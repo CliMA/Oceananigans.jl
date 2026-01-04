@@ -40,16 +40,16 @@ function is_obstacle(x, z)
     return (x - x₀)^2 + (z - z₀)^2 < r₀^2
 end
 
-function setup_grid()
+function setup_grid(arch)
     zs = collect(range(-Lz / 2, Lz / 2, length=Nz+1))
     zs[2:end-1] .+= randn(length(zs[2:end-1])) * (1 / Nz) / 10
 
     underlying_grid = RectilinearGrid(
-        GPU(),
+        arch,
         size = (Nx, Nz),
         x = (0.0, Lx),
-        z = (- Lz / 2, Lz / 2),
-        # z = zs,               # if you want to use a non-uniform grid
+        # z = (- Lz / 2, Lz / 2),
+        z = zs,               # if you want to use a non-uniform grid
         topology = (Periodic, Flat, Bounded),
         halo = (4, 4),
     )
@@ -63,16 +63,16 @@ closure = ScalarDiffusivity(ν = ν)
 c_forcing = Forcing(c_tendency, field_dependencies = (:c, ))
 u_forcing = Forcing(u_tendency, field_dependencies = (:u, ))
 
-grid = setup_grid()
-preconditioner = nonhydrostatic_pressure_solver(with_number_type(Float32, grid.underlying_grid))
+arch = GPU()
+grid = setup_grid(arch)
+preconditioner = nonhydrostatic_pressure_solver(arch, with_number_type(Float32, grid.underlying_grid), nothing)
 # preconditioner = DiagonallyDominantPreconditioner()
 # preconditioner = nothing
 
 pressure_solver = ConjugateGradientPoissonSolver(
     grid, maxiter=1000, preconditioner=preconditioner)
 
-model = NonhydrostaticModel(;
-    grid,
+model = NonhydrostaticModel(grid;
     advection = WENO(),
     tracers = (:c, ),
     forcing = (; c = c_forcing, u = u_forcing),
@@ -201,4 +201,4 @@ display(fig)
 CairoMakie.record(fig, "./vortex_sheet.mp4", 1:Nt, framerate=15, px_per_unit=2) do nn
     n[] = nn
 end
-#%%
+# #%%

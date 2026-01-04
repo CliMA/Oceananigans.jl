@@ -225,6 +225,10 @@ function initialize!(sim::Simulation)
         initialize!(callback, sim)
     end
 
+    for writer in values(sim.output_writers)
+        initialize!(writer, model)
+    end
+
     # Reset! the model time-stepper, evaluate all diagnostics, and write all output at first iteration
     if model.clock.iteration == 0
         reset!(timestepper(model))

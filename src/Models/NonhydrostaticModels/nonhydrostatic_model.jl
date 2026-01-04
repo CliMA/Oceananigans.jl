@@ -56,37 +56,41 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
 end
 
 """
-    NonhydrostaticModel(;           grid,
-                                    clock = Clock{eltype(grid)}(time = 0),
-                                advection = Centered(),
-                                 buoyancy = nothing,
-                                 coriolis = nothing,
-                             stokes_drift = nothing,
-                      forcing::NamedTuple = NamedTuple(),
-                                  closure = nothing,
-          boundary_conditions::NamedTuple = NamedTuple(),
-                                  tracers = (),
-                              timestepper = :RungeKutta3,
-            background_fields::NamedTuple = NamedTuple(),
-            particles::ParticlesOrNothing = nothing,
-    biogeochemistry::AbstractBGCOrNothing = nothing,
-                               velocities = nothing,
-                  nonhydrostatic_pressure = CenterField(grid),
-             hydrostatic_pressure_anomaly = DefaultHydrostaticPressureAnomaly(),
-                           closure_fields = nothing,
-                          pressure_solver = nothing,
-                         auxiliary_fields = NamedTuple())
+    NonhydrostaticModel(grid;
+                        clock = Clock{eltype(grid)}(time = 0),
+                        advection = Centered(),
+                        buoyancy = nothing,
+                        coriolis = nothing,
+                        stokes_drift = nothing,
+                        forcing::NamedTuple = NamedTuple(),
+                        closure = nothing,
+                        boundary_conditions::NamedTuple = NamedTuple(),
+                        tracers = (),
+                        timestepper = :RungeKutta3,
+                        background_fields::NamedTuple = NamedTuple(),
+                        particles::ParticlesOrNothing = nothing,
+                        biogeochemistry::AbstractBGCOrNothing = nothing,
+                        velocities = nothing,
+                        nonhydrostatic_pressure = nothing,
+                        hydrostatic_pressure_anomaly = DefaultHydrostaticPressureAnomaly(),
+                        closure_fields = nothing,
+                        pressure_solver = nothing,
+                        auxiliary_fields = NamedTuple())
 
 Construct a model for a non-hydrostatic, incompressible fluid on `grid`, using the Boussinesq
 approximation when `buoyancy != nothing`. By default, all Bounded directions are rigid and impenetrable.
 
+Arguments
+==========
+
+ - `grid`: (required) The resolution and discrete geometry on which the `model` is solved. The
+           architecture (CPU/GPU) that the model is solved on is inferred from the architecture
+           of the `grid`. Note that the grid needs to be regularly spaced in the horizontal
+           dimensions, ``x`` and ``y``.
+
 Keyword arguments
 =================
 
-  - `grid`: (required) The resolution and discrete geometry on which the `model` is solved. The
-            architecture (CPU/GPU) that the model is solved on is inferred from the architecture
-            of the `grid`. Note that the grid needs to be regularly spaced in the horizontal
-            dimensions, ``x`` and ``y``.
   - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
   - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyFormulations`.
   - `coriolis`: Parameters for the background rotation rate of the model.
@@ -102,18 +106,19 @@ Keyword arguments
   - `particles`: Lagrangian particles to be advected with the flow. Default: `nothing`.
   - `biogeochemistry`: Biogeochemical model for `tracers`.
   - `velocities`: The model velocities. Default: `nothing`.
-  - `nonhydrostatic_pressure`: The nonhydrostatic pressure field. Default: `CenterField(grid)`.
+  - `nonhydrostatic_pressure`: The nonhydrostatic pressure field. Default: `nothing`.
   - `hydrostatic_pressure_anomaly`: An optional field that stores the part of the nonhydrostatic pressure
-                                    in hydrostatic balance with the buoyancy field. If `CenterField(grid)` (default), the anomaly is precomputed by
-                                    vertically integrating the buoyancy field. In this case, the `nonhydrostatic_pressure` represents
-                                    only the part of pressure that deviates from the hydrostatic anomaly. If `nothing`, the anomaly
-                                    is not computed.
+                                    in hydrostatic balance with the buoyancy field. If `CenterField(grid)`, the anomaly is
+                                    precomputed by vertically integrating the buoyancy field. In this case, the `nonhydrostatic_pressure`
+                                    represents only the part of pressure that deviates from the hydrostatic anomaly.
+                                    If `nothing` (default), the anomaly is not computed. Note: for grids with periodic vertical topology,
+                                    the hydrostatic pressure anomaly is set to `nothing` by default.
   - `closure_fields`: Diffusivity fields. Default: `nothing`.
   - `pressure_solver`: Pressure solver to be used in the model. If `nothing` (default), the model constructor
     chooses the default based on the `grid` provide.
   - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`
 """
-function NonhydrostaticModel(; grid,
+function NonhydrostaticModel(grid;
                              clock = Clock(grid),
                              advection = Centered(),
                              buoyancy = nothing,
@@ -160,7 +165,13 @@ function NonhydrostaticModel(; grid,
     if hydrostatic_pressure_anomaly isa DefaultHydrostaticPressureAnomaly
         # Manage treatment of the hydrostatic pressure anomaly:
 
-        if !isnothing(buoyancy)
+        # Check if the grid is periodic in the vertical direction
+        TZ = topology(grid, 3)
+
+        if TZ === Periodic
+            # If vertical direction is periodic, don't use hydrostatic pressure anomaly
+            hydrostatic_pressure_anomaly = nothing
+        elseif !isnothing(buoyancy)
             # Separate the hydrostatic pressure anomaly
             # from the nonhydrostatic pressure contribution.
             # See https://github.com/CliMA/Oceananigans.jl/issues/3677
@@ -278,6 +289,7 @@ function NonhydrostaticModel(; grid,
 end
 
 architecture(model::NonhydrostaticModel) = model.architecture
+timestepper(model::NonhydrostaticModel) = model.timestepper
 
 function inflate_grid_halo_size(grid, tendency_terms...)
     user_halo = grid.Hx, grid.Hy, grid.Hz

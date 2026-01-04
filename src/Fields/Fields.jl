@@ -8,6 +8,8 @@ export set!, compute!, @compute, regrid!
 export VelocityFields, TracerFields, tracernames
 export interpolate
 
+using OffsetArrays: OffsetArray
+
 using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.BoundaryConditions
@@ -46,11 +48,18 @@ Build a field from array `a` at `loc` and on `grid`.
     f = Field(loc, grid)
     a = on_architecture(architecture(grid), a)
     try
-        copyto!(parent(f), a)
+        set!(f, a)
     catch
-        f .= a
+        copyto!(parent(f), parent(a))
     end
     return f
+end
+
+# Build a field off of the current data
+@inline function field(loc, a::OffsetArray, grid) 
+    loc = instantiate(loc)
+    a = on_architecture(architecture(grid), a)
+    return Field(loc, grid; data=a)
 end
 
 @inline field(loc, a::Function, grid) = FunctionField(loc, a, grid)
@@ -61,7 +70,18 @@ end
 @inline function field(loc, f::Field, grid)
     loc = instantiate(loc)
     loc === instantiated_location(f) && grid === f.grid && return f
-    error("Cannot construct field at $loc and on $grid from $f")
+
+    msg = """
+    Cannot reconstruct field, originally located at ($(instantiated_location(f))), at $loc.
+
+    Destination grid:
+    $grid
+
+    Source grid:
+    $(f.grid)
+    """
+
+    return throw(ArgumentError(msg))
 end
 
 include("set!.jl")

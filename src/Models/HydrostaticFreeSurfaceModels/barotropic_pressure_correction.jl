@@ -25,7 +25,7 @@ function make_pressure_correction!(model, ::ImplicitFreeSurface, Δt)
             model.grid,
             Δt,
             model.free_surface.gravitational_acceleration,
-            model.free_surface.η)
+            model.free_surface.displacement)
 
     return nothing
 end

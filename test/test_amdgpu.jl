@@ -55,7 +55,7 @@ end
 
             free_surface = SplitExplicitFreeSurface(grid; substeps=60)
 
-            model = HydrostaticFreeSurfaceModel(; grid, free_surface,
+            model = HydrostaticFreeSurfaceModel(grid; free_surface,
                                                 coriolis, buoyancy, tracers,
                                                 momentum_advection, tracer_advection)
 
@@ -70,7 +70,7 @@ end
                                 Oceananigans.Solvers.FFTBasedPoissonSolver(grid))
 
             for pressure_solver in pressure_solvers
-                model = NonhydrostaticModel(; grid, pressure_solver,
+                model = NonhydrostaticModel(grid; pressure_solver,
                                             coriolis, buoyancy,
                                             tracers, advection)
 
@@ -105,7 +105,7 @@ end
         equation_of_state = TEOS10EquationOfState()
         buoyancy = SeawaterBuoyancy(; equation_of_state)
 
-        model = HydrostaticFreeSurfaceModel(; grid, buoyancy,
+        model = HydrostaticFreeSurfaceModel(grid; buoyancy,
                                             coriolis = FPlane(latitude=45),
                                             tracers = (:T, :S),
                                             momentum_advection = WENO(order=5),
