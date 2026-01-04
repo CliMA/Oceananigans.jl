@@ -173,7 +173,7 @@ catke = CATKEVerticalDiffusivity()
 
 @info "Building a model..."
 
-model = HydrostaticFreeSurfaceModel(grid = grid,
+model = HydrostaticFreeSurfaceModel(grid;
                                     free_surface = ImplicitFreeSurface(),
                                     momentum_advection = WENO(),
                                     tracer_advection = WENO(),

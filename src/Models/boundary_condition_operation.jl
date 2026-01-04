@@ -62,7 +62,7 @@ grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
 c_flux(x, y, t) = sin(2π * x)
 c_top_bc = FluxBoundaryCondition(c_flux)
 c_bcs = FieldBoundaryConditions(top=c_top_bc)
-model = NonhydrostaticModel(; grid, tracers=:c, boundary_conditions=(; c=c_bcs))
+model = NonhydrostaticModel(grid; tracers=:c, boundary_conditions=(; c=c_bcs))
 
 c_flux_op = BoundaryConditionOperation(model.tracers.c, :top, model)
 

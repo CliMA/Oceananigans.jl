@@ -76,7 +76,7 @@ function run_simulation(solver, preconditioner; Nr, Ra, Nz, Pr=1, IPS_reltol=1e-
     max_Δt = 1e-5
 
     if solver == "FFT"
-        model = NonhydrostaticModel(; grid,
+        model = NonhydrostaticModel(grid;
                                     # advection = Centered(),
                                     advection = WENO(order=7),
                                     tracers = (:b),
@@ -85,7 +85,7 @@ function run_simulation(solver, preconditioner; Nr, Ra, Nz, Pr=1, IPS_reltol=1e-
                                     # timestepper = :RungeKutta3,
                                     boundary_conditions=(; u=u_bcs, v=v_bcs, w=w_bcs, b=b_bcs))
     else
-        model = NonhydrostaticModel(; grid,
+        model = NonhydrostaticModel(grid;
                                     pressure_solver = ImmersedPoissonSolver(grid, preconditioner=preconditioner, reltol=IPS_reltol),
                                     # advection = Centered(),
                                     advection = WENO(order=7),
