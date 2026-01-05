@@ -75,7 +75,7 @@ For implicit free surfaces, a predictor-corrector approach is used:
 
     @apply_regionally begin
         # Computing tendencies...
-        compute_momentum_tendencies!(model, callbacks)
+        compute_momentum_flux_bcs!(model)
         compute_tracer_tendencies!(model)
 
         # Finally Substep! Advance grid, tracers, (predictor) momentum
