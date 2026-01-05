@@ -12,7 +12,9 @@ export
     Center, Face,
     Periodic, Bounded, Flat,
     RightConnected, LeftConnected, FullyConnected,
-    RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, TripolarGrid,
+    RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
+    TripolarGrid, RotatedLatitudeLongitudeGrid,
+    MutableVerticalDiscretization,
     ExponentialDiscretization, ReferenceToStretchedDiscretization, PowerLawStretching, LinearStretching,
     nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
     xspacings, yspacings, rspacings, zspacings, λspacings, φspacings,
@@ -81,6 +83,7 @@ export
     NonhydrostaticModel, HydrostaticFreeSurfaceModel, ShallowWaterModel,
     ConservativeFormulation, VectorInvariantFormulation,
     PressureField, fields, ZCoordinate, ZStarCoordinate,
+    BulkDrag, LinearFormulation, QuadraticFormulation,
 
     # Hydrostatic free surface model stuff
     VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,

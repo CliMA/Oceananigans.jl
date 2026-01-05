@@ -49,14 +49,9 @@ function run_cylinder_steadystate(; output_time_interval = 1, stop_time = 100, a
     v_bc = OpenBoundaryCondition(1.0)
     v_bcs = FieldBoundaryConditions(north = v_bc, south = v_bc)
 
-    immersed_model = NonhydrostaticModel(advection = advection,
-                                         timestepper = :RungeKutta3,
-                                         grid = immersed_grid,
-                                         tracers = :mass,
-                                         closure = ScalarDiffusivity(ν=ν, κ=ν),
-                                         boundary_conditions = (v=v_bcs,),
-                                         coriolis = nothing,
-                                         buoyancy = nothing)
+    immersed_model = NonhydrostaticModel(immersed_grid; advection, timestepper = :RungeKutta3,
+                                                        tracers = :mass, closure = ScalarDiffusivity(ν=ν, κ=ν),
+                                                        boundary_conditions = (v=v_bcs,))
 
     # ** Initial conditions **
     #

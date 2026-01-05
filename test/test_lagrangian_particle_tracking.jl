@@ -20,36 +20,35 @@ function particle_tracking_simulation(; grid, particles, timestepper=:RungeKutta
     Arch = typeof(architecture(grid))
 
     if grid isa RectilinearGrid
-        model = NonhydrostaticModel(; grid, timestepper, velocities, particles)
+        model = NonhydrostaticModel(grid; timestepper, velocities, particles)
         set!(model, u=1, v=1)
     else
         set!(velocities.u, 1)
         set!(velocities.v, 1)
-        model = HydrostaticFreeSurfaceModel(; grid, velocities=PrescribedVelocityFields(; velocities...), particles)
+        model = HydrostaticFreeSurfaceModel(grid; velocities=PrescribedVelocityFields(; velocities...), particles)
     end
-    sim = Simulation(model, Δt=1e-2, stop_iteration=1)
+
+    simulation = Simulation(model, Δt=1e-2, stop_iteration=1)
 
     jld2_filepath = "test_particles_$Arch.jld2"
-    sim.output_writers[:particles_jld2] = JLD2Writer(model, (; particles=model.particles),
-                                                     filename=jld2_filepath, schedule=IterationInterval(1))
+    simulation.output_writers[:particles_jld2] = JLD2Writer(model, (; particles=model.particles),
+                                                            filename = jld2_filepath,
+                                                            schedule = IterationInterval(1))
 
     nc_filepath = "test_particles_$Arch.nc"
-    sim.output_writers[:particles_nc] = NetCDFWriter(model,
-                                                     (; model.particles),
-                                                     filename = nc_filepath,
-                                                     schedule = IterationInterval(1))
+    simulation.output_writers[:particles_nc] = NetCDFWriter(model, (; particles=model.particles),
+                                                            filename = nc_filepath,
+                                                            schedule = IterationInterval(1))
 
-    sim.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(1),
-                                                     dir=".", prefix="particles_checkpoint_$Arch")
+    simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(1),
+                                                            dir=".", prefix="particles_checkpoint_$Arch")
 
-    return sim, jld2_filepath, nc_filepath
+    return simulation, jld2_filepath, nc_filepath
 end
 
-function run_simple_particle_tracking_tests(grid, dynamics, timestepper=:QuasiAdamsBashforth)
-
+function run_particle_tracking_tests(grid, dynamics, timestepper=:QuasiAdamsBashforth)
     arch = architecture(grid)
     Arch = typeof(arch)
-
     P = 10
 
     #####
@@ -64,9 +63,9 @@ function run_simple_particle_tracking_tests(grid, dynamics, timestepper=:QuasiAd
     @test particles isa LagrangianParticles
 
     if grid isa RectilinearGrid
-        sim, jld2_filepath, nc_filepath = particle_tracking_simulation(; grid, particles, timestepper)
-        model = sim.model
-        run!(sim)
+        simulation, jld2_filepath, nc_filepath = particle_tracking_simulation(; grid, particles, timestepper)
+        model = simulation.model
+        run!(simulation)
 
         # Just test we run without errors
         @test length(model.particles) == P
@@ -81,11 +80,12 @@ function run_simple_particle_tracking_tests(grid, dynamics, timestepper=:QuasiAd
     ##### Test Boundary restitution
     #####
 
-    initial_z = @allowscalar grid.z.cᵃᵃᶜ[grid.Nz-1]
-    top_boundary = @allowscalar grid.z.cᵃᵃᶠ[grid.Nz+1]
+    @allowscalar begin
+        initial_z    = znode(1, 1, grid.Nz-1, grid, Center(), Center(), Center())
+        top_boundary = znode(1, 1, grid.Nz+1, grid, Center(), Center(), Face())
+    end
 
     x, y, z = on_architecture.(Ref(arch), ([0.0], [0.0], [initial_z]))
-
     particles = LagrangianParticles(; x, y, z, dynamics)
     u, v, w = VelocityFields(grid)
 
@@ -94,9 +94,7 @@ function run_simple_particle_tracking_tests(grid, dynamics, timestepper=:QuasiAd
     interior(w, :, :, grid.Nz - 1) .= (0.2 + top_boundary - initial_z) / Δt
 
     velocities = PrescribedVelocityFields(; u, v, w)
-
-    model = HydrostaticFreeSurfaceModel(; grid, particles, velocities, buoyancy=nothing, tracers=())
-
+    model = HydrostaticFreeSurfaceModel(grid; particles, velocities, buoyancy=nothing, tracers=())
     time_step!(model, Δt)
 
     if dynamics == no_dynamics
@@ -132,35 +130,43 @@ function run_simple_particle_tracking_tests(grid, dynamics, timestepper=:QuasiAd
     @test lagrangian_particles isa LagrangianParticles
 
     if grid isa RectilinearGrid
-        model = NonhydrostaticModel(; grid, timestepper,
+        model = NonhydrostaticModel(grid; timestepper,
                                       velocities, particles=lagrangian_particles,
                                       background_fields=(v=background_v,))
 
         set!(model, u=1)
 
-        sim = Simulation(model, Δt=1e-2, stop_iteration=1)
+        simulation = Simulation(model, Δt=1e-2, stop_iteration=1)
 
         jld2_filepath = "test_particles_$Arch.jld2"
-        sim.output_writers[:particles_jld2] = JLD2Writer(model, (; particles=model.particles),
-                                                         filename=jld2_filepath, schedule=IterationInterval(1))
+        jld2_ow = JLD2Writer(model, (; particles=model.particles),
+                             filename = jld2_filepath,
+                             schedule = IterationInterval(1))
+
+        Oceananigans.Simulations.initialize!(jld2_ow, model)
+        simulation.output_writers[:particles_jld2] = jld2_ow
 
         nc_filepath = "test_particles_$Arch.nc"
-        sim.output_writers[:particles_nc] = NetCDFWriter(model,
-                                                         (; particles = model.particles),
-                                                         filename = nc_filepath,
-                                                         schedule = IterationInterval(1))
+        nc_ow = NetCDFWriter(model, (; particles = model.particles),
+                             filename = nc_filepath,
+                             schedule = IterationInterval(1))
 
-        sim.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(1),
-                                                         dir=".", prefix="particles_checkpoint_$Arch")
+        Oceananigans.Simulations.initialize!(nc_ow, model)
+        simulation.output_writers[:particles_nc] = nc_ow
+
+        checkpointer_ow = Checkpointer(model, schedule=IterationInterval(1),
+                                       dir=".", prefix="particles_checkpoint_$Arch")
+
+        simulation.output_writers[:checkpointer] = checkpointer_ow
 
         rm(jld2_filepath)
         rm(nc_filepath)
         rm("particles_checkpoint_$(Arch)_iteration1.jld2")
     end
 
-    sim, jld2_filepath, nc_filepath = particle_tracking_simulation(; grid, particles=lagrangian_particles, timestepper, velocities)
-    model = sim.model
-    run!(sim)
+    simulation, jld2_filepath, nc_filepath = particle_tracking_simulation(; grid, particles=lagrangian_particles, timestepper, velocities)
+    model = simulation.model
+    run!(simulation)
 
     @test length(model.particles) == P
     @test size(model.particles) == tuple(P)
@@ -318,18 +324,21 @@ lagrangian_particle_test_curvilinear_grid(arch, z) =
     particle_dynamics = (no_dynamics, DroguedParticleDynamics)
 
     for arch in archs, timestepper in timesteppers, y_topo in y_topologies, (z_grid_type, z) in pairs(vertical_grids), dynamics in particle_dynamics
-        @info "  Testing Lagrangian particle tracking [$(typeof(arch)), $timestepper] with y $(typeof(y_topo)) on vertically $z_grid_type grid and $(dynamics) ..."
+        A = typeof(arch)
+        Y = typeof(y_topo)
+        Z = typeof(z_grid_type)
+        @info "  Testing Lagrangian particle tracking [$A, $timestepper] with y $Y on vertically $Z grid and $dynamics ..."
         if dynamics == DroguedParticleDynamics
             dynamics = dynamics(on_architecture(arch, [-1:0.1:0;]))
         end
 
         grid = lagrangian_particle_test_grid(arch, y_topo, z)
-        run_simple_particle_tracking_tests(grid, dynamics, timestepper)
+        run_particle_tracking_tests(grid, dynamics, timestepper)
 
         if z isa NTuple{2} # Test immersed regular grids
             @info "  Testing Lagrangian particle tracking [$(typeof(arch)), $timestepper] with y $(typeof(y_topo)) on vertically $z_grid_type immersed grid and $(dynamics) ..."
             grid = lagrangian_particle_test_immersed_grid(arch, y_topo, z)
-            run_simple_particle_tracking_tests(grid, dynamics, timestepper)
+            run_particle_tracking_tests(grid, dynamics, timestepper)
         end
     end
 
@@ -340,7 +349,7 @@ lagrangian_particle_test_curvilinear_grid(arch, z) =
         end
 
         grid = lagrangian_particle_test_curvilinear_grid(arch, z)
-        run_simple_particle_tracking_tests(grid, dynamics)
+        run_particle_tracking_tests(grid, dynamics)
     end
 
     for arch in archs
@@ -355,7 +364,7 @@ lagrangian_particle_test_curvilinear_grid(arch, z) =
 
         grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
         particles = LagrangianParticles(x=xp, y=yp, z=zp)
-        model = NonhydrostaticModel(; grid, particles)
+        model = NonhydrostaticModel(grid; particles)
         time_step!(model, 1)
         @test model.particles isa LagrangianParticles
     end

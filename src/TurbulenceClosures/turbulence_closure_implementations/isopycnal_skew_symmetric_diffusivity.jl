@@ -46,6 +46,9 @@ calculated isopycnal slope values. The skew fluxes can be computed using either 
 or the `DiffusiveFormulation`.
 
 Both `κ_skew` and `κ_symmetric` may be constants, arrays, fields, or functions of `(x, y, z, t)`.
+
+This closure implements the mesoscale eddy parameterization developed by
+[Gent and McWilliams (1990)](@cite GentMcWilliams90) and [Redi (1982)](@cite Redi82).
 """
 function IsopycnalSkewSymmetricDiffusivity(time_disc::TD=VerticallyImplicitTimeDiscretization(), FT=Oceananigans.defaults.FloatType;
                                            κ_skew = nothing,
@@ -346,12 +349,14 @@ end
 #####
 
 Base.summary(closure::ISSD) = string("IsopycnalSkewSymmetricDiffusivity",
-                                     "(κ_skew=",
-                                     prettysummary(closure.κ_skew),
+                                     "(κ_skew=", prettysummary(closure.κ_skew),
                                      ", κ_symmetric=", prettysummary(closure.κ_symmetric), ")")
 
-Base.show(io::IO, closure::ISSD) =
-    print(io, "IsopycnalSkewSymmetricDiffusivity: " *
-              "(κ_symmetric=$(closure.κ_symmetric), κ_skew=$(closure.κ_skew), " *
-              "(isopycnal_tensor=$(closure.isopycnal_tensor), slope_limiter=$(closure.slope_limiter))")
+function Base.show(io::IO, closure::ISSD)
+    print(io, "IsopycnalSkewSymmetricDiffusivity:", '\n',
+              "├── κ_skew: ", prettysummary(closure.κ_skew), '\n',
+              "├── κ_symmetric: ", prettysummary(closure.κ_symmetric), '\n',
+              "├── isopycnal_tensor: ", summary(closure.isopycnal_tensor), '\n',
+              "└── slope_limiter: ", summary(closure.slope_limiter))
+end
 

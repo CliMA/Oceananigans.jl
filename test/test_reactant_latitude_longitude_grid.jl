@@ -29,7 +29,7 @@ include("reactant_test_utils.jl")
                                                      hydrostatic_model_kw,
                                                      immersed_boundary_grid=true)
 
-        η = simulation.model.free_surface.η
+        η = simulation.model.free_surface.displacement
         η_grid = η.grid
         @test isnothing(η_grid.interior_active_cells)
         @test isnothing(η_grid.active_z_columns)
@@ -61,7 +61,7 @@ include("reactant_test_utils.jl")
                                                  lat_lon_kw,
                                                  hydrostatic_model_kw,
                                                  immersed_boundary_grid=true)
-    η = simulation.model.free_surface.η
+    η = simulation.model.free_surface.displacement
     η_grid = η.grid
     @test isnothing(η_grid.interior_active_cells)
     @test isnothing(η_grid.active_z_columns)
