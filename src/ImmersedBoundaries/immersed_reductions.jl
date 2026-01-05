@@ -79,9 +79,8 @@ end
                                     grid::ImmersedBoundaryGrid,
                                     co::ConditionalOperation, args...)
 
-    ℓx, ℓy, ℓz = instantiated_location(co)
-    immersed = immersed_peripheral_node(i, j, k, grid, ℓx, ℓy, ℓz) | inactive_node(i, j, k, grid, ℓx, ℓy, ℓz)
-    return !immersed & evaluate_condition(ni.condition, i, j, k, grid, co, args...)
+    valid_cell = evaluate_condition(NotImmersed(), i, j, k, grid, co)
+    return valid_cell & evaluate_condition(ni.condition, i, j, k, grid, co, args...)
 end
 
 @inline function evaluate_condition(condition::NotImmersed, i::AbstractArray, j::AbstractArray, k::AbstractArray, ibg, co::ConditionalOperation, args...)
@@ -116,38 +115,6 @@ end
 using Oceananigans.Fields: reduced_dimensions, OneField
 using Oceananigans.AbstractOperations: ConditionalOperation
 
-@inline function condition_operand(func, op::IRF, condition, mask)
-    immersed_condition = NotImmersedColumn(immersed_column(op), condition)
-    return ConditionalOperation(op; func, condition=immersed_condition, mask)
-end
-
-@inline function condition_operand(::Nothing, op::IRF, ::Nothing, mask)
-    immersed_condition = NotImmersedColumn(immersed_column(op), nothing)
-    return ConditionalOperation(op; func=nothing, condition=immersed_condition, mask)
-end
-
-condition_operand(::typeof(identity), op::IF, ::Nothing, mask) =
-    condition_operand(nothing, op, nothing, mask)
-
-condition_operand(::typeof(identity), op::IRF, ::Nothing, mask) =
-    condition_operand(nothing, op, nothing, mask)
-
-@inline function condition_operand(func, op::IF, condition, mask)
-    immersed_condition = NotImmersed(condition)
-    return ConditionalOperation(op; func, condition=immersed_condition, mask)
-end
-
-@inline function condition_operand(::Nothing, op::IF, ::Nothing, mask)
-    immersed_condition = NotImmersed()
-    return ConditionalOperation(op; func=nothing, condition=immersed_condition, mask)
-end
-
-@inline function condition_operand(func, operand::IF, condition::AbstractArray, mask)
-    condition = on_architecture(architecture(operand.grid), condition)
-    immersed_condition = NotImmersed(condition)
-    return ConditionalOperation(operand; func, condition=immersed_condition, mask)
-end
-
 @inline function immersed_column(field::IRF)
     grid         = field.grid
     reduced_dims = reduced_dimensions(field)
@@ -174,5 +141,48 @@ const NICO{LX, LY, LZ, F, C} = Union{
     ConditionalOperation{LX, LY, LZ, F, C, <:NotImmersed, <:ImmersedBoundaryGrid},
     ConditionalOperation{LX, LY, LZ, F, C, <:NotImmersedColumn, <:ImmersedBoundaryGrid},
 }
+
 @inline conditional_length(c::NICO) = sum(conditional_one(c, 0))
 @inline conditional_length(c::NICO, dims) = sum(conditional_one(c, 0); dims = dims)
+
+#####
+##### conditional_operand extension
+#####
+
+condition_operand(::typeof(identity), op::IF, ::Nothing, mask) =
+    condition_operand(nothing, op, nothing, mask)
+
+@inline function condition_operand(::Nothing, op::IF, ::Nothing, mask)
+    immersed_condition = NotImmersed()
+    return ConditionalOperation(op; func=nothing, condition=immersed_condition, mask)
+end
+
+@inline function condition_operand(func, op::IF, condition, mask)
+    immersed_condition = NotImmersed(condition)
+    return ConditionalOperation(op; func, condition=immersed_condition, mask)
+end
+
+@inline function condition_operand(func, operand::IF, condition::AbstractArray, mask)
+    condition = on_architecture(architecture(operand.grid), condition)
+    immersed_condition = NotImmersed(condition)
+    return ConditionalOperation(operand; func, condition=immersed_condition, mask)
+end
+
+condition_operand(::typeof(identity), op::IRF, ::Nothing, mask) =
+    condition_operand(nothing, op, nothing, mask)
+
+@inline function condition_operand(func, op::IRF, condition, mask)
+    immersed_condition = NotImmersedColumn(immersed_column(op), condition)
+    return ConditionalOperation(op; func, condition=immersed_condition, mask)
+end
+
+@inline function condition_operand(::Nothing, op::IRF, ::Nothing, mask)
+    immersed_condition = NotImmersedColumn(immersed_column(op), nothing)
+    return ConditionalOperation(op; func=nothing, condition=immersed_condition, mask)
+end
+
+@inline function condition_operand(func, operand::IRF, condition::AbstractArray, mask)
+    condition = on_architecture(architecture(operand.grid), condition)
+    immersed_condition = NotImmersedColumn(condition)
+    return ConditionalOperation(operand; func, condition=immersed_condition, mask)
+end

@@ -31,4 +31,7 @@ include("distributed_tripolar_grid.jl")
 include("distributed_zipper.jl")
 include("distributed_zipper_north_tags.jl")
 
+# Reductions on a tripolar grid
+include("tripolar_grid_reductions.jl")
+
 end # module
