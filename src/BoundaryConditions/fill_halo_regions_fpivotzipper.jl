@@ -17,16 +17,15 @@ while the T-point pivot, the seam is located on the cells' `Center` and `XFace`.
 Example
 =======
 
-Consider the northern edge of a tripolar grid where P indicates the i - location of the poles
+Consider the northern edge of a tripolar grid where P indicates the pivot point.
 
 ```
-                    P                         P                         P
                     │            │            │            │            │
 Ny + 2 (face)   ─▶  ├─── -v₆ ────┼─── -v₅ ────┼─── -v₄ ────┼─── -v₃ ────┤
                     │            │            │            │            │
 Ny + 1 (center) ─▶ -u₁    c₄    -u₄    c₃    -u₃    c₂    -u₂    c₁    -u₁
                     │            │            │            │            │
-Ny + 1 (face)   ─▶  ├──── v₁ ────┼──── v₂ ────┼─── -v₂ ────┼─── -v₁ ────┤ ◀─ Fold
+Ny + 1 (face)   ─▶  ├──── v₁ ────┼──── v₂ ─── P ── -v₂ ────┼─── -v₁ ────┤ ◀─ Fold
                     │            │            │            │            │
 Ny     (center) ─▶  u₁    c₁     u₂    c₂     u₃    c₃     u₄    c₄     u₁
                     │            │            │            │            │

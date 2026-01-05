@@ -165,6 +165,14 @@ end
     end
 end
 
+# helper function for generating indices around the pivot point of zipper
+function pivoted_indices(idxmin, idxmax, pivot)
+    idx = idxmin:idxmax
+    rotidx = Int.(2pivot .- idx)
+    valid = @. idxmin ≤ rotidx ≤ idxmax
+    return idx[valid], rotidx[valid]
+end
+
 @testset "Zipper boundary conditions..." begin
     for arch in archs, ytopology in ytopologies
         grid = TripolarGrid(arch; size = (10, 10, 1), ytopology)
@@ -196,11 +204,11 @@ end
         @test u.boundary_conditions.north.condition == -1
         @test v.boundary_conditions.north.condition == -1
 
-        set!(c, 1)
-        set!(cx, 1)
-        set!(cy, 1)
-        set!(u, 1)
-        set!(v, 1)
+        set!(c, (x, y, z) -> x + y + z)
+        set!(cx, (x, y, z) -> x + y + z)
+        set!(cy, (x, y, z) -> x + y + z)
+        set!(u, (x, y, z) -> x + y + z)
+        set!(v, (x, y, z) -> x + y + z)
 
         fill_halo_regions!(c)
         fill_halo_regions!(cx)
@@ -208,28 +216,54 @@ end
         fill_halo_regions!(u)
         fill_halo_regions!(v)
 
+        # Halo/interior indices for `YFaceField`s depend on where the topology folds.
+        # Illustrated below are both cases with the pivot point (F or T) indicated in bold.
+        #            │           │           │           │           │
+        # Ny + 2 ─▶  ├──── v ────┼──── v ────┼──── v ────┼───  v ────┤
+        #            │           │           │           │           │
+        # Ny + 1 ─▶  u     c     u     c     u     c     u     c     u
+        #            │           │           │           │           │
+        # Ny + 1 ─▶  𝐅 ─── v ────┼──── v ─── 𝐅 ─── v ────┼───  v ─── 𝐅 ◀─ Fold (RightFoldedAlongFaces)
+        #            │           │           │           │           │
+        # Ny     ─▶  𝐓     c     u     c     𝐓     c     u     c     𝐓 ◀─ Fold (RightFoldedAlongCenters)
+        #            │           │           │           │           │
+        # Ny     ─▶  ├──── v ────┼──── v ────┼──── v ────┼──── v ────┤
+        #            │           │           │           │           │
+        # Ny - 1 ─▶  u     c     u     c     u     c     u     c     u
+        #            │           │           │           │           │
+        # Ny - 1 ─▶  ├──── v ────┼──── v ────┼──── v ────┼──── v ────┤
+        #            │           │           │           │           │
+        #                                                ▲     ▲
+        #                                                Nx    Nx
+        #                                             (face)  (center)
+        # For testing, we define all the indices by symmetry around the pivot point!
+        c_pivot_i = v_pivot_i = Nx ÷ 2 + 0.5
+        u_pivot_i = Nx ÷ 2 + 1
+        c_pivot_j = u_pivot_j = (ytopology == RightFoldedAlongCenters) ? Ny : Ny + 0.5
+        v_pivot_j = c_pivot_j + 0.5
+        # We will take views centered around the pivot
+        imin, imax = 1 - Hx, Nx + Hx
+        jmin = 1 - Hy
+        u_jmax = c_jmax = Ny + Hy
+        v_jmax = (ytopology == RightFoldedAlongCenters) ? (Ny + Hy) : (Ny + Hy + 1)
+        c_i, c_i′ = pivoted_indices(imin, imax, c_pivot_i)
+        c_j, c_j′ = pivoted_indices(jmin, c_jmax, c_pivot_j)
+        u_i, u_i′ = pivoted_indices(imin, imax, u_pivot_i)
+        u_j, u_j′ = pivoted_indices(jmin, u_jmax, u_pivot_j)
+        v_i, v_i′ = pivoted_indices(imin, imax, v_pivot_i)
+        v_j, v_j′ = pivoted_indices(jmin, v_jmax, v_pivot_j)
+
+        # Test that the northern halo region has been correctly rotated and sign-changed
         c = on_architecture(CPU(), c)
         cy = on_architecture(CPU(), cy)
         v = on_architecture(CPU(), v)
-        north_boundary_c = view(c.data, :, Ny+1:Ny+Hy, 1)
-        north_boundary_cy = view(cy.data, :, Ny+1:Ny+Hy, 1)
-        north_boundary_v = view(v.data, :, Ny+1:Ny+Hy, 1)
-        @test all(north_boundary_c .== 1)
-        @test all(north_boundary_cy .== 1)
-        @test all(north_boundary_v .== -1)
-
         cx = on_architecture(CPU(), cx)
         u = on_architecture(CPU(), u)
-        north_interior_boundary_cx = view(cx.data, 2:Nx-1, Ny+1:Ny+Hy, 1)
-        north_interior_boundary_u = view(u.data, 2:Nx-1, Ny+1:Ny+Hy, 1)
-
-        @test all(north_interior_boundary_cx .== 1)
-        @test all(north_interior_boundary_u .== -1)
-
-        north_boundary_u_left  = view(u.data, 1, Ny+1:Ny+Hy, 1)
-        north_boundary_u_right = view(u.data, Nx+1, Ny+1:Ny+Hy, 1)
-        @test all(north_boundary_u_left  .== 1)
-        @test all(north_boundary_u_right .== 1)
+        @test all(view(c.data, c_i, c_j, :) .== view(c.data, c_i′, c_j′, :))
+        @test all(view(cy.data, v_i, v_j, :) .== view(cy.data, v_i′, v_j′, :))
+        @test all(view(v.data, v_i, v_j, :) .== -view(v.data, v_i′, v_j′, :))
+        @test all(view(cx.data, u_i, u_j, :) .== view(cx.data, u_i′, u_j′, :))
+        @test all(view(u.data, u_i, u_j, :) .== -view(u.data, u_i′, u_j′, :))
 
         grid = TripolarGrid(arch; size = (10, 10, 1), ytopology)
         bottom(x, y) = rand()
@@ -237,33 +271,6 @@ end
         bottom_height = grid.immersed_boundary.bottom_height
 
         @test on_architecture(CPU(), interior(bottom_height, :, 10, 1)) == on_architecture(CPU(), interior(bottom_height, 10:-1:1, 10, 1))
-
-        c = CenterField(grid)
-        cx = XFaceField(grid)
-        u = XFaceField(grid, boundary_conditions=u_bcs)
-
-        set!(c, (x, y, z) -> x)
-        set!(cx, (x, y, z) -> x)
-        set!(u, (x, y, z) -> x)
-
-        fill_halo_regions!(c)
-        fill_halo_regions!(cx)
-        fill_halo_regions!(u)
-
-        @test on_architecture(CPU(), interior(c, :, 10, 1)) == on_architecture(CPU(), interior(c, 10:-1:1, 10, 1))
-        # For x face fields the first element is unique and we remove the
-        # north pole that is exactly at Nx+1
-        left_side  = on_architecture(CPU(), interior(cx, 2:5, 10, 1))
-        right_side = on_architecture(CPU(), interior(cx, 7:10, 10, 1))
-
-        # The sign of auxiliary XFaceField are _not_ reversed at the north boundary
-        @test left_side == reverse(right_side)
-
-        left_side  = on_architecture(CPU(), interior(u, 2:5, 10, 1))
-        right_side = on_architecture(CPU(), interior(u, 7:10, 10, 1))
-
-        # The sign of `u` is reversed at the north boundary
-        @test left_side == - reverse(right_side)
 
     end
 end
