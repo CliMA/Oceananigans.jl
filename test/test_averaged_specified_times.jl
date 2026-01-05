@@ -448,7 +448,7 @@ function test_averaged_specified_times_runtime_validation()
     # Test 1: Valid case - window doesn't extend before start
     @testset "Valid window (doesn't extend before start)" begin
         grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
-        model = NonhydrostaticModel(; grid)
+        model = NonhydrostaticModel(grid)
 
         # First specified time at 5.0, window is 2.0 (goes back to 3.0)
         # Simulation starts at 0.0, so this should be fine
@@ -468,7 +468,7 @@ function test_averaged_specified_times_runtime_validation()
     # Test 2: Invalid case - window extends before simulation start
     @testset "Invalid window (extends before start)" begin
         grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
-        model = NonhydrostaticModel(; grid)
+        model = NonhydrostaticModel(grid)
 
         # First specified time at 2.0, window is 5.0 (goes back to -3.0)
         # Simulation starts at 0.0, so this should fail at runtime
@@ -488,7 +488,7 @@ function test_averaged_specified_times_runtime_validation()
     # Test 3: Invalid case with vector windows
     @testset "Invalid vector windows (first window extends before start)" begin
         grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
-        model = NonhydrostaticModel(; grid)
+        model = NonhydrostaticModel(grid)
 
         # First window: time=2.0, window=5.0 -> starts at -3.0 (invalid)
         # Second window: time=10.0, window=2.0 -> starts at 8.0 (valid)
@@ -508,7 +508,7 @@ function test_averaged_specified_times_runtime_validation()
     # Test 4: Valid case with non-zero start time
     @testset "Valid window with non-zero start time" begin
         grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
-        model = NonhydrostaticModel(; grid)
+        model = NonhydrostaticModel(grid)
 
         # Start simulation at t=5.0
         model.clock.time = 5.0
@@ -531,7 +531,7 @@ function test_averaged_specified_times_runtime_validation()
     # Test 5: Invalid case with non-zero start time
     @testset "Invalid window with non-zero start time" begin
         grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
-        model = NonhydrostaticModel(; grid)
+        model = NonhydrostaticModel(grid)
 
         # Start simulation at t=5.0
         model.clock.time = 5.0
@@ -624,7 +624,7 @@ end
 
     for arch in archs
         grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
-        model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+        model = NonhydrostaticModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
         @testset "Time averaging simulation with AveragedSpecifiedTimes [$(typeof(arch))]" begin
             test_averaged_specified_times_simulation(model)
