@@ -11,7 +11,8 @@ export
     # Grids
     Center, Face,
     Periodic, Bounded, Flat,
-    RightConnected, LeftConnected, FullyConnected, RightFaceConnected,
+    RightConnected, LeftConnected, FullyConnected,
+    RightFoldedAlongFaces, RightFoldedAlongCenters,
     RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
     TripolarGrid, RotatedLatitudeLongitudeGrid,
     MutableVerticalDiscretization,

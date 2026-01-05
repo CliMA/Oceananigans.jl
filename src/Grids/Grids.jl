@@ -2,7 +2,8 @@ module Grids
 
 export Center, Face
 export AbstractTopology, topology
-export Periodic, Bounded, Flat, FullyConnected, LeftConnected, RightConnected, RightFaceConnected
+export Periodic, Bounded, Flat, FullyConnected, LeftConnected, RightConnected
+export RightFoldedAlongFaces, RightFoldedAlongCenters
 export AbstractGrid, AbstractUnderlyingGrid, halo_size, total_size
 export RectilinearGrid
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
@@ -103,11 +104,20 @@ Grid topology for dimensions that are connected to other models or domains only 
 struct RightConnected <: AbstractTopology end
 
 """
-    RightFaceConnected
+    RightFoldedAlongFaces
 
-Grid topology for tripolar F-point pivot connection.
+Grid topology for tripolar F-point pivot connection
+(folded north boundary along face locations).
 """
-struct RightFaceConnected <: AbstractTopology end
+struct RightFoldedAlongFaces <: AbstractTopology end
+
+"""
+    RightFoldedAlongCenters
+
+Grid topology for tripolar T-point pivot connection.
+(folded north boundary along center locations).
+"""
+struct RightFoldedAlongCenters <: AbstractTopology end
 
 #####
 ##### Directions (for tilted domains)

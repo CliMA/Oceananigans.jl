@@ -9,6 +9,7 @@ using Oceananigans.Utils: KernelParameters
 import Oceananigans.Utils: contiguousrange
 
 contiguousrange(::KernelParameters{spec, offset}) where {spec, offset} = contiguousrange(spec, offset)
+ytopologies = (RightFoldedAlongFaces, RightFoldedAlongCenters)
 
 @kernel function compute_nonorthogonality_angle!(angle, grid, xF, yF, zF)
     i, j = @index(Global, NTuple)
@@ -39,11 +40,12 @@ contiguousrange(::KernelParameters{spec, offset}) where {spec, offset} = contigu
 end
 
 @testset "Unit tests..." begin
-    for arch in archs
+    for arch in archs, ytopology in ytopologies
         grid = TripolarGrid(arch, size = (4, 5, 1), z = (0, 1),
                             first_pole_longitude = 75,
                             north_poles_latitude = 35,
-                            southernmost_latitude = -80)
+                            southernmost_latitude = -80,
+                            ytopology = ytopology)
 
         @test grid isa TripolarGrid
 
@@ -73,8 +75,8 @@ end
 end
 
 @testset "Model tests..." begin
-    for arch in archs
-        grid = TripolarGrid(arch, size = (10, 10, 1))
+    for arch in archs, ytopology in ytopologies
+        grid = TripolarGrid(arch; size = (10, 10, 1), ytopology)
 
         # Wrong free surface
         @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid)
@@ -108,14 +110,14 @@ end
 end
 
 @testset "Grid construction error tests..." begin
-    for FT in float_types
-        @test_throws ArgumentError TripolarGrid(CPU(), FT, size=(10, 10, 4), z=[-50.0, -30.0, -20.0, 0.0]) # too few z-faces
-        @test_throws ArgumentError TripolarGrid(CPU(), FT, size=(10, 10, 4), z=[-2000.0, -1000.0, -50.0, -30.0, -20.0, 0.0]) # too many z-faces
+    for FT in float_types, ytopology in ytopologies
+        @test_throws ArgumentError TripolarGrid(CPU(), FT; size=(10, 10, 4), ytopology, z=[-50.0, -30.0, -20.0, 0.0]) # too few z-faces
+        @test_throws ArgumentError TripolarGrid(CPU(), FT; size=(10, 10, 4), ytopology, z=[-2000.0, -1000.0, -50.0, -30.0, -20.0, 0.0]) # too many z-faces
     end
 end
 
 @testset "Orthogonality of family of ellipses and hyperbolae..." begin
-    for arch in archs
+    for arch in archs, ytopology in ytopologies
         # Test the orthogonality of a tripolar grid based on the orthogonality of a
         # cubed sphere of the same size (1ᵒ in latitude and longitude)
         cubed_sphere_grid = ConformalCubedSphereGrid(arch, panel_size = (90, 90, 1), z = (0, 1))
@@ -140,7 +142,7 @@ end
         λ²ₚ = λ¹ₚ + 180
 
         # Build a tripolar grid at 1ᵒ
-        underlying_grid = TripolarGrid(arch; size = (360, 180, 1), first_pole_longitude, north_poles_latitude)
+        underlying_grid = TripolarGrid(arch; size = (360, 180, 1), first_pole_longitude, north_poles_latitude, ytopology)
 
         # We need a bottom height field that ``masks'' the singularities
         bottom_height(λ, φ) = ((abs(λ - λ¹ₚ) < 5) & (abs(φₚ - φ) < 5)) |
@@ -164,8 +166,8 @@ end
 end
 
 @testset "Zipper boundary conditions..." begin
-    for arch in archs
-        grid = TripolarGrid(arch; size = (10, 10, 1))
+    for arch in archs, ytopology in ytopologies
+        grid = TripolarGrid(arch; size = (10, 10, 1), ytopology)
         Nx, Ny, _ = size(grid)
         Hx, Hy, _ = halo_size(grid)
 
@@ -229,7 +231,7 @@ end
         @test all(north_boundary_u_left  .== 1)
         @test all(north_boundary_u_right .== 1)
 
-        grid = TripolarGrid(arch; size = (10, 10, 1))
+        grid = TripolarGrid(arch; size = (10, 10, 1), ytopology)
         bottom(x, y) = rand()
         grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
         bottom_height = grid.immersed_boundary.bottom_height

@@ -66,7 +66,7 @@ is restricted by `length(ind)`.
 total_length(::Face,    ::AT,              N, H=0) = N + 2H
 total_length(::Center,  ::AT,              N, H=0) = N + 2H
 total_length(::Face,    ::BoundedTopology, N, H=0) = N + 1 + 2H
-total_length(::Face,    ::RightFaceConnected, N, H=0) = N + 1 + 2H
+total_length(::Face,    ::RightFoldedAlongFaces, N, H=0) = N + 1 + 2H
 total_length(::Nothing, ::AT,              N, H=0) = 1
 total_length(::Nothing, ::Flat,            N, H=0) = N
 total_length(::Face,    ::Flat,            N, H=0) = N
@@ -120,6 +120,7 @@ constant grid spacing `Δ`, and interior extent `L`.
 """
 @inline total_extent(topo, H, Δ, L) = L + (2H - 1) * Δ
 @inline total_extent(::BoundedTopology, H, Δ, L) = L + 2H * Δ
+@inline total_extent(::RightFoldedAlongFaces, H, Δ, L) = L + 2H * Δ
 
 # Grid domains
 @inline domain(topo, N, ξ) = @allowscalar ξ[1], ξ[N+1]
@@ -289,14 +290,15 @@ domain_summary(topo::Flat, name, coord::Number) = "Flat $name = $coord"
 function domain_summary(topo, name, (left, right))
     interval = (topo isa Bounded) ||
                (topo isa LeftConnected) ||
-               (topo isa RightFaceConnected) ? "]" : ")"
+               (topo isa RightFoldedAlongFaces) ? "]" : ")"
 
     topo_string = topo isa Periodic ? "Periodic " :
                   topo isa Bounded ? "Bounded  " :
                   topo isa FullyConnected ? "FullyConnected " :
                   topo isa LeftConnected ? "LeftConnected  " :
                   topo isa RightConnected ? "RightConnected  " :
-                  topo isa RightFaceConnected ? "RightFaceConnected  " :
+                  topo isa RightFoldedAlongFaces ? "RightFoldedAlongFaces  " :
+                  topo isa RightFoldedAlongCenters ? "RightFoldedAlongCenters  " :
                   error("Unexpected topology $topo together with the domain end points ($left, $right)")
 
     return string(topo_string, name, " ∈ [",

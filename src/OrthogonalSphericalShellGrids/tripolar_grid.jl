@@ -1,7 +1,8 @@
 using Oceananigans.BoundaryConditions: ZipperBoundaryCondition, NoFluxBoundaryCondition
 using Oceananigans.Fields: set!
-using Oceananigans.Grids: Grids, Bounded, Flat, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid, RightConnected,
-    architecture, cpu_face_constructor_z, validate_dimension_specification
+using Oceananigans.Grids: Grids, Bounded, Flat, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid,
+    architecture, cpu_face_constructor_z, validate_dimension_specification,
+    RightFoldedAlongCenters, RightFoldedAlongFaces
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 """
@@ -84,7 +85,8 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
                       radius = Oceananigans.defaults.planet_radius,
                       z = (0, 1),
                       north_poles_latitude = 55,
-                      first_pole_longitude = 70)  # second pole is at longitude `first_pole_longitude + 180ᵒ`
+                      first_pole_longitude = 70, # second pole is at longitude `first_pole_longitude + 180ᵒ`
+                      ytopology = RightFoldedAlongCenters)
 
     # TODO: Change a couple of allocations here and there to be able
     # to construct the grid on the GPU. This is not a huge problem as
@@ -102,23 +104,15 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
         throw(ArgumentError("The number of cells in the longitude dimension should be even!"))
     end
 
-    # the λ and z coordinate is the same as for the other grids,
-    # but for the φ coordinate we need to remove one point at the north
-    # because the the north pole is a `Center` point, not on `Face` point...
-    topology  = (Periodic, RightConnected, Bounded)
+    # Set the topology
+    topology  = (Periodic, ytopology, Bounded)
+
+    # Generate coordinates
     TZ = topology[3]
     z = validate_dimension_specification(TZ, z, :z, Nz, FT)
-
-    Lx, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, longitude, :longitude, 1, CPU())
     Lz, z                        = generate_coordinate(FT, topology, size, halo, z,         :z,         3, CPU())
-
-    # The φ coordinate is a bit more complicated because the center points start from
-    # southernmost_latitude and end at 90ᵒ N.
-    # TODO: Replace this with a call to `generate_coordinate` that dispatches on the north topology:
-    # and replace RightConnected with RightCenterConnected / RightFaceConnected?
-    φᵃᶜᵃ = collect(range(southernmost_latitude, 90, length = Nφ))
-    Δφ = φᵃᶜᵃ[2] - φᵃᶜᵃ[1]
-    φᵃᶠᵃ = φᵃᶜᵃ .- Δφ / 2
+    Ly, φᵃᶠᵃ, φᵃᶜᵃ, Δφᶠᵃᵃ, Δφᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, latitude,  :latitude,  2, CPU())
+    Lx, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, longitude, :longitude, 1, CPU())
 
     # Start with the NH stereographic projection
     # TODO: make these on_architecture(arch, zeros(Nx, Ny))
@@ -161,7 +155,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     grid = RectilinearGrid(; size = (Nx, Ny),
                              halo = (Hλ, Hφ),
                              x = (0, 1), y = (0, 1),
-                             topology = (Periodic, RightConnected, Flat))
+                             topology = (Periodic, ytopology, Flat))
 
     # Boundary conditions to fill halos of the coordinate and metric terms
     # We need to define them manually because of the convention in the
@@ -324,7 +318,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
 
     # Final grid with correct metrics
     # TODO: remove `on_architecture(arch, ...)` when we shift grid construction to GPU
-    grid = OrthogonalSphericalShellGrid{Periodic, RightConnected, Bounded}(arch,
+    grid = OrthogonalSphericalShellGrid{Periodic, ytopology, Bounded}(arch,
                                                                            Nx, Ny, Nz,
                                                                            Hx, Hy, Hz,
                                                                            convert(FT, Lz),
