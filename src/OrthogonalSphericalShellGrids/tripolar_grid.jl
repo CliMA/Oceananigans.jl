@@ -115,7 +115,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     # The φ coordinate is a bit more complicated because the center points start from
     # southernmost_latitude and end at 90ᵒ N.
     # TODO: Replace this with a call to `generate_coordinate` that dispatches on the north topology:
-    # and replace RightConnected with TPivotConnected / FPivotConnected?
+    # and replace RightConnected with RightCenterConnected / RightFaceConnected?
     φᵃᶜᵃ = collect(range(southernmost_latitude, 90, length = Nφ))
     Δφ = φᵃᶜᵃ[2] - φᵃᶜᵃ[1]
     φᵃᶠᵃ = φᵃᶜᵃ .- Δφ / 2

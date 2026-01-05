@@ -20,9 +20,9 @@ offset_indices(::Face, ::BoundedTopology, N, H=0) = 1 - H : N + H + 1
 
 """
 Return a range of indices for a field located at cell `Face`s along a grid dimension which
-is `FPivotConnected` and has length `N` and with halo points `H`.
+is `RightFaceConnected` and has length `N` and with halo points `H`.
 """
-offset_indices(::Face, ::FPivotConnected, N, H=0) = 1 - H : N + H + 1
+offset_indices(::Face, ::RightFaceConnected, N, H=0) = 1 - H : N + H + 1
 
 """
 Return a range of indices for a field along a 'reduced' dimension.
