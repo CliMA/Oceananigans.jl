@@ -266,9 +266,10 @@ function initialization_update_state!(model::HydrostaticFreeSurfaceModel; kw...)
     # Update the state of the model
     update_state!(model; kw...)
 
-    # Make sure everyhing is correctly communicated after initialization
+    # Update state may have asynchronous fill halo, so we refill all the 
+    # halos here (in a synchronous fashion) for initialization
     for field in prognostic_fields(model)
-        synchronize_communication!(field)
+        fill_halo_regions!(field, model.clock, fields(model))
     end
 
     # Finally, initialize the model (e.g., free surface, vertical coordinate...)

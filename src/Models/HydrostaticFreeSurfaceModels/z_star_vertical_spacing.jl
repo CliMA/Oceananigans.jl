@@ -199,7 +199,7 @@ Initialize the vertical coordinate system at the start of a simulation.
 
 For `ZCoordinate` (static grids), this is a no-op.
 For `ZStarCoordinate`, initializes the grid stretching factors `σ` from the
-initial free surface height and sets `∂t_σ = 0`.
+initial free surface height (we assume that `∂t_σ = 0`).
 """
 initialize_vertical_coordinate!(::ZCoordinate, model, grid) = nothing
 
