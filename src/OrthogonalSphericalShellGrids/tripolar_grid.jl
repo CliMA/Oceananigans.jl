@@ -86,7 +86,14 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
                       z = (0, 1),
                       north_poles_latitude = 55,
                       first_pole_longitude = 70, # second pole is at longitude `first_pole_longitude + 180ᵒ`
-                      ytopology = RightFoldedAlongCenters)
+                      pivot = :TPointPivot)
+
+    # Set the topology
+    if pivot == :TPointPivot
+        topology = (Periodic, RightFoldedAlongCenters, Bounded)
+    else
+        topology = (Periodic, RightFoldedAlongFaces, Bounded)
+    end
 
     # TODO: Change a couple of allocations here and there to be able
     # to construct the grid on the GPU. This is not a huge problem as
@@ -103,9 +110,6 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     if isodd(Nλ)
         throw(ArgumentError("The number of cells in the longitude dimension should be even!"))
     end
-
-    # Set the topology
-    topology  = (Periodic, ytopology, Bounded)
 
     # Generate coordinates
     TZ = topology[3]
@@ -155,7 +159,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     grid = RectilinearGrid(; size = (Nx, Ny),
                              halo = (Hλ, Hφ),
                              x = (0, 1), y = (0, 1),
-                             topology = (Periodic, ytopology, Flat))
+                             topology = (topology[1], topology[2], Flat))
 
     # Boundary conditions to fill halos of the coordinate and metric terms
     # We need to define them manually because of the convention in the
@@ -318,33 +322,33 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
 
     # Final grid with correct metrics
     # TODO: remove `on_architecture(arch, ...)` when we shift grid construction to GPU
-    grid = OrthogonalSphericalShellGrid{Periodic, ytopology, Bounded}(arch,
-                                                                           Nx, Ny, Nz,
-                                                                           Hx, Hy, Hz,
-                                                                           convert(FT, Lz),
-                                                                           on_architecture(arch, map(FT, λᶜᶜᵃ)),
-                                                                           on_architecture(arch, map(FT, λᶠᶜᵃ)),
-                                                                           on_architecture(arch, map(FT, λᶜᶠᵃ)),
-                                                                           on_architecture(arch, map(FT, λᶠᶠᵃ)),
-                                                                           on_architecture(arch, map(FT, φᶜᶜᵃ)),
-                                                                           on_architecture(arch, map(FT, φᶠᶜᵃ)),
-                                                                           on_architecture(arch, map(FT, φᶜᶠᵃ)),
-                                                                           on_architecture(arch, map(FT, φᶠᶠᵃ)),
-                                                                           on_architecture(arch, z),
-                                                                           on_architecture(arch, map(FT, Δxᶜᶜᵃ)),
-                                                                           on_architecture(arch, map(FT, Δxᶠᶜᵃ)),
-                                                                           on_architecture(arch, map(FT, Δxᶜᶠᵃ)),
-                                                                           on_architecture(arch, map(FT, Δxᶠᶠᵃ)),
-                                                                           on_architecture(arch, map(FT, Δyᶜᶜᵃ)),
-                                                                           on_architecture(arch, map(FT, Δyᶠᶜᵃ)),
-                                                                           on_architecture(arch, map(FT, Δyᶜᶠᵃ)),
-                                                                           on_architecture(arch, map(FT, Δyᶠᶠᵃ)),
-                                                                           on_architecture(arch, map(FT, Azᶜᶜᵃ)),
-                                                                           on_architecture(arch, map(FT, Azᶠᶜᵃ)),
-                                                                           on_architecture(arch, map(FT, Azᶜᶠᵃ)),
-                                                                           on_architecture(arch, map(FT, Azᶠᶠᵃ)),
-                                                                           convert(FT, radius),
-                                                                           Tripolar(north_poles_latitude, first_pole_longitude, southernmost_latitude))
+    grid = OrthogonalSphericalShellGrid{topology...}(arch,
+                                                     Nx, Ny, Nz,
+                                                     Hx, Hy, Hz,
+                                                     convert(FT, Lz),
+                                                     on_architecture(arch, map(FT, λᶜᶜᵃ)),
+                                                     on_architecture(arch, map(FT, λᶠᶜᵃ)),
+                                                     on_architecture(arch, map(FT, λᶜᶠᵃ)),
+                                                     on_architecture(arch, map(FT, λᶠᶠᵃ)),
+                                                     on_architecture(arch, map(FT, φᶜᶜᵃ)),
+                                                     on_architecture(arch, map(FT, φᶠᶜᵃ)),
+                                                     on_architecture(arch, map(FT, φᶜᶠᵃ)),
+                                                     on_architecture(arch, map(FT, φᶠᶠᵃ)),
+                                                     on_architecture(arch, z),
+                                                     on_architecture(arch, map(FT, Δxᶜᶜᵃ)),
+                                                     on_architecture(arch, map(FT, Δxᶠᶜᵃ)),
+                                                     on_architecture(arch, map(FT, Δxᶜᶠᵃ)),
+                                                     on_architecture(arch, map(FT, Δxᶠᶠᵃ)),
+                                                     on_architecture(arch, map(FT, Δyᶜᶜᵃ)),
+                                                     on_architecture(arch, map(FT, Δyᶠᶜᵃ)),
+                                                     on_architecture(arch, map(FT, Δyᶜᶠᵃ)),
+                                                     on_architecture(arch, map(FT, Δyᶠᶠᵃ)),
+                                                     on_architecture(arch, map(FT, Azᶜᶜᵃ)),
+                                                     on_architecture(arch, map(FT, Azᶠᶜᵃ)),
+                                                     on_architecture(arch, map(FT, Azᶜᶠᵃ)),
+                                                     on_architecture(arch, map(FT, Azᶠᶠᵃ)),
+                                                     convert(FT, radius),
+                                                     Tripolar(north_poles_latitude, first_pole_longitude, southernmost_latitude))
 
     return grid
 end
