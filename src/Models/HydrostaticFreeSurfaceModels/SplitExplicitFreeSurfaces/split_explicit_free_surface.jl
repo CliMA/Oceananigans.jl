@@ -211,7 +211,7 @@ function hydrostatic_tendency_fields(velocities, free_surface::SplitExplicitFree
     return merge((u=u, v=v, U=U, V=V), tracers)
 end
 
-const ConnectedTopology = Union{LeftConnected, RightConnected, FullyConnected}
+const ConnectedTopology = Union{LeftConnected, RightConnected, FullyConnected, RightFoldedAlongCenters, RightFoldedAlongFaces}
 
 # Internal function for HydrostaticFreeSurfaceModel
 function materialize_free_surface(free_surface::SplitExplicitFreeSurface, velocities, grid)
