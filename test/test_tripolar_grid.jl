@@ -39,13 +39,16 @@ pivots = (:TPointPivot, :FPointPivot)
     end
 end
 
+
 @testset "Unit tests..." begin
     for arch in archs, pivot in pivots
-        grid = TripolarGrid(arch, size = (4, 5, 1), z = (0, 1),
+        grid = TripolarGrid(arch;
+                            size = (4, 5, 1),
+                            z = (0, 1),
                             first_pole_longitude = 75,
                             north_poles_latitude = 35,
                             southernmost_latitude = -80,
-                            pivot)
+                            pivot = pivot)
 
         @test grid isa TripolarGrid
 
@@ -76,7 +79,7 @@ end
 
 @testset "Model tests..." begin
     for arch in archs, pivot in pivots
-        grid = TripolarGrid(arch; size = (10, 10, 1), pivot)
+        grid = TripolarGrid(arch; size = (10, 10, 1), pivot = pivot)
 
         # Wrong free surface
         @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid)
@@ -111,8 +114,8 @@ end
 
 @testset "Grid construction error tests..." begin
     for FT in float_types, pivot in pivots
-        @test_throws ArgumentError TripolarGrid(CPU(), FT; size=(10, 10, 4), pivot, z=[-50.0, -30.0, -20.0, 0.0]) # too few z-faces
-        @test_throws ArgumentError TripolarGrid(CPU(), FT; size=(10, 10, 4), pivot, z=[-2000.0, -1000.0, -50.0, -30.0, -20.0, 0.0]) # too many z-faces
+        @test_throws ArgumentError TripolarGrid(CPU(), FT; size=(10, 10, 4), pivot = pivot, z=[-50.0, -30.0, -20.0, 0.0]) # too few z-faces
+        @test_throws ArgumentError TripolarGrid(CPU(), FT; size=(10, 10, 4), pivot = pivot, z=[-2000.0, -1000.0, -50.0, -30.0, -20.0, 0.0]) # too many z-faces
     end
 end
 
@@ -142,7 +145,7 @@ end
         λ²ₚ = λ¹ₚ + 180
 
         # Build a tripolar grid at 1ᵒ
-        underlying_grid = TripolarGrid(arch; size = (360, 180, 1), first_pole_longitude, north_poles_latitude, pivot)
+        underlying_grid = TripolarGrid(arch; size = (360, 180, 1), first_pole_longitude, north_poles_latitude, pivot = pivot)
 
         # We need a bottom height field that ``masks'' the singularities
         bottom_height(λ, φ) = ((abs(λ - λ¹ₚ) < 5) & (abs(φₚ - φ) < 5)) |
@@ -166,16 +169,16 @@ end
 end
 
 # helper function for generating indices around the pivot point of zipper
-function pivoted_indices(idxmin, idxmax, pivot)
+function pivoted_indices(idxmin, idxmax, idxpivot)
     idx = idxmin:idxmax
-    rotidx = Int.(2pivot .- idx)
+    rotidx = Int.(2idxpivot .- idx)
     valid = @. idxmin ≤ rotidx ≤ idxmax
     return idx[valid], rotidx[valid]
 end
 
 @testset "Zipper boundary conditions..." begin
     for arch in archs, pivot in pivots
-        grid = TripolarGrid(arch; size = (10, 10, 1), pivot)
+        grid = TripolarGrid(arch; size = (10, 10, 1), pivot = pivot)
         Nx, Ny, _ = size(grid)
         Hx, Hy, _ = halo_size(grid)
 
@@ -271,7 +274,7 @@ end
         @test all(view(cx.data, u_i, u_j, 1) .== view(cx.data, u_i′, u_j′, 1))
         @test all(view(u.data, u_i, u_j, 1) .== -view(u.data, u_i′, u_j′, 1))
 
-        grid = TripolarGrid(arch; size = (10, 10, 1), pivot)
+        grid = TripolarGrid(arch; size = (10, 10, 1), pivot = pivot)
         bottom(x, y) = rand()
         grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
         bottom_height = grid.immersed_boundary.bottom_height
