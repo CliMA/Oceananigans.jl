@@ -108,9 +108,9 @@ end
     i′ = Nx - i + 1
     Hy = grid.Hy
 
-    for j in 0:Hy # The Ny line is duplicated so we substitute starting Ny-1
+    for j in 1:Hy
         @inbounds begin
-            c[i, Ny + j, k] = sign * c[i′, Ny - j - 1, k]
+            c[i, Ny + j, k] = sign * c[i′, Ny + 1 - j, k]
         end
     end
 

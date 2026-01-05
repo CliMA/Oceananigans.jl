@@ -3,7 +3,7 @@ include("dependencies_for_runtests.jl")
 using Statistics
 using Oceananigans.Grids: get_cartesian_nodes_and_vertices
 using Oceananigans.ImmersedBoundaries: immersed_cell
-using Oceananigans.BoundaryConditions: Zipper
+using Oceananigans.BoundaryConditions: Zipper, FPivotZipper
 
 using Oceananigans.Utils: KernelParameters
 import Oceananigans.Utils: contiguousrange
@@ -189,11 +189,13 @@ end
         u = XFaceField(grid, boundary_conditions=u_bcs)
         v = YFaceField(grid, boundary_conditions=v_bcs)
 
-        @test c.boundary_conditions.north.classification isa Zipper
-        @test cx.boundary_conditions.north.classification isa Zipper
-        @test cy.boundary_conditions.north.classification isa Zipper
-        @test u.boundary_conditions.north.classification isa Zipper
-        @test v.boundary_conditions.north.classification isa Zipper
+        zipper_bc = (pivot == :TPointPivot) ? Zipper : FPivotZipper
+
+        @test c.boundary_conditions.north.classification isa zipper_bc
+        @test cx.boundary_conditions.north.classification isa zipper_bc
+        @test cy.boundary_conditions.north.classification isa zipper_bc
+        @test u.boundary_conditions.north.classification isa zipper_bc
+        @test v.boundary_conditions.north.classification isa zipper_bc
 
         # The velocity fields are reversed at the north boundary
         # boundary_conditions.north.condition == -1, while the tracer
@@ -274,7 +276,7 @@ end
         grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
         bottom_height = grid.immersed_boundary.bottom_height
 
-        @test on_architecture(CPU(), interior(bottom_height, :, 10, 1)) == on_architecture(CPU(), interior(bottom_height, 10:-1:1, 10, 1))
+        @test on_architecture(CPU(), view(bottom_height.data, c_i, c_j, 1)) == on_architecture(CPU(), view(bottom_height.data, c_i′, c_j′, 1))
 
     end
 end

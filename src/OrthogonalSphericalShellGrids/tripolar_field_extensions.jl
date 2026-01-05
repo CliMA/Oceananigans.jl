@@ -19,6 +19,10 @@ sign(::Type{Face},   ::Type{Center}) = - 1 # u-velocity type
 sign(::Type{Center}, ::Type{Face})   = - 1 # v-velocity type
 sign(::Type{Center}, ::Type{Center}) = 1
 
+north_fold_boundary_condition(RightFoldedAlongCenters) = ZipperBoundaryCondition
+north_fold_boundary_condition(RightFoldedAlongFaces)   = FPivotZipperBoundaryCondition
+north_fold_boundary_condition(grid::T) where {T <: TripolarGridOfSomeKind} = north_fold_boundary_condition(T.parameters[3])
+
 # a `TripolarGrid` needs a `ZipperBoundaryCondition` for the north boundary
 # The `sign` 1 for regular tracers and -1 for velocities and signed vectors
 function BoundaryConditions.regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
@@ -34,7 +38,7 @@ function BoundaryConditions.regularize_field_boundary_conditions(bcs::FieldBound
 
     # Assumption: :u and :v are signed vectors, all other fields are scalars
     sign = field_name == :u || field_name == :v ? -1 : 1
-    north  = ZipperBoundaryCondition(sign)
+    north  = north_fold_boundary_condition(grid)(sign)
 
     bottom = regularize_boundary_condition(bcs.bottom, grid, loc, 3, LeftBoundary,  prognostic_names)
     top    = regularize_boundary_condition(bcs.top,    grid, loc, 3, RightBoundary, prognostic_names)
@@ -44,4 +48,4 @@ function BoundaryConditions.regularize_field_boundary_conditions(bcs::FieldBound
     return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
 
-BoundaryConditions.default_auxiliary_bc(grid::TripolarGridOfSomeKind, ::Val{:north}, loc) = ZipperBoundaryCondition(1)
+BoundaryConditions.default_auxiliary_bc(grid::TripolarGridOfSomeKind, ::Val{:north}, loc) = north_fold_boundary_condition(grid)(1)

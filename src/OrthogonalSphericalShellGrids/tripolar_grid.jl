@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: ZipperBoundaryCondition, NoFluxBoundaryCondition
+using Oceananigans.BoundaryConditions: ZipperBoundaryCondition, FPivotZipperBoundaryCondition, NoFluxBoundaryCondition
 using Oceananigans.Fields: set!
 using Oceananigans.Grids: Grids, Bounded, Flat, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid,
     architecture, cpu_face_constructor_z, validate_dimension_specification,
@@ -165,24 +165,24 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     # We need to define them manually because of the convention in the
     # ZipperBoundaryCondition that edge fields need to switch sign (which we definitely do not
     # want for coordinates and metrics)
-    default_boundary_conditions = FieldBoundaryConditions(north  = ZipperBoundaryCondition(),
-                                                          south  = NoFluxBoundaryCondition(), # The south should be `continued`
-                                                          west   = Oceananigans.PeriodicBoundaryCondition(),
-                                                          east   = Oceananigans.PeriodicBoundaryCondition(),
-                                                          top    = nothing,
-                                                          bottom = nothing)
+    boundary_conditions = FieldBoundaryConditions(north  = north_boundary_condition(pivot),
+                                                  south  = NoFluxBoundaryCondition(), # The south should be `continued`
+                                                  west   = Oceananigans.PeriodicBoundaryCondition(),
+                                                  east   = Oceananigans.PeriodicBoundaryCondition(),
+                                                  top    = nothing,
+                                                  bottom = nothing)
 
-    lFF = Field{Face, Face, Center}(grid; boundary_conditions = default_boundary_conditions)
-    pFF = Field{Face, Face, Center}(grid; boundary_conditions = default_boundary_conditions)
+    lFF = Field{Face, Face, Center}(grid; boundary_conditions)
+    pFF = Field{Face, Face, Center}(grid; boundary_conditions)
 
-    lFC = Field{Face, Center, Center}(grid; boundary_conditions = default_boundary_conditions)
-    pFC = Field{Face, Center, Center}(grid; boundary_conditions = default_boundary_conditions)
+    lFC = Field{Face, Center, Center}(grid; boundary_conditions)
+    pFC = Field{Face, Center, Center}(grid; boundary_conditions)
 
-    lCF = Field{Center, Face, Center}(grid; boundary_conditions = default_boundary_conditions)
-    pCF = Field{Center, Face, Center}(grid; boundary_conditions = default_boundary_conditions)
+    lCF = Field{Center, Face, Center}(grid; boundary_conditions)
+    pCF = Field{Center, Face, Center}(grid; boundary_conditions)
 
-    lCC = Field{Center, Center, Center}(grid; boundary_conditions = default_boundary_conditions)
-    pCC = Field{Center, Center, Center}(grid; boundary_conditions = default_boundary_conditions)
+    lCC = Field{Center, Center, Center}(grid; boundary_conditions)
+    pCC = Field{Center, Center, Center}(grid; boundary_conditions)
 
     set!(lFF, λFF)
     set!(pFF, φFF)
@@ -248,10 +248,10 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
           radius)
 
     # Metrics fields to fill halos
-    FF = Field{Face,   Face,   Center}(grid; boundary_conditions = default_boundary_conditions)
-    FC = Field{Face,   Center, Center}(grid; boundary_conditions = default_boundary_conditions)
-    CF = Field{Center, Face,   Center}(grid; boundary_conditions = default_boundary_conditions)
-    CC = Field{Center, Center, Center}(grid; boundary_conditions = default_boundary_conditions)
+    FF = Field{Face,   Face,   Center}(grid; boundary_conditions)
+    FC = Field{Face,   Center, Center}(grid; boundary_conditions)
+    CF = Field{Center, Face,   Center}(grid; boundary_conditions)
+    CC = Field{Center, Center, Center}(grid; boundary_conditions)
 
     # Fill all periodic halos
     set!(FF, Δxᶠᶠᵃ)
@@ -352,6 +352,8 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
 
     return grid
 end
+
+north_boundary_condition(pivot) = (pivot == :TPointPivot) ? ZipperBoundaryCondition() : FPivotZipperBoundaryCondition()
 
 # Continue the metrics to the south with LatitudeLongitudeGrid metrics
 function continue_south!(new_metric, lat_lon_metric::Number)
