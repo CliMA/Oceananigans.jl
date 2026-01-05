@@ -19,9 +19,10 @@ sign(::Type{Face},   ::Type{Center}) = - 1 # u-velocity type
 sign(::Type{Center}, ::Type{Face})   = - 1 # v-velocity type
 sign(::Type{Center}, ::Type{Center}) = 1
 
-north_fold_boundary_condition(RightFoldedAlongCenters) = ZipperBoundaryCondition
-north_fold_boundary_condition(RightFoldedAlongFaces)   = FPivotZipperBoundaryCondition
-north_fold_boundary_condition(grid::T) where {T <: TripolarGridOfSomeKind} = north_fold_boundary_condition(T.parameters[3])
+# Determine the appropriate north fold boundary condition based on grid topology
+north_fold_boundary_condition(::RightFoldedAlongCenters) = ZipperBoundaryCondition
+north_fold_boundary_condition(::RightFoldedAlongFaces)   = FPivotZipperBoundaryCondition
+north_fold_boundary_condition(grid::TripolarGridOfSomeKind) = north_fold_boundary_condition(topology(grid, 2)())
 
 # a `TripolarGrid` needs a `ZipperBoundaryCondition` for the north boundary
 # The `sign` 1 for regular tracers and -1 for velocities and signed vectors
