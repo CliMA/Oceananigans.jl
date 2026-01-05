@@ -146,7 +146,7 @@ S_bcs = FieldBoundaryConditions(top=evaporation_bc)
 # to model the effect of turbulent motions at scales smaller than the grid scale
 # that are not explicitly resolved.
 
-model = NonhydrostaticModel(; grid, buoyancy,
+model = NonhydrostaticModel(grid; buoyancy,
                             tracers = (:T, :S),
                             coriolis = FPlane(f=1e-4),
                             closure = AnisotropicMinimumDissipation(),

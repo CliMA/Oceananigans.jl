@@ -1039,7 +1039,7 @@ using Oceananigans
 
 grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
 
-model = NonhydrostaticModel(grid=grid, tracers=:c)
+model = NonhydrostaticModel(grid; tracers=:c)
 
 simulation = Simulation(model, Δt=12, stop_time=3600)
 
@@ -1073,7 +1073,7 @@ Nx, Ny, Nz = 16, 16, 16
 
 grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(1, 2, 3))
 
-model = NonhydrostaticModel(; grid)
+model = NonhydrostaticModel(grid)
 
 simulation = Simulation(model, Δt=1.25, stop_iteration=3)
 
@@ -1113,7 +1113,7 @@ using Oceananigans
 using Oceananigans.Fields: interpolate!
 
 grid = RectilinearGrid(size=(1, 1, 8), extent=(1, 1, 1));
-model = NonhydrostaticModel(; grid)
+model = NonhydrostaticModel(grid)
 
 coarse_grid = RectilinearGrid(size=(grid.Nx, grid.Ny, grid.Nz÷2), extent=(grid.Lx, grid.Ly, grid.Lz))
 coarse_u = Field{Face, Center, Center}(coarse_grid)
@@ -1404,7 +1404,7 @@ function define_output_variable!(model, dataset, output::AbstractField, output_n
                                  dimensions, filepath, dimension_type=Float64)
 
     # If the output is the free surface, we need to handle it differently since it will be writen as a 3D array with a singleton dimension for the z-coordinate
-    if output_name == "η" && output == view(model.free_surface.η, output.indices...)
+    if output_name == "η" && output == view(model.free_surface.displacement, output.indices...)
         local default_dimension_name_generator = dimension_name_generator
         dimension_name_generator = (var_name, grid, LX, LY, LZ, dim) -> dimension_name_generator_free_surface(default_dimension_name_generator, var_name, grid, LX, LY, LZ, dim)
     end

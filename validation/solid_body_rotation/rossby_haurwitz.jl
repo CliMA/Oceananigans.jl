@@ -55,15 +55,10 @@ function run_rossby_haurwitz(; architecture = CPU(),
 
     free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver, gravitational_acceleration=900)
 
-    model = HydrostaticFreeSurfaceModel(; grid, free_surface,
-                                        tracers = (),
-                                        momentum_advection = advection_scheme,
-                                        buoyancy = nothing,
-                                        coriolis = coriolis,
-                                        closure = nothing)
+    model = HydrostaticFreeSurfaceModel(grid; free_surface, coriolis, momentum_advection = advection_scheme)
 
     R = model.grid.radius   # [m]
-    ω = 0.0 # 7.848e-6            # [s⁻¹]
+    ω = 0.0 # 7.848e-6      # [s⁻¹]
     K = 7.848e-6            # [s⁻¹]
     n = 4                   # dimensionless
     g = model.free_surface.gravitational_acceleration          # [m/s²]
@@ -90,7 +85,7 @@ function run_rossby_haurwitz(; architecture = CPU(),
     hᵢ(λ, ϕ, z) = h₁(rescale²(ϕ), rescale¹(λ)) # (rescale¹(λ), rescale²(ϕ))
 
     u, v, w = model.velocities
-    η = model.free_surface.η
+    η = model.free_surface.displacement
 
     set!(u, uᵢ)
     set!(v, vᵢ)
@@ -104,13 +99,13 @@ function run_rossby_haurwitz(; architecture = CPU(),
     # wizard = TimeStepWizard(cfl=0.5, max_change=3.0, max_Δt=3minutes)
 
     progress(sim) = @printf("Iter: %d, time: %s, Δt: %s, max|u|: %.3f, max|η|: %.3f \n",
-                            iteration(sim), prettytime(sim), prettytime(sim.Δt), maximum(abs, model.velocities.u), maximum(abs, model.free_surface.η))
+                            iteration(sim), prettytime(sim), prettytime(sim.Δt), maximum(abs, model.velocities.u), maximum(abs, model.free_surface.displacement))
 
     simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
     # simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(100))
 
     u, v, w = model.velocities
-    η=model.free_surface.η
+    η=model.free_surface.displacement
 
     ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, u, v)
 

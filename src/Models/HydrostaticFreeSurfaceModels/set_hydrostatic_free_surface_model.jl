@@ -9,7 +9,7 @@ import Oceananigans.Fields: set!
 
 Set velocity and tracer fields of `model`. The keyword arguments `kwargs...`
 take the form `name = data`, where `name` refers to one of the fields of either:
-(i) `model.velocities`, (ii) `model.tracers`, or (iii) `model.free_surface.η`,
+(i) `model.velocities`, (ii) `model.tracers`, or (iii) `model.free_surface.displacement`,
 and the `data` may be an array, a function with arguments `(x, y, z)`, or any data type
 for which a `set!(ϕ::AbstractField, data)` function exists.
 
@@ -19,7 +19,7 @@ Example
 ```jldoctest
 using Oceananigans
 grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
-model = HydrostaticFreeSurfaceModel(; grid, tracers=:T)
+model = HydrostaticFreeSurfaceModel(grid; tracers=:T)
 
 # Set u to a parabolic function of z, v to random numbers damped
 # at top and bottom, and T to some silly array of half zeros,
@@ -58,6 +58,10 @@ model.velocities.u
             ϕ = getproperty(model.tracers, fldname)
         elseif fldname ∈ propertynames(model.free_surface)
             ϕ = getproperty(model.free_surface, fldname)
+        elseif fldname === :η
+            # The free surface displacement is accessed via `model.free_surface.displacement`
+            # but the public interface uses `η` as the canonical name.
+            ϕ = model.free_surface.displacement
         else
             throw(ArgumentError("name $fldname not found in model.velocities, model.tracers, or model.free_surface"))
         end
@@ -102,8 +106,8 @@ end
 function set_from_extrinsic_velocities!(velocities, grid, u, v)
     grid = grid
     arch = grid.architecture
-    uᶜᶜᶜ = CenterField(grid) 
-    vᶜᶜᶜ = CenterField(grid) 
+    uᶜᶜᶜ = CenterField(grid)
+    vᶜᶜᶜ = CenterField(grid)
     u isa ZeroField || set!(uᶜᶜᶜ, u)
     v isa ZeroField || set!(vᶜᶜᶜ, v)
     launch!(arch, grid, :xyz, _rotate_velocities!, uᶜᶜᶜ, vᶜᶜᶜ, grid)
