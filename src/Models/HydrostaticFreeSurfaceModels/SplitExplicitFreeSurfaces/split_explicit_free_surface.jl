@@ -1,5 +1,6 @@
 using Oceananigans: Oceananigans
 using Oceananigans.Grids: Grids, Flat, LeftConnected, RightConnected, FullyConnected,
+    RightFoldedAlongCenters, RightFoldedAlongFaces,
     halo_size, on_architecture, minimum_xspacing, minimum_yspacing, with_halo
 using Oceananigans.Fields: TracerFields, XFaceField, YFaceField
 using Oceananigans.Utils: prettytime
@@ -39,8 +40,8 @@ of the velocity field ``u`` and ``v``, ``H`` is the column depth, ``G^U`` is the
 tendency of ``u`` and ``v``, and ``g`` is the gravitational acceleration.
 
 The discretized equations are solved within a baroclinic timestep (``Δt``) by substepping with a ``Δτ < Δt``.
-The barotropic velocities are filtered throughout the substepping and, finally, the barotropic mode of the velocities 
-at the new time step is corrected with the filtered velocities. The complementary filtered transport barotropic velocities, 
+The barotropic velocities are filtered throughout the substepping and, finally, the barotropic mode of the velocities
+at the new time step is corrected with the filtered velocities. The complementary filtered transport barotropic velocities,
 `Ũ` and `Ṽ`, are used as transport barotropic velocities for tracer advection.
 
 Fields
@@ -370,6 +371,9 @@ split_explicit_kernel_size(topo, N, H)                   =    1:N
 split_explicit_kernel_size(::Type{FullyConnected}, N, H) = -H+2:N+H-1
 split_explicit_kernel_size(::Type{RightConnected}, N, H) =    1:N+H-1
 split_explicit_kernel_size(::Type{LeftConnected},  N, H) = -H+2:N
+
+split_explicit_kernel_size(::Type{RightFoldedAlongCenters}, N, H) = 1:N+H-1
+split_explicit_kernel_size(::Type{RightFoldedAlongFaces}, N, H) = 1:N+H-1
 
 # Adapt
 Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
