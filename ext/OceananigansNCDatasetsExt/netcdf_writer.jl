@@ -33,7 +33,7 @@ function defVar(ds::AbstractDataset, field_name, fd::AbstractField;
     # Write the data to the NetCDF file (or don't, but still create the space for it there)
     if write_data
         # Squeeze the data to remove dimensions where location is Nothing and add a time dimension if the field is time-dependent
-        constructed_fd = construct_output(fd, fd.grid, (:, :, :), with_halos)
+        constructed_fd = construct_output(fd, (:, :, :), with_halos)
         squeezed_field_data = squeeze_nothing_dimensions(constructed_fd; array_type)
         squeezed_reshaped_field_data = time_dependent ? reshape(squeezed_field_data, size(squeezed_field_data)..., 1) : squeezed_field_data
 
