@@ -293,7 +293,7 @@ function test_averaging_datetime_windows(model)
     # Create DateTime model using the passed grid's architecture
     grid = model.grid
     clock = Clock(time=start_time)
-    datetime_model = HydrostaticFreeSurfaceModel(; grid, clock)
+    datetime_model = HydrostaticFreeSurfaceModel(grid; clock)
 
     simulation = Simulation(datetime_model, Δt=Day(1), stop_time=stop_time)
 
@@ -373,7 +373,7 @@ function test_averaging_datetime_varying_period_windows(model)
     # Create DateTime model using the passed grid's architecture
     grid = model.grid
     clock = Clock(time=start_time)
-    datetime_model = HydrostaticFreeSurfaceModel(; grid, clock)
+    datetime_model = HydrostaticFreeSurfaceModel(grid; clock)
 
     simulation = Simulation(datetime_model, Δt=Day(1), stop_time=stop_time)
 
@@ -558,7 +558,7 @@ function test_averaged_specified_times_runtime_validation()
         # Start simulation at Jan 10, 2000
         start_time = DateTime(2000, 1, 10)
         clock = Clock(time=start_time)
-        model = HydrostaticFreeSurfaceModel(; grid, clock)
+        model = HydrostaticFreeSurfaceModel(grid; clock)
 
         # First specified time at Jan 15, window is 10 days (goes back to Jan 5)
         # Simulation starts at Jan 10, 2000, so window extends before start
@@ -582,7 +582,7 @@ function test_averaged_specified_times_runtime_validation()
 
         start_time = DateTime(2000, 1, 1)
         clock = Clock(time=start_time)
-        model = HydrostaticFreeSurfaceModel(; grid, clock)
+        model = HydrostaticFreeSurfaceModel(grid; clock)
 
         # First specified time at Jan 10, window is 5 days (goes back to Jan 5)
         # Simulation starts at Jan 1, 2000, so this should be valid
