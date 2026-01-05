@@ -65,3 +65,4 @@ end
 
 prettytime(dt::AbstractTime) = "$dt"
 prettytime(t::Array) = map(prettytime, t)
+prettytime(dt::AbstractTime, ::Bool) = prettytime(dt)

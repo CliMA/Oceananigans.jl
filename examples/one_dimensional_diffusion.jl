@@ -49,7 +49,7 @@ closure = ScalarDiffusivity(κ=1)
 
 # We finally pass these two ingredients to `NonhydrostaticModel`,
 
-model = NonhydrostaticModel(; grid, closure, tracers=:T)
+model = NonhydrostaticModel(grid; closure, tracers=:T)
 
 # By default, `NonhydrostaticModel` has no-flux (insulating and stress-free) boundary conditions on
 # all fields.

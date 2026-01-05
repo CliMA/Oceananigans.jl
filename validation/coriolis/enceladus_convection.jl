@@ -155,7 +155,7 @@ grid = LatitudeLongitudeGrid(size = (256, 16, 128),
 using Oceananigans.Coriolis: SphericalCoriolis, NonhydrostaticFormulation
 coriolis = SphericalCoriolis(rotation_rate=Ω_enceladus, formulation=NonhydrostaticFormulation())
 
-model = NonhydrostaticModel(; grid, coriolis,
+model = NonhydrostaticModel(grid; coriolis,
                             advection = WENO(order=5),
                             tracers = (:T, :S),
                             buoyancy = SeawaterBuoyancy(equation_of_state=TEOS10EquationOfState()))
