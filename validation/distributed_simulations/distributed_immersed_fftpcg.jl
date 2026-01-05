@@ -41,7 +41,7 @@ function setup_grid(N, arch)
 end
 
 function setup_model(grid, pressure_solver)
-    model = NonhydrostaticModel(; grid, pressure_solver,
+    model = NonhydrostaticModel(grid; pressure_solver,
                                 advection = WENO(),
                                 coriolis = FPlane(f = 0.1),
                                 tracers = :b,

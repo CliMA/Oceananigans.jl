@@ -42,7 +42,7 @@ end
 
 function test_jld2_size_file_splitting(arch)
     grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1), halo=(1, 1, 1))
-    model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    model = NonhydrostaticModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=1, stop_iteration=10)
 
     function fake_bc_init(file, model)
@@ -90,7 +90,7 @@ end
 
 function test_jld2_time_file_splitting(arch)
     grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1), halo=(1, 1, 1))
-    model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    model = NonhydrostaticModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=1, stop_iteration=10)
 
     function fake_bc_init(file, model)
@@ -211,7 +211,7 @@ function test_jld2_time_averaging(arch)
             c1_forcing = Forcing(Fc1, field_dependencies=:c1)
             c2_forcing = Forcing(Fc2, field_dependencies=:c2)
 
-            model = NonhydrostaticModel(; grid,
+            model = NonhydrostaticModel(grid;
                                         tracers = (:c1, :c2),
                                         forcing = (c1=c1_forcing, c2=c2_forcing))
 
@@ -325,7 +325,7 @@ for arch in archs
     topo =(Periodic, Periodic, Bounded)
     grid = RectilinearGrid(arch, topology=topo, size=(4, 4, 4), extent=(1, 1, 1))
     background_u = BackgroundField((x, y, z, t) -> 0)
-    model = NonhydrostaticModel(grid=grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S), background_fields=(u=background_u,))
+    model = NonhydrostaticModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S), background_fields=(u=background_u,))
 
     @testset "JLD2 output writer [$(typeof(arch))]" begin
         @info "  Testing JLD2 output writer [$(typeof(arch))]..."
@@ -470,7 +470,7 @@ for arch in archs
         # Test that free surface can be output
         grid = RectilinearGrid(arch, size=(4, 4, 4), x=(0, 1), y=(0, 1), z=(0, 1))
         free_surface = SplitExplicitFreeSurface(substeps=10)
-        model = HydrostaticFreeSurfaceModel(; grid, free_surface)
+        model = HydrostaticFreeSurfaceModel(grid; free_surface)
         simulation = Simulation(model, Δt=1, stop_iteration=2)
         filename = "test_free_surface_output.jld2"
         ow = JLD2Writer(model, (; η=model.free_surface.displacement); filename,

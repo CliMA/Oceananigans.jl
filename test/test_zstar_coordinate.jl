@@ -85,8 +85,8 @@ const F = Face
     # Make sure a model with a MutableVerticalDiscretization but ZCoordinate still runs and
     # the results are the same as a model with a static vertical discretization.
     kw = (; free_surface=ImplicitFreeSurface(), vertical_coordinate=ZCoordinate())
-    mutable_model = HydrostaticFreeSurfaceModel(; grid=mutable_grid, kw...)
-    static_model  = HydrostaticFreeSurfaceModel(; grid=static_grid, kw...)
+    mutable_model = HydrostaticFreeSurfaceModel(mutable_grid; kw...)
+    static_model  = HydrostaticFreeSurfaceModel(static_grid; kw...)
 
     @test mutable_model.vertical_coordinate isa ZCoordinate
     @test static_model.vertical_coordinate isa ZCoordinate
@@ -140,13 +140,13 @@ end
                 for c_bcs in (NoFluxBoundaryCondition(), FluxBoundaryCondition(0.01), ValueBoundaryCondition(0.01))
                     @info "testing ZStarCoordinate diffusion on $(typeof(arch)) with $TD, $timestepper, and $c_bcs at the top"
 
-                    model_static = HydrostaticFreeSurfaceModel(; grid = grid_static,
+                    model_static = HydrostaticFreeSurfaceModel(grid_static;
                                                                 tracers = :c,
                                                                 timestepper,
                                                                 boundary_conditions = (; c = FieldBoundaryConditions(top=c_bcs)),
                                                                 closure = VerticalScalarDiffusivity(TD(), κ=0.1))
 
-                    model_moving = HydrostaticFreeSurfaceModel(; grid = grid_moving,
+                    model_moving = HydrostaticFreeSurfaceModel(grid_moving;
                                                                 tracers = :c,
                                                                 timestepper,
                                                                 boundary_conditions = (; c = FieldBoundaryConditions(top=c_bcs)),
@@ -216,8 +216,8 @@ end
 
                     info_msg = info_message(grid, free_surface)
                     @testset "$info_msg" begin
-                        @info "  Testing a $info_msg..."
-                        model = HydrostaticFreeSurfaceModel(; grid,
+                        @info "  Testing a $info_msg"
+                        model = HydrostaticFreeSurfaceModel(grid;
                                                             free_surface,
                                                             tracers = (:b, :c, :constant),
                             				                buoyancy = BuoyancyTracer(),
@@ -244,7 +244,7 @@ end
 
         for grid in [rtg, llg, irtg, illg]
             split_free_surface = SplitExplicitFreeSurface(grid; substeps=50)
-            model = HydrostaticFreeSurfaceModel(; grid,
+            model = HydrostaticFreeSurfaceModel(grid;
                                                 free_surface = split_free_surface,
                                                 tracers = (:b, :c, :constant),
                                                 timestepper = :SplitRungeKutta3,
@@ -288,7 +288,7 @@ end
             grid = ImmersedBoundaryGrid(grid, GridFittedBottom(gaussian_islands))
             free_surface = SplitExplicitFreeSurface(grid; substeps=10)
 
-            model = HydrostaticFreeSurfaceModel(; grid,
+            model = HydrostaticFreeSurfaceModel(grid;
                                                   free_surface,
                                                   tracers = (:b, :c, :constant),
                                                   buoyancy = BuoyancyTracer(),

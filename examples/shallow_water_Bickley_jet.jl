@@ -46,7 +46,7 @@ grid = RectilinearGrid(size = (48, 128),
 gravitational_acceleration = 1
 coriolis = FPlane(f=1)
 
-model = ShallowWaterModel(; grid, coriolis, gravitational_acceleration,
+model = ShallowWaterModel(grid; coriolis, gravitational_acceleration,
                           timestepper = :RungeKutta3,
                           momentum_advection = WENO())
 
