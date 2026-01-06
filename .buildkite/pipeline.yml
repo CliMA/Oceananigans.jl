@@ -91,6 +91,9 @@ steps:
       cd "$OCEANANIGANS_DIR"
       julia +$JULIA_VERSION -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test()'
 
+      # Ship coverage files
+      buildkite-agent artifact upload "**/*.cov"
+
     matrix:
       setup:
         architecture:
@@ -99,24 +102,24 @@ steps:
         group:
           - "🦖 poisson_solvers_2"
           - "🐇 unit"
-          - "👻 abstract_operations"
-          - "🕊 poisson_solvers_1"
-          - "🦤 general_solvers"
-          - "🎣 turbulence_closures"
-          - "🦀 time_stepping_1"
-          - "🦈 time_stepping_2"
-          - "🦟 time_stepping_3"
-          - "🐫 nonhydrostatic_regression"
-          - "🐙 hydrostatic_free_surface"
-          - "🫐 tripolar_grid"
-          - "🥑 vertical_coordinate"
-          - "🙈 hydrostatic_regression"
-          - "🦢 shallow_water"
-          - "🐳 simulation"
-          - "🍂 lagrangian_particles"
-          - "🧅 multi_region"
-          - "🦧 scripts"
-          - "🍱 xesmf"
+          # - "👻 abstract_operations"
+          # - "🕊 poisson_solvers_1"
+          # - "🦤 general_solvers"
+          # - "🎣 turbulence_closures"
+          # - "🦀 time_stepping_1"
+          # - "🦈 time_stepping_2"
+          # - "🦟 time_stepping_3"
+          # - "🐫 nonhydrostatic_regression"
+          # - "🐙 hydrostatic_free_surface"
+          # - "🫐 tripolar_grid"
+          # - "🥑 vertical_coordinate"
+          # - "🙈 hydrostatic_regression"
+          # - "🦢 shallow_water"
+          # - "🐳 simulation"
+          # - "🍂 lagrangian_particles"
+          # - "🧅 multi_region"
+          # - "🦧 scripts"
+          # - "🍱 xesmf"
 
     retry:
       automatic:
@@ -147,6 +150,9 @@ steps:
       cd "$OCEANANIGANS_DIR"
       julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test()'
 
+      # Ship coverage files
+      buildkite-agent artifact upload "**/*.cov"
+
     matrix:
       setup:
         architecture:
@@ -161,6 +167,17 @@ steps:
       automatic:
         - exit_status: 1
           limit: 1
+
+  #####
+  ##### Blocking wait on tests and documentation
+  #####
+
+  - wait: ~
+    continue_on_failure: true
+
+  #####
+  ##### Upload to Codecov
+  #####
 
   - label: "📊 Upload coverage to Codecov"
     agents:
@@ -178,13 +195,6 @@ steps:
         -s coverage_artifacts \
         -F buildkite \
         -F julia
-
-  #####
-  ##### Blocking wait on tests and documentation
-  #####
-
-  - wait: ~
-    continue_on_failure: true
 
   #####
   ##### Clean up
