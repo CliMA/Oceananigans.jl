@@ -41,7 +41,7 @@ function compute_tendencies!(model::NonhydrostaticModel, callbacks)
 end
 
 """ Store previous value of the source term and compute current source term. """
-function compute_interior_tendency_contributions!(model, kernel_parameters)
+function compute_interior_tendency_contributions!(model, kernel_parameters; region = :interior)
 
     tendencies           = model.timestepper.Gⁿ
     arch                 = model.architecture
