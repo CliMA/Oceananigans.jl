@@ -9,7 +9,7 @@ using Benchmarks
 
 function benchmark_vertically_stretched_nonhydrostatic_model(Arch, FT, N)
     grid = RectilinearGrid(Arch(), FT, size=(N, N, N), x=(0, 1), y=(0, 1), z=collect(0:N))
-    model = NonhydrostaticModel(grid=grid)
+    model = NonhydrostaticModel(grid)
 
     time_step!(model, 1) # warmup
 

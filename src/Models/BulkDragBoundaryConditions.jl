@@ -355,7 +355,7 @@ With `LinearFormulation()` (Rayleigh friction), the drag is:
 τᵘ = - C^D (u + U_∞)
 ```
 
-where `C^D` is the drag coefficient, `|U + U∞| = √((u + U∞)² + (v + V∞)² + (w + W∞)²)` is the
+where `Cᴰ` is the drag coefficient, `|U + U∞| = √((u + U∞)² + (v + V∞)² + (w + W∞)²)` is the
 total 3D speed including background velocities, and `(U∞, V∞, W∞)` are the background velocities.
 The boundary-normal velocity component is zero due to the no-penetration condition.
 
@@ -390,7 +390,7 @@ u_bcs = FieldBoundaryConditions(bottom=drag)
 v_bcs = FieldBoundaryConditions(bottom=drag)
 
 grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
-model = NonhydrostaticModel(; grid, boundary_conditions=(u=u_bcs, v=v_bcs))
+model = NonhydrostaticModel(grid; boundary_conditions=(u=u_bcs, v=v_bcs))
 model.velocities.u.boundary_conditions
 
 # output
@@ -418,7 +418,7 @@ drag = BulkDrag(LinearFormulation(), coefficient=1e-3)
 u_bcs = FieldBoundaryConditions(bottom=drag, immersed=ImmersedBoundaryCondition(bottom=drag))
 v_bcs = FieldBoundaryConditions(bottom=drag, immersed=ImmersedBoundaryCondition(bottom=drag))
 
-model = HydrostaticFreeSurfaceModel(; grid, boundary_conditions=(u=u_bcs, v=v_bcs))
+model = HydrostaticFreeSurfaceModel(grid; boundary_conditions=(u=u_bcs, v=v_bcs))
 
 # Verify the immersed BC has drag only on the bottom facet
 model.velocities.u.boundary_conditions.immersed
@@ -451,7 +451,7 @@ u_bcs = FieldBoundaryConditions(south=drag, north=drag, bottom=drag, immersed=dr
 v_bcs = FieldBoundaryConditions(west=drag, east=drag, bottom=drag, immersed=drag)
 w_bcs = FieldBoundaryConditions(south=drag, north=drag, west=drag, east=drag, immersed=drag)
 
-model = HydrostaticFreeSurfaceModel(; grid, boundary_conditions=(u=u_bcs, v=v_bcs, w=w_bcs))
+model = HydrostaticFreeSurfaceModel(grid; boundary_conditions=(u=u_bcs, v=v_bcs, w=w_bcs))
 
 model.velocities.u.boundary_conditions
 

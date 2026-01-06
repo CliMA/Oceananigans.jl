@@ -45,6 +45,17 @@ It provides a framework for solving the incompressible (or Boussinesq) Navier-St
    - Generally minimize memory allocation
    - Design solutions that work within the existing framework
 
+6. **Model Constructor Formatting**: Model constructors use positional arguments for required parameters
+   - **HydrostaticFreeSurfaceModel**: `HydrostaticFreeSurfaceModel(grid; ...)` - `grid` is positional
+   - **NonhydrostaticModel**: `NonhydrostaticModel(grid; ...)` - `grid` is positional
+   - **ShallowWaterModel**: `ShallowWaterModel(grid; gravitational_acceleration, ...)` - both `grid` and `gravitational_acceleration` are positional
+   - **Important**: When there are no keyword arguments, omit the semicolon:
+     - ✅ `NonhydrostaticModel(grid)` 
+     - ❌ `NonhydrostaticModel(grid;)`
+   - When keyword arguments are present, use the semicolon:
+     - ✅ `NonhydrostaticModel(grid; closure=nothing)`
+     - ✅ `HydrostaticFreeSurfaceModel(grid; tracers=:c)`
+
 ### Naming Conventions
 - **Files**: snake_case (e.g., `nonhydrostatic_model.jl`, `compute_hydrostatic_free_surface_tendencies.jl`)
 - **Types**: PascalCase (e.g., `NonhydrostaticModel`, `HydrostaticFreeSurfaceModel`, `SeawaterBuoyancy`)

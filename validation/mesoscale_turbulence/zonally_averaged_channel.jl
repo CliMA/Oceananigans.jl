@@ -171,7 +171,7 @@ gent_mcwilliams_diffusivity = IsopycnalSkewSymmetricDiffusivity(κ_skew = 1000,
 @info "Building a model..."
 
 
-model = HydrostaticFreeSurfaceModel(grid = grid,
+model = HydrostaticFreeSurfaceModel(grid;
                                     free_surface = ImplicitFreeSurface(),
                                     momentum_advection = WENO(),
                                     tracer_advection = WENO(),
