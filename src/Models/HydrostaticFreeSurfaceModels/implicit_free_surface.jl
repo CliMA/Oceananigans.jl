@@ -153,15 +153,6 @@ function step_free_surface!(free_surface::ImplicitFreeSurface, model, timesteppe
     return nothing
 end
 
-function local_compute_integrated_volume_flux!(∫ᶻQ, velocities, arch)
-
-    foreach(mask_immersed_field!, velocities)
-
-    # Compute barotropic volume flux. Blocking.
-    compute_vertically_integrated_volume_flux!(∫ᶻQ, velocities)
-
-    return nothing
-end
 
 #####
 ##### Checkpointing
