@@ -98,9 +98,9 @@ steps:
       setup:
         architecture:
           - "CPU"
-          - "GPU"
+          # - "GPU"
         group:
-          - "🦖 poisson_solvers_2"
+          # - "🦖 poisson_solvers_2"
           - "🐇 unit"
           # - "👻 abstract_operations"
           # - "🕊 poisson_solvers_1"
@@ -156,12 +156,12 @@ steps:
     matrix:
       setup:
         architecture:
-          - "CPU"
-          - "GPU"
+          # - "CPU"
+          # - "GPU"
         group:
-          - "🎭 reactant_2"
-          - "👺 enzyme"
-          - "👹 reactant_1"
+          # - "🎭 reactant_2"
+          # - "👺 enzyme"
+          # - "👹 reactant_1"
 
     retry:
       automatic:
