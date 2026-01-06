@@ -91,7 +91,7 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; regi
     exclude_periphery = true
     launch!(arch, grid, kernel_parameters, compute_Gu!,
             tendencies.u, grid, u_kernel_args;
-            exclude_periphery)
+            exclude_periphery; region)
 
     launch!(arch, grid, kernel_parameters, compute_Gv!,
             tendencies.v, grid, v_kernel_args;
