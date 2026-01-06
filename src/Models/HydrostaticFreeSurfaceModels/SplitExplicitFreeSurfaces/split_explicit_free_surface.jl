@@ -1,6 +1,6 @@
 using Oceananigans: Oceananigans
 using Oceananigans.Grids: Grids, Flat, LeftConnected, RightConnected, FullyConnected,
-    RightFoldedAlongCenters, RightFoldedAlongFaces,
+    RightCenterFolded, RightFaceFolded,
     halo_size, on_architecture, minimum_xspacing, minimum_yspacing, with_halo
 using Oceananigans.Fields: TracerFields, XFaceField, YFaceField
 using Oceananigans.Utils: prettytime
@@ -211,7 +211,7 @@ function hydrostatic_tendency_fields(velocities, free_surface::SplitExplicitFree
     return merge((u=u, v=v, U=U, V=V), tracers)
 end
 
-const ConnectedTopology = Union{LeftConnected, RightConnected, FullyConnected, RightFoldedAlongCenters, RightFoldedAlongFaces}
+const ConnectedTopology = Union{LeftConnected, RightConnected, FullyConnected, RightCenterFolded, RightFaceFolded}
 
 # Internal function for HydrostaticFreeSurfaceModel
 function materialize_free_surface(free_surface::SplitExplicitFreeSurface, velocities, grid)
@@ -372,8 +372,8 @@ split_explicit_kernel_size(::Type{FullyConnected}, N, H) = -H+2:N+H-1
 split_explicit_kernel_size(::Type{RightConnected}, N, H) =    1:N+H-1
 split_explicit_kernel_size(::Type{LeftConnected},  N, H) = -H+2:N
 
-split_explicit_kernel_size(::Type{RightFoldedAlongCenters}, N, H) = 1:N+H-1
-split_explicit_kernel_size(::Type{RightFoldedAlongFaces}, N, H) = 1:N+H
+split_explicit_kernel_size(::Type{RightCenterFolded}, N, H) = 1:N+H-1
+split_explicit_kernel_size(::Type{RightFaceFolded}, N, H) = 1:N+H
 
 # Adapt
 Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =

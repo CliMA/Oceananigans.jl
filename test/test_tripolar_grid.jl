@@ -227,9 +227,9 @@ end
         #          │           │           │           │           │           │           │
         # Ny+1 ─▶  u     c     u     c     u     c     u     c     u     c     u     c     u
         #          │           │           │           │           │           │           │
-        # Ny+1 ─▶  ├──── v ────┼──── v ────┼──── v ─── F ─── v ────┼──── v ────┼───  v ────┤ ◀─ Fold (RightFoldedAlongFaces)
+        # Ny+1 ─▶  ├──── v ────┼──── v ────┼──── v ─── F ─── v ────┼──── v ────┼───  v ────┤ ◀─ Fold (RightFaceFolded)
         #          │           │           │           │           │           │           │
-        #   Ny ─▶  │     c     u     c     u     c     T     c     u     c     u     c     │ ◀─ Fold (RightFoldedAlongCenters)
+        #   Ny ─▶  │     c     u     c     u     c     T     c     u     c     u     c     │ ◀─ Fold (RightCenterFolded)
         #          │           │           │           │           │           │           │
         #   Ny ─▶  ├──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┤
         #          │           │           │           │           │           │           │
@@ -263,7 +263,7 @@ end
         cx = on_architecture(CPU(), cx)
         u = on_architecture(CPU(), u)
         # Before we run the tests, enforce zero velocities on the pivot points!
-        # Only u can be on pivot point for TPointPivot grid (RightFoldedAlongCenters)
+        # Only u can be on pivot point for TPointPivot grid (RightCenterFolded)
         # Maybe this can be avoided with some land over the pivot points?
         if pivot == :TPointPivot
             u.data[[1, u_pivot_i, Nx + 1], u_pivot_j, :] .= 0.0

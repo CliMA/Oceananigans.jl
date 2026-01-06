@@ -12,7 +12,7 @@ export
     Center, Face,
     Periodic, Bounded, Flat,
     RightConnected, LeftConnected, FullyConnected,
-    RightFoldedAlongFaces, RightFoldedAlongCenters,
+    RightFaceFolded, RightCenterFolded,
     RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
     TripolarGrid, RotatedLatitudeLongitudeGrid,
     MutableVerticalDiscretization,

@@ -2,7 +2,7 @@ using Oceananigans.BoundaryConditions: ZipperBoundaryCondition, FPivotZipperBoun
 using Oceananigans.Fields: set!
 using Oceananigans.Grids: Grids, Bounded, Flat, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid,
     architecture, cpu_face_constructor_z, validate_dimension_specification,
-    RightFoldedAlongCenters, RightFoldedAlongFaces
+    RightCenterFolded, RightFaceFolded
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 """
@@ -26,8 +26,8 @@ const TripolarGridOfSomeKind = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <
 
 # helper function to retrieve the pivot symbol from topology
 # (needed to reconstruct the grid with extended halos)
-pivot_symbol(::Type{RightFoldedAlongCenters}) = :TPointPivot
-pivot_symbol(::Type{RightFoldedAlongFaces})   = :FPivotPivot
+pivot_symbol(::Type{RightCenterFolded}) = :TPointPivot
+pivot_symbol(::Type{RightFaceFolded})   = :FPivotPivot
 
 """
     TripolarGrid(arch = CPU(), FT::DataType = Float64;
@@ -95,9 +95,9 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
 
     # Set the topology
     if pivot == :TPointPivot
-        topology = (Periodic, RightFoldedAlongCenters, Bounded)
+        topology = (Periodic, RightCenterFolded, Bounded)
     else
-        topology = (Periodic, RightFoldedAlongFaces, Bounded)
+        topology = (Periodic, RightFaceFolded, Bounded)
     end
 
     # TODO: Change a couple of allocations here and there to be able

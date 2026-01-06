@@ -44,7 +44,7 @@ const BoundedTopology = Union{Bounded, LeftConnected}
 const AT = AbstractTopology
 
 Base.length(::Face,    ::BoundedTopology, N) = N + 1
-Base.length(::Face, ::RightFoldedAlongFaces, N) = N + 1
+Base.length(::Face, ::RightFaceFolded, N) = N + 1
 Base.length(::Nothing, ::AT,              N) = 1
 Base.length(::Face,    ::AT,              N) = N
 Base.length(::Center,  ::AT,              N) = N
@@ -67,7 +67,7 @@ is restricted by `length(ind)`.
 total_length(::Face,    ::AT,              N, H=0) = N + 2H
 total_length(::Center,  ::AT,              N, H=0) = N + 2H
 total_length(::Face,    ::BoundedTopology, N, H=0) = N + 1 + 2H
-total_length(::Face,    ::RightFoldedAlongFaces, N, H=0) = N + 1 + 2H
+total_length(::Face,    ::RightFaceFolded, N, H=0) = N + 1 + 2H
 total_length(::Nothing, ::AT,              N, H=0) = 1
 total_length(::Nothing, ::Flat,            N, H=0) = N
 total_length(::Face,    ::Flat,            N, H=0) = N
@@ -121,7 +121,7 @@ constant grid spacing `Δ`, and interior extent `L`.
 """
 @inline total_extent(topo, H, Δ, L) = L + (2H - 1) * Δ
 @inline total_extent(::BoundedTopology, H, Δ, L) = L + 2H * Δ
-@inline total_extent(::RightFoldedAlongFaces, H, Δ, L) = L + 2H * Δ
+@inline total_extent(::RightFaceFolded, H, Δ, L) = L + 2H * Δ
 
 # Grid domains
 @inline domain(topo, N, ξ) = @allowscalar ξ[1], ξ[N+1]
@@ -143,7 +143,7 @@ regular_dimensions(grid) = ()
 
 @inline right_halo_indices(loc, ::AT, N, H) = N+1:N+H
 @inline right_halo_indices(::Face, ::BoundedTopology, N, H) = N+2:N+1+H
-@inline right_halo_indices(::Face, ::RightFoldedAlongFaces, N, H) = N+2:N+1+H
+@inline right_halo_indices(::Face, ::RightFaceFolded, N, H) = N+2:N+1+H
 @inline right_halo_indices(::Nothing, ::AT, N, H) = 1:0 # empty
 
 @inline underlying_left_halo_indices(loc, ::AT, N, H) = 1:H
@@ -151,12 +151,12 @@ regular_dimensions(grid) = ()
 
 @inline underlying_right_halo_indices(loc,       ::AT, N, H) = N+1+H:N+2H
 @inline underlying_right_halo_indices(::Face,    ::BoundedTopology, N, H) = N+2+H:N+1+2H
-@inline underlying_right_halo_indices(::Face,    ::RightFoldedAlongFaces, N, H) = N+2+H:N+1+2H
+@inline underlying_right_halo_indices(::Face,    ::RightFaceFolded, N, H) = N+2+H:N+1+2H
 @inline underlying_right_halo_indices(::Nothing, ::AT, N, H) = 1:0 # empty
 
 @inline interior_indices(loc,       ::AT,              N) = 1:N
 @inline interior_indices(::Face,    ::BoundedTopology, N) = 1:N+1
-@inline interior_indices(::Face,    ::RightFoldedAlongFaces, N) = 1:N+1
+@inline interior_indices(::Face,    ::RightFaceFolded, N) = 1:N+1
 @inline interior_indices(::Nothing, ::AT,              N) = 1:1
 
 @inline interior_indices(::Nothing, ::Flat, N) = 1:N
@@ -172,7 +172,7 @@ regular_dimensions(grid) = ()
 
 @inline interior_parent_indices(::Nothing, ::AT,              N, H) = 1:1
 @inline interior_parent_indices(::Face,    ::BoundedTopology, N, H) = 1+H:N+1+H
-@inline interior_parent_indices(::Face,    ::RightFoldedAlongFaces, N, H) = 1+H:N+1+H
+@inline interior_parent_indices(::Face,    ::RightFaceFolded, N, H) = 1+H:N+1+H
 @inline interior_parent_indices(loc,       ::AT,              N, H) = 1+H:N+H
 
 @inline interior_parent_indices(::Nothing, ::Flat, N, H) = 1:N
@@ -182,7 +182,7 @@ regular_dimensions(grid) = ()
 # All indices including halos.
 @inline all_indices(::Nothing, ::AT,              N, H) = 1:1
 @inline all_indices(::Face,    ::BoundedTopology, N, H) = 1-H:N+1+H
-@inline all_indices(::Face,    ::RightFoldedAlongFaces, N, H) = 1-H:N+1+H
+@inline all_indices(::Face,    ::RightFaceFolded, N, H) = 1-H:N+1+H
 @inline all_indices(loc,       ::AT,              N, H) = 1-H:N+H
 
 @inline all_indices(::Nothing, ::Flat, N, H) = 1:N
@@ -195,7 +195,7 @@ regular_dimensions(grid) = ()
 
 @inline all_parent_indices(loc,       ::AT,              N, H) = 1:N+2H
 @inline all_parent_indices(::Face,    ::BoundedTopology, N, H) = 1:N+1+2H
-@inline all_parent_indices(::Face,    ::RightFoldedAlongFaces, N, H) = 1:N+1+2H
+@inline all_parent_indices(::Face,    ::RightFaceFolded, N, H) = 1:N+1+2H
 @inline all_parent_indices(::Nothing, ::AT,              N, H) = 1:1
 
 @inline all_parent_indices(::Nothing, ::Flat, N, H) = 1:N
@@ -297,15 +297,15 @@ domain_summary(topo::Flat, name, coord::Number) = "Flat $name = $coord"
 function domain_summary(topo, name, (left, right))
     interval = (topo isa Bounded) ||
                (topo isa LeftConnected) ||
-               (topo isa RightFoldedAlongFaces) ? "]" : ")"
+               (topo isa RightFaceFolded) ? "]" : ")"
 
     topo_string = topo isa Periodic ? "Periodic " :
                   topo isa Bounded ? "Bounded  " :
                   topo isa FullyConnected ? "FullyConnected " :
                   topo isa LeftConnected ? "LeftConnected  " :
                   topo isa RightConnected ? "RightConnected  " :
-                  topo isa RightFoldedAlongFaces ? "RightFoldedAlongFaces  " :
-                  topo isa RightFoldedAlongCenters ? "RightFoldedAlongCenters  " :
+                  topo isa RightFaceFolded ? "RightFaceFolded  " :
+                  topo isa RightCenterFolded ? "RightCenterFolded  " :
                   error("Unexpected topology $topo together with the domain end points ($left, $right)")
 
     return string(topo_string, name, " ∈ [",
