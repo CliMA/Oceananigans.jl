@@ -261,10 +261,10 @@ function HydrostaticFreeSurfaceModel(grid;
     return model
 end
 
-function initialization_update_state!(model::HydrostaticFreeSurfaceModel; kw...)
+function initialization_update_state!(model::HydrostaticFreeSurfaceModel)
 
     # Update the state of the model
-    update_state!(model; kw...)
+    update_state!(model)
 
     # Update state may have asynchronous fill halo, so we refill all the 
     # halos here (in a synchronous fashion) for initialization

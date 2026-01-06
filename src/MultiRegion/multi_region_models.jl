@@ -1,6 +1,6 @@
 using Oceananigans.Advection: WENO, VectorInvariant
 using Oceananigans.BuoyancyFormulations: NegativeZDirection, AbstractBuoyancyFormulation, validate_unit_vector
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, update_state!
 using Oceananigans.Models: PrescribedVelocityFields
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 using Oceananigans.Advection: OnlySelfUpwinding, CrossAndSelfUpwinding
@@ -10,10 +10,12 @@ using Oceananigans.Solvers: ConjugateGradientSolver
 import Oceananigans.BuoyancyFormulations: BuoyancyForce
 import Oceananigans.Advection: WENO, cell_advection_timescale, adapt_advection_order
 import Oceananigans.BuoyancyFormulations: BuoyancyForce
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: validate_tracer_advection, initialization_update_state!
+import Oceananigans.Models: initialization_update_state!
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: validate_tracer_advection
 import Oceananigans.TurbulenceClosures: implicit_diffusion_solver
 
 const MultiRegionModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:MultiRegionGrids}
+const CubedSphereModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:ConformalCubedSphereGridOfSomeKind}
 
 function adapt_advection_order(advection::MultiRegionObject, grid::MultiRegionGrids)
     @apply_regionally new_advection = adapt_advection_order(advection, grid)
@@ -66,21 +68,21 @@ end
 
 validate_tracer_advection(tracer_advection::MultiRegionObject, grid::MultiRegionGrids) = tracer_advection, NamedTuple()
 
-function initialization_update_state!(model::MultiRegionModel; kw...)
+# A cubed sphere needs to fill u and v separately
+# U and V (in case of a `SplitExplicitFreeSurface`) are filled in `initialize!`
+function initialization_update_state!(model::CubedSphereModel)
 
     # Update the state of the model
-    update_state!(model; kw...)
+    update_state!(model)
 
-    # A cubed sphere needs to fill u and v separately
     u = model.velocities.u
     v = model.velocities.v
 
     fill_halo_regions!((u, v), model.clock, Oceananigans.fields(model))
     fields = Oceananigans.prognostic_fields(model)
 
-    for field in keys(fields)
-        !(key ∈ (:u, :v, :U, :V)) && 
-            fill_halo_regions!(field, model.clock, Oceananigans.fields(model))
+    for key in keys(fields)
+        !(key ∈ (:u, :v, :U, :V)) && fill_halo_regions!(fields[key], model.clock, Oceananigans.fields(model))
     end
 
     # Finally, initialize the model (e.g., free surface, vertical coordinate...)
