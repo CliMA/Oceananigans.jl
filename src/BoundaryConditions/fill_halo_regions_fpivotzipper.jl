@@ -57,7 +57,7 @@ v₂ == -v₃
     i′ = ifelse(i′ > Nx, i′ - Nx, i′) # Periodicity is hardcoded in the x-direction!!
     Hy = grid.Hy
 
-    for j in 1:Hy
+    for j in 1:(Hy - 1)
         @inbounds begin
             ζ[i, Ny + 1 + j, k] = sign * ζ[i′, Ny + 1 - j, k]
         end
@@ -90,7 +90,7 @@ end
     i′ = Nx - i + 1
     Hy = grid.Hy
 
-    for j in 1:Hy
+    for j in 1:(Hy - 1)
         @inbounds begin
             v[i, Ny + 1 + j, k] = sign * v[i′, Ny + 1 - j, k]
         end
