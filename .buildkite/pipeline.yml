@@ -156,8 +156,8 @@ steps:
     matrix:
       setup:
         architecture:
-          # - "CPU"
-          # - "GPU"
+          - "CPU"
+          - "GPU"
         group:
           # - "🎭 reactant_2"
           # - "👺 enzyme"
