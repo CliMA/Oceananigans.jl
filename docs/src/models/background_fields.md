@@ -51,7 +51,7 @@ U(x, y, z, t) = 0.2 * z
 
 grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
 
-model = NonhydrostaticModel(grid = grid, background_fields = (u=U,))
+model = NonhydrostaticModel(grid; background_fields = (u=U,))
 
 model.background_fields.velocities.u
 
@@ -93,7 +93,7 @@ When inserted into `NonhydrostaticModel`, we get
 ```jldoctest moar_background
 grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
 
-model = NonhydrostaticModel(grid = grid, background_fields = (u=U_field, b=B_field),
+model = NonhydrostaticModel(grid; background_fields = (u=U_field, b=B_field),
                             tracers=:b, buoyancy=BuoyancyTracer())
 
 model.background_fields.tracers.b

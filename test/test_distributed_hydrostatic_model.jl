@@ -51,7 +51,7 @@ function rotation_with_shear_test(grid, closure=nothing; timestepper=:QuasiAdams
     free_surface = SplitExplicitFreeSurface(grid; substeps = 8, gravitational_acceleration = g)
     coriolis     = HydrostaticSphericalCoriolis(rotation_rate = 1)
 
-    model = HydrostaticFreeSurfaceModel(; grid,
+    model = HydrostaticFreeSurfaceModel(grid;
                                         momentum_advection = WENOVectorInvariant(order=3), 
                                         free_surface = free_surface,
                                         coriolis = coriolis,

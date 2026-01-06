@@ -30,7 +30,7 @@ end
 """ Set up a simple simulation to test picking up from a checkpoint. """
 function initialization_test_simulation(arch, stop_time, Δt=1, δt=2)
     grid = RectilinearGrid(arch, size=(), topology=(Flat, Flat, Flat))
-    model = NonhydrostaticModel(; grid)
+    model = NonhydrostaticModel(grid)
     simulation = Simulation(model; Δt, stop_time)
 
     progress_message(sim) = @info string("Iter: ", iteration(sim), ", time: ", prettytime(sim))
@@ -65,7 +65,7 @@ function test_thermal_bubble_checkpointer_output(arch)
 
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = ScalarDiffusivity(ν=4e-2, κ=4e-2)
-    true_model = NonhydrostaticModel(; grid, closure, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    true_model = NonhydrostaticModel(grid; closure, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     test_model = deepcopy(true_model)
 
     # Add a cube-shaped warm temperature anomaly that takes up the middle 50%
@@ -81,7 +81,7 @@ end
 function test_hydrostatic_splash_checkpointer(grid, free_surface, timestepper)
     # Create and run "true model"
     closure = ScalarDiffusivity(ν=1e-2, κ=1e-2)
-    true_model = HydrostaticFreeSurfaceModel(; grid, free_surface, timestepper, closure, buoyancy=nothing, tracers=())
+    true_model = HydrostaticFreeSurfaceModel(grid; free_surface, timestepper, closure, buoyancy=nothing, tracers=())
     test_model = deepcopy(true_model)
 
     ηᵢ(x, y, z) = 1e-1 * exp(-x^2 - y^2)
@@ -179,7 +179,7 @@ function test_constant_fields_checkpointer(arch)
     v = ConstantField(2)
     w = ConstantField(3)
 
-    model = HydrostaticFreeSurfaceModel(; grid, velocities=PrescribedVelocityFields(; u, v, w))
+    model = HydrostaticFreeSurfaceModel(grid; velocities=PrescribedVelocityFields(; u, v, w))
 
     simulation = Simulation(model, Δt=0.1, stop_iteration=1)
     simulation.output_writers[:checkpointer] = Checkpointer(model, prefix="constant_fields_test",
@@ -202,7 +202,7 @@ end
 
 function run_checkpointer_cleanup_tests(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    model = NonhydrostaticModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=0.2, stop_iteration=10)
 
     simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(3), cleanup=true)

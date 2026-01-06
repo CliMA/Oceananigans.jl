@@ -1,4 +1,5 @@
 using Oceananigans.TurbulenceClosures: implicit_step!
+
 import Oceananigans.TimeSteppers: rk_substep!, cache_current_fields!
 
 """
@@ -31,7 +32,7 @@ The order of operations for explicit free surfaces is:
 @inline function rk_substep!(model, free_surface, grid, Δτ, callbacks)
     # Compute barotropic and baroclinic tendencies
     @apply_regionally compute_momentum_flux_bcs!(model)
-    
+
     # Advance the free surface first
     compute_free_surface_tendency!(grid, model, free_surface)
     step_free_surface!(free_surface, model, model.timestepper, Δτ)
@@ -50,10 +51,10 @@ The order of operations for explicit free surfaces is:
         # Correct for the updated barotropic mode
         correct_barotropic_mode!(model, Δτ)
 
-        # TODO: fill halo regions for horizontal velocities should be here before the tracer update.   
+        # TODO: fill halo regions for horizontal velocities should be here before the tracer update.
         rk_substep_tracers!(model.tracers, model, Δτ)
     end
-    
+
     return nothing
 end
 
@@ -74,10 +75,10 @@ For implicit free surfaces, a predictor-corrector approach is used:
 
     @apply_regionally begin
         # Computing tendencies...
-        compute_momentum_tendencies!(model, callbacks)
+        compute_momentum_flux_bcs!(model)
         compute_tracer_tendencies!(model)
-        
-        # Finally Substep! Advance grid, tracers, (predictor) momentum 
+
+        # Finally Substep! Advance grid, tracers, (predictor) momentum
         rk_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
         rk_substep_velocities!(model.velocities, model, Δτ)
     end
@@ -88,7 +89,7 @@ For implicit free surfaces, a predictor-corrector approach is used:
     # Correct for the updated barotropic mode
     @apply_regionally correct_barotropic_mode!(model, Δτ)
 
-    # TODO: fill halo regions for horizontal velocities should be here before the tracer update.   
+    # TODO: fill halo regions for horizontal velocities should be here before the tracer update.
     @apply_regionally rk_substep_tracers!(model.tracers, model, Δτ)
 
     return nothing

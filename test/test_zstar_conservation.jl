@@ -119,7 +119,7 @@ end
                     info_msg = info_message(grid, free_surface, timestepper)
                     @testset "$info_msg" begin
                         @root @info "  Testing a $info_msg"
-                        model = HydrostaticFreeSurfaceModel(; grid = deepcopy(grid),
+                        model = HydrostaticFreeSurfaceModel(deepcopy(grid);
                                                             free_surface,
                                                             tracers = (:b, :c, :constant),
                                                             timestepper,
@@ -171,12 +171,12 @@ end
             grid = ImmersedBoundaryGrid(grid, GridFittedBottom(gaussian_islands))
             free_surface = SplitExplicitFreeSurface(grid; substeps=20)
 
-            model = HydrostaticFreeSurfaceModel(; grid,
-                                                  free_surface,
-                                                  tracers = (:b, :c, :constant),
-                                                  buoyancy = BuoyancyTracer(),
-                                                  timestepper = :SplitRungeKutta3,
-                                                  vertical_coordinate = ZStarCoordinate())
+            model = HydrostaticFreeSurfaceModel(grid;
+                                                free_surface,
+                                                tracers = (:b, :c, :constant),
+                                                buoyancy = BuoyancyTracer(),
+                                                timestepper = :SplitRungeKutta3,
+                                                vertical_coordinate = ZStarCoordinate())
 
             bᵢ(x, y, z) = y < 0 ? 0.06 : 0.01
 

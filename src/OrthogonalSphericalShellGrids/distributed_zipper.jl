@@ -1,17 +1,10 @@
-using Oceananigans.BoundaryConditions: fill_halo_event!, get_boundary_kernels,
-                                       DistributedCommunication
-
-using Oceananigans.DistributedComputations: cooperative_waitall!,
-                                            recv_from_buffers!,
-                                            fill_corners!,
-                                            loc_id
-
+using Oceananigans.BoundaryConditions: fill_halo_event!, get_boundary_kernels, DistributedCommunication
+using Oceananigans.DistributedComputations: cooperative_waitall!, recv_from_buffers!, fill_corners!, loc_id
 using Oceananigans.Fields: instantiated_location
+using OffsetArrays: OffsetArray
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.DistributedComputations: synchronize_communication!
-
-using OffsetArrays: OffsetArray
 
 @inline instantiate(T::DataType) = T()
 @inline instantiate(T) = T
@@ -59,7 +52,7 @@ end
 end
 
 function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedTripolarGridOfSomeKind, buffers, args...; kwargs...)
-  
+
     arch = architecture(grid)
     kernels!, ordered_bcs = get_boundary_kernels(bcs, c, grid, loc, indices)
 
@@ -83,7 +76,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
         north_bc = bcs.north
         switch_north_halos!(c, north_bc, grid, loc)
     end
-  
+
     return nothing
 end
 
