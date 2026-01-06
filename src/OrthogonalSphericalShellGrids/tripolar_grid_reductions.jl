@@ -66,7 +66,7 @@ condition_operand(::typeof(identity), op::TF, ::Nothing, mask) =
     if !(arch isa Distributed) || (arch.ranks[2] == arch.local_index[2]) # The last core
         tripolar_condition = ValidTripolarDomain()
     else # intermediate cores
-        tripolar_condition = condition
+        tripolar_condition = nothing
     end
 
     return ConditionalOperation(op; func=nothing, condition=tripolar_condition, mask)
