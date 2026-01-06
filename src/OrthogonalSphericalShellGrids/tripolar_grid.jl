@@ -24,6 +24,11 @@ Adapt.adapt_structure(to, t::Tripolar) =
 const TripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} = OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, Arch}
 const TripolarGridOfSomeKind = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}}
 
+# helper function to retrieve the pivot symbol from topology
+# (needed to reconstruct the grid with extended halos)
+pivot_symbol(::Type{RightFoldedAlongCenters}) = :TPointPivot
+pivot_symbol(::Type{RightFoldedAlongFaces})   = :FPivotPivot
+
 """
     TripolarGrid(arch = CPU(), FT::DataType = Float64;
                  size,
@@ -401,12 +406,15 @@ function Grids.with_halo(new_halo, old_grid::TripolarGrid)
     first_pole_longitude = old_grid.conformal_mapping.first_pole_longitude
     southernmost_latitude = old_grid.conformal_mapping.southernmost_latitude
 
+    pivot = pivot_symbol(topology(old_grid, 2))
+
     new_grid = TripolarGrid(architecture(old_grid), eltype(old_grid);
                             size, z, halo = new_halo,
                             radius = old_grid.radius,
                             north_poles_latitude,
                             first_pole_longitude,
-                            southernmost_latitude)
+                            southernmost_latitude,
+                            pivot)
 
     return new_grid
 end
