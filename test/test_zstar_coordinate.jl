@@ -306,6 +306,10 @@ end
 
 	        # Set streamfunction amplitude to Δ * U to yield velocities of order U.
             set!(ψ, U * Δ * rand(size(ψ)...))
+			fill_halo_regiond!(ψ)
+			uᵢ = - ∂y(ψ)
+			vᵢ = ∂x(ψ)
+			
             set!(model, c = (x, y, z) -> rand(), u = uᵢ, v = vᵢ, b = bᵢ, constant = 1)
 
             Δt = 2minutes
