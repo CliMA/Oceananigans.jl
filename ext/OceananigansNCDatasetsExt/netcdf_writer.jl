@@ -184,7 +184,7 @@ function NetCDFWriter(model::AbstractModel, outputs;
         end
     end
 
-    outputs = Dict(string(name) => construct_output(outputs[name], grid, indices, with_halos) for name in keys(outputs))
+    outputs = Dict(string(name) => construct_output(outputs[name], indices, with_halos) for name in keys(outputs))
 
     output_attributes = dictify(output_attributes)
     global_attributes = dictify(global_attributes)
@@ -310,7 +310,7 @@ function initialize_nc_file(model,
 
         if !isempty(time_independent_vars)
             for (output_name, output) in sort(collect(pairs(time_independent_vars)), by=first)
-                output = construct_output(output, grid, indices, with_halos)
+                output = construct_output(output, indices, with_halos)
                 attrib = haskey(output_attributes, output_name) ? output_attributes[output_name] : Dict()
                 materialized = materialize_output(output, model)
 

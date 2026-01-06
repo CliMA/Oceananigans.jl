@@ -647,8 +647,6 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
         end
         
         path = first(part_paths) # part1 is first?
-    else
-        Nparts = nothing
     end
 
     file = jldopen(path; reader_kw...)
