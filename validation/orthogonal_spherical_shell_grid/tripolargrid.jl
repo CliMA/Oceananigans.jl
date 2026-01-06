@@ -1,5 +1,6 @@
 using Oceananigans
 using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid
+using Oceananigans.Fields: location
 using Printf
 using GLMakie
 
@@ -80,84 +81,169 @@ using GLMakie
 # fig
 
 
-function plot_u!(ax, u; k = size(u, 3), kwargs...)
-    Nx, Ny, Nz = size(u)
-    Hx, Hy, Hz = .-u.data.offsets
-    i = (1 - Hx):(Nx + Hx)
-    j = (1 - Hy):(Ny + Hy)
-    us = [u[i, j, k] for i in i for j in j]
-    vs = [0 for i in i for j in j]
-    xs = [i - 0.5 for i in i for j in j]
-    ys = [j for i in i for j in j]
-    return arrows2d!(ax, xs, ys, us, vs; lengthscale = 1 / 2maximum(u), kwargs...)
+
+
+
+# function plot_u!(ax, u; k = size(u, 3), kwargs...)
+#     Nx, Ny, Nz = size(u)
+#     Hx, Hy, Hz = .-u.data.offsets
+#     i = (1 - Hx):(Nx + Hx)
+#     j = (1 - Hy):(Ny + Hy)
+#     us = [u[i, j, k] for i in i for j in j]
+#     vs = [0 for i in i for j in j]
+#     xs = [i - 0.5 for i in i for j in j]
+#     ys = [j for i in i for j in j]
+#     return arrows2d!(ax, xs, ys, us, vs; lengthscale = 1 / 2maximum(u), kwargs...)
+# end
+# function plot_v!(ax, v; k = size(v, 3), kwargs...)
+#     Nx, Ny, Nz = size(v)
+#     Hx, Hy, Hz = .-v.data.offsets
+#     i = (1 - Hx):(Nx + Hx)
+#     j = (1 - Hy):(Ny + Hy)
+#     us = [0 for i in i for j in j]
+#     vs = [v[i, j, k] for i in i for j in j]
+#     xs = [i for i in i for j in j]
+#     ys = [j - 0.5 for i in i for j in j]
+#     return arrows2d!(ax, xs, ys, us, vs; lengthscale = 1 / 2maximum(v), kwargs...)
+# end
+
+# # Create a small tripolar grid
+# tg = TripolarGrid(;
+#     size = (6, 6, 2),
+#     z = (-1000, 0),
+#     southernmost_latitude = -70,
+#     north_poles_latitude = 75,
+#     first_pole_longitude = -180,
+# )
+# # Create u and v fields with Zipper boundary conditions at the north edge
+# north_bc = Oceananigans.BoundaryCondition(Oceananigans.BoundaryConditions.Zipper(), -1)
+# ubcs = FieldBoundaryConditions(tg, (Face(), Center(), Center()), north = north_bc)
+# vbcs = FieldBoundaryConditions(tg, (Center(), Face(), Center()), north = north_bc)
+# u = XFaceField(tg; boundary_conditions = ubcs)
+# v = YFaceField(tg; boundary_conditions = vbcs)
+# u .= randn(size(tg))
+# v .= randn(size(tg))
+# # Zero out u at the poles
+# (; Nx, Ny, Nz, Hx, Hy, Hz) = tg
+# u[1, Ny, :] .= 0
+# u[Nx ÷ 2 + 1, Ny, :] .= 0
+# # Fill halos of u and v
+# Oceananigans.fill_halo_regions!(u)
+# Oceananigans.fill_halo_regions!(v)
+# # Compute divergence of (u, v)
+# c = [Oceananigans.div_xyᶜᶜᶜ(i, j, k, tg, u, v) for i in (1 - Hx):(Nx + Hx), j in (1 - Hy):(Ny + Hy), k in 1:Nz]
+# # Make figure
+# fig = Figure()
+# ax = Axis(
+#     fig[1, 1];
+#     aspect = DataAspect(),
+#     limits = (1 - Hx - 1, Nx + Hx + 1, 1 - Hy - 1, Ny + Hy + 1),
+#     # xticks = 0.5:(Nx + 0.5),
+#     # yticks = 0.5:(Ny + 0.5),
+#     xticks = 1-Hx:Nx+Hx, xlabel = "i (center)",
+#     yticks = 1-Hy:Ny+Hy, ylabel = "j (center)",
+#     xminorgridvisible = true, xminorticksvisible = true,
+#     xticksvisible = false, xgridvisible = false,
+#     xminorgridcolor = (:black, 0.2),
+#     )
+# colormap = cgrad(:RdBu, rev = true)
+# # Heatmap of divergence
+# hm = heatmap!(ax, (1 - Hx):(Nx + Hx), (1 - Hy):(Ny + Hy), c[:,:,1]; colormap, colorrange = 1.5e-6 .* (-1, 1))
+# translate!(hm, 0, 0, -20)
+# Colorbar(fig[2, 1], hm; label = "Divergence", width = Relative(0.666), tellwidth = false, vertical = false)
+# # Plot u and v
+# plot_u!(ax, u; color = :black, align = 0.5)#:teal)
+# plot_v!(ax, v; color = :black, align = 0.5)#:tomato)
+# # Show "Interior" domain
+# interior = poly!(ax, [0.5, Nx + 0.5, Nx + 0.5, 0.5], [0.5, 0.5, Ny + 0.5, Ny + 0.5]; color = (:black, 0.03), strokewidth = 1, strokecolor = :black)
+# translate!(interior, 0, 0, -1)
+# # North fold
+# fold = hlines!(ax, Ny, color = :red, linestyle = :dash)
+# # Poles
+# poles = scatter!(ax, [0.5, Nx ÷ 2 + 0.5, Nx + 0.5], [Ny, Ny, Ny]; color = :red)
+# # labels
+# text!(ax, [1, 1, Nx, Nx], Ny .+ [-1, 1, -1, 1]; text = ["A", "B", "B", "A"], align = (:center, :center))
+# save("/Users/benoitpasquier/tmp/Oceananigans_signchange_afterfix.png", fig)
+# fig
+
+
+@info "Plotting the tripolar grid using a finer grid"
+
+function remove_jumps!(x)
+    # dx = abs.(diff(x))
+    # x[findall(dx .> 100)] .= NaN
+    return x
 end
-function plot_v!(ax, v; k = size(v, 3), kwargs...)
-    Nx, Ny, Nz = size(v)
-    Hx, Hy, Hz = .-v.data.offsets
-    i = (1 - Hx):(Nx + Hx)
-    j = (1 - Hy):(Ny + Hy)
-    us = [0 for i in i for j in j]
-    vs = [v[i, j, k] for i in i for j in j]
-    xs = [i for i in i for j in j]
-    ys = [j - 0.5 for i in i for j in j]
-    return arrows2d!(ax, xs, ys, us, vs; lengthscale = 1 / 2maximum(v), kwargs...)
+function lonshift(λ)
+    # λ = @. mod(λ - 250, 360) + 250
+    return λ
 end
 
-# Create a small tripolar grid
-tg = TripolarGrid(;
-    size = (6, 6, 2),
-    z = (-1000, 0),
-    southernmost_latitude = -70,
-    north_poles_latitude = 75,
-    first_pole_longitude = -180,
-)
-# Create u and v fields with Zipper boundary conditions at the north edge
-north_bc = Oceananigans.BoundaryCondition(Oceananigans.BoundaryConditions.Zipper(), -1)
-ubcs = FieldBoundaryConditions(tg, (Face(), Center(), Center()), north = north_bc)
-vbcs = FieldBoundaryConditions(tg, (Center(), Face(), Center()), north = north_bc)
-u = XFaceField(tg; boundary_conditions = ubcs)
-v = YFaceField(tg; boundary_conditions = vbcs)
-u .= randn(size(tg))
-v .= randn(size(tg))
-# Zero out u at the poles
-(; Nx, Ny, Nz, Hx, Hy, Hz) = tg
-u[1, Ny, :] .= 0
-u[Nx ÷ 2 + 1, Ny, :] .= 0
-# Fill halos of u and v
-Oceananigans.fill_halo_regions!(u)
-Oceananigans.fill_halo_regions!(v)
-# Compute divergence of (u, v)
-c = [Oceananigans.div_xyᶜᶜᶜ(i, j, k, tg, u, v) for i in (1 - Hx):(Nx + Hx), j in (1 - Hy):(Ny + Hy), k in 1:Nz]
-# Make figure
+function plot_grid!(ax, grid; kwargs...)
+
+    Nx, Ny, _ = size(grid, (Face(), Face(), Center()))
+    x = lonshift(grid.λᶠᶠᵃ)
+    y = grid.φᶠᶠᵃ
+
+    xgreatcircles = reduce((x, y) -> [x; NaN; y], eachcol(x[1:Nx, 1:Ny]))
+    ygreatcircles = reduce((x, y) -> [x; NaN; y], eachcol(y[1:Nx, 1:Ny]))
+    xmeridians = reduce((x, y) -> [x; NaN; y], eachrow(x[1:Nx, 1:Ny]))
+    ymeridians = reduce((x, y) -> [x; NaN; y], eachrow(y[1:Nx, 1:Ny]))
+
+    xgreatcircles = remove_jumps!(xgreatcircles)
+    ygreatcircles = remove_jumps!(ygreatcircles)
+    xmeridians = remove_jumps!(xmeridians)
+    ymeridians = remove_jumps!(ymeridians)
+
+    greatcircles = lines!(ax, xgreatcircles, ygreatcircles; kwargs...)
+    meridians = lines!(ax, xmeridians, ymeridians; kwargs...)
+
+    x = lonshift.(grid.λᶜᶜᵃ)
+    y = grid.φᶜᶜᵃ
+    Nx, Ny, _ = size(grid, (Center(), Center(), Center()))
+    text!(ax, x[1:Nx, 1] .+ randn.(), y[1:Nx, 1] .+ randn.(); text = string.(1:Nx), align = (:center, :center), color = :teal)
+    text!(ax, x[1, 1:Ny] .+ randn.(), y[1, 1:Ny] .+ randn.(); text = string.(1:Ny), align = (:center, :center), color = :tomato)
+
+    x = lonshift.(grid.λᶠᶜᵃ)
+    y = grid.φᶠᶜᵃ
+    @show Nx, Ny, _ = size(grid, (Face(), Center(), Center()))
+    @show i = findall(i -> (i == 1) || (i == 1 + Nx ÷ 2), circshift(1:Nx, Nx ÷ 4))
+    text!(ax, x[i, Ny], y[i, Ny]; text = ["FC1", "FC2"], align = (:center, :center), color = [:red, :blue])
+
+    x = lonshift.(grid.λᶠᶠᵃ)
+    y = grid.φᶠᶠᵃ
+    @show Nx, Ny, _ = size(grid, (Face(), Face(), Center()))
+    @show i = findall(i -> (i == 1) || (i == 1 + Nx ÷ 2), circshift(1:Nx, Nx ÷ 4))
+    text!(ax, x[i, Ny], y[i, Ny]; text = ["FF1", "FF2"], align = (:center, :center), color = [:red, :blue])
+
+    return (greatcircles, meridians)
+end
+
 fig = Figure()
-ax = Axis(
-    fig[1, 1];
+Nx, Ny, Nz = 10, 10, 1
+grid = TripolarGrid(size = (Nx, Ny, Nz))
+
+axopt = (
     aspect = DataAspect(),
-    limits = (1 - Hx - 1, Nx + Hx + 1, 1 - Hy - 1, Ny + Hy + 1),
-    # xticks = 0.5:(Nx + 0.5),
-    # yticks = 0.5:(Ny + 0.5),
-    xticks = 1-Hx:Nx+Hx, xlabel = "i (center)",
-    yticks = 1-Hy:Ny+Hy, ylabel = "j (center)",
-    xminorgridvisible = true, xminorticksvisible = true,
-    xticksvisible = false, xgridvisible = false,
-    xminorgridcolor = (:black, 0.2),
-    )
-colormap = cgrad(:RdBu, rev = true)
-# Heatmap of divergence
-hm = heatmap!(ax, (1 - Hx):(Nx + Hx), (1 - Hy):(Ny + Hy), c[:,:,1]; colormap, colorrange = 1.5e-6 .* (-1, 1))
-translate!(hm, 0, 0, -20)
-Colorbar(fig[2, 1], hm; label = "Divergence", width = Relative(0.666), tellwidth = false, vertical = false)
-# Plot u and v
-plot_u!(ax, u; color = :black, align = 0.5)#:teal)
-plot_v!(ax, v; color = :black, align = 0.5)#:tomato)
-# Show "Interior" domain
-interior = poly!(ax, [0.5, Nx + 0.5, Nx + 0.5, 0.5], [0.5, 0.5, Ny + 0.5, Ny + 0.5]; color = (:black, 0.03), strokewidth = 1, strokecolor = :black)
-translate!(interior, 0, 0, -1)
-# North fold
-fold = hlines!(ax, Ny, color = :red, linestyle = :dash)
-# Poles
-poles = scatter!(ax, [0.5, Nx ÷ 2 + 0.5, Nx + 0.5], [Ny, Ny, Ny]; color = :red)
-# labels
-text!(ax, [1, 1, Nx, Nx], Ny .+ [-1, 1, -1, 1]; text = ["A", "B", "B", "A"], align = (:center, :center))
-save("/Users/benoitpasquier/tmp/Oceananigans_signchange_afterfix.png", fig)
+    # limits = (nothing, nothing, -90, 90),
+    xticks = -360:30:720,
+    yticks = -120:30:120,
+)
+
+ax = Axis(fig[1, 1]; axopt...)
+
+plot_grid!(ax, grid;
+    color = (:black, 0.25),
+    linewidth = 1,
+)
+
+# grid = TripolarGrid(size = (Nx, Ny, Nz), pivot = :FPointPivot)
+
+# ax = Axis(fig[2, 1]; axopt...)
+
+# plot_grid!(ax, grid;
+#     color = (:black, 0.25),
+#     linewidth = 1,
+# )
+
 fig

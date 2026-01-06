@@ -119,19 +119,19 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     Lx, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, longitude, :longitude, 1, CPU())
 
     # Start with the NH stereographic projection
-    # TODO: make these on_architecture(arch, zeros(Nx, Ny))
+    # TODO: make these on_architecture(arch, zeros(Nx, Ny + 1))
     # to build the grid on GPU
-    λFF = zeros(Nλ, Nφ)
-    φFF = zeros(Nλ, Nφ)
-    λFC = zeros(Nλ, Nφ)
-    φFC = zeros(Nλ, Nφ)
+    λFF = zeros(Nλ, Nφ + 1)
+    φFF = zeros(Nλ, Nφ + 1)
+    λFC = zeros(Nλ, Nφ + 1)
+    φFC = zeros(Nλ, Nφ + 1)
 
-    λCF = zeros(Nλ, Nφ)
-    φCF = zeros(Nλ, Nφ)
-    λCC = zeros(Nλ, Nφ)
-    φCC = zeros(Nλ, Nφ)
+    λCF = zeros(Nλ, Nφ + 1)
+    φCF = zeros(Nλ, Nφ + 1)
+    λCC = zeros(Nλ, Nφ + 1)
+    φCC = zeros(Nλ, Nφ + 1)
 
-    loop! = _compute_tripolar_coordinates!(device(CPU()), (16, 16), (Nλ, Nφ))
+    loop! = _compute_tripolar_coordinates!(device(CPU()), (16, 16), (Nλ, Nφ + 1))
 
     loop!(λFF, φFF, λFC, φFC, λCF, φCF, λCC, φCC,
           λᶠᵃᵃ, λᶜᵃᵃ, φᵃᶠᵃ, φᵃᶜᵃ,
@@ -184,17 +184,17 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     lCC = Field{Center, Center, Center}(grid; boundary_conditions)
     pCC = Field{Center, Center, Center}(grid; boundary_conditions)
 
-    set!(lFF, λFF)
-    set!(pFF, φFF)
+    set!(lFF, view(λFF, 1:Base.size(lFF, 1), 1:Base.size(lFF, 2)))
+    set!(pFF, view(φFF, 1:Base.size(pFF, 1), 1:Base.size(pFF, 2)))
 
-    set!(lFC, λFC)
-    set!(pFC, φFC)
+    set!(lFC, view(λFC, 1:Base.size(lFC, 1), 1:Base.size(lFC, 2)))
+    set!(pFC, view(φFC, 1:Base.size(pFC, 1), 1:Base.size(pFC, 2)))
 
-    set!(lCF, λCF)
-    set!(pCF, φCF)
+    set!(lCF, view(λCF, 1:Base.size(lCF, 1), 1:Base.size(lCF, 2)))
+    set!(pCF, view(φCF, 1:Base.size(pCF, 1), 1:Base.size(pCF, 2)))
 
-    set!(lCC, λCC)
-    set!(pCC, φCC)
+    set!(lCC, view(λCC, 1:Base.size(lCC, 1), 1:Base.size(lCC, 2)))
+    set!(pCC, view(φCC, 1:Base.size(pCC, 1), 1:Base.size(pCC, 2)))
 
     fill_halo_regions!(lFF)
     fill_halo_regions!(lCF)

@@ -44,6 +44,7 @@ const BoundedTopology = Union{Bounded, LeftConnected}
 const AT = AbstractTopology
 
 Base.length(::Face,    ::BoundedTopology, N) = N + 1
+Base.length(::Face, ::RightFoldedAlongFaces, N) = N + 1
 Base.length(::Nothing, ::AT,              N) = 1
 Base.length(::Face,    ::AT,              N) = N
 Base.length(::Center,  ::AT,              N) = N
@@ -142,6 +143,7 @@ regular_dimensions(grid) = ()
 
 @inline right_halo_indices(loc, ::AT, N, H) = N+1:N+H
 @inline right_halo_indices(::Face, ::BoundedTopology, N, H) = N+2:N+1+H
+@inline right_halo_indices(::Face, ::RightFoldedAlongFaces, N, H) = N+2:N+1+H
 @inline right_halo_indices(::Nothing, ::AT, N, H) = 1:0 # empty
 
 @inline underlying_left_halo_indices(loc, ::AT, N, H) = 1:H
@@ -149,10 +151,12 @@ regular_dimensions(grid) = ()
 
 @inline underlying_right_halo_indices(loc,       ::AT, N, H) = N+1+H:N+2H
 @inline underlying_right_halo_indices(::Face,    ::BoundedTopology, N, H) = N+2+H:N+1+2H
+@inline underlying_right_halo_indices(::Face,    ::RightFoldedAlongFaces, N, H) = N+2+H:N+1+2H
 @inline underlying_right_halo_indices(::Nothing, ::AT, N, H) = 1:0 # empty
 
 @inline interior_indices(loc,       ::AT,              N) = 1:N
 @inline interior_indices(::Face,    ::BoundedTopology, N) = 1:N+1
+@inline interior_indices(::Face,    ::RightFoldedAlongFaces, N) = 1:N+1
 @inline interior_indices(::Nothing, ::AT,              N) = 1:1
 
 @inline interior_indices(::Nothing, ::Flat, N) = 1:N
@@ -168,6 +172,7 @@ regular_dimensions(grid) = ()
 
 @inline interior_parent_indices(::Nothing, ::AT,              N, H) = 1:1
 @inline interior_parent_indices(::Face,    ::BoundedTopology, N, H) = 1+H:N+1+H
+@inline interior_parent_indices(::Face,    ::RightFoldedAlongFaces, N, H) = 1+H:N+1+H
 @inline interior_parent_indices(loc,       ::AT,              N, H) = 1+H:N+H
 
 @inline interior_parent_indices(::Nothing, ::Flat, N, H) = 1:N
@@ -177,6 +182,7 @@ regular_dimensions(grid) = ()
 # All indices including halos.
 @inline all_indices(::Nothing, ::AT,              N, H) = 1:1
 @inline all_indices(::Face,    ::BoundedTopology, N, H) = 1-H:N+1+H
+@inline all_indices(::Face,    ::RightFoldedAlongFaces, N, H) = 1-H:N+1+H
 @inline all_indices(loc,       ::AT,              N, H) = 1-H:N+H
 
 @inline all_indices(::Nothing, ::Flat, N, H) = 1:N
@@ -189,6 +195,7 @@ regular_dimensions(grid) = ()
 
 @inline all_parent_indices(loc,       ::AT,              N, H) = 1:N+2H
 @inline all_parent_indices(::Face,    ::BoundedTopology, N, H) = 1:N+1+2H
+@inline all_parent_indices(::Face,    ::RightFoldedAlongFaces, N, H) = 1:N+1+2H
 @inline all_parent_indices(::Nothing, ::AT,              N, H) = 1:1
 
 @inline all_parent_indices(::Nothing, ::Flat, N, H) = 1:N
