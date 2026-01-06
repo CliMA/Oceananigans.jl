@@ -94,6 +94,16 @@ function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name
     end
 end
 
+# Special case for tripolar grids folding along centers
+# The (face) node interval must be extended by half a cell each side
+extend_node_interval(topo::AT, N, node_interval::Tuple{<:Number, <:Number}) = node_interval
+function extend_node_interval(topo::RightFoldedAlongCenters, N, node_interval::Tuple{<:Number, <:Number})
+    c₁, c₂ = @. BigFloat(node_interval)
+    L = c₂ - c₁
+    Δ = L / (N - 1)
+    return (c₁ - Δ/2, c₂ + Δ/2)
+end
+
 # Generate a regularly-spaced coordinate passing the domain extent (2-tuple) and number of points
 function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, <:Number}, coordinate_name, arch)
 
@@ -101,6 +111,8 @@ function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, 
         msg = "$coordinate_name must be an increasing interval!"
         throw(ArgumentError(msg))
     end
+
+    node_interval = extend_node_interval(topo, N, node_interval)
 
     c₁, c₂ = @. BigFloat(node_interval)
     @assert c₁ < c₂
