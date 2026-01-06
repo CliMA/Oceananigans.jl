@@ -42,7 +42,7 @@ function run_test(; Nx, Δt, stop_iteration, order, U = 0,
     u_bcs = FieldBoundaryConditions(west=bcs_u_w, east=bcs_u_e, south=bcs_u_s, north=bcs_u_n)
     v_bcs = FieldBoundaryConditions(west=bcs_v_w, east=bcs_v_e, south=bcs_v_s, north=bcs_v_n)
 
-    model = ShallowWaterModel( grid = grid,
+    model = ShallowWaterModel(grid;
          gravitational_acceleration = 0.0,
                  momentum_advection = VectorInvariant(vorticity_scheme = WENO(; order)),
                 boundary_conditions = (u = u_bcs, v = v_bcs),
@@ -86,7 +86,7 @@ function run_test(; Nx, Δt, stop_iteration, order, U = 0,
     ##### Test advection of an isoentropic vortex with a ConservativeFormulation
     #####
 
-    model = ShallowWaterModel( grid = grid,
+    model = ShallowWaterModel(grid;
          gravitational_acceleration = 0.0,
                  momentum_advection = WENO(; order),
                 boundary_conditions = (uh = u_bcs, vh = v_bcs),

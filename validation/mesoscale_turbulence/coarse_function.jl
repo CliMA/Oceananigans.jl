@@ -52,7 +52,7 @@ closures = (vertical_closure, horizontal_closure, gent_mcwilliams_diffusivity)
 
 @info "Building a model..."
 
-model = HydrostaticFreeSurfaceModel(grid = grid,
+model = HydrostaticFreeSurfaceModel(grid;
                                     coriolis = coriolis,
                                     buoyancy = BuoyancyTracer(),
                                     closure = closures,

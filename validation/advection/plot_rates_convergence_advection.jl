@@ -78,7 +78,7 @@ for N in Ns, (adv, scheme) in enumerate(schemes)
 
     Δt = 0.1 * minimum_xspacing(grid, Center(), Center(), Center())
 
-    model = ShallowWaterModel(grid = grid,
+    model = ShallowWaterModel(grid;
                               momentum_advection = scheme,
                               tracer_advection = scheme,
                               coriolis = nothing,

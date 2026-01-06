@@ -14,7 +14,7 @@ For the following examples, we will use the following simple simulation and prog
 ```@example schedules
 using Oceananigans
 grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-model = NonhydrostaticModel(; grid)
+model = NonhydrostaticModel(grid)
 simulation = Simulation(model, Δt=0.1, stop_time=2.5, verbose=false)
 dummy(sim) = @info string("Iter: ", iteration(sim), " -- I was called at t = ", time(sim),
                           " and wall time = ", prettytime(sim.run_wall_time))
@@ -73,7 +73,7 @@ using Dates
 
 start_time = DateTime(2025, 1, 1)
 clock = Clock(time = start_time)
-datetime_model = NonhydrostaticModel(; grid, clock)
+datetime_model = NonhydrostaticModel(grid; clock)
 
 stop_time = start_time + Dates.Minute(3)
 datetime_simulation = Simulation(datetime_model; Δt=Dates.Second(25), stop_time, verbose=false)
