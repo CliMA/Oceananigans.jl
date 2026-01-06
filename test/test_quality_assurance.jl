@@ -1,11 +1,14 @@
 using Oceananigans: Oceananigans
 using Aqua: Aqua
 using ExplicitImports: ExplicitImports
-using Test: @testset, @test
+using Test: @testset, @test, detect_ambiguities
 
 @testset "Aqua" begin
     @info "testing quality assurance via Aqua"
     Aqua.test_all(Oceananigans; ambiguities=false)
+
+    # Until we resolve all ambiguities, we make sure we don't increase them.
+    @test length(detect_ambiguities(Oceananigans; recursive=true)) <= 349
 end
 
 @testset "ExplicitImports" begin
