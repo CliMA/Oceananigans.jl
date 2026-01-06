@@ -1,3 +1,5 @@
+using Oceananigans.Fields: AbstractField
+
 @inline zeroforcing(args...) = 0
 
 """

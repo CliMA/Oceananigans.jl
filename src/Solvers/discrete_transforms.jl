@@ -1,4 +1,4 @@
-import Oceananigans.Architectures: architecture, child_architecture
+using Oceananigans.Architectures: child_architecture
 
 abstract type AbstractTransformDirection end
 
@@ -17,7 +17,7 @@ struct DiscreteTransform{P, D, G, Δ, Ω, N, T, Σ}
 end
 
 # Includes support for distributed architectures
-architecture(transform::DiscreteTransform) = child_architecture(architecture(transform.grid))
+Architectures.architecture(transform::DiscreteTransform) = child_architecture(architecture(transform.grid))
 
 #####
 ##### Normalization factors
