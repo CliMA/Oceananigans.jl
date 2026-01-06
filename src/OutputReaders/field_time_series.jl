@@ -742,13 +742,13 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
 end
 
 # Stub function for NetCDF files - will be extended by OceananigansNCDatasetsExt
-FieldTimeSeries_from_netcdf(path::String, args...; kwargs...) = error("Loading FieldTimeSeries from NetCDF files requires NCDatasets")
+field_time_series_from_netcdf(path::String, args...; kwargs...) = error("Loading FieldTimeSeries from NetCDF files requires NCDatasets")
 
 function FieldTimeSeries(path::String, args...; reader_kw = NamedTuple(), kwargs...)
     path = auto_extension(path, ".jld2") # JLD2 is the default extension
 
     if endswith(path, ".nc")
-        return FieldTimeSeries_from_netcdf(path, args...; reader_kw, kwargs...)
+        return field_time_series_from_netcdf(path, args...; reader_kw, kwargs...)
     elseif endswith(path, ".jld2")
         if !isfile(path)
             start = path[1:end-5] # Remove filepath extension

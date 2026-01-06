@@ -11,16 +11,16 @@ import Oceananigans.Fields: Field
 ##### FieldTimeSeries from NetCDF
 #####
 
-function FieldTimeSeries_from_netcdf(path::String, name::String;
-                                     backend = InMemory(),
-                                     architecture = nothing,
-                                     grid = nothing,
-                                     location = nothing,
-                                     boundary_conditions = UnspecifiedBoundaryConditions(),
-                                     time_indexing = Linear(),
-                                     iterations = nothing,
-                                     times = nothing,
-                                     reader_kw = NamedTuple())
+function field_time_series_from_netcdf(path::String, name::String;
+                                       backend = InMemory(),
+                                       architecture = nothing,
+                                       grid = nothing,
+                                       location = nothing,
+                                       boundary_conditions = UnspecifiedBoundaryConditions(),
+                                       time_indexing = Linear(),
+                                       iterations = nothing,
+                                       times = nothing,
+                                       reader_kw = NamedTuple())
 
     file = NCDataset(path; reader_kw...)
 
