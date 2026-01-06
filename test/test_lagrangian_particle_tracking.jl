@@ -260,7 +260,7 @@ function run_particle_tracking_tests(grid, dynamics, timestepper=:QuasiAdamsBash
     model.particles.properties.w .= 0
     model.particles.properties.s .= 0
 
-    set!(sim, "particles_checkpoint_$(Arch)_iteration1.jld2")
+    set!(simulation, "particles_checkpoint_$(Arch)_iteration1.jld2")
 
     x = convert(array_type(arch), model.particles.properties.x)
     y = convert(array_type(arch), model.particles.properties.y)

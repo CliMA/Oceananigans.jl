@@ -82,7 +82,7 @@ function test_minimal_restore_nonhydrostatic(arch, FT, pickup_method)
         extent = (L, L, L)
     )
 
-    model = NonhydrostaticModel(; grid)
+    model = NonhydrostaticModel(grid)
     simulation = Simulation(model; Δt=1.0, stop_time=3.0)
 
     prefix = "mwe_checkpointer_$(typeof(arch))_$(FT)"
@@ -115,7 +115,7 @@ function test_minimal_restore_nonhydrostatic(arch, FT, pickup_method)
         extent = (L, L, L)
     )
 
-    new_model = NonhydrostaticModel(; grid=new_grid)
+    new_model = NonhydrostaticModel(new_grid)
     new_simulation = Simulation(new_model; Δt=1.0, stop_time=3.0)
 
     new_checkpointer = Checkpointer(
@@ -150,7 +150,7 @@ end
 
 function test_checkpointer_cleanup(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    model = NonhydrostaticModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model, Δt=0.2, stop_iteration=10)
 
     prefix = "checkpointer_cleanup_$(typeof(arch))"
@@ -177,7 +177,7 @@ function test_thermal_bubble_checkpointing_nonhydrostatic(arch, timestepper)
     Δt = 6
 
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    model = NonhydrostaticModel(; grid, timestepper,
+    model = NonhydrostaticModel(grid; timestepper,
         closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
@@ -198,8 +198,7 @@ function test_thermal_bubble_checkpointing_nonhydrostatic(arch, timestepper)
     @test_nowarn run!(simulation)
 
     new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    new_model = NonhydrostaticModel(; timestepper,
-        grid = new_grid,
+    new_model = NonhydrostaticModel(new_grid; timestepper,
         closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
@@ -231,7 +230,7 @@ function test_minimal_restore_hydrostatic(arch, FT, pickup_method)
         extent = (L, L, L)
     )
 
-    model = HydrostaticFreeSurfaceModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    model = HydrostaticFreeSurfaceModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     simulation = Simulation(model; Δt=1.0, stop_time=3.0)
 
     prefix = "mwe_checkpointer_hydrostatic_$(typeof(arch))_$(FT)"
@@ -264,7 +263,7 @@ function test_minimal_restore_hydrostatic(arch, FT, pickup_method)
         extent = (L, L, L)
     )
 
-    new_model = HydrostaticFreeSurfaceModel(; grid=new_grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    new_model = HydrostaticFreeSurfaceModel(new_grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     new_simulation = Simulation(new_model; Δt=1.0, stop_time=3.0)
 
     new_checkpointer = Checkpointer(
@@ -303,7 +302,7 @@ function test_thermal_bubble_checkpointing_hydrostatic(arch, timestepper)
     Δt = 6
 
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    model = HydrostaticFreeSurfaceModel(; grid, timestepper,
+    model = HydrostaticFreeSurfaceModel(grid; timestepper,
         closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
@@ -324,8 +323,7 @@ function test_thermal_bubble_checkpointing_hydrostatic(arch, timestepper)
     @test_nowarn run!(simulation)
 
     new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    new_model = HydrostaticFreeSurfaceModel(; timestepper,
-        grid = new_grid,
+    new_model = HydrostaticFreeSurfaceModel(new_grid; timestepper,
         closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
@@ -481,7 +479,7 @@ function test_checkpointing_split_explicit_free_surface(arch, timestepper)
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     free_surface = SplitExplicitFreeSurface(grid; substeps=30)
 
-    model = HydrostaticFreeSurfaceModel(; grid, timestepper, free_surface,
+    model = HydrostaticFreeSurfaceModel(grid; timestepper, free_surface,
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
     )
@@ -503,8 +501,7 @@ function test_checkpointing_split_explicit_free_surface(arch, timestepper)
     new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     new_free_surface = SplitExplicitFreeSurface(new_grid; substeps=30)
 
-    new_model = HydrostaticFreeSurfaceModel(; timestepper,
-        grid = new_grid,
+    new_model = HydrostaticFreeSurfaceModel(new_grid; timestepper,
         free_surface = new_free_surface,
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
@@ -536,7 +533,7 @@ function test_checkpointing_implicit_free_surface(arch, solver_method)
 
     free_surface = ImplicitFreeSurface(solver_method=solver_method)
 
-    model = HydrostaticFreeSurfaceModel(; grid, free_surface,
+    model = HydrostaticFreeSurfaceModel(grid; free_surface,
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
     )
@@ -560,8 +557,7 @@ function test_checkpointing_implicit_free_surface(arch, solver_method)
 
     new_free_surface = ImplicitFreeSurface(solver_method=solver_method)
 
-    new_model = HydrostaticFreeSurfaceModel(;
-        grid = new_grid,
+    new_model = HydrostaticFreeSurfaceModel(new_grid;
         free_surface = new_free_surface,
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
@@ -601,7 +597,7 @@ function test_checkpointing_lagrangian_particles(arch, timestepper)
 
     particles = LagrangianParticles(x=xs, y=ys, z=zs)
 
-    model = NonhydrostaticModel(; grid, timestepper, particles,
+    model = NonhydrostaticModel(grid; timestepper, particles,
         closure = ScalarDiffusivity(ν=1e-4, κ=1e-4)
     )
 
@@ -630,8 +626,7 @@ function test_checkpointing_lagrangian_particles(arch, timestepper)
     new_zs = on_architecture(arch, -0.5 * ones(P))
     new_particles = LagrangianParticles(x=new_xs, y=new_ys, z=new_zs)
 
-    new_model = NonhydrostaticModel(; timestepper,
-        grid = new_grid,
+    new_model = NonhydrostaticModel(new_grid; timestepper,
         particles = new_particles,
         closure = ScalarDiffusivity(ν=1e-4, κ=1e-4)
     )
@@ -667,7 +662,7 @@ function test_checkpointing_immersed_boundary_grid(arch, boundary_type)
         grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom))
     end
 
-    model = NonhydrostaticModel(; grid,
+    model = NonhydrostaticModel(grid;
         closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
@@ -693,8 +688,7 @@ function test_checkpointing_immersed_boundary_grid(arch, boundary_type)
         new_grid = ImmersedBoundaryGrid(new_underlying_grid, PartialCellBottom(bottom))
     end
 
-    new_model = NonhydrostaticModel(;
-        grid = new_grid,
+    new_model = NonhydrostaticModel(new_grid;
         closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
@@ -728,7 +722,7 @@ function test_checkpointing_latitude_longitude_grid(arch)
 
     free_surface = SplitExplicitFreeSurface(grid; substeps=30)
 
-    model = HydrostaticFreeSurfaceModel(; grid, free_surface,
+    model = HydrostaticFreeSurfaceModel(grid; free_surface,
         coriolis = HydrostaticSphericalCoriolis(),
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
@@ -755,8 +749,7 @@ function test_checkpointing_latitude_longitude_grid(arch)
 
     new_free_surface = SplitExplicitFreeSurface(new_grid; substeps=30)
 
-    new_model = HydrostaticFreeSurfaceModel(;
-        grid = new_grid,
+    new_model = HydrostaticFreeSurfaceModel(new_grid;
         free_surface = new_free_surface,
         coriolis = HydrostaticSphericalCoriolis(),
         buoyancy = SeawaterBuoyancy(),
@@ -785,7 +778,7 @@ function test_checkpointing_float32(arch)
     Δt = 0.1
 
     grid = RectilinearGrid(arch, Float32, size=(N, N, N), extent=(L, L, L))
-    model = NonhydrostaticModel(; grid)
+    model = NonhydrostaticModel(grid)
 
     set!(model, u=1, v=0.5)
 
@@ -800,7 +793,7 @@ function test_checkpointing_float32(arch)
     @test_nowarn run!(simulation)
 
     new_grid = RectilinearGrid(arch, Float32, size=(N, N, N), extent=(L, L, L))
-    new_model = NonhydrostaticModel(; grid=new_grid)
+    new_model = NonhydrostaticModel(new_grid)
 
     new_simulation = Simulation(new_model, Δt=Float32(Δt), stop_iteration=5)
 
@@ -827,7 +820,7 @@ function test_checkpointing_auxiliary_fields(arch)
 
     auxiliary_fields = (custom_field = CenterField(grid),)
 
-    model = NonhydrostaticModel(; grid, auxiliary_fields)
+    model = NonhydrostaticModel(grid; auxiliary_fields)
 
     # Set custom_field data
     set!(model.auxiliary_fields.custom_field, (x, y, z) -> x + y + z)
@@ -845,7 +838,7 @@ function test_checkpointing_auxiliary_fields(arch)
 
     new_grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
     new_auxiliary_fields = (custom_field = CenterField(new_grid),)
-    new_model = NonhydrostaticModel(; grid=new_grid, auxiliary_fields=new_auxiliary_fields)
+    new_model = NonhydrostaticModel(new_grid; auxiliary_fields=new_auxiliary_fields)
 
     new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
 
@@ -872,7 +865,7 @@ function test_checkpointing_closure_fields(arch)
 
     closure = SmagorinskyLilly()
 
-    model = NonhydrostaticModel(; grid, closure,
+    model = NonhydrostaticModel(grid; closure,
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
     )
@@ -895,8 +888,7 @@ function test_checkpointing_closure_fields(arch)
     @test_nowarn run!(simulation)
 
     new_grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
-    new_model = NonhydrostaticModel(;
-        grid = new_grid,
+    new_model = NonhydrostaticModel(new_grid;
         closure = SmagorinskyLilly(),
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
@@ -926,7 +918,7 @@ function test_checkpointing_catke_closure(arch)
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = CATKEVerticalDiffusivity()
 
-    model = HydrostaticFreeSurfaceModel(; grid, closure,
+    model = HydrostaticFreeSurfaceModel(grid; closure,
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S, :e)
     )
@@ -948,8 +940,7 @@ function test_checkpointing_catke_closure(arch)
 
     # Create new model and restore
     new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    new_model = HydrostaticFreeSurfaceModel(;
-        grid = new_grid,
+    new_model = HydrostaticFreeSurfaceModel(new_grid;
         closure = CATKEVerticalDiffusivity(),
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S, :e)
@@ -978,7 +969,7 @@ function test_checkpointing_dynamic_smagorinsky_closure(arch)
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = DynamicSmagorinsky()
 
-    model = NonhydrostaticModel(; grid, closure)
+    model = NonhydrostaticModel(grid; closure)
 
     # Sheared flow to generate non-trivial dynamic coefficients
     u_init(x, y, z) = sin(2π * z / Lz)
@@ -1002,7 +993,7 @@ function test_checkpointing_dynamic_smagorinsky_closure(arch)
 
     # Create new model and restore
     new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    new_model = NonhydrostaticModel(; grid=new_grid, closure=DynamicSmagorinsky())
+    new_model = NonhydrostaticModel(new_grid; closure=DynamicSmagorinsky())
 
     new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
@@ -1033,7 +1024,7 @@ function test_checkpointing_ri_based_closure(arch)
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = RiBasedVerticalDiffusivity(Cᵃᵛ=0.6)  # Time averaging enabled
 
-    model = HydrostaticFreeSurfaceModel(; grid, closure,
+    model = HydrostaticFreeSurfaceModel(grid; closure,
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
     )
@@ -1059,8 +1050,7 @@ function test_checkpointing_ri_based_closure(arch)
 
     # Create new model and restore
     new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    new_model = HydrostaticFreeSurfaceModel(;
-        grid = new_grid,
+    new_model = HydrostaticFreeSurfaceModel(new_grid;
         closure = RiBasedVerticalDiffusivity(Cᵃᵛ=0.6),
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
@@ -1093,7 +1083,7 @@ function test_checkpointing_tke_dissipation_closure(arch)
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
     closure = TKEDissipationVerticalDiffusivity()
 
-    model = HydrostaticFreeSurfaceModel(; grid, closure,
+    model = HydrostaticFreeSurfaceModel(grid; closure,
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S, :e, :ϵ)
     )
@@ -1119,8 +1109,7 @@ function test_checkpointing_tke_dissipation_closure(arch)
 
     # Create new model and restore
     new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    new_model = HydrostaticFreeSurfaceModel(;
-        grid = new_grid,
+    new_model = HydrostaticFreeSurfaceModel(new_grid;
         closure = TKEDissipationVerticalDiffusivity(),
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S, :e, :ϵ)
@@ -1152,7 +1141,7 @@ function test_checkpoint_continuation_matches_direct(arch, timestepper)
 
     # Run A: Direct run for 10 iterations
     grid_A = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    model_A = NonhydrostaticModel(; grid=grid_A, timestepper,
+    model_A = NonhydrostaticModel(grid_A; timestepper,
         closure = ScalarDiffusivity(ν=1e-4, κ=1e-4),
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
@@ -1166,7 +1155,7 @@ function test_checkpoint_continuation_matches_direct(arch, timestepper)
 
     # Run B: Run 5 iterations, checkpoint, restore, run 5 more
     grid_B = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    model_B = NonhydrostaticModel(; grid=grid_B, timestepper,
+    model_B = NonhydrostaticModel(grid_B; timestepper,
         closure = ScalarDiffusivity(ν=1e-4, κ=1e-4),
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
@@ -1186,7 +1175,7 @@ function test_checkpoint_continuation_matches_direct(arch, timestepper)
 
     # Create fresh model and restore from checkpoint
     grid_B_new = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    model_B_new = NonhydrostaticModel(; grid=grid_B_new, timestepper,
+    model_B_new = NonhydrostaticModel(grid_B_new; timestepper,
         closure = ScalarDiffusivity(ν=1e-4, κ=1e-4),
         buoyancy = SeawaterBuoyancy(),
         tracers = (:T, :S)
@@ -1225,7 +1214,7 @@ function test_checkpoint_empty_tracers(arch)
     Δt = 0.1
 
     grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
-    model = NonhydrostaticModel(; grid, tracers=())
+    model = NonhydrostaticModel(grid; tracers=())
 
     set!(model, u=1, v=0.5)
 
@@ -1240,7 +1229,7 @@ function test_checkpoint_empty_tracers(arch)
     @test_nowarn run!(simulation)
 
     new_grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
-    new_model = NonhydrostaticModel(; grid=new_grid, tracers=())
+    new_model = NonhydrostaticModel(new_grid; tracers=())
 
     new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
 
@@ -1264,7 +1253,7 @@ function test_checkpoint_missing_file_warning(arch)
     Δt = 0.1
 
     grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
-    model = NonhydrostaticModel(; grid)
+    model = NonhydrostaticModel(grid)
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
@@ -1290,7 +1279,7 @@ function test_stateful_schedule_checkpointing(arch, schedule_type)
     Δt = 0.1
 
     grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
-    model = NonhydrostaticModel(; grid)
+    model = NonhydrostaticModel(grid)
     set!(model, u=1, v=0.5)
 
     if schedule_type == :SpecifiedTimes
@@ -1319,7 +1308,7 @@ function test_stateful_schedule_checkpointing(arch, schedule_type)
     original_schedule = simulation.callbacks[:test_schedule].schedule
 
     new_grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
-    new_model = NonhydrostaticModel(; grid=new_grid)
+    new_model = NonhydrostaticModel(new_grid)
 
     new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=15)
 
@@ -1373,7 +1362,7 @@ function test_windowed_time_average_checkpointing(arch, WriterType)
     Δt = 0.1
 
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    model = NonhydrostaticModel(; grid)
+    model = NonhydrostaticModel(grid)
 
     # Set up initial conditions that will produce non-trivial averages
     u_init(x, y, z) = sin(2π * x / Lx)
@@ -1418,7 +1407,7 @@ function test_windowed_time_average_checkpointing(arch, WriterType)
 
     # Create new simulation and restore from checkpoint at iteration 8
     new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    new_model = NonhydrostaticModel(; grid=new_grid)
+    new_model = NonhydrostaticModel(new_grid)
 
     new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=15)
 
@@ -1501,7 +1490,7 @@ function test_windowed_time_average_continuation_correctness(arch, WriterType)
 
     # Run A: Continuous run from 0 to iteration 10
     grid_A = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    model_A = NonhydrostaticModel(; grid=grid_A)
+    model_A = NonhydrostaticModel(grid_A)
     u_init(x, y, z) = sin(2π * x / Lx) * cos(2π * y / Ly)
     set!(model_A, u=u_init, v=0.1)
 
@@ -1517,7 +1506,7 @@ function test_windowed_time_average_continuation_correctness(arch, WriterType)
 
     # Run B: From 0 to iteration 7, checkpoint in middle of first window
     grid_B = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    model_B = NonhydrostaticModel(; grid=grid_B)
+    model_B = NonhydrostaticModel(grid_B)
     set!(model_B, u=u_init, v=0.1)
 
     simulation_B = Simulation(model_B, Δt=Δt, stop_iteration=7)
@@ -1540,7 +1529,7 @@ function test_windowed_time_average_continuation_correctness(arch, WriterType)
 
     # Run B_new: Restore from iteration 7, continue to iteration 10
     grid_B_new = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    model_B_new = NonhydrostaticModel(; grid=grid_B_new)
+    model_B_new = NonhydrostaticModel(grid_B_new)
 
     simulation_B_new = Simulation(model_B_new, Δt=Δt, stop_iteration=10)
 
@@ -1580,7 +1569,7 @@ function test_manual_checkpoint_with_checkpointer(arch)
     Δt = 0.1
 
     grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
-    model = NonhydrostaticModel(; grid)
+    model = NonhydrostaticModel(grid)
     set!(model, u=1, v=0.5)
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
@@ -1599,7 +1588,7 @@ function test_manual_checkpoint_with_checkpointer(arch)
 
     # Verify we can restore from it
     new_grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
-    new_model = NonhydrostaticModel(; grid=new_grid)
+    new_model = NonhydrostaticModel(new_grid)
     new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
 
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
@@ -1623,7 +1612,7 @@ function test_manual_checkpoint_without_checkpointer(arch)
     Δt = 0.1
 
     grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
-    model = NonhydrostaticModel(; grid)
+    model = NonhydrostaticModel(grid)
     set!(model, u=1, v=0.5)
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
@@ -1640,7 +1629,7 @@ function test_manual_checkpoint_without_checkpointer(arch)
 
     # Verify we can restore from it
     new_grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
-    new_model = NonhydrostaticModel(; grid=new_grid)
+    new_model = NonhydrostaticModel(new_grid)
     new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
 
     @test_nowarn set!(new_simulation, expected_filepath)
@@ -1659,7 +1648,7 @@ function test_manual_checkpoint_with_filepath(arch)
     Δt = 0.1
 
     grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
-    model = NonhydrostaticModel(; grid)
+    model = NonhydrostaticModel(grid)
     set!(model, u=1, v=0.5)
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
@@ -1682,7 +1671,7 @@ function test_manual_checkpoint_with_filepath(arch)
 
     # Verify we can restore from it
     new_grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
-    new_model = NonhydrostaticModel(; grid=new_grid)
+    new_model = NonhydrostaticModel(new_grid)
     new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
 
     @test_nowarn set!(new_simulation, custom_filepath)
