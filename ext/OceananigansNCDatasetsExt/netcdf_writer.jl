@@ -55,11 +55,10 @@ default_velocity_attributes(::RectilinearGrid) = Dict(
     "w" => Dict("long_name" => "Velocity in the +z-direction.", "units" => "m/s"))
 
 default_velocity_attributes(::LatitudeLongitudeGrid) = Dict(
-    "u" => Dict("long_name" => "Velocity in the zonal direction (+ = east).", "units" => "m/s"),
-    "v" => Dict("long_name" => "Velocity in the meridional direction (+ = north).", "units" => "m/s"),
-    "w" => Dict("long_name" => "Velocity in the vertical direction (+ = up).", "units" => "m/s"),
-    "η" => Dict("long_name" => "Sea surface height", "units" => "m/s"),
-    "eta" => Dict("long_name" => "Sea surface height", "units" => "m/s")) # non-unicode default
+    "u"            => Dict("long_name" => "Velocity in the zonal direction (+ = east).", "units" => "m/s"),
+    "v"            => Dict("long_name" => "Velocity in the meridional direction (+ = north).", "units" => "m/s"),
+    "w"            => Dict("long_name" => "Velocity in the vertical direction (+ = up).", "units" => "m/s"),
+    "displacement" => Dict("long_name" => "Sea surface height displacement", "units" => "m"))
 
 default_velocity_attributes(ibg::ImmersedBoundaryGrid) = default_velocity_attributes(ibg.underlying_grid)
 
@@ -412,7 +411,7 @@ function define_output_variable!(model, dataset, output::AbstractField, output_n
                                  dimensions, filepath, dimension_type=Float64)
 
     # If the output is the free surface, we need to handle it differently since it will be writen as a 3D array with a singleton dimension for the z-coordinate
-    if output_name == "η" && output == view(model.free_surface.η, output.indices...)
+    if output_name == "displacement" && output == view(model.free_surface.displacement, output.indices...)
         local default_dimension_name_generator = dimension_name_generator
         dimension_name_generator = (var_name, grid, LX, LY, LZ, dim) -> dimension_name_generator_free_surface(default_dimension_name_generator, var_name, grid, LX, LY, LZ, dim)
     end
