@@ -199,3 +199,7 @@ end
     ∂y_z = ∂y_zᶠᶠᶜ(i, j, k, grid)
     return ∂y_at_r - ∂y_z * ∂z_ϕ
 end
+
+# Note: For z-reduced fields (fields with Nothing as z-location), the chain-rule
+# correction term (∂z/∂x|_r)(∂ϕ/∂z) is automatically zero since ∂ϕ/∂z = 0 for such fields.
+# Therefore, the general implementations above correctly return ∂ϕ/∂x|_z = ∂ϕ/∂x|_r.
