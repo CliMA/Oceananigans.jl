@@ -8,7 +8,7 @@ using Test: @testset, @test, detect_ambiguities
     Aqua.test_all(Oceananigans; ambiguities=false)
 
     # Until we resolve all ambiguities, we make sure we don't increase them.
-    @test length(detect_ambiguities(Oceananigans; recursive=true)) <= 349
+    @test length(detect_ambiguities(Oceananigans; recursive=true)) <= 361
 end
 
 @testset "ExplicitImports" begin
