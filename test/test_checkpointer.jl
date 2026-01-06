@@ -578,7 +578,7 @@ function test_checkpointing_implicit_free_surface(arch, solver_method)
 
     test_model_equality(new_model, model)
 
-    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+    rm.(glob("$(prefixdefault_included_properties)_iteration*.jld2"), force=true)
 
     return nothing
 end

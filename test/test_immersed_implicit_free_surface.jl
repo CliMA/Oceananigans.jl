@@ -42,10 +42,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integ
 
         for free_surface in free_surfaces
 
-            model = HydrostaticFreeSurfaceModel(; grid, free_surface,
-                                                buoyancy = nothing,
-                                                tracers = nothing,
-                                                closure = nothing)
+            model = HydrostaticFreeSurfaceModel(grid; free_surface)
 
             # Now create a divergent flow field and solve for pressure correction
             u, v, w = model.velocities
@@ -56,7 +53,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integ
 
             step_free_surface!(model.free_surface, model, model.timestepper, 1.0)
 
-            sol = (sol..., model.free_surface.η)
+            sol = (sol..., model.free_surface.displacement)
             f  = (f..., model.free_surface)
         end
 

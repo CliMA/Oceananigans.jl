@@ -88,8 +88,7 @@ The shape of the physical domain determines what grid type should be used:
 
 !!! note "OrthogonalSphericalShellGrids"
     See the auxiliary module [`OrthogonalSphericalShellGrids`](@ref)
-    for recipes that implement some useful `OrthogonalSphericalShellGrid`s, including the
-    ["tripolar" grid](https://www.sciencedirect.com/science/article/abs/pii/S0021999196901369).
+    for recipes that implement some useful `OrthogonalSphericalShellGrid`s, including the ["tripolar" grid](@cite Murray1996).
 
 For example, to make a `LatitudeLongitudeGrid` that wraps around the sphere, extends for 60 degrees latitude on either side of the equator, and has 5 vertical levels down to 1000 meters, we write
 

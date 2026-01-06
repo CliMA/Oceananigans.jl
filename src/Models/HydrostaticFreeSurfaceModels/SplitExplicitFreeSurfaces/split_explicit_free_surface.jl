@@ -9,7 +9,7 @@ import Oceananigans: prognostic_state, restore_prognostic_state!
 import ..HydrostaticFreeSurfaceModels: hydrostatic_tendency_fields
 
 struct SplitExplicitFreeSurface{H, U, M, FT, K , S, T} <: AbstractFreeSurface{H, FT}
-    η :: H
+    displacement :: H
     barotropic_velocities :: U # A namedtuple with U, V
     filtered_state :: M # A namedtuple with η, U, V averaged throughout the substepping
     gravitational_acceleration :: FT
@@ -202,7 +202,7 @@ function hydrostatic_tendency_fields(velocities, free_surface::SplitExplicitFree
     @apply_regionally U_bcs = barotropic_velocity_boundary_conditions(velocities.u)
     @apply_regionally V_bcs = barotropic_velocity_boundary_conditions(velocities.v)
 
-    free_surface_grid = free_surface.η.grid
+    free_surface_grid = free_surface.displacement.grid
     U = Field{Face, Center, Nothing}(free_surface_grid, boundary_conditions=U_bcs)
     V = Field{Center, Face, Nothing}(free_surface_grid, boundary_conditions=V_bcs)
 
@@ -374,7 +374,7 @@ split_explicit_kernel_size(::Type{LeftConnected},  N, H) = -H+2:N
 
 # Adapt
 Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
-    SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.η),
+    SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.displacement),
                              Adapt.adapt(to, free_surface.barotropic_velocities),
                              Adapt.adapt(to, free_surface.filtered_state),
                              free_surface.gravitational_acceleration,

@@ -55,13 +55,9 @@ function build_simulation(grid;
     # Create settling forcing with the velocity field
     c_forcing = AdvectiveForcing(w = w_settle_field)
 
-    model = NonhydrostaticModel(
-        grid = grid,
-        advection = WENO(order=5),
-        tracers = (:c,),
-        forcing = (c = c_forcing,),
-        pressure_solver = ConjugateGradientPoissonSolver(grid)
-    )
+    model = NonhydrostaticModel(grid; advection = WENO(order=5),
+                                      pressure_solver = ConjugateGradientPoissonSolver(grid),
+                                      tracers = :c, forcing = (c = c_forcing,))
 
     # Circular initial condition for tracer c in the center of the domain
     x₀ = grid.Lx / 2
