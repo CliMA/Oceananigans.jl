@@ -161,7 +161,7 @@ steps:
         group:
           # - "🎭 reactant_2"
           # - "👺 enzyme"
-          # - "👹 reactant_1"
+          - "👹 reactant_1"
 
     retry:
       automatic:
