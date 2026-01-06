@@ -287,7 +287,7 @@ function test_complex_boundary_conditions(Rx, Ry, child_arch)
     arch  = Distributed(child_arch, partition=Partition(Rx, Ry))
     
     # A grid with unity spacings in all directions
-    grid  = RectilinearGrid(arch, topology=(Bounded, Bounded, Bounded), size=(Rx, Ry, 1), extent=(Rx, Ry, 1))
+    grid  = RectilinearGrid(arch, topology=(Bounded, Bounded, Bounded), size=(2*Rx, 2*Ry, 1), extent=(2*Rx,2*Ry, 1))
     u_bc  = FluxBoundaryCondition(clock_field_dependent_boudary_condition, discrete_form=true)
     u_bcs = FieldBoundaryCondition(top=u_bcs)
     
