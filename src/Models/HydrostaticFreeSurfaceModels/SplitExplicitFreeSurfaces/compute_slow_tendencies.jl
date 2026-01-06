@@ -37,7 +37,7 @@ end
     Gv⁻ = timestepper.G⁻.v
 
     launch!(architecture(grid), grid, :xy, _compute_integrated_ab2_tendencies!, GUⁿ, GVⁿ, grid,
-            Gu⁻, Gv⁻, Guⁿ, Gvⁿ, timestepper.χ)
+            Gu⁻, Gv⁻, Guⁿ, Gvⁿ, timestepper.χ; region = :interior)
 
     return nothing
 end
