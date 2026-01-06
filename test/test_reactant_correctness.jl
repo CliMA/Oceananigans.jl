@@ -2,6 +2,7 @@ include("reactant_test_utils.jl")
 include("reactant_correctness_utils.jl")
 
 using Random
+using CUDA
 using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid
 
 # Helper to generate all combinations
