@@ -52,7 +52,7 @@ cox_closure = IsopycnalSkewSymmetricDiffusivity(κ_skew = 0e3,
 
 @info "Building a model..."
 
-model = HydrostaticFreeSurfaceModel(; grid, coriolis,
+model = HydrostaticFreeSurfaceModel(grid; coriolis,
                                     closure = triad_closure, #, h_visc, v_visc),
                                     buoyancy = BuoyancyTracer(),
                                     tracers = (:b, :c))

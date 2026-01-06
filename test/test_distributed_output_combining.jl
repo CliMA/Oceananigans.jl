@@ -103,7 +103,7 @@ function rectilinear_mpi_script(config, filename)
                            size = ($Nx, $Ny, $Nz),
                            extent = ($Lx, $Ly, $Lz))
 
-    model = NonhydrostaticModel(; grid, tracers=:c)
+    model = NonhydrostaticModel(grid; tracers=:c)
 
     Lx, Ly, Lz = $Lx, $Ly, $Lz
     cᵢ(x, y, z) = sin(2π * x / Lx) * cos(2π * y / Ly) * (z + Lz) / Lz
@@ -134,7 +134,7 @@ function run_serial_rectilinear(config, filename)
                            size = (Nx, Ny, Nz),
                            extent = (Lx, Ly, Lz))
 
-    model = NonhydrostaticModel(; grid, tracers=:c)
+    model = NonhydrostaticModel(grid; tracers=:c)
 
     cᵢ(x, y, z) = sin(2π * x / Lx) * cos(2π * y / Ly) * (z + Lz) / Lz
     uᵢ(x, y, z) = 0.1 * sin(2π * x / Lx)
@@ -192,7 +192,7 @@ function lat_lon_mpi_script(config, filename)
                                  z = ($z1, $z2),
                                  halo = ($Hλ, $Hφ, $Hz))
 
-    model = HydrostaticFreeSurfaceModel(; grid, tracers=:c, free_surface=ExplicitFreeSurface())
+    model = HydrostaticFreeSurfaceModel(grid; tracers=:c, free_surface=ExplicitFreeSurface())
 
     cᵢ(λ, φ, z) = sin(π * λ / 30) * cos(π * φ / 60) * (z + 100) / 100
     set!(model, c=cᵢ)
@@ -219,7 +219,7 @@ function run_serial_lat_lon(config, filename)
                                  z = config.z,
                                  halo = config.halo)
 
-    model = HydrostaticFreeSurfaceModel(; grid, tracers=:c, free_surface=ExplicitFreeSurface())
+    model = HydrostaticFreeSurfaceModel(grid; tracers=:c, free_surface=ExplicitFreeSurface())
 
     cᵢ(λ, φ, z) = sin(π * λ / 30) * cos(π * φ / 60) * (z + 100) / 100
     set!(model, c=cᵢ)
@@ -274,7 +274,7 @@ function tripolar_mpi_script(config, filename)
                         north_poles_latitude = $(config.north_poles_latitude),
                         first_pole_longitude = $(config.first_pole_longitude))
 
-    model = HydrostaticFreeSurfaceModel(; grid, tracers=:c, free_surface=ExplicitFreeSurface())
+    model = HydrostaticFreeSurfaceModel(grid; tracers=:c, free_surface=ExplicitFreeSurface())
 
     cᵢ(λ, φ, z) = cosd(φ) * (z + 100) / 100
     set!(model, c=cᵢ)
@@ -301,7 +301,7 @@ function run_serial_tripolar(config, filename)
                         north_poles_latitude = config.north_poles_latitude,
                         first_pole_longitude = config.first_pole_longitude)
 
-    model = HydrostaticFreeSurfaceModel(; grid, tracers=:c, free_surface=ExplicitFreeSurface())
+    model = HydrostaticFreeSurfaceModel(grid; tracers=:c, free_surface=ExplicitFreeSurface())
 
     cᵢ(λ, φ, z) = cosd(φ) * (z + 100) / 100
     set!(model, c=cᵢ)
