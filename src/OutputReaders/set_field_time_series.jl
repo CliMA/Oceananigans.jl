@@ -27,6 +27,7 @@ function set!(fts::InMemoryFTS, path::String=fts.path, args...; kwargs...)
     if endswith(path, ".jld2")
         file = jldopen(path; fts.reader_kw...)
         set!(fts, file, args...; kwargs...)
+        close(file)
     elseif endswith(path, ".nc")
         return set_from_netcdf!(fts, path, args...; kwargs...)
     else
