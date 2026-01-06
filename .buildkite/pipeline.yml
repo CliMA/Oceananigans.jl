@@ -89,7 +89,7 @@ steps:
 
       # Run tests
       cd "$OCEANANIGANS_DIR"
-      julia +$JULIA_VERSION -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
+      julia +$JULIA_VERSION -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test()'
 
     matrix:
       setup:
@@ -145,7 +145,7 @@ steps:
 
       # Run tests
       cd "$OCEANANIGANS_DIR"
-      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
+      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test()'
 
     matrix:
       setup:
@@ -161,6 +161,24 @@ steps:
       automatic:
         - exit_status: 1
           limit: 1
+
+  - label: "📊 Upload coverage to Codecov"
+    agents:
+      queue: "Oceananigans-nautilus"
+    command: |
+      # Pull all coverage artifacts from prior steps
+      mkdir -p coverage_artifacts
+      buildkite-agent artifact download "**/*.cov" coverage_artifacts/
+
+      # (Optional) quick sanity check
+      echo "Number of .cov files:" $(find coverage_artifacts -name "*.cov" | wc -l)
+
+      # Upload to Codecov (CODECOV_TOKEN comes from Buildkite secret env var)
+      curl -s https://codecov.io/bash | bash -s -- \
+        -s coverage_artifacts \
+        -F buildkite \
+        -F julia
+
   #####
   ##### Blocking wait on tests and documentation
   #####
