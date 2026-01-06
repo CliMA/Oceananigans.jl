@@ -1,4 +1,3 @@
-import Base: show
 using Oceananigans.Utils: prettysummary
 
 const DFBC = DefaultBoundaryCondition
@@ -38,7 +37,7 @@ function Base.summary(bc::MBC)
            prettysummary(bc.condition.inhomogeneity))
 end
 
-show(io::IO, bc::BoundaryCondition) = print(io, summary(bc))
+Base.show(io::IO, bc::BoundaryCondition) = print(io, summary(bc))
 
 #####
 ##### FieldBoundaryConditions

@@ -5,25 +5,25 @@ export XPartition, YPartition, Connectivity
 export CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField
 
 using Oceananigans
-using Oceananigans.Grids
-using Oceananigans.Fields
-using Oceananigans.Models
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
+using Oceananigans.Fields
+using Oceananigans.Grids
+using Oceananigans.Models
 using Oceananigans.Utils
+
+using Oceananigans.Grids: AbstractUnderlyingGrid
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Utils: Reference, Iterate
 
 using Adapt
 using DocStringExtensions
 using OffsetArrays
 
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Utils: Reference, Iterate, getnamewrapper
-using Oceananigans.Grids: AbstractUnderlyingGrid
-
 import KernelAbstractions as KA
 using KernelAbstractions: @kernel, @index
 
-import Base: show, length, size
+import Base: length, size
 
 import Oceananigans.Utils:
                 isregional,

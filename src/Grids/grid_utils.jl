@@ -1,6 +1,6 @@
 using Base.Ryu: writeshortest
-using LinearAlgebra: dot, cross
 using OffsetArrays: IdOffsetRange
+using Oceananigans.Utils: Utils, prettysummary
 
 """
     _property(ξ, ℓ, T, N, H, with_halos)
@@ -278,8 +278,9 @@ Base.summary(::NegativeZDirection) = "NegativeZDirection()"
 
 Base.show(io::IO, dir::AbstractDirection) = print(io, summary(dir))
 
+size_summary(grid::AbstractGrid) = size_summary(size(grid))
 size_summary(sz) = string(sz[1], "×", sz[2], "×", sz[3])
-prettysummary(σ::AbstractFloat, plus=false) = writeshortest(σ, plus, false, true, -1, UInt8('e'), false, UInt8('.'), false, true)
+Utils.prettysummary(σ::AbstractFloat, plus=false) = writeshortest(σ, plus, false, true, -1, UInt8('e'), false, UInt8('.'), false, true)
 
 domain_summary(topo::Flat, name, ::Nothing) = "Flat $name"
 domain_summary(topo::Flat, name, coord::Number) = "Flat $name = $coord"
@@ -432,3 +433,17 @@ function add_halos(data::AbstractArray{FT, 2} where FT, loc, topo, sz, halo_sz; 
     Nx, Ny = size(data)
     return add_halos(reshape(data, (Nx, Ny, 1)), loc, topo, sz, halo_sz; warnings)
 end
+
+#####
+##### Extensions for kernel launching
+#####
+
+function Utils.periphery_offset(loc, grid::AbstractGrid, side::Int)
+    T = topology(grid, side)
+    N = size(grid, side)
+
+    return Utils.periphery_offset(loc, T(), N)
+end
+
+# Other cases are already covered by the fallback in Oceananigans.Utils
+Utils.periphery_offset(::Face, ::Bounded, N::Int) = ifelse(N > 1, 1, 0)

@@ -1,4 +1,4 @@
-using Oceananigans.Utils: prettysummary, shortsummary
+using Oceananigans.Utils: shortsummary, construct_regionally, prettysummary
 
 struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, LY, LZ, G, T}
     kernel_function :: K
@@ -44,8 +44,8 @@ struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, 
     ```jldoctest kfo
     using Oceananigans.Operators: ζ₃ᶠᶠᶜ # called with signature ζ₃ᶠᶠᶜ(i, j, k, grid, u, v)
 
-    model = HydrostaticFreeSurfaceModel(; grid);
-    u, v, w = model.velocities;
+    model = HydrostaticFreeSurfaceModel(grid)
+    u, v, w = model.velocities
     ζ_op = KernelFunctionOperation{Face, Face, Center}(ζ₃ᶠᶠᶜ, grid, u, v)
 
     # output
@@ -75,7 +75,7 @@ Adapt.adapt_structure(to, κ::KernelFunctionOperation{LX, LY, LZ}) where {LX, LY
                                         Adapt.adapt(to, κ.grid),
                                         Tuple(Adapt.adapt(to, a) for a in κ.arguments)...)
 
-on_architecture(to, κ::KernelFunctionOperation{LX, LY, LZ}) where {LX, LY, LZ} =
+Architectures.on_architecture(to, κ::KernelFunctionOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     KernelFunctionOperation{LX, LY, LZ}(on_architecture(to, κ.kernel_function),
                                         on_architecture(to, κ.grid),
                                         Tuple(on_architecture(to, a) for a in κ.arguments)...)

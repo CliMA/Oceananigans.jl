@@ -1,5 +1,5 @@
-using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_superprefix
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!, next_time, unit_time
+using Oceananigans.OutputWriters: WindowedTimeAverage
+using Oceananigans.TimeSteppers: update_state!, unit_time
 
 using Oceananigans: AbstractModel, run_diagnostic!
 
@@ -223,6 +223,10 @@ function initialize!(sim::Simulation)
 
     for callback in values(sim.callbacks)
         initialize!(callback, sim)
+    end
+
+    for writer in values(sim.output_writers)
+        initialize!(writer, model)
     end
 
     # Reset! the model time-stepper, evaluate all diagnostics, and write all output at first iteration

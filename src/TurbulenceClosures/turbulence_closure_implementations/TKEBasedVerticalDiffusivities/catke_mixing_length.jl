@@ -1,11 +1,8 @@
 using ..TurbulenceClosures:
-    wall_vertical_distanceᶜᶜᶠ,
-    wall_vertical_distanceᶜᶜᶜ,
     depthᶜᶜᶠ,
     height_above_bottomᶜᶜᶠ,
     depthᶜᶜᶜ,
-    height_above_bottomᶜᶜᶜ,
-    static_column_depthᶜᶜᵃ
+    height_above_bottomᶜᶜᶜ
 
 """
     struct CATKEMixingLength{FT}

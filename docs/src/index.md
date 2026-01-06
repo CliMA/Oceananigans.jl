@@ -6,7 +6,8 @@ Oceananigans is a fast, friendly, flexible software package for finite volume si
 and hydrostatic Boussinesq equations on CPUs and GPUs.
 It runs on GPUs (wow, [fast!](https://doi.org/10.1029/2024MS004465)), though we believe Oceananigans makes the biggest waves
 with its ultra-flexible user interface that makes simple simulations easy, and complex, creative simulations possible.
-Oceananigans development is community-driven with contributors from academia and industry.
+Oceananigans development is community-driven with contributors from academia and industry -
+see [jobs discussions](https://github.com/CliMA/Oceananigans.jl/discussions/categories/jobs) for developer and user opportunities!
 Testing infrastructure is provided by [atdepth](https://www.atdepth.org) and the [Climate Modeling Alliance](https://clima.caltech.edu).
 
 ## Quick install
@@ -55,7 +56,7 @@ Whether you need help getting started with Oceananigans, found a bug, want Ocean
 
 * [Start a discussion](https://github.com/CliMA/Oceananigans.jl/discussions). This is great for general questions about numerics, science, experimental or under-documented features, and for getting help setting up a neat new numerical experiment.
 * [Open an issue](https://github.com/CliMA/Oceananigans.jl/issues). Issues are best if you think the Oceananigans source code needs attention: a bug, a sign error (😱), an important missing feature, or a typo in this documentation 👀.
-* Sign up for the [Julia Slack](https://julialang.org/slack/) and join the `#oceananigans` channel because we love to chat.
+* [Join the NumericalEarth slack](https://join.slack.com/t/numericalearth/shared_invite/zt-3kjcowmpg-B0s3nalWkvZg8IBc~BIJEA) because we love to chat.
 
 ## Citing and otherwise spreading the word
 
@@ -106,6 +107,8 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
+1. Lee, X. K., Ramadhan, A., Souza, A., Wagner, G. L., Silvestri, S., Marshall, J. and Ferrari, R. (2025) [NORi: An ML-augmented ocean boundary layer parameterization](https://doi.org/10.48550/arXiv.2512.04452), _arXiv preprint_, arXiv:2512.04452. DOI: [10.48550/arXiv.2512.04452](https://doi.org/10.48550/arXiv.2512.04452)
+
 1. Brenner, S., Thompson, A., and Gupta, M. (2025) [Patterns of sea ice floes shape ocean turbulence in the marginal ice zone](https://doi.org/10.21203/rs.3.rs-8099873/v1
 ), preprint (Version 1), available at Research Square. DOI: [10.21203/rs.3.rs-8099873/v1](https://doi.org/10.21203/rs.3.rs-8099873/v1)
 
@@ -121,7 +124,9 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Souza, A. N., Silvestri, S., Deck, K., Bischoff, T., Ferrari, R., and Flierl, G. R. (2025) [Surface to seafloor: A generative AI framework for decoding the ocean interior state](https://doi.org/10.48550/arXiv.2504.15308), _arXiv preprint_, arXiv:2504.15308. DOI: [10.48550/arXiv.2503.12845](https://doi.org/10.48550/arXiv.2504.15308)
 
-1. Johnston, D. R., Shakespeare, C. J., and Constantinou, N. C. (2025) [Evaluating and improving wave and non-wave stress parametrisations for oceanic flows](https://doi.org/10.48550/arXiv.2503.12845), _arXiv preprint_, arXiv:2503.12845 (submitted to the Journal of Physical Oceanography). DOI: [10.48550/arXiv.2503.12845](https://doi.org/10.48550/arXiv.2503.12845)
+1. Johnston, D. R., Shakespeare, C. J., and Constantinou, N. C. (2025) [Evaluating and improving wave and non-wave stress parametrisations for oceanic flows](https://doi.org/10.48550/arXiv.2503.12845), _arXiv preprint_, arXiv:2503.12845 (to appear at the Journal of Physical Oceanography). DOI: [10.48550/arXiv.2503.12845](https://doi.org/10.48550/arXiv.2503.12845)
+
+1. Vankevich, R. Ye., Rodionov, А. А., Shpilev, N. N., and Chebotkova, V. V. (2025) [Modeling the origin and evolution of convective vortex structures on a slope. Numerical experiment](https://doi.org/10.59887/2073-6673.2025.18(4)-2), _Fundamental and Applied Hydrophysics_, **18(4)**, 20-27. DOI: [10.59887/2073-6673.2025.18(4)-2](https://doi.org/10.59887/2073-6673.2025.18(4)-2)
 
 1. Bhadouriya, A., Gayen, B., Naveira Garabato, A., and Silvano, A. (2025) [Overshooting convection drives winter mixed layer under Antarctic sea ice](https://doi.org/10.21203/rs.3.rs-5932119/v1), preprint (Version 1), available at Research Square. DOI: [10.21203/rs.3.rs-5932119/v1](https://doi.org/10.21203/rs.3.rs-5932119/v1)
 

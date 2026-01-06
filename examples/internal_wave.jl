@@ -52,7 +52,7 @@ B = BackgroundField(B_func, parameters=N)
 # during time-stepping, and specify that we're using a single tracer called
 # `b` that we identify as buoyancy by setting `buoyancy=BuoyancyTracer()`.
 
-model = NonhydrostaticModel(; grid, coriolis,
+model = NonhydrostaticModel(grid; coriolis,
                             advection = Centered(order=4),
                             closure = ScalarDiffusivity(ν=1e-6, κ=1e-6),
                             tracers = :b,
@@ -61,7 +61,7 @@ model = NonhydrostaticModel(; grid, coriolis,
 
 # ## A Gaussian wavepacket
 #
-# Next, we set up an initial condition that excites an internal wave that progates
+# Next, we set up an initial condition that excites an internal wave that propagates
 # through our rotating, stratified fluid. This internal wave has the pressure field
 #
 # ```math

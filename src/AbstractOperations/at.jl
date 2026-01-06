@@ -1,4 +1,4 @@
-using Oceananigans
+using Oceananigans: Oceananigans
 using Oceananigans.Fields: default_indices, compute_index_intersection
 
 """
@@ -81,11 +81,9 @@ indices(::Number)   = default_indices(3)
 Utility to compute the intersection of `operands' indices.
 """
 function intersect_indices(loc, operands...)
-
     idx1 = compute_operand_intersection(Colon(), loc[1], operands...; dim=1)
     idx2 = compute_operand_intersection(Colon(), loc[2], operands...; dim=2)
     idx3 = compute_operand_intersection(Colon(), loc[3], operands...; dim=3)
-
     return (idx1, idx2, idx3)
 end
 

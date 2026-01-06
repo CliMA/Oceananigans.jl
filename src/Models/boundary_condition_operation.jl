@@ -2,14 +2,20 @@ using Oceananigans: fields
 using Oceananigans.BoundaryConditions: getbc, bc_str
 using Oceananigans.Fields: Field, location
 using Oceananigans.AbstractOperations: KernelFunctionOperation
-
-import Oceananigans.Utils: prettysummary
+using Oceananigans.Utils: Utils
+using Adapt: Adapt
 
 struct BoundaryConditionKernelFunction{Side, BC}
     bc :: BC
 end
 
-function prettysummary(kf::BoundaryConditionKernelFunction{Side}) where Side
+function Adapt.adapt_structure(to, bckf::BoundaryConditionKernelFunction{Side}) where Side
+    bc = adapt(to, bckf.bc)
+    BC = typeof(bc)
+    return BoundaryConditionKernelFunction{Side, BC}(bc)
+end
+
+function Utils.prettysummary(kf::BoundaryConditionKernelFunction{Side}) where Side
     return string("BoundaryConditionKernelFunction{", Side, "}(", bc_str(kf.bc), ")")
 end
 
@@ -63,7 +69,7 @@ grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
 c_flux(x, y, t) = sin(2π * x)
 c_top_bc = FluxBoundaryCondition(c_flux)
 c_bcs = FieldBoundaryConditions(top=c_top_bc)
-model = NonhydrostaticModel(; grid, tracers=:c, boundary_conditions=(; c=c_bcs))
+model = NonhydrostaticModel(grid; tracers=:c, boundary_conditions=(; c=c_bcs))
 
 c_flux_op = BoundaryConditionOperation(model.tracers.c, :top, model)
 

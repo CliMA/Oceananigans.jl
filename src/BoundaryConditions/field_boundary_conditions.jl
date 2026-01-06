@@ -171,14 +171,24 @@ and the topology in the boundary-normal direction is used:
 - `nothing` for `Bounded` directions and `Face`-located fields
 - `nothing` for `Flat` directions and/or `Nothing`-located fields
 """
-function FieldBoundaryConditions(grid::AbstractGrid, loc, indices=(:, :, :);
-                                 west     = default_auxiliary_bc(grid, Val(:west),   loc),
-                                 east     = default_auxiliary_bc(grid, Val(:east),   loc),
-                                 south    = default_auxiliary_bc(grid, Val(:south),  loc),
-                                 north    = default_auxiliary_bc(grid, Val(:north),  loc),
-                                 bottom   = default_auxiliary_bc(grid, Val(:bottom), loc),
-                                 top      = default_auxiliary_bc(grid, Val(:top),    loc),
-                                 immersed = DefaultBoundaryCondition())
+function FieldBoundaryConditions(grid::AbstractGrid, loc::Tuple, indices=(:, :, :); kwargs...)
+
+    for ℓ in loc
+        if !(ℓ isa Union{Nothing, Face, Center})
+            msg = string("Location $ℓ in $loc is not a valid location!", '\n',
+                         "Locations must be Center(), Face(), or nothing.")
+            throw(ArgumentError(msg))
+        end
+    end
+
+    # Build defaults _after_ validating the location
+    west     = get(kwargs, :west,     default_auxiliary_bc(grid, Val(:west),   loc))
+    east     = get(kwargs, :east,     default_auxiliary_bc(grid, Val(:east),   loc))
+    south    = get(kwargs, :south,    default_auxiliary_bc(grid, Val(:south),  loc))
+    north    = get(kwargs, :north,    default_auxiliary_bc(grid, Val(:north),  loc))
+    bottom   = get(kwargs, :bottom,   default_auxiliary_bc(grid, Val(:bottom), loc))
+    top      = get(kwargs, :top,      default_auxiliary_bc(grid, Val(:top),    loc))
+    immersed = get(kwargs, :immersed, DefaultBoundaryCondition())
 
     bcs = FieldBoundaryConditions(indices, west, east, south, north, bottom, top, immersed)
     return materialize_default_boundary_conditions(bcs, grid, loc)

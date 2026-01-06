@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ, Ax_qᶠᶜᶜ, Ay_qᶜᶠᶜ, Az_qᶜᶜᶠ
+using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ
 using Oceananigans: defaults
 
 struct PerturbationAdvection{FT}
@@ -12,7 +12,7 @@ end
                           inflow_timescale = 0)
 
 Create a `PerturbationAdvection` scheme to be used with an `OpenBoundaryCondition`.
-This scheme will nudge the boundary velocity to the OpenBoundaryCondition's exterior value `val`,
+This scheme nudges the boundary velocity to the `OpenBoundaryCondition`'s exterior value `val`,
 using a time-scale `inflow_timescale` for inflow and `outflow_timescale` for outflow.
 
 For cases where we assume that the internal flow is a small perturbation from
@@ -34,10 +34,10 @@ a backwards euler step (in the case that the mean flow is boundary normal) on a 
 
 This can not be solved for general forcing, but if we assume the dominant forcing is
 relaxation to the mean velocity (i.e. u′→0) then Fᵤ = -u′ / τ then we can find u′ⁿ⁺¹:
-    u′ⁿ⁺¹ = (uⁿ + Ũu′ⁿ⁺¹ᵢ₋₁ - Uⁿ⁺¹) / (1 + Ũ + Δt/τ),
+    u′ⁿ⁺¹ = (uⁿ + Ũ u′ⁿ⁺¹ᵢ₋₁ - Uⁿ⁺¹) / (1 + Ũ + Δt/τ),
 
 where Ũ = U Δt / Δx, then uⁿ⁺¹ is:
-    uⁿ⁺¹ = (uᵢⁿ + Ũuᵢ₋₁ⁿ⁺¹ + Uⁿ⁺¹τ̃) / (1 + τ̃ + Ũ)
+    uⁿ⁺¹ = (uᵢⁿ + Ũ uᵢ₋₁ⁿ⁺¹ + Uⁿ⁺¹τ̃) / (1 + τ̃ + Ũ)
 
 where τ̃ = Δt/τ.
 

@@ -9,7 +9,7 @@ Distributed.addprocs(2)
 
     using CairoMakie # to avoid capturing precompilation output by Literate
     set_theme!(Theme(fontsize=20))
-    CairoMakie.activate!(type = "svg")
+    CairoMakie.activate!(type = "png")
 
     using NCDatasets
     using XESMF
@@ -36,6 +36,7 @@ Distributed.addprocs(2)
     # The examples that take longer to run should be first. This ensures that the
     # docs built which extra workers is as efficient as possible.
     example_scripts = [
+        "spherical_baroclinic_instability.jl",
         "internal_tide.jl",
         "langmuir_turbulence.jl",
         "shallow_water_Bickley_jet.jl",
@@ -45,11 +46,31 @@ Distributed.addprocs(2)
         "baroclinic_adjustment.jl",
         "tilted_bottom_boundary_layer.jl",
         "convecting_plankton.jl",
+        "hydrostatic_lock_exchange.jl",
         "two_dimensional_turbulence.jl",
         "one_dimensional_diffusion.jl",
         "internal_wave.jl",
     ]
 end
+
+# We'll append the following postamble to the literate examples, to include
+# information about the computing environment used to run them.
+example_postamble = """
+
+# ---
+
+# ### Julia version and environment information
+#
+# This example was executed with the following version of Julia:
+
+using InteractiveUtils: versioninfo
+versioninfo()
+
+# These were the top-level packages installed in the environment:
+
+import Pkg
+Pkg.status()
+"""
 
 @info string("Executing the examples using ", Distributed.nprocs(), " processes")
 
@@ -59,6 +80,7 @@ Distributed.pmap(1:length(example_scripts)) do n
     withenv("JULIA_DEBUG" => "Literate") do
         start_time = time_ns()
         Literate.markdown(example_filepath, OUTPUT_DIR;
+                          preprocess = content -> content * example_postamble,
                           flavor = Literate.DocumenterFlavor(), execute = true)
         elapsed = 1e-9 * (time_ns() - start_time)
         @info @sprintf("%s example took %s to build.", example, prettytime(elapsed))
@@ -72,24 +94,27 @@ Distributed.rmprocs()
 #####
 
 example_pages = [
-    "One-dimensional diffusion"        => "literated/one_dimensional_diffusion.md",
-    "Two-dimensional turbulence"       => "literated/two_dimensional_turbulence.md",
-    "Internal wave"                    => "literated/internal_wave.md",
-    "Internal tide by a seamount"      => "literated/internal_tide.md",
-    "Convecting plankton"              => "literated/convecting_plankton.md",
-    "Ocean wind mixing and convection" => "literated/ocean_wind_mixing_and_convection.md",
-    "Langmuir turbulence"              => "literated/langmuir_turbulence.md",
-    "Baroclinic adjustment"            => "literated/baroclinic_adjustment.md",
-    "Kelvin-Helmholtz instability"     => "literated/kelvin_helmholtz_instability.md",
-    "Shallow water Bickley jet"        => "literated/shallow_water_Bickley_jet.md",
-    "Horizontal convection"            => "literated/horizontal_convection.md",
-    "Tilted bottom boundary layer"     => "literated/tilted_bottom_boundary_layer.md"
+    "One-dimensional diffusion"             => "literated/one_dimensional_diffusion.md",
+    "Two-dimensional turbulence"            => "literated/two_dimensional_turbulence.md",
+    "Internal wave"                         => "literated/internal_wave.md",
+    "Internal tide by a seamount"           => "literated/internal_tide.md",
+    "Convecting plankton"                   => "literated/convecting_plankton.md",
+    "Ocean wind mixing and convection"      => "literated/ocean_wind_mixing_and_convection.md",
+    "Langmuir turbulence"                   => "literated/langmuir_turbulence.md",
+    "Baroclinic adjustment"                 => "literated/baroclinic_adjustment.md",
+    "Kelvin-Helmholtz instability"          => "literated/kelvin_helmholtz_instability.md",
+    "Hydrostatic lock exchange with CATKE"  => "literated/hydrostatic_lock_exchange.md",
+    "Shallow water Bickley jet"             => "literated/shallow_water_Bickley_jet.md",
+    "Horizontal convection"                 => "literated/horizontal_convection.md",
+    "Tilted bottom boundary layer"          => "literated/tilted_bottom_boundary_layer.md",
+    "Spherical baroclinic instability"      => "literated/spherical_baroclinic_instability.md"
 ]
 
 model_pages = [
     "Overview" => "models/models_overview.md",
     "Coriolis forces" => "models/coriolis.md",
     "Buoyancy and equations of state" => "models/buoyancy_and_equation_of_state.md",
+    "Stokes drift" => "models/stokes_drift.md",
     "Turbulence closures" => "models/turbulence_closures.md",
     "Boundary conditions" => "models/boundary_conditions.md",
     "Forcings" => "models/forcing_functions.md",
@@ -99,14 +124,14 @@ model_pages = [
 
 simulation_pages = [
     "Overview" => "simulations/simulations_overview.md",
-    # "Callbacks" => "simulations/callbacks.md",
+    "Callbacks" => "simulations/callbacks.md",
     "Schedules" => "simulations/schedules.md",
     "Output writers" => "simulations/output_writers.md",
     "Checkpointing" => "simulations/checkpointing.md",
 ]
 
 physics_pages = [
-    "Coordinate system and notation" => "physics/notation.md",
+    "Coordinate systems" => "physics/coordinate_systems.md",
     "Boussinesq approximation" => "physics/boussinesq.md",
     "`NonhydrostaticModel`" => [
         "Nonhydrostatic model" => "physics/nonhydrostatic_model.md",
@@ -144,6 +169,17 @@ appendix_pages = [
     "Function index" => "appendix/function_index.md"
 ]
 
+root = pkgdir(Oceananigans)
+agents_src = joinpath(root, "AGENTS.md")
+agents_dst = joinpath(root, "docs", "src", "developer_docs", "AGENTS.md")
+cp(agents_src, agents_dst; force=true)
+
+developer_pages = [
+    "Contributor's guide" => "developer_docs/contributing.md",
+    "Model interface" => "developer_docs/model_interface.md",
+    "Rules for agent-assisted development" => "developer_docs/AGENTS.md",
+]
+
 pages = [
     "Home" => "index.md",
     "Quick start" => "quick_start.md",
@@ -161,7 +197,7 @@ pages = [
     "Physics" => physics_pages,
     "Numerical implementation" => numerical_pages,
     "Simulation tips" => "simulation_tips.md",
-    "Contributor's guide" => "contributing.md",
+    "For developers" => developer_pages,
     "Gallery" => "gallery.md",
     "References" => "references.md",
     "Appendix" => appendix_pages
@@ -194,14 +230,20 @@ makedocs(; sitename = "Oceananigans.jl",
          format, pages, modules,
          plugins = [bib],
          warnonly = [:cross_references],
-         draft = false,        # set to true to speed things up
-         doctest = true,       # set to false to speed things up
          doctestfilters = [
              r"┌ Warning:.*",  # remove standard warning lines
              r"└ @ .*",        # remove the source location of warnings
          ],
          clean = true,
-         checkdocs = :exports) # set to :none to speed things up
+         linkcheck = true,
+         linkcheck_ignore = [
+            r"jstor\.org",
+            r"^https://github\.com/.*?/blob/",
+         ],
+         draft = false,        # set to true to speed things up
+         doctest = true,       # set to false to speed things up
+         checkdocs = :exports, # set to :none to speed things up
+         )
 
 """
     recursive_find(directory, pattern)

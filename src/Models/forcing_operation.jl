@@ -1,6 +1,6 @@
 using Adapt
 
-import Oceananigans.Utils: prettysummary
+using Oceananigans.Utils: Utils
 
 struct ForcingKernelFunction{F}
     forcing :: F
@@ -9,7 +9,7 @@ end
 Adapt.adapt_structure(to, fkf::ForcingKernelFunction) =
     ForcingKernelFunction(adapt(to, fkf.forcing))
 
-prettysummary(kf::ForcingKernelFunction) = "ForcingKernelFunction"
+Utils.prettysummary(kf::ForcingKernelFunction) = "ForcingKernelFunction"
 
 @inline function (kf::ForcingKernelFunction)(i, j, k, grid, args...)
     return kf.forcing(i, j, k, grid, args...)
@@ -35,7 +35,7 @@ grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
 
 damping(x, y, z, t, c, τ) = - c / τ
 c_forcing = Forcing(damping, field_dependencies=:c, parameters=60)
-model = NonhydrostaticModel(; grid, tracers=:c, forcing=(; c=c_forcing))
+model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=c_forcing))
 
 c_forcing_op = ForcingOperation(:c, model)
 

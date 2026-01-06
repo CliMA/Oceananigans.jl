@@ -4,7 +4,7 @@ using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, Grid
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions
 import Oceananigans.DistributedComputations: reconstruct_global_grid
 import Oceananigans.Grids: architecture, size, new_data, halo_size,
-                           with_halo, on_architecture, destantiate,
+                           with_halo, on_architecture,
                            minimum_xspacing, minimum_yspacing, minimum_zspacing
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: default_free_surface
 
@@ -60,7 +60,7 @@ minimum_zspacing(grid::MultiRegionGrid, ℓx, ℓy, ℓz) =
 default_free_surface(grid::MultiRegionGrid; gravitational_acceleration=Oceananigans.defaults.gravitational_acceleration) =
     SplitExplicitFreeSurface(; substeps=50, gravitational_acceleration)
 
-FieldBoundaryConditions(mrg::MultiRegionGrids, loc, indices; kwargs...) =
+FieldBoundaryConditions(mrg::MultiRegionGrids, loc::Tuple, indices=(:, :, :); kwargs...) =
     construct_regionally(inject_regional_bcs, mrg, mrg.connectivity, Reference(loc), indices; kwargs...)
 
 """
@@ -229,8 +229,8 @@ Base.summary(mrg::MultiRegionGrids{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     "MultiRegionGrid{$FT, $TX, $TY, $TZ} with $(summary(mrg.partition)) on $(string(typeof(mrg.region_grids[1]).name.wrapper))"
 
 function Base.show(io::IO, mrg::MultiRegionGrids{FT}) where FT
-    TX, TY, TZ = Oceananigans.Grids.topology_strs(mrg)
-    return print(io, "$(grid_name(mrg)){$FT, $TX, $TY, $TZ} partitioned on $(architecture(mrg)): \n",
+    TX, TY, TZ = topology(mrg)
+    return print(io, "$(grid_name(mrg)){$FT, $TX, $TY, $TZ} partitioned on $(summary(architecture(mrg))): \n",
                      "├── region_grids: $(summary(mrg.region_grids[1])) \n",
                      "├── partition: $(summary(mrg.partition)) \n",
                      "└── connectivity: $(summary(mrg.connectivity))")

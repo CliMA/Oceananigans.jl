@@ -2,6 +2,8 @@ module OceananigansNCDatasetsExt
 
 using NCDatasets
 
+using Oceananigans.Fields
+
 using Dates: AbstractTime, UTC, now, DateTime
 using Printf: @sprintf
 using OrderedCollections: OrderedDict
@@ -11,17 +13,21 @@ using Oceananigans: initialize!, prettytime, pretty_filesize, AbstractModel
 using Oceananigans.Architectures: CPU, GPU, on_architecture
 using Oceananigans.AbstractOperations: KernelFunctionOperation, AbstractOperation
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
-using Oceananigans.Fields
 using Oceananigans.Fields: Reduction, reduced_dimensions, reduced_location, location, indices
+using Oceananigans.Models: ShallowWaterModel, LagrangianParticles
+
 using Oceananigans.Grids: Center, Face, Flat, Periodic, Bounded,
                           AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, StaticVerticalDiscretization,
                           topology, halo_size, xspacings, yspacings, zspacings, λspacings, φspacings,
                           parent_index_range, nodes, ξnodes, ηnodes, rnodes, validate_index, peripheral_node,
-                          constructor_arguments
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary, PartialCellBottom, PCBIBG
-using Oceananigans.Models: ShallowWaterModel, LagrangianParticles
+                          constructor_arguments, architecture
+
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary, PartialCellBottom, PCBIBG,
+                                       CenterImmersedCondition, InterfaceImmersedCondition
+
 using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, materialize_schedule,
                           versioninfo_with_gpu, oceananigans_versioninfo, prettykeys
+
 using Oceananigans.OutputWriters:
     auto_extension,
     output_averaging_schedule,
@@ -37,6 +43,8 @@ using Oceananigans.OutputWriters:
     convert_output,
     fetch_and_convert_output,
     show_array_type
+
+using NCDatasets: AbstractDataset
 
 import NCDatasets: defVar
 import Oceananigans: write_output!
@@ -59,7 +67,7 @@ const BuoyancyBoussinesqEOSModel = BuoyancyForce{<:BoussinesqSeawaterBuoyancy, g
 #####
 
 """
-    squeeze_data(fd::AbstractField; array_type=Array{eltype(fd)})
+    squeeze_data(field::AbstractField; array_type=Array{eltype(field)})
 
 Returns the data of the field with the any dimensions where location is Nothing squeezed. For example:
 ```Julia
@@ -91,8 +99,8 @@ infil> squeeze_data(c) |> size
 
 Note that this will only remove (squeeze) singleton dimensions.
 """
-function squeeze_data(fd::AbstractField, field_data; array_type=Array{eltype(fd)})
-    reduced_dims = effective_reduced_dimensions(fd)
+function squeeze_data(field::AbstractField, field_data; array_type=Array{eltype(field)})
+    reduced_dims = effective_reduced_dimensions(field)
     field_data_cpu = array_type(field_data) # Need to convert to the array type of the field
 
     indices = Any[:, :, :]
@@ -106,15 +114,15 @@ end
 
 squeeze_data(func, func_data; kwargs...) = func_data
 squeeze_data(wta::WindowedTimeAverage{<:AbstractField}, data; kwargs...) = squeeze_data(wta.operand, data; kwargs...)
-squeeze_data(fd::AbstractField; kwargs...) = squeeze_data(fd, parent(fd); kwargs...)
+squeeze_data(field::AbstractField; kwargs...) = squeeze_data(field, parent(field); kwargs...)
 
-squeeze_data(fd::WindowedTimeAverage{<:AbstractField}; kwargs...) = squeeze_data(fd.operand; kwargs...)
+squeeze_data(field::WindowedTimeAverage{<:AbstractField}; kwargs...) = squeeze_data(field.operand; kwargs...)
 
-defVar(ds, name, op::AbstractOperation; kwargs...) = defVar(ds, name, Field(op); kwargs...)
-defVar(ds, name, op::Reduction; kwargs...) = defVar(ds, name, Field(op); kwargs...)
+defVar(ds::AbstractDataset, name, op::AbstractOperation; kwargs...) = defVar(ds, name, Field(op); kwargs...)
+defVar(ds::AbstractDataset, name, op::Reduction; kwargs...) = defVar(ds, name, Field(op); kwargs...)
 
-function defVar(ds, field_name, fd::AbstractField;
-                array_type=Array{eltype(fd)},
+function defVar(ds::AbstractDataset, field_name, field::AbstractField;
+                array_type=Array{eltype(field)},
                 time_dependent=false,
                 with_halos=false,
                 dimension_name_generator = trilocation_dim_name,
@@ -123,13 +131,13 @@ function defVar(ds, field_name, fd::AbstractField;
                 kwargs...)
 
     # effective_dim_names are the dimensions that will be used to write the field data (excludes reduced and dimensions where location is Nothing)
-    effective_dim_names = create_field_dimensions!(ds, fd, dimension_name_generator; time_dependent, with_halos, array_type, dimension_type)
+    effective_dim_names = create_field_dimensions!(ds, field, dimension_name_generator; time_dependent, with_halos, array_type, dimension_type)
 
     # Write the data to the NetCDF file (or don't, but still create the space for it there)
     if write_data
         # Squeeze the data to remove dimensions where location is Nothing and add a time dimension if the field is time-dependent
-        constructed_fd = construct_output(fd, fd.grid, (:, :, :), with_halos)
-        squeezed_field_data = squeeze_data(constructed_fd; array_type)
+        constructed_field = construct_output(field, (:, :, :), with_halos)
+        squeezed_field_data = squeeze_data(constructed_field; array_type)
         squeezed_reshaped_field_data = time_dependent ? reshape(squeezed_field_data, size(squeezed_field_data)..., 1) : squeezed_field_data
 
         defVar(ds, field_name, squeezed_reshaped_field_data, effective_dim_names; kwargs...)
@@ -138,28 +146,30 @@ function defVar(ds, field_name, fd::AbstractField;
     end
 end
 
+defVar(ds::AbstractDataset, field_name::Union{AbstractString, Symbol}, data::Array{Bool}, dim_names; kwargs...) = defVar(ds, field_name, Int8.(data), dim_names; kwargs...)
+
 #####
 ##### Dimension validation
 #####
 
 """
-    create_field_dimensions!(ds, fd::AbstractField, dimension_name_generator; time_dependent=false, with_halos=false, array_type=Array{eltype(fd)})
+    create_field_dimensions!(ds, field::AbstractField, dimension_name_generator; time_dependent=false, with_halos=false, array_type=Array{eltype(field)})
 
-Creates all dimensions for the given field `fd` in the NetCDF dataset `ds`. If the dimensions
+Creates all dimensions for the given `field` in the NetCDF dataset `ds`. If the dimensions
 already exist, they are validated to match the expected dimensions.
 
 Arguments:
 - `ds`: NetCDF dataset
-- `fd`: AbstractField being written
+- `field`: AbstractField being written
 - `dim_names`: Tuple of dimension names to create/validate
 - `dimension_name_generator`: Function to generate dimension names
 """
-function create_field_dimensions!(ds, fd::AbstractField, dimension_name_generator; time_dependent=false, with_halos=false, array_type=Array{eltype(fd)}, dimension_type=Float64)
+function create_field_dimensions!(ds, field::AbstractField, dimension_name_generator; time_dependent=false, with_halos=false, array_type=Array{eltype(field)}, dimension_type=Float64)
     # Assess and create the dimensions for the field
 
-    dimension_attributes = default_dimension_attributes(fd.grid, dimension_name_generator)
-    spatial_dim_names = field_dimensions(fd, dimension_name_generator)
-    spatial_dim_data = nodes(fd; with_halos)
+    dimension_attributes = default_dimension_attributes(field.grid, dimension_name_generator)
+    spatial_dim_names = field_dimensions(field, dimension_name_generator)
+    spatial_dim_data = nodes(field; with_halos)
 
     # Create dictionary of spatial dimensions and their data. Using OrderedDict to ensure the order of the dimensions is preserved.
     spatial_dim_names_dict = OrderedDict(spatial_dim_name => spatial_dim_array for (spatial_dim_name, spatial_dim_array) in zip(spatial_dim_names, spatial_dim_data))
@@ -218,7 +228,9 @@ function create_spatial_dimensions!(dataset, dims, attributes_dict; dimension_ty
         dim_name == "" && continue # Don't create anything if dim_name is an empty string
         push!(effective_dim_names, dim_name)
 
-        dim_array = dimension_type.(dim_array) # Transform dim_array to the correct float type
+        # Transform dim_array to the correct float type and ensure it's on the CPU
+        dim_array = collect(dimension_type.(dim_array))
+
         if dim_name ∉ keys(dataset.dim)
             # Create missing dimension
             defVar(dataset, dim_name, dim_array, (dim_name,), attrib=attributes_dict[dim_name]; kwargs...)
@@ -520,8 +532,8 @@ end
 ##### Mapping outputs/fields to dimensions
 #####
 
-function field_dimensions(fd::AbstractField, grid::RectilinearGrid, dim_name_generator)
-    LX, LY, LZ = location(fd)
+function field_dimensions(field::AbstractField, grid::RectilinearGrid, dim_name_generator)
+    LX, LY, LZ = location(field)
     TX, TY, TZ = topology(grid)
 
     x_dim_name = LX == Nothing ? "" : dim_name_generator("x", grid, LX(), nothing, nothing, Val(:x))
@@ -531,8 +543,8 @@ function field_dimensions(fd::AbstractField, grid::RectilinearGrid, dim_name_gen
     return tuple(x_dim_name, y_dim_name, z_dim_name)
 end
 
-function field_dimensions(fd::AbstractField, grid::LatitudeLongitudeGrid, dim_name_generator)
-    LΛ, LΦ, LZ = location(fd)
+function field_dimensions(field::AbstractField, grid::LatitudeLongitudeGrid, dim_name_generator)
+    LΛ, LΦ, LZ = location(field)
     TΛ, TΦ, TZ = topology(grid)
 
     λ_dim_name = LΛ == Nothing ? "" : dim_name_generator("λ", grid, LΛ(), nothing, nothing, Val(:x))
@@ -542,11 +554,11 @@ function field_dimensions(fd::AbstractField, grid::LatitudeLongitudeGrid, dim_na
     return tuple(λ_dim_name, φ_dim_name, z_dim_name)
 end
 
-field_dimensions(fd::AbstractField, grid::ImmersedBoundaryGrid, dim_name_generator) =
-    field_dimensions(fd, grid.underlying_grid, dim_name_generator)
+field_dimensions(field::AbstractField, grid::ImmersedBoundaryGrid, dim_name_generator) =
+    field_dimensions(field, grid.underlying_grid, dim_name_generator)
 
-field_dimensions(fd::AbstractField, dim_name_generator) =
-    field_dimensions(fd, fd.grid, dim_name_generator)
+field_dimensions(field::AbstractField, dim_name_generator) =
+    field_dimensions(field, field.grid, dim_name_generator)
 
 #####
 ##### Dimension attributes
@@ -733,57 +745,6 @@ function default_output_attributes(model)
     return merge(velocity_attrs, tracer_attrs)
 end
 
-#####
-##### Gather grid reconstruction attributes (also used for FieldTimeSeries support)
-#####
-
-function grid_attributes(grid::RectilinearGrid)
-    TX, TY, TZ = topology(grid)
-
-    dims = Dict()
-
-    attrs = Dict("type" => string(nameof(typeof(grid))),
-                 "eltype" => string(eltype(grid)),
-                 "TX" => string(TX),
-                 "TY" => string(TY),
-                 "TZ" => string(TZ),
-                 "Nx" => grid.Nx,
-                 "Ny" => grid.Ny,
-                 "Nz" => grid.Nz,
-                 "Hx" => grid.Hx,
-                 "Hy" => grid.Hy,
-                 "Hz" => grid.Hz)
-
-    return attrs, dims
-end
-
-function grid_attributes(grid::LatitudeLongitudeGrid)
-    TX, TY, TZ = topology(grid)
-
-    dims = Dict()
-
-    attrs = Dict("type" => string(nameof(typeof(grid))),
-                 "eltype" => string(eltype(grid)),
-                 "TX" => string(TX),
-                 "TY" => string(TY),
-                 "TZ" => string(TZ),
-                 "Nx" => grid.Nx,
-                 "Ny" => grid.Ny,
-                 "Nz" => grid.Nz,
-                 "Hx" => grid.Hx,
-                 "Hy" => grid.Hy,
-                 "Hz" => grid.Hz)
-
-    return attrs, dims
-end
-
-function grid_attributes(ibg::ImmersedBoundaryGrid)
-    attrs, dims = grid_attributes(ibg.underlying_grid)
-    immersed_attrs = Dict("immersed_boundary_type" => string(nameof(typeof(ibg.immersed_boundary))))
-    attrs = merge(attrs, immersed_attrs)
-    return attrs, dims
-end
-
 # Using OrderedDict to preserve order of keys (important when saving positional arguments), and string(key) because that's what NetCDF supports as global_attributes.
 convert_for_netcdf(dict::AbstractDict) = OrderedDict(string(key) => convert_for_netcdf(value) for (key, value) in dict)
 convert_for_netcdf(x::Number) = x
@@ -791,33 +752,63 @@ convert_for_netcdf(x::Bool) = string(x)
 convert_for_netcdf(x::NTuple{N, Number}) where N = collect(x)
 convert_for_netcdf(x) = string(x)
 convert_for_netcdf(::GPU) = "GPU()"
+convert_for_netcdf(::CenterImmersedCondition) = "CenterImmersedCondition()"
+convert_for_netcdf(::InterfaceImmersedCondition) = "InterfaceImmersedCondition()"
 
 materialize_from_netcdf(dict::AbstractDict) = OrderedDict(Symbol(key) => materialize_from_netcdf(value) for (key, value) in dict)
 materialize_from_netcdf(x::Number) = x
 materialize_from_netcdf(x::Array) = Tuple(x)
 materialize_from_netcdf(x::String) = @eval $(Meta.parse(x))
 
-function write_grid_reconstruction_data!(ds, grid; array_type=Array{eltype(grid)}, deflatelevel=0)
-    grid_attrs, grid_dims = grid_attributes(grid)
+function netcdf_grid_constructor_info(grid)
+    underlying_grid_args, underlying_grid_kwargs = constructor_arguments(grid)
 
-    sorted_grid_attrs = sort(collect(pairs(grid_attrs)), by=first) # Organizes attributes to make it more easily human-readable
-    ds_grid = defGroup(ds, "grid_attributes"; attrib = sorted_grid_attrs)
-    for (dim_name, dim_array) in grid_dims
-        defVar(ds_grid, dim_name, array_type(dim_array), (dim_name,); deflatelevel)
+    immersed_grid_args = Dict()
+
+    underlying_grid_type = typeof(grid).name.wrapper |> string # Save type of grid for reconstruction
+    grid_metadata = Dict(:immersed_boundary_type => nothing,
+                         :underlying_grid_type => underlying_grid_type)
+    return underlying_grid_args, underlying_grid_kwargs, immersed_grid_args, grid_metadata
+end
+
+function netcdf_grid_constructor_info(grid::ImmersedBoundaryGrid)
+    underlying_grid_args, underlying_grid_kwargs, immersed_grid_args = constructor_arguments(grid)
+
+    immersed_boundary_type = typeof(grid.immersed_boundary).name.wrapper |> string # Save type of immersed boundary for reconstruction
+    underlying_grid_type   = typeof(grid.underlying_grid).name.wrapper |> string # Save type of underlying grid for reconstruction
+
+    grid_metadata = Dict(:immersed_boundary_type => immersed_boundary_type,
+                         :underlying_grid_type => underlying_grid_type)
+    return underlying_grid_args, underlying_grid_kwargs, immersed_grid_args, grid_metadata
+end
+
+function write_immersed_boundary_data!(ds, grid::ImmersedBoundaryGrid, immersed_grid_args)
+    group_name = "immersed_grid_reconstruction_args"
+    if (grid.immersed_boundary isa GridFittedBottom) || (grid.immersed_boundary isa PartialCellBottom)
+        bottom_height = pop!(immersed_grid_args, :bottom_height)
+        ibg_group = defGroup(ds, group_name; attrib=convert_for_netcdf(immersed_grid_args))
+        defVar(ibg_group, "bottom_height", bottom_height)
+
+    elseif grid.immersed_boundary isa GridFittedBoundary
+        mask = pop!(immersed_grid_args, :mask)
+        ibg_group = defGroup(ds, group_name; attrib=convert_for_netcdf(immersed_grid_args))
+        defVar(ibg_group, "mask", mask)
     end
 
-    args, kwargs = constructor_arguments(grid)
+    return ds
+end
 
-    # This is needed for now to prevent NetCDF from throwing an error, but precludes
-    # us from reconstructing immersed grids from NetCDF. This is a temporary fix.
-    :mask ∈ keys(args) && delete!(args, :mask)
-    :bottom_height ∈ keys(args) && delete!(args, :bottom_height)
+write_immersed_boundary_data!(ds, grid, immersed_grid_args) = nothing
 
-    args, kwargs = map(convert_for_netcdf, (args, kwargs))
-    args["grid_type"] = typeof(grid).name.wrapper |> string # Save type of grid for reconstruction
+function write_grid_reconstruction_data!(ds, grid; array_type=Array{eltype(grid)}, deflatelevel=0)
+    underlying_grid_args, underlying_grid_kwargs, immersed_grid_args, grid_metadata = netcdf_grid_constructor_info(grid)
+    underlying_grid_args, underlying_grid_kwargs, grid_metadata = map(convert_for_netcdf, (underlying_grid_args, underlying_grid_kwargs, grid_metadata))
 
-    defGroup(ds, "grid_reconstruction_args"; attrib = args)
-    defGroup(ds, "grid_reconstruction_kwargs"; attrib = kwargs)
+    defGroup(ds, "underlying_grid_reconstruction_args"; attrib = underlying_grid_args)
+    defGroup(ds, "underlying_grid_reconstruction_kwargs"; attrib = underlying_grid_kwargs)
+    defGroup(ds, "grid_reconstruction_metadata"; attrib = grid_metadata)
+
+    write_immersed_boundary_data!(ds, grid, immersed_grid_args)
 
     return ds
 end
@@ -829,23 +820,51 @@ function reconstruct_grid(filename::String)
     return grid
 end
 
+function reconstruct_immersed_boundary(ds)
+    ibg_group = ds.group["immersed_grid_reconstruction_args"]
+
+    grid_reconstruction_metadata = ds.group["grid_reconstruction_metadata"].attrib |> materialize_from_netcdf
+    immersed_boundary_type = grid_reconstruction_metadata[:immersed_boundary_type]
+    if immersed_boundary_type == GridFittedBottom
+        bottom_height = Array(ibg_group["bottom_height"])
+        immersed_condition = ibg_group.attrib["immersed_condition"] |> materialize_from_netcdf
+        immersed_boundary = immersed_boundary_type(bottom_height, immersed_condition)
+
+    elseif immersed_boundary_type == PartialCellBottom
+        bottom_height = Array(ibg_group["bottom_height"])
+        minimum_fractional_cell_height = ibg_group.attrib["minimum_fractional_cell_height"] |> materialize_from_netcdf
+        immersed_boundary = immersed_boundary_type(bottom_height, minimum_fractional_cell_height)
+
+    elseif immersed_boundary_type == GridFittedBoundary
+        mask = Array(ibg_group["mask"])
+        immersed_boundary = immersed_boundary_type(mask)
+
+    else
+        error("Unsupported immersed boundary type: $immersed_boundary_type")
+    end
+    return immersed_boundary
+end
+
+
 function reconstruct_grid(ds)
     # Read back the grid reconstruction metadata
-    grid_reconstruction_args = ds.group["grid_reconstruction_args"].attrib |> materialize_from_netcdf
-    grid_reconstruction_kwargs = ds.group["grid_reconstruction_kwargs"].attrib |> materialize_from_netcdf
+    underlying_grid_reconstruction_args   = ds.group["underlying_grid_reconstruction_args"].attrib |> materialize_from_netcdf
+    underlying_grid_reconstruction_kwargs = ds.group["underlying_grid_reconstruction_kwargs"].attrib |> materialize_from_netcdf
+    grid_reconstruction_metadata          = ds.group["grid_reconstruction_metadata"].attrib |> materialize_from_netcdf
 
-    # Pop out infomration about grid type and immersed boundary type from Dict
-    grid_type = pop!(grid_reconstruction_args, :grid_type)
-    is_immersed = haskey(grid_reconstruction_args, :immersed_boundary_type)
-    if is_immersed
-        ib_type = pop!(grid_reconstruction_args, :immersed_boundary_type)
+    # Pop out infomration about the underlying grid
+    underlying_grid_type = grid_reconstruction_metadata[:underlying_grid_type]
+    underlying_grid = underlying_grid_type(values(underlying_grid_reconstruction_args)...; underlying_grid_reconstruction_kwargs...)
+
+    # If this is an ImmersedBoundaryGrid, reconstruct the immersed boundary, otherwise underlying grid is the final grid
+    if isnothing(grid_reconstruction_metadata[:immersed_boundary_type])
+        grid = underlying_grid
+    else
+        immersed_boundary = reconstruct_immersed_boundary(ds)
+        immersed_boundary = on_architecture(architecture(underlying_grid), immersed_boundary)
+        grid = ImmersedBoundaryGrid(underlying_grid, immersed_boundary)
     end
 
-    # Reconstruct the grid which may or may not be an underlying grid to an ImmersedBoundaryGrid
-    maybe_underlying_grid = grid_type(values(grid_reconstruction_args)...; grid_reconstruction_kwargs...)
-
-    # If this is an ImmersedBoundaryGrid, reconstruct the immersed boundary
-    grid = is_immersed ? ImmersedBoundaryGrid(maybe_underlying_grid, ib_type) : maybe_underlying_grid
     return grid
 end
 
@@ -992,7 +1011,7 @@ Optional keyword arguments
 - `verbose`: Log variable compute times, file write times, and file sizes. Default: `false`.
 
 - `deflatelevel`: Determines the NetCDF compression level of data (integer 0-9; 0 (default) means no compression
-                  and 9 means maximum compression). See [NCDatasets.jl documentation](https://alexander-barth.github.io/NCDatasets.jl/stable/variables/#Creating-a-variable)
+                  and 9 means maximum compression). See [NCDatasets.jl documentation](https://juliageo.org/NCDatasets.jl/stable/variables/#Creating-a-variable)
                   for more information.
 
 - `part`: The starting part number used when file splitting. Default: `1`.
@@ -1020,7 +1039,7 @@ using Oceananigans
 
 grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
 
-model = NonhydrostaticModel(grid=grid, tracers=:c)
+model = NonhydrostaticModel(grid; tracers=:c)
 
 simulation = Simulation(model, Δt=12, stop_time=3600)
 
@@ -1054,7 +1073,7 @@ Nx, Ny, Nz = 16, 16, 16
 
 grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(1, 2, 3))
 
-model = NonhydrostaticModel(; grid)
+model = NonhydrostaticModel(grid)
 
 simulation = Simulation(model, Δt=1.25, stop_iteration=3)
 
@@ -1094,7 +1113,7 @@ using Oceananigans
 using Oceananigans.Fields: interpolate!
 
 grid = RectilinearGrid(size=(1, 1, 8), extent=(1, 1, 1));
-model = NonhydrostaticModel(; grid)
+model = NonhydrostaticModel(grid)
 
 coarse_grid = RectilinearGrid(size=(grid.Nx, grid.Ny, grid.Nz÷2), extent=(grid.Lx, grid.Ly, grid.Lz))
 coarse_u = Field{Face, Center, Center}(coarse_grid)
@@ -1157,7 +1176,7 @@ function NetCDFWriter(model::AbstractModel, outputs;
         end
     end
 
-    outputs = Dict(string(name) => construct_output(outputs[name], grid, indices, with_halos) for name in keys(outputs))
+    outputs = Dict(string(name) => construct_output(outputs[name], indices, with_halos) for name in keys(outputs))
 
     output_attributes = dictify(output_attributes)
     global_attributes = dictify(global_attributes)
@@ -1283,7 +1302,7 @@ function initialize_nc_file(model,
 
         if !isempty(time_independent_vars)
             for (output_name, output) in sort(collect(pairs(time_independent_vars)), by=first)
-                output = construct_output(output, grid, indices, with_halos)
+                output = construct_output(output, indices, with_halos)
                 attrib = haskey(output_attributes, output_name) ? output_attributes[output_name] : Dict()
                 materialized = materialize_output(output, model)
 
@@ -1385,7 +1404,7 @@ function define_output_variable!(model, dataset, output::AbstractField, output_n
                                  dimensions, filepath, dimension_type=Float64)
 
     # If the output is the free surface, we need to handle it differently since it will be writen as a 3D array with a singleton dimension for the z-coordinate
-    if output_name == "η" && output == view(model.free_surface.η, output.indices...)
+    if output_name == "η" && output == view(model.free_surface.displacement, output.indices...)
         local default_dimension_name_generator = dimension_name_generator
         dimension_name_generator = (var_name, grid, LX, LY, LZ, dim) -> dimension_name_generator_free_surface(default_dimension_name_generator, var_name, grid, LX, LY, LZ, dim)
     end

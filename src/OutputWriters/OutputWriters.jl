@@ -3,7 +3,7 @@ module OutputWriters
 export
     JLD2Writer, NetCDFWriter, written_names,
     Checkpointer, WindowedTimeAverage, FileSizeLimit,
-    TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval
+    TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval, AveragedSpecifiedTimes
 
 using Oceananigans.Architectures
 using Oceananigans.Grids
@@ -23,6 +23,9 @@ const f = Face()
 
 Base.open(ow::AbstractOutputWriter) = nothing
 Base.close(ow::AbstractOutputWriter) = nothing
+
+# Default fallback: most output writers don't need special initialization
+initialize!(::AbstractOutputWriter, model) = nothing
 
 include("output_writer_utils.jl")
 include("fetch_output.jl")

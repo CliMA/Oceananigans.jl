@@ -4,14 +4,11 @@ import Oceananigans.Models: complete_communication_and_compute_buffer!
 import Oceananigans.Models: interior_tendency_kernel_parameters
 
 using Oceananigans: fields, prognostic_fields, TendencyCallsite, UpdateStateCallsite
-using Oceananigans.Utils: work_layout, KernelParameters
-using Oceananigans.Grids: halo_size
+using Oceananigans.Utils: KernelParameters
+using Oceananigans.Grids: halo_size, get_active_cells_map
 using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
-
-using Oceananigans.ImmersedBoundaries: get_active_cells_map, ActiveInteriorIBG,
-                                       linear_index_to_tuple
 
 """
     compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
@@ -124,11 +121,11 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args..., v_forcing)
 
     launch!(arch, grid, kernel_parameters,
-            compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid, 
+            compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid,
             u_kernel_args; active_cells_map)
 
     launch!(arch, grid, kernel_parameters,
-            compute_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid, 
+            compute_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid,
             v_kernel_args; active_cells_map)
 
     return nothing

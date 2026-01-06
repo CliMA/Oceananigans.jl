@@ -13,7 +13,7 @@ using Oceananigans.Solvers
 using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: reconstruct_global_grid, Distributed
 using Oceananigans.DistributedComputations: DistributedFFTBasedPoissonSolver, DistributedFourierTridiagonalPoissonSolver
-using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
+using Oceananigans.Grids: XYZRegularRG
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver, ConjugateGradientPoissonSolver
 using Oceananigans.Solvers: InhomogeneousFormulation, ZDirection
@@ -21,6 +21,7 @@ using Oceananigans.Utils: sum_of_velocities
 
 import Oceananigans: fields, prognostic_fields
 import Oceananigans.Advection: cell_advection_timescale
+import Oceananigans.Simulations: timestepper
 import Oceananigans.TimeSteppers: step_lagrangian_particles!
 
 function nonhydrostatic_pressure_solver(::Distributed, local_grid::XYZRegularRG, ::Nothing)

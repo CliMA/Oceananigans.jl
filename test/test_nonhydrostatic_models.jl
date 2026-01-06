@@ -11,9 +11,9 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
     for grid in grids
         @testset "$grid grid construction" begin
             @info "  Testing $grid grid construction..."
-                @test_throws TypeError NonhydrostaticModel(; grid, boundary_conditions=1)
-                @test_throws TypeError NonhydrostaticModel(; grid, forcing=2)
-                @test_throws TypeError NonhydrostaticModel(; grid, background_fields=3)
+                @test_throws TypeError NonhydrostaticModel(grid; boundary_conditions=1)
+                @test_throws TypeError NonhydrostaticModel(grid; forcing=2)
+                @test_throws TypeError NonhydrostaticModel(grid; background_fields=3)
 
         end
     end
@@ -30,7 +30,7 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
                 arch isa GPU && topo == (Bounded, Bounded, Bounded) && continue
 
                 grid = RectilinearGrid(arch, FT, topology=topo, size=(16, 16, 2), extent=(1, 2, 3))
-                model = NonhydrostaticModel(; grid)
+                model = NonhydrostaticModel(grid)
 
                 @test model isa NonhydrostaticModel
             end
@@ -44,54 +44,54 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
           funny_grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 2, 3), halo=(1, 3, 4))
 
         # Model ensures that halos are at least of size 1
-        model = NonhydrostaticModel(grid=minimal_grid)
+        model = NonhydrostaticModel(minimal_grid)
         @test model.grid.Hx == 1 && model.grid.Hy == 1 && model.grid.Hz == 1
 
-        model = NonhydrostaticModel(grid=funny_grid)
+        model = NonhydrostaticModel(funny_grid)
         @test model.grid.Hx == 1 && model.grid.Hy == 3 && model.grid.Hz == 4
 
         # Model ensures that halos are at least of size 2
         for scheme in (Centered(order=4), UpwindBiased(order=3))
-            model = NonhydrostaticModel(advection=scheme, grid=minimal_grid)
+            model = NonhydrostaticModel(minimal_grid; advection=scheme)
             @test model.grid.Hx == 2 && model.grid.Hy == 2 && model.grid.Hz == 2
 
-            model = NonhydrostaticModel(advection=scheme, grid=funny_grid)
+            model = NonhydrostaticModel(funny_grid; advection=scheme)
             @test model.grid.Hx == 2 && model.grid.Hy == 3 && model.grid.Hz == 4
         end
 
         # Model ensures that halos are at least of size 3
         for scheme in (WENO(), UpwindBiased(order=5))
-            model = NonhydrostaticModel(advection=scheme, grid=minimal_grid)
+            model = NonhydrostaticModel(minimal_grid; advection=scheme)
             @test model.grid.Hx == 3 && model.grid.Hy == 3 && model.grid.Hz == 3
 
-            model = NonhydrostaticModel(advection=scheme, grid=funny_grid)
+            model = NonhydrostaticModel(funny_grid; advection=scheme)
             @test model.grid.Hx == 3 && model.grid.Hy == 3 && model.grid.Hz == 4
         end
 
         # Model ensures that halos are at least of size 2 with ScalarBiharmonicDiffusivity
-        model = NonhydrostaticModel(closure=ScalarBiharmonicDiffusivity(), grid=minimal_grid)
+        model = NonhydrostaticModel(minimal_grid; closure=ScalarBiharmonicDiffusivity())
         @test model.grid.Hx == 2 && model.grid.Hy == 2 && model.grid.Hz == 2
 
-        model = NonhydrostaticModel(closure=ScalarBiharmonicDiffusivity(), grid=funny_grid)
+        model = NonhydrostaticModel(funny_grid; closure=ScalarBiharmonicDiffusivity())
         @test model.grid.Hx == 2 && model.grid.Hy == 3 && model.grid.Hz == 4
 
         @info "  Testing adjustment of advection schemes in NonhydrostaticModel constructor..."
         small_grid = RectilinearGrid(size=(4, 2, 4), extent=(1, 2, 3), halo=(1, 1, 1))
 
         # Model ensures that halos are at least of size 1
-        model = NonhydrostaticModel(grid=small_grid, advection=WENO())
+        model = NonhydrostaticModel(small_grid, advection=WENO())
         @test model.advection isa FluxFormAdvection
         @test required_halo_size_x(model.advection) == 3
         @test required_halo_size_y(model.advection) == 2
         @test required_halo_size_z(model.advection) == 3
 
-        model = NonhydrostaticModel(grid=small_grid, advection=UpwindBiased(; order = 9))
+        model = NonhydrostaticModel(small_grid, advection=UpwindBiased(; order = 9))
         @test model.advection isa FluxFormAdvection
         @test required_halo_size_x(model.advection) == 4
         @test required_halo_size_y(model.advection) == 2
         @test required_halo_size_z(model.advection) == 4
 
-        model = NonhydrostaticModel(grid=small_grid, advection=Centered(; order = 10))
+        model = NonhydrostaticModel(small_grid, advection=Centered(; order = 10))
         @test model.advection isa FluxFormAdvection
         @test required_halo_size_x(model.advection) == 4
         @test required_halo_size_y(model.advection) == 2
@@ -102,12 +102,27 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
         @info "  Testing model construction with single tracer and nothing tracer..."
         for arch in archs
             for grid in grids
-                model = NonhydrostaticModel(; grid, tracers=:c, buoyancy=nothing)
+                model = NonhydrostaticModel(grid; tracers = :c)
                 @test model isa NonhydrostaticModel
 
-                model = NonhydrostaticModel(; grid, tracers=nothing, buoyancy=nothing)
+                model = NonhydrostaticModel(grid)
                 @test model isa NonhydrostaticModel
             end
+        end
+    end
+
+    @testset "Hydrostatic pressure anomaly with periodic vertical topology" begin
+        @info "  Testing hydrostatic pressure anomaly with periodic vertical topology..."
+        for arch in archs
+            grid = RectilinearGrid(arch, size=(4, 4), extent=(1, 1), topology=(Flat, Bounded, Periodic))
+            model = NonhydrostaticModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+            @test isnothing(model.pressures.pHY′)
+
+            model = NonhydrostaticModel(grid; buoyancy=nothing)
+            @test isnothing(model.pressures.pHY′)
+
+            model = NonhydrostaticModel(grid; buoyancy = BuoyancyTracer(), tracers = :b)
+            @test isnothing(model.pressures.pHY′)
         end
     end
 
@@ -121,9 +136,9 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
                                                topology = (Periodic, Bounded, Bounded))
             latlon_grid = LatitudeLongitudeGrid(arch, FT; size=N, latitude=(-1, 1), longitude=(-1, 1), z=(-100, 0),
                                                 topology = (Periodic, Bounded, Bounded))
-            
+
             for grid in (rectilinear_grid, latlon_grid)
-                model = NonhydrostaticModel(; grid, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+                model = NonhydrostaticModel(grid; buoyancy = SeawaterBuoyancy(), tracers = (:T, :S))
 
                 u, v, w = model.velocities
                 T, S = model.tracers
@@ -196,11 +211,11 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
                 # Test setting the background_fields to a Field
                 U_field = XFaceField(grid)
                 U_field .= 1
-                model = NonhydrostaticModel(; grid, background_fields = (u=U_field,))
+                model = NonhydrostaticModel(grid; background_fields = (u=U_field,))
                 @test model.background_fields.velocities.u isa Field
 
                 U_field = CenterField(grid)
-                @test_throws ArgumentError NonhydrostaticModel(; grid, background_fields = (u=U_field,))
+                @test_throws ArgumentError NonhydrostaticModel(grid; background_fields = (u=U_field,))
             end
         end
     end

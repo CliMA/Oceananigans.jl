@@ -72,7 +72,7 @@ function run_distributed_tripolar_grid(arch, filename)
     distributed_grid = analytical_immersed_tripolar_grid(distributed_grid)
     model            = run_distributed_simulation(distributed_grid)
 
-    η = reconstruct_global_field(model.free_surface.η)
+    η = reconstruct_global_field(model.free_surface.displacement)
     u = reconstruct_global_field(model.velocities.u)
     v = reconstruct_global_field(model.velocities.v)
     c = reconstruct_global_field(model.tracers.c)
@@ -113,7 +113,7 @@ function run_distributed_latitude_longitude_grid(arch, filename)
     distributed_grid = ImmersedBoundaryGrid(distributed_grid, GridFittedBottom(bottom_height))
     model = run_distributed_simulation(distributed_grid)
 
-    η = reconstruct_global_field(model.free_surface.η)
+    η = reconstruct_global_field(model.free_surface.displacement)
     u = reconstruct_global_field(model.velocities.u)
     v = reconstruct_global_field(model.velocities.v)
     c = reconstruct_global_field(model.tracers.c)
@@ -131,13 +131,12 @@ end
 # Just a random simulation on a tripolar grid
 function run_distributed_simulation(grid)
 
-    model = HydrostaticFreeSurfaceModel(; grid = grid,
-                                          free_surface = SplitExplicitFreeSurface(grid; substeps = 20),
-                                          tracers = :c,
-                                          buoyancy = nothing,
-                                          tracer_advection = WENO(),
-                                          momentum_advection = WENOVectorInvariant(order=3),
-                                          coriolis = HydrostaticSphericalCoriolis())
+    model = HydrostaticFreeSurfaceModel(grid;
+                                        free_surface = SplitExplicitFreeSurface(grid; substeps = 20),
+                                        tracers = :c,
+                                        tracer_advection = WENO(),
+                                        momentum_advection = WENOVectorInvariant(order=3),
+                                        coriolis = HydrostaticSphericalCoriolis())
 
     # Setup the model with a gaussian sea surface height
     # near the physical north poles and one near the equator

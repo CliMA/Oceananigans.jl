@@ -3,7 +3,6 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.Operators: Δxᶠᵃᵃ, Δxᶜᵃᵃ, Δxᶠᶠᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶜᶜᵃ
 using Oceananigans.Operators: Δyᵃᶠᵃ, Δyᵃᶜᵃ, Δyᶠᶠᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶜᶜᵃ
 
-using Oceananigans.Operators: Δzᵃᵃᶜ, Δzᵃᵃᶠ
 
 function test_three_dimensional_differences(T=Float64)
     grid = RectilinearGrid(CPU(), T; size=(3, 3, 3), extent=(3, 3, 3))
