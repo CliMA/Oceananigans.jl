@@ -1,4 +1,5 @@
-using Oceananigans.Grids: AbstractUnderlyingGrid
+using Oceananigans.Grids: AbstractUnderlyingGrid, Bounded, LeftConnected, Periodic,
+    RightConnected
 
 const AGXB = AbstractUnderlyingGrid{FT, Bounded} where FT
 const AGXP = AbstractUnderlyingGrid{FT, Periodic} where FT
