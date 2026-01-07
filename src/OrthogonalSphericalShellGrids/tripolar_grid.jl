@@ -123,7 +123,10 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
 
     # Start with the NH stereographic projection
     # TODO: make these on_architecture(arch, zeros(Nx, Ny + 1))
-    # to build the grid on GPU
+    #       to build the grid on GPU
+    # TODO: Use correct kernel indexes for the different locations.
+    #       Nφ + 1 is the largest y-direction size is OK here
+    #       because of the subsequent call to `fill_halo_regions!`?
     λFF = zeros(Nλ, Nφ + 1)
     φFF = zeros(Nλ, Nφ + 1)
     λFC = zeros(Nλ, Nφ + 1)

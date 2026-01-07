@@ -114,7 +114,7 @@ struct RightFaceFolded <: AbstractTopology end
 """
     RightCenterFolded
 
-Grid topology for tripolar T-point pivot connection.
+Grid topology for tripolar U-point pivot connection.
 (folded north boundary along center locations).
 """
 struct RightCenterFolded <: AbstractTopology end
