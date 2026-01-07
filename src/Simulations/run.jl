@@ -57,27 +57,43 @@ function aligned_time_step(sim::Simulation, Δt)
 end
 
 """
-    set!(simulation, pickup)
+    set!(simulation; checkpoint=nothing, iteration=nothing)
 
 Restore `simulation` state from a checkpoint file.
 
-Possible values for `pickup` are:
+Keyword arguments
+=================
 
-  * `pickup=true` restores from the latest checkpoint associated with
+- `checkpoint`: Specifies the checkpoint source. Can be:
+  - `:latest` to restore from the latest checkpoint associated with
     the `Checkpointer` in `simulation.output_writers`.
+  - A `String` filepath to restore from checkpointer data in that file.
 
-  * `pickup=iteration::Int` restores from the checkpointed file associated
-    with `iteration` and the `Checkpointer` in `simulation.output_writers`.
+- `iteration`: An `Integer` specifying the iteration number to restore from.
+  Uses the `Checkpointer` in `simulation.output_writers` to locate the file.
 
-  * `pickup=filepath::String` restores from checkpointer data in `filepath`.
-
-Note: `pickup=true` and `pickup=iteration` require that `simulation.output_writers`
+Note: Only one of `checkpoint` or `iteration` should be specified.
+The `iteration` keyword and `checkpoint=:latest` require that `simulation.output_writers`
 contains exactly one checkpointer.
 
 See also [`run!`](@ref), which accepts a `pickup` keyword argument.
 """
-function set!(sim::Simulation, pickup::Union{Bool, Integer, String})
-    checkpoint_filepath = checkpoint_path(pickup, sim.output_writers)
+function set!(sim::Simulation; checkpoint=nothing, iteration=nothing)
+    nargs = count(!isnothing, (checkpoint, iteration))
+
+    nargs == 0 && return nothing
+    nargs > 1 && throw(ArgumentError("Only one of `checkpoint` or `iteration` should be specified."))
+
+    checkpoint_filepath = if !isnothing(iteration)
+        checkpoint_path(iteration, sim.output_writers)
+    elseif checkpoint === :latest
+        checkpoint_path(true, sim.output_writers)
+    elseif checkpoint isa String
+        checkpoint_path(checkpoint, sim.output_writers)
+    else
+        throw(ArgumentError("Invalid checkpoint=$checkpoint. Expected :latest or a String filepath."))
+    end
+
     state = load_checkpoint_state(checkpoint_filepath)
     restore_prognostic_state!(sim, state)
     return nothing
@@ -116,7 +132,13 @@ function run!(sim; pickup=false)
     start_run = time_ns()
 
     if we_want_to_pickup(pickup)
-        set!(sim, pickup)
+        if pickup === true
+            set!(sim; checkpoint=:latest)
+        elseif pickup isa Integer
+            set!(sim; iteration=pickup)
+        elseif pickup isa String
+            set!(sim; checkpoint=pickup)
+        end
     end
 
     sim.initialized = false

@@ -70,9 +70,9 @@ The [`set!`](@ref) function can also be used to restore from a checkpoint withou
 running the simulation:
 
 ```julia
-set!(simulation, filepath)   # restore from specific file (no Checkpointer required)
-set!(simulation, true)       # restore from latest checkpoint (requires Checkpointer)
-set!(simulation, iteration)  # restore from specific iteration (requires Checkpointer)
+set!(simulation; checkpoint="path/to/file.jld2")  # restore from specific file
+set!(simulation; checkpoint=:latest)               # restore from latest checkpoint (requires Checkpointer)
+set!(simulation; iteration=12345)                  # restore from specific iteration (requires Checkpointer)
 ```
 
 ## Checkpointing on wall-clock time
