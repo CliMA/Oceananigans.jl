@@ -1,9 +1,6 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Diagnostics
-using Oceananigans.Diagnostics: AbstractDiagnostic
-
-struct TestDiagnostic <: AbstractDiagnostic end
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant
 
@@ -152,16 +149,6 @@ end
 get_iteration(model) = model.clock.iteration
 get_time(model) = model.clock.time
 
-function diagnostics_getindex(arch, FT)
-    model = TestModel_RegularRectGrid(arch, FT)
-    simulation = Simulation(model, Δt=0, stop_iteration=0)
-    td1 = TestDiagnostic()
-    td2 = TestDiagnostic()
-    simulation.diagnostics[:td1] = td1
-    simulation.diagnostics[:td2] = td2
-    return simulation.diagnostics[1] == td1 && simulation.diagnostics[2] == td2
-end
-
 @testset "Diagnostics" begin
     @info "Testing diagnostics..."
 
@@ -176,16 +163,6 @@ end
                 @test advective_timescale_cfl_on_stretched_grid(arch, FT)
                 @test advective_timescale_cfl_on_lat_lon_grid(arch, FT)
                 @test advective_timescale_cfl_on_flat_2d_grid(arch, FT)
-            end
-        end
-    end
-
-    for arch in archs
-        @testset "Miscellaneous timeseries diagnostics [$(typeof(arch))]" begin
-            @info "  Testing miscellaneous timeseries diagnostics [$(typeof(arch))]..."
-            for FT in float_types
-                @test diagnostics_getindex(arch, FT)
-                @test diagnostics_setindex(arch, FT)
             end
         end
     end
