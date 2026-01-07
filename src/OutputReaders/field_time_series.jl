@@ -18,7 +18,7 @@ using Oceananigans.Grids: topology, total_size, interior_parent_indices, Abstrac
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 
 using Oceananigans.Fields: interior_view_indices,
-                           indices_summary, boundary_conditions, instantiate
+                           indices_summary, instantiate
 
 using Oceananigans.Units: Time
 using Oceananigans.Utils: launch!

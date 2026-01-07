@@ -149,7 +149,7 @@ max_c²[1:Nx, 1:Ny]
 ```
 """
 Reduction(reduce!, operand; dims) = Scan(Reducing(), reduce!, operand, dims)
-location(r::Reduction) = reduced_location(location(r.operand); dims=r.dims)
+Oceananigans.location(r::Reduction) = reduced_location(location(r.operand); dims=r.dims)
 
 #####
 ##### Accumulations (where the output has the same dimensions as the input)
@@ -204,7 +204,7 @@ Accumulation(accumulate!, operand; dims) = Scan(Accumulating(), accumulate!, ope
 flip(::Type{Face}) = Center
 flip(::Type{Center}) = Face
             
-function location(a::Accumulation)
+function Oceananigans.location(a::Accumulation)
     op_loc = location(a.operand)
     loc = Tuple(d ∈ a.dims ? flip(op_loc[d]) : op_loc[d] for d=1:3)
     return loc

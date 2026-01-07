@@ -5,6 +5,7 @@ export FieldTimeSeries
 export InMemory, OnDisk
 export Cyclical, Linear, Clamp
 
+using Oceananigans: boundary_conditions
 using Oceananigans.Utils: @apply_regionally
 
 struct JLD2Path
