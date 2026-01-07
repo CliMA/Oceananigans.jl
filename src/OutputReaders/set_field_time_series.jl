@@ -23,7 +23,7 @@ find_time_index(time::AbstractTime, file_times, Δt) = findfirst(t -> t == time,
 # Extended in OceananigansNCDatasetsExt
 set_from_netcdf!(fts, path::String, args...; kwargs...) = error("Setting FieldTimeSeries from NetCDF files requires NCDatasets")
 
-function set!(fts::InMemoryFTS, path::String=fts.path, args...; kwargs...)
+function set!(fts::InMemoryFTS, path::String, args::String...; kwargs...)
     if endswith(path, ".jld2")
         file = jldopen(path; fts.reader_kw...)
         set!(fts, file, args...; kwargs...)
@@ -33,6 +33,11 @@ function set!(fts::InMemoryFTS, path::String=fts.path, args...; kwargs...)
     else
         error("Unsupported file extension: $(path)")
     end
+end
+
+# Convenience method with default path
+function set!(fts::InMemoryFTS; kwargs...)
+    return set!(fts, fts.path; kwargs...)
 end
 
 function set!(fts::InMemoryFTS, file::JLD2.JLDFile, name::String=fts.name; warn_missing_data=true)
