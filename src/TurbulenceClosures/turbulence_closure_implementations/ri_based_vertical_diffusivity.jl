@@ -3,6 +3,9 @@ using Oceananigans.BuoyancyFormulations: ∂z_b, top_buoyancy_flux
 using Oceananigans.Operators
 using Oceananigans.Grids: inactive_node
 using Oceananigans.Operators: ℑzᵃᵃᶜ
+using Oceananigans.Utils: time_difference_seconds
+
+import Oceananigans: prognostic_state, restore_prognostic_state!
 
 struct RiBasedVerticalDiffusivity{TD, FT, R, HR} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 1}
     ν₀  :: FT
@@ -187,7 +190,14 @@ function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfR
     κc = Field{Center, Center, Face}(grid)
     κu = Field{Center, Center, Face}(grid)
     Ri = Field{Center, Center, Face}(grid)
-    return (; κc, κu, Ri)
+    previous_compute_time = Ref(clock.time)
+    return (; κc, κu, Ri, previous_compute_time)
+end
+
+function update_previous_compute_time!(diffusivities, model)
+    Δt = time_difference_seconds(model.clock.time, diffusivities.previous_compute_time[])
+    diffusivities.previous_compute_time[] = model.clock.time
+    return Δt
 end
 
 function compute_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; parameters = :xyz)
@@ -198,6 +208,12 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; par
     buoyancy = buoyancy_force(model)
     velocities = model.velocities
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
+    Δt = update_previous_compute_time!(diffusivities, model)
+
+    # Skip recomputation if Δt == 0 (e.g., after checkpoint restore).
+    # The diffusivity fields are restored from the checkpoint and are already correct.
+    # Recomputing would incorrectly apply the time-averaging formula again.
+    Δt == 0 && return nothing
 
     launch!(arch, grid, parameters,
             compute_ri_number!,
@@ -358,4 +374,28 @@ function Base.show(io::IO, closure::RiBasedVerticalDiffusivity)
     print(io, "├── Riᵟ: ", prettysummary(closure.Riᵟ), '\n')
     print(io, "├── maximum_diffusivity: ", prettysummary(closure.maximum_diffusivity), '\n')
     print(io, "└── maximum_viscosity: ", prettysummary(closure.maximum_viscosity))
+end
+
+#####
+##### Checkpointing
+#####
+
+# RiBasedVerticalDiffusivity uses time-averaging when Cᵃᵛ > 0, storing the running average
+# in κc and κu. So these fields need to be checkpointed.
+
+function prognostic_state(closure_fields::NamedTuple{(:κc, :κu, :Ri, :previous_compute_time)})
+    return (
+        κc = prognostic_state(closure_fields.κc),
+        κu = prognostic_state(closure_fields.κu),
+        Ri = prognostic_state(closure_fields.Ri),
+        previous_compute_time = closure_fields.previous_compute_time[],
+    )
+end
+
+function restore_prognostic_state!(closure_fields::NamedTuple{(:κc, :κu, :Ri, :previous_compute_time)}, state)
+    restore_prognostic_state!(closure_fields.κc, state.κc)
+    restore_prognostic_state!(closure_fields.κu, state.κu)
+    restore_prognostic_state!(closure_fields.Ri, state.Ri)
+    closure_fields.previous_compute_time[] = state.previous_compute_time
+    return closure_fields
 end
