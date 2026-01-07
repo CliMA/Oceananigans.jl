@@ -177,59 +177,55 @@ function test_thermal_bubble_checkpointing(arch, timestepper, model_type::Symbol
     Lx, Ly, Lz = 100, 100, 100
     Δt = 6
 
-    grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+    bubble(x, y, z) = 0.01 * exp(-100 * ((x - Lx/2)^2 + (y - Ly/2)^2 + (z - Lz/2)^2) / (Lx^2 + Ly^2 + Lz^2))
 
-    if model_type == :nonhydrostatic
-        model = NonhydrostaticModel(grid; timestepper,
-                                    closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
-                                    buoyancy = SeawaterBuoyancy(),
-                                    tracers = (:T, :S))
-    elseif model_type == :hydrostatic
-        model = HydrostaticFreeSurfaceModel(grid; timestepper,
-                                            closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
-                                            buoyancy = SeawaterBuoyancy(),
-                                            tracers = (:T, :S))
+    function make_model()
+        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+        if model_type == :nonhydrostatic
+            return NonhydrostaticModel(grid; timestepper,
+                                       closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
+                                       buoyancy = SeawaterBuoyancy(),
+                                       tracers = (:T, :S))
+        elseif model_type == :hydrostatic
+            return HydrostaticFreeSurfaceModel(grid; timestepper,
+                                               closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
+                                               buoyancy = SeawaterBuoyancy(),
+                                               tracers = (:T, :S))
+        end
     end
 
-    bubble(x, y, z) = 0.01 * exp(-100 * ((x - Lx/2)^2 + (y - Ly/2)^2 + (z - Lz/2)^2) / (Lx^2 + Ly^2 + Lz^2))
-    set!(model, T=bubble, S=bubble)
+    # Reference run: 10 iterations continuously
+    ref_model = make_model()
+    set!(ref_model, T=bubble, S=bubble)
+    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    @test_nowarn run!(ref_simulation)
 
+    # Checkpointed run: 5 iterations, checkpoint, then another 5 iterations
+    model = make_model()
+    set!(model, T=bubble, S=bubble)
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
     prefix = "thermal_bubble_checkpointing_$(model_type)_$(typeof(arch))"
-    checkpointer = Checkpointer(model,
-                                schedule = IterationInterval(5),
-                                prefix = prefix)
-
-    simulation.output_writers[:checkpointer] = checkpointer
+    simulation.output_writers[:checkpointer] = Checkpointer(model,
+                                                            schedule = IterationInterval(5),
+                                                            prefix = prefix)
 
     @test_nowarn run!(simulation)
 
-    new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-
-    if model_type == :nonhydrostatic
-        new_model = NonhydrostaticModel(new_grid; timestepper,
-                                        closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
-                                        buoyancy = SeawaterBuoyancy(),
-                                        tracers = (:T, :S))
-    elseif model_type == :hydrostatic
-        new_model = HydrostaticFreeSurfaceModel(new_grid; timestepper,
-                                                closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
-                                                buoyancy = SeawaterBuoyancy(),
-                                                tracers = (:T, :S))
-    end
-
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
-
-    new_checkpointer = Checkpointer(new_model,
-                                    schedule = IterationInterval(5),
-                                    prefix = prefix)
-
-    new_simulation.output_writers[:checkpointer] = new_checkpointer
+    # Restore and continue for 5 more iterations
+    new_model = make_model()
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
+    new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
+                                                                schedule = IterationInterval(5),
+                                                                prefix = prefix)
 
     @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_nowarn run!(new_simulation)
 
-    test_model_equality(new_model, model)
+    # Compare final states at iteration 10
+    test_model_equality(new_model, ref_model)
+
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
 
     return nothing
 end
@@ -308,41 +304,47 @@ function test_height_perturbation_checkpointing_shallow_water(arch, timestepper)
     Lx, Ly = 100, 100
     Δt = 6
 
-    grid = RectilinearGrid(arch, size=(Nx, Ny), extent=(Lx, Ly), topology=(Periodic, Periodic, Flat))
-    model = ShallowWaterModel(grid; timestepper,
-                              gravitational_acceleration = 1,
-                              closure = ShallowWaterScalarDiffusivity(ν=4e-2, ξ=0))
-
-    # Gaussian height perturbation (analogous to thermal bubble)
     perturbation(x, y) = 1 + 0.01 * exp(-100 * ((x - Lx/2)^2 + (y - Ly/2)^2) / (Lx^2 + Ly^2))
-    set!(model, h=perturbation)
 
+    function make_model()
+        grid = RectilinearGrid(arch, size=(Nx, Ny), extent=(Lx, Ly), topology=(Periodic, Periodic, Flat))
+        return ShallowWaterModel(grid; timestepper,
+                                 gravitational_acceleration = 1,
+                                 closure = ShallowWaterScalarDiffusivity(ν=4e-2, ξ=0))
+    end
+
+    # Reference run: 10 iterations continuously
+    ref_model = make_model()
+    set!(ref_model, h=perturbation)
+    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    @test_nowarn run!(ref_simulation)
+
+    # Checkpointed run: 5 iterations, checkpoint
+    model = make_model()
+    set!(model, h=perturbation)
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
-    checkpointer = Checkpointer(model,
-                                schedule = IterationInterval(5),
-                                prefix = "height_perturbation_checkpointing_shallow_water_$(typeof(arch))")
-
-    simulation.output_writers[:checkpointer] = checkpointer
+    prefix = "height_perturbation_checkpointing_shallow_water_$(typeof(arch))"
+    simulation.output_writers[:checkpointer] = Checkpointer(model,
+                                                            schedule = IterationInterval(5),
+                                                            prefix = prefix)
 
     @test_nowarn run!(simulation)
 
-    new_grid = RectilinearGrid(arch, size=(Nx, Ny), extent=(Lx, Ly), topology=(Periodic, Periodic, Flat))
-    new_model = ShallowWaterModel(new_grid; timestepper,
-                                  gravitational_acceleration = 1,
-                                  closure = ShallowWaterScalarDiffusivity(ν=4e-2, ξ=0))
-
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
-
-    new_checkpointer = Checkpointer(new_model,
-                                    schedule = IterationInterval(5),
-                                    prefix = "height_perturbation_checkpointing_shallow_water_$(typeof(arch))")
-
-    new_simulation.output_writers[:checkpointer] = new_checkpointer
+    # Restore and continue for 5 more iterations
+    new_model = make_model()
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
+    new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
+                                                                schedule = IterationInterval(5),
+                                                                prefix = prefix)
 
     @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_nowarn run!(new_simulation)
 
-    test_model_equality(new_model, model)
+    # Compare final states at iteration 10
+    test_model_equality(new_model, ref_model)
+
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
 
     return nothing
 end
@@ -352,16 +354,25 @@ function test_checkpointing_split_explicit_free_surface(arch, timestepper, free_
     Lx, Ly, Lz = 1000, 1000, 100
     Δt = 0.1
 
-    grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    free_surface = SplitExplicitFreeSurface(grid; substeps=30, timestepper=free_surface_timestepper)
-
-    model = HydrostaticFreeSurfaceModel(grid; timestepper, free_surface,
-                                        buoyancy = SeawaterBuoyancy(),
-                                        tracers = (:T, :S))
-
     bubble(x, y, z) = 0.01 * exp(-100 * ((x - Lx/2)^2 + (y - Ly/2)^2 + (z - Lz/2)^2) / (Lx^2 + Ly^2 + Lz^2))
-    set!(model, T=bubble, S=bubble)
 
+    function make_model()
+        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+        free_surface = SplitExplicitFreeSurface(grid; substeps=30, timestepper=free_surface_timestepper)
+        return HydrostaticFreeSurfaceModel(grid; timestepper, free_surface,
+                                           buoyancy = SeawaterBuoyancy(),
+                                           tracers = (:T, :S))
+    end
+
+    # Reference run: 10 iterations continuously
+    ref_model = make_model()
+    set!(ref_model, T=bubble, S=bubble)
+    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    @test_nowarn run!(ref_simulation)
+
+    # Checkpointed run: 5 iterations, checkpoint
+    model = make_model()
+    set!(model, T=bubble, S=bubble)
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
     fs_ts_name = nameof(typeof(free_surface_timestepper))
@@ -372,24 +383,18 @@ function test_checkpointing_split_explicit_free_surface(arch, timestepper, free_
 
     @test_nowarn run!(simulation)
 
-    # Create new model with same setup
-    new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    new_free_surface = SplitExplicitFreeSurface(new_grid; substeps=30, timestepper=free_surface_timestepper)
-
-    new_model = HydrostaticFreeSurfaceModel(new_grid; timestepper,
-                                            free_surface = new_free_surface,
-                                            buoyancy = SeawaterBuoyancy(),
-                                            tracers = (:T, :S))
-
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
-
+    # Restore and continue for 5 more iterations
+    new_model = make_model()
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(5),
                                                                 prefix = prefix)
 
     @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_nowarn run!(new_simulation)
 
-    test_model_equality(new_model, model)
+    # Compare final states at iteration 10
+    test_model_equality(new_model, ref_model)
 
     rm.(glob("$(prefix)_iteration*.jld2"), force=true)
 
@@ -401,18 +406,26 @@ function test_checkpointing_implicit_free_surface(arch, solver_method)
     Lx, Ly, Lz = 1000, 1000, 1000
     Δt = 0.1
 
-    grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz),
-                          topology=(Bounded, Bounded, Bounded))
-
-    free_surface = ImplicitFreeSurface(solver_method=solver_method)
-
-    model = HydrostaticFreeSurfaceModel(grid; free_surface,
-                                        buoyancy = SeawaterBuoyancy(),
-                                        tracers = (:T, :S))
-
     bubble(x, y, z) = 0.01 * exp(-100 * ((x - Lx/2)^2 + (y - Ly/2)^2 + (z - Lz/2)^2) / (Lx^2 + Ly^2 + Lz^2))
-    set!(model, T=bubble, S=bubble)
 
+    function make_model()
+        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz),
+                               topology=(Bounded, Bounded, Bounded))
+        free_surface = ImplicitFreeSurface(solver_method=solver_method)
+        return HydrostaticFreeSurfaceModel(grid; free_surface,
+                                           buoyancy = SeawaterBuoyancy(),
+                                           tracers = (:T, :S))
+    end
+
+    # Reference run: 10 iterations continuously
+    ref_model = make_model()
+    set!(ref_model, T=bubble, S=bubble)
+    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    @test_nowarn run!(ref_simulation)
+
+    # Checkpointed run: 5 iterations, checkpoint
+    model = make_model()
+    set!(model, T=bubble, S=bubble)
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
     prefix = "implicit_free_surface_checkpointing_$(typeof(arch))_$(solver_method)"
@@ -422,26 +435,18 @@ function test_checkpointing_implicit_free_surface(arch, solver_method)
 
     @test_nowarn run!(simulation)
 
-    # Create new model with same setup
-    new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz),
-                              topology=(Bounded, Bounded, Bounded))
-
-    new_free_surface = ImplicitFreeSurface(solver_method=solver_method)
-
-    new_model = HydrostaticFreeSurfaceModel(new_grid;
-                                           free_surface = new_free_surface,
-                                           buoyancy = SeawaterBuoyancy(),
-                                           tracers = (:T, :S))
-
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
-
+    # Restore and continue for 5 more iterations
+    new_model = make_model()
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(5),
                                                                 prefix = prefix)
 
     @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_nowarn run!(new_simulation)
 
-    test_model_equality(new_model, model)
+    # Compare final states at iteration 10
+    test_model_equality(new_model, ref_model)
 
     rm.(glob("$(prefix)_iteration*.jld2"), force=true)
 
@@ -452,25 +457,30 @@ function test_checkpointing_lagrangian_particles(arch, timestepper)
     Nx, Ny, Nz = 8, 8, 8
     Lx, Ly, Lz = 1, 1, 1
     Δt = 0.01
-
-    grid = RectilinearGrid(arch,
-                           size = (Nx, Ny, Nz),
-                           extent = (Lx, Ly, Lz),
-                           topology = (Periodic, Periodic, Bounded))
-
     P = 10  # number of particles
-    xs = on_architecture(arch, 0.5 * ones(P))
-    ys = on_architecture(arch, 0.5 * ones(P))
-    zs = on_architecture(arch, -0.5 * ones(P))
 
-    particles = LagrangianParticles(x=xs, y=ys, z=zs)
+    function make_model()
+        grid = RectilinearGrid(arch,
+                               size = (Nx, Ny, Nz),
+                               extent = (Lx, Ly, Lz),
+                               topology = (Periodic, Periodic, Bounded))
+        xs = on_architecture(arch, 0.5 * ones(P))
+        ys = on_architecture(arch, 0.5 * ones(P))
+        zs = on_architecture(arch, -0.5 * ones(P))
+        particles = LagrangianParticles(x=xs, y=ys, z=zs)
+        return NonhydrostaticModel(grid; timestepper, particles,
+                                   closure = ScalarDiffusivity(ν=1e-4, κ=1e-4))
+    end
 
-    model = NonhydrostaticModel(grid; timestepper, particles,
-                                closure = ScalarDiffusivity(ν=1e-4, κ=1e-4))
+    # Reference run: 10 iterations continuously
+    ref_model = make_model()
+    set!(ref_model, u=1, v=0.5, w=0)
+    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    @test_nowarn run!(ref_simulation)
 
-    # Set some initial velocity to move particles
+    # Checkpointed run: 5 iterations, checkpoint
+    model = make_model()
     set!(model, u=1, v=0.5, w=0)
-
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
     prefix = "lagrangian_particles_checkpointing_$(typeof(arch))_$(timestepper)"
@@ -480,30 +490,18 @@ function test_checkpointing_lagrangian_particles(arch, timestepper)
 
     @test_nowarn run!(simulation)
 
-    # Create new model with same setup
-    new_grid = RectilinearGrid(arch,
-                               size = (Nx, Ny, Nz),
-                               extent = (Lx, Ly, Lz),
-                               topology = (Periodic, Periodic, Bounded))
-
-    new_xs = on_architecture(arch, 0.5 * ones(P))
-    new_ys = on_architecture(arch, 0.5 * ones(P))
-    new_zs = on_architecture(arch, -0.5 * ones(P))
-    new_particles = LagrangianParticles(x=new_xs, y=new_ys, z=new_zs)
-
-    new_model = NonhydrostaticModel(new_grid; timestepper,
-                                    particles = new_particles,
-                                    closure = ScalarDiffusivity(ν=1e-4, κ=1e-4))
-
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
-
+    # Restore and continue for 5 more iterations
+    new_model = make_model()
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(5),
                                                                 prefix = prefix)
 
     @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_nowarn run!(new_simulation)
 
-    test_model_equality(new_model, model)
+    # Compare final states at iteration 10
+    test_model_equality(new_model, ref_model)
 
     rm.(glob("$(prefix)_iteration*.jld2"), force=true)
 
@@ -515,24 +513,31 @@ function test_checkpointing_immersed_boundary_grid(arch, boundary_type)
     Lx, Ly, Lz = 100, 100, 50
     Δt = 0.1
 
-    underlying_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-
     bottom(x, y) = -40 + 10 * sin(2π * x / Lx)
+    bubble(x, y, z) = 0.01 * exp(-100 * ((x - Lx/2)^2 + (y - Ly/2)^2 + (z + Lz/2)^2) / (Lx^2 + Ly^2 + Lz^2))
 
-    if boundary_type == :GridFittedBottom
-        grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
-    elseif boundary_type == :PartialCellBottom
-        grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom))
+    function make_model()
+        underlying_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+        if boundary_type == :GridFittedBottom
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
+        elseif boundary_type == :PartialCellBottom
+            grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom))
+        end
+        return NonhydrostaticModel(grid;
+                                   closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
+                                   buoyancy = SeawaterBuoyancy(),
+                                   tracers = (:T, :S))
     end
 
-    model = NonhydrostaticModel(grid;
-                                closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
-                                buoyancy = SeawaterBuoyancy(),
-                                tracers = (:T, :S))
+    # Reference run: 10 iterations continuously
+    ref_model = make_model()
+    set!(ref_model, T=bubble, S=bubble)
+    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    @test_nowarn run!(ref_simulation)
 
-    bubble(x, y, z) = 0.01 * exp(-100 * ((x - Lx/2)^2 + (y - Ly/2)^2 + (z + Lz/2)^2) / (Lx^2 + Ly^2 + Lz^2))
+    # Checkpointed run: 5 iterations, checkpoint
+    model = make_model()
     set!(model, T=bubble, S=bubble)
-
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
     prefix = "immersed_boundary_checkpointing_$(typeof(arch))_$(boundary_type)"
@@ -542,27 +547,18 @@ function test_checkpointing_immersed_boundary_grid(arch, boundary_type)
 
     @test_nowarn run!(simulation)
 
-    new_underlying_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    if boundary_type == :GridFittedBottom
-        new_grid = ImmersedBoundaryGrid(new_underlying_grid, GridFittedBottom(bottom))
-    elseif boundary_type == :PartialCellBottom
-        new_grid = ImmersedBoundaryGrid(new_underlying_grid, PartialCellBottom(bottom))
-    end
-
-    new_model = NonhydrostaticModel(new_grid;
-                                    closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
-                                    buoyancy = SeawaterBuoyancy(),
-                                    tracers = (:T, :S))
-
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
-
+    # Restore and continue for 5 more iterations
+    new_model = make_model()
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(5),
                                                                 prefix = prefix)
 
     @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_nowarn run!(new_simulation)
 
-    test_model_equality(new_model, model)
+    # Compare final states at iteration 10
+    test_model_equality(new_model, ref_model)
 
     rm.(glob("$(prefix)_iteration*.jld2"), force=true)
 
@@ -574,22 +570,29 @@ function test_checkpointing_latitude_longitude_grid(arch)
     Nx, Ny, Nz = 8, 8, 4
     Δt = 300  # 5 minute timestep
 
-    grid = LatitudeLongitudeGrid(arch, size=(Nx, Ny, Nz),
-                                 longitude=(0, 60),
-                                 latitude=(-30, 30),
-                                 z=(-1000, 0))
-
-    free_surface = SplitExplicitFreeSurface(grid; substeps=30)
-
-    model = HydrostaticFreeSurfaceModel(grid; free_surface,
-                                        coriolis = HydrostaticSphericalCoriolis(),
-                                        buoyancy = SeawaterBuoyancy(),
-                                        tracers = (:T, :S))
-
-    # Stable initial conditions: linear temperature profile
     T_init(λ, φ, z) = 20 + 5 * (z + 1000) / 1000
-    set!(model, T=T_init, S=35)
 
+    function make_model()
+        grid = LatitudeLongitudeGrid(arch, size=(Nx, Ny, Nz),
+                                     longitude=(0, 60),
+                                     latitude=(-30, 30),
+                                     z=(-1000, 0))
+        free_surface = SplitExplicitFreeSurface(grid; substeps=30)
+        return HydrostaticFreeSurfaceModel(grid; free_surface,
+                                           coriolis = HydrostaticSphericalCoriolis(),
+                                           buoyancy = SeawaterBuoyancy(),
+                                           tracers = (:T, :S))
+    end
+
+    # Reference run: 10 iterations continuously
+    ref_model = make_model()
+    set!(ref_model, T=T_init, S=35)
+    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    @test_nowarn run!(ref_simulation)
+
+    # Checkpointed run: 5 iterations, checkpoint
+    model = make_model()
+    set!(model, T=T_init, S=35)
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
     prefix = "lat_lon_grid_checkpointing_$(typeof(arch))"
@@ -599,28 +602,18 @@ function test_checkpointing_latitude_longitude_grid(arch)
 
     @test_nowarn run!(simulation)
 
-    new_grid = LatitudeLongitudeGrid(arch, size=(Nx, Ny, Nz),
-                                     longitude=(0, 60),
-                                     latitude=(-30, 30),
-                                     z=(-1000, 0))
-
-    new_free_surface = SplitExplicitFreeSurface(new_grid; substeps=30)
-
-    new_model = HydrostaticFreeSurfaceModel(new_grid;
-                                            free_surface = new_free_surface,
-                                            coriolis = HydrostaticSphericalCoriolis(),
-                                            buoyancy = SeawaterBuoyancy(),
-                                            tracers = (:T, :S))
-
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
-
+    # Restore and continue for 5 more iterations
+    new_model = make_model()
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(5),
                                                                 prefix = prefix)
 
     @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_nowarn run!(new_simulation)
 
-    test_model_equality(new_model, model)
+    # Compare final states at iteration 10
+    test_model_equality(new_model, ref_model)
 
     rm.(glob("$(prefix)_iteration*.jld2"), force=true)
 
@@ -632,11 +625,20 @@ function test_checkpointing_float32(arch)
     L = 1
     Δt = 0.1
 
-    grid = RectilinearGrid(arch, Float32, size=(N, N, N), extent=(L, L, L))
-    model = NonhydrostaticModel(grid)
+    function make_model()
+        grid = RectilinearGrid(arch, Float32, size=(N, N, N), extent=(L, L, L))
+        return NonhydrostaticModel(grid)
+    end
 
+    # Reference run: 10 iterations continuously
+    ref_model = make_model()
+    set!(ref_model, u=1, v=0.5)
+    ref_simulation = Simulation(ref_model, Δt=Float32(Δt), stop_iteration=10)
+    @test_nowarn run!(ref_simulation)
+
+    # Checkpointed run: 5 iterations, checkpoint
+    model = make_model()
     set!(model, u=1, v=0.5)
-
     simulation = Simulation(model, Δt=Float32(Δt), stop_iteration=5)
 
     prefix = "float32_checkpointing_$(typeof(arch))"
@@ -646,18 +648,18 @@ function test_checkpointing_float32(arch)
 
     @test_nowarn run!(simulation)
 
-    new_grid = RectilinearGrid(arch, Float32, size=(N, N, N), extent=(L, L, L))
-    new_model = NonhydrostaticModel(new_grid)
-
-    new_simulation = Simulation(new_model, Δt=Float32(Δt), stop_iteration=5)
-
+    # Restore and continue for 5 more iterations
+    new_model = make_model()
+    new_simulation = Simulation(new_model, Δt=Float32(Δt), stop_iteration=10)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(5),
                                                                 prefix = prefix)
 
     @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_nowarn run!(new_simulation)
 
-    test_model_equality(new_model, model)
+    # Compare final states at iteration 10
+    test_model_equality(new_model, ref_model)
 
     rm.(glob("$(prefix)_iteration*.jld2"), force=true)
 
@@ -669,16 +671,25 @@ function test_checkpointing_auxiliary_fields(arch)
     L = 1
     Δt = 0.1
 
-    grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+    custom_field_init(x, y, z) = x + y + z
 
-    auxiliary_fields = (custom_field = CenterField(grid),)
+    function make_model()
+        grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+        auxiliary_fields = (custom_field = CenterField(grid),)
+        return NonhydrostaticModel(grid; auxiliary_fields)
+    end
 
-    model = NonhydrostaticModel(grid; auxiliary_fields)
+    # Reference run: 10 iterations continuously
+    ref_model = make_model()
+    set!(ref_model.auxiliary_fields.custom_field, custom_field_init)
+    set!(ref_model, u=1, v=0.5)
+    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    @test_nowarn run!(ref_simulation)
 
-    # Set custom_field data
-    set!(model.auxiliary_fields.custom_field, (x, y, z) -> x + y + z)
+    # Checkpointed run: 5 iterations, checkpoint
+    model = make_model()
+    set!(model.auxiliary_fields.custom_field, custom_field_init)
     set!(model, u=1, v=0.5)
-
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
     prefix = "auxiliary_fields_checkpointing_$(typeof(arch))"
@@ -688,19 +699,18 @@ function test_checkpointing_auxiliary_fields(arch)
 
     @test_nowarn run!(simulation)
 
-    new_grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
-    new_auxiliary_fields = (custom_field = CenterField(new_grid),)
-    new_model = NonhydrostaticModel(new_grid; auxiliary_fields=new_auxiliary_fields)
-
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
-
+    # Restore and continue for 5 more iterations
+    new_model = make_model()
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(5),
                                                                 prefix = prefix)
 
     @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_nowarn run!(new_simulation)
 
-    test_model_equality(new_model, model)
+    # Compare final states at iteration 10
+    test_model_equality(new_model, ref_model)
 
     rm.(glob("$(prefix)_iteration*.jld2"), force=true)
 
@@ -712,21 +722,28 @@ function test_checkpointing_closure_fields(arch)
     L = 1
     Δt = 0.01
 
-    grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
-
-    closure = SmagorinskyLilly()
-
-    model = NonhydrostaticModel(grid; closure,
-                                buoyancy = SeawaterBuoyancy(),
-                                tracers = (:T, :S))
-
-    # Set initial conditions to generate turbulent closure fields
     u₀(x, y, z) = sin(2π*x)
     v₀(x, y, z) = cos(2π*y)
     T₀(x, y, z) = 20
     S₀(x, y, z) = 35
-    set!(model, u=u₀, v=v₀, T=T₀, S=S₀)
 
+    function make_model()
+        grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+        return NonhydrostaticModel(grid;
+                                   closure = SmagorinskyLilly(),
+                                   buoyancy = SeawaterBuoyancy(),
+                                   tracers = (:T, :S))
+    end
+
+    # Reference run: 10 iterations continuously
+    ref_model = make_model()
+    set!(ref_model, u=u₀, v=v₀, T=T₀, S=S₀)
+    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    @test_nowarn run!(ref_simulation)
+
+    # Checkpointed run: 5 iterations, checkpoint
+    model = make_model()
+    set!(model, u=u₀, v=v₀, T=T₀, S=S₀)
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
     prefix = "closure_fields_checkpointing_$(typeof(arch))"
@@ -736,21 +753,18 @@ function test_checkpointing_closure_fields(arch)
 
     @test_nowarn run!(simulation)
 
-    new_grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
-    new_model = NonhydrostaticModel(new_grid;
-                                    closure = SmagorinskyLilly(),
-                                    buoyancy = SeawaterBuoyancy(),
-                                    tracers = (:T, :S))
-
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
-
+    # Restore and continue for 5 more iterations
+    new_model = make_model()
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(5),
                                                                 prefix = prefix)
 
     @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_nowarn run!(new_simulation)
 
-    test_model_equality(new_model, model)
+    # Compare final states at iteration 10
+    test_model_equality(new_model, ref_model)
 
     rm.(glob("$(prefix)_iteration*.jld2"), force=true)
 
@@ -762,18 +776,26 @@ function test_checkpointing_catke_closure(arch)
     Lx, Ly, Lz = 100, 100, 100
     Δt = 60
 
-    grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    closure = CATKEVerticalDiffusivity()
-
-    model = HydrostaticFreeSurfaceModel(grid; closure,
-                                        buoyancy = SeawaterBuoyancy(),
-                                        tracers = (:T, :S))
-
-    # Linear stratification + noisy velocity to generate TKE
     T_init(x, y, z) = 20 + 0.01 * z
-    u_init(x, y, z) = 0.01 * randn()
-    set!(model, T=T_init, S=35, u=u_init)
+    u_init(x, y, z) = 0.01 * sin(2π * x / Lx + 3π * y / Ly)
 
+    function make_model()
+        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+        return HydrostaticFreeSurfaceModel(grid;
+                                           closure = CATKEVerticalDiffusivity(),
+                                           buoyancy = SeawaterBuoyancy(),
+                                           tracers = (:T, :S))
+    end
+
+    # Reference run: 10 iterations continuously
+    ref_model = make_model()
+    set!(ref_model, T=T_init, S=35, u=u_init)
+    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    @test_nowarn run!(ref_simulation)
+
+    # Checkpointed run: 5 iterations, checkpoint
+    model = make_model()
+    set!(model, T=T_init, S=35, u=u_init)
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
     prefix = "catke_checkpointing_$(typeof(arch))"
@@ -783,21 +805,18 @@ function test_checkpointing_catke_closure(arch)
 
     @test_nowarn run!(simulation)
 
-    # Create new model and restore
-    new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    new_model = HydrostaticFreeSurfaceModel(new_grid;
-                                            closure = CATKEVerticalDiffusivity(),
-                                            buoyancy = SeawaterBuoyancy(),
-                                            tracers = (:T, :S))
-
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
+    # Restore and continue for 5 more iterations
+    new_model = make_model()
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(5),
                                                                 prefix = prefix)
 
     @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_nowarn run!(new_simulation)
 
-    test_model_equality(new_model, model)
+    # Compare final states at iteration 10
+    test_model_equality(new_model, ref_model)
 
     rm.(glob("$(prefix)_iteration*.jld2"), force=true)
 
@@ -809,15 +828,22 @@ function test_checkpointing_dynamic_smagorinsky_closure(arch)
     Lx, Ly, Lz = 1, 1, 1
     Δt = 0.001
 
-    grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    closure = DynamicSmagorinsky()
-
-    model = NonhydrostaticModel(grid; closure)
-
-    # Sheared flow to generate non-trivial dynamic coefficients
     u_init(x, y, z) = sin(2π * z / Lz)
-    set!(model, u=u_init)
 
+    function make_model()
+        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+        return NonhydrostaticModel(grid; closure=DynamicSmagorinsky())
+    end
+
+    # Reference run: 10 iterations continuously
+    ref_model = make_model()
+    set!(ref_model, u=u_init)
+    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    @test_nowarn run!(ref_simulation)
+
+    # Checkpointed run: 5 iterations, checkpoint
+    model = make_model()
+    set!(model, u=u_init)
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
     prefix = "dynamic_smagorinsky_checkpointing_$(typeof(arch))"
@@ -827,30 +853,25 @@ function test_checkpointing_dynamic_smagorinsky_closure(arch)
 
     @test_nowarn run!(simulation)
 
-    # Get original closure field state
-    original_cf = model.closure_fields
-    original_previous_time = original_cf.previous_compute_time[]
-    original_𝒥ᴸᴹ = copy(Array(interior(original_cf.𝒥ᴸᴹ)))
-    original_𝒥ᴹᴹ = copy(Array(interior(original_cf.𝒥ᴹᴹ)))
-
-    # Create new model and restore
-    new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    new_model = NonhydrostaticModel(new_grid; closure=DynamicSmagorinsky())
-
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
+    # Restore and continue for 5 more iterations
+    new_model = make_model()
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(5),
                                                                 prefix = prefix)
 
     @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_nowarn run!(new_simulation)
 
-    # Verify closure field state was restored
+    # Verify closure field state matches reference at iteration 10
+    ref_cf = ref_model.closure_fields
     new_cf = new_model.closure_fields
-    @test new_cf.previous_compute_time[] ≈ original_previous_time
-    @test all(Array(interior(new_cf.𝒥ᴸᴹ)) .≈ original_𝒥ᴸᴹ)
-    @test all(Array(interior(new_cf.𝒥ᴹᴹ)) .≈ original_𝒥ᴹᴹ)
+    @test new_cf.previous_compute_time[] ≈ ref_cf.previous_compute_time[]
+    @test all(Array(interior(new_cf.𝒥ᴸᴹ)) .≈ Array(interior(ref_cf.𝒥ᴸᴹ)))
+    @test all(Array(interior(new_cf.𝒥ᴹᴹ)) .≈ Array(interior(ref_cf.𝒥ᴹᴹ)))
 
-    test_model_equality(new_model, model)
+    # Compare final states at iteration 10
+    test_model_equality(new_model, ref_model)
 
     rm.(glob("$(prefix)_iteration*.jld2"), force=true)
 
@@ -862,18 +883,26 @@ function test_checkpointing_ri_based_closure(arch)
     Lx, Ly, Lz = 100, 100, 100
     Δt = 60
 
-    grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    closure = RiBasedVerticalDiffusivity(Cᵃᵛ=0.6)  # Time averaging enabled
-
-    model = HydrostaticFreeSurfaceModel(grid; closure,
-                                        buoyancy = SeawaterBuoyancy(),
-                                        tracers = (:T, :S))
-
-    # Stratified with shear to generate non-trivial Ri-based diffusivities
     T_init(x, y, z) = 20 + 0.01 * z
     u_init(x, y, z) = 0.1 * z / Lz
-    set!(model, T=T_init, S=35, u=u_init)
 
+    function make_model()
+        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+        return HydrostaticFreeSurfaceModel(grid;
+                                           closure = RiBasedVerticalDiffusivity(Cᵃᵛ=0.6),
+                                           buoyancy = SeawaterBuoyancy(),
+                                           tracers = (:T, :S))
+    end
+
+    # Reference run: 10 iterations continuously
+    ref_model = make_model()
+    set!(ref_model, T=T_init, S=35, u=u_init)
+    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    @test_nowarn run!(ref_simulation)
+
+    # Checkpointed run: 5 iterations, checkpoint
+    model = make_model()
+    set!(model, T=T_init, S=35, u=u_init)
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
     prefix = "ri_based_checkpointing_$(typeof(arch))"
@@ -883,29 +912,22 @@ function test_checkpointing_ri_based_closure(arch)
 
     @test_nowarn run!(simulation)
 
-    # Get original closure field state
-    original_κc = copy(Array(interior(model.closure_fields.κc)))
-    original_κu = copy(Array(interior(model.closure_fields.κu)))
-
-    # Create new model and restore
-    new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    new_model = HydrostaticFreeSurfaceModel(new_grid;
-                                            closure = RiBasedVerticalDiffusivity(Cᵃᵛ=0.6),
-                                            buoyancy = SeawaterBuoyancy(),
-                                            tracers = (:T, :S))
-
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
+    # Restore and continue for 5 more iterations
+    new_model = make_model()
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(5),
                                                                 prefix = prefix)
 
     @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_nowarn run!(new_simulation)
 
-    # Verify closure field state was restored
-    @test all(Array(interior(new_model.closure_fields.κc)) .≈ original_κc)
-    @test all(Array(interior(new_model.closure_fields.κu)) .≈ original_κu)
+    # Verify closure field state matches reference at iteration 10
+    @test all(Array(interior(new_model.closure_fields.κc)) .≈ Array(interior(ref_model.closure_fields.κc)))
+    @test all(Array(interior(new_model.closure_fields.κu)) .≈ Array(interior(ref_model.closure_fields.κu)))
 
-    test_model_equality(new_model, model)
+    # Compare final states at iteration 10
+    test_model_equality(new_model, ref_model)
 
     rm.(glob("$(prefix)_iteration*.jld2"), force=true)
 
@@ -917,18 +939,26 @@ function test_checkpointing_tke_dissipation_closure(arch)
     Lx, Ly, Lz = 100, 100, 100
     Δt = 60
 
-    grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    closure = TKEDissipationVerticalDiffusivity()
-
-    model = HydrostaticFreeSurfaceModel(grid; closure,
-                                        buoyancy = SeawaterBuoyancy(),
-                                        tracers = (:T, :S))
-
-    # Linear stratification + noisy velocity to generate turbulence
     T_init(x, y, z) = 20 + 0.01 * z
-    u_init(x, y, z) = 0.01 * randn()
-    set!(model, T=T_init, S=35, u=u_init)
+    u_init(x, y, z) = 0.01 * sin(2π * x / Lx + 3π * y / Ly)
 
+    function make_model()
+        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+        return HydrostaticFreeSurfaceModel(grid;
+                                           closure = TKEDissipationVerticalDiffusivity(),
+                                           buoyancy = SeawaterBuoyancy(),
+                                           tracers = (:T, :S))
+    end
+
+    # Reference run: 10 iterations continuously
+    ref_model = make_model()
+    set!(ref_model, T=T_init, S=35, u=u_init)
+    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    @test_nowarn run!(ref_simulation)
+
+    # Checkpointed run: 5 iterations, checkpoint
+    model = make_model()
+    set!(model, T=T_init, S=35, u=u_init)
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
     prefix = "tke_dissipation_checkpointing_$(typeof(arch))"
@@ -938,29 +968,24 @@ function test_checkpointing_tke_dissipation_closure(arch)
 
     @test_nowarn run!(simulation)
 
-    # Store original previous_velocities state
-    original_u⁻ = copy(Array(interior(model.closure_fields.previous_velocities.u)))
-    original_v⁻ = copy(Array(interior(model.closure_fields.previous_velocities.v)))
-
-    # Create new model and restore
-    new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    new_model = HydrostaticFreeSurfaceModel(new_grid;
-                                            closure = TKEDissipationVerticalDiffusivity(),
-                                            buoyancy = SeawaterBuoyancy(),
-                                            tracers = (:T, :S))
-
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
+    # Restore and continue for 5 more iterations
+    new_model = make_model()
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(5),
                                                                 prefix = prefix)
 
     @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_nowarn run!(new_simulation)
 
-    # Verify previous_velocities state was restored
-    @test all(Array(interior(new_model.closure_fields.previous_velocities.u)) .≈ original_u⁻)
-    @test all(Array(interior(new_model.closure_fields.previous_velocities.v)) .≈ original_v⁻)
+    # Verify previous_velocities state matches reference at iteration 10
+    ref_pv = ref_model.closure_fields.previous_velocities
+    new_pv = new_model.closure_fields.previous_velocities
+    @test all(Array(interior(new_pv.u)) .≈ Array(interior(ref_pv.u)))
+    @test all(Array(interior(new_pv.v)) .≈ Array(interior(ref_pv.v)))
 
-    test_model_equality(new_model, model)
+    # Compare final states at iteration 10
+    test_model_equality(new_model, ref_model)
 
     rm.(glob("$(prefix)_iteration*.jld2"), force=true)
 
@@ -1041,11 +1066,20 @@ function test_checkpoint_empty_tracers(arch)
     L = 1
     Δt = 0.1
 
-    grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
-    model = NonhydrostaticModel(grid; tracers=())
+    function make_model()
+        grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+        return NonhydrostaticModel(grid; tracers=())
+    end
 
+    # Reference run: 10 iterations continuously
+    ref_model = make_model()
+    set!(ref_model, u=1, v=0.5)
+    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    @test_nowarn run!(ref_simulation)
+
+    # Checkpointed run: 5 iterations, checkpoint
+    model = make_model()
     set!(model, u=1, v=0.5)
-
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
     prefix = "empty_tracers_checkpointing_$(typeof(arch))"
@@ -1055,18 +1089,18 @@ function test_checkpoint_empty_tracers(arch)
 
     @test_nowarn run!(simulation)
 
-    new_grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
-    new_model = NonhydrostaticModel(new_grid; tracers=())
-
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
-
+    # Restore and continue for 5 more iterations
+    new_model = make_model()
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(5),
                                                                 prefix = prefix)
 
     @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_nowarn run!(new_simulation)
 
-    test_model_equality(new_model, model)
+    # Compare final states at iteration 10
+    test_model_equality(new_model, ref_model)
 
     rm.(glob("$(prefix)_iteration*.jld2"), force=true)
 
@@ -1382,10 +1416,20 @@ function test_manual_checkpoint_with_checkpointer(arch)
     L = 1
     Δt = 0.1
 
-    grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
-    model = NonhydrostaticModel(grid)
-    set!(model, u=1, v=0.5)
+    function make_model()
+        grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+        return NonhydrostaticModel(grid)
+    end
 
+    # Reference run: 10 iterations continuously
+    ref_model = make_model()
+    set!(ref_model, u=1, v=0.5)
+    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    @test_nowarn run!(ref_simulation)
+
+    # Checkpointed run: 5 iterations, manual checkpoint
+    model = make_model()
+    set!(model, u=1, v=0.5)
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
     prefix = "manual_checkpoint_with_checkpointer_$(typeof(arch))"
@@ -1399,11 +1443,9 @@ function test_manual_checkpoint_with_checkpointer(arch)
     expected_filepath = "$(prefix)_iteration5.jld2"
     @test isfile(expected_filepath)
 
-    # Verify we can restore from it
-    new_grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
-    new_model = NonhydrostaticModel(new_grid)
+    # Restore and continue for 5 more iterations
+    new_model = make_model()
     new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
-
     new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
                                                                 schedule = IterationInterval(10),
                                                                 prefix = prefix)
@@ -1411,7 +1453,10 @@ function test_manual_checkpoint_with_checkpointer(arch)
     @test_nowarn set!(new_simulation; checkpoint=expected_filepath)
     @test iteration(new_simulation) == 5
 
-    test_model_equality(new_model, model)
+    @test_nowarn run!(new_simulation)
+
+    # Compare final states at iteration 10
+    test_model_equality(new_model, ref_model)
 
     rm(expected_filepath, force=true)
 
@@ -1423,13 +1468,22 @@ function test_manual_checkpoint_without_checkpointer(arch)
     L = 1
     Δt = 0.1
 
-    grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
-    model = NonhydrostaticModel(grid)
-    set!(model, u=1, v=0.5)
+    function make_model()
+        grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+        return NonhydrostaticModel(grid)
+    end
 
+    # Reference run: 10 iterations continuously
+    ref_model = make_model()
+    set!(ref_model, u=1, v=0.5)
+    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    @test_nowarn run!(ref_simulation)
+
+    # Checkpointed run: 5 iterations, manual checkpoint (no Checkpointer configured)
+    model = make_model()
+    set!(model, u=1, v=0.5)
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
-    # No Checkpointer configured
     @test_nowarn run!(simulation)
 
     # Manually checkpoint - should use default path
@@ -1439,15 +1493,17 @@ function test_manual_checkpoint_without_checkpointer(arch)
     expected_filepath = "checkpoint_iteration5.jld2"
     @test isfile(expected_filepath)
 
-    # Verify we can restore from it
-    new_grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
-    new_model = NonhydrostaticModel(new_grid)
+    # Restore and continue for 5 more iterations
+    new_model = make_model()
     new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
 
     @test_nowarn set!(new_simulation; checkpoint=expected_filepath)
     @test iteration(new_simulation) == 5
 
-    test_model_equality(new_model, model)
+    @test_nowarn run!(new_simulation)
+
+    # Compare final states at iteration 10
+    test_model_equality(new_model, ref_model)
 
     rm(expected_filepath, force=true)
 
@@ -1459,10 +1515,20 @@ function test_manual_checkpoint_with_filepath(arch)
     L = 1
     Δt = 0.1
 
-    grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
-    model = NonhydrostaticModel(grid)
-    set!(model, u=1, v=0.5)
+    function make_model()
+        grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+        return NonhydrostaticModel(grid)
+    end
 
+    # Reference run: 10 iterations continuously
+    ref_model = make_model()
+    set!(ref_model, u=1, v=0.5)
+    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    @test_nowarn run!(ref_simulation)
+
+    # Checkpointed run: 5 iterations, manual checkpoint with custom filepath
+    model = make_model()
+    set!(model, u=1, v=0.5)
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
     # Add a Checkpointer with a different prefix
@@ -1480,15 +1546,17 @@ function test_manual_checkpoint_with_filepath(arch)
     @test isfile(custom_filepath)
     @test !isfile("$(prefix)_iteration5.jld2")
 
-    # Verify we can restore from it
-    new_grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
-    new_model = NonhydrostaticModel(new_grid)
+    # Restore and continue for 5 more iterations
+    new_model = make_model()
     new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
 
     @test_nowarn set!(new_simulation; checkpoint=custom_filepath)
     @test iteration(new_simulation) == 5
 
-    test_model_equality(new_model, model)
+    @test_nowarn run!(new_simulation)
+
+    # Compare final states at iteration 10
+    test_model_equality(new_model, ref_model)
 
     rm(custom_filepath, force=true)
 
