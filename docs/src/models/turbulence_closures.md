@@ -181,35 +181,6 @@ julia> ConvectiveAdjustmentVerticalDiffusivity(convective_κz = 1.0, background_
 ConvectiveAdjustmentVerticalDiffusivity{VerticallyImplicitTimeDiscretization}(background_κz=0.001 convective_κz=1.0 background_νz=0.0 convective_νz=0.0)
 ```
 
-### `PacanowskiPhilanderVerticalDiffusivity`
-
-[`PacanowskiPhilanderVerticalDiffusivity`](@ref) parameterizes vertical mixing as a function
-of the gradient Richardson number following [PacanowskiPhilander81](@citet):
-
-```math
-\nu = \nu_0 + \frac{\nu_1}{(1 + c \, Ri)^n}
-```
-
-```math
-\kappa = \kappa_0 + \frac{\nu_1}{(1 + c \, Ri)^{n+1}}
-```
-
-This simple parameterization produces enhanced mixing when shear is strong relative to
-stratification (low Richardson number) and approaches background values when stratification
-dominates (high Richardson number):
-
-```jldoctest
-julia> using Oceananigans
-
-julia> PacanowskiPhilanderVerticalDiffusivity()
-PacanowskiPhilanderVerticalDiffusivity{VerticallyImplicitTimeDiscretization}:
-├── ν₀: 0.0001
-├── ν₁: 0.01
-├── κ₀: 1.0e-5
-├── c: 5.0
-└── n: 2.0
-```
-
 ### `CATKEVerticalDiffusivity`
 
 [`CATKEVerticalDiffusivity`](@ref) is a TKE-based closure for vertical mixing by small-scale

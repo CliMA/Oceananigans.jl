@@ -18,7 +18,6 @@ export
     AnisotropicMinimumDissipation,
     ConvectiveAdjustmentVerticalDiffusivity,
     RiBasedVerticalDiffusivity,
-    PacanowskiPhilanderVerticalDiffusivity,
     IsopycnalSkewSymmetricDiffusivity,
     CATKEVerticalDiffusivity,
     TKEDissipationVerticalDiffusivity,
@@ -215,7 +214,6 @@ include("turbulence_closure_implementations/Smagorinskys/Smagorinskys.jl")
 include("turbulence_closure_implementations/convective_adjustment_vertical_diffusivity.jl")
 include("turbulence_closure_implementations/TKEBasedVerticalDiffusivities/TKEBasedVerticalDiffusivities.jl")
 include("turbulence_closure_implementations/ri_based_vertical_diffusivity.jl")
-include("turbulence_closure_implementations/pacanowski_philander_vertical_diffusivity.jl")
 
 # Special non-abstracted diffusivities:
 # TODO: introduce abstract typing for these

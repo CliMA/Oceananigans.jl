@@ -73,7 +73,6 @@ export
     CATKEVerticalDiffusivity,
     TKEDissipationVerticalDiffusivity,
     RiBasedVerticalDiffusivity,
-    PacanowskiPhilanderVerticalDiffusivity,
     VerticallyImplicitTimeDiscretization,
     viscosity, diffusivity,
 
