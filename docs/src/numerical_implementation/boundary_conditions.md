@@ -22,7 +22,7 @@ boundary conditions in Oceananigans.
 Users impose gradient boundary conditions by prescribing the gradient ``\gamma`` of a field
 ``c`` across an *external boundary* ``\partial \Omega_b``. The prescribed gradient ``\gamma``
 may be a constant, discrete array of values, or an arbitrary function. The gradient boundary
-condition is enforced setting the value of halo points located outside the domain interior
+condition is enforced by setting the value of halo points located outside the domain interior
 such that
 ```math
     \begin{equation}
@@ -75,7 +75,7 @@ Value boundary conditions are represented by the [`Value`](@ref) type.
 
 Users impose flux boundary conditions by prescribing the flux ``q_c \, |_b`` of ``c`` across
 the external boundary ``\partial \Omega_b``. The flux ``q_c \, |_b`` may be a constant, array
-of discrete values, or arbitrary function. To explain how flux boundary conditions are imposed
+of discrete values, or an arbitrary function. To explain how flux boundary conditions are imposed
 in `Oceananigans.jl`, we note that the average of the tracer conservation equation over a finite
 volume yields
 ```math
@@ -102,11 +102,11 @@ on the external boundary implies that the total flux of ``c`` across the externa
     \hat{\boldsymbol{n}} \boldsymbol{\cdot} \left ( \boldsymbol{v} c + \boldsymbol{q}_c \right ) |_{\partial \Omega_b} = 0 \, .
     \end{equation}
 ```
-`Oceananigans.jl` exploits this fact to define algorithm that prescribe fluxes across external
+`Oceananigans.jl` exploits this fact to define an algorithm that prescribes fluxes across external
 boundaries ``\partial \Omega_b``:
 
 1. Impose a constant gradient ``\hat{\boldsymbol{n}} \boldsymbol{\cdot} \boldsymbol{\nabla} c
-   \, |_{\partial \Omega_b} = 0`` across external boundaries via using halo points (similar
+   \, |_{\partial \Omega_b} = 0`` across external boundaries by using halo points (similar
    to \eqref{eq:gradient-bc}), which ensures that the evaluation of ``G_c`` in boundary-adjacent
    cells does not include fluxes across the external boundary, and;
 2. Add the prescribed flux to the boundary-adjacent volumes prior to calculating ``G_c``:
@@ -127,13 +127,13 @@ Flux boundary conditions are represented by the [`Flux`](@ref) type.
 ## Open boundary conditions
 
 Open boundary conditions directly specify the value of the halo points. Typically this is used
-to impose no penetration boundary conditions, i.e. setting wall normal velocity components on
+to impose no penetration boundary conditions, i.e. setting wall normal velocity components
 to zero on the boundary.
 
 The nuance here is that open boundaries behave differently for fields on face points in the
 boundary direction due to the [staggered grid](@ref finite_volume). For example, the u-component
 of velocity lies on `(Face, Center, Center)` points so for open `west` or `east` boundaries the
-point specified by the boundary condition is the point lying on the boundary, where as for a
+point specified by the boundary condition is the point lying on the boundary, whereas for a
 tracer on `(Center, Center, Center)` points the open boundary condition specifies a point outside
 of the domain (hence the difference with `Value` boundary conditions).
 
@@ -206,13 +206,13 @@ point to
 ```math
     \begin{equation}
     \label{eq:zero_wall_normal_velocity_gradient}
-    u^\star_{1jk} \approx u^\star_{3jk} + (u^\star_{2jk} - u^\star_{jk4}) / 2 + \mathcal{O}(\Delta x^2),
+    u^\star_{1jk} \approx u^\star_{3jk} + (u^\star_{2jk} - u^\star_{4jk}) / 2 + \mathcal{O}(\Delta x^2),
     \end{equation}
 ```
 but we then pressure correct the interior so a new ``\mathcal{O}(\Delta t)`` error is introduced as
 ```math
     \begin{align}
-    u^{n+1}_{1jk} &\approx u^{n+1}_{3jk} + (u^{n+1}_{2jk} - u^{n+1}_{jk4}) / 2 + \mathcal{O}(\Delta x^2),\\
+    u^{n+1}_{1jk} &\approx u^{n+1}_{3jk} + (u^{n+1}_{2jk} - u^{n+1}_{4jk}) / 2 + \mathcal{O}(\Delta x^2),\\
     &= u^\star_{1jk} - \Delta t \left[ \boldsymbol{\nabla} p^{n+1}_{3jk} + (\boldsymbol{\nabla} p^{n+1}_{2jk} - \boldsymbol{\nabla} p^{n+1}_{4jk}) / 2 \right] + \mathcal{O}(\Delta x^2),\\
     &\approx u^\star_{1jk} + \mathcal{O}(\Delta x^2) + \mathcal{O}(\Delta t).
     \end{align}
@@ -227,7 +227,7 @@ Open boundary conditions are represented by the [`Open`](@ref) type.
 
 Except for trivial cases (i.e. no-penetration) the velocity on the boundary point has to be
 approximated as it is outside the computed domain. There is insufficient information to step the
-full equation of motion as gradients across the boundary can not be computed and simply prescribing
+full equation of motion as gradients across the boundary cannot be computed and simply prescribing
 a boundary normal velocity is unphysical and reflects energy leaving the domain [Orlanksi1976](@citep).
 
 ### Perturbation advection
