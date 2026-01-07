@@ -127,7 +127,8 @@ Plain code blocks (`` ```julia ``) are NOT tested and can become stale or incorr
 Doctests (`` ```jldoctest ``) are automatically tested and verified to work.
 
 ✅ CORRECT - use `jldoctest`:
-```markdown
+
+~~~~
 \"\"\"
     my_function(x)
 
@@ -143,10 +144,11 @@ typeof(grid)
 RectilinearGrid{Float64, Periodic, Periodic, Bounded, Nothing, Nothing, Nothing, Nothing}
 ```
 \"\"\"
-```
+~~~~
 
 ❌ WRONG - never use plain `julia` blocks in docstrings:
-```markdown
+
+~~~~
 \"\"\"
     my_function(x)
 
@@ -157,7 +159,7 @@ Example:
 grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
 ```
 \"\"\"
-```
+~~~~
 
 Key doctest requirements:
 - Always include expected output after `# output`
@@ -188,6 +190,36 @@ Key doctest requirements:
 ```sh
 julia --project=docs/ docs/make.jl
 ```
+
+### Fast Local Docs Builds for Testing
+
+When testing documentation changes locally (especially without a GPU), make these temporary changes to `docs/make.jl`:
+
+1. **Comment out Literate examples** - These take the longest to run:
+   ```julia
+   example_scripts = String[
+       # "spherical_baroclinic_instability.jl",
+       # ... all examples commented out
+   ]
+   ```
+   Also comment out the corresponding `example_pages` entries.
+
+2. **Add error categories to `warnonly`** - Prevents build failures from GPU-dependent examples and network issues:
+   ```julia
+   warnonly = [:cross_references, :example_block, :linkcheck],
+   ```
+
+3. **Comment out GPU-requiring pages** - Pages like `simulation_tips.md` have `@example` blocks requiring GPU:
+   ```julia
+   # "Simulation tips" => "simulation_tips.md",  # requires GPU
+   ```
+
+4. **Optional speedups** in `makedocs`:
+   - `doctest = false` - Skip doctests entirely if not testing those
+   - `linkcheck = false` - Skip link validation
+   - `draft = true` - Skip many checks for fastest builds
+
+**Important**: Remember to revert these changes before committing!
 
 ### Viewing Docs
 ```julia
