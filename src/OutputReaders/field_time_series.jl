@@ -815,7 +815,7 @@ function FieldTimeSeries(typed_path::JLD2Path, name::String;
 end
 
 # Stub function for NetCDF files - will be extended by OceananigansNCDatasetsExt
-FieldTimeSeries(path::NetCDFPath, args...; kwargs...) = error("Loading FieldTimeSeries from NetCDF files requires NCDatasets")
+FieldTimeSeries(path::NetCDFPath, name::String; kwargs...) = error("Loading FieldTimeSeries from NetCDF files requires NCDatasets")
 
 
 """
