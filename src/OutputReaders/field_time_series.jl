@@ -629,7 +629,7 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
                                                    reader_kw)
             end
         end
-        
+
         # Handle file splitting due to max_filesize limitations by looking for filenames
         # that end in part1, etc
         start = path[1:end-5]
@@ -637,7 +637,7 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
         part_paths = glob(lookfor)
         part_paths = naturalsort(part_paths)
         Nparts = length(part_paths)
-        
+
         if Nparts == 0
             if combine
                 error("File not found: $path. Also tried looking for rank files (*_rank*.jld2) and part files (*_part*.jld2).")
@@ -645,7 +645,7 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
                 error("File not found: $path. Also tried looking for part files (*_part*.jld2). Set combine=true to also look for distributed rank files.")
             end
         end
-        
+
         path = first(part_paths) # part1 is first?
     end
 
@@ -756,17 +756,51 @@ function FieldTimeSeries(path::String, args...; reader_kw = NamedTuple(), kwargs
     return FieldTimeSeries(typed_path, args...; reader_kw, kwargs...)
 end
 
-function FieldTimeSeries(typed_path::JLD2Path, args...; reader_kw = NamedTuple(), kwargs...)
+function FieldTimeSeries(typed_path::JLD2Path, name::String;
+                         backend = InMemory(),
+                         architecture = nothing,
+                         grid = nothing,
+                         location = nothing,
+                         boundary_conditions = UnspecifiedBoundaryConditions(),
+                         time_indexing = Linear(),
+                         iterations = nothing,
+                         times = nothing,
+                         combine = true,
+                         reader_kw = NamedTuple())
 
     path = typed_path.path
+
     if !isfile(path)
-        start = typed_path.path[1:end-5] # Remove filepath extension
+        # First, check for distributed rank files (e.g., output_rank0.jld2, output_rank1.jld2, ...)
+        if combine
+            rank_paths = find_rank_files(path)
+            if !isnothing(rank_paths)
+                return combined_field_time_series(path, name;
+                                                   backend,
+                                                   architecture,
+                                                   grid,
+                                                   location,
+                                                   boundary_conditions,
+                                                   time_indexing,
+                                                   iterations,
+                                                   times,
+                                                   reader_kw)
+            end
+        end
+
+        # Handle file splitting due to max_filesize limitations by looking for filenames
+        # that end in part1, etc
+        start = path[1:end-5] # Remove filepath extension
         lookfor = string(start, "_part*.jld2") # Look for part1, etc
         part_paths = glob(lookfor) |> naturalsort
         Nparts = length(part_paths)
 
         if Nparts == 0
-            error("File not found: $(path). Also tried looking for part files (*_part*.jld2).")
+            if combine
+                error("File not found: $path. Also tried looking for rank files (*_rank*.jld2) and part files (*_part*.jld2).")
+            else
+                error("File not found: $path. Also tried looking for part files (*_part*.jld2). Set combine=true to also look for distributed rank files.")
+            end
         end
 
         path = first(part_paths) # part1 is first?
@@ -776,7 +810,8 @@ function FieldTimeSeries(typed_path::JLD2Path, args...; reader_kw = NamedTuple()
     end
 
     file = jldopen(path; reader_kw...)
-    return FieldTimeSeries(file, args...; Nparts, part_paths, path, reader_kw, kwargs...)
+    return FieldTimeSeries(file, name; backend, architecture, grid, location, boundary_conditions,
+                           time_indexing, iterations, times, Nparts, part_paths, path, reader_kw)
 end
 
 # Stub function for NetCDF files - will be extended by OceananigansNCDatasetsExt
