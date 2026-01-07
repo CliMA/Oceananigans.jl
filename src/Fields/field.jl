@@ -1,19 +1,15 @@
-using Oceananigans.BoundaryConditions: OBC, MCBC, Zipper, construct_boundary_conditions_kernels
-using Oceananigans.Grids: parent_index_range, default_indices, validate_indices
-using Oceananigans.Grids: index_range_contains
+using Oceananigans.BoundaryConditions:  construct_boundary_conditions_kernels, OBC, MCBC,
+    Zipper, validate_boundary_condition_architecture, validate_boundary_condition_topology
+using Oceananigans.Grids: parent_index_range, default_indices, validate_indices,
+    index_range_contains, halo_size, offset_data, interior_parent_indices
+using Oceananigans.Utils: @apply_regionally, getregion
 using Oceananigans.Architectures: convert_to_device
 
-using Adapt
-using LinearAlgebra
+using LinearAlgebra: LinearAlgebra
 using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
 using GPUArraysCore: @allowscalar
-
-import Oceananigans: boundary_conditions
-import Oceananigans.Architectures: on_architecture
-import Oceananigans.BoundaryConditions: fill_halo_regions!, getbc
-import Statistics: mean
-import Base: ==
+using Statistics: Statistics
 
 #####
 ##### The bees knees
@@ -373,10 +369,10 @@ Base.view(f::Field, I::Vararg{Colon}) = f
 Base.view(f::Field, i) = view(f, i, :, :)
 Base.view(f::Field, i, j) = view(f, i, j, :)
 
-boundary_conditions(not_field) = nothing
+Oceananigans.boundary_conditions(not_field) = nothing
 
-@inline boundary_conditions(f::Field) = f.boundary_conditions
-@inline boundary_conditions(w::WindowedField) = FieldBoundaryConditions(w.indices, w.boundary_conditions)
+@inline Oceananigans.boundary_conditions(f::Field) = f.boundary_conditions
+@inline Oceananigans.boundary_conditions(w::WindowedField) = FieldBoundaryConditions(w.indices, w.boundary_conditions)
 
 immersed_boundary_condition(f::Field) = f.boundary_conditions.immersed
 data(field::Field) = field.data
@@ -440,13 +436,13 @@ Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
 Adapt.adapt_structure(to, f::Field) = Adapt.adapt(to, f.data)
 Adapt.parent_type(::Type{<:Field{LX, LY, LZ, O, G, I, D}}) where {LX, LY, LZ, O, G, I, D} = D
 
-total_size(f::Field) = total_size(f.grid, location(f), f.indices)
+Grids.total_size(f::Field) = total_size(f.grid, location(f), f.indices)
 @inline Base.size(f::Field)  = size(f.grid, location(f), f.indices)
 
-==(f::Field, a) = interior(f) == a
-==(a, f::Field) = a == interior(f)
+Base.:(==)(f::Field, a) = interior(f) == a
+Base.:(==)(a, f::Field) = a == interior(f)
 
-function ==(a::Field, b::Field)
+function Base.:(==)(a::Field, b::Field)
     if architecture(a) == architecture(b)
         return interior(a) == interior(b)
     elseif architecture(a) isa CPU && architecture(b) isa GPU
@@ -464,7 +460,7 @@ end
 ##### Move Fields between architectures
 #####
 
-on_architecture(arch, field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
+Architectures.on_architecture(arch, field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
     Field{LX, LY, LZ}(on_architecture(arch, field.grid),
                       on_architecture(arch, field.data),
                       on_architecture(arch, field.boundary_conditions),
@@ -590,14 +586,14 @@ const ReducedField = Union{XReducedField,
 @propagate_inbounds Base.setindex!(r::XYZReducedField, v, i, j, k) = setindex!(r.data, v, 1, 1, 1)
 
 # Boundary conditions reduced in one direction --- drop boundary-normal index
-@inline getbc(condition::XReducedField, j::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[1, j, k]
-@inline getbc(condition::YReducedField, i::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, 1, k]
-@inline getbc(condition::ZReducedField, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, j, 1]
+@inline BoundaryConditions.getbc(condition::XReducedField, j::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[1, j, k]
+@inline BoundaryConditions.getbc(condition::YReducedField, i::Integer, k::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, 1, k]
+@inline BoundaryConditions.getbc(condition::ZReducedField, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, j, 1]
 
 # Boundary conditions reduced in two directions are ambiguous, so that's hard...
 
 # 0D boundary conditions --- easy case
-@inline getbc(condition::XYZReducedField, ::Integer, ::Integer, ::AbstractGrid, args...) = @inbounds condition[1, 1, 1]
+@inline BoundaryConditions.getbc(condition::XYZReducedField, ::Integer, ::Integer, ::AbstractGrid, args...) = @inbounds condition[1, 1, 1]
 
 # Preserve location when adapting fields reduced on one or more dimensions
 function Adapt.adapt_structure(to, reduced_field::ReducedField)
@@ -853,7 +849,7 @@ Statistics.mean!(r::ReducedAbstractField, a::AbstractArray; kwargs...) = Statist
 ##### fill_halo_regions!
 #####
 
-function fill_halo_regions!(field::Field, positional_args...; kwargs...)
+function BoundaryConditions.fill_halo_regions!(field::Field, positional_args...; kwargs...)
 
     arch = architecture(field.grid)
     args = (field.data,
@@ -877,4 +873,4 @@ end
 ##### nodes
 #####
 
-nodes(f::Field; kwargs...) = nodes(f.grid, instantiated_location(f)...; indices=indices(f), kwargs...)
+Grids.nodes(f::Field; kwargs...) = nodes(f.grid, instantiated_location(f)...; indices=indices(f), kwargs...)

@@ -5,11 +5,12 @@ export
     SphericalCoriolis, HydrostaticSphericalCoriolis,
     x_f_cross_U, y_f_cross_U, z_f_cross_U
 
-using Printf
-using Adapt
-using Oceananigans
-using Oceananigans.Grids
-using Oceananigans.Operators
+using Printf: @sprintf
+using Adapt: Adapt
+using Oceananigans: Oceananigans
+using Oceananigans.Grids: AbstractGrid, Center, Face, ynode, znode
+using Oceananigans.Operators: active_weighted_ℑxyᶜᶠᶜ, active_weighted_ℑxyᶠᶜᶜ, ℑxᶜᵃᵃ, ℑxᶠᵃᵃ,
+    ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ, ℑxyᶜᶠᵃ, ℑxzᶜᵃᶠ
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 """

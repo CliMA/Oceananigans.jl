@@ -1,11 +1,7 @@
-using Oceananigans.Operators
-using Oceananigans.Operators: Vᶜᶜᶜ
+using Oceananigans.Operators: Vᶜᶜᶜ, V⁻¹ᶜᶜᶜ, Ax_∂xᶠᶜᶜ, Axᶠᶜᶜ, Ay_∂yᶜᶠᶜ, Ayᶜᶠᶜ, Az_∂zᶜᶜᶠ,
+    Azᶜᶜᶠ, Δx⁻¹ᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ, Δz⁻¹ᶜᶜᶠ, δxᶜᶜᶜ, δyᶜᶜᶜ, δzᶜᶜᶜ
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Statistics: mean
-
-using KernelAbstractions: @kernel, @index
-
-import Oceananigans.Architectures: architecture
 
 struct ConjugateGradientPoissonSolver{G, R, S}
     grid :: G
@@ -13,7 +9,7 @@ struct ConjugateGradientPoissonSolver{G, R, S}
     conjugate_gradient_solver :: S
 end
 
-architecture(solver::ConjugateGradientPoissonSolver) = architecture(solver.grid)
+Architectures.architecture(solver::ConjugateGradientPoissonSolver) = architecture(solver.grid)
 iteration(cgps::ConjugateGradientPoissonSolver) = iteration(cgps.conjugate_gradient_solver)
 
 Base.summary(ips::ConjugateGradientPoissonSolver) =
