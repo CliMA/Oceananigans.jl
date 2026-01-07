@@ -127,7 +127,7 @@ function step_free_surface!(free_surface::ImplicitFreeSurface, model, timesteppe
     solver = free_surface.implicit_step_solver
 
     fill_halo_regions!(model.velocities, model.clock, fields(model))
-    
+
     @apply_regionally begin
         mask_immersed_field!(model.velocities.u)
         mask_immersed_field!(model.velocities.v)
@@ -160,11 +160,11 @@ end
 
 function prognostic_state(fs::ImplicitFreeSurface)
     return (
-        η = prognostic_state(fs.η),
+        displacement = prognostic_state(fs.displacement),
     )
 end
 
 function restore_prognostic_state!(fs::ImplicitFreeSurface, state)
-    restore_prognostic_state!(fs.η, state.η)
+    restore_prognostic_state!(fs.displacement, state.displacement)
     return fs
 end

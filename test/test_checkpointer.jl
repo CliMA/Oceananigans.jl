@@ -129,14 +129,12 @@ function test_minimal_restore_nonhydrostatic(arch, FT, pickup_method)
     new_simulation.output_writers[:checkpointer] = new_checkpointer
 
     if pickup_method == :boolean
-        pickup = true
+        @test_nowarn set!(new_simulation; checkpoint=:latest)
     elseif pickup_method == :iteration
-        pickup = 3
+        @test_nowarn set!(new_simulation; iteration=3)
     elseif pickup_method == :filepath
-        pickup = "$(prefix)_iteration3.jld2"
+        @test_nowarn set!(new_simulation; checkpoint="$(prefix)_iteration3.jld2")
     end
-
-    @test_nowarn set!(new_simulation, pickup)
 
     @test iteration(new_simulation) == 3
     @test time(new_simulation) == 3.0
@@ -213,7 +211,7 @@ function test_thermal_bubble_checkpointing_nonhydrostatic(arch, timestepper)
 
     new_simulation.output_writers[:checkpointer] = new_checkpointer
 
-    @test_nowarn set!(new_simulation, true)
+    @test_nowarn set!(new_simulation; checkpoint=:latest)
 
     test_model_equality(new_model, model)
 
@@ -277,14 +275,12 @@ function test_minimal_restore_hydrostatic(arch, FT, pickup_method)
     new_simulation.output_writers[:checkpointer] = new_checkpointer
 
     if pickup_method == :boolean
-        pickup = true
+        @test_nowarn set!(new_simulation; checkpoint=:latest)
     elseif pickup_method == :iteration
-        pickup = 3
+        @test_nowarn set!(new_simulation; iteration=3)
     elseif pickup_method == :filepath
-        pickup = "$(prefix)_iteration3.jld2"
+        @test_nowarn set!(new_simulation; checkpoint="$(prefix)_iteration3.jld2")
     end
-
-    @test_nowarn set!(new_simulation, pickup)
 
     @test iteration(new_simulation) == 3
     @test time(new_simulation) == 3.0
@@ -338,7 +334,7 @@ function test_thermal_bubble_checkpointing_hydrostatic(arch, timestepper)
 
     new_simulation.output_writers[:checkpointer] = new_checkpointer
 
-    @test_nowarn set!(new_simulation, true)
+    @test_nowarn set!(new_simulation; checkpoint=:latest)
 
     test_model_equality(new_model, model)
 
@@ -355,7 +351,7 @@ function test_minimal_restore_shallow_water(arch, FT, pickup_method)
         extent = (L, L)
     )
 
-    model = ShallowWaterModel(; grid, gravitational_acceleration=1)
+    model = ShallowWaterModel(grid; gravitational_acceleration=1)
     set!(model, h=1)
     simulation = Simulation(model; Δt=1.0, stop_time=3.0)
 
@@ -389,7 +385,7 @@ function test_minimal_restore_shallow_water(arch, FT, pickup_method)
         extent = (L, L)
     )
 
-    new_model = ShallowWaterModel(; grid=new_grid, gravitational_acceleration=1)
+    new_model = ShallowWaterModel(new_grid; gravitational_acceleration=1)
     new_simulation = Simulation(new_model; Δt=1.0, stop_time=3.0)
 
     new_checkpointer = Checkpointer(
@@ -403,14 +399,12 @@ function test_minimal_restore_shallow_water(arch, FT, pickup_method)
     new_simulation.output_writers[:checkpointer] = new_checkpointer
 
     if pickup_method == :boolean
-        pickup = true
+        @test_nowarn set!(new_simulation; checkpoint=:latest)
     elseif pickup_method == :iteration
-        pickup = 3
+        @test_nowarn set!(new_simulation; iteration=3)
     elseif pickup_method == :filepath
-        pickup = "$(prefix)_iteration3.jld2"
+        @test_nowarn set!(new_simulation; checkpoint="$(prefix)_iteration3.jld2")
     end
-
-    @test_nowarn set!(new_simulation, pickup)
 
     @test iteration(new_simulation) == 3
     @test time(new_simulation) == 3.0
@@ -428,7 +422,7 @@ function test_height_perturbation_checkpointing_shallow_water(arch, timestepper)
     Δt = 6
 
     grid = RectilinearGrid(arch, size=(Nx, Ny), extent=(Lx, Ly), topology=(Periodic, Periodic, Flat))
-    model = ShallowWaterModel(; grid, timestepper,
+    model = ShallowWaterModel(grid; timestepper,
         gravitational_acceleration = 1,
         closure = ShallowWaterScalarDiffusivity(ν=4e-2, ξ=0)
     )
@@ -449,8 +443,7 @@ function test_height_perturbation_checkpointing_shallow_water(arch, timestepper)
     @test_nowarn run!(simulation)
 
     new_grid = RectilinearGrid(arch, size=(Nx, Ny), extent=(Lx, Ly), topology=(Periodic, Periodic, Flat))
-    new_model = ShallowWaterModel(; timestepper,
-        grid = new_grid,
+    new_model = ShallowWaterModel(new_grid; timestepper,
         gravitational_acceleration = 1,
         closure = ShallowWaterScalarDiffusivity(ν=4e-2, ξ=0)
     )
@@ -464,7 +457,7 @@ function test_height_perturbation_checkpointing_shallow_water(arch, timestepper)
 
     new_simulation.output_writers[:checkpointer] = new_checkpointer
 
-    @test_nowarn set!(new_simulation, true)
+    @test_nowarn set!(new_simulation; checkpoint=:latest)
 
     test_model_equality(new_model, model)
 
@@ -514,7 +507,7 @@ function test_checkpointing_split_explicit_free_surface(arch, timestepper)
         prefix = prefix
     )
 
-    @test_nowarn set!(new_simulation, true)
+    @test_nowarn set!(new_simulation; checkpoint=:latest)
 
     test_model_equality(new_model, model)
 
@@ -570,11 +563,11 @@ function test_checkpointing_implicit_free_surface(arch, solver_method)
         prefix = prefix
     )
 
-    @test_nowarn set!(new_simulation, true)
+    @test_nowarn set!(new_simulation; checkpoint=:latest)
 
     test_model_equality(new_model, model)
 
-    rm.(glob("$(prefixdefault_included_properties)_iteration*.jld2"), force=true)
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
 
     return nothing
 end
@@ -638,7 +631,7 @@ function test_checkpointing_lagrangian_particles(arch, timestepper)
         prefix = prefix
     )
 
-    @test_nowarn set!(new_simulation, true)
+    @test_nowarn set!(new_simulation; checkpoint=:latest)
 
     test_model_equality(new_model, model)
 
@@ -701,7 +694,7 @@ function test_checkpointing_immersed_boundary_grid(arch, boundary_type)
         prefix = prefix
     )
 
-    @test_nowarn set!(new_simulation, true)
+    @test_nowarn set!(new_simulation; checkpoint=:latest)
 
     test_model_equality(new_model, model)
 
@@ -763,7 +756,7 @@ function test_checkpointing_latitude_longitude_grid(arch)
         prefix = prefix
     )
 
-    @test_nowarn set!(new_simulation, true)
+    @test_nowarn set!(new_simulation; checkpoint=:latest)
 
     test_model_equality(new_model, model)
 
@@ -802,7 +795,7 @@ function test_checkpointing_float32(arch)
         prefix = prefix
     )
 
-    @test_nowarn set!(new_simulation, true)
+    @test_nowarn set!(new_simulation; checkpoint=:latest)
 
     test_model_equality(new_model, model)
 
@@ -847,7 +840,7 @@ function test_checkpointing_auxiliary_fields(arch)
         prefix = prefix
     )
 
-    @test_nowarn set!(new_simulation, true)
+    @test_nowarn set!(new_simulation; checkpoint=:latest)
 
     test_model_equality(new_model, model)
 
@@ -901,7 +894,7 @@ function test_checkpointing_closure_fields(arch)
         prefix = prefix
     )
 
-    @test_nowarn set!(new_simulation, true)
+    @test_nowarn set!(new_simulation; checkpoint=:latest)
 
     test_model_equality(new_model, model)
 
@@ -920,7 +913,7 @@ function test_checkpointing_catke_closure(arch)
 
     model = HydrostaticFreeSurfaceModel(grid; closure,
         buoyancy = SeawaterBuoyancy(),
-        tracers = (:T, :S, :e)
+        tracers = (:T, :S)
     )
 
     # Linear stratification + noisy velocity to generate TKE
@@ -943,7 +936,7 @@ function test_checkpointing_catke_closure(arch)
     new_model = HydrostaticFreeSurfaceModel(new_grid;
         closure = CATKEVerticalDiffusivity(),
         buoyancy = SeawaterBuoyancy(),
-        tracers = (:T, :S, :e)
+        tracers = (:T, :S)
     )
 
     new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
@@ -952,7 +945,7 @@ function test_checkpointing_catke_closure(arch)
         prefix = prefix
     )
 
-    @test_nowarn set!(new_simulation, true)
+    @test_nowarn set!(new_simulation; checkpoint=:latest)
 
     test_model_equality(new_model, model)
 
@@ -1001,7 +994,7 @@ function test_checkpointing_dynamic_smagorinsky_closure(arch)
         prefix = prefix
     )
 
-    @test_nowarn set!(new_simulation, true)
+    @test_nowarn set!(new_simulation; checkpoint=:latest)
 
     # Verify closure field state was restored
     new_cf = new_model.closure_fields
@@ -1062,7 +1055,7 @@ function test_checkpointing_ri_based_closure(arch)
         prefix = prefix
     )
 
-    @test_nowarn set!(new_simulation, true)
+    @test_nowarn set!(new_simulation; checkpoint=:latest)
 
     # Verify closure field state was restored
     @test all(Array(interior(new_model.closure_fields.κc)) .≈ original_κc)
@@ -1085,7 +1078,7 @@ function test_checkpointing_tke_dissipation_closure(arch)
 
     model = HydrostaticFreeSurfaceModel(grid; closure,
         buoyancy = SeawaterBuoyancy(),
-        tracers = (:T, :S, :e, :ϵ)
+        tracers = (:T, :S)
     )
 
     # Linear stratification + noisy velocity to generate turbulence
@@ -1112,7 +1105,7 @@ function test_checkpointing_tke_dissipation_closure(arch)
     new_model = HydrostaticFreeSurfaceModel(new_grid;
         closure = TKEDissipationVerticalDiffusivity(),
         buoyancy = SeawaterBuoyancy(),
-        tracers = (:T, :S, :e, :ϵ)
+        tracers = (:T, :S)
     )
 
     new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
@@ -1121,7 +1114,7 @@ function test_checkpointing_tke_dissipation_closure(arch)
         prefix = prefix
     )
 
-    @test_nowarn set!(new_simulation, true)
+    @test_nowarn set!(new_simulation; checkpoint=:latest)
 
     # Verify previous_velocities state was restored
     @test all(Array(interior(new_model.closure_fields.previous_velocities.u)) .≈ original_u⁻)
@@ -1188,7 +1181,7 @@ function test_checkpoint_continuation_matches_direct(arch, timestepper)
         prefix = prefix
     )
 
-    @test_nowarn set!(simulation_B_new, true)
+    @test_nowarn set!(simulation_B_new; checkpoint=:latest)
 
     # Continue running for 5 more iterations (to iteration 10)
     @test_nowarn run!(simulation_B_new)
@@ -1238,7 +1231,7 @@ function test_checkpoint_empty_tracers(arch)
         prefix = prefix
     )
 
-    @test_nowarn set!(new_simulation, true)
+    @test_nowarn set!(new_simulation; checkpoint=:latest)
 
     test_model_equality(new_model, model)
 
@@ -1265,7 +1258,7 @@ function test_checkpoint_missing_file_warning(arch)
     )
 
     # Should warn but not error when no checkpoint files exist
-    @test_logs (:warn,) set!(simulation, true)
+    @test_logs (:warn,) set!(simulation; checkpoint=:latest)
 
     # Simulation should still be at iteration 0
     @test iteration(simulation) == 0
@@ -1330,7 +1323,7 @@ function test_stateful_schedule_checkpointing(arch, schedule_type)
 
     new_simulation.callbacks[:test_schedule] = Callback(_ -> nothing, new_schedule)
 
-    @test_nowarn set!(new_simulation, true)
+    @test_nowarn set!(new_simulation; checkpoint=:latest)
 
     # Run the restored simulation to completion
     @test_nowarn run!(new_simulation)
@@ -1423,7 +1416,7 @@ function test_windowed_time_average_checkpointing(arch, WriterType)
     )
 
     # Restore from checkpoint at iteration 8
-    @test_nowarn set!(new_simulation, 8)
+    @test_nowarn set!(new_simulation; iteration=8)
 
     # Verify WindowedTimeAverage state was restored
     new_writer = new_simulation.output_writers[:averaged]
@@ -1543,7 +1536,7 @@ function test_windowed_time_average_continuation_correctness(arch, WriterType)
         overwrite_existing = true
     )
 
-    @test_nowarn set!(simulation_B_new, true)
+    @test_nowarn set!(simulation_B_new; checkpoint=:latest)
     @test_nowarn run!(simulation_B_new)
 
     # Compare at iteration 10 (time 1.0) - first window just completed
@@ -1596,7 +1589,7 @@ function test_manual_checkpoint_with_checkpointer(arch)
         prefix = prefix
     )
 
-    @test_nowarn set!(new_simulation, expected_filepath)
+    @test_nowarn set!(new_simulation; checkpoint=expected_filepath)
     @test iteration(new_simulation) == 5
 
     test_model_equality(new_model, model)
@@ -1632,7 +1625,7 @@ function test_manual_checkpoint_without_checkpointer(arch)
     new_model = NonhydrostaticModel(new_grid)
     new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
 
-    @test_nowarn set!(new_simulation, expected_filepath)
+    @test_nowarn set!(new_simulation; checkpoint=expected_filepath)
     @test iteration(new_simulation) == 5
 
     test_model_equality(new_model, model)
@@ -1674,7 +1667,7 @@ function test_manual_checkpoint_with_filepath(arch)
     new_model = NonhydrostaticModel(new_grid)
     new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
 
-    @test_nowarn set!(new_simulation, custom_filepath)
+    @test_nowarn set!(new_simulation; checkpoint=custom_filepath)
     @test iteration(new_simulation) == 5
 
     test_model_equality(new_model, model)
@@ -1684,7 +1677,7 @@ function test_manual_checkpoint_with_filepath(arch)
     return nothing
 end
 
-for arch in archs
+for arch in [CPU(), GPU()]
     for pickup_method in (:boolean, :iteration, :filepath)
         @testset "Minimal restore [$(typeof(arch)), $(pickup_method)]" begin
             @info "  Testing minimal restore [$(typeof(arch)), $(pickup_method)]..."
