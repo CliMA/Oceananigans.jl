@@ -72,7 +72,7 @@ function test_model_equality(test_model, true_model)
     return nothing
 end
 
-function test_minimal_restore_nonhydrostatic(arch, FT, pickup_method)
+function test_minimal_restore(arch, FT, pickup_method, model_type)
     N = 16
     L = 50
 
@@ -82,10 +82,15 @@ function test_minimal_restore_nonhydrostatic(arch, FT, pickup_method)
         extent = (L, L, L)
     )
 
-    model = NonhydrostaticModel(grid)
+    if model_type == :nonhydrostatic
+        model = NonhydrostaticModel(grid)
+    elseif model_type == :hydrostatic
+        model = HydrostaticFreeSurfaceModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    end
+
     simulation = Simulation(model; Δt=1.0, stop_time=3.0)
 
-    prefix = "mwe_checkpointer_$(typeof(arch))_$(FT)"
+    prefix = "mwe_checkpointer_$(model_type)_$(typeof(arch))_$(FT)"
 
     checkpointer = Checkpointer(
         model;
@@ -115,7 +120,12 @@ function test_minimal_restore_nonhydrostatic(arch, FT, pickup_method)
         extent = (L, L, L)
     )
 
-    new_model = NonhydrostaticModel(new_grid)
+    if model_type == :nonhydrostatic
+        new_model = NonhydrostaticModel(new_grid)
+    elseif model_type == :hydrostatic
+        new_model = HydrostaticFreeSurfaceModel(new_grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    end
+
     new_simulation = Simulation(new_model; Δt=1.0, stop_time=3.0)
 
     new_checkpointer = Checkpointer(
@@ -169,149 +179,36 @@ function test_checkpointer_cleanup(arch)
     return nothing
 end
 
-function test_thermal_bubble_checkpointing_nonhydrostatic(arch, timestepper)
+function test_thermal_bubble_checkpointing(arch, timestepper, model_type::Symbol)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 100, 100, 100
     Δt = 6
 
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    model = NonhydrostaticModel(grid; timestepper,
-        closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
-        buoyancy = SeawaterBuoyancy(),
-        tracers = (:T, :S)
-    )
 
-    bubble(x, y, z) = 0.01 * exp(-100 * ((x - Lx/2)^2 + (y - Ly/2)^2 + (z - Lz/2)^2) / (Lx^2 + Ly^2 + Lz^2))
-    set!(model, T=bubble, S=bubble)
-
-    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
-
-    checkpointer = Checkpointer(model,
-        schedule = IterationInterval(5),
-        prefix = "thermal_bubble_checkpointing_$(typeof(arch))"
-    )
-
-    simulation.output_writers[:checkpointer] = checkpointer
-
-    @test_nowarn run!(simulation)
-
-    new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    new_model = NonhydrostaticModel(new_grid; timestepper,
-        closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
-        buoyancy = SeawaterBuoyancy(),
-        tracers = (:T, :S)
-    )
-
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
-
-    new_checkpointer = Checkpointer(new_model,
-        schedule = IterationInterval(5),
-        prefix = "thermal_bubble_checkpointing_$(typeof(arch))"
-    )
-
-    new_simulation.output_writers[:checkpointer] = new_checkpointer
-
-    @test_nowarn set!(new_simulation; checkpoint=:latest)
-
-    test_model_equality(new_model, model)
-
-    return nothing
-end
-
-function test_minimal_restore_hydrostatic(arch, FT, pickup_method)
-    N = 16
-    L = 50
-
-    grid = RectilinearGrid(arch, FT,
-        size = (N, N, N),
-        topology = (Periodic, Bounded, Bounded),
-        extent = (L, L, L)
-    )
-
-    model = HydrostaticFreeSurfaceModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
-    simulation = Simulation(model; Δt=1.0, stop_time=3.0)
-
-    prefix = "mwe_checkpointer_hydrostatic_$(typeof(arch))_$(FT)"
-
-    checkpointer = Checkpointer(
-        model;
-        schedule = TimeInterval(1.0),
-        prefix = prefix,
-        cleanup = false,
-        verbose = true
-    )
-
-    simulation.output_writers[:checkpointer] = checkpointer
-
-    @test_nowarn run!(simulation)
-
-    @test isfile("$(prefix)_iteration0.jld2")
-    @test isfile("$(prefix)_iteration1.jld2")
-    @test isfile("$(prefix)_iteration2.jld2")
-    @test isfile("$(prefix)_iteration3.jld2")
-
-    grid = nothing
-    model = nothing
-    simulation = nothing
-    checkpointer = nothing
-
-    new_grid = RectilinearGrid(arch, FT,
-        size = (N, N, N),
-        topology = (Periodic, Bounded, Bounded),
-        extent = (L, L, L)
-    )
-
-    new_model = HydrostaticFreeSurfaceModel(new_grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
-    new_simulation = Simulation(new_model; Δt=1.0, stop_time=3.0)
-
-    new_checkpointer = Checkpointer(
-        new_model;
-        schedule = TimeInterval(1.0),
-        prefix = prefix,
-        cleanup = false,
-        verbose = true
-    )
-
-    new_simulation.output_writers[:checkpointer] = new_checkpointer
-
-    if pickup_method == :boolean
-        @test_nowarn set!(new_simulation; checkpoint=:latest)
-    elseif pickup_method == :iteration
-        @test_nowarn set!(new_simulation; iteration=3)
-    elseif pickup_method == :filepath
-        @test_nowarn set!(new_simulation; checkpoint="$(prefix)_iteration3.jld2")
+    if model_type == :nonhydrostatic
+        model = NonhydrostaticModel(grid; timestepper,
+            closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
+            buoyancy = SeawaterBuoyancy(),
+            tracers = (:T, :S)
+        )
+    elseif model_type == :hydrostatic
+        model = HydrostaticFreeSurfaceModel(grid; timestepper,
+            closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
+            buoyancy = SeawaterBuoyancy(),
+            tracers = (:T, :S)
+        )
     end
 
-    @test iteration(new_simulation) == 3
-    @test time(new_simulation) == 3.0
-
-    @test new_checkpointer.schedule.actuations == 3
-
-    rm.(glob("$(prefix)_iteration*.jld2"))
-
-    return nothing
-end
-
-function test_thermal_bubble_checkpointing_hydrostatic(arch, timestepper)
-    Nx, Ny, Nz = 16, 16, 16
-    Lx, Ly, Lz = 100, 100, 100
-    Δt = 6
-
-    grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    model = HydrostaticFreeSurfaceModel(grid; timestepper,
-        closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
-        buoyancy = SeawaterBuoyancy(),
-        tracers = (:T, :S)
-    )
-
     bubble(x, y, z) = 0.01 * exp(-100 * ((x - Lx/2)^2 + (y - Ly/2)^2 + (z - Lz/2)^2) / (Lx^2 + Ly^2 + Lz^2))
     set!(model, T=bubble, S=bubble)
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
+    prefix = "thermal_bubble_checkpointing_$(model_type)_$(typeof(arch))"
     checkpointer = Checkpointer(model,
         schedule = IterationInterval(5),
-        prefix = "thermal_bubble_checkpointing_hydrostatic_$(typeof(arch))"
+        prefix = prefix
     )
 
     simulation.output_writers[:checkpointer] = checkpointer
@@ -319,17 +216,26 @@ function test_thermal_bubble_checkpointing_hydrostatic(arch, timestepper)
     @test_nowarn run!(simulation)
 
     new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    new_model = HydrostaticFreeSurfaceModel(new_grid; timestepper,
-        closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
-        buoyancy = SeawaterBuoyancy(),
-        tracers = (:T, :S)
-    )
+
+    if model_type == :nonhydrostatic
+        new_model = NonhydrostaticModel(new_grid; timestepper,
+            closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
+            buoyancy = SeawaterBuoyancy(),
+            tracers = (:T, :S)
+        )
+    elseif model_type == :hydrostatic
+        new_model = HydrostaticFreeSurfaceModel(new_grid; timestepper,
+            closure = ScalarDiffusivity(ν=4e-2, κ=4e-2),
+            buoyancy = SeawaterBuoyancy(),
+            tracers = (:T, :S)
+        )
+    end
 
     new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
 
     new_checkpointer = Checkpointer(new_model,
         schedule = IterationInterval(5),
-        prefix = "thermal_bubble_checkpointing_hydrostatic_$(typeof(arch))"
+        prefix = prefix
     )
 
     new_simulation.output_writers[:checkpointer] = new_checkpointer
@@ -1707,10 +1613,12 @@ function test_checkpoint_at_end(arch)
 end
 
 for arch in [CPU(), GPU()]
-    for pickup_method in (:boolean, :iteration, :filepath)
-        @testset "Minimal restore [$(typeof(arch)), $(pickup_method)]" begin
-            @info "  Testing minimal restore [$(typeof(arch)), $(pickup_method)]..."
-            test_minimal_restore_nonhydrostatic(arch, Float64, pickup_method)
+    for model_type in (:nonhydrostatic, :hydrostatic)
+        for pickup_method in (:boolean, :iteration, :filepath)
+            @testset "Minimal restore [$model_type, $pickup_method] [$(typeof(arch))]" begin
+                @info "  Testing minimal restore [$model_type, $pickup_method] [$(typeof(arch))]..."
+                test_minimal_restore(arch, Float64, pickup_method, model_type)
+            end
         end
     end
 
@@ -1719,24 +1627,16 @@ for arch in [CPU(), GPU()]
         test_checkpointer_cleanup(arch)
     end
 
-    for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
-        @testset "Thermal bubble checkpointing [$(typeof(arch)), $(timestepper)]" begin
-            @info "  Testing thermal bubble checkpointing [$(typeof(arch)), $(timestepper)]..."
-            test_thermal_bubble_checkpointing_nonhydrostatic(arch, timestepper)
-        end
-    end
+    for model_type in (:nonhydrostatic, :hydrostatic)
+        timesteppers = model_type == :hydrostatic ?
+            (:QuasiAdamsBashforth2, :SplitRungeKutta3) :
+            (:QuasiAdamsBashforth2, :RungeKutta3)
 
-    for pickup_method in (:boolean, :iteration, :filepath)
-        @testset "Minimal restore hydrostatic [$(typeof(arch)), $(pickup_method)]" begin
-            @info "  Testing minimal restore hydrostatic [$(typeof(arch)), $(pickup_method)]..."
-            test_minimal_restore_hydrostatic(arch, Float64, pickup_method)
-        end
-    end
-
-    for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
-        @testset "Thermal bubble checkpointing hydrostatic [$(typeof(arch)), $(timestepper)]" begin
-            @info "  Testing thermal bubble checkpointing hydrostatic [$(typeof(arch)), $(timestepper)]..."
-            test_thermal_bubble_checkpointing_hydrostatic(arch, timestepper)
+        for timestepper in timesteppers
+            @testset "Thermal bubble checkpointing [$model_type, $timestepper] [$(typeof(arch))]" begin
+                @info "  Testing thermal bubble checkpointing [$model_type, $timestepper] [$(typeof(arch))]..."
+                test_thermal_bubble_checkpointing(arch, timestepper, model_type)
+            end
         end
     end
 
