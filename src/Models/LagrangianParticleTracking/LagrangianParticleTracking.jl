@@ -15,9 +15,9 @@ using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
 using Oceananigans.Grids: XYFlatGrid, YZFlatGrid, XZFlatGrid
 using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.Architectures: device, architecture
-using Oceananigans.Fields: interpolate, datatuple, compute!, location
+using Oceananigans.Fields: interpolate, compute!, location
 using Oceananigans.TimeSteppers: AbstractLagrangianParticles
-using Oceananigans.Utils: launch!, prettysummary
+using Oceananigans.Utils: datatuple, launch!, prettysummary
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.TimeSteppers: step_lagrangian_particles!
