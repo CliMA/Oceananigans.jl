@@ -2,7 +2,7 @@ using Oceananigans.OutputWriters: WindowedTimeAverage
 using Oceananigans.TimeSteppers: update_state!, unit_time
 
 using Oceananigans: AbstractModel, run_diagnostic!, restore_prognostic_state!
-using Oceananigans.OutputWriters: checkpoint_path, load_checkpoint_state
+using Oceananigans.OutputWriters: checkpoint_path, load_checkpoint_state, checkpoint
 
 import Oceananigans: initialize!
 import Oceananigans.Fields: set!
@@ -100,7 +100,7 @@ function set!(sim::Simulation; checkpoint=nothing, iteration=nothing)
 end
 
 """
-    run!(simulation; pickup=false)
+    run!(simulation; pickup=false, checkpoint_at_end=false)
 
 Run a `simulation` until one of `simulation.callbacks` such as `stop_time_exceeded` or
 `wall_time_limit_exceeded` sets `simulation.running` to `false`. The simulation will then
@@ -126,8 +126,13 @@ Possible values for `pickup` are:
 
 Note that `pickup=true` and `pickup=iteration` fail if `simulation.output_writers` contains
 more than one checkpointer.
+
+# Checkpointing at end
+
+Set `checkpoint_at_end=true` to automatically checkpoint the simulation when it stops running.
+This ensures the final state is saved even if the simulation stops due to wall time limits.
 """
-function run!(sim; pickup=false)
+function run!(sim; pickup=false, checkpoint_at_end=false)
 
     start_run = time_ns()
 
@@ -148,6 +153,8 @@ function run!(sim; pickup=false)
     while sim.running
         time_step!(sim)
     end
+
+    checkpoint_at_end && checkpoint(sim)
 
     for callback in values(sim.callbacks)
         finalize!(callback, sim)

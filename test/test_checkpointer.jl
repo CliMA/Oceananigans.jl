@@ -1677,6 +1677,35 @@ function test_manual_checkpoint_with_filepath(arch)
     return nothing
 end
 
+function test_checkpoint_at_end(arch)
+    N = 8
+    L = 1
+    Δt = 0.1
+    expected_filepath = "checkpoint_iteration5.jld2"
+
+    # Test with checkpoint_at_end=false (default) - should NOT create checkpoint
+    grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+    model = NonhydrostaticModel(grid)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+
+    @test_nowarn run!(simulation)
+
+    @test !isfile(expected_filepath)
+
+    # Test with checkpoint_at_end=true - should create checkpoint
+    grid2 = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+    model2 = NonhydrostaticModel(grid2)
+    set!(model2, u=1, v=0.5)
+    simulation2 = Simulation(model2, Δt=Δt, stop_iteration=5)
+
+    @test_nowarn run!(simulation2, checkpoint_at_end=true)  # Should create checkpoint
+
+    @test isfile(expected_filepath)
+    rm(expected_filepath, force=true)
+
+    return nothing
+end
+
 for arch in [CPU(), GPU()]
     for pickup_method in (:boolean, :iteration, :filepath)
         @testset "Minimal restore [$(typeof(arch)), $(pickup_method)]" begin
@@ -1832,5 +1861,6 @@ for arch in [CPU(), GPU()]
         test_manual_checkpoint_with_checkpointer(arch)
         test_manual_checkpoint_without_checkpointer(arch)
         test_manual_checkpoint_with_filepath(arch)
+        test_checkpoint_at_end(arch)
     end
 end

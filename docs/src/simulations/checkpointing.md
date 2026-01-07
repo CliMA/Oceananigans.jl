@@ -99,3 +99,17 @@ checkpoint(simulation, filepath="my_state.jld2")  # write to specific file
 If a `Checkpointer` is configured in `simulation.output_writers`, it will be used (respecting
 its `dir`, `prefix`, and other settings). Otherwise, the checkpoint is written to the specified
 `filepath`, or to `checkpoint_iteration{N}.jld2` in the current directory.
+
+## Automatic checkpointing at end
+
+Use `checkpoint_at_end=true` to automatically checkpoint the simulation when it finishes:
+
+```julia
+run!(simulation, checkpoint_at_end=true)  # Checkpoints when done
+```
+
+This ensures the final simulation state is saved, even if the simulation stops due to
+wall time limits or other callbacks.
+
+If a `Checkpointer` is configured, it will be used. Otherwise, a file named
+`checkpoint_iteration{N}.jld2` is created in the current directory.
