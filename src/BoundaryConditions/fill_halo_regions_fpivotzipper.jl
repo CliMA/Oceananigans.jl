@@ -5,14 +5,13 @@ using Oceananigans.Utils: KernelParameters, launch!
     FPivotZipperBoundaryCondition(sign = 1)
 
 Create a F-point pivot zipper boundary condition specific to a `TripolarGrid`.
-The zipper BC "folds" the northern boundary on itself along the `YFace` line.
+This zipper BC folds the northern boundary on itself along the `YFace` line,
+with a pivot point located at a `(Face, Face)` location (a F-point pivot).
 
 When copying in halos, folded velocities need to switch sign, while tracers or similar fields do not.
 
 Note: There are two types of zipper boundary conditions:
-F-point pivot (this one) and T-point pivot (original/default).
-For the F-point pivot, the folded seam is located on the cells' `YFace`,
-while the T-point pivot, the seam is located on the cells' `Center` and `XFace`.
+F-point pivot (this one) and U-point pivot (original/default).
 
 Example
 =======
@@ -36,7 +35,7 @@ Ny     (face)   ─▶  ├──── v₃ ────┼──── v₄ �
                                                          (face) (center)
 ```
 
-Note that for the F-point pivot, the `YFAce` fields have an extra row (size `Ny + 1`)
+Note that `YFAce` fields have an extra row (size `Ny + 1`)
 just like for `Bounded` topologies.
 
 Given the fold, we have

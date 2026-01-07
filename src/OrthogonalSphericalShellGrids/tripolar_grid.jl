@@ -24,11 +24,6 @@ Adapt.adapt_structure(to, t::Tripolar) =
 const TripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} = OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, Arch}
 const TripolarGridOfSomeKind = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}}
 
-# helper function to retrieve the pivot symbol from topology
-# (needed to reconstruct the grid with extended halos)
-pivot_symbol(::Type{RightCenterFolded}) = :TPointPivot
-pivot_symbol(::Type{RightFaceFolded})   = :FPivotPivot
-
 """
     TripolarGrid(arch = CPU(), FT::DataType = Float64;
                  size,
@@ -37,7 +32,8 @@ pivot_symbol(::Type{RightFaceFolded})   = :FPivotPivot
                  radius = Oceananigans.defaults.planet_radius,
                  z = (0, 1),
                  north_poles_latitude = 55,
-                 first_pole_longitude = 70)
+                 first_pole_longitude = 70,
+                 fold_topology = RightCenterFolded)
 
 Return an `OrthogonalSphericalShellGrid` tripolar grid on the sphere. The
 tripolar grid replaces the North pole singularity with two other singularities
@@ -67,6 +63,12 @@ Keyword Arguments
                           The second singularity is located at `first_pole_longitude + 180ᵒ`.
                           Default: 75.
 - `north_poles_latitude`: The latitude of the "north" singularities. Default: 55.
+- `fold_topology`: The folding topology to use. Either `RightCenterFolded` or `RightFaceFolded`:
+    - `RightCenterFolded` folds the north boundary along cell `XFace`s and `Center`s,
+        with a pivot point located on a `XFace`.
+    - `RightFaceFolded` corresponds to folding the north boundary along `YFace`s,
+        with a pivot point located on a corner location `(Face, Face)`.
+        Default: `RightCenterFolded`.
 
 !!! warning "Longitude coordinate must have even number of cells"
     `size` is a 3-tuple of the grid size in longitude, latitude, and vertical directions.
@@ -91,14 +93,10 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
                       z = (0, 1),
                       north_poles_latitude = 55,
                       first_pole_longitude = 70, # second pole is at longitude `first_pole_longitude + 180ᵒ`
-                      pivot = :TPointPivot)
+                      fold_topology = RightCenterFolded)
 
     # Set the topology
-    if pivot == :TPointPivot
-        topology = (Periodic, RightCenterFolded, Bounded)
-    else
-        topology = (Periodic, RightFaceFolded, Bounded)
-    end
+    topology = (Periodic, fold_topology, Bounded)
 
     # TODO: Change a couple of allocations here and there to be able
     # to construct the grid on the GPU. This is not a huge problem as
@@ -164,13 +162,13 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     grid = RectilinearGrid(; size = (Nx, Ny),
                              halo = (Hλ, Hφ),
                              x = (0, 1), y = (0, 1),
-                             topology = (topology[1], topology[2], Flat))
+                             topology = (Periodic, fold_topology, Flat))
 
     # Boundary conditions to fill halos of the coordinate and metric terms
     # We need to define them manually because of the convention in the
     # ZipperBoundaryCondition that edge fields need to switch sign (which we definitely do not
     # want for coordinates and metrics)
-    boundary_conditions = FieldBoundaryConditions(north  = north_boundary_condition(pivot),
+    boundary_conditions = FieldBoundaryConditions(north  = north_fold_boundary_condition(fold_topology)(),
                                                   south  = NoFluxBoundaryCondition(), # The south should be `continued`
                                                   west   = Oceananigans.PeriodicBoundaryCondition(),
                                                   east   = Oceananigans.PeriodicBoundaryCondition(),
@@ -358,8 +356,6 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     return grid
 end
 
-north_boundary_condition(pivot) = (pivot == :TPointPivot) ? ZipperBoundaryCondition() : FPivotZipperBoundaryCondition()
-
 # Continue the metrics to the south with LatitudeLongitudeGrid metrics
 function continue_south!(new_metric, lat_lon_metric::Number)
     Hx, Hy = new_metric.offsets
@@ -406,15 +402,13 @@ function Grids.with_halo(new_halo, old_grid::TripolarGrid)
     first_pole_longitude = old_grid.conformal_mapping.first_pole_longitude
     southernmost_latitude = old_grid.conformal_mapping.southernmost_latitude
 
-    pivot = pivot_symbol(topology(old_grid, 2))
-
     new_grid = TripolarGrid(architecture(old_grid), eltype(old_grid);
                             size, z, halo = new_halo,
                             radius = old_grid.radius,
                             north_poles_latitude,
                             first_pole_longitude,
                             southernmost_latitude,
-                            pivot)
+                            fold_topology = topology(old_grid, 2))
 
     return new_grid
 end
