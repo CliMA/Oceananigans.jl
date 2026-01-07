@@ -16,10 +16,10 @@ Advance `HydrostaticFreeSurfaceModel` by one Adams-Bashforth 2nd-order time step
 Dispatches to the appropriate method based on the free surface type (explicit or implicit).
 """
 ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, callbacks) =
-    ab2_step!(model, model.free_surface, model.grid, Δt, callbacks)
+    hydrostatic_ab2_step!(model, model.free_surface, model.grid, Δt, callbacks)
 
 """
-    ab2_step!(model, free_surface, grid, Δt, callbacks)
+    hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
 
 The Adams-Bashforth 2nd-order time step for `HydrostaticFreeSurfaceModel` with explicit free surfaces
 (`ExplicitFreeSurface` or `SplitExplicitFreeSurface`).
@@ -34,7 +34,7 @@ The order of operations for explicit free surfaces is:
 7. Correct barotropic mode
 8. Advance tracers using AB2
 """
-function ab2_step!(model, free_surface, grid, Δt, callbacks)
+function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
     FT = eltype(grid)
     χ  = convert(FT, model.timestepper.χ)
     Δt = convert(FT, Δt)
@@ -69,7 +69,7 @@ function ab2_step!(model, free_surface, grid, Δt, callbacks)
 end
 
 """
-    ab2_step!(model, ::ImplicitFreeSurface, grid, Δt, callbacks)
+    hydrostatic_ab2_step!(model::HydrostaticFreeSurfaceModel, ::ImplicitFreeSurface, grid, Δt, callbacks)
 
 The Adams-Bashforth 2nd-order time step for `HydrostaticFreeSurfaceModel` with `ImplicitFreeSurface`.
 
@@ -81,7 +81,7 @@ For implicit free surfaces, a predictor-corrector approach is used:
 5. Correct velocities for the updated barotropic pressure gradient
 6. Advance tracers using AB2
 """
-function ab2_step!(model, ::ImplicitFreeSurface, grid, Δt, callbacks)
+function hydrostatic_ab2_step!(model, ::ImplicitFreeSurface, grid, Δt, callbacks)
     FT = eltype(grid)
     χ  = convert(FT, model.timestepper.χ)
     Δt = convert(FT, Δt)

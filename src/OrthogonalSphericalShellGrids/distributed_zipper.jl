@@ -51,6 +51,9 @@ end
     return nothing
 end
 
+# Disambiguation
+fill_halo_regions!(c::OffsetArray, ::Nothing, indices, loc, ::DistributedTripolarGridOfSomeKind, args...; kwargs...) = nothing
+
 function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedTripolarGridOfSomeKind, buffers, args...; kwargs...)
 
     arch = architecture(grid)
