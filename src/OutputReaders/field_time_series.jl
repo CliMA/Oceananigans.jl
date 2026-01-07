@@ -755,6 +755,11 @@ function FieldTimeSeries(path::String, args...; reader_kw = NamedTuple(), kwargs
             lookfor = string(start, "_part*.jld2") # Look for part1, etc
             part_paths = glob(lookfor) |> naturalsort
             Nparts = length(part_paths)
+
+            if Nparts == 0
+                error("File not found: $path. Also tried looking for part files (*_part*.jld2).")
+            end
+
             path = first(part_paths) # part1 is first?
         else
             Nparts = nothing
