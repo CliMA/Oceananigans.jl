@@ -1,16 +1,19 @@
 using Oceananigans: Oceananigans
 using Aqua: Aqua
 using ExplicitImports: ExplicitImports
-using Test: @testset, @test
+using Test: @testset, @test, detect_ambiguities
 
 @testset "Aqua" begin
     @info "testing quality assurance via Aqua"
     Aqua.test_all(Oceananigans; ambiguities=false)
+
+    # Until we resolve all ambiguities, we make sure we don't increase them.
+    @test length(detect_ambiguities(Oceananigans; recursive=true)) <= 361
 end
 
 @testset "ExplicitImports" begin
 
-    modules = (Oceananigans.Utils, Oceananigans.OrthogonalSphericalShellGrids, Oceananigans.Diagnostics, Oceananigans.AbstractOperations, Oceananigans.Models.HydrostaticFreeSurfaceModels, Oceananigans.TimeSteppers, Oceananigans.ImmersedBoundaries, Oceananigans.TurbulenceClosures)
+    modules = (Oceananigans.Utils, Oceananigans.OrthogonalSphericalShellGrids, Oceananigans.Diagnostics, Oceananigans.AbstractOperations, Oceananigans.Models.HydrostaticFreeSurfaceModels, Oceananigans.TimeSteppers, Oceananigans.ImmersedBoundaries, Oceananigans.TurbulenceClosures, Oceananigans.Coriolis, Oceananigans.Forcings, Oceananigans.BuoyancyFormulations, Oceananigans.Solvers, Oceananigans.Operators)
 
     @testset "Explicit Imports [$(mod)]" for mod in modules
         @info "Testing no implicit imports for module $(mod)"
