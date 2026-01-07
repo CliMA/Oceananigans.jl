@@ -155,23 +155,11 @@ get_time(model) = model.clock.time
 function diagnostics_getindex(arch, FT)
     model = TestModel_RegularRectGrid(arch, FT)
     simulation = Simulation(model, Δt=0, stop_iteration=0)
-    td = TestDiagnostic()
-    simulation.diagnostics[:td] = td
-    return simulation.diagnostics[1] == td
-end
-
-function diagnostics_setindex(arch, FT)
-    model = TestModel_RegularRectGrid(arch, FT)
-    simulation = Simulation(model, Δt=0, stop_iteration=0)
-
     td1 = TestDiagnostic()
     td2 = TestDiagnostic()
-    td3 = TestDiagnostic()
-
-    push!(simulation.diagnostics, td1, td2)
-    simulation.diagnostics[2] = td3
-
-    return simulation.diagnostics[:diag2] == td3
+    simulation.diagnostics[:td1] = td1
+    simulation.diagnostics[:td2] = td2
+    return simulation.diagnostics[1] == td1 && simulation.diagnostics[2] == td2
 end
 
 @testset "Diagnostics" begin
