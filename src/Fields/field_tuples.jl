@@ -1,4 +1,3 @@
-using Oceananigans.Grids: AbstractGrid
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
 
 #####
@@ -54,7 +53,7 @@ Fill halo regions for all `fields`. The algorithm:
   4. In every direction, the halo regions in each of the remaining `Field` tuple
      are filled simultaneously.
 """
-function fill_halo_regions!(fields::Union{NamedTuple, Tuple}, args...; kwargs...)
+function BoundaryConditions.fill_halo_regions!(fields::Union{NamedTuple, Tuple}, args...; kwargs...)
 
     for i in eachindex(fields)
         @inbounds fill_halo_regions!(fields[i], args...; kwargs...)
