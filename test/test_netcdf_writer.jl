@@ -2508,7 +2508,7 @@ function test_netcdf_hydrostatic_free_surface_only_output(arch; immersed=false, 
     Nt = 5
     simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
 
-    outputs = (; η = model.free_surface.displacement,)
+    outputs = (; model.free_surface.displacement,)
 
     Arch = typeof(arch)
     immersed_str = immersed ? "_immersed" : ""
@@ -2535,16 +2535,16 @@ function test_netcdf_hydrostatic_free_surface_only_output(arch; immersed=false, 
 
     ds_h = NCDataset(filepath_with_halos)
 
-    @test haskey(ds_h, "η")
-    @test dimsize(ds_h["η"]) == (λ_caa=Nλ + 2Hλ, φ_aca=Nφ + 2Hφ, z_aaf_η=1, time=Nt + 1)
+    @test haskey(ds_h, "displacement")
+    @test dimsize(ds_h["displacement"]) == (λ_caa=Nλ + 2Hλ, φ_aca=Nφ + 2Hφ, z_aaf_η=1, time=Nt + 1)
 
     close(ds_h)
     rm(filepath_with_halos)
 
     ds_n = NCDataset(filepath_no_halos)
 
-    @test haskey(ds_n, "η")
-    @test dimsize(ds_n["η"]) == (λ_caa=Nλ, φ_aca=Nφ, z_aaf_η=1, time=Nt + 1)
+    @test haskey(ds_n, "displacement")
+    @test dimsize(ds_n["displacement"]) == (λ_caa=Nλ, φ_aca=Nφ, z_aaf_η=1, time=Nt + 1)
 
     close(ds_n)
     rm(filepath_no_halos)
