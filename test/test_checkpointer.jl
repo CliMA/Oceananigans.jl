@@ -5,6 +5,7 @@ using NCDatasets
 
 using Oceananigans: restore_prognostic_state!, prognostic_fields
 using Oceananigans.Models.ShallowWaterModels: ShallowWaterScalarDiffusivity
+using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: ForwardBackwardScheme, AdamsBashforth3Scheme
 using Oceananigans.OutputWriters: load_checkpoint_state
 
 function test_model_equality(test_model, true_model)
@@ -346,13 +347,13 @@ function test_height_perturbation_checkpointing_shallow_water(arch, timestepper)
     return nothing
 end
 
-function test_checkpointing_split_explicit_free_surface(arch, timestepper)
+function test_checkpointing_split_explicit_free_surface(arch, timestepper, free_surface_timestepper)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 1000, 1000, 100
     Δt = 0.1
 
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    free_surface = SplitExplicitFreeSurface(grid; substeps=30)
+    free_surface = SplitExplicitFreeSurface(grid; substeps=30, timestepper=free_surface_timestepper)
 
     model = HydrostaticFreeSurfaceModel(grid; timestepper, free_surface,
                                         buoyancy = SeawaterBuoyancy(),
@@ -363,7 +364,8 @@ function test_checkpointing_split_explicit_free_surface(arch, timestepper)
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
-    prefix = "split_explicit_checkpointing_$(typeof(arch))_$(timestepper)"
+    fs_ts_name = nameof(typeof(free_surface_timestepper))
+    prefix = "split_explicit_checkpointing_$(typeof(arch))_$(timestepper)_$(fs_ts_name)"
     simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                             schedule = IterationInterval(5),
                                                             prefix = prefix)
@@ -372,12 +374,12 @@ function test_checkpointing_split_explicit_free_surface(arch, timestepper)
 
     # Create new model with same setup
     new_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    new_free_surface = SplitExplicitFreeSurface(new_grid; substeps=30)
+    new_free_surface = SplitExplicitFreeSurface(new_grid; substeps=30, timestepper=free_surface_timestepper)
 
     new_model = HydrostaticFreeSurfaceModel(new_grid; timestepper,
-                                           free_surface = new_free_surface,
-                                           buoyancy = SeawaterBuoyancy(),
-                                           tracers = (:T, :S))
+                                            free_surface = new_free_surface,
+                                            buoyancy = SeawaterBuoyancy(),
+                                            tracers = (:T, :S))
 
     new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=5)
 
@@ -1522,7 +1524,7 @@ function test_checkpoint_at_end(arch)
     return nothing
 end
 
-for arch in [CPU(), GPU()]
+for arch in archs
     for model_type in (:nonhydrostatic, :hydrostatic)
         for pickup_method in (:boolean, :iteration, :filepath)
             @testset "Minimal restore [$model_type, $pickup_method] [$(typeof(arch))]" begin
@@ -1565,9 +1567,12 @@ for arch in [CPU(), GPU()]
     end
 
     for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
-        @testset "SplitExplicitFreeSurface checkpointing [$(typeof(arch)), $timestepper]" begin
-            @info "  Testing SplitExplicitFreeSurface checkpointing [$(typeof(arch)), $timestepper]..."
-            test_checkpointing_split_explicit_free_surface(arch, timestepper)
+        for free_surface_timestepper in (ForwardBackwardScheme(), AdamsBashforth3Scheme())
+            fs_ts_name = nameof(typeof(free_surface_timestepper))
+            @testset "SplitExplicitFreeSurface checkpointing [$(typeof(arch)), $timestepper, $fs_ts_name]" begin
+                @info "  Testing SplitExplicitFreeSurface checkpointing [$(typeof(arch)), $timestepper, $fs_ts_name]..."
+                test_checkpointing_split_explicit_free_surface(arch, timestepper, free_surface_timestepper)
+            end
         end
     end
 
