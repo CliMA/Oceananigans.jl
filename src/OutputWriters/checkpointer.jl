@@ -265,6 +265,44 @@ function restore_prognostic_state!(checkpointer::Checkpointer, state)
 end
 
 #####
+##### Checkpointing file-based output writers (JLD2Writer, NetCDFWriter)
+#####
+
+output_key_to_symbol(name::Symbol) = name
+output_key_to_symbol(name::AbstractString) = Symbol(name)
+
+output_lookup_key(::JLD2Writer, name::Symbol) = name
+output_lookup_key(::NetCDFWriter, name::Symbol) = string(name)
+
+function prognostic_state(writer::Union{JLD2Writer, NetCDFWriter})
+    wta_outputs = NamedTuple(output_key_to_symbol(name) => prognostic_state(output)
+                             for (name, output) in pairs(writer.outputs)
+                             if output isa WindowedTimeAverage)
+
+    return (
+        schedule = prognostic_state(writer.schedule),
+        part = writer.part,
+        windowed_time_averages = isempty(wta_outputs) ? nothing : wta_outputs,
+    )
+end
+
+function restore_prognostic_state!(writer::Union{JLD2Writer, NetCDFWriter}, state)
+    restore_prognostic_state!(writer.schedule, state.schedule)
+    writer.part = state.part
+
+    if hasproperty(state, :windowed_time_averages) && !isnothing(state.windowed_time_averages)
+        for (name, wta_state) in pairs(state.windowed_time_averages)
+            key = output_lookup_key(writer, name)
+            if haskey(writer.outputs, key) && writer.outputs[key] isa WindowedTimeAverage
+                restore_prognostic_state!(writer.outputs[key], wta_state)
+            end
+        end
+    end
+
+    return writer
+end
+
+#####
 ##### Manual checkpointing
 #####
 

@@ -1584,36 +1584,4 @@ end
 
 ext(::Type{NetCDFWriter}) = ".nc"
 
-#####
-##### Checkpointing the NetCDFWriter
-#####
-
-function prognostic_state(writer::NetCDFWriter)
-    # Only checkpoint WindowedTimeAverage outputs (which have accumulated state)
-    wta_outputs = NamedTuple(Symbol(name) => prognostic_state(output)
-                             for (name, output) in pairs(writer.outputs)
-                             if output isa WindowedTimeAverage)
-
-    return (schedule = prognostic_state(writer.schedule),
-            part = writer.part,
-            windowed_time_averages = isempty(wta_outputs) ? nothing : wta_outputs)
-end
-
-function restore_prognostic_state!(writer::NetCDFWriter, state)
-    restore_prognostic_state!(writer.schedule, state.schedule)
-    writer.part = state.part
-
-    # Restore WindowedTimeAverage outputs if present
-    if hasproperty(state, :windowed_time_averages) && !isnothing(state.windowed_time_averages)
-        for (name, wta_state) in pairs(state.windowed_time_averages)
-            name_str = string(name)
-            if haskey(writer.outputs, name_str) && writer.outputs[name_str] isa WindowedTimeAverage
-                restore_prognostic_state!(writer.outputs[name_str], wta_state)
-            end
-        end
-    end
-
-    return writer
-end
-
 end # module
