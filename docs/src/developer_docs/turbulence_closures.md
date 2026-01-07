@@ -414,7 +414,7 @@ For `AbstractScalarDiffusivity`, flux functions are already implemented—you do
 
 Two options for diffusive terms:
 
-[`ExplicitTimeDiscretization`](@ref) — simple but has a diffusive CFL constraint:
+`ExplicitTimeDiscretization` — simple but has a diffusive CFL constraint:
 
 ```@example pp_closure
 using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization
@@ -422,7 +422,7 @@ using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization
 closure = PacanowskiPhilanderVerticalDiffusivity(ExplicitTimeDiscretization())
 ```
 
-[`VerticallyImplicitTimeDiscretization`](@ref) (default) — stable for large diffusivities, uses a tridiagonal solver:
+`VerticallyImplicitTimeDiscretization` (default) — stable for large diffusivities, uses a tridiagonal solver:
 
 ```@example pp_closure
 closure = PacanowskiPhilanderVerticalDiffusivity(VerticallyImplicitTimeDiscretization())
