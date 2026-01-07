@@ -9,6 +9,43 @@ using Test: @testset, @test, detect_ambiguities
 
     # Until we resolve all ambiguities, we make sure we don't increase them.
     @test length(detect_ambiguities(Oceananigans; recursive=true)) <= 361
+
+    modules = (
+        # Oceananigans.AbstractOperations,
+        # Oceananigans.Advection,
+        Oceananigans.Architectures,
+        Oceananigans.Biogeochemistry,
+        # Oceananigans.BoundaryConditions,
+        Oceananigans.BuoyancyFormulations,
+        Oceananigans.Coriolis,
+        # Oceananigans.Diagnostics,
+        # Oceananigans.DistributedComputations,
+        # Oceananigans.Fields,
+        Oceananigans.Forcings,
+        # Oceananigans.Grids,
+        # Oceananigans.ImmersedBoundaries,
+        Oceananigans.Logger,
+        # Oceananigans.Models,
+        # Oceananigans.MultiRegion,
+        # Oceananigans.Operators,
+        # Oceananigans.OrthogonalSphericalShellGrids,
+        # Oceananigans.OutputReaders,
+        # Oceananigans.OutputWriters,
+        Oceananigans.Simulations,
+        # Oceananigans.Solvers,
+        Oceananigans.StokesDrifts,
+        Oceananigans.TimeSteppers,
+        # Oceananigans.TurbulenceClosures,
+        Oceananigans.Units,
+        # Oceananigans.Utils,
+    )
+
+    # In addition to capping the total number of ambiguities above, we make sure
+    # modules which don't have any don't get new ones.
+    @testset "No ambiguities for module $(mod)" for mod in modules
+        @info "Testing no ambiguities for module $(mod)"
+        @test length(detect_ambiguities(mod; recursive=true)) == 0
+    end
 end
 
 @testset "ExplicitImports" begin
