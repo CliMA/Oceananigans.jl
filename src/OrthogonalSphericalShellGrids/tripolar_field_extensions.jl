@@ -20,6 +20,7 @@ sign(::Type{Center}, ::Type{Face})   = - 1 # v-velocity type
 sign(::Type{Center}, ::Type{Center}) = 1
 
 # Determine the appropriate north fold boundary condition based on grid topology
+north_fold_boundary_condition(::Type{<:AT}) = ZipperBoundaryCondition # Default fallback for distribtuted to work
 north_fold_boundary_condition(::Type{RightCenterFolded}) = ZipperBoundaryCondition
 north_fold_boundary_condition(::Type{RightFaceFolded})   = FPivotZipperBoundaryCondition
 north_fold_boundary_condition(grid::TripolarGridOfSomeKind) = north_fold_boundary_condition(topology(grid, 2))
