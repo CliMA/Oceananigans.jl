@@ -228,8 +228,8 @@ end
     i, j, k = @index(Global, NTuple)
 
     FT = eltype(χ)
-    α = 3//2 + χ
-    β = 1//2 + χ
+    α = 3*one(FT)/2 + χ
+    β = 1*one(FT)/2 + χ
 
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
     σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
