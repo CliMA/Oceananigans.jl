@@ -7,6 +7,8 @@ using Oceananigans: AbstractOutputWriter, AbstractDiagnostic
 ##### Utilities shared between diagnostics and output writers
 #####
 
+const DiagOrWriterDict = OrderedDict{S, <:Union{AbstractDiagnostic, AbstractOutputWriter}} where S
+
 getindex(container::DiagOrWriterDict, inds::Integer...) = getindex(container.vals, inds...)
 
 setindex!(container::DiagOrWriterDict, newvals, inds::Integer...) = setindex!(container.vals, newvals, inds...)
