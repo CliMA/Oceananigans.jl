@@ -61,16 +61,16 @@ import Oceananigans.OutputWriters:
     trilocation_dim_name,
     dimension_name_generator_free_surface
 
-import Oceananigans.OutputReaders: field_time_series_from_netcdf, set_from_netcdf!
+import Oceananigans.OutputReaders: FieldTimeSeries, set_from_netcdf!
 
 using Oceananigans.OutputReaders:
-    FieldTimeSeries,
     InMemory,
     OnDisk,
     Linear,
     time_indices_length,
     new_data,
-    UnspecifiedBoundaryConditions
+    UnspecifiedBoundaryConditions,
+    NetCDFPath
 
 using Oceananigans.Fields: set!
 

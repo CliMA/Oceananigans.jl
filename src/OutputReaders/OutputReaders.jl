@@ -7,6 +7,14 @@ export Cyclical, Linear, Clamp
 
 using Oceananigans.Utils: @apply_regionally
 
+struct JLD2Path
+    path :: String
+end
+
+struct NetCDFPath
+    path :: String
+end
+
 """
     auto_extension(filename, ext)
 

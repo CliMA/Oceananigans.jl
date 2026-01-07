@@ -148,7 +148,7 @@ function gather_immersed_boundary(grid::GFBoundaryIBG, indices, dim_name_generat
     op_peripheral_nodes_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
     op_peripheral_nodes_ccf = KernelFunctionOperation{Center, Center, Face}(peripheral_node, grid, Center(), Center(), Face())
 
-    return Dict("peripheral_nodes" => Field(grid.immersed_boundary.mask; indices),
+    return Dict("mask" => Field(grid.immersed_boundary.mask; indices),
                 "peripheral_nodes_ccc" => Field(op_peripheral_nodes_ccc; indices),
                 "peripheral_nodes_fcc" => Field(op_peripheral_nodes_fcc; indices),
                 "peripheral_nodes_cfc" => Field(op_peripheral_nodes_cfc; indices),

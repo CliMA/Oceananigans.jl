@@ -741,37 +741,47 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
     return time_series
 end
 
-# Stub function for NetCDF files - will be extended by OceananigansNCDatasetsExt
-field_time_series_from_netcdf(path::String, args...; kwargs...) = error("Loading FieldTimeSeries from NetCDF files requires NCDatasets")
+ext(path) = splitext(path) |> last
 
 function FieldTimeSeries(path::String, args...; reader_kw = NamedTuple(), kwargs...)
     path = auto_extension(path, ".jld2") # JLD2 is the default extension
+    typed_path = if ext(path) == ".jld2"
+                     JLD2Path(path)
+                 elseif ext(path) == ".nc"
+                     NetCDFPath(path)
+                 else
+                     error("Unsupported file extension: $(path)")
+                 end
 
-    if endswith(path, ".nc")
-        return field_time_series_from_netcdf(path, args...; reader_kw, kwargs...)
-    elseif endswith(path, ".jld2")
-        if !isfile(path)
-            start = path[1:end-5] # Remove filepath extension
-            lookfor = string(start, "_part*.jld2") # Look for part1, etc
-            part_paths = glob(lookfor) |> naturalsort
-            Nparts = length(part_paths)
+    return FieldTimeSeries(typed_path, args...; reader_kw, kwargs...)
+end
 
-            if Nparts == 0
-                error("File not found: $path. Also tried looking for part files (*_part*.jld2).")
-            end
+function FieldTimeSeries(typed_path::JLD2Path, args...; reader_kw = NamedTuple(), kwargs...)
 
-            path = first(part_paths) # part1 is first?
-        else
-            Nparts = nothing
-            part_paths = nothing
+    path = typed_path.path
+    if !isfile(path)
+        start = typed_path.path[1:end-5] # Remove filepath extension
+        lookfor = string(start, "_part*.jld2") # Look for part1, etc
+        part_paths = glob(lookfor) |> naturalsort
+        Nparts = length(part_paths)
+
+        if Nparts == 0
+            error("File not found: $(path). Also tried looking for part files (*_part*.jld2).")
         end
 
-        file = jldopen(path; reader_kw...)
-        return FieldTimeSeries(file, args...; Nparts, part_paths, path, reader_kw, kwargs...)
+        path = first(part_paths) # part1 is first?
     else
-        error("Unsupported file extension: $(path)")
+        Nparts = nothing
+        part_paths = nothing
     end
+
+    file = jldopen(path; reader_kw...)
+    return FieldTimeSeries(file, args...; Nparts, part_paths, path, reader_kw, kwargs...)
 end
+
+# Stub function for NetCDF files - will be extended by OceananigansNCDatasetsExt
+FieldTimeSeries(path::NetCDFPath, args...; kwargs...) = error("Loading FieldTimeSeries from NetCDF files requires NCDatasets")
+
 
 """
     Field(location, file::JLD2.JLDFile, name::String, iter;
