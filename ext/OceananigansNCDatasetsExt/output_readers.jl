@@ -154,7 +154,6 @@ function set_from_netcdf!(fts::InMemoryFTS, path::String, name; warn_missing_dat
             file_iter = file_iterations[file_index]
 
             # Note: use the CPU for this step
-            # Main.@infiltrate
             field_n = Field(instantiated_location(fts), file, name, file_iter,
                             grid = on_architecture(CPU(), fts.grid),
                             architecture = cpu_architecture(arch),
