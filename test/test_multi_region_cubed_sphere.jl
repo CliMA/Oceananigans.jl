@@ -129,8 +129,14 @@ function create_ψ_test_data(grid, region)
     return ψ_test_data
 end
 
-create_u_test_data(grid, region) = create_test_data(grid, region; trailing_zeros=2)
-create_v_test_data(grid, region) = create_test_data(grid, region; trailing_zeros=3)
+create_c₁_test_data(grid, region) = create_test_data(grid, region; trailing_zeros=2)
+create_c₂_test_data(grid, region) = create_test_data(grid, region; trailing_zeros=3)
+
+create_u_test_data(grid, region)  = create_test_data(grid, region; trailing_zeros=4)
+create_v_test_data(grid, region)  = create_test_data(grid, region; trailing_zeros=5)
+
+cretae_ψ₁_test_data(grid, region) = create_test_data(grid, region; trailing_zeros=6)
+create_ψ₂_test_data(grid, region) = create_test_data(grid, region; trailing_zeros=7)
 
 """
     same_longitude_at_poles!(grid_1, grid_2)
@@ -289,10 +295,10 @@ end
     end
 end
 
-@testset "Testing conformal cubed sphere fill halos for tracers" begin
+@testset "Testing conformal cubed sphere fill halos for center fields such as tracers" begin
     for FT in float_types, arch in archs, non_uniform_conformal_mapping in (false, true)
         cm = non_uniform_conformal_mapping ? "non-uniform conformal mapping" : "uniform conformal mapping"
-        @info "  Testing fill halos for tracers [$FT, $(typeof(arch)), $cm]..."
+        @info "  Testing fill halos for center fields [$FT, $(typeof(arch)), $cm]..."
 
         Nx, Ny, Nz = 9, 9, 1
 
@@ -312,7 +318,7 @@ end
             set!(c, data)
             fill_halo_regions!(c)
 
-            Hx, Hy, Hz = halo_size(c.grid)
+            Hx, Hy, Hz = halo_size(grid)
 
             west_indices  = 1:Hx, 1:Ny
             south_indices = 1:Nx, 1:Hy
@@ -344,10 +350,76 @@ end
     end
 end
 
-@testset "Testing conformal cubed sphere fill halos for horizontal velocities" begin
+@testset "Testing conformal cubed sphere fill halos for center-center field pairs such as Δxᶜᶜᵃ and Δyᶜᶜᵃ" begin
     for FT in float_types, arch in archs, non_uniform_conformal_mapping in (false, true)
         cm = non_uniform_conformal_mapping ? "non-uniform conformal mapping" : "uniform conformal mapping"
-        @info "  Testing fill halos for horizontal velocities [$FT, $(typeof(arch)), $cm]..."
+        @info "  Testing fill halos for center-center field pairs [$FT, $(typeof(arch)), $cm]..."
+
+        Nx, Ny, Nz = 9, 9, 1
+
+        underlying_grid = ConformalCubedSphereGrid(arch, FT;
+                                                   panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1,
+                                                   horizontal_direction_halo = 3, non_uniform_conformal_mapping)
+        @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
+        immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom); active_cells_map = true)
+
+        grids = (underlying_grid, immersed_grid)
+
+        for grid in grids
+            c₁ = CenterField(grid)
+            c₂ = CenterField(grid)
+
+            region = Iterate(1:6)
+            @apply_regionally data = create_c₁_test_data(grid, region)
+            set!(c₁, data)
+            @apply_regionally data = create_c₂_test_data(grid, region)
+            set!(c₂, data)
+            fill_halo_regions!((c₁, c₂); signed = false)
+
+            Hx, Hy, Hz = halo_size(grid)
+
+            west_indices  = 1:Hx, 1:Ny
+            south_indices = 1:Nx, 1:Hy
+            east_indices  = Nx-Hx+1:Nx, 1:Ny
+            north_indices = 1:Nx, Ny-Hy+1:Ny
+
+            # Confirm that the tracer halos were filled according to connectivity described at ConformalCubedSphereGrid docstring.
+            @allowscalar begin
+                for panel in 1:6
+                    west_panel = grid.connectivity.connections[panel].west.from_rank
+                    east_panel = grid.connectivity.connections[panel].east.from_rank
+                    south_panel = grid.connectivity.connections[panel].south.from_rank
+                    north_panel = grid.connectivity.connections[panel].north.from_rank
+
+                    if isodd(panel)
+                        @test get_halo_data(getregion(c₁, panel), West())  == reverse(create_c₂_test_data(grid, west_panel)[north_indices...], dims=1)'
+                        @test get_halo_data(getregion(c₂, panel), West())  == reverse(create_c₁_test_data(grid, west_panel)[north_indices...], dims=1)'
+                        @test get_halo_data(getregion(c₁, panel), East())  ==         create_c₁_test_data(grid, east_panel)[west_indices...]
+                        @test get_halo_data(getregion(c₂, panel), East())  ==         create_c₂_test_data(grid, east_panel)[west_indices...]
+                        @test get_halo_data(getregion(c₁, panel), South()) ==         create_c₁_test_data(grid, south_panel)[north_indices...]
+                        @test get_halo_data(getregion(c₂, panel), South()) ==         create_c₂_test_data(grid, south_panel)[north_indices...]
+                        @test get_halo_data(getregion(c₁, panel), North()) == reverse(create_c₂_test_data(grid, north_panel)[west_indices...], dims=2)'
+                        @test get_halo_data(getregion(c₂, panel), North()) == reverse(create_c₁_test_data(grid, north_panel)[west_indices...], dims=2)'
+                    else
+                        @test get_halo_data(getregion(c₁, panel), West())  ==         create_c₁_test_data(grid, west_panel)[east_indices...]
+                        @test get_halo_data(getregion(c₂, panel), West())  ==         create_c₂_test_data(grid, west_panel)[east_indices...]
+                        @test get_halo_data(getregion(c₁, panel), East())  == reverse(create_c₂_test_data(grid, east_panel)[south_indices...], dims=1)'
+                        @test get_halo_data(getregion(c₂, panel), East())  == reverse(create_c₁_test_data(grid, east_panel)[south_indices...], dims=1)'
+                        @test get_halo_data(getregion(c₁, panel), South()) == reverse(create_c₂_test_data(grid, south_panel)[east_indices...], dims=2)'
+                        @test get_halo_data(getregion(c₂, panel), South()) == reverse(create_c₁_test_data(grid, south_panel)[east_indices...], dims=2)'
+                        @test get_halo_data(getregion(c₁, panel), North()) ==         create_c₁_test_data(grid, north_panel)[south_indices...]
+                        @test get_halo_data(getregion(c₂, panel), North()) ==         create_c₂_test_data(grid, north_panel)[south_indices...]
+                    end
+                end
+            end # CUDA.@allowscalar
+        end
+    end
+end
+
+@testset "Testing conformal cubed sphere fill halos for face-center and center-face field pairs such as horizontal velocities" begin
+    for FT in float_types, arch in archs, non_uniform_conformal_mapping in (false, true)
+        cm = non_uniform_conformal_mapping ? "non-uniform conformal mapping" : "uniform conformal mapping"
+        @info "  Testing fill halos for face-center and center-face field pairs [$FT, $(typeof(arch)), $cm]..."
 
         Nx, Ny, Nz = 9, 9, 1
 
@@ -371,7 +443,7 @@ end
 
             fill_halo_regions!((u, v))
 
-            Hx, Hy, Hz = halo_size(u.grid)
+            Hx, Hy, Hz = halo_size(grid)
 
             west_indices  = get_boundary_indices(Nx, Ny, Hx, Hy, West();  operation=nothing, index=:all) # (1:Hx, 1:Ny)
             east_indices  = get_boundary_indices(Nx, Ny, Hx, Hy, East();  operation=nothing, index=:all) # (Nx-Hx+1:Nx, 1:Ny)
@@ -487,10 +559,10 @@ end
     end
 end
 
-@testset "Testing conformal cubed sphere fill halos for Face-Face-Any field" begin
+@testset "Testing conformal cubed sphere fill halos for face-face-any fields such as streamfunction" begin
     for FT in float_types, arch in archs, non_uniform_conformal_mapping in (false, true)
         cm = non_uniform_conformal_mapping ? "non-uniform conformal mapping" : "uniform conformal mapping"
-        @info "  Testing fill halos for streamfunction [$FT, $(typeof(arch)), $cm]..."
+        @info "  Testing fill halos for face-face-any fields [$FT, $(typeof(arch)), $cm]..."
 
         Nx, Ny, Nz = 9, 9, 1
 
@@ -511,7 +583,7 @@ end
 
             fill_halo_regions!(ψ)
 
-            Hx, Hy, Hz = halo_size(ψ.grid)
+            Hx, Hy, Hz = halo_size(grid)
 
             west_indices  = get_boundary_indices(Nx, Ny, Hx, Hy, West();  operation=nothing, index=:all) # (1:Hx, 1:Ny)
             east_indices  = get_boundary_indices(Nx, Ny, Hx, Hy, East();  operation=nothing, index=:all) # (Nx-Hx+1:Nx, 1:Ny)
