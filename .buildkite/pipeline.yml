@@ -203,7 +203,16 @@ steps:
     command: |
       # Pull all coverage artifacts from prior steps
       mkdir -p coverage_artifacts
-      if ! buildkite-agent artifact download "**/*.cov" coverage_artifacts/; then
+      buildkite-agent artifact download "**/*.cov" coverage_artifacts/ || true
+      buildkite-agent artifact download "**/*.jl.cov" coverage_artifacts/ || true
+      buildkite-agent artifact download "**/*.info" coverage_artifacts/ || true
+      buildkite-agent artifact download "**/lcov.info" coverage_artifacts/ || true
+
+      echo "Downloaded coverage-like files:" $$(find coverage_artifacts -type f | wc -l)
+      find coverage_artifacts -type f | head -n 200 || true
+
+      # If nothing, stop
+      if [ $$(find coverage_artifacts -type f | wc -l) -eq 0 ]; then
         echo "No coverage artifacts were uploaded by test steps."
         exit 0
       fi
