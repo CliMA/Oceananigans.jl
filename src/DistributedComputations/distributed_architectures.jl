@@ -5,8 +5,6 @@ import Oceananigans.Architectures: device, device!, cpu_architecture, on_archite
 import Oceananigans.Grids: zeros
 import Oceananigans.Utils: sync_device!
 
-import Base
-
 #####
 ##### Partitioning
 #####
@@ -482,4 +480,3 @@ function Base.show(io::IO, arch::Distributed)
         print(io, connectivity_info)
     end
 end
-
