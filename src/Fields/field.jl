@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: OBC, MCBC, Zipper, FPivot, UPivot, construct_boundary_conditions_kernels
+using Oceananigans.BoundaryConditions: OBC, MCBC, Zipper, construct_boundary_conditions_kernels
 using Oceananigans.Grids: parent_index_range, default_indices, validate_indices
 using Oceananigans.Grids: index_range_contains
 using Oceananigans.Architectures: convert_to_device
