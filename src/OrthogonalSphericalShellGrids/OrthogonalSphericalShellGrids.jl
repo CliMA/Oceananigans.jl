@@ -7,7 +7,7 @@ import Oceananigans
 import Oceananigans.Architectures: on_architecture
 
 using Oceananigans.Architectures: device, on_architecture, AbstractArchitecture, CPU, GPU
-using Oceananigans.BoundaryConditions: BoundaryCondition, Zipper, FPivot, UPivot, UZBC, FZBC
+using Oceananigans.BoundaryConditions: BoundaryCondition, UZBC
 using Oceananigans.Fields: convert_to_0_360
 using Oceananigans.Grids: AbstractTopology, RightConnected
 using Oceananigans.Grids: halo_size, generate_coordinate, topology
