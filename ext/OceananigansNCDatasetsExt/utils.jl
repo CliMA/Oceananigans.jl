@@ -1,6 +1,11 @@
 #####
-##### Utilities
+##### Utilities for general use
 #####
+#
+# Utilities for handling dimension squeezing between Oceananigans and NetCDF.
+# Oceananigans stores all fields as 3D arrays; NetCDF prefers omitting size-1 dims.
+# Squeeze singleton dims (location=Nothing or topology=Flat) for NetCDF.
+# When reading, add them back so all arrays are 3D as Oceananigans expects.
 
 """
     squeeze_nothing_dimensions(fd::AbstractField, field_data; array_type=Array{eltype(fd)})

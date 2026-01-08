@@ -1,7 +1,64 @@
 #####
+##### Grid Reconstruction for NetCDF Files
+#####
+#
+# This file handles serialization (saving) and deserialization (loading) of Oceananigans
+# grids to/from NetCDF files.
+#
+# Why is Grid Reconstruction Necessary?
+#
+# NetCDF files are just arrays and metadata - they don't inherently store Julia object
+# structure. To properly reconstruct an Oceananigans simulation from a NetCDF file, we
+# need to rebuild the exact grid that was used, including:
+#
+# 1. GRID CONSTRUCTION PARAMETERS
+#    - Size (Nx, Ny, Nz)
+#    - Extent or coordinate arrays
+#    - Topology (Periodic, Bounded, Flat)
+#    - Halo size
+#    - Architecture (CPU/GPU)
+#
+#    Why? These parameters determine how Oceananigans computes derivatives, interpolation,
+#    and boundary conditions. Getting them wrong would give incorrect physics.
+#
+# 2. IMMERSED BOUNDARIES CONSTRUCTION PARAMETERS
+#    For grids with immersed boundaries (e.g., GridFittedBottom for bathymetry):
+#    - Bottom height field
+#    - Immersed boundary type
+#    - Immersed condition parameters
+#
+#    Why? Immersed boundaries modify which cells are active/inactive. This affects
+#    every computation in the domain. Without this information, we can't properly
+#    reconstruct flow near boundaries.
+#
+#
+# Reconstruction Process:
+#
+# WRITING (write_grid_reconstruction_data!):
+# 1. Extract grid constructor arguments
+# 2. Serialize to NetCDF-compatible format (strings, numbers, arrays) and save them as in NetCDF groups dedicated to that
+# 3. Do the same for the immersed boundary construction parameters.
+# 4. If immersed boundary, save boundary field (mask or bottom height) as variable in the same NetCDF group as above
+#
+# READING (reconstruct_grid):
+# 1. Read "underlying_grid_type" attribute to determine grid type
+# 2. Read "underlying_grid_reconstruction_args" and "underlying_grid_reconstruction_kwargs" and deserialize
+# 3. Call appropriate grid constructor with saved arguments
+# 4. For immersed boundaries, reconstruct boundary object
+# 5. Return the grid
+#####
+
+#####
 ##### Gathering of grid metrics
 #####
 
+"""
+    gather_grid_metrics(grid, indices, dim_name_generator)
+
+Gather the grid metrics for the grid. Not strictly necessary for grid reconstruction, but it is
+implemented and used as a quality of life improvement since it gives users easy access to relevant grid
+metrics when opening the NetCDF file.
+"""
 function gather_grid_metrics(grid::RectilinearGrid, indices, dim_name_generator)
     TX, TY, TZ = topology(grid)
 
@@ -125,7 +182,13 @@ flat_loc(T, L) = T == Flat ? nothing : L
 
 const PCBorGFBIBG = Union{GFBIBG, PCBIBG}
 
-# For Immersed Boundary Grids (IBG) with either a Grid Fitted Bottom (GFB) or a Partial Cell Bottom (PCB)
+"""
+    gather_immersed_boundary(grid, indices, dim_name_generator)
+
+Gather the construction parameters for the immersed boundary of the grid. This isn't
+strictly necessary for grid reconstruction, but it is implemented and used a quality of life improvement
+since it gives users easy access to relevant immersed boundary parameters when opening the NetCDF file.
+"""
 function gather_immersed_boundary(grid::PCBorGFBIBG, indices, dim_name_generator)
     op_peripheral_nodes_ccc = KernelFunctionOperation{Center, Center, Center}(peripheral_node, grid, Center(), Center(), Center())
     op_peripheral_nodes_fcc = KernelFunctionOperation{Face, Center, Center}(peripheral_node, grid, Face(), Center(), Center())
@@ -141,7 +204,6 @@ end
 
 const GFBoundaryIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBoundary}
 
-# For Immersed Boundary Grids (IBG) with a Grid Fitted Boundary (also GFB!)
 function gather_immersed_boundary(grid::GFBoundaryIBG, indices, dim_name_generator)
     op_peripheral_nodes_ccc = KernelFunctionOperation{Center, Center, Center}(peripheral_node, grid, Center(), Center(), Center())
     op_peripheral_nodes_fcc = KernelFunctionOperation{Face, Center, Center}(peripheral_node, grid, Face(), Center(), Center())

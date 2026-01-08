@@ -1,6 +1,23 @@
 #####
-##### Dimension validation
+##### NetCDF Dimension Management
 #####
+
+# This file contains utilities for managing dimensions in NetCDF files,
+# including default conventions and quality of life functions for Oceananigans outputs.
+#
+# 1. DIMENSION NAMING CONVENTIONS
+#    - NetCDF dimensions use names based on grid direction: x, y, z
+#      (or λ, φ, z for latitude-longitude grids).
+#    - By default, Oceananigans conventions for staggered fields are followed,
+#      but Unicode is avoided for NetCDF compatibility:
+#         - e.g., xᶜᵃᵃ becomes x_caa.
+#    - Users may provide a custom dimension naming function to override these defaults.
+#
+# 2. DIMENSION VALIDATION
+#    - When appending to existing NetCDF files, dimensions are checked for compatibility.
+#    - Ensures dimension sizes match expectations and coordinate values agree.
+#    - Errors are raised if a mismatch is detected, protecting files from silent corruption.
+#
 
 """
     create_field_dimensions!(ds, fd::AbstractField, dimension_name_generator; time_dependent=false, with_halos=false, array_type=Array{eltype(fd)})

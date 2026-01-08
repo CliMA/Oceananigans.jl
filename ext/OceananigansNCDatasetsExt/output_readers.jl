@@ -1,3 +1,7 @@
+#####
+##### Reading FieldTimeSeries from NetCDF Files
+#####
+
 using Oceananigans.Fields: instantiated_location
 using Oceananigans.Architectures: cpu_architecture
 using Oceananigans.Utils: @apply_regionally
@@ -66,24 +70,38 @@ end
 iterations_from_file(file::NCDataset) = 1:length(keys(file["time"][:]))
 
 """
-    inflate_nothing_dimensions(data, location)
+    inflate_nothing_dimensions(data, location, grid)
 
-Add singleton dimensions to `data` where `location` is `Nothing`. This is the inverse
-operation of `squeeze_nothing_dimensions`.
+Add singleton dimensions to `data` where `location` is `Nothing` or topology is `Flat`.
+This is the inverse operation of `squeeze_nothing_dimensions` and it is done for compatibility
+with Oceananigans' internal representation of fields.
 
 For example, if `location = (Center, Center, Nothing)`, the data will have a singleton
 dimension added in the third (z) direction, transforming data of size `(Nx, Ny)` to
 size `(Nx, Ny, 1)`.
 
 # Arguments
-- `data`: Array data to inflate
-- `location`: Tuple of location types (e.g., `(Center, Face, Nothing)`)
+- `data`: Array data read from NetCDF file (may be 1D, 2D, or 3D)
+- `location`: Field's grid location tuple (e.g., `(Center, Face, Nothing)`)
+- `grid`: Grid object to check topology
 
 # Returns
-Reshaped array with singleton dimensions added where location is `Nothing`.
+Reshaped array with singleton dimensions added where needed. Always returns 3D spatial array.
+
+# Example
+```julia
+# Field with location (Center, Center, Nothing) on 100×200×1 grid
+data_from_file = rand(100, 200)  # NetCDF squeezed out z-dimension
+location = (Center, Center, Nothing)
+inflated = inflate_nothing_dimensions(data_from_file, location, grid)
+size(inflated)  # (100, 200, 1) - z-dimension restored
+```
 """
 function inflate_nothing_dimensions(data, location, grid)
-    # Determine which dimensions need to be inflated (where location is Nothing)
+    # Determine which dimensions need to be inflated
+    # A dimension is inflated if:
+    # 1. Location is Nothing (e.g., reduced dimension like 2D field in 3D grid), OR
+    # 2. Grid topology is Flat (e.g., 2D simulation with no variation in that direction)
     inflated_dims = []
     for (i, loc) in enumerate(location)
         if loc == Nothing || topology(grid, i) == Flat
@@ -91,18 +109,22 @@ function inflate_nothing_dimensions(data, location, grid)
         end
     end
 
-    # If no dimensions need inflating, return original data
+    # If no dimensions need inflating, return original data unchanged
     isempty(inflated_dims) && return data
 
-    # Build new shape by inserting singleton dimensions
+    # Build new shape by inserting size-1 at positions that were squeezed
+    # Example: data size (100, 200), inflated_dims = [3]
+    #          → new_shape = [100, 200, 1]
     original_shape = collect(size(data))
     new_shape = Int[]
     original_dim_idx = 1
 
     for i in 1:3
         if i ∈ inflated_dims
+            # This dimension was squeezed, insert singleton dimension
             push!(new_shape, 1)
         else
+            # This dimension exists in data, copy its size
             if original_dim_idx <= length(original_shape)
                 push!(new_shape, original_shape[original_dim_idx])
                 original_dim_idx += 1
@@ -110,7 +132,7 @@ function inflate_nothing_dimensions(data, location, grid)
         end
     end
 
-    # Reshape the data to add singleton dimensions
+    # Reshape adds singleton dimensions in the correct positions
     return reshape(data, new_shape...)
 end
 
@@ -161,7 +183,6 @@ function set_from_netcdf!(fts::InMemoryFTS, path::String, name; warn_missing_dat
                             indices = fts.indices,
                             boundary_conditions = fts.boundary_conditions)
 
-            # Potentially transfer from CPU to GPU
             set!(fts[n], field_n)
         end
     end

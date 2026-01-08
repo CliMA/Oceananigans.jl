@@ -1,4 +1,14 @@
 #####
+##### NetCDF Output Writer for Oceananigans
+#####
+#
+# This file implements NetCDFWriter, which saves Oceananigans simulation output to
+# NetCDF files during simulation runtime. By default, it also saves grid reconstruction
+# data and immersed boundary construction parameters to the NetCDF file, as well as
+# grid metrics.
+#
+
+#####
 ##### Extend defVar to be able to write fields to NetCDF directly
 #####
 

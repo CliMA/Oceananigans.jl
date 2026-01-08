@@ -1,3 +1,14 @@
+"""
+    OceananigansNCDatasetsExt
+
+Extension that adds NetCDF (via NCDatasets.jl) read/write support to Oceananigans.jl.
+
+# Features
+
+- NetCDFWriter: Saves model output and metadata to NetCDF files.
+- Grid reconstruction: Saves all grid construction and boundary info for accurate grid reconstruction.
+- FieldTimeSeries: Loads time series from NetCDF files.
+"""
 module OceananigansNCDatasetsExt
 
 using NCDatasets
