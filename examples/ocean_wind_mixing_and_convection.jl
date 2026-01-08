@@ -142,18 +142,18 @@ S_bcs = FieldBoundaryConditions(top=evaporation_bc)
 # ## Model instantiation
 #
 # We fill in the final details of the model here, i.e., Coriolis forces,
-# and the `AnisotropicMinimumDissipation` closure for large eddy simulation
+# and use the (scale-invariant) `DynamicSmagorinsky` closure for large eddy simulation
 # to model the effect of turbulent motions at scales smaller than the grid scale
 # that are not explicitly resolved.
 
 model = NonhydrostaticModel(grid; buoyancy,
                             tracers = (:T, :S),
                             coriolis = FPlane(f=1e-4),
-                            closure = AnisotropicMinimumDissipation(),
+                            closure = DynamicSmagorinsky(),
                             boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs))
 
-# Note: To use the Smagorinsky-Lilly turbulence closure (with a constant model coefficient) rather than
-# `AnisotropicMinimumDissipation`, use `closure = SmagorinskyLilly()` in the model constructor.
+# Note: To use the (constant-coefficient) Smagorinsky-Lilly turbulence closure
+# rather than `DynamicSmagorinsky`, use `closure = SmagorinskyLilly()` in the model constructor.
 
 # ## Initial conditions
 #
