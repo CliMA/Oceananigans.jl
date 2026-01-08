@@ -100,6 +100,7 @@ steps:
       # Ship coverage files
       cd "$OCEANANIGANS_DIR"
       buildkite-agent artifact upload "**/*.cov"
+      buildkite-agent artifact upload "*.cov"
 
       # Preserve the original test result for Buildkite
       exit $test_status
@@ -169,6 +170,7 @@ steps:
       # Ship coverage files
       cd "$OCEANANIGANS_DIR"
       buildkite-agent artifact upload "**/*.cov"
+      buildkite-agent artifact upload "*.cov"
 
       # Preserve the original test result for Buildkite
       exit $test_status
