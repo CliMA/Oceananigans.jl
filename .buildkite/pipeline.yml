@@ -98,7 +98,7 @@ steps:
       echo "Coverage files produced:" $(find . -type f -name "*.cov" | wc -l)
       find . -type f -name "*.cov" | head -n 20 || true
 
-      tarball="coverage-${BUILDKITE_JOB_ID:-nojobid}.tgz"
+      tarball="coverage-${BUILDKITE_STEP_KEY:-step}-${BUILDKITE_JOB_ID:-nojobid}.tgz"
 
       find . -type f -name "*.cov" > cov_list.txt
       echo "Coverage files found:" `wc -l < cov_list.txt`
@@ -174,7 +174,7 @@ steps:
       echo "Coverage files produced:" $(find . -type f -name "*.cov" | wc -l)
       find . -type f -name "*.cov" | head -n 20 || true
 
-      tarball="coverage-${BUILDKITE_JOB_ID:-nojobid}.tgz"
+      tarball="coverage-${BUILDKITE_STEP_KEY:-step}-${BUILDKITE_JOB_ID:-nojobid}.tgz"
 
       find . -type f -name "*.cov" > cov_list.txt
       echo "Coverage files found:" `wc -l < cov_list.txt`
