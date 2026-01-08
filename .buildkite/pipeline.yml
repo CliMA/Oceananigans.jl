@@ -89,7 +89,7 @@ steps:
 
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
-      julia +$JULIA_VERSION -O0 --color=yes --project -e 'using Pkg; Pkg.test(coverage="user")'
+      julia +$JULIA_VERSION -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(coverage="user")'
       test_status=$$?
       set -e
 
@@ -157,7 +157,7 @@ steps:
 
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
-      julia +$JULIA_VERSION -O0 --color=yes --project -e 'using Pkg; Pkg.test(coverage="user")'
+      julia +$JULIA_VERSION -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(coverage="user")'
       test_status=$$?
       set -e
 
