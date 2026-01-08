@@ -954,6 +954,13 @@ function test_checkpointing_tke_dissipation_closure(arch, timestepper)
     ref_model = make_model()
     set!(ref_model, T=T_init, S=35, u=u_init)
     ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+
+    if timestepper == :SplitRungeKutta3
+        # See: https://github.com/CliMA/Oceananigans.jl/issues/5127
+        @test_broken run!(ref_simulation) |> isnothing
+        return nothing
+    end
+
     @test_nowarn run!(ref_simulation)
 
     # Checkpointed run: 5 iterations, checkpoint
