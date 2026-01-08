@@ -219,26 +219,27 @@ steps:
     command: |
       mkdir -p coverage_artifacts extracted
 
-      if ! buildkite-agent artifact download "coverage-*.tgz" coverage_artifacts/; then
+      buildkite-agent artifact download "coverage-*.tgz" coverage_artifacts/ || {
         echo "No coverage tarballs were uploaded by test steps."
         exit 0
-      fi
-
-      echo "Downloaded tarballs:"
-      ls -lh coverage_artifacts/coverage-*.tgz || true
+      }
 
       for f in coverage_artifacts/coverage-*.tgz; do
-        echo "Extracting $$f"
         tar -xzf "$$f" -C extracted
       done
 
-      echo "Extracted .cov files:" $$(find extracted -name "*.cov" | wc -l)
-      find extracted -name "*.cov" | head -n 20 || true
+      echo "Found lcov files:" $$(find extracted -name "lcov.info" | wc -l)
+      find extracted -name "lcov.info" -maxdepth 2 -print || true
 
-      curl -s https://codecov.io/bash | bash -s -- \
-        -s extracted \
-        -F buildkite \
-        -F julia
+      # Upload each lcov.info with a flag (optional)
+      for r in extracted/**/lcov.info extracted/lcov.info; do
+        if [ -f "$$r" ]; then
+          curl -s https://codecov.io/bash | bash -s -- \
+            -f "$$r" \
+            -F buildkite \
+            -F julia
+        fi
+      done
 
   #####
   ##### Clean up
