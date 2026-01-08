@@ -160,12 +160,14 @@ end
 ##### Grid reconstruction
 #####
 
+netcdf_string(obj) = typeof(obj).name.wrapper |> string
+
 function netcdf_grid_constructor_info(grid)
     underlying_grid_args, underlying_grid_kwargs = constructor_arguments(grid)
 
     immersed_grid_args = Dict()
 
-    underlying_grid_type = typeof(grid).name.wrapper |> string # Save type of grid for reconstruction
+    underlying_grid_type = netcdf_string(grid) # Save type of grid for reconstruction
     grid_metadata = Dict(:immersed_boundary_type => nothing,
                          :underlying_grid_type => underlying_grid_type)
     return underlying_grid_args, underlying_grid_kwargs, immersed_grid_args, grid_metadata
@@ -174,8 +176,8 @@ end
 function netcdf_grid_constructor_info(grid::ImmersedBoundaryGrid)
     underlying_grid_args, underlying_grid_kwargs, immersed_grid_args = constructor_arguments(grid)
 
-    immersed_boundary_type = typeof(grid.immersed_boundary).name.wrapper |> string # Save type of immersed boundary for reconstruction
-    underlying_grid_type   = typeof(grid.underlying_grid).name.wrapper |> string # Save type of underlying grid for reconstruction
+    immersed_boundary_type = netcdf_string(grid.immersed_boundary) # Save type of immersed boundary for reconstruction
+    underlying_grid_type   = netcdf_string(grid.underlying_grid) # Save type of underlying grid for reconstruction
 
     grid_metadata = Dict(:immersed_boundary_type => immersed_boundary_type,
                          :underlying_grid_type => underlying_grid_type)
@@ -220,28 +222,32 @@ function reconstruct_grid(filename::String)
     return grid
 end
 
-function reconstruct_immersed_boundary(ds)
+function reconstruct_immersed_boundary(ds, ::Val{:GridFittedBoundary})
     ibg_group = ds.group["immersed_grid_reconstruction_args"]
+    mask = Array(ibg_group["mask"])
+    return GridFittedBoundary(mask)
+end
 
-    grid_reconstruction_metadata = ds.group["grid_reconstruction_metadata"].attrib |> materialize_from_netcdf
+function reconstruct_immersed_boundary(ds, ::Val{:GridFittedBottom})
+    ibg_group = ds.group["immersed_grid_reconstruction_args"]
+    bottom_height = Array(ibg_group["bottom_height"])
+    immersed_condition = ibg_group.attrib["immersed_condition"] |> materialize_from_netcdf
+    return GridFittedBottom(bottom_height, immersed_condition)
+end
+
+function reconstruct_immersed_boundary(ds, ::Val{:PartialCellBottom})
+    ibg_group = ds.group["immersed_grid_reconstruction_args"]
+    bottom_height = Array(ibg_group["bottom_height"])
+    minimum_fractional_cell_height = ibg_group.attrib["minimum_fractional_cell_height"] |> materialize_from_netcdf
+    return PartialCellBottom(bottom_height, minimum_fractional_cell_height)
+end
+
+reconstruct_immersed_boundary(ds, immersed_boundary_type) = error("Unsupported immersed boundary type: $immersed_boundary_type")
+
+function reconstruct_immersed_boundary(ds)
+    grid_reconstruction_metadata = ds.group["grid_reconstruction_metadata"].attrib
     immersed_boundary_type = grid_reconstruction_metadata[:immersed_boundary_type]
-    if immersed_boundary_type == GridFittedBottom
-        bottom_height = Array(ibg_group["bottom_height"])
-        immersed_condition = ibg_group.attrib["immersed_condition"] |> materialize_from_netcdf
-        immersed_boundary = immersed_boundary_type(bottom_height, immersed_condition)
-
-    elseif immersed_boundary_type == PartialCellBottom
-        bottom_height = Array(ibg_group["bottom_height"])
-        minimum_fractional_cell_height = ibg_group.attrib["minimum_fractional_cell_height"] |> materialize_from_netcdf
-        immersed_boundary = immersed_boundary_type(bottom_height, minimum_fractional_cell_height)
-
-    elseif immersed_boundary_type == GridFittedBoundary
-        mask = Array(ibg_group["mask"])
-        immersed_boundary = immersed_boundary_type(mask)
-
-    else
-        error("Unsupported immersed boundary type: $immersed_boundary_type")
-    end
+    immersed_boundary = reconstruct_immersed_boundary(ds, Val(Symbol(immersed_boundary_type)))
     return immersed_boundary
 end
 
