@@ -87,12 +87,21 @@ steps:
       export TEST_GROUP="\${group#* }"
       echo $TEST_GROUP
 
-      # Run tests
-      cd "$OCEANANIGANS_DIR"
-      julia +$JULIA_VERSION -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test()'
+      # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
+      set +e
+      julia +$JULIA_VERSION -O0 --color=yes --project -e 'using Pkg; Pkg.test(coverage="user")'
+      test_status=$?
+      set -e
+
+      # Sanity check: did we actually produce coverage?
+      echo "Coverage files produced:" $(find . -name "*.cov" | wc -l)
+      find . -name "*.cov" | head -n 20 || true
 
       # Ship coverage files
-      buildkite-agent artifact upload "**/*.cov"
+      buildkite-agent artifact upload "$OCEANANIGANS_DIR/**/*.cov"
+
+      # Preserve the original test result for Buildkite
+      exit $test_status
 
     matrix:
       setup:
@@ -146,12 +155,21 @@ steps:
       export TEST_GROUP="\${group#* }"
       echo $TEST_GROUP
 
-      # Run tests
-      cd "$OCEANANIGANS_DIR"
-      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test()'
+      # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
+      set +e
+      julia +$JULIA_VERSION -O0 --color=yes --project -e 'using Pkg; Pkg.test(coverage="user")'
+      test_status=$?
+      set -e
+
+      # Sanity check: did we actually produce coverage?
+      echo "Coverage files produced:" $(find . -name "*.cov" | wc -l)
+      find . -name "*.cov" | head -n 20 || true
 
       # Ship coverage files
-      buildkite-agent artifact upload "**/*.cov"
+      buildkite-agent artifact upload "$OCEANANIGANS_DIR/**/*.cov"
+
+      # Preserve the original test result for Buildkite
+      exit $test_status
 
     matrix:
       setup:
@@ -185,7 +203,10 @@ steps:
     command: |
       # Pull all coverage artifacts from prior steps
       mkdir -p coverage_artifacts
-      buildkite-agent artifact download "**/*.cov" coverage_artifacts/
+      if ! buildkite-agent artifact download "**/*.cov" coverage_artifacts/; then
+        echo "No coverage artifacts were uploaded by test steps."
+        exit 0
+      fi
 
       # (Optional) quick sanity check
       echo "Number of .cov files:" $(find coverage_artifacts -name "*.cov" | wc -l)
