@@ -61,8 +61,8 @@ const MINIMUM_SUBSTEPS = 5
 function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
     arch = architecture(grid)
 
-    η           = free_surface.η
-    grid        = free_surface.η.grid
+    η           = free_surface.displacement
+    grid        = free_surface.displacement.grid
     state       = free_surface.filtered_state
     timestepper = free_surface.timestepper
     g           = free_surface.gravitational_acceleration
@@ -117,9 +117,9 @@ end
 
 function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroclinic_timestepper, Δt)
 
-    # Note: free_surface.η.grid != model.grid for DistributedSplitExplicitFreeSurface
-    # since halo_size(free_surface.η.grid) != halo_size(model.grid)
-    free_surface_grid = free_surface.η.grid
+    # Note: free_surface.displacement.grid != model.grid for DistributedSplitExplicitFreeSurface
+    # since halo_size(free_surface.displacement.grid) != halo_size(model.grid)
+    free_surface_grid = free_surface.displacement.grid
     filtered_state    = free_surface.filtered_state
     substepping       = free_surface.substepping
 
@@ -142,7 +142,7 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     GVⁿ = model.timestepper.Gⁿ.V
 
     #free surface state
-    η = free_surface.η
+    η = free_surface.displacement
     U = barotropic_velocities.U
     V = barotropic_velocities.V
     F = model.forcing.η

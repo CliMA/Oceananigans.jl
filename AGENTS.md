@@ -37,11 +37,24 @@ It provides a framework for solving the incompressible (or Boussinesq) Navier-St
    - Use DocStringExtensions.jl for consistent docstrings
    - Include `$(SIGNATURES)` for automatic signature documentation
    - Add examples in docstrings when helpful
+   - **CRITICAL: ALWAYS use `jldoctest` blocks, NEVER use plain `julia` blocks in docstrings**
+     (see "Docstring Examples" section below for details)
 
 5. **Memory efficiency**
    - Favor doing lots of computations inline versus allocating temporary memory
    - Generally minimize memory allocation
    - Design solutions that work within the existing framework
+
+6. **Model Constructor Formatting**: Model constructors use positional arguments for required parameters
+   - **HydrostaticFreeSurfaceModel**: `HydrostaticFreeSurfaceModel(grid; ...)` - `grid` is positional
+   - **NonhydrostaticModel**: `NonhydrostaticModel(grid; ...)` - `grid` is positional
+   - **ShallowWaterModel**: `ShallowWaterModel(grid; gravitational_acceleration, ...)` - both `grid` and `gravitational_acceleration` are positional
+   - **Important**: When there are no keyword arguments, omit the semicolon:
+     - ✅ `NonhydrostaticModel(grid)` 
+     - ❌ `NonhydrostaticModel(grid;)`
+   - When keyword arguments are present, use the semicolon:
+     - ✅ `NonhydrostaticModel(grid; closure=nothing)`
+     - ✅ `HydrostaticFreeSurfaceModel(grid; tracers=:c)`
 
 ### Naming Conventions
 - **Files**: snake_case (e.g., `nonhydrostatic_model.jl`, `compute_hydrostatic_free_surface_tendencies.jl`)
@@ -106,6 +119,52 @@ Pkg.test("Oceananigans")
 - Ensure doctests pass
 - Use Aqua.jl for package quality checks
 
+### Docstring Examples (CRITICAL)
+
+**NEVER use plain `julia` code blocks in docstrings. ALWAYS use `jldoctest` blocks.**
+
+Plain code blocks (`` ```julia ``) are NOT tested and can become stale or incorrect.
+Doctests (`` ```jldoctest ``) are automatically tested and verified to work.
+
+✅ CORRECT - use `jldoctest`:
+```markdown
+\"\"\"
+    my_function(x)
+
+Example:
+
+```jldoctest
+using Oceananigans
+
+grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+typeof(grid)
+
+# output
+RectilinearGrid{Float64, Periodic, Periodic, Bounded, Nothing, Nothing, Nothing, Nothing}
+```
+\"\"\"
+```
+
+❌ WRONG - never use plain `julia` blocks in docstrings:
+```markdown
+\"\"\"
+    my_function(x)
+
+Example:
+
+```julia
+# This code is NOT tested and may be wrong!
+grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+```
+\"\"\"
+```
+
+Key doctest requirements:
+- Always include expected output after `# output`
+- Use simple, verifiable output (e.g., `typeof(result)`, accessing a field that returns a simple value)
+- Doctests should exercise `Base.show` to verify objects display correctly
+- Keep doctests minimal but complete enough to verify the feature works
+
 ## Common Development Tasks
 
 ### Adding New Physics or Features
@@ -146,6 +205,28 @@ serve(dir="docs/build")
   is already exported by the user interface. Always rely on `using Oceananigans` for imports and keep
   imports clean. Explicit imports should only be used for source code.
 
+### Writing Doctests
+- Use `jldoctest` blocks for testable examples in docstrings
+- **Do NOT use boolean comparisons as the final line** (e.g., avoid `x ≈ 1.0` or `obj isa Type`)
+- Instead, make the final line invoke a `show` method that prints something useful
+- This serves two purposes:
+  1. Helps users understand what the code produces
+  2. Tests that our `show` methods are high quality and informative
+- Example of what NOT to do:
+  ```julia
+  plt = surface!(ax, T)
+  plt isa CairoMakie.Surface  # BAD: boolean comparison
+  # output
+  true
+  ```
+- Example of what TO do:
+  ```julia
+  x, y, z = spherical_coordinates(0.0, 0.0)
+  (x, y, z)  # GOOD: shows the actual output
+  # output
+  (1.0, 0.0, 0.0)
+  ```
+
 ### Writing examples
 - Explain at the top of the file what a simulation is doing
 - Let code "speak for itself" as much as possible, to keep an explanation concise.
@@ -158,6 +239,11 @@ serve(dir="docs/build")
 - Don't "over import". Use names that are exported by `using Oceananigans`. If there are
   names that are not exported, but are needed in common/basic examples, consider
   exporting those names from `Oceananigans.jl`.
+- **Literate.jl comment conventions**: Examples in `examples/` are processed by Literate.jl.
+  - Single `#` comments become markdown blocks in the generated documentation
+  - Double `##` comments remain as code comments within code blocks
+  - Use `##` for inline code comments that should stay with the code (e.g., `## Helper function`)
+  - Use single `#` only for narrative text that should render as markdown
 
 ## Important Files to Know
 
@@ -204,6 +290,63 @@ serve(dir="docs/build")
 1. **Type Instability**: Especially in kernel functions - ruins GPU performance
 2. **Overconstraining types**: Julia compiler can infer types. Type annotations should be used primarily for _multiple dispatch_, not for documentation.
 3. **Forgetting Explicit Imports**: Tests will fail - add to using statements
+4. **Using plain `julia` blocks in docstrings**: NEVER do this. ALWAYS use `jldoctest` blocks so examples are tested and verified to work. Plain `julia` blocks are not tested and will become stale.
+
+## Implementing Validation Cases / Reproducing Paper Results
+
+When implementing a simulation from a published paper:
+
+### 1. Parameter Extraction
+- **Read the paper carefully** and extract ALL parameters: domain size, resolution, physical constants, 
+  boundary conditions, initial conditions, forcing, closure parameters
+- Look for parameter tables (often "Table 1" or similar)
+- Check figure captions for additional details
+- Note the coordinate system and conventions used
+
+### 2. Geometry Verification (BEFORE running long simulations)
+- **Always visualize the grid/domain geometry first**
+- Check that:
+  - Domain extents match the paper
+  - Topography/immersed boundaries are correct
+  - Coordinate orientations match (which direction is "downslope"?)
+- Compare your geometry plot to figures in the paper
+
+### 3. Initial Condition Verification
+- After setting initial conditions, check:
+  - `minimum(field)` and `maximum(field)` make physical sense
+  - Spatial distribution looks correct (visualize if needed)
+  - Dense water is where it should be, stratification is correct, etc.
+
+### 4. Short Test Runs
+Before running a long simulation:
+- Run for a few timesteps on CPU at low resolution
+- Verify:
+  - No NaNs appear (check `maximum(abs, u)` etc.)
+  - Flow is developing as expected (velocities increasing from zero)
+  - Output files contain meaningful data
+- Then test on GPU to catch GPU-specific issues
+
+### 5. Progressive Validation
+- Run a short simulation (e.g., 1 hour sim time) and visualize
+- Check that the physics looks right:
+  - Dense water flowing in the correct direction?
+  - Velocities reasonable magnitude?
+  - Mixing/entrainment happening where expected?
+- Compare to early-time figures in the paper if available
+
+### 6. Comparison to Paper Figures
+- Create visualizations that match the paper's figure format
+- Use the same colormaps, axis ranges, and time snapshots if possible
+- Quantitative comparison: compute the same diagnostics as the paper
+
+### 7. Common Issues
+- **NaN blowups**: Usually from timestep too large, unstable initial conditions, 
+  or if-else statements on GPU (use `ifelse` instead)
+- **Nothing happening**: Check that buoyancy anomaly has the right sign, 
+  that initial conditions are actually applied, that forcing is active
+- **Wrong direction of flow**: Check coordinate conventions (is y increasing 
+  upslope or downslope?)
+- **GPU issues**: Avoid branching, ensure type stability, use `randn()` carefully
 
 
 ## Git Workflow

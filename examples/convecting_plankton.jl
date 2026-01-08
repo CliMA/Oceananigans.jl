@@ -2,12 +2,10 @@
 #
 # In this example, we simulate the mixing of phytoplankton by convection
 # that decreases in time and eventually shuts off, thereby precipitating a
-# phytoplankton bloom. A similar scenario was simulated by
-# [Taylor and Ferrari (2011)](https://aslopubs.onlinelibrary.wiley.com/doi/abs/10.4319/lo.2011.56.6.2293),
+# phytoplankton bloom. A similar scenario was simulated by [Taylor2011shutdown](@citet),
 # providing evidence that the
 # ["critical turbulence hypothesis"](https://en.wikipedia.org/wiki/Critical_depth#Critical_Turbulence_Hypothesis)
-# explains the explosive bloom of oceanic phytoplankton
-# observed in spring.
+# explains the explosive bloom of oceanic phytoplankton observed in spring.
 #
 # The phytoplankton in our model are advected, diffuse, grow, and die according to
 #
@@ -127,7 +125,7 @@ plankton_dynamics = Forcing(growing_and_grazing, field_dependencies = :P,
 # advection scheme, third-order Runge-Kutta time-stepping, isotropic viscosity and diffusivities,
 # and Coriolis forces appropriate for planktonic convection at mid-latitudes on Earth.
 
-model = NonhydrostaticModel(; grid,
+model = NonhydrostaticModel(grid;
                             advection = UpwindBiased(order=5),
                             closure = ScalarDiffusivity(ν=1e-4, κ=1e-4),
                             coriolis = FPlane(f=1e-4),
