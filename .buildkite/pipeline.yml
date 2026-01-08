@@ -99,8 +99,14 @@ steps:
 
       # Ship coverage files
       cd "$OCEANANIGANS_DIR"
-      buildkite-agent artifact upload "**/*.cov"
-      buildkite-agent artifact upload "*.cov"
+
+      rm -rf coverage_artifacts
+      mkdir -p coverage_artifacts
+      find . -type f -name "*.cov" -exec cp --parents {} coverage_artifacts/ \;
+
+      echo "Staged cov count:" $$(find coverage_artifacts -name "*.cov" | wc -l)
+
+      buildkite-agent artifact upload "coverage_artifacts/**/*.cov"
 
       # Preserve the original test result for Buildkite
       exit $test_status
@@ -169,8 +175,14 @@ steps:
 
       # Ship coverage files
       cd "$OCEANANIGANS_DIR"
-      buildkite-agent artifact upload "**/*.cov"
-      buildkite-agent artifact upload "*.cov"
+
+      rm -rf coverage_artifacts
+      mkdir -p coverage_artifacts
+      find . -type f -name "*.cov" -exec cp --parents {} coverage_artifacts/ \;
+
+      echo "Staged cov count:" $$(find coverage_artifacts -name "*.cov" | wc -l)
+
+      buildkite-agent artifact upload "coverage_artifacts/**/*.cov"
 
       # Preserve the original test result for Buildkite
       exit $test_status
