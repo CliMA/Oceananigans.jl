@@ -36,8 +36,9 @@ end
 @kernel function _fill_cubed_sphere_center_center_field_east_west_halo_regions!(field, multiregion_field, region,
                                                                                 connections, Nc, Hc)
     j, k = @index(Global, NTuple)
-    region_E = connections.east.from_rank
+
     region_W = connections.west.from_rank
+    region_E = connections.east.from_rank
 
     # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
     # verifying halo filling against schematics or physical cubed sphere models.
@@ -128,9 +129,11 @@ end
 @kernel function _fill_cubed_sphere_face_face_field_east_west_halo_regions!(field, multiregion_field, region,
                                                                             connections, Nc, Hc)
     j, k = @index(Global, NTuple)
-    region_E = connections.east.from_rank
+
     region_W = connections.west.from_rank
+    region_E = connections.east.from_rank
     region_S = connections.south.from_rank
+    region_N = connections.north.from_rank
 
     # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
     # verifying halo filling against schematics or physical cubed sphere models.
@@ -141,29 +144,33 @@ end
             @inbounds begin
                 #=
                 field[region][Nc+1:Nc+Hc, 1:Nc, k]   .=         field[region_E][1:Hc, 1:Nc, k]
+                field[region][Nc+1:Nc+Hc, Nc+1, k]   .=         field[region_N][1:Hc, 1, k]
                 field[region][1-Hc:0, 2:Nc+1, k]     .= reverse(field[region_W][1:Nc, Nc+1-Hc:Nc, k], dims=1)'
                 field[region][1-Hc:0, 1, k]          .=         field[region_S][1, Nc+1-Hc:Nc, k]
                 =#
-                field[Nc+i, j, k]   = multiregion_field[region_E][i, j, k]
-                field[i-Hc, j+1, k] = multiregion_field[region_W][Nc+1-j, Nc+i-Hc, k]
-                field[i-Hc, 1, k]   = multiregion_field[region_S][1, Nc+i-Hc, k]
+                field[Nc+i, j, k]    = multiregion_field[region_E][i, j, k]
+                field[Nc+i, Nc+1, k] = multiregion_field[region_N][i, 1, k]
+                field[i-Hc, j+1, k]  = multiregion_field[region_W][Nc+1-j, Nc+i-Hc, k]
+                field[i-Hc, 1, k]    = multiregion_field[region_S][1, Nc+i-Hc, k]
             end
         elseif iseven(region)
             @inbounds begin
                 #=
-                field[region][Nc+1:Nc+Hc, 2:Nc, k]   .= reverse(field[region_E][2:Nc, 1:Hc, k], dims=1)'
+                field[region][Nc+1:Nc+Hc, 2:Nc+1, k] .= reverse(field[region_E][1:Nc, 1:Hc, k], dims=1)'
                 if Hc > 1
                     field[region][Nc+2:Nc+Hc, 1, k]  .= reverse(field[region_S][Nc+2-Hc:Nc, 1, k])
                 end
                 Note that the halo corresponding to the "missing" south-east corner of even panels, specifically
                 field[region][Nc+1, 1, k], remains unfilled.
                 =#
-                j > 1 && (field[Nc+i, j, k] = multiregion_field[region_E][Nc+2-j, i, k])
+                field[Nc+i, j+1, k] = multiregion_field[region_E][Nc+1-j, i, k]
                 (Hc > 1 && i > 1) && (field[Nc+i, 1, k] = multiregion_field[region_S][Nc+2-i, 1, k])
                 #=
                 field[region][1-Hc:0, 1:Nc, k]       .=         field[region_W][Nc+1-Hc:Nc, 1:Nc, k]
+                field[region][1-Hc:0, Nc+1, k]       .= reverse(field[region_N][1, 2:Hc+1, k])'
                 =#
                 field[i-Hc, j, k] = multiregion_field[region_W][Nc+i-Hc, j, k]
+                field[i-Hc, Nc+1, k] = multiregion_field[region_N][1, Hc+2-i, k]
             end
         end
     end
@@ -172,10 +179,11 @@ end
 @kernel function _fill_cubed_sphere_face_face_field_north_south_halo_regions!(field, multiregion_field, region,
                                                                               connections, Nc, Hc)
     i, k = @index(Global, NTuple)
-    region_E = connections.east.from_rank
-    region_N = connections.north.from_rank
+
     region_W = connections.west.from_rank
+    region_E = connections.east.from_rank
     region_S = connections.south.from_rank
+    region_N = connections.north.from_rank
 
     # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
     # verifying halo filling against schematics or physical cubed sphere models.
@@ -187,7 +195,7 @@ end
                 #=
                 field[region][2:Nc+1, Nc+1:Nc+Hc, k] .= reverse(field[region_N][1:Hc, 1:Nc, k], dims=2)'
                 if Hc > 1
-                    field[region][1, Nc+2:Nc+Hc, k]  .= reverse(field[region_W][1, Nc+2-Hc:Nc, k])'
+                    field[region][1, Nc+2:Nc+Hc, k]  .= reverse(field[region_W][1, Nc+2-Hc:Nc, k])
                 end
                 Note that the halo corresponding to the "missing" north-west corner of odd panels, specifically
                 field[region][1, Nc+1, k], remains unfilled.
@@ -205,7 +213,7 @@ end
             @inbounds begin
                 #=
                 field[region][1:Nc, Nc+1:Nc+Hc, k]   .=         field[region_N][1:Nc, 1:Hc, k]
-                field[region][Nc+1, Nc+1:Nc+Hc, k]   .=         field[region_E][1, 1:Hc, k]'
+                field[region][Nc+1, Nc+1:Nc+Hc, k]   .=         field[region_E][1, 1:Hc, k]
                 field[region][2:Nc+1, 1-Hc:0, k]     .= reverse(field[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)'
                 field[region][1, 1-Hc:0, k]          .=         field[region_W][Nc+1-Hc:Nc, 1, k]'
                 =#
@@ -258,8 +266,9 @@ end
 @kernel function _fill_cubed_sphere_center_center_center_center_field_pairs_east_west_halo_regions!(
 field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections, Nc, Hc, plmn)
     j, k = @index(Global, NTuple)
-    region_E = connections.east.from_rank
+
     region_W = connections.west.from_rank
+    region_E = connections.east.from_rank
 
     # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
     # verifying halo filling against schematics or physical cubed sphere models.
@@ -415,10 +424,10 @@ end
 field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections, Nc, Hc, plmn)
     j, k = @index(Global, NTuple)
 
-    region_E = connections.east.from_rank
-    region_N = connections.north.from_rank
     region_W = connections.west.from_rank
+    region_E = connections.east.from_rank
     region_S = connections.south.from_rank
+    region_N = connections.north.from_rank
 
     # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
     # verifying halo filling against schematics or physical cubed sphere models.
@@ -475,10 +484,10 @@ end
 field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections, Nc, Hc, plmn)
     i, k = @index(Global, NTuple)
 
-    region_E = connections.east.from_rank
-    region_N = connections.north.from_rank
     region_W = connections.west.from_rank
+    region_E = connections.east.from_rank
     region_S = connections.south.from_rank
+    region_N = connections.north.from_rank
 
     # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
     # verifying halo filling against schematics or physical cubed sphere models.
@@ -620,10 +629,10 @@ end
 field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections, Nc, Hc, plmn)
     j, k = @index(Global, NTuple)
 
-    region_E = connections.east.from_rank
-    region_N = connections.north.from_rank
     region_W = connections.west.from_rank
+    region_E = connections.east.from_rank
     region_S = connections.south.from_rank
+    region_N = connections.north.from_rank
 
     # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
     # verifying halo filling against schematics or physical cubed sphere models.
@@ -688,10 +697,10 @@ end
 field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections, Nc, Hc, plmn)
     i, k = @index(Global, NTuple)
 
-    region_E = connections.east.from_rank
-    region_N = connections.north.from_rank
     region_W = connections.west.from_rank
+    region_E = connections.east.from_rank
     region_S = connections.south.from_rank
+    region_N = connections.north.from_rank
 
     # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
     # verifying halo filling against schematics or physical cubed sphere models.
