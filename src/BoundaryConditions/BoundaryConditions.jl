@@ -46,7 +46,7 @@ include("fill_halo_regions_value_gradient.jl")
 include("fill_halo_regions_open.jl")
 include("fill_halo_regions_periodic.jl")
 include("fill_halo_regions_flux.jl")
-include("fill_halo_regions_zipper.jl")
+include("fill_halo_regions_upivotzipper.jl")
 include("fill_halo_regions_fpivotzipper.jl")
 include("fill_halo_kernels.jl")
 

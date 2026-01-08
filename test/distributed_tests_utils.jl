@@ -6,7 +6,7 @@ using Reactant
 using Oceananigans.TimeSteppers: first_time_step!
 
 import Oceananigans.BoundaryConditions: _fill_north_halo!
-using Oceananigans.BoundaryConditions: ZBC, CCLocation, FCLocation
+using Oceananigans.BoundaryConditions: UZBC, CCLocation, FCLocation
 
 include("dependencies_for_runtests.jl")
 
@@ -33,10 +33,10 @@ function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius
 end
 
 # tracers or similar fields
-@inline _fill_north_halo!(i, k, grid, c, bc::ZBC, ::CCLocation, args...) = my_fold_north_center_center!(i, k, grid, bc.condition, c)
-@inline _fill_north_halo!(i, k, grid, u, bc::ZBC, ::FCLocation, args...) = my_fold_north_face_center!(i, k, grid, bc.condition, u)
+@inline _fill_north_halo!(i, k, grid, c, bc::UZBC, ::CCLocation, args...) = my_fold_north_center_center_upivot!(i, k, grid, bc.condition, c)
+@inline _fill_north_halo!(i, k, grid, u, bc::UZBC, ::FCLocation, args...) = my_fold_north_face_center_upivot!(i, k, grid, bc.condition, u)
 
-@inline function my_fold_north_face_center!(i, k, grid, sign, c)
+@inline function my_fold_north_face_center_upivot!(i, k, grid, sign, c)
     Nx, Ny, _ = size(grid)
 
     i′ = Nx - i + 2 # Remember! elemesnt Nx + 1 does not exist!
@@ -53,7 +53,7 @@ end
     return nothing
 end
 
-@inline function my_fold_north_center_center!(i, k, grid, sign, c)
+@inline function my_fold_north_center_center_upivot!(i, k, grid, sign, c)
     Nx, Ny, _ = size(grid)
 
     i′ = Nx - i + 1

@@ -7,7 +7,7 @@ import Oceananigans
 import Oceananigans.Architectures: on_architecture
 
 using Oceananigans.Architectures: device, on_architecture, AbstractArchitecture, CPU, GPU
-using Oceananigans.BoundaryConditions: BoundaryCondition, Zipper, FPivotZipper
+using Oceananigans.BoundaryConditions: BoundaryCondition, Zipper, FPivot, UPivot, UZBC, FZBC
 using Oceananigans.Fields: convert_to_0_360
 using Oceananigans.Grids: AbstractTopology, RightConnected
 using Oceananigans.Grids: halo_size, generate_coordinate, topology
@@ -17,9 +17,6 @@ using Distances: haversine
 using Adapt: Adapt, adapt
 using KernelAbstractions: @kernel, @index
 using KernelAbstractions.Extras.LoopInfo: @unroll
-
-const ZBC = BoundaryCondition{<:Zipper}
-const FZBC = BoundaryCondition{<:FPivotZipper}
 
 include("generate_tripolar_coordinates.jl")
 include("tripolar_grid.jl")

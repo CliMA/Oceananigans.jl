@@ -3,7 +3,7 @@ include("dependencies_for_runtests.jl")
 using Statistics
 using Oceananigans.Grids: get_cartesian_nodes_and_vertices, RightFaceFolded, RightCenterFolded
 using Oceananigans.ImmersedBoundaries: immersed_cell
-using Oceananigans.BoundaryConditions: Zipper, FPivotZipper
+using Oceananigans.BoundaryConditions: Zipper, FPivot, UPivot
 
 using Oceananigans.Utils: KernelParameters
 import Oceananigans.Utils: contiguousrange
@@ -192,13 +192,13 @@ end
         u = XFaceField(grid, boundary_conditions=u_bcs)
         v = YFaceField(grid, boundary_conditions=v_bcs)
 
-        zipper_bc = (fold_topology == RightCenterFolded) ? Zipper : FPivotZipper
+        Pivot = (fold_topology == RightCenterFolded) ? UPivot : FPivot
 
-        @test c.boundary_conditions.north.classification isa zipper_bc
-        @test cx.boundary_conditions.north.classification isa zipper_bc
-        @test cy.boundary_conditions.north.classification isa zipper_bc
-        @test u.boundary_conditions.north.classification isa zipper_bc
-        @test v.boundary_conditions.north.classification isa zipper_bc
+        @test c.boundary_conditions.north.classification isa Zipper{Pivot}
+        @test cx.boundary_conditions.north.classification isa Zipper{Pivot}
+        @test cy.boundary_conditions.north.classification isa Zipper{Pivot}
+        @test u.boundary_conditions.north.classification isa Zipper{Pivot}
+        @test v.boundary_conditions.north.classification isa Zipper{Pivot}
 
         # The velocity fields are reversed at the north boundary
         # boundary_conditions.north.condition == -1, while the tracer

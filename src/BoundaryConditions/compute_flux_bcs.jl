@@ -92,7 +92,6 @@ end
 
 # shortcut for the zipper BC
 @inline compute_y_north_bc!(Gc, loc, ::ZBC, args...) = nothing
-@inline compute_y_north_bc!(Gc, loc, ::FZBC, args...) = nothing
 
 @inline flip(::Center) = Face()
 @inline flip(::Face) = Center()

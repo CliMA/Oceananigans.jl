@@ -10,14 +10,15 @@ with a pivot point located at a `(Face, Face)` location (a F-point pivot).
 
 When copying in halos, folded velocities need to switch sign, while tracers or similar fields do not.
 
-Note: There are two types of zipper boundary conditions:
-F-point pivot (this one) and U-point pivot (original/default).
+Note: Two types of zipper boundary conditions are currently implented:
+- F-point pivot (this one)
+- U-point pivot
 
 Example
 =======
 
-Consider the northern edge of a tripolar grid where P indicates the pivot point.
-
+Consider the northern edge of a tripolar grid where P indicates the pivot point,
+then there must be a 180° rotation symmetry around the pivot point:
 ```
                     │            │            │            │            │
 Ny + 2 (face)   ─▶  ├─── -v₆ ────┼─── -v₅ ────┼─── -v₄ ────┼─── -v₃ ────┤
@@ -37,17 +38,10 @@ Ny     (face)   ─▶  ├──── v₃ ────┼──── v₄ �
 
 Note that `YFAce` fields have an extra row (size `Ny + 1`)
 just like for `Bounded` topologies.
-
-Given the fold, we have
-
-```
-v₁ == -v₄
-v₂ == -v₃
-```
 """
 
 #####
-##### Outer functions for filling halo regions for FPivotZipper boundary conditions.
+##### Outer functions for filling halo regions for Zipper{FPivot} boundary conditions.
 #####
 
 @inline function fold_north_face_face_fpivot!(i, k, grid, sign, ζ)

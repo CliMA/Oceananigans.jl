@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: ZipperBoundaryCondition, FPivotZipperBoundaryCondition, NoFluxBoundaryCondition
+using Oceananigans.BoundaryConditions: UPivotZipperBoundaryCondition, FPivotZipperBoundaryCondition, NoFluxBoundaryCondition
 using Oceananigans.Fields: set!
 using Oceananigans.Grids: Grids, Bounded, Flat, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid,
     architecture, cpu_face_constructor_z, validate_dimension_specification,
@@ -169,7 +169,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
 
     # Boundary conditions to fill halos of the coordinate and metric terms
     # We need to define them manually because of the convention in the
-    # ZipperBoundaryCondition that edge fields need to switch sign (which we definitely do not
+    # UPivotZipperBoundaryCondition that edge fields need to switch sign (which we definitely do not
     # want for coordinates and metrics)
     boundary_conditions = FieldBoundaryConditions(north  = north_fold_boundary_condition(fold_topology)(),
                                                   south  = NoFluxBoundaryCondition(), # The south should be `continued`
