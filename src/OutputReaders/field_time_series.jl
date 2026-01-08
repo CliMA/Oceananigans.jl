@@ -814,10 +814,6 @@ function FieldTimeSeries(typed_path::JLD2Path, name::String;
                            time_indexing, iterations, times, Nparts, part_paths, path, reader_kw)
 end
 
-# Stub function for NetCDF files - will be extended by OceananigansNCDatasetsExt
-FieldTimeSeries(path::NetCDFPath, name::String; kwargs...) = error("Loading FieldTimeSeries from NetCDF files requires NCDatasets")
-
-
 """
     Field(location, file::JLD2.JLDFile, name::String, iter;
           grid = nothing,
