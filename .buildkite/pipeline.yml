@@ -100,13 +100,21 @@ steps:
       # Ship coverage files
       cd "$OCEANANIGANS_DIR"
 
-      rm -rf coverage_artifacts
-      mkdir -p coverage_artifacts
-      find . -type f -name "*.cov" -exec cp --parents {} coverage_artifacts/ \;
+      # Create a tarball containing all .cov files
+      tarball="coverage-${BUILDKITE_JOB_ID}.tgz"
 
-      echo "Staged cov count:" $$(find coverage_artifacts -name "*.cov" | wc -l)
+      # Use a null-delimited file list to be safe
+      find . -type f -name "*.cov" -print0 > covfiles.txt
 
-      buildkite-agent artifact upload "coverage_artifacts/**/*.cov"
+      # Sanity check
+      echo "Coverage files found:" $$(tr '\0' '\n' < covfiles.txt | wc -l)
+      tr '\0' '\n' < covfiles.txt | head -n 20 || true
+
+      # Create tarball from file list
+      tar --null --files-from=covfiles.txt -czf "$tarball"
+
+      # Upload tarball (single artifact)
+      buildkite-agent artifact upload "$tarball"
 
       # Preserve the original test result for Buildkite
       exit $test_status
@@ -176,13 +184,21 @@ steps:
       # Ship coverage files
       cd "$OCEANANIGANS_DIR"
 
-      rm -rf coverage_artifacts
-      mkdir -p coverage_artifacts
-      find . -type f -name "*.cov" -exec cp --parents {} coverage_artifacts/ \;
+      # Create a tarball containing all .cov files
+      tarball="coverage-${BUILDKITE_JOB_ID}.tgz"
 
-      echo "Staged cov count:" $$(find coverage_artifacts -name "*.cov" | wc -l)
+      # Use a null-delimited file list to be safe
+      find . -type f -name "*.cov" -print0 > covfiles.txt
 
-      buildkite-agent artifact upload "coverage_artifacts/**/*.cov"
+      # Sanity check
+      echo "Coverage files found:" $$(tr '\0' '\n' < covfiles.txt | wc -l)
+      tr '\0' '\n' < covfiles.txt | head -n 20 || true
+
+      # Create tarball from file list
+      tar --null --files-from=covfiles.txt -czf "$tarball"
+
+      # Upload tarball (single artifact)
+      buildkite-agent artifact upload "$tarball"
 
       # Preserve the original test result for Buildkite
       exit $test_status
@@ -219,26 +235,28 @@ steps:
     command: |
       # Pull all coverage artifacts from prior steps
       mkdir -p coverage_artifacts
-      buildkite-agent artifact download "**/*.cov" coverage_artifacts/ || true
-      buildkite-agent artifact download "**/*.jl.cov" coverage_artifacts/ || true
-      buildkite-agent artifact download "**/*.info" coverage_artifacts/ || true
-      buildkite-agent artifact download "**/lcov.info" coverage_artifacts/ || true
 
-      echo "Downloaded coverage-like files:" $$(find coverage_artifacts -type f | wc -l)
-      find coverage_artifacts -type f | head -n 200 || true
-
-      # If nothing, stop
-      if [ $$(find coverage_artifacts -type f | wc -l) -eq 0 ]; then
-        echo "No coverage artifacts were uploaded by test steps."
+      # Download all coverage tarballs from all steps
+      if ! buildkite-agent artifact download "coverage-*.tgz" coverage_artifacts/; then
+        echo "No coverage tarballs were uploaded by test steps."
         exit 0
       fi
 
-      # (Optional) quick sanity check
-      echo "Number of .cov files:" $(find coverage_artifacts -name "*.cov" | wc -l)
+      echo "Downloaded tarballs:" $$(ls -1 coverage_artifacts/coverage-*.tgz | wc -l)
+      ls -1 coverage_artifacts/coverage-*.tgz | head || true
 
-      # Upload to Codecov (CODECOV_TOKEN comes from Buildkite secret env var)
+      # Extract them into coverage_artifacts/extracted/
+      mkdir -p coverage_artifacts/extracted
+      for f in coverage_artifacts/coverage-*.tgz; do
+        tar -xzf "$f" -C coverage_artifacts/extracted
+      done
+
+      echo "Extracted .cov files:" $$(find coverage_artifacts/extracted -name "*.cov" | wc -l)
+      find coverage_artifacts/extracted -name "*.cov" | head -n 20 || true
+
+      # Upload to Codecov
       curl -s https://codecov.io/bash | bash -s -- \
-        -s coverage_artifacts \
+        -s coverage_artifacts/extracted \
         -F buildkite \
         -F julia
 
