@@ -98,30 +98,46 @@ steps:
       find . -name "*.cov" | head -n 20 || true
 
       # Ship coverage files
-      cd "$OCEANANIGANS_DIR"
+      # Make failures obvious
+      set -e
 
-      echo "PWD for coverage:"; pwd
-      echo "Example cov files:"; find . -type f -name "*.cov" | head -n 20 || true
+      # Resolve paths once
+      REPO="$OCEANANIGANS_DIR"
+      OUT="${BUILDKITE_BUILD_CHECKOUT_PATH:-$PWD}"
 
-      tarball="coverage-${BUILDKITE_JOB_ID}.tgz"
-      echo "Tarball will be: $tarball"
+      echo "REPO=$REPO"
+      echo "OUT=$OUT"
+      test -d "$REPO" || { echo "REPO dir missing"; exit 1; }
+      test -d "$OUT"  || { echo "OUT dir missing"; exit 1; }
 
-      # Create tarball directly from find output (newline-delimited)
-      # This avoids --null / --files-from / covfiles.txt entirely.
-      find . -type f -name "*.cov" -print > cov_list.txt
-      echo "Coverage files found:" $(wc -l < cov_list.txt)
-      head -n 20 cov_list.txt || true
+      # Build a deterministic file list using absolute find (no dependence on cd)
+      cov_list="$OUT/cov_list.txt"
+      tarball="$OUT/coverage-${BUILDKITE_JOB_ID:-nojobid}.tgz"
 
-      # If none, don’t fail the step (but print why)
-      if [ ! -s cov_list.txt ]; then
-        echo "No .cov files found at tar time (but you printed some earlier)."
+      find "$REPO" -type f -name "*.cov" > "$cov_list"
+
+      echo "Coverage files found:" `wc -l < "$cov_list"`
+      echo "First few:"
+      head -n 20 "$cov_list" || true
+
+      # Fail loudly if it’s empty (it shouldn't be, given your earlier printout)
+      if [ ! -s "$cov_list" ]; then
+        echo "cov_list.txt is empty, despite earlier .cov output."
+        echo "Debug: showing a fresh find sample:"
+        find "$REPO" -type f -name "*.cov" | head -n 20 || true
         exit 1
       fi
 
-      tar -czf "$tarball" -T cov_list.txt
+      # Create tarball from the list.
+      # Use tar's -T list, but paths in the list are absolute. That's fine.
+      tar -czf "$tarball" -T "$cov_list"
 
-      # Upload single artifact
-      buildkite-agent artifact upload "$tarball"
+      echo "Tarball created:" "$tarball"
+      ls -lh "$tarball"
+
+      # Upload from OUT (checkout) so Buildkite will definitely match it
+      cd "$OUT"
+      buildkite-agent artifact upload "$(basename "$tarball")"
 
       # Preserve the original test result for Buildkite
       exit $test_status
@@ -189,64 +205,6 @@ steps:
       find . -name "*.cov" | head -n 20 || true
 
       # Ship coverage files
-      cd "$OCEANANIGANS_DIR"
-
-      echo "PWD for coverage:"; pwd
-      echo "Example cov files:"; find . -type f -name "*.cov" | head -n 20 || true
-
-      tarball="coverage-${BUILDKITE_JOB_ID}.tgz"
-      echo "Tarball will be: $tarball"
-
-      # Create tarball directly from find output (newline-delimited)
-      # This avoids --null / --files-from / covfiles.txt entirely.
-      find . -type f -name "*.cov" -print > cov_list.txt
-      echo "Coverage files found:" $(wc -l < cov_list.txt)
-      head -n 20 cov_list.txt || true
-
-      # If none, don’t fail the step (but print why)
-      if [ ! -s cov_list.txt ]; then
-        echo "No .cov files found at tar time (but you printed some earlier)."
-        exit 1
-      fi
-
-      tar -czf "$tarball" -T cov_list.txt
-
-      # Upload single artifact
-      buildkite-agent artifact upload "$tarball"
-
-      # Preserve the original test result for Buildkite
-      exit $test_status
-
-    matrix:
-      setup:
-        architecture:
-          - "CPU"
-          - "GPU"
-        group:
-          # - "🎭 reactant_2"
-          # - "👺 enzyme"
-          - "👹 reactant_1"
-
-    retry:
-      automatic:
-        - exit_status: 1
-          limit: 1
-
-  #####
-  ##### Blocking wait on tests and documentation
-  #####
-
-  - wait: ~
-    continue_on_failure: true
-
-  #####
-  ##### Upload to Codecov
-  #####
-
-  - label: "📊 Upload coverage to Codecov"
-    agents:
-      queue: "Oceananigans-nautilus"
-    command: |
       # Make failures obvious
       set -e
 
@@ -287,6 +245,57 @@ steps:
       # Upload from OUT (checkout) so Buildkite will definitely match it
       cd "$OUT"
       buildkite-agent artifact upload "$(basename "$tarball")"
+
+      # Preserve the original test result for Buildkite
+      exit $test_status
+
+    matrix:
+      setup:
+        architecture:
+          - "CPU"
+          - "GPU"
+        group:
+          # - "🎭 reactant_2"
+          # - "👺 enzyme"
+          - "👹 reactant_1"
+
+    retry:
+      automatic:
+        - exit_status: 1
+          limit: 1
+
+  #####
+  ##### Blocking wait on tests and documentation
+  #####
+
+  - wait: ~
+    continue_on_failure: true
+
+  #####
+  ##### Upload to Codecov
+  #####
+
+  - label: "📊 Upload coverage to Codecov"
+    agents:
+      queue: "Oceananigans-nautilus"
+    command: |
+      mkdir -p coverage_artifacts extracted
+
+      if ! buildkite-agent artifact download "coverage-*.tgz" coverage_artifacts/; then
+        echo "No coverage tarballs were uploaded by test steps."
+        exit 0
+      fi
+
+      for f in coverage_artifacts/coverage-*.tgz; do
+        tar -xzf "$f" -C extracted
+      done
+
+      echo "Extracted .cov files:" `find extracted -name "*.cov" | wc -l`
+
+      curl -s https://codecov.io/bash | bash -s -- \
+        -s extracted \
+        -F buildkite \
+        -F julia
 
   #####
   ##### Clean up
