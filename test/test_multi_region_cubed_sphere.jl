@@ -316,6 +316,7 @@ end
             region = Iterate(1:6)
             @apply_regionally data = create_c_test_data(grid, region)
             set!(c, data)
+
             fill_halo_regions!(c)
 
             Hx, Hy, Hz = halo_size(grid)
@@ -494,10 +495,11 @@ end
             c₂ = CenterField(grid)
 
             region = Iterate(1:6)
-            @apply_regionally data = create_c₁_test_data(grid, region)
-            set!(c₁, data)
-            @apply_regionally data = create_c₂_test_data(grid, region)
-            set!(c₂, data)
+            @apply_regionally c₁_data = create_c₁_test_data(grid, region)
+            @apply_regionally c₂_data = create_c₂_test_data(grid, region)
+            set!(c₁, c₁_data)
+            set!(c₂, c₂_data)
+
             fill_halo_regions!((c₁, c₂); signed = false)
 
             Hx, Hy, Hz = halo_size(grid)
