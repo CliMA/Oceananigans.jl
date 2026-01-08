@@ -100,20 +100,27 @@ steps:
       # Ship coverage files
       cd "$OCEANANIGANS_DIR"
 
-      # Create a tarball containing all .cov files
+      echo "PWD for coverage:"; pwd
+      echo "Example cov files:"; find . -type f -name "*.cov" | head -n 20 || true
+
       tarball="coverage-${BUILDKITE_JOB_ID}.tgz"
+      echo "Tarball will be: $tarball"
 
-      # Use a null-delimited file list to be safe
-      find . -type f -name "*.cov" -print0 > covfiles.txt
+      # Create tarball directly from find output (newline-delimited)
+      # This avoids --null / --files-from / covfiles.txt entirely.
+      find . -type f -name "*.cov" -print > cov_list.txt
+      echo "Coverage files found:" $(wc -l < cov_list.txt)
+      head -n 20 cov_list.txt || true
 
-      # Sanity check
-      echo "Coverage files found:" $$(tr '\0' '\n' < covfiles.txt | wc -l)
-      tr '\0' '\n' < covfiles.txt | head -n 20 || true
+      # If none, don’t fail the step (but print why)
+      if [ ! -s cov_list.txt ]; then
+        echo "No .cov files found at tar time (but you printed some earlier)."
+        exit 1
+      fi
 
-      # Create tarball from file list
-      tar --null --files-from=covfiles.txt -czf "$tarball"
+      tar -czf "$tarball" -T cov_list.txt
 
-      # Upload tarball (single artifact)
+      # Upload single artifact
       buildkite-agent artifact upload "$tarball"
 
       # Preserve the original test result for Buildkite
@@ -184,20 +191,27 @@ steps:
       # Ship coverage files
       cd "$OCEANANIGANS_DIR"
 
-      # Create a tarball containing all .cov files
+      echo "PWD for coverage:"; pwd
+      echo "Example cov files:"; find . -type f -name "*.cov" | head -n 20 || true
+
       tarball="coverage-${BUILDKITE_JOB_ID}.tgz"
+      echo "Tarball will be: $tarball"
 
-      # Use a null-delimited file list to be safe
-      find . -type f -name "*.cov" -print0 > covfiles.txt
+      # Create tarball directly from find output (newline-delimited)
+      # This avoids --null / --files-from / covfiles.txt entirely.
+      find . -type f -name "*.cov" -print > cov_list.txt
+      echo "Coverage files found:" $(wc -l < cov_list.txt)
+      head -n 20 cov_list.txt || true
 
-      # Sanity check
-      echo "Coverage files found:" $$(tr '\0' '\n' < covfiles.txt | wc -l)
-      tr '\0' '\n' < covfiles.txt | head -n 20 || true
+      # If none, don’t fail the step (but print why)
+      if [ ! -s cov_list.txt ]; then
+        echo "No .cov files found at tar time (but you printed some earlier)."
+        exit 1
+      fi
 
-      # Create tarball from file list
-      tar --null --files-from=covfiles.txt -czf "$tarball"
+      tar -czf "$tarball" -T cov_list.txt
 
-      # Upload tarball (single artifact)
+      # Upload single artifact
       buildkite-agent artifact upload "$tarball"
 
       # Preserve the original test result for Buildkite
