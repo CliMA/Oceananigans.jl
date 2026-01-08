@@ -103,10 +103,10 @@ steps:
       find . -type f -name "*.cov" > cov_list.txt
       echo "Coverage files found:" `wc -l < cov_list.txt`
 
-      tar -czf "$tarball" -T cov_list.txt
-      ls -lh "$tarball"
+      tar -czf "$$tarball" -T cov_list.txt
+      ls -lh "$$tarball"
 
-      buildkite-agent artifact upload "$tarball"
+      buildkite-agent artifact upload "$$tarball"
 
       # Preserve the original test result for Buildkite
       exit $test_status
@@ -179,10 +179,10 @@ steps:
       find . -type f -name "*.cov" > cov_list.txt
       echo "Coverage files found:" `wc -l < cov_list.txt`
 
-      tar -czf "$tarball" -T cov_list.txt
-      ls -lh "$tarball"
+      tar -czf "$$tarball" -T cov_list.txt
+      ls -lh "$$tarball"
 
-      buildkite-agent artifact upload "$tarball"
+      buildkite-agent artifact upload "$$tarball"
 
       # Preserve the original test result for Buildkite
       exit $test_status
