@@ -203,9 +203,9 @@ end
 
 """
     Distributed(child_architecture = CPU();
-                partition = Partition(MPI.Comm_size(communicator)),
+                partition = nothing,
                 devices = nothing,
-                communicator = MPI.COMM_WORLD,
+                communicator = nothing,
                 synchronized_communication = false)
 
 Return a distributed architecture that uses MPI for communications.
@@ -225,11 +225,11 @@ Keyword arguments
 
 - `devices`: `GPU` device linked to local rank. The GPU will be assigned based on the
              local node rank as such `devices[node_rank]`. Make sure to run `--ntasks-per-node` <= `--gres=gpu`.
-             If `nothing`, the devices will be assigned automatically based on the available resources.
+             If `nothing` (default), the devices will be assigned automatically based on the available resources.
              This argument is irrelevant if `child_architecture = CPU()`.
 
-- `communicator`: the MPI communicator that orchestrates data transfer between nodes.
-                  Default: `MPI.COMM_WORLD`.
+- `communicator`: the MPI communicator that orchestrates data transfer between nodes, e.g., `MPI.COMM_WORLD`.
+                  Default: `nothing`.
 
 - `synchronized_communication`: This keyword argument can be used to control downstream code behavior.
                                 If `true`, then downstream code may use this tag to toggle between an algorithm
