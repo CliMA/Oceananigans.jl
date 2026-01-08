@@ -182,7 +182,7 @@ function HydrostaticFreeSurfaceModel(grid;
                                      timestepper = :QuasiAdamsBashforth2,
                                      boundary_conditions::NamedTuple = NamedTuple(),
                                      particles::ParticlesOrNothing = nothing,
-                                     biogeochemistry::AbstractBGCOrNothing = nothing,
+                                     biogeochemistry = nothing,
                                      velocities = nothing,
                                      pressure = nothing,
                                      closure_fields = nothing,
