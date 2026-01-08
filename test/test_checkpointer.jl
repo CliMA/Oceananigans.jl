@@ -94,8 +94,8 @@ end
 function run_checkpointer_tests(true_model, test_model, Δt)
     true_simulation = Simulation(true_model, Δt=Δt, stop_iteration=5)
 
-    checkpointer = Checkpointer(true_model, schedule=IterationInterval(5), overwrite_existing=true)
-    push!(true_simulation.output_writers, checkpointer)
+    test_simulation.output_writers[:checkpointer] =
+        Checkpointer(true_model, schedule=IterationInterval(5), overwrite_existing=true)
 
     run!(true_simulation) # for 5 iterations
 
