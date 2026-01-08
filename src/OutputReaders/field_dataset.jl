@@ -1,4 +1,4 @@
-using Oceananigans.Fields: instantiated_location, indices, boundary_conditions
+using Oceananigans.Fields: instantiated_location, indices
 import Oceananigans.Fields: set!
 
 struct FieldDataset{F, B, M, P, KW}
@@ -192,7 +192,7 @@ function FieldDataset(times, fields;
 
     loc = map(instantiated_location, fields)
     inds = map(Fields.indices, fields)
-    bcs = map(Fields.boundary_conditions, fields)
+    bcs = map(boundary_conditions, fields)
 
     return FieldDataset(grid, times, keys(fields);
         location=loc,

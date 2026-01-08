@@ -1,16 +1,48 @@
 using Oceananigans: Oceananigans
 using Aqua: Aqua
 using ExplicitImports: ExplicitImports
-using Test: @testset, @test
+using Test: @testset, @test, detect_ambiguities
 
 @testset "Aqua" begin
     @info "testing quality assurance via Aqua"
     Aqua.test_all(Oceananigans; ambiguities=false)
+
+    # Until we resolve all ambiguities, we make sure we don't increase them.
+    @test length(detect_ambiguities(Oceananigans; recursive=true)) <= 361
 end
 
 @testset "ExplicitImports" begin
 
-    modules = (Oceananigans.Utils, Oceananigans.OrthogonalSphericalShellGrids, Oceananigans.Diagnostics, Oceananigans.AbstractOperations, Oceananigans.Models.HydrostaticFreeSurfaceModels, Oceananigans.TimeSteppers, Oceananigans.ImmersedBoundaries, Oceananigans.TurbulenceClosures, Oceananigans.Coriolis, Oceananigans.Forcings, Oceananigans.BuoyancyFormulations, Oceananigans.Solvers, Oceananigans.Operators)
+    modules = (
+        Oceananigans.AbstractOperations,
+        # Oceananigans.Advection,
+        # Oceananigans.Architectures,
+        Oceananigans.Biogeochemistry,
+        # Oceananigans.BoundaryConditions,
+        Oceananigans.BuoyancyFormulations,
+        Oceananigans.Coriolis,
+        Oceananigans.Diagnostics,
+        # Oceananigans.DistributedComputations,
+        Oceananigans.Fields,
+        Oceananigans.Forcings,
+        # Oceananigans.Grids,
+        Oceananigans.ImmersedBoundaries,
+        # Oceananigans.Logger,
+        # Oceananigans.Models,
+        Oceananigans.Models.HydrostaticFreeSurfaceModels,
+        # Oceananigans.MultiRegion,
+        Oceananigans.Operators,
+        Oceananigans.OrthogonalSphericalShellGrids,
+        # Oceananigans.OutputReaders,
+        # Oceananigans.OutputWriters,
+        # Oceananigans.Simulations,
+        Oceananigans.Solvers,
+        # Oceananigans.StokesDrifts,
+        Oceananigans.TimeSteppers,
+        Oceananigans.TurbulenceClosures,
+        Oceananigans.Units,
+        Oceananigans.Utils,
+    )
 
     @testset "Explicit Imports [$(mod)]" for mod in modules
         @info "Testing no implicit imports for module $(mod)"
