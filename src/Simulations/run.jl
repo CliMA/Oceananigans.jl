@@ -184,7 +184,7 @@ add_dependency!(diagnostics, output) = nothing # fallback
 function add_dependency!(diags, wta::WindowedTimeAverage)
     if wta ∉ values(diags)
         num_diags_plus_1 = length(diags) + 1
-        diags[Symbol("diag$num_diags_plus_1")] = wta
+        diags[Symbol("WindowedTimeAverage$num_diags_plus_1")] = wta
     end
 end
 
