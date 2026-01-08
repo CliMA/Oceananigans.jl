@@ -1,5 +1,3 @@
-using Oceananigans.Grids: ynode, znode
-
 """
     struct NonTraditionalBetaPlane{FT} <: AbstractRotation
 

@@ -38,7 +38,7 @@ function rotation_with_shear_test(grid, closure=nothing)
     coriolis = HydrostaticSphericalCoriolis(rotation_rate = 1)
     tracers = (:c, :b)
 
-    model = HydrostaticFreeSurfaceModel(; grid, closure, coriolis, tracers, free_surface,
+    model = HydrostaticFreeSurfaceModel(grid; closure, coriolis, tracers, free_surface,
                                         momentum_advection = WENOVectorInvariant(order=3),
                                         tracer_advection = WENO(order=3),
                                         buoyancy = BuoyancyTracer())
@@ -113,7 +113,7 @@ for arch in archs
                 vs = interior(on_architecture(CPU(), ms.velocities.v))
                 ws = interior(on_architecture(CPU(), ms.velocities.w))
                 cs = interior(on_architecture(CPU(), ms.tracers.c))
-                ηs = interior(on_architecture(CPU(), ms.free_surface.η))
+                ηs = interior(on_architecture(CPU(), ms.free_surface.displacement))
 
                 cpu_arch = cpu_architecture(arch)
 
@@ -121,7 +121,7 @@ for arch in archs
                 vp = interior(on_architecture(cpu_arch, mp.velocities.v))
                 wp = interior(on_architecture(cpu_arch, mp.velocities.w))
                 cp = interior(on_architecture(cpu_arch, mp.tracers.c))
-                ηp = interior(on_architecture(cpu_arch, mp.free_surface.η))
+                ηp = interior(on_architecture(cpu_arch, mp.free_surface.displacement))
 
                 us = partition(us, cpu_arch, size(up))
                 vs = partition(vs, cpu_arch, size(vp))
@@ -155,7 +155,7 @@ for arch in archs
             vs = interior(on_architecture(CPU(), ms.velocities.v))
             ws = interior(on_architecture(CPU(), ms.velocities.w))
             cs = interior(on_architecture(CPU(), ms.tracers.c))
-            ηs = interior(on_architecture(CPU(), ms.free_surface.η))
+            ηs = interior(on_architecture(CPU(), ms.free_surface.displacement))
 
             cpu_arch = cpu_architecture(arch)
 
@@ -163,7 +163,7 @@ for arch in archs
             vp = interior(on_architecture(cpu_arch, mp.velocities.v))
             wp = interior(on_architecture(cpu_arch, mp.velocities.w))
             cp = interior(on_architecture(cpu_arch, mp.tracers.c))
-            ηp = interior(on_architecture(cpu_arch, mp.free_surface.η))
+            ηp = interior(on_architecture(cpu_arch, mp.free_surface.displacement))
 
             us = partition(us, cpu_arch, size(up))
             vs = partition(vs, cpu_arch, size(vp))

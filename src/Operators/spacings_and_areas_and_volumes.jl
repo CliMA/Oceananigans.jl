@@ -1,4 +1,4 @@
-using Oceananigans.Grids: Center, Face, AbstractGrid, hack_cosd, hack_sind
+using Oceananigans.Grids: AbstractGrid, hack_cosd, hack_sind, λnode
 
 """
 Notes:

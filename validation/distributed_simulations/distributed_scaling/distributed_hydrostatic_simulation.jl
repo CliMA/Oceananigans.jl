@@ -55,7 +55,7 @@ function run_hydrostatic_simulation!(grid_size;
 
     free_surface = SplitExplicitFreeSurface(grid; cfl = barotropic_CFL, fixed_Δt = max_Δt)
 
-    model = HydrostaticFreeSurfaceModel(; grid,
+    model = HydrostaticFreeSurfaceModel(grid;
                                         momentum_advection,
                                         tracer_advection,
                                         coriolis,
