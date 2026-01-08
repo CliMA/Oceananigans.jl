@@ -85,6 +85,7 @@ export
     ConservativeFormulation, VectorInvariantFormulation,
     PressureField, fields, ZCoordinate, ZStarCoordinate,
     BulkDrag, LinearFormulation, QuadraticFormulation,
+    BoundaryConditionOperation,
 
     # Hydrostatic free surface model stuff
     VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,

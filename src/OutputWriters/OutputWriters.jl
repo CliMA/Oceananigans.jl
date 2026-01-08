@@ -9,6 +9,7 @@ using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Fields
 
+using Oceananigans: boundary_conditions
 using Oceananigans: AbstractOutputWriter
 using Oceananigans.Grids: interior_indices
 using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, instantiate

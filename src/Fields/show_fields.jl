@@ -1,9 +1,6 @@
-using Printf
-using Oceananigans.Utils: prettysummary
-using Oceananigans.Grids: size_summary
+using Oceananigans.Grids: grid_name, size_summary
 using Oceananigans.BoundaryConditions: bc_str
-
-import Oceananigans.Grids: grid_name
+using Statistics: mean
 
 location_str(::Type{Face})    = "Face"
 location_str(::Type{Center})  = "Center"
@@ -11,7 +8,7 @@ location_str(::Type{Nothing}) = "⋅"
 show_location(LX, LY, LZ) = "($(location_str(LX)), $(location_str(LY)), $(location_str(LZ)))"
 show_location(field::AbstractField) = show_location(location(field)...)
 
-grid_name(field::Field) = grid_name(field.grid)
+Grids.grid_name(field::Field) = grid_name(field.grid)
 
 function Base.summary(field::Field)
     LX, LY, LZ = location(field)
