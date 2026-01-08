@@ -247,32 +247,46 @@ steps:
     agents:
       queue: "Oceananigans-nautilus"
     command: |
-      # Pull all coverage artifacts from prior steps
-      mkdir -p coverage_artifacts
+      # Make failures obvious
+      set -e
 
-      # Download all coverage tarballs from all steps
-      if ! buildkite-agent artifact download "coverage-*.tgz" coverage_artifacts/; then
-        echo "No coverage tarballs were uploaded by test steps."
-        exit 0
+      # Resolve paths once
+      REPO="$OCEANANIGANS_DIR"
+      OUT="${BUILDKITE_BUILD_CHECKOUT_PATH:-$PWD}"
+
+      echo "REPO=$REPO"
+      echo "OUT=$OUT"
+      test -d "$REPO" || { echo "REPO dir missing"; exit 1; }
+      test -d "$OUT"  || { echo "OUT dir missing"; exit 1; }
+
+      # Build a deterministic file list using absolute find (no dependence on cd)
+      cov_list="$OUT/cov_list.txt"
+      tarball="$OUT/coverage-${BUILDKITE_JOB_ID:-nojobid}.tgz"
+
+      find "$REPO" -type f -name "*.cov" > "$cov_list"
+
+      echo "Coverage files found:" `wc -l < "$cov_list"`
+      echo "First few:"
+      head -n 20 "$cov_list" || true
+
+      # Fail loudly if it’s empty (it shouldn't be, given your earlier printout)
+      if [ ! -s "$cov_list" ]; then
+        echo "cov_list.txt is empty, despite earlier .cov output."
+        echo "Debug: showing a fresh find sample:"
+        find "$REPO" -type f -name "*.cov" | head -n 20 || true
+        exit 1
       fi
 
-      echo "Downloaded tarballs:" $$(ls -1 coverage_artifacts/coverage-*.tgz | wc -l)
-      ls -1 coverage_artifacts/coverage-*.tgz | head || true
+      # Create tarball from the list.
+      # Use tar's -T list, but paths in the list are absolute. That's fine.
+      tar -czf "$tarball" -T "$cov_list"
 
-      # Extract them into coverage_artifacts/extracted/
-      mkdir -p coverage_artifacts/extracted
-      for f in coverage_artifacts/coverage-*.tgz; do
-        tar -xzf "$f" -C coverage_artifacts/extracted
-      done
+      echo "Tarball created:" "$tarball"
+      ls -lh "$tarball"
 
-      echo "Extracted .cov files:" $$(find coverage_artifacts/extracted -name "*.cov" | wc -l)
-      find coverage_artifacts/extracted -name "*.cov" | head -n 20 || true
-
-      # Upload to Codecov
-      curl -s https://codecov.io/bash | bash -s -- \
-        -s coverage_artifacts/extracted \
-        -F buildkite \
-        -F julia
+      # Upload from OUT (checkout) so Buildkite will definitely match it
+      cd "$OUT"
+      buildkite-agent artifact upload "$(basename "$tarball")"
 
   #####
   ##### Clean up
