@@ -94,50 +94,19 @@ steps:
       set -e
 
       # Sanity check: did we actually produce coverage?
-      echo "Coverage files produced:" $$(find . -name "*.cov" | wc -l)
-      find . -name "*.cov" | head -n 20 || true
+      echo "PWD:"; pwd
+      echo "Coverage files produced:" $(find . -type f -name "*.cov" | wc -l)
+      find . -type f -name "*.cov" | head -n 20 || true
 
-      # Ship coverage files
-      # Make failures obvious
-      set -e
+      tarball="coverage-${BUILDKITE_JOB_ID:-nojobid}.tgz"
 
-      # Resolve paths once
-      REPO="$OCEANANIGANS_DIR"
-      OUT="${BUILDKITE_BUILD_CHECKOUT_PATH:-$PWD}"
+      find . -type f -name "*.cov" > cov_list.txt
+      echo "Coverage files found:" `wc -l < cov_list.txt`
 
-      echo "REPO=$REPO"
-      echo "OUT=$OUT"
-      test -d "$REPO" || { echo "REPO dir missing"; exit 1; }
-      test -d "$OUT"  || { echo "OUT dir missing"; exit 1; }
-
-      # Build a deterministic file list using absolute find (no dependence on cd)
-      cov_list="$OUT/cov_list.txt"
-      tarball="$OUT/coverage-${BUILDKITE_JOB_ID:-nojobid}.tgz"
-
-      find "$REPO" -type f -name "*.cov" > "$cov_list"
-
-      echo "Coverage files found:" `wc -l < "$cov_list"`
-      echo "First few:"
-      head -n 20 "$cov_list" || true
-
-      # Fail loudly if it’s empty (it shouldn't be, given your earlier printout)
-      if [ ! -s "$cov_list" ]; then
-        echo "cov_list.txt is empty, despite earlier .cov output."
-        echo "Debug: showing a fresh find sample:"
-        find "$REPO" -type f -name "*.cov" | head -n 20 || true
-        exit 1
-      fi
-
-      # Create tarball from the list.
-      # Use tar's -T list, but paths in the list are absolute. That's fine.
-      tar -czf "$tarball" -T "$cov_list"
-
-      echo "Tarball created:" "$tarball"
+      tar -czf "$tarball" -T cov_list.txt
       ls -lh "$tarball"
 
-      # Upload from OUT (checkout) so Buildkite will definitely match it
-      cd "$OUT"
-      buildkite-agent artifact upload "$(basename "$tarball")"
+      buildkite-agent artifact upload "$tarball"
 
       # Preserve the original test result for Buildkite
       exit $test_status
@@ -201,50 +170,19 @@ steps:
       set -e
 
       # Sanity check: did we actually produce coverage?
-      echo "Coverage files produced:" $$(find . -name "*.cov" | wc -l)
-      find . -name "*.cov" | head -n 20 || true
+      echo "PWD:"; pwd
+      echo "Coverage files produced:" $(find . -type f -name "*.cov" | wc -l)
+      find . -type f -name "*.cov" | head -n 20 || true
 
-      # Ship coverage files
-      # Make failures obvious
-      set -e
+      tarball="coverage-${BUILDKITE_JOB_ID:-nojobid}.tgz"
 
-      # Resolve paths once
-      REPO="$OCEANANIGANS_DIR"
-      OUT="${BUILDKITE_BUILD_CHECKOUT_PATH:-$PWD}"
+      find . -type f -name "*.cov" > cov_list.txt
+      echo "Coverage files found:" `wc -l < cov_list.txt`
 
-      echo "REPO=$REPO"
-      echo "OUT=$OUT"
-      test -d "$REPO" || { echo "REPO dir missing"; exit 1; }
-      test -d "$OUT"  || { echo "OUT dir missing"; exit 1; }
-
-      # Build a deterministic file list using absolute find (no dependence on cd)
-      cov_list="$OUT/cov_list.txt"
-      tarball="$OUT/coverage-${BUILDKITE_JOB_ID:-nojobid}.tgz"
-
-      find "$REPO" -type f -name "*.cov" > "$cov_list"
-
-      echo "Coverage files found:" `wc -l < "$cov_list"`
-      echo "First few:"
-      head -n 20 "$cov_list" || true
-
-      # Fail loudly if it’s empty (it shouldn't be, given your earlier printout)
-      if [ ! -s "$cov_list" ]; then
-        echo "cov_list.txt is empty, despite earlier .cov output."
-        echo "Debug: showing a fresh find sample:"
-        find "$REPO" -type f -name "*.cov" | head -n 20 || true
-        exit 1
-      fi
-
-      # Create tarball from the list.
-      # Use tar's -T list, but paths in the list are absolute. That's fine.
-      tar -czf "$tarball" -T "$cov_list"
-
-      echo "Tarball created:" "$tarball"
+      tar -czf "$tarball" -T cov_list.txt
       ls -lh "$tarball"
 
-      # Upload from OUT (checkout) so Buildkite will definitely match it
-      cd "$OUT"
-      buildkite-agent artifact upload "$(basename "$tarball")"
+      buildkite-agent artifact upload "$tarball"
 
       # Preserve the original test result for Buildkite
       exit $test_status

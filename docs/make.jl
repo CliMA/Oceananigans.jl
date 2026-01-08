@@ -48,7 +48,7 @@ Distributed.addprocs(2)
         # "convecting_plankton.jl",
         # "hydrostatic_lock_exchange.jl",
         # "two_dimensional_turbulence.jl",
-        # "one_dimensional_diffusion.jl",
+        "one_dimensional_diffusion.jl",
         # "internal_wave.jl",
     ]
 end
