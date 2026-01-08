@@ -224,11 +224,16 @@ steps:
         exit 0
       fi
 
+      echo "Downloaded tarballs:"
+      ls -lh coverage_artifacts/coverage-*.tgz || true
+
       for f in coverage_artifacts/coverage-*.tgz; do
-        tar -xzf "$f" -C extracted
+        echo "Extracting $$f"
+        tar -xzf "$$f" -C extracted
       done
 
-      echo "Extracted .cov files:" `find extracted -name "*.cov" | wc -l`
+      echo "Extracted .cov files:" $$(find extracted -name "*.cov" | wc -l)
+      find extracted -name "*.cov" | head -n 20 || true
 
       curl -s https://codecov.io/bash | bash -s -- \
         -s extracted \
