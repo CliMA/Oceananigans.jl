@@ -252,6 +252,13 @@ steps:
       done
 
   #####
+  ##### Blocking wait on Codecov upload
+  #####
+
+  - wait: ~
+    continue_on_failure: true
+
+  #####
   ##### Clean up
   #####
 
