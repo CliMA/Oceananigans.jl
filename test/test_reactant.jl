@@ -49,13 +49,13 @@ end
 	Gv = model.timestepper.Gⁿ.v
 	Gui = Array(interior(Gu))
 	Gvi = Array(interior(Gv))
-	
+
 	carch = Oceananigans.Architectures.ReactantState()
 	cgrid = LatitudeLongitudeGrid(carch; lat_lon_kw...)
 	cmodel = HydrostaticFreeSurfaceModel(cgrid; hydrostatic_model_kw...)
 
 	set!(cmodel, u=ui, v=vi)
-	
+
 	simple_tendency!(cmodel)
 	@test all(Array(interior(model.timestepper.Gⁿ.u)) .≈ Array(interior(cmodel.timestepper.Gⁿ.u)))
 end

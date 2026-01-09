@@ -1,5 +1,3 @@
-using Oceananigans.Utils: prettysummary
-
 struct FunctionField{LX, LY, LZ, C, P, F, G, T} <: AbstractField{LX, LY, LZ, G, T, 3}
           func :: F
           grid :: G
@@ -68,7 +66,7 @@ Adapt.adapt_structure(to, f::FunctionField{LX, LY, LZ}) where {LX, LY, LZ} =
                            parameters = Adapt.adapt(to, f.parameters))
 
 
-on_architecture(to, f::FunctionField{LX, LY, LZ}) where {LX, LY, LZ} =
+Architectures.on_architecture(to, f::FunctionField{LX, LY, LZ}) where {LX, LY, LZ} =
     FunctionField{LX, LY, LZ}(on_architecture(to, f.func),
                               on_architecture(to, f.grid),
                               clock = on_architecture(to, f.clock),
