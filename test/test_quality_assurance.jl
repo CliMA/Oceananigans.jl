@@ -8,7 +8,9 @@ using Test: @testset, @test, detect_ambiguities
     Aqua.test_all(Oceananigans; ambiguities=false)
 
     # Until we resolve all ambiguities, we make sure we don't increase them.
-    @test length(detect_ambiguities(Oceananigans; recursive=true)) <= 355
+    number_of_ambiguities = length(detect_ambiguities(Oceananigans; recursive=true))
+    @test number_of_ambiguities <= 355
+    @info "Number of ambiguities: $number_of_ambiguities"
 end
 
 @testset "ExplicitImports" begin

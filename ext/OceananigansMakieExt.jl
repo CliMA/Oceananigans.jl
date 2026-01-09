@@ -354,9 +354,9 @@ using Oceananigans
 ext = Base.get_extension(Oceananigans, :OceananigansMakieExt)
 geo_surface! = ext.geo_surface!
 
-grid = LatitudeLongitudeGrid(size=(36, 18, 1), 
-                             longitude=(0, 360), 
-                             latitude=(-90, 90), 
+grid = LatitudeLongitudeGrid(size=(36, 18, 1),
+                             longitude=(0, 360),
+                             latitude=(-90, 90),
                              z=(0, 1))
 
 T = CenterField(grid)
@@ -485,7 +485,7 @@ function surface!(ax::Axis3, f_obs::Observable{<:SphericalField}; kwargs...)
     # Get initial field to compute coordinates (grid doesn't change)
     f0 = f_obs[]
     x, y, z = spherical_coordinates(f0)
-    
+
     # Create an observable for the color data that updates when f_obs changes
     color_obs = @lift begin
         f = $f_obs
@@ -495,7 +495,7 @@ function surface!(ax::Axis3, f_obs::Observable{<:SphericalField}; kwargs...)
         mask_immersed_field!(f)
         fi
     end
-    
+
     return surface!(ax, x, y, z; color=color_obs, shading=NoShading, kwargs...)
 end
 

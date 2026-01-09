@@ -7,7 +7,7 @@ using Oceananigans.Fields: set_to_function!
 ##### set!
 #####
 
-iterations_from_file(file) = parse.(Int, keys(file["timeseries/t"]))
+iterations_from_file(file::JLD2.JLDFile) = parse.(Int, keys(file["timeseries/t"]))
 
 function find_time_index(time::Number, file_times, Δt)
     # We introduce an additional absolute tolerance to accomodate
@@ -20,11 +20,29 @@ end
 
 find_time_index(time::AbstractTime, file_times, Δt) = findfirst(t -> t == time, file_times)
 
-function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name; warn_missing_data=true)
-    file = jldopen(path; fts.reader_kw...)
+# Extended in OceananigansNCDatasetsExt
+set_from_netcdf!(fts, path::String, args...; kwargs...) = error("Setting FieldTimeSeries from NetCDF files requires NCDatasets")
+
+function set!(fts::InMemoryFTS, path::String, args::String...; kwargs...)
+    if endswith(path, ".jld2")
+        file = jldopen(path; fts.reader_kw...)
+        set!(fts, file, args...; kwargs...)
+        close(file)
+    elseif endswith(path, ".nc")
+        return set_from_netcdf!(fts, path, args...; kwargs...)
+    else
+        error("Unsupported file extension: $(path)")
+    end
+end
+
+# Convenience method with default path
+function set!(fts::InMemoryFTS; kwargs...)
+    return set!(fts, fts.path; kwargs...)
+end
+
+function set!(fts::InMemoryFTS, file::JLD2.JLDFile, name::String=fts.name; warn_missing_data=true)
     file_iterations = iterations_from_file(file)
     file_times = [file["timeseries/t/$i"] for i in file_iterations]
-    close(file)
 
     # Compute a timescale for comparisons
     Δt = mean(diff(file_times))
@@ -45,14 +63,14 @@ function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name; wa
         if isnothing(file_index) # the time does not exist in the file
             if warn_missing_data
                 msg = @sprintf("No data found for time %.1e and time index %d\n", t, n)
-                msg *= @sprintf("for field %s at path %s", path, name)
+                msg *= @sprintf("for field %s at path %s", file.path, name)
                 @warn msg
             end
         else
             file_iter = file_iterations[file_index]
 
             # Note: use the CPU for this step
-            field_n = Field(instantiated_location(fts), path, name, file_iter,
+            field_n = Field(instantiated_location(fts), file, name, file_iter,
                             grid = on_architecture(CPU(), fts.grid),
                             architecture = cpu_architecture(arch),
                             indices = fts.indices,
@@ -62,6 +80,7 @@ function set!(fts::InMemoryFTS, path::String=fts.path, name::String=fts.name; wa
             set!(fts[n], field_n)
         end
     end
+    close(file)
 
     return nothing
 end
