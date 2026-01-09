@@ -1495,15 +1495,13 @@ function test_thermal_bubble_netcdf_output(arch, FT; with_halos=false)
     nc_filepath = "test_thermal_bubble$(halo_suffix)_$(Arch)_$FT.nc"
     isfile(nc_filepath) && rm(nc_filepath)
 
-    nc_writer = NetCDFWriter(model, outputs,
+    simulation.output_writers[:nc_writer] = NetCDFWriter(model, outputs,
         filename = nc_filepath,
         schedule = IterationInterval(10),
         array_type = Array{FT},
         with_halos = with_halos,
         include_grid_metrics = false,
         verbose = true)
-
-    push!(simulation.output_writers, nc_writer)
 
     i_slice = 1:10
     j_slice = 13
@@ -1514,15 +1512,13 @@ function test_thermal_bubble_netcdf_output(arch, FT; with_halos=false)
     nc_sliced_filepath = "test_thermal_bubble_sliced_$(Arch)_$FT.nc"
     isfile(nc_sliced_filepath) && rm(nc_sliced_filepath)
 
-    nc_sliced_writer = NetCDFWriter(model, outputs,
+    simulation.output_writers[:nc_sliced_writer] = NetCDFWriter(model, outputs,
         filename = nc_sliced_filepath,
         schedule = IterationInterval(10),
         array_type = Array{FT},
         indices = indices,
         include_grid_metrics = false,
         verbose = true)
-
-    push!(simulation.output_writers, nc_sliced_writer)
 
     run!(simulation)
 
@@ -1714,7 +1710,8 @@ function test_netcdf_size_file_splitting(arch)
     fake_attributes = Dict("fake_attribute" => "fake_attribute")
 
     Arch = typeof(arch)
-    ow = NetCDFWriter(model, (; u=model.velocities.u);
+
+    simulation.output_writers[:nc_writer] = NetCDFWriter(model, (; u=model.velocities.u);
         dir = ".",
         filename = "test_size_file_splitting_$Arch",
         schedule = IterationInterval(1),
@@ -1723,8 +1720,6 @@ function test_netcdf_size_file_splitting(arch)
         global_attributes = fake_attributes,
         file_splitting = FileSizeLimit(200KiB),
         overwrite_existing = true)
-
-    push!(simulation.output_writers, ow)
 
     # 531 KiB of output will be written which should get split into 3 files.
     run!(simulation)
@@ -1770,7 +1765,7 @@ function test_netcdf_time_file_splitting(arch)
     fake_attributes = Dict("fake_attribute" => "fake_attribute")
 
     Arch = typeof(arch)
-    ow = NetCDFWriter(model, (; u=model.velocities.u);
+    simulation.output_writers[:nc_writer] = NetCDFWriter(model, (; u=model.velocities.u);
         dir = ".",
         filename = "test_time_file_splitting_$Arch",
         schedule = IterationInterval(2),
@@ -1779,8 +1774,6 @@ function test_netcdf_time_file_splitting(arch)
         global_attributes = fake_attributes,
         file_splitting = TimeInterval(4seconds),
         overwrite_existing = true)
-
-    push!(simulation.output_writers, ow)
 
     run!(simulation)
 
