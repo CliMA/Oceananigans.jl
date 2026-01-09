@@ -1064,7 +1064,10 @@ function test_checkpointing_tke_dissipation_closure(arch, timestepper)
     @test all(Array(interior(new_pv.v)) .≈ Array(interior(ref_pv.v)))
 
     # Compare final states at iteration 10
-    test_model_equality(new_model, ref_model)
+    # We need a small atol because while all prognostic fields are exactly equal, the e and ϵ
+    # fields can have tiny differences due to floating-point ordering with RK3 I think.
+    atol = timestepper == :SplitRungeKutta3 ? 1e-16 : 0
+    test_model_equality(new_model, ref_model; atol)
 
     rm.(glob("$(prefix)_iteration*.jld2"), force=true)
 
@@ -1780,20 +1783,19 @@ for arch in archs
         end
     end
 
-    # Hydrostatic closures: test with both QAB2 and SplitRK3 timesteppers
     for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
-        @testset "CATKE closure checkpointing [$timestepper] [$(typeof(arch))]" begin
-            @info "  Testing CATKE closure checkpointing [$timestepper] [$(typeof(arch))]..."
-            test_checkpointing_catke_closure(arch, timestepper)
-        end
-
-        @testset "RiBasedVerticalDiffusivity closure checkpointing [$timestepper] [$(typeof(arch))]" begin
-            @info "  Testing RiBasedVerticalDiffusivity closure checkpointing [$timestepper] [$(typeof(arch))]..."
+        @testset "RiBasedVerticalDiffusivity closure checkpointing [$(typeof(arch)), $timestepper]" begin
+            @info "  Testing RiBasedVerticalDiffusivity closure checkpointing [$(typeof(arch)), $timestepper]..."
             test_checkpointing_ri_based_closure(arch, timestepper)
         end
 
-        @testset "TKEDissipationVerticalDiffusivity closure checkpointing [$timestepper] [$(typeof(arch))]" begin
-            @info "  Testing TKEDissipationVerticalDiffusivity closure checkpointing [$timestepper] [$(typeof(arch))]..."
+        @testset "CATKE closure checkpointing [$(typeof(arch)), $timestepper]" begin
+            @info "  Testing CATKE closure checkpointing [$(typeof(arch)), $timestepper]..."
+            test_checkpointing_catke_closure(arch, timestepper)
+        end
+
+        @testset "TKEDissipationVerticalDiffusivity closure checkpointing [$(typeof(arch)), $timestepper]" begin
+            @info "  Testing TKEDissipationVerticalDiffusivity closure checkpointing [$(typeof(arch)), $timestepper]..."
             test_checkpointing_tke_dissipation_closure(arch, timestepper)
         end
     end

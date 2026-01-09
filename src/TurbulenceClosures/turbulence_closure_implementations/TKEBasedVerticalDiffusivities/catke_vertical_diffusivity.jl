@@ -277,7 +277,7 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; pa
         time_step_catke_equation!(model, model.timestepper)
     end
 
-    # Update "previous velocities" and surface buoyancy flux only on new iterations.
+    # Update previous velocities and surface buoyancy flux only on new iterations.
     if Δt > 0
         u, v, w = model.velocities
         u⁻, v⁻ = diffusivities.previous_velocities
