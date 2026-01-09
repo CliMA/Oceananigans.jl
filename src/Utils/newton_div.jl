@@ -21,3 +21,6 @@ end
 
 # Fallback for no precision lowering
 @inline newton_div(::Type{FT}, a, b::FT) where FT = a * Base.FastMath.inv_fast(b)
+
+# Note that the implementation may be overridden for some specific backends
+# Refer to extension modules (e.g. `OceananigansCUDAExt`)
