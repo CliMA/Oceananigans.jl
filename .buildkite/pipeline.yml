@@ -223,6 +223,8 @@ steps:
     agents:
       queue: "Oceananigans-nautilus"
     command: |
+      set -e
+
       mkdir -p coverage_artifacts extracted
 
       buildkite-agent artifact download "coverage-*.tgz" coverage_artifacts/ || {
@@ -233,23 +235,21 @@ steps:
       for f in coverage_artifacts/coverage-*.tgz; do
         tar -xzf "$$f" -C extracted
       done
-      echo "Found lcov files:" $$(find extracted -name "lcov.info" | wc -l)
-      find extracted -maxdepth 2 -name "lcov.info" -print || true
 
+      echo "Found .cov files:" $$(find extracted -name "*.cov" | wc -l)
+      find extracted -name "*.cov" | head -n 20 || true
+
+      # Convert Julia .cov -> lcov.info
+      julia --color=yes --project -e "import Pkg; Pkg.add(\"Coverage\"); using Coverage; cov = process_folder(\"extracted\"); LCOV.writefile(\"lcov.info\", cov)"
+
+      echo "Generated lcov.info:"
+      ls -lh lcov.info
+
+      # Upload LCOV to Codecov
       curl -s https://codecov.io/bash | bash -s -- \
-        -s extracted \
+        -f lcov.info \
         -F buildkite \
         -F julia
-
-      # Upload each lcov.info with a flag (optional)
-      for r in extracted/**/lcov.info extracted/lcov.info; do
-        if [ -f "$$r" ]; then
-          curl -s https://codecov.io/bash | bash -s -- \
-            -f "$$r" \
-            -F buildkite \
-            -F julia
-        fi
-      done
 
   #####
   ##### Blocking wait on Codecov upload
