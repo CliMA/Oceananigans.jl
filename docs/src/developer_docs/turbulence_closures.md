@@ -177,10 +177,7 @@ Now the main function and GPU kernel:
 using Oceananigans.Utils: launch!
 using Oceananigans.TurbulenceClosures: buoyancy_tracers, buoyancy_force
 using KernelAbstractions: @kernel, @index
-nothing # hide
-```
 
-```@example pp_closure
 function TurbulenceClosures.compute_diffusivities!(diffusivities, closure::PPVD, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
