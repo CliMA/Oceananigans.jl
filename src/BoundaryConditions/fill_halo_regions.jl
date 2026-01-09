@@ -128,9 +128,9 @@ const TBB = Union{BottomAndTop, Bottom, Top}
 @inline fill_halo_size(::Tuple, ::TBB, args...) = :xy
 
 # However, for flux boundary conditions and quantities at faces, we fill the extra line
-@inline fill_halo_size(t::Tuple, f::WEB, idx, bc::FluxBoundaryCondition, loc, grid) = fill_halo_size(t[1], f, idx, bc, loc, grid)
-@inline fill_halo_size(t::Tuple, f::SNB, idx, bc::FluxBoundaryCondition, loc, grid) = fill_halo_size(t[1], f, idx, bc, loc, grid)
-@inline fill_halo_size(t::Tuple, f::TBB, idx, bc::FluxBoundaryCondition, loc, grid) = fill_halo_size(t[1], f, idx, bc, loc, grid)
+@inline fill_halo_size(t::Tuple, f::WEB, ::Tuple{<:Any, <:Colon, <:Colon}, bc::FBC, loc, grid) = fill_halo_size(t[1], f, idx, bc, loc, grid)
+@inline fill_halo_size(t::Tuple, f::SNB, ::Tuple{<:Colon, <:Any, <:Colon}, bc::FBC, loc, grid) = fill_halo_size(t[1], f, idx, bc, loc, grid)
+@inline fill_halo_size(t::Tuple, f::TBB, ::Tuple{<:Colon, <:Colon, <:Any}, bc::FBC, loc, grid) = fill_halo_size(t[1], f, idx, bc, loc, grid)
 
 # If indices are colon, and locations are _not_ Nothing, fill the whole boundary plane!
 # If locations are _Nothing_, then the kwarg `reduced_dimensions` will allow the size `:xz`
@@ -140,31 +140,33 @@ const TBB = Union{BottomAndTop, Bottom, Top}
 @inline fill_halo_size(::OffsetArray, ::TBB, ::Tuple{<:Colon, <:Colon, <:Any}, args...) = :xy
 
 # However, for flux boundary conditions and quantities at faces, we fill the extra line
-@inline function fill_halo_size(::OffsetArray, ::WEB, idx, ::FluxBoundaryCondition, loc, grid)
+# (only if the field spans the total direction of the grid, i.e. the tangential indices
+# are both a Colon)
+@inline function fill_halo_size(::OffsetArray, ::WEB, ::Tuple{<:Any, <:Colon, <:Colon}, ::FBC, loc, grid)
     TX, TY, TZ = topology(grid)
     ℓx, ℓy, ℓz = loc
     Nx, Ny, Nz = size(grid)
-    Fy = length(ℓy, TY, Ny)
-    Fz = length(ℓz, TZ, Nz)
-    return KernelParameters(1:Fy, 1:Fz)
+    Fy = length(ℓy, TY(), Ny)
+    Fz = length(ℓz, TZ(), Nz)
+    return (Fy, Fz)
 end
 
-@inline function fill_halo_size(::OffsetArray, ::SNB, idx, ::FluxBoundaryCondition, loc, grid)
+@inline function fill_halo_size(::OffsetArray, ::SNB, ::Tuple{<:Colon, <:Any, <:Colon}, ::FBC, loc, grid)
     TX, TY, TZ = topology(grid)
     ℓx, ℓy, ℓz = loc
     Nx, Ny, Nz = size(grid)
-    Fy = length(ℓy, TY, Ny)
-    Fz = length(ℓz, TZ, Nz)
-    return KernelParameters(1:Fy, 1:Fz)
+    Fx = length(ℓx, TX(), Nx)
+    Fz = length(ℓz, TZ(), Nz)
+    return (Fx, Fz)
 end
 
-@inline function fill_halo_size(::OffsetArray, ::TBB, idx, ::FluxBoundaryCondition, loc, grid)
+@inline function fill_halo_size(::OffsetArray, ::TBB, ::Tuple{<:Colon, <:Colon, <:Any}, ::FBC, loc, grid)
     TX, TY, TZ = topology(grid)
     ℓx, ℓy, ℓz = loc
     Nx, Ny, Nz = size(grid)
-    Fy = length(ℓy, TY, Ny)
-    Fz = length(ℓz, TZ, Nz)
-    return KernelParameters(1:Fy, 1:Fz)
+    Fx = length(ℓx, TX(), Nx)
+    Fy = length(ℓx, TY(), Ny)
+    return (Fx, Fy)
 end
 
 # If the index is a Colon and the location is _NOT_ a `Nothing` (i.e. not a `ReducedField`),
