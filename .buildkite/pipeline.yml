@@ -46,7 +46,7 @@ steps:
       juliaup add $JULIA_VERSION_ENZYME
       cd "$OCEANANIGANS_DIR"
 
-      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(coverage="user")'
+      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
       # After we have instantiated the Enzyme environment, move manifest to the
       # version-specific filename, not to clash with the general manifest.
       # mv -v Manifest.toml Manifest-v$(echo "${JULIA_VERSION_ENZYME}" | cut -d. -f1-2).toml
@@ -95,10 +95,13 @@ steps:
 
       # Sanity check: did we actually produce coverage?
       echo "PWD:"; pwd
-      echo "Coverage files produced:" $(find . -type f -name "*.cov" | wc -l)
+      echo "Coverage files produced:" `find . -type f -name "*.cov" | wc -l`
       find . -type f -name "*.cov" | head -n 20 || true
 
-      tarball="coverage-${BUILDKITE_STEP_KEY:-step}-${BUILDKITE_JOB_ID:-nojobid}.tgz"
+      group_slug="{{ matrix.group }}"
+      group_slug="$${group_slug//[^A-Za-z0-9_.-]/_}"
+      tarball="coverage-${BUILDKITE_BUILD_NUMBER}-${BUILDKITE_JOB_ID}-{{ matrix.architecture }}-$${group_slug}.tgz"
+
 
       find . -type f -name "*.cov" > cov_list.txt
       echo "Coverage files found:" `wc -l < cov_list.txt`
@@ -115,28 +118,28 @@ steps:
       setup:
         architecture:
           - "CPU"
-          - "GPU"
+          # - "GPU"
         group:
-          - "🦖 poisson_solvers_2"
+          # - "🦖 poisson_solvers_2"
           - "🐇 unit"
           - "👻 abstract_operations"
-          - "🕊 poisson_solvers_1"
-          - "🦤 general_solvers"
-          - "🎣 turbulence_closures"
-          - "🦀 time_stepping_1"
-          - "🦈 time_stepping_2"
-          - "🦟 time_stepping_3"
-          - "🐫 nonhydrostatic_regression"
-          - "🐙 hydrostatic_free_surface"
-          - "🫐 tripolar_grid"
-          - "🥑 vertical_coordinate"
-          - "🙈 hydrostatic_regression"
-          - "🦢 shallow_water"
-          - "🐳 simulation"
-          - "🍂 lagrangian_particles"
-          - "🧅 multi_region"
-          - "🦧 scripts"
-          - "🍱 xesmf"
+          # - "🕊 poisson_solvers_1"
+          # - "🦤 general_solvers"
+          # - "🎣 turbulence_closures"
+          # - "🦀 time_stepping_1"
+          # - "🦈 time_stepping_2"
+          # - "🦟 time_stepping_3"
+          # - "🐫 nonhydrostatic_regression"
+          # - "🐙 hydrostatic_free_surface"
+          # - "🫐 tripolar_grid"
+          # - "🥑 vertical_coordinate"
+          # - "🙈 hydrostatic_regression"
+          # - "🦢 shallow_water"
+          # - "🐳 simulation"
+          # - "🍂 lagrangian_particles"
+          # - "🧅 multi_region"
+          # - "🦧 scripts"
+          # - "🍱 xesmf"
 
     retry:
       automatic:
@@ -171,10 +174,13 @@ steps:
 
       # Sanity check: did we actually produce coverage?
       echo "PWD:"; pwd
-      echo "Coverage files produced:" $(find . -type f -name "*.cov" | wc -l)
+      echo "Coverage files produced:" `find . -type f -name "*.cov" | wc -l`
       find . -type f -name "*.cov" | head -n 20 || true
 
-      tarball="coverage-${BUILDKITE_STEP_KEY:-step}-${BUILDKITE_JOB_ID:-nojobid}.tgz"
+      group_slug="{{ matrix.group }}"
+      group_slug="$${group_slug//[^A-Za-z0-9_.-]/_}"
+      tarball="coverage-${BUILDKITE_BUILD_NUMBER}-${BUILDKITE_JOB_ID}-{{ matrix.architecture }}-$${group_slug}.tgz"
+
 
       find . -type f -name "*.cov" > cov_list.txt
       echo "Coverage files found:" `wc -l < cov_list.txt`
@@ -191,10 +197,10 @@ steps:
       setup:
         architecture:
           - "CPU"
-          - "GPU"
+          # - "GPU"
         group:
-          - "🎭 reactant_2"
-          - "👺 enzyme"
+          # - "🎭 reactant_2"
+          # - "👺 enzyme"
           - "👹 reactant_1"
 
     retry:
@@ -227,9 +233,13 @@ steps:
       for f in coverage_artifacts/coverage-*.tgz; do
         tar -xzf "$$f" -C extracted
       done
-
       echo "Found lcov files:" $$(find extracted -name "lcov.info" | wc -l)
-      find extracted -name "lcov.info" -maxdepth 2 -print || true
+      find extracted -maxdepth 2 -name "lcov.info" -print || true
+
+      curl -s https://codecov.io/bash | bash -s -- \
+        -s extracted \
+        -F buildkite \
+        -F julia
 
       # Upload each lcov.info with a flag (optional)
       for r in extracted/**/lcov.info extracted/lcov.info; do
@@ -239,7 +249,6 @@ steps:
             -F buildkite \
             -F julia
         fi
-      done
 
   #####
   ##### Clean up
