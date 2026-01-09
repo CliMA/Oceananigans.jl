@@ -8,7 +8,7 @@ using Adapt: Adapt
 import ..HydrostaticFreeSurfaceModels: hydrostatic_tendency_fields
 
 struct SplitExplicitFreeSurface{H, U, M, FT, K , S, T} <: AbstractFreeSurface{H, FT}
-    η :: H
+    displacement :: H
     barotropic_velocities :: U # A namedtuple with U, V
     filtered_state :: M # A namedtuple with η, U, V averaged throughout the substepping
     gravitational_acceleration :: FT
@@ -201,7 +201,7 @@ function hydrostatic_tendency_fields(velocities, free_surface::SplitExplicitFree
     @apply_regionally U_bcs = barotropic_velocity_boundary_conditions(velocities.u)
     @apply_regionally V_bcs = barotropic_velocity_boundary_conditions(velocities.v)
 
-    free_surface_grid = free_surface.η.grid
+    free_surface_grid = free_surface.displacement.grid
     U = Field{Face, Center, Nothing}(free_surface_grid, boundary_conditions=U_bcs)
     V = Field{Center, Face, Nothing}(free_surface_grid, boundary_conditions=V_bcs)
 
@@ -343,8 +343,8 @@ function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
     old_halos = halo_size(grid)
     Nsubsteps = length(substepping.averaging_weights)
 
-    Hx = TX() isa ConnectedTopology ? max(Nsubsteps+1, old_halos[1]) : old_halos[1]
-    Hy = TY() isa ConnectedTopology ? max(Nsubsteps+1, old_halos[2]) : old_halos[2]
+    Hx = TX() isa ConnectedTopology ? max(Nsubsteps+2, old_halos[1]) : old_halos[1]
+    Hy = TY() isa ConnectedTopology ? max(Nsubsteps+2, old_halos[2]) : old_halos[2]
 
     new_halos = (Hx, Hy, old_halos[3])
 
@@ -373,7 +373,7 @@ split_explicit_kernel_size(::Type{LeftConnected},  N, H) = -H+2:N
 
 # Adapt
 Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
-    SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.η),
+    SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.displacement),
                              Adapt.adapt(to, free_surface.barotropic_velocities),
                              Adapt.adapt(to, free_surface.filtered_state),
                              free_surface.gravitational_acceleration,

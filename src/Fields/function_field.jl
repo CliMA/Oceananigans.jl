@@ -1,5 +1,3 @@
-using Oceananigans.Utils: prettysummary
-
 struct FunctionField{LX, LY, LZ, C, P, F, G, T} <: AbstractField{LX, LY, LZ, G, T, 3}
           func :: F
           grid :: G
@@ -54,8 +52,10 @@ fieldify_function(L, a::Function, grid) = FunctionField(L, a, grid)
 @inline call_func(::Nothing, parameters, func, x...) = func(x..., parameters)
 @inline call_func(::Nothing, ::Nothing,  func, x...) = func(x...)
 
-@inline Base.getindex(f::FunctionField{LX, LY, LZ}, i, j, k) where {LX, LY, LZ} =
-    call_func(f.clock, f.parameters, f.func, node(i, j, k, f.grid, LX(), LY(), LZ())...)
+@inline function Base.getindex(f::FunctionField{LX, LY, LZ}, i, j, k) where {LX, LY, LZ}
+    f_ijk = call_func(f.clock, f.parameters, f.func, node(i, j, k, f.grid, LX(), LY(), LZ())...)
+    return convert(eltype(f.grid), f_ijk)
+end
 
 @inline (f::FunctionField)(x...) = call_func(f.clock, f.parameters, f.func, x...)
 
@@ -66,7 +66,7 @@ Adapt.adapt_structure(to, f::FunctionField{LX, LY, LZ}) where {LX, LY, LZ} =
                            parameters = Adapt.adapt(to, f.parameters))
 
 
-on_architecture(to, f::FunctionField{LX, LY, LZ}) where {LX, LY, LZ} =
+Architectures.on_architecture(to, f::FunctionField{LX, LY, LZ}) where {LX, LY, LZ} =
     FunctionField{LX, LY, LZ}(on_architecture(to, f.func),
                               on_architecture(to, f.grid),
                               clock = on_architecture(to, f.clock),

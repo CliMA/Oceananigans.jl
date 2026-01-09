@@ -180,7 +180,13 @@ end
 #####
 
 add_dependency!(diagnostics, output) = nothing # fallback
-add_dependency!(diags, wta::WindowedTimeAverage) = wta ∈ values(diags) || push!(diags, wta)
+
+function add_dependency!(diags, wta::WindowedTimeAverage)
+    if wta ∉ values(diags)
+        num_diags_plus_1 = length(diags) + 1
+        diags[Symbol("WindowedTimeAverage$num_diags_plus_1")] = wta
+    end
+end
 
 add_dependencies!(diags, writer) = [add_dependency!(diags, out) for out in values(writer.outputs)]
 add_dependencies!(sim, ::Checkpointer) = nothing # Checkpointer does not have "outputs"
@@ -223,6 +229,10 @@ function initialize!(sim::Simulation)
 
     for callback in values(sim.callbacks)
         initialize!(callback, sim)
+    end
+
+    for writer in values(sim.output_writers)
+        initialize!(writer, model)
     end
 
     # Reset! the model time-stepper, evaluate all diagnostics, and write all output at first iteration

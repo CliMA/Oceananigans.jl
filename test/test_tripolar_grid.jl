@@ -77,13 +77,13 @@ end
         grid = TripolarGrid(arch, size = (10, 10, 1))
 
         # Wrong free surface
-        @test_throws ArgumentError HydrostaticFreeSurfaceModel(; grid)
+        @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid)
 
         free_surface = SplitExplicitFreeSurface(grid; substeps = 12)
-        model = HydrostaticFreeSurfaceModel(; grid, free_surface)
+        model = HydrostaticFreeSurfaceModel(grid; free_surface)
 
         # Tests the grid has been extended
-        η = model.free_surface.η
+        η = model.free_surface.displacement
         P = model.free_surface.kernel_parameters
 
         range = contiguousrange(P)
@@ -98,7 +98,7 @@ end
 
         @test Hx == halo_size(grid, 1)
         @test Hy != halo_size(grid, 2)
-        @test Hy == length(free_surface.substepping.averaging_weights) + 1
+        @test Hy == length(free_surface.substepping.averaging_weights) + 2
 
         @test begin
             time_step!(model, 1.0)
