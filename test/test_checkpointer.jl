@@ -4,28 +4,30 @@ using Glob
 using NCDatasets
 
 using Oceananigans: restore_prognostic_state!, prognostic_fields
+using Oceananigans.TurbulenceClosures.Smagorinskys: Smagorinsky,
+    DirectionallyAveragedDynamicSmagorinsky, LagrangianAveragedDynamicSmagorinsky
 using Oceananigans.Models.ShallowWaterModels: ShallowWaterScalarDiffusivity
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: ForwardBackwardScheme, AdamsBashforth3Scheme
 using Oceananigans.OutputWriters: load_checkpoint_state
 
-function test_model_equality(test_model, true_model)
+function test_model_equality(test_model, true_model; atol=0)
     # Test prognostic field equality
     test_model_fields = prognostic_fields(test_model)
     true_model_fields = prognostic_fields(true_model)
     field_names = keys(test_model_fields)
 
     for name in field_names
-        @test all(test_model_fields[name].data .≈ true_model_fields[name].data)
+        @test all(isapprox.(test_model_fields[name].data, true_model_fields[name].data; atol))
 
         if name ∈ keys(test_model.timestepper.Gⁿ)
-            @test all(test_model.timestepper.Gⁿ[name].data .≈ true_model.timestepper.Gⁿ[name].data)
+            @test all(isapprox.(test_model.timestepper.Gⁿ[name].data, true_model.timestepper.Gⁿ[name].data; atol))
 
             if hasfield(typeof(test_model.timestepper), :G⁻)
-                @test all(test_model.timestepper.G⁻[name].data .≈ true_model.timestepper.G⁻[name].data)
+                @test all(isapprox.(test_model.timestepper.G⁻[name].data, true_model.timestepper.G⁻[name].data; atol))
             end
 
             if hasfield(typeof(test_model.timestepper), :Ψ⁻)
-                @test all(test_model.timestepper.Ψ⁻[name].data .≈ true_model.timestepper.Ψ⁻[name].data)
+                @test all(isapprox.(test_model.timestepper.Ψ⁻[name].data, true_model.timestepper.Ψ⁻[name].data; atol))
             end
         end
     end
@@ -35,7 +37,7 @@ function test_model_equality(test_model, true_model)
         for name in propertynames(test_model.particles.properties)
             test_prop = getproperty(test_model.particles.properties, name)
             true_prop = getproperty(true_model.particles.properties, name)
-            @test all(Array(test_prop) .≈ Array(true_prop))
+            @test all(isapprox.(Array(test_prop), Array(true_prop); atol))
         end
     end
 
@@ -43,30 +45,30 @@ function test_model_equality(test_model, true_model)
     if hasproperty(test_model, :free_surface) && test_model.free_surface isa SplitExplicitFreeSurface
         fs_test = test_model.free_surface
         fs_true = true_model.free_surface
-        @test all(interior(fs_test.barotropic_velocities.U) .≈ interior(fs_true.barotropic_velocities.U))
-        @test all(interior(fs_test.barotropic_velocities.V) .≈ interior(fs_true.barotropic_velocities.V))
-        @test all(interior(fs_test.filtered_state.η̅)        .≈ interior(fs_true.filtered_state.η̅))
-        @test all(interior(fs_test.filtered_state.U̅)        .≈ interior(fs_true.filtered_state.U̅))
-        @test all(interior(fs_test.filtered_state.V̅)        .≈ interior(fs_true.filtered_state.V̅))
+        @test all(isapprox.(interior(fs_test.barotropic_velocities.U), interior(fs_true.barotropic_velocities.U); atol))
+        @test all(isapprox.(interior(fs_test.barotropic_velocities.V), interior(fs_true.barotropic_velocities.V); atol))
+        @test all(isapprox.(interior(fs_test.filtered_state.η̅),        interior(fs_true.filtered_state.η̅); atol))
+        @test all(isapprox.(interior(fs_test.filtered_state.U̅),        interior(fs_true.filtered_state.U̅); atol))
+        @test all(isapprox.(interior(fs_test.filtered_state.V̅),        interior(fs_true.filtered_state.V̅); atol))
 
         # Check free surface timestepper fields (for AdamsBashforth3Scheme)
         if hasproperty(fs_test.timestepper, :ηᵐ)
             ts_test = fs_test.timestepper
             ts_true = fs_true.timestepper
-            @test all(interior(ts_test.ηᵐ)   .≈ interior(ts_true.ηᵐ))
-            @test all(interior(ts_test.ηᵐ⁻¹) .≈ interior(ts_true.ηᵐ⁻¹))
-            @test all(interior(ts_test.ηᵐ⁻²) .≈ interior(ts_true.ηᵐ⁻²))
-            @test all(interior(ts_test.Uᵐ⁻¹) .≈ interior(ts_true.Uᵐ⁻¹))
-            @test all(interior(ts_test.Uᵐ⁻²) .≈ interior(ts_true.Uᵐ⁻²))
-            @test all(interior(ts_test.Vᵐ⁻¹) .≈ interior(ts_true.Vᵐ⁻¹))
-            @test all(interior(ts_test.Vᵐ⁻²) .≈ interior(ts_true.Vᵐ⁻²))
+            @test all(isapprox.(interior(ts_test.ηᵐ),   interior(ts_true.ηᵐ); atol))
+            @test all(isapprox.(interior(ts_test.ηᵐ⁻¹), interior(ts_true.ηᵐ⁻¹); atol))
+            @test all(isapprox.(interior(ts_test.ηᵐ⁻²), interior(ts_true.ηᵐ⁻²); atol))
+            @test all(isapprox.(interior(ts_test.Uᵐ⁻¹), interior(ts_true.Uᵐ⁻¹); atol))
+            @test all(isapprox.(interior(ts_test.Uᵐ⁻²), interior(ts_true.Uᵐ⁻²); atol))
+            @test all(isapprox.(interior(ts_test.Vᵐ⁻¹), interior(ts_true.Vᵐ⁻¹); atol))
+            @test all(isapprox.(interior(ts_test.Vᵐ⁻²), interior(ts_true.Vᵐ⁻²); atol))
         end
     end
 
     # Test auxiliary fields equality
     if hasproperty(test_model, :auxiliary_fields) && length(test_model.auxiliary_fields) > 0
         for name in keys(test_model.auxiliary_fields)
-            @test all(interior(test_model.auxiliary_fields[name]) .≈ interior(true_model.auxiliary_fields[name]))
+            @test all(isapprox.(interior(test_model.auxiliary_fields[name]), interior(true_model.auxiliary_fields[name]); atol))
         end
     end
 
@@ -872,6 +874,73 @@ function test_checkpointing_dynamic_smagorinsky_closure(arch, timestepper)
 
     # Compare final states at iteration 10
     test_model_equality(new_model, ref_model)
+
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+
+    return nothing
+end
+
+function test_checkpointing_smagorinsky_closure(arch, timestepper, closure, closure_name)
+    Nx, Ny, Nz = 8, 8, 8
+    Lx, Ly, Lz = 1, 1, 1
+    Δt = 0.001
+
+    u_init(x, y, z) = sin(2π * z / Lz)
+
+    function make_model()
+        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+        return NonhydrostaticModel(grid; timestepper, closure,
+                                   buoyancy = SeawaterBuoyancy(),
+                                   tracers = (:T, :S))
+    end
+
+    # Reference run: 10 iterations continuously
+    ref_model = make_model()
+    set!(ref_model, u=u_init)
+    set!(ref_model, T=20, S=35)
+    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    @test_nowarn run!(ref_simulation)
+
+    # Checkpointed run: 5 iterations, checkpoint
+    model = make_model()
+    set!(model, u=u_init)
+    set!(model, T=20, S=35)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+
+    prefix = "$(closure_name)_checkpointing_$(typeof(arch))_$(timestepper)"
+    simulation.output_writers[:checkpointer] = Checkpointer(model,
+                                                            schedule = IterationInterval(5),
+                                                            prefix = prefix)
+
+    @test_nowarn run!(simulation)
+
+    # Restore and continue for 5 more iterations
+    new_model = make_model()
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
+    new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
+                                                                schedule = IterationInterval(5),
+                                                                prefix = prefix)
+
+    @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_nowarn run!(new_simulation)
+
+    # Verify closure-specific fields
+    new_cf = new_model.closure_fields
+    ref_cf = ref_model.closure_fields
+
+    if closure isa DirectionallyAveragedDynamicSmagorinsky
+        @test all(Array(interior(new_cf.𝒥ᴸᴹ)) .≈ Array(interior(ref_cf.𝒥ᴸᴹ)))
+        @test all(Array(interior(new_cf.𝒥ᴹᴹ)) .≈ Array(interior(ref_cf.𝒥ᴹᴹ)))
+    elseif closure isa LagrangianAveragedDynamicSmagorinsky
+        @test new_cf.previous_compute_time[] ≈ ref_cf.previous_compute_time[]
+        @test all(Array(interior(new_cf.𝒥ᴸᴹ)) .≈ Array(interior(ref_cf.𝒥ᴸᴹ)))
+        @test all(Array(interior(new_cf.𝒥ᴹᴹ)) .≈ Array(interior(ref_cf.𝒥ᴹᴹ)))
+        @test all(Array(interior(new_cf.𝒥ᴸᴹ⁻)) .≈ Array(interior(ref_cf.𝒥ᴸᴹ⁻)))
+        @test all(Array(interior(new_cf.𝒥ᴹᴹ⁻)) .≈ Array(interior(ref_cf.𝒥ᴹᴹ⁻)))
+    end
+
+    # Compare final states at iteration 10
+    test_model_equality(new_model, ref_model; atol=1e-14)
 
     rm.(glob("$(prefix)_iteration*.jld2"), force=true)
 
@@ -1692,6 +1761,22 @@ for arch in archs
         test_checkpointing_closure_fields(arch)
     end
 
+    smagorinsky_closures = [
+        (Smagorinsky(coefficient=0.16), "Smagorinsky"),
+        (SmagorinskyLilly(), "SmagorinskyLilly"),
+        (DynamicSmagorinsky(averaging=(1, 2)), "DirectionallyAveragedDynamicSmagorinsky"),
+        (DynamicSmagorinsky(), "LagrangianAveragedDynamicSmagorinsky"),
+    ]
+
+    for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
+        for (closure, name) in smagorinsky_closures
+            @testset "$name closure checkpointing [$(typeof(arch)), $timestepper]" begin
+                @info "  Testing $name closure checkpointing [$(typeof(arch)), $timestepper]..."
+                test_checkpointing_smagorinsky_closure(arch, timestepper, closure, name)
+            end
+        end
+    end
+
     # Hydrostatic closures: test with both QAB2 and SplitRK3 timesteppers
     for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
         @testset "CATKE closure checkpointing [$timestepper] [$(typeof(arch))]" begin
@@ -1707,13 +1792,6 @@ for arch in archs
         @testset "TKEDissipationVerticalDiffusivity closure checkpointing [$timestepper] [$(typeof(arch))]" begin
             @info "  Testing TKEDissipationVerticalDiffusivity closure checkpointing [$timestepper] [$(typeof(arch))]..."
             test_checkpointing_tke_dissipation_closure(arch, timestepper)
-        end
-    end
-
-    for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
-        @testset "DynamicSmagorinsky closure checkpointing [$timestepper] [$(typeof(arch))]" begin
-            @info "  Testing DynamicSmagorinsky closure checkpointing [$timestepper] [$(typeof(arch))]..."
-            test_checkpointing_dynamic_smagorinsky_closure(arch, timestepper)
         end
     end
 
