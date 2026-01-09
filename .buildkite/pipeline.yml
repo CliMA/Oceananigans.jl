@@ -225,25 +225,27 @@ steps:
     command: |
       set -e
 
-      mkdir -p coverage_artifacts extracted
+      mkdir -p coverage_artifacts
 
       buildkite-agent artifact download "coverage-*.tgz" coverage_artifacts/ || {
         echo "No coverage tarballs were uploaded by test steps."
         exit 0
       }
 
+      # Extract .cov files alongside the real source tree
       for f in coverage_artifacts/coverage-*.tgz; do
-        tar -xzf "$$f" -C extracted
+        tar -xzf "$$f" -C .
       done
 
-      echo "Found .cov files:" $$(find extracted -name "*.cov" | wc -l)
-      find extracted -name "*.cov" | head -n 20 || true
+      echo "Found .cov files in checkout:" $$(find . -name "*.cov" | wc -l)
+      find . -name "*.cov" | head -n 20 || true
 
-      # Convert Julia .cov -> lcov.info
-      julia --color=yes --project -e "import Pkg; Pkg.add(\"Coverage\"); using Coverage; cov = process_folder(\"extracted\"); LCOV.writefile(\"lcov.info\", cov)"
+      # Convert Julia .cov -> lcov.info (temp env so we don't edit Project/Manifest)
+      julia --color=yes --project -e "import Pkg; Pkg.activate(; temp=true); Pkg.add(\"Coverage\"); using Coverage; cov = vcat(process_folder(\"src\"), process_folder(\"ext\")); LCOV.writefile(\"lcov.info\", cov)"
 
       echo "Generated lcov.info:"
       ls -lh lcov.info
+      test -s lcov.info
 
       # Upload LCOV to Codecov
       curl -s https://codecov.io/bash | bash -s -- \
