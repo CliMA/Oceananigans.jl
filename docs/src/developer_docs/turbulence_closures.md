@@ -371,6 +371,9 @@ lines!(ax3, κ_tked_plot, z_face_tked, label="TKE-ε", linewidth=2, linestyle=:d
 fig[2, :] = Legend(fig, [lpp, lcatke, ltked], ["Pacanowski-Philander", "CATKE", "TKE-ε"],
                    orientation = :horizontal, tellwidth = false, framevisible = false)
 
+rowsize!(fig.layout, 2, Auto(0.15))  # adjust legend row height
+rowgap!(fig.layout, 10)
+
 fig
 ```
 
