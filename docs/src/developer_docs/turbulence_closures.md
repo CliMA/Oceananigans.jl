@@ -40,10 +40,7 @@ The closure struct holds its parameters:
 
 ```@example pp_closure
 using Oceananigans.TurbulenceClosures: AbstractScalarDiffusivity, VerticalFormulation
-nothing # hide
-```
 
-```@example pp_closure
 struct PacanowskiPhilanderVerticalDiffusivity{TD, FT} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 1}
     ν₀ :: FT  # Background viscosity
     ν₁ :: FT  # Shear-driven viscosity coefficient
