@@ -128,9 +128,9 @@ const TBB = Union{BottomAndTop, Bottom, Top}
 @inline fill_halo_size(::Tuple, ::TBB, args...) = :xy
 
 # However, for flux boundary conditions and quantities at faces, we fill the extra line
-@inline fill_halo_size(t::Tuple, f::WEB, ::Tuple{<:Any, <:Colon, <:Colon}, bc::FBC, loc, grid) = fill_halo_size(t[1], f, idx, bc, loc, grid)
-@inline fill_halo_size(t::Tuple, f::SNB, ::Tuple{<:Colon, <:Any, <:Colon}, bc::FBC, loc, grid) = fill_halo_size(t[1], f, idx, bc, loc, grid)
-@inline fill_halo_size(t::Tuple, f::TBB, ::Tuple{<:Colon, <:Colon, <:Any}, bc::FBC, loc, grid) = fill_halo_size(t[1], f, idx, bc, loc, grid)
+@inline fill_halo_size(t::Tuple, f::WEB, idx::Tuple{<:Any, <:Colon, <:Colon}, bc::FBC, loc, grid) = fill_halo_size(t[1], f, idx, bc, loc, grid)
+@inline fill_halo_size(t::Tuple, f::SNB, idx::Tuple{<:Colon, <:Any, <:Colon}, bc::FBC, loc, grid) = fill_halo_size(t[1], f, idx, bc, loc, grid)
+@inline fill_halo_size(t::Tuple, f::TBB, idx::Tuple{<:Colon, <:Colon, <:Any}, bc::FBC, loc, grid) = fill_halo_size(t[1], f, idx, bc, loc, grid)
 
 # If indices are colon, and locations are _not_ Nothing, fill the whole boundary plane!
 # If locations are _Nothing_, then the kwarg `reduced_dimensions` will allow the size `:xz`
