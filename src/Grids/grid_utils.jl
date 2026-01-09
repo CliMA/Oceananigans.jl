@@ -44,7 +44,7 @@ const BoundedTopology = Union{Bounded, LeftConnected}
 const AT = AbstractTopology
 
 Base.length(::Face,    ::BoundedTopology, N) = N + 1
-Base.length(::Face, ::RightFaceFolded, N) = N + 1
+Base.length(::Face,    ::RightFaceFolded, N) = N + 1
 Base.length(::Nothing, ::AT,              N) = 1
 Base.length(::Face,    ::AT,              N) = N
 Base.length(::Center,  ::AT,              N) = N

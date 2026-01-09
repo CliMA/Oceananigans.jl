@@ -22,9 +22,9 @@ sign(::Type{Center}, ::Type{Center}) = 1
 # Determine the appropriate north fold boundary condition based on grid topology
 # TODO: Implement proper topologies for distributed tripolar grids
 #       and remove the default fallback for AbstractTopology
-north_fold_boundary_condition(::Type{<:AbstractTopology}) = UPivotZipperBoundaryCondition # Default fallback for distribtuted to work
-north_fold_boundary_condition(::Type{RightCenterFolded}) = UPivotZipperBoundaryCondition
-north_fold_boundary_condition(::Type{RightFaceFolded})   = FPivotZipperBoundaryCondition
+north_fold_boundary_condition(::Type{<:AbstractTopology})  = UPivotZipperBoundaryCondition # Default fallback for distribtuted to work
+north_fold_boundary_condition(::Type{RightCenterFolded})   = UPivotZipperBoundaryCondition
+north_fold_boundary_condition(::Type{RightFaceFolded})     = FPivotZipperBoundaryCondition
 north_fold_boundary_condition(grid::TripolarGridOfSomeKind) = north_fold_boundary_condition(topology(grid, 2))
 
 # a `TripolarGrid` needs a `UPivotZipperBoundaryCondition` for the north boundary

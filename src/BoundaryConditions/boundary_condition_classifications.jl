@@ -99,7 +99,7 @@ An abstract type representing pivot locations for Zipper boundary conditions.
 abstract type AbstractPivot end
 
 """
-UPivot
+    struct UPivot <: AbstractPivot
 
 The type representing a U-point pivot for Zipper boundary conditions.
 
@@ -108,7 +108,7 @@ See [`TripolarGrid`](@ref) for examples.
 struct UPivot <: AbstractPivot end
 
 """
-FPivot
+    struct FPivot <: AbstractPivot
 
 The type representing a F-point pivot for Zipper boundary conditions.
 
