@@ -210,8 +210,7 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; par
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
     Δt = update_previous_compute_time!(diffusivities, model)
 
-    # Skip recomputation if Δt == 0 (e.g., after checkpoint restore).
-    # The diffusivity fields are restored from the checkpoint and are already correct.
+    # Skip recomputation if Δt == 0 (e.g., after restoring from a checkpoint).
     # Recomputing would incorrectly apply the time-averaging formula again.
     Δt == 0 && return nothing
 
@@ -272,9 +271,6 @@ end
     # Clip N² and avoid NaN
     return ifelse(N² <= 0, zero(grid), Ri)
 end
-
-const c = Center()
-const f = Face()
 
 @kernel function compute_ri_number!(diffusivities, grid, closure::FlavorOfRBVD,
                                     velocities, tracers, buoyancy, tracer_bcs, clock)
@@ -380,10 +376,9 @@ end
 ##### Checkpointing
 #####
 
-# RiBasedVerticalDiffusivity uses time-averaging when Cᵃᵛ > 0, storing the running average
-# in κc and κu. So these fields need to be checkpointed.
+const RiBasedVerticalDiffusivityFields = NamedTuple{(:κc, :κu, :Ri, :previous_compute_time)}
 
-function prognostic_state(closure_fields::NamedTuple{(:κc, :κu, :Ri, :previous_compute_time)})
+function prognostic_state(closure_fields::RiBasedVerticalDiffusivityFields)
     return (
         κc = prognostic_state(closure_fields.κc),
         κu = prognostic_state(closure_fields.κu),
@@ -392,7 +387,7 @@ function prognostic_state(closure_fields::NamedTuple{(:κc, :κu, :Ri, :previous
     )
 end
 
-function restore_prognostic_state!(closure_fields::NamedTuple{(:κc, :κu, :Ri, :previous_compute_time)}, state)
+function restore_prognostic_state!(closure_fields::RiBasedVerticalDiffusivityFields, state)
     restore_prognostic_state!(closure_fields.κc, state.κc)
     restore_prognostic_state!(closure_fields.κu, state.κu)
     restore_prognostic_state!(closure_fields.Ri, state.Ri)
