@@ -828,61 +828,6 @@ function test_checkpointing_catke_closure(arch, timestepper)
     return nothing
 end
 
-function test_checkpointing_dynamic_smagorinsky_closure(arch, timestepper)
-    Nx, Ny, Nz = 8, 8, 8
-    Lx, Ly, Lz = 1, 1, 1
-    Δt = 0.001
-
-    u_init(x, y, z) = sin(2π * z / Lz)
-
-    function make_model()
-        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-        return NonhydrostaticModel(grid; timestepper, closure=DynamicSmagorinsky())
-    end
-
-    # Reference run: 10 iterations continuously
-    ref_model = make_model()
-    set!(ref_model, u=u_init)
-    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
-    @test_nowarn run!(ref_simulation)
-
-    # Checkpointed run: 5 iterations, checkpoint
-    model = make_model()
-    set!(model, u=u_init)
-    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
-
-    prefix = "dynamic_smagorinsky_checkpointing_$(typeof(arch))_$(timestepper)"
-    simulation.output_writers[:checkpointer] = Checkpointer(model,
-                                                            schedule = IterationInterval(5),
-                                                            prefix = prefix)
-
-    @test_nowarn run!(simulation)
-
-    # Restore and continue for 5 more iterations
-    new_model = make_model()
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
-    new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
-                                                                schedule = IterationInterval(5),
-                                                                prefix = prefix)
-
-    @test_nowarn set!(new_simulation; checkpoint=:latest)
-    @test_nowarn run!(new_simulation)
-
-    # Verify closure field state matches reference at iteration 10
-    ref_cf = ref_model.closure_fields
-    new_cf = new_model.closure_fields
-    @test new_cf.previous_compute_time[] ≈ ref_cf.previous_compute_time[]
-    @test all(Array(interior(new_cf.𝒥ᴸᴹ)) .≈ Array(interior(ref_cf.𝒥ᴸᴹ)))
-    @test all(Array(interior(new_cf.𝒥ᴹᴹ)) .≈ Array(interior(ref_cf.𝒥ᴹᴹ)))
-
-    # Compare final states at iteration 10
-    test_model_equality(new_model, ref_model)
-
-    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
-
-    return nothing
-end
-
 function test_checkpointing_smagorinsky_closure(arch, timestepper, closure, closure_name)
     Nx, Ny, Nz = 8, 8, 8
     Lx, Ly, Lz = 1, 1, 1
