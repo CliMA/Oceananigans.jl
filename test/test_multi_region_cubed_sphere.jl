@@ -111,25 +111,23 @@ function create_test_data(grid, region; trailing_zeros=0)
     Nx, Ny, Nz = size(grid)
     (Nx > 9 || Ny > 9) && error("you provided (Nx, Ny) = ($Nx, $Ny); use a grid with Nx, Ny ≤ 9.")
     !(trailing_zeros isa Integer) && error("trailing_zeros has to be an integer")
-    factor = 10^(trailing_zeros)
+    FT = eltype(grid)
+    factor = FT(10^trailing_zeros)
 
-    return factor .* [100region + 10i + j for i in 1:Nx, j in 1:Ny, k in 1:Nz]
-end
-
-function fill_missing_corners!(grid, region, test_data)
-    Nx, Ny, _ = size(grid)
-    if isodd(region)
-        test_data[1, Ny+1, :] .= 0
-    else
-        test_data[Nx+1, 1, :] .= 0
-    end
+    return factor .* [FT(100region + 10i + j) for i in 1:Nx, j in 1:Ny, k in 1:Nz]
 end
 
 create_c_test_data(grid, region) = create_test_data(grid, region; trailing_zeros=0)
 
 function create_ψ_test_data(grid, region)
     ψ_test_data = create_test_data(grid, region; trailing_zeros=1)
-    fill_missing_corners!(grid, region, ψ_test_data)
+    return ψ_test_data
+end
+
+function create_ψ_test_data_with_one_halo(grid, region)
+    test_data = create_test_data(grid, region; trailing_zeros=1)
+    ψ_test_data = zeros(size(test_data, 1)+1, size(test_data, 2)+1, size(test_data, 3))
+    ψ_test_data[1:end-1, 1:end-1, :] .= test_data
     return ψ_test_data
 end
 
@@ -141,14 +139,28 @@ create_v_test_data(grid, region)  = create_test_data(grid, region; trailing_zero
 
 function create_ψ₁_test_data(grid, region)
     ψ₁_test_data = create_test_data(grid, region; trailing_zeros=6)
-    fill_missing_corners!(grid, region, ψ₁_test_data)
+    ψ₁_test_data[1, 1, :] .= 0
+    return ψ₁_test_data
+end
+
+function create_ψ₁_test_data_with_one_halo(grid, region)
+    test_data = create_test_data(grid, region; trailing_zeros=6)
+    ψ₁_test_data = zeros(size(test_data, 1)+1, size(test_data, 2)+1, size(test_data, 3))
+    ψ₁_test_data[1:end-1, 1:end-1, :] .= test_data
     ψ₁_test_data[1, 1, :] .= 0
     return ψ₁_test_data
 end
 
 function create_ψ₂_test_data(grid, region)
     ψ₂_test_data = create_test_data(grid, region; trailing_zeros=7)
-    fill_missing_corners!(grid, region, ψ₂_test_data)
+    ψ₂_test_data[1, 1, :] .= 0
+    return ψ₂_test_data
+end
+
+function create_ψ₂_test_data_with_one_halo(grid, region)
+    test_data = create_test_data(grid, region; trailing_zeros=7)
+    ψ₂_test_data = zeros(size(test_data, 1)+1, size(test_data, 2)+1, size(test_data, 3))
+    ψ₂_test_data[1:end-1, 1:end-1, :] .= test_data
     ψ₂_test_data[1, 1, :] .= 0
     return ψ₂_test_data
 end
@@ -443,7 +455,7 @@ end
                                             index=:after_last)            == reverse(create_ψ_test_data(grid, east_panel)[west_indices_first_shifted_east...])
                         @test get_halo_data(getregion(ψ, panel), North();
                                             operation=:endpoint,
-                                            index=:first)                 == reverse(create_ψ_test_data(grid, west_panel)[north_indices_first_shifted_north...])
+                                            index=:first)                 == reverse(create_ψ_test_data_with_one_halo(grid, west_panel)[north_indices_first_shifted_north...])
                         @test get_halo_data(getregion(ψ, panel), North();
                                             operation=:subset,
                                             index=:first)                 == reverse(create_ψ_test_data(grid, north_panel)[west_indices_subset_skip_first_index...], dims=2)'
@@ -462,7 +474,7 @@ end
                                             index=:after_last)            == reverse(create_ψ_test_data(grid, north_panel)[south_indices_first_shifted_north...])
                         @test get_halo_data(getregion(ψ, panel), East();
                                             operation=:endpoint,
-                                            index=:first)                 == reverse(create_ψ_test_data(grid, south_panel)[east_indices_first_shifted_east...])
+                                            index=:first)                 == reverse(create_ψ_test_data_with_one_halo(grid, south_panel)[east_indices_first_shifted_east...])
                         @test get_halo_data(getregion(ψ, panel), East();
                                             operation=:subset,
                                             index=:first)                 == reverse(create_ψ_test_data(grid, east_panel)[south_indices_subset_skip_first_index...], dims=1)'
@@ -803,7 +815,7 @@ end
                                             index=:after_last)             ==   reverse(create_ψ₂_test_data(grid, east_panel)[west_indices_first_shifted_east...])
                         @test get_halo_data(getregion(ψ₁, panel), North();
                                             operation=:endpoint,
-                                            index=:first)                  == - reverse(create_ψ₁_test_data(grid, west_panel)[north_indices_first_shifted_north...])
+                                            index=:first)                  == - reverse(create_ψ₁_test_data_with_one_halo(grid, west_panel)[north_indices_first_shifted_north...])
                         @test get_halo_data(getregion(ψ₁, panel), North();
                                             operation=:subset,
                                             index=:first)                  == - reverse(create_ψ₂_test_data(grid, north_panel)[west_indices_subset_skip_first_index...], dims=2)'
@@ -837,7 +849,7 @@ end
                                             index=:after_last)             == - reverse(create_ψ₁_test_data(grid, east_panel)[west_indices_first_shifted_east...])
                         @test get_halo_data(getregion(ψ₂, panel), North();
                                             operation=:endpoint,
-                                            index=:first)                  == - reverse(create_ψ₂_test_data(grid, west_panel)[north_indices_first_shifted_north...])
+                                            index=:first)                  == - reverse(create_ψ₂_test_data_with_one_halo(grid, west_panel)[north_indices_first_shifted_north...])
                         @test get_halo_data(getregion(ψ₂, panel), North();
                                             operation=:subset,
                                             index=:first)                  ==   reverse(create_ψ₁_test_data(grid, north_panel)[west_indices_subset_skip_first_index...], dims=2)'
@@ -858,7 +870,7 @@ end
                                             index=:after_last)             == - reverse(create_ψ₂_test_data(grid, north_panel)[south_indices_first_shifted_north...])
                         @test get_halo_data(getregion(ψ₁, panel), East();
                                             operation=:endpoint,
-                                            index=:first)                  == - reverse(create_ψ₁_test_data(grid, south_panel)[east_indices_first_shifted_east...])
+                                            index=:first)                  == - reverse(create_ψ₁_test_data_with_one_halo(grid, south_panel)[east_indices_first_shifted_east...])
                         @test get_halo_data(getregion(ψ₁, panel), East();
                                             operation=:subset,
                                             index=:first)                  ==   reverse(create_ψ₂_test_data(grid, east_panel)[south_indices_subset_skip_first_index...], dims=1)'
@@ -892,7 +904,7 @@ end
                                             index=:after_last)             ==   reverse(create_ψ₁_test_data(grid, north_panel)[south_indices_first_shifted_north...])
                         @test get_halo_data(getregion(ψ₂, panel), East();
                                             operation=:endpoint,
-                                            index=:first)                  == - reverse(create_ψ₂_test_data(grid, south_panel)[east_indices_first_shifted_east...])
+                                            index=:first)                  == - reverse(create_ψ₂_test_data_with_one_halo(grid, south_panel)[east_indices_first_shifted_east...])
                         @test get_halo_data(getregion(ψ₂, panel), East();
                                             operation=:subset,
                                             index=:first)                  == - reverse(create_ψ₁_test_data(grid, east_panel)[south_indices_subset_skip_first_index...], dims=1)'
