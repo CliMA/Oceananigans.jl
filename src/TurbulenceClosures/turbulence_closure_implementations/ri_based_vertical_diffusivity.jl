@@ -394,3 +394,5 @@ function restore_prognostic_state!(closure_fields::RiBasedVerticalDiffusivityFie
     closure_fields.previous_compute_time[] = state.previous_compute_time
     return closure_fields
 end
+
+restore_prognostic_state!(::RiBasedVerticalDiffusivityFields, ::Nothing) = nothing

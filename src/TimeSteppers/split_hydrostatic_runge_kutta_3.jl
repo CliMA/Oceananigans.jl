@@ -182,3 +182,5 @@ function restore_prognostic_state!(timestepper::SplitRungeKutta3TimeStepper, sta
     restore_prognostic_state!(timestepper.Ψ⁻, state.Ψ⁻)
     return timestepper
 end
+
+restore_prognostic_state!(::SplitRungeKutta3TimeStepper, ::Nothing) = nothing

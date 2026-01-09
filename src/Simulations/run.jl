@@ -2,7 +2,7 @@ using Oceananigans.OutputWriters: WindowedTimeAverage
 using Oceananigans.TimeSteppers: update_state!, unit_time
 
 using Oceananigans: AbstractModel, run_diagnostic!, restore_prognostic_state!
-using Oceananigans.OutputWriters: checkpoint_path, load_checkpoint_state, checkpoint
+using Oceananigans.OutputWriters: checkpoint_path, load_checkpoint_state
 
 import Oceananigans: initialize!
 import Oceananigans.Fields: set!

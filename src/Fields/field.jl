@@ -870,3 +870,5 @@ function Oceananigans.restore_prognostic_state!(field::Field, state)
     restore_prognostic_state!(field.data, state.data)
     return field
 end
+
+Oceananigans.restore_prognostic_state!(::Field, ::Nothing) = nothing

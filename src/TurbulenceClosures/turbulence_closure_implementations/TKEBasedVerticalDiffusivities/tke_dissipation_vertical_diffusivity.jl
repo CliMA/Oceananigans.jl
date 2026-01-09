@@ -460,3 +460,5 @@ function restore_prognostic_state!(cf::TKEDissipationDiffusivityFields, state)
 
     return cf
 end
+
+restore_prognostic_state!(::TKEDissipationDiffusivityFields, ::Nothing) = nothing

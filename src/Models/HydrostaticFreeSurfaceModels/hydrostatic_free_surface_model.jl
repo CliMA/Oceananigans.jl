@@ -358,3 +358,5 @@ function restore_prognostic_state!(model::HydrostaticFreeSurfaceModel, state)
     restore_prognostic_state!(model.auxiliary_fields, state.auxiliary_fields)
     return model
 end
+
+restore_prognostic_state!(::HydrostaticFreeSurfaceModel, ::Nothing) = nothing

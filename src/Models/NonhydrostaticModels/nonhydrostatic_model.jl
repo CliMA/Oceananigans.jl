@@ -338,3 +338,5 @@ function restore_prognostic_state!(model::NonhydrostaticModel, state)
     restore_prognostic_state!(model.boundary_mass_fluxes, state.boundary_mass_fluxes)
     return model
 end
+
+restore_prognostic_state!(::NonhydrostaticModel, ::Nothing) = nothing

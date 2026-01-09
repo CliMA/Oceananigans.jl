@@ -207,6 +207,14 @@ restore_prognostic_state!(::AbstractDict, ::Nothing) = nothing
 restore_prognostic_state!(::Nothing, state) = nothing
 restore_prognostic_state!(::Nothing, ::Nothing) = nothing
 
+# To resolve dispatch ambiguities with `restore_prognostic_state!(obj, ::Nothing)`
+restore_prognostic_state!(::AbstractArray, ::Nothing) = nothing
+restore_prognostic_state!(::NamedTuple, ::Nothing) = nothing
+restore_prognostic_state!(::StructArray, ::Nothing) = nothing
+restore_prognostic_state!(::Ref, ::Nothing) = nothing
+restore_prognostic_state!(::Checkpointer, ::Nothing) = nothing
+restore_prognostic_state!(::Union{JLD2Writer, NetCDFWriter}, ::Nothing) = nothing
+
 function restore_prognostic_state!(arr::AbstractArray, state)
     arch = architecture(arr)
     data = on_architecture(arch, state)

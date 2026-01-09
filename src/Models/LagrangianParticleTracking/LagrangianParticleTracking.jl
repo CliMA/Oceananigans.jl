@@ -171,4 +171,6 @@ function restore_prognostic_state!(lagrangian_particles::LagrangianParticles, st
     return lagrangian_particles
 end
 
+restore_prognostic_state!(::LagrangianParticles, ::Nothing) = nothing
+
 end # module

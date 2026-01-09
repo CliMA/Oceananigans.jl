@@ -513,3 +513,6 @@ function restore_prognostic_state!(cf::LagrangianAveragedSmagorinskyFields, stat
     cf.previous_compute_time[] = state.previous_compute_time
     return cf
 end
+
+restore_prognostic_state!(::DirectionallyAveragedSmagorinskyFields, ::Nothing) = nothing
+restore_prognostic_state!(::LagrangianAveragedSmagorinskyFields, ::Nothing) = nothing

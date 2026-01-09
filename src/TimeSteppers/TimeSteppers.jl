@@ -94,4 +94,6 @@ function restore_prognostic_state!(timestepper::AbstractTimeStepper, state)
     return timestepper
 end
 
+restore_prognostic_state!(::AbstractTimeStepper, ::Nothing) = nothing
+
 end # module

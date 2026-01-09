@@ -124,6 +124,8 @@ function restore_prognostic_state!(schedule::AveragedTimeInterval, state)
     return schedule
 end
 
+restore_prognostic_state!(::AveragedTimeInterval, ::Nothing) = nothing
+
 """
     mutable struct AveragedSpecifiedTimes <: AbstractSchedule
 
@@ -225,6 +227,8 @@ function restore_prognostic_state!(schedule::AveragedSpecifiedTimes, state)
     schedule.collecting = state.collecting
     return schedule
 end
+
+restore_prognostic_state!(::AveragedSpecifiedTimes, ::Nothing) = nothing
 
 #####
 ##### WindowedTimeAverage
@@ -365,6 +369,8 @@ function restore_prognostic_state!(wta::WindowedTimeAverage, state)
     restore_prognostic_state!(wta.schedule, state.schedule)
     return wta
 end
+
+restore_prognostic_state!(::WindowedTimeAverage, ::Nothing) = nothing
 
 Base.show(io::IO, schedule::AveragedTimeInterval) = print(io, summary(schedule))
 

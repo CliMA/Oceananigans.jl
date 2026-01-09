@@ -154,3 +154,5 @@ function restore_prognostic_state!(clock::Clock, state)
     clock.stage = state.stage
     return clock
 end
+
+restore_prognostic_state!(::Clock, ::Nothing) = nothing

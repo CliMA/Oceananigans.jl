@@ -451,3 +451,5 @@ function restore_prognostic_state!(cf::CATKEDiffusivityFields, state)
 
     return cf
 end
+
+restore_prognostic_state!(::CATKEDiffusivityFields, ::Nothing) = nothing

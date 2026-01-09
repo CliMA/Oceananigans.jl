@@ -192,3 +192,5 @@ function restore_prognostic_state!(ts::AdamsBashforth3Scheme, state)
     restore_prognostic_state!(ts.Vᵐ⁻², state.Vᵐ⁻²)
     return ts
 end
+
+restore_prognostic_state!(::AdamsBashforth3Scheme, ::Nothing) = nothing

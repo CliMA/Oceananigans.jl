@@ -168,3 +168,5 @@ function restore_prognostic_state!(fs::ImplicitFreeSurface, state)
     restore_prognostic_state!(fs.displacement, state.displacement)
     return fs
 end
+
+restore_prognostic_state!(::ImplicitFreeSurface, ::Nothing) = nothing

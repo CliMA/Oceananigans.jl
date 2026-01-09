@@ -211,3 +211,5 @@ function restore_prognostic_state!(mo::MultiRegionObject, state)
     end
     return mo
 end
+
+restore_prognostic_state!(::MultiRegionObject, ::Nothing) = nothing

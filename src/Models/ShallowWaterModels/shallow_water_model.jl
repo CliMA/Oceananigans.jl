@@ -262,3 +262,5 @@ function restore_prognostic_state!(model::ShallowWaterModel, state)
     restore_prognostic_state!(model.closure_fields, state.closure_fields)
     return model
 end
+
+restore_prognostic_state!(::ShallowWaterModel, ::Nothing) = nothing

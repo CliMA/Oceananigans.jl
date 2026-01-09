@@ -61,7 +61,7 @@ step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::SplitR
 @inline rk3_coeffs(ts, ::Val{2}) = (ts.γ², ts.ζ²)
 @inline rk3_coeffs(ts, ::Val{3}) = (ts.γ³, ts.ζ³)
 
-explicit_rk3_step_free_surface!(free_surface, model, Δt) = 
+explicit_rk3_step_free_surface!(free_surface, model, Δt) =
     launch!(model.architecture, model.grid, :xy,
             _explicit_rk3_step_free_surface!, free_surface.displacement, Δt,
             model.timestepper.Gⁿ.η, model.timestepper.Ψ⁻.η, size(model.grid, 3))
@@ -188,3 +188,5 @@ function restore_prognostic_state!(fs::ExplicitFreeSurface, state)
     restore_prognostic_state!(fs.η, state.η)
     return fs
 end
+
+restore_prognostic_state!(::ExplicitFreeSurface, ::Nothing) = nothing

@@ -108,6 +108,8 @@ function restore_prognostic_state!(schedule::TimeInterval, state)
     return schedule
 end
 
+restore_prognostic_state!(::TimeInterval, ::Nothing) = nothing
+
 #####
 ##### IterationInterval
 #####
@@ -275,6 +277,8 @@ function restore_prognostic_state!(schedule::SpecifiedTimes, state)
     return schedule
 end
 
+restore_prognostic_state!(::SpecifiedTimes, ::Nothing) = nothing
+
 #####
 ##### ConsecutiveIterations
 #####
@@ -321,6 +325,8 @@ function restore_prognostic_state!(schedule::ConsecutiveIterations, state)
     schedule.previous_parent_actuation_iteration = state.previous_parent_actuation_iteration
     return schedule
 end
+
+restore_prognostic_state!(::ConsecutiveIterations, ::Nothing) = nothing
 
 #####
 ##### Any and AndSchedule

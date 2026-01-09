@@ -415,3 +415,5 @@ function restore_prognostic_state!(fs::SplitExplicitFreeSurface, state)
     restore_prognostic_state!(fs.timestepper, state.timestepper)
     return fs
 end
+
+restore_prognostic_state!(::SplitExplicitFreeSurface, ::Nothing) = nothing
