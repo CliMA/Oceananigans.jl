@@ -331,14 +331,12 @@ z_tked = znodes(model_tked.tracers.b)
 ax1 = Axis(fig[1, 1], xlabel="Buoyancy (m s⁻²)", ylabel="z (m)",
            title="Buoyancy profile")
 
-lines!(ax1, interior(model_pp.tracers.b, 1, 1, :), z_pp, 
-       label="Pacanowski-Philander", linewidth=2)
-lines!(ax1, interior(model_catke.tracers.b, 1, 1, :), z_catke, 
-       label="CATKE", linewidth=2, linestyle=:dash)
-lines!(ax1, interior(model_tked.tracers.b, 1, 1, :), z_tked, 
-       label="TKE-Dissipation", linewidth=2, linestyle=:dot)
-
-axislegend(ax1, position=:lb)
+lpp = lines!(ax1, interior(model_pp.tracers.b, 1, 1, :), z_pp, 
+             label="Pacanowski-Philander", linewidth=2)
+lcatke = lines!(ax1, interior(model_catke.tracers.b, 1, 1, :), z_catke, 
+                label="CATKE", linewidth=2, linestyle=:dash)
+ltked = lines!(ax1, interior(model_tked.tracers.b, 1, 1, :), z_tked, 
+               label="TKE-Dissipation", linewidth=2, linestyle=:dot)
 
 ## Velocity profiles
 ax2 = Axis(fig[1, 2], xlabel="Velocity (m s⁻¹)", ylabel="z (m)",
@@ -350,8 +348,6 @@ lines!(ax2, interior(model_catke.velocities.u, 1, 1, :), z_catke,
        label="CATKE", linewidth=2, linestyle=:dash)
 lines!(ax2, interior(model_tked.velocities.u, 1, 1, :), z_tked, 
        label="TKE-ϵ", linewidth=2, linestyle=:dot)
-
-axislegend(ax2, position=:rb)
 
 ## Diffusivity profiles
 ax3 = Axis(fig[1, 3], xlabel="Diffusivity (m² s⁻¹)", ylabel="z (m)",
@@ -372,7 +368,8 @@ z_face_tked = znodes(model_tked.closure_fields.κu)
 κ_tked_plot = max.(κ_tked, 1e-6)
 lines!(ax3, κ_tked_plot, z_face_tked, label="TKE-ε", linewidth=2, linestyle=:dot)
 
-axislegend(ax3, position=:rb)
+fig[2, :] = Legend(fig, [lpp, lcatke, ltked], ["Pacanowski-Philander", "CATKE", "TKE-ε"],
+                   orientation = :horizontal, tellwidth = false, framevisible = false)
 
 fig
 ```
