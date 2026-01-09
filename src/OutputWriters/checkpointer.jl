@@ -72,9 +72,6 @@ checkpointer_address(model) = ""
 """ Return the full prefix (the `superprefix`) associated with `checkpointer`. """
 checkpoint_superprefix(prefix) = prefix * "_iteration"
 
-# This is the default name used in the simulation.output_writers ordered dict.
-defaultname(::Checkpointer, nelems) = :checkpointer
-
 """
     checkpoint_path(iteration::Int, c::Checkpointer)
 

@@ -91,7 +91,7 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     simulation.stop_iteration = spinup_steps-test_steps
     run!(simulation)
 
-    push!(simulation.output_writers, checkpointer)
+    simulation.output_writers[:checkpointer] = checkpointer
     simulation.stop_iteration += 2test_steps
     run!(simulation)
     =#

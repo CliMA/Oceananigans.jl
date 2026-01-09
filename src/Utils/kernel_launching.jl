@@ -2,20 +2,17 @@
 ##### Utilities for launching kernels
 #####
 
-using Oceananigans.Architectures: Architectures
 using Adapt: Adapt
 using Base: @pure
-using KernelAbstractions: Kernel
+using KernelAbstractions: Kernel,
+                          ndrange, workgroupsize,
+                          __iterspace, __groupindex, __dynamic_checkbounds,
+                          CompilerMetadata
 using KernelAbstractions.NDIteration: NDIteration, NDRange, blocks, workitems, _Size
-
-using KernelAbstractions: ndrange, workgroupsize
-
-using KernelAbstractions: __iterspace, __groupindex, __dynamic_checkbounds
-using KernelAbstractions: CompilerMetadata
+using Oceananigans.Architectures: Architectures
 
 import Oceananigans
 import KernelAbstractions: get, expand, StaticSize
-import Base
 
 struct KernelParameters{S, O} end
 
