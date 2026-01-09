@@ -48,8 +48,8 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
         @test isnothing(grid.active_z_columns)
     end
 
-    r_model = ModelType(; grid=r_grid, model_kw...)
-    model = ModelType(; grid=grid, model_kw...)
+    r_model = ModelType(r_grid; model_kw...)
+    model = ModelType(grid; model_kw...)
 
     ui = randn(size(model.velocities.u)...)
     vi = randn(size(model.velocities.v)...)

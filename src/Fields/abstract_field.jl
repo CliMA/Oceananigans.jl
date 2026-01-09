@@ -1,15 +1,7 @@
 using Base: @propagate_inbounds
-using Adapt
-using OffsetArrays
-using Statistics
 
-using Oceananigans.Architectures
-using Oceananigans.Utils
-using Oceananigans.Grids: interior_parent_indices
-
-import Oceananigans.Architectures: architecture, child_architecture
-import Oceananigans.Grids: interior_x_indices, interior_y_indices, interior_z_indices, interior_indices
-import Oceananigans.Grids: total_size, topology, nodes, xnodes, ynodes, znodes, rnodes, node, xnode, ynode, znode, rnode
+using Oceananigans.Architectures: Architectures, AbstractArchitecture, architecture
+using Oceananigans.Grids: rnodes
 
 const ArchOrNothing = Union{AbstractArchitecture, Nothing}
 const GridOrNothing = Union{AbstractGrid, Nothing}
@@ -30,17 +22,17 @@ Base.IndexStyle(::AbstractField) = IndexCartesian()
 ##### AbstractField functionality
 #####
 
-@inline location(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = (LX, LY, LZ) # note no instantiation
-@inline instantiated_location(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = (LX(), LY(), LZ())
+@inline Oceananigans.location(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = (LX, LY, LZ) # note no instantiation
+@inline Oceananigans.instantiated_location(::AbstractField{LX, LY, LZ}) where {LX, LY, LZ} = (LX(), LY(), LZ())
 Base.eltype(::AbstractField{<:Any, <:Any, <:Any, <:Any, T}) where T = T
 Base.eltype(::Type{<:AbstractField{<:Any, <:Any, <:Any, <:Any, T}}) where T = T
 
 "Returns the architecture of on which `f` is defined."
-architecture(f::AbstractField) = architecture(f.grid)
-child_architecture(f::AbstractField) = child_architecture(architecture(f))
+Architectures.architecture(f::AbstractField) = architecture(f.grid)
+Architectures.child_architecture(f::AbstractField) = child_architecture(architecture(f))
 
 "Returns the topology of a fields' `grid`."
-@inline topology(f::AbstractField, args...) = topology(f.grid, args...)
+@inline Grids.topology(f::AbstractField, args...) = topology(f.grid, args...)
 
 """
     size(f::AbstractField)
@@ -91,7 +83,7 @@ end
 Returns a 3-tuple that gives the "total" size of a field including
 both interior points and halo points.
 """
-total_size(f::AbstractField) = total_size(f.grid, location(f))
+Grids.total_size(f::AbstractField) = total_size(f.grid, location(f))
 
 interior(f::AbstractField) = f
 
@@ -99,18 +91,18 @@ interior(f::AbstractField) = f
 ##### Coordinates of fields
 #####
 
-@propagate_inbounds  node(i, j, k, ψ::AbstractField) =  node(i, j, k, ψ.grid, instantiated_location(ψ)...)
-@propagate_inbounds xnode(i, j, k, ψ::AbstractField) = xnode(i, j, k, ψ.grid, instantiated_location(ψ)...)
-@propagate_inbounds ynode(i, j, k, ψ::AbstractField) = ynode(i, j, k, ψ.grid, instantiated_location(ψ)...)
-@propagate_inbounds znode(i, j, k, ψ::AbstractField) = znode(i, j, k, ψ.grid, instantiated_location(ψ)...)
-@propagate_inbounds rnode(i, j, k, ψ::AbstractField) = rnode(i, j, k, ψ.grid, instantiated_location(ψ)...)
+@propagate_inbounds  Grids.node(i, j, k, ψ::AbstractField) =  node(i, j, k, ψ.grid, instantiated_location(ψ)...)
+@propagate_inbounds Grids.xnode(i, j, k, ψ::AbstractField) = xnode(i, j, k, ψ.grid, instantiated_location(ψ)...)
+@propagate_inbounds Grids.ynode(i, j, k, ψ::AbstractField) = ynode(i, j, k, ψ.grid, instantiated_location(ψ)...)
+@propagate_inbounds Grids.znode(i, j, k, ψ::AbstractField) = znode(i, j, k, ψ.grid, instantiated_location(ψ)...)
+@propagate_inbounds Grids.rnode(i, j, k, ψ::AbstractField) = rnode(i, j, k, ψ.grid, instantiated_location(ψ)...)
 
-xnodes(ψ::AbstractField; kwargs...) = xnodes(ψ.grid, instantiated_location(ψ)...; kwargs...)
-ynodes(ψ::AbstractField; kwargs...) = ynodes(ψ.grid, instantiated_location(ψ)...; kwargs...)
-znodes(ψ::AbstractField; kwargs...) = znodes(ψ.grid, instantiated_location(ψ)...; kwargs...)
-rnodes(ψ::AbstractField; kwargs...) = rnodes(ψ.grid, instantiated_location(ψ)...; kwargs...)
+Grids.xnodes(ψ::AbstractField; kwargs...) = xnodes(ψ.grid, instantiated_location(ψ)...; kwargs...)
+Grids.ynodes(ψ::AbstractField; kwargs...) = ynodes(ψ.grid, instantiated_location(ψ)...; kwargs...)
+Grids.znodes(ψ::AbstractField; kwargs...) = znodes(ψ.grid, instantiated_location(ψ)...; kwargs...)
+Grids.rnodes(ψ::AbstractField; kwargs...) = rnodes(ψ.grid, instantiated_location(ψ)...; kwargs...)
 
-nodes(ψ::AbstractField; kwargs...) = nodes(ψ.grid, instantiated_location(ψ); kwargs...)
+Grids.nodes(ψ::AbstractField; kwargs...) = nodes(ψ.grid, instantiated_location(ψ); kwargs...)
 
 #####
 ##### Some conveniences

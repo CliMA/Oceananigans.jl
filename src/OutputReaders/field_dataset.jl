@@ -1,4 +1,4 @@
-using Oceananigans.Fields: instantiated_location, indices, boundary_conditions
+using Oceananigans.Fields: instantiated_location, indices
 import Oceananigans.Fields: set!
 
 struct FieldDataset{F, B, M, P, KW}
@@ -104,7 +104,7 @@ Keyword arguments
 
 - `path`: path to data for `backend = OnDisk()`
 
-- `location`: `NamedTuple` of location specifications, defaults to 
+- `location`: `NamedTuple` of location specifications, defaults to
                (Center, Center, Center) for each field`
 
 - `indices`: `NamedTuple` of spatial indices, defaults to (:, :, :) for each field
@@ -145,12 +145,12 @@ function FieldDataset(grid, times, fields::NTuple{N, Symbol};
         loc = location[field]
         bcs = boundary_conditions[field]
 
-        FieldTimeSeries(loc, grid, times; 
-            indices=inds, 
-            backend, 
-            path, 
-            name, 
-            reader_kw, 
+        FieldTimeSeries(loc, grid, times;
+            indices=inds,
+            backend,
+            path,
+            name,
+            reader_kw,
             boundary_conditions=bcs
         )
     end
@@ -171,8 +171,8 @@ end
                  metadata = Dict(),
                  reader_kw = NamedTuple())
 
-Returns a `FieldDataset` containing a new `FieldTimeSeries` for each field 
-in the `NamedTuple``fields` at `times`. Locations, indices and boundary 
+Returns a `FieldDataset` containing a new `FieldTimeSeries` for each field
+in the `NamedTuple``fields` at `times`. Locations, indices and boundary
 conditions are extracted from `fields``
 
 Keyword arguments
@@ -192,7 +192,7 @@ function FieldDataset(times, fields;
 
     loc = map(instantiated_location, fields)
     inds = map(Fields.indices, fields)
-    bcs = map(Fields.boundary_conditions, fields)
+    bcs = map(boundary_conditions, fields)
 
     return FieldDataset(grid, times, keys(fields);
         location=loc,

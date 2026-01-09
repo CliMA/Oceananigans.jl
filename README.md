@@ -100,14 +100,14 @@ Let's run a two-dimensional, horizontally-periodic simulation of turbulence usin
 ```julia
 using Oceananigans
 grid = RectilinearGrid(CPU(), size=(128, 128), x=(0, 2π), y=(0, 2π), topology=(Periodic, Periodic, Flat))
-model = NonhydrostaticModel(; grid, advection=WENO())
+model = NonhydrostaticModel(grid; advection=WENO())
 ϵ(x, y) = 2rand() - 1
 set!(model, u=ϵ, v=ϵ)
 simulation = Simulation(model; Δt=0.01, stop_time=4)
 run!(simulation)
 ```
 
-But there's more: changing `CPU()` to `GPU()` makes this code run on a CUDA-enabled Nvidia GPU.
+But there's more: loading CUDA.jl (via `using CUDA`) and changing `CPU()` to `GPU()` makes this code run on a CUDA-enabled Nvidia GPU.
 
 Dive into [the documentation](https://clima.github.io/OceananigansDocumentation/stable/) for more code examples and tutorials.
 Below, you'll find movies from GPU simulations along with CPU and GPU [performance benchmarks](https://github.com/clima/Oceananigans.jl#performance-benchmarks).

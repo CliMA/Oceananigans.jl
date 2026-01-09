@@ -1,6 +1,5 @@
 using Oceananigans.Fields: ZeroField, ConstantField
 using Oceananigans.Utils: sum_of_velocities
-using Adapt
 
 maybe_constant_field(u) = u
 maybe_constant_field(u::Number) = ConstantField(u)
@@ -68,7 +67,7 @@ end
 Adapt.adapt_structure(to, af::AdvectiveForcing) =
     AdvectiveForcing(adapt(to, af.u), adapt(to, af.v), adapt(to, af.w))
 
-on_architecture(to, af::AdvectiveForcing) =
+Architectures.on_architecture(to, af::AdvectiveForcing) =
     AdvectiveForcing(on_architecture(to, af.u), on_architecture(to, af.v), on_architecture(to, af.w))
 
 @inline velocities(forcing::AdvectiveForcing) = (u=forcing.u, v=forcing.v, w=forcing.w)

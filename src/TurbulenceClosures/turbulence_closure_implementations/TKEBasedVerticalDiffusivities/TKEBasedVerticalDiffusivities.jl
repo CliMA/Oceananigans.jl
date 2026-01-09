@@ -46,6 +46,7 @@ import Oceananigans.TurbulenceClosures:
     buoyancy_force,
     buoyancy_tracers,
     add_closure_specific_boundary_conditions,
+    closure_required_tracers,
     compute_diffusivities!,
     build_closure_fields,
     implicit_linear_coefficient,

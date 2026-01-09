@@ -39,6 +39,7 @@ end
                stop_iteration = Inf,
                stop_time = Inf,
                wall_time_limit = Inf,
+               align_time_step = true,
                minimum_relative_step = 0)
 
 Construct a `Simulation` for a `model` with time step `Δt`.
@@ -46,8 +47,9 @@ Construct a `Simulation` for a `model` with time step `Δt`.
 Keyword arguments
 =================
 
-- `Δt`: Required keyword argument specifying the simulation time step. Can be a `Number`
-        for constant time steps or a `TimeStepWizard` for adaptive time-stepping.
+- `Δt`: Required keyword argument specifying the simulation time step. Can be either a `Number`
+        for constant time steps, a `TimeStepWizard` for adaptive time-stepping, or a `Dates.Period`
+        if the `model` has a DateTime clock.
 
 - `stop_iteration`: Stop the simulation after this many iterations. Default: `Inf`.
 
@@ -68,7 +70,8 @@ Keyword arguments
                            This avoids extremely high values when writing the pressure to disk.
                            Default value is 0. See github.com/CliMA/Oceananigans.jl/issues/3593 for details.
 """
-function Simulation(model; Δt,
+function Simulation(model;
+                    Δt,
                     verbose = true,
                     stop_iteration = Inf,
                     stop_time = Inf,
@@ -176,11 +179,13 @@ Return the current simulation iteration.
 iteration(sim::Simulation) = iteration(sim.model)
 
 """
-    prettytime(sim::Simulation)
+    prettytime(sim::Simulation, longform=true)
 
 Return `sim.model.clock.time` as a prettily formatted string."
+
+For more details, see [`prettytime`](@ref Oceananigans.Utils.prettytime).
 """
-prettytime(sim::Simulation, longform=true) = prettytime(time(sim))
+prettytime(sim::Simulation, longform=true) = prettytime(time(sim), longform)
 
 """
     run_wall_time(sim::Simulation)

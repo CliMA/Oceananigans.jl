@@ -154,6 +154,9 @@ function Utils.with_tracers(tracer_names, closure::FlavorOfTD)
     return closure
 end
 
+# Required tracer names for TKEDissipation
+closure_required_tracers(::FlavorOfTD) = (:e, :ϵ)
+
 #####
 ##### Stratified displacement length scale limiter
 #####
