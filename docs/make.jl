@@ -7,6 +7,7 @@ Distributed.addprocs(2)
     using Literate
     using Printf
 
+    using CUDA
     using CairoMakie # to avoid capturing precompilation output by Literate
     set_theme!(Theme(fontsize=20))
     CairoMakie.activate!(type = "png")
