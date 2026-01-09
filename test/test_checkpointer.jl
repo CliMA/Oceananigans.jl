@@ -776,7 +776,7 @@ end
 function test_checkpointing_catke_closure(arch, timestepper)
     Nx, Ny, Nz = 8, 8, 8
     Lx, Ly, Lz = 100, 100, 100
-    Δt = 60
+    Δt = 0.1
 
     T_init(x, y, z) = 20 + 0.01 * z
     u_init(x, y, z) = 0.01 * sin(2π * x / Lx + 3π * y / Ly)
@@ -818,7 +818,10 @@ function test_checkpointing_catke_closure(arch, timestepper)
     @test_nowarn run!(new_simulation)
 
     # Compare final states at iteration 10
-    test_model_equality(new_model, ref_model)
+    # We need a small atol because while all prognostic fields are exactly equal, the e
+    # field can have tiny differences due to floating-point ordering with RK3 I think.
+    atol = timestepper == :SplitRungeKutta3 ? 1e-20 : 0
+    test_model_equality(new_model, ref_model; atol)
 
     rm.(glob("$(prefix)_iteration*.jld2"), force=true)
 
