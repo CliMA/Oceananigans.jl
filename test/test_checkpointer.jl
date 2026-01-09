@@ -883,7 +883,7 @@ end
 function test_checkpointing_smagorinsky_closure(arch, timestepper, closure, closure_name)
     Nx, Ny, Nz = 8, 8, 8
     Lx, Ly, Lz = 1, 1, 1
-    Δt = 0.001
+    Δt = 0.1
 
     u_init(x, y, z) = sin(2π * z / Lz)
 
@@ -940,7 +940,7 @@ function test_checkpointing_smagorinsky_closure(arch, timestepper, closure, clos
     end
 
     # Compare final states at iteration 10
-    test_model_equality(new_model, ref_model; atol=1e-14)
+    test_model_equality(new_model, ref_model; atol=1e-20)
 
     rm.(glob("$(prefix)_iteration*.jld2"), force=true)
 
