@@ -514,7 +514,7 @@ end
             set!(c₁, c₁_data)
             set!(c₂, c₂_data)
 
-            fill_halo_regions!((c₁, c₂); signed = false)
+            fill_halo_regions!((c₁, c₂))
 
             Hx, Hy, Hz = halo_size(grid)
 
@@ -534,42 +534,42 @@ end
                         # Confirm that the c₁ halos were filled according to connectivity described at ConformalCubedSphereGrid docstring.
                         #
                         # Trivial halo checks
-                        @test get_halo_data(getregion(c₁, panel), East())  ==         create_c₁_test_data(grid, east_panel)[west_indices...]
-                        @test get_halo_data(getregion(c₁, panel), South()) ==         create_c₁_test_data(grid, south_panel)[north_indices...]
+                        @test get_halo_data(getregion(c₁, panel), East())  ==           create_c₁_test_data(grid, east_panel)[west_indices...]
+                        @test get_halo_data(getregion(c₁, panel), South()) ==           create_c₁_test_data(grid, south_panel)[north_indices...]
                         #
                         # Non-trivial halo checks
-                        @test get_halo_data(getregion(c₁, panel), West())  == reverse(create_c₂_test_data(grid, west_panel)[north_indices...], dims=1)'
-                        @test get_halo_data(getregion(c₁, panel), North()) == reverse(create_c₂_test_data(grid, north_panel)[west_indices...], dims=2)'
+                        @test get_halo_data(getregion(c₁, panel), West())  ==   reverse(create_c₂_test_data(grid, west_panel)[north_indices...], dims=1)'
+                        @test get_halo_data(getregion(c₁, panel), North()) == - reverse(create_c₂_test_data(grid, north_panel)[west_indices...], dims=2)'
 
                         # Confirm that the c₂ halos were filled according to connectivity described at ConformalCubedSphereGrid docstring.
                         #
                         # Trivial halo checks
-                        @test get_halo_data(getregion(c₂, panel), East())  ==         create_c₂_test_data(grid, east_panel)[west_indices...]
-                        @test get_halo_data(getregion(c₂, panel), South()) ==         create_c₂_test_data(grid, south_panel)[north_indices...]
+                        @test get_halo_data(getregion(c₂, panel), East())  ==           create_c₂_test_data(grid, east_panel)[west_indices...]
+                        @test get_halo_data(getregion(c₂, panel), South()) ==           create_c₂_test_data(grid, south_panel)[north_indices...]
                         #
                         # Non-trivial halo checks
-                        @test get_halo_data(getregion(c₂, panel), West())  == reverse(create_c₁_test_data(grid, west_panel)[north_indices...], dims=1)'
-                        @test get_halo_data(getregion(c₂, panel), North()) == reverse(create_c₁_test_data(grid, north_panel)[west_indices...], dims=2)'
+                        @test get_halo_data(getregion(c₂, panel), West())  == - reverse(create_c₁_test_data(grid, west_panel)[north_indices...], dims=1)'
+                        @test get_halo_data(getregion(c₂, panel), North()) ==   reverse(create_c₁_test_data(grid, north_panel)[west_indices...], dims=2)'
                     else
                         # Confirm that the c₁ halos were filled according to connectivity described at ConformalCubedSphereGrid docstring.
                         #
                         # Trivial halo checks
-                        @test get_halo_data(getregion(c₁, panel), West())  ==         create_c₁_test_data(grid, west_panel)[east_indices...]
-                        @test get_halo_data(getregion(c₁, panel), North()) ==         create_c₁_test_data(grid, north_panel)[south_indices...]
+                        @test get_halo_data(getregion(c₁, panel), West())  ==           create_c₁_test_data(grid, west_panel)[east_indices...]
+                        @test get_halo_data(getregion(c₁, panel), North()) ==           create_c₁_test_data(grid, north_panel)[south_indices...]
                         #
                         # Non-trivial halo checks
-                        @test get_halo_data(getregion(c₁, panel), East())  == reverse(create_c₂_test_data(grid, east_panel)[south_indices...], dims=1)'
-                        @test get_halo_data(getregion(c₁, panel), South()) == reverse(create_c₂_test_data(grid, south_panel)[east_indices...], dims=2)'
+                        @test get_halo_data(getregion(c₁, panel), East())  ==   reverse(create_c₂_test_data(grid, east_panel)[south_indices...], dims=1)'
+                        @test get_halo_data(getregion(c₁, panel), South()) == - reverse(create_c₂_test_data(grid, south_panel)[east_indices...], dims=2)'
 
                         # Confirm that the c₂ halos were filled according to connectivity described at ConformalCubedSphereGrid docstring.
                         #
                         # Trivial halo checks
-                        @test get_halo_data(getregion(c₂, panel), West())  ==         create_c₂_test_data(grid, west_panel)[east_indices...]
-                        @test get_halo_data(getregion(c₂, panel), North()) ==         create_c₂_test_data(grid, north_panel)[south_indices...]
+                        @test get_halo_data(getregion(c₂, panel), West())  ==           create_c₂_test_data(grid, west_panel)[east_indices...]
+                        @test get_halo_data(getregion(c₂, panel), North()) ==           create_c₂_test_data(grid, north_panel)[south_indices...]
                         #
                         # Non-trivial halo checks
-                        @test get_halo_data(getregion(c₂, panel), East())  == reverse(create_c₁_test_data(grid, east_panel)[south_indices...], dims=1)'
-                        @test get_halo_data(getregion(c₂, panel), South()) == reverse(create_c₁_test_data(grid, south_panel)[east_indices...], dims=2)'
+                        @test get_halo_data(getregion(c₂, panel), East())  == - reverse(create_c₁_test_data(grid, east_panel)[south_indices...], dims=1)'
+                        @test get_halo_data(getregion(c₂, panel), South()) ==   reverse(create_c₁_test_data(grid, south_panel)[east_indices...], dims=2)'
                     end
                 end
             end # CUDA.@allowscalar
