@@ -249,6 +249,7 @@ steps:
             -F buildkite \
             -F julia
         fi
+      done
 
   #####
   ##### Clean up
