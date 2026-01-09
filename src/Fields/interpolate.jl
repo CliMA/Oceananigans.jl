@@ -354,6 +354,7 @@ end
 @inline flatten_node(::Nothing, ::Nothing, ::Nothing) = tuple()
 
 @inline flatten_node(x, y) = (x, y)
+@inline flatten_node(::Nothing, ::Nothing) = tuple()
 @inline flatten_node(::Nothing, y) = flatten_node(y)
 @inline flatten_node(x, ::Nothing) = flatten_node(x)
 
