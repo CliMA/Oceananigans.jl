@@ -233,10 +233,7 @@ Good display methods help users understand their closures:
 
 ```@example pp_closure
 using Oceananigans.Utils: prettysummary
-nothing # hide
-```
 
-```@example pp_closure
 Base.summary(closure::PPVD{TD}) where TD = 
     string("PacanowskiPhilanderVerticalDiffusivity{$TD}")
 
@@ -258,15 +255,12 @@ PacanowskiPhilanderVerticalDiffusivity()
 Let's test the closure by comparing it with [`CATKEVerticalDiffusivity`](@ref) and
 [`TKEDissipationVerticalDiffusivity`](@ref) in a wind-driven boundary layer simulation.
 
-```@example pp_closure
-using Oceananigans
-using Oceananigans.Units
-nothing # hide
-```
-
 First, we set up the simulation parameters:
 
 ```@example pp_closure
+using Oceananigans
+using Oceananigans.Units
+
 Lz = 256       # Domain depth (m)
 Nz = 64        # Vertical resolution
 N² = 1e-5      # Background stratification (s⁻²)
@@ -326,10 +320,7 @@ Let's visualize the resulting boundary layer profiles:
 
 ```@example pp_closure
 using CairoMakie
-nothing # hide
-```
 
-```@example pp_closure
 fig = Figure(size=(1000, 400))
 
 z_pp = znodes(model_pp.tracers.b)
@@ -358,7 +349,7 @@ lines!(ax2, interior(model_pp.velocities.u, 1, 1, :), z_pp,
 lines!(ax2, interior(model_catke.velocities.u, 1, 1, :), z_catke, 
        label="CATKE", linewidth=2, linestyle=:dash)
 lines!(ax2, interior(model_tked.velocities.u, 1, 1, :), z_tked, 
-       label="TKE-ε", linewidth=2, linestyle=:dot)
+       label="TKE-ϵ", linewidth=2, linestyle=:dot)
 
 axislegend(ax2, position=:rb)
 
