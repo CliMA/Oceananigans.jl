@@ -50,7 +50,6 @@ struct PacanowskiPhilanderVerticalDiffusivity{TD, FT} <: AbstractScalarDiffusivi
     maximum_diffusivity :: FT
     maximum_viscosity :: FT
 end
-nothing # hide
 ```
 
 Key points:
