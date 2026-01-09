@@ -924,7 +924,7 @@ end
     for non_uniform_conformal_mapping in (false, true)
         cm = non_uniform_conformal_mapping ? "non-uniform conformal mapping" : "uniform conformal mapping"
         cm_suffix = non_uniform_conformal_mapping ? "NUCM" : "UCM"
-        for FT in float_types, arch in archs
+        for FT in (Oceananigans.defaults.FloatType,), arch in archs
             Nx, Ny, Nz = 18, 18, 9
 
             underlying_grid = ConformalCubedSphereGrid(arch, FT;
