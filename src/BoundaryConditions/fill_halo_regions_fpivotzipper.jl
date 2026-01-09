@@ -36,7 +36,7 @@ Ny     (face)   ─▶  ├──── v₃ ────┼──── v₄ �
                                                          (face) (center)
 ```
 
-Note that `YFAce` fields have an extra row (size `Ny + 1`)
+Note that `YFaceField`s have an extra row (size `Ny + 1`)
 just like for `Bounded` topologies.
 """
 
