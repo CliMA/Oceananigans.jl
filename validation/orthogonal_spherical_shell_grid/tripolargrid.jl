@@ -1,6 +1,7 @@
 using Oceananigans
 using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid
 using Oceananigans.Fields: location
+using Oceananigans.Grids: RightFaceFolded, topology, λnodes, φnodes
 using Printf
 using GLMakie
 
@@ -116,7 +117,7 @@ using GLMakie
 #     first_pole_longitude = -180,
 # )
 # # Create u and v fields with Zipper boundary conditions at the north edge
-# north_bc = Oceananigans.BoundaryCondition(Oceananigans.BoundaryConditions.Zipper(), -1)
+# north_bc = Oceananigans.BoundaryCondition(Oceananigans.BoundaryConditions.Zipper{UPivot}(), -1)
 # ubcs = FieldBoundaryConditions(tg, (Face(), Center(), Center()), north = north_bc)
 # vbcs = FieldBoundaryConditions(tg, (Center(), Face(), Center()), north = north_bc)
 # u = XFaceField(tg; boundary_conditions = ubcs)
@@ -167,7 +168,7 @@ using GLMakie
 # fig
 
 
-@info "Plotting the tripolar grid using a finer grid"
+@info "Plotting the tripolar grid"
 
 function remove_jumps!(x)
     # dx = abs.(diff(x))
@@ -181,7 +182,7 @@ end
 
 function plot_grid!(ax, grid; kwargs...)
 
-    Nx, Ny, _ = size(grid, (Face(), Face(), Center()))
+    Nx, Ny, _ = Base.size(grid, (Face(), Face(), Center()))
     x = lonshift(grid.λᶠᶠᵃ)
     y = grid.φᶠᶠᵃ
 
@@ -200,21 +201,26 @@ function plot_grid!(ax, grid; kwargs...)
 
     x = lonshift.(grid.λᶜᶜᵃ)
     y = grid.φᶜᶜᵃ
-    Nx, Ny, _ = size(grid, (Center(), Center(), Center()))
+    Nx, Ny, _ = Base.size(grid, (Center(), Center(), Center()))
     text!(ax, x[1:Nx, 1] .+ randn.(), y[1:Nx, 1] .+ randn.(); text = string.(1:Nx), align = (:center, :center), color = :teal)
     text!(ax, x[1, 1:Ny] .+ randn.(), y[1, 1:Ny] .+ randn.(); text = string.(1:Ny), align = (:center, :center), color = :tomato)
 
-    x = lonshift.(grid.λᶠᶜᵃ)
-    y = grid.φᶠᶜᵃ
-    @show Nx, Ny, _ = size(grid, (Face(), Center(), Center()))
+    true_pole_location = (Face(), (topology(grid, 2) == RightCenterFolded) ? Center() : Face(), Center())
+    x = lonshift.(λnodes(grid, true_pole_location...))
+    y = φnodes(grid, true_pole_location...)
+    @show Nx, Ny, _ = Base.size(grid, true_pole_location)
     @show i = findall(i -> (i == 1) || (i == 1 + Nx ÷ 2), circshift(1:Nx, Nx ÷ 4))
-    text!(ax, x[i, Ny], y[i, Ny]; text = ["FC1", "FC2"], align = (:center, :center), color = [:red, :blue])
+    text!(ax, x[i, Ny], y[i, Ny]; text = ["NP", "NP"], align = (:center, :center), color = [:red, :blue])
 
-    x = lonshift.(grid.λᶠᶠᵃ)
-    y = grid.φᶠᶠᵃ
-    @show Nx, Ny, _ = size(grid, (Face(), Face(), Center()))
-    @show i = findall(i -> (i == 1) || (i == 1 + Nx ÷ 2), circshift(1:Nx, Nx ÷ 4))
-    text!(ax, x[i, Ny], y[i, Ny]; text = ["FF1", "FF2"], align = (:center, :center), color = [:red, :blue])
+    # x = lonshift.(grid.λᶠᶠᵃ)
+    # y = grid.φᶠᶠᵃ
+    # @show Nx, Ny, _ = Base.size(grid, (Face(), Face(), Center()))
+    # @show i = findall(i -> (i == 1) || (i == 1 + Nx ÷ 2), circshift(1:Nx, Nx ÷ 4))
+    # text!(ax, x[i, Ny], y[i, Ny]; text = ["F1", "F2"], align = (:center, :center), color = [:red, :blue])
+
+    north_poles_latitude = 55
+    first_pole_longitude = 70
+    scatter!(ax, [first_pole_longitude, first_pole_longitude + 180], [north_poles_latitude, north_poles_latitude]; color = :red, markersize = 10)
 
     return (greatcircles, meridians)
 end
@@ -237,13 +243,13 @@ plot_grid!(ax, grid;
     linewidth = 1,
 )
 
-# grid = TripolarGrid(size = (Nx, Ny, Nz), pivot = :FPointPivot)
+grid = TripolarGrid(size = (Nx, Ny, Nz), fold_topology = RightFaceFolded)
 
-# ax = Axis(fig[2, 1]; axopt...)
+ax = Axis(fig[2, 1]; axopt...)
 
-# plot_grid!(ax, grid;
-#     color = (:black, 0.25),
-#     linewidth = 1,
-# )
+plot_grid!(ax, grid;
+    color = (:black, 0.25),
+    linewidth = 1,
+)
 
 fig
