@@ -197,7 +197,7 @@ steps:
       setup:
         architecture:
           - "CPU"
-          # - "GPU"
+          - "GPU"
         group:
           - "🎭 reactant_2"
           - "👺 enzyme"
