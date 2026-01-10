@@ -61,7 +61,7 @@ struct YPartition{N} <: AbstractPartition
             sizes
         end
 
-        return new{typeof(sizes)}(sizes)
+        return new{typeof(div)}(div)
     end
 end
 
