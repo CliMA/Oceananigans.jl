@@ -6,7 +6,6 @@ env:
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
   XLA_REACTANT_GPU_PREALLOCATE: false
   OCEANANIGANS_DIR: "$HOME/Oceananigans.jl-$BUILDKITE_BUILD_NUMBER"
-  CODECOV_TOKEN: fc902be7-5dcf-47f7-ab94-9d773c5b27d7
 
 agents:
   queue: "Oceananigans"
@@ -198,10 +197,10 @@ steps:
       setup:
         architecture:
           - "CPU"
-          # - "GPU"
+          - "GPU"
         group:
-          # - "🎭 reactant_2"
-          # - "👺 enzyme"
+          - "🎭 reactant_2"
+          - "👺 enzyme"
           - "👹 reactant_1"
 
     retry:
