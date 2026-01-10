@@ -64,7 +64,7 @@ steps:
     command: |
       cd "$OCEANANIGANS_DIR"
       julia +$JULIA_VERSION --color=yes --project=docs/ -e \
-        'using Pkg; Pkg.develop(PackageSpec(path=pwd())); Pkg.instantiate()'
+        'using Pkg; Pkg.instantiate()'
       julia +$JULIA_VERSION --color=yes --project=docs/ docs/make.jl
 
   - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"

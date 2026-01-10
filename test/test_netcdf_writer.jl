@@ -1495,15 +1495,13 @@ function test_thermal_bubble_netcdf_output(arch, FT; with_halos=false)
     nc_filepath = "test_thermal_bubble$(halo_suffix)_$(Arch)_$FT.nc"
     isfile(nc_filepath) && rm(nc_filepath)
 
-    nc_writer = NetCDFWriter(model, outputs,
+    simulation.output_writers[:nc_writer] = NetCDFWriter(model, outputs,
         filename = nc_filepath,
         schedule = IterationInterval(10),
         array_type = Array{FT},
         with_halos = with_halos,
         include_grid_metrics = false,
         verbose = true)
-
-    push!(simulation.output_writers, nc_writer)
 
     i_slice = 1:10
     j_slice = 13
@@ -1514,15 +1512,13 @@ function test_thermal_bubble_netcdf_output(arch, FT; with_halos=false)
     nc_sliced_filepath = "test_thermal_bubble_sliced_$(Arch)_$FT.nc"
     isfile(nc_sliced_filepath) && rm(nc_sliced_filepath)
 
-    nc_sliced_writer = NetCDFWriter(model, outputs,
+    simulation.output_writers[:nc_sliced_writer] = NetCDFWriter(model, outputs,
         filename = nc_sliced_filepath,
         schedule = IterationInterval(10),
         array_type = Array{FT},
         indices = indices,
         include_grid_metrics = false,
         verbose = true)
-
-    push!(simulation.output_writers, nc_sliced_writer)
 
     run!(simulation)
 
@@ -1714,7 +1710,8 @@ function test_netcdf_size_file_splitting(arch)
     fake_attributes = Dict("fake_attribute" => "fake_attribute")
 
     Arch = typeof(arch)
-    ow = NetCDFWriter(model, (; u=model.velocities.u);
+
+    simulation.output_writers[:nc_writer] = NetCDFWriter(model, (; u=model.velocities.u);
         dir = ".",
         filename = "test_size_file_splitting_$Arch",
         schedule = IterationInterval(1),
@@ -1723,8 +1720,6 @@ function test_netcdf_size_file_splitting(arch)
         global_attributes = fake_attributes,
         file_splitting = FileSizeLimit(200KiB),
         overwrite_existing = true)
-
-    push!(simulation.output_writers, ow)
 
     # 531 KiB of output will be written which should get split into 3 files.
     run!(simulation)
@@ -1770,7 +1765,7 @@ function test_netcdf_time_file_splitting(arch)
     fake_attributes = Dict("fake_attribute" => "fake_attribute")
 
     Arch = typeof(arch)
-    ow = NetCDFWriter(model, (; u=model.velocities.u);
+    simulation.output_writers[:nc_writer] = NetCDFWriter(model, (; u=model.velocities.u);
         dir = ".",
         filename = "test_time_file_splitting_$Arch",
         schedule = IterationInterval(2),
@@ -1779,8 +1774,6 @@ function test_netcdf_time_file_splitting(arch)
         global_attributes = fake_attributes,
         file_splitting = TimeInterval(4seconds),
         overwrite_existing = true)
-
-    push!(simulation.output_writers, ow)
 
     run!(simulation)
 
@@ -2508,7 +2501,7 @@ function test_netcdf_hydrostatic_free_surface_only_output(arch; immersed=false, 
     Nt = 5
     simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
 
-    outputs = (; η = model.free_surface.displacement,)
+    outputs = (; model.free_surface.displacement,)
 
     Arch = typeof(arch)
     immersed_str = immersed ? "_immersed" : ""
@@ -2535,16 +2528,16 @@ function test_netcdf_hydrostatic_free_surface_only_output(arch; immersed=false, 
 
     ds_h = NCDataset(filepath_with_halos)
 
-    @test haskey(ds_h, "η")
-    @test dimsize(ds_h["η"]) == (λ_caa=Nλ + 2Hλ, φ_aca=Nφ + 2Hφ, z_aaf_η=1, time=Nt + 1)
+    @test haskey(ds_h, "displacement")
+    @test dimsize(ds_h["displacement"]) == (λ_caa=Nλ + 2Hλ, φ_aca=Nφ + 2Hφ, z_aaf_displacement=1, time=Nt + 1)
 
     close(ds_h)
     rm(filepath_with_halos)
 
     ds_n = NCDataset(filepath_no_halos)
 
-    @test haskey(ds_n, "η")
-    @test dimsize(ds_n["η"]) == (λ_caa=Nλ, φ_aca=Nφ, z_aaf_η=1, time=Nt + 1)
+    @test haskey(ds_n, "displacement")
+    @test dimsize(ds_n["displacement"]) == (λ_caa=Nλ, φ_aca=Nφ, z_aaf_displacement=1, time=Nt + 1)
 
     close(ds_n)
     rm(filepath_no_halos)
@@ -2576,7 +2569,7 @@ function test_netcdf_hydrostatic_free_surface_mixed_output(arch; immersed=false,
     Nt = 5
     simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
 
-    free_surface_outputs = (; η = model.free_surface.displacement,)
+    free_surface_outputs = (; model.free_surface.displacement,)
 
     outputs = merge(model.velocities, model.tracers, free_surface_outputs)
 
@@ -2607,8 +2600,8 @@ function test_netcdf_hydrostatic_free_surface_mixed_output(arch; immersed=false,
 
     ds_h = NCDataset(filepath_with_halos)
 
-    @test haskey(ds_h, "η")
-    @test dimsize(ds_h["η"]) == (λ_caa=Nλ + 2Hλ, φ_aca=Nφ + 2Hφ, z_aaf_η=1, time=Nt + 1)
+    @test haskey(ds_h, "displacement")
+    @test dimsize(ds_h["displacement"]) == (λ_caa=Nλ + 2Hλ, φ_aca=Nφ + 2Hφ, z_aaf_displacement=1, time=Nt + 1)
 
     @test dimsize(ds_h[:u]) == (λ_faa=Nλ + 2Hλ + 1, φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz,     time=Nt + 1)
     @test dimsize(ds_h[:v]) == (λ_caa=Nλ + 2Hλ,     φ_afa=Nφ + 2Hφ + 1, z_aac=Nz + 2Hz,     time=Nt + 1)
@@ -2621,8 +2614,8 @@ function test_netcdf_hydrostatic_free_surface_mixed_output(arch; immersed=false,
 
     ds_n = NCDataset(filepath_no_halos)
 
-    @test haskey(ds_n, "η")
-    @test dimsize(ds_n["η"]) == (λ_caa=Nλ, φ_aca=Nφ, z_aaf_η=1, time=Nt + 1)
+    @test haskey(ds_n, "displacement")
+    @test dimsize(ds_n["displacement"]) == (λ_caa=Nλ, φ_aca=Nφ, z_aaf_displacement=1, time=Nt + 1)
 
     @test dimsize(ds_n[:u]) == (λ_faa=Nλ + 1, φ_aca=Nφ,     z_aac=Nz,     time=Nt + 1)
     @test dimsize(ds_n[:v]) == (λ_caa=Nλ,     φ_afa=Nφ + 1, z_aac=Nz,     time=Nt + 1)
@@ -2661,7 +2654,7 @@ function test_netcdf_nonhydrostatic_free_surface_only_output(arch; immersed=fals
     Nt = 5
     simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
 
-    outputs = (; η = model.free_surface.displacement)
+    outputs = (; model.free_surface.displacement)
 
     Arch = typeof(arch)
     immersed_str = immersed ? "_immersed" : ""
@@ -2687,14 +2680,14 @@ function test_netcdf_nonhydrostatic_free_surface_only_output(arch; immersed=fals
     run!(simulation)
 
     ds_h = NCDataset(filepath_with_halos)
-    @test haskey(ds_h, "η")
-    @test dimsize(ds_h["η"]) == (x_caa=Nx + 2Hx, y_aca=Ny + 2Hy, z_aaf_η=1, time=Nt + 1)
+    @test haskey(ds_h, "displacement")
+    @test dimsize(ds_h["displacement"]) == (x_caa=Nx + 2Hx, y_aca=Ny + 2Hy, z_aaf_displacement=1, time=Nt + 1)
     close(ds_h)
     rm(filepath_with_halos)
 
     ds_n = NCDataset(filepath_no_halos)
-    @test haskey(ds_n, "η")
-    @test dimsize(ds_n["η"]) == (x_caa=Nx, y_aca=Ny, z_aaf_η=1, time=Nt + 1)
+    @test haskey(ds_n, "displacement")
+    @test dimsize(ds_n["displacement"]) == (x_caa=Nx, y_aca=Ny, z_aaf_displacement=1, time=Nt + 1)
     close(ds_n)
     rm(filepath_no_halos)
 
@@ -2726,7 +2719,7 @@ function test_netcdf_nonhydrostatic_free_surface_mixed_output(arch; immersed=fal
     Nt = 5
     simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
 
-    free_surface_outputs = (; η = model.free_surface.displacement)
+    free_surface_outputs = (; model.free_surface.displacement)
     outputs = merge(model.velocities, model.tracers, free_surface_outputs)
 
     Arch = typeof(arch)
@@ -2756,8 +2749,8 @@ function test_netcdf_nonhydrostatic_free_surface_mixed_output(arch; immersed=fal
 
     ds_h = NCDataset(filepath_with_halos)
 
-    @test haskey(ds_h, "η")
-    @test dimsize(ds_h["η"]) == (x_caa=Nx + 2Hx, y_aca=Ny + 2Hy, z_aaf_η=1, time=Nt + 1)
+    @test haskey(ds_h, "displacement")
+    @test dimsize(ds_h["displacement"]) == (x_caa=Nx + 2Hx, y_aca=Ny + 2Hy, z_aaf_displacement=1, time=Nt + 1)
 
     @test dimsize(ds_h[:u]) == (x_faa=Nx + 2Hx + 1, y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz,     time=Nt + 1)
     @test dimsize(ds_h[:v]) == (x_caa=Nx + 2Hx,     y_afa=Ny + 2Hy + 1, z_aac=Nz + 2Hz,     time=Nt + 1)
@@ -2770,8 +2763,8 @@ function test_netcdf_nonhydrostatic_free_surface_mixed_output(arch; immersed=fal
 
     ds_n = NCDataset(filepath_no_halos)
 
-    @test haskey(ds_n, "η")
-    @test dimsize(ds_n["η"]) == (x_caa=Nx, y_aca=Ny, z_aaf_η=1, time=Nt + 1)
+    @test haskey(ds_n, "displacement")
+    @test dimsize(ds_n["displacement"]) == (x_caa=Nx, y_aca=Ny, z_aaf_displacement=1, time=Nt + 1)
 
     @test dimsize(ds_n[:u]) == (x_faa=Nx + 1, y_aca=Ny,     z_aac=Nz,     time=Nt + 1)
     @test dimsize(ds_n[:v]) == (x_caa=Nx,     y_afa=Ny + 1, z_aac=Nz,     time=Nt + 1)
