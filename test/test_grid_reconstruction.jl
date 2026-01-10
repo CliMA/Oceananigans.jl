@@ -308,11 +308,11 @@ N = 6
                                                    halo=(2, 2, 2))
 
         regular_latlon_grid = LatitudeLongitudeGrid(arch, FT, size=(N, N, N),
-                                                   longitude = (0, 1),
-                                                   latitude = (0, 1),
-                                                   z = (-1, 0),
-                                                   topology = (Periodic, Bounded, Bounded),
-                                                   halo = (2, 2, 2))
+                                                    longitude = (0, 1),
+                                                    latitude = (0, 1),
+                                                    z = (-1, 0),
+                                                    topology = (Periodic, Bounded, Bounded),
+                                                    halo = (2, 2, 2))
 
         stretched_rectilinear_grid = RectilinearGrid(arch, FT, size=(N, N, N),
                                                      x = collect(range(0, 1, length=N+1)),

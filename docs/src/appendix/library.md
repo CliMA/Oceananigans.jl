@@ -199,6 +199,14 @@ Private = false
 NetCDFWriter
 ```
 
+## Extensions
+
+### OceananigansNCDatasetsExt
+
+```@docs
+OceananigansNCDatasetsExt.OceananigansNCDatasetsExt
+```
+
 ## Simulations
 
 ```@autodocs
