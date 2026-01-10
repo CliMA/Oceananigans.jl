@@ -1319,6 +1319,7 @@ function test_windowed_time_average_checkpointing(arch, WriterType)
     @test all(Array(new_wta_u.result) .≈ original_result)
 
     rm.(glob("$(prefix)*$(ext)"), force=true)
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
 
     return nothing
 end
@@ -1434,6 +1435,7 @@ function test_windowed_time_average_continuation_correctness(arch, WriterType)
 
     rm.(glob("$(prefix_A)*$(ext)"), force=true)
     rm.(glob("$(prefix_B)*$(ext)"), force=true)
+    rm.(glob("$(prefix_B)_iteration*.jld2"), force=true)
 
     return nothing
 end
@@ -1556,7 +1558,7 @@ function test_manual_checkpoint_with_checkpointer(arch)
     # Compare final states at iteration 10
     test_model_equality(new_model, ref_model)
 
-    rm(expected_filepath, force=true)
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
 
     return nothing
 end
@@ -1657,6 +1659,7 @@ function test_manual_checkpoint_with_filepath(arch)
     test_model_equality(new_model, ref_model)
 
     rm(custom_filepath, force=true)
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
 
     return nothing
 end
