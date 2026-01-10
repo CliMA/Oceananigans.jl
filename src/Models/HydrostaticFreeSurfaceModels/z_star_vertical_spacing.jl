@@ -6,6 +6,8 @@ using Oceananigans.Grids: halo_size, topology, AbstractGrid, Flat,
 using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 
+import Oceananigans: prognostic_state, restore_prognostic_state!
+
 #####
 ##### Mutable-specific vertical spacings update
 #####
@@ -221,3 +223,35 @@ end
 
 @inline grid_slope_contribution_y(i, j, k, grid::MutableGridOfSomeKind, buoyancy, ::ZStarCoordinate, model_fields) =
     ℑyᵃᶠᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, model_fields) * ∂y_z(i, j, k, grid)
+
+#####
+##### Checkpointing
+#####
+
+prognostic_state(::ZCoordinate, grid) = nothing
+restore_prognostic_state!(::ZCoordinate, grid, ::Nothing) = nothing
+
+function prognostic_state(zc::ZStarCoordinate, grid)
+    z = grid.z
+    return (
+        storage = prognostic_state(zc.storage),
+        ηⁿ   = prognostic_state(z.ηⁿ),
+        σᶜᶜⁿ = prognostic_state(z.σᶜᶜⁿ),
+        σᶠᶜⁿ = prognostic_state(z.σᶠᶜⁿ),
+        σᶜᶠⁿ = prognostic_state(z.σᶜᶠⁿ),
+        σᶠᶠⁿ = prognostic_state(z.σᶠᶠⁿ),
+        σᶜᶜ⁻ = prognostic_state(z.σᶜᶜ⁻),
+    )
+end
+
+function restore_prognostic_state!(zc::ZStarCoordinate, grid, state)
+    z = grid.z
+    restore_prognostic_state!(zc.storage, state.storage)
+    restore_prognostic_state!(z.ηⁿ,   state.ηⁿ)
+    restore_prognostic_state!(z.σᶜᶜⁿ, state.σᶜᶜⁿ)
+    restore_prognostic_state!(z.σᶠᶜⁿ, state.σᶠᶜⁿ)
+    restore_prognostic_state!(z.σᶜᶠⁿ, state.σᶜᶠⁿ)
+    restore_prognostic_state!(z.σᶠᶠⁿ, state.σᶠᶠⁿ)
+    restore_prognostic_state!(z.σᶜᶜ⁻, state.σᶜᶜ⁻)
+    return zc
+end
