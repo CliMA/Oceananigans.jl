@@ -8,6 +8,7 @@ using Oceananigans.TurbulenceClosures.Smagorinskys: Smagorinsky,
     DirectionallyAveragedDynamicSmagorinsky, LagrangianAveragedDynamicSmagorinsky
 using Oceananigans.Models.ShallowWaterModels: ShallowWaterScalarDiffusivity
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: ForwardBackwardScheme, AdamsBashforth3Scheme
+using Oceananigans.Grids: MutableVerticalDiscretization
 using Oceananigans.OutputWriters: load_checkpoint_state
 
 function test_model_equality(test_model, true_model; atol=0)
@@ -403,6 +404,76 @@ function test_checkpointing_split_explicit_free_surface(arch, timestepper, free_
     return nothing
 end
 
+function test_checkpointing_zstar_coordinate(arch, timestepper)
+    Nx, Ny, Nz = 8, 8, 8
+    Lx, Ly, Lz = 1000, 1000, 100
+    Δt = 0.1
+
+    # Perturbations that drive free surface motion (exercises z-star dynamics)
+    T_init(x, y, z) = 20 + 0.01 * z + 0.1 * exp(-((x - Lx/2)^2 + (y - Ly/2)^2) / (Lx/4)^2)
+    u_init(x, y, z) = 0.1 * sin(2π * x / Lx)
+
+    function make_model()
+        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz),
+                               x = (0, Lx), y = (0, Ly),
+                               z = MutableVerticalDiscretization((-Lz, 0)))
+        free_surface = SplitExplicitFreeSurface(grid; substeps=30)
+        return HydrostaticFreeSurfaceModel(grid; timestepper, free_surface,
+                                           buoyancy = SeawaterBuoyancy(),
+                                           tracers = (:T, :S))
+    end
+
+    # Reference run: 10 iterations continuously
+    ref_model = make_model()
+    set!(ref_model, T=T_init, S=35, u=u_init)
+    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    @test_nowarn run!(ref_simulation)
+
+    # Checkpointed run: 5 iterations, checkpoint
+    model = make_model()
+    set!(model, T=T_init, S=35, u=u_init)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+
+    prefix = "zstar_checkpointing_$(typeof(arch))_$(timestepper)"
+    simulation.output_writers[:checkpointer] = Checkpointer(model,
+                                                            schedule = IterationInterval(5),
+                                                            prefix = prefix)
+
+    @test_nowarn run!(simulation)
+
+    # Restore and continue for 5 more iterations
+    new_model = make_model()
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
+    new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
+                                                                schedule = IterationInterval(5),
+                                                                prefix = prefix)
+
+    @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_nowarn run!(new_simulation)
+
+    # Compare final states at iteration 10
+    test_model_equality(new_model, ref_model)
+
+    # Verify z-star is being exercised (non-zero free surface)
+    @test maximum(abs, parent(ref_model.grid.z.ηⁿ)) > 0
+
+    # Check ZStarCoordinate storage field
+    ref_storage = ref_model.vertical_coordinate.storage
+    new_storage = new_model.vertical_coordinate.storage
+    @test all(Array(interior(ref_storage)) .≈ Array(interior(new_storage)))
+
+    # Check grid's mutable vertical discretization fields
+    ref_z = ref_model.grid.z
+    new_z = new_model.grid.z
+    @test all(parent(ref_z.ηⁿ) .≈ parent(new_z.ηⁿ))
+    @test all(parent(ref_z.σᶜᶜⁿ) .≈ parent(new_z.σᶜᶜⁿ))
+    @test all(parent(ref_z.σᶜᶜ⁻) .≈ parent(new_z.σᶜᶜ⁻))
+
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+
+    return nothing
+end
+
 function test_checkpointing_implicit_free_surface(arch, solver_method)
     Nx, Ny, Nz = 16, 16, 16
     Lx, Ly, Lz = 1000, 1000, 1000
@@ -773,61 +844,6 @@ function test_checkpointing_closure_fields(arch)
     return nothing
 end
 
-function test_checkpointing_catke_closure(arch, timestepper)
-    Nx, Ny, Nz = 8, 8, 8
-    Lx, Ly, Lz = 100, 100, 100
-    Δt = 0.1
-
-    T_init(x, y, z) = 20 + 0.01 * z
-    u_init(x, y, z) = 0.01 * sin(2π * x / Lx + 3π * y / Ly)
-
-    function make_model()
-        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-        return HydrostaticFreeSurfaceModel(grid; timestepper,
-                                           closure = CATKEVerticalDiffusivity(),
-                                           buoyancy = SeawaterBuoyancy(),
-                                           tracers = (:T, :S))
-    end
-
-    # Reference run: 10 iterations continuously
-    ref_model = make_model()
-    set!(ref_model, T=T_init, S=35, u=u_init)
-    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
-    @test_nowarn run!(ref_simulation)
-
-    # Checkpointed run: 5 iterations, checkpoint
-    model = make_model()
-    set!(model, T=T_init, S=35, u=u_init)
-    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
-
-    prefix = "catke_checkpointing_$(typeof(arch))_$(timestepper)"
-    simulation.output_writers[:checkpointer] = Checkpointer(model,
-                                                            schedule = IterationInterval(5),
-                                                            prefix = prefix)
-
-    @test_nowarn run!(simulation)
-
-    # Restore and continue for 5 more iterations
-    new_model = make_model()
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
-    new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
-                                                                schedule = IterationInterval(5),
-                                                                prefix = prefix)
-
-    @test_nowarn set!(new_simulation; checkpoint=:latest)
-    @test_nowarn run!(new_simulation)
-
-    # Compare final states at iteration 10
-    # We need a small atol because while all prognostic fields are exactly equal, the e
-    # field can have tiny differences due to floating-point ordering with RK3 I think.
-    atol = timestepper == :SplitRungeKutta3 ? 1e-20 : 0
-    test_model_equality(new_model, ref_model; atol)
-
-    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
-
-    return nothing
-end
-
 function test_checkpointing_smagorinsky_closure(arch, timestepper, closure, closure_name)
     Nx, Ny, Nz = 8, 8, 8
     Lx, Ly, Lz = 1, 1, 1
@@ -945,6 +961,61 @@ function test_checkpointing_ri_based_closure(arch, timestepper)
 
     # Compare final states at iteration 10
     test_model_equality(new_model, ref_model)
+
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+
+    return nothing
+end
+
+function test_checkpointing_catke_closure(arch, timestepper)
+    Nx, Ny, Nz = 8, 8, 8
+    Lx, Ly, Lz = 100, 100, 100
+    Δt = 0.1
+
+    T_init(x, y, z) = 20 + 0.01 * z
+    u_init(x, y, z) = 0.01 * sin(2π * x / Lx + 3π * y / Ly)
+
+    function make_model()
+        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+        return HydrostaticFreeSurfaceModel(grid; timestepper,
+                                           closure = CATKEVerticalDiffusivity(),
+                                           buoyancy = SeawaterBuoyancy(),
+                                           tracers = (:T, :S))
+    end
+
+    # Reference run: 10 iterations continuously
+    ref_model = make_model()
+    set!(ref_model, T=T_init, S=35, u=u_init)
+    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    @test_nowarn run!(ref_simulation)
+
+    # Checkpointed run: 5 iterations, checkpoint
+    model = make_model()
+    set!(model, T=T_init, S=35, u=u_init)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+
+    prefix = "catke_checkpointing_$(typeof(arch))_$(timestepper)"
+    simulation.output_writers[:checkpointer] = Checkpointer(model,
+                                                            schedule = IterationInterval(5),
+                                                            prefix = prefix)
+
+    @test_nowarn run!(simulation)
+
+    # Restore and continue for 5 more iterations
+    new_model = make_model()
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
+    new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
+                                                                schedule = IterationInterval(5),
+                                                                prefix = prefix)
+
+    @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_nowarn run!(new_simulation)
+
+    # Compare final states at iteration 10
+    # We need a small atol because while all prognostic fields are exactly equal, the e
+    # field can have tiny differences due to floating-point ordering with RK3 I think.
+    atol = timestepper == :SplitRungeKutta3 ? 1e-20 : 0
+    test_model_equality(new_model, ref_model; atol)
 
     rm.(glob("$(prefix)_iteration*.jld2"), force=true)
 
@@ -1084,77 +1155,6 @@ function test_checkpoint_continuation_matches_direct(arch, timestepper)
     end
 
     rm.(glob("$(prefix)_iteration*.jld2"), force=true)
-
-    return nothing
-end
-
-function test_checkpoint_empty_tracers(arch)
-    N = 8
-    L = 1
-    Δt = 0.1
-
-    function make_model()
-        grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
-        return NonhydrostaticModel(grid; tracers=())
-    end
-
-    # Reference run: 10 iterations continuously
-    ref_model = make_model()
-    set!(ref_model, u=1, v=0.5)
-    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
-    @test_nowarn run!(ref_simulation)
-
-    # Checkpointed run: 5 iterations, checkpoint
-    model = make_model()
-    set!(model, u=1, v=0.5)
-    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
-
-    prefix = "empty_tracers_checkpointing_$(typeof(arch))"
-    simulation.output_writers[:checkpointer] = Checkpointer(model,
-                                                            schedule = IterationInterval(5),
-                                                            prefix = prefix)
-
-    @test_nowarn run!(simulation)
-
-    # Restore and continue for 5 more iterations
-    new_model = make_model()
-    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
-    new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
-                                                                schedule = IterationInterval(5),
-                                                                prefix = prefix)
-
-    @test_nowarn set!(new_simulation; checkpoint=:latest)
-    @test_nowarn run!(new_simulation)
-
-    # Compare final states at iteration 10
-    test_model_equality(new_model, ref_model)
-
-    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
-
-    return nothing
-end
-
-function test_checkpoint_missing_file_warning(arch)
-    N = 8
-    L = 1
-    Δt = 0.1
-
-    grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
-    model = NonhydrostaticModel(grid)
-
-    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
-
-    # Use a unique prefix that doesn't have any checkpoint files
-    prefix = "nonexistent_checkpoint_$(typeof(arch))_$(rand(1:100000))"
-    simulation.output_writers[:checkpointer] = Checkpointer(model,
-                                                            schedule = IterationInterval(5),
-                                                            prefix = prefix)
-
-    # Should warn but not error when no checkpoint files exist
-    @test_logs (:warn,) set!(simulation; checkpoint=:latest)
-
-    # Simulation should still be at iteration 0
-    @test iteration(simulation) == 0
 
     return nothing
 end
@@ -1438,6 +1438,77 @@ function test_windowed_time_average_continuation_correctness(arch, WriterType)
     return nothing
 end
 
+function test_checkpoint_empty_tracers(arch)
+    N = 8
+    L = 1
+    Δt = 0.1
+
+    function make_model()
+        grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+        return NonhydrostaticModel(grid; tracers=())
+    end
+
+    # Reference run: 10 iterations continuously
+    ref_model = make_model()
+    set!(ref_model, u=1, v=0.5)
+    ref_simulation = Simulation(ref_model, Δt=Δt, stop_iteration=10)
+    @test_nowarn run!(ref_simulation)
+
+    # Checkpointed run: 5 iterations, checkpoint
+    model = make_model()
+    set!(model, u=1, v=0.5)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+
+    prefix = "empty_tracers_checkpointing_$(typeof(arch))"
+    simulation.output_writers[:checkpointer] = Checkpointer(model,
+                                                            schedule = IterationInterval(5),
+                                                            prefix = prefix)
+
+    @test_nowarn run!(simulation)
+
+    # Restore and continue for 5 more iterations
+    new_model = make_model()
+    new_simulation = Simulation(new_model, Δt=Δt, stop_iteration=10)
+    new_simulation.output_writers[:checkpointer] = Checkpointer(new_model,
+                                                                schedule = IterationInterval(5),
+                                                                prefix = prefix)
+
+    @test_nowarn set!(new_simulation; checkpoint=:latest)
+    @test_nowarn run!(new_simulation)
+
+    # Compare final states at iteration 10
+    test_model_equality(new_model, ref_model)
+
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+
+    return nothing
+end
+
+function test_checkpoint_missing_file_warning(arch)
+    N = 8
+    L = 1
+    Δt = 0.1
+
+    grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+    model = NonhydrostaticModel(grid)
+
+    simulation = Simulation(model, Δt=Δt, stop_iteration=5)
+
+    # Use a unique prefix that doesn't have any checkpoint files
+    prefix = "nonexistent_checkpoint_$(typeof(arch))_$(rand(1:100000))"
+    simulation.output_writers[:checkpointer] = Checkpointer(model,
+                                                            schedule = IterationInterval(5),
+                                                            prefix = prefix)
+
+    # Should warn but not error when no checkpoint files exist
+    @test_logs (:warn,) set!(simulation; checkpoint=:latest)
+
+    # Simulation should still be at iteration 0
+    @test iteration(simulation) == 0
+
+    return nothing
+end
+
 function test_manual_checkpoint_with_checkpointer(arch)
     N = 8
     L = 1
@@ -1619,7 +1690,7 @@ function test_checkpoint_at_end(arch)
     return nothing
 end
 
-for arch in archs
+for arch in [CPU(), GPU()]
     for model_type in (:nonhydrostatic, :hydrostatic)
         for pickup_method in (:boolean, :iteration, :filepath)
             @testset "Minimal restore [$model_type, $pickup_method] [$(typeof(arch))]" begin
@@ -1668,6 +1739,13 @@ for arch in archs
                 @info "  Testing SplitExplicitFreeSurface checkpointing [$(typeof(arch)), $timestepper, $fs_ts_name]..."
                 test_checkpointing_split_explicit_free_surface(arch, timestepper, free_surface_timestepper)
             end
+        end
+    end
+
+    for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+        @testset "ZStarCoordinate checkpointing [$(typeof(arch)), $timestepper]" begin
+            @info "  Testing ZStarCoordinate checkpointing [$(typeof(arch)), $timestepper]..."
+            test_checkpointing_zstar_coordinate(arch, timestepper)
         end
     end
 
