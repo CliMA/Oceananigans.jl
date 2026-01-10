@@ -47,7 +47,7 @@ struct XPartition{N} <: AbstractPartition
             sizes
         end
 
-        return new{typeof(s)}(div)
+        return new{typeof(div)}(div)
     end
 end
 
