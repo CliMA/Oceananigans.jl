@@ -649,10 +649,10 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
         path = first(part_paths) # part1 is first?
     end
 
-    file = jldopen(path; reader_kw...)
+    handle = jldopen(path; reader_kw...)
 
     indices = try
-        file["timeseries/$name/serialized/indices"]
+        handle["timeseries/$name/serialized/indices"]
     catch
         (:, :, :)
     end
@@ -666,7 +666,7 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
     end
 
     if isnothing(grid)
-        grid = file["serialized/grid"]
+        grid = handle["serialized/grid"]
     end
 
     # If isreconstructed(grid), it probably means that the data was generated prior to
@@ -675,49 +675,49 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
     # and LatitudeLongitudeGrid (but not OrthogonalSphericalShellGrid) and we also assume
     # GridFittedBottom if the grid is an ImmersedBoundaryGrid. If these assumptions can be relaxed
     # in the future, they should.
-    isreconstructed(grid) && (grid = reconstruct_legacy_grid(grid, file, architecture))
+    isreconstructed(grid) && (grid = reconstruct_legacy_grid(grid, handle, architecture))
 
     # This should be removed eventually... (4/5/2022)
     grid = try
         on_architecture(architecture, grid)
     catch err # Likely, the grid was saved with CuArrays or generated with a different Julia version.
         if grid isa RectilinearGrid # we can try...
-            manually_reconstruct_rectilinear_grid(grid, file, architecture)
+            manually_reconstruct_rectilinear_grid(grid, handle, architecture)
         else
             throw(err)
         end
     end
 
     if boundary_conditions isa UnspecifiedBoundaryConditions
-        boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
+        boundary_conditions = handle["timeseries/$name/serialized/boundary_conditions"]
         boundary_conditions = on_architecture(architecture, boundary_conditions)
     end
 
-    isnothing(location) && (location = file["timeseries/$name/serialized/location"])
+    isnothing(location) && (location = handle["timeseries/$name/serialized/location"])
     LX, LY, LZ = location
     loc = (LX(), LY(), LZ())
 
     if isnothing(Nparts)
-        isnothing(iterations) && (iterations = parse.(Int, keys(file["timeseries/t"])))
-        isnothing(times) && (times = [file["timeseries/t/$i"] for i in iterations])
-        close(file)
+        isnothing(iterations) && (iterations = parse.(Int, keys(handle["timeseries/t"])))
+        isnothing(times) && (times = [handle["timeseries/t/$i"] for i in iterations])
+        close(handle)
     else
         all_iterations = []
         all_times = []
-        part_iterations = parse.(Int, keys(file["timeseries/t"]))
-        part_times = [file["timeseries/t/$i"] for i in part_iterations]
+        part_iterations = parse.(Int, keys(handle["timeseries/t"]))
+        part_times = [handle["timeseries/t/$i"] for i in part_iterations]
         push!(all_iterations, part_iterations)
         push!(all_times, part_times)
-        close(file)
+        close(handle)
 
         for part in 2:Nparts
             path = part_paths[part]
-            file = jldopen(path; reader_kw...)
-            part_iterations = parse.(Int, keys(file["timeseries/t"]))
-            part_times = [file["timeseries/t/$i"] for i in part_iterations]
+            local handle = jldopen(path; reader_kw...)
+            part_iterations = parse.(Int, keys(handle["timeseries/t"]))
+            part_times = [handle["timeseries/t/$i"] for i in part_iterations]
             push!(all_iterations, part_iterations)
             push!(all_times, part_times)
-            close(file)
+            close(handle)
         end
 
         iterations = vcat(all_iterations...)
@@ -899,8 +899,7 @@ const MAX_FTS_TUPLE_SIZE = 10
 fill_halo_regions!(fts::OnDiskFTS) = nothing
 
 function fill_halo_regions!(fts::InMemoryFTS)
-    partitioned_indices = Iterators.partition(time_indices(fts), MAX_FTS_TUPLE_SIZE)
-    partitioned_indices = collect(partitioned_indices)
+    partitioned_indices = collect(Iterators.partition(time_indices(fts), MAX_FTS_TUPLE_SIZE))
     Ni = length(partitioned_indices)
 
     asyncmap(1:Ni) do i

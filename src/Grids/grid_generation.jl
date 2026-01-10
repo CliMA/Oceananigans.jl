@@ -68,9 +68,9 @@ function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name
 
     # Trim face locations for periodic domains
     TF = total_length(Face(), topo, N, H)
-    F  = F[1:TF]
+    _F  = F[1:TF]
 
-    Δᶜ = [F[i + 1] - F[i] for i = 1:TF-1]
+    Δᶜ = [_F[i + 1] - _F[i] for i = 1:TF-1]
 
     Δᶠ = [Δᶠ[1], Δᶠ..., Δᶠ[end]]
     for i = length(Δᶠ):-1:2
@@ -80,17 +80,17 @@ function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name
     Δᶜ = OffsetArray(on_architecture(arch, Δᶜ), -H)
     Δᶠ = OffsetArray(on_architecture(arch, Δᶠ), -H - 1)
 
-    F = OffsetArray(F, -H)
-    C = OffsetArray(C, -H)
+    OF = OffsetArray(_F, -H)
+    OC = OffsetArray( C, -H)
 
     # Convert to appropriate array type for arch
-    F = OffsetArray(on_architecture(arch, F.parent), F.offsets...)
-    C = OffsetArray(on_architecture(arch, C.parent), C.offsets...)
+    OF = OffsetArray(on_architecture(arch, OF.parent), OF.offsets...)
+    OC = OffsetArray(on_architecture(arch, OC.parent), OC.offsets...)
 
     if coordinate_name == :z
-        return L, StaticVerticalDiscretization(F, C, Δᶠ, Δᶜ)
+        return L, StaticVerticalDiscretization(OF, OC, Δᶠ, Δᶜ)
     else
-        return L, F, C, Δᶠ, Δᶜ
+        return L, OF, OC, Δᶠ, Δᶜ
     end
 end
 
