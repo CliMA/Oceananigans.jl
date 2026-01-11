@@ -112,7 +112,7 @@ steps:
       buildkite-agent artifact upload "$$tarball"
 
       # Preserve the original test result for Buildkite
-      exit $test_status
+      exit "$${test_status}"
 
     matrix:
       setup:
@@ -168,7 +168,7 @@ steps:
 
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
-      julia +$JULIA_VERSION -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(coverage="user")'
+      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(coverage="user")'
       test_status=$$?
       set -e
 
@@ -191,7 +191,7 @@ steps:
       buildkite-agent artifact upload "$$tarball"
 
       # Preserve the original test result for Buildkite
-      exit $test_status
+      exit "$${test_status}"
 
     matrix:
       setup:
