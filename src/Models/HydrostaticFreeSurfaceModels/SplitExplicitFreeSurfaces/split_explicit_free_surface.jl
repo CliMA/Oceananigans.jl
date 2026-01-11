@@ -307,13 +307,14 @@ end
     Δτ = τᶠ[2] - τᶠ[1]
 
     averaging_weights = map(averaging_kernel, τᶠ[2:end])
+    # Find the latest allowable weight
     M★ = something(findlast(>(0), averaging_weights), firstindex(averaging_weights))
 
-    tmp = averaging_weights[1:M★]
-    tmp ./= sum(tmp)
-    transport_weights = [sum(tmp[i:M★]) for i in 1:M★] ./ M
+    trimmed_weights = averaging_weights[1:M★]
+    trimmed_weights ./= sum(trimmed_weights)
+    transport_weights = [sum(trimmed_weights[i:M★]) for i in 1:M★] ./ M
 
-    return FT(Δτ), map(FT, tuple(tmp...)), map(FT, tuple(transport_weights...))
+    return FT(Δτ), map(FT, tuple(trimmed_weights...)), map(FT, tuple(transport_weights...))
 end
 
 Base.summary(s::FixedTimeStepSize)  = string("FixedTimeStepSize($(prettytime(s.Δt_barotropic)))")
