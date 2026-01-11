@@ -112,7 +112,7 @@ steps:
       buildkite-agent artifact upload "$$tarball"
 
       # Preserve the original test result for Buildkite
-      exit $test_status
+      exit "$${test_status}"
 
     matrix:
       setup:
@@ -191,7 +191,7 @@ steps:
       buildkite-agent artifact upload "$$tarball"
 
       # Preserve the original test result for Buildkite
-      exit $test_status
+      exit "$${test_status}"
 
     matrix:
       setup:
