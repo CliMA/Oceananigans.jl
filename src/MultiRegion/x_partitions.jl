@@ -25,8 +25,8 @@ function partition_extent(p::XPartition, grid)
     y = cpu_face_constructor_y(grid)
     z = cpu_face_constructor_z(grid)
 
-    _x = divide_direction(x, p)
-    return Tuple((x = xi, y = y, z = z) for xi in _x)
+    divided_x = divide_direction(x, p)
+    return Tuple((x = xi, y = y, z = z) for xi in divided_x)
 end
 
 function partition_topology(p::XPartition, grid)
