@@ -37,17 +37,17 @@ function FFTImplicitFreeSurfaceSolver(grid, settings=nothing, gravitational_acce
 
     # Construct a "horizontal grid". We support either x or y being Flat, but not both.
     TX, TY, TZ = topology(grid)
-    _sz = Nx, Ny = (grid.Nx, grid.Ny)
-    _halo = (grid.Hx, grid.Hy)
-    _domain = (x = x_domain(grid), y = y_domain(grid))
+    sz = Nx, Ny = (grid.Nx, grid.Ny)
+    halo = (grid.Hx, grid.Hy)
+    domain = (x = x_domain(grid), y = y_domain(grid))
 
     # Reduce kwargs.
     # Either [1, 2], [1], or [2]
     nonflat_dims = findall(T -> !(T() isa Flat), (TX, TY))
 
-    sz = Tuple(_sz[i] for i in nonflat_dims)
-    halo = Tuple(_halo[i] for i in nonflat_dims)
-    domain = NamedTuple((:x, :y)[i] => _domain[i] for i in nonflat_dims)
+    nonflat_sz = Tuple(sz[i] for i in nonflat_dims)
+    nonflat_halo = Tuple(halo[i] for i in nonflat_dims)
+    nonflat_domain = NamedTuple((:x, :y)[i] => domain[i] for i in nonflat_dims)
 
     # Build a "horizontal grid" with a Flat vertical direction.
     # Even if the three dimensional grid is vertically stretched, we can only use
@@ -55,9 +55,9 @@ function FFTImplicitFreeSurfaceSolver(grid, settings=nothing, gravitational_acce
     # horizontal direction.
     horizontal_grid = RectilinearGrid(architecture(grid), eltype(grid);
                                       topology = (TX, TY, Flat),
-                                      size = sz,
-                                      halo = halo,
-                                      domain...)
+                                      size = nonflat_sz,
+                                      halo = nonflat_halo,
+                                      nonflat_domain...)
 
     solver = FFTBasedPoissonSolver(horizontal_grid)
     right_hand_side = solver.storage
