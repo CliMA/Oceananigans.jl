@@ -181,10 +181,9 @@ set!(model, u=uᵢ, w=uᵢ, T=Tᵢ, S=35)
 simulation = Simulation(model, Δt=10, stop_time=2hours)
 
 # The `TimeStepWizard` helps ensure stable time-stepping
-# with a Courant-Freidrichs-Lewy (CFL) number of 1.0.
+# with a Courant-Freidrichs-Lewy (CFL) number of 0.7.
 
-wizard = TimeStepWizard(cfl=1, max_change=1.1, max_Δt=1minute)
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
+conjure_time_step_wizard!(simulation, cfl=0.7)
 
 # Nice progress messaging is helpful:
 
