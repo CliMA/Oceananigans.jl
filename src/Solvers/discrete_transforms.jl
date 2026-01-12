@@ -91,12 +91,12 @@ function DiscreteTransform(plan, direction, grid, dims)
     twiddle = twiddle_factors(arch, grid, dims)
     transpose = arch isa GPU && dims == [2] ? (2, 1, 3) : nothing
 
-    topo = [topology(grid)[d]() for d in dims]
-    topo = length(topo) == 1 ? topo[1] : topo
+    topos = [topology(grid)[d]() for d in dims]
+    topos = length(topos) == 1 ? topos[1] : topos
 
     dims = length(dims) == 1 ? dims[1] : dims
 
-    return DiscreteTransform(plan, grid, direction, dims, topo, normalization, twiddle, transpose)
+    return DiscreteTransform(plan, grid, direction, dims, topos, normalization, twiddle, transpose)
 end
 
 #####

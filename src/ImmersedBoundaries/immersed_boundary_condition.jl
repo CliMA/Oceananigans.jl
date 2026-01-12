@@ -69,8 +69,8 @@ regularize_immersed_boundary_condition(default::DefaultBoundaryCondition, ibg::I
 
 # Convert certain non-immersed boundary conditions to immersed boundary conditions
 function regularize_immersed_boundary_condition(ibc::Union{VBC, GBC, FBC}, ibg::IBG, loc, field_name, args...)
-    ibc = ImmersedBoundaryCondition(Tuple(ibc for i=1:6)...)
-    regularize_immersed_boundary_condition(ibc, ibg, loc, field_name, args...)
+    _ibc = ImmersedBoundaryCondition(Tuple(ibc for i=1:6)...)
+    regularize_immersed_boundary_condition(_ibc, ibg, loc, field_name, args...)
 end
 
 """

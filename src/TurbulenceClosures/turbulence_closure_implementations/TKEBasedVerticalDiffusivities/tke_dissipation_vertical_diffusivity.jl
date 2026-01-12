@@ -228,19 +228,19 @@ function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfT
     _tupled_tracer_diffusivities = Dict{Symbol, Any}(name => κc for name in tracer_names)
     _tupled_tracer_diffusivities[:e] = κe
     _tupled_tracer_diffusivities[:ϵ] = κϵ
-    _tupled_tracer_diffusivities = NamedTuple(name => _tupled_tracer_diffusivities[name]
-                                              for name in tracer_names)
+    _ntupled_tracer_diffusivities = NamedTuple(name => _tupled_tracer_diffusivities[name]
+                                               for name in tracer_names)
 
     _tupled_implicit_linear_coefficients = Dict{Symbol, Any}(name => ZeroField() for name in tracer_names)
     _tupled_implicit_linear_coefficients[:e] = Le
     _tupled_implicit_linear_coefficients[:ϵ] = Lϵ
-    _tupled_implicit_linear_coefficients = NamedTuple(name => _tupled_implicit_linear_coefficients[name]
-                                                      for name in tracer_names)
+    _ntupled_implicit_linear_coefficients = NamedTuple(name => _tupled_implicit_linear_coefficients[name]
+                                                       for name in tracer_names)
 
     return TKEDissipationDiffusivityFields(κu, κc, κe, κϵ, Le, Lϵ,
                                            previous_velocities,
-                                           _tupled_tracer_diffusivities,
-                                           _tupled_implicit_linear_coefficients)
+                                           _ntupled_tracer_diffusivities,
+                                           _ntupled_implicit_linear_coefficients)
 end
 
 @inline viscosity_location(::FlavorOfTD) = (c, c, f)
