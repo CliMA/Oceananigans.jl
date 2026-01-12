@@ -184,7 +184,6 @@ function rk_substep_tracers!(tracers, model, Δt)
             Gⁿ = model.timestepper.Gⁿ[tracer_name]
             Ψ⁻ = model.timestepper.Ψ⁻[tracer_name]
             c  = tracers[tracer_name]
-            closure = model.closure
 
             launch!(architecture(grid), grid, :xyz,
                     _rk_substep_tracer_field!, c, grid, convert(FT, Δt), Gⁿ, Ψ⁻)

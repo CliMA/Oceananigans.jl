@@ -199,7 +199,6 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
             Gⁿ = model.timestepper.Gⁿ[tracer_name]
             G⁻ = model.timestepper.G⁻[tracer_name]
             tracer_field = tracers[tracer_name]
-            closure = model.closure
             grid = model.grid
 
             FT = eltype(grid)
