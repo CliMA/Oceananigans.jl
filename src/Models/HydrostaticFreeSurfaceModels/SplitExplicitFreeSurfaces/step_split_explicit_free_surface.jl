@@ -1,3 +1,5 @@
+using KernelAbstractions.Extras.LoopInfo: @unroll
+
 # Evolution Kernels
 #
 # ∂t(η) = - ∇⋅U
