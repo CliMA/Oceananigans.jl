@@ -6,7 +6,6 @@ export
     PrescribedVelocityFields, ZStarCoordinate, ZCoordinate
 
 using KernelAbstractions: @index, @kernel
-using KernelAbstractions.Extras.LoopInfo: @unroll
 using Adapt: Adapt
 
 using Oceananigans.Utils: launch!, @apply_regionally
