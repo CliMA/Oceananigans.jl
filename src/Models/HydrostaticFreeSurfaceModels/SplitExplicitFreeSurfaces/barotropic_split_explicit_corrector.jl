@@ -89,9 +89,15 @@ end
     immersedᶜᶠᶜ = peripheral_node(i, j, k, grid, Center(), Face(), Center())
     immersedᶠᶜᶜ = peripheral_node(i, j, k, grid, Face(), Center(), Center())
 
+    δuᵢ = @inbounds U[i, j, 1] - U̅[i, j, 1]
+    δvⱼ = @inbounds V[i, j, 1] - V̅[i, j, 1]
+
+    u_correction = ifelse(Hᶠᶜ == 0, zero(grid), δuᵢ / Hᶠᶜ)
+    v_correction = ifelse(Hᶜᶠ == 0, zero(grid), δvⱼ / Hᶜᶠ)
+
     @inbounds begin
-        ũ⁺ = u[i, j, k] + (Ũ[i, j, 1] - U̅[i, j, 1]) / Hᶠᶜ
-        ṽ⁺ = v[i, j, k] + (Ṽ[i, j, 1] - V̅[i, j, 1]) / Hᶜᶠ
+        ũ⁺ = u[i, j, k] + u_correction
+        ṽ⁺ = v[i, j, k] + v_correction
 
         ũ[i, j, k] = ifelse(immersedᶠᶜᶜ, zero(grid), ũ⁺)
         ṽ[i, j, k] = ifelse(immersedᶜᶠᶜ, zero(grid), ṽ⁺)
