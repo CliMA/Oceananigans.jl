@@ -37,13 +37,10 @@ include("netcdf_writer.jl")
 include("checkpointer.jl")
 
 function written_names(filename)
-    field_names = String[]
-    jldopen(filename, "r") do file
+    return jldopen(filename, "r") do file
         all_names = keys(file["timeseries"])
-        field_names = filter(n -> n != "t", all_names)
+        filter(n -> n != "t", all_names)
     end
-    return field_names
 end
 
 end # module
-
