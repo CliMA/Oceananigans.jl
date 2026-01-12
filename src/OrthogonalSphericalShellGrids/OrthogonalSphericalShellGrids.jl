@@ -16,7 +16,6 @@ using Oceananigans.Grids: total_length, add_halos, fill_metric_halo_regions!
 using Distances: haversine
 using Adapt: Adapt, adapt
 using KernelAbstractions: @kernel, @index
-using KernelAbstractions.Extras.LoopInfo: @unroll
 
 include("generate_tripolar_coordinates.jl")
 include("tripolar_grid.jl")
