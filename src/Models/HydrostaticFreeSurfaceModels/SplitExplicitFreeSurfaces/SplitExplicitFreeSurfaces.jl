@@ -15,7 +15,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface,
                                                         update_vertical_velocities!
 
 using KernelAbstractions: @index, @kernel
-using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Grids: column_depthᶜᶠᵃ,
                           column_depthᶠᶜᵃ

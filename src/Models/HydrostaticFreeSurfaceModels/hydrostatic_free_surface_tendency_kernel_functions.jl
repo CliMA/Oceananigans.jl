@@ -6,7 +6,6 @@ using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
 using Oceananigans.Forcings: with_advective_forcing
 using Oceananigans.TurbulenceClosures: closure_auxiliary_velocity
 using Oceananigans.Utils: sum_of_velocities
-using KernelAbstractions: @private
 
 """
 Return the tendency for the horizontal velocity in the ``x``-direction, or the east-west

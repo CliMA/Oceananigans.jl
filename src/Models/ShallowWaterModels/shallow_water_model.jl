@@ -1,7 +1,7 @@
 using Oceananigans: AbstractModel
 
 using Oceananigans.Architectures: AbstractArchitecture
-using Oceananigans.AbstractOperations: @at, KernelFunctionOperation
+using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.DistributedComputations
 using Oceananigans.Advection: VectorInvariant
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
