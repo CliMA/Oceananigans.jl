@@ -749,7 +749,7 @@ end
 import Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, δxTᶠᵃᵃ, δyTᵃᶠᵃ
 
 @inline ℑxᶠᵃᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) =
-    @inbounds ifelse((i == 1) & (j < 1),              (c[1, j, k] + c[j, 1, k])/2,
+    @inbounds ifelse((i == 1) & (j < 1),               (c[1, j, k] + c[j, 1, k])/2,
               ifelse((i == grid.Nx+1) & (j < 1),       (c[grid.Nx-j+1, 1, k] + c[grid.Nx, j, k])/2,
               ifelse((i == grid.Nx+1) & (j > grid.Ny), (c[j, grid.Ny, k] + c[grid.Nx, j, k])/2 ,
               ifelse((i == 1) & (j > grid.Ny),         (c[1, j, k] + c[grid.Nx-j+1, grid.Ny, k])/2 ,
