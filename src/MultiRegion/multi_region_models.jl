@@ -52,7 +52,7 @@ for T in Types
 end
 
 @inline _getregion(fs::SplitExplicitFreeSurface{E}, r) where {E} =
-    SplitExplicitFreeSurface{E}(getregion(fs.η, r), 
+    SplitExplicitFreeSurface{E}(getregion(fs.displacement, r),
                                 getregion(fs.barotropic_velocities, r),
                                 getregion(fs.filtered_state, r),
                                 getregion(fs.gravitational_acceleration, r),
@@ -61,7 +61,7 @@ end
                                 getregion(fs.timestepper, r))
 
 @inline getregion(fs::SplitExplicitFreeSurface{E}, r) where {E} =
-    SplitExplicitFreeSurface{E}(_getregion(fs.η, r), 
+    SplitExplicitFreeSurface{E}(_getregion(fs.displacement, r),
                                 _getregion(fs.barotropic_velocities, r),
                                 _getregion(fs.filtered_state, r),
                                 _getregion(fs.gravitational_acceleration, r),
