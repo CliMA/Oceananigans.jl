@@ -1693,7 +1693,7 @@ function test_checkpoint_at_end(arch)
     return nothing
 end
 
-for arch in [CPU(), GPU()]
+for arch in archs
     for model_type in (:nonhydrostatic, :hydrostatic)
         for pickup_method in (:boolean, :iteration, :filepath)
             @testset "Minimal restore [$model_type, $pickup_method] [$(typeof(arch))]" begin
