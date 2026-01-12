@@ -71,7 +71,7 @@ end
 
 Return kernel parameters for computing 2D (surface) variables including halo regions.
 
-The returned `KernelParameters` cover the total date ming one halo cell on each side
+The returned `KernelParameters` cover the total domain minus one halo cell on each side
 (indices `-Hx+2:Nx+Hx-1` and `-Hy+2:Ny+Hy-1`), which is sufficient for computing
 quantities that require neighbor data (like derivatives and interpolations).
 """
