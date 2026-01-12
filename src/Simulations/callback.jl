@@ -139,9 +139,7 @@ end
 validate_schedule(func, schedule) = schedule
 
 function prognostic_state(callback::Callback)
-    return (
-        schedule = prognostic_state(callback.schedule),
-    )
+    return (; schedule = prognostic_state(callback.schedule))
 end
 
 function restore_prognostic_state!(callback::Callback, state)

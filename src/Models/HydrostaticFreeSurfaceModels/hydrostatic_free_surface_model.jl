@@ -333,19 +333,20 @@ timestepper(model::HydrostaticFreeSurfaceModel) = model.timestepper
 buoyancy_force(model::HydrostaticFreeSurfaceModel) = model.buoyancy
 buoyancy_tracers(model::HydrostaticFreeSurfaceModel) = model.tracers
 
-# For checkpointing
+#####
+##### Checkpointing
+#####
+
 function prognostic_state(model::HydrostaticFreeSurfaceModel)
-    return (
-        clock = prognostic_state(model.clock),
-        particles = prognostic_state(model.particles),
-        velocities = prognostic_state(model.velocities),
-        tracers = prognostic_state(model.tracers),
-        closure_fields = prognostic_state(model.closure_fields),
-        timestepper = prognostic_state(model.timestepper),
-        free_surface = prognostic_state(model.free_surface),
-        auxiliary_fields = prognostic_state(model.auxiliary_fields),
-        vertical_coordinate = prognostic_state(model.vertical_coordinate, model.grid),
-    )
+    return (clock = prognostic_state(model.clock),
+            particles = prognostic_state(model.particles),
+            velocities = prognostic_state(model.velocities),
+            tracers = prognostic_state(model.tracers),
+            closure_fields = prognostic_state(model.closure_fields),
+            timestepper = prognostic_state(model.timestepper),
+            free_surface = prognostic_state(model.free_surface),
+            auxiliary_fields = prognostic_state(model.auxiliary_fields),
+            vertical_coordinate = prognostic_state(model.vertical_coordinate, model.grid))
 end
 
 function restore_prognostic_state!(model::HydrostaticFreeSurfaceModel, state)

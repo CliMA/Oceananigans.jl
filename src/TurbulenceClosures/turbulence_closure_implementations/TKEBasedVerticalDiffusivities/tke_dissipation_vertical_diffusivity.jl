@@ -437,14 +437,12 @@ end
 #####
 
 function prognostic_state(cf::TKEDissipationDiffusivityFields)
-    return (
-        previous_compute_time = cf.previous_compute_time[],
-        previous_velocities = prognostic_state(cf.previous_velocities),
-        κu = prognostic_state(cf.κu),
-        κc = prognostic_state(cf.κc),
-        κe = prognostic_state(cf.κe),
-        κϵ = prognostic_state(cf.κϵ),
-    )
+    return (previous_compute_time = cf.previous_compute_time[],
+            previous_velocities = prognostic_state(cf.previous_velocities),
+            κu = prognostic_state(cf.κu),
+            κc = prognostic_state(cf.κc),
+            κe = prognostic_state(cf.κe),
+            κϵ = prognostic_state(cf.κϵ))
 end
 
 function restore_prognostic_state!(cf::TKEDissipationDiffusivityFields, state)

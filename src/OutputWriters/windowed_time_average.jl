@@ -108,13 +108,14 @@ end
 TimeInterval(sch::AveragedTimeInterval) = TimeInterval(sch.interval)
 Base.copy(sch::AveragedTimeInterval) = AveragedTimeInterval(sch.interval, window=sch.window, stride=sch.stride)
 
-# Checkpointing
+#####
+##### Checkpointing
+#####
+
 function prognostic_state(schedule::AveragedTimeInterval)
-    return (
-        first_actuation_time = schedule.first_actuation_time,
-        actuations = schedule.actuations,
-        collecting = schedule.collecting,
-    )
+    return (first_actuation_time = schedule.first_actuation_time,
+            actuations = schedule.actuations,
+            collecting = schedule.collecting)
 end
 
 function restore_prognostic_state!(schedule::AveragedTimeInterval, state)
@@ -214,12 +215,9 @@ function end_of_window(schedule::AveragedSpecifiedTimes, clock)
     return clock.time >= next_time - eps(next_time)
 end
 
-# Checkpointing
 function prognostic_state(schedule::AveragedSpecifiedTimes)
-    return (
-        specified_times = prognostic_state(schedule.specified_times),
-        collecting = schedule.collecting,
-    )
+    return (specified_times = prognostic_state(schedule.specified_times),
+            collecting = schedule.collecting)
 end
 
 function restore_prognostic_state!(schedule::AveragedSpecifiedTimes, state)
@@ -350,15 +348,12 @@ end
 # So it can be used as a Diagnostic
 run_diagnostic!(wta::WindowedTimeAverage, model) = advance_time_average!(wta, model)
 
-# Checkpointing
 function prognostic_state(wta::WindowedTimeAverage)
-    return (
-        result = prognostic_state(wta.result),
-        window_start_time = wta.window_start_time,
-        window_start_iteration = wta.window_start_iteration,
-        previous_collection_time = wta.previous_collection_time,
-        schedule = prognostic_state(wta.schedule),
-    )
+    return (result = prognostic_state(wta.result),
+            window_start_time = wta.window_start_time,
+            window_start_iteration = wta.window_start_iteration,
+            previous_collection_time = wta.previous_collection_time,
+            schedule = prognostic_state(wta.schedule))
 end
 
 function restore_prognostic_state!(wta::WindowedTimeAverage, state)

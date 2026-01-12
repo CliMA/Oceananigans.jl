@@ -233,15 +233,13 @@ restore_prognostic_state!(::ZCoordinate, grid, ::Nothing) = nothing
 
 function prognostic_state(zc::ZStarCoordinate, grid)
     z = grid.z
-    return (
-        storage = prognostic_state(zc.storage),
-        ηⁿ   = prognostic_state(z.ηⁿ),
-        σᶜᶜⁿ = prognostic_state(z.σᶜᶜⁿ),
-        σᶠᶜⁿ = prognostic_state(z.σᶠᶜⁿ),
-        σᶜᶠⁿ = prognostic_state(z.σᶜᶠⁿ),
-        σᶠᶠⁿ = prognostic_state(z.σᶠᶠⁿ),
-        σᶜᶜ⁻ = prognostic_state(z.σᶜᶜ⁻),
-    )
+    return (storage = prognostic_state(zc.storage),
+            ηⁿ   = prognostic_state(z.ηⁿ),
+            σᶜᶜⁿ = prognostic_state(z.σᶜᶜⁿ),
+            σᶠᶜⁿ = prognostic_state(z.σᶠᶜⁿ),
+            σᶜᶠⁿ = prognostic_state(z.σᶜᶠⁿ),
+            σᶠᶠⁿ = prognostic_state(z.σᶠᶠⁿ),
+            σᶜᶜ⁻ = prognostic_state(z.σᶜᶜ⁻))
 end
 
 function restore_prognostic_state!(zc::ZStarCoordinate, grid, state)

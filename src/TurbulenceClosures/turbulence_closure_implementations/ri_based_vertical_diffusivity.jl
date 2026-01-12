@@ -379,12 +379,10 @@ end
 const RiBasedVerticalDiffusivityFields = NamedTuple{(:κc, :κu, :Ri, :previous_compute_time)}
 
 function prognostic_state(closure_fields::RiBasedVerticalDiffusivityFields)
-    return (
-        κc = prognostic_state(closure_fields.κc),
-        κu = prognostic_state(closure_fields.κu),
-        Ri = prognostic_state(closure_fields.Ri),
-        previous_compute_time = closure_fields.previous_compute_time[],
-    )
+    return (κc = prognostic_state(closure_fields.κc),
+            κu = prognostic_state(closure_fields.κu),
+            Ri = prognostic_state(closure_fields.Ri),
+            previous_compute_time = closure_fields.previous_compute_time[])
 end
 
 function restore_prognostic_state!(closure_fields::RiBasedVerticalDiffusivityFields, state)

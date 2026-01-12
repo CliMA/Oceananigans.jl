@@ -96,10 +96,8 @@ function schedule_aligned_time_step(schedule::TimeInterval, clock, Δt)
 end
 
 function prognostic_state(schedule::TimeInterval)
-    return (
-        first_actuation_time = schedule.first_actuation_time,
-        actuations = schedule.actuations,
-    )
+    return (first_actuation_time = schedule.first_actuation_time,
+            actuations = schedule.actuations)
 end
 
 function restore_prognostic_state!(schedule::TimeInterval, state)
@@ -267,9 +265,7 @@ function specified_times_str(st)
 end
 
 function prognostic_state(schedule::SpecifiedTimes)
-    return (
-        previous_actuation = schedule.previous_actuation,
-    )
+    return (; previous_actuation = schedule.previous_actuation)
 end
 
 function restore_prognostic_state!(schedule::SpecifiedTimes, state)
@@ -314,10 +310,8 @@ schedule_aligned_time_step(schedule::ConsecutiveIterations, clock, Δt) =
     schedule_aligned_time_step(schedule.parent, clock, Δt)
 
 function prognostic_state(schedule::ConsecutiveIterations)
-    return (
-        parent = prognostic_state(schedule.parent),
-        previous_parent_actuation_iteration = schedule.previous_parent_actuation_iteration,
-    )
+    return (parent = prognostic_state(schedule.parent),
+            previous_parent_actuation_iteration = schedule.previous_parent_actuation_iteration)
 end
 
 function restore_prognostic_state!(schedule::ConsecutiveIterations, state)

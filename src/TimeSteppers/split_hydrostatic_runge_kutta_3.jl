@@ -169,12 +169,13 @@ function cache_previous_fields!(model)
     return nothing
 end
 
-# Checkpointing
+#####
+##### Checkpointing
+#####
+
 function prognostic_state(timestepper::SplitRungeKutta3TimeStepper)
-    return (
-        Gⁿ = prognostic_state(timestepper.Gⁿ),
-        Ψ⁻ = prognostic_state(timestepper.Ψ⁻),
-    )
+    return (Gⁿ = prognostic_state(timestepper.Gⁿ),
+            Ψ⁻ = prognostic_state(timestepper.Ψ⁻))
 end
 
 function restore_prognostic_state!(timestepper::SplitRungeKutta3TimeStepper, state)

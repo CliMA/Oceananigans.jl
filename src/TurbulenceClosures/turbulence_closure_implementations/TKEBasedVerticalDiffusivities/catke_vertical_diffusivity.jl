@@ -428,14 +428,12 @@ end
 #####
 
 function prognostic_state(cf::CATKEDiffusivityFields)
-    return (
-        previous_compute_time = cf.previous_compute_time[],
-        previous_velocities = prognostic_state(cf.previous_velocities),
-        Jᵇ = prognostic_state(cf.Jᵇ),
-        κu = prognostic_state(cf.κu),
-        κc = prognostic_state(cf.κc),
-        κe = prognostic_state(cf.κe),
-    )
+    return (previous_compute_time = cf.previous_compute_time[],
+            previous_velocities = prognostic_state(cf.previous_velocities),
+            Jᵇ = prognostic_state(cf.Jᵇ),
+            κu = prognostic_state(cf.κu),
+            κc = prognostic_state(cf.κc),
+            κe = prognostic_state(cf.κe))
 end
 
 function restore_prognostic_state!(cf::CATKEDiffusivityFields, state)

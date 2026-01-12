@@ -243,14 +243,12 @@ shallow_water_fields(velocities, solution, tracers, ::VectorInvariantFormulation
 #####
 
 function prognostic_state(model::ShallowWaterModel)
-    return (
-        clock = prognostic_state(model.clock),
-        solution = prognostic_state(model.solution),
-        velocities = prognostic_state(model.velocities),
-        tracers = prognostic_state(model.tracers),
-        closure_fields = prognostic_state(model.closure_fields),
-        timestepper = prognostic_state(model.timestepper),
-    )
+    return (clock = prognostic_state(model.clock),
+            solution = prognostic_state(model.solution),
+            velocities = prognostic_state(model.velocities),
+            tracers = prognostic_state(model.tracers),
+            closure_fields = prognostic_state(model.closure_fields),
+            timestepper = prognostic_state(model.timestepper))
 end
 
 function restore_prognostic_state!(model::ShallowWaterModel, state)

@@ -483,10 +483,8 @@ const DirectionallyAveragedSmagorinskyFields = NamedTuple{(:νₑ, :Σ, :Σ̄, :
 const LagrangianAveragedSmagorinskyFields = NamedTuple{(:νₑ, :Σ, :Σ̄, :𝒥ᴸᴹ, :𝒥ᴹᴹ, :𝒥ᴸᴹ⁻, :𝒥ᴹᴹ⁻, :previous_compute_time)}
 
 function prognostic_state(cf::DirectionallyAveragedSmagorinskyFields)
-    return (
-        𝒥ᴸᴹ = prognostic_state(cf.𝒥ᴸᴹ),
-        𝒥ᴹᴹ = prognostic_state(cf.𝒥ᴹᴹ),
-    )
+    return (𝒥ᴸᴹ = prognostic_state(cf.𝒥ᴸᴹ),
+            𝒥ᴹᴹ = prognostic_state(cf.𝒥ᴹᴹ))
 end
 
 function restore_prognostic_state!(cf::DirectionallyAveragedSmagorinskyFields, state)
@@ -496,13 +494,11 @@ function restore_prognostic_state!(cf::DirectionallyAveragedSmagorinskyFields, s
 end
 
 function prognostic_state(cf::LagrangianAveragedSmagorinskyFields)
-    return (
-        𝒥ᴸᴹ = prognostic_state(cf.𝒥ᴸᴹ),
-        𝒥ᴹᴹ = prognostic_state(cf.𝒥ᴹᴹ),
-        𝒥ᴸᴹ⁻ = prognostic_state(cf.𝒥ᴸᴹ⁻),
-        𝒥ᴹᴹ⁻ = prognostic_state(cf.𝒥ᴹᴹ⁻),
-        previous_compute_time = cf.previous_compute_time[],
-    )
+    return (𝒥ᴸᴹ = prognostic_state(cf.𝒥ᴸᴹ),
+            𝒥ᴹᴹ = prognostic_state(cf.𝒥ᴹᴹ),
+            𝒥ᴸᴹ⁻ = prognostic_state(cf.𝒥ᴸᴹ⁻),
+            𝒥ᴹᴹ⁻ = prognostic_state(cf.𝒥ᴹᴹ⁻),
+            previous_compute_time = cf.previous_compute_time[])
 end
 
 function restore_prognostic_state!(cf::LagrangianAveragedSmagorinskyFields, state)

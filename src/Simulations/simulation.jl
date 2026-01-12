@@ -284,17 +284,15 @@ write_output!(writer::JLD2Writer,   sim::Simulation) = write_output!(writer, sim
 write_output!(writer::NetCDFWriter, sim::Simulation) = write_output!(writer, sim.model)
 
 function prognostic_state(sim::Simulation)
-    return (
-        model = prognostic_state(sim.model),
-        Δt = sim.Δt,
-        diagnostics = prognostic_state(sim.diagnostics),
-        output_writers = prognostic_state(sim.output_writers),
-        callbacks = prognostic_state(sim.callbacks),
-        run_wall_time = sim.run_wall_time,
-        align_time_step = sim.align_time_step,
-        verbose = sim.verbose,
-        minimum_relative_step = sim.minimum_relative_step
-    )
+    return (model = prognostic_state(sim.model),
+            Δt = sim.Δt,
+            diagnostics = prognostic_state(sim.diagnostics),
+            output_writers = prognostic_state(sim.output_writers),
+            callbacks = prognostic_state(sim.callbacks),
+            run_wall_time = sim.run_wall_time,
+            align_time_step = sim.align_time_step,
+            verbose = sim.verbose,
+            minimum_relative_step = sim.minimum_relative_step)
 end
 
 function restore_prognostic_state!(sim::Simulation, state)

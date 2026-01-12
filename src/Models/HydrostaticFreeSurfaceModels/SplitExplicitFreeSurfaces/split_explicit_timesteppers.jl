@@ -171,15 +171,13 @@ prognostic_state(::ForwardBackwardScheme) = nothing
 restore_prognostic_state!(ts::ForwardBackwardScheme, ::Nothing) = ts
 
 function prognostic_state(ts::AdamsBashforth3Scheme)
-    return (
-        ηᵐ   = prognostic_state(ts.ηᵐ),
-        ηᵐ⁻¹ = prognostic_state(ts.ηᵐ⁻¹),
-        ηᵐ⁻² = prognostic_state(ts.ηᵐ⁻²),
-        Uᵐ⁻¹ = prognostic_state(ts.Uᵐ⁻¹),
-        Uᵐ⁻² = prognostic_state(ts.Uᵐ⁻²),
-        Vᵐ⁻¹ = prognostic_state(ts.Vᵐ⁻¹),
-        Vᵐ⁻² = prognostic_state(ts.Vᵐ⁻²),
-    )
+    return (ηᵐ   = prognostic_state(ts.ηᵐ),
+            ηᵐ⁻¹ = prognostic_state(ts.ηᵐ⁻¹),
+            ηᵐ⁻² = prognostic_state(ts.ηᵐ⁻²),
+            Uᵐ⁻¹ = prognostic_state(ts.Uᵐ⁻¹),
+            Uᵐ⁻² = prognostic_state(ts.Uᵐ⁻²),
+            Vᵐ⁻¹ = prognostic_state(ts.Vᵐ⁻¹),
+            Vᵐ⁻² = prognostic_state(ts.Vᵐ⁻²))
 end
 
 function restore_prognostic_state!(ts::AdamsBashforth3Scheme, state)
