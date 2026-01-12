@@ -5,12 +5,10 @@ the simulation can be restored at any time. This is useful if you'd like to peri
 long simulations in case of crashes or hitting cluster time limits, but also if you'd like to restore
 from a checkpoint and try out multiple scenarios.
 
-For example, to periodically checkpoint to disk every 1,000,000 seconds of simulation
-time to files of the form `checkpoint_iteration12500.jld2` where `12500` is the iteration
-number (automatically filled in).
-
-Here's an example where we checkpoint every 5 iterations. This is far more often than appropriate for
-typical applications: we only do it here for illustration purposes.
+Here's an example where we checkpoint every 5 iterations to files of the form
+`model_checkpoint_iteration5.jld2` (where the iteration number is automatically included in
+the filename). This is far more often than appropriate for typical applications: we only do
+it here for illustration purposes.
 
 ```@repl checkpointing
 using Oceananigans
@@ -29,12 +27,11 @@ when a new one is written, keeping only the latest checkpoint:
 Checkpointer(model, schedule=IterationInterval(1000), prefix="checkpoint", cleanup=true)
 ```
 
-Again, for illustration purposes of this example, we also add another callback so we can see the iteration
-of the simulation
+Again, for illustration purposes, we also add a callback so we can see the simulation progress:
 
 ```@repl checkpointing
-show_iteration(sim) = @info "iteration: $(iteration(sim)); time: $(prettytime(sim.model.clock.time))"
-add_callback!(simulation, show_iteration, name=:info, IterationInterval(1))
+show_iteration(sim) = @info "iteration: $(iteration(sim)), time: $(prettytime(sim.model.clock.time))"
+add_callback!(simulation, show_iteration, name=:info, schedule=IterationInterval(1))
 ```
 
 Now let's run
@@ -46,10 +43,15 @@ run!(simulation)
 The default options should provide checkpoint files that are easy to restore from (in most cases).
 For more advanced options and features, see [`Checkpointer`](@ref).
 
+Checkpointing is supported for: `ShallowWaterModel`, `NonhydrostaticModel`, and `HydrostaticFreeSurfaceModel`
+(including split-explicit, implicit, and explicit free surfaces, as well as z-star vertical coordinates).
+
 ## Picking up a simulation from a checkpoint file
 
-Picking up a simulation from a checkpoint requires the original script that was used to generate
-the checkpoint data. Change the first instance of [`run!`](@ref) in the script to take `pickup=true`.
+Picking up a simulation from a checkpoint requires recreating the simulation identically
+to how it was originally configured. This means using the same grid, model type, boundary
+conditions, forcing, closures, and output writers. Only the **prognostic state** (data that
+evolves during simulation) is restored from the checkpoint - not the simulation configuration.
 
 When `pickup=true` is provided to `run!`, it finds the latest checkpoint file in the `Checkpointer`'s
 directory, restores the simulation state (including model fields, clock, and timestepper state),
@@ -113,3 +115,16 @@ wall time limits or other callbacks.
 
 If a `Checkpointer` is configured, it will be used. Otherwise, a file named
 `checkpoint_iteration{N}.jld2` is created in the current directory.
+
+## What gets checkpointed
+
+Checkpointing saves the **prognostic state** which is data that evolves during simulation. This includes
+prognostic model fields (velocities, tracers, diffusivities, etc.), the clock, the state of the
+time stepper, output writer state, turbulence closure state, free surface state, and Lagrangian particle
+properties.
+
+Static configuration is **not** checkpointed. This includes the grid, boundary conditions, forcing
+functions, closure parameters, model options, and callbacks.
+
+This means your script must recreate the simulation with identical configuration before
+restoring from a checkpoint.
