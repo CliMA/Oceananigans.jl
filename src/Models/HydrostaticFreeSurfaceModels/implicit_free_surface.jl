@@ -153,7 +153,6 @@ function step_free_surface!(free_surface::ImplicitFreeSurface, model, timesteppe
     return nothing
 end
 
-
 #####
 ##### Checkpointing
 #####
