@@ -179,7 +179,7 @@ function rk_substep_tracers!(tracers, model, Δt)
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
 
         if catke_in_closures && tracer_name == :e
-            @debug "Skipping RK3 step for e"
+            @debug "Skipping RK substep for e"
         else
             Gⁿ = model.timestepper.Gⁿ[tracer_name]
             Ψ⁻ = model.timestepper.Ψ⁻[tracer_name]
