@@ -1,5 +1,4 @@
 using Oceananigans.Fields: FunctionField
-using Oceananigans.Utils: @apply_regionally
 
 mutable struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeStepper
                   χ :: FT
