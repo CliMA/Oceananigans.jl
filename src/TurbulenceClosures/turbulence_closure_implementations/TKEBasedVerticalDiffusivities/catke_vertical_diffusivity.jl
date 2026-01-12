@@ -64,7 +64,8 @@ Turbulent Kinetic Energy (TKE).
     values for its free parameters are obtained from calibration against large eddy
     simulations. For more details please refer to [Wagner et al. (2025)](@cite Wagner25catke).
 
-    Use with caution and report any issues with the physics at [https://github.com/CliMA/Oceananigans.jl/issues](https://github.com/CliMA/Oceananigans.jl/issues).
+    Use with caution and report any issues with the physics at
+    [https://github.com/CliMA/Oceananigans.jl/issues](https://github.com/CliMA/Oceananigans.jl/issues).
 
 Arguments
 =========
@@ -92,9 +93,18 @@ Keyword arguments
 - `maximum_viscosity`: Maximum value for momentum diffusivity. CATKE-predicted momentum diffusivities
                        that are larger than `maximum_viscosity` are clipped. Default: `Inf`.
 
-- `minimum_tke`: Minimum value for the turbulent kinetic energy. Can be used to model the presence
-                 "background" TKE levels due to, for example, mixing by breaking internal waves.
-                 Default: 1e-9.
+- `minimum_tke`: Minimum value for the turbulent kinetic energy. `minimum_tke` produces
+                 a background tracer diffusivity
+  ```math
+  κ_{bg} ≈ C^{hi}_c \\frac{e^{\\min}}{N}
+  ```
+  and background viscosity
+  ```math
+  ν_{bg} ≈ C^{hi}_u \\frac{e^{\\min}}{N}
+  ```
+  where ``N`` is the buoyancy frequency and by default, ``C^{hi}_c = 0.098`` and ``C^{hi}_u = 0.242``
+  are parameters of `CATKEMixingLength`. This feature may be used to model background mixing by
+  internal waves [Wagner et al. (2025)](@cite Wagner25catke). Default: 1e-9.
 
 - `minimum_convective_buoyancy_flux` Minimum value for the convective buoyancy flux. Default: 1e-11.
 
@@ -142,6 +152,9 @@ function Utils.with_tracers(tracer_names, closure::FlavorOfCATKE)
 
     return closure
 end
+
+# Required tracer names for CATKE
+closure_required_tracers(::FlavorOfCATKE) = tuple(:e)
 
 # For tuples of closures, we need to know _which_ closure is CATKE.
 # Here we take a "simple" approach that sorts the tuple so CATKE is first.

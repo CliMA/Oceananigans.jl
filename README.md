@@ -31,7 +31,6 @@
 <!-- counts downloads from individual IPs excluding bots (eg, CI) -->
 <!-- see https://discourse.julialang.org/t/announcing-package-download-stats/69073 -->
 <p align="center">
-
   <a href="https://clima.github.io/OceananigansDocumentation/stable">
     <img alt="Stable documentation" src="https://img.shields.io/badge/documentation-stable%20release-blue?style=flat-square">
   </a>
@@ -44,10 +43,18 @@
   <a href="https://juliapkgstats.com/pkg/Oceananigans">
     <img alt="Downloads per month" src="https://img.shields.io/badge/dynamic/json?url=http%3A%2F%2Fjuliapkgstats.com%2Fapi%2Fv1%2Ftotal_downloads%2FOceananigans&query=total_requests&&label=Total%20Downloads&style=flat-square">
   </a>
+</p>
+
+<!-- Testing and Coverage -->
+<p align="center">
   <a href="https://github.com/JuliaTesting/Aqua.jl" >
     <img src="https://raw.githubusercontent.com/JuliaTesting/Aqua.jl/master/badge.svg?style=flat-square"/>
   </a>
+  <a href="https://codecov.io/gh/CliMA/Oceananigans.jl" >
+    <img src="https://codecov.io/gh/CliMA/Oceananigans.jl/graph/badge.svg?token=1eev6VdKD0"/>
+  </a>
 </p>
+
 
 Oceananigans is a fast, friendly, flexible software package for finite volume simulations of the nonhydrostatic
 and hydrostatic Boussinesq equations on CPUs and GPUs.
@@ -100,14 +107,14 @@ Let's run a two-dimensional, horizontally-periodic simulation of turbulence usin
 ```julia
 using Oceananigans
 grid = RectilinearGrid(CPU(), size=(128, 128), x=(0, 2π), y=(0, 2π), topology=(Periodic, Periodic, Flat))
-model = NonhydrostaticModel(; grid, advection=WENO())
+model = NonhydrostaticModel(grid; advection=WENO())
 ϵ(x, y) = 2rand() - 1
 set!(model, u=ϵ, v=ϵ)
 simulation = Simulation(model; Δt=0.01, stop_time=4)
 run!(simulation)
 ```
 
-But there's more: changing `CPU()` to `GPU()` makes this code run on a CUDA-enabled Nvidia GPU.
+But there's more: loading CUDA.jl (via `using CUDA`) and changing `CPU()` to `GPU()` makes this code run on a CUDA-enabled Nvidia GPU.
 
 Dive into [the documentation](https://clima.github.io/OceananigansDocumentation/stable/) for more code examples and tutorials.
 Below, you'll find movies from GPU simulations along with CPU and GPU [performance benchmarks](https://github.com/clima/Oceananigans.jl#performance-benchmarks).

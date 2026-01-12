@@ -16,7 +16,7 @@ function run_with_background_fields(arch; with_background=true)
             bottom = GradientBoundaryCondition(-N^2), # ∂B∂z = 0 → ∂b∂z = -∂B∂z = -N²
             top = GradientBoundaryCondition(0.) # ∂B∂z = ∂B̄∂z+∂b∂z = N² → ∂b∂z = 0 
         );                                
-        model = NonhydrostaticModel(; grid, background_fields, tracers = :b, buoyancy=BuoyancyTracer(),
+        model = NonhydrostaticModel(grid; background_fields, tracers = :b, buoyancy=BuoyancyTracer(),
                                 boundary_conditions=(; b = B_bcs))
         b = model.tracers.b
         B̄ = model.background_fields.tracers.b
@@ -27,7 +27,7 @@ function run_with_background_fields(arch; with_background=true)
             bottom = GradientBoundaryCondition(0), # ∂B∂z = 0
             top = GradientBoundaryCondition(N^2) # ∂B∂z =  N²
         );
-        model = NonhydrostaticModel(; grid, tracers = :b, buoyancy=BuoyancyTracer(),
+        model = NonhydrostaticModel(grid; tracers = :b, buoyancy=BuoyancyTracer(),
                                 boundary_conditions=(b = B_bcs,))
         Bᵢ(z) = constant_stratification(z, 0, (; N² = N^2))
         set!(model, b=Bᵢ)  # add background buoyancy as an initial condition

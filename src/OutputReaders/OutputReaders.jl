@@ -5,7 +5,16 @@ export FieldTimeSeries
 export InMemory, OnDisk
 export Cyclical, Linear, Clamp
 
+using Oceananigans: boundary_conditions
 using Oceananigans.Utils: @apply_regionally
+
+struct JLD2Path
+    path :: String
+end
+
+struct NetCDFPath
+    path :: String
+end
 
 """
     auto_extension(filename, ext)
@@ -13,7 +22,7 @@ using Oceananigans.Utils: @apply_regionally
 If `filename` ends in `ext`, return `filename`. Otherwise return `filename * ext`.
 """
 function auto_extension(filename, ext)
-    if endswith(filename, ext)
+    if endswith(filename, ext) || endswith(filename, ".nc") || endswith(filename, ".jld2")
         return filename
     else
         return filename * ext
@@ -26,6 +35,7 @@ include("set_field_time_series.jl")
 include("field_time_series_reductions.jl")
 include("show_field_time_series.jl")
 include("extract_field_time_series.jl")
+include("combining_field_time_series.jl")
 
 # Experimental
 include("field_dataset.jl")

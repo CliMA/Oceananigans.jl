@@ -58,55 +58,11 @@ const MINIMUM_SUBSTEPS = 5
 @inline calculate_adaptive_settings(substepping::FNS, substeps) = substepping.fractional_step_size, substepping.averaging_weights, substepping.transport_weights
 @inline calculate_adaptive_settings(substepping::FTS, substeps) = weights_from_substeps(eltype(substepping.Δt_barotropic), substeps, substepping.averaging_kernel)
 
-iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps =
-    iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, Val(Nsubsteps))
-
-function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
+function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
     arch = architecture(grid)
 
-    η           = free_surface.η
-    grid        = free_surface.η.grid
-    state       = free_surface.filtered_state
-    timestepper = free_surface.timestepper
-    g           = free_surface.gravitational_acceleration
-    parameters  = free_surface.kernel_parameters
-
-    # Unpack state quantities, parameters and forcing terms.
-    U, V    = free_surface.barotropic_velocities
-    η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
-    Ũ, Ṽ    = state.Ũ, state.Ṽ
-  
-    barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
-    free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
-
-    U_args = (grid, Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
-    η_args = (grid, Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
-
-    GC.@preserve η_args U_args begin
-        # We need to perform ~50 time-steps which means launching ~100 very small kernels: we are limited by latency of 
-        # argument conversion to GPU-compatible values. To alleviate this penalty we convert first and then we substep!
-        converted_η_args = convert_to_device(arch, η_args)
-        converted_U_args = convert_to_device(arch, U_args)
-
-        @unroll for substep in 1:Nsubsteps
-            @inbounds averaging_weight = weights[substep]
-            @inbounds transport_weight = transport_weights[substep]
-
-            fill_halo_regions!(η)
-            barotropic_velocity_kernel!(transport_weight, converted_U_args...)
-            fill_halo_regions!((U, V))
-            free_surface_kernel!(averaging_weight, converted_η_args...)
-        end
-    end
-
-    return nothing
-end
-
-function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
-    arch = architecture(grid)
-
-    η           = free_surface.η
-    grid        = free_surface.η.grid
+    η           = free_surface.displacement
+    grid        = free_surface.displacement.grid
     state       = free_surface.filtered_state
     timestepper = free_surface.timestepper
     g           = free_surface.gravitational_acceleration
@@ -124,8 +80,11 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
     η_args = (grid, Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
 
     GC.@preserve η_args U_args begin
-        # We need to perform ~50 time-steps which means launching ~100 very small kernels: we are limited by latency of 
-        # argument conversion to GPU-compatible values. To alleviate this penalty we convert first and then we substep!
+
+        # We need to perform ~50 time-steps which means
+        # launching ~100 very small kernels: we are limited by
+        # latency of argument conversion to GPU-compatible values.
+        # To alleviate this penalty we convert first and then we substep!
         converted_η_args = convert_to_device(arch, η_args)
         converted_U_args = convert_to_device(arch, U_args)
 
@@ -157,9 +116,9 @@ end
 #####
 
 function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroclinic_timestepper, Δt)
-    # Note: free_surface.η.grid != model.grid for DistributedSplitExplicitFreeSurface since
-    # halo_size(free_surface.η.grid) != halo_size(model.grid)
-    free_surface_grid = free_surface.η.grid
+    # Note: free_surface.displacement.grid != model.grid for DistributedSplitExplicitFreeSurface since
+    # halo_size(free_surface.displacement.grid) != halo_size(model.grid)
+    free_surface_grid = free_surface.displacement.grid
     filtered_state    = free_surface.filtered_state
     substepping       = free_surface.substepping
 
@@ -182,7 +141,7 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     GVⁿ = model.timestepper.Gⁿ.V
 
     # Free surface state
-    η = free_surface.η
+    η = free_surface.displacement
     U = barotropic_velocities.U
     V = barotropic_velocities.V
     F = model.forcing.η

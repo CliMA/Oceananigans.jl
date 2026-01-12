@@ -3,11 +3,13 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.Units: Time
 using Oceananigans.Fields: indices, interpolate!
 using Oceananigans.OutputReaders: Cyclical, Clamp, Linear
+
 using Random
+using NCDatasets
 
 function generate_nonzero_simulation_data(Lx, Δt, FT; architecture=CPU())
     grid = RectilinearGrid(architecture, size=10, x=(0, Lx), topology=(Periodic, Flat, Flat))
-    model = NonhydrostaticModel(; grid, tracers = (:T, :S), advection = nothing)
+    model = NonhydrostaticModel(grid; tracers = (:T, :S), advection = nothing)
     set!(model, T=30, S=35)
     simulation = Simulation(model; Δt, stop_iteration=100)
 
@@ -22,7 +24,7 @@ function generate_nonzero_simulation_data(Lx, Δt, FT; architecture=CPU())
     return simulation.output_writers[:constant_fields].filepath
 end
 
-function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU())
+function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(), output_writer=JLD2Writer)
     grid = RectilinearGrid(architecture, size=(Nx, Ny, Nz), extent=(64, 64, 32))
 
     T_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(5e-5), bottom = GradientBoundaryCondition(0.01))
@@ -32,7 +34,8 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
     evaporation_bc = FluxBoundaryCondition(Qˢ, field_dependencies=:S, parameters=3e-7)
     S_bcs = FieldBoundaryConditions(top=evaporation_bc)
 
-    model = NonhydrostaticModel(; grid, tracers = (:T, :S), buoyancy = SeawaterBuoyancy(),
+    model = NonhydrostaticModel(grid; tracers = (:T, :S),
+                                buoyancy = SeawaterBuoyancy(),
                                 boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs))
 
     dTdz = 0.01
@@ -54,45 +57,51 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
 
     fields_to_output = merge(model.velocities, model.tracers, computed_fields)
 
-    filepath3d = "test_3d_output_with_halos.jld2"
-    filepath2d = "test_2d_output_with_halos.jld2"
-    filepath1d = "test_1d_output_with_halos.jld2"
-    split_filepath = "test_split_output.jld2"
-    unsplit_filepath = "test_unsplit_output.jld2"
+    # Determine file extension based on output writer type
+    file_ext = output_writer == JLD2Writer ? ".jld2" : ".nc"
 
-    simulation.output_writers[:jld2_3d_with_halos] = JLD2Writer(model, fields_to_output,
-                                                                filename = filepath3d,
-                                                                with_halos = true,
-                                                                schedule = TimeInterval(30seconds),
-                                                                overwrite_existing = true)
+    filepath3d = "test_3d_output_with_halos" * file_ext
+    simulation.output_writers[:writer_3d_with_halos] = output_writer(model, fields_to_output,
+                                                                     filename = filepath3d,
+                                                                     with_halos = true,
+                                                                     schedule = TimeInterval(30seconds),
+                                                                     overwrite_existing = true)
 
-    simulation.output_writers[:jld2_2d_with_halos] = JLD2Writer(model, fields_to_output,
-                                                                filename = filepath2d,
-                                                                indices = (:, :, grid.Nz),
-                                                                with_halos = true,
-                                                                schedule = TimeInterval(30seconds),
-                                                                overwrite_existing = true)
+    filepath2d = "test_2d_output_with_halos" * file_ext
+    if output_writer == JLD2Writer
+        simulation.output_writers[:writer_2d_with_halos] = output_writer(model, fields_to_output,
+                                                                         filename = filepath2d,
+                                                                         indices = (:, :, grid.Nz),
+                                                                         with_halos = true,
+                                                                         schedule = TimeInterval(30seconds),
+                                                                         overwrite_existing = true)
+    else
+        @warn "Skipping 2D output writer since you cannot pass non-default indices to NetCDFWriter if `with_halos=true`."
+    end
 
     profiles = NamedTuple{keys(fields_to_output)}(Field(Average(f, dims=(1, 2))) for f in fields_to_output)
 
-    simulation.output_writers[:jld2_1d_with_halos] = JLD2Writer(model, profiles,
-                                                                filename = filepath1d,
-                                                                with_halos = true,
-                                                                schedule = TimeInterval(30seconds),
-                                                                overwrite_existing = true)
+    filepath1d = "test_1d_output_with_halos" * file_ext
+    simulation.output_writers[:writer_1d_with_halos] = output_writer(model, profiles,
+                                                                     filename = filepath1d,
+                                                                     with_halos = true,
+                                                                     schedule = TimeInterval(30seconds),
+                                                                     overwrite_existing = true)
 
-    simulation.output_writers[:unsplit_jld2] = JLD2Writer(model, profiles,
-                                                          filename = unsplit_filepath,
-                                                          with_halos = true,
-                                                          schedule = TimeInterval(10seconds),
-                                                          overwrite_existing = true)
+    unsplit_filepath = "test_unsplit_output" * file_ext
+    simulation.output_writers[:unsplit_writer] = output_writer(model, profiles,
+                                                               filename = unsplit_filepath,
+                                                               with_halos = true,
+                                                               schedule = TimeInterval(10seconds),
+                                                               overwrite_existing = true)
 
-    simulation.output_writers[:split_jld2] = JLD2Writer(model, profiles,
-                                                        filename = split_filepath,
-                                                        with_halos = true,
-                                                        schedule = TimeInterval(10seconds),
-                                                        file_splitting = TimeInterval(30seconds),
-                                                        overwrite_existing = true)
+    split_filepath = "test_split_output" * file_ext
+    simulation.output_writers[:split_writer] = output_writer(model, profiles,
+                                                             filename = split_filepath,
+                                                             with_halos = true,
+                                                             schedule = TimeInterval(10seconds),
+                                                             file_splitting = TimeInterval(30seconds),
+                                                             overwrite_existing = true)
 
     run!(simulation)
 
@@ -329,7 +338,7 @@ function test_field_time_series_array_boundary_conditions(arch)
     τy = Field{Center, Face, Nothing}(grid)
     u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
     v_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τy))
-    model = NonhydrostaticModel(; grid, boundary_conditions = (; u=u_bcs, v=v_bcs))
+    model = NonhydrostaticModel(grid; boundary_conditions = (; u=u_bcs, v=v_bcs))
     simulation = Simulation(model; Δt=1, stop_iteration=1)
 
     filename = arch isa GPU ? "test_cuarray_bc.jld2" : "test_array_bc.jld2"
@@ -360,7 +369,7 @@ function test_field_time_series_function_boundary_conditions(arch)
     u_west(x, y, t) = 0
     u_east(x, y, t) = 0
     u_bcs = FieldBoundaryConditions(west = OpenBoundaryCondition(u_west), east = OpenBoundaryCondition(u_east, scheme=PerturbationAdvection()))
-    model = NonhydrostaticModel(; grid, boundary_conditions = (; u=u_bcs))
+    model = NonhydrostaticModel(grid; boundary_conditions = (; u=u_bcs))
     simulation = Simulation(model; Δt=1, stop_iteration=1)
 
     filename = "test_function_bc.jld2"
@@ -406,6 +415,83 @@ function test_field_time_series_reductions(filepath3d, Nt)
 
         @test val1 ≈ val2 atol=4ε
     end
+
+    return nothing
+end
+
+function test_field_time_series_reductions_with_dims()
+    grid = RectilinearGrid(size=(4, 5, 6), extent=(1, 1, 1))
+    times = [1.0, 2.0, 3.0]
+    fts = FieldTimeSeries{Center, Center, Center}(grid, times)
+
+    # Fill with known data: value = i + j + k + 10*n
+    for n in 1:length(times)
+        set!(fts[n], (x, y, z) -> x + y + z + 10 * n)
+    end
+
+    # Test dims=1 (reduce over x)
+    fts1 = sum(fts; dims=1)
+    @test fts1 isa FieldTimeSeries
+    @test location(fts1) == (Nothing, Center, Center)
+    @test size(fts1) == (1, 5, 6, 3)
+    @test length(fts1.times) == 3
+
+    # Test dims=2 (reduce over y)
+    fts2 = sum(fts; dims=2)
+    @test fts2 isa FieldTimeSeries
+    @test location(fts2) == (Center, Nothing, Center)
+    @test size(fts2) == (4, 1, 6, 3)
+    @test length(fts2.times) == 3
+
+    # Test dims=3 (reduce over z)
+    fts3 = sum(fts; dims=3)
+    @test fts3 isa FieldTimeSeries
+    @test location(fts3) == (Center, Center, Nothing)
+    @test size(fts3) == (4, 5, 1, 3)
+    @test length(fts3.times) == 3
+
+    # Test dims=4 (reduce over time)
+    fts4 = sum(fts; dims=4)
+    @test fts4 isa FieldTimeSeries
+    @test location(fts4) == (Center, Center, Center)
+    @test size(fts4) == (4, 5, 6, 1)
+    @test length(fts4.times) == 1
+    @test fts4.times[1] ≈ mean(times)
+
+    # Test correctness of dims=4 sum
+    expected_sum = zeros(4, 5, 6)
+    for n in 1:length(times)
+        expected_sum .+= interior(fts[n])
+    end
+    @test interior(fts4[1]) ≈ expected_sum
+
+    # Test mean with dims=4
+    fts4_mean = mean(fts; dims=4)
+    @test fts4_mean isa FieldTimeSeries
+    @test size(fts4_mean) == (4, 5, 6, 1)
+    @test interior(fts4_mean[1]) ≈ expected_sum ./ length(times)
+
+    # Test combined dims=(1, 4) (reduce over x and time)
+    fts14 = sum(fts; dims=(1, 4))
+    @test fts14 isa FieldTimeSeries
+    @test location(fts14) == (Nothing, Center, Center)
+    @test size(fts14) == (1, 5, 6, 1)
+    @test length(fts14.times) == 1
+
+    # Test combined dims=(1, 2, 4) (reduce over x, y, and time)
+    fts124 = sum(fts; dims=(1, 2, 4))
+    @test fts124 isa FieldTimeSeries
+    @test location(fts124) == (Nothing, Nothing, Center)
+    @test size(fts124) == (1, 1, 6, 1)
+
+    # Test dims=: (reduce over all dimensions, returns a scalar)
+    total_sum = sum(fts; dims=:)
+    expected_total = sum(sum(fts[n]) for n in 1:length(times))
+    @test total_sum ≈ expected_total
+
+    total_mean = mean(fts; dims=:)
+    expected_mean = expected_total / (4 * 5 * 6 * 3)
+    @test total_mean ≈ expected_mean
 
     return nothing
 end
@@ -579,84 +665,95 @@ end
 
     Nt = 5
     Nx, Ny, Nz = 16, 10, 5
-    filepath1d, filepath2d, filepath3d, unsplit_filepath, split_filepath = generate_some_interesting_simulation_data(Nx, Ny, Nz)
 
-    for arch in archs
-        @testset "FieldTimeSeries{InMemory} [$(typeof(arch))]" begin
-            @info "  Testing FieldTimeSeries{InMemory} [$(typeof(arch))]..."
-            test_field_time_series_in_memory(arch, filepath3d, filepath2d, filepath1d, split_filepath, unsplit_filepath, Nx, Ny, Nz, Nt)
-        end
+    for output_writer in (JLD2Writer, NetCDFWriter)
+        filepath1d, filepath2d, filepath3d, unsplit_filepath, split_filepath = generate_some_interesting_simulation_data(Nx, Ny, Nz; output_writer)
 
-        if arch isa CPU
-            @testset "FieldTimeSeries pickup" begin
-                @info "  Testing FieldTimeSeries pickup..."
-                test_field_time_series_pickup(arch)
+        for arch in archs
+            if output_writer == JLD2Writer
+                @testset "FieldTimeSeries{InMemory} [$(typeof(arch))] with $output_writer" begin
+                    @info "  Testing FieldTimeSeries{InMemory} [$(typeof(arch))]..."
+                        test_field_time_series_in_memory(arch, filepath3d, filepath2d, filepath1d, split_filepath, unsplit_filepath, Nx, Ny, Nz, Nt)
+                end
+
+                @testset "FieldTimeSeries with Function boundary conditions [$(typeof(arch))] with $output_writer" begin
+                    @info "  Testing FieldTimeSeries with Function boundary conditions..."
+                    test_field_time_series_function_boundary_conditions(arch)
+                end
+            end
+
+            if arch isa CPU
+                @testset "FieldTimeSeries pickup" begin
+                    @info "  Testing FieldTimeSeries pickup with $output_writer"
+                    test_field_time_series_pickup(arch)
+                end
+            end
+
+            @testset "FieldTimeSeries with Array boundary conditions [$(typeof(arch))] with $output_writer" begin
+                @info "  Testing FieldTimeSeries with Array boundary conditions..."
+                test_field_time_series_array_boundary_conditions(arch)
+            end
+
+            # TODO: Make FieldTimeSeries{OnDisk} work with NetCDFWriter
+            if output_writer == JLD2Writer
+                @testset "FieldTimeSeries{OnDisk} [$(typeof(arch))] with $output_writer" begin
+                    @info "  Testing FieldTimeSeries{OnDisk} [$(typeof(arch))]..."
+                    test_field_time_series_on_disk(arch, filepath3d, filepath1d, Nx, Ny, Nz, Nt)
+                end
+            end
+
+            @testset "FieldTimeSeries{InMemory} reductions with $output_writer" begin
+                @info "  Testing FieldTimeSeries{InMemory} reductions..."
+                test_field_time_series_reductions(filepath3d, Nt)
             end
         end
 
-        @testset "FieldTimeSeries with Array boundary conditions [$(typeof(arch))]" begin
-            @info "  Testing FieldTimeSeries with Array boundary conditions..."
-            test_field_time_series_array_boundary_conditions(arch)
+        # TODO: Make all of these features work with NetCDFWriter
+        if output_writer == JLD2Writer
+            @testset "Test chunked abstraction with $output_writer" begin
+                @info "  Testing Chunked abstraction..."
+                test_chunked_abstraction(filepath3d, "T")
+            end
+
+            for Backend in [InMemory, OnDisk]
+                @testset "FieldTimeSeries{$Backend} parallel reading with $output_writer" begin
+                    @info "  Testing FieldTimeSeries{$Backend} parallel reading..."
+                    test_field_time_series_parallel_reading(Backend, filepath3d)
+                end
+            end
+
+            for Backend in [InMemory, OnDisk]
+                @testset "FieldDataset{$Backend} indexing with $output_writer" begin
+                    @info "  Testing FieldDataset{$Backend} indexing..."
+                    test_field_dataset_indexing(Backend, filepath3d)
+                end
+            end
+
+            for Backend in [InMemory, OnDisk]
+                @testset "FieldDataset{$Backend} parallel reading with $output_writer" begin
+                    @info "  Testing FieldDataset{$Backend} parallel reading..."
+                    test_field_dataset_parallel_reading(Backend, filepath3d)
+                end
+            end
         end
 
-        @testset "FieldTimeSeries with Function boundary conditions [$(typeof(arch))]" begin
-            @info "  Testing FieldTimeSeries with Function boundary conditions..."
-            test_field_time_series_function_boundary_conditions(arch)
-        end
+        rm(filepath1d)
+        rm(filepath2d, force=true) # This file doesn't exist if we use NetCDFWriter
+        rm(filepath3d)
     end
 
-    for arch in archs
-        @testset "FieldTimeSeries{OnDisk} [$(typeof(arch))]" begin
-            @info "  Testing FieldTimeSeries{OnDisk} [$(typeof(arch))]..."
-            test_field_time_series_on_disk(arch, filepath3d, filepath1d, Nx, Ny, Nz, Nt)
-        end
-    end
-
-    for arch in archs
-        @testset "FieldTimeSeries{InMemory} reductions" begin
-            @info "  Testing FieldTimeSeries{InMemory} reductions..."
-            test_field_time_series_reductions(filepath3d, Nt)
-        end
-    end
-
-    @testset "Test chunked abstraction" begin
-        @info "  Testing Chunked abstraction..."
-        test_chunked_abstraction(filepath3d, "T")
+    @testset "FieldTimeSeries reductions with dims" begin
+        @info "  Testing FieldTimeSeries reductions with dims..."
+        test_field_time_series_reductions_with_dims()
     end
 
     @testset "Time Interpolation" begin
         test_time_interpolation()
     end
 
-    for Backend in [InMemory, OnDisk]
-        @testset "FieldDataset{$Backend} indexing" begin
-            @info "  Testing FieldDataset{$Backend} indexing..."
-            test_field_dataset_indexing(Backend, filepath3d)
-        end
-    end
-
-    for Backend in [InMemory, OnDisk]
-        @testset "FieldTimeSeries{$Backend} parallel reading" begin
-            @info "  Testing FieldTimeSeries{$Backend} parallel reading..."
-            test_field_time_series_parallel_reading(Backend, filepath3d)
-        end
-    end
-
-    for Backend in [InMemory, OnDisk]
-        @testset "FieldDataset{$Backend} parallel reading" begin
-            @info "  Testing FieldDataset{$Backend} parallel reading..."
-            test_field_dataset_parallel_reading(Backend, filepath3d)
-        end
-    end
-
     filepath_sine = "one_dimensional_sine.jld2"
-
-    @testset "Test interpolation using `InMemory` backends" begin
+    @testset "Test interpolation using `InMemory` backend" begin
         test_interpolation_with_in_memory_backends(filepath_sine)
     end
-
-    rm(filepath1d)
-    rm(filepath2d)
-    rm(filepath3d)
     rm(filepath_sine)
 end

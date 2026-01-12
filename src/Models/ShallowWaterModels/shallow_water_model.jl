@@ -1,7 +1,7 @@
 using Oceananigans: AbstractModel
 
 using Oceananigans.Architectures: AbstractArchitecture
-using Oceananigans.AbstractOperations: @at, KernelFunctionOperation
+using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.DistributedComputations
 using Oceananigans.Advection: VectorInvariant
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
@@ -58,30 +58,34 @@ struct ConservativeFormulation end
 struct VectorInvariantFormulation end
 
 """
-    ShallowWaterModel(; grid,
-                        gravitational_acceleration,
-                              clock = Clock{eltype(grid)}(time = 0),
-                 momentum_advection = UpwindBiased(order=5),
-                   tracer_advection = WENO(),
-                     mass_advection = WENO(),
-                           coriolis = nothing,
-                forcing::NamedTuple = NamedTuple(),
-                            closure = nothing,
-                         bathymetry = nothing,
-                            tracers = (),
-                     closure_fields = nothing,
-    boundary_conditions::NamedTuple = NamedTuple(),
-                timestepper::Symbol = :RungeKutta3,
-                        formulation = ConservativeFormulation())
+    ShallowWaterModel(grid;
+                      gravitational_acceleration,
+                      clock = Clock(grid),
+                      momentum_advection = UpwindBiased(order=5),
+                      tracer_advection = WENO(),
+                      mass_advection = WENO(),
+                      coriolis = nothing,
+                      forcing::NamedTuple = NamedTuple(),
+                      closure = nothing,
+                      bathymetry = nothing,
+                      tracers = (),
+                      closure_fields = nothing,
+                      boundary_conditions::NamedTuple = NamedTuple(),
+                      timestepper::Symbol = :RungeKutta3,
+                      formulation = ConservativeFormulation())
 
 Construct a shallow water model on `grid` with `gravitational_acceleration` constant.
 
-Keyword arguments
-=================
+Arguments
+=========
 
   - `grid`: (required) The resolution and discrete geometry on which `model` is solved. The
             architecture (CPU/GPU) that the model is solve is inferred from the architecture
             of the grid.
+
+Keyword arguments
+=================
+
   - `gravitational_acceleration`: (required) The gravitational acceleration constant.
   - `clock`: The `clock` for the model.
   - `momentum_advection`: The scheme that advects velocities. See `Oceananigans.Advection`.
@@ -108,22 +112,21 @@ Keyword arguments
     The `ConservativeFormulation()` requires `RectilinearGrid`.
     Use `VectorInvariantFormulation()` with `LatitudeLongitudeGrid`.
 """
-function ShallowWaterModel(;
-                           grid,
+function ShallowWaterModel(grid;
                            gravitational_acceleration,
-                               clock = Clock(grid),
-                  momentum_advection = UpwindBiased(order=5),
-                    tracer_advection = WENO(),
-                      mass_advection = WENO(),
-                            coriolis = nothing,
-                 forcing::NamedTuple = NamedTuple(),
-                             closure = nothing,
-                          bathymetry = nothing,
-                             tracers = (),
-                      closure_fields = nothing,
-     boundary_conditions::NamedTuple = NamedTuple(),
-                 timestepper::Symbol = :RungeKutta3,
-                         formulation = ConservativeFormulation())
+                           clock = Clock(grid),
+                           momentum_advection = UpwindBiased(order=5),
+                           tracer_advection = WENO(),
+                           mass_advection = WENO(),
+                           coriolis = nothing,
+                           forcing::NamedTuple = NamedTuple(),
+                           closure = nothing,
+                           bathymetry = nothing,
+                           tracers = (),
+                           closure_fields = nothing,
+                           boundary_conditions::NamedTuple = NamedTuple(),
+                           timestepper::Symbol = :RungeKutta3,
+                           formulation = ConservativeFormulation())
 
     @warn "The ShallowWaterModel is currently unvalidated, subject to change, and should not be used for scientific research without adequate validation."
 
@@ -217,6 +220,7 @@ validate_momentum_advection(momentum_advection::Union{VectorInvariant, Nothing},
 
 formulation(model::ShallowWaterModel)  = model.formulation
 architecture(model::ShallowWaterModel) = model.architecture
+timestepper(model::ShallowWaterModel)  = model.timestepper
 
 # The w velocity is needed to use generic TurbulenceClosures methods, therefore it is set to nothing
 shallow_water_velocities(::VectorInvariantFormulation, solution) = (u = solution.u, v = solution.v, w = nothing)
