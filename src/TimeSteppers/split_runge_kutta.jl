@@ -25,10 +25,9 @@ end
                                kwargs...) where {TI, TG, PF}
 
 Return a nth-order `SplitRungeKuttaTimeStepper` on `grid` and with `tracers`.
-The tendency fields `Gⁿ` and `G⁻`, and the previous state `Ψ⁻` can be modified
-via optional `kwargs`.
+The tendency fields `Gⁿ`, and the previous state `Ψ⁻` can be modified via optional `kwargs`.
 
-The scheme is described by [Knoth and Wensch (2014)](@cite knoth2014). In a nutshell,
+The scheme is described by [Wicker and Skamarock (2002)](@cite WickerSkamarock2002). In a nutshell,
 the nth-order low-storage Runge-Kutta timestepper steps forward the state `Uⁿ` by `Δt` via n substeps.
 A barotropic velocity correction step is applied after at each substep.
 
@@ -45,12 +44,13 @@ and default to `(3, 2, 1)` for a three-stage scheme. The number of stages is inf
 `β` tuple.
 
 The state at the first substep is taken to be the one that corresponds to the ``n``-th timestep,
-`U¹ = Uⁿ`, and the state after the third substep is then the state at the `Uⁿ⁺¹ = U³`.
+`U¹ = Uⁿ`, and the state after the last substep is then the state at `Uⁿ⁺¹`.
 
 References
 ==========
 
-To be added once the paper is submitted...
+Wicker, Louis J. & Skamarock, William C. (2002). Time-Splitting Methods for Elastic Models 
+    Using Forward Time Schemes. Monthly Weather Review, 130(8), 2088–2097. 
 """
 function SplitRungeKuttaTimeStepper(grid, prognostic_fields, args...;
                                     implicit_solver::TI = nothing,
@@ -87,11 +87,11 @@ ts = SplitRungeKuttaTimeStepper(stages=3)
 ts = SplitRungeKuttaTimeStepper(coefficients=(4, 3, 2, 1))
 ```
 """
-function SplitRungeKuttaTimeStepper(; coefficients = nothing, stages = nothing) 
-    if coefficients !== nothing && stages !== nothing
+function SplitRungeKuttaTimeStepper(; coefficients = nothing, stages = 3) 
+    if !isnothing(coefficients) && !isnothing(stages)
         error("Cannot specify both `coefficients` and `stages`.")
     end
-    if coefficients == nothing 
+    if isnothing(coefficients)
         coefficients = tuple(collect(stages:-1:1)...)
     end
     return SplitRungeKuttaTimeStepper{typeof(coefficients), Nothing, Nothing, Nothing}(coefficients, nothing, nothing, nothing)
