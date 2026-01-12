@@ -22,7 +22,7 @@ simulation = Simulation(model, Δt=1, stop_iteration=8)
 simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(5), prefix="model_checkpoint")
 ```
 
-For long simulations, use `cleanup=true` to automatically delete old checkpoint files
+Use `cleanup=true` to automatically delete old checkpoint files
 when a new one is written, keeping only the latest checkpoint:
 
 ```julia
