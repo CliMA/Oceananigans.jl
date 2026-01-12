@@ -748,19 +748,19 @@ end
 
 import Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, δxTᶠᵃᵃ, δyTᵃᶠᵃ
 
-@inline ℑxᶠᵃᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind{FT}, c) where FT =
-    @inbounds ifelse((i == 1) & (j < 1),               FT(0.5) * (c[1, j, k] + c[j, 1, k]) ,
-              ifelse((i == grid.Nx+1) & (j < 1),       FT(0.5) * (c[grid.Nx-j+1, 1, k] + c[grid.Nx, j, k]) ,
-              ifelse((i == grid.Nx+1) & (j > grid.Ny), FT(0.5) * (c[j, grid.Ny, k] + c[grid.Nx, j, k]) ,
-              ifelse((i == 1) & (j > grid.Ny),         FT(0.5) * (c[1, j, k] + c[grid.Nx-j+1, grid.Ny, k]) ,
-                                                       FT(0.5) * (c[i, j, k] + c[i-1, j, k])))))
+@inline ℑxᶠᵃᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) =
+    @inbounds ifelse((i == 1) & (j < 1),              (c[1, j, k] + c[j, 1, k])/2,
+              ifelse((i == grid.Nx+1) & (j < 1),       (c[grid.Nx-j+1, 1, k] + c[grid.Nx, j, k])/2,
+              ifelse((i == grid.Nx+1) & (j > grid.Ny), (c[j, grid.Ny, k] + c[grid.Nx, j, k])/2 ,
+              ifelse((i == 1) & (j > grid.Ny),         (c[1, j, k] + c[grid.Nx-j+1, grid.Ny, k])/2 ,
+                                                       (c[i, j, k] + c[i-1, j, k])/2)))) 
 
-@inline ℑyᵃᶠᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind{FT}, c) where FT =
-    @inbounds ifelse((i < 1) & (j == 1),               FT(0.5) * (c[i, 1, k] + c[1, i, k]) ,
-              ifelse((i > grid.Nx) & (j == 1),         FT(0.5) * (c[i, 1, k] + c[grid.Nx, grid.Ny+1-i, k]) ,
-              ifelse((i > grid.Nx) & (j == grid.Ny+1), FT(0.5) * (c[grid.Nx, i, k] + c[i, grid.Ny, k]) ,
-              ifelse((i < 1) & (j == grid.Ny+1),       FT(0.5) * (c[1, grid.Ny-i+1, k] + c[i, grid.Ny, k]) ,
-                                                       FT(0.5) * (c[i, j, k] + c[i, j-1, k])))))
+@inline ℑyᵃᶠᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) =
+    @inbounds ifelse((i < 1) & (j == 1),               (c[i, 1, k] + c[1, i, k])/2,
+              ifelse((i > grid.Nx) & (j == 1),         (c[i, 1, k] + c[grid.Nx, grid.Ny+1-i, k])/2,
+              ifelse((i > grid.Nx) & (j == grid.Ny+1), (c[grid.Nx, i, k] + c[i, grid.Ny, k])/2,
+              ifelse((i < 1) & (j == grid.Ny+1),       (c[1, grid.Ny-i+1, k] + c[i, grid.Ny, k])/2,
+                                                       (c[i, j, k] + c[i, j-1, k])/2)))) 
 
 @inline δxTᶠᵃᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) =
     @inbounds ifelse((i == 1) & (j < 1),               c[1, j, k]           - c[j, 1, k],
