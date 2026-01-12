@@ -50,6 +50,7 @@ function ab2_step_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordina
 
     params = zstar_params(grid)
 
+    # Do we need to fill halos of the barotropic velocities at this point?
     launch!(architecture(grid), grid, params, _ab2_update_grid_scaling!,
             σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ηⁿ, Gⁿ, grid, Δt, χ, U, V, u, v)
 
