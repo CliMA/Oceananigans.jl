@@ -161,9 +161,7 @@ end
 # Checkpointing
 
 function prognostic_state(lagrangian_particles::LagrangianParticles)
-    return (
-        properties = prognostic_state(lagrangian_particles.properties),
-    )
+    return (; properties = prognostic_state(lagrangian_particles.properties))
 end
 
 function restore_prognostic_state!(lagrangian_particles::LagrangianParticles, state)
