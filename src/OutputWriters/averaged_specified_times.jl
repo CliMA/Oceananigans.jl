@@ -2,7 +2,7 @@ using Oceananigans.Utils: AbstractSchedule, prettytime
 using Oceananigans.TimeSteppers: Clock
 using Dates: Period, Second, value, DateTime
 
-import Oceananigans: initialize!
+import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
 import Oceananigans.Utils: TimeInterval, SpecifiedTimes
 
 """
