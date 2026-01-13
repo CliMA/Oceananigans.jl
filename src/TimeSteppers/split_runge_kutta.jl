@@ -199,3 +199,13 @@ The cached fields are stored in `model.timestepper.Ψ⁻` and used as the base s
 for all substeps within a single time step.
 """
 cache_current_fields!(model::AbstractModel) = error("cache_current_fields! not implemented for $(typeof(model))")
+
+#####
+##### Checkpointing
+#####
+
+# SplitRungeKuttaTimeStepper is self-starting!
+prognostic_state(timestepper::SplitRungeKuttaTimeStepper) = nothing
+
+restore_prognostic_state!(timestepper::SplitRungeKuttaTimeStepper, state) = nothing
+restore_prognostic_state!(::SplitRungeKutta3TimeStepper, ::Nothing) = nothing

@@ -1,8 +1,6 @@
 using Adapt: Adapt
 
-#####
-##### ForwardBackward timestepper
-##### 
+import Oceananigans: prognostic_state, restore_prognostic_state!
 
 """
     struct ForwardBackwardScheme
@@ -173,3 +171,33 @@ end
     @inbounds   t.Vᵐ[i, j, k] =      V[i, j, k]
     return nothing
 end
+
+#####
+##### Checkpointing
+#####
+
+prognostic_state(::ForwardBackwardScheme) = nothing
+restore_prognostic_state!(ts::ForwardBackwardScheme, ::Nothing) = ts
+
+function prognostic_state(ts::AdamsBashforth3Scheme)
+    return (ηᵐ   = prognostic_state(ts.ηᵐ),
+            ηᵐ⁻¹ = prognostic_state(ts.ηᵐ⁻¹),
+            ηᵐ⁻² = prognostic_state(ts.ηᵐ⁻²),
+            Uᵐ⁻¹ = prognostic_state(ts.Uᵐ⁻¹),
+            Uᵐ⁻² = prognostic_state(ts.Uᵐ⁻²),
+            Vᵐ⁻¹ = prognostic_state(ts.Vᵐ⁻¹),
+            Vᵐ⁻² = prognostic_state(ts.Vᵐ⁻²))
+end
+
+function restore_prognostic_state!(ts::AdamsBashforth3Scheme, state)
+    restore_prognostic_state!(ts.ηᵐ,   state.ηᵐ)
+    restore_prognostic_state!(ts.ηᵐ⁻¹, state.ηᵐ⁻¹)
+    restore_prognostic_state!(ts.ηᵐ⁻², state.ηᵐ⁻²)
+    restore_prognostic_state!(ts.Uᵐ⁻¹, state.Uᵐ⁻¹)
+    restore_prognostic_state!(ts.Uᵐ⁻², state.Uᵐ⁻²)
+    restore_prognostic_state!(ts.Vᵐ⁻¹, state.Vᵐ⁻¹)
+    restore_prognostic_state!(ts.Vᵐ⁻², state.Vᵐ⁻²)
+    return ts
+end
+
+restore_prognostic_state!(::AdamsBashforth3Scheme, ::Nothing) = nothing

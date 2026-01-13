@@ -6,6 +6,8 @@ using Oceananigans.Grids: halo_size, topology, AbstractGrid, Flat,
 using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 
+import Oceananigans: prognostic_state, restore_prognostic_state!
+
 #####
 ##### Mutable-specific vertical spacings update
 #####
@@ -207,4 +209,31 @@ function initialize_vertical_coordinate!(::ZStarCoordinate, model, grid::Mutable
     launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.displacement, grid)
     parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
     return nothing
+
+#####
+##### Checkpointing
+#####
+
+prognostic_state(::ZCoordinate, grid) = nothing
+restore_prognostic_state!(::ZCoordinate, grid, ::Nothing) = nothing
+
+function prognostic_state(zc::ZStarCoordinate, grid)
+    z = grid.z
+    return (ηⁿ   = prognostic_state(z.ηⁿ),
+            σᶜᶜⁿ = prognostic_state(z.σᶜᶜⁿ),
+            σᶠᶜⁿ = prognostic_state(z.σᶠᶜⁿ),
+            σᶜᶠⁿ = prognostic_state(z.σᶜᶠⁿ),
+            σᶠᶠⁿ = prognostic_state(z.σᶠᶠⁿ),
+            σᶜᶜ⁻ = prognostic_state(z.σᶜᶜ⁻))
+end
+
+function restore_prognostic_state!(zc::ZStarCoordinate, grid, state)
+    z = grid.z
+    restore_prognostic_state!(z.ηⁿ,   state.ηⁿ)
+    restore_prognostic_state!(z.σᶜᶜⁿ, state.σᶜᶜⁿ)
+    restore_prognostic_state!(z.σᶠᶜⁿ, state.σᶠᶜⁿ)
+    restore_prognostic_state!(z.σᶜᶠⁿ, state.σᶜᶠⁿ)
+    restore_prognostic_state!(z.σᶠᶠⁿ, state.σᶠᶠⁿ)
+    restore_prognostic_state!(z.σᶜᶜ⁻, state.σᶜᶜ⁻)
+    return zc
 end

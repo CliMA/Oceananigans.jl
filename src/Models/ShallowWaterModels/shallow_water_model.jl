@@ -14,6 +14,7 @@ using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, build_closure_fields
 using Oceananigans.Utils: tupleit
 
+import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.Architectures: architecture
 
 const RectilinearGrids = Union{RectilinearGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:RectilinearGrid}}
@@ -236,3 +237,28 @@ shallow_water_velocities(model::ShallowWaterModel) = shallow_water_velocities(mo
 
 shallow_water_fields(velocities, solution, tracers, ::ConservativeFormulation) = merge(velocities, solution, tracers)
 shallow_water_fields(velocities, solution, tracers, ::VectorInvariantFormulation) = merge(solution, (; w = velocities.w), tracers)
+
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(model::ShallowWaterModel)
+    return (clock = prognostic_state(model.clock),
+            solution = prognostic_state(model.solution),
+            velocities = prognostic_state(model.velocities),
+            tracers = prognostic_state(model.tracers),
+            closure_fields = prognostic_state(model.closure_fields),
+            timestepper = prognostic_state(model.timestepper))
+end
+
+function restore_prognostic_state!(model::ShallowWaterModel, state)
+    restore_prognostic_state!(model.clock, state.clock)
+    restore_prognostic_state!(model.solution, state.solution)
+    restore_prognostic_state!(model.velocities, state.velocities)
+    restore_prognostic_state!(model.timestepper, state.timestepper)
+    restore_prognostic_state!(model.tracers, state.tracers)
+    restore_prognostic_state!(model.closure_fields, state.closure_fields)
+    return model
+end
+
+restore_prognostic_state!(::ShallowWaterModel, ::Nothing) = nothing

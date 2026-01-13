@@ -4,6 +4,7 @@ using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ, Az⁻¹ᶜᶜᶜ, Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, δxᶜᶜᶜ, δyᶜᶜᶜ
 
 import Oceananigans.DistributedComputations: synchronize_communication!
+import Oceananigans: prognostic_state, restore_prognostic_state!
 
 """
     struct ExplicitFreeSurface{E, T}
@@ -190,3 +191,18 @@ function compute_explicit_free_surface_tendency!(grid, model)
 
     return nothing
 end
+
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(fs::ExplicitFreeSurface)
+    return (; η = prognostic_state(fs.η))
+end
+
+function restore_prognostic_state!(fs::ExplicitFreeSurface, state)
+    restore_prognostic_state!(fs.η, state.η)
+    return fs
+end
+
+restore_prognostic_state!(::ExplicitFreeSurface, ::Nothing) = nothing
