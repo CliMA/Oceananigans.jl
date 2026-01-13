@@ -47,8 +47,12 @@ const ConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
 const ConformalCubedSpherePanelGridOfSomeKind{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
     Union{ConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch},
           ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch}}}
-const AbstractGridFittedBottomImmersedBoundaryConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
+const AGFIBConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
     ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch}, <:AbstractGridFittedBottom}
+const XFlatAGFIBConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
+    ImmersedBoundaryGrid{<:Any, <:Flat, <:Any, <:Any, <:ConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch}, <:AbstractGridFittedBottom}
+const YFlatAGFIBConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
+    ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:ConformalCubedSpherePanelGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch}, <:AbstractGridFittedBottom}
 
 # architecture = CPU() by default, assuming that a DataType positional arg is specifying the floating point type.
 ConformalCubedSpherePanelGrid(FT::DataType; kwargs...) = ConformalCubedSpherePanelGrid(CPU(), FT; kwargs...)
@@ -292,24 +296,24 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
                               topology = ξη_grid_topology,
                               x = ξ, y = η, z, halo)
 
-    if !isnothing(provided_conformal_mapping)
-        ξᶠᵃᵃ = on_architecture(CPU(), provided_conformal_mapping.ξᶠᵃᵃ)
-        ηᵃᶠᵃ = on_architecture(CPU(), provided_conformal_mapping.ηᵃᶠᵃ)
-        ξᶜᵃᵃ = on_architecture(CPU(), provided_conformal_mapping.ξᶜᵃᵃ)
-        ηᵃᶜᵃ = on_architecture(CPU(), provided_conformal_mapping.ηᵃᶜᵃ)
+    ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ = if !isnothing(provided_conformal_mapping)
+        (on_architecture(CPU(), provided_conformal_mapping.ξᶠᵃᵃ),
+         on_architecture(CPU(), provided_conformal_mapping.ηᵃᶠᵃ),
+         on_architecture(CPU(), provided_conformal_mapping.ξᶜᵃᵃ),
+         on_architecture(CPU(), provided_conformal_mapping.ηᵃᶜᵃ))
     else
         if non_uniform_conformal_mapping
-            ξᶠᵃᵃ, ηᵃᶠᵃ, xᶠᶠᵃ, yᶠᶠᵃ, z = (
-            optimized_non_uniform_conformal_cubed_sphere_coordinates(Nξ+1, Nη+1, spacing))
-            ξᶠᵃᵃ = map(FT, ξᶠᵃᵃ)
-            ηᵃᶠᵃ = map(FT, ηᵃᶠᵃ)
-            ξᶜᵃᵃ = [FT(0.5 * (ξᶠᵃᵃ[i] + ξᶠᵃᵃ[i+1])) for i in 1:Nξ]
-            ηᵃᶜᵃ = [FT(0.5 * (ηᵃᶠᵃ[j] + ηᵃᶠᵃ[j+1])) for j in 1:Nη]
+            _ξᶠᵃᵃ, _ηᵃᶠᵃ, _, _, _ =
+                optimized_non_uniform_conformal_cubed_sphere_coordinates(Nξ+1, Nη+1, spacing)
+            (map(FT, _ξᶠᵃᵃ),
+             map(FT, _ηᵃᶠᵃ),
+             [FT(0.5 * (_ξᶠᵃᵃ[i] + _ξᶠᵃᵃ[i+1])) for i in 1:Nξ],
+             [FT(0.5 * (_ηᵃᶠᵃ[j] + _ηᵃᶠᵃ[j+1])) for j in 1:Nη])
         else
-            ξᶠᵃᵃ = xnodes(ξη_grid, Face())
-            ξᶜᵃᵃ = xnodes(ξη_grid, Center())
-            ηᵃᶠᵃ = ynodes(ξη_grid, Face())
-            ηᵃᶜᵃ = ynodes(ξη_grid, Center())
+            (xnodes(ξη_grid, Face()),
+             ynodes(ξη_grid, Face()),
+             xnodes(ξη_grid, Center()),
+             ynodes(ξη_grid, Center()))
         end
     end
 
@@ -748,19 +752,36 @@ end
 
 import Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, δxTᶠᵃᵃ, δyTᵃᶠᵃ
 
-@inline ℑxᶠᵃᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind{FT}, c) where FT =
-    @inbounds ifelse((i == 1) & (j < 1),               FT(0.5) * (c[1, j, k] + c[j, 1, k]) ,
-              ifelse((i == grid.Nx+1) & (j < 1),       FT(0.5) * (c[grid.Nx-j+1, 1, k] + c[grid.Nx, j, k]) ,
-              ifelse((i == grid.Nx+1) & (j > grid.Ny), FT(0.5) * (c[j, grid.Ny, k] + c[grid.Nx, j, k]) ,
-              ifelse((i == 1) & (j > grid.Ny),         FT(0.5) * (c[1, j, k] + c[grid.Nx-j+1, grid.Ny, k]) ,
-                                                       FT(0.5) * (c[i, j, k] + c[i-1, j, k])))))
+@inline ℑxᶠᵃᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) =
+    @inbounds ifelse((i == 1) & (j < 1),               (c[1, j, k] + c[j, 1, k])/2,
+              ifelse((i == grid.Nx+1) & (j < 1),       (c[grid.Nx-j+1, 1, k] + c[grid.Nx, j, k])/2,
+              ifelse((i == grid.Nx+1) & (j > grid.Ny), (c[j, grid.Ny, k] + c[grid.Nx, j, k])/2,
+              ifelse((i == 1) & (j > grid.Ny),         (c[1, j, k] + c[grid.Nx-j+1, grid.Ny, k])/2,
+                                                       (c[i, j, k] + c[i-1, j, k])/2)))) 
 
-@inline ℑyᵃᶠᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind{FT}, c) where FT =
-    @inbounds ifelse((i < 1) & (j == 1),               FT(0.5) * (c[i, 1, k] + c[1, i, k]) ,
-              ifelse((i > grid.Nx) & (j == 1),         FT(0.5) * (c[i, 1, k] + c[grid.Nx, grid.Ny+1-i, k]) ,
-              ifelse((i > grid.Nx) & (j == grid.Ny+1), FT(0.5) * (c[grid.Nx, i, k] + c[i, grid.Ny, k]) ,
-              ifelse((i < 1) & (j == grid.Ny+1),       FT(0.5) * (c[1, grid.Ny-i+1, k] + c[i, grid.Ny, k]) ,
-                                                       FT(0.5) * (c[i, j, k] + c[i, j-1, k])))))
+@inline ℑyᵃᶠᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) =
+    @inbounds ifelse((i < 1) & (j == 1),               (c[i, 1, k] + c[1, i, k])/2,
+              ifelse((i > grid.Nx) & (j == 1),         (c[i, 1, k] + c[grid.Nx, grid.Ny+1-i, k])/2,
+              ifelse((i > grid.Nx) & (j == grid.Ny+1), (c[grid.Nx, i, k] + c[i, grid.Ny, k])/2,
+              ifelse((i < 1) & (j == grid.Ny+1),       (c[1, grid.Ny-i+1, k] + c[i, grid.Ny, k])/2,
+                                                       (c[i, j, k] + c[i, j-1, k])/2))))
+
+@inline ℑxᶠᵃᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::Number, args...) = f
+@inline ℑyᵃᶠᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::Number, args...) = f
+
+@inline ℑxᶠᵃᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::F, args...) where {F<:Function} =
+    @inbounds ifelse((i == 1) & (j < 1),               (f(1, j, k, grid, args...) + f(j, 1, k, grid, args...))/2,
+              ifelse((i == grid.Nx+1) & (j < 1),       (f(grid.Nx-j+1, 1, k, grid, args...) + f(grid.Nx, j, k, grid, args...))/2,
+              ifelse((i == grid.Nx+1) & (j > grid.Ny), (f(j, grid.Ny, k, grid, args...) + f(grid.Nx, j, k, grid, args...))/2,
+              ifelse((i == 1) & (j > grid.Ny),         (f(1, j, k, grid, args...) + f(grid.Nx-j+1, grid.Ny, k, grid, args...))/2,
+                                                       (f(i, j, k, grid, args...) + f(i-1, j, k, grid, args...))/2))))
+
+@inline ℑyᵃᶠᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::F, args...) where {F<:Function} =
+    @inbounds ifelse((i < 1) & (j == 1),               (f(i, 1, k, grid, args...) + f(1, i, k, grid, args...))/2,
+              ifelse((i > grid.Nx) & (j == 1),         (f(i, 1, k, grid, args...) + f(grid.Nx, grid.Ny+1-i, k, grid, args...))/2,
+              ifelse((i > grid.Nx) & (j == grid.Ny+1), (f(grid.Nx, i, k, grid, args...) + f(i, grid.Ny, k, grid, args...))/2,
+              ifelse((i < 1) & (j == grid.Ny+1),       (f(1, grid.Ny-i+1, k, grid, args...) + f(i, grid.Ny, k, grid, args...))/2,
+                                                       (f(i, j, k, grid, args...) + f(i, j-1, k, grid, args...))/2))))
 
 @inline δxTᶠᵃᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) =
     @inbounds ifelse((i == 1) & (j < 1),               c[1, j, k]           - c[j, 1, k],
@@ -799,12 +820,14 @@ import Oceananigans.Grids: static_column_depthᶠᶜᵃ, static_column_depthᶜ�
               ifelse((i == 1) & (j > grid.Ny),         min(static_column_depthᶜᶜᵃ(1, j, grid), static_column_depthᶜᶜᵃ(grid.Nx-j+1, grid.Ny, grid)),
                                                        min(static_column_depthᶜᶜᵃ(i, j, grid), static_column_depthᶜᶜᵃ(i-1, j, grid))))))
 
-@inline static_column_depthᶠᶜᵃ(i, j, grid::AbstractGridFittedBottomImmersedBoundaryConformalCubedSpherePanelGrid) =
+@inline static_column_depthᶠᶜᵃ(i, j, grid::AGFIBConformalCubedSpherePanelGrid) =
     @inbounds ifelse((i == 1) & (j < 1),               min(static_column_depthᶜᶜᵃ(1, j, grid), static_column_depthᶜᶜᵃ(j, 1, grid)),
               ifelse((i == grid.Nx+1) & (j < 1),       min(static_column_depthᶜᶜᵃ(grid.Nx-j+1, 1, grid), static_column_depthᶜᶜᵃ(grid.Nx, j, grid)),
               ifelse((i == grid.Nx+1) & (j > grid.Ny), min(static_column_depthᶜᶜᵃ(j, grid.Ny, grid), static_column_depthᶜᶜᵃ(grid.Nx, j, grid)),
               ifelse((i == 1) & (j > grid.Ny),         min(static_column_depthᶜᶜᵃ(1, j, grid), static_column_depthᶜᶜᵃ(grid.Nx-j+1, grid.Ny, grid)),
                                                        min(static_column_depthᶜᶜᵃ(i, j, grid), static_column_depthᶜᶜᵃ(i-1, j, grid))))))
+
+@inline static_column_depthᶠᶜᵃ(i, j, grid::XFlatAGFIBConformalCubedSpherePanelGrid) = static_column_depthᶜᶜᵃ(i, j, grid)
 
 @inline static_column_depthᶜᶠᵃ(i, j, grid::ConformalCubedSpherePanelGridOfSomeKind) =
     @inbounds ifelse((i < 1) & (j == 1),               min(static_column_depthᶜᶜᵃ(i, 1, grid), static_column_depthᶜᶜᵃ(1, i, grid)),
@@ -813,12 +836,14 @@ import Oceananigans.Grids: static_column_depthᶠᶜᵃ, static_column_depthᶜ�
               ifelse((i < 1) & (j == grid.Ny+1),       min(static_column_depthᶜᶜᵃ(1, grid.Ny-i+1, grid), static_column_depthᶜᶜᵃ(i, grid.Ny, grid)),
                                                        min(static_column_depthᶜᶜᵃ(i, j, grid), static_column_depthᶜᶜᵃ(i, j-1, grid))))))
 
-@inline static_column_depthᶜᶠᵃ(i, j, grid::AbstractGridFittedBottomImmersedBoundaryConformalCubedSpherePanelGrid) =
+@inline static_column_depthᶜᶠᵃ(i, j, grid::AGFIBConformalCubedSpherePanelGrid) =
     @inbounds ifelse((i < 1) & (j == 1),               min(static_column_depthᶜᶜᵃ(i, 1, grid), static_column_depthᶜᶜᵃ(1, i, grid)),
               ifelse((i > grid.Nx) & (j == 1),         min(static_column_depthᶜᶜᵃ(i, 1, grid), static_column_depthᶜᶜᵃ(grid.Nx, grid.Ny+1-i, grid)),
               ifelse((i > grid.Nx) & (j == grid.Ny+1), min(static_column_depthᶜᶜᵃ(grid.Nx, i, grid), static_column_depthᶜᶜᵃ(i, grid.Ny, grid)),
               ifelse((i < 1) & (j == grid.Ny+1),       min(static_column_depthᶜᶜᵃ(1, grid.Ny-i+1, grid), static_column_depthᶜᶜᵃ(i, grid.Ny, grid)),
                                                        min(static_column_depthᶜᶜᵃ(i, j, grid), static_column_depthᶜᶜᵃ(i, j-1, grid))))))
+
+@inline static_column_depthᶜᶠᵃ(i, j, grid::YFlatAGFIBConformalCubedSpherePanelGrid) = static_column_depthᶜᶜᵃ(i, j, grid)
 
 import Oceananigans.BoundaryConditions: fill_halo_kernels
 
