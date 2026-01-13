@@ -46,7 +46,7 @@ stability for problems with oscillatory dynamics.
 
 ### Split Runge-Kutta
 
-The `SplitRungeKuttaTimeStepper` implements a runge-kutta scheme suitable for split-explicit computations, that follows the implmentation
+The `SplitRungeKuttaTimeStepper` implements a runge-kutta scheme suitable for split-explicit computations, that follows the implementation
 detailed in [Wicker and Skamarock (2002)](@cite WickerSkamarock2002). At the beginning of each time step the
 prognostic fields are cached, and subsequent substeps compute:
 ```math
