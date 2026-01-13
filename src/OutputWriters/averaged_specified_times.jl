@@ -268,8 +268,6 @@ function end_of_window(schedule::AveragedSpecifiedTimes, clock)
     return clock.time >= next_time
 end
 
-restore_prognostic_state!(::AveragedTimeInterval, ::Nothing) = nothing
-
 function prognostic_state(schedule::AveragedSpecifiedTimes)
     return (specified_times = prognostic_state(schedule.specified_times),
             collecting = schedule.collecting)

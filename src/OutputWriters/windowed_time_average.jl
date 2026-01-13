@@ -127,6 +127,8 @@ function restore_prognostic_state!(schedule::AveragedTimeInterval, state)
     return schedule
 end
 
+restore_prognostic_state!(::AveragedTimeInterval, ::Nothing) = nothing
+
 #####
 ##### WindowedTimeAverage
 #####
