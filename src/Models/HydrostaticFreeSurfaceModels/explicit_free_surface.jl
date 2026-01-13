@@ -2,6 +2,8 @@ using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ, Az⁻¹ᶜᶜᶜ, Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, δxᶜᶜᶜ, δyᶜᶜᶜ
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 
+import Oceananigans: prognostic_state, restore_prognostic_state!
+
 using Adapt: Adapt
 
 """
@@ -59,7 +61,7 @@ step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::SplitR
 @inline rk3_coeffs(ts, ::Val{2}) = (ts.γ², ts.ζ²)
 @inline rk3_coeffs(ts, ::Val{3}) = (ts.γ³, ts.ζ³)
 
-explicit_rk3_step_free_surface!(free_surface, model, Δt) = 
+explicit_rk3_step_free_surface!(free_surface, model, Δt) =
     launch!(model.architecture, model.grid, :xy,
             _explicit_rk3_step_free_surface!, free_surface.displacement, Δt,
             model.timestepper.Gⁿ.η, model.timestepper.Ψ⁻.η, size(model.grid, 3))
@@ -171,3 +173,18 @@ function compute_explicit_free_surface_tendency!(grid, model)
 
     return nothing
 end
+
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(fs::ExplicitFreeSurface)
+    return (; η = prognostic_state(fs.η))
+end
+
+function restore_prognostic_state!(fs::ExplicitFreeSurface, state)
+    restore_prognostic_state!(fs.η, state.η)
+    return fs
+end
+
+restore_prognostic_state!(::ExplicitFreeSurface, ::Nothing) = nothing
