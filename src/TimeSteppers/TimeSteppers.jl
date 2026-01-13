@@ -80,4 +80,21 @@ function first_time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper
     return nothing
 end
 
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(timestepper::AbstractTimeStepper)
+    return (Gⁿ = prognostic_state(timestepper.Gⁿ),
+            G⁻ = prognostic_state(timestepper.G⁻))
+end
+
+function restore_prognostic_state!(timestepper::AbstractTimeStepper, state)
+    restore_prognostic_state!(timestepper.Gⁿ, state.Gⁿ)
+    restore_prognostic_state!(timestepper.G⁻, state.G⁻)
+    return timestepper
+end
+
+restore_prognostic_state!(::AbstractTimeStepper, ::Nothing) = nothing
+
 end # module

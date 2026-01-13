@@ -289,24 +289,24 @@ function ConformalCubedSpherePanelGrid(architecture::AbstractArchitecture = CPU(
                               topology = ξη_grid_topology,
                               x = ξ, y = η, z, halo)
 
-    if !isnothing(provided_conformal_mapping)
-        ξᶠᵃᵃ = on_architecture(CPU(), provided_conformal_mapping.ξᶠᵃᵃ)
-        ηᵃᶠᵃ = on_architecture(CPU(), provided_conformal_mapping.ηᵃᶠᵃ)
-        ξᶜᵃᵃ = on_architecture(CPU(), provided_conformal_mapping.ξᶜᵃᵃ)
-        ηᵃᶜᵃ = on_architecture(CPU(), provided_conformal_mapping.ηᵃᶜᵃ)
+    ξᶠᵃᵃ, ηᵃᶠᵃ, ξᶜᵃᵃ, ηᵃᶜᵃ = if !isnothing(provided_conformal_mapping)
+        (on_architecture(CPU(), provided_conformal_mapping.ξᶠᵃᵃ),
+         on_architecture(CPU(), provided_conformal_mapping.ηᵃᶠᵃ),
+         on_architecture(CPU(), provided_conformal_mapping.ξᶜᵃᵃ),
+         on_architecture(CPU(), provided_conformal_mapping.ηᵃᶜᵃ))
     else
         if non_uniform_conformal_mapping
-            ξᶠᵃᵃ, ηᵃᶠᵃ, xᶠᶠᵃ, yᶠᶠᵃ, z = (
-            optimized_non_uniform_conformal_cubed_sphere_coordinates(Nξ+1, Nη+1, spacing))
-            ξᶠᵃᵃ = map(FT, ξᶠᵃᵃ)
-            ηᵃᶠᵃ = map(FT, ηᵃᶠᵃ)
-            ξᶜᵃᵃ = [FT(0.5 * (ξᶠᵃᵃ[i] + ξᶠᵃᵃ[i+1])) for i in 1:Nξ]
-            ηᵃᶜᵃ = [FT(0.5 * (ηᵃᶠᵃ[j] + ηᵃᶠᵃ[j+1])) for j in 1:Nη]
+            _ξᶠᵃᵃ, _ηᵃᶠᵃ, _, _, _ =
+                optimized_non_uniform_conformal_cubed_sphere_coordinates(Nξ+1, Nη+1, spacing)
+            (map(FT, _ξᶠᵃᵃ),
+             map(FT, _ηᵃᶠᵃ),
+             [FT(0.5 * (_ξᶠᵃᵃ[i] + _ξᶠᵃᵃ[i+1])) for i in 1:Nξ],
+             [FT(0.5 * (_ηᵃᶠᵃ[j] + _ηᵃᶠᵃ[j+1])) for j in 1:Nη])
         else
-            ξᶠᵃᵃ = xnodes(ξη_grid, Face())
-            ξᶜᵃᵃ = xnodes(ξη_grid, Center())
-            ηᵃᶠᵃ = ynodes(ξη_grid, Face())
-            ηᵃᶜᵃ = ynodes(ξη_grid, Center())
+            (xnodes(ξη_grid, Face()),
+             ynodes(ξη_grid, Face()),
+             xnodes(ξη_grid, Center()),
+             ynodes(ξη_grid, Center()))
         end
     end
 

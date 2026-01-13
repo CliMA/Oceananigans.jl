@@ -14,7 +14,6 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface,
                                                         free_surface_displacement_field
 
 using KernelAbstractions: @index, @kernel
-using KernelAbstractions.Extras.LoopInfo: @unroll
 
 using Oceananigans.Grids: column_depthᶜᶠᵃ,
                           column_depthᶠᶜᵃ

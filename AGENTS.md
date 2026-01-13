@@ -32,6 +32,9 @@ It provides a framework for solving the incompressible (or Boussinesq) Navier-St
    - Short-circuiting if-statements should be avoided if possible, ifelse should always be used if possible
    - No error messages inside kernels
    - Models _never_ go inside kernels
+   - Mark functions called inside kernels with `@inline`
+   - **Never use loops outside kernels**: Always replace `for` loops that iterate over grid points
+     with kernels launched via `launch!`. This ensures code works on both CPU and GPU.
    
 4. **Documentation**:
    - Use DocStringExtensions.jl for consistent docstrings
@@ -119,6 +122,11 @@ Pkg.test("Oceananigans")
 - Ensure doctests pass
 - Use Aqua.jl for package quality checks
 
+### Debugging Tips
+- Sometimes "Julia version compatibility" issues are resolved by deleting the Manifest.toml,
+  and then re-populating it with `using Pkg; Pkg.instantiate()`.
+- GPU tests may fail with "dynamic invocation error". Run on CPU first to isolate GPU-specific issues.
+
 ### Docstring Examples (CRITICAL)
 
 **NEVER use plain `julia` code blocks in docstrings. ALWAYS use `jldoctest` blocks.**
@@ -127,7 +135,8 @@ Plain code blocks (`` ```julia ``) are NOT tested and can become stale or incorr
 Doctests (`` ```jldoctest ``) are automatically tested and verified to work.
 
 ✅ CORRECT - use `jldoctest`:
-```markdown
+
+~~~~
 \"\"\"
     my_function(x)
 
@@ -143,10 +152,11 @@ typeof(grid)
 RectilinearGrid{Float64, Periodic, Periodic, Bounded, Nothing, Nothing, Nothing, Nothing}
 ```
 \"\"\"
-```
+~~~~
 
 ❌ WRONG - never use plain `julia` blocks in docstrings:
-```markdown
+
+~~~~
 \"\"\"
     my_function(x)
 
@@ -157,7 +167,7 @@ Example:
 grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
 ```
 \"\"\"
-```
+~~~~
 
 Key doctest requirements:
 - Always include expected output after `# output`
@@ -188,6 +198,36 @@ Key doctest requirements:
 ```sh
 julia --project=docs/ docs/make.jl
 ```
+
+### Fast Local Docs Builds for Testing
+
+When testing documentation changes locally (especially without a GPU), make these temporary changes to `docs/make.jl`:
+
+1. **Comment out Literate examples** - These take the longest to run:
+   ```julia
+   example_scripts = String[
+       # "spherical_baroclinic_instability.jl",
+       # ... all examples commented out
+   ]
+   ```
+   Also comment out the corresponding `example_pages` entries.
+
+2. **Add error categories to `warnonly`** - Prevents build failures from GPU-dependent examples and network issues:
+   ```julia
+   warnonly = [:cross_references, :example_block, :linkcheck],
+   ```
+
+3. **Comment out GPU-requiring pages** - Pages like `simulation_tips.md` have `@example` blocks requiring GPU:
+   ```julia
+   # "Simulation tips" => "simulation_tips.md",  # requires GPU
+   ```
+
+4. **Optional speedups** in `makedocs`:
+   - `doctest = false` - Skip doctests entirely if not testing those
+   - `linkcheck = false` - Skip link validation
+   - `draft = true` - Skip many checks for fastest builds
+
+**Important**: Remember to revert these changes before committing!
 
 ### Viewing Docs
 ```julia
@@ -292,6 +332,19 @@ serve(dir="docs/build")
 3. **Forgetting Explicit Imports**: Tests will fail - add to using statements
 4. **Using plain `julia` blocks in docstrings**: NEVER do this. ALWAYS use `jldoctest` blocks so examples are tested and verified to work. Plain `julia` blocks are not tested and will become stale.
 
+### Fixing Bugs
+- Subtle bugs often occur when a method is not imported, especially in extensions
+- Sometimes user scripts expect names to be exported when they are not. Consider exporting the name
+  (implementing the user interface that the user expects) rather than changing the user script.
+- **Extending getproperty:** Never do this to fix a bug from accessing an undefined property.
+  Fix the bug on the _caller_ side. A common source is when a property name is changed; update the calling function.
+- **"Type is not callable" errors**: Variable names can conflict with function names in the same scope.
+  This leads to errors like "Fields cannot be called". Solution: rename the variable or use a qualified
+  function name (e.g., `Module.function_name`).
+- **Connecting dots:** If a test fails immediately after a change, re-examine whether that change
+  made sense. A quick fix that gets code to _run_ (fixing a test _error_) may make it _incorrect_
+  (causing a test _failure_). Revisit the original edit for a more nuanced solution.
+
 ## Implementing Validation Cases / Reproducing Paper Results
 
 When implementing a simulation from a published paper:
@@ -366,6 +419,7 @@ Before running a long simulation:
 - Enzyme.jl docs: https://enzyme.mit.edu/julia/dev
 - YASGuide: https://github.com/jrevels/YASGuide
 - ColPrac: https://github.com/SciML/ColPrac
+- MCPRepl.jl: https://github.com/kahliburke/MCPRepl.jl
 
 ## When Unsure
 1. Check existing examples in `examples/` directory
@@ -383,6 +437,102 @@ Before running a long simulation:
 - Consider both CPU and GPU architectures
 - Reference physics equations in comments when implementing dynamics
 - Maintain consistency with the existing codebase style
+
+## Interactive Julia REPL for AI Agents (MCPRepl.jl)
+
+[MCPRepl.jl](https://github.com/kahliburke/MCPRepl.jl) exposes a Julia REPL via the Model Context Protocol (MCP),
+allowing AI agents to execute Julia code, run tests, and iterate quickly during development.
+
+### Installation
+
+If MCPRepl.jl is not already installed, add it to your global Julia environment:
+
+```julia
+using Pkg
+Pkg.activate()  # Activate global environment
+Pkg.add(url="https://github.com/kahliburke/MCPRepl.jl")
+```
+
+Then run the security setup (one-time):
+
+```julia
+using MCPRepl
+MCPRepl.quick_setup(:lax)  # For local development (localhost only, no API key)
+```
+
+### Starting the MCP Server
+
+Before the AI agent can use the REPL, start the server in Julia:
+
+```julia
+using MCPRepl
+MCPRepl.start_proxy(port=3000)  # Recommended: persistent proxy with dashboard
+# OR
+MCPRepl.start!(port=3000)       # Direct REPL backend
+```
+
+The dashboard is available at `http://localhost:3000/dashboard` when using the proxy.
+
+### Cursor Configuration
+
+Create `.cursor/mcp.json` in your project root:
+
+```json
+{
+  "mcpServers": {
+    "julia-repl": {
+      "url": "http://localhost:3000",
+      "transport": "http",
+      "headers": {
+        "X-MCPRepl-Target": "Oceananigans.jl"
+      }
+    }
+  }
+}
+```
+
+After creating this file, reload Cursor (Cmd+Shift+P → "Reload Window").
+
+### Speeding Up Development with Revise.jl
+
+For rapid iteration, use Revise.jl alongside MCPRepl. This allows code changes to be
+reflected immediately without restarting Julia:
+
+```julia
+using Revise
+using MCPRepl
+using Oceananigans
+
+MCPRepl.start_proxy(port=3000)
+```
+
+With this setup:
+1. The AI agent can execute code via the REPL
+2. Source code edits are automatically picked up by Revise
+3. No need to restart Julia or re-import packages after editing source files
+4. Tests can be run interactively with immediate feedback
+
+### Available MCP Tools
+
+Once connected, the AI agent has access to:
+- **`julia_eval`** — Execute Julia code in the REPL
+- **`lsp_goto_definition`** — Navigate to symbol definitions
+- **`lsp_find_references`** — Find all usages of a symbol
+- **`lsp_rename`** — Rename symbols across the codebase
+- **`lsp_document_symbols`** — Get file structure/outline
+- **`lsp_code_actions`** — Get available quick fixes
+
+### Workflow Example
+
+A typical development workflow:
+
+1. Start Julia with Revise and MCPRepl
+2. AI agent makes code changes via file editing
+3. Revise automatically loads the changes
+4. AI agent tests changes via MCPRepl without restarting
+5. Iterate rapidly until the feature/fix is complete
+
+This eliminates the slow compile-restart cycle and enables interactive debugging.
 
 ## Current Development Focus
 

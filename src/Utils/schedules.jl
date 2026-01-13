@@ -1,6 +1,6 @@
 using Dates: AbstractTime
 
-import Oceananigans: initialize!
+import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
 
 """
     AbstractSchedule
@@ -95,6 +95,19 @@ function schedule_aligned_time_step(schedule::TimeInterval, clock, Δt)
     return min(Δt, δt)
 end
 
+function prognostic_state(schedule::TimeInterval)
+    return (first_actuation_time = schedule.first_actuation_time,
+            actuations = schedule.actuations)
+end
+
+function restore_prognostic_state!(schedule::TimeInterval, state)
+    schedule.first_actuation_time = state.first_actuation_time
+    schedule.actuations = state.actuations
+    return schedule
+end
+
+restore_prognostic_state!(::TimeInterval, ::Nothing) = nothing
+
 #####
 ##### IterationInterval
 #####
@@ -119,6 +132,10 @@ IterationInterval(interval::Int; offset=0) = IterationInterval(interval, offset)
 (schedule::IterationInterval)(model) = (model.clock.iteration - schedule.offset) % schedule.interval == 0
 
 next_actuation_time(schedule::IterationInterval) = Inf
+
+# IterationInterval has no state
+prognostic_state(schedule::IterationInterval) = nothing
+restore_prognostic_state!(schedule::IterationInterval, state::Nothing) = nothing
 
 #####
 ##### WallTimeInterval
@@ -157,6 +174,11 @@ function (schedule::WallTimeInterval)(model)
         return false
     end
 end
+
+# WallTimeInterval uses absolute wall clock time, which doesn't make sense to checkpoint.
+# On restore, the schedule starts fresh from the current wall time.
+prognostic_state(::WallTimeInterval) = nothing
+restore_prognostic_state!(schedule::WallTimeInterval, ::Nothing) = schedule
 
 #####
 ##### SpecifiedTimes
@@ -244,6 +266,17 @@ end
 
 Base.copy(st::SpecifiedTimes) = SpecifiedTimes(copy(st.times), st.previous_actuation)
 
+function prognostic_state(schedule::SpecifiedTimes)
+    return (; previous_actuation = schedule.previous_actuation)
+end
+
+function restore_prognostic_state!(schedule::SpecifiedTimes, state)
+    schedule.previous_actuation = state.previous_actuation
+    return schedule
+end
+
+restore_prognostic_state!(::SpecifiedTimes, ::Nothing) = nothing
+
 #####
 ##### ConsecutiveIterations
 #####
@@ -277,6 +310,19 @@ end
 
 schedule_aligned_time_step(schedule::ConsecutiveIterations, clock, Δt) =
     schedule_aligned_time_step(schedule.parent, clock, Δt)
+
+function prognostic_state(schedule::ConsecutiveIterations)
+    return (parent = prognostic_state(schedule.parent),
+            previous_parent_actuation_iteration = schedule.previous_parent_actuation_iteration)
+end
+
+function restore_prognostic_state!(schedule::ConsecutiveIterations, state)
+    restore_prognostic_state!(schedule.parent, state.parent)
+    schedule.previous_parent_actuation_iteration = state.previous_parent_actuation_iteration
+    return schedule
+end
+
+restore_prognostic_state!(::ConsecutiveIterations, ::Nothing) = nothing
 
 #####
 ##### Any and AndSchedule
