@@ -1,4 +1,89 @@
-# [Time-stepping and the fractional step method](@id time_stepping)
+# [Time-stepping](@id time_stepping)
+
+## [Available time steppers](@id available-time-steppers)
+
+The `TimeSteppers` module provides three generic, explicit time-stepping schemes. Importantly, the module handles only the
+time integration of prognostic fields, the tendency computation is the responsibility
+of each model's implementation.
+
+!!! note "Time stepper availability in Oceananigans models"
+    - `NonhydrostaticModel`: `QuasiAdamsBashforth2`, `RungeKutta3TimeStepper` (default)
+    - `ShallowWaterModel`: `QuasiAdamsBashforth2TimeStepper`, `RungeKutta3` (default)
+    - `HydrostaticFreeSurfaceModel`: `QuasiAdamsBashforth2TimeStepper` (default), `SplitRungeKuttaTimeStepper`
+
+### Quasi-Adams-Bashforth second order
+
+The `QuasiAdamsBashforth2TimeStepper` approximates the time integral of tendencies via
+```math
+    \begin{equation}
+    \label{eq:adams-bashforth}
+    \int_{t_n}^{t_{n+1}} G \, \mathrm{d} t \approx
+        \Delta t \left [ \left ( \tfrac{3}{2} + \chi \right ) G^n
+        - \left ( \tfrac{1}{2} + \chi \right ) G^{n-1} \right ] \, ,
+    \end{equation}
+```
+where ``\chi`` is a parameter. [Ascher et a. (1995)](@cite Ascher95) suggest that ``\chi = \tfrac{1}{8}`` is optimal.
+With the additional ``\chi`` parameter, the scheme is formally first-order accurate but offers improved
+stability properties. The default ``\chi = 0.1`` provides a reasonable balance between accuracy and stability;
+``\chi = 0`` recovers the standard second-order Adams-Bashforth method.
+
+The scheme requires storing tendencies from the previous time step, but only requires one tendency evalution, 
+making it computationally-efficient compared to multi-stage methods. The first time step automatically uses forward 
+Euler (``\chi = -1/2``) since no previous tendencies exist.
+
+### Runge-Kutta third order
+
+The `RungeKutta3TimeStepper` implements a low-storage, third-order Runge-Kutta scheme following
+[Le and Moin (1991)](@cite LeMoin1991). The scheme advances the state through three substeps per time step:
+```math
+U^{m+1} = U^m + \Delta t \left( \gamma^m G^m + \zeta^m G^{m-1} \right)
+```
+with default coefficients ``\gamma^1 = 8/15``, ``\gamma^2 = 5/12``, ``\gamma^3 = 3/4``,
+``\zeta^2 = -17/60``, and ``\zeta^3 = -5/12`` (``\zeta^1 = 0``).
+
+This scheme requires three tendency evaluations per time step but provides higher accuracy and better
+stability for problems with oscillatory dynamics.
+
+### Split Runge-Kutta
+
+The `SplitRungeKuttaTimeStepper` implements a runge-kutta scheme suitable for split-explicit computations, that follows the implmentation
+detailed in [Wicker and Skamarock (2002)](@cite WickerSkamarock2002). At the beginning of each time step the
+prognostic fields are cached, and subsequent substeps compute:
+```math
+U^{m+1} = U^0 + \frac{\Delta t}{\beta^m} G^m
+```
+where ``U^0`` is the cached initial state and ``\beta`` are stage coefficients. The default three-stage
+scheme uses ``\beta = (3, 2, 1)``. This time stepper is used by `HydrostaticFreeSurfaceModel` for
+split-explicit treatment of the barotropic and baroclinic modes.
+
+## Extending time steppers for custom models
+
+To use the existing time steppers with a new model type, implement the following methods.
+For `QuasiAdamsBashforth2TimeStepper`:
+
+```julia
+ab2_step!(model::MyModel, Δt, callbacks)           # advance fields one AB2 step
+cache_previous_tendencies!(model::MyModel)         # store Gⁿ → G⁻
+```
+
+For `RungeKutta3TimeStepper`:
+
+```julia
+rk3_substep!(model::MyModel, Δt, γⁿ, ζⁿ, callbacks) # advance one RK3 substep
+cache_previous_tendencies!(model::MyModel)          # store Gⁿ → G⁻
+```
+
+For `SplitRungeKuttaTimeStepper`:
+
+```julia
+cache_current_fields!(model::MyModel)               # store U → Ψ⁻ at step start
+rk_substep!(model::MyModel, Δτ, callbacks)          # advance one substep
+```
+
+All models must also implement `update_state!(model, callbacks)` to fill halo regions and compute
+any diagnostic quantities after each step or substep.
+
+## The fractional step method
 
 With the [pressure decomposition](@ref pressure_decomposition) as discussed, the momentum evolves via:
 
@@ -53,25 +138,8 @@ To effect such a fractional step method, we define an intermediate velocity fiel
     \end{equation}
 ```
 
-The integral on the right of the equation for ``\boldsymbol{v}^\star`` may be approximated by a variety of explicit
-methods. For example, a forward Euler method approximates the integral via
-```math
-    \begin{equation}
-    \int_{t_n}^{t_{n+1}} G \, \mathrm{d} t \approx \Delta t G^n \, ,
-    \label{eq:forward-euler}
-    \end{equation}
-```
-for any time-dependent function ``G(t)``, while a second-order Adams-Bashforth method uses the approximation
-```math
-    \begin{equation}
-    \label{eq:adams-bashforth}
-    \int_{t_n}^{t_{n+1}} G \, \mathrm{d} t \approx
-        \Delta t \left [ \left ( \tfrac{3}{2} + \chi \right ) G^n
-        - \left ( \tfrac{1}{2} + \chi \right ) G^{n-1} \right ] \, ,
-    \end{equation}
-```
-where ``\chi`` is a parameter. [Ascher95](@citet) claim that ``\chi = \tfrac{1}{8}`` is optimal;
-``\chi = -\tfrac{1}{2}`` yields the forward Euler scheme.
+The integral on the right of the equation for ``\boldsymbol{v}^\star`` may be approximated by any of the
+time steppers described in [Available time steppers](@ref available-time-steppers).
 
 Combining the equation \eqref{eq:intermediate-velocity-field} for ``\boldsymbol{v}^\star`` and the time integral
 of the non-hydrostatic pressure \eqref{eq:pnon_implicit} yields
@@ -107,5 +175,4 @@ where
     G_c \equiv - \boldsymbol{\nabla} \boldsymbol{\cdot} \left ( \boldsymbol{v} c \right ) - \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{q}_c + F_c \, ,
     \end{equation}
 ```
-and the same forward Euler or Adams-Bashforth scheme as for the explicit evaluation of the time-integral of
-``\boldsymbol{G}_u`` is used to evaluate the integral of ``G_c``.
+and the same time-stepping scheme used for the momentum tendencies is applied to evaluate the integral of ``G_c``.
