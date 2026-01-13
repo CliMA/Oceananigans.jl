@@ -9,8 +9,6 @@ using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
 using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.Utils: KernelParameters
 
-import Oceananigans.TimeSteppers: update_state!
-
 compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxiliary_fields)
 
 # Note: see single_column_model_mode.jl for a "reduced" version of update_state! for

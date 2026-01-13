@@ -1,4 +1,3 @@
-using Oceananigans.TimeSteppers: update_state!
 using Oceananigans.Operators: intrinsic_vector, ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ
 using Oceananigans.Utils: @apply_regionally
 

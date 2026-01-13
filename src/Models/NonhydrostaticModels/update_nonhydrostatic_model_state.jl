@@ -9,8 +9,6 @@ using Oceananigans.Fields: compute!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models: update_model_field_time_series!, surface_kernel_parameters
 
-import Oceananigans.TimeSteppers: update_state!
-
 """
     update_state!(model::NonhydrostaticModel, callbacks=[])
 
