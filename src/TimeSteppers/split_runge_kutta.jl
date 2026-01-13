@@ -208,4 +208,4 @@ cache_current_fields!(model::AbstractModel) = error("cache_current_fields! not i
 prognostic_state(timestepper::SplitRungeKuttaTimeStepper) = nothing
 
 restore_prognostic_state!(timestepper::SplitRungeKuttaTimeStepper, state) = nothing
-restore_prognostic_state!(::SplitRungeKutta3TimeStepper, ::Nothing) = nothing
+restore_prognostic_state!(::SplitRungeKuttaTimeStepper, ::Nothing) = nothing
