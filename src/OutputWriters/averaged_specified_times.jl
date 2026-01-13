@@ -268,6 +268,21 @@ function end_of_window(schedule::AveragedSpecifiedTimes, clock)
     return clock.time >= next_time
 end
 
+restore_prognostic_state!(::AveragedTimeInterval, ::Nothing) = nothing
+
+function prognostic_state(schedule::AveragedSpecifiedTimes)
+    return (specified_times = prognostic_state(schedule.specified_times),
+            collecting = schedule.collecting)
+end
+
+function restore_prognostic_state!(schedule::AveragedSpecifiedTimes, state)
+    restore_prognostic_state!(schedule.specified_times, state.specified_times)
+    schedule.collecting = state.collecting
+    return schedule
+end
+
+restore_prognostic_state!(::AveragedSpecifiedTimes, ::Nothing) = nothing
+
 TimeInterval(sch::AveragedSpecifiedTimes) = TimeInterval(sch.specified_times.times)
 Base.copy(sch::AveragedSpecifiedTimes) = AveragedSpecifiedTimes(copy(sch.specified_times); window=sch.window, stride=sch.stride)
 
