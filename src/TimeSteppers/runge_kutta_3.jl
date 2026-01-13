@@ -2,6 +2,8 @@ using Oceananigans.Architectures: architecture
 using Oceananigans: fields
 using Oceananigans.Utils: time_difference_seconds
 
+import Oceananigans: prognostic_state, restore_prognostic_state!
+
 """
     RungeKutta3TimeStepper{FT, TG} <: AbstractTimeStepper
 
