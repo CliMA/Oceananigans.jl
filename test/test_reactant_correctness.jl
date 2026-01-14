@@ -4,6 +4,7 @@ include("reactant_correctness_utils.jl")
 using Random
 using CUDA
 using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid
+using SeawaterPolynomials: TEOS10EquationOfState
 
 # Helper to generate all combinations
 all_combos(xs...) = vec(collect(Iterators.product(xs...)))
@@ -160,10 +161,10 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
             # Test with coriolis=nothing
             @testset "coriolis=nothing" begin
                 @info "Testing compute_simple_Gu! on RectilinearGrid with coriolis=nothing..."
-                for advection in advection_schemes, raise in raise_modes
+            for advection in advection_schemes, raise in raise_modes
                     @testset "advection=$(adv_name(advection)) raise=$raise" begin
-                        fill!(vanilla_Gu, 0)
-                        fill!(reactant_Gu, 0)
+                    fill!(vanilla_Gu, 0)
+                    fill!(reactant_Gu, 0)
                         compute_simple_Gu!(vanilla_Gu, advection, nothing, vanilla_velocities)
                         @jit raise=raise compute_simple_Gu!(reactant_Gu, advection, nothing, reactant_velocities)
                         @test compare_interior("Gu", vanilla_Gu, reactant_Gu)
@@ -179,8 +180,8 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                     @testset "advection=$(adv_name(advection)) raise=$raise" begin
                         fill!(vanilla_Gu, 0)
                         fill!(reactant_Gu, 0)
-                        compute_simple_Gu!(vanilla_Gu, advection, coriolis, vanilla_velocities)
-                        @jit raise=raise compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
+                    compute_simple_Gu!(vanilla_Gu, advection, coriolis, vanilla_velocities)
+                    @jit raise=raise compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
                         @test compare_interior("Gu", vanilla_Gu, reactant_Gu)
                     end
                 end
@@ -214,10 +215,10 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
             # Note: WENO on LatitudeLongitudeGrid fails to compile with raise=true
             @testset "coriolis=nothing" begin
                 @info "Testing compute_simple_Gu! on LatitudeLongitudeGrid with coriolis=nothing..."
-                for advection in advection_schemes, raise in raise_modes
+            for advection in advection_schemes, raise in raise_modes
                     @testset "advection=$(adv_name(advection)) raise=$raise" begin
-                        fill!(vanilla_Gu, 0)
-                        fill!(reactant_Gu, 0)
+                    fill!(vanilla_Gu, 0)
+                    fill!(reactant_Gu, 0)
                         compute_simple_Gu!(vanilla_Gu, advection, nothing, vanilla_velocities)
                         @jit raise=raise compute_simple_Gu!(reactant_Gu, advection, nothing, reactant_velocities)
                         @test compare_interior("Gu", vanilla_Gu, reactant_Gu)
@@ -234,10 +235,129 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                     @testset "advection=$(adv_name(advection)) raise=$raise" begin
                         fill!(vanilla_Gu, 0)
                         fill!(reactant_Gu, 0)
-                        compute_simple_Gu!(vanilla_Gu, advection, coriolis, vanilla_velocities)
-                        @jit raise=raise compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
+                    compute_simple_Gu!(vanilla_Gu, advection, coriolis, vanilla_velocities)
+                    @jit raise=raise compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
                         @test compare_interior("Gu", vanilla_Gu, reactant_Gu)
                     end
+                end
+            end
+        end
+    end
+
+    #####
+    ##### Time-stepping tests with HydrostaticFreeSurfaceModel
+    #####
+
+    @testset "HydrostaticFreeSurfaceModel time-stepping" begin
+
+        # Common grid setup
+        # Note: WENOVectorInvariant requires halo >= (6, 6, 3)
+        Nx, Ny, Nz = 8, 8, 4
+        Lx, Ly, Lz = 1e5, 1e5, 100  # 100km x 100km x 100m domain
+
+        vanilla_grid = RectilinearGrid(vanilla_arch;
+                                       size = (Nx, Ny, Nz),
+                                       halo = (6, 6, 3),
+                                       x = (0, Lx),
+                                       y = (0, Ly),
+                                       z = (-Lz, 0),
+                                       topology = (Periodic, Periodic, Bounded))
+
+        reactant_grid = RectilinearGrid(reactant_arch;
+                                        size = (Nx, Ny, Nz),
+                                        halo = (6, 6, 3),
+                                        x = (0, Lx),
+                                        y = (0, Ly),
+                                        z = (-Lz, 0),
+                                        topology = (Periodic, Periodic, Bounded))
+
+        # Common model parameters
+        coriolis = FPlane(f=1e-4)
+        advection = WENO()
+        momentum_advection = WENOVectorInvariant()
+        equation_of_state = TEOS10EquationOfState()
+        buoyancy = SeawaterBuoyancy(; equation_of_state)
+        tracers = (:T, :S)
+        
+        # Use SplitExplicitFreeSurface (FFT-based ImplicitFreeSurface doesn't work with Reactant)
+        free_surface = SplitExplicitFreeSurface(vanilla_grid; substeps = 10)
+
+        # Closures to test
+        # Note: CATKEVerticalDiffusivity takes too long to compile with Reactant (>10 min)
+        closures = (nothing,)
+
+        closure_name(::Nothing) = "nothing"
+        closure_name(c) = string(nameof(typeof(c)))
+
+        for closure in closures
+            @testset "closure=$(closure_name(closure))" begin
+                @info "Testing HydrostaticFreeSurfaceModel time-stepping with closure=$(closure_name(closure))..."
+
+                vanilla_model = HydrostaticFreeSurfaceModel(vanilla_grid;
+                                                            coriolis,
+                                                            buoyancy,
+                                                            free_surface,
+                                                            tracers,
+                                                            tracer_advection = advection,
+                                                            momentum_advection,
+                                                            closure)
+
+                reactant_model = HydrostaticFreeSurfaceModel(reactant_grid;
+                                                             coriolis,
+                                                             buoyancy,
+                                                             free_surface,
+                                                             tracers,
+                                                             tracer_advection = advection,
+                                                             momentum_advection,
+                                                             closure)
+
+                # Set initial conditions
+                # Note: Use pre-computed arrays, NOT functions with randn(),
+                # because randn() would be called at different times for each model
+                Random.seed!(98765)
+                
+                # Small velocity perturbations
+                u_init = 0.1 * randn(Nx, Ny, Nz)
+                v_init = 0.1 * randn(Nx, Ny, Nz)
+                
+                # Realistic T/S with vertical gradient and small perturbations
+                T_init = [20.0 + 5.0 * (k - 0.5) / Nz + 0.01 * randn() for i=1:Nx, j=1:Ny, k=1:Nz]
+                S_init = [35.0 + 0.01 * randn() for i=1:Nx, j=1:Ny, k=1:Nz]
+
+                set!(vanilla_model, u=u_init, v=v_init, T=T_init, S=S_init)
+                set!(reactant_model, u=u_init, v=v_init, T=T_init, S=S_init)
+
+                # Small time-step for stability
+                Δt = 60.0  # 1 minute
+                stop_iteration = 3
+
+                # Run vanilla simulation
+                vanilla_simulation = Simulation(vanilla_model; Δt, stop_iteration, verbose=false)
+                run!(vanilla_simulation)
+
+                # Compile and run Reactant simulation
+                @jit Oceananigans.TimeSteppers.update_state!(reactant_model)
+
+                r_first_time_step! = @compile sync=true Oceananigans.TimeSteppers.first_time_step!(reactant_model, Δt)
+                r_time_step! = @compile sync=true Oceananigans.TimeSteppers.time_step!(reactant_model, Δt)
+
+                reactant_simulation = Simulation(reactant_model; Δt, stop_iteration, verbose=false)
+                r_run!(reactant_simulation, r_time_step!, r_first_time_step!)
+
+                # Compare results
+                @testset "velocity fields" begin
+                    @test compare_interior("u", vanilla_model.velocities.u, reactant_model.velocities.u)
+                    @test compare_interior("v", vanilla_model.velocities.v, reactant_model.velocities.v)
+                end
+
+                @testset "tracer fields" begin
+                    @test compare_interior("T", vanilla_model.tracers.T, reactant_model.tracers.T)
+                    @test compare_interior("S", vanilla_model.tracers.S, reactant_model.tracers.S)
+                end
+
+                @testset "simulation state" begin
+                    @test iteration(vanilla_simulation) == iteration(reactant_simulation)
+                    @test time(vanilla_simulation) ≈ time(reactant_simulation)
                 end
             end
         end

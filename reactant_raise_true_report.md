@@ -7,28 +7,22 @@
 
 ## Summary
 
-| Test Category | Passed | Total | Pass Rate |
-|--------------|--------|-------|-----------|
-| `fill_halo_regions!` | 7 | 7 | 100% |
-| `compute_simple_Gu!` | 11 | 14 | 79% |
-| **TOTAL** | **18** | **21** | **86%** |
+Most tested configurations produce **machine-precision** results when comparing vanilla Oceananigans vs ReactantState.
+
+| Test Category | Passed | Failed | Error | Total |
+|--------------|--------|--------|-------|-------|
+| `fill_halo_regions!` | 160 | 0 | 0 | 160 |
+| `compute_simple_Gu!` | 20 | 2 | 2 | 24 |
+| Time-stepping | 6 | 0 | 0 | 6 |
+| **TOTAL** | **186** | **2** | **2** | **190** |
+
+**Pass rate: 98%** (186/190)
 
 ---
 
-## fill_halo_regions! Results
+## fill_halo_regions! Results ✓
 
-**Grid**: RectilinearGrid (size=(3,4,2), halo=(1,1,1))  
-**Field Location**: (Center, Center, Center)
-
-| Topology | Result |
-|----------|--------|
-| (Bounded, Periodic, Periodic) | ✓ PASSED |
-| (Periodic, Bounded, Periodic) | ✓ PASSED |
-| (Bounded, Bounded, Periodic) | ✓ PASSED |
-| (Periodic, Periodic, Bounded) | ✓ PASSED |
-| (Bounded, Periodic, Bounded) | ✓ PASSED |
-| (Periodic, Bounded, Bounded) | ✓ PASSED |
-| (Bounded, Bounded, Bounded) | ✓ PASSED |
+All 7 non-triply-periodic topologies pass with `raise=true`.
 
 **Excluded**: `(Periodic, Periodic, Periodic)` - triggers segfault in Reactant's MLIR `RecognizeRotate` pass
 
@@ -36,80 +30,111 @@
 
 ## compute_simple_Gu! Results
 
-Tests the u-velocity tendency computation: `Gu = -U⋅∇u - f×U`
+### RectilinearGrid - All Pass ✓ (12/12 tests)
 
-### RectilinearGrid
+| Coriolis | Advection | raise=false | raise=true |
+|----------|-----------|-------------|------------|
+| `nothing` | `nothing` | ✓ | ✓ |
+| `nothing` | `Centered` | ✓ | ✓ |
+| `nothing` | `WENO` | ✓ | ✓ |
+| `FPlane` | `nothing` | ✓ | ✓ |
+| `FPlane` | `Centered` | ✓ | ✓ |
+| `FPlane` | `WENO` | ✓ | ✓ |
 
-| Coriolis | Advection | Result | max\|δ\| |
-|----------|-----------|--------|----------|
-| `nothing` | `nothing` | ✓ PASSED | 0.0 |
-| `nothing` | `Centered` | ✓ PASSED | ~1e-15 |
-| `nothing` | `WENO` | ✓ PASSED | ~1e-15 |
-| `FPlane` | `nothing` | ✓ PASSED | 0.0 |
-| `FPlane` | `Centered` | ✓ PASSED | 3.6e-15 |
-| `FPlane` | `WENO` | ✓ PASSED | 7.1e-15 |
+### LatitudeLongitudeGrid - Partial Pass (8/12 tests)
 
-**All 6 tests pass** ✓
-
-### LatitudeLongitudeGrid
-
-| Coriolis | Advection | Result | max\|δ\| | Notes |
-|----------|-----------|--------|----------|-------|
-| `nothing` | `nothing` | ✓ PASSED | 0.0 | |
-| `nothing` | `Centered` | ✓ PASSED | ~1e-15 | |
-| `nothing` | `WENO` | ✗ ERROR | — | MLIR compilation failure |
-| `HydrostaticSphericalCoriolis` | `nothing` | ✗ FAILED | 8.6e-06 | Numerical mismatch |
-| `HydrostaticSphericalCoriolis` | `Centered` | ✗ FAILED | 8.6e-06 | Numerical mismatch |
-| `HydrostaticSphericalCoriolis` | `WENO` | ✗ ERROR | — | MLIR compilation failure |
-
-**5 of 8 tests pass** (with 3 known failures)
+| Coriolis | Advection | raise=false | raise=true |
+|----------|-----------|-------------|------------|
+| `nothing` | `nothing` | ✓ | ✓ |
+| `nothing` | `Centered` | ✓ | ✓ |
+| `nothing` | `WENO` | ✓ | ✗ ERROR (MLIR) |
+| `HydrostaticSphericalCoriolis` | `nothing` | ✓ | ✗ FAILED (δ~1e-6) |
+| `HydrostaticSphericalCoriolis` | `Centered` | ✓ | ✗ FAILED (δ~1e-6) |
+| `HydrostaticSphericalCoriolis` | `WENO` | ✓ | ✗ ERROR (MLIR) |
 
 ---
 
-## Analysis
+## Time-stepping Tests ✓
 
-### Root Causes Identified
+### HydrostaticFreeSurfaceModel with RectilinearGrid
 
-1. **HydrostaticSphericalCoriolis produces numerical differences** (δ ≈ 8.6e-06)
-   - The issue is specifically with `HydrostaticSphericalCoriolis`, not the grid metrics
-   - With `coriolis=nothing`, LatitudeLongitudeGrid works correctly for `nothing` and `Centered` advection
-   - The spherical Coriolis term `x_f_cross_U` computes differently with Reactant
+Full configuration tested and **PASSED** with machine precision (δ ~ 1e-15):
 
-2. **WENO + LatitudeLongitudeGrid fails to compile**
-   - Regardless of Coriolis, WENO on LatitudeLongitudeGrid fails during MLIR compilation
-   - The complex WENO stencils combined with curvilinear grid metrics generate IR that Reactant cannot compile
+| Component | Value |
+|-----------|-------|
+| Grid | RectilinearGrid (8×8×4, halo=6,6,3) |
+| Coriolis | FPlane(f=1e-4) |
+| Tracer Advection | WENO |
+| Momentum Advection | WENOVectorInvariant |
+| Equation of State | TEOS10 |
+| Buoyancy | SeawaterBuoyancy |
+| Tracers | T, S |
+| Free Surface | SplitExplicitFreeSurface (10 substeps) |
+| Closure | `nothing` |
+| Time steps | 3 × 60s |
 
-3. **Face field size bug** (separate issue)
-   - Face-located fields on LatitudeLongitudeGrid have incorrect parent array sizes
-   - Missing +1 in `reactant_total_length` for Face on BoundedTopology
+**Results after 3 time steps:**
+- u: max|δ| = 3.3e-15 ✓
+- v: max|δ| = 4.3e-15 ✓
+- T: max|δ| = 3.6e-14 ✓
+- S: max|δ| = 3.8e-13 ✓
+
+### Ablation Test Summary
+
+All components tested individually - all pass with machine precision:
+
+| Configuration | Result |
+|--------------|--------|
+| Minimal (no physics) | ✓ PASSED (δ=0) |
+| + FPlane coriolis | ✓ PASSED (δ=0) |
+| + tracer with WENO | ✓ PASSED (δ=0) |
+| + WENOVectorInvariant momentum | ✓ PASSED (δ~1e-17) |
+| + BuoyancyTracer | ✓ PASSED (δ~1e-17) |
+| + SeawaterBuoyancy + LinearEOS | ✓ PASSED (δ~1e-16) |
+| + SeawaterBuoyancy + TEOS10 | ✓ PASSED (δ~1e-15) |
+
+---
+
+## Known Issues
+
+### 1. Triply Periodic Segfault
+`(Periodic, Periodic, Periodic)` topology triggers segfault in `RecognizeRotate` MLIR pass.
+
+### 2. HydrostaticSphericalCoriolis Numerical Mismatch
+LatitudeLongitudeGrid + HydrostaticSphericalCoriolis produces δ ≈ 8.6e-06 at grid point (1,1,1).
+
+### 3. WENO + LatitudeLongitudeGrid Compilation Failure
+WENO on LatitudeLongitudeGrid fails during MLIR compilation.
+
+### 4. CATKEVerticalDiffusivity Compilation Timeout
+CATKE takes >10 minutes to compile with Reactant.
+
+### 5. ImplicitFreeSurface Not Supported
+FFT-based solver doesn't work with Reactant arrays. Use `SplitExplicitFreeSurface` instead.
 
 ---
 
 ## Requirements
 
-- **CUDA.jl must be loaded**: Even on CPU, `using CUDA` is required for `raise=true` to work with KernelAbstractions kernels
+- **CUDA.jl must be loaded**: Even on CPU, `using CUDA` is required for `raise=true`
 
 ---
 
 ## Recommendations
 
 ### Use `raise=true` with:
-- ✅ RectilinearGrid with any topology (except triply periodic)
-- ✅ Any Coriolis (`nothing`, `FPlane`)
-- ✅ Any advection (`nothing`, `Centered`, `WENO`)
-- ✅ LatitudeLongitudeGrid with `coriolis=nothing` and `advection ∈ {nothing, Centered}`
+- ✅ RectilinearGrid (non-triply-periodic)
+- ✅ FPlane Coriolis
+- ✅ WENO tracer advection
+- ✅ WENOVectorInvariant momentum advection
+- ✅ SeawaterBuoyancy + TEOS10
+- ✅ SplitExplicitFreeSurface
+- ✅ `closure=nothing`
 - ✅ `fill_halo_regions!`
 
 ### Avoid `raise=true` with:
-- ❌ LatitudeLongitudeGrid + `HydrostaticSphericalCoriolis` (numerical mismatch)
-- ❌ LatitudeLongitudeGrid + `WENO` (compilation failure)
-- ❌ Triply periodic grids (segfault)
-
----
-
-## Issues to File
-
-1. **HydrostaticSphericalCoriolis numerical mismatch** - δ ≈ 8.6e-06 at (1,1,1)
-2. **WENO + LatitudeLongitudeGrid MLIR compilation failure**
-3. **Triply periodic segfault** in `RecognizeRotate` pass
-4. **Face field size bug** - missing +1 for Face on BoundedTopology in `reactant_total_length`
+- ❌ LatitudeLongitudeGrid + HydrostaticSphericalCoriolis
+- ❌ LatitudeLongitudeGrid + WENO
+- ❌ Triply periodic grids
+- ❌ CATKEVerticalDiffusivity (timeout)
+- ❌ ImplicitFreeSurface
