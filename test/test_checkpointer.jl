@@ -1817,17 +1817,17 @@ for arch in archs
             test_checkpointing_ri_based_closure(arch, timestepper)
         end
 
-        #=
-        @testset "CATKE closure checkpointing [$(typeof(arch)), $timestepper]" begin
-            @info "  Testing CATKE closure checkpointing [$(typeof(arch)), $timestepper]..."
-            test_checkpointing_catke_closure(arch, timestepper)
-        end
+        if timestepper == :SplitRungeKutta3 # currently, CATKE and TKE-ε tests fail with :QuasiAdamsBashforth2
+            @testset "CATKE closure checkpointing [$(typeof(arch)), $timestepper]" begin
+                @info "  Testing CATKE closure checkpointing [$(typeof(arch)), $timestepper]..."
+                test_checkpointing_catke_closure(arch, timestepper)
+            end
 
-        @testset "TKEDissipationVerticalDiffusivity closure checkpointing [$(typeof(arch)), $timestepper]" begin
-            @info "  Testing TKEDissipationVerticalDiffusivity closure checkpointing [$(typeof(arch)), $timestepper]..."
-            test_checkpointing_tke_dissipation_closure(arch, timestepper)
+            @testset "TKEDissipationVerticalDiffusivity closure checkpointing [$(typeof(arch)), $timestepper]" begin
+                @info "  Testing TKEDissipationVerticalDiffusivity closure checkpointing [$(typeof(arch)), $timestepper]..."
+                test_checkpointing_tke_dissipation_closure(arch, timestepper)
+            end
         end
-        =#
     end
 
     for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
