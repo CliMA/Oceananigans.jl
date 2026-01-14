@@ -46,7 +46,7 @@ using Test: @testset, @test, detect_ambiguities
     # modules which don't have any don't get new ones.
     @testset "No ambiguities for module $(mod)" for mod in modules
         @info "Testing no ambiguities for module $(mod)"
-        @test length(detect_ambiguities(mod; recursive=true)) == 0
+        @test isempty(detect_ambiguities(mod; recursive=true))
     end
 end
 
