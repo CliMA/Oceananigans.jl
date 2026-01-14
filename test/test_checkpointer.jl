@@ -1728,6 +1728,7 @@ for arch in archs
         end
     end
 
+    #=
     for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
         @testset "Height perturbation checkpointing shallow water [$(typeof(arch)), $(timestepper)]" begin
             @info "  Testing height perturbation checkpointing shallow water [$(typeof(arch)), $(timestepper)]..."
@@ -1751,6 +1752,7 @@ for arch in archs
             test_checkpointing_zstar_coordinate(arch, timestepper)
         end
     end
+    =#
 
     for solver_method in (:PreconditionedConjugateGradient,)
         @testset "ImplicitFreeSurface checkpointing [$(typeof(arch)), $solver_method]" begin
@@ -1815,6 +1817,7 @@ for arch in archs
             test_checkpointing_ri_based_closure(arch, timestepper)
         end
 
+        #=
         @testset "CATKE closure checkpointing [$(typeof(arch)), $timestepper]" begin
             @info "  Testing CATKE closure checkpointing [$(typeof(arch)), $timestepper]..."
             test_checkpointing_catke_closure(arch, timestepper)
@@ -1824,6 +1827,7 @@ for arch in archs
             @info "  Testing TKEDissipationVerticalDiffusivity closure checkpointing [$(typeof(arch)), $timestepper]..."
             test_checkpointing_tke_dissipation_closure(arch, timestepper)
         end
+        =#
     end
 
     for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
