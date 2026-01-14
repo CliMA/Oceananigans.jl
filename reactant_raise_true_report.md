@@ -11,20 +11,24 @@ Most tested configurations produce **machine-precision** results when comparing 
 
 | Test Category | Passed | Failed | Error | Total |
 |--------------|--------|--------|-------|-------|
-| `fill_halo_regions!` | 160 | 0 | 0 | 160 |
+| `fill_halo_regions!` | 176 | 0 | 0 | 176 |
 | `compute_simple_Gu!` | 20 | 2 | 2 | 24 |
 | Time-stepping | 6 | 0 | 0 | 6 |
-| **TOTAL** | **186** | **2** | **2** | **190** |
+| **TOTAL** | **202** | **2** | **2** | **206** |
 
-**Pass rate: 98%** (186/190)
+**Pass rate: 98%** (202/206)
 
 ---
 
 ## fill_halo_regions! Results ✓
 
-All 7 non-triply-periodic topologies pass with `raise=true`.
+All tested grids pass with `raise=true` (176/176 tests):
+- **RectilinearGrid**: 7 non-triply-periodic topologies × 8 locations × 2 raise modes = 112 tests
+- **LatitudeLongitudeGrid**: 2 topologies × 8 locations × 2 raise modes = 32 tests
+- **TripolarGrid**: 8 locations × 2 raise modes = 16 tests
+- **OrthogonalSphericalShellGrid**: 8 locations × 2 raise modes = 16 tests
 
-**Excluded**: `(Periodic, Periodic, Periodic)` - triggers segfault in Reactant's MLIR `RecognizeRotate` pass
+**Excluded**: `(Periodic, Periodic, Periodic)` topology - triggers segfault in Reactant's MLIR `RecognizeRotate` pass
 
 ---
 
@@ -97,7 +101,11 @@ All components tested individually - all pass with machine precision:
 
 ## Known Issues
 
-### 1. Triply Periodic Segfault
+### 1. GPU-specific failures (not reproduced locally on CPU)
+CI shows `fill_south_and_north_halo!` failure on `OrthogonalSphericalShellGrid` when running with GPU backend.
+This passes locally on CPU. See [Buildkite build #28477](https://buildkite.com/clima/oceananigans/builds/28477#019bbb0d-6e66-4f7c-85f2-e8ece7b51d52).
+
+### 2. Triply Periodic Segfault
 `(Periodic, Periodic, Periodic)` topology triggers segfault in `RecognizeRotate` MLIR pass.
 
 ### 2. HydrostaticSphericalCoriolis Numerical Mismatch
