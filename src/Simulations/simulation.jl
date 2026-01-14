@@ -7,6 +7,7 @@ using Oceananigans.DistributedComputations: Distributed, all_reduce
 using Oceananigans.OutputWriters: JLD2Writer, NetCDFWriter
 using Oceananigans.Utils: period_to_seconds
 
+import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.Diagnostics: CFL
 import Oceananigans.Utils: prettytime
 import Oceananigans.TimeSteppers: reset!
@@ -281,7 +282,34 @@ end
 # Fallback, to be elaborated on
 write_output!(writer::JLD2Writer,   sim::Simulation) = write_output!(writer, sim.model)
 write_output!(writer::NetCDFWriter, sim::Simulation) = write_output!(writer, sim.model)
-write_output!(writer::Checkpointer, sim::Simulation) = write_output!(writer, sim.model)
+
+function prognostic_state(sim::Simulation)
+    return (model = prognostic_state(sim.model),
+            Δt = sim.Δt,
+            diagnostics = prognostic_state(sim.diagnostics),
+            output_writers = prognostic_state(sim.output_writers),
+            callbacks = prognostic_state(sim.callbacks),
+            run_wall_time = sim.run_wall_time,
+            align_time_step = sim.align_time_step,
+            verbose = sim.verbose,
+            minimum_relative_step = sim.minimum_relative_step)
+end
+
+function restore_prognostic_state!(sim::Simulation, state)
+    restore_prognostic_state!(sim.model, state.model)
+    sim.Δt = state.Δt
+    restore_prognostic_state!(sim.diagnostics, state.diagnostics)
+    restore_prognostic_state!(sim.output_writers, state.output_writers)
+    restore_prognostic_state!(sim.callbacks, state.callbacks)
+    sim.run_wall_time = state.run_wall_time
+    sim.align_time_step = state.align_time_step
+    sim.verbose = state.verbose
+    sim.minimum_relative_step = state.minimum_relative_step
+    return sim
+end
+
+# Disambiguation: handle case when no checkpoint file exists
+restore_prognostic_state!(::Simulation, ::Nothing) = nothing
 
 #####
 ##### Diagnostics

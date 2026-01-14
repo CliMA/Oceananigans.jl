@@ -1,3 +1,4 @@
+import Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.BoundaryConditions:  construct_boundary_conditions_kernels, OBC, MCBC,
     Zipper, validate_boundary_condition_architecture, validate_boundary_condition_topology
 using Oceananigans.Grids: parent_index_range, default_indices, validate_indices,
@@ -874,3 +875,18 @@ end
 #####
 
 Grids.nodes(f::Field; kwargs...) = nodes(f.grid, instantiated_location(f)...; indices=indices(f), kwargs...)
+
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(field::Field)
+    return (; data = prognostic_state(field.data))
+end
+
+function restore_prognostic_state!(field::Field, state)
+    restore_prognostic_state!(field.data, state.data)
+    return field
+end
+
+restore_prognostic_state!(::Field, ::Nothing) = nothing

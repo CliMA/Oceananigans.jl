@@ -36,8 +36,9 @@ end
 @kernel function _fill_cubed_sphere_center_center_field_east_west_halo_regions!(field, multiregion_field, region,
                                                                                 connections, Nc, Hc)
     j, k = @index(Global, NTuple)
-    region_E = connections.east.from_rank
+
     region_W = connections.west.from_rank
+    region_E = connections.east.from_rank
 
     # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
     # verifying halo filling against schematics or physical cubed sphere models.
@@ -128,9 +129,11 @@ end
 @kernel function _fill_cubed_sphere_face_face_field_east_west_halo_regions!(field, multiregion_field, region,
                                                                             connections, Nc, Hc)
     j, k = @index(Global, NTuple)
-    region_E = connections.east.from_rank
+
     region_W = connections.west.from_rank
+    region_E = connections.east.from_rank
     region_S = connections.south.from_rank
+    region_N = connections.north.from_rank
 
     # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
     # verifying halo filling against schematics or physical cubed sphere models.
@@ -141,29 +144,33 @@ end
             @inbounds begin
                 #=
                 field[region][Nc+1:Nc+Hc, 1:Nc, k]   .=         field[region_E][1:Hc, 1:Nc, k]
+                field[region][Nc+1:Nc+Hc, Nc+1, k]   .=         field[region_N][1:Hc, 1, k]
                 field[region][1-Hc:0, 2:Nc+1, k]     .= reverse(field[region_W][1:Nc, Nc+1-Hc:Nc, k], dims=1)'
                 field[region][1-Hc:0, 1, k]          .=         field[region_S][1, Nc+1-Hc:Nc, k]
                 =#
-                field[Nc+i, j, k]   = multiregion_field[region_E][i, j, k]
-                field[i-Hc, j+1, k] = multiregion_field[region_W][Nc+1-j, Nc+i-Hc, k]
-                field[i-Hc, 1, k]   = multiregion_field[region_S][1, Nc+i-Hc, k]
+                field[Nc+i, j, k]    = multiregion_field[region_E][i, j, k]
+                field[Nc+i, Nc+1, k] = multiregion_field[region_N][i, 1, k]
+                field[i-Hc, j+1, k]  = multiregion_field[region_W][Nc+1-j, Nc+i-Hc, k]
+                field[i-Hc, 1, k]    = multiregion_field[region_S][1, Nc+i-Hc, k]
             end
         elseif iseven(region)
             @inbounds begin
                 #=
-                field[region][Nc+1:Nc+Hc, 2:Nc, k]   .= reverse(field[region_E][2:Nc, 1:Hc, k], dims=1)'
+                field[region][Nc+1:Nc+Hc, 2:Nc+1, k] .= reverse(field[region_E][1:Nc, 1:Hc, k], dims=1)'
                 if Hc > 1
                     field[region][Nc+2:Nc+Hc, 1, k]  .= reverse(field[region_S][Nc+2-Hc:Nc, 1, k])
                 end
                 Note that the halo corresponding to the "missing" south-east corner of even panels, specifically
                 field[region][Nc+1, 1, k], remains unfilled.
                 =#
-                j > 1 && (field[Nc+i, j, k] = multiregion_field[region_E][Nc+2-j, i, k])
+                field[Nc+i, j+1, k] = multiregion_field[region_E][Nc+1-j, i, k]
                 (Hc > 1 && i > 1) && (field[Nc+i, 1, k] = multiregion_field[region_S][Nc+2-i, 1, k])
                 #=
                 field[region][1-Hc:0, 1:Nc, k]       .=         field[region_W][Nc+1-Hc:Nc, 1:Nc, k]
+                field[region][1-Hc:0, Nc+1, k]       .= reverse(field[region_N][1, 2:Hc+1, k])'
                 =#
                 field[i-Hc, j, k] = multiregion_field[region_W][Nc+i-Hc, j, k]
+                field[i-Hc, Nc+1, k] = multiregion_field[region_N][1, Hc+2-i, k]
             end
         end
     end
@@ -172,10 +179,11 @@ end
 @kernel function _fill_cubed_sphere_face_face_field_north_south_halo_regions!(field, multiregion_field, region,
                                                                               connections, Nc, Hc)
     i, k = @index(Global, NTuple)
-    region_E = connections.east.from_rank
-    region_N = connections.north.from_rank
+
     region_W = connections.west.from_rank
+    region_E = connections.east.from_rank
     region_S = connections.south.from_rank
+    region_N = connections.north.from_rank
 
     # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
     # verifying halo filling against schematics or physical cubed sphere models.
@@ -187,7 +195,7 @@ end
                 #=
                 field[region][2:Nc+1, Nc+1:Nc+Hc, k] .= reverse(field[region_N][1:Hc, 1:Nc, k], dims=2)'
                 if Hc > 1
-                    field[region][1, Nc+2:Nc+Hc, k]  .= reverse(field[region_W][1, Nc+2-Hc:Nc, k])'
+                    field[region][1, Nc+2:Nc+Hc, k]  .= reverse(field[region_W][1, Nc+2-Hc:Nc, k])
                 end
                 Note that the halo corresponding to the "missing" north-west corner of odd panels, specifically
                 field[region][1, Nc+1, k], remains unfilled.
@@ -196,7 +204,7 @@ end
                 (Hc > 1 && j > 1) && (field[1, Nc+j, k] = multiregion_field[region_W][1, Nc+2-j, k])
                 #=
                 field[region][1:Nc, 1-Hc:0, k]       .=         field[region_S][1:Nc, Nc+1-Hc:Nc, k]
-                field[region][Nc+1, 1-Hc:0, k]       .= reverse(field[region_E][2:Hc+1, 1, k])'
+                field[region][Nc+1, 1-Hc:0, k]       .= reverse(field[region_E][2:Hc+1, 1, k])
                 =#
                 field[i, j-Hc, k] = multiregion_field[region_S][i, Nc+j-Hc, k]
                 field[Nc+1, j-Hc, k] = multiregion_field[region_E][Hc+2-j, 1, k]
@@ -205,9 +213,9 @@ end
             @inbounds begin
                 #=
                 field[region][1:Nc, Nc+1:Nc+Hc, k]   .=         field[region_N][1:Nc, 1:Hc, k]
-                field[region][Nc+1, Nc+1:Nc+Hc, k]   .=         field[region_E][1, 1:Hc, k]'
+                field[region][Nc+1, Nc+1:Nc+Hc, k]   .=         field[region_E][1, 1:Hc, k]
                 field[region][2:Nc+1, 1-Hc:0, k]     .= reverse(field[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)'
-                field[region][1, 1-Hc:0, k]          .=         field[region_W][Nc+1-Hc:Nc, 1, k]'
+                field[region][1, 1-Hc:0, k]          .=         field[region_W][Nc+1-Hc:Nc, 1, k]
                 =#
                 field[i, Nc+j, k] = multiregion_field[region_N][i, j, k]
                 field[Nc+1, Nc+j, k] = multiregion_field[region_E][1, j, k]
@@ -258,8 +266,9 @@ end
 @kernel function _fill_cubed_sphere_center_center_center_center_field_pairs_east_west_halo_regions!(
 field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections, Nc, Hc, plmn)
     j, k = @index(Global, NTuple)
-    region_E = connections.east.from_rank
+
     region_W = connections.west.from_rank
+    region_E = connections.east.from_rank
 
     # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
     # verifying halo filling against schematics or physical cubed sphere models.
@@ -415,10 +424,10 @@ end
 field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections, Nc, Hc, plmn)
     j, k = @index(Global, NTuple)
 
-    region_E = connections.east.from_rank
-    region_N = connections.north.from_rank
     region_W = connections.west.from_rank
+    region_E = connections.east.from_rank
     region_S = connections.south.from_rank
+    region_N = connections.north.from_rank
 
     # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
     # verifying halo filling against schematics or physical cubed sphere models.
@@ -475,10 +484,10 @@ end
 field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections, Nc, Hc, plmn)
     i, k = @index(Global, NTuple)
 
-    region_E = connections.east.from_rank
-    region_N = connections.north.from_rank
     region_W = connections.west.from_rank
+    region_E = connections.east.from_rank
     region_S = connections.south.from_rank
+    region_N = connections.north.from_rank
 
     # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
     # verifying halo filling against schematics or physical cubed sphere models.
@@ -490,9 +499,9 @@ field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections,
                 #=
                 #- N + S Halo for field_1:
                 field_1[region][2:Nc+1, Nc+1:Nc+Hc, k] .= reverse(field_2[region_N][1:Hc, 1:Nc, k], dims=2)' * plmn
-                field_1[region][1, Nc+1:Nc+Hc, k]      .= reverse(field_1[region_W][1, Nc+1-Hc:Nc, k])' * plmn
+                field_1[region][1, Nc+1:Nc+Hc, k]      .= reverse(field_1[region_W][1, Nc+1-Hc:Nc, k]) * plmn
                 field_1[region][1:Nc, 1-Hc:0, k]       .=         field_1[region_S][1:Nc, Nc+1-Hc:Nc, k]
-                field_1[region][Nc+1, 1-Hc:0, k]       .= reverse(field_2[region_E][1:Hc, 1, k])'
+                field_1[region][Nc+1, 1-Hc:0, k]       .= reverse(field_2[region_E][1:Hc, 1, k])
                 =#
                 field_1[i+1, Nc+j, k] = multiregion_field_2[region_N][j, Nc+1-i, k] * plmn
                 field_1[1, Nc+j, k] = multiregion_field_1[region_W][1, Nc+1-j, k] * plmn
@@ -511,9 +520,9 @@ field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections,
                 #=
                 #- N + S Halo for field_1:
                 field_1[region][1:Nc, Nc+1:Nc+Hc, k]   .=         field_1[region_N][1:Nc, 1:Hc, k]
-                field_1[region][Nc+1, Nc+1:Nc+Hc, k]   .=         field_1[region_E][1, 1:Hc, k]'
+                field_1[region][Nc+1, Nc+1:Nc+Hc, k]   .=         field_1[region_E][1, 1:Hc, k]
                 field_1[region][2:Nc+1, 1-Hc:0, k]     .= reverse(field_2[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)' * plmn
-                field_1[region][1, 1-Hc:0, k]          .=         field_2[region_W][Nc+1-Hc:Nc, 1, k]' * plmn
+                field_1[region][1, 1-Hc:0, k]          .=         field_2[region_W][Nc+1-Hc:Nc, 1, k] * plmn
                 =#
                 field_1[i, Nc+j, k] = multiregion_field_1[region_N][i, j, k]
                 field_1[Nc+1, Nc+j, k] = multiregion_field_1[region_E][1, j, k]
@@ -573,22 +582,22 @@ end
         @inbounds begin
             #=
             #- SW corner:
-            field_2[region][0, 1-Hc:0, k] .= field_1[region][1-Hc:0, 1, k]'
+            field_2[region][0, 1-Hc:0, k] .= field_1[region][1-Hc:0, 1, k]
             =#
             field_2[0, j-Hc, k] = field_1[j-Hc, 1, k]
             #=
             #- NW corner:
-            field_2[region][0, Nc+2:Nc+Hc, k] .= reverse(field_1[region][2-Hc:0, Nc, k])' * plmn
+            field_2[region][0, Nc+2:Nc+Hc, k] .= reverse(field_1[region][2-Hc:0, Nc, k]) * plmn
             =#
             (j > 1) && (field_2[0, Nc+j, k] = field_1[2-j, Nc, k] * plmn)
             #=
             #- SE corner:
-            field_2[region][Nc+1, 2-Hc:0, k] .= reverse(field_1[region][Nc+2:Nc+Hc, 1, k])' * plmn
+            field_2[region][Nc+1, 2-Hc:0, k] .= reverse(field_1[region][Nc+2:Nc+Hc, 1, k]) * plmn
             =#
             (j > 1) && (field_2[Nc+1, j-Hc, k] = field_1[Nc+Hc+2-j, 1, k] * plmn)
             #=
             #- NE corner:
-            field_2[region][Nc+1, Nc+2:Nc+Hc, k] .= field_1[region][Nc+2:Nc+Hc, Nc, k]'
+            field_2[region][Nc+1, Nc+2:Nc+Hc, k] .= field_1[region][Nc+2:Nc+Hc, Nc, k]
             =#
             (j > 1) && (field_2[Nc+1, Nc+j, k] = field_1[Nc+j, Nc, k])
         end
@@ -620,10 +629,10 @@ end
 field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections, Nc, Hc, plmn)
     j, k = @index(Global, NTuple)
 
-    region_E = connections.east.from_rank
-    region_N = connections.north.from_rank
     region_W = connections.west.from_rank
+    region_E = connections.east.from_rank
     region_S = connections.south.from_rank
+    region_N = connections.north.from_rank
 
     # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
     # verifying halo filling against schematics or physical cubed sphere models.
@@ -636,10 +645,12 @@ field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections,
                 #- E Halo:
                 field_1[region][Nc+1:Nc+Hc, 1:Nc, k]   .=         field_1[region_E][1:Hc, 1:Nc, k]
                 field_2[region][Nc+1:Nc+Hc, 1:Nc, k]   .=         field_2[region_E][1:Hc, 1:Nc, k]
+                field_1[region][Nc+1:Nc+Hc, Nc+1, k]   .=         field_1[region_N][1:Hc, 1, k]
                 field_2[region][Nc+1:Nc+Hc, Nc+1, k]   .=         field_2[region_N][1:Hc, 1, k]
                 =#
-                field_1[Nc+i, j, k] = multiregion_field_1[region_E][i, j, k]
-                field_2[Nc+i, j, k] = multiregion_field_2[region_E][i, j, k]
+                field_1[Nc+i, j, k]    = multiregion_field_1[region_E][i, j, k]
+                field_2[Nc+i, j, k]    = multiregion_field_2[region_E][i, j, k]
+                field_1[Nc+i, Nc+1, k] = multiregion_field_1[region_N][i, 1, k]
                 field_2[Nc+i, Nc+1, k] = multiregion_field_2[region_N][i, 1, k]
                 #=
                 #- W Halo:
@@ -650,14 +661,14 @@ field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections,
                 =#
                 field_1[i-Hc, j+1, k] = multiregion_field_2[region_W][Nc+1-j, Nc+i-Hc, k]
                 field_2[i-Hc, j+1, k] = multiregion_field_1[region_W][Nc+1-j, Nc+i-Hc, k] * plmn
-                field_1[i-Hc, 1, k] = multiregion_field_2[region_S][1, Nc+i-Hc, k]
-                field_2[i-Hc, 1, k] = multiregion_field_1[region_S][1, Nc+i-Hc, k] * plmn
+                field_1[i-Hc, 1, k]   = multiregion_field_2[region_S][1, Nc+i-Hc, k]
+                field_2[i-Hc, 1, k]   = multiregion_field_1[region_S][1, Nc+i-Hc, k] * plmn
             end
         elseif iseven(region)
             @inbounds begin
                 #=
                 #- E Halo:
-                field_1[region][Nc+1:Nc+Hc, 2:Nc, k]   .= reverse(field_2[region_E][2:Nc, 1:Hc, k], dims=1)'
+                field_1[region][Nc+1:Nc+Hc, 2:Nc+1, k] .= reverse(field_2[region_E][1:Nc, 1:Hc, k], dims=1)'
                 field_2[region][Nc+1:Nc+Hc, 2:Nc+1, k] .= reverse(field_1[region_E][1:Nc, 1:Hc, k], dims=1)' * plmn
                 if Hc > 1
                     field_1[region][Nc+2:Nc+Hc, 1, k]  .= reverse(field_1[region_S][Nc+2-Hc:Nc, 1, k]) * plmn
@@ -666,18 +677,20 @@ field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections,
                 Note that the halos corresponding to the "missing" south-east corner of even panels, specifically
                 field_1[region][Nc+1, 1, k] and field_2[region][Nc+1, 1, k], remain unfilled.
                 =#
-                j > 1 && (field_1[Nc+i, j, k] = multiregion_field_2[region_E][Nc+2-j, i, k])
+                field_1[Nc+i, j+1, k] = multiregion_field_2[region_E][Nc+1-j, i, k]
                 field_2[Nc+i, j+1, k] = multiregion_field_1[region_E][Nc+1-j, i, k] * plmn
-                (Hc > 1 && i > 1) && (field_1[Nc+i, 1, k] = multiregion_field_1[region_S][Nc+2-i, 1, k]) * plmn
-                (Hc > 1 && i > 1) && (field_2[Nc+i, 1, k] = multiregion_field_2[region_S][Nc+2-i, 1, k]) * plmn
+                (Hc > 1 && i > 1) && (field_1[Nc+i, 1, k] = multiregion_field_1[region_S][Nc+2-i, 1, k] * plmn)
+                (Hc > 1 && i > 1) && (field_2[Nc+i, 1, k] = multiregion_field_2[region_S][Nc+2-i, 1, k] * plmn)
                 #=
                 #- W Halo:
                 field_1[region][1-Hc:0, 1:Nc, k]       .=         field_1[region_W][Nc+1-Hc:Nc, 1:Nc, k]
                 field_2[region][1-Hc:0, 1:Nc, k]       .=         field_2[region_W][Nc+1-Hc:Nc, 1:Nc, k]
+                field_1[region][1-Hc:0, Nc+1, k]       .= reverse(field_2[region_N][1, 2:Hc+1, k]) * plmn
                 field_2[region][1-Hc:0, Nc+1, k]       .= reverse(field_1[region_N][1, 2:Hc+1, k])
                 =#
                 field_1[i-Hc, j, k] = multiregion_field_1[region_W][Nc+i-Hc, j, k]
                 field_2[i-Hc, j, k] = multiregion_field_2[region_W][Nc+i-Hc, j, k]
+                field_1[i-Hc, Nc+1, k] = multiregion_field_2[region_N][1, Hc+2-i, k] * plmn
                 field_2[i-Hc, Nc+1, k] = multiregion_field_1[region_N][1, Hc+2-i, k]
             end
         end
@@ -688,10 +701,10 @@ end
 field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections, Nc, Hc, plmn)
     i, k = @index(Global, NTuple)
 
-    region_E = connections.east.from_rank
-    region_N = connections.north.from_rank
     region_W = connections.west.from_rank
+    region_E = connections.east.from_rank
     region_S = connections.south.from_rank
+    region_N = connections.north.from_rank
 
     # The commented blocks below show the equivalent non-GPU vectorized implementation, which can be useful for visually
     # verifying halo filling against schematics or physical cubed sphere models.
@@ -703,27 +716,29 @@ field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections,
                 #=
                 #- N Halo:
                 field_1[region][2:Nc+1, Nc+1:Nc+Hc, k] .= reverse(field_2[region_N][1:Hc, 1:Nc, k], dims=2)' * plmn
-                field_2[region][2:Nc, Nc+1:Nc+Hc, k]   .= reverse(field_1[region_N][1:Hc, 2:Nc, k], dims=2)'
+                field_2[region][2:Nc+1, Nc+1:Nc+Hc, k] .= reverse(field_1[region_N][1:Hc, 1:Nc, k], dims=2)'
                 if Hc > 1
-                    field_1[region][1, Nc+2:Nc+Hc, k]  .= reverse(field_1[region_W][1, Nc+2-Hc:Nc, k])' * plmn
-                    field_2[region][1, Nc+2:Nc+Hc, k]  .= reverse(field_2[region_W][1, Nc+2-Hc:Nc, k])' * plmn
+                    field_1[region][1, Nc+2:Nc+Hc, k]  .= reverse(field_1[region_W][1, Nc+2-Hc:Nc, k]) * plmn
+                    field_2[region][1, Nc+2:Nc+Hc, k]  .= reverse(field_2[region_W][1, Nc+2-Hc:Nc, k]) * plmn
                 end
                 # Note that the halos corresponding to the "missing" north-west corner of odd panels, specifically
                 # field_1[region][1, Nc+1, k] and field_2[region][1, Nc+1, k], remain unfilled.
                 =#
                 field_1[i+1, Nc+j, k] = multiregion_field_2[region_N][j, Nc+1-i, k] * plmn
-                (i > 1) && (field_2[i, Nc+j, k] = multiregion_field_1[region_N][j, Nc+2-i, k])
-                (Hc > 1 && j > 1) && (field_1[1, Nc+j, k] = multiregion_field_1[region_W][1, Nc+2-j, k]) * plmn
-                (Hc > 1 && j > 1) && (field_2[1, Nc+j, k] = multiregion_field_2[region_W][1, Nc+2-j, k]) * plmn
+                field_2[i+1, Nc+j, k] = multiregion_field_1[region_N][j, Nc+1-i, k]
+                (Hc > 1 && j > 1) && (field_1[1, Nc+j, k] = multiregion_field_1[region_W][1, Nc+2-j, k] * plmn)
+                (Hc > 1 && j > 1) && (field_2[1, Nc+j, k] = multiregion_field_2[region_W][1, Nc+2-j, k] * plmn)
                 #=
                 #- S Halo:
                 field_1[region][1:Nc, 1-Hc:0, k]       .=         field_1[region_S][1:Nc, Nc+1-Hc:Nc, k]
                 field_2[region][1:Nc, 1-Hc:0, k]       .=         field_2[region_S][1:Nc, Nc+1-Hc:Nc, k]
-                field_1[region][Nc+1, 1-Hc:0, k]       .= reverse(field_2[region_E][2:Hc+1, 1, k])'
+                field_1[region][Nc+1, 1-Hc:0, k]       .= reverse(field_2[region_E][2:Hc+1, 1, k])
+                field_2[region][Nc+1, 1-Hc:0, k]       .= reverse(field_1[region_E][2:Hc+1, 1, k]) * plmn
                 =#
                 field_1[i, j-Hc, k] = multiregion_field_1[region_S][i, Nc+j-Hc, k]
                 field_2[i, j-Hc, k] = multiregion_field_2[region_S][i, Nc+j-Hc, k]
                 field_1[Nc+1, j-Hc, k] = multiregion_field_2[region_E][Hc+2-j, 1, k]
+                field_2[Nc+1, j-Hc, k] = multiregion_field_1[region_E][Hc+2-j, 1, k] * plmn
             end
         elseif iseven(region)
             @inbounds begin
@@ -731,20 +746,22 @@ field_1, multiregion_field_1, field_2, multiregion_field_2, region, connections,
                 #- N Halo:
                 field_1[region][1:Nc, Nc+1:Nc+Hc, k]   .=         field_1[region_N][1:Nc, 1:Hc, k]
                 field_2[region][1:Nc, Nc+1:Nc+Hc, k]   .=         field_2[region_N][1:Nc, 1:Hc, k]
-                field_1[region][Nc+1, Nc+1:Nc+Hc, k]   .=         field_1[region_E][1, 1:Hc, k]'
+                field_1[region][Nc+1, Nc+1:Nc+Hc, k]   .=         field_1[region_E][1, 1:Hc, k]
+                field_2[region][Nc+1, Nc+1:Nc+Hc, k]   .=         field_2[region_E][1, 1:Hc, k]
                 =#
                 field_1[i, Nc+j, k] = multiregion_field_1[region_N][i, j, k]
                 field_2[i, Nc+j, k] = multiregion_field_2[region_N][i, j, k]
                 field_1[Nc+1, Nc+j, k] = multiregion_field_1[region_E][1, j, k]
+                field_2[Nc+1, Nc+j, k] = multiregion_field_2[region_E][1, j, k]
                 #=
                 #- S Halo:
                 field_1[region][2:Nc+1, 1-Hc:0, k]     .= reverse(field_2[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)' * plmn
-                field_2[region][2:Nc, 1-Hc:0, k]       .= reverse(field_1[region_S][Nc+1-Hc:Nc, 2:Nc, k], dims=2)'
-                field_1[region][1, 1-Hc:0, k]          .=         field_2[region_W][Nc+1-Hc:Nc, 1, k]' * plmn
-                field_2[region][1, 1-Hc:0, k]          .=         field_1[region_W][Nc+1-Hc:Nc, 1, k]'
+                field_2[region][2:Nc+1, 1-Hc:0, k]     .= reverse(field_1[region_S][Nc+1-Hc:Nc, 1:Nc, k], dims=2)'
+                field_1[region][1, 1-Hc:0, k]          .=         field_2[region_W][Nc+1-Hc:Nc, 1, k] * plmn
+                field_2[region][1, 1-Hc:0, k]          .=         field_1[region_W][Nc+1-Hc:Nc, 1, k]
                 =#
                 field_1[i+1, j-Hc, k] = multiregion_field_2[region_S][Nc+j-Hc, Nc+1-i, k] * plmn
-                (i > 1) && (field_2[i, j-Hc, k] = multiregion_field_1[region_S][Nc+j-Hc, Nc+2-i, k])
+                field_2[i+1, j-Hc, k] = multiregion_field_1[region_S][Nc+j-Hc, Nc+1-i, k]
                 field_1[1, j-Hc, k] = multiregion_field_2[region_W][Nc+j-Hc, 1, k] * plmn
                 field_2[1, j-Hc, k] = multiregion_field_1[region_W][Nc+j-Hc, 1, k]
             end
