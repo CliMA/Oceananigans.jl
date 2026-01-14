@@ -1,6 +1,6 @@
 using Oceananigans.Architectures: architecture
 using Oceananigans.Utils: configure_kernel
-using Oceananigans.TimeSteppers: rk3_substep_field!
+using Oceananigans.TimeSteppers: _rk3_substep_field!
 
 import Oceananigans.TimeSteppers: rk3_substep!
 
@@ -19,14 +19,13 @@ function rk3_substep!(model::ShallowWaterModel, Δt, γⁿ, ζⁿ, callbacks)
     compute_tendencies!(model, callbacks)
     grid = model.grid
 
-
     launch!(architecture(grid), grid, :xyz, _rk_substep_solution!, 
             model.solution,
             Δt, γⁿ, ζⁿ,
             model.timestepper.Gⁿ,
             model.timestepper.G⁻)
 
-    _tracer_kernel!, _ = configure_kernel(architecture(grid), grid, :xyz, rk3_substep_field!)
+    _tracer_kernel!, _ = configure_kernel(architecture(grid), grid, :xyz, _rk3_substep_field!)
 
     for i in 1:length(model.tracers)
         @inbounds c = model.tracers[i]
