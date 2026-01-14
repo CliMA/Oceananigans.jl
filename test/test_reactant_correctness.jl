@@ -1,5 +1,5 @@
-include("reactnt_test_utils.jl")
-include("reactnt_correctness_utils.jl")
+include("reactant_test_utils.jl")
+include("reactant_correctness_utils.jl")
 
 using Random
 using CUDA
