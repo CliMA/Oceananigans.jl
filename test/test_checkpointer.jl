@@ -1728,7 +1728,6 @@ for arch in archs
         end
     end
 
-    #=
     for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
         @testset "Height perturbation checkpointing shallow water [$(typeof(arch)), $(timestepper)]" begin
             @info "  Testing height perturbation checkpointing shallow water [$(typeof(arch)), $(timestepper)]..."
@@ -1752,7 +1751,6 @@ for arch in archs
             test_checkpointing_zstar_coordinate(arch, timestepper)
         end
     end
-    =#
 
     for solver_method in (:PreconditionedConjugateGradient,)
         @testset "ImplicitFreeSurface checkpointing [$(typeof(arch)), $solver_method]" begin
