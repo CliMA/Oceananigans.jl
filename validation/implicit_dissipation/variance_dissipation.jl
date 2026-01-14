@@ -60,7 +60,7 @@ c⁻    = CenterField(grid)
 
 for (ts, timestepper) in zip((:AB2, :RK3), (:QuasiAdamsBashforth2, :SplitRungeKutta3))
     
-    model = HydrostaticFreeSurfaceModel(; grid, 
+    model = HydrostaticFreeSurfaceModel(grid; 
                                         timestepper, 
                                         velocities, 
                                         tracer_advection, 

@@ -4,10 +4,12 @@ using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Solvers: solve!
 using Oceananigans.Utils: prettytime, prettysummary
 
+import Oceananigans: prognostic_state, restore_prognostic_state!
+
 using Adapt: Adapt
 
 struct ImplicitFreeSurface{E, G, I, M, S} <: AbstractFreeSurface{E, G}
-    η :: E
+    displacement :: E
     gravitational_acceleration :: G
     implicit_step_solver :: I
     solver_method :: M
@@ -15,14 +17,14 @@ struct ImplicitFreeSurface{E, G, I, M, S} <: AbstractFreeSurface{E, G}
 end
 
 Base.show(io::IO, fs::ImplicitFreeSurface) =
-    isnothing(fs.η) ?
+    isnothing(fs.displacement) ?
     print(io, "ImplicitFreeSurface with ", fs.solver_method, "\n",
               "├─ gravitational_acceleration: ", prettysummary(fs.gravitational_acceleration), "\n",
               "├─ solver_method: ", fs.solver_method, "\n", # TODO: implement summary for solvers
               "└─ settings: ", isempty(fs.solver_settings) ? "Default" : fs.solver_settings) :
     print(io, "ImplicitFreeSurface with ", fs.solver_method, "\n",
-              "├─ grid: ", summary(fs.η.grid), "\n",
-              "├─ η: ", summary(fs.η), "\n",
+              "├─ grid: ", summary(fs.displacement.grid), "\n",
+              "├─ displacement: ", summary(fs.displacement), "\n",
               "├─ gravitational_acceleration: ", prettysummary(fs.gravitational_acceleration), "\n",
               "├─ implicit_step_solver: ", nameof(typeof(fs.implicit_step_solver)), "\n", # TODO: implement summary for solvers
               "└─ settings: ", fs.solver_settings)
@@ -80,11 +82,11 @@ function ImplicitFreeSurface(;
 end
 
 Adapt.adapt_structure(to, free_surface::ImplicitFreeSurface) =
-    ImplicitFreeSurface(Adapt.adapt(to, free_surface.η), free_surface.gravitational_acceleration,
+    ImplicitFreeSurface(Adapt.adapt(to, free_surface.displacement), free_surface.gravitational_acceleration,
                         nothing, nothing, nothing)
 
 on_architecture(to, free_surface::ImplicitFreeSurface) =
-    ImplicitFreeSurface(on_architecture(to, free_surface.η),
+    ImplicitFreeSurface(on_architecture(to, free_surface.displacement),
                         on_architecture(to, free_surface.gravitational_acceleration),
                         on_architecture(to, free_surface.implicit_step_solver),
                         on_architecture(to, free_surface.solver_methods),
@@ -119,13 +121,13 @@ build_implicit_step_solver(::Val{:Default}, grid, settings, gravitational_accele
 Implicitly step forward η.
 """
 function step_free_surface!(free_surface::ImplicitFreeSurface, model, timestepper, Δt)
-    η      = free_surface.η
+    η      = free_surface.displacement
     g      = free_surface.gravitational_acceleration
     rhs    = free_surface.implicit_step_solver.right_hand_side
     solver = free_surface.implicit_step_solver
 
     fill_halo_regions!(model.velocities, model.clock, fields(model))
-    
+
     @apply_regionally begin
         mask_immersed_field!(model.velocities.u)
         mask_immersed_field!(model.velocities.v)
@@ -146,7 +148,22 @@ function step_free_surface!(free_surface::ImplicitFreeSurface, model, timesteppe
 end
 
 function step_free_surface!(free_surface::ImplicitFreeSurface, model, timestepper::SplitRungeKutta3TimeStepper, Δt)
-    parent(free_surface.η) .= parent(timestepper.Ψ⁻.η)
+    parent(free_surface.displacement) .= parent(timestepper.Ψ⁻.η)
     step_free_surface!(free_surface, model, nothing, Δt)
     return nothing
 end
+
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(fs::ImplicitFreeSurface)
+    return (; displacement = prognostic_state(fs.displacement))
+end
+
+function restore_prognostic_state!(fs::ImplicitFreeSurface, state)
+    restore_prognostic_state!(fs.displacement, state.displacement)
+    return fs
+end
+
+restore_prognostic_state!(::ImplicitFreeSurface, ::Nothing) = nothing

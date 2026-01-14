@@ -1,14 +1,11 @@
-using Oceananigans.Grids: topology, node, _node, φnode, λnode,
+using Oceananigans.Grids: topology, _node, φnode, φnodes, λnode, λnodes,
                           XFlatGrid, YFlatGrid, ZFlatGrid,
                           XYFlatGrid, YZFlatGrid, XZFlatGrid,
                           XRegularRG, YRegularRG, ZRegularRG,
                           XRegularLLG, YRegularLLG, ZRegularLLG,
-                          ZRegOrthogonalSphericalShellGrid,
-                          RectilinearGrid, LatitudeLongitudeGrid
+                          ZRegOrthogonalSphericalShellGrid
 
 using Oceananigans.Operators: Δx, Δy, Δz
-
-using Oceananigans.Architectures: child_architecture
 
 # GPU-compatile middle point calculation
 @inline middle_point(l, h) = Base.unsafe_trunc(Int, (l + h) / 2)
@@ -357,6 +354,7 @@ end
 @inline flatten_node(::Nothing, ::Nothing, ::Nothing) = tuple()
 
 @inline flatten_node(x, y) = (x, y)
+@inline flatten_node(::Nothing, ::Nothing) = tuple()
 @inline flatten_node(::Nothing, y) = flatten_node(y)
 @inline flatten_node(x, ::Nothing) = flatten_node(x)
 

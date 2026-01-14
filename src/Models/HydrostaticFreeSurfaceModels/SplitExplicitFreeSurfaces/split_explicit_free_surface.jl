@@ -5,10 +5,11 @@ using Oceananigans.Fields: TracerFields, XFaceField, YFaceField
 using Oceananigans.Utils: prettytime
 using Adapt: Adapt
 
+import Oceananigans: prognostic_state, restore_prognostic_state!
 import ..HydrostaticFreeSurfaceModels: hydrostatic_tendency_fields
 
 struct SplitExplicitFreeSurface{H, U, M, FT, K , S, T} <: AbstractFreeSurface{H, FT}
-    η :: H
+    displacement :: H
     barotropic_velocities :: U # A namedtuple with U, V
     filtered_state :: M # A namedtuple with η, U, V averaged throughout the substepping
     gravitational_acceleration :: FT
@@ -39,8 +40,8 @@ of the velocity field ``u`` and ``v``, ``H`` is the column depth, ``G^U`` is the
 tendency of ``u`` and ``v``, and ``g`` is the gravitational acceleration.
 
 The discretized equations are solved within a baroclinic timestep (``Δt``) by substepping with a ``Δτ < Δt``.
-The barotropic velocities are filtered throughout the substepping and, finally, the barotropic mode of the velocities 
-at the new time step is corrected with the filtered velocities. The complementary filtered transport barotropic velocities, 
+The barotropic velocities are filtered throughout the substepping and, finally, the barotropic mode of the velocities
+at the new time step is corrected with the filtered velocities. The complementary filtered transport barotropic velocities,
 `Ũ` and `Ṽ`, are used as transport barotropic velocities for tracer advection.
 
 Fields
@@ -201,7 +202,7 @@ function hydrostatic_tendency_fields(velocities, free_surface::SplitExplicitFree
     @apply_regionally U_bcs = barotropic_velocity_boundary_conditions(velocities.u)
     @apply_regionally V_bcs = barotropic_velocity_boundary_conditions(velocities.v)
 
-    free_surface_grid = free_surface.η.grid
+    free_surface_grid = free_surface.displacement.grid
     U = Field{Face, Center, Nothing}(free_surface_grid, boundary_conditions=U_bcs)
     V = Field{Center, Face, Nothing}(free_surface_grid, boundary_conditions=V_bcs)
 
@@ -307,21 +308,14 @@ end
     Δτ = τᶠ[2] - τᶠ[1]
 
     averaging_weights = map(averaging_kernel, τᶠ[2:end])
-    M★ = substeps
-
     # Find the latest allowable weight
-    for i in substeps:-1:1
-        if averaging_weights[i] > 0
-            M★ = i
-            break
-        end
-    end
+    M★ = something(findlast(>(0), averaging_weights), firstindex(averaging_weights))
 
-    averaging_weights = averaging_weights[1:M★]
-    averaging_weights ./= sum(averaging_weights)
-    transport_weights = [sum(averaging_weights[i:M★]) for i in 1:M★] ./ M
+    trimmed_weights = averaging_weights[1:M★]
+    trimmed_weights ./= sum(trimmed_weights)
+    transport_weights = [sum(trimmed_weights[i:M★]) for i in 1:M★] ./ M
 
-    return FT(Δτ), map(FT, tuple(averaging_weights...)), map(FT, tuple(transport_weights...))
+    return FT(Δτ), map(FT, tuple(trimmed_weights...)), map(FT, tuple(transport_weights...))
 end
 
 Base.summary(s::FixedTimeStepSize)  = string("FixedTimeStepSize($(prettytime(s.Δt_barotropic)))")
@@ -373,7 +367,7 @@ split_explicit_kernel_size(::Type{LeftConnected},  N, H) = -H+2:N
 
 # Adapt
 Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
-    SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.η),
+    SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.displacement),
                              Adapt.adapt(to, free_surface.barotropic_velocities),
                              Adapt.adapt(to, free_surface.filtered_state),
                              free_surface.gravitational_acceleration,
@@ -393,3 +387,22 @@ for Type in (SplitExplicitFreeSurface,
         end
     end
 end
+
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(fs::SplitExplicitFreeSurface)
+    return (displacement = prognostic_state(fs.displacement),
+            barotropic_velocities = prognostic_state(fs.barotropic_velocities),
+            timestepper = prognostic_state(fs.timestepper))
+end
+
+function restore_prognostic_state!(fs::SplitExplicitFreeSurface, state)
+    restore_prognostic_state!(fs.displacement, state.displacement)
+    restore_prognostic_state!(fs.barotropic_velocities, state.barotropic_velocities)
+    restore_prognostic_state!(fs.timestepper, state.timestepper)
+    return fs
+end
+
+restore_prognostic_state!(::SplitExplicitFreeSurface, ::Nothing) = nothing

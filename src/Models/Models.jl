@@ -8,7 +8,10 @@ export
     PrescribedVelocityFields, PressureField,
     LagrangianParticles, DroguedParticleDynamics,
     BoundaryConditionOperation, ForcingOperation,
-    seawater_density
+    seawater_density,
+    BulkDrag, BulkDragFunction, BulkDragBoundaryCondition,
+    XDirectionBulkDragFunction, YDirectionBulkDragFunction, ZDirectionBulkDragFunction,
+    LinearFormulation, QuadraticFormulation
 
 using Oceananigans: AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation
@@ -111,6 +114,12 @@ using .HydrostaticFreeSurfaceModels:
 using .ShallowWaterModels: ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation
 using .LagrangianParticleTracking: LagrangianParticles, DroguedParticleDynamics
 
+# BulkDrag for quadratic drag boundary conditions
+include("BulkDragBoundaryConditions.jl")
+using .BulkDragBoundaryConditions: BulkDrag, BulkDragFunction, BulkDragBoundaryCondition,
+                                  XDirectionBulkDragFunction, YDirectionBulkDragFunction, ZDirectionBulkDragFunction,
+                                  LinearFormulation, QuadraticFormulation
+
 const OceananigansModels = Union{HydrostaticFreeSurfaceModel,
                                  NonhydrostaticModel,
                                  ShallowWaterModel}
@@ -194,8 +203,7 @@ default_nan_checker(::OnlyParticleTrackingModel) = nothing
 
 # Extend output writer functionality to custom Oceananigans.Models
 import Oceananigans.OutputWriters: default_included_properties,
-                                   checkpointer_address,
-                                   required_checkpoint_properties
+                                   checkpointer_address
 
 default_included_properties(::NonhydrostaticModel) = [:grid, :coriolis, :buoyancy, :closure]
 default_included_properties(::HydrostaticFreeSurfaceModel) = [:grid, :coriolis, :buoyancy, :closure]
@@ -204,17 +212,6 @@ default_included_properties(::ShallowWaterModel) = [:grid, :coriolis, :closure]
 checkpointer_address(::ShallowWaterModel) = "ShallowWaterModel"
 checkpointer_address(::NonhydrostaticModel) = "NonhydrostaticModel"
 checkpointer_address(::HydrostaticFreeSurfaceModel) = "HydrostaticFreeSurfaceModel"
-
-function required_checkpoint_properties(model::OceananigansModels)
-    properties = [:grid, :clock]
-    if !isnothing(model.timestepper)
-       push!(properties, :timestepper)
-    end
-    if !isnothing(model.particles)
-       push!(properties, :particles)
-    end
-    return properties
-end
 
 default_included_properties(::OceananigansModels) = [:grid]
 

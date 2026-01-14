@@ -1,7 +1,7 @@
 using Oceananigans: AbstractModel
 
 using Oceananigans.Architectures: AbstractArchitecture
-using Oceananigans.AbstractOperations: @at, KernelFunctionOperation
+using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.DistributedComputations
 using Oceananigans.Advection: VectorInvariant
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
@@ -14,6 +14,7 @@ using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, build_closure_fields
 using Oceananigans.Utils: tupleit
 
+import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.Architectures: architecture
 
 const RectilinearGrids = Union{RectilinearGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:RectilinearGrid}}
@@ -58,30 +59,34 @@ struct ConservativeFormulation end
 struct VectorInvariantFormulation end
 
 """
-    ShallowWaterModel(; grid,
-                        gravitational_acceleration,
-                              clock = Clock{eltype(grid)}(time = 0),
-                 momentum_advection = UpwindBiased(order=5),
-                   tracer_advection = WENO(),
-                     mass_advection = WENO(),
-                           coriolis = nothing,
-                forcing::NamedTuple = NamedTuple(),
-                            closure = nothing,
-                         bathymetry = nothing,
-                            tracers = (),
-                     closure_fields = nothing,
-    boundary_conditions::NamedTuple = NamedTuple(),
-                timestepper::Symbol = :RungeKutta3,
-                        formulation = ConservativeFormulation())
+    ShallowWaterModel(grid;
+                      gravitational_acceleration,
+                      clock = Clock(grid),
+                      momentum_advection = UpwindBiased(order=5),
+                      tracer_advection = WENO(),
+                      mass_advection = WENO(),
+                      coriolis = nothing,
+                      forcing::NamedTuple = NamedTuple(),
+                      closure = nothing,
+                      bathymetry = nothing,
+                      tracers = (),
+                      closure_fields = nothing,
+                      boundary_conditions::NamedTuple = NamedTuple(),
+                      timestepper::Symbol = :RungeKutta3,
+                      formulation = ConservativeFormulation())
 
 Construct a shallow water model on `grid` with `gravitational_acceleration` constant.
 
-Keyword arguments
-=================
+Arguments
+=========
 
   - `grid`: (required) The resolution and discrete geometry on which `model` is solved. The
             architecture (CPU/GPU) that the model is solve is inferred from the architecture
             of the grid.
+
+Keyword arguments
+=================
+
   - `gravitational_acceleration`: (required) The gravitational acceleration constant.
   - `clock`: The `clock` for the model.
   - `momentum_advection`: The scheme that advects velocities. See `Oceananigans.Advection`.
@@ -108,22 +113,21 @@ Keyword arguments
     The `ConservativeFormulation()` requires `RectilinearGrid`.
     Use `VectorInvariantFormulation()` with `LatitudeLongitudeGrid`.
 """
-function ShallowWaterModel(;
-                           grid,
+function ShallowWaterModel(grid;
                            gravitational_acceleration,
-                               clock = Clock(grid),
-                  momentum_advection = UpwindBiased(order=5),
-                    tracer_advection = WENO(),
-                      mass_advection = WENO(),
-                            coriolis = nothing,
-                 forcing::NamedTuple = NamedTuple(),
-                             closure = nothing,
-                          bathymetry = nothing,
-                             tracers = (),
-                      closure_fields = nothing,
-     boundary_conditions::NamedTuple = NamedTuple(),
-                 timestepper::Symbol = :RungeKutta3,
-                         formulation = ConservativeFormulation())
+                           clock = Clock(grid),
+                           momentum_advection = UpwindBiased(order=5),
+                           tracer_advection = WENO(),
+                           mass_advection = WENO(),
+                           coriolis = nothing,
+                           forcing::NamedTuple = NamedTuple(),
+                           closure = nothing,
+                           bathymetry = nothing,
+                           tracers = (),
+                           closure_fields = nothing,
+                           boundary_conditions::NamedTuple = NamedTuple(),
+                           timestepper::Symbol = :RungeKutta3,
+                           formulation = ConservativeFormulation())
 
     @warn "The ShallowWaterModel is currently unvalidated, subject to change, and should not be used for scientific research without adequate validation."
 
@@ -233,3 +237,28 @@ shallow_water_velocities(model::ShallowWaterModel) = shallow_water_velocities(mo
 
 shallow_water_fields(velocities, solution, tracers, ::ConservativeFormulation)    = merge(velocities, solution, tracers)
 shallow_water_fields(velocities, solution, tracers, ::VectorInvariantFormulation) = merge(solution, (; w = velocities.w), tracers)
+
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(model::ShallowWaterModel)
+    return (clock = prognostic_state(model.clock),
+            solution = prognostic_state(model.solution),
+            velocities = prognostic_state(model.velocities),
+            tracers = prognostic_state(model.tracers),
+            closure_fields = prognostic_state(model.closure_fields),
+            timestepper = prognostic_state(model.timestepper))
+end
+
+function restore_prognostic_state!(model::ShallowWaterModel, state)
+    restore_prognostic_state!(model.clock, state.clock)
+    restore_prognostic_state!(model.solution, state.solution)
+    restore_prognostic_state!(model.velocities, state.velocities)
+    restore_prognostic_state!(model.timestepper, state.timestepper)
+    restore_prognostic_state!(model.tracers, state.tracers)
+    restore_prognostic_state!(model.closure_fields, state.closure_fields)
+    return model
+end
+
+restore_prognostic_state!(::ShallowWaterModel, ::Nothing) = nothing

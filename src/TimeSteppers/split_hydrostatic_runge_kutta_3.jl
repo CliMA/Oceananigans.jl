@@ -1,6 +1,8 @@
 using Oceananigans.Architectures: architecture
 using Oceananigans: fields
 
+import Oceananigans: prognostic_state, restore_prognostic_state!
+
 """
     SplitRungeKutta3TimeStepper{FT, TG, PF, TI} <: AbstractTimeStepper
 
@@ -166,3 +168,20 @@ function cache_previous_fields!(model)
 
     return nothing
 end
+
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(timestepper::SplitRungeKutta3TimeStepper)
+    return (Gⁿ = prognostic_state(timestepper.Gⁿ),
+            Ψ⁻ = prognostic_state(timestepper.Ψ⁻))
+end
+
+function restore_prognostic_state!(timestepper::SplitRungeKutta3TimeStepper, state)
+    restore_prognostic_state!(timestepper.Gⁿ, state.Gⁿ)
+    restore_prognostic_state!(timestepper.Ψ⁻, state.Ψ⁻)
+    return timestepper
+end
+
+restore_prognostic_state!(::SplitRungeKutta3TimeStepper, ::Nothing) = nothing

@@ -33,7 +33,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
     # This coriolis scheme was used to generated the regression test data
     coriolis = HydrostaticSphericalCoriolis(scheme=EnergyConserving())
 
-    model = HydrostaticFreeSurfaceModel(; grid, coriolis,
+    model = HydrostaticFreeSurfaceModel(grid; coriolis,
                                         momentum_advection = VectorInvariant(),
                                         free_surface = free_surface,
                                         closure = HorizontalScalarDiffusivity(ν=1e+5, κ=1e+4))
@@ -83,7 +83,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
                             Δt = Δt,
                             stop_iteration = stop_iteration)
 
-    η = model.free_surface.η
+    η = model.free_surface.displacement
 
     free_surface_str = string(typeof(model.free_surface).name.wrapper)
     x_topology_str = global_topology(grid, 1)

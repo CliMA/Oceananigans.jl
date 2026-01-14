@@ -13,10 +13,10 @@ grid = RectilinearGrid(size = (128, 20),
                        halo = (6, 6),
                    topology = (Bounded, Flat, Bounded))
 
-model = HydrostaticFreeSurfaceModel(; grid,
-                         momentum_advection = WENO(order=5),
-                           tracer_advection = WENO(order=7),
-                                   buoyancy = BuoyancyTracer(),
+model = HydrostaticFreeSurfaceModel(grid;
+                                    momentum_advection = WENO(order=5),
+                                    tracer_advection = WENO(order=7),
+                                    buoyancy = BuoyancyTracer(),
                                     closure = (VerticalScalarDiffusivity(ν=1e-4), HorizontalScalarDiffusivity(ν=1.0)),
                                     tracers = (:b, :c),
                                 timestepper = :SplitRungeKutta3,
@@ -68,7 +68,7 @@ function progress(sim)
     msg4 = @sprintf("extrema Δz: %.2e %.2e ", maximum(Δz), minimum(Δz))
     @info msg0 * msg1 * msg2 * msg3 * msg4
 
-    push!(et1, deepcopy(interior(model.free_surface.η, :, 1, 1)))
+    push!(et1, deepcopy(interior(model.free_surface.displacement, :, 1, 1)))
     push!(et2, deepcopy(model.grid.z.ηⁿ[1:128, 1, 1]))
 
     return nothing

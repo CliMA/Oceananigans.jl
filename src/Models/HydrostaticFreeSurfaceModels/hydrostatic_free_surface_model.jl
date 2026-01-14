@@ -61,7 +61,7 @@ using Oceananigans.TurbulenceClosures:
 
 using Oceananigans.Utils: tupleit
 
-import Oceananigans: initialize!
+import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
 import Oceananigans.Models: total_velocities
 import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
 
@@ -110,7 +110,7 @@ default_free_surface(grid; gravitational_acceleration=defaults.gravitational_acc
     SplitExplicitFreeSurface(grid; cfl = 0.7, gravitational_acceleration)
 
 """
-    HydrostaticFreeSurfaceModel(; grid,
+    HydrostaticFreeSurfaceModel(grid;
                                 clock = Clock{Float64}(time = 0),
                                 momentum_advection = VectorInvariant(),
                                 tracer_advection = Centered(),
@@ -132,12 +132,16 @@ default_free_surface(grid; gravitational_acceleration=defaults.gravitational_acc
 
 Construct a hydrostatic model with a free surface on `grid`.
 
+Arguments
+==========
+
+ - `grid`: (required) The resolution and discrete geometry on which `model` is solved. The
+            architecture (CPU/GPU) that the model is solved is inferred from the architecture
+            of the `grid`.
+
 Keyword arguments
 =================
 
-  - `grid`: (required) The resolution and discrete geometry on which `model` is solved. The
-            architecture (CPU/GPU) that the model is solved is inferred from the architecture
-            of the `grid`.
   - `momentum_advection`: The scheme that advects velocities. See `Oceananigans.Advection`.
   - `tracer_advection`: The scheme that advects tracers. See `Oceananigans.Advection`.
   - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyFormulations`.
@@ -165,25 +169,25 @@ Keyword arguments
                            for grids with `MutableVerticalDiscretization` otherwise returns
                            `ZCoordinate()`.
 """
-function HydrostaticFreeSurfaceModel(; grid,
-    clock = Clock(grid),
-    momentum_advection = VectorInvariant(),
-    tracer_advection = Centered(),
-    buoyancy = nothing,
-    coriolis = nothing,
-    free_surface = default_free_surface(grid, gravitational_acceleration=defaults.gravitational_acceleration),
-    tracers = nothing,
-    forcing::NamedTuple = NamedTuple(),
-    closure = nothing,
-    timestepper = :QuasiAdamsBashforth2,
-    boundary_conditions::NamedTuple = NamedTuple(),
-    particles::ParticlesOrNothing = nothing,
-    biogeochemistry::AbstractBGCOrNothing = nothing,
-    velocities = nothing,
-    pressure = nothing,
-    closure_fields = nothing,
-    auxiliary_fields = NamedTuple(),
-    vertical_coordinate = default_vertical_coordinate(grid))
+function HydrostaticFreeSurfaceModel(grid;
+                                     clock = Clock(grid),
+                                     momentum_advection = VectorInvariant(),
+                                     tracer_advection = Centered(),
+                                     buoyancy = nothing,
+                                     coriolis = nothing,
+                                     free_surface = default_free_surface(grid, gravitational_acceleration=defaults.gravitational_acceleration),
+                                     tracers = nothing,
+                                     forcing::NamedTuple = NamedTuple(),
+                                     closure = nothing,
+                                     timestepper = :QuasiAdamsBashforth2,
+                                     boundary_conditions::NamedTuple = NamedTuple(),
+                                     particles::ParticlesOrNothing = nothing,
+                                     biogeochemistry::AbstractBGCOrNothing = nothing,
+                                     velocities = nothing,
+                                     pressure = nothing,
+                                     closure_fields = nothing,
+                                     auxiliary_fields = NamedTuple(),
+                                     vertical_coordinate = default_vertical_coordinate(grid))
 
     # Check halos and throw an error if the grid's halo is too small
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
@@ -328,3 +332,34 @@ initialize!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model
 timestepper(model::HydrostaticFreeSurfaceModel) = model.timestepper
 buoyancy_force(model::HydrostaticFreeSurfaceModel) = model.buoyancy
 buoyancy_tracers(model::HydrostaticFreeSurfaceModel) = model.tracers
+
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(model::HydrostaticFreeSurfaceModel)
+    return (clock = prognostic_state(model.clock),
+            particles = prognostic_state(model.particles),
+            velocities = prognostic_state(model.velocities),
+            tracers = prognostic_state(model.tracers),
+            closure_fields = prognostic_state(model.closure_fields),
+            timestepper = prognostic_state(model.timestepper),
+            free_surface = prognostic_state(model.free_surface),
+            auxiliary_fields = prognostic_state(model.auxiliary_fields),
+            vertical_coordinate = prognostic_state(model.vertical_coordinate, model.grid))
+end
+
+function restore_prognostic_state!(model::HydrostaticFreeSurfaceModel, state)
+    restore_prognostic_state!(model.clock, state.clock)
+    restore_prognostic_state!(model.particles, state.particles)
+    restore_prognostic_state!(model.velocities, state.velocities)
+    restore_prognostic_state!(model.timestepper, state.timestepper)
+    restore_prognostic_state!(model.free_surface, state.free_surface)
+    restore_prognostic_state!(model.tracers, state.tracers)
+    restore_prognostic_state!(model.closure_fields, state.closure_fields)
+    restore_prognostic_state!(model.auxiliary_fields, state.auxiliary_fields)
+    restore_prognostic_state!(model.vertical_coordinate, model.grid, state.vertical_coordinate)
+    return model
+end
+
+restore_prognostic_state!(::HydrostaticFreeSurfaceModel, ::Nothing) = nothing

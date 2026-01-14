@@ -2,7 +2,7 @@ using Printf: @sprintf
 using JLD2
 using Oceananigans.Utils
 using Oceananigans.Utils: TimeInterval, prettykeys, materialize_schedule
-using Oceananigans.Fields: boundary_conditions, indices
+using Oceananigans.Fields: indices
 
 default_included_properties(model) = []
 
@@ -112,7 +112,8 @@ Output 3D fields of the model velocities ``u``, ``v``, and ``w``:
 using Oceananigans
 using Oceananigans.Units
 
-model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)), tracers=:c)
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)
+model = NonhydrostaticModel(grid), tracers=:c)
 simulation = Simulation(model, Δt=12, stop_time=1hour)
 
 function init_save_some_metadata!(file, model)
@@ -161,15 +162,15 @@ function JLD2Writer(model, outputs; filename, schedule,
     initialize!(file_splitting, model)
     update_file_splitting_schedule!(file_splitting, filepath)
 
-    outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], indices, with_halos) for name in keys(outputs))                        
+    nt_outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], indices, with_halos) for name in keys(outputs))
     schedule = materialize_schedule(schedule)
 
     # Convert each output to WindowedTimeAverage if schedule::AveragedTimeWindow is specified
-    schedule, outputs = time_average_outputs(schedule, outputs, model)
+    schedule, d_outputs = time_average_outputs(schedule, nt_outputs, model)
 
     # Note: file initialization is deferred until `initialize!(writer, model)` is called
     # (typically when `run!` is invoked on a Simulation containing this writer)
-    return JLD2Writer(filepath, outputs, schedule, array_type, init,
+    return JLD2Writer(filepath, d_outputs, schedule, array_type, init,
                       including, part, file_splitting, overwrite_existing, verbose, jld2_kw, false)
 end
 

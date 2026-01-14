@@ -15,7 +15,7 @@ function run_thermal_bubble_regression_test(arch, grid_type)
 
     closure = ScalarDiffusivity(ν=4e-2, κ=4e-2)
 
-    model = NonhydrostaticModel(; grid, closure,
+    model = NonhydrostaticModel(grid; closure,
                                 timestepper = :QuasiAdamsBashforth2,
                                 coriolis = FPlane(f=1e-4),
                                 buoyancy = SeawaterBuoyancy(),
@@ -51,7 +51,7 @@ function run_thermal_bubble_regression_test(arch, grid_type)
                    "S" => model.tracers.S)
 
     nc_writer = NetCDFWriter(model, outputs, filename=regression_data_filepath, schedule=IterationInterval(10))
-    push!(simulation.output_writers, nc_writer)
+    simulation.output_writers[:nc_writer] = nc_writer
     =#
 
     ####

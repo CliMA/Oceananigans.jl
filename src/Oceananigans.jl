@@ -14,6 +14,7 @@ export
     RightConnected, LeftConnected, FullyConnected,
     RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
     TripolarGrid, RotatedLatitudeLongitudeGrid,
+    MutableVerticalDiscretization,
     ExponentialDiscretization, ReferenceToStretchedDiscretization, PowerLawStretching, LinearStretching,
     nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
     xspacings, yspacings, rspacings, zspacings, λspacings, φspacings,
@@ -82,6 +83,8 @@ export
     NonhydrostaticModel, HydrostaticFreeSurfaceModel, ShallowWaterModel,
     ConservativeFormulation, VectorInvariantFormulation,
     PressureField, fields, ZCoordinate, ZStarCoordinate,
+    BulkDrag, LinearFormulation, QuadraticFormulation,
+    BoundaryConditionOperation,
 
     # Hydrostatic free surface model stuff
     VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
@@ -204,6 +207,8 @@ function instantiated_location end
 function tupleit end
 function fields end
 function prognostic_fields end
+function prognostic_state end
+function restore_prognostic_state! end
 function tracer_tendency_kernel_function end
 function boundary_conditions end
 

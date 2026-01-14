@@ -1,7 +1,5 @@
-using Oceananigans.Operators: Δxᶜᵃᵃ, Δxᶠᵃᵃ, Δyᵃᶜᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶜ, Δzᵃᵃᶠ
+using Oceananigans.Operators: Δxᶜᶜᶜ, Δxᶜᵃᵃ, Δxᶠᵃᵃ, Δyᵃᶜᵃ, Δyᵃᶠᵃ, Δyᶜᶜᶜ, Δzᵃᵃᶜ, Δzᵃᵃᶠ, Δzᶜᶜᶜ
 using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
-
-import Oceananigans.Architectures: architecture
 
 struct FourierTridiagonalPoissonSolver{G, F, Λ, B, R, S, β, T}
     grid :: G
@@ -20,7 +18,7 @@ function Base.show(io::IO, solver::FourierTridiagonalPoissonSolver)
     print(io, "└── grid: ", prettysummary(solver.grid))
 end
 
-architecture(solver::FourierTridiagonalPoissonSolver) = architecture(solver.grid)
+Architectures.architecture(solver::FourierTridiagonalPoissonSolver) = architecture(solver.grid)
 
 stretched_direction(::YZRegularRG) = XDirection()
 stretched_direction(::XZRegularRG) = YDirection()
