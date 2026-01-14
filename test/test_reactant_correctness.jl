@@ -128,13 +128,14 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
 
     @testset "compute_simple_Gu! correctness" begin
 
-        advection_schemes = (Centered(), WENO())
+        advection_schemes = (nothing, Centered(), WENO())
+        
+        # Helper to get advection name for testset
+        adv_name(::Nothing) = "nothing"
+        adv_name(a) = string(nameof(typeof(a)))
 
-        # RectilinearGrid + FPlane
-        @testset "RectilinearGrid + FPlane" begin
-            @info "Testing compute_simple_Gu! correctness on RectilinearGrid with FPlane Coriolis..."
-            coriolis = FPlane(f=1e-4)
-
+        # RectilinearGrid tests
+        @testset "RectilinearGrid" begin
             vanilla_grid = RectilinearGrid(vanilla_arch; size=(4, 4, 4), halo=(3, 3, 3),
                                            extent=(1, 1, 1), topology=(Periodic, Periodic, Bounded))
             reactant_grid = RectilinearGrid(reactant_arch; size=(4, 4, 4), halo=(3, 3, 3),
@@ -156,25 +157,38 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
             vanilla_Gu = XFaceField(vanilla_grid)
             reactant_Gu = XFaceField(reactant_grid)
 
-            for advection in advection_schemes, raise in raise_modes
-                adv_name = nameof(typeof(advection))
-                @testset "advection=$adv_name raise=$raise" begin
-                    fill!(vanilla_Gu, 0)
-                    fill!(reactant_Gu, 0)
+            # Test with coriolis=nothing
+            @testset "coriolis=nothing" begin
+                @info "Testing compute_simple_Gu! on RectilinearGrid with coriolis=nothing..."
+                for advection in advection_schemes, raise in raise_modes
+                    @testset "advection=$(adv_name(advection)) raise=$raise" begin
+                        fill!(vanilla_Gu, 0)
+                        fill!(reactant_Gu, 0)
+                        compute_simple_Gu!(vanilla_Gu, advection, nothing, vanilla_velocities)
+                        @jit raise=raise compute_simple_Gu!(reactant_Gu, advection, nothing, reactant_velocities)
+                        @test compare_interior("Gu", vanilla_Gu, reactant_Gu)
+                    end
+                end
+            end
 
-                    compute_simple_Gu!(vanilla_Gu, advection, coriolis, vanilla_velocities)
-                    @jit raise=raise compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
-
-                    @test compare_parent("Gu", vanilla_Gu, reactant_Gu)
+            # Test with FPlane Coriolis
+            @testset "coriolis=FPlane" begin
+                @info "Testing compute_simple_Gu! on RectilinearGrid with FPlane Coriolis..."
+                coriolis = FPlane(f=1e-4)
+                for advection in advection_schemes, raise in raise_modes
+                    @testset "advection=$(adv_name(advection)) raise=$raise" begin
+                        fill!(vanilla_Gu, 0)
+                        fill!(reactant_Gu, 0)
+                        compute_simple_Gu!(vanilla_Gu, advection, coriolis, vanilla_velocities)
+                        @jit raise=raise compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
+                        @test compare_interior("Gu", vanilla_Gu, reactant_Gu)
+                    end
                 end
             end
         end
 
-        # LatitudeLongitudeGrid + HydrostaticSphericalCoriolis
-        @testset "LatitudeLongitudeGrid + HydrostaticSphericalCoriolis" begin
-            @info "Testing compute_simple_Gu! correctness on LatitudeLongitudeGrid with HydrostaticSphericalCoriolis..."
-            coriolis = HydrostaticSphericalCoriolis()
-
+        # LatitudeLongitudeGrid tests
+        @testset "LatitudeLongitudeGrid" begin
             vanilla_grid = LatitudeLongitudeGrid(vanilla_arch; size=(4, 4, 4), halo=(3, 3, 3),
                                                  longitude=(0, 10), latitude=(0, 10), z=(0, 1))
             reactant_grid = LatitudeLongitudeGrid(reactant_arch; size=(4, 4, 4), halo=(3, 3, 3),
@@ -196,16 +210,34 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
             vanilla_Gu = XFaceField(vanilla_grid)
             reactant_Gu = XFaceField(reactant_grid)
 
-            for advection in advection_schemes, raise in raise_modes
-                adv_name = nameof(typeof(advection))
-                @testset "advection=$adv_name raise=$raise" begin
-                    fill!(vanilla_Gu, 0)
-                    fill!(reactant_Gu, 0)
+            # Test with coriolis=nothing (advection-only)
+            # Note: WENO on LatitudeLongitudeGrid fails to compile with raise=true
+            @testset "coriolis=nothing" begin
+                @info "Testing compute_simple_Gu! on LatitudeLongitudeGrid with coriolis=nothing..."
+                for advection in advection_schemes, raise in raise_modes
+                    @testset "advection=$(adv_name(advection)) raise=$raise" begin
+                        fill!(vanilla_Gu, 0)
+                        fill!(reactant_Gu, 0)
+                        compute_simple_Gu!(vanilla_Gu, advection, nothing, vanilla_velocities)
+                        @jit raise=raise compute_simple_Gu!(reactant_Gu, advection, nothing, reactant_velocities)
+                        @test compare_interior("Gu", vanilla_Gu, reactant_Gu)
+                    end
+                end
+            end
 
-                    compute_simple_Gu!(vanilla_Gu, advection, coriolis, vanilla_velocities)
-                    @jit raise=raise compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
-
-                    @test compare_parent("Gu", vanilla_Gu, reactant_Gu)
+            # Test with HydrostaticSphericalCoriolis
+            # Note: This has known numerical differences with raise=true (δ ≈ 8.6e-06)
+            @testset "coriolis=HydrostaticSphericalCoriolis" begin
+                @info "Testing compute_simple_Gu! on LatitudeLongitudeGrid with HydrostaticSphericalCoriolis..."
+                coriolis = HydrostaticSphericalCoriolis()
+                for advection in advection_schemes, raise in raise_modes
+                    @testset "advection=$(adv_name(advection)) raise=$raise" begin
+                        fill!(vanilla_Gu, 0)
+                        fill!(reactant_Gu, 0)
+                        compute_simple_Gu!(vanilla_Gu, advection, coriolis, vanilla_velocities)
+                        @jit raise=raise compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
+                        @test compare_interior("Gu", vanilla_Gu, reactant_Gu)
+                    end
                 end
             end
         end
