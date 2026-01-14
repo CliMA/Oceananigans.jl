@@ -7,31 +7,33 @@ using Oceananigans.Utils: launch!
 using Oceananigans.Grids: architecture
 
 """
-    compare_interior(name, f₁, f₂; rtol=1e-8, atol=sqrt(eps(eltype(f₁))))
+    compare_interior(name, f₁, f₂; rtol=1e-8, atol=sqrt(eps(eltype(f₁))), quiet=true)
 
 Compare the interior of two fields, returning `true` if they are approximately equal.
-Prints a diagnostic line showing max difference and location.
+Prints a diagnostic line showing max difference and location only when `!quiet` or test fails.
 """
-function compare_interior(name, f₁, f₂; rtol=1e-8, atol=sqrt(eps(eltype(f₁))))
+function compare_interior(name, f₁, f₂; rtol=1e-8, atol=sqrt(eps(eltype(f₁))), quiet=true)
     a₁ = Array(interior(f₁))
     a₂ = Array(interior(f₂))
     δ = a₁ .- a₂
     max_δ, idx = findmax(abs, δ)
     approx_equal = isapprox(a₁, a₂; rtol, atol)
-    @printf("(%6s) interior: ψ₁ ≈ ψ₂: %-5s, max|ψ₁|=%.6e, max|ψ₂|=%.6e, max|δ|=%.6e at %s\n",
-            name, approx_equal, maximum(abs, a₁), maximum(abs, a₂), max_δ, string(idx.I))
+    if !quiet || !approx_equal
+        @printf("(%6s) interior: ψ₁ ≈ ψ₂: %-5s, max|ψ₁|=%.6e, max|ψ₂|=%.6e, max|δ|=%.6e at %s\n",
+                name, approx_equal, maximum(abs, a₁), maximum(abs, a₂), max_δ, string(idx.I))
+    end
     return approx_equal
 end
 
 """
-    compare_parent(name, f₁, f₂; rtol=1e-8, atol=sqrt(eps(eltype(f₁))))
+    compare_parent(name, f₁, f₂; rtol=1e-8, atol=sqrt(eps(eltype(f₁))), quiet=true)
 
 Compare the parent arrays of two fields, cropping to the common overlap
 (to handle padding differences between vanilla and Reactant grids).
 Returns `true` if they are approximately equal.
-Prints a diagnostic line showing max difference and location.
+Prints a diagnostic line showing max difference and location only when `!quiet` or test fails.
 """
-function compare_parent(name, f₁, f₂; rtol=1e-8, atol=sqrt(eps(eltype(f₁))))
+function compare_parent(name, f₁, f₂; rtol=1e-8, atol=sqrt(eps(eltype(f₁))), quiet=true)
     p₁ = Array(parent(f₁))
     p₂ = Array(parent(f₂))
     # Crop to the common overlap (smaller of the two in each dimension)
@@ -43,8 +45,10 @@ function compare_parent(name, f₁, f₂; rtol=1e-8, atol=sqrt(eps(eltype(f₁))
     δ = v₁ .- v₂
     max_δ, idx = findmax(abs, δ)
     approx_equal = isapprox(v₁, v₂; rtol, atol)
-    @printf("(%6s)   parent: ψ₁ ≈ ψ₂: %-5s, max|ψ₁|=%.6e, max|ψ₂|=%.6e, max|δ|=%.6e at %s (overlap %s)\n",
-            name, approx_equal, maximum(abs, v₁), maximum(abs, v₂), max_δ, string(idx.I), string(common_sz))
+    if !quiet || !approx_equal
+        @printf("(%6s)   parent: ψ₁ ≈ ψ₂: %-5s, max|ψ₁|=%.6e, max|ψ₂|=%.6e, max|δ|=%.6e at %s (overlap %s)\n",
+                name, approx_equal, maximum(abs, v₁), maximum(abs, v₂), max_δ, string(idx.I), string(common_sz))
+    end
     return approx_equal
 end
 
