@@ -216,9 +216,9 @@ end
 #####
 
 prognostic_state(::ZCoordinate, grid) = nothing
-restore_prognostic_state!(::ZCoordinate, grid, ::Nothing) = nothing
+restore_prognostic_state!(::ZCoordinate, grid, ::Nothing) = ZCoordinate()
 
-function prognostic_state(zc::ZStarCoordinate, grid)
+function prognostic_state(::ZStarCoordinate, grid)
     z = grid.z
     return (ηⁿ   = prognostic_state(z.ηⁿ),
             σᶜᶜⁿ = prognostic_state(z.σᶜᶜⁿ),
@@ -228,7 +228,7 @@ function prognostic_state(zc::ZStarCoordinate, grid)
             σᶜᶜ⁻ = prognostic_state(z.σᶜᶜ⁻))
 end
 
-function restore_prognostic_state!(zc::ZStarCoordinate, grid, state)
+function restore_prognostic_state!(::ZStarCoordinate, grid, state)
     z = grid.z
     restore_prognostic_state!(z.ηⁿ,   state.ηⁿ)
     restore_prognostic_state!(z.σᶜᶜⁿ, state.σᶜᶜⁿ)
@@ -236,5 +236,5 @@ function restore_prognostic_state!(zc::ZStarCoordinate, grid, state)
     restore_prognostic_state!(z.σᶜᶠⁿ, state.σᶜᶠⁿ)
     restore_prognostic_state!(z.σᶠᶠⁿ, state.σᶠᶠⁿ)
     restore_prognostic_state!(z.σᶜᶜ⁻, state.σᶜᶜ⁻)
-    return zc
+    return ZStarCoordinate()
 end

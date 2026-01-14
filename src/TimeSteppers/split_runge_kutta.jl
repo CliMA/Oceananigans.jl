@@ -205,7 +205,5 @@ cache_current_fields!(model::AbstractModel) = error("cache_current_fields! not i
 #####
 
 # SplitRungeKuttaTimeStepper is self-starting!
-prognostic_state(timestepper::SplitRungeKuttaTimeStepper) = nothing
-
-restore_prognostic_state!(timestepper::SplitRungeKuttaTimeStepper, state) = nothing
-restore_prognostic_state!(::SplitRungeKuttaTimeStepper, ::Nothing) = nothing
+prognostic_state(ts::SplitRungeKuttaTimeStepper) = nothing
+restore_prognostic_state!(ts::SplitRungeKuttaTimeStepper, ::Nothing) = ts
