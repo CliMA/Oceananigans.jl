@@ -35,7 +35,6 @@ StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 
 [weakdeps]
 AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
-ConservativeRegridding = "8e50ac2c-eb48-49bc-a402-07c87b949343"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 ConstructionBase = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
 Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
@@ -50,7 +49,6 @@ oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 [extensions]
 OceananigansAMDGPUExt = "AMDGPU"
 OceananigansCUDAExt = ["CUDA", "GPUArrays", "GPUArraysCore"]
-OceananigansConservativeRegriddingExt = "ConservativeRegridding"
 OceananigansEnzymeExt = "Enzyme"
 OceananigansMakieExt = "Makie"
 OceananigansMetalExt = "Metal"

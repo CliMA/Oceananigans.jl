@@ -6,6 +6,7 @@ using Oceananigans.Fields: TracerFields, XFaceField, YFaceField
 using Oceananigans.Utils: prettytime
 using Adapt: Adapt
 
+import Oceananigans: prognostic_state, restore_prognostic_state!
 import ..HydrostaticFreeSurfaceModels: hydrostatic_tendency_fields
 
 struct SplitExplicitFreeSurface{H, U, M, FT, K , S, T} <: AbstractFreeSurface{H, FT}
@@ -308,21 +309,14 @@ end
     Δτ = τᶠ[2] - τᶠ[1]
 
     averaging_weights = map(averaging_kernel, τᶠ[2:end])
-    M★ = substeps
-
     # Find the latest allowable weight
-    for i in substeps:-1:1
-        if averaging_weights[i] > 0
-            M★ = i
-            break
-        end
-    end
+    M★ = something(findlast(>(0), averaging_weights), firstindex(averaging_weights))
 
-    averaging_weights = averaging_weights[1:M★]
-    averaging_weights ./= sum(averaging_weights)
-    transport_weights = [sum(averaging_weights[i:M★]) for i in 1:M★] ./ M
+    trimmed_weights = averaging_weights[1:M★]
+    trimmed_weights ./= sum(trimmed_weights)
+    transport_weights = [sum(trimmed_weights[i:M★]) for i in 1:M★] ./ M
 
-    return FT(Δτ), map(FT, tuple(averaging_weights...)), map(FT, tuple(transport_weights...))
+    return FT(Δτ), map(FT, tuple(trimmed_weights...)), map(FT, tuple(transport_weights...))
 end
 
 Base.summary(s::FixedTimeStepSize)  = string("FixedTimeStepSize($(prettytime(s.Δt_barotropic)))")
@@ -397,3 +391,22 @@ for Type in (SplitExplicitFreeSurface,
         end
     end
 end
+
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(fs::SplitExplicitFreeSurface)
+    return (displacement = prognostic_state(fs.displacement),
+            barotropic_velocities = prognostic_state(fs.barotropic_velocities),
+            timestepper = prognostic_state(fs.timestepper))
+end
+
+function restore_prognostic_state!(fs::SplitExplicitFreeSurface, state)
+    restore_prognostic_state!(fs.displacement, state.displacement)
+    restore_prognostic_state!(fs.barotropic_velocities, state.barotropic_velocities)
+    restore_prognostic_state!(fs.timestepper, state.timestepper)
+    return fs
+end
+
+restore_prognostic_state!(::SplitExplicitFreeSurface, ::Nothing) = nothing
