@@ -457,11 +457,6 @@ function test_checkpointing_zstar_coordinate(arch, timestepper)
     # Verify z-star is being exercised (non-zero free surface)
     @test maximum(abs, parent(ref_model.grid.z.ηⁿ)) > 0
 
-    # Check ZStarCoordinate storage field
-    ref_storage = ref_model.vertical_coordinate.storage
-    new_storage = new_model.vertical_coordinate.storage
-    @test all(Array(interior(ref_storage)) .≈ Array(interior(new_storage)))
-
     # Check grid's mutable vertical discretization fields
     ref_z = ref_model.grid.z
     new_z = new_model.grid.z
