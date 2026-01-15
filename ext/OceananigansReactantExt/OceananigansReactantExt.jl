@@ -145,7 +145,7 @@ end
 
 @inline Reactant.make_tracer(
     seen,
-    @nospecialize(prev::Oceananigans.Grids.OrthogonalSphericalShellGrid),
+    @nospe cialize(prev::Oceananigans.Grids.OrthogonalSphericalShellGrid),
     args...;
     kwargs...
     ) = Reactant.make_tracer_via_immutable_constructor(seen, prev, args...; kwargs...)
@@ -209,7 +209,7 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     end
 
     res = Oceananigans.Grids.LatitudeLongitudeGrid{FT2, TX2, TY2, TZ2, Z2, DXF2, DXC2, XF2, XC2, DYF2, DYC2, YF2, YC2,
-                                                 DXCC2, DXFC2, DXCF2, DXFF2, DYFC2, DYCF2, Arch, I2}
+                                                   DXCC2, DXFC2, DXCF2, DXFF2, DYFC2, DYCF2, Arch, I2}
     return res
 end
 
