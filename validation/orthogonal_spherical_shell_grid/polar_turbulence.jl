@@ -105,4 +105,3 @@ frames = 1:length(times)
 record(fig, "polar_turbulence.mp4", frames, framerate = 12) do i
     n[] = i
 end
-

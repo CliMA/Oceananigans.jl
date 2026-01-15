@@ -49,4 +49,3 @@ update_hydrostatic_pressure!(::Nothing, arch, ::PCBIBG, args...; kw...) = nothin
 
     return KernelParameters(ii, jj)
 end
-

@@ -217,8 +217,8 @@ end
 
 for sym in (:Δxᶠᶜᵃ, :Δxᶜᶠᵃ, :Δxᶠᶠᵃ, :Δxᶜᶜᵃ)
     @eval @inline function $sym(i::AbstractArray, j::AbstractArray, k::AbstractArray, grid::LLGX)
-	  x = $sym(1, j, 1, grid)
-	  Base.Broadcast.materialize(Base.Broadcast.Broadcasted(Base.Broadcast.BroadcastStyle(typeof(x)), Base.identity, (Base.Broadcast.Extruded(x, (false, true,false), (1,1,1)),), (Base.axes(i, 1), Base.axes(j, 2), Base.axes(k, 3))))
+          x = $sym(1, j, 1, grid)
+          Base.Broadcast.materialize(Base.Broadcast.Broadcasted(Base.Broadcast.BroadcastStyle(typeof(x)), Base.identity, (Base.Broadcast.Extruded(x, (false, true,false), (1,1,1)),), (Base.axes(i, 1), Base.axes(j, 2), Base.axes(k, 3))))
     end
 end
 
@@ -382,12 +382,12 @@ end
 ##### We also use the function "volume" rather than `V`.
 #####
 
-function location_from_superscript(val::Symbol) 
-    if val == :ᶜ 
-        return :Center 
-    elseif val == :ᶠ 
-        return :Face 
-    else 
+function location_from_superscript(val::Symbol)
+    if val == :ᶜ
+        return :Center
+    elseif val == :ᶠ
+        return :Face
+    else
         return :Nothing
     end
 end
@@ -401,10 +401,10 @@ for ℓ1 in (:ᶜ, :ᶠ), ℓ2 in (:ᶜ, :ᶠ, :ᵃ), ℓ3 in (:ᶜ, :ᶠ, :ᵃ)
     L3 = location_from_superscript(ℓ3)
 
     spacing_x = Symbol(:Δx, ℓ1, ℓ2, ℓ3)
-    spacing_λ = Symbol(:Δλ, ℓ1, ℓ2, ℓ3) 
+    spacing_λ = Symbol(:Δλ, ℓ1, ℓ2, ℓ3)
     spacing_y = Symbol(:Δy, ℓ2, ℓ1, ℓ3)
-    spacing_φ = Symbol(:Δφ, ℓ2, ℓ1, ℓ3) 
-    spacing_z = Symbol(:Δz, ℓ2, ℓ3, ℓ1) 
+    spacing_φ = Symbol(:Δφ, ℓ2, ℓ1, ℓ3)
+    spacing_z = Symbol(:Δz, ℓ2, ℓ3, ℓ1)
     spacing_r = Symbol(:Δr, ℓ2, ℓ3, ℓ1)
 
     @eval begin
@@ -428,7 +428,7 @@ for ℓ1 in (:ᶜ, :ᶠ), ℓ2 in (:ᶜ, :ᶠ), ℓ3 in (:ᶜ, :ᶠ, :ᵃ)
     area_x = Symbol(:Ax, ℓ3, ℓ1, ℓ2)
     area_y = Symbol(:Ay, ℓ1, ℓ3, ℓ2)
     area_z = Symbol(:Az, ℓ1, ℓ2, ℓ3)
- 
+
     @eval begin
         @eval Ax(i, j, k, grid, ::$L3, ::$L1, ::$L2) = $area_x(i, j, k, grid)
         @eval Ay(i, j, k, grid, ::$L1, ::$L3, ::$L2) = $area_y(i, j, k, grid)
