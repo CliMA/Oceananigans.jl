@@ -121,6 +121,8 @@ steps:
           - "GPU"
         group:
           - "🦖 poisson_solvers_2"
+          - "🎭 reactant_2"
+          - "👹 reactant_1"
           - "🐇 unit"
           - "👻 abstract_operations"
           - "🕊 poisson_solvers_1"
@@ -199,9 +201,7 @@ steps:
           - "CPU"
           - "GPU"
         group:
-          - "🎭 reactant_2"
           - "👺 enzyme"
-          - "👹 reactant_1"
 
     retry:
       automatic:
