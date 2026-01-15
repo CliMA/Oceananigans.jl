@@ -145,7 +145,7 @@ end
 
 @inline Reactant.make_tracer(
     seen,
-    @nospe cialize(prev::Oceananigans.Grids.OrthogonalSphericalShellGrid),
+    @nospecialize(prev::Oceananigans.Grids.OrthogonalSphericalShellGrid),
     args...;
     kwargs...
     ) = Reactant.make_tracer_via_immutable_constructor(seen, prev, args...; kwargs...)
