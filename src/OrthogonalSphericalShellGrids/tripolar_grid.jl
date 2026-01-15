@@ -107,10 +107,10 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
 
     focal_distance = tand((90 - north_poles_latitude) / 2)
 
-    Nλ, Nφ, Nz = size
-    Hλ, Hφ, Hz = halo
+    Nx, Ny, Nz = size
+    Hx, Hy, Hz = halo
 
-    if isodd(Nλ)
+    if isodd(Nx)
         throw(ArgumentError("The number of cells in the longitude dimension should be even!"))
     end
 
@@ -121,109 +121,50 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     Ly, φᵃᶠᵃ, φᵃᶜᵃ, Δφᶠᵃᵃ, Δφᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, latitude,  :latitude,  2, CPU())
     Lx, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, longitude, :longitude, 1, CPU())
 
-    # Start with the NH stereographic projection
-    # TODO: make these on_architecture(arch, zeros(Nx, Ny + 1))
-    #       to build the grid on GPU
-    # TODO: Use correct kernel indexes for the different locations.
-    #       Nφ + 1 is the largest y-direction size is OK here
-    #       because of the subsequent call to `fill_halo_regions!`?
-    λFF = zeros(Nλ, Nφ + 1)
-    φFF = zeros(Nλ, Nφ + 1)
-    λFC = zeros(Nλ, Nφ + 1)
-    φFC = zeros(Nλ, Nφ + 1)
-
-    λCF = zeros(Nλ, Nφ + 1)
-    φCF = zeros(Nλ, Nφ + 1)
-    λCC = zeros(Nλ, Nφ + 1)
-    φCC = zeros(Nλ, Nφ + 1)
-
-    loop! = _compute_tripolar_coordinates!(device(CPU()), (16, 16), (Nλ, Nφ + 1))
-
-    loop!(λFF, φFF, λFC, φFC, λCF, φCF, λCC, φCC,
-          λᶠᵃᵃ, λᶜᵃᵃ, φᵃᶠᵃ, φᵃᶜᵃ,
-          first_pole_longitude,
-          focal_distance, Nλ)
-
-    # We need to circshift everything to have the first pole at the beginning of the
-    # grid and the second pole in the middle
-    shift = Nλ ÷ 4
-
-    λFF = circshift(λFF, (shift, 0))
-    φFF = circshift(φFF, (shift, 0))
-    λFC = circshift(λFC, (shift, 0))
-    φFC = circshift(φFC, (shift, 0))
-    λCF = circshift(λCF, (shift, 0))
-    φCF = circshift(φCF, (shift, 0))
-    λCC = circshift(λCC, (shift, 0))
-    φCC = circshift(φCC, (shift, 0))
-
-    Nx = Nλ
-    Ny = Nφ
 
     # return λFF, φFF, λFC, φFC, λCF, φCF, λCC, φCC
-    # Helper grid to fill halo
+    # Helper grid to lauch kernels on
     grid = RectilinearGrid(; size = (Nx, Ny),
-                             halo = (Hλ, Hφ),
+                             halo = (Hx, Hy),
                              x = (0, 1), y = (0, 1),
                              topology = (Periodic, fold_topology, Flat))
 
-    # Boundary conditions to fill halos of the coordinate and metric terms
-    # We need to define them manually because of the convention in the
-    # UPivotZipperBoundaryCondition that edge fields need to switch sign (which we definitely do not
-    # want for coordinates and metrics)
-    boundary_conditions = FieldBoundaryConditions(north  = north_fold_boundary_condition(fold_topology)(),
-                                                  south  = NoFluxBoundaryCondition(), # The south should be `continued`
-                                                  west   = Oceananigans.PeriodicBoundaryCondition(),
-                                                  east   = Oceananigans.PeriodicBoundaryCondition(),
-                                                  top    = nothing,
-                                                  bottom = nothing)
+    #  Place the fields on the grid
+    λFF = Field{Face, Face, Center}(grid)
+    φFF = Field{Face, Face, Center}(grid)
+    λFC = Field{Face, Center, Center}(grid)
+    φFC = Field{Face, Center, Center}(grid)
+    λCF = Field{Center, Face, Center}(grid)
+    φCF = Field{Center, Face, Center}(grid)
+    λCC = Field{Center, Center, Center}(grid)
+    φCC = Field{Center, Center, Center}(grid)
 
-    lFF = Field{Face, Face, Center}(grid; boundary_conditions)
-    pFF = Field{Face, Face, Center}(grid; boundary_conditions)
-
-    lFC = Field{Face, Center, Center}(grid; boundary_conditions)
-    pFC = Field{Face, Center, Center}(grid; boundary_conditions)
-
-    lCF = Field{Center, Face, Center}(grid; boundary_conditions)
-    pCF = Field{Center, Face, Center}(grid; boundary_conditions)
-
-    lCC = Field{Center, Center, Center}(grid; boundary_conditions)
-    pCC = Field{Center, Center, Center}(grid; boundary_conditions)
-
-    set!(lFF, view(λFF, 1:Base.size(lFF, 1), 1:Base.size(lFF, 2)))
-    set!(pFF, view(φFF, 1:Base.size(pFF, 1), 1:Base.size(pFF, 2)))
-
-    set!(lFC, view(λFC, 1:Base.size(lFC, 1), 1:Base.size(lFC, 2)))
-    set!(pFC, view(φFC, 1:Base.size(pFC, 1), 1:Base.size(pFC, 2)))
-
-    set!(lCF, view(λCF, 1:Base.size(lCF, 1), 1:Base.size(lCF, 2)))
-    set!(pCF, view(φCF, 1:Base.size(pCF, 1), 1:Base.size(pCF, 2)))
-
-    set!(lCC, view(λCC, 1:Base.size(lCC, 1), 1:Base.size(lCC, 2)))
-    set!(pCC, view(φCC, 1:Base.size(pCC, 1), 1:Base.size(pCC, 2)))
-
-    fill_halo_regions!(lFF)
-    fill_halo_regions!(lCF)
-    fill_halo_regions!(lFC)
-    fill_halo_regions!(lCC)
-
-    fill_halo_regions!(pFF)
-    fill_halo_regions!(pCF)
-    fill_halo_regions!(pFC)
-    fill_halo_regions!(pCC)
+    # Compute coordinates using the same kernel twice but with varying size,
+    # as the size of λᵃᶠᵃ and φᵃᶠᵃ may vary with the fold topology.
+    # Note: we don't fill_halo_regions! and, instead,
+    # compute the full fields including in the halos (less code!).
+    kp = KernelParameters(Base.size(λCC.data), λCC.data.offsets)
+    launch!(CPU(), grid, kp, _compute_tripolar_coordinates!,
+            λFC, φFC, λCC, φCC,
+            λᶠᵃᵃ, λᶜᵃᵃ, φᵃᶜᵃ,
+            first_pole_longitude,
+            focal_distance, Nx)
+    kp = KernelParameters(Base.size(λCF.data), λCF.data.offsets)
+    launch!(CPU(), grid, kp, _compute_tripolar_coordinates!,
+            λFF, φFF, λCF, φCF,
+            λᶠᵃᵃ, λᶜᵃᵃ, φᵃᶠᵃ,
+            first_pole_longitude,
+            focal_distance, Nx)
 
     # Coordinates
-    λᶠᶠᵃ = dropdims(lFF.data, dims=3)
-    φᶠᶠᵃ = dropdims(pFF.data, dims=3)
-
-    λᶠᶜᵃ = dropdims(lFC.data, dims=3)
-    φᶠᶜᵃ = dropdims(pFC.data, dims=3)
-
-    λᶜᶠᵃ = dropdims(lCF.data, dims=3)
-    φᶜᶠᵃ = dropdims(pCF.data, dims=3)
-
-    λᶜᶜᵃ = dropdims(lCC.data, dims=3)
-    φᶜᶜᵃ = dropdims(pCC.data, dims=3)
+    λᶠᶠᵃ = dropdims(λFF.data, dims=3)
+    φᶠᶠᵃ = dropdims(φFF.data, dims=3)
+    λᶠᶜᵃ = dropdims(λFC.data, dims=3)
+    φᶠᶜᵃ = dropdims(φFC.data, dims=3)
+    λᶜᶠᵃ = dropdims(λCF.data, dims=3)
+    φᶜᶠᵃ = dropdims(φCF.data, dims=3)
+    λᶜᶜᵃ = dropdims(λCC.data, dims=3)
+    φᶜᶜᵃ = dropdims(φCC.data, dims=3)
 
     # Allocate Metrics
     # TODO: make these on_architecture(arch, zeros(Nx, Ny))
@@ -254,10 +195,10 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
           radius)
 
     # Metrics fields to fill halos
-    FF = Field{Face,   Face,   Center}(grid; boundary_conditions)
-    FC = Field{Face,   Center, Center}(grid; boundary_conditions)
-    CF = Field{Center, Face,   Center}(grid; boundary_conditions)
-    CC = Field{Center, Center, Center}(grid; boundary_conditions)
+    FF = Field{Face,   Face,   Center}(grid)
+    FC = Field{Face,   Center, Center}(grid)
+    CF = Field{Center, Face,   Center}(grid)
+    CC = Field{Center, Center, Center}(grid)
 
     # Fill all periodic halos
     set!(FF, Δxᶠᶠᵃ)
@@ -299,7 +240,10 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     Azᶠᶜᵃ = deepcopy(dropdims(FC.data, dims=3))
     Azᶜᶜᵃ = deepcopy(dropdims(CC.data, dims=3))
 
-    Hx, Hy, Hz = halo
+
+    # Continue the metrics to the south with a LatitudeLongitudeGrid
+    # metrics (probably we don't even need to do this, since the tripolar grid should
+    # terminate below Antartica, but it's better to be safe)
 
     latitude_longitude_grid = LatitudeLongitudeGrid(; size,
                                                       latitude,
@@ -308,9 +252,6 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
                                                       z = (0, 1), # z does not really matter here
                                                       radius)
 
-    # Continue the metrics to the south with the LatitudeLongitudeGrid
-    # metrics (probably we don't even need to do this, since the tripolar grid should
-    # terminate below Antartica, but it's better to be safe)
     continue_south!(Δxᶠᶠᵃ, latitude_longitude_grid.Δxᶠᶠᵃ)
     continue_south!(Δxᶠᶜᵃ, latitude_longitude_grid.Δxᶠᶜᵃ)
     continue_south!(Δxᶜᶠᵃ, latitude_longitude_grid.Δxᶜᶠᵃ)
@@ -376,20 +317,8 @@ function continue_south!(new_metric, lat_lon_metric::AbstractArray{<:Any, 1})
     Hx, Hy = new_metric.offsets
     Nx, Ny = size(new_metric)
 
-    for j in Hy+1:1, i in Hx+1:Nx+Hx
+    for j in Hy+1:0, i in Hx+1:Nx+Hx
         @inbounds new_metric[i, j] = lat_lon_metric[j]
-    end
-
-    return nothing
-end
-
-# Continue the metrics to the south with LatitudeLongitudeGrid metrics
-function continue_south!(new_metric, lat_lon_metric::AbstractArray{<:Any, 2})
-    Hx, Hy = - new_metric.offsets
-    Nx, Ny = size(new_metric)
-
-    for j in Hy+1:1, i in Hx+1:Nx+Hx
-        @inbounds new_metric[i, j] = lat_lon_metric[i, j]
     end
 
     return nothing

@@ -1,255 +1,98 @@
 using Oceananigans
 using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid
-using Oceananigans.Fields: location
-using Oceananigans.Grids: RightFaceFolded, topology, λnodes, φnodes
-using Printf
+# using Oceananigans.Grids: RightFaceFolded
 using GLMakie
 
-# tg = TripolarGrid(;
-#     size = (12, 12, 2),
-#     z = (-1000, 0),
-#     southernmost_latitude = -70,
-#     north_poles_latitude = 75,
-#     first_pole_longitude = -180,
-# )
+"""
+    plot_grid!(ax, grid)
 
-# (; Nx, Ny, Nz, Hx, Hy, Hz) = tg
-# # paint halos with NaNs for visualizing the grid
-# function NaN_halo!(array, Nx, Ny, Hx, Hy; NEoffset = 1)
-#     array[(1 - Hx):0, :] .= NaN
-#     array[:, (1 - Hy):0] .= NaN
-#     array[(Nx + NEoffset + 1):(Nx + Hx), :] .= NaN
-#     array[:, (Ny + NEoffset + 1):(Ny + Hy)] .= NaN
-#     return array
-# end
-# function no_lon_jumps(lon, Nx, Ny)
-#     out = deepcopy(lon)
-#     for j in 2:(Ny + 1)
-#         for i in 2:(Nx + 1)
-#             if (lon[i, j] < lon[i - 1, j] - 180) || (lon[i, j] < lon[i, j - 1] - 180)
-#                 out[i, j] += 360
-#             elseif (lon[i, j] > lon[i - 1, j] + 180) || (lon[i, j] > lon[i, j - 1] + 180)
-#                 out[i, j] -= 360
-#             end
-#         end
-#     end
-#     return out
-# end
-# function no_lon_jumps_in_x(lon, Nx, Ny)
-#     out = deepcopy(lon)
-#     for j in 2:(Ny + 1)
-#         for i in 2:(Nx + 1)
-#             if lon[i, j] < lon[i - 1, j] - 180
-#                 out[i, j] += 360
-#             elseif lon[i, j] > lon[i - 1, j] + 180
-#                 out[i, j] -= 360
-#             end
-#         end
-#     end
-#     return out
-# end
-# function no_lon_jumps_in_y(lon, Nx, Ny)
-#     out = deepcopy(lon)
-#     for j in 2:(Ny + 1)
-#         for i in 2:(Nx + 1)
-#             if lon[i, j] < lon[i, j - 1] - 180
-#                 out[i, j] += 360
-#             elseif lon[i, j] > lon[i, j - 1] + 180
-#                 out[i, j] -= 360
-#             end
-#         end
-#     end
-#     return out
-# end
-# elat = NaN_halo!(tg.φᶠᶠᵃ, Nx, Ny, Hx, Hy; NEoffset = 1)
-# elonx = no_lon_jumps_in_x(NaN_halo!(tg.λᶠᶠᵃ, Nx, Ny, Hx, Hy; NEoffset = 1), Nx, Ny)
-# elony = no_lon_jumps_in_y(NaN_halo!(tg.λᶠᶠᵃ, Nx, Ny, Hx, Hy; NEoffset = 1), Nx, Ny)
-# elon = no_lon_jumps(NaN_halo!(tg.λᶠᶠᵃ, Nx, Ny, Hx, Hy; NEoffset = 1), Nx, Ny)
-# lat = NaN_halo!(tg.φᶜᶜᵃ, Nx, Ny, Hx, Hy; NEoffset = 0)
-# lon = no_lon_jumps_in_x(NaN_halo!(tg.λᶜᶜᵃ, Nx, Ny, Hx, Hy; NEoffset = 0), Nx, Ny)
+Plots the grid as a wireframe on the given axis `ax`.
+Includes markers at the centers.
+Extra lines are drawn for the edges of the interior grid and, optionally, the halo.
+Extra markers are also drawn for the centers located on the edges of the interior grid, and, optionally, the edges of the halo.
+"""
+function plot_grid!(ax, grid; plothalo = false)
+    (; λᶜᶜᵃ, λᶠᶠᵃ) = grid
+    (; φᶜᶜᵃ, φᶠᶠᵃ) = grid
 
-# fig = Figure(size = (1600, 800))
-# ax = Axis(
-#     fig[1, 1];
-#     limits = ((-60, 420), (-91, 91)),
-#     aspect = DataAspect(),
-#     xticks = 0:30:360,
-#     yticks = -90:30:90,
-# )
-# lines!(ax, elonx.parent[:], elat.parent[:])
-# lines!(ax, elony.parent'[:], elat.parent'[:])
-# scatter!(ax, lon.parent[:], lat.parent[:], color = :red)
-# fig
+    for (color, linestyle, linewidth, iscenter, x, y) in zip(
+            ((:black, 0.25), (:black, 0.1)),
+            (:solid, :solid),
+            (1, 0.5),
+            (false, true),
+            (λᶠᶠᵃ, λᶜᶜᵃ),
+            (φᶠᶠᵃ, φᶜᶜᵃ)
+        )
 
+        Hx, Hy = -1 .* x.offsets
+        Nx, Ny = size(x) .- 2 .* (Hx, Hy)
+        xleft = x[1, 1:Ny]; xhaloleft = x[1 - Hx, :]
+        yleft = y[1, 1:Ny]; yhaloleft = y[1 - Hx, :]
+        xright = x[Nx, 1:Ny]; xhaloright = x[Nx + Hx, :]
+        yright = y[Nx, 1:Ny]; yhaloright = y[Nx + Hx, :]
+        xbottom = x[1:Nx, 1]; xhalobottom = x[:, 1 - Hy]
+        ybottom = y[1:Nx, 1]; yhalobottom = y[:, 1 - Hy]
+        xtop = x[1:Nx, Ny]; xhalotop = x[:, Ny + Hy]
+        ytop = y[1:Nx, Ny]; yhalotop = y[:, Ny + Hy]
 
+        ix, iy = plothalo ? (Colon(), Colon()) : (1:Nx, 1:Ny)
+        wireframe!(ax, x[ix, iy], y[ix, iy], 0 * x[ix, iy]; color, linestyle, linewidth = 2 * linewidth) # <- plot in Cartesian (x,y) coords
 
-
-
-# function plot_u!(ax, u; k = size(u, 3), kwargs...)
-#     Nx, Ny, Nz = size(u)
-#     Hx, Hy, Hz = .-u.data.offsets
-#     i = (1 - Hx):(Nx + Hx)
-#     j = (1 - Hy):(Ny + Hy)
-#     us = [u[i, j, k] for i in i for j in j]
-#     vs = [0 for i in i for j in j]
-#     xs = [i - 0.5 for i in i for j in j]
-#     ys = [j for i in i for j in j]
-#     return arrows2d!(ax, xs, ys, us, vs; lengthscale = 1 / 2maximum(u), kwargs...)
-# end
-# function plot_v!(ax, v; k = size(v, 3), kwargs...)
-#     Nx, Ny, Nz = size(v)
-#     Hx, Hy, Hz = .-v.data.offsets
-#     i = (1 - Hx):(Nx + Hx)
-#     j = (1 - Hy):(Ny + Hy)
-#     us = [0 for i in i for j in j]
-#     vs = [v[i, j, k] for i in i for j in j]
-#     xs = [i for i in i for j in j]
-#     ys = [j - 0.5 for i in i for j in j]
-#     return arrows2d!(ax, xs, ys, us, vs; lengthscale = 1 / 2maximum(v), kwargs...)
-# end
-
-# # Create a small tripolar grid
-# tg = TripolarGrid(;
-#     size = (6, 6, 2),
-#     z = (-1000, 0),
-#     southernmost_latitude = -70,
-#     north_poles_latitude = 75,
-#     first_pole_longitude = -180,
-# )
-# # Create u and v fields with Zipper boundary conditions at the north edge
-# north_bc = Oceananigans.BoundaryCondition(Oceananigans.BoundaryConditions.Zipper{UPivot}(), -1)
-# ubcs = FieldBoundaryConditions(tg, (Face(), Center(), Center()), north = north_bc)
-# vbcs = FieldBoundaryConditions(tg, (Center(), Face(), Center()), north = north_bc)
-# u = XFaceField(tg; boundary_conditions = ubcs)
-# v = YFaceField(tg; boundary_conditions = vbcs)
-# u .= randn(size(tg))
-# v .= randn(size(tg))
-# # Zero out u at the poles
-# (; Nx, Ny, Nz, Hx, Hy, Hz) = tg
-# u[1, Ny, :] .= 0
-# u[Nx ÷ 2 + 1, Ny, :] .= 0
-# # Fill halos of u and v
-# Oceananigans.fill_halo_regions!(u)
-# Oceananigans.fill_halo_regions!(v)
-# # Compute divergence of (u, v)
-# c = [Oceananigans.div_xyᶜᶜᶜ(i, j, k, tg, u, v) for i in (1 - Hx):(Nx + Hx), j in (1 - Hy):(Ny + Hy), k in 1:Nz]
-# # Make figure
-# fig = Figure()
-# ax = Axis(
-#     fig[1, 1];
-#     aspect = DataAspect(),
-#     limits = (1 - Hx - 1, Nx + Hx + 1, 1 - Hy - 1, Ny + Hy + 1),
-#     # xticks = 0.5:(Nx + 0.5),
-#     # yticks = 0.5:(Ny + 0.5),
-#     xticks = 1-Hx:Nx+Hx, xlabel = "i (center)",
-#     yticks = 1-Hy:Ny+Hy, ylabel = "j (center)",
-#     xminorgridvisible = true, xminorticksvisible = true,
-#     xticksvisible = false, xgridvisible = false,
-#     xminorgridcolor = (:black, 0.2),
-#     )
-# colormap = cgrad(:RdBu, rev = true)
-# # Heatmap of divergence
-# hm = heatmap!(ax, (1 - Hx):(Nx + Hx), (1 - Hy):(Ny + Hy), c[:,:,1]; colormap, colorrange = 1.5e-6 .* (-1, 1))
-# translate!(hm, 0, 0, -20)
-# Colorbar(fig[2, 1], hm; label = "Divergence", width = Relative(0.666), tellwidth = false, vertical = false)
-# # Plot u and v
-# plot_u!(ax, u; color = :black, align = 0.5)#:teal)
-# plot_v!(ax, v; color = :black, align = 0.5)#:tomato)
-# # Show "Interior" domain
-# interior = poly!(ax, [0.5, Nx + 0.5, Nx + 0.5, 0.5], [0.5, 0.5, Ny + 0.5, Ny + 0.5]; color = (:black, 0.03), strokewidth = 1, strokecolor = :black)
-# translate!(interior, 0, 0, -1)
-# # North fold
-# fold = hlines!(ax, Ny, color = :red, linestyle = :dash)
-# # Poles
-# poles = scatter!(ax, [0.5, Nx ÷ 2 + 0.5, Nx + 0.5], [Ny, Ny, Ny]; color = :red)
-# # labels
-# text!(ax, [1, 1, Nx, Nx], Ny .+ [-1, 1, -1, 1]; text = ["A", "B", "B", "A"], align = (:center, :center))
-# save("/Users/benoitpasquier/tmp/Oceananigans_signchange_afterfix.png", fig)
-# fig
-
-
-@info "Plotting the tripolar grid"
-
-function remove_jumps!(x)
-    # dx = abs.(diff(x))
-    # x[findall(dx .> 100)] .= NaN
-    return x
-end
-function lonshift(λ)
-    # λ = @. mod(λ - 250, 360) + 250
-    return λ
+        # Color lines differently for first and last
+        if iscenter
+            sc = scatter!(ax, x[ix, iy][:], y[ix, iy][:]; color) # <- plot in Spherical (lon,lat) coords
+            translate!(sc, 0, 0, 50)
+            for (x, y, color, marker, markersize, fillit, plotit) in zip(
+                    (xleft, xbottom, xright, xtop, xhaloleft, xhalobottom, xhaloright, xhalotop),
+                    (yleft, ybottom, yright, ytop, yhaloleft, yhalobottom, yhaloright, yhalotop),
+                    (:green, :blue, :red, :orange, :green, :blue, :red, :orange),
+                    (:ltriangle, :dtriangle, :rtriangle, :utriangle, :ltriangle, :dtriangle, :rtriangle, :utriangle),
+                    (10, 10, 10, 10, 10, 10, 10, 10),
+                    (true, true, true, true, false, false, false, false),
+                    (true, true, true, true, plothalo, plothalo, plothalo, plothalo),
+                )
+                plotit || continue
+                sc = scatter!(ax, x, y; color = fillit ? color : :transparent, marker, markersize, strokecolor = color, strokewidth = 1)
+                translate!(sc, 0, 0, 100)
+            end
+        else
+            for (x, y, color, linewidth, plotit) in zip(
+                    (xleft, xbottom, xright, xtop, xhaloleft, xhalobottom, xhaloright, xhalotop),
+                    (yleft, ybottom, yright, ytop, yhaloleft, yhalobottom, yhaloright, yhalotop),
+                    (:green, :blue, :red, :orange, :green, :blue, :red, :orange),
+                    (3, 3, 3, 3, 1, 1, 1, 1),
+                    (true, true, true, true, plothalo, plothalo, plothalo, plothalo),
+                )
+                plotit || continue
+                ln = lines!(ax, x, y; color, linewidth)
+                translate!(ln, 0, 0, 100)
+            end
+        end
+    end
+    return
 end
 
-function plot_grid!(ax, grid; kwargs...)
-
-    Nx, Ny, _ = Base.size(grid, (Face(), Face(), Center()))
-    x = lonshift(grid.λᶠᶠᵃ)
-    y = grid.φᶠᶠᵃ
-
-    xgreatcircles = reduce((x, y) -> [x; NaN; y], eachcol(x[1:Nx, 1:Ny]))
-    ygreatcircles = reduce((x, y) -> [x; NaN; y], eachcol(y[1:Nx, 1:Ny]))
-    xmeridians = reduce((x, y) -> [x; NaN; y], eachrow(x[1:Nx, 1:Ny]))
-    ymeridians = reduce((x, y) -> [x; NaN; y], eachrow(y[1:Nx, 1:Ny]))
-
-    xgreatcircles = remove_jumps!(xgreatcircles)
-    ygreatcircles = remove_jumps!(ygreatcircles)
-    xmeridians = remove_jumps!(xmeridians)
-    ymeridians = remove_jumps!(ymeridians)
-
-    greatcircles = lines!(ax, xgreatcircles, ygreatcircles; kwargs...)
-    meridians = lines!(ax, xmeridians, ymeridians; kwargs...)
-
-    x = lonshift.(grid.λᶜᶜᵃ)
-    y = grid.φᶜᶜᵃ
-    Nx, Ny, _ = Base.size(grid, (Center(), Center(), Center()))
-    text!(ax, x[1:Nx, 1] .+ randn.(), y[1:Nx, 1] .+ randn.(); text = string.(1:Nx), align = (:center, :center), color = :teal)
-    text!(ax, x[1, 1:Ny] .+ randn.(), y[1, 1:Ny] .+ randn.(); text = string.(1:Ny), align = (:center, :center), color = :tomato)
-
-    true_pole_location = (Face(), (topology(grid, 2) == RightCenterFolded) ? Center() : Face(), Center())
-    x = lonshift.(λnodes(grid, true_pole_location...))
-    y = φnodes(grid, true_pole_location...)
-    @show Nx, Ny, _ = Base.size(grid, true_pole_location)
-    @show i = findall(i -> (i == 1) || (i == 1 + Nx ÷ 2), circshift(1:Nx, Nx ÷ 4))
-    text!(ax, x[i, Ny], y[i, Ny]; text = ["NP", "NP"], align = (:center, :center), color = [:red, :blue])
-
-    # x = lonshift.(grid.λᶠᶠᵃ)
-    # y = grid.φᶠᶠᵃ
-    # @show Nx, Ny, _ = Base.size(grid, (Face(), Face(), Center()))
-    # @show i = findall(i -> (i == 1) || (i == 1 + Nx ÷ 2), circshift(1:Nx, Nx ÷ 4))
-    # text!(ax, x[i, Ny], y[i, Ny]; text = ["F1", "F2"], align = (:center, :center), color = [:red, :blue])
-
-    north_poles_latitude = 55
-    first_pole_longitude = 70
-    scatter!(ax, [first_pole_longitude, first_pole_longitude + 180], [north_poles_latitude, north_poles_latitude]; color = :red, markersize = 10)
-
-    return (greatcircles, meridians)
-end
-
-fig = Figure()
-Nx, Ny, Nz = 10, 10, 1
-grid = TripolarGrid(size = (Nx, Ny, Nz))
+fig = Figure(size = (1200, 1200))
+# fig = Figure(size = (600, 600))
+# Nx, Ny, Nz = 10, 10, 1
+Nx, Ny, Nz = 30, 15, 1
 
 axopt = (
-    aspect = DataAspect(),
-    # limits = (nothing, nothing, -90, 90),
-    xticks = -360:30:720,
-    yticks = -120:30:120,
+    xticks = -720:30:720,
+    yticks = -360:30:360,
 )
+labelopt = (rotation = π / 2, tellheight = false, fontsize = 24)
 
+fold_topology = RightCenterFolded
+grid = TripolarGrid(; size = (Nx, Ny, Nz), fold_topology)
 ax = Axis(fig[1, 1]; axopt...)
+plot_grid!(ax, grid; plothalo = true)
+Label(fig[1, 0]; text = "$fold_topology (U-point pivot)", labelopt...)
 
-plot_grid!(ax, grid;
-    color = (:black, 0.25),
-    linewidth = 1,
-)
-
-grid = TripolarGrid(size = (Nx, Ny, Nz), fold_topology = RightFaceFolded)
-
+fold_topology = RightFaceFolded
+grid = TripolarGrid(; size = (Nx, Ny, Nz), fold_topology)
 ax = Axis(fig[2, 1]; axopt...)
-
-plot_grid!(ax, grid;
-    color = (:black, 0.25),
-    linewidth = 1,
-)
+plot_grid!(ax, grid; plothalo = true)
+Label(fig[2, 0]; text = "$fold_topology (F-point pivot)", labelopt...)
 
 fig

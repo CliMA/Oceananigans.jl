@@ -42,12 +42,15 @@ end
 
 @testset "Unit tests..." begin
     for arch in archs, fold_topology in fold_topologies
+        first_pole_longitude = 75
+        north_poles_latitude = 35
+        southernmost_latitude = -35
         grid = TripolarGrid(arch;
                             size = (4, 5, 1),
                             z = (0, 1),
-                            first_pole_longitude = 75,
-                            north_poles_latitude = 35,
-                            southernmost_latitude = -80,
+                            first_pole_longitude,
+                            north_poles_latitude,
+                            southernmost_latitude,
                             fold_topology = fold_topology)
 
         @test grid isa TripolarGrid
@@ -56,18 +59,27 @@ end
         @test grid.Ny == 5
         @test grid.Nz == 1
 
-        @test grid.conformal_mapping.first_pole_longitude == 75
-        @test grid.conformal_mapping.north_poles_latitude == 35
-        @test grid.conformal_mapping.southernmost_latitude == -80
+        @test grid.conformal_mapping.first_pole_longitude == first_pole_longitude
+        @test grid.conformal_mapping.north_poles_latitude == north_poles_latitude
+        @test grid.conformal_mapping.southernmost_latitude == southernmost_latitude
 
         λᶜᶜᵃ = λnodes(grid, Center(), Center())
         φᶜᶜᵃ = φnodes(grid, Center(), Center())
+        λᶠᶠᵃ = λnodes(grid, Face(), Face())
+        φᶠᶠᵃ = φnodes(grid, Face(), Face())
 
         min_Δφ = @allowscalar minimum(φᶜᶜᵃ[:, 2] .- φᶜᶜᵃ[:, 1])
         @allowscalar begin
-            @test minimum(λᶜᶜᵃ) ≥ 0
-            @test maximum(λᶜᶜᵃ) ≤ 360
+            # The tripolar grid should cover the whole longitude range
+            # from the first_pole_longitude - 90 to first_pole_longitude + 270
+            @test minimum(λᶜᶜᵃ) ≥ first_pole_longitude - 90
+            @test maximum(λᶜᶜᵃ) ≤ first_pole_longitude + 270
+            @test minimum(λᶠᶠᵃ) ≥ first_pole_longitude - 90
+            @test maximum(λᶠᶠᵃ) ≤ first_pole_longitude + 270
             @test maximum(φᶜᶜᵃ) ≤ 90
+            @test maximum(φᶠᶠᵃ) ≤ 90
+            @test minimum(φᶜᶜᵃ) ≥ -90
+            @test minimum(φᶠᶠᵃ) ≥ -90
 
             # The minimum latitude is not exactly the southermost latitude because the grid
             # undulates slightly to maintain the same analytical description in the whole sphere

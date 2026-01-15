@@ -36,8 +36,9 @@ Ny     (face)   ─▶  ├──── v₃ ────┼──── v₄ �
                                                          (face) (center)
 ```
 
-Note that `YFaceField`s have an extra row (size `Ny + 1`)
-just like for `Bounded` topologies.
+Note that for the `RightFaceFolded` topology used here,
+`YFaceField`s have an extra row (size `Ny + 1` in the y-direction)
+because the `v` velocities along the fold must be defined.
 """
 
 #####
@@ -98,7 +99,7 @@ end
 @inline function fold_north_center_center_fpivot!(i, k, grid, sign, c)
     Nx, Ny, _ = size(grid)
 
-    i′ = Nx - i + 1
+    i′ = Nx + 1 - i
     Hy = grid.Hy
 
     for j in 1:Hy

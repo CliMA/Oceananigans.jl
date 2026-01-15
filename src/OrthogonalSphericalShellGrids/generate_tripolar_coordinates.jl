@@ -56,41 +56,47 @@ Murray, R. J. (1996). Explicit generation of orthogonal grids for ocean models.
     Journal of Computational Physics, 126(2), 251-273.
 ```
 """
-@kernel function _compute_tripolar_coordinates!(λFF, φFF, λFC, φFC, λCF, φCF, λCC, φCC,
-                                                λᶠᵃᵃ, λᶜᵃᵃ, φᵃᶠᵃ, φᵃᶜᵃ,
-                                                first_pole_longitude,
-                                                focal_distance, Nλ)
+@kernel function _compute_tripolar_coordinates!(λFA, φFA, λCA, φCA,
+                                                  λF, λC, φA,
+                                                  first_pole_longitude,
+                                                  focal_distance, Nx)
 
     i, j = @index(Global, NTuple)
 
-    λ2Ds = (λFF,  λFC,  λCF,  λCC)
-    φ2Ds = (φFF,  φFC,  φCF,  φCC)
-    λ1Ds = (λᶠᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ, λᶜᵃᵃ)
-    φ1Ds = (φᵃᶠᵃ, φᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ)
+    λ2Ds = (λFA, λCA)
+    φ2Ds = (φFA, φCA)
+    λ1Ds = (λF , λC )
+    φ1Ds = (φA , φA )
+    iscenters = (false, true)
 
-    for (λ2D, φ2D, λ1D, φ1D) in zip(λ2Ds, φ2Ds, λ1Ds, φ1Ds)
+    for (λ2D, φ2D, λ1D, φ1D, iscenter) in zip(λ2Ds, φ2Ds, λ1Ds, φ1Ds, iscenters)
+        # We chose the formulae below for λ ∈ (-180, 180) and φ ∈ (-90, 90)
+        # so that the grid of (x,y) never crosses the negative x-axis,
+        # overwhich atan is discontinuous, which we want to avoid.
         ψ = asinh(tand((90 - φ1D[j]) / 2) / focal_distance)
-        x = focal_distance * sind(λ1D[i]) * cosh(ψ)
-        y = focal_distance * cosd(λ1D[i]) * sinh(ψ)
+        x = focal_distance * cosd(λ1D[i]) * sinh(ψ)
+        y = focal_distance * sind(λ1D[i]) * cosh(ψ)
+        R = sqrt(x^2 + y^2)
 
-        # When x == 0 and y == 0 we are exactly at the north pole,
-        # λ (which depends on `atan(y / x)`) is not defined
-        # This makes sense, what is the longitude of the north pole? Could be anything!
-        # so we choose a value that is continuous with the surrounding points.
-        on_the_north_pole = (x == 0) & (y == 0)
-        north_pole_value  = ifelse(i == 1, -90, 90)
+        # λ is simply
+        λ2D[i, j] = atand(y, x)
+        # But we fill the halos ourselves here.
+        # Instead of periodicity, we continue the longitudes in the East and West halos.
+        λ2D[i, j] = ifelse(i < 1 && 1 ≤ j, λ2D[i, j] - 360, λ2D[i, j])
+        # For the East halo, we need to "specialise" on center/face x-location.
+        imax = ifelse(iscenter, Nx, Nx + 1)
+        λ2D[i, j] = ifelse(imax < i && 1 ≤ j, λ2D[i, j] + 360, λ2D[i, j])
+        # And we "continue" down South for j < 1 in the south halo.
+        λ2D[i, j] = ifelse(j < 1, λ1D[i], λ2D[i, j])
 
-        λ2D[i, j] = ifelse(on_the_north_pole, north_pole_value, - 180 / π * atan(y / x))
-        φ2D[i, j] = 90 - 360 / π * atan(sqrt(y^2 + x^2)) # The latitude will be in the range [-90, 90]
-
-        # Shift longitude to the range [-180, 180], the
-        # the north singularities will be located at -90 and 90
-        λ2D[i, j] += ifelse(i ≤ Nλ÷2, -90, 90)
+        # And φ is simply
+        φ2D[i, j] = 2 * atand(1, R) - 90
+        # But we "continue" South until we hit the South Polefor j < 1 in the south halo.
+        φ2D[i, j] = ifelse(j < 1, max(φ1D[j], -90), φ2D[i, j])
 
         # Make sure the singularities are at longitude we want them to be at.
         # (`first_pole_longitude` and `first_pole_longitude` + 180)
         λ2D[i, j] += first_pole_longitude + 90
-        λ2D[i, j]  = convert_to_0_360(λ2D[i, j])
     end
 end
 
