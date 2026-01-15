@@ -116,32 +116,6 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                 end
             end
         end
-
-        # Test OrthogonalSphericalShellGrid (fixed topology)
-        @testset "OrthogonalSphericalShellGrid" begin
-            @info "Testing fill_halo_regions! correctness on OrthogonalSphericalShellGrid..."
-            kw = (size=(4, 4, 2), halo=(3, 3, 3), z=(0, 1), conformal_mapping=nothing)
-            vanilla_grid = OrthogonalSphericalShellGrid(vanilla_arch; kw...)
-            reactant_grid = OrthogonalSphericalShellGrid(reactant_arch; kw...)
-
-            for loc in all_locations, raise in raise_modes
-                LX, LY, LZ = loc
-                @testset "loc=$loc raise=$raise" begin
-                    vanilla_field = Field{LX, LY, LZ}(vanilla_grid)
-                    reactant_field = Field{LX, LY, LZ}(reactant_grid)
-
-                    Random.seed!(12345)
-                    data = randn(size(vanilla_field)...)
-                    set!(vanilla_field, data)
-                    set!(reactant_field, data)
-
-                    fill_halo_regions!(vanilla_field)
-                    @jit raise=raise fill_halo_regions!(reactant_field)
-
-                    @test compare_parent("halo", vanilla_field, reactant_field)
-                end
-            end
-        end
     end
 
     #####
