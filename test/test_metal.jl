@@ -39,4 +39,3 @@ Oceananigans.defaults.FloatType = Float32
     @test iteration(simulation) == 3
     @test time(simulation) == 3minutes
 end
-

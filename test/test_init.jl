@@ -17,4 +17,3 @@ try
     CUDA.precompile_runtime()
     @root CUDA.versioninfo()
 catch; end
-

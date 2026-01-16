@@ -207,4 +207,3 @@ The function signature for [`StokesDrift`](@ref) depends on the grid topology:
   functions are called as `f(x, z, t)` (the ``y`` coordinate is omitted).
 - When `parameters` is provided, it is passed as an additional final argument:
   `f(x, y, z, t, parameters)` or `f(x, z, t, parameters)`.
-

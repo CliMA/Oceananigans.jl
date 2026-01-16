@@ -127,4 +127,3 @@ function conjure_time_step_wizard!(simulation, schedule=IterationInterval(10); w
     simulation.callbacks[:time_step_wizard] = Callback(wizard, schedule)
     return nothing
 end
-
