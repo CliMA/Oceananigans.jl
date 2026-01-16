@@ -81,4 +81,3 @@ function buffer_parameters(parameters, grid, arch)
 
     return Tuple(KernelParameters(parameters[i]...) for i in findall(include_side))
 end
-

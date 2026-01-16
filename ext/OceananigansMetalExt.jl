@@ -51,4 +51,3 @@ Metal.@device_override @inline function __validindex(ctx::MappedCompilerMetadata
 end
 
 end # module
-

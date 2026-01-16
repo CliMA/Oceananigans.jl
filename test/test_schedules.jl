@@ -93,4 +93,3 @@ using Oceananigans: initialize!
     st = SpecifiedTimes(2.5)
     @test 0.4 ≈ schedule_aligned_time_step(st, fake_clock, Inf)
 end
-

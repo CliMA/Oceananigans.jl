@@ -54,4 +54,3 @@ function cache_previous_tendencies!(model::HydrostaticFreeSurfaceModel)
 
     return nothing
 end
-

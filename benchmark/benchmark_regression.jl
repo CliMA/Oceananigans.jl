@@ -17,4 +17,3 @@ for (case, trial) in results
     println("Results for $case")
     display(trial)
 end
-
