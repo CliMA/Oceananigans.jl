@@ -103,7 +103,7 @@ Convert spectral Runge-Kutta coefficients `c` to low-storage coefficients `β` f
 with `SplitRungeKuttaTimeStepper`.
 
 This conversion is useful for designing schemes that minimize dispersion and dissipation
-errors; see [Hu19996lowdissipation](@citet).
+errors; see [Hu et al. (1996)](@cite Hu19996lowdissipation).
 
 # Arguments
 
