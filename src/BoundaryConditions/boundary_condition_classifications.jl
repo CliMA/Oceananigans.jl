@@ -92,9 +92,48 @@ A classification specifying a distributed memory communicating boundary conditio
 struct DistributedCommunication <: AbstractBoundaryConditionClassification end
 
 """
-    struct Zipper <: AbstractBoundaryConditionClassification
+    AbstractPivot
+
+An abstract type representing pivot locations for Zipper boundary conditions.
+"""
+abstract type AbstractPivot end
+
+"""
+    struct UPivot <: AbstractPivot
+
+The type representing a U-point pivot for Zipper boundary conditions.
+
+See [`TripolarGrid`](@ref) for examples.
+"""
+struct UPivot <: AbstractPivot end
+
+"""
+    struct FPivot <: AbstractPivot
+
+The type representing a F-point pivot for Zipper boundary conditions.
+
+See [`TripolarGrid`](@ref) for examples.
+"""
+struct FPivot <: AbstractPivot end
+
+
+"""
+    Zipper{P} <: AbstractBoundaryConditionClassification
 
 A classification specifying a Zipper boundary condition where one boundary is folded onto itself.
-Used only for a tripolar grid.
+The points where the zipper starts and ends act as "pivots", and the grid cell location of these pivot points
+is encoded in the type parameter `P`.
+`P` can be set to either:
+- `UPivot`: pivots on (Face, Center)
+- `FPivot`: pivots on (Face, Face)
+
+See [`TripolarGrid`](@ref) for examples.
 """
-struct Zipper <: AbstractBoundaryConditionClassification end
+struct Zipper{P <: AbstractPivot} <: AbstractBoundaryConditionClassification end
+
+"""
+    pivot_type(zbc::Zipper)
+
+Returns the pivot type of the Zipper boundary condition `zbc`.
+"""
+pivot_type(::Zipper{T}) where T = T

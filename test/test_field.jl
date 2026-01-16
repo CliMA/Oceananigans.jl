@@ -783,7 +783,10 @@ end
 
     @testset "Field nodes and view consistency" begin
         @info "  Testing that nodes() returns indices consistent with view()..."
-        for arch in archs, FT in float_types
+
+        fold_topologies = (RightCenterFolded, RightFaceFolded)
+
+        for arch in archs, FT in float_types, fold_topology in fold_topologies
             # Test RectilinearGrid
             rectilinear_grid = RectilinearGrid(arch, FT, size=(8, 6, 4), extent=(2, 3, 1))
             nodes_of_field_views_are_consistent(rectilinear_grid)
@@ -793,7 +796,7 @@ end
             nodes_of_field_views_are_consistent(latlon_grid)
 
             # Test OrthogonalSphericalShellGrid (TripolarGrid)
-            tripolar_grid = TripolarGrid(arch, FT, size=(8, 6, 4))
+            tripolar_grid = TripolarGrid(arch, FT, size=(8, 10, 4))
             nodes_of_field_views_are_consistent(tripolar_grid)
 
             # Test Flat topology behavior for RectilinearGrid
