@@ -45,7 +45,7 @@ function test_zstar_coordinate(model, Ni, Δt, test_local_conservation=true)
         end
         @test condition
 
-        # Test this condition only if the model is not distributed. 
+        # Test this condition only if the model is not distributed.
         # The vertical velocity at the top may not be exactly zero due asynchronous updates,
         # which will be fixed in a future PR.
         if !(model.grid isa DistributedGrid)
@@ -105,12 +105,12 @@ end
 
             for grid in grids
                 # Preconditioned conjugate gradient solver does not satisfy local conservation stricly to machine precision.
-                implicit_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient) 
+                implicit_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient)
                 split_free_surface    = SplitExplicitFreeSurface(grid; substeps=20)
                 explicit_free_surface = ExplicitFreeSurface()
                 for free_surface in [explicit_free_surface, split_free_surface, implicit_free_surface]
 
-                    if (free_surface isa ImplicitFreeSurface) && (grid isa DistributedGrid) 
+                    if (free_surface isa ImplicitFreeSurface) && (grid isa DistributedGrid)
                         @root @info "  Skipping ImplicitFreeSurface on DistributedGrids because not supported"
                         continue
                     end
@@ -136,7 +136,7 @@ end
                 end
             end
         end
-        
+
         @testset "TripolarGrid ZStarCoordinate tracer conservation tests" begin
             @info "Testing a ZStarCoordinate coordinate with a Tripolar grid on $(arch)..."
 

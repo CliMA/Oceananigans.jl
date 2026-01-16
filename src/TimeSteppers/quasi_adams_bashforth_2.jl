@@ -91,7 +91,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     if model.clock.iteration == 0
         update_state!(model, callbacks)
     end
-    
+
     # If euler, then set χ = -0.5
     minus_point_five = convert(eltype(model.grid), -0.5)
     ab2_timestepper = model.timestepper

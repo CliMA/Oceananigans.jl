@@ -21,7 +21,7 @@ function ab2_step!(model::ShallowWaterModel, Δt, callbacks)
     fields = prognostic_fields(model)
 
     for key in keys(fields)
-        launch!(architecture(grid), grid, :xyz, _ab2_step_field!, 
+        launch!(architecture(grid), grid, :xyz, _ab2_step_field!,
                 fields[key],
                 Δt,
                 model.timestepper.χ,

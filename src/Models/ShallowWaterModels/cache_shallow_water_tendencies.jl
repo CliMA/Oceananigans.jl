@@ -39,4 +39,3 @@ function cache_previous_tendencies!(model::ShallowWaterModel)
 
     return nothing
 end
-

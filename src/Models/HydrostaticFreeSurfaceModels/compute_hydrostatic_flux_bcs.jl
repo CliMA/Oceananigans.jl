@@ -12,7 +12,7 @@ function compute_flux_bcs!(Gcⁿ, c, arch, args)
     return nothing
 end
 
-@inline function compute_momentum_flux_bcs!(model::HydrostaticFreeSurfaceModel) 
+@inline function compute_momentum_flux_bcs!(model::HydrostaticFreeSurfaceModel)
     Gⁿ   = model.timestepper.Gⁿ
     grid = model.grid
     arch = architecture(grid)
@@ -24,12 +24,12 @@ end
     return nothing
 end
 
-@inline function compute_tracer_flux_bcs!(model::HydrostaticFreeSurfaceModel) 
+@inline function compute_tracer_flux_bcs!(model::HydrostaticFreeSurfaceModel)
     Gⁿ   = model.timestepper.Gⁿ
     grid = model.grid
     arch = architecture(grid)
     args = (model.clock, fields(model), model.closure, model.buoyancy)
-    
+
     for i in propertynames(model.tracers)
         compute_flux_bcs!(Gⁿ[i], model.tracers[i], arch, args)
     end

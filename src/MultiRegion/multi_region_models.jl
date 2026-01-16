@@ -94,10 +94,10 @@ end
 @inline isregional(mrm::MultiRegionModel) = true
 @inline regions(mrm::MultiRegionModel) = regions(mrm.grid)
 
-Oceananigans.TimeSteppers.cache_previous_tendencies!(model::MultiRegionModel) = 
+Oceananigans.TimeSteppers.cache_previous_tendencies!(model::MultiRegionModel) =
     @apply_regionally Oceananigans.TimeSteppers.cache_previous_tendencies!(model)
 
-Oceananigans.TimeSteppers.cache_current_fields!(model::MultiRegionModel) = 
+Oceananigans.TimeSteppers.cache_current_fields!(model::MultiRegionModel) =
     @apply_regionally Oceananigans.TimeSteppers.cache_current_fields!(model)
 
 implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretization, mrg::MultiRegionGrid) =

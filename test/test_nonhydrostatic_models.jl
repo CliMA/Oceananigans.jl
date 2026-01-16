@@ -80,10 +80,10 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
 
         # These tests are broken at the moment, because limiting does not work as intended:
         # It is not enough to limit the advection scheme in one direction since the same scheme
-        # (only for momentum advection) is used to reconstruct the advecting velocity in the 
+        # (only for momentum advection) is used to reconstruct the advecting velocity in the
         # tangential direction, leading to an out-of-bounds access:
         # for example, if the grid is 4, 2, 4 and we limit advection in y to Upwind(3), still we
-        # will have Upwind(7) in x that needs to compute the advecting velocity (for example u for v advection) 
+        # will have Upwind(7) in x that needs to compute the advecting velocity (for example u for v advection)
         # using an 8-point stencil, thus leading to an out-of-bounds error
         # Model ensures that halos are at least of size 1
         # See issue

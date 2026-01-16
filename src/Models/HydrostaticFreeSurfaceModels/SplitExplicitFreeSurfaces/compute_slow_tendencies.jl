@@ -63,8 +63,8 @@ end
     end
 end
 
-@inline compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, ::SplitRungeKuttaTimeStepper) = 
-    launch!(architecture(grid), grid, :xy, _compute_integrated_rk_tendencies!, 
+@inline compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, ::SplitRungeKuttaTimeStepper) =
+    launch!(architecture(grid), grid, :xy, _compute_integrated_rk_tendencies!,
             GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ; active_cells_map = get_active_column_map(grid))
 
 #####

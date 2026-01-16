@@ -28,10 +28,10 @@ function compute_tracer_dissipation!(sim)
     return nothing
 end
 
-arch = CPU() # Distributed(CPU())#; synchronized_communication=true) 
-z_faces = MutableVerticalDiscretization((-200, 0)) # (-200, 0) # 
+arch = CPU() # Distributed(CPU())#; synchronized_communication=true)
+z_faces = MutableVerticalDiscretization((-200, 0)) # (-200, 0) #
 
-grid = RectilinearGrid(arch; 
+grid = RectilinearGrid(arch;
                        size = (128, 20),
                           x = (0, 64kilometers),
                           z = z_faces,
@@ -131,7 +131,7 @@ end
 # lines!(ax, (bav .- bav[1]) ./ bav[1], label = "Buoyancy anomaly")
 # lines!(ax, (cav .- cav[1]) ./ cav[1], label = "Tracer anomaly")
 # axislegend(ax, position=:lt)
-# ax  = Axis(fig[1, 2], title = "Final buoyancy field") 
+# ax  = Axis(fig[1, 2], title = "Final buoyancy field")
 # contourf!(ax, x, z, interior(model.tracers.b, :, 1, :), colormap=:balance, levels=20)
 # vlines!(ax, 62.3e3, linestyle = :dash, linewidth = 3, color = :black)
 

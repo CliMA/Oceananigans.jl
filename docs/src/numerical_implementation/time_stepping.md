@@ -27,8 +27,8 @@ With the additional ``\chi`` parameter, the scheme is formally first-order accur
 stability properties. The default ``\chi = 0.1`` provides a reasonable balance between accuracy and stability;
 ``\chi = 0`` recovers the standard second-order Adams-Bashforth method.
 
-The scheme requires storing tendencies from the previous time step, but only requires one tendency evalution, 
-making it computationally-efficient compared to multi-stage methods. The first time step automatically uses forward 
+The scheme requires storing tendencies from the previous time step, but only requires one tendency evalution,
+making it computationally-efficient compared to multi-stage methods. The first time step automatically uses forward
 Euler (``\chi = -1/2``) since no previous tendencies exist.
 
 ### Runge-Kutta third order

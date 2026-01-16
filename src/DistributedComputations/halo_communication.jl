@@ -170,7 +170,7 @@ function fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc, grid::Distr
                           async = false, only_local_halos = false, kwargs...)
 
     only_local_halos && return nothing # No need to do anything here
-    
+
     buffer_side = kernel!.side
     arch = architecture(grid)
 

@@ -49,8 +49,8 @@ The state at the first substep is taken to be the one that corresponds to the ``
 References
 ==========
 
-Wicker, Louis J. & Skamarock, William C. (2002). Time-Splitting Methods for Elastic Models 
-    Using Forward Time Schemes. Monthly Weather Review, 130(8), 2088–2097. 
+Wicker, Louis J. & Skamarock, William C. (2002). Time-Splitting Methods for Elastic Models
+    Using Forward Time Schemes. Monthly Weather Review, 130(8), 2088–2097.
 """
 function SplitRungeKuttaTimeStepper(grid, prognostic_fields, args...;
                                     implicit_solver::TI = nothing,
@@ -72,7 +72,7 @@ useful for passing to model constructors which will then build the full time ste
 
 Keyword Arguments
 =================
-- `coefficients`: A tuple of coefficients `(β₁, β₂, ..., βₙ)` for each stage. 
+- `coefficients`: A tuple of coefficients `(β₁, β₂, ..., βₙ)` for each stage.
                   Cannot be specified together with `stages`.
 - `stages`: Number of stages `n`. If provided, coefficients default to `(n, n-1, ..., 1)`.
             Cannot be specified together with `coefficients`.
@@ -87,7 +87,7 @@ ts = SplitRungeKuttaTimeStepper(stages=3)
 ts = SplitRungeKuttaTimeStepper(coefficients=(4, 3, 2, 1))
 ```
 """
-function SplitRungeKuttaTimeStepper(; coefficients = nothing, stages = 3) 
+function SplitRungeKuttaTimeStepper(; coefficients = nothing, stages = 3)
     if !isnothing(coefficients) && !isnothing(stages)
         error("Cannot specify both `coefficients` and `stages`.")
     end
@@ -118,7 +118,7 @@ function spectral_coefficients(c::AbstractVector)
     N = length(c)
     b = similar(c)
     for i in 1:N-1
-        b[i] = c[N - i] / c[N - i + 1] 
+        b[i] = c[N - i] / c[N - i + 1]
     end
     b[end] = 1
     return tuple(b...)
@@ -154,7 +154,7 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
     for (stage, β) in enumerate(model.timestepper.β)
         # Update the clock stage
         model.clock.stage = stage
-        
+
         # Perform the substep
         Δτ = Δt / β
         rk_substep!(model, Δτ, callbacks)
@@ -162,7 +162,7 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
         # Update the state
         update_state!(model, callbacks)
     end
-    
+
     # Finalize step
     step_lagrangian_particles!(model, Δt)
     tick!(model.clock, Δt)

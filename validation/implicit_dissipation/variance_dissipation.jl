@@ -58,19 +58,19 @@ set!(cᵢ, c₀)
 tracer_advection = WENO(order=7)
 closure = nothing # ScalarDiffusivity(κ=1e-5)
 velocities = PrescribedVelocityFields(u=1)
-    
-function run_simulation(ts, timestepper; χ=nothing, velocities=velocities)   
-    c⁻    = CenterField(grid)
-    Δtc²  = CenterField(grid)     
 
-    model = HydrostaticFreeSurfaceModel(grid; 
-                                        timestepper, 
-                                        velocities, 
-                                        tracer_advection, 
-                                        closure, 
+function run_simulation(ts, timestepper; χ=nothing, velocities=velocities)
+    c⁻    = CenterField(grid)
+    Δtc²  = CenterField(grid)
+
+    model = HydrostaticFreeSurfaceModel(grid;
+                                        timestepper,
+                                        velocities,
+                                        tracer_advection,
+                                        closure,
                                         tracers=:c,
                                         auxiliary_fields=(; Δtc², c⁻))
-                                       
+
     if timestepper == :QuasiAdamsBashforth2 && χ !== nothing
         model.timestepper.χ = χ
     end
@@ -102,7 +102,7 @@ function run_simulation(ts, timestepper; χ=nothing, velocities=velocities)
                                                filename="one_d_simulation_$(ts).jld2",
                                                schedule=IterationInterval(iteration_interval),
                                                overwrite_existing=true)
-    
+
     run!(sim)
 
     c    = FieldTimeSeries("one_d_simulation_$(ts).jld2", "c")
@@ -130,8 +130,8 @@ cases["RK3"]  = run_simulation(:RK3, :SplitRungeKutta3)
 cases["ICC"]  = run_simulation(:D0, :SplitRungeKutta3, velocities=PrescribedVelocityFields())
 
 fig = Figure(size = (1000, 250))
-ax  = Axis(fig[1, 1:2], 
-           xlabel=L"\text{x [m]}", 
+ax  = Axis(fig[1, 1:2],
+           xlabel=L"\text{x [m]}",
            ylabel=L"\text{tracer concentration [-]}",
            xticks=([-1, -0.5, 0, 0.5, 1], latexstring.(string.([-1, -0.5, 0, 0.5, 1]))),
            yticks=([0, 0.5, 1], latexstring.(string.([0, 0.5, 1]))))
@@ -143,8 +143,8 @@ lines!(ax, x, interior(cases["AB1"].c[end], :, 1, 1), label = L"QAB2, \ \epsilon
 lines!(ax, x, interior(cases["RK3"].c[end], :, 1, 1), label = L"RK, \ M = 3", color = :red)
 axislegend(ax, position=:rt, framevisible=false)
 
-ax2 = Axis(fig[1, 3], 
-           xlabel=L"\text{time [s]}", 
+ax2 = Axis(fig[1, 3],
+           xlabel=L"\text{time [s]}",
            ylabel=L"\text{integrated variance loss}",
            xticks=([0, 2, 4, 6, 8, 10], latexstring.(string.([0, 2, 4, 6, 8, 10]))),
            yticks=([0, 0.2, 0.4, 0.6], latexstring.(string.([0, 0.2, 0.4, 0.6]))))

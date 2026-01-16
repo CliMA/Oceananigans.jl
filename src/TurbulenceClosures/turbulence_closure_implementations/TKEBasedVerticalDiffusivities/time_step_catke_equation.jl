@@ -81,7 +81,7 @@ function time_step_catke_equation!(model, ::QuasiAdamsBashforth2TimeStepper)
 
     return nothing
 end
-                                
+
 function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper)
 
     # TODO: properly handle closure tuples
@@ -125,10 +125,10 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper)
 
     implicit_step!(e, implicit_solver, closure,
                    closure_fields, Val(tracer_index),
-                   model.clock, 
-                   fields(model), 
+                   model.clock,
+                   fields(model),
                    Δτ)
-                   
+
     return nothing
 end
 
