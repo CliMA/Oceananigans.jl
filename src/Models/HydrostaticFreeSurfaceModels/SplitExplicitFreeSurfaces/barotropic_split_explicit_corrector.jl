@@ -38,10 +38,10 @@ split-explicit substepping.
 The correction ensures that the depth-integrated baroclinic velocity matches the
 filtered barotropic velocity from the split-explicit scheme:
 
-    u_corrected = u + (U_filtered - U_baroclinic) / H
+    u = u + (U̅ - ∫udz) / H
 
-where `U_filtered` is the filtered barotropic transport from substepping and
-`U_baroclinic` is the depth-integral of the baroclinic velocity.
+where `U̅` is the filtered barotropic transport from substepping and
+`∫udz` is the depth-integral of the baroclinic velocity.
 """
 function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     state = free_surface.filtered_state
@@ -111,9 +111,9 @@ Compute transport velocities used for tracer advection with split-explicit free 
 
 Transport velocities differ from prognostic velocities by including the barotropic correction:
 
-    ũ = u + (Ũ_filtered - U_baroclinic) / H
+    u = u + (Ũ - ∫udz) / H
 
-where `Ũ_filtered` is the time-filtered barotropic transport from split-explicit substepping.
+where `Ũ` is the time-filtered barotropic transport from split-explicit substepping.
 This ensures that tracers are advected with a velocity field consistent with the filtered
 free surface evolution.
 
