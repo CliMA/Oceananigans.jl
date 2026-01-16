@@ -29,4 +29,3 @@ Return N-element array of `0.0` reshaped to three-dimensions.
 This is also the first `poisson_eigenvalue` for `Bounded` and `Periodic` directions.
 """
 poisson_eigenvalues(N, L, dim, ::Flat) = reshape(zeros(N), reshaped_size(N, dim)...)
-

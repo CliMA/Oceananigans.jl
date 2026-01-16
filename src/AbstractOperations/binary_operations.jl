@@ -126,7 +126,7 @@ function define_binary_operator(op)
 
         # instantiate location if types are passed
         $op(Lc::Tuple, a, b) = $op((Lc[1](), Lc[2](), Lc[3]()), a, b)
-        
+
         $op(Lc::Tuple, f::Function, b::AbstractField) = $op((Lc[1](), Lc[2](), Lc[3]()), a, b)
         $op(Lc::Tuple, a::AbstractField, f::Function) = $op((Lc[1](), Lc[2](), Lc[3]()), a, b)
 
@@ -186,8 +186,8 @@ BinaryOperation at (Center, Center, Center)
 ├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 └── tree:
     plus_or_times at (Center, Center, Center)
-    ├── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
-    └── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
+    ├── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
+    └── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
 ```
 """
 macro binary(ops...)

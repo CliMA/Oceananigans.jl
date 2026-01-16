@@ -59,15 +59,15 @@ c⁻    = CenterField(grid)
 Δtc²  = CenterField(grid)
 
 for (ts, timestepper) in zip((:AB2, :RK3), (:QuasiAdamsBashforth2, :SplitRungeKutta3))
-    
-    model = HydrostaticFreeSurfaceModel(grid; 
-                                        timestepper, 
-                                        velocities, 
-                                        tracer_advection, 
-                                        closure, 
+
+    model = HydrostaticFreeSurfaceModel(grid;
+                                        timestepper,
+                                        velocities,
+                                        tracer_advection,
+                                        closure,
                                         tracers=:c,
                                         auxiliary_fields=(; Δtc², c⁻))
-                                            
+
     set!(model, c=c₀)
     set!(model.auxiliary_fields.c⁻, c₀)
 
@@ -91,7 +91,7 @@ for (ts, timestepper) in zip((:AB2, :RK3), (:QuasiAdamsBashforth2, :SplitRungeKu
                                             overwrite_existing=true)
 
     sim.callbacks[:compute_tracer_dissipation] = Callback(compute_tracer_dissipation!, IterationInterval(1))
-    
+
     run!(sim)
 end
 

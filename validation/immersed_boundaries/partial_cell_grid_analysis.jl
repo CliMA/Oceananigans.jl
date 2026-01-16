@@ -46,4 +46,3 @@ Colorbar(fig[1, 2], hmc)
 hmf = heatmap!(ax_f, fractional_Δzᶠ)
 Colorbar(fig[2, 2], hmf)
 display(fig)
-

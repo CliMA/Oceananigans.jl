@@ -63,4 +63,3 @@ function FD.maybe_copy_interior(::MetalGPU, r::FD.AbstractField)
 end
 
 end # module
-

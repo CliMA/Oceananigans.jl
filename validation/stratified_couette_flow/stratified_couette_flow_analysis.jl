@@ -266,4 +266,3 @@ png_filepath = "stratified_couette_flow_velocity_temperature_slices.png"
 @info "Saving $png_filepath..."
 savefig(png_filepath, dpi=200)
 close(fig)
-

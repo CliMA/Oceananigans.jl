@@ -65,4 +65,3 @@ function interior_tendency_kernel_parameters(arch::AsynchronousDistributed, grid
 
     return KernelParameters(sizes, offsets)
 end
-

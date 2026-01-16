@@ -203,7 +203,7 @@ Accumulation(accumulate!, operand; dims) = Scan(Accumulating(), accumulate!, ope
 
 flip(::Type{Face}) = Center
 flip(::Type{Center}) = Face
-            
+
 function Oceananigans.location(a::Accumulation)
     op_loc = location(a.operand)
     loc = Tuple(d ∈ a.dims ? flip(op_loc[d]) : op_loc[d] for d=1:3)
