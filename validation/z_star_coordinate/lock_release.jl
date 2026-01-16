@@ -21,7 +21,7 @@ model = HydrostaticFreeSurfaceModel(grid;
                                     tracers = (:b, :c),
                                 timestepper = :SplitRungeKutta3,
                         vertical_coordinate = ZStarCoordinate(grid),
-                               free_surface = SplitExplicitFreeSurface(grid; substeps=20)) # 
+                               free_surface = SplitExplicitFreeSurface(grid; substeps=20)) #
 
 g = model.free_surface.gravitational_acceleration
 bᵢ(x, z) = x > 32kilometers ? 0.06 : 0.01
@@ -77,7 +77,7 @@ end
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
 run!(simulation)
- 
+
 b = model.tracers.b
 x, y, z = nodes(b)
 
@@ -87,6 +87,6 @@ lines!(ax, (vav .- vav[1]) ./ vav[1], label = "Volume anomaly")
 lines!(ax, (bav .- bav[1]) ./ bav[1], label = "Buoyancy anomaly")
 lines!(ax, (cav .- cav[1]) ./ cav[1], label = "Tracer anomaly")
 axislegend(ax, position=:lt)
-ax  = Axis(fig[1, 2], title = "Final buoyancy field") 
+ax  = Axis(fig[1, 2], title = "Final buoyancy field")
 contourf!(ax, x, z, interior(model.tracers.b, :, 1, :), colormap=:balance, levels=20)
 vlines!(ax, 62.3e3, linestyle = :dash, linewidth = 3, color = :black)

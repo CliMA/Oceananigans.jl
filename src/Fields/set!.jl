@@ -92,7 +92,7 @@ function set_to_function!(u, f, clock=nothing)
 
     # Transfer data to GPU if u is on the GPU
     if child_arch isa GPU || child_arch isa ReactantState
-    	set!(u, cpu_u)
+        set!(u, cpu_u)
     end
     return u
 end
@@ -151,4 +151,3 @@ end
 Base.copyto!(f::Field, src::Base.Broadcast.Broadcasted) = copyto!(interior(f), src)
 Base.copyto!(f::Field, src::AbstractArray) = copyto!(interior(f), src)
 Base.copyto!(f::Field, src::Field) = copyto!(parent(f), parent(src))
-

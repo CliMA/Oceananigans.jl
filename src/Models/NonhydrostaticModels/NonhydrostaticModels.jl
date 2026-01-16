@@ -51,7 +51,7 @@ nonhydrostatic_pressure_solver(arch, grid, ::Nothing) = ConjugateGradientPoisson
 const IBGWithFFT = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:GridWithFFTSolver}
 nonhydrostatic_pressure_solver(arch, ibg::IBGWithFFT, ::Nothing) = naive_solver_with_warning(arch, ibg, nothing)
 nonhydrostatic_pressure_solver(arch, ibg::IBGWithFFT, fs) = naive_solver_with_warning(arch, ibg, fs)
-    
+
 function naive_solver_with_warning(arch, ibg, free_surface)
     msg = """The FFT-based pressure_solver for NonhydrostaticModels on ImmersedBoundaryGrid
           is approximate and will probably produce velocity fields that are divergent
@@ -122,4 +122,3 @@ include("compute_nonhydrostatic_tendencies.jl")
 include("compute_nonhydrostatic_buffer_tendencies.jl")
 
 end # module
-

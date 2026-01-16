@@ -22,33 +22,33 @@ end
     Π.op(Π.▶[1](i, j, k, Π.grid, Π.args[1]))
 
 @inline Base.getindex(Π::MultiaryOperation{LX, LY, LZ, 2}, i, j, k)  where {LX, LY, LZ} =
-    Π.op(Π.▶[1](i, j, k, Π.grid, Π.args[1]), 
+    Π.op(Π.▶[1](i, j, k, Π.grid, Π.args[1]),
          Π.▶[2](i, j, k, Π.grid, Π.args[2]))
 
 @inline Base.getindex(Π::MultiaryOperation{LX, LY, LZ, 3}, i, j, k)  where {LX, LY, LZ} =
-    Π.op(Π.▶[1](i, j, k, Π.grid, Π.args[1]), 
-         Π.▶[2](i, j, k, Π.grid, Π.args[2]), 
+    Π.op(Π.▶[1](i, j, k, Π.grid, Π.args[1]),
+         Π.▶[2](i, j, k, Π.grid, Π.args[2]),
          Π.▶[3](i, j, k, Π.grid, Π.args[3]))
 
 @inline Base.getindex(Π::MultiaryOperation{LX, LY, LZ, 4}, i, j, k)  where {LX, LY, LZ} =
-    Π.op(Π.▶[1](i, j, k, Π.grid, Π.args[1]), 
-         Π.▶[2](i, j, k, Π.grid, Π.args[2]), 
-         Π.▶[3](i, j, k, Π.grid, Π.args[3]), 
+    Π.op(Π.▶[1](i, j, k, Π.grid, Π.args[1]),
+         Π.▶[2](i, j, k, Π.grid, Π.args[2]),
+         Π.▶[3](i, j, k, Π.grid, Π.args[3]),
          Π.▶[4](i, j, k, Π.grid, Π.args[4]))
 
 @inline Base.getindex(Π::MultiaryOperation{LX, LY, LZ, 5}, i, j, k)  where {LX, LY, LZ} =
-    Π.op(Π.▶[1](i, j, k, Π.grid, Π.args[1]), 
-         Π.▶[2](i, j, k, Π.grid, Π.args[2]), 
-         Π.▶[3](i, j, k, Π.grid, Π.args[3]), 
-         Π.▶[4](i, j, k, Π.grid, Π.args[4]), 
+    Π.op(Π.▶[1](i, j, k, Π.grid, Π.args[1]),
+         Π.▶[2](i, j, k, Π.grid, Π.args[2]),
+         Π.▶[3](i, j, k, Π.grid, Π.args[3]),
+         Π.▶[4](i, j, k, Π.grid, Π.args[4]),
          Π.▶[5](i, j, k, Π.grid, Π.args[5]))
 
 @inline Base.getindex(Π::MultiaryOperation{LX, LY, LZ, 6}, i, j, k)  where {LX, LY, LZ} =
-    Π.op(Π.▶[1](i, j, k, Π.grid, Π.args[1]), 
-         Π.▶[2](i, j, k, Π.grid, Π.args[2]), 
-         Π.▶[3](i, j, k, Π.grid, Π.args[3]), 
-         Π.▶[4](i, j, k, Π.grid, Π.args[4]), 
-         Π.▶[5](i, j, k, Π.grid, Π.args[5]), 
+    Π.op(Π.▶[1](i, j, k, Π.grid, Π.args[1]),
+         Π.▶[2](i, j, k, Π.grid, Π.args[2]),
+         Π.▶[3](i, j, k, Π.grid, Π.args[3]),
+         Π.▶[4](i, j, k, Π.grid, Π.args[4]),
+         Π.▶[5](i, j, k, Π.grid, Π.args[5]),
          Π.▶[6](i, j, k, Π.grid, Π.args[6]))
 
 #####
@@ -85,10 +85,10 @@ function define_multiary_operator(op)
         end
 
         # Instantiate location if types are passed
-        $op(Lop::Tuple, 
-            a::Union{Function, Number, Oceananigans.Fields.AbstractField}, 
-            b::Union{Function, Number, Oceananigans.Fields.AbstractField}, 
-            c::Union{Function, Number, Oceananigans.Fields.AbstractField}, 
+        $op(Lop::Tuple,
+            a::Union{Function, Number, Oceananigans.Fields.AbstractField},
+            b::Union{Function, Number, Oceananigans.Fields.AbstractField},
+            c::Union{Function, Number, Oceananigans.Fields.AbstractField},
             d::Union{Function, Number, Oceananigans.Fields.AbstractField}...) = $op((Lop[1](), Lop[2](), Lop[3]()), a, b, c, d...)
 
         $op(a::Oceananigans.Fields.AbstractField,
@@ -125,17 +125,17 @@ BinaryOperation at (Center, Center, Center)
 ├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 └── tree:
     * at (Center, Center, Center)
-    ├── 0.3333333333333333
-    └── + at (Center, Center, Center)
-        ├── / at (Center, Center, Center)
-        │   ├── 1
-        │   └── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
-        ├── / at (Center, Center, Center)
-        │   ├── 1
-        │   └── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
-        └── / at (Center, Center, Center)
-            ├── 1
-            └── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
+    ├── 0.3333333333333333
+    └── + at (Center, Center, Center)
+        ├── / at (Center, Center, Center)
+        │   ├── 1
+        │   └── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
+        ├── / at (Center, Center, Center)
+        │   ├── 1
+        │   └── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
+        └── / at (Center, Center, Center)
+            ├── 1
+            └── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
 
 julia> @multiary harmonic_plus
 Set{Any} with 3 elements:
@@ -148,9 +148,9 @@ MultiaryOperation at (Center, Center, Center)
 ├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 └── tree:
     harmonic_plus at (Center, Center, Center)
-    ├── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
-    ├── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
-    └── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
+    ├── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
+    ├── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
+    └── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
 ```
 """
 macro multiary(ops...)

@@ -154,4 +154,3 @@ on_architecture(to, scheme::WENO{N, FT, FT2}) where {N, FT, FT2} =
     WENO{N, FT, FT2}(on_architecture(to, scheme.bounds),
                      on_architecture(to, scheme.buffer_scheme),
                      on_architecture(to, scheme.advecting_velocity_scheme))
-

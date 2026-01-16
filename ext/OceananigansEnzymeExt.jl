@@ -133,8 +133,8 @@ EnzymeCore.EnzymeRules.inactive(::typeof(Oceananigans.BoundaryConditions.periodi
 #
 #         FunctionFieldType(dfunction_field_func, grid.val; clock, parameters)
 #     else
-#   	    ntuple(Val(config_width)) do i
-#   		    Base.@_inline_meta
+#           ntuple(Val(config_width)) do i
+#                   Base.@_inline_meta
 #
 #             dfunction_field_func = if function_field_is_active
 #                 dactives[i][]
@@ -143,7 +143,7 @@ EnzymeCore.EnzymeRules.inactive(::typeof(Oceananigans.BoundaryConditions.periodi
 #             end
 #
 #             FunctionFieldType(dfunction_field_func, grid.val; clock, parameters)
-#   	    end
+#           end
 #     end
 #
 #     P = EnzymeCore.EnzymeRules.needs_primal(config) ? RT : Nothing

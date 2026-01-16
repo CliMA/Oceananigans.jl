@@ -166,4 +166,3 @@ function run_distributed_simulation(grid)
 
     return model
 end
-

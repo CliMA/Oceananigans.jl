@@ -85,4 +85,3 @@ function internal_wave_dynamics_test(model, solution, Δt)
 
     return nothing
 end
-

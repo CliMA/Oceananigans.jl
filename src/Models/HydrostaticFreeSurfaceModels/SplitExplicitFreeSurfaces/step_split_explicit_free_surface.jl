@@ -13,12 +13,12 @@
 
     Hᶠᶜ = column_depthᶠᶜᵃ(i, j, k_top, grid, η)
     Hᶜᶠ = column_depthᶜᶠᵃ(i, j, k_top, grid, η)
-    
+
     # ∂τ(U) = - ∇η + G
     @inbounds begin
         U[i, j, 1] += Δτ * (- g * Hᶠᶜ * ∂xTᶠᶜᶠ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
         V[i, j, 1] += Δτ * (- g * Hᶜᶠ * ∂yTᶜᶠᶠ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
-        
+
         # averaging the transport
         Ũ[i, j, 1] += transport_weight * U[i, j, 1]
         Ṽ[i, j, 1] += transport_weight * V[i, j, 1]
@@ -32,7 +32,7 @@ end
     cache_previous_free_surface!(timestepper, i, j, k_top, η)
 
     δh_U = (δxTᶜᵃᵃ(i, j, grid.Nz, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
-            δyTᵃᶜᵃ(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) * Az⁻¹ᶜᶜᶠ(i, j, k_top, grid) 
+            δyTᵃᶜᵃ(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) * Az⁻¹ᶜᶜᶠ(i, j, k_top, grid)
 
     @inbounds begin
         η[i, j, k_top] += Δτ * (F(i, j, k_top, grid, clock, (; η, U, V)) - δh_U)
@@ -91,7 +91,7 @@ function iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, c
         for substep in 1:Nsubsteps
             @inbounds averaging_weight = weights[substep]
             @inbounds transport_weight = transport_weights[substep]
-            
+
             barotropic_velocity_kernel!(transport_weight, converted_U_args...)
             free_surface_kernel!(averaging_weight, converted_η_args...)
         end
@@ -149,11 +149,11 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
 
     # Wait for setup step to finish
     wait_free_surface_communication!(free_surface, model, architecture(free_surface_grid))
-    
+
     @apply_regionally begin
-        # Reset the filtered fields and the barotropic timestepper to zero. 
+        # Reset the filtered fields and the barotropic timestepper to zero.
         initialize_free_surface_state!(free_surface, baroclinic_timestepper, barotropic_timestepper)
-        
+
         # Solve for the free surface at tⁿ⁺¹
         iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, F, model.clock, weights, transport_weights, Val(Nsubsteps))
 
