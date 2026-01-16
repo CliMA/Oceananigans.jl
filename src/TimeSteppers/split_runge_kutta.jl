@@ -178,7 +178,7 @@ end
 #####
 
 """
-    rk_substep!(model::AbstractModel, Δτ, callbacks)
+    rk_substep!(model::AbstractModel, Δt, callbacks)
 
 Perform a single Runge-Kutta substep, advancing the model state by `Δτ`.
 
