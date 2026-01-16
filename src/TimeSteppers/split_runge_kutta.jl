@@ -20,6 +20,7 @@ end
 """
     SplitRungeKuttaTimeStepper(grid, prognostic_fields, args...;
                                implicit_solver::TI = nothing,
+                               coefficients = (3, 2, 1),
                                Gⁿ::TG = map(similar, prognostic_fields),
                                Ψ⁻::PF = map(similar, prognostic_fields),
                                kwargs...) where {TI, TG, PF}
@@ -33,10 +34,8 @@ A barotropic velocity correction step is applied after at each substep.
 
 The state `U` after each substep `m` is equivalent to an Euler step with a modified time step:
 
-```julia
-Δt̃   = Δt / βᵐ
-Uᵐ⁺¹ = Uⁿ + Δt̃ * Gᵐ
-```
+    Δt̃   = Δt / βᵐ
+    Uᵐ⁺¹ = Uⁿ + Δt̃ * Gᵐ
 
 where `Uᵐ` is the state at the ``m``-th substep, `Uⁿ` is the state at the ``n``-th timestep,
 `Gᵐ` is the tendency at the ``m``-th substep. The coefficients `β` can be specified by the user,
@@ -63,7 +62,7 @@ function SplitRungeKuttaTimeStepper(grid, prognostic_fields, args...;
 end
 
 """
-    SplitRungeKuttaTimeStepper(; coefficients=nothing, stages=nothing)
+    SplitRungeKuttaTimeStepper(; coefficients=nothing, stages=3)
 
 Construct a `SplitRungeKuttaTimeStepper` by specifying either `coefficients` or `stages`.
 
