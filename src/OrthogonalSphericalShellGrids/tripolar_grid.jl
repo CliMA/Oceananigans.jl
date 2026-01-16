@@ -343,7 +343,7 @@ function continue_south!(new_metric, lat_lon_metric::AbstractArray{<:Any, 1})
     Hx, Hy = new_metric.offsets
     Nx, Ny = size(new_metric)
 
-    for j in Hy+1:0, i in Hx+1:Nx+Hx
+    for j in Hy+1:1, i in Hx+1:Nx+Hx
         @inbounds new_metric[i, j] = lat_lon_metric[j]
     end
 

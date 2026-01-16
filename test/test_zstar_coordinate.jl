@@ -261,7 +261,7 @@ end
 
         fold_topologies = (RightCenterFolded, RightFaceFolded)
 
-        @testset "TripolarGrid ZStarCoordinate tracer conservation tests" for fold_topology in fold_topologies
+        @testset "$fold_topology TripolarGrid ZStarCoordinate tracer conservation tests" for fold_topology in fold_topologies
             @info "Testing a ZStarCoordinate coordinate with a $fold_topology Tripolar grid on $(arch)..."
 
             grid = TripolarGrid(arch; size = (20, 20, 20), z = z_stretched, fold_topology = fold_topology)
@@ -269,13 +269,13 @@ end
             # Code credit:
             # https://github.com/PRONTOLab/GB-25/blob/682106b8487f94da24a64d93e86d34d560f33ffc/src/model_utils.jl#L65
             function mtn(λ, φ, λ₀, φ₀)
-                dφ = 5
-                dλ = 5
+                dφ = 2 * 180 / 20
+                dλ = 2 * 360 / 20
                 return exp(-(λ - λ₀)^2 / 2dλ^2 - (φ - φ₀)^2 / 2dφ^2)
             end
             function mtns(λ, φ)
                 λ₀ = 70
-                φ₀ = 50
+                φ₀ = 55
                 return mtn(λ, φ, λ₀, φ₀) + mtn(λ, φ, λ₀ + 180, φ₀) + mtn(λ, φ, λ₀ + 360, φ₀)
             end
 
