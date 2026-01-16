@@ -71,11 +71,11 @@ end
         min_Δφ = @allowscalar minimum(φᶜᶜᵃ[:, 2] .- φᶜᶜᵃ[:, 1])
         @allowscalar begin
             # The tripolar grid should cover the whole longitude range
-            # from the first_pole_longitude - 90 to first_pole_longitude + 270
-            @test minimum(λᶜᶜᵃ) ≥ first_pole_longitude - 90
-            @test maximum(λᶜᶜᵃ) ≤ first_pole_longitude + 270
-            @test minimum(λᶠᶠᵃ) ≥ first_pole_longitude - 90
-            @test maximum(λᶠᶠᵃ) ≤ first_pole_longitude + 270
+            # from the first_pole_longitude to first_pole_longitude + 360
+            @test minimum(λᶜᶜᵃ) ≥ first_pole_longitude
+            @test maximum(λᶜᶜᵃ) ≤ first_pole_longitude + 360
+            @test minimum(λᶠᶠᵃ) ≥ first_pole_longitude
+            @test maximum(λᶠᶠᵃ) ≤ first_pole_longitude + 360
             @test maximum(φᶜᶜᵃ) ≤ 90
             @test maximum(φᶠᶠᵃ) ≤ 90
             @test minimum(φᶜᶜᵃ) ≥ -90
@@ -155,13 +155,15 @@ end
         north_poles_latitude = φₚ  = 35
 
         λ²ₚ = λ¹ₚ + 180
+        λ³ₚ = λ²ₚ + 180
 
         # Build a tripolar grid at 1ᵒ
         underlying_grid = TripolarGrid(arch; size = (360, 180, 1), first_pole_longitude, north_poles_latitude, fold_topology = fold_topology)
 
         # We need a bottom height field that ``masks'' the singularities
         bottom_height(λ, φ) = ((abs(λ - λ¹ₚ) < 5) & (abs(φₚ - φ) < 5)) |
-                              ((abs(λ - λ²ₚ) < 5) & (abs(φₚ - φ) < 5)) | (φ < -78) ? 1 : 0
+                              ((abs(λ - λ²ₚ) < 5) & (abs(φₚ - φ) < 5)) |
+                              ((abs(λ - λ³ₚ) < 5) & (abs(φₚ - φ) < 5)) | (φ < -78) ? 1 : 0
 
         # Exclude the singularities from the computation! (They are definitely not orthogonal)
         tripolar_grid      = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))

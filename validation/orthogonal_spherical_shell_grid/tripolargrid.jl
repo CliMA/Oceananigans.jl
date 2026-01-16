@@ -60,7 +60,7 @@ function plot_grid!(ax, grid; plothalo = false)
                     (xleft, xbottom, xright, xtop, xhaloleft, xhalobottom, xhaloright, xhalotop),
                     (yleft, ybottom, yright, ytop, yhaloleft, yhalobottom, yhaloright, yhalotop),
                     (:green, :blue, :red, :orange, :green, :blue, :red, :orange),
-                    (3, 3, 3, 3, 1, 1, 1, 1),
+                    (6, 5, 4, 3, 4, 3, 2, 1),
                     (true, true, true, true, plothalo, plothalo, plothalo, plothalo),
                 )
                 plotit || continue
@@ -69,30 +69,49 @@ function plot_grid!(ax, grid; plothalo = false)
             end
         end
     end
+
+    (; first_pole_longitude, north_poles_latitude) = grid.conformal_mapping
+    sc = scatter!(ax, first_pole_longitude .+ [0, 180, 360], north_poles_latitude .+ [0, 0, 0]; color = :purple, marker = :star5, markersize = 20)
+    translate!(sc, 0, 0, 300)
+
     return
 end
 
-fig = Figure(size = (1200, 1200))
-# fig = Figure(size = (600, 600))
-# Nx, Ny, Nz = 10, 10, 1
-Nx, Ny, Nz = 30, 15, 1
+fig = Figure(size = (1600, 800))
+
+# Nx, Ny, Nz = 10, 8, 1
+Nx, Ny, Nz = 20, 15, 1
+halo = (2, 2, 2)
+southernmost_latitude = -50
+first_pole_longitude = -180
+north_poles_latitude = 48
+
+gridopt = (;
+    size = (Nx, Ny, Nz),
+    halo,
+    southernmost_latitude,
+    first_pole_longitude,
+    north_poles_latitude
+)
 
 axopt = (
-    xticks = -720:30:720,
-    yticks = -360:30:360,
+    xticks = -720:180:720,
+    yticks = -360:45:360,
 )
-labelopt = (rotation = π / 2, tellheight = false, fontsize = 24)
+xlabelopt = (rotation = π / 2, tellheight = false, fontsize = 24)
+ylabelopt = (tellwidth = false, fontsize = 24)
 
-fold_topology = RightCenterFolded
-grid = TripolarGrid(; size = (Nx, Ny, Nz), fold_topology)
-ax = Axis(fig[1, 1]; axopt...)
-plot_grid!(ax, grid; plothalo = true)
-Label(fig[1, 0]; text = "$fold_topology (U-point pivot)", labelopt...)
+fold_topologies = (RightCenterFolded, RightFaceFolded)
+Nxs = (Nx, Nx + 2)
 
-fold_topology = RightFaceFolded
-grid = TripolarGrid(; size = (Nx, Ny, Nz), fold_topology)
-ax = Axis(fig[2, 1]; axopt...)
-plot_grid!(ax, grid; plothalo = true)
-Label(fig[2, 0]; text = "$fold_topology (F-point pivot)", labelopt...)
+for (irow, fold_topology) in enumerate(fold_topologies)
+    for (icol, Nx′) in enumerate(Nxs)
+        grid = TripolarGrid(; gridopt..., fold_topology, size = (Nx′, Ny, Nz))
+        ax = Axis(fig[irow, icol]; axopt...)
+        plot_grid!(ax, grid; plothalo = false)
+        Label(fig[0, icol]; text = "Nx = $(Nx′)", ylabelopt...)
+    end
+    Label(fig[irow, 0]; text = "$fold_topology", xlabelopt...)
+end
 
 fig

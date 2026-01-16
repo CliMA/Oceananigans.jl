@@ -121,6 +121,10 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     Ly, φᵃᶠᵃ, φᵃᶜᵃ, Δφᶠᵃᵃ, Δφᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, latitude,  :latitude,  2, CPU())
     Lx, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, longitude, :longitude, 1, CPU())
 
+    # Make sure φ's are valid in the south
+    if φᵃᶠᵃ[1] < -90
+        throw(ArgumentError("Your southernmost latitude is too far South! (The southernmost grid cell does not fit.)"))
+    end
 
     # return λFF, φFF, λFC, φFC, λCF, φCF, λCC, φCC
     # Helper grid to lauch kernels on
@@ -144,17 +148,21 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     # Note: we don't fill_halo_regions! and, instead,
     # compute the full fields including in the halos (less code!).
     kp = KernelParameters(Base.size(λCC.data), λCC.data.offsets)
+    Nx′, Ny′ = Base.size(λCC.data) .+ 2 .* λCC.data.offsets
     launch!(CPU(), grid, kp, _compute_tripolar_coordinates!,
-            λFC, φFC, λCC, φCC,
-            λᶠᵃᵃ, λᶜᵃᵃ, φᵃᶜᵃ,
-            first_pole_longitude,
-            focal_distance, Nx)
+        λFC, φFC, λCC, φCC,
+        λᶠᵃᵃ, λᶜᵃᵃ, φᵃᶜᵃ,
+        first_pole_longitude,
+        focal_distance, Nx′, Ny′
+    )
     kp = KernelParameters(Base.size(λCF.data), λCF.data.offsets)
+    Nx′, Ny′ = Base.size(λCF.data) .+ 2 .* λCF.data.offsets
     launch!(CPU(), grid, kp, _compute_tripolar_coordinates!,
-            λFF, φFF, λCF, φCF,
-            λᶠᵃᵃ, λᶜᵃᵃ, φᵃᶠᵃ,
-            first_pole_longitude,
-            focal_distance, Nx)
+        λFF, φFF, λCF, φCF,
+        λᶠᵃᵃ, λᶜᵃᵃ, φᵃᶠᵃ,
+        first_pole_longitude,
+        focal_distance, Nx′, Ny′
+    )
 
     # Coordinates
     λᶠᶠᵃ = dropdims(λFF.data, dims=3)

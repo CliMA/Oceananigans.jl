@@ -25,7 +25,8 @@ function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius
 
     # We need a bottom height field that ``masks'' the singularities
     bottom_height(λ, φ) = ((abs(λ - λp) < radius)       & (abs(φp - φ) < radius)) |
-                          ((abs(λ - λp - 180) < radius) & (abs(φp - φ) < radius)) | (φ < φm) ? 0 : - Lz
+                          ((abs(λ - λp - 180) < radius) & (abs(φp - φ) < radius)) |
+                          ((abs(λ - λp - 360) < radius) & (abs(φp - φ) < radius)) | (φ < φm) ? 0 : - Lz
 
     grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
 
