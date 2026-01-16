@@ -183,7 +183,7 @@ end
 
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
 function compute_flux_bc_tendencies!(model::ShallowWaterModel)
-    
+
     Gⁿ    = model.timestepper.Gⁿ
     arch  = model.architecture
     clock = model.clock
@@ -199,4 +199,3 @@ function compute_flux_bc_tendencies!(model::ShallowWaterModel)
 
     return nothing
 end
-

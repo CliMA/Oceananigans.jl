@@ -59,7 +59,7 @@ end
 end
 
 function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedTripolarGridOfSomeKind, buffers, args...; kwargs...)
-  
+
     arch = architecture(grid)
     kernels!, ordered_bcs = get_boundary_kernels(bcs, c, grid, loc, indices)
 
@@ -83,7 +83,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
         north_bc = bcs.north
         switch_north_halos!(c, north_bc, grid, loc)
     end
-  
+
     return nothing
 end
 

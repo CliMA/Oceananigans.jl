@@ -153,4 +153,3 @@ end
     mask = active_nodes == 0
     return ifelse(mask, zero(grid), ℑyzᵃᶜᶜ(i, j, k, grid, q, args...) / active_nodes)
 end
-

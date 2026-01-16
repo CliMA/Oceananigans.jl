@@ -20,10 +20,10 @@ function TimeSteppers.compute_flux_bc_tendencies!(model::HydrostaticFreeSurfaceM
     arch       = architecture(grid)
     velocities = model.velocities
     tracers    = model.tracers
-    
+
     args = (model.clock, fields(model), model.closure, model.buoyancy)
 
-    
+
     # Velocity fields
     for i in (:u, :v)
         @apply_regionally compute_flux_bcs!(Gⁿ[i], velocities[i], arch, args)

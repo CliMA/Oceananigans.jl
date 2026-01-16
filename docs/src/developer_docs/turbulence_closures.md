@@ -234,7 +234,7 @@ Good display methods help users understand their closures:
 ```@example pp_closure
 using Oceananigans.Utils: prettysummary
 
-Base.summary(closure::PPVD{TD}) where TD = 
+Base.summary(closure::PPVD{TD}) where TD =
     string("PacanowskiPhilanderVerticalDiffusivity{$TD}")
 
 function Base.show(io::IO, closure::PPVD)
@@ -277,7 +277,7 @@ We'll create a helper function to set up and run simulations:
 ```@example pp_closure
 function run_boundary_layer(closure; stop_time)
     grid = RectilinearGrid(size=Nz, z=(-Lz, 0), topology=(Flat, Flat, Bounded))
-    
+
     u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τˣ))
     b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Jᵇ))
 
@@ -287,13 +287,13 @@ function run_boundary_layer(closure; stop_time)
                                         tracers = :b,
                                         coriolis = FPlane(f=f),
                                         boundary_conditions = (u=u_bcs, b=b_bcs))
-    
+
     set!(model, b = z -> N² * z)  # linear stratification
-    
+
     simulation = Simulation(model; Δt=10minutes, stop_time)
     conjure_time_step_wizard!(simulation, cfl=0.5, max_Δt=10minutes)
     run!(simulation)
-    
+
     return model
 end
 nothing # hide
@@ -331,22 +331,22 @@ z_tked = znodes(model_tked.tracers.b)
 ax1 = Axis(fig[1, 1], xlabel="Buoyancy (m s⁻²)", ylabel="z (m)",
            title="Buoyancy profile")
 
-lpp = lines!(ax1, interior(model_pp.tracers.b, 1, 1, :), z_pp, 
+lpp = lines!(ax1, interior(model_pp.tracers.b, 1, 1, :), z_pp,
              label="Pacanowski-Philander", linewidth=2)
-lcatke = lines!(ax1, interior(model_catke.tracers.b, 1, 1, :), z_catke, 
+lcatke = lines!(ax1, interior(model_catke.tracers.b, 1, 1, :), z_catke,
                 label="CATKE", linewidth=2, linestyle=:dash)
-ltked = lines!(ax1, interior(model_tked.tracers.b, 1, 1, :), z_tked, 
+ltked = lines!(ax1, interior(model_tked.tracers.b, 1, 1, :), z_tked,
                label="TKE-Dissipation", linewidth=2, linestyle=:dot)
 
 ## Velocity profiles
 ax2 = Axis(fig[1, 2], xlabel="Velocity (m s⁻¹)", ylabel="z (m)",
            title="Zonal velocity")
 
-lines!(ax2, interior(model_pp.velocities.u, 1, 1, :), z_pp, 
+lines!(ax2, interior(model_pp.velocities.u, 1, 1, :), z_pp,
        label="PP", linewidth=2)
-lines!(ax2, interior(model_catke.velocities.u, 1, 1, :), z_catke, 
+lines!(ax2, interior(model_catke.velocities.u, 1, 1, :), z_catke,
        label="CATKE", linewidth=2, linestyle=:dash)
-lines!(ax2, interior(model_tked.velocities.u, 1, 1, :), z_tked, 
+lines!(ax2, interior(model_tked.velocities.u, 1, 1, :), z_tked,
        label="TKE-ϵ", linewidth=2, linestyle=:dot)
 
 ## Diffusivity profiles
@@ -472,7 +472,7 @@ If you'd like to contribute your closure to Oceananigans itself, here are the ad
 
 ### 1. Create a source file
 
-Place your implementation in a file under 
+Place your implementation in a file under
 `src/TurbulenceClosures/turbulence_closure_implementations/`. For example:
 
 ```

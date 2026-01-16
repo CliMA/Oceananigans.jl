@@ -63,4 +63,3 @@ the fine details at the surface as it cools and the layers of different temperat
 by internal waves.
 
 [![Watch free convection with wind stress in action](https://raw.githubusercontent.com/ali-ramadhan/ali-ramadhan.Github.io/master/img/wind_stress_unstable_7500.png)](https://www.youtube.com/watch?v=ob6OMQgPfI4)
-

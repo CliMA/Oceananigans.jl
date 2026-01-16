@@ -21,4 +21,3 @@ const CF = Union{ConstantField, ZeroField, OneField}
 
 BoundaryConditions.fill_halo_regions!(::ZeroField, args...; kw...) = nothing
 BoundaryConditions.fill_halo_regions!(::ConstantField, args...; kw...) = nothing
-
