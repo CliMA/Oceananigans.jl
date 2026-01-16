@@ -82,9 +82,11 @@ fig = Figure(size = (1600, 800))
 # Nx, Ny, Nz = 10, 8, 1
 Nx, Ny, Nz = 20, 15, 1
 halo = (2, 2, 2)
-southernmost_latitude = -50
-first_pole_longitude = -180
-north_poles_latitude = 48
+southernmost_latitude = -80
+first_pole_longitude = 70
+north_poles_latitude = 55
+
+
 
 gridopt = (;
     size = (Nx, Ny, Nz),
@@ -95,7 +97,7 @@ gridopt = (;
 )
 
 axopt = (
-    xticks = -720:180:720,
+    xticks = -720:90:720,
     yticks = -360:45:360,
 )
 xlabelopt = (rotation = π / 2, tellheight = false, fontsize = 24)
