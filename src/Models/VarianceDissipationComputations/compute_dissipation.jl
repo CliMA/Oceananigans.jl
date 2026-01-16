@@ -62,7 +62,7 @@ assemble_advective_dissipation!(P, grid, ts::QuasiAdamsBashforth2TimeStepper, su
     launch!(architecture(grid), grid, :xyz, _assemble_ab2_advective_dissipation!, P, grid, ts.χ, Fⁿ, Fⁿ⁻¹, Uⁿ, Uⁿ⁻¹, cⁿ⁺¹, cⁿ)
 
 function assemble_advective_dissipation!(P, grid, ts::RungeKuttaScheme, substep, Fⁿ, Fⁿ⁻¹, Uⁿ, Uⁿ⁻¹, cⁿ⁺¹, cⁿ)
-    if substep == length(ts.β)
+    if substep == ts.Nstages
         launch!(architecture(grid), grid, :xyz, _assemble_rk3_advective_dissipation!, P, grid, Fⁿ, Uⁿ, cⁿ⁺¹, cⁿ)
     end
     return nothing
@@ -72,7 +72,7 @@ assemble_diffusive_dissipation!(K, grid, ts::QuasiAdamsBashforth2TimeStepper, su
     launch!(architecture(grid), grid, :xyz, _assemble_ab2_diffusive_dissipation!, K, grid, ts.χ, Vⁿ, Vⁿ⁻¹, cⁿ⁺¹, cⁿ)
 
 function assemble_diffusive_dissipation!(K, grid, ts::RungeKuttaScheme, substep, Vⁿ, Vⁿ⁻¹, cⁿ⁺¹, cⁿ)
-    if substep == length(ts.β)
+    if substep == ts.Nstages
         launch!(architecture(grid), grid, :xyz, _assemble_rk3_diffusive_dissipation!, K, grid, Vⁿ, cⁿ⁺¹, cⁿ)
     end
     return nothing

@@ -5,12 +5,14 @@ Hold parameters and tendency fields for a low-storage, n-th order split Runge-Ku
 
 Fields
 ======
+- `Nstages`: total number of stages
 - `β`: Tuple of coefficients for each stage. The number of stages is `length(β)`.
 - `Gⁿ`: Tendency fields at the current substep.
 - `Ψ⁻`: Prognostic fields cached at the beginning of the time step (before substeps).
 - `implicit_solver`: Solver for implicit time stepping of diffusion (or `nothing`).
 """
 struct SplitRungeKuttaTimeStepper{B, TG, PF, TI} <: AbstractTimeStepper
+    Nstages :: Int
     β  :: B
     Gⁿ :: TG
     Ψ⁻ :: PF # prognostic state at the previous timestep
@@ -58,7 +60,7 @@ function SplitRungeKuttaTimeStepper(grid, prognostic_fields, args...;
                                     Ψ⁻::PF = map(similar, prognostic_fields),
                                     kwargs...) where {TI, TG, PF}
 
-    return SplitRungeKuttaTimeStepper{typeof(coefficients), TG, PF, TI}(coefficients, Gⁿ, Ψ⁻, implicit_solver)
+    return SplitRungeKuttaTimeStepper{typeof(coefficients), TG, PF, TI}(length(coefficients), coefficients, Gⁿ, Ψ⁻, implicit_solver)
 end
 
 """
@@ -93,7 +95,7 @@ function SplitRungeKuttaTimeStepper(; coefficients = nothing, stages = 3)
     if isnothing(coefficients)
         coefficients = tuple(collect(stages:-1:1)...)
     end
-    return SplitRungeKuttaTimeStepper{typeof(coefficients), Nothing, Nothing, Nothing}(coefficients, nothing, nothing, nothing)
+    return SplitRungeKuttaTimeStepper{typeof(coefficients), Nothing, Nothing, Nothing}(length(coefficients), coefficients, nothing, nothing, nothing)
 end
 
 """
@@ -132,7 +134,7 @@ end
 
 Step forward `model` one time step `Δt` using the split Runge-Kutta method.
 
-The split Runge-Kutta scheme advances the model state through `n` substeps (where `n = length(model.timestepper.β)`).
+The split Runge-Kutta scheme advances the model state through `n` substeps (where `n = model.timestepper.Nstages`).
 At the beginning of the time step, the current prognostic fields are cached. Then, for each stage `m`:
 
 1. Compute the substep time increment: `Δτ = Δt / βᵐ`
