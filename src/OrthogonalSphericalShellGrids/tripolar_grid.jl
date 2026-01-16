@@ -77,7 +77,7 @@ References
 Murray, R. J. (1996). Explicit generation of orthogonal grids for ocean models.
     Journal of Computational Physics, 126(2), 251-273.
 """
-function TripolarGrid(arch = CPU(), FT::DataType = Float64;
+function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatType;
                       size,
                       southernmost_latitude = -80,
                       halo = (4, 4, 4),
