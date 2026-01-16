@@ -7,6 +7,7 @@ Distributed.addprocs(2)
     using Literate
     using Printf
 
+    using CUDA
     using CairoMakie # to avoid capturing precompilation output by Literate
     set_theme!(Theme(fontsize=20))
     CairoMakie.activate!(type = "png")
@@ -177,6 +178,7 @@ cp(agents_src, agents_dst; force=true)
 developer_pages = [
     "Contributor's guide" => "developer_docs/contributing.md",
     "Model interface" => "developer_docs/model_interface.md",
+    "Implementing turbulence closures" => "developer_docs/turbulence_closures.md",
     "Rules for agent-assisted development" => "developer_docs/AGENTS.md",
 ]
 

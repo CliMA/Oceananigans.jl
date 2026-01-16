@@ -84,6 +84,7 @@ export
     ConservativeFormulation, VectorInvariantFormulation,
     PressureField, fields, ZCoordinate, ZStarCoordinate,
     BulkDrag, LinearFormulation, QuadraticFormulation,
+    BoundaryConditionOperation,
 
     # Hydrostatic free surface model stuff
     VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
@@ -206,6 +207,8 @@ function instantiated_location end
 function tupleit end
 function fields end
 function prognostic_fields end
+function prognostic_state end
+function restore_prognostic_state! end
 function tracer_tendency_kernel_function end
 function boundary_conditions end
 

@@ -33,6 +33,6 @@ function synchronize_communication!(free_surface::SplitExplicitFreeSurface)
     for field in (U, V, Ũ, Ṽ, η)
         synchronize_communication!(field)
     end
-    
+
     return nothing
 end

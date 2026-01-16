@@ -3,9 +3,16 @@ using Oceananigans.BoundaryConditions: getbc, bc_str
 using Oceananigans.Fields: Field, location
 using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Utils: Utils
+using Adapt: Adapt
 
 struct BoundaryConditionKernelFunction{Side, BC}
     bc :: BC
+end
+
+function Adapt.adapt_structure(to, bckf::BoundaryConditionKernelFunction{Side}) where Side
+    bc = adapt(to, bckf.bc)
+    BC = typeof(bc)
+    return BoundaryConditionKernelFunction{Side, BC}(bc)
 end
 
 function Utils.prettysummary(kf::BoundaryConditionKernelFunction{Side}) where Side
@@ -55,7 +62,6 @@ Build a `BoundaryConditionOperation` for a top flux boundary condition:
 
 ```jldoctest bc_op
 using Oceananigans
-using Oceananigans.Models: BoundaryConditionOperation
 
 grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
 
@@ -73,11 +79,10 @@ KernelFunctionOperation at (Center, Center, ⋅)
 └── arguments: ("Clock", "NamedTuple")
 ```
 
-Next, we build a `BoundaryConditionField` for the top flux, and compute it:
+Next, we build a `Field` for the top flux, and compute it:
 
 ```jldoctest bc_op
-using Oceananigans.Models: BoundaryConditionField
-c_flux_field = BoundaryConditionField(model.tracers.c, :top, model)
+c_flux_field = Field(c_flux_op)
 compute!(c_flux_field)
 
 # output

@@ -113,4 +113,3 @@ run_pencil_distributed_grid = """
     @test all(cs .≈ cp)
     @test all(ηs .≈ ηp)
 end
-

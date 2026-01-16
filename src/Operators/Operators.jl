@@ -55,8 +55,10 @@ export intrinsic_vector, extrinsic_vector
 # Variable grid operators
 export σⁿ, σ⁻, ∂t_σ
 
-using Oceananigans.Grids
-using Oceananigans.Grids: LLGOTF, XRegLLGOTF, YRegLLGOTF
+using Oceananigans.Grids: LatitudeLongitudeGrid, LLGOTF, XRegLLGOTF, YRegLLGOTF,
+    OrthogonalSphericalShellGrid, RectilinearGrid, XRegularLLG, XRegularRG, YRegularLLG,
+    YRegularRG, ZRegOrthogonalSphericalShellGrid, ZRegularLLG, ZRegularRG, AbstractGrid,
+    Center, Face
 
 #####
 ##### Convenient aliases

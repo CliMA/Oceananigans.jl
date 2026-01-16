@@ -61,7 +61,7 @@ using Oceananigans.TurbulenceClosures:
 
 using Oceananigans.Utils: tupleit
 
-import Oceananigans: initialize!
+import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
 import Oceananigans.Models: total_velocities
 import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
 
@@ -332,3 +332,34 @@ initialize!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model
 timestepper(model::HydrostaticFreeSurfaceModel) = model.timestepper
 buoyancy_force(model::HydrostaticFreeSurfaceModel) = model.buoyancy
 buoyancy_tracers(model::HydrostaticFreeSurfaceModel) = model.tracers
+
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(model::HydrostaticFreeSurfaceModel)
+    return (clock = prognostic_state(model.clock),
+            particles = prognostic_state(model.particles),
+            velocities = prognostic_state(model.velocities),
+            tracers = prognostic_state(model.tracers),
+            closure_fields = prognostic_state(model.closure_fields),
+            timestepper = prognostic_state(model.timestepper),
+            free_surface = prognostic_state(model.free_surface),
+            auxiliary_fields = prognostic_state(model.auxiliary_fields),
+            vertical_coordinate = prognostic_state(model.vertical_coordinate, model.grid))
+end
+
+function restore_prognostic_state!(model::HydrostaticFreeSurfaceModel, state)
+    restore_prognostic_state!(model.clock, state.clock)
+    restore_prognostic_state!(model.particles, state.particles)
+    restore_prognostic_state!(model.velocities, state.velocities)
+    restore_prognostic_state!(model.timestepper, state.timestepper)
+    restore_prognostic_state!(model.free_surface, state.free_surface)
+    restore_prognostic_state!(model.tracers, state.tracers)
+    restore_prognostic_state!(model.closure_fields, state.closure_fields)
+    restore_prognostic_state!(model.auxiliary_fields, state.auxiliary_fields)
+    restore_prognostic_state!(model.vertical_coordinate, model.grid, state.vertical_coordinate)
+    return model
+end
+
+restore_prognostic_state!(::HydrostaticFreeSurfaceModel, ::Nothing) = nothing

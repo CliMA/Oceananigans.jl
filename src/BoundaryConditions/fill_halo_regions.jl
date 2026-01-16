@@ -2,8 +2,6 @@ using OffsetArrays: OffsetArray
 using Oceananigans.Utils
 using Oceananigans.Grids: architecture
 
-import Base
-
 #####
 ##### General halo filling functions
 #####
@@ -17,9 +15,7 @@ fill_halo_regions!(::Nothing, args...; kwargs...) = nothing
 Fill halo regions for each field in the tuple `fields` according to their boundary
 conditions, possibly recursing into `fields` if it is a nested tuple-of-tuples.
 """
-# Some fields have `nothing` boundary conditions, such as `FunctionField` and `ZeroField`.
-fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = nothing
-
+fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = nothing # Some fields have `nothing` boundary conditions, such as `FunctionField` and `ZeroField`.
 
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
 function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid, args...; kwargs...)
@@ -218,4 +214,3 @@ end
 @inline fill_halo_offset(::Tuple, ::WEB, idx) = (idx[2] == Colon() ? 0 : first(idx[2])-1, idx[3] == Colon() ? 0 : first(idx[3])-1)
 @inline fill_halo_offset(::Tuple, ::SNB, idx) = (idx[1] == Colon() ? 0 : first(idx[1])-1, idx[3] == Colon() ? 0 : first(idx[3])-1)
 @inline fill_halo_offset(::Tuple, ::TBB, idx) = (idx[1] == Colon() ? 0 : first(idx[1])-1, idx[2] == Colon() ? 0 : first(idx[2])-1)
-
