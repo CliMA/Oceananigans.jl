@@ -52,7 +52,7 @@ function rotation_with_shear_test(grid, closure=nothing; timestepper=:QuasiAdams
     coriolis     = HydrostaticSphericalCoriolis(rotation_rate = 1)
 
     model = HydrostaticFreeSurfaceModel(grid;
-                                        momentum_advection = WENOVectorInvariant(order=3), 
+                                        momentum_advection = WENOVectorInvariant(order=3),
                                         free_surface = free_surface,
                                         coriolis = coriolis,
                                         closure,
@@ -93,11 +93,11 @@ for arch in archs
 
             child_arch = child_architecture(arch)
 
-            # TODO: MutableVerticalDiscretization does not lead to exactly equal solutions. 
+            # TODO: MutableVerticalDiscretization does not lead to exactly equal solutions.
             # For the moment we remove the offending tests, but we need to investigate this...
             # z_faces = [(-1, 0), MutableVerticalDiscretization((-1, 0))]
             z_faces = [(-1, 0)]
-            
+
             for z_face in z_faces
                 underlying_grid = LatitudeLongitudeGrid(arch,
                                                         size = (Nx, Ny, 3),
@@ -121,7 +121,7 @@ for arch in archs
 
                     for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
                         @root @info "Testing solid body rotation with $(ranks(arch)) ranks on $(typeof(grid).name.wrapper) and a $(typeof(grid.z).name.wrapper) on $(timestepper)"
-                        
+
                         # We deepcopy the grid to ensure it is not modified in the case of a MutableVerticalDiscretization
                         test_global_grid = deepcopy(global_grid)
                         test_grid = deepcopy(grid)
@@ -169,9 +169,9 @@ for arch in archs
                                                    z = z_face,
                                                    radius = 10,
                                                    topology = (Bounded, Bounded, Bounded))
-    
+
                 catke_global_grid = reconstruct_global_grid(catke_grid)
-                
+
                 @root @info "  Testing CATKE with $(ranks(arch)) ranks"
 
                 # "s" for "serial" computation, "p" for parallel

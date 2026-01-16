@@ -1,8 +1,8 @@
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, adapt_advection_order
 using Oceananigans.Architectures: AbstractArchitecture
-using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
+using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Fields: CenterField, tracernames, TracerFields
 using Oceananigans.Forcings: model_forcing
@@ -15,9 +15,8 @@ using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_clo
 using Oceananigans.Utils: tupleit
 
 import Oceananigans
-import Oceananigans: initialize!
-import Oceananigans.Models: initialization_update_state!, total_velocities
 import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
+import Oceananigans.Models: initialization_update_state!, total_velocities
 import Oceananigans.TimeSteppers: update_state!
 import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
 
@@ -268,7 +267,7 @@ function initialization_update_state!(model::HydrostaticFreeSurfaceModel)
     # Update the state of the model
     update_state!(model)
 
-    # Update state may have asynchronous fill halo, so we refill all the 
+    # Update state may have asynchronous fill halo, so we refill all the
     # halos here (in a synchronous fashion) for initialization
     for field in prognostic_fields(model)
         fill_halo_regions!(field, model.clock, fields(model))

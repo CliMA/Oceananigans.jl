@@ -411,7 +411,7 @@ end
 @inline getrange(::OffsetStaticSize{S}) where {S} = worksize(S), offsets(S)
 @inline getrange(::Type{OffsetStaticSize{S}}) where {S} = worksize(S), offsets(S)
 
-# Makes sense to explicitly define the offsets for up to 3 dimensions, 
+# Makes sense to explicitly define the offsets for up to 3 dimensions,
 # since Oceananigans typically runs kernels with up to 3 dimensions.
 @inline offsets(ranges::NTuple{1, UnitRange}) = @inbounds (ranges[1].start - 1, )
 @inline offsets(ranges::NTuple{2, UnitRange}) = @inbounds (ranges[1].start - 1, ranges[2].start - 1)

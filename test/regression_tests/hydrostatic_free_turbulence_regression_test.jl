@@ -36,7 +36,7 @@ function run_hydrostatic_free_turbulence_regression_test(grid, free_surface; reg
     model = HydrostaticFreeSurfaceModel(grid; coriolis,
                                         momentum_advection = VectorInvariant(),
                                         free_surface = free_surface,
-                                        timestepper = :QuasiAdamsBashforth2, 
+                                        timestepper = :QuasiAdamsBashforth2,
                                         closure = HorizontalScalarDiffusivity(ν=1e+5, κ=1e+4))
 
     #####
@@ -144,7 +144,7 @@ function test_fields_equality(arch, test_fields, truth_fields)
     @test all(test_fields.u .≈ truth_fields.u)
     @test all(test_fields.v .≈ truth_fields.v)
 
-    # for a synchronized architecture, the w field at the end of the 
+    # for a synchronized architecture, the w field at the end of the
     # timestep does not coincide with the correct w, it gets corrected
     # during tendency computation. This behavior will be fixed in a future PR.
     if !(arch isa Distributed)

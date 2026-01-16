@@ -27,7 +27,7 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
     x₀ = grid.Lx / 4 # gaussian center
 
     vᴳ(x, z) = -U * (x - x₀) / L * gaussian(x - x₀, L)
-    Vᴳ(x) = grid.Lz * vᴳ(x, 1) 
+    Vᴳ(x) = grid.Lz * vᴳ(x, 1)
 
     g  = model.free_surface.gravitational_acceleration
     η₀ = model.coriolis.f * U * L / g # geostrophic free surface amplitude
@@ -50,7 +50,7 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
         end
         parent(z.σᶜᶜ⁻) .= parent(z.σᶜᶜⁿ)
     end
-        
+
     stop_iteration=10000
 
     gravity_wave_speed = sqrt(g * grid.Lz) # hydrostatic (shallow water) gravity wave speed
@@ -69,7 +69,7 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
     save_u(sim) = uarr[sim.model .clock.iteration+1] = deepcopy(sim.model.velocities.u)
     save_c(sim) = carr[sim.model.clock.iteration+1] = deepcopy(sim.model.tracers.c)
     save_w(sim) = warr[sim.model.clock.iteration+1] .= sim.model.velocities.w[1:sim.model.grid.Nx, 1, 2]
-    
+
     if grid isa MutableGridOfSomeKind
         save_g(sim) = garr[sim.model.clock.iteration+1] .= sim.model.grid.z.ηⁿ[1:sim.model.grid.Nx, 1, 1]
         simulation.callbacks[:save_g] = Callback(save_g, IterationInterval(1))
@@ -78,7 +78,7 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
     V = KernelFunctionOperation{Center, Center, Center}(Oceananigans.Operators.Vᶜᶜᶜ, grid)
     cav = [sum(model.tracers.c * V) / sum(V)]
 
-    function progress_message(sim) 
+    function progress_message(sim)
         H = sum(sim.model.free_surface.displacement)
         msg = @sprintf("[%.2f%%], iteration: %d, time: %.3f, max|w|: %.2e, sim(η): %e",
                         100 * sim.model.clock.time / sim.stop_time, sim.model.clock.iteration,
@@ -109,7 +109,7 @@ Lz = 400meters
 grid = RectilinearGrid(size = (80, 1),
                        halo = (5, 5),
                        x = (0, Lh),
-                       z = MutableVerticalDiscretization((-Lz, 0)), # (-Lz, 0), #  
+                       z = MutableVerticalDiscretization((-Lz, 0)), # (-Lz, 0), #
                        topology = (Periodic, Flat, Bounded))
 
 
@@ -187,8 +187,8 @@ function plot_variable2(sims, var1, var2;
     end
 end
 
-# @inline dη_local(i, j, k, grid, U, V) = (Oceananigans.Operators.δxᶜᶜᶜ(i, j, k, grid, Oceananigans.Operators.Δy_qᶠᶜᶜ, U) + 
-#                                          Oceananigans.Operators.δyᶜᶜᶜ(i, j, k, grid, Oceananigans.Operators.Δx_qᶜᶠᶜ, V)) * 
+# @inline dη_local(i, j, k, grid, U, V) = (Oceananigans.Operators.δxᶜᶜᶜ(i, j, k, grid, Oceananigans.Operators.Δy_qᶠᶜᶜ, U) +
+#                                          Oceananigans.Operators.δyᶜᶜᶜ(i, j, k, grid, Oceananigans.Operators.Δx_qᶜᶠᶜ, V)) *
 #                                          Oceananigans.Operators.Az⁻¹ᶜᶜᶜ(i, j, k, grid)
 
 # model = sim3

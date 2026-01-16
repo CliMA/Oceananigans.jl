@@ -17,7 +17,7 @@ The correction depends on the free surface type:
 correct_barotropic_mode!(model::HydrostaticFreeSurfaceModel, Δt; kwargs...) =
     correct_barotropic_mode!(model, model.free_surface, Δt; kwargs...)
 
-# Fallback for ExplicitFreeSurface and Nothing free surfaces 
+# Fallback for ExplicitFreeSurface and Nothing free surfaces
 correct_barotropic_mode!(model, ::Nothing, Δt; kwargs...) = nothing
 correct_barotropic_mode!(model, ::ExplicitFreeSurface, Δt; kwargs...) = nothing
 

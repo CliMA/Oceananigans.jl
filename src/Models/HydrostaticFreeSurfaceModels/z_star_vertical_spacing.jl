@@ -13,12 +13,12 @@ import Oceananigans: prognostic_state, restore_prognostic_state!
 #####
 
 # The easy case
-barotropic_transport(free_surface::SplitExplicitFreeSurface) = 
-    (U = free_surface.filtered_state.Ũ, 
+barotropic_transport(free_surface::SplitExplicitFreeSurface) =
+    (U = free_surface.filtered_state.Ũ,
      V = free_surface.filtered_state.Ṽ)
 
 # The easy case
-barotropic_velocities(free_surface::SplitExplicitFreeSurface) = 
+barotropic_velocities(free_surface::SplitExplicitFreeSurface) =
     free_surface.barotropic_velocities
 
 # The "harder" case, barotropic velocities are computed on the fly
@@ -34,7 +34,7 @@ Copies the free surface height `η` from the model to the grid's internal storag
 then recomputes the grid stretching factors `σ` at all staggered locations.
 The previous scaling `σᶜᶜ⁻` is also updated for use in tracer evolution.
 """
-function ab2_step_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt, χ) 
+function ab2_step_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt, χ)
     launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.displacement, grid)
     parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
     return nothing
@@ -58,7 +58,7 @@ end
 
 # Update η in the grid
 @kernel function _update_zstar_scaling!(ηⁿ⁺¹, grid)
-    i, j = @index(Global, NTuple) 
+    i, j = @index(Global, NTuple)
     @inbounds grid.z.ηⁿ[i, j, 1] = ηⁿ⁺¹[i, j, grid.Nz+1]
     update_grid_scaling!(grid.z, i, j, grid)
 end
@@ -112,7 +112,7 @@ function update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSo
     else
         U, V = barotropic_transport(model.free_surface)
     end
-    
+
     u, v, _ = velocities
     ∂t_σ    = grid.z.∂t_σ
 
@@ -133,7 +133,7 @@ end
     δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, U, u)
     δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
 
-    δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, kᴺ, grid) 
+    δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, kᴺ, grid)
 
     @inbounds ∂t_σ[i, j, 1] = ifelse(hᶜᶜ == 0, zero(grid), - δh_U / hᶜᶜ)
 end

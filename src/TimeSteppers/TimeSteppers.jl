@@ -29,7 +29,6 @@ reset!(timestepper) = nothing
 implicit_step!(field, ::Nothing, args...; kwargs...) = nothing
 
 include("clock.jl")
-include("store_tendencies.jl")
 include("quasi_adams_bashforth_2.jl")
 include("runge_kutta_3.jl")
 include("split_runge_kutta.jl")
@@ -59,13 +58,13 @@ TimeStepper(::Val{:RungeKutta3}, args...; kwargs...) =
     RungeKutta3TimeStepper(args...; kwargs...)
 
 # Convenience constructors for SplitRungeKuttaTimeStepper with 2 to 5 stages
-# By calling TimeStepper(:SplitRungeKuttaN, ...) 
+# By calling TimeStepper(:SplitRungeKuttaN, ...)
 for stages in 2:5
     @eval TimeStepper(::Val{Symbol(:SplitRungeKutta, $stages)}, args...; kwargs...) =
               SplitRungeKuttaTimeStepper(args...; coefficients=tuple(collect($stages:-1:1)...), kwargs...)
 end
 
-TimeStepper(ts::SplitRungeKuttaTimeStepper, grid, prognostic_fields; kw...) = 
+TimeStepper(ts::SplitRungeKuttaTimeStepper, grid, prognostic_fields; kw...) =
     SplitRungeKuttaTimeStepper(grid, prognostic_fields; coefficients=ts.β, kw...)
 
 function first_time_step!(model::AbstractModel, Δt)
