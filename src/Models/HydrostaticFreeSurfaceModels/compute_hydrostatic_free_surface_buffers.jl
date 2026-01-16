@@ -1,6 +1,6 @@
 import Oceananigans.Models: compute_buffer_tendencies!
 
-using Oceananigans.Grids: get_active_cells_map, halo_size
+using Oceananigans.Grids: halo_size
 using Oceananigans.DistributedComputations: Distributed, DistributedGrid
 using Oceananigans.ImmersedBoundaries: CellMaps
 using Oceananigans.Models.NonhydrostaticModels: buffer_tendency_kernel_parameters,
@@ -37,18 +37,11 @@ function compute_buffer_tendency_contributions!(grid, arch, model)
 end
 
 function compute_buffer_tendency_contributions!(grid::DistributedActiveInteriorIBG, arch, model)
-    maps = grid.interior_active_cells
-
-    for name in (:west_halo_dependent_cells,
-                 :east_halo_dependent_cells,
-                 :south_halo_dependent_cells,
-                 :north_halo_dependent_cells)
-
-        active_cells_map = @inbounds maps[name]
-
-        # If the map == nothing, we don't need to compute the buffer because
-        # the buffer is not adjacent to a processor boundary
-        !isnothing(active_cells_map) && compute_hydrostatic_free_surface_tendency_contributions!(model, :xyz; active_cells_map)
+    # Loop over boundary regions: west, east, south, north
+    for region in (:west, :east, :south, :north)
+        # The region keyword will resolve to the appropriate halo-dependent cells map.
+        # If the map is nothing (no processor boundary), the kernel becomes a no-op.
+        compute_hydrostatic_free_surface_tendency_contributions!(model, :xyz; region)
     end
 
     return nothing

@@ -109,9 +109,9 @@ A `MappedFunction` is a wrapper around a function `func` of a kernel that is map
 The `index_map` is a one-dimensional `AbstractArray` where the elements are tuple of indices `(i, j, k, ....)`.
 
 A kernel launched over a `MappedFunction` **needs** to be launched with a one-dimensional **static** workgroup and worksize.
-If using `launch!` with a non-nothing `active_cells_map` keyword argument, the kernel function will be automatically wrapped
-in a `MappedFunction` with `index_map = active_cells_map` and the resulting kernel will be launched with a
-one-dimensional workgroup and worksize equal  to the length of the `active_cells_map`.
+If using `launch!` with a non-nothing `region` keyword argument (e.g., `region=:interior`), the kernel function will 
+be automatically wrapped in a `MappedFunction` with `index_map = active_cells_map` (resolved from the grid and region)
+and the resulting kernel will be launched with a one-dimensional workgroup and worksize equal to the length of the map.
 """
 struct MappedFunction{F, M} <: Function
     func :: F
@@ -227,9 +227,45 @@ end
     return  workgroup, OffsetStaticSize(range)
 end
 
+#####
+##### Resolve active cells map from workspec + region
+#####
+
+"""
+    resolve_active_cells_map(grid, workspec, region)
+
+Resolve the appropriate active cells map based on the workspec and region.
+
+The default `region=:interior` automatically uses active cells maps for immersed boundary grids:
+  - With `:xy` workspec, returns the active column map (2D)
+  - With other workspecs (`:xyz`, `:xz`, `:yz`), returns the 3D active cells map
+  - For non-immersed grids, returns `nothing` (falls back to full grid iteration)
+
+When `region=nothing`, returns `nothing` (explicit full grid iteration).
+When `region` is `:west`, `:east`, `:south`, or `:north`, returns the corresponding
+halo-dependent cells map (for distributed computing).
+"""
+@inline resolve_active_cells_map(grid, workspec, ::Nothing) = nothing
+
+@inline function resolve_active_cells_map(grid, workspec::Symbol, region::Symbol)
+    if region === :interior
+        if workspec === :xy
+            return Oceananigans.Grids.active_column_map(grid)  # 2D columns
+        else
+            return Oceananigans.Grids.active_cells_map(grid, Val(:interior))  # 3D cells
+        end
+    else
+        # :west, :east, :south, :north for distributed buffer computation
+        return Oceananigans.Grids.active_cells_map(grid, Val(region))
+    end
+end
+
+# Fallback for non-symbol workspecs (e.g., KernelParameters, tuples)
+@inline resolve_active_cells_map(grid, workspec, region::Symbol) =
+    Oceananigans.Grids.active_cells_map(grid, Val(region))
+
 """
     configure_kernel(arch, grid, workspec, kernel!;
-                     active_cells_map = nothing,
                      exclude_periphery = false;
                      reduced_dimensions = (),
                      location = nothing)
@@ -250,12 +286,20 @@ Keyword Arguments
 
 - `reduced_dimensions`: A tuple specifying the dimensions to be reduced in the work distribution. Default is an empty tuple.
 - `location`: The location of the kernel execution, needed for `include_right_boundaries`. Default is `nothing`.
-- `active_cells_map`: A map indicating the active cells in the grid. If the map is not a nothing, the workspec will be disregarded and
-                      the kernel is configured as a linear kernel with a worksize equal to the length of the active cell map. Default is `nothing`.
 - `exclude_periphery`: A boolean indicating whether to exclude the periphery, used only for interior kernels.
 """
 @inline function configure_kernel(arch, grid, workspec, kernel!;
-                                  active_cells_map = nothing,
+                                  exclude_periphery = false,
+                                  reduced_dimensions = (),
+                                  location = nothing)
+
+    # Fallback with no active_cells_map
+    return configure_kernel(arch, grid, workspec, kernel!, nothing, exclude_periphery;
+                            reduced_dimensions,
+                            location)
+end
+
+@inline function configure_kernel(arch, grid, workspec, kernel!, active_cells_map;
                                   exclude_periphery = false,
                                   reduced_dimensions = (),
                                   location = nothing)
@@ -327,8 +371,18 @@ Launches `kernel!` with arguments `kernel_args`
 over the `dims` of `grid` on the architecture `arch`.
 Kernels run on the default stream.
 
-See [configure_kernel](@ref) for more information and also a list of the
-keyword arguments `kw`.
+Keyword Arguments
+=================
+
+- `region`: Specifies the region of active cells to compute. Default is `:interior`.
+  - `:interior`: Use the active cells map if available (3D for `:xyz`, 2D columns for `:xy`).
+                 For non-immersed grids, falls back to full grid iteration.
+  - `:west`, `:east`, `:south`, `:north`: Use halo-dependent cells (distributed computing)
+  - `nothing`: Explicitly disable active cells map (full grid iteration)
+- `exclude_periphery`: Whether to exclude peripheral nodes. Default is `false`.
+- `reduced_dimensions`: Dimensions to reduce in work distribution. Default is `()`.
+
+See [configure_kernel](@ref) for more information.
 """
 @inline launch!(args...; kwargs...) = _launch!(args...; kwargs...)
 
@@ -356,9 +410,12 @@ end
 @inline function _launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...;
                           exclude_periphery = false,
                           reduced_dimensions = (),
-                          active_cells_map = nothing)
+                          region = nothing)
 
     location = Oceananigans.location(first_kernel_arg)
+
+    # Resolve the active cells map from workspec + region
+    active_cells_map = resolve_active_cells_map(grid, workspec, region)
 
     loop!, worksize = configure_kernel(arch, grid, workspec, kernel!, active_cells_map, Val(exclude_periphery);
                                        location,
