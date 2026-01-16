@@ -91,4 +91,3 @@ for (label, error) in zip(labels, errorses)
     test_rate_of_convergence(L₁[p], Nx[p], expected=-2.0, atol=0.05, name=name * " L₁")
     test_rate_of_convergence(L∞[p], Nx[p], expected=-2.0, atol=0.10, name=name * " L∞")
 end
-

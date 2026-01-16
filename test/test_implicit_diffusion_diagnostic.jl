@@ -22,8 +22,8 @@ function compute_tracer_dissipation!(sim)
     Δtc² = sim.model.auxiliary_fields.Δtc²
     Δtd² = sim.model.auxiliary_fields.Δtd²
     grid = sim.model.grid
-    Oceananigans.Utils.launch!(architecture(grid), grid, :xyz, 
-                               _compute_dissipation!, 
+    Oceananigans.Utils.launch!(architecture(grid), grid, :xyz,
+                               _compute_dissipation!,
                                Δtc², c⁻, c, Δtd², d⁻, d, grid, sim.Δt)
 
     return nothing
@@ -60,11 +60,11 @@ function test_implicit_diffusion_diagnostic(arch, dim, timestepper, schedule)
     Δtc² = CenterField(grid)
     Δtd² = CenterField(grid)
 
-    model = HydrostaticFreeSurfaceModel(grid; 
-                                        timestepper, 
-                                        velocities, 
-                                        tracer_advection, 
-                                        closure, 
+    model = HydrostaticFreeSurfaceModel(grid;
+                                        timestepper,
+                                        velocities,
+                                        tracer_advection,
+                                        closure,
                                         tracers=(:c, :d),
                                         auxiliary_fields=(; Δtc², c⁻, Δtd², d⁻))
 
@@ -91,9 +91,9 @@ function test_implicit_diffusion_diagnostic(arch, dim, timestepper, schedule)
     fd = flatten_dissipation_fields(ϵd)
 
     outputs = merge(model.tracers, model.auxiliary_fields, fd, fc)
-    
+
     # Add both callbacks to the simulation with a schedule
-    add_callback!(sim, ϵc, schedule)    
+    add_callback!(sim, ϵc, schedule)
     add_callback!(sim, ϵd, schedule)
 
     sim.output_writers[:solution] = JLD2Writer(model, outputs;
@@ -106,11 +106,11 @@ function test_implicit_diffusion_diagnostic(arch, dim, timestepper, schedule)
 
     run!(sim)
 
-    Δtc² = FieldTimeSeries("one_d_simulation_$(dim).jld2", "Δtc²") 
+    Δtc² = FieldTimeSeries("one_d_simulation_$(dim).jld2", "Δtc²")
     Ac   = get_advection_dissipation(Val(dim), :c)
     Dc   = get_diffusion_dissipation(Val(dim), :c)
 
-    Δtd² = FieldTimeSeries("one_d_simulation_$(dim).jld2", "Δtd²") 
+    Δtd² = FieldTimeSeries("one_d_simulation_$(dim).jld2", "Δtd²")
     Ad   = get_advection_dissipation(Val(dim), :d)
     Dd   = get_diffusion_dissipation(Val(dim), :d)
 
@@ -118,11 +118,11 @@ function test_implicit_diffusion_diagnostic(arch, dim, timestepper, schedule)
 
     ∫closs = [sum(interior(Δtc²[i]))  for i in 1:Nt]
     ∫Ac    = [sum(interior(Ac[i]))    for i in 1:Nt]
-    ∫Dc    = [sum(interior(Dc[i]))    for i in 1:Nt] 
+    ∫Dc    = [sum(interior(Dc[i]))    for i in 1:Nt]
 
     ∫dloss = [sum(interior(Δtd²[i]))  for i in 1:Nt]
     ∫Ad    = [sum(interior(Ad[i]))    for i in 1:Nt]
-    ∫Dd    = [sum(interior(Dd[i]))    for i in 1:Nt] 
+    ∫Dd    = [sum(interior(Dd[i]))    for i in 1:Nt]
 
     for i in 3:Nt-1
         @test abs(∫closs[i] - ∫Ac[i] - ∫Dc[i]) < 2e-13 # Arbitrary tolerance, not exactly machine precision

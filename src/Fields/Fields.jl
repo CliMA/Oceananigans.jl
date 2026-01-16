@@ -57,7 +57,7 @@ Build a field from array `a` at `loc` and on `grid`.
 end
 
 # Build a field off of the current data
-@inline function field(loc, a::OffsetArray, grid) 
+@inline function field(loc, a::OffsetArray, grid)
     loc = instantiate(loc)
     a = on_architecture(architecture(grid), a)
     return Field(loc, grid; data=a)

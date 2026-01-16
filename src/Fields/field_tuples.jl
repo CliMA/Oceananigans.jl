@@ -131,7 +131,7 @@ function VelocityFields(grid::AbstractGrid, user_bcs = NamedTuple())
     u = XFaceField(grid, boundary_conditions=bcs.u)
     v = YFaceField(grid, boundary_conditions=bcs.v)
     w = ZFaceField(grid, boundary_conditions=bcs.w)
-    
+
     return (u=u, v=v, w=w)
 end
 

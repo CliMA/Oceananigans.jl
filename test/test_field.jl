@@ -500,7 +500,7 @@ end
             number_data = FT(1)
             f = field((Center, Center, Center), number_data, grid)
             @test f.constant == 1
-            
+
             function_data = (x, y, z) -> 1
             f = field((Center, Center, Center), function_data, grid)
             @test @allowscalar all(isone, interior(f))

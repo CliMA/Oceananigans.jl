@@ -27,7 +27,7 @@ end
 function instantiate_location_expression(exp::Expr)
     new_exp = deepcopy(exp)
     for (i, arg) in enumerate(new_exp.args)
-        new_exp.args[i] = instantiate_location_expression(arg) 
+        new_exp.args[i] = instantiate_location_expression(arg)
     end
     return new_exp
 end

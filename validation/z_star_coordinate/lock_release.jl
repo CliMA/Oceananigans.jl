@@ -112,7 +112,7 @@ simulation.output_writers[:other_variables] = JLD2Writer(model, field_outputs,
                                                          filename = "zstar_model")
 
 run!(simulation)
- 
+
 b = model.tracers.b
 x, y, z = nodes(b)
 

@@ -8,4 +8,3 @@ import Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: update_pre
 update_previous_compute_time!(diffusivities, model::ReactantModel) = model.clock.last_Δt
 
 end # module TurbulenceClosures
-
