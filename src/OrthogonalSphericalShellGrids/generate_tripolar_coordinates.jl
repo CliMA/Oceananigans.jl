@@ -67,15 +67,13 @@ Murray, R. J. (1996). Explicit generation of orthogonal grids for ocean models.
     φ2Ds = (φFA, φCA)
     λ1Ds = (λF , λC )
     φ1Ds = (φA , φA )
-    iscenters = (false, true)
+    isxfaces = (true, false)
 
-    for (λ2D, φ2D, λ1D, φ1D, iscenter) in zip(λ2Ds, φ2Ds, λ1Ds, φ1Ds, iscenters)
+    for (λ2D, φ2D, λ1D, φ1D, isxface) in zip(λ2Ds, φ2Ds, λ1Ds, φ1Ds, isxfaces)
         # We chose the formulae below for λ ∈ (-180, 180) and φ ∈ (-90, 90)
         # so that the grid of (x,y) never crosses the negative x-axis,
         # overwhich atan is discontinuous, which we want to avoid.
         ψ = asinh(tand((90 - max(φ1D[j], -90)) / 2) / focal_distance)
-        ψval = abs(ψ)
-        ψsign = Base.sign(ψ)
         x = focal_distance * cosd(λ1D[i]) * cosh(ψ)
         y = focal_distance * sind(λ1D[i]) * sinh(ψ)
         R = sqrt(x^2 + y^2)
@@ -85,8 +83,11 @@ Murray, R. J. (1996). Explicit generation of orthogonal grids for ocean models.
         # But we fill the halos east and west ourselves here instead of periodicity.
         # That is, we continue the longitudes in the East and West halos.
         λ2D[i, j] -= ifelse(i < 1 && j ≤ Ny, 360, 0)
-        # For the East halo, we need to "specialise" on center/face x-location.
-        λ2D[i, j] += ifelse(i > Nx + 1 && j ≤ Ny, 360, 0)
+        λ2D[i, j] += ifelse(i < 1 && j > Ny, 360, 0)
+        # For the East halo, we need to "specialise" on center/face x-location
+        # as we only continue for cells beyond the (face-located) antimeridian at +180.
+        λ2D[i, j] += ifelse(i > Nx + isxface && j ≤ Ny, 360, 0)
+        λ2D[i, j] -= ifelse(i > Nx + isxface && j > Ny, 360, 0)
         # In case we are on the true North Pole (x == y == 0)
         # we impose λ from λ1D as this is along a symmetry meridian (constant λ along j)
         λ2D[i, j] = ifelse(x == y == 0, λ1D[i], λ2D[i, j])

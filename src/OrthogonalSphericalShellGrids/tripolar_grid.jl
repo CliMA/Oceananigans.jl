@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: UPivotZipperBoundaryCondition, FPivotZipperBoundaryCondition
+using Oceananigans.BoundaryConditions: UPivotZipperBoundaryCondition, FPivotZipperBoundaryCondition, NoFluxBoundaryCondition
 using Oceananigans.Fields: set!
 using Oceananigans.Grids: Grids, Bounded, Flat, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid,
     architecture, cpu_face_constructor_z, validate_dimension_specification,
@@ -177,23 +177,25 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     # Allocate Metrics
     # TODO: make these on_architecture(arch, zeros(Nx, Ny))
     # to build the grid on GPU
-    Δxᶜᶜᵃ = zeros(Nx, Ny)
-    Δxᶠᶜᵃ = zeros(Nx, Ny)
-    Δxᶜᶠᵃ = zeros(Nx, Ny)
-    Δxᶠᶠᵃ = zeros(Nx, Ny)
+    # We build these up to Ny + 1 in case the topology is RightFaceFolded
+    Δxᶜᶜᵃ = zeros(Nx, Ny + 1)
+    Δxᶠᶜᵃ = zeros(Nx, Ny + 1)
+    Δxᶜᶠᵃ = zeros(Nx, Ny + 1)
+    Δxᶠᶠᵃ = zeros(Nx, Ny + 1)
 
-    Δyᶜᶜᵃ = zeros(Nx, Ny)
-    Δyᶠᶜᵃ = zeros(Nx, Ny)
-    Δyᶜᶠᵃ = zeros(Nx, Ny)
-    Δyᶠᶠᵃ = zeros(Nx, Ny)
+    Δyᶜᶜᵃ = zeros(Nx, Ny + 1)
+    Δyᶠᶜᵃ = zeros(Nx, Ny + 1)
+    Δyᶜᶠᵃ = zeros(Nx, Ny + 1)
+    Δyᶠᶠᵃ = zeros(Nx, Ny + 1)
 
-    Azᶜᶜᵃ = zeros(Nx, Ny)
-    Azᶠᶜᵃ = zeros(Nx, Ny)
-    Azᶜᶠᵃ = zeros(Nx, Ny)
-    Azᶠᶠᵃ = zeros(Nx, Ny)
+    Azᶜᶜᵃ = zeros(Nx, Ny + 1)
+    Azᶠᶜᵃ = zeros(Nx, Ny + 1)
+    Azᶜᶠᵃ = zeros(Nx, Ny + 1)
+    Azᶠᶠᵃ = zeros(Nx, Ny + 1)
 
     # Calculate metrics
-    loop! = _calculate_metrics!(device(CPU()), (16, 16), (Nx, Ny))
+    # TODO: rewrite this kernel and split the call to match the indices exactly.
+    loop! = _calculate_metrics!(device(CPU()), (16, 16), (Nx, Ny + 1))
 
     loop!(Δxᶠᶜᵃ, Δxᶜᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
           Δyᶠᶜᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
@@ -202,17 +204,33 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
           φᶠᶜᵃ, φᶜᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ,
           radius)
 
+    # Boundary conditions to fill halos of the metric terms
+    # We define them manually because the helper RectilinearGrid
+    # does not know how to fold the north boundary...
+    boundary_conditions = FieldBoundaryConditions(north  = north_fold_boundary_condition(fold_topology)(),
+                                                  south  = NoFluxBoundaryCondition(), # The south should be `continued`
+                                                  west   = Oceananigans.PeriodicBoundaryCondition(),
+                                                  east   = Oceananigans.PeriodicBoundaryCondition(),
+                                                  top    = nothing,
+                                                  bottom = nothing)
+
     # Metrics fields to fill halos
-    FF = Field{Face,   Face,   Center}(grid)
-    FC = Field{Face,   Center, Center}(grid)
-    CF = Field{Center, Face,   Center}(grid)
-    CC = Field{Center, Center, Center}(grid)
+    FF = Field{Face,   Face,   Center}(grid; boundary_conditions)
+    FC = Field{Face,   Center, Center}(grid; boundary_conditions)
+    CF = Field{Center, Face,   Center}(grid; boundary_conditions)
+    CC = Field{Center, Center, Center}(grid; boundary_conditions)
+
+    # Sizes of the metric fields
+    NxCC, NyCC = Base.size(CC)
+    NxFC, NyFC = Base.size(FC)
+    NxCF, NyCF = Base.size(CF)
+    NxFF, NyFF = Base.size(FF)
 
     # Fill all periodic halos
-    set!(FF, Δxᶠᶠᵃ)
-    set!(CF, Δxᶜᶠᵃ)
-    set!(FC, Δxᶠᶜᵃ)
-    set!(CC, Δxᶜᶜᵃ)
+    set!(FF, view(Δxᶠᶠᵃ, 1:NxFF, 1:NyFF))
+    set!(CF, view(Δxᶜᶠᵃ, 1:NxCF, 1:NyCF))
+    set!(FC, view(Δxᶠᶜᵃ, 1:NxFC, 1:NyFC))
+    set!(CC, view(Δxᶜᶜᵃ, 1:NxCC, 1:NyCC))
     fill_halo_regions!(FF)
     fill_halo_regions!(CF)
     fill_halo_regions!(FC)
@@ -222,10 +240,10 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     Δxᶠᶜᵃ = deepcopy(dropdims(FC.data, dims=3))
     Δxᶜᶜᵃ = deepcopy(dropdims(CC.data, dims=3))
 
-    set!(FF, Δyᶠᶠᵃ)
-    set!(CF, Δyᶜᶠᵃ)
-    set!(FC, Δyᶠᶜᵃ)
-    set!(CC, Δyᶜᶜᵃ)
+    set!(FF, view(Δyᶠᶠᵃ, 1:NxFF, 1:NyFF))
+    set!(CF, view(Δyᶜᶠᵃ, 1:NxCF, 1:NyCF))
+    set!(FC, view(Δyᶠᶜᵃ, 1:NxFC, 1:NyFC))
+    set!(CC, view(Δyᶜᶜᵃ, 1:NxCC, 1:NyCC))
     fill_halo_regions!(FF)
     fill_halo_regions!(CF)
     fill_halo_regions!(FC)
@@ -235,10 +253,10 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     Δyᶠᶜᵃ = deepcopy(dropdims(FC.data, dims=3))
     Δyᶜᶜᵃ = deepcopy(dropdims(CC.data, dims=3))
 
-    set!(FF, Azᶠᶠᵃ)
-    set!(CF, Azᶜᶠᵃ)
-    set!(FC, Azᶠᶜᵃ)
-    set!(CC, Azᶜᶜᵃ)
+    set!(FF, view(Azᶠᶠᵃ, 1:NxFF, 1:NyFF))
+    set!(CF, view(Azᶜᶠᵃ, 1:NxCF, 1:NyCF))
+    set!(FC, view(Azᶠᶜᵃ, 1:NxFC, 1:NyFC))
+    set!(CC, view(Azᶜᶜᵃ, 1:NxCC, 1:NyCC))
     fill_halo_regions!(FF)
     fill_halo_regions!(CF)
     fill_halo_regions!(FC)

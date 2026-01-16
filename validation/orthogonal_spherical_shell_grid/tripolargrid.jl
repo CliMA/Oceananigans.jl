@@ -77,16 +77,65 @@ function plot_grid!(ax, grid; plothalo = false)
     return
 end
 
+"""Determine Location from 3 characters at the end?"""
+function celllocation(char::Char)
+    return char == 'ᶜ' ? Center :
+        char == 'ᶠ' ? Face :
+        char == 'ᵃ' ? Center :
+        throw(ArgumentError("Unknown cell location character: $char"))
+end
+function celllocation(str::String)
+    N = ncodeunits(str)
+    iz = prevind(str, N)
+    z = celllocation(str[iz])
+    iy = prevind(str, iz)
+    y = celllocation(str[iy])
+    ix = prevind(str, iy)
+    x = celllocation(str[ix])
+    return (x, y, z)
+end
+celllocation(sym::Symbol) = celllocation(String(sym))
+
+"""
+    plot_metric(grid, metric_symbol; prefix = "")
+
+Plots a heatmap of the gien metric and saves it to a PNG file.
+Adds a polygon representing the interior points.
+"""
+function plot_metric(grid, metric_symbol; prefix = "")
+    xdata = getproperty(grid, metric_symbol)
+    (Hx, Hy) = .-xdata.offsets
+    (Nx, Ny) = Base.size(xdata) .- 2 .* (Hx, Hy)
+    fig = Figure()
+    ax = Axis(fig[1, 1];
+        xlabel = "i",
+        ylabel = "j",
+        aspect = DataAspect(),
+        xticks = [1 - Hx, 1, Nx, Nx + Hx],
+        yticks = [1 - Hy, 1, Ny, Ny + Hy],
+    )
+    extraopt = (; nan_color = :gray)
+    hm = heatmap!(ax, (1 - Hx):(Nx + Hx), (1 - Hy):(Ny + Hy), xdata[:, :].parent; extraopt...)
+    pl = poly!(ax, [0.5, Nx + 0.5, Nx + 0.5, 0.5, 0.5], [0.5, 0.5, Ny + 0.5, Ny + 0.5, 0.5];
+        color = (:red, 0.0),
+        strokewidth = 2,
+        linestyle = :solid,
+        strokecolor = :red
+    )
+    ax.title = "$(prefix) $metric_symbol"
+    Colorbar(fig[2, 1], hm; vertical = false, tellwidth = false)
+    save("$(prefix)_$(metric_symbol).png", fig)
+    return fig
+end
+
+
 fig = Figure(size = (1600, 800))
 
-# Nx, Ny, Nz = 10, 8, 1
 Nx, Ny, Nz = 20, 15, 1
 halo = (2, 2, 2)
 southernmost_latitude = -80
 first_pole_longitude = 70
 north_poles_latitude = 55
-
-
 
 gridopt = (;
     size = (Nx, Ny, Nz),
@@ -105,6 +154,12 @@ ylabelopt = (tellwidth = false, fontsize = 24)
 
 fold_topologies = (RightCenterFolded, RightFaceFolded)
 Nxs = (Nx, Nx + 2)
+metrics = (
+    :λᶜᶜᵃ, :φᶜᶜᵃ, :Δxᶜᶜᵃ, :Δyᶜᶜᵃ, :Azᶜᶜᵃ,
+    :λᶜᶠᵃ, :φᶜᶠᵃ, :Δxᶜᶠᵃ, :Δyᶜᶠᵃ, :Azᶜᶠᵃ,
+    :λᶠᶜᵃ, :φᶠᶜᵃ, :Δxᶠᶜᵃ, :Δyᶠᶜᵃ, :Azᶠᶜᵃ,
+    :λᶠᶠᵃ, :φᶠᶠᵃ, :Δxᶠᶠᵃ, :Δyᶠᶠᵃ, :Azᶠᶠᵃ,
+)
 
 for (irow, fold_topology) in enumerate(fold_topologies)
     for (icol, Nx′) in enumerate(Nxs)
@@ -112,8 +167,15 @@ for (irow, fold_topology) in enumerate(fold_topologies)
         ax = Axis(fig[irow, icol]; axopt...)
         plot_grid!(ax, grid; plothalo = false)
         Label(fig[0, icol]; text = "Nx = $(Nx′)", ylabelopt...)
+
+        # Also plot all the metrics in separate figures
+        for (imetric, metric) in enumerate(metrics)
+            local fig = Figure()
+            plot_metric(grid, metric; prefix = "$(fold_topology)_Nx$(Nx)")
+        end
+
     end
     Label(fig[irow, 0]; text = "$fold_topology", xlabelopt...)
 end
 
-fig
+save("tripolar_grids.png", fig)
