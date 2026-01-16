@@ -68,7 +68,7 @@ end
         return r² ≤ 1 ? -Lz * (1 - r²) : 1
     end
 
-    grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(depth); active_cells_map=false)
+    grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(depth); active_cells_map=true)
 
     @test eltype(grid) == Float32
 
@@ -84,7 +84,7 @@ end
                                         buoyancy=SeawaterBuoyancy(),
                                         momentum_advection=WENO(),
                                         tracer_advection=WENO(),
-                                        free_surface=SplitExplicitFreeSurface(grid; substeps=30), # default does not work on MetalGPU
+                                        free_surface=SplitExplicitFreeSurface(grid; substeps=30), # default works on MetalGPU as well
                                         closure=ConvectiveAdjustmentVerticalDiffusivity(convective_κz=1, background_κz=1e-3),
                                         boundary_conditions=(u=u_bcs, T=T_bcs))
 
@@ -92,11 +92,11 @@ end
         @test parent(field) isa MtlArray
     end
 
-    simulation = Simulation(model, Δt=1, stop_iteration=1)
+    simulation = Simulation(model, Δt=1, stop_iteration=10)
     run!(simulation)
 
-    @test iteration(simulation) == 1
-    @test time(simulation) == 1seconds
+    @test iteration(simulation) == 10
+    @test time(simulation) == 10seconds
 end
 
 @testset "MetalGPU: test for reductions" begin
