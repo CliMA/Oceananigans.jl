@@ -102,16 +102,20 @@ end
 Convert spectral Runge-Kutta coefficients `c` to low-storage coefficients `β` for use
 with `SplitRungeKuttaTimeStepper`.
 
-This conversion is useful for designing schemes that minimize dispersion and dissipation errors.
-See Hu et al., "Low-Dissipation and Low-Dispersion Runge–Kutta Schemes for Computational Acoustics", 1996.
+This conversion is useful for designing schemes that minimize dispersion and dissipation
+errors; see [Hu19996lowdissipation](@citet).
 
-Arguments
-=========
+# Arguments
+
 - `c`: Vector of spectral coefficients of length `N`.
 
-Returns
-=======
+# Returns
+
 A tuple of low-storage coefficients `(β₁, β₂, ..., βₙ)` where `βᵢ = cₙ₋ᵢ / cₙ₋ᵢ₊₁` for `i < N` and `βₙ = 1`.
+
+# References
+* Hu, F. Q., Hussaini, M. Y., & Manthey, J. L. (1996). Low-dissipation and low-dispersion Runge–Kutta
+    schemes for computational acoustics. Journal of computational physics, 124(1), 177-191.
 """
 function spectral_coefficients(c::AbstractVector)
     N = length(c)
