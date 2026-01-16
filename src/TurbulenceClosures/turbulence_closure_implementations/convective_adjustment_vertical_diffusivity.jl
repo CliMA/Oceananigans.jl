@@ -69,7 +69,7 @@ function ConvectiveAdjustmentVerticalDiffusivity(time_discretization=VerticallyI
     convective_νz = convert(FT, convective_νz)
     background_κz = convert(FT, background_κz)
     background_νz = convert(FT, background_νz)
-    
+
     return ConvectiveAdjustmentVerticalDiffusivity{typeof(time_discretization)}(convective_κz, convective_νz,
                                                                                 background_κz, background_νz)
 end

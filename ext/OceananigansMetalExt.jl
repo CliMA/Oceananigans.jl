@@ -12,7 +12,7 @@ import Oceananigans.Architectures:
     convert_to_device,
     on_architecture
 
-import Oceananigans.Fields as FD    
+import Oceananigans.Fields as FD
 
 const MetalGPU = GPU{<:Metal.MetalBackend}
 MetalGPU() = GPU(Metal.MetalBackend())
