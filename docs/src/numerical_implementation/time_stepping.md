@@ -22,7 +22,7 @@ The `QuasiAdamsBashforth2TimeStepper` approximates the time integral of tendenci
         - \left ( \tfrac{1}{2} + \chi \right ) G^{n-1} \right ] \, ,
     \end{equation}
 ```
-where ``\chi`` is a parameter. [Ascher et a. (1995)](@cite Ascher95) suggest that ``\chi = \tfrac{1}{8}`` is optimal.
+where ``\chi`` is a parameter. [Ascher95](@citet) suggest that ``\chi = \tfrac{1}{8}`` is optimal.
 With the additional ``\chi`` parameter, the scheme is formally first-order accurate but offers improved
 stability properties. The default ``\chi = 0.1`` provides a reasonable balance between accuracy and stability;
 ``\chi = 0`` recovers the standard second-order Adams-Bashforth method.
@@ -34,7 +34,7 @@ Euler (``\chi = -1/2``) since no previous tendencies exist.
 ### Runge-Kutta third order
 
 The `RungeKutta3TimeStepper` implements a low-storage, third-order Runge-Kutta scheme following
-[Le and Moin (1991)](@cite LeMoin1991). The scheme advances the state through three substeps per time step:
+[LeMoin1991](@citet). The scheme advances the state through three substeps per time step:
 ```math
 U^{m+1} = U^m + \Delta t \left( \gamma^m G^m + \zeta^m G^{m-1} \right)
 ```
@@ -46,8 +46,8 @@ stability for problems with oscillatory dynamics.
 
 ### Split Runge-Kutta
 
-The `SplitRungeKuttaTimeStepper` implements a runge-kutta scheme suitable for split-explicit computations, that follows the implementation
-detailed in [Wicker and Skamarock (2002)](@cite WickerSkamarock2002). At the beginning of each time step the
+The `SplitRungeKuttaTimeStepper` implements a Runge-Kutta scheme suitable for split-explicit computations, that follows the implementation
+detailed by [WickerSkamarock2002](@citet). At the beginning of each time step the
 prognostic fields are cached, and subsequent substeps compute:
 ```math
 U^{m+1} = U^0 + \frac{\Delta t}{\beta^m} G^m
