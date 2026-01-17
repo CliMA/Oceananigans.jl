@@ -20,7 +20,7 @@ using Test: @testset, @test, detect_ambiguities
         # Oceananigans.BoundaryConditions,
         Oceananigans.BuoyancyFormulations,
         Oceananigans.Coriolis,
-        # Oceananigans.Diagnostics,
+        Oceananigans.Diagnostics,
         # Oceananigans.DistributedComputations,
         # Oceananigans.Fields,
         Oceananigans.Forcings,
