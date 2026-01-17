@@ -56,6 +56,121 @@ where ``U^0`` is the cached initial state and ``\beta`` are stage coefficients. 
 scheme uses ``\beta = (3, 2, 1)``. This time stepper is used by `HydrostaticFreeSurfaceModel` for
 split-explicit treatment of the barotropic and baroclinic modes.
 
+## Usage
+
+### NonhydrostaticModel
+
+The `NonhydrostaticModel` supports two time steppers: `:QuasiAdamsBashforth2` and `:RungeKutta3` (default).
+
+```jldoctest
+using Oceananigans
+
+grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+
+# Use QuasiAdamsBashforth2 time stepper
+model_ab2 = NonhydrostaticModel(grid; timestepper=:QuasiAdamsBashforth2)
+typeof(model_ab2.timestepper)
+
+# output
+QuasiAdamsBashforth2TimeStepper
+```
+
+```jldoctest
+using Oceananigans
+
+grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+
+# Use RungeKutta3 time stepper (default)
+model_rk3 = NonhydrostaticModel(grid; timestepper=:RungeKutta3)
+typeof(model_rk3.timestepper)
+
+# output
+RungeKutta3TimeStepper
+```
+
+### ShallowWaterModel
+
+The `ShallowWaterModel` supports two time steppers: `:QuasiAdamsBashforth2` and `:RungeKutta3` (default).
+
+```jldoctest
+using Oceananigans
+
+grid = RectilinearGrid(size=(4, 4), extent=(1, 1), topology=(Periodic, Periodic, Flat))
+
+# Use QuasiAdamsBashforth2 time stepper
+model_ab2 = ShallowWaterModel(grid; gravitational_acceleration=9.81, timestepper=:QuasiAdamsBashforth2)
+typeof(model_ab2.timestepper)
+
+# output
+QuasiAdamsBashforth2TimeStepper
+```
+
+```jldoctest
+using Oceananigans
+
+grid = RectilinearGrid(size=(4, 4), extent=(1, 1), topology=(Periodic, Periodic, Flat))
+
+# RungeKutta3 is the default, so timestepper can be omitted
+model_default = ShallowWaterModel(grid; gravitational_acceleration=9.81)
+typeof(model_default.timestepper)
+
+# output
+RungeKutta3TimeStepper
+```
+
+### HydrostaticFreeSurfaceModel
+
+The `HydrostaticFreeSurfaceModel` supports `:QuasiAdamsBashforth2` (default) and `SplitRungeKuttaTimeStepper` variants.
+
+```jldoctest
+using Oceananigans
+
+grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+
+# Use QuasiAdamsBashforth2 time stepper (default)
+model_ab2 = HydrostaticFreeSurfaceModel(grid; timestepper=:QuasiAdamsBashforth2)
+typeof(model_ab2.timestepper)
+
+# output
+QuasiAdamsBashforth2TimeStepper
+```
+
+The `HydrostaticFreeSurfaceModel` also supports split Runge-Kutta time steppers with 2 to 5 stages using convenience constructors:
+
+```jldoctest
+using Oceananigans
+
+grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+
+# Construct model with convenience split Runge-Kutta constructor
+model_srk2 = HydrostaticFreeSurfaceModel(grid; timestepper=:SplitRungeKutta2)
+model_srk3 = HydrostaticFreeSurfaceModel(grid; timestepper=:SplitRungeKutta3)
+model_srk4 = HydrostaticFreeSurfaceModel(grid; timestepper=:SplitRungeKutta4)
+model_srk5 = HydrostaticFreeSurfaceModel(grid; timestepper=:SplitRungeKutta5)
+
+model_srk3.timestepper.Nstages
+
+# output
+3
+```
+
+For custom coefficients, you can construct a `SplitRungeKuttaTimeStepper` directly:
+
+```jldoctest
+using Oceananigans
+using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper
+
+grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+
+# Create a custom split Runge-Kutta time stepper with specific coefficients
+timestepper = SplitRungeKuttaTimeStepper(coefficients=(4, 3, 2, 1))
+model_custom = HydrostaticFreeSurfaceModel(grid; timestepper)
+model_custom.timestepper.β
+
+# output
+(4, 3, 2, 1)
+```
+
 ## Extending time steppers for custom models
 
 To use the existing time steppers with a new model type, implement the following methods.
