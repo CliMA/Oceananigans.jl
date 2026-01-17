@@ -1722,10 +1722,12 @@ for arch in archs
         end
     end
 
-for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
-        @testset "SplitExplicitFreeSurface checkpointing [$(typeof(arch)), $timestepper, $ForwardBackwardScheme]" begin
+    for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+        free_surface_timestepper = ForwardBackwardScheme()
+        fs_ts_name = nameof(typeof(free_surface_timestepper))
+        @testset "SplitExplicitFreeSurface checkpointing [$(typeof(arch)), $timestepper, $fs_ts_name]" begin
             @info "  Testing SplitExplicitFreeSurface checkpointing [$(typeof(arch)), $timestepper, $ForwardBackwardScheme]..."
-            test_checkpointing_split_explicit_free_surface(arch, ForwardBackwardScheme(), free_surface_timestepper)
+            test_checkpointing_split_explicit_free_surface(arch, timestepper, free_surface_timestepper)
         end
     end
 
