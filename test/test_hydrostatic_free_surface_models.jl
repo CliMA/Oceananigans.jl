@@ -3,7 +3,7 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, ImplicitFreeSurface
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid
-using Oceananigans.Advection: EnergyConserving, EnstrophyConserving, FluxFormAdvection
+using Oceananigans.Advection: EnergyConserving, EnstrophyConserving, FluxFormAdvection, CrossAndSelfUpwinding
 using Oceananigans.TurbulenceClosures
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 
@@ -273,14 +273,23 @@ topos_3d = ((Periodic, Periodic, Bounded),
             end
         end
 
-        for momentum_advection in (VectorInvariant(), WENOVectorInvariant(), Centered(), WENO())
+        momentum_advections = (
+            Centered(), 
+            WENO(), 
+            VectorInvariant(), 
+            WENOVectorInvariant(), 
+            WENOVectorInvariant(; upwinding = CrossAndSelfUpwinding(cross_scheme = WENO()))
+            WENOVectorInvariant(; multi_dimensional_stencil = true)
+        )
+
+        for momentum_advection in momentum_advections
             @testset "Time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(momentum_advection))]" begin
                 @info "  Testing time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(momentum_advection))]..."
                 @test time_step_hydrostatic_model_works(rectilinear_grid; momentum_advection)
             end
         end
 
-        for momentum_advection in (VectorInvariant(), WENOVectorInvariant())
+        for momentum_advection in momentum_advections
             @testset "Time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(momentum_advection))]" begin
                 @info "  Testing time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(momentum_advection))]..."
                 @test time_step_hydrostatic_model_works(lat_lon_sector_grid; momentum_advection)
