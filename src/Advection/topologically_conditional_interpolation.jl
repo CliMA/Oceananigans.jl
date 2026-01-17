@@ -123,11 +123,11 @@ for bias in (:symmetric, :biased)
 end
 
 @inline _multi_dimensional_reconstruction_x(i, j, k, grid::AGX, scheme, interp, args...) =
-                    ifelse(outside_symmetric_bufferᶜ(i, topology(grid, 1), grid.Nx, scheme),
+                    ifelse(outside_symmetric_haloᶜ(i, topology(grid, 1), grid.Nx, scheme),
                            multi_dimensional_reconstruction_x(i, j, k, grid, scheme, interp, args...),
                            interp(i, j, k, grid, scheme, args...))
 
 @inline _multi_dimensional_reconstruction_y(i, j, k, grid::AGY, scheme, interp, args...) =
-                    ifelse(outside_symmetric_bufferᶜ(j, topology(grid, 2), grid.Ny, scheme),
+                    ifelse(outside_symmetric_haloᶜ(j, topology(grid, 2), grid.Ny, scheme),
                             multi_dimensional_reconstruction_y(i, j, k, grid, scheme, interp, args...),
                             interp(i, j, k, grid, scheme, args...))
