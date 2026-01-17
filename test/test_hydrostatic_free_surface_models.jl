@@ -278,7 +278,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             WENO(),
             VectorInvariant(),
             WENOVectorInvariant(),
-            WENOVectorInvariant(; upwinding = CrossAndSelfUpwinding(cross_scheme = WENO()))
+            WENOVectorInvariant(; upwinding = CrossAndSelfUpwinding(cross_scheme = WENO())),
             WENOVectorInvariant(; multi_dimensional_stencil = true)
         )
 
