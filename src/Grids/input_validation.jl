@@ -164,9 +164,6 @@ validate_dimension_specification(::Type{Flat}, ξ::Tuple,  dir, N, FT) = map(FT,
 validate_dimension_specification(::Type{Flat}, ::Nothing, dir, N, FT) = nothing
 validate_dimension_specification(::Type{Flat}, ξ::Number, dir, N, FT) = convert(FT, ξ)
 
-default_horizontal_extent(T, extent) = (0, extent[i])
-default_vertical_extent(T, extent) = (-extent[3], 0)
-
 function validate_vertically_stretched_grid_xy(TX, TY, FT, x, y)
     x = validate_dimension_specification(TX, x, :x, FT)
     y = validate_dimension_specification(TY, y, :y, FT)
