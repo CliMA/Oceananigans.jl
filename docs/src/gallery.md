@@ -17,8 +17,8 @@ disk is clear.
 
 ```@raw html
 <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;">
-  <iframe src="https://www.youtube.com/embed/kpUrxnKKMjI?si=HyUzKTXVXjq71zJH" 
-  style="position: absolute; top:0; left: 0; width: 100%; height: 100%;" 
+  <iframe src="https://www.youtube.com/embed/kpUrxnKKMjI?si=HyUzKTXVXjq71zJH"
+  style="position: absolute; top:0; left: 0; width: 100%; height: 100%;"
   title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 </div>
 ```
@@ -35,8 +35,8 @@ The video shows the temperature field and the domain is sliced in half.
 
 ```@raw html
 <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;">
-  <iframe src="https://www.youtube.com/embed/yq4op9h3xcU?si=Oof3Wy2CoQOjlLhR" 
-  style="position: absolute; top:0; left: 0; width: 100%; height: 100%;" 
+  <iframe src="https://www.youtube.com/embed/yq4op9h3xcU?si=Oof3Wy2CoQOjlLhR"
+  style="position: absolute; top:0; left: 0; width: 100%; height: 100%;"
   title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 </div>
 ```
@@ -55,8 +55,8 @@ plots show the horizontally averaged temperature profile (top right), horizontal
 
 ```@raw html
 <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;">
-  <iframe src="https://www.youtube.com/embed/IRncfbvuiy8?si=U0It-P0ZGY4lyhX7" 
-  style="position: absolute; top:0; left: 0; width: 100%; height: 100%;" 
+  <iframe src="https://www.youtube.com/embed/IRncfbvuiy8?si=U0It-P0ZGY4lyhX7"
+  style="position: absolute; top:0; left: 0; width: 100%; height: 100%;"
   title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 </div>
 ```
@@ -79,8 +79,8 @@ by internal waves.
 
 ```@raw html
 <div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;">
-  <iframe src="https://www.youtube.com/embed/ob6OMQgPfI4?si=oktgEXdcbuFRgrjm" 
-  style="position: absolute; top:0; left: 0; width: 100%; height: 100%;" 
+  <iframe src="https://www.youtube.com/embed/ob6OMQgPfI4?si=oktgEXdcbuFRgrjm"
+  style="position: absolute; top:0; left: 0; width: 100%; height: 100%;"
   title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
 </div>
 ```
