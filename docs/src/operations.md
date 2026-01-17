@@ -43,8 +43,8 @@ BinaryOperation at (Center, Center, Center)
 ├── grid: 4×1×4 RectilinearGrid{Float64, Periodic, Flat, Bounded} on CPU with 3×0×3 halo
 └── tree:
     * at (Center, Center, Center)
-    ├── 2
-    └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+    ├── 2
+    └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
 ```
 
 and even by chaining expressions together, which may themselves include `AbstractOperations`,
@@ -57,13 +57,13 @@ MultiaryOperation at (Center, Center, Center)
 ├── grid: 4×1×4 RectilinearGrid{Float64, Periodic, Flat, Bounded} on CPU with 3×0×3 halo
 └── tree:
     + at (Center, Center, Center)
-    ├── ^ at (Center, Center, Center)
-    │   ├── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
-    │   └── 2
-    ├── * at (Center, Center, Center)
-    │   ├── 2
-    │   └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
-    └── 1
+    ├── ^ at (Center, Center, Center)
+    │   ├── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+    │   └── 2
+    ├── * at (Center, Center, Center)
+    │   ├── 2
+    │   └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+    └── 1
 ```
 
 Like `Field`s, `AbstractOperations` have a location and a grid.
@@ -77,7 +77,7 @@ UnaryOperation at (Center, Center, Center)
 ├── grid: 4×1×4 RectilinearGrid{Float64, Periodic, Flat, Bounded} on CPU with 3×0×3 halo
 └── tree:
     cos at (Center, Center, Center) via identity
-    └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+    └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
 ```
 
 ```jldoctest operations
@@ -88,10 +88,10 @@ MultiaryOperation at (Center, Center, Center)
 ├── grid: 4×1×4 RectilinearGrid{Float64, Periodic, Flat, Bounded} on CPU with 3×0×3 halo
 └── tree:
     + at (Center, Center, Center)
-    ├── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
-    ├── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
-    ├── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
-    └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+    ├── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+    ├── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+    ├── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+    └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
 ```
 
 `UnaryOperation`, `BinaryOperation` and `MultiaryOperation` all have both an "operator", and between 1 and many.
@@ -105,7 +105,7 @@ Derivative at (Face, Center, Center)
 ├── grid: 4×1×4 RectilinearGrid{Float64, Periodic, Flat, Bounded} on CPU with 3×0×3 halo
 └── tree:
     ∂xᶠᶜᶜ at (Face, Center, Center) via identity
-    └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+    └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
 ```
 
 !!! note
@@ -158,14 +158,14 @@ BinaryOperation at (Face, Center, Center)
 ├── grid: 4×1×4 RectilinearGrid{Float64, Periodic, Flat, Bounded} on CPU with 3×0×3 halo
 └── tree:
     + at (Face, Center, Center)
-    ├── ^ at (Face, Center, Center)
-    │   ├── ∂xᶠᶜᶜ at (Face, Center, Center) via identity
-    │   │   └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
-    │   └── 2
-    └── ^ at (Center, Center, Face)
-        ├── ∂zᶜᶜᶠ at (Center, Center, Face) via identity
-        │   └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
-        └── 2
+    ├── ^ at (Face, Center, Center)
+    │   ├── ∂xᶠᶜᶜ at (Face, Center, Center) via identity
+    │   │   └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+    │   └── 2
+    └── ^ at (Center, Center, Face)
+        ├── ∂zᶜᶜᶠ at (Center, Center, Face) via identity
+        │   └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+        └── 2
 ```
 
 Because `∂x(c)^2` is located at `(Face, Center, Center)` and `∂z(c)^2` is located at `(Center, Center, Face)`,
@@ -181,14 +181,14 @@ BinaryOperation at (Center, Center, Face)
 ├── grid: 4×1×4 RectilinearGrid{Float64, Periodic, Flat, Bounded} on CPU with 3×0×3 halo
 └── tree:
     + at (Center, Center, Face)
-    ├── ^ at (Center, Center, Face)
-    │   ├── ∂zᶜᶜᶠ at (Center, Center, Face) via identity
-    │   │   └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
-    │   └── 2
-    └── ^ at (Face, Center, Center)
-        ├── ∂xᶠᶜᶜ at (Face, Center, Center) via identity
-        │   └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
-        └── 2
+    ├── ^ at (Center, Center, Face)
+    │   ├── ∂zᶜᶜᶠ at (Center, Center, Face) via identity
+    │   │   └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+    │   └── 2
+    └── ^ at (Face, Center, Center)
+        ├── ∂xᶠᶜᶜ at (Face, Center, Center) via identity
+        │   └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+        └── 2
 ```
 
 ends up at `(Center, Center, Face)`. To control the location of an operation we use the macro `@at`,
@@ -201,14 +201,14 @@ BinaryOperation at (Center, Center, Center)
 ├── grid: 4×1×4 RectilinearGrid{Float64, Periodic, Flat, Bounded} on CPU with 3×0×3 halo
 └── tree:
     + at (Center, Center, Center)
-    ├── ^ at (Center, Center, Center)
-    │   ├── ∂xᶠᶜᶜ at (Center, Center, Center) via ℑxᶜᵃᵃ
-    │   │   └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
-    │   └── 2
-    └── ^ at (Center, Center, Center)
-        ├── ∂zᶜᶜᶠ at (Center, Center, Center) via ℑzᵃᵃᶜ
-        │   └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
-        └── 2
+    ├── ^ at (Center, Center, Center)
+    │   ├── ∂xᶠᶜᶜ at (Center, Center, Center) via ℑxᶜᵃᵃ
+    │   │   └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+    │   └── 2
+    └── ^ at (Center, Center, Center)
+        ├── ∂zᶜᶜᶠ at (Center, Center, Center) via ℑzᵃᵃᶜ
+        │   └── 4×1×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+        └── 2
 ```
 
 ## Averages and integrals

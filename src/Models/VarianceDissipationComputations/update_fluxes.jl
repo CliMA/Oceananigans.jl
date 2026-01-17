@@ -16,7 +16,6 @@ function cache_fluxes!(dissipation, model, tracer_name)
     stage = model.clock.stage
 
     update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, timestepper, stage, U)
-
     tracer_id = findfirst(x -> x == tracer_name, keys(model.tracers))
     cache_fluxes!(dissipation, model, tracer_name, Val(tracer_id))
 
@@ -72,7 +71,7 @@ function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
 
     if timestepper isa QuasiAdamsBashforth2TimeStepper
         parent(cⁿ⁻¹) .= parent(c)
-    elseif (timestepper isa RungeKuttaScheme) && (stage == 3)
+    elseif (timestepper isa RungeKuttaScheme) && (stage == timestepper.Nstages)
         parent(cⁿ⁻¹) .= parent(c)
     end
 
@@ -82,8 +81,8 @@ end
 cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage, advection, U, c) =
     launch!(architecture(grid), grid, params, _cache_advective_fluxes!, Fⁿ, Fⁿ⁻¹, grid, advection, U, c)
 
-function cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ts::SplitRungeKutta3TimeStepper, stage, advection, U, c)
-    if stage == 2
+function cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid, params, ts::SplitRungeKuttaTimeStepper, stage, advection, U, c)
+    if stage == ts.Nstages-1
         launch!(architecture(grid), grid, params, _cache_advective_fluxes!, Fⁿ, grid, advection, U, c)
     end
 end
@@ -91,8 +90,8 @@ end
 cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage, clo, D, B, c, tracer_id, clk, model_fields) =
     launch!(architecture(grid), grid, params, _cache_diffusive_fluxes!, Vⁿ, Vⁿ⁻¹, grid, clo, D, B, c, tracer_id, clk, model_fields)
 
-function cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ts::SplitRungeKutta3TimeStepper, stage, clo, D, B, c, tracer_id, clk, model_fields)
-    if stage == 2
+function cache_diffusive_fluxes(Vⁿ, Vⁿ⁻¹, grid, params, ts::SplitRungeKuttaTimeStepper, stage, clo, D, B, c, tracer_id, clk, model_fields)
+    if stage == ts.Nstages-1
         launch!(architecture(grid), grid, params, _cache_diffusive_fluxes!, Vⁿ, grid, clo, D, B, c, tracer_id, clk, model_fields)
     end
 end
@@ -100,8 +99,8 @@ end
 update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ::QuasiAdamsBashforth2TimeStepper, stage, U) =
     launch!(architecture(grid), grid, params, _update_transport!, Uⁿ, Uⁿ⁻¹, grid, U)
 
-function update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ts::SplitRungeKutta3TimeStepper, stage, U)
-    if stage == 2
+function update_transport!(Uⁿ, Uⁿ⁻¹, grid, params, ts::SplitRungeKuttaTimeStepper, stage, U)
+    if stage == ts.Nstages-1
         launch!(architecture(grid), grid, params, _update_transport!, Uⁿ, grid, U)
     end
 end

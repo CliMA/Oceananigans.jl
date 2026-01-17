@@ -1,10 +1,10 @@
+using Adapt: Adapt
+using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ, Az⁻¹ᶜᶜᶜ, Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, δxᶜᶜᶜ, δyᶜᶜᶜ
-using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 
+import Oceananigans.DistributedComputations: synchronize_communication!
 import Oceananigans: prognostic_state, restore_prognostic_state!
-
-using Adapt: Adapt
 
 """
     struct ExplicitFreeSurface{E, T}
@@ -38,6 +38,18 @@ function materialize_free_surface(free_surface::ExplicitFreeSurface{Nothing}, ve
 end
 
 #####
+##### Tendency fields
+#####
+
+function hydrostatic_tendency_fields(velocities, free_surface::ExplicitFreeSurface, grid, tracer_names, bcs)
+    u = XFaceField(grid, boundary_conditions=bcs.u)
+    v = YFaceField(grid, boundary_conditions=bcs.v)
+    η = free_surface_displacement_field(velocities, free_surface, grid)
+    tracers = TracerFields(tracer_names, grid, bcs)
+    return merge((u=u, v=v, η=η), tracers)
+end
+
+#####
 ##### Kernel functions for HydrostaticFreeSurfaceModel
 #####
 
@@ -51,15 +63,21 @@ end
 ##### Time stepping
 #####
 
-step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::QuasiAdamsBashforth2TimeStepper, Δt) =
+# Only the free surface needs to be synchronized
+synchronize_communication!(free_surface::ExplicitFreeSurface) =
+    synchronize_communication!(free_surface.displacement)
+
+function step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::QuasiAdamsBashforth2TimeStepper, Δt)
     @apply_regionally explicit_ab2_step_free_surface!(free_surface, model, Δt)
+    fill_halo_regions!(free_surface.displacement; async=true)
+    return nothing
+end
 
-step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::SplitRungeKutta3TimeStepper, Δt) =
+function step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::SplitRungeKuttaTimeStepper, Δt)
     @apply_regionally explicit_rk3_step_free_surface!(free_surface, model, Δt)
-
-@inline rk3_coeffs(ts, ::Val{1}) = (1,     0)
-@inline rk3_coeffs(ts, ::Val{2}) = (ts.γ², ts.ζ²)
-@inline rk3_coeffs(ts, ::Val{3}) = (ts.γ³, ts.ζ³)
+    fill_halo_regions!(free_surface.displacement; async=true)
+    return nothing
+end
 
 explicit_rk3_step_free_surface!(free_surface, model, Δt) =
     launch!(model.architecture, model.grid, :xy,
