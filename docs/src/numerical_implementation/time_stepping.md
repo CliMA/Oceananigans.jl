@@ -22,12 +22,12 @@ The `QuasiAdamsBashforth2TimeStepper` approximates the time integral of tendenci
         - \left ( \tfrac{1}{2} + \chi \right ) G^{n-1} \right ] \, ,
     \end{equation}
 ```
-where ``\chi`` is a parameter. [Ascher95](@citet) suggest that ``\chi = \tfrac{1}{8}`` is optimal.
+where ``\chi`` is a parameter. [Ascher95](@citet) suggests that ``\chi = \tfrac{1}{8}`` is optimal.
 With the additional ``\chi`` parameter, the scheme is formally first-order accurate but offers improved
 stability properties. The default ``\chi = 0.1`` provides a reasonable balance between accuracy and stability;
 ``\chi = 0`` recovers the standard second-order Adams-Bashforth method.
 
-The scheme requires storing tendencies from the previous time step, but only requires one tendency evalution,
+The scheme requires storing tendencies from the previous time step, but only requires one tendency evaluation,
 making it computationally-efficient compared to multi-stage methods. The first time step automatically uses forward
 Euler (``\chi = -1/2``) since no previous tendencies exist.
 
@@ -46,7 +46,7 @@ stability for problems with oscillatory dynamics.
 
 ### Split Runge-Kutta
 
-The `SplitRungeKuttaTimeStepper` implements a Runge-Kutta scheme suitable for split-explicit computations,
+The `SplitRungeKuttaTimeStepper` implements a Runge-Kutta scheme suitable for split-explicit computations
 that follows the implementation detailed by [WickerSkamarock2002](@citet). At the beginning of each time step the
 prognostic fields are cached, and subsequent substeps compute:
 ```math
@@ -61,9 +61,9 @@ split-explicit treatment of the barotropic and baroclinic modes.
 
 ### NonhydrostaticModel and ShallowWaterModel
 
-The `NonhydrostaticModel` and `ShallowWaterModel` supports two time steppers: `:QuasiAdamsBashforth2` and `:RungeKutta3` (default).
+The `NonhydrostaticModel` and `ShallowWaterModel` support two time steppers: `:QuasiAdamsBashforth2` and `:RungeKutta3` (default).
 The timestepper can be specified through a keyword argument in the model constructor using the symbols shown in the examples below
-or by building the timestepper manually
+or by building the timestepper manually.
 
 ```jldoctest
 using Oceananigans
@@ -137,7 +137,7 @@ SplitRungeKuttaTimeStepper
 └── implicit_solver: nothing
 ```
 
-For custom coefficients, you can construct a `SplitRungeKuttaTimeStepper` directly:
+For custom coefficients, it is also possible to construct a `SplitRungeKuttaTimeStepper` directly:
 
 ```jldoctest
 using Oceananigans
