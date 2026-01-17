@@ -216,7 +216,7 @@ pages = [
 #####
 
 format=DocumenterVitepress.MarkdownVitepress(
-        repo = "github.com/CliMA/OceananigansDocumentation", # this must be the full URL!
+        repo = "github.com/CliMA/OceananigansDocumentation",
         devbranch = "main",
         devurl = "dev";
     )
