@@ -276,6 +276,6 @@ for pattern in [r"\.jld2", r"\.nc"]
 end
 
 DocumenterVitepress.deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
-           forcepush = true,
-           push_preview = true,
-           devbranch = "main")
+                               forcepush = true,
+                               push_preview = true,
+                               devbranch = "main")
