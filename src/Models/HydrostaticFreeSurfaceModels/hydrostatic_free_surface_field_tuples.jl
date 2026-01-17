@@ -14,6 +14,7 @@ end
 
 previous_hydrostatic_tendency_fields(timestepper, args...)         = nothing
 previous_hydrostatic_tendency_fields(timestepper::Symbol, args...) = previous_hydrostatic_tendency_fields(Val(timestepper), args...)
+previous_hydrostatic_tendency_fields(::QuasiAdamsBashforth2TimeStepper, args...) = hydrostatic_tendency_fields(args...)
 
 previous_hydrostatic_tendency_fields(::Val{:QuasiAdamsBashforth2}, args...) = hydrostatic_tendency_fields(args...)
 previous_hydrostatic_tendency_fields(::Val{:SplitRungeKutta}, args...)      = nothing

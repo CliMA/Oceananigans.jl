@@ -74,9 +74,8 @@ useful for passing to model constructors which will then build the full time ste
 Keyword Arguments
 =================
 - `coefficients`: A tuple of coefficients `(β₁, β₂, ..., βₙ)` for each stage.
-                  Cannot be specified together with `stages`.
 - `stages`: Number of stages `n`. If provided, coefficients default to `(n, n-1, ..., 1)`.
-            Cannot be specified together with `coefficients`.
+            if `coefficients` is specified, this keyword argument is ignored.
 
 Example
 =======
@@ -89,10 +88,7 @@ ts = SplitRungeKuttaTimeStepper(coefficients=(4, 3, 2, 1))
 ```
 """
 function SplitRungeKuttaTimeStepper(; coefficients = nothing, stages = 3)
-    if !isnothing(coefficients) && !isnothing(stages)
-        error("Cannot specify both `coefficients` and `stages`.")
-    end
-    if isnothing(coefficients)
+    if isnothing(coefficients) # coefficients takes the priority
         coefficients = tuple(collect(stages:-1:1)...)
     end
     return SplitRungeKuttaTimeStepper{typeof(coefficients), Nothing, Nothing, Nothing}(length(coefficients), coefficients, nothing, nothing, nothing)
@@ -212,3 +208,16 @@ cache_current_fields!(model::AbstractModel) = error("cache_current_fields! not i
 # SplitRungeKuttaTimeStepper is self-starting!
 prognostic_state(ts::SplitRungeKuttaTimeStepper) = nothing
 restore_prognostic_state!(ts::SplitRungeKuttaTimeStepper, ::Nothing) = ts
+
+#####
+##### Show methods
+#####
+
+Base.summary(ts::SplitRungeKuttaTimeStepper) = string("SplitRungeKuttaTimeStepper(", ts.Nstages, ")")
+
+function Base.show(io::IO, ts::SplitRungeKuttaTimeStepper)
+    print(io, "SplitRungeKuttaTimeStepper", '\n')
+    print(io, "├── stages: ", ts.Nstages, '\n')
+    print(io, "├── β: ", ts.β, '\n')
+    print(io, "└── implicit_solver: ", isnothing(ts.implicit_solver) ? "nothing" : nameof(typeof(ts.implicit_solver)))
+end

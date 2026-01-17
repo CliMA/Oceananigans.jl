@@ -212,3 +212,18 @@ Arguments
 The state is advanced as: `U += Δt * (γⁿ * Gⁿ + ζⁿ * G⁻)`.
 """
 rk3_substep!(model::AbstractModel, Δt, γ, ζ, callbacks) = error("rk3_substep! not implemented for $(typeof(model))")
+
+#####
+##### Show methods
+#####
+
+function Base.summary(ts::RungeKutta3TimeStepper{FT}) where FT
+    return string("RungeKutta3TimeStepper{$FT}")
+end
+
+function Base.show(io::IO, ts::RungeKutta3TimeStepper{FT}) where FT
+    print(io, "RungeKutta3TimeStepper{$FT}", '\n')
+    print(io, "├── γ: (", ts.γ¹, ", ", ts.γ², ", ", ts.γ³, ")", '\n')
+    print(io, "├── ζ: (", ts.ζ², ", ", ts.ζ³, ")", '\n')
+    print(io, "└── implicit_solver: ", isnothing(ts.implicit_solver) ? "nothing" : nameof(typeof(ts.implicit_solver)))
+end

@@ -35,7 +35,8 @@ timestep (`G⁻`).
     Uⁿ⁺¹ = Uⁿ + Δt * Gⁿ
     ```
 """
-function QuasiAdamsBashforth2TimeStepper(grid, prognostic_fields, χ = 0.1;
+function QuasiAdamsBashforth2TimeStepper(grid, prognostic_fields;
+                                         χ = 0.1,
                                          implicit_solver::IT = nothing,
                                          Gⁿ = map(similar, prognostic_fields),
                                          G⁻ = map(similar, prognostic_fields)) where IT
@@ -48,6 +49,13 @@ function QuasiAdamsBashforth2TimeStepper(grid, prognostic_fields, χ = 0.1;
 end
 
 reset!(timestepper::QuasiAdamsBashforth2TimeStepper) = nothing
+
+"""
+    QuasiAdamsBashforth2TimeStepper(; χ = 0.1)
+
+Construct a `QuasiAdamsBashforth2TimeStepper` by specifying the `χ` parameter.
+"""
+QuasiAdamsBashforth2TimeStepper(; χ = 0.1) = QuasiAdamsBashforth2TimeStepper{typeof(χ), Nothing, Nothing}(χ, nothing, nothing, nothing)
 
 #####
 ##### Time steppping
@@ -167,3 +175,15 @@ This is an abstract interface that must be implemented by each model type.
 Called after advancing the model state but before updating tendencies for the next step.
 """
 cache_previous_tendencies!(model::AbstractModel) = error("cache_previous_tendencies! not implemented for $(typeof(model))")
+
+#####
+##### Show methods
+#####
+
+Base.summary(ts::QuasiAdamsBashforth2TimeStepper{FT}) where FT = string("QuasiAdamsBashforth2TimeStepper{$FT}(χ=", ts.χ, ")")
+
+function Base.show(io::IO, ts::QuasiAdamsBashforth2TimeStepper{FT}) where FT
+    print(io, "QuasiAdamsBashforth2TimeStepper{$FT}", '\n')
+    print(io, "├── χ: ", ts.χ, '\n')
+    print(io, "└── implicit_solver: ", isnothing(ts.implicit_solver) ? "nothing" : nameof(typeof(ts.implicit_solver)))
+end

@@ -67,6 +67,9 @@ end
 TimeStepper(ts::SplitRungeKuttaTimeStepper, grid, prognostic_fields; kw...) =
     SplitRungeKuttaTimeStepper(grid, prognostic_fields; coefficients=ts.β, kw...)
 
+TimeStepper(ts::QuasiAdamsBashforth2TimeStepper, grid, prognostic_fields; kw...) =
+    QuasiAdamsBashforth2TimeStepper(grid, prognostic_fields; χ=ts.χ, kw...)
+
 function first_time_step!(model::AbstractModel, Δt)
     initialize!(model)
     # The first update_state! is conditionally gated from within time_step!
