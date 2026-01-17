@@ -46,13 +46,14 @@ stability for problems with oscillatory dynamics.
 
 ### Split Runge-Kutta
 
-The `SplitRungeKuttaTimeStepper` implements a Runge-Kutta scheme suitable for split-explicit computations, that follows the implementation
-detailed by [WickerSkamarock2002](@citet). At the beginning of each time step the
+The `SplitRungeKuttaTimeStepper` implements a Runge-Kutta scheme suitable for split-explicit computations, 
+that follows the implementation detailed by [WickerSkamarock2002](@citet). At the beginning of each time step the
 prognostic fields are cached, and subsequent substeps compute:
 ```math
 U^{m+1} = U^0 + \frac{\Delta t}{\beta^m} G^m
 ```
-where ``U^0`` is the cached initial state and ``\beta`` are stage coefficients. The default three-stage
+where ``U^0`` is the cached initial state and ``\beta`` are stage coefficients. 
+The user can specify an arbitrary number of stages with custom coefficients. The default three-stage
 scheme uses ``\beta = (3, 2, 1)``. This time stepper is used by `HydrostaticFreeSurfaceModel` for
 split-explicit treatment of the barotropic and baroclinic modes.
 
