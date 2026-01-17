@@ -89,7 +89,7 @@ end
     end
 
     @testset "Import via Owner" begin
-        @info "Testing no imports via owner"
+        @info "Testing imports via owner"
         @test ExplicitImports.check_all_explicit_imports_via_owners(Oceananigans) === nothing
     end
 
@@ -99,7 +99,7 @@ end
     end
 
     @testset "Qualified Accesses" begin
-        @info "Testing no qualified access via owners"
+        @info "Testing qualified access via owners"
         @test ExplicitImports.check_all_qualified_accesses_via_owners(Oceananigans) === nothing
     end
 
