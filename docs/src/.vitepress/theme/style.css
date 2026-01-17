@@ -1,0 +1,308 @@
+/* Customize default theme styling by overriding CSS variables:
+https://github.com/vuejs/vitepress/blob/main/src/client/theme-default/styles/vars.css */
+
+.VPHero .clip {
+  white-space: pre;
+  max-width: 600px;
+}
+
+/* =========================
+   Fonts
+   ========================= */
+
+@font-face {
+  font-family: JuliaMono-Regular;
+  src: url("https://cdn.jsdelivr.net/gh/cormullion/juliamono/webfonts/JuliaMono-Regular.woff2");
+}
+
+:root {
+  --vp-font-family-base: "Barlow", "Inter var experimental", "Inter var",
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
+    Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
+
+  --vp-font-family-mono: JuliaMono-Regular, monospace;
+}
+
+/* Disable contextual alternates in monospace */
+.mono-no-substitutions {
+  font-family: "JuliaMono-Regular", monospace;
+  font-feature-settings: "calt" off;
+}
+
+.mono-no-substitutions-alt {
+  font-family: "JuliaMono-Regular", monospace;
+  font-variant-ligatures: none;
+}
+
+pre,
+code {
+  font-family: "JuliaMono-Regular", monospace;
+  font-feature-settings: "calt" off;
+}
+
+/* =========================
+   Colors (Light Mode)
+   ========================= */
+
+:root {
+  --vp-c-brand:   #0284c7;
+  --vp-c-brand-1: #1396d6;
+  --vp-c-brand-2: #06b6d4;
+  --vp-c-brand-3: #0891b2;
+
+  --vp-c-brand-light: #0ea5e9;
+  --vp-c-brand-dark: #0369a1;
+  --vp-c-brand-dimm: #1e293b;
+
+  --vp-dark-gray: #1e1e1e;
+  --vp-dark-gray-soft: #2d2d2d;
+  --vp-dark-gray-mute: #262626;
+  --vp-light-gray: #cbd5e1;
+
+  --vp-tip-bg: #f8fafc;
+
+  --vp-dark-text: #f1f5f9;
+  --vp-dark-subtext: #cbd5e1;
+  --vp-source-text: #f1f5f9;
+
+  --vp-custom-block-tip-border: #0ea5e9;
+  --vp-custom-block-tip-bg: #f0f9ff;
+  --vp-custom-block-tip-text: #0c4a6e;
+}
+
+/* =========================
+   Buttons (Light)
+   ========================= */
+
+:root {
+  --vp-button-brand-border: #0ea5e9;
+  --vp-button-brand-bg: #0ea5e9;
+  --vp-button-brand-text: #ffffff;
+  --vp-button-brand-hover-border: #0284c7;
+  --vp-button-brand-hover-bg: #0284c7;
+  --vp-button-brand-hover-text: #ffffff;
+  --vp-button-brand-active-border: #0369a1;
+  --vp-button-brand-active-bg: #0369a1;
+}
+
+/* =========================
+   Home Hero (Light)
+   ========================= */
+
+:root {
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: -webkit-linear-gradient(
+    120deg,
+    #0284c7 15%,
+    #0ea5e9 45%,
+    #38bdf8 75%
+  );
+
+  --vp-home-hero-image-background-image: linear-gradient(
+    -145deg,
+    #0ea5e940 20%,
+    #38bdf870 50%,
+    #7dd3fca0 80%
+  );
+
+  --vp-home-hero-image-filter: blur(40px);
+}
+
+/* =========================
+   Dark Mode (Refined Neutral)
+   ========================= */
+
+:root.dark {
+  /* Brand */
+  --vp-c-brand: #38bdf8;
+  --vp-c-brand-1: #7dd3fc;
+  --vp-c-brand-2: #38bdf8;
+  --vp-c-brand-3: #0ea5e9;
+  --vp-c-brand-light: #7dd3fc;
+  --vp-c-brand-dark: #075985;
+  --vp-c-brand-dimm: #0c0e12;
+
+  /* Surface ladder - neutral grays */
+  --vp-c-bg: #0d0e11;
+  --vp-c-bg-alt: #11131a;
+  --vp-c-bg-soft: #15171c; /* matches code blocks */
+  --vp-c-bg-mute: #0f1014;
+
+  /* Global text */
+  --vp-c-text-1: #e6e8eb;
+  --vp-c-text-2: #c8cad0;
+  --vp-c-text-3: #9fa1a8;
+
+  --vp-dark-text: #e6e8eb;
+  --vp-dark-subtext: #c8cad0;
+  --vp-source-text: #e6e8eb;
+
+  /* Borders - subtle neutral */
+  /* --vp-c-border: #24262c; */
+  /* --vp-c-divider: #1d1f24; */
+
+  /* Tips */
+  --vp-custom-block-tip-bg: transparent;
+  --vp-custom-block-tip-border: #24262c;
+  --vp-custom-block-tip-text: #dbeafe;
+}
+
+/* Subtle tip highlight */
+.custom-block.tip {
+  background: linear-gradient(
+    90deg,
+    rgba(56, 189, 248, 0.08),
+    rgba(56, 189, 248, 0)
+  );
+}
+
+/* =========================
+   Links (Dark)
+   ========================= */
+
+:root.dark {
+  --vp-c-brand-1: #60a5fa;  /* dimmed from #7dd3fc */
+  --vp-c-brand-2: #38bdf8;
+  --vp-c-brand-3: #0ea5e9;
+}
+
+/* =========================
+   Buttons (Dark)
+   ========================= */
+
+:root.dark {
+  --vp-button-brand-border: #38bdf8;
+  --vp-button-brand-bg: #0ea5e9;
+  --vp-button-brand-text: #ffffff;
+  --vp-button-brand-hover-border: #7dd3fc;
+  --vp-button-brand-hover-bg: #38bdf8;
+  --vp-button-brand-hover-text: #07121f;
+  --vp-button-brand-active-border: #bae6fd;
+  --vp-button-brand-active-bg: #0284c7;
+}
+
+/* =========================
+   Home Hero (Dark)
+   ========================= */
+
+:root.dark {
+  --vp-home-hero-name-color: transparent;
+  --vp-home-hero-name-background: -webkit-linear-gradient(
+    120deg,
+    #38bdf8 10%,
+    #7dd3fc 40%,
+    #bae6fd 80%
+  );
+
+  --vp-home-hero-image-background-image: linear-gradient(
+    -45deg,
+    #15171c 20%,
+    #0ea5e9 50%,
+    #0d0e11 80%
+  );
+
+  --vp-home-hero-image-filter: blur(60px);
+}
+
+/* =========================
+   Code Blocks
+   ========================= */
+
+:root {
+  --vp-code-bg: #f8fafc;
+  --vp-code-block-bg: #f1f5f9;
+}
+
+:root.dark {
+  --vp-code-bg: #15171c;
+  --vp-code-block-bg: #15171c;
+}
+
+/* =========================
+   Cards (Fixed Text Colors)
+   ========================= */
+
+.vp-card {
+  background-color: var(--vp-c-bg-soft);
+  border: 1px solid var(--vp-c-border);
+}
+
+.vp-card h2,
+.vp-card h3 {
+  color: #f1f5f9; /* neutral light */
+}
+
+.vp-card p {
+  color: #d1d5db; /* neutral gray */
+}
+
+.vp-card small,
+.vp-card .meta {
+  color: #9ca3af;
+}
+
+
+/* =========================
+   Responsive Hero Blur
+   ========================= */
+
+@media (min-width: 640px) {
+  :root {
+    --vp-home-hero-image-filter: blur(56px);
+  }
+  :root.dark {
+    --vp-home-hero-image-filter: blur(64px);
+  }
+}
+
+@media (min-width: 960px) {
+  :root {
+    --vp-home-hero-image-filter: blur(72px);
+  }
+  :root.dark {
+    --vp-home-hero-image-filter: blur(80px);
+  }
+}
+
+/* =========================
+   MathJax
+   ========================= */
+
+mjx-container > svg {
+  display: block;
+  margin: auto;
+}
+
+mjx-container {
+  padding: 0.5rem 0;
+  display: inline;
+  margin: auto 2px -2px;
+}
+
+/* =========================
+   Search Box (Dark)
+   ========================= */
+
+/* =========================
+   Search Box (Dark)
+   ========================= */
+
+/* 
+  :root.dark {
+  --vp-local-search-result-selected-border: #5a8597;
+  --vp-local-search-highlight-bg: #38bdf8;
+} 
+*/
+
+/* =========================
+   Accessibility
+   ========================= */
+
+:focus-visible {
+  outline: 2px solid var(--vp-c-brand);
+  outline-offset: 2px;
+}
+
+:root.dark :focus-visible {
+  outline-color: var(--vp-c-brand-light);
+}

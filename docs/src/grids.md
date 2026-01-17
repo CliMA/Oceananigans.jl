@@ -452,8 +452,6 @@ scatter!(ax, Δx / 1e3)
 fig
 ```
 
-![](plot_lat_lon_spacings.svg)
-
 ## `LatitudeLongitudeGrid` with variable spacing
 
 The syntax for building a grid with variably-spaced cells is the same as for `RectilinearGrid`.
