@@ -48,7 +48,7 @@ end
     @inbounds v̂ = v[i, j, k]
     δ_stencil = scheme.upwinding.divergence_stencil
     cross_scheme = scheme.upwinding.cross_scheme
-    
+
     δᴿ   =    _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, bias(v̂), flux_div_xyᶜᶜᶜ, δ_stencil, u, v)
     ∂t_σ = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, cross_scheme, Az_Δr_∂t_σ)
 
