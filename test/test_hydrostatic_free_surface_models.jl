@@ -279,7 +279,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             VectorInvariant(),
             WENOVectorInvariant(),
             WENOVectorInvariant(; upwinding = CrossAndSelfUpwinding(cross_scheme = WENO())),
-            WENOVectorInvariant(; multi_dimensional_stencil = true)
+            WENOVectorInvariant(; multi_dimensional_stencil = true),
         )
 
         for momentum_advection in momentum_advections
