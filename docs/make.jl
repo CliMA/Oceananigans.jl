@@ -83,7 +83,7 @@ Distributed.pmap(1:length(example_scripts)) do n
         start_time = time_ns()
         Literate.markdown(example_filepath, OUTPUT_DIR;
                           preprocess = content -> content * example_postamble,
-                          flavor = Literate.DocumenterFlavor(), execute = false)
+                          flavor = Literate.DocumenterFlavor(), execute = true)
         elapsed = 1e-9 * (time_ns() - start_time)
         @info @sprintf("%s example took %s to build.", example, prettytime(elapsed))
     end
@@ -237,7 +237,7 @@ makedocs(; sitename = "Oceananigans.jl",
          authors = "Climate Modeling Alliance and contributors",
          format, pages, modules,
          plugins = [bib],
-         warnonly = true, #[:cross_references],
+         warnonly = [:cross_references],
          doctestfilters = [
              r"┌ Warning:.*",  # remove standard warning lines
              r"└ @ .*",        # remove the source location of warnings
@@ -248,9 +248,9 @@ makedocs(; sitename = "Oceananigans.jl",
             r"jstor\.org",
             r"^https://github\.com/.*?/blob/",
          ],
-         draft = true,        # set to true to speed things up
-         doctest = false,       # set to false to speed things up
-         checkdocs = :none, # set to :none to speed things up
+         draft = false,        # set to true to speed things up
+         doctest = true,       # set to false to speed things up
+         checkdocs = :exports, # set to :none to speed things up
          )
 
 """
