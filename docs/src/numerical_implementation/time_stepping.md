@@ -61,7 +61,8 @@ split-explicit treatment of the barotropic and baroclinic modes.
 ### NonhydrostaticModel and ShallowWaterModel
 
 The `NonhydrostaticModel` and `ShallowWaterModel` supports two time steppers: `:QuasiAdamsBashforth2` and `:RungeKutta3` (default).
-The timestepper can be specified through a keyword argument in the model constructor
+The timestepper can be specified through a keyword argument in the model constructor using the symbols shown in the examples below
+or by building the timestepper manually
 
 ```jldoctest
 using Oceananigans
