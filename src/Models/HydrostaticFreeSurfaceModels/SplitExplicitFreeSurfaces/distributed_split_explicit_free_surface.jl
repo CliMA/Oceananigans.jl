@@ -1,5 +1,4 @@
-using Oceananigans.DistributedComputations: DistributedField
-using Oceananigans.DistributedComputations: AsynchronousDistributed, synchronize_communication!
+using Oceananigans.DistributedComputations: DistributedField, AsynchronousDistributed, synchronize_communication!
 
 import Oceananigans.DistributedComputations: synchronize_communication!
 
