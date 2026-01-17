@@ -146,7 +146,7 @@ using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper
 grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
 timestepper = SplitRungeKuttaTimeStepper(coefficients=(4.3, 3.2, 2.1, 1.0))
 model = HydrostaticFreeSurfaceModel(grid; timestepper)
-model.timestepper.β
+model.timestepper
 
 # output
 SplitRungeKuttaTimeStepper
