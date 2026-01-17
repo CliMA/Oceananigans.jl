@@ -68,3 +68,5 @@ statprof
 
 # MCPRepl security configuration (contains API keys)
 .mcprepl/
+node_modules
+!package.json

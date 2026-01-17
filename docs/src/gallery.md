@@ -15,8 +15,13 @@ the Labrador Sea.
 The video shows the temperature field and the domain is sliced in half so the convection happening under the cooling
 disk is clear.
 
-[![Watch deep convection in action](https://raw.githubusercontent.com/ali-ramadhan/ali-ramadhan.Github.io/master/img/surface_temp_3d_00130_halfsize.png)](https://www.youtube.com/watch?v=kpUrxnKKMjI)
-
+```@raw html
+<div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;">
+  <iframe src="https://www.youtube.com/embed/kpUrxnKKMjI?si=HyUzKTXVXjq71zJH" 
+  style="position: absolute; top:0; left: 0; width: 100%; height: 100%;" 
+  title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+</div>
+```
 
 ## [Free convection](https://www.youtube.com/watch?v=yq4op9h3xcU)
 
@@ -28,8 +33,13 @@ temperature and keeps deepening as the surface is cooled.
 
 The video shows the temperature field and the domain is sliced in half.
 
-[![Watch free convection in action](https://raw.githubusercontent.com/ali-ramadhan/ali-ramadhan.Github.io/master/img/free_convection_0956.png)](https://www.youtube.com/watch?v=yq4op9h3xcU)
-
+```@raw html
+<div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;">
+  <iframe src="https://www.youtube.com/embed/yq4op9h3xcU?si=Oof3Wy2CoQOjlLhR" 
+  style="position: absolute; top:0; left: 0; width: 100%; height: 100%;" 
+  title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+</div>
+```
 
 ## [Winds blowing over the ocean](https://www.youtube.com/watch?v=IRncfbvuiy8)
 
@@ -43,8 +53,13 @@ The video shows the temperature field in the top 25 meters and the domain is sli
 plots show the horizontally averaged temperature profile (top right), horizontally averaged turbulent kinetic energy
 (middle right), and the horizontally averaged buoyancy flux (or temperature flux).
 
-[![Watch winds blowing over the ocean](https://raw.githubusercontent.com/ali-ramadhan/ali-ramadhan.Github.io/master/img/wind_stress_0400.png)](https://www.youtube.com/watch?v=IRncfbvuiy8)
-
+```@raw html
+<div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;">
+  <iframe src="https://www.youtube.com/embed/IRncfbvuiy8?si=U0It-P0ZGY4lyhX7" 
+  style="position: absolute; top:0; left: 0; width: 100%; height: 100%;" 
+  title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+</div>
+```
 
 ## [Free convection with wind stress](https://www.youtube.com/watch?v=ob6OMQgPfI4)
 
@@ -62,4 +77,10 @@ and the horizontally averaged buoyancy flux (or temperature flux). The unusual p
 the fine details at the surface as it cools and the layers of different temperatures (the isopycnals) being perturbed
 by internal waves.
 
-[![Watch free convection with wind stress in action](https://raw.githubusercontent.com/ali-ramadhan/ali-ramadhan.Github.io/master/img/wind_stress_unstable_7500.png)](https://www.youtube.com/watch?v=ob6OMQgPfI4)
+```@raw html
+<div style="position: relative; padding-bottom: 56.25%; height: 0; overflow: hidden;">
+  <iframe src="https://www.youtube.com/embed/ob6OMQgPfI4?si=oktgEXdcbuFRgrjm" 
+  style="position: absolute; top:0; left: 0; width: 100%; height: 100%;" 
+  title="YouTube video player" frameborder="0" allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share" referrerpolicy="strict-origin-when-cross-origin" allowfullscreen></iframe>
+</div>
+```

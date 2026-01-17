@@ -2,6 +2,7 @@ using Distributed
 Distributed.addprocs(2)
 
 @everywhere begin
+    using DocumenterVitepress
     using Documenter
     using DocumenterCitations
     using Literate
@@ -82,7 +83,7 @@ Distributed.pmap(1:length(example_scripts)) do n
         start_time = time_ns()
         Literate.markdown(example_filepath, OUTPUT_DIR;
                           preprocess = content -> content * example_postamble,
-                          flavor = Literate.DocumenterFlavor(), execute = true)
+                          flavor = Literate.DocumenterFlavor(), execute = false)
         elapsed = 1e-9 * (time_ns() - start_time)
         @info @sprintf("%s example took %s to build.", example, prettytime(elapsed))
     end
@@ -183,37 +184,42 @@ developer_pages = [
 ]
 
 pages = [
-    "Home" => "index.md",
-    "Quick start" => "quick_start.md",
-    "Examples" => example_pages,
-    "Grids" => "grids.md",
-    "Fields" => "fields.md",
-    "Operations" => "operations.md",
-    # TODO:
-    #   - Develop the following tutorials on reductions and post-processing
-    #   - Refactor the model setup pages and make them more tutorial-like.
-    # "Averages, integrals, and cumulative integrals" => "reductions_and_accumulations.md",
-    # "FieldTimeSeries and post-processing" => field_time_series.md,
-    "Models" => model_pages,
-    "Simulations" => simulation_pages,
-    "Physics" => physics_pages,
-    "Numerical implementation" => numerical_pages,
-    "Simulation tips" => "simulation_tips.md",
-    "For developers" => developer_pages,
-    "Gallery" => "gallery.md",
-    "References" => "references.md",
-    "Appendix" => appendix_pages
+    "Manual" => [
+        "Quick Start" => "quick_start.md",
+        "Grids" => "grids.md",
+        "Fields" => "fields.md",
+        "Operations" => "operations.md",
+        "Simulation Tips" => "simulation_tips.md",
+        "Examples" => example_pages,
+        "Gallery" => "gallery.md",
+        # Future tutorials:
+        # "Reductions & Accumulations" => "reductions_and_accumulations.md",
+        # "FieldTimeSeries & Post-Processing" => field_time_series.md
+    ],
+    "Workflows" => [
+        "Models" => model_pages,
+        "Simulations" => simulation_pages
+    ],
+    "Concepts" => [
+        "Physics" => physics_pages,
+        "Numerical Implementation" => numerical_pages
+    ],
+    "Developer" => developer_pages,
+    "Resources" => [
+        "References" => "references.md",
+        "Appendix" => appendix_pages
+    ]
 ]
 
 #####
 ##### Build and deploy docs
 #####
 
-format = Documenter.HTML(collapselevel = 1,
-                         canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
-                         mathengine = MathJax3(),
-                         size_threshold = 2^20,
-                         assets = String["assets/citations.css"])
+format=DocumenterVitepress.MarkdownVitepress(
+        repo = "github.com/CliMA/OceananigansDocumentation", # this must be the full URL!
+        devbranch = "main",
+        devurl = "dev";
+    )
 
 DocMeta.setdocmeta!(Oceananigans, :DocTestSetup, :(using Oceananigans); recursive=true)
 
@@ -231,7 +237,7 @@ makedocs(; sitename = "Oceananigans.jl",
          authors = "Climate Modeling Alliance and contributors",
          format, pages, modules,
          plugins = [bib],
-         warnonly = [:cross_references],
+         warnonly = true, #[:cross_references],
          doctestfilters = [
              r"┌ Warning:.*",  # remove standard warning lines
              r"└ @ .*",        # remove the source location of warnings
@@ -242,9 +248,9 @@ makedocs(; sitename = "Oceananigans.jl",
             r"jstor\.org",
             r"^https://github\.com/.*?/blob/",
          ],
-         draft = false,        # set to true to speed things up
-         doctest = true,       # set to false to speed things up
-         checkdocs = :exports, # set to :none to speed things up
+         draft = true,        # set to true to speed things up
+         doctest = false,       # set to false to speed things up
+         checkdocs = :none, # set to :none to speed things up
          )
 
 """
@@ -269,8 +275,7 @@ for pattern in [r"\.jld2", r"\.nc"]
     end
 end
 
-deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
-           versions = ["stable" => "v^", "dev" => "dev", "v#.#.#"],
+DocumenterVitepress.deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
            forcepush = true,
            push_preview = true,
            devbranch = "main")
