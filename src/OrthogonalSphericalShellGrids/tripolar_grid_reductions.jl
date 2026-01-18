@@ -1,6 +1,5 @@
 using Oceananigans.AbstractOperations: ConditionalOperation
 using Oceananigans.Fields: AbstractField, OneField, instantiated_location
-using Oceananigans.ImmersedBoundaries: NotImmersed, NotImmersedColumn
 
 import Oceananigans.AbstractOperations: evaluate_condition, validate_condition
 import Oceananigans.Fields: condition_operand, conditional_length
@@ -10,23 +9,23 @@ import Oceananigans.Fields: condition_operand, conditional_length
 ##### of the domain for Fields located on `Center`s in meridional direction.
 #####
 
-struct ValidTripolarDomain{F} <: Function 
+struct PrognosticTripolarCells{F} <: Function 
     condition :: F
 end
 
-ValidTripolarDomain() = ValidTripolarDomain(nothing)
+PrognosticTripolarCells() = PrognosticTripolarCells(nothing)
 
-Base.summary(::ValidTripolarDomain{Nothing}) = "ValidTripolarDomain()"
-Base.summary(vd::ValidTripolarDomain) = string("ValidTripolarDomain(", summary(vd.condition), ")")
-Base.size(vd::ValidTripolarDomain{<:AbstractArray}) = size(vd.condition)
+Base.summary(::PrognosticTripolarCells{Nothing}) = "PrognosticTripolarCells()"
+Base.summary(vd::PrognosticTripolarCells) = string("PrognosticTripolarCells(", summary(vd.condition), ")")
+Base.size(vd::PrognosticTripolarCells{<:AbstractArray}) = size(vd.condition)
 
-validate_condition(cond::ValidTripolarDomain{<:AbstractArray}, ::OneField) = cond
-validate_condition(cond::ValidTripolarDomain{<:AbstractArray}, operand::AbstractField) = validate_condition(cond.condition, operand)
+validate_condition(cond::PrognosticTripolarCells{<:AbstractArray}, ::OneField) = cond
+validate_condition(cond::PrognosticTripolarCells{<:AbstractArray}, operand::AbstractField) = validate_condition(cond.condition, operand)
 
-"Adapt `ValidTripolarDomain` to work on the GPU via KernelAbstractions."
-Adapt.adapt_structure(to, vd::ValidTripolarDomain) = ValidTripolarDomain(Adapt.adapt(to, vd.condition))
+"Adapt `PrognosticTripolarCells` to work on the GPU via KernelAbstractions."
+Adapt.adapt_structure(to, vd::PrognosticTripolarCells) = PrognosticTripolarCells(Adapt.adapt(to, vd.condition))
 
-@inline function evaluate_condition(::ValidTripolarDomain{Nothing},
+@inline function evaluate_condition(::PrognosticTripolarCells{Nothing},
                                     i, j, k,
                                     grid::TripolarGridOfSomeKind,
                                     co::ConditionalOperation) #, args...)
@@ -36,12 +35,12 @@ Adapt.adapt_structure(to, vd::ValidTripolarDomain) = ValidTripolarDomain(Adapt.a
     return ifelse(ℓy == Face, true, valid_domain)
 end
 
-@inline function evaluate_condition(vd::ValidTripolarDomain,
+@inline function evaluate_condition(vd::PrognosticTripolarCells,
                                     i, j, k,
                                     grid::TripolarGridOfSomeKind,
                                     co::ConditionalOperation, args...)
 
-    valid_domain = evaluate_condition(ValidTripolarDomain(), i, j, k, grid, co)                                
+    valid_domain = evaluate_condition(PrognosticTripolarCells(), i, j, k, grid, co)                                
     return valid_domain & evaluate_condition(vd.condition, i, j, k, grid, co, args...)
 end
 
@@ -54,8 +53,8 @@ ITG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}
 const TF = Union{<:AbstractField{<:Any, <:Any, <:Any, <:TripolarGridOfSomeKind},
                  <:AbstractField{<:Any, <:Any, <:Any, <:ITG}}
 
-@inline conditional_length(c::TF) = conditional_length(condition_operand(identity, c, ValidTripolarDomain(), 0))
-@inline conditional_length(c::TF, dims) = conditional_length(condition_operand(identity, c, ValidTripolarDomain(), 0), dims)
+@inline conditional_length(c::TF) = conditional_length(condition_operand(identity, c, PrognosticTripolarCells(), 0))
+@inline conditional_length(c::TF, dims) = conditional_length(condition_operand(identity, c, PrognosticTripolarCells(), 0), dims)
 
 condition_operand(::typeof(identity), op::TF, ::Nothing, mask) =
     condition_operand(nothing, op, nothing, mask)
@@ -64,7 +63,7 @@ condition_operand(::typeof(identity), op::TF, ::Nothing, mask) =
     arch = architecture(op)
 
     if !(arch isa Distributed) || (arch.ranks[2] == arch.local_index[2]) # The last core
-        tripolar_condition = ValidTripolarDomain()
+        tripolar_condition = PrognosticTripolarCells()
     else # intermediate cores
         tripolar_condition = condition
     end
@@ -76,7 +75,7 @@ end
     arch = architecture(op)
 
     if !(arch isa Distributed) || (arch.ranks[2] == arch.local_index[2]) # The last core
-        tripolar_condition = ValidTripolarDomain(condition)
+        tripolar_condition = PrognosticTripolarCells(condition)
     else # intermediate cores
         tripolar_condition = condition
     end
@@ -89,7 +88,7 @@ end
     condition = on_architecture(architecture(operand.grid), condition)
 
     if !(arch isa Distributed) || (arch.ranks[2] == arch.local_index[2]) # The last core
-        tripolar_condition = ValidTripolarDomain(condition)
+        tripolar_condition = PrognosticTripolarCells(condition)
     else # intermediate cores
         tripolar_condition = condition
     end
@@ -112,5 +111,5 @@ const XYZITRF = AbstractField{Nothing, Nothing, Nothing, <:ITG}
 
 const ITRF = Union{XITRF, YITRF, ZITRF, YZITRF, XZITRF, XYITRF, XYZITRF}
 
-condition_operand(::typeof(identity), op::ITRF, ::Nothing, mask) =
+condition_operand(::typeof(identity), op::ITRF, ::Nothing, mask) = 
     condition_operand(nothing, op, nothing, mask)
