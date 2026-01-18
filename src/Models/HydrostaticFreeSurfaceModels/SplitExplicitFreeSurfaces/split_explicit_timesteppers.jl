@@ -10,9 +10,9 @@ A timestepping scheme used for substepping in the split-explicit free surface so
 The equations are evolved as follows:
 ```math
 \\begin{gather}
-η^{m+1} = η^m - Δτ (∂_x U^m + ∂_y V^m), \\\\
-U^{m+1} = U^m - Δτ (∂_x η^{m+1} - G^U), \\\\
-V^{m+1} = V^m - Δτ (∂_y η^{m+1} - G^V).
+U^{m+1} = U^m - Δτ (∂_x η^m - G^U), \\\\
+V^{m+1} = V^m - Δτ (∂_y η^m - G^V).
+η^{m+1} = η^m - Δτ (∂_x U^{m+1} + ∂_y V^{m+1}), \\\\
 \\end{gather}
 ```
 """
@@ -36,8 +36,8 @@ initialize_free_surface_timestepper!(::ForwardBackwardScheme, args...) = nothing
 @inline U★(i, j, k, grid,  ::ForwardBackwardScheme, Uᵐ)   = @inbounds Uᵐ[i, j, k]
 @inline η★(i, j, k, grid,  ::ForwardBackwardScheme, ηᵐ⁺¹) = @inbounds ηᵐ⁺¹[i, j, k]
 
-@inline   cache_previous_velocities!(::ForwardBackwardScheme, i, j, k, U, V) = nothing
 @inline cache_previous_free_surface!(::ForwardBackwardScheme, i, j, k, η)    = nothing
+@inline   cache_previous_velocities!(::ForwardBackwardScheme, i, j, k, U, V) = nothing
 
 #####
 ##### Checkpointing
