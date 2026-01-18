@@ -147,7 +147,7 @@ function construct_exponential_coordinate(i, N, left, right, scale, bias)
     xᵢ = if bias === :right
         rightbiased_exponential_mapping(ξᵢ, left, right, scale)
     elseif bias === :left
-        leftbiased_exponential_mappingleftbiased_exponential_mapping(ξᵢ, left, right, scale)
+        leftbiased_exponential_mapping(ξᵢ, left, right, scale)
     end
 
     xᵢ = if abs(xᵢ - left) < 10eps(Float32)
