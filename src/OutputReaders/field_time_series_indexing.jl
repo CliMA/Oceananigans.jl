@@ -172,14 +172,35 @@ const YFTS  = FlavorOfFTS{Nothing, <:Any, Nothing}
 const ZFTS  = FlavorOfFTS{Nothing, Nothing, <:Any}
 const FTS0  = FlavorOfFTS{Nothing, Nothing, Nothing}
 
-# getbc for FTS boundary conditions
+# `getbc` for 2D FTS boundary conditions (only possible for 2D, 1D and 0D FTS)
+
+# Bottom and top boundary conditions
 @inline getbc(f::XYFTS, i::Int, j::Int, grid::AbstractGrid, clock, args...) = @inbounds f[i, j, 1, Time(clock.time)]
+
+# South and north boundary conditions
 @inline getbc(f::XZFTS, i::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[i, 1, k, Time(clock.time)]
+
+# West and east boundary conditions
 @inline getbc(f::YZFTS, j::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, j, k, Time(clock.time)]
-@inline getbc(f::XFTS,  i::Int, j::Int, grid::AbstractGrid, clock, args...) = @inbounds f[i, 1, 1, Time(clock.time)]
-@inline getbc(f::YFTS,  i::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, j, 1, Time(clock.time)]
-@inline getbc(f::ZFTS,  j::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, 1, k, Time(clock.time)]
-@inline getbc(f::FTS0,  j::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, 1, 1, Time(clock.time)]
+
+# Disambiguation for 1D and 0D FTS
+
+# South - north and top - bottom, only the first index is valid (the second one is either j or k)
+@inline getbc(f::XFTS, i::Int, ::Int, grid::AbstractGrid, clock, args...) = @inbounds f[i, 1, 1, Time(clock.time)]
+
+# West - east and top - bottom, this case is not really well defined since the indexes could be i and j or j and k
+# so we check which dimension of the grid is 1 and pick the corresponding index
+@inline function getbc(f::YFTS, i1::Int, i2::Int, grid::AbstractGrid, clock, args...) 
+    Nx, _, Nz = size(grid)
+    j = ifelse(Nz == 1, i1, i2)
+    return @inbounds f[1, j, 1, Time(clock.time)]
+end
+
+# West - east and south - north boundary conditions, only the last index is valid (the first one is either i or j)
+@inline getbc(f::ZFTS, ::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, 1, k, Time(clock.time)]
+
+# 0D -> index do not matter!
+@inline getbc(f::FTS0, ::Int, ::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, 1, 1, Time(clock.time)]
 
 #####
 ##### Time interpolation / extrapolation
