@@ -72,7 +72,7 @@ synchronize_communication!(var) = throw(ArgumentError("`synchronize_communicatio
 
 # Methods for types that do not require synchronization
 synchronize_communication!(::AbstractField) = nothing
-synchronize_communication!(::AbstractArray) = nothing   
+synchronize_communication!(::AbstractArray) = nothing
 synchronize_communication!(::Number)        = nothing
 synchronize_communication!(::Nothing)       = nothing
 
@@ -228,14 +228,14 @@ end
 
 # Distributed dot product
 @inline function dot(u::DistributedField, v::DistributedField; condition=nothing)
-    cu = condition_operand(u, condition, 0) 
-    cv = condition_operand(v, condition, 0) 
-     
-    B = cu * cv # Binary operation 
-    r = zeros(u.grid, 1) 
-     
-    Base.mapreducedim!(identity, +, r, B) 
-    dot_local = @allowscalar r[1] 
+    cu = condition_operand(u, condition, 0)
+    cv = condition_operand(v, condition, 0)
+
+    B = cu * cv # Binary operation
+    r = zeros(u.grid, 1)
+
+    Base.mapreducedim!(identity, +, r, B)
+    dot_local = @allowscalar r[1]
     arch = architecture(u)
     return all_reduce(+, dot_local, arch)
 end

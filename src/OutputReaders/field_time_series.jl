@@ -18,7 +18,7 @@ using Oceananigans.Grids: topology, total_size, interior_parent_indices, Abstrac
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 
 using Oceananigans.Fields: interior_view_indices,
-                           indices_summary, boundary_conditions, instantiate
+                           indices_summary, instantiate
 
 using Oceananigans.Units: Time
 using Oceananigans.Utils: launch!
@@ -262,6 +262,7 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW} 
         end
 
         if times isa AbstractArray
+            times = on_architecture(CPU(), times)
             times = try_convert_to_range(times)
             times = on_architecture(architecture(grid), times)
         end
@@ -457,6 +458,107 @@ end
 struct UnspecifiedBoundaryConditions end
 
 """
+    reconstruct_legacy_grid(grid, file, architecture)
+
+Reconstruct a grid from legacy JLD2 output files (prior to Oceananigans 0.95.0)
+that did not serialize grids properly.
+"""
+function reconstruct_legacy_grid(grid, file, architecture)
+    isibg = grid isa ImmersedBoundaryGrid
+    test_grid = isibg ? grid.underlying_grid : grid
+    address = isibg ? "grid/underlying_grid" : "grid"
+    Nx = file["$address/Nx"]
+    Ny = file["$address/Ny"]
+    Nz = file["$address/Nz"]
+    Hx = file["$address/Hx"]
+    Hy = file["$address/Hy"]
+    Hz = file["$address/Hz"]
+    zᵃᵃᶠ = file["$address/zᵃᵃᶠ"]
+    z = file["$address/Δzᵃᵃᶠ"] isa Number ? (zᵃᵃᶠ[1], zᵃᵃᶠ[Nz+1]) : zᵃᵃᶠ[1:Nz+1]
+
+    if isibg
+        topo = topology(grid)
+    else
+        topo = reconstructed_topology(grid)
+    end
+
+    size = (Nx, Ny, Nz)
+    halo = (Hx, Hy, Hz)
+
+    if :λᶜᵃᵃ ∈ propertynames(test_grid) # I guess its a LatitudeLongitudeGrid.
+        λᶠᵃᵃ = file["$address/λᶠᵃᵃ"]
+        φᵃᶠᵃ = file["$address/φᵃᶠᵃ"]
+        λ = file["$address/Δλᶠᵃᵃ"] isa Number ? (λᶠᵃᵃ[1], λᶠᵃᵃ[Nx+1]) : λᶠᵃᵃ[1:Nx+1]
+        φ = file["$address/Δφᵃᶠᵃ"] isa Number ? (φᵃᶠᵃ[1], φᵃᶠᵃ[Ny+1]) : φᵃᶠᵃ[1:Ny+1]
+        domain = (latitude=φ, longitude=λ, z=z)
+        underlying_grid = LatitudeLongitudeGrid(architecture; size, halo, topology=topo, domain...)
+    else
+        xᶠᵃᵃ = file["$address/xᶠᵃᵃ"]
+        yᵃᶠᵃ = file["$address/yᵃᶠᵃ"]
+        x = file["$address/Δxᶠᵃᵃ"] isa Number ? (xᶠᵃᵃ[1], xᶠᵃᵃ[Nx+1]) : xᶠᵃᵃ[1:Nx+1]
+        y = file["$address/Δyᵃᶠᵃ"] isa Number ? (yᵃᶠᵃ[1], yᵃᶠᵃ[Ny+1]) : yᵃᶠᵃ[1:Ny+1]
+        domain = (; x, y, z)
+        underlying_grid = RectilinearGrid(architecture; size, halo, topology=topo, domain...)
+    end
+
+    if isibg
+        bottom_height = file["grid/immersed_boundary/bottom_height"]
+        bottom_height = view(bottom_height, 1+Hx:Nx+Hx, 1+Hy:Ny+Hy, 1)
+        grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
+    else
+        grid = underlying_grid
+    end
+
+    return grid
+end
+
+"""
+    manually_reconstruct_rectilinear_grid(grid, file, architecture)
+
+Manually reconstruct a RectilinearGrid from file data when `on_architecture` fails.
+This is a fallback for grids saved with CuArrays or generated with a different Julia version.
+"""
+function manually_reconstruct_rectilinear_grid(grid, file, architecture)
+    @info "Initial attempt to transfer grid to $architecture failed."
+    @info "Attempting to reconstruct RectilinearGrid on $architecture manually..."
+
+    Nx = file["grid/Nx"]
+    Ny = file["grid/Ny"]
+    Nz = file["grid/Nz"]
+    Hx = file["grid/Hx"]
+    Hy = file["grid/Hy"]
+    Hz = file["grid/Hz"]
+    xᶠᵃᵃ = file["grid/xᶠᵃᵃ"]
+    yᵃᶠᵃ = file["grid/yᵃᶠᵃ"]
+    zᵃᵃᶠ = file["grid/zᵃᵃᶠ"]
+    x = file["grid/Δxᶠᵃᵃ"] isa Number ? (xᶠᵃᵃ[1], xᶠᵃᵃ[Nx+1]) : xᶠᵃᵃ
+    y = file["grid/Δyᵃᶠᵃ"] isa Number ? (yᵃᶠᵃ[1], yᵃᶠᵃ[Ny+1]) : yᵃᶠᵃ
+    z = file["grid/Δzᵃᵃᶠ"] isa Number ? (zᵃᵃᶠ[1], zᵃᵃᶠ[Nz+1]) : zᵃᵃᶠ
+    topo = topology(grid)
+
+    N = (Nx, Ny, Nz)
+
+    # Reduce for Flat dimensions
+    domain = Dict()
+    for (i, ξ) in enumerate((x, y, z))
+        if topo[i] !== Flat
+            if !(ξ isa Tuple)
+                chopped_ξ = ξ[1:N[i]+1]
+            else
+                chopped_ξ = ξ
+            end
+            sξ = (:x, :y, :z)[i]
+            domain[sξ] = chopped_ξ
+        end
+    end
+
+    size = Tuple(N[i] for i=1:3 if topo[i] !== Flat)
+    halo = Tuple((Hx, Hy, Hz)[i] for i=1:3 if topo[i] !== Flat)
+
+    return RectilinearGrid(architecture; size, halo, topology=topo, domain...)
+end
+
+"""
     FieldTimeSeries(path, name;
                     backend = InMemory(),
                     architecture = nothing,
@@ -494,7 +596,7 @@ Keyword arguments
 - `reader_kw`: A named tuple or dictionary of keyword arguments to pass to the reader
                (currently only JLD2) to be used when opening files.
 """
-function FieldTimeSeries(path::String, name::String;
+function FieldTimeSeries(file::JLD2.JLDFile, name::String;
                          backend = InMemory(),
                          architecture = nothing,
                          grid = nothing,
@@ -503,6 +605,9 @@ function FieldTimeSeries(path::String, name::String;
                          time_indexing = Linear(),
                          iterations = nothing,
                          times = nothing,
+                         Nparts = nothing,
+                         part_paths = nothing,
+                         path = nothing,
                          combine = true,
                          reader_kw = NamedTuple())
 
@@ -525,7 +630,7 @@ function FieldTimeSeries(path::String, name::String;
                                                    reader_kw)
             end
         end
-        
+
         # Handle file splitting due to max_filesize limitations by looking for filenames
         # that end in part1, etc
         start = path[1:end-5]
@@ -533,7 +638,7 @@ function FieldTimeSeries(path::String, name::String;
         part_paths = glob(lookfor)
         part_paths = naturalsort(part_paths)
         Nparts = length(part_paths)
-        
+
         if Nparts == 0
             if combine
                 error("File not found: $path. Also tried looking for rank files (*_rank*.jld2) and part files (*_part*.jld2).")
@@ -541,16 +646,14 @@ function FieldTimeSeries(path::String, name::String;
                 error("File not found: $path. Also tried looking for part files (*_part*.jld2). Set combine=true to also look for distributed rank files.")
             end
         end
-        
+
         path = first(part_paths) # part1 is first?
-    else
-        Nparts = nothing
     end
 
-    file = jldopen(path; reader_kw...)
+    handle = jldopen(path; reader_kw...)
 
     indices = try
-        file["timeseries/$name/serialized/indices"]
+        handle["timeseries/$name/serialized/indices"]
     catch
         (:, :, :)
     end
@@ -563,7 +666,9 @@ function FieldTimeSeries(path::String, name::String;
         end
     end
 
-    isnothing(grid) && (grid = file["serialized/grid"])
+    if isnothing(grid)
+        grid = handle["serialized/grid"]
+    end
 
     # If isreconstructed(grid), it probably means that the data was generated prior to
     # Oceananigans version 0.95.0 (12/13/2024). In this case, the best we can do is to try to rebuild
@@ -571,130 +676,49 @@ function FieldTimeSeries(path::String, name::String;
     # and LatitudeLongitudeGrid (but not OrthogonalSphericalShellGrid) and we also assume
     # GridFittedBottom if the grid is an ImmersedBoundaryGrid. If these assumptions can be relaxed
     # in the future, they should.
-    if isreconstructed(grid)
-        isibg = grid isa ImmersedBoundaryGrid
-        test_grid = isibg ? grid.underlying_grid : grid
-        address = isibg ? "grid/underlying_grid" : "grid"
-        Nx = file["$address/Nx"]
-        Ny = file["$address/Ny"]
-        Nz = file["$address/Nz"]
-        Hx = file["$address/Hx"]
-        Hy = file["$address/Hy"]
-        Hz = file["$address/Hz"]
-        zᵃᵃᶠ = file["$address/zᵃᵃᶠ"]
-        z = file["$address/Δzᵃᵃᶠ"] isa Number ? (zᵃᵃᶠ[1], zᵃᵃᶠ[Nz+1]) : zᵃᵃᶠ[1:Nz+1]
-
-        if isibg
-            topo = topology(grid)
-        else
-            topo = reconstructed_topology(grid)
-        end
-
-        size = (Nx, Ny, Nz)
-        halo = (Hx, Hy, Hz)
-
-        if :λᶜᵃᵃ ∈ propertynames(test_grid) # I guess its a LatitudeLongitudeGrid.
-            λᶠᵃᵃ = file["$address/λᶠᵃᵃ"]
-            φᵃᶠᵃ = file["$address/φᵃᶠᵃ"]
-            λ = file["$address/Δλᶠᵃᵃ"] isa Number ? (λᶠᵃᵃ[1], λᶠᵃᵃ[Nx+1]) : λᶠᵃᵃ[1:Nx+1]
-            φ = file["$address/Δφᵃᶠᵃ"] isa Number ? (φᵃᶠᵃ[1], φᵃᶠᵃ[Ny+1]) : φᵃᶠᵃ[1:Ny+1]
-            domain = (latitude=φ, longitude=λ, z=z)
-            underlying_grid = LatitudeLongitudeGrid(architecture; size, halo, topology=topo, domain...)
-        else
-            xᶠᵃᵃ = file["$address/xᶠᵃᵃ"]
-            yᵃᶠᵃ = file["$address/yᵃᶠᵃ"]
-            x = file["$address/Δxᶠᵃᵃ"] isa Number ? (xᶠᵃᵃ[1], xᶠᵃᵃ[Nx+1]) : xᶠᵃᵃ[1:Nx+1]
-            y = file["$address/Δyᵃᶠᵃ"] isa Number ? (yᵃᶠᵃ[1], yᵃᶠᵃ[Ny+1]) : yᵃᶠᵃ[1:Ny+1]
-            domain = (; x, y, z)
-            underlying_grid = RectilinearGrid(architecture; size, halo, topology=topo, domain...)
-        end
-
-        if isibg
-            bottom_height = file["grid/immersed_boundary/bottom_height"]
-            bottom_height = view(bottom_height, 1+Hx:Nx+Hx, 1+Hy:Ny+Hy, 1)
-            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
-        else
-            grid = underlying_grid
-        end
-    end
+    isreconstructed(grid) && (grid = reconstruct_legacy_grid(grid, handle, architecture))
 
     # This should be removed eventually... (4/5/2022)
     grid = try
         on_architecture(architecture, grid)
     catch err # Likely, the grid was saved with CuArrays or generated with a different Julia version.
         if grid isa RectilinearGrid # we can try...
-            @info "Initial attempt to transfer grid to $architecture failed."
-            @info "Attempting to reconstruct RectilinearGrid on $architecture manually..."
-
-            Nx = file["grid/Nx"]
-            Ny = file["grid/Ny"]
-            Nz = file["grid/Nz"]
-            Hx = file["grid/Hx"]
-            Hy = file["grid/Hy"]
-            Hz = file["grid/Hz"]
-            xᶠᵃᵃ = file["grid/xᶠᵃᵃ"]
-            yᵃᶠᵃ = file["grid/yᵃᶠᵃ"]
-            zᵃᵃᶠ = file["grid/zᵃᵃᶠ"]
-            x = file["grid/Δxᶠᵃᵃ"] isa Number ? (xᶠᵃᵃ[1], xᶠᵃᵃ[Nx+1]) : xᶠᵃᵃ
-            y = file["grid/Δyᵃᶠᵃ"] isa Number ? (yᵃᶠᵃ[1], yᵃᶠᵃ[Ny+1]) : yᵃᶠᵃ
-            z = file["grid/Δzᵃᵃᶠ"] isa Number ? (zᵃᵃᶠ[1], zᵃᵃᶠ[Nz+1]) : zᵃᵃᶠ
-            topo = topology(grid)
-
-            N = (Nx, Ny, Nz)
-
-            # Reduce for Flat dimensions
-            domain = Dict()
-            for (i, ξ) in enumerate((x, y, z))
-                if topo[i] !== Flat
-                    if !(ξ isa Tuple)
-                        chopped_ξ = ξ[1:N[i]+1]
-                    else
-                        chopped_ξ = ξ
-                    end
-                    sξ = (:x, :y, :z)[i]
-                    domain[sξ] = chopped_ξ
-                end
-            end
-
-            size = Tuple(N[i] for i=1:3 if topo[i] !== Flat)
-            halo = Tuple((Hx, Hy, Hz)[i] for i=1:3 if topo[i] !== Flat)
-
-            RectilinearGrid(architecture; size, halo, topology=topo, domain...)
+            manually_reconstruct_rectilinear_grid(grid, handle, architecture)
         else
             throw(err)
         end
     end
 
     if boundary_conditions isa UnspecifiedBoundaryConditions
-        boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
+        boundary_conditions = handle["timeseries/$name/serialized/boundary_conditions"]
         boundary_conditions = on_architecture(architecture, boundary_conditions)
     end
 
-    isnothing(location) && (location = file["timeseries/$name/serialized/location"])
+    isnothing(location) && (location = handle["timeseries/$name/serialized/location"])
     LX, LY, LZ = location
     loc = (LX(), LY(), LZ())
 
     if isnothing(Nparts)
-        isnothing(iterations) && (iterations = parse.(Int, keys(file["timeseries/t"])))
-        isnothing(times) && (times = [file["timeseries/t/$i"] for i in iterations])
-        close(file)
+        isnothing(iterations) && (iterations = parse.(Int, keys(handle["timeseries/t"])))
+        isnothing(times) && (times = [handle["timeseries/t/$i"] for i in iterations])
+        close(handle)
     else
         all_iterations = []
         all_times = []
-        part_iterations = parse.(Int, keys(file["timeseries/t"]))
-        part_times = [file["timeseries/t/$i"] for i in part_iterations]
+        part_iterations = parse.(Int, keys(handle["timeseries/t"]))
+        part_times = [handle["timeseries/t/$i"] for i in part_iterations]
         push!(all_iterations, part_iterations)
         push!(all_times, part_times)
-        close(file)
+        close(handle)
 
         for part in 2:Nparts
             path = part_paths[part]
-            file = jldopen(path; reader_kw...)
-            part_iterations = parse.(Int, keys(file["timeseries/t"]))
-            part_times = [file["timeseries/t/$i"] for i in part_iterations]
+            local handle = jldopen(path; reader_kw...)
+            part_iterations = parse.(Int, keys(handle["timeseries/t"]))
+            part_times = [handle["timeseries/t/$i"] for i in part_iterations]
             push!(all_iterations, part_iterations)
             push!(all_times, part_times)
-            close(file)
+            close(handle)
         end
 
         iterations = vcat(all_iterations...)
@@ -718,18 +742,91 @@ function FieldTimeSeries(path::String, name::String;
     return time_series
 end
 
+ext(path) = splitext(path) |> last
+
+function FieldTimeSeries(path::String, args...; reader_kw = NamedTuple(), kwargs...)
+    path = auto_extension(path, ".jld2") # JLD2 is the default extension
+    typed_path = if ext(path) == ".jld2"
+                     JLD2Path(path)
+                 elseif ext(path) == ".nc"
+                     NetCDFPath(path)
+                 else
+                     error("Unsupported file extension: $(path)")
+                 end
+
+    return FieldTimeSeries(typed_path, args...; reader_kw, kwargs...)
+end
+
+function FieldTimeSeries(typed_path::JLD2Path, name::String;
+                         backend = InMemory(),
+                         architecture = nothing,
+                         grid = nothing,
+                         location = nothing,
+                         boundary_conditions = UnspecifiedBoundaryConditions(),
+                         time_indexing = Linear(),
+                         iterations = nothing,
+                         times = nothing,
+                         combine = true,
+                         reader_kw = NamedTuple())
+
+    path = typed_path.path
+
+    if !isfile(path)
+        # First, check for distributed rank files (e.g., output_rank0.jld2, output_rank1.jld2, ...)
+        if combine
+            rank_paths = find_rank_files(path)
+            if !isnothing(rank_paths)
+                return combined_field_time_series(path, name;
+                                                   backend,
+                                                   architecture,
+                                                   grid,
+                                                   location,
+                                                   boundary_conditions,
+                                                   time_indexing,
+                                                   iterations,
+                                                   times,
+                                                   reader_kw)
+            end
+        end
+
+        # Handle file splitting due to max_filesize limitations by looking for filenames
+        # that end in part1, etc
+        start = path[1:end-5] # Remove filepath extension
+        lookfor = string(start, "_part*.jld2") # Look for part1, etc
+        part_paths = glob(lookfor) |> naturalsort
+        Nparts = length(part_paths)
+
+        if Nparts == 0
+            if combine
+                error("File not found: $path. Also tried looking for rank files (*_rank*.jld2) and part files (*_part*.jld2).")
+            else
+                error("File not found: $path. Also tried looking for part files (*_part*.jld2). Set combine=true to also look for distributed rank files.")
+            end
+        end
+
+        path = first(part_paths) # part1 is first?
+    else
+        Nparts = nothing
+        part_paths = nothing
+    end
+
+    file = jldopen(path; reader_kw...)
+    return FieldTimeSeries(file, name; backend, architecture, grid, location, boundary_conditions,
+                           time_indexing, iterations, times, Nparts, part_paths, path, reader_kw)
+end
+
 """
-    Field(location, path, name, iter;
+    Field(location, file::JLD2.JLDFile, name::String, iter;
           grid = nothing,
           architecture = nothing,
           indices = (:, :, :),
           boundary_conditions = nothing,
           reader_kw = NamedTuple())
 
-Load a field called `name` saved in a JLD2 file at `path` at `iter`ation.
+Load a field called `name` saved in a JLD2 file at `file` at `iter`ation.
 Unless specified, the `grid` is loaded from `path`.
 """
-function Field(location, path::String, name::String, iter;
+function Field(location, file::JLD2.JLDFile, name::String, iter;
                grid = nothing,
                architecture = nothing,
                indices = (:, :, :),
@@ -745,13 +842,8 @@ function Field(location, path::String, name::String, iter;
         end
     end
 
-    # Load the grid and data from file
-    file = jldopen(path; reader_kw...)
-
     isnothing(grid) && (grid = file["serialized/grid"])
     raw_data = file["timeseries/$name/$iter"]
-
-    close(file)
 
     # Change grid to specified architecture?
     grid = on_architecture(architecture, grid)
@@ -808,8 +900,7 @@ const MAX_FTS_TUPLE_SIZE = 10
 fill_halo_regions!(fts::OnDiskFTS) = nothing
 
 function fill_halo_regions!(fts::InMemoryFTS)
-    partitioned_indices = Iterators.partition(time_indices(fts), MAX_FTS_TUPLE_SIZE)
-    partitioned_indices = collect(partitioned_indices)
+    partitioned_indices = collect(Iterators.partition(time_indices(fts), MAX_FTS_TUPLE_SIZE))
     Ni = length(partitioned_indices)
 
     asyncmap(1:Ni) do i

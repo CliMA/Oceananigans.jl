@@ -1,11 +1,11 @@
 using Oceananigans.OutputWriters: WindowedTimeAverage
 using Oceananigans.TimeSteppers: update_state!, unit_time
 
-using Oceananigans: AbstractModel, run_diagnostic!
+using Oceananigans: AbstractModel, run_diagnostic!, restore_prognostic_state!
+using Oceananigans.OutputWriters: checkpoint_path, load_checkpoint_state
 
 import Oceananigans: initialize!
 import Oceananigans.Fields: set!
-import Oceananigans.OutputWriters: checkpoint_path
 import Oceananigans.TimeSteppers: time_step!
 import Oceananigans.Utils: schedule_aligned_time_step
 
@@ -56,25 +56,63 @@ function aligned_time_step(sim::Simulation, Δt)
     return aligned_Δt
 end
 
-function set!(sim::Simulation, pickup::Union{Bool, Integer, String})
-    checkpoint_file_path = checkpoint_path(pickup, sim.output_writers)
-    set!(sim.model, checkpoint_file_path)
+"""
+    set!(simulation; checkpoint=nothing, iteration=nothing)
+
+Restore `simulation` state from a checkpoint file.
+
+Keyword arguments
+=================
+
+- `checkpoint`: Specifies the checkpoint source. Can be:
+  - `:latest` to restore from the latest checkpoint associated with
+    the `Checkpointer` in `simulation.output_writers`.
+  - A `String` filepath to restore from checkpointer data in that file.
+
+- `iteration`: An `Integer` specifying the iteration number to restore from.
+  Uses the `Checkpointer` in `simulation.output_writers` to locate the file.
+
+Note: Only one of `checkpoint` or `iteration` should be specified.
+The `iteration` keyword and `checkpoint=:latest` require that `simulation.output_writers`
+contains exactly one checkpointer.
+
+See also [`run!`](@ref), which accepts a `pickup` keyword argument.
+"""
+function set!(sim::Simulation; checkpoint=nothing, iteration=nothing)
+    nargs = count(!isnothing, (checkpoint, iteration))
+
+    nargs == 0 && return nothing
+    nargs > 1 && throw(ArgumentError("Only one of `checkpoint` or `iteration` should be specified."))
+
+    checkpoint_filepath = if !isnothing(iteration)
+        checkpoint_path(iteration, sim.output_writers)
+    elseif checkpoint === :latest
+        checkpoint_path(true, sim.output_writers)
+    elseif checkpoint isa String
+        checkpoint_path(checkpoint, sim.output_writers)
+    else
+        throw(ArgumentError("Invalid checkpoint=$checkpoint. Expected :latest or a String filepath."))
+    end
+
+    state = load_checkpoint_state(checkpoint_filepath)
+    restore_prognostic_state!(sim, state)
     return nothing
 end
 
 """
-    run!(simulation; pickup=false)
+    run!(simulation; pickup=false, checkpoint_at_end=false)
 
-Run a `simulation` until one of `simulation.stop_criteria` evaluates `true`.
-The simulation will then stop.
+Run a `simulation` until one of `simulation.callbacks` such as `stop_time_exceeded` or
+`wall_time_limit_exceeded` sets `simulation.running` to `false`. The simulation will then
+stop.
 
 # Picking simulations up from a checkpoint
 
 Simulations are "picked up" from a checkpoint if `pickup` is either `true`, a `String`, or an
 `Integer` greater than 0.
 
-Picking up a simulation sets field and tendency data to the specified checkpoint,
-leaving all other model properties unchanged.
+Picking up a simulation restores the simulation's prognostic state to the specified checkpoint,
+leaving all other simulation properties unchanged.
 
 Possible values for `pickup` are:
 
@@ -86,15 +124,26 @@ Possible values for `pickup` are:
 
   * `pickup=filepath::String` picks a simulation up from checkpointer data in `filepath`.
 
-Note that `pickup=true` and `pickup=iteration` fails if `simulation.output_writers` contains
+Note that `pickup=true` and `pickup=iteration` fail if `simulation.output_writers` contains
 more than one checkpointer.
+
+# Checkpointing at end
+
+Set `checkpoint_at_end=true` to automatically checkpoint the simulation when it stops running.
+This ensures the final state is saved even if the simulation stops due to wall time limits.
 """
-function run!(sim; pickup=false)
+function run!(sim; pickup=false, checkpoint_at_end=false)
 
     start_run = time_ns()
 
     if we_want_to_pickup(pickup)
-        set!(sim, pickup)
+        if pickup === true
+            set!(sim; checkpoint=:latest)
+        elseif pickup isa Integer
+            set!(sim; iteration=pickup)
+        elseif pickup isa String
+            set!(sim; checkpoint=pickup)
+        end
     end
 
     sim.initialized = false
@@ -104,6 +153,8 @@ function run!(sim; pickup=false)
     while sim.running
         time_step!(sim)
     end
+
+    checkpoint_at_end && checkpoint(sim)
 
     for callback in values(sim.callbacks)
         finalize!(callback, sim)
@@ -180,7 +231,13 @@ end
 #####
 
 add_dependency!(diagnostics, output) = nothing # fallback
-add_dependency!(diags, wta::WindowedTimeAverage) = wta ∈ values(diags) || push!(diags, wta)
+
+function add_dependency!(diags, wta::WindowedTimeAverage)
+    if wta ∉ values(diags)
+        num_diags_plus_1 = length(diags) + 1
+        diags[Symbol("WindowedTimeAverage$num_diags_plus_1")] = wta
+    end
+end
 
 add_dependencies!(diags, writer) = [add_dependency!(diags, out) for out in values(writer.outputs)]
 add_dependencies!(sim, ::Checkpointer) = nothing # Checkpointer does not have "outputs"
@@ -206,34 +263,36 @@ function initialize!(sim::Simulation)
     end
 
     model = sim.model
-    initialize!(model)
+
+    # Only initialize for fresh simulations, not after restoring from a checkpoint.
+    if model.clock.iteration == 0
+        initialize!(model)
+    end
+
+    # After restoring from a checkpoint, skip tendency computation since the restored
+    # tendencies are already correct. We still need to call update_state! to fill halos,
+    # compute w from continuity, etc. though.
     update_state!(model)
 
     # Output and diagnostics initialization
     [add_dependencies!(sim.diagnostics, writer) for writer in values(sim.output_writers)]
 
-    # Initialize schedules
-    scheduled_activities = Iterators.flatten((values(sim.diagnostics),
-                                              values(sim.callbacks),
-                                              values(sim.output_writers)))
-
-    for activity in scheduled_activities
-        initialize!(activity.schedule, sim.model)
-    end
-
-    for callback in values(sim.callbacks)
-        initialize!(callback, sim)
-    end
-
-    for writer in values(sim.output_writers)
-        initialize!(writer, model)
-    end
-
-    # Reset! the model time-stepper, evaluate all diagnostics, and write all output at first iteration
+    # Things to do for fresh simulations (not after checkpoint restore)
     if model.clock.iteration == 0
+        scheduled_activities = Iterators.flatten((values(sim.diagnostics),
+                                                  values(sim.callbacks),
+                                                  values(sim.output_writers)))
+
+        for activity in scheduled_activities
+            initialize!(activity.schedule, sim.model)
+        end
+
+        for callback in values(sim.callbacks)
+            initialize!(callback, sim)
+        end
+
         reset!(timestepper(model))
 
-        # Initialize schedules and run diagnostics, callbacks, and output writers
         for diag in values(sim.diagnostics)
             run_diagnostic!(diag, model)
         end
@@ -257,4 +316,3 @@ function initialize!(sim::Simulation)
 
     return nothing
 end
-

@@ -7,21 +7,15 @@ export
     ConjugateGradientSolver,
     KrylovSolver
 
-using Statistics
-using FFTW
-using GPUArraysCore
-using SparseArrays
-using KernelAbstractions
+using FFTW: FFTW
+using KernelAbstractions: @kernel, @index
 
-using Oceananigans.Architectures: CPU, GPU, on_architecture
+using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Utils
-using Oceananigans.Grids
-using Oceananigans.BoundaryConditions
-using Oceananigans.Fields
-
-using Oceananigans.Grids: inactive_cell
-using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG, RectilinearGrid, RegularVerticalCoordinate
+using Oceananigans.Utils: launch!
+using Oceananigans.Fields: AbstractField, CenterField, field
+using Oceananigans.Grids: Bounded, Flat, Periodic, XYRegularRG, XZRegularRG, YZRegularRG,
+    XYZRegularRG, RectilinearGrid, RegularVerticalCoordinate, inactive_cell, topology
 
 """
     ω(M, k)

@@ -142,7 +142,7 @@ sequential_data(sz::NTuple{N, Int}) where N = reshape(Float64.(1:prod(sz)), sz..
 
         fig = CairoMakie.Figure()
         ax = CairoMakie.Axis3(fig[1, 1]; aspect=:data)
-        
+
         # This should work via the extension
         plt = surface!(ax, T; colormap=:viridis)
         @test plt isa CairoMakie.Surface
@@ -155,7 +155,7 @@ sequential_data(sz::NTuple{N, Int}) where N = reshape(Float64.(1:prod(sz)), sz..
 
         fig = CairoMakie.Figure()
         ax = CairoMakie.Axis3(fig[1, 1]; aspect=:data)
-        
+
         plt = surface!(ax, T; colormap=:viridis)
         @test plt isa CairoMakie.Surface
     end
@@ -176,7 +176,7 @@ sequential_data(sz::NTuple{N, Int}) where N = reshape(Float64.(1:prod(sz)), sz..
 
         fig = CairoMakie.Figure()
         ax = CairoMakie.Axis3(fig[1, 1]; aspect=:data)
-        
+
         # This should work with Observable fields
         plt = surface!(ax, T_obs; colormap=:viridis)
         @test plt isa CairoMakie.Surface
@@ -199,7 +199,7 @@ sequential_data(sz::NTuple{N, Int}) where N = reshape(Float64.(1:prod(sz)), sz..
 
         fig = CairoMakie.Figure()
         ax = CairoMakie.Axis3(fig[1, 1]; aspect=:data)
-        
+
         plt = geo_surface!(ax, T; colormap=:thermal)
         @test plt isa CairoMakie.Surface
     end

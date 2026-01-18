@@ -45,6 +45,7 @@ minimal_location_string(::RectilinearGrid, LX, LY, LZ, ::Val{:x}) = loc2letter(L
 minimal_location_string(::RectilinearGrid, LX, LY, LZ, ::Val{:y}) = loc2letter(LY, false)
 
 minimal_dim_name(var_name, grid, LX, LY, LZ, dim) =
+    suffixed_dim_name_generator(var_name, grid, LX, LY, LZ, dim; connector="_", location_letters=minimal_location_string(grid, LX, LY, LZ, dim))
 minimal_dim_name(var_name, grid::ImmersedBoundaryGrid, args...) = minimal_dim_name(var_name, grid.underlying_grid, args...)
 
 trilocation_location_string(::RectilinearGrid, LX, LY, LZ, ::Val{:x}) = loc2letter(LX) * "aa"
@@ -63,7 +64,7 @@ trilocation_dim_name(var_name, grid, LX, LY, LZ, dim) =
 trilocation_dim_name(var_name, grid::ImmersedBoundaryGrid, args...) = trilocation_dim_name(var_name, grid.underlying_grid, args...)
 
 dimension_name_generator_free_surface(dimension_name_generator, var_name, grid, LX, LY, LZ, dim) = dimension_name_generator(var_name, grid, LX, LY, LZ, dim)
-dimension_name_generator_free_surface(dimension_name_generator, var_name, grid, LX, LY, LZ, dim::Val{:z}) = dimension_name_generator(var_name, grid, LX, LY, LZ, dim) * "_η"
+dimension_name_generator_free_surface(dimension_name_generator, var_name, grid, LX, LY, LZ, dim::Val{:z}) = dimension_name_generator(var_name, grid, LX, LY, LZ, dim) * "_displacement"
 
 mutable struct NetCDFWriter{G, D, O, T, A, FS, DN, DT} <: AbstractOutputWriter
     grid :: G

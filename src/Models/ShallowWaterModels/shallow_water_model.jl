@@ -1,10 +1,10 @@
 using Oceananigans: AbstractModel
 
-using Oceananigans.Architectures: AbstractArchitecture
-using Oceananigans.AbstractOperations: @at, KernelFunctionOperation
-using Oceananigans.DistributedComputations
+using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Advection: VectorInvariant
+using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
+using Oceananigans.DistributedComputations
 using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CenterField, compute!
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: topology, Flat, architecture, RectilinearGrid, Center
@@ -14,6 +14,7 @@ using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, build_closure_fields
 using Oceananigans.Utils: tupleit
 
+import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.Architectures: architecture
 
 const RectilinearGrids = Union{RectilinearGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:RectilinearGrid}}
@@ -177,8 +178,8 @@ function ShallowWaterModel(grid;
     boundary_conditions = merge(default_boundary_conditions, boundary_conditions)
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, prognostic_field_names)
 
-    solution           = ShallowWaterSolutionFields(grid, boundary_conditions, prognostic_field_names)
-    tracers            = TracerFields(tracers, grid, boundary_conditions)
+    solution = ShallowWaterSolutionFields(grid, boundary_conditions, prognostic_field_names)
+    tracers  = TracerFields(tracers, grid, boundary_conditions)
     closure_fields = build_closure_fields(closure_fields, grid, clock, tracernames(tracers), boundary_conditions, closure)
 
     # Instantiate timestepper if not already instantiated
@@ -207,7 +208,7 @@ function ShallowWaterModel(grid;
                               timestepper,
                               formulation)
 
-    update_state!(model; compute_tendencies = false)
+    update_state!(model)
 
     return model
 end
@@ -234,5 +235,30 @@ end
 
 shallow_water_velocities(model::ShallowWaterModel) = shallow_water_velocities(model.formulation, model.solution)
 
-shallow_water_fields(velocities, solution, tracers, ::ConservativeFormulation)    = merge(velocities, solution, tracers)
+shallow_water_fields(velocities, solution, tracers, ::ConservativeFormulation) = merge(velocities, solution, tracers)
 shallow_water_fields(velocities, solution, tracers, ::VectorInvariantFormulation) = merge(solution, (; w = velocities.w), tracers)
+
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(model::ShallowWaterModel)
+    return (clock = prognostic_state(model.clock),
+            solution = prognostic_state(model.solution),
+            velocities = prognostic_state(model.velocities),
+            tracers = prognostic_state(model.tracers),
+            closure_fields = prognostic_state(model.closure_fields),
+            timestepper = prognostic_state(model.timestepper))
+end
+
+function restore_prognostic_state!(model::ShallowWaterModel, state)
+    restore_prognostic_state!(model.clock, state.clock)
+    restore_prognostic_state!(model.solution, state.solution)
+    restore_prognostic_state!(model.velocities, state.velocities)
+    restore_prognostic_state!(model.timestepper, state.timestepper)
+    restore_prognostic_state!(model.tracers, state.tracers)
+    restore_prognostic_state!(model.closure_fields, state.closure_fields)
+    return model
+end
+
+restore_prognostic_state!(::ShallowWaterModel, ::Nothing) = nothing
