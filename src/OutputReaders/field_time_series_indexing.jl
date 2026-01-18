@@ -190,7 +190,7 @@ const FTS0  = FlavorOfFTS{Nothing, Nothing, Nothing}
 
 # West - east and top - bottom, this case is not really well defined since the indexes could be i and j or j and k
 # so we check which dimension of the grid is 1 and pick the corresponding index
-@inline function getbc(f::YFTS, i1::Int, i2::Int, grid::AbstractGrid, clock, args...) 
+@inline function getbc(f::YFTS, i1::Int, i2::Int, grid::AbstractGrid, clock, args...)
     Nx, _, Nz = size(grid)
     j = ifelse(Nz == 1, i1, i2)
     return @inbounds f[1, j, 1, Time(clock.time)]
