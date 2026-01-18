@@ -56,7 +56,6 @@ Adapt.adapt_structure(to, ti::TimeInterpolator) =
     tᴺ = last(times)
 
     T = ti.period
-    Δt = T - (tᴺ - t¹)
 
     # Compute modulus of shifted time, then add shift back
     τ = t - t¹
