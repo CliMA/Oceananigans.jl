@@ -65,7 +65,7 @@ fieldify_function(L, a::Function, grid) = FunctionField(L, a, grid)
 @inline call_func(::Nothing, ::Nothing,  func, x...) = func(x...)
 # If clock is specified for discrete form, pass directly to `func`
 @inline call_func(clock,     parameters, func, i, j, k, grid::AbstractGrid) = func(i, j, k, grid, clock, parameters)
-@inline call_func(clock,     ::Nothing,  func, i, j, k, grid::AbstractGRid) = func(i, j, k, grid, clock)
+@inline call_func(clock,     ::Nothing,  func, i, j, k, grid::AbstractGrid) = func(i, j, k, grid, clock)
 
 @inline function Base.getindex(f::FunctionField{LX, LY, LZ}, i, j, k) where {LX, LY, LZ}
     f_ijk = call_func(f.clock, f.parameters, f.func, node(i, j, k, f.grid, LX(), LY(), LZ())...)
