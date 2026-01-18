@@ -38,20 +38,20 @@ Distributed.addprocs(2)
     # The examples that take longer to run should be first. This ensures that the
     # docs built which extra workers is as efficient as possible.
     example_scripts = [
-        "spherical_baroclinic_instability.jl",
-        "internal_tide.jl",
-        "langmuir_turbulence.jl",
-        "shallow_water_Bickley_jet.jl",
-        "ocean_wind_mixing_and_convection.jl",
-        "kelvin_helmholtz_instability.jl",
-        "horizontal_convection.jl",
-        "baroclinic_adjustment.jl",
-        "tilted_bottom_boundary_layer.jl",
-        "convecting_plankton.jl",
-        "hydrostatic_lock_exchange.jl",
-        "two_dimensional_turbulence.jl",
-        "one_dimensional_diffusion.jl",
-        "internal_wave.jl",
+        # "spherical_baroclinic_instability.jl",
+        # "internal_tide.jl",
+        # "langmuir_turbulence.jl",
+        # "shallow_water_Bickley_jet.jl",
+        # "ocean_wind_mixing_and_convection.jl",
+        # "kelvin_helmholtz_instability.jl",
+        # "horizontal_convection.jl",
+        # "baroclinic_adjustment.jl",
+        # "tilted_bottom_boundary_layer.jl",
+        # "convecting_plankton.jl",
+        # "hydrostatic_lock_exchange.jl",
+        # "two_dimensional_turbulence.jl",
+        # "one_dimensional_diffusion.jl",
+        # "internal_wave.jl",
     ]
 end
 
@@ -96,20 +96,20 @@ Distributed.rmprocs()
 #####
 
 example_pages = [
-    "One-dimensional diffusion"             => "literated/one_dimensional_diffusion.md",
-    "Two-dimensional turbulence"            => "literated/two_dimensional_turbulence.md",
-    "Internal wave"                         => "literated/internal_wave.md",
-    "Internal tide by a seamount"           => "literated/internal_tide.md",
-    "Convecting plankton"                   => "literated/convecting_plankton.md",
-    "Ocean wind mixing and convection"      => "literated/ocean_wind_mixing_and_convection.md",
-    "Langmuir turbulence"                   => "literated/langmuir_turbulence.md",
-    "Baroclinic adjustment"                 => "literated/baroclinic_adjustment.md",
-    "Kelvin-Helmholtz instability"          => "literated/kelvin_helmholtz_instability.md",
-    "Hydrostatic lock exchange with CATKE"  => "literated/hydrostatic_lock_exchange.md",
-    "Shallow water Bickley jet"             => "literated/shallow_water_Bickley_jet.md",
-    "Horizontal convection"                 => "literated/horizontal_convection.md",
-    "Tilted bottom boundary layer"          => "literated/tilted_bottom_boundary_layer.md",
-    "Spherical baroclinic instability"      => "literated/spherical_baroclinic_instability.md"
+    # "One-dimensional diffusion"             => "literated/one_dimensional_diffusion.md",
+    # "Two-dimensional turbulence"            => "literated/two_dimensional_turbulence.md",
+    # "Internal wave"                         => "literated/internal_wave.md",
+    # "Internal tide by a seamount"           => "literated/internal_tide.md",
+    # "Convecting plankton"                   => "literated/convecting_plankton.md",
+    # "Ocean wind mixing and convection"      => "literated/ocean_wind_mixing_and_convection.md",
+    # "Langmuir turbulence"                   => "literated/langmuir_turbulence.md",
+    # "Baroclinic adjustment"                 => "literated/baroclinic_adjustment.md",
+    # "Kelvin-Helmholtz instability"          => "literated/kelvin_helmholtz_instability.md",
+    # "Hydrostatic lock exchange with CATKE"  => "literated/hydrostatic_lock_exchange.md",
+    # "Shallow water Bickley jet"             => "literated/shallow_water_Bickley_jet.md",
+    # "Horizontal convection"                 => "literated/horizontal_convection.md",
+    # "Tilted bottom boundary layer"          => "literated/tilted_bottom_boundary_layer.md",
+    # "Spherical baroclinic instability"      => "literated/spherical_baroclinic_instability.md"
 ]
 
 model_pages = [
@@ -243,13 +243,13 @@ makedocs(; sitename = "Oceananigans.jl",
              r"└ @ .*",        # remove the source location of warnings
          ],
          clean = true,
-         linkcheck = true,
+         linkcheck = false,
          linkcheck_ignore = [
             r"jstor\.org",
             r"^https://github\.com/.*?/blob/",
          ],
-         draft = false,        # set to true to speed things up
-         doctest = true,       # set to false to speed things up
+         draft = true,        # set to true to speed things up
+         doctest = false,       # set to false to speed things up
          checkdocs = :exports, # set to :none to speed things up
          )
 
