@@ -349,6 +349,12 @@ for arch in archs
                 @test c_z[2, 2, 2] == znode(2, 2, 2, grid, Center(), Center(), Center())
                 @test w_z[2, 2, 2] == znode(2, 2, 2, grid, Center(), Center(), Face())
             end
+
+            # Test binary operations with GridMetric and location type tuples (not instances)
+            op = *((Center, Center, Center), AbstractOperations.Δx, c)
+            @test op isa BinaryOperation
+            op = *((Center, Center, Center), c, AbstractOperations.Δx)
+            @test op isa BinaryOperation
         end
 
         @testset "Indexing of AbstractOperations [$A]" begin
