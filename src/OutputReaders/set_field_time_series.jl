@@ -105,7 +105,7 @@ end
 # Write property only if it does not already exist
 function maybe_write_property!(file, property, data)
     try
-        test = file[property]
+        file[property]
     catch
         file[property] = data
     end
