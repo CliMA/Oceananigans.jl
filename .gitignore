@@ -70,3 +70,4 @@ statprof
 .mcprepl/
 node_modules
 !package.json
+!logo.png
