@@ -216,9 +216,10 @@ pages = [
 #####
 
 format=DocumenterVitepress.MarkdownVitepress(
-        repo = "github.com/CliMA/OceananigansDocumentation",
+        repo = "github.com/CliMA/Oceananigans.jl.git",
         devbranch = "main",
         devurl = "dev";
+        deploy_url = "./OceananigansDocumentation/",
     )
 
 DocMeta.setdocmeta!(Oceananigans, :DocTestSetup, :(using Oceananigans); recursive=true)
@@ -275,8 +276,10 @@ for pattern in [r"\.jld2", r"\.nc"]
     end
 end
 
-DocumenterVitepress.deploydocs(repo = "github.com/CliMA/Oceananigans.jl",
-                               deploy_repo = "github.com/CliMA/OceananigansDocumentation",
+DocumenterVitepress.deploydocs(repo = "github.com/CliMA/Oceananigans.jl.git",
+                               deploy_repo = "github.com/CliMA/OceananigansDocumentation.git",
+                               target = "build",
+                               branch = "gh-pages",
                                forcepush = true,
                                push_preview = true,
                                devbranch = "main")
