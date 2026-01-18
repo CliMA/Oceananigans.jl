@@ -1,10 +1,10 @@
 using Oceananigans: AbstractModel
 
-using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.AbstractOperations: KernelFunctionOperation
-using Oceananigans.DistributedComputations
 using Oceananigans.Advection: VectorInvariant
+using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
+using Oceananigans.DistributedComputations
 using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CenterField, compute!
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: topology, Flat, architecture, RectilinearGrid, Center
@@ -178,8 +178,8 @@ function ShallowWaterModel(grid;
     boundary_conditions = merge(default_boundary_conditions, boundary_conditions)
     boundary_conditions = regularize_field_boundary_conditions(boundary_conditions, grid, prognostic_field_names)
 
-    solution           = ShallowWaterSolutionFields(grid, boundary_conditions, prognostic_field_names)
-    tracers            = TracerFields(tracers, grid, boundary_conditions)
+    solution = ShallowWaterSolutionFields(grid, boundary_conditions, prognostic_field_names)
+    tracers  = TracerFields(tracers, grid, boundary_conditions)
     closure_fields = build_closure_fields(closure_fields, grid, clock, tracernames(tracers), boundary_conditions, closure)
 
     # Instantiate timestepper if not already instantiated
@@ -208,7 +208,7 @@ function ShallowWaterModel(grid;
                               timestepper,
                               formulation)
 
-    update_state!(model; compute_tendencies = false)
+    update_state!(model)
 
     return model
 end
@@ -235,7 +235,7 @@ end
 
 shallow_water_velocities(model::ShallowWaterModel) = shallow_water_velocities(model.formulation, model.solution)
 
-shallow_water_fields(velocities, solution, tracers, ::ConservativeFormulation)    = merge(velocities, solution, tracers)
+shallow_water_fields(velocities, solution, tracers, ::ConservativeFormulation) = merge(velocities, solution, tracers)
 shallow_water_fields(velocities, solution, tracers, ::VectorInvariantFormulation) = merge(solution, (; w = velocities.w), tracers)
 
 #####
