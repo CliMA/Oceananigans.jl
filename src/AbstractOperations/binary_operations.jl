@@ -130,8 +130,8 @@ function define_binary_operator(op)
         $op(Lc::Tuple, f::Function, b::AbstractField) = $op((Lc[1](), Lc[2](), Lc[3]()), a, b)
         $op(Lc::Tuple, a::AbstractField, f::Function) = $op((Lc[1](), Lc[2](), Lc[3]()), a, b)
 
-        $op(Lc::Tuple, m::GridMetric, b::AbstractField) = $op((Lc[1](), Lc[2](), Lc[3]()), a, b)
-        $op(Lc::Tuple, a::AbstractField, m::GridMetric) = $op((Lc[1](), Lc[2](), Lc[3]()), a, b)
+        $op(Lc::Tuple, m::GridMetric, b::AbstractField) = $op((Lc[1](), Lc[2](), Lc[3]()), m, b)
+        $op(Lc::Tuple, a::AbstractField, m::GridMetric) = $op((Lc[1](), Lc[2](), Lc[3]()), a, m)
 
         # Sugary versions with default locations
         $op(a::AF, b::AF) = $op(Oceananigans.Fields.instantiated_location(a), a, b)
