@@ -173,13 +173,13 @@ const ZFTS  = FlavorOfFTS{Nothing, Nothing, <:Any}
 const FTS0  = FlavorOfFTS{Nothing, Nothing, Nothing}
 
 # getbc for FTS boundary conditions
-@inline getbc(f::XYFTS, i::Int, j::Int, grid::AbstractGrid, clock, args...) = f[i, j, 1, Time(clock.time)]
-@inline getbc(f::XZFTS, i::Int, k::Int, grid::AbstractGrid, clock, args...) = f[i, 1, k, Time(clock.time)]
-@inline getbc(f::YZFTS, j::Int, k::Int, grid::AbstractGrid, clock, args...) = f[1, j, k, Time(clock.time)]
-@inline getbc(f::XFTS,  i::Int, j::Int, grid::AbstractGrid, clock, args...) = f[i, 1, 1, Time(clock.time)]
-@inline getbc(f::YFTS,  i::Int, k::Int, grid::AbstractGrid, clock, args...) = f[1, j, 1, Time(clock.time)]
-@inline getbc(f::ZFTS,  j::Int, k::Int, grid::AbstractGrid, clock, args...) = f[1, 1, k, Time(clock.time)]
-@inline getbc(f::FTS0,  j::Int, k::Int, grid::AbstractGrid, clock, args...) = f[1, 1, 1, Time(clock.time)]
+@inline getbc(f::XYFTS, i::Int, j::Int, grid::AbstractGrid, clock, args...) = @inbounds f[i, j, 1, Time(clock.time)]
+@inline getbc(f::XZFTS, i::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[i, 1, k, Time(clock.time)]
+@inline getbc(f::YZFTS, j::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, j, k, Time(clock.time)]
+@inline getbc(f::XFTS,  i::Int, j::Int, grid::AbstractGrid, clock, args...) = @inbounds f[i, 1, 1, Time(clock.time)]
+@inline getbc(f::YFTS,  i::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, j, 1, Time(clock.time)]
+@inline getbc(f::ZFTS,  j::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, 1, k, Time(clock.time)]
+@inline getbc(f::FTS0,  j::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, 1, 1, Time(clock.time)]
 
 #####
 ##### Time interpolation / extrapolation
