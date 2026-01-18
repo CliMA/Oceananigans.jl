@@ -278,6 +278,8 @@ for pattern in [r"\.jld2", r"\.nc"]
     end
 end
 
+@show haskey(ENV, "DOCUMENTER_KEY")
+@show isempty(ENV["DOCUMENTER_KEY"])
 DocumenterVitepress.deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
                                forcepush = true,
                                push_preview = true,
