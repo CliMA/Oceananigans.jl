@@ -1,7 +1,7 @@
 using Base: @propagate_inbounds
 
 using Oceananigans.Architectures: Architectures, AbstractArchitecture, architecture
-using Oceananigans.Grids: rnodes
+using Oceananigans.Grids: rnode, rnodes
 
 const ArchOrNothing = Union{AbstractArchitecture, Nothing}
 const GridOrNothing = Union{AbstractGrid, Nothing}

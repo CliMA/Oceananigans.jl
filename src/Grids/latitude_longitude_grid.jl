@@ -357,7 +357,6 @@ end
 
 function constructor_arguments(grid::LatitudeLongitudeGrid)
     arch = architecture(grid)
-    FT = eltype(grid)
     args = OrderedDict(:architecture => arch, :number_type => eltype(grid))
 
     # Kwargs
