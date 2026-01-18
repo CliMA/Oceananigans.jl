@@ -89,7 +89,7 @@ set!(fts::InMemoryFTS, value, n::Int) = set!(fts[n], value)
 
 function set!(fts::InMemoryFTS, fields_vector::AbstractVector{<:AbstractField})
     raw_data = parent(fts)
-    file = jldopen(path; fts.reader_kw...)
+    file = jldopen(fts.path; fts.reader_kw...)
 
     for (n, field) in enumerate(fields_vector)
         nth_raw_data = view(raw_data, :, :, :, n)
