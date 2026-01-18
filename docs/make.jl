@@ -190,7 +190,7 @@ pages = [
         "Fields" => "fields.md",
         "Operations" => "operations.md",
         "Simulation Tips" => "simulation_tips.md",
-        "Examples" => example_pages,
+        # "Examples" => example_pages,
         "Gallery" => "gallery.md",
         # Future tutorials:
         # "Reductions & Accumulations" => "reductions_and_accumulations.md",
