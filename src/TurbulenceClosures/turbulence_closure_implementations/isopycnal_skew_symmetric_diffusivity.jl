@@ -1,4 +1,4 @@
-using Oceananigans.Fields: VelocityFields
+using Oceananigans.Fields: VelocityFields, NamedFieldTuple
 
 struct AdvectiveFormulation end
 struct DiffusiveFormulation end
