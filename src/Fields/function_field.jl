@@ -54,6 +54,10 @@ fieldify_function(L, a::Function, grid) = FunctionField(L, a, grid)
 
 @inline indices(::FunctionField) = (:, :, :)
 
+@inline has_discrete_form(f::FunctionField) = has_discrete_form(typeof(f))
+@inline has_discrete_form(::Type{<:FunctionField}) = false
+@inline has_discrete_form(::Type{<:DiscreteFunctionField}) = true
+
 # Various possibilities for calling FunctionField.func:
 @inline call_func(clock,     parameters, func, x...) = func(x..., clock.time, parameters)
 @inline call_func(clock,     ::Nothing,  func, x...) = func(x..., clock.time)
@@ -79,14 +83,16 @@ Adapt.adapt_structure(to, f::FunctionField{LX, LY, LZ}) where {LX, LY, LZ} =
     FunctionField{LX, LY, LZ}(Adapt.adapt(to, f.func),
                            Adapt.adapt(to, f.grid),
                            clock = Adapt.adapt(to, f.clock),
-                           parameters = Adapt.adapt(to, f.parameters))
+                           parameters = Adapt.adapt(to, f.parameters),
+                           discrete_form = has_discrete_form(f))
 
 
 Architectures.on_architecture(to, f::FunctionField{LX, LY, LZ}) where {LX, LY, LZ} =
     FunctionField{LX, LY, LZ}(on_architecture(to, f.func),
                               on_architecture(to, f.grid),
                               clock = on_architecture(to, f.clock),
-                              parameters = on_architecture(to, f.parameters))
+                              parameters = on_architecture(to, f.parameters),
+                              discrete_form = has_discrete_form(f))
 
 Base.show(io::IO, field::FunctionField) =
     print(io, "FunctionField located at ", show_location(field), "\n",
