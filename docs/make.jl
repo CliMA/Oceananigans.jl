@@ -1,4 +1,5 @@
 @show haskey(ENV, "DOCUMENTER_KEY")
+@show isempty(ENV["DOCUMENTER_KEY"])
 
 using Distributed
 Distributed.addprocs(2)
