@@ -164,17 +164,29 @@ end
 @propagate_inbounds setindex!(f::FlavorOfFTS, v, i, j, k, n::Int) = setindex!(f.data, v, i, j, k, memory_index(f, n))
 
 # Reduced FTS
-const XYFTS = FlavorOfFTS{<:Any, <:Any, Nothing, <:Any, <:Any}
-const XZFTS = FlavorOfFTS{<:Any, Nothing, <:Any, <:Any, <:Any}
-const YZFTS = FlavorOfFTS{Nothing, <:Any, <:Any, <:Any, <:Any}
+const XYFTS = FlavorOfFTS{<:Any, <:Any, Nothing}
+const XZFTS = FlavorOfFTS{<:Any, Nothing, <:Any}
+const YZFTS = FlavorOfFTS{Nothing, <:Any, <:Any}
+const XFTS  = FlavorOfFTS{<:Any, Nothing, Nothing}
+const YFTS  = FlavorOfFTS{Nothing, <:Any, Nothing}
+const ZFTS  = FlavorOfFTS{Nothing, Nothing, <:Any}
+const FTS0  = FlavorOfFTS{Nothing, Nothing, Nothing}
 
 @propagate_inbounds getindex(f::XYFTS, i::Int, j::Int, n::Int) = getindex(f.data, i, j, 1, memory_index(f, n))
 @propagate_inbounds getindex(f::XZFTS, i::Int, k::Int, n::Int) = getindex(f.data, i, 1, k, memory_index(f, n))
 @propagate_inbounds getindex(f::YZFTS, j::Int, k::Int, n::Int) = getindex(f.data, 1, j, k, memory_index(f, n))
+@propagate_inbounds getindex(f::XFTS,  i::Int, j::Int, n::Int) = getindex(f.data, i, 1, 1, memory_index(f, n))
+@propagate_inbounds getindex(f::YFTS,  i::Int, k::Int, n::Int) = getindex(f.data, 1, j, 1, memory_index(f, n))
+@propagate_inbounds getindex(f::ZFTS,  j::Int, k::Int, n::Int) = getindex(f.data, 1, 1, k, memory_index(f, n))
+@propagate_inbounds getindex(f::FTS0,  j::Int, k::Int, n::Int) = getindex(f.data, 1, 1, 1, memory_index(f, n))
 
 @propagate_inbounds getindex(f::XYFTS, i::Int, j::Int, n::Time) = getindex(f, i, j, 1, n)
 @propagate_inbounds getindex(f::XZFTS, i::Int, k::Int, n::Time) = getindex(f, i, 1, k, n)
 @propagate_inbounds getindex(f::YZFTS, j::Int, k::Int, n::Time) = getindex(f, 1, j, k, n)
+@propagate_inbounds getindex(f::XFTS,  i::Int, j::Int, n::Time) = getindex(f, i, 1, 1, n)
+@propagate_inbounds getindex(f::YFTS,  i::Int, k::Int, n::Time) = getindex(f, 1, j, 1, n)
+@propagate_inbounds getindex(f::ZFTS,  j::Int, k::Int, n::Time) = getindex(f, 1, 1, k, n)
+@propagate_inbounds getindex(f::FTS0,  j::Int, k::Int, n::Time) = getindex(f, 1, 1, 1, n)
 
 #####
 ##### Time interpolation / extrapolation

@@ -1,6 +1,6 @@
 module SplitExplicitFreeSurfaces
 
-export SplitExplicitFreeSurface, ForwardBackwardScheme, AdamsBashforth3Scheme
+export SplitExplicitFreeSurface, ForwardBackwardScheme
 export FixedSubstepNumber, FixedTimeStepSize
 
 using Oceananigans.Architectures: convert_to_device, architecture
@@ -11,7 +11,8 @@ using Oceananigans.Fields: Field
 using Oceananigans.Grids: Center, Face, get_active_column_map, topology
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface,
-                                                        free_surface_displacement_field
+                                                        free_surface_displacement_field,
+                                                        update_vertical_velocities!
 
 using KernelAbstractions: @index, @kernel
 
@@ -22,6 +23,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: initialize_free_surface
                                                          materialize_free_surface,
                                                          step_free_surface!,
                                                          compute_free_surface_tendency!,
+                                                         compute_transport_velocities!,
                                                          explicit_barotropic_pressure_x_gradient,
                                                          explicit_barotropic_pressure_y_gradient
 

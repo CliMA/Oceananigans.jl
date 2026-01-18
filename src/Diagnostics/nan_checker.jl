@@ -18,7 +18,7 @@ function Base.summary(nc::NaNChecker)
     end
 end
 
-Base.show(io, nc::NaNChecker) = print(io, summary(nc))
+Base.show(io::IO, nc::NaNChecker) = print(io, summary(nc))
 
 """
     NaNChecker(; fields, erroring=false)
