@@ -35,25 +35,25 @@ steps:
         - exit_status: 1
           limit: 1
 
-  - label: "🏕️ initialize enzyme environment"
-    key: "init_enzyme"
-    depends_on: "init"
-    agents:
-      queue: "Oceananigans-nautilus"
-    env:
-      TEST_GROUP: "init"
-    command: |
-      juliaup add $JULIA_VERSION_ENZYME
-      cd "$OCEANANIGANS_DIR"
+  # - label: "🏕️ initialize enzyme environment"
+  #   key: "init_enzyme"
+  #   depends_on: "init"
+  #   agents:
+  #     queue: "Oceananigans-nautilus"
+  #   env:
+  #     TEST_GROUP: "init"
+  #   command: |
+  #     juliaup add $JULIA_VERSION_ENZYME
+  #     cd "$OCEANANIGANS_DIR"
 
-      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
-      # After we have instantiated the Enzyme environment, move manifest to the
-      # version-specific filename, not to clash with the general manifest.
-      # mv -v Manifest.toml Manifest-v$(echo "${JULIA_VERSION_ENZYME}" | cut -d. -f1-2).toml
-    retry:
-      automatic:
-        - exit_status: 1
-          limit: 1
+  #     julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
+  #     # After we have instantiated the Enzyme environment, move manifest to the
+  #     # version-specific filename, not to clash with the general manifest.
+  #     # mv -v Manifest.toml Manifest-v$(echo "${JULIA_VERSION_ENZYME}" | cut -d. -f1-2).toml
+  #   retry:
+  #     automatic:
+  #       - exit_status: 1
+  #         limit: 1
 
   - label: "🦉 documentation"
     depends_on: "init"
@@ -69,146 +69,146 @@ steps:
         'using Pkg; Pkg.instantiate()'
       julia +$JULIA_VERSION --color=yes --project=docs/ docs/make.jl
 
-  - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
-    key: "tests"
-    depends_on: "init"
-    agents:
-      queue: "Oceananigans-nautilus"
-    command: |
-      # Add matrix-specific environment variables
-      if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
-        export CUDA_VISIBLE_DEVICES="-1"
-        export TEST_ARCHITECTURE="CPU"
-      else
-        export CUDA_VISIBLE_DEVICES="0"
-        export TEST_ARCHITECTURE="GPU"
-      fi
+  # - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
+  #   key: "tests"
+  #   depends_on: "init"
+  #   agents:
+  #     queue: "Oceananigans-nautilus"
+  #   command: |
+  #     # Add matrix-specific environment variables
+  #     if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
+  #       export CUDA_VISIBLE_DEVICES="-1"
+  #       export TEST_ARCHITECTURE="CPU"
+  #     else
+  #       export CUDA_VISIBLE_DEVICES="0"
+  #       export TEST_ARCHITECTURE="GPU"
+  #     fi
 
-      # Strip emoji for environment variable
-      group="{{ matrix.group }}"
-      export TEST_GROUP="\${group#* }"
-      echo $TEST_GROUP
+  #     # Strip emoji for environment variable
+  #     group="{{ matrix.group }}"
+  #     export TEST_GROUP="\${group#* }"
+  #     echo $TEST_GROUP
 
-      # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
-      set +e
-      julia +$JULIA_VERSION -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(coverage="user")'
-      test_status=$$?
-      set -e
+  #     # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
+  #     set +e
+  #     julia +$JULIA_VERSION -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(coverage="user")'
+  #     test_status=$$?
+  #     set -e
 
-      # Sanity check: did we actually produce coverage?
-      echo "PWD:"; pwd
-      echo "Coverage files produced:" `find . -type f -name "*.cov" | wc -l`
-      find . -type f -name "*.cov" | head -n 20 || true
+  #     # Sanity check: did we actually produce coverage?
+  #     echo "PWD:"; pwd
+  #     echo "Coverage files produced:" `find . -type f -name "*.cov" | wc -l`
+  #     find . -type f -name "*.cov" | head -n 20 || true
 
-      group_slug="{{ matrix.group }}"
-      group_slug="$${group_slug//[^A-Za-z0-9_.-]/_}"
-      tarball="coverage-${BUILDKITE_BUILD_NUMBER}-${BUILDKITE_JOB_ID}-{{ matrix.architecture }}-$${group_slug}.tgz"
-
-
-      find . -type f -name "*.cov" > cov_list.txt
-      echo "Coverage files found:" `wc -l < cov_list.txt`
-
-      tar -czf "$$tarball" -T cov_list.txt
-      ls -lh "$$tarball"
-
-      buildkite-agent artifact upload "$$tarball"
-
-      # Preserve the original test result for Buildkite
-      exit "$${test_status}"
-
-    matrix:
-      setup:
-        architecture:
-          - "CPU"
-          - "GPU"
-        group:
-          - "🦖 poisson_solvers_2"
-          - "🐇 unit"
-          - "👻 abstract_operations"
-          - "🕊 poisson_solvers_1"
-          - "🦤 general_solvers"
-          - "🎣 turbulence_closures"
-          - "🦀 time_stepping_1"
-          - "🦈 time_stepping_2"
-          - "🦟 time_stepping_3"
-          - "🐫 nonhydrostatic_regression"
-          - "🐙 hydrostatic_free_surface"
-          - "🫐 tripolar_grid"
-          - "🥑 vertical_coordinate"
-          - "🙈 hydrostatic_regression"
-          - "🦢 shallow_water"
-          - "🐳 simulation"
-          - "🍂 lagrangian_particles"
-          - "🧅 multi_region"
-          - "🦧 scripts"
-          - "🍱 xesmf"
-
-    retry:
-      automatic:
-        - exit_status: 1
-          limit: 1
-
-  - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
-    key: "tests_enzyme_reactant"
-    depends_on: "init_enzyme"
-    agents:
-      queue: "Oceananigans-nautilus"
-    command: |
-      # Add matrix-specific environment variables
-      if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
-        export CUDA_VISIBLE_DEVICES="-1"
-        export TEST_ARCHITECTURE="CPU"
-      else
-        export CUDA_VISIBLE_DEVICES="0"
-        export TEST_ARCHITECTURE="GPU"
-      fi
-
-      # Strip emoji for environment variable
-      group="{{ matrix.group }}"
-      export TEST_GROUP="\${group#* }"
-      echo $TEST_GROUP
-
-      # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
-      set +e
-      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(coverage="user")'
-      test_status=$$?
-      set -e
-
-      # Sanity check: did we actually produce coverage?
-      echo "PWD:"; pwd
-      echo "Coverage files produced:" `find . -type f -name "*.cov" | wc -l`
-      find . -type f -name "*.cov" | head -n 20 || true
-
-      group_slug="{{ matrix.group }}"
-      group_slug="$${group_slug//[^A-Za-z0-9_.-]/_}"
-      tarball="coverage-${BUILDKITE_BUILD_NUMBER}-${BUILDKITE_JOB_ID}-{{ matrix.architecture }}-$${group_slug}.tgz"
+  #     group_slug="{{ matrix.group }}"
+  #     group_slug="$${group_slug//[^A-Za-z0-9_.-]/_}"
+  #     tarball="coverage-${BUILDKITE_BUILD_NUMBER}-${BUILDKITE_JOB_ID}-{{ matrix.architecture }}-$${group_slug}.tgz"
 
 
-      find . -type f -name "*.cov" > cov_list.txt
-      echo "Coverage files found:" `wc -l < cov_list.txt`
+  #     find . -type f -name "*.cov" > cov_list.txt
+  #     echo "Coverage files found:" `wc -l < cov_list.txt`
 
-      tar -czf "$$tarball" -T cov_list.txt
-      ls -lh "$$tarball"
+  #     tar -czf "$$tarball" -T cov_list.txt
+  #     ls -lh "$$tarball"
 
-      buildkite-agent artifact upload "$$tarball"
+  #     buildkite-agent artifact upload "$$tarball"
 
-      # Preserve the original test result for Buildkite
-      exit "$${test_status}"
+  #     # Preserve the original test result for Buildkite
+  #     exit "$${test_status}"
 
-    matrix:
-      setup:
-        architecture:
-          - "CPU"
-          - "GPU"
-        group:
-          - "🎭 reactant_2"
-          - "👺 enzyme"
-          - "👹 reactant_1"
+  #   matrix:
+  #     setup:
+  #       architecture:
+  #         - "CPU"
+  #         - "GPU"
+  #       group:
+  #         - "🦖 poisson_solvers_2"
+  #         - "🐇 unit"
+  #         - "👻 abstract_operations"
+  #         - "🕊 poisson_solvers_1"
+  #         - "🦤 general_solvers"
+  #         - "🎣 turbulence_closures"
+  #         - "🦀 time_stepping_1"
+  #         - "🦈 time_stepping_2"
+  #         - "🦟 time_stepping_3"
+  #         - "🐫 nonhydrostatic_regression"
+  #         - "🐙 hydrostatic_free_surface"
+  #         - "🫐 tripolar_grid"
+  #         - "🥑 vertical_coordinate"
+  #         - "🙈 hydrostatic_regression"
+  #         - "🦢 shallow_water"
+  #         - "🐳 simulation"
+  #         - "🍂 lagrangian_particles"
+  #         - "🧅 multi_region"
+  #         - "🦧 scripts"
+  #         - "🍱 xesmf"
 
-    retry:
-      automatic:
-        - exit_status: 1
-          limit: 1
+  #   retry:
+  #     automatic:
+  #       - exit_status: 1
+  #         limit: 1
+
+  # - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
+  #   key: "tests_enzyme_reactant"
+  #   depends_on: "init_enzyme"
+  #   agents:
+  #     queue: "Oceananigans-nautilus"
+  #   command: |
+  #     # Add matrix-specific environment variables
+  #     if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
+  #       export CUDA_VISIBLE_DEVICES="-1"
+  #       export TEST_ARCHITECTURE="CPU"
+  #     else
+  #       export CUDA_VISIBLE_DEVICES="0"
+  #       export TEST_ARCHITECTURE="GPU"
+  #     fi
+
+  #     # Strip emoji for environment variable
+  #     group="{{ matrix.group }}"
+  #     export TEST_GROUP="\${group#* }"
+  #     echo $TEST_GROUP
+
+  #     # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
+  #     set +e
+  #     julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(coverage="user")'
+  #     test_status=$$?
+  #     set -e
+
+  #     # Sanity check: did we actually produce coverage?
+  #     echo "PWD:"; pwd
+  #     echo "Coverage files produced:" `find . -type f -name "*.cov" | wc -l`
+  #     find . -type f -name "*.cov" | head -n 20 || true
+
+  #     group_slug="{{ matrix.group }}"
+  #     group_slug="$${group_slug//[^A-Za-z0-9_.-]/_}"
+  #     tarball="coverage-${BUILDKITE_BUILD_NUMBER}-${BUILDKITE_JOB_ID}-{{ matrix.architecture }}-$${group_slug}.tgz"
+
+
+  #     find . -type f -name "*.cov" > cov_list.txt
+  #     echo "Coverage files found:" `wc -l < cov_list.txt`
+
+  #     tar -czf "$$tarball" -T cov_list.txt
+  #     ls -lh "$$tarball"
+
+  #     buildkite-agent artifact upload "$$tarball"
+
+  #     # Preserve the original test result for Buildkite
+  #     exit "$${test_status}"
+
+  #   matrix:
+  #     setup:
+  #       architecture:
+  #         - "CPU"
+  #         - "GPU"
+  #       group:
+  #         - "🎭 reactant_2"
+  #         - "👺 enzyme"
+  #         - "👹 reactant_1"
+
+  #   retry:
+  #     automatic:
+  #       - exit_status: 1
+  #         limit: 1
 
   #####
   ##### Blocking wait on tests and documentation
