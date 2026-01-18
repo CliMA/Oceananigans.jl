@@ -92,5 +92,5 @@ end
 @inline Operators.∂xTᶠᶜᶠ(i, j, k, ibg::IBG, f, args...) = conditional_∂xTᶠᶜᶠ(i, j, k, ibg, f, args...)
 @inline Operators.∂yTᶜᶠᶠ(i, j, k, ibg::IBG, f, args...) = conditional_∂yTᶜᶠᶠ(i, j, k, ibg, f, args...)
 
-@inline Operators.∂xTᶠᶜᶠ(i, j, k, ibg::IBG, w::AbstractArray) = conditional_∂xTᶠᶜᶠ(i, j, k, ibg, f, args...)
-@inline Operators.∂yTᶜᶠᶠ(i, j, k, ibg::IBG, w::AbstractArray) = conditional_∂yTᶜᶠᶠ(i, j, k, ibg, f, args...)
+@inline Operators.∂xTᶠᶜᶠ(i, j, k, ibg::IBG, w::AbstractArray) = conditional_∂xTᶠᶜᶠ(i, j, k, ibg, f)
+@inline Operators.∂yTᶜᶠᶠ(i, j, k, ibg::IBG, w::AbstractArray) = conditional_∂yTᶜᶠᶠ(i, j, k, ibg, f)
