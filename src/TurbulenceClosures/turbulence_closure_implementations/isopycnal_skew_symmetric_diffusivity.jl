@@ -101,11 +101,11 @@ function Utils.with_tracers(tracers, closure_vector::ISSDVector)
 end
 
 function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfISSD{TD, A}) where {TD, A}
-    if TD() isa VerticallyImplicitTimeDiscretization
+    diffusivities = if TD() isa VerticallyImplicitTimeDiscretization
         # Precompute the _tapered_ 33 component of the isopycnal rotation tensor
-        diffusivities = (; ϵ_R₃₃ = Field{Center, Center, Face}(grid))
+        (; ϵ_R₃₃ = Field{Center, Center, Face}(grid))
     else
-        diffusivities = NamedFieldTuple()
+        NamedFieldTuple()
     end
 
     if A() isa AdvectiveFormulation && !(closure.κ_skew isa Nothing)
