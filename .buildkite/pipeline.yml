@@ -61,8 +61,8 @@ steps:
       queue: "Oceananigans-nautilus"
     env:
       CUDA_VISIBLE_DEVICES: "0" # GPU for docs
-      GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
+      GITHUB_TOKEN: $GITHUB_TOKEN
+      DOCUMENTER_KEY: $DOCUMENTER_KEY
     command: |
       cd "$OCEANANIGANS_DIR"
       julia +$JULIA_VERSION --color=yes --project=docs/ -e \
