@@ -134,8 +134,6 @@ This ensures the final state is saved even if the simulation stops due to wall t
 """
 function run!(sim; pickup=false, checkpoint_at_end=false)
 
-    start_run = time_ns()
-
     if we_want_to_pickup(pickup)
         if pickup === true
             set!(sim; checkpoint=:latest)
