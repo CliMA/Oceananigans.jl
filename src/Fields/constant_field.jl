@@ -1,3 +1,5 @@
+import Oceananigans: prognostic_state, restore_prognostic_state!
+
 struct ZeroField{T, N} <: AbstractField{Nothing, Nothing, Nothing, Nothing, T, N} end
 struct OneField{T, N} <: AbstractField{Nothing, Nothing, Nothing, Nothing, T, N} end
 
