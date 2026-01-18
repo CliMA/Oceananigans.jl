@@ -24,3 +24,4 @@ BoundaryConditions.fill_halo_regions!(::ConstantField, args...; kw...) = nothing
 
 prognostic_state(f::Union{ZeroField, OneField, ConstantField}) = nothing
 restore_prognostic_state!(f::Union{ZeroField, OneField, ConstantField}, state) = f
+restore_prognostic_state!(f::Union{ZeroField, OneField, ConstantField}, ::Nothing) = f
