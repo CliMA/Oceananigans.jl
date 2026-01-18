@@ -104,7 +104,6 @@ end
 
 function (::MultiRegionFillHalo{<:West})(c, bc, loc, grid, buffers)
     H = halo_size(grid)[1]
-    N = size(grid)[1]
 
     dst = buffers[bc.condition.rank].west.recv
     src = getside(buffers[bc.condition.from_rank], bc.condition.from_side).send
@@ -134,7 +133,6 @@ end
 
 function (::MultiRegionFillHalo{<:South})(c, bc, loc, grid, buffers)
     H = halo_size(grid)[2]
-    N = size(grid)[2]
 
     dst = buffers[bc.condition.rank].south.recv
     src = getside(buffers[bc.condition.from_rank], bc.condition.from_side).send
