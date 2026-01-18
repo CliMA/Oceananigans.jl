@@ -150,10 +150,10 @@ function construct_exponential_coordinate(i, N, left, right, scale, bias)
         leftbiased_exponential_mapping(ξᵢ, left, right, scale)
     end
 
-    xᵢ = if abs(xᵢ - left) < 10eps(Float32)
-        left
+    if abs(xᵢ - left) < 10eps(Float32)
+        xᵢ = left
     elseif abs(xᵢ - right) < 10eps(Float32)
-        right
+        xᵢ = right
     end
 
     return xᵢ
