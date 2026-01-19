@@ -376,4 +376,16 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions)
         end
     end
+
+    @testset "FieldTimeSeries boundary conditions" begin
+        for arch in archs, FT in (Float64,)
+            A = typeof(arch)
+            @info "  Testing FieldTimeSeries boundary conditions [$A, $FT]..."
+            topo = (Bounded, Bounded, Bounded)
+            for C in (Flux, Value)
+                bc = field_time_series_bc(C, FT, array_type(arch))
+                @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :top, :T, bc)
+            end
+        end
+    end
 end
