@@ -224,9 +224,10 @@ field_dependent_function_bc(C, FT=Float64, ArrayType=Array) = BoundaryCondition(
        parameterized_discrete_function_bc(C, FT=Float64, ArrayType=Array) = BoundaryCondition(C, parameterized_discrete_func, discrete_form=true, parameters=(μ=0.1,))
 parameterized_field_dependent_function_bc(C, FT=Float64, ArrayType=Array) = BoundaryCondition(C, exploding_fun, field_dependencies=(:T, :S), parameters=(S0=35, T0=100, μ=2π, λ=FT(2)))
 
+# Create a 2D (x-y) FieldTimeSeries for use as a top/bottom boundary condition
 function field_time_series_bc(C, FT=Float64, ArrayType=Array)
-    # Create a 2D (x-y) FieldTimeSeries for use as a top/bottom boundary condition
-    grid = RectilinearGrid(size=(1, 1), x=(0, 1), y=(0, 1), topology=(Periodic, Periodic, Flat))
+    arch = architecture(ArrayType)
+    grid = RectilinearGrid(arch, size=(1, 1), x=(0, 1), y=(0, 1), topology=(Periodic, Periodic, Flat))
     times = [0.0, 1.0]
     fts = FieldTimeSeries{Center, Center, Nothing}(grid, times)
     set!(fts, (x, y, t) -> FT(π))
