@@ -757,7 +757,7 @@ import Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, δxTᶠᵃᵃ, δyT
               ifelse((i == grid.Nx+1) & (j < 1),       (c[grid.Nx-j+1, 1, k] + c[grid.Nx, j, k])/2,
               ifelse((i == grid.Nx+1) & (j > grid.Ny), (c[j, grid.Ny, k] + c[grid.Nx, j, k])/2,
               ifelse((i == 1) & (j > grid.Ny),         (c[1, j, k] + c[grid.Nx-j+1, grid.Ny, k])/2,
-                                                       (c[i, j, k] + c[i-1, j, k])/2)))) 
+                                                       (c[i, j, k] + c[i-1, j, k])/2))))
 
 @inline ℑyᵃᶠᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, c) =
     @inbounds ifelse((i < 1) & (j == 1),               (c[i, 1, k] + c[1, i, k])/2,
@@ -766,7 +766,10 @@ import Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, δxTᶠᵃᵃ, δyT
               ifelse((i < 1) & (j == grid.Ny+1),       (c[1, grid.Ny-i+1, k] + c[i, grid.Ny, k])/2,
                                                        (c[i, j, k] + c[i, j-1, k])/2))))
 
+# coverage: ignore
 @inline ℑxᶠᵃᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::Number, args...) = f
+
+# coverage: ignore
 @inline ℑyᵃᶠᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::Number, args...) = f
 
 @inline ℑxᶠᵃᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::F, args...) where {F<:Function} =
@@ -813,6 +816,7 @@ import Oceananigans.Grids: static_column_depthᶠᶜᵃ, static_column_depthᶜ�
               ifelse((i == 1) & (j > grid.Ny),         min(static_column_depthᶜᶜᵃ(1, j, grid), static_column_depthᶜᶜᵃ(grid.Nx-j+1, grid.Ny, grid)),
                                                        min(static_column_depthᶜᶜᵃ(i, j, grid), static_column_depthᶜᶜᵃ(i-1, j, grid))))))
 
+# coverage: ignore
 @inline static_column_depthᶠᶜᵃ(i, j, grid::XFlatAGFIBConformalCubedSpherePanelGrid) = static_column_depthᶜᶜᵃ(i, j, grid)
 
 @inline static_column_depthᶜᶠᵃ(i, j, grid::ConformalCubedSpherePanelGridOfSomeKind) =
@@ -829,6 +833,7 @@ import Oceananigans.Grids: static_column_depthᶠᶜᵃ, static_column_depthᶜ�
               ifelse((i < 1) & (j == grid.Ny+1),       min(static_column_depthᶜᶜᵃ(1, grid.Ny-i+1, grid), static_column_depthᶜᶜᵃ(i, grid.Ny, grid)),
                                                        min(static_column_depthᶜᶜᵃ(i, j, grid), static_column_depthᶜᶜᵃ(i, j-1, grid))))))
 
+# coverage: ignore
 @inline static_column_depthᶜᶠᵃ(i, j, grid::YFlatAGFIBConformalCubedSpherePanelGrid) = static_column_depthᶜᶜᵃ(i, j, grid)
 
 import Oceananigans.BoundaryConditions: fill_halo_kernels
