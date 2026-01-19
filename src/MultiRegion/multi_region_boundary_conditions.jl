@@ -35,7 +35,6 @@ fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothin
 # The complication here is the possibility of different regions having different number of tasks,
 # Which might happen, for example, for a grid that partitioned in a Bounded direction.
 function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; fill_open_bcs=true, kwargs...)
-    arch     = architecture(mrg)
     buff_ref = Reference(buffers.regional_objects)
 
     apply_regionally!(fill_send_buffers!, c, buffers, mrg)
@@ -105,7 +104,6 @@ end
 
 function (::MultiRegionFillHalo{<:West})(c, bc, loc, grid, buffers)
     H = halo_size(grid)[1]
-    N = size(grid)[1]
 
     dst = buffers[bc.condition.rank].west.recv
     src = getside(buffers[bc.condition.from_rank], bc.condition.from_side).send
@@ -135,7 +133,6 @@ end
 
 function (::MultiRegionFillHalo{<:South})(c, bc, loc, grid, buffers)
     H = halo_size(grid)[2]
-    N = size(grid)[2]
 
     dst = buffers[bc.condition.rank].south.recv
     src = getside(buffers[bc.condition.from_rank], bc.condition.from_side).send
