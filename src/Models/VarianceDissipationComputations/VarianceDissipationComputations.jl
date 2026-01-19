@@ -26,8 +26,6 @@ using Oceananigans: UpdateStateCallsite
 using Oceananigans.Utils: IterationInterval, ConsecutiveIterations
 using KernelAbstractions: @kernel, @index
 
-const RungeKuttaScheme = Union{RungeKutta3TimeStepper, SplitRungeKuttaTimeStepper}
-
 struct VarianceDissipation{P, K, A, D, S}
     advective_production :: P
     diffusive_production :: K
