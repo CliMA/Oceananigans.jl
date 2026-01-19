@@ -37,22 +37,22 @@ Distributed.addprocs(2)
 
     # The examples that take longer to run should be first. This ensures that the
     # docs built which extra workers is as efficient as possible.
-    # example_scripts = [
-    #     "spherical_baroclinic_instability.jl",
-    #     "internal_tide.jl",
-    #     "langmuir_turbulence.jl",
-    #     "shallow_water_Bickley_jet.jl",
-    #     "ocean_wind_mixing_and_convection.jl",
-    #     "kelvin_helmholtz_instability.jl",
-    #     "horizontal_convection.jl",
-    #     "baroclinic_adjustment.jl",
-    #     "tilted_bottom_boundary_layer.jl",
-    #     "convecting_plankton.jl",
-    #     "hydrostatic_lock_exchange.jl",
-    #     "two_dimensional_turbulence.jl",
-    #     "one_dimensional_diffusion.jl",
-    #     "internal_wave.jl",
-    # ]
+    example_scripts = [
+        "spherical_baroclinic_instability.jl",
+        "internal_tide.jl",
+        "langmuir_turbulence.jl",
+        "shallow_water_Bickley_jet.jl",
+        "ocean_wind_mixing_and_convection.jl",
+        "kelvin_helmholtz_instability.jl",
+        "horizontal_convection.jl",
+        "baroclinic_adjustment.jl",
+        "tilted_bottom_boundary_layer.jl",
+        "convecting_plankton.jl",
+        "hydrostatic_lock_exchange.jl",
+        "two_dimensional_turbulence.jl",
+        "one_dimensional_diffusion.jl",
+        "internal_wave.jl",
+    ]
 end
 
 # We'll append the following postamble to the literate examples, to include
@@ -76,18 +76,18 @@ Pkg.status()
 
 @info string("Executing the examples using ", Distributed.nprocs(), " processes")
 
-# Distributed.pmap(1:length(example_scripts)) do n
-#     example = example_scripts[n]
-#     example_filepath = joinpath(EXAMPLES_DIR, example)
-#     withenv("JULIA_DEBUG" => "Literate") do
-#         start_time = time_ns()
-#         Literate.markdown(example_filepath, OUTPUT_DIR;
-#                           preprocess = content -> content * example_postamble,
-#                           flavor = Literate.DocumenterFlavor(), execute = true)
-#         elapsed = 1e-9 * (time_ns() - start_time)
-#         @info @sprintf("%s example took %s to build.", example, prettytime(elapsed))
-#     end
-# end
+Distributed.pmap(1:length(example_scripts)) do n
+    example = example_scripts[n]
+    example_filepath = joinpath(EXAMPLES_DIR, example)
+    withenv("JULIA_DEBUG" => "Literate") do
+        start_time = time_ns()
+        Literate.markdown(example_filepath, OUTPUT_DIR;
+                          preprocess = content -> content * example_postamble,
+                          flavor = Literate.DocumenterFlavor(), execute = true)
+        elapsed = 1e-9 * (time_ns() - start_time)
+        @info @sprintf("%s example took %s to build.", example, prettytime(elapsed))
+    end
+end
 
 Distributed.rmprocs()
 
@@ -190,7 +190,7 @@ pages = [
         "Fields" => "fields.md",
         "Operations" => "operations.md",
         "Simulation Tips" => "simulation_tips.md",
-        # "Examples" => example_pages,
+        "Examples" => example_pages,
         "Gallery" => "gallery.md",
         # Future tutorials:
         # "Reductions & Accumulations" => "reductions_and_accumulations.md",
@@ -215,11 +215,18 @@ pages = [
 ##### Build and deploy docs
 #####
 
-format=DocumenterVitepress.MarkdownVitepress(
+deploy_config = Documenter.auto_detect_deploy_system()
+deploy_decision = Documenter.deploy_folder(
+    deploy_config; repo="github.com/CliMA/OceananigansDocumentation.git",
+    devbranch="main", devurl="dev", push_preview=true
+)
+
+format = DocumenterVitepress.MarkdownVitepress(;
         repo = "github.com/CliMA/Oceananigans.jl.git",
         devbranch = "main",
         devurl = "dev";
         deploy_url = "./OceananigansDocumentation/",
+        deploy_decision
     )
 
 DocMeta.setdocmeta!(Oceananigans, :DocTestSetup, :(using Oceananigans); recursive=true)

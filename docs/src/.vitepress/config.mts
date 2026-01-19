@@ -37,8 +37,8 @@ export default defineConfig({
   
   head: [
     ['link', { rel: 'icon', href: 'REPLACE_ME_DOCUMENTER_VITEPRESS_FAVICON' }],
-    ['script', {src: `${getBaseRepository(baseTemp.base)}versions.js`}],
-    // ['script', {src: '/versions.js'], for custom domains, I guess if deploy_url is available.
+    // ['script', {src: `${getBaseRepository(baseTemp.base)}versions.js`}],
+    ['script', {src: '/OceananigansDocumentation/versions.js'}],
     ['script', {src: `${baseTemp.base}siteinfo.js`}]
   ],
   ignoreDeadLinks: true,
