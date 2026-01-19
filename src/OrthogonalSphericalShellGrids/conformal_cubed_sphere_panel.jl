@@ -766,8 +766,8 @@ import Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, δxTᶠᵃᵃ, δyT
               ifelse((i < 1) & (j == grid.Ny+1),       (c[1, grid.Ny-i+1, k] + c[i, grid.Ny, k])/2,
                                                        (c[i, j, k] + c[i, j-1, k])/2))))
 
-@inline ℑxᶠᵃᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::Number, args...) = f # codecov-ignore
-@inline ℑyᵃᶠᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::Number, args...) = f # codecov-ignore
+@inline ℑxᶠᵃᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::Number, args...) = f
+@inline ℑyᵃᶠᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::Number, args...) = f
 
 @inline ℑxᶠᵃᵃ(i, j, k, grid::ConformalCubedSpherePanelGridOfSomeKind, f::F, args...) where {F<:Function} =
     @inbounds ifelse((i == 1) & (j < 1),               (f(1, j, k, grid, args...) + f(j, 1, k, grid, args...))/2,
@@ -813,7 +813,7 @@ import Oceananigans.Grids: static_column_depthᶠᶜᵃ, static_column_depthᶜ�
               ifelse((i == 1) & (j > grid.Ny),         min(static_column_depthᶜᶜᵃ(1, j, grid), static_column_depthᶜᶜᵃ(grid.Nx-j+1, grid.Ny, grid)),
                                                        min(static_column_depthᶜᶜᵃ(i, j, grid), static_column_depthᶜᶜᵃ(i-1, j, grid))))))
 
-@inline static_column_depthᶠᶜᵃ(i, j, grid::XFlatAGFIBConformalCubedSpherePanelGrid) = static_column_depthᶜᶜᵃ(i, j, grid) # codecov-ignore
+@inline static_column_depthᶠᶜᵃ(i, j, grid::XFlatAGFIBConformalCubedSpherePanelGrid) = static_column_depthᶜᶜᵃ(i, j, grid)
 
 @inline static_column_depthᶜᶠᵃ(i, j, grid::ConformalCubedSpherePanelGridOfSomeKind) =
     @inbounds ifelse((i < 1) & (j == 1),               min(static_column_depthᶜᶜᵃ(i, 1, grid), static_column_depthᶜᶜᵃ(1, i, grid)),
@@ -829,7 +829,7 @@ import Oceananigans.Grids: static_column_depthᶠᶜᵃ, static_column_depthᶜ�
               ifelse((i < 1) & (j == grid.Ny+1),       min(static_column_depthᶜᶜᵃ(1, grid.Ny-i+1, grid), static_column_depthᶜᶜᵃ(i, grid.Ny, grid)),
                                                        min(static_column_depthᶜᶜᵃ(i, j, grid), static_column_depthᶜᶜᵃ(i, j-1, grid))))))
 
-@inline static_column_depthᶜᶠᵃ(i, j, grid::YFlatAGFIBConformalCubedSpherePanelGrid) = static_column_depthᶜᶜᵃ(i, j, grid) # codecov-ignore
+@inline static_column_depthᶜᶠᵃ(i, j, grid::YFlatAGFIBConformalCubedSpherePanelGrid) = static_column_depthᶜᶜᵃ(i, j, grid)
 
 import Oceananigans.BoundaryConditions: fill_halo_kernels
 
