@@ -5,11 +5,11 @@ import Oceananigans.AbstractOperations: evaluate_condition, validate_condition
 import Oceananigans.Fields: condition_operand, conditional_length
 
 #####
-##### Reduction operations involving tripolar grids exclude the repeated row at the top 
+##### Reduction operations involving tripolar grids exclude the repeated row at the top
 ##### of the domain for Fields located on `Center`s in meridional direction.
 #####
 
-struct PrognosticTripolarCells{F} <: Function 
+struct PrognosticTripolarCells{F} <: Function
     condition :: F
 end
 
@@ -40,7 +40,7 @@ end
                                     grid::TripolarGridOfSomeKind,
                                     co::ConditionalOperation, args...)
 
-    valid_domain = evaluate_condition(PrognosticTripolarCells(), i, j, k, grid, co)                                
+    valid_domain = evaluate_condition(PrognosticTripolarCells(), i, j, k, grid, co)
     return valid_domain & evaluate_condition(vd.condition, i, j, k, grid, co, args...)
 end
 
