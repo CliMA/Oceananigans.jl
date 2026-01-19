@@ -172,4 +172,3 @@ function Base.show(io::IO, f::TabulatedFunction)
         print(io, " of ", f.func)
     end
 end
-

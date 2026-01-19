@@ -145,5 +145,3 @@ Base.summary(dc::LillyCoefficient) = string("LillyCoefficient(smagorinsky = $(dc
 Base.show(io::IO, dc::LillyCoefficient) = print(io, "LillyCoefficient with\n",
                                                     "├── Smagorinsky coefficient = ", dc.smagorinsky, "\n",
                                                     "└── reduction_factor = ", dc.reduction_factor)
-
-
