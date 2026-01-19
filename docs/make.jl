@@ -230,16 +230,16 @@ Distributed.rmprocs()
 
 makedocs(; sitename = "Oceananigans.jl",
          authors = "Climate Modeling Alliance and contributors",
-        #  format = DocumenterVitepress.MarkdownVitepress(
-        #     repo      = "github.com/CliMA/Oceananigans.jl.git",
-        #     devbranch = "main",
-        #     devurl    = "dev",
-        #     deploy_url = "./OceananigansDocumentation/"
-        # ),
-        format = Documenter.HTML(collapselevel = 1,
-                         canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
-                         mathengine = MathJax3(),
-                         size_threshold = 2^20,),
+         format = DocumenterVitepress.MarkdownVitepress(
+            repo      = "https://clima.github.io/OceananigansDocumentation/",
+            devbranch = "main",
+            devurl    = "dev",
+            deploy_url = "./OceananigansDocumentation/"
+        ),
+        # format = Documenter.HTML(collapselevel = 1,
+        #                  canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
+        #                  mathengine = MathJax3(),
+        #                  size_threshold = 2^20,),
         pages = [
             "Home" => "index.md",
         ],
