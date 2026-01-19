@@ -144,10 +144,10 @@ function construct_exponential_coordinate(i, N, left, right, scale, bias)
     ξᵢ = left + (i-1) * Δ     # interfaces
 
     # mapped coordinate
-    if bias === :right
-       xᵢ = rightbiased_exponential_mapping(ξᵢ, left, right, scale)
+    xᵢ = if bias === :right
+        rightbiased_exponential_mapping(ξᵢ, left, right, scale)
     elseif bias === :left
-       xᵢ =  leftbiased_exponential_mapping(ξᵢ, left, right, scale)
+        leftbiased_exponential_mapping(ξᵢ, left, right, scale)
     end
 
     if abs(xᵢ - left) < 10eps(Float32)
