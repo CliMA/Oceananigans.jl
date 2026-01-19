@@ -28,7 +28,7 @@ Adapt.adapt_structure(to, vd::PrognosticTripolarCells) = PrognosticTripolarCells
 @inline function evaluate_condition(::PrognosticTripolarCells{Nothing},
                                     i, j, k,
                                     grid::TripolarGridOfSomeKind,
-                                    co::ConditionalOperation) #, args...)
+                                    co::ConditionalOperation, args...)
     ℓx, ℓy, ℓz = Oceananigans.Fields.location(co)
     Nx, Ny, _ = size(grid)
     valid_domain = !((i > Nx÷2) & (j == Ny))
