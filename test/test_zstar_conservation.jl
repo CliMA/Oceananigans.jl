@@ -146,30 +146,26 @@ end
                     continue
                 end
 
-                grid = TripolarGrid(arch; size = (30, 30, 20), z = z_stretched, fold_topology)
+                underlying_grid = TripolarGrid(arch; size = (30, 30, 20), z = z_stretched, fold_topology)
 
                 # Code credit:
                 # https://github.com/PRONTOLab/GB-25/blob/682106b8487f94da24a64d93e86d34d560f33ffc/src/model_utils.jl#L65
-                function mtn₁(λ, φ)
-                    λ₁ = 70
-                    φ₁ = 55
+                function mtn(λ, φ, λ₀, φ₀)
                     dφ = 5
-                    return exp(-((λ - λ₁)^2 + (φ - φ₁)^2) / 2dφ^2)
+                    dλ = 5
+                    return exp(-(λ - λ₀)^2 / 2dλ^2 - (φ - φ₀)^2 / 2dφ^2)
                 end
-
-                function mtn₂(λ, φ)
-                    λ₁ = 70
-                    λ₂ = λ₁ + 180
-                    φ₂ = 55
-                    dφ = 5
-                    return exp(-((λ - λ₂)^2 + (φ - φ₂)^2) / 2dφ^2)
+                function mtns(λ, φ)
+                    λ₀ = 70
+                    φ₀ = 55
+                    return mtn(λ, φ, λ₀, φ₀) + mtn(λ, φ, λ₀ + 180, φ₀) + mtn(λ, φ, λ₀ + 360, φ₀)
                 end
 
                 zb = - 20
                 h  = - zb + 10
-                gaussian_islands(λ, φ) = zb + h * (mtn₁(λ, φ) + mtn₂(λ, φ))
+                gaussian_islands(λ, φ) = zb + h * mtns(λ, φ)
 
-                grid = ImmersedBoundaryGrid(grid, GridFittedBottom(gaussian_islands))
+                grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(gaussian_islands))
                 free_surface = SplitExplicitFreeSurface(grid; substeps=20)
 
                 model = HydrostaticFreeSurfaceModel(grid;
