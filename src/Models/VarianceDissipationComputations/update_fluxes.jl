@@ -38,7 +38,6 @@ function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
     cⁿ⁻¹ = dissipation.previous_state.cⁿ⁻¹
 
     grid = model.grid
-    arch = architecture(grid)
     U = model.velocities
     params = flux_parameters(grid)
     stage  = model.clock.stage
