@@ -199,7 +199,6 @@ If `backend::TotallyInMemory` then return `1:length(times)`.
 """
 function time_indices(backend::PartlyInMemory, time_indexing, Nt)
     St = length(backend)
-    n₀ = backend.start
 
     time_indices = ntuple(St) do m
         time_index(backend, time_indexing, Nt, m)
@@ -405,12 +404,10 @@ reconstructed_name(::JLD2.ReconstructedStatic{N}) where N = string(N)
 function reconstructed_topology(grid::JLD2.ReconstructedStatic)
     name = reconstructed_name(grid)
     firstcurly = findfirst('{', name)
-    grid_type = name[1:firstcurly-1]
 
     type_parameters = name[firstcurly+1:end-1]
     parameter_list = split(type_parameters, ',')
 
-    FTstr = parameter_list[1]
     TXstr = parameter_list[2]
     TYstr = parameter_list[3]
     TZstr = parameter_list[4]
