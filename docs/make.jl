@@ -271,8 +271,8 @@ makedocs(; sitename = "Oceananigans.jl",
 #     end
 # end
 
-DocumenterVitepress.deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
-        #    versions = ["stable" => "v^", "dev" => "dev", "v#.#.#"],
+deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
+           versions = ["stable" => "v^", "dev" => "dev", "v#.#.#"],
            forcepush = true,
            push_preview = true,
            devbranch = "main")
