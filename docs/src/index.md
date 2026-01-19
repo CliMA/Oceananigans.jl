@@ -107,6 +107,8 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
+1. Peng. S., Silvestri, S., and Bodner A (2026). [Submesoscale and boundary layer turbulence under mesoscale forcing in the upper ocean](https://doi.org/10.48550/arXiv.2601.10441), _arXiv preprint_, arXiv:2601.10441. DOI: [10.48550/arXiv.2601.10441](https://doi.org/10.48550/arXiv.2601.10441)
+
 1. Wang, S., Kang, W., Zhang, Y., & Marshall, J. (2026). [Evolution of a point plume in a rotating unstratified fluid overlain by a stratified layer: scaling and implications for icy satellites](https://doi.org/10.22541/essoar.176824050.01249257/v1), _ESS Open Archive_. DOI: [10.22541/essoar.176824050.01249257/v1](https://doi.org/10.22541/essoar.176659936.64523492/v1)
 
 1. Wei, Z., Li, Q., & Chen, B. (2026). [A direct assessment of Langmuir turbulence parameterizations in idealized coastal merging boundary layers](https://doi.org/10.1029/2025MS004993), _Journal of Advances in Modeling Earth Systems_, **18**, e2025MS004993. DOI:[10.1029/2025MS004993](https://doi.org/10.1029/2025MS004993)
