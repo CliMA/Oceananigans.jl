@@ -231,7 +231,7 @@ Distributed.rmprocs()
 makedocs(; sitename = "Oceananigans.jl",
          authors = "Climate Modeling Alliance and contributors",
          format = DocumenterVitepress.MarkdownVitepress(
-            repo      = "https://clima.github.io/OceananigansDocumentation/",
+            repo      = "github.com/CliMA/Oceananigans.jl.git",
             devbranch = "main",
             devurl    = "dev",
             deploy_url = "./OceananigansDocumentation/"
