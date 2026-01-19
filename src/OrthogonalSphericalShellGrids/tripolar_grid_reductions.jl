@@ -103,7 +103,7 @@ end
 # Disambiguation for Immersed Tripolar Fields (ITF) and Immersed Tripolar Reduced Fields (ITRF)
 # These types match both IF/IRF (from ImmersedBoundaries) and TF (from tripolar reductions)
 
-using Oceananigans.ImmersedBoundaries: NotImmersed, NotImmersedColumn, immersed_column
+using Oceananigans.ImmersedBoundaries: NotImmersedColumn, immersed_column
 
 # Immersed Tripolar Fields (non-reduced)
 const ITF = AbstractField{<:Any, <:Any, <:Any, <:ITG}
