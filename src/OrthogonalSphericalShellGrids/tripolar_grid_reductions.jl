@@ -54,7 +54,11 @@ const TF = Union{<:AbstractField{<:Any, <:Any, <:Any, <:TripolarGridOfSomeKind},
                  <:AbstractField{<:Any, <:Any, <:Any, <:ITG}}
 
 @inline conditional_length(c::TF) = conditional_length(condition_operand(identity, c, PrognosticTripolarCells(), 0))
-@inline conditional_length(c::TF, dims) = conditional_length(condition_operand(identity, c, PrognosticTripolarCells(), 0), dims)
+@inline conditional_length(c::TF, ::Colon) = conditional_length(c)
+@inline conditional_length(c::TF, ::NTuple{3}) = conditional_length(c)
+@inline conditional_length(c::TF, d::Int) = conditional_length(condition_operand(identity, c, PrognosticTripolarCells(), 0), d)
+@inline conditional_length(c::TF, dims::NTuple{1}) = conditional_length(c, dims[1])
+@inline conditional_length(c::TF, dims::NTuple{2}) = conditional_length(condition_operand(identity, c, PrognosticTripolarCells(), 0), dims)
 
 condition_operand(::typeof(identity), op::TF, ::Nothing, mask) =
     condition_operand(nothing, op, nothing, mask)
@@ -96,9 +100,15 @@ end
     return ConditionalOperation(operand; func, condition=tripolar_condition, mask)
 end
 
-# Disambiguation for Immersed reduced fields
+# Disambiguation for Immersed Tripolar Fields (ITF) and Immersed Tripolar Reduced Fields (ITRF)
+# These types match both IF/IRF (from ImmersedBoundaries) and TF (from tripolar reductions)
 
-# ImmersedReducedFields
+using Oceananigans.ImmersedBoundaries: NotImmersed, NotImmersedColumn, immersed_column
+
+# Immersed Tripolar Fields (non-reduced)
+const ITF = AbstractField{<:Any, <:Any, <:Any, <:ITG}
+
+# Immersed Tripolar Reduced Fields
 const XITRF = AbstractField{Nothing, <:Any, <:Any, <:ITG}
 const YITRF = AbstractField{<:Any, Nothing, <:Any, <:ITG}
 const ZITRF = AbstractField{<:Any, <:Any, Nothing, <:ITG}
@@ -111,5 +121,48 @@ const XYZITRF = AbstractField{Nothing, Nothing, Nothing, <:ITG}
 
 const ITRF = Union{XITRF, YITRF, ZITRF, YZITRF, XZITRF, XYITRF, XYZITRF}
 
+# Disambiguation: ITRF matches both IRF and TF, so we need explicit methods
+# For ITRF, we combine both tripolar (PrognosticTripolarCells) and immersed (NotImmersedColumn) conditions
+
 condition_operand(::typeof(identity), op::ITRF, ::Nothing, mask) =
     condition_operand(nothing, op, nothing, mask)
+
+@inline function condition_operand(::Nothing, op::ITRF, ::Nothing, mask)
+    arch = architecture(op)
+    immersed_cond = NotImmersedColumn(immersed_column(op), nothing)
+
+    if !(arch isa Distributed) || (arch.ranks[2] == arch.local_index[2]) # The last core
+        tripolar_condition = PrognosticTripolarCells(immersed_cond)
+    else # intermediate cores
+        tripolar_condition = immersed_cond
+    end
+
+    return ConditionalOperation(op; func=nothing, condition=tripolar_condition, mask)
+end
+
+@inline function condition_operand(func, op::ITRF, condition, mask)
+    arch = architecture(op)
+    immersed_cond = NotImmersedColumn(immersed_column(op), condition)
+
+    if !(arch isa Distributed) || (arch.ranks[2] == arch.local_index[2]) # The last core
+        tripolar_condition = PrognosticTripolarCells(immersed_cond)
+    else # intermediate cores
+        tripolar_condition = immersed_cond
+    end
+
+    return ConditionalOperation(op; func, condition=tripolar_condition, mask)
+end
+
+@inline function condition_operand(func, op::ITRF, condition::AbstractArray, mask)
+    arch = architecture(op)
+    condition = on_architecture(architecture(op.grid), condition)
+    immersed_cond = NotImmersedColumn(immersed_column(op), condition)
+
+    if !(arch isa Distributed) || (arch.ranks[2] == arch.local_index[2]) # The last core
+        tripolar_condition = PrognosticTripolarCells(immersed_cond)
+    else # intermediate cores
+        tripolar_condition = immersed_cond
+    end
+
+    return ConditionalOperation(op; func, condition=tripolar_condition, mask)
+end
