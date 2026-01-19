@@ -29,20 +29,23 @@ function pressure_correction_ab2_step!(model, Δt, callbacks)
     # Compute flux bc tendencies
     compute_flux_bc_tendencies!(model)
 
-    # Velocity steps
-    ab2_step_velocities!(model, Δt)
-
-    # Tracer steps
-    for (i, name) in enumerate(propertynames(model.tracers))
+    # Prognostic variables stepping
+    for (i, name) in enumerate(prognostic_fields(model))
         field = model.tracers[name]
         kernel_args = (field, Δt, model.timestepper.χ, model.timestepper.Gⁿ[name], model.timestepper.G⁻[name])
-        launch!(architecture(grid), grid, :xyz, _ab2_step_field!, kernel_args...)
+        launch!(architecture(grid), grid, :xyz, _ab2_step_field!, kernel_args...; exclude_periphery=true)
+
+        idx = if name ∈ keys(model.tracers)
+            nothing
+        else
+            Val(i-3) # We assume that the first 3 fields are velocity / momentum variables
+        end
 
         implicit_step!(field,
                        model.timestepper.implicit_solver,
                        model.closure,
                        model.closure_fields,
-                       Val(i),
+                       idx,
                        model.clock,
                        fields(model),
                        Δt)
@@ -50,27 +53,6 @@ function pressure_correction_ab2_step!(model, Δt, callbacks)
 
     compute_pressure_correction!(model, Δt)
     make_pressure_correction!(model, Δt)
-
-    return nothing
-end
-
-ab2_step_velocities!(model::NonhydrostaticModel, Δt) =
-    ab2_step_velocities!(model.velocities, model, Δt)
-
-function ab2_step_velocities!(velocities, model, Δt)
-    for (i, field) in enumerate(velocities)
-        kernel_args = (field, Δt, model.timestepper.χ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])
-        launch!(architecture(grid), grid, :xyz, _ab2_step_field!, kernel_args...; exclude_periphery=true)
-
-        implicit_step!(field,
-                       model.timestepper.implicit_solver,
-                       model.closure,
-                       model.closure_fields,
-                       nothing,
-                       model.clock,
-                       fields(model),
-                       Δt)
-    end
 
     return nothing
 end

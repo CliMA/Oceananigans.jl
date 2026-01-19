@@ -33,19 +33,24 @@ function pressure_correction_rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
     grid = model.grid
 
     compute_flux_bc_tendencies!(model)
-    rk3_substep_velocities!(model, Δt)
 
-    # Tracer steps
-    for (i, name) in enumerate(propertynames(model.tracers))
+    # Prognostic variables stepping
+    for (i, name) in enumerate(prognostic_fields(model))
         field = model.tracers[name]
         kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[name], model.timestepper.G⁻[name])
         launch!(architecture(grid), grid, :xyz, _rk3_substep_field!, kernel_args...)
+
+        idx = if name ∈ keys(model.tracers)
+            nothing
+        else
+            Val(i-3) # We assume that the first 3 fields are velocity / momentum variables
+        end
 
         implicit_step!(field,
                        model.timestepper.implicit_solver,
                        model.closure,
                        model.closure_fields,
-                       Val(i),
+                       idx,
                        model.clock,
                        fields(model),
                        Δτ)
@@ -53,27 +58,6 @@ function pressure_correction_rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
 
     compute_pressure_correction!(model, Δτ)
     make_pressure_correction!(model, Δτ)
-
-    return nothing
-end
-
-rk3_substep_velocities!(model::NonhydrostaticModel, Δt) =
-    rk3_substep_velocities!(model.velocities, model, Δt)
-
-function rk3_substep_velocities!(velocities, model, Δt)
-    for (i, field) in enumerate(model.velocities)
-        kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])
-        launch!(architecture(grid), grid, :xyz, _rk3_substep_field!, kernel_args...; exclude_periphery=true)
-
-        implicit_step!(field,
-                       model.timestepper.implicit_solver,
-                       model.closure,
-                       model.closure_fields,
-                       nothing,
-                       model.clock,
-                       fields(model),
-                       Δτ)
-    end
 
     return nothing
 end
