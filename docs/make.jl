@@ -228,18 +228,21 @@ Distributed.rmprocs()
 #     end
 # end
 
+deploy_config = Documenter.auto_detect_deploy_system()
+deploy_decision = Documenter.deploy_folder(
+    deploy_config; repo="github.com/CliMA/OceananigansDocumentation.git",
+    devbranch="main", devurl="dev", push_preview=true
+)
+
 makedocs(; sitename = "Oceananigans.jl",
          authors = "Climate Modeling Alliance and contributors",
-         format = DocumenterVitepress.MarkdownVitepress(
+            format = DocumenterVitepress.MarkdownVitepress(;
             repo      = "github.com/CliMA/Oceananigans.jl.git",
             devbranch = "main",
             devurl    = "dev",
-            deploy_url = "./OceananigansDocumentation/"
+            deploy_url = "./OceananigansDocumentation/",
+            deploy_decision
         ),
-        # format = Documenter.HTML(collapselevel = 1,
-        #                  canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
-        #                  mathengine = MathJax3(),
-        #                  size_threshold = 2^20,),
         pages = [
             "Home" => "index.md",
         ],
@@ -249,39 +252,12 @@ makedocs(; sitename = "Oceananigans.jl",
         warnonly = true,
         )
 
-# """
-#     recursive_find(directory, pattern)
-
-# Return list of filepaths within `directory` that contains the `pattern::Regex`.
-# """
-# function recursive_find(directory, pattern)
-#     mapreduce(vcat, walkdir(directory)) do (root, dirs, filenames)
-#         matched_filenames = filter(contains(pattern), filenames)
-#         map(filename -> joinpath(root, filename), matched_filenames)
-#     end
-# end
-
-# @info "Cleaning up temporary .jld2 and .nc output created by doctests or literated examples..."
-
-# for pattern in [r"\.jld2", r"\.nc"]
-#     filenames = recursive_find(@__DIR__, pattern)
-
-#     for filename in filenames
-#         rm(filename)
-#     end
-# end
-
-deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
-           versions = ["stable" => "v^", "dev" => "dev", "v#.#.#"],
+DocumenterVitepress.deploydocs(
+           repo = "github.com/CliMA/Oceananigans.jl.git",
+           deploy_repo = "github.com/CliMA/OceananigansDocumentation.git",
+           target = "build",
+           branch="gh-pages",
            forcepush = true,
            push_preview = true,
-           devbranch = "main")
-
-# DocumenterVitepress.deploydocs(
-#            repo = "github.com/CliMA/Oceananigans.jl.git",
-#            deploy_repo = "github.com/CliMA/OceananigansDocumentation.git",
-#            target = "build",
-#            branch="gh-pages",
-#            forcepush = true,
-#            push_preview = true,
-#            devbranch = "main")
+           devbranch = "main",
+           )
