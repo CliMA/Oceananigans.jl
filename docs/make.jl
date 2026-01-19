@@ -230,12 +230,16 @@ Distributed.rmprocs()
 
 makedocs(; sitename = "Oceananigans.jl",
          authors = "Climate Modeling Alliance and contributors",
-         format = DocumenterVitepress.MarkdownVitepress(
-            repo      = "github.com/CliMA/Oceananigans.jl.git",
-            devbranch = "main",
-            devurl    = "dev",
-            deploy_url = "./OceananigansDocumentation/"
-        ),
+        #  format = DocumenterVitepress.MarkdownVitepress(
+        #     repo      = "github.com/CliMA/Oceananigans.jl.git",
+        #     devbranch = "main",
+        #     devurl    = "dev",
+        #     deploy_url = "./OceananigansDocumentation/"
+        # ),
+        format = Documenter.HTML(collapselevel = 1,
+                         canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
+                         mathengine = MathJax3(),
+                         size_threshold = 2^20,),
         pages = [
             "Home" => "index.md",
         ],
@@ -267,11 +271,17 @@ makedocs(; sitename = "Oceananigans.jl",
 #     end
 # end
 
-DocumenterVitepress.deploydocs(
-           repo = "github.com/CliMA/Oceananigans.jl.git",
-           deploy_repo = "github.com/CliMA/OceananigansDocumentation.git",
-           target = "build",
-           branch="gh-pages",
+deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
+           versions = ["stable" => "v^", "dev" => "dev", "v#.#.#"],
            forcepush = true,
            push_preview = true,
            devbranch = "main")
+
+# DocumenterVitepress.deploydocs(
+#            repo = "github.com/CliMA/Oceananigans.jl.git",
+#            deploy_repo = "github.com/CliMA/OceananigansDocumentation.git",
+#            target = "build",
+#            branch="gh-pages",
+#            forcepush = true,
+#            push_preview = true,
+#            devbranch = "main")
