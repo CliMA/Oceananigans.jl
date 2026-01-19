@@ -3,36 +3,36 @@ Distributed.addprocs(2)
 
 @everywhere begin
     using Documenter
-    using DocumenterCitations
-    using Literate
-    using Printf
+    # using DocumenterCitations
+    # using Literate
+    # using Printf
 
-    using CUDA
-    using CairoMakie # to avoid capturing precompilation output by Literate
-    set_theme!(Theme(fontsize=20))
-    CairoMakie.activate!(type = "png")
+    # using CUDA
+    # using CairoMakie # to avoid capturing precompilation output by Literate
+    # set_theme!(Theme(fontsize=20))
+    # CairoMakie.activate!(type = "png")
 
-    using NCDatasets
-    using XESMF
+    # using NCDatasets
+    # using XESMF
 
-    using Oceananigans
-    using Oceananigans.AbstractOperations
-    using Oceananigans.Operators
-    using Oceananigans.Diagnostics
-    using Oceananigans.OutputWriters
-    using Oceananigans.TimeSteppers
-    using Oceananigans.TurbulenceClosures
-    using Oceananigans.BoundaryConditions: Flux, Value, Gradient, Open
+    # using Oceananigans
+    # using Oceananigans.AbstractOperations
+    # using Oceananigans.Operators
+    # using Oceananigans.Diagnostics
+    # using Oceananigans.OutputWriters
+    # using Oceananigans.TimeSteppers
+    # using Oceananigans.TurbulenceClosures
+    # using Oceananigans.BoundaryConditions: Flux, Value, Gradient, Open
 
-    bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
-    bib = CitationBibliography(bib_filepath, style=:authoryear)
+    # bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
+    # bib = CitationBibliography(bib_filepath, style=:authoryear)
 
     #####
     ##### Generate examples
     #####
 
-    const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
-    const OUTPUT_DIR   = joinpath(@__DIR__, "src/literated")
+    # const EXAMPLES_DIR = joinpath(@__DIR__, "..", "examples")
+    # const OUTPUT_DIR   = joinpath(@__DIR__, "src/literated")
 
     # The examples that take longer to run should be first. This ensures that the
     # docs built which extra workers is as efficient as possible.
@@ -73,20 +73,20 @@ import Pkg
 Pkg.status()
 """
 
-@info string("Executing the examples using ", Distributed.nprocs(), " processes")
+# @info string("Executing the examples using ", Distributed.nprocs(), " processes")
 
-Distributed.pmap(1:length(example_scripts)) do n
-    example = example_scripts[n]
-    example_filepath = joinpath(EXAMPLES_DIR, example)
-    withenv("JULIA_DEBUG" => "Literate") do
-        start_time = time_ns()
-        Literate.markdown(example_filepath, OUTPUT_DIR;
-                          preprocess = content -> content * example_postamble,
-                          flavor = Literate.DocumenterFlavor(), execute = true)
-        elapsed = 1e-9 * (time_ns() - start_time)
-        @info @sprintf("%s example took %s to build.", example, prettytime(elapsed))
-    end
-end
+# Distributed.pmap(1:length(example_scripts)) do n
+#     example = example_scripts[n]
+#     example_filepath = joinpath(EXAMPLES_DIR, example)
+#     withenv("JULIA_DEBUG" => "Literate") do
+#         start_time = time_ns()
+#         Literate.markdown(example_filepath, OUTPUT_DIR;
+#                           preprocess = content -> content * example_postamble,
+#                           flavor = Literate.DocumenterFlavor(), execute = true)
+#         elapsed = 1e-9 * (time_ns() - start_time)
+#         @info @sprintf("%s example took %s to build.", example, prettytime(elapsed))
+#     end
+# end
 
 Distributed.rmprocs()
 
@@ -184,25 +184,25 @@ developer_pages = [
 
 pages = [
     "Home" => "index.md",
-    "Quick start" => "quick_start.md",
-    "Examples" => example_pages,
-    "Grids" => "grids.md",
-    "Fields" => "fields.md",
-    "Operations" => "operations.md",
+    # "Quick start" => "quick_start.md",
+    # "Examples" => example_pages,
+    # "Grids" => "grids.md",
+    # "Fields" => "fields.md",
+    # "Operations" => "operations.md",
     # TODO:
     #   - Develop the following tutorials on reductions and post-processing
     #   - Refactor the model setup pages and make them more tutorial-like.
     # "Averages, integrals, and cumulative integrals" => "reductions_and_accumulations.md",
     # "FieldTimeSeries and post-processing" => field_time_series.md,
-    "Models" => model_pages,
-    "Simulations" => simulation_pages,
-    "Physics" => physics_pages,
-    "Numerical implementation" => numerical_pages,
-    "Simulation tips" => "simulation_tips.md",
-    "For developers" => developer_pages,
-    "Gallery" => "gallery.md",
-    "References" => "references.md",
-    "Appendix" => appendix_pages
+    # "Models" => model_pages,
+    # "Simulations" => simulation_pages,
+    # "Physics" => physics_pages,
+    # "Numerical implementation" => numerical_pages,
+    # "Simulation tips" => "simulation_tips.md",
+    # "For developers" => developer_pages,
+    # "Gallery" => "gallery.md",
+    # "References" => "references.md",
+    # "Appendix" => appendix_pages
 ]
 
 #####
