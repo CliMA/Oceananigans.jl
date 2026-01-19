@@ -885,9 +885,6 @@ function interior(fts::FieldTimeSeries)
     return view(parent(fts), iv, jv, kv, :)
 end
 
-# FieldTimeSeries boundary conditions
-@inline getbc(condition::Union{FTS, GPUFTS}, i::Int, j::Int, grid::AbstractGrid, clock, args...) = condition[i, j, Time(clock.time)]
-
 #####
 ##### Fill halo regions
 #####
