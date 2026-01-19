@@ -38,7 +38,7 @@ function pressure_correction_rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
     for (i, name) in enumerate(prognostic_fields(model))
         field = model.tracers[name]
         kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[name], model.timestepper.G⁻[name])
-        launch!(architecture(grid), grid, :xyz, _rk3_substep_field!, kernel_args...)
+        launch!(architecture(grid), grid, :xyz, _rk3_substep_field!, kernel_args...; exclude_periphery=true)
 
         idx = if name ∈ keys(model.tracers)
             nothing
