@@ -54,8 +54,8 @@ function pressure_correction_ab2_step!(model, Δt, callbacks)
     return nothing
 end
 
-ab2_step_velocities!(model::NonhydrostaticModel, Δt) = 
-    ab2_step_velocities!(model.velocities, model, Δt) = 
+ab2_step_velocities!(model::NonhydrostaticModel, Δt) =
+    ab2_step_velocities!(model.velocities, model, Δt)
 
 function ab2_step_velocities!(velocities, model, Δt)
     for (i, field) in enumerate(velocities)
