@@ -72,4 +72,3 @@ function Base.show(io::IO, mf::MultipleForcings)
 
     return nothing
 end
-

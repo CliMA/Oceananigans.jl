@@ -60,7 +60,7 @@ end
         grid = TripolarGrid(size=(10, 10, 10), z = (0, 1))
         default_bcs = FieldBoundaryConditions(grid, loc)
         @test default_bcs.north.classification isa Zipper
-        @test default_bcs.south isa ZFBC        
+        @test default_bcs.south isa ZFBC
     end
 
     @testset "Boundary condition instantiation" begin

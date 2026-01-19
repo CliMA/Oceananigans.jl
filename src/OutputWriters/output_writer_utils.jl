@@ -2,7 +2,7 @@ using StructArrays: StructArray, replace_storage
 using Oceananigans.Grids: on_architecture, architecture
 using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: DistributedGrid, Partition
-using Oceananigans.Fields: AbstractField, indices, boundary_conditions, instantiated_location, ConstantField, ZeroField, OneField
+using Oceananigans.Fields: AbstractField, indices, instantiated_location, ConstantField, ZeroField, OneField
 using Oceananigans.BoundaryConditions: bc_str, FieldBoundaryConditions, ContinuousBoundaryFunction, DiscreteBoundaryFunction
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper
 using Oceananigans.Utils: AbstractSchedule
@@ -59,7 +59,7 @@ Return the file extension for the output writer or output
 writer type `ow`.
 """
 ext(ow::Type{AbstractOutputWriter}) = throw("Extension for $ow is not implemented.")
-ext(ow::AbstractOutputWriter) = ext(typeof(fw))
+ext(ow::AbstractOutputWriter) = ext(typeof(ow))
 
 # TODO: add example to docstring below
 
@@ -241,4 +241,3 @@ function with_architecture_suffix(arch::Distributed, filename, ext)
     prefix *= "_rank$rank"
     return prefix * ext
 end
-

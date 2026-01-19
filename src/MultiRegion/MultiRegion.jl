@@ -41,11 +41,9 @@ struct XPartition{N} <: AbstractPartition
     div :: N
 
     function XPartition(sizes)
-        if length(sizes) > 1 && all(y -> y == sizes[1], sizes)
-            sizes = length(sizes)
-        end
+        div = length(sizes) > 1 && allequal(sizes) ? length(sizes) : sizes
 
-        return new{typeof(sizes)}(sizes)
+        return new{typeof(div)}(div)
     end
 end
 
@@ -53,11 +51,9 @@ struct YPartition{N} <: AbstractPartition
     div :: N
 
     function YPartition(sizes)
-        if length(sizes) > 1 && all(y -> y == sizes[1], sizes)
-            sizes = length(sizes)
-        end
+        div = length(sizes) > 1 && allequal(sizes) ? length(sizes) : sizes
 
-        return new{typeof(sizes)}(sizes)
+        return new{typeof(div)}(div)
     end
 end
 

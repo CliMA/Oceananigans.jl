@@ -357,7 +357,6 @@ end
 
 function constructor_arguments(grid::LatitudeLongitudeGrid)
     arch = architecture(grid)
-    FT = eltype(grid)
     args = OrderedDict(:architecture => arch, :number_type => eltype(grid))
 
     # Kwargs
@@ -416,9 +415,9 @@ function Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid)
     return LatitudeLongitudeGrid{TX, TY, TZ}(nothing,
                                              grid.Nx, grid.Ny, grid.Nz,
                                              grid.Hx, grid.Hy, grid.Hz,
-					     Adapt.adapt(to, grid.Lx),
-					     Adapt.adapt(to, grid.Ly),
-					     Adapt.adapt(to, grid.Lz),
+                                             Adapt.adapt(to, grid.Lx),
+                                             Adapt.adapt(to, grid.Ly),
+                                             Adapt.adapt(to, grid.Lz),
                                              Adapt.adapt(to, grid.Δλᶠᵃᵃ),
                                              Adapt.adapt(to, grid.Δλᶜᵃᵃ),
                                              Adapt.adapt(to, grid.λᶠᵃᵃ),
@@ -438,7 +437,7 @@ function Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid)
                                              Adapt.adapt(to, grid.Azᶠᶜᵃ),
                                              Adapt.adapt(to, grid.Azᶜᶠᵃ),
                                              Adapt.adapt(to, grid.Azᶠᶠᵃ),
-					     Adapt.adapt(to, grid.radius))
+                                             Adapt.adapt(to, grid.radius))
 end
 
 #####

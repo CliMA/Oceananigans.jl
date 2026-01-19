@@ -263,4 +263,3 @@ function Oceananigans.Grids.zeros(arch::ShardedDistributed, FT, global_sz...)
         sharding=Sharding.DimsSharding(arch.connectivity, (1, 2), (:x, :y))
     )
 end
-

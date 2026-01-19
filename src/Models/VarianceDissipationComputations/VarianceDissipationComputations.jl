@@ -12,7 +12,7 @@ using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper,
                                  RungeKutta3TimeStepper,
-                                 SplitRungeKutta3TimeStepper
+                                 SplitRungeKuttaTimeStepper
 
 using Oceananigans.TurbulenceClosures: _diffusive_flux_x,
                                        _diffusive_flux_y,
@@ -26,7 +26,7 @@ using Oceananigans: UpdateStateCallsite
 using Oceananigans.Utils: IterationInterval, ConsecutiveIterations
 using KernelAbstractions: @kernel, @index
 
-const RungeKuttaScheme = Union{RungeKutta3TimeStepper, SplitRungeKutta3TimeStepper}
+const RungeKuttaScheme = Union{RungeKutta3TimeStepper, SplitRungeKuttaTimeStepper}
 
 struct VarianceDissipation{P, K, A, D, S}
     advective_production :: P
@@ -73,7 +73,7 @@ Keyword Arguments
 
 !!! compat "Time stepper compatibility"
     At the moment, the variance dissipation diagnostic is supported only for a [`QuasiAdamsBashforth2TimeStepper`](@ref)
-    and a [`SplitRungeKutta3TimeStepper`](@ref).
+    and a [`SplitRungeKuttaTimeStepper`](@ref).
 """
 function VarianceDissipation(tracer_name, grid;
                              Uⁿ⁻¹ = VelocityFields(grid),
@@ -108,7 +108,7 @@ function (ϵ::VarianceDissipation)(model)
 
     # Check if the model has tracers
     if !hasproperty(model.tracers, ϵ.tracer_name)
-        throw(ArgumentError("Model must have a tracer called $tracer_name."))
+        throw(ArgumentError("Model must have a tracer called $(ϵ.tracer_name)."))
     end
 
     # First we compute the dissipation from previously computed fluxes

@@ -1,4 +1,4 @@
-import Oceananigans.BoundaryConditions: fill_halo_regions!
+import Oceananigans: prognostic_state, restore_prognostic_state!
 
 struct ZeroField{T, N} <: AbstractField{Nothing, Nothing, Nothing, Nothing, T, N} end
 struct OneField{T, N} <: AbstractField{Nothing, Nothing, Nothing, Nothing, T, N} end
@@ -21,6 +21,9 @@ ConstantField(constant) = ConstantField{3}(constant)
 
 const CF = Union{ConstantField, ZeroField, OneField}
 
-fill_halo_regions!(::ZeroField, args...; kw...) = nothing
-fill_halo_regions!(::ConstantField, args...; kw...) = nothing
+BoundaryConditions.fill_halo_regions!(::ZeroField, args...; kw...) = nothing
+BoundaryConditions.fill_halo_regions!(::ConstantField, args...; kw...) = nothing
 
+prognostic_state(f::Union{ZeroField, OneField, ConstantField}) = nothing
+restore_prognostic_state!(f::Union{ZeroField, OneField, ConstantField}, state) = f
+restore_prognostic_state!(f::Union{ZeroField, OneField, ConstantField}, ::Nothing) = f

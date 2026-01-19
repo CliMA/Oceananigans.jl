@@ -40,4 +40,3 @@ simulation.callbacks[:plot] = Callback(update!, IterationInterval(100))
 display(fig)
 
 run!(simulation)
-

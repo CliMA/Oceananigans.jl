@@ -1,28 +1,30 @@
+using Oceananigans.Grids: interior_x_indices, interior_y_indices, interior_z_indices
+
 indices(obj, i=default_indices(3)) = i
 indices(f::Field, i=default_indices(3)) = f.indices
 indices(a::SubArray, i=default_indices(ndims(a))) = a.indices
 indices(a::OffsetArray, i=default_indices(ndims(a))) = indices(parent(a), i)
 
-function interior_x_indices(f::Field)
+function Grids.interior_x_indices(f::Field)
     loc = instantiated_location(f)
     interior_indices = interior_x_indices(f.grid, loc)
     return compute_index_intersection(interior_indices, f.indices[1])
 end
 
-function interior_y_indices(f::Field)
+function Grids.interior_y_indices(f::Field)
     loc = instantiated_location(f)
     interior_indices = interior_y_indices(f.grid, loc)
     return compute_index_intersection(interior_indices, f.indices[2])
 end
 
-function interior_z_indices(f::Field)
+function Grids.interior_z_indices(f::Field)
     loc = instantiated_location(f)
     interior_indices = interior_z_indices(f.grid, loc)
     return compute_index_intersection(interior_indices, f.indices[3])
 end
 
 # Interior indices for a field with a given location and topology
-function interior_indices(f::Field)
+function Grids.interior_indices(f::Field)
     ind_x = interior_x_indices(f)
     ind_y = interior_y_indices(f)
     ind_z = interior_z_indices(f)
@@ -72,7 +74,7 @@ function compute_index_intersection(to_idx::AbstractUnitRange, from_idx::Abstrac
 end
 
 validate_shifted_index(shifted_idx) = first(shifted_idx) > last(shifted_idx) &&
-    throw(ArgumentError("Cannot compute index intersection for indices $(from_idx) interpolating from $(from_loc) to $(to_loc)!"))
+    throw(ArgumentError("Cannot compute index intersection!"))
 
 """
     restrict_index_on_location(from_idx, from_loc, to_loc)

@@ -1,5 +1,3 @@
-import Oceananigans.TimeSteppers: compute_pressure_correction!, make_pressure_correction!
-
 """
     compute_pressure_correction!(model::NonhydrostaticModel, Δt)
 

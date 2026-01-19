@@ -3,7 +3,7 @@ using Oceananigans.OutputWriters: fetch_output
 using Oceananigans.Utils: AbstractSchedule, prettytime
 using Oceananigans.TimeSteppers: Clock
 
-import Oceananigans: run_diagnostic!
+import Oceananigans: run_diagnostic!, prognostic_state, restore_prognostic_state!
 import Oceananigans.Utils: TimeInterval, SpecifiedTimes
 import Oceananigans.Fields: location, indices, set!
 
@@ -93,13 +93,39 @@ function (sch::AveragedTimeInterval)(model)
     return scheduled
 end
 initialize_schedule!(sch::AveragedTimeInterval, clock) = nothing
-outside_window(sch::AveragedTimeInterval, clock) = clock.time <=  next_actuation_time(sch) - sch.window
-end_of_window(sch::AveragedTimeInterval, clock) = clock.time >= next_actuation_time(sch)
+
+outside_window(sch::AveragedTimeInterval, clock) = clock.time <= next_actuation_time(sch) - sch.window
+
+# Accumulated clock time from repeated Δt additions may fall just short of target times
+# due to floating point arithmetic. For example, 10 iterations of Δt=0.1 yields
+# clock.time = 0.9999999999999999 rather than 1.0, causing (0.999... >= 1.0) = false.
+# Using eps(t★) as tolerance ensures times within one floating point increment are accepted.
+function end_of_window(sch::AveragedTimeInterval, clock)
+    t★ = next_actuation_time(sch)
+    return clock.time >= t★ - eps(t★)
+end
 
 TimeInterval(sch::AveragedTimeInterval) = TimeInterval(sch.interval)
 Base.copy(sch::AveragedTimeInterval) = AveragedTimeInterval(sch.interval, window=sch.window, stride=sch.stride)
 
+#####
+##### Checkpointing
+#####
 
+function prognostic_state(schedule::AveragedTimeInterval)
+    return (first_actuation_time = schedule.first_actuation_time,
+            actuations = schedule.actuations,
+            collecting = schedule.collecting)
+end
+
+function restore_prognostic_state!(schedule::AveragedTimeInterval, state)
+    schedule.first_actuation_time = state.first_actuation_time
+    schedule.actuations = state.actuations
+    schedule.collecting = state.collecting
+    return schedule
+end
+
+restore_prognostic_state!(::AveragedTimeInterval, ::Nothing) = nothing
 
 """
     mutable struct AveragedSpecifiedTimes <: AbstractSchedule
@@ -185,8 +211,22 @@ function end_of_window(schedule::AveragedSpecifiedTimes, clock)
     next = schedule.specified_times.previous_actuation + 1
     next > length(schedule.specified_times.times) && return true
     next_time = schedule.specified_times.times[next]
-    return clock.time >= next_time
+    # Use tolerance to handle floating point accumulation errors in clock.time
+    return clock.time >= next_time - eps(next_time)
 end
+
+function prognostic_state(schedule::AveragedSpecifiedTimes)
+    return (specified_times = prognostic_state(schedule.specified_times),
+            collecting = schedule.collecting)
+end
+
+function restore_prognostic_state!(schedule::AveragedSpecifiedTimes, state)
+    restore_prognostic_state!(schedule.specified_times, state.specified_times)
+    schedule.collecting = state.collecting
+    return schedule
+end
+
+restore_prognostic_state!(::AveragedSpecifiedTimes, ::Nothing) = nothing
 
 #####
 ##### WindowedTimeAverage
@@ -308,6 +348,25 @@ end
 # So it can be used as a Diagnostic
 run_diagnostic!(wta::WindowedTimeAverage, model) = advance_time_average!(wta, model)
 
+function prognostic_state(wta::WindowedTimeAverage)
+    return (result = prognostic_state(wta.result),
+            window_start_time = wta.window_start_time,
+            window_start_iteration = wta.window_start_iteration,
+            previous_collection_time = wta.previous_collection_time,
+            schedule = prognostic_state(wta.schedule))
+end
+
+function restore_prognostic_state!(wta::WindowedTimeAverage, state)
+    restore_prognostic_state!(wta.result, state.result)
+    wta.window_start_time = state.window_start_time
+    wta.window_start_iteration = state.window_start_iteration
+    wta.previous_collection_time = state.previous_collection_time
+    restore_prognostic_state!(wta.schedule, state.schedule)
+    return wta
+end
+
+restore_prognostic_state!(::WindowedTimeAverage, ::Nothing) = nothing
+
 Base.show(io::IO, schedule::AveragedTimeInterval) = print(io, summary(schedule))
 
 Base.summary(schedule::AveragedTimeInterval) = string("AveragedTimeInterval(",
@@ -354,4 +413,3 @@ function time_average_outputs(schedule::AveragedTimeInterval, outputs::NamedTupl
 
     return TimeInterval(schedule), averaged_outputs
 end
-
