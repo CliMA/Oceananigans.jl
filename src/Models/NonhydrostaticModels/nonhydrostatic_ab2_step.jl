@@ -30,19 +30,7 @@ function pressure_correction_ab2_step!(model, Δt, callbacks)
     compute_flux_bc_tendencies!(model)
 
     # Velocity steps
-    for (i, field) in enumerate(model.velocities)
-        kernel_args = (field, Δt, model.timestepper.χ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])
-        launch!(architecture(grid), grid, :xyz, _ab2_step_field!, kernel_args...; exclude_periphery=true)
-
-        implicit_step!(field,
-                       model.timestepper.implicit_solver,
-                       model.closure,
-                       model.closure_fields,
-                       nothing,
-                       model.clock,
-                       fields(model),
-                       Δt)
-    end
+    ab2_step_velocities!(model, Δt)
 
     # Tracer steps
     for (i, name) in enumerate(propertynames(model.tracers))
@@ -62,6 +50,27 @@ function pressure_correction_ab2_step!(model, Δt, callbacks)
 
     compute_pressure_correction!(model, Δt)
     make_pressure_correction!(model, Δt)
+
+    return nothing
+end
+
+ab2_step_velocities!(model::NonhydrostaticModel, Δt) = 
+    ab2_step_velocities!(model.velocities, model, Δt) = 
+
+function ab2_step_velocities!(velocities, model, Δt)
+    for (i, field) in enumerate(velocities)
+        kernel_args = (field, Δt, model.timestepper.χ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])
+        launch!(architecture(grid), grid, :xyz, _ab2_step_field!, kernel_args...; exclude_periphery=true)
+
+        implicit_step!(field,
+                       model.timestepper.implicit_solver,
+                       model.closure,
+                       model.closure_fields,
+                       nothing,
+                       model.clock,
+                       fields(model),
+                       Δt)
+    end
 
     return nothing
 end
