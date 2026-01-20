@@ -1,10 +1,11 @@
 include("dependencies_for_runtests.jl")
 include("data_dependencies.jl")
 
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Grids: φnode, λnode, halo_size
+using Oceananigans.MultiRegion: number_of_regions
 using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid
 using Oceananigans.Utils: Iterate, getregion
-using Oceananigans.MultiRegion: number_of_regions, fill_halo_regions!
 
 function get_range_of_indices(operation, index, Nx, Ny)
     if operation == :endpoint && index == :before_first
@@ -929,6 +930,84 @@ end
                 end
             end # CUDA.@allowscalar
         end
+    end
+end
+
+@kernel function _interpolate_to_face_center!(grid, ηᶠᶜᵃ, η)
+    i, j, k = @index(Global, NTuple)
+    ηᶠᶜᵃ[i, j, k] = ℑxᶠᵃᵃ(i, j, k, grid, η)
+end
+
+@kernel function _interpolate_to_face_center!(grid, ηᶠᶜᵃ, f, η)
+    i, j, k = @index(Global, NTuple)
+    ηᶠᶜᵃ[i, j, k] = ℑxᶠᵃᵃ(i, j, k, grid, f, η)
+end
+
+@kernel function _interpolate_to_center_face!(grid, ηᶜᶠᵃ, η)
+    i, j, k = @index(Global, NTuple)
+    ηᶜᶠᵃ[i, j, k] = ℑyᵃᶠᵃ(i, j, k, grid, η)
+end
+
+@kernel function _interpolate_to_center_face!(grid, ηᶜᶠᵃ, f, η)
+    i, j, k = @index(Global, NTuple)
+    ηᶜᶠᵃ[i, j, k] = ℑyᵃᶠᵃ(i, j, k, grid, f, η)
+end
+
+@kernel function _difference_face_center!(grid, δf, f, η)
+    i, j, k = @index(Global, NTuple)
+    δf[i, j, k] = δxTᶠᵃᵃ(i, j, k, grid, f, η)
+end
+
+@kernel function _difference_center_face!(grid, δf, f, η)
+    i, j, k = @index(Global, NTuple)
+    δf[i, j, k] = δyTᵃᶠᵃ(i, j, k, grid, f, η)
+end
+
+@kernel function _set_static_column_depth_face_center!(grid, depth_field)
+    i, j, k = @index(Global, NTuple)
+    depth_field[i, j, k] = static_column_depthᶠᶜᵃ(i, j, k, grid)
+end
+
+@testset "Testing interpolation and derivative operators on cubed sphere grids" begin
+    for FT in float_types, arch in archs, non_uniform_conformal_mapping in (false, true)
+        cm = non_uniform_conformal_mapping ? "non-uniform conformal mapping" : "uniform conformal mapping"
+        @info "  Testing interpolation and derivative operators [$FT, $(typeof(arch)), $cm]..."
+
+        Nx, Ny, Nz = 9, 9, 2
+        grid = ConformalCubedSphereGrid(arch, FT;
+                                        panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1,
+                                        horizontal_direction_halo = 3)
+        Hx, Hy, Hz = halo_size(grid)
+
+        η = CenterField(grid)
+        set!(η, -1)
+        fill_halo_regions!(η)
+
+        ηᶠᶜᵃ  = Field{Face, Center, Center}(grid)
+        ηᶜᶠᵃ  = Field{Center, Face, Center}(grid)
+        fηᶠᶜᵃ = Field{Face, Center, Center}(grid)
+        fηᶜᶠᵃ = Field{Center, Face, Center}(grid)
+        δηᶠᶜᵃ = Field{Face, Center, Center}(grid)
+        δηᶜᶠᵃ = Field{Center, Face, Center}(grid)
+
+        @inline η★(i, j, k, grid, η) = @inbounds η[i, j, k]
+
+        kernel_parameters = KernelParameters((Nx+2Hx-1, Ny+2Hy, Nz+2Hz), (-Hx+1, -Hy, -Hz))
+        @apply_regionally launch!(arch, grid, kernel_parameters, _interpolate_to_face_center!, grid, ηᶠᶜᵃ, η)
+        @apply_regionally launch!(arch, grid, kernel_parameters, _interpolate_to_face_center!, grid, fηᶠᶜᵃ, η★, η)
+        @apply_regionally launch!(arch, grid, kernel_parameters, _difference_face_center!, grid, δηᶠᶜᵃ, η★, η)
+
+        kernel_parameters = KernelParameters((Nx+2Hx, Ny+2Hy-1, Nz+2Hz), (-Hx, -Hy+1, -Hz))
+        @apply_regionally launch!(arch, grid, kernel_parameters, _interpolate_to_center_face!, grid, ηᶜᶠᵃ, η)
+        @apply_regionally launch!(arch, grid, kernel_parameters, _interpolate_to_center_face!, grid, fηᶜᶠᵃ, η★, η)
+        @apply_regionally launch!(arch, grid, kernel_parameters, _difference_center_face!, grid, δηᶜᶠᵃ, η★, η)
+
+        @test minimum(ηᶠᶜᵃ)  == -1 && maximum(abs, ηᶠᶜᵃ)  == 1
+        @test minimum(ηᶜᶠᵃ)  == -1 && maximum(abs, ηᶜᶠᵃ)  == 1
+        @test minimum(fηᶠᶜᵃ) == -1 && maximum(abs, fηᶠᶜᵃ) == 1
+        @test minimum(fηᶜᶠᵃ) == -1 && maximum(abs, fηᶜᶠᵃ) == 1
+        @test maximum(abs, δηᶠᶜᵃ) ==  0
+        @test maximum(abs, δηᶜᶠᵃ) ==  0
     end
 end
 
