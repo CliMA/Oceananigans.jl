@@ -29,7 +29,7 @@ function pressure_correction_ab2_step!(model, Δt, callbacks)
     # Compute flux bc tendencies
     compute_flux_bc_tendencies!(model)
     model_fields = prognostic_fields(model)
-    
+
     # Prognostic variables stepping
     for (i, name) in enumerate(keys(model_fields))
         field = model_fields[name]

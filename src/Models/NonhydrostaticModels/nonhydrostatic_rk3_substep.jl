@@ -40,7 +40,7 @@ function pressure_correction_rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
         field = model_fields[name]
         kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[name], model.timestepper.G⁻[name])
         launch!(architecture(grid), grid, :xyz, _rk3_substep_field!, kernel_args...; exclude_periphery=true)
-        
+
         implicit_step!(field,
                        model.timestepper.implicit_solver,
                        model.closure,
