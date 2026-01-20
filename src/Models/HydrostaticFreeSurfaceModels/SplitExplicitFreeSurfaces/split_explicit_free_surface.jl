@@ -388,14 +388,14 @@ split_explicit_kernel_size(::Type{RightConnected}, N, H) =    1:N+H-1
 split_explicit_kernel_size(::Type{LeftConnected},  N, H) = -H+2:N
 
 # Adapt
-Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
-    SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.displacement),
-                             Adapt.adapt(to, free_surface.barotropic_velocities),
-                             Adapt.adapt(to, free_surface.filtered_state),
-                             free_surface.gravitational_acceleration,
-                             nothing,
-                             Adapt.adapt(to, free_surface.substepping),
-                             Adapt.adapt(to, free_surface.timestepper))
+Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface{extend_halos}) where {extend_halos} =
+    SplitExplicitFreeSurface{extend_halos}(Adapt.adapt(to, free_surface.displacement),
+                                           Adapt.adapt(to, free_surface.barotropic_velocities),
+                                           Adapt.adapt(to, free_surface.filtered_state),
+                                           free_surface.gravitational_acceleration,
+                                           nothing,
+                                           Adapt.adapt(to, free_surface.substepping),
+                                           Adapt.adapt(to, free_surface.timestepper))
 
 for Type in (SplitExplicitFreeSurface,
              FixedTimeStepSize,
