@@ -184,10 +184,10 @@ end
             # to ensure the velocity field is divergence-free at initialization.
             ψ = Field{Face, Face, Center}(grid)
 
-	        mean_xspacing = mean(xspacings(grid, Face(), Face(), Center()))
+            mean_xspacing = mean(xspacings(grid, Face(), Face(), Center()))
             mean_yspacing = mean(yspacings(grid, Face(), Face(), Center()))
             Δ = mean((mean_xspacing, mean_yspacing))
-	        U = 1
+            U = 1
 
 	        # Set streamfunction amplitude to Δ * U to yield velocities of order U.
             set!(ψ, U * Δ * rand(size(ψ)...))
