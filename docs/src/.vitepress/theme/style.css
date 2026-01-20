@@ -275,13 +275,17 @@ mjx-container > svg {
 
 mjx-container {
   padding: 0.5rem 0;
+}
+
+mjx-container {
   display: inline;
   margin: auto 2px -2px;
 }
 
-/* =========================
-   Search Box (Dark)
-   ========================= */
+mjx-container > svg {
+  margin: auto;
+  display: inline-block;
+}
 
 /* =========================
    Search Box (Dark)
