@@ -76,8 +76,15 @@ Keyword Arguments
     of the grid (i.e., the first component of `size`) _must_ be an even number!
 
 !!! info "North pole singularities"
-    The north singularities are located at: `i = 1`, `j = grid.Ny` and
-    `i = grid.Nx ÷ 2 + 1`, `j = grid.Ny`.
+    For a `RightCenterFolded` y-topology, The north singularities are located on `(Face, Center)`, 
+    at: `i = 1`, `j = grid.Ny` and `i = grid.Nx ÷ 2 + 1`, `j = grid.Ny`.
+    See [`UPivotZipperBoundaryCondition`](@ref) for more information on the fold.
+
+    For a `RightFaceFolded` y-topology, The north singularities are located on `(Face, Face_`, 
+    at: `i = 1`, `j = grid.Ny` and `i = grid.Nx ÷ 2 + 1`, `j = grid.Ny`. This means that the last
+    row of the tracers is redundant and, despite being advanced dynamically, it is then replaced
+    by the interior of the domain when folding. 
+    See [`FPivotZipperBoundaryCondition`](@ref) for more information on the fold.
 
 References
 ==========
@@ -110,6 +117,16 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     Nx, Ny, Nz = size
     Hx, Hy, Hz = halo
 
+    # We increase the halo size by one in case of a `RightFaceFolded` y-topology
+    # since the `Ny + 1` (Center, Face) row is half prognostic, not fully determined by 
+    # boundary conditions like Oceananigans' machinery assumes. For this reason we
+    # increase the corresponding halo `Hy` by 1 and then just add the first north halo 
+    # to the computational domain (by later adding 1 cell to Ny and reducing Hy by 1 again)
+    if fold_topology isa RightFaceFolded
+        Hy  += 1
+        halo = (Hx, Hy, Hz)
+    end
+
     if isodd(Nx)
         throw(ArgumentError("The number of cells in the longitude dimension should be even!"))
     end
@@ -117,6 +134,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     # Generate coordinates
     TZ = topology[3]
     z = validate_dimension_specification(TZ, z, :z, Nz, FT)
+
     Lz, z                        = generate_coordinate(FT, topology, size, halo, z,         :z,         3, CPU())
     Ly, φᵃᶠᵃ, φᵃᶜᵃ, Δφᶠᵃᵃ, Δφᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, latitude,  :latitude,  2, CPU())
     Lx, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, longitude, :longitude, 1, CPU())
@@ -174,6 +192,17 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     λᶜᶜᵃ = dropdims(λCC.data, dims=3)
     φᶜᶜᵃ = dropdims(φCC.data, dims=3)
 
+    # Increase by 1 the size of the domain (note we had increased by 1 the meridional halos)
+    # The effect of this is that we compute also in Ny_new = Ny + 1 and the north boundary condition 
+    # should start substituting from Ny and not Ny + 1 . We also reduce the halo back to its previous
+    # user-specified value to comply eith the `FPivotZipperBoundaryCondition` requirements
+    if fold_topology isa RightFaceFolded
+        Hy  -= 1
+        Ny  += 1 
+        halo = (Hx, Hy, Hz)
+        size = (Ny, Ny, Nz)
+    end
+    
     # Allocate Metrics
     # TODO: make these on_architecture(arch, zeros(Nx, Ny))
     # to build the grid on GPU
@@ -213,6 +242,13 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
                                                   east   = Oceananigans.PeriodicBoundaryCondition(),
                                                   top    = nothing,
                                                   bottom = nothing)
+
+
+    # return metrics grid
+    grid = RectilinearGrid(; size = (Nx, Ny),
+                             halo = (Hx, Hy),
+                             x = (0, 1), y = (0, 1),
+                             topology = (Periodic, fold_topology, Flat))
 
     # Metrics fields to fill halos
     FF = Field{Face,   Face,   Center}(grid; boundary_conditions)
@@ -266,11 +302,9 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     Azᶠᶜᵃ = deepcopy(dropdims(FC.data, dims=3))
     Azᶜᶜᵃ = deepcopy(dropdims(CC.data, dims=3))
 
-
     # Continue the metrics to the south with a LatitudeLongitudeGrid
     # metrics (probably we don't even need to do this, since the tripolar grid should
     # terminate below Antartica, but it's better to be safe)
-
     latitude_longitude_grid = LatitudeLongitudeGrid(; size,
                                                       latitude,
                                                       longitude,

@@ -21,15 +21,15 @@ Consider the northern edge of a tripolar grid where P indicates the pivot point,
 then there must be a 180° rotation symmetry around the pivot point:
 ```
                     │            │            │            │            │
-Ny + 2 (face)   ─▶  ├─── -v₆ ────┼─── -v₅ ────┼─── -v₄ ────┼─── -v₃ ────┤
+Ny + 1 (face)   ─▶  ├─── -v₆ ────┼─── -v₅ ────┼─── -v₄ ────┼─── -v₃ ────┤
                     │            │            │            │            │
-Ny + 1 (center) ─▶ -u₁    c₄    -u₄    c₃    -u₃    c₂    -u₂    c₁    -u₁
+Ny     (center) ─▶ -u₁    c₄    -u₄    c₃    -u₃    c₂    -u₂    c₁    -u₁
                     │            │            │            │            │
-Ny + 1 (face)   ─▶  ├──── v₁ ────┼──── v₂ ─── P ── -v₂ ────┼─── -v₁ ────┤ ◀─ Fold
+Ny     (face)   ─▶  ├──── v₁ ────┼──── v₂ ─── P ── -v₂ ────┼─── -v₁ ────┤ ◀─ Fold
                     │            │            │            │            │
-Ny     (center) ─▶  u₁    c₁     u₂    c₂     u₃    c₃     u₄    c₄     u₁
+Ny - 1 (center) ─▶  u₁    c₁     u₂    c₂     u₃    c₃     u₄    c₄     u₁
                     │            │            │            │            │
-Ny     (face)   ─▶  ├──── v₃ ────┼──── v₄ ────┼──── v₅ ────┼──── v₆ ────┤
+Ny - 1 (face)   ─▶  ├──── v₃ ────┼──── v₄ ────┼──── v₅ ────┼──── v₆ ────┤
                     │            │            │            │            │
                                                            ▲     ▲
                                                            Nx    Nx
@@ -37,8 +37,11 @@ Ny     (face)   ─▶  ├──── v₃ ────┼──── v₄ �
 ```
 
 Note that for the `RightFaceFolded` topology used here,
-`YFaceField`s have an extra row (size `Ny + 1` in the y-direction)
+`YFaceField`s have an extra row (size `Ny` in the y-direction)
 because the `v` velocities along the fold must be defined.
+
+There is also an extra row for tracers and u-velocities which will be computed
+dynamically but is redundant and will be eventually subsitituted by the boundary condition.
 """
 
 #####
@@ -53,12 +56,12 @@ because the `v` velocities along the fold must be defined.
 
     for j in 1:Hy
         @inbounds begin
-            ζ[i, Ny + 1 + j, k] = sign * ζ[i′, Ny + 1 - j, k]
+            ζ[i, Ny + j, k] = sign * ζ[i′, Ny - j, k]
         end
     end
 
     # We substitute the redundant part of the last row of ζ to ensure consistency
-    @inbounds ζ[i, Ny + 1, k] = ifelse(i > Nx ÷ 2, sign * ζ[i′, Ny + 1, k], ζ[i, Ny + 1, k])
+    @inbounds ζ[i, Ny, k] = ifelse(i > Nx ÷ 2, sign * ζ[i′, Ny, k], ζ[i, Ny, k])
 
     return nothing
 end
@@ -71,7 +74,7 @@ end
 
     for j in 1:Hy
         @inbounds begin
-            u[i, Ny + j, k] = sign * u[i′, Ny + 1 - j, k]
+            u[i, Ny + j - 1, k] = sign * u[i′, Ny - j, k]
         end
     end
 
@@ -86,12 +89,12 @@ end
 
     for j in 1:Hy
         @inbounds begin
-            v[i, Ny + 1 + j, k] = sign * v[i′, Ny + 1 - j, k]
+            v[i, Ny + j, k] = sign * v[i′, Ny - j, k]
         end
     end
 
     # We substitute the redundant part of the last row of v (index Ny + 1)to ensure consistency
-    @inbounds v[i, Ny + 1, k] = ifelse(i > Nx ÷ 2, sign * v[i′, Ny + 1, k], v[i, Ny + 1, k])
+    @inbounds v[i, Ny, k] = ifelse(i > Nx ÷ 2, sign * v[i′, Ny, k], v[i, Ny, k])
 
     return nothing
 end
@@ -104,7 +107,7 @@ end
 
     for j in 1:Hy
         @inbounds begin
-            c[i, Ny + j, k] = sign * c[i′, Ny + 1 - j, k]
+            c[i, Ny - 1 + j, k] = sign * c[i′, Ny - j, k]
         end
     end
 
