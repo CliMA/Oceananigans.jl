@@ -31,7 +31,7 @@ function pressure_correction_ab2_step!(model, Δt, callbacks)
     fields = prognostic_fields(model)
     
     # Prognostic variables stepping
-    for (i, name) in enumerate(fields)
+    for (i, name) in enumerate(keys(fields))
         field = fields[name]
         kernel_args = (field, Δt, model.timestepper.χ, model.timestepper.Gⁿ[name], model.timestepper.G⁻[name])
         launch!(architecture(grid), grid, :xyz, _ab2_step_field!, kernel_args...; exclude_periphery=true)
