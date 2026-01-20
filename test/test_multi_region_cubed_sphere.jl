@@ -963,11 +963,6 @@ end
     δf[i, j, k] = δyTᵃᶠᵃ(i, j, k, grid, f, η)
 end
 
-@kernel function _set_static_column_depth_face_center!(grid, depth_field)
-    i, j, k = @index(Global, NTuple)
-    depth_field[i, j, k] = static_column_depthᶠᶜᵃ(i, j, k, grid)
-end
-
 @testset "Testing interpolation and derivative operators on cubed sphere grids" begin
     for FT in float_types, arch in archs, non_uniform_conformal_mapping in (false, true)
         cm = non_uniform_conformal_mapping ? "non-uniform conformal mapping" : "uniform conformal mapping"
