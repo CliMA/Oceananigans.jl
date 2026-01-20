@@ -70,7 +70,7 @@ end
                                 _getregion(fs.kernel_parameters, r),
                                 _getregion(fs.substepping, r),
                                 _getregion(fs.timestepper, r))
-  
+
 # TODO: For the moment, buoyancy gradients cannot be precomputed in MultiRegionModels
 function BuoyancyForce(grid::MultiRegionGrids, formulation::AbstractBuoyancyFormulation;
                        gravity_unit_vector=NegativeZDirection(),

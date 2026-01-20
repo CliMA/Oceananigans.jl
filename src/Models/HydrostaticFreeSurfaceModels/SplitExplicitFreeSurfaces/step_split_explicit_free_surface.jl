@@ -20,7 +20,7 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
     @inbounds begin
         U[i, j, 1] += Δτ * (- g * Hᶠᶜ * ∂xTᶠᶜᶠ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
         V[i, j, 1] += Δτ * (- g * Hᶜᶠ * ∂yTᶜᶠᶠ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
-        
+
         # Averaging the transport
         Ũ[i, j, 1] += transport_weight * U[i, j, 1]
         Ṽ[i, j, 1] += transport_weight * V[i, j, 1]
@@ -171,7 +171,7 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     barotropic_timestepper = free_surface.timestepper
     baroclinic_timestepper = model.timestepper
 
-    # Compute barotropic substepping parameters: number of substeps per baroclinic time step, fractional barotropic time 
+    # Compute barotropic substepping parameters: number of substeps per baroclinic time step, fractional barotropic time
     # step, and the corresponding averaging and transport weights.
     Nsubsteps = calculate_substeps(substepping, Δt)
     fractional_Δt, weights, transport_weights = calculate_adaptive_settings(substepping, Nsubsteps)

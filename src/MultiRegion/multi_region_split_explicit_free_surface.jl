@@ -8,8 +8,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: materialize_free_surface
 
 # Internal function for HydrostaticFreeSurfaceModel
-function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_halos}, 
-                                  velocities, 
+function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_halos},
+                                  velocities,
                                   grid::MultiRegionGrids) where {extend_halos}
     substepping = free_surface.substepping
 
