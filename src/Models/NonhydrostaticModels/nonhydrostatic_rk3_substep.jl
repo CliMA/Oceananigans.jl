@@ -36,7 +36,7 @@ function pressure_correction_rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
     fields = prognostic_fields(model)
 
     # Prognostic variables stepping
-    for (i, name) in enumerate(fields)
+    for (i, name) in enumerate(keys(fields))
         field = fields[name]
         kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[name], model.timestepper.G⁻[name])
         launch!(architecture(grid), grid, :xyz, _rk3_substep_field!, kernel_args...; exclude_periphery=true)
