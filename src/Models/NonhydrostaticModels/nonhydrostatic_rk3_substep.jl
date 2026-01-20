@@ -45,7 +45,7 @@ function pressure_correction_rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
                        model.timestepper.implicit_solver,
                        model.closure,
                        model.closure_fields,
-                       Val(i-3) # We assume that the first 3 fields are velocity / momentum variables
+                       Val(i-3), # We assume that the first 3 fields are velocity / momentum variables
                        model.clock,
                        fields(model),
                        Δτ)
