@@ -226,7 +226,8 @@ format = DocumenterVitepress.MarkdownVitepress(;
         devbranch = "main",
         devurl = "dev",
         deploy_url = "./OceananigansDocumentation/",
-        deploy_decision
+        deploy_decision,
+        keep = :patch, # keep all versions of docs
     )
 
 DocMeta.setdocmeta!(Oceananigans, :DocTestSetup, :(using Oceananigans); recursive=true)
