@@ -334,12 +334,22 @@ end
 """
     interpolate(to_node, from_field)
 
-Interpolate `field` to the physical point `(x, y, z)` using trilinear interpolation.
+Interpolate `field` `to_node`.
+
+`to_node` is an N-tuple corresponding the dimensionality of `from_field`:
+
+    * `to_node = (x, y, z)` for 3D fields and trilinear interpolation,
+    * `to_node = (x, y)`, `(x, z)`, or `(y, z)` for 2D fields and bilinear interpolation,
+    * `to_node = (x,)`, `(y,)`, or `(z,)` for 1D fields and linear interpolation.
+
+For 1D interpolation, `to_node` may also be a `Number`.
 """
 @inline function interpolate(to_node, from_field)
     from_loc = Tuple(L() for L in location(from_field))
     return interpolate(to_node, from_field, from_loc, from_field.grid)
 end
+
+@inline interpolate(to_node::Number, from_field) = interpolate(tuple(to_node), from_field)
 
 @inline flatten_node(x, y, z) = (x, y, z)
 
