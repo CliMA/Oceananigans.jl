@@ -224,7 +224,7 @@ deploy_decision = Documenter.deploy_folder(
 format = DocumenterVitepress.MarkdownVitepress(;
         repo = "github.com/CliMA/Oceananigans.jl.git",
         devbranch = "main",
-        devurl = "dev";
+        devurl = "dev",
         deploy_url = "./OceananigansDocumentation/",
         deploy_decision
     )
