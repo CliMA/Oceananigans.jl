@@ -76,14 +76,14 @@ Keyword Arguments
     of the grid (i.e., the first component of `size`) _must_ be an even number!
 
 !!! info "North pole singularities"
-    For a `RightCenterFolded` y-topology, The north singularities are located on `(Face, Center)`, 
+    For a `RightCenterFolded` y-topology, The north singularities are located on `(Face, Center)`,
     at: `i = 1`, `j = grid.Ny` and `i = grid.Nx ÷ 2 + 1`, `j = grid.Ny`.
     See [`UPivotZipperBoundaryCondition`](@ref) for more information on the fold.
 
-    For a `RightFaceFolded` y-topology, The north singularities are located on `(Face, Face_`, 
+    For a `RightFaceFolded` y-topology, The north singularities are located on `(Face, Face_`,
     at: `i = 1`, `j = grid.Ny` and `i = grid.Nx ÷ 2 + 1`, `j = grid.Ny`. This means that the last
     row of the tracers is redundant and, despite being advanced dynamically, it is then replaced
-    by the interior of the domain when folding. 
+    by the interior of the domain when folding.
     See [`FPivotZipperBoundaryCondition`](@ref) for more information on the fold.
 
 References
@@ -118,9 +118,9 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     Hx, Hy, Hz = halo
 
     # We increase the halo size by one in case of a `RightFaceFolded` y-topology
-    # since the `Ny + 1` (Center, Face) row is half prognostic, not fully determined by 
+    # since the `Ny + 1` (Center, Face) row is half prognostic, not fully determined by
     # boundary conditions like Oceananigans' machinery assumes. For this reason we
-    # increase the corresponding halo `Hy` by 1 and then just add the first north halo 
+    # increase the corresponding halo `Hy` by 1 and then just add the first north halo
     # to the computational domain (by later adding 1 cell to Ny and reducing Hy by 1 again)
     if fold_topology isa RightFaceFolded
         Hy  += 1
@@ -193,16 +193,16 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     φᶜᶜᵃ = dropdims(φCC.data, dims=3)
 
     # Increase by 1 the size of the domain (note we had increased by 1 the meridional halos)
-    # The effect of this is that we compute also in Ny_new = Ny + 1 and the north boundary condition 
+    # The effect of this is that we compute also in Ny_new = Ny + 1 and the north boundary condition
     # should start substituting from Ny and not Ny + 1 . We also reduce the halo back to its previous
     # user-specified value to comply eith the `FPivotZipperBoundaryCondition` requirements
     if fold_topology isa RightFaceFolded
         Hy  -= 1
-        Ny  += 1 
+        Ny  += 1
         halo = (Hx, Hy, Hz)
         size = (Ny, Ny, Nz)
     end
-    
+
     # Allocate Metrics
     # TODO: make these on_architecture(arch, zeros(Nx, Ny))
     # to build the grid on GPU
