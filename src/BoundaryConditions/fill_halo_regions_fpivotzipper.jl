@@ -84,7 +84,7 @@ end
 @inline function fold_north_center_face_fpivot!(i, k, grid, sign, v)
     Nx, Ny, _ = size(grid)
 
-    i′ = Nx - i + 1
+    i′ = Nx + 1 - i
     Hy = grid.Hy
 
     for j in 1:Hy

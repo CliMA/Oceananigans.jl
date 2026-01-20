@@ -134,8 +134,6 @@ This ensures the final state is saved even if the simulation stops due to wall t
 """
 function run!(sim; pickup=false, checkpoint_at_end=false)
 
-    start_run = time_ns()
-
     if we_want_to_pickup(pickup)
         if pickup === true
             set!(sim; checkpoint=:latest)
@@ -186,9 +184,11 @@ function time_step!(sim::Simulation)
         sim.Δt
     end
 
-    if initial_time_step && sim.verbose
+    start_time = if initial_time_step && sim.verbose
         @info "Executing initial time step..."
-        start_time = time_ns()
+        time_ns()
+    else
+        zero(UInt64)
     end
 
     if Δt < sim.minimum_relative_step * sim.Δt
@@ -257,9 +257,11 @@ Initialize a simulation:
 - Add diagnostics that "depend" on output writers
 """
 function initialize!(sim::Simulation)
-    if sim.verbose
+    start_time = if sim.verbose
         @info "Initializing simulation..."
-        start_time = time_ns()
+        time_ns()
+    else
+        zero(UInt64)
     end
 
     model = sim.model

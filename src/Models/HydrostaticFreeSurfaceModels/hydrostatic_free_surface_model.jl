@@ -58,7 +58,7 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
     vertical_coordinate :: Z   # Rulesets that define the time-evolution of the grid
 end
 
-default_free_surface(grid::XYRegularStaticRG; gravitational_acceleration=g_Earth) =
+default_free_surface(grid::XYRegularStaticRG; gravitational_acceleration=defaults.gravitational_acceleration) =
     ImplicitFreeSurface(; gravitational_acceleration)
 
 default_free_surface(grid; gravitational_acceleration=defaults.gravitational_acceleration) =
