@@ -40,6 +40,4 @@ function fetch_and_convert_output(output, model, writer)
     return convert_output(fetched, writer)
 end
 
-fetch_and_convert_output(output::ZeroField{FT}, model, writer) where FT = zero(FT)
-fetch_and_convert_output(output::OneField{FT}, model, writer) where FT = one(FT)
-fetch_and_convert_output(output::ConstantField, model, writer) = output.constant
+fetch_and_convert_output(output::Union{ZeroField, OneField, ConstantField}, model, writer) = output[1, 1, 1]

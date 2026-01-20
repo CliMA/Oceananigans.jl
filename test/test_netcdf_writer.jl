@@ -3293,5 +3293,30 @@ end
                 test_netcdf_multiple_grids_defvar(grid1, grid2, immersed=true)
             end
         end
+
+        @testset "Constant fields output writing" begin
+            grid = rectilinear_grid1
+            model = NonhydrostaticModel(grid)
+            simulation = Simulation(model, Δt = 1, stop_iteration = 1)
+            outputs = (z = ZeroField(), o = OneField(), c = ConstantField(10))
+
+            simulation.output_writers[:constants] = NetCDFWriter(model, outputs,
+                                                                 schedule = TimeInterval(1),
+                                                                 dir = ".",
+                                                                 filename = "test_constants.nc",
+                                                                 overwrite_existing = true)
+        
+            run!(simulation)
+        
+            file = Dataset("test_constants.nc")
+
+            # Open the netcdf here and extract one instance of z, o, and c
+            
+            close(file)
+        
+            rm("test_constants.jld2")
+        
+            @test z == 0 && o == 1 && c == 10
+        end
     end
 end
