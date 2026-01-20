@@ -189,7 +189,7 @@ end
             Δ = mean((mean_xspacing, mean_yspacing))
             U = 1
 
-	        # Set streamfunction amplitude to Δ * U to yield velocities of order U.
+            # Set streamfunction amplitude to Δ * U to yield velocities of order U.
             set!(ψ, U * Δ * rand(size(ψ)...))
             fill_halo_regions!(ψ)
 
