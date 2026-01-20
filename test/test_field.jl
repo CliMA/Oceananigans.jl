@@ -7,6 +7,7 @@ using Oceananigans.Fields: VelocityFields, TracerFields, interpolate, interpolat
 using Oceananigans.Fields: reduced_location
 using Oceananigans.Fields: FractionalIndices, interpolator, instantiate
 using Oceananigans.Fields: convert_to_0_360, convert_to_λ₀_λ₀_plus360
+using Oceananigans.Fields: ZeroField, OneField, ConstantField, prognostic_state, restore_prognostic_state!
 using Oceananigans.Grids: ξnode, ηnode, rnode
 using Oceananigans.Grids: total_length
 using Oceananigans.Grids: λnode
@@ -806,5 +807,20 @@ end
             c_flat = CenterField(flat_llgrid)
             @test nodes(c_flat) == (nothing, nothing, nothing)
         end
+    end
+
+    @testset "Constant field prognostic state" begin
+        @info "  Testing prognostic_state for constant fields..."
+        zf = ZeroField()
+        of = OneField()
+        cf = ConstantField(42)
+
+        @test prognostic_state(zf) === nothing
+        @test prognostic_state(of) === nothing
+        @test prognostic_state(cf) === nothing
+
+        @test restore_prognostic_state!(zf, nothing) === zf
+        @test restore_prognostic_state!(of, :some_state) === of
+        @test restore_prognostic_state!(cf, nothing) === cf
     end
 end

@@ -56,7 +56,6 @@ Adapt.adapt_structure(to, ti::TimeInterpolator) =
     tᴺ = last(times)
 
     T = ti.period
-    Δt = T - (tᴺ - t¹)
 
     # Compute modulus of shifted time, then add shift back
     τ = t - t¹
@@ -172,21 +171,35 @@ const YFTS  = FlavorOfFTS{Nothing, <:Any, Nothing}
 const ZFTS  = FlavorOfFTS{Nothing, Nothing, <:Any}
 const FTS0  = FlavorOfFTS{Nothing, Nothing, Nothing}
 
-@propagate_inbounds getindex(f::XYFTS, i::Int, j::Int, n::Int) = getindex(f.data, i, j, 1, memory_index(f, n))
-@propagate_inbounds getindex(f::XZFTS, i::Int, k::Int, n::Int) = getindex(f.data, i, 1, k, memory_index(f, n))
-@propagate_inbounds getindex(f::YZFTS, j::Int, k::Int, n::Int) = getindex(f.data, 1, j, k, memory_index(f, n))
-@propagate_inbounds getindex(f::XFTS,  i::Int, j::Int, n::Int) = getindex(f.data, i, 1, 1, memory_index(f, n))
-@propagate_inbounds getindex(f::YFTS,  i::Int, k::Int, n::Int) = getindex(f.data, 1, j, 1, memory_index(f, n))
-@propagate_inbounds getindex(f::ZFTS,  j::Int, k::Int, n::Int) = getindex(f.data, 1, 1, k, memory_index(f, n))
-@propagate_inbounds getindex(f::FTS0,  j::Int, k::Int, n::Int) = getindex(f.data, 1, 1, 1, memory_index(f, n))
+# `getbc` for 2D FTS boundary conditions (only possible for 2D, 1D and 0D FTS)
 
-@propagate_inbounds getindex(f::XYFTS, i::Int, j::Int, n::Time) = getindex(f, i, j, 1, n)
-@propagate_inbounds getindex(f::XZFTS, i::Int, k::Int, n::Time) = getindex(f, i, 1, k, n)
-@propagate_inbounds getindex(f::YZFTS, j::Int, k::Int, n::Time) = getindex(f, 1, j, k, n)
-@propagate_inbounds getindex(f::XFTS,  i::Int, j::Int, n::Time) = getindex(f, i, 1, 1, n)
-@propagate_inbounds getindex(f::YFTS,  i::Int, k::Int, n::Time) = getindex(f, 1, j, 1, n)
-@propagate_inbounds getindex(f::ZFTS,  j::Int, k::Int, n::Time) = getindex(f, 1, 1, k, n)
-@propagate_inbounds getindex(f::FTS0,  j::Int, k::Int, n::Time) = getindex(f, 1, 1, 1, n)
+# Bottom and top boundary conditions
+@inline getbc(f::XYFTS, i::Int, j::Int, grid::AbstractGrid, clock, args...) = @inbounds f[i, j, 1, Time(clock.time)]
+
+# South and north boundary conditions
+@inline getbc(f::XZFTS, i::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[i, 1, k, Time(clock.time)]
+
+# West and east boundary conditions
+@inline getbc(f::YZFTS, j::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, j, k, Time(clock.time)]
+
+# Disambiguation for 1D and 0D FTS
+
+# South - north and top - bottom, only the first index is valid (the second one is either j or k)
+@inline getbc(f::XFTS, i::Int, ::Int, grid::AbstractGrid, clock, args...) = @inbounds f[i, 1, 1, Time(clock.time)]
+
+# West - east and top - bottom, this case is not really well defined since the indexes could be i and j or j and k
+# so we check which dimension of the grid is 1 and pick the corresponding index
+@inline function getbc(f::YFTS, i1::Int, i2::Int, grid::AbstractGrid, clock, args...)
+    Nx, _, Nz = size(grid)
+    j = ifelse(Nz == 1, i1, i2)
+    return @inbounds f[1, j, 1, Time(clock.time)]
+end
+
+# West - east and south - north boundary conditions, only the last index is valid (the first one is either i or j)
+@inline getbc(f::ZFTS, ::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, 1, k, Time(clock.time)]
+
+# 0D -> index do not matter!
+@inline getbc(f::FTS0, ::Int, ::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, 1, 1, Time(clock.time)]
 
 #####
 ##### Time interpolation / extrapolation
