@@ -96,8 +96,8 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper)
     e = model.tracers.e
     arch = model.architecture
     grid = model.grid
-    Gⁿ = model.timestepper.Gⁿ.e
-    e⁻ = model.timestepper.Ψ⁻.e
+    Gⁿ  = model.timestepper.Gⁿ.e
+    σe⁻ = model.timestepper.Ψ⁻.e
 
     κe = closure_fields.κe
     Le = closure_fields.Le
@@ -117,8 +117,8 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper)
 
     # ... and step forward.
     launch!(arch, grid, :xyz,
-            _euler_step_turbulent_kinetic_energy!,
-            Le, grid, closure,
+            _rk_substep_turbulent_kinetic_energy!,
+            Le, σe⁻, grid, closure,
             model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
             tracers, buoyancy, closure_fields,
             Δτ, Gⁿ)
@@ -250,7 +250,7 @@ end
     end
 end
 
-@kernel function _euler_step_turbulent_kinetic_energy!(Le, grid, closure,
+@kernel function _euler_step_turbulent_kinetic_energy!(Le, σe⁻, grid, closure,
                                                        next_velocities, previous_velocities,
                                                        tracers, buoyancy, diffusivities,
                                                        Δt, slow_Gⁿe)
@@ -265,12 +265,11 @@ end
 
     # See below.
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
-    σᶜᶜ⁻ = σ⁻(i, j, k, grid, Center(), Center(), Center())
     active = !inactive_cell(i, j, k, grid)
 
     @inbounds begin
         total_Gⁿ = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ
-        e[i, j, k] = (σᶜᶜ⁻ * e[i, j, k] + Δt * total_Gⁿ * active) / σᶜᶜⁿ
+        e[i, j, k] = (e⁻[i, j, k] + Δt * total_Gⁿ * active) / σᶜᶜⁿ
     end
 end
 
