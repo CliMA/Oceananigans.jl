@@ -1,5 +1,4 @@
 using Oceananigans.Fields: FunctionField
-using Oceananigans.Utils: @apply_regionally
 
 mutable struct QuasiAdamsBashforth2TimeStepper{FT, GT, IT} <: AbstractTimeStepper
                   χ :: FT
@@ -36,7 +35,8 @@ timestep (`G⁻`).
     Uⁿ⁺¹ = Uⁿ + Δt * Gⁿ
     ```
 """
-function QuasiAdamsBashforth2TimeStepper(grid, prognostic_fields, χ = 0.1;
+function QuasiAdamsBashforth2TimeStepper(grid, prognostic_fields;
+                                         χ = 0.1,
                                          implicit_solver::IT = nothing,
                                          Gⁿ = map(similar, prognostic_fields),
                                          G⁻ = map(similar, prognostic_fields)) where IT
@@ -50,34 +50,42 @@ end
 
 reset!(timestepper::QuasiAdamsBashforth2TimeStepper) = nothing
 
+"""
+    QuasiAdamsBashforth2TimeStepper(; χ = 0.1)
+
+Construct a `QuasiAdamsBashforth2TimeStepper` by specifying the `χ` parameter.
+"""
+QuasiAdamsBashforth2TimeStepper(; χ = 0.1) = QuasiAdamsBashforth2TimeStepper{typeof(χ), Nothing, Nothing}(χ, nothing, nothing, nothing)
+
 #####
 ##### Time steppping
 #####
 
 """
-    time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler=false)
+    time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler=false, callbacks=[])
 
-Step forward `model` one time step `Δt` with a 2nd-order Adams-Bashforth method and
-pressure-correction substep. Setting `euler=true` will take a forward Euler time step.
-The tendencies are calculated by the `update_step!` at the end of the `time_step!` function.
+Step forward `model` one time step `Δt` with a 2nd-order Adams-Bashforth method.
+Setting `euler=true` will take a forward Euler time step.
 
 The steps of the Quasi-Adams-Bashforth second-order (AB2) algorithm are:
 
-1. If this the first time step (`model.clock.iteration == 0`), then call `update_state!` and calculate the tendencies.
-2. Advance tracers in time and compute predictor velocities (including implicit vertical diffusion).
-3. Solve the elliptic equation for pressure (three dimensional for the non-hydrostatic model, two-dimensional for the hydrostatic model).
-4. Correct the velocities based on the results of step 3.
-5. Store the old tendencies.
-6. Update the model state.
-7. Compute tendencies for the next time step
+1. If this is the first time step (`model.clock.iteration == 0`), call `update_state!`.
+2. Call `ab2_step!(model, Δt, callbacks)` which:
+   - Computes tendencies for all prognostic fields
+   - Advances fields using AB2: `U += Δt * ((3/2 + χ) * Gⁿ - (1/2 + χ) * G⁻)`
+   - Applies model-specific corrections (e.g., pressure correction for incompressibility)
+3. Store the current tendencies in `G⁻` for use in the next time step.
+4. Update the model state (fill halos, compute diagnostics).
+5. Advance the clock and step Lagrangian particles.
+
+The specific implementation of `ab2_step!` varies by model type (e.g., `NonhydrostaticModel`
+includes a pressure correction step, while `HydrostaticFreeSurfaceModel` handles the
+free surface and barotropic mode).
 """
 function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt;
                     callbacks=[], euler=false)
 
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
-
-    # Be paranoid and update state at iteration 0
-    model.clock.iteration == 0 && update_state!(model, callbacks; compute_tendencies=true)
 
     # Take an euler step if:
     #   * We detect that the time-step size has changed.
@@ -88,6 +96,10 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     euler = euler || (Δt != model.clock.last_Δt)
     euler && @debug "Taking a forward Euler step."
 
+    if model.clock.iteration == 0
+        update_state!(model, callbacks)
+    end
+
     # If euler, then set χ = -0.5
     minus_point_five = convert(eltype(model.grid), -0.5)
     ab2_timestepper = model.timestepper
@@ -95,16 +107,12 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     χ₀ = ab2_timestepper.χ # Save initial value
     ab2_timestepper.χ = χ
 
-    # Full step for tracers, fractional step for velocities.
-    compute_flux_bc_tendencies!(model)
-    ab2_step!(model, Δt)
+    ab2_step!(model, Δt, callbacks)
+    cache_previous_tendencies!(model)
+    update_state!(model, callbacks)
 
     tick!(model.clock, Δt)
 
-    compute_pressure_correction!(model, Δt)
-    @apply_regionally correct_velocities_and_cache_previous_tendencies!(model, Δt)
-
-    update_state!(model, callbacks; compute_tendencies=true)
     step_lagrangian_particles!(model, Δt)
 
     # Return χ to initial value
@@ -113,65 +121,69 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     return nothing
 end
 
-function correct_velocities_and_cache_previous_tendencies!(model, Δt)
-    make_pressure_correction!(model, Δt)
-    cache_previous_tendencies!(model)
-    return nothing
-end
-
-#####
-##### Time stepping in each step
-#####
-
-""" Generic implementation. """
-function ab2_step!(model, Δt)
-    grid = model.grid
-    FT = eltype(grid)
-    arch = architecture(grid)
-    model_fields = prognostic_fields(model)
-    χ = model.timestepper.χ
-    Δt = convert(FT, Δt)
-    χ = convert(FT, χ)
-
-    for (i, field) in enumerate(model_fields)
-        kernel_args = (field, Δt, χ, model.timestepper.Gⁿ[i], model.timestepper.G⁻[i])
-        launch!(arch, grid, :xyz, ab2_step_field!, kernel_args...; exclude_periphery=true)
-
-        # TODO: function tracer_index(model, field_index) = field_index - 3, etc...
-        tracer_index = Val(i - 3) # assumption
-
-        implicit_step!(field,
-                       model.timestepper.implicit_solver,
-                       model.closure,
-                       model.closure_fields,
-                       tracer_index,
-                       model.clock,
-                       fields(model),
-                       Δt)
-    end
-
-    return nothing
-end
-
 """
-Time step velocity fields via the 2nd-order quasi Adams-Bashforth method
+Time step fields via the 2nd-order quasi Adams-Bashforth method
 
     `U^{n+1} = U^n + Δt ((3/2 + χ) * G^{n} - (1/2 + χ) G^{n-1})`
 
 """
-@kernel function ab2_step_field!(u, Δt, χ, Gⁿ, G⁻)
+@kernel function _ab2_step_field!(u, Δt, χ, Gⁿ, G⁻)
     i, j, k = @index(Global, NTuple)
 
     FT = eltype(u)
     Δt = convert(FT, Δt)
-    one_point_five = convert(FT, 1.5)
-    oh_point_five  = convert(FT, 0.5)
+    α = convert(FT, 3/2) + χ
+    β = convert(FT, 1/2) + χ
     not_euler = χ != convert(FT, -0.5) # use to prevent corruption by leftover NaNs in G⁻
 
     @inbounds begin
-        Gu = (one_point_five + χ) * Gⁿ[i, j, k] - (oh_point_five + χ) * G⁻[i, j, k] * not_euler
+        Gu = α * Gⁿ[i, j, k] - β * G⁻[i, j, k] * not_euler
         u[i, j, k] += Δt * Gu
     end
 end
 
-@kernel ab2_step_field!(::FunctionField, Δt, χ, Gⁿ, G⁻) = nothing
+@kernel _ab2_step_field!(::FunctionField, Δt, χ, Gⁿ, G⁻) = nothing
+
+#####
+##### These functions need to be implemented by every model independently
+#####
+
+"""
+    ab2_step!(model::AbstractModel, Δt, callbacks)
+
+Advance the model state by one Adams-Bashforth 2nd-order (AB2) time step of size `Δt`.
+
+This is an abstract interface that must be implemented by each model type
+(e.g., `NonhydrostaticModel`, `HydrostaticFreeSurfaceModel`).
+
+The implementation should:
+1. Compute tendencies for velocities and tracers
+2. Advance prognostic fields using AB2: `U += Δt * ((3/2 + χ) * Gⁿ - (1/2 + χ) * G⁻)`
+3. Apply any necessary corrections (e.g., pressure correction for incompressibility)
+
+The AB2 parameter `χ` is stored in `model.timestepper.χ`. When `χ = -0.5`, the scheme
+reduces to forward Euler (used for the first time step).
+"""
+ab2_step!(model::AbstractModel, Δt, callbacks) = error("ab2_step! not implemented for $(typeof(model))")
+
+"""
+    cache_previous_tendencies!(model::AbstractModel)
+
+Store the current tendencies `Gⁿ` into `G⁻` for use in the next AB2 time step.
+
+This is an abstract interface that must be implemented by each model type.
+Called after advancing the model state but before updating tendencies for the next step.
+"""
+cache_previous_tendencies!(model::AbstractModel) = error("cache_previous_tendencies! not implemented for $(typeof(model))")
+
+#####
+##### Show methods
+#####
+
+Base.summary(ts::QuasiAdamsBashforth2TimeStepper{FT}) where FT = string("QuasiAdamsBashforth2TimeStepper{$FT}(χ=", ts.χ, ")")
+
+function Base.show(io::IO, ts::QuasiAdamsBashforth2TimeStepper{FT}) where FT
+    print(io, "QuasiAdamsBashforth2TimeStepper{$FT}", '\n')
+    print(io, "├── χ: ", ts.χ, '\n')
+    print(io, "└── implicit_solver: ", isnothing(ts.implicit_solver) ? "nothing" : nameof(typeof(ts.implicit_solver)))
+end

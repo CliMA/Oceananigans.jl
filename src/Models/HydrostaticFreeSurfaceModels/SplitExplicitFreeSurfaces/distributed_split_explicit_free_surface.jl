@@ -1,5 +1,4 @@
-using Oceananigans.DistributedComputations: DistributedField
-using Oceananigans.DistributedComputations: AsynchronousDistributed, synchronize_communication!
+using Oceananigans.DistributedComputations: DistributedField, AsynchronousDistributed, synchronize_communication!
 
 import Oceananigans.DistributedComputations: synchronize_communication!
 
@@ -33,6 +32,6 @@ function synchronize_communication!(free_surface::SplitExplicitFreeSurface)
     for field in (U, V, Ũ, Ṽ, η)
         synchronize_communication!(field)
     end
-    
+
     return nothing
 end

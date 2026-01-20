@@ -75,9 +75,8 @@ When materialized (see [`materialize_free_surface`](@ref)), a `SplitExplicitFree
   strategy. `FixedSubstepNumber` uses a fixed number of substeps with fractional step sizes, while
   `FixedTimeStepSize` uses a fixed barotropic time step size based on a CFL condition.
 
-- `timestepper`: Time stepping scheme for barotropic advancement. Either `ForwardBackwardScheme()` (which
-  contains no auxiliary fields) or `AdamsBashforth3Scheme` (which contains auxiliary fields `ηᵐ`, `ηᵐ⁻¹`, `ηᵐ⁻²`,
-  `Uᵐ⁻¹`, `Uᵐ⁻²`, `Vᵐ⁻¹`, `Vᵐ⁻²` for storing previous time step values, along with extrapolation coefficients).
+- `timestepper`: Time stepping scheme for barotropic advancement. Only `ForwardBackwardScheme()` is implemented (which
+  contains no auxiliary fields).
 
 Keyword Arguments
 =================
@@ -117,9 +116,8 @@ Keyword Arguments
                       `averaging_kernel > 0`. By default, the averaging kernel described by
                       [Shchepetkin and McWilliams (2005)](@cite Shchepetkin2005) is used.
 
-- `timestepper`: Time stepping scheme used for the barotropic advancement. Choose one of:
-  * `ForwardBackwardScheme()` (default): `η = f(U)`   then `U = f(η)`,
-  * `AdamsBashforth3Scheme()`: `η = f(U, Uᵐ⁻¹, Uᵐ⁻²)` then `U = f(η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)`.
+- `timestepper`: Time stepping scheme used for the barotropic advancement. Only one supported:
+  * `ForwardBackwardScheme()` (default): `η = f(U)` then `U = f(η)`,
 
 References
 ==========
@@ -189,6 +187,10 @@ end
 # Disambiguation for a default `SplitExplicitFreeSurface` constructor
 split_explicit_substepping(::Nothing, ::Nothing, ::Nothing, grid, averaging_kernel, gravitational_acceleration) =
     split_explicit_substepping(nothing, MINIMUM_SUBSTEPS, nothing, grid, averaging_kernel, gravitational_acceleration)
+
+# Disambiguation
+split_explicit_substepping(::Nothing, ::Nothing, fixed_Δt, grid, averaging_kernel, gravitational_acceleration) =
+    split_explicit_substepping(nothing, MINIMUM_SUBSTEPS, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
 
 # TODO: When open boundary conditions are online
 # We need to calculate the barotropic boundary conditions
@@ -396,7 +398,6 @@ Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
                              Adapt.adapt(to, free_surface.timestepper))
 
 for Type in (SplitExplicitFreeSurface,
-             AdamsBashforth3Scheme,
              FixedTimeStepSize,
              FixedSubstepNumber)
 

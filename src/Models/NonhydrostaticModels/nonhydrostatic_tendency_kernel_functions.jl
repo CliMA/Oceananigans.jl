@@ -9,6 +9,7 @@ using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_
 using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∂ⱼ_τ₃ⱼ, immersed_∇_dot_qᶜ
 using Oceananigans.Forcings: with_advective_forcing
 using Oceananigans.Fields: ZeroField
+using Oceananigans.Utils: SumOfArrays
 
 "return the ``x``-gradient of hydrostatic pressure"
 hydrostatic_pressure_gradient_x(i, j, k, grid, hydrostatic_pressure) = ∂xᶠᶜᶜ(i, j, k, grid, hydrostatic_pressure)
@@ -86,7 +87,7 @@ pressure anomaly.
     total_velocities = sum_of_velocities(velocities, background_fields.velocities)
     total_velocities = with_advective_forcing(forcing, total_velocities)
 
-    closure_velocities = assemble_closure_velocities(velocities, background_fields)    
+    closure_velocities = assemble_closure_velocities(velocities, background_fields)
     closure_model_fields = merge(closure_velocities, tracers, auxiliary_fields)
     model_fields = merge(velocities, tracers, auxiliary_fields)
 
@@ -148,7 +149,7 @@ pressure anomaly.
     total_velocities = sum_of_velocities(velocities, background_fields.velocities)
     total_velocities = with_advective_forcing(forcing, total_velocities)
 
-    closure_velocities = assemble_closure_velocities(velocities, background_fields)    
+    closure_velocities = assemble_closure_velocities(velocities, background_fields)
     closure_model_fields = merge(closure_velocities, tracers, auxiliary_fields)
     model_fields = merge(velocities, tracers, auxiliary_fields)
 
@@ -213,7 +214,7 @@ velocity components, tracer fields, and precalculated diffusivities where applic
     total_velocities = sum_of_velocities(velocities, background_fields.velocities)
     total_velocities = with_advective_forcing(forcing, total_velocities)
 
-    closure_velocities = assemble_closure_velocities(velocities, background_fields)    
+    closure_velocities = assemble_closure_velocities(velocities, background_fields)
     closure_model_fields = merge(closure_velocities, tracers, auxiliary_fields)
     model_fields = merge(velocities, tracers, auxiliary_fields)
 
@@ -296,4 +297,3 @@ velocity components, tracer fields, and precalculated diffusivities where applic
              + biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields)
              + forcing(i, j, k, grid, clock, model_fields))
 end
-

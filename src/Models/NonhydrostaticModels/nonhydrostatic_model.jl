@@ -1,13 +1,13 @@
-using Oceananigans.Architectures: AbstractArchitecture
-using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Advection: Centered, adapt_advection_order
-using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
-using Oceananigans.BoundaryConditions: MixedBoundaryCondition
+using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
+using Oceananigans.BoundaryConditions: MixedBoundaryCondition
+using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
+using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Fields: Field, tracernames, VelocityFields, TracerFields, CenterField
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: inflate_halo_size, with_halo, architecture
+using Oceananigans.Grids: topology, inflate_halo_size, with_halo, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface
 using Oceananigans.Solvers: FFTBasedPoissonSolver
@@ -15,7 +15,6 @@ using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagr
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, time_discretization, implicit_diffusion_solver
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.Utils: tupleit
-using Oceananigans.Grids: topology
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.Architectures: architecture
@@ -284,7 +283,7 @@ function NonhydrostaticModel(grid;
                                 forcing, closure, free_surface, background_fields, particles, biogeochemistry, velocities, tracers,
                                 pressures, closure_fields, timestepper, pressure_solver, auxiliary_fields, boundary_mass_fluxes)
 
-    update_state!(model; compute_tendencies = false)
+    update_state!(model)
 
     return model
 end

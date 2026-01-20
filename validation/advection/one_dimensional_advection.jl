@@ -1,4 +1,5 @@
 using Oceananigans
+using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper
 
 N = 200
 
@@ -29,7 +30,7 @@ a = 0.5
     end
 end
 
-Δt_max = 0.5 * minimum_xspacing(grid)
+Δt_max = 0.6 * minimum_xspacing(grid)
 c_real = CenterField(grid)
 set!(c_real, c₀)
 
@@ -48,21 +49,34 @@ model2 = HydrostaticFreeSurfaceModel(grid;
 set!(model2, c=c₀)
 sim2 = Simulation(model2, Δt=Δt_max, stop_time=10)
 
+timestepper = SplitRungeKuttaTimeStepper(coefficients = [4, 3, 2, 1])
+
+model3 = HydrostaticFreeSurfaceModel(; grid, velocities=PrescribedVelocityFields(u=1), timestepper=timestepper, tracer_advection=advection, tracers=:c)
+set!(model3, c=c₀)
+sim3 = Simulation(model3, Δt=Δt_max, stop_time=10)
+
 sim1.output_writers[:solution] = JLD2Writer(model1, (; c = model1.tracers.c);
-                                            filename="one_d_simulation_NH.jld2",
+                                            filename="one_d_simulation_1.jld2",
                                             schedule=IterationInterval(10),
                                             overwrite_existing=true)
 
 sim2.output_writers[:solution] = JLD2Writer(model2, (; c = model2.tracers.c);
-                                            filename="one_d_simulation_HF.jld2",
+                                            filename="one_d_simulation_2.jld2",
+                                            schedule=IterationInterval(10),
+                                            overwrite_existing=true)
+
+sim3.output_writers[:solution] = JLD2Writer(model3, (; c = model3.tracers.c);
+                                            filename="one_d_simulation_3.jld2",
                                             schedule=IterationInterval(10),
                                             overwrite_existing=true)
 
 run!(sim1)
 run!(sim2)
+run!(sim3)
 
-c1 = FieldTimeSeries("one_d_simulation_NH.jld2", "c")
-c2 = FieldTimeSeries("one_d_simulation_HF.jld2", "c")
+c1 = FieldTimeSeries("one_d_simulation_1.jld2", "c")
+c2 = FieldTimeSeries("one_d_simulation_2.jld2", "c")
+c3 = FieldTimeSeries("one_d_simulation_3.jld2", "c")
 
 using GLMakie
 
@@ -73,8 +87,10 @@ fig = Figure()
 ax = Axis(fig[1, 1], title="c", xlabel="x", ylabel="t")
 c1i = @lift(interior(c1[$iter], :, 1, 1))
 c2i = @lift(interior(c2[$iter], :, 1, 1))
-lines!(ax, c1i, color=:blue, label = "RK3  (NonhydrostaticModel)")
-lines!(ax, c2i, color=:red,  label = "SRK3 (HydrostaticFreeSurfaceModel)")
+c3i = @lift(interior(c3[$iter], :, 1, 1))
+lines!(ax, c1i, color=:blue,  label = "RK3  (NonhydrostaticModel)")
+lines!(ax, c2i, color=:red,   label = "SRK3 (HydrostaticFreeSurfaceModel)")
+lines!(ax, c3i, color=:green, label = "Custom SRK3 (HydrostaticFreeSurfaceModel)")
 Legend(fig[0, 1], ax)
 
 GLMakie.record(fig, "one_d_simulation.mp4", 1:Nt) do i

@@ -199,13 +199,10 @@ Adapt.adapt_structure(to, catke_closure_fields::CATKEDiffusivityFields) =
                            catke_closure_fields._skip_next_compute[])
 
 function BoundaryConditions.fill_halo_regions!(catke_closure_fields::CATKEDiffusivityFields, args...; kw...)
-    grid = catke_closure_fields.κu.grid
-
     κ = (catke_closure_fields.κu,
          catke_closure_fields.κc,
          catke_closure_fields.κe)
-
-    return fill_halo_regions!(κ, grid, args...; kw...)
+    return fill_halo_regions!(κ, args...; kw...)
 end
 
 function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfCATKE)

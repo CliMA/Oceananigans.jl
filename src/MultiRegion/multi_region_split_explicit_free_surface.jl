@@ -69,7 +69,7 @@ end
 materialize_free_surface(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, ::MultiRegionGrids) = nothing
 
 @inline multiregion_split_explicit_halos(old_halos, step_halo, ::XPartition) = (max(step_halo, old_halos[1]), old_halos[2], old_halos[3])
-@inline multiregion_split_explicit_halos(old_halos, step_halo, ::YPartition) = (old_halos[1], max(step_halo, old_halo[2]), old_halos[3])
+@inline multiregion_split_explicit_halos(old_halos, step_halo, ::YPartition) = (old_halos[1], max(step_halo, old_halos[2]), old_halos[3])
 @inline multiregion_split_explicit_halos(old_halos, step_halo, ::CubedSpherePartition) = (max(step_halo, old_halos[1]), max(step_halo, old_halos[2]), old_halos[3])
 
 iterate_split_explicit!(free_surface, grid::MultiRegionGrids, GUⁿ, GVⁿ, Δτᴮ, weights, ::Val{Nsubsteps}) where Nsubsteps =

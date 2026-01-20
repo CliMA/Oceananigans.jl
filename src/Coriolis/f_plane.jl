@@ -57,4 +57,3 @@ function Base.summary(fplane::FPlane{FT}) where FT
 end
 
 Base.show(io::IO, fplane::FPlane) = print(io, summary(fplane))
-
