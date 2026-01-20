@@ -40,18 +40,12 @@ function pressure_correction_rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
         field = model_fields[name]
         kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[name], model.timestepper.G⁻[name])
         launch!(architecture(grid), grid, :xyz, _rk3_substep_field!, kernel_args...; exclude_periphery=true)
-
-        idx = if name ∈ keys(model.tracers)
-            nothing
-        else
-            Val(i-3) # We assume that the first 3 fields are velocity / momentum variables
-        end
-
+        
         implicit_step!(field,
                        model.timestepper.implicit_solver,
                        model.closure,
                        model.closure_fields,
-                       idx,
+                       Val(i-3) # We assume that the first 3 fields are velocity / momentum variables
                        model.clock,
                        fields(model),
                        Δτ)
