@@ -3008,7 +3008,7 @@ function test_netcdf_writer_different_grid(arch)
                                  overwrite_existing = true)
 
     # Run simulation to write output
-    simulation = Simulation(model, Δt=0.1, stop_iteration=2)
+    simulation = Simulation(model, Δt=0.1, stop_iteration=2, verbose=false)
     simulation.output_writers[:coarse] = output_writer
     run!(simulation)
 
@@ -3049,7 +3049,7 @@ function test_singleton_dimension_behavior(arch)
     u_xavg = Field(Average(model.velocities.u, dims=(1)))
 
     Nt = 5
-    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt, verbose=false)
 
     Arch = typeof(arch)
     filepath_full = "test_singleton_full_u_$Arch.nc"
@@ -3103,7 +3103,7 @@ function test_netcdf_dimension_type(arch)
     model = NonhydrostaticModel(grid)
 
     Nt = 3
-    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt, verbose=false)
 
     Arch = typeof(arch)
 
@@ -3118,11 +3118,11 @@ function test_netcdf_dimension_type(arch)
     # Test with Float32 dimension_type
     filepath_float32 = "test_dimension_type_float32_$Arch.nc"
     simulation.output_writers[:float32] = NetCDFWriter(model, (; u = model.velocities.u),
-                                                        filename = filepath_float32,
-                                                        schedule = IterationInterval(1),
-                                                        dimension_type = Float32,
-                                                        include_grid_metrics = false,
-                                                        overwrite_existing = true)
+                                                       filename = filepath_float32,
+                                                       schedule = IterationInterval(1),
+                                                       dimension_type = Float32,
+                                                       include_grid_metrics = false,
+                                                       overwrite_existing = true)
 
     run!(simulation)
 
@@ -3162,20 +3162,27 @@ function test_constant_fields_output_writing(grid)
                                                          schedule = TimeInterval(1),
                                                          dir = ".",
                                                          filename = "test_constants.nc",
-                                                         overwrite_existing = true)
+                                                         overwrite_existing = true,
+                                                         verbose = false)
     run!(simulation)
 
     file = NCDataset("test_constants.nc")
 
-    # Open the netcdf here and extract one instance of z, o, and c
-    z = file["z"][:]
-    o = file["o"][:]
-    c = file["c"][:]
+    z = file["z"]
+    o = file["o"]
+    c = file["c"]
+
+    @test z[] == 0
+    @test z.attrib["type"] == "ZeroField"
+
+    @test o[] == 1
+    @test o.attrib["type"] == "OneField"
+
+    @test c[] == 10
+    @test c.attrib["type"] == "ConstantField"
+
     close(file)
-
     rm("test_constants.nc")
-    @test z[] == 0 && o[] == 1 && c[] == 10
-
     return nothing
 end
 
