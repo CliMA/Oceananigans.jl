@@ -250,7 +250,7 @@ end
     end
 end
 
-@kernel function _euler_step_turbulent_kinetic_energy!(Le, σe⁻, grid, closure,
+@kernel function _rk_substep_turbulent_kinetic_energy!(Le, σe⁻, grid, closure,
                                                        next_velocities, previous_velocities,
                                                        tracers, buoyancy, diffusivities,
                                                        Δt, slow_Gⁿe)
