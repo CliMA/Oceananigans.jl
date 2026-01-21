@@ -338,9 +338,9 @@ Interpolate `field` `to_node`.
 
 `to_node` is an N-tuple corresponding the dimensionality of `from_field`:
 
-    * `to_node = (x, y, z)` for 3D fields and trilinear interpolation,
-    * `to_node = (x, y)`, `(x, z)`, or `(y, z)` for 2D fields and bilinear interpolation,
-    * `to_node = (x,)`, `(y,)`, or `(z,)` for 1D fields and linear interpolation.
+* `to_node = (x, y, z)` for 3D fields and trilinear interpolation,
+* `to_node = (x, y)`, `(x, z)`, or `(y, z)` for 2D fields and bilinear interpolation,
+* `to_node = (x,)`, `(y,)`, or `(z,)` for 1D fields and linear interpolation.
 
 For 1D interpolation, `to_node` may also be a `Number`.
 """
