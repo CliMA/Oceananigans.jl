@@ -334,7 +334,7 @@ end
 """
     interpolate(to_node, from_field)
 
-Interpolate `field` `to_node`.
+Interpolate the `from_field` `to_node`.
 
 `to_node` is an N-tuple corresponding the dimensionality of `from_field`:
 
