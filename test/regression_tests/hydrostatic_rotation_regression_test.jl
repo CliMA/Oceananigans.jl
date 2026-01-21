@@ -3,6 +3,14 @@ using Oceananigans.Grids
 
 using JLD2
 
+function Δ_min(grid)
+    Δx_min = minimum_xspacing(grid, Center(), Center(), Center())
+    Δy_min = minimum_yspacing(grid, Center(), Center(), Center())
+    return min(Δx_min, Δy_min)
+end
+
+@inline Gaussian(x, y, L) = exp(-(x^2 + y^2) / L^2)
+
 function run_hydrostatic_rotation_regression_test(grid, closure, timestepper; regenerate_data = false)
 
     g = Oceananigans.defaults.gravitational_acceleration
@@ -35,7 +43,7 @@ function run_hydrostatic_rotation_regression_test(grid, closure, timestepper; re
     Δt = all_reduce(min, Δt_local, architecture(grid))
 
     stop_iteration = 20
-    simulation = Simulation(model; Δt, stop_iteration)
+    simulation = Simulation(model; Δt, stop_iteration, verbose=false)
 
     coord_str = grid.z isa MutableVerticalDiscretization ? "Mutable" : "Static"
     closure_str = isnothing(closure) ? "Nothing" : "CATKE"
@@ -88,11 +96,11 @@ function run_hydrostatic_rotation_regression_test(grid, closure, timestepper; re
         )
 
         close(file)
-
-        summarize_regression_test(test_fields, truth_fields)
     else
         truth_fields = test_fields
     end
+
+    summarize_regression_test(test_fields, truth_fields)
 
     @test all(test_fields.u .≈ truth_fields.u)
     @test all(test_fields.v .≈ truth_fields.v)

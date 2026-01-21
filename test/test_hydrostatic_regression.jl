@@ -114,7 +114,7 @@ include("regression_tests/hydrostatic_rotation_regression_test.jl")
                 testset_str = "Hydrostatic rotation regression [$(arch), $(coord_str) z, $(closure_str) closure, $(timestepper_str) timestepper]"
                 info_str    =  "  Testing $testset_str"
 
-                grid = LatitudeLongitudeGrid(arch; size=(150, 150, 10), latitude=(-80, 80), longitude=(0, 360), z)
+                grid = LatitudeLongitudeGrid(arch; size=(150, 150, 10), latitude=(-80, 80), longitude=(0, 360), z, halo=(4, 4, 4))
 
                 @testset "$testset_str" begin
                     run_hydrostatic_rotation_regression_test(grid, closure, timestepper; regenerate_data = true)
