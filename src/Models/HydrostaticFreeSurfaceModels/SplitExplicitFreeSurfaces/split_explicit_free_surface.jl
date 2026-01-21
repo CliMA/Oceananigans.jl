@@ -136,10 +136,8 @@ function SplitExplicitFreeSurface(grid = nothing;
     if !isnothing(grid)
         FT = eltype(grid)
     else
-        # this is a fallback and only used via the outer constructor,
-        # in case no grid is provided; when afterwards the free surfade
-        # is materialized via materialize_free_surface
-        # FT becomes eltype(grid)
+        # This is a fallback and is only used via the outer constructor when no grid is provided; afterwards,
+        # when the free surface is materialized via materialize_free_surface, FT becomes eltype(grid).
         FT = Oceananigans.defaults.FloatType
     end
 

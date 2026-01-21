@@ -126,7 +126,6 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
     η_args = (grid, Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
 
     GC.@preserve η_args U_args begin
-
         # We need to perform ~50 time-steps which means launching ~100 very small kernels: we are limited by latency of
         # argument conversion to GPU-compatible values. To alleviate this penalty we convert first and then we substep!
         converted_η_args = convert_to_device(arch, η_args)
