@@ -90,6 +90,7 @@ validate_boundary_condition_location(bc::Zipper, loc::Center, side) =
 validate_boundary_condition_location(bc::Zipper, loc::Face, side) =
     side == :north ? nothing : throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc) (north only)!"))
 
+
 #####
 ##### Some basic constructors
 #####
