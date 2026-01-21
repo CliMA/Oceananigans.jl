@@ -1031,13 +1031,21 @@ end
                     grid_suffix = "IG"
                 end
 
+                momentum_advection = WENOVectorInvariant(FT; order=5)
+                tracer_advection   = WENO(FT; order=5)
+                free_surface       = SplitExplicitFreeSurface(grid;
+                                                              substeps=12)
+                coriolis           = HydrostaticSphericalCoriolis(FT)
+                tracers            = :b
+                buoyancy = BuoyancyTracer()
+
                 model = HydrostaticFreeSurfaceModel(grid;
-                                                    momentum_advection = WENOVectorInvariant(FT; order=5),
-                                                    tracer_advection = WENO(FT; order=5),
-                                                    free_surface = SplitExplicitFreeSurface(grid; substeps=12),
-                                                    coriolis = HydrostaticSphericalCoriolis(FT),
-                                                    tracers = :b,
-                                                    buoyancy = BuoyancyTracer())
+                                                    momentum_advection,
+                                                    tracer_advection,
+                                                    free_surface,
+                                                    coriolis,
+                                                    tracers,
+                                                    buoyancy)
 
                 simulation = Simulation(model, Δt=1minute, stop_time=10minutes)
 
@@ -1069,10 +1077,34 @@ end
 
                 run!(simulation)
 
+                u = simulation.model.velocities.u
+
+                free_surface_slow = SplitExplicitFreeSurface(grid;
+                                                             substeps=12,
+                                                             extend_halos=false)
+                model_slow = HydrostaticFreeSurfaceModel(grid;
+                                                         momentum_advection,
+                                                         tracer_advection,
+                                                         free_surface = free_surface_slow,
+                                                         coriolis,
+                                                         tracers,
+                                                         buoyancy)
+
+                simulation_slow = Simulation(model_slow, Δt=1minute, stop_time=10minutes)
+                run!(simulation_slow)
+                u_slow = simulation_slow.model.velocities.u
+
+                @apply_regionally u_max_abs = maximum(abs, interior(u))
+                u_max_abs = maximum(u_max_abs.regional_objects)
+                @apply_regionally u_slow_max_abs = maximum(abs, interior(u_slow))
+                u_slow_max_abs = maximum(u_slow_max_abs.regional_objects)
+
+                @test u_max_abs ≈ u_slow_max_abs
+
                 @test iteration(simulation) == 10
                 @test time(simulation) == 10minutes
-
                 u_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "u"; architecture = CPU())
+                u_end = u_timeseries[end]
 
                 if grid == underlying_grid
                     @info "  Restarting simulation from pickup file on conformal cubed sphere grid [$FT, $(typeof(arch)), $cm]..."
@@ -1080,7 +1112,7 @@ end
                     @info "  Restarting simulation from pickup file on immersed boundary conformal cubed sphere grid [$FT, $(typeof(arch)), $cm]..."
                 end
 
-                simulation = Simulation(model, Δt=1minute, stop_time=20minutes)
+                simulation = Simulation(model, Δt=1minute, stop_time=10minutes)
 
                 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                                         schedule = TimeInterval(checkpointer_interval),
@@ -1093,12 +1125,20 @@ end
                                                                 verbose = false,
                                                                 overwrite_existing = true)
 
-                run!(simulation, pickup = true)
+                run!(simulation, pickup = 4)
 
-                @test iteration(simulation) == 20
-                @test time(simulation) == 20minutes
+                @test iteration(simulation) == 10
+                @test time(simulation) == 10minutes
 
                 u_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "u"; architecture = CPU())
+                u_end_checkpointed_run = u_timeseries[end]
+
+                @apply_regionally u_end_max_abs = maximum(abs, interior(u_end))
+                u_end_max_abs = maximum(u_end_max_abs.regional_objects)
+                @apply_regionally u_end_checkpointed_run_max_abs = maximum(abs, interior(u_end_checkpointed_run))
+                u_end_checkpointed_run_max_abs = maximum(u_end_checkpointed_run_max_abs.regional_objects)
+
+                @test u_end_max_abs ≈ u_end_checkpointed_run_max_abs
             end
         end
     end
