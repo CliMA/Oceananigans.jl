@@ -368,6 +368,9 @@ split_explicit_kernel_size(::Type{FullyConnected}, N, H) = -H+2:N+H-1
 split_explicit_kernel_size(::Type{RightConnected}, N, H) =    1:N+H-1
 split_explicit_kernel_size(::Type{LeftConnected},  N, H) = -H+2:N
 
+split_explicit_kernel_size(::Type{RightCenterFolded}, N, H) = 1:N+H-1
+split_explicit_kernel_size(::Type{RightFaceFolded}, N, H)   = 1:N+H-1
+
 # Adapt
 Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
     SplitExplicitFreeSurface(Adapt.adapt(to, free_surface.displacement),
