@@ -56,18 +56,21 @@ Murray, R. J. (1996). Explicit generation of orthogonal grids for ocean models.
     Journal of Computational Physics, 126(2), 251-273.
 ```
 """
-@kernel function _compute_tripolar_coordinates!(λFA, φFA, λCA, φCA,
-                                                  λF, λC, φA,
-                                                  first_pole_longitude,
-                                                  focal_distance, Nx, Ny)
+@kernel function _compute_tripolar_coordinates!(
+        λFC, φFC, λCC, φCC,
+        λFF, φFF, λCF, φCF,
+        λF, λC, φC, φF,
+        first_pole_longitude,
+        focal_distance, Nx, Ny
+    )
 
     i, j = @index(Global, NTuple)
 
-    λ2Ds = (λFA, λCA)
-    φ2Ds = (φFA, φCA)
-    λ1Ds = (λF , λC )
-    φ1Ds = (φA , φA )
-    isxfaces = (true, false)
+    λ2Ds = (λFC, λCC, λFF, λCF)
+    φ2Ds = (φFC, φCC, φFF, φCF)
+    λ1Ds = (λF , λC , λF , λC )
+    φ1Ds = (φC , φC , φF , φF )
+    isxfaces = (true, false, true, false)
 
     for (λ2D, φ2D, λ1D, φ1D, isxface) in zip(λ2Ds, φ2Ds, λ1Ds, φ1Ds, isxfaces)
         # We chose the formulae below for λ ∈ (-180, 180) and φ ∈ (-90, 90)

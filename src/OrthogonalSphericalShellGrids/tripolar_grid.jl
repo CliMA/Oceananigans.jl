@@ -78,13 +78,50 @@ Keyword Arguments
 !!! info "North pole singularities"
     For a `RightCenterFolded` y-topology, The north singularities are located on `(Face, Center)`,
     at: `i = 1`, `j = grid.Ny` and `i = grid.Nx ÷ 2 + 1`, `j = grid.Ny`.
+    Pivot points are indicated by the `↻` symbols below:
+    ```
+              │           │           │           │           │           │           │
+    Ny+1 ─▶ ──╔═══════════╪═══════════╪═══════════╪═══════════╪═══════════╪═══════════╗──
+              ║           │           │           │           │           │           ║
+    Ny   ─▶   ↻     c     u     c     u     c     ↻     c     u     c     u     c     ↻ ◀─ Fold
+              ║           │           │           │           │           │           ║
+    Ny   ─▶ ──╫──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────╫──
+              ║           │           │           │           │           │           ║
+    Ny-1 ─▶   u     c     u     c     u     c     u     c     u     c     u     c     ║
+              ║           │           │           │           │           │           ║
+    Ny-1 ─▶ ──╫──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────╫──
+              ║           │           │           │           │           │           ║
+              ▲     ▲     ▲                       ▲                       ▲     ▲     ▲
+              1     1     2                     Nx÷2+1                    Nx    Nx    Nx+1
+    ```
     See [`UPivotZipperBoundaryCondition`](@ref) for more information on the fold.
 
-    For a `RightFaceFolded` y-topology, The north singularities are located on `(Face, Face_`,
+    For a `RightFaceFolded` y-topology, The north singularities are located on `(Face, Face)`,
     at: `i = 1`, `j = grid.Ny` and `i = grid.Nx ÷ 2 + 1`, `j = grid.Ny`. This means that the last
     row of the tracers is redundant and, despite being advanced dynamically, it is then replaced
     by the interior of the domain when folding.
+
+    !!! warning "Add `1` to `Ny` when you build a `RightFaceFolded` tripolar grid"
+        Otherwise you might end up with one less row than what you expected.
+
+    Pivot points are indicated by the `↻` symbols below:
+    ```
+              │           │           │           │           │           │           │
+    Ny+1 ─▶ ──╔═══════════╪═══════════╪═══════════╪═══════════╪═══════════╪═══════════╗──
+              ║           │           │           │           │           │           ║
+    Ny   ─▶   u     c     u     c     u     c     u     c     u     c     u     c     ║
+              ║           │           │           │           │           │           ║
+    Ny   ─▶   ↻ ─── v ────┼──── v ────┼──── v ─── ↻ ─── v ────┼──── v ────┼──── v ─── ↻ ◀─ Fold
+              ║           │           │           │           │           │           ║
+    Ny-1 ─▶   u     c     u     c     u     c     u     c     u     c     u     c     ║
+              ║           │           │           │           │           │           ║
+    Ny-1 ─▶ ──╫──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────╫──
+              ║           │           │           │           │           │           ║
+              ▲     ▲     ▲                       ▲                       ▲     ▲     ▲
+              1     1     2                     Nx÷2+1                    Nx    Nx    Nx+1
+    ```
     See [`FPivotZipperBoundaryCondition`](@ref) for more information on the fold.
+
 
 References
 ==========
@@ -117,15 +154,10 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     Nx, Ny, Nz = size
     Hx, Hy, Hz = halo
 
-    # We increase the halo size by one in case of a `RightFaceFolded` y-topology
-    # since the `Ny + 1` (Center, Face) row is half prognostic, not fully determined by
-    # boundary conditions like Oceananigans' machinery assumes. For this reason we
-    # increase the corresponding halo `Hy` by 1 and then just add the first north halo
-    # to the computational domain (by later adding 1 cell to Ny and reducing Hy by 1 again)
-    if fold_topology isa RightFaceFolded
-        Hy  += 1
-        halo = (Hx, Hy, Hz)
-    end
+    # In case of a `RightFaceFolded` y-topology, we must add an extra row on the northern boundary.
+    # This is because the topology folds on `v` velocities, which are located "south" of center locations
+    # by convention in Oceananigans. Thus the `Ny` row of `v` is half prognostic but is entirely computed
+    # during time-stepping, before the `FPivot` zipper boundary condition is applied.
 
     if isodd(Nx)
         throw(ArgumentError("The number of cells in the longitude dimension should be even!"))
@@ -134,11 +166,9 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     # Generate coordinates
     TZ = topology[3]
     z = validate_dimension_specification(TZ, z, :z, Nz, FT)
-
     Lz, z                        = generate_coordinate(FT, topology, size, halo, z,         :z,         3, CPU())
     Ly, φᵃᶠᵃ, φᵃᶜᵃ, Δφᶠᵃᵃ, Δφᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, latitude,  :latitude,  2, CPU())
     Lx, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, longitude, :longitude, 1, CPU())
-
     # Make sure φ's are valid in the south
     if φᵃᶠᵃ[1] < -90
         throw(ArgumentError("Your southernmost latitude is too far South! (The southernmost grid cell does not fit.)"))
@@ -165,21 +195,13 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     # as the size of λᵃᶠᵃ and φᵃᶠᵃ may vary with the fold topology.
     # Note: we don't fill_halo_regions! and, instead,
     # compute the full fields including in the halos (less code!).
-    kp = KernelParameters(Base.size(λCC.data), λCC.data.offsets)
-    Nx′, Ny′ = Base.size(λCC.data) .+ 2 .* λCC.data.offsets
+    kp = KernelParameters(1-Hx:Nx+Hx, 1-Hy:Ny+Hy)
     launch!(CPU(), grid, kp, _compute_tripolar_coordinates!,
         λFC, φFC, λCC, φCC,
-        λᶠᵃᵃ, λᶜᵃᵃ, φᵃᶜᵃ,
-        first_pole_longitude,
-        focal_distance, Nx′, Ny′
-    )
-    kp = KernelParameters(Base.size(λCF.data), λCF.data.offsets)
-    Nx′, Ny′ = Base.size(λCF.data) .+ 2 .* λCF.data.offsets
-    launch!(CPU(), grid, kp, _compute_tripolar_coordinates!,
         λFF, φFF, λCF, φCF,
-        λᶠᵃᵃ, λᶜᵃᵃ, φᵃᶠᵃ,
+        λᶠᵃᵃ, λᶜᵃᵃ, φᵃᶜᵃ, φᵃᶠᵃ,
         first_pole_longitude,
-        focal_distance, Nx′, Ny′
+        focal_distance, Nx, Ny
     )
 
     # Coordinates
@@ -192,39 +214,28 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     λᶜᶜᵃ = dropdims(λCC.data, dims=3)
     φᶜᶜᵃ = dropdims(φCC.data, dims=3)
 
-    # Increase by 1 the size of the domain (note we had increased by 1 the meridional halos)
-    # The effect of this is that we compute also in Ny_new = Ny + 1 and the north boundary condition
-    # should start substituting from Ny and not Ny + 1 . We also reduce the halo back to its previous
-    # user-specified value to comply eith the `FPivotZipperBoundaryCondition` requirements
-    if fold_topology isa RightFaceFolded
-        Hy  -= 1
-        Ny  += 1
-        halo = (Hx, Hy, Hz)
-        size = (Ny, Ny, Nz)
-    end
-
     # Allocate Metrics
     # TODO: make these on_architecture(arch, zeros(Nx, Ny))
     # to build the grid on GPU
     # We build these up to Ny + 1 in case the topology is RightFaceFolded
-    Δxᶜᶜᵃ = zeros(Nx, Ny + 1)
-    Δxᶠᶜᵃ = zeros(Nx, Ny + 1)
-    Δxᶜᶠᵃ = zeros(Nx, Ny + 1)
-    Δxᶠᶠᵃ = zeros(Nx, Ny + 1)
+    Δxᶜᶜᵃ = zeros(Nx, Ny)
+    Δxᶠᶜᵃ = zeros(Nx, Ny)
+    Δxᶜᶠᵃ = zeros(Nx, Ny)
+    Δxᶠᶠᵃ = zeros(Nx, Ny)
 
-    Δyᶜᶜᵃ = zeros(Nx, Ny + 1)
-    Δyᶠᶜᵃ = zeros(Nx, Ny + 1)
-    Δyᶜᶠᵃ = zeros(Nx, Ny + 1)
-    Δyᶠᶠᵃ = zeros(Nx, Ny + 1)
+    Δyᶜᶜᵃ = zeros(Nx, Ny)
+    Δyᶠᶜᵃ = zeros(Nx, Ny)
+    Δyᶜᶠᵃ = zeros(Nx, Ny)
+    Δyᶠᶠᵃ = zeros(Nx, Ny)
 
-    Azᶜᶜᵃ = zeros(Nx, Ny + 1)
-    Azᶠᶜᵃ = zeros(Nx, Ny + 1)
-    Azᶜᶠᵃ = zeros(Nx, Ny + 1)
-    Azᶠᶠᵃ = zeros(Nx, Ny + 1)
+    Azᶜᶜᵃ = zeros(Nx, Ny)
+    Azᶠᶜᵃ = zeros(Nx, Ny)
+    Azᶜᶠᵃ = zeros(Nx, Ny)
+    Azᶠᶠᵃ = zeros(Nx, Ny)
 
     # Calculate metrics
     # TODO: rewrite this kernel and split the call to match the indices exactly.
-    loop! = _calculate_metrics!(device(CPU()), (16, 16), (Nx, Ny + 1))
+    loop! = _calculate_metrics!(device(CPU()), (16, 16), (Nx, Ny))
 
     loop!(Δxᶠᶜᵃ, Δxᶜᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
           Δyᶠᶜᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
@@ -256,17 +267,11 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     CF = Field{Center, Face,   Center}(grid; boundary_conditions)
     CC = Field{Center, Center, Center}(grid; boundary_conditions)
 
-    # Sizes of the metric fields
-    NxCC, NyCC = Base.size(CC)
-    NxFC, NyFC = Base.size(FC)
-    NxCF, NyCF = Base.size(CF)
-    NxFF, NyFF = Base.size(FF)
-
     # Fill all periodic halos
-    set!(FF, view(Δxᶠᶠᵃ, 1:NxFF, 1:NyFF))
-    set!(CF, view(Δxᶜᶠᵃ, 1:NxCF, 1:NyCF))
-    set!(FC, view(Δxᶠᶜᵃ, 1:NxFC, 1:NyFC))
-    set!(CC, view(Δxᶜᶜᵃ, 1:NxCC, 1:NyCC))
+    set!(FF, Δxᶠᶠᵃ)
+    set!(CF, Δxᶜᶠᵃ)
+    set!(FC, Δxᶠᶜᵃ)
+    set!(CC, Δxᶜᶜᵃ)
     fill_halo_regions!(FF)
     fill_halo_regions!(CF)
     fill_halo_regions!(FC)
@@ -276,10 +281,10 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     Δxᶠᶜᵃ = deepcopy(dropdims(FC.data, dims=3))
     Δxᶜᶜᵃ = deepcopy(dropdims(CC.data, dims=3))
 
-    set!(FF, view(Δyᶠᶠᵃ, 1:NxFF, 1:NyFF))
-    set!(CF, view(Δyᶜᶠᵃ, 1:NxCF, 1:NyCF))
-    set!(FC, view(Δyᶠᶜᵃ, 1:NxFC, 1:NyFC))
-    set!(CC, view(Δyᶜᶜᵃ, 1:NxCC, 1:NyCC))
+    set!(FF, Δyᶠᶠᵃ)
+    set!(CF, Δyᶜᶠᵃ)
+    set!(FC, Δyᶠᶜᵃ)
+    set!(CC, Δyᶜᶜᵃ)
     fill_halo_regions!(FF)
     fill_halo_regions!(CF)
     fill_halo_regions!(FC)
@@ -289,10 +294,10 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     Δyᶠᶜᵃ = deepcopy(dropdims(FC.data, dims=3))
     Δyᶜᶜᵃ = deepcopy(dropdims(CC.data, dims=3))
 
-    set!(FF, view(Azᶠᶠᵃ, 1:NxFF, 1:NyFF))
-    set!(CF, view(Azᶜᶠᵃ, 1:NxCF, 1:NyCF))
-    set!(FC, view(Azᶠᶜᵃ, 1:NxFC, 1:NyFC))
-    set!(CC, view(Azᶜᶜᵃ, 1:NxCC, 1:NyCC))
+    set!(FF, Azᶠᶠᵃ)
+    set!(CF, Azᶜᶠᵃ)
+    set!(FC, Azᶠᶜᵃ)
+    set!(CC, Azᶜᶜᵃ)
     fill_halo_regions!(FF)
     fill_halo_regions!(CF)
     fill_halo_regions!(FC)

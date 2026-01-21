@@ -785,9 +785,7 @@ end
     @testset "Field nodes and view consistency" begin
         @info "  Testing that nodes() returns indices consistent with view()..."
 
-        fold_topologies = (RightCenterFolded, RightFaceFolded)
-
-        for arch in archs, FT in float_types, fold_topology in fold_topologies
+        for arch in archs, FT in float_types
             # Test RectilinearGrid
             rectilinear_grid = RectilinearGrid(arch, FT, size=(8, 6, 4), extent=(2, 3, 1))
             nodes_of_field_views_are_consistent(rectilinear_grid)
@@ -795,10 +793,6 @@ end
             # Test LatitudeLongitudeGrid
             latlon_grid = LatitudeLongitudeGrid(arch, FT, size=(8, 6, 4), longitude = (-180, 180), latitude = (-85, 85), z = (-100, 0))
             nodes_of_field_views_are_consistent(latlon_grid)
-
-            # Test OrthogonalSphericalShellGrid (TripolarGrid)
-            tripolar_grid = TripolarGrid(arch, FT, size=(8, 10, 4))
-            nodes_of_field_views_are_consistent(tripolar_grid)
 
             # Test Flat topology behavior for RectilinearGrid
             flat_rlgrid = RectilinearGrid(arch, FT, size=(), extent=(), topology=(Flat, Flat, Flat))
@@ -809,6 +803,16 @@ end
             flat_llgrid = LatitudeLongitudeGrid(arch, FT, size=(), topology=(Flat, Flat, Flat))
             c_flat = CenterField(flat_llgrid)
             @test nodes(c_flat) == (nothing, nothing, nothing)
+        end
+
+
+        # Test OrthogonalSphericalShellGrid (TripolarGrid)
+        fold_topologies = (RightCenterFolded, RightFaceFolded)
+        for arch in archs, FT in float_types
+            @testset "$fold_topology TripolarGrid" for fold_topology in fold_topologies
+                grid = TripolarGrid(arch, FT, size = (8, 10, 4), fold_topology = fold_topology)
+                nodes_of_field_views_are_consistent(grid)
+            end
         end
     end
 

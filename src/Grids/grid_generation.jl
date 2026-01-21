@@ -94,14 +94,38 @@ function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name
     end
 end
 
-# Special case for tripolar grids folding along centers
-# The (face) node interval must be extended by half a cell each side
-extend_node_interval(topo::AT, N, node_interval::Tuple{<:Number, <:Number}) = node_interval
-function extend_node_interval(topo::RightCenterFolded, N, node_interval::Tuple{<:Number, <:Number})
+# Special case for tripolar grids.
+# For RightCenterFolded, we want to generate coordinates that start and end at center locations,
+# but the default `generate_coordinate` assumes that the interval is located on faces,
+# so we must extend the interval by half a cell on both sides:
+# Example with N = 4
+# interval wanted:          c₁                      c₂
+#                           │◀───────── L ─────────▶│
+#                           │◀─ Δ ─▶│               │
+# face and centers:     f   c   f   c   f   c   f   c   f
+#                       │                               │
+# extended interval:    f₁                              f₂
+extend_node_interval(::AT, N, node_interval::Tuple{<:Number, <:Number}) = node_interval
+function extend_node_interval(::RightCenterFolded, N, node_interval::Tuple{<:Number, <:Number})
     c₁, c₂ = @. BigFloat(node_interval)
     L = c₂ - c₁
     Δ = L / (N - 1)
     return (c₁ - Δ/2, c₂ + Δ/2)
+end
+# For RightFaceFolded, we want to generate coordinates that start and end at face locations,
+# but we have an extra row at Ny, so we must extend the interval by one cell on the right:
+# Example with N = 4
+# interval wanted:      c₁                      c₂
+#                       │◀───────── L ─────────▶│
+#                       │◀─ Δ ─▶│               │
+# face and centers:     f   c   f   c   f   c   f   c   f
+#                       │                               │
+# extended interval:    f₁                              f₂
+function extend_node_interval(::RightFaceFolded, N, node_interval::Tuple{<:Number, <:Number})
+    c₁, c₂ = @. BigFloat(node_interval)
+    L = c₂ - c₁
+    Δ = L / (N - 1)
+    return (c₁, c₂ + Δ)
 end
 
 # Generate a regularly-spaced coordinate passing the domain extent (2-tuple) and number of points
