@@ -148,8 +148,8 @@ function run_field_interpolation_tests(grid)
 
         result = true
         @allowscalar begin
-            for i in size(f, 1), j in size(f, 2), k in size(f, 3)
-                x, y, z = node(i, j, k, f)
+            for k in size(f, 3), j in size(f, 2), i in size(f, 1)
+                x, y, z = Oceananigans.node(i, j, k, f)
                 ℑf = interpolate((x, y, z), f, loc, f.grid)
                 true_value = interior(f, i, j, k)[]
 
@@ -180,8 +180,8 @@ function run_field_interpolation_tests(grid)
         for f in (u, v, w, c)
             loc = Tuple(L() for L in location(f))
             result = true
-            for i in size(f, 1), j in size(f, 2), k in size(f, 3)
-                xi, yi, zi = node(i, j, k, f)
+            for k in size(f, 3), j in size(f, 2), i in size(f, 1)
+                xi, yi, zi = Oceananigans.node(i, j, k, f)
                 ℑf = interpolate((xi, yi, zi), f, loc, f.grid)
                 true_value = func(xi, yi, zi)
 
