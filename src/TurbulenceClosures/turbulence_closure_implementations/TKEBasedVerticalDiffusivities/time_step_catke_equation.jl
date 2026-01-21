@@ -269,7 +269,7 @@ end
 
     @inbounds begin
         total_Gⁿ = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ
-        e[i, j, k] = (e⁻[i, j, k] + Δt * total_Gⁿ * active) / σᶜᶜⁿ
+        e[i, j, k] = (σe⁻[i, j, k] + Δt * total_Gⁿ * active) / σᶜᶜⁿ
     end
 end
 
