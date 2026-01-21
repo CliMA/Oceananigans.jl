@@ -737,7 +737,7 @@ end
             # Test 1D interpolation on z-field
             z_field = Field{Nothing, Nothing, Center}(grid)
             set!(z_field, z -> z)
-            @test interpolate(FT(0.4), z_field) ≈ FT(0.4)
+            @test @allowscalar interpolate(FT(0.4), z_field) ≈ FT(0.4)
         end
     end
 
