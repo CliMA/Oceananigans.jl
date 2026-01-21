@@ -13,7 +13,7 @@ using Oceananigans: Clock
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, ImplicitFreeSurface
 using Oceananigans.OutputWriters: trilocation_dim_name
 using Oceananigans.Grids: ξname, ηname, rname, ξnodes, ηnodes
-using Oceananigans.Fields: interpolate!
+using Oceananigans.Fields: interpolate!, OneField, ZeroField, ConstantField
 
 function test_datetime_netcdf_output(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
@@ -3153,6 +3153,32 @@ function test_netcdf_dimension_type(arch)
     return nothing
 end
 
+function test_constant_fields_output_writing(grid)
+    model = NonhydrostaticModel(grid)
+    simulation = Simulation(model, Δt = 1, stop_iteration = 1)
+    outputs = (z = ZeroField(), o = OneField(), c = ConstantField(10))
+
+    simulation.output_writers[:constants] = NetCDFWriter(model, outputs,
+                                                         schedule = TimeInterval(1),
+                                                         dir = ".",
+                                                         filename = "test_constants.nc",
+                                                         overwrite_existing = true)
+    run!(simulation)
+
+    file = NCDataset("test_constants.nc")
+
+    # Open the netcdf here and extract one instance of z, o, and c
+    z = file["z"][:]
+    o = file["o"][:]
+    c = file["c"][:]
+    close(file)
+
+    rm("test_constants.nc")
+    @test z[] == 0 && o[] == 1 && c[] == 10
+
+    return nothing
+end
+
 @testset "NetCDF output writer" begin
     @info "Testing NetCDF output writer..."
 
@@ -3295,28 +3321,7 @@ end
         end
 
         @testset "Constant fields output writing" begin
-            grid = rectilinear_grid1
-            model = NonhydrostaticModel(grid)
-            simulation = Simulation(model, Δt = 1, stop_iteration = 1)
-            outputs = (z = ZeroField(), o = OneField(), c = ConstantField(10))
-
-            simulation.output_writers[:constants] = NetCDFWriter(model, outputs,
-                                                                 schedule = TimeInterval(1),
-                                                                 dir = ".",
-                                                                 filename = "test_constants.nc",
-                                                                 overwrite_existing = true)
-        
-            run!(simulation)
-        
-            file = Dataset("test_constants.nc")
-
-            # Open the netcdf here and extract one instance of z, o, and c
-            
-            close(file)
-        
-            rm("test_constants.jld2")
-        
-            @test z == 0 && o == 1 && c == 10
+            test_constant_fields_output_writing(rectilinear_grid1)
         end
     end
 end
