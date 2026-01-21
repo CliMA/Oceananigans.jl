@@ -714,25 +714,25 @@ end
             set!(xy_field, (x, y) -> x + y)
 
             node = convert.(FT, (0.4, 0.5))
-            @test interpolate(node, xy_field) ≈ node[1] + node[2]
+            @test @allowscalar interpolate(node, xy_field) ≈ node[1] + node[2]
             node = convert.(FT, (0.5, 0.4))
-            @test interpolate(node, xy_field) ≈ node[1] + node[2]
+            @test @allowscalar interpolate(node, xy_field) ≈ node[1] + node[2]
 
             # Test 2D interpolation on xz-field
             xz_field = Field{Center, Nothing, Center}(grid)
             set!(xz_field, (x, z) -> x + z)
             node = convert.(FT, (0.4, 0.5))
-            @test interpolate(node, xz_field) ≈ node[1] + node[2]
+            @test @allowscalar interpolate(node, xz_field) ≈ node[1] + node[2]
             node = convert.(FT, (0.5, 0.4))
-            @test interpolate(node, xz_field) ≈ node[1] + node[2]
+            @test @allowscalar interpolate(node, xz_field) ≈ node[1] + node[2]
 
             # Test 2D interpolation on yz-field
             yz_field = Field{Nothing, Center, Center}(grid)
             set!(yz_field, (y, z) -> y + z)
             node = convert.(FT, (0.5, 0.4))
-            @test interpolate(node, yz_field) ≈ node[1] + node[2]
+            @test @allowscalar interpolate(node, yz_field) ≈ node[1] + node[2]
             node = convert.(FT, (0.4, 0.5))
-            @test interpolate(node, yz_field) ≈ node[1] + node[2]
+            @test @allowscalar interpolate(node, yz_field) ≈ node[1] + node[2]
 
             # Test 1D interpolation on z-field
             z_field = Field{Nothing, Nothing, Center}(grid)
