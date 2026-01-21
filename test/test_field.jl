@@ -705,7 +705,7 @@ end
             end
 
             x = y = z = (0, 1)
-            grid = RectilinearGrid(arch, FT, size=(2, 2, 2), x, y, z)
+            grid = RectilinearGrid(arch, FT; size=(2, 2, 2), x, y, z)
 
             xy_field = Field{Center, Center, Nothing}(grid)
             set!(xy_field, (x, y) -> x + y)
