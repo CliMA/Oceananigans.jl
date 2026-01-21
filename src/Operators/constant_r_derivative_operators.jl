@@ -10,15 +10,15 @@
 ##### include chain-rule corrections to compute derivatives at constant z.
 #####
 
-# x-direction derivatives at constant r
+# Horizontal derivatives at constant r
 for ℓ1 in (:ᶜ, :ᶠ), ℓ2 in (:ᶜ, :ᶠ, :ᵃ), ℓ3 in (:ᶜ, :ᶠ, :ᵃ)
-    ∂x_r       = Symbol(:∂xᵣ, ℓ1, ℓ2, ℓ3)
-    δx         = Symbol(:δx, ℓ1, ℓ2, ℓ3)
-    rcp_Δx     = Symbol(:Δx⁻¹, ℓ1, ℓ2, ℓ3)
+    ∂xᵣ    = Symbol(:∂xᵣ, ℓ1, ℓ2, ℓ3)
+    δx     = Symbol(:δx, ℓ1, ℓ2, ℓ3)
+    rcp_Δx = Symbol(:Δx⁻¹, ℓ1, ℓ2, ℓ3)
 
-    ∂y_r       = Symbol(:∂yᵣ, ℓ2, ℓ1, ℓ3)
-    δy         = Symbol(:δy, ℓ2, ℓ1, ℓ3)
-    rcp_Δy     = Symbol(:Δy⁻¹, ℓ2, ℓ1, ℓ3)
+    ∂yᵣ    = Symbol(:∂yᵣ, ℓ2, ℓ1, ℓ3)
+    δy     = Symbol(:δy, ℓ2, ℓ1, ℓ3)
+    rcp_Δy = Symbol(:Δy⁻¹, ℓ2, ℓ1, ℓ3)
 
     @eval begin
         @inline $∂xᵣ(i, j, k, grid, c) = $δx(i, j, k, grid, c) * $rcp_Δx(i, j, k, grid)
