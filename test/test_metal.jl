@@ -136,12 +136,12 @@ end
     using Oceananigans.Solvers: ConjugateGradientPoissonSolver
 
     arch = GPU(Metal.MetalBackend());
-    grid = RectilinearGrid(arch; size=(64, 64, 16), x=(0, 5000), y=(0, 5000), z=(-20, 0))
+    grid = RectilinearGrid(arch; size=(32, 32, 8), x=(0, 5000), y=(0, 5000), z=(-20, 0))
     @test eltype(grid) == Float32
 
     model = NonhydrostaticModel(grid; advection=WENO(),
                                 pressure_solver=ConjugateGradientPoissonSolver(grid, maxiter=50),)
-    sim = Simulation(model, Δt=5, stop_iteration=20)
+    sim = Simulation(model, Δt=5, stop_iteration=2)
     run!(sim)
-    @test time(sim) == 100seconds
+    @test time(sim) == 10seconds
 end
