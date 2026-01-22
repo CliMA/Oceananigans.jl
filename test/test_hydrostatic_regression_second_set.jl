@@ -81,7 +81,7 @@ include("regression_tests/hydrostatic_rotation_regression_test.jl")
 
                 @testset "$testset_str" begin
                     @info "$info_str"
-                    run_hydrostatic_rotation_regression_test(grid, closure, timestepper; regenerate_data = true)
+                    run_hydrostatic_rotation_regression_test(grid, closure, timestepper)
                 end
             end
         end
