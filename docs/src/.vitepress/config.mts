@@ -22,6 +22,11 @@ if (!mathjaxInstance) {
 const virtualModuleId = 'virtual:mathjax-styles.css';
 const resolvedVirtualModuleId = '\0' + virtualModuleId;
 
+const mathjaxDeps = [
+  '@mathjax/mathjax-newcm-font',
+  'mathjax-full',
+];
+
 function getBaseRepository(base: string): string {
   if (!base || base === '/') return '/';
   const parts = base.split('/').filter(Boolean);
@@ -106,6 +111,7 @@ export default defineConfig({
         '@nolebase/vitepress-plugin-enhanced-readabilities/client',
         'vitepress',
         '@nolebase/ui',
+        ...mathjaxDeps,
       ], 
     }, 
     ssr: { 
@@ -113,6 +119,8 @@ export default defineConfig({
         // If there are other packages that need to be processed by Vite, you can add them here.
         '@nolebase/vitepress-plugin-enhanced-readabilities',
         '@nolebase/ui',
+        ...mathjaxDeps,
+        '@mdit/plugin-mathjax',
       ], 
     },
   },
