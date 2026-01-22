@@ -433,11 +433,19 @@ function load_combined_field_data!(field, all_ranks, name, iter; reader_kw=Named
             file["timeseries/$name/$iter"]
         end
 
+        # Limit data for `Nothing` locations
+        LX, LY, LZ = location(field)
+        xrange = LX == Nothing ? 1 : UnitRange(Hx+1:Hx+nx)
+        yrange = LY == Nothing ? 1 : UnitRange(Hy+1:Hy+ny)
+        zrange = LZ == Nothing ? 1 : UnitRange(Hz+1:Hz+nz)
+
+        xsize = LX == Nothing ? 1 : x_offsets[ri]+1:x_offsets[ri]+nx
+        ysize = LY == Nothing ? 1 : y_offsets[rj]+1:y_offsets[rj]+ny
+        zsize = LZ == Nothing ? 1 : 1:nz
+
         # Extract interior (remove halos) and copy to global array
-        interior_data = @view raw_data[Hx+1:Hx+nx, Hy+1:Hy+ny, Hz+1:Hz+nz]
-        field_data[x_offsets[ri]+1:x_offsets[ri]+nx,
-                   y_offsets[rj]+1:y_offsets[rj]+ny,
-                   1:nz] .= interior_data
+        interior_data = @view raw_data[xrange, yrange, zrange]
+        field_data[xsize, ysize, zsize] .= interior_data
     end
 
     return nothing
