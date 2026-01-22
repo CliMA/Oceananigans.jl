@@ -6,6 +6,8 @@ using Oceananigans.Grids: φnode, λnode, halo_size
 using Oceananigans.MultiRegion: number_of_regions
 using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid
 using Oceananigans.Utils: Iterate, getregion
+using Random
+using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
 
 function get_range_of_indices(operation, index, Nx, Ny)
     if operation == :endpoint && index == :before_first
@@ -1036,8 +1038,8 @@ end
                 free_surface       = SplitExplicitFreeSurface(grid;
                                                               substeps=12)
                 coriolis           = HydrostaticSphericalCoriolis(FT)
-                tracers            = :b
-                buoyancy = BuoyancyTracer()
+                tracers            = (:T, :S)
+                buoyancy           = SeawaterBuoyancy(equation_of_state = TEOS10EquationOfState()),
 
                 model = HydrostaticFreeSurfaceModel(grid;
                                                     momentum_advection,
@@ -1046,6 +1048,11 @@ end
                                                     coriolis,
                                                     tracers,
                                                     buoyancy)
+
+                Random.seed!(1234)
+                Tᵢ(λ, φ, z) = 30 * (1 - tanh((abs(φ) - 45) / 8)) / 2 + rand()
+                Sᵢ(λ, φ, z) = 28 - 5e-3 * z + rand()
+                set!(model, T=Tᵢ, S=Sᵢ)
 
                 simulation = Simulation(model, Δt=1minute, stop_time=10minutes)
 
@@ -1078,33 +1085,51 @@ end
                 run!(simulation)
 
                 u = simulation.model.velocities.u
+                v = simulation.model.velocities.v
+                T = simulation.model.tracers.T
+                S = simulation.model.tracers.S
+                b = simulation.model.tracers.b
 
-                free_surface_slow = SplitExplicitFreeSurface(grid;
-                                                             substeps=12,
-                                                             extend_halos=false)
-                model_slow = HydrostaticFreeSurfaceModel(grid;
-                                                         momentum_advection,
-                                                         tracer_advection,
-                                                         free_surface = free_surface_slow,
-                                                         coriolis,
-                                                         tracers,
-                                                         buoyancy)
+                free_surface_no_halos = SplitExplicitFreeSurface(grid;
+                                                                 substeps=12,
+                                                                 extend_halos=false)
+                model_no_halos = HydrostaticFreeSurfaceModel(grid;
+                                                             momentum_advection,
+                                                             tracer_advection,
+                                                             free_surface = free_surface_no_halos,
+                                                             coriolis,
+                                                             tracers,
+                                                             buoyancy)
 
-                simulation_slow = Simulation(model_slow, Δt=1minute, stop_time=10minutes)
-                run!(simulation_slow)
-                u_slow = simulation_slow.model.velocities.u
+                simulation_no_halos = Simulation(model_no_halos, Δt=1minute, stop_time=10minutes)
 
-                @apply_regionally u_max_abs = maximum(abs, interior(u))
-                u_max_abs = maximum(u_max_abs.regional_objects)
-                @apply_regionally u_slow_max_abs = maximum(abs, interior(u_slow))
-                u_slow_max_abs = maximum(u_slow_max_abs.regional_objects)
+                run!(simulation_no_halos)
 
-                @test u_max_abs ≈ u_slow_max_abs
+                u_no_halos = simulation_no_halos.model.velocities.u
+                v_no_halos = simulation_no_halos.model.velocities.v
+                T_no_halos = simulation_no_halos.model.tracers.T
+                S_no_halos = simulation_no_halos.model.tracers.S
+                b_no_halos = simulation_no_halos.model.tracers.b
+
+                @apply_regionally @test isapprox.(interior(u), interior(u_no_halos))
+                @apply_regionally @test isapprox.(interior(v), interior(v_no_halos))
+                @apply_regionally @test isapprox.(interior(T), interior(T_no_halos))
+                @apply_regionally @test isapprox.(interior(S), interior(S_no_halos))
+                @apply_regionally @test isapprox.(interior(b), interior(b_no_halos))
 
                 @test iteration(simulation) == 10
                 @test time(simulation) == 10minutes
+
                 u_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "u"; architecture = CPU())
+                v_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "v"; architecture = CPU())
+                T_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "T"; architecture = CPU())
+                S_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "S"; architecture = CPU())
+                b_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "b"; architecture = CPU())
                 u_end = u_timeseries[end]
+                v_end = v_timeseries[end]
+                T_end = T_timeseries[end]
+                S_end = S_timeseries[end]
+                b_end = b_timeseries[end]
 
                 if grid == underlying_grid
                     @info "  Restarting simulation from pickup file on conformal cubed sphere grid [$FT, $(typeof(arch)), $cm]..."
@@ -1131,14 +1156,21 @@ end
                 @test time(simulation) == 10minutes
 
                 u_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "u"; architecture = CPU())
+                v_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "v"; architecture = CPU())
+                T_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "T"; architecture = CPU())
+                S_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "S"; architecture = CPU())
+                b_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "b"; architecture = CPU())
                 u_end_checkpointed_run = u_timeseries[end]
+                v_end_checkpointed_run = v_timeseries[end]
+                T_end_checkpointed_run = T_timeseries[end]
+                S_end_checkpointed_run = S_timeseries[end]
+                b_end_checkpointed_run = b_timeseries[end]
 
-                @apply_regionally u_end_max_abs = maximum(abs, interior(u_end))
-                u_end_max_abs = maximum(u_end_max_abs.regional_objects)
-                @apply_regionally u_end_checkpointed_run_max_abs = maximum(abs, interior(u_end_checkpointed_run))
-                u_end_checkpointed_run_max_abs = maximum(u_end_checkpointed_run_max_abs.regional_objects)
-
-                @test u_end_max_abs ≈ u_end_checkpointed_run_max_abs
+                @apply_regionally @test isapprox.(interior(u_end), interior(u_end_checkpointed_run))
+                @apply_regionally @test isapprox.(interior(v_end), interior(v_end_checkpointed_run))
+                @apply_regionally @test isapprox.(interior(T_end), interior(T_end_checkpointed_run))
+                @apply_regionally @test isapprox.(interior(S_end), interior(S_end_checkpointed_run))
+                @apply_regionally @test isapprox.(interior(b_end), interior(b_end_checkpointed_run))
             end
         end
     end
