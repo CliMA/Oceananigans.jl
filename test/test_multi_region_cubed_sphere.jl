@@ -1013,12 +1013,14 @@ end
         cm = non_uniform_conformal_mapping ? "non-uniform conformal mapping" : "uniform conformal mapping"
         cm_suffix = non_uniform_conformal_mapping ? "NUCM" : "UCM"
         for FT in (Oceananigans.defaults.FloatType,), arch in archs
-            Nx, Ny, Nz = 18, 18, 9
+            Nx, Ny, Nz = 32, 32, 10
 
             underlying_grid = ConformalCubedSphereGrid(arch, FT;
-                                                       panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1,
+                                                       panel_size = (Nx, Ny, Nz), z = (-3000, 0),
+                                                       radius = Oceananigans.defaults.planet_radius,
                                                        horizontal_direction_halo = 6, non_uniform_conformal_mapping)
-            @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
+
+            @inline bottom(λ, φ) = ifelse(abs(φ) < 30, - 2, 0)
             immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom);
                                                  active_cells_map = true)
 
