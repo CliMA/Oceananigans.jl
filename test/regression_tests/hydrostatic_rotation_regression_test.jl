@@ -85,8 +85,6 @@ function run_hydrostatic_rotation_regression_test(grid, closure, timestepper; re
         regression_data_path = @datadep_str datadep_path
         file = jldopen(regression_data_path)
 
-        cpu_arch = cpu_architecture(architecture(grid))
-
         # Data was saved with 2 halos per direction (see issue #3260)
         truth_fields = (
             u = file["timeseries/u/$stop_iteration"],
