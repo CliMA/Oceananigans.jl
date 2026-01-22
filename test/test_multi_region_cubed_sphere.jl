@@ -1114,11 +1114,16 @@ end
                 S_no_halos = simulation_no_halos.model.tracers.S
                 b_no_halos = buoyancy_field(simulation_no_halos.model)
 
-                @apply_regionally @test isapprox.(interior(u), interior(u_no_halos))
-                @apply_regionally @test isapprox.(interior(v), interior(v_no_halos))
-                @apply_regionally @test isapprox.(interior(T), interior(T_no_halos))
-                @apply_regionally @test isapprox.(interior(S), interior(S_no_halos))
-                @apply_regionally @test isapprox.(interior(b), interior(b_no_halos))
+                @apply_regionally regional_comparison = interior(u) ≈ interior(u_no_halos)
+                @test all(regional_comparison.regional_objects)
+                @apply_regionally regional_comparison = interior(v) ≈ interior(v_no_halos)
+                @test all(regional_comparison.regional_objects)
+                @apply_regionally regional_comparison = interior(T) ≈ interior(T_no_halos)
+                @test all(regional_comparison.regional_objects)
+                @apply_regionally regional_comparison = interior(S) ≈ interior(S_no_halos)
+                @test all(regional_comparison.regional_objects)
+                @apply_regionally regional_comparison = interior(b) ≈ interior(b_no_halos)
+                @test all(regional_comparison.regional_objects)
 
                 @test iteration(simulation) == 10
                 @test time(simulation) == 10minutes
@@ -1171,11 +1176,16 @@ end
                 S_end_checkpointed_run = S_timeseries[end]
                 b_end_checkpointed_run = b_timeseries[end]
 
-                @apply_regionally @test isapprox.(interior(u_end), interior(u_end_checkpointed_run))
-                @apply_regionally @test isapprox.(interior(v_end), interior(v_end_checkpointed_run))
-                @apply_regionally @test isapprox.(interior(T_end), interior(T_end_checkpointed_run))
-                @apply_regionally @test isapprox.(interior(S_end), interior(S_end_checkpointed_run))
-                @apply_regionally @test isapprox.(interior(b_end), interior(b_end_checkpointed_run))
+                @apply_regionally regional_comparison = interior(u_end) ≈ interior(u_end_checkpointed_run)
+                @test all(regional_comparison.regional_objects)
+                @apply_regionally regional_comparison = interior(v_end) ≈ interior(v_end_checkpointed_run)
+                @test all(regional_comparison.regional_objects)
+                @apply_regionally regional_comparison = interior(T_end) ≈ interior(T_end_checkpointed_run)
+                @test all(regional_comparison.regional_objects)
+                @apply_regionally regional_comparison = interior(S_end) ≈ interior(S_end_checkpointed_run)
+                @test all(regional_comparison.regional_objects)
+                @apply_regionally regional_comparison = interior(b_end) ≈ interior(b_end_checkpointed_run)
+                @test all(regional_comparison.regional_objects)
             end
         end
     end
