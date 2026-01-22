@@ -90,8 +90,8 @@ function run_hydrostatic_rotation_regression_test(grid, closure, timestepper; re
             u = file["timeseries/u/$stop_iteration"],
             v = file["timeseries/v/$stop_iteration"],
             w = file["timeseries/w/$stop_iteration"],
-            b = file["timeseries/b/$stop_iteration"],
             c = file["timeseries/c/$stop_iteration"],
+            b = file["timeseries/b/$stop_iteration"],
             η = file["timeseries/η/$stop_iteration"]
         )
 
