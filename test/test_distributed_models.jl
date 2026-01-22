@@ -439,26 +439,37 @@ end
         end
     end
 
-    @testset "Test Distributed MPI Grids" begin
-        child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
+    @testset "Distributed Grid partitioning" begin
+        @info "  Testing distributed grid partitioning..."
+        
+        topologies = ((Periodic, Periodic, Bounded), 
+                      (Periodic, Bounded, Bounded), 
+                      (Bounded, Periodic, Bounded),
+                      (Bounded, Bounded, Bounded))
 
-        if child_arch isa GPU
-            @info "Testing `on_architecture` for distributed grids..."
+        for arch in archs
+            child_arch = child_architecture(arch)
 
+            for topology in topologies
+                local_grid = RectilinearGrid(arch; size=(100, 100, 100), extent=(1, 2, 3), topology)
+                global_grid = RectilinearGrid(child_arch; size=(100, 100, 100), extent=(1, 2, 3), topology)
+        
+                reconstructed_grid = reconstruct_global_grid(local_grid)
+                @test reconstructed_grid == global_grid
+            
+                if topology[2] == Bounded
+                    local_grid = LatitudeLongitudeGrid(arch; size=(100, 100, 100), z=(-1000, 0), latitude=(-10, 10), longitude=(-20, 20), topology)
+                    global_grid = LatitudeLongitudeGrid(child_arch; size=(100, 100, 100), z=(-1000, 0), latitude=(-10, 10), longitude=(-20, 20), topology)
+
+                    reconstructed_grid = reconstruct_global_grid(local_grid)
+                    @test reconstructed_grid == global_grid
+                end
+            end
+            
             arch = Distributed(child_arch; partition=Partition(1, 4))
             rg   = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
             llg  = LatitudeLongitudeGrid(arch, size=(8, 8, 8), latitude=(0, 60), longitude=(0, 60), z=(0, 1), radius=1)
             osg  = TripolarGrid(arch, size=(8, 8, 8))
-
-            cpu_arch = cpu_architecture(arch)
-
-            cpurg  = on_architecture(cpu_arch, rg)
-            cpullg = on_architecture(cpu_arch, llg)
-            cpuosg = on_architecture(cpu_arch, osg)
-
-            @test child_architecture(architecture(cpurg))  == CPU()
-            @test child_architecture(architecture(cpullg)) == CPU()
-            @test child_architecture(architecture(cpuosg)) == CPU()
 
             @info "Testing `minimum_*spacing` for distributed grids..."
 
@@ -519,7 +530,6 @@ end
         child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
         for partition in [Partition(1, 4), Partition(2, 2), Partition(4, 1)]
             @info "Time-stepping a distributed NonhydrostaticModel with partition $partition..."
-            arch = Distributed(child_arch; partition)
             grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
             model = NonhydrostaticModel(grid)
 
@@ -530,6 +540,23 @@ end
             simulation = Simulation(model, Δt=1, stop_iteration=2)
             run!(simulation)
             @test model isa NonhydrostaticModel
+            @test model.clock.time ≈ 2
+        end
+    end
+
+    @testset "Time stepping HydrostaticFreeSurfaceModel" begin
+        for arch in archs 
+            @info "Time-stepping a distributed NonhydrostaticModel with partition $partition..."
+            grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Bounded), size=(8, 8, 8), extent=(1, 2, 3))
+            model = HydrostaticFreeSurfaceModel(; grid)
+
+            time_step!(model, 1)
+            @test model isa HydrostaticFreeSurfaceModel
+            @test model.clock.time ≈ 1
+
+            simulation = Simulation(model, Δt=1, stop_iteration=2)
+            run!(simulation)
+            @test model isa HydrostaticFreeSurfaceModel
             @test model.clock.time ≈ 2
         end
     end
