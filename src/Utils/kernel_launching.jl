@@ -348,6 +348,12 @@ end
     return nothing
 end
 
+@inline function launch!(arch, grid, workspec, kernel, args...; active_cells_map_tuple::Tuple, kwargs...)
+	for active_cells_map in active_cells_map_tuple
+		launch!(arch, grid, workspec, kernel, args...; active_cells_map=active_cells_map, kwargs...)
+	end
+	return nothing
+end
 # When dims::Val
 @inline launch!(arch, grid, ::Val{workspec}, args...; kw...) where workspec =
     _launch!(arch, grid, workspec, args...; kw...)

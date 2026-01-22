@@ -28,6 +28,7 @@ function compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callba
     arch = architecture(grid)
 
     active_cells_map = get_active_cells_map(model.grid, Val(:interior))
+		
     kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
 
     compute_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters; active_cells_map)
@@ -133,6 +134,10 @@ function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active
     return nothing
 end
 
+get_u_conditioned_map(scheme, grid; active_cells_map=nothing) = nothing
+
+get_v_conditioned_map(scheme, grid; active_cells_map=nothing) = nothing
+
 """
     compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters; active_cells_map=nothing)
 
@@ -142,6 +147,9 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
 
     grid = model.grid
     arch = architecture(grid)
+
+		u_conditioned_maps = get_u_conditioned_map(model.advection.momentum, grid; active_cells_map)
+		v_conditioned_maps = get_v_conditioned_map(model.advection.momentum, grid; active_cells_map)
 
     u_immersed_bc = immersed_boundary_condition(velocities.u)
     v_immersed_bc = immersed_boundary_condition(velocities.v)
@@ -168,11 +176,11 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
 
     launch!(arch, grid, kernel_parameters,
             compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid,
-            u_kernel_args; active_cells_map)
+            u_kernel_args; u_conditioned_maps)
 
     launch!(arch, grid, kernel_parameters,
             compute_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid,
-            v_kernel_args; active_cells_map)
+            v_kernel_args; v_conditioned_maps)
 
     return nothing
 end
