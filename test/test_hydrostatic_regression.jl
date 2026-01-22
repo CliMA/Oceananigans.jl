@@ -72,20 +72,24 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
                                                     solver_method = :PreconditionedConjugateGradient,
                                                     reltol = 0, abstol = 1e-15)
 
-        for longitude in longitudes, latitude in latitudes, z in zs, precompute_metrics in (true, false), extend_halos in (false, true)
+        for longitude in longitudes, latitude in latitudes, z in zs, precompute_metrics in (true, false)
             longitude[1] == -180 ? size = (180, 60, 3) : size = (160, 60, 3)
             grid  = LatitudeLongitudeGrid(arch; size, longitude, latitude, z, precompute_metrics, halo=(2, 2, 2))
 
-            split_explicit_free_surface = SplitExplicitFreeSurface(grid;
-                                                                   gravitational_acceleration = 1.0,
-                                                                   substeps = 5,
-                                                                   extend_halos)
+            split_explicit_free_surface          = SplitExplicitFreeSurface(grid;
+                                                                            gravitational_acceleration = 1.0,
+                                                                            substeps = 5)
+            split_explicit_free_surface_no_halos = SplitExplicitFreeSurface(grid;
+                                                                            gravitational_acceleration = 1.0,
+                                                                            substeps = 5,
+                                                                            extend_halos=false)
 
-            for free_surface in [explicit_free_surface, implicit_free_surface, split_explicit_free_surface]
+            for free_surface in [explicit_free_surface, implicit_free_surface, split_explicit_free_surface, split_explicit_free_surface_no_halos]
                 # GPU + ImplicitFreeSurface + precompute metrics cannot be tested on sverdrup at the moment because of
                 # "uses too much parameter space (maximum 0x1100 bytes)" error
                 if !(precompute_metrics && free_surface isa ImplicitFreeSurface && arch isa GPU) &&
                    !(free_surface isa ImplicitFreeSurface && arch isa Distributed) # Also no implicit free surface on distributed
+                    extend_halos = free_surface !== split_explicit_free_surface_no_halos
 
                     testset_str, info_str = show_hydrostatic_test(grid, free_surface, precompute_metrics, extend_halos)
 
