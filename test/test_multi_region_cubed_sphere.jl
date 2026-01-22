@@ -1077,7 +1077,8 @@ end
                                                                         prefix = filename_checkpointer,
                                                                         overwrite_existing = true)
 
-                outputs = fields(model)
+                b = buoyancy_field(model)
+                outputs = merge(fields(model), (; b))
                 simulation.output_writers[:fields] = JLD2Writer(model, outputs;
                                                                 schedule = TimeInterval(save_fields_interval),
                                                                 filename = filename_output_writer,
@@ -1146,6 +1147,8 @@ end
                                                                         prefix = filename_checkpointer,
                                                                         overwrite_existing = true)
 
+                b = buoyancy_field(model)
+                outputs = merge(fields(model), (; b))
                 simulation.output_writers[:fields] = JLD2Writer(model, outputs;
                                                                 schedule = TimeInterval(save_fields_interval),
                                                                 filename = filename_output_writer,
