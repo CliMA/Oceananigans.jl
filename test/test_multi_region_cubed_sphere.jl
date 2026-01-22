@@ -1090,7 +1090,7 @@ end
                 v = simulation.model.velocities.v
                 T = simulation.model.tracers.T
                 S = simulation.model.tracers.S
-                b = simulation.model.tracers.b
+                b = buoyancy_field(simulation.model)
 
                 free_surface_no_halos = SplitExplicitFreeSurface(grid;
                                                                  substeps=12,
@@ -1111,7 +1111,7 @@ end
                 v_no_halos = simulation_no_halos.model.velocities.v
                 T_no_halos = simulation_no_halos.model.tracers.T
                 S_no_halos = simulation_no_halos.model.tracers.S
-                b_no_halos = simulation_no_halos.model.tracers.b
+                b_no_halos = buoyancy_field(simulation_no_halos.model)
 
                 @apply_regionally @test isapprox.(interior(u), interior(u_no_halos))
                 @apply_regionally @test isapprox.(interior(v), interior(v_no_halos))
