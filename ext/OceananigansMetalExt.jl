@@ -13,6 +13,8 @@ import Oceananigans.Architectures:
     on_architecture
 
 import Oceananigans.Fields as FD
+import Oceananigans.Grids as GD 
+import Oceananigans: Clock
 
 const MetalGPU = GPU{<:Metal.MetalBackend}
 MetalGPU() = GPU(Metal.MetalBackend())
@@ -61,5 +63,8 @@ function FD.maybe_copy_interior(::MetalGPU, r::FD.AbstractField)
     end
     return interior_r
 end
+
+const MetalGrid = GD.AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:MetalGPU}
+Clock(grid::MetalGrid) = Clock{Float32}(time=0)
 
 end # module

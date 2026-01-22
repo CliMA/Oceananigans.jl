@@ -131,3 +131,17 @@ end
     run!(sim)
     @test time(sim) > 100seconds
 end
+
+@testset "MetalGPU: Nonhydrostatic model" begin
+    using Oceananigans.Solvers: ConjugateGradientPoissonSolver
+
+    arch = GPU(Metal.MetalBackend());
+    grid = RectilinearGrid(arch; size=(64, 64, 16), x=(0, 5000), y=(0, 5000), z=(-20, 0))
+    @test eltype(grid) == Float32
+
+    model = NonhydrostaticModel(grid; advection=WENO(),
+                                pressure_solver=ConjugateGradientPoissonSolver(grid, maxiter=50),)
+    sim = Simulation(model, Δt=5, stop_iteration=20)
+    run!(sim)
+    @test time(sim) == 100seconds
+end
