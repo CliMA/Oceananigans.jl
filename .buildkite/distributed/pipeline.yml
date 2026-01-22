@@ -20,7 +20,6 @@ steps:
       MPI_TEST: "false" # initialization is not an MPI test
     command:
       - echo "--- Initialize distributed tests"
-      - "rm -rf /resnick/scratch/esm/slurm-buildkite/oceananigans-distributed/depot/default/scratchspaces/124859b0-ceae-595e-8997-d05f6a7a8dfe/datadeps/regression_truth_data/"
       - "julia -O0 --project -e 'using Pkg; Pkg.test()'"
     agents:
       slurm_mem: 50G
