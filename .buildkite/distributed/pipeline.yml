@@ -89,10 +89,10 @@ steps:
         - exit_status: 1
           limit: 1
 
-  - label: "🤿 cpu hydrostatic regression tests"
-    key: "distributed_hydrostatic_regression_cpu"
+  - label: "🤿 cpu hydrostatic regression tests 1"
+    key: "distributed_hydrostatic_regression_cpu_1"
     env:
-      TEST_GROUP: "distributed_hydrostatic_regression"
+      TEST_GROUP: "distributed_hydrostatic_regression_1"
       TEST_ARCHITECTURE: "CPU"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -105,10 +105,10 @@ steps:
         - exit_status: 1
           limit: 1
 
-  - label: "🥽 gpu hydrostatic regression tests"
-    key: "distributed_hydrostatic_regression_gpu"
+  - label: "🥽 gpu hydrostatic regression tests 1"
+    key: "distributed_hydrostatic_regression_gpu_1"
     env:
-      TEST_GROUP: "distributed_hydrostatic_regression"
+      TEST_GROUP: "distributed_hydrostatic_regression_1"
       TEST_ARCHITECTURE: "GPU"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -122,10 +122,10 @@ steps:
         - exit_status: 1
           limit: 1
 
-  - label: "🤺 cpu hydrostatic model tests 1"
-    key: "distributed_hydrostatic_model_cpu_1"
+  - label: "❤️‍🔥 cpu hydrostatic regression tests 2"
+    key: "distributed_hydrostatic_regression_cpu_2"
     env:
-      TEST_GROUP: "distributed_hydrostatic_model_1"
+      TEST_GROUP: "distributed_hydrostatic_regression_2"
       TEST_ARCHITECTURE: "CPU"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -138,16 +138,16 @@ steps:
         - exit_status: 1
           limit: 1
 
-  - label: "🦏 gpu hydrostatic model tests 1"
-    key: "distributed_hydrostatic_model_gpu_1"
+  - label: "🪐 gpu hydrostatic regression tests 2"
+    key: "distributed_hydrostatic_regression_gpu_2"
     env:
-      TEST_GROUP: "distributed_hydrostatic_model_1"
+      TEST_GROUP: "distributed_hydrostatic_regression_2"
       TEST_ARCHITECTURE: "GPU"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
     timeout_in_minutes: 1440
     agents:
-      slurm_mem: 150G # Apparently the GPU tests require more memory?
+      slurm_mem: 100G # Apparently the GPU tests require more memory
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
     retry:
@@ -155,10 +155,10 @@ steps:
         - exit_status: 1
           limit: 1
 
-  - label: "🤺 cpu hydrostatic model tests 2"
-    key: "distributed_hydrostatic_model_cpu_2"
+  - label: "🤺 cpu hydrostatic model tests"
+    key: "distributed_hydrostatic_model_cpu"
     env:
-      TEST_GROUP: "distributed_hydrostatic_model_2"
+      TEST_GROUP: "distributed_hydrostatic_model"
       TEST_ARCHITECTURE: "CPU"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
@@ -171,10 +171,10 @@ steps:
         - exit_status: 1
           limit: 1
 
-  - label: "🦏 gpu hydrostatic model tests_2"
-    key: "distributed_hydrostatic_model_gpu_2"
+  - label: "🦏 gpu hydrostatic model tests"
+    key: "distributed_hydrostatic_model_gpu"
     env:
-      TEST_GROUP: "distributed_hydrostatic_model_2"
+      TEST_GROUP: "distributed_hydrostatic_model"
       TEST_ARCHITECTURE: "GPU"
     commands:
       - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
