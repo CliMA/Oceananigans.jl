@@ -287,6 +287,22 @@ mjx-container > svg {
   display: inline-block;
 }
 
+/* @mdit/plugin-mathjax theming refs */
+
+mjx-container svg path {
+  fill: currentColor !important;
+  stroke: currentColor !important;
+}
+
+.MathJax_ref {
+  color: var(--vp-c-brand-1);
+}
+
+.MathJax_ref:hover {
+  color: var(--vp-c-brand-2);
+  cursor: pointer;
+}
+
 /* =========================
    Search Box (Dark)
    ========================= */

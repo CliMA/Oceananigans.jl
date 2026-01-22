@@ -1,10 +1,26 @@
 import { defineConfig } from 'vitepress'
 import { tabsMarkdownPlugin } from 'vitepress-plugin-tabs'
-import mathjax3 from "markdown-it-mathjax3";
+// import mathjax3 from "markdown-it-mathjax3";
+import { createMathjaxInstance, mathjax } from '@mdit/plugin-mathjax';
 import footnote from "markdown-it-footnote";
 import path from 'path'
 
 // console.log(process.env)
+
+const mathjaxInstance = await createMathjaxInstance({
+  transformer: (content) =>
+    content.replace(/^<mjx-container/, '<mjx-container v-pre'),
+  tex: {
+    tags: 'ams',
+  },
+});
+
+if (!mathjaxInstance) {
+  throw new Error('Failed to create MathJax instance.');
+}
+
+const virtualModuleId = 'virtual:mathjax-styles.css';
+const resolvedVirtualModuleId = '\0' + virtualModuleId;
 
 function getBaseRepository(base: string): string {
   if (!base || base === '/') return '/';
@@ -42,7 +58,38 @@ export default defineConfig({
     ['script', {src: `${baseTemp.base}siteinfo.js`}]
   ],
   ignoreDeadLinks: true,
+  markdown: {
+    config(md) {
+      md.use(tabsMarkdownPlugin);
+      md.use(footnote);
+      md.use(mathjax, mathjaxInstance);
+      const orig = md.render; // use md.render if you're on vitepress v1, renderAsync if on v2
+      md.render = function (...args) {
+        mathjaxInstance?.reset();
+        return orig.apply(this, args);
+      };
+    },
+    theme: {
+      light: "github-light",
+      dark: "github-dark"
+    },
+  },
   vite: {
+    plugins: [
+      {
+        name: 'mathjax-styles',
+        resolveId(id) {
+          if (id === virtualModuleId) {
+            return resolvedVirtualModuleId;
+          }
+        },
+        load(id) {
+          if (id === resolvedVirtualModuleId) {
+            return mathjaxInstance?.outputStyle();
+          }
+        },
+      },
+    ],
     define: {
       __DEPLOY_ABSPATH__: JSON.stringify('REPLACE_ME_DOCUMENTER_VITEPRESS_DEPLOY_ABSPATH'),
     },
@@ -67,19 +114,6 @@ export default defineConfig({
         '@nolebase/vitepress-plugin-enhanced-readabilities',
         '@nolebase/ui',
       ], 
-    },
-  },
-
-  markdown: {
-    math: true,
-    config(md) {
-      md.use(tabsMarkdownPlugin),
-      md.use(mathjax3),
-      md.use(footnote)
-    },
-    theme: {
-      light: "github-light",
-      dark: "github-dark"
     },
   },
   themeConfig: {
