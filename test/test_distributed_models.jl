@@ -285,15 +285,15 @@ end
 
 function test_complex_boundary_conditions(Rx, Ry, child_arch)
     arch  = Distributed(child_arch, partition=Partition(Rx, Ry))
-    
+
     # A grid with unity spacings in all directions
     grid  = RectilinearGrid(arch, topology=(Bounded, Bounded, Bounded), size=(2*Rx, 2*Ry, 1), extent=(2*Rx,2*Ry, 1))
     u_bc  = FluxBoundaryCondition(clock_field_dependent_boudary_condition, discrete_form=true)
     u_bcs = FieldBoundaryConditions(top=u_bc)
-    
+
     # A model with an Euler step
     model = HydrostaticFreeSurfaceModel(; grid, boundary_conditions=(; u=u_bcs), timestepper=:QuasiAdamsBashforth2, free_surface=SplitExplicitFreeSurface(grid; substeps=20))
-    model.timestepper.χ = -0.5    
+    model.timestepper.χ = -0.5
     @test model.velocities.u.boundary_conditions.top isa typeof(u_bc)
 
     # u += Δt ⋅ (t + u) / Δz where Δt == Δz == 1
@@ -478,7 +478,7 @@ end
             test_complex_boundary_conditions(Rx, Ry, child_arch)
         end
     end
-    
+
     @testset "Test Distributed MPI Grids" begin
         child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
 
