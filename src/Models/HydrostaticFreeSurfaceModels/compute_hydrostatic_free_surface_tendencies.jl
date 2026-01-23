@@ -8,7 +8,7 @@ using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
 using Oceananigans.Grids: get_active_cells_map
-using Oceananigans.Advection: near_y_immersed_boundary_biased_ᶜ
+using Oceananigans.Advection: near_y_immersed_boundary_biasedᶜ
 using KernelAbstractions: @kernel, @index
 """
     compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
@@ -149,7 +149,7 @@ end
 
 @kernel function condition_map!(max_scheme_field, ibg, scheme)
     i, j, k = @index(Global, NTuple)
-    @inbounds max_scheme_field[i, j, k] = near_y_immersed_boundary_biased_ᶜ(i, j, k, ibg, scheme)
+    @inbounds max_scheme_field[i, j, k] = near_y_immersed_boundary_biasedᶜ(i, j, k, ibg, scheme)
 end
 
 get_v_conditioned_map(scheme, grid; active_cells_map=nothing) = ()
