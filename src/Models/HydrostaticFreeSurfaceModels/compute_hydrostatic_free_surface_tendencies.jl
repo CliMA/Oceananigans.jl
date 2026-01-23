@@ -134,9 +134,9 @@ function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active
     return nothing
 end
 
-get_u_conditioned_map(scheme, grid; active_cells_map=nothing) = nothing
+get_u_conditioned_map(scheme, grid; active_cells_map=nothing) = ()
 
-get_v_conditioned_map(scheme, grid; active_cells_map=nothing) = nothing
+get_v_conditioned_map(scheme, grid; active_cells_map=nothing) = ()
 
 """
     compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters; active_cells_map=nothing)
@@ -174,13 +174,13 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args..., u_forcing)
     v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args..., v_forcing)
 
-    launch!(arch, grid, kernel_parameters,
+    launch_conditioned!(arch, grid, kernel_parameters, u_conditioned_maps,
             compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid,
-            u_kernel_args; u_conditioned_maps)
+            u_kernel_args)
 
-    launch!(arch, grid, kernel_parameters,
+    launch_conditioned!(arch, grid, kernel_parameters, v_conditioned_maps,
             compute_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid,
-            v_kernel_args; v_conditioned_maps)
+            v_kernel_args)
 
     return nothing
 end
