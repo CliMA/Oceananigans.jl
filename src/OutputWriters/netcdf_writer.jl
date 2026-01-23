@@ -84,19 +84,24 @@ dimension_name_generator_free_surface(dimension_name_generator, var_name, grid, 
                  deflatelevel = 0,
                  part = 1,
                  file_splitting = NoFileSplitting(),
-                 dimension_name_generator = trilocation_dim_name)
+                 dimension_name_generator = trilocation_dim_name,
+                 dimension_type = Float64)
 
 Construct a `NetCDFWriter` that writes `(label, output)` pairs in `outputs` to a NetCDF file.
-The `outputs` can be a `Dict` or `NamedTuple` where each `label` is a string and each `output` is
-one of:
 
-- A `Field` (e.g., `model.velocities.u`)
-- A `Reduction` (e.g., `Average(model.tracers.T, dims=(1, 2))`)
+!!! note "NCDatasets required"
+    `NetCDFWriter` requires NCDatasets.jl to be loaded: `using NCDatasets`
+
+The `outputs` can be a `Dict` or `NamedTuple` where each `label` is a symbol or string and each `output` is one of:
+
+- An `AbstractField` (e.g., `model.velocities.u`, `model.tracers.T`)
+- An `AbstractOperation` or `Reduction` (e.g., `Average(model.tracers.T, dims=(1, 2))`)
 - `LagrangianParticles` for particle tracking data
-- A function `f(model)` that returns something to be written to disk
+- A function `f(model)` that returns data to be written to disk
 
-If any of `outputs` are not `AbstractField`, `Reduction`, or `LagrangianParticles`, their spatial
-`dimensions` must be provided.
+If any `outputs` are not `AbstractField`, `AbstractOperation`, `Reduction`, or `LagrangianParticles`,
+their spatial `dimensions` must be provided as a `Dict` or `NamedTuple` mapping output names to
+dimension name tuples.
 
 Required arguments
 ==================
@@ -104,25 +109,25 @@ Required arguments
 - `model`: The Oceananigans model instance.
 
 - `outputs`: A collection of outputs to write, specified as either:
-  * A `Dict` with string keys and Field/function values.
-  * A `NamedTuple` of `Field`s or functions.
+  * A `Dict` with `Symbol` or `String` keys and field/operation/function values
+  * A `NamedTuple` of fields, operations, or functions
 
 Required keyword arguments
 ==========================
 
-- `filename`: Descriptive filename. `".nc"` is appended if not present.
+- `filename`: Descriptive filename. `".nc"` is appended automatically if not present.
 
 - `schedule`: An `AbstractSchedule` that determines when output is saved. Options include:
-  * `TimeInterval(dt)`: Save every `dt` seconds of simulation time.
-  * `IterationInterval(n)`: Save every `n` iterations.
-  * `AveragedTimeInterval(dt; window, stride)`: Time-average output over a window before saving.
-  * `WallTimeInterval(dt)`: Save every `dt` seconds of wall clock time.
+  * `TimeInterval(dt)`: Save every `dt` seconds of simulation time
+  * `IterationInterval(n)`: Save every `n` iterations
+  * `AveragedTimeInterval(dt; window, stride)`: Time-average output over a window before saving
+  * `WallTimeInterval(dt)`: Save every `dt` seconds of wall clock time
 
 Optional keyword arguments
 ==========================
 
-- `grid`: The grid associated with `outputs`. Defaults to `model.grid`. To use `outputs` on a different
-          grid than `model.grid`, provide the proper `grid` here.
+- `grid`: The grid associated with `outputs`. Default: `model.grid`.
+          Use this to specify a different grid when outputs are interpolated or regridded.
 
 - `dir`: Directory to save output to. Default: `"."`.
 
@@ -136,10 +141,10 @@ Optional keyword arguments
                        Some useful global attributes are included by default but will be overwritten if
                        included in this `Dict`.
 
-- `output_attributes`: `Dict` or `NamedTuple` of attributes to be saved with each field variable.
-                       Default: `Dict()`. Reasonable defaults including descriptive names and units are
-                       provided for velocities, buoyancy, temperature, and salinity. Attributes provided
-                       here will overwrite the defaults.
+- `output_attributes`: `Dict` or `NamedTuple` of attributes to save with each output variable.
+                       Default: `Dict()`.
+                       Reasonable defaults (long_name, units) are provided for standard variables
+                       (u, v, w, T, S, b) and can be overwritten here.
 
 - `dimensions`: A `Dict` or `NamedTuple` of dimension tuples to apply to outputs (required for function
                 outputs that return custom data).
@@ -163,7 +168,7 @@ Optional keyword arguments
                   and 9 means maximum compression). See [NCDatasets.jl documentation](https://alexander-barth.github.io/NCDatasets.jl/stable/variables/#Creating-a-variable)
                   for more information.
 
-- `part`: The starting part number used when file splitting. Default: `1`.
+- `part`: Starting part number for file splitting. Default: `1`.
 
 - `file_splitting`: Schedule for splitting the output file. The new files will be suffixed with
                     `_part1`, `_part2`, etc. Options include:
@@ -176,6 +181,9 @@ Optional keyword arguments
                               to the name of the dimension `var_name` on `grid` with location `(LX, LY, LZ)`
                               along `dim`. This advanced option can be used to rename dimensions and variables
                               to satisfy certain naming conventions. Default: `trilocation_dim_name`.
+
+- `dimension_type`: Floating point type for dimension coordinate arrays. Default: `Float64`.
+                    Use `Float32` to reduce file size if needed.
 
 Examples
 ========
