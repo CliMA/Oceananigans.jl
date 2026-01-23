@@ -16,6 +16,10 @@ import Oceananigans.Fields as FD
 import Oceananigans.Grids as GD
 import Oceananigans: Clock
 
+using Oceananigans.Grids: XYZRegularRG
+using Oceananigans.Solvers: ConjugateGradientPoissonSolver
+import Oceananigans.Models.NonhydrostaticModels: nonhydrostatic_pressure_solver
+
 const MetalGPU = GPU{<:Metal.MetalBackend}
 MetalGPU() = GPU(Metal.MetalBackend())
 Base.summary(::MetalGPU) = "MetalGPU"
@@ -66,5 +70,7 @@ end
 
 const MetalGrid = GD.AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:MetalGPU}
 Clock(grid::MetalGrid) = Clock{Float32}(time=0)
+
+nonhydrostatic_pressure_solver(::MetalGPU, grid::XYZRegularRG, ::Nothing) = ConjugateGradientPoissonSolver(grid)
 
 end # module
