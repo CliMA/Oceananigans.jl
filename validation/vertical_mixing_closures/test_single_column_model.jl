@@ -25,4 +25,3 @@ time_step!(model, 600)
 @time for n = 1:100
     time_step!(model, 600)
 end
-

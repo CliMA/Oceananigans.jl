@@ -79,4 +79,3 @@ function fill_halo_event!(c, kernel!, bcs::SouthAndNorthPolarBC, loc, grid, args
     update_pole_value!(bcs[2].condition, c, grid, loc)
     return kernel!(c, bcs..., loc, grid, Tuple(args))
 end
-

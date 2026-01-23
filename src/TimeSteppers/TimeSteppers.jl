@@ -3,7 +3,7 @@ module TimeSteppers
 export
     QuasiAdamsBashforth2TimeStepper,
     RungeKutta3TimeStepper,
-    SplitRungeKutta3TimeStepper,
+    SplitRungeKuttaTimeStepper,
     time_step!,
     Clock
 
@@ -21,9 +21,6 @@ function update_state! end
 function compute_tendencies! end
 function compute_flux_bc_tendencies! end
 
-compute_pressure_correction!(model, Δt) = nothing
-make_pressure_correction!(model, Δt) = nothing
-
 # Interface for time-stepping Lagrangian particles
 abstract type AbstractLagrangianParticles end
 step_lagrangian_particles!(model, Δt) = nothing
@@ -32,10 +29,9 @@ reset!(timestepper) = nothing
 implicit_step!(field, ::Nothing, args...; kwargs...) = nothing
 
 include("clock.jl")
-include("store_tendencies.jl")
 include("quasi_adams_bashforth_2.jl")
 include("runge_kutta_3.jl")
-include("split_hydrostatic_runge_kutta_3.jl")
+include("split_runge_kutta.jl")
 
 """
     TimeStepper(name::Symbol, args...; kwargs...)
@@ -61,8 +57,18 @@ TimeStepper(::Val{:QuasiAdamsBashforth2}, args...; kwargs...) =
 TimeStepper(::Val{:RungeKutta3}, args...; kwargs...) =
     RungeKutta3TimeStepper(args...; kwargs...)
 
-TimeStepper(::Val{:SplitRungeKutta3}, args...; kwargs...) =
-    SplitRungeKutta3TimeStepper(args...; kwargs...)
+# Convenience constructors for SplitRungeKuttaTimeStepper with 2 to 5 stages
+# By calling TimeStepper(:SplitRungeKuttaN, ...)
+for stages in 2:5
+    @eval TimeStepper(::Val{Symbol(:SplitRungeKutta, $stages)}, args...; kwargs...) =
+              SplitRungeKuttaTimeStepper(args...; coefficients=tuple(collect($stages:-1:1)...), kwargs...)
+end
+
+TimeStepper(ts::SplitRungeKuttaTimeStepper, grid, prognostic_fields; kw...) =
+    SplitRungeKuttaTimeStepper(grid, prognostic_fields; coefficients=ts.β, kw...)
+
+TimeStepper(ts::QuasiAdamsBashforth2TimeStepper, grid, prognostic_fields; kw...) =
+    QuasiAdamsBashforth2TimeStepper(grid, prognostic_fields; χ=ts.χ, kw...)
 
 function first_time_step!(model::AbstractModel, Δt)
     initialize!(model)

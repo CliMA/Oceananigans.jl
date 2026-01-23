@@ -169,9 +169,7 @@ cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
 function fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc, grid::DistributedGrid, buffers, args...;
                           async = false, only_local_halos = false, kwargs...)
 
-    if only_local_halos # No need to do anything here
-        return nothing
-    end
+    only_local_halos && return nothing # No need to do anything here
 
     buffer_side = kernel!.side
     arch = architecture(grid)
