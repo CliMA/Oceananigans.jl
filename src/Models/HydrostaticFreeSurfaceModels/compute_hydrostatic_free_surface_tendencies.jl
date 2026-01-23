@@ -8,6 +8,11 @@ using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
 using Oceananigans.Grids: get_active_cells_map
+using Oceananigans.Advection: near_y_immersed_boundary_biased_ᶜ
+using KernelAbstractions: @kernel, @index
+"""
+    compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
+>>>>>>> 6afff2baa (Add stub function for u-advection conditioning)
 
 """
     compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
@@ -134,7 +139,18 @@ function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active
     return nothing
 end
 
-get_u_conditioned_map(scheme, grid; active_cells_map=nothing) = ()
+function get_u_conditioned_map(scheme, grid; active_cells_map=nothing)
+    # Field is true if the max scheme can be used for computing u advection
+    max_scheme_field = Field{Center, Center, Center}(grid, Bool)
+    fill!(max_scheme_field, false)
+    launch!(architecture(grid), grid, :xyz, condition_map!, max_scheme_field, grid; active_cells_map)
+    return ()
+end
+
+@kernel function condition_map!(max_scheme_field, ibg, scheme)
+    i, j, k = @index(Global, NTuple)
+    @inbounds max_scheme_field[i, j, k] = near_y_immersed_boundary_biased_ᶜ(i, j, k, ibg, scheme)
+end
 
 get_v_conditioned_map(scheme, grid; active_cells_map=nothing) = ()
 
@@ -148,8 +164,8 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     grid = model.grid
     arch = architecture(grid)
 
-		u_conditioned_maps = get_u_conditioned_map(model.advection.momentum, grid; active_cells_map)
-		v_conditioned_maps = get_v_conditioned_map(model.advection.momentum, grid; active_cells_map)
+		u_conditioned_maps = get_u_conditioned_map(model.advection.momentum.vorticity_scheme, grid; active_cells_map)
+		v_conditioned_maps = get_v_conditioned_map(model.advection.momentum.vorticity_scheme, grid; active_cells_map)
 
     u_immersed_bc = immersed_boundary_condition(velocities.u)
     v_immersed_bc = immersed_boundary_condition(velocities.v)
