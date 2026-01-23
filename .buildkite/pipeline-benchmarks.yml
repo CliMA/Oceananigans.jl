@@ -7,7 +7,7 @@ env:
   JULIA_NUM_PRECOMPILE_TASKS: 24
   JULIA_NUM_THREADS: 8
   NSYS: "/storage6/nsight/bin/nsys"
-  CUDA_VISIBLE_DEVICES: "0" # Tartarus device for GPU Benchmarking
+  CUDA_VISIBLE_DEVICES: "0" # Tartarus device for GPU Benchmarking TODO: Find a better solution, i.e. an idle device
   TMPDIR: "$TARTARUS_HOME/tmp"
 
 steps:
