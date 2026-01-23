@@ -323,7 +323,7 @@ function fill_halo_regions!(grid::ConformalCubedSphereGridOfSomeKind{FT, TX, TY,
         end
 
         if TX == FullyConnected
-            fill_halo_regions!(field₁, field₂; signed = false)
+            fill_halo_regions!((field₁, field₂); signed = false)
         end
 
         for region in 1:number_of_regions(grid)
