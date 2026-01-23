@@ -5,6 +5,7 @@ using Oceananigans.Fields: TracerFields, XFaceField, YFaceField
 using Oceananigans.Utils: prettytime
 using Adapt: Adapt
 
+import Oceananigans: prognostic_state, restore_prognostic_state!
 import ..HydrostaticFreeSurfaceModels: hydrostatic_tendency_fields
 
 struct SplitExplicitFreeSurface{H, U, M, FT, K , S, T} <: AbstractFreeSurface{H, FT}
@@ -39,8 +40,8 @@ of the velocity field ``u`` and ``v``, ``H`` is the column depth, ``G^U`` is the
 tendency of ``u`` and ``v``, and ``g`` is the gravitational acceleration.
 
 The discretized equations are solved within a baroclinic timestep (``Δt``) by substepping with a ``Δτ < Δt``.
-The barotropic velocities are filtered throughout the substepping and, finally, the barotropic mode of the velocities 
-at the new time step is corrected with the filtered velocities. The complementary filtered transport barotropic velocities, 
+The barotropic velocities are filtered throughout the substepping and, finally, the barotropic mode of the velocities
+at the new time step is corrected with the filtered velocities. The complementary filtered transport barotropic velocities,
 `Ũ` and `Ṽ`, are used as transport barotropic velocities for tracer advection.
 
 Fields
@@ -69,9 +70,8 @@ When materialized (see [`materialize_free_surface`](@ref)), a `SplitExplicitFree
   strategy. `FixedSubstepNumber` uses a fixed number of substeps with fractional step sizes, while
   `FixedTimeStepSize` uses a fixed barotropic time step size based on a CFL condition.
 
-- `timestepper`: Time stepping scheme for barotropic advancement. Either `ForwardBackwardScheme()` (which
-  contains no auxiliary fields) or `AdamsBashforth3Scheme` (which contains auxiliary fields `ηᵐ`, `ηᵐ⁻¹`, `ηᵐ⁻²`,
-  `Uᵐ⁻¹`, `Uᵐ⁻²`, `Vᵐ⁻¹`, `Vᵐ⁻²` for storing previous time step values, along with extrapolation coefficients).
+- `timestepper`: Time stepping scheme for barotropic advancement. Only `ForwardBackwardScheme()` is implemented (which
+  contains no auxiliary fields).
 
 Keyword Arguments
 =================
@@ -108,9 +108,8 @@ Keyword Arguments
                       `averaging_kernel > 0`. By default, the averaging kernel described by
                       [Shchepetkin and McWilliams (2005)](@cite Shchepetkin2005) is used.
 
-- `timestepper`: Time stepping scheme used for the barotropic advancement. Choose one of:
-  * `ForwardBackwardScheme()` (default): `η = f(U)`   then `U = f(η)`,
-  * `AdamsBashforth3Scheme()`: `η = f(U, Uᵐ⁻¹, Uᵐ⁻²)` then `U = f(η, ηᵐ, ηᵐ⁻¹, ηᵐ⁻²)`.
+- `timestepper`: Time stepping scheme used for the barotropic advancement. Only one supported:
+  * `ForwardBackwardScheme()` (default): `η = f(U)` then `U = f(η)`,
 
 References
 ==========
@@ -176,6 +175,10 @@ end
 # Disambiguation for a default `SplitExplicitFreeSurface` constructor
 split_explicit_substepping(::Nothing, ::Nothing, ::Nothing, grid, averaging_kernel, gravitational_acceleration) =
     split_explicit_substepping(nothing, MINIMUM_SUBSTEPS, nothing, grid, averaging_kernel, gravitational_acceleration)
+
+# Disambiguation
+split_explicit_substepping(::Nothing, ::Nothing, fixed_Δt, grid, averaging_kernel, gravitational_acceleration) =
+    split_explicit_substepping(nothing, MINIMUM_SUBSTEPS, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
 
 # TODO: When open boundary conditions are online
 # We need to calculate the barotropic boundary conditions
@@ -307,21 +310,14 @@ end
     Δτ = τᶠ[2] - τᶠ[1]
 
     averaging_weights = map(averaging_kernel, τᶠ[2:end])
-    M★ = substeps
-
     # Find the latest allowable weight
-    for i in substeps:-1:1
-        if averaging_weights[i] > 0
-            M★ = i
-            break
-        end
-    end
+    M★ = something(findlast(>(0), averaging_weights), firstindex(averaging_weights))
 
-    averaging_weights = averaging_weights[1:M★]
-    averaging_weights ./= sum(averaging_weights)
-    transport_weights = [sum(averaging_weights[i:M★]) for i in 1:M★] ./ M
+    trimmed_weights = averaging_weights[1:M★]
+    trimmed_weights ./= sum(trimmed_weights)
+    transport_weights = [sum(trimmed_weights[i:M★]) for i in 1:M★] ./ M
 
-    return FT(Δτ), map(FT, tuple(averaging_weights...)), map(FT, tuple(transport_weights...))
+    return FT(Δτ), map(FT, tuple(trimmed_weights...)), map(FT, tuple(transport_weights...))
 end
 
 Base.summary(s::FixedTimeStepSize)  = string("FixedTimeStepSize($(prettytime(s.Δt_barotropic)))")
@@ -382,7 +378,6 @@ Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface) =
                              Adapt.adapt(to, free_surface.timestepper))
 
 for Type in (SplitExplicitFreeSurface,
-             AdamsBashforth3Scheme,
              FixedTimeStepSize,
              FixedSubstepNumber)
 
@@ -393,3 +388,22 @@ for Type in (SplitExplicitFreeSurface,
         end
     end
 end
+
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(fs::SplitExplicitFreeSurface)
+    return (displacement = prognostic_state(fs.displacement),
+            barotropic_velocities = prognostic_state(fs.barotropic_velocities),
+            timestepper = prognostic_state(fs.timestepper))
+end
+
+function restore_prognostic_state!(fs::SplitExplicitFreeSurface, state)
+    restore_prognostic_state!(fs.displacement, state.displacement)
+    restore_prognostic_state!(fs.barotropic_velocities, state.barotropic_velocities)
+    restore_prognostic_state!(fs.timestepper, state.timestepper)
+    return fs
+end
+
+restore_prognostic_state!(::SplitExplicitFreeSurface, ::Nothing) = nothing

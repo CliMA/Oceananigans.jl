@@ -1,13 +1,10 @@
 using Oceananigans.BoundaryConditions: get_boundary_kernels, DistributedCommunication
-
 using Oceananigans.DistributedComputations: cooperative_waitall!, recv_from_buffers!, distributed_fill_halo_event!,
 using Oceananigans.DistributedComputations: CommunicationBuffers, fill_corners!, loc_id
 using Oceananigans.Fields: location
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.DistributedComputations: synchronize_communication!
-
-using OffsetArrays: OffsetArray
 
 @inline instantiate(T::DataType) = T()
 @inline instantiate(T) = T
@@ -54,8 +51,11 @@ end
     return nothing
 end
 
+# Disambiguation
+fill_halo_regions!(c::OffsetArray, ::Nothing, indices, loc, ::DistributedTripolarGridOfSomeKind, args...; kwargs...) = nothing
+
 function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedTripolarGridOfSomeKind, buffers::CommunicationBuffers, args...; kwargs...)
-  
+
     arch = architecture(grid)
     kernels!, ordered_bcs = get_boundary_kernels(bcs, c, grid, loc, indices)
 
@@ -79,7 +79,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
         north_bc = bcs.north
         switch_north_halos!(c, north_bc, grid, loc)
     end
-  
+
     return nothing
 end
 
@@ -100,9 +100,7 @@ function synchronize_communication!(field::Field{<:Any, <:Any, <:Any, <:Any, <:D
     recv_from_buffers!(field.data, field.communication_buffers, field.grid)
 
     north_bc = field.boundary_conditions.north
-    instantiated_location = map(instantiate, location(field))
-
-    switch_north_halos!(field, north_bc, field.grid, instantiated_location)
+    switch_north_halos!(field, north_bc, field.grid, instantiated_location(field))
 
     return nothing
 end

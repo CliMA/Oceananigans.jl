@@ -33,7 +33,7 @@ ext(::Type{JLD2Writer}) = ".jld2"
                file_splitting = NoFileSplitting(),
                overwrite_existing = false,
                init = noinit,
-               including = [],
+               including = default_included_properties(model),
                verbose = false,
                part = 1,
                jld2_kw = Dict{Symbol, Any}())
@@ -162,15 +162,15 @@ function JLD2Writer(model, outputs; filename, schedule,
     initialize!(file_splitting, model)
     update_file_splitting_schedule!(file_splitting, filepath)
 
-    outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], indices, with_halos) for name in keys(outputs))
+    nt_outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], indices, with_halos) for name in keys(outputs))
     schedule = materialize_schedule(schedule)
 
     # Convert each output to WindowedTimeAverage if schedule::AveragedTimeWindow is specified
-    schedule, outputs = time_average_outputs(schedule, outputs, model)
+    schedule, d_outputs = time_average_outputs(schedule, nt_outputs, model)
 
     # Note: file initialization is deferred until `initialize!(writer, model)` is called
     # (typically when `run!` is invoked on a Simulation containing this writer)
-    return JLD2Writer(filepath, outputs, schedule, array_type, init,
+    return JLD2Writer(filepath, d_outputs, schedule, array_type, init,
                       including, part, file_splitting, overwrite_existing, verbose, jld2_kw, false)
 end
 

@@ -12,6 +12,8 @@ import Oceananigans.Architectures:
     convert_to_device,
     on_architecture
 
+import Oceananigans.Fields as FD
+
 const MetalGPU = GPU{<:Metal.MetalBackend}
 MetalGPU() = GPU(Metal.MetalBackend())
 Base.summary(::MetalGPU) = "MetalGPU"
@@ -50,5 +52,14 @@ Metal.@device_override @inline function __validindex(ctx::MappedCompilerMetadata
     end
 end
 
-end # module
 
+function FD.maybe_copy_interior(::MetalGPU, r::FD.AbstractField)
+    interior_r = interior(r)
+
+    if parent(interior_r) !== interior_r
+        interior_r = copy(interior_r)
+    end
+    return interior_r
+end
+
+end # module

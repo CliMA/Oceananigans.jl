@@ -1,0 +1,36 @@
+name: Whitespace
+
+permissions: {}
+
+on:
+  push:
+    branches:
+      - 'main'
+  pull_request:
+
+jobs:
+  whitespace:
+    name: Check whitespace
+    runs-on: ubuntu-latest
+    timeout-minutes: 2
+    steps:
+      - name: Checkout the repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+      - name: Checkout the JuliaLang/julia repository
+        uses: actions/checkout@v6
+        with:
+          persist-credentials: false
+          repository: 'JuliaLang/julia'
+          # Clone Julia in a subdir.
+          path: '.julia'
+          # Check out a fixed revision to avoid surprises in case the script is
+          # changed in the future.
+          ref: '3b12a882e887753e4d2e9e9db65d99d3f7d9e26b'
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: '1.12.4'
+      - name: Check whitespace
+        run: |
+          .julia/contrib/check-whitespace.jl

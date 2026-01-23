@@ -1,12 +1,11 @@
-using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
-using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
-using Oceananigans.Biogeochemistry: biogeochemical_transition, biogeochemical_drift_velocity
-using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∇_dot_qᶜ
 using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v
+using Oceananigans.Biogeochemistry: biogeochemical_transition, biogeochemical_drift_velocity
 using Oceananigans.Forcings: with_advective_forcing
-using Oceananigans.TurbulenceClosures: closure_auxiliary_velocity
+using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
+using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ,
+                                       immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∇_dot_qᶜ,
+                                       closure_auxiliary_velocity
 using Oceananigans.Utils: sum_of_velocities
-using KernelAbstractions: @private
 
 """
 Return the tendency for the horizontal velocity in the ``x``-direction, or the east-west

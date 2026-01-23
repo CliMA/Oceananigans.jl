@@ -7,9 +7,7 @@ using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
 using Oceananigans.TurbulenceClosures: compute_diffusivities!
 using Oceananigans.Fields: compute!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
-using Oceananigans.Models: update_model_field_time_series!
-
-import Oceananigans.TimeSteppers: update_state!
+using Oceananigans.Models: update_model_field_time_series!, surface_kernel_parameters
 
 """
     update_state!(model::NonhydrostaticModel, callbacks=[])
@@ -18,11 +16,11 @@ Update peripheral aspects of the model (halo regions, diffusivities, hydrostatic
 pressure) to the current model state. If `callbacks` are provided (in an array),
 they are called in the end.
 """
-function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendencies = true)
+function update_state!(model::NonhydrostaticModel, callbacks=[])
 
     # Mask immersed tracers
     foreach(model.tracers) do tracer
-        @apply_regionally mask_immersed_field!(tracer)
+        mask_immersed_field!(tracer)
     end
 
     # Update all FieldTimeSeries used in the model
@@ -32,7 +30,7 @@ function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendenc
     update_boundary_conditions!(fields(model), model)
 
     # Fill halos for velocities and tracers
-    fill_halo_regions!(merge(model.velocities, model.tracers), model.grid, model.clock, fields(model); fill_open_bcs=false, async=true)
+    fill_halo_regions!(merge(model.velocities, model.tracers), model.clock, fields(model); fill_open_bcs=false, async=true)
 
     # Compute auxiliary fields
     for aux_field in model.auxiliary_fields
@@ -40,23 +38,22 @@ function update_state!(model::NonhydrostaticModel, callbacks=[]; compute_tendenc
     end
 
     # Calculate diffusivities and hydrostatic pressure
-    @apply_regionally compute_auxiliaries!(model)
+    compute_auxiliaries!(model)
 
     fill_halo_regions!(model.closure_fields; only_local_halos=true)
+    fill_halo_regions!(model.pressures.pHY′; only_local_halos=true)
 
     for callback in callbacks
         callback.callsite isa UpdateStateCallsite && callback(model)
     end
 
+    compute_tendencies!(model, callbacks)
     update_biogeochemical_state!(model.biogeochemistry, model)
-
-    compute_tendencies &&
-        @apply_regionally compute_tendencies!(model, callbacks)
 
     return nothing
 end
 
-function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = p_kernel_parameters(model.grid),
+function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = surface_kernel_parameters(model.grid),
                                                           κ_parameters = :xyz)
 
     grid = model.grid
