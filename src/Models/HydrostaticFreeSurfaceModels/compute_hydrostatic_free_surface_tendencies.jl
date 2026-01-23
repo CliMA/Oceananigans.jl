@@ -143,7 +143,7 @@ function get_u_conditioned_map(scheme, grid; active_cells_map=nothing)
     # Field is true if the max scheme can be used for computing u advection
     max_scheme_field = Field{Center, Center, Center}(grid, Bool)
     fill!(max_scheme_field, false)
-    launch!(architecture(grid), grid, :xyz, condition_map!, max_scheme_field, grid; active_cells_map)
+    launch!(architecture(grid), grid, :xyz, condition_map!, max_scheme_field, grid, scheme; active_cells_map)
     return ()
 end
 
