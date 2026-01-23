@@ -137,7 +137,7 @@ end
     grid = RectilinearGrid(arch; size=(32, 32, 8), x=(0, 5000), y=(0, 5000), z=(-20, 0))
     @test eltype(grid) == Float32
 
-    model = NonhydrostaticModel(grid;)
+    model = NonhydrostaticModel(grid)
     sim = Simulation(model, Δt=5, stop_iteration=2)
     run!(sim)
     @test time(sim) == 10seconds
