@@ -133,8 +133,6 @@ end
 end
 
 @testset "MetalGPU: Nonhydrostatic model" begin
-    using Oceananigans.Solvers: ConjugateGradientPoissonSolver
-
     arch = GPU(Metal.MetalBackend());
     grid = RectilinearGrid(arch; size=(32, 32, 8), x=(0, 5000), y=(0, 5000), z=(-20, 0))
     @test eltype(grid) == Float32
