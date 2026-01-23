@@ -19,6 +19,7 @@ using Oceananigans.Fields: interpolate, compute!, location
 using Oceananigans.TimeSteppers: AbstractLagrangianParticles
 using Oceananigans.Utils: datatuple, launch!, prettysummary
 
+import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.TimeSteppers: step_lagrangian_particles!
 import Oceananigans.OutputWriters: serializeproperty!, fetch_output
 
@@ -156,5 +157,18 @@ function fetch_output(lagrangian_particles::LagrangianParticles, model)
     names = propertynames(particle_properties)
     return NamedTuple{names}([getproperty(particle_properties, name) for name in names])
 end
+
+# Checkpointing
+
+function prognostic_state(lagrangian_particles::LagrangianParticles)
+    return (; properties = prognostic_state(lagrangian_particles.properties))
+end
+
+function restore_prognostic_state!(lagrangian_particles::LagrangianParticles, state)
+    restore_prognostic_state!(lagrangian_particles.properties, state.properties)
+    return lagrangian_particles
+end
+
+restore_prognostic_state!(::LagrangianParticles, ::Nothing) = nothing
 
 end # module

@@ -4,6 +4,8 @@ using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Solvers: solve!
 using Oceananigans.Utils: prettytime, prettysummary
 
+import Oceananigans: prognostic_state, restore_prognostic_state!
+
 using Adapt: Adapt
 
 struct ImplicitFreeSurface{E, G, I, M, S} <: AbstractFreeSurface{E, G}
@@ -106,7 +108,7 @@ function materialize_free_surface(free_surface::ImplicitFreeSurface{Nothing}, ve
                                free_surface.solver_settings)
 end
 
-build_implicit_step_solver(::Val{:Default}, grid::XYRegularRG, settings, gravitational_acceleration) =
+build_implicit_step_solver(::Val{:Default}, grid::XYRegularStaticRG, settings, gravitational_acceleration) =
     build_implicit_step_solver(Val(:FastFourierTransform), grid, settings, gravitational_acceleration)
 
 build_implicit_step_solver(::Val{:Default}, grid, settings, gravitational_acceleration) =
@@ -125,7 +127,7 @@ function step_free_surface!(free_surface::ImplicitFreeSurface, model, timesteppe
     solver = free_surface.implicit_step_solver
 
     fill_halo_regions!(model.velocities, model.clock, fields(model))
-    
+
     @apply_regionally begin
         mask_immersed_field!(model.velocities.u)
         mask_immersed_field!(model.velocities.v)
@@ -145,8 +147,23 @@ function step_free_surface!(free_surface::ImplicitFreeSurface, model, timesteppe
     return nothing
 end
 
-function step_free_surface!(free_surface::ImplicitFreeSurface, model, timestepper::SplitRungeKutta3TimeStepper, Δt)
+function step_free_surface!(free_surface::ImplicitFreeSurface, model, timestepper::SplitRungeKuttaTimeStepper, Δt)
     parent(free_surface.displacement) .= parent(timestepper.Ψ⁻.η)
     step_free_surface!(free_surface, model, nothing, Δt)
     return nothing
 end
+
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(fs::ImplicitFreeSurface)
+    return (; displacement = prognostic_state(fs.displacement))
+end
+
+function restore_prognostic_state!(fs::ImplicitFreeSurface, state)
+    restore_prognostic_state!(fs.displacement, state.displacement)
+    return fs
+end
+
+restore_prognostic_state!(::ImplicitFreeSurface, ::Nothing) = nothing

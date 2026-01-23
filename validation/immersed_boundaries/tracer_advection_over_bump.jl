@@ -105,4 +105,3 @@ simulation.output_writers[:fields] = JLD2Writer(model, model.tracers,
                                                 force = true)
 
 run!(simulation)
-

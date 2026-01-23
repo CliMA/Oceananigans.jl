@@ -1,3 +1,4 @@
+import Oceananigans: prognostic_state, restore_prognostic_state!
 using Oceananigans.BoundaryConditions:  construct_boundary_conditions_kernels, OBC, MCBC,
     Zipper, validate_boundary_condition_architecture, validate_boundary_condition_topology
 using Oceananigans.Grids: parent_index_range, default_indices, validate_indices,
@@ -696,7 +697,6 @@ get_neutral_mask(::Union{AllReduction, AnyReduction})  = true
 get_neutral_mask(::Union{SumReduction, MeanReduction}) = 0
 get_neutral_mask(::ProdReduction)    = 1
 
-# TODO make this Float32 friendly
 get_neutral_mask(::MinimumReduction) = +Inf
 get_neutral_mask(::MaximumReduction) = -Inf
 
@@ -730,6 +730,19 @@ const Identity = typeof(Base.identity)
 end
 
 # Allocating and in-place reductions
+
+"""
+    maybe_copy_interior(r::AbstractField)
+
+Return the interior view of `r`, materialized if necessary to be GPU-native on MetalGPU.
+MetalGPU does not support ReshapedArray in kernels,
+so copying ensures the reduction operates on a GPU-native array.
+"""
+maybe_copy_interior(r::AbstractField) = maybe_copy_interior(architecture(r), r)
+
+# Extended in the OceananigansMetalExt for compatibility with Metal
+maybe_copy_interior(arch, r) = interior(r)
+
 for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 
     reduction! = Symbol(reduction, '!')
@@ -743,11 +756,11 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                                     condition = nothing,
                                     mask = get_neutral_mask(Base.$(reduction!)),
                                     kwargs...)
-
+            mask = convert(eltype(a), mask)
             operand = condition_operand(f, a, condition, mask)
 
             return Base.$(reduction!)(identity,
-                                      interior(r),
+                                      maybe_copy_interior(r),
                                       operand;
                                       kwargs...)
         end
@@ -758,8 +771,10 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                                     mask = get_neutral_mask(Base.$(reduction!)),
                                     kwargs...)
 
+
+            mask = convert(eltype(a), mask)
             return Base.$(reduction!)(identity,
-                                      interior(r),
+                                      maybe_copy_interior(r),
                                       condition_operand(a, condition, mask);
                                       kwargs...)
         end
@@ -771,12 +786,13 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
                                    mask = get_neutral_mask(Base.$(reduction!)),
                                    dims = :)
 
+            mask = convert(eltype(c), mask)
             conditioned_c = condition_operand(f, c, condition, mask)
             T = filltype(Base.$(reduction!), c)
             loc = reduced_location(instantiated_location(c); dims)
             r = Field(loc, c.grid, T; indices=indices(c))
             initialize_reduced_field!(Base.$(reduction!), identity, r, conditioned_c)
-            Base.$(reduction!)(identity, interior(r), conditioned_c, init=false)
+            Base.$(reduction!)(identity, maybe_copy_interior(r), conditioned_c, init=false)
 
             if dims isa Colon
                 return @allowscalar first(r)
@@ -794,11 +810,13 @@ Base.extrema(c::AbstractField; kwargs...) = (minimum(c; kwargs...), maximum(c; k
 Base.extrema(f, c::AbstractField; kwargs...) = (minimum(f, c; kwargs...), maximum(f, c; kwargs...))
 
 function Statistics._mean(f, c::AbstractField, ::Colon; condition = nothing, mask = 0)
+    mask = convert(eltype(c), mask)
     operator = condition_operand(f, c, condition, mask)
     return sum(operator) / conditional_length(operator)
 end
 
 function Statistics._mean(f, c::AbstractField, dims; condition = nothing, mask = 0)
+    mask = convert(eltype(c), mask)
     operand = condition_operand(f, c, condition, mask)
     r = sum(operand; dims)
     L = conditional_length(operand, dims)
@@ -814,6 +832,7 @@ Statistics.mean(f::Function, c::AbstractField; condition = nothing, dims=:) = St
 Statistics.mean(c::AbstractField; condition = nothing, dims=:) = Statistics._mean(identity, c, dims; condition)
 
 function Statistics.mean!(f::Function, r::ReducedAbstractField, a::AbstractField; condition = nothing, mask = 0)
+    mask = convert(eltype(a), mask)
     sum!(f, r, a; condition, mask, init=true)
     dims = reduced_dimension(location(r))
     L = conditional_length(condition_operand(f, a, condition, mask), dims)
@@ -856,3 +875,18 @@ end
 #####
 
 Grids.nodes(f::Field; kwargs...) = nodes(f.grid, instantiated_location(f)...; indices=indices(f), kwargs...)
+
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(field::Field)
+    return (; data = prognostic_state(field.data))
+end
+
+function restore_prognostic_state!(field::Field, state)
+    restore_prognostic_state!(field.data, state.data)
+    return field
+end
+
+restore_prognostic_state!(::Field, ::Nothing) = nothing

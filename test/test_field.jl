@@ -7,6 +7,7 @@ using Oceananigans.Fields: VelocityFields, TracerFields, interpolate, interpolat
 using Oceananigans.Fields: reduced_location
 using Oceananigans.Fields: FractionalIndices, interpolator, instantiate
 using Oceananigans.Fields: convert_to_0_360, convert_to_λ₀_λ₀_plus360
+using Oceananigans.Fields: ZeroField, OneField, ConstantField, prognostic_state, restore_prognostic_state!
 using Oceananigans.Grids: ξnode, ηnode, rnode
 using Oceananigans.Grids: total_length
 using Oceananigans.Grids: λnode
@@ -147,8 +148,8 @@ function run_field_interpolation_tests(grid)
 
         result = true
         @allowscalar begin
-            for i in size(f, 1), j in size(f, 2), k in size(f, 3)
-                x, y, z = node(i, j, k, f)
+            for k in size(f, 3), j in size(f, 2), i in size(f, 1)
+                x, y, z = Oceananigans.node(i, j, k, f)
                 ℑf = interpolate((x, y, z), f, loc, f.grid)
                 true_value = interior(f, i, j, k)[]
 
@@ -179,8 +180,8 @@ function run_field_interpolation_tests(grid)
         for f in (u, v, w, c)
             loc = Tuple(L() for L in location(f))
             result = true
-            for i in size(f, 1), j in size(f, 2), k in size(f, 3)
-                xi, yi, zi = node(i, j, k, f)
+            for k in size(f, 3), j in size(f, 2), i in size(f, 1)
+                xi, yi, zi = Oceananigans.node(i, j, k, f)
                 ℑf = interpolate((xi, yi, zi), f, loc, f.grid)
                 true_value = func(xi, yi, zi)
 
@@ -500,7 +501,7 @@ end
             number_data = FT(1)
             f = field((Center, Center, Center), number_data, grid)
             @test f.constant == 1
-            
+
             function_data = (x, y, z) -> 1
             f = field((Center, Center, Center), function_data, grid)
             @test @allowscalar all(isone, interior(f))
@@ -702,6 +703,41 @@ end
             for grid in grids
                 run_field_interpolation_tests(grid)
             end
+
+            x = y = z = (0, 1)
+            grid = RectilinearGrid(arch, FT; size=(2, 2, 2), x, y, z)
+
+            # Test 2D interpolation on xy-field
+            # Note: Cell centers are at 0.25 and 0.75, so test points must be
+            # within the interpolation domain [0.25, 0.75] in each direction
+            xy_field = Field{Center, Center, Nothing}(grid)
+            set!(xy_field, (x, y) -> x + y)
+
+            node = convert.(FT, (0.4, 0.5))
+            @test @allowscalar interpolate(node, xy_field) ≈ node[1] + node[2]
+            node = convert.(FT, (0.5, 0.4))
+            @test @allowscalar interpolate(node, xy_field) ≈ node[1] + node[2]
+
+            # Test 2D interpolation on xz-field
+            xz_field = Field{Center, Nothing, Center}(grid)
+            set!(xz_field, (x, z) -> x + z)
+            node = convert.(FT, (0.4, 0.5))
+            @test @allowscalar interpolate(node, xz_field) ≈ node[1] + node[2]
+            node = convert.(FT, (0.5, 0.4))
+            @test @allowscalar interpolate(node, xz_field) ≈ node[1] + node[2]
+
+            # Test 2D interpolation on yz-field
+            yz_field = Field{Nothing, Center, Center}(grid)
+            set!(yz_field, (y, z) -> y + z)
+            node = convert.(FT, (0.5, 0.4))
+            @test @allowscalar interpolate(node, yz_field) ≈ node[1] + node[2]
+            node = convert.(FT, (0.4, 0.5))
+            @test @allowscalar interpolate(node, yz_field) ≈ node[1] + node[2]
+
+            # Test 1D interpolation on z-field
+            z_field = Field{Nothing, Nothing, Center}(grid)
+            set!(z_field, z -> z)
+            @test @allowscalar interpolate(FT(0.4), z_field) ≈ FT(0.4)
         end
     end
 
@@ -806,5 +842,20 @@ end
             c_flat = CenterField(flat_llgrid)
             @test nodes(c_flat) == (nothing, nothing, nothing)
         end
+    end
+
+    @testset "Constant field prognostic state" begin
+        @info "  Testing prognostic_state for constant fields..."
+        zf = ZeroField()
+        of = OneField()
+        cf = ConstantField(42)
+
+        @test prognostic_state(zf) === nothing
+        @test prognostic_state(of) === nothing
+        @test prognostic_state(cf) === nothing
+
+        @test restore_prognostic_state!(zf, nothing) === zf
+        @test restore_prognostic_state!(of, :some_state) === of
+        @test restore_prognostic_state!(cf, nothing) === cf
     end
 end

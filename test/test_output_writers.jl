@@ -53,7 +53,7 @@ function dependencies_added_correctly!(model, windowed_time_average, output_writ
     model.clock.time = 0.0
 
     simulation = Simulation(model, Δt=1.0, stop_iteration=1)
-    push!(simulation.output_writers, output_writer)
+    simulation.output_writers[:ow1] = output_writer
     run!(simulation)
 
     return windowed_time_average ∈ values(simulation.diagnostics)
