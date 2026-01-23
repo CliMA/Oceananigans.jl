@@ -50,8 +50,8 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
 
     # In a non-parallel grid we calculate only the interior
     if extend_halos
-        @apply_regionally kernel_size       = augmented_kernel_size(grid, grid.partition)
-        @apply_regionally kernel_offsets    = augmented_kernel_offsets(grid, grid.partition)
+        @apply_regionally kernel_size       = augmented_kernel_size(extended_grid, extended_grid.partition)
+        @apply_regionally kernel_offsets    = augmented_kernel_offsets(extended_grid, extended_grid.partition)
         @apply_regionally kernel_parameters = KernelParameters(kernel_size, kernel_offsets)
     else
         kernel_parameters = :xy
@@ -72,13 +72,10 @@ materialize_free_surface(::SplitExplicitFreeSurface, ::PrescribedVelocityFields,
 @inline multiregion_split_explicit_halos(old_halos, step_halo, ::YPartition) = (old_halos[1], max(step_halo, old_halos[2]), old_halos[3])
 @inline multiregion_split_explicit_halos(old_halos, step_halo, ::CubedSpherePartition) = (max(step_halo, old_halos[1]), max(step_halo, old_halos[2]), old_halos[3])
 
-iterate_split_explicit!(free_surface, grid::MultiRegionGrids, GUⁿ, GVⁿ, Δτᴮ, weights, ::Val{Nsubsteps}) where Nsubsteps =
-    @apply_regionally iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, weights, Val(Nsubsteps))
-
 @inline augmented_kernel_size(grid, ::XPartition)           = (size(grid, 1) + 2halo_size(grid)[1]-2, size(grid, 2))
 @inline augmented_kernel_size(grid, ::YPartition)           = (size(grid, 1), size(grid, 2) + 2halo_size(grid)[2]-2)
 @inline augmented_kernel_size(grid, ::CubedSpherePartition) = (size(grid, 1) + 2halo_size(grid)[1]-2, size(grid, 2) + 2halo_size(grid)[2]-2)
 
 @inline augmented_kernel_offsets(grid, ::XPartition) = (- halo_size(grid)[1] + 1, 0)
 @inline augmented_kernel_offsets(grid, ::YPartition) = (0, - halo_size(grid)[2] + 1)
-@inline augmented_kernel_offsets(grid, ::CubedSpherePartition) = (- halo_size(grid)[2] + 1, - halo_size(grid)[2] + 1)
+@inline augmented_kernel_offsets(grid, ::CubedSpherePartition) = (- halo_size(grid)[1] + 1, - halo_size(grid)[2] + 1)
