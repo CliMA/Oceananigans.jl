@@ -10,7 +10,7 @@ with a pivot point located at a `(Face, Face)` location (a F-point pivot).
 
 When copying in halos, folded velocities need to switch sign, while tracers or similar fields do not.
 
-Note: Two types of zipper boundary conditions are currently implented:
+Note: Two types of zipper boundary conditions are currently implemented:
 - F-point pivot (this one)
 - U-point pivot
 
@@ -41,7 +41,7 @@ Note that for the `RightFaceFolded` topology used here,
 because the `v` velocities along the fold must be defined.
 
 There is also an extra row for tracers and u-velocities which will be computed
-dynamically but is redundant and will be eventually subsitituted by the boundary condition.
+dynamically but is redundant and will be eventually substituted by the boundary condition.
 """
 
 #####
@@ -93,7 +93,7 @@ end
         end
     end
 
-    # We substitute the redundant part of the last row of v (index Ny + 1)to ensure consistency
+    # We substitute the redundant part of the last row of v (index Ny + 1) to ensure consistency
     @inbounds v[i, Ny, k] = ifelse(i > Nx ÷ 2, sign * v[i′, Ny, k], v[i, Ny, k])
 
     return nothing

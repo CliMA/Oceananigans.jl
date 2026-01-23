@@ -10,7 +10,7 @@ with a pivot point located at a `(Face, Center)` location (a U-point pivot).
 
 When copying in halos, folded velocities need to switch sign, while tracers or similar fields do not.
 
-Note: Two types of zipper boundary conditions are currently implented:
+Note: Two types of zipper boundary conditions are currently implemented:
 - F-point pivot
 - U-point pivot (this one)
 

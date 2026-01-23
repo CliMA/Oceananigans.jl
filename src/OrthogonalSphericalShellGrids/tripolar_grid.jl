@@ -36,7 +36,7 @@ const TripolarGridOfSomeKind = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <
                  fold_topology = RightCenterFolded)
 
 Return an `OrthogonalSphericalShellGrid` tripolar grid on the sphere. The
-tripolar grid replaces the North pole singularity with two other singularities
+tripolar grid replaces the North Pole singularity with two other singularities
 at `north_poles_latitude` that is _less_ than 90ᵒ.
 
 The grid is constructed following the formulation by [Murray (1996)](@cite Murray1996).
@@ -70,7 +70,7 @@ Keyword Arguments
         with a pivot point located on a corner location `(Face, Face)`.
         Default: `RightCenterFolded`.
 
-!!! warning "Longitude coordinate must have even number of cells"
+!!! warning "Longitude coordinate must have an even number of cells"
     `size` is a 3-tuple of the grid size in longitude, latitude, and vertical directions.
     Due to requirements of the folding at the north edge of the domain, the longitude size
     of the grid (i.e., the first component of `size`) _must_ be an even number!
@@ -111,7 +111,7 @@ Keyword Arguments
               ║           │           │           │           │           │           ║
     Ny   ─▶   u     c     u     c     u     c     u     c     u     c     u     c     ║
               ║           │           │           │           │           │           ║
-    Ny   ─▶   ↻ ─── v ────┼──── v ────┼──── v ─── ↻ ─── v ────┼──── v ────┼──── v ─── ↻ ◀─ Fold
+    Ny   ─▶ ─ ↻ ─── v ────┼──── v ────┼──── v ─── ↻ ─── v ────┼──── v ────┼──── v ─── ↻ ◀─ Fold
               ║           │           │           │           │           │           ║
     Ny-1 ─▶   u     c     u     c     u     c     u     c     u     c     u     c     ║
               ║           │           │           │           │           │           ║
@@ -309,7 +309,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
 
     # Continue the metrics to the south with a LatitudeLongitudeGrid
     # metrics (probably we don't even need to do this, since the tripolar grid should
-    # terminate below Antartica, but it's better to be safe)
+    # terminate below Antarctica, but it's better to be safe)
     latitude_longitude_grid = LatitudeLongitudeGrid(; size,
                                                       latitude,
                                                       longitude,

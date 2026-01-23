@@ -82,7 +82,7 @@ end
                 @test minimum(φᶜᶜᵃ) ≥ -90
                 @test minimum(φᶠᶠᵃ) ≥ -90
 
-                # The minimum latitude is not exactly the southermost latitude because the grid
+                # The minimum latitude is not exactly the southernmost latitude because the grid
                 # undulates slightly to maintain the same analytical description in the whole sphere
                 # (i.e. constant latitude lines do not exist anywhere in this grid)
                 @test minimum(φᶜᶜᵃ .+ min_Δφ / 10) ≥ grid.conformal_mapping.southernmost_latitude
