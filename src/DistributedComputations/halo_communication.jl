@@ -166,7 +166,7 @@ cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
 
 # Fallback: for serial boundary conditions fall back to `fill_halo_event!` but prune out the additional `buffers`
 # argument used only for distributed halo-filling boundary conditions
-distributed_fill_halo_event!(c, kernel!, bcs, loc, grid::DistributedGrid, buffers, args...; kwargs...) = 
+distributed_fill_halo_event!(c, kernel!, bcs, loc, grid::DistributedGrid, buffers, args...; kwargs...) =
     fill_halo_event!(c, kernel!, bcs, loc, grid, args...; kwargs...)
 
 # There are two additional keyword arguments (with respect to serial `fill_halo_event!`s) that take an effect on `DistributedGrids`:
