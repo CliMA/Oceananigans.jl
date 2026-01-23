@@ -14,6 +14,7 @@ module OceananigansNCDatasetsExt
 export NetCDFWriter
 
 using NCDatasets
+using NCDatasets: AbstractDataset
 
 using Dates: AbstractTime, UTC, now, DateTime
 using Printf: @sprintf
@@ -22,11 +23,11 @@ using SeawaterPolynomials: BoussinesqEquationOfState
 using Statistics: mean
 
 using Oceananigans: initialize!, prettytime, pretty_filesize, AbstractModel
-using Oceananigans.Architectures: CPU, GPU, on_architecture
 using Oceananigans.AbstractOperations: KernelFunctionOperation, AbstractOperation
+using Oceananigans.Architectures: CPU, GPU, on_architecture
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
 using Oceananigans.Fields
-using Oceananigans.Fields: Reduction, reduced_dimensions, reduced_location, location, indices
+using Oceananigans.Fields: set!, Reduction, reduced_dimensions, reduced_location, location, indices
 using Oceananigans.Grids:
     Center, Face, Flat, Periodic, Bounded,
     AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, StaticVerticalDiscretization,
@@ -37,6 +38,7 @@ using Oceananigans.ImmersedBoundaries:
     ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary, PartialCellBottom, PCBIBG,
     CenterImmersedCondition, InterfaceImmersedCondition
 using Oceananigans.Models: ShallowWaterModel, LagrangianParticles
+using Oceananigans.OutputReaders: InMemoryFTS, time_indices
 using Oceananigans.OutputWriters:
     auto_extension,
     output_averaging_schedule,
@@ -52,15 +54,22 @@ using Oceananigans.OutputWriters:
     convert_output,
     fetch_and_convert_output,
     show_array_type
-using Oceananigans.OutputReaders: InMemoryFTS, time_indices
 using Oceananigans.Utils:
     TimeInterval, IterationInterval, WallTimeInterval, materialize_schedule,
     versioninfo_with_gpu, oceananigans_versioninfo, prettykeys, add_time_interval
 
-using NCDatasets: AbstractDataset
-
 import NCDatasets: defVar
 import Oceananigans: write_output!
+using Oceananigans.OutputReaders:
+    FieldTimeSeries,
+    set_from_netcdf!,
+    InMemory,
+    OnDisk,
+    Linear,
+    time_indices_length,
+    new_data,
+    UnspecifiedBoundaryConditions,
+    NetCDFPath
 import Oceananigans.OutputWriters:
     NetCDFWriter,
     write_grid_reconstruction_data!,
@@ -69,19 +78,6 @@ import Oceananigans.OutputWriters:
     reconstruct_grid,
     trilocation_dim_name,
     dimension_name_generator_free_surface
-
-import Oceananigans.OutputReaders: FieldTimeSeries, set_from_netcdf!
-
-using Oceananigans.OutputReaders:
-    InMemory,
-    OnDisk,
-    Linear,
-    time_indices_length,
-    new_data,
-    UnspecifiedBoundaryConditions,
-    NetCDFPath
-
-using Oceananigans.Fields: set!
 
 const c = Center()
 const f = Face()
