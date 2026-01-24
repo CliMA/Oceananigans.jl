@@ -974,6 +974,7 @@ grid = RectilinearGrid(architecture,
 
 write("distributed_grid_example.jl", make_distributed_grid)
 
+using MPI
 run(`$(mpiexec()) -n 2 $(Base.julia_cmd()) --project distributed_grid_example.jl`)
 nothing # hide
 ```
@@ -1031,6 +1032,7 @@ end
 
 write("partition_example.jl", make_y_partition)
 
+using MPI
 run(`$(mpiexec()) -n 2 $(Base.julia_cmd()) --project partition_example.jl`)
 nothing # hide
 ```
@@ -1073,6 +1075,7 @@ end
 
 write("programmatic_partition_example.jl", make_xy_partition)
 
+using MPI
 run(`$(mpiexec()) -n 6 $(Base.julia_cmd()) --project programmatic_partition_example.jl`)
 nothing # hide
 ```
@@ -1121,6 +1124,7 @@ end
 
 write("equally_partitioned_grids.jl", partitioned_grid_example)
 
+using MPI
 run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project equally_partitioned_grids.jl`)
 nothing # hide
 ```
