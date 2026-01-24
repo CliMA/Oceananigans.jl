@@ -11,8 +11,6 @@ Extension that adds NetCDF (via NCDatasets.jl) read/write support to Oceananigan
 """
 module OceananigansNCDatasetsExt
 
-export NetCDFWriter
-
 using NCDatasets
 using NCDatasets: AbstractDataset
 
@@ -38,7 +36,16 @@ using Oceananigans.ImmersedBoundaries:
     ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary, PartialCellBottom, PCBIBG,
     CenterImmersedCondition, InterfaceImmersedCondition
 using Oceananigans.Models: ShallowWaterModel, LagrangianParticles
-using Oceananigans.OutputReaders: InMemoryFTS, time_indices
+using Oceananigans.OutputReaders:
+    InMemoryFTS,
+    time_indices,
+    InMemory,
+    OnDisk,
+    Linear,
+    time_indices_length,
+    new_data,
+    UnspecifiedBoundaryConditions,
+    NetCDFPath
 using Oceananigans.OutputWriters:
     auto_extension,
     output_averaging_schedule,
@@ -60,16 +67,7 @@ using Oceananigans.Utils:
 
 import NCDatasets: defVar
 import Oceananigans: write_output!
-using Oceananigans.OutputReaders:
-    FieldTimeSeries,
-    set_from_netcdf!,
-    InMemory,
-    OnDisk,
-    Linear,
-    time_indices_length,
-    new_data,
-    UnspecifiedBoundaryConditions,
-    NetCDFPath
+import Oceananigans.OutputReaders: FieldTimeSeries, set_from_netcdf!
 import Oceananigans.OutputWriters:
     NetCDFWriter,
     write_grid_reconstruction_data!,
