@@ -188,7 +188,7 @@ Optional keyword arguments
 - `verbose`: Log variable compute times, file write times, and file sizes. Default: `false`.
 
 - `deflatelevel`: Determines the NetCDF compression level of data (integer 0-9; 0 (default) means no compression
-                  and 9 means maximum compression). See [NCDatasets.jl documentation](https://alexander-barth.github.io/NCDatasets.jl/stable/variables/#Creating-a-variable)
+                  and 9 means maximum compression). See [NCDatasets.jl documentation](https://juliageo.org/NCDatasets.jl/stable/variables/#Creating-a-variable)
                   for more information.
 
 - `part`: Starting part number for file splitting. Default: `1`.
