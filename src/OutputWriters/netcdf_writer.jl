@@ -214,7 +214,7 @@ Examples
 Saving the ``u`` velocity field and temperature fields, the full 3D fields and surface 2D slices
 to separate NetCDF files:
 
-```@example netcdf1
+```jldoctest netcdf1
 using Oceananigans, NCDatasets
 
 grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
@@ -227,26 +227,55 @@ fields = Dict("u" => model.velocities.u, "c" => model.tracers.c)
 
 simulation.output_writers[:field_writer] =
     NetCDFWriter(model, fields, filename="fields.nc", schedule=TimeInterval(60))
+
+# output
+
+NetCDFWriter scheduled on TimeInterval(1 minute):
+├── filepath: fields.nc
+├── dimensions: time(0), y_afa(16), x_faa(16), x_caa(16), y_aca(16), z_aaf(17), z_aac(16)
+├── 2 outputs: (c, u)
+├── array_type: Array{Float32}
+├── file_splitting: NoFileSplitting
+└── file size: 32.6 KiB
 ```
 
-```@example netcdf1
+```jldoctest netcdf1
 simulation.output_writers[:surface_slice_writer] =
     NetCDFWriter(model, fields, filename="surface_xy_slice.nc",
                  schedule=TimeInterval(60), indices=(:, :, grid.Nz))
+
+# output
+
+NetCDFWriter scheduled on TimeInterval(1 minute):
+├── filepath: surface_xy_slice.nc
+├── dimensions: time(0), y_afa(16), x_faa(16), x_caa(16), y_aca(16), z_aaf(1), z_aac(1)
+├── 2 outputs: (c, u)
+├── array_type: Array{Float32}
+├── file_splitting: NoFileSplitting
+└── file size: 32.6 KiB
 ```
 
-```@example netcdf1
+```jldoctest netcdf1
 simulation.output_writers[:averaged_profile_writer] =
     NetCDFWriter(model, fields,
                  filename = "averaged_z_profile.nc",
                  schedule = AveragedTimeInterval(60, window=20),
                  indices = (1, 1, :))
+# output
+
+NetCDFWriter scheduled on TimeInterval(1 minute):
+├── filepath: averaged_z_profile.nc
+├── dimensions: time(0), y_afa(1), x_faa(1), x_caa(1), y_aca(1), z_aaf(17), z_aac(16)
+├── 2 outputs: (c, u) averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
+├── array_type: Array{Float32}
+├── file_splitting: NoFileSplitting
+└── file size: 33.8 KiB
 ```
 
 `NetCDFWriter` also accepts output functions that write scalars and arrays to disk,
 provided that their `dimensions` are provided:
 
-```@example
+```jldoctest netcdf2
 using Oceananigans, NCDatasets
 
 Nx, Ny, Nz = 16, 16, 16
@@ -282,13 +311,23 @@ simulation.output_writers[:things] =
     NetCDFWriter(model, outputs,
                  schedule=IterationInterval(1), filename="things.nc", dimensions=dims, verbose=true,
                  global_attributes=global_attributes, output_attributes=output_attributes)
+
+# output
+
+NetCDFWriter scheduled on IterationInterval(1):
+├── filepath: things.nc
+├── dimensions: time(0), y_afa(16), x_faa(16), x_caa(16), y_aca(16), z_aaf(17), z_aac(16)
+├── 3 outputs: (profile, slice, scalar)
+├── array_type: Array{Float32}
+├── file_splitting: NoFileSplitting
+└── file size: 31.5 KiB
 ```
 
 `NetCDFWriter` can also be configured for `outputs` that are interpolated or regridded
 to a different grid than `model.grid`. To use this functionality, include the keyword argument
 `grid = output_grid`.
 
-```@example
+```jldoctest netcdf3
 using Oceananigans, NCDatasets
 using Oceananigans.Fields: interpolate!
 
@@ -305,6 +344,16 @@ output_writer = NetCDFWriter(model, outputs;
                              grid = coarse_grid,
                              filename = "coarse_u.nc",
                              schedule = IterationInterval(1))
+
+# output
+
+NetCDFWriter scheduled on IterationInterval(1):
+├── filepath: coarse_u.nc
+├── dimensions: time(0), y_afa(1), x_faa(1), x_caa(1), y_aca(1), z_aaf(5), z_aac(4)
+├── 1 outputs: u
+├── array_type: Array{Float32}
+├── file_splitting: NoFileSplitting
+└── file size: 31.4 KiB
 ```
 """
 function NetCDFWriter(model, outputs; kw...)
