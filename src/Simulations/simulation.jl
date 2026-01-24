@@ -69,7 +69,7 @@ Keyword arguments
 
 - `minimum_relative_step`: time steps smaller than `Δt * minimum_relative_step` will be skipped.
                            This avoids extremely high values when writing the pressure to disk.
-                           Default value is 0. See github.com/CliMA/Oceananigans.jl/issues/3593 for details.
+                           Default value is 0. See [github.com/CliMA/Oceananigans.jl/issues/3593](https://github.com/CliMA/Oceananigans.jl/issues/3593) for details.
 """
 function Simulation(model;
                     Δt,
