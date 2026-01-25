@@ -248,8 +248,8 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     u_baroclinic = velocities.u
     v_baroclinic = velocities.v
 
-    u_bcs = barotropic_velocity_boundary_conditions(u_baroclinic)
-    v_bcs = barotropic_velocity_boundary_conditions(v_baroclinic)
+    @apply_regionally u_bcs = barotropic_velocity_boundary_conditions(u_baroclinic)
+    @apply_regionally v_bcs = barotropic_velocity_boundary_conditions(v_baroclinic)
 
     U = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bcs)
     V = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = v_bcs)
@@ -262,7 +262,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     barotropic_velocities = (U = U, V = V)
 
     if extend_halos
-        kernel_parameters = maybe_augmented_kernel_parameters(TX, TY, substepping, maybe_extended_grid)
+        @apply_regionally kernel_parameters = maybe_augmented_kernel_parameters(TX, TY, substepping, maybe_extended_grid)
     else
         kernel_parameters = :xy
     end
@@ -352,7 +352,6 @@ Base.show(io::IO, sefs::SplitExplicitFreeSurface) = print(io, "$(summary(sefs))\
 maybe_extend_halos(TX, TY, grid, ::FixedTimeStepSize) = grid
 
 function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
-
     old_halos = halo_size(grid)
     Nsubsteps = length(substepping.averaging_weights)
 
