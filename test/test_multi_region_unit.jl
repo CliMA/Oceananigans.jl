@@ -14,6 +14,39 @@ include("dependencies_for_runtests.jl")
     @test a == MultiRegionObject((5, 6, 7))
 end
 
+@kernel function _test_kernel!(a)
+    i, j = @index(Global, NTuple)
+    @inbounds a[i, j] = 1
+end
+
+@testset "Test @apply_regionally with regional kernels" begin
+    for arch in archs
+        grid = RectilinearGrid(arch, size=(10, 10, 1), x=(0, 1), y=(0, 1), z=(0, 1))
+        mrg = MultiRegionGrid(grid, partition=XPartition(2))
+        field = CenterField(mrg)
+
+        # Configure regional kernels with different work sizes per region
+        # Region 1: 5x10, Region 2: 5x10 (each region has half the x-extent)
+        regional_sizes = MultiRegionObject(((5, 10), (5, 5)))
+        @apply_regionally loops, sizes = configure_kernel(arch, mrg, regional_sizes, _test_kernel!)
+
+        @test loops isa MultiRegionObject  # The loop
+        @test sizes isa MultiRegionObject  # The worksize
+
+        # Launch the configured kernels using @apply_regionally with MultiRegionObject function
+        @apply_regionally loops(field)
+
+        regional_field = getregion(field, 1)
+        interior_data = interior(regional_field)
+        @test all(isone, interior_data)
+
+        regional_field = getregion(field, 2)
+        interior_data = interior(regional_field)
+        @test !(all(isone, interior_data))
+        @test any(isone, interior_data)
+    end
+end
+
 @testset "Testing multi region grids" begin
     for arch in archs
 
