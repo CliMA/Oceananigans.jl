@@ -526,18 +526,13 @@ end
 
 # Interpolation functions
 for (interp, dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, :z], [1, 2, 3])
-    interpolate_func = Symbol(:biased_interpolate_, interp)
-    stencil          = Symbol(:weno_stencil_, dir)
+    interpolate_func  = Symbol(:biased_interpolate_, interp)
+    fused_interpolate = Symbol(:fused_biased_interpolate_, interp)
+    stencil           = Symbol(:weno_stencil_, dir)
 
     @eval begin
-        @inline function $interpolate_func(i, j, k, grid,
-                                            scheme::WENO{N, FT}, bias,
-                                            ψ, args...) where {N, FT}
-
-            ψₜ = $stencil(i, j, k, grid, scheme, bias, ψ, args...)
-            ω = biased_weno_weights(ψₜ, grid, scheme, bias, args...)
-            return weno_reconstruction(scheme, bias, ψₜ, ω)
-        end
+        @inline $interpolate_func(i, j, k, grid, scheme::WENO{N, FT}, bias, ψ, args...) where {N, FT} = 
+                $fused_interpolate(i, j, k, grid, scheme, bias, ψ, args...)
 
         @inline function $interpolate_func(i, j, k, grid,
                                             scheme::WENO{N, FT}, bias,
