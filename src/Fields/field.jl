@@ -434,7 +434,6 @@ Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
 
 @inline Base.fill!(f::Field, val) = fill!(parent(f), val)
 @inline Base.parent(f::Field) = parent(f.data)
-Adapt.adapt_structure(to, f::Field) = Adapt.adapt(to, f.data)
 Adapt.parent_type(::Type{<:Field{LX, LY, LZ, O, G, I, D}}) where {LX, LY, LZ, O, G, I, D} = D
 
 Grids.total_size(f::Field) = total_size(f.grid, location(f), f.indices)
@@ -597,10 +596,10 @@ const ReducedField = Union{XReducedField,
 @inline BoundaryConditions.getbc(condition::XYZReducedField, ::Integer, ::Integer, ::AbstractGrid, args...) = @inbounds condition[1, 1, 1]
 
 # Preserve location when adapting fields reduced on one or more dimensions
-function Adapt.adapt_structure(to, reduced_field::ReducedField)
-    LX, LY, LZ = location(reduced_field)
+function Adapt.adapt_structure(to, field::Field)
+    LX, LY, LZ = location(field)
     return Field{LX, LY, LZ}(nothing,
-                             adapt(to, reduced_field.data),
+                             adapt(to, field.data),
                              nothing,
                              nothing,
                              nothing,
