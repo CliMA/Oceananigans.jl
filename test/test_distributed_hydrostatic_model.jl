@@ -94,7 +94,7 @@ for arch in archs
             child_arch = child_architecture(arch)
 
             z_faces = [(-1, 0), MutableVerticalDiscretization((-1, 0))]
-            
+
             for z_face in z_faces
                 underlying_grid = LatitudeLongitudeGrid(arch,
                                                         size = (Nx, Ny, 3),
