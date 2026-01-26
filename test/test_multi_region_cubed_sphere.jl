@@ -1105,9 +1105,9 @@ end
                                                              buoyancy)
 
                 Random.seed!(1234)
-                Tᵢ(λ, φ, z) = 30 * (1 - tanh((abs(φ) - 45) / 8)) / 2 + rand()
-                Sᵢ(λ, φ, z) = 28 - 5e-3 * z + rand()
-                set!(model_no_halos, T=Tᵢ, S=Sᵢ)
+                Tᵢ_no_halos(λ, φ, z) = 30 * (1 - tanh((abs(φ) - 45) / 8)) / 2 + rand()
+                Sᵢ_no_halos(λ, φ, z) = 28 - 5e-3 * z + rand()
+                set!(model_no_halos, T=Tᵢ_no_halos, S=Sᵢ_no_halos)
 
                 simulation_no_halos = Simulation(model_no_halos, Δt=1minute, stop_time=10minutes)
 
