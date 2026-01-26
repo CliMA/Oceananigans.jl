@@ -59,11 +59,11 @@ end
 using Random
 Random.seed!(1234)
 
-grid = TripolarGrid(GPU(), size = (200, 200, 100), z = (-1000, 0), halo=(6,6,6))
+grid = TripolarGrid(GPU(), size = (200, 200, 100), z = (-1000, 0), halo=(7, 7, 7))
 grid = ImmersedBoundaryGrid(grid, GridFittedBottom((x, y) -> -500 * rand() - 500); active_cells_map = true)
 
 free_surface = SplitExplicitFreeSurface(grid; substeps = 20)
-model = HydrostaticFreeSurfaceModel(grid; free_surface, tracers = :c, momentum_advection = nothing, tracer_advection = WENO(order=7))
+model = HydrostaticFreeSurfaceModel(grid; free_surface, tracers = :c, momentum_advection = WENOVectorInvariant(), tracer_advection = WENO(order=7))
 set!(model, u = (x, y, z) -> rand(), v = (x, y, z) -> rand(), c = (x, y, z) -> rand())
 
 arch = model.architecture
@@ -94,9 +94,47 @@ args = tuple(Val(tracer_index),
              model.clock,
              c_forcing)
 
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_hydrostatic_free_surface_Gc!
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_hydrostatic_free_surface_Gc!, 
+                                                        compute_hydrostatic_free_surface_Gu!, 
+                                                        compute_hydrostatic_free_surface_Gv!
 
 Gc = model.timestepper.Gⁿ.c
 kernel, _ = Oceananigans.Utils.configure_kernel(arch, grid, :xyz, compute_hydrostatic_free_surface_Gc!; active_cells_map)
 cuda_kernel = my_cuda_kernel(kernel, Gc, grid, args)
-CUDA.registers(cuda_kernel) # 123 for mine # What will it be for AI?? 120 for the new one
+@info "Tracer registers $(CUDA.registers(cuda_kernel))" # 123 for mine # What will it be for AI?? 120 for the new one
+
+u_immersed_bc = nothing
+v_immersed_bc = nothing
+
+u_forcing = model.forcing.u
+v_forcing = model.forcing.v
+
+start_momentum_kernel_args = (model.advection.momentum,
+                              model.coriolis,
+                              model.closure)
+
+end_momentum_kernel_args = (model.velocities,
+                            model.free_surface,
+                            model.tracers,
+                            model.buoyancy,
+                            model.closure_fields,
+                            model.pressure.pHY′,
+                            model.auxiliary_fields,
+                            model.vertical_coordinate,
+                            model.clock)
+
+u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args..., u_forcing)
+v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args..., v_forcing)
+
+
+u_kernel, _ = Oceananigans.Utils.configure_kernel(arch, grid, :xyz, compute_hydrostatic_free_surface_Gu!; active_cells_map)
+v_kernel, _ = Oceananigans.Utils.configure_kernel(arch, grid, :xyz, compute_hydrostatic_free_surface_Gv!; active_cells_map)
+
+Gu = model.timestepper.Gⁿ.u
+Gv = model.timestepper.Gⁿ.v
+
+cuda_u_kernel = my_cuda_kernel(u_kernel, Gu, grid, u_kernel_args)
+cuda_v_kernel = my_cuda_kernel(v_kernel, Gv, grid, v_kernel_args)
+
+@info "UVel registers $(CUDA.registers(cuda_u_kernel))"
+@info "VVel registers $(CUDA.registers(cuda_v_kernel))"
