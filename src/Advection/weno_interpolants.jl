@@ -277,6 +277,20 @@ end
     return :($(elem...),)
 end
 
+# Fused β computation for VelocityStencil: compute βᵤ[i] and βᵥ[i] for each stencil i,
+# combine immediately, and only store the combined β array. This reduces register pressure
+# by avoiding storage of separate βᵤ and βᵥ arrays.
+@inline function metaprogrammed_beta_loop_combined(buffer)
+    elem = Vector(undef, buffer)
+    for stencil = 1:buffer
+        # Compute βᵤ[i] and βᵥ[i] for stencil i, combine immediately
+        elem[stencil] = :((smoothness_indicator(uₛ[$stencil], scheme, Val($(stencil-1))) +
+                           smoothness_indicator(vₛ[$stencil], scheme, Val($(stencil-1)))) / 2)
+    end
+
+    return :($(elem...),)
+end
+
 # smoothness_indicator calculation for scheme and stencil = 0:buffer - 1
 @inline function metaprogrammed_beta_loop(buffer)
     elem = Vector(undef, buffer)
@@ -299,9 +313,10 @@ end
 
 for buffer in advection_buffers[2:end]
     @eval begin
-        @inline         beta_sum(scheme::WENO{$buffer, FT}, β₁, β₂)    where FT = @inbounds $(metaprogrammed_beta_sum(buffer))
-        @inline        beta_loop(scheme::WENO{$buffer, FT}, ψ)         where FT = @inbounds $(metaprogrammed_beta_loop(buffer))
-        @inline zweno_alpha_loop(scheme::WENO{$buffer, FT, FT2}, β, τ) where {FT, FT2} = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
+        @inline           beta_sum(scheme::WENO{$buffer, FT}, β₁, β₂)    where FT = @inbounds $(metaprogrammed_beta_sum(buffer))
+        @inline          beta_loop(scheme::WENO{$buffer, FT}, ψ)         where FT = @inbounds $(metaprogrammed_beta_loop(buffer))
+        @inline beta_loop_combined(scheme::WENO{$buffer, FT}, uₛ, vₛ)     where FT = @inbounds $(metaprogrammed_beta_loop_combined(buffer))
+        @inline   zweno_alpha_loop(scheme::WENO{$buffer, FT, FT2}, β, τ) where {FT, FT2} = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
     end
 end
 
@@ -338,15 +353,23 @@ The ``α`` values are normalized before returning
     return α .* Σα⁻¹
 end
 
+# Optimized VelocityStencil path: compute β values and combine on-the-fly
+# This reduces register pressure by computing βᵤ[i] and βᵥ[i] for each stencil i,
+# combining them immediately, and only storing the combined β array.
+# This avoids storing separate βᵤ and βᵥ arrays, reducing register usage significantly.
 @inline function biased_weno_weights(ijk, grid, scheme::WENO{N, FT}, bias, dir, ::VelocityStencil, u, v) where {N, FT}
     i, j, k = ijk
 
+    # Load tangential stencils
     uₛ = tangential_stencil_u(i, j, k, grid, scheme, bias, dir, u)
     vₛ = tangential_stencil_v(i, j, k, grid, scheme, bias, dir, v)
-    βᵤ = beta_loop(scheme, uₛ)
-    βᵥ = beta_loop(scheme, vₛ)
-    β  = beta_sum(scheme, βᵤ, βᵥ)
+    
+    # Compute combined β on-the-fly: for each stencil i, compute βᵤ[i] and βᵥ[i],
+    # combine immediately. This avoids storing separate βᵤ and βᵥ arrays.
+    β = beta_loop_combined(scheme, uₛ, vₛ)
+    # uₛ and vₛ can now be freed (compiler can reuse these registers)
 
+    # Compute weights from combined β
     τ = global_smoothness_indicator(Val(N), β)
     α = zweno_alpha_loop(scheme, β, τ)
     Σα⁻¹ =  1 / sum(α)
