@@ -280,14 +280,14 @@ on_architecture(to, scheme::VectorInvariant{N, FT, M}) where {N, FT, M} =
                               on_architecture(to, scheme.divergence_scheme),
                               on_architecture(to, scheme.upwinding))
 
-@inline function U_dot_∇u(i, j, k, grid, scheme::VectorInvariant, U) 
+@inline function U_dot_∇u(i, j, k, grid, scheme::VectorInvariant, U)
     𝒜h = horizontal_advection_U(i, j, k, grid, scheme, U.u, U.v)
     𝒜z = vertical_advection_U(i, j, k, grid, scheme, U)
     ℬh = bernoulli_head_U(i, j, k, grid, scheme, U.u, U.v)
     return 𝒜h + 𝒜z + ℬh
 end
 
-@inline function U_dot_∇v(i, j, k, grid, scheme::VectorInvariant, U) = 
+@inline function U_dot_∇v(i, j, k, grid, scheme::VectorInvariant, U)
     𝒜h = horizontal_advection_V(i, j, k, grid, scheme, U.u, U.v)
     𝒜z = vertical_advection_V(i, j, k, grid, scheme, U)
     ℬh = bernoulli_head_V(i, j, k, grid, scheme, U.u, U.v)
