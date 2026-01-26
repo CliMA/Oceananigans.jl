@@ -292,7 +292,7 @@ function test_complex_boundary_conditions(Rx, Ry, child_arch)
     u_bcs = FieldBoundaryConditions(top=u_bc)
 
     # A model with an Euler step
-    model = HydrostaticFreeSurfaceModel(; grid, boundary_conditions=(; u=u_bcs), timestepper=:QuasiAdamsBashforth2, free_surface=SplitExplicitFreeSurface(grid; substeps=20))
+    model = HydrostaticFreeSurfaceModel(grid; boundary_conditions=(; u=u_bcs), timestepper=:QuasiAdamsBashforth2, free_surface=SplitExplicitFreeSurface(grid; substeps=20))
     model.timestepper.χ = -0.5
     @test model.velocities.u.boundary_conditions.top isa typeof(u_bc)
 
