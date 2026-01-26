@@ -274,6 +274,38 @@ function test_triply_periodic_local_grid_with_221_ranks()
 end
 
 #####
+##### Complex boundary conditions in distributed models
+#####
+
+@inline function clock_field_dependent_boudary_condition(i, j, grid, clock, fields)
+    u = fields.u[i, j, size(grid, 3)]
+    t = clock.time
+    return t + u
+end
+
+function test_complex_boundary_conditions(Rx, Ry, child_arch)
+    arch  = Distributed(child_arch, partition=Partition(Rx, Ry))
+
+    # A grid with unity spacings in all directions
+    grid  = RectilinearGrid(arch, topology=(Bounded, Bounded, Bounded), size=(2*Rx, 2*Ry, 1), extent=(2*Rx,2*Ry, 1))
+    u_bc  = FluxBoundaryCondition(clock_field_dependent_boudary_condition, discrete_form=true)
+    u_bcs = FieldBoundaryConditions(top=u_bc)
+
+    # A model with an Euler step
+    model = HydrostaticFreeSurfaceModel(; grid, boundary_conditions=(; u=u_bcs), timestepper=:QuasiAdamsBashforth2, free_surface=SplitExplicitFreeSurface(grid; substeps=20))
+    model.timestepper.χ = -0.5
+    @test model.velocities.u.boundary_conditions.top isa typeof(u_bc)
+
+    # u += Δt ⋅ (t + u) / Δz where Δt == Δz == 1
+    time_step!(model, 1) # t = 0, u⁻ = 0 => u = 0
+    @test @allowscalar all(iszero, model.velocities.u)
+    time_step!(model, 1) # t = 1, u⁻ = 0 => u = 1
+    @test @allowscalar all(isequal(1), model.velocities.u)
+    time_step!(model, 1) # t = 2, u⁻ = 1 => u = 4
+    @test @allowscalar all(isequal(4), model.velocities.u)
+end
+
+#####
 ##### Injection of halo communication BCs
 #####
 ##### TODO: use Field constructor for these tests rather than NonhydrostaticModel.
@@ -436,6 +468,14 @@ end
             test_triply_periodic_halo_communication_with_411_ranks((H, H, H), child_arch)
             test_triply_periodic_halo_communication_with_141_ranks((H, H, H), child_arch)
             test_triply_periodic_halo_communication_with_221_ranks((H, H, H), child_arch)
+        end
+    end
+
+    @testset "Complex boundary conditions" begin
+        @info "  Testing complex boundary conditions..."
+        child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
+        for (Rx, Ry) in ((4, 1), (1, 4), (2, 2))
+            test_complex_boundary_conditions(Rx, Ry, child_arch)
         end
     end
 

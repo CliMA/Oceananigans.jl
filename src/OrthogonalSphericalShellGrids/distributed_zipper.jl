@@ -1,7 +1,7 @@
-using Oceananigans.BoundaryConditions: fill_halo_event!, get_boundary_kernels, DistributedCommunication
-using Oceananigans.DistributedComputations: cooperative_waitall!, recv_from_buffers!, fill_corners!, loc_id
+using Oceananigans.BoundaryConditions: get_boundary_kernels, DistributedCommunication
+using Oceananigans.DistributedComputations: cooperative_waitall!, recv_from_buffers!, distributed_fill_halo_event!
+using Oceananigans.DistributedComputations: CommunicationBuffers, fill_corners!, loc_id
 using Oceananigans.Fields: instantiated_location
-using OffsetArrays: OffsetArray
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.DistributedComputations: synchronize_communication!
@@ -54,7 +54,7 @@ end
 # Disambiguation
 fill_halo_regions!(c::OffsetArray, ::Nothing, indices, loc, ::DistributedTripolarGridOfSomeKind, args...; kwargs...) = nothing
 
-function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedTripolarGridOfSomeKind, buffers, args...; kwargs...)
+function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedTripolarGridOfSomeKind, buffers::CommunicationBuffers, args...; kwargs...)
 
     arch = architecture(grid)
     kernels!, ordered_bcs = get_boundary_kernels(bcs, c, grid, loc, indices)
@@ -63,7 +63,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     outstanding_requests = length(arch.mpi_requests)
 
     for task = 1:number_of_tasks
-        @inbounds fill_halo_event!(c, kernels![task], ordered_bcs[task], loc, grid, buffers, args...; kwargs...)
+        @inbounds distributed_fill_halo_event!(c, kernels![task], ordered_bcs[task], loc, grid, buffers, args...; kwargs...)
     end
 
     fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; kwargs...)
