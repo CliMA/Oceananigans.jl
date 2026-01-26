@@ -25,97 +25,666 @@
 @inline stencil_offset(::RightBias, s, p) = s - p
 
 #####
-##### Code generation function to create WENO interpolation methods for all three directions
+##### WENO{2} (3rd order) - x direction
 #####
-function generate_weno_body(N, dir_name, dir_suffix)
-    num_stencils = N + 1
-    num_positions = N + 1
-    
-    # Build the function body step by step
-    body_lines = Expr[]
-    
+
+@inline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
+                                               scheme::WENO{2, FT}, bias,
+                                               ψ, args...) where FT
     # Stencil 0: load initial window
-    push!(body_lines, Expr(:comment, "Stencil 0: load initial window"))
-    for p in 0:(num_positions-1)
-        w_idx = p + 1
-        if dir_name == :x
-            push!(body_lines, :(w$w_idx = getvalue(ψ, i + stencil_offset(bias, 0, $p), j, k, grid, args...)))
-        elseif dir_name == :y
-            push!(body_lines, :(w$w_idx = getvalue(ψ, i, j + stencil_offset(bias, 0, $p), k, grid, args...)))
-        else  # z
-            push!(body_lines, :(w$w_idx = getvalue(ψ, i, j, k + stencil_offset(bias, 0, $p), grid, args...)))
-        end
-    end
-    
-    # Build w tuple for stencil 0
-    w_vars = [Symbol("w$i") for i in 1:num_positions]
-    w_tuple = Expr(:tuple, w_vars...)
-    push!(body_lines, :(β1 = smoothness_indicator($w_tuple, scheme, Val(0))))
-    push!(body_lines, :(p1 = biased_p(scheme, bias, Val(0), $w_tuple)))
-    
-    # Subsequent stencils
-    for s in 1:(num_stencils-1)
-        push!(body_lines, Expr(:comment, "Slide for stencil $s"))
-        
-        # Slide operations - combine with semicolons
-        slide_ops = Expr[]
-        for i in num_positions:-1:2
-            push!(slide_ops, :(w$i = w$(i-1)))
-        end
-        # Combine slide operations with semicolons
-        if length(slide_ops) > 1
-            combined_slide = slide_ops[1]
-            for i in 2:length(slide_ops)
-                combined_slide = Expr(:(;), combined_slide, slide_ops[i])
-            end
-            push!(body_lines, combined_slide)
-        elseif length(slide_ops) == 1
-            push!(body_lines, slide_ops[1])
-        end
-        
-        # Load new w1
-        if dir_name == :x
-            push!(body_lines, :(w1 = getvalue(ψ, i + stencil_offset(bias, $s, 0), j, k, grid, args...)))
-        elseif dir_name == :y
-            push!(body_lines, :(w1 = getvalue(ψ, i, j + stencil_offset(bias, $s, 0), k, grid, args...)))
-        else  # z
-            push!(body_lines, :(w1 = getvalue(ψ, i, j, k + stencil_offset(bias, $s, 0), grid, args...)))
-        end
-        
-        # Compute β and p (w_tuple is still valid after slide)
-        push!(body_lines, :(β$(s+1) = smoothness_indicator($w_tuple, scheme, Val($s))))
-        push!(body_lines, :(p$(s+1) = biased_p(scheme, bias, Val($s), $w_tuple)))
-    end
-    
+    w1 = getvalue(ψ, i + stencil_offset(bias, 0, 0), j, k, grid, args...)
+    w2 = getvalue(ψ, i + stencil_offset(bias, 0, 1), j, k, grid, args...)
+
+    β1 = smoothness_indicator((w1, w2), scheme, Val(0))
+    p1 = biased_p(scheme, bias, Val(0), (w1, w2))
+
+    # Slide for stencil 1
+    w2 = w1
+    w1 = getvalue(ψ, i + stencil_offset(bias, 1, 0), j, k, grid, args...)
+
+    β2 = smoothness_indicator((w1, w2), scheme, Val(1))
+    p2 = biased_p(scheme, bias, Val(1), (w1, w2))
+
     # Compute weights
-    push!(body_lines, Expr(:comment, "Compute weights"))
-    β_vars = [Symbol("β$i") for i in 1:num_stencils]
-    β_tuple = Expr(:tuple, β_vars...)
-    push!(body_lines, :(τ = global_smoothness_indicator(Val($N), $β_tuple)))
-    push!(body_lines, :(α = zweno_alpha_loop(scheme, $β_tuple, τ)))
-    
-    # Sum of alphas
-    α_sum = Expr(:call, :+, [:(α[$i]) for i in 1:num_stencils]...)
-    push!(body_lines, :(Σα = $α_sum))
-    
-    # Return statement
-    p_vars = [Symbol("p$i") for i in 1:num_stencils]
-    p_sum = Expr(:call, :+, [:(α[$i] * $(p_vars[i])) for i in 1:num_stencils]...)
-    push!(body_lines, :(return @muladd ($p_sum) / Σα))
-    
-    return Expr(:block, body_lines...)
+    τ = global_smoothness_indicator(Val(2), (β1, β2))
+    α = zweno_alpha_loop(scheme, (β1, β2), τ)
+    Σα = α[1] + α[2]
+
+    return @muladd (α[1] * p1 + α[2] * p2) / Σα
 end
 
-# Generate all methods
-for N in [2, 3, 4, 5, 6]
-    for (dir_name, dir_suffix) in [(:x, :xᶠᵃᵃ), (:y, :yᵃᶠᵃ), (:z, :zᵃᵃᶠ)]
-        func_name = Symbol("fused_biased_interpolate_$dir_suffix")
-        body = generate_weno_body(N, dir_name, dir_suffix)
-        
-        @eval @inline function $func_name(i, j, k, grid,
-                                          scheme::WENO{$N, FT}, bias,
-                                          ψ, args...) where FT
-            $body
-        end
-    end
+#####
+##### WENO{2} (3rd order) - y direction
+#####
+
+@inline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
+                                                 scheme::WENO{2, FT}, bias,
+                                                 ψ, args...) where FT
+    w1 = getvalue(ψ, i, j + stencil_offset(bias, 0, 0), k, grid, args...)
+    w2 = getvalue(ψ, i, j + stencil_offset(bias, 0, 1), k, grid, args...)
+
+    β1 = smoothness_indicator((w1, w2), scheme, Val(0))
+    p1 = biased_p(scheme, bias, Val(0), (w1, w2))
+
+    w2 = w1
+    w1 = getvalue(ψ, i, j + stencil_offset(bias, 1, 0), k, grid, args...)
+
+    β2 = smoothness_indicator((w1, w2), scheme, Val(1))
+    p2 = biased_p(scheme, bias, Val(1), (w1, w2))
+
+    τ = global_smoothness_indicator(Val(2), (β1, β2))
+    α = zweno_alpha_loop(scheme, (β1, β2), τ)
+    Σα = α[1] + α[2]
+
+    return @muladd (α[1] * p1 + α[2] * p2) / Σα
+end
+
+#####
+##### WENO{2} (3rd order) - z direction
+#####
+
+@inline function fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid,
+                                                 scheme::WENO{2, FT}, bias,
+                                                 ψ, args...) where FT
+    w1 = getvalue(ψ, i, j, k + stencil_offset(bias, 0, 0), grid, args...)
+    w2 = getvalue(ψ, i, j, k + stencil_offset(bias, 0, 1), grid, args...)
+
+    β1 = smoothness_indicator((w1, w2), scheme, Val(0))
+    p1 = biased_p(scheme, bias, Val(0), (w1, w2))
+
+    w2 = w1
+    w1 = getvalue(ψ, i, j, k + stencil_offset(bias, 1, 0), grid, args...)
+
+    β2 = smoothness_indicator((w1, w2), scheme, Val(1))
+    p2 = biased_p(scheme, bias, Val(1), (w1, w2))
+
+    τ = global_smoothness_indicator(Val(2), (β1, β2))
+    α = zweno_alpha_loop(scheme, (β1, β2), τ)
+    Σα = α[1] + α[2]
+
+    return @muladd (α[1] * p1 + α[2] * p2) / Σα
+end
+
+#####
+##### WENO{3} (5th order) - x direction
+#####
+
+@inline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
+                                                 scheme::WENO{3, FT}, bias,
+                                                 ψ, args...) where FT
+    # Stencil 0: load initial window
+    w1 = getvalue(ψ, i + stencil_offset(bias, 0, 0), j, k, grid, args...)
+    w2 = getvalue(ψ, i + stencil_offset(bias, 0, 1), j, k, grid, args...)
+    w3 = getvalue(ψ, i + stencil_offset(bias, 0, 2), j, k, grid, args...)
+
+    β1 = smoothness_indicator((w1, w2, w3), scheme, Val(0))
+    p1 = biased_p(scheme, bias, Val(0), (w1, w2, w3))
+
+    # Slide for stencil 1
+    w3 = w2
+    w2 = w1
+    w1 = getvalue(ψ, i + stencil_offset(bias, 1, 0), j, k, grid, args...)
+
+    β2 = smoothness_indicator((w1, w2, w3), scheme, Val(1))
+    p2 = biased_p(scheme, bias, Val(1), (w1, w2, w3))
+
+    # Slide for stencil 2
+    w3 = w2
+    w2 = w1
+    w1 = getvalue(ψ, i + stencil_offset(bias, 2, 0), j, k, grid, args...)
+
+    β3 = smoothness_indicator((w1, w2, w3), scheme, Val(2))
+    p3 = biased_p(scheme, bias, Val(2), (w1, w2, w3))
+
+    # Compute weights
+    τ = global_smoothness_indicator(Val(3), (β1, β2, β3))
+    α = zweno_alpha_loop(scheme, (β1, β2, β3), τ)
+    Σα = α[1] + α[2] + α[3]
+
+    return @muladd (α[1] * p1 + α[2] * p2 + α[3] * p3) / Σα
+end
+
+#####
+##### WENO{3} (5th order) - y direction
+#####
+
+@inline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
+                                                 scheme::WENO{3, FT}, bias,
+                                                 ψ, args...) where FT
+    # Stencil 0: load initial window
+    w1 = getvalue(ψ, i, j + stencil_offset(bias, 0, 0), k, grid, args...)
+    w2 = getvalue(ψ, i, j + stencil_offset(bias, 0, 1), k, grid, args...)
+    w3 = getvalue(ψ, i, j + stencil_offset(bias, 0, 2), k, grid, args...)
+
+    β1 = smoothness_indicator((w1, w2, w3), scheme, Val(0))
+    p1 = biased_p(scheme, bias, Val(0), (w1, w2, w3))
+
+    # Slide for stencil 1
+    w3 = w2
+    w2 = w1
+    w1 = getvalue(ψ, i, j + stencil_offset(bias, 1, 0), k, grid, args...)
+
+    β2 = smoothness_indicator((w1, w2, w3), scheme, Val(1))
+    p2 = biased_p(scheme, bias, Val(1), (w1, w2, w3))
+
+    # Slide for stencil 2
+    w3 = w2
+    w2 = w1
+    w1 = getvalue(ψ, i, j + stencil_offset(bias, 2, 0), k, grid, args...)
+
+    β3 = smoothness_indicator((w1, w2, w3), scheme, Val(2))
+    p3 = biased_p(scheme, bias, Val(2), (w1, w2, w3))
+
+    τ = global_smoothness_indicator(Val(3), (β1, β2, β3))
+    α = zweno_alpha_loop(scheme, (β1, β2, β3), τ)
+    Σα = α[1] + α[2] + α[3]
+
+    return @muladd (α[1] * p1 + α[2] * p2 + α[3] * p3) / Σα
+end
+
+#####
+##### WENO{3} (5th order) - z direction
+#####
+
+@inline function fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid,
+                                                 scheme::WENO{3, FT}, bias,
+                                                 ψ, args...) where FT
+    # Stencil 0: load initial window
+    w1 = getvalue(ψ, i, j, k + stencil_offset(bias, 0, 0), grid, args...)
+    w2 = getvalue(ψ, i, j, k + stencil_offset(bias, 0, 1), grid, args...)
+    w3 = getvalue(ψ, i, j, k + stencil_offset(bias, 0, 2), grid, args...)
+
+    β1 = smoothness_indicator((w1, w2, w3), scheme, Val(0))
+    p1 = biased_p(scheme, bias, Val(0), (w1, w2, w3))
+
+    # Slide for stencil 1
+    w3 = w2
+    w2 = w1
+    w1 = getvalue(ψ, i, j, k + stencil_offset(bias, 1, 0), grid, args...)
+
+    β2 = smoothness_indicator((w1, w2, w3), scheme, Val(1))
+    p2 = biased_p(scheme, bias, Val(1), (w1, w2, w3))
+
+    # Slide for stencil 2
+    w3 = w2
+    w2 = w1
+    w1 = getvalue(ψ, i, j, k + stencil_offset(bias, 2, 0), grid, args...)
+
+    β3 = smoothness_indicator((w1, w2, w3), scheme, Val(2))
+    p3 = biased_p(scheme, bias, Val(2), (w1, w2, w3))
+
+    τ = global_smoothness_indicator(Val(3), (β1, β2, β3))
+    α = zweno_alpha_loop(scheme, (β1, β2, β3), τ)
+    Σα = α[1] + α[2] + α[3]
+
+    return @muladd (α[1] * p1 + α[2] * p2 + α[3] * p3) / Σα
+end
+
+#####
+##### WENO{4} (7th order) - x direction
+#####
+
+@inline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
+                                                 scheme::WENO{4, FT}, bias,
+                                                 ψ, args...) where FT
+    # Stencil 0: load initial window
+    w1 = getvalue(ψ, i + stencil_offset(bias, 0, 0), j, k, grid, args...)
+    w2 = getvalue(ψ, i + stencil_offset(bias, 0, 1), j, k, grid, args...)
+    w3 = getvalue(ψ, i + stencil_offset(bias, 0, 2), j, k, grid, args...)
+    w4 = getvalue(ψ, i + stencil_offset(bias, 0, 3), j, k, grid, args...)
+
+    β1 = smoothness_indicator((w1, w2, w3, w4), scheme, Val(0))
+    p1 = biased_p(scheme, bias, Val(0), (w1, w2, w3, w4))
+
+    # Slide for stencil 1
+    w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i + stencil_offset(bias, 1, 0), j, k, grid, args...)
+
+    β2 = smoothness_indicator((w1, w2, w3, w4), scheme, Val(1))
+    p2 = biased_p(scheme, bias, Val(1), (w1, w2, w3, w4))
+
+    # Slide for stencil 2
+    w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i + stencil_offset(bias, 2, 0), j, k, grid, args...)
+
+    β3 = smoothness_indicator((w1, w2, w3, w4), scheme, Val(2))
+    p3 = biased_p(scheme, bias, Val(2), (w1, w2, w3, w4))
+
+    # Slide for stencil 3
+    w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i + stencil_offset(bias, 3, 0), j, k, grid, args...)
+
+    β4 = smoothness_indicator((w1, w2, w3, w4), scheme, Val(3))
+    p4 = biased_p(scheme, bias, Val(3), (w1, w2, w3, w4))
+
+    # Compute weights
+    τ = global_smoothness_indicator(Val(4), (β1, β2, β3, β4))
+    α = zweno_alpha_loop(scheme, (β1, β2, β3, β4), τ)
+    Σα = α[1] + α[2] + α[3] + α[4]
+
+    return @muladd (α[1] * p1 + α[2] * p2 + α[3] * p3 + α[4] * p4) / Σα
+end
+
+#####
+##### WENO{4} (7th order) - y direction
+#####
+
+@inline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
+                                                 scheme::WENO{4, FT}, bias,
+                                                 ψ, args...) where FT
+    # Stencil 0: load initial window
+    w1 = getvalue(ψ, i, j + stencil_offset(bias, 0, 0), k, grid, args...)
+    w2 = getvalue(ψ, i, j + stencil_offset(bias, 0, 1), k, grid, args...)
+    w3 = getvalue(ψ, i, j + stencil_offset(bias, 0, 2), k, grid, args...)
+    w4 = getvalue(ψ, i, j + stencil_offset(bias, 0, 3), k, grid, args...)
+
+    β1 = smoothness_indicator((w1, w2, w3, w4), scheme, Val(0))
+    p1 = biased_p(scheme, bias, Val(0), (w1, w2, w3, w4))
+
+    # Slide for stencil 1
+    w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i, j + stencil_offset(bias, 1, 0), k, grid, args...)
+
+    β2 = smoothness_indicator((w1, w2, w3, w4), scheme, Val(1))
+    p2 = biased_p(scheme, bias, Val(1), (w1, w2, w3, w4))
+
+    # Slide for stencil 2
+    w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i, j + stencil_offset(bias, 2, 0), k, grid, args...)
+
+    β3 = smoothness_indicator((w1, w2, w3, w4), scheme, Val(2))
+    p3 = biased_p(scheme, bias, Val(2), (w1, w2, w3, w4))
+
+    # Slide for stencil 3
+    w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i, j + stencil_offset(bias, 3, 0), k, grid, args...)
+
+    β4 = smoothness_indicator((w1, w2, w3, w4), scheme, Val(3))
+    p4 = biased_p(scheme, bias, Val(3), (w1, w2, w3, w4))
+
+    τ = global_smoothness_indicator(Val(4), (β1, β2, β3, β4))
+    α = zweno_alpha_loop(scheme, (β1, β2, β3, β4), τ)
+    Σα = α[1] + α[2] + α[3] + α[4]
+
+    return @muladd (α[1] * p1 + α[2] * p2 + α[3] * p3 + α[4] * p4) / Σα
+end
+
+#####
+##### WENO{4} (7th order) - z direction
+#####
+
+@inline function fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid,
+                                                 scheme::WENO{4, FT}, bias,
+                                                 ψ, args...) where FT
+    # Stencil 0: load initial window
+    w1 = getvalue(ψ, i, j, k + stencil_offset(bias, 0, 0), grid, args...)
+    w2 = getvalue(ψ, i, j, k + stencil_offset(bias, 0, 1), grid, args...)
+    w3 = getvalue(ψ, i, j, k + stencil_offset(bias, 0, 2), grid, args...)
+    w4 = getvalue(ψ, i, j, k + stencil_offset(bias, 0, 3), grid, args...)
+
+    β1 = smoothness_indicator((w1, w2, w3, w4), scheme, Val(0))
+    p1 = biased_p(scheme, bias, Val(0), (w1, w2, w3, w4))
+
+    # Slide for stencil 1
+    w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i, j, k + stencil_offset(bias, 1, 0), grid, args...)
+
+    β2 = smoothness_indicator((w1, w2, w3, w4), scheme, Val(1))
+    p2 = biased_p(scheme, bias, Val(1), (w1, w2, w3, w4))
+
+    # Slide for stencil 2
+    w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i, j, k + stencil_offset(bias, 2, 0), grid, args...)
+
+    β3 = smoothness_indicator((w1, w2, w3, w4), scheme, Val(2))
+    p3 = biased_p(scheme, bias, Val(2), (w1, w2, w3, w4))
+
+    # Slide for stencil 3
+    w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i, j, k + stencil_offset(bias, 3, 0), grid, args...)
+
+    β4 = smoothness_indicator((w1, w2, w3, w4), scheme, Val(3))
+    p4 = biased_p(scheme, bias, Val(3), (w1, w2, w3, w4))
+
+    τ = global_smoothness_indicator(Val(4), (β1, β2, β3, β4))
+    α = zweno_alpha_loop(scheme, (β1, β2, β3, β4), τ)
+    Σα = α[1] + α[2] + α[3] + α[4]
+
+    return @muladd (α[1] * p1 + α[2] * p2 + α[3] * p3 + α[4] * p4) / Σα
+end
+
+#####
+##### WENO{5} (9th order) - x direction
+#####
+
+@inline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
+                                                 scheme::WENO{5, FT}, bias,
+                                                 ψ, args...) where FT
+    # Stencil 0: load initial window
+    w1 = getvalue(ψ, i + stencil_offset(bias, 0, 0), j, k, grid, args...)
+    w2 = getvalue(ψ, i + stencil_offset(bias, 0, 1), j, k, grid, args...)
+    w3 = getvalue(ψ, i + stencil_offset(bias, 0, 2), j, k, grid, args...)
+    w4 = getvalue(ψ, i + stencil_offset(bias, 0, 3), j, k, grid, args...)
+    w5 = getvalue(ψ, i + stencil_offset(bias, 0, 4), j, k, grid, args...)
+
+    β1 = smoothness_indicator((w1, w2, w3, w4, w5), scheme, Val(0))
+    p1 = biased_p(scheme, bias, Val(0), (w1, w2, w3, w4, w5))
+
+    # Slide for stencil 1
+    w5 = w4; w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i + stencil_offset(bias, 1, 0), j, k, grid, args...)
+
+    β2 = smoothness_indicator((w1, w2, w3, w4, w5), scheme, Val(1))
+    p2 = biased_p(scheme, bias, Val(1), (w1, w2, w3, w4, w5))
+
+    # Slide for stencil 2
+    w5 = w4; w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i + stencil_offset(bias, 2, 0), j, k, grid, args...)
+
+    β3 = smoothness_indicator((w1, w2, w3, w4, w5), scheme, Val(2))
+    p3 = biased_p(scheme, bias, Val(2), (w1, w2, w3, w4, w5))
+
+    # Slide for stencil 3
+    w5 = w4; w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i + stencil_offset(bias, 3, 0), j, k, grid, args...)
+
+    β4 = smoothness_indicator((w1, w2, w3, w4, w5), scheme, Val(3))
+    p4 = biased_p(scheme, bias, Val(3), (w1, w2, w3, w4, w5))
+
+    # Slide for stencil 4
+    w5 = w4; w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i + stencil_offset(bias, 4, 0), j, k, grid, args...)
+
+    β5 = smoothness_indicator((w1, w2, w3, w4, w5), scheme, Val(4))
+    p5 = biased_p(scheme, bias, Val(4), (w1, w2, w3, w4, w5))
+
+    τ = global_smoothness_indicator(Val(5), (β1, β2, β3, β4, β5))
+    α = zweno_alpha_loop(scheme, (β1, β2, β3, β4, β5), τ)
+    Σα = α[1] + α[2] + α[3] + α[4] + α[5]
+
+    return @muladd (α[1] * p1 + α[2] * p2 + α[3] * p3 + α[4] * p4 + α[5] * p5) / Σα
+end
+
+#####
+##### WENO{5} (9th order) - y direction
+#####
+
+@inline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
+                                                 scheme::WENO{5, FT}, bias,
+                                                 ψ, args...) where FT
+    # Stencil 0: load initial window
+    w1 = getvalue(ψ, i, j + stencil_offset(bias, 0, 0), k, grid, args...)
+    w2 = getvalue(ψ, i, j + stencil_offset(bias, 0, 1), k, grid, args...)
+    w3 = getvalue(ψ, i, j + stencil_offset(bias, 0, 2), k, grid, args...)
+    w4 = getvalue(ψ, i, j + stencil_offset(bias, 0, 3), k, grid, args...)
+    w5 = getvalue(ψ, i, j + stencil_offset(bias, 0, 4), k, grid, args...)
+
+    β1 = smoothness_indicator((w1, w2, w3, w4, w5), scheme, Val(0))
+    p1 = biased_p(scheme, bias, Val(0), (w1, w2, w3, w4, w5))
+
+    # Slide for stencil 1
+    w5 = w4; w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i, j + stencil_offset(bias, 1, 0), k, grid, args...)
+
+    β2 = smoothness_indicator((w1, w2, w3, w4, w5), scheme, Val(1))
+    p2 = biased_p(scheme, bias, Val(1), (w1, w2, w3, w4, w5))
+
+    # Slide for stencil 2
+    w5 = w4; w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i, j + stencil_offset(bias, 2, 0), k, grid, args...)
+
+    β3 = smoothness_indicator((w1, w2, w3, w4, w5), scheme, Val(2))
+    p3 = biased_p(scheme, bias, Val(2), (w1, w2, w3, w4, w5))
+
+    # Slide for stencil 3
+    w5 = w4; w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i, j + stencil_offset(bias, 3, 0), k, grid, args...)
+
+    β4 = smoothness_indicator((w1, w2, w3, w4, w5), scheme, Val(3))
+    p4 = biased_p(scheme, bias, Val(3), (w1, w2, w3, w4, w5))
+
+    # Slide for stencil 4
+    w5 = w4; w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i, j + stencil_offset(bias, 4, 0), k, grid, args...)
+
+    β5 = smoothness_indicator((w1, w2, w3, w4, w5), scheme, Val(4))
+    p5 = biased_p(scheme, bias, Val(4), (w1, w2, w3, w4, w5))
+
+    τ = global_smoothness_indicator(Val(5), (β1, β2, β3, β4, β5))
+    α = zweno_alpha_loop(scheme, (β1, β2, β3, β4, β5), τ)
+    Σα = α[1] + α[2] + α[3] + α[4] + α[5]
+
+    return @muladd (α[1] * p1 + α[2] * p2 + α[3] * p3 + α[4] * p4 + α[5] * p5) / Σα
+end
+
+#####
+##### WENO{5} (9th order) - z direction
+#####
+
+@inline function fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid,
+                                                 scheme::WENO{5, FT}, bias,
+                                                 ψ, args...) where FT
+    # Stencil 0: load initial window
+    w1 = getvalue(ψ, i, j, k + stencil_offset(bias, 0, 0), grid, args...)
+    w2 = getvalue(ψ, i, j, k + stencil_offset(bias, 0, 1), grid, args...)
+    w3 = getvalue(ψ, i, j, k + stencil_offset(bias, 0, 2), grid, args...)
+    w4 = getvalue(ψ, i, j, k + stencil_offset(bias, 0, 3), grid, args...)
+    w5 = getvalue(ψ, i, j, k + stencil_offset(bias, 0, 4), grid, args...)
+
+    β1 = smoothness_indicator((w1, w2, w3, w4, w5), scheme, Val(0))
+    p1 = biased_p(scheme, bias, Val(0), (w1, w2, w3, w4, w5))
+
+    # Slide for stencil 1
+    w5 = w4; w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i, j, k + stencil_offset(bias, 1, 0), grid, args...)
+
+    β2 = smoothness_indicator((w1, w2, w3, w4, w5), scheme, Val(1))
+    p2 = biased_p(scheme, bias, Val(1), (w1, w2, w3, w4, w5))
+
+    # Slide for stencil 2
+    w5 = w4; w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i, j, k + stencil_offset(bias, 2, 0), grid, args...)
+
+    β3 = smoothness_indicator((w1, w2, w3, w4, w5), scheme, Val(2))
+    p3 = biased_p(scheme, bias, Val(2), (w1, w2, w3, w4, w5))
+
+    # Slide for stencil 3
+    w5 = w4; w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i, j, k + stencil_offset(bias, 3, 0), grid, args...)
+
+    β4 = smoothness_indicator((w1, w2, w3, w4, w5), scheme, Val(3))
+    p4 = biased_p(scheme, bias, Val(3), (w1, w2, w3, w4, w5))
+
+    # Slide for stencil 4
+    w5 = w4; w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i, j, k + stencil_offset(bias, 4, 0), grid, args...)
+
+    β5 = smoothness_indicator((w1, w2, w3, w4, w5), scheme, Val(4))
+    p5 = biased_p(scheme, bias, Val(4), (w1, w2, w3, w4, w5))
+
+    τ = global_smoothness_indicator(Val(5), (β1, β2, β3, β4, β5))
+    α = zweno_alpha_loop(scheme, (β1, β2, β3, β4, β5), τ)
+    Σα = α[1] + α[2] + α[3] + α[4] + α[5]
+
+    return @muladd (α[1] * p1 + α[2] * p2 + α[3] * p3 + α[4] * p4 + α[5] * p5) / Σα
+end
+
+#####
+##### WENO{6} (11th order) - x direction
+#####
+
+@inline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
+                                                 scheme::WENO{6, FT}, bias,
+                                                 ψ, args...) where FT
+    # Stencil 0: load initial window
+    w1 = getvalue(ψ, i + stencil_offset(bias, 0, 0), j, k, grid, args...)
+    w2 = getvalue(ψ, i + stencil_offset(bias, 0, 1), j, k, grid, args...)
+    w3 = getvalue(ψ, i + stencil_offset(bias, 0, 2), j, k, grid, args...)
+    w4 = getvalue(ψ, i + stencil_offset(bias, 0, 3), j, k, grid, args...)
+    w5 = getvalue(ψ, i + stencil_offset(bias, 0, 4), j, k, grid, args...)
+    w6 = getvalue(ψ, i + stencil_offset(bias, 0, 5), j, k, grid, args...)
+
+    β1 = smoothness_indicator((w1, w2, w3, w4, w5, w6), scheme, Val(0))
+    p1 = biased_p(scheme, bias, Val(0), (w1, w2, w3, w4, w5, w6))
+
+    # Slide for stencil 1
+    w6 = w5; w5 = w4; w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i + stencil_offset(bias, 1, 0), j, k, grid, args...)
+
+    β2 = smoothness_indicator((w1, w2, w3, w4, w5, w6), scheme, Val(1))
+    p2 = biased_p(scheme, bias, Val(1), (w1, w2, w3, w4, w5, w6))
+
+    # Slide for stencil 2
+    w6 = w5; w5 = w4; w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i + stencil_offset(bias, 2, 0), j, k, grid, args...)
+
+    β3 = smoothness_indicator((w1, w2, w3, w4, w5, w6), scheme, Val(2))
+    p3 = biased_p(scheme, bias, Val(2), (w1, w2, w3, w4, w5, w6))
+
+    # Slide for stencil 3
+    w6 = w5; w5 = w4; w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i + stencil_offset(bias, 3, 0), j, k, grid, args...)
+
+    β4 = smoothness_indicator((w1, w2, w3, w4, w5, w6), scheme, Val(3))
+    p4 = biased_p(scheme, bias, Val(3), (w1, w2, w3, w4, w5, w6))
+
+    # Slide for stencil 4
+    w6 = w5; w5 = w4; w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i + stencil_offset(bias, 4, 0), j, k, grid, args...)
+
+    β5 = smoothness_indicator((w1, w2, w3, w4, w5, w6), scheme, Val(4))
+    p5 = biased_p(scheme, bias, Val(4), (w1, w2, w3, w4, w5, w6))
+
+    # Slide for stencil 5
+    w6 = w5; w5 = w4; w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i + stencil_offset(bias, 5, 0), j, k, grid, args...)
+
+    β6 = smoothness_indicator((w1, w2, w3, w4, w5, w6), scheme, Val(5))
+    p6 = biased_p(scheme, bias, Val(5), (w1, w2, w3, w4, w5, w6))
+
+    τ = global_smoothness_indicator(Val(6), (β1, β2, β3, β4, β5, β6))
+    α = zweno_alpha_loop(scheme, (β1, β2, β3, β4, β5, β6), τ)
+    Σα = α[1] + α[2] + α[3] + α[4] + α[5] + α[6]
+
+    return @muladd (α[1] * p1 + α[2] * p2 + α[3] * p3 + α[4] * p4 + α[5] * p5 + α[6] * p6) / Σα
+end
+
+#####
+##### WENO{6} (11th order) - y direction
+#####
+
+@inline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
+                                                 scheme::WENO{6, FT}, bias,
+                                                 ψ, args...) where FT
+    # Stencil 0: load initial window
+    w1 = getvalue(ψ, i, j + stencil_offset(bias, 0, 0), k, grid, args...)
+    w2 = getvalue(ψ, i, j + stencil_offset(bias, 0, 1), k, grid, args...)
+    w3 = getvalue(ψ, i, j + stencil_offset(bias, 0, 2), k, grid, args...)
+    w4 = getvalue(ψ, i, j + stencil_offset(bias, 0, 3), k, grid, args...)
+    w5 = getvalue(ψ, i, j + stencil_offset(bias, 0, 4), k, grid, args...)
+    w6 = getvalue(ψ, i, j + stencil_offset(bias, 0, 5), k, grid, args...)
+
+    β1 = smoothness_indicator((w1, w2, w3, w4, w5, w6), scheme, Val(0))
+    p1 = biased_p(scheme, bias, Val(0), (w1, w2, w3, w4, w5, w6))
+
+    # Slide for stencil 1
+    w6 = w5; w5 = w4; w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i, j + stencil_offset(bias, 1, 0), k, grid, args...)
+
+    β2 = smoothness_indicator((w1, w2, w3, w4, w5, w6), scheme, Val(1))
+    p2 = biased_p(scheme, bias, Val(1), (w1, w2, w3, w4, w5, w6))
+
+    # Slide for stencil 2
+    w6 = w5; w5 = w4; w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i, j + stencil_offset(bias, 2, 0), k, grid, args...)
+
+    β3 = smoothness_indicator((w1, w2, w3, w4, w5, w6), scheme, Val(2))
+    p3 = biased_p(scheme, bias, Val(2), (w1, w2, w3, w4, w5, w6))
+
+    # Slide for stencil 3
+    w6 = w5; w5 = w4; w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i, j + stencil_offset(bias, 3, 0), k, grid, args...)
+
+    β4 = smoothness_indicator((w1, w2, w3, w4, w5, w6), scheme, Val(3))
+    p4 = biased_p(scheme, bias, Val(3), (w1, w2, w3, w4, w5, w6))
+
+    # Slide for stencil 4
+    w6 = w5; w5 = w4; w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i, j + stencil_offset(bias, 4, 0), k, grid, args...)
+
+    β5 = smoothness_indicator((w1, w2, w3, w4, w5, w6), scheme, Val(4))
+    p5 = biased_p(scheme, bias, Val(4), (w1, w2, w3, w4, w5, w6))
+
+    # Slide for stencil 5
+    w6 = w5; w5 = w4; w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i, j + stencil_offset(bias, 5, 0), k, grid, args...)
+
+    β6 = smoothness_indicator((w1, w2, w3, w4, w5, w6), scheme, Val(5))
+    p6 = biased_p(scheme, bias, Val(5), (w1, w2, w3, w4, w5, w6))
+
+    τ = global_smoothness_indicator(Val(6), (β1, β2, β3, β4, β5, β6))
+    α = zweno_alpha_loop(scheme, (β1, β2, β3, β4, β5, β6), τ)
+    Σα = α[1] + α[2] + α[3] + α[4] + α[5] + α[6]
+
+    return @muladd (α[1] * p1 + α[2] * p2 + α[3] * p3 + α[4] * p4 + α[5] * p5 + α[6] * p6) / Σα
+end
+
+#####
+##### WENO{6} (11th order) - z direction
+#####
+
+@inline function fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid,
+                                                 scheme::WENO{6, FT}, bias,
+                                                 ψ, args...) where FT
+    # Stencil 0: load initial window
+    w1 = getvalue(ψ, i, j, k + stencil_offset(bias, 0, 0), grid, args...)
+    w2 = getvalue(ψ, i, j, k + stencil_offset(bias, 0, 1), grid, args...)
+    w3 = getvalue(ψ, i, j, k + stencil_offset(bias, 0, 2), grid, args...)
+    w4 = getvalue(ψ, i, j, k + stencil_offset(bias, 0, 3), grid, args...)
+    w5 = getvalue(ψ, i, j, k + stencil_offset(bias, 0, 4), grid, args...)
+    w6 = getvalue(ψ, i, j, k + stencil_offset(bias, 0, 5), grid, args...)
+
+    β1 = smoothness_indicator((w1, w2, w3, w4, w5, w6), scheme, Val(0))
+    p1 = biased_p(scheme, bias, Val(0), (w1, w2, w3, w4, w5, w6))
+
+    # Slide for stencil 1
+    w6 = w5; w5 = w4; w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i, j, k + stencil_offset(bias, 1, 0), grid, args...)
+
+    β2 = smoothness_indicator((w1, w2, w3, w4, w5, w6), scheme, Val(1))
+    p2 = biased_p(scheme, bias, Val(1), (w1, w2, w3, w4, w5, w6))
+
+    # Slide for stencil 2
+    w6 = w5; w5 = w4; w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i, j, k + stencil_offset(bias, 2, 0), grid, args...)
+
+    β3 = smoothness_indicator((w1, w2, w3, w4, w5, w6), scheme, Val(2))
+    p3 = biased_p(scheme, bias, Val(2), (w1, w2, w3, w4, w5, w6))
+
+    # Slide for stencil 3
+    w6 = w5; w5 = w4; w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i, j, k + stencil_offset(bias, 3, 0), grid, args...)
+
+    β4 = smoothness_indicator((w1, w2, w3, w4, w5, w6), scheme, Val(3))
+    p4 = biased_p(scheme, bias, Val(3), (w1, w2, w3, w4, w5, w6))
+
+    # Slide for stencil 4
+    w6 = w5; w5 = w4; w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i, j, k + stencil_offset(bias, 4, 0), grid, args...)
+
+    β5 = smoothness_indicator((w1, w2, w3, w4, w5, w6), scheme, Val(4))
+    p5 = biased_p(scheme, bias, Val(4), (w1, w2, w3, w4, w5, w6))
+
+    # Slide for stencil 5
+    w6 = w5; w5 = w4; w4 = w3; w3 = w2; w2 = w1
+    w1 = getvalue(ψ, i, j, k + stencil_offset(bias, 5, 0), grid, args...)
+
+    β6 = smoothness_indicator((w1, w2, w3, w4, w5, w6), scheme, Val(5))
+    p6 = biased_p(scheme, bias, Val(5), (w1, w2, w3, w4, w5, w6))
+
+    τ = global_smoothness_indicator(Val(6), (β1, β2, β3, β4, β5, β6))
+    α = zweno_alpha_loop(scheme, (β1, β2, β3, β4, β5, β6), τ)
+    Σα = α[1] + α[2] + α[3] + α[4] + α[5] + α[6]
+
+    return @muladd (α[1] * p1 + α[2] * p2 + α[3] * p3 + α[4] * p4 + α[5] * p5 + α[6] * p6) / Σα
 end
