@@ -474,7 +474,7 @@ end
     @testset "Complex boundary conditions" begin
         @info "  Testing complex boundary conditions..."
         child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
-        for (Rx, Ry) in ((4, 1), (1, 4), (2, 2))
+        for (Rx, Ry) in ((8, 1), (1, 8), (8, 8))
             test_complex_boundary_conditions(Rx, Ry, child_arch)
         end
     end
