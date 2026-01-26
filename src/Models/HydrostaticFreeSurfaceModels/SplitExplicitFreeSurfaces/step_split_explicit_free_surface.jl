@@ -78,8 +78,8 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
     η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
     Ũ, Ṽ    = state.Ũ, state.Ṽ
 
-    barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
-    free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
+    @apply_regionally barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
+    @apply_regionally free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
 
     U_args = (grid, Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
     η_args = (grid, Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
@@ -95,9 +95,10 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
             @inbounds transport_weight = transport_weights[substep]
 
             fill_halo_regions!(η)
-            barotropic_velocity_kernel!(transport_weight, converted_U_args...)
+            @apply_regionally barotropic_velocity_kernel!(transport_weight, converted_U_args...)
+
             fill_halo_regions!((U, V))
-            free_surface_kernel!(averaging_weight, converted_η_args...)
+            @apply_regionally free_surface_kernel!(averaging_weight, converted_η_args...)
         end
     end
 
@@ -119,8 +120,8 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
     η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
     Ũ, Ṽ    = state.Ũ, state.Ṽ
 
-    barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
-    free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
+    @apply_regionally barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
+    @apply_regionally free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
 
     U_args = (grid, Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
     η_args = (grid, Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
@@ -135,8 +136,8 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
             @inbounds averaging_weight = weights[substep]
             @inbounds transport_weight = transport_weights[substep]
 
-            barotropic_velocity_kernel!(transport_weight, converted_U_args...)
-            free_surface_kernel!(averaging_weight, converted_η_args...)
+            @apply_regionally barotropic_velocity_kernel!(transport_weight, converted_U_args...)
+            @apply_regionally free_surface_kernel!(averaging_weight, converted_η_args...)
         end
     end
 
@@ -192,16 +193,14 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     # Wait for setup step to finish.
     wait_free_surface_communication!(free_surface, model, architecture(free_surface_grid))
 
-    @apply_regionally begin
-        # Reset the filtered fields and the barotropic timestepper to zero.
-        initialize_free_surface_state!(free_surface, baroclinic_timestepper, barotropic_timestepper)
+    # Reset the filtered fields and the barotropic timestepper to zero.
+    @apply_regionally initialize_free_surface_state!(free_surface, baroclinic_timestepper, barotropic_timestepper)
 
-        # Solve for the free surface at tⁿ⁺¹.
-        iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, F, model.clock, weights, transport_weights, Val(Nsubsteps))
+    # Solve for the free surface at tⁿ⁺¹.
+    iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, F, model.clock, weights, transport_weights, Val(Nsubsteps))
 
-        # Update eta and velocities for the next timestep. The halos are updated in the `update_state!` function.
-        launch!(architecture(free_surface_grid), free_surface_grid, :xy, _update_split_explicit_state!, η, U, V, free_surface_grid, filtered_state)
-    end
+    # Update eta and velocities for the next timestep. The halos are updated in the `update_state!` function.
+    @apply_regionally launch!(architecture(free_surface_grid), free_surface_grid, :xy, _update_split_explicit_state!, η, U, V, free_surface_grid, filtered_state)
 
     # Fill all the barotropic state.
     fill_halo_regions!((filtered_state.Ũ, filtered_state.Ṽ); async=true)
