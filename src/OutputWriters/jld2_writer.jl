@@ -108,12 +108,12 @@ Example
 
 Output 3D fields of the model velocities ``u``, ``v``, and ``w``:
 
-```@example
+```jldoctest example
 using Oceananigans
 using Oceananigans.Units
 
-grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)
-model = NonhydrostaticModel(grid), tracers=:c)
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+model = NonhydrostaticModel(grid, tracers=:c)
 simulation = Simulation(model, Δt=12, stop_time=1hour)
 
 function init_save_some_metadata!(file, model)
@@ -130,15 +130,35 @@ simulation.output_writers[:velocities] = JLD2Writer(model, model.velocities,
                                                     filename = "some_data.jld2",
                                                     schedule = TimeInterval(20minutes),
                                                     init = init_save_some_metadata!)
+
+# output
+
+JLD2Writer scheduled on TimeInterval(20 minutes):
+├── filepath: some_data.jld2
+├── 3 outputs: (u, v, w)
+├── array_type: Array{Float32}
+├── including: [:grid, :coriolis, :buoyancy, :closure]
+├── file_splitting: NoFileSplitting
+└── file size: 0 bytes (file not yet created)
 ```
 
 and also output a both 5-minute-time-average and horizontal-average of the tracer ``c`` every 20 minutes
 of simulation time to a file called `some_averaged_data.jld2`
 
-```@example
+```jldoctest example
 simulation.output_writers[:avg_c] = JLD2Writer(model, (; c=c_avg),
                                                filename = "some_averaged_data.jld2",
                                                schedule = AveragedTimeInterval(20minute, window=5minutes))
+
+# output
+
+JLD2Writer scheduled on TimeInterval(20 minutes):
+├── filepath: some_averaged_data.jld2
+├── 1 outputs: c averaged on AveragedTimeInterval(window=5 minutes, stride=1, interval=20 minutes)
+├── array_type: Array{Float32}
+├── including: [:grid, :coriolis, :buoyancy, :closure]
+├── file_splitting: NoFileSplitting
+└── file size: 0 bytes (file not yet created)
 ```
 """
 function JLD2Writer(model, outputs; filename, schedule,
