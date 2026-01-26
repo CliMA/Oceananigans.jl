@@ -98,7 +98,7 @@ for arch in archs
             for z_face in z_faces
                 underlying_grid = LatitudeLongitudeGrid(arch,
                                                         size = (Nx, Ny, 3),
-                                                        halo = (4, 4, 3),
+                                                        halo = (5, 5, 3),
                                                         latitude = (-80, 80),
                                                         longitude = (-160, 160),
                                                         z = z_face,
@@ -160,7 +160,7 @@ for arch in archs
 
                 catke_grid = LatitudeLongitudeGrid(synchronized_arch,
                                                    size = (Nx, Ny, 3),
-                                                   halo = (4, 4, 3),
+                                                   halo = (5, 5, 3),
                                                    latitude = (-80, 80),
                                                    longitude = (-160, 160),
                                                    z = z_face,
