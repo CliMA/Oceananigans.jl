@@ -14,6 +14,23 @@
 using Oceananigans.Operators: ℑyᵃᶠᵃ, ℑxᶠᵃᵃ
 
 #####
+##### Remove `DefaultStencil` implementations (same as normal WENO)
+#####
+
+for N in [2, 3, 4, 5, 6]
+    @eval begin
+        fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme::WENO{$N}, bias, ψ, ::DefaultStencil, args...) =
+            fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, bias, ψ, args...)
+        
+        fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::WENO{$N}, bias, ψ, ::DefaultStencil, args...) =
+            fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, bias, ψ, args...) =
+        
+        fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::WENO{$N}, bias, ψ, ::DefaultStencil, args...) =
+            fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, bias, ψ, args...)
+    end
+end
+
+#####
 ##### Fused interpolation for VelocityStencil - x direction
 #####
 

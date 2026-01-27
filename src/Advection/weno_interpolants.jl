@@ -531,35 +531,36 @@ for (interp, dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, 
     stencil           = Symbol(:weno_stencil_, dir)
 
     @eval begin
-        @inline $interpolate_func(i, j, k, grid, scheme::WENO{N, FT}, bias, ψ, args...) where {N, FT} = 
-                $fused_interpolate(i, j, k, grid, scheme, bias, ψ, args...)
-
-        # @inline function $interpolate_func(i, j, k, grid,
-        #                                    scheme::WENO{N, FT}, bias,
-        #                                    ψ, VI::AbstractSmoothnessStencil, args...) where {N, FT}
-
-        #     ψₜ = $stencil(i, j, k, grid, scheme, bias, ψ, args...)
-        #     ω = biased_weno_weights(ψₜ, grid, scheme, bias, VI, args...)
-        #     return weno_reconstruction(scheme, bias, ψₜ, ω)
-        # end
-
-        # @inline function $interpolate_func(i, j, k, grid,
-        #                                    scheme::WENO{N, FT}, bias,
-        #                                    ψ, VI::VelocityStencil, u, v, args...) where {N, FT}
-
-        #     ψₜ = $stencil(i, j, k, grid, scheme, bias, ψ, u, v, args...)
-        #     ω = biased_weno_weights((i, j, k), grid, scheme, bias, Val($val), VI, u, v)
-        #     return weno_reconstruction(scheme, bias, ψₜ, ω)
-        # end
-
-        # @inline function $interpolate_func(i, j, k, grid,
-        #                                    scheme::WENO{N, FT}, bias,
-        #                                    ψ, VI::FunctionStencil, args...) where {N, FT}
-
-        #     ψₜ = $stencil(i, j, k, grid, scheme, bias, ψ,       args...)
-        #     ψₛ = $stencil(i, j, k, grid, scheme, bias, VI.func, args...)
-        #     ω = biased_weno_weights(ψₛ, grid, scheme, bias, VI, args...)
-        #     return weno_reconstruction(scheme, bias, ψₜ, ω)
-        # end
+        @inline $interpolate_func(i, j, k, grid, scheme::WENO, bias, ψ, args...) = $fused_interpolate(i, j, k, grid, scheme, bias, ψ, args...)
     end
 end
+
+# Previous implementation:
+
+# @inline function $interpolate_func(i, j, k, grid,
+#                                    scheme::WENO{N, FT}, bias,
+#                                    ψ, VI::AbstractSmoothnessStencil, args...) where {N, FT}
+
+#     ψₜ = $stencil(i, j, k, grid, scheme, bias, ψ, args...)
+#     ω = biased_weno_weights(ψₜ, grid, scheme, bias, VI, args...)
+#     return weno_reconstruction(scheme, bias, ψₜ, ω)
+# end
+
+# @inline function $interpolate_func(i, j, k, grid,
+#                                    scheme::WENO{N, FT}, bias,
+#                                    ψ, VI::VelocityStencil, u, v, args...) where {N, FT}
+
+#     ψₜ = $stencil(i, j, k, grid, scheme, bias, ψ, u, v, args...)
+#     ω = biased_weno_weights((i, j, k), grid, scheme, bias, Val($val), VI, u, v)
+#     return weno_reconstruction(scheme, bias, ψₜ, ω)
+# end
+
+# @inline function $interpolate_func(i, j, k, grid,
+#                                    scheme::WENO{N, FT}, bias,
+#                                    ψ, VI::FunctionStencil, args...) where {N, FT}
+
+#     ψₜ = $stencil(i, j, k, grid, scheme, bias, ψ,       args...)
+#     ψₛ = $stencil(i, j, k, grid, scheme, bias, VI.func, args...)
+#     ω = biased_weno_weights(ψₛ, grid, scheme, bias, VI, args...)
+#     return weno_reconstruction(scheme, bias, ψₜ, ω)
+# end
