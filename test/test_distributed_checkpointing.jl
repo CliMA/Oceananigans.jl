@@ -9,7 +9,8 @@ for model_type in (:nonhydrostatic, :hydrostatic)
     for pickup_method in (:boolean, :iteration, :filepath)
         @testset "Minimal distributed restore [$model_type, $pickup_method] [$(typeof(arch))]" begin
             @info "  Testing minimal distributed restore [$model_type, $pickup_method] [$(typeof(arch))]..."
-            test_minimal_restore(arch, Float64, pickup_method, model_type)
+            free_surface = SplitExplicitFreeSurface(grid, substeps=10)
+            test_minimal_restore(arch, Float64, pickup_method, model_type, free_surface)
         end
     end
 end
