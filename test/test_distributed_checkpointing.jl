@@ -13,4 +13,3 @@ for model_type in (:nonhydrostatic, :hydrostatic)
         end
     end
 end
-
