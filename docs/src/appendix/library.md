@@ -195,16 +195,14 @@ Private = false
 Modules = [Oceananigans.OutputWriters]
 Private = false
 ```
-```@docs
-NetCDFWriter
-```
 
 ## Extensions
 
 ### OceananigansNCDatasetsExt
 
-```@docs
-OceananigansNCDatasetsExt.OceananigansNCDatasetsExt
+```@autodocs
+Modules = [OceananigansNCDatasetsExt.OceananigansNCDatasetsExt]
+Private = false
 ```
 
 ## Simulations
