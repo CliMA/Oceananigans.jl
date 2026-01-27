@@ -449,7 +449,6 @@ end
 #####
 
 @testset "Distributed MPI Oceananigans" begin
-    #=
     @info "Testing distributed MPI Oceananigans..."
     @testset "Multi architectures rank connectivity" begin
         @info "  Testing multi architecture rank connectivity..."
@@ -481,7 +480,6 @@ end
             test_triply_periodic_halo_communication_with_221_ranks((H, H, H), child_arch)
         end
     end
-    =#
     @testset "Complex boundary conditions" begin
         @info "  Testing complex boundary conditions..."
         child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
@@ -489,7 +487,6 @@ end
             test_complex_boundary_conditions(Rx, Ry, child_arch)
         end
     end
-    #=
     @testset "Test Distributed MPI Grids" begin
         child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
 
@@ -602,5 +599,4 @@ end
         @test model isa ShallowWaterModel
         @test model.clock.time ≈ 2
     end
-    =#
 end
