@@ -419,6 +419,9 @@ end
 ##### Loading and combining field data
 #####
 
+flatten_nothing_dimension(ℓ, range) = range
+flatten_nothing_dimension(::Nothing, range) = 1:1
+
 """Load and combine field data from rank files into a field."""
 function load_combined_field_data!(field, all_ranks, name, iter; reader_kw=NamedTuple())
     x_offsets, y_offsets = compute_partition_offsets(all_ranks)
@@ -433,11 +436,19 @@ function load_combined_field_data!(field, all_ranks, name, iter; reader_kw=Named
             file["timeseries/$name/$iter"]
         end
 
+        # Limit data for `Nothing` locations
+        ℓx, ℓy, ℓz = instantiated_location(field)
+        xrange = flatten_nothing_dimension(ℓx, Hx+1:Hx+nx)
+        yrange = flatten_nothing_dimension(ℓy, Hy+1:Hy+ny)
+        zrange = flatten_nothing_dimension(ℓz, Hz+1:Hz+nz)
+
+        xsize = flatten_nothing_dimension(ℓx, x_offsets[ri]+1:x_offsets[ri]+nx)
+        ysize = flatten_nothing_dimension(ℓy, y_offsets[rj]+1:y_offsets[rj]+ny)
+        zsize = flatten_nothing_dimension(ℓz, 1:nz)
+
         # Extract interior (remove halos) and copy to global array
-        interior_data = @view raw_data[Hx+1:Hx+nx, Hy+1:Hy+ny, Hz+1:Hz+nz]
-        field_data[x_offsets[ri]+1:x_offsets[ri]+nx,
-                   y_offsets[rj]+1:y_offsets[rj]+ny,
-                   1:nz] .= interior_data
+        interior_data = @view raw_data[xrange, yrange, zrange]
+        field_data[xsize, ysize, zsize] .= interior_data
     end
 
     return nothing
