@@ -1,4 +1,5 @@
-function test_minimal_restore(arch, FT, pickup_method, model_type)
+function test_minimal_restore(arch, FT, pickup_method, model_type,
+                              free_surface = Oceananigans.Models.HydrostaticFreeSurfaceModels.default_free_surface(grid))
     N = 16
     L = 50
 
@@ -10,12 +11,13 @@ function test_minimal_restore(arch, FT, pickup_method, model_type)
     if model_type == :nonhydrostatic
         model = NonhydrostaticModel(grid)
     elseif model_type == :hydrostatic
-        model = HydrostaticFreeSurfaceModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+        model = HydrostaticFreeSurfaceModel(grid; free_surface, buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     end
 
     simulation = Simulation(model; Δt=1.0, stop_time=3.0)
 
-    prefix = "mwe_checkpointer_$(model_type)_$(typeof(arch))_$(FT)"
+    arch_str = arch isa Distributed ? "$(nameof(typeof(arch)))_$(typeof(arch.child_architecture))" : "$(nameof(typeof(arch)))"
+    prefix = "mwe_checkpointer_$(model_type)_$(arch_str)_$(FT)"
 
     checkpointer = Checkpointer(model;
                                 schedule = TimeInterval(1.0),
@@ -45,7 +47,7 @@ function test_minimal_restore(arch, FT, pickup_method, model_type)
     if model_type == :nonhydrostatic
         new_model = NonhydrostaticModel(new_grid)
     elseif model_type == :hydrostatic
-        new_model = HydrostaticFreeSurfaceModel(new_grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+        new_model = HydrostaticFreeSurfaceModel(new_grid; free_surface, uoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     end
 
     new_simulation = Simulation(new_model; Δt=1.0, stop_time=3.0)
