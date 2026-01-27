@@ -949,7 +949,7 @@ function test_checkpointing_ri_based_closure(arch, timestepper)
     return nothing
 end
 
-function test_checkpointing_catke_closure(arch, timestepper)
+function test_checkpointing_catke_closure(arch, timestepper, closure=CATKEVerticalDiffusivity())
     Nx, Ny, Nz = 8, 8, 8
     Lx, Ly, Lz = 100, 100, 100
     Δt = 0.1
@@ -960,7 +960,7 @@ function test_checkpointing_catke_closure(arch, timestepper)
     function make_model()
         grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
         return HydrostaticFreeSurfaceModel(grid; timestepper,
-                                           closure = CATKEVerticalDiffusivity(),
+                                           closure,
                                            buoyancy = SeawaterBuoyancy(),
                                            tracers = (:T, :S))
     end
@@ -1003,6 +1003,9 @@ function test_checkpointing_catke_closure(arch, timestepper)
 
     return nothing
 end
+
+test_checkpointing_catke_and_more_closures(arch, timestepper, extra_closure = VerticalScalarDiffusivity(κ=1e-5)) =
+    test_checkpointing_catke_closure(arch, timestepper, closure=tuple(extra_closure, CATKEVerticalDiffusivity()))
 
 function test_checkpointing_tke_dissipation_closure(arch, timestepper)
     Nx, Ny, Nz = 8, 8, 8
@@ -1800,6 +1803,7 @@ for arch in archs
             @testset "CATKE closure checkpointing [$(typeof(arch)), $timestepper]" begin
                 @info "  Testing CATKE closure checkpointing [$(typeof(arch)), $timestepper]..."
                 test_checkpointing_catke_closure(arch, timestepper)
+                test_checkpointing_catke_and_more_closures(arch, timestepper)
             end
 
             @testset "TKEDissipationVerticalDiffusivity closure checkpointing [$(typeof(arch)), $timestepper]" begin
