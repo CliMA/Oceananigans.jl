@@ -284,7 +284,7 @@ function test_complex_boundary_conditions(Rx, Ry, child_arch)
     @inline function clock_field_dependent_boundary_condition(i, j, grid, clock, fields)
         c = fields.c[i, j, size(grid, 3)]
         t = clock.time
-        return t + c
+        return - (t + c)
     end
 
     # A grid with unity spacings in all directions
