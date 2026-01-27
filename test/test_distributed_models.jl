@@ -294,7 +294,7 @@ function test_complex_boundary_conditions(Rx, Ry, child_arch)
 
     # A model with an Euler step
     model = HydrostaticFreeSurfaceModel(grid;
-                                        timestepper=:QuasiAdamsBashforth2, 
+                                        timestepper=:QuasiAdamsBashforth2,
                                         velocities=PrescribedVelocityFields(),
                                         tracers=:c,
                                         boundary_conditions=(; c=c_bcs),
