@@ -16,7 +16,7 @@ end
 
 @kernel function _test_kernel!(a)
     i, j = @index(Global, NTuple)
-    @inbounds a[i, j] = 1
+    @inbounds a[i, j, 1] = 1
 end
 
 @testset "Test @apply_regionally with regional kernels" begin
