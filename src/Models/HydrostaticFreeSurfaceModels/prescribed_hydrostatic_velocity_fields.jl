@@ -69,6 +69,17 @@ function hydrostatic_velocity_fields(velocities::PrescribedVelocityFields, grid,
     return PrescribedVelocityFields(u, v, w, parameters)
 end
 
+# Allow u, v, w = velocities when velocities isa PrescribedVelocityFields
+function Base.indexed_iterate(p::PrescribedVelocityFields, i::Int, state=1)
+    if i == 1
+        return p.u, 2
+    elseif i == 2
+        return p.v, 3
+    else
+        return p.w, 4
+    end
+end
+
 hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracer_names, bcs) =
     merge((u=nothing, v=nothing), TracerFields(tracer_names, grid))
 

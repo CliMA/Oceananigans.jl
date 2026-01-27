@@ -73,12 +73,12 @@ checkpointer_address(model) = ""
 checkpoint_superprefix(prefix) = prefix * "_iteration"
 
 """
-    checkpoint_path(iteration::Int, c::Checkpointer)
+    checkpoint_path(iteration::Int, checkpointer::Checkpointer)
 
-Return the path to the `c`heckpointer file associated with model `iteration`.
+Return the path to the `checkpointer` file associated with model `iteration`.
 """
-checkpoint_path(iteration::Int, c::Checkpointer) =
-    joinpath(c.dir, string(checkpoint_superprefix(c.prefix), iteration, ".jld2"))
+checkpoint_path(iteration::Int, checkpointer::Checkpointer) =
+    joinpath(checkpointer.dir, string(checkpoint_superprefix(checkpointer.prefix), iteration, ".jld2"))
 
 """ Returns `filepath`. Shortcut for `run!(simulation, pickup=filepath)`. """
 checkpoint_path(filepath::String, output_writers) = filepath
