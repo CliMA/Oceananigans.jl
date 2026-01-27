@@ -480,6 +480,7 @@ end
             test_triply_periodic_halo_communication_with_221_ranks((H, H, H), child_arch)
         end
     end
+
     @testset "Complex boundary conditions" begin
         @info "  Testing complex boundary conditions..."
         child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
@@ -487,6 +488,7 @@ end
             test_complex_boundary_conditions(Rx, Ry, child_arch)
         end
     end
+
     @testset "Test Distributed MPI Grids" begin
         child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
 
