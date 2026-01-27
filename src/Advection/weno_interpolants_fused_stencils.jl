@@ -11,24 +11,6 @@
 ##### This reduces register usage from O(buffer²) to O(buffer)
 #####
 
-#####
-##### Helper function to unify array and function access
-#####
-
-@inline getvalue(a, i, j, k, grid, args...) = @inbounds a[i, j, k]
-@inline getvalue(a::Function, i, j, k, grid, args...) = a(i, j, k, grid, args...)
-
-#####
-##### Helper function to compute index offset based on bias, stencil, and position
-#####
-
-@inline stencil_offset(::LeftBias, s, p)  = p - s - 1
-@inline stencil_offset(::RightBias, s, p) = s - p
-
-#####
-##### Helper function to get tangential interpolation operator
-#####
-
 using Oceananigans.Operators: ℑyᵃᶠᵃ, ℑxᶠᵃᵃ
 
 #####
