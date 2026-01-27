@@ -106,7 +106,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}  # only needed for some repos (see below)
 
   distributed_output:
-    name: Distributed Output Combining - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    name: Distributed Output - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 60
     strategy:
