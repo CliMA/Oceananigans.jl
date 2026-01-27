@@ -976,7 +976,12 @@ function test_checkpointing_catke_closure(arch, timestepper, closure=CATKEVertic
     set!(model, T=T_init, S=35, u=u_init)
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
-    prefix = "catke_checkpointing_$(typeof(arch))_$(timestepper)"
+    closure_prefix = closure isa CATKEVerticalDiffusivity ? "catke" :
+                     closure isa NTuple{1} && closure[1] isa CATKEVerticalDiffusivity ? "catke" :
+                     (closure isa Tuple && any(x -> x isa CATKEVerticalDiffusivity, closure)) ? "catke_etal" :
+                     "some_closure"
+
+    prefix = closure_prefix * "_checkpointing_$(typeof(arch))_$(timestepper)"
     simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                             schedule = IterationInterval(5),
                                                             prefix = prefix)
@@ -1003,9 +1008,6 @@ function test_checkpointing_catke_closure(arch, timestepper, closure=CATKEVertic
 
     return nothing
 end
-
-test_checkpointing_catke_and_more_closures(arch, timestepper, extra_closure = VerticalScalarDiffusivity(κ=1e-5)) =
-    test_checkpointing_catke_closure(arch, timestepper, closure=tuple(extra_closure, CATKEVerticalDiffusivity()))
 
 function test_checkpointing_tke_dissipation_closure(arch, timestepper)
     Nx, Ny, Nz = 8, 8, 8
@@ -1802,8 +1804,8 @@ for arch in archs
         if timestepper == :SplitRungeKutta3 # currently, CATKE and TKE-ε tests fail with :QuasiAdamsBashforth2
             @testset "CATKE closure checkpointing [$(typeof(arch)), $timestepper]" begin
                 @info "  Testing CATKE closure checkpointing [$(typeof(arch)), $timestepper]..."
-                test_checkpointing_catke_closure(arch, timestepper)
-                test_checkpointing_catke_and_more_closures(arch, timestepper)
+                test_checkpointing_catke_closure(arch, timestepper, closure=CATKEVerticalDiffusivity())
+                test_checkpointing_catke_closure(arch, timestepper, closure=(CATKEVerticalDiffusivity(), VerticalScalarDiffusivity(κ=1e-5)))
             end
 
             @testset "TKEDissipationVerticalDiffusivity closure checkpointing [$(typeof(arch)), $timestepper]" begin
