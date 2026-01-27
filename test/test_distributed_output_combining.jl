@@ -103,7 +103,7 @@ function rectilinear_mpi_script(config, filename)
                            size = ($Nx, $Ny, $Nz),
                            extent = ($Lx, $Ly, $Lz))
 
-    model = NonhydrostaticModel(grid; tracers=:c)
+    model = NonhydrostaticModel(grid; tracers=:c, closure=CATKEVerticalDiffusivity())
 
     Lx, Ly, Lz = $Lx, $Ly, $Lz
     cᵢ(x, y, z) = sin(2π * x / Lx) * cos(2π * y / Ly) * (z + Lz) / Lz
@@ -138,7 +138,7 @@ function run_serial_rectilinear(config, filename)
                            size = (Nx, Ny, Nz),
                            extent = (Lx, Ly, Lz))
 
-    model = NonhydrostaticModel(grid; tracers=:c)
+    model = NonhydrostaticModel(grid; tracers=:c, closure=CATKEVerticalDiffusivity())
 
     cᵢ(x, y, z) = sin(2π * x / Lx) * cos(2π * y / Ly) * (z + Lz) / Lz
     uᵢ(x, y, z) = 0.1 * sin(2π * x / Lx)
