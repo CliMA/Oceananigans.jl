@@ -282,32 +282,36 @@ function test_complex_boundary_conditions(Rx, Ry, child_arch)
     arch  = Distributed(child_arch, partition=Partition(Rx, Ry))
 
     @inline function clock_field_dependent_boundary_condition(i, j, grid, clock, fields)
-        u = fields.u[i, j, size(grid, 3)]
+        c = fields.c[i, j, size(grid, 3)]
         t = clock.time
-        return t + u
+        return t + c
     end
 
     # A grid with unity spacings in all directions
     grid  = RectilinearGrid(arch, topology=(Bounded, Bounded, Bounded), size=(2*Rx, 2*Ry, 1), extent=(2*Rx, 2*Ry, 1))
-    u_bc  = FluxBoundaryCondition(clock_field_dependent_boundary_condition, discrete_form=true)
-    u_bcs = FieldBoundaryConditions(top=u_bc)
+    c_bc  = FluxBoundaryCondition(clock_field_dependent_boundary_condition, discrete_form=true)
+    c_bcs = FieldBoundaryConditions(top=c_bc)
 
     # A model with an Euler step
-    model = HydrostaticFreeSurfaceModel(grid; boundary_conditions=(; u=u_bcs), timestepper=:QuasiAdamsBashforth2, free_surface=nothing, buoyancy=nothing)
+    model = HydrostaticFreeSurfaceModel(grid;
+                                        timestepper=:QuasiAdamsBashforth2, 
+                                        velocities=PrescribedVelocityFields(),
+                                        tracers=:c,
+                                        boundary_conditions=(; c=c_bcs),
+                                        tracer_advection=nothing)
+
     model.timestepper.χ = -0.5
-    @test model.velocities.u.boundary_conditions.top isa typeof(u_bc)
+    @test model.tracers.c.boundary_conditions.top isa typeof(c_bc)
 
-    # u += Δt (t + u) / Δz, where Δt = Δz = 1
-    time_step!(model, 1) # t = 0, u⁻ = 0 => u = 0
-    @test @allowscalar all(iszero, model.velocities.u)
+    # c += Δt (t + c) / Δz, where Δt = Δz = 1
+    time_step!(model, 1) # t = 0, c⁻ = 0 => c = 0
+    @test @allowscalar all(iszero, model.tracers.c)
 
-    time_step!(model, 1) # t = 1, u⁻ = 0 => u = 1
-    @show model.velocities.u[1, 1, 1]
-    @test @allowscalar all(isequal(1), model.velocities.u)
+    time_step!(model, 1) # t = 1, c⁻ = 0 => c = 1
+    @test @allowscalar all(isequal(1), model.tracers.c)
 
-    time_step!(model, 1) # t = 2, u⁻ = 1 => u = 4
-    @show model.velocities.u[1, 1, 1]
-    @test @allowscalar all(isequal(4), model.velocities.u)
+    time_step!(model, 1) # t = 2, c⁻ = 1 => c = 4
+    @test @allowscalar all(isequal(4), model.tracers.c)
 end
 
 #####
