@@ -320,7 +320,7 @@ NetCDFWriter scheduled on IterationInterval(1):
 ├── 3 outputs: (profile, slice, scalar)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
-└── file size: 31.5 KiB
+└── file size: 34.0 KiB
 ```
 
 `NetCDFWriter` can also be configured for `outputs` that are interpolated or regridded
