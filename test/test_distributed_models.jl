@@ -297,6 +297,7 @@ function test_complex_boundary_conditions(Rx, Ry, child_arch)
                                         timestepper=:QuasiAdamsBashforth2,
                                         velocities=PrescribedVelocityFields(),
                                         tracers=:c,
+                                        free_surface=nothing,
                                         boundary_conditions=(; c=c_bcs),
                                         tracer_advection=nothing)
 
