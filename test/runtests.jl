@@ -218,6 +218,7 @@ CUDA.allowscalar() do
         reset_cuda_if_necessary()
         @testset "Distributed output combining tests" begin
             include("test_distributed_output_combining.jl")
+            include("test_distributed_checkpointing.jl")
         end
     end
 
