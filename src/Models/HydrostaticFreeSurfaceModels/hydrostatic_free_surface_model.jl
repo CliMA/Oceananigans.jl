@@ -58,6 +58,8 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
     vertical_coordinate :: Z   # Rulesets that define the time-evolution of the grid
 end
 
+supported_timesteppers = (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5)
+
 default_free_surface(grid::XYRegularStaticRG; gravitational_acceleration=defaults.gravitational_acceleration) =
     ImplicitFreeSurface(; gravitational_acceleration)
 
@@ -111,9 +113,8 @@ Keyword arguments
   - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
   - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
   - `timestepper`: A symbol or a `TimeStepper` object that specifies the time-stepping method.
-                   Supported symbols include `:QuasiAdamsBashforth2` (default), `:SplitRungeKutta`,
-                   `:SplitRungeKutta2`, `:SplitRungeKutta3`, `:SplitRungeKutta4`, and `:SplitRungeKutta5`.
-                   (See [HydrostaticFreeSurfaceModel](@ref) for examples.)
+                   Supported symbols include $(join("`" .* repr.(supported_timesteppers) .* "`", ", ")).
+                   Default: `:QuasiAdamsBashforth2`.
   - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
   - `particles`: Lagrangian particles to be advected with the flow. Default: `nothing`.
   - `biogeochemistry`: Biogeochemical model for `tracers`.
@@ -155,16 +156,14 @@ function HydrostaticFreeSurfaceModel(grid;
         throw(ArgumentError(msg))
     end
 
-    supported_timesteppers = (:QuasiAdamsBashforth2, :SplitRungeKutta, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5)
-    if timestepper ∉ supported_timesteppers
+    if timestepper isa Symbol && timestepper ∉ supported_timesteppers
         msg = """
-        `timestepper = :$timestepper` is not supported.
+        timestepper = :$timestepper is not supported.
         Supported timesteppers are: $(join(repr.(supported_timesteppers), ", ")).
-        You can also construct your own `TimeStepper` and pass it to the constructor.
+        You can also construct your own TimeStepper and pass it to the constructor.
         """
         throw(ArgumentError(msg))
     end
-
 
     # Validate biogeochemistry (add biogeochemical tracers automagically)
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
