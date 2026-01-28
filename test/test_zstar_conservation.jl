@@ -137,60 +137,58 @@ end
             end
         end
 
-        @testset "TripolarGrid ZStarCoordinate tracer conservation tests" begin
-            @info "Testing a ZStarCoordinate coordinate with a Tripolar grid on $(arch)..."
+        for fold_topology in (RightCenterFolded, RightFaceFolded)
+            @testset "$(fold_topology) TripolarGrid ZStarCoordinate tracer conservation tests" begin
+                @info "Testing a ZStarCoordinate coordinate with a $(fold_topology) Tripolar grid on $(arch)..."
 
-            # Check that the grid is correctly partitioned in case of a distributed architecture
-            if arch isa Distributed && (arch.ranks[1] != 1 || arch.ranks[2] == 1)
-                continue
+                # Check that the grid is correctly partitioned in case of a distributed architecture
+                if arch isa Distributed && (arch.ranks[1] != 1 || arch.ranks[2] == 1)
+                    continue
+                end
+
+                underlying_grid = TripolarGrid(arch; size = (30, 30, 20), z = z_stretched, fold_topology)
+
+                # Code credit:
+                # https://github.com/PRONTOLab/GB-25/blob/682106b8487f94da24a64d93e86d34d560f33ffc/src/model_utils.jl#L65
+                function mtn(λ, φ, λ₀, φ₀)
+                    dφ = 5
+                    dλ = 5
+                    return exp(-(λ - λ₀)^2 / 2dλ^2 - (φ - φ₀)^2 / 2dφ^2)
+                end
+                function mtns(λ, φ)
+                    λ₀ = 70
+                    φ₀ = 55
+                    return mtn(λ, φ, λ₀, φ₀) + mtn(λ, φ, λ₀ + 180, φ₀) + mtn(λ, φ, λ₀ + 360, φ₀)
+                end
+
+                zb = - 20
+                h  = - zb + 10
+                gaussian_islands(λ, φ) = zb + h * mtns(λ, φ)
+
+                grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(gaussian_islands))
+                free_surface = SplitExplicitFreeSurface(grid; substeps=20)
+
+                model = HydrostaticFreeSurfaceModel(grid;
+                                                    free_surface,
+                                                    tracers = (:b, :c, :constant),
+                                                    buoyancy = BuoyancyTracer(),
+                                                    timestepper = :SplitRungeKutta3,
+                                                    vertical_coordinate = ZStarCoordinate())
+
+                bᵢ(x, y, z) = y < 0 ? 0.06 : 0.01
+
+                # Instead of initializing with random velocities, infer them from a random initial streamfunction
+                # to ensure the velocity field is divergence-free at initialization.
+                ψ = Field{Center, Center, Center}(grid)
+                set!(ψ, rand(size(ψ)...))
+                uᵢ = ∂y(ψ)
+                vᵢ = -∂x(ψ)
+
+                set!(model, c = (x, y, z) -> rand(), u = uᵢ, v = vᵢ, b = bᵢ, constant = 1)
+
+                Δt = 2minutes
+                test_zstar_coordinate(model, 300, Δt)
             end
-
-            grid = TripolarGrid(arch; size = (30, 30, 20), z = z_stretched)
-
-            # Code credit:
-            # https://github.com/PRONTOLab/GB-25/blob/682106b8487f94da24a64d93e86d34d560f33ffc/src/model_utils.jl#L65
-            function mtn₁(λ, φ)
-                λ₁ = 70
-                φ₁ = 55
-                dφ = 5
-                return exp(-((λ - λ₁)^2 + (φ - φ₁)^2) / 2dφ^2)
-            end
-
-            function mtn₂(λ, φ)
-                λ₁ = 70
-                λ₂ = λ₁ + 180
-                φ₂ = 55
-                dφ = 5
-                return exp(-((λ - λ₂)^2 + (φ - φ₂)^2) / 2dφ^2)
-            end
-
-            zb = - 20
-            h  = - zb + 10
-            gaussian_islands(λ, φ) = zb + h * (mtn₁(λ, φ) + mtn₂(λ, φ))
-
-            grid = ImmersedBoundaryGrid(grid, GridFittedBottom(gaussian_islands))
-            free_surface = SplitExplicitFreeSurface(grid; substeps=20)
-
-            model = HydrostaticFreeSurfaceModel(grid;
-                                                free_surface,
-                                                tracers = (:b, :c, :constant),
-                                                buoyancy = BuoyancyTracer(),
-                                                timestepper = :SplitRungeKutta3,
-                                                vertical_coordinate = ZStarCoordinate())
-
-            bᵢ(x, y, z) = y < 0 ? 0.06 : 0.01
-
-            # Instead of initializing with random velocities, infer them from a random initial streamfunction
-            # to ensure the velocity field is divergence-free at initialization.
-            ψ = Field{Center, Center, Center}(grid)
-            set!(ψ, rand(size(ψ)...))
-            uᵢ = ∂y(ψ)
-            vᵢ = -∂x(ψ)
-
-            set!(model, c = (x, y, z) -> rand(), u = uᵢ, v = vᵢ, b = bᵢ, constant = 1)
-
-            Δt = 2minutes
-            test_zstar_coordinate(model, 300, Δt)
         end
     end
 end
