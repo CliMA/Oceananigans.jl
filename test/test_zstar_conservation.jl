@@ -101,21 +101,15 @@ end
                 grids = [rtgv, irtgv] #, prtgv]
             end
 
-            @root @info "  Skipping local conservation test for QuasiAdamsBashforth2 time stepping, which does not guarantee conservation of tracers."
+            # We test only SKR3 because AB2 is not conservative
+            timestepper = :SplitRungeKutta3
 
             for grid in grids
                 # Preconditioned conjugate gradient solver does not satisfy local conservation stricly to machine precision.
-                implicit_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient)
+                implicit_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner=nothing)
                 split_free_surface    = SplitExplicitFreeSurface(grid; substeps=20)
                 explicit_free_surface = ExplicitFreeSurface()
                 for free_surface in [explicit_free_surface, split_free_surface, implicit_free_surface]
-
-                    if (free_surface isa ImplicitFreeSurface) && (grid isa DistributedGrid)
-                        @root @info "  Skipping ImplicitFreeSurface on DistributedGrids because not supported"
-                        continue
-                    end
-
-                    timestepper = :SplitRungeKutta3
                     info_msg = info_message(grid, free_surface, timestepper)
                     @testset "$info_msg" begin
                         @root @info "  Testing a $info_msg"
@@ -139,7 +133,7 @@ end
 
         for fold_topology in (RightCenterFolded, RightFaceFolded)
             @testset "$(fold_topology) TripolarGrid ZStarCoordinate tracer conservation tests" begin
-                @info "Testing a ZStarCoordinate coordinate with a $(fold_topology) Tripolar grid on $(arch)..."
+                @root @info "Testing a ZStarCoordinate coordinate with a $(fold_topology) Tripolar grid on $(arch)..."
 
                 # Check that the grid is correctly partitioned in case of a distributed architecture
                 if arch isa Distributed && (arch.ranks[1] != 1 || arch.ranks[2] == 1)

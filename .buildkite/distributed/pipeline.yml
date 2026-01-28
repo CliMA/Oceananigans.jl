@@ -155,39 +155,39 @@ steps:
         - exit_status: 1
           limit: 1
 
-  # TODO: these tests fail at the moment. Fix them...
-  # - label: "🪰 cpu vertical coordinate tests"
-  #   key: "distributed_vertical_coordinate_cpu"
-  #   env:
-  #     TEST_GROUP: "distributed_vertical_coordinate"
-  #     TEST_ARCHITECTURE: "CPU"
-  #   commands:
-  #     - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-  #   timeout_in_minutes: 5440
-  #   agents:
-  #     slurm_mem: 50G
-  #     slurm_ntasks: 4
-  #   retry:
-  #     automatic:
-  #       - exit_status: 1
-  #         limit: 1
+  TODO: these tests fail at the moment. Fix them...
+  - label: "🪰 cpu vertical coordinate tests"
+    key: "distributed_vertical_coordinate_cpu"
+    env:
+      TEST_GROUP: "distributed_vertical_coordinate"
+      TEST_ARCHITECTURE: "CPU"
+    commands:
+      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    timeout_in_minutes: 5440
+    agents:
+      slurm_mem: 50G
+      slurm_ntasks: 4
+    retry:
+      automatic:
+        - exit_status: 1
+          limit: 1
 
-  # - label: "🪲 gpu vertical coordinate tests"
-  #   key: "distributed_vertical_coordinate_gpu"
-  #   env:
-  #     TEST_GROUP: "distributed_vertical_coordinate"
-  #     TEST_ARCHITECTURE: "GPU"
-  #   commands:
-  #     - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-  #   timeout_in_minutes: 5440
-  #   agents:
-  #     slurm_mem: 150G # Apparently the GPU tests require more memory?
-  #     slurm_ntasks: 4
-  #     slurm_gpus_per_task: 1
-  #   retry:
-  #     automatic:
-  #       - exit_status: 1
-  #         limit: 1
+  - label: "🪲 gpu vertical coordinate tests"
+    key: "distributed_vertical_coordinate_gpu"
+    env:
+      TEST_GROUP: "distributed_vertical_coordinate"
+      TEST_ARCHITECTURE: "GPU"
+    commands:
+      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+    timeout_in_minutes: 5440
+    agents:
+      slurm_mem: 150G # Apparently the GPU tests require more memory?
+      slurm_ntasks: 4
+      slurm_gpus_per_task: 1
+    retry:
+      automatic:
+        - exit_status: 1
+          limit: 1
 
   - label: "🦍 cpu nonhydrostatic regression"
     key: "distributed_nonhydrostatic_regression_cpu"
