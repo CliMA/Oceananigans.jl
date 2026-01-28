@@ -236,6 +236,11 @@ function restore_prognostic_state!(nt::NamedTuple, state)
     return nt
 end
 
+function restore_prognostic_state!(t::Tuple, state::Tuple)
+    new_t = tuple(restore_prognostic_state!(t[j], state[j]) for j in 1:eachindex(t))
+    return new_t
+end
+
 function restore_prognostic_state!(sa::StructArray, state)
     # Get the architecture from one of the component arrays
     some_property = first(propertynames(sa))

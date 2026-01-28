@@ -1681,7 +1681,6 @@ function test_checkpoint_at_end(arch)
 end
 
 for arch in archs
-    #=
     for model_type in (:nonhydrostatic, :hydrostatic)
         for pickup_method in (:boolean, :iteration, :filepath)
             @testset "Minimal restore [$model_type, $pickup_method] [$(typeof(arch))]" begin
@@ -1795,25 +1794,25 @@ for arch in archs
             end
         end
     end
-    =#
 
     for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
-        # @testset "RiBasedVerticalDiffusivity closure checkpointing [$(typeof(arch)), $timestepper]" begin
-        #     @info "  Testing RiBasedVerticalDiffusivity closure checkpointing [$(typeof(arch)), $timestepper]..."
-        #     test_checkpointing_ri_based_closure(arch, timestepper)
-        # end
+        @testset "RiBasedVerticalDiffusivity closure checkpointing [$(typeof(arch)), $timestepper]" begin
+            @info "  Testing RiBasedVerticalDiffusivity closure checkpointing [$(typeof(arch)), $timestepper]..."
+            test_checkpointing_ri_based_closure(arch, timestepper)
+        end
 
         if timestepper == :SplitRungeKutta3 # currently, CATKE and TKE-ε tests fail with :QuasiAdamsBashforth2
             @testset "CATKE closure checkpointing [$(typeof(arch)), $timestepper]" begin
                 @info "  Testing CATKE closure checkpointing [$(typeof(arch)), $timestepper]..."
-                test_checkpointing_catke_closure(arch, timestepper, CATKEVerticalDiffusivity())
+                test_checkpointing_catke_closure(arch, timestepper, (CATKEVerticalDiffusivity(),))
+                @info "  Testing CATKE+another closure checkpointing [$(typeof(arch)), $timestepper]..."
                 test_checkpointing_catke_closure(arch, timestepper, (CATKEVerticalDiffusivity(), VerticalScalarDiffusivity(κ=1e-5)))
             end
 
-            # @testset "TKEDissipationVerticalDiffusivity closure checkpointing [$(typeof(arch)), $timestepper]" begin
-            #     @info "  Testing TKEDissipationVerticalDiffusivity closure checkpointing [$(typeof(arch)), $timestepper]..."
-            #     test_checkpointing_tke_dissipation_closure(arch, timestepper)
-            # end
+            @testset "TKEDissipationVerticalDiffusivity closure checkpointing [$(typeof(arch)), $timestepper]" begin
+                @info "  Testing TKEDissipationVerticalDiffusivity closure checkpointing [$(typeof(arch)), $timestepper]..."
+                test_checkpointing_tke_dissipation_closure(arch, timestepper)
+            end
         end
     end
 
@@ -1823,7 +1822,7 @@ for arch in archs
             test_checkpoint_continuation_matches_direct(arch, timestepper)
         end
     end
-    #=
+
     for schedule_type in (:SpecifiedTimes, :ConsecutiveIterations, :TimeInterval, :WallTimeInterval)
         @testset "Stateful schedule checkpointing [$schedule_type] [$(typeof(arch))]" begin
             @info "  Testing stateful schedule checkpointing [$schedule_type] [$(typeof(arch))]..."
@@ -1858,5 +1857,4 @@ for arch in archs
         test_manual_checkpoint_with_filepath(arch)
         test_checkpoint_at_end(arch)
     end
-    =#
 end
