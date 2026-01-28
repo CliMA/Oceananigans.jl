@@ -1,3 +1,4 @@
+
 function test_minimal_restore(arch, FT, pickup_method, model_type)
     N = 16
     L = 50
