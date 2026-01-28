@@ -51,7 +51,7 @@ sim2 = Simulation(model2, Δt=Δt_max, stop_time=10)
 
 timestepper = SplitRungeKuttaTimeStepper(coefficients = [4, 3, 2, 1])
 
-model3 = HydrostaticFreeSurfaceModel(; grid, velocities=PrescribedVelocityFields(u=1), timestepper=timestepper, tracer_advection=advection, tracers=:c)
+model3 = HydrostaticFreeSurfaceModel(grid; velocities=PrescribedVelocityFields(u=1), timestepper=timestepper, tracer_advection=advection, tracers=:c)
 set!(model3, c=c₀)
 sim3 = Simulation(model3, Δt=Δt_max, stop_time=10)
 
