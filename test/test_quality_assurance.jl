@@ -9,7 +9,7 @@ using Test: @testset, @test, detect_ambiguities
 
     # Until we resolve all ambiguities, we make sure we don't increase them.
     number_of_ambiguities = length(detect_ambiguities(Oceananigans; recursive=true))
-    @test number_of_ambiguities <= 345
+    @test number_of_ambiguities <= 335
     @info "Number of ambiguities: $number_of_ambiguities"
 
     modules = (
