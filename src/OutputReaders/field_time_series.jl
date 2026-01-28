@@ -376,7 +376,14 @@ time_indices_length(backend::PartlyInMemory, times) = length(backend)
 time_indices_length(::OnDisk, times) = nothing
 
 """
-    FieldTimeSeries(loc, grid::AbstractGrid [, times=()]; kwargs...)
+    FieldTimeSeries(loc, grid [, times=()];
+                    indices = (:, :, :),
+                    backend = InMemory(),
+                    path = nothing,
+                    name = nothing,
+                    time_indexing = Clamp(),
+                    boundary_conditions = FieldBoundaryConditions(grid, loc),
+                    reader_kw = NamedTuple())
 
 Construct a `FieldTimeSeries` on `grid` and at `times`.
 
