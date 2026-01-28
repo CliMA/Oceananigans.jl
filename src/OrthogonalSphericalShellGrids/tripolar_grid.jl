@@ -179,7 +179,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     end
 
     # return λFF, φFF, λFC, φFC, λCF, φCF, λCC, φCC
-    # Helper grid to lauch kernels on
+    # Helper grid to launch kernels on
     grid = RectilinearGrid(; size = (Nx, Ny),
                              halo = (Hx, Hy),
                              x = (0, 1), y = (0, 1),
