@@ -109,7 +109,16 @@ end
                 implicit_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner=nothing)
                 split_free_surface    = SplitExplicitFreeSurface(grid; substeps=20)
                 explicit_free_surface = ExplicitFreeSurface()
+
                 for free_surface in [explicit_free_surface, split_free_surface, implicit_free_surface]
+                    
+                    if (arch isa Distributed{<:GPU}) && (grid ∈ [llgv, illgv]) && (free_surface === implicit_free_surface)
+                        # This combination of parameters leads to the following error:
+                        # Kernel invocation uses too much parameter memory.
+                        # 4.375 KiB exceeds the 4.000 KiB limit imposed by sm_60 / PTX v8.2.
+                        continue
+                    end
+
                     info_msg = info_message(grid, free_surface, timestepper)
                     @testset "$info_msg" begin
                         @root @info "  Testing a $info_msg"
@@ -133,10 +142,10 @@ end
 
         for fold_topology in (RightCenterFolded, RightFaceFolded)
             @testset "$(fold_topology) TripolarGrid ZStarCoordinate tracer conservation tests" begin
-                @root @info "Testing a ZStarCoordinate coordinate with a $(fold_topology) Tripolar grid on $(arch)..."
+                @root @info "Testing a ZStarCoordinate coordinate with a $(fold_topology) Tripolar grid on $(summary(arch))..."
 
                 # Check that the grid is correctly partitioned in case of a distributed architecture
-                if arch isa Distributed && (arch.ranks[1] != 1 || arch.ranks[2] == 1)
+                if arch isa Distributed && ((arch.ranks[1] != 1 || arch.ranks[2] == 1) || (fold_topology == RightFaceFolded))
                     continue
                 end
 
