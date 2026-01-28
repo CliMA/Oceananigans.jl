@@ -6,7 +6,7 @@ export TripolarGrid, RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid
 import Oceananigans
 import Oceananigans.Architectures: on_architecture
 
-using Oceananigans.Architectures: device, on_architecture, AbstractArchitecture, CPU, GPU
+using Oceananigans.Architectures: on_architecture, AbstractArchitecture, CPU, GPU
 using Oceananigans.BoundaryConditions: BoundaryCondition, UZBC
 using Oceananigans.Grids: AbstractTopology, RightConnected
 using Oceananigans.Grids: halo_size, generate_coordinate, topology
