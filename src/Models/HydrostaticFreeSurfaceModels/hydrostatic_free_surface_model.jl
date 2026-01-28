@@ -110,8 +110,10 @@ Keyword arguments
                preallocated `CenterField`s.
   - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
   - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
-  - `timestepper`: A symbol that specifies the time-stepping method.
-                   Either `:QuasiAdamsBashforth2` (default) or `:SplitRungeKutta`.
+  - `timestepper`: A symbol or a `TimeStepper` object that specifies the time-stepping method.
+                   Supported symbols include `:QuasiAdamsBashforth2` (default), `:SplitRungeKutta`,
+                   `:SplitRungeKutta2`, `:SplitRungeKutta3`, `:SplitRungeKutta4`, and `:SplitRungeKutta5`.
+                   (See [HydrostaticFreeSurfaceModel](@ref) for examples.)
   - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
   - `particles`: Lagrangian particles to be advected with the flow. Default: `nothing`.
   - `biogeochemistry`: Biogeochemical model for `tracers`.
@@ -152,6 +154,18 @@ function HydrostaticFreeSurfaceModel(grid;
                      "z must be a MutableVerticalDiscretization to allow the use of ZStarCoordinate.")
         throw(ArgumentError(msg))
     end
+
+    supported_timesteppers = (:QuasiAdamsBashforth2, :SplitRungeKutta, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5)
+    if timestepper ∉ supported_timesteppers
+        msg = """
+        `timestepper = :$timestepper` is not supported.
+        See the docstring for supported symbols.
+        You can also construct your own `TimeStepper` and pass it instead.
+        See [HydrostaticFreeSurfaceModel](@ref) for examples.
+        """
+        throw(ArgumentError(msg))
+    end
+
 
     # Validate biogeochemistry (add biogeochemical tracers automagically)
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
