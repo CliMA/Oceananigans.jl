@@ -400,66 +400,104 @@ Examples
 A `fts::FieldTimeSeries` can be indexed into by time indices or by time values:
 
 - To access the field of `fts` at the 3rd time index, use
-    ```julia
+    ```jldoctest field_time_series
     using Oceananigans
-    grid = RectilinearGrid(size = (16, 16, 16), extent = (1, 1, 1))
+    grid = RectilinearGrid(size = (4, 4, 4), extent = (1, 1, 1))
     fts = FieldTimeSeries{Center, Center, Center}(grid, 0:0.1:1)
     fts[4]
+
+    # output
+    4×4×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+    ├── grid: 4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+    ├── boundary conditions: FieldBoundaryConditions
+    │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
+    └── data: 10×10×10 OffsetArray(view(::Array{Float64, 4}, :, :, :, 4), -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
+        └── max=0.0, min=0.0, mean=0.0
     ```
 
 - To access the field of `fts` at a given time `t` (in seconds), use the [`Time`](@ref) type:
-    ```julia
+    ```jldoctest field_time_series
     using Oceananigans.Units: Time
     fts[Time(0.3)]
+
+    # output
+    4×4×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+    ├── grid: 4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+    ├── boundary conditions: FieldBoundaryConditions
+    │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
+    ├── operand: BinaryOperation at (Center, Center, Center)
+    ├── status: Oceananigans.Fields.FixedTime{Float64}
+    └── data: 10×10×10 OffsetArray(::Array{Float64, 3}, -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
+        └── max=0.0, min=0.0, mean=0.0
     ```
 
 You can also index spatially at the same time, e.g., with
-```julia
-fts[:, :, 2:5, Time(t)]
+```jldoctest field_time_series
+fts[1:3, 2:4, 1:2, 3]
+
+# output
+3×3×2 Array{Float64, 3}:
+[:, :, 1] =
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+
+[:, :, 2] =
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
 ```
 
 When using [`Time`](@ref) indexing, Oceananigans interpolates between saved time slices
 and extrapolates outside the time domain.
 To control the extrapolation method, use the `time_indexing` keyword argument.
 For example, construct a sine-like `FieldTimeSeries` with `Cyclical` time indexing,
-and plot it beyond the recorded time domain:
+and get values outside of the domain:
 
-```julia
+```jldoctest field_time_series
 using Oceananigans.OutputReaders: Cyclical
-using GLMakie
-
-# Construct the FieldTimeSeries
+output_times = 0:0.1:1
 fts = FieldTimeSeries{Center, Center, Center}(
     grid,
     output_times;
-    time_indexing = Cyclical(),
+    time_indexing = Cyclical(1),
 )
 for (idx, t) in enumerate(output_times)
     c = CenterField(grid)
-    set!(c, (x, y, z) -> sin(2π * t / 1.1))
+    set!(c, (x, y, z) -> sin(2π * t / 1))
     set!(fts, c, idx)
 end
+fts[1, 2, 3, Time(-1.25)]
 
-# Plot the FieldTimeSeries beyond the time domain
-plot_times = -1:0.05:2
-fig, ax, plt = lines(plot_times, [fts[1, 2, 3, Time(t)] for t in plot_times])
+# output
+-0.9510565162951536
 ```
 
 To access a `FieldTimeSeries` constructed on disk, you must first `set!` all its fields:
 
-```julia
+```jldoctest field_time_series
+output_times = 0:0.1:1
 fts = FieldTimeSeries{Center, Center, Center}(
     grid,
-    0:0.1:1;
+    output_times;
     backend = OnDisk(),
     path = "test.jld2",
     name = "c",
 )
-for idx in eachindex(0:0.1:1)
+for idx in eachindex(output_times)
     c = CenterField(grid)
     set!(fts, c, idx) # writes fts[idx] to disk
 end
-fts[11]
+fts[5]
+
+# output
+julia> fts[5]
+4×4×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+├── grid: 4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
+└── data: 10×10×10 OffsetArray(::Array{Float64, 3}, -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
+    └── max=0.0, min=0.0, mean=0.0
 ```
 """
 function FieldTimeSeries(loc::Tuple{<:LX, <:LY, <:LZ}, grid, times=();
