@@ -239,7 +239,7 @@ function restore_prognostic_state!(nt::NamedTuple, state)
 end
 
 function restore_prognostic_state!(t::Tuple, state::Tuple)
-    new_t = tuple(restore_prognostic_state!(t[j], state[j]) for j in 1:eachindex(t))
+    new_t = tuple(restore_prognostic_state!(t[j], state[j]) for j in 1:length(t))
     return new_t
 end
 
