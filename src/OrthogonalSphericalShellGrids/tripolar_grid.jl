@@ -173,7 +173,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     if φᵃᶠᵃ[1] < -90
         msg = "Your southernmost latitude is too far South! (The southernmost grid cell does not fit.)"
         if topology[2] === RightCenterFolded
-            msg *= '\n' * "For $(topology[2]) topology in latitude, you need to ensure that southernmost_latitude - Δφ/2 > -90."
+            msg *= '\n' * "For $(topology[2]) topology in latitude, you need to ensure that southernmost_latitude - Δφ/2 ≥ -90."
         end
         throw(ArgumentError(msg))
     end
