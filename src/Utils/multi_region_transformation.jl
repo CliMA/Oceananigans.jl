@@ -94,6 +94,17 @@ Architectures.on_architecture(arch, mo::MultiRegionObject) = MultiRegionObject(o
     return nothing
 end
 
+# For `MultiRegionObject` calls (think kernels with different sizes for different regions)
+# we also `getregion` for the function. Since the function itself is multiregional we do not
+# need to check if the call is single region or not.
+@inline function apply_regionally!(regional_func!::MultiRegionObject, args...; kwargs...)
+    R = regions(regional_func!)
+    for r in R
+        getregion(regional_func!, r)((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
+    end
+    return nothing
+end
+
 @inline construct_regionally(regional_func::Base.Callable, args...; kwargs...) =
     construct_regionally(1, regional_func, args...; kwargs...)
 
