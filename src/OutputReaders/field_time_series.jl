@@ -385,7 +385,7 @@ time_indices_length(::OnDisk, times) = nothing
                     boundary_conditions = FieldBoundaryConditions(grid, loc),
                     reader_kw = NamedTuple())
 
-Construct a `FieldTimeSeries` on `grid` and at `times`.
+Construct a `FieldTimeSeries` on `loc`ation of `grid` and at `times`.
 
 The data in a `FieldTimeSeries` can be loaded in your RAM (`backend = InMemory()`),
 or be written directly to disk (`backend = OnDisk()`).
