@@ -116,7 +116,7 @@ function reconstruct_global_field(field::DistributedField)
     field_indices = field.indices
 
     if (!(field_indices[1] isa Colon) && (arch.ranks[1] != 1)) ||
-       (!(field_indices[2] isa Colon) && (arch.ranks[2] != 1)) 
+       (!(field_indices[2] isa Colon) && (arch.ranks[2] != 1))
         @warn "Windowed fields in a partitioned directions are not supported."
     end
 
