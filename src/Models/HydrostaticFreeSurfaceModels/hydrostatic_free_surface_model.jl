@@ -159,9 +159,8 @@ function HydrostaticFreeSurfaceModel(grid;
     if timestepper ∉ supported_timesteppers
         msg = """
         `timestepper = :$timestepper` is not supported.
-        See the docstring for supported symbols.
-        You can also construct your own `TimeStepper` and pass it instead.
-        See [HydrostaticFreeSurfaceModel](@ref) for examples.
+        Supported timesteppers are: $(join(repr.(supported_timesteppers), ", ")).
+        You can also construct your own `TimeStepper` and pass it to the constructor.
         """
         throw(ArgumentError(msg))
     end
