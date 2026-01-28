@@ -31,8 +31,16 @@ Adapt.adapt_structure(to, vd::PrognosticTripolarCells) = PrognosticTripolarCells
                                     co::ConditionalOperation, args...)
     ℓx, ℓy, ℓz = Oceananigans.Fields.location(co)
     Nx, Ny, _ = size(grid)
-    valid_domain = !((i > Nx÷2) & (j == Ny))
-    return ifelse(ℓy == Face, true, valid_domain)
+    
+    TY = topology(grid, 2)
+
+    last_half_row  = ((i > Nx÷2) & (j == Ny))
+    full_final_row = (j == Ny)
+    
+    face_folded_domain = ifelse(ℓy == Face, !last_half_row, !full_final_row)
+    center_folded_domain = ifelse(ℓy == Face, true, !last_half_row) 
+
+    return ifelse(TY == RightFaceFolded, face_folded_domain, center_folded_domain)
 end
 
 @inline function evaluate_condition(vd::PrognosticTripolarCells,
@@ -40,8 +48,8 @@ end
                                     grid::TripolarGridOfSomeKind,
                                     co::ConditionalOperation, args...)
 
-    valid_domain = evaluate_condition(PrognosticTripolarCells(), i, j, k, grid, co)
-    return valid_domain & evaluate_condition(vd.condition, i, j, k, grid, co, args...)
+    prognostic_domain = evaluate_condition(PrognosticTripolarCells(), i, j, k, grid, co)
+    return prognostic_domain & evaluate_condition(vd.condition, i, j, k, grid, co, args...)
 end
 
 #####
