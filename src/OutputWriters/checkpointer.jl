@@ -125,6 +125,10 @@ end
 prognostic_state(obj) = obj
 prognostic_state(::NamedTuple{()}) = nothing
 
+function prognostic_state(tuple::Tuple) 
+    return Tuple(prognostic_state(t) for t in tuple)
+end
+
 function prognostic_state(nt::NamedTuple)
     ks = keys(nt)
     vs = Tuple(prognostic_state(v) for v in values(nt))
