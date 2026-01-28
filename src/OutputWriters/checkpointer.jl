@@ -125,9 +125,7 @@ end
 prognostic_state(obj) = obj
 prognostic_state(::NamedTuple{()}) = nothing
 
-function prognostic_state(tuple::Tuple) 
-    return Tuple(prognostic_state(t) for t in tuple)
-end
+prognostic_state(tuple::Tuple) = Tuple(prognostic_state(t) for t in tuple)
 
 function prognostic_state(nt::NamedTuple)
     ks = keys(nt)
