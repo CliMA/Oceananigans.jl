@@ -399,6 +399,7 @@ Examples
 
 A `fts::FieldTimeSeries` can be indexed into by time indices or by time values.
 To access the field of `fts` at the 3rd time index, use
+
 ```jldoctest field_time_series
 using Oceananigans
 grid = RectilinearGrid(size = (4, 4, 4), extent = (1, 1, 1))
@@ -415,6 +416,7 @@ fts[4]
 ```
 
 To access the field of `fts` at a given time `t` (in seconds), use the [`Time`](@ref) type:
+
 ```jldoctest field_time_series
 using Oceananigans.Units: Time
 fts[Time(0.3)]
@@ -431,6 +433,7 @@ fts[Time(0.3)]
 ```
 
 You can also index spatially at the same time, e.g., with
+
 ```jldoctest field_time_series
 fts[1:3, 2:4, 1:2, 3]
 
@@ -474,7 +477,7 @@ fts[1, 2, 3, Time(-1.25)]
 
 To access a `FieldTimeSeries` constructed on disk, you must first `set!` all its fields:
 
-```jldoctest field_time_series
+```jldoctest field_time_series; teardown = :(rm("test.jld2"))
 output_times = 0:0.1:1
 fts = FieldTimeSeries{Center, Center, Center}(
     grid,
@@ -485,18 +488,18 @@ fts = FieldTimeSeries{Center, Center, Center}(
 )
 for idx in eachindex(output_times)
     c = CenterField(grid)
+    set!(c, Returns(idx))
     set!(fts, c, idx) # writes fts[idx] to disk
 end
 fts[5]
 
 # output
-julia> fts[5]
 4×4×4 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 10×10×10 OffsetArray(::Array{Float64, 3}, -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
-    └── max=0.0, min=0.0, mean=0.0
+    └── max=5.0, min=5.0, mean=5.0
 ```
 """
 function FieldTimeSeries(loc::Tuple{<:LX, <:LY, <:LZ}, grid, times=();
