@@ -168,9 +168,14 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     Lz, z                        = generate_coordinate(FT, topology, size, halo, z,         :z,         3, CPU())
     Ly, φᵃᶠᵃ, φᵃᶜᵃ, Δφᶠᵃᵃ, Δφᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, latitude,  :latitude,  2, CPU())
     Lx, λᶠᵃᵃ, λᶜᵃᵃ, Δλᶠᵃᵃ, Δλᶜᵃᵃ = generate_coordinate(FT, topology, size, halo, longitude, :longitude, 1, CPU())
+
     # Make sure φ's are valid in the south
     if φᵃᶠᵃ[1] < -90
-        throw(ArgumentError("Your southernmost latitude is too far South! (The southernmost grid cell does not fit.)"))
+        msg = "Your southernmost latitude is too far South! (The southernmost grid cell does not fit.)"
+        if topology[2] === RightCenterFolded
+            msg *= '\n' * "For $(topology[2]) topology in latitude, you need to ensure that southernmost_latitude - Δφ/2 > -90."
+        end
+        throw(ArgumentError(msg))
     end
 
     # return λFF, φFF, λFC, φFC, λCF, φCF, λCC, φCC
