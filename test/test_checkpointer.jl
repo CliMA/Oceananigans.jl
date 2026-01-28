@@ -1804,6 +1804,7 @@ for arch in archs
         if timestepper == :SplitRungeKutta3 # currently, CATKE and TKE-ε tests fail with :QuasiAdamsBashforth2
             @testset "CATKE closure checkpointing [$(typeof(arch)), $timestepper]" begin
                 @info "  Testing CATKE closure checkpointing [$(typeof(arch)), $timestepper]..."
+                test_checkpointing_catke_closure(arch, timestepper, CATKEVerticalDiffusivity())
                 test_checkpointing_catke_closure(arch, timestepper, (CATKEVerticalDiffusivity(),))
                 @info "  Testing CATKE+another closure checkpointing [$(typeof(arch)), $timestepper]..."
                 test_checkpointing_catke_closure(arch, timestepper, (CATKEVerticalDiffusivity(), VerticalScalarDiffusivity(κ=1e-5)))
