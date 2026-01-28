@@ -13,7 +13,6 @@ DataDeps.register(dd)
 datadep"cubed_sphere_32_grid"
 
 # Downloading the regression fields
-
 path = "https://github.com/glwagner/OceananigansArtifacts.jl/raw/main/data_for_regression_tests/"
 
 dh = DataDep("regression_truth_data",
@@ -24,6 +23,14 @@ dh = DataDep("regression_truth_data",
      path * "hydrostatic_free_turbulence_regression_Bounded_ImplicitFreeSurface.jld2",
      path * "hydrostatic_free_turbulence_regression_Bounded_ExplicitFreeSurface.jld2",
      path * "hydrostatic_free_turbulence_regression_Bounded_SplitExplicitFreeSurface.jld2",
+     path * "hydrostatic_rotation_regression_Static_Nothing_AB2.jld2",
+     path * "hydrostatic_rotation_regression_Static_CATKE_AB2.jld2",
+     path * "hydrostatic_rotation_regression_Static_Nothing_RK3.jld2",
+     path * "hydrostatic_rotation_regression_Static_CATKE_RK3.jld2",
+     path * "hydrostatic_rotation_regression_Mutable_Nothing_AB2.jld2",
+     path * "hydrostatic_rotation_regression_Mutable_CATKE_AB2.jld2",
+     path * "hydrostatic_rotation_regression_Mutable_Nothing_RK3.jld2",
+     path * "hydrostatic_rotation_regression_Mutable_CATKE_RK3.jld2",
      path * "ocean_large_eddy_simulation_AnisotropicMinimumDissipation_iteration10000.jld2",
      path * "ocean_large_eddy_simulation_AnisotropicMinimumDissipation_iteration10010.jld2",
      path * "ocean_large_eddy_simulation_SmagorinskyLilly_iteration10000.jld2",
