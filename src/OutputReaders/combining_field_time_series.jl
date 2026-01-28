@@ -48,9 +48,13 @@ Given a file path, check if distributed rank files exist (e.g., `output_rank0.jl
 Returns a sorted vector of rank file paths if they exist, or `nothing` if not.
 """
 function find_rank_files(path)
-    path = auto_extension(path, ".jld2")
-    prefix = path[1:end-5]
-    rank_paths = glob(string(prefix, "_rank*.jld2"))
+    path = auto_extension(path, ".jld2") 
+
+    base, ext = splitext(path)            # removes ".jld2" safely
+    dir = dirname(path)
+    stem = basename(base)
+
+    rank_paths = glob(stem * "_rank*.jld2", dir)
     isempty(rank_paths) && return nothing
     return naturalsort(rank_paths)
 end
