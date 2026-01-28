@@ -8,62 +8,62 @@ using GLMakie
 
 Plots the grid as a wireframe on the given axis `ax`.
 Includes markers at the centers.
-Extra lines are drawn for the edges of the interior grid and, optionally, the halo.
-Extra markers are also drawn for the centers located on the edges of the interior grid, and, optionally, the edges of the halo.
+Extra lines are drawn for the edges of the interior grid.
+Extra markers are also drawn for the centers located on the edges of the interior grid.
 """
-function plot_grid!(ax, grid; plothalo = false)
-    (; λᶜᶜᵃ, λᶠᶠᵃ) = grid
-    (; φᶜᶜᵃ, φᶠᶠᵃ) = grid
+function plot_grid!(ax, grid)
+
+    λᶜᶜᵃ_interior = λnodes(grid, Center(), Center())
+    λᶠᶠᵃ_interior = λnodes(grid, Face(), Face())
+    φᶜᶜᵃ_interior = φnodes(grid, Center(), Center())
+    φᶠᶠᵃ_interior = φnodes(grid, Face(), Face())
+
+    (; Hx, Hy) = grid
 
     for (color, linestyle, linewidth, iscenter, x, y) in zip(
             ((:black, 0.25), (:black, 0.1)),
             (:solid, :solid),
             (1, 0.5),
             (false, true),
-            (λᶠᶠᵃ, λᶜᶜᵃ),
-            (φᶠᶠᵃ, φᶜᶜᵃ)
+            (λᶠᶠᵃ_interior, λᶜᶜᵃ_interior),
+            (φᶠᶠᵃ_interior, φᶜᶜᵃ_interior),
         )
 
-        Hx, Hy = -1 .* x.offsets
-        Nx, Ny = size(x) .- 2 .* (Hx, Hy)
-        xleft = x[1, 1:Ny]; xhaloleft = x[1 - Hx, :]
-        yleft = y[1, 1:Ny]; yhaloleft = y[1 - Hx, :]
-        xright = x[Nx, 1:Ny]; xhaloright = x[Nx + Hx, :]
-        yright = y[Nx, 1:Ny]; yhaloright = y[Nx + Hx, :]
-        xbottom = x[1:Nx, 1]; xhalobottom = x[:, 1 - Hy]
-        ybottom = y[1:Nx, 1]; yhalobottom = y[:, 1 - Hy]
-        xtop = x[1:Nx, Ny]; xhalotop = x[:, Ny + Hy]
-        ytop = y[1:Nx, Ny]; yhalotop = y[:, Ny + Hy]
+        Nx, Ny = size(x)
+        @assert (Nx, Ny) == size(y)
 
-        ix, iy = plothalo ? (Colon(), Colon()) : (1:Nx, 1:Ny)
-        wireframe!(ax, x[ix, iy], y[ix, iy], 0 * x[ix, iy]; color, linestyle, linewidth = 2 * linewidth) # <- plot in Cartesian (x,y) coords
+        xleft = x[1, 1:Ny]
+        yleft = y[1, 1:Ny]
+        xright = x[Nx, 1:Ny]
+        yright = y[Nx, 1:Ny]
+        xbottom = x[1:Nx, 1]
+        ybottom = y[1:Nx, 1]
+        xtop = x[1:Nx, Ny]
+        ytop = y[1:Nx, Ny]
+
+        wireframe!(ax, x, y, 0 * x; color, linestyle, linewidth = 2 * linewidth) # <- plot in Cartesian (x,y) coords
 
         # Color lines differently for first and last
         if iscenter
-            sc = scatter!(ax, x[ix, iy][:], y[ix, iy][:]; color) # <- plot in Spherical (lon,lat) coords
+            sc = scatter!(ax, x[:], y[:]; color) # <- plot in Spherical (lon,lat) coords
             translate!(sc, 0, 0, 50)
-            for (x, y, color, marker, markersize, fillit, plotit) in zip(
-                    (xleft, xbottom, xright, xtop, xhaloleft, xhalobottom, xhaloright, xhalotop),
-                    (yleft, ybottom, yright, ytop, yhaloleft, yhalobottom, yhaloright, yhalotop),
-                    (:green, :blue, :red, :orange, :green, :blue, :red, :orange),
-                    (:ltriangle, :dtriangle, :rtriangle, :utriangle, :ltriangle, :dtriangle, :rtriangle, :utriangle),
-                    (10, 10, 10, 10, 10, 10, 10, 10),
-                    (true, true, true, true, false, false, false, false),
-                    (true, true, true, true, plothalo, plothalo, plothalo, plothalo),
+            for (x, y, color, marker, markersize) in zip(
+                    (xleft, xbottom, xright, xtop),
+                    (yleft, ybottom, yright, ytop),
+                    (:green, :blue, :red, :orange),
+                    (:ltriangle, :dtriangle, :rtriangle, :utriangle),
+                    (10, 10, 10, 10),
                 )
-                plotit || continue
-                sc = scatter!(ax, x, y; color = fillit ? color : :transparent, marker, markersize, strokecolor = color, strokewidth = 1)
+                sc = scatter!(ax, x, y; color, marker, markersize, strokecolor = color, strokewidth = 1)
                 translate!(sc, 0, 0, 100)
             end
         else
-            for (x, y, color, linewidth, plotit) in zip(
-                    (xleft, xbottom, xright, xtop, xhaloleft, xhalobottom, xhaloright, xhalotop),
-                    (yleft, ybottom, yright, ytop, yhaloleft, yhalobottom, yhaloright, yhalotop),
-                    (:green, :blue, :red, :orange, :green, :blue, :red, :orange),
-                    (6, 5, 4, 3, 4, 3, 2, 1),
-                    (true, true, true, true, plothalo, plothalo, plothalo, plothalo),
+            for (x, y, color, linewidth) in zip(
+                    (xleft, xbottom, xright, xtop),
+                    (yleft, ybottom, yright, ytop),
+                    (:green, :blue, :red, :orange),
+                    (6, 5, 4, 3),
                 )
-                plotit || continue
                 ln = lines!(ax, x, y; color, linewidth)
                 translate!(ln, 0, 0, 100)
             end
@@ -179,9 +179,10 @@ metrics = (
 
 for (irow, fold_topology) in enumerate(fold_topologies)
     for (icol, Nx′) in enumerate(Nxs)
+        @info "Plotting grid with fold topology: $fold_topology and Nx = $Nx′"
         grid = TripolarGrid(; gridopt..., fold_topology, size = (Nx′, Ny, Nz))
         ax = Axis(fig[irow, icol]; axopt...)
-        plot_grid!(ax, grid; plothalo = false)
+        plot_grid!(ax, grid)
         Label(fig[0, icol]; text = "Nx = $(Nx′)", ylabelopt...)
 
         # Also plot all the metrics in separate figures

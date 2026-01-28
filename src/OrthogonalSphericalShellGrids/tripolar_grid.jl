@@ -214,36 +214,6 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     λᶜᶜᵃ = dropdims(λCC.data, dims=3)
     φᶜᶜᵃ = dropdims(φCC.data, dims=3)
 
-    # Allocate Metrics
-    # TODO: make these on_architecture(arch, zeros(Nx, Ny))
-    # to build the grid on GPU
-    # We build these up to Ny + 1 in case the topology is RightFaceFolded
-    Δxᶜᶜᵃ = zeros(Nx, Ny)
-    Δxᶠᶜᵃ = zeros(Nx, Ny)
-    Δxᶜᶠᵃ = zeros(Nx, Ny)
-    Δxᶠᶠᵃ = zeros(Nx, Ny)
-
-    Δyᶜᶜᵃ = zeros(Nx, Ny)
-    Δyᶠᶜᵃ = zeros(Nx, Ny)
-    Δyᶜᶠᵃ = zeros(Nx, Ny)
-    Δyᶠᶠᵃ = zeros(Nx, Ny)
-
-    Azᶜᶜᵃ = zeros(Nx, Ny)
-    Azᶠᶜᵃ = zeros(Nx, Ny)
-    Azᶜᶠᵃ = zeros(Nx, Ny)
-    Azᶠᶠᵃ = zeros(Nx, Ny)
-
-    # Calculate metrics
-    # TODO: rewrite this kernel and split the call to match the indices exactly.
-    loop! = _calculate_metrics!(device(CPU()), (16, 16), (Nx, Ny))
-
-    loop!(Δxᶠᶜᵃ, Δxᶜᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
-          Δyᶠᶜᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
-          Azᶠᶜᵃ, Azᶜᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
-          λᶠᶜᵃ, λᶜᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
-          φᶠᶜᵃ, φᶜᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ,
-          radius)
-
     # Boundary conditions to fill halos of the metric terms
     # We define them manually because the helper RectilinearGrid
     # does not know how to fold the north boundary...
@@ -261,51 +231,61 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
                              x = (0, 1), y = (0, 1),
                              topology = (Periodic, fold_topology, Flat))
 
-    # Metrics fields to fill halos
-    FF = Field{Face,   Face,   Center}(grid; boundary_conditions)
-    FC = Field{Face,   Center, Center}(grid; boundary_conditions)
-    CF = Field{Center, Face,   Center}(grid; boundary_conditions)
-    CC = Field{Center, Center, Center}(grid; boundary_conditions)
+    # Allocate fields for all the metrics fields to fill halos
+    # TODO: make these on_architecture(arch, zeros(Nx, Ny))
+    # to build the grid on GPU
+    Δxᶠᶠᵃ = Field{Face,   Face,   Center}(grid; boundary_conditions)
+    Δxᶠᶜᵃ = Field{Face,   Center, Center}(grid; boundary_conditions)
+    Δxᶜᶠᵃ = Field{Center, Face,   Center}(grid; boundary_conditions)
+    Δxᶜᶜᵃ = Field{Center, Center, Center}(grid; boundary_conditions)
+    Δyᶠᶠᵃ = Field{Face,   Face,   Center}(grid; boundary_conditions)
+    Δyᶠᶜᵃ = Field{Face,   Center, Center}(grid; boundary_conditions)
+    Δyᶜᶠᵃ = Field{Center, Face,   Center}(grid; boundary_conditions)
+    Δyᶜᶜᵃ = Field{Center, Center, Center}(grid; boundary_conditions)
+    Azᶠᶠᵃ = Field{Face,   Face,   Center}(grid; boundary_conditions)
+    Azᶠᶜᵃ = Field{Face,   Center, Center}(grid; boundary_conditions)
+    Azᶜᶠᵃ = Field{Center, Face,   Center}(grid; boundary_conditions)
+    Azᶜᶜᵃ = Field{Center, Center, Center}(grid; boundary_conditions)
 
-    # Fill all periodic halos
-    set!(FF, Δxᶠᶠᵃ)
-    set!(CF, Δxᶜᶠᵃ)
-    set!(FC, Δxᶠᶜᵃ)
-    set!(CC, Δxᶜᶜᵃ)
-    fill_halo_regions!(FF)
-    fill_halo_regions!(CF)
-    fill_halo_regions!(FC)
-    fill_halo_regions!(CC)
-    Δxᶠᶠᵃ = deepcopy(dropdims(FF.data, dims=3))
-    Δxᶜᶠᵃ = deepcopy(dropdims(CF.data, dims=3))
-    Δxᶠᶜᵃ = deepcopy(dropdims(FC.data, dims=3))
-    Δxᶜᶜᵃ = deepcopy(dropdims(CC.data, dims=3))
+    # Calculate metrics
+    # TODO: rewrite this kernel and split the call to match the indices exactly.
+    kp = KernelParameters(1:Nx, 1:Ny)
+    launch!(CPU(), grid, kp, _calculate_metrics!,
+        Δxᶠᶜᵃ, Δxᶜᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
+        Δyᶠᶜᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
+        Azᶠᶜᵃ, Azᶜᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
+        λᶠᶜᵃ, λᶜᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
+        φᶠᶜᵃ, φᶜᶜᵃ, φᶜᶠᵃ, φᶠᶠᵃ,
+        radius
+    )
 
-    set!(FF, Δyᶠᶠᵃ)
-    set!(CF, Δyᶜᶠᵃ)
-    set!(FC, Δyᶠᶜᵃ)
-    set!(CC, Δyᶜᶜᵃ)
-    fill_halo_regions!(FF)
-    fill_halo_regions!(CF)
-    fill_halo_regions!(FC)
-    fill_halo_regions!(CC)
-    Δyᶠᶠᵃ = deepcopy(dropdims(FF.data, dims=3))
-    Δyᶜᶠᵃ = deepcopy(dropdims(CF.data, dims=3))
-    Δyᶠᶜᵃ = deepcopy(dropdims(FC.data, dims=3))
-    Δyᶜᶜᵃ = deepcopy(dropdims(CC.data, dims=3))
+    # Fill all halos
+    fill_halo_regions!(Δxᶠᶠᵃ)
+    fill_halo_regions!(Δxᶠᶜᵃ)
+    fill_halo_regions!(Δxᶜᶠᵃ)
+    fill_halo_regions!(Δxᶜᶜᵃ)
+    fill_halo_regions!(Δyᶠᶠᵃ)
+    fill_halo_regions!(Δyᶠᶜᵃ)
+    fill_halo_regions!(Δyᶜᶠᵃ)
+    fill_halo_regions!(Δyᶜᶜᵃ)
+    fill_halo_regions!(Azᶠᶠᵃ)
+    fill_halo_regions!(Azᶠᶜᵃ)
+    fill_halo_regions!(Azᶜᶠᵃ)
+    fill_halo_regions!(Azᶜᶜᵃ)
 
-    set!(FF, Azᶠᶠᵃ)
-    set!(CF, Azᶜᶠᵃ)
-    set!(FC, Azᶠᶜᵃ)
-    set!(CC, Azᶜᶜᵃ)
-    fill_halo_regions!(FF)
-    fill_halo_regions!(CF)
-    fill_halo_regions!(FC)
-    fill_halo_regions!(CC)
-    Azᶠᶠᵃ = deepcopy(dropdims(FF.data, dims=3))
-    Azᶜᶠᵃ = deepcopy(dropdims(CF.data, dims=3))
-    Azᶠᶜᵃ = deepcopy(dropdims(FC.data, dims=3))
-    Azᶜᶜᵃ = deepcopy(dropdims(CC.data, dims=3))
+    # Copy metrics as offset arrays
+    Δxᶠᶠᵃ = deepcopy(dropdims(Δxᶠᶠᵃ.data, dims=3))
+    Δxᶜᶠᵃ = deepcopy(dropdims(Δxᶜᶠᵃ.data, dims=3))
+    Δxᶠᶜᵃ = deepcopy(dropdims(Δxᶠᶜᵃ.data, dims=3))
+    Δxᶜᶜᵃ = deepcopy(dropdims(Δxᶜᶜᵃ.data, dims=3))
+    Δyᶠᶠᵃ = deepcopy(dropdims(Δyᶠᶠᵃ.data, dims=3))
+    Δyᶜᶠᵃ = deepcopy(dropdims(Δyᶜᶠᵃ.data, dims=3))
+    Δyᶠᶜᵃ = deepcopy(dropdims(Δyᶠᶜᵃ.data, dims=3))
+    Δyᶜᶜᵃ = deepcopy(dropdims(Δyᶜᶜᵃ.data, dims=3))
+    Azᶠᶠᵃ = deepcopy(dropdims(Azᶠᶠᵃ.data, dims=3))
+    Azᶜᶠᵃ = deepcopy(dropdims(Azᶜᶠᵃ.data, dims=3))
+    Azᶠᶜᵃ = deepcopy(dropdims(Azᶠᶜᵃ.data, dims=3))
+    Azᶜᶜᵃ = deepcopy(dropdims(Azᶜᶜᵃ.data, dims=3))
 
     # Continue the metrics to the south with a LatitudeLongitudeGrid
     # metrics (probably we don't even need to do this, since the tripolar grid should
