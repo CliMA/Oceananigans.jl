@@ -29,16 +29,16 @@ Adapt.adapt_structure(to, vd::PrognosticTripolarCells) = PrognosticTripolarCells
                                     i, j, k,
                                     grid::TripolarGridOfSomeKind,
                                     co::ConditionalOperation, args...)
-    ℓx, ℓy, ℓz = Oceananigans.Fields.location(co)
     Nx, Ny, _ = size(grid)
-    
-    TY = topology(grid, 2)
+
+    Ly = Oceananigans.Fields.location(co)[2]
+    TY = Oceananigans.Grids.topology(grid, 2)
 
     last_half_row  = ((i > Nx÷2) & (j == Ny))
     full_final_row = (j == Ny)
-    
-    face_folded_domain = ifelse(ℓy == Face, !last_half_row, !full_final_row)
-    center_folded_domain = ifelse(ℓy == Face, true, !last_half_row) 
+
+    face_folded_domain   = ifelse(Ly == Face, !last_half_row, !full_final_row)
+    center_folded_domain = ifelse(Ly == Face, true,           !last_half_row)
 
     return ifelse(TY == RightFaceFolded, face_folded_domain, center_folded_domain)
 end
