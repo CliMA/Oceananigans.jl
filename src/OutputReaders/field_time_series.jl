@@ -387,17 +387,11 @@ Keyword arguments
 =================
 
 - `indices`: spatial indices. Default: `(:, :, :)`.
-
 - `backend`: `InMemory()` (default), `OnDisk()`, or a custom backend. This is how the data is stored outside `FieldTimeSeries.data`.
-
 - `path`: path to data for `backend = OnDisk()`. Default: `nothing`.
-
 - `name`: name of field for `backend = OnDisk()`. Default: `nothing`.
-
 - `time_indexing`: time indexing mode for extrapolation in time. Can be `Clamped()` (default), `Cyclical()`, or `Linear()`.
-
 - `boundary_conditions`: boundary conditions for the fields. Default: `FieldBoundaryConditions(grid, loc)`.
-
 - `reader_kw`: a named tuple or dictionary of keyword arguments to pass to the reader.
 
 Examples
