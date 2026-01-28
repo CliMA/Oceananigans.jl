@@ -155,7 +155,6 @@ steps:
         - exit_status: 1
           limit: 1
 
-  TODO: these tests fail at the moment. Fix them...
   - label: "🪰 cpu vertical coordinate tests"
     key: "distributed_vertical_coordinate_cpu"
     env:
