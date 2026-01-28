@@ -49,11 +49,9 @@ Returns a sorted vector of rank file paths if they exist, or `nothing` if not.
 """
 function find_rank_files(path)
     path = auto_extension(path, ".jld2") 
-
     base, ext = splitext(path)            # removes ".jld2" safely
     dir = dirname(path)
     stem = basename(base)
-
     rank_paths = glob(stem * "_rank*.jld2", dir)
     isempty(rank_paths) && return nothing
     return naturalsort(rank_paths)
