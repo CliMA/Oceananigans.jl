@@ -404,7 +404,7 @@ Keyword arguments
 Examples
 ========
 
-A `fts::FieldTimeSeries` can be indexed into by time indices or by time values.
+A `FieldTimeSeries` can be indexed into by time indices or by time values.
 To access the field of `fts` at the 3rd time index, use
 
 ```jldoctest field_time_series
