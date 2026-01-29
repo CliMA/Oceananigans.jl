@@ -45,8 +45,26 @@ function offset_data(underlying_data::A, loc, topo, N, H, indices::T=default_ind
         @inbounds axes(underlying_data, i+length(ii))
     end
 
-    return OffsetArray(underlying_data, ii..., extra_ii...)
+    offsets = tuple(ii..., extra_ii...)
+    max_integer = maximum([maximum(abs, o) for o in offsets])
+
+    for IT in [Int64, Int32, Int16, Int8]
+        if max_integer <= typemax(IT)
+            offsets = convert_offsets_type(IT, offsets)
+        end
+    end
+
+    # Strip out the range
+    new_offsets = Tuple(first(o)-1 for o in offsets)
+
+    @show new_offsets, offsets
+
+    return OffsetArray(underlying_data, new_offsets...)
 end
+
+convert_offsets_type(IT, offsets::Tuple) = Tuple(convert_offsets_type(IT, o) for o in offsets)
+convert_offsets_type(IT, offsets::AbstractUnitRange) = UnitRange{IT}(first(offsets), last(offsets))
+convert_offsets_type(IT, offset::Number) = convert(IT, offset)
 
 """
     offset_data(underlying_data, grid::AbstractGrid, loc, indices=default_indices(length(loc)))
