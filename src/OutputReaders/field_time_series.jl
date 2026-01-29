@@ -76,7 +76,7 @@ struct OnDisk <: AbstractDataBackend end
 """
     Cyclical(period=nothing)
 
-Specifies cyclical FieldTimeSeries linear Time extrapolation. If
+Specifies cyclical `FieldTimeSeries` linear `Time` extrapolation. If
 `period` is not specified, it is inferred from the `fts::FieldTimeSeries` via
 
 ```julia
@@ -94,14 +94,14 @@ Cyclical() = Cyclical(nothing)
 """
     Linear()
 
-Specifies FieldTimeSeries linear Time extrapolation.
+Specifies `FieldTimeSeries` linear `Time` extrapolation.
 """
 struct Linear end
 
 """
     Clamp()
 
-Specifies FieldTimeSeries Time extrapolation that returns data from the nearest value.
+Specifies `FieldTimeSeries` `Time` extrapolation that returns data from the nearest value.
 """
 struct Clamp end # clamp to nearest value
 
@@ -375,6 +375,140 @@ time_indices_length(::TotallyInMemory, times) = length(times)
 time_indices_length(backend::PartlyInMemory, times) = length(backend)
 time_indices_length(::OnDisk, times) = nothing
 
+"""
+    FieldTimeSeries(loc, grid [, times=()];
+                    indices = (:, :, :),
+                    backend = InMemory(),
+                    path = nothing,
+                    name = nothing,
+                    time_indexing = Clamp(),
+                    boundary_conditions = FieldBoundaryConditions(grid, loc),
+                    reader_kw = NamedTuple())
+
+Construct a `FieldTimeSeries` on `loc`ation of `grid` and at `times`.
+
+The data in a `FieldTimeSeries` can be loaded in your RAM (`backend = InMemory()`),
+or be written directly to disk (`backend = OnDisk()`).
+
+Keyword arguments
+=================
+
+- `indices`: spatial indices. Default: `(:, :, :)`.
+- `backend`: `InMemory()` (default), `OnDisk()`, or a custom backend. This is how the data is stored outside `FieldTimeSeries.data`.
+- `path`: path to data for `backend = OnDisk()`. Default: `nothing`.
+- `name`: name of field for `backend = OnDisk()`. Default: `nothing`.
+- `time_indexing`: time indexing mode for extrapolation in time. Can be `Clamped()` (default), `Cyclical()`, or `Linear()`.
+- `boundary_conditions`: boundary conditions for the fields. Default: `FieldBoundaryConditions(grid, loc)`.
+- `reader_kw`: a named tuple or dictionary of keyword arguments to pass to the reader.
+
+Examples
+========
+
+A `FieldTimeSeries` can be indexed into by time indices or by time values.
+To access the field of `fts` at the 3rd time index, use
+
+```jldoctest field_time_series
+using Oceananigans
+grid = RectilinearGrid(size = (4, 4, 4), extent = (1, 1, 1))
+fts = FieldTimeSeries{Center, Center, Center}(grid, 0:0.1:1)
+fts[4]
+
+# output
+4×4×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+├── grid: 4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
+└── data: 10×10×10 OffsetArray(view(::Array{Float64, 4}, :, :, :, 4), -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
+    └── max=0.0, min=0.0, mean=0.0
+```
+
+To access the field of `fts` at a given time `t` (in seconds), use the [`Time`](@ref) type:
+
+```jldoctest field_time_series
+using Oceananigans.Units: Time
+fts[Time(0.3)]
+
+# output
+4×4×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+├── grid: 4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
+├── operand: BinaryOperation at (Center, Center, Center)
+├── status: Oceananigans.Fields.FixedTime{Float64}
+└── data: 10×10×10 OffsetArray(::Array{Float64, 3}, -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
+    └── max=0.0, min=0.0, mean=0.0
+```
+
+You can also index spatially at the same time, e.g., with
+
+```jldoctest field_time_series
+fts[1:3, 2:4, 1:2, 3]
+
+# output
+3×3×2 Array{Float64, 3}:
+[:, :, 1] =
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+
+[:, :, 2] =
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+```
+
+When using [`Time`](@ref) indexing, Oceananigans interpolates between saved time slices
+and extrapolates outside the time domain.
+To control the extrapolation method, use the `time_indexing` keyword argument.
+For example, construct a sine-like `FieldTimeSeries` with `Cyclical` time indexing,
+and get values outside of the domain:
+
+```jldoctest field_time_series
+using Oceananigans.OutputReaders: Cyclical
+output_times = 0:0.1:1
+fts = FieldTimeSeries{Center, Center, Center}(
+    grid,
+    output_times;
+    time_indexing = Cyclical(1),
+)
+for (idx, t) in enumerate(output_times)
+    c = CenterField(grid)
+    set!(c, (x, y, z) -> sin(2π * t / 1))
+    set!(fts, c, idx)
+end
+fts[1, 2, 3, Time(-1.25)]
+
+# output
+-0.9510565162951536
+```
+
+To access a `FieldTimeSeries` constructed on disk, you must first `set!` all its fields:
+
+```jldoctest field_time_series; teardown = :(rm("test.jld2"))
+output_times = 0:0.1:1
+fts = FieldTimeSeries{Center, Center, Center}(
+    grid,
+    output_times;
+    backend = OnDisk(),
+    path = "test.jld2",
+    name = "c",
+)
+for idx in eachindex(output_times)
+    c = CenterField(grid)
+    set!(c, Returns(idx))
+    set!(fts, c, idx) # writes fts[idx] to disk
+end
+fts[5]
+
+# output
+4×4×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+├── grid: 4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
+└── data: 10×10×10 OffsetArray(::Array{Float64, 3}, -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
+    └── max=5.0, min=5.0, mean=5.0
+```
+"""
 function FieldTimeSeries(loc::Tuple{<:LX, <:LY, <:LZ}, grid, times=();
                          indices = (:, :, :),
                          backend = InMemory(),
@@ -428,16 +562,7 @@ end
 
 Construct a `FieldTimeSeries` on `grid` and at `times`.
 
-Keyword arguments
-=================
-
-- `indices`: spatial indices
-
-- `backend`: backend, `InMemory(indices=Colon())` or `OnDisk()`
-
-- `path`: path to data for `backend = OnDisk()`
-
-- `name`: name of field for `backend = OnDisk()`
+Same as `FieldTimeSeries((LX(), LY(), LZ()), grid, [, times]; kwargs...)`.
 """
 function FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid, times=(); kwargs...) where {LX, LY, LZ}
     loc = (LX(), LY(), LZ())
