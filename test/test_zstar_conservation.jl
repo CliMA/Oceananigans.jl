@@ -74,6 +74,9 @@ function info_message(grid, free_surface, timestepper)
     return msg1 * msg2 * msg3 * msg4
 end
 
+const LLGOfSomeKind = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:LatitudeLongitudeGrid}}
+
+
 @testset "ZStarCoordinate tracer conservation testset" begin
     z_stretched = MutableVerticalDiscretization(collect(-20:0))
     topologies  = ((Periodic, Periodic, Bounded),
@@ -112,7 +115,7 @@ end
 
                 for free_surface in [explicit_free_surface, split_free_surface, implicit_free_surface]
 
-                    if (arch isa Distributed{<:GPU}) && (grid ∈ [llgv, illgv]) && (free_surface === implicit_free_surface)
+                    if (arch isa Distributed{<:GPU}) && (grid isa LLGOfSomeKind) && (free_surface === implicit_free_surface)
                         # This combination of parameters leads to the following error:
                         # Kernel invocation uses too much parameter memory.
                         # 4.375 KiB exceeds the 4.000 KiB limit imposed by sm_60 / PTX v8.2.
