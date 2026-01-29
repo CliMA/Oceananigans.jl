@@ -19,7 +19,14 @@ import Oceananigans.Grids: total_length
 import Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid, TripolarGrid
 import Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, materialize_immersed_boundary
 
-const ShardedDistributed = Oceananigans.Distributed{<:ReactantState}
+const ShardedDistributed = Oceananigans.Distributed{<:ReactantState, 
+                                                    <:Any, 
+                                                    <:Any, 
+                                                    <:Any, 
+                                                    <:Any, 
+                                                    <:Any, 
+                                                    <:Sharding.Mesh
+                                                   }
 
 const ReactantGrid{FT, TX, TY, TZ} = Union{
     AbstractGrid{FT, TX, TY, TZ, <:ReactantState},
