@@ -45,16 +45,11 @@ function test_zstar_coordinate(model, Ni, Δt, test_local_conservation=true)
         end
         @test condition
 
-        # Test this condition only if the model is not distributed.
-        # The vertical velocity at the top may not be exactly zero due asynchronous updates,
-        # which will be fixed in a future PR.
-        if !(model.grid isa DistributedGrid)
-            condition = maximum(abs, interior(w, :, :, Nz+1)) < eps(eltype(w))
-            if !condition
-                @info "Stopping early: nonzero vertical velocity at top at step $step"
-            end
-            @test condition
+        condition = maximum(abs, interior(w, :, :, Nz+1)) < eps(eltype(w))
+        if !condition
+            @info "Stopping early: nonzero vertical velocity at top at step $step"
         end
+        @test condition
 
         # Constancy preservation test
         if test_local_conservation

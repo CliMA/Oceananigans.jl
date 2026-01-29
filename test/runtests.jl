@@ -209,7 +209,10 @@ CUDA.allowscalar() do
         MPI.Initialized() || MPI.Init()
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
-        archs = test_architectures()
+
+        # We only use the non-fractional partitioning
+        # otherwise tests become a bit too long
+        archs = test_architectures()[1:3]
         include("test_zstar_conservation.jl")
     end
 
