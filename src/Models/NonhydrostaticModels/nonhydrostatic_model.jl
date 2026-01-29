@@ -55,6 +55,8 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
  boundary_mass_fluxes :: BM       # Container for the average mass fluxes at boundaries
 end
 
+supported_timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
+
 """
     NonhydrostaticModel(grid;
                         clock = Clock{eltype(grid)}(time = 0),
@@ -100,8 +102,9 @@ Keyword arguments
   - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
   - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
                preallocated `CenterField`s.
-  - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2` or
-                   `:RungeKutta3` (default).
+  - `timestepper`: A symbol or a `TimeStepper` object that specifies the time-stepping method.
+                   Supported symbols include $(join("`" .* repr.(supported_timesteppers) .* "`", ", ")).
+                   Default: `:RungeKutta3`.
   - `background_fields`: `NamedTuple` with background fields (e.g., background flow). Default: `nothing`.
   - `particles`: Lagrangian particles to be advected with the flow. Default: `nothing`.
   - `biogeochemistry`: Biogeochemical model for `tracers`.
@@ -143,6 +146,15 @@ function NonhydrostaticModel(grid;
     arch = architecture(grid)
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
+
+    if timestepper isa Symbol && timestepper ∉ supported_timesteppers
+        msg = """
+        timestepper = :$timestepper is not supported.
+        Supported timesteppers are: $(join(repr.(supported_timesteppers), ", ")).
+        You can also construct your own TimeStepper and pass it to the constructor.
+        """
+        throw(ArgumentError(msg))
+    end
 
     if isnothing(nonhydrostatic_pressure)
         if isnothing(free_surface)
