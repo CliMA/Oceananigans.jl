@@ -50,8 +50,8 @@ const MutableGridOfSomeKind{FT, TX, TY} = Union{MutableImmersedGrid{FT, TX, TY},
 
 # Topology - aware column height (used for the SplitExplicitFreeSurface)
 
-@inline column_depthTᶠᶜᵃ(i, j, k, grid::AbstractGrid, η) = column_depthᶠᶜᵃ(i, j, k, grid, η) 
-@inline column_depthTᶜᶠᵃ(i, j, k, grid::AbstractGrid, η) = column_depthᶜᶠᵃ(i, j, k, grid, η) 
+@inline column_depthTᶠᶜᵃ(i, j, k, grid::AbstractGrid, η) = column_depthᶠᶜᵃ(i, j, k, grid, η)
+@inline column_depthTᶜᶠᵃ(i, j, k, grid::AbstractGrid, η) = column_depthᶜᶠᵃ(i, j, k, grid, η)
 
 const AMGXB = MutableGridOfSomeKind{<:Any, Bounded}
 const AMGXP = MutableGridOfSomeKind{<:Any, Periodic}
@@ -64,14 +64,14 @@ const AMGYR = MutableGridOfSomeKind{<:Any, <:Any, <:Union{RightConnected, RightC
 const AMGYL = MutableGridOfSomeKind{<:Any, <:Any, LeftConnected}
 
 # Enforce Periodic conditions for column depth
-@inline function column_depthTᶠᶜᵃ(i, j, k, grid::AMGXP, η) 
+@inline function column_depthTᶠᶜᵃ(i, j, k, grid::AMGXP, η)
     Hᶠᶜᵃ = column_depthᶠᶜᵃ(i, j, k, grid, η)
     hᶠᶜᵃ = static_column_depthᶠᶜᵃ(i, j, grid)
     ηᶠᶜᵃ = @inbounds (η[grid.Nx, j, k] + η[1, j, k]) / 2
     return ifelse(i == 1, hᶠᶜᵃ + ηᶠᶜᵃ, Hᶠᶜᵃ)
 end
 
-@inline function column_depthTᶜᶠᵃ(i, j, k, grid::AMGYP, η) 
+@inline function column_depthTᶜᶠᵃ(i, j, k, grid::AMGYP, η)
     Hᶜᶠᵃ = column_depthᶜᶠᵃ(i, j, k, grid, η)
     hᶜᶠᵃ = static_column_depthᶜᶠᵃ(i, j, grid)
     ηᶜᶠᵃ = @inbounds (η[i, grid.Ny, k] + η[i, 1, k]) / 2
@@ -79,14 +79,14 @@ end
 end
 
 # Enforce boundary conditions for Bounded topologies
-@inline function column_depthTᶠᶜᵃ(i, j, k, grid::AMGXB, η) 
+@inline function column_depthTᶠᶜᵃ(i, j, k, grid::AMGXB, η)
     Hᶠᶜᵃ = column_depthᶠᶜᵃ(i, j, k, grid, η)
     hᶠᶜᵃ = static_column_depthᶠᶜᵃ(i, j, grid)
     η₁ = @inbounds η[i, j, k]
     return ifelse(i == 1, hᶠᶜᵃ + η₁, Hᶠᶜᵃ)
 end
 
-@inline function column_depthTᶜᶠᵃ(i, j, k, grid::AMGYB, η) 
+@inline function column_depthTᶜᶠᵃ(i, j, k, grid::AMGYB, η)
     Hᶜᶠᵃ = column_depthᶜᶠᵃ(i, j, k, grid, η)
     hᶜᶠᵃ = static_column_depthᶜᶠᵃ(i, j, grid)
     η₁ = @inbounds η[i, j, k]
@@ -94,14 +94,14 @@ end
 end
 
 # Enforce boundary conditions for RightConnected/RightFolded topologies
-@inline function column_depthTᶠᶜᵃ(i, j, k, grid::AMGXR, η) 
+@inline function column_depthTᶠᶜᵃ(i, j, k, grid::AMGXR, η)
     Hᶠᶜᵃ = column_depthᶠᶜᵃ(i, j, k, grid, η)
     hᶠᶜᵃ = static_column_depthᶠᶜᵃ(i, j, grid)
     η₁ = @inbounds η[1, j, k]
     return ifelse(i == 1, hᶠᶜᵃ + η₁,  Hᶠᶜᵃ)
 end
 
-@inline function column_depthTᶜᶠᵃ(i, j, k, grid::AMGYR, η) 
+@inline function column_depthTᶜᶠᵃ(i, j, k, grid::AMGYR, η)
     Hᶜᶠᵃ = column_depthᶜᶠᵃ(i, j, k, grid, η)
     hᶜᶠᵃ = static_column_depthᶜᶠᵃ(i, j, grid)
     η₁ = @inbounds η[i, j, k]
@@ -109,14 +109,14 @@ end
 end
 
 # Enforce boundary conditions for LeftConnected topologies
-@inline function column_depthTᶠᶜᵃ(i, j, k, grid::AMGXL, η) 
+@inline function column_depthTᶠᶜᵃ(i, j, k, grid::AMGXL, η)
     Hᶠᶜᵃ = column_depthᶠᶜᵃ(i, j, k, grid, η)
     hᶠᶜᵃ = static_column_depthᶠᶜᵃ(i, j, grid)
     ηₑ = @inbounds η[grid.Nx, j, k]
     return iifelse(i == grid.Nx + 1, hᶠᶜᵃ + ηₑ, Hᶠᶜᵃ)
 end
 
-@inline function column_depthTᶜᶠᵃ(i, j, k, grid::AMGYL, η) 
+@inline function column_depthTᶜᶠᵃ(i, j, k, grid::AMGYL, η)
     Hᶜᶠᵃ = column_depthᶜᶠᵃ(i, j, k, grid, η)
     hᶜᶠᵃ = static_column_depthᶜᶠᵃ(i, j, grid)
     ηₑ = @inbounds η[i, grid.Ny, k]

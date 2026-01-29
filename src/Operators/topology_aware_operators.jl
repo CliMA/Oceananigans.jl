@@ -1,11 +1,11 @@
-using Oceananigans.Grids: AbstractUnderlyingGrid, 
-                          Bounded, 
-                          LeftConnected, 
+using Oceananigans.Grids: AbstractUnderlyingGrid,
+                          Bounded,
+                          LeftConnected,
                           Periodic,
                           RightConnected,
                           RightCenterFolded,
                           RightFaceFolded
-                          
+
 const AGXB = AbstractUnderlyingGrid{FT, Bounded} where FT
 const AGXP = AbstractUnderlyingGrid{FT, Periodic} where FT
 const AGXR = AbstractUnderlyingGrid{FT, <:Union{RightConnected, RightCenterFolded, RightFaceFolded}} where FT
