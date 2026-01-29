@@ -6,6 +6,7 @@ using Oceananigans.Grids: Center, Face
 using Oceananigans.Fields: FunctionField, field
 using Oceananigans.TimeSteppers: tick!, step_lagrangian_particles!
 using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!
+using Oceananigans.OutputReaders: FieldTimeSeries, TimeSeriesInterpolatedField
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
@@ -54,6 +55,7 @@ function PrescribedVelocityFields(; u = ZeroField(),
 end
 
 wrap_prescribed_field(X, Y, Z, f::Function, grid; kwargs...) = FunctionField{X, Y, Z}(f, grid; kwargs...)
+wrap_prescribed_field(X, Y, Z, fts::FieldTimeSeries, grid; clock, kwargs...) = TimeSeriesInterpolatedField{X, Y, Z}(fts, grid; clock)
 wrap_prescribed_field(X, Y, Z, f, grid; kwargs...) = field((X, Y, Z), f, grid)
 
 function hydrostatic_velocity_fields(velocities::PrescribedVelocityFields, grid, clock, bcs)
@@ -88,6 +90,7 @@ free_surface_names(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, grid)
 
 @inline BoundaryConditions.fill_halo_regions!(::PrescribedVelocityFields, args...; kwargs...) = nothing
 @inline BoundaryConditions.fill_halo_regions!(::FunctionField, args...; kwargs...) = nothing
+@inline BoundaryConditions.fill_halo_regions!(::TimeSeriesInterpolatedField, args...; kwargs...) = nothing
 
 @inline datatuple(obj::PrescribedVelocityFields) = (; u = datatuple(obj.u), v = datatuple(obj.v), w = datatuple(obj.w))
 @inline velocities(obj::PrescribedVelocityFields) = (u = obj.u, v = obj.v, w = obj.w)

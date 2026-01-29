@@ -346,6 +346,41 @@ topos_3d = ((Periodic, Periodic, Bounded),
             @test time_step_hydrostatic_model_works(lat_lon_sector_grid, momentum_advection = nothing, velocities = velocities)
         end
 
+        @testset "PrescribedVelocityFields with FieldTimeSeries [$arch]" begin
+            @info "  Testing PrescribedVelocityFields with FieldTimeSeries [$arch]..."
+
+            grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+            times = 0:0.1:1.0
+
+            # Create velocity FieldTimeSeries and populate with set!
+            u_fts = FieldTimeSeries{Face, Center, Center}(grid, times)
+            for (n, t) in enumerate(times)
+                set!(u_fts, t, n)  # u = t at each time index
+            end
+
+            # Use with PrescribedVelocityFields
+            velocities = PrescribedVelocityFields(; u=u_fts)
+            model = HydrostaticFreeSurfaceModel(grid; velocities, tracers=:c)
+
+            # At t=0, velocity field should interpolate to u=0
+            u = model.velocities.u
+            @test u[1, 1, 1] ≈ 0.0
+
+            # Time step to t=0.05
+            time_step!(model, 0.05)
+
+            # Now u should interpolate to 0.05 (between t=0 and t=0.1)
+            @test u[1, 1, 1] ≈ 0.05
+
+            # Time step to t=0.15 (total t=0.2)
+            time_step!(model, 0.15)
+
+            # Now u should interpolate to 0.2
+            @test u[1, 1, 1] ≈ 0.2
+
+            @info "    PrescribedVelocityFields with FieldTimeSeries test passed"
+        end
+
         @testset "HydrostaticFreeSurfaceModel with tracers and forcings [$arch]" begin
             @info "  Testing HydrostaticFreeSurfaceModel with tracers and forcings [$arch]..."
             hydrostatic_free_surface_model_tracers_and_forcings_work(arch)
