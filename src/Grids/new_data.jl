@@ -54,11 +54,7 @@ function offset_data(underlying_data::A, loc, topo, N, H, indices::T=default_ind
         end
     end
 
-    @show typeof(offsets)
-    arr = OffsetArray(underlying_data, offsets...)
-
-    @show typeof(arr)
-    return arr
+    return OffsetArray(underlying_data, offsets...)
 end
 
 convert_offsets_type(IT, offsets::Tuple) = Tuple(convert_offsets_type(IT, o) for o in offsets)
