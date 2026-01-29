@@ -8,6 +8,7 @@ using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
 using Oceananigans.Grids: get_active_cells_map
+using Oceananigans.Fields: Field, interior
 using Oceananigans.Advection: near_y_immersed_boundary_biasedᶜ
 using KernelAbstractions: @kernel, @index
 """
@@ -144,7 +145,42 @@ function get_u_conditioned_map(scheme, grid; active_cells_map=nothing)
     max_scheme_field = Field{Center, Center, Center}(grid, Bool)
     fill!(max_scheme_field, false)
     launch!(architecture(grid), grid, :xyz, condition_map!, max_scheme_field, grid, scheme; active_cells_map)
-    return ()
+    
+    return split_indices(max_scheme_field, grid; active_cells_map)
+end
+
+function split_indices(field, grid; active_cells_map)
+    IndicesType = Tuple{Int32, Int32, Int32}
+    maps = NTuple{2, Tuple{IndicesType}} 
+    for index in active_cells_map
+        val = on_architecture(CPU(), interior(field, index...)) 
+        if val
+            maps[1] = vcat(maps[1], index)
+        else
+            maps[2] = vcat(maps[2], index)
+        end
+        GC.gc()
+    end
+end
+
+function split_indices(field, grid; active_cells_map::Nothing)
+    IndicesType = Tuple{Int32, Int32, Int32}
+    maps = NTuple{2, Tuple{IndicesType}} 
+    for i in 1:size(grid, 1), j in 1:size(grid, 2), k in 1:size(grid, 3)
+        val = on_architecture(CPU(), interior(field, i, j, k)) 
+        if val
+            maps[1] = vcat(maps[1], (i, j, k))
+        else
+            maps[2] = vcat(maps[2], (i, j, k))
+        end
+        GC.gc()
+    end
+end
+
+function convert_interior_indices(interior_indices, k, IndicesType)
+    interior_indices =   getproperty.(interior_indices, :I)
+    interior_indices = (interior_indices[1], interior_indices[2], k) |> Array{IndicesType}
+    return interior_indices
 end
 
 @kernel function condition_map!(max_scheme_field, ibg, scheme)
