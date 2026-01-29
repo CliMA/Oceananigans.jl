@@ -24,8 +24,8 @@ struct TimeSeriesInterpolatedField{LX, LY, LZ, FTS, C, G, T} <: AbstractField{LX
     time-interpolated values from the underlying `FieldTimeSeries`.
     """
     function TimeSeriesInterpolatedField{LX, LY, LZ}(time_series::FTS,
-                                                      grid::G;
-                                                      clock::C) where {LX, LY, LZ, FTS, G, C}
+                                                     grid::G;
+                                                     clock::C) where {LX, LY, LZ, FTS, G, C}
         T = eltype(grid)
         return new{LX, LY, LZ, FTS, C, G, T}(time_series, grid, clock)
     end
@@ -41,9 +41,8 @@ end
 ##### getindex: interpolate to current clock time
 #####
 
-@inline function Base.getindex(f::TimeSeriesInterpolatedField, i, j, k)
-    return @inbounds f.time_series[i, j, k, Time(f.clock.time)]
-end
+@inline Base.getindex(f::TimeSeriesInterpolatedField, i, j, k) =
+    @inbounds f.time_series[i, j, k, Time(f.clock.time)]
 
 #####
 ##### GPU adaptation
@@ -57,7 +56,7 @@ struct GPUAdaptedTimeSeriesInterpolatedField{LX, LY, LZ, FTS, TT, T} <: Abstract
     time :: TT          # Current clock time (scalar value)
 
     function GPUAdaptedTimeSeriesInterpolatedField{LX, LY, LZ}(time_series::FTS,
-                                                                time::TT) where {LX, LY, LZ, FTS, TT}
+                                                               time::TT) where {LX, LY, LZ, FTS, TT}
         T = eltype(time_series)
         return new{LX, LY, LZ, FTS, TT, T}(time_series, time)
     end
@@ -65,9 +64,8 @@ end
 
 @inline indices(::GPUAdaptedTimeSeriesInterpolatedField) = (:, :, :)
 
-@inline function Base.getindex(f::GPUAdaptedTimeSeriesInterpolatedField, i, j, k)
-    return @inbounds f.time_series[i, j, k, Time(f.time)]
-end
+@inline Base.getindex(f::GPUAdaptedTimeSeriesInterpolatedField, i, j, k) =
+    @inbounds f.time_series[i, j, k, Time(f.time)]
 
 function Adapt.adapt_structure(to, f::TimeSeriesInterpolatedField{LX, LY, LZ}) where {LX, LY, LZ}
     adapted_time_series = Adapt.adapt(to, f.time_series)
@@ -80,8 +78,8 @@ end
 
 function on_architecture(to, f::TimeSeriesInterpolatedField{LX, LY, LZ}) where {LX, LY, LZ}
     return TimeSeriesInterpolatedField{LX, LY, LZ}(on_architecture(to, f.time_series),
-                                                    on_architecture(to, f.grid);
-                                                    clock = on_architecture(to, f.clock))
+                                                   on_architecture(to, f.grid);
+                                                   clock = on_architecture(to, f.clock))
 end
 
 #####
