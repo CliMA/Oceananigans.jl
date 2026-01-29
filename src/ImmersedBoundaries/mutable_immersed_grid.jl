@@ -113,7 +113,7 @@ end
     Hᶠᶜᵃ = column_depthᶠᶜᵃ(i, j, k, grid, η)
     hᶠᶜᵃ = static_column_depthᶠᶜᵃ(i, j, grid)
     ηₑ = @inbounds η[grid.Nx, j, k]
-    return iifelse(i == grid.Nx + 1, hᶠᶜᵃ + ηₑ, Hᶠᶜᵃ)
+    return ifelse(i == grid.Nx + 1, hᶠᶜᵃ + ηₑ, Hᶠᶜᵃ)
 end
 
 @inline function column_depthTᶜᶠᵃ(i, j, k, grid::AMGYL, η)
