@@ -17,7 +17,30 @@ set!(u_fts, (x, y, z, t) -> t)
 velocities = PrescribedVelocityFields(; u=u_fts)
 model = HydrostaticFreeSurfaceModel(grid; velocities, tracers=:c)
 
-for n = 1:3
-    time_step!(model, 0.03)
-    @show model.velocities.u[1, 1, 1]
+simulation = Simulation(
+    model;
+    Δt = 0.05,
+    stop_time = 1.0,
+)
+
+output_fields = Dict(
+    "u" => model.velocities.u,
+)
+
+filename = "prescribed_velocity_field_time_series_mwe.jld2"
+
+simulation.output_writers[:fields] = JLD2Writer(
+    model, output_fields;
+    schedule = TimeInterval(0.1),
+    filename = filename,
+    overwrite_existing = true,
+)
+
+run!(simulation)
+
+u_fts_output = FieldTimeSeries(filename, "u")
+
+for n in eachindex(u_fts_output.times)
+    u = u_fts_output[n]
+    @show u[1, 1, 1]
 end

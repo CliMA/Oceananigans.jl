@@ -381,6 +381,45 @@ topos_3d = ((Periodic, Periodic, Bounded),
             @info "    PrescribedVelocityFields with FieldTimeSeries test passed"
         end
 
+        @testset "PrescribedVelocityFields with FieldTimeSeries output [$arch]" begin
+            @info "  Testing PrescribedVelocityFields with FieldTimeSeries output [$arch]..."
+
+            grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+            times = 0:0.1:1.0
+
+            # Create velocity FieldTimeSeries with u = t
+            u_fts = FieldTimeSeries{Face, Center, Center}(grid, times)
+            set!(u_fts, (x, y, z, t) -> t)
+
+            velocities = PrescribedVelocityFields(; u=u_fts)
+            model = HydrostaticFreeSurfaceModel(grid; velocities, tracers=:c)
+
+            simulation = Simulation(model; Δt=0.05, stop_time=0.5)
+
+            # Output the prescribed velocity (which is a TimeSeriesInterpolation)
+            test_filename = "test_prescribed_velocity_output.jld2"
+            simulation.output_writers[:fields] = JLD2Writer(model, (; u=model.velocities.u);
+                                                           schedule=TimeInterval(0.1),
+                                                           filename=test_filename,
+                                                           overwrite_existing=true)
+
+            run!(simulation)
+
+            # Read output and verify values
+            u_output = FieldTimeSeries(test_filename, "u")
+
+            for n in eachindex(u_output.times)
+                t = u_output.times[n]
+                u_val = u_output[n][1, 1, 1]
+                @test u_val ≈ t atol=1e-5
+            end
+
+            # Clean up
+            rm(test_filename)
+
+            @info "    PrescribedVelocityFields with FieldTimeSeries output test passed"
+        end
+
         @testset "HydrostaticFreeSurfaceModel with tracers and forcings [$arch]" begin
             @info "  Testing HydrostaticFreeSurfaceModel with tracers and forcings [$arch]..."
             hydrostatic_free_surface_model_tracers_and_forcings_work(arch)

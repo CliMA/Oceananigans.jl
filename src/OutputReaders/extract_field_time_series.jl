@@ -24,8 +24,8 @@ end
 # Termination (move all here when we switch the code up)
 extract_field_time_series(f::FieldTimeSeries) = f
 
-# Extract the underlying FieldTimeSeries from TimeSeriesInterpolatedField
-extract_field_time_series(f::TimeSeriesInterpolatedField) = f.time_series
+# Extract the underlying FieldTimeSeries from TimeSeriesInterpolation
+extract_field_time_series(f::TimeSeriesInterpolation) = f.time_series
 
 # For types that do not contain `FieldTimeSeries`, halt the recursion
 CannotPossiblyContainFTS = (:Number, :AbstractArray, :AbstractGrid, :AbstractField, :Returns)

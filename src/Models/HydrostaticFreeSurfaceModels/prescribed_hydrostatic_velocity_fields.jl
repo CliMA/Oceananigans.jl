@@ -7,7 +7,7 @@ using Oceananigans.Grids: Center, Face
 using Oceananigans.Fields: FunctionField, field
 using Oceananigans.TimeSteppers: tick!, step_lagrangian_particles!
 using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!
-using Oceananigans.OutputReaders: FieldTimeSeries, TimeSeriesInterpolatedField
+using Oceananigans.OutputReaders: FieldTimeSeries, TimeSeriesInterpolation
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
@@ -64,7 +64,7 @@ function materialize_prescribed_velocity(X, Y, Z, fts::FieldTimeSeries, grid; cl
         throw(ArgumentError("FieldTimeSeries location $fts_location does not match " *
                             "the expected velocity location $requested_location"))
     end
-    return TimeSeriesInterpolatedField(fts, grid; clock)
+    return TimeSeriesInterpolation(fts, grid; clock)
 end
 
 materialize_prescribed_velocity(X, Y, Z, f, grid; kwargs...) = field((X, Y, Z), f, grid)
@@ -101,7 +101,7 @@ free_surface_names(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, grid)
 
 @inline BoundaryConditions.fill_halo_regions!(::PrescribedVelocityFields, args...; kwargs...) = nothing
 @inline BoundaryConditions.fill_halo_regions!(::FunctionField, args...; kwargs...) = nothing
-@inline BoundaryConditions.fill_halo_regions!(::TimeSeriesInterpolatedField, args...; kwargs...) = nothing
+@inline BoundaryConditions.fill_halo_regions!(::TimeSeriesInterpolation, args...; kwargs...) = nothing
 
 @inline datatuple(obj::PrescribedVelocityFields) = (; u = datatuple(obj.u), v = datatuple(obj.v), w = datatuple(obj.w))
 @inline velocities(obj::PrescribedVelocityFields) = (u = obj.u, v = obj.v, w = obj.w)

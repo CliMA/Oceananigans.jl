@@ -2,7 +2,7 @@ module OutputReaders
 
 export FieldDataset
 export FieldTimeSeries
-export TimeSeriesInterpolatedField
+export TimeSeriesInterpolation
 export InMemory, OnDisk
 export Cyclical, Linear, Clamp
 

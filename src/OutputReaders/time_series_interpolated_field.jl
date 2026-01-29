@@ -1,52 +1,56 @@
 using Adapt
 using Oceananigans: location
 using Oceananigans.Architectures: on_architecture
-using Oceananigans.Fields: AbstractField, indices, show_location
+using Oceananigans.AbstractOperations: AbstractOperation
+using Oceananigans.Fields: indices, show_location
 using Oceananigans.Grids: size as grid_size
 using Oceananigans.Units: Time
 
 import Oceananigans.Fields: indices
 
 #####
-##### TimeSeriesInterpolatedField
+##### TimeSeriesInterpolation
 #####
-##### A wrapper around FieldTimeSeries that interpolates to the current clock time
+##### An AbstractOperation that wraps a FieldTimeSeries and interpolates to the current clock time
 #####
 
-struct TimeSeriesInterpolatedField{LX, LY, LZ, FTS, C, G, T} <: AbstractField{LX, LY, LZ, G, T, 3}
+struct TimeSeriesInterpolation{LX, LY, LZ, FTS, C, G, T} <: AbstractOperation{LX, LY, LZ, G, T}
     time_series :: FTS
     grid :: G
     clock :: C
 end
 
 """
-    TimeSeriesInterpolatedField(time_series, grid; clock)
+    TimeSeriesInterpolation(time_series, grid; clock)
 
-Returns a `TimeSeriesInterpolatedField` that wraps a `FieldTimeSeries`
+Returns a `TimeSeriesInterpolation` that wraps a `FieldTimeSeries`
 and interpolates to the current `clock.time` when indexed.
 
 The location is obtained from the `FieldTimeSeries`.
 
 When indexed at `i, j, k`, returns `time_series[i, j, k, Time(clock.time)]`, providing
 time-interpolated values from the underlying `FieldTimeSeries`.
+
+Since `TimeSeriesInterpolation <: AbstractOperation`, it can be used with the `Field`
+constructor to compute and store values for output.
 """
-function TimeSeriesInterpolatedField(time_series::FTS, grid::G; clock::C) where {FTS, G, C}
+function TimeSeriesInterpolation(time_series::FTS, grid::G; clock::C) where {FTS, G, C}
     LX, LY, LZ = location(time_series)
     T = eltype(grid)
-    return TimeSeriesInterpolatedField{LX, LY, LZ, FTS, C, G, T}(time_series, grid, clock)
+    return TimeSeriesInterpolation{LX, LY, LZ, FTS, C, G, T}(time_series, grid, clock)
 end
 
 # Use indices from the underlying FieldTimeSeries
-@inline indices(f::TimeSeriesInterpolatedField) = indices(f.time_series)
+@inline indices(f::TimeSeriesInterpolation) = indices(f.time_series)
 
 # Override size to account for reduced indices
-@inline Base.size(f::TimeSeriesInterpolatedField) = grid_size(f.grid, location(f), indices(f))
+@inline Base.size(f::TimeSeriesInterpolation) = grid_size(f.grid, location(f), indices(f))
 
 #####
 ##### getindex: interpolate to current clock time
 #####
 
-@inline Base.getindex(f::TimeSeriesInterpolatedField, i, j, k) =
+@inline Base.getindex(f::TimeSeriesInterpolation, i, j, k) =
     @inbounds f.time_series[i, j, k, Time(f.clock.time)]
 
 #####
@@ -57,53 +61,48 @@ end
 ##### We also store indices since GPUAdaptedFieldTimeSeries doesn't preserve them.
 #####
 
-struct GPUAdaptedTimeSeriesInterpolatedField{LX, LY, LZ, FTS, TT, I, T} <: AbstractField{LX, LY, LZ, Nothing, T, 3}
+struct GPUAdaptedTimeSeriesInterpolation{LX, LY, LZ, FTS, TT, I, T} <: AbstractOperation{LX, LY, LZ, Nothing, T}
     time_series :: FTS  # GPUAdaptedFieldTimeSeries
     time :: TT          # Current clock time (scalar value)
     indices :: I        # Spatial indices from the original FieldTimeSeries
-
-    function GPUAdaptedTimeSeriesInterpolatedField{LX, LY, LZ}(time_series::FTS,
-                                                                time::TT,
-                                                                indices::I) where {LX, LY, LZ, FTS, TT, I}
-        T = eltype(time_series)
-        return new{LX, LY, LZ, FTS, TT, I, T}(time_series, time, indices)
-    end
 end
 
-@inline indices(f::GPUAdaptedTimeSeriesInterpolatedField) = f.indices
+@inline indices(f::GPUAdaptedTimeSeriesInterpolation) = f.indices
 
-@inline Base.getindex(f::GPUAdaptedTimeSeriesInterpolatedField, i, j, k) =
+@inline Base.getindex(f::GPUAdaptedTimeSeriesInterpolation, i, j, k) =
     @inbounds f.time_series[i, j, k, Time(f.time)]
 
-function Adapt.adapt_structure(to, f::TimeSeriesInterpolatedField{LX, LY, LZ}) where {LX, LY, LZ}
+function Adapt.adapt_structure(to, f::TimeSeriesInterpolation{LX, LY, LZ}) where {LX, LY, LZ}
     adapted_time_series = Adapt.adapt(to, f.time_series)
-    return GPUAdaptedTimeSeriesInterpolatedField{LX, LY, LZ}(adapted_time_series, f.clock.time, indices(f))
+    T = eltype(f)
+    return GPUAdaptedTimeSeriesInterpolation{LX, LY, LZ, typeof(adapted_time_series), typeof(f.clock.time), typeof(indices(f)), T}(
+        adapted_time_series, f.clock.time, indices(f))
 end
 
 #####
 ##### on_architecture
 #####
 
-function on_architecture(to, f::TimeSeriesInterpolatedField)
-    return TimeSeriesInterpolatedField(on_architecture(to, f.time_series),
-                                       on_architecture(to, f.grid);
-                                       clock = on_architecture(to, f.clock))
+function on_architecture(to, f::TimeSeriesInterpolation)
+    return TimeSeriesInterpolation(on_architecture(to, f.time_series),
+                                   on_architecture(to, f.grid);
+                                   clock = on_architecture(to, f.clock))
 end
 
 #####
 ##### Show method
 #####
 
-function Base.show(io::IO, field::TimeSeriesInterpolatedField)
-    print(io, "TimeSeriesInterpolatedField located at ", show_location(field), "\n",
-          "├── time_series: $(summary(field.time_series))", "\n",
-          "├── grid: $(summary(field.grid))\n",
-          "└── clock: $(summary(field.clock))")
+function Base.show(io::IO, op::TimeSeriesInterpolation)
+    print(io, "TimeSeriesInterpolation located at ", show_location(op), "\n",
+          "├── time_series: $(summary(op.time_series))", "\n",
+          "├── grid: $(summary(op.grid))\n",
+          "└── clock: $(summary(op.clock))")
 end
 
-function Base.show(io::IO, field::GPUAdaptedTimeSeriesInterpolatedField)
-    print(io, "GPUAdaptedTimeSeriesInterpolatedField located at ", show_location(field), "\n",
-          "├── time_series: $(summary(field.time_series))", "\n",
-          "├── time: $(field.time)\n",
-          "└── indices: $(field.indices)")
+function Base.show(io::IO, op::GPUAdaptedTimeSeriesInterpolation)
+    print(io, "GPUAdaptedTimeSeriesInterpolation located at ", show_location(op), "\n",
+          "├── time_series: $(summary(op.time_series))", "\n",
+          "├── time: $(op.time)\n",
+          "└── indices: $(op.indices)")
 end
