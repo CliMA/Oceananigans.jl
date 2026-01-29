@@ -497,8 +497,8 @@ end
 
             arch = Distributed(child_arch; partition=Partition(1, 4))
             rg   = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
-            llg  = LatitudeLongitudeGrid(arch, size=(8, 8, 8), latitude=(0, 60), longitude=(0, 60), z=(0, 1), radius=1)
-            osg  = TripolarGrid(arch, size=(8, 8, 8))
+            llg  = LatitudeLongitudeGrid(arch, size=(8, 16, 8), latitude=(0, 60), longitude=(0, 60), z=(0, 1), radius=1)
+            osg  = TripolarGrid(arch, size=(8, 16, 8))
 
             cpu_arch = cpu_architecture(arch)
 
