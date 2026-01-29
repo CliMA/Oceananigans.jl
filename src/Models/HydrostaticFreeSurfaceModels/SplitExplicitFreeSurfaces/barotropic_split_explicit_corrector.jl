@@ -121,8 +121,8 @@ from continuity and halo regions are filled.
 """
 function compute_transport_velocities!(model, free_surface::SplitExplicitFreeSurface)
     grid = model.grid
-    u, v, _ = model.velocities
-    ũ, ṽ, _ = model.transport_velocities
+    u, v, w = model.velocities
+    ũ, ṽ, w̃ = model.transport_velocities
     Ũ = free_surface.filtered_state.Ũ
     Ṽ = free_surface.filtered_state.Ṽ
     U̅ = free_surface.filtered_state.U̅

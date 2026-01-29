@@ -5,6 +5,7 @@ using Oceananigans.Solvers: solve!
 using Oceananigans.Utils: prettytime, prettysummary
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
+import Oceananigans.DistributedComputations: synchronize_communication!
 
 using Adapt: Adapt
 
@@ -116,6 +117,9 @@ build_implicit_step_solver(::Val{:Default}, grid, settings, gravitational_accele
 
 @inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, ::ImplicitFreeSurface) = 0
 @inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, ::ImplicitFreeSurface) = 0
+
+# No variables are asynchronously computed
+synchronize_communication!(::ImplicitFreeSurface) = nothing
 
 """
 Implicitly step forward η.

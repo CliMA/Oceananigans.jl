@@ -73,6 +73,8 @@ free_surface_displacement_field(velocities, ::Nothing, grid) = nothing
 
 # free surface initialization functions
 initialize_free_surface!(free_surface, grid, velocities) = nothing
+
+# Transport velocity computation (only for a SplitExplicitFreeSurface)
 compute_transport_velocities!(model, free_surface) = nothing
 
 include("compute_w_from_continuity.jl")
