@@ -3,6 +3,8 @@ using Oceananigans.Grids: Grids, Bounded, Flat, OrthogonalSphericalShellGrid, Pe
     architecture, cpu_face_constructor_z, validate_dimension_specification,
     RightCenterFolded, RightFaceFolded
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Fields: Field
+using OffsetArrays: OffsetArray
 
 """
     struct Tripolar{N, F, S}
