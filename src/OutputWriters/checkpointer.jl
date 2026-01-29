@@ -125,6 +125,8 @@ end
 prognostic_state(obj) = obj
 prognostic_state(::NamedTuple{()}) = nothing
 
+prognostic_state(tuple::Tuple) = Tuple(prognostic_state(t) for t in tuple)
+
 function prognostic_state(nt::NamedTuple)
     ks = keys(nt)
     vs = Tuple(prognostic_state(v) for v in values(nt))
@@ -234,6 +236,11 @@ function restore_prognostic_state!(nt::NamedTuple, state)
         restore_prognostic_state!(nt[name], value)
     end
     return nt
+end
+
+function restore_prognostic_state!(t::Tuple, state::Tuple)
+    new_t = tuple(restore_prognostic_state!(t[j], state[j]) for j in 1:length(t))
+    return new_t
 end
 
 function restore_prognostic_state!(sa::StructArray, state)
