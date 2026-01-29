@@ -28,13 +28,22 @@ steps:
 
   - wait
 
-  - label: "🐉 cpu unit tests"
-    key: "distributed_cpu"
-    env:
-      TEST_GROUP: "distributed"
-      TEST_ARCHITECTURE: "CPU"
-    commands:
-      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
+  - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
+    key: "distributed_tests"
+    command: |
+      # Set architecture-specific environment variables
+      if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
+        export TEST_ARCHITECTURE="CPU"
+      else
+        export TEST_ARCHITECTURE="GPU"
+      fi
+
+      # Strip emoji for environment variable
+      group="{{ matrix.group }}"
+      export TEST_GROUP="${group#* }"
+
+      srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
+    timeout_in_minutes: 5440
     agents:
       slurm_mem: 50G
       slurm_ntasks: 4
@@ -43,182 +52,46 @@ steps:
         - exit_status: 1
           limit: 1
 
-  - label: "🐲 gpu unit tests"
-    key: "distributed_gpu"
-    env:
-      TEST_GROUP: "distributed"
-      TEST_ARCHITECTURE: "GPU"
-    commands:
-      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      slurm_mem: 50G
-      slurm_ntasks: 4
-      slurm_gpus_per_task: 1
-    retry:
-      automatic:
-        - exit_status: 1
-          limit: 1
+    matrix:
+      setup:
+        architecture:
+          - "CPU"
+          - "GPU"
+        group:
+          - "🐉 distributed"
+          - "🦾 distributed_solvers"
+          - "🤿 distributed_hydrostatic_regression"
+          - "🤺 distributed_hydrostatic_model"
+          # - "🪰 distributed_vertical_coordinate"
+          - "🦍 distributed_nonhydrostatic_regression"
 
-  - label: "🦾 cpu solvers tests"
-    key: "distributed_solvers_cpu"
-    env:
-      TEST_GROUP: "distributed_solvers"
-    commands:
-      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      slurm_mem: 50G
-      slurm_ntasks: 4
-    retry:
-      automatic:
-        - exit_status: 1
-          limit: 1
+      adjustments:
+        # GPU tests need GPUs
+        - with:
+            architecture: "GPU"
+          agents:
+            slurm_gpus_per_task: 1
 
-  - label: "🛸 gpu solvers tests"
-    key: "distributed_solvers_gpu"
-    env:
-      TEST_GROUP: "distributed_solvers"
-      TEST_ARCHITECTURE: "GPU"
-    commands:
-      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      slurm_mem: 50G
-      slurm_ntasks: 4
-      slurm_gpus_per_task: 1
-    retry:
-      automatic:
-        - exit_status: 1
-          limit: 1
+        # GPU hydrostatic regression needs more memory
+        - with:
+            architecture: "GPU"
+            group: "🤿 distributed_hydrostatic_regression"
+          agents:
+            slurm_mem: 100G
 
-  - label: "🤿 cpu hydrostatic regression tests"
-    key: "distributed_hydrostatic_regression_cpu"
-    env:
-      TEST_GROUP: "distributed_hydrostatic_regression"
-      TEST_ARCHITECTURE: "CPU"
-    commands:
-      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    timeout_in_minutes: 1440
-    agents:
-      slurm_mem: 50G
-      slurm_ntasks: 4
-    retry:
-      automatic:
-        - exit_status: 1
-          limit: 1
+        # GPU hydrostatic model needs more memory
+        - with:
+            architecture: "GPU"
+            group: "🤺 distributed_hydrostatic_model"
+          agents:
+            slurm_mem: 150G
 
-  - label: "🥽 gpu hydrostatic regression tests"
-    key: "distributed_hydrostatic_regression_gpu"
-    env:
-      TEST_GROUP: "distributed_hydrostatic_regression"
-      TEST_ARCHITECTURE: "GPU"
-    commands:
-      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    timeout_in_minutes: 1440
-    agents:
-      slurm_mem: 100G # Apparently the GPU tests require more memory
-      slurm_ntasks: 4
-      slurm_gpus_per_task: 1
-    retry:
-      automatic:
-        - exit_status: 1
-          limit: 1
-
-  - label: "🤺 cpu hydrostatic model tests"
-    key: "distributed_hydrostatic_model_cpu"
-    env:
-      TEST_GROUP: "distributed_hydrostatic_model"
-      TEST_ARCHITECTURE: "CPU"
-    commands:
-      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    timeout_in_minutes: 1440
-    agents:
-      slurm_mem: 50G
-      slurm_ntasks: 4
-    retry:
-      automatic:
-        - exit_status: 1
-          limit: 1
-
-  - label: "🦏 gpu hydrostatic model tests"
-    key: "distributed_hydrostatic_model_gpu"
-    env:
-      TEST_GROUP: "distributed_hydrostatic_model"
-      TEST_ARCHITECTURE: "GPU"
-    commands:
-      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    timeout_in_minutes: 1440
-    agents:
-      slurm_mem: 150G # Apparently the GPU tests require more memory?
-      slurm_ntasks: 4
-      slurm_gpus_per_task: 1
-    retry:
-      automatic:
-        - exit_status: 1
-          limit: 1
-
-  # TODO: these tests fail at the moment. Fix them...
-  # - label: "🪰 cpu vertical coordinate tests"
-  #   key: "distributed_vertical_coordinate_cpu"
-  #   env:
-  #     TEST_GROUP: "distributed_vertical_coordinate"
-  #     TEST_ARCHITECTURE: "CPU"
-  #   commands:
-  #     - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-  #   timeout_in_minutes: 5440
-  #   agents:
-  #     slurm_mem: 50G
-  #     slurm_ntasks: 4
-  #   retry:
-  #     automatic:
-  #       - exit_status: 1
-  #         limit: 1
-
-  # - label: "🪲 gpu vertical coordinate tests"
-  #   key: "distributed_vertical_coordinate_gpu"
-  #   env:
-  #     TEST_GROUP: "distributed_vertical_coordinate"
-  #     TEST_ARCHITECTURE: "GPU"
-  #   commands:
-  #     - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-  #   timeout_in_minutes: 5440
-  #   agents:
-  #     slurm_mem: 150G # Apparently the GPU tests require more memory?
-  #     slurm_ntasks: 4
-  #     slurm_gpus_per_task: 1
-  #   retry:
-  #     automatic:
-  #       - exit_status: 1
-  #         limit: 1
-
-  - label: "🦍 cpu nonhydrostatic regression"
-    key: "distributed_nonhydrostatic_regression_cpu"
-    env:
-      TEST_GROUP: "distributed_nonhydrostatic_regression"
-      TEST_ARCHITECTURE: "CPU"
-    commands:
-      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      slurm_mem: 50G
-      slurm_ntasks: 4
-    retry:
-      automatic:
-        - exit_status: 1
-          limit: 1
-
-  - label: "🕺 gpu nonhydrostatic regression"
-    key: "distributed_nonhydrostatic_regression_gpu"
-    env:
-      TEST_GROUP: "distributed_nonhydrostatic_regression"
-      TEST_ARCHITECTURE: "GPU"
-    commands:
-      - "srun julia -O0 --color=yes --project -e 'using Pkg; Pkg.test()'"
-    agents:
-      slurm_mem: 50G
-      slurm_ntasks: 4
-      slurm_gpus_per_task: 1
-    retry:
-      automatic:
-        - exit_status: 1
-          limit: 1
+        # # GPU vertical coordinate needs more memory
+        # - with:
+        #     architecture: "GPU"
+        #     group: "🪰 distributed_vertical_coordinate"
+        #   agents:
+        #     slurm_mem: 150G
 
   - wait
 
