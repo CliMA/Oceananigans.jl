@@ -944,9 +944,10 @@ nothing # hide
 ```
 
 That's what it looks like to build a [`Distributed`](@ref) architecture.
-Notice we chose to display only if we're on rank 0 -- because otherwise, all the ranks print
-to the terminal at once, talking over each other, and things get messy. Also, we used the
-"default communicator" `MPI.COMM_WORLD` to determine whether we were on rank 0. This works
+Notice we can choose whether or not to display from a given rank (`@onrank 0 @show ...`.) 
+In this case we choose to display from both ranks, but sometimes it is useful to display 
+only from a single rank, since otherwise ranks can talk over each other making things messy.
+Also, we used the "default communicator" `MPI.COMM_WORLD` to determine whether we were on rank 0. This works
 because `Distributed` uses `communicator = MPI.COMM_WORLD` by default (and this should be
 changed only with great intention). See the [`Distributed`](@ref) docstring for more information.
 
