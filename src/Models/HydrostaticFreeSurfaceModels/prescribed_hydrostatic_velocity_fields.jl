@@ -2,6 +2,7 @@
 ##### PrescribedVelocityFields
 #####
 
+using Oceananigans: location
 using Oceananigans.Grids: Center, Face
 using Oceananigans.Fields: FunctionField, field
 using Oceananigans.TimeSteppers: tick!, step_lagrangian_particles!
@@ -54,16 +55,26 @@ function PrescribedVelocityFields(; u = ZeroField(),
     return PrescribedVelocityFields(u, v, w, parameters)
 end
 
-wrap_prescribed_field(X, Y, Z, f::Function, grid; kwargs...) = FunctionField{X, Y, Z}(f, grid; kwargs...)
-wrap_prescribed_field(X, Y, Z, fts::FieldTimeSeries, grid; clock, kwargs...) = TimeSeriesInterpolatedField{X, Y, Z}(fts, grid; clock)
-wrap_prescribed_field(X, Y, Z, f, grid; kwargs...) = field((X, Y, Z), f, grid)
+materialize_prescribed_velocity(X, Y, Z, f::Function, grid; kwargs...) = FunctionField{X, Y, Z}(f, grid; kwargs...)
+
+function materialize_prescribed_velocity(X, Y, Z, fts::FieldTimeSeries, grid; clock, kwargs...)
+    fts_location = location(fts)
+    requested_location = (X, Y, Z)
+    if fts_location != requested_location
+        throw(ArgumentError("FieldTimeSeries location $fts_location does not match " *
+                            "the expected velocity location $requested_location"))
+    end
+    return TimeSeriesInterpolatedField(fts, grid; clock)
+end
+
+materialize_prescribed_velocity(X, Y, Z, f, grid; kwargs...) = field((X, Y, Z), f, grid)
 
 function hydrostatic_velocity_fields(velocities::PrescribedVelocityFields, grid, clock, bcs)
 
     parameters = velocities.parameters
-    u = wrap_prescribed_field(Face, Center, Center, velocities.u, grid; clock, parameters)
-    v = wrap_prescribed_field(Center, Face, Center, velocities.v, grid; clock, parameters)
-    w = wrap_prescribed_field(Center, Center, Face, velocities.w, grid; clock, parameters)
+    u = materialize_prescribed_velocity(Face, Center, Center, velocities.u, grid; clock, parameters)
+    v = materialize_prescribed_velocity(Center, Face, Center, velocities.v, grid; clock, parameters)
+    w = materialize_prescribed_velocity(Center, Center, Face, velocities.w, grid; clock, parameters)
 
     fill_halo_regions!((u, v))
     fill_halo_regions!(w)
