@@ -1,14 +1,19 @@
-using Oceananigans.Grids: AbstractUnderlyingGrid, Bounded, LeftConnected, Periodic,
-    RightConnected
-
+using Oceananigans.Grids: AbstractUnderlyingGrid, 
+                          Bounded, 
+                          LeftConnected, 
+                          Periodic,
+                          RightConnected,
+                          RightCenterFolded,
+                          RightFaceFolded
+                          
 const AGXB = AbstractUnderlyingGrid{FT, Bounded} where FT
 const AGXP = AbstractUnderlyingGrid{FT, Periodic} where FT
-const AGXR = AbstractUnderlyingGrid{FT, RightConnected} where FT
+const AGXR = AbstractUnderlyingGrid{FT, <:Union{RightConnected, RightCenterFolded, RightFaceFolded}} where FT
 const AGXL = AbstractUnderlyingGrid{FT, LeftConnected} where FT
 
 const AGYB = AbstractUnderlyingGrid{FT, <:Any, Bounded} where FT
 const AGYP = AbstractUnderlyingGrid{FT, <:Any, Periodic} where FT
-const AGYR = AbstractUnderlyingGrid{FT, <:Any, RightConnected} where FT
+const AGYR = AbstractUnderlyingGrid{FT, <:Any, <:Union{RightConnected, RightCenterFolded, RightFaceFolded}} where FT
 const AGYL = AbstractUnderlyingGrid{FT, <:Any, LeftConnected} where FT
 
 # Topology-aware Operators with the following convention:
