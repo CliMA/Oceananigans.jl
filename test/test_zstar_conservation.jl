@@ -115,11 +115,15 @@ const LLGOfSomeKind = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <
 
                 for free_surface in [explicit_free_surface, split_free_surface, implicit_free_surface]
 
-                    if (arch isa Distributed{<:GPU}) && (grid isa LLGOfSomeKind) && (free_surface === implicit_free_surface)
-                        # This combination of parameters leads to the following error:
-                        # Kernel invocation uses too much parameter memory.
-                        # 4.375 KiB exceeds the 4.000 KiB limit imposed by sm_60 / PTX v8.2.
-                        continue
+                    # These combination of parameters lead to the parameter error:
+                    # Kernel invocation uses too much parameter memory.
+                    if (arch isa Distributed{<:GPU}) 
+                        if (grid isa LLGOfSomeKind) && free_surface === implicit_free_surface
+                            continue
+                        end
+                        if (grid isa ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:LatitudeLongitudeGrid}) && (free_surface === split_free_surface)
+                            continue
+                        end
                     end
 
                     info_msg = info_message(grid, free_surface, timestepper)
