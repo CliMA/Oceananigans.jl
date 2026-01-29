@@ -54,12 +54,11 @@ function offset_data(underlying_data::A, loc, topo, N, H, indices::T=default_ind
         end
     end
 
-    # Strip out the range
-    new_offsets = Tuple(first(o)-1 for o in offsets)
+    @show typeof(offsets)
+    arr = OffsetArray(underlying_data, offsets...)
 
-    @show new_offsets, offsets
-
-    return OffsetArray(underlying_data, new_offsets...)
+    @show typeof(arr)
+    return arr
 end
 
 convert_offsets_type(IT, offsets::Tuple) = Tuple(convert_offsets_type(IT, o) for o in offsets)
