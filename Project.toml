@@ -47,7 +47,7 @@ XESMF = "2e0b0046-e7a1-486f-88de-807ee8ffabe5"
 oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 
 [sources]
-OffestArrays = {url="https://github.com/simone-silvestri/OffsetArrays.jl"}
+OffsetArrays = {url="https://github.com/simone-silvestri/OffsetArrays.jl"}
 
 [extensions]
 OceananigansAMDGPUExt = "AMDGPU"
