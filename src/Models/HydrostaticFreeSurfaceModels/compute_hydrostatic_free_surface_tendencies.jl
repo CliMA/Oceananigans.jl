@@ -149,7 +149,15 @@ function get_u_conditioned_map(scheme, grid; active_cells_map=nothing)
     return split_indices(max_scheme_field, grid; active_cells_map)
 end
 
-function split_indices(field, grid; active_cells_map)
+function split_indices(field, grid; active_cells_map=nothing)
+    if isnothing(active_cells_map)
+        return split_indices_full(field, grid)
+    else
+        return split_indices_mapped(field, grid, active_cells_map)
+    end
+end
+
+function split_indices_mapped(field, grid, active_cells_map)
     IndicesType = Tuple{Int32, Int32, Int32}
     maps = NTuple{2, Tuple{IndicesType}} 
     for index in active_cells_map
@@ -161,9 +169,10 @@ function split_indices(field, grid; active_cells_map)
         end
         GC.gc()
     end
+    return maps
 end
 
-function split_indices(field, grid; active_cells_map::Nothing)
+function split_indices_full(field, grid)
     IndicesType = Tuple{Int32, Int32, Int32}
     maps = NTuple{2, Tuple{IndicesType}} 
     for i in 1:size(grid, 1), j in 1:size(grid, 2), k in 1:size(grid, 3)
@@ -175,6 +184,7 @@ function split_indices(field, grid; active_cells_map::Nothing)
         end
         GC.gc()
     end
+    return maps
 end
 
 function convert_interior_indices(interior_indices, k, IndicesType)
