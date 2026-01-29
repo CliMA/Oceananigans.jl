@@ -111,7 +111,7 @@ end
                 explicit_free_surface = ExplicitFreeSurface()
 
                 for free_surface in [explicit_free_surface, split_free_surface, implicit_free_surface]
-                    
+
                     if (arch isa Distributed{<:GPU}) && (grid ∈ [llgv, illgv]) && (free_surface === implicit_free_surface)
                         # This combination of parameters leads to the following error:
                         # Kernel invocation uses too much parameter memory.
