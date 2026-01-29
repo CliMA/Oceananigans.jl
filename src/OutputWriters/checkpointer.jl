@@ -203,10 +203,10 @@ end
 load_checkpoint_state(::Nothing; base_path="simulation") = nothing
 
 restore_prognostic_state!(obj, ::Nothing) = nothing
-restore_prognostic_state!(::NamedTuple{()}, state) = nothing
+restore_prognostic_state!(::NamedTuple{()}, from) = nothing
 restore_prognostic_state!(::NamedTuple{()}, ::Nothing) = nothing
 restore_prognostic_state!(::AbstractDict, ::Nothing) = nothing
-restore_prognostic_state!(::Nothing, state) = nothing
+restore_prognostic_state!(::Nothing, from) = nothing
 restore_prognostic_state!(::Nothing, ::Nothing) = nothing
 
 # To resolve dispatch ambiguities with `restore_prognostic_state!(obj, ::Nothing)`
@@ -217,49 +217,47 @@ restore_prognostic_state!(::Ref, ::Nothing) = nothing
 restore_prognostic_state!(::Checkpointer, ::Nothing) = nothing
 restore_prognostic_state!(::Union{JLD2Writer, NetCDFWriter}, ::Nothing) = nothing
 
-function restore_prognostic_state!(arr::AbstractArray, state)
-    arch = architecture(arr)
-    data = on_architecture(arch, state)
-    copyto!(arr, data)
-    return arr
+function restore_prognostic_state!(restored::AbstractArray, from)
+    copyto!(restored, from)
+    return restored
 end
 
-function restore_prognostic_state!(dict::AbstractDict, state)
-    for (name, value) in pairs(state)
-        haskey(dict, name) && restore_prognostic_state!(dict[name], value)
+function restore_prognostic_state!(restored::AbstractDict, from)
+    for (name, value) in pairs(from)
+        haskey(restored, name) && restore_prognostic_state!(restored[name], value)
     end
-    return dict
+    return restored
 end
 
-function restore_prognostic_state!(nt::NamedTuple, state)
-    for (name, value) in pairs(state)
-        restore_prognostic_state!(nt[name], value)
+function restore_prognostic_state!(restored::NamedTuple, from)
+    for (name, value) in pairs(from)
+        restore_prognostic_state!(restored[name], value)
     end
-    return nt
+    return restored
 end
 
-function restore_prognostic_state!(t::Tuple, state::Tuple)
-    new_t = tuple(restore_prognostic_state!(t[j], state[j]) for j in 1:length(t))
+function restore_prognostic_state!(t::Tuple, from::Tuple)
+    new_t = tuple(restore_prognostic_state!(t[j], from[j]) for j in 1:length(t))
     return new_t
 end
 
-function restore_prognostic_state!(sa::StructArray, state)
+function restore_prognostic_state!(restored::StructArray, from)
     # Get the architecture from one of the component arrays
-    some_property = first(propertynames(sa))
-    arch = architecture(getproperty(sa, some_property))
+    some_property = first(propertynames(restored))
+    arch = architecture(getproperty(restored, some_property))
 
     # Copy each property
-    for name in propertynames(sa)
-        data = on_architecture(arch, getproperty(state, name))
-        copyto!(getproperty(sa, name), data)
+    for name in propertynames(restored)
+        data = on_architecture(arch, getproperty(from, name))
+        copyto!(getproperty(restored, name), data)
     end
 
-    return sa
+    return restored
 end
 
 # Ref handling: dereference on save, set on restore
 prognostic_state(r::Ref) = r[]
-restore_prognostic_state!(r::Ref, value) = (r[] = value; r)
+restore_prognostic_state!(restored::Ref, from) = (restored[] = from; restored)
 
 #####
 ##### Checkpointing the checkpointer
@@ -269,9 +267,9 @@ function prognostic_state(checkpointer::Checkpointer)
     return (; schedule = prognostic_state(checkpointer.schedule))
 end
 
-function restore_prognostic_state!(checkpointer::Checkpointer, state)
-    restore_prognostic_state!(checkpointer.schedule, state.schedule)
-    return checkpointer
+function restore_prognostic_state!(restored::Checkpointer, from)
+    restore_prognostic_state!(restored.schedule, from.schedule)
+    return restored
 end
 
 #####
@@ -294,20 +292,31 @@ function prognostic_state(writer::Union{JLD2Writer, NetCDFWriter})
             windowed_time_averages = isempty(wta_outputs) ? nothing : wta_outputs)
 end
 
-function restore_prognostic_state!(writer::Union{JLD2Writer, NetCDFWriter}, state)
-    restore_prognostic_state!(writer.schedule, state.schedule)
-    writer.part = state.part
+function restore_prognostic_state!(restored::Union{JLD2Writer, NetCDFWriter}, from)
+    restore_prognostic_state!(restored.schedule, from.schedule)
+    restored.part = from.part
 
-    if hasproperty(state, :windowed_time_averages) && !isnothing(state.windowed_time_averages)
-        for (name, wta_state) in pairs(state.windowed_time_averages)
-            key = output_lookup_key(writer, name)
-            if haskey(writer.outputs, key) && writer.outputs[key] isa WindowedTimeAverage
-                restore_prognostic_state!(writer.outputs[key], wta_state)
+    if hasproperty(from, :windowed_time_averages) && !isnothing(from.windowed_time_averages)
+        for (name, wta_state) in pairs(from.windowed_time_averages)
+            key = output_lookup_key(restored, name)
+            if haskey(restored.outputs, key) && restored.outputs[key] isa WindowedTimeAverage
+                restore_prognostic_state!(restored.outputs[key], wta_state)
             end
         end
     end
 
-    return writer
+    return restored
+end
+
+function restore_prognostic_state!(restored::OffsetArray, from::AbstractArray)
+    restored_parent = parent(restored)
+    return restore_prognostic_state!(restored_parent, from)
+end
+
+function restore_prognostic_state!(restored::OffsetArray, from::OffsetArray)
+    restored_parent = parent(restored)
+    from_parent = parent(from)
+    return restore_prognostic_state!(restored_parent, from_parent)
 end
 
 #####

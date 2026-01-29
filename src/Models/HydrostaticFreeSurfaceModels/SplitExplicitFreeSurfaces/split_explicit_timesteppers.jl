@@ -44,4 +44,4 @@ initialize_free_surface_timestepper!(::ForwardBackwardScheme, args...) = nothing
 #####
 
 prognostic_state(::ForwardBackwardScheme) = nothing
-restore_prognostic_state!(ts::ForwardBackwardScheme, ::Nothing) = ts
+restore_prognostic_state!(restored::ForwardBackwardScheme, ::Nothing) = restored

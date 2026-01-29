@@ -161,9 +161,9 @@ function prognostic_state(fs::ImplicitFreeSurface)
     return (; displacement = prognostic_state(fs.displacement))
 end
 
-function restore_prognostic_state!(fs::ImplicitFreeSurface, state)
-    restore_prognostic_state!(fs.displacement, state.displacement)
-    return fs
+function restore_prognostic_state!(restored::ImplicitFreeSurface, from)
+    restore_prognostic_state!(restored.displacement, from.displacement)
+    return restored
 end
 
 restore_prognostic_state!(::ImplicitFreeSurface, ::Nothing) = nothing

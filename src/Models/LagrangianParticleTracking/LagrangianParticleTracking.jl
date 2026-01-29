@@ -164,9 +164,9 @@ function prognostic_state(lagrangian_particles::LagrangianParticles)
     return (; properties = prognostic_state(lagrangian_particles.properties))
 end
 
-function restore_prognostic_state!(lagrangian_particles::LagrangianParticles, state)
-    restore_prognostic_state!(lagrangian_particles.properties, state.properties)
-    return lagrangian_particles
+function restore_prognostic_state!(restored::LagrangianParticles, from)
+    restore_prognostic_state!(restored.properties, from.properties)
+    return restored
 end
 
 restore_prognostic_state!(::LagrangianParticles, ::Nothing) = nothing

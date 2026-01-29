@@ -200,9 +200,9 @@ function prognostic_state(fs::ExplicitFreeSurface)
     return (; η = prognostic_state(fs.η))
 end
 
-function restore_prognostic_state!(fs::ExplicitFreeSurface, state)
-    restore_prognostic_state!(fs.η, state.η)
-    return fs
+function restore_prognostic_state!(restored::ExplicitFreeSurface, from)
+    restore_prognostic_state!(restored.η, from.η)
+    return restored
 end
 
 restore_prognostic_state!(::ExplicitFreeSurface, ::Nothing) = nothing

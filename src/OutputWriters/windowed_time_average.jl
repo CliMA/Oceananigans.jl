@@ -128,11 +128,11 @@ function prognostic_state(schedule::AveragedTimeInterval)
             collecting = schedule.collecting)
 end
 
-function restore_prognostic_state!(schedule::AveragedTimeInterval, state)
-    schedule.first_actuation_time = state.first_actuation_time
-    schedule.actuations = state.actuations
-    schedule.collecting = state.collecting
-    return schedule
+function restore_prognostic_state!(restored::AveragedTimeInterval, from)
+    restored.first_actuation_time = from.first_actuation_time
+    restored.actuations = from.actuations
+    restored.collecting = from.collecting
+    return restored
 end
 
 restore_prognostic_state!(::AveragedTimeInterval, ::Nothing) = nothing
@@ -230,10 +230,10 @@ function prognostic_state(schedule::AveragedSpecifiedTimes)
             collecting = schedule.collecting)
 end
 
-function restore_prognostic_state!(schedule::AveragedSpecifiedTimes, state)
-    restore_prognostic_state!(schedule.specified_times, state.specified_times)
-    schedule.collecting = state.collecting
-    return schedule
+function restore_prognostic_state!(restored::AveragedSpecifiedTimes, from)
+    restore_prognostic_state!(restored.specified_times, from.specified_times)
+    restored.collecting = from.collecting
+    return restored
 end
 
 restore_prognostic_state!(::AveragedSpecifiedTimes, ::Nothing) = nothing
@@ -366,13 +366,13 @@ function prognostic_state(wta::WindowedTimeAverage)
             schedule = prognostic_state(wta.schedule))
 end
 
-function restore_prognostic_state!(wta::WindowedTimeAverage, state)
-    restore_prognostic_state!(wta.result, state.result)
-    wta.window_start_time = state.window_start_time
-    wta.window_start_iteration = state.window_start_iteration
-    wta.previous_collection_time = state.previous_collection_time
-    restore_prognostic_state!(wta.schedule, state.schedule)
-    return wta
+function restore_prognostic_state!(restored::WindowedTimeAverage, from)
+    restore_prognostic_state!(restored.result, from.result)
+    restored.window_start_time = from.window_start_time
+    restored.window_start_iteration = from.window_start_iteration
+    restored.previous_collection_time = from.previous_collection_time
+    restore_prognostic_state!(restored.schedule, from.schedule)
+    return restored
 end
 
 restore_prognostic_state!(::WindowedTimeAverage, ::Nothing) = nothing

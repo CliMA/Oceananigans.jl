@@ -385,12 +385,12 @@ function prognostic_state(closure_fields::RiBasedVerticalDiffusivityFields)
             previous_compute_time = closure_fields.previous_compute_time[])
 end
 
-function restore_prognostic_state!(closure_fields::RiBasedVerticalDiffusivityFields, state)
-    restore_prognostic_state!(closure_fields.κc, state.κc)
-    restore_prognostic_state!(closure_fields.κu, state.κu)
-    restore_prognostic_state!(closure_fields.Ri, state.Ri)
-    closure_fields.previous_compute_time[] = state.previous_compute_time
-    return closure_fields
+function restore_prognostic_state!(restored::RiBasedVerticalDiffusivityFields, from)
+    restore_prognostic_state!(restored.κc, from.κc)
+    restore_prognostic_state!(restored.κu, from.κu)
+    restore_prognostic_state!(restored.Ri, from.Ri)
+    restored.previous_compute_time[] = from.previous_compute_time
+    return restored
 end
 
 restore_prognostic_state!(::RiBasedVerticalDiffusivityFields, ::Nothing) = nothing

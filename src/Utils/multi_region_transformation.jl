@@ -214,13 +214,13 @@ function prognostic_state(mo::MultiRegionObject)
     return Tuple(prognostic_state(regional_obj) for regional_obj in mo.regional_objects)
 end
 
-function restore_prognostic_state!(mo::MultiRegionObject, state)
-    regional_states = state isa MultiRegionObject ? state.regional_objects : state
+function restore_prognostic_state!(restored::MultiRegionObject, from)
+    regional_states = from isa MultiRegionObject ? from.regional_objects : from
 
-    for (regional_obj, regional_state) in zip(mo.regional_objects, regional_states)
+    for (regional_obj, regional_state) in zip(restored.regional_objects, regional_states)
         restore_prognostic_state!(regional_obj, regional_state)
     end
-    return mo
+    return restored
 end
 
 restore_prognostic_state!(::MultiRegionObject, ::Nothing) = nothing

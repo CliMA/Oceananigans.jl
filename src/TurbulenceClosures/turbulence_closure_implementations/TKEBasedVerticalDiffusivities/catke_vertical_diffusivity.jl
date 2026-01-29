@@ -433,18 +433,17 @@ function prognostic_state(cf::CATKEDiffusivityFields)
             κe = prognostic_state(cf.κe))
 end
 
-function restore_prognostic_state!(cf::CATKEDiffusivityFields, state)
-    cf.previous_compute_time[] = state.previous_compute_time
-    restore_prognostic_state!(cf.previous_velocities, state.previous_velocities)
-    restore_prognostic_state!(cf.Jᵇ, state.Jᵇ)
-    restore_prognostic_state!(cf.κu, state.κu)
-    restore_prognostic_state!(cf.κc, state.κc)
-    restore_prognostic_state!(cf.κe, state.κe)
+function restore_prognostic_state!(restored::CATKEDiffusivityFields, from)
+    restored.previous_compute_time[] = from.previous_compute_time
+    restore_prognostic_state!(restored.previous_velocities, from.previous_velocities)
+    restore_prognostic_state!(restored.Jᵇ, from.Jᵇ)
+    restore_prognostic_state!(restored.κu, from.κu)
+    restore_prognostic_state!(restored.κc, from.κc)
+    restore_prognostic_state!(restored.κe, from.κe)
 
     # Skip the first compute_diffusivities! call after restore to preserve the restored state
-    cf._skip_next_compute[] = true
-
-    return cf
+    restored._skip_next_compute[] = true
+    return restored
 end
 
 restore_prognostic_state!(::CATKEDiffusivityFields, ::Nothing) = nothing
