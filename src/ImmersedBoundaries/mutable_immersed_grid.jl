@@ -1,9 +1,9 @@
 using Oceananigans.Operators
 using Oceananigans.Operators: MRG, MLLG, MOSG, superscript_location
 
-using Oceananigans.Grids: AbstractUnderlyingGrid, 
-                          Bounded, 
-                          LeftConnected, 
+using Oceananigans.Grids: AbstractUnderlyingGrid,
+                          Bounded,
+                          LeftConnected,
                           Periodic,
                           RightConnected,
                           RightCenterFolded,
