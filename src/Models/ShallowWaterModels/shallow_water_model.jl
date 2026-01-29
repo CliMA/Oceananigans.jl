@@ -54,6 +54,8 @@ mutable struct ShallowWaterModel{G, A<:AbstractArchitecture, T, GR, V, U, R, F, 
                    formulation :: FR        # Either conservative or vector-invariant
 end
 
+supported_timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
+
 struct ConservativeFormulation end
 
 struct VectorInvariantFormulation end
@@ -103,8 +105,9 @@ Keyword arguments
   - `closure_fields`: Stores diffusivity fields when the closures require a diffusivity to be
                           calculated at each timestep.
   - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
-  - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2` or
-                   `:RungeKutta3` (default).
+  - `timestepper`: A symbol or a `TimeStepper` object that specifies the time-stepping method.
+                   Supported symbols include $(join("`" .* repr.(supported_timesteppers) .* "`", ", ")).
+                   Default: `:RungeKutta3`.
   - `formulation`: Whether the dynamics are expressed in conservative form (`ConservativeFormulation()`;
                    default) or in non-conservative form with a vector-invariant formulation for the
                    non-linear terms (`VectorInvariantFormulation()`).
@@ -143,6 +146,15 @@ function ShallowWaterModel(grid;
     (typeof(grid) <: RectilinearGrids || formulation == VectorInvariantFormulation()) ||
         throw(ArgumentError("`ConservativeFormulation()` requires a rectilinear `grid`. \n" *
                             "Use `VectorInvariantFormulation()` or change your grid to a rectilinear one."))
+
+    if timestepper isa Symbol && timestepper ∉ supported_timesteppers
+        msg = """
+        timestepper = :$timestepper is not supported.
+        Supported timesteppers are: $(join(repr.(supported_timesteppers), ", ")).
+        You can also construct your own TimeStepper and pass it to the constructor.
+        """
+        throw(ArgumentError(msg))
+    end
 
     # Check halos and throw an error if the grid's halo is too small
     validate_model_halo(grid, momentum_advection, tracer_advection, closure)
