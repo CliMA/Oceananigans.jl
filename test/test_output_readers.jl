@@ -43,7 +43,7 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
     uᵢ(x, y, z) = 1e-3 * randn()
     set!(model, u=uᵢ, w=uᵢ, T=Tᵢ, S=35)
 
-    simulation = Simulation(model, Δt=10.0, stop_time=2minutes)
+    simulation = Simulation(model, Δt=10.0, stop_time=2minutes, verbose=false)
     wizard = TimeStepWizard(cfl=1.0, max_change=1.1, max_Δt=1minute)
     simulation.callbacks[:wizard] = Callback(wizard)
 
@@ -670,12 +670,13 @@ end
         filepath1d, filepath2d, filepath3d, unsplit_filepath, split_filepath = generate_some_interesting_simulation_data(Nx, Ny, Nz; output_writer)
 
         for arch in archs
-            if output_writer == JLD2Writer
-                @testset "FieldTimeSeries{InMemory} [$(typeof(arch))] with $output_writer" begin
-                    @info "  Testing FieldTimeSeries{InMemory} [$(typeof(arch))]..."
-                        test_field_time_series_in_memory(arch, filepath3d, filepath2d, filepath1d, split_filepath, unsplit_filepath, Nx, Ny, Nz, Nt)
-                end
+            arch = GPU()
+            @testset "FieldTimeSeries{InMemory} [$(typeof(arch))] with $output_writer" begin
+                @info "  Testing FieldTimeSeries{InMemory} [$(typeof(arch))]..."
+                test_field_time_series_in_memory(arch, filepath3d, filepath2d, filepath1d, split_filepath, unsplit_filepath, Nx, Ny, Nz, Nt)
+            end
 
+            if output_writer == JLD2Writer
                 @testset "FieldTimeSeries with Function boundary conditions [$(typeof(arch))] with $output_writer" begin
                     @info "  Testing FieldTimeSeries with Function boundary conditions..."
                     test_field_time_series_function_boundary_conditions(arch)
