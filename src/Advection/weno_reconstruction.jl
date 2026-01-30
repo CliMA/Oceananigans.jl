@@ -4,15 +4,15 @@ import Oceananigans
 ##### Weighted Essentially Non-Oscillatory (WENO) advection scheme
 #####
 
-struct WENO{N, FT, FT2, PP, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
+struct WENO{N, FT, FT2, NDC, PP, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
     bounds :: PP
     buffer_scheme :: CA
     advecting_velocity_scheme :: SI
 
-    function WENO{N, FT, FT2}(bounds::PP, buffer_scheme::CA,
-                              advecting_velocity_scheme :: SI) where {N, FT, FT2, PP, CA, SI}
+    function WENO{N, FT, FT2, NDC}(bounds::PP, buffer_scheme::CA,
+                              advecting_velocity_scheme :: SI) where {N, FT, FT2, NDC, PP, CA, SI}
 
-        return new{N, FT, FT2, PP, CA, SI}(bounds, buffer_scheme, advecting_velocity_scheme)
+        return new{N, FT, FT2, NDC, PP, CA, SI}(bounds, buffer_scheme, advecting_velocity_scheme)
     end
 end
 
@@ -32,7 +32,8 @@ Arguments
 
 Keyword arguments
 =================
-
+- `newton_div`: The type of approximate division to use in performance-critical parts of the scheme.
+                  Default: `Oceananigans.Utils.NewtonDivWithConversion{FT2}`
 - `order`: The order of the WENO advection scheme. Default: 5
 - `bounds` (experimental): Whether to use bounds-preserving WENO, which produces a reconstruction
                            that attempts to restrict a quantity to lie between a `bounds` tuple.
@@ -92,7 +93,9 @@ WENO{5, Float64, Float32}(order=9, bounds=(0.0, 1.0))
 └── advecting_velocity_scheme: Centered(order=8)
 ```
 """
-function WENO(FT::DataType=Oceananigans.defaults.FloatType, FT2::DataType=Float32;
+function WENO(FT::DataType=Oceananigans.defaults.FloatType,
+              FT2::DataType=Float32;
+              newton_div::DataType=Oceananigans.Utils.NewtonDivWithConversion{FT2},
               order = 5,
               buffer_scheme = DecreasingOrderAdvectionScheme(),
               bounds = nothing,
@@ -121,15 +124,15 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType, FT2::DataType=Float3
         end
 
         N = Int((order + 1) ÷ 2)
-        return WENO{N, FT, FT2}(bounds, buffer_scheme, advecting_velocity_scheme)
+        return WENO{N, FT, FT2, newton_div}(bounds, buffer_scheme, advecting_velocity_scheme)
     end
 end
 
 weno_order(::WENO{N}) where N = 2N-1
 Base.eltype(::WENO{N, FT}) where {N, FT} = FT
 eltype2(::WENO{N, FT, FT2}) where {N, FT, FT2} = FT2
-Base.summary(a::WENO{N, FT, FT2, Nothing}) where {N, FT, FT2} = string("WENO{$N, $FT, $FT2}(order=", 2N-1, ")")
-Base.summary(a::WENO{N, FT, FT2, PP}) where {N, FT, FT2, PP} = string("WENO{$N, $FT, $FT2}(order=", 2N-1, ", bounds=", string(a.bounds), ")")
+Base.summary(a::WENO{N, FT, FT2, NDC, Nothing}) where {N, FT, FT2, NDC} = string("WENO{$N, $FT, $FT2, $NDC}(order=", 2N-1, ")")
+Base.summary(a::WENO{N, FT, FT2, NDC, PP}) where {N, FT, FT2, NDC, PP} = string("WENO{$N, $FT, $FT2, $NDC}(order=", 2N-1, ", bounds=", string(a.bounds), ")")
 
 function Base.show(io::IO, a::WENO)
     print(io, summary(a), '\n')
@@ -145,12 +148,12 @@ function Base.show(io::IO, a::WENO)
     print(io, "└── advecting_velocity_scheme: ", summary(a.advecting_velocity_scheme))
 end
 
-Adapt.adapt_structure(to, scheme::WENO{N, FT, FT2}) where {N, FT, FT2} =
-     WENO{N, FT, FT2}(Adapt.adapt(to, scheme.bounds),
-                      Adapt.adapt(to, scheme.buffer_scheme),
-                      Adapt.adapt(to, scheme.advecting_velocity_scheme))
+Adapt.adapt_structure(to, scheme::WENO{N, FT, FT2, NDC}) where {N, FT, FT2, NDC} =
+     WENO{N, FT, FT2, NDC}(Adapt.adapt(to, scheme.bounds),
+                           Adapt.adapt(to, scheme.buffer_scheme),
+                           Adapt.adapt(to, scheme.advecting_velocity_scheme))
 
-on_architecture(to, scheme::WENO{N, FT, FT2}) where {N, FT, FT2} =
-    WENO{N, FT, FT2}(on_architecture(to, scheme.bounds),
-                     on_architecture(to, scheme.buffer_scheme),
-                     on_architecture(to, scheme.advecting_velocity_scheme))
+on_architecture(to, scheme::WENO{N, FT, FT2, NDC}) where {N, FT, FT2, NDC} =
+    WENO{N, FT, FT2, NDC}(on_architecture(to, scheme.bounds),
+                          on_architecture(to, scheme.buffer_scheme),
+                          on_architecture(to, scheme.advecting_velocity_scheme))
