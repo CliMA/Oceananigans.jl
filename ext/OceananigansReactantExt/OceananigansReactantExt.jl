@@ -39,8 +39,12 @@ using .Simulations
 include("OutputReaders.jl")
 using .OutputReaders
 
+<<<<<<< HEAD
 include("Solvers.jl")
 using .Solvers
+=======
+import Oceananigans.Utils
+>>>>>>> d2830227b (Add method sync_device(::ReactantState))
 
 #####
 ##### Telling Reactant how to construct types
@@ -370,5 +374,7 @@ Base.getindex(array::OffsetVector{T, <:Reactant.AbstractConcreteArray{T, 1}}, ::
 # using .Fields
 # using .MultiRegion
 # using .Solvers
+
+@inline Oceananigans.Utils.sync_device!(::ReactantState) = nothing
 
 end # module
