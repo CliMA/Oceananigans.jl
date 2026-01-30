@@ -1,6 +1,8 @@
 using Adapt
+using KernelAbstractions: @kernel, @index
+import KernelAbstractions
 using DocStringExtensions: TYPEDFIELDS, TYPEDSIGNATURES
-using Oceananigans.Architectures: CPU
+using Oceananigans.Architectures: CPU, device
 import Oceananigans.Architectures: on_architecture
 
 """
@@ -47,7 +49,7 @@ _normalize_points(points::NTuple{N, <:Integer}, ::Val{N}) where N = points
 #####
 
 """
-    ($TYPEDSIGNATURES)
+    $(TYPEDSIGNATURES)
 
 Construct a `TabulatedFunction` by precomputing values over the specified range(s)
 for fast linear, bilinear, or trilinear interpolation.
@@ -105,54 +107,91 @@ function TabulatedFunction(func, arch=CPU(), FT=Oceananigans.defaults.FloatType;
                            range,
                            points = 100)
 
-    N = _tabulated_ndims(range)
     normalized_range = _normalize_range(range)
+    N = length(normalized_range)
     normalized_points = _normalize_points(points, Val(N))
 
     # Compute grid spacings
-    inverse_Δ = ntuple(Val(N)) do d
-        r = normalized_range[d]
-        p = normalized_points[d]
+    inverse_Δ = map(normalized_range, normalized_points) do r, p
         Δ = (r[2] - r[1]) / (p - 1)
         convert(FT, 1 / Δ)
     end
 
-    # Build lookup table
-    table = _build_table(func, FT, Val(N), normalized_range, normalized_points, inverse_Δ)
-    table = on_architecture(arch, table)
-
     # Convert range tuples to FT
     converted_range = map(r -> (convert(FT, r[1]), convert(FT, r[2])), normalized_range)
+
+    # Build lookup table directly on the target architecture
+    table = _build_table(arch, func, converted_range, normalized_points, inverse_Δ)
 
     return TabulatedFunction{N, typeof(func), typeof(table), typeof(converted_range), typeof(inverse_Δ)}(
         func, table, converted_range, inverse_Δ)
 end
 
 #####
+##### Table building kernels
+#####
+
+@kernel function _build_table_1d_kernel!(table, func, range, inverse_Δ)
+    i = @index(Global)
+    @inbounds begin
+        x_min = range[1][1]
+        inv_Δx = inverse_Δ[1]
+        table[i] = func(x_min + (i - 1) / inv_Δx)
+    end
+end
+
+@kernel function _build_table_2d_kernel!(table, func, range, inverse_Δ)
+    i, j = @index(Global, NTuple)
+    @inbounds begin
+        x_rng, y_rng = range
+        x_min, y_min = x_rng[1], y_rng[1]
+        inv_Δx, inv_Δy = inverse_Δ
+        table[i, j] = func(x_min + (i - 1) / inv_Δx,
+                           y_min + (j - 1) / inv_Δy)
+    end
+end
+
+@kernel function _build_table_3d_kernel!(table, func, range, inverse_Δ)
+    i, j, k = @index(Global, NTuple)
+    @inbounds begin
+        x_rng, y_rng, z_rng = range
+        x_min, y_min, z_min = x_rng[1], y_rng[1], z_rng[1]
+        inv_Δx, inv_Δy, inv_Δz = inverse_Δ
+        table[i, j, k] = func(x_min + (i - 1) / inv_Δx,
+                              y_min + (j - 1) / inv_Δy,
+                              z_min + (k - 1) / inv_Δz)
+    end
+end
+
+#####
 ##### Table builders for each dimensionality
 #####
 
-@inline function _build_table(func, FT, ::Val{1}, range, points, inverse_Δ)
-    x_min = range[1][1]
-    inv_Δx = inverse_Δ[1]
-    return [convert(FT, func(x_min + (i - 1) / inv_Δx)) for i in 1:points[1]]
+function _build_table(arch, func, range::NTuple{1}, points::NTuple{1}, inverse_Δ)
+    dev = device(arch)
+    FT = eltype(inverse_Δ)
+    table = KernelAbstractions.zeros(dev, FT, points...)
+    kernel! = _build_table_1d_kernel!(dev, 256)
+    kernel!(table, func, range, inverse_Δ; ndrange=points)
+    return table
 end
 
-@inline function _build_table(func, FT, ::Val{2}, range, points, inverse_Δ)
-    x_min, y_min = range[1][1], range[2][1]
-    inv_Δx, inv_Δy = inverse_Δ
-    return [convert(FT, func(x_min + (i - 1) / inv_Δx,
-                             y_min + (j - 1) / inv_Δy))
-            for i in 1:points[1], j in 1:points[2]]
+function _build_table(arch, func, range::NTuple{2}, points::NTuple{2}, inverse_Δ)
+    dev = device(arch)
+    FT = eltype(inverse_Δ)
+    table = KernelAbstractions.zeros(dev, FT, points...)
+    kernel! = _build_table_2d_kernel!(dev, (16, 16))
+    kernel!(table, func, range, inverse_Δ; ndrange=points)
+    return table
 end
 
-@inline function _build_table(func, FT, ::Val{3}, range, points, inverse_Δ)
-    x_min, y_min, z_min = range[1][1], range[2][1], range[3][1]
-    inv_Δx, inv_Δy, inv_Δz = inverse_Δ
-    return [convert(FT, func(x_min + (i - 1) / inv_Δx,
-                             y_min + (j - 1) / inv_Δy,
-                             z_min + (k - 1) / inv_Δz))
-            for i in 1:points[1], j in 1:points[2], k in 1:points[3]]
+function _build_table(arch, func, range::NTuple{3}, points::NTuple{3}, inverse_Δ)
+    dev = device(arch)
+    FT = eltype(inverse_Δ)
+    table = KernelAbstractions.zeros(dev, FT, points...)
+    kernel! = _build_table_3d_kernel!(dev, (8, 8, 8))
+    kernel!(table, func, range, inverse_Δ; ndrange=points)
+    return table
 end
 
 #####
