@@ -194,11 +194,11 @@ julia> using Oceananigans
 
 julia> WENOVectorInvariant()
 WENOVectorInvariant{5, Float64, Float32}(vorticity_order=9, vertical_order=5)
-├── vorticity_scheme: WENO{5, Float64, Float32}(order=9)
+├── vorticity_scheme: WENO{5, Float64, Float32, Oceananigans.Utils.NewtonDivWithConversion{Float32}}(order=9)
 ├── vorticity_stencil: Oceananigans.Advection.VelocityStencil
-├── vertical_advection_scheme: WENO{3, Float64, Float32}(order=5)
-├── kinetic_energy_gradient_scheme: WENO{3, Float64, Float32}(order=5)
-├── divergence_scheme: WENO{3, Float64, Float32}(order=5)
+├── vertical_advection_scheme: WENO{3, Float64, Float32, Oceananigans.Utils.NewtonDivWithConversion{Float32}}(order=5)
+├── kinetic_energy_gradient_scheme: WENO{3, Float64, Float32, Oceananigans.Utils.NewtonDivWithConversion{Float32}}(order=5)
+├── divergence_scheme: WENO{3, Float64, Float32, Oceananigans.Utils.NewtonDivWithConversion{Float32}}(order=5)
 └── upwinding: OnlySelfUpwinding
 ```
 """
