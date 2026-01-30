@@ -209,7 +209,7 @@ CUDA.allowscalar() do
         MPI.Initialized() || MPI.Init()
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
-        # We test only on the first three architectures otherwise the 
+        # We test only on the first three architectures otherwise the
         # tests start becoming a bit too expensive
         archs = test_architectures()[1:3]
         include("test_zstar_conservation.jl")
