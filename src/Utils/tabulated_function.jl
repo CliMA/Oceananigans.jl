@@ -3,67 +3,10 @@ using Oceananigans.Architectures: CPU
 import Oceananigans.Architectures: on_architecture
 
 """
-    TabulatedFunction{N, F, T, R, D}
+    $(TYPEDFIELDS)
 
 A wrapper around a callable that precomputes values in an N-dimensional lookup table
 for fast interpolation. Supports 1D (linear), 2D (bilinear), and 3D (trilinear) interpolation.
-
-# Type Parameters
-- `N`: Dimensionality (1, 2, or 3)
-- `F`: Type of the original function
-- `T`: Type of the lookup table
-- `R`: Type of the range specification
-- `D`: Type of the inverse grid spacing(s)
-
-# Fields
-- `func`: The original callable being tabulated
-- `table`: Precomputed values (N-dimensional array)
-- `range`: Tuple of (min, max) for each dimension
-- `inverse_Δ`: Inverse grid spacing for each dimension
-
-# Example
-
-```jldoctest tabulatedfunc
-using Oceananigans.Utils: TabulatedFunction
-
-# Tabulate a simple function for fast evaluation
-f = TabulatedFunction(sin; range=(0, 2π))
-
-# output
-TabulatedFunction{1} with 100 points over [0.0, 6.283185307179586] of sin
-```
-
-```jldoctest tabulatedfunc
-# Evaluate like a regular function
-f(π/2)
-
-# output
-0.9996224305511583
-```
-
-2D tabulation:
-
-```jldoctest
-using Oceananigans.Utils: TabulatedFunction
-
-g(x, y) = sin(x) * cos(y)
-f = TabulatedFunction(g; range=((0, π), (0, 2π)), points=(50, 100))
-
-# output
-TabulatedFunction{2} with 50×100 points over [0.0, 3.141592653589793] × [0.0, 6.283185307179586] of g
-```
-
-3D tabulation:
-
-```jldoctest
-using Oceananigans.Utils: TabulatedFunction
-
-h(x, y, z) = x^2 + y^2 + z^2
-f = TabulatedFunction(h; range=((-1, 1), (-1, 1), (-1, 1)), points=20)
-
-# output
-TabulatedFunction{3} with 20×20×20 points over [-1.0, 1.0] × [-1.0, 1.0] × [-1.0, 1.0] of h
-```
 """
 struct TabulatedFunction{N, F, T, R, D}
     func :: F
@@ -103,7 +46,7 @@ _normalize_points(points::NTuple{N, <:Integer}, ::Val{N}) where N = points
 #####
 
 """
-    TabulatedFunction(func, [arch=CPU()], [FT=Float64]; range, points=100)
+    ($TYPEDSIGNATURES)
 
 Construct a `TabulatedFunction` by precomputing values over the specified range(s)
 for fast linear, bilinear, or trilinear interpolation.
