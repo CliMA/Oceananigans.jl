@@ -13,7 +13,8 @@ export apply_regionally!, construct_regionally, @apply_regionally, MultiRegionOb
 export isregional, getregion, _getregion, regions, sync_device!
 export newton_div
 export TabulatedFunction
-export interpolator
+export interpolator, _interpolate
+export ϕ₁, ϕ₂, ϕ₃, ϕ₄, ϕ₅, ϕ₆, ϕ₇, ϕ₈
 
 #####
 ##### Misc. small utils
@@ -42,6 +43,7 @@ include("user_function_arguments.jl")
 include("multi_region_transformation.jl")
 include("sum_of_arrays.jl")
 include("newton_div.jl")
+include("interpolation.jl")
 include("tabulated_function.jl")
 
 end # module

@@ -186,36 +186,7 @@ function _build_table(arch, func, range::NTuple{3}, points::NTuple{3}, inverse_�
     return table
 end
 
-#####
-##### Interpolation helper
-#####
-
-"""
-    interpolator(fractional_idx)
-
-Return an "interpolator tuple" from the fractional index `fractional_idx`,
-defined as the 3-tuple `(i⁻, i⁺, ξ)` where:
-
-- `i⁻` is the index to the left (floor of fractional_idx)
-- `i⁺` is the index to the right (i⁻ + 1)
-- `ξ` is the fractional distance from `i⁻`, such that `ξ ∈ [0, 1)`
-
-This function is used for linear interpolation in lookup tables and fields.
-
-Note: Uses `Base.unsafe_trunc` instead of `trunc` for GPU compatibility.
-See https://github.com/CliMA/Oceananigans.jl/issues/828
-"""
-@inline function interpolator(fractional_idx)
-    # For why we use Base.unsafe_trunc instead of trunc see:
-    # https://github.com/CliMA/Oceananigans.jl/issues/828
-    # https://github.com/CliMA/Oceananigans.jl/pull/997
-    i⁻ = Base.unsafe_trunc(Int, fractional_idx)
-    i⁺ = i⁻ + 1
-    ξ = mod(fractional_idx, 1)
-    return (i⁻, i⁺, ξ)
-end
-
-@inline interpolator(::Nothing) = (1, 1, 0)
+# Interpolation utilities (interpolator, _interpolate, ϕ₁-ϕ₈) are defined in interpolation.jl
 
 #####
 ##### Evaluation: 1D linear interpolation
@@ -232,10 +203,7 @@ end
     i⁻ = i⁻ + 1
     i⁺ = min(i⁺ + 1, n)
 
-    f⁻ = @inbounds f.table[i⁻]
-    f⁺ = @inbounds f.table[i⁺]
-
-    return (1 - ξ) * f⁻ + ξ * f⁺
+    return _interpolate(f.table, (i⁻, i⁺, ξ))
 end
 
 #####
@@ -261,16 +229,7 @@ end
     j⁻ = j⁻ + 1
     j⁺ = min(j⁺ + 1, ny)
 
-    f₀₀ = @inbounds f.table[i⁻, j⁻]
-    f₁₀ = @inbounds f.table[i⁺, j⁻]
-    f₀₁ = @inbounds f.table[i⁻, j⁺]
-    f₁₁ = @inbounds f.table[i⁺, j⁺]
-
-    # Bilinear interpolation
-    return (1 - ξ) * (1 - η) * f₀₀ +
-                 ξ * (1 - η) * f₁₀ +
-           (1 - ξ) *       η * f₀₁ +
-                 ξ *       η * f₁₁
+    return _interpolate(f.table, (i⁻, i⁺, ξ), (j⁻, j⁺, η))
 end
 
 #####
@@ -302,24 +261,7 @@ end
     k⁻ = k⁻ + 1
     k⁺ = min(k⁺ + 1, nz)
 
-    f₀₀₀ = @inbounds f.table[i⁻, j⁻, k⁻]
-    f₁₀₀ = @inbounds f.table[i⁺, j⁻, k⁻]
-    f₀₁₀ = @inbounds f.table[i⁻, j⁺, k⁻]
-    f₁₁₀ = @inbounds f.table[i⁺, j⁺, k⁻]
-    f₀₀₁ = @inbounds f.table[i⁻, j⁻, k⁺]
-    f₁₀₁ = @inbounds f.table[i⁺, j⁻, k⁺]
-    f₀₁₁ = @inbounds f.table[i⁻, j⁺, k⁺]
-    f₁₁₁ = @inbounds f.table[i⁺, j⁺, k⁺]
-
-    # Trilinear interpolation
-    return (1 - ξ) * (1 - η) * (1 - ζ) * f₀₀₀ +
-                 ξ * (1 - η) * (1 - ζ) * f₁₀₀ +
-           (1 - ξ) *       η * (1 - ζ) * f₀₁₀ +
-                 ξ *       η * (1 - ζ) * f₁₁₀ +
-           (1 - ξ) * (1 - η) *       ζ * f₀₀₁ +
-                 ξ * (1 - η) *       ζ * f₁₀₁ +
-           (1 - ξ) *       η *       ζ * f₀₁₁ +
-                 ξ *       η *       ζ * f₁₁₁
+    return _interpolate(f.table, (i⁻, i⁺, ξ), (j⁻, j⁺, η), (k⁻, k⁺, ζ))
 end
 
 #####
