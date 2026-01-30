@@ -116,7 +116,8 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}},
 end
 
 function time_step!(model::ReactantModel{<:SplitRungeKuttaTimeStepper}, Δt; callbacks=[])
-    # Eliminate problematic conditional, since our extension of first_time_step! ensures update_state! is called
+    # This conditional causes problems with Reactant, so we remove it from the method here.
+    # We then modify first_time_step! (seen below) so it always calls update_state for ReactantModels.
     #=
     if model.clock.iteration == 0
         update_state!(model, callbacks)
