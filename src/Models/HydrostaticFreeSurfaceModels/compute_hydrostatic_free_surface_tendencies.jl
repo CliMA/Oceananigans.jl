@@ -8,6 +8,8 @@ using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
 using Oceananigans.Grids: get_active_cells_map
+using Oceananigans.Architectures: CPU
+import Oceananigans.Architectures as AC
 using Oceananigans.Fields: Field, interior
 using Oceananigans.Advection: near_y_immersed_boundary_biasedᶜ
 using KernelAbstractions: @kernel, @index
@@ -140,12 +142,14 @@ function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active
     return nothing
 end
 
-function get_u_conditioned_map(scheme, grid; active_cells_map=nothing)
+function get_u_conditioned_map(scheme, grid::ImmersedBoundaryGrid; active_cells_map=nothing)
     # Field is true if the max scheme can be used for computing u advection
-    max_scheme_field = Field{Center, Center, Center}(grid, Bool)
+    max_scheme_field = Field{Center, Center, Center}(getproperty(grid, :underlying_grid), Bool)
+    summary(max_scheme_field)
     fill!(max_scheme_field, false)
     launch!(architecture(grid), grid, :xyz, condition_map!, max_scheme_field, grid, scheme; active_cells_map)
-    
+    summary(max_scheme_field)
+
     return split_indices(max_scheme_field, grid; active_cells_map)
 end
 
@@ -158,10 +162,11 @@ function split_indices(field, grid; active_cells_map=nothing)
 end
 
 function split_indices_mapped(field, grid, active_cells_map)
+    val = AC.on_architecture(CPU(), interior(field)) 
     IndicesType = Tuple{Int32, Int32, Int32}
-    maps = NTuple{2, Tuple{IndicesType}} 
+    maps = (IndicesType[], IndicesType[])
     for index in active_cells_map
-        val = on_architecture(CPU(), interior(field, index...)) 
+        val = vals[index]
         if val
             maps[1] = vcat(maps[1], index)
         else
@@ -174,24 +179,27 @@ end
 
 function split_indices_full(field, grid)
     IndicesType = Tuple{Int32, Int32, Int32}
-    maps = NTuple{2, Tuple{IndicesType}} 
-    for i in 1:size(grid, 1), j in 1:size(grid, 2), k in 1:size(grid, 3)
-        val = on_architecture(CPU(), interior(field, i, j, k)) 
-        if val
-            maps[1] = vcat(maps[1], (i, j, k))
-        else
-            maps[2] = vcat(maps[2], (i, j, k))
-        end
-        GC.gc()
+    map1 = IndicesType[]
+    map2 = IndicesType[]
+    for k in 1:size(grid, 3)
+        vals = AC.on_architecture(CPU(), interior(field, :, :, k)) 
+	map1 = vcat(map1, convert_interior_indices(findall(x->x, vals), k, IndicesType))
+	map2 = vcat(map2, convert_interior_indices(findall(x->!x, vals), k, IndicesType))
+	GC.gc()
     end
-    return maps
+    map1 = AC.on_architecture(architecture(grid), map1) 
+    map2 = AC.on_architecture(architecture(grid), map2) 
+    return (map1, map2)
 end
+
 
 function convert_interior_indices(interior_indices, k, IndicesType)
     interior_indices =   getproperty.(interior_indices, :I)
-    interior_indices = (interior_indices[1], interior_indices[2], k) |> Array{IndicesType}
+    interior_indices = add_3rd_index.(interior_indices, k) |> Array{IndicesType}
     return interior_indices
 end
+
+add_3rd_index(ij, k) = (ij[1], ij[2], k)
 
 @kernel function condition_map!(max_scheme_field, ibg, scheme)
     i, j, k = @index(Global, NTuple)
