@@ -68,7 +68,7 @@ end
             model_kw = (; coriolis, buoyancy, tracers, advection)
             cg_solver = Oceananigans.Solvers.ConjugateGradientPoissonSolver(grid;
                 maxiter=10, reltol=1e-7, abstol=1e-7, preconditioner=nothing)
-                                            
+
             # With default pressure solver
             model = NonhydrostaticModel(grid; model_kw...)
             build_and_timestep_simulation(model)
@@ -110,6 +110,6 @@ end
                                             tracer_advection = WENO(order=5),
                                             free_surface = SplitExplicitFreeSurface(grid; substeps=60))
 
-        build_and_time_step_simulation(model)
+        build_and_timestep_simulation(model)
     end
 end
