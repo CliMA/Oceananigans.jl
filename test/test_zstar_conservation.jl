@@ -151,7 +151,7 @@ const LLGOfSomeKind = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <
                     continue
                 end
 
-                underlying_grid = TripolarGrid(arch; size = (40, 40, 20), z = z_stretched, fold_topology)
+                underlying_grid = TripolarGrid(arch; size = (40, 40, 10), z = z_stretched, fold_topology)
 
                 # Code credit:
                 # https://github.com/PRONTOLab/GB-25/blob/682106b8487f94da24a64d93e86d34d560f33ffc/src/model_utils.jl#L65
