@@ -27,14 +27,6 @@ const TabulatedFunction3D = TabulatedFunction{3}
 ##### Dimensionality detection and normalization
 #####
 
-# Detect dimensionality from range specification
-# 1D: range = (a, b) where a and b are numbers
-_tabulated_ndims(::Tuple{<:Number, <:Number}) = 1
-# 2D: range = ((x1, x2), (y1, y2)) - tuple of two 2-tuples
-_tabulated_ndims(::Tuple{<:Tuple, <:Tuple}) = 2
-# 3D: range = ((x1, x2), (y1, y2), (z1, z2)) - tuple of three 2-tuples
-_tabulated_ndims(::Tuple{<:Tuple, <:Tuple, <:Tuple}) = 3
-
 # Normalize range to tuple-of-tuples format (internal representation)
 _normalize_range(range::Tuple{<:Number, <:Number}) = (range,)
 _normalize_range(range::Tuple{<:Tuple, <:Tuple}) = range
