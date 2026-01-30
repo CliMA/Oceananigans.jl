@@ -113,7 +113,7 @@ function TabulatedFunction(func, arch=CPU(), FT=Oceananigans.defaults.FloatType;
     converted_range = map(r -> (convert(FT, r[1]), convert(FT, r[2])), normalized_range)
 
     # Build lookup table directly on the target architecture
-    table = _build_table(arch, func, converted_range, normalized_points, inverse_Δ)
+    table = build_table(arch, func, converted_range, normalized_points, inverse_Δ)
 
     return TabulatedFunction{N, typeof(func), typeof(table), typeof(converted_range), typeof(inverse_Δ)}(
         func, table, converted_range, inverse_Δ)
@@ -159,7 +159,7 @@ end
 ##### Table builders for each dimensionality
 #####
 
-function _build_table(arch, func, range::NTuple{1}, points::NTuple{1}, inverse_Δ)
+function build_table(arch, func, range::NTuple{1}, points::NTuple{1}, inverse_Δ)
     dev = device(arch)
     FT = eltype(inverse_Δ)
     table = KernelAbstractions.zeros(dev, FT, points...)
@@ -168,7 +168,7 @@ function _build_table(arch, func, range::NTuple{1}, points::NTuple{1}, inverse_�
     return table
 end
 
-function _build_table(arch, func, range::NTuple{2}, points::NTuple{2}, inverse_Δ)
+function build_table(arch, func, range::NTuple{2}, points::NTuple{2}, inverse_Δ)
     dev = device(arch)
     FT = eltype(inverse_Δ)
     table = KernelAbstractions.zeros(dev, FT, points...)
@@ -177,7 +177,7 @@ function _build_table(arch, func, range::NTuple{2}, points::NTuple{2}, inverse_�
     return table
 end
 
-function _build_table(arch, func, range::NTuple{3}, points::NTuple{3}, inverse_Δ)
+function build_table(arch, func, range::NTuple{3}, points::NTuple{3}, inverse_Δ)
     dev = device(arch)
     FT = eltype(inverse_Δ)
     table = KernelAbstractions.zeros(dev, FT, points...)
