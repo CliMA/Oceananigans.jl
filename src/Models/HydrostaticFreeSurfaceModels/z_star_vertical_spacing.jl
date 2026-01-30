@@ -228,13 +228,13 @@ function prognostic_state(::ZStarCoordinate, grid)
             σᶜᶜ⁻ = prognostic_state(z.σᶜᶜ⁻))
 end
 
-function restore_prognostic_state!(::ZStarCoordinate, grid, state)
+function restore_prognostic_state!(::ZStarCoordinate, grid, from)
     z = grid.z
-    restore_prognostic_state!(z.ηⁿ,   state.ηⁿ)
-    restore_prognostic_state!(z.σᶜᶜⁿ, state.σᶜᶜⁿ)
-    restore_prognostic_state!(z.σᶠᶜⁿ, state.σᶠᶜⁿ)
-    restore_prognostic_state!(z.σᶜᶠⁿ, state.σᶜᶠⁿ)
-    restore_prognostic_state!(z.σᶠᶠⁿ, state.σᶠᶠⁿ)
-    restore_prognostic_state!(z.σᶜᶜ⁻, state.σᶜᶜ⁻)
+    restore_prognostic_state!(z.ηⁿ,   from.ηⁿ)
+    restore_prognostic_state!(z.σᶜᶜⁿ, from.σᶜᶜⁿ)
+    restore_prognostic_state!(z.σᶠᶜⁿ, from.σᶠᶜⁿ)
+    restore_prognostic_state!(z.σᶜᶠⁿ, from.σᶜᶠⁿ)
+    restore_prognostic_state!(z.σᶠᶠⁿ, from.σᶠᶠⁿ)
+    restore_prognostic_state!(z.σᶜᶜ⁻, from.σᶜᶜ⁻)
     return ZStarCoordinate()
 end
