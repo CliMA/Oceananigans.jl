@@ -417,11 +417,11 @@ function prognostic_state(fs::SplitExplicitFreeSurface)
             timestepper = prognostic_state(fs.timestepper))
 end
 
-function restore_prognostic_state!(fs::SplitExplicitFreeSurface, state)
-    restore_prognostic_state!(fs.displacement, state.displacement)
-    restore_prognostic_state!(fs.barotropic_velocities, state.barotropic_velocities)
-    restore_prognostic_state!(fs.timestepper, state.timestepper)
-    return fs
+function restore_prognostic_state!(restored::SplitExplicitFreeSurface, from)
+    restore_prognostic_state!(restored.displacement, from.displacement)
+    restore_prognostic_state!(restored.barotropic_velocities, from.barotropic_velocities)
+    restore_prognostic_state!(restored.timestepper, from.timestepper)
+    return restored
 end
 
 restore_prognostic_state!(::SplitExplicitFreeSurface, ::Nothing) = nothing
