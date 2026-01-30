@@ -13,6 +13,7 @@ export apply_regionally!, construct_regionally, @apply_regionally, MultiRegionOb
 export isregional, getregion, _getregion, regions, sync_device!
 export newton_div
 export TabulatedFunction
+export interpolator
 
 #####
 ##### Misc. small utils

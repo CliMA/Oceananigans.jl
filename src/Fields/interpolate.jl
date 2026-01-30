@@ -6,6 +6,7 @@ using Oceananigans.Grids: topology, _node, φnode, φnodes, λnode, λnodes,
                           ZRegOrthogonalSphericalShellGrid
 
 using Oceananigans.Operators: Δx, Δy, Δz
+using Oceananigans.Utils: interpolator
 
 # GPU-compatile middle point calculation
 @inline middle_point(l, h) = Base.unsafe_trunc(Int, (l + h) / 2)

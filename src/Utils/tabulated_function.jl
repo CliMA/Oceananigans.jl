@@ -215,7 +215,22 @@ end
 ##### Interpolation helper
 #####
 
-@inline function _tabulated_interpolator(fractional_idx)
+"""
+    interpolator(fractional_idx)
+
+Return an "interpolator tuple" from the fractional index `fractional_idx`,
+defined as the 3-tuple `(i⁻, i⁺, ξ)` where:
+
+- `i⁻` is the index to the left (floor of fractional_idx)
+- `i⁺` is the index to the right (i⁻ + 1)
+- `ξ` is the fractional distance from `i⁻`, such that `ξ ∈ [0, 1)`
+
+This function is used for linear interpolation in lookup tables and fields.
+
+Note: Uses `Base.unsafe_trunc` instead of `trunc` for GPU compatibility.
+See https://github.com/CliMA/Oceananigans.jl/issues/828
+"""
+@inline function interpolator(fractional_idx)
     # For why we use Base.unsafe_trunc instead of trunc see:
     # https://github.com/CliMA/Oceananigans.jl/issues/828
     # https://github.com/CliMA/Oceananigans.jl/pull/997
@@ -224,6 +239,8 @@ end
     ξ = mod(fractional_idx, 1)
     return (i⁻, i⁺, ξ)
 end
+
+@inline interpolator(::Nothing) = (1, 1, 0)
 
 #####
 ##### Evaluation: 1D linear interpolation
@@ -234,7 +251,7 @@ end
     x_clamped = clamp(x, x_min, x_max)
 
     fractional_idx = (x_clamped - x_min) * f.inverse_Δ[1]
-    i⁻, i⁺, ξ = _tabulated_interpolator(fractional_idx)
+    i⁻, i⁺, ξ = interpolator(fractional_idx)
 
     n = length(f.table)
     i⁻ = i⁻ + 1
@@ -260,8 +277,8 @@ end
     frac_i = (x_clamped - x_min) * f.inverse_Δ[1]
     frac_j = (y_clamped - y_min) * f.inverse_Δ[2]
 
-    i⁻, i⁺, ξ = _tabulated_interpolator(frac_i)
-    j⁻, j⁺, η = _tabulated_interpolator(frac_j)
+    i⁻, i⁺, ξ = interpolator(frac_i)
+    j⁻, j⁺, η = interpolator(frac_j)
 
     nx, ny = size(f.table)
     i⁻ = i⁻ + 1
@@ -298,9 +315,9 @@ end
     frac_j = (y_clamped - y_min) * f.inverse_Δ[2]
     frac_k = (z_clamped - z_min) * f.inverse_Δ[3]
 
-    i⁻, i⁺, ξ = _tabulated_interpolator(frac_i)
-    j⁻, j⁺, η = _tabulated_interpolator(frac_j)
-    k⁻, k⁺, ζ = _tabulated_interpolator(frac_k)
+    i⁻, i⁺, ξ = interpolator(frac_i)
+    j⁻, j⁺, η = interpolator(frac_j)
+    k⁻, k⁺, ζ = interpolator(frac_k)
 
     nx, ny, nz = size(f.table)
     i⁻ = i⁻ + 1
