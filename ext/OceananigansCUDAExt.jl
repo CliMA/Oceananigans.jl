@@ -137,7 +137,7 @@ end
 @inline UT.sync_device!(::CUDABackend)   = CUDA.synchronize()
 
 # Use faster versions of `newton_div` on Nvidia GPUs
-CUDA.@device_override UT.newton_div(::Type{UT.BackendOptimizedNewtonDiv}, a, b::Float64) = a * fast_inv_cuda(b)
+CUDA.@device_override UT.newton_div(::Type{UT.BackendOptimizedNewtonDiv}, a, b) = a * fast_inv_cuda(b)
 
 function fast_inv_cuda(a::Float64)
     # Get the approximate reciprocal
@@ -152,6 +152,14 @@ function fast_inv_cuda(a::Float64)
     e = fma(inv_a, -a, 1.0)
     e = fma(e, e, e)
     inv_a = fma(e, inv_a, inv_a)
+    return inv_a
+end
+
+function fast_inv_cuda(a::Float32)
+    # This instruction just computes reciprocal flushing subnormals to 0.0
+    # Hence for subnormal inputs it returns Inf
+    # For large number whose reciprocal is subnormal it underflows to 0.0
+    inv_a = ccall("llvm.nvvm.rcp.approx.ftz.f32", llvmcall, Float32, (Float32,), a)
     return inv_a
 end
 
