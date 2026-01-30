@@ -1,4 +1,5 @@
 using Adapt
+using DocStringExtensions: TYPEDFIELDS, TYPEDSIGNATURES
 using Oceananigans.Architectures: CPU
 import Oceananigans.Architectures: on_architecture
 
