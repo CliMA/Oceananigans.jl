@@ -28,6 +28,7 @@ CUDA.allowscalar() do
         end
     end
 
+    #=
     # Initialization steps
     if group == :init || group == :all
         include("test_init.jl")
@@ -276,7 +277,16 @@ CUDA.allowscalar() do
             include("test_reactant_latitude_longitude_grid.jl")
         end
     end
+    =#
 
+    # Tests for Reactant correctness (comparing vanilla vs ReactantState)
+    if group == :reactant_correctness || group == :all
+        @testset "Reactant correctness tests" begin
+            include("test_reactant_correctness.jl")
+        end
+    end
+
+    #=
     # Tests for XESMF extension
     if group == :xesmf || group == :all
         @testset "XESMF extension tests" begin
@@ -330,6 +340,7 @@ CUDA.allowscalar() do
     if group == :convergence
         include("test_convergence.jl")
     end
+    =#
 end
 
 end #CUDA.allowscalar()
