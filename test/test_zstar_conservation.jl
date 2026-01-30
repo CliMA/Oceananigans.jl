@@ -148,7 +148,7 @@ end
             end
         end
 
-        if arch isa isa Distributed{<:GPU}
+        if arch isa Distributed{<:GPU}
             # Unfortunately tripolar grid tests fail on the GPU because of
             # parameter space memory. We skip also these test
             continue
