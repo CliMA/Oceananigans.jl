@@ -77,7 +77,7 @@ end
             # tests become too long because we test too many architectures,
             # given that `FullyConnected` acts as a `Periodic` we don't need
             # to test different topologies
-            [(Bounded, Bounded, Bounded)] 
+            [(Bounded, Bounded, Bounded)]
         else
            [(Periodic, Periodic, Bounded),
             (Bounded, Bounded, Bounded)]
@@ -122,7 +122,7 @@ end
                         if (grid isa LatitudeLongitudeGrid) && free_surface === implicit_free_surface
                             continue
                         end
-                        if (grid isa ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:LatitudeLongitudeGrid}) 
+                        if (grid isa ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:LatitudeLongitudeGrid})
                             continue
                         end
                     end
