@@ -137,8 +137,7 @@ end
 @inline UT.sync_device!(::CUDABackend)   = CUDA.synchronize()
 
 # Use faster versions of `newton_div` on Nvidia GPUs
-CUDA.@device_override UT.newton_div(::Type{Float32}, a, b::Float64) = a * fast_inv_cuda(b)
-CUDA.@device_override UT.newton_div(::Type{Float64}, a, b::Float64) = a * fast_inv_cuda(b)
+CUDA.@device_override UT.newton_div(::Type{UT.BackendOptimizedNewtonDiv}, a, b::Float64) = a * fast_inv_cuda(b)
 
 function fast_inv_cuda(a::Float64)
     # Get the approximate reciprocal

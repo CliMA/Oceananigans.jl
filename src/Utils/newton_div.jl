@@ -1,11 +1,37 @@
 """
-    newton_div(inv_FT, a, b::FT)
-
-Compute an approximation of `a / b` that uses `inv_FT` type to compute
-`1/b`, and then performs a single Newton iteration to add a few more bits of precision
-afterwards.
+Abstract supertype grouping configuration options for `newton_div`.
+Use one of the concrete subtypes as the first argument to `newton_div`
+to select the implementation.
 """
-@inline function newton_div(inv_FT, a, b::FT) where FT
+abstract type NewtonDivConfig end
+
+"""
+Configuration selecting regular, full-precision division.
+"""
+struct NoNewtonDiv <: NewtonDivConfig end
+
+"""
+Configuration selecting approximate division via one Newton iteration.
+The reciprocal `1/b` is first evaluated in a lower-precision type `FT`
+to obtain a fast initial guess, then refined with a single Newton step
+in the original precision.
+"""
+struct NewtonDivWithConversion{FT} <: NewtonDivConfig end
+
+"""
+Configuration selecting a backend-optimized implementation of approximate division.
+The actual algorithm may differ across CPU and different GPU backends.
+"""
+struct BackendOptimizedNewtonDiv <: NewtonDivConfig end
+
+"""
+    newton_div(::Type{T}, a, b)
+
+Compute an approximate division `a/b` using a method specified by selector type `T`.
+"""
+function newton_div end
+
+@inline function newton_div(::Type{NewtonDivWithConversion{inv_FT}}, a, b::FT) where {inv_FT, FT}
     # Low precision division:
     b_low = convert(inv_FT, b)
     inv_b = Base.FastMath.inv_fast(b_low)
@@ -19,8 +45,8 @@ afterwards.
     return x
 end
 
-# Fallback for no precision lowering
-@inline newton_div(::Type{FT}, a, b::FT) where FT = a * Base.FastMath.inv_fast(b)
+# Case of matching precisions
+@inline newton_div(::Type{NewtonDivWithConversion{FT}}, a, b::FT) where FT = a * Base.FastMath.inv_fast(b)
 
-# Note that the implementation may be overridden for some specific backends
-# Refer to extension modules (e.g. `OceananigansCUDAExt`)
+# Exact division if requested
+@inline newton_div(::Type{NoNewtonDiv}, a, b) = a / b
