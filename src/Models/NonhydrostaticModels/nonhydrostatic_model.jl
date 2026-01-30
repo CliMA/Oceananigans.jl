@@ -55,6 +55,8 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
  boundary_mass_fluxes :: BM       # Container for the average mass fluxes at boundaries
 end
 
+supported_timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
+
 """
     NonhydrostaticModel(grid;
                         clock = Clock{eltype(grid)}(time = 0),
@@ -100,8 +102,9 @@ Keyword arguments
   - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
   - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
                preallocated `CenterField`s.
-  - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2` or
-                   `:RungeKutta3` (default).
+  - `timestepper`: A symbol or a `TimeStepper` object that specifies the time-stepping method.
+                   Supported symbols include $(join("`" .* repr.(supported_timesteppers) .* "`", ", ")).
+                   Default: `:RungeKutta3`.
   - `background_fields`: `NamedTuple` with background fields (e.g., background flow). Default: `nothing`.
   - `particles`: Lagrangian particles to be advected with the flow. Default: `nothing`.
   - `biogeochemistry`: Biogeochemical model for `tracers`.
@@ -143,6 +146,15 @@ function NonhydrostaticModel(grid;
     arch = architecture(grid)
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
+
+    if timestepper isa Symbol && timestepper ∉ supported_timesteppers
+        msg = """
+        timestepper = :$timestepper is not supported.
+        Supported timesteppers are: $(join(repr.(supported_timesteppers), ", ")).
+        You can also construct your own TimeStepper and pass it to the constructor.
+        """
+        throw(ArgumentError(msg))
+    end
 
     if isnothing(nonhydrostatic_pressure)
         if isnothing(free_surface)
@@ -327,16 +339,16 @@ function prognostic_state(model::NonhydrostaticModel)
             boundary_mass_fluxes = prognostic_state(model.boundary_mass_fluxes))
 end
 
-function restore_prognostic_state!(model::NonhydrostaticModel, state)
-    restore_prognostic_state!(model.clock, state.clock)
-    restore_prognostic_state!(model.particles, state.particles)
-    restore_prognostic_state!(model.velocities, state.velocities)
-    restore_prognostic_state!(model.timestepper, state.timestepper)
-    restore_prognostic_state!(model.tracers, state.tracers)
-    restore_prognostic_state!(model.closure_fields, state.closure_fields)
-    restore_prognostic_state!(model.auxiliary_fields, state.auxiliary_fields)
-    restore_prognostic_state!(model.boundary_mass_fluxes, state.boundary_mass_fluxes)
-    return model
+function restore_prognostic_state!(restored::NonhydrostaticModel, from)
+    restore_prognostic_state!(restored.clock, from.clock)
+    restore_prognostic_state!(restored.particles, from.particles)
+    restore_prognostic_state!(restored.velocities, from.velocities)
+    restore_prognostic_state!(restored.timestepper, from.timestepper)
+    restore_prognostic_state!(restored.tracers, from.tracers)
+    restore_prognostic_state!(restored.closure_fields, from.closure_fields)
+    restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
+    restore_prognostic_state!(restored.boundary_mass_fluxes, from.boundary_mass_fluxes)
+    return restored
 end
 
 restore_prognostic_state!(::NonhydrostaticModel, ::Nothing) = nothing
