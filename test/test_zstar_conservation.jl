@@ -73,7 +73,7 @@ const LLGOfSomeKind = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <
 
 
 @testset "ZStarCoordinate tracer conservation testset" begin
-    z_stretched = MutableVerticalDiscretization(collect(-20:0))
+    z_stretched = MutableVerticalDiscretization(collect(-10:0))
     topologies  = ((Periodic, Periodic, Bounded),
                    (Bounded, Bounded, Bounded))
 
@@ -81,12 +81,12 @@ const LLGOfSomeKind = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <
         for topology in topologies
             Random.seed!(1234)
 
-            rtgv = RectilinearGrid(arch; size = (20, 20, 20), x = (0, 100kilometers), y = (-10kilometers, 10kilometers), topology, z = z_stretched)
+            rtgv = RectilinearGrid(arch; size = (40, 40, 10), x = (0, 100kilometers), y = (-10kilometers, 10kilometers), topology, z = z_stretched)
             irtgv = ImmersedBoundaryGrid(deepcopy(rtgv),  GridFittedBottom((x, y) -> rand() - 10))
             prtgv = ImmersedBoundaryGrid(deepcopy(rtgv), PartialCellBottom((x, y) -> rand() - 10))
 
             if topology[2] == Bounded
-                llgv = LatitudeLongitudeGrid(arch; size = (20, 20, 20), latitude = (0, 1), longitude = (0, 1), topology, z = z_stretched)
+                llgv = LatitudeLongitudeGrid(arch; size = (40, 40, 10), latitude = (0, 1), longitude = (0, 1), topology, z = z_stretched)
 
                 illgv = ImmersedBoundaryGrid(deepcopy(llgv),  GridFittedBottom((x, y) -> rand() - 10))
                 pllgv = ImmersedBoundaryGrid(deepcopy(llgv), PartialCellBottom((x, y) -> rand() - 10))
@@ -105,7 +105,7 @@ const LLGOfSomeKind = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <
             for grid in grids
                 # Preconditioned conjugate gradient solver does not satisfy local conservation stricly to machine precision.
                 implicit_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner=nothing)
-                split_free_surface    = SplitExplicitFreeSurface(grid; substeps=20)
+                split_free_surface    = SplitExplicitFreeSurface(grid; substeps=8)
                 explicit_free_surface = ExplicitFreeSurface()
 
                 for free_surface in [explicit_free_surface, split_free_surface, implicit_free_surface]
@@ -151,7 +151,7 @@ const LLGOfSomeKind = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <
                     continue
                 end
 
-                underlying_grid = TripolarGrid(arch; size = (30, 30, 20), z = z_stretched, fold_topology)
+                underlying_grid = TripolarGrid(arch; size = (40, 40, 20), z = z_stretched, fold_topology)
 
                 # Code credit:
                 # https://github.com/PRONTOLab/GB-25/blob/682106b8487f94da24a64d93e86d34d560f33ffc/src/model_utils.jl#L65
@@ -171,7 +171,7 @@ const LLGOfSomeKind = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <
                 gaussian_islands(λ, φ) = zb + h * mtns(λ, φ)
 
                 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(gaussian_islands))
-                free_surface = SplitExplicitFreeSurface(grid; substeps=20)
+                free_surface = SplitExplicitFreeSurface(grid; substeps=8)
 
                 model = HydrostaticFreeSurfaceModel(grid;
                                                     free_surface,
