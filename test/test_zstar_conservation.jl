@@ -112,7 +112,7 @@ const LLGOfSomeKind = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <
 
                     # These combination of parameters lead to the parameter error:
                     # Kernel invocation uses too much parameter memory.
-                    if (arch isa Distributed{<:GPU}) 
+                    if (arch isa Distributed{<:GPU})
                         if (grid isa LLGOfSomeKind) && free_surface === implicit_free_surface
                             continue
                         end
