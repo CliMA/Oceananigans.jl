@@ -4,6 +4,8 @@
 
 @kernel function _fill_periodic_west_and_east_halo!(c, west_bc, east_bc, loc, grid, args)
     j, k = @index(Global, NTuple)
+    j += grid.Hy
+    k += grid.Hz
     H = grid.Hx
     N = grid.Nx
     @inbounds for i = 1:H
@@ -14,6 +16,8 @@ end
 
 @kernel function _fill_periodic_south_and_north_halo!(c, south_bc, north_bc, loc, grid, args)
     i, k = @index(Global, NTuple)
+    i += grid.Hx
+    k += grid.Hz
     H = grid.Hy
     N = grid.Ny
     @inbounds for j = 1:H
@@ -24,6 +28,8 @@ end
 
 @kernel function _fill_periodic_bottom_and_top_halo!(c, bottom_bc, top_bc, loc, grid, args)
     i, j = @index(Global, NTuple)
+    i += grid.Hx
+    j += grid.Hy
     H = grid.Hz
     N = grid.Nz
     @inbounds for k = 1:H
