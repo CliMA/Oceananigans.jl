@@ -65,17 +65,17 @@ end
         @info "Testing NonhydrostaticModel on $arch with $FT..."
 
         for grid in (regular_grid, vertically_stretched_grid)
-            cg_kw = (maxiter=10, reltol=1e-7, abstol=1e-7, preconditioner=nothing)
-            pressure_solvers = (Oceananigans.Solvers.ConjugateGradientPoissonSolver(grid; cg_kw...),
-                                Oceananigans.Solvers.FFTBasedPoissonSolver(grid))
+            model_kw = (; coriolis, buoyancy, tracers, advection)
+            cg_solver = Oceananigans.Solvers.ConjugateGradientPoissonSolver(grid;
+                maxiter=10, reltol=1e-7, abstol=1e-7, preconditioner=nothing)
+                                            
+            # With default pressure solver
+            model = NonhydrostaticModel(grid; model_kw...)
+            build_and_timestep_simulation(model)
 
-            for pressure_solver in pressure_solvers
-                model = NonhydrostaticModel(grid; pressure_solver,
-                                            coriolis, buoyancy,
-                                            tracers, advection)
-
-                build_and_timestep_simulation(model)
-            end
+            # With CG pressure solver
+            model = NonhydrostaticModel(grid; pressure_solver=cg_solver, model_kw...)
+            build_and_timestep_simulation(model)
         end
     end
 end
