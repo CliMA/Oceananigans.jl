@@ -34,7 +34,7 @@ function run_simulation(Nx, Ny, arch; topology = (Periodic, Periodic, Bounded))
     mask(x, y, z) = x > 3π/2 && x < 5π/2 && y > 3π/2 && y < 5π/2
     set!(model.tracers.c, mask)
 
-    set!(c, mask)
+    set!(model.tracers.c, mask)
 
     u, v, _ = model.velocities
     # ζ = VerticalVorticityField(model)
