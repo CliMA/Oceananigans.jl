@@ -54,7 +54,7 @@ steps:
     command: *test_command
     timeout_in_minutes: 5440
     agents:
-      slurm_mem: 50G
+      slurm_mem: 100G
       slurm_ntasks: 4
     retry: *retry_config
     matrix:

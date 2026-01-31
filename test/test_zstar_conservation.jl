@@ -156,12 +156,12 @@ end
 
         for fold_topology in (RightCenterFolded, RightFaceFolded)
             @testset "$(fold_topology) TripolarGrid ZStarCoordinate tracer conservation tests" begin
-                @root @info "Testing a ZStarCoordinate coordinate with a $(fold_topology) Tripolar grid on $(summary(arch))..."
-
                 # Check that the grid is correctly partitioned in case of a distributed architecture
                 if arch isa Distributed && ((arch.ranks[1] != 1 || arch.ranks[2] == 1) || (fold_topology == RightFaceFolded))
                     continue
                 end
+
+                @root @info "Testing a ZStarCoordinate coordinate with a $(fold_topology) Tripolar grid on $(summary(arch))..."
 
                 underlying_grid = TripolarGrid(arch; size = (40, 40, 10), z = z_stretched, fold_topology)
 
