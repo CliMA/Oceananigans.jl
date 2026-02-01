@@ -72,6 +72,7 @@ end
 @testset "ZStarCoordinate tracer conservation testset" begin
     z_stretched = MutableVerticalDiscretization(collect(-10:0))
 
+    archs = test_architectures()
     if length(archs) == 6 # Distributed with 6 archs, we only take the first 3
         archs = archs[1:3]
     end
