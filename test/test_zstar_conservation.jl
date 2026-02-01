@@ -5,7 +5,7 @@ using Oceananigans: initialize!
 using Oceananigans.ImmersedBoundaries: PartialCellBottom
 using Oceananigans.Grids: MutableVerticalDiscretization
 using Oceananigans.Models: ZStarCoordinate, ZCoordinate
-using Oceananigans.DistributedComputations: DistributedGrid, @root
+using Oceananigans.DistributedComputations: DistributedGrid, @root, @handshake
 
 grid_type(::RectilinearGrid{F, X, Y}) where {F, X, Y} = "Rect{$X, $Y}"
 grid_type(::LatitudeLongitudeGrid{F, X, Y}) where {F, X, Y} = "LatLon{$X, $Y}"
@@ -83,6 +83,7 @@ end
             (Bounded, Bounded, Bounded)]
         end
 
+        @handshake @info arch
 
         for topology in topologies
             Random.seed!(1234)
