@@ -274,6 +274,48 @@ function test_triply_periodic_local_grid_with_221_ranks()
 end
 
 #####
+##### Complex boundary conditions in distributed models
+#####
+
+
+function test_complex_boundary_conditions(Rx, Ry, child_arch)
+    arch  = Distributed(child_arch, partition=Partition(Rx, Ry))
+
+    @inline function clock_field_dependent_boundary_condition(i, j, grid, clock, fields)
+        c = fields.c[i, j, size(grid, 3)]
+        t = clock.time
+        return - (t + c)
+    end
+
+    # A grid with unity spacings in all directions
+    grid  = RectilinearGrid(arch, topology=(Bounded, Bounded, Bounded), size=(2*Rx, 2*Ry, 1), extent=(2*Rx, 2*Ry, 1))
+    c_bc  = FluxBoundaryCondition(clock_field_dependent_boundary_condition, discrete_form=true)
+    c_bcs = FieldBoundaryConditions(top=c_bc)
+
+    # A model with an Euler step
+    model = HydrostaticFreeSurfaceModel(grid;
+                                        timestepper=:QuasiAdamsBashforth2,
+                                        velocities=PrescribedVelocityFields(),
+                                        tracers=:c,
+                                        free_surface=nothing,
+                                        boundary_conditions=(; c=c_bcs),
+                                        tracer_advection=nothing)
+
+    model.timestepper.χ = -0.5
+    @test model.tracers.c.boundary_conditions.top isa typeof(c_bc)
+
+    # c += Δt (t + c) / Δz, where Δt = Δz = 1
+    time_step!(model, 1) # t = 0, c⁻ = 0 => c = 0
+    @test @allowscalar all(iszero, model.tracers.c)
+
+    time_step!(model, 1) # t = 1, c⁻ = 0 => c = 1
+    @test @allowscalar all(isequal(1), model.tracers.c)
+
+    time_step!(model, 1) # t = 2, c⁻ = 1 => c = 4
+    @test @allowscalar all(isequal(4), model.tracers.c)
+end
+
+#####
 ##### Injection of halo communication BCs
 #####
 ##### TODO: use Field constructor for these tests rather than NonhydrostaticModel.
@@ -439,6 +481,14 @@ end
         end
     end
 
+    @testset "Complex boundary conditions" begin
+        @info "  Testing complex boundary conditions..."
+        child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
+        for (Rx, Ry) in ((4, 1), (1, 4), (2, 2))
+            test_complex_boundary_conditions(Rx, Ry, child_arch)
+        end
+    end
+
     @testset "Test Distributed MPI Grids" begin
         child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
 
@@ -447,8 +497,8 @@ end
 
             arch = Distributed(child_arch; partition=Partition(1, 4))
             rg   = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
-            llg  = LatitudeLongitudeGrid(arch, size=(8, 8, 8), latitude=(0, 60), longitude=(0, 60), z=(0, 1), radius=1)
-            osg  = TripolarGrid(arch, size=(8, 8, 8))
+            llg  = LatitudeLongitudeGrid(arch, size=(8, 16, 8), latitude=(0, 60), longitude=(0, 60), z=(0, 1), radius=1)
+            osg  = TripolarGrid(arch, size=(8, 16, 8))
 
             cpu_arch = cpu_architecture(arch)
 
