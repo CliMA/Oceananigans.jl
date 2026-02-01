@@ -26,8 +26,6 @@ using Oceananigans: UpdateStateCallsite
 using Oceananigans.Utils: IterationInterval, ConsecutiveIterations
 using KernelAbstractions: @kernel, @index
 
-const RungeKuttaScheme = Union{RungeKutta3TimeStepper, SplitRungeKuttaTimeStepper}
-
 struct VarianceDissipation{P, K, A, D, S}
     advective_production :: P
     diffusive_production :: K
@@ -108,7 +106,7 @@ function (ϵ::VarianceDissipation)(model)
 
     # Check if the model has tracers
     if !hasproperty(model.tracers, ϵ.tracer_name)
-        throw(ArgumentError("Model must have a tracer called $tracer_name."))
+        throw(ArgumentError("Model must have a tracer called $(ϵ.tracer_name)."))
     end
 
     # First we compute the dissipation from previously computed fluxes

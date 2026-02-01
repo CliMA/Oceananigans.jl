@@ -38,7 +38,6 @@ function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
     cⁿ⁻¹ = dissipation.previous_state.cⁿ⁻¹
 
     grid = model.grid
-    arch = architecture(grid)
     U = model.velocities
     params = flux_parameters(grid)
     stage  = model.clock.stage
@@ -71,7 +70,7 @@ function cache_fluxes!(dissipation, model, tracer_name::Symbol, tracer_id)
 
     if timestepper isa QuasiAdamsBashforth2TimeStepper
         parent(cⁿ⁻¹) .= parent(c)
-    elseif (timestepper isa RungeKuttaScheme) && (stage == timestepper.Nstages)
+    elseif (timestepper isa SplitRungeKuttaTimeStepper) && (stage == timestepper.Nstages)
         parent(cⁿ⁻¹) .= parent(c)
     end
 

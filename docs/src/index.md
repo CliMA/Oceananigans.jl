@@ -44,7 +44,7 @@ julia> using Pkg
 julia> Pkg.add("Oceananigans")
 ```
 
-!!! compat "Julia 1.9 or later is required"
+!!! compat "Julia 1.10 or later is required"
     Oceananigans requires Julia 1.9 or later.
 
 !!! info "Tested Julia versions"
@@ -126,6 +126,8 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 ## Papers and preprints using Oceananigans
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
+
+1. Peng. S., Silvestri, S., and Bodner A (2026). [Submesoscale and boundary layer turbulence under mesoscale forcing in the upper ocean](https://doi.org/10.48550/arXiv.2601.10441), _arXiv preprint_, arXiv:2601.10441. DOI: [10.48550/arXiv.2601.10441](https://doi.org/10.48550/arXiv.2601.10441)
 
 1. Wang, S., Kang, W., Zhang, Y., & Marshall, J. (2026). [Evolution of a point plume in a rotating unstratified fluid overlain by a stratified layer: scaling and implications for icy satellites](https://doi.org/10.22541/essoar.176824050.01249257/v1), _ESS Open Archive_. DOI: [10.22541/essoar.176824050.01249257/v1](https://doi.org/10.22541/essoar.176659936.64523492/v1)
 

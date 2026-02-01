@@ -102,13 +102,21 @@ function complete_communication_and_compute_tracer_buffer!(model::HydrostaticFre
     grid = model.grid
     arch = architecture(grid)
 
-    ũ, ṽ, _ = model.transport_velocities
-    synchronize_communication!(ũ)
-    synchronize_communication!(ṽ)
+    # synchronize the free surface
     synchronize_communication!(model.free_surface)
 
-    surface_params = buffer_surface_kernel_parameters(grid, arch)
-    update_vertical_velocities!(model.transport_velocities, grid, model; parameters=surface_params)
+    # We need to synchronize the transport velocities only on
+    # a split-explicit free surface model
+    # (with other free surfaces `transport_velocities === velocities`)
+    if model.free_surface isa SplitExplicitFreeSurface
+        ũ, ṽ, _ = model.transport_velocities
+        synchronize_communication!(ũ)
+        synchronize_communication!(ṽ)
+
+        surface_params = buffer_surface_kernel_parameters(grid, arch)
+        update_vertical_velocities!(model.transport_velocities, grid, model; parameters=surface_params)
+    end
+
     compute_tracer_buffer_contributions!(grid, arch, model)
 
     return nothing
@@ -158,8 +166,8 @@ function buffer_surface_kernel_parameters(grid, arch)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
-    xside = isa(grid, XFlatGrid) ? UnitRange(1, Nx) : UnitRange(0, Nx+1)
-    yside = isa(grid, YFlatGrid) ? UnitRange(1, Ny) : UnitRange(0, Ny+1)
+    xside = isa(grid, XFlatGrid) ? UnitRange(1, Nx) : UnitRange(-Hx+2, Nx+Hx-1)
+    yside = isa(grid, YFlatGrid) ? UnitRange(1, Ny) : UnitRange(-Hy+2, Ny+Hy-1)
 
     # Offsets in tangential direction are == -1 to
     # cover the required corners
@@ -185,8 +193,8 @@ function buffer_volume_kernel_parameters(grid, arch)
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
 
-    xside = isa(grid, XFlatGrid) ? UnitRange(1, Nx) : UnitRange(0, Nx+1)
-    yside = isa(grid, YFlatGrid) ? UnitRange(1, Ny) : UnitRange(0, Ny+1)
+    xside = isa(grid, XFlatGrid) ? UnitRange(1, Nx) : UnitRange(-Hx+2, Nx+Hx-1)
+    yside = isa(grid, YFlatGrid) ? UnitRange(1, Ny) : UnitRange(-Hy+2, Ny+Hy-1)
 
     # Offsets in tangential direction are == -1 to
     # cover the required corners

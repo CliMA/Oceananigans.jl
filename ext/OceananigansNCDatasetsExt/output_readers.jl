@@ -2,14 +2,13 @@
 ##### Reading FieldTimeSeries from NetCDF Files
 #####
 
-using Oceananigans.Fields: instantiated_location
 using Oceananigans.Architectures: cpu_architecture
-using Oceananigans.Utils: @apply_regionally
-using Oceananigans.Grids: offset_data
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions
+using Oceananigans.Fields: instantiated_location
+using Oceananigans.Grids: offset_data
+using Oceananigans.Utils: @apply_regionally
 
 import Oceananigans.Fields: Field
-
 
 #####
 ##### FieldTimeSeries from NetCDF

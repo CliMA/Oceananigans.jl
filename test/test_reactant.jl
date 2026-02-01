@@ -39,6 +39,8 @@ end
         grid = LatitudeLongitudeGrid(arch; lat_lon_kw...)
         model = HydrostaticFreeSurfaceModel(grid; hydrostatic_model_kw...)
 
+        @test model.clock.stage == 1
+
         ui = randn(size(model.velocities.u)...)
         vi = randn(size(model.velocities.v)...)
         set!(model, u=ui, v=vi)
