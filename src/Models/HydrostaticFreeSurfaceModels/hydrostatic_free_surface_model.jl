@@ -58,6 +58,8 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
     vertical_coordinate :: Z   # Rulesets that define the time-evolution of the grid
 end
 
+supported_timesteppers = (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5)
+
 default_free_surface(grid::XYRegularStaticRG; gravitational_acceleration=defaults.gravitational_acceleration) =
     ImplicitFreeSurface(; gravitational_acceleration)
 
@@ -110,8 +112,9 @@ Keyword arguments
                preallocated `CenterField`s.
   - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
   - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
-  - `timestepper`: A symbol that specifies the time-stepping method.
-                   Either `:QuasiAdamsBashforth2` (default) or `:SplitRungeKutta`.
+  - `timestepper`: A symbol or a `TimeStepper` object that specifies the time-stepping method.
+                   Supported symbols include $(join("`" .* repr.(supported_timesteppers) .* "`", ", ")).
+                   Default: `:QuasiAdamsBashforth2`.
   - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
   - `particles`: Lagrangian particles to be advected with the flow. Default: `nothing`.
   - `biogeochemistry`: Biogeochemical model for `tracers`.
@@ -150,6 +153,15 @@ function HydrostaticFreeSurfaceModel(grid;
     if !(grid isa MutableGridOfSomeKind) && (vertical_coordinate isa ZStarCoordinate)
         msg = string("The grid ", summary(grid), " does not support ZStarCoordinate.", '\n',
                      "z must be a MutableVerticalDiscretization to allow the use of ZStarCoordinate.")
+        throw(ArgumentError(msg))
+    end
+
+    if timestepper isa Symbol && timestepper ∉ supported_timesteppers
+        msg = """
+        timestepper = :$timestepper is not supported.
+        Supported timesteppers are: $(join(repr.(supported_timesteppers), ", ")).
+        You can also construct your own TimeStepper and pass it to the constructor.
+        """
         throw(ArgumentError(msg))
     end
 
@@ -293,10 +305,9 @@ function validate_vertical_velocity_boundary_conditions(w)
     return nothing
 end
 
-validate_free_surface(::Distributed, free_surface::SplitExplicitFreeSurface) = free_surface
-validate_free_surface(::Distributed, free_surface::ExplicitFreeSurface)      = free_surface
-validate_free_surface(::Distributed, free_surface::Nothing)                  = free_surface
-validate_free_surface(arch::Distributed, free_surface) = error("$(typeof(free_surface)) is not supported with $(typeof(arch))")
+const FFTIFS = ImplicitFreeSurface{<:Any, <:Any, <:FFTImplicitFreeSurfaceSolver}
+
+validate_free_surface(arch::Distributed, ::FFTIFS) = error("$(typeof(free_surface)) is not supported with $(typeof(arch))")
 validate_free_surface(arch, free_surface) = free_surface
 
 validate_momentum_advection(momentum_advection, ibg::ImmersedBoundaryGrid) = validate_momentum_advection(momentum_advection, ibg.underlying_grid)
@@ -334,17 +345,17 @@ function prognostic_state(model::HydrostaticFreeSurfaceModel)
             vertical_coordinate = prognostic_state(model.vertical_coordinate, model.grid))
 end
 
-function restore_prognostic_state!(model::HydrostaticFreeSurfaceModel, state)
-    restore_prognostic_state!(model.clock, state.clock)
-    restore_prognostic_state!(model.particles, state.particles)
-    restore_prognostic_state!(model.velocities, state.velocities)
-    restore_prognostic_state!(model.timestepper, state.timestepper)
-    restore_prognostic_state!(model.free_surface, state.free_surface)
-    restore_prognostic_state!(model.tracers, state.tracers)
-    restore_prognostic_state!(model.closure_fields, state.closure_fields)
-    restore_prognostic_state!(model.auxiliary_fields, state.auxiliary_fields)
-    restore_prognostic_state!(model.vertical_coordinate, model.grid, state.vertical_coordinate)
-    return model
+function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
+    restore_prognostic_state!(restored.clock, from.clock)
+    restore_prognostic_state!(restored.particles, from.particles)
+    restore_prognostic_state!(restored.velocities, from.velocities)
+    restore_prognostic_state!(restored.timestepper, from.timestepper)
+    restore_prognostic_state!(restored.free_surface, from.free_surface)
+    restore_prognostic_state!(restored.tracers, from.tracers)
+    restore_prognostic_state!(restored.closure_fields, from.closure_fields)
+    restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
+    restore_prognostic_state!(restored.vertical_coordinate, restored.grid, from.vertical_coordinate)
+    return restored
 end
 
 restore_prognostic_state!(::HydrostaticFreeSurfaceModel, ::Nothing) = nothing

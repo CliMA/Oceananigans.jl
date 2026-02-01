@@ -949,7 +949,7 @@ function test_checkpointing_ri_based_closure(arch, timestepper)
     return nothing
 end
 
-function test_checkpointing_catke_closure(arch, timestepper)
+function test_checkpointing_catke_closure(arch, timestepper, closure=CATKEVerticalDiffusivity())
     Nx, Ny, Nz = 8, 8, 8
     Lx, Ly, Lz = 100, 100, 100
     Δt = 0.1
@@ -960,7 +960,7 @@ function test_checkpointing_catke_closure(arch, timestepper)
     function make_model()
         grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
         return HydrostaticFreeSurfaceModel(grid; timestepper,
-                                           closure = CATKEVerticalDiffusivity(),
+                                           closure,
                                            buoyancy = SeawaterBuoyancy(),
                                            tracers = (:T, :S))
     end
@@ -976,7 +976,12 @@ function test_checkpointing_catke_closure(arch, timestepper)
     set!(model, T=T_init, S=35, u=u_init)
     simulation = Simulation(model, Δt=Δt, stop_iteration=5)
 
-    prefix = "catke_checkpointing_$(typeof(arch))_$(timestepper)"
+    closure_prefix = closure isa CATKEVerticalDiffusivity ? "catke" :
+                     closure isa NTuple{1} && closure[1] isa CATKEVerticalDiffusivity ? "catke" :
+                     (closure isa Tuple && any(x -> x isa CATKEVerticalDiffusivity, closure)) ? "catke_etal" :
+                     "some_closure"
+
+    prefix = closure_prefix * "_checkpointing_$(typeof(arch))_$(timestepper)"
     simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                             schedule = IterationInterval(5),
                                                             prefix = prefix)
@@ -1799,7 +1804,10 @@ for arch in archs
         if timestepper == :SplitRungeKutta3 # currently, CATKE and TKE-ε tests fail with :QuasiAdamsBashforth2
             @testset "CATKE closure checkpointing [$(typeof(arch)), $timestepper]" begin
                 @info "  Testing CATKE closure checkpointing [$(typeof(arch)), $timestepper]..."
-                test_checkpointing_catke_closure(arch, timestepper)
+                test_checkpointing_catke_closure(arch, timestepper, CATKEVerticalDiffusivity())
+                test_checkpointing_catke_closure(arch, timestepper, (CATKEVerticalDiffusivity(),))
+                @info "  Testing CATKE+another closure checkpointing [$(typeof(arch)), $timestepper]..."
+                test_checkpointing_catke_closure(arch, timestepper, (CATKEVerticalDiffusivity(), VerticalScalarDiffusivity(κ=1e-5)))
             end
 
             @testset "TKEDissipationVerticalDiffusivity closure checkpointing [$(typeof(arch)), $timestepper]" begin
