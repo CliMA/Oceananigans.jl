@@ -16,6 +16,7 @@ https://github.com/vuejs/vitepress/blob/main/src/client/theme-default/styles/var
 }
 
 :root {
+  scroll-behavior: smooth;
   --vp-font-family-base: "Barlow", "Inter var experimental", "Inter var",
     -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Oxygen, Ubuntu,
     Cantarell, "Fira Sans", "Droid Sans", "Helvetica Neue", sans-serif;
@@ -264,27 +265,36 @@ code {
   }
 }
 
-/* =========================
-   MathJax
-   ========================= */
+/* Component: MathJax */
 
-mjx-container > svg {
+.mjx-scroll-wrapper {
   display: block;
-  margin: auto;
+  max-width: 100%;
+  overflow-x: auto;
+  overflow-y: hidden;
+  text-align: center;
 }
 
 mjx-container {
+  display: inline-block;
   padding: 0.5rem 0;
-}
-
-mjx-container {
-  display: inline;
   margin: auto 2px -2px;
+  overflow: visible !important;  /* Override MathJax's overflow */
+  text-align: left;
 }
 
 mjx-container > svg {
-  margin: auto;
   display: inline-block;
+  height: auto;
+}
+
+mjx-container > svg[data-labels="true"] {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 100%;
+  height: 100%;
+  pointer-events: none;
 }
 
 /* @mdit/plugin-mathjax theming refs */
