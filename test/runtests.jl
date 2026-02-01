@@ -213,7 +213,6 @@ CUDA.allowscalar() do
         # We test only on the first three architectures otherwise the
         # tests start becoming a bit too expensive
         archs = archs[1:3]
-        @root @show archs
         include("test_zstar_conservation.jl")
     end
 
