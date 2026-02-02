@@ -5,6 +5,7 @@ using Oceananigans.Solvers: solve!
 using Oceananigans.Utils: prettytime, prettysummary
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
+import Oceananigans.DistributedComputations: synchronize_communication!
 
 using Adapt: Adapt
 
@@ -108,7 +109,7 @@ function materialize_free_surface(free_surface::ImplicitFreeSurface{Nothing}, ve
                                free_surface.solver_settings)
 end
 
-build_implicit_step_solver(::Val{:Default}, grid::XYRegularRG, settings, gravitational_acceleration) =
+build_implicit_step_solver(::Val{:Default}, grid::XYRegularStaticRG, settings, gravitational_acceleration) =
     build_implicit_step_solver(Val(:FastFourierTransform), grid, settings, gravitational_acceleration)
 
 build_implicit_step_solver(::Val{:Default}, grid, settings, gravitational_acceleration) =
@@ -116,6 +117,9 @@ build_implicit_step_solver(::Val{:Default}, grid, settings, gravitational_accele
 
 @inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, ::ImplicitFreeSurface) = 0
 @inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, ::ImplicitFreeSurface) = 0
+
+# No variables are asynchronously computed
+synchronize_communication!(::ImplicitFreeSurface) = nothing
 
 """
 Implicitly step forward η.
@@ -147,7 +151,7 @@ function step_free_surface!(free_surface::ImplicitFreeSurface, model, timesteppe
     return nothing
 end
 
-function step_free_surface!(free_surface::ImplicitFreeSurface, model, timestepper::SplitRungeKutta3TimeStepper, Δt)
+function step_free_surface!(free_surface::ImplicitFreeSurface, model, timestepper::SplitRungeKuttaTimeStepper, Δt)
     parent(free_surface.displacement) .= parent(timestepper.Ψ⁻.η)
     step_free_surface!(free_surface, model, nothing, Δt)
     return nothing
@@ -161,9 +165,9 @@ function prognostic_state(fs::ImplicitFreeSurface)
     return (; displacement = prognostic_state(fs.displacement))
 end
 
-function restore_prognostic_state!(fs::ImplicitFreeSurface, state)
-    restore_prognostic_state!(fs.displacement, state.displacement)
-    return fs
+function restore_prognostic_state!(restored::ImplicitFreeSurface, from)
+    restore_prognostic_state!(restored.displacement, from.displacement)
+    return restored
 end
 
 restore_prognostic_state!(::ImplicitFreeSurface, ::Nothing) = nothing

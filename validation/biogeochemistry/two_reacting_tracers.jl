@@ -56,4 +56,3 @@ record(fig, "tracer_reactions.mp4", 1:100, framerate=24) do _
     run!(simulation)
     update_plot!(simulation)
 end
-

@@ -8,7 +8,7 @@ EnstrophyConserving(FT::DataType = Oceananigans.defaults.FloatType) = EnstrophyC
 struct VectorInvariant{N, FT, M, Z, ZS, V, K, D, U} <: AbstractAdvectionScheme{N, FT}
     vorticity_scheme               :: Z  # reconstruction scheme for vorticity flux
     vorticity_stencil              :: ZS # stencil used for assessing vorticity smoothness
-    vertical_advection_scheme      :: V  # recontruction scheme for vertical advection
+    vertical_advection_scheme      :: V  # reconstruction scheme for vertical advection
     kinetic_energy_gradient_scheme :: K  # reconstruction scheme for kinetic energy gradient
     divergence_scheme              :: D  # reconstruction scheme for divergence flux
     upwinding                      :: U  # treatment of upwinding for divergence flux and kinetic energy gradient
@@ -64,7 +64,7 @@ Keyword arguments
   * `OnlySelfUpwinding()`
 
 - `multi_dimensional_stencil`: whether or not to use a horizontal two-dimensional stencil for the reconstruction
-                               of vorticity, divergence and kinetic energy gradient. Currently the "tangential"
+                               of vorticity, divergence, and kinetic energy gradient. Currently the "tangential"
                                direction uses 5th-order centered WENO reconstruction. Default: false
 
 Examples
