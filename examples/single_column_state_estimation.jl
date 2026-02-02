@@ -164,7 +164,7 @@ function compute_gradients(model, u₀, b₀, u★)
 end
 
 dJ, du, db = if arch isa Oceananigans.Architectures.ReactantState
-    compute_gradientsᶜ = @compile sync=true raise=true compute_gradients(model, u₀, b₀, u₁)
+    compute_gradientsᶜ = @compile sync=true raise=true raise_first=true compute_gradients(model, u₀, b₀, u₁)
     compute_gradientsᶜ(model, u₀, b₀, u₁)
 else
     compute_gradients(model, u₀, b₀, u₁)
