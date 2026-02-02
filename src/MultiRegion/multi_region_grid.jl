@@ -1,5 +1,8 @@
 using Oceananigans.Grids: metrics_precomputed, on_architecture, pop_flat_elements, grid_name
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary
+using Oceananigans.Models: PrescribedVelocityFields
+using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: SplitExplicitFreeSurface,
+    FixedSubstepNumber
 
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions
 import Oceananigans.DistributedComputations: reconstruct_global_grid
@@ -7,6 +10,7 @@ import Oceananigans.Grids: architecture, size, new_data, halo_size,
                            with_halo, on_architecture,
                            minimum_xspacing, minimum_yspacing, minimum_zspacing
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: default_free_surface
+import Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: maybe_augmented_kernel_parameters
 
 struct MultiRegionGrid{FT, TX, TY, TZ, CZ, P, C, G, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch}
     architecture :: Arch
@@ -270,3 +274,23 @@ const MRG = MultiRegionGrid
 @inline get_multi_property(mrg::MRG, ::Val{:partition})              = getfield(mrg, :partition)
 @inline get_multi_property(mrg::MRG, ::Val{:connectivity})           = getfield(mrg, :connectivity)
 @inline get_multi_property(mrg::MRG, ::Val{:region_grids})           = getfield(mrg, :region_grids)
+
+@inline multiregion_split_explicit_halos(old_halos, step_halo, ::XPartition) = (max(step_halo, old_halos[1]), old_halos[2], old_halos[3])
+@inline multiregion_split_explicit_halos(old_halos, step_halo, ::YPartition) = (old_halos[1], max(step_halo, old_halos[2]), old_halos[3])
+
+@inline augmented_kernel_size(grid, ::XPartition) = (size(grid, 1) + 2halo_size(grid)[1]-2, size(grid, 2))
+@inline augmented_kernel_size(grid, ::YPartition) = (size(grid, 1), size(grid, 2) + 2halo_size(grid)[2]-2)
+
+@inline augmented_kernel_offsets(grid, ::XPartition) = (-halo_size(grid)[1] + 1, 0)
+@inline augmented_kernel_offsets(grid, ::YPartition) = (0, -halo_size(grid)[2] + 1)
+
+function maybe_augmented_kernel_parameters(TX, TY, grid::MultiRegionGrids, partition::Union{XPartition, YPartition},
+                                           ::FixedSubstepNumber)
+    # In a non-parallel grid we calculate only the interior
+    kernel_size    = augmented_kernel_size(grid, partition)
+    kernel_offsets = augmented_kernel_offsets(grid, partition)
+
+    return KernelParameters(kernel_size, kernel_offsets)
+end
+
+materialize_free_surface(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, ::MultiRegionGrids) = nothing

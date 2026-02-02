@@ -7,11 +7,14 @@ using CubedSphere
 using CubedSphere.SphericalGeometry
 using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, has_active_cells_map, has_active_z_columns
+using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: FixedSubstepNumber
+using Oceananigans.MultiRegion: MultiRegionGrids, multiregion_split_explicit_halos
 
 using Distances
 
 import Oceananigans.Grids: grid_name, nodes
 import Oceananigans.BoundaryConditions: fill_halo_regions!
+import Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: maybe_extend_halos
 
 const ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ} = MultiRegionGrid{FT, TX, TY, TZ, CZ, <:CubedSpherePartition}
 
@@ -463,3 +466,23 @@ end
 radius(mrg::ConformalCubedSphereGridOfSomeKind) = first(mrg).radius
 
 grid_name(mrg::ConformalCubedSphereGridOfSomeKind) = "ConformalCubedSphereGrid"
+
+function maybe_extend_halos(TX, TY, grid::MultiRegionGrids, substepping::FixedSubstepNumber)
+    old_halos = halo_size(grid)
+    Nsubsteps = length(substepping.averaging_weights)
+
+    if grid isa ConformalCubedSphereGridOfSomeKind
+        Hx = TX() isa ConnectedTopology ? max(Nsubsteps+2, old_halos[1]) : old_halos[1]
+        Hy = TY() isa ConnectedTopology ? max(Nsubsteps+2, old_halos[2]) : old_halos[2]
+
+        new_halos = (Hx, Hy, old_halos[3])
+    else
+        new_halos = multiregion_split_explicit_halos(old_halos, Nsubsteps+2, grid.partition)
+    end
+
+    if new_halos == old_halos
+        return grid
+    else
+        return with_halo(new_halos, grid)
+    end
+end

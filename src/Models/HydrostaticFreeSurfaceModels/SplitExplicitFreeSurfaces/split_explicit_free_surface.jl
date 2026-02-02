@@ -263,7 +263,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     barotropic_velocities = (U = U, V = V)
 
     if extend_halos
-        @apply_regionally kernel_parameters = maybe_augmented_kernel_parameters(TX, TY, substepping, maybe_extended_grid)
+        @apply_regionally kernel_parameters = maybe_augmented_kernel_parameters(TX, TY, maybe_extended_grid, substepping)
     else
         kernel_parameters = :xy
     end
@@ -368,9 +368,9 @@ function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
     end
 end
 
-maybe_augmented_kernel_parameters(TX, TY, ::FixedTimeStepSize, grid) = :xy
+maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedTimeStepSize) = :xy
 
-function maybe_augmented_kernel_parameters(TX, TY, ::FixedSubstepNumber, grid)
+function maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedSubstepNumber)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
