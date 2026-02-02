@@ -15,7 +15,7 @@ using Oceananigans.ImmersedBoundaries: GridFittedBottom, AbstractImmersedBoundar
 
 import ..OceananigansReactantExt: deconcretize
 import Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid, OrthogonalSphericalShellGrid
-import Oceananigans.Grids: total_length, offset_data
+import Oceananigans.Grids: total_length
 import Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid, TripolarGrid
 import Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, materialize_immersed_boundary
 
