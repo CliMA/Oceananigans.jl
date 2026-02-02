@@ -172,11 +172,6 @@ end
 ##### NetCDFWriter constructor
 #####
 
-"""
-    NetCDFWriter(model, outputs; ...)
-
-See the original OceananigansNCDatasetsExt for full documentation.
-"""
 function NetCDFWriter(model::AbstractModel, outputs;
                       filename,
                       schedule,
