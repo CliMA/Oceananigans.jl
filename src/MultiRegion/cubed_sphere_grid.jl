@@ -16,8 +16,7 @@ using Distances
 
 import Oceananigans.Grids: grid_name, nodes
 import Oceananigans.BoundaryConditions: fill_halo_regions!
-import Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: maybe_extend_halos,
-    maybe_augmented_kernel_parameters
+import Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: maybe_extend_halos
 
 const ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ} = MultiRegionGrid{FT, TX, TY, TZ, CZ, <:CubedSpherePartition}
 
@@ -488,20 +487,4 @@ function maybe_extend_halos(TX, TY, grid::MultiRegionGrids, substepping::FixedSu
     else
         return with_halo(new_halos, grid)
     end
-end
-
-function maybe_augmented_kernel_parameters(TX, TY, grid::MultiRegionGrids, ::FixedSubstepNumber)
-    if grid isa ConformalCubedSphereGridOfSomeKind
-        Nx, Ny, _ = size(grid)
-        Hx, Hy, _ = halo_size(grid)
-        kernel_sizes = map(split_explicit_kernel_size, (TX, TY), (Nx, Ny), (Hx, Hy))
-        kernel_parameters = KernelParameters(kernel_sizes...)
-    else
-        # In a non-parallel grid we calculate only the interior.
-        kernel_size    = augmented_kernel_size(grid, grid.partition)
-        kernel_offsets = augmented_kernel_offsets(grid, grid.partition)
-        kernel_parameters = KernelParameters(kernel_size, kernel_offsets)
-    end
-
-    return kernel_parameters
 end

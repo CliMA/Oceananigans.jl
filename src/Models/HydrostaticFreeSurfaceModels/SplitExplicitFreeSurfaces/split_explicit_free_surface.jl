@@ -262,14 +262,18 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     filtered_state = (η̅ = η̅, U̅ = U̅, V̅ = V̅, Ũ = Ũ, Ṽ = Ṽ)
     barotropic_velocities = (U = U, V = V)
 
+    partition = hasproperty(grid, :partition) ? grid.partition : nothing
+
     if extend_halos
-        @apply_regionally kernel_parameters = maybe_augmented_kernel_parameters(TX, TY, maybe_extended_grid, substepping)
+        @apply_regionally kernel_parameters = maybe_augmented_kernel_parameters(TX, TY, maybe_extended_grid, partition,
+                                                                                substepping)
     else
         kernel_parameters = :xy
     end
 
     gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
-    timestepper = materialize_timestepper(free_surface.timestepper, maybe_extended_grid, free_surface, velocities, u_bcs, v_bcs)
+    timestepper = materialize_timestepper(free_surface.timestepper, maybe_extended_grid, free_surface, velocities,
+                                          u_bcs, v_bcs)
 
     return SplitExplicitFreeSurface{extend_halos}(η,
                                                   barotropic_velocities,
@@ -382,9 +386,9 @@ function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
     end
 end
 
-maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedTimeStepSize) = :xy
+maybe_augmented_kernel_parameters(TX, TY, grid, partition, ::FixedTimeStepSize) = :xy
 
-function maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedSubstepNumber)
+function maybe_augmented_kernel_parameters(TX, TY, grid, partition, ::FixedSubstepNumber)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 

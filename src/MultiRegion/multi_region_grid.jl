@@ -10,6 +10,7 @@ import Oceananigans.Grids: architecture, size, new_data, halo_size,
                            with_halo, on_architecture,
                            minimum_xspacing, minimum_yspacing, minimum_zspacing
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: default_free_surface
+import Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: maybe_augmented_kernel_parameters
 
 struct MultiRegionGrid{FT, TX, TY, TZ, CZ, P, C, G, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch}
     architecture :: Arch
@@ -282,5 +283,12 @@ const MRG = MultiRegionGrid
 
 @inline augmented_kernel_offsets(grid, ::XPartition) = (-halo_size(grid)[1] + 1, 0)
 @inline augmented_kernel_offsets(grid, ::YPartition) = (0, -halo_size(grid)[2] + 1)
+
+function maybe_augmented_kernel_parameters(TX, TY, grid, partition::Union{XPartition, YPartition}, ::FixedSubstepNumber)
+    kernel_size    = augmented_kernel_size(grid, partition)
+    kernel_offsets = augmented_kernel_offsets(grid, partition)
+
+    return KernelParameters(kernel_size, kernel_offsets)
+end
 
 materialize_free_surface(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, ::MultiRegionGrids) = nothing
