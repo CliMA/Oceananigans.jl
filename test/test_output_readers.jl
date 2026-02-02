@@ -146,6 +146,7 @@ function test_field_time_series_in_memory(arch, filepath3d, filepath2d, filepath
     T3 = FieldTimeSeries(filepath3d, "T", architecture=arch)
     b3 = FieldTimeSeries(filepath3d, "b", architecture=arch)
     ζ3 = FieldTimeSeries(filepath3d, "ζ", architecture=arch)
+    # @infiltrate
 
     # This behavior ensures that set! works
     # but perhaps should be changed in the future
@@ -670,7 +671,6 @@ end
         filepath1d, filepath2d, filepath3d, unsplit_filepath, split_filepath = generate_some_interesting_simulation_data(Nx, Ny, Nz; output_writer)
 
         for arch in archs
-            arch = GPU()
             @testset "FieldTimeSeries{InMemory} [$(typeof(arch))] with $output_writer" begin
                 @info "  Testing FieldTimeSeries{InMemory} [$(typeof(arch))]..."
                 test_field_time_series_in_memory(arch, filepath3d, filepath2d, filepath1d, split_filepath, unsplit_filepath, Nx, Ny, Nz, Nt)
