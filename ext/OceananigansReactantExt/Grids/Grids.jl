@@ -41,7 +41,7 @@ const ShardedGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:ShardedDistri
 include("serial_grids.jl")
 include("sharded_grids.jl")
 
-function total_size(grid::ReactantGrid, loc, indices)
+function total_size(grid::ShardedGrid, loc, indices)
     sz = size(grid)
     halo_sz = halo_size(grid)
     topo = topology(grid)
