@@ -86,14 +86,14 @@ For implicit free surfaces, a predictor-corrector approach is used:
     end
 
     # Advancing free surface in preparation for the correction step
-    step_free_surface!(model.free_surface, model, model.timestepper, Δτ)
+    step_free_surface!(free_surface, model, model.timestepper, Δτ)
 
     # Correct for the updated barotropic mode
     @apply_regionally begin
         correct_barotropic_mode!(model, Δτ)
 
         # Compute transport velocities
-        compute_transport_velocities!(model, free_surface)        
+        compute_transport_velocities!(model, free_surface)
         compute_tracer_tendencies!(model)
 
         rk_substep_grid!(model.grid, model, model.vertical_coordinate, Δτ)

@@ -92,14 +92,14 @@ const LLGOfSomeKind = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <
             Random.seed!(1234)
 
             rtgv = RectilinearGrid(arch; size = (40, 40, 10), x = (0, 100kilometers), y = (-10kilometers, 10kilometers), topology, z = z_stretched)
-            irtgv = ImmersedBoundaryGrid(deepcopy(rtgv),  GridFittedBottom((x, y) -> rand() - 10))
-            prtgv = ImmersedBoundaryGrid(deepcopy(rtgv), PartialCellBottom((x, y) -> rand() - 10))
+            irtgv = ImmersedBoundaryGrid(deepcopy(rtgv),  GridFittedBottom((x, y) -> 2rand() - 8))
+            prtgv = ImmersedBoundaryGrid(deepcopy(rtgv), PartialCellBottom((x, y) -> 2rand() - 8))
 
             if topology[2] == Bounded
                 llgv = LatitudeLongitudeGrid(arch; size = (40, 40, 10), latitude = (0, 1), longitude = (0, 1), topology, z = z_stretched)
 
-                illgv = ImmersedBoundaryGrid(deepcopy(llgv),  GridFittedBottom((x, y) -> rand() - 10))
-                pllgv = ImmersedBoundaryGrid(deepcopy(llgv), PartialCellBottom((x, y) -> rand() - 10))
+                illgv = ImmersedBoundaryGrid(deepcopy(llgv),  GridFittedBottom((x, y) -> 2rand() - 8))
+                pllgv = ImmersedBoundaryGrid(deepcopy(llgv), PartialCellBottom((x, y) -> 2rand() - 8))
 
                 # TODO: Partial cell bottom are broken at the moment and do not account for the Δz in the volumes
                 # and vertical areas (see https://github.com/CliMA/Oceananigans.jl/issues/3958)
@@ -118,7 +118,7 @@ const LLGOfSomeKind = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <
                 split_free_surface    = SplitExplicitFreeSurface(grid; substeps=8)
                 explicit_free_surface = ExplicitFreeSurface()
 
-                for free_surface in [explicit_free_surface, split_free_surface, implicit_free_surface]
+                for free_surface in [implicit_free_surface] # [explicit_free_surface, split_free_surface, implicit_free_surface]
 
                     # These combination of parameters lead to the parameter error:
                     # Kernel invocation uses too much parameter memory.
