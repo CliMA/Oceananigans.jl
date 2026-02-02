@@ -94,6 +94,17 @@ Architectures.on_architecture(arch, mo::MultiRegionObject) = MultiRegionObject(o
     return nothing
 end
 
+# For `MultiRegionObject` calls (think kernels with different sizes for different regions)
+# we also `getregion` for the function. Since the function itself is multiregional we do not
+# need to check if the call is single region or not.
+@inline function apply_regionally!(regional_func!::MultiRegionObject, args...; kwargs...)
+    R = regions(regional_func!)
+    for r in R
+        getregion(regional_func!, r)((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
+    end
+    return nothing
+end
+
 @inline construct_regionally(regional_func::Base.Callable, args...; kwargs...) =
     construct_regionally(1, regional_func, args...; kwargs...)
 
@@ -203,13 +214,13 @@ function prognostic_state(mo::MultiRegionObject)
     return Tuple(prognostic_state(regional_obj) for regional_obj in mo.regional_objects)
 end
 
-function restore_prognostic_state!(mo::MultiRegionObject, state)
-    regional_states = state isa MultiRegionObject ? state.regional_objects : state
+function restore_prognostic_state!(restored::MultiRegionObject, from)
+    regional_states = from isa MultiRegionObject ? from.regional_objects : from
 
-    for (regional_obj, regional_state) in zip(mo.regional_objects, regional_states)
+    for (regional_obj, regional_state) in zip(restored.regional_objects, regional_states)
         restore_prognostic_state!(regional_obj, regional_state)
     end
-    return mo
+    return restored
 end
 
 restore_prognostic_state!(::MultiRegionObject, ::Nothing) = nothing

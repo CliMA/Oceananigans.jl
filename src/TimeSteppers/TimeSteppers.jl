@@ -95,10 +95,10 @@ function prognostic_state(timestepper::AbstractTimeStepper)
             G⁻ = prognostic_state(timestepper.G⁻))
 end
 
-function restore_prognostic_state!(timestepper::AbstractTimeStepper, state)
-    restore_prognostic_state!(timestepper.Gⁿ, state.Gⁿ)
-    restore_prognostic_state!(timestepper.G⁻, state.G⁻)
-    return timestepper
+function restore_prognostic_state!(restored::AbstractTimeStepper, from)
+    restore_prognostic_state!(restored.Gⁿ, from.Gⁿ)
+    restore_prognostic_state!(restored.G⁻, from.G⁻)
+    return restored
 end
 
 restore_prognostic_state!(::AbstractTimeStepper, ::Nothing) = nothing
