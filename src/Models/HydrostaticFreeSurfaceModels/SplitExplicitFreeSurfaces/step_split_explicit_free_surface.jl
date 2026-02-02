@@ -62,7 +62,7 @@ const MINIMUM_SUBSTEPS = 5
 @inline calculate_adaptive_settings(substepping::FTS, substeps) = weights_from_substeps(eltype(substepping.Δt_barotropic), substeps, substepping.averaging_kernel)
 
 iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps =
-    iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, Val(Nsubsteps))
+    @apply_regionally iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, Val(Nsubsteps))
 
 function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
     arch = architecture(grid)
@@ -121,8 +121,8 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
     η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
     Ũ, Ṽ    = state.Ũ, state.Ṽ
 
-    @apply_regionally barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
-    @apply_regionally free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
+    barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
+    free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
 
     U_args = (grid, Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
     η_args = (grid, Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
@@ -137,8 +137,8 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
             @inbounds averaging_weight = weights[substep]
             @inbounds transport_weight = transport_weights[substep]
 
-            @apply_regionally barotropic_velocity_kernel!(transport_weight, converted_U_args...)
-            @apply_regionally free_surface_kernel!(averaging_weight, converted_η_args...)
+            barotropic_velocity_kernel!(transport_weight, converted_U_args...)
+            free_surface_kernel!(averaging_weight, converted_η_args...)
         end
     end
 
