@@ -71,11 +71,11 @@ function Oceananigans.Grids.new_data(FT::DataType, arch::ShardedDistributed,
     underlying_data = zeros(arch, FT, Tsz...)
     indices = validate_indices(indices, loc, topo, sz, halo_sz)
 
-    return offset_data(underlying_data, loc, topo, sz, halo_sz, indices)
+    return reactant_offset_data(underlying_data, loc, topo, sz, halo_sz, indices)
 end
 
 # The type parameter for indices helps / encourages the compiler to fully type infer `offset_data`
-function offset_data(underlying_data::ConcreteRArray, loc, topo, N, H, indices::T=default_indices(length(loc))) where T
+function reactant_offset_data(underlying_data::ConcreteRArray, loc, topo, N, H, indices::T=default_indices(length(loc))) where T
     loc = map(instantiate, loc)
     topo = map(instantiate, topo)
     ii = map(reactant_offset_indices, loc, topo, N, H, indices)
