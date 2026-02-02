@@ -158,6 +158,54 @@ function step_free_surface!(free_surface::ImplicitFreeSurface, model, timesteppe
 end
 
 #####
+##### Compute transport velocities for RK discretization
+#####
+
+function compute_transport_velocities!(model, free_surface::ImplicitFreeSurface)
+    grid = model.grid
+    u, v, w = model.velocities
+    ũ, ṽ, w̃ = model.transport_velocities
+
+    # Make sure updated velocities are masked
+    mask_immersed_field!(u)
+    mask_immersed_field!(v)
+
+    launch!(architecture(grid), grid, :xy, _compute_transport_velocities!, ũ, ṽ, grid, u, v)
+
+    # Fill transport velocities
+    fill_halo_regions!((ũ, ṽ); async=true)
+
+    # Update grid velocity and vertical transport velocity
+    @apply_regionally update_vertical_velocities!(model.transport_velocities, model.grid, model)
+
+    return nothing
+end
+
+@kernel function _compute_transport_velocities!(ũ, ṽ, grid, u, v)
+    i, j = @index(Global, NTuple)
+    Nz   = size(grid, 3)
+    Hᶠᶜ  = column_depthᶠᶜᵃ(i, j, grid)
+    Hᶜᶠ  = column_depthᶜᶠᵃ(i, j, grid)
+
+    # Barotropic velocities
+    Ũᵐ⁺¹ = barotropic_U(i, j, Nz, grid, u)
+    Ṽᵐ⁺¹ = barotropic_V(i, j, Nz, grid, v)
+    Ũ    = barotropic_U(i, j, Nz, grid, ũ)
+    Ṽ    = barotropic_V(i, j, Nz, grid, ṽ)
+
+    δuᵢ = ifelse(Hᶠᶜ == 0, zero(grid), (Ũᵐ⁺¹ - Ũ) / Hᶠᶜ)
+    δvⱼ = ifelse(Hᶜᶠ == 0, zero(grid), (Ṽᵐ⁺¹ - Ṽ) / Hᶜᶠ)
+
+    @inbounds for k in 1:Nz
+        immersedᶠᶜᶜ = peripheral_node(i, j, k, grid, Face(), Center(), Center())
+        immersedᶜᶠᶜ = peripheral_node(i, j, k, grid, Center(), Face(), Center())
+
+        ũ[i, j, k] = ifelse(immersedᶠᶜᶜ, zero(grid), ũ[i, j, k] + δuᵢ)
+        ṽ[i, j, k] = ifelse(immersedᶜᶠᶜ, zero(grid), ṽ[i, j, k] + δvⱼ)
+    end
+end
+
+#####
 ##### Checkpointing
 #####
 

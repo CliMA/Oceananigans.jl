@@ -51,11 +51,8 @@ function test_zstar_coordinate(model, Ni, Δt, test_local_conservation=true)
         end
         @test condition
 
-        # Constancy preservation test
-        if test_local_conservation
-            @test maximum(model.tracers.constant) ≈ 1
-            @test minimum(model.tracers.constant) ≈ 1
-        end
+        @test maximum(model.tracers.constant) ≈ 1
+        @test minimum(model.tracers.constant) ≈ 1
     end
 
     return nothing
@@ -136,7 +133,7 @@ const LLGOfSomeKind = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <
                         set!(model, c = (x, y, z) -> rand(), b = bᵢ, constant = 1)
 
                         Δt = free_surface isa ExplicitFreeSurface ? 10 : 2minutes
-                        test_zstar_coordinate(model, 100, Δt, !(free_surface isa ImplicitFreeSurface))
+                        test_zstar_coordinate(model, 100, Δt)
                     end
                 end
             end

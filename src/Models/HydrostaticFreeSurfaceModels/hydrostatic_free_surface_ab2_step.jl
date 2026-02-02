@@ -81,29 +81,36 @@ For implicit free surfaces, a predictor-corrector approach is used:
 5. Correct velocities for the updated barotropic pressure gradient
 6. Advance tracers using AB2
 """
-function hydrostatic_ab2_step!(model, ::ImplicitFreeSurface, grid, Δt, callbacks)
+function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, Δt, callbacks)
     FT = eltype(grid)
     χ  = convert(FT, model.timestepper.χ)
     Δt = convert(FT, Δt)
 
     @apply_regionally begin
-        # Computing tracer tendencies and adding fluxes to momentum
-        compute_momentum_flux_bcs!(model)
-        compute_tracer_tendencies!(model)
+        parent(model.transport_velocities.u) .= parent(model.velocities.u)
+        parent(model.transport_velocities.v) .= parent(model.velocities.v)
 
-        # Finally Substep! Advance grid, tracers, and momentum
-        ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
+        # Computing tendencies...
+        compute_momentum_flux_bcs!(model)
+
+        # Finally Substep! Advance grid, tracers, (predictor) momentum
         ab2_step_velocities!(model.velocities, model, Δt, χ)
     end
 
-    # Advance the free surface
+    # Advancing free surface in preparation for the correction step
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
 
-    # Correct the barotropic mode
-    @apply_regionally correct_barotropic_mode!(model, Δt)
+    # Correct for the updated barotropic mode
+    @apply_regionally begin
+        correct_barotropic_mode!(model, Δt)
 
-    # TODO: fill halo regions for horizontal velocities should be here before the tracer update.
-    @apply_regionally ab2_step_tracers!(model.tracers, model, Δt, χ)
+        # Compute transport velocities
+        compute_transport_velocities!(model, free_surface)        
+        compute_tracer_tendencies!(model)
+
+        ab2_substep_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
+        ab2_substep_tracers!(model.tracers, model, Δt, χ)
+    end
 
     return nothing
 end
