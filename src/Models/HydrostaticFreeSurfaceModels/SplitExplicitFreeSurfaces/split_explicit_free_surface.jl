@@ -361,6 +361,20 @@ function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
 
     new_halos = (Hx, Hy, old_halos[3])
 
+    # Warn if extended halos are larger than or equal to interior grid size
+    # This can cause out-of-bounds memory access in distributed computations
+    Nx, Ny, _ = size(grid)
+    if Hx >= Nx && TX() isa ConnectedTopology
+        @warn "SplitExplicitFreeSurface: Extended halo size Hx=$Hx >= local grid size Nx=$Nx. " *
+              "This may cause incorrect results in distributed computations. " *
+              "Consider using a larger grid or fewer substeps."
+    end
+    if Hy >= Ny && TY() isa ConnectedTopology
+        @warn "SplitExplicitFreeSurface: Extended halo size Hy=$Hy >= local grid size Ny=$Ny. " *
+              "This may cause incorrect results in distributed computations. " *
+              "Consider using a larger grid or fewer substeps."
+    end
+
     if new_halos == old_halos
         return grid
     else
@@ -419,11 +433,11 @@ function prognostic_state(fs::SplitExplicitFreeSurface)
             timestepper = prognostic_state(fs.timestepper))
 end
 
-function restore_prognostic_state!(fs::SplitExplicitFreeSurface, state)
-    restore_prognostic_state!(fs.displacement, state.displacement)
-    restore_prognostic_state!(fs.barotropic_velocities, state.barotropic_velocities)
-    restore_prognostic_state!(fs.timestepper, state.timestepper)
-    return fs
+function restore_prognostic_state!(restored::SplitExplicitFreeSurface, from)
+    restore_prognostic_state!(restored.displacement, from.displacement)
+    restore_prognostic_state!(restored.barotropic_velocities, from.barotropic_velocities)
+    restore_prognostic_state!(restored.timestepper, from.timestepper)
+    return restored
 end
 
 restore_prognostic_state!(::SplitExplicitFreeSurface, ::Nothing) = nothing

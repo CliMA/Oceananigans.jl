@@ -1,3 +1,5 @@
+using Oceananigans.ImmersedBoundaries: column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ
+
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 # Evolution Kernels
@@ -13,8 +15,8 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 
     cache_previous_velocities!(timestepper, i, j, 1, U, V)
 
-    Hᶠᶜ = column_depthᶠᶜᵃ(i, j, k_top, grid, η)
-    Hᶜᶠ = column_depthᶜᶠᵃ(i, j, k_top, grid, η)
+    Hᶠᶜ = column_depthTᶠᶜᵃ(i, j, k_top, grid, η) # topology-aware column
+    Hᶜᶠ = column_depthTᶜᶠᵃ(i, j, k_top, grid, η) # topology-aware column
 
     # ∂τ(U) = - ∇η + G
     @inbounds begin
@@ -205,7 +207,7 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     # Fill all the barotropic state.
     fill_halo_regions!((filtered_state.Ũ, filtered_state.Ṽ); async=true)
     fill_halo_regions!((U, V); async=true)
-    fill_halo_regions!(η;  async=true)
+    fill_halo_regions!(η; async=true)
 
     return nothing
 end
