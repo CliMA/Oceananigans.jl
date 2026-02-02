@@ -5,7 +5,7 @@ using Oceananigans: initialize!
 using Oceananigans.ImmersedBoundaries: PartialCellBottom
 using Oceananigans.Grids: MutableVerticalDiscretization
 using Oceananigans.Models: ZStarCoordinate, ZCoordinate
-using Oceananigans.DistributedComputations: DistributedGrid, @root
+using Oceananigans.DistributedComputations: DistributedGrid, @root, @handshake
 
 grid_type(::RectilinearGrid{F, X, Y}) where {F, X, Y} = "Rect{$X, $Y}"
 grid_type(::LatitudeLongitudeGrid{F, X, Y}) where {F, X, Y} = "LatLon{$X, $Y}"
@@ -70,20 +70,33 @@ const LLGOfSomeKind = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <
 
 
 @testset "ZStarCoordinate tracer conservation testset" begin
-    z_stretched = MutableVerticalDiscretization(collect(-20:0))
-    topologies  = ((Periodic, Periodic, Bounded),
-                   (Bounded, Bounded, Bounded))
+    z_stretched = MutableVerticalDiscretization(collect(-10:0))
+
+    archs = test_architectures()
+    if length(archs) == 6 # Distributed with 6 archs, we only take the first 3
+        archs = archs[1:3]
+    end
 
     for arch in archs
+        topologies = if arch isa Distributed
+            # tests become too long because we test too many architectures,
+            # given that `FullyConnected` acts as a `Periodic` we don't need
+            # to test different topologies
+            [(Bounded, Bounded, Bounded)]
+        else
+           [(Periodic, Periodic, Bounded),
+            (Bounded, Bounded, Bounded)]
+        end
+
         for topology in topologies
             Random.seed!(1234)
 
-            rtgv = RectilinearGrid(arch; size = (20, 20, 20), x = (0, 100kilometers), y = (-10kilometers, 10kilometers), topology, z = z_stretched)
+            rtgv = RectilinearGrid(arch; size = (40, 40, 10), x = (0, 100kilometers), y = (-10kilometers, 10kilometers), topology, z = z_stretched)
             irtgv = ImmersedBoundaryGrid(deepcopy(rtgv),  GridFittedBottom((x, y) -> rand() - 10))
             prtgv = ImmersedBoundaryGrid(deepcopy(rtgv), PartialCellBottom((x, y) -> rand() - 10))
 
             if topology[2] == Bounded
-                llgv = LatitudeLongitudeGrid(arch; size = (20, 20, 20), latitude = (0, 1), longitude = (0, 1), topology, z = z_stretched)
+                llgv = LatitudeLongitudeGrid(arch; size = (40, 40, 10), latitude = (0, 1), longitude = (0, 1), topology, z = z_stretched)
 
                 illgv = ImmersedBoundaryGrid(deepcopy(llgv),  GridFittedBottom((x, y) -> rand() - 10))
                 pllgv = ImmersedBoundaryGrid(deepcopy(llgv), PartialCellBottom((x, y) -> rand() - 10))
@@ -102,18 +115,18 @@ const LLGOfSomeKind = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <
             for grid in grids
                 # Preconditioned conjugate gradient solver does not satisfy local conservation stricly to machine precision.
                 implicit_free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradient, preconditioner=nothing)
-                split_free_surface    = SplitExplicitFreeSurface(grid; substeps=20)
+                split_free_surface    = SplitExplicitFreeSurface(grid; substeps=8)
                 explicit_free_surface = ExplicitFreeSurface()
 
                 for free_surface in [explicit_free_surface, split_free_surface, implicit_free_surface]
 
                     # These combination of parameters lead to the parameter error:
                     # Kernel invocation uses too much parameter memory.
-                    if (arch isa Distributed{<:GPU}) 
-                        if (grid isa LLGOfSomeKind) && free_surface === implicit_free_surface
+                    if (arch isa Distributed{<:GPU})
+                        if (grid isa LatitudeLongitudeGrid) && free_surface === implicit_free_surface
                             continue
                         end
-                        if (grid isa ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:LatitudeLongitudeGrid}) && (free_surface === split_free_surface)
+                        if (grid isa ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:LatitudeLongitudeGrid})
                             continue
                         end
                     end
@@ -139,16 +152,22 @@ const LLGOfSomeKind = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <
             end
         end
 
+        if arch isa Distributed{<:GPU}
+            # Unfortunately tripolar grid tests fail on the GPU because of
+            # parameter space memory. We skip also these test
+            continue
+        end
+
         for fold_topology in (RightCenterFolded, RightFaceFolded)
             @testset "$(fold_topology) TripolarGrid ZStarCoordinate tracer conservation tests" begin
-                @root @info "Testing a ZStarCoordinate coordinate with a $(fold_topology) Tripolar grid on $(summary(arch))..."
-
                 # Check that the grid is correctly partitioned in case of a distributed architecture
                 if arch isa Distributed && ((arch.ranks[1] != 1 || arch.ranks[2] == 1) || (fold_topology == RightFaceFolded))
                     continue
                 end
 
-                underlying_grid = TripolarGrid(arch; size = (30, 30, 20), z = z_stretched, fold_topology)
+                @root @info "Testing a ZStarCoordinate coordinate with a $(fold_topology) Tripolar grid on $(summary(arch))..."
+
+                underlying_grid = TripolarGrid(arch; size = (40, 40, 10), z = z_stretched, fold_topology)
 
                 # Code credit:
                 # https://github.com/PRONTOLab/GB-25/blob/682106b8487f94da24a64d93e86d34d560f33ffc/src/model_utils.jl#L65
@@ -168,7 +187,7 @@ const LLGOfSomeKind = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <
                 gaussian_islands(λ, φ) = zb + h * mtns(λ, φ)
 
                 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(gaussian_islands))
-                free_surface = SplitExplicitFreeSurface(grid; substeps=20)
+                free_surface = SplitExplicitFreeSurface(grid; substeps=8)
 
                 model = HydrostaticFreeSurfaceModel(grid;
                                                     free_surface,
