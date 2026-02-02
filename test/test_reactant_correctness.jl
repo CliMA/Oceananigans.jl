@@ -26,7 +26,9 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                             all_combos((Periodic, Bounded), (Periodic, Bounded), (Periodic, Bounded)))
 
     # JIT raise modes: raise=false is default, raise=true is needed for autodiff
+    # raise_first controls whether the first pass uses raise mode
     raise_modes = (false, true)
+    raise_first_modes = (false, true)
 
     #####
     ##### Halo filling tests
@@ -42,9 +44,9 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                 vanilla_grid = RectilinearGrid(vanilla_arch; kw...)
                 reactant_grid = RectilinearGrid(reactant_arch; kw...)
 
-                for loc in all_locations, raise in raise_modes
+                for loc in all_locations, raise in raise_modes, raise_first in raise_first_modes
                     LX, LY, LZ = loc
-                    @testset "loc=$loc raise=$raise" begin
+                    @testset "loc=$loc raise=$raise raise_first=$raise_first" begin
                         vanilla_field = Field{LX, LY, LZ}(vanilla_grid)
                         reactant_field = Field{LX, LY, LZ}(reactant_grid)
 
@@ -54,7 +56,7 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                         set!(reactant_field, data)
 
                         fill_halo_regions!(vanilla_field)
-                        @jit raise=raise fill_halo_regions!(reactant_field)
+                        @jit raise=raise raise_first=raise_first fill_halo_regions!(reactant_field)
 
                         @test compare_parent("halo", vanilla_field, reactant_field)
                     end
@@ -71,9 +73,9 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                 vanilla_grid = LatitudeLongitudeGrid(vanilla_arch; kw...)
                 reactant_grid = LatitudeLongitudeGrid(reactant_arch; kw...)
 
-                for loc in all_locations, raise in raise_modes
+                for loc in all_locations, raise in raise_modes, raise_first in raise_first_modes
                     LXf, LYf, LZf = loc
-                    @testset "loc=$loc raise=$raise" begin
+                    @testset "loc=$loc raise=$raise raise_first=$raise_first" begin
                         vanilla_field = Field{LXf, LYf, LZf}(vanilla_grid)
                         reactant_field = Field{LXf, LYf, LZf}(reactant_grid)
 
@@ -83,7 +85,7 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                         set!(reactant_field, data)
 
                         fill_halo_regions!(vanilla_field)
-                        @jit raise=raise fill_halo_regions!(reactant_field)
+                        @jit raise=raise raise_first=raise_first fill_halo_regions!(reactant_field)
 
                         @test compare_parent("halo", vanilla_field, reactant_field)
                     end
@@ -94,13 +96,13 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
         # Test TripolarGrid (fixed topology)
         @testset "TripolarGrid" begin
             @info "Testing fill_halo_regions! correctness on TripolarGrid..."
-            kw = (size=(4, 4, 2), halo=(1, 1, 1), z=(0, 1), southernmost_latitude=-80)
+            kw = (size=(8, 10, 2), halo=(1, 1, 1), z=(0, 1))
             vanilla_grid = TripolarGrid(vanilla_arch; kw...)
             reactant_grid = TripolarGrid(reactant_arch; kw...)
 
-            for loc in all_locations, raise in raise_modes
+            for loc in all_locations, raise in raise_modes, raise_first in raise_first_modes
                 LX, LY, LZ = loc
-                @testset "loc=$loc raise=$raise" begin
+                @testset "loc=$loc raise=$raise raise_first=$raise_first" begin
                     vanilla_field = Field{LX, LY, LZ}(vanilla_grid)
                     reactant_field = Field{LX, LY, LZ}(reactant_grid)
 
@@ -110,7 +112,7 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                     set!(reactant_field, data)
 
                     fill_halo_regions!(vanilla_field)
-                    @jit raise=raise fill_halo_regions!(reactant_field)
+                    @jit raise=raise raise_first=raise_first fill_halo_regions!(reactant_field)
 
                     @test compare_parent("halo", vanilla_field, reactant_field)
                 end
@@ -164,12 +166,12 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                     # Test with coriolis=nothing
                     @testset "coriolis=nothing" begin
                         @info "Testing compute_simple_Gu! on RectilinearGrid($topo) with coriolis=nothing..."
-                        for advection in advection_schemes, raise in raise_modes
-                            @testset "advection=$(adv_name(advection)) raise=$raise" begin
+                        for advection in advection_schemes, raise in raise_modes, raise_first in raise_first_modes
+                            @testset "advection=$(adv_name(advection)) raise=$raise raise_first=$raise_first" begin
                                 fill!(vanilla_Gu, 0)
                                 fill!(reactant_Gu, 0)
                                 compute_simple_Gu!(vanilla_Gu, advection, nothing, vanilla_velocities)
-                                @jit raise=raise compute_simple_Gu!(reactant_Gu, advection, nothing, reactant_velocities)
+                                @jit raise=raise raise_first=raise_first compute_simple_Gu!(reactant_Gu, advection, nothing, reactant_velocities)
                                 @test compare_interior("Gu", vanilla_Gu, reactant_Gu)
                             end
                         end
@@ -179,12 +181,12 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                     @testset "coriolis=FPlane" begin
                         @info "Testing compute_simple_Gu! on RectilinearGrid($topo) with FPlane Coriolis..."
                         coriolis = FPlane(f=1e-4)
-                        for advection in advection_schemes, raise in raise_modes
-                            @testset "advection=$(adv_name(advection)) raise=$raise" begin
+                        for advection in advection_schemes, raise in raise_modes, raise_first in raise_first_modes
+                            @testset "advection=$(adv_name(advection)) raise=$raise raise_first=$raise_first" begin
                                 fill!(vanilla_Gu, 0)
                                 fill!(reactant_Gu, 0)
                                 compute_simple_Gu!(vanilla_Gu, advection, coriolis, vanilla_velocities)
-                                @jit raise=raise compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
+                                @jit raise=raise raise_first=raise_first compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
                                 @test compare_interior("Gu", vanilla_Gu, reactant_Gu)
                             end
                         end
@@ -219,12 +221,12 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
             # Note: WENO on LatitudeLongitudeGrid fails to compile with raise=true
             @testset "coriolis=nothing" begin
                 @info "Testing compute_simple_Gu! on LatitudeLongitudeGrid with coriolis=nothing..."
-            for advection in advection_schemes, raise in raise_modes
-                    @testset "advection=$(adv_name(advection)) raise=$raise" begin
-                    fill!(vanilla_Gu, 0)
-                    fill!(reactant_Gu, 0)
+                for advection in advection_schemes, raise in raise_modes, raise_first in raise_first_modes
+                    @testset "advection=$(adv_name(advection)) raise=$raise raise_first=$raise_first" begin
+                        fill!(vanilla_Gu, 0)
+                        fill!(reactant_Gu, 0)
                         compute_simple_Gu!(vanilla_Gu, advection, nothing, vanilla_velocities)
-                        @jit raise=raise compute_simple_Gu!(reactant_Gu, advection, nothing, reactant_velocities)
+                        @jit raise=raise raise_first=raise_first compute_simple_Gu!(reactant_Gu, advection, nothing, reactant_velocities)
                         @test compare_interior("Gu", vanilla_Gu, reactant_Gu)
                     end
                 end
@@ -235,12 +237,12 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
             @testset "coriolis=HydrostaticSphericalCoriolis" begin
                 @info "Testing compute_simple_Gu! on LatitudeLongitudeGrid with HydrostaticSphericalCoriolis..."
                 coriolis = HydrostaticSphericalCoriolis()
-                for advection in advection_schemes, raise in raise_modes
-                    @testset "advection=$(adv_name(advection)) raise=$raise" begin
+                for advection in advection_schemes, raise in raise_modes, raise_first in raise_first_modes
+                    @testset "advection=$(adv_name(advection)) raise=$raise raise_first=$raise_first" begin
                         fill!(vanilla_Gu, 0)
                         fill!(reactant_Gu, 0)
-                    compute_simple_Gu!(vanilla_Gu, advection, coriolis, vanilla_velocities)
-                    @jit raise=raise compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
+                        compute_simple_Gu!(vanilla_Gu, advection, coriolis, vanilla_velocities)
+                        @jit raise=raise raise_first=raise_first compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
                         @test compare_interior("Gu", vanilla_Gu, reactant_Gu)
                     end
                 end
