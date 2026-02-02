@@ -98,16 +98,19 @@ function run_distributed_latitude_longitude_grid(arch, filename)
         longitude = (0, 360),
         latitude = (-90, 90),
         topology = (Periodic, Bounded, Flat))
+    
+    @test isnothing(flat_distributed_grid.z)
 
-    # @test isnothing(flat_distributed_grid.z)
+    distributed_grid = LatitudeLongitudeGrid(arch;
+                                             size = (40, 40, 10),
+                                             longitude = (0, 360),
+                                             latitude = (-10, 10),
+                                             z = (-1000, 0),
+                                             halo = (5, 5, 5))
 
-    grid = LatitudeLongitudeGrid(arch; 
-                                 size=(40, 40, 10), 
-                                 longitude=(0, 360), 
-                                 latitude=(-10, 10), 
-                                 z=(-1000, 0), 
-                                 halo=(5, 5, 5))   
-
+    distributed_grid = ImmersedBoundaryGrid(distributed_grid, GridFittedBottom(bottom_height))
+    model = run_distributed_simulation(distributed_grid)
+    
     η = reconstruct_global_field(model.free_surface.displacement)
     u = reconstruct_global_field(model.velocities.u)
     v = reconstruct_global_field(model.velocities.v)
@@ -138,7 +141,7 @@ function run_distributed_simulation(grid)
     ηᵢ(λ, φ, z) = exp(- (φ - 90)^2 / 10^2) + exp(- φ^2 / 10^2)
     set!(model, c=ηᵢ, η=ηᵢ)
 
-    Δt = 10 # 5minutes
+    Δt = 5minutes
     arch = architecture(grid)
     if arch isa ReactantState || arch isa Distributed{<:ReactantState}
         @info "Compiling first_time_step..."
