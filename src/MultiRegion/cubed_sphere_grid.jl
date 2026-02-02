@@ -468,22 +468,24 @@ radius(mrg::ConformalCubedSphereGridOfSomeKind) = first(mrg).radius
 
 grid_name(mrg::ConformalCubedSphereGridOfSomeKind) = "ConformalCubedSphereGrid"
 
-function maybe_extend_halos(TX, TY, grid::MultiRegionGrids, substepping::FixedSubstepNumber)
+function maybe_extend_halos(TX, TY, grid::ConformalCubedSphereGridOfSomeKind, substepping::FixedSubstepNumber)
     old_halos = halo_size(grid)
     Nsubsteps = length(substepping.averaging_weights)
 
-    if grid isa ConformalCubedSphereGridOfSomeKind
-        Hx = TX() isa ConnectedTopology ? max(Nsubsteps+2, old_halos[1]) : old_halos[1]
-        Hy = TY() isa ConnectedTopology ? max(Nsubsteps+2, old_halos[2]) : old_halos[2]
+    Hx = TX() isa ConnectedTopology ? max(Nsubsteps+2, old_halos[1]) : old_halos[1]
+    Hy = TY() isa ConnectedTopology ? max(Nsubsteps+2, old_halos[2]) : old_halos[2]
 
-        new_halos = (Hx, Hy, old_halos[3])
-    else
-        new_halos = multiregion_split_explicit_halos(old_halos, Nsubsteps+2, grid.partition)
-    end
+    new_halos = (Hx, Hy, old_halos[3])
 
     if new_halos == old_halos
         return grid
     else
         return with_halo(new_halos, grid)
     end
+end
+
+function maybe_augmented_kernel_parameters(TX, TY, grid::ConformalCubedSphereGridOfSomeKind,
+                                           substepping::FixedSubstepNumber)
+    @apply_regionally kernel_parameters = maybe_augmented_kernel_parameters(TX, TY, grid, substepping)
+    return kernel_parameters
 end
