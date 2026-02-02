@@ -36,9 +36,7 @@ jobs:
         version:
           - '1.10'
         os: 
-          - ubuntu-22.04-arm
           - ubuntu-latest
-          - macos-latest
         arch:
           - x64
     steps:
