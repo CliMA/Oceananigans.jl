@@ -1,8 +1,7 @@
 using Oceananigans.Grids: metrics_precomputed, on_architecture, pop_flat_elements, grid_name
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary
 using Oceananigans.Models: PrescribedVelocityFields
-using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: SplitExplicitFreeSurface,
-    FixedSubstepNumber
+using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: SplitExplicitFreeSurface, FixedSubstepNumber, FixedTimeStepSize
 
 import Oceananigans.BoundaryConditions: FieldBoundaryConditions
 import Oceananigans.DistributedComputations: reconstruct_global_grid
@@ -283,6 +282,12 @@ const MRG = MultiRegionGrid
 
 @inline augmented_kernel_offsets(grid, ::XPartition) = (-halo_size(grid)[1] + 1, 0)
 @inline augmented_kernel_offsets(grid, ::YPartition) = (0, -halo_size(grid)[2] + 1)
+
+maybe_augmented_kernel_parameters(TX, TY, grid::MultiRegionGrids, stepping::FixedSubstepNumber) = 
+    @apply_regionally maybe_augmented_kernel_parameters(TX, TY, grid, grid.partition, stepping)
+
+maybe_augmented_kernel_parameters(TX, TY, grid::MultiRegionGrids, stepping::FixedTimeStepSize) = 
+    @apply_regionally maybe_augmented_kernel_parameters(TX, TY, grid, grid.partition, stepping)
 
 function maybe_augmented_kernel_parameters(TX, TY, grid, partition::Union{XPartition, YPartition}, ::FixedSubstepNumber)
     kernel_size    = augmented_kernel_size(grid, partition)
