@@ -106,6 +106,7 @@ Keyword Arguments
 
 - `extend_halos`: Extend the halos and avoid calling `fill_halo_regions!` at each substep if `true`.
                   If `false`, after each individual update of `U` and `η`, `fill_halo_regions!` will be called.
+                  This keyword argument affects the computations only for grids with `Connected` topologies.
 
 - `averaging_kernel`: A function of `τ` used to average the barotropic transport `U` and the free surface
                       `η` within the barotropic advancement. `τ` is the fractional substep going from 0 to 2
