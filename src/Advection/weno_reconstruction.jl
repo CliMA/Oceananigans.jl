@@ -119,7 +119,7 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType,
                 # At minimum order, switch to Centered scheme
                 buffer_scheme = Centered(FT; order=2)
             else
-                buffer_scheme = WENO(FT, FT2; order=order-2, bounds, minimum_buffer_upwind_order)
+                buffer_scheme = WENO(FT, FT2; order=order-2, bounds, minimum_buffer_upwind_order, newton_div)
             end
         end
 
