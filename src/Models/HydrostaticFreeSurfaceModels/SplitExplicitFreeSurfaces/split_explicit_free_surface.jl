@@ -263,11 +263,8 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     filtered_state = (η̅ = η̅, U̅ = U̅, V̅ = V̅, Ũ = Ũ, Ṽ = Ṽ)
     barotropic_velocities = (U = U, V = V)
 
-    partition = hasproperty(grid, :partition) ? grid.partition : nothing
-
     if extend_halos
-        @apply_regionally kernel_parameters = maybe_augmented_kernel_parameters(TX, TY, maybe_extended_grid, partition,
-                                                                                substepping)
+        kernel_parameters = maybe_augmented_kernel_parameters(TX, TY, maybe_extended_grid, substepping)
     else
         kernel_parameters = :xy
     end
