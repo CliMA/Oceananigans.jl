@@ -283,11 +283,15 @@ const MRG = MultiRegionGrid
 @inline augmented_kernel_offsets(grid, ::XPartition) = (-halo_size(grid)[1] + 1, 0)
 @inline augmented_kernel_offsets(grid, ::YPartition) = (0, -halo_size(grid)[2] + 1)
 
-maybe_augmented_kernel_parameters(TX, TY, grid::MultiRegionGrids, stepping::FixedSubstepNumber) =
-    @apply_regionally maybe_augmented_kernel_parameters(TX, TY, grid, grid.partition, stepping)
+function maybe_augmented_kernel_parameters(TX, TY, grid::MultiRegionGrids, substepping::FixedSubstepNumber)
+    @apply_regionally kernel_parameters = maybe_augmented_kernel_parameters(TX, TY, grid, grid.partition, substepping)
+    return kernel_parameters
+end
 
-maybe_augmented_kernel_parameters(TX, TY, grid::MultiRegionGrids, stepping::FixedTimeStepSize) =
-    @apply_regionally maybe_augmented_kernel_parameters(TX, TY, grid, grid.partition, stepping)
+function maybe_augmented_kernel_parameters(TX, TY, grid::MultiRegionGrids, substepping::FixedTimeStepSize)
+    @apply_regionally kernel_parameters = maybe_augmented_kernel_parameters(TX, TY, grid, substepping)
+    return kernel_parameters
+end
 
 function maybe_augmented_kernel_parameters(TX, TY, grid, partition::Union{XPartition, YPartition}, ::FixedSubstepNumber)
     kernel_size    = augmented_kernel_size(grid, partition)
