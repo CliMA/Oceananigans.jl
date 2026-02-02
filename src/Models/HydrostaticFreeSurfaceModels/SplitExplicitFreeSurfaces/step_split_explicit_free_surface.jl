@@ -1,6 +1,5 @@
-using Oceananigans.ImmersedBoundaries: column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ
-
 using KernelAbstractions.Extras.LoopInfo: @unroll
+using Oceananigans.ImmersedBoundaries: column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ
 
 # Evolution Kernels
 #
