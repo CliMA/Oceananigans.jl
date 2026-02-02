@@ -36,7 +36,6 @@ StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 [weakdeps]
 AbstractFFTs = "621f4979-c628-5d54-868e-fcf4e3e8185c"
 AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
-AbstractFFTs = "621f4979-c628-5d54-868e-fcf4e3e8185c"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 ConstructionBase = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
 Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
