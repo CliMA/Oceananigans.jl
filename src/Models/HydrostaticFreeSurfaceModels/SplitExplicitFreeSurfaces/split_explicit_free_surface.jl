@@ -238,10 +238,10 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
                              `free_surface = SplitExplicitFreeSurface(grid; substeps = N)` where `N::Int`"))
     end
 
-    if extend_halos
-        maybe_extended_grid = maybe_extend_halos(TX, TY, grid, substepping)
+    maybe_extended_grid = if extend_halos
+         maybe_extend_halos(TX, TY, grid, substepping)
     else
-        maybe_extended_grid = grid
+        grid
     end
 
     η = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid)
@@ -263,10 +263,10 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     filtered_state = (η̅ = η̅, U̅ = U̅, V̅ = V̅, Ũ = Ũ, Ṽ = Ṽ)
     barotropic_velocities = (U = U, V = V)
 
-    if extend_halos
-        kernel_parameters = maybe_augmented_kernel_parameters(TX, TY, maybe_extended_grid, substepping)
+    kernel_parameters = if extend_halos
+        maybe_augmented_kernel_parameters(TX, TY, maybe_extended_grid, substepping)
     else
-        kernel_parameters = :xy
+        :xy
     end
 
     gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
