@@ -5,7 +5,7 @@
 Oceananigans.jl is a Julia package for fast, friendly, flexible, ocean-flavored fluid dynamics simulations on CPUs and GPUs.
 It provides a framework for solving the incompressible (or Boussinesq) Navier-Stokes equations with various model configurations including:
 - Nonhydrostatic models with free surfaces
-- Hydrostatic models for large-scale ocean simulations  
+- Hydrostatic models for large-scale ocean simulations
 - Shallow water models
 - Support for a variety of grids: RectilinearGrid, LatitudeLongitudeGrid, CubedSphereGrid
 - Support for complex domains using ImmersedBoundaryGrid
@@ -22,10 +22,10 @@ It provides a framework for solving the incompressible (or Boussinesq) Navier-St
 1. **Explicit Imports**: Use `ExplicitImports.jl` style - explicitly import all used functions/types
    - Import from modules explicitly (already done in src/Oceananigans.jl)
    - Tests automatically check for proper imports
-   
+
 2. **Type Stability**: Prioritize type-stable code for performance
    - All structs must be concretely typed
-   
+
 3. **Kernel Functions**: For GPU compatibility:
    - Use KernelAbstractions.jl syntax for kernels, eg `@kernel`, `@index`
    - Keep kernels type-stable and allocation-free
@@ -33,12 +33,16 @@ It provides a framework for solving the incompressible (or Boussinesq) Navier-St
      `if`... `else`, as well as the ternary operator `?` ... `:`. The function `ifelse` should be used for logic instead.
    - Do not put error messages inside kernels.
    - Models _never_ go inside kernels
-   - Mark functions inside kernels with `@inline`.
-   
+   - Mark functions called inside kernels with `@inline`
+   - **Never use loops outside kernels**: Always replace `for` loops that iterate over grid points
+     with kernels launched via `launch!`. This ensures code works on both CPU and GPU.
+
 4. **Documentation**:
    - Use DocStringExtensions.jl for consistent docstrings
    - Include `$(SIGNATURES)` for automatic signature documentation
    - Add examples in docstrings when helpful
+   - **CRITICAL: ALWAYS use `jldoctest` blocks, NEVER use plain `julia` blocks in docstrings**
+     (see "Docstring Examples" section below for details)
 
 5. **Memory leanness**
    - Favor doing computations inline versus allocating temporary memory
@@ -109,6 +113,17 @@ It provides a framework for solving the incompressible (or Boussinesq) Navier-St
 5. **Common misconceptions**
   - Fields and AbstractOperations can be used in `set!`.
 
+6. **Model Constructor Formatting**: Model constructors use positional arguments for required parameters
+   - **HydrostaticFreeSurfaceModel**: `HydrostaticFreeSurfaceModel(grid; ...)` - `grid` is positional
+   - **NonhydrostaticModel**: `NonhydrostaticModel(grid; ...)` - `grid` is positional
+   - **ShallowWaterModel**: `ShallowWaterModel(grid; gravitational_acceleration, ...)` - both `grid` and `gravitational_acceleration` are positional
+   - **Important**: When there are no keyword arguments, omit the semicolon:
+     - ✅ `NonhydrostaticModel(grid)`
+     - ❌ `NonhydrostaticModel(grid;)`
+   - When keyword arguments are present, use the semicolon:
+     - ✅ `NonhydrostaticModel(grid; closure=nothing)`
+     - ✅ `HydrostaticFreeSurfaceModel(grid; tracers=:c)`
+
 ### Naming Conventions
 - **Files**: snake_case (e.g., `nonhydrostatic_model.jl`, `compute_hydrostatic_free_surface_tendencies.jl`)
 - **Types**: PascalCase (e.g., `NonhydrostaticModel`, `HydrostaticFreeSurfaceModel`, `SeawaterBuoyancy`)
@@ -177,6 +192,9 @@ Pkg.test("Oceananigans")
 - Sometimes user scripts are written expecting names to be exported, when they are not. In that case
   consider exporting the name automatically (ie implement the user interface that the user expects) rather
   than changing the user script
+- Sometimes "Julia version compatibility" issues are resolved by deleting the Manifest.toml,
+  and then re-populating it with `using Pkg; Pkg.instantiate()`.
+- GPU tests may fail with "dynamic invocation error". Run on CPU first to isolate GPU-specific issues.
 - **Extending getproperty:** never do this to fix a bug associated with accessing an undefined property.
   This bug should be fixed on the _caller_ side, so that an undefined name is not accessed.
   A common source of this bug is when a property name is changed (for example, to make it clearer).
@@ -187,6 +205,54 @@ Pkg.test("Oceananigans")
   that references the module it is defined in to disambiguate the names (if possible).
 - **Connecting dots:** If a test fails immediately after a change was made, go back and re-examine whether that change
   made sense. Sometimes, a simple fix that gets code to _run_ (ie fixing a test _error_) will end up making it _incorrect_ (which hopefully will be caught as a test _failure_). In this case the original edit should be revisited: a more nuanced solution to the test error may be required.
+
+### Docstring Examples (CRITICAL)
+
+**NEVER use plain `julia` code blocks in docstrings. ALWAYS use `jldoctest` blocks.**
+
+Plain code blocks (`` ```julia ``) are NOT tested and can become stale or incorrect.
+Doctests (`` ```jldoctest ``) are automatically tested and verified to work.
+
+✅ CORRECT - use `jldoctest`:
+
+~~~~
+\"\"\"
+    my_function(x)
+
+Example:
+
+```jldoctest
+using Oceananigans
+
+grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+typeof(grid)
+
+# output
+RectilinearGrid{Float64, Periodic, Periodic, Bounded, Nothing, Nothing, Nothing, Nothing}
+```
+\"\"\"
+~~~~
+
+❌ WRONG - never use plain `julia` blocks in docstrings:
+
+~~~~
+\"\"\"
+    my_function(x)
+
+Example:
+
+```julia
+# This code is NOT tested and may be wrong!
+grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+```
+\"\"\"
+~~~~
+
+Key doctest requirements:
+- Always include expected output after `# output`
+- Use simple, verifiable output (e.g., `typeof(result)`, accessing a field that returns a simple value)
+- Doctests should exercise `Base.show` to verify objects display correctly
+- Keep doctests minimal but complete enough to verify the feature works
 
 ## Common Development Tasks
 
@@ -211,6 +277,36 @@ Pkg.test("Oceananigans")
 ```sh
 julia --project=docs/ docs/make.jl
 ```
+
+### Fast Local Docs Builds for Testing
+
+When testing documentation changes locally (especially without a GPU), make these temporary changes to `docs/make.jl`:
+
+1. **Comment out Literate examples** - These take the longest to run:
+   ```julia
+   example_scripts = String[
+       # "spherical_baroclinic_instability.jl",
+       # ... all examples commented out
+   ]
+   ```
+   Also comment out the corresponding `example_pages` entries.
+
+2. **Add error categories to `warnonly`** - Prevents build failures from GPU-dependent examples and network issues:
+   ```julia
+   warnonly = [:cross_references, :example_block, :linkcheck],
+   ```
+
+3. **Comment out GPU-requiring pages** - Pages like `simulation_tips.md` have `@example` blocks requiring GPU:
+   ```julia
+   # "Simulation tips" => "simulation_tips.md",  # requires GPU
+   ```
+
+4. **Optional speedups** in `makedocs`:
+   - `doctest = false` - Skip doctests entirely if not testing those
+   - `linkcheck = false` - Skip link validation
+   - `draft = true` - Skip many checks for fastest builds
+
+**Important**: Remember to revert these changes before committing!
 
 ### Viewing Docs
 ```julia
@@ -270,6 +366,11 @@ serve(dir="docs/build")
 - Don't "over import". Use names that are exported by `using Oceananigans`. If there are
   names that are not exported, but are needed in common/basic examples, consider
   exporting those names from `Oceananigans.jl`.
+- **Literate.jl comment conventions**: Examples in `examples/` are processed by Literate.jl.
+  - Single `#` comments become markdown blocks in the generated documentation
+  - Double `##` comments remain as code comments within code blocks
+  - Use `##` for inline code comments that should stay with the code (e.g., `## Helper function`)
+  - Use single `#` only for narrative text that should render as markdown
 
 ## Important Files to Know
 
@@ -316,13 +417,27 @@ serve(dir="docs/build")
 1. **Type Instability**: Especially in kernel functions - ruins GPU performance
 2. **Overconstraining types**: Julia compiler can infer types. Type annotations should be used primarily for _multiple dispatch_, not for documentation.
 3. **Forgetting Explicit Imports**: Tests will fail - add to using statements
+4. **Using plain `julia` blocks in docstrings**: NEVER do this. ALWAYS use `jldoctest` blocks so examples are tested and verified to work. Plain `julia` blocks are not tested and will become stale.
+
+### Fixing Bugs
+- Subtle bugs often occur when a method is not imported, especially in extensions
+- Sometimes user scripts expect names to be exported when they are not. Consider exporting the name
+  (implementing the user interface that the user expects) rather than changing the user script.
+- **Extending getproperty:** Never do this to fix a bug from accessing an undefined property.
+  Fix the bug on the _caller_ side. A common source is when a property name is changed; update the calling function.
+- **"Type is not callable" errors**: Variable names can conflict with function names in the same scope.
+  This leads to errors like "Fields cannot be called". Solution: rename the variable or use a qualified
+  function name (e.g., `Module.function_name`).
+- **Connecting dots:** If a test fails immediately after a change, re-examine whether that change
+  made sense. A quick fix that gets code to _run_ (fixing a test _error_) may make it _incorrect_
+  (causing a test _failure_). Revisit the original edit for a more nuanced solution.
 
 ## Implementing Validation Cases / Reproducing Paper Results
 
 When implementing a simulation from a published paper:
 
 ### 1. Parameter Extraction
-- **Read the paper carefully** and extract ALL parameters: domain size, resolution, physical constants, 
+- **Read the paper carefully** and extract ALL parameters: domain size, resolution, physical constants,
   boundary conditions, initial conditions, forcing, closure parameters
 - Look for parameter tables (often "Table 1" or similar)
 - Check figure captions for additional details
@@ -365,11 +480,11 @@ Before running a long simulation:
 - Quantitative comparison: compute the same diagnostics as the paper
 
 ### 7. Common Issues
-- **NaN blowups**: Usually from timestep too large, unstable initial conditions, 
+- **NaN blowups**: Usually from timestep too large, unstable initial conditions,
   or if-else statements on GPU (use `ifelse` instead)
-- **Nothing happening**: Check that buoyancy anomaly has the right sign, 
+- **Nothing happening**: Check that buoyancy anomaly has the right sign,
   that initial conditions are actually applied, that forcing is active
-- **Wrong direction of flow**: Check coordinate conventions (is y increasing 
+- **Wrong direction of flow**: Check coordinate conventions (is y increasing
   upslope or downslope?)
 - **GPU issues**: Avoid branching, ensure type stability, use `randn()` carefully
 
@@ -391,6 +506,7 @@ Before running a long simulation:
 - Enzyme.jl docs: https://enzyme.mit.edu/julia/dev
 - YASGuide: https://github.com/jrevels/YASGuide
 - ColPrac: https://github.com/SciML/ColPrac
+- MCPRepl.jl: https://github.com/kahliburke/MCPRepl.jl
 
 ## When Unsure
 1. Check existing examples in `examples/` directory
@@ -408,6 +524,102 @@ Before running a long simulation:
 - Consider both CPU and GPU architectures
 - Reference physics equations in comments when implementing dynamics
 - Maintain consistency with the existing codebase style
+
+## Interactive Julia REPL for AI Agents (MCPRepl.jl)
+
+[MCPRepl.jl](https://github.com/kahliburke/MCPRepl.jl) exposes a Julia REPL via the Model Context Protocol (MCP),
+allowing AI agents to execute Julia code, run tests, and iterate quickly during development.
+
+### Installation
+
+If MCPRepl.jl is not already installed, add it to your global Julia environment:
+
+```julia
+using Pkg
+Pkg.activate()  # Activate global environment
+Pkg.add(url="https://github.com/kahliburke/MCPRepl.jl")
+```
+
+Then run the security setup (one-time):
+
+```julia
+using MCPRepl
+MCPRepl.quick_setup(:lax)  # For local development (localhost only, no API key)
+```
+
+### Starting the MCP Server
+
+Before the AI agent can use the REPL, start the server in Julia:
+
+```julia
+using MCPRepl
+MCPRepl.start_proxy(port=3000)  # Recommended: persistent proxy with dashboard
+# OR
+MCPRepl.start!(port=3000)       # Direct REPL backend
+```
+
+The dashboard is available at `http://localhost:3000/dashboard` when using the proxy.
+
+### Cursor Configuration
+
+Create `.cursor/mcp.json` in your project root:
+
+```json
+{
+  "mcpServers": {
+    "julia-repl": {
+      "url": "http://localhost:3000",
+      "transport": "http",
+      "headers": {
+        "X-MCPRepl-Target": "Oceananigans.jl"
+      }
+    }
+  }
+}
+```
+
+After creating this file, reload Cursor (Cmd+Shift+P → "Reload Window").
+
+### Speeding Up Development with Revise.jl
+
+For rapid iteration, use Revise.jl alongside MCPRepl. This allows code changes to be
+reflected immediately without restarting Julia:
+
+```julia
+using Revise
+using MCPRepl
+using Oceananigans
+
+MCPRepl.start_proxy(port=3000)
+```
+
+With this setup:
+1. The AI agent can execute code via the REPL
+2. Source code edits are automatically picked up by Revise
+3. No need to restart Julia or re-import packages after editing source files
+4. Tests can be run interactively with immediate feedback
+
+### Available MCP Tools
+
+Once connected, the AI agent has access to:
+- **`julia_eval`** — Execute Julia code in the REPL
+- **`lsp_goto_definition`** — Navigate to symbol definitions
+- **`lsp_find_references`** — Find all usages of a symbol
+- **`lsp_rename`** — Rename symbols across the codebase
+- **`lsp_document_symbols`** — Get file structure/outline
+- **`lsp_code_actions`** — Get available quick fixes
+
+### Workflow Example
+
+A typical development workflow:
+
+1. Start Julia with Revise and MCPRepl
+2. AI agent makes code changes via file editing
+3. Revise automatically loads the changes
+4. AI agent tests changes via MCPRepl without restarting
+5. Iterate rapidly until the feature/fix is complete
+
+This eliminates the slow compile-restart cycle and enables interactive debugging.
 
 ## Current Development Focus
 

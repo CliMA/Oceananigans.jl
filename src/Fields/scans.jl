@@ -51,7 +51,7 @@ function Field(scan::Scan;
 
     operand = scan.operand
     grid = operand.grid
-    LX, LY, LZ = loc = instantiated_location(scan)
+    loc = instantiated_location(scan)
     dims = filter_nothing_dims(scan.dims, loc)
     indices = scan_indices(scan.type, indices, dims)
 
@@ -149,7 +149,7 @@ max_c²[1:Nx, 1:Ny]
 ```
 """
 Reduction(reduce!, operand; dims) = Scan(Reducing(), reduce!, operand, dims)
-location(r::Reduction) = reduced_location(location(r.operand); dims=r.dims)
+Oceananigans.location(r::Reduction) = reduced_location(location(r.operand); dims=r.dims)
 
 #####
 ##### Accumulations (where the output has the same dimensions as the input)
@@ -203,8 +203,8 @@ Accumulation(accumulate!, operand; dims) = Scan(Accumulating(), accumulate!, ope
 
 flip(::Type{Face}) = Center
 flip(::Type{Center}) = Face
-            
-function location(a::Accumulation)
+
+function Oceananigans.location(a::Accumulation)
     op_loc = location(a.operand)
     loc = Tuple(d ∈ a.dims ? flip(op_loc[d]) : op_loc[d] for d=1:3)
     return loc
@@ -250,23 +250,18 @@ function directional_accumulate!(op, B, A, dim, direction)
 
     # TODO: this won't work on windowed fields
     # To fix this we can change config, start, and finish.
-    if dim == 1
-        config = :yz
-        kernel = accumulate_x
+    config, kernel = if dim == 1
+        :yz, accumulate_x
     elseif dim == 2
-        config = :xz
-        kernel = accumulate_y
+        :xz, accumulate_y
     elseif dim == 3
-        config = :xy
-        kernel = accumulate_z
+        :xy, accumulate_z
     end
 
-    if direction isa Forward
-        start = 1
-        finish = size(B, dim)
+    start,finish = if direction isa Forward
+        1, size(B, dim)
     elseif direction isa Reverse
-        start = size(B, dim)
-        finish = 1
+        size(B, dim), 1
     end
 
     # Determine if we're "expanding" (output has more points than input)

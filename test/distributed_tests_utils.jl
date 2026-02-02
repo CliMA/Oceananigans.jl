@@ -6,7 +6,7 @@ using Reactant
 using Oceananigans.TimeSteppers: first_time_step!
 
 import Oceananigans.BoundaryConditions: _fill_north_halo!
-using Oceananigans.BoundaryConditions: ZBC, CCLocation, FCLocation
+using Oceananigans.BoundaryConditions: UZBC, CCLocation, FCLocation
 
 include("dependencies_for_runtests.jl")
 
@@ -25,7 +25,8 @@ function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius
 
     # We need a bottom height field that ``masks'' the singularities
     bottom_height(λ, φ) = ((abs(λ - λp) < radius)       & (abs(φp - φ) < radius)) |
-                          ((abs(λ - λp - 180) < radius) & (abs(φp - φ) < radius)) | (φ < φm) ? 0 : - Lz
+                          ((abs(λ - λp - 180) < radius) & (abs(φp - φ) < radius)) |
+                          ((abs(λ - λp - 360) < radius) & (abs(φp - φ) < radius)) | (φ < φm) ? 0 : - Lz
 
     grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
 
@@ -33,10 +34,10 @@ function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius
 end
 
 # tracers or similar fields
-@inline _fill_north_halo!(i, k, grid, c, bc::ZBC, ::CCLocation, args...) = my_fold_north_center_center!(i, k, grid, bc.condition, c)
-@inline _fill_north_halo!(i, k, grid, u, bc::ZBC, ::FCLocation, args...) = my_fold_north_face_center!(i, k, grid, bc.condition, u)
+@inline _fill_north_halo!(i, k, grid, c, bc::UZBC, ::CCLocation, args...) = my_fold_north_center_center_upivot!(i, k, grid, bc.condition, c)
+@inline _fill_north_halo!(i, k, grid, u, bc::UZBC, ::FCLocation, args...) = my_fold_north_face_center_upivot!(i, k, grid, bc.condition, u)
 
-@inline function my_fold_north_face_center!(i, k, grid, sign, c)
+@inline function my_fold_north_face_center_upivot!(i, k, grid, sign, c)
     Nx, Ny, _ = size(grid)
 
     i′ = Nx - i + 2 # Remember! elemesnt Nx + 1 does not exist!
@@ -53,7 +54,7 @@ end
     return nothing
 end
 
-@inline function my_fold_north_center_center!(i, k, grid, sign, c)
+@inline function my_fold_north_center_center_upivot!(i, k, grid, sign, c)
     Nx, Ny, _ = size(grid)
 
     i′ = Nx - i + 1
@@ -72,7 +73,7 @@ function run_distributed_tripolar_grid(arch, filename)
     distributed_grid = analytical_immersed_tripolar_grid(distributed_grid)
     model            = run_distributed_simulation(distributed_grid)
 
-    η = reconstruct_global_field(model.free_surface.η)
+    η = reconstruct_global_field(model.free_surface.displacement)
     u = reconstruct_global_field(model.velocities.u)
     v = reconstruct_global_field(model.velocities.v)
     c = reconstruct_global_field(model.tracers.c)
@@ -113,7 +114,7 @@ function run_distributed_latitude_longitude_grid(arch, filename)
     distributed_grid = ImmersedBoundaryGrid(distributed_grid, GridFittedBottom(bottom_height))
     model = run_distributed_simulation(distributed_grid)
 
-    η = reconstruct_global_field(model.free_surface.η)
+    η = reconstruct_global_field(model.free_surface.displacement)
     u = reconstruct_global_field(model.velocities.u)
     v = reconstruct_global_field(model.velocities.v)
     c = reconstruct_global_field(model.tracers.c)
@@ -131,13 +132,12 @@ end
 # Just a random simulation on a tripolar grid
 function run_distributed_simulation(grid)
 
-    model = HydrostaticFreeSurfaceModel(; grid = grid,
-                                          free_surface = SplitExplicitFreeSurface(grid; substeps = 20),
-                                          tracers = :c,
-                                          buoyancy = nothing,
-                                          tracer_advection = WENO(),
-                                          momentum_advection = WENOVectorInvariant(order=3),
-                                          coriolis = HydrostaticSphericalCoriolis())
+    model = HydrostaticFreeSurfaceModel(grid;
+                                        free_surface = SplitExplicitFreeSurface(grid; substeps = 20),
+                                        tracers = :c,
+                                        tracer_advection = WENO(),
+                                        momentum_advection = WENOVectorInvariant(order=3),
+                                        coriolis = HydrostaticSphericalCoriolis())
 
     # Setup the model with a gaussian sea surface height
     # near the physical north poles and one near the equator
@@ -166,4 +166,3 @@ function run_distributed_simulation(grid)
 
     return model
 end
-

@@ -14,7 +14,7 @@ include("reactant_test_utils.jl")
     for momentum_advection in (nothing, VectorInvariant(), WENOVectorInvariant())
         hydrostatic_model_kw = (; momentum_advection, free_surface=ExplicitFreeSurface())
         name = string(typeof(momentum_advection).name.wrapper)
-    
+
         @info "  Testing hydrostatic LatitudeLongitudeGrid + ExplicitFreeSurface Reactant correctness with momentum_advection: $name"
         @info "    Not immersed:"
         test_reactant_model_correctness(LatitudeLongitudeGrid,
@@ -29,7 +29,7 @@ include("reactant_test_utils.jl")
                                                      hydrostatic_model_kw,
                                                      immersed_boundary_grid=true)
 
-        η = simulation.model.free_surface.η
+        η = simulation.model.free_surface.displacement
         η_grid = η.grid
         @test isnothing(η_grid.interior_active_cells)
         @test isnothing(η_grid.active_z_columns)
@@ -61,7 +61,7 @@ include("reactant_test_utils.jl")
                                                  lat_lon_kw,
                                                  hydrostatic_model_kw,
                                                  immersed_boundary_grid=true)
-    η = simulation.model.free_surface.η
+    η = simulation.model.free_surface.displacement
     η_grid = η.grid
     @test isnothing(η_grid.interior_active_cells)
     @test isnothing(η_grid.active_z_columns)
@@ -77,4 +77,3 @@ include("reactant_test_utils.jl")
     test_reactant_model_correctness(LatitudeLongitudeGrid, HydrostaticFreeSurfaceModel, lat_lon_kw, hydrostatic_model_kw)
     =#
 end
-

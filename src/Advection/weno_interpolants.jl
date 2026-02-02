@@ -202,10 +202,11 @@ end
 
 # Trick to force compilation of Val(stencil-1) and avoid loops on the GPU
 @inline function metaprogrammed_smoothness_operation(buffer)
-    elem = Vector(undef, buffer)
+    elem = Vector{Expr}(undef, buffer)
     c_idx = 1
     for stencil = 1:buffer - 1
-        stencil_sum   = Expr(:call, :+, (:(C[$(c_idx + i - stencil)] * ψ[$i]) for i in stencil:buffer)...)
+        local c = c_idx # Avoid capturing `c_idx` in the generator expression below
+        stencil_sum   = Expr(:call, :+, (:(C[$(c + i - stencil)] * ψ[$i]) for i in stencil:buffer)...)
         elem[stencil] = :(ψ[$stencil] * $stencil_sum)
         c_idx += buffer - stencil + 1
     end
@@ -371,7 +372,7 @@ julia> load_weno_stencil(3, :x)
 
 julia> load_weno_stencil(2, :x)
 :((ψ[i + -2, j, k], ψ[i + -1, j, k], ψ[i + 0, j, k], ψ[i + 1, j, k]))
-
+```
 """
 @inline function load_weno_stencil(buffer, dir, func::Bool = false)
     N = buffer * 2 - 1

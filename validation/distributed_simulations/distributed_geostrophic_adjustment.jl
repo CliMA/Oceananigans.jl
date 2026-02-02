@@ -37,7 +37,7 @@ grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom); active_cells_map = t
 
 coriolis = FPlane(f=1e-4)
 
-model = HydrostaticFreeSurfaceModel(; grid, coriolis,
+model = HydrostaticFreeSurfaceModel(grid; coriolis,
                                     timestepper = :SplitRungeKutta3,
                                     free_surface = SplitExplicitFreeSurface(grid; substeps=10))
 
@@ -50,6 +50,7 @@ x₀ = Lh / 4 # gaussian center
 vᵍ(x, y, z) = -U * (x - x₀) / L * gaussian(x - x₀, L)
 
 g = model.free_surface.gravitational_acceleration
+η = model.free_surface.displacement
 η₀ = coriolis.f * U * L / g # geostrophic free surface amplitude
 
 ηᵍ(x) = η₀ * gaussian(x - x₀, L)
@@ -61,6 +62,13 @@ set!(model, η = ηⁱ)
 gravity_wave_speed = sqrt(g * grid.Lz)
 Δt = 2 * model.grid.Δxᶜᵃᵃ / gravity_wave_speed
 
+ut = []
+vt = []
+ηt = []
+
+save_u(sim) = push!(ut, deepcopy(sim.model.velocities.u))
+save_v(sim) = push!(vt, deepcopy(sim.model.velocities.v))
+save_η(sim) = push!(ηt, deepcopy(sim.model.free_surface.displacement))
 simulation = Simulation(model; Δt, stop_iteration = 100)
 
 function progress_message(sim)

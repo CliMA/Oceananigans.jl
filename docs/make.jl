@@ -7,6 +7,7 @@ Distributed.addprocs(2)
     using Literate
     using Printf
 
+    using CUDA
     using CairoMakie # to avoid capturing precompilation output by Literate
     set_theme!(Theme(fontsize=20))
     CairoMakie.activate!(type = "png")
@@ -34,22 +35,22 @@ Distributed.addprocs(2)
     const OUTPUT_DIR   = joinpath(@__DIR__, "src/literated")
 
     # The examples that take longer to run should be first. This ensures that the
-    # docs built which extra workers is as efficient as possible.
+    # docs built with extra workers is as efficient as possible.
     example_scripts = [
+        # "ocean_wind_mixing_and_convection.jl",
+        # "shallow_water_Bickley_jet.jl",
         # "spherical_baroclinic_instability.jl",
+        # "hydrostatic_lock_exchange.jl",
         # "internal_tide.jl",
         # "langmuir_turbulence.jl",
-        # "shallow_water_Bickley_jet.jl",
-        #"ocean_wind_mixing_and_convection.jl",
-        #"kelvin_helmholtz_instability.jl",
-        #"horizontal_convection.jl",
-        #"baroclinic_adjustment.jl",
-        #"tilted_bottom_boundary_layer.jl",
-        #"convecting_plankton.jl",
-        #"lock_exchange.jl",
-        #"two_dimensional_turbulence.jl",
-        #"one_dimensional_diffusion.jl",
-        #"internal_wave.jl",
+        # "kelvin_helmholtz_instability.jl",
+        # "horizontal_convection.jl",
+        # "baroclinic_adjustment.jl",
+        # "tilted_bottom_boundary_layer.jl",
+        # "convecting_plankton.jl",
+        # "two_dimensional_turbulence.jl",
+        # "one_dimensional_diffusion.jl",
+        # "internal_wave.jl",
         "single_column_state_estimation.jl",
     ]
 end
@@ -95,20 +96,20 @@ Distributed.rmprocs()
 #####
 
 example_pages = [
-    # "One-dimensional diffusion"        => "literated/one_dimensional_diffusion.md",
-    # "Two-dimensional turbulence"       => "literated/two_dimensional_turbulence.md",
-    # "Internal wave"                    => "literated/internal_wave.md",
-    # "Internal tide by a seamount"      => "literated/internal_tide.md",
-    # "Convecting plankton"              => "literated/convecting_plankton.md",
-    # "Ocean wind mixing and convection" => "literated/ocean_wind_mixing_and_convection.md",
-    # "Langmuir turbulence"              => "literated/langmuir_turbulence.md",
-    # "Baroclinic adjustment"            => "literated/baroclinic_adjustment.md",
-    # "Kelvin-Helmholtz instability"     => "literated/kelvin_helmholtz_instability.md",
-    #  "Lock exchange"                    => "literated/lock_exchange.md",
-    # "Shallow water Bickley jet"        => "literated/shallow_water_Bickley_jet.md",
-    # "Horizontal convection"            => "literated/horizontal_convection.md",
-    # "Tilted bottom boundary layer"     => "literated/tilted_bottom_boundary_layer.md"
-    # "Spherical baroclinic instability" => "literated/spherical_baroclinic_instability.md"
+    # "One-dimensional diffusion"             => "literated/one_dimensional_diffusion.md",
+    # "Two-dimensional turbulence"            => "literated/two_dimensional_turbulence.md",
+    # "Internal wave"                         => "literated/internal_wave.md",
+    # "Internal tide by a seamount"           => "literated/internal_tide.md",
+    # "Convecting plankton"                   => "literated/convecting_plankton.md",
+    # "Ocean wind mixing and convection"      => "literated/ocean_wind_mixing_and_convection.md",
+    # "Langmuir turbulence"                   => "literated/langmuir_turbulence.md",
+    # "Baroclinic adjustment"                 => "literated/baroclinic_adjustment.md",
+    # "Kelvin-Helmholtz instability"          => "literated/kelvin_helmholtz_instability.md",
+    # "Hydrostatic lock exchange with CATKE"  => "literated/hydrostatic_lock_exchange.md",
+    # "Shallow water Bickley jet"             => "literated/shallow_water_Bickley_jet.md",
+    # "Horizontal convection"                 => "literated/horizontal_convection.md",
+    # "Tilted bottom boundary layer"          => "literated/tilted_bottom_boundary_layer.md",
+    # "Spherical baroclinic instability"      => "literated/spherical_baroclinic_instability.md"
     "Single column state estimation"   => "literated/single_column_state_estimation.md"
 ]
 
@@ -179,6 +180,7 @@ cp(agents_src, agents_dst; force=true)
 developer_pages = [
     "Contributor's guide" => "developer_docs/contributing.md",
     "Model interface" => "developer_docs/model_interface.md",
+    "Implementing turbulence closures" => "developer_docs/turbulence_closures.md",
     "Rules for agent-assisted development" => "developer_docs/AGENTS.md",
 ]
 

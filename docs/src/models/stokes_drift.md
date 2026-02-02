@@ -94,7 +94,7 @@ keyword argument:
 ```jldoctest stokes2D
 grid = RectilinearGrid(size = (32, 32, 32), extent = (128, 128, 64))
 ∂z_uˢ(z, t) = 0.01 * exp(z / 10)
-model = NonhydrostaticModel(; grid, stokes_drift = UniformStokesDrift(∂z_uˢ = ∂z_uˢ))
+model = NonhydrostaticModel(grid; stokes_drift = UniformStokesDrift(∂z_uˢ = ∂z_uˢ))
 model.stokes_drift
 
 # output
@@ -207,4 +207,3 @@ The function signature for [`StokesDrift`](@ref) depends on the grid topology:
   functions are called as `f(x, z, t)` (the ``y`` coordinate is omitted).
 - When `parameters` is provided, it is passed as an additional final argument:
   `f(x, y, z, t, parameters)` or `f(x, z, t, parameters)`.
-

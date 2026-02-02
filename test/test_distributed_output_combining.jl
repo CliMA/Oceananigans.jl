@@ -103,17 +103,21 @@ function rectilinear_mpi_script(config, filename)
                            size = ($Nx, $Ny, $Nz),
                            extent = ($Lx, $Ly, $Lz))
 
-    model = NonhydrostaticModel(; grid, tracers=:c)
+    model = NonhydrostaticModel(grid; tracers=:c)
 
     Lx, Ly, Lz = $Lx, $Ly, $Lz
     cᵢ(x, y, z) = sin(2π * x / Lx) * cos(2π * y / Ly) * (z + Lz) / Lz
     uᵢ(x, y, z) = 0.1 * sin(2π * x / Lx)
     set!(model, c=cᵢ, u=uᵢ)
 
+    # Add a `Nothing field in the z-direction`
+    zflat = Field{Center, Center, Nothing}(grid)
+    set!(zflat, (x, y) -> x)
+
     simulation = Simulation(model; Δt=$Δt, stop_iteration=$stop_iteration)
 
     simulation.output_writers[:jld2] = JLD2Writer(model,
-                                                  merge(model.velocities, model.tracers);
+                                                  merge(model.velocities, model.tracers, (; zflat));
                                                   filename = "$filename",
                                                   schedule = IterationInterval($output_interval),
                                                   overwrite_existing = true,
@@ -134,16 +138,20 @@ function run_serial_rectilinear(config, filename)
                            size = (Nx, Ny, Nz),
                            extent = (Lx, Ly, Lz))
 
-    model = NonhydrostaticModel(; grid, tracers=:c)
+    model = NonhydrostaticModel(grid; tracers=:c)
 
     cᵢ(x, y, z) = sin(2π * x / Lx) * cos(2π * y / Ly) * (z + Lz) / Lz
     uᵢ(x, y, z) = 0.1 * sin(2π * x / Lx)
     set!(model, c=cᵢ, u=uᵢ)
 
+    # Add a `Nothing field in the z-direction`
+    zflat = Field{Center, Center, Nothing}(grid)
+    set!(zflat, (x, y) -> x)
+
     simulation = Simulation(model; Δt=config.Δt, stop_iteration=config.stop_iteration)
 
     simulation.output_writers[:jld2] = JLD2Writer(model,
-                                                  merge(model.velocities, model.tracers);
+                                                  merge(model.velocities, model.tracers, (; zflat));
                                                   filename = filename,
                                                   schedule = IterationInterval(config.output_interval),
                                                   overwrite_existing = true,
@@ -192,7 +200,7 @@ function lat_lon_mpi_script(config, filename)
                                  z = ($z1, $z2),
                                  halo = ($Hλ, $Hφ, $Hz))
 
-    model = HydrostaticFreeSurfaceModel(; grid, tracers=:c, free_surface=ExplicitFreeSurface())
+    model = HydrostaticFreeSurfaceModel(grid; tracers=:c, free_surface=ExplicitFreeSurface())
 
     cᵢ(λ, φ, z) = sin(π * λ / 30) * cos(π * φ / 60) * (z + 100) / 100
     set!(model, c=cᵢ)
@@ -219,7 +227,7 @@ function run_serial_lat_lon(config, filename)
                                  z = config.z,
                                  halo = config.halo)
 
-    model = HydrostaticFreeSurfaceModel(; grid, tracers=:c, free_surface=ExplicitFreeSurface())
+    model = HydrostaticFreeSurfaceModel(grid; tracers=:c, free_surface=ExplicitFreeSurface())
 
     cᵢ(λ, φ, z) = sin(π * λ / 30) * cos(π * φ / 60) * (z + 100) / 100
     set!(model, c=cᵢ)
@@ -274,7 +282,7 @@ function tripolar_mpi_script(config, filename)
                         north_poles_latitude = $(config.north_poles_latitude),
                         first_pole_longitude = $(config.first_pole_longitude))
 
-    model = HydrostaticFreeSurfaceModel(; grid, tracers=:c, free_surface=ExplicitFreeSurface())
+    model = HydrostaticFreeSurfaceModel(grid; tracers=:c, free_surface=ExplicitFreeSurface())
 
     cᵢ(λ, φ, z) = cosd(φ) * (z + 100) / 100
     set!(model, c=cᵢ)
@@ -301,7 +309,7 @@ function run_serial_tripolar(config, filename)
                         north_poles_latitude = config.north_poles_latitude,
                         first_pole_longitude = config.first_pole_longitude)
 
-    model = HydrostaticFreeSurfaceModel(; grid, tracers=:c, free_surface=ExplicitFreeSurface())
+    model = HydrostaticFreeSurfaceModel(grid; tracers=:c, free_surface=ExplicitFreeSurface())
 
     cᵢ(λ, φ, z) = cosd(φ) * (z + 100) / 100
     set!(model, c=cᵢ)
@@ -332,7 +340,7 @@ end
 
     run_serial_rectilinear(config, serial_file)
 
-    test_combined_output_matches_serial(dist_prefix, serial_file, ["c", "u"])
+    test_combined_output_matches_serial(dist_prefix, serial_file, ["c", "u", "zflat"])
 
     @info "  RectilinearGrid (2x2) test passed!"
 

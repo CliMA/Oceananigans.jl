@@ -1,5 +1,4 @@
-using Oceananigans.DistributedComputations: DistributedField
-using Oceananigans.DistributedComputations: AsynchronousDistributed, synchronize_communication!
+using Oceananigans.DistributedComputations: DistributedField, AsynchronousDistributed, synchronize_communication!
 
 import Oceananigans.DistributedComputations: synchronize_communication!
 
@@ -26,13 +25,13 @@ function wait_free_surface_communication!(free_surface::DistributedSplitExplicit
 end
 
 function synchronize_communication!(free_surface::SplitExplicitFreeSurface)
-    η    = free_surface.η
+    η    = free_surface.displacement
     U, V = free_surface.barotropic_velocities
     Ũ, Ṽ = free_surface.filtered_state.Ũ, free_surface.filtered_state.Ṽ
 
     for field in (U, V, Ũ, Ṽ, η)
         synchronize_communication!(field)
     end
-    
+
     return nothing
 end

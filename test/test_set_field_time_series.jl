@@ -2,6 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Units: Time
 using Oceananigans.Fields: indices
+using Oceananigans.BoundaryConditions: getbc
 
 function_of_time(x, y, z, t) = t
 function_of_time(x, y, t) = t
@@ -115,4 +116,17 @@ end
     set!(g, 2; a=-1, b=-2)
     @test g.a[1, 1, 1, 2] == -1
     @test g.b[1, 1, 1, 2] == -2
+end
+
+@testset "getbc for FieldTimeSeries boundary conditions" begin
+    @info "  Testing getbc for FieldTimeSeries boundary conditions..."
+
+    grid = RectilinearGrid(size=(), topology=(Flat, Flat, Flat))
+    times = 0:1.0:4
+    fts = FieldTimeSeries{Nothing, Nothing, Nothing}(grid, times)
+    set!(fts, function_of_time)
+
+    clock = Clock(time=2.5)
+    bc_value = getbc(fts, 1, 1, grid, clock)
+    @test bc_value == 2.5
 end

@@ -67,4 +67,3 @@ end
 function serializeproperty!(file, location, csg::ConformalCubedSphereGridOfSomeKind)
     file[location] = on_architecture(CPU(), csg)
 end
-

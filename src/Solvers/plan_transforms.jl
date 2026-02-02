@@ -17,7 +17,7 @@ function plan_forward_transform(A::Array, ::Periodic, dims, planner_flag=FFTW.PA
     length(dims) == 0 && return nothing
     return FFTW.plan_fft!(A, dims, flags=planner_flag; num_threads)
 end
-    
+
 function plan_forward_transform(A::Array, ::Bounded, dims, planner_flag=FFTW.PATIENT, num_threads=FFTW_NUM_THREADS[])
     length(dims) == 0 && return nothing
     return FFTW.plan_r2r!(A, FFTW.REDFT10, dims, flags=planner_flag; num_threads)
@@ -226,14 +226,14 @@ function plan_transforms(grid, storage, planner_flag, untransformed_dim)
         b_order = backward_orders(unflattened_topo...)
 
         # Extract untranformed dimension
-        f_order = Tuple(f_order[i] for i in findall(d -> d != untransformed_dim, f_order))
-        b_order = Tuple(b_order[i] for i in findall(d -> d != untransformed_dim, b_order))
+        ex_f_order = Tuple(f_order[i] for i in findall(d -> d != untransformed_dim, f_order))
+        ex_b_order = Tuple(b_order[i] for i in findall(d -> d != untransformed_dim, b_order))
 
-        forward_transforms = (DiscreteTransform(forward_plans[f_order[1]], Forward(), grid, [f_order[1]]),
-                              DiscreteTransform(forward_plans[f_order[2]], Forward(), grid, [f_order[2]]))
+        forward_transforms = (DiscreteTransform(forward_plans[ex_f_order[1]], Forward(), grid, [ex_f_order[1]]),
+                              DiscreteTransform(forward_plans[ex_f_order[2]], Forward(), grid, [ex_f_order[2]]))
 
-        backward_transforms = (DiscreteTransform(backward_plans[b_order[1]], Backward(), grid, [b_order[1]]),
-                               DiscreteTransform(backward_plans[b_order[2]], Backward(), grid, [b_order[2]]))
+        backward_transforms = (DiscreteTransform(backward_plans[ex_b_order[1]], Backward(), grid, [ex_b_order[1]]),
+                               DiscreteTransform(backward_plans[ex_b_order[2]], Backward(), grid, [ex_b_order[2]]))
     end
 
     transforms = (forward=forward_transforms, backward=backward_transforms)
