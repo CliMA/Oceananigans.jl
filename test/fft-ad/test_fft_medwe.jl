@@ -18,6 +18,12 @@ using Test
 
 Reactant.set_default_backend("cpu")
 
+grid = RectilinearGrid(ReactantState(),
+            size=(4, 4, 4), extent=(100, 100, 100),
+            halo=(3, 3, 3), topology=(Periodic, Periodic, Periodic))
+
+        model = NonhydrostaticModel(grid; tracers=:T, buoyancy=nothing, closure=nothing)
+
 @testset "FFT AD - NonhydrostaticModel" begin
 
     @testset "Periodic topology (FFT only)" begin
