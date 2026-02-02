@@ -30,7 +30,7 @@ function setup_grid(Nx, Ny, Nz, arch)
     zs[2:end-1] .+= randn(length(zs[2:end-1])) * (1 / Nz) / 10
 
     grid = RectilinearGrid(arch, Float64,
-                        size = (Nx, Ny, Nz), 
+                        size = (Nx, Ny, Nz),
                         halo = (4, 4, 4),
                         x = (0, 1),
                         y = (0, 1),
@@ -38,7 +38,7 @@ function setup_grid(Nx, Ny, Nz, arch)
                         # z = zs,
                         topology = (Bounded, Bounded, Bounded))
 
-    slope(x, y) = (5 + tanh(40*(x - 1/6)) + tanh(40*(x - 2/6)) + tanh(40*(x - 3/6)) + tanh(40*(x - 4/6)) + tanh(40*(x - 5/6))) / 20 + 
+    slope(x, y) = (5 + tanh(40*(x - 1/6)) + tanh(40*(x - 2/6)) + tanh(40*(x - 3/6)) + tanh(40*(x - 4/6)) + tanh(40*(x - 5/6))) / 20 +
                   (5 + tanh(40*(y - 1/6)) + tanh(40*(y - 2/6)) + tanh(40*(y - 3/6)) + tanh(40*(y - 4/6)) + tanh(40*(y - 5/6))) / 20
 
     # grid = ImmersedBoundaryGrid(grid, GridFittedBottom(slope))
@@ -47,7 +47,7 @@ function setup_grid(Nx, Ny, Nz, arch)
 end
 
 function setup_model(grid, pressure_solver)
-    model = NonhydrostaticModel(; grid, pressure_solver,
+    model = NonhydrostaticModel(grid; pressure_solver,
                                   advection = WENO(),
                                   coriolis = FPlane(f=0.1),
                                   tracers = :b,
@@ -75,14 +75,14 @@ function setup_simulation(model)
     Δt = 1e-3
     simulation = Simulation(model; Δt = Δt, stop_time = 10, minimum_relative_step = 1e-10)
     conjure_time_step_wizard!(simulation, cfl=0.7, IterationInterval(1))
-    
+
     wall_time = Ref(time_ns())
 
     d = Field{Center, Center, Center}(grid)
 
     function progress(sim)
         pressure_solver = sim.model.pressure_solver
-    
+
         if pressure_solver isa ConjugateGradientPoissonSolver
             pressure_iters = iteration(pressure_solver)
         else
@@ -91,11 +91,11 @@ function setup_simulation(model)
 
         msg = @sprintf("iter: %d, time: %s, Δt: %.4f, Poisson iters: %d",
                         iteration(sim), prettytime(time(sim)), sim.Δt, pressure_iters)
-    
+
         elapsed = 1e-9 * (time_ns() - wall_time[])
-    
+
         compute_flow_divergence!(d, sim.model)
-    
+
         msg *= @sprintf(", max u: %6.3e, max v: %6.3e, max w: %6.3e, max b: %6.3e, max d: %6.3e, max pressure: %6.3e, wall time: %s",
                         maximum(sim.model.velocities.u),
                         maximum(sim.model.velocities.v),
@@ -104,10 +104,10 @@ function setup_simulation(model)
                         maximum(d),
                         maximum(sim.model.pressures.pNHS),
                         prettytime(elapsed))
-    
+
         @info msg
         wall_time[] = time_ns()
-    
+
         return nothing
     end
 
@@ -146,7 +146,7 @@ function setup_simulation(model)
                                                 filename = filename,
                                                 schedule = TimeInterval(0.1),
                                                 overwrite_existing = true)
-    
+
     return simulation, file_prefix
 end
 

@@ -39,6 +39,8 @@ using Oceananigans.TurbulenceClosures:
     VerticallyImplicitTimeDiscretization,
     VerticalFormulation
 
+import Oceananigans: prognostic_state, restore_prognostic_state!
+
 import Oceananigans.TurbulenceClosures:
     validate_closure,
     shear_production,
@@ -46,6 +48,7 @@ import Oceananigans.TurbulenceClosures:
     buoyancy_force,
     buoyancy_tracers,
     add_closure_specific_boundary_conditions,
+    closure_required_tracers,
     compute_diffusivities!,
     build_closure_fields,
     implicit_linear_coefficient,

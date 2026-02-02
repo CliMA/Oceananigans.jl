@@ -2,7 +2,10 @@ using Pkg
 
 include("dependencies_for_runtests.jl")
 
+# TEST_GROUP=unit julia --project -e 'using Pkg; Pkg.test()'
 group = get(ENV, "TEST_GROUP", "all") |> Symbol
+
+# TEST_FILE=test_coriolis.jl julia --project -e 'using Pkg; Pkg.test()'
 test_file = get(ENV, "TEST_FILE", :none) |> Symbol
 
 # if we are testing just a single file then group = :none
@@ -132,6 +135,7 @@ CUDA.allowscalar() do
             include("test_seawater_density.jl")
             include("test_model_diagnostics.jl")
             include("test_orthogonal_spherical_shell_time_stepping.jl")
+            include("test_bulk_drag.jl")
         end
     end
 
@@ -201,11 +205,20 @@ CUDA.allowscalar() do
         include("test_distributed_hydrostatic_model.jl")
     end
 
-    # if group == :distributed_output || group == :all
-    #     @testset "Distributed output writing and reading tests" begin
-    #         include("test_distributed_output.jl")
-    #     end
-    # end
+    if group == :distributed_vertical_coordinate || group == :all
+        MPI.Initialized() || MPI.Init()
+        # In case CUDA is not found, we reset CUDA and restart the julia session
+        reset_cuda_if_necessary()
+        include("test_zstar_conservation.jl")
+    end
+
+    if group == :distributed_output || group == :all
+        MPI.Initialized() || MPI.Init()
+        reset_cuda_if_necessary()
+        @testset "Distributed output combining tests" begin
+            include("test_distributed_output_combining.jl")
+        end
+    end
 
     if group == :distributed_nonhydrostatic_regression || group == :all
         MPI.Initialized() || MPI.Init()
@@ -232,6 +245,7 @@ CUDA.allowscalar() do
     if group == :vertical_coordinate || group == :all
         @testset "Vertical coordinate tests" begin
             include("test_zstar_coordinate.jl")
+            include("test_zstar_conservation.jl")
         end
     end
 
@@ -266,6 +280,13 @@ CUDA.allowscalar() do
     if group == :xesmf || group == :all
         @testset "XESMF extension tests" begin
             include("test_xesmf.jl")
+        end
+    end
+
+    # Tests for ConservativeRegridding extension
+    if group == :conservative_regridding || group == :all
+        @testset "ConservativeRegridding extension tests" begin
+            include("test_conservative_regridding.jl")
         end
     end
 

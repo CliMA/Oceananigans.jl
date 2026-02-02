@@ -5,8 +5,6 @@ import Oceananigans.Architectures: device, device!, cpu_architecture, on_archite
 import Oceananigans.Grids: zeros
 import Oceananigans.Utils: sync_device!
 
-import Base
-
 #####
 ##### Partitioning
 #####
@@ -203,9 +201,9 @@ end
 
 """
     Distributed(child_architecture = CPU();
-                partition = Partition(MPI.Comm_size(communicator)),
+                partition = nothing,
                 devices = nothing,
-                communicator = MPI.COMM_WORLD,
+                communicator = nothing,
                 synchronized_communication = false)
 
 Return a distributed architecture that uses MPI for communications.
@@ -225,11 +223,11 @@ Keyword arguments
 
 - `devices`: `GPU` device linked to local rank. The GPU will be assigned based on the
              local node rank as such `devices[node_rank]`. Make sure to run `--ntasks-per-node` <= `--gres=gpu`.
-             If `nothing`, the devices will be assigned automatically based on the available resources.
+             If `nothing` (default), the devices will be assigned automatically based on the available resources.
              This argument is irrelevant if `child_architecture = CPU()`.
 
-- `communicator`: the MPI communicator that orchestrates data transfer between nodes.
-                  Default: `MPI.COMM_WORLD`.
+- `communicator`: the MPI communicator that orchestrates data transfer between nodes, e.g., `MPI.COMM_WORLD`.
+                  Default: `nothing`.
 
 - `synchronized_communication`: This keyword argument can be used to control downstream code behavior.
                                 If `true`, then downstream code may use this tag to toggle between an algorithm
@@ -439,8 +437,9 @@ end
 
 function Base.summary(arch::Distributed)
     child_arch = child_architecture(arch)
-    A = typeof(child_arch)
-    return string("Distributed{$A}")
+    A = Base.summary(child_arch)
+    Rx, Ry, Rz = ranks(arch)
+    return "Distributed{$A} on $(Rx)×$(Ry)×$(Rz)"
 end
 
 function Base.show(io::IO, arch::Distributed)
@@ -482,4 +481,3 @@ function Base.show(io::IO, arch::Distributed)
         print(io, connectivity_info)
     end
 end
-

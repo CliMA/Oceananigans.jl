@@ -1,3 +1,7 @@
+using Oceananigans.Utils: time_difference_seconds
+
+import Oceananigans: prognostic_state, restore_prognostic_state!
+
 struct TKEDissipationVerticalDiffusivity{TD, KE, ST, LMIN, FT, DT} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 2}
     tke_dissipation_equations :: KE
     stability_functions :: ST
@@ -154,6 +158,9 @@ function Utils.with_tracers(tracer_names, closure::FlavorOfTD)
     return closure
 end
 
+# Required tracer names for TKEDissipation
+closure_required_tracers(::FlavorOfTD) = (:e, :ϵ)
+
 #####
 ##### Stratified displacement length scale limiter
 #####
@@ -167,7 +174,7 @@ end
 ##### Diffusivities and diffusivity fields utilities
 #####
 
-struct TKEDissipationDiffusivityFields{K, L, U, KC, LC}
+struct TKEDissipationDiffusivityFields{K, L, U, T, KC, LC, S}
     κu :: K
     κc :: K
     κe :: K
@@ -175,8 +182,10 @@ struct TKEDissipationDiffusivityFields{K, L, U, KC, LC}
     Le :: L
     Lϵ :: L
     previous_velocities :: U
+    previous_compute_time :: T
     _tupled_tracer_diffusivities :: KC
     _tupled_implicit_linear_coefficients :: LC
+    _skip_next_compute :: S  # Used for checkpointing
 end
 
 Adapt.adapt_structure(to, tke_dissipation_closure_fields::TKEDissipationDiffusivityFields) =
@@ -187,8 +196,10 @@ Adapt.adapt_structure(to, tke_dissipation_closure_fields::TKEDissipationDiffusiv
                                     adapt(to, tke_dissipation_closure_fields.Le),
                                     adapt(to, tke_dissipation_closure_fields.Lϵ),
                                     adapt(to, tke_dissipation_closure_fields.previous_velocities),
+                                    tke_dissipation_closure_fields.previous_compute_time[],
                                     adapt(to, tke_dissipation_closure_fields._tupled_tracer_diffusivities),
-                                    adapt(to, tke_dissipation_closure_fields._tupled_implicit_linear_coefficients))
+                                    adapt(to, tke_dissipation_closure_fields._tupled_implicit_linear_coefficients),
+                                    tke_dissipation_closure_fields._skip_next_compute[])
 
 function BoundaryConditions.fill_halo_regions!(tke_dissipation_closure_fields::TKEDissipationDiffusivityFields, args...; kw...)
     fields_with_halos_to_fill = (tke_dissipation_closure_fields.κu,
@@ -220,30 +231,42 @@ function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfT
     u⁻ = XFaceField(grid)
     v⁻ = YFaceField(grid)
     previous_velocities = (; u=u⁻, v=v⁻)
+    previous_compute_time = Ref(clock.time)
 
     # Secret tuple for getting tracer diffusivities with tuple[tracer_index]
     _tupled_tracer_diffusivities = Dict{Symbol, Any}(name => κc for name in tracer_names)
     _tupled_tracer_diffusivities[:e] = κe
     _tupled_tracer_diffusivities[:ϵ] = κϵ
-    _tupled_tracer_diffusivities = NamedTuple(name => _tupled_tracer_diffusivities[name]
-                                              for name in tracer_names)
+    _ntupled_tracer_diffusivities = NamedTuple(name => _tupled_tracer_diffusivities[name]
+                                               for name in tracer_names)
 
     _tupled_implicit_linear_coefficients = Dict{Symbol, Any}(name => ZeroField() for name in tracer_names)
     _tupled_implicit_linear_coefficients[:e] = Le
     _tupled_implicit_linear_coefficients[:ϵ] = Lϵ
-    _tupled_implicit_linear_coefficients = NamedTuple(name => _tupled_implicit_linear_coefficients[name]
-                                                      for name in tracer_names)
+    _ntupled_implicit_linear_coefficients = NamedTuple(name => _tupled_implicit_linear_coefficients[name]
+                                                       for name in tracer_names)
+
+    _skip_next_compute = Ref(false)
 
     return TKEDissipationDiffusivityFields(κu, κc, κe, κϵ, Le, Lϵ,
                                            previous_velocities,
-                                           _tupled_tracer_diffusivities,
-                                           _tupled_implicit_linear_coefficients)
+                                           previous_compute_time,
+                                           _ntupled_tracer_diffusivities,
+                                           _ntupled_implicit_linear_coefficients,
+                                           _skip_next_compute)
 end
 
 @inline viscosity_location(::FlavorOfTD) = (c, c, f)
 @inline diffusivity_location(::FlavorOfTD) = (c, c, f)
 
 function compute_diffusivities!(diffusivities, closure::FlavorOfTD, model; parameters = :xyz)
+    # Skip the first compute after restoring from a checkpoint to preserve the restored state.
+    # This flag is set during `restore_prognostic_state!` and cleared here.
+    if diffusivities._skip_next_compute[]
+        diffusivities._skip_next_compute[] = false
+        diffusivities.previous_compute_time[] = model.clock.time
+        return nothing
+    end
 
     arch = model.architecture
     grid = model.grid
@@ -251,20 +274,26 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfTD, model; param
     tracers = buoyancy_tracers(model)
     buoyancy = buoyancy_force(model)
     clock = model.clock
-    top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
 
-    if isfinite(model.clock.last_Δt) # Check that we have taken a valid time-step first.
+    Δt = time_difference_seconds(clock.time, diffusivities.previous_compute_time[])
+    diffusivities.previous_compute_time[] = clock.time
+
+    # Step TKE/dissipation when time has advanced or at later stages of multi-stage
+    # timesteppers. Skip stages > 1 at iteration 0 (clock.last_Δt is Inf).
+    if (Δt > 0 || clock.stage > 1) && isfinite(clock.last_Δt)
         # Compute e at the current time:
         #   * update tendency Gⁿ using current and previous velocity field
         #   * use tridiagonal solve to take an implicit step
         time_step_tke_dissipation_equations!(model)
     end
 
-    # Update "previous velocities"
-    u, v, w = model.velocities
-    u⁻, v⁻ = diffusivities.previous_velocities
-    parent(u⁻) .= parent(u)
-    parent(v⁻) .= parent(v)
+    # Update previous velocities and surface buoyancy flux only on new iterations.
+    if Δt > 0
+        u, v, w = model.velocities
+        u⁻, v⁻ = diffusivities.previous_velocities
+        parent(u⁻) .= parent(u)
+        parent(v⁻) .= parent(v)
+    end
 
     launch!(arch, grid, parameters,
             compute_TKEDissipation_diffusivities!,
@@ -402,3 +431,32 @@ function Base.show(io::IO, clo::TDVD)
               "│   └── CᵂwΔ: ", prettysummary(clo.tke_dissipation_equations.CᵂwΔ), '\n')
     print(io, "└── stability_functions: ", summarize_stability_functions(clo.stability_functions), "", "    ")
 end
+
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(cf::TKEDissipationDiffusivityFields)
+    return (previous_compute_time = cf.previous_compute_time[],
+            previous_velocities = prognostic_state(cf.previous_velocities),
+            κu = prognostic_state(cf.κu),
+            κc = prognostic_state(cf.κc),
+            κe = prognostic_state(cf.κe),
+            κϵ = prognostic_state(cf.κϵ))
+end
+
+function restore_prognostic_state!(restored::TKEDissipationDiffusivityFields, from)
+    restored.previous_compute_time[] = from.previous_compute_time
+    restore_prognostic_state!(restored.previous_velocities, from.previous_velocities)
+    restore_prognostic_state!(restored.κu, from.κu)
+    restore_prognostic_state!(restored.κc, from.κc)
+    restore_prognostic_state!(restored.κe, from.κe)
+    restore_prognostic_state!(restored.κϵ, from.κϵ)
+
+    # Skip the first compute_diffusivities! call after restore to preserve the restored state
+    restored._skip_next_compute[] = true
+
+    return restored
+end
+
+restore_prognostic_state!(::TKEDissipationDiffusivityFields, ::Nothing) = nothing

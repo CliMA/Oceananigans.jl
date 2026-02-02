@@ -13,7 +13,7 @@ Nhosts = 1
     # Retrieve Serial quantities
     us, vs, ws = model.velocities
     cs = model.tracers.c
-    ηs = model.free_surface.η
+    ηs = model.free_surface.displacement
 
     us = interior(us, :, :, 1)
     vs = interior(vs, :, :, 1)

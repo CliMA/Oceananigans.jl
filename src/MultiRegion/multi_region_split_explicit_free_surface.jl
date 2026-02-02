@@ -16,7 +16,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface, veloci
     old_halos = halo_size(getregion(grid, 1))
     Nsubsteps = calculate_substeps(free_surface.substepping)
 
-    extended_halos = multiregion_split_explicit_halos(old_halos, Nsubsteps+1, grid.partition)
+    extended_halos = multiregion_split_explicit_halos(old_halos, Nsubsteps+2, grid.partition)
     extended_grid  = with_halo(extended_halos, grid)
 
     η = free_surface_displacement_field(velocities, free_surface, extended_grid)
@@ -59,7 +59,7 @@ end
 materialize_free_surface(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, ::MultiRegionGrids) = nothing
 
 @inline multiregion_split_explicit_halos(old_halos, step_halo, ::XPartition) = (max(step_halo, old_halos[1]), old_halos[2], old_halos[3])
-@inline multiregion_split_explicit_halos(old_halos, step_halo, ::YPartition) = (old_halos[1], max(step_halo, old_halo[2]), old_halos[3])
+@inline multiregion_split_explicit_halos(old_halos, step_halo, ::YPartition) = (old_halos[1], max(step_halo, old_halos[2]), old_halos[3])
 @inline multiregion_split_explicit_halos(old_halos, step_halo, ::CubedSpherePartition) = (max(step_halo, old_halos[1]), max(step_halo, old_halos[2]), old_halos[3])
 
 iterate_split_explicit!(free_surface, grid::MultiRegionGrids, GUⁿ, GVⁿ, Δτᴮ, weights, ::Val{Nsubsteps}) where Nsubsteps =

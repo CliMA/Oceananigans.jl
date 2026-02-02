@@ -66,9 +66,14 @@ end
 function materialize_immersed_boundary(grid, ib::PartialCellBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
     set!(bottom_field, ib.bottom_height)
-    @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, ib)
+
+    minimum_fractional_cell_height = convert(eltype(grid), ib.minimum_fractional_cell_height)
+    new_ib = PartialCellBottom(bottom_field, minimum_fractional_cell_height)
+
+    @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, new_ib)
     fill_halo_regions!(bottom_field)
-    return PartialCellBottom(bottom_field, ib.minimum_fractional_cell_height)
+
+    return new_ib
 end
 
 @kernel function _compute_numerical_bottom_height!(bottom_field, grid, ib::PartialCellBottom)
@@ -90,14 +95,13 @@ end
         z⁻ = rnode(i, j, k,   grid, c, c, f)
         z⁺ = rnode(i, j, k+1, grid, c, c, f)
         Δz = Δrᶜᶜᶜ(i, j, k, grid)
-        bottom_cell = (z⁻ ≤ zb) & (z⁺ ≥ zb)
-        capped_zb   = min(z⁺ - ϵ * Δz, zb)
+        bottom_cell = z⁻ ≤ adjusted_zb < z⁺
+        capped_zb   = min(z⁺ - ϵ * Δz, adjusted_zb)
 
         # If the size of the bottom cell is less than ϵ Δz,
         # we enforce a minimum size of ϵ Δz.
-        adjusted_zb = ifelse(bottom_cell, capped_zb, zb)
+        adjusted_zb = ifelse(bottom_cell, capped_zb, adjusted_zb)
     end
-
     @inbounds bottom_field[i, j, 1] = adjusted_zb
 end
 

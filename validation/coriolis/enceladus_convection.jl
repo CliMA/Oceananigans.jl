@@ -104,7 +104,7 @@ for T in [0.0]
         α_Z = thermal_expansion.(T, S, Z_r, Ref(eos))
         β_Z = haline_contraction.(T, S, Z_r, Ref(eos))
         lines!(ax3, Z_r ./ 1e3, α_Z ./ β_Z, linewidth = 2, label = "T = $T °C, S = $S psu")
-        
+
         ρ_Z = ρ.(T, S, Z_r, Ref(eos))
         lines!(ax4, Z_r ./ 1e3, ρ_Z, linewidth = 2, label = "T = $T °C, S = $S psu")
     end
@@ -155,7 +155,7 @@ grid = LatitudeLongitudeGrid(size = (256, 16, 128),
 using Oceananigans.Coriolis: SphericalCoriolis, NonhydrostaticFormulation
 coriolis = SphericalCoriolis(rotation_rate=Ω_enceladus, formulation=NonhydrostaticFormulation())
 
-model = NonhydrostaticModel(; grid, coriolis,
+model = NonhydrostaticModel(grid; coriolis,
                             advection = WENO(order=5),
                             tracers = (:T, :S),
                             buoyancy = SeawaterBuoyancy(equation_of_state=TEOS10EquationOfState()))

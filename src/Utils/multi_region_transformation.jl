@@ -1,4 +1,7 @@
 using Oceananigans.Architectures: Architectures, on_architecture, CPU
+
+import Oceananigans: prognostic_state, restore_prognostic_state!
+
 import KernelAbstractions as KA
 
 #####
@@ -88,6 +91,17 @@ Architectures.on_architecture(arch, mo::MultiRegionObject) = MultiRegionObject(o
         regional_func!((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
     end
 
+    return nothing
+end
+
+# For `MultiRegionObject` calls (think kernels with different sizes for different regions)
+# we also `getregion` for the function. Since the function itself is multiregional we do not
+# need to check if the call is single region or not.
+@inline function apply_regionally!(regional_func!::MultiRegionObject, args...; kwargs...)
+    R = regions(regional_func!)
+    for r in R
+        getregion(regional_func!, r)((getregion(arg, r) for arg in args)...; (getregion(kwarg, r) for kwarg in kwargs)...)
+    end
     return nothing
 end
 
@@ -191,3 +205,22 @@ macro apply_regionally(expr)
         end
     end
 end
+
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(mo::MultiRegionObject)
+    return Tuple(prognostic_state(regional_obj) for regional_obj in mo.regional_objects)
+end
+
+function restore_prognostic_state!(restored::MultiRegionObject, from)
+    regional_states = from isa MultiRegionObject ? from.regional_objects : from
+
+    for (regional_obj, regional_state) in zip(restored.regional_objects, regional_states)
+        restore_prognostic_state!(regional_obj, regional_state)
+    end
+    return restored
+end
+
+restore_prognostic_state!(::MultiRegionObject, ::Nothing) = nothing

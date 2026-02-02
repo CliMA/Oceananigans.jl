@@ -164,7 +164,7 @@ julia> grid = LatitudeLongitudeGrid(size=(36, 34, 25),
                                     longitude = (-180, 180),
                                     latitude = (-85, 85),
                                     z = (-1000, 0))
-36×34×25 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+36×34×25 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── longitude: Periodic λ ∈ [-180.0, 180.0) regularly spaced with Δλ=10.0
 ├── latitude:  Bounded  φ ∈ [-85.0, 85.0]   regularly spaced with Δφ=5.0
 └── z:         Bounded  z ∈ [-1000.0, 0.0]  regularly spaced with Δz=40.0
@@ -188,7 +188,7 @@ grid = LatitudeLongitudeGrid(size=(36, 34, Nz),
 
 # output
 
-36×34×24 LatitudeLongitudeGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+36×34×24 LatitudeLongitudeGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── longitude: Bounded  λ ∈ [-180.0, 180.0] regularly spaced with Δλ=10.0
 ├── latitude:  Bounded  φ ∈ [-20.0, 20.0]   regularly spaced with Δφ=1.17647
 └── z:         Bounded  z ∈ [-1000.0, -0.0] variably spaced with min(Δz)=21.3342, max(Δz)=57.2159
@@ -316,13 +316,11 @@ end
 
 function Base.summary(grid::LatitudeLongitudeGrid)
     FT = eltype(grid)
-    TX, TY, TZ = topology_strs(grid)
-    metric_computation = isnothing(grid.Δxᶠᶜᵃ) ? "without precomputed metrics" : "with precomputed metrics"
+    TX, TY, TZ = topology(grid)
 
-    return string(size_summary(size(grid)),
+    return string(size_summary(grid),
                   " LatitudeLongitudeGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
-                  " with ", size_summary(halo_size(grid)), " halo",
-                  " and ", metric_computation)
+                  " with ", size_summary(halo_size(grid)), " halo")
 end
 
 function Base.show(io::IO, grid::LatitudeLongitudeGrid, withsummary=true)
@@ -359,7 +357,6 @@ end
 
 function constructor_arguments(grid::LatitudeLongitudeGrid)
     arch = architecture(grid)
-    FT = eltype(grid)
     args = OrderedDict(:architecture => arch, :number_type => eltype(grid))
 
     # Kwargs
@@ -418,9 +415,9 @@ function Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid)
     return LatitudeLongitudeGrid{TX, TY, TZ}(nothing,
                                              grid.Nx, grid.Ny, grid.Nz,
                                              grid.Hx, grid.Hy, grid.Hz,
-					     Adapt.adapt(to, grid.Lx),
-					     Adapt.adapt(to, grid.Ly),
-					     Adapt.adapt(to, grid.Lz),
+                                             Adapt.adapt(to, grid.Lx),
+                                             Adapt.adapt(to, grid.Ly),
+                                             Adapt.adapt(to, grid.Lz),
                                              Adapt.adapt(to, grid.Δλᶠᵃᵃ),
                                              Adapt.adapt(to, grid.Δλᶜᵃᵃ),
                                              Adapt.adapt(to, grid.λᶠᵃᵃ),
@@ -440,7 +437,7 @@ function Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid)
                                              Adapt.adapt(to, grid.Azᶠᶜᵃ),
                                              Adapt.adapt(to, grid.Azᶜᶠᵃ),
                                              Adapt.adapt(to, grid.Azᶠᶠᵃ),
-					     Adapt.adapt(to, grid.radius))
+                                             Adapt.adapt(to, grid.radius))
 end
 
 #####

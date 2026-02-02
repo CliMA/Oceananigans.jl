@@ -32,7 +32,7 @@ Ry = parse(Int, ARGS[4])
 topo = (Periodic, Periodic, Flat)
 arch = Distributed(CPU(), topology=topo, ranks=(Rx, Ry, 1), communicator=MPI.COMM_WORLD)
 distributed_grid = RectilinearGrid(arch, topology=topo, size=(Nx, Ny), extent=(1, 1))
-model = ShallowWaterModel(grid=distributed_grid, gravitational_acceleration=1.0)
+model = ShallowWaterModel(distributed_grid; gravitational_acceleration=1.0)
 set!(model, h=1)
 
 @info "Warming up distributed shallow water model on rank $local_rank..."

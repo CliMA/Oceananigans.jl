@@ -161,6 +161,13 @@ Modules = [Oceananigans.Models.VarianceDissipationComputations]
 Private = false
 ```
 
+### Bulk drag boundary conditions
+
+```@autodocs
+Modules = [Oceananigans.Models.BulkDragBoundaryConditions]
+Private = false
+```
+
 ## MultiRegion
 
 ```@autodocs
@@ -188,8 +195,14 @@ Private = false
 Modules = [Oceananigans.OutputWriters]
 Private = false
 ```
-```@docs
-NetCDFWriter
+
+## Extensions
+
+### OceananigansNCDatasetsExt
+
+```@autodocs
+Modules = [OceananigansNCDatasetsExt.OceananigansNCDatasetsExt]
+Private = false
 ```
 
 ## Simulations

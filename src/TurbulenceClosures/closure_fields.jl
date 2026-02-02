@@ -25,4 +25,3 @@ build_closure_fields(grid, clock, tracer_names, bcs, closure) = nothing
 
 build_closure_fields(grid, clock, tracer_names, bcs, closure_tuple::Tuple) =
     Tuple(build_closure_fields(grid, clock, tracer_names, bcs, closure) for closure in closure_tuple)
-

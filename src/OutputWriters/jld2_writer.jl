@@ -2,9 +2,9 @@ using Printf: @sprintf
 using JLD2
 using Oceananigans.Utils
 using Oceananigans.Utils: TimeInterval, prettykeys, materialize_schedule
-using Oceananigans.Fields: boundary_conditions, indices
+using Oceananigans.Fields: indices
 
-default_included_properties(model) = [:grid]
+default_included_properties(model) = []
 
 mutable struct JLD2Writer{O, T, D, IF, IN, FS, KW} <: AbstractOutputWriter
     filepath :: String
@@ -18,6 +18,7 @@ mutable struct JLD2Writer{O, T, D, IF, IN, FS, KW} <: AbstractOutputWriter
     overwrite_existing :: Bool
     verbose :: Bool
     jld2_kw :: KW
+    initialized :: Bool
 end
 
 noinit(args...) = nothing
@@ -32,7 +33,7 @@ ext(::Type{JLD2Writer}) = ".jld2"
                file_splitting = NoFileSplitting(),
                overwrite_existing = false,
                init = noinit,
-               including = [:grid, :coriolis, :buoyancy, :closure],
+               including = default_included_properties(model),
                verbose = false,
                part = 1,
                jld2_kw = Dict{Symbol, Any}())
@@ -107,11 +108,12 @@ Example
 
 Output 3D fields of the model velocities ``u``, ``v``, and ``w``:
 
-```@example
+```jldoctest example
 using Oceananigans
 using Oceananigans.Units
 
-model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)), tracers=:c)
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+model = NonhydrostaticModel(grid, tracers=:c)
 simulation = Simulation(model, Δt=12, stop_time=1hour)
 
 function init_save_some_metadata!(file, model)
@@ -128,15 +130,35 @@ simulation.output_writers[:velocities] = JLD2Writer(model, model.velocities,
                                                     filename = "some_data.jld2",
                                                     schedule = TimeInterval(20minutes),
                                                     init = init_save_some_metadata!)
+
+# output
+
+JLD2Writer scheduled on TimeInterval(20 minutes):
+├── filepath: some_data.jld2
+├── 3 outputs: (u, v, w)
+├── array_type: Array{Float32}
+├── including: [:grid, :coriolis, :buoyancy, :closure]
+├── file_splitting: NoFileSplitting
+└── file size: 0 bytes (file not yet created)
 ```
 
 and also output a both 5-minute-time-average and horizontal-average of the tracer ``c`` every 20 minutes
 of simulation time to a file called `some_averaged_data.jld2`
 
-```@example
+```jldoctest example
 simulation.output_writers[:avg_c] = JLD2Writer(model, (; c=c_avg),
                                                filename = "some_averaged_data.jld2",
                                                schedule = AveragedTimeInterval(20minute, window=5minutes))
+
+# output
+
+JLD2Writer scheduled on TimeInterval(20 minutes):
+├── filepath: some_averaged_data.jld2
+├── 1 outputs: c averaged on AveragedTimeInterval(window=5 minutes, stride=1, interval=20 minutes)
+├── array_type: Array{Float32}
+├── including: [:grid, :coriolis, :buoyancy, :closure]
+├── file_splitting: NoFileSplitting
+└── file size: 0 bytes (file not yet created)
 ```
 """
 function JLD2Writer(model, outputs; filename, schedule,
@@ -159,20 +181,17 @@ function JLD2Writer(model, outputs; filename, schedule,
 
     initialize!(file_splitting, model)
     update_file_splitting_schedule!(file_splitting, filepath)
-    overwrite_existing && isfile(filepath) && rm(filepath, force=true)
 
-    outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], model.grid, indices, with_halos)
-                         for name in keys(outputs))
-
+    nt_outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], indices, with_halos) for name in keys(outputs))
     schedule = materialize_schedule(schedule)
 
     # Convert each output to WindowedTimeAverage if schedule::AveragedTimeWindow is specified
-    schedule, outputs = time_average_outputs(schedule, outputs, model)
+    schedule, d_outputs = time_average_outputs(schedule, nt_outputs, model)
 
-    initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
-
-    return JLD2Writer(filepath, outputs, schedule, array_type, init,
-                      including, part, file_splitting, overwrite_existing, verbose, jld2_kw)
+    # Note: file initialization is deferred until `initialize!(writer, model)` is called
+    # (typically when `run!` is invoked on a Simulation containing this writer)
+    return JLD2Writer(filepath, d_outputs, schedule, array_type, init,
+                      including, part, file_splitting, overwrite_existing, verbose, jld2_kw, false)
 end
 
 function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
@@ -215,6 +234,39 @@ end
 initialize_jld2_file!(writer::JLD2Writer, model) =
     initialize_jld2_file!(writer.filepath, writer.init, writer.jld2_kw, writer.including, writer.outputs, model)
 
+"""
+    initialize!(writer::JLD2Writer, model)
+
+Initialize a `JLD2Writer` by creating its output file and writing initial metadata.
+
+This function is called automatically when a `Simulation` containing the writer is initialized
+(typically during the first call to `run!`). The initialization is skipped if the writer
+has already been initialized, preventing files from being overwritten when `run!` is called
+multiple times.
+
+When resuming a simulation (i.e., `model.clock.iteration > 0`, such as when picking up from
+a checkpoint), existing files are preserved regardless of the `overwrite_existing` setting.
+"""
+function initialize!(writer::JLD2Writer, model)
+    # Skip if already initialized (e.g., when run! is called multiple times)
+    writer.initialized && return nothing
+
+    # Remove existing file if overwrite_existing is true,
+    # but only if we're starting fresh (iteration == 0).
+    # When resuming (iteration > 0), we preserve existing files.
+    starting_fresh = model.clock.iteration == 0
+    if writer.overwrite_existing && starting_fresh
+        isfile(writer.filepath) && rm(writer.filepath, force=true)
+    end
+
+    # Initialize the JLD2 file with metadata
+    initialize_jld2_file!(writer, model)
+
+    writer.initialized = true
+
+    return nothing
+end
+
 function iteration_exists(filepath, iter=0)
     file = jldopen(filepath, "r")
 
@@ -232,6 +284,10 @@ function iteration_exists(filepath, iter=0)
 end
 
 function write_output!(writer::JLD2Writer, model)
+    # Ensure the writer is initialized before writing
+    if !writer.initialized
+        initialize!(writer, model)
+    end
 
     verbose = writer.verbose
     current_iteration = model.clock.iteration
@@ -327,11 +383,17 @@ function Base.show(io::IO, ow::JLD2Writer)
     averaging_schedule = output_averaging_schedule(ow)
     Noutputs = length(ow.outputs)
 
+    file_size_str = if ow.initialized && isfile(ow.filepath)
+        pretty_filesize(filesize(ow.filepath))
+    else
+        "0 bytes (file not yet created)"
+    end
+
     print(io, "JLD2Writer scheduled on $(summary(ow.schedule)):", "\n",
               "├── filepath: ", relpath(ow.filepath), "\n",
               "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), "\n",
               "├── array_type: ", show_array_type(ow.array_type), "\n",
               "├── including: ", ow.including, "\n",
               "├── file_splitting: ", summary(ow.file_splitting), "\n",
-              "└── file size: ", pretty_filesize(filesize(ow.filepath)))
+              "└── file size: ", file_size_str)
 end
