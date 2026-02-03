@@ -2,6 +2,7 @@ module OutputReaders
 
 export FieldDataset
 export FieldTimeSeries
+export TimeSeriesInterpolation
 export InMemory, OnDisk
 export Cyclical, Linear, Clamp
 
@@ -31,6 +32,7 @@ end
 
 include("field_time_series.jl")
 include("field_time_series_indexing.jl")
+include("time_series_interpolated_field.jl")
 include("set_field_time_series.jl")
 include("field_time_series_reductions.jl")
 include("show_field_time_series.jl")
@@ -41,4 +43,3 @@ include("combining_field_time_series.jl")
 include("field_dataset.jl")
 
 end # module
-

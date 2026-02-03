@@ -72,7 +72,7 @@ synchronize_communication!(var) = throw(ArgumentError("`synchronize_communicatio
 
 # Methods for types that do not require synchronization
 synchronize_communication!(::AbstractField) = nothing
-synchronize_communication!(::AbstractArray) = nothing   
+synchronize_communication!(::AbstractArray) = nothing
 synchronize_communication!(::Number)        = nothing
 synchronize_communication!(::Nothing)       = nothing
 
@@ -112,9 +112,16 @@ reconstruct_global_field(field) = field
 Reconstruct a global field from a local field by combining the data from all processes.
 """
 function reconstruct_global_field(field::DistributedField)
-    global_grid = reconstruct_global_grid(field.grid)
-    global_field = Field(instantiated_location(field), global_grid)
     arch = architecture(field)
+    field_indices = field.indices
+
+    if (!(field_indices[1] isa Colon) && (arch.ranks[1] != 1)) ||
+       (!(field_indices[2] isa Colon) && (arch.ranks[2] != 1))
+        @warn "Windowed fields in a partitioned directions are not supported."
+    end
+
+    global_grid = reconstruct_global_grid(field.grid)
+    global_field = Field(instantiated_location(field), global_grid; indices=field_indices)
 
     global_data = construct_global_array(interior(field), arch, size(field))
 
@@ -228,14 +235,14 @@ end
 
 # Distributed dot product
 @inline function dot(u::DistributedField, v::DistributedField; condition=nothing)
-    cu = condition_operand(u, condition, 0) 
-    cv = condition_operand(v, condition, 0) 
-     
-    B = cu * cv # Binary operation 
-    r = zeros(u.grid, 1) 
-     
-    Base.mapreducedim!(identity, +, r, B) 
-    dot_local = @allowscalar r[1] 
+    cu = condition_operand(u, condition, 0)
+    cv = condition_operand(v, condition, 0)
+
+    B = cu * cv # Binary operation
+    r = zeros(u.grid, 1)
+
+    Base.mapreducedim!(identity, +, r, B)
+    dot_local = @allowscalar r[1]
     arch = architecture(u)
     return all_reduce(+, dot_local, arch)
 end

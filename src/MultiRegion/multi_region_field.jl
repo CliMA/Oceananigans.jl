@@ -6,7 +6,11 @@ using Oceananigans.OutputWriters: output_indices
 
 using Base: @propagate_inbounds
 
+import Oceananigans.DistributedComputations: reconstruct_global_field, CommunicationBuffers
 import Oceananigans.BoundaryConditions: regularize_field_boundary_conditions, FieldBoundaryConditions
+import Oceananigans.Grids: xnodes, ynodes
+import Oceananigans.Fields: set!, compute!, compute_at!, interior
+import Oceananigans.Fields: validate_indices, communication_buffers
 import Oceananigans.Diagnostics: hasnan
 import Oceananigans.DistributedComputations: reconstruct_global_field, CommunicationBuffers
 import Oceananigans.Fields: set!, compute!, compute_at!, interior, communication_buffers,
@@ -100,7 +104,7 @@ function reconstruct_global_indices(indices, p::YPartition, N)
     if idx1 == Colon() && idxl == Colon()
         idx_y = Colon()
     else
-        idx_y = UnitRange(ix1 == Colon() ? 1 : first(idx1), idxl == Colon() ? N[2] : last(idxl))
+        idx_y = UnitRange(idx1 == Colon() ? 1 : first(idx1), idxl == Colon() ? N[2] : last(idxl))
     end
 
     idx_x = getregion(indices, 1)[1]
@@ -183,8 +187,8 @@ function inject_regional_bcs(grid, connectivity, loc, indices;
                              top = default_auxiliary_bc(grid, Val(:top), loc),
                              immersed = NoFluxBoundaryCondition())
 
-    west  = inject_west_boundary(connectivity, west)
-    east  = inject_east_boundary(connectivity, east)
+    west  =  inject_west_boundary(connectivity, west)
+    east  =  inject_east_boundary(connectivity, east)
     south = inject_south_boundary(connectivity, south)
     north = inject_north_boundary(connectivity, north)
 

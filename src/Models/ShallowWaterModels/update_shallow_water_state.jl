@@ -18,7 +18,7 @@ Next, `callbacks` are executed.
 
 Finally, tendencies are computed if `compute_tendencies=true`.
 """
-function update_state!(model::ShallowWaterModel, callbacks=[]; compute_tendencies=true)
+function update_state!(model::ShallowWaterModel, callbacks=[])
 
     # Mask immersed fields
     foreach(mask_immersed_field!, merge(model.solution, model.tracers))
@@ -37,8 +37,6 @@ function update_state!(model::ShallowWaterModel, callbacks=[]; compute_tendencie
             callback(model)
         end
     end
-
-    compute_tendencies && compute_tendencies!(model, callbacks)
 
     return nothing
 end

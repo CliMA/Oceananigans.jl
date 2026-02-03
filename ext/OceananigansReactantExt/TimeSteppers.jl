@@ -12,11 +12,9 @@ using Oceananigans.Utils: @apply_regionally, apply_regionally!
 using Oceananigans.TimeSteppers:
     update_state!,
     tick!,
-    compute_pressure_correction!,
-    correct_velocities_and_cache_previous_tendencies!,
     step_lagrangian_particles!,
     QuasiAdamsBashforth2TimeStepper,
-    compute_flux_bc_tendencies!
+    cache_previous_tendencies!
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     step_free_surface!,
@@ -34,7 +32,7 @@ function Clock(::ReactantGrid)
     FT = Oceananigans.defaults.FloatType
     t = ConcreteRNumber(zero(FT))
     iter = ConcreteRNumber(0)
-    stage = 0 #ConcreteRNumber(0)
+    stage = 1
     last_Δt = convert(FT, Inf)
     last_stage_Δt = convert(FT, Inf)
     return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
@@ -46,7 +44,7 @@ function Clock(grid::ShardedGrid)
     replicate = Sharding.Replicated(arch.connectivity)
     t = ConcreteRNumber(zero(FT), sharding=replicate)
     iter = ConcreteRNumber(0, sharding=replicate)
-    stage = 0 #ConcreteRNumber(0)
+    stage = 1
     last_Δt = convert(FT, Inf)
     last_stage_Δt = convert(FT, Inf)
     return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
@@ -87,8 +85,8 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}},
     ab2_timestepper.χ = χ
 
     # Full step for tracers, fractional step for velocities.
-    compute_flux_bc_tendencies!(model)
-    ab2_step!(model, Δt)
+    ab2_step!(model, Δt, callbacks)
+    cache_previous_tendencies!(model)
 
     tick!(model.clock, Δt)
 
@@ -105,10 +103,7 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}},
         model.clock.last_stage_Δt = Δt
     end
 
-    compute_pressure_correction!(model, Δt)
-    correct_velocities_and_cache_previous_tendencies!(model, Δt)
-
-    update_state!(model, callbacks; compute_tendencies=true)
+    update_state!(model, callbacks)
     step_lagrangian_particles!(model, Δt)
 
     # Return χ to initial value
@@ -134,4 +129,3 @@ function first_time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper
 end
 
 end # module
-

@@ -28,4 +28,3 @@ for Arch in Architectures, N in Ns
 
     SUITE[(Arch, N)] = benchmark
 end
-
