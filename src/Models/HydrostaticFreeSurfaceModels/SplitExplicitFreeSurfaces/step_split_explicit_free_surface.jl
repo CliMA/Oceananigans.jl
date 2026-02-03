@@ -79,32 +79,29 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
     η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
     Ũ, Ṽ    = state.Ũ, state.Ṽ
 
-    @apply_regionally barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
-    @apply_regionally free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
-
     U_args = (grid, Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
     η_args = (grid, Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
 
-    GC.@preserve η_args U_args begin
-        # We need to perform ~50 time-steps which means launching ~100 very small kernels: we are limited by latency of
-        # argument conversion to GPU-compatible values. To alleviate this penalty we convert first and then we substep!
-        @apply_regionally converted_η_args = convert_to_device(arch, η_args)
-        @apply_regionally converted_U_args = convert_to_device(arch, U_args)
-
+    GC.@preserve U_args η_args begin
         @unroll for substep in 1:Nsubsteps
             @inbounds averaging_weight = weights[substep]
             @inbounds transport_weight = transport_weights[substep]
 
             fill_halo_regions!(η)
-            @apply_regionally barotropic_velocity_kernel!(transport_weight, converted_U_args...)
+            @apply_regionally advance_barotropic_velocity_step!(arch, grid, parameters, transport_weight, U_args)
 
             fill_halo_regions!((U, V))
-            @apply_regionally free_surface_kernel!(averaging_weight, converted_η_args...)
+            @apply_regionally advance_free_surface_step!(arch, grid, parameters, averaging_weight, η_args)
         end
     end
 
     return nothing
 end
+
+advance_barotropic_velocity_step!(arch, grid, parameters, transport_weight, U_args) =
+    launch!(arch, grid, parameters, _split_explicit_barotropic_velocity!, transport_weight, U_args...)
+advance_free_surface_step!(arch, grid, parameters, averaging_weight, η_args) =
+    launch!(arch, grid, parameters, _split_explicit_free_surface!, averaging_weight, η_args...)
 
 function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
     arch = architecture(grid)
@@ -127,11 +124,11 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
     U_args = (grid, Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
     η_args = (grid, Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
 
-    GC.@preserve η_args U_args begin
+    GC.@preserve U_args η_args begin
         # We need to perform ~50 time-steps which means launching ~100 very small kernels: we are limited by latency of
         # argument conversion to GPU-compatible values. To alleviate this penalty we convert first and then we substep!
-        converted_η_args = convert_to_device(arch, η_args)
         converted_U_args = convert_to_device(arch, U_args)
+        converted_η_args = convert_to_device(arch, η_args)
 
         @unroll for substep in 1:Nsubsteps
             @inbounds averaging_weight = weights[substep]
