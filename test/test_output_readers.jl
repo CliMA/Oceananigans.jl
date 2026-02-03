@@ -324,14 +324,6 @@ function test_field_time_series_in_memory_split(arch, split_filepath, unsplit_fi
     return nothing
 end
 
-function test_field_time_series_in_memory(arch, filepath3d, filepath2d, filepath1d, split_filepath, unsplit_filepath, Nx, Ny, Nz, Nt)
-    test_field_time_series_in_memory_3d(arch, filepath3d, Nx, Ny, Nz, Nt)
-    test_field_time_series_in_memory_2d(arch, filepath2d, Nx, Ny, Nt)
-    test_field_time_series_in_memory_1d(arch, filepath1d, Nz, Nt)
-    test_field_time_series_in_memory_split(arch, split_filepath, unsplit_filepath)
-    return nothing
-end
-
 function test_field_time_series_pickup(arch)
     Random.seed!(1234)
     for n in -4:4
@@ -702,7 +694,7 @@ end
                 if output_writer == JLD2Writer
                     test_field_time_series_in_memory_2d(arch, filepath2d, Nx, Ny, Nt) # NetCDFWriter does not support 2D sliced fields with halos yet
                     test_field_time_series_in_memory_1d(arch, filepath1d, Nz, Nt) # FieldTimeSeries with NetCDF does not support 1D fields yet
-                    test_field_time_series_in_memory_split(arch, split_filepath, unsplit_filepath, Nx, Ny, Nz, Nt) # FieldTimeSeries with NetCDF does not support split fields yet
+                    test_field_time_series_in_memory_split(arch, split_filepath, unsplit_filepath) # FieldTimeSeries with NetCDF does not support split fields yet
                 end
             end
 
