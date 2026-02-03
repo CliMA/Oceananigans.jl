@@ -106,6 +106,7 @@ Keyword Arguments
 
 - `extend_halos`: Extend the halos and avoid calling `fill_halo_regions!` at each substep if `true`.
                   If `false`, after each individual update of `U` and `η`, `fill_halo_regions!` will be called.
+                  This keyword argument affects the computations only for grids with `Connected` topologies.
 
 - `averaging_kernel`: A function of `τ` used to average the barotropic transport `U` and the free surface
                       `η` within the barotropic advancement. `τ` is the fractional substep going from 0 to 2
@@ -237,10 +238,10 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
                              `free_surface = SplitExplicitFreeSurface(grid; substeps = N)` where `N::Int`"))
     end
 
-    if extend_halos
-        maybe_extended_grid = maybe_extend_halos(TX, TY, grid, substepping)
+    maybe_extended_grid = if extend_halos
+         maybe_extend_halos(TX, TY, grid, substepping)
     else
-        maybe_extended_grid = grid
+        grid
     end
 
     η = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid)
@@ -262,14 +263,15 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     filtered_state = (η̅ = η̅, U̅ = U̅, V̅ = V̅, Ũ = Ũ, Ṽ = Ṽ)
     barotropic_velocities = (U = U, V = V)
 
-    if extend_halos
-        @apply_regionally kernel_parameters = maybe_augmented_kernel_parameters(TX, TY, substepping, maybe_extended_grid)
+    kernel_parameters = if extend_halos
+        maybe_augmented_kernel_parameters(TX, TY, maybe_extended_grid, substepping)
     else
-        kernel_parameters = :xy
+        :xy
     end
 
     gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
-    timestepper = materialize_timestepper(free_surface.timestepper, maybe_extended_grid, free_surface, velocities, u_bcs, v_bcs)
+    timestepper = materialize_timestepper(free_surface.timestepper, maybe_extended_grid, free_surface, velocities,
+                                          u_bcs, v_bcs)
 
     return SplitExplicitFreeSurface{extend_halos}(η,
                                                   barotropic_velocities,
@@ -361,6 +363,20 @@ function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
 
     new_halos = (Hx, Hy, old_halos[3])
 
+    # Warn if extended halos are larger than or equal to interior grid size
+    # This can cause out-of-bounds memory access in distributed computations
+    Nx, Ny, _ = size(grid)
+    if Hx >= Nx && TX() isa ConnectedTopology
+        @warn "SplitExplicitFreeSurface: Extended halo size Hx=$Hx >= local grid size Nx=$Nx. " *
+              "This may cause incorrect results in distributed computations. " *
+              "Consider using a larger grid or fewer substeps."
+    end
+    if Hy >= Ny && TY() isa ConnectedTopology
+        @warn "SplitExplicitFreeSurface: Extended halo size Hy=$Hy >= local grid size Ny=$Ny. " *
+              "This may cause incorrect results in distributed computations. " *
+              "Consider using a larger grid or fewer substeps."
+    end
+
     if new_halos == old_halos
         return grid
     else
@@ -368,9 +384,9 @@ function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
     end
 end
 
-maybe_augmented_kernel_parameters(TX, TY, ::FixedTimeStepSize, grid) = :xy
+maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedTimeStepSize) = :xy
 
-function maybe_augmented_kernel_parameters(TX, TY, ::FixedSubstepNumber, grid)
+function maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedSubstepNumber)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
@@ -419,11 +435,11 @@ function prognostic_state(fs::SplitExplicitFreeSurface)
             timestepper = prognostic_state(fs.timestepper))
 end
 
-function restore_prognostic_state!(fs::SplitExplicitFreeSurface, state)
-    restore_prognostic_state!(fs.displacement, state.displacement)
-    restore_prognostic_state!(fs.barotropic_velocities, state.barotropic_velocities)
-    restore_prognostic_state!(fs.timestepper, state.timestepper)
-    return fs
+function restore_prognostic_state!(restored::SplitExplicitFreeSurface, from)
+    restore_prognostic_state!(restored.displacement, from.displacement)
+    restore_prognostic_state!(restored.barotropic_velocities, from.barotropic_velocities)
+    restore_prognostic_state!(restored.timestepper, from.timestepper)
+    return restored
 end
 
 restore_prognostic_state!(::SplitExplicitFreeSurface, ::Nothing) = nothing
