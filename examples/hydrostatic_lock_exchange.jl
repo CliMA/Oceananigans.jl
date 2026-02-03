@@ -98,6 +98,7 @@ model = HydrostaticFreeSurfaceModel(grid;
                                     tracers = :b,
                                     buoyancy = BuoyancyTracer(),
                                     closure = CATKEVerticalDiffusivity(),
+                                    timestepper = :SplitRungeKutta3,
                                     momentum_advection = WENO(order=5),
                                     tracer_advection = WENO(order=7),
                                     boundary_conditions = (; u=u_bcs),
@@ -115,7 +116,7 @@ set!(model, b=bᵢ)
 # adequately small values to maintain numerical stability.
 
 # Set the timesteps
-Δt = 1second
+Δt = 20second
 stop_time = 6hours
 simulation = Simulation(model; Δt, stop_time)
 
