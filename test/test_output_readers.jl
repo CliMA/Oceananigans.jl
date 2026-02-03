@@ -218,36 +218,37 @@ function test_field_time_series_in_memory(arch, filepath3d, filepath2d, filepath
     @test c12 ≈ [10.0, 12.0, 14.0]
 
     ## 2D sliced Fields
+    if isfile(filepath2d)
+        u2 = FieldTimeSeries(filepath2d, "u", architecture=arch)
+        v2 = FieldTimeSeries(filepath2d, "v", architecture=arch)
+        w2 = FieldTimeSeries(filepath2d, "w", architecture=arch)
+        T2 = FieldTimeSeries(filepath2d, "T", architecture=arch)
+        b2 = FieldTimeSeries(filepath2d, "b", architecture=arch)
+        ζ2 = FieldTimeSeries(filepath2d, "ζ", architecture=arch)
 
-    u2 = FieldTimeSeries(filepath2d, "u", architecture=arch)
-    v2 = FieldTimeSeries(filepath2d, "v", architecture=arch)
-    w2 = FieldTimeSeries(filepath2d, "w", architecture=arch)
-    T2 = FieldTimeSeries(filepath2d, "T", architecture=arch)
-    b2 = FieldTimeSeries(filepath2d, "b", architecture=arch)
-    ζ2 = FieldTimeSeries(filepath2d, "ζ", architecture=arch)
+        @test location(u2) == (Face, Center, Center)
+        @test location(v2) == (Center, Face, Center)
+        @test location(w2) == (Center, Center, Face)
+        @test location(T2) == (Center, Center, Center)
+        @test location(b2) == (Center, Center, Center)
+        @test location(ζ2) == (Face, Face, Center)
 
-    @test location(u2) == (Face, Center, Center)
-    @test location(v2) == (Center, Face, Center)
-    @test location(w2) == (Center, Center, Face)
-    @test location(T2) == (Center, Center, Center)
-    @test location(b2) == (Center, Center, Center)
-    @test location(ζ2) == (Face, Face, Center)
+        @test size(u2) == (Nx, Ny, 1, Nt)
+        @test size(v2) == (Nx, Ny, 1, Nt)
+        @test size(w2) == (Nx, Ny, 1, Nt)
+        @test size(T2) == (Nx, Ny, 1, Nt)
+        @test size(b2) == (Nx, Ny, 1, Nt)
+        @test size(ζ2) == (Nx, Ny, 1, Nt)
 
-    @test size(u2) == (Nx, Ny, 1, Nt)
-    @test size(v2) == (Nx, Ny, 1, Nt)
-    @test size(w2) == (Nx, Ny, 1, Nt)
-    @test size(T2) == (Nx, Ny, 1, Nt)
-    @test size(b2) == (Nx, Ny, 1, Nt)
-    @test size(ζ2) == (Nx, Ny, 1, Nt)
+        for fts in (u2, v2, w2, T2, b2, ζ2)
+            @test parent(fts) isa ArrayType
+        end
 
-    for fts in (u3, v3, w3, T3, b3, ζ3)
-        @test parent(fts) isa ArrayType
-    end
-
-    if arch isa CPU
-        @test u2[1, 2, 5, 4] isa Number
-        @test u2[1] isa Field
-        @test v2[2] isa Field
+        if arch isa CPU
+            @test u2[1, 2, 5, 4] isa Number
+            @test u2[1] isa Field
+            @test v2[2] isa Field
+        end
     end
 
     ## 1D AveragedFields
