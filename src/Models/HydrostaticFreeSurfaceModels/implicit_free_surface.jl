@@ -1,8 +1,9 @@
-using Oceananigans.Grids: AbstractGrid, XYRegularRG
+using Oceananigans.Grids: AbstractGrid, XYRegularRG, static_column_depthᶜᶜᵃ
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Solvers: solve!
 using Oceananigans.Utils: prettytime, prettysummary
+using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.DistributedComputations: synchronize_communication!
@@ -130,13 +131,12 @@ function step_free_surface!(free_surface::ImplicitFreeSurface, model, timesteppe
     rhs    = free_surface.implicit_step_solver.right_hand_side
     solver = free_surface.implicit_step_solver
 
-    fill_halo_regions!(model.velocities, model.clock, fields(model))
-
     @apply_regionally begin
         mask_immersed_field!(model.velocities.u)
         mask_immersed_field!(model.velocities.v)
     end
 
+    fill_halo_regions!(model.velocities, model.clock, fields(model))
     compute_implicit_free_surface_right_hand_side!(rhs, solver, g, Δt, model.velocities, η)
 
     # Solve for the free surface at tⁿ⁺¹
@@ -161,19 +161,20 @@ end
 ##### Compute transport velocities for RK discretization
 #####
 
+# Compute transport velocities for tracer advection
 function compute_transport_velocities!(model, free_surface::ImplicitFreeSurface)
     grid = model.grid
     u, v, w = model.velocities
-    ũ, ṽ, w̃ = model.transport_velocities
+    ũ, ṽ, w̃ = model.transport_velocities
 
     # Make sure updated velocities are masked
     mask_immersed_field!(u)
     mask_immersed_field!(v)
 
-    launch!(architecture(grid), grid, :xy, _compute_transport_velocities!, ũ, ṽ, grid, u, v)
+    launch!(architecture(grid), grid, :xy, _compute_transport_velocities!, ũ, ṽ, grid, u, v)
 
     # Fill transport velocities
-    fill_halo_regions!((ũ, ṽ); async=true)
+    fill_halo_regions!((ũ, ṽ); async=true)
 
     # Update grid velocity and vertical transport velocity
     @apply_regionally update_vertical_velocities!(model.transport_velocities, model.grid, model)
@@ -181,27 +182,27 @@ function compute_transport_velocities!(model, free_surface::ImplicitFreeSurface)
     return nothing
 end
 
-@kernel function _compute_transport_velocities!(ũ, ṽ, grid, u, v)
+@kernel function _compute_transport_velocities!(ũ, ṽ, grid, u, v)
     i, j = @index(Global, NTuple)
     Nz   = size(grid, 3)
     Hᶠᶜ  = column_depthᶠᶜᵃ(i, j, grid)
     Hᶜᶠ  = column_depthᶜᶠᵃ(i, j, grid)
 
     # Barotropic velocities
-    Ũᵐ⁺¹ = barotropic_U(i, j, Nz, grid, u)
-    Ṽᵐ⁺¹ = barotropic_V(i, j, Nz, grid, v)
-    Ũ    = barotropic_U(i, j, Nz, grid, ũ)
-    Ṽ    = barotropic_V(i, j, Nz, grid, ṽ)
+    Ũᵐ⁺¹ = barotropic_U(i, j, Nz, grid, u)
+    Ṽᵐ⁺¹ = barotropic_V(i, j, Nz, grid, v)
+    Ũ    = barotropic_U(i, j, Nz, grid, ũ)
+    Ṽ    = barotropic_V(i, j, Nz, grid, ṽ)
 
-    δuᵢ = ifelse(Hᶠᶜ == 0, zero(grid), (Ũᵐ⁺¹ - Ũ) / Hᶠᶜ)
-    δvⱼ = ifelse(Hᶜᶠ == 0, zero(grid), (Ṽᵐ⁺¹ - Ṽ) / Hᶜᶠ)
+    δuᵢ = ifelse(Hᶠᶜ == 0, zero(grid), (Ũᵐ⁺¹ - Ũ) / Hᶠᶜ)
+    δvⱼ = ifelse(Hᶜᶠ == 0, zero(grid), (Ṽᵐ⁺¹ - Ṽ) / Hᶜᶠ)
 
     @inbounds for k in 1:Nz
         immersedᶠᶜᶜ = peripheral_node(i, j, k, grid, Face(), Center(), Center())
         immersedᶜᶠᶜ = peripheral_node(i, j, k, grid, Center(), Face(), Center())
 
-        ũ[i, j, k] = ifelse(immersedᶠᶜᶜ, zero(grid), ũ[i, j, k] + δuᵢ)
-        ṽ[i, j, k] = ifelse(immersedᶜᶠᶜ, zero(grid), ṽ[i, j, k] + δvⱼ)
+        ũ[i, j, k] = ifelse(immersedᶠᶜᶜ, zero(grid), ũ[i, j, k] + δuᵢ)
+        ṽ[i, j, k] = ifelse(immersedᶜᶠᶜ, zero(grid), ṽ[i, j, k] + δvⱼ)
     end
 end
 

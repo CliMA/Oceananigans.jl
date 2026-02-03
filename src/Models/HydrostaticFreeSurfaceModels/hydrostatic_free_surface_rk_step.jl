@@ -1,5 +1,5 @@
 using Oceananigans.TurbulenceClosures: implicit_step!
-using Oceananigans.ImmersedBoundaries: peripheral_node
+using Oceananigans.ImmersedBoundaries: peripheral_node, MutableGridOfSomeKind
 
 import Oceananigans.TimeSteppers: rk_substep!, cache_current_fields!
 
@@ -89,11 +89,11 @@ For implicit free surfaces, a predictor-corrector approach is used:
     step_free_surface!(free_surface, model, model.timestepper, Δτ)
 
     # Correct for the updated barotropic mode
-    @apply_regionally begin
-        correct_barotropic_mode!(model, Δτ)
+    @apply_regionally correct_barotropic_mode!(model, Δτ)
 
-        # Compute transport velocities
-        compute_transport_velocities!(model, free_surface)
+    compute_transport_velocities!(model, free_surface)
+
+    @apply_regionally begin
         compute_tracer_tendencies!(model)
 
         rk_substep_grid!(model.grid, model, model.vertical_coordinate, Δτ)
