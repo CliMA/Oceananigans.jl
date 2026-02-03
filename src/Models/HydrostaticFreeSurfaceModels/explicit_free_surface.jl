@@ -197,7 +197,7 @@ end
 #####
 
 function prognostic_state(fs::ExplicitFreeSurface)
-    return (; η = prognostic_state(fs.η))
+    return (; η = prognostic_state(fs.displacement))
 end
 
 function restore_prognostic_state!(restored::ExplicitFreeSurface, from)
