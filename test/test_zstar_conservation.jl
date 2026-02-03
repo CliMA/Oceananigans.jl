@@ -12,7 +12,7 @@ grid_type(::LatitudeLongitudeGrid{F, X, Y}) where {F, X, Y} = "LatLon{$X, $Y}"
 
 grid_type(g::ImmersedBoundaryGrid) = "Immersed" * grid_type(g.underlying_grid)
 
-function test_zstar_coordinate(model, Ni, Δt, test_local_conservation=true)
+function test_zstar_coordinate(model, Ni, Δt)
 
     bᵢ = deepcopy(model.tracers.b)
     cᵢ = deepcopy(model.tracers.c)
