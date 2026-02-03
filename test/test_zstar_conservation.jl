@@ -66,9 +66,6 @@ function info_message(grid, free_surface, timestepper)
     return msg1 * msg2 * msg3 * msg4
 end
 
-const LLGOfSomeKind = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:LatitudeLongitudeGrid}}
-
-
 @testset "ZStarCoordinate tracer conservation testset" begin
     z_stretched = MutableVerticalDiscretization(collect(-10:0))
 
