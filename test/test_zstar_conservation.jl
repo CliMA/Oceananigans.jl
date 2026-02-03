@@ -118,7 +118,7 @@ const LLGOfSomeKind = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <
                 split_free_surface    = SplitExplicitFreeSurface(grid; substeps=8)
                 explicit_free_surface = ExplicitFreeSurface()
 
-                for free_surface in [implicit_free_surface] # [explicit_free_surface, split_free_surface, implicit_free_surface]
+                for free_surface in [explicit_free_surface, split_free_surface, implicit_free_surface]
 
                     # These combination of parameters lead to the parameter error:
                     # Kernel invocation uses too much parameter memory.
