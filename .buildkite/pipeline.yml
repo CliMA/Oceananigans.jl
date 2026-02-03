@@ -165,6 +165,10 @@ steps:
       group="{{ matrix.group }}"
       export TEST_GROUP="\${group#* }"
       echo $TEST_GROUP
+    
+      # Installing version 0.2.210 of Reactant since tests seem to fail with version 0.2.211
+      # See issue https://github.com/CliMA/Oceananigans.jl/issues/5249
+      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project -e 'using Pkg;  Pkg.add(Pkg.PackageSpec(name="Reactant", version="0.2.210"))'
 
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
@@ -180,7 +184,6 @@ steps:
       group_slug="{{ matrix.group }}"
       group_slug="$${group_slug//[^A-Za-z0-9_.-]/_}"
       tarball="coverage-${BUILDKITE_BUILD_NUMBER}-${BUILDKITE_JOB_ID}-{{ matrix.architecture }}-$${group_slug}.tgz"
-
 
       find . -type f -name "*.cov" > cov_list.txt
       echo "Coverage files found:" `wc -l < cov_list.txt`
