@@ -884,9 +884,9 @@ function prognostic_state(field::Field)
     return (; data = prognostic_state(field.data))
 end
 
-function restore_prognostic_state!(field::Field, state)
-    restore_prognostic_state!(field.data, state.data)
-    return field
+function restore_prognostic_state!(restored::Field, from)
+    restore_prognostic_state!(restored.data, from.data)
+    return restored
 end
 
 restore_prognostic_state!(::Field, ::Nothing) = nothing
