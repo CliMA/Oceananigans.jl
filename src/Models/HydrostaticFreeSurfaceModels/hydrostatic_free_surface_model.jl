@@ -292,11 +292,14 @@ function initialization_update_state!(model::HydrostaticFreeSurfaceModel)
 end
 
 transport_velocity_fields(velocities, ::ExplicitFreeSurface) = velocities
+transport_velocity_fields(velocities::PrescribedVelocityFields, free_surface) = velocities
+transport_velocity_fields(velocities::PrescribedVelocityFields, ::ExplicitFreeSurface) = velocities
 
 transport_velocity_fields(velocities, free_surface) =
     (u = XFaceField(velocities.u.grid; boundary_conditions=velocities.u.boundary_conditions),
      v = YFaceField(velocities.v.grid; boundary_conditions=velocities.v.boundary_conditions),
      w = ZFaceField(velocities.w.grid; boundary_conditions=velocities.w.boundary_conditions))
+
 
 validate_velocity_boundary_conditions(grid, velocities) = validate_vertical_velocity_boundary_conditions(velocities.w)
 
