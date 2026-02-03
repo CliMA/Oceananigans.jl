@@ -25,7 +25,7 @@ julia> Pkg.add("Oceananigans")
 ```
 
 !!! compat "Julia 1.10 or later is required"
-    Oceananigans requires Julia 1.9 or later.
+    Oceananigans requires Julia 1.10 or later.
 
 !!! info "Tested Julia versions"
     Oceananigans is currently tested on Julia 1.12.
