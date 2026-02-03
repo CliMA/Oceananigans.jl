@@ -150,7 +150,7 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
 
     @testset "compute_simple_Gu! correctness" begin
         advection_schemes = (nothing, Centered(), WENO())
-        
+
         # Helper to get advection name for testset
         adv_name(::Nothing) = "nothing"
         adv_name(a) = string(nameof(typeof(a)))
@@ -297,7 +297,7 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
         equation_of_state = TEOS10EquationOfState()
         buoyancy = SeawaterBuoyancy(; equation_of_state)
         tracers = (:T, :S)
-        
+
         # Use SplitExplicitFreeSurface (FFT-based ImplicitFreeSurface doesn't work with reactnt)
         free_surface = SplitExplicitFreeSurface(vanilla_grid; substeps = 10)
 
@@ -320,11 +320,11 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                 # Note: Use pre-computed arrays, NOT functions with randn(),
                 # because randn() would be called at different times for each model
                 Random.seed!(98765)
-                
+
                 # Small velocity perturbations
                 u_init = 0.1 * randn(Nx, Ny, Nz)
                 v_init = 0.1 * randn(Nx, Ny, Nz)
-                
+
                 # Realistic T/S with vertical gradient and small perturbations
                 T_init = [20.0 + 5.0 * (k - 0.5) / Nz + 0.01 * randn() for i=1:Nx, j=1:Ny, k=1:Nz]
                 S_init = [35.0 + 0.01 * randn() for i=1:Nx, j=1:Ny, k=1:Nz]
