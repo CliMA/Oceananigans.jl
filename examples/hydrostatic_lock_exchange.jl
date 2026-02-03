@@ -122,8 +122,11 @@ simulation = Simulation(model; Δt, stop_time)
 
 # The [`TimeStepWizard`](@ref) is incorporated in the simulation via the
 # [`conjure_time_step_wizard!`](@ref) helper function and it ensures stable
-# time-stepping with a Courant-Freidrichs-Lewy (CFL) number of 0.35.
-conjure_time_step_wizard!(simulation, cfl=0.3)
+# time-stepping with a Courant-Freidrichs-Lewy (CFL) number of 0.7.
+# Note that the suitability of the wizard depends on the model's `timestepper`.
+# In this case we use a single-step method (a Runge-Kutta discretization)
+# which allows the use of a variable time-step
+conjure_time_step_wizard!(simulation, cfl=0.7)
 
 # ## Track Simulation Progress
 
