@@ -45,6 +45,8 @@ function FieldTimeSeries(typed_path::NetCDFPath, name::String;
 
     isnothing(grid) && (grid = reconstruct_grid(file))
 
+    # Convert grid to specified architecture
+    grid = on_architecture(architecture, grid)
 
     isnothing(location) && (location = file[name].attrib["location"] |> materialize_from_netcdf)
     LX, LY, LZ = location
@@ -176,10 +178,10 @@ function set_from_netcdf!(fts::InMemoryFTS, path::String, name; warn_missing_dat
         else
             file_iter = file_iterations[file_index]
 
-            # Note: use the CPU for this step
+            # Load field data on the appropriate architecture
             field_n = Field(instantiated_location(fts), file, name, file_iter,
-                            grid = on_architecture(CPU(), fts.grid),
-                            architecture = cpu_architecture(arch),
+                            grid = on_architecture(arch, fts.grid),
+                            architecture = arch,
                             indices = fts.indices,
                             boundary_conditions = fts.boundary_conditions)
 
