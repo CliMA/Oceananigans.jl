@@ -138,7 +138,7 @@ function test_pickup_with_inaccurate_times()
     return nothing
 end
 
-function test_field_time_series_in_memory(arch, filepath3d, filepath2d, filepath1d, split_filepath, unsplit_filepath, Nx, Ny, Nz, Nt)
+function test_field_time_series_in_memory_3d(arch, filepath3d, Nx, Ny, Nz, Nt)
     # 3D Fields
     u3 = FieldTimeSeries(filepath3d, "u", architecture=arch)
     v3 = FieldTimeSeries(filepath3d, "v", architecture=arch)
@@ -146,7 +146,6 @@ function test_field_time_series_in_memory(arch, filepath3d, filepath2d, filepath
     T3 = FieldTimeSeries(filepath3d, "T", architecture=arch)
     b3 = FieldTimeSeries(filepath3d, "b", architecture=arch)
     ζ3 = FieldTimeSeries(filepath3d, "ζ", architecture=arch)
-    # @infiltrate
 
     # This behavior ensures that set! works
     # but perhaps should be changed in the future
@@ -217,42 +216,53 @@ function test_field_time_series_in_memory(arch, filepath3d, filepath2d, filepath
     @test c11 ≈ [5.0, 6.0, 7.0]
     @test c12 ≈ [10.0, 12.0, 14.0]
 
+    return nothing
+end
+
+function test_field_time_series_in_memory_2d(arch, filepath2d, Nx, Ny, Nt)
     ## 2D sliced Fields
-    if isfile(filepath2d)
-        u2 = FieldTimeSeries(filepath2d, "u", architecture=arch)
-        v2 = FieldTimeSeries(filepath2d, "v", architecture=arch)
-        w2 = FieldTimeSeries(filepath2d, "w", architecture=arch)
-        T2 = FieldTimeSeries(filepath2d, "T", architecture=arch)
-        b2 = FieldTimeSeries(filepath2d, "b", architecture=arch)
-        ζ2 = FieldTimeSeries(filepath2d, "ζ", architecture=arch)
-
-        @test location(u2) == (Face, Center, Center)
-        @test location(v2) == (Center, Face, Center)
-        @test location(w2) == (Center, Center, Face)
-        @test location(T2) == (Center, Center, Center)
-        @test location(b2) == (Center, Center, Center)
-        @test location(ζ2) == (Face, Face, Center)
-
-        @test size(u2) == (Nx, Ny, 1, Nt)
-        @test size(v2) == (Nx, Ny, 1, Nt)
-        @test size(w2) == (Nx, Ny, 1, Nt)
-        @test size(T2) == (Nx, Ny, 1, Nt)
-        @test size(b2) == (Nx, Ny, 1, Nt)
-        @test size(ζ2) == (Nx, Ny, 1, Nt)
-
-        for fts in (u2, v2, w2, T2, b2, ζ2)
-            @test parent(fts) isa ArrayType
-        end
-
-        if arch isa CPU
-            @test u2[1, 2, 5, 4] isa Number
-            @test u2[1] isa Field
-            @test v2[2] isa Field
-        end
+    if !isfile(filepath2d)
+        @warn "Skipping 2D sliced fields test: $filepath2d does not exist"
+        return nothing
     end
 
-    ## 1D AveragedFields
+    u2 = FieldTimeSeries(filepath2d, "u", architecture=arch)
+    v2 = FieldTimeSeries(filepath2d, "v", architecture=arch)
+    w2 = FieldTimeSeries(filepath2d, "w", architecture=arch)
+    T2 = FieldTimeSeries(filepath2d, "T", architecture=arch)
+    b2 = FieldTimeSeries(filepath2d, "b", architecture=arch)
+    ζ2 = FieldTimeSeries(filepath2d, "ζ", architecture=arch)
 
+    @test location(u2) == (Face, Center, Center)
+    @test location(v2) == (Center, Face, Center)
+    @test location(w2) == (Center, Center, Face)
+    @test location(T2) == (Center, Center, Center)
+    @test location(b2) == (Center, Center, Center)
+    @test location(ζ2) == (Face, Face, Center)
+
+    @test size(u2) == (Nx, Ny, 1, Nt)
+    @test size(v2) == (Nx, Ny, 1, Nt)
+    @test size(w2) == (Nx, Ny, 1, Nt)
+    @test size(T2) == (Nx, Ny, 1, Nt)
+    @test size(b2) == (Nx, Ny, 1, Nt)
+    @test size(ζ2) == (Nx, Ny, 1, Nt)
+
+    ArrayType = array_type(arch)
+    for fts in (u2, v2, w2, T2, b2, ζ2)
+        @test parent(fts) isa ArrayType
+    end
+
+    if arch isa CPU
+        @test u2[1, 2, 5, 4] isa Number
+        @test u2[1] isa Field
+        @test v2[2] isa Field
+    end
+
+    return nothing
+end
+
+function test_field_time_series_in_memory_1d(arch, filepath1d, Nz, Nt)
+    ## 1D AveragedFields
     u1 = FieldTimeSeries(filepath1d, "u", architecture=arch)
     v1 = FieldTimeSeries(filepath1d, "v", architecture=arch)
     w1 = FieldTimeSeries(filepath1d, "w", architecture=arch)
@@ -274,6 +284,7 @@ function test_field_time_series_in_memory(arch, filepath3d, filepath2d, filepath
     @test size(b1) == (1, 1, Nz,   Nt)
     @test size(ζ1) == (1, 1, Nz,   Nt)
 
+    ArrayType = array_type(arch)
     for fts in (u1, v1, w1, T1, b1, ζ1)
         @test parent(fts) isa ArrayType
     end
@@ -284,6 +295,10 @@ function test_field_time_series_in_memory(arch, filepath3d, filepath2d, filepath
         @test v1[2] isa Field
     end
 
+    return nothing
+end
+
+function test_field_time_series_in_memory_split(arch, split_filepath, unsplit_filepath)
     us = FieldTimeSeries(split_filepath, "u", architecture=arch)
     vs = FieldTimeSeries(split_filepath, "v", architecture=arch)
     ws = FieldTimeSeries(split_filepath, "w", architecture=arch)
@@ -306,6 +321,14 @@ function test_field_time_series_in_memory(arch, filepath3d, filepath2d, filepath
         @test parent(s) == parent(u)
     end
 
+    return nothing
+end
+
+function test_field_time_series_in_memory(arch, filepath3d, filepath2d, filepath1d, split_filepath, unsplit_filepath, Nx, Ny, Nz, Nt)
+    test_field_time_series_in_memory_3d(arch, filepath3d, Nx, Ny, Nz, Nt)
+    test_field_time_series_in_memory_2d(arch, filepath2d, Nx, Ny, Nt)
+    test_field_time_series_in_memory_1d(arch, filepath1d, Nz, Nt)
+    test_field_time_series_in_memory_split(arch, split_filepath, unsplit_filepath)
     return nothing
 end
 
@@ -674,7 +697,13 @@ end
         for arch in archs
             @testset "FieldTimeSeries{InMemory} [$(typeof(arch))] with $output_writer" begin
                 @info "  Testing FieldTimeSeries{InMemory} [$(typeof(arch))]..."
-                test_field_time_series_in_memory(arch, filepath3d, filepath2d, filepath1d, split_filepath, unsplit_filepath, Nx, Ny, Nz, Nt)
+                test_field_time_series_in_memory_3d(arch, filepath3d, Nx, Ny, Nz, Nt)
+
+                if output_writer == JLD2Writer
+                    test_field_time_series_in_memory_2d(arch, filepath2d, Nx, Ny, Nt) # NetCDFWriter does not support 2D sliced fields with halos yet
+                    test_field_time_series_in_memory_1d(arch, filepath1d, Nz, Nt) # FieldTimeSeries with NetCDF does not support 1D fields yet
+                    test_field_time_series_in_memory_split(arch, split_filepath, unsplit_filepath, Nx, Ny, Nz, Nt) # FieldTimeSeries with NetCDF does not support split fields yet
+                end
             end
 
             if output_writer == JLD2Writer
