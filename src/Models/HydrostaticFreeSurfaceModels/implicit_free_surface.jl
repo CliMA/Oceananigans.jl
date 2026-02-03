@@ -126,17 +126,18 @@ synchronize_communication!(::ImplicitFreeSurface) = nothing
 Implicitly step forward η.
 """
 function step_free_surface!(free_surface::ImplicitFreeSurface, model, timestepper, Δt)
-    η      = free_surface.displacement
-    g      = free_surface.gravitational_acceleration
-    rhs    = free_surface.implicit_step_solver.right_hand_side
-    solver = free_surface.implicit_step_solver
+    η       = free_surface.displacement
+    g       = free_surface.gravitational_acceleration
+    rhs     = free_surface.implicit_step_solver.right_hand_side
+    solver  = free_surface.implicit_step_solver
+    u, v, _ = model.velocities
 
     @apply_regionally begin
-        mask_immersed_field!(model.velocities.u)
-        mask_immersed_field!(model.velocities.v)
+        mask_immersed_field!(u)
+        mask_immersed_field!(v)
     end
 
-    fill_halo_regions!(model.velocities, model.clock, fields(model))
+    fill_halo_regions!((u, v), model.clock, fields(model))
     compute_implicit_free_surface_right_hand_side!(rhs, solver, g, Δt, model.velocities, η)
 
     # Solve for the free surface at tⁿ⁺¹
@@ -174,7 +175,7 @@ function compute_transport_velocities!(model, free_surface::ImplicitFreeSurface)
     launch!(architecture(grid), grid, :xy, _compute_transport_velocities!, ũ, ṽ, grid, u, v)
 
     # Fill transport velocities
-    fill_halo_regions!((ũ, ṽ); async=true)
+    fill_halo_regions!((ũ, ṽ), model.clock, fields(model); async=true)
 
     # Update grid velocity and vertical transport velocity
     @apply_regionally update_vertical_velocities!(model.transport_velocities, model.grid, model)
