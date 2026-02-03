@@ -2,7 +2,6 @@
 ##### Reading FieldTimeSeries from NetCDF Files
 #####
 
-using Oceananigans.Architectures: cpu_architecture
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions
 using Oceananigans.Fields: instantiated_location
 using Oceananigans.Grids: offset_data
