@@ -162,7 +162,7 @@ function set_from_netcdf!(fts::InMemoryFTS, path::String, name; warn_missing_dat
 
     # Index times on the CPU
     cpu_times = on_architecture(CPU(), fts.times)
-
+    grid = on_architecture(arch, fts.grid)
     for n in time_indices(fts)
         t = cpu_times[n]
         file_index = find_time_index(t, file_times, Δt)
@@ -177,11 +177,11 @@ function set_from_netcdf!(fts::InMemoryFTS, path::String, name; warn_missing_dat
             file_iter = file_iterations[file_index]
 
             # Load field data on the appropriate architecture
-            field_n = Field(instantiated_location(fts), file, name, file_iter,
-                            grid = on_architecture(arch, fts.grid),
+            field_n = Field(instantiated_location(fts), file, name, file_iter;
+                            grid,
                             architecture = arch,
-                            indices = fts.indices,
-                            boundary_conditions = fts.boundary_conditions)
+                            fts.indices,
+                            fts.boundary_conditions)
 
             set!(fts[n], field_n)
         end
