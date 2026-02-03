@@ -1,3 +1,5 @@
+using Oceananigans: fields
+
 # Kernels to compute the vertical integral of the velocities
 @kernel function _compute_barotropic_mode!(U̅, V̅, grid, u, v)
     i, j  = @index(Global, NTuple)
