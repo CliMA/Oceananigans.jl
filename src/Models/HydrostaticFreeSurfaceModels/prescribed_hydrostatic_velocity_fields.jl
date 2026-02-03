@@ -120,6 +120,10 @@ step_free_surface!(::Nothing, model, timestepper, Δt) = nothing
 compute_w_from_continuity!(::PrescribedVelocityFields, args...; kwargs...) = nothing
 mask_immersed_velocities!(::PrescribedVelocityFields) = nothing
 
+# No need for extra velocities
+transport_velocity_fields(velocities::PrescribedVelocityFields, free_surface) = velocities
+transport_velocity_fields(velocities::PrescribedVelocityFields, ::ExplicitFreeSurface) = velocities
+
 validate_velocity_boundary_conditions(grid, ::PrescribedVelocityFields) = nothing
 extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()
 
