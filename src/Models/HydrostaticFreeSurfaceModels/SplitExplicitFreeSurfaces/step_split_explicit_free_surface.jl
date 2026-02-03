@@ -1,4 +1,3 @@
-using KernelAbstractions.Extras.LoopInfo: @unroll
 using Oceananigans.ImmersedBoundaries: column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ
 
 # Evolution Kernels
@@ -91,7 +90,7 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
         converted_η_args = convert_to_device(arch, η_args)
         converted_U_args = convert_to_device(arch, U_args)
 
-        @unroll for substep in 1:Nsubsteps
+        for substep in 1:Nsubsteps
             @inbounds averaging_weight = weights[substep]
             @inbounds transport_weight = transport_weights[substep]
 
@@ -133,7 +132,7 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
         converted_η_args = convert_to_device(arch, η_args)
         converted_U_args = convert_to_device(arch, U_args)
 
-        @unroll for substep in 1:Nsubsteps
+        for substep in 1:Nsubsteps
             @inbounds averaging_weight = weights[substep]
             @inbounds transport_weight = transport_weights[substep]
 
