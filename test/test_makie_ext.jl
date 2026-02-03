@@ -149,7 +149,7 @@ sequential_data(sz::NTuple{N, Int}) where N = reshape(Float64.(1:prod(sz)), sz..
     end
 
     @testset "surface! on TripolarGrid" begin
-        grid = TripolarGrid(size=(8, 6, 1), z=(0, 1))
+        grid = TripolarGrid(size=(8, 10, 1), z=(0, 1))
         T = CenterField(grid)
         set!(T, (λ, φ, z) -> cosd(φ))
 
