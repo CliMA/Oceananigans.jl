@@ -82,16 +82,43 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
     U_args = (grid, Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
     η_args = (grid, Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
 
+    @apply_regionally begin
+        converted_grid = convert_to_device(arch, grid)
+        converted_η    = convert_to_device(arch, η)
+        converted_U    = convert_to_device(arch, U)
+        converted_V    = convert_to_device(arch, V)
+        converted_GUⁿ  = convert_to_device(arch, GUⁿ)
+        converted_GVⁿ  = convert_to_device(arch, GVⁿ)
+        converted_Ũ    = convert_to_device(arch, Ũ)
+        converted_Ṽ    = convert_to_device(arch, Ṽ)
+        converted_η̅    = convert_to_device(arch, η̅)
+        converted_U̅    = convert_to_device(arch, U̅)
+        converted_V̅    = convert_to_device(arch, V̅)
+    end
+
+    converted_Δτᴮ         = convert_to_device(arch, Δτᴮ)
+    converted_g           = convert_to_device(arch, g)
+    converted_timestepper = convert_to_device(arch, timestepper)
+    converted_F           = convert_to_device(arch, F)
+    converted_clock       = convert_to_device(arch, clock)
+
     GC.@preserve U_args η_args begin
+        # We need to perform ~50 time-steps which means launching ~100 very small kernels: we are limited by latency of
+        # argument conversion to GPU-compatible values. To alleviate this penalty we convert first and then we substep!
+        converted_U_args = (converted_grid, converted_Δτᴮ, converted_η, converted_U, converted_V, converted_GUⁿ,
+                            converted_GVⁿ, converted_g, converted_Ũ, converted_Ṽ, converted_timestepper)
+        converted_η_args = (converted_grid, converted_Δτᴮ, converted_η, converted_U, converted_V, converted_F,
+                            converted_clock, converted_η̅, converted_U̅, converted_V̅, converted_timestepper)
+
         @unroll for substep in 1:Nsubsteps
             @inbounds averaging_weight = weights[substep]
             @inbounds transport_weight = transport_weights[substep]
 
             fill_halo_regions!(η)
-            @apply_regionally advance_barotropic_velocity_step!(arch, grid, parameters, transport_weight, U_args)
+            @apply_regionally advance_barotropic_velocity_step!(arch, grid, parameters, transport_weight, converted_U_args)
 
             fill_halo_regions!((U, V))
-            @apply_regionally advance_free_surface_step!(arch, grid, parameters, averaging_weight, η_args)
+            @apply_regionally advance_free_surface_step!(arch, grid, parameters, averaging_weight, converted_η_args)
         end
     end
 
