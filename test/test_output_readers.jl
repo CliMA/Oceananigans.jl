@@ -221,11 +221,6 @@ end
 
 function test_field_time_series_in_memory_2d(arch, filepath2d, Nx, Ny, Nt)
     ## 2D sliced Fields
-    if !isfile(filepath2d)
-        @warn "Skipping 2D sliced fields test: $filepath2d does not exist"
-        return nothing
-    end
-
     u2 = FieldTimeSeries(filepath2d, "u", architecture=arch)
     v2 = FieldTimeSeries(filepath2d, "v", architecture=arch)
     w2 = FieldTimeSeries(filepath2d, "w", architecture=arch)
