@@ -51,7 +51,7 @@ model = HydrostaticFreeSurfaceModel(grid;
                                     tracers = (:b, :c),
                                     closure = HorizontalScalarDiffusivity(ν=100),
                                 timestepper = :QuasiAdamsBashforth2,
-                               free_surface =  ImplicitFreeSurface(), # SplitExplicitFreeSurface(grid; substeps=20),  # 
+                               free_surface =  ImplicitFreeSurface(), # SplitExplicitFreeSurface(grid; substeps=20), #
                            auxiliary_fields = (; Δtb², b⁻))
 
 g = model.free_surface.gravitational_acceleration

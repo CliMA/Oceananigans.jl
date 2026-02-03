@@ -105,7 +105,7 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
         correct_barotropic_mode!(model, Δt)
 
         # Compute transport velocities
-        compute_transport_velocities!(model, free_surface)        
+        compute_transport_velocities!(model, free_surface)
         compute_tracer_tendencies!(model)
 
         ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)

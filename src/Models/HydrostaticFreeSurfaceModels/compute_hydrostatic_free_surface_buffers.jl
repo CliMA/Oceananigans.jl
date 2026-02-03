@@ -105,7 +105,7 @@ function complete_communication_and_compute_tracer_buffer!(model::HydrostaticFre
     # synchronize the free surface
     synchronize_communication!(model.free_surface)
 
-    # We do not need to synchronize the transport velocities 
+    # We do not need to synchronize the transport velocities
     # for an ExplicitFreeSurface (`transport_velocities === velocities`)
     if !(model.free_surface isa ExplicitFreeSurface)
         ũ, ṽ, _ = model.transport_velocities
