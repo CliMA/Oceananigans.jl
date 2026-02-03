@@ -123,6 +123,7 @@ mask_immersed_velocities!(::PrescribedVelocityFields) = nothing
 # No need for extra velocities
 transport_velocity_fields(velocities::PrescribedVelocityFields, free_surface) = velocities
 transport_velocity_fields(velocities::PrescribedVelocityFields, ::ExplicitFreeSurface) = velocities
+transport_velocity_fields(velocities::PrescribedVelocityFields, ::Nothing) = velocities
 
 validate_velocity_boundary_conditions(grid, ::PrescribedVelocityFields) = nothing
 extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()

@@ -4,7 +4,7 @@ using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochem
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
 using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
 using Oceananigans.DistributedComputations: Distributed
-using Oceananigans.Fields: CenterField, tracernames, TracerFields, Field
+using Oceananigans.Fields: CenterField, tracernames, TracerFields
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
@@ -291,11 +291,11 @@ function initialization_update_state!(model::HydrostaticFreeSurfaceModel)
     return nothing
 end
 
+transport_velocity_fields(velocities, ::Nothing) = velocities
 transport_velocity_fields(velocities, ::ExplicitFreeSurface) = velocities
-transport_velocity_fields(velocities, free_surface) =
-    (u = XFaceField(velocities.u.grid; boundary_conditions=velocities.u.boundary_conditions),
-     v = YFaceField(velocities.v.grid; boundary_conditions=velocities.v.boundary_conditions),
-     w = ZFaceField(velocities.w.grid; boundary_conditions=velocities.w.boundary_conditions))
+transport_velocity_fields(velocities, free_surface) = (u = XFaceField(velocities.u.grid; boundary_conditions=velocities.u.boundary_conditions),
+                                                       v = YFaceField(velocities.v.grid; boundary_conditions=velocities.v.boundary_conditions),
+                                                       w = ZFaceField(velocities.w.grid; boundary_conditions=velocities.w.boundary_conditions))
 
 validate_velocity_boundary_conditions(grid, velocities) = validate_vertical_velocity_boundary_conditions(velocities.w)
 
