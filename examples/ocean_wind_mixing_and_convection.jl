@@ -147,7 +147,7 @@ S_bcs = FieldBoundaryConditions(top=evaporation_bc)
 # that are not explicitly resolved.
 
 model = NonhydrostaticModel(grid; buoyancy,
-                            advection = WENO(order=5),
+                            advection = WENO(order=7),
                             tracers = (:T, :S),
                             coriolis = FPlane(f=1e-4),
                             closure = DynamicSmagorinsky(),
