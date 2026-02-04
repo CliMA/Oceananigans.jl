@@ -17,6 +17,8 @@ using SparseMatrixColorings
 using Printf
 using GLMakie
 
+@info "Grid setup"
+
 resolution = 2 // 1        # degrees
 Nx = 360 ÷ resolution      # number of longitude points
 Ny = 180 ÷ resolution + 1  # number of latitude points (avoiding poles)
@@ -45,6 +47,8 @@ gaussian_mountains(λ, φ) = (-H
 
 grid = ImmersedBoundaryGrid(underlying_tripolar_grid, GridFittedBottom(gaussian_mountains))
 
+@info "Model setup"
+
 # Instead of initializing with random velocities, infer them from a random initial streamfunction
 # to ensure the velocity field is divergence-free at initialization.
 ψ = Field{Face, Face, Center}(grid)
@@ -60,15 +64,27 @@ closure = (
 
 f0 = CenterField(grid, Real)
 
+@warn "Adding newton_div method to allow sparsity tracer to pass through WENO"
+
+ADTypes = Union{SparseConnectivityTracer.AbstractTracer, SparseConnectivityTracer.Dual, ForwardDiff.Dual}
+@inline Oceananigans.Utils.newton_div(::Type{FT}, a::FT, b::FT) where {FT <: ADTypes} = a / b
+@inline Oceananigans.Utils.newton_div(::Type{FT}, a, b::FT) where {FT <: ADTypes} = a / b
+@inline Oceananigans.Utils.newton_div(::Type{FT}, a::FT, b) where {FT <: ADTypes} = a / b
+@inline Oceananigans.Utils.newton_div(inv_FT, a::FT, b::FT) where {FT <: ADTypes} = a / b
+@inline Oceananigans.Utils.newton_div(inv_FT, a, b::FT) where {FT <: ADTypes} = a / b
+@inline Oceananigans.Utils.newton_div(inv_FT, a::FT, b) where {FT <: ADTypes} = a / b
+
 model = HydrostaticFreeSurfaceModel(
     grid;
     velocities = velocities,
-    # tracer_advection = WENO(),
-    tracer_advection = Centered(order = 2),
+    tracer_advection = WENO(),
+    # tracer_advection = Centered(order = 2),
     # tracer_advection = UpwindBiased(order = 1),
     tracers = (c = f0,),
     closure = closure,
 )
+
+@info "Functions to get vector of tendencies"
 
 Nx′, Ny′, Nz′ = size(f0)
 N = Nx′ * Ny′ * Nz′
@@ -83,6 +99,7 @@ advection = model.advection[:c]
 total_velocities = model.transport_velocities
 kernel_parameters = KernelParameters(1:Nx′, 1:Ny′, 1:Nz′)
 active_cells_map = get_active_cells_map(grid, Val(:interior))
+
 
 @kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid, args)
     i, j, k = @index(Global, NTuple)
@@ -127,13 +144,19 @@ function mytendency(c)
     return interior(c_tendency)[idx]
 end
 
+@info "Autodiff setup"
+
 sparse_forward_backend = AutoSparse(
     AutoForwardDiff();
     sparsity_detector = TracerSparsityDetector(; gradient_pattern_type = Set{UInt}),
     coloring_algorithm = GreedyColoringAlgorithm(),
 )
 
+@info "Compute the Jacobian"
+
 J = jacobian(mytendency, sparse_forward_backend, c0)
+
+@info "Extra for vector of volumes"
 
 @kernel function compute_volume!(vol, grid)
     i, j, k = @index(Global, NTuple)
@@ -149,6 +172,8 @@ function compute_volume(grid)
 end
 
 volvec = interior(compute_volume(grid))[idx]
+
+@info "Plot the Jacobian sparsity pattern"
 
 fig, ax, plt = spy(
     0.5..size(J,1)+0.5,
@@ -170,5 +195,7 @@ fig
 # If F is linear in c, then we have that
 # F(c) = J c
 # So we can check that J c0 ≈ F(c0) = mytendency(c0)
+
+@info "Assert Jacobian is correct for linear tendency"
 
 @assert J * c0 ≈ mytendency(c0)
