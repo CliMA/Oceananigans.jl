@@ -63,12 +63,13 @@ end
 
 @inline isregional(t::Tuple{}) = false
 @inline isregional(nt::NT) where NT<:NamedTuple{(), Tuple{}} = false
-for func in [:isregional, :regions]
-    @eval begin
-        @inline $func(t::Union{Tuple, NamedTuple}) = $func(first(t))
-    end
+
+@inline function isregional(t::Union{Tuple, NamedTuple}) 
+    idx = findfirst(isregional, t)
+    return !isnothing(idx)
 end
 
+@inline regions(t::Union{Tuple, NamedTuple}) = regions(first(t))
 @inline regions(mo::MultiRegionObject) = 1:length(mo.regional_objects)
 
 Base.getindex(mo::MultiRegionObject, i, args...) = Base.getindex(mo.regional_objects, i, args...)
