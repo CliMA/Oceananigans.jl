@@ -141,7 +141,7 @@ S_bcs = FieldBoundaryConditions(top=evaporation_bc)
 
 # ## Model instantiation
 #
-# We fill in the final details of the model here, i.e., Coriolis forces,
+# We fill in the final details of the model here, i.e., Coriolis forces, advection scheme,
 # and use the (scale-invariant) `DynamicSmagorinsky` closure for large eddy simulation
 # to model the effect of turbulent motions at scales smaller than the grid scale
 # that are not explicitly resolved.
