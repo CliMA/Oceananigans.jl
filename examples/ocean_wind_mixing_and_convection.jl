@@ -147,6 +147,7 @@ S_bcs = FieldBoundaryConditions(top=evaporation_bc)
 # that are not explicitly resolved.
 
 model = NonhydrostaticModel(grid; buoyancy,
+                            advection = WENO(order=5),
                             tracers = (:T, :S),
                             coriolis = FPlane(f=1e-4),
                             closure = DynamicSmagorinsky(),
@@ -165,7 +166,7 @@ model = NonhydrostaticModel(grid; buoyancy,
 Ξ(z) = randn() * z / model.grid.Lz * (1 + z / model.grid.Lz) # noise
 
 ## Temperature initial condition: a stable density gradient with random noise superposed.
-Tᵢ(x, y, z) = 20 + dTdz * z + dTdz * model.grid.Lz * 1e-6 * Ξ(z)
+Tᵢ(x, y, z) = 20 + dTdz * z + dTdz * model.grid.Lz * 2e-6 * Ξ(z)
 
 ## Velocity initial condition: random noise scaled by the friction velocity.
 uᵢ(x, y, z) = sqrt(abs(τx)) * 1e-3 * Ξ(z)
@@ -192,7 +193,7 @@ progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, max(|w|) = 
                                 iteration(sim), prettytime(sim), prettytime(sim.Δt),
                                 maximum(abs, sim.model.velocities.w), prettytime(sim.run_wall_time))
 
-add_callback!(simulation, progress_message, IterationInterval(40))
+add_callback!(simulation, progress_message, IterationInterval(100))
 
 # We then set up the simulation:
 
