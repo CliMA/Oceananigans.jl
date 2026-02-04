@@ -1,7 +1,7 @@
 name = "Oceananigans"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
+version = "0.104.4"
 authors = ["Climate Modeling Alliance and contributors"]
-version = "0.104.2"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -35,6 +35,7 @@ StructArrays = "09ab397b-f2b6-538f-b94a-2f83cf4a842a"
 
 [weakdeps]
 AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
+AbstractFFTs = "621f4979-c628-5d54-868e-fcf4e3e8185c"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 ConstructionBase = "187b0558-2788-49d3-abe0-74a17ed4e7c9"
 Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
@@ -47,7 +48,7 @@ XESMF = "2e0b0046-e7a1-486f-88de-807ee8ffabe5"
 oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 
 [extensions]
-OceananigansAMDGPUExt = "AMDGPU"
+OceananigansAMDGPUExt = ["AMDGPU", "AbstractFFTs"]
 OceananigansCUDAExt = ["CUDA", "GPUArrays", "GPUArraysCore"]
 OceananigansEnzymeExt = "Enzyme"
 OceananigansMakieExt = "Makie"
@@ -59,6 +60,7 @@ OceananigansXESMFExt = ["XESMF"]
 
 [compat]
 AMDGPU = "1.3.6, 2"
+AbstractFFTs = "1.5"
 Adapt = "4.1.1"
 Aqua = "0.8"
 CUDA = "=5.8.5, 5.9.1"

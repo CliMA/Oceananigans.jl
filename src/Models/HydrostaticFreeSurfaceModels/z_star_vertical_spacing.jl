@@ -35,8 +35,8 @@ then recomputes the grid stretching factors `σ` at all staggered locations.
 The previous scaling `σᶜᶜ⁻` is also updated for use in tracer evolution.
 """
 function ab2_step_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt, χ)
-    launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.displacement, grid)
     parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
+    launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.displacement, grid)
     return nothing
 end
 
@@ -49,10 +49,8 @@ Similar to `ab2_step_grid!`, but only updates `σᶜᶜ⁻` on the final substep
 (when `model.clock.stage == model.timestepper.Nstages`).
 """
 function rk_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt)
+    parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
     launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.displacement, grid)
-    if model.clock.stage == model.timestepper.Nstages
-       parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
-    end
     return nothing
 end
 
@@ -228,13 +226,13 @@ function prognostic_state(::ZStarCoordinate, grid)
             σᶜᶜ⁻ = prognostic_state(z.σᶜᶜ⁻))
 end
 
-function restore_prognostic_state!(::ZStarCoordinate, grid, state)
+function restore_prognostic_state!(::ZStarCoordinate, grid, from)
     z = grid.z
-    restore_prognostic_state!(z.ηⁿ,   state.ηⁿ)
-    restore_prognostic_state!(z.σᶜᶜⁿ, state.σᶜᶜⁿ)
-    restore_prognostic_state!(z.σᶠᶜⁿ, state.σᶠᶜⁿ)
-    restore_prognostic_state!(z.σᶜᶠⁿ, state.σᶜᶠⁿ)
-    restore_prognostic_state!(z.σᶠᶠⁿ, state.σᶠᶠⁿ)
-    restore_prognostic_state!(z.σᶜᶜ⁻, state.σᶜᶜ⁻)
+    restore_prognostic_state!(z.ηⁿ,   from.ηⁿ)
+    restore_prognostic_state!(z.σᶜᶜⁿ, from.σᶜᶜⁿ)
+    restore_prognostic_state!(z.σᶠᶜⁿ, from.σᶠᶜⁿ)
+    restore_prognostic_state!(z.σᶜᶠⁿ, from.σᶜᶠⁿ)
+    restore_prognostic_state!(z.σᶠᶠⁿ, from.σᶠᶠⁿ)
+    restore_prognostic_state!(z.σᶜᶜ⁻, from.σᶜᶜ⁻)
     return ZStarCoordinate()
 end
