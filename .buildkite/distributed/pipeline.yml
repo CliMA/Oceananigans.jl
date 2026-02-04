@@ -38,6 +38,9 @@ steps:
       TEST_ARCHITECTURE: "GPU"
       MPI_TEST: "false"
     command:
+      - |
+        echo "--- Clearing depot"
+        rm -rf ${BUILDKITE_BUILD_PATH}/${BUILDKITE_PIPELINE_SLUG}/depot/default
       - echo "--- Initialize distributed tests"
       - "julia -O0 --project -e 'using Pkg; Pkg.test()'"
     agents:
