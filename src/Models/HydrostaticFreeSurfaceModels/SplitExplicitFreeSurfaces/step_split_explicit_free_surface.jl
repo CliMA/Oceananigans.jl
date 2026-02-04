@@ -79,28 +79,20 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
     η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
     Ũ, Ṽ    = state.Ũ, state.Ṽ
 
+    @apply_regionally barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
+    @apply_regionally free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
+
     U_args = (grid, Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
     η_args = (grid, Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
 
     @apply_regionally begin
-        converted_grid = convert_to_device(arch, grid)
-        converted_η    = convert_to_device(arch, η)
-        converted_U    = convert_to_device(arch, U)
-        converted_V    = convert_to_device(arch, V)
-        converted_GUⁿ  = convert_to_device(arch, GUⁿ)
-        converted_GVⁿ  = convert_to_device(arch, GVⁿ)
-        converted_Ũ    = convert_to_device(arch, Ũ)
-        converted_Ṽ    = convert_to_device(arch, Ṽ)
-        converted_η̅    = convert_to_device(arch, η̅)
-        converted_U̅    = convert_to_device(arch, U̅)
-        converted_V̅    = convert_to_device(arch, V̅)
+        converted_grid, converted_η, converted_U, converted_V, converted_GUⁿ, converted_GVⁿ,
+        converted_Ũ, converted_Ṽ, converted_η̅, converted_U̅, converted_V̅ =
+            convert_to_device(arch, (grid, η, U, V, GUⁿ, GVⁿ, Ũ, Ṽ, η̅, U̅, V̅))
     end
 
-    converted_Δτᴮ         = convert_to_device(arch, Δτᴮ)
-    converted_g           = convert_to_device(arch, g)
-    converted_timestepper = convert_to_device(arch, timestepper)
-    converted_F           = convert_to_device(arch, F)
-    converted_clock       = convert_to_device(arch, clock)
+    converted_Δτᴮ, converted_g, converted_timestepper, converted_F, converted_clock =
+        convert_to_device(arch, (Δτᴮ, g, timestepper, F, clock))
 
     GC.@preserve U_args η_args begin
         # We need to perform ~50 time-steps which means launching ~100 very small kernels: we are limited by latency of
@@ -115,20 +107,15 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
             @inbounds transport_weight = transport_weights[substep]
 
             fill_halo_regions!(η)
-            @apply_regionally advance_barotropic_velocity_step!(arch, grid, parameters, transport_weight, converted_U_args)
+            @apply_regionally barotropic_velocity_kernel!(transport_weight, converted_U_args...)
 
             fill_halo_regions!((U, V))
-            @apply_regionally advance_free_surface_step!(arch, grid, parameters, averaging_weight, converted_η_args)
+            @apply_regionally free_surface_kernel!(averaging_weight, converted_η_args...)
         end
     end
 
     return nothing
 end
-
-advance_barotropic_velocity_step!(arch, grid, parameters, transport_weight, U_args) =
-    launch!(arch, grid, parameters, _split_explicit_barotropic_velocity!, transport_weight, U_args...)
-advance_free_surface_step!(arch, grid, parameters, averaging_weight, η_args) =
-    launch!(arch, grid, parameters, _split_explicit_free_surface!, averaging_weight, η_args...)
 
 function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
     arch = architecture(grid)
