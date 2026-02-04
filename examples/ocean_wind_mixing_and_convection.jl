@@ -142,9 +142,16 @@ S_bcs = FieldBoundaryConditions(top=evaporation_bc)
 # ## Model instantiation
 #
 # We fill in the final details of the model here, i.e., Coriolis forces, advection scheme,
-# and use the (scale-invariant) `DynamicSmagorinsky` closure for large eddy simulation
-# to model the effect of turbulent motions at scales smaller than the grid scale
-# that are not explicitly resolved.
+# and use the (scale-invariant) `DynamicSmagorinsky` closure for large eddy simulation.
+# The effect of both the `WENO` advection scheme and `DynamicSmagorinsky` turbulence closure
+# is to dissipate variance at the grid scale. In the context of large eddy simulation, this dissipation
+# may be interpreted as approximating a forward cascade of kinetic energy from resolved motions into
+# motions that are smaller than the grid scale and not explicitly resolved. Note that dissipation of grid-scale variance can be achieved by the `WENO` advection scheme alone with
+# `closure = nothing`. Typically, using an explicit `closure = DynamicSmagorinsky()` will produce
+# stronger dissipation of kinetic energy; whether or not this leads to a higher quality numerical solution
+# depends on the context. An explicit `closure = DynamicSmagorinsky()` is also useful for diagnosing
+# the kinetic energy dissipation rate (the dissipation rate associated with `WENO` advection can be computed
+# in principle, but is challenging and relatively computationally intensive).
 
 model = NonhydrostaticModel(grid; buoyancy,
                             advection = WENO(order=7),
