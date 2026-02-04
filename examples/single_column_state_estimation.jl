@@ -56,7 +56,7 @@ arch = Oceananigans.Architectures.ReactantState()
 # arch = CPU()
 grid = RectilinearGrid(arch, size=Nz, z=(-H, 0), topology=(Flat, Flat, Bounded))
 closure = TKEDissipationVerticalDiffusivity()
-model = HydrostaticFreeSurfaceModel(grid; closure, tracers=(:b, :e, :ϵ), buoyancy=BuoyancyTracer())
+model = HydrostaticFreeSurfaceModel(grid; closure, tracers=:b, buoyancy=BuoyancyTracer())
 
 # ## Initial Conditions
 #
