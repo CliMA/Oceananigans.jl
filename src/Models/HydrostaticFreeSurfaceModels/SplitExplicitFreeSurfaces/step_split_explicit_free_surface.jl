@@ -85,18 +85,19 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
     U_args = (grid, Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
     η_args = (grid, Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
 
-    @apply_regionally begin
-        converted_grid, converted_η, converted_U, converted_V, converted_GUⁿ, converted_GVⁿ,
-        converted_Ũ, converted_Ṽ, converted_η̅, converted_U̅, converted_V̅ =
-            convert_to_device(arch, (grid, η, U, V, GUⁿ, GVⁿ, Ũ, Ṽ, η̅, U̅, V̅))
-    end
-
-    converted_Δτᴮ, converted_g, converted_timestepper, converted_F, converted_clock =
-        convert_to_device(arch, (Δτᴮ, g, timestepper, F, clock))
-
     GC.@preserve U_args η_args begin
         # We need to perform ~50 time-steps which means launching ~100 very small kernels: we are limited by latency of
         # argument conversion to GPU-compatible values. To alleviate this penalty we convert first and then we substep!
+
+        @apply_regionally begin
+            converted_grid, converted_η, converted_U, converted_V, converted_GUⁿ, converted_GVⁿ,
+            converted_Ũ, converted_Ṽ, converted_η̅, converted_U̅, converted_V̅ =
+                convert_to_device(arch, (grid, η, U, V, GUⁿ, GVⁿ, Ũ, Ṽ, η̅, U̅, V̅))
+        end
+
+        converted_Δτᴮ, converted_g, converted_timestepper, converted_F, converted_clock =
+            convert_to_device(arch, (Δτᴮ, g, timestepper, F, clock))
+
         converted_U_args = (converted_grid, converted_Δτᴮ, converted_η, converted_U, converted_V, converted_GUⁿ,
                             converted_GVⁿ, converted_g, converted_Ũ, converted_Ṽ, converted_timestepper)
         converted_η_args = (converted_grid, converted_Δτᴮ, converted_η, converted_U, converted_V, converted_F,
