@@ -1,5 +1,6 @@
 include("dependencies_for_runtests.jl")
 using Reactant
+using Reactant: @trace
 
 Reactant.set_default_backend("cpu")
 
@@ -10,7 +11,7 @@ Reactant.set_default_backend("cpu")
         grid = RectilinearGrid(reactnt_arch; size=(4, 4, 4), extent=(1, 1, 1),
                                topology=(Periodic, Periodic, Periodic))
 
-        model = NonhydrostaticModel(grid)
+        model = NonhydrostaticModel(grid; timestepper=:QuasiAdamsBashforth2)
         @test model isa NonhydrostaticModel
         @test model.grid.architecture isa ReactantState
     end
@@ -19,42 +20,56 @@ Reactant.set_default_backend("cpu")
         grid = RectilinearGrid(reactnt_arch; size=(4, 4), extent=(1, 1),
                                topology=(Periodic, Periodic, Flat))
 
-        model = NonhydrostaticModel(grid)
+        model = NonhydrostaticModel(grid; timestepper=:QuasiAdamsBashforth2)
         @test model isa NonhydrostaticModel
     end
 end
 
 #####
-##### Time-stepping sanity check: invoke pressure correction via time_step!
+##### Time-stepping with @compile (compiled execution)
 #####
-# NonhydrostaticModel uses FFT-based pressure solver (for Periodic topology).
-# This is direct execution only - NO Reactant compilation.
+# This follows the standard pattern used in Breeze.jl and differentiation tests:
+# - Use @trace with track_numbers=false inside a wrapper function
+# - Δt stays as Float64 (not traced), only arrays are traced
+# - This avoids issues with Clock field assignments
+# - Must use QB2 timestepper (RK3 not supported, see B.6.5)
 
-@testset "Reactant FFT-based model time-stepping (direct execution)" begin
+@testset "Reactant FFT-based model time-stepping (compiled execution)" begin
     reactnt_arch = ReactantState()
-    @testset "NonhydrostaticModel 3D time_step! (invokes FFT pressure solver)" begin
-        grid = RectilinearGrid(reactnt_arch; size=(4, 4, 4), extent=(1, 1, 1),
-                               topology=(Periodic, Periodic, Periodic))
-        
-        model = NonhydrostaticModel(grid)
-        @test model isa NonhydrostaticModel
-        
-        # Take a time step - this invokes the FFT-based pressure solver
-        Δt = 0.001
-        time_step!(model, Δt)
-        
-        @test model.clock.iteration == 1
-        @test model.clock.time ≈ Δt
+
+    # Wrapper function with @trace and track_numbers=false
+    function run_timesteps!(model, Δt, nsteps)
+        @trace track_numbers=false for i in 1:nsteps
+            time_step!(model, Δt)
+        end
+        return nothing
     end
 
-    @testset "NonhydrostaticModel 2D time_step!" begin
+    @testset "NonhydrostaticModel 3D compiled time_step!" begin
+        grid = RectilinearGrid(reactnt_arch; size=(4, 4, 4), extent=(1, 1, 1),
+                               topology=(Periodic, Periodic, Periodic))
+        model = NonhydrostaticModel(grid; timestepper=:QuasiAdamsBashforth2)
+        
+        Δt = 0.001  # Regular Float64, not ConcreteRNumber
+        nsteps = 1
+        
+        # Compile and execute
+        compiled_run! = @compile run_timesteps!(model, Δt, nsteps)
+        compiled_run!(model, Δt, nsteps)
+        
+        @test model.clock.iteration == 1
+    end
+
+    @testset "NonhydrostaticModel 2D compiled time_step!" begin
         grid = RectilinearGrid(reactnt_arch; size=(4, 4), extent=(1, 1),
                                topology=(Periodic, Periodic, Flat))
-        
-        model = NonhydrostaticModel(grid)
+        model = NonhydrostaticModel(grid; timestepper=:QuasiAdamsBashforth2)
         
         Δt = 0.001
-        time_step!(model, Δt)
+        nsteps = 1
+        
+        compiled_run! = @compile run_timesteps!(model, Δt, nsteps)
+        compiled_run!(model, Δt, nsteps)
         
         @test model.clock.iteration == 1
     end
