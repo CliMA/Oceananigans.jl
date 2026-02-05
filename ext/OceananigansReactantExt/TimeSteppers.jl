@@ -60,12 +60,12 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}},
         model.clock.last_Δt = Δt
     end
 
-    #=
+    
     # Be paranoid and update state at iteration 0
     @trace if model.clock.iteration == 0
-        update_state!(model, callbacks; compute_tendencies=true)
+        update_state!(model, callbacks)
     end
-
+    #=
     # Take an euler step if:
     #   * We detect that the time-step size has changed.
     #   * We detect that this is the "first" time-step, which means we
@@ -123,7 +123,7 @@ end
 function first_time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper}, Δt)
     initialize!(model)
     # The first update_state is conditionally gated from within time_step! normally, but not Reactant
-    update_state!(model)
+    #update_state!(model)
     time_step!(model, Δt, euler=true)
     return nothing
 end
