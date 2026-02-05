@@ -202,7 +202,7 @@ There are multiple pre-commit managers you can install, some alternatives are:
   ```
   to install the hooks.
 
-This is it!
+That's it!
 After you install the pre-commit manager and the hooks for this repository, you don't have to do anything else manually: whenever you run `git commit` in this repository, the manager will automatically run the hooks and fix the possible issues.
 
 !!! Note
