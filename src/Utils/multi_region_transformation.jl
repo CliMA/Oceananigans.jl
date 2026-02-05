@@ -64,7 +64,7 @@ end
 @inline isregional(t::Tuple{}) = false
 @inline isregional(nt::NT) where NT<:NamedTuple{(), Tuple{}} = false
 
-@inline function isregional(t::Union{Tuple, NamedTuple}) 
+@inline function isregional(t::Union{Tuple, NamedTuple})
     idx = findfirst(isregional, t)
     return !isnothing(idx)
 end
