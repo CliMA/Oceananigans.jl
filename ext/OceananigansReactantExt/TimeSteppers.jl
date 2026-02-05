@@ -115,6 +115,7 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}},
     return nothing
 end
 
+# Method of time_step! for a Reactant Model with SplitRungeKuttaTimeStepper:
 function time_step!(model::ReactantModel{<:SplitRungeKuttaTimeStepper}, Δt; callbacks=[])
     # This conditional causes problems with Reactant, so we remove it from the method here.
     # We then modify first_time_step! (seen below) so it always calls update_state for ReactantModels.
@@ -124,6 +125,7 @@ function time_step!(model::ReactantModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
     end
     =#
 
+    # Same as in time_step! for a non-reactant model with SplitRungeKuttaTimeStepper:
     cache_current_fields!(model)
     grid = model.grid
 
@@ -131,6 +133,7 @@ function time_step!(model::ReactantModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
     #### Loop over the stages
     ####
 
+    # Same as in time_step! for a non-reactant model with SplitRungeKuttaTimeStepper:
     for (stage, β) in enumerate(model.timestepper.β)
         # Update the clock stage
         model.clock.stage = stage
@@ -144,6 +147,7 @@ function time_step!(model::ReactantModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
     end
 
     # Finalize step
+    # Same as in time_step! for a non-reactant model with SplitRungeKuttaTimeStepper:
     step_lagrangian_particles!(model, Δt)
     tick!(model.clock, Δt)
 
