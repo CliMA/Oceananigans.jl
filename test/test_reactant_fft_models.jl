@@ -51,14 +51,14 @@ end
         grid = RectilinearGrid(reactnt_arch; size=(4, 4, 4), extent=(1, 1, 1),
                                topology=(Periodic, Periodic, Periodic))
         model = NonhydrostaticModel(grid; timestepper=:QuasiAdamsBashforth2)
-        
+
         Δt = 0.001  # Regular Float64, not ConcreteRNumber
         nsteps = 1
-        
+
         # Compile and execute
         compiled_run! = @compile run_timesteps!(model, Δt, nsteps)
         compiled_run!(model, Δt, nsteps)
-        
+
         @test model.clock.iteration == 1
     end
 
@@ -67,13 +67,13 @@ end
         grid = RectilinearGrid(reactnt_arch; size=(4, 4), extent=(1, 1),
                                topology=(Periodic, Periodic, Flat))
         model = NonhydrostaticModel(grid; timestepper=:QuasiAdamsBashforth2)
-        
+
         Δt = 0.001
         nsteps = 1
-        
+
         compiled_run! = @compile run_timesteps!(model, Δt, nsteps)
         compiled_run!(model, Δt, nsteps)
-        
+
         @test model.clock.iteration == 1
     end
 end
