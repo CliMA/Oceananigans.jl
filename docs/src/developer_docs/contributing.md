@@ -205,7 +205,7 @@ There are multiple pre-commit managers you can install, some alternatives are:
 That's it!
 After you install the pre-commit manager and the hooks for this repository, you don't have to do anything else manually: whenever you run `git commit` in this repository, the manager will automatically run the hooks and fix the possible issues.
 
-!!! Note
+!!! note
     If a pre-commit hooks detects an issue and automatically fixes it, the git commit actually fails.
     In that case you will have to `git add` the new changes and `git commit` again to make the commit successful.
 
