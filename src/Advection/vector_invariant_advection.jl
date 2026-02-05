@@ -137,8 +137,7 @@ function Base.summary(a::WENOVectorInvariant{N}) where N
     vertical_order = weno_order(a.vertical_advection_scheme)
     order = weno_order(a.vorticity_scheme)
     FT = eltype(a.vorticity_scheme)
-    FT2 = eltype2(a.vorticity_scheme)
-    return string("WENOVectorInvariant{$N, $FT, $FT2}(vorticity_order=$vorticity_order, vertical_order=$vertical_order)")
+    return string("WENOVectorInvariant{$N, $FT}(vorticity_order=$vorticity_order, vertical_order=$vertical_order)")
 end
 
 function Base.show(io::IO, a::VectorInvariant{N, FT}) where {N, FT}
@@ -193,12 +192,12 @@ Example
 julia> using Oceananigans
 
 julia> WENOVectorInvariant()
-WENOVectorInvariant{5, Float64, Float32}(vorticity_order=9, vertical_order=5)
-├── vorticity_scheme: WENO{5, Float64, Float32, Oceananigans.Utils.NewtonDivWithConversion{Float32}}(order=9)
+WENOVectorInvariant{5, Float64}(vorticity_order=9, vertical_order=5)
+├── vorticity_scheme: WENO{5, Float64, Oceananigans.Utils.NewtonDivWithConversion{Float32}}(order=9)
 ├── vorticity_stencil: Oceananigans.Advection.VelocityStencil
-├── vertical_advection_scheme: WENO{3, Float64, Float32, Oceananigans.Utils.NewtonDivWithConversion{Float32}}(order=5)
-├── kinetic_energy_gradient_scheme: WENO{3, Float64, Float32, Oceananigans.Utils.NewtonDivWithConversion{Float32}}(order=5)
-├── divergence_scheme: WENO{3, Float64, Float32, Oceananigans.Utils.NewtonDivWithConversion{Float32}}(order=5)
+├── vertical_advection_scheme: WENO{3, Float64, Oceananigans.Utils.NewtonDivWithConversion{Float32}}(order=5)
+├── kinetic_energy_gradient_scheme: WENO{3, Float64, Oceananigans.Utils.NewtonDivWithConversion{Float32}}(order=5)
+├── divergence_scheme: WENO{3, Float64, Oceananigans.Utils.NewtonDivWithConversion{Float32}}(order=5)
 └── upwinding: OnlySelfUpwinding
 ```
 """
