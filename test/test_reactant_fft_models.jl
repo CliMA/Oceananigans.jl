@@ -1,13 +1,12 @@
-include("dependencies_for_runtests.jl")
-using Reactant
+include("reactant_test_utils.jl")
 using Reactant: @trace
 
-Reactant.set_default_backend("cpu")
-
 @testset "Reactant FFT-based model construction" begin
+    @info "Performing Reactant FFT-based NonhydrostaticModel construction tests..."
     reactnt_arch = ReactantState()
 
     @testset "NonhydrostaticModel 3D (Periodic, Periodic, Periodic)" begin
+        @info "  Testing NonhydrostaticModel 3D construction (Periodic, Periodic, Periodic)..."
         grid = RectilinearGrid(reactnt_arch; size=(4, 4, 4), extent=(1, 1, 1),
                                topology=(Periodic, Periodic, Periodic))
 
@@ -17,6 +16,7 @@ Reactant.set_default_backend("cpu")
     end
 
     @testset "NonhydrostaticModel 2D (Periodic, Periodic, Flat)" begin
+        @info "  Testing NonhydrostaticModel 2D construction (Periodic, Periodic, Flat)..."
         grid = RectilinearGrid(reactnt_arch; size=(4, 4), extent=(1, 1),
                                topology=(Periodic, Periodic, Flat))
 
@@ -35,6 +35,7 @@ end
 # - Must use QB2 timestepper (RK3 not supported, see B.6.5)
 
 @testset "Reactant FFT-based model time-stepping (compiled execution)" begin
+    @info "Performing Reactant FFT-based NonhydrostaticModel time-stepping tests..."
     reactnt_arch = ReactantState()
 
     # Wrapper function with @trace and track_numbers=false
@@ -46,6 +47,7 @@ end
     end
 
     @testset "NonhydrostaticModel 3D compiled time_step!" begin
+        @info "  Testing NonhydrostaticModel 3D compiled time_step! (with FFT pressure solver)..."
         grid = RectilinearGrid(reactnt_arch; size=(4, 4, 4), extent=(1, 1, 1),
                                topology=(Periodic, Periodic, Periodic))
         model = NonhydrostaticModel(grid; timestepper=:QuasiAdamsBashforth2)
@@ -61,6 +63,7 @@ end
     end
 
     @testset "NonhydrostaticModel 2D compiled time_step!" begin
+        @info "  Testing NonhydrostaticModel 2D compiled time_step! (with FFT pressure solver)..."
         grid = RectilinearGrid(reactnt_arch; size=(4, 4), extent=(1, 1),
                                topology=(Periodic, Periodic, Flat))
         model = NonhydrostaticModel(grid; timestepper=:QuasiAdamsBashforth2)
