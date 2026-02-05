@@ -3,7 +3,7 @@ include("data_dependencies.jl")
 
 using Oceananigans.Grids: topology, XRegularLLG, YRegularLLG, ZRegularLLG
 
-function show_hydrostatic_test(grid, free_surface, precompute_metrics, extend_halos)
+function show_hydrostatic_test(grid, free_surface, precompute_metrics)
 
     typeof(grid) <: XRegularLLG ? gx = :regular : gx = :stretched
     typeof(grid) <: YRegularLLG ? gy = :regular : gy = :stretched
@@ -13,10 +13,9 @@ function show_hydrostatic_test(grid, free_surface, precompute_metrics, extend_ha
     free_surface_str = string(typeof(free_surface).name.wrapper)
 
     strc = "$(precompute_metrics ? ", metrics are precomputed" : "")"
-    strh = "$(extend_halos ? ", halos are extended" : "")"
 
-    testset_str = "Hydrostatic free turbulence regression [$(arch), $(topology(grid, 1)) longitude,  ($gx, $gy, $gz) grid, $free_surface_str]" * strc * strh
-    info_str    =  "  Testing Hydrostatic free turbulence [$(arch), $(topology(grid, 1)) longitude,  ($gx, $gy, $gz) grid, $free_surface_str]" * strc * strh
+    testset_str = "Hydrostatic free turbulence regression [$(arch), $(topology(grid, 1)) longitude,  ($gx, $gy, $gz) grid, $free_surface_str]" * strc
+    info_str    =  "  Testing Hydrostatic free turbulence [$(arch), $(topology(grid, 1)) longitude,  ($gx, $gy, $gz) grid, $free_surface_str]" * strc
 
     return testset_str, info_str
 end
@@ -76,22 +75,18 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
             longitude[1] == -180 ? size = (180, 60, 3) : size = (160, 60, 3)
             grid  = LatitudeLongitudeGrid(arch; size, longitude, latitude, z, precompute_metrics, halo=(2, 2, 2))
 
-            split_explicit_free_surface          = SplitExplicitFreeSurface(grid;
-                                                                            gravitational_acceleration = 1.0,
-                                                                            substeps = 5)
-            split_explicit_free_surface_no_halos = SplitExplicitFreeSurface(grid;
-                                                                            gravitational_acceleration = 1.0,
-                                                                            substeps = 5,
-                                                                            extend_halos=false)
+            split_explicit_free_surface = SplitExplicitFreeSurface(grid,
+                                                                   gravitational_acceleration = 1.0,
+                                                                   substeps = 5)
 
-            for free_surface in [explicit_free_surface, implicit_free_surface, split_explicit_free_surface, split_explicit_free_surface_no_halos]
-                # GPU + ImplicitFreeSurface + precompute metrics cannot be tested on sverdrup at the moment because of
-                # "uses too much parameter space (maximum 0x1100 bytes)" error
+            for free_surface in [explicit_free_surface, implicit_free_surface, split_explicit_free_surface]
+
+                # GPU + ImplicitFreeSurface + precompute metrics cannot be tested on sverdrup at the moment
+                # because "uses too much parameter space (maximum 0x1100 bytes)" error
                 if !(precompute_metrics && free_surface isa ImplicitFreeSurface && arch isa GPU) &&
                    !(free_surface isa ImplicitFreeSurface && arch isa Distributed) # Also no implicit free surface on distributed
-                    extend_halos = free_surface !== split_explicit_free_surface_no_halos
 
-                    testset_str, info_str = show_hydrostatic_test(grid, free_surface, precompute_metrics, extend_halos)
+                    testset_str, info_str = show_hydrostatic_test(grid, free_surface, precompute_metrics)
 
                     @testset "$testset_str" begin
                         @info "$info_str"
