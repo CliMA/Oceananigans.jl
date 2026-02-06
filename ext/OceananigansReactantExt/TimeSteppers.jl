@@ -14,7 +14,10 @@ using Oceananigans.TimeSteppers:
     tick!,
     step_lagrangian_particles!,
     QuasiAdamsBashforth2TimeStepper,
-    cache_previous_tendencies!
+    RungeKutta3TimeStepper,
+    cache_previous_tendencies!,
+    rk3_substep!,
+    stage_Δt
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     step_free_surface!,
@@ -125,6 +128,85 @@ function first_time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper
     # The first update_state is conditionally gated from within time_step! normally, but not Reactant
     update_state!(model)
     time_step!(model, Δt, euler=true)
+    return nothing
+end
+
+#####
+##### RungeKutta3TimeStepper for Reactant
+#####
+# The standard RK3 time_step! uses `model.clock.iteration == 0 && update_state!(...)`
+# which fails with Reactant because TracedRNumber{Bool} cannot be used in boolean context.
+# This implementation removes that conditional and relies on first_time_step! for initialization.
+
+function time_step!(model::ReactantModel{<:RungeKutta3TimeStepper}, Δt; callbacks=[])
+    γ¹ = model.timestepper.γ¹
+    γ² = model.timestepper.γ²
+    γ³ = model.timestepper.γ³
+
+    ζ² = model.timestepper.ζ²
+    ζ³ = model.timestepper.ζ³
+
+    first_stage_Δt  = stage_Δt(Δt, γ¹, nothing)
+    second_stage_Δt = stage_Δt(Δt, γ², ζ²)
+    third_stage_Δt  = stage_Δt(Δt, γ³, ζ³)
+
+    #
+    # First stage
+    #
+
+    rk3_substep!(model, Δt, γ¹, nothing, callbacks)
+    cache_previous_tendencies!(model)
+
+    tick!(model.clock, first_stage_Δt; stage=true)
+
+    update_state!(model, callbacks)
+    step_lagrangian_particles!(model, first_stage_Δt)
+
+    #
+    # Second stage
+    #
+
+    rk3_substep!(model, Δt, γ², ζ², callbacks)
+    cache_previous_tendencies!(model)
+
+    tick!(model.clock, second_stage_Δt; stage=true)
+
+    update_state!(model, callbacks)
+    step_lagrangian_particles!(model, second_stage_Δt)
+
+    #
+    # Third stage
+    #
+
+    rk3_substep!(model, Δt, γ³, ζ³, callbacks)
+    cache_previous_tendencies!(model)
+
+    tick!(model.clock, third_stage_Δt)
+
+    # Update clock fields - handle TracedRNumber vs regular Float64
+    if model.clock.last_stage_Δt isa Reactant.TracedRNumber
+        model.clock.last_stage_Δt.mlir_data = third_stage_Δt.mlir_data
+    elseif !(third_stage_Δt isa Reactant.TracedRNumber)
+        model.clock.last_stage_Δt = third_stage_Δt
+    end
+
+    if model.clock.last_Δt isa Reactant.TracedRNumber
+        model.clock.last_Δt.mlir_data = Δt.mlir_data
+    elseif !(Δt isa Reactant.TracedRNumber)
+        model.clock.last_Δt = Δt
+    end
+
+    update_state!(model, callbacks)
+    step_lagrangian_particles!(model, third_stage_Δt)
+
+    return nothing
+end
+
+function first_time_step!(model::ReactantModel{<:RungeKutta3TimeStepper}, Δt)
+    initialize!(model)
+    # The first update_state is conditionally gated from within time_step! normally, but not Reactant
+    update_state!(model)
+    time_step!(model, Δt)
     return nothing
 end
 
