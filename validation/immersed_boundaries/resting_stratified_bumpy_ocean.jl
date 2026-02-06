@@ -112,4 +112,3 @@ hmvd = heatmap!(ax_vd, Δv)
 =#
 
 display(fig)
-

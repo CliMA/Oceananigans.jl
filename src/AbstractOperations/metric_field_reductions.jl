@@ -191,14 +191,14 @@ set!(c, z -> z)
 """
 function CumulativeIntegral(field::AbstractField; dims, reverse=false, condition=nothing, mask=0)
     dims ∈ (1, 2, 3) || throw(ArgumentError("CumulativeIntegral only supports dims=1, 2, or 3."))
-    
+
     # Check that we're not accumulating over a Periodic dimension
     topo = topology(field.grid, dims)
     if topo === Periodic
         throw(ArgumentError("CumulativeIntegral does not support Periodic dimensions. " *
                             "The cumulative integral of a periodic function is not periodic."))
     end
-    
+
     maybe_reverse_cumsum = reverse ? reverse_cumsum! : cumsum!
     dx = reduction_grid_metric(dims)
     operand = condition_operand(field * dx, condition, mask)

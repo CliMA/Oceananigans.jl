@@ -1,13 +1,13 @@
-using Oceananigans.Architectures: AbstractArchitecture
-using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Advection: Centered, adapt_advection_order
-using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
-using Oceananigans.BoundaryConditions: MixedBoundaryCondition
+using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
+using Oceananigans.BoundaryConditions: MixedBoundaryCondition
+using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
+using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Fields: Field, tracernames, VelocityFields, TracerFields, CenterField
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: inflate_halo_size, with_halo, architecture
+using Oceananigans.Grids: topology, inflate_halo_size, with_halo, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface
 using Oceananigans.Solvers: FFTBasedPoissonSolver
@@ -15,7 +15,6 @@ using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagr
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, time_discretization, implicit_diffusion_solver
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.Utils: tupleit
-using Oceananigans.Grids: topology
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.Architectures: architecture
@@ -55,6 +54,8 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
      auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
  boundary_mass_fluxes :: BM       # Container for the average mass fluxes at boundaries
 end
+
+supported_timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
 """
     NonhydrostaticModel(grid;
@@ -101,8 +102,9 @@ Keyword arguments
   - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
   - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
                preallocated `CenterField`s.
-  - `timestepper`: A symbol that specifies the time-stepping method. Either `:QuasiAdamsBashforth2` or
-                   `:RungeKutta3` (default).
+  - `timestepper`: A symbol or a `TimeStepper` object that specifies the time-stepping method.
+                   Supported symbols include $(join("`" .* repr.(supported_timesteppers) .* "`", ", ")).
+                   Default: `:RungeKutta3`.
   - `background_fields`: `NamedTuple` with background fields (e.g., background flow). Default: `nothing`.
   - `particles`: Lagrangian particles to be advected with the flow. Default: `nothing`.
   - `biogeochemistry`: Biogeochemical model for `tracers`.
@@ -144,6 +146,15 @@ function NonhydrostaticModel(grid;
     arch = architecture(grid)
 
     tracers = tupleit(tracers) # supports tracers=:c keyword argument (for example)
+
+    if timestepper isa Symbol && timestepper ∉ supported_timesteppers
+        msg = """
+        timestepper = :$timestepper is not supported.
+        Supported timesteppers are: $(join(repr.(supported_timesteppers), ", ")).
+        You can also construct your own TimeStepper and pass it to the constructor.
+        """
+        throw(ArgumentError(msg))
+    end
 
     if isnothing(nonhydrostatic_pressure)
         if isnothing(free_surface)
@@ -284,7 +295,7 @@ function NonhydrostaticModel(grid;
                                 forcing, closure, free_surface, background_fields, particles, biogeochemistry, velocities, tracers,
                                 pressures, closure_fields, timestepper, pressure_solver, auxiliary_fields, boundary_mass_fluxes)
 
-    update_state!(model; compute_tendencies = false)
+    update_state!(model)
 
     return model
 end
@@ -328,16 +339,16 @@ function prognostic_state(model::NonhydrostaticModel)
             boundary_mass_fluxes = prognostic_state(model.boundary_mass_fluxes))
 end
 
-function restore_prognostic_state!(model::NonhydrostaticModel, state)
-    restore_prognostic_state!(model.clock, state.clock)
-    restore_prognostic_state!(model.particles, state.particles)
-    restore_prognostic_state!(model.velocities, state.velocities)
-    restore_prognostic_state!(model.timestepper, state.timestepper)
-    restore_prognostic_state!(model.tracers, state.tracers)
-    restore_prognostic_state!(model.closure_fields, state.closure_fields)
-    restore_prognostic_state!(model.auxiliary_fields, state.auxiliary_fields)
-    restore_prognostic_state!(model.boundary_mass_fluxes, state.boundary_mass_fluxes)
-    return model
+function restore_prognostic_state!(restored::NonhydrostaticModel, from)
+    restore_prognostic_state!(restored.clock, from.clock)
+    restore_prognostic_state!(restored.particles, from.particles)
+    restore_prognostic_state!(restored.velocities, from.velocities)
+    restore_prognostic_state!(restored.timestepper, from.timestepper)
+    restore_prognostic_state!(restored.tracers, from.tracers)
+    restore_prognostic_state!(restored.closure_fields, from.closure_fields)
+    restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
+    restore_prognostic_state!(restored.boundary_mass_fluxes, from.boundary_mass_fluxes)
+    return restored
 end
 
 restore_prognostic_state!(::NonhydrostaticModel, ::Nothing) = nothing

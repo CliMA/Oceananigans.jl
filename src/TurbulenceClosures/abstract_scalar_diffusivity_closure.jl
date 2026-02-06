@@ -112,7 +112,7 @@ const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 @inline κᶠᶜᶠ(i, j, k, grid, closure::ASD, K, id, clk, fields) = κᶠᶜᶠ(i, j, k, grid, diffusivity_location(closure), diffusivity(closure, K, id), clk, fields)
 @inline κᶜᶠᶠ(i, j, k, grid, closure::ASD, K, id, clk, fields) = κᶜᶠᶠ(i, j, k, grid, diffusivity_location(closure), diffusivity(closure, K, id), clk, fields)
 
-# Vertical and horizontal diffusivity 
+# Vertical and horizontal diffusivity
 
 # Viscosities without explicit passing of `id`
 @inline νzᶜᶜᶜ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields)
@@ -285,7 +285,7 @@ end
                   zero(grid))
 end
 
-@inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::AIDorAVD, K, id, c, clk, fields, b) 
+@inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::AIDorAVD, K, id, c, clk, fields, b)
     return ifelse((k == 1) | (k == grid.Nz+1),
                   diffusive_flux_z(i, j, k, grid, ExplicitTimeDiscretization(), closure, K, id, c, clk, fields, b),
                   zero(grid))

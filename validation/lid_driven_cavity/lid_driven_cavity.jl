@@ -69,4 +69,3 @@ simulate_lid_driven_cavity(Re=3200,  N=128, end_time=50)
 simulate_lid_driven_cavity(Re=5000,  N=256, end_time=50)
 simulate_lid_driven_cavity(Re=7500,  N=256, end_time=75)
 simulate_lid_driven_cavity(Re=10000, N=256, end_time=100)
-

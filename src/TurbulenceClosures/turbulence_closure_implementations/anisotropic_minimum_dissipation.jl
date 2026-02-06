@@ -78,7 +78,7 @@ second-order advection scheme. [Verstappen et al. (2014)](@cite Verstappen14) sh
 should be 4 times larger than for straightforward (spectral) discretisation, resulting in `C = 1/3`
 in our formulation. They also empirically demonstrated that this coefficient produces the correct
 discrete production-dissipation balance. Further demonstration of this can be found at
-[https://github.com/CliMA/Oceananigans.jl/issues/4367](https://github.com/CliMA/Oceananigans.jl/issues/4367).
+<https://github.com/CliMA/Oceananigans.jl/issues/4367>.
 
 `C`, `Cν` and `Cκ` may be numbers, or functions of `x, y, z`.
 

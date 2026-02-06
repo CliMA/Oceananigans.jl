@@ -20,7 +20,7 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
                                x = (0, 1),
                                z = z_faces,
                                topology = (Bounded, Flat, Bounded))
-        
+
         model = HydrostaticFreeSurfaceModel(grid;
                                             buoyancy = BuoyancyTracer(),
                                             closure = eddy_closure,
@@ -35,7 +35,7 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
                                y = (0, 1),
                                z = z_faces,
                                topology = (Flat, Bounded, Bounded))
-        
+
         model = HydrostaticFreeSurfaceModel(grid;
                                             buoyancy = BuoyancyTracer(),
                                             closure = eddy_closure,
@@ -51,7 +51,7 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
                                y = (0, 1),
                                z = z_faces,
                                topology = (Bounded, Bounded, Bounded))
-        
+
         model = HydrostaticFreeSurfaceModel(grid;
                                             buoyancy = BuoyancyTracer(),
                                             closure = eddy_closure,

@@ -2,20 +2,20 @@ include("dependencies_for_runtests.jl")
 
 """
     function run_with_background_fields(arch; with_background=true)
-    
+
 Run a model with or without background fields and compare the two.
 """
 function run_with_background_fields(arch; with_background=true)
     grid = RectilinearGrid(arch, size=10, z=(0, 1), topology=(Flat, Flat, Bounded))
     # Setup model with or without background fields
     if with_background
-        background_fields = Oceananigans.BackgroundFields(; 
+        background_fields = Oceananigans.BackgroundFields(;
                              background_closure_fluxes=true, b=B̄_field)
         # we want no flux bottom boundary (∂B∂z = 0) and infinite ocean at the top boundary
         B_bcs = FieldBoundaryConditions(
             bottom = GradientBoundaryCondition(-N^2), # ∂B∂z = 0 → ∂b∂z = -∂B∂z = -N²
-            top = GradientBoundaryCondition(0.) # ∂B∂z = ∂B̄∂z+∂b∂z = N² → ∂b∂z = 0 
-        );                                
+            top = GradientBoundaryCondition(0.) # ∂B∂z = ∂B̄∂z+∂b∂z = N² → ∂b∂z = 0
+        );
         model = NonhydrostaticModel(grid; background_fields, tracers = :b, buoyancy=BuoyancyTracer(),
                                 boundary_conditions=(; b = B_bcs))
         b = model.tracers.b
@@ -38,7 +38,7 @@ function run_with_background_fields(arch; with_background=true)
     # Run for a few iterations
     simulation = Simulation(model, Δt=0.1, stop_iteration=5)
     run!(simulation)
-  
+
     return B
 end
 
@@ -51,13 +51,13 @@ test_archs = has_cuda() ? [CPU(), GPU()] : [CPU()]
 
 @testset "Background Fields Tests" begin
     for arch in test_archs
-    
+
         # Test model runs with background fields
         @test run_with_background_fields(arch, with_background=true) !== nothing
-    
+
         # Test model runs without background fields
         @test run_with_background_fields(arch, with_background=false) !== nothing
-    
+
         # Test that background fields affect the solution
         b_with = run_with_background_fields(arch, with_background=true)
         b_without = run_with_background_fields(arch, with_background=false)

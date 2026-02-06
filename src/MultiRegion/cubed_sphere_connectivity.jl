@@ -98,12 +98,12 @@ function Base.summary(c::CubedSphereRegionalConnectivity)
 end
 
 function Base.show(io::IO, c::CubedSphereRegionalConnectivity{S, FS, R}) where {S, FS, R}
-    if R == Nothing
-        rotation_description = "no rotation"
+    rotation_description = if R == Nothing
+        "no rotation"
     elseif R == ↺
-        rotation_description = "counter-clockwise rotation ↺"
+        "counter-clockwise rotation ↺"
     elseif R == ↻
-        rotation_description = "clockwise rotation ↻"
+        "clockwise rotation ↻"
     end
 
     return print(io, "CubedSphereRegionalConnectivity", "\n",

@@ -65,17 +65,17 @@ implement (or inherit sane fallbacks for) the items listed below.
 - `update_state!(model, callbacks=[]; compute_tendencies=true)`: invoked by
   Simulation right after `initialize!` and inside most time steppers. This is
   where models fill halos, update boundary conditions, recompute auxiliary
-  fields, and run [`Callback`](@ref callbacks)s with an `UpdateStateCallsite`. 
-  PDE-based models typically finish by calling `compute_tendencies!(model, callbacks)` 
+  fields, and run [`Callback`](@ref callbacks)s with an `UpdateStateCallsite`.
+  PDE-based models typically finish by calling `compute_tendencies!(model, callbacks)`
   so that any `TendencyCallsite` callbacks can modify tendencies before integration.
   Note that `compute_tendencies!` is not part of the required interface—it is simply
   a useful pattern for models that integrate differential equations.
 
 - `time_step!(model, Δt; callbacks=[])`: advances the model clock and its
   prognostic variables by one step. Simulation hands in the tuple of
-  `ModelCallsite` [`Callback`](@ref callbacks)s so the model can execute 
-  `TendencyCallsite` (before tendencies are applied) and `UpdateStateCallsite` 
-  callbacks (after auxiliary updates). The method must call `tick!(model.clock, Δt)` 
+  `ModelCallsite` [`Callback`](@ref callbacks)s so the model can execute
+  `TendencyCallsite` (before tendencies are applied) and `UpdateStateCallsite`
+  callbacks (after auxiliary updates). The method must call `tick!(model.clock, Δt)`
   (or equivalent) so that `time(model)` and `iteration(model)` remain consistent.
 
 - `set!(model, kw...)`: not strictly required, but strongly recommended as an
@@ -241,8 +241,8 @@ fig
 
 This minimal implementation inherits all other behavior from the generic
 `AbstractModel` fallbacks: Simulation can query `time(sim.model)`, diagnostics
-can read `sim.model.clock`, and [`Callback`](@ref callbacks)s scheduled on 
-`ModelCallsite`s execute because `time_step!` forwards the tuple that Simulation 
+can read `sim.model.clock`, and [`Callback`](@ref callbacks)s scheduled on
+`ModelCallsite`s execute because `time_step!` forwards the tuple that Simulation
 hands to it. Note that this model has no grid, no fields, and no time-stepper object—just
 the essentials. Larger models can follow the same recipe while adding grids,
 fields, closures, and time steppers as needed.
@@ -411,4 +411,3 @@ operators within a custom `AbstractModel`. The key additions compared to the
 - Third-order Runge-Kutta (RK3) time-stepping using Williamson's low-storage scheme
 - Using `fill_halo_regions!` in `update_state!` to maintain periodic boundary conditions
 - Leveraging `AbstractOperations` (`∂x`) for computing spatial derivatives via broadcasting
-

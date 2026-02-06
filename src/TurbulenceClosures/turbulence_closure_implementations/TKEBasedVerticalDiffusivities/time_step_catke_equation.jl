@@ -2,7 +2,7 @@ using Oceananigans: fields
 using Oceananigans.Operators: σⁿ, σ⁻
 using Oceananigans.Grids: bottommost_active_node
 using Oceananigans.TimeSteppers: implicit_step!
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKutta3TimeStepper
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper
 
 get_time_step(closure::CATKEVerticalDiffusivity) = closure.tke_time_step
 
@@ -57,7 +57,7 @@ function time_step_catke_equation!(model, ::QuasiAdamsBashforth2TimeStepper)
                 compute_TKE_diffusivity!,
                 κe, grid, closure,
                 model.velocities, tracers, buoyancy, closure_fields)
-                
+
         # ... and step forward.
         launch!(arch, grid, :xyz,
                 _ab2_substep_turbulent_kinetic_energy!,
@@ -74,19 +74,15 @@ function time_step_catke_equation!(model, ::QuasiAdamsBashforth2TimeStepper)
 
         implicit_step!(e, implicit_solver, closure,
                        closure_fields, Val(tracer_index),
-                       model.clock, 
-                       fields(model), 
+                       model.clock,
+                       fields(model),
                        Δτ)
     end
 
     return nothing
 end
 
-@inline rk3_coeffs(ts, stage) = stage == 1 ? (one(ts.γ²), zero(ts.γ²)) :
-                                stage == 2 ? (ts.γ², ts.ζ²) :
-                                             (ts.γ³, ts.ζ³) 
-                                
-function time_step_catke_equation!(model, ::SplitRungeKutta3TimeStepper)
+function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper)
 
     # TODO: properly handle closure tuples
     if model.closure isa Tuple
@@ -108,11 +104,8 @@ function time_step_catke_equation!(model, ::SplitRungeKutta3TimeStepper)
     previous_velocities = closure_fields.previous_velocities
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
-    stage = model.clock.stage
-    β = (model.timestepper.β¹, model.timestepper.β², one(model.timestepper.β¹))
-    βn = β[stage]
-    Δt = model.clock.last_Δt / βn
-
+    β  = model.timestepper.β[model.clock.stage]  # Get the correct β value for the current stage
+    Δτ = model.clock.last_Δt / β
     tracers = buoyancy_tracers(model)
     buoyancy = buoyancy_force(model)
 
@@ -121,21 +114,21 @@ function time_step_catke_equation!(model, ::SplitRungeKutta3TimeStepper)
             compute_TKE_diffusivity!,
             κe, grid, closure,
             model.velocities, tracers, buoyancy, closure_fields)
-                
+
     # ... and step forward.
     launch!(arch, grid, :xyz,
             _euler_step_turbulent_kinetic_energy!,
             Le, grid, closure,
             model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
             tracers, buoyancy, closure_fields,
-            Δt, Gⁿ)
+            Δτ, Gⁿ)
 
     implicit_step!(e, implicit_solver, closure,
                    closure_fields, Val(tracer_index),
-                   model.clock, 
-                   fields(model), 
-                   Δt)
-                   
+                   model.clock,
+                   fields(model),
+                   Δτ)
+
     return nothing
 end
 
@@ -242,7 +235,7 @@ end
     Δτ = convert(FT, Δτ)
     e  = tracers.e
 
-    # See below.    
+    # See below.
     α = convert(FT, 1.5) + χ
     β = convert(FT, 0.5) + χ
 

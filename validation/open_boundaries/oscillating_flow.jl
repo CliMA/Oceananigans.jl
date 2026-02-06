@@ -146,4 +146,3 @@ for grid in (xygrid, xzgrid)
         run_cylinder(grid, boundary_conditions, simname = simname, stop_time = T)
     end
 end
-

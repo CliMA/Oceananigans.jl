@@ -12,6 +12,7 @@ export
     Center, Face,
     Periodic, Bounded, Flat,
     RightConnected, LeftConnected, FullyConnected,
+    RightFaceFolded, RightCenterFolded,
     RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
     TripolarGrid, RotatedLatitudeLongitudeGrid,
     MutableVerticalDiscretization,
@@ -118,6 +119,8 @@ export
     # Utils
     prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 
+using DocStringExtensions
+
 function __init__()
     if VERSION >= v"1.13.0"
         @warn """You are using Julia v1.13 or later!"
@@ -133,7 +136,7 @@ end
 # List of fully-supported floating point types where applicable.
 # Currently used only in the Advection module to specialize
 # reconstruction schemes (WENO, UpwindBiased, and Centered).
-const fully_supported_float_types = (Float32, Float64)
+const fully_supported_float_types = (Float32, Float64, BigFloat)
 
 #####
 ##### Default settings for constructors

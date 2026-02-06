@@ -40,4 +40,3 @@ end
 bickley_grid(; Nh, arch=CPU(), halo=(3, 3, 3)) = RectilinearGrid(arch; size=(Nh, Nh, 1), halo,
                                                                  x = (-2π, 2π), y=(-2π, 2π), z=(0, 1),
                                                                  topology = (Periodic, Periodic, Bounded))
-

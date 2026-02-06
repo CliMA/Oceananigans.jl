@@ -110,10 +110,14 @@ function rectilinear_mpi_script(config, filename)
     uᵢ(x, y, z) = 0.1 * sin(2π * x / Lx)
     set!(model, c=cᵢ, u=uᵢ)
 
+    # Add a `Nothing field in the z-direction`
+    zflat = Field{Center, Center, Nothing}(grid)
+    set!(zflat, (x, y) -> x)
+
     simulation = Simulation(model; Δt=$Δt, stop_iteration=$stop_iteration)
 
     simulation.output_writers[:jld2] = JLD2Writer(model,
-                                                  merge(model.velocities, model.tracers);
+                                                  merge(model.velocities, model.tracers, (; zflat));
                                                   filename = "$filename",
                                                   schedule = IterationInterval($output_interval),
                                                   overwrite_existing = true,
@@ -140,10 +144,14 @@ function run_serial_rectilinear(config, filename)
     uᵢ(x, y, z) = 0.1 * sin(2π * x / Lx)
     set!(model, c=cᵢ, u=uᵢ)
 
+    # Add a `Nothing field in the z-direction`
+    zflat = Field{Center, Center, Nothing}(grid)
+    set!(zflat, (x, y) -> x)
+
     simulation = Simulation(model; Δt=config.Δt, stop_iteration=config.stop_iteration)
 
     simulation.output_writers[:jld2] = JLD2Writer(model,
-                                                  merge(model.velocities, model.tracers);
+                                                  merge(model.velocities, model.tracers, (; zflat));
                                                   filename = filename,
                                                   schedule = IterationInterval(config.output_interval),
                                                   overwrite_existing = true,
@@ -332,7 +340,7 @@ end
 
     run_serial_rectilinear(config, serial_file)
 
-    test_combined_output_matches_serial(dist_prefix, serial_file, ["c", "u"])
+    test_combined_output_matches_serial(dist_prefix, serial_file, ["c", "u", "zflat"])
 
     @info "  RectilinearGrid (2x2) test passed!"
 

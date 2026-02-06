@@ -29,7 +29,7 @@ c = sqrt(g)
 simulation = Simulation(model; Δt, stop_iteration=10) #stop_time=5/c)
 
 ηt = []
-function progress(sim) 
+function progress(sim)
     @info @sprintf("Time: %s, iteration: %d", prettytime(sim), iteration(sim))
     push!(ηt, deepcopy(interior(model.free_surface.displacement, :, 1, 1)))
     return nothing

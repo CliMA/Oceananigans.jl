@@ -83,7 +83,7 @@ Testing infrastructure is provided by [atdepth](https://www.atdepth.org) and the
 
 Oceananigans is a [registered Julia package](https://julialang.org/packages/). So to install it,
 
-1. [Download Julia](https://julialang.org/downloads/) (version 1.9 or later).
+1. [Download Julia](https://julialang.org/downloads/) (version 1.10 or later).
 
 2. Launch Julia and type
 

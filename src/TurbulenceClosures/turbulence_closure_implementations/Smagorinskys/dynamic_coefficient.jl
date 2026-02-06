@@ -487,10 +487,10 @@ function prognostic_state(cf::DirectionallyAveragedSmagorinskyFields)
             𝒥ᴹᴹ = prognostic_state(cf.𝒥ᴹᴹ))
 end
 
-function restore_prognostic_state!(cf::DirectionallyAveragedSmagorinskyFields, state)
-    restore_prognostic_state!(cf.𝒥ᴸᴹ, state.𝒥ᴸᴹ)
-    restore_prognostic_state!(cf.𝒥ᴹᴹ, state.𝒥ᴹᴹ)
-    return cf
+function restore_prognostic_state!(restored::DirectionallyAveragedSmagorinskyFields, from)
+    restore_prognostic_state!(restored.𝒥ᴸᴹ, from.𝒥ᴸᴹ)
+    restore_prognostic_state!(restored.𝒥ᴹᴹ, from.𝒥ᴹᴹ)
+    return restored
 end
 
 function prognostic_state(cf::LagrangianAveragedSmagorinskyFields)
@@ -501,13 +501,13 @@ function prognostic_state(cf::LagrangianAveragedSmagorinskyFields)
             previous_compute_time = cf.previous_compute_time[])
 end
 
-function restore_prognostic_state!(cf::LagrangianAveragedSmagorinskyFields, state)
-    restore_prognostic_state!(cf.𝒥ᴸᴹ, state.𝒥ᴸᴹ)
-    restore_prognostic_state!(cf.𝒥ᴹᴹ, state.𝒥ᴹᴹ)
-    restore_prognostic_state!(cf.𝒥ᴸᴹ⁻, state.𝒥ᴸᴹ⁻)
-    restore_prognostic_state!(cf.𝒥ᴹᴹ⁻, state.𝒥ᴹᴹ⁻)
-    cf.previous_compute_time[] = state.previous_compute_time
-    return cf
+function restore_prognostic_state!(restored::LagrangianAveragedSmagorinskyFields, from)
+    restore_prognostic_state!(restored.𝒥ᴸᴹ, from.𝒥ᴸᴹ)
+    restore_prognostic_state!(restored.𝒥ᴹᴹ, from.𝒥ᴹᴹ)
+    restore_prognostic_state!(restored.𝒥ᴸᴹ⁻, from.𝒥ᴸᴹ⁻)
+    restore_prognostic_state!(restored.𝒥ᴹᴹ⁻, from.𝒥ᴹᴹ⁻)
+    restored.previous_compute_time[] = from.previous_compute_time
+    return restored
 end
 
 restore_prognostic_state!(::DirectionallyAveragedSmagorinskyFields, ::Nothing) = nothing

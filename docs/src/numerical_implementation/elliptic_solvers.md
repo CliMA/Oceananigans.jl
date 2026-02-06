@@ -16,7 +16,7 @@ along with homogenous Neumann boundary conditions ``\boldsymbol{v} \cdot \boldsy
 denotes the source term for the Poisson equation.
 
 !!! note "Dividing small timesteps"
-    In practice, in order to avoid division by extremely small numbers when ``\Delta t \lesssim \epsilon``, 
+    In practice, in order to avoid division by extremely small numbers when ``\Delta t \lesssim \epsilon``,
     we solve the Poisson equation for ``p_{NH} \Delta t`` instead.
     ``\Delta t`` is then removed from the pressure field after the elliptic solve routine.
 

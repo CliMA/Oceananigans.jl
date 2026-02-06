@@ -69,7 +69,7 @@ Keyword arguments
 
 - `minimum_relative_step`: time steps smaller than `Δt * minimum_relative_step` will be skipped.
                            This avoids extremely high values when writing the pressure to disk.
-                           Default value is 0. See github.com/CliMA/Oceananigans.jl/issues/3593 for details.
+                           Default value is 0. See <https://github.com/CliMA/Oceananigans.jl/issues/3593> for details.
 """
 function Simulation(model;
                     Δt,
@@ -295,17 +295,17 @@ function prognostic_state(sim::Simulation)
             minimum_relative_step = sim.minimum_relative_step)
 end
 
-function restore_prognostic_state!(sim::Simulation, state)
-    restore_prognostic_state!(sim.model, state.model)
-    sim.Δt = state.Δt
-    restore_prognostic_state!(sim.diagnostics, state.diagnostics)
-    restore_prognostic_state!(sim.output_writers, state.output_writers)
-    restore_prognostic_state!(sim.callbacks, state.callbacks)
-    sim.run_wall_time = state.run_wall_time
-    sim.align_time_step = state.align_time_step
-    sim.verbose = state.verbose
-    sim.minimum_relative_step = state.minimum_relative_step
-    return sim
+function restore_prognostic_state!(restored::Simulation, from)
+    restore_prognostic_state!(restored.model, from.model)
+    restored.Δt = from.Δt
+    restore_prognostic_state!(restored.diagnostics, from.diagnostics)
+    restore_prognostic_state!(restored.output_writers, from.output_writers)
+    restore_prognostic_state!(restored.callbacks, from.callbacks)
+    restored.run_wall_time = from.run_wall_time
+    restored.align_time_step = from.align_time_step
+    restored.verbose = from.verbose
+    restored.minimum_relative_step = from.minimum_relative_step
+    return restored
 end
 
 # Disambiguation: handle case when no checkpoint file exists

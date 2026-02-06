@@ -58,32 +58,3 @@ function assign_devices(arch::AbstractArchitecture, p::AbstractPartition, dev::T
     end
     return Tuple(devices)
 end
-
-maybe_enable_peer_access!(arch, devices) = nothing
-
-# # Enable peer access by copying fake CuArrays between all devices
-function maybe_enable_peer_access!(arch::AbstractArchitecture, devices::NTuple)
-
-    fake_arrays = []
-    for dev in devices
-        switch_device!(dev)
-        push!(fake_arrays, on_architecture(arch, zeros(2, 2, 2)))
-    end
-
-    sync_all_devices!(devices)
-
-    for (idx_dst, dev_dst) in enumerate(devices)
-        for (idx_src, dev_src) in enumerate(devices)
-            if idx_dst != idx_src
-                switch_device!(dev_src)
-                src = fake_arrays[idx_src]
-                switch_device!(dev_dst)
-                dst = fake_arrays[idx_dst]
-                copyto!(dst, src)
-            end
-        end
-    end
-
-    sync_all_devices!(devices)
-    return nothing
-end

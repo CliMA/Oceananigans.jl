@@ -35,19 +35,19 @@ Distributed.addprocs(2)
     const OUTPUT_DIR   = joinpath(@__DIR__, "src/literated")
 
     # The examples that take longer to run should be first. This ensures that the
-    # docs built which extra workers is as efficient as possible.
+    # docs built with extra workers is as efficient as possible.
     example_scripts = [
+        "ocean_wind_mixing_and_convection.jl",
+        "shallow_water_Bickley_jet.jl",
         "spherical_baroclinic_instability.jl",
+        "hydrostatic_lock_exchange.jl",
         "internal_tide.jl",
         "langmuir_turbulence.jl",
-        "shallow_water_Bickley_jet.jl",
-        "ocean_wind_mixing_and_convection.jl",
         "kelvin_helmholtz_instability.jl",
         "horizontal_convection.jl",
         "baroclinic_adjustment.jl",
         "tilted_bottom_boundary_layer.jl",
         "convecting_plankton.jl",
-        "hydrostatic_lock_exchange.jl",
         "two_dimensional_turbulence.jl",
         "one_dimensional_diffusion.jl",
         "internal_wave.jl",

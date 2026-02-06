@@ -142,9 +142,9 @@ function prognostic_state(callback::Callback)
     return (; schedule = prognostic_state(callback.schedule))
 end
 
-function restore_prognostic_state!(callback::Callback, state)
-    restore_prognostic_state!(callback.schedule, state.schedule)
-    return callback
+function restore_prognostic_state!(restored::Callback, from)
+    restore_prognostic_state!(restored.schedule, from.schedule)
+    return restored
 end
 
 restore_prognostic_state!(::Callback, ::Nothing) = nothing

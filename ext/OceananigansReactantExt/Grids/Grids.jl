@@ -90,4 +90,3 @@ function offset_data(underlying_data::ConcreteRArray, loc, topo, N, H, indices::
 end
 
 end # module
-

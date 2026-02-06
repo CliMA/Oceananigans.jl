@@ -74,7 +74,7 @@ function compute_index_intersection(to_idx::AbstractUnitRange, from_idx::Abstrac
 end
 
 validate_shifted_index(shifted_idx) = first(shifted_idx) > last(shifted_idx) &&
-    throw(ArgumentError("Cannot compute index intersection for indices $(from_idx) interpolating from $(from_loc) to $(to_loc)!"))
+    throw(ArgumentError("Cannot compute index intersection!"))
 
 """
     restrict_index_on_location(from_idx, from_loc, to_loc)

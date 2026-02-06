@@ -378,4 +378,3 @@ end
     rel_error = abs(dedν[1][1] - ΔeΔν) / abs(ΔeΔν)
     @test rel_error < tol
 end
-

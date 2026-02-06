@@ -438,7 +438,8 @@ end
 function Base.summary(arch::Distributed)
     child_arch = child_architecture(arch)
     A = Base.summary(child_arch)
-    return "Distributed{$A}"
+    Rx, Ry, Rz = ranks(arch)
+    return "Distributed{$A} on $(Rx)×$(Ry)×$(Rz)"
 end
 
 function Base.show(io::IO, arch::Distributed)

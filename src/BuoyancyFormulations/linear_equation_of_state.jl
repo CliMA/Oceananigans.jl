@@ -78,4 +78,3 @@ const LinearSalinitySeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfSt
 
 @inline buoyancy_perturbationᶜᶜᶜ(i, j, k, grid, b::LinearSalinitySeawaterBuoyancy, C) =
     @inbounds - b.gravitational_acceleration * b.equation_of_state.haline_contraction * C.S[i, j, k]
-

@@ -52,8 +52,8 @@ validate_momentum_advection(momentum_advection, ::SingleColumnGrid) = nothing
 validate_tracer_advection(tracer_advection_tuple::NamedTuple, ::SingleColumnGrid) = Centered(), tracer_advection_tuple
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, ::SingleColumnGrid) = tracer_advection, NamedTuple()
 
-compute_w_from_continuity!(velocities, arch, ::SingleColumnGrid; kwargs...) = nothing
-compute_w_from_continuity!(::PrescribedVelocityFields, arch, ::SingleColumnGrid; kwargs...) = nothing
+compute_w_from_continuity!(velocities, ::SingleColumnGrid; kwargs...) = nothing
+compute_w_from_continuity!(::PrescribedVelocityFields, ::SingleColumnGrid; kwargs...) = nothing
 
 #####
 ##### Time-step optimizations
@@ -65,7 +65,7 @@ compute_free_surface_tendency!(::SingleColumnGrid, model, ::SplitExplicitFreeSur
 
 # Fast state update and halo filling
 
-function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid, callbacks; compute_tendencies=true)
+function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid, callbacks)
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
 
@@ -83,8 +83,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
 
     update_biogeochemical_state!(model.biogeochemistry, model)
 
-    compute_tendencies &&
-        @apply_regionally compute_tendencies!(model, callbacks)
+    compute_momentum_tendencies!(model, callbacks)
 
     return nothing
 end

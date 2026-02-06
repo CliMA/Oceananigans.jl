@@ -113,4 +113,3 @@ display(fig)
 record(fig, "bottom_boundary_layer.mp4", 1:Nt, framerate=12) do nn
     n[] = nn
 end
-

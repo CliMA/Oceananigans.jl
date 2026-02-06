@@ -1,6 +1,6 @@
 using Oceananigans.Advection: WENO, VectorInvariant
 using Oceananigans.BuoyancyFormulations: NegativeZDirection, AbstractBuoyancyFormulation, validate_unit_vector
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, update_state!
 using Oceananigans.Models: PrescribedVelocityFields
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 using Oceananigans.Advection: OnlySelfUpwinding, CrossAndSelfUpwinding
@@ -10,10 +10,12 @@ using Oceananigans.Solvers: ConjugateGradientSolver
 import Oceananigans.BuoyancyFormulations: BuoyancyForce
 import Oceananigans.Advection: WENO, cell_advection_timescale, adapt_advection_order
 import Oceananigans.BuoyancyFormulations: BuoyancyForce
+import Oceananigans.Models: initialization_update_state!
 import Oceananigans.Models.HydrostaticFreeSurfaceModels: validate_tracer_advection
 import Oceananigans.TurbulenceClosures: implicit_diffusion_solver
 
 const MultiRegionModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:MultiRegionGrids}
+const CubedSphereModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:ConformalCubedSphereGridOfSomeKind}
 
 function adapt_advection_order(advection::MultiRegionObject, grid::MultiRegionGrids)
     @apply_regionally new_advection = adapt_advection_order(advection, grid)
@@ -34,7 +36,6 @@ Types = (HydrostaticFreeSurfaceModel,
          ImplicitFreeSurface,
          ExplicitFreeSurface,
          QuasiAdamsBashforth2TimeStepper,
-         SplitExplicitFreeSurface,
          PrescribedVelocityFields,
          ConjugateGradientSolver,
          CrossAndSelfUpwinding,
@@ -52,10 +53,28 @@ for T in Types
     end
 end
 
+@inline _getregion(fs::SplitExplicitFreeSurface{E}, r) where {E} =
+    SplitExplicitFreeSurface{E}(getregion(fs.displacement, r),
+                                getregion(fs.barotropic_velocities, r),
+                                getregion(fs.filtered_state, r),
+                                getregion(fs.gravitational_acceleration, r),
+                                getregion(fs.kernel_parameters, r),
+                                getregion(fs.substepping, r),
+                                getregion(fs.timestepper, r))
+
+@inline getregion(fs::SplitExplicitFreeSurface{E}, r) where {E} =
+    SplitExplicitFreeSurface{E}(_getregion(fs.displacement, r),
+                                _getregion(fs.barotropic_velocities, r),
+                                _getregion(fs.filtered_state, r),
+                                _getregion(fs.gravitational_acceleration, r),
+                                _getregion(fs.kernel_parameters, r),
+                                _getregion(fs.substepping, r),
+                                _getregion(fs.timestepper, r))
+
 # TODO: For the moment, buoyancy gradients cannot be precomputed in MultiRegionModels
-function BuoyancyForce(grid::MultiRegionGrids, formulation::AbstractBuoyancyFormulation; 
-                       gravity_unit_vector=NegativeZDirection(), 
-                       materialize_gradients=false) 
+function BuoyancyForce(grid::MultiRegionGrids, formulation::AbstractBuoyancyFormulation;
+                       gravity_unit_vector=NegativeZDirection(),
+                       materialize_gradients=false)
 
     gravity_unit_vector = validate_unit_vector(gravity_unit_vector)
     return BuoyancyForce(formulation, gravity_unit_vector, nothing)
@@ -66,8 +85,37 @@ end
 
 validate_tracer_advection(tracer_advection::MultiRegionObject, grid::MultiRegionGrids) = tracer_advection, NamedTuple()
 
+# A cubed sphere needs to fill u and v separately
+# U and V (in case of a `SplitExplicitFreeSurface`) are filled in `initialize!`
+function initialization_update_state!(model::CubedSphereModel)
+
+    # Update the state of the model
+    update_state!(model)
+
+    u = model.velocities.u
+    v = model.velocities.v
+
+    fill_halo_regions!((u, v), model.clock, Oceananigans.fields(model))
+    fields = Oceananigans.prognostic_fields(model)
+
+    for key in keys(fields)
+        !(key ∈ (:u, :v, :U, :V)) && fill_halo_regions!(fields[key], model.clock, Oceananigans.fields(model))
+    end
+
+    # Finally, initialize the model (e.g., free surface, vertical coordinate...)
+    Oceananigans.initialize!(model)
+
+    return nothing
+end
+
 @inline isregional(mrm::MultiRegionModel) = true
 @inline regions(mrm::MultiRegionModel) = regions(mrm.grid)
+
+Oceananigans.TimeSteppers.cache_previous_tendencies!(model::MultiRegionModel) =
+    @apply_regionally Oceananigans.TimeSteppers.cache_previous_tendencies!(model)
+
+Oceananigans.TimeSteppers.cache_current_fields!(model::MultiRegionModel) =
+    @apply_regionally Oceananigans.TimeSteppers.cache_current_fields!(model)
 
 implicit_diffusion_solver(time_discretization::VerticallyImplicitTimeDiscretization, mrg::MultiRegionGrid) =
     construct_regionally(implicit_diffusion_solver, time_discretization, mrg)

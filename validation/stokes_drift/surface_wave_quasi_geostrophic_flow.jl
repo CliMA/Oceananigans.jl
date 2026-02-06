@@ -161,4 +161,3 @@ contour!(axw, xc, yc, An, color=:gray, levels=5)
 record(fig, "surface_wave_quasi_geostrophic_induced_flow.mp4", 1:Nt, framerate=8) do nn
     n[] = nn
 end
-

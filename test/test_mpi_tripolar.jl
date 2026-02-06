@@ -81,11 +81,11 @@ tripolar_reconstructed_field = """
 
 @testset "Test distributed TripolarGrid..." begin
     write("distributed_tripolar_grid.jl", tripolar_reconstructed_grid)
-    run(`$(mpiexec()) -n 4 julia --project -O0 distributed_tripolar_grid.jl`)
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project -O0 distributed_tripolar_grid.jl`)
     rm("distributed_tripolar_grid.jl")
 
     write("distributed_tripolar_field.jl", tripolar_reconstructed_field)
-    run(`$(mpiexec()) -n 4 julia --project -O0 distributed_tripolar_field.jl`)
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project -O0 distributed_tripolar_field.jl`)
     rm("distributed_tripolar_field.jl")
 end
 
@@ -144,7 +144,7 @@ tripolar_boundary_conditions = """
     fill_halo_regions!((v, c))
 
     write("distributed_boundary_tests.jl", tripolar_boundary_conditions)
-    run(`$(mpiexec()) -n 4 julia --project -O0 distributed_boundary_tests.jl`)
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project -O0 distributed_boundary_tests.jl`)
     rm("distributed_boundary_tests.jl")
 
     # Retrieve Parallel quantities from rank 1 (the north-west rank)

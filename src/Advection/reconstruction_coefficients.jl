@@ -166,7 +166,6 @@ end
         rng = rng .+ 1
     end
     stencil_full = Vector(undef, N)
-    coeff = Symbol(:coeff, order, :_, shift)
     for (idx, n) in enumerate(rng)
         c = n - buffer - 1
         if func

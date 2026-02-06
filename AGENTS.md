@@ -5,7 +5,7 @@
 Oceananigans.jl is a Julia package for fast, friendly, flexible, ocean-flavored fluid dynamics simulations on CPUs and GPUs.
 It provides a framework for solving the incompressible (or Boussinesq) Navier-Stokes equations with various model configurations including:
 - Nonhydrostatic models with free surfaces
-- Hydrostatic models for large-scale ocean simulations  
+- Hydrostatic models for large-scale ocean simulations
 - Shallow water models
 - Support for a variety of grids: RectilinearGrid, LatitudeLongitudeGrid, CubedSphereGrid
 - Support for complex domains using ImmersedBoundaryGrid
@@ -22,10 +22,10 @@ It provides a framework for solving the incompressible (or Boussinesq) Navier-St
 1. **Explicit Imports**: Use `ExplicitImports.jl` style - explicitly import all used functions/types
    - Import from modules explicitly (already done in src/Oceananigans.jl)
    - Tests automatically check for proper imports
-   
+
 2. **Type Stability**: Prioritize type-stable code for performance
    - All structs must be concretely typed
-   
+
 3. **Kernel Functions**: For GPU compatibility:
    - Use KernelAbstractions.jl syntax for kernels, eg `@kernel`, `@index`
    - Keep kernels type-stable and allocation-free
@@ -35,7 +35,7 @@ It provides a framework for solving the incompressible (or Boussinesq) Navier-St
    - Mark functions called inside kernels with `@inline`
    - **Never use loops outside kernels**: Always replace `for` loops that iterate over grid points
      with kernels launched via `launch!`. This ensures code works on both CPU and GPU.
-   
+
 4. **Documentation**:
    - Use DocStringExtensions.jl for consistent docstrings
    - Include `$(SIGNATURES)` for automatic signature documentation
@@ -53,7 +53,7 @@ It provides a framework for solving the incompressible (or Boussinesq) Navier-St
    - **NonhydrostaticModel**: `NonhydrostaticModel(grid; ...)` - `grid` is positional
    - **ShallowWaterModel**: `ShallowWaterModel(grid; gravitational_acceleration, ...)` - both `grid` and `gravitational_acceleration` are positional
    - **Important**: When there are no keyword arguments, omit the semicolon:
-     - ✅ `NonhydrostaticModel(grid)` 
+     - ✅ `NonhydrostaticModel(grid)`
      - ❌ `NonhydrostaticModel(grid;)`
    - When keyword arguments are present, use the semicolon:
      - ✅ `NonhydrostaticModel(grid; closure=nothing)`
@@ -350,7 +350,7 @@ serve(dir="docs/build")
 When implementing a simulation from a published paper:
 
 ### 1. Parameter Extraction
-- **Read the paper carefully** and extract ALL parameters: domain size, resolution, physical constants, 
+- **Read the paper carefully** and extract ALL parameters: domain size, resolution, physical constants,
   boundary conditions, initial conditions, forcing, closure parameters
 - Look for parameter tables (often "Table 1" or similar)
 - Check figure captions for additional details
@@ -393,11 +393,11 @@ Before running a long simulation:
 - Quantitative comparison: compute the same diagnostics as the paper
 
 ### 7. Common Issues
-- **NaN blowups**: Usually from timestep too large, unstable initial conditions, 
+- **NaN blowups**: Usually from timestep too large, unstable initial conditions,
   or if-else statements on GPU (use `ifelse` instead)
-- **Nothing happening**: Check that buoyancy anomaly has the right sign, 
+- **Nothing happening**: Check that buoyancy anomaly has the right sign,
   that initial conditions are actually applied, that forcing is active
-- **Wrong direction of flow**: Check coordinate conventions (is y increasing 
+- **Wrong direction of flow**: Check coordinate conventions (is y increasing
   upslope or downslope?)
 - **GPU issues**: Avoid branching, ensure type stability, use `randn()` carefully
 

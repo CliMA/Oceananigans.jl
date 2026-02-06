@@ -66,3 +66,40 @@ function interior_tendency_kernel_parameters(arch::AsynchronousDistributed, grid
     return KernelParameters(sizes, offsets)
 end
 
+"""
+    surface_kernel_parameters(grid)
+
+Return kernel parameters for computing 2D (surface) variables including halo regions.
+
+The returned `KernelParameters` cover the total domain minus one halo cell on each side
+(indices `-Hx+2:Nx+Hx-1` and `-Hy+2:Ny+Hy-1`), which is sufficient for computing
+quantities that require neighbor data (like derivatives and interpolations).
+"""
+@inline function surface_kernel_parameters(grid)
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+    Tx, Ty, _ = topology(grid)
+
+    ii = ifelse(Tx == Flat, 1:Nx, -Hx+2:Nx+Hx-1)
+    jj = ifelse(Ty == Flat, 1:Ny, -Hy+2:Ny+Hy-1)
+
+    return KernelParameters(ii, jj)
+end
+
+"""
+    volume_kernel_parameters(grid)
+
+Return kernel parameters for computing 3D (volume) variables including halo regions.
+Similar to `surface_kernel_parameters` but for three-dimensional fields.
+"""
+@inline function volume_kernel_parameters(grid)
+    Nx, Ny, Nz = size(grid)
+    Hx, Hy, Hz = halo_size(grid)
+    Tx, Ty, Tz = topology(grid)
+
+    ii = ifelse(Tx == Flat, 1:Nx, -Hx+2:Nx+Hx-1)
+    jj = ifelse(Ty == Flat, 1:Ny, -Hy+2:Ny+Hy-1)
+    kk = ifelse(Tz == Flat, 1:Nz, -Hz+2:Nz+Hz-1)
+
+    return KernelParameters(ii, jj, kk)
+end

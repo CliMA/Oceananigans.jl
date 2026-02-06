@@ -1,10 +1,13 @@
 include("dependencies_for_runtests.jl")
 include("data_dependencies.jl")
 
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Grids: φnode, λnode, halo_size
+using Oceananigans.MultiRegion: number_of_regions
 using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid
 using Oceananigans.Utils: Iterate, getregion
-using Oceananigans.MultiRegion: number_of_regions, fill_halo_regions!
+using Random
+using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
 
 function get_range_of_indices(operation, index, Nx, Ny)
     if operation == :endpoint && index == :before_first
@@ -932,17 +935,92 @@ end
     end
 end
 
+@kernel function _interpolate_to_face_center!(grid, ηᶠᶜᵃ, η)
+    i, j, k = @index(Global, NTuple)
+    ηᶠᶜᵃ[i, j, k] = ℑxᶠᵃᵃ(i, j, k, grid, η)
+end
+
+@kernel function _interpolate_to_face_center!(grid, ηᶠᶜᵃ, f, η)
+    i, j, k = @index(Global, NTuple)
+    ηᶠᶜᵃ[i, j, k] = ℑxᶠᵃᵃ(i, j, k, grid, f, η)
+end
+
+@kernel function _interpolate_to_center_face!(grid, ηᶜᶠᵃ, η)
+    i, j, k = @index(Global, NTuple)
+    ηᶜᶠᵃ[i, j, k] = ℑyᵃᶠᵃ(i, j, k, grid, η)
+end
+
+@kernel function _interpolate_to_center_face!(grid, ηᶜᶠᵃ, f, η)
+    i, j, k = @index(Global, NTuple)
+    ηᶜᶠᵃ[i, j, k] = ℑyᵃᶠᵃ(i, j, k, grid, f, η)
+end
+
+@kernel function _difference_face_center!(grid, δf, f, η)
+    i, j, k = @index(Global, NTuple)
+    δf[i, j, k] = δxTᶠᵃᵃ(i, j, k, grid, f, η)
+end
+
+@kernel function _difference_center_face!(grid, δf, f, η)
+    i, j, k = @index(Global, NTuple)
+    δf[i, j, k] = δyTᵃᶠᵃ(i, j, k, grid, f, η)
+end
+
+@testset "Testing interpolation and derivative operators on cubed sphere grids" begin
+    for FT in float_types, arch in archs, non_uniform_conformal_mapping in (false, true)
+        cm = non_uniform_conformal_mapping ? "non-uniform conformal mapping" : "uniform conformal mapping"
+        @info "  Testing interpolation and derivative operators [$FT, $(typeof(arch)), $cm]..."
+
+        Nx, Ny, Nz = 9, 9, 2
+        grid = ConformalCubedSphereGrid(arch, FT;
+                                        panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1,
+                                        horizontal_direction_halo = 3)
+        Hx, Hy, Hz = halo_size(grid)
+
+        η = CenterField(grid)
+        set!(η, -1)
+        fill_halo_regions!(η)
+
+        ηᶠᶜᵃ  = Field{Face, Center, Center}(grid)
+        ηᶜᶠᵃ  = Field{Center, Face, Center}(grid)
+        fηᶠᶜᵃ = Field{Face, Center, Center}(grid)
+        fηᶜᶠᵃ = Field{Center, Face, Center}(grid)
+        δηᶠᶜᵃ = Field{Face, Center, Center}(grid)
+        δηᶜᶠᵃ = Field{Center, Face, Center}(grid)
+
+        @inline η★(i, j, k, grid, η) = @inbounds η[i, j, k]
+
+        kernel_parameters = KernelParameters((Nx+2Hx-1, Ny+2Hy, Nz+2Hz), (-Hx+1, -Hy, -Hz))
+        @apply_regionally launch!(arch, grid, kernel_parameters, _interpolate_to_face_center!, grid, ηᶠᶜᵃ, η)
+        @apply_regionally launch!(arch, grid, kernel_parameters, _interpolate_to_face_center!, grid, fηᶠᶜᵃ, η★, η)
+        @apply_regionally launch!(arch, grid, kernel_parameters, _difference_face_center!, grid, δηᶠᶜᵃ, η★, η)
+
+        kernel_parameters = KernelParameters((Nx+2Hx, Ny+2Hy-1, Nz+2Hz), (-Hx, -Hy+1, -Hz))
+        @apply_regionally launch!(arch, grid, kernel_parameters, _interpolate_to_center_face!, grid, ηᶜᶠᵃ, η)
+        @apply_regionally launch!(arch, grid, kernel_parameters, _interpolate_to_center_face!, grid, fηᶜᶠᵃ, η★, η)
+        @apply_regionally launch!(arch, grid, kernel_parameters, _difference_center_face!, grid, δηᶜᶠᵃ, η★, η)
+
+        @test minimum(ηᶠᶜᵃ)  == -1 && maximum(abs, ηᶠᶜᵃ)  == 1
+        @test minimum(ηᶜᶠᵃ)  == -1 && maximum(abs, ηᶜᶠᵃ)  == 1
+        @test minimum(fηᶠᶜᵃ) == -1 && maximum(abs, fηᶠᶜᵃ) == 1
+        @test minimum(fηᶜᶠᵃ) == -1 && maximum(abs, fηᶜᶠᵃ) == 1
+        @test maximum(abs, δηᶠᶜᵃ) ==  0
+        @test maximum(abs, δηᶜᶠᵃ) ==  0
+    end
+end
+
 @testset "Testing simulation on conformal and immersed conformal cubed sphere grids" begin
     for non_uniform_conformal_mapping in (false, true)
         cm = non_uniform_conformal_mapping ? "non-uniform conformal mapping" : "uniform conformal mapping"
         cm_suffix = non_uniform_conformal_mapping ? "NUCM" : "UCM"
         for FT in (Oceananigans.defaults.FloatType,), arch in archs
-            Nx, Ny, Nz = 18, 18, 9
+            Nx, Ny, Nz = 32, 32, 10
 
             underlying_grid = ConformalCubedSphereGrid(arch, FT;
-                                                       panel_size = (Nx, Ny, Nz), z = (0, 1), radius = 1,
+                                                       panel_size = (Nx, Ny, Nz), z = (-3000, 0),
+                                                       radius = Oceananigans.defaults.planet_radius,
                                                        horizontal_direction_halo = 6, non_uniform_conformal_mapping)
-            @inline bottom(x, y) = ifelse(abs(y) < 30, - 2, 0)
+
+            @inline bottom(λ, φ) = ifelse(abs(φ) < 30, - 2, 0)
             immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom);
                                                  active_cells_map = true)
 
@@ -957,13 +1035,26 @@ end
                     grid_suffix = "IG"
                 end
 
+                momentum_advection = WENOVectorInvariant(FT; order=5)
+                tracer_advection   = WENO(FT; order=5)
+                free_surface       = SplitExplicitFreeSurface(grid;
+                                                              substeps=12)
+                coriolis           = HydrostaticSphericalCoriolis(FT)
+                tracers            = (:T, :S)
+                buoyancy           = SeawaterBuoyancy(equation_of_state = TEOS10EquationOfState())
+
                 model = HydrostaticFreeSurfaceModel(grid;
-                                                    momentum_advection = WENOVectorInvariant(FT; order=5),
-                                                    tracer_advection = WENO(FT; order=5),
-                                                    free_surface = SplitExplicitFreeSurface(grid; substeps=12),
-                                                    coriolis = HydrostaticSphericalCoriolis(FT),
-                                                    tracers = :b,
-                                                    buoyancy = BuoyancyTracer())
+                                                    momentum_advection,
+                                                    tracer_advection,
+                                                    free_surface,
+                                                    coriolis,
+                                                    tracers,
+                                                    buoyancy)
+
+                Random.seed!(1234)
+                Tᵢ(λ, φ, z) = 30 * (1 - tanh((abs(φ) - 45) / 8)) / 2 + rand()
+                Sᵢ(λ, φ, z) = 28 - 5e-3 * z + rand()
+                set!(model, T=Tᵢ, S=Sᵢ)
 
                 simulation = Simulation(model, Δt=1minute, stop_time=10minutes)
 
@@ -986,7 +1077,8 @@ end
                                                                         prefix = filename_checkpointer,
                                                                         overwrite_existing = true)
 
-                outputs = fields(model)
+                b = buoyancy_field(model)
+                outputs = merge(fields(model), (; b))
                 simulation.output_writers[:fields] = JLD2Writer(model, outputs;
                                                                 schedule = TimeInterval(save_fields_interval),
                                                                 filename = filename_output_writer,
@@ -995,10 +1087,62 @@ end
 
                 run!(simulation)
 
+                u = simulation.model.velocities.u
+                v = simulation.model.velocities.v
+                T = simulation.model.tracers.T
+                S = simulation.model.tracers.S
+                b = buoyancy_field(simulation.model)
+
+                free_surface_no_halos = SplitExplicitFreeSurface(grid;
+                                                                 substeps=12,
+                                                                 extend_halos=false)
+                model_no_halos = HydrostaticFreeSurfaceModel(grid;
+                                                             momentum_advection,
+                                                             tracer_advection,
+                                                             free_surface = free_surface_no_halos,
+                                                             coriolis,
+                                                             tracers,
+                                                             buoyancy)
+
+                Random.seed!(1234)
+                Tᵢ_no_halos(λ, φ, z) = 30 * (1 - tanh((abs(φ) - 45) / 8)) / 2 + rand()
+                Sᵢ_no_halos(λ, φ, z) = 28 - 5e-3 * z + rand()
+                set!(model_no_halos, T=Tᵢ_no_halos, S=Sᵢ_no_halos)
+
+                simulation_no_halos = Simulation(model_no_halos, Δt=1minute, stop_time=10minutes)
+
+                run!(simulation_no_halos)
+
+                u_no_halos = simulation_no_halos.model.velocities.u
+                v_no_halos = simulation_no_halos.model.velocities.v
+                T_no_halos = simulation_no_halos.model.tracers.T
+                S_no_halos = simulation_no_halos.model.tracers.S
+                b_no_halos = buoyancy_field(simulation_no_halos.model)
+
+                @apply_regionally regional_comparison = interior(u) ≈ interior(u_no_halos)
+                @test all(regional_comparison.regional_objects)
+                @apply_regionally regional_comparison = interior(v) ≈ interior(v_no_halos)
+                @test all(regional_comparison.regional_objects)
+                @apply_regionally regional_comparison = interior(T) ≈ interior(T_no_halos)
+                @test all(regional_comparison.regional_objects)
+                @apply_regionally regional_comparison = interior(S) ≈ interior(S_no_halos)
+                @test all(regional_comparison.regional_objects)
+                @apply_regionally regional_comparison = interior(b) ≈ interior(b_no_halos)
+                @test all(regional_comparison.regional_objects)
+
                 @test iteration(simulation) == 10
                 @test time(simulation) == 10minutes
 
                 u_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "u"; architecture = CPU())
+                v_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "v"; architecture = CPU())
+                T_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "T"; architecture = CPU())
+                S_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "S"; architecture = CPU())
+                b_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "b"; architecture = CPU())
+                u_end = u_timeseries[end]
+                v_end = v_timeseries[end]
+                T_end = T_timeseries[end]
+                S_end = S_timeseries[end]
+                b_end = b_timeseries[end]
 
                 if grid == underlying_grid
                     @info "  Restarting simulation from pickup file on conformal cubed sphere grid [$FT, $(typeof(arch)), $cm]..."
@@ -1006,25 +1150,47 @@ end
                     @info "  Restarting simulation from pickup file on immersed boundary conformal cubed sphere grid [$FT, $(typeof(arch)), $cm]..."
                 end
 
-                simulation = Simulation(model, Δt=1minute, stop_time=20minutes)
+                simulation = Simulation(model, Δt=1minute, stop_time=10minutes)
 
                 simulation.output_writers[:checkpointer] = Checkpointer(model,
                                                                         schedule = TimeInterval(checkpointer_interval),
                                                                         prefix = filename_checkpointer,
                                                                         overwrite_existing = true)
 
+                b = buoyancy_field(model)
+                outputs = merge(fields(model), (; b))
                 simulation.output_writers[:fields] = JLD2Writer(model, outputs;
                                                                 schedule = TimeInterval(save_fields_interval),
                                                                 filename = filename_output_writer,
                                                                 verbose = false,
                                                                 overwrite_existing = true)
 
-                run!(simulation, pickup = true)
+                run!(simulation, pickup = 4)
 
-                @test iteration(simulation) == 20
-                @test time(simulation) == 20minutes
+                @test iteration(simulation) == 10
+                @test time(simulation) == 10minutes
 
                 u_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "u"; architecture = CPU())
+                v_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "v"; architecture = CPU())
+                T_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "T"; architecture = CPU())
+                S_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "S"; architecture = CPU())
+                b_timeseries = FieldTimeSeries(filename_output_writer * ".jld2", "b"; architecture = CPU())
+                u_end_checkpointed_run = u_timeseries[end]
+                v_end_checkpointed_run = v_timeseries[end]
+                T_end_checkpointed_run = T_timeseries[end]
+                S_end_checkpointed_run = S_timeseries[end]
+                b_end_checkpointed_run = b_timeseries[end]
+
+                @apply_regionally regional_comparison = interior(u_end) ≈ interior(u_end_checkpointed_run)
+                @test all(regional_comparison.regional_objects)
+                @apply_regionally regional_comparison = interior(v_end) ≈ interior(v_end_checkpointed_run)
+                @test all(regional_comparison.regional_objects)
+                @apply_regionally regional_comparison = interior(T_end) ≈ interior(T_end_checkpointed_run)
+                @test all(regional_comparison.regional_objects)
+                @apply_regionally regional_comparison = interior(S_end) ≈ interior(S_end_checkpointed_run)
+                @test all(regional_comparison.regional_objects)
+                @apply_regionally regional_comparison = interior(b_end) ≈ interior(b_end_checkpointed_run)
+                @test all(regional_comparison.regional_objects)
             end
         end
     end

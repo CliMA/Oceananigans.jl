@@ -156,10 +156,10 @@ end
 
 Adapt.adapt_structure(to, scheme::WENO{N, FT, WCT}) where {N, FT, WCT} =
      WENO{N, FT, WCT}(Adapt.adapt(to, scheme.bounds),
-                           Adapt.adapt(to, scheme.buffer_scheme),
-                           Adapt.adapt(to, scheme.advecting_velocity_scheme))
+                      Adapt.adapt(to, scheme.buffer_scheme),
+                      Adapt.adapt(to, scheme.advecting_velocity_scheme))
 
 on_architecture(to, scheme::WENO{N, FT, WCT}) where {N, FT, WCT} =
     WENO{N, FT, WCT}(on_architecture(to, scheme.bounds),
-                          on_architecture(to, scheme.buffer_scheme),
-                          on_architecture(to, scheme.advecting_velocity_scheme))
+                     on_architecture(to, scheme.buffer_scheme),
+                     on_architecture(to, scheme.advecting_velocity_scheme))

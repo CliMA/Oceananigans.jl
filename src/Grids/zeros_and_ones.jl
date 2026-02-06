@@ -10,4 +10,3 @@ Base.zeros(grid::AbstractGrid, N...) = zeros(architecture(grid), eltype(grid), N
 
 @inline Base.zero(grid::AbstractGrid) = zero(eltype(grid))
 @inline Base.one(grid::AbstractGrid)  = one(eltype(grid))
-

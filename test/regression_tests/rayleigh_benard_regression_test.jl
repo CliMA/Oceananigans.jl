@@ -61,7 +61,7 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     Δt = 0.01 * min(model.grid.Δxᶜᵃᵃ, model.grid.Δyᵃᶜᵃ, Lz/Nz)^2 / ν
 
     # We will manually change the stop_iteration as needed.
-    simulation = Simulation(model, Δt=Δt, stop_iteration=0)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=0, verbose=false)
 
     # The type of the underlying data, not the offset array.
     ArrayType = typeof(model.velocities.u.data.parent)

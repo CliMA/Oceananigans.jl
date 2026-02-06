@@ -1,4 +1,5 @@
 using Oceananigans.Fields: AbstractField, OneField, instantiated_location
+using Oceananigans.AbstractOperations: conditional_one
 
 import Oceananigans.AbstractOperations: ConditionalOperation, evaluate_condition, validate_condition
 import Oceananigans.Fields: condition_operand, conditional_length

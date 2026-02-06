@@ -6,18 +6,15 @@ export TripolarGrid, RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid
 import Oceananigans
 import Oceananigans.Architectures: on_architecture
 
-using Oceananigans.Architectures: device, on_architecture, AbstractArchitecture, CPU, GPU
-using Oceananigans.BoundaryConditions: BoundaryCondition, Zipper
-using Oceananigans.Fields: convert_to_0_360
-using Oceananigans.Grids: RightConnected
+using Oceananigans.Architectures: on_architecture, AbstractArchitecture, CPU, GPU
+using Oceananigans.BoundaryConditions: BoundaryCondition, UZBC
+using Oceananigans.Grids: AbstractTopology, RightConnected
 using Oceananigans.Grids: halo_size, generate_coordinate, topology
 using Oceananigans.Grids: total_length, add_halos, fill_metric_halo_regions!
 
 using Distances: haversine
 using Adapt: Adapt, adapt
 using KernelAbstractions: @kernel, @index
-
-const ZBC = BoundaryCondition{<:Zipper}
 
 include("generate_tripolar_coordinates.jl")
 include("tripolar_grid.jl")

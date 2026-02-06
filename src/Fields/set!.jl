@@ -55,14 +55,12 @@ function set_to_function!(u, f, clock=nothing)
     child_arch = child_architecture(u)
 
     # Determine cpu_grid and cpu_u
-    if child_arch isa GPU || child_arch isa ReactantState
+    cpu_grid, cpu_u = if child_arch isa GPU || child_arch isa ReactantState
         cpu_arch = cpu_architecture(arch)
         cpu_grid = on_architecture(cpu_arch, u.grid)
-        cpu_u    = Field(instantiated_location(u), cpu_grid; indices = indices(u))
-
+        cpu_grid, Field(instantiated_location(u), cpu_grid; indices = indices(u))
     elseif child_arch isa CPU
-        cpu_grid = u.grid
-        cpu_u = u
+        u.grid, u
     end
 
     # Form a FunctionField from `f`
@@ -92,7 +90,7 @@ function set_to_function!(u, f, clock=nothing)
 
     # Transfer data to GPU if u is on the GPU
     if child_arch isa GPU || child_arch isa ReactantState
-    	set!(u, cpu_u)
+        set!(u, cpu_u)
     end
     return u
 end
@@ -151,4 +149,3 @@ end
 Base.copyto!(f::Field, src::Base.Broadcast.Broadcasted) = copyto!(interior(f), src)
 Base.copyto!(f::Field, src::AbstractArray) = copyto!(interior(f), src)
 Base.copyto!(f::Field, src::Field) = copyto!(parent(f), parent(src))
-

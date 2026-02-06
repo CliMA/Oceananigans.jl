@@ -19,7 +19,15 @@ sign(::Type{Face},   ::Type{Center}) = - 1 # u-velocity type
 sign(::Type{Center}, ::Type{Face})   = - 1 # v-velocity type
 sign(::Type{Center}, ::Type{Center}) = 1
 
-# a `TripolarGrid` needs a `ZipperBoundaryCondition` for the north boundary
+# Determine the appropriate north fold boundary condition based on grid topology
+# TODO: Implement proper topologies for distributed tripolar grids
+#       and remove the default fallback for AbstractTopology
+north_fold_boundary_condition(::Type{<:AbstractTopology})  = UPivotZipperBoundaryCondition # Default fallback for distribtuted to work
+north_fold_boundary_condition(::Type{RightCenterFolded})   = UPivotZipperBoundaryCondition
+north_fold_boundary_condition(::Type{RightFaceFolded})     = FPivotZipperBoundaryCondition
+north_fold_boundary_condition(grid::TripolarGridOfSomeKind) = north_fold_boundary_condition(topology(grid, 2))
+
+# a `TripolarGrid` needs a `UPivotZipperBoundaryCondition` for the north boundary
 # The `sign` 1 for regular tracers and -1 for velocities and signed vectors
 function BoundaryConditions.regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                                                  grid::TripolarGridOfSomeKind,
@@ -34,7 +42,7 @@ function BoundaryConditions.regularize_field_boundary_conditions(bcs::FieldBound
 
     # Assumption: :u and :v are signed vectors, all other fields are scalars
     sign = field_name == :u || field_name == :v ? -1 : 1
-    north  = ZipperBoundaryCondition(sign)
+    north  = north_fold_boundary_condition(grid)(sign)
 
     bottom = regularize_boundary_condition(bcs.bottom, grid, loc, 3, LeftBoundary,  prognostic_names)
     top    = regularize_boundary_condition(bcs.top,    grid, loc, 3, RightBoundary, prognostic_names)
@@ -44,4 +52,4 @@ function BoundaryConditions.regularize_field_boundary_conditions(bcs::FieldBound
     return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
 
-BoundaryConditions.default_auxiliary_bc(grid::TripolarGridOfSomeKind, ::Val{:north}, loc) = ZipperBoundaryCondition(1)
+BoundaryConditions.default_auxiliary_bc(grid::TripolarGridOfSomeKind, ::Val{:north}, loc) = north_fold_boundary_condition(grid)(1)

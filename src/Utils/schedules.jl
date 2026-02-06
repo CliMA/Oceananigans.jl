@@ -100,10 +100,10 @@ function prognostic_state(schedule::TimeInterval)
             actuations = schedule.actuations)
 end
 
-function restore_prognostic_state!(schedule::TimeInterval, state)
-    schedule.first_actuation_time = state.first_actuation_time
-    schedule.actuations = state.actuations
-    return schedule
+function restore_prognostic_state!(restored::TimeInterval, from)
+    restored.first_actuation_time = from.first_actuation_time
+    restored.actuations = from.actuations
+    return restored
 end
 
 restore_prognostic_state!(::TimeInterval, ::Nothing) = nothing
@@ -135,7 +135,7 @@ next_actuation_time(schedule::IterationInterval) = Inf
 
 # IterationInterval has no state
 prognostic_state(schedule::IterationInterval) = nothing
-restore_prognostic_state!(schedule::IterationInterval, state::Nothing) = nothing
+restore_prognostic_state!(restored::IterationInterval, from::Nothing) = nothing
 
 #####
 ##### WallTimeInterval
@@ -178,7 +178,7 @@ end
 # WallTimeInterval uses absolute wall clock time, which doesn't make sense to checkpoint.
 # On restore, the schedule starts fresh from the current wall time.
 prognostic_state(::WallTimeInterval) = nothing
-restore_prognostic_state!(schedule::WallTimeInterval, ::Nothing) = schedule
+restore_prognostic_state!(restored::WallTimeInterval,  ::Nothing) = restored
 
 #####
 ##### SpecifiedTimes
@@ -268,9 +268,9 @@ function prognostic_state(schedule::SpecifiedTimes)
     return (; previous_actuation = schedule.previous_actuation)
 end
 
-function restore_prognostic_state!(schedule::SpecifiedTimes, state)
-    schedule.previous_actuation = state.previous_actuation
-    return schedule
+function restore_prognostic_state!(restored::SpecifiedTimes, from)
+    restored.previous_actuation = from.previous_actuation
+    return restored
 end
 
 restore_prognostic_state!(::SpecifiedTimes, ::Nothing) = nothing
@@ -314,10 +314,10 @@ function prognostic_state(schedule::ConsecutiveIterations)
             previous_parent_actuation_iteration = schedule.previous_parent_actuation_iteration)
 end
 
-function restore_prognostic_state!(schedule::ConsecutiveIterations, state)
-    restore_prognostic_state!(schedule.parent, state.parent)
-    schedule.previous_parent_actuation_iteration = state.previous_parent_actuation_iteration
-    return schedule
+function restore_prognostic_state!(restored::ConsecutiveIterations, from)
+    restore_prognostic_state!(restored.parent, from.parent)
+    restored.previous_parent_actuation_iteration = from.previous_parent_actuation_iteration
+    return restored
 end
 
 restore_prognostic_state!(::ConsecutiveIterations, ::Nothing) = nothing

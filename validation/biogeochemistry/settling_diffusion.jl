@@ -71,4 +71,3 @@ record(fig, "settling_diffusion.mp4", 1:100, framerate=24) do nn
     run!(simulation)
     update_plot!(simulation)
 end
-

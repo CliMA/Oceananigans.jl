@@ -85,7 +85,7 @@ grid_metric_operation(Loc::Tuple, metric, grid) = grid_metric_operation((Loc[1](
 
 const NodeMetric = Union{XNode, YNode, ZNode, ΛNode, ΦNode, RNode}
 
-function grid_metric_operation(loc::Tuple{LX, LY, LZ}, metric::NodeMetric, grid) where {LX<:Location, LY<:Location, LZ<:Location} 
+function grid_metric_operation(loc::Tuple{LX, LY, LZ}, metric::NodeMetric, grid) where {LX<:Location, LY<:Location, LZ<:Location}
     ℓx, ℓy, ℓz = loc
     ξnode = metric_function(loc, metric)
     return KernelFunctionOperation{LX, LY, LZ}(ξnode, grid, ℓx, ℓy, ℓz)

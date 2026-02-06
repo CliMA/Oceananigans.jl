@@ -59,7 +59,7 @@ Return the file extension for the output writer or output
 writer type `ow`.
 """
 ext(ow::Type{AbstractOutputWriter}) = throw("Extension for $ow is not implemented.")
-ext(ow::AbstractOutputWriter) = ext(typeof(fw))
+ext(ow::AbstractOutputWriter) = ext(typeof(ow))
 
 # TODO: add example to docstring below
 

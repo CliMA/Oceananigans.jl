@@ -105,8 +105,6 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     return isapprox(mean(b) - mean_b₀, flux * model.clock.time / Lz, atol=1e-6)
 end
 
-
-
 end_position(::Val{1}, grid) = (grid.Nx+1, 1, 1)
 end_position(::Val{2}, grid) = (1, grid.Ny+1, 1)
 end_position(::Val{3}, grid) = (1, 1, grid.Nz+1)
@@ -376,6 +374,18 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
                                             east = OpenBoundaryCondition(U₀; scheme = PerturbationAdvection(inflow_timescale, outflow_timescale)))
             boundary_conditions = (; u = u_bcs)
             test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions)
+        end
+    end
+
+    @testset "FieldTimeSeries boundary conditions" begin
+        for arch in archs, FT in (Float64,)
+            A = typeof(arch)
+            @info "  Testing FieldTimeSeries boundary conditions [$A, $FT]..."
+            topo = (Bounded, Bounded, Bounded)
+            for C in (Flux, Value)
+                bc = field_time_series_bc(C, FT, array_type(arch))
+                @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :top, :T, bc)
+            end
         end
     end
 end
