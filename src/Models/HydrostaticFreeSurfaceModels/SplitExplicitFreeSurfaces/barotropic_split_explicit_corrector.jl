@@ -1,3 +1,5 @@
+using Oceananigans: fields
+
 # Kernels to compute the vertical integral of the velocities
 @kernel function _compute_barotropic_mode!(U̅, V̅, grid, u, v)
     i, j  = @index(Global, NTuple)
@@ -134,7 +136,7 @@ function compute_transport_velocities!(model, free_surface::SplitExplicitFreeSur
     end
 
     # Fill transport velocities
-    fill_halo_regions!((ũ, ṽ); async=true)
+    fill_halo_regions!((ũ, ṽ), model.clock, fields(model); async=true)
 
     # Update grid velocity and vertical transport velocity
     @apply_regionally update_vertical_velocities!(model.transport_velocities, model.grid, model)
