@@ -8,7 +8,7 @@ using Oceananigans
 
 using Oceananigans: AbstractModel, Distributed
 using Oceananigans.Grids: AbstractGrid, architecture
-using Oceananigans.Utils: @apply_regionally, apply_regionally!
+using Oceananigans.Utils: @apply_regionally, apply_regionally!, time_difference_seconds
 using Oceananigans.TimeSteppers:
     update_state!,
     tick!,
@@ -17,7 +17,8 @@ using Oceananigans.TimeSteppers:
     RungeKutta3TimeStepper,
     cache_previous_tendencies!,
     rk3_substep!,
-    stage_Δt
+    stage_Δt,
+    next_time
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels:
     step_free_surface!,
@@ -150,6 +151,9 @@ function time_step!(model::ReactantModel{<:RungeKutta3TimeStepper}, Δt; callbac
     second_stage_Δt = stage_Δt(Δt, γ², ζ²)
     third_stage_Δt  = stage_Δt(Δt, γ³, ζ³)
 
+    # Compute the next time step a priori to reduce floating point error accumulation
+    tⁿ⁺¹ = next_time(model.clock, Δt)
+
     #
     # First stage
     #
@@ -181,13 +185,17 @@ function time_step!(model::ReactantModel{<:RungeKutta3TimeStepper}, Δt; callbac
     rk3_substep!(model, Δt, γ³, ζ³, callbacks)
     cache_previous_tendencies!(model)
 
-    tick!(model.clock, third_stage_Δt)
+    # This adjustment of the final time-step reduces the accumulation of
+    # round-off error when Δt is added to model.clock.time. Note that we still use
+    # third_stage_Δt for the substep and Lagrangian particles step.
+    corrected_third_stage_Δt = time_difference_seconds(tⁿ⁺¹, model.clock.time)
+    tick!(model.clock, corrected_third_stage_Δt)
 
     # Update clock fields - handle TracedRNumber vs regular Float64
     if model.clock.last_stage_Δt isa Reactant.TracedRNumber
-        model.clock.last_stage_Δt.mlir_data = third_stage_Δt.mlir_data
-    elseif !(third_stage_Δt isa Reactant.TracedRNumber)
-        model.clock.last_stage_Δt = third_stage_Δt
+        model.clock.last_stage_Δt.mlir_data = corrected_third_stage_Δt.mlir_data
+    elseif !(corrected_third_stage_Δt isa Reactant.TracedRNumber)
+        model.clock.last_stage_Δt = corrected_third_stage_Δt
     end
 
     if model.clock.last_Δt isa Reactant.TracedRNumber
@@ -199,14 +207,6 @@ function time_step!(model::ReactantModel{<:RungeKutta3TimeStepper}, Δt; callbac
     update_state!(model, callbacks)
     step_lagrangian_particles!(model, third_stage_Δt)
 
-    return nothing
-end
-
-function first_time_step!(model::ReactantModel{<:RungeKutta3TimeStepper}, Δt)
-    initialize!(model)
-    # The first update_state is conditionally gated from within time_step! normally, but not Reactant
-    update_state!(model)
-    time_step!(model, Δt)
     return nothing
 end
 
