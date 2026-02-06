@@ -424,8 +424,11 @@ function compute_coefficient_fields!(closure_fields, closure::LagrangianAveraged
 
     Δt = time_difference_seconds(clock.time, t⁻[])
 
-    # This can happen after restoring from a checkpoint.
-    Δt == 0 && return nothing
+    # After restoring from a checkpoint, Δt == 0 because previous_compute_time
+    # matches clock.time. In that case, skip the computation.
+    # But do NOT skip on iteration 0, because the coefficient fields
+    # need to be initialized.
+    Δt == 0 && clock.iteration > 0 && return nothing
 
     if cˢ.schedule(model)
         # Update `previous_compute_time` only when we actually compute coefficients
