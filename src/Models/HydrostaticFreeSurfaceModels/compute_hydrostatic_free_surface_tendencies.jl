@@ -216,7 +216,9 @@ add_3rd_index(ij, k) = (ij[1], ij[2], k)
     @inbounds max_scheme_field[i, j, k] = !near_x && !near_y && !near_z
 end
 
-get_v_conditioned_map(scheme, grid; active_cells_map=nothing) = ()
+function get_v_conditioned_map(scheme, grid; active_cells_map=nothing)
+    return active_cells_map
+end
 
 """
     compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters; active_cells_map=nothing)
