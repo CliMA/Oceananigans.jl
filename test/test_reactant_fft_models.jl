@@ -1,42 +1,16 @@
 include("reactant_test_utils.jl")
 using Reactant: @trace
 
-@testset "Reactant FFT-based model construction" begin
-    @info "Performing Reactant FFT-based NonhydrostaticModel construction tests..."
-    reactnt_arch = ReactantState()
-
-    @testset "NonhydrostaticModel 3D (Periodic, Periodic, Periodic)" begin
-        @info "  Testing NonhydrostaticModel 3D construction (Periodic, Periodic, Periodic)..."
-        grid = RectilinearGrid(reactnt_arch; size=(4, 4, 4), extent=(1, 1, 1),
-                               topology=(Periodic, Periodic, Periodic))
-
-        model = NonhydrostaticModel(grid; timestepper=:QuasiAdamsBashforth2)
-        @test model isa NonhydrostaticModel
-        @test model.grid.architecture isa ReactantState
-    end
-
-    @testset "NonhydrostaticModel 2D (Periodic, Periodic, Flat)" begin
-        @info "  Testing NonhydrostaticModel 2D construction (Periodic, Periodic, Flat)..."
-        grid = RectilinearGrid(reactnt_arch; size=(4, 4), extent=(1, 1),
-                               topology=(Periodic, Periodic, Flat))
-
-        model = NonhydrostaticModel(grid; timestepper=:QuasiAdamsBashforth2)
-        @test model isa NonhydrostaticModel
-    end
-end
-
 #####
-##### Time-stepping with @compile (compiled execution)
+##### Reactant FFT-based NonhydrostaticModel tests
 #####
-# This follows the standard pattern used in Breeze.jl and differentiation tests:
-# - Use @trace with track_numbers=false inside a wrapper function
-# - Δt stays as Float64 (not traced), only arrays are traced
-# - This avoids issues with Clock field assignments
-# - Must use QB2 timestepper (RK3 not supported, see B.6.5)
+# Groups tests by model configuration to avoid rebuilding the same grid+model.
+# Uses @trace with track_numbers=false for time-stepping (see B.6.5 in differentiability-mwe.mdc).
+# Must use QB2 timestepper (RK3 not supported).
 
-@testset "Reactant FFT-based model time-stepping (compiled execution)" begin
-    @info "Performing Reactant FFT-based NonhydrostaticModel time-stepping tests..."
-    reactnt_arch = ReactantState()
+@testset "Reactant FFT-based NonhydrostaticModel" begin
+    @info "Performing Reactant FFT-based NonhydrostaticModel tests..."
+    reactant_arch = ReactantState()
 
     # Wrapper function with @trace and track_numbers=false
     function run_timesteps!(model, Δt, nsteps)
@@ -46,34 +20,44 @@ end
         return nothing
     end
 
-    @testset "NonhydrostaticModel 3D compiled time_step!" begin
-        @info "  Testing NonhydrostaticModel 3D compiled time_step! (with FFT pressure solver)..."
-        grid = RectilinearGrid(reactnt_arch; size=(4, 4, 4), extent=(1, 1, 1),
+    @testset "3D (Periodic, Periodic, Periodic)" begin
+        @info "  Testing NonhydrostaticModel 3D (Periodic, Periodic, Periodic)..."
+        grid = RectilinearGrid(reactant_arch; size=(4, 4, 4), extent=(1, 1, 1),
                                topology=(Periodic, Periodic, Periodic))
         model = NonhydrostaticModel(grid; timestepper=:QuasiAdamsBashforth2)
 
-        Δt = 0.001  # Regular Float64, not ConcreteRNumber
-        nsteps = 1
+        @testset "Construction" begin
+            @test model isa NonhydrostaticModel
+            @test model.grid.architecture isa ReactantState
+        end
 
-        # Compile and execute
-        compiled_run! = @compile run_timesteps!(model, Δt, nsteps)
-        compiled_run!(model, Δt, nsteps)
-
-        @test model.clock.iteration == 1
+        @testset "Compiled time_step!" begin
+            @info "    Compiling and running time_step!..."
+            Δt = 0.001
+            nsteps = 4
+            compiled_run! = @compile run_timesteps!(model, Δt, nsteps)
+            compiled_run!(model, Δt, nsteps)
+            @test model.clock.iteration == nsteps
+        end
     end
 
-    @testset "NonhydrostaticModel 2D compiled time_step!" begin
-        @info "  Testing NonhydrostaticModel 2D compiled time_step! (with FFT pressure solver)..."
-        grid = RectilinearGrid(reactnt_arch; size=(4, 4), extent=(1, 1),
+    @testset "2D (Periodic, Periodic, Flat)" begin
+        @info "  Testing NonhydrostaticModel 2D (Periodic, Periodic, Flat)..."
+        grid = RectilinearGrid(reactant_arch; size=(4, 4), extent=(1, 1),
                                topology=(Periodic, Periodic, Flat))
         model = NonhydrostaticModel(grid; timestepper=:QuasiAdamsBashforth2)
 
-        Δt = 0.001
-        nsteps = 1
+        @testset "Construction" begin
+            @test model isa NonhydrostaticModel
+        end
 
-        compiled_run! = @compile run_timesteps!(model, Δt, nsteps)
-        compiled_run!(model, Δt, nsteps)
-
-        @test model.clock.iteration == 1
+        @testset "Compiled time_step!" begin
+            @info "    Compiling and running time_step!..."
+            Δt = 0.001
+            nsteps = 4
+            compiled_run! = @compile run_timesteps!(model, Δt, nsteps)
+            compiled_run!(model, Δt, nsteps)
+            @test model.clock.iteration == nsteps
+        end
     end
 end
