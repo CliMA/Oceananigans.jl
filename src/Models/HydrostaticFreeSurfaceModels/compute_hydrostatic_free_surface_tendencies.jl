@@ -11,7 +11,7 @@ using Oceananigans.Grids: get_active_cells_map
 using Oceananigans.Architectures: CPU
 import Oceananigans.Architectures as AC
 using Oceananigans.Fields: Field, interior
-using Oceananigans.Advection: near_y_immersed_boundary_biasedᶜ
+using Oceananigans.Advection: near_y_immersed_boundary_biasedᶜ, near_z_immersed_boundary_biasedᶠ, near_x_immersed_boundary_symmetricᶠ
 using KernelAbstractions: @kernel, @index
 """
     compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
@@ -144,11 +144,11 @@ end
 
 function get_u_conditioned_map(scheme, grid::ImmersedBoundaryGrid; active_cells_map=nothing)
     # Field is true if the max scheme can be used for computing u advection
-    max_scheme_field = Field{Center, Center, Center}(getproperty(grid, :underlying_grid), Bool)
+    max_scheme_field = Field{Center, Center, Center}(grid, Bool)
     summary(max_scheme_field)
     fill!(max_scheme_field, false)
     launch!(architecture(grid), grid, :xyz, condition_map!, max_scheme_field, grid, scheme; active_cells_map)
-    summary(max_scheme_field)
+    println(summary(max_scheme_field))
 
     return split_indices(max_scheme_field, grid; active_cells_map)
 end
@@ -162,23 +162,28 @@ function split_indices(field, grid; active_cells_map=nothing)
 end
 
 function split_indices_mapped(field, grid, active_cells_map)
-    val = AC.on_architecture(CPU(), interior(field)) 
-    IndicesType = Tuple{Int32, Int32, Int32}
-    maps = (IndicesType[], IndicesType[])
-    for index in active_cells_map
-        val = vals[index]
-        if val
-            maps[1] = vcat(maps[1], index)
-        else
-            maps[2] = vcat(maps[2], index)
-        end
-        GC.gc()
+    IndexType = Tuple{Int64,Int64,Int64}
+    vals = AC.on_architecture(CPU(), interior(field))
+    active_indices = AC.on_architecture(CPU(), active_cells_map)
+    map1 = Vector{eltype(active_indices)}()
+    map2 = Vector{eltype(active_indices)}()
+    for index in active_indices
+        val = vals[convert(IndexType, index)...]
+	if val
+	    push!(map1, index)
+	else
+	    push!(map2, index)
+	end
     end
-    return maps
+    println(size(map1))
+    println(size(map2))
+    map1 = AC.on_architecture(architecture(grid), map1) 
+    map2 = AC.on_architecture(architecture(grid), map2) 
+    return (map1, map2)
 end
 
 function split_indices_full(field, grid)
-    IndicesType = Tuple{Int32, Int32, Int32}
+    IndicesType = Tuple{Int16, Int16, Int16}
     map1 = IndicesType[]
     map2 = IndicesType[]
     for k in 1:size(grid, 3)
@@ -188,7 +193,9 @@ function split_indices_full(field, grid)
 	GC.gc()
     end
     map1 = AC.on_architecture(architecture(grid), map1) 
+    println(size(map1))
     map2 = AC.on_architecture(architecture(grid), map2) 
+    println(size(map2))
     return (map1, map2)
 end
 
@@ -203,7 +210,10 @@ add_3rd_index(ij, k) = (ij[1], ij[2], k)
 
 @kernel function condition_map!(max_scheme_field, ibg, scheme)
     i, j, k = @index(Global, NTuple)
-    @inbounds max_scheme_field[i, j, k] = near_y_immersed_boundary_biasedᶜ(i, j, k, ibg, scheme)
+    near_x = near_x_immersed_boundary_symmetricᶠ(i, j, k, ibg, scheme)
+    near_y = near_y_immersed_boundary_biasedᶜ(i, j, k, ibg, scheme)
+    near_z = near_z_immersed_boundary_biasedᶠ(i, j, k, ibg, scheme)
+    @inbounds max_scheme_field[i, j, k] = !near_x && !near_y && !near_z
 end
 
 get_v_conditioned_map(scheme, grid; active_cells_map=nothing) = ()
@@ -280,3 +290,4 @@ end
     i, j, k = @index(Global, NTuple)
     @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
 end
+
