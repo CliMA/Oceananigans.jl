@@ -52,7 +52,7 @@ julia> using Oceananigans
 
 julia> WENO()
 WENO{3, Float64, Oceananigans.Utils.ConvertingDivision{Float32}}(order=5)
-├── buffer_scheme: WENO{2, Float64, Float32, Oceananigans.Utils.ConvertingDivision{Float32}}(order=3)
+├── buffer_scheme: WENO{2, Float64, Oceananigans.Utils.ConvertingDivision{Float32}}(order=3)
 │   └── buffer_scheme: Centered(order=2)
 └── advecting_velocity_scheme: Centered(order=4)
 ```
