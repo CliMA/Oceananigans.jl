@@ -54,10 +54,10 @@ using Reactant: @trace
         @testset "Compiled time_step!" begin
             @info "    Compiling and running time_step!..."
             Δt = 0.001
-            nsteps = 4
-            compiled_run! = @compile run_timesteps!(model, Δt, nsteps)
-            compiled_run!(model, Δt, nsteps)
-            @test model.clock.iteration == nsteps
+            Nt = 4
+            compiled_run! = @compile run_timesteps!(model, Δt, Nt)
+            compiled_run!(model, Δt, Nt)
+            @test model.clock.iteration == Nt
         end
     end
 end
