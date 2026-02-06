@@ -13,8 +13,8 @@ using Reactant: @trace
     reactant_arch = ReactantState()
 
     # Wrapper function with @trace and track_numbers=false
-    function run_timesteps!(model, Δt, nsteps)
-        @trace track_numbers=false for i in 1:nsteps
+    function run_timesteps!(model, Δt, Nt)
+        @trace track_numbers=false for i in 1:Nt
             time_step!(model, Δt)
         end
         return nothing
