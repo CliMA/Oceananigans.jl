@@ -142,10 +142,10 @@ function find_west_connectivity(region, partition::CubedSpherePartition)
         from_rank = rank_from_panel_idx(pᵢ - 1, pⱼ, pidx, partition)
     end
 
-    if from_side == North()
-        rotation = ↻()
+    rotation = if from_side == North()
+        ↻()
     elseif from_side == East()
-        rotation = nothing
+        nothing
     end
 
     return CubedSphereRegionalConnectivity(region, from_rank, West(), from_side, rotation)
@@ -175,10 +175,10 @@ function find_east_connectivity(region, partition::CubedSpherePartition)
         from_rank = rank_from_panel_idx(pᵢ + 1, pⱼ, pidx, partition)
     end
 
-    if from_side == South()
-        rotation = ↻()
+    rotation = if from_side == South()
+        ↻()
     elseif from_side == West()
-        rotation = nothing
+        nothing
     end
 
     return CubedSphereRegionalConnectivity(region, from_rank, East(), from_side, rotation)
@@ -208,10 +208,10 @@ function find_south_connectivity(region, partition::CubedSpherePartition)
         from_rank = rank_from_panel_idx(pᵢ, pⱼ - 1, pidx, partition)
     end
 
-    if from_side == East()
-        rotation = ↺()
+    rotation = if from_side == East()
+        ↺()
     elseif from_side == North()
-        rotation = nothing
+        nothing
     end
 
     return CubedSphereRegionalConnectivity(region, from_rank, South(), from_side, rotation)
@@ -241,10 +241,10 @@ function find_north_connectivity(region, partition::CubedSpherePartition)
         from_rank = rank_from_panel_idx(pᵢ, pⱼ + 1, pidx, partition)
     end
 
-    if from_side == West()
-        rotation = ↺()
+    rotation = if from_side == West()
+        ↺()
     elseif from_side == South()
-        rotation = nothing
+        nothing
     end
 
     return CubedSphereRegionalConnectivity(region, from_rank, North(), from_side, rotation)
