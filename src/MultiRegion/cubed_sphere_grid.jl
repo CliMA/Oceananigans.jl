@@ -1,18 +1,17 @@
 using Oceananigans.Grids: halo_size,
                           size_summary,
-                          topology
+                          topology,
+                          grid_name,
+                          nodes
 
 using CubedSphere: GeometricSpacing, conformal_cubed_sphere_mapping
 using CubedSphere.SphericalGeometry: cartesian_to_lat_lon
 using Oceananigans.OrthogonalSphericalShellGrids: ConformalCubedSpherePanelGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, has_active_cells_map, has_active_z_columns
-using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: FixedSubstepNumber, ConnectedTopology
+using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: SplitExplicitFreeSurfaces,
+    FixedSubstepNumber, ConnectedTopology
 using Oceananigans.MultiRegion: MultiRegionGrids, multiregion_split_explicit_halos, augmented_kernel_size,
     augmented_kernel_offsets
-
-import Oceananigans.Grids: grid_name, nodes
-import Oceananigans.BoundaryConditions: fill_halo_regions!
-import Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: maybe_extend_halos
 
 const ConformalCubedSphereGrid{FT, TX, TY, TZ, CZ} = MultiRegionGrid{FT, TX, TY, TZ, CZ, <:CubedSpherePartition}
 
@@ -269,7 +268,7 @@ function ConformalCubedSphereGrid(arch::AbstractArchitecture=CPU(),
     return new_grid
 end
 
-function fill_halo_regions!(grid::ConformalCubedSphereGridOfSomeKind{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
+function BoundaryConditions.fill_halo_regions!(grid::ConformalCubedSphereGridOfSomeKind{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     Nx, Ny, Nz = size(grid)
 
     λᶜᶜᵃ  = Field{Center, Center, Nothing}(grid)
@@ -404,7 +403,7 @@ function ConformalCubedSphereGrid(filepath::AbstractString,
     return MultiRegionGrid{FT, panel_topology..., CZ}(arch, partition, connectivity, region_grids)
 end
 
-function with_halo(new_halo, csg::ConformalCubedSphereGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
+function Grids.with_halo(new_halo, csg::ConformalCubedSphereGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
     arch = csg.architecture
     partition = csg.partition
     connectivity = csg.connectivity
@@ -440,7 +439,7 @@ function with_halo(new_halo, csg::ConformalCubedSphereGrid{FT, TX, TY, TZ}) wher
     return new_grid
 end
 
-function with_halo(halo, ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSphereGrid})
+function Grids.with_halo(halo, ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:ConformalCubedSphereGrid})
     active_cells_map = has_active_cells_map(getregion(ibg, 1))
     active_z_columns = has_active_z_columns(getregion(ibg, 1))
     underlying_grid = with_halo(halo, ibg.underlying_grid)
@@ -449,7 +448,7 @@ function with_halo(halo, ibg::ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <
                                 active_z_columns)
 end
 
-function nodes(iccsg::ImmersedConformalCubedSphereGrid, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
+function Grids.nodes(iccsg::ImmersedConformalCubedSphereGrid, ℓx, ℓy, ℓz; reshape=false, with_halos=false)
     @apply_regionally immersed_nodes = nodes(iccsg.underlying_grid, ℓx, ℓy, ℓz, reshape, with_halos)
     return immersed_nodes
 end
@@ -463,9 +462,9 @@ end
 
 radius(mrg::ConformalCubedSphereGridOfSomeKind) = first(mrg).radius
 
-grid_name(mrg::ConformalCubedSphereGridOfSomeKind) = "ConformalCubedSphereGrid"
+Grids.grid_name(mrg::ConformalCubedSphereGridOfSomeKind) = "ConformalCubedSphereGrid"
 
-function maybe_extend_halos(TX, TY, grid::ConformalCubedSphereGridOfSomeKind, substepping::FixedSubstepNumber)
+function SplitExplicitFreeSurfaces.maybe_extend_halos(TX, TY, grid::ConformalCubedSphereGridOfSomeKind, substepping::FixedSubstepNumber)
     old_halos = halo_size(grid)
     Nsubsteps = length(substepping.averaging_weights)
 
@@ -481,8 +480,8 @@ function maybe_extend_halos(TX, TY, grid::ConformalCubedSphereGridOfSomeKind, su
     end
 end
 
-function maybe_augmented_kernel_parameters(TX, TY, grid::ConformalCubedSphereGridOfSomeKind,
-                                           substepping::FixedSubstepNumber)
+function SplitExplicitFreeSurfaces.maybe_augmented_kernel_parameters(TX, TY, grid::ConformalCubedSphereGridOfSomeKind,
+                                                                     substepping::FixedSubstepNumber)
     @apply_regionally kernel_parameters = maybe_augmented_kernel_parameters(TX, TY, grid, substepping)
     return kernel_parameters
 end

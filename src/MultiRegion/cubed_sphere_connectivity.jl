@@ -28,8 +28,8 @@ function CubedSphereConnectivity(partition::CubedSpherePartition, rotations::Tup
     return CubedSphereConnectivity(connectivity, rotations)
 end
 
-@inline getregion(connectivity::CubedSphereConnectivity, r) = _getregion(connectivity.connections, r)
-@inline _getregion(connectivity::CubedSphereConnectivity, r) = getregion(connectivity.connections, r)
+@inline Utils.getregion(connectivity::CubedSphereConnectivity, r) = _getregion(connectivity.connections, r)
+@inline Utils._getregion(connectivity::CubedSphereConnectivity, r) = getregion(connectivity.connections, r)
 
 """
     struct CubedSphereRegionalConnectivity{S, FS, R}
