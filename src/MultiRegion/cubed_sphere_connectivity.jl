@@ -1,7 +1,6 @@
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z, default_indices
 
-using Rotations
-using DocStringExtensions
+using Rotations: RotX, RotY, RotZ
 
 # Rotations of adjacent regions with respect to host region.
 # Transforming host indices into the adjacent region coordinate system

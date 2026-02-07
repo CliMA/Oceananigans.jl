@@ -5,10 +5,12 @@ using Oceananigans.Fields: reduced_dimensions
 using Oceananigans.DistributedComputations: fill_send_buffers!
 
 using Oceananigans.BoundaryConditions:
+    BoundaryCondition,
     ContinuousBoundaryFunction,
     DiscreteBoundaryFunction,
     fill_halo_event!,
-    MultiRegionFillHalo
+    MultiRegionFillHalo,
+    MultiRegionCommunicationBoundaryCondition
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!, fill_halo_event!
 

@@ -1,7 +1,7 @@
 using Oceananigans.Advection: WENO, VectorInvariant
 using Oceananigans.BuoyancyFormulations: NegativeZDirection, AbstractBuoyancyFormulation, validate_unit_vector
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, update_state!
-using Oceananigans.Models: PrescribedVelocityFields
+using Oceananigans.Models: ExplicitFreeSurface, HydrostaticFreeSurfaceModel, ImplicitFreeSurface, PrescribedVelocityFields
 using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
 using Oceananigans.Advection: OnlySelfUpwinding, CrossAndSelfUpwinding
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary

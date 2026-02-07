@@ -1,4 +1,5 @@
-using Oceananigans.Grids: metrics_precomputed, on_architecture, pop_flat_elements, grid_name
+using Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, metrics_precomputed,
+    on_architecture, pop_flat_elements, grid_name
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary
 using Oceananigans.Models: PrescribedVelocityFields
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: SplitExplicitFreeSurface, FixedSubstepNumber, FixedTimeStepSize

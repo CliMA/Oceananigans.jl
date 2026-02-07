@@ -2,6 +2,7 @@ using Oceananigans.BoundaryConditions
 using Oceananigans.BoundaryConditions: fill_halo_size, fill_halo_offset, fill_halo_event!, get_boundary_kernels
 using Oceananigans.Fields: reduced_dimensions
 using Oceananigans.MultiRegion: number_of_regions
+using Oceananigans.Utils: launch!
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 

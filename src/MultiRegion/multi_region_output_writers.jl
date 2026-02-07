@@ -1,4 +1,3 @@
-using Oceananigans.Architectures: architecture
 using Oceananigans.Fields: compute_at!
 using Oceananigans.OutputWriters: _saveproperty!
 

@@ -4,23 +4,19 @@ export MultiRegionGrid, MultiRegionField
 export XPartition, YPartition, Connectivity
 export CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField
 
-using Oceananigans
-using Oceananigans.Architectures
-using Oceananigans.BoundaryConditions
-using Oceananigans.Fields
-using Oceananigans.Grids
-using Oceananigans.Models
-using Oceananigans.Utils
-
-using Oceananigans.Grids: AbstractUnderlyingGrid
+using Oceananigans.Architectures: AbstractArchitecture, CPU, GPU, architecture
+using Oceananigans.BoundaryConditions: BoundaryConditions, East, North, South, SouthAndNorth, West, WestAndEast
+using Oceananigans.Fields: Field, location
+using Oceananigans.Grids: Grids, AbstractGrid, AbstractUnderlyingGrid, Bounded, Center, Face, Flat,
+    FullyConnected, LeftConnected, OrthogonalSphericalShellGrid, Periodic, RightConnected
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Utils: Reference, Iterate
+using Oceananigans.Utils: KernelParameters, Iterate, MultiRegionObject, Reference, Utils,
+    @apply_regionally, apply_regionally!, construct_regionally
 
-using Adapt
-using DocStringExtensions
-using OffsetArrays
+using DocStringExtensions: TYPEDFIELDS
+using OffsetArrays: OffsetArray
 
-import KernelAbstractions as KA
+using KernelAbstractions: KernelAbstractions as KA
 using KernelAbstractions: @kernel, @index
 
 import Base: length, size

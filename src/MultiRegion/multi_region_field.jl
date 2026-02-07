@@ -1,5 +1,5 @@
 using Oceananigans.AbstractOperations: AbstractOperation, compute_computed_field!
-using Oceananigans.BoundaryConditions: default_auxiliary_bc
+using Oceananigans.BoundaryConditions: NoFluxBoundaryCondition, default_auxiliary_bc
 using Oceananigans.Fields: FunctionField, data_summary, AbstractField, instantiated_location
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.OutputWriters: output_indices
