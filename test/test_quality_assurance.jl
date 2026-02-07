@@ -69,7 +69,7 @@ end
         # Oceananigans.Logger,
         # Oceananigans.Models,
         Oceananigans.Models.HydrostaticFreeSurfaceModels,
-        # Oceananigans.MultiRegion,
+        Oceananigans.MultiRegion,
         Oceananigans.Operators,
         Oceananigans.OrthogonalSphericalShellGrids,
         # Oceananigans.OutputReaders,
