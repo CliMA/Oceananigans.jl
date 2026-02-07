@@ -6,7 +6,7 @@ using Reactant: @trace
 #####
 # Groups tests by model configuration to avoid rebuilding the same grid+model.
 # Uses @trace with track_numbers=false for time-stepping (see B.6.5 in differentiability-mwe.mdc).
-# Must use QB2 timestepper (RK3 not supported).
+# Both QB2 and RK3 timesteppers are supported.
 
 @testset "Reactant FFT-based NonhydrostaticModel" begin
     @info "Performing Reactant FFT-based NonhydrostaticModel tests..."
@@ -24,7 +24,8 @@ using Reactant: @trace
         @info "  Testing NonhydrostaticModel 3D (Periodic, Periodic, Periodic)..."
         grid = RectilinearGrid(reactant_arch; size=(4, 4, 4), extent=(1, 1, 1),
                                topology=(Periodic, Periodic, Periodic))
-        model = NonhydrostaticModel(grid; timestepper=:QuasiAdamsBashforth2)
+        # model = NonhydrostaticModel(grid; timestepper=:QuasiAdamsBashforth2)
+        model = NonhydrostaticModel(grid; timestepper=:RungeKutta3)
 
         @testset "Construction" begin
             @test model isa NonhydrostaticModel
