@@ -19,7 +19,7 @@ using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid
 
 function run_mpi_script(script, filename, nranks=4)
     write(filename, script)
-    run(`$(mpiexec()) -n $nranks $(Base.julia_cmd()) -O0 $filename`)
+    run(`$(mpiexec()) -n $nranks $(Base.julia_cmd()) --project -O0 $filename`)
     rm(filename)
 end
 

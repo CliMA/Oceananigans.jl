@@ -44,15 +44,11 @@ fill_horizontal_velocity_halos!(args...) = nothing
 #####
 
 # If U and V are prognostic (for example in `SplitExplicitFreeSurface`), we use them
-@inline barotropic_U(i, j, k, grid, U, u) = @inbounds U[i, j, 1]
-@inline barotropic_V(i, j, k, grid, V, v) = @inbounds V[i, j, 1]
-
-# convenience for when we do not have prognostic `U` and `V`
-@inline barotropic_U(i, j, k, grid, u) = barotropic_U(i, j, k, grid, nothing, u)
-@inline barotropic_V(i, j, k, grid, v) = barotropic_V(i, j, k, grid, nothing, v)
+@inline barotropic_U(i, j, k, grid, U, u) = @inbounds U[i, j, k]
+@inline barotropic_V(i, j, k, grid, V, v) = @inbounds V[i, j, k]
 
 # If either U or V are not available, we compute them
-@inline function barotropic_U(i, j, k′, grid, ::Nothing, u)
+@inline function barotropic_U(i, j, k, grid, ::Nothing, u)
     U = zero(grid)
     for k in 1:size(grid, 3)
         @inbounds U += u[i, j, k] * Δzᶠᶜᶜ(i, j, k, grid)
@@ -60,7 +56,7 @@ fill_horizontal_velocity_halos!(args...) = nothing
     return U
 end
 
-@inline function barotropic_V(i, j, k′, grid, ::Nothing, v)
+@inline function barotropic_V(i, j, k, grid, ::Nothing, v)
     V = zero(grid)
     for k in 1:size(grid, 3)
         @inbounds V += v[i, j, k] * Δzᶜᶠᶜ(i, j, k, grid)
@@ -77,8 +73,6 @@ free_surface_displacement_field(velocities, ::Nothing, grid) = nothing
 
 # free surface initialization functions
 initialize_free_surface!(free_surface, grid, velocities) = nothing
-
-# Transport velocity computation (only for a SplitExplicitFreeSurface)
 compute_transport_velocities!(model, free_surface) = nothing
 
 include("compute_w_from_continuity.jl")

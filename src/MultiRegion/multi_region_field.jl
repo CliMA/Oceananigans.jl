@@ -1,15 +1,21 @@
 using Oceananigans.AbstractOperations: AbstractOperation, compute_computed_field!
-using Oceananigans.BoundaryConditions: FieldBoundaryConditions, NoFluxBoundaryCondition,
-    default_auxiliary_bc, regularize_field_boundary_conditions
-using Oceananigans.Diagnostics: Diagnostics, hasnan
-using Oceananigans.DistributedComputations: DistributedComputations, reconstruct_global_field, CommunicationBuffers
-using Oceananigans.Fields: FunctionField, AbstractField, compute!, compute_at!, data_summary,
-    instantiated_location, interior, set!, validate_indices
-using Oceananigans.Grids: xnodes, ynodes
+using Oceananigans.BoundaryConditions: default_auxiliary_bc
+using Oceananigans.Fields: FunctionField, data_summary, AbstractField, instantiated_location
 using Oceananigans.Operators: assumed_field_location
 using Oceananigans.OutputWriters: output_indices
 
 using Base: @propagate_inbounds
+
+import Oceananigans.DistributedComputations: reconstruct_global_field, CommunicationBuffers
+import Oceananigans.BoundaryConditions: regularize_field_boundary_conditions, FieldBoundaryConditions
+import Oceananigans.Grids: xnodes, ynodes
+import Oceananigans.Fields: set!, compute!, compute_at!, interior
+import Oceananigans.Fields: validate_indices, communication_buffers
+import Oceananigans.Diagnostics: hasnan
+import Oceananigans.DistributedComputations: reconstruct_global_field, CommunicationBuffers
+import Oceananigans.Fields: set!, compute!, compute_at!, interior, communication_buffers,
+                            validate_indices
+import Oceananigans.Grids: xnodes, ynodes
 
 # Field and FunctionField (both fields with "grids attached")
 const MultiRegionField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:MultiRegionGrids} where {LX, LY, LZ, O}
@@ -22,16 +28,16 @@ const GriddedMultiRegionFieldNamedTuple{S, N} = NamedTuple{S, N} where {S, N<:Gr
 
 # Utils
 Base.size(f::GriddedMultiRegionField) = size(getregion(f, 1))
-@inline Utils.isregional(f::GriddedMultiRegionField) = true
-@inline Utils.regions(f::GriddedMultiRegionField) = regions(f.grid)
+@inline isregional(f::GriddedMultiRegionField) = true
+@inline regions(f::GriddedMultiRegionField) = regions(f.grid)
 
-@inline Utils.getregion(f::MultiRegionFunctionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
+@inline getregion(f::MultiRegionFunctionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
     FunctionField{LX, LY, LZ}(_getregion(f.func, r),
                               _getregion(f.grid, r),
                               clock = _getregion(f.clock, r),
                               parameters = _getregion(f.parameters, r))
 
-@inline Utils.getregion(f::MultiRegionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
+@inline getregion(f::MultiRegionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
     Field{LX, LY, LZ}(_getregion(f.grid, r),
                       _getregion(f.data, r),
                       _getregion(f.boundary_conditions, r),
@@ -40,13 +46,13 @@ Base.size(f::GriddedMultiRegionField) = size(getregion(f, 1))
                       _getregion(f.status, r),
                       _getregion(f.communication_buffers, r))
 
-@inline Utils._getregion(f::MultiRegionFunctionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
+@inline _getregion(f::MultiRegionFunctionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
     FunctionField{LX, LY, LZ}(getregion(f.func, r),
                               getregion(f.grid, r),
                               clock = getregion(f.clock, r),
                               parameters = getregion(f.parameters, r))
 
-@inline Utils._getregion(f::MultiRegionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
+@inline _getregion(f::MultiRegionField{LX, LY, LZ}, r) where {LX, LY, LZ} =
     Field{LX, LY, LZ}(getregion(f.grid, r),
                       getregion(f.data, r),
                       getregion(f.boundary_conditions, r),
@@ -60,7 +66,7 @@ Base.size(f::GriddedMultiRegionField) = size(getregion(f, 1))
 
 Reconstruct a global field from `mrf::MultiRegionField` on the `CPU`.
 """
-function DistributedComputations.reconstruct_global_field(mrf::MultiRegionField)
+function reconstruct_global_field(mrf::MultiRegionField)
 
     # TODO: Reconstruct global field on the architecture of the grid. Use on_architecture to switch from GPU to CPU.
     global_grid  = on_architecture(CPU(), reconstruct_global_grid(mrf.grid))
@@ -108,18 +114,18 @@ function reconstruct_global_indices(indices, p::YPartition, N)
 end
 
 ## Functions applied regionally
-Fields.set!(mrf::MultiRegionField, v)  = apply_regionally!(set!,  mrf, v)
+set!(mrf::MultiRegionField, v)  = apply_regionally!(set!,  mrf, v)
 Base.fill!(mrf::MultiRegionField, v) = apply_regionally!(fill!, mrf, v)
 
-Fields.set!(mrf::MultiRegionField, a::Number)  = apply_regionally!(set!,  mrf, a)
+set!(mrf::MultiRegionField, a::Number)  = apply_regionally!(set!,  mrf, a)
 Base.fill!(mrf::MultiRegionField, a::Number) = apply_regionally!(fill!, mrf, a)
 
-Fields.set!(mrf::MultiRegionField, f::Function) = apply_regionally!(set!, mrf, f)
-Fields.set!(u::MultiRegionField, v::MultiRegionField) = apply_regionally!(set!, u, v)
-Fields.compute!(mrf::GriddedMultiRegionField, time=nothing) = apply_regionally!(compute!, mrf, time)
+set!(mrf::MultiRegionField, f::Function) = apply_regionally!(set!, mrf, f)
+set!(u::MultiRegionField, v::MultiRegionField) = apply_regionally!(set!, u, v)
+compute!(mrf::GriddedMultiRegionField, time=nothing) = apply_regionally!(compute!, mrf, time)
 
 # Disambiguation (same as computed_field.jl:64)
-function Fields.compute!(comp::MultiRegionComputedField, time=nothing)
+function compute!(comp::MultiRegionComputedField, time=nothing)
     # First compute `dependencies`:
     compute_at!(comp.operand, time)
 
@@ -131,34 +137,34 @@ function Fields.compute!(comp::MultiRegionComputedField, time=nothing)
     return comp
 end
 
-function Fields.interior(mrf::MultiRegionField)
+function interior(mrf::MultiRegionField)
     @apply_regionally interior_mrf = interior(mrf)
     return interior_mrf
 end
 
-function Fields.interior(mrf::MultiRegionField, I...)
+function interior(mrf::MultiRegionField, I...)
     @apply_regionally interior_mrf = interior(mrf, I...)
     return interior_mrf
 end
 
-@inline Diagnostics.hasnan(field::MultiRegionField) = (&)(construct_regionally(hasnan, field).regional_objects...)
+@inline hasnan(field::MultiRegionField) = (&)(construct_regionally(hasnan, field).regional_objects...)
 
-Fields.validate_indices(indices, loc, mrg::MultiRegionGrids) =
+validate_indices(indices, loc, mrg::MultiRegionGrids) =
     construct_regionally(validate_indices, indices, loc, mrg.region_grids)
 
-Fields.communication_buffers(grid::MultiRegionGrid, data, bcs) =
+communication_buffers(grid::MultiRegionGrid, data, bcs) =
     construct_regionally(CommunicationBuffers, grid, data, bcs)
 
-Fields.communication_buffers(grid::MultiRegionGrid, data, ::Nothing) = nothing
-Fields.communication_buffers(grid::MultiRegionGrid, data, ::Missing) = nothing
+communication_buffers(grid::MultiRegionGrid, data, ::Nothing) = nothing
+communication_buffers(grid::MultiRegionGrid, data, ::Missing) = nothing
 
-DistributedComputations.CommunicationBuffers(grid::MultiRegionGrids, args...; kwargs...) =
+CommunicationBuffers(grid::MultiRegionGrids, args...; kwargs...) =
     construct_regionally(CommunicationBuffers, grid, args...; kwargs...)
 
-function BoundaryConditions.regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
-                                                                 mrg::MultiRegionGrids,
-                                                                 field_name::Symbol,
-                                                                 prognostic_field_name=nothing)
+function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
+                                              mrg::MultiRegionGrids,
+                                              field_name::Symbol,
+                                              prognostic_field_name=nothing)
 
   reg_bcs = regularize_field_boundary_conditions(bcs, mrg.region_grids[1], field_name, prognostic_field_name)
   loc = assumed_field_location(field_name)
@@ -206,8 +212,8 @@ function Base.show(io::IO, field::MultiRegionField)
     print(io, prefix, middle, suffix)
 end
 
-Grids.xnodes(ψ::AbstractField{<:Any, <:Any, <:Any, <:OrthogonalSphericalShellGrid}) = xnodes((location(ψ, 1), location(ψ, 2)), ψ.grid)
-Grids.ynodes(ψ::AbstractField{<:Any, <:Any, <:Any, <:OrthogonalSphericalShellGrid}) = ynodes((location(ψ, 1), location(ψ, 2)), ψ.grid)
+xnodes(ψ::AbstractField{<:Any, <:Any, <:Any, <:OrthogonalSphericalShellGrid}) = xnodes((location(ψ, 1), location(ψ, 2)), ψ.grid)
+ynodes(ψ::AbstractField{<:Any, <:Any, <:Any, <:OrthogonalSphericalShellGrid}) = ynodes((location(ψ, 1), location(ψ, 2)), ψ.grid)
 
 # Convenience
 @propagate_inbounds Base.getindex(mrf::MultiRegionField, r::Int) = getregion(mrf, r)

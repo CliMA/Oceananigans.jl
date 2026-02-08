@@ -22,7 +22,7 @@ function run_thermal_bubble_regression_test(arch, grid_type)
                                 hydrostatic_pressure_anomaly = CenterField(grid),
                                 tracers = (:T, :S))
 
-    simulation = Simulation(model, Δt=6, stop_iteration=10, verbose=false)
+    simulation = Simulation(model, Δt=6, stop_iteration=10)
 
     model.tracers.T.data.parent .= 9.85
     model.tracers.S.data.parent .= 35.0

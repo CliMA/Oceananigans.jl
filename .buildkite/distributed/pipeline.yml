@@ -18,7 +18,6 @@ definitions:
     - "🤿 distributed_hydrostatic_regression"
     - "🤺 distributed_hydrostatic_model"
     - "🦍 distributed_nonhydrostatic_regression"
-    - "🪰 distributed_vertical_coordinate"
 
   retry_config: &retry_config
     automatic:
@@ -54,7 +53,7 @@ steps:
     command: *test_command
     timeout_in_minutes: 5440
     agents:
-      slurm_mem: 100G
+      slurm_mem: 50G
       slurm_ntasks: 4
     retry: *retry_config
     matrix:

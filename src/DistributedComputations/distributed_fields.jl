@@ -112,16 +112,9 @@ reconstruct_global_field(field) = field
 Reconstruct a global field from a local field by combining the data from all processes.
 """
 function reconstruct_global_field(field::DistributedField)
-    arch = architecture(field)
-    field_indices = field.indices
-
-    if (!(field_indices[1] isa Colon) && (arch.ranks[1] != 1)) ||
-       (!(field_indices[2] isa Colon) && (arch.ranks[2] != 1))
-        @warn "Windowed fields in a partitioned directions are not supported."
-    end
-
     global_grid = reconstruct_global_grid(field.grid)
-    global_field = Field(instantiated_location(field), global_grid; indices=field_indices)
+    global_field = Field(instantiated_location(field), global_grid)
+    arch = architecture(field)
 
     global_data = construct_global_array(interior(field), arch, size(field))
 

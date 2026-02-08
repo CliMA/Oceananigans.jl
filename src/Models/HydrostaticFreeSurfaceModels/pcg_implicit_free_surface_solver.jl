@@ -1,7 +1,6 @@
 using Oceananigans.Operators: Azᶜᶜᶜ, Azᶜᶜᶠ, Δx_qᶜᶠᶜ, Δxᶜᶠᵃ, Δx⁻¹ᶠᶜᶠ, Δy_qᶠᶜᶜ, Δyᶠᶜᵃ, Δy⁻¹ᶜᶠᶠ,
     δxᶜᵃᵃ, δxᶜᶜᶜ, δyᵃᶜᵃ, δyᶜᶜᶜ, ∂xᶠᶜᶠ, ∂yᶜᶠᶠ
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.DistributedComputations: DistributedGrid
 using Oceananigans.Grids: isrectilinear, halo_size
 
 using Oceananigans.Solvers: Solvers, solve!, ConjugateGradientSolver
@@ -54,14 +53,10 @@ function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitationa
     settings[:maxiter] = get(settings, :maxiter, grid.Nx * grid.Ny)
     settings[:reltol] = get(settings, :reltol, min(1e-7, 10 * sqrt(eps(eltype(grid)))))
 
-    if grid isa DistributedGrid
-        settings[:preconditioner] = nothing
-    else
-        # FFT preconditioner for rectilinear grids, nothing otherwise.
-        settings[:preconditioner] = isrectilinear(grid) ?
-            get(settings, :preconditioner, FFTImplicitFreeSurfaceSolver(grid)) :
-            get(settings, :preconditioner, nothing)
-    end
+    # FFT preconditioner for rectilinear grids, nothing otherwise.
+    settings[:preconditioner] = isrectilinear(grid) ?
+        get(settings, :preconditioner, FFTImplicitFreeSurfaceSolver(grid)) :
+        get(settings, :preconditioner, nothing)
 
     # TODO: reuse solver.storage for rhs when preconditioner isa FFTImplicitFreeSurfaceSolver?
     right_hand_side = ZFaceField(grid, indices = (:, :, size(grid, 3) + 1))

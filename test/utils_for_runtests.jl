@@ -1,6 +1,5 @@
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, RungeKutta3TimeStepper, update_state!
 using Oceananigans.DistributedComputations: Distributed, Partition, child_architecture, Fractional, Equal
-using Statistics: mean, std
 
 import Oceananigans.Fields: interior
 

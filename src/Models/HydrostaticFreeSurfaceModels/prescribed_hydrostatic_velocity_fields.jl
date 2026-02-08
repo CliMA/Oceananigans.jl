@@ -2,12 +2,10 @@
 ##### PrescribedVelocityFields
 #####
 
-using Oceananigans: location
 using Oceananigans.Grids: Center, Face
 using Oceananigans.Fields: FunctionField, field
 using Oceananigans.TimeSteppers: tick!, step_lagrangian_particles!
 using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!
-using Oceananigans.OutputReaders: FieldTimeSeries, TimeSeriesInterpolation
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
@@ -55,26 +53,15 @@ function PrescribedVelocityFields(; u = ZeroField(),
     return PrescribedVelocityFields(u, v, w, parameters)
 end
 
-materialize_prescribed_velocity(X, Y, Z, f::Function, grid; kwargs...) = FunctionField{X, Y, Z}(f, grid; kwargs...)
-
-function materialize_prescribed_velocity(X, Y, Z, fts::FieldTimeSeries, grid; clock, kwargs...)
-    fts_location = location(fts)
-    requested_location = (X, Y, Z)
-    if fts_location != requested_location
-        throw(ArgumentError("FieldTimeSeries location $fts_location does not match " *
-                            "the expected velocity location $requested_location"))
-    end
-    return TimeSeriesInterpolation(fts, grid; clock)
-end
-
-materialize_prescribed_velocity(X, Y, Z, f, grid; kwargs...) = field((X, Y, Z), f, grid)
+wrap_prescribed_field(X, Y, Z, f::Function, grid; kwargs...) = FunctionField{X, Y, Z}(f, grid; kwargs...)
+wrap_prescribed_field(X, Y, Z, f, grid; kwargs...) = field((X, Y, Z), f, grid)
 
 function hydrostatic_velocity_fields(velocities::PrescribedVelocityFields, grid, clock, bcs)
 
     parameters = velocities.parameters
-    u = materialize_prescribed_velocity(Face, Center, Center, velocities.u, grid; clock, parameters)
-    v = materialize_prescribed_velocity(Center, Face, Center, velocities.v, grid; clock, parameters)
-    w = materialize_prescribed_velocity(Center, Center, Face, velocities.w, grid; clock, parameters)
+    u = wrap_prescribed_field(Face, Center, Center, velocities.u, grid; clock, parameters)
+    v = wrap_prescribed_field(Center, Face, Center, velocities.v, grid; clock, parameters)
+    w = wrap_prescribed_field(Center, Center, Face, velocities.w, grid; clock, parameters)
 
     fill_halo_regions!((u, v))
     fill_halo_regions!(w)
@@ -101,7 +88,6 @@ free_surface_names(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, grid)
 
 @inline BoundaryConditions.fill_halo_regions!(::PrescribedVelocityFields, args...; kwargs...) = nothing
 @inline BoundaryConditions.fill_halo_regions!(::FunctionField, args...; kwargs...) = nothing
-@inline BoundaryConditions.fill_halo_regions!(::TimeSeriesInterpolation, args...; kwargs...) = nothing
 
 @inline datatuple(obj::PrescribedVelocityFields) = (; u = datatuple(obj.u), v = datatuple(obj.v), w = datatuple(obj.w))
 @inline velocities(obj::PrescribedVelocityFields) = (u = obj.u, v = obj.v, w = obj.w)
@@ -119,11 +105,6 @@ rk_substep_velocities!(::PrescribedVelocityFields, args...) = nothing
 step_free_surface!(::Nothing, model, timestepper, Δt) = nothing
 compute_w_from_continuity!(::PrescribedVelocityFields, args...; kwargs...) = nothing
 mask_immersed_velocities!(::PrescribedVelocityFields) = nothing
-
-# No need for extra velocities
-transport_velocity_fields(velocities::PrescribedVelocityFields, free_surface) = velocities
-transport_velocity_fields(velocities::PrescribedVelocityFields, ::ExplicitFreeSurface) = velocities
-transport_velocity_fields(velocities::PrescribedVelocityFields, ::Nothing) = velocities
 
 validate_velocity_boundary_conditions(grid, ::PrescribedVelocityFields) = nothing
 extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()

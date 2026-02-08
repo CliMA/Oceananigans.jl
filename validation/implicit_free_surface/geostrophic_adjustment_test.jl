@@ -66,7 +66,7 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
 
     save_η(sim) = ηarr[sim.model.clock.iteration+1] = deepcopy(sim.model.free_surface.displacement)
     save_v(sim) = varr[sim.model.clock.iteration+1] = deepcopy(sim.model.velocities.v)
-    save_u(sim) = uarr[sim.model.clock.iteration+1] = deepcopy(sim.model.velocities.u)
+    save_u(sim) = uarr[sim.model .clock.iteration+1] = deepcopy(sim.model.velocities.u)
     save_c(sim) = carr[sim.model.clock.iteration+1] = deepcopy(sim.model.tracers.c)
     save_w(sim) = warr[sim.model.clock.iteration+1] .= sim.model.velocities.w[1:sim.model.grid.Nx, 1, 2]
 
@@ -85,7 +85,7 @@ function geostrophic_adjustment_simulation(free_surface, grid, timestepper=:Quas
                         sim.model.clock.time, maximum(abs, sim.model.velocities.u), H)
 
         if grid isa MutableGridOfSomeKind
-                msg2 = @sprintf(", max(Δη): %.2e", maximum(sim.model.grid.z.ηⁿ[1:sim.model.grid.Nx, 1, 1] .- interior(sim.model.free_surface.displacement)))
+                msg2 = @sprintf(", max(Δη): %.2e", maximum(sim.model.grid.z.ηⁿ[1:sim.model.grid.Nx, 2, 1] .- interior(sim.model.free_surface.displacement)))
                 msg  = msg * msg2
         end
 

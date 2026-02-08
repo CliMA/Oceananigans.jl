@@ -181,6 +181,7 @@ steps:
       group_slug="$${group_slug//[^A-Za-z0-9_.-]/_}"
       tarball="coverage-${BUILDKITE_BUILD_NUMBER}-${BUILDKITE_JOB_ID}-{{ matrix.architecture }}-$${group_slug}.tgz"
 
+
       find . -type f -name "*.cov" > cov_list.txt
       echo "Coverage files found:" `wc -l < cov_list.txt`
 

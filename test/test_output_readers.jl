@@ -43,7 +43,7 @@ function generate_some_interesting_simulation_data(Nx, Ny, Nz; architecture=CPU(
     uᵢ(x, y, z) = 1e-3 * randn()
     set!(model, u=uᵢ, w=uᵢ, T=Tᵢ, S=35)
 
-    simulation = Simulation(model, Δt=10.0, stop_time=2minutes, verbose=false)
+    simulation = Simulation(model, Δt=10.0, stop_time=2minutes)
     wizard = TimeStepWizard(cfl=1.0, max_change=1.1, max_Δt=1minute)
     simulation.callbacks[:wizard] = Callback(wizard)
 
@@ -138,7 +138,7 @@ function test_pickup_with_inaccurate_times()
     return nothing
 end
 
-function test_field_time_series_in_memory_3d(arch, filepath3d, Nx, Ny, Nz, Nt)
+function test_field_time_series_in_memory(arch, filepath3d, filepath2d, filepath1d, split_filepath, unsplit_filepath, Nx, Ny, Nz, Nt)
     # 3D Fields
     u3 = FieldTimeSeries(filepath3d, "u", architecture=arch)
     v3 = FieldTimeSeries(filepath3d, "v", architecture=arch)
@@ -216,11 +216,8 @@ function test_field_time_series_in_memory_3d(arch, filepath3d, Nx, Ny, Nz, Nt)
     @test c11 ≈ [5.0, 6.0, 7.0]
     @test c12 ≈ [10.0, 12.0, 14.0]
 
-    return nothing
-end
-
-function test_field_time_series_in_memory_2d(arch, filepath2d, Nx, Ny, Nt)
     ## 2D sliced Fields
+
     u2 = FieldTimeSeries(filepath2d, "u", architecture=arch)
     v2 = FieldTimeSeries(filepath2d, "v", architecture=arch)
     w2 = FieldTimeSeries(filepath2d, "w", architecture=arch)
@@ -242,8 +239,7 @@ function test_field_time_series_in_memory_2d(arch, filepath2d, Nx, Ny, Nt)
     @test size(b2) == (Nx, Ny, 1, Nt)
     @test size(ζ2) == (Nx, Ny, 1, Nt)
 
-    ArrayType = array_type(arch)
-    for fts in (u2, v2, w2, T2, b2, ζ2)
+    for fts in (u3, v3, w3, T3, b3, ζ3)
         @test parent(fts) isa ArrayType
     end
 
@@ -253,11 +249,8 @@ function test_field_time_series_in_memory_2d(arch, filepath2d, Nx, Ny, Nt)
         @test v2[2] isa Field
     end
 
-    return nothing
-end
-
-function test_field_time_series_in_memory_1d(arch, filepath1d, Nz, Nt)
     ## 1D AveragedFields
+
     u1 = FieldTimeSeries(filepath1d, "u", architecture=arch)
     v1 = FieldTimeSeries(filepath1d, "v", architecture=arch)
     w1 = FieldTimeSeries(filepath1d, "w", architecture=arch)
@@ -279,7 +272,6 @@ function test_field_time_series_in_memory_1d(arch, filepath1d, Nz, Nt)
     @test size(b1) == (1, 1, Nz,   Nt)
     @test size(ζ1) == (1, 1, Nz,   Nt)
 
-    ArrayType = array_type(arch)
     for fts in (u1, v1, w1, T1, b1, ζ1)
         @test parent(fts) isa ArrayType
     end
@@ -290,10 +282,6 @@ function test_field_time_series_in_memory_1d(arch, filepath1d, Nz, Nt)
         @test v1[2] isa Field
     end
 
-    return nothing
-end
-
-function test_field_time_series_in_memory_split(arch, split_filepath, unsplit_filepath)
     us = FieldTimeSeries(split_filepath, "u", architecture=arch)
     vs = FieldTimeSeries(split_filepath, "v", architecture=arch)
     ws = FieldTimeSeries(split_filepath, "w", architecture=arch)
@@ -682,18 +670,12 @@ end
         filepath1d, filepath2d, filepath3d, unsplit_filepath, split_filepath = generate_some_interesting_simulation_data(Nx, Ny, Nz; output_writer)
 
         for arch in archs
-            @testset "FieldTimeSeries{InMemory} [$(typeof(arch))] with $output_writer" begin
-                @info "  Testing FieldTimeSeries{InMemory} [$(typeof(arch))]..."
-                test_field_time_series_in_memory_3d(arch, filepath3d, Nx, Ny, Nz, Nt)
-
-                if output_writer == JLD2Writer
-                    test_field_time_series_in_memory_2d(arch, filepath2d, Nx, Ny, Nt) # NetCDFWriter does not support 2D sliced fields with halos yet
-                    test_field_time_series_in_memory_1d(arch, filepath1d, Nz, Nt) # FieldTimeSeries with NetCDF does not support 1D fields yet
-                    test_field_time_series_in_memory_split(arch, split_filepath, unsplit_filepath) # FieldTimeSeries with NetCDF does not support split fields yet
-                end
-            end
-
             if output_writer == JLD2Writer
+                @testset "FieldTimeSeries{InMemory} [$(typeof(arch))] with $output_writer" begin
+                    @info "  Testing FieldTimeSeries{InMemory} [$(typeof(arch))]..."
+                        test_field_time_series_in_memory(arch, filepath3d, filepath2d, filepath1d, split_filepath, unsplit_filepath, Nx, Ny, Nz, Nt)
+                end
+
                 @testset "FieldTimeSeries with Function boundary conditions [$(typeof(arch))] with $output_writer" begin
                     @info "  Testing FieldTimeSeries with Function boundary conditions..."
                     test_field_time_series_function_boundary_conditions(arch)

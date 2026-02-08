@@ -182,33 +182,6 @@ If the documentation built is successful, you can open `docs/build/index.html` i
 `JULIA_DEBUG=Documenter` will provide with more information in the documentation build process and
 thus help figuring out a potential bug.
 
-## Pre-commit hook
-
-This project uses [pre-commit](https://pre-commit.com/) for ensuring some minimal formatting consistency in the codebase, in particular related to whitespace.
-
-### Installing a pre-commit manager
-
-You can install a "pre-commit manager" locally so that you can automatically ensure to adapt to the project style.
-There are multiple pre-commit managers you can install, some alternatives are:
-
-* the original [pre-commit](https://pre-commit.com/): follow the [instructions to install it](https://pre-commit.com/#install), and then move in the terminal inside the Oceananigans repository and run the command
-  ```
-  pre-commit install
-  ```
-  to install the hooks
-* a new (and faster) manager called [prek](https://prek.j178.dev/): follow the [instructions to install it](https://prek.j178.dev/installation/), and then move in the terminal inside the Oceananigans repository and run the command
-  ```
-  prek install
-  ```
-  to install the hooks.
-
-That's it!
-After you install the pre-commit manager and the hooks for this repository, you don't have to do anything else manually: whenever you run `git commit` in this repository, the manager will automatically run the hooks and fix the possible issues.
-
-!!! note
-    If a pre-commit hooks detects an issue and automatically fixes it, the git commit actually fails.
-    In that case you will have to `git add` the new changes and `git commit` again to make the commit successful.
-
 ## Credits
 
 This contributor's guide is heavily based on the excellent [MetPy contributor's guide](https://github.com/Unidata/MetPy/blob/master/CONTRIBUTING.md).

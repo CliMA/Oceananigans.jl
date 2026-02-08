@@ -87,7 +87,7 @@ function reconstruct_extent(mrg, p::XPartition)
              cpu_face_constructor_x(mrg.region_grids.regional_objects[length(p)])[end])
     else
         x = [cpu_face_constructor_x(mrg.region_grids.regional_objects[1])...]
-        for grid in mrg.region_grids.regional_objects[2:end]
+        for (idx, grid) in enumerate(mrg.region_grids.regional_objects[2:end])
             x = [x..., cpu_face_constructor_x(grid)[2:end]...]
         end
     end

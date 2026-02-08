@@ -81,37 +81,29 @@ For implicit free surfaces, a predictor-corrector approach is used:
 5. Correct velocities for the updated barotropic pressure gradient
 6. Advance tracers using AB2
 """
-function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, Δt, callbacks)
+function hydrostatic_ab2_step!(model, ::ImplicitFreeSurface, grid, Δt, callbacks)
     FT = eltype(grid)
     χ  = convert(FT, model.timestepper.χ)
     Δt = convert(FT, Δt)
 
     @apply_regionally begin
-        parent(model.transport_velocities.u) .= parent(model.velocities.u)
-        parent(model.transport_velocities.v) .= parent(model.velocities.v)
-
-        # Computing tendencies...
+        # Computing tracer tendencies and adding fluxes to momentum
         compute_momentum_flux_bcs!(model)
+        compute_tracer_tendencies!(model)
 
-        # Finally Substep! Advance grid, tracers, (predictor) momentum
+        # Finally Substep! Advance grid, tracers, and momentum
+        ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
         ab2_step_velocities!(model.velocities, model, Δt, χ)
     end
 
-    # Advancing free surface in preparation for the correction step
+    # Advance the free surface
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
 
-    # Correct for the updated barotropic mode
+    # Correct the barotropic mode
     @apply_regionally correct_barotropic_mode!(model, Δt)
 
-    # Compute transport velocities
-    compute_transport_velocities!(model, free_surface)
-
-    @apply_regionally begin
-        compute_tracer_tendencies!(model)
-
-        ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
-        ab2_step_tracers!(model.tracers, model, Δt, χ)
-    end
+    # TODO: fill halo regions for horizontal velocities should be here before the tracer update.
+    @apply_regionally ab2_step_tracers!(model.tracers, model, Δt, χ)
 
     return nothing
 end
