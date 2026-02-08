@@ -106,6 +106,7 @@ end
 @inline square_smagorinsky_coefficient(i, j, k, grid, c::ConstantSmagorinsky, args...) = c.coefficient^2
 @inline square_smagorinsky_coefficient(i, j, k, grid, c, args...) = closure_coefficient(i, j, k, grid, c)^2
 
+# Fallback: most closures don't have time-evolving coefficient fields
 compute_coefficient_fields!(closure_fields, closure, model; parameters) = nothing
 
 function compute_diffusivities!(closure_fields, closure::Smagorinsky, model; parameters = :xyz)
@@ -115,8 +116,8 @@ function compute_diffusivities!(closure_fields, closure::Smagorinsky, model; par
     buoyancy = buoyancy_force(model)
     velocities = model.velocities
 
-    compute_coefficient_fields!(closure_fields, closure, model; parameters)
-
+    # Compute the eddy viscosity based on current coefficient field values
+    # Note: coefficient fields are updated via step_closure_fields!, not here
     launch!(arch, grid, parameters, _compute_smagorinsky_viscosity!,
             closure_fields, grid, closure, buoyancy, velocities, tracers)
 

@@ -165,8 +165,12 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
     end
 
     # Finalize step
-    step_lagrangian_particles!(model, Δt)
     tick!(model.clock, Δt)
+    
+    # Step closure coefficient fields forward in time (once per timestep, after all stages)
+    step_closure_fields!(model.closure_fields, model.closure, model)
+
+    step_lagrangian_particles!(model, Δt)
 
     return nothing
 end

@@ -81,6 +81,14 @@ function compute_diffusivities!(closure_fields_tuple, closure_tuple::Tuple, args
     return nothing
 end
 
+function step_closure_fields!(closure_fields_tuple, closure_tuple::Tuple, model)
+    for (α, closure) in enumerate(closure_tuple)
+        closure_fields = closure_fields_tuple[α]
+        step_closure_fields!(closure_fields, closure, model)
+    end
+    return nothing
+end
+
 function add_closure_specific_boundary_conditions(closure_tuple::Tuple, bcs, args...)
     # So the last closure in the tuple has the say...
     for closure in closure_tuple

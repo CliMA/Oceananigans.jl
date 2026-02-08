@@ -10,6 +10,7 @@ using Oceananigans.Grids: AbstractGrid, Center
 using KernelAbstractions: @kernel, @index
 
 import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
+import Oceananigans.TimeSteppers: step_closure_fields!
 
 include("smagorinsky.jl")
 include("dynamic_coefficient.jl")

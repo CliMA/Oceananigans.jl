@@ -163,6 +163,9 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     model.clock.last_stage_Δt = corrected_third_stage_Δt
     model.clock.last_Δt = Δt
 
+    # Step closure coefficient fields forward in time (once per timestep, after all RK3 stages)
+    step_closure_fields!(model.closure_fields, model.closure, model)
+
     update_state!(model, callbacks)
     step_lagrangian_particles!(model, third_stage_Δt)
 

@@ -21,6 +21,12 @@ function update_state! end
 function compute_tendencies! end
 function compute_flux_bc_tendencies! end
 
+# Interface for stepping closure coefficient fields (implemented in TurbulenceClosures module)
+# Fallback: most closures don't have time-evolving fields
+step_closure_fields!(closure_fields, closure, model) = nothing
+step_closure_fields!(closure_fields::Nothing, closure, model) = nothing
+step_closure_fields!(closure_fields, closure::Nothing, model) = nothing
+
 # Interface for time-stepping Lagrangian particles
 abstract type AbstractLagrangianParticles end
 step_lagrangian_particles!(model, Δt) = nothing

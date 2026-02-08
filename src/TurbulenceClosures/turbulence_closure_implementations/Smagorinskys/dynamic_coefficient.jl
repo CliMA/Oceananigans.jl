@@ -309,15 +309,12 @@ end
 ##### Directionally-averaged functionality
 #####
 
-function compute_coefficient_fields!(closure_fields, closure::DirectionallyAveragedDynamicSmagorinsky, model; parameters)
+function step_closure_fields!(closure_fields, closure::DirectionallyAveragedDynamicSmagorinsky, model)
     grid = model.grid
     arch = architecture(grid)
     velocities = model.velocities
     cˢ = closure.coefficient
     clock = model.clock
-
-    # For RK3 only compute coefficients at the final stage.
-    clock.stage == 1 || return nothing
 
     if cˢ.schedule(model)
         Σ = closure_fields.Σ
@@ -411,16 +408,13 @@ const c = Center()
     end
 end
 
-function compute_coefficient_fields!(closure_fields, closure::LagrangianAveragedDynamicSmagorinsky, model; parameters)
+function step_closure_fields!(closure_fields, closure::LagrangianAveragedDynamicSmagorinsky, model)
     grid = model.grid
     arch = architecture(grid)
     clock = model.clock
     cˢ = closure.coefficient
     t⁻ = closure_fields.previous_compute_time
     u, v, w = model.velocities
-
-    # For RK3 only compute coefficients at the final stage.
-    clock.stage == 1 || return nothing
 
     Δt = time_difference_seconds(clock.time, t⁻[])
 
@@ -449,7 +443,10 @@ function compute_coefficient_fields!(closure_fields, closure::LagrangianAveraged
         𝒥ᴹᴹ  = closure_fields.𝒥ᴹᴹ
         𝒥ᴸᴹ_min = cˢ.minimum_numerator
 
-        if !isfinite(clock.last_Δt) || Δt == 0 # first time-step
+        # Check if this is the first computation by testing if coefficients are uninitialized
+        first_time = maximum(abs, 𝒥ᴸᴹ) == 0 && maximum(abs, 𝒥ᴹᴹ) == 0
+
+        if first_time # first time-step
             launch!(arch, grid, :xyz, _compute_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, Σ, Σ̄, grid, u, v, w)
             parent(𝒥ᴸᴹ) .= max(mean(𝒥ᴸᴹ), 𝒥ᴸᴹ_min)
             parent(𝒥ᴹᴹ) .= mean(𝒥ᴹᴹ)

@@ -61,6 +61,7 @@ using Oceananigans.Fields: Field, CenterField, FunctionField, ZFaceField
 using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom, ImmersedBoundaryGrid
 
 import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
+import Oceananigans.TimeSteppers: step_closure_fields!
 
 const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 
