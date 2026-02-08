@@ -268,6 +268,7 @@ CUDA.allowscalar() do
     if group == :reactant_1 || group == :all
         @testset "Reactant extension tests 1" begin
             include("test_reactant.jl")
+            include("test_reactant_fft_models.jl")
         end
     end
 
