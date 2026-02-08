@@ -6,7 +6,6 @@ using Oceananigans.Grids: topology, _node, φnode, φnodes, λnode, λnodes,
                           ZRegOrthogonalSphericalShellGrid
 
 using Oceananigans.Operators: Δx, Δy, Δz
-using Oceananigans.Utils: interpolator
 
 # GPU-compatile middle point calculation
 @inline middle_point(l, h) = Base.unsafe_trunc(Int, (l + h) / 2)
@@ -278,7 +277,33 @@ end
     return _interpolate(from_field, ix, iy, iz)
 end
 
-# interpolator is imported from Oceananigans.Utils
+"""
+    interpolator(fractional_idx)
+
+Return an ``interpolator tuple'' from the fractional index `fractional_idx`
+defined as the 3-tuple
+
+```
+(i⁻, i⁺, ξ)
+```
+
+where `i⁻` is the index to the left of `i`, `i⁺` is the index to the
+right of `i`, and `ξ` is the fractional distance between `i` and the
+left bound `i⁻`, such that `ξ ∈ [0, 1)`.
+"""
+@inline function interpolator(fractional_idx)
+    # For why we use Base.unsafe_trunc instead of trunc see:
+    # https://github.com/CliMA/Oceananigans.jl/issues/828
+    # https://github.com/CliMA/Oceananigans.jl/pull/997
+
+    i⁻ = Base.unsafe_trunc(Int, fractional_idx)
+    i⁺ = i⁻ + 1
+    ξ = mod(fractional_idx, 1)
+
+    return (i⁻, i⁺, ξ)
+end
+
+@inline interpolator(::Nothing) = (1, 1, 0)
 
 # Trilinear Lagrange polynomials
 @inline ϕ₁(ξ, η, ζ) = (1 - ξ) * (1 - η) * (1 - ζ)
