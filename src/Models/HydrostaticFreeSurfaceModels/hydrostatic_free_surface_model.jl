@@ -291,11 +291,11 @@ function initialization_update_state!(model::HydrostaticFreeSurfaceModel)
     return nothing
 end
 
-transport_velocity_fields(velocities, free_surface) = velocities
-transport_velocity_fields(velocities, ::SplitExplicitFreeSurface) =
-    (u = XFaceField(velocities.u.grid; boundary_conditions=velocities.u.boundary_conditions),
-     v = YFaceField(velocities.v.grid; boundary_conditions=velocities.v.boundary_conditions),
-     w = ZFaceField(velocities.w.grid; boundary_conditions=velocities.w.boundary_conditions))
+transport_velocity_fields(velocities, ::Nothing) = velocities
+transport_velocity_fields(velocities, ::ExplicitFreeSurface) = velocities
+transport_velocity_fields(velocities, free_surface) = (u = XFaceField(velocities.u.grid; boundary_conditions=velocities.u.boundary_conditions),
+                                                       v = YFaceField(velocities.v.grid; boundary_conditions=velocities.v.boundary_conditions),
+                                                       w = ZFaceField(velocities.w.grid; boundary_conditions=velocities.w.boundary_conditions))
 
 validate_velocity_boundary_conditions(grid, velocities) = validate_vertical_velocity_boundary_conditions(velocities.w)
 
@@ -305,10 +305,9 @@ function validate_vertical_velocity_boundary_conditions(w)
     return nothing
 end
 
-validate_free_surface(::Distributed, free_surface::SplitExplicitFreeSurface) = free_surface
-validate_free_surface(::Distributed, free_surface::ExplicitFreeSurface)      = free_surface
-validate_free_surface(::Distributed, free_surface::Nothing)                  = free_surface
-validate_free_surface(arch::Distributed, free_surface) = error("$(typeof(free_surface)) is not supported with $(typeof(arch))")
+const FFTIFS = ImplicitFreeSurface{<:Any, <:Any, <:FFTImplicitFreeSurfaceSolver}
+
+validate_free_surface(arch::Distributed, ::FFTIFS) = error("$(typeof(free_surface)) is not supported with $(typeof(arch))")
 validate_free_surface(arch, free_surface) = free_surface
 
 validate_momentum_advection(momentum_advection, ibg::ImmersedBoundaryGrid) = validate_momentum_advection(momentum_advection, ibg.underlying_grid)
