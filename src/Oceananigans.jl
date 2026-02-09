@@ -39,7 +39,7 @@ export
     # Boundary conditions
     BoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, OpenBoundaryCondition,
-    PerturbationAdvection,
+    PerturbationAdvection, StevensAdvection,
     FieldBoundaryConditions,
 
     # Fields and field manipulation
