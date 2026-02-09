@@ -51,6 +51,19 @@ import ConstructionBase: constructorof
 constructorof(::Type{<:RectilinearGrid{FT, TX, TY, TZ}}) where {FT, TX, TY, TZ} = RectilinearGrid{TX, TY, TZ}
 constructorof(::Type{<:VectorInvariant{N, FT, M}}) where {N, FT, M} = VectorInvariant{N, FT, M}
 
+# RectilinearGrid is treated as constant — don't trace any type parameters.
+# This matches the make_tracer override below which returns the grid unchanged.
+Base.@nospecializeinfer function Reactant.traced_type_inner(
+    @nospecialize(OA::Type{RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch}}),
+    seen,
+    mode::Reactant.TraceMode,
+    @nospecialize(track_numbers::Type),
+    @nospecialize(sharding),
+    @nospecialize(runtime)
+) where {FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch}
+    return RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch}
+end
+
 # https://github.com/CliMA/Oceananigans.jl/blob/da9959f3e5d8ee7cf2fb42b74ecc892874ec1687/src/AbstractOperations/conditional_operations.jl#L8
 Base.@nospecializeinfer function Reactant.traced_type_inner(
     @nospecialize(OA::Type{Oceananigans.AbstractOperations.ConditionalOperation{LX, LY, LZ, F, C, O, G, M, T}}),
@@ -204,16 +217,15 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
 
     FT2 = Reactant.traced_type_inner(FT, seen, mode, track_numbers, sharding, runtime)
 
-    for NF in (XF2, XC2, YF2, YC2, DXCC2, DXFC2, DYCF2, DYCF2, DXFF2)
+    for NF in (XF2, XC2, YF2, YC2, DXCC2, DXFC2, DXCF2, DXFF2, DYFC2, DYCF2)
         if NF === Nothing
            continue
         end
         FT2 = Reactant.promote_traced_type(FT2, eltype(NF))
     end
 
-    res = Oceananigans.Grids.LatitudeLongitudeGrid{FT2, TX2, TY2, TZ2, Z2, DXF2, DXC2, XF2, XC2, DYF2, DYC2, YF2, YC2,
-                                                   DXCC2, DXFC2, DXCF2, DXFF2, DYFC2, DYCF2, Arch, I2}
-    return res
+    return Oceananigans.Grids.LatitudeLongitudeGrid{FT2, TX2, TY2, TZ2, Z2, DXF2, DXC2, XF2, XC2, DYF2, DYC2, YF2, YC2,
+                                                    DXCC2, DXFC2, DXCF2, DXFF2, DYFC2, DYCF2, Arch, I2}
 end
 
 @inline Reactant.make_tracer(
@@ -335,19 +347,19 @@ end
 
 Base.getindex(array::OffsetVector{T, <:Reactant.AbstractConcreteArray{T, 1}}, ::Colon) where T = array
 
-
-# These are additional modules that may need to be Reactantified in the future:
-#
-# include("Utils.jl")
-# include("BoundaryConditions.jl")
-# include("Fields.jl")
-# include("MultiRegion.jl")
-# include("Solvers.jl")
-#
-# using .Utils
-# using .BoundaryConditions
-# using .Fields
-# using .MultiRegion
-# using .Solvers
+# RectilinearGrid is constant — don't trace any of its fields.
+# This prevents @trace if (which sets track_numbers=Number) from tracing
+# grid scalar fields, which would then fail when set_mlir_data! is called
+# on the non-traced original grid after the branch.
+Base.@nospecializeinfer function Reactant.make_tracer(
+    seen,
+    @nospecialize(prev::RectilinearGrid),
+    @nospecialize(path),
+    mode::Reactant.TraceMode;
+    kwargs...
+)
+    seen[prev] = prev
+    return prev
+end
 
 end # module

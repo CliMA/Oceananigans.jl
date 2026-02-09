@@ -46,4 +46,9 @@ function initialize!(model::ReactantHFSM)
     return nothing
 end
 
+# Skip initialization_update_state! for Reactant models.
+# The default implementation calls update_state! and fill_halo_regions! which
+# trigger KA kernels outside of a traced (@compile) context.
+initialization_update_state!(model::ReactantHFSM) = nothing
+
 end # module

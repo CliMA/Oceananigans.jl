@@ -277,6 +277,12 @@ CUDA.allowscalar() do
         end
     end
 
+    if group == :reactant_tracing || group == :all
+        @testset "Reactant tracing tests" begin
+            include("test_reactant_tracing.jl")
+        end
+    end
+
     # Tests for XESMF extension
     if group == :xesmf || group == :all
         @testset "XESMF extension tests" begin
