@@ -758,10 +758,28 @@ end
                 f = Field{X, Y, Z}(grid)
                 run_similar_field_tests(f)
 
+                # Test similar with different types
+                for FTg in float_types
+                    g = similar(f, FTg)
+                    @test eltype(g) == FTg
+                    @test f.grid == g.grid
+                    @test location(f) === location(g)
+                    @test !(f.data === g.data)
+                end
+
                 for dims in (3, (1, 2), (1, 2, 3))
                     loc = reduced_location((X(), Y(), Z()); dims)
                     f = Field(loc, grid)
                     run_similar_field_tests(f)
+
+                    # Test similar with different types
+                    for FTg in float_types
+                        g = similar(f, FTg)
+                        @test eltype(g) == FTg
+                        @test f.grid == g.grid
+                        @test location(f) === location(g)
+                        @test !(f.data === g.data)
+                    end
                 end
             end
         end
