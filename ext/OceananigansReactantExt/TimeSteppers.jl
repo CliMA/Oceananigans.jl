@@ -17,7 +17,7 @@ using Oceananigans.TimeSteppers:
     SplitRungeKuttaTimeStepper,
     cache_previous_tendencies!,
     rk_substep!,
-    cache_current_fields!
+    cache_current_fields!,
     RungeKutta3TimeStepper,
     cache_previous_tendencies!,
     rk3_substep!,
