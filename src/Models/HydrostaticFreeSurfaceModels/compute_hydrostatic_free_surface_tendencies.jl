@@ -11,7 +11,7 @@ using Oceananigans.Grids: get_active_cells_map
 using Oceananigans.Architectures: CPU
 import Oceananigans.Architectures as AC
 using Oceananigans.Fields: Field, interior
-using Oceananigans.Advection: near_y_immersed_boundary_biasedᶜ, near_z_immersed_boundary_biasedᶠ, near_x_immersed_boundary_symmetricᶠ
+using Oceananigans.Advection: StaticWENO, near_y_immersed_boundary_biasedᶜ, near_z_immersed_boundary_biasedᶠ, near_x_immersed_boundary_symmetricᶠ
 using KernelAbstractions: @kernel, @index
 """
     compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
@@ -253,12 +253,22 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
                                 model.vertical_coordinate,
                                 model.clock)
 
-    u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args..., u_forcing)
+    static_momentum_advection = VectorInvariant(
+        vorticity_scheme=StaticWENO(model.advection.momentum.vorticity_scheme),
+	vorticity_stencil=model.advection.momentum.vorticity_stencil,
+	    vertical_advection_scheme=model.advection.momentum.vertical_advection_scheme,
+	    divergence_scheme=model.advection.momentum.divergence_scheme,
+	    kinetic_energy_gradient_scheme=model.advection.momentum.kinetic_energy_gradient_scheme,
+	    upwinding=model.advection.momentum.upwinding
+	    )
+    u_kernel_args_1 = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args..., u_forcing)
+    u_kernel_args_2 = tuple(static_momentum_advection, model.coriolis, model.closure, u_immersed_bc, end_momentum_kernel_args..., u_forcing)
     v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args..., v_forcing)
 
-    launch_conditioned!(arch, grid, kernel_parameters, u_conditioned_maps,
-            compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid,
-            u_kernel_args)
+    launch!(arch, grid, kernel_parameters, compute_hydrostatic_free_surface_Gu!,
+		  model.timestepper.Gⁿ.u, grid, u_kernel_args_1; active_cells_map=u_conditioned_maps[1])
+    launch!(arch, grid, kernel_parameters, compute_hydrostatic_free_surface_Gu!,
+		  model.timestepper.Gⁿ.u, grid, u_kernel_args_2; active_cells_map=u_conditioned_maps[2])
 
     launch_conditioned!(arch, grid, kernel_parameters, v_conditioned_maps,
             compute_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid,
