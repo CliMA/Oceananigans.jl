@@ -19,12 +19,12 @@ using GLMakie
 
 @info "Grid setup"
 
-resolution = 2 // 1        # degrees
+resolution = 1 // 1        # degrees
 Nx = 360 ÷ resolution      # number of longitude points
 Ny = 180 ÷ resolution + 1  # number of latitude points (avoiding poles)
 # Nz = 50                    # number of vertical levels
 # Nz = 75                    # number of vertical levels
-Nz = 10
+Nz = 30
 H = 5000                   # domain depth [m]
 z = (-H, 0)                # vertical extent
 
@@ -62,7 +62,8 @@ closure = (
     # VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), κ = 1.0e-5),
 )
 
-f0 = CenterField(grid, Real)
+# f0 = CenterField(grid, Real)
+f0 = CenterField(grid)
 
 @warn "Adding newton_div method to allow sparsity tracer to pass through WENO"
 
@@ -77,8 +78,8 @@ ADTypes = Union{SparseConnectivityTracer.AbstractTracer, SparseConnectivityTrace
 model = HydrostaticFreeSurfaceModel(
     grid;
     velocities = velocities,
-    tracer_advection = WENO(),
-    # tracer_advection = Centered(order = 2),
+    # tracer_advection = WENO(),
+    tracer_advection = Centered(order = 2),
     # tracer_advection = UpwindBiased(order = 1),
     tracers = (c = f0,),
     closure = closure,
@@ -94,9 +95,6 @@ idx = findall(!isnan, interior(fNaN))
 Nidx = length(idx)
 @show N, Nidx
 c0 = ones(Nidx)
-c3D = zeros(Real, Nx′, Ny′, Nz′)
-advection = model.advection[:c]
-total_velocities = model.transport_velocities
 kernel_parameters = KernelParameters(1:Nx′, 1:Ny′, 1:Nz′)
 active_cells_map = get_active_cells_map(grid, Val(:interior))
 
@@ -106,11 +104,23 @@ active_cells_map = get_active_cells_map(grid, Val(:interior))
     @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
 end
 
-function mytendency(c)
-    c3D[idx] .= c
-    set!(model, c = c3D)
-    c_tendency = CenterField(grid, Real)
 
+function mytendency(cvec)
+    Gcvec = similar(cvec)
+    mytendency!(Gcvec, cvec)
+    return Gcvec
+end
+
+function mytendency!(Gcvec::Vector{T}, cvec::Vector{T}) where {T}
+    # Preallocate 3D array with type T and fill wet points
+    c3D = zeros(T, Nx′, Ny′, Nz′)
+    c3D[idx] .= cvec
+    # Preallocate Field with type T and fill it with 3D array
+    c = CenterField(grid, T)
+    set!(c, c3D)
+    # Preallocate "output" Field with type T
+    Gc = CenterField(grid, T)
+    # bits and pieces from model
     c_advection = model.advection[:c]
     c_forcing = model.forcing[:c]
     c_immersed_bc = immersed_boundary_condition(model.tracers[:c])
@@ -125,7 +135,7 @@ function mytendency(c)
         model.biogeochemistry,
         model.transport_velocities,
         model.free_surface,
-        model.tracers,
+        (; c = c),
         model.closure_fields,
         model.auxiliary_fields,
         model.clock,
@@ -135,14 +145,59 @@ function mytendency(c)
     launch!(
         CPU(), grid, kernel_parameters,
         compute_hydrostatic_free_surface_Gc!,
-        c_tendency,
+        Gc,
         grid,
         args;
         active_cells_map
     )
-
-    return interior(c_tendency)[idx]
+    # Fill output vector with interior wet values
+    Gcvec .= interior(Gc)[idx]
+    return Gcvec
 end
+
+# function myfieldtendency(c)
+#     dc = similar(c)
+#     myfieldtendency!(dc, c)
+#     return dc
+# end
+
+# function myfieldtendency!(dc, c)
+
+
+#     c_advection = model.advection[:c]
+#     c_forcing = model.forcing[:c]
+#     c_immersed_bc = immersed_boundary_condition(model.tracers[:c])
+
+#     args = tuple(
+#         Val(1),
+#         Val(:c),
+#         c_advection,
+#         model.closure,
+#         c_immersed_bc,
+#         model.buoyancy,
+#         model.biogeochemistry,
+#         model.transport_velocities,
+#         model.free_surface,
+#         (c = c,),
+#         model.closure_fields,
+#         model.auxiliary_fields,
+#         model.clock,
+#         c_forcing
+#     )
+
+#     launch!(
+#         CPU(), grid, kernel_parameters,
+#         compute_hydrostatic_free_surface_Gc!,
+#         dc,
+#         grid,
+#         args;
+#         active_cells_map
+#     )
+
+#     return dc
+# end
+
+# # foo
 
 @info "Autodiff setup"
 
@@ -153,49 +208,183 @@ sparse_forward_backend = AutoSparse(
 )
 
 @info "Compute the Jacobian"
+using BenchmarkTools
+
+# c = CenterField(grid)
+# dc = CenterField(grid)
+
+# J = jacobian(myfieldtendency, sparse_forward_backend, c)
+
+# @benchmark jacobian(
+#     $myfieldtendency, $sparse_forward_backend, $c
+# )
+
+# jac_prep_sparse = prepare_jacobian(myfieldtendency, sparse_forward_backend, c)
+
+# @benchmark jacobian(
+#     $myfieldtendency, $jac_prep_sparse, $sparse_forward_backend, $c
+# )
+
+# jac_buffer = similar(sparsity_pattern(jac_prep_sparse), eltype(c))
+
+# @benchmark jacobian!(
+#     $myfieldtendency, $jac_buffer, $jac_prep_sparse, $sparse_forward_backend, $c
+# )
+
+# jac_prep_sparse_nonallocating = prepare_jacobian(
+#     myfieldtendency!, dc, sparse_forward_backend, c
+# )
+
+# jac_buffer = similar(sparsity_pattern(jac_prep_sparse_nonallocating), eltype(c))
+
+# @benchmark jacobian!(
+#     myfieldtendency!,
+#     $dc,
+#     $jac_buffer,
+#     $jac_prep_sparse_nonallocating,
+#     $sparse_forward_backend,
+#     $c,
+# )
+
+# foo
 
 J = jacobian(mytendency, sparse_forward_backend, c0)
+dc0 = similar(c0)
 
-@info "Extra for vector of volumes"
-
-@kernel function compute_volume!(vol, grid)
-    i, j, k = @index(Global, NTuple)
-    @inbounds vol[i, j, k] = volume(i, j, k, grid, Center(), Center(), Center())
-end
-
-function compute_volume(grid)
-    vol = CenterField(grid)
-    (Nx, Ny, Nz) = size(vol)
-    kernel_parameters = KernelParameters(1:Nx, 1:Ny, 1:Nz)
-    launch!(CPU(), grid, kernel_parameters, compute_volume!, vol, grid)
-    return vol
-end
-
-volvec = interior(compute_volume(grid))[idx]
-
-@info "Plot the Jacobian sparsity pattern"
-
-fig, ax, plt = spy(
-    0.5..size(J,1)+0.5,
-    0.5..size(J,2)+0.5,
-    J;
-    # axis = (
-    #     xticks = 1:12:size(J,1),
-    #     yticks = 1:12:size(J,2)
-    # ),
-    colormap = :coolwarm,
-    colorrange = maximum(abs.(J)) .* (-1, 1)
+jac_prep_sparse = prepare_jacobian(mytendency!, dc0, sparse_forward_backend, c0; strict=Val(false))
+jac_buffer = similar(sparsity_pattern(jac_prep_sparse), eltype(c0))
+@benchmark jacobian!(
+    mytendency!,
+    $dc0,
+    $jac_buffer,
+    $jac_prep_sparse,
+    $sparse_forward_backend,
+    $c0,
 )
-ylims!(ax, size(J,2)+0.5, 0.5)
-Colorbar(fig[1, 2], plt)
-fig
 
-# TODO: Figure out a way to check the correctness of the jacobian = transport matrix!
-# The tendency is F(c) = ∂c/∂t, and the Jacobian is J(c) = ∂F/∂c(c) = ∂(∂c/∂t)/∂c.
-# If F is linear in c, then we have that
-# F(c) = J c
-# So we can check that J c0 ≈ F(c0) = mytendency(c0)
+DualType = eltype(DifferentiationInterface.overloaded_input_type(jac_prep_sparse))
+# Preallocate 3D array with type T and fill wet points
+c3D_dual = zeros(DualType, Nx′, Ny′, Nz′)
+# Preallocate Field with type T and fill it with 3D array
+c_dual = CenterField(grid, DualType)
+# Preallocate "output" Field with type T
+Gc_dual = CenterField(grid, DualType)
 
-@info "Assert Jacobian is correct for linear tendency"
+function mytendency_preallocated!(Gcvec::Vector{DualType}, cvec::Vector{DualType})
+    c3D_dual[idx] .= cvec
+    set!(c_dual, c3D_dual)
+    # bits and pieces from model
+    c_advection = model.advection[:c]
+    c_forcing = model.forcing[:c]
+    c_immersed_bc = immersed_boundary_condition(model.tracers[:c])
 
-@assert J * c0 ≈ mytendency(c0)
+    args = tuple(
+        Val(1),
+        Val(:c),
+        c_advection,
+        model.closure,
+        c_immersed_bc,
+        model.buoyancy,
+        model.biogeochemistry,
+        model.transport_velocities,
+        model.free_surface,
+        (; c = c_dual),
+        model.closure_fields,
+        model.auxiliary_fields,
+        model.clock,
+        c_forcing
+    )
+
+    launch!(
+        CPU(), grid, kernel_parameters,
+        compute_hydrostatic_free_surface_Gc!,
+        Gc_dual,
+        grid,
+        args;
+        active_cells_map
+    )
+    # Fill output vector with interior wet values
+    Gcvec .= view(interior(Gc_dual), idx)
+    return Gcvec
+end
+
+@benchmark jacobian!(
+    mytendency_preallocated!,
+    $dc0,
+    $jac_buffer,
+    $jac_prep_sparse,
+    $sparse_forward_backend,
+    $c0,
+)
+
+# # @benchmark jacobian($mytendency, $sparse_forward_backend, $c0)
+# # @benchmark jacobian($mytendency!, $dc0, $sparse_forward_backend, $c0)
+
+
+# # @info "Extra for vector of volumes"
+
+# # @kernel function compute_volume!(vol, grid)
+# #     i, j, k = @index(Global, NTuple)
+# #     @inbounds vol[i, j, k] = volume(i, j, k, grid, Center(), Center(), Center())
+# # end
+
+# # function compute_volume(grid)
+# #     vol = CenterField(grid)
+# #     (Nx, Ny, Nz) = size(vol)
+# #     kernel_parameters = KernelParameters(1:Nx, 1:Ny, 1:Nz)
+# #     launch!(CPU(), grid, kernel_parameters, compute_volume!, vol, grid)
+# #     return vol
+# # end
+
+# # volvec = interior(compute_volume(grid))[idx]
+
+# # @info "Plot the Jacobian sparsity pattern"
+
+# # fig, ax, plt = spy(
+# #     0.5..size(J,1)+0.5,
+# #     0.5..size(J,2)+0.5,
+# #     J;
+# #     # axis = (
+# #     #     xticks = 1:12:size(J,1),
+# #     #     yticks = 1:12:size(J,2)
+# #     # ),
+# #     colormap = :coolwarm,
+# #     colorrange = maximum(abs.(J)) .* (-1, 1)
+# # )
+# # ylims!(ax, size(J,2)+0.5, 0.5)
+# # Colorbar(fig[1, 2], plt)
+# # fig
+
+# # TODO: Figure out a way to check the correctness of the jacobian = transport matrix!
+# # The tendency is F(c) = ∂c/∂t, and the Jacobian is J(c) = ∂F/∂c(c) = ∂(∂c/∂t)/∂c.
+# # If F is linear in c, then we have that
+# # F(c) = J c
+# # So we can check that J c0 ≈ F(c0) = mytendency(c0)
+
+# @info "Assert Jacobian is correct for linear tendency"
+
+# @info "profiling now"
+
+# @assert J * c0 ≈ mytendency(c0)
+
+# using Profile
+# using PProf
+# Profile.clear()
+# @profile jacobian!(
+#     mytendency!,
+#     dc0,
+#     jac_buffer,
+#     jac_prep_sparse,
+#     sparse_forward_backend,
+#     c0,
+# )
+# Profile.clear()
+# @profile jacobian!(
+#     mytendency!,
+#     dc0,
+#     jac_buffer,
+#     jac_prep_sparse,
+#     sparse_forward_backend,
+#     c0,
+# )
+# pprof()
