@@ -23,7 +23,7 @@ simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=Iteratio
 Use `cleanup=true` to automatically delete old checkpoint files
 when a new one is written, keeping only the latest checkpoint:
 
-```julia
+```@repl checkpointing
 Checkpointer(model, schedule=IterationInterval(1000), prefix="checkpoint", cleanup=true)
 ```
 
@@ -31,7 +31,8 @@ Again, for illustration purposes, we also add a callback so we can see the simul
 
 ```@repl checkpointing
 show_iteration(sim) = @info "iteration: $(iteration(sim)), time: $(prettytime(sim.model.clock.time))"
-add_callback!(simulation, show_iteration, name=:info, schedule=IterationInterval(1))
+add_callback!(simulation, show_iteration, IterationInterval(1), name=:info)
+simulation.callbacks[:info]
 ```
 
 Now let's run
@@ -82,7 +83,7 @@ set!(simulation; iteration=12345)                 # restore from specific iterat
 For cluster jobs with time limits, use `WallTimeInterval` to checkpoint based on elapsed
 wall-clock time rather than simulation time or iterations:
 
-```julia
+```@repl checkpointing
 # Checkpoint every 30 minutes of wall-clock time
 Checkpointer(model, schedule=WallTimeInterval(30minute), prefix="checkpoint")
 ```

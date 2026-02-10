@@ -395,7 +395,7 @@ julia> load_weno_stencil(3, :x)
 
 julia> load_weno_stencil(2, :x)
 :((ψ[i + -2, j, k], ψ[i + -1, j, k], ψ[i + 0, j, k], ψ[i + 1, j, k]))
-
+```
 """
 @inline function load_weno_stencil(buffer, dir, func::Bool = false)
     N = buffer * 2 - 1
