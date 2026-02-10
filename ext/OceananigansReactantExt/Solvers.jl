@@ -5,10 +5,11 @@ using Oceananigans.Architectures: architecture
 using Oceananigans.Grids: Bounded, Periodic, Flat, inactive_cell
 using Oceananigans.Operators: divᶜᶜᶜ
 using Oceananigans.Solvers: FFTBasedPoissonSolver
+using Oceananigans.Fields: interior
 using Oceananigans.Utils: launch!
 using KernelAbstractions: @kernel, @index
 
-import Oceananigans.Solvers: plan_forward_transform, plan_backward_transform
+import Oceananigans.Solvers: plan_forward_transform, plan_backward_transform, copy_real_component!
 import Oceananigans.Models.NonhydrostaticModels: compute_source_term!
 import ..Architectures: AnyConcreteReactantArray
 import ..Grids: ReactantGrid
@@ -54,8 +55,9 @@ plan_forward_transform(A::AnyReactantArray, ::Flat, args...) = nothing
 plan_backward_transform(A::AnyReactantArray, ::Flat, args...) = nothing
 
 #####
-##### B.6.7 workaround: avoid ComplexF64 stores in KA kernels.
-##### KA kernel writes Float64 into a scratch, then broadcast copies into complex storage.
+##### B.6.7 workaround: avoid Float64→ComplexF64 type mismatch in KA kernels.
+##### KA kernel writes Float64 into a traced real-valued scratch,
+##### then broadcast promotes into the complex rhs.
 #####
 
 @kernel function _compute_source_term_real!(scratch, grid, Ũ)
@@ -68,11 +70,23 @@ end
 
 function compute_source_term!(solver::FFTBasedPoissonSolver{<:ReactantGrid}, ::Nothing, Ũ, Δt)
     rhs = solver.storage
-    arch = architecture(solver)
     grid = solver.grid
+    # Derive a traced Float64 scratch from the traced ComplexF64 rhs.
+    # (CenterField(grid) won't work here: allocations inside @compile produce
+    #  untraced ConcretePJRTArrays that KA kernels can't write to.)
     scratch = similar(rhs, real(eltype(rhs)))
     launch!(architecture(solver), grid, :xyz, _compute_source_term_real!, scratch, grid, Ũ)
     rhs .= scratch
+    return nothing
+end
+
+#####
+##### B.6.7 workaround: avoid ComplexF64 reads in KA kernels.
+##### Use broadcast to extract real component and copy via interior view (no KA kernel needed).
+#####
+
+function copy_real_component!(grid::ReactantGrid, ϕ, ϕc, index_ranges)
+    interior(ϕ) .= real.(ϕc)
     return nothing
 end
 

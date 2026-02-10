@@ -118,14 +118,14 @@ function solve!(ϕ, solver::FFTBasedPoissonSolver, b=solver.storage, m=0)
         transform!(ϕc, solver.buffer)
     end
 
-    interior(ϕ) .= real.(ϕc)
+    copy_real_component!(solver.grid, ϕ, ϕc, indices(ϕ))
 
     return ϕ
 end
 
 # We have to pass the offset explicitly to this kernel (we cannot use KA implicit
-# index offsetting) since ϕc and ϕ and indexed with different indices
-@kernel function copy_real_component!(ϕ, ϕc, index_ranges)
+# index offsetting) since ϕc and ϕ are indexed with different indices.
+@kernel function _copy_real_component!(ϕ, ϕc, index_ranges)
     i, j, k = @index(Global, NTuple)
 
     i′ = offset_compute_index(index_ranges[1], i)
@@ -133,4 +133,9 @@ end
     k′ = offset_compute_index(index_ranges[3], k)
 
     @inbounds ϕ[i′, j′, k′] = real(ϕc[i, j, k])
+end
+
+function copy_real_component!(grid, ϕ, ϕc, index_ranges)
+    launch!(architecture(grid), grid, :xyz, _copy_real_component!, ϕ, ϕc, index_ranges)
+    return nothing
 end
