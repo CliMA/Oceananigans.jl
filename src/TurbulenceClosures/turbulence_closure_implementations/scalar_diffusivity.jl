@@ -192,12 +192,12 @@ end
 @inline viscosity(closure::ScalarDiffusivity, K) = closure.ν
 @inline diffusivity(closure::ScalarDiffusivity, K, ::Val{id}) where id = closure.κ[id]
 
-compute_closure_fields!(diffusivities, ::ScalarDiffusivity, args...) = nothing
+compute_closure_fields!(closure_fields, ::ScalarDiffusivity, args...) = nothing
 
 # Note: we could compute ν and κ (if they are Field):
-# function compute_closure_fields!(diffusivities, closure::ScalarDiffusivity, args...)
-#     compute!(viscosity(closure, diffusivities))
-#     !isnothing(closure.κ) && Tuple(compute!(diffusivity(closure, Val(c), diffusivities) for c=1:length(closure.κ)))
+# function compute_closure_fields!(closure_fields, closure::ScalarDiffusivity, args...)
+#     compute!(viscosity(closure, closure_fields))
+#     !isnothing(closure.κ) && Tuple(compute!(diffusivity(closure, Val(c), closure_fields) for c=1:length(closure.κ)))
 #     return nothing
 # end
 

@@ -103,7 +103,7 @@ end
 @inline viscosity(closure::ScalarBiharmonicDiffusivity, K) = closure.ν
 @inline diffusivity(closure::ScalarBiharmonicDiffusivity, K, ::Val{id}) where id = closure.κ[id]
 
-compute_closure_fields!(diffusivities, closure::ScalarBiharmonicDiffusivity, args...) = nothing
+compute_closure_fields!(closure_fields, closure::ScalarBiharmonicDiffusivity, args...) = nothing
 
 function Base.summary(closure::ScalarBiharmonicDiffusivity)
     F = summary(formulation(closure))
