@@ -109,9 +109,7 @@ function compute_source_term!(solver::FFTBasedPoissonSolver, ::Nothing, Ũ, Δt
     rhs = solver.storage
     arch = architecture(solver)
     grid = solver.grid
-    scratch = solver.scratch
-    launch!(arch, grid, :xyz, _compute_source_term!, scratch, grid, Ũ)
-    rhs .= scratch
+    launch!(arch, grid, :xyz, _compute_source_term!, rhs, grid, Ũ)
     return nothing
 end
 

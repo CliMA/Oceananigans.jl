@@ -253,9 +253,8 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
         ϕ .= ϕ .- mean(ϕ)
     end
 
-    # Extract real component from complex solution via broadcast.
-    # This avoids ComplexF64 reads in KA kernels (unsupported by Reactant MLIR lowering).
-    interior(x) .= real.(ϕ)
+    arch = architecture(solver)
+    launch!(arch, solver.grid, :xyz, copy_real_component!, x, ϕ, indices(x))
 
     return nothing
 end

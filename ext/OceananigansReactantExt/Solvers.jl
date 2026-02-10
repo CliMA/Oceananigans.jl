@@ -1,10 +1,17 @@
 module Solvers
 
 using Reactant
-using Oceananigans.Grids: Bounded, Periodic, Flat
+using Oceananigans.Architectures: architecture
+using Oceananigans.Grids: Bounded, Periodic, Flat, inactive_cell
+using Oceananigans.Operators: divᶜᶜᶜ
+using Oceananigans.Solvers: FFTBasedPoissonSolver
+using Oceananigans.Utils: launch!
+using KernelAbstractions: @kernel, @index
 
 import Oceananigans.Solvers: plan_forward_transform, plan_backward_transform
+import Oceananigans.Models.NonhydrostaticModels: compute_source_term!
 import ..Architectures: AnyConcreteReactantArray
+import ..Grids: ReactantGrid
 
 const AnyReactantArray = Union{AnyConcreteReactantArray, Reactant.AnyTracedRArray}
 const ReactantAbstractFFTsExt = Base.get_extension(Reactant, :ReactantAbstractFFTsExt)
@@ -45,5 +52,28 @@ end
 
 plan_forward_transform(A::AnyReactantArray, ::Flat, args...) = nothing
 plan_backward_transform(A::AnyReactantArray, ::Flat, args...) = nothing
+
+#####
+##### B.6.7 workaround: avoid ComplexF64 stores in KA kernels.
+##### KA kernel writes Float64 into a scratch, then broadcast copies into complex storage.
+#####
+
+@kernel function _compute_source_term_real!(scratch, grid, Ũ)
+    i, j, k = @index(Global, NTuple)
+    active = !inactive_cell(i, j, k, grid)
+    u, v, w = Ũ
+    δ = divᶜᶜᶜ(i, j, k, grid, u, v, w)
+    @inbounds scratch[i, j, k] = active * δ
+end
+
+function compute_source_term!(solver::FFTBasedPoissonSolver{<:ReactantGrid}, ::Nothing, Ũ, Δt)
+    rhs = solver.storage
+    arch = architecture(solver)
+    grid = solver.grid
+    scratch = similar(rhs, real(eltype(rhs)))
+    launch!(architecture(solver), grid, :xyz, _compute_source_term_real!, scratch, grid, Ũ)
+    rhs .= scratch
+    return nothing
+end
 
 end # module
