@@ -19,12 +19,12 @@ using GLMakie
 
 @info "Grid setup"
 
-resolution = 1 // 1        # degrees
+resolution = 4 // 1        # degrees
 Nx = 360 ÷ resolution      # number of longitude points
 Ny = 180 ÷ resolution + 1  # number of latitude points (avoiding poles)
 # Nz = 50                    # number of vertical levels
 # Nz = 75                    # number of vertical levels
-Nz = 30
+Nz = 10
 H = 5000                   # domain depth [m]
 z = (-H, 0)                # vertical extent
 
@@ -317,6 +317,17 @@ end
     $c0,
 )
 
+J2 = jacobian!(
+    mytendency_preallocated!,
+    dc0,
+    jac_buffer,
+    jac_prep_sparse,
+    sparse_forward_backend,
+    c0,
+)
+
+@assert J == J2
+
 # # @benchmark jacobian($mytendency, $sparse_forward_backend, $c0)
 # # @benchmark jacobian($mytendency!, $dc0, $sparse_forward_backend, $c0)
 
@@ -388,3 +399,16 @@ end
 #     c0,
 # )
 # pprof()
+
+
+
+z1D = reshape(znodes(grid, Center(), Center(), Center()), 1, 1, Nz)
+srf = z1D .≥ z1D[Nz] * ones(Nx, Ny)
+using SparseArrays
+using LinearAlgebra
+L = sparse(Diagonal(srf[idx]))
+M = J - L
+age = M \ -ones(Nidx)
+using Oceananigans.Units: minute, minutes, hour, hours, day, days, second, seconds
+year = years = 365.25days
+fig, ax, plt = hist(age / year)
