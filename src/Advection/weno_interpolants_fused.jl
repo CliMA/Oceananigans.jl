@@ -28,7 +28,7 @@
 ##### WENO{2} (3rd order) - x direction
 #####
 
-@inline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
                                                scheme::WENO{2, FT}, bias,
                                                ψ, args...) where FT
     # Stencil 0: load initial window
@@ -57,7 +57,7 @@ end
 ##### WENO{2} (3rd order) - y direction
 #####
 
-@inline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
                                                  scheme::WENO{2, FT}, bias,
                                                  ψ, args...) where FT
     w1 = getvalue(ψ, i, j + stencil_offset(bias, 0, 0), k, grid, args...)
@@ -83,7 +83,7 @@ end
 ##### WENO{2} (3rd order) - z direction
 #####
 
-@inline function fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid,
+@noinline function fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid,
                                                  scheme::WENO{2, FT}, bias,
                                                  ψ, args...) where FT
     w1 = getvalue(ψ, i, j, k + stencil_offset(bias, 0, 0), grid, args...)
@@ -109,7 +109,7 @@ end
 ##### WENO{3} (5th order) - x direction
 #####
 
-@inline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
                                                  scheme::WENO{3, FT}, bias,
                                                  ψ, args...) where FT
     # Stencil 0: load initial window
@@ -148,7 +148,7 @@ end
 ##### WENO{3} (5th order) - y direction
 #####
 
-@inline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
                                                  scheme::WENO{3, FT}, bias,
                                                  ψ, args...) where FT
     # Stencil 0: load initial window
@@ -186,7 +186,7 @@ end
 ##### WENO{3} (5th order) - z direction
 #####
 
-@inline function fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid,
+@noinline function fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid,
                                                  scheme::WENO{3, FT}, bias,
                                                  ψ, args...) where FT
     # Stencil 0: load initial window
@@ -224,7 +224,7 @@ end
 ##### WENO{4} (7th order) - x direction
 #####
 
-@inline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
                                                  scheme::WENO{4, FT}, bias,
                                                  ψ, args...) where FT
     # Stencil 0: load initial window
@@ -269,7 +269,7 @@ end
 ##### WENO{4} (7th order) - y direction
 #####
 
-@inline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
                                                  scheme::WENO{4, FT}, bias,
                                                  ψ, args...) where FT
     # Stencil 0: load initial window
@@ -313,7 +313,7 @@ end
 ##### WENO{4} (7th order) - z direction
 #####
 
-@inline function fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid,
+@noinline function fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid,
                                                  scheme::WENO{4, FT}, bias,
                                                  ψ, args...) where FT
     # Stencil 0: load initial window
@@ -357,7 +357,7 @@ end
 ##### WENO{5} (9th order) - x direction
 #####
 
-@inline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
                                                  scheme::WENO{5, FT}, bias,
                                                  ψ, args...) where FT
     # Stencil 0: load initial window
@@ -409,7 +409,7 @@ end
 ##### WENO{5} (9th order) - y direction
 #####
 
-@inline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
                                                  scheme::WENO{5, FT}, bias,
                                                  ψ, args...) where FT
     # Stencil 0: load initial window
@@ -461,7 +461,7 @@ end
 ##### WENO{5} (9th order) - z direction
 #####
 
-@inline function fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid,
+@noinline function fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid,
                                                  scheme::WENO{5, FT}, bias,
                                                  ψ, args...) where FT
     # Stencil 0: load initial window
@@ -513,7 +513,7 @@ end
 ##### WENO{6} (11th order) - x direction
 #####
 
-@inline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
                                                  scheme::WENO{6, FT}, bias,
                                                  ψ, args...) where FT
     # Stencil 0: load initial window
@@ -573,7 +573,7 @@ end
 ##### WENO{6} (11th order) - y direction
 #####
 
-@inline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
                                                  scheme::WENO{6, FT}, bias,
                                                  ψ, args...) where FT
     # Stencil 0: load initial window
@@ -633,7 +633,7 @@ end
 ##### WENO{6} (11th order) - z direction
 #####
 
-@inline function fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid,
+@noinline function fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid,
                                                  scheme::WENO{6, FT}, bias,
                                                  ψ, args...) where FT
     # Stencil 0: load initial window

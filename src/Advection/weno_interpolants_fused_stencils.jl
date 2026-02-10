@@ -34,7 +34,7 @@ end
 ##### Fused interpolation for VelocityStencil - x direction
 #####
 
-@inline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
                                                scheme::WENO{2, FT}, bias,
                                                ψ, ::VelocityStencil, u, v, args...) where FT
     # Compute all β values first (reusing registers for u and v)
@@ -75,7 +75,7 @@ end
     return @muladd (α[1] * p1 + α[2] * p2) / Σα
 end
 
-@inline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
                                                scheme::WENO{3, FT}, bias,
                                                ψ, ::VelocityStencil, u, v, args...) where FT
     # Compute all β values first (reusing registers for u and v)
@@ -132,7 +132,7 @@ end
     return @muladd (α[1] * p1 + α[2] * p2 + α[3] * p3) / Σα
 end
 
-@inline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
                                                scheme::WENO{4, FT}, bias,
                                                ψ, ::VelocityStencil, u, v, args...) where FT
     # Compute all β values first (reusing registers for u and v)
@@ -205,7 +205,7 @@ end
     return @muladd (α[1] * p1 + α[2] * p2 + α[3] * p3 + α[4] * p4) / Σα
 end
 
-@inline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
                                                scheme::WENO{5, FT}, bias,
                                                ψ, ::VelocityStencil, u, v, args...) where FT
     # Compute all β values first (reusing registers for u and v)
@@ -294,7 +294,7 @@ end
     return @muladd (α[1] * p1 + α[2] * p2 + α[3] * p3 + α[4] * p4 + α[5] * p5) / Σα
 end
 
-@inline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
                                                scheme::WENO{6, FT}, bias,
                                                ψ, ::VelocityStencil, u, v, args...) where FT
     # Compute all β values first (reusing registers for u and v)
@@ -403,7 +403,7 @@ end
 ##### Fused interpolation for FunctionStencil - x direction
 #####
 
-@inline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
                                                scheme::WENO{2, FT}, bias,
                                                ψ, VI::FunctionStencil, args...) where FT
     # Compute all β values first (reusing registers)
@@ -432,7 +432,7 @@ end
     return @muladd (α[1] * p1 + α[2] * p2) / Σα
 end
 
-@inline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
                                                scheme::WENO{3, FT}, bias,
                                                ψ, VI::FunctionStencil, args...) where FT
     # Compute all β values first (reusing registers)
@@ -471,7 +471,7 @@ end
     return @muladd (α[1] * p1 + α[2] * p2 + α[3] * p3) / Σα
 end
 
-@inline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
                                                scheme::WENO{4, FT}, bias,
                                                ψ, VI::FunctionStencil, args...) where FT
     # Compute all β values first (reusing registers)
@@ -520,7 +520,7 @@ end
     return @muladd (α[1] * p1 + α[2] * p2 + α[3] * p3 + α[4] * p4) / Σα
 end
 
-@inline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
                                                scheme::WENO{5, FT}, bias,
                                                ψ, VI::FunctionStencil, args...) where FT
     # Compute all β values first (reusing registers)
@@ -579,7 +579,7 @@ end
     return @muladd (α[1] * p1 + α[2] * p2 + α[3] * p3 + α[4] * p4 + α[5] * p5) / Σα
 end
 
-@inline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid,
                                                scheme::WENO{6, FT}, bias,
                                                ψ, VI::FunctionStencil, args...) where FT
     # Compute all β values first (reusing registers)
@@ -652,7 +652,7 @@ end
 ##### Fused interpolation for VelocityStencil - y direction
 #####
 
-@inline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
                                                scheme::WENO{2, FT}, bias,
                                                ψ, ::VelocityStencil, u, v, args...) where FT
     # Compute all β values first (reusing registers for u and v)
@@ -694,7 +694,7 @@ end
 end
 
 
-@inline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
                                                scheme::WENO{3, FT}, bias,
                                                ψ, ::VelocityStencil, u, v, args...) where FT
     # Compute all β values first (reusing registers for u and v)
@@ -751,7 +751,7 @@ end
     return @muladd (α[1] * p1 + α[2] * p2 + α[3] * p3) / Σα
 end
 
-@inline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
                                                scheme::WENO{4, FT}, bias,
                                                ψ, ::VelocityStencil, u, v, args...) where FT
     # Compute all β values first (reusing registers for u and v)
@@ -824,7 +824,7 @@ end
     return @muladd (α[1] * p1 + α[2] * p2 + α[3] * p3 + α[4] * p4) / Σα
 end
 
-@inline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
                                                scheme::WENO{5, FT}, bias,
                                                ψ, ::VelocityStencil, u, v, args...) where FT
     # Compute all β values first (reusing registers for u and v)
@@ -913,7 +913,7 @@ end
     return @muladd (α[1] * p1 + α[2] * p2 + α[3] * p3 + α[4] * p4 + α[5] * p5) / Σα
 end
 
-@inline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
                                                scheme::WENO{6, FT}, bias,
                                                ψ, ::VelocityStencil, u, v, args...) where FT
     # Compute all β values first (reusing registers for u and v)
@@ -1022,7 +1022,7 @@ end
 ##### Fused interpolation for FunctionStencil - y direction
 #####
 
-@inline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
                                                scheme::WENO{2, FT}, bias,
                                                ψ, VI::FunctionStencil, args...) where FT
     # Compute all β values first (reusing registers)
@@ -1051,7 +1051,7 @@ end
     return @muladd (α[1] * p1 + α[2] * p2) / Σα
 end
 
-@inline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
                                                scheme::WENO{3, FT}, bias,
                                                ψ, VI::FunctionStencil, args...) where FT
     # Compute all β values first (reusing registers)
@@ -1090,7 +1090,7 @@ end
     return @muladd (α[1] * p1 + α[2] * p2 + α[3] * p3) / Σα
 end
 
-@inline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
                                                scheme::WENO{4, FT}, bias,
                                                ψ, VI::FunctionStencil, args...) where FT
     # Compute all β values first (reusing registers)
@@ -1139,7 +1139,7 @@ end
     return @muladd (α[1] * p1 + α[2] * p2 + α[3] * p3 + α[4] * p4) / Σα
 end
 
-@inline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
                                                scheme::WENO{5, FT}, bias,
                                                ψ, VI::FunctionStencil, args...) where FT
     # Compute all β values first (reusing registers)
@@ -1198,7 +1198,7 @@ end
     return @muladd (α[1] * p1 + α[2] * p2 + α[3] * p3 + α[4] * p4 + α[5] * p5) / Σα
 end
 
-@inline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
+@noinline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
                                                scheme::WENO{6, FT}, bias,
                                                ψ, VI::FunctionStencil, args...) where FT
     # Compute all β values first (reusing registers)
@@ -1271,7 +1271,7 @@ end
 ##### Fused interpolation for FunctionStencil - z direction
 #####
 
-@inline function fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid,
+@noinline function fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid,
                                                scheme::WENO{2, FT}, bias,
                                                ψ, VI::FunctionStencil, args...) where FT
     # Compute all β values first (reusing registers)
@@ -1300,7 +1300,7 @@ end
     return @muladd (α[1] * p1 + α[2] * p2) / Σα
 end
 
-@inline function fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid,
+@noinline function fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid,
                                                scheme::WENO{3, FT}, bias,
                                                ψ, VI::FunctionStencil, args...) where FT
     # Compute all β values first (reusing registers)
@@ -1339,7 +1339,7 @@ end
     return @muladd (α[1] * p1 + α[2] * p2 + α[3] * p3) / Σα
 end
 
-@inline function fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid,
+@noinline function fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid,
                                                scheme::WENO{4, FT}, bias,
                                                ψ, VI::FunctionStencil, args...) where FT
     # Compute all β values first (reusing registers)
@@ -1388,7 +1388,7 @@ end
     return @muladd (α[1] * p1 + α[2] * p2 + α[3] * p3 + α[4] * p4) / Σα
 end
 
-@inline function fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid,
+@noinline function fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid,
                                                scheme::WENO{5, FT}, bias,
                                                ψ, VI::FunctionStencil, args...) where FT
     # Compute all β values first (reusing registers)
@@ -1447,7 +1447,7 @@ end
     return @muladd (α[1] * p1 + α[2] * p2 + α[3] * p3 + α[4] * p4 + α[5] * p5) / Σα
 end
 
-@inline function fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid,
+@noinline function fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid,
                                                scheme::WENO{6, FT}, bias,
                                                ψ, VI::FunctionStencil, args...) where FT
     # Compute all β values first (reusing registers)
