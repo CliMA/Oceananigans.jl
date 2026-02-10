@@ -520,7 +520,7 @@ To implement a turbulence closure:
 2. **Create a constructor** with sensible defaults
 3. **Specify locations and accessors** for viscosity/diffusivity
 4. **Build fields** with `build_closure_fields`
-5. **Compute diffusivities** with `compute_closure_fields!`
+5. **Compute closure fields** with `compute_closure_fields!`
 6. **Add display methods** with `summary` and `show`
 
 That's it! Your closure is ready to use. Contributing to Oceananigans is optional
