@@ -693,75 +693,6 @@ end
     return @muladd (α[1] * p1 + α[2] * p2) / Σα
 end
 
-#####
-##### Fused interpolation for FunctionStencil - y direction
-#####
-
-@inline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
-                                               scheme::WENO{2, FT}, bias,
-                                               ψ, VI::FunctionStencil, args...) where FT
-    # Compute all β values first (reusing registers)
-    w1 = getvalue(VI.func, i, j + stencil_offset(bias, 0, 0), k, grid, args...)
-    w2 = getvalue(VI.func, i, j + stencil_offset(bias, 0, 1), k, grid, args...)
-    β1 = smoothness_indicator((w1, w2), scheme, Val(0))
-
-    w2 = w1
-    w1 = getvalue(VI.func, i, j + stencil_offset(bias, 1, 0), k, grid, args...)
-    β2 = smoothness_indicator((w1, w2), scheme, Val(1))
-
-    # Compute weights from β values
-    τ = global_smoothness_indicator(Val(2), (β1, β2))
-    α = zweno_alpha_loop(scheme, (β1, β2), τ)
-    Σα = α[1] + α[2]
-
-    # Now compute all p values (reusing same registers)
-    w1 = getvalue(ψ, i, j + stencil_offset(bias, 0, 0), k, grid, args...)
-    w2 = getvalue(ψ, i, j + stencil_offset(bias, 0, 1), k, grid, args...)
-    p1 = biased_p(scheme, bias, Val(0), (w1, w2))
-
-    w2 = w1
-    w1 = getvalue(ψ, i, j + stencil_offset(bias, 1, 0), k, grid, args...)
-    p2 = biased_p(scheme, bias, Val(1), (w1, w2))
-
-    return @muladd (α[1] * p1 + α[2] * p2) / Σα
-end
-
-#####
-##### Fused interpolation for FunctionStencil - z direction
-#####
-
-@inline function fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid,
-                                               scheme::WENO{2, FT}, bias,
-                                               ψ, VI::FunctionStencil, args...) where FT
-    # Compute all β values first (reusing registers)
-    w1 = getvalue(VI.func, i, j, k + stencil_offset(bias, 0, 0), grid, args...)
-    w2 = getvalue(VI.func, i, j, k + stencil_offset(bias, 0, 1), grid, args...)
-    β1 = smoothness_indicator((w1, w2), scheme, Val(0))
-
-    w2 = w1
-    w1 = getvalue(VI.func, i, j, k + stencil_offset(bias, 1, 0), grid, args...)
-    β2 = smoothness_indicator((w1, w2), scheme, Val(1))
-
-    # Compute weights from β values
-    τ = global_smoothness_indicator(Val(2), (β1, β2))
-    α = zweno_alpha_loop(scheme, (β1, β2), τ)
-    Σα = α[1] + α[2]
-
-    # Now compute all p values (reusing same registers)
-    w1 = getvalue(ψ, i, j, k + stencil_offset(bias, 0, 0), grid, args...)
-    w2 = getvalue(ψ, i, j, k + stencil_offset(bias, 0, 1), grid, args...)
-    p1 = biased_p(scheme, bias, Val(0), (w1, w2))
-
-    w2 = w1
-    w1 = getvalue(ψ, i, j, k + stencil_offset(bias, 1, 0), grid, args...)
-    p2 = biased_p(scheme, bias, Val(1), (w1, w2))
-
-    return @muladd (α[1] * p1 + α[2] * p2) / Σα
-end
-
-#####
-##### VelocityStencil - y direction (continued)
-#####
 
 @inline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
                                                scheme::WENO{3, FT}, bias,
@@ -1088,8 +1019,37 @@ end
 end
 
 #####
-##### FunctionStencil - y direction (continued)
+##### Fused interpolation for FunctionStencil - y direction
 #####
+
+@inline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
+                                               scheme::WENO{2, FT}, bias,
+                                               ψ, VI::FunctionStencil, args...) where FT
+    # Compute all β values first (reusing registers)
+    w1 = getvalue(VI.func, i, j + stencil_offset(bias, 0, 0), k, grid, args...)
+    w2 = getvalue(VI.func, i, j + stencil_offset(bias, 0, 1), k, grid, args...)
+    β1 = smoothness_indicator((w1, w2), scheme, Val(0))
+
+    w2 = w1
+    w1 = getvalue(VI.func, i, j + stencil_offset(bias, 1, 0), k, grid, args...)
+    β2 = smoothness_indicator((w1, w2), scheme, Val(1))
+
+    # Compute weights from β values
+    τ = global_smoothness_indicator(Val(2), (β1, β2))
+    α = zweno_alpha_loop(scheme, (β1, β2), τ)
+    Σα = α[1] + α[2]
+
+    # Now compute all p values (reusing same registers)
+    w1 = getvalue(ψ, i, j + stencil_offset(bias, 0, 0), k, grid, args...)
+    w2 = getvalue(ψ, i, j + stencil_offset(bias, 0, 1), k, grid, args...)
+    p1 = biased_p(scheme, bias, Val(0), (w1, w2))
+
+    w2 = w1
+    w1 = getvalue(ψ, i, j + stencil_offset(bias, 1, 0), k, grid, args...)
+    p2 = biased_p(scheme, bias, Val(1), (w1, w2))
+
+    return @muladd (α[1] * p1 + α[2] * p2) / Σα
+end
 
 @inline function fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid,
                                                scheme::WENO{3, FT}, bias,
@@ -1308,8 +1268,37 @@ end
 end
 
 #####
-##### FunctionStencil - z direction (continued)
+##### Fused interpolation for FunctionStencil - z direction
 #####
+
+@inline function fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid,
+                                               scheme::WENO{2, FT}, bias,
+                                               ψ, VI::FunctionStencil, args...) where FT
+    # Compute all β values first (reusing registers)
+    w1 = getvalue(VI.func, i, j, k + stencil_offset(bias, 0, 0), grid, args...)
+    w2 = getvalue(VI.func, i, j, k + stencil_offset(bias, 0, 1), grid, args...)
+    β1 = smoothness_indicator((w1, w2), scheme, Val(0))
+
+    w2 = w1
+    w1 = getvalue(VI.func, i, j, k + stencil_offset(bias, 1, 0), grid, args...)
+    β2 = smoothness_indicator((w1, w2), scheme, Val(1))
+
+    # Compute weights from β values
+    τ = global_smoothness_indicator(Val(2), (β1, β2))
+    α = zweno_alpha_loop(scheme, (β1, β2), τ)
+    Σα = α[1] + α[2]
+
+    # Now compute all p values (reusing same registers)
+    w1 = getvalue(ψ, i, j, k + stencil_offset(bias, 0, 0), grid, args...)
+    w2 = getvalue(ψ, i, j, k + stencil_offset(bias, 0, 1), grid, args...)
+    p1 = biased_p(scheme, bias, Val(0), (w1, w2))
+
+    w2 = w1
+    w1 = getvalue(ψ, i, j, k + stencil_offset(bias, 1, 0), grid, args...)
+    p2 = biased_p(scheme, bias, Val(1), (w1, w2))
+
+    return @muladd (α[1] * p1 + α[2] * p2) / Σα
+end
 
 @inline function fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid,
                                                scheme::WENO{3, FT}, bias,
