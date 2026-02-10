@@ -23,7 +23,7 @@ for N in [2, 3, 4, 5, 6]
             fused_biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, bias, ψ, args...)
         
         fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme::WENO{$N}, bias, ψ, ::DefaultStencil, args...) =
-            fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, bias, ψ, args...) =
+            fused_biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, bias, ψ, args...)
         
         fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme::WENO{$N}, bias, ψ, ::DefaultStencil, args...) =
             fused_biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, bias, ψ, args...)
