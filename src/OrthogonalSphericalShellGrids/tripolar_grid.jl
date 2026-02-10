@@ -278,7 +278,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Float64;
     fill_halo_regions!(Azᶠᶜᵃ)
     fill_halo_regions!(Azᶜᶠᵃ)
     fill_halo_regions!(Azᶜᶜᵃ)
-    
+
     # Copy metrics as offset arrays
     Δxᶠᶠᵃ = copy_metric_as_offset_array(Δxᶠᶠᵃ)
     Δxᶜᶠᵃ = copy_metric_as_offset_array(Δxᶜᶠᵃ)
