@@ -72,7 +72,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
     # Compute auxiliaries
     compute_auxiliary_fields!(model.auxiliary_fields)
 
-    # Calculate diffusivities
+    # Calculate closure fields
     compute_closure_fields!(model.closure_fields, model.closure, model)
 
     fill_halo_regions!(model.closure_fields, model.clock, fields(model))

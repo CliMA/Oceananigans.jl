@@ -20,11 +20,11 @@ end
 #####
 
 #=
-@inline buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, diffusivities) =
-    explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
+@inline buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, closure_fields) =
+    explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, closure_fields)
 
-@inline function buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, velocities, tracers, buoyancy, diffusivities)
-    wb = explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities)
+@inline function buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, velocities, tracers, buoyancy, closure_fields)
+    wb = explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, closure_fields)
 
     # "Patankar trick" for buoyancy production (cf Patankar 1980 or Burchard et al. 2003)
     # If buoyancy flux is a _sink_ of TKE, we treat it implicitly, and return zero here for
@@ -63,9 +63,9 @@ end
 end
 
 @inline function dissipation_rate(i, j, k, grid, closure::FlavorOfCATKE,
-                                  velocities, tracers, buoyancy, diffusivities)
+                                  velocities, tracers, buoyancy, closure_fields)
 
-    ℓᴰ = dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities.Jᵇ)
+    ℓᴰ = dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure, velocities, tracers, buoyancy, closure_fields.Jᵇ)
     e = tracers.e
     FT = eltype(grid)
     eᵢ = @inbounds e[i, j, k]

@@ -286,7 +286,7 @@ function compute_closure_fields!(closure_fields, closure::FlavorOfCATKE, model; 
     buoyancy = buoyancy_force(model)
 
     launch!(arch, grid, parameters,
-            compute_CATKE_diffusivities!,
+            compute_CATKE_closure_fields!,
             closure_fields, grid, closure, velocities, tracers, buoyancy)
 
     return nothing
@@ -312,7 +312,7 @@ end
     @inbounds Jᵇ[i, j, 1] = (Jᵇᵢⱼ + ϵ * Jᵇ★) / (1 + ϵ)
 end
 
-@kernel function compute_CATKE_diffusivities!(closure_fields, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy)
+@kernel function compute_CATKE_closure_fields!(closure_fields, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy)
     i, j, k = @index(Global, NTuple)
 
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
@@ -366,8 +366,8 @@ end
     return FT(κe★)
 end
 
-@inline viscosity(::FlavorOfCATKE, diffusivities) = diffusivities.κu
-@inline diffusivity(::FlavorOfCATKE, diffusivities, ::Val{id}) where id = diffusivities._tupled_tracer_diffusivities[id]
+@inline viscosity(::FlavorOfCATKE, closure_fields) = closure_fields.κu
+@inline diffusivity(::FlavorOfCATKE, closure_fields, ::Val{id}) where id = closure_fields._tupled_tracer_diffusivities[id]
 
 #####
 ##### Show

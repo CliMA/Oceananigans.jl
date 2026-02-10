@@ -52,7 +52,7 @@ function time_step_catke_equation!(model, ::QuasiAdamsBashforth2TimeStepper)
         tracers = buoyancy_tracers(model)
         buoyancy = buoyancy_force(model)
 
-        # Compute the linear implicit component of the RHS (diffusivities, L)...
+        # Compute the linear implicit component of the RHS (closure_fields, L)...
         launch!(arch, grid, :xyz,
                 compute_TKE_diffusivity!,
                 κe, grid, closure,
@@ -109,7 +109,7 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper)
     tracers = buoyancy_tracers(model)
     buoyancy = buoyancy_force(model)
 
-    # Compute the linear implicit component of the RHS (diffusivities, L)...
+    # Compute the linear implicit component of the RHS (closure_fields, L)...
     launch!(arch, grid, :xyz,
             compute_TKE_diffusivity!,
             κe, grid, closure,
@@ -135,12 +135,12 @@ end
 const c = Center()
 
 @kernel function compute_TKE_diffusivity!(κe, grid, closure,
-                                          next_velocities, tracers, buoyancy, diffusivities)
+                                          next_velocities, tracers, buoyancy, closure_fields)
     i, j, k = @index(Global, NTuple)
 
     # Compute TKE diffusivity.
     closure_ij = getclosure(i, j, closure)
-    Jᵇ = diffusivities.Jᵇ
+    Jᵇ = closure_fields.Jᵇ
     κe★ = κeᶜᶜᶠ(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, Jᵇ)
     κe★ = mask_diffusivity(i, j, k, grid, κe★)
     @inbounds κe[i, j, k] = κe★
@@ -148,13 +148,13 @@ end
 
 @inline function fast_tke_tendency(i, j, k, grid, Le, closure,
                                    next_velocities, previous_velocities,
-                                   tracers, buoyancy, diffusivities)
+                                   tracers, buoyancy, closure_fields)
 
     e = tracers.e
     closure_ij = getclosure(i, j, closure)
 
     # Compute additional diagonal component of the linear TKE operator
-    wb = explicit_buoyancy_flux(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, diffusivities)
+    wb = explicit_buoyancy_flux(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, closure_fields)
     wb⁻ = min(zero(grid), wb)
     wb⁺ = max(zero(grid), wb)
 
@@ -189,7 +189,7 @@ end
     div_Jᵉ_e = - on_bottom * Cᵂϵ * w★ / Δz
 
     # Implicit TKE dissipation
-    ω = dissipation_rate(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, diffusivities)
+    ω = dissipation_rate(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, closure_fields)
 
     # The interior contributions to the linear implicit term `L` are defined via
     #
@@ -210,25 +210,25 @@ end
     v⁺ = next_velocities.v
     uⁿ = previous_velocities.u
     vⁿ = previous_velocities.v
-    κu = diffusivities.κu
+    κu = closure_fields.κu
 
     # TODO: correctly handle closure / diffusivity tuples
     # TODO: the shear_production is actually a slow term so we _could_ precompute.
     P = shear_production(i, j, k, grid, κu, uⁿ, u⁺, vⁿ, v⁺)
-    ϵ = dissipation(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, diffusivities)
+    ϵ = dissipation(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, closure_fields)
     return P + wb⁺ - ϵ
 end
 
 @kernel function _ab2_substep_turbulent_kinetic_energy!(Le, grid, closure,
                                                         next_velocities, previous_velocities,
-                                                        tracers, buoyancy, diffusivities,
+                                                        tracers, buoyancy, closure_fields,
                                                         Δτ, χ, slow_Gⁿe, G⁻e)
 
     i, j, k = @index(Global, NTuple)
 
     fast_Gⁿe = fast_tke_tendency(i, j, k, grid, Le, closure,
                                  next_velocities, previous_velocities,
-                                 tracers, buoyancy, diffusivities)
+                                 tracers, buoyancy, closure_fields)
 
     # Advance TKE and store tendency
     FT = eltype(χ)
@@ -252,7 +252,7 @@ end
 
 @kernel function _rk_substep_turbulent_kinetic_energy!(Le, σe⁻, grid, closure,
                                                        next_velocities, previous_velocities,
-                                                       tracers, buoyancy, diffusivities,
+                                                       tracers, buoyancy, closure_fields,
                                                        Δt, slow_Gⁿe)
 
     i, j, k = @index(Global, NTuple)
@@ -261,7 +261,7 @@ end
 
     fast_Gⁿe = fast_tke_tendency(i, j, k, grid, Le, closure,
                                  next_velocities, previous_velocities,
-                                 tracers, buoyancy, diffusivities)
+                                 tracers, buoyancy, closure_fields)
 
     # See below.
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())

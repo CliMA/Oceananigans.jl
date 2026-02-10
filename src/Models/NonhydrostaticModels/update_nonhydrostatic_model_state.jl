@@ -59,7 +59,7 @@ function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = surface
 
     grid = model.grid
     closure = model.closure
-    diffusivity = model.closure_fields
+    closure_fields = model.closure_fields
     tracers = model.tracers
     buoyancy = model.buoyancy
 
@@ -67,7 +67,7 @@ function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = surface
     compute_buoyancy_gradients!(buoyancy, grid, tracers; parameters = κ_parameters)
 
     # Compute closure_fields
-    compute_closure_fields!(diffusivity, closure, model; parameters = κ_parameters)
+    compute_closure_fields!(closure_fields, closure, model; parameters = κ_parameters)
 
     # Update hydrostatic pressure
     update_hydrostatic_pressure!(model; parameters = p_parameters)
