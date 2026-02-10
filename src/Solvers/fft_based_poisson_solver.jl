@@ -1,12 +1,13 @@
-using Oceananigans.Fields: indices, offset_compute_index
+using Oceananigans.Fields: indices, offset_compute_index, interior
 using GPUArraysCore: @allowscalar
 
-struct FFTBasedPoissonSolver{G, Λ, S, B, T}
+struct FFTBasedPoissonSolver{G, Λ, S, B, T, R}
             grid :: G
      eigenvalues :: Λ
          storage :: S
           buffer :: B
       transforms :: T
+         scratch :: R
 end
 
 Architectures.architecture(solver::FFTBasedPoissonSolver) = architecture(solver.grid)
@@ -69,7 +70,9 @@ function FFTBasedPoissonSolver(grid, planner_flag=FFTW.PATIENT)
     buffer_needed = arch isa GPU && Bounded in topo
     buffer = buffer_needed ? similar(storage) : nothing
 
-    return FFTBasedPoissonSolver(grid, eigenvalues, storage, buffer, transforms)
+    scratch = on_architecture(arch, zeros(eltype(grid), size(grid)...))
+
+    return FFTBasedPoissonSolver(grid, eigenvalues, storage, buffer, transforms, scratch)
 end
 
 """
@@ -118,7 +121,7 @@ function solve!(ϕ, solver::FFTBasedPoissonSolver, b=solver.storage, m=0)
         transform!(ϕc, solver.buffer)
     end
 
-    launch!(arch, solver.grid, :xyz, copy_real_component!, ϕ, ϕc, indices(ϕ))
+    interior(ϕ) .= real.(ϕc)
 
     return ϕ
 end

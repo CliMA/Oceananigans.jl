@@ -40,6 +40,15 @@ using Reactant: @trace
             compiled_run!(model, Δt, Nt)
             @test model.clock.iteration == Nt
         end
+
+        @testset "Raised compilation (raise=true)" begin
+            @info "    Compiling with raise=true raise_first=true..."
+            Δt = 0.001
+            Nt = 2
+            compiled_run! = Reactant.@compile raise_first=true raise=true sync=true run_timesteps!(model, Δt, Nt)
+            compiled_run!(model, Δt, Nt)
+            @test true  # compilation + execution succeeded
+        end
     end
 
     @testset "2D (Periodic, Periodic, Flat)" begin
@@ -59,6 +68,15 @@ using Reactant: @trace
             compiled_run! = @compile run_timesteps!(model, Δt, Nt)
             compiled_run!(model, Δt, Nt)
             @test model.clock.iteration == Nt
+        end
+
+        @testset "Raised compilation (raise=true)" begin
+            @info "    Compiling with raise=true raise_first=true..."
+            Δt = 0.001
+            Nt = 2
+            compiled_run! = Reactant.@compile raise_first=true raise=true sync=true run_timesteps!(model, Δt, Nt)
+            compiled_run!(model, Δt, Nt)
+            @test true  # compilation + execution succeeded
         end
     end
 end
