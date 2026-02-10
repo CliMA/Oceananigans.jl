@@ -41,10 +41,8 @@ function FieldTimeSeries(typed_path::NetCDFPath, name::String;
         end
     end
 
-    isnothing(grid) && (grid = reconstruct_grid(file))
-
-    # Convert grid to specified architecture
-    grid = on_architecture(architecture, grid)
+    # Read the grid from the file on the correct architecture
+    isnothing(grid) && (grid = reconstruct_grid(file; arch=architecture))
 
     isnothing(location) && (location = file[name].attrib["location"] |> materialize_from_netcdf)
     LX, LY, LZ = location

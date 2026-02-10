@@ -313,9 +313,13 @@ function reconstruct_immersed_boundary(ds)
     return immersed_boundary
 end
 
-function reconstruct_grid(ds)
+function reconstruct_grid(ds; arch=nothing)
     # Read back the grid reconstruction metadata
-    underlying_grid_reconstruction_args   = ds.group["underlying_grid_reconstruction_args"].attrib |> materialize_from_netcdf
+    underlying_grid_reconstruction_args   = ds.group["underlying_grid_reconstruction_args"].attrib |> Dict
+    if !isnothing(arch) # If architecture is specified, force it into the underlying grid reconstruction arguments before materializing
+        underlying_grid_reconstruction_args["architecture"] = arch
+    end
+    underlying_grid_reconstruction_args   = underlying_grid_reconstruction_args |> materialize_from_netcdf
     underlying_grid_reconstruction_kwargs = ds.group["underlying_grid_reconstruction_kwargs"].attrib |> materialize_from_netcdf
     grid_reconstruction_metadata          = ds.group["grid_reconstruction_metadata"].attrib |> materialize_from_netcdf
 
