@@ -200,7 +200,7 @@ function update_previous_compute_time!(diffusivities, model)
     return Δt
 end
 
-function compute_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; parameters = :xyz)
+function compute_closure_fields!(diffusivities, closure::FlavorOfRBVD, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
     clock = model.clock

@@ -27,7 +27,8 @@ export
     VerticallyImplicitTimeDiscretization,
 
     build_closure_fields,
-    compute_diffusivities!,
+    compute_closure_fields!,
+    step_closure_prognostics!,
 
     viscosity, diffusivity,
 
@@ -79,7 +80,10 @@ abstract type AbstractTurbulenceClosure{TimeDiscretization, RequiredHalo} end
 validate_closure(closure) = closure
 closure_summary(closure) = summary(closure)
 Utils.with_tracers(tracers, closure::AbstractTurbulenceClosure) = closure
-compute_diffusivities!(K, closure::AbstractTurbulenceClosure, args...; kwargs...) = nothing
+compute_closure_fields!(K, closure::AbstractTurbulenceClosure, args...; kwargs...) = nothing
+
+import Oceananigans.TimeSteppers: step_closure_prognostics!
+step_closure_prognostics!(K, closure::AbstractTurbulenceClosure, args...) = nothing
 
 # Tracer names that a closure requires (eg TKE-based closures)
 # Fallbacks: by default closures do not require extra tracers.

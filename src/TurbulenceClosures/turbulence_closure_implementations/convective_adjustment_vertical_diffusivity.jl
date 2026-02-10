@@ -93,7 +93,7 @@ build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfCAVD) = (;
 @inline viscosity(::FlavorOfCAVD, diffusivities) = diffusivities.κᵘ
 @inline diffusivity(::FlavorOfCAVD, diffusivities, id) = diffusivities.κᶜ
 
-function compute_diffusivities!(diffusivities, closure::FlavorOfCAVD, model; parameters = :xyz)
+function compute_closure_fields!(diffusivities, closure::FlavorOfCAVD, model; parameters = :xyz)
 
     arch = model.architecture
     grid = model.grid

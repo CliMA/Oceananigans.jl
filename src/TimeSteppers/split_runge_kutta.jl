@@ -160,7 +160,8 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
         Δτ = Δt / β
         rk_substep!(model, Δτ, callbacks)
 
-        # Update the state
+        # Step closure prognostics and update the state
+        step_closure_prognostics!(model)
         update_state!(model, callbacks)
     end
 

@@ -315,10 +315,6 @@ function compute_coefficient_fields!(closure_fields, closure::DirectionallyAvera
     arch = architecture(grid)
     velocities = model.velocities
     cˢ = closure.coefficient
-    clock = model.clock
-
-    # For RK3 only compute coefficients at the final stage.
-    clock.stage == 1 || return nothing
 
     if cˢ.schedule(model)
         Σ = closure_fields.Σ
@@ -417,7 +413,7 @@ const c = Center()
     end
 end
 
-function compute_coefficient_fields!(closure_fields, closure::LagrangianAveragedDynamicSmagorinsky, model; parameters)
+function step_closure_prognostics!(closure_fields, closure::LagrangianAveragedDynamicSmagorinsky, model)
     grid = model.grid
     arch = architecture(grid)
     clock = model.clock
@@ -425,13 +421,13 @@ function compute_coefficient_fields!(closure_fields, closure::LagrangianAveraged
     previous_compute_time = closure_fields.previous_compute_time
     u, v, w = model.velocities
 
-    # For RK3 only compute coefficients at the final stage.
+    # For multi-stage timesteppers, only step at the final stage.
     clock.stage == 1 || return nothing
 
     Δt = time_difference_seconds(clock.time, previous_compute_time[])
 
     # After restoring from a checkpoint, previous_compute_time matches clock.time
-    # (since both QAB2 and RK3 call update_state! after tick!), so Δt == 0.
+    # (since both QAB2 and RK3 call step_closure_prognostics! after tick!), so Δt == 0.
     # Skip the computation in that case — the restored fields are already correct.
     Δt == 0 && return nothing
 
@@ -476,6 +472,9 @@ function compute_coefficient_fields!(closure_fields, closure::LagrangianAveraged
 
     return nothing
 end
+
+# Lagrangian-averaged coefficients are now stepped via step_closure_prognostics!
+compute_coefficient_fields!(closure_fields, closure::LagrangianAveragedDynamicSmagorinsky, model; parameters) = nothing
 
 function allocate_coefficient_fields(closure::LagrangianAveragedDynamicSmagorinsky, grid, clock)
     𝒥ᴸᴹ⁻ = CenterField(grid)

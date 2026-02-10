@@ -116,7 +116,7 @@ function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfI
     return diffusivities
 end
 
-function compute_diffusivities!(diffusivities, closure::FlavorOfISSD, model; parameters = :xyz)
+function compute_closure_fields!(diffusivities, closure::FlavorOfISSD, model; parameters = :xyz)
 
     arch = model.architecture
     grid = model.grid

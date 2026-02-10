@@ -92,7 +92,7 @@ end
 build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfTISSD) =
     DiffusivityFields(grid, tracer_names, bcs, closure)
 
-function compute_diffusivities!(diffusivities, closure::FlavorOfTISSD{TD}, model; parameters = :xyz) where TD
+function compute_closure_fields!(diffusivities, closure::FlavorOfTISSD{TD}, model; parameters = :xyz) where TD
 
     arch = model.architecture
     grid = model.grid

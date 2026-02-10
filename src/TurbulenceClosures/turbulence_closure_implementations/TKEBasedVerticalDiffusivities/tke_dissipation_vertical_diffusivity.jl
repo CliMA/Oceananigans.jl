@@ -259,20 +259,7 @@ end
 @inline viscosity_location(::FlavorOfTD) = (c, c, f)
 @inline diffusivity_location(::FlavorOfTD) = (c, c, f)
 
-function compute_diffusivities!(diffusivities, closure::FlavorOfTD, model; parameters = :xyz)
-    # Skip the first compute after restoring from a checkpoint to preserve the restored state.
-    # This flag is set during `restore_prognostic_state!` and cleared here.
-    if diffusivities._skip_next_compute[]
-        diffusivities._skip_next_compute[] = false
-        diffusivities.previous_compute_time[] = model.clock.time
-        return nothing
-    end
-
-    arch = model.architecture
-    grid = model.grid
-    velocities = model.velocities
-    tracers = buoyancy_tracers(model)
-    buoyancy = buoyancy_force(model)
+function step_closure_prognostics!(diffusivities, closure::FlavorOfTD, model)
     clock = model.clock
 
     Δt = time_difference_seconds(clock.time, diffusivities.previous_compute_time[])
@@ -281,19 +268,26 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfTD, model; param
     # Step TKE/dissipation when time has advanced or at later stages of multi-stage
     # timesteppers. Skip stages > 1 at iteration 0 (clock.last_Δt is Inf).
     if (Δt > 0 || clock.stage > 1) && isfinite(clock.last_Δt)
-        # Compute e at the current time:
-        #   * update tendency Gⁿ using current and previous velocity field
-        #   * use tridiagonal solve to take an implicit step
         time_step_tke_dissipation_equations!(model)
     end
 
-    # Update previous velocities and surface buoyancy flux only on new iterations.
+    # Update previous velocities only on new iterations.
     if Δt > 0
         u, v, w = model.velocities
         u⁻, v⁻ = diffusivities.previous_velocities
         parent(u⁻) .= parent(u)
         parent(v⁻) .= parent(v)
     end
+
+    return nothing
+end
+
+function compute_closure_fields!(diffusivities, closure::FlavorOfTD, model; parameters = :xyz)
+    arch = model.architecture
+    grid = model.grid
+    velocities = model.velocities
+    tracers = buoyancy_tracers(model)
+    buoyancy = buoyancy_force(model)
 
     launch!(arch, grid, parameters,
             compute_TKEDissipation_diffusivities!,
@@ -452,10 +446,6 @@ function restore_prognostic_state!(restored::TKEDissipationDiffusivityFields, fr
     restore_prognostic_state!(restored.κc, from.κc)
     restore_prognostic_state!(restored.κe, from.κe)
     restore_prognostic_state!(restored.κϵ, from.κϵ)
-
-    # Skip the first compute_diffusivities! call after restore to preserve the restored state
-    restored._skip_next_compute[] = true
-
     return restored
 end
 
