@@ -138,3 +138,28 @@ cuda_v_kernel = my_cuda_kernel(v_kernel, Gv, grid, v_kernel_args)
 
 @info "UVel registers $(CUDA.registers(cuda_u_kernel))"
 @info "VVel registers $(CUDA.registers(cuda_v_kernel))"
+
+# Detailed kernel analysis
+for (name, kernel) in [("Tracer", cuda_kernel), ("UVel", cuda_u_kernel), ("VVel", cuda_v_kernel)]
+    regs = CUDA.registers(kernel)
+    maxthreads = CUDA.maxthreads(kernel)
+    local_mem = CUDA.memory(kernel).local
+    shared_mem = CUDA.memory(kernel).shared
+    @info "$name kernel:" registers=regs maxthreads=maxthreads local_mem_bytes=local_mem shared_mem_bytes=shared_mem
+
+    # Compute occupancy
+    dev = CUDA.device()
+    mp_count = CUDA.attribute(dev, CUDA.DEVICE_ATTRIBUTE_MULTIPROCESSOR_COUNT)
+    max_regs = CUDA.attribute(dev, CUDA.DEVICE_ATTRIBUTE_MAX_REGISTERS_PER_MULTIPROCESSOR)
+    max_threads_mp = CUDA.attribute(dev, CUDA.DEVICE_ATTRIBUTE_MAX_THREADS_PER_MULTIPROCESSOR)
+    warp_size = CUDA.attribute(dev, CUDA.DEVICE_ATTRIBUTE_WARP_SIZE)
+    threads_per_block = min(maxthreads, 256)
+    warps_per_block = cld(threads_per_block, warp_size)
+    regs_per_warp = regs * warp_size
+    max_warps_by_regs = div(max_regs, regs_per_warp)
+    max_warps_total = div(max_threads_mp, warp_size)
+    active_warps = min(max_warps_by_regs, max_warps_total)
+    occupancy = active_warps / max_warps_total
+    @info "  Occupancy estimate: $(round(occupancy * 100, digits=1))% ($(active_warps)/$(max_warps_total) warps)"
+    @info "  Register-limited warps/SM: $max_warps_by_regs"
+end
