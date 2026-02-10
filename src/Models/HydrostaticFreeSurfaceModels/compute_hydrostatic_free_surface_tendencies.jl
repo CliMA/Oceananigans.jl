@@ -148,7 +148,6 @@ function get_u_conditioned_map(scheme, grid::ImmersedBoundaryGrid; active_cells_
     summary(max_scheme_field)
     fill!(max_scheme_field, false)
     launch!(architecture(grid), grid, :xyz, condition_map!, max_scheme_field, grid, scheme; active_cells_map)
-    println(summary(max_scheme_field))
 
     return split_indices(max_scheme_field, grid; active_cells_map)
 end
@@ -175,8 +174,6 @@ function split_indices_mapped(field, grid, active_cells_map)
 	    push!(map2, index)
 	end
     end
-    println(size(map1))
-    println(size(map2))
     map1 = AC.on_architecture(architecture(grid), map1) 
     map2 = AC.on_architecture(architecture(grid), map2) 
     return (map1, map2)
@@ -193,9 +190,7 @@ function split_indices_full(field, grid)
 	GC.gc()
     end
     map1 = AC.on_architecture(architecture(grid), map1) 
-    println(size(map1))
     map2 = AC.on_architecture(architecture(grid), map2) 
-    println(size(map2))
     return (map1, map2)
 end
 
@@ -256,13 +251,13 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     static_momentum_advection = VectorInvariant(
         vorticity_scheme=StaticWENO(model.advection.momentum.vorticity_scheme),
 	vorticity_stencil=model.advection.momentum.vorticity_stencil,
-	    vertical_advection_scheme=model.advection.momentum.vertical_advection_scheme,
+	    vertical_advection_scheme=StaticWENO(model.advection.momentum.vertical_advection_scheme),
 	    divergence_scheme=model.advection.momentum.divergence_scheme,
 	    kinetic_energy_gradient_scheme=model.advection.momentum.kinetic_energy_gradient_scheme,
 	    upwinding=model.advection.momentum.upwinding
 	    )
-    u_kernel_args_1 = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args..., u_forcing)
-    u_kernel_args_2 = tuple(static_momentum_advection, model.coriolis, model.closure, u_immersed_bc, end_momentum_kernel_args..., u_forcing)
+    u_kernel_args_1 = tuple(static_momentum_advection, model.coriolis, model.closure, u_immersed_bc, end_momentum_kernel_args..., u_forcing)
+    u_kernel_args_2 = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args..., u_forcing)
     v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args..., v_forcing)
 
     launch!(arch, grid, kernel_parameters, compute_hydrostatic_free_surface_Gu!,
