@@ -1,28 +1,8 @@
 include("dependencies_for_runtests.jl")
 include("distributed_tests_utils.jl")
 
-# We need to initiate MPI for sharding because we are using a multi-host implementation:
-# i.e. we are launching the tests with `mpiexec` and on Github actions the default MPI
-# implementation is MPICH which requires calling MPI.Init(). In the case of OpenMPI,
-# MPI.Init() is not necessary.
+Nhosts = 1
 
-run_slab_distributed_grid = """
-    using MPI
-    MPI.Init()
-    include("distributed_tests_utils.jl")
-    Reactant.Distributed.initialize(; single_gpu_per_process=false)
-    arch = Distributed(ReactantState(), partition = Partition(1, 4)) #, synchronized_communication=true)
-    run_distributed_tripolar_grid(arch, "distributed_yslab_tripolar.jld2")
-"""
-
-run_pencil_distributed_grid = """
-    using MPI
-    MPI.Init()
-    include("distributed_tests_utils.jl")
-    Reactant.Distributed.initialize(; single_gpu_per_process=false)
-    arch = Distributed(ReactantState(), partition = Partition(2, 2))
-    run_distributed_tripolar_grid(arch, "distributed_pencil_tripolar.jld2")
-"""
 
 @testset "Test distributed TripolarGrid simulations..." begin
     # Run the serial computation
@@ -37,41 +17,46 @@ run_pencil_distributed_grid = """
 
     us = interior(us, :, :, 1)
     vs = interior(vs, :, :, 1)
+    ηs = interior(ηs, :, :, 1)
     cs = interior(cs, :, :, 1)
-    # Run the distributed grid simulation with a slab configuration
-    write("distributed_slab_tests.jl", run_slab_distributed_grid)
-    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project -O0 distributed_slab_tests.jl`)
-    rm("distributed_slab_tests.jl")
+
+    # Run the distributed grid simulations in all the configurations
+    run(`$(mpiexec()) -n $(Nhosts) $(Base.julia_cmd()) --project -O0 run_sharding_tests.jl "tripolar"`)
 
     # Retrieve Parallel quantities
-    up = jldopen("distributed_yslab_tripolar.jld2")["u"]
-    vp = jldopen("distributed_yslab_tripolar.jld2")["v"]
-    cp = jldopen("distributed_yslab_tripolar.jld2")["c"]
-    ηp = jldopen("distributed_yslab_tripolar.jld2")["η"]
+    up1 = jldopen("distributed_xslab_trg.jld2")["u"]
+    vp1 = jldopen("distributed_xslab_trg.jld2")["v"]
+    cp1 = jldopen("distributed_xslab_trg.jld2")["c"]
+    ηp1 = jldopen("distributed_xslab_trg.jld2")["η"]
 
-    rm("distributed_yslab_tripolar.jld2")
+    vp2 = jldopen("distributed_yslab_trg.jld2")["v"]
+    up2 = jldopen("distributed_yslab_trg.jld2")["u"]
+    cp2 = jldopen("distributed_yslab_trg.jld2")["c"]
+    ηp2 = jldopen("distributed_yslab_trg.jld2")["η"]
 
-    # Test slab partitioning
-    @test all(us .≈ up)
-    @test all(vs .≈ vp)
-    @test all(cs .≈ cp)
-    @test all(ηs .≈ ηp)
+    vp3 = jldopen("distributed_pencil_trg.jld2")["v"]
+    up3 = jldopen("distributed_pencil_trg.jld2")["u"]
+    cp3 = jldopen("distributed_pencil_trg.jld2")["c"]
+    ηp3 = jldopen("distributed_pencil_trg.jld2")["η"]
 
-    # Run the distributed grid simulation with a pencil configuration
-    write("distributed_tests.jl", run_pencil_distributed_grid)
-    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project -O0 distributed_tests.jl`)
-    rm("distributed_tests.jl")
+    # What does correctness mean in this case? Probably sqrt(ϵ)?
+    ϵ = sqrt(eps(Float64))
 
-    # Retrieve Parallel quantities
-    up = jldopen("distributed_pencil_tripolar.jld2")["u"]
-    vp = jldopen("distributed_pencil_tripolar.jld2")["v"]
-    ηp = jldopen("distributed_pencil_tripolar.jld2")["η"]
-    cp = jldopen("distributed_pencil_tripolar.jld2")["c"]
+    @info "Testing xslab partitioning..."
+    @test all(isapprox.(us, up1; atol=ϵ))
+    @test all(isapprox.(vs, vp1; atol=ϵ))
+    @test all(isapprox.(cs, cp1; atol=ϵ))
+    @test all(isapprox.(ηs, ηp1; atol=ϵ))
 
-    rm("distributed_pencil_tripolar.jld2")
+    @info "Testing yslab partitioning..."
+    @test all(isapprox.(us, up2; atol=ϵ))
+    @test all(isapprox.(vs, vp2; atol=ϵ))
+    @test all(isapprox.(cs, cp2; atol=ϵ))
+    @test all(isapprox.(ηs, ηp2; atol=ϵ))
 
-    @test all(us .≈ up)
-    @test all(vs .≈ vp)
-    @test all(cs .≈ cp)
-    @test all(ηs .≈ ηp)
+    @info "Testing pencil partitioning..."
+    @test all(isapprox.(us, up2; atol=ϵ))
+    @test all(isapprox.(vs, vp2; atol=ϵ))
+    @test all(isapprox.(cs, cp2; atol=ϵ))
+    @test all(isapprox.(ηs, ηp2; atol=ϵ))
 end

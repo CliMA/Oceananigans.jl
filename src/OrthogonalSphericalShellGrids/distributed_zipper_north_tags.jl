@@ -11,7 +11,7 @@ sides  = (:west, :east, :south, :north, :southwest, :southeast, :northwest, :nor
 side_id = Dict(side => n-1 for (n, side) in enumerate(sides))
 
 # Change these and we are golden!
-function north_recv_tag(arch, ::DistributedTripolarGridOfSomeKind, location)
+function north_recv_tag(arch, ::MPITripolarGridOfSomeKind, location)
     field_id   = string(arch.mpi_tag[], pad=ID_DIGITS)
     loc_digit  = string(loc_id(location...), pad=ID_DIGITS)
     last_rank  = arch.local_index[2] == ranks(arch)[2]
@@ -19,7 +19,7 @@ function north_recv_tag(arch, ::DistributedTripolarGridOfSomeKind, location)
     return parse(Int, field_id * loc_digit * side_digit)
 end
 
-function north_send_tag(arch, ::DistributedTripolarGridOfSomeKind, location)
+function north_send_tag(arch, ::MPITripolarGridOfSomeKind, location)
     field_id   = string(arch.mpi_tag[], pad=ID_DIGITS)
     loc_digit  = string(loc_id(location...), pad=ID_DIGITS)
     last_rank  = arch.local_index[2] == ranks(arch)[2]
@@ -27,7 +27,7 @@ function north_send_tag(arch, ::DistributedTripolarGridOfSomeKind, location)
     return parse(Int, field_id * loc_digit * side_digit)
 end
 
-function northwest_recv_tag(arch, ::DistributedTripolarGridOfSomeKind, location)
+function northwest_recv_tag(arch, ::MPITripolarGridOfSomeKind, location)
     field_id   = string(arch.mpi_tag[], pad=ID_DIGITS)
     loc_digit  = string(loc_id(location...), pad=ID_DIGITS)
     last_rank  = arch.local_index[2] == ranks(arch)[2]
@@ -35,7 +35,7 @@ function northwest_recv_tag(arch, ::DistributedTripolarGridOfSomeKind, location)
     return parse(Int, field_id * loc_digit * side_digit)
 end
 
-function northwest_send_tag(arch, ::DistributedTripolarGridOfSomeKind, location)
+function northwest_send_tag(arch, ::MPITripolarGridOfSomeKind, location)
     field_id   = string(arch.mpi_tag[], pad=ID_DIGITS)
     loc_digit  = string(loc_id(location...), pad=ID_DIGITS)
     last_rank  = arch.local_index[2] == ranks(arch)[2]
@@ -43,7 +43,7 @@ function northwest_send_tag(arch, ::DistributedTripolarGridOfSomeKind, location)
     return parse(Int, field_id * loc_digit * side_digit)
 end
 
-function northeast_recv_tag(arch, ::DistributedTripolarGridOfSomeKind, location)
+function northeast_recv_tag(arch, ::MPITripolarGridOfSomeKind, location)
     field_id   = string(arch.mpi_tag[], pad=ID_DIGITS)
     loc_digit  = string(loc_id(location...), pad=ID_DIGITS)
     last_rank  = arch.local_index[2] == ranks(arch)[2]
@@ -51,7 +51,7 @@ function northeast_recv_tag(arch, ::DistributedTripolarGridOfSomeKind, location)
     return parse(Int, field_id * loc_digit * side_digit)
 end
 
-function northeast_send_tag(arch, ::DistributedTripolarGridOfSomeKind, location)
+function northeast_send_tag(arch, ::MPITripolarGridOfSomeKind, location)
     field_id   = string(arch.mpi_tag[], pad=ID_DIGITS)
     loc_digit  = string(loc_id(location...), pad=ID_DIGITS)
     last_rank  = arch.local_index[2] == ranks(arch)[2]
