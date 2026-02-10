@@ -15,7 +15,7 @@ import Oceananigans.Fields: Field
 
 function FieldTimeSeries(typed_path::NetCDFPath, name::String;
                          backend = InMemory(),
-                         architecture = nothing,
+                         architecture = CPU(),
                          grid = nothing,
                          location = nothing,
                          boundary_conditions = UnspecifiedBoundaryConditions(),
