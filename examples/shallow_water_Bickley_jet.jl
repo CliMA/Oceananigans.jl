@@ -160,11 +160,6 @@ run!(simulation)
 using NCDatasets, Printf, CairoMakie
 nothing #hide
 
-# Define the coordinates for plotting.
-
-x, y = xnodes(ω), ynodes(ω)
-nothing #hide
-
 # Read in the `output_writer` for the two-dimensional fields and then create an animation
 # showing both the total and perturbation vorticities.
 
@@ -176,16 +171,17 @@ ax_ω′ = Axis(fig[2, 3]; title = "Perturbation vorticity, ω - ω̄", axis_kwa
 
 n = Observable(1)
 
-ds = NCDataset(simulation.output_writers[:fields].filepath, "r")
+ω_timeseries = FieldTimeSeries(simulation.output_writers[:fields].filepath, "ω")
+ω′_timeseries = FieldTimeSeries(simulation.output_writers[:fields].filepath, "ω′")
 
-times = ds["time"][:]
+times = ω_timeseries.times
 
-ω = @lift ds["ω"][:, :, $n]
-hm_ω = heatmap!(ax_ω, x, y, ω, colorrange = (-1, 1), colormap = :balance)
+ω = @lift ω_timeseries[$n]
+hm_ω = heatmap!(ax_ω, ω, colorrange = (-1, 1), colormap = :balance)
 Colorbar(fig[2, 2], hm_ω)
 
-ω′ = @lift ds["ω′"][:, :, $n]
-hm_ω′ = heatmap!(ax_ω′, x, y, ω′, colormap = :balance)
+ω′ = @lift ω′_timeseries[$n]
+hm_ω′ = heatmap!(ax_ω′, ω′, colormap = :balance)
 Colorbar(fig[2, 4], hm_ω′)
 
 title = @lift @sprintf("t = %.1f", times[$n])
