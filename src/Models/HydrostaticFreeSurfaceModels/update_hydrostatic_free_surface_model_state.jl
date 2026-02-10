@@ -28,7 +28,7 @@ This function performs the following steps:
    - Buoyancy gradients (for turbulence closures)
    - Vertical velocity `w` from continuity equation
    - Hydrostatic pressure `pHY′`
-   - Turbulent closure_fields
+   - Turbulent closure fields
 5. Fill local halos for closure fields and pressure
 6. Execute any callbacks registered for `UpdateStateCallsite`
 7. Update biogeochemical state
