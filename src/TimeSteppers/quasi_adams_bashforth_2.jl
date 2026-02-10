@@ -109,9 +109,10 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
 
     ab2_step!(model, Δt, callbacks)
     cache_previous_tendencies!(model)
-    update_state!(model, callbacks)
 
     tick!(model.clock, Δt)
+
+    update_state!(model, callbacks)
 
     step_lagrangian_particles!(model, Δt)
 

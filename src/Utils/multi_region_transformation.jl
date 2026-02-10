@@ -63,12 +63,13 @@ end
 
 @inline isregional(t::Tuple{}) = false
 @inline isregional(nt::NT) where NT<:NamedTuple{(), Tuple{}} = false
-for func in [:isregional, :regions]
-    @eval begin
-        @inline $func(t::Union{Tuple, NamedTuple}) = $func(first(t))
-    end
+
+@inline function isregional(t::Union{Tuple, NamedTuple})
+    idx = findfirst(isregional, t)
+    return !isnothing(idx)
 end
 
+@inline regions(t::Union{Tuple, NamedTuple}) = regions(first(t))
 @inline regions(mo::MultiRegionObject) = 1:length(mo.regional_objects)
 
 Base.getindex(mo::MultiRegionObject, i, args...) = Base.getindex(mo.regional_objects, i, args...)
@@ -214,13 +215,13 @@ function prognostic_state(mo::MultiRegionObject)
     return Tuple(prognostic_state(regional_obj) for regional_obj in mo.regional_objects)
 end
 
-function restore_prognostic_state!(mo::MultiRegionObject, state)
-    regional_states = state isa MultiRegionObject ? state.regional_objects : state
+function restore_prognostic_state!(restored::MultiRegionObject, from)
+    regional_states = from isa MultiRegionObject ? from.regional_objects : from
 
-    for (regional_obj, regional_state) in zip(mo.regional_objects, regional_states)
+    for (regional_obj, regional_state) in zip(restored.regional_objects, regional_states)
         restore_prognostic_state!(regional_obj, regional_state)
     end
-    return mo
+    return restored
 end
 
 restore_prognostic_state!(::MultiRegionObject, ::Nothing) = nothing

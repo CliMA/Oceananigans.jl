@@ -146,13 +146,13 @@ Adapt.adapt_structure(to, clock::Clock) = (time          = clock.time,
                                            stage         = clock.stage)
 
 """Restore the clock from a checkpointed state."""
-function restore_prognostic_state!(clock::Clock, state)
-    clock.time = state.time
-    clock.iteration = state.iteration
-    clock.last_Δt = state.last_Δt
-    clock.last_stage_Δt = state.last_stage_Δt
-    clock.stage = state.stage
-    return clock
+function restore_prognostic_state!(restored::Clock, from)
+    restored.time = from.time
+    restored.iteration = from.iteration
+    restored.last_Δt = from.last_Δt
+    restored.last_stage_Δt = from.last_stage_Δt
+    restored.stage = from.stage
+    return restored
 end
 
 restore_prognostic_state!(::Clock, ::Nothing) = nothing
