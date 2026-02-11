@@ -128,7 +128,7 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper)
                    Val(tracer_index),
                    model.clock, 
                    fields(model),
-                   Δt)
+                   Δτ)
                    
     return nothing
 end
