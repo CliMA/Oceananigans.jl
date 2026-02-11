@@ -82,8 +82,8 @@ the grid's intrinsic coordinates in order to match the grid's extrinsic coordina
 
     cosθ, sinθ = Rcosθ / R, Rsinθ / R
 
-    θ_radians = atan(sinθ / cosθ)
-    return θ_radians
+    θ = atan(sinθ / cosθ)
+    return θ
 end
 
 # Intrinsic and extrinsic conversion for `OrthogonalSphericalShellGrid`s,
