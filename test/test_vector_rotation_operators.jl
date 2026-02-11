@@ -107,7 +107,7 @@ end
                     # fill in coordinates
                     sinθ = sin(θᵢ)
                     cosθ = cos(θᵢ)
-                    for i in 1:Nx+1, j in 1:Ny+1
+                    for j in 1:Ny+1, i in 1:Nx+1
                         λᶠᶠᵃ[i, j, 1] =   (i-1) * Δ * cosθ + (j-1) * Δ * sinθ
                         φᶠᶠᵃ[i, j, 1] = - (i-1) * Δ * sinθ + (j-1) * Δ * cosθ
                     end
