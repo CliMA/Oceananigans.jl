@@ -131,7 +131,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
 
     tick!(model.clock, first_stage_Δt; stage=true)
 
-    step_closure_prognostics!(model)
+    step_closure_prognostics!(model, first_stage_Δt)
     update_state!(model, callbacks)
     step_lagrangian_particles!(model, first_stage_Δt)
 
@@ -144,7 +144,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
 
     tick!(model.clock, second_stage_Δt; stage=true)
 
-    step_closure_prognostics!(model)
+    step_closure_prognostics!(model, second_stage_Δt)
     update_state!(model, callbacks)
     step_lagrangian_particles!(model, second_stage_Δt)
 
@@ -165,7 +165,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     model.clock.last_stage_Δt = corrected_third_stage_Δt
     model.clock.last_Δt = Δt
 
-    step_closure_prognostics!(model)
+    step_closure_prognostics!(model, corrected_third_stage_Δt)
     update_state!(model, callbacks)
     step_lagrangian_particles!(model, third_stage_Δt)
 

@@ -413,23 +413,13 @@ const c = Center()
     end
 end
 
-function step_closure_prognostics!(closure_fields, closure::LagrangianAveragedDynamicSmagorinsky, model)
+function step_closure_prognostics!(closure_fields, closure::LagrangianAveragedDynamicSmagorinsky, model, Δt)
     grid = model.grid
     arch = architecture(grid)
     clock = model.clock
     cˢ = closure.coefficient
     previous_compute_time = closure_fields.previous_compute_time
     u, v, w = model.velocities
-
-    # For multi-stage timesteppers, only step at the final stage.
-    clock.stage == 1 || return nothing
-
-    Δt = time_difference_seconds(clock.time, previous_compute_time[])
-
-    # After restoring from a checkpoint, previous_compute_time matches clock.time
-    # (since both QAB2 and RK3 call step_closure_prognostics! after tick!), so Δt == 0.
-    # Skip the computation in that case — the restored fields are already correct.
-    Δt == 0 && return nothing
 
     if cˢ.schedule(model)
         Σ = closure_fields.Σ

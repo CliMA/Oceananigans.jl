@@ -23,7 +23,7 @@ function compute_flux_bc_tendencies! end
 function step_closure_prognostics! end
 
 # Fallback for models without closure prognostics
-step_closure_prognostics!(model) = nothing
+step_closure_prognostics!(model, Δt) = nothing
 
 # Interface for time-stepping Lagrangian particles
 abstract type AbstractLagrangianParticles end

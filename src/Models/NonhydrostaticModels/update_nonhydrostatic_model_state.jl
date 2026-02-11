@@ -75,5 +75,5 @@ function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = surface
     return nothing
 end
 
-step_closure_prognostics!(model::NonhydrostaticModel) =
-    step_closure_prognostics!(model.closure_fields, model.closure, model)
+step_closure_prognostics!(model::NonhydrostaticModel, Δt) =
+    step_closure_prognostics!(model.closure_fields, model.closure, model, Δt)

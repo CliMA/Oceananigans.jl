@@ -247,7 +247,7 @@ function update_previous_compute_time!(closure_fields, model)
     return Δt
 end
 
-function step_closure_prognostics!(closure_fields, closure::FlavorOfCATKE, model)
+function step_closure_prognostics!(closure_fields, closure::FlavorOfCATKE, model, Δt)
     arch = model.architecture
     grid = model.grid
     velocities = model.velocities
@@ -255,16 +255,16 @@ function step_closure_prognostics!(closure_fields, closure::FlavorOfCATKE, model
     buoyancy = buoyancy_force(model)
     clock = model.clock
     top_tracer_bcs = get_top_tracer_bcs(buoyancy, tracers)
-    Δt = update_previous_compute_time!(closure_fields, model)
+    time_since_last_compute = update_previous_compute_time!(closure_fields, model)
 
-    # Step TKE equation on new iterations (Δt > 0) or later stages of multi-stage timesteppers.
-    # Skip at iteration 0 when stage > 1 because clock.last_Δt is Inf (causes NaN).
-    if Δt > 0 || (clock.stage > 1 && clock.iteration > 0)
-        time_step_catke_equation!(model, model.timestepper)
+    # Step TKE equation on new iterations (time_since_last_compute > 0) or later stages of multi-stage timesteppers.
+    # Skip at iteration 0 when stage > 1 because the timestep isn't well-defined yet.
+    if time_since_last_compute > 0 || (clock.stage > 1 && clock.iteration > 0)
+        time_step_catke_equation!(model, model.timestepper, Δt)
     end
 
     # Update previous velocities and surface buoyancy flux only on new iterations.
-    if Δt > 0
+    if time_since_last_compute > 0
         u, v, w = model.velocities
         u⁻, v⁻ = closure_fields.previous_velocities
         parent(u⁻) .= parent(u)

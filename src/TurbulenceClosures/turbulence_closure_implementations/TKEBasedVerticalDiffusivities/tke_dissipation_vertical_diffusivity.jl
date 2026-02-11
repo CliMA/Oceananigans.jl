@@ -259,20 +259,20 @@ end
 @inline viscosity_location(::FlavorOfTD) = (c, c, f)
 @inline diffusivity_location(::FlavorOfTD) = (c, c, f)
 
-function step_closure_prognostics!(closure_fields, closure::FlavorOfTD, model)
+function step_closure_prognostics!(closure_fields, closure::FlavorOfTD, model, Δt)
     clock = model.clock
 
-    Δt = time_difference_seconds(clock.time, closure_fields.previous_compute_time[])
+    time_since_last_compute = time_difference_seconds(clock.time, closure_fields.previous_compute_time[])
     closure_fields.previous_compute_time[] = clock.time
 
     # Step TKE/dissipation when time has advanced or at later stages of multi-stage
-    # timesteppers. Skip stages > 1 at iteration 0 (clock.last_Δt is Inf).
-    if (Δt > 0 || clock.stage > 1) && isfinite(clock.last_Δt)
-        time_step_tke_dissipation_equations!(model)
+    # timesteppers. Skip stages > 1 at iteration 0 (timestep not well-defined yet).
+    if (time_since_last_compute > 0 || clock.stage > 1) && clock.iteration > 0
+        time_step_tke_dissipation_equations!(model, Δt)
     end
 
     # Update previous velocities only on new iterations.
-    if Δt > 0
+    if time_since_last_compute > 0
         u, v, w = model.velocities
         u⁻, v⁻ = closure_fields.previous_velocities
         parent(u⁻) .= parent(u)

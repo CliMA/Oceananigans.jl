@@ -16,7 +16,7 @@ end
 
 get_time_step(closure::TKEDissipationVerticalDiffusivity) = closure.tke_dissipation_time_step
 
-function time_step_tke_dissipation_equations!(model)
+function time_step_tke_dissipation_equations!(model, Δt)
 
     # TODO: properly handle closure tuples
     closure = model.closure
@@ -41,7 +41,7 @@ function time_step_tke_dissipation_equations!(model)
     implicit_solver = model.timestepper.implicit_solver
 
     FT = eltype(model.tracers.e)
-    Δt = convert(FT, model.clock.last_Δt)
+    Δt = convert(FT, Δt)
     Δτ = get_time_step(closure)
 
     if isnothing(Δτ)

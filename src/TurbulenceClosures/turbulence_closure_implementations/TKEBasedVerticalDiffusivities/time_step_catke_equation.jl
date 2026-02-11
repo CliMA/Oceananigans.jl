@@ -6,7 +6,7 @@ using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKutt
 
 get_time_step(closure::CATKEVerticalDiffusivity) = closure.tke_time_step
 
-function time_step_catke_equation!(model, ::QuasiAdamsBashforth2TimeStepper)
+function time_step_catke_equation!(model, ::QuasiAdamsBashforth2TimeStepper, Δt)
 
     # TODO: properly handle closure tuples
     if model.closure isa Tuple
@@ -29,7 +29,6 @@ function time_step_catke_equation!(model, ::QuasiAdamsBashforth2TimeStepper)
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
 
-    Δt = model.clock.last_Δt
     Δτ = get_time_step(closure)
 
     if isnothing(Δτ)
@@ -82,7 +81,7 @@ function time_step_catke_equation!(model, ::QuasiAdamsBashforth2TimeStepper)
     return nothing
 end
 
-function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper)
+function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper, Δt)
 
     # TODO: properly handle closure tuples
     if model.closure isa Tuple
@@ -104,8 +103,7 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper)
     previous_velocities = closure_fields.previous_velocities
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
-    β  = model.timestepper.β[model.clock.stage]  # Get the correct β value for the current stage
-    Δτ = model.clock.last_Δt / β
+    Δτ = Δt
     tracers = buoyancy_tracers(model)
     buoyancy = buoyancy_force(model)
 
