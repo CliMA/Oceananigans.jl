@@ -1,11 +1,12 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, ImplicitFreeSurface
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, ImplicitFreeSurface, PrescribedFreeSurface
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving, FluxFormAdvection, CrossAndSelfUpwinding
 using Oceananigans.TurbulenceClosures
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
+using Oceananigans.Grids: MutableVerticalDiscretization
 
 function time_step_hydrostatic_model_works(grid;
                                            coriolis = nothing,
@@ -418,6 +419,83 @@ topos_3d = ((Periodic, Periodic, Bounded),
             rm(test_filename)
 
             @info "    PrescribedVelocityFields with FieldTimeSeries output test passed"
+        end
+
+        @testset "PrescribedFreeSurface with PrescribedVelocityFields and ZStar [$arch]" begin
+            @info "  Testing PrescribedFreeSurface with PrescribedVelocityFields and ZStar [$arch]..."
+
+            # Small grid with MutableVerticalDiscretization (triggers ZStarCoordinate)
+            H = 10
+            z_faces = MutableVerticalDiscretization((-H, 0))
+
+            grid = RectilinearGrid(arch;
+                                   size = (4, 4, 4),
+                                   x = (0, 100),
+                                   y = (0, 100),
+                                   z = z_faces,
+                                   halo = (3, 3, 3),
+                                   topology = (Periodic, Periodic, Bounded))
+
+            # Prescribed velocity fields (zero divergence)
+            u_prescribed(x, y, z, t) = 0.0
+            v_prescribed(x, y, z, t) = 0.0
+
+            velocities = PrescribedVelocityFields(; u=u_prescribed, v=v_prescribed)
+
+            # Prescribed free surface: η oscillates over one period
+            A = 0.1  # amplitude (small relative to H=10)
+            η_prescribed(x, y, z, t) = A * sin(2π * t)
+
+            free_surface = PrescribedFreeSurface(displacement=η_prescribed)
+
+            # Build model
+            model = HydrostaticFreeSurfaceModel(grid;
+                                                 velocities,
+                                                 free_surface,
+                                                 tracers = nothing,
+                                                 buoyancy = nothing)
+
+            @test model isa HydrostaticFreeSurfaceModel
+            @test model.free_surface isa PrescribedFreeSurface
+
+            # Check that η appears in fields(model)
+            model_fields = fields(model)
+            @test haskey(model_fields, :η)
+
+            # Time step for one full period with dt = 0.01
+            dt = 0.01
+            T_period = 1.0  # one full period of sin(2πt)
+            simulation = Simulation(model; Δt=dt, stop_time=T_period)
+
+            # σᶜᶜⁿ is an OffsetArray with halo; extract interior values using OffsetArray indexing
+            Nx, Ny, _ = size(grid)
+            σ_interior(σ) = [σ[i, j, 1] for i in 1:Nx, j in 1:Ny]
+
+            # Check initial σ ≈ 1.0 (η(0) = 0)
+            σ_initial = σ_interior(grid.z.σᶜᶜⁿ)
+            @test all(σ_initial .≈ 1.0)
+
+            # Run for one full period
+            run!(simulation)
+
+            # σ should reflect η at the current clock time (step_free_surface! advances
+            # the PFS clock to tⁿ⁺¹ before the grid update, matching prognostic behavior).
+            σ_final = σ_interior(grid.z.σᶜᶜⁿ)
+            expected_σ = (H + A * sin(2π * model.clock.time)) / H
+
+            tol = 1e-10
+            @test all(abs.(σ_final .- expected_σ) .< tol)
+
+            # Also verify that σ oscillates correctly at a non-trivial time
+            simulation.stop_time = 1.25
+            run!(simulation)
+
+            σ_quarter = σ_interior(grid.z.σᶜᶜⁿ)
+            expected_σ_quarter = (H + A * sin(2π * model.clock.time)) / H
+
+            @test all(abs.(σ_quarter .- expected_σ_quarter) .< tol)
+
+            @info "    PrescribedFreeSurface with PrescribedVelocityFields and ZStar test passed"
         end
 
         @testset "HydrostaticFreeSurfaceModel with tracers and forcings [$arch]" begin
