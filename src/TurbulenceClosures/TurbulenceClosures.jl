@@ -90,6 +90,7 @@ step_closure_prognostics!(K, closure::AbstractArray{<:AbstractTurbulenceClosure}
 # Initialize closure fields when simulation starts (after velocities are properly set)
 initialize_closure_fields!(K, closure::AbstractTurbulenceClosure, args...) = nothing
 initialize_closure_fields!(K, closure::AbstractArray{<:AbstractTurbulenceClosure}, args...) = nothing
+initialize_closure_fields!(K, ::Nothing, args...) = nothing
 
 # Tracer names that a closure requires (eg TKE-based closures)
 # Fallbacks: by default closures do not require extra tracers.
