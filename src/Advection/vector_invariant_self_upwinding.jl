@@ -56,7 +56,7 @@ end
 @inline u_smoothness(i, j, k, grid, u, v) = ℑxᶜᵃᵃ(i, j, k, grid, u)
 @inline v_smoothness(i, j, k, grid, u, v) = ℑyᵃᶜᵃ(i, j, k, grid, v)
 
-@noinline function bernoulli_head_U(i, j, k, grid, scheme::VectorInvariantKineticEnergyUpwinding, u, v)
+@inline function bernoulli_head_U(i, j, k, grid, scheme::VectorInvariantKineticEnergyUpwinding, u, v)
 
     @inbounds û = u[i, j, k]
 
@@ -69,7 +69,7 @@ end
     return (δKuᴿ + δKvˢ) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
 end
 
-@noinline function bernoulli_head_V(i, j, k, grid, scheme::VectorInvariantKineticEnergyUpwinding, u, v)
+@inline function bernoulli_head_V(i, j, k, grid, scheme::VectorInvariantKineticEnergyUpwinding, u, v)
 
     @inbounds v̂ = v[i, j, k]
 

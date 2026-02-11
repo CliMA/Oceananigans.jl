@@ -342,7 +342,7 @@ end
 ##### Upwinding vertical advection (2. and 3.)
 #####
 
-@noinline function vertical_advection_U(i, j, k, grid, scheme::VectorInvariant, U)
+@inline function vertical_advection_U(i, j, k, grid, scheme::VectorInvariant, U)
 
     Φᵟ = upwinded_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme, U.u, U.v)
     𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wu, scheme.vertical_advection_scheme, U.w, U.u)
@@ -350,7 +350,7 @@ end
     return 1/Vᶠᶜᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
 end
 
-@noinline function vertical_advection_V(i, j, k, grid, scheme::VectorInvariant, U)
+@inline function vertical_advection_V(i, j, k, grid, scheme::VectorInvariant, U)
 
     Φᵟ = upwinded_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme, U.u, U.v)
     𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wv, scheme.vertical_advection_scheme, U.w, U.v)
@@ -384,7 +384,7 @@ end
 ##### Upwinding schemes (3. and 4.)
 #####
 
-@noinline function horizontal_advection_U(i, j, k, grid, scheme::VectorInvariantUpwindVorticity, u, v)
+@inline function horizontal_advection_U(i, j, k, grid, scheme::VectorInvariantUpwindVorticity, u, v)
 
     Sζ = scheme.vorticity_stencil
 
@@ -394,7 +394,7 @@ end
     return - v̂ * ζᴿ
 end
 
-@noinline function horizontal_advection_V(i, j, k, grid, scheme::VectorInvariantUpwindVorticity, u, v)
+@inline function horizontal_advection_V(i, j, k, grid, scheme::VectorInvariantUpwindVorticity, u, v)
 
     Sζ = scheme.vorticity_stencil
 
