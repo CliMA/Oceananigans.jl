@@ -102,9 +102,6 @@ include("implicit_free_surface.jl")
 # ZStarCoordinate implementation
 include("z_star_vertical_spacing.jl")
 
-# Prescribed free surface
-include("prescribed_free_surface.jl")
-
 # Hydrostatic model implementation
 include("hydrostatic_free_surface_model.jl")
 include("show_hydrostatic_free_surface_model.jl")

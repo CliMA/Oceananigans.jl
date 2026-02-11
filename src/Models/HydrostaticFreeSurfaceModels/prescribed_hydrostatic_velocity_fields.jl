@@ -5,12 +5,13 @@
 using Oceananigans: location
 using Oceananigans.Grids: Center, Face
 using Oceananigans.Fields: FunctionField, field
-using Oceananigans.TimeSteppers: tick!, step_lagrangian_particles!
+using Oceananigans.TimeSteppers: tick!, step_lagrangian_particles!, Clock
 using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!
 using Oceananigans.OutputReaders: FieldTimeSeries, TimeSeriesInterpolation
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
+import Oceananigans.DistributedComputations: synchronize_communication!
 import Oceananigans.Models: extract_boundary_conditions
 import Oceananigans.Utils: datatuple, sum_of_velocities
 import Oceananigans.TimeSteppers: time_step!
@@ -136,19 +137,7 @@ materialize_free_surface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFie
 materialize_free_surface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid, args...) = nothing
 materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, grid, args...) = nothing
 
-# PrescribedFreeSurface is NOT nullified by PrescribedVelocityFields — delegate to its own method
-materialize_free_surface(fs::PrescribedFreeSurface, ::PrescribedVelocityFields, grid, clock) =
-    materialize_free_surface(fs, nothing, grid, clock)
-
 hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = tracers
-hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::PrescribedFreeSurface, tracers) = tracers
-
-hydrostatic_tendency_fields(::PrescribedVelocityFields, ::PrescribedFreeSurface, grid, tracer_names, bcs) =
-    merge((u=nothing, v=nothing), TracerFields(tracer_names, grid))
-
-free_surface_names(::PrescribedFreeSurface, ::PrescribedVelocityFields, grid) = tuple(:η)
-
-transport_velocity_fields(velocities::PrescribedVelocityFields, ::PrescribedFreeSurface) = velocities
 compute_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields, kernel_parameters; kwargs...) = nothing
 
 compute_flux_bcs!(::Nothing, c, arch, clock, model_fields) = nothing
@@ -178,9 +167,139 @@ end
 update_state!(model::OnlyParticleTrackingModel, callbacks) =
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
 
-#####
-##### Checkpointing
-#####
-
 prognostic_state(::PrescribedVelocityFields) = nothing
 restore_prognostic_state!(::PrescribedVelocityFields, ::Nothing) = nothing
+
+#####
+##### PrescribedFreeSurface
+#####
+
+struct PrescribedFreeSurface{E, G, P} <: AbstractFreeSurface{E, G}
+    displacement :: E
+    gravitational_acceleration :: G
+    parameters :: P
+end
+
+"""
+    PrescribedFreeSurface(; displacement,
+                            gravitational_acceleration = defaults.gravitational_acceleration,
+                            parameters = nothing)
+
+Build a `PrescribedFreeSurface` with a prescribed `displacement` field.
+
+`displacement` may be a `Function` with signature `η(x, y, z, t)` (or
+`η(x, y, z, t, parameters)` if `parameters` is provided), or a `FieldTimeSeries`.
+
+The displacement is used by the `ZStarCoordinate` vertical coordinate to update
+grid scaling factors, but the free surface is never stepped forward in time.
+
+This is useful when combining `PrescribedVelocityFields` with a
+`MutableVerticalDiscretization` grid.
+"""
+PrescribedFreeSurface(; displacement,
+                        gravitational_acceleration = defaults.gravitational_acceleration,
+                        parameters = nothing) =
+    PrescribedFreeSurface(displacement, gravitational_acceleration, parameters)
+
+#####
+##### PrescribedFreeSurface materialization
+#####
+
+materialize_prescribed_displacement(f::Function, grid; clock, parameters) =
+    FunctionField{Center, Center, Face}(f, grid; clock, parameters)
+
+function materialize_prescribed_displacement(fts::FieldTimeSeries, grid; clock, parameters=nothing)
+    return TimeSeriesInterpolation(fts, grid; clock)
+end
+
+# Fallback: if already a field, just return it
+materialize_prescribed_displacement(f, grid; kwargs...) = f
+
+function materialize_free_surface(free_surface::PrescribedFreeSurface, velocities, grid, clock)
+    # Create a separate clock so that step_free_surface! can advance it to tⁿ⁺¹
+    # before the grid update, matching prognostic free surfaces. The model clock
+    # must not be modified because other operations (e.g. tracer tendency forcings)
+    # still need it at tⁿ.
+    displacement_clock = Clock(time = clock.time)
+    η = materialize_prescribed_displacement(free_surface.displacement, grid;
+                                            clock = displacement_clock,
+                                            parameters = free_surface.parameters)
+    g = convert(eltype(grid), free_surface.gravitational_acceleration)
+    return PrescribedFreeSurface(η, g, free_surface.parameters)
+end
+
+# PrescribedFreeSurface is NOT nullified by PrescribedVelocityFields — delegate to its own method
+materialize_free_surface(fs::PrescribedFreeSurface, ::PrescribedVelocityFields, grid, clock) =
+    materialize_free_surface(fs, nothing, grid, clock)
+
+#####
+##### PrescribedFreeSurface time stepping
+#####
+
+# Advance the displacement's clock to tⁿ⁺¹ so the FunctionField /
+# TimeSeriesInterpolation evaluates η at the new time, consistent with how
+# a prognostic free surface is stepped forward before the grid update.
+function step_free_surface!(fs::PrescribedFreeSurface, model, timestepper, Δt)
+    fs.displacement.clock.time = model.clock.time + Δt
+    return nothing
+end
+
+compute_free_surface_tendency!(grid, model, ::PrescribedFreeSurface) = nothing
+correct_barotropic_mode!(model, ::PrescribedFreeSurface, Δt; kwargs...) = nothing
+
+@inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, ::PrescribedFreeSurface) = zero(grid)
+@inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, ::PrescribedFreeSurface) = zero(grid)
+
+barotropic_velocities(::PrescribedFreeSurface) = (nothing, nothing)
+barotropic_transport(::PrescribedFreeSurface) = (nothing, nothing)
+
+synchronize_communication!(::PrescribedFreeSurface) = nothing
+
+transport_velocity_fields(velocities, ::PrescribedFreeSurface) = velocities
+transport_velocity_fields(velocities::PrescribedVelocityFields, ::PrescribedFreeSurface) = velocities
+
+#####
+##### PrescribedFreeSurface field introspection
+#####
+
+@inline free_surface_fields(free_surface::PrescribedFreeSurface) = (; η = free_surface.displacement)
+@inline free_surface_names(::PrescribedFreeSurface, velocities, grid) = tuple(:η)
+@inline free_surface_names(::PrescribedFreeSurface, ::PrescribedVelocityFields, grid) = tuple(:η)
+
+# The displacement is not prognostic — it is prescribed
+hydrostatic_prognostic_fields(velocities, free_surface::PrescribedFreeSurface, tracers) =
+    merge(horizontal_velocities(velocities), tracers)
+
+hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::PrescribedFreeSurface, tracers) = tracers
+
+hydrostatic_tendency_fields(velocities, ::PrescribedFreeSurface, grid, tracer_names, bcs) =
+    hydrostatic_tendency_fields(velocities, nothing, grid, tracer_names, bcs)
+
+hydrostatic_tendency_fields(::PrescribedVelocityFields, ::PrescribedFreeSurface, grid, tracer_names, bcs) =
+    merge((u=nothing, v=nothing), TracerFields(tracer_names, grid))
+
+free_surface_displacement_field(velocities, ::PrescribedFreeSurface, grid) = nothing
+
+# No initialization needed — the displacement is prescribed
+initialize_free_surface!(::PrescribedFreeSurface, grid, velocities) = nothing
+
+#####
+##### PrescribedFreeSurface Adapt and on_architecture
+#####
+
+Adapt.adapt_structure(to, fs::PrescribedFreeSurface) =
+    PrescribedFreeSurface(Adapt.adapt(to, fs.displacement),
+                          fs.gravitational_acceleration,
+                          nothing)
+
+on_architecture(to, fs::PrescribedFreeSurface) =
+    PrescribedFreeSurface(on_architecture(to, fs.displacement),
+                          on_architecture(to, fs.gravitational_acceleration),
+                          on_architecture(to, fs.parameters))
+
+#####
+##### PrescribedFreeSurface checkpointing
+#####
+
+prognostic_state(::PrescribedFreeSurface) = nothing
+restore_prognostic_state!(::PrescribedFreeSurface, ::Nothing) = nothing
