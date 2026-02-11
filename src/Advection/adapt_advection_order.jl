@@ -84,7 +84,7 @@ function adapt_advection_order(advection::UpwindBiased{B, FT}, N::Int, grid::Abs
     if N >= B
         return advection
     else
-        return UpwindBiased(FT; order=2N-1)
+        return UpwindBiased(FT; order=2N-1, minimum_buffer_upwind_order=advection.minimum_buffer_upwind_order)
     end
 end
 

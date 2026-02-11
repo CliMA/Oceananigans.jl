@@ -66,6 +66,7 @@ const A{B} = AbstractAdvectionScheme{B}
 # When red_order drops below the minimum, set it to 0 (sentinel for centered 2nd-order fallback).
 @inline clamp_reduced_order(scheme, red_order) = red_order
 @inline clamp_reduced_order(scheme::WENO, red_order) = ifelse(red_order < scheme.minimum_buffer_upwind_order, 0, red_order)
+@inline clamp_reduced_order(scheme::UpwindBiased, red_order) = ifelse(red_order < scheme.minimum_buffer_upwind_order, 0, red_order)
 
 # Fallback for periodic underlying grids
 @inline compute_face_reduced_order_x(i, j, k, grid::AUG, ::A{B}, bias) where B = B

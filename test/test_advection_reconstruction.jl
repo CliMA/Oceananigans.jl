@@ -323,4 +323,74 @@ if archs == tuple(CPU()) # Just a CPU test, do not repeat it...
             end
         end
     end
+
+    # Test UpwindBiased centered fallback (red_order = 0)
+    # When red_order = 0, UpwindBiased should produce centered 2nd-order interpolation: (ψ[i-1] + ψ[i]) / 2
+    @testset "Testing UpwindBiased centered fallback (red_order = 0)" begin
+        for ub_order in (1, 3, 5, 7, 9, 11)
+            s = UpwindBiased(order=ub_order, minimum_buffer_upwind_order=1)
+            for bias in (LeftBias(), RightBias()), i in 1:Nx, j in 1:Ny, k in 1:Nz
+                @test biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 0, bias, c) ≈
+                      symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, centered_scheme, 1, c)
+                @test biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, 0, bias, c) ≈
+                      symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, centered_scheme, 1, c)
+                @test biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 0, bias, c) ≈
+                      symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, centered_scheme, 1, c)
+            end
+        end
+    end
+
+    # Test UpwindBiased minimum_buffer_upwind_order default
+    @testset "Testing UpwindBiased minimum_buffer_upwind_order default" begin
+        for ub_order in (5, 7, 9, 11)
+            s_default = UpwindBiased(order=ub_order)
+            @test s_default.minimum_buffer_upwind_order == 3
+        end
+        # For order=3 (buffer=2), default 3 is clamped to buffer=2
+        @test UpwindBiased(order=3).minimum_buffer_upwind_order == 2
+        # For order=1 (buffer=1), default 3 is clamped to buffer=1
+        @test UpwindBiased(order=1).minimum_buffer_upwind_order == 1
+    end
+
+    # Test UpwindBiased constructor validation
+    @testset "Testing UpwindBiased minimum_buffer_upwind_order constructor" begin
+        # Default is 3 (clamped to buffer for small orders)
+        @test UpwindBiased(order=5).minimum_buffer_upwind_order == 3
+        @test UpwindBiased(order=3).minimum_buffer_upwind_order == 2  # clamped to buffer=2
+        @test UpwindBiased(order=1).minimum_buffer_upwind_order == 1  # clamped to buffer=1
+        # Valid values
+        @test UpwindBiased(order=5, minimum_buffer_upwind_order=1).minimum_buffer_upwind_order == 1
+        @test UpwindBiased(order=5, minimum_buffer_upwind_order=2).minimum_buffer_upwind_order == 2
+        @test UpwindBiased(order=5, minimum_buffer_upwind_order=3).minimum_buffer_upwind_order == 3
+        # Clamped to buffer (3 for order=5)
+        @test UpwindBiased(order=5, minimum_buffer_upwind_order=10).minimum_buffer_upwind_order == 3
+        # Clamped to 1 from below
+        @test UpwindBiased(order=5, minimum_buffer_upwind_order=0).minimum_buffer_upwind_order == 1
+    end
+
+    # Test UpwindBiased centered fallback on a bounded grid
+    @testset "Testing UpwindBiased centered fallback on bounded grid" begin
+        for topology in ((Bounded, Flat, Flat),
+                         (Flat, Bounded, Flat),
+                         (Flat, Flat, Bounded))
+
+            extent = grid_args(instantiate.(topology))
+            bgrid = RectilinearGrid(; size = 10, extent..., topology, halo=6)
+
+            bc = CenterField(bgrid)
+            Random.seed!(5678)
+            set!(bc, rand(size(bgrid)...))
+            fill_halo_regions!(bc)
+
+            for ub_order in (5, 9)
+                buffer = (ub_order + 1) ÷ 2
+
+                s_centered = UpwindBiased(order=ub_order, minimum_buffer_upwind_order=buffer)
+                s_no_fallback = UpwindBiased(order=ub_order, minimum_buffer_upwind_order=1)
+
+                @test s_centered.minimum_buffer_upwind_order == buffer
+                @test s_no_fallback.minimum_buffer_upwind_order == 1
+            end
+        end
+    end
 end
