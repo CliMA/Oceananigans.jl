@@ -11,7 +11,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions,
-                                       time_discretization, implicit_diffusion_solver, closure_required_tracers
+                                       time_discretization, implicit_diffusion_solver, closure_required_tracers, initialize_closure_fields!
 using Oceananigans.Utils: tupleit
 
 import Oceananigans
@@ -320,6 +320,7 @@ validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGr
 function initialize!(model::HydrostaticFreeSurfaceModel)
     initialize_vertical_coordinate!(model.vertical_coordinate, model, model.grid)
     initialize_free_surface!(model.free_surface, model.grid, model.velocities)
+    initialize_closure_fields!(model.closure_fields, model.closure, model)
     return nothing
 end
 
