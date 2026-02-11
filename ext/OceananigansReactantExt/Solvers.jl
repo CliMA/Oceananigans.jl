@@ -2,9 +2,10 @@ module Solvers
 
 using Reactant
 using Oceananigans.Architectures: architecture
-using Oceananigans.Grids: Bounded, Periodic, Flat, inactive_cell
-using Oceananigans.Operators: divᶜᶜᶜ
-using Oceananigans.Solvers: FFTBasedPoissonSolver
+using Oceananigans.Grids: Bounded, Periodic, Flat, inactive_cell,
+                          XDirection, YDirection, ZDirection
+using Oceananigans.Operators: divᶜᶜᶜ, Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜᶜ
+using Oceananigans.Solvers: FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver
 using Oceananigans.Fields: interior
 using Oceananigans.Utils: launch!
 using KernelAbstractions: @kernel, @index
@@ -76,6 +77,42 @@ function compute_source_term!(solver::FFTBasedPoissonSolver{<:ReactantGrid}, ::N
     #  untraced ConcretePJRTArrays that KA kernels can't write to.)
     scratch = similar(rhs, real(eltype(rhs)))
     launch!(architecture(solver), grid, :xyz, _compute_source_term_real!, scratch, grid, Ũ)
+    rhs .= scratch
+    return nothing
+end
+
+# --- FourierTridiagonalPoissonSolver: same pattern, but kernel also multiplies by grid spacing ---
+
+@kernel function _fourier_tridiagonal_source_term_real!(scratch, ::XDirection, grid, Ũ)
+    i, j, k = @index(Global, NTuple)
+    active = !inactive_cell(i, j, k, grid)
+    u, v, w = Ũ
+    δ = divᶜᶜᶜ(i, j, k, grid, u, v, w)
+    @inbounds scratch[i, j, k] = active * Δxᶜᶜᶜ(i, j, k, grid) * δ
+end
+
+@kernel function _fourier_tridiagonal_source_term_real!(scratch, ::YDirection, grid, Ũ)
+    i, j, k = @index(Global, NTuple)
+    active = !inactive_cell(i, j, k, grid)
+    u, v, w = Ũ
+    δ = divᶜᶜᶜ(i, j, k, grid, u, v, w)
+    @inbounds scratch[i, j, k] = active * Δyᶜᶜᶜ(i, j, k, grid) * δ
+end
+
+@kernel function _fourier_tridiagonal_source_term_real!(scratch, ::ZDirection, grid, Ũ)
+    i, j, k = @index(Global, NTuple)
+    active = !inactive_cell(i, j, k, grid)
+    u, v, w = Ũ
+    δ = divᶜᶜᶜ(i, j, k, grid, u, v, w)
+    @inbounds scratch[i, j, k] = active * Δzᶜᶜᶜ(i, j, k, grid) * δ
+end
+
+function compute_source_term!(solver::FourierTridiagonalPoissonSolver{<:ReactantGrid}, ::Nothing, Ũ, Δt)
+    rhs  = solver.source_term
+    grid = solver.grid
+    tdir = solver.batched_tridiagonal_solver.tridiagonal_direction
+    scratch = similar(rhs, real(eltype(rhs)))
+    launch!(architecture(solver), grid, :xyz, _fourier_tridiagonal_source_term_real!, scratch, tdir, grid, Ũ)
     rhs .= scratch
     return nothing
 end
