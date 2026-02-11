@@ -84,6 +84,7 @@ compute_closure_fields!(K, closure::AbstractTurbulenceClosure, args...; kwargs..
 
 import Oceananigans.TimeSteppers: step_closure_prognostics!
 step_closure_prognostics!(K, closure::AbstractTurbulenceClosure, args...) = nothing
+step_closure_prognostics!(K, closure::AbstractArray{<:AbstractTurbulenceClosure}, args...) = nothing
 
 # Tracer names that a closure requires (eg TKE-based closures)
 # Fallbacks: by default closures do not require extra tracers.
