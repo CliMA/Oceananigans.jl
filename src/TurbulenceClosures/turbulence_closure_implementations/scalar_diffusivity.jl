@@ -194,13 +194,6 @@ end
 
 compute_closure_fields!(closure_fields, ::ScalarDiffusivity, args...) = nothing
 
-# Note: we could compute ν and κ (if they are Field):
-# function compute_closure_fields!(closure_fields, closure::ScalarDiffusivity, args...)
-#     compute!(viscosity(closure, closure_fields))
-#     !isnothing(closure.κ) && Tuple(compute!(diffusivity(closure, Val(c), closure_fields) for c=1:length(closure.κ)))
-#     return nothing
-# end
-
 function Base.summary(closure::ScalarDiffusivity)
     TD = summary(time_discretization(closure))
     prefix = replace(summary(formulation(closure)), "Formulation" => "")

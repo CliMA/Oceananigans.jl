@@ -19,20 +19,6 @@ end
 ##### Terms in the turbulent kinetic energy equation, all at cell centers
 #####
 
-#=
-@inline buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy, closure_fields) =
-    explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, closure_fields)
-
-@inline function buoyancy_flux(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, velocities, tracers, buoyancy, closure_fields)
-    wb = explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, closure_fields)
-
-    # "Patankar trick" for buoyancy production (cf Patankar 1980 or Burchard et al. 2003)
-    # If buoyancy flux is a _sink_ of TKE, we treat it implicitly, and return zero here for
-    # the explicit buoyancy flux.
-    return max(zero(grid), wb)
-end
-=#
-
 @inline dissipation(i, j, k, grid, closure::FlavorOfCATKE{<:VITD}, args...) = zero(grid)
 
 @inline function dissipation_length_scaleᶜᶜᶜ(i, j, k, grid, closure::FlavorOfCATKE, velocities, tracers,

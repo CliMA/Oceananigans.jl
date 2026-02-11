@@ -119,12 +119,12 @@ end
     stable_cell = is_stableᶜᶜᶠ(i, j, k, grid, tracers, buoyancy)
 
     @inbounds closure_fields.κᶜ[i, j, k] = ifelse(stable_cell,
-                                                    closure_ij.background_κz,
-                                                    closure_ij.convective_κz)
+                                                  closure_ij.background_κz,
+                                                  closure_ij.convective_κz)
 
     @inbounds closure_fields.κᵘ[i, j, k] = ifelse(stable_cell,
-                                                    closure_ij.background_νz,
-                                                    closure_ij.convective_νz)
+                                                  closure_ij.background_νz,
+                                                  closure_ij.convective_νz)
 end
 
 #####
