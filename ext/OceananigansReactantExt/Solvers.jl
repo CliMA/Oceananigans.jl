@@ -2,20 +2,25 @@ module Solvers
 
 using Reactant
 using Oceananigans.Architectures: architecture
-using Oceananigans.Grids: Bounded, Periodic, Flat, inactive_cell,
-                          XDirection, YDirection, ZDirection
-using Oceananigans.Operators: divᶜᶜᶜ, Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜᶜ
-using Oceananigans.Solvers: FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver
-using Oceananigans.Fields: interior
+using Oceananigans.Grids: Bounded, Periodic, Flat
+using Oceananigans.Solvers: FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver,
+                            BatchedTridiagonalSolver
+using Oceananigans.Models.NonhydrostaticModels: _compute_source_term!, _fourier_tridiagonal_source_term!
+using Oceananigans.Fields: interior, indices
 using Oceananigans.Utils: launch!
-using KernelAbstractions: @kernel, @index
 
-import Oceananigans.Solvers: plan_forward_transform, plan_backward_transform, copy_real_component!
+import Oceananigans.Solvers: plan_forward_transform, plan_backward_transform, copy_real_component!, solve!
 import Oceananigans.Models.NonhydrostaticModels: compute_source_term!
 import ..Architectures: AnyConcreteReactantArray
 import ..Grids: ReactantGrid
 
-const AnyReactantArray = Union{AnyConcreteReactantArray, Reactant.AnyTracedRArray}
+# Type aliases with eltype parameter for dispatch on Complex arrays
+const AnyReactantArray{T} = Union{
+    Reactant.AnyConcretePJRTArray{T},
+    Reactant.AnyConcreteIFRTArray{T},
+    Reactant.AnyTracedRArray{T}
+}
+const ComplexReactantArray = AnyReactantArray{<:Complex}
 const ReactantAbstractFFTsExt = Base.get_extension(Reactant, :ReactantAbstractFFTsExt)
 
 #####
@@ -57,54 +62,17 @@ plan_backward_transform(A::AnyReactantArray, ::Flat, args...) = nothing
 
 #####
 ##### B.6.7 workaround: avoid Float64→ComplexF64 type mismatch in KA kernels.
-##### KA kernel writes Float64 into a traced real-valued scratch,
-##### then broadcast promotes into the complex rhs.
+##### Reuse the existing source-code kernels (_compute_source_term!, _fourier_tridiagonal_source_term!)
+##### but target a Float64 scratch array, then broadcast into the complex rhs.
 #####
-
-@kernel function _compute_source_term_real!(scratch, grid, Ũ)
-    i, j, k = @index(Global, NTuple)
-    active = !inactive_cell(i, j, k, grid)
-    u, v, w = Ũ
-    δ = divᶜᶜᶜ(i, j, k, grid, u, v, w)
-    @inbounds scratch[i, j, k] = active * δ
-end
 
 function compute_source_term!(solver::FFTBasedPoissonSolver{<:ReactantGrid}, ::Nothing, Ũ, Δt)
     rhs = solver.storage
     grid = solver.grid
-    # Derive a traced Float64 scratch from the traced ComplexF64 rhs.
-    # (CenterField(grid) won't work here: allocations inside @compile produce
-    #  untraced ConcretePJRTArrays that KA kernels can't write to.)
     scratch = similar(rhs, real(eltype(rhs)))
-    launch!(architecture(solver), grid, :xyz, _compute_source_term_real!, scratch, grid, Ũ)
+    launch!(architecture(solver), grid, :xyz, _compute_source_term!, scratch, grid, Ũ)
     rhs .= scratch
     return nothing
-end
-
-# --- FourierTridiagonalPoissonSolver: same pattern, but kernel also multiplies by grid spacing ---
-
-@kernel function _fourier_tridiagonal_source_term_real!(scratch, ::XDirection, grid, Ũ)
-    i, j, k = @index(Global, NTuple)
-    active = !inactive_cell(i, j, k, grid)
-    u, v, w = Ũ
-    δ = divᶜᶜᶜ(i, j, k, grid, u, v, w)
-    @inbounds scratch[i, j, k] = active * Δxᶜᶜᶜ(i, j, k, grid) * δ
-end
-
-@kernel function _fourier_tridiagonal_source_term_real!(scratch, ::YDirection, grid, Ũ)
-    i, j, k = @index(Global, NTuple)
-    active = !inactive_cell(i, j, k, grid)
-    u, v, w = Ũ
-    δ = divᶜᶜᶜ(i, j, k, grid, u, v, w)
-    @inbounds scratch[i, j, k] = active * Δyᶜᶜᶜ(i, j, k, grid) * δ
-end
-
-@kernel function _fourier_tridiagonal_source_term_real!(scratch, ::ZDirection, grid, Ũ)
-    i, j, k = @index(Global, NTuple)
-    active = !inactive_cell(i, j, k, grid)
-    u, v, w = Ũ
-    δ = divᶜᶜᶜ(i, j, k, grid, u, v, w)
-    @inbounds scratch[i, j, k] = active * Δzᶜᶜᶜ(i, j, k, grid) * δ
 end
 
 function compute_source_term!(solver::FourierTridiagonalPoissonSolver{<:ReactantGrid}, ::Nothing, Ũ, Δt)
@@ -112,8 +80,33 @@ function compute_source_term!(solver::FourierTridiagonalPoissonSolver{<:Reactant
     grid = solver.grid
     tdir = solver.batched_tridiagonal_solver.tridiagonal_direction
     scratch = similar(rhs, real(eltype(rhs)))
-    launch!(architecture(solver), grid, :xyz, _fourier_tridiagonal_source_term_real!, scratch, tdir, grid, Ũ)
+    launch!(architecture(solver), grid, :xyz, _fourier_tridiagonal_source_term!, scratch, tdir, grid, Ũ)
     rhs .= scratch
+    return nothing
+end
+
+#####
+##### B.6.7 workaround: split complex tridiagonal solve into two real solves.
+##### The tridiagonal coefficients (a, b, c) are real, so real and imaginary parts decouple.
+##### Dispatches on ComplexReactantArray for ϕ so the original FourierTridiagonalPoissonSolver
+##### solve! is untouched — only the inner BatchedTridiagonalSolver call is intercepted.
+#####
+
+function solve!(ϕ::ComplexReactantArray, solver::BatchedTridiagonalSolver, rhs, args...)
+    T = real(eltype(ϕ))
+
+    # Build a real-typed solver (solver.t is scratch, must also be real to avoid B.6.7.1)
+    real_solver = BatchedTridiagonalSolver(solver.a, solver.b, solver.c, similar(solver.t, T),
+                                           solver.grid, solver.parameters, solver.tridiagonal_direction)
+
+    real_ϕ = similar(ϕ, T)
+    imag_ϕ = similar(ϕ, T)
+
+    # Solve independently for real and imaginary parts (coefficients a, b, c are real)
+    solve!(real_ϕ, real_solver, real.(rhs), args...)
+    solve!(imag_ϕ, real_solver, imag.(rhs), args...)
+
+    ϕ .= Complex.(real_ϕ, imag_ϕ)
     return nothing
 end
 
