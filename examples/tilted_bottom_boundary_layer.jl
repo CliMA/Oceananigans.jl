@@ -260,7 +260,3 @@ end
 nothing #hide
 
 # ![](tilted_bottom_boundary_layer.mp4)
-
-# Don't forget to close the NetCDF file!
-
-close(ds)

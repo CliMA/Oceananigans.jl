@@ -201,18 +201,14 @@ nothing #hide
 
 # ![](shallow_water_Bickley_jet.mp4)
 
-# It's always good practice to close the NetCDF files when we are done.
-
-close(ds)
-
 # Read in the `output_writer` for the scalar field (the norm of ``v``-velocity).
 
 ds2 = NCDataset(simulation.output_writers[:growth].filepath, "r")
 
-     t = ds2["time"][:]
-norm_v = ds2["perturbation_norm"][:]
+growth_timeseries = FieldTimeSeries(simulation.output_writers[:growth].filepath, "perturbation_norm")
+t = growth_timeseries.times
+norm_v = growth_timeseries[1]
 
-close(ds2)
 nothing #hide
 
 # We import the `fit` function from `Polynomials.jl` to compute the best-fit slope of the
