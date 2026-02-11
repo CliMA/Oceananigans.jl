@@ -83,7 +83,7 @@ UnaryOperation at (Center, Center, Center)
 ├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 └── tree:
     square_it at (Center, Center, Center) via identity
-    └── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
+    └── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
 ```
 """
 macro unary(ops...)

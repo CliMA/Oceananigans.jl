@@ -26,7 +26,10 @@ The `Checkpointer` is discussed in detail on a separate [section](@ref checkpoin
 
 Other important keyword arguments are
 
-* `indices` for outputting subregions, two- and one-dimensional slices of fields. Specifies the indices to write to disk with a `Tuple` of `Colon`, `UnitRange`,or `Int` elements. For example, `indices = (:, :, 1)` implies outputing ``x-y``-slices of the bottom-most index (`k=1`). Defaults to `(:, :, :)`, i.e., "all indices".
+* `indices` for outputting subregions, two- and one-dimensional slices of fields. Specifies the indices to write to disk with a `Tuple`
+  of `Colon`, `UnitRange`, or `Int` elements. For example, `indices = (:, :, 1)` implies outputing ``x``-``y`` slices of the bottom-most
+  index (`k=1`). Defaults to `(:, :, :)`, i.e., "all indices".
+
 * `with_halos :: Boolean`: whether to output the halos (`true`) or only the interior points (`false`; default).
 
 * `array_type` for specifying the type of the array that holds outputted field data. The default is
@@ -57,7 +60,7 @@ using NCDatasets
 
 grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
 
-model = NonhydrostaticModel(grid=grid, tracers=:c)
+model = NonhydrostaticModel(grid; tracers=:c)
 
 simulation = Simulation(model, Δt=12, stop_time=3600)
 
@@ -92,7 +95,7 @@ Nx, Ny, Nz = 16, 16, 16
 
 grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(1, 2, 3))
 
-model = NonhydrostaticModel(grid=grid)
+model = NonhydrostaticModel(grid)
 
 simulation = Simulation(model, Δt=1.25, stop_iteration=3)
 
@@ -134,7 +137,7 @@ using Oceananigans.Fields: interpolate!
 using NCDatasets
 
 grid = RectilinearGrid(size=(1, 1, 8), extent=(1, 1, 1));
-model = NonhydrostaticModel(; grid)
+model = NonhydrostaticModel(grid)
 
 coarse_grid = RectilinearGrid(size=(grid.Nx, grid.Ny, grid.Nz÷2), extent=(grid.Lx, grid.Ly, grid.Lz))
 coarse_u = Field{Face, Center, Center}(coarse_grid)
@@ -170,7 +173,7 @@ Write out 3D fields for u, v, w, and a tracer c, along with a horizontal average
 using Oceananigans
 using Oceananigans.Utils: hour, minute
 
-model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)), tracers=(:c,))
+model = NonhydrostaticModel(RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)), tracers=(:c,))
 simulation = Simulation(model, Δt=12, stop_time=1hour)
 
 function init_save_some_metadata!(file, model)
@@ -236,7 +239,9 @@ to time-average its outputs before writing them to disk:
 using Oceananigans
 using Oceananigans.Units
 
-model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+
+model = NonhydrostaticModel(grid)
 
 simulation = Simulation(model, Δt=10minutes, stop_time=30days)
 

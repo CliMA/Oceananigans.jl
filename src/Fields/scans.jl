@@ -51,7 +51,7 @@ function Field(scan::Scan;
 
     operand = scan.operand
     grid = operand.grid
-    LX, LY, LZ = loc = instantiated_location(scan)
+    loc = instantiated_location(scan)
     dims = filter_nothing_dims(scan.dims, loc)
     indices = scan_indices(scan.type, indices, dims)
 
@@ -149,7 +149,7 @@ max_c²[1:Nx, 1:Ny]
 ```
 """
 Reduction(reduce!, operand; dims) = Scan(Reducing(), reduce!, operand, dims)
-location(r::Reduction) = reduced_location(location(r.operand); dims=r.dims)
+Oceananigans.location(r::Reduction) = reduced_location(location(r.operand); dims=r.dims)
 
 #####
 ##### Accumulations (where the output has the same dimensions as the input)
@@ -184,23 +184,31 @@ cumsum_c²[1:Nx, 1:Ny, 1:Nz]
 # output
 3×3×3 Array{Float64, 3}:
 [:, :, 1] =
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+
+[:, :, 2] =
  0.25      0.694444  1.36111
  0.694444  1.36111   2.25
  1.36111   2.25      3.36111
 
-[:, :, 2] =
+[:, :, 3] =
  0.944444  2.05556  3.61111
  2.05556   3.61111  5.61111
  3.61111   5.61111  8.05556
-
-[:, :, 3] =
- 2.30556   4.30556   6.97222
- 4.30556   6.97222  10.3056
- 6.97222  10.3056   14.3056
 ```
 """
 Accumulation(accumulate!, operand; dims) = Scan(Accumulating(), accumulate!, operand, dims)
-location(a::Accumulation) = location(a.operand)
+
+flip(::Type{Face}) = Center
+flip(::Type{Center}) = Face
+
+function Oceananigans.location(a::Accumulation)
+    op_loc = location(a.operand)
+    loc = Tuple(d ∈ a.dims ? flip(op_loc[d]) : op_loc[d] for d=1:3)
+    return loc
+end
 
 #####
 ##### Some custom scans
@@ -242,26 +250,25 @@ function directional_accumulate!(op, B, A, dim, direction)
 
     # TODO: this won't work on windowed fields
     # To fix this we can change config, start, and finish.
-    if dim == 1
-        config = :yz
-        kernel = accumulate_x
+    config, kernel = if dim == 1
+        :yz, accumulate_x
     elseif dim == 2
-        config = :xz
-        kernel = accumulate_y
+        :xz, accumulate_y
     elseif dim == 3
-        config = :xy
-        kernel = accumulate_z
+        :xy, accumulate_z
     end
 
-    if direction isa Forward
-        start = 1
-        finish = size(B, dim)
+    start,finish = if direction isa Forward
+        1, size(B, dim)
     elseif direction isa Reverse
-        start = size(B, dim)
-        finish = 1
+        size(B, dim), 1
     end
 
-    launch!(arch, grid, config, kernel, op, B, A, start, finish, direction)
+    # Determine if we're "expanding" (output has more points than input)
+    # This affects which A index to use for reverse accumulation
+    expanding = size(B, dim) > size(A, dim)
+
+    launch!(arch, grid, config, kernel, op, B, A, start, finish, direction, expanding)
 
     return B
 end
@@ -272,38 +279,59 @@ end
     return StepRange(from, by, finish)
 end
 
-@kernel function accumulate_x(op, B, A, start, finish, dir)
+# TODO: extend to more operators
+neutral_element(::typeof(Base.min), T) = convert(T, +Inf)
+neutral_element(::typeof(Base.max), T) = convert(T, -Inf)
+neutral_element(::typeof(Base.add_sum), T) = convert(T, 0)
+
+# For computing the correct A index when locations are flipped (Center ↔ Face):
+# - Forward (all cases): use A[previous] (k-1)
+# - Reverse expanding (Center→Face, more output points): use A[current] (k)
+# - Reverse contracting (Face→Center, fewer output points): use A[previous] (k+1)
+@inline accumulate_A_index(::Forward, current, previous, expanding) = previous
+@inline accumulate_A_index(::Reverse, current, previous, expanding) = expanding ? current : previous
+
+@kernel function accumulate_x(op, B, A, start, finish, dir, expanding)
     j, k = @index(Global, NTuple)
 
-    # Initialize
-    @inbounds B[start, j, k] = Base.reduce_first(op, A[start, j, k])
+    # Initialize with neutral element
+    FT = eltype(B)
+    @inbounds B[start, j, k] = neutral_element(op, FT)
 
+    # Accumulate with correct A index based on direction and size relationship
     for i in accumulation_range(dir, start, finish)
         pr = decrement(dir, i)
-        @inbounds B[i, j, k] = op(B[pr, j, k], A[i, j, k])
+        Ai = accumulate_A_index(dir, i, pr, expanding)
+        @inbounds B[i, j, k] = op(B[pr, j, k], A[Ai, j, k])
     end
 end
 
-@kernel function accumulate_y(op, B, A, start, finish, dir)
+@kernel function accumulate_y(op, B, A, start, finish, dir, expanding)
     i, k = @index(Global, NTuple)
 
-    # Initialize
-    @inbounds B[i, start, k] = Base.reduce_first(op, A[i, start, k])
+    # Initialize with neutral element
+    FT = eltype(B)
+    @inbounds B[i, start, k] = neutral_element(op, FT)
 
+    # Accumulate with correct A index based on direction and size relationship
     for j in accumulation_range(dir, start, finish)
         pr = decrement(dir, j)
-        @inbounds B[i, j, k] = op(B[i, pr, k], A[i, j, k])
+        Aj = accumulate_A_index(dir, j, pr, expanding)
+        @inbounds B[i, j, k] = op(B[i, pr, k], A[i, Aj, k])
     end
 end
 
-@kernel function accumulate_z(op, B, A, start, finish, dir)
+@kernel function accumulate_z(op, B, A, start, finish, dir, expanding)
     i, j = @index(Global, NTuple)
 
-    # Initialize
-    @inbounds B[i, j, start] = Base.reduce_first(op, A[i, j, start])
+    # Initialize with neutral element
+    FT = eltype(B)
+    @inbounds B[i, j, start] = neutral_element(op, FT)
 
+    # Accumulate with correct A index based on direction and size relationship
     for k in accumulation_range(dir, start, finish)
         pr = decrement(dir, k)
-        @inbounds B[i, j, k] = op(B[i, j, pr], A[i, j, k])
+        Ak = accumulate_A_index(dir, k, pr, expanding)
+        @inbounds B[i, j, k] = op(B[i, j, pr], A[i, j, Ak])
     end
 end

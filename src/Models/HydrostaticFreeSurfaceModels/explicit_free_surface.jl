@@ -1,8 +1,10 @@
+using Adapt: Adapt
+using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ, Az⁻¹ᶜᶜᶜ, Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, δxᶜᶜᶜ, δyᶜᶜᶜ
-using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 
-using Adapt: Adapt
+import Oceananigans.DistributedComputations: synchronize_communication!
+import Oceananigans: prognostic_state, restore_prognostic_state!
 
 """
     struct ExplicitFreeSurface{E, T}
@@ -13,7 +15,7 @@ $(TYPEDFIELDS)
 """
 struct ExplicitFreeSurface{E, G} <: AbstractFreeSurface{E, G}
     "free surface elevation"
-    η :: E
+    displacement :: E
     "gravitational accelerations"
     gravitational_acceleration :: G
 end
@@ -22,10 +24,10 @@ ExplicitFreeSurface(; gravitational_acceleration=Oceananigans.defaults.gravitati
     ExplicitFreeSurface(nothing, gravitational_acceleration)
 
 Adapt.adapt_structure(to, free_surface::ExplicitFreeSurface) =
-    ExplicitFreeSurface(Adapt.adapt(to, free_surface.η), free_surface.gravitational_acceleration)
+    ExplicitFreeSurface(Adapt.adapt(to, free_surface.displacement), free_surface.gravitational_acceleration)
 
 on_architecture(to, free_surface::ExplicitFreeSurface) =
-    ExplicitFreeSurface(on_architecture(to, free_surface.η),
+    ExplicitFreeSurface(on_architecture(to, free_surface.displacement),
                         on_architecture(to, free_surface.gravitational_acceleration))
 
 # Internal function for HydrostaticFreeSurfaceModel
@@ -36,37 +38,55 @@ function materialize_free_surface(free_surface::ExplicitFreeSurface{Nothing}, ve
 end
 
 #####
+##### Tendency fields
+#####
+
+function hydrostatic_tendency_fields(velocities, free_surface::ExplicitFreeSurface, grid, tracer_names, bcs)
+    u = XFaceField(grid, boundary_conditions=bcs.u)
+    v = YFaceField(grid, boundary_conditions=bcs.v)
+    η = free_surface_displacement_field(velocities, free_surface, grid)
+    tracers = TracerFields(tracer_names, grid, bcs)
+    return merge((u=u, v=v, η=η), tracers)
+end
+
+#####
 ##### Kernel functions for HydrostaticFreeSurfaceModel
 #####
 
 @inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface::ExplicitFreeSurface) =
-    free_surface.gravitational_acceleration * ∂xᶠᶜᶜ(i, j, grid.Nz+1, grid, free_surface.η)
+    free_surface.gravitational_acceleration * ∂xᶠᶜᶜ(i, j, grid.Nz+1, grid, free_surface.displacement)
 
 @inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface::ExplicitFreeSurface) =
-    free_surface.gravitational_acceleration * ∂yᶜᶠᶜ(i, j, grid.Nz+1, grid, free_surface.η)
+    free_surface.gravitational_acceleration * ∂yᶜᶠᶜ(i, j, grid.Nz+1, grid, free_surface.displacement)
 
 #####
 ##### Time stepping
 #####
 
-step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::QuasiAdamsBashforth2TimeStepper, Δt) =
+# Only the free surface needs to be synchronized
+synchronize_communication!(free_surface::ExplicitFreeSurface) =
+    synchronize_communication!(free_surface.displacement)
+
+function step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::QuasiAdamsBashforth2TimeStepper, Δt)
     @apply_regionally explicit_ab2_step_free_surface!(free_surface, model, Δt)
+    fill_halo_regions!(free_surface.displacement; async=true)
+    return nothing
+end
 
-step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::SplitRungeKutta3TimeStepper, Δt) =
+function step_free_surface!(free_surface::ExplicitFreeSurface, model, timestepper::SplitRungeKuttaTimeStepper, Δt)
     @apply_regionally explicit_rk3_step_free_surface!(free_surface, model, Δt)
+    fill_halo_regions!(free_surface.displacement; async=true)
+    return nothing
+end
 
-@inline rk3_coeffs(ts, ::Val{1}) = (1,     0)
-@inline rk3_coeffs(ts, ::Val{2}) = (ts.γ², ts.ζ²)
-@inline rk3_coeffs(ts, ::Val{3}) = (ts.γ³, ts.ζ³)
-
-explicit_rk3_step_free_surface!(free_surface, model, Δt) = 
+explicit_rk3_step_free_surface!(free_surface, model, Δt) =
     launch!(model.architecture, model.grid, :xy,
-            _explicit_rk3_step_free_surface!, free_surface.η, Δt,
+            _explicit_rk3_step_free_surface!, free_surface.displacement, Δt,
             model.timestepper.Gⁿ.η, model.timestepper.Ψ⁻.η, size(model.grid, 3))
 
 explicit_ab2_step_free_surface!(free_surface, model, Δt) =
     launch!(model.architecture, model.grid, :xy,
-            _explicit_ab2_step_free_surface!, free_surface.η, Δt, model.timestepper.χ,
+            _explicit_ab2_step_free_surface!, free_surface.displacement, Δt, model.timestepper.χ,
             model.timestepper.Gⁿ.η, model.timestepper.G⁻.η, size(model.grid, 3))
 
 #####
@@ -137,8 +157,8 @@ end
 
 @inline function free_surface_vertical_velocity(i, j, k_top, grid, ::ZStarCoordinate, velocities)
     u, v, _ = velocities
-    δx_U = δxᶜᶜᶜ(i, j, k_top-1, grid, Δy_qᶠᶜᶜ, barotropic_U, nothing, u)
-    δy_V = δyᶜᶜᶜ(i, j, k_top-1, grid, Δx_qᶜᶠᶜ, barotropic_V, nothing, v)
+    δx_U = δxᶜᶜᶜ(i, j, k_top-1, grid, Δy_qᶠᶜᶜ, barotropic_U, u)
+    δy_V = δyᶜᶜᶜ(i, j, k_top-1, grid, Δx_qᶜᶠᶜ, barotropic_V, v)
     δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, k_top-1, grid)
     return - δh_U
 end
@@ -171,3 +191,18 @@ function compute_explicit_free_surface_tendency!(grid, model)
 
     return nothing
 end
+
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(fs::ExplicitFreeSurface)
+    return (; η = prognostic_state(fs.displacement))
+end
+
+function restore_prognostic_state!(restored::ExplicitFreeSurface, from)
+    restore_prognostic_state!(restored.η, from.η)
+    return restored
+end
+
+restore_prognostic_state!(::ExplicitFreeSurface, ::Nothing) = nothing

@@ -21,7 +21,7 @@ By default, momentum and tracer forcing functions are assumed to be functions of
 u_forcing(x, y, z, t) = exp(z) * cos(x) * sin(t)
 
 grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-model = NonhydrostaticModel(grid=grid, forcing=(u=u_forcing,))
+model = NonhydrostaticModel(grid; forcing=(u=u_forcing,))
 
 model.forcing.u
 
@@ -68,7 +68,7 @@ T_forcing_func(x, y, z, t, p) = - p.μ * exp(z / p.λ) * cos(p.k * x) * sin(p.ω
 T_forcing = Forcing(T_forcing_func, parameters=(μ=1, λ=0.5, k=2π, ω=4π))
 
 grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-model = NonhydrostaticModel(grid=grid, forcing=(u=u_forcing, T=T_forcing), buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+model = NonhydrostaticModel(grid; forcing=(u=u_forcing, T=T_forcing), buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
 model.forcing.T
 
@@ -113,7 +113,7 @@ S_forcing_func(x, y, z, t, S, μ) = - μ * S
 S_forcing = Forcing(S_forcing_func, parameters=0.01, field_dependencies=:S)
 
 grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-model = NonhydrostaticModel(grid=grid, forcing=(w=w_forcing, S=S_forcing), buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+model = NonhydrostaticModel(grid; forcing=(w=w_forcing, S=S_forcing), buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
 model.forcing.w
 
@@ -192,7 +192,7 @@ end
 u_forcing = Forcing(u_forcing_func, discrete_form=true, parameters=1e-3)
 
 grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-model = NonhydrostaticModel(grid=grid, tracers=:b, buoyancy=BuoyancyTracer(), forcing=(u=u_forcing, b=b_forcing))
+model = NonhydrostaticModel(grid; tracers=:b, buoyancy=BuoyancyTracer(), forcing=(u=u_forcing, b=b_forcing))
 
 model.forcing.b
 
@@ -227,7 +227,7 @@ of the velocity field are damped to zero everywhere on a time-scale of 1000 seco
 damping = Relaxation(rate = 1/1000)
 
 grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-model = NonhydrostaticModel(grid=grid, forcing=(u=damping, v=damping, w=damping))
+model = NonhydrostaticModel(grid; forcing=(u=damping, v=damping, w=damping))
 
 model.forcing.w
 
@@ -239,7 +239,7 @@ ContinuousForcing{Nothing} at (Center, Center, Face)
 ```
 
 The constructor for `Relaxation` accepts the keyword arguments `mask`, and `target`,
-which specify a `mask(x, y, z)` function that multiplies the forcing, and a `target(x, y, z)`
+which specify a `mask(x, y, z)` function that multiplies the forcing, and a `target(x, y, z, t)`
 distribution for the quantity in question. By default, `mask` uncovered the whole domain
 and `target` restores the field in question to 0
 
@@ -260,7 +260,7 @@ target_temperature = LinearTarget{:z}(intercept=surface_temperature, gradient=te
 uvw_sponge = Relaxation(rate=damping_rate, mask=bottom_mask)
   T_sponge = Relaxation(rate=damping_rate, mask=bottom_mask, target=target_temperature)
 
-model = NonhydrostaticModel(grid=grid, forcing=(u=uvw_sponge, v=uvw_sponge, w=uvw_sponge, T=T_sponge), buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+model = NonhydrostaticModel(grid; forcing=(u=uvw_sponge, v=uvw_sponge, w=uvw_sponge, T=T_sponge), buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
 model.forcing.u
 
@@ -343,7 +343,7 @@ computes `w_slip` ever iteration:
 ```jldoctest sinking
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 
-model = NonhydrostaticModel(; grid, tracers=(:b, :P), forcing=(; P=sinking))
+model = NonhydrostaticModel(grid; tracers=(:b, :P), forcing=(; P=sinking))
 simulation = Simulation(model; Δt=1, stop_iteration=100)
 
 # Build abstract operation for slip velocity

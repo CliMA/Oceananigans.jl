@@ -1,14 +1,11 @@
-using Oceananigans.Grids: topology, node, _node, φnode, λnode,
+using Oceananigans.Grids: topology, _node, φnode, φnodes, λnode, λnodes,
                           XFlatGrid, YFlatGrid, ZFlatGrid,
                           XYFlatGrid, YZFlatGrid, XZFlatGrid,
                           XRegularRG, YRegularRG, ZRegularRG,
                           XRegularLLG, YRegularLLG, ZRegularLLG,
-                          ZRegOrthogonalSphericalShellGrid,
-                          RectilinearGrid, LatitudeLongitudeGrid
+                          ZRegOrthogonalSphericalShellGrid
 
 using Oceananigans.Operators: Δx, Δy, Δz
-
-using Oceananigans.Architectures: child_architecture
 
 # GPU-compatile middle point calculation
 @inline middle_point(l, h) = Base.unsafe_trunc(Int, (l + h) / 2)
@@ -337,12 +334,22 @@ end
 """
     interpolate(to_node, from_field)
 
-Interpolate `field` to the physical point `(x, y, z)` using trilinear interpolation.
+Interpolate the `from_field` `to_node`.
+
+`to_node` is an N-tuple corresponding the dimensionality of `from_field`:
+
+* `to_node = (x, y, z)` for 3D fields and trilinear interpolation,
+* `to_node = (x, y)`, `(x, z)`, or `(y, z)` for 2D fields and bilinear interpolation,
+* `to_node = (x,)`, `(y,)`, or `(z,)` for 1D fields and linear interpolation.
+
+For 1D interpolation, `to_node` may also be a `Number`.
 """
 @inline function interpolate(to_node, from_field)
     from_loc = Tuple(L() for L in location(from_field))
     return interpolate(to_node, from_field, from_loc, from_field.grid)
 end
+
+@inline interpolate(to_node::Number, from_field) = interpolate(tuple(to_node), from_field)
 
 @inline flatten_node(x, y, z) = (x, y, z)
 
@@ -357,6 +364,7 @@ end
 @inline flatten_node(::Nothing, ::Nothing, ::Nothing) = tuple()
 
 @inline flatten_node(x, y) = (x, y)
+@inline flatten_node(::Nothing, ::Nothing) = tuple()
 @inline flatten_node(::Nothing, y) = flatten_node(y)
 @inline flatten_node(x, ::Nothing) = flatten_node(x)
 
@@ -410,4 +418,3 @@ function interpolate!(to_field::Field, from_field::AbstractField)
 
     return to_field
 end
-

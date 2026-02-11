@@ -18,7 +18,7 @@ grid = RotatedLatitudeLongitudeGrid(size = (Nx, Ny, Nz),
                                     z = (-1000, 0),
                                     topology = (Bounded, Bounded, Bounded))
 
-model = HydrostaticFreeSurfaceModel(; grid,
+model = HydrostaticFreeSurfaceModel(grid;
                                     coriolis = HydrostaticSphericalCoriolis(),
                                     momentum_advection = WENOVectorInvariant())
 
@@ -105,4 +105,3 @@ frames = 1:length(times)
 record(fig, "polar_turbulence.mp4", frames, framerate = 12) do i
     n[] = i
 end
-

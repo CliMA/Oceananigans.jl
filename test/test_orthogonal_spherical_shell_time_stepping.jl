@@ -25,19 +25,19 @@ using Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid
 
     momentum_advection = VectorInvariant()
     closure = ScalarDiffusivity(ν=2e-4, κ=2e-4)
-    m1 = HydrostaticFreeSurfaceModel(grid=g1; closure, momentum_advection)
-    m2 = HydrostaticFreeSurfaceModel(grid=g2; closure, momentum_advection)
+    m1 = HydrostaticFreeSurfaceModel(g1; closure, momentum_advection)
+    m2 = HydrostaticFreeSurfaceModel(g2; closure, momentum_advection)
 
     Random.seed!(123)
     ϵᵢ(λ, φ, z) = 1e-6 * randn()
     set!(m1, η=ηᵢ, u=ϵᵢ, v=ϵᵢ)
 
-    set!(m2, η = interior(m1.free_surface.η),
+    set!(m2, η = interior(m1.free_surface.displacement),
              u = interior(m1.velocities.u),
              v = interior(m1.velocities.v),
              intrinsic_velocities = true)
 
-    @test interior(m1.free_surface.η) == interior(m2.free_surface.η)
+    @test interior(m1.free_surface.displacement) == interior(m2.free_surface.displacement)
     @test interior(m1.velocities.u)   == interior(m2.velocities.u)
     @test interior(m1.velocities.v)   == interior(m2.velocities.v)
 
@@ -46,8 +46,7 @@ using Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid
         run!(simulation)
     end
 
-    @test interior(m1.free_surface.η) == interior(m2.free_surface.η)
+    @test interior(m1.free_surface.displacement) == interior(m2.free_surface.displacement)
     @test interior(m1.velocities.u)   == interior(m2.velocities.u)
     @test interior(m1.velocities.v)   == interior(m2.velocities.v)
 end
-

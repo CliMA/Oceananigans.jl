@@ -72,8 +72,7 @@ preconditioner = nonhydrostatic_pressure_solver(arch, with_number_type(Float32, 
 pressure_solver = ConjugateGradientPoissonSolver(
     grid, maxiter=1000, preconditioner=preconditioner)
 
-model = NonhydrostaticModel(;
-    grid,
+model = NonhydrostaticModel(grid;
     advection = WENO(),
     tracers = (:c, ),
     forcing = (; c = c_forcing, u = u_forcing),

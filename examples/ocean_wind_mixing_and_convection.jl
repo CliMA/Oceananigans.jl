@@ -141,19 +141,35 @@ S_bcs = FieldBoundaryConditions(top=evaporation_bc)
 
 # ## Model instantiation
 #
-# We fill in the final details of the model here, i.e., Coriolis forces,
-# and the `AnisotropicMinimumDissipation` closure for large eddy simulation
-# to model the effect of turbulent motions at scales smaller than the grid scale
-# that are not explicitly resolved.
+# We fill in the final details of the model here, i.e., Coriolis forces, advection scheme, and use
+# the `DynamicSmagorinsky` closure for large eddy simulation. The effect of both the `WENO`
+# advection scheme and `DynamicSmagorinsky` turbulence closure is to dissipate variance at the grid
+# scale. In the context of large eddy simulation, this dissipation may be interpreted as
+# approximating a forward cascade of kinetic energy from resolved motions into motions that are
+# smaller than the grid scale and not explicitly resolved. Note that dissipation of grid-scale
+# variance can be achieved by the `WENO` advection scheme alone with `closure = nothing`. Typically,
+# using an explicit `closure = DynamicSmagorinsky()` will produce stronger dissipation of kinetic
+# energy; whether or not this leads to a higher quality numerical solution depends on the context.
+# An explicit `closure = DynamicSmagorinsky()` is also useful for diagnosing the kinetic energy
+# dissipation rate (the dissipation rate associated with `WENO` advection can be computed in
+# principle, but is challenging and relatively computationally intensive).
+#
+# In the `DynamicSmagorinsky` closure used below, a dynamic, multi-scale method is used to estimate
+# the Smagorinsky coefficient at every point in time and space. Specifically, we use an algorithm
+# that assumes the coefficient does not depend on the spatial scale of the implicit filter that
+# separates the "true", underlying, and unresolved flow from the "filtered", or computed flow. This
+# implementation corresponds to the "scale-invariant" formulation described by [Bou-Zeid et al.
+# (2005)](@cite BouZeid05).
 
-model = NonhydrostaticModel(; grid, buoyancy,
+model = NonhydrostaticModel(grid; buoyancy,
+                            advection = WENO(order=7),
                             tracers = (:T, :S),
                             coriolis = FPlane(f=1e-4),
-                            closure = AnisotropicMinimumDissipation(),
+                            closure = DynamicSmagorinsky(),
                             boundary_conditions = (u=u_bcs, T=T_bcs, S=S_bcs))
 
-# Note: To use the Smagorinsky-Lilly turbulence closure (with a constant model coefficient) rather than
-# `AnisotropicMinimumDissipation`, use `closure = SmagorinskyLilly()` in the model constructor.
+# Note: To use the (constant-coefficient) Smagorinsky-Lilly turbulence closure
+# rather than `DynamicSmagorinsky`, use `closure = SmagorinskyLilly()` in the model constructor.
 
 # ## Initial conditions
 #
@@ -165,7 +181,7 @@ model = NonhydrostaticModel(; grid, buoyancy,
 Ξ(z) = randn() * z / model.grid.Lz * (1 + z / model.grid.Lz) # noise
 
 ## Temperature initial condition: a stable density gradient with random noise superposed.
-Tᵢ(x, y, z) = 20 + dTdz * z + dTdz * model.grid.Lz * 1e-6 * Ξ(z)
+Tᵢ(x, y, z) = 20 + dTdz * z + dTdz * model.grid.Lz * 2e-6 * Ξ(z)
 
 ## Velocity initial condition: random noise scaled by the friction velocity.
 uᵢ(x, y, z) = sqrt(abs(τx)) * 1e-3 * Ξ(z)
@@ -181,10 +197,9 @@ set!(model, u=uᵢ, w=uᵢ, T=Tᵢ, S=35)
 simulation = Simulation(model, Δt=10, stop_time=2hours)
 
 # The `TimeStepWizard` helps ensure stable time-stepping
-# with a Courant-Freidrichs-Lewy (CFL) number of 1.0.
+# with a Courant-Freidrichs-Lewy (CFL) number of 0.7.
 
-wizard = TimeStepWizard(cfl=1, max_change=1.1, max_Δt=1minute)
-simulation.callbacks[:wizard] = Callback(wizard, IterationInterval(10))
+conjure_time_step_wizard!(simulation, cfl=0.7)
 
 # Nice progress messaging is helpful:
 
@@ -193,7 +208,7 @@ progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, max(|w|) = 
                                 iteration(sim), prettytime(sim), prettytime(sim.Δt),
                                 maximum(abs, sim.model.velocities.w), prettytime(sim.run_wall_time))
 
-add_callback!(simulation, progress_message, IterationInterval(40))
+add_callback!(simulation, progress_message, IterationInterval(200))
 
 # We then set up the simulation:
 
@@ -233,16 +248,12 @@ time_series = (w = FieldTimeSeries(filepath, "w"),
                S = FieldTimeSeries(filepath, "S"),
                νₑ = FieldTimeSeries(filepath, "νₑ"))
 
-# We start the animation at ``t = 10`` minutes since things are pretty boring till then:
-
-times = time_series.w.times
-intro = searchsortedfirst(times, 10minutes)
-
 # We are now ready to animate using Makie. We use Makie's `Observable` to animate
 # the data. To dive into how `Observable`s work we refer to
 # [Makie.jl's Documentation](https://docs.makie.org/stable/explanations/observables).
 
-n = Observable(intro)
+times = time_series.w.times
+n = Observable(length(times))
 
  wₙ = @lift time_series.w[$n]
  Tₙ = @lift time_series.T[$n]
@@ -285,8 +296,10 @@ fig[1, 1:4] = Label(fig, title, fontsize=24, tellwidth=false)
 current_figure() #hide
 fig
 
-# And now record a movie.
+# And now record a movie. We start the animation at ``t = 10`` minutes since
+# things are pretty boring till then:
 
+intro = searchsortedfirst(times, 10minutes)
 frames = intro:length(times)
 
 @info "Making a motion picture of ocean wind mixing and convection..."

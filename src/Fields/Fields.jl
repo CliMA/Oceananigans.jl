@@ -9,19 +9,20 @@ export VelocityFields, TracerFields, tracernames
 export interpolate
 
 using OffsetArrays: OffsetArray
+using Adapt: Adapt, adapt
 
-using Oceananigans.Architectures
-using Oceananigans.Grids
-using Oceananigans.BoundaryConditions
-using Oceananigans.Utils
-
-import Oceananigans.Architectures: on_architecture
-import Oceananigans: location, instantiated_location
+using Oceananigans: Oceananigans, instantiated_location, location
+using Oceananigans.Architectures: Architectures, child_architecture, on_architecture
+using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!
+using Oceananigans.Grids: Grids, AbstractGrid, Bounded, Center, Face, LatitudeLongitudeGrid,
+    RectilinearGrid, new_data, interior_indices, total_size, topology, nodes, xnodes,
+    ynodes, znodes, node, xnode, ynode, znode
+using Oceananigans.Utils: KernelParameters, launch!, prettysummary
 
 "Return the location `(LX, LY, LZ)` of an `AbstractField{LX, LY, LZ}`."
-@inline location(a) = (Nothing, Nothing, Nothing) # used in AbstractOperations for location inference
-@inline location(a, i) = location(a)[i]
-@inline function instantiated_location(a)
+@inline Oceananigans.location(a) = (Nothing, Nothing, Nothing) # used in AbstractOperations for location inference
+@inline Oceananigans.location(a, i) = location(a)[i]
+@inline function Oceananigans.instantiated_location(a)
     LX, LY, LZ = location(a)
     return (LX(), LY(), LZ())
 end
@@ -56,7 +57,7 @@ Build a field from array `a` at `loc` and on `grid`.
 end
 
 # Build a field off of the current data
-@inline function field(loc, a::OffsetArray, grid) 
+@inline function field(loc, a::OffsetArray, grid)
     loc = instantiate(loc)
     a = on_architecture(architecture(grid), a)
     return Field(loc, grid; data=a)
@@ -70,7 +71,18 @@ end
 @inline function field(loc, f::Field, grid)
     loc = instantiate(loc)
     loc === instantiated_location(f) && grid === f.grid && return f
-    error("Cannot construct field at $loc and on $grid from $f")
+
+    msg = """
+    Cannot reconstruct field, originally located at ($(instantiated_location(f))), at $loc.
+
+    Destination grid:
+    $grid
+
+    Source grid:
+    $(f.grid)
+    """
+
+    return throw(ArgumentError(msg))
 end
 
 include("set!.jl")

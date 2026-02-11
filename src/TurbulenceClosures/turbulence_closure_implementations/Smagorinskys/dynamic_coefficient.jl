@@ -1,6 +1,10 @@
 using Oceananigans.Architectures: architecture
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: CenterField, Field, compute!, interpolate, xnode, ynode, znode
+using Oceananigans.Utils: time_difference_seconds
 using Statistics: mean
+
+import Oceananigans: prognostic_state, restore_prognostic_state!
 
 mutable struct DynamicCoefficient{A, FT, S}
     averaging :: A
@@ -35,6 +39,16 @@ For example, `averaging = (1, 2)` invokes averaging in the ``x, y`` directions.
 The coefficient is updated according to `schedule`. Less frequent updates than `IterationInterval(1)`
 may be used as a performance optimization for cases where dynamic coefficient computation is relatively expensive.
 `minimum_numerator` defines the minimum value that is acceptable in the denominator of the final calculation.
+
+Multi-stage timestepper compatibility
+=====================================
+
+For multi-stage timesteppers like `RungeKutta3`, the dynamic coefficient computation is performed
+only at the final stage of each iteration (when `clock.stage == 1`).
+
+This is necessary because RK3 calls `update_state!` multiple times per iteration which for
+`LagrangianAveraging` would apply the time-average multiple times per iteration with small
+fractional Δt values.
 
 Examples
 ========
@@ -301,12 +315,21 @@ function compute_coefficient_fields!(closure_fields, closure::DirectionallyAvera
     arch = architecture(grid)
     velocities = model.velocities
     cˢ = closure.coefficient
+    clock = model.clock
+
+    # For RK3 only compute coefficients at the final stage.
+    clock.stage == 1 || return nothing
 
     if cˢ.schedule(model)
         Σ = closure_fields.Σ
         Σ̄ = closure_fields.Σ̄
         launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, velocities...)
         launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, velocities...)
+
+        # Fill Σ, Σ̄ halos because the M tensor computation uses `filter`
+        # which reads from neighboring cells (including halo cells).
+        fill_halo_regions!(Σ; only_local_halos=true)
+        fill_halo_regions!(Σ̄; only_local_halos=true)
 
         LM = closure_fields.LM
         MM = closure_fields.MM
@@ -321,7 +344,7 @@ function compute_coefficient_fields!(closure_fields, closure::DirectionallyAvera
     return nothing
 end
 
-function allocate_coefficient_fields(closure::DirectionallyAveragedDynamicSmagorinsky, grid)
+function allocate_coefficient_fields(closure::DirectionallyAveragedDynamicSmagorinsky, grid, clock)
     LM = CenterField(grid)
     MM = CenterField(grid)
 
@@ -399,17 +422,29 @@ function compute_coefficient_fields!(closure_fields, closure::LagrangianAveraged
     arch = architecture(grid)
     clock = model.clock
     cˢ = closure.coefficient
-    t⁻ = closure_fields.previous_compute_time
+    previous_compute_time = closure_fields.previous_compute_time
     u, v, w = model.velocities
 
-    Δt = clock.time - t⁻[]
-    t⁻[] = model.clock.time
+    # For RK3 only compute coefficients at the final stage.
+    clock.stage == 1 || return nothing
+
+    Δt = time_difference_seconds(clock.time, previous_compute_time[])
+
+    # After restoring from a checkpoint, previous_compute_time matches clock.time
+    # (since both QAB2 and RK3 call update_state! after tick!), so Δt == 0.
+    # Skip the computation in that case — the restored fields are already correct.
+    Δt == 0 && return nothing
 
     if cˢ.schedule(model)
         Σ = closure_fields.Σ
         Σ̄ = closure_fields.Σ̄
         launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, u, v, w)
         launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, u, v, w)
+
+        # Fill Σ, Σ̄ halos because the M tensor computation uses `filter`
+        # which reads from neighboring cells (including halo cells).
+        fill_halo_regions!(Σ; only_local_halos=true)
+        fill_halo_regions!(Σ̄; only_local_halos=true)
 
         parent(closure_fields.𝒥ᴸᴹ⁻) .= parent(closure_fields.𝒥ᴸᴹ)
         parent(closure_fields.𝒥ᴹᴹ⁻) .= parent(closure_fields.𝒥ᴹᴹ)
@@ -420,21 +455,29 @@ function compute_coefficient_fields!(closure_fields, closure::LagrangianAveraged
         𝒥ᴹᴹ  = closure_fields.𝒥ᴹᴹ
         𝒥ᴸᴹ_min = cˢ.minimum_numerator
 
-        if !isfinite(clock.last_Δt) || Δt == 0 # first time-step
+        if isnan(previous_compute_time[])
+            # Compute instantaneous LM, MM and spatially average for initialization.
+            # Don't commit previous_compute_time at iteration 0 because the model
+            # constructor calls update_state! before set! populates the velocities.
+            # This allows run! → initialize! to re-compute with the actual velocities.
             launch!(arch, grid, :xyz, _compute_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, Σ, Σ̄, grid, u, v, w)
             parent(𝒥ᴸᴹ) .= max(mean(𝒥ᴸᴹ), 𝒥ᴸᴹ_min)
             parent(𝒥ᴹᴹ) .= mean(𝒥ᴹᴹ)
+
+            if clock.iteration > 0
+                previous_compute_time[] = clock.time
+            end
         else
+            previous_compute_time[] = clock.time
             launch!(arch, grid, :xyz,
                     _lagrangian_average_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, 𝒥ᴸᴹ_min, Σ, Σ̄, grid, Δt, u, v, w)
-
         end
     end
 
     return nothing
 end
 
-function allocate_coefficient_fields(closure::LagrangianAveragedDynamicSmagorinsky, grid)
+function allocate_coefficient_fields(closure::LagrangianAveragedDynamicSmagorinsky, grid, clock)
     𝒥ᴸᴹ⁻ = CenterField(grid)
     𝒥ᴹᴹ⁻ = CenterField(grid)
 
@@ -444,7 +487,45 @@ function allocate_coefficient_fields(closure::LagrangianAveragedDynamicSmagorins
     Σ = CenterField(grid)
     Σ̄ = CenterField(grid)
 
-    previous_compute_time = Ref(zero(grid))
+    previous_compute_time = Ref(oftype(clock.time, NaN))
 
     return (; Σ, Σ̄, 𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, previous_compute_time)
 end
+
+#####
+##### Checkpointing
+#####
+
+const DirectionallyAveragedSmagorinskyFields = NamedTuple{(:νₑ, :Σ, :Σ̄, :LM, :MM, :𝒥ᴸᴹ, :𝒥ᴹᴹ)}
+const LagrangianAveragedSmagorinskyFields = NamedTuple{(:νₑ, :Σ, :Σ̄, :𝒥ᴸᴹ, :𝒥ᴹᴹ, :𝒥ᴸᴹ⁻, :𝒥ᴹᴹ⁻, :previous_compute_time)}
+
+function prognostic_state(cf::DirectionallyAveragedSmagorinskyFields)
+    return (𝒥ᴸᴹ = prognostic_state(cf.𝒥ᴸᴹ),
+            𝒥ᴹᴹ = prognostic_state(cf.𝒥ᴹᴹ))
+end
+
+function restore_prognostic_state!(restored::DirectionallyAveragedSmagorinskyFields, from)
+    restore_prognostic_state!(restored.𝒥ᴸᴹ, from.𝒥ᴸᴹ)
+    restore_prognostic_state!(restored.𝒥ᴹᴹ, from.𝒥ᴹᴹ)
+    return restored
+end
+
+function prognostic_state(cf::LagrangianAveragedSmagorinskyFields)
+    return (𝒥ᴸᴹ = prognostic_state(cf.𝒥ᴸᴹ),
+            𝒥ᴹᴹ = prognostic_state(cf.𝒥ᴹᴹ),
+            𝒥ᴸᴹ⁻ = prognostic_state(cf.𝒥ᴸᴹ⁻),
+            𝒥ᴹᴹ⁻ = prognostic_state(cf.𝒥ᴹᴹ⁻),
+            previous_compute_time = cf.previous_compute_time[])
+end
+
+function restore_prognostic_state!(restored::LagrangianAveragedSmagorinskyFields, from)
+    restore_prognostic_state!(restored.𝒥ᴸᴹ, from.𝒥ᴸᴹ)
+    restore_prognostic_state!(restored.𝒥ᴹᴹ, from.𝒥ᴹᴹ)
+    restore_prognostic_state!(restored.𝒥ᴸᴹ⁻, from.𝒥ᴸᴹ⁻)
+    restore_prognostic_state!(restored.𝒥ᴹᴹ⁻, from.𝒥ᴹᴹ⁻)
+    restored.previous_compute_time[] = from.previous_compute_time
+    return restored
+end
+
+restore_prognostic_state!(::DirectionallyAveragedSmagorinskyFields, ::Nothing) = nothing
+restore_prognostic_state!(::LagrangianAveragedSmagorinskyFields, ::Nothing) = nothing

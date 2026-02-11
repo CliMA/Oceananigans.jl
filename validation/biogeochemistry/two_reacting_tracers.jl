@@ -13,10 +13,9 @@ a_to_b(z, t, a, b) = - a * b
 a_reaction = Forcing(a_to_b, field_dependencies=(:a, :b))
 b_reaction = Forcing(b_to_a, field_dependencies=(:a, :b))
 
-model = HydrostaticFreeSurfaceModel(; grid,
+model = HydrostaticFreeSurfaceModel(grid;
                                     velocities = nothing,
                                     tracers = (:a, :b),
-                                    buoyancy = nothing,
                                     closure = ScalarDiffusivity(κ=1e-2),
                                     forcing = (a=(a_reaction, sinking), b=(b_reaction, rising)))
 
@@ -57,4 +56,3 @@ record(fig, "tracer_reactions.mp4", 1:100, framerate=24) do _
     run!(simulation)
     update_plot!(simulation)
 end
-
