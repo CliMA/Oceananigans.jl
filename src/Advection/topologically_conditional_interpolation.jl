@@ -60,7 +60,12 @@ const AGZ = AUG{<:Any, <:Any, <:Any, <:BT}
 @inline reduced_center_order(i, ::Type{LeftConnected},  N, B, bias) = max(1, min(B, N+1-i))
 @inline reduced_center_order(i, ::Type{Bounded},        N, B, bias) = max(1, min(B, i, N+1-i))
 
-const A{B} = AbstractAdvectionScheme{B} 
+const A{B} = AbstractAdvectionScheme{B}
+
+# Clamping of reduced order for schemes with a minimum buffer (e.g., WENO with minimum_buffer_upwind_order).
+# When red_order drops below the minimum, set it to 0 (sentinel for centered 2nd-order fallback).
+@inline clamp_reduced_order(scheme, red_order) = red_order
+@inline clamp_reduced_order(scheme::WENO, red_order) = ifelse(red_order < scheme.minimum_buffer_upwind_order, 0, red_order)
 
 # Fallback for periodic underlying grids
 @inline compute_face_reduced_order_x(i, j, k, grid::AUG, ::A{B}, bias) where B = B
@@ -84,31 +89,37 @@ const A{B} = AbstractAdvectionScheme{B}
 
 @inline function _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, bias, args...)
     red_order = compute_face_reduced_order_x(i, j, k, grid, scheme, bias)
+    red_order = clamp_reduced_order(scheme, red_order)
     return biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, red_order, bias, args...)
 end
 
-@inline function _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, bias, args...) 
+@inline function _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, bias, args...)
     red_order = compute_face_reduced_order_y(i, j, k, grid, scheme, bias)
+    red_order = clamp_reduced_order(scheme, red_order)
     return biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, red_order, bias, args...)
 end
 
 @inline function _biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, bias, args...)
     red_order = compute_face_reduced_order_z(i, j, k, grid, scheme, bias)
+    red_order = clamp_reduced_order(scheme, red_order)
     return biased_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, red_order, bias, args...)
 end
 
 @inline function _biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, bias, args...)
     red_order = compute_center_reduced_order_x(i, j, k, grid, scheme, bias)
+    red_order = clamp_reduced_order(scheme, red_order)
     return biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, red_order, bias, args...)
 end
 
-@inline function _biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, bias, args...) 
+@inline function _biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, bias, args...)
     red_order = compute_center_reduced_order_y(i, j, k, grid, scheme, bias)
+    red_order = clamp_reduced_order(scheme, red_order)
     return biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, red_order, bias, args...)
 end
 
-@inline function _biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, bias, args...) 
+@inline function _biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, bias, args...)
     red_order = compute_center_reduced_order_z(i, j, k, grid, scheme, bias)
+    red_order = clamp_reduced_order(scheme, red_order)
     return biased_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, red_order, bias, args...)
 end
 

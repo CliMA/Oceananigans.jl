@@ -122,119 +122,124 @@ const SS665 = Int32.((01152561, -12950184, 29442256, -33918804, 19834350, -04712
         In the above case, if `red_order == 2`, then all the coefficients corresponding to ψ[i for i > 2]
         are zero. This last operation is metaprogrammed in the function `metaprogrammed_smoothness_operation`
         """
-        # 3rd order WENO, restricted to order 1 (does not matter the restriction order here)
-        @inline smoothness_coefficients(::WENO{2}, red_order, ::Val{0}) = 
-                ifelse(red_order == 1, $(SS210),    # Order 1 (Centered)
-                                       $(SS220))    # Order 3
+        # 3rd order WENO
+        @inline smoothness_coefficients(::WENO{2}, red_order, ::Val{0}) =
+                ifelse(red_order == 0, $(SS20M),     # Centered (zero smoothness)
+                ifelse(red_order == 1, $(SS210),     # Order 1
+                                       $(SS220)))    # Order 3
 
-        @inline smoothness_coefficients(::WENO{2}, red_order, ::Val{1}) = 
-                ifelse(red_order == 1, $(SS20M),    # Order 1 (Centered)
-                                       $(SS221))    # Order 3
+        @inline smoothness_coefficients(::WENO{2}, red_order, ::Val{1}) =
+                ifelse(red_order  < 2, $(SS20M),      # Centered / Order 1
+                                       $(SS221))      # Order 3
 
-        # 5th order WENO, restricted to orders 3 and 1
+        # 5th order WENO
         @inline smoothness_coefficients(::WENO{3}, red_order, ::Val{0}) =
-                ifelse(red_order == 1, $(SS310),     # Order 1 (Centered)
-                ifelse(red_order == 2, $(SS320),     # Order 3                                           
-                                       $(SS330)))    # Order 5
+                ifelse(red_order == 0, $(SS30M),     # Centered (zero smoothness)
+                ifelse(red_order == 1, $(SS310),     # Order 1
+                ifelse(red_order == 2, $(SS320),     # Order 3
+                                       $(SS330))))   # Order 5
 
-        @inline smoothness_coefficients(::WENO{3}, red_order, ::Val{1}) = 
-                ifelse(red_order == 1, $(SS30M),     # Order 1 (Centered)
+        @inline smoothness_coefficients(::WENO{3}, red_order, ::Val{1}) =
+                ifelse(red_order  < 2, $(SS30M),     # Centered / Order 1
                 ifelse(red_order == 2, $(SS321),     # Order 3
                                        $(SS331)))    # Order 5
 
-        @inline smoothness_coefficients(::WENO{3}, red_order, ::Val{2}) = 
-                ifelse(red_order <  3, $(SS30M),     # Order ≤ 3
+        @inline smoothness_coefficients(::WENO{3}, red_order, ::Val{2}) =
+                ifelse(red_order  < 3, $(SS30M),     # Order ≤ 3
                                        $(SS332))     # Order 5
 
-        # 7th order WENO, restricted to orders 5, 3, and 1
-        @inline smoothness_coefficients(::WENO{4}, red_order, ::Val{0}) = 
-                ifelse(red_order == 1, $(SS410),     # Order 1 (Centered)                             
+        # 7th order WENO
+        @inline smoothness_coefficients(::WENO{4}, red_order, ::Val{0}) =
+                ifelse(red_order == 0, $(SS40M),     # Centered (zero smoothness)
+                ifelse(red_order == 1, $(SS410),     # Order 1
                 ifelse(red_order == 2, $(SS420),     # Order 3
                 ifelse(red_order == 3, $(SS430),     # Order 5
-                                       $(SS440))))   # Order 7
+                                       $(SS440))))) # Order 7
 
-        @inline smoothness_coefficients(::WENO{4}, red_order, ::Val{1}) = 
-                ifelse(red_order == 1, $(SS40M),     # Order 1 (Centered)
+        @inline smoothness_coefficients(::WENO{4}, red_order, ::Val{1}) =
+                ifelse(red_order  < 2, $(SS40M),     # Centered / Order 1
                 ifelse(red_order == 2, $(SS421),     # Order 3
                 ifelse(red_order == 3, $(SS431),     # Order 5
                                        $(SS441))))   # Order 7
 
-        @inline smoothness_coefficients(::WENO{4}, red_order, ::Val{2}) = 
-                ifelse(red_order <  3, $(SS40M),     # Order ≤ 3                    
+        @inline smoothness_coefficients(::WENO{4}, red_order, ::Val{2}) =
+                ifelse(red_order  < 3, $(SS40M),     # Order ≤ 3
                 ifelse(red_order == 3, $(SS432),     # Order 5
                                        $(SS442)))    # Order 7
 
-        @inline smoothness_coefficients(::WENO{4}, red_order, ::Val{3}) = 
-                ifelse(red_order <  4, $(SS40M),     # Order ≤ 5                                              
+        @inline smoothness_coefficients(::WENO{4}, red_order, ::Val{3}) =
+                ifelse(red_order  < 4, $(SS40M),     # Order ≤ 5
                                        $(SS443))     # Order 7
 
-        # 9th order WENO, restricted to orders 7, 5, 3, and 1
-        @inline smoothness_coefficients(::WENO{5}, red_order, ::Val{0}) = 
-                ifelse(red_order == 1, $(SS510),     # Order 1 (Centered)                             
-                ifelse(red_order == 2, $(SS520),     # Order 3       
+        # 9th order WENO
+        @inline smoothness_coefficients(::WENO{5}, red_order, ::Val{0}) =
+                ifelse(red_order == 0, $(SS50M),     # Centered (zero smoothness)
+                ifelse(red_order == 1, $(SS510),     # Order 1
+                ifelse(red_order == 2, $(SS520),     # Order 3
                 ifelse(red_order == 3, $(SS530),     # Order 5
                 ifelse(red_order == 4, $(SS540),     # Order 7
-                                       $(SS550)))))  # Order 9
+                                       $(SS550)))))) # Order 9
 
-        @inline smoothness_coefficients(::WENO{5}, red_order, ::Val{1}) = 
-                ifelse(red_order == 1, $(SS50M),     # Order 1 (Centered)                             
-                ifelse(red_order == 2, $(SS521),     # Order 3       
+        @inline smoothness_coefficients(::WENO{5}, red_order, ::Val{1}) =
+                ifelse(red_order  < 2, $(SS50M),     # Centered / Order 1
+                ifelse(red_order == 2, $(SS521),     # Order 3
                 ifelse(red_order == 3, $(SS531),     # Order 5
                 ifelse(red_order == 4, $(SS541),     # Order 7
                                        $(SS551)))))  # Order 9
 
-        @inline smoothness_coefficients(::WENO{5}, red_order, ::Val{2}) = 
-                ifelse(red_order <  3, $(SS50M),     # Order ≤ 3                            
+        @inline smoothness_coefficients(::WENO{5}, red_order, ::Val{2}) =
+                ifelse(red_order  < 3, $(SS50M),     # Order ≤ 3
                 ifelse(red_order == 3, $(SS532),     # Order 5
                 ifelse(red_order == 4, $(SS542),     # Order 7
                                        $(SS552))))   # Order 9
 
-        @inline smoothness_coefficients(::WENO{5}, red_order, ::Val{3}) = 
-                ifelse(red_order <  4, $(SS50M),     # Order ≤ 5 
+        @inline smoothness_coefficients(::WENO{5}, red_order, ::Val{3}) =
+                ifelse(red_order  < 4, $(SS50M),     # Order ≤ 5
                 ifelse(red_order == 4, $(SS543),     # Order 7
                                        $(SS553)))    # Order 9
 
-        @inline smoothness_coefficients(::WENO{5}, red_order, ::Val{4}) = 
-                ifelse(red_order <  5, $(SS50M),     # Order ≤ 7
+        @inline smoothness_coefficients(::WENO{5}, red_order, ::Val{4}) =
+                ifelse(red_order  < 5, $(SS50M),     # Order ≤ 7
                                        $(SS554))     # Order 9
 
-        # 11th order WENO, restricted to orders 9, 7, 5, 3, and 1
-        @inline smoothness_coefficients(::WENO{6}, red_order, ::Val{0}) = 
-                ifelse(red_order == 1, $(SS610),     # Order 1 (Centered)                             
-                ifelse(red_order == 2, $(SS620),     # Order 3       
+        # 11th order WENO
+        @inline smoothness_coefficients(::WENO{6}, red_order, ::Val{0}) =
+                ifelse(red_order == 0, $(SS60M),     # Centered (zero smoothness)
+                ifelse(red_order == 1, $(SS610),     # Order 1
+                ifelse(red_order == 2, $(SS620),     # Order 3
                 ifelse(red_order == 3, $(SS630),     # Order 5
                 ifelse(red_order == 4, $(SS640),     # Order 7
                 ifelse(red_order == 5, $(SS650),     # Order 9
-                                       $(SS660)))))) # Order 11
+                                       $(SS660))))))) # Order 11
 
-        @inline smoothness_coefficients(::WENO{6}, red_order, ::Val{1}) = 
-                ifelse(red_order == 1, $(SS60M),     # Order 1 (Centered)                             
-                ifelse(red_order == 2, $(SS621),     # Order 3       
+        @inline smoothness_coefficients(::WENO{6}, red_order, ::Val{1}) =
+                ifelse(red_order  < 2, $(SS60M),     # Centered / Order 1
+                ifelse(red_order == 2, $(SS621),     # Order 3
                 ifelse(red_order == 3, $(SS631),     # Order 5
                 ifelse(red_order == 4, $(SS641),     # Order 7
                 ifelse(red_order == 5, $(SS651),     # Order 9
                                        $(SS661)))))) # Order 11
 
-        @inline smoothness_coefficients(::WENO{6}, red_order, ::Val{2}) = 
-                ifelse(red_order <  3, $(SS60M),     # Order ≤ 3                            
+        @inline smoothness_coefficients(::WENO{6}, red_order, ::Val{2}) =
+                ifelse(red_order  < 3, $(SS60M),     # Order ≤ 3
                 ifelse(red_order == 3, $(SS632),     # Order 5
                 ifelse(red_order == 4, $(SS642),     # Order 7
                 ifelse(red_order == 5, $(SS652),     # Order 9
                                        $(SS662)))))  # Order 11
 
-        @inline smoothness_coefficients(::WENO{6}, red_order, ::Val{3}) = 
-                ifelse(red_order <  4, $(SS60M),     # Order ≤ 5 
+        @inline smoothness_coefficients(::WENO{6}, red_order, ::Val{3}) =
+                ifelse(red_order  < 4, $(SS60M),     # Order ≤ 5
                 ifelse(red_order == 4, $(SS643),     # Order 7
                 ifelse(red_order == 5, $(SS653),     # Order 9
                                        $(SS663))))   # Order 11
 
-        @inline smoothness_coefficients(::WENO{6}, red_order, ::Val{4}) = 
-                ifelse(red_order <  5, $(SS60M),     # Order ≤ 7
+        @inline smoothness_coefficients(::WENO{6}, red_order, ::Val{4}) =
+                ifelse(red_order  < 5, $(SS60M),     # Order ≤ 7
                 ifelse(red_order == 5, $(SS654),     # Order 9
-                                $(SS664)))    # Order 11
+                                       $(SS664)))    # Order 11
 
-        @inline smoothness_coefficients(::WENO{6}, red_order, ::Val{5}) = 
-                ifelse(red_order <  6, $(SS60M),     # Order ≤ 9
+        @inline smoothness_coefficients(::WENO{6}, red_order, ::Val{5}) =
+                ifelse(red_order  < 6, $(SS60M),     # Order ≤ 9
                                        $(SS665))     # Order 11
 end
 

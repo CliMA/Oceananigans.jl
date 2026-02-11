@@ -92,6 +92,6 @@ function adapt_advection_order(advection::WENO{B, FT}, N::Int, grid::AbstractGri
     if N >= B
         return advection
     else
-        return WENO(FT; order=2N-1)
+        return WENO(FT; order=2N-1, minimum_buffer_upwind_order=advection.minimum_buffer_upwind_order)
     end
 end
