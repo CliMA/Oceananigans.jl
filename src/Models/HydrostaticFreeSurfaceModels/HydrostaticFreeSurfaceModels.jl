@@ -3,7 +3,7 @@ module HydrostaticFreeSurfaceModels
 export
     HydrostaticFreeSurfaceModel,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
-    PrescribedVelocityFields, ZStarCoordinate, ZCoordinate
+    PrescribedVelocityFields, PrescribedFreeSurface, ZStarCoordinate, ZCoordinate
 
 using KernelAbstractions: @index, @kernel
 using Adapt: Adapt
@@ -101,6 +101,9 @@ include("implicit_free_surface.jl")
 
 # ZStarCoordinate implementation
 include("z_star_vertical_spacing.jl")
+
+# Prescribed free surface
+include("prescribed_free_surface.jl")
 
 # Hydrostatic model implementation
 include("hydrostatic_free_surface_model.jl")

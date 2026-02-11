@@ -131,12 +131,24 @@ extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()
 free_surface_displacement_field(::PrescribedVelocityFields, ::Nothing, grid) = nothing
 HorizontalVelocityFields(::PrescribedVelocityFields, grid) = nothing, nothing
 
-materialize_free_surface(::Nothing,                      ::PrescribedVelocityFields, grid) = nothing
-materialize_free_surface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
-materialize_free_surface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
-materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, grid) = nothing
+materialize_free_surface(::Nothing,                      ::PrescribedVelocityFields, grid, args...) = nothing
+materialize_free_surface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid, args...) = nothing
+materialize_free_surface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid, args...) = nothing
+materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, grid, args...) = nothing
+
+# PrescribedFreeSurface is NOT nullified by PrescribedVelocityFields — delegate to its own method
+materialize_free_surface(fs::PrescribedFreeSurface, ::PrescribedVelocityFields, grid, clock) =
+    materialize_free_surface(fs, nothing, grid, clock)
 
 hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = tracers
+hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::PrescribedFreeSurface, tracers) = tracers
+
+hydrostatic_tendency_fields(::PrescribedVelocityFields, ::PrescribedFreeSurface, grid, tracer_names, bcs) =
+    merge((u=nothing, v=nothing), TracerFields(tracer_names, grid))
+
+free_surface_names(::PrescribedFreeSurface, ::PrescribedVelocityFields, grid) = tuple(:η)
+
+transport_velocity_fields(velocities::PrescribedVelocityFields, ::PrescribedFreeSurface) = velocities
 compute_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields, kernel_parameters; kwargs...) = nothing
 
 compute_flux_bcs!(::Nothing, c, arch, clock, model_fields) = nothing
