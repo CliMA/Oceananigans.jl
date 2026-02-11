@@ -123,9 +123,9 @@ end
     u = getvalue(uᵢ, i, j, k, grid)
     v = getvalue(vᵢ, i, j, k, grid)
 
-    θ_radians = rotation_angle(i, j, grid::OrthogonalSphericalShellGrid)
-    sinθ = sin(θ_radians)
-    cosθ = cos(θ_radians)
+    θ = rotation_angle(i, j, grid::OrthogonalSphericalShellGrid)
+    sinθ = sin(θ)
+    cosθ = cos(θ)
 
     uₑ = + u * cosθ + v * sinθ
     vₑ = - u * sinθ + v * cosθ
