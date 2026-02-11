@@ -94,17 +94,12 @@ end
 
 function solve!(ϕ::ComplexReactantArray, solver::BatchedTridiagonalSolver, rhs, args...)
     T = real(eltype(ϕ))
-
-    # Build a real-typed solver (solver.t is scratch, must also be real to avoid B.6.7.1)
-    real_solver = BatchedTridiagonalSolver(solver.a, solver.b, solver.c, similar(solver.t, T),
-                                           solver.grid, solver.parameters, solver.tridiagonal_direction)
-
     real_ϕ = similar(ϕ, T)
     imag_ϕ = similar(ϕ, T)
 
-    # Solve independently for real and imaginary parts (coefficients a, b, c are real)
-    solve!(real_ϕ, real_solver, real.(rhs), args...)
-    solve!(imag_ϕ, real_solver, imag.(rhs), args...)
+    # Coefficients a, b, c and scratch t are already real — only ϕ and rhs are complex.
+    solve!(real_ϕ, solver, real.(rhs), args...)
+    solve!(imag_ϕ, solver, imag.(rhs), args...)
 
     ϕ .= Complex.(real_ϕ, imag_ϕ)
     return nothing
