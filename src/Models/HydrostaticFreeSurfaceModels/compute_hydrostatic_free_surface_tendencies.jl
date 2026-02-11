@@ -11,7 +11,7 @@ using Oceananigans.Grids: get_active_cells_map
 using Oceananigans.Architectures: CPU
 import Oceananigans.Architectures as AC
 using Oceananigans.Fields: Field, interior
-using Oceananigans.Advection: StaticWENO, near_y_immersed_boundary_biasedᶜ, near_z_immersed_boundary_biasedᶠ, near_x_immersed_boundary_symmetricᶠ
+using Oceananigans.Advection: StaticWENO, near_y_immersed_boundary_biasedᶜ, near_z_immersed_boundary_biasedᶠ, near_x_immersed_boundary_symmetricᶠ, near_x_immersed_boundary_biasedᶠ
 using KernelAbstractions: @kernel, @index
 """
     compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
@@ -145,7 +145,6 @@ end
 function get_u_conditioned_map(scheme, grid::ImmersedBoundaryGrid; active_cells_map=nothing)
     # Field is true if the max scheme can be used for computing u advection
     max_scheme_field = Field{Center, Center, Center}(grid, Bool)
-    summary(max_scheme_field)
     fill!(max_scheme_field, false)
     launch!(architecture(grid), grid, :xyz, condition_map!, max_scheme_field, grid, scheme; active_cells_map)
 
@@ -174,6 +173,8 @@ function split_indices_mapped(field, grid, active_cells_map)
 	    push!(map2, index)
 	end
     end
+    println(size(map1))
+    println(size(map2))
     map1 = AC.on_architecture(architecture(grid), map1) 
     map2 = AC.on_architecture(architecture(grid), map2) 
     return (map1, map2)
@@ -205,10 +206,13 @@ add_3rd_index(ij, k) = (ij[1], ij[2], k)
 
 @kernel function condition_map!(max_scheme_field, ibg, scheme)
     i, j, k = @index(Global, NTuple)
-    near_x = near_x_immersed_boundary_symmetricᶠ(i, j, k, ibg, scheme)
-    near_y = near_y_immersed_boundary_biasedᶜ(i, j, k, ibg, scheme)
-    near_z = near_z_immersed_boundary_biasedᶠ(i, j, k, ibg, scheme)
-    @inbounds max_scheme_field[i, j, k] = !near_x && !near_y && !near_z
+    near_y = near_y_immersed_boundary_biasedᶜ(i, j, k, ibg, scheme.vorticity_scheme)
+    vert1 = near_x_immersed_boundary_symmetricᶠ(i, j, k, ibg, scheme.vertical_advection_scheme)
+    vert2 = near_z_immersed_boundary_biasedᶠ(i, j, k, ibg, scheme.vertical_advection_scheme)
+    vert3 = false #near_x_immersed_boundary_symmetricᶠ(i, j, k, ibg, scheme.upwinding.cross_scheme)
+    vert4 = near_x_immersed_boundary_biasedᶠ(i, j, k, ibg, scheme.divergence_scheme)
+
+    @inbounds max_scheme_field[i, j, k] = !near_y && !vert1 && !vert2 && !vert3 && !vert4
 end
 
 function get_v_conditioned_map(scheme, grid; active_cells_map=nothing)
@@ -225,8 +229,8 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     grid = model.grid
     arch = architecture(grid)
 
-		u_conditioned_maps = get_u_conditioned_map(model.advection.momentum.vorticity_scheme, grid; active_cells_map)
-		v_conditioned_maps = get_v_conditioned_map(model.advection.momentum.vorticity_scheme, grid; active_cells_map)
+		u_conditioned_maps = get_u_conditioned_map(model.advection.momentum, grid; active_cells_map)
+		v_conditioned_maps = get_v_conditioned_map(model.advection.momentum, grid; active_cells_map)
 
     u_immersed_bc = immersed_boundary_condition(velocities.u)
     v_immersed_bc = immersed_boundary_condition(velocities.v)
@@ -252,7 +256,7 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
         vorticity_scheme=StaticWENO(model.advection.momentum.vorticity_scheme),
 	vorticity_stencil=model.advection.momentum.vorticity_stencil,
 	    vertical_advection_scheme=StaticWENO(model.advection.momentum.vertical_advection_scheme),
-	    divergence_scheme=model.advection.momentum.divergence_scheme,
+	    divergence_scheme=StaticWENO(model.advection.momentum.divergence_scheme),
 	    kinetic_energy_gradient_scheme=model.advection.momentum.kinetic_energy_gradient_scheme,
 	    upwinding=model.advection.momentum.upwinding
 	    )
