@@ -35,6 +35,26 @@ const AbstractStaticGrid  = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any, <
 
 coordinate_summary(topo, z::StaticVerticalDiscretization, name) = coordinate_summary(topo, z.Δᵃᵃᶜ, name)
 
+"""
+    struct MutableVerticalDiscretization{C, D, E, F, H, CC, FC, CF, FF} <: AbstractVerticalCoordinate
+
+Represent a mutable one-dimensional vertical coordinate that can evolve in time.
+
+Fields
+======
+
+- `cᵃᵃᶠ::C`: Face-centered reference coordinate.
+- `cᵃᵃᶜ::D`: Cell-centered reference coordinate.
+- `Δᵃᵃᶠ::E`: Face-centered grid spacing.
+- `Δᵃᵃᶜ::F`: Cell-centered grid spacing.
+- `ηⁿ::H`: Surface elevation at the current time step.
+- `σᶜᶜⁿ::CC`: Cell-centered scaling factor at the current time step.
+- `σᶠᶜⁿ::FC`: Face-centered (vertical) and cell-centered (horizontal) scaling at the current time step.
+- `σᶜᶠⁿ::CF`: Cell-centered (vertical) and face-centered (horizontal) scaling at the current time step.
+- `σᶠᶠⁿ::FF`: Face-centered scaling factor at the current time step.
+- `σᶜᶜ⁻::CC`: Cell-centered scaling factor at the previous time step.
+- `∂t_σ::CC`: Time derivative of the cell-centered scaling factor.
+"""
 struct MutableVerticalDiscretization{C, D, E, F, H, CC, FC, CF, FF} <: AbstractVerticalCoordinate
     cᵃᵃᶠ :: C
     cᵃᵃᶜ :: D
