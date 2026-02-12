@@ -8,16 +8,15 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
 
     Nx = Ny = Nz = 16
 
-    z = ExponentialDiscretization(Nz, -1, 0)
-
-    timestepper = :QuasiAdamsBashforth2
-
+    z = ExponentialDiscretization(Nz, -100, 0)
+    L = 10000
+    
     # Create grid and initial condition based on direction
     if horizontal_direction == :x
         # Slope in x-direction (Flat in y)
         grid = RectilinearGrid(arch, FT;
                                size = (Nx, Nz),
-                               x = (0, 1),
+                               x = (0, L),
                                z,
                                topology = (Bounded, Flat, Bounded))
 
@@ -32,7 +31,7 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
         # Slope in y-direction (Flat in x)
         grid = RectilinearGrid(arch, FT;
                                size = (Nx, Nz),
-                               y = (0, 1),
+                               y = (0, L),
                                z,
                                topology = (Flat, Bounded, Bounded))
 
@@ -47,8 +46,8 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
         # Slope in both x and y directions
         grid = RectilinearGrid(arch, FT;
                                size = (Nx, Ny, Nz),
-                               x = (0, 1),
-                               y = (0, 1),
+                               x = (0, L),
+                               y = (0, L),
                                z,
                                topology = (Bounded, Bounded, Bounded))
 
@@ -61,8 +60,8 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
     end
 
     # Time step the model 10 times
-    Δt = convert(FT, 1)
-    for _ in 1:10
+    Δt = convert(FT, 10)
+    for _ in 1:20
         time_step!(model, Δt)
     end
 
