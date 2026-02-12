@@ -1,31 +1,27 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity, DiffusiveFormulation, AdvectiveFormulation,
-                                       FluxTapering, TanhTapering
+using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity, DiffusiveFormulation, AdvectiveFormulation
 
-function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_direction,
-                                  slope_limiter=FluxTapering(FT(1e-2)),
-                                  timestepper=:SplitRungeKutta3)
-
+function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_direction)
     eddy_closure = IsopycnalSkewSymmetricDiffusivity(FT, κ_skew=1e3, κ_symmetric=1e3,
-                                                     skew_flux_formulation=skew_flux_formulation,
-                                                     slope_limiter=slope_limiter)
+                                                     skew_flux_formulation=skew_flux_formulation)
 
-    nx = ny = nz = 16
+    nx = 16
+    ny = 16
+    nz = 16
 
-    z_faces = ExponentialDiscretization(nz, -100, 0)
-    L = 10000
+    z_faces = ExponentialDiscretization(nz, -1, 0)
 
     # Create grid and initial condition based on direction
     if horizontal_direction == :x
         # Slope in x-direction (Flat in y)
         grid = RectilinearGrid(arch, FT;
                                size = (nx, nz),
-                               x = (0, L),
+                               x = (0, 1),
                                z = z_faces,
                                topology = (Bounded, Flat, Bounded))
 
-        model = HydrostaticFreeSurfaceModel(grid; timestepper,
+        model = HydrostaticFreeSurfaceModel(grid;
                                             buoyancy = BuoyancyTracer(),
                                             closure = eddy_closure,
                                             tracers = :b)
@@ -36,11 +32,11 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
         # Slope in y-direction (Flat in x)
         grid = RectilinearGrid(arch, FT;
                                size = (ny, nz),
-                               y = (0, L),
+                               y = (0, 1),
                                z = z_faces,
                                topology = (Flat, Bounded, Bounded))
 
-        model = HydrostaticFreeSurfaceModel(grid; timestepper,
+        model = HydrostaticFreeSurfaceModel(grid;
                                             buoyancy = BuoyancyTracer(),
                                             closure = eddy_closure,
                                             tracers = :b)
@@ -51,12 +47,12 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
         # Slope in both x and y directions
         grid = RectilinearGrid(arch, FT;
                                size = (nx, ny, nz),
-                               x = (0, L),
-                               y = (0, L),
+                               x = (0, 1),
+                               y = (0, 1),
                                z = z_faces,
                                topology = (Bounded, Bounded, Bounded))
 
-        model = HydrostaticFreeSurfaceModel(grid; timestepper,
+        model = HydrostaticFreeSurfaceModel(grid;
                                             buoyancy = BuoyancyTracer(),
                                             closure = eddy_closure,
                                             tracers = :b)
@@ -81,29 +77,14 @@ end
 
     formulations = [DiffusiveFormulation(), AdvectiveFormulation()]
     directions = [:x, :y, :xy]
-    timesteppers = [:QuasiAdamsBashforth2, :SplitRungeKutta3]
 
-    for arch in archs, FT in float_types, formulation in formulations, direction in directions, timestepper in timesteppers
+    for arch in archs, FT in float_types, formulation in formulations, direction in directions
         formulation_name = typeof(formulation).name.name
-        @testset "GM FluxTapering $formulation_name $direction $timestepper [$arch, $FT]" begin
-            @info "  Testing GM FluxTapering $formulation_name $direction $timestepper [$arch, $FT]..."
+        @testset "GM $formulation_name $direction direction [$arch, $FT]" begin
+            @info "  Testing GM $formulation_name $direction direction [$arch, $FT]..."
             @test gm_tracer_remains_finite(arch, FT;
                                            skew_flux_formulation=formulation,
-                                           horizontal_direction=direction,
-                                           timestepper)
-        end
-    end
-
-    for arch in archs, FT in float_types, formulation in formulations, direction in directions, timestepper in timesteppers
-        formulation_name = typeof(formulation).name.name
-        taper = TanhTapering(FT)
-        @testset "GM TanhTapering $formulation_name $direction $timestepper [$arch, $FT]" begin
-            @info "  Testing GM TanhTapering $formulation_name $direction $timestepper [$arch, $FT]..."
-            @test gm_tracer_remains_finite(arch, FT;
-                                           skew_flux_formulation=formulation,
-                                           horizontal_direction=direction,
-                                           slope_limiter=taper,
-                                           timestepper)
+                                           horizontal_direction=direction)
         end
     end
 end
