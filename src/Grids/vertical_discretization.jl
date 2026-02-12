@@ -40,32 +40,30 @@ coordinate_summary(topo, z::StaticVerticalDiscretization, name) = coordinate_sum
 
 Represent a mutable one-dimensional vertical coordinate that can evolve in time.
 
-Fields
-======
-
-- `cᵃᵃᶠ::C`: Face-centered reference coordinate.
-- `cᵃᵃᶜ::D`: Cell-centered reference coordinate.
-- `Δᵃᵃᶠ::E`: Face-centered grid spacing.
-- `Δᵃᵃᶜ::F`: Cell-centered grid spacing.
-- `ηⁿ::H`: Surface elevation at the current time step.
-- `σᶜᶜⁿ::CC`: Cell-centered scaling factor at the current time step.
-- `σᶠᶜⁿ::FC`: Face-centered (vertical) and cell-centered (horizontal) scaling at the current time step.
-- `σᶜᶠⁿ::CF`: Cell-centered (vertical) and face-centered (horizontal) scaling at the current time step.
-- `σᶠᶠⁿ::FF`: Face-centered scaling factor at the current time step.
-- `σᶜᶜ⁻::CC`: Cell-centered scaling factor at the previous time step.
-- `∂t_σ::CC`: Time derivative of the cell-centered scaling factor.
+$(TYPEDFIELDS)
 """
 struct MutableVerticalDiscretization{C, D, E, F, H, CC, FC, CF, FF} <: AbstractVerticalCoordinate
+    "Face-centered reference coordinate"
     cᵃᵃᶠ :: C
+    "Cell-centered reference coordinate"
     cᵃᵃᶜ :: D
+    "Face-centered grid spacing"
     Δᵃᵃᶠ :: E
+    "Cell-centered grid spacing"
     Δᵃᵃᶜ :: F
-      ηⁿ :: H
+    "Surface elevation at the current time step"
+    ηⁿ :: H
+    "Cell-centered scaling factor at the current time step"
     σᶜᶜⁿ :: CC
+    "Face-centered (vertical) and cell-centered (horizontal) scaling at the current time step"
     σᶠᶜⁿ :: FC
+    "Cell-centered (vertical) and face-centered (horizontal) scaling at the current time step"
     σᶜᶠⁿ :: CF
+    "Face-centered scaling factor at the current time step"
     σᶠᶠⁿ :: FF
+    "Cell-centered scaling factor at the previous time step"
     σᶜᶜ⁻ :: CC
+    "Time derivative of the cell-centered scaling factor"
     ∂t_σ :: CC
 end
 
