@@ -24,6 +24,7 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
         model = HydrostaticFreeSurfaceModel(grid;
                                             buoyancy = BuoyancyTracer(),
                                             closure = eddy_closure,
+                                            timestepper = :QuasiAdamsBashforth2,
                                             tracers = :b)
 
         set!(model, b = (x, z) -> x / 10000)
