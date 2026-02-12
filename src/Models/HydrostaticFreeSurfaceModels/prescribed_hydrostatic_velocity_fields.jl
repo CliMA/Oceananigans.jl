@@ -4,7 +4,7 @@
 
 using Oceananigans: location
 using Oceananigans.Grids: Center, Face
-using Oceananigans.Fields: FunctionField, field
+using Oceananigans.Fields: FunctionField, Field, field
 using Oceananigans.TimeSteppers: tick!, step_lagrangian_particles!, Clock
 using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!
 using Oceananigans.OutputReaders: FieldTimeSeries, TimeSeriesInterpolation
@@ -23,7 +23,43 @@ struct PrescribedVelocityFields{U, V, W, P}
     parameters :: P
 end
 
-@inline Base.getindex(U::PrescribedVelocityFields, i) = getindex((u=U.u, v=U.v, w=U.w), i)
+@inline Base.getindex(U::PrescribedVelocityFields, i) = getindex((u=U.u, v=U.v, w=_unwrap_w(U.w)), i)
+
+#####
+##### DiagnosticVerticalVelocity
+#####
+
+"""
+    DiagnosticVerticalVelocity()
+
+A type indicating that the vertical velocity `w` should be diagnosed from the
+horizontal velocity fields `u` and `v` via the continuity equation, rather than
+being prescribed.
+
+When used as the `w` argument to [`PrescribedVelocityFields`](@ref), the vertical
+velocity is computed from continuity at each time step via `compute_w_from_continuity!`.
+
+```jldoctest
+julia> using Oceananigans
+
+julia> w = DiagnosticVerticalVelocity()
+DiagnosticVerticalVelocity()
+```
+"""
+struct DiagnosticVerticalVelocity{W}
+    field :: W
+end
+
+DiagnosticVerticalVelocity() = DiagnosticVerticalVelocity(nothing)
+
+# Helper to unwrap DiagnosticVerticalVelocity to its inner field.
+# Used in velocities(), getindex, and indexed_iterate so that kernels
+# always receive a plain Field for w (important on CPU where Adapt is not called).
+@inline _unwrap_w(w) = w
+@inline _unwrap_w(d::DiagnosticVerticalVelocity) = d.field
+
+Base.show(io::IO, ::DiagnosticVerticalVelocity{Nothing}) = print(io, "DiagnosticVerticalVelocity()")
+Base.show(io::IO, d::DiagnosticVerticalVelocity) = print(io, "DiagnosticVerticalVelocity: ", summary(d.field))
 
 """
     PrescribedVelocityFields(; u = ZeroField(),
@@ -70,6 +106,10 @@ end
 
 materialize_prescribed_velocity(X, Y, Z, f, grid; kwargs...) = field((X, Y, Z), f, grid)
 
+function materialize_prescribed_velocity(X, Y, Z, ::DiagnosticVerticalVelocity{Nothing}, grid; kwargs...)
+    return DiagnosticVerticalVelocity(Field{X, Y, Z}(grid))
+end
+
 function hydrostatic_velocity_fields(velocities::PrescribedVelocityFields, grid, clock, bcs)
 
     parameters = velocities.parameters
@@ -90,7 +130,7 @@ function Base.indexed_iterate(p::PrescribedVelocityFields, i::Int, state=1)
     elseif i == 2
         return p.v, 3
     else
-        return p.w, 4
+        return _unwrap_w(p.w), 4
     end
 end
 
@@ -103,9 +143,12 @@ free_surface_names(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, grid)
 @inline BoundaryConditions.fill_halo_regions!(::PrescribedVelocityFields, args...; kwargs...) = nothing
 @inline BoundaryConditions.fill_halo_regions!(::FunctionField, args...; kwargs...) = nothing
 @inline BoundaryConditions.fill_halo_regions!(::TimeSeriesInterpolation, args...; kwargs...) = nothing
+@inline BoundaryConditions.fill_halo_regions!(d::DiagnosticVerticalVelocity, args...; kwargs...) =
+    fill_halo_regions!(d.field, args...; kwargs...)
 
+@inline datatuple(d::DiagnosticVerticalVelocity) = datatuple(d.field)
 @inline datatuple(obj::PrescribedVelocityFields) = (; u = datatuple(obj.u), v = datatuple(obj.v), w = datatuple(obj.w))
-@inline velocities(obj::PrescribedVelocityFields) = (u = obj.u, v = obj.v, w = obj.w)
+@inline velocities(obj::PrescribedVelocityFields) = (u = obj.u, v = obj.v, w = _unwrap_w(obj.w))
 
 # Extend sum_of_velocities for `PrescribedVelocityFields`
 @inline sum_of_velocities(U1::PrescribedVelocityFields, U2) = sum_of_velocities(velocities(U1), U2)
@@ -119,6 +162,14 @@ ab2_step_velocities!(::PrescribedVelocityFields, args...) = nothing
 rk_substep_velocities!(::PrescribedVelocityFields, args...) = nothing
 step_free_surface!(::Nothing, model, timestepper, Δt) = nothing
 compute_w_from_continuity!(::PrescribedVelocityFields, args...; kwargs...) = nothing
+
+function compute_w_from_continuity!(velocities::PrescribedVelocityFields{<:Any, <:Any, <:DiagnosticVerticalVelocity},
+                                    grid; parameters = surface_kernel_parameters(grid))
+    w = velocities.w.field
+    vels = (u=velocities.u, v=velocities.v, w=w)
+    compute_w_from_continuity!(vels, grid; parameters)
+end
+
 mask_immersed_velocities!(::PrescribedVelocityFields) = nothing
 
 # No need for extra velocities
@@ -141,6 +192,11 @@ hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = 
 compute_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields, kernel_parameters; kwargs...) = nothing
 
 compute_flux_bcs!(::Nothing, c, arch, clock, model_fields) = nothing
+
+Adapt.adapt_structure(to, d::DiagnosticVerticalVelocity) = Adapt.adapt(to, d.field)
+
+on_architecture(arch, d::DiagnosticVerticalVelocity) =
+    DiagnosticVerticalVelocity(on_architecture(arch, d.field))
 
 Adapt.adapt_structure(to, velocities::PrescribedVelocityFields) =
     PrescribedVelocityFields(Adapt.adapt(to, velocities.u),

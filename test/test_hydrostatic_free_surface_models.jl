@@ -498,6 +498,101 @@ topos_3d = ((Periodic, Periodic, Bounded),
             @info "    PrescribedFreeSurface with PrescribedVelocityFields and ZStar test passed"
         end
 
+        @testset "DiagnosticVerticalVelocity [$arch]" begin
+            @info "  Testing DiagnosticVerticalVelocity [$arch]..."
+
+            Nx, Ny, Nz = 4, 4, 4
+            Lx, Ly, H = 100.0, 100.0, 10.0
+
+            u_prescribed(x, y, z, t) = sin(2π * x / Lx)
+            v_prescribed(x, y, z, t) = 0.0
+
+            # --- Static grid ---
+            static_grid = RectilinearGrid(arch;
+                                          size = (Nx, Ny, Nz),
+                                          x = (0, Lx), y = (0, Ly), z = (-H, 0),
+                                          topology = (Periodic, Periodic, Bounded))
+
+            static_velocities = PrescribedVelocityFields(; u = u_prescribed,
+                                                           v = v_prescribed,
+                                                           w = DiagnosticVerticalVelocity())
+
+            static_model = HydrostaticFreeSurfaceModel(static_grid;
+                                                       velocities = static_velocities,
+                                                       tracers = :c,
+                                                       buoyancy = nothing)
+
+            @test static_model isa HydrostaticFreeSurfaceModel
+            @test static_model.velocities.w isa DiagnosticVerticalVelocity
+
+            time_step!(static_model, 1.0)
+
+            w_static = static_model.velocities.w.field
+            Δx = Lx / Nx
+            Δz = H / Nz
+
+            # w should be non-zero for divergent u
+            @test !all(iszero, interior(w_static))
+
+            # Bottom boundary condition: w = 0 at k = 1
+            for i in 1:Nx
+                @test w_static[i, 1, 1] == 0
+            end
+
+            # Check discrete continuity: w[k+1] = w[k] - Δz * discrete_div_u
+            for i in 1:Nx, k in 1:Nz
+                u_right = u_prescribed(i * Δx, 0, 0, 0)
+                u_left  = u_prescribed((i - 1) * Δx, 0, 0, 0)
+                discrete_div = (u_right - u_left) / Δx
+
+                Δw = w_static[i, 1, k + 1] - w_static[i, 1, k]
+                @test Δw ≈ -Δz * discrete_div atol = 1e-10
+            end
+
+            # --- ZStar grid with PrescribedFreeSurface ---
+            z_faces = MutableVerticalDiscretization((-H, 0))
+
+            zstar_grid = RectilinearGrid(arch;
+                                         size = (Nx, Ny, Nz),
+                                         x = (0, Lx), y = (0, Ly), z = z_faces,
+                                         halo = (3, 3, 3),
+                                         topology = (Periodic, Periodic, Bounded))
+
+            A = 0.1
+            η_prescribed(x, y, z, t) = A * sin(2π * t)
+
+            zstar_velocities = PrescribedVelocityFields(; u = u_prescribed,
+                                                          v = v_prescribed,
+                                                          w = DiagnosticVerticalVelocity())
+
+            free_surface = PrescribedFreeSurface(displacement = η_prescribed)
+
+            zstar_model = HydrostaticFreeSurfaceModel(zstar_grid;
+                                                      velocities = zstar_velocities,
+                                                      free_surface,
+                                                      tracers = :c,
+                                                      buoyancy = nothing)
+
+            @test zstar_model isa HydrostaticFreeSurfaceModel
+            @test zstar_model.velocities.w isa DiagnosticVerticalVelocity
+            @test zstar_model.free_surface isa PrescribedFreeSurface
+
+            time_step!(zstar_model, 1.0)
+
+            w_zstar = zstar_model.velocities.w.field
+            @test !all(iszero, interior(w_zstar))
+
+            # σ should reflect η at the current time
+            σ_val = zstar_grid.z.σᶜᶜⁿ[1, 1, 1]
+            expected_σ = (H + A * sin(2π * zstar_model.clock.time)) / H
+            @test σ_val ≈ expected_σ atol = 1e-10
+
+            # The moving-grid ∂t_σ contribution should make w_zstar differ from w_static
+            @test interior(w_zstar) != interior(w_static)
+
+            @info "    DiagnosticVerticalVelocity test passed"
+        end
+
         @testset "HydrostaticFreeSurfaceModel with tracers and forcings [$arch]" begin
             @info "  Testing HydrostaticFreeSurfaceModel with tracers and forcings [$arch]..."
             hydrostatic_free_surface_model_tracers_and_forcings_work(arch)
