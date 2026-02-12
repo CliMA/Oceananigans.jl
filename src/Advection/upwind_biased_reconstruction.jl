@@ -14,7 +14,7 @@ struct UpwindBiased{N, FT, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
     end
 end
 
-function UpwindBiased(FT::DataType = Float64; order = 3, minimum_buffer_upwind_order = 3)
+function UpwindBiased(FT::DataType = Float64; order = 3, minimum_buffer_upwind_order = 1)
 
     mod(order, 2) == 0 && throw(ArgumentError("UpwindBiased reconstruction scheme is defined only for odd orders"))
 

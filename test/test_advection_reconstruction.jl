@@ -30,52 +30,52 @@ using Oceananigans.Advection: biased_interpolate_xᶠᵃᵃ,
 @inline grid_args(::Tuple{Flat, Bounded, Flat}) = (; y = (0, 1))
 @inline grid_args(::Tuple{Flat, Flat, Bounded}) = (; z = (0, 1))
 
-red_order_field(grid::AbstractGrid{<:Any, <:Bounded, <:Flat, <:Flat}, adv, ::Face, bias) = 
+red_order_field(grid::AbstractGrid{<:Any, <:Bounded, <:Flat, <:Flat}, adv, ::Face, bias) =
     compute!(Field(KernelFunctionOperation{Face, Nothing, Nothing}(compute_face_reduced_order_x, grid, adv, bias)))
 
-red_order_field(grid::AbstractGrid{<:Any, <:Flat, <:Bounded, <:Flat}, adv, ::Face, bias) = 
+red_order_field(grid::AbstractGrid{<:Any, <:Flat, <:Bounded, <:Flat}, adv, ::Face, bias) =
     compute!(Field(KernelFunctionOperation{Nothing, Face, Nothing}(compute_face_reduced_order_y, grid, adv, bias)))
 
-red_order_field(grid::AbstractGrid{<:Any, <:Flat, <:Flat, <:Bounded}, adv, ::Face, bias) = 
+red_order_field(grid::AbstractGrid{<:Any, <:Flat, <:Flat, <:Bounded}, adv, ::Face, bias) =
     compute!(Field(KernelFunctionOperation{Nothing, Nothing, Face}(compute_face_reduced_order_z, grid, adv, bias)))
 
-red_order_field(grid::AbstractGrid{<:Any, <:Bounded, <:Flat, <:Flat}, adv, ::Center, bias) = 
+red_order_field(grid::AbstractGrid{<:Any, <:Bounded, <:Flat, <:Flat}, adv, ::Center, bias) =
     compute!(Field(KernelFunctionOperation{Center, Nothing, Nothing}(compute_center_reduced_order_x, grid, adv, bias)))
 
-red_order_field(grid::AbstractGrid{<:Any, <:Flat, <:Bounded, <:Flat}, adv, ::Center, bias) = 
+red_order_field(grid::AbstractGrid{<:Any, <:Flat, <:Bounded, <:Flat}, adv, ::Center, bias) =
     compute!(Field(KernelFunctionOperation{Nothing, Center, Nothing}(compute_center_reduced_order_y, grid, adv, bias)))
 
-red_order_field(grid::AbstractGrid{<:Any, <:Flat, <:Flat, <:Bounded}, adv, ::Center, bias) = 
+red_order_field(grid::AbstractGrid{<:Any, <:Flat, <:Flat, <:Bounded}, adv, ::Center, bias) =
     compute!(Field(KernelFunctionOperation{Nothing, Nothing, Center}(compute_center_reduced_order_z, grid, adv, bias)))
 
 if archs == tuple(CPU()) # Just a CPU test, do not repeat it...
     @testset "Reduced order computation" begin
-        for topology in ((Bounded, Flat, Flat), 
+        for topology in ((Bounded, Flat, Flat),
                         (Flat, Bounded, Flat),
                         (Flat, Flat, Bounded))
 
             extent = grid_args(instantiate.(topology))
             grid = RectilinearGrid(; size = 10, extent..., topology, halo=6)
-            adv  = WENO(order=9) 
+            adv  = WENO(order=9)
 
             red_ord_face   = red_order_field(grid, adv, Face(), NoBias())
             red_ord_center = red_order_field(grid, adv, Center(), NoBias())
 
             @test all(interior(red_ord_face)[:]   .== [1, 1, 2, 3, 4, 5, 4, 3, 2, 1, 1])
             @test all(interior(red_ord_center)[:] .== [1, 2, 3, 4, 5, 5, 4, 3, 2, 1])
-        
+
             red_ord_face   = red_order_field(grid, adv, Face(), LeftBias())
             red_ord_center = red_order_field(grid, adv, Center(), LeftBias())
 
             @test all(interior(red_ord_face)[:]   .== [1, 1, 2, 3, 4, 5, 5, 4, 3, 2, 1])
             @test all(interior(red_ord_center)[:] .== [1, 2, 3, 4, 5, 5, 4, 3, 2, 1])
-        
+
             red_ord_face   = red_order_field(grid, adv, Face(), RightBias())
             red_ord_center = red_order_field(grid, adv, Center(), RightBias())
 
             @test all(interior(red_ord_face)[:]   .== [1, 2, 3, 4, 5, 5, 4, 3, 2, 1, 1])
             @test all(interior(red_ord_center)[:] .== [1, 2, 3, 4, 5, 5, 4, 3, 2, 1])
-        
+
             ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary(false)) # A fake immersed boundary
 
             red_ord_face   = red_order_field(ibg, adv, Face(), NoBias())
@@ -87,7 +87,7 @@ if archs == tuple(CPU()) # Just a CPU test, do not repeat it...
     end
 
     grid = RectilinearGrid(size=(20, 20, 20), extent=(1, 1, 1), halo=(6, 6, 6), topology=(Periodic, Periodic, Periodic))
-    c = CenterField(grid)    
+    c = CenterField(grid)
     u = XFaceField(grid)
     v = YFaceField(grid)
     w = ZFaceField(grid)
@@ -118,7 +118,7 @@ if archs == tuple(CPU()) # Just a CPU test, do not repeat it...
                 @test symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 1, c) ≈ symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme5, 1, c)
             end
         end
-            
+
         for s in (scheme, rscheme1, rscheme2, rscheme3)
             for i in 1:Nx, j in 1:Ny, k in 1:Nz
                 @test symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 2, c) ≈ symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme4, 2, c)
@@ -158,7 +158,7 @@ if archs == tuple(CPU()) # Just a CPU test, do not repeat it...
     rscheme3 = UpwindBiased(order=5)
     rscheme4 = UpwindBiased(order=3)
     rscheme5 = UpwindBiased(order=1)
-    
+
     @testset "Testing UpwindBiased reconstruction" begin
         for s in (scheme, rscheme1, rscheme2, rscheme3, rscheme4)
             for bias in (LeftBias(), RightBias()), i in 1:Nx, j in 1:Ny, k in 1:Nz
@@ -167,7 +167,7 @@ if archs == tuple(CPU()) # Just a CPU test, do not repeat it...
                 @test biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 1, bias, c) ≈ biased_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme5, 1, bias, c)
             end
         end
-            
+
         for s in (scheme, rscheme1, rscheme2, rscheme3)
             for bias in (LeftBias(), RightBias()), i in 1:Nx, j in 1:Ny, k in 1:Nz
                 @test biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 2, bias, c) ≈ biased_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme4, 2, bias, c)
@@ -175,7 +175,7 @@ if archs == tuple(CPU()) # Just a CPU test, do not repeat it...
                 @test biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, 2, bias, c) ≈ biased_interpolate_zᵃᵃᶠ(i, j, k, grid, rscheme4, 2, bias, c)
             end
         end
-        
+
         for s in (scheme, rscheme1, rscheme2)
             for bias in (LeftBias(), RightBias()), i in 1:Nx, j in 1:Ny, k in 1:Nz
                 @test biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, 3, bias, c) ≈ biased_interpolate_xᶠᵃᵃ(i, j, k, grid, rscheme3, 3, bias, c)
@@ -269,21 +269,19 @@ if archs == tuple(CPU()) # Just a CPU test, do not repeat it...
         end
     end
 
-    # Test that minimum_buffer_upwind_order default (=3) is stored correctly
+    # Test that minimum_buffer_upwind_order default (=1) is stored correctly
     @testset "Testing WENO minimum_buffer_upwind_order default" begin
-        for weno_order in (5, 7, 9, 11)
+        for weno_order in (3, 5, 7, 9, 11)
             s_default = WENO(order=weno_order)
-            @test s_default.minimum_buffer_upwind_order == 3
+            @test s_default.minimum_buffer_upwind_order == 1
         end
-        # For order=3 (buffer=2), default 3 is clamped to buffer=2
-        @test WENO(order=3).minimum_buffer_upwind_order == 2
     end
 
     # Test constructor validation
     @testset "Testing WENO minimum_buffer_upwind_order constructor" begin
-        # Default is 3 (clamped to buffer for small orders)
-        @test WENO(order=5).minimum_buffer_upwind_order == 3
-        @test WENO(order=3).minimum_buffer_upwind_order == 2  # clamped to buffer=2
+        # Default is 1
+        @test WENO(order=5).minimum_buffer_upwind_order == 1
+        @test WENO(order=3).minimum_buffer_upwind_order == 1
         # Valid values
         @test WENO(order=5, minimum_buffer_upwind_order=1).minimum_buffer_upwind_order == 1
         @test WENO(order=5, minimum_buffer_upwind_order=2).minimum_buffer_upwind_order == 2
@@ -342,22 +340,18 @@ if archs == tuple(CPU()) # Just a CPU test, do not repeat it...
 
     # Test UpwindBiased minimum_buffer_upwind_order default
     @testset "Testing UpwindBiased minimum_buffer_upwind_order default" begin
-        for ub_order in (5, 7, 9, 11)
+        for ub_order in (1, 3, 5, 7, 9, 11)
             s_default = UpwindBiased(order=ub_order)
-            @test s_default.minimum_buffer_upwind_order == 3
+            @test s_default.minimum_buffer_upwind_order == 1
         end
-        # For order=3 (buffer=2), default 3 is clamped to buffer=2
-        @test UpwindBiased(order=3).minimum_buffer_upwind_order == 2
-        # For order=1 (buffer=1), default 3 is clamped to buffer=1
-        @test UpwindBiased(order=1).minimum_buffer_upwind_order == 1
     end
 
     # Test UpwindBiased constructor validation
     @testset "Testing UpwindBiased minimum_buffer_upwind_order constructor" begin
-        # Default is 3 (clamped to buffer for small orders)
-        @test UpwindBiased(order=5).minimum_buffer_upwind_order == 3
-        @test UpwindBiased(order=3).minimum_buffer_upwind_order == 2  # clamped to buffer=2
-        @test UpwindBiased(order=1).minimum_buffer_upwind_order == 1  # clamped to buffer=1
+        # Default is 1
+        @test UpwindBiased(order=5).minimum_buffer_upwind_order == 1
+        @test UpwindBiased(order=3).minimum_buffer_upwind_order == 1
+        @test UpwindBiased(order=1).minimum_buffer_upwind_order == 1
         # Valid values
         @test UpwindBiased(order=5, minimum_buffer_upwind_order=1).minimum_buffer_upwind_order == 1
         @test UpwindBiased(order=5, minimum_buffer_upwind_order=2).minimum_buffer_upwind_order == 2

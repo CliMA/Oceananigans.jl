@@ -49,7 +49,7 @@ Keyword arguments
                                  the reconstruction falls back to centered 2nd-order interpolation
                                  instead of continuing to decrease the upwind order.
                                  Must be between 1 and `(order + 1) ÷ 2`.
-                                 Default: 1 (preserves existing behavior).
+                                 Default: 1 (preserves upwind behavior at all boundaries).
 
 Examples
 ========
@@ -75,15 +75,15 @@ WENO{5, Float64, Float32}(order=9)
 
 ```jldoctest weno
 julia> WENO(order=9, bounds=(0, 1))
-WENO{5, Float64, Float32}(order=9)
-├── bounds: (0, 1)
+WENO{5, Float64, Float32}(order=9, bounds=(0.0, 1.0))
+├── bounds: (0.0, 1.0)
 └── advection_velocity_scheme: Centered(order=8)
 ```
 """
 function WENO(FT::DataType=Oceananigans.defaults.FloatType, FT2::DataType=Float32;
               order = 5,
               bounds = nothing,
-              minimum_buffer_upwind_order = 3)
+              minimum_buffer_upwind_order = 1)
 
     mod(order, 2) == 0 && throw(ArgumentError("WENO reconstruction scheme is defined only for odd orders"))
 

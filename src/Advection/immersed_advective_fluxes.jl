@@ -106,11 +106,11 @@ julia> inside_immersed_boundary(3, :x, :ᶠ)
     zside = dir == :z ? side : Symbol("f")
 
     for (idx, n) in enumerate(1:N)
-        c = side == :f ? n - buffer - 1 : n - buffer 
+        c = side == :f ? n - buffer - 1 : n - buffer
         xflipside = flip(xside)
         yflipside = flip(yside)
         zflipside = flip(zside)
-        inactive_cells[idx] =  dir == :x ? 
+        inactive_cells[idx] =  dir == :x ?
                                :(immersed_inactive_node(i + $c, j, k, ibg, $xflipside, $yflipside, $zflipside)) :
                                dir == :y ?
                                :(immersed_inactive_node(i, j + $c, k, ibg, $xflipside, $yflipside, $zflipside)) :
@@ -123,7 +123,7 @@ end
 flip(l) = ifelse(l == :f, :c, :f)
 
 # For an immersed boundary grid, we compute the reduced order based on the inactive cells around the
-# reconstruction interface (either face or center). 
+# reconstruction interface (either face or center).
 #
 # Below an example for an 10th (or 9th for upwind schemes) order reconstruction performed on interface `X`.
 # Note that the buffer size is 5, and we represent reconstructions based on the buffer size, not the formal order.
@@ -133,8 +133,8 @@ flip(l) = ifelse(l == :f, :c, :f)
 # - if at least one between 2 or  9 are inactive, reduce from 4 to 3.
 # - if at least one between 3 or  8 are inactive, reduce from 3 to 2.
 # - if at least one between 4 or  7 are inactive, reduce from 2 to 1.
-#     
-#      1     2     3     4     5  X  6     7     8     9    10   
+#
+#      1     2     3     4     5  X  6     7     8     9    10
 #   | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 #   |     |     |     |     └── 1st ────|     |     |     |     |
 #   |     |     |     └── 2nd ─────────────── |     |     |     |
@@ -145,14 +145,14 @@ flip(l) = ifelse(l == :f, :c, :f)
 # The same logic applies to biased stencils, with the only difference that we a biased stencil.
 # For example, for a RightBias stencil, we have:
 #
-#      1     2     3     4     5  X  6     7     8     9    10   
+#      1     2     3     4     5  X  6     7     8     9    10
 #   | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
 #         |     |     |     └── 1st ────|     |     |     |     |
 #         |     |     |     └── 2nd ──────────|     |     |     |
 #         |     |     └── 3rd ──────────────────────|     |     |
 #         |     └── 4th ──────────────────────────────────|     |
 #         └── 5th ──────────────────────────────────────────────|
-#   
+#
 for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
     compute_reduced_order = Symbol(:compute_, Loc,:_reduced_order_, dir)
     compute_immersed_reduced_order = Symbol(:compute_, Loc, :_immersed_reduced_order_, dir)
@@ -165,57 +165,57 @@ for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
         end
     end
 
-    @eval begin 
+    @eval begin
         # Faces symmetric
         @inline $compute_immersed_reduced_order(i, j, k, ibg::IBG, ::A{1}, bias) = 1
 
-        @inline function $compute_immersed_reduced_order(i, j, k, ibg::IBG, a::A{2}, bias) 
+        @inline function $compute_immersed_reduced_order(i, j, k, ibg::IBG, a::A{2}, bias)
             I = $(inside_immersed_boundary(2, dir, loc))
             to1 = first_order_bounds_check(I, bias)
-            return ifelse(to1, 1, 2) 
+            return ifelse(to1, 1, 2)
         end
 
-        @inline function $compute_immersed_reduced_order(i, j, k, ibg::IBG, a::A{3}, bias) 
+        @inline function $compute_immersed_reduced_order(i, j, k, ibg::IBG, a::A{3}, bias)
             I = $(inside_immersed_boundary(3, dir, loc))
             to2 = second_order_bounds_check(I, bias)
             to1 =  first_order_bounds_check(I, bias)
-            return ifelse(to1, 1, 
+            return ifelse(to1, 1,
                    ifelse(to2, 2, 3))
         end
 
-        @inline function $compute_immersed_reduced_order(i, j, k, ibg::IBG, a::A{4}, bias) 
+        @inline function $compute_immersed_reduced_order(i, j, k, ibg::IBG, a::A{4}, bias)
             I = $(inside_immersed_boundary(4, dir, loc))
             to3 =  third_order_bounds_check(I, bias)
             to2 = second_order_bounds_check(I, bias)
             to1 =  first_order_bounds_check(I, bias)
-            return ifelse(to1, 1, 
-                   ifelse(to2, 2, 
+            return ifelse(to1, 1,
+                   ifelse(to2, 2,
                    ifelse(to3, 3, 4)))
         end
 
-        @inline function $compute_immersed_reduced_order(i, j, k, ibg::IBG, a::A{5}, bias) 
+        @inline function $compute_immersed_reduced_order(i, j, k, ibg::IBG, a::A{5}, bias)
             I = $(inside_immersed_boundary(5, dir, loc))
             to4 = fourth_order_bounds_check(I, bias)
             to3 =  third_order_bounds_check(I, bias)
             to2 = second_order_bounds_check(I, bias)
             to1 =  first_order_bounds_check(I, bias)
-            return ifelse(to1, 1, 
-                   ifelse(to2, 2, 
-                   ifelse(to3, 3, 
+            return ifelse(to1, 1,
+                   ifelse(to2, 2,
+                   ifelse(to3, 3,
                    ifelse(to4, 4, 5))))
         end
 
-        @inline function $compute_immersed_reduced_order(i, j, k, ibg::IBG, a::A{6}, bias) 
+        @inline function $compute_immersed_reduced_order(i, j, k, ibg::IBG, a::A{6}, bias)
             I = $(inside_immersed_boundary(6, dir, loc))
             to5 =  fifth_order_bounds_check(I, bias)
             to4 = fourth_order_bounds_check(I, bias)
             to3 =  third_order_bounds_check(I, bias)
             to2 = second_order_bounds_check(I, bias)
             to1 =  first_order_bounds_check(I, bias)
-            return ifelse(to1, 1, 
-                   ifelse(to2, 2, 
-                   ifelse(to3, 3, 
-                   ifelse(to4, 4, 
+            return ifelse(to1, 1,
+                   ifelse(to2, 2,
+                   ifelse(to3, 3,
+                   ifelse(to4, 4,
                    ifelse(to5, 5, 6)))))
         end
     end

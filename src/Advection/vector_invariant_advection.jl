@@ -447,8 +447,8 @@ for b in advection_buffers, FT in fully_supported_float_types
         @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s::Centered{$b, $FT}, r::Int, f::Callable, ::AS, args...) = symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s, r, f, args...)
         @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s::Centered{$b, $FT}, r::Int, f::Callable, ::AS, args...) = symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s, r, f, args...)
 
-        @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s::UpwindBiased{$b, $FT}, r::Int, bias, f::Callable, ::AS, args...) = biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, bias, r, f, args...)
-        @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s::UpwindBiased{$b, $FT}, r::Int, bias, f::Callable, ::AS, args...) = biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, bias, r, f, args...)
-        @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s::UpwindBiased{$b, $FT}, r::Int, bias, f::Callable, ::AS, args...) = biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, bias, r, f, args...)
+        @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s::UpwindBiased{$b, $FT}, r::Int, bias, f::Callable, ::AS, args...) = biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, r, bias, f, args...)
+        @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s::UpwindBiased{$b, $FT}, r::Int, bias, f::Callable, ::AS, args...) = biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, r, bias, f, args...)
+        @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s::UpwindBiased{$b, $FT}, r::Int, bias, f::Callable, ::AS, args...) = biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, r, bias, f, args...)
     end
 end

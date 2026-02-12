@@ -5,7 +5,7 @@
 struct Centered{N, FT} <: AbstractCenteredAdvectionScheme{N, FT} end
 
 function Centered(FT::DataType=Oceananigans.defaults.FloatType; order = 2)
-    
+
     mod(order, 2) != 0 && throw(ArgumentError("Centered reconstruction scheme is defined only for even orders"))
 
     N = Int(order ÷ 2)
@@ -32,25 +32,25 @@ for (side, dir) in zip((:ᶠᵃᵃ, :ᵃᶠᵃ, :ᵃᵃᶠ), (:x, :y, :z))
             @eval begin
                 @inline $interp(i, j, k, grid, ::Centered{1, $FT}, red_order::Int, ψ::$F, args...) = @muladd $(stencil_reconstruction(FT, 1, :symmetric, dir, bool))
 
-                @inline function $interp(i, j, k, grid, ::Centered{2, $FT}, red_order::Int, ψ::$F, args...)          
+                @inline function $interp(i, j, k, grid, ::Centered{2, $FT}, red_order::Int, ψ::$F, args...)
                     @muladd ifelse(red_order==1, $(stencil_reconstruction(FT, 1, :symmetric, dir, bool)),
                                                  $(stencil_reconstruction(FT, 2, :symmetric, dir, bool)))
                 end
 
-                @inline function $interp(i, j, k, grid, ::Centered{3, $FT}, red_order::Int, ψ::$F, args...)          
+                @inline function $interp(i, j, k, grid, ::Centered{3, $FT}, red_order::Int, ψ::$F, args...)
                     @muladd ifelse(red_order==1, $(stencil_reconstruction(FT, 1, :symmetric, dir, bool)),
                             ifelse(red_order==2, $(stencil_reconstruction(FT, 2, :symmetric, dir, bool)),
                                                  $(stencil_reconstruction(FT, 3, :symmetric, dir, bool))))
                 end
 
-                @inline function $interp(i, j, k, grid, ::Centered{4, $FT}, red_order::Int, ψ::$F, args...)          
+                @inline function $interp(i, j, k, grid, ::Centered{4, $FT}, red_order::Int, ψ::$F, args...)
                     @muladd ifelse(red_order==1, $(stencil_reconstruction(FT, 1, :symmetric, dir, bool)),
                             ifelse(red_order==2, $(stencil_reconstruction(FT, 2, :symmetric, dir, bool)),
                             ifelse(red_order==3, $(stencil_reconstruction(FT, 3, :symmetric, dir, bool)),
                                                  $(stencil_reconstruction(FT, 4, :symmetric, dir, bool)))))
                 end
 
-                @inline function $interp(i, j, k, grid, ::Centered{5, $FT}, red_order::Int, ψ::$F, args...)          
+                @inline function $interp(i, j, k, grid, ::Centered{5, $FT}, red_order::Int, ψ::$F, args...)
                     @muladd ifelse(red_order==1, $(stencil_reconstruction(FT, 1, :symmetric, dir, bool)),
                             ifelse(red_order==2, $(stencil_reconstruction(FT, 2, :symmetric, dir, bool)),
                             ifelse(red_order==3, $(stencil_reconstruction(FT, 3, :symmetric, dir, bool)),
@@ -58,7 +58,7 @@ for (side, dir) in zip((:ᶠᵃᵃ, :ᵃᶠᵃ, :ᵃᵃᶠ), (:x, :y, :z))
                                                  $(stencil_reconstruction(FT, 5, :symmetric, dir, bool))))))
                 end
 
-                @inline function $interp(i, j, k, grid, ::Centered{6, $FT}, red_order::Int, ψ::$F, args...)          
+                @inline function $interp(i, j, k, grid, ::Centered{6, $FT}, red_order::Int, ψ::$F, args...)
                     @muladd ifelse(red_order==1, $(stencil_reconstruction(FT, 1, :symmetric, dir, bool)),
                             ifelse(red_order==2, $(stencil_reconstruction(FT, 2, :symmetric, dir, bool)),
                             ifelse(red_order==3, $(stencil_reconstruction(FT, 3, :symmetric, dir, bool)),

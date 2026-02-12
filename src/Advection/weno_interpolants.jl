@@ -78,11 +78,11 @@ const ϵ = 1f-8
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
         elem[stencil] = :(ψ[$stencil] * C[$(stencil)])
-    end    
+    end
     return Expr(:call, :+, elem...)
 end
 
-""" 
+"""
     biased_p(ψ, scheme::WENO{buffer}, bias, ::Val{stencil})
 
 Biased reconstruction of `ψ` from the stencil `stencil` of a WENO reconstruction of
@@ -99,7 +99,7 @@ for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
     @eval @inline reconstruction_operation(scheme::WENO{$buffer}, ψ, C) = @inbounds @muladd $(metaprogrammed_reconstruction_operation(buffer))
 end
 
-@inline function biased_p(ψ, scheme, red_order, val_stencil) 
+@inline function biased_p(ψ, scheme, red_order, val_stencil)
     coefficients = reconstruction_coefficients(scheme, red_order, val_stencil)
     return reconstruction_operation(scheme, ψ, coefficients)
 end
@@ -170,10 +170,10 @@ while for `buffer == 4` unrolls into
 
 # Smoothness indicators for stencil `stencil` for left and right biased reconstruction
 for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
-    @eval @inline smoothness_operation(scheme::WENO{$buffer}, ψ, C) = @inbounds ϵ + @muladd @fastmath $(metaprogrammed_smoothness_operation(buffer)) 
+    @eval @inline smoothness_operation(scheme::WENO{$buffer}, ψ, C) = @inbounds ϵ + @muladd @fastmath $(metaprogrammed_smoothness_operation(buffer))
 end
 
-@inline function smoothness_indicator(ψ, scheme, red_order, val_stencil) 
+@inline function smoothness_indicator(ψ, scheme, red_order, val_stencil)
     coefficients = smoothness_coefficients(scheme, red_order, val_stencil)
     return smoothness_operation(scheme, ψ, coefficients)
 end
@@ -235,19 +235,19 @@ where
 
 The ``α`` values are normalized before returning
 """
-@inline function biased_weno_weights(ψ, grid, scheme::WENO, red_order, args...) 
-    
+@inline function biased_weno_weights(ψ, grid, scheme::WENO, red_order, args...)
+
     β = beta_loop(scheme, red_order, ψ)
     τ = global_smoothness_indicator(β, red_order)
     α = zweno_alpha_loop(scheme, red_order, β, τ)
-    
+
     # Normalization factor
     Σα⁻¹ =  1 / sum(α)
 
     return α .* Σα⁻¹
 end
 
-@inline function biased_weno_weights(ijk, grid, scheme::WENO, red_order, bias, dir, ::VelocityStencil, u, v) 
+@inline function biased_weno_weights(ijk, grid, scheme::WENO, red_order, bias, dir, ::VelocityStencil, u, v)
     i, j, k = ijk
 
     uₛ = tangential_stencil_u(i, j, k, grid, scheme, bias, dir, u)
@@ -257,7 +257,7 @@ end
     β  =  beta_sum(scheme, βᵤ, βᵥ)
     τ  = global_smoothness_indicator(β, red_order)
     α  = zweno_alpha_loop(scheme, red_order, β, τ)
-    
+
     # Normalization factor
     Σα⁻¹ =  1 / sum(α)
     return α .* Σα⁻¹
@@ -367,9 +367,9 @@ The calculation of the reconstruction is metaprogrammed in the `metaprogrammed_w
 `buffer == 4` (seventh order WENO), unrolls to:
 
 ```julia
-ψ̂ = ω[1] * biased_p(ψ[1], scheme, red_order, Val(0)) + 
-    ω[2] * biased_p(ψ[2], scheme, red_order, Val(1)) + 
-    ω[3] * biased_p(ψ[3], scheme, red_order, Val(2)) + 
+ψ̂ = ω[1] * biased_p(ψ[1], scheme, red_order, Val(0)) +
+    ω[2] * biased_p(ψ[2], scheme, red_order, Val(1)) +
+    ω[3] * biased_p(ψ[3], scheme, red_order, Val(2)) +
     ω[4] * biased_p(ψ[4], scheme, red_order, Val(3)))
 ```
 
@@ -397,8 +397,8 @@ for (interp, dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, 
             return weno_reconstruction(scheme, red_order, ψₜ, ω)::FT
         end
 
-        @inline function $interpolate_func(i, j, k, grid, 
-                                            scheme::WENO{N, FT}, red_order, bias, 
+        @inline function $interpolate_func(i, j, k, grid,
+                                            scheme::WENO{N, FT}, red_order, bias,
                                             ψ, VI::AbstractSmoothnessStencil, args...) where {N, FT}
 
             ψₜ = $stencil(i, j, k, grid, scheme, bias, ψ, args...)
@@ -406,8 +406,8 @@ for (interp, dir, val) in zip([:xᶠᵃᵃ, :yᵃᶠᵃ, :zᵃᵃᶠ], [:x, :y, 
             return weno_reconstruction(scheme, red_order, ψₜ, ω)::FT
         end
 
-        @inline function $interpolate_func(i, j, k, grid, 
-                                            scheme::WENO{N, FT}, red_order, bias, 
+        @inline function $interpolate_func(i, j, k, grid,
+                                            scheme::WENO{N, FT}, red_order, bias,
                                             ψ, VI::VelocityStencil, u, v, args...) where {N, FT}
 
             ψₜ = $stencil(i, j, k, grid, scheme, bias, ψ, u, v, args...)

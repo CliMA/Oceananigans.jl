@@ -124,12 +124,12 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper)
             Δτ, Gⁿ)
 
     implicit_step!(e, implicit_solver, closure,
-                   closure_fields, 
+                   closure_fields,
                    Val(tracer_index),
-                   model.clock, 
+                   model.clock,
                    fields(model),
                    Δτ)
-                   
+
     return nothing
 end
 

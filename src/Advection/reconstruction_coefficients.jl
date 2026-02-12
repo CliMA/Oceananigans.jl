@@ -88,7 +88,7 @@ uniform_reconstruction_coefficients(FT, ::Val{:symmetric}, buffer) = stencil_coe
 uniform_reconstruction_coefficients(FT, ::Val{:left}, buffer)      = buffer==1 ? (one(FT),) : stencil_coefficients(FT, 50, buffer-2, collect(1:100), collect(1:100); order = 2buffer-1)
 uniform_reconstruction_coefficients(FT, ::Val{:right}, buffer)     = buffer==1 ? (one(FT),) : stencil_coefficients(FT, 50, buffer-1, collect(1:100), collect(1:100); order = 2buffer-1)
 
-""" 
+"""
     stencil_reconstruction(FT, buffer, bias, dir, func::Bool = false)
 
 Stencils for reconstruction using linear advection schemes (note that WENO has its own reconstruction stencils)

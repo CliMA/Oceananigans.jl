@@ -5,8 +5,8 @@
 # SS -> smoothness stencil
 # X  -> order of the WENO reconstruction
 # Y  -> reduced order of the WENO reconstruction (with Y ≤ X)
-# Z  -> stencil number  
-# 
+# Z  -> stencil number
+#
 # The zero stencil for each order is names SSX0M
 
 # Zero and one coefficient stencils
@@ -99,8 +99,8 @@ const SS665 = Int32.((01152561, -12950184, 29442256, -33918804, 19834350, -04712
         """
                 smoothness_coefficients(::Val{FT}, ::Val{buffer}, ::Val{red_order}, ::Val{stencil})
 
-        Return the coefficients used to calculate the smoothness indicators for the stencil 
-        number `stencil` of a WENO reconstruction of order `buffer * 2 - 1`. The actual order of 
+        Return the coefficients used to calculate the smoothness indicators for the stencil
+        number `stencil` of a WENO reconstruction of order `buffer * 2 - 1`. The actual order of
         reconstruction is restricted by `red_order <= buffer`. The coefficients
         are ordered in such a way to calculate the smoothness in the following fashion:
 
@@ -113,8 +113,8 @@ const SS665 = Int32.((01152561, -12950184, 29442256, -33918804, 19834350, -04712
         C = smoothness_coefficients(Val(buffer), Val(0))
 
         # The smoothness indicator
-        β = ψ[1] * (C[1]  * ψ[1] + C[2] * ψ[2] + C[3] * ψ[3] + C[4] * ψ[4]) + 
-                ψ[2] * (C[5]  * ψ[2] + C[6] * ψ[3] + C[7] * ψ[4]) + 
+        β = ψ[1] * (C[1]  * ψ[1] + C[2] * ψ[2] + C[3] * ψ[3] + C[4] * ψ[4]) +
+                ψ[2] * (C[5]  * ψ[2] + C[6] * ψ[3] + C[7] * ψ[4]) +
                 ψ[3] * (C[8]  * ψ[3] + C[9] * ψ[4])
                 ψ[4] * (C[10] * ψ[4])
         ```
@@ -243,25 +243,25 @@ const SS665 = Int32.((01152561, -12950184, 29442256, -33918804, 19834350, -04712
                                        $(SS665))     # Order 11
 end
 
-# Global smoothness indicator τ₂ᵣ₋₁ from "Accuracy of the weighted essentially non-oscillatory 
+# Global smoothness indicator τ₂ᵣ₋₁ from "Accuracy of the weighted essentially non-oscillatory
 # conservative finite difference schemes", Don & Borges, 2013
-@inline function global_smoothness_indicator(β::NTuple{1}, R) 
+@inline function global_smoothness_indicator(β::NTuple{1}, R)
     @inbounds abs(β[1])
 end
 
-@inline function global_smoothness_indicator(β::NTuple{2}, R) 
+@inline function global_smoothness_indicator(β::NTuple{2}, R)
     τ = @inbounds @fastmath ifelse(R == 1, β[1], β[1] - β[2])
     return abs(τ)
 end
 
-@inline function global_smoothness_indicator(β::NTuple{3}, R) 
+@inline function global_smoothness_indicator(β::NTuple{3}, R)
     τ = @inbounds @fastmath ifelse(R == 1, β[1],
                             ifelse(R == 2, β[1] - β[2],
                                            β[1] - β[3]))
     return abs(τ)
 end
 
-@inline function global_smoothness_indicator(β::NTuple{4}, R) 
+@inline function global_smoothness_indicator(β::NTuple{4}, R)
     τ = @inbounds @fastmath ifelse(R == 1, β[1],
                             ifelse(R == 2, β[1] -  β[2],
                             ifelse(R == 3, β[1] -  β[3],
@@ -269,7 +269,7 @@ end
     return abs(τ)
 end
 
-@inline function global_smoothness_indicator(β::NTuple{5}, R) 
+@inline function global_smoothness_indicator(β::NTuple{5}, R)
     τ = @inbounds @fastmath ifelse(R == 1, β[1],
                             ifelse(R == 2, β[1] - β[2],
                             ifelse(R == 3, β[1] - β[3],
@@ -279,7 +279,7 @@ end
 end
 
 # Otherwise we take the 11th order WENO smoothness indicator as a default
-@inline function global_smoothness_indicator(β, R) 
+@inline function global_smoothness_indicator(β, R)
     τ = @inbounds @fastmath ifelse(R == 1, β[1],
                             ifelse(R == 2, β[1] -   β[2],
                             ifelse(R == 3, β[1] -   β[3],

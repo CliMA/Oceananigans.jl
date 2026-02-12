@@ -22,7 +22,7 @@ const AGX = AUG{<:Any, <:BT}
 const AGY = AUG{<:Any, <:Any, <:BT}
 const AGZ = AUG{<:Any, <:Any, <:Any, <:BT}
 
-# Reduction of the order near boundaries 
+# Reduction of the order near boundaries
 #
 # For faces reconstructions with NoBias (tracers for example):
 #               B                                                           B
