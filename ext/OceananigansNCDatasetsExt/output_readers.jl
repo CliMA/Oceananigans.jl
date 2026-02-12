@@ -33,14 +33,6 @@ function FieldTimeSeries(typed_path::NetCDFPath, name::String;
         (:, :, :)
     end
 
-    if isnothing(architecture) # determine architecture
-        if isnothing(grid) # go to default
-            architecture = CPU()
-        else # there's a grid, use that architecture
-            architecture = Oceananigans.Architectures.architecture(grid)
-        end
-    end
-
     # Read the grid from the file on the correct architecture
     isnothing(grid) && (grid = reconstruct_grid(file; architecture))
 
