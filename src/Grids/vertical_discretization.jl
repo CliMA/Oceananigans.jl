@@ -40,7 +40,7 @@ coordinate_summary(topo, z::StaticVerticalDiscretization, name) = coordinate_sum
 
 Represent a mutable vertical coordinate that can evolve in time.
 
-$(TYPEDFIELDS)
+$(FIELDS)
 """
 struct MutableVerticalDiscretization{C, D, E, F, H, CC, FC, CF, FF} <: AbstractVerticalCoordinate
     "Face-centered reference coordinate"
