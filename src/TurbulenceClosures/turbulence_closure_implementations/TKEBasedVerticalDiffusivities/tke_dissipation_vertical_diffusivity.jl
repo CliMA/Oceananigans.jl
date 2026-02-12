@@ -174,7 +174,7 @@ end
 ##### Diffusivities and diffusivity fields utilities
 #####
 
-struct TKEDissipationClosureFields{K, L, U, T, KC, LC, S}
+struct TKEDissipationClosureFields{K, L, U, KC, LC}
     κu :: K
     κc :: K
     κe :: K
@@ -182,10 +182,8 @@ struct TKEDissipationClosureFields{K, L, U, T, KC, LC, S}
     Le :: L
     Lϵ :: L
     previous_velocities :: U
-    previous_compute_time :: T
     _tupled_tracer_diffusivities :: KC
     _tupled_implicit_linear_coefficients :: LC
-    _skip_next_compute :: S  # Used for checkpointing
 end
 
 Adapt.adapt_structure(to, tke_dissipation_closure_fields::TKEDissipationClosureFields) =
@@ -196,10 +194,8 @@ Adapt.adapt_structure(to, tke_dissipation_closure_fields::TKEDissipationClosureF
                                     adapt(to, tke_dissipation_closure_fields.Le),
                                     adapt(to, tke_dissipation_closure_fields.Lϵ),
                                     adapt(to, tke_dissipation_closure_fields.previous_velocities),
-                                    tke_dissipation_closure_fields.previous_compute_time[],
                                     adapt(to, tke_dissipation_closure_fields._tupled_tracer_diffusivities),
-                                    adapt(to, tke_dissipation_closure_fields._tupled_implicit_linear_coefficients),
-                                    tke_dissipation_closure_fields._skip_next_compute[])
+                                    adapt(to, tke_dissipation_closure_fields._tupled_implicit_linear_coefficients))
 
 function BoundaryConditions.fill_halo_regions!(tke_dissipation_closure_fields::TKEDissipationClosureFields, args...; kw...)
     fields_with_halos_to_fill = (tke_dissipation_closure_fields.κu,
@@ -231,7 +227,6 @@ function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfT
     u⁻ = XFaceField(grid)
     v⁻ = YFaceField(grid)
     previous_velocities = (; u=u⁻, v=v⁻)
-    previous_compute_time = Ref(clock.time)
 
     # Secret tuple for getting tracer diffusivities with tuple[tracer_index]
     _tupled_tracer_diffusivities = Dict{Symbol, Any}(name => κc for name in tracer_names)
@@ -246,14 +241,10 @@ function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfT
     _ntupled_implicit_linear_coefficients = NamedTuple(name => _tupled_implicit_linear_coefficients[name]
                                                        for name in tracer_names)
 
-    _skip_next_compute = Ref(false)
-
     return TKEDissipationClosureFields(κu, κc, κe, κϵ, Le, Lϵ,
                                            previous_velocities,
-                                           previous_compute_time,
                                            _ntupled_tracer_diffusivities,
-                                           _ntupled_implicit_linear_coefficients,
-                                           _skip_next_compute)
+                                           _ntupled_implicit_linear_coefficients)
 end
 
 @inline viscosity_location(::FlavorOfTD) = (c, c, f)
@@ -421,8 +412,7 @@ end
 #####
 
 function prognostic_state(cf::TKEDissipationClosureFields)
-    return (previous_compute_time = cf.previous_compute_time[],
-            previous_velocities = prognostic_state(cf.previous_velocities),
+    return (previous_velocities = prognostic_state(cf.previous_velocities),
             κu = prognostic_state(cf.κu),
             κc = prognostic_state(cf.κc),
             κe = prognostic_state(cf.κe),
@@ -430,7 +420,6 @@ function prognostic_state(cf::TKEDissipationClosureFields)
 end
 
 function restore_prognostic_state!(restored::TKEDissipationClosureFields, from)
-    restored.previous_compute_time[] = from.previous_compute_time
     restore_prognostic_state!(restored.previous_velocities, from.previous_velocities)
     restore_prognostic_state!(restored.κu, from.κu)
     restore_prognostic_state!(restored.κc, from.κc)

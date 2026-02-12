@@ -173,17 +173,15 @@ catke_first(catke1::FlavorOfCATKE, catke2::FlavorOfCATKE) = error("Can't have tw
 ##### Diffusivities and diffusivity fields utilities
 #####
 
-struct CATKEClosureFields{K, L, J, T, U, KC, LC, S}
+struct CATKEClosureFields{K, L, J, U, KC, LC}
     κu :: K
     κc :: K
     κe :: K
     Le :: L
     Jᵇ :: J
-    previous_compute_time :: T
     previous_velocities :: U
     _tupled_tracer_diffusivities :: KC
     _tupled_implicit_linear_coefficients :: LC
-    _skip_next_compute :: S  # Used for checkpointing
 end
 
 Adapt.adapt_structure(to, catke_closure_fields::CATKEClosureFields) =
@@ -192,11 +190,9 @@ Adapt.adapt_structure(to, catke_closure_fields::CATKEClosureFields) =
                            adapt(to, catke_closure_fields.κe),
                            adapt(to, catke_closure_fields.Le),
                            adapt(to, catke_closure_fields.Jᵇ),
-                           catke_closure_fields.previous_compute_time[],
                            adapt(to, catke_closure_fields.previous_velocities),
                            adapt(to, catke_closure_fields._tupled_tracer_diffusivities),
-                           adapt(to, catke_closure_fields._tupled_implicit_linear_coefficients),
-                           catke_closure_fields._skip_next_compute[])
+                           adapt(to, catke_closure_fields._tupled_implicit_linear_coefficients))
 
 function BoundaryConditions.fill_halo_regions!(catke_closure_fields::CATKEClosureFields, args...; kw...)
     κ = (catke_closure_fields.κu,
@@ -218,7 +214,6 @@ function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfC
     κe = ZFaceField(grid, boundary_conditions=bcs.κe)
     Le = CenterField(grid)
     Jᵇ = Field{Center, Center, Nothing}(grid)
-    previous_compute_time = Ref(clock.time)
 
     # Note: we may be able to avoid using the "previous velocities" in favor of a "fully implicit"
     # discretization of shear production
@@ -230,22 +225,14 @@ function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfC
     _tupled_tracer_diffusivities         = NamedTuple(name => name === :e ? κe : κc          for name in tracer_names)
     _tupled_implicit_linear_coefficients = NamedTuple(name => name === :e ? Le : ZeroField() for name in tracer_names)
 
-    _skip_next_compute = Ref(false)
-
     return CATKEClosureFields(κu, κc, κe, Le, Jᵇ,
-                                  previous_compute_time, previous_velocities,
-                                  _tupled_tracer_diffusivities, _tupled_implicit_linear_coefficients,
-                                  _skip_next_compute)
+                                  previous_velocities,
+                                  _tupled_tracer_diffusivities,
+                                  _tupled_implicit_linear_coefficients)
 end
 
 @inline viscosity_location(::FlavorOfCATKE) = (c, c, f)
 @inline diffusivity_location(::FlavorOfCATKE) = (c, c, f)
-
-function update_previous_compute_time!(closure_fields, model)
-    Δt = time_difference_seconds(model.clock.time, closure_fields.previous_compute_time[])
-    closure_fields.previous_compute_time[] = model.clock.time
-    return Δt
-end
 
 function step_closure_prognostics!(closure_fields, closure::FlavorOfCATKE, model, Δt)
     arch = model.architecture
@@ -418,8 +405,7 @@ end
 #####
 
 function prognostic_state(cf::CATKEClosureFields)
-    return (previous_compute_time = cf.previous_compute_time[],
-            previous_velocities = prognostic_state(cf.previous_velocities),
+    return (previous_velocities = prognostic_state(cf.previous_velocities),
             Jᵇ = prognostic_state(cf.Jᵇ),
             κu = prognostic_state(cf.κu),
             κc = prognostic_state(cf.κc),
@@ -427,7 +413,6 @@ function prognostic_state(cf::CATKEClosureFields)
 end
 
 function restore_prognostic_state!(restored::CATKEClosureFields, from)
-    restored.previous_compute_time[] = from.previous_compute_time
     restore_prognostic_state!(restored.previous_velocities, from.previous_velocities)
     restore_prognostic_state!(restored.Jᵇ, from.Jᵇ)
     restore_prognostic_state!(restored.κu, from.κu)
