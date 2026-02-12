@@ -9,8 +9,8 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
     Nx = Ny = Nz = 16
 
     z = ExponentialDiscretization(Nz, -100, 0)
-    L = 10000
-    
+    L = 10e3
+
     # Create grid and initial condition based on direction
     if horizontal_direction == :x
         # Slope in x-direction (Flat in y)
@@ -20,7 +20,7 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
                                z,
                                topology = (Bounded, Flat, Bounded))
 
-        model = HydrostaticFreeSurfaceModel(grid; timestepper,
+        model = HydrostaticFreeSurfaceModel(grid;
                                             buoyancy = BuoyancyTracer(),
                                             closure = eddy_closure,
                                             tracers = :b)
@@ -35,7 +35,7 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
                                z,
                                topology = (Flat, Bounded, Bounded))
 
-        model = HydrostaticFreeSurfaceModel(grid; timestepper,
+        model = HydrostaticFreeSurfaceModel(grid;
                                             buoyancy = BuoyancyTracer(),
                                             closure = eddy_closure,
                                             tracers = :b)
@@ -51,7 +51,7 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
                                z,
                                topology = (Bounded, Bounded, Bounded))
 
-        model = HydrostaticFreeSurfaceModel(grid; timestepper,
+        model = HydrostaticFreeSurfaceModel(grid;
                                             buoyancy = BuoyancyTracer(),
                                             closure = eddy_closure,
                                             tracers = :b)
