@@ -67,22 +67,73 @@ Base.show(io::IO, d::DiagnosticVerticalVelocity) = print(io, "DiagnosticVertical
                                w = ZeroField(),
                                parameters = nothing)
 
-Builds `PrescribedVelocityFields` with prescribed functions `u`, `v`, and `w`.
+Build `PrescribedVelocityFields` with prescribed `u`, `v`, and `w`.
 
-If `isnothing(parameters)`, then `u, v, w` are called with the signature
+Each of `u`, `v`, and `w` may be:
 
+- A `Function` with signature `u(x, y, z, t)` (or `u(x, y, z, t, parameters)` when
+  `parameters` is provided). Functions are wrapped in `FunctionField` during model
+  construction and associated with the model's `grid` and `clock`.
+- A `Field` with the appropriate staggering (`u` at `(Face, Center, Center)`,
+  `v` at `(Center, Face, Center)`, `w` at `(Center, Center, Face)`).
+- A `FieldTimeSeries`, which is wrapped in a `TimeSeriesInterpolation` that
+  interpolates to the model clock time at each time step. The `FieldTimeSeries`
+  must already have the correct staggered location.
+- A `DiagnosticVerticalVelocity()` (only valid for `w`), which allocates a
+  `Field{Center, Center, Face}` and computes `w` from the continuity equation
+  at each time step via `compute_w_from_continuity!`.
+- A `ZeroField()` (default).
+
+```jldoctest
+julia> using Oceananigans
+
+julia> PrescribedVelocityFields().u
+ZeroField{Int64}
 ```
-u(x, y, z, t) = # something interesting
+
+Using `Field` arguments:
+
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1));
+
+julia> PrescribedVelocityFields(u = XFaceField(grid)).u
+4×4×4 Field{Face, Center, Center} on RectilinearGrid on CPU
+├── grid: 4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
+└── data: 10×10×10 OffsetArray(::Array{Float64, 3}, -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
+    └── max=0.0, min=0.0, mean=0.0
 ```
 
-If `!isnothing(parameters)`, then `u, v, w` are called with the signature
+Using a `FieldTimeSeries`:
 
-```
-u(x, y, z, t, parameters) = # something parameterized and interesting
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1));
+
+julia> u_fts = FieldTimeSeries{Face, Center, Center}(grid, 0:0.5:1);
+
+julia> PrescribedVelocityFields(u = u_fts).u
+4×4×4×3 FieldTimeSeries{InMemory} located at (Face, Center, Center) on CPU
+├── grid: 4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── indices: (:, :, :)
+├── time_indexing: Clamp()
+├── backend: InMemory()
+└── data: 10×10×10×3 OffsetArray(::Array{Float64, 4}, -2:7, -2:7, -2:7, 1:3) with eltype Float64 with indices -2:7×-2:7×-2:7×1:3
+    └── max=0.0, min=0.0, mean=0.0
 ```
 
-In the constructor for `HydrostaticFreeSurfaceModel`, the functions `u, v, w` are wrapped
-in `FunctionField` and associated with the model's `grid` and `clock`.
+Using `DiagnosticVerticalVelocity` for `w`:
+
+```jldoctest
+julia> using Oceananigans
+
+julia> PrescribedVelocityFields(w = DiagnosticVerticalVelocity()).w
+DiagnosticVerticalVelocity()
+```
 """
 function PrescribedVelocityFields(; u = ZeroField(),
                                     v = ZeroField(),
