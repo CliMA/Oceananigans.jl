@@ -23,7 +23,7 @@ struct PrescribedVelocityFields{U, V, W, P}
     parameters :: P
 end
 
-@inline Base.getindex(U::PrescribedVelocityFields, i) = getindex((u=U.u, v=U.v, w=_unwrap_w(U.w)), i)
+@inline Base.getindex(U::PrescribedVelocityFields, i) = getindex((u=U.u, v=U.v, w=unwrap_w(U.w)), i)
 
 #####
 ##### DiagnosticVerticalVelocity
