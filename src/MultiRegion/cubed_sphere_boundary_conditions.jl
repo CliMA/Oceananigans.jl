@@ -2,10 +2,9 @@ using Oceananigans.BoundaryConditions
 using Oceananigans.BoundaryConditions: fill_halo_size, fill_halo_offset, fill_halo_event!, get_boundary_kernels
 using Oceananigans.Fields: reduced_dimensions
 using Oceananigans.MultiRegion: number_of_regions
+using Oceananigans.Utils: launch!
 
-import Oceananigans.BoundaryConditions: fill_halo_regions!
-
-function fill_halo_regions!(field::CubedSphereField{<:Center, <:Center}, args...; kwargs...)
+function BoundaryConditions.fill_halo_regions!(field::CubedSphereField{<:Center, <:Center}, args...; kwargs...)
     grid = field.grid
 
     multiregion_field = Reference(field.data.regional_objects)
@@ -109,7 +108,7 @@ end
     fill_halo_event!(field.data, kernel!, bc, loc, grid)
 end
 
-function fill_halo_regions!(field::CubedSphereField{<:Face, <:Face}; kwargs...)
+function BoundaryConditions.fill_halo_regions!(field::CubedSphereField{<:Face, <:Face}, args...; kwargs...)
     grid = field.grid
 
     multiregion_field = Reference(field.data.regional_objects)
@@ -226,10 +225,10 @@ end
     end
 end
 
-fill_halo_regions!(fields::Tuple{CubedSphereField,CubedSphereField}; signed = true, kwargs...) = fill_halo_regions!(fields...; signed, kwargs...)
+BoundaryConditions.fill_halo_regions!(fields::Tuple{CubedSphereField, CubedSphereField}, args...; signed=true, kwargs...) = fill_halo_regions!(fields...; signed, kwargs...)
 
-function fill_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
-                            field_2::CubedSphereField{<:Center, <:Center}; signed = true, kwargs...)
+function BoundaryConditions.fill_halo_regions!(field_1::CubedSphereField{<:Center, <:Center},
+                                               field_2::CubedSphereField{<:Center, <:Center}, args...; signed=true, kwargs...)
     grid = field_1.grid
 
     plmn = signed ? -1 : 1
@@ -373,8 +372,8 @@ end
     end
 end
 
-function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
-                            field_2::CubedSphereField{<:Center, <:Face}; signed = true, kwargs...)
+function BoundaryConditions.fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Center},
+                                               field_2::CubedSphereField{<:Center, <:Face}, args...; signed = true, kwargs...)
     grid = field_1.grid
 
     plmn = signed ? -1 : 1
@@ -604,8 +603,8 @@ end
     end
 end
 
-function fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Face},
-                            field_2::CubedSphereField{<:Face, <:Face}; signed = true, kwargs...)
+function BoundaryConditions.fill_halo_regions!(field_1::CubedSphereField{<:Face, <:Face},
+                                               field_2::CubedSphereField{<:Face, <:Face}, args...; signed = true, kwargs...)
     grid = field_1.grid
 
     plmn = signed ? -1 : 1

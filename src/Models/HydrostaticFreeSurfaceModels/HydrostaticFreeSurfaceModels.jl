@@ -8,36 +8,33 @@ export
 using KernelAbstractions: @index, @kernel
 using Adapt: Adapt
 
-using Oceananigans.Utils: launch!, @apply_regionally
-using Oceananigans.Grids: AbstractGrid, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid
+using Oceananigans.Architectures: architecture
 using Oceananigans.Fields: ZFaceField
+using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid
 using Oceananigans.Operators: Δzᶜᶠᶜ, Δzᶠᶜᶜ
+using Oceananigans.TimeSteppers: TimeSteppers, SplitRungeKuttaTimeStepper, QuasiAdamsBashforth2TimeStepper
+using Oceananigans.Utils: Utils, launch!, @apply_regionally
 
 using DocStringExtensions: TYPEDFIELDS
 
 import Oceananigans: fields, prognostic_fields, initialize!
 import Oceananigans.Advection: cell_advection_timescale
+import Oceananigans.Architectures: Architectures, on_architecture
+import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Models: materialize_free_surface
 import Oceananigans.Simulations: timestepper
-using Oceananigans.Architectures: Architectures, architecture
+import Oceananigans.TimeSteppers: step_lagrangian_particles!
 
-using Oceananigans.TimeSteppers: TimeSteppers, SplitRungeKutta3TimeStepper, QuasiAdamsBashforth2TimeStepper
+# The only grid type that can support an FFT implicit free-surface solver
+const XYRegularStaticRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:StaticVerticalDiscretization, <:Number, <:Number}
 
 abstract type AbstractFreeSurface{E, G} end
 
 struct ZCoordinate end
-
-struct ZStarCoordinate{CC}
-    storage :: CC # Storage space used in different ways by different timestepping schemes.
-end
-
-ZStarCoordinate(grid::AbstractGrid) = ZStarCoordinate(Field{Center, Center, Nothing}(grid))
+struct ZStarCoordinate end
 
 Base.summary(::ZStarCoordinate) = "ZStarCoordinate"
 Base.show(io::IO, c::ZStarCoordinate) = print(io, summary(c))
-
-Adapt.adapt_structure(to, coord::ZStarCoordinate) = ZStarCoordinate(Adapt.adapt(to, coord.storage))
-Architectures.on_architecture(arch, coord::ZStarCoordinate) = ZStarCoordinate(on_architecture(arch, coord.storage))
 
 # This is only used by the cubed sphere for now.
 fill_horizontal_velocity_halos!(args...) = nothing
@@ -47,11 +44,15 @@ fill_horizontal_velocity_halos!(args...) = nothing
 #####
 
 # If U and V are prognostic (for example in `SplitExplicitFreeSurface`), we use them
-@inline barotropic_U(i, j, k, grid, U, u) = @inbounds U[i, j, k]
-@inline barotropic_V(i, j, k, grid, V, v) = @inbounds V[i, j, k]
+@inline barotropic_U(i, j, k, grid, U, u) = @inbounds U[i, j, 1]
+@inline barotropic_V(i, j, k, grid, V, v) = @inbounds V[i, j, 1]
+
+# convenience for when we do not have prognostic `U` and `V`
+@inline barotropic_U(i, j, k, grid, u) = barotropic_U(i, j, k, grid, nothing, u)
+@inline barotropic_V(i, j, k, grid, v) = barotropic_V(i, j, k, grid, nothing, v)
 
 # If either U or V are not available, we compute them
-@inline function barotropic_U(i, j, k, grid, ::Nothing, u)
+@inline function barotropic_U(i, j, k′, grid, ::Nothing, u)
     U = zero(grid)
     for k in 1:size(grid, 3)
         @inbounds U += u[i, j, k] * Δzᶠᶜᶜ(i, j, k, grid)
@@ -59,7 +60,7 @@ fill_horizontal_velocity_halos!(args...) = nothing
     return U
 end
 
-@inline function barotropic_V(i, j, k, grid, ::Nothing, v)
+@inline function barotropic_V(i, j, k′, grid, ::Nothing, v)
     V = zero(grid)
     for k in 1:size(grid, 3)
         @inbounds V += v[i, j, k] * Δzᶜᶠᶜ(i, j, k, grid)
@@ -77,7 +78,11 @@ free_surface_displacement_field(velocities, ::Nothing, grid) = nothing
 # free surface initialization functions
 initialize_free_surface!(free_surface, grid, velocities) = nothing
 
+# Transport velocity computation (only for a SplitExplicitFreeSurface)
+compute_transport_velocities!(model, free_surface) = nothing
+
 include("compute_w_from_continuity.jl")
+include("hydrostatic_free_surface_field_tuples.jl")
 
 # No free surface
 include("nothing_free_surface.jl")
@@ -85,15 +90,14 @@ include("nothing_free_surface.jl")
 # Explicit free-surface solver functionality
 include("explicit_free_surface.jl")
 
+# Split-Explicit free-surface solver functionality
+include("SplitExplicitFreeSurfaces/SplitExplicitFreeSurfaces.jl")
+using .SplitExplicitFreeSurfaces
+
 # Implicit free-surface solver functionality
 include("fft_based_implicit_free_surface_solver.jl")
 include("pcg_implicit_free_surface_solver.jl")
 include("implicit_free_surface.jl")
-include("hydrostatic_free_surface_field_tuples.jl")
-
-# Split-Explicit free-surface solver functionality
-include("SplitExplicitFreeSurfaces/SplitExplicitFreeSurfaces.jl")
-using .SplitExplicitFreeSurfaces
 
 # ZStarCoordinate implementation
 include("z_star_vertical_spacing.jl")
@@ -172,7 +176,7 @@ include("compute_hydrostatic_free_surface_buffers.jl")
 include("compute_hydrostatic_flux_bcs.jl")
 include("update_hydrostatic_free_surface_model_state.jl")
 include("hydrostatic_free_surface_ab2_step.jl")
-include("hydrostatic_free_surface_rk3_step.jl")
+include("hydrostatic_free_surface_rk_step.jl")
 include("cache_hydrostatic_free_surface_tendencies.jl")
 include("prescribed_hydrostatic_velocity_fields.jl")
 include("single_column_model_mode.jl")

@@ -9,8 +9,45 @@ using Test: @testset, @test, detect_ambiguities
 
     # Until we resolve all ambiguities, we make sure we don't increase them.
     number_of_ambiguities = length(detect_ambiguities(Oceananigans; recursive=true))
-    @test number_of_ambiguities <= 355
+    @test number_of_ambiguities <= 345
     @info "Number of ambiguities: $number_of_ambiguities"
+
+    modules = (
+        # Oceananigans.AbstractOperations,
+        # Oceananigans.Advection,
+        Oceananigans.Architectures,
+        Oceananigans.Biogeochemistry,
+        # Oceananigans.BoundaryConditions,
+        Oceananigans.BuoyancyFormulations,
+        Oceananigans.Coriolis,
+        Oceananigans.Diagnostics,
+        # Oceananigans.DistributedComputations,
+        # Oceananigans.Fields,
+        Oceananigans.Forcings,
+        # Oceananigans.Grids,
+        # Oceananigans.ImmersedBoundaries,
+        Oceananigans.Logger,
+        # Oceananigans.Models,
+        # Oceananigans.MultiRegion,
+        # Oceananigans.Operators,
+        # Oceananigans.OrthogonalSphericalShellGrids,
+        # Oceananigans.OutputReaders,
+        # Oceananigans.OutputWriters,
+        Oceananigans.Simulations,
+        # Oceananigans.Solvers,
+        Oceananigans.StokesDrifts,
+        Oceananigans.TimeSteppers,
+        # Oceananigans.TurbulenceClosures,
+        Oceananigans.Units,
+        # Oceananigans.Utils,
+    )
+
+    # In addition to capping the total number of ambiguities above, we make sure
+    # modules which don't have any don't get new ones.
+    @testset "No ambiguities for module $(mod)" for mod in modules
+        @info "Testing no ambiguities for module $(mod)"
+        @test isempty(detect_ambiguities(mod; recursive=true))
+    end
 end
 
 @testset "ExplicitImports" begin
@@ -32,7 +69,7 @@ end
         # Oceananigans.Logger,
         # Oceananigans.Models,
         Oceananigans.Models.HydrostaticFreeSurfaceModels,
-        # Oceananigans.MultiRegion,
+        Oceananigans.MultiRegion,
         Oceananigans.Operators,
         Oceananigans.OrthogonalSphericalShellGrids,
         # Oceananigans.OutputReaders,
@@ -52,7 +89,7 @@ end
     end
 
     @testset "Import via Owner" begin
-        @info "Testing no imports via owner"
+        @info "Testing imports via owner"
         @test ExplicitImports.check_all_explicit_imports_via_owners(Oceananigans) === nothing
     end
 
@@ -62,7 +99,7 @@ end
     end
 
     @testset "Qualified Accesses" begin
-        @info "Testing no qualified access via owners"
+        @info "Testing qualified access via owners"
         @test ExplicitImports.check_all_qualified_accesses_via_owners(Oceananigans) === nothing
     end
 

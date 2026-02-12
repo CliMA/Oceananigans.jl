@@ -5,41 +5,16 @@ using Oceananigans.Fields: reduced_dimensions
 using Oceananigans.DistributedComputations: fill_send_buffers!
 
 using Oceananigans.BoundaryConditions:
+    BoundaryCondition,
     ContinuousBoundaryFunction,
     DiscreteBoundaryFunction,
     fill_halo_event!,
-    MultiRegionFillHalo
-
-import Oceananigans.BoundaryConditions: fill_halo_regions!, fill_halo_event!
+    MultiRegionFillHalo,
+    MultiRegionCommunicationBoundaryCondition
 
 @inline bc_str(::MultiRegionObject) = "MultiRegion Boundary Conditions"
 
-@inline function fill_halo_regions!(fields::NamedTuple, grid::ConformalCubedSphereGridOfSomeKind, args...; kwargs...)
-    u = haskey(fields, :u) ? fields.u : nothing
-    v = haskey(fields, :v) ? fields.v : nothing
-
-    if !isnothing(u) && !isnothing(v)
-        fill_halo_regions!((u, v); kwargs...)
-    end
-
-    U = haskey(fields, :U) ? fields.U : nothing
-    V = haskey(fields, :V) ? fields.V : nothing
-
-    if !isnothing(U) && !isnothing(V)
-        fill_halo_regions!((U, V); kwargs...)
-    end
-
-    other_keys = filter(k -> k != :u && k != :v && k != :U && k != :V, keys(fields))
-    other_fields = Tuple(fields[k] for k in other_keys)
-
-    for field in other_fields
-        fill_halo_regions!(field; kwargs...)
-    end
-
-    return nothing
-end
-
-fill_halo_regions!(field::MultiRegionField, args...; kwargs...) =
+BoundaryConditions.fill_halo_regions!(field::MultiRegionField, args...; kwargs...) =
     fill_halo_regions!(field.data,
                        field.boundary_conditions,
                        field.indices,
@@ -49,7 +24,7 @@ fill_halo_regions!(field::MultiRegionField, args...; kwargs...) =
                        args...;
                        kwargs...)
 
-fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothing
+BoundaryConditions.fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothing
 
 #####
 ##### fill_halo_regions! for a MultiRegionObject
@@ -59,8 +34,7 @@ fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; kwargs...) = nothin
 # TODO: Optimize this some way (needs infra-regional-function synchronization between regions).
 # The complication here is the possibility of different regions having different number of tasks,
 # Which might happen, for example, for a grid that partitioned in a Bounded direction.
-function fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; fill_open_bcs=true, kwargs...)
-    arch     = architecture(mrg)
+function BoundaryConditions.fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; fill_open_bcs=true, kwargs...)
     buff_ref = Reference(buffers.regional_objects)
 
     apply_regionally!(fill_send_buffers!, c, buffers, mrg)
@@ -75,7 +49,7 @@ end
 ##### fill halo event, splat the args...
 #####
 
-fill_halo_event!(c, kernel!::MultiRegionFillHalo, bcs, loc, grid, buffers, args...; kwargs...) = kernel!(c, bcs..., loc, grid, buffers)
+BoundaryConditions.fill_halo_event!(c, kernel!::MultiRegionFillHalo, bcs, loc, grid, buffers, args...; kwargs...) = kernel!(c, bcs..., loc, grid, buffers)
 
 getside(x, ::North) = x.north
 getside(x, ::South) = x.south
@@ -130,7 +104,6 @@ end
 
 function (::MultiRegionFillHalo{<:West})(c, bc, loc, grid, buffers)
     H = halo_size(grid)[1]
-    N = size(grid)[1]
 
     dst = buffers[bc.condition.rank].west.recv
     src = getside(buffers[bc.condition.from_rank], bc.condition.from_side).send
@@ -160,7 +133,6 @@ end
 
 function (::MultiRegionFillHalo{<:South})(c, bc, loc, grid, buffers)
     H = halo_size(grid)[2]
-    N = size(grid)[2]
 
     dst = buffers[bc.condition.rank].south.recv
     src = getside(buffers[bc.condition.from_rank], bc.condition.from_side).send
@@ -192,7 +164,7 @@ end
 ##### MultiRegion boundary condition utils
 #####
 
-@inline getregion(fc::FieldBoundaryConditions, i) =
+@inline Utils.getregion(fc::FieldBoundaryConditions, i) =
             FieldBoundaryConditions(_getregion(fc.west, i),
                                     _getregion(fc.east, i),
                                     _getregion(fc.south, i),
@@ -203,19 +175,19 @@ end
                                     fc.kernels,
                                     _getregion(fc.ordered_bcs, i))
 
-@inline getregion(bc::BoundaryCondition, i) = BoundaryCondition(bc.classification, _getregion(bc.condition, i))
+@inline Utils.getregion(bc::BoundaryCondition, i) = BoundaryCondition(bc.classification, _getregion(bc.condition, i))
 
-@inline getregion(cf::ContinuousBoundaryFunction{X, Y, Z, I}, i) where {X, Y, Z, I} =
+@inline Utils.getregion(cf::ContinuousBoundaryFunction{X, Y, Z, I}, i) where {X, Y, Z, I} =
             ContinuousBoundaryFunction{X, Y, Z, I}(cf.func,
                                                 _getregion(cf.parameters, i),
                                                 cf.field_dependencies,
                                                 cf.field_dependencies_indices,
                                                 cf.field_dependencies_interp)
 
-@inline getregion(df::DiscreteBoundaryFunction, i) =
+@inline Utils.getregion(df::DiscreteBoundaryFunction, i) =
             DiscreteBoundaryFunction(_getregion(df.func, i), _getregion(df.parameters, i))
 
-@inline _getregion(fc::FieldBoundaryConditions, i) =
+@inline Utils._getregion(fc::FieldBoundaryConditions, i) =
             FieldBoundaryConditions(getregion(fc.west, i),
                                     getregion(fc.east, i),
                                     getregion(fc.south, i),
@@ -226,16 +198,16 @@ end
                                     fc.kernels,
                                     getregion(fc.ordered_bcs, i))
 
-@inline _getregion(bc::BoundaryCondition, i) = BoundaryCondition(bc.classification, getregion(bc.condition, i))
+@inline Utils._getregion(bc::BoundaryCondition, i) = BoundaryCondition(bc.classification, getregion(bc.condition, i))
 
-@inline _getregion(cf::ContinuousBoundaryFunction{X, Y, Z, I}, i) where {X, Y, Z, I} =
+@inline Utils._getregion(cf::ContinuousBoundaryFunction{X, Y, Z, I}, i) where {X, Y, Z, I} =
             ContinuousBoundaryFunction{X, Y, Z, I}(cf.func,
                                                 getregion(cf.parameters, i),
                                                 cf.field_dependencies,
                                                 cf.field_dependencies_indices,
                                                 cf.field_dependencies_interp)
 
-@inline _getregion(df::DiscreteBoundaryFunction, i) = DiscreteBoundaryFunction(getregion(df.func, i), getregion(df.parameters, i))
+@inline Utils._getregion(df::DiscreteBoundaryFunction, i) = DiscreteBoundaryFunction(getregion(df.func, i), getregion(df.parameters, i))
 
 # Everything goes for multi-region BC
 validate_boundary_condition_location(::MultiRegionObject, ::Center, side) = nothing

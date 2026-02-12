@@ -55,16 +55,12 @@ Fill halo regions for all `fields`. The algorithm:
 """
 function BoundaryConditions.fill_halo_regions!(fields::Union{NamedTuple, Tuple}, args...; kwargs...)
 
-    for field in fields
-        fill_halo_regions!(field, args...; kwargs...)
+    for i in eachindex(fields)
+        @inbounds fill_halo_regions!(fields[i], args...; kwargs...)
     end
 
     return nothing
 end
-
-# This is a convenience function that allows `fill_halo_regions!` to be dispatched on the grid type.
-BoundaryConditions.fill_halo_regions!(fields::NamedTuple, grid::AbstractGrid, args...; signed=true, kwargs...) = fill_halo_regions!(fields, args...; kwargs...)
-BoundaryConditions.fill_halo_regions!(fields::Tuple,      grid::AbstractGrid, args...; signed=true, kwargs...) = fill_halo_regions!(fields, args...; kwargs...)
 
 #####
 ##### Tracer names

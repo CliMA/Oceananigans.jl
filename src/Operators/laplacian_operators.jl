@@ -18,8 +18,8 @@ end
 end
 
 @inline function ∇²hᶜᶜᶠ(i, j, k, grid, w)
-    return V⁻¹ᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_∂xᶠᶠᶜ, v) +
-                                    δyᵃᶠᵃ(i, j, k, grid, Ay_∂yᶜᶜᶜ, v))
+    return V⁻¹ᶜᶠᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_∂xᶠᶠᶜ, w) +
+                                    δyᵃᶠᵃ(i, j, k, grid, Ay_∂yᶜᶜᶜ, w))
 end
 
 """
