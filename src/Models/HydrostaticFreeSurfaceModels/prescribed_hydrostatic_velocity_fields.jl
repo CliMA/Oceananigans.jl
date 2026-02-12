@@ -55,8 +55,8 @@ DiagnosticVerticalVelocity() = DiagnosticVerticalVelocity(nothing)
 # Helper to unwrap DiagnosticVerticalVelocity to its inner field.
 # Used in velocities(), getindex, and indexed_iterate so that kernels
 # always receive a plain Field for w (important on CPU where Adapt is not called).
-@inline _unwrap_w(w) = w
-@inline _unwrap_w(d::DiagnosticVerticalVelocity) = d.field
+@inline unwrap_w(w) = w
+@inline unwrap_w(d::DiagnosticVerticalVelocity) = d.field
 
 Base.show(io::IO, ::DiagnosticVerticalVelocity{Nothing}) = print(io, "DiagnosticVerticalVelocity()")
 Base.show(io::IO, d::DiagnosticVerticalVelocity) = print(io, "DiagnosticVerticalVelocity: ", summary(d.field))
@@ -181,7 +181,7 @@ function Base.indexed_iterate(p::PrescribedVelocityFields, i::Int, state=1)
     elseif i == 2
         return p.v, 3
     else
-        return _unwrap_w(p.w), 4
+        return unwrap_w(p.w), 4
     end
 end
 
@@ -199,7 +199,7 @@ free_surface_names(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, grid)
 
 @inline datatuple(d::DiagnosticVerticalVelocity) = datatuple(d.field)
 @inline datatuple(obj::PrescribedVelocityFields) = (; u = datatuple(obj.u), v = datatuple(obj.v), w = datatuple(obj.w))
-@inline velocities(obj::PrescribedVelocityFields) = (u = obj.u, v = obj.v, w = _unwrap_w(obj.w))
+@inline velocities(obj::PrescribedVelocityFields) = (u = obj.u, v = obj.v, w = unwrap_w(obj.w))
 
 # Extend sum_of_velocities for `PrescribedVelocityFields`
 @inline sum_of_velocities(U1::PrescribedVelocityFields, U2) = sum_of_velocities(velocities(U1), U2)
