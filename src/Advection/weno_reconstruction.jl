@@ -4,7 +4,7 @@ import Oceananigans
 ##### Weighted Essentially Non-Oscillatory (WENO) advection scheme
 #####
 
-struct WENO{N, FT, FT2, PP, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
+struct WENO{N, FT, FT2, PP, SI, M} <: AbstractUpwindBiasedAdvectionScheme{N, FT, M}
 
     "Bounds for maximum-principle-satisfying WENO scheme"
     bounds :: PP
@@ -12,14 +12,10 @@ struct WENO{N, FT, FT2, PP, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
     "Reconstruction scheme used for symmetric interpolation"
     advecting_velocity_scheme :: SI
 
-    "Minimum buffer for the reduced upwind order near boundaries (below this, use centered 2nd-order)"
-    minimum_buffer_upwind_order :: Int
+    function WENO{N, FT, FT2, M}(bounds::PP,
+                                  advecting_velocity_scheme :: SI) where {N, FT, FT2, M, PP, SI}
 
-    function WENO{N, FT, FT2}(bounds::PP,
-                              advecting_velocity_scheme :: SI,
-                              minimum_buffer_upwind_order :: Int) where {N, FT, FT2, PP, SI}
-
-        return new{N, FT, FT2, PP, SI}(bounds, advecting_velocity_scheme, minimum_buffer_upwind_order)
+        return new{N, FT, FT2, PP, SI, M}(bounds, advecting_velocity_scheme)
     end
 end
 
@@ -100,7 +96,7 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType, FT2::DataType=Float3
 
         N = Int((order + 1) ÷ 2)
         minimum_buffer_upwind_order = max(1, min(N, Int(minimum_buffer_upwind_order)))
-        return WENO{N, FT, FT2}(bounds, advecting_velocity_scheme, minimum_buffer_upwind_order)
+        return WENO{N, FT, FT2, minimum_buffer_upwind_order}(bounds, advecting_velocity_scheme)
     end
 end
 
@@ -117,19 +113,17 @@ function Base.show(io::IO, a::WENO)
         print(io, "├── bounds: ", string(a.bounds), '\n')
     end
 
-    if a.minimum_buffer_upwind_order > 1
-        print(io, "├── minimum_buffer_upwind_order: ", a.minimum_buffer_upwind_order, '\n')
+    if minimum_buffer_upwind_order(a) > 1
+        print(io, "├── minimum_buffer_upwind_order: ", minimum_buffer_upwind_order(a), '\n')
     end
 
     print(io, "└── advection_velocity_scheme: ", summary(a.advecting_velocity_scheme))
 end
 
-Adapt.adapt_structure(to, scheme::WENO{N, FT, FT2}) where {N, FT, FT2} =
-     WENO{N, FT, FT2}(Adapt.adapt(to, scheme.bounds),
-                      Adapt.adapt(to, scheme.advecting_velocity_scheme),
-                      scheme.minimum_buffer_upwind_order)
+Adapt.adapt_structure(to, scheme::WENO{N, FT, FT2, PP, SI, M}) where {N, FT, FT2, PP, SI, M} =
+     WENO{N, FT, FT2, M}(Adapt.adapt(to, scheme.bounds),
+                          Adapt.adapt(to, scheme.advecting_velocity_scheme))
 
-on_architecture(to, scheme::WENO{N, FT, FT2}) where {N, FT, FT2} =
-    WENO{N, FT, FT2}(on_architecture(to, scheme.bounds),
-                     on_architecture(to, scheme.advecting_velocity_scheme),
-                     scheme.minimum_buffer_upwind_order)
+on_architecture(to, scheme::WENO{N, FT, FT2, PP, SI, M}) where {N, FT, FT2, PP, SI, M} =
+    WENO{N, FT, FT2, M}(on_architecture(to, scheme.bounds),
+                         on_architecture(to, scheme.advecting_velocity_scheme))

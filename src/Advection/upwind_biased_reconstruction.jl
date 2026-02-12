@@ -2,15 +2,11 @@
 ##### Upwind-biased 3rd-order advection scheme
 #####
 
-struct UpwindBiased{N, FT, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
+struct UpwindBiased{N, FT, SI, M} <: AbstractUpwindBiasedAdvectionScheme{N, FT, M}
     advecting_velocity_scheme :: SI
 
-    "Minimum buffer for the reduced upwind order near boundaries (below this, use centered 2nd-order)"
-    minimum_buffer_upwind_order :: Int
-
-    function UpwindBiased{N, FT}(advecting_velocity_scheme::SI,
-                                 minimum_buffer_upwind_order::Int) where {N, FT, SI}
-        return new{N, FT, SI}(advecting_velocity_scheme, minimum_buffer_upwind_order)
+    function UpwindBiased{N, FT, M}(advecting_velocity_scheme::SI) where {N, FT, M, SI}
+        return new{N, FT, SI, M}(advecting_velocity_scheme)
     end
 end
 
@@ -23,26 +19,24 @@ function UpwindBiased(FT::DataType = Float64; order = 3, minimum_buffer_upwind_o
     advecting_velocity_scheme = Centered(FT; order = symmetric_order)
     minimum_buffer_upwind_order = max(1, min(N, Int(minimum_buffer_upwind_order)))
 
-    return UpwindBiased{N, FT}(advecting_velocity_scheme, minimum_buffer_upwind_order)
+    return UpwindBiased{N, FT, minimum_buffer_upwind_order}(advecting_velocity_scheme)
 end
 
 Base.summary(a::UpwindBiased{N}) where N = string("UpwindBiased(order=", 2N-1, ")")
 
 function Base.show(io::IO, a::UpwindBiased)
     print(io, summary(a), '\n')
-    if a.minimum_buffer_upwind_order > 1
-        print(io, "├── minimum_buffer_upwind_order: ", a.minimum_buffer_upwind_order, '\n')
+    if minimum_buffer_upwind_order(a) > 1
+        print(io, "├── minimum_buffer_upwind_order: ", minimum_buffer_upwind_order(a), '\n')
     end
     print(io, "└── advecting_velocity_scheme: ", summary(a.advecting_velocity_scheme))
 end
 
-Adapt.adapt_structure(to, scheme::UpwindBiased{N, FT}) where {N, FT} =
-    UpwindBiased{N, FT}(Adapt.adapt(to, scheme.advecting_velocity_scheme),
-                        scheme.minimum_buffer_upwind_order)
+Adapt.adapt_structure(to, scheme::UpwindBiased{N, FT, SI, M}) where {N, FT, SI, M} =
+    UpwindBiased{N, FT, M}(Adapt.adapt(to, scheme.advecting_velocity_scheme))
 
-on_architecture(to, scheme::UpwindBiased{N, FT}) where {N, FT} =
-    UpwindBiased{N, FT}(on_architecture(to, scheme.advecting_velocity_scheme),
-                        scheme.minimum_buffer_upwind_order)
+on_architecture(to, scheme::UpwindBiased{N, FT, SI, M}) where {N, FT, SI, M} =
+    UpwindBiased{N, FT, M}(on_architecture(to, scheme.advecting_velocity_scheme))
 
 const AUAS = AbstractUpwindBiasedAdvectionScheme
 

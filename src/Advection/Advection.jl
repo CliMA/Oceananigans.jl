@@ -37,7 +37,7 @@ using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
 
 abstract type AbstractAdvectionScheme{B, FT} end
 abstract type AbstractCenteredAdvectionScheme{B, FT} <: AbstractAdvectionScheme{B, FT} end
-abstract type AbstractUpwindBiasedAdvectionScheme{B, FT} <: AbstractAdvectionScheme{B, FT} end
+abstract type AbstractUpwindBiasedAdvectionScheme{B, FT, M} <: AbstractAdvectionScheme{B, FT} end
 
 # `advection_buffers` specifies the list of buffers for which advection schemes
 # are constructed via metaprogramming. (The `advection_buffer` is the width of
@@ -55,7 +55,8 @@ const advection_buffers = [1, 2, 3, 4, 5, 6]
 @inline required_halo_size_y(::AbstractAdvectionScheme{B}) where B = B
 @inline required_halo_size_z(::AbstractAdvectionScheme{B}) where B = B
 
-struct DecreasingOrderAdvectionScheme end
+"""Return the minimum buffer upwind order (encoded as a type parameter for constant-folding)."""
+minimum_buffer_upwind_order(::AbstractUpwindBiasedAdvectionScheme{N, FT, M}) where {N, FT, M} = M
 
 include("centered_advective_fluxes.jl")
 include("upwind_biased_advective_fluxes.jl")

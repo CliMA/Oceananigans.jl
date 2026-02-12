@@ -3,7 +3,7 @@ include("dependencies_for_runtests.jl")
 using Random
 
 using Oceananigans.Fields: instantiate
-using Oceananigans.Advection: LeftBias, RightBias, NoBias
+using Oceananigans.Advection: LeftBias, RightBias, NoBias, minimum_buffer_upwind_order
 
 using Oceananigans.Advection: compute_face_reduced_order_x,
                               compute_face_reduced_order_y,
@@ -273,23 +273,23 @@ if archs == tuple(CPU()) # Just a CPU test, do not repeat it...
     @testset "Testing WENO minimum_buffer_upwind_order default" begin
         for weno_order in (3, 5, 7, 9, 11)
             s_default = WENO(order=weno_order)
-            @test s_default.minimum_buffer_upwind_order == 1
+            @test minimum_buffer_upwind_order(s_default) == 1
         end
     end
 
     # Test constructor validation
     @testset "Testing WENO minimum_buffer_upwind_order constructor" begin
         # Default is 1
-        @test WENO(order=5).minimum_buffer_upwind_order == 1
-        @test WENO(order=3).minimum_buffer_upwind_order == 1
+        @test minimum_buffer_upwind_order(WENO(order=5)) == 1
+        @test minimum_buffer_upwind_order(WENO(order=3)) == 1
         # Valid values
-        @test WENO(order=5, minimum_buffer_upwind_order=1).minimum_buffer_upwind_order == 1
-        @test WENO(order=5, minimum_buffer_upwind_order=2).minimum_buffer_upwind_order == 2
-        @test WENO(order=5, minimum_buffer_upwind_order=3).minimum_buffer_upwind_order == 3
+        @test minimum_buffer_upwind_order(WENO(order=5, minimum_buffer_upwind_order=1)) == 1
+        @test minimum_buffer_upwind_order(WENO(order=5, minimum_buffer_upwind_order=2)) == 2
+        @test minimum_buffer_upwind_order(WENO(order=5, minimum_buffer_upwind_order=3)) == 3
         # Clamped to buffer (3 for order=5)
-        @test WENO(order=5, minimum_buffer_upwind_order=10).minimum_buffer_upwind_order == 3
+        @test minimum_buffer_upwind_order(WENO(order=5, minimum_buffer_upwind_order=10)) == 3
         # Clamped to 1 from below
-        @test WENO(order=5, minimum_buffer_upwind_order=0).minimum_buffer_upwind_order == 1
+        @test minimum_buffer_upwind_order(WENO(order=5, minimum_buffer_upwind_order=0)) == 1
     end
 
     # Test WENO centered fallback on a bounded grid with minimum_buffer_upwind_order
@@ -316,8 +316,8 @@ if archs == tuple(CPU()) # Just a CPU test, do not repeat it...
                 s_no_fallback = WENO(order=weno_order, minimum_buffer_upwind_order=1)
 
                 # Test that the scheme stores the correct value
-                @test s_centered.minimum_buffer_upwind_order == buffer
-                @test s_no_fallback.minimum_buffer_upwind_order == 1
+                @test minimum_buffer_upwind_order(s_centered) == buffer
+                @test minimum_buffer_upwind_order(s_no_fallback) == 1
             end
         end
     end
@@ -342,24 +342,24 @@ if archs == tuple(CPU()) # Just a CPU test, do not repeat it...
     @testset "Testing UpwindBiased minimum_buffer_upwind_order default" begin
         for ub_order in (1, 3, 5, 7, 9, 11)
             s_default = UpwindBiased(order=ub_order)
-            @test s_default.minimum_buffer_upwind_order == 1
+            @test minimum_buffer_upwind_order(s_default) == 1
         end
     end
 
     # Test UpwindBiased constructor validation
     @testset "Testing UpwindBiased minimum_buffer_upwind_order constructor" begin
         # Default is 1
-        @test UpwindBiased(order=5).minimum_buffer_upwind_order == 1
-        @test UpwindBiased(order=3).minimum_buffer_upwind_order == 1
-        @test UpwindBiased(order=1).minimum_buffer_upwind_order == 1
+        @test minimum_buffer_upwind_order(UpwindBiased(order=5)) == 1
+        @test minimum_buffer_upwind_order(UpwindBiased(order=3)) == 1
+        @test minimum_buffer_upwind_order(UpwindBiased(order=1)) == 1
         # Valid values
-        @test UpwindBiased(order=5, minimum_buffer_upwind_order=1).minimum_buffer_upwind_order == 1
-        @test UpwindBiased(order=5, minimum_buffer_upwind_order=2).minimum_buffer_upwind_order == 2
-        @test UpwindBiased(order=5, minimum_buffer_upwind_order=3).minimum_buffer_upwind_order == 3
+        @test minimum_buffer_upwind_order(UpwindBiased(order=5, minimum_buffer_upwind_order=1)) == 1
+        @test minimum_buffer_upwind_order(UpwindBiased(order=5, minimum_buffer_upwind_order=2)) == 2
+        @test minimum_buffer_upwind_order(UpwindBiased(order=5, minimum_buffer_upwind_order=3)) == 3
         # Clamped to buffer (3 for order=5)
-        @test UpwindBiased(order=5, minimum_buffer_upwind_order=10).minimum_buffer_upwind_order == 3
+        @test minimum_buffer_upwind_order(UpwindBiased(order=5, minimum_buffer_upwind_order=10)) == 3
         # Clamped to 1 from below
-        @test UpwindBiased(order=5, minimum_buffer_upwind_order=0).minimum_buffer_upwind_order == 1
+        @test minimum_buffer_upwind_order(UpwindBiased(order=5, minimum_buffer_upwind_order=0)) == 1
     end
 
     # Test UpwindBiased centered fallback on a bounded grid
@@ -382,8 +382,8 @@ if archs == tuple(CPU()) # Just a CPU test, do not repeat it...
                 s_centered = UpwindBiased(order=ub_order, minimum_buffer_upwind_order=buffer)
                 s_no_fallback = UpwindBiased(order=ub_order, minimum_buffer_upwind_order=1)
 
-                @test s_centered.minimum_buffer_upwind_order == buffer
-                @test s_no_fallback.minimum_buffer_upwind_order == 1
+                @test minimum_buffer_upwind_order(s_centered) == buffer
+                @test minimum_buffer_upwind_order(s_no_fallback) == 1
             end
         end
     end

@@ -61,12 +61,13 @@ const AGZ = AUG{<:Any, <:Any, <:Any, <:BT}
 @inline reduced_center_order(i, ::Type{Bounded},        N, B, bias) = max(1, min(B, i, N+1-i))
 
 const A{B} = AbstractAdvectionScheme{B}
+const AU{M} = AbstractUpwindBiasedAdvectionScheme{<:Any, <:Any, M}
 
 # Clamping of reduced order for schemes with a minimum buffer (e.g., WENO with minimum_buffer_upwind_order).
 # When red_order drops below the minimum, set it to 0 (sentinel for centered 2nd-order fallback).
-@inline clamp_reduced_order(scheme, red_order) = red_order
-@inline clamp_reduced_order(scheme::WENO, red_order) = ifelse(red_order < scheme.minimum_buffer_upwind_order, 0, red_order)
-@inline clamp_reduced_order(scheme::UpwindBiased, red_order) = ifelse(red_order < scheme.minimum_buffer_upwind_order, 0, red_order)
+# M is a type parameter (not a runtime field) to allow constant-folding on non-IBG grids.
+@inline clamp_reduced_order(scheme,  red_order) = red_order
+@inline clamp_reduced_order(::AU{M}, red_order) where M = ifelse(red_order < M, 0, red_order)
 
 # Fallback for periodic underlying grids
 @inline compute_face_reduced_order_x(i, j, k, grid::AUG, ::A{B}, bias) where B = B
