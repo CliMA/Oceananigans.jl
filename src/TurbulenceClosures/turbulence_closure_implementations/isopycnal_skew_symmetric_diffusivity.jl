@@ -147,22 +147,51 @@ end
 ##### Tapering
 #####
 
+"""
+    FluxTapering(max_slope)
+
+Taper the isopycnal slope tensor using the GKW91 tapering scheme,
+where the tapering factor is `min(1, Sₘₐₓ² / S²)` and `S² = Sx² + Sy²`.
+
+References
+==========
+R. Gerdes, C. Koberle, and J. Willebrand. (1991), "The influence of numerical advection schemes
+    on the results of ocean general circulation models", Clim. Dynamics, 5 (4), 211–226.
+"""
 struct FluxTapering{FT}
     max_slope :: FT
 end
 
 """
-    taper_factor(i, j, k, grid, closure, tracers, buoyancy)
+    TanhTapering(; cutoff_slope=0.004, tapering_width=0.001)
 
-Return the tapering factor `min(1, Sₘₐₓ² / slope²)`, where `slope² = slope_x² + slope_y²`
-that multiplies all components of the isopycnal slope tensor. The tapering factor is calculated on all the
-faces involved in the isopycnal slope tensor calculation. The minimum value of tapering is selected.
+Taper the isopycnal slope tensor with a smooth hyperbolic tangent function,
+where the tapering factor is `½[1 + tanh((Sc - |S|) / Sd)]`.
+
+Arguments
+=========
+- `cutoff_slope`: the slope `Sc` at which tapering reaches half its maximum (default: 0.004)
+- `tapering_width`: the scale `Sd` over which the tapering transitions (default: 0.001)
 
 References
 ==========
+G. Danabasoglu and J.C. McWilliams (1995), "Sensitivity of the global ocean circulation to
+    parameterizations of mesoscale tracer transports", J. Climate, 8 (12), 2967–2987.
+"""
+struct TanhTapering{FT}
+    cutoff_slope :: FT
+    tapering_width :: FT
+end
 
-R. Gerdes, C. Koberle, and J. Willebrand. (1991), "The influence of numerical advection schemes
-    on the results of ocean general circulation models", Clim. Dynamics, 5 (4), 211–226.
+TanhTapering(FT::DataType=Float64; cutoff_slope=0.004, tapering_width=0.001) =
+    TanhTapering(FT(cutoff_slope), FT(tapering_width))
+
+"""
+    taper_factor(i, j, k, grid, closure, tracers, buoyancy)
+
+Return the tapering factor that multiplies all components of the isopycnal slope tensor.
+The tapering factor is calculated on all the faces involved in the isopycnal slope tensor
+calculation. The minimum value of tapering is selected.
 """
 @inline function tapering_factor(i, j, k, grid, closure, tracers, buoyancy)
 
@@ -200,7 +229,7 @@ end
     return calc_tapering(bx, by, bz, grid, closure.isopycnal_tensor, closure.slope_limiter)
 end
 
-@inline function calc_tapering(bx, by, bz, grid, slope_model, slope_limiter)
+@inline function calc_tapering(bx, by, bz, grid, slope_model, slope_limiter::FluxTapering)
 
     bz = max(bz, slope_model.minimum_bz)
 
@@ -208,6 +237,20 @@ end
     Sy = - by / bz
 
     return ifelse(bz <= 0, zero(grid), min(one(grid), slope_limiter.max_slope^2 / (Sx^2 + Sy^2)))
+end
+
+@inline function calc_tapering(bx, by, bz, grid, slope_model, slope_limiter::TanhTapering)
+
+    bz = max(bz, slope_model.minimum_bz)
+
+    Sx = - bx / bz
+    Sy = - by / bz
+    S  = sqrt(Sx^2 + Sy^2)
+
+    Sc = slope_limiter.cutoff_slope
+    Sd = slope_limiter.tapering_width
+
+    return ifelse(bz <= 0, zero(grid), (one(grid) + tanh((Sc - S) / Sd)) / 2)
 end
 
 # Make sure we do not need to perform heavy calculations if we really do not need to
