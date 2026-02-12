@@ -1,5 +1,7 @@
 using Oceananigans.Utils: time_difference_seconds
 
+using ReactantCore: @trace
+
 import Oceananigans: prognostic_state, restore_prognostic_state!
 
 struct TKEDissipationVerticalDiffusivity{TD, KE, ST, LMIN, FT, DT} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 2}
@@ -280,7 +282,7 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfTD, model; param
 
     # Step TKE/dissipation when time has advanced or at later stages of multi-stage
     # timesteppers. Skip stages > 1 at iteration 0 (clock.last_Δt is Inf).
-    if (Δt > 0 || clock.stage > 1) && isfinite(clock.last_Δt)
+    @trace if (Δt > 0 || clock.stage > 1) && isfinite(clock.last_Δt)
         # Compute e at the current time:
         #   * update tendency Gⁿ using current and previous velocity field
         #   * use tridiagonal solve to take an implicit step
