@@ -6,13 +6,11 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
     eddy_closure = IsopycnalSkewSymmetricDiffusivity(FT, κ_skew=1e3, κ_symmetric=1e3,
                                                      skew_flux_formulation=skew_flux_formulation)
 
-    Nx = 16
-    Ny = 16
-    Nz = 16
+    Nx = Ny = Nz = 16
 
     z = ExponentialDiscretization(Nz, -1, 0)
 
-    timestepper = :QuasiAdamsBashforth2,
+    timestepper = :QuasiAdamsBashforth2
 
     # Create grid and initial condition based on direction
     if horizontal_direction == :x
