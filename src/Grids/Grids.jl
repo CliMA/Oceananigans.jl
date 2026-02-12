@@ -28,7 +28,7 @@ using Adapt
 using GPUArraysCore
 using OffsetArrays
 using Printf
-using DocStringExtensions: FIELDS
+using DocStringExtensions: TYPEDFIELDS
 
 using Oceananigans
 using Oceananigans.Architectures
