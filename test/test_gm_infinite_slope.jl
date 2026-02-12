@@ -10,7 +10,9 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
     ny = 16
     nz = 16
 
-    z_faces = ExponentialDiscretization(nz, -1, 0)
+    z = ExponentialDiscretization(nz, -1, 0)
+
+    timestepper = :QuasiAdamsBashforth2,
 
     # Create grid and initial condition based on direction
     if horizontal_direction == :x
@@ -18,13 +20,12 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
         grid = RectilinearGrid(arch, FT;
                                size = (nx, nz),
                                x = (0, 1),
-                               z = z_faces,
+                               z,
                                topology = (Bounded, Flat, Bounded))
 
-        model = HydrostaticFreeSurfaceModel(grid;
+        model = HydrostaticFreeSurfaceModel(grid; timestepper,
                                             buoyancy = BuoyancyTracer(),
                                             closure = eddy_closure,
-                                            timestepper = :QuasiAdamsBashforth2,
                                             tracers = :b)
 
         set!(model, b = (x, z) -> x / 10000)
@@ -34,10 +35,10 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
         grid = RectilinearGrid(arch, FT;
                                size = (ny, nz),
                                y = (0, 1),
-                               z = z_faces,
+                               z,
                                topology = (Flat, Bounded, Bounded))
 
-        model = HydrostaticFreeSurfaceModel(grid;
+        model = HydrostaticFreeSurfaceModel(grid; timestepper,
                                             buoyancy = BuoyancyTracer(),
                                             closure = eddy_closure,
                                             tracers = :b)
@@ -50,10 +51,10 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
                                size = (nx, ny, nz),
                                x = (0, 1),
                                y = (0, 1),
-                               z = z_faces,
+                               z,
                                topology = (Bounded, Bounded, Bounded))
 
-        model = HydrostaticFreeSurfaceModel(grid;
+        model = HydrostaticFreeSurfaceModel(grid; timestepper,
                                             buoyancy = BuoyancyTracer(),
                                             closure = eddy_closure,
                                             tracers = :b)
