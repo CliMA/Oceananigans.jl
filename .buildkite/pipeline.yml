@@ -166,10 +166,6 @@ steps:
       export TEST_GROUP="\${group#* }"
       echo $TEST_GROUP
 
-      # Installing version 0.2.210 of Reactant since tests seem to fail with version 0.2.211
-      # See issue https://github.com/CliMA/Oceananigans.jl/issues/5249
-      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project -e 'using Pkg;  Pkg.add(Pkg.PackageSpec(name="Reactant", version="0.2.210"))'
-
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
       julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(coverage="user")'

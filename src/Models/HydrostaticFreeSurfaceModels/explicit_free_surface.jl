@@ -157,8 +157,8 @@ end
 
 @inline function free_surface_vertical_velocity(i, j, k_top, grid, ::ZStarCoordinate, velocities)
     u, v, _ = velocities
-    δx_U = δxᶜᶜᶜ(i, j, k_top-1, grid, Δy_qᶠᶜᶜ, barotropic_U, nothing, u)
-    δy_V = δyᶜᶜᶜ(i, j, k_top-1, grid, Δx_qᶜᶠᶜ, barotropic_V, nothing, v)
+    δx_U = δxᶜᶜᶜ(i, j, k_top-1, grid, Δy_qᶠᶜᶜ, barotropic_U, u)
+    δy_V = δyᶜᶜᶜ(i, j, k_top-1, grid, Δx_qᶜᶠᶜ, barotropic_V, v)
     δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, k_top-1, grid)
     return - δh_U
 end
@@ -197,7 +197,7 @@ end
 #####
 
 function prognostic_state(fs::ExplicitFreeSurface)
-    return (; η = prognostic_state(fs.η))
+    return (; η = prognostic_state(fs.displacement))
 end
 
 function restore_prognostic_state!(restored::ExplicitFreeSurface, from)
