@@ -26,6 +26,7 @@ steps:
       rsync -a . "$OCEANANIGANS_DIR/"
       cd "$OCEANANIGANS_DIR"
 
+      rm -rf /var/lib/buildkite-agent/.julia-oceananigans/scratchspaces/124859b0-ceae-595e-8997-d05f6a7a8dfe/datadeps/regression_truth_data/
       julia +$JULIA_VERSION -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
       # After we have instantiated the general environment, move manifest to the
       # version-specific filename, not to clash with the manifest for Enzyme.
