@@ -53,15 +53,15 @@ struct MutableVerticalDiscretization{C, D, E, F, H, CC, FC, CF, FF} <: AbstractV
     Δᵃᵃᶜ :: F
     "Surface elevation at the current time step"
     ηⁿ :: H
-    "Cell-centered scaling factor at the current time step"
+    "(Center, Center) scaling factor at the current time step"
     σᶜᶜⁿ :: CC
-    "Face-centered (vertical) and cell-centered (horizontal) scaling at the current time step"
+    "(Face, Center) scaling at the current time step"
     σᶠᶜⁿ :: FC
-    "Cell-centered (vertical) and face-centered (horizontal) scaling at the current time step"
+    "(Center, Face) scaling at the current time step"
     σᶜᶠⁿ :: CF
-    "Face-centered scaling factor at the current time step"
+    "(Face, Face) scaling factor at the current time step"
     σᶠᶠⁿ :: FF
-    "Cell-centered scaling factor at the previous time step"
+    "(Center, Center) scaling factor at the previous time step"
     σᶜᶜ⁻ :: CC
     "Time derivative of the cell-centered scaling factor"
     ∂t_σ :: CC
