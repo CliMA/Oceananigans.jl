@@ -6,11 +6,11 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
     eddy_closure = IsopycnalSkewSymmetricDiffusivity(FT, κ_skew=1e3, κ_symmetric=1e3,
                                                      skew_flux_formulation=skew_flux_formulation)
 
-    nx = 16
-    ny = 16
-    nz = 16
+    Nx = 16
+    Ny = 16
+    Nz = 16
 
-    z = ExponentialDiscretization(nz, -1, 0)
+    z = ExponentialDiscretization(Nz, -1, 0)
 
     timestepper = :QuasiAdamsBashforth2,
 
@@ -18,7 +18,7 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
     if horizontal_direction == :x
         # Slope in x-direction (Flat in y)
         grid = RectilinearGrid(arch, FT;
-                               size = (nx, nz),
+                               size = (Nx, Nz),
                                x = (0, 1),
                                z,
                                topology = (Bounded, Flat, Bounded))
@@ -33,7 +33,7 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
     elseif horizontal_direction == :y
         # Slope in y-direction (Flat in x)
         grid = RectilinearGrid(arch, FT;
-                               size = (ny, nz),
+                               size = (Nx, Nz),
                                y = (0, 1),
                                z,
                                topology = (Flat, Bounded, Bounded))
@@ -48,7 +48,7 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
     else # :xy - full 3D
         # Slope in both x and y directions
         grid = RectilinearGrid(arch, FT;
-                               size = (nx, ny, nz),
+                               size = (Nx, Ny, Nz),
                                x = (0, 1),
                                y = (0, 1),
                                z,
@@ -64,7 +64,7 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
 
     # Time step the model 10 times
     Δt = convert(FT, 1)
-    for n in 1:10
+    for _ in 1:10
         time_step!(model, Δt)
     end
 
