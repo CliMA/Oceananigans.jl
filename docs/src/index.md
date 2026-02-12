@@ -56,7 +56,7 @@ Whether you need help getting started with Oceananigans, found a bug, want Ocean
 
 * [Start a discussion](https://github.com/CliMA/Oceananigans.jl/discussions). This is great for general questions about numerics, science, experimental or under-documented features, and for getting help setting up a neat new numerical experiment.
 * [Open an issue](https://github.com/CliMA/Oceananigans.jl/issues). Issues are best if you think the Oceananigans source code needs attention: a bug, a sign error (😱), an important missing feature, or a typo in this documentation 👀.
-* [Join the NumericalEarth slack](https://join.slack.com/t/numericalearth/shared_invite/zt-3kjcowmpg-B0s3nalWkvZg8IBc~BIJEA) because we love to chat.
+* [Join the NumericalEarth slack](https://join.slack.com/t/numericalearth/shared_invite/zt-3pwpvky4k-XX7RkgQgHLIUt~wtwGXN~Q) because we love to chat.
 
 ## Citing and otherwise spreading the word
 
@@ -106,6 +106,8 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 ## Papers and preprints using Oceananigans
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
+
+1. Li, Q. (2026). [Large eddy simulations of stabilizing effects induced by opposing Eulerian shear and Stokes drift shear in an idealized ocean surface boundary layer](https://doi.org/10.1175/JPO-D-25-0077.1), _Journal of Physical Oceanography_, e250077, in press. DOI: [10.1175/JPO-D-25-0077.1](https://doi.org/10.1175/JPO-D-25-0077.1)
 
 1. Peng. S., Silvestri, S., and Bodner A (2026). [Submesoscale and boundary layer turbulence under mesoscale forcing in the upper ocean](https://doi.org/10.48550/arXiv.2601.10441), _arXiv preprint_, arXiv:2601.10441. DOI: [10.48550/arXiv.2601.10441](https://doi.org/10.48550/arXiv.2601.10441)
 
