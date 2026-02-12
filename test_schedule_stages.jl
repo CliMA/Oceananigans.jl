@@ -1,5 +1,4 @@
 using Oceananigans
-using Oceananigans.TurbulenceClosures: DynamicSmagorinsky
 using Oceananigans.Utils: IterationInterval
 
 println("Testing IterationInterval(1) behavior across RK3 stages")
