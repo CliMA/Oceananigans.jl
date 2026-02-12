@@ -103,29 +103,51 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper, Δt)
     previous_velocities = closure_fields.previous_velocities
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
-    Δτ = Δt
+
+    Δτ = get_time_step(closure)
+
+    if isnothing(Δτ)
+        Δτ = Δt
+        M = 1
+    else
+        M = ceil(Int, Δt / Δτ) # number of substeps
+        Δτ = Δt / M
+    end
+
     tracers = buoyancy_tracers(model)
     buoyancy = buoyancy_force(model)
 
-    # Compute the linear implicit component of the RHS (closure_fields, L)...
-    launch!(arch, grid, :xyz,
-            compute_TKE_diffusivity!,
-            κe, grid, closure,
-            model.velocities, tracers, buoyancy, closure_fields)
+    for m = 1:M
+        # Compute the linear implicit component of the RHS (closure_fields, L)...
+        launch!(arch, grid, :xyz,
+                compute_TKE_diffusivity!,
+                κe, grid, closure,
+                model.velocities, tracers, buoyancy, closure_fields)
 
-    # ... and step forward.
-    launch!(arch, grid, :xyz,
-            _rk_substep_turbulent_kinetic_energy!,
-            Le, σe⁻, grid, closure,
-            model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
-            tracers, buoyancy, closure_fields,
-            Δτ, Gⁿ)
+        if m == 1
+            # First substep: reset from cached state σe⁻
+            launch!(arch, grid, :xyz,
+                    _rk_substep_turbulent_kinetic_energy!,
+                    Le, σe⁻, grid, closure,
+                    model.velocities, previous_velocities,
+                    tracers, buoyancy, closure_fields,
+                    Δτ, Gⁿ)
+        else
+            # Subsequent substeps: Euler increment from current state
+            launch!(arch, grid, :xyz,
+                    _rk_euler_substep_turbulent_kinetic_energy!,
+                    Le, grid, closure,
+                    model.velocities, previous_velocities,
+                    tracers, buoyancy, closure_fields,
+                    Δτ, Gⁿ)
+        end
 
-    implicit_step!(e, implicit_solver, closure,
-                   closure_fields, Val(tracer_index),
-                   model.clock,
-                   fields(model),
-                   Δτ)
+        implicit_step!(e, implicit_solver, closure,
+                       closure_fields, Val(tracer_index),
+                       model.clock,
+                       fields(model),
+                       Δτ)
+    end
 
     return nothing
 end
@@ -261,13 +283,37 @@ end
                                  next_velocities, previous_velocities,
                                  tracers, buoyancy, closure_fields)
 
-    # See below.
     σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
     active = !inactive_cell(i, j, k, grid)
 
     @inbounds begin
         total_Gⁿ = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ
         e[i, j, k] = (σe⁻[i, j, k] + Δt * total_Gⁿ * active) / σᶜᶜⁿ
+    end
+end
+
+@kernel function _rk_euler_substep_turbulent_kinetic_energy!(Le, grid, closure,
+                                                             next_velocities, previous_velocities,
+                                                             tracers, buoyancy, closure_fields,
+                                                             Δτ, slow_Gⁿe)
+
+    i, j, k = @index(Global, NTuple)
+
+    e = tracers.e
+
+    fast_Gⁿe = fast_tke_tendency(i, j, k, grid, Le, closure,
+                                 next_velocities, previous_velocities,
+                                 tracers, buoyancy, closure_fields)
+
+    σᶜᶜⁿ = σⁿ(i, j, k, grid, Center(), Center(), Center())
+    active = !inactive_cell(i, j, k, grid)
+
+    FT = eltype(grid)
+    Δτ = convert(FT, Δτ)
+
+    @inbounds begin
+        total_Gⁿ = slow_Gⁿe[i, j, k] + fast_Gⁿe * σᶜᶜⁿ
+        e[i, j, k] += Δτ * total_Gⁿ * active / σᶜᶜⁿ
     end
 end
 
