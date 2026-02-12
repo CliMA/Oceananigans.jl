@@ -1,5 +1,3 @@
-using Oceananigans.Utils: time_difference_seconds
-
 import Oceananigans: prognostic_state, restore_prognostic_state!
 
 struct TKEDissipationVerticalDiffusivity{TD, KE, ST, LMIN, FT, DT} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 2}

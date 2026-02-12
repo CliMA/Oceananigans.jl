@@ -1,5 +1,4 @@
 using Oceananigans.Fields: Field
-using Oceananigans.Utils: time_difference_seconds
 using Oceananigans.Units: minute
 
 struct CATKEVerticalDiffusivity{TD, CL, FT, DT, TKE} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 2}
