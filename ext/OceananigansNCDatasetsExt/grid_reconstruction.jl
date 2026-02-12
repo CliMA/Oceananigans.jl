@@ -52,6 +52,8 @@
 ##### Gathering of grid metrics
 #####
 
+import Oceananigans.Architectures
+
 """
     gather_grid_metrics(grid, indices, dim_name_generator)
 
@@ -313,11 +315,11 @@ function reconstruct_immersed_boundary(ds)
     return immersed_boundary
 end
 
-function reconstruct_grid(ds; arch=nothing)
+function reconstruct_grid(ds; architecture=nothing)
     # Read back the grid reconstruction metadata
     underlying_grid_reconstruction_args   = ds.group["underlying_grid_reconstruction_args"].attrib |> Dict
-    if !isnothing(arch) # If architecture is specified, force it into the underlying grid reconstruction arguments before materializing
-        underlying_grid_reconstruction_args["architecture"] = arch
+    if !isnothing(architecture) # If architecture is specified, force it into the underlying grid reconstruction arguments before materializing
+        underlying_grid_reconstruction_args["architecture"] = architecture
     end
     underlying_grid_reconstruction_args   = underlying_grid_reconstruction_args |> materialize_from_netcdf
     underlying_grid_reconstruction_kwargs = ds.group["underlying_grid_reconstruction_kwargs"].attrib |> materialize_from_netcdf
@@ -332,7 +334,7 @@ function reconstruct_grid(ds; arch=nothing)
         grid = underlying_grid
     else
         immersed_boundary = reconstruct_immersed_boundary(ds)
-        immersed_boundary = on_architecture(architecture(underlying_grid), immersed_boundary)
+        immersed_boundary = on_architecture(Architecturesarchitecture(underlying_grid), immersed_boundary)
         grid = ImmersedBoundaryGrid(underlying_grid, immersed_boundary)
     end
 
