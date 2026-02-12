@@ -160,6 +160,11 @@ run!(simulation)
 using NCDatasets, Printf, CairoMakie
 nothing #hide
 
+# Define the coordinates for plotting.
+
+x, y = xnodes(ω), ynodes(ω)
+nothing #hide
+
 # Read in the `output_writer` for the two-dimensional fields and then create an animation
 # showing both the total and perturbation vorticities.
 
@@ -171,17 +176,16 @@ ax_ω′ = Axis(fig[2, 3]; title = "Perturbation vorticity, ω - ω̄", axis_kwa
 
 n = Observable(1)
 
-ω_timeseries = FieldTimeSeries(simulation.output_writers[:fields].filepath, "ω")
-ω′_timeseries = FieldTimeSeries(simulation.output_writers[:fields].filepath, "ω′")
+ds = NCDataset(simulation.output_writers[:fields].filepath, "r")
 
-times = ω_timeseries.times
+times = ds["time"][:]
 
-ω = @lift ω_timeseries[$n]
-hm_ω = heatmap!(ax_ω, ω, colorrange = (-1, 1), colormap = :balance)
+ω = @lift ds["ω"][:, :, $n]
+hm_ω = heatmap!(ax_ω, x, y, ω, colorrange = (-1, 1), colormap = :balance)
 Colorbar(fig[2, 2], hm_ω)
 
-ω′ = @lift ω′_timeseries[$n]
-hm_ω′ = heatmap!(ax_ω′, ω′, colormap = :balance)
+ω′ = @lift ds["ω′"][:, :, $n]
+hm_ω′ = heatmap!(ax_ω′, x, y, ω′, colormap = :balance)
 Colorbar(fig[2, 4], hm_ω′)
 
 title = @lift @sprintf("t = %.1f", times[$n])
@@ -201,14 +205,18 @@ nothing #hide
 
 # ![](shallow_water_Bickley_jet.mp4)
 
+# It's always good practice to close the NetCDF files when we are done.
+
+close(ds)
+
 # Read in the `output_writer` for the scalar field (the norm of ``v``-velocity).
 
 ds2 = NCDataset(simulation.output_writers[:growth].filepath, "r")
 
-growth_timeseries = FieldTimeSeries(simulation.output_writers[:growth].filepath, "perturbation_norm")
-t = growth_timeseries.times
-norm_v = growth_timeseries[1]
+     t = ds2["time"][:]
+norm_v = ds2["perturbation_norm"][:]
 
+close(ds2)
 nothing #hide
 
 # We import the `fit` function from `Polynomials.jl` to compute the best-fit slope of the
