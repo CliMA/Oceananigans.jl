@@ -2,9 +2,7 @@ import Oceananigans.Models: compute_buffer_tendencies!
 
 using Oceananigans.TurbulenceClosures: required_halo_size_x, required_halo_size_y
 using Oceananigans.Grids: XFlatGrid, YFlatGrid
-
-# TODO: the code in this file is difficult to understand.
-# Rewriting it may be helpful.
+using Oceananigans.DistributedComputations: DistributedActiveInteriorIBG
 
 # We assume here that top/bottom BC are always synched (no partitioning in z)
 function compute_buffer_tendencies!(model::NonhydrostaticModel)
@@ -17,10 +15,29 @@ function compute_buffer_tendencies!(model::NonhydrostaticModel)
     # We need new values for `p` and `κ`
     compute_auxiliaries!(model; p_parameters, κ_parameters)
 
-    # parameters for communicating North / South / East / West side
+    # Compute tendencies in buffer regions
+    compute_buffer_tendency_contributions!(grid, arch, model)
+
+    return nothing
+end
+
+# Default: use KernelParameters ranges for each communicating side
+function compute_buffer_tendency_contributions!(grid, arch, model::NonhydrostaticModel)
     kernel_parameters = buffer_tendency_kernel_parameters(grid, arch)
     compute_interior_tendency_contributions!(model, kernel_parameters)
+    return nothing
+end
 
+# Distributed IBG: iterate over halo-dependent active cells maps
+function compute_buffer_tendency_contributions!(grid::DistributedActiveInteriorIBG, arch, model::NonhydrostaticModel)
+    maps = grid.interior_active_cells
+    for name in (:west_halo_dependent_cells, :east_halo_dependent_cells,
+                 :south_halo_dependent_cells, :north_halo_dependent_cells)
+        active_cells_map = maps[name]
+        if !isnothing(active_cells_map)
+            compute_interior_tendency_contributions!(model, nothing; active_cells_map)
+        end
+    end
     return nothing
 end
 

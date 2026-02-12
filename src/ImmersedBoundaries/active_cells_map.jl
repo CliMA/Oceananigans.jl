@@ -174,3 +174,77 @@ function build_active_z_columns(grid, ib)
 
     return columns_map
 end
+
+#####
+##### Stencil-interior / boundary cell classification for WENO split kernels
+#####
+
+"""
+    stencil_interior_cell(i, j, k, grid, ib, buffer)
+
+Return `true` if cell (i, j, k) is active AND no cell within a horizontal
+neighborhood of radius `buffer + 1` or vertical neighborhood of radius `buffer`
+is immersed. This guarantees the full stencil lies in the fluid domain.
+"""
+@inline function stencil_interior_cell(i, j, k, grid, ib, buffer)
+    B = buffer + 1  # +1 for vorticity δ neighbor access
+    interior = true
+    for di in -B:B, dj in -B:B
+        immersed = immersed_cell(i + di, j + dj, k, grid, ib)
+        interior = ifelse(immersed, false, interior)
+    end
+    for dk in -B:B
+        immersed = immersed_cell(i, j, k + dk, grid, ib)
+        interior = ifelse(immersed, false, interior)
+    end
+    return interior
+end
+
+@kernel function _compute_stencil_interior_cells!(interior_field, grid, ib, buffer)
+    i, j, k = @index(Global, NTuple)
+    @inbounds interior_field[i, j, k] = stencil_interior_cell(i, j, k, grid, ib, buffer)
+end
+
+"""
+    compute_stencil_interior_field(grid, ib, buffer)
+
+Compute a Boolean field marking cells whose full stencil (radius `buffer`) lies
+entirely in the fluid domain. Reusable for both serial and distributed stencil
+map construction.
+"""
+function compute_stencil_interior_field(grid, ib, buffer)
+    interior_field = Field{Center, Center, Center}(grid, Bool)
+    launch!(architecture(grid), grid, :xyz, _compute_stencil_interior_cells!, interior_field, grid, ib, buffer)
+    return interior_field
+end
+
+"""
+    partition_active_map_by_stencil(active_cells_map, stencil_field, grid)
+
+Given an existing active cells map (flat array of `(i,j,k)` tuples) and a
+precomputed stencil interior field, partition the cells into
+`(; interior, boundary)` sub-maps.
+"""
+function partition_active_map_by_stencil(active_cells_map, stencil_field, grid)
+    cpu_map = on_architecture(CPU(), active_cells_map)
+    cpu_stencil = on_architecture(CPU(), interior(stencil_field))
+
+    N = maximum(size(grid))
+    IntType = N > MAXUInt8 ? (N > MAXUInt16 ? (N > MAXUInt32 ? UInt64 : UInt32) : UInt16) : UInt8
+    IndicesType = Tuple{IntType, IntType, IntType}
+
+    interior_indices = IndicesType[]
+    boundary_indices = IndicesType[]
+
+    for idx in cpu_map
+        if cpu_stencil[idx...]
+            push!(interior_indices, IndicesType(idx))
+        else
+            push!(boundary_indices, IndicesType(idx))
+        end
+    end
+
+    arch = architecture(grid)
+    return (; interior = on_architecture(arch, interior_indices),
+              boundary = on_architecture(arch, boundary_indices))
+end

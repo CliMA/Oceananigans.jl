@@ -1,11 +1,7 @@
 using Oceananigans.Grids: halo_size, XFlatGrid, YFlatGrid, get_active_cells_map
 using Oceananigans.DistributedComputations: Distributed, DistributedGrid, AsynchronousDistributed, synchronize_communication!
-using Oceananigans.ImmersedBoundaries: CellMaps
+using Oceananigans.DistributedComputations: DistributedActiveInteriorIBG
 using Oceananigans.Models.NonhydrostaticModels: buffer_tendency_kernel_parameters, buffer_κ_kernel_parameters, buffer_parameters
-
-const DistributedActiveInteriorIBG = ImmersedBoundaryGrid{FT, TX, TY, TZ,
-                                                          <:DistributedGrid, I, <:CellMaps, S,
-                                                          <:Distributed} where {FT, TX, TY, TZ, I, S}
 
 # Fallback for non-distributed grids
 complete_communication_and_compute_tracer_buffer!(model, grid, arch) = nothing

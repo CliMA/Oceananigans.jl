@@ -92,53 +92,23 @@ end
 
 Compute tracer tendencies in the grid interior (or on specified active cells).
 
-Launches the tracer tendency kernel for each tracer, computing advection, diffusion,
-and forcing contributions. Uses `model.transport_velocities` for advection.
+Dispatches to split sub-kernels (advection + forcing/diffusion) for register pressure reduction
+on ImmersedBoundaryGrid, similar to the momentum kernel split.
 """
-function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_map=nothing)
-
-    arch = model.architecture
-    grid = model.grid
-
-    for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
-
-        @inbounds c_tendency    = model.timestepper.Gⁿ[tracer_name]
-        @inbounds c_advection   = model.advection[tracer_name]
-        @inbounds c_forcing     = model.forcing[tracer_name]
-        @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
-
-        args = tuple(Val(tracer_index),
-                     Val(tracer_name),
-                     c_advection,
-                     model.closure,
-                     c_immersed_bc,
-                     model.buoyancy,
-                     model.biogeochemistry,
-                     model.transport_velocities,
-                     model.free_surface,
-                     model.tracers,
-                     model.closure_fields,
-                     model.auxiliary_fields,
-                     model.clock,
-                     c_forcing)
-
-        launch!(arch, grid, kernel_parameters,
-                compute_hydrostatic_free_surface_Gc!,
-                c_tendency,
-                grid,
-                args;
-                active_cells_map)
-    end
-
-    return nothing
-end
 
 """
     compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters; active_cells_map=nothing)
 
 Compute momentum tendencies for `u` and `v` in the grid interior (or on specified active cells).
+Dispatches to split sub-kernels for VectorInvariant upwind schemes (WENO, UpwindBiased).
 """
 function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters; active_cells_map=nothing)
+    advection = model.advection.momentum
+    return compute_hydrostatic_momentum_tendencies!(advection, model, velocities, kernel_parameters; active_cells_map)
+end
+
+# Fallback: monolithic kernel for non-upwind advection schemes
+function compute_hydrostatic_momentum_tendencies!(advection, model, velocities, kernel_parameters; active_cells_map=nothing)
 
     grid = model.grid
     arch = architecture(grid)
@@ -149,7 +119,7 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     u_forcing = model.forcing.u
     v_forcing = model.forcing.v
 
-    start_momentum_kernel_args = (model.advection.momentum,
+    start_momentum_kernel_args = (advection,
                                   model.coriolis,
                                   model.closure)
 

@@ -1,5 +1,5 @@
 using Oceananigans.Advection: Centered, adapt_advection_order
-using Oceananigans.Architectures: AbstractArchitecture
+using Oceananigans.Architectures: AbstractArchitecture, on_architecture
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: MixedBoundaryCondition
 using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
@@ -216,11 +216,15 @@ function NonhydrostaticModel(grid;
     # is smaller than the advection order, reduce the order of the advection in that particular
     # direction
     advection = adapt_advection_order(advection, grid)
+    advection = on_architecture(architecture(grid), advection)
 
     # Adjust halos when the advection scheme or turbulence closure requires it.
     # Note that halos are isotropic by default; however we respect user-input here
     # by adjusting each (x, y, z) halo individually.
     grid = inflate_grid_halo_size(grid, advection, closure)
+
+    # Precompute stencil split maps for IBG grids with upwind advection schemes
+    grid = attach_stencil_active_cells(grid, advection)
 
     # Collect boundary conditions for all model prognostic fields and, if specified, some model
     # auxiliary fields. Boundary conditions are "regularized" based on the _name_ of the field:

@@ -19,6 +19,9 @@ using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver,
 using Oceananigans.Solvers: InhomogeneousFormulation, ZDirection
 using Oceananigans.Utils: sum_of_velocities
 
+import ..attach_stencil_active_cells
+import ..split_advection_launch!
+
 import Oceananigans: fields, prognostic_fields
 import Oceananigans.Advection: cell_advection_timescale
 import Oceananigans.Simulations: timestepper
@@ -122,6 +125,7 @@ include("update_nonhydrostatic_model_state.jl")
 include("pressure_correction.jl")
 include("nonhydrostatic_tendency_kernel_functions.jl")
 include("compute_nonhydrostatic_tendencies.jl")
+include("split_nonhydrostatic_tendencies.jl")
 include("compute_nonhydrostatic_buffer_tendencies.jl")
 
 end # module

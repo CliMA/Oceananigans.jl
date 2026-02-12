@@ -95,6 +95,9 @@ function materialize_free_surface end
 # Communication - Computation overlap in distributed models
 include("interleave_communication_and_computation.jl")
 
+# Shared split advection infrastructure for IBG register pressure reduction
+include("split_advection.jl")
+
 #####
 ##### All the code
 #####

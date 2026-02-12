@@ -3,11 +3,11 @@ using Oceananigans.ImmersedBoundaries
 using Oceananigans.ImmersedBoundaries:
     AbstractGridFittedBottom,
     GridFittedBoundary,
+    CellMaps,
     compute_mask,
     has_active_cells_map,
     has_active_z_columns,
-    serially_build_active_cells_map,
-    compute_mask
+    serially_build_active_cells_map
 
 import Oceananigans.ImmersedBoundaries: build_active_cells_map
 
@@ -18,6 +18,12 @@ import Oceananigans.ImmersedBoundaries: build_active_cells_map
 const DistributedImmersedBoundaryGrid = ImmersedBoundaryGrid{FT, TX, TY, TZ,
                                                              <:DistributedGrid, I, M, S,
                                                              <:Distributed} where {FT, TX, TY, TZ, I, M, S}
+
+# Distributed IBG with active cells map (either whole or split).
+# Used for buffer tendency dispatch in both Hydrostatic and Nonhydrostatic models.
+const DistributedActiveInteriorIBG = ImmersedBoundaryGrid{FT, TX, TY, TZ,
+                                                          <:DistributedGrid, I, <:CellMaps, S,
+                                                          <:Distributed} where {FT, TX, TY, TZ, I, S}
 
 function reconstruct_global_grid(grid::ImmersedBoundaryGrid)
     active_cells_map = has_active_cells_map(grid)

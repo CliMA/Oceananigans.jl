@@ -7,20 +7,21 @@ Abstract supertype for immersed boundary grids.
 """
 abstract type AbstractImmersedBoundary end
 
-struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch}
+struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, W, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch}
     architecture :: Arch
     underlying_grid :: G
     immersed_boundary :: I
     interior_active_cells :: M
     active_z_columns :: S
+    stencil_active_cells :: W
 end
 
 # Internal interface
-function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I, mi::M, ms::S) where {TX, TY, TZ, G<:AbstractUnderlyingGrid, I, M, S}
+function ImmersedBoundaryGrid{TX, TY, TZ}(grid::G, ib::I, mi::M, ms::S, ws::W=nothing) where {TX, TY, TZ, G<:AbstractUnderlyingGrid, I, M, S, W}
     FT = eltype(grid)
     arch = architecture(grid)
     Arch = typeof(arch)
-    return ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, Arch}(arch, grid, ib, mi, ms)
+    return ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, W, Arch}(arch, grid, ib, mi, ms, ws)
 end
 
 const CellMaps = Union{AbstractArray, NamedTuple, Tuple}
@@ -85,6 +86,7 @@ const IBG = ImmersedBoundaryGrid
 @inline get_ibg_property(ibg::IBG, ::Val{:underlying_grid})        = getfield(ibg, :underlying_grid)
 @inline get_ibg_property(ibg::IBG, ::Val{:interior_active_cells})  = getfield(ibg, :interior_active_cells)
 @inline get_ibg_property(ibg::IBG, ::Val{:active_z_columns})       = getfield(ibg, :active_z_columns)
+@inline get_ibg_property(ibg::IBG, ::Val{:stencil_active_cells})   = getfield(ibg, :stencil_active_cells)
 
 @inline architecture(ibg::IBG) = architecture(ibg.underlying_grid)
 
@@ -95,6 +97,7 @@ const IBG = ImmersedBoundaryGrid
 Adapt.adapt_structure(to, ibg::IBG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     ImmersedBoundaryGrid{TX, TY, TZ}(adapt(to, ibg.underlying_grid),
                                      adapt(to, ibg.immersed_boundary),
+                                     nothing,
                                      nothing,
                                      nothing)
 

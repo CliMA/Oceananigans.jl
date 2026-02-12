@@ -44,6 +44,11 @@ end
 
 """ Store previous value of the source term and compute current source term. """
 function compute_interior_tendency_contributions!(model, kernel_parameters; active_cells_map = nothing)
+    compute_interior_tendency_contributions!(model, model.advection, kernel_parameters; active_cells_map)
+end
+
+# Fallback for non-upwind advection schemes: use monolithic kernels
+function compute_interior_tendency_contributions!(model, advection, kernel_parameters; active_cells_map = nothing)
 
     tendencies           = model.timestepper.Gⁿ
     arch                 = model.architecture

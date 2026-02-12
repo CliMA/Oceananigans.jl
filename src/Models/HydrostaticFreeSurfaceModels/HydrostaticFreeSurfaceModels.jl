@@ -24,6 +24,8 @@ import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Models: materialize_free_surface
 import Oceananigans.Simulations: timestepper
 import Oceananigans.TimeSteppers: step_lagrangian_particles!
+import ..attach_stencil_active_cells
+import ..split_advection_launch!
 
 # The only grid type that can support an FFT implicit free-surface solver
 const XYRegularStaticRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:StaticVerticalDiscretization, <:Number, <:Number}
@@ -172,6 +174,7 @@ TimeSteppers.step_lagrangian_particles!(model::HydrostaticFreeSurfaceModel, Δt)
 include("barotropic_pressure_correction.jl")
 include("hydrostatic_free_surface_tendency_kernel_functions.jl")
 include("compute_hydrostatic_free_surface_tendencies.jl")
+include("split_hydrostatic_momentum_tendencies.jl")
 include("compute_hydrostatic_free_surface_buffers.jl")
 include("compute_hydrostatic_flux_bcs.jl")
 include("update_hydrostatic_free_surface_model_state.jl")
