@@ -1,5 +1,4 @@
 using Oceananigans
-using Oceananigans.TurbulenceClosures: DynamicSmagorinsky
 
 println("Testing stage check in step_closure_prognostics!")
 println("=" ^ 60)
