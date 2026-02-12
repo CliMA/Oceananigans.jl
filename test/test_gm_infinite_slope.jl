@@ -7,9 +7,14 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
                                                      skew_flux_formulation=skew_flux_formulation)
 
     Nx = Ny = Nz = 16
-
-    z = ExponentialDiscretization(Nz, -100, 0)
+    H = 100
     L = 10e3
+
+    z = ExponentialDiscretization(Nz, -H, 0)
+
+    closure = eddy_closure
+    buoyancy = BuoyancyTracer()
+    tracers = :b
 
     # Create grid and initial condition based on direction
     if horizontal_direction == :x
@@ -20,10 +25,7 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
                                z,
                                topology = (Bounded, Flat, Bounded))
 
-        model = HydrostaticFreeSurfaceModel(grid;
-                                            buoyancy = BuoyancyTracer(),
-                                            closure = eddy_closure,
-                                            tracers = :b)
+        model = HydrostaticFreeSurfaceModel(grid; buoyancy, closure, tracers)
 
         set!(model, b = (x, z) -> x / 10000)
 
@@ -35,10 +37,7 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
                                z,
                                topology = (Flat, Bounded, Bounded))
 
-        model = HydrostaticFreeSurfaceModel(grid;
-                                            buoyancy = BuoyancyTracer(),
-                                            closure = eddy_closure,
-                                            tracers = :b)
+        model = HydrostaticFreeSurfaceModel(grid; buoyancy, closure, tracers)
 
         set!(model, b = (y, z) -> y / 10000)
 
@@ -51,10 +50,7 @@ function gm_tracer_remains_finite(arch, FT; skew_flux_formulation, horizontal_di
                                z,
                                topology = (Bounded, Bounded, Bounded))
 
-        model = HydrostaticFreeSurfaceModel(grid;
-                                            buoyancy = BuoyancyTracer(),
-                                            closure = eddy_closure,
-                                            tracers = :b)
+        model = HydrostaticFreeSurfaceModel(grid; buoyancy, closure, tracers)
 
         set!(model, b = (x, y, z) -> (x + y) / 10000)
     end
