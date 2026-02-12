@@ -38,7 +38,7 @@ coordinate_summary(topo, z::StaticVerticalDiscretization, name) = coordinate_sum
 """
     struct MutableVerticalDiscretization{C, D, E, F, H, CC, FC, CF, FF} <: AbstractVerticalCoordinate
 
-Represent a mutable one-dimensional vertical coordinate that can evolve in time.
+Represent a mutable vertical coordinate that can evolve in time.
 
 $(TYPEDFIELDS)
 """
