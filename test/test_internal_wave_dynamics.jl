@@ -11,10 +11,10 @@ function internal_wave_solution(; L, background_stratification=false)
      k = 1
      f = 0.2
      ℕ = 1.0
-     σ = sqrt( (ℕ^2 * k^2 + f^2 * m^2) / (k^2 + m^2) )
+     σ = sqrt((ℕ^2 * k^2 + f^2 * m^2) / (k^2 + m^2))
 
     # Numerical parameters
-    Δt = 0.01 * 1/σ
+    Δt = 0.01 / σ
 
     cᵍ = m * σ / (k^2 + m^2) * (f^2/σ^2 - 1)
      U = a₀ * k * σ   / (σ^2 - f^2)
@@ -22,7 +22,7 @@ function internal_wave_solution(; L, background_stratification=false)
      W = a₀ * m * σ   / (σ^2 - ℕ^2)
      B = a₀ * m * ℕ^2 / (σ^2 - ℕ^2)
 
-    a(x, z, t) = exp( -(z - cᵍ*t - z₀)^2 / (2*δ)^2 )
+    a(x, z, t) = exp( -(z - cᵍ*t - z₀)^2 / (2δ)^2 )
     u(x, z, t) = a(x, z, t) * U * cos(k*x + m*z - σ*t)
     v(x, z, t) = a(x, z, t) * V * sin(k*x + m*z - σ*t)
     w(x, z, t) = a(x, z, t) * W * cos(k*x + m*z - σ*t)
@@ -74,7 +74,7 @@ function internal_wave_dynamics_test(model, solution, Δt)
 
     set!(model, u=u₀, v=v₀, w=w₀, b=b₀)
 
-    simulation = Simulation(model, stop_iteration=10, Δt=Δt)
+    simulation = Simulation(model; Δt, stop_iteration=10, verbose=false)
 
     # Pesky NaNChecker
     pop!(simulation.callbacks, :nan_checker)
