@@ -66,13 +66,10 @@ default_free_surface(grid::XYRegularStaticRG; gravitational_acceleration=default
 default_free_surface(grid; gravitational_acceleration=defaults.gravitational_acceleration) =
     SplitExplicitFreeSurface(grid; cfl = 0.7, gravitational_acceleration)
 
-default_hydrostatic_momentum_advection(::Union{XFlatGrid, YFlatGrid}) = Centered()
-default_hydrostatic_momentum_advection(grid) = VectorInvariant()
-
 """
     HydrostaticFreeSurfaceModel(grid;
                                 clock = Clock{Float64}(time = 0),
-                                momentum_advection = default_hydrostatic_momentum_advection(grid),
+                                momentum_advection = VectorInvariant(),
                                 tracer_advection = Centered(),
                                 buoyancy = SeawaterBuoyancy(eltype(grid)),
                                 coriolis = nothing,
@@ -132,7 +129,7 @@ Keyword arguments
 """
 function HydrostaticFreeSurfaceModel(grid;
                                      clock = Clock(grid),
-                                     momentum_advection = default_hydrostatic_momentum_advection(grid),
+                                     momentum_advection = VectorInvariant(),
                                      tracer_advection = Centered(),
                                      buoyancy = nothing,
                                      coriolis = nothing,
