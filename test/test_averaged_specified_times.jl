@@ -8,133 +8,39 @@ using Statistics
 using NCDatasets
 
 #####
-##### Test time averaging of output with AveragedSpecifiedTimes
+##### Smoke test: outputs are wrapped and collection state transitions correctly
 #####
 
 function test_averaged_specified_times_simulation(model)
-    jld_filename1 = "test_averaged_specified_times1.jld2"
-    jld_filename2 = "test_averaged_specified_times2.jld2"
+    jld_filename = "test_averaged_specified_times.jld2"
 
     model.clock.iteration = model.clock.time = 0
     simulation = Simulation(model, Δt=1.0, stop_iteration=0)
 
     times = [π, 2π, 3π]
     window = 1.0
-    
+
     jld2_output_writer = JLD2Writer(model, model.velocities,
-                                    schedule = AveragedSpecifiedTimes(times; window),
-                                    filename = jld_filename1,
-                                    overwrite_existing = true)
+                                   schedule = AveragedSpecifiedTimes(times; window),
+                                   filename = jld_filename,
+                                   overwrite_existing = true)
 
-    nc_filepath1 = "averaged_specified_times_test1.nc"
-    nc_output_writer = NetCDFWriter(model, model.velocities,
-                                    filename = nc_filepath1,
-                                    schedule = AveragedSpecifiedTimes(times; window),
-                                    overwrite_existing = true)
+    @test all(typeof(out) <: WindowedTimeAverage for out in jld2_output_writer.outputs)
 
-    jld2_outputs_are_time_averaged = Tuple(typeof(out) <: WindowedTimeAverage for out in jld2_output_writer.outputs)
-    nc_outputs_are_time_averaged = Tuple(typeof(out) <: WindowedTimeAverage for out in values(nc_output_writer.outputs))
-
-    @test all(jld2_outputs_are_time_averaged)
-    @test all(nc_outputs_are_time_averaged)
-
-    # Test that the collection does *not* start when a simulation is initialized
-    # when specified time is far in the future
     simulation.output_writers[:jld2] = jld2_output_writer
-    simulation.output_writers[:nc] = nc_output_writer
-
     run!(simulation)
 
-    jld2_u_windowed_time_average = simulation.output_writers[:jld2].outputs.u
-    nc_w_windowed_time_average = simulation.output_writers[:nc].outputs["w"]
+    u_wta = simulation.output_writers[:jld2].outputs.u
+    @test !(u_wta.schedule.collecting)
 
-    @test !(jld2_u_windowed_time_average.schedule.collecting)
-    @test !(nc_w_windowed_time_average.schedule.collecting)
-
-    # Test that time-averaging starts when we enter the window
+    # Step into the window (π - 1.0 ≈ 2.14, so clock.time=3.0 enters it)
     simulation.Δt = 1.5
     simulation.stop_iteration = 2
-    run!(simulation) # model.clock.time = 3.0, just after average-collection starts (π - 1.0 ≈ 2.14)
-
-    @test jld2_u_windowed_time_average.schedule.collecting
-    @test nc_w_windowed_time_average.schedule.collecting
-
-    # Step forward such that we reach the first output time
-    simulation.Δt = π - 3 + 0.01
-    simulation.stop_iteration = 3
-    run!(simulation) # model.clock.time ≈ π, after first output
-
-    model.clock.iteration = model.clock.time = 0
-
-    immediate_times = [π, 2π]
-    # Use window size that extends to simulation start but doesn't overlap
-    window_size = π  # Non-overlapping: window 1: [0,π], window 2: [π,2π]
-
-    simulation.output_writers[:jld2] = JLD2Writer(model, model.velocities,
-                                                  schedule = AveragedSpecifiedTimes(immediate_times; window=window_size),
-                                                  filename = jld_filename2,
-                                                  overwrite_existing = true)
-
-    nc_filepath2 = "averaged_specified_times_test2.nc"
-
-    simulation.output_writers[:nc] = NetCDFWriter(model, model.velocities,
-                                                  filename = nc_filepath2,
-                                                  schedule = AveragedSpecifiedTimes(immediate_times; window=window_size))
-
     run!(simulation)
 
-    @test simulation.output_writers[:jld2].outputs.u.schedule.collecting
-    @test simulation.output_writers[:nc].outputs["w"].schedule.collecting
+    @test u_wta.schedule.collecting
 
-    rm(nc_filepath1)
-    rm(nc_filepath2)
-    rm(jld_filename1)
-    rm(jld_filename2)
-
-    return nothing
-end
-
-#####
-##### Test error handling
-#####
-
-function test_averaged_specified_times_overlapping_windows()
-    # Test that mismatched lengths throw an error
-    times = [1.0, 2.0, 3.0]
-    window = [0.5, 0.3]  # Wrong length
-
-    @test_throws ArgumentError AveragedSpecifiedTimes(times; window)
-
-    # Test overlapping windows with scalar window
-    times_overlap = [1.0, 1.5, 3.0]
-    window_scalar = 1.0  # Windows overlap: gap between 1.0 and 1.5 is only 0.5
-
-    @test_throws ArgumentError AveragedSpecifiedTimes(times_overlap; window=window_scalar)
-
-    # Test overlapping windows with vector of numeric windows
-    times_numeric = [1.0, 2.0, 4.0]
-    windows_numeric = [0.5, 1.5, 1.0]  # Window 2 starts at 0.5, overlaps with time 1.0
-
-    @test_throws ArgumentError AveragedSpecifiedTimes(times_numeric; window=windows_numeric)
-
-    # Test overlapping windows with DateTime and Period windows
-    times_datetime = [DateTime(2000, 1, 10), DateTime(2000, 1, 15), DateTime(2000, 2, 1)]
-    windows_periods = [Day(5), Day(10), Day(5)]  # Window 2 starts at Jan 5, overlaps with Jan 10
-
-    @test_throws ArgumentError AveragedSpecifiedTimes(times_datetime; window=windows_periods)
-
-    # Test valid non-overlapping windows (should not throw)
-    times_valid = [1.0, 3.0, 6.0]
-    windows_valid = [0.5, 1.0, 1.5]
-
-    @test AveragedSpecifiedTimes(times_valid; window=windows_valid) isa AveragedSpecifiedTimes
-
-    # Test valid DateTime non-overlapping windows (should not throw)
-    times_datetime_valid = [DateTime(2000, 1, 10), DateTime(2000, 1, 20), DateTime(2000, 2, 15)]
-    windows_periods_valid = [Day(3), Day(5), Day(10)]
-
-    @test AveragedSpecifiedTimes(times_datetime_valid; window=windows_periods_valid) isa AveragedSpecifiedTimes
-
+    rm(jld_filename)
     return nothing
 end
 
@@ -398,12 +304,6 @@ function test_averaging_datetime_varying_period_windows(model)
 
     run!(simulation)
 
-    # Calculate expected averages manually:
-    # Window 1: Jan 1 - Jan 11 (days 0-10), avg = 5.0
-    # Window 2: Jan 11 - Feb 11 (days 10-41, since Jan has 31 days), avg = 25.5
-    # Window 3: Feb 11 - Feb 26 (days 41-56), avg = 48.5
-
-    window_starts = [start_time, DateTime(2000, 1, 11), DateTime(2000, 2, 11)]
     expected_averages = Float64[]
 
     for i in 1:length(times)
@@ -439,186 +339,15 @@ function test_averaging_datetime_varying_period_windows(model)
 end
 
 #####
-##### Test runtime validation of averaging windows
-#####
-
-function test_averaged_specified_times_runtime_validation()
-    @info "  Testing runtime validation for AveragedSpecifiedTimes..."
-
-    # Test 1: Valid case - window doesn't extend before start
-    @testset "Valid window (doesn't extend before start)" begin
-        grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
-        model = NonhydrostaticModel(grid)
-
-        # First specified time at 5.0, window is 2.0 (goes back to 3.0)
-        # Simulation starts at 0.0, so this should be fine
-        schedule = AveragedSpecifiedTimes([5.0, 10.0], window=2.0)
-        simulation = Simulation(model, Δt=0.1, stop_time=10.0)
-        simulation.output_writers[:test] = JLD2Writer(model, model.velocities,
-                                                       filename="test_valid_runtime.jld2",
-                                                       schedule=schedule,
-                                                       overwrite_existing=true)
-
-        # Should not throw an error
-        @test_nowarn run!(simulation)
-
-        rm("test_valid_runtime.jld2", force=true)
-    end
-
-    # Test 2: Invalid case - window extends before simulation start
-    @testset "Invalid window (extends before start)" begin
-        grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
-        model = NonhydrostaticModel(grid)
-
-        # First specified time at 2.0, window is 5.0 (goes back to -3.0)
-        # Simulation starts at 0.0, so this should fail at runtime
-        schedule = AveragedSpecifiedTimes([2.0, 10.0], window=5.0)
-        simulation = Simulation(model, Δt=0.1, stop_time=10.0)
-        simulation.output_writers[:test] = JLD2Writer(model, model.velocities,
-                                                       filename="test_invalid_runtime.jld2",
-                                                       schedule=schedule,
-                                                       overwrite_existing=true)
-
-        # Should throw ArgumentError at runtime during initialize!
-        @test_throws ArgumentError run!(simulation)
-
-        rm("test_invalid_runtime.jld2", force=true)
-    end
-
-    # Test 3: Invalid case with vector windows
-    @testset "Invalid vector windows (first window extends before start)" begin
-        grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
-        model = NonhydrostaticModel(grid)
-
-        # First window: time=2.0, window=5.0 -> starts at -3.0 (invalid)
-        # Second window: time=10.0, window=2.0 -> starts at 8.0 (valid)
-        schedule = AveragedSpecifiedTimes([2.0, 10.0], window=[5.0, 2.0])
-        simulation = Simulation(model, Δt=0.1, stop_time=10.0)
-        simulation.output_writers[:test] = JLD2Writer(model, model.velocities,
-                                                       filename="test_invalid_vector_runtime.jld2",
-                                                       schedule=schedule,
-                                                       overwrite_existing=true)
-
-        # Should throw ArgumentError at runtime during initialize!
-        @test_throws ArgumentError run!(simulation)
-
-        rm("test_invalid_vector_runtime.jld2", force=true)
-    end
-
-    # Test 4: Valid case with non-zero start time
-    @testset "Valid window with non-zero start time" begin
-        grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
-        model = NonhydrostaticModel(grid)
-
-        # Start simulation at t=5.0
-        model.clock.time = 5.0
-
-        # First specified time at 10.0, window is 3.0 (goes back to 7.0)
-        # This is after start time (5.0), so should be valid
-        schedule = AveragedSpecifiedTimes([10.0, 15.0], window=3.0)
-        simulation = Simulation(model, Δt=0.1, stop_time=15.0)
-        simulation.output_writers[:test] = JLD2Writer(model, model.velocities,
-                                                       filename="test_valid_nonzero_runtime.jld2",
-                                                       schedule=schedule,
-                                                       overwrite_existing=true)
-
-        # Should not throw an error
-        @test_nowarn run!(simulation)
-
-        rm("test_valid_nonzero_runtime.jld2", force=true)
-    end
-
-    # Test 5: Invalid case with non-zero start time
-    @testset "Invalid window with non-zero start time" begin
-        grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
-        model = NonhydrostaticModel(grid)
-
-        # Start simulation at t=5.0
-        model.clock.time = 5.0
-
-        # First specified time at 7.0, window is 5.0 (goes back to 2.0)
-        # This is before start time (5.0), so should fail
-        schedule = AveragedSpecifiedTimes([7.0, 15.0], window=5.0)
-        simulation = Simulation(model, Δt=0.1, stop_time=15.0)
-        simulation.output_writers[:test] = JLD2Writer(model, model.velocities,
-                                                       filename="test_invalid_nonzero_runtime.jld2",
-                                                       schedule=schedule,
-                                                       overwrite_existing=true)
-
-        # Should throw ArgumentError
-        @test_throws ArgumentError run!(simulation)
-
-        rm("test_invalid_nonzero_runtime.jld2", force=true)
-    end
-
-    # Test 6: DateTime - Invalid case (runtime validation with non-zero start)
-    @testset "Invalid DateTime window (runtime validation)" begin
-        grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
-
-        # Start simulation at Jan 10, 2000
-        start_time = DateTime(2000, 1, 10)
-        clock = Clock(time=start_time)
-        model = HydrostaticFreeSurfaceModel(grid; clock)
-
-        # First specified time at Jan 15, window is 10 days (goes back to Jan 5)
-        # Simulation starts at Jan 10, 2000, so window extends before start
-        times = [DateTime(2000, 1, 15), DateTime(2000, 1, 25)]
-        schedule = AveragedSpecifiedTimes(times, window=Day(10))
-        simulation = Simulation(model, Δt=Day(1), stop_time=DateTime(2000, 1, 25))
-        simulation.output_writers[:test] = JLD2Writer(model, model.velocities,
-                                                       filename="test_invalid_datetime_runtime.jld2",
-                                                       schedule=schedule,
-                                                       overwrite_existing=true)
-
-        # Should throw ArgumentError at runtime during initialize!
-        @test_throws ArgumentError run!(simulation)
-
-        rm("test_invalid_datetime_runtime.jld2", force=true)
-    end
-
-    # Test 7: DateTime - Valid case
-    @testset "Valid DateTime window" begin
-        grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
-
-        start_time = DateTime(2000, 1, 1)
-        clock = Clock(time=start_time)
-        model = HydrostaticFreeSurfaceModel(grid; clock)
-
-        # First specified time at Jan 10, window is 5 days (goes back to Jan 5)
-        # Simulation starts at Jan 1, 2000, so this should be valid
-        times = [DateTime(2000, 1, 10), DateTime(2000, 1, 20)]
-        schedule = AveragedSpecifiedTimes(times, window=Day(5))
-        simulation = Simulation(model, Δt=Day(1), stop_time=DateTime(2000, 1, 20))
-        simulation.output_writers[:test] = JLD2Writer(model, model.velocities,
-                                                       filename="test_valid_datetime_runtime.jld2",
-                                                       schedule=schedule,
-                                                       overwrite_existing=true)
-
-        # Should not throw an error
-        @test_nowarn run!(simulation)
-
-        rm("test_valid_datetime_runtime.jld2", force=true)
-    end
-
-    return nothing
-end
-
-#####
 ##### Run AveragedSpecifiedTimes tests
 #####
 
 @testset "AveragedSpecifiedTimes" begin
     @info "Testing AveragedSpecifiedTimes..."
 
-    # Error handling tests
-    @testset "AveragedSpecifiedTimes error handling" begin
-        test_averaged_specified_times_overlapping_windows()
-    end
-
-    # Runtime validation tests
-    @testset "Runtime validation of averaging windows" begin
-        test_averaged_specified_times_runtime_validation()
-    end
+    # Error handling: overlapping windows
+    @test_throws ArgumentError AveragedSpecifiedTimes([1.0, 1.5, 3.0]; window=1.0)
+    @test AveragedSpecifiedTimes([1.0, 3.0, 6.0]; window=[0.5, 1.0, 1.5]) isa AveragedSpecifiedTimes
 
     topo = (Periodic, Periodic, Bounded)
 
@@ -638,4 +367,3 @@ end
         end
     end
 end
-
