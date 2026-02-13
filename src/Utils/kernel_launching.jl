@@ -356,7 +356,8 @@ end
 @inline function _launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...;
                           exclude_periphery = false,
                           reduced_dimensions = (),
-                          active_cells_map = nothing)
+                          active_cells_map = nothing,
+                          maxregs = nothing)
 
     location = Oceananigans.location(first_kernel_arg)
 
@@ -366,11 +367,17 @@ end
 
     # Don't launch kernels with no size
     if length(worksize) > 0
-        loop!(first_kernel_arg, other_kernel_args...)
+        _launch_kernel!(arch, loop!, maxregs, first_kernel_arg, other_kernel_args...)
     end
 
     return nothing
 end
+
+# Default: just call the kernel
+@inline _launch_kernel!(arch, loop!, ::Nothing, args...) = loop!(args...)
+
+# Fallback for architectures without maxregs support: ignore the hint
+@inline _launch_kernel!(arch, loop!, maxregs, args...) = loop!(args...)
 
 #####
 ##### Extension to KA for offset indices: to remove when implemented in KA

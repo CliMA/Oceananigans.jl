@@ -16,6 +16,7 @@ import Oceananigans.Grids as GD
 import Oceananigans.Solvers as SO
 import Oceananigans.Utils as UT
 import SparseArrays: SparseMatrixCSC
+import KernelAbstractions as KA
 import KernelAbstractions: __iterspace, __dynamic_checkbounds, __validindex
 import Oceananigans.DistributedComputations: Distributed
 
@@ -135,5 +136,47 @@ end
 @inline UT.sync_device!(::CuDevice)      = CUDA.synchronize()
 @inline UT.sync_device!(::CUDAGPU)       = CUDA.synchronize()
 @inline UT.sync_device!(::CUDABackend)   = CUDA.synchronize()
+
+#####
+##### maxregs support for CUDA kernel launches
+#####
+##### When `maxregs` is specified, we bypass KA's default kernel compilation
+##### and use `@cuda maxregs=N` to hint the register allocator. This can
+##### improve performance by guiding the compiler to a better allocation
+##### strategy, even when occupancy stays the same.
+#####
+
+function UT._launch_kernel!(::CUDAGPU, loop!::KA.Kernel{CUDABackend}, maxregs::Integer, args...)
+    backend = KA.backend(loop!)
+    ndrange, workgroupsize, iterspace, dynamic = KA.launch_config(loop!, nothing, nothing)
+    ctx = KA.mkcontext(loop!, ndrange, iterspace)
+
+    if KA.workgroupsize(loop!) <: KA.StaticSize
+        maxthreads = prod(KA.get(KA.workgroupsize(loop!)))
+    else
+        maxthreads = nothing
+    end
+
+    # Total work items from the kernel's static ndrange
+    total_work = prod(KA.get(KA.ndrange(loop!)))
+
+    # Recompile the kernel with the maxregs hint
+    cuda_kernel = CUDA.@cuda(launch=false,
+                              always_inline=backend.always_inline,
+                              maxthreads=maxthreads,
+                              maxregs=maxregs,
+                              loop!.f(ctx, args...))
+
+    # Determine launch configuration based on the recompiled kernel
+    config = CUDA.launch_configuration(cuda_kernel.fun)
+    threads = min(total_work, config.threads)
+    blocks = cld(total_work, threads)
+
+    if blocks > 0
+        cuda_kernel(ctx, args...; threads, blocks)
+    end
+
+    return nothing
+end
 
 end # module OceananigansCUDAExt
