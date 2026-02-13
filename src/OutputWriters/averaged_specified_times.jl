@@ -24,10 +24,9 @@ AveragedSpecifiedTimes(specified_times::SpecifiedTimes; window, stride=1) =
 
 AveragedSpecifiedTimes(times; window, kw...) = AveragedSpecifiedTimes(times, window; kw...)
 
-determine_epsilon(eltype) = 0 # Fallback method
-determine_epsilon(::Type{T}) where T <: AbstractFloat = eps(T)
-determine_epsilon(::Type{<:Period}) = Second(0)
-determine_epsilon(::Type{<:DateTime}) = Second(0)
+overlap_tolerance(eltype) = 0 # Fallback method
+overlap_tolerance(::Type{T}) where T <: AbstractFloat = 100 * eps(T)
+overlap_tolerance(::Type{<:Union{Period, DateTime}}) = Second(0)
 
 const NumberTypeWindows = Union{Number, Vector{<:Number}}
 const PeriodTypeWindows = Union{Period, Vector{<:Period}}
@@ -37,7 +36,7 @@ function validate_nonoverlapping_windows(times, window::NumberTypeWindows)
     # Check for overlapping windows between consecutive times
     # Works for both scalar and vector windows through broadcasting
     if length(times) >= 2
-        tol = 100 * determine_epsilon(eltype(times))
+        tol = 100 * overlap_tolerance(eltype(times))
         window_starts = times .- window  # Broadcasts correctly for both scalar and vector
         prev_times = times[1:end-1]
         if any(window_starts[2:end] .- prev_times .< -tol)
@@ -240,7 +239,7 @@ function validate_schedule_runtime(schedule::AveragedSpecifiedTimes, clock)
     # Check if the first window extends before the simulation start time
     window_start = first_time - first_window
 
-    tol = 100 * determine_epsilon(typeof(clock.time))
+    tol = 100 * overlap_tolerance(typeof(clock.time))
 
     if window_start < clock.time - tol
         throw(ArgumentError("The first averaging window starts at $(prettytime(window_start)), " *
