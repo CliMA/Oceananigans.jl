@@ -146,7 +146,7 @@ end
     topology = (Periodic, Periodic, Bounded)
 
     grid = RectilinearGrid(size=(Nx, Ny, Nz); x, y, z, topology)
-    model = HydrostaticFreeSurfaceModel(grid; tracers=:c)
+    model = HydrostaticFreeSurfaceModel(grid; tracers=:c, timestepper=:QuasiAdamsBashforth2)
     model_tracer = model.tracers.c
 
     amplitude = 1.0
@@ -233,12 +233,14 @@ end
     # 3. Do a problem where we invert for the tracer fluxes (maybe with CATKE)
 
     model_no_bc = HydrostaticFreeSurfaceModel(grid;
+                                              timestepper = :QuasiAdamsBashforth2,
                                               tracer_advection = WENO(),
                                               tracers = :c,
                                               velocities = PrescribedVelocityFields(; u, v),
                                               closure = diffusion)
 
     model_bc = HydrostaticFreeSurfaceModel(grid;
+                                           timestepper = :QuasiAdamsBashforth2,
                                            tracer_advection = WENO(),
                                            tracers = :c,
                                            velocities = PrescribedVelocityFields(; u, v),
@@ -328,7 +330,7 @@ end
     g = 4^2
     c = sqrt(g)
     free_surface = ExplicitFreeSurface(gravitational_acceleration=g)
-    model = HydrostaticFreeSurfaceModel(grid; momentum_advection, free_surface, closure)
+    model = HydrostaticFreeSurfaceModel(grid; momentum_advection, free_surface, closure, timestepper = :QuasiAdamsBashforth2)
 
     ϵ(x, y, z) = 2randn() - 1
     set!(model, u=ϵ, v=ϵ)
