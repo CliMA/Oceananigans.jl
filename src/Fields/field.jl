@@ -234,16 +234,19 @@ ZFaceField(grid::AbstractGrid, T::DataType=eltype(grid); kw...) = Field((Center(
 #####
 
 # Canonical `similar` for Field (doesn't transfer boundary conditions)
-function Base.similar(f::Field, grid=f.grid)
+function Base.similar(f::Field, ::Type{T}, grid::AbstractGrid) where {T}
     loc = instantiated_location(f)
     return Field(loc,
                  grid,
-                 new_data(eltype(grid), grid, loc, f.indices),
+                 new_data(T, grid, loc, f.indices),
                  FieldBoundaryConditions(grid, loc, f.indices),
                  f.indices,
                  f.operand,
                  deepcopy(f.status))
 end
+Base.similar(f::Field, ::Type{T}) where {T} = similar(f, T, f.grid)
+Base.similar(f::Field, grid::AbstractGrid) = similar(f, eltype(grid), grid)
+Base.similar(f::Field) = similar(f, eltype(f.grid), f.grid)
 
 """
     offset_windowed_data(data, data_indices, loc, grid, view_indices)
