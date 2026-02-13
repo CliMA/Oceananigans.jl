@@ -397,7 +397,6 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
 @testset "Dynamics" begin
     @info "Testing dynamics..."
-
     @testset "Simple diffusion" begin
         @info "  Testing simple diffusion..."
         for fieldname in (:u, :v, :c), timestepper in timesteppers
@@ -667,7 +666,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                     gravitational_acceleration = (10σ)^2 / Lx
 
                     for free_surface in free_surface_types(Val(timestepper), gravitational_acceleration, grid)
-                        model = HydrostaticFreeSurfaceModel(grid; free_surface, kwargs...)
+                        model = HydrostaticFreeSurfaceModel(grid; free_surface, timestepper, kwargs...)
 
                         free_surface_type = typeof(free_surface).name.wrapper
                         @info "  Testing internal wave [HydrostaticFreeSurfaceModel, $grid_name, $topo, $timestepper, $free_surface_type]..."

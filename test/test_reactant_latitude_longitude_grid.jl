@@ -12,7 +12,7 @@ include("reactant_test_utils.jl")
     stretched_lat_lon_kw = (; size=(Nx, Ny, Nz), halo, longitude=stretched_longitude, latitude, z)
 
     for momentum_advection in (nothing, VectorInvariant(), WENOVectorInvariant())
-        hydrostatic_model_kw = (; momentum_advection, free_surface=ExplicitFreeSurface())
+        hydrostatic_model_kw = (; momentum_advection, free_surface=ExplicitFreeSurface(), timestepper=:QuasiAdamsBashforth2)
         name = string(typeof(momentum_advection).name.wrapper)
 
         @info "  Testing hydrostatic LatitudeLongitudeGrid + ExplicitFreeSurface Reactant correctness with momentum_advection: $name"
@@ -36,7 +36,7 @@ include("reactant_test_utils.jl")
     end
 
     #=
-    hydrostatic_model_kw = (; momentum_advection=WENOVectorInvariant(), free_surface=SplitExplicitFreeSurface(substeps=4))
+    hydrostatic_model_kw = (; momentum_advection=WENOVectorInvariant(), free_surface=SplitExplicitFreeSurface(substeps=4), timestepper=:QuasiAdamsBashforth2)
 
     @info "Testing hydrostatic LatitudeLongitudeGrid + SplitExplicitFreeSurface + WENOVectorInvariant Reactant correctness"
     hydrostatic_model_kw = (; momentum_advection=VectorInvariant(), free_surface=ExplicitFreeSurface())
@@ -54,7 +54,7 @@ include("reactant_test_utils.jl")
     =#
 
     #=
-    hydrostatic_model_kw = (; momentum_advection=WENOVectorInvariant(), free_surface=SplitExplicitFreeSurface(substeps=4))
+    hydrostatic_model_kw = (; momentum_advection=WENOVectorInvariant(), free_surface=SplitExplicitFreeSurface(substeps=4), timestepper=:QuasiAdamsBashforth2)
     @info "Testing LatitudeLongitudeGrid + WENO + SplitExplicitFreeSurface + HydrostaticFreeSurfaceModel Reactant correctness"
     simulation = test_reactant_model_correctness(LatitudeLongitudeGrid,
                                                  HydrostaticFreeSurfaceModel,

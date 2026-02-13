@@ -33,7 +33,7 @@ end
         latitude = (0, 4)
         z = (-1, 0)
         lat_lon_kw = (; size=(Nx, Ny, Nz), halo, longitude, latitude, z)
-        hydrostatic_model_kw = (; momentum_advection=VectorInvariant(), free_surface=ExplicitFreeSurface())
+        hydrostatic_model_kw = (; momentum_advection=VectorInvariant(), free_surface=ExplicitFreeSurface(), timestepper=:QuasiAdamsBashforth2)
 
         arch = Oceananigans.Architectures.ReactantState()
         grid = LatitudeLongitudeGrid(arch; lat_lon_kw...)

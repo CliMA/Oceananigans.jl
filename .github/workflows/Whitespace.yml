@@ -30,7 +30,7 @@ jobs:
           ref: '3b12a882e887753e4d2e9e9db65d99d3f7d9e26b'
       - uses: julia-actions/setup-julia@v2
         with:
-          version: '1.12.4'
+          version: '1.12.5'
       - name: Check whitespace
         run: |
           .julia/contrib/check-whitespace.jl

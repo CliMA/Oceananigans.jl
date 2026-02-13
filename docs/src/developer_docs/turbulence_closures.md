@@ -281,8 +281,12 @@ function run_boundary_layer(closure; stop_time)
     u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τˣ))
     b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Jᵇ))
 
+    # TKEDissipationVerticalDiffusivity only supports QuasiAdamsBashforth2 timestepping
+    timestepper = closure isa TKEDissipationVerticalDiffusivity ? :QuasiAdamsBashforth2 : :SplitRungeKutta3
+
     model = HydrostaticFreeSurfaceModel(grid;
                                         closure,
+                                        timestepper,
                                         buoyancy = BuoyancyTracer(),
                                         tracers = :b,
                                         coriolis = FPlane(f=f),

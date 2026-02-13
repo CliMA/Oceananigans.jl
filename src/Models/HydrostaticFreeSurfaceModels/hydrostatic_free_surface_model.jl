@@ -6,7 +6,7 @@ using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Fields: CenterField, tracernames, TracerFields
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization
+using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization, XFlatGrid, YFlatGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles
@@ -114,7 +114,7 @@ Keyword arguments
   - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
   - `timestepper`: A symbol or a `TimeStepper` object that specifies the time-stepping method.
                    Supported symbols include $(join("`" .* repr.(supported_timesteppers) .* "`", ", ")).
-                   Default: `:QuasiAdamsBashforth2`.
+                   Default: `:SplitRungeKutta3`.
   - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
   - `particles`: Lagrangian particles to be advected with the flow. Default: `nothing`.
   - `biogeochemistry`: Biogeochemical model for `tracers`.
@@ -137,7 +137,7 @@ function HydrostaticFreeSurfaceModel(grid;
                                      tracers = nothing,
                                      forcing::NamedTuple = NamedTuple(),
                                      closure = nothing,
-                                     timestepper = :QuasiAdamsBashforth2,
+                                     timestepper = :SplitRungeKutta3,
                                      boundary_conditions::NamedTuple = NamedTuple(),
                                      particles::ParticlesOrNothing = nothing,
                                      biogeochemistry::AbstractBGCOrNothing = nothing,

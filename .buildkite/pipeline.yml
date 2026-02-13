@@ -1,5 +1,5 @@
 env:
-  JULIA_VERSION: "1.12.4"
+  JULIA_VERSION: "1.12.5"
   JULIA_VERSION_ENZYME: "1.10.10"
   BUILDKITE_HOME: "/var/lib/buildkite-agent"
   JULIA_DEPOT_PATH: "$BUILDKITE_HOME/.julia-oceananigans"

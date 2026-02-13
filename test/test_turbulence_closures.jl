@@ -1,26 +1,19 @@
 include("dependencies_for_runtests.jl")
 
 using Random
-using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, RiBasedVerticalDiffusivity, DiscreteDiffusionFunction
-
-using Oceananigans.TurbulenceClosures: viscosity_location, diffusivity_location,
+using Oceananigans.Grids: znode
+using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, RiBasedVerticalDiffusivity, DiscreteDiffusionFunction,
+                                       viscosity_location, diffusivity_location,
                                        required_halo_size_x, required_halo_size_y, required_halo_size_z,
-                                       cell_diffusion_timescale, formulation, min_Δxyz
-
-using Oceananigans.TurbulenceClosures: diffusive_flux_x, diffusive_flux_y, diffusive_flux_z,
-                                       viscous_flux_ux, viscous_flux_uy, viscous_flux_uz
-
-using Oceananigans.TurbulenceClosures: ScalarDiffusivity,
-                                       ScalarBiharmonicDiffusivity,
+                                       cell_diffusion_timescale, formulation, min_Δxyz,
+                                       diffusive_flux_x, diffusive_flux_y, diffusive_flux_z,
+                                       viscous_flux_ux, viscous_flux_uy, viscous_flux_uz,
+                                       ScalarDiffusivity, ScalarBiharmonicDiffusivity,
                                        TwoDimensionalLeith,
                                        ConvectiveAdjustmentVerticalDiffusivity,
-                                       Smagorinsky,
-                                       DynamicSmagorinsky,
-                                       SmagorinskyLilly,
+                                       Smagorinsky, DynamicSmagorinsky,SmagorinskyLilly,
                                        LagrangianAveraging,
                                        AnisotropicMinimumDissipation
-
-using Oceananigans.Grids: znode
 
 ConstantSmagorinsky(FT=Float64) = Smagorinsky(FT, coefficient=0.16)
 DirectionallyAveragedDynamicSmagorinsky(FT=Float64) = DynamicSmagorinsky(FT, averaging=(1, 2))
@@ -198,6 +191,7 @@ function run_catke_tke_substepping_tests(arch, closure)
                                         momentum_advection = nothing,
                                         tracer_advection = nothing,
                                         closure,
+                                        timestepper = :QuasiAdamsBashforth2,
                                         buoyancy = BuoyancyTracer(),
                                         tracers = (:b))
 
@@ -242,7 +236,7 @@ function run_time_step_with_catke_tests(arch, closure, timestepper)
     # Supplying closure tracers explicitly should error
     @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid; closure, buoyancy, tracers = (:b, :c, :e))
 
-    model = HydrostaticFreeSurfaceModel(grid; closure, buoyancy, tracers = (:b, :c))
+    model = HydrostaticFreeSurfaceModel(grid; timestepper, closure, buoyancy, tracers = (:b, :c))
 
     # Default boundary condition is Flux, Nothing... with CATKE this has to change.
     @test !(model.tracers.e.boundary_conditions.top.condition isa BoundaryCondition{Flux, Nothing})
