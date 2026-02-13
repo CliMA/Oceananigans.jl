@@ -426,27 +426,27 @@ topos_3d = ((Periodic, Periodic, Bounded),
 
             # Small grid with MutableVerticalDiscretization (triggers ZStarCoordinate)
             H = 10
-            z_faces = MutableVerticalDiscretization((-H, 0))
+            zstar = MutableVerticalDiscretization((-H, 0))
 
             grid = RectilinearGrid(arch;
                                    size = (4, 4, 4),
                                    x = (0, 100),
                                    y = (0, 100),
-                                   z = z_faces,
+                                   z = zstar,
                                    halo = (3, 3, 3),
                                    topology = (Periodic, Periodic, Bounded))
 
             # Prescribed velocity fields (zero divergence)
-            u_prescribed(x, y, z, t) = 0.0
-            v_prescribed(x, y, z, t) = 0.0
+            u(x, y, z, t) = 0.0
+            v(x, y, z, t) = 0.0
 
-            velocities = PrescribedVelocityFields(; u=u_prescribed, v=v_prescribed)
+            velocities = PrescribedVelocityFields(; u=u, v=v)
 
             # Prescribed free surface: η oscillates over one period
             A = 0.1  # amplitude (small relative to H=10)
-            η_prescribed(x, y, z, t) = A * sin(2π * t)
+            displacement(x, y, z, t) = A * sin(2π * t)
 
-            free_surface = PrescribedFreeSurface(displacement=η_prescribed)
+            free_surface = PrescribedFreeSurface(displacement=displacement)
 
             # Build model
             model = HydrostaticFreeSurfaceModel(grid;
@@ -462,38 +462,34 @@ topos_3d = ((Periodic, Periodic, Bounded),
             model_fields = fields(model)
             @test haskey(model_fields, :η)
 
-            # Time step for one full period with dt = 0.01
-            dt = 0.01
-            T_period = 1.0  # one full period of sin(2πt)
-            simulation = Simulation(model; Δt=dt, stop_time=T_period)
+            # Time step for one full period with Δt = 0.01
+            Δt = 0.01
+            stop_time = 1.0  # one full period of sin(2πt)
+            simulation = Simulation(model; Δt=Δt, stop_time=stop_time)
 
             # σᶜᶜⁿ is an OffsetArray with halo; extract interior values using OffsetArray indexing
-            Nx, Ny, _ = size(grid)
-            σ_interior(σ) = [σ[i, j, 1] for i in 1:Nx, j in 1:Ny]
+            Nx, Ny, _ = size(grid, (Center, Center, Center))
 
-            # Check initial σ ≈ 1.0 (η(0) = 0)
-            σ_initial = σ_interior(grid.z.σᶜᶜⁿ)
-            @test all(σ_initial .≈ 1.0)
+            # Check initial σ == 1.0 (η(0) = 0)
+            atol = 1e-10
+            σ = view(grid.z.σᶜᶜⁿ, 1:Nx, 1:Ny, 1)
+            target = ones(size(σ))
+            @test σ ≈ target atol=atol
 
             # Run for one full period
             run!(simulation)
 
             # σ should reflect η at the current clock time (step_free_surface! advances
             # the PFS clock to tⁿ⁺¹ before the grid update, matching prognostic behavior).
-            σ_final = σ_interior(grid.z.σᶜᶜⁿ)
-            expected_σ = (H + A * sin(2π * model.clock.time)) / H
-
-            tol = 1e-10
-            @test all(abs.(σ_final .- expected_σ) .< tol)
+            target .= (H + A * sin(2π * model.clock.time)) / H
+            @test σ ≈ target atol=atol
 
             # Also verify that σ oscillates correctly at a non-trivial time
             simulation.stop_time = 1.25
             run!(simulation)
 
-            σ_quarter = σ_interior(grid.z.σᶜᶜⁿ)
-            expected_σ_quarter = (H + A * sin(2π * model.clock.time)) / H
-
-            @test all(abs.(σ_quarter .- expected_σ_quarter) .< tol)
+            target .= (H + A * sin(2π * model.clock.time)) / H
+            @test σ ≈ target atol=atol
 
             @info "    PrescribedFreeSurface with PrescribedVelocityFields and ZStar test passed"
         end
@@ -504,8 +500,8 @@ topos_3d = ((Periodic, Periodic, Bounded),
             Nx, Ny, Nz = 4, 4, 4
             Lx, Ly, H = 100.0, 100.0, 10.0
 
-            u_prescribed(x, y, z, t) = sin(2π * x / Lx)
-            v_prescribed(x, y, z, t) = 0.0
+            u(x, y, z, t) = sin(2π * x / Lx)
+            v(x, y, z, t) = 0.0
 
             # --- Static grid ---
             static_grid = RectilinearGrid(arch;
@@ -513,8 +509,8 @@ topos_3d = ((Periodic, Periodic, Bounded),
                                           x = (0, Lx), y = (0, Ly), z = (-H, 0),
                                           topology = (Periodic, Periodic, Bounded))
 
-            static_velocities = PrescribedVelocityFields(; u = u_prescribed,
-                                                           v = v_prescribed,
+            static_velocities = PrescribedVelocityFields(; u = u,
+                                                           v = v,
                                                            w = DiagnosticVerticalVelocity())
 
             static_model = HydrostaticFreeSurfaceModel(static_grid;
@@ -527,45 +523,42 @@ topos_3d = ((Periodic, Periodic, Bounded),
 
             time_step!(static_model, 1.0)
 
-            w_static = static_model.velocities.w.field
+            w = static_model.velocities.w.field
             Δx = Lx / Nx
             Δz = H / Nz
 
             # w should be non-zero for divergent u
-            @test !all(iszero, interior(w_static))
+            @test !all(iszero, interior(w))
 
             # Bottom boundary condition: w = 0 at k = 1
             for i in 1:Nx
-                @test w_static[i, 1, 1] == 0
+                @test w[i, 1, 1] == 0
             end
 
             # Check discrete continuity: w[k+1] = w[k] - Δz * discrete_div_u
             for i in 1:Nx, k in 1:Nz
-                u_right = u_prescribed(i * Δx, 0, 0, 0)
-                u_left  = u_prescribed((i - 1) * Δx, 0, 0, 0)
-                discrete_div = (u_right - u_left) / Δx
-
-                Δw = w_static[i, 1, k + 1] - w_static[i, 1, k]
+                discrete_div = (u(i * Δx, 0, 0, 0) - u((i - 1) * Δx, 0, 0, 0)) / Δx
+                Δw = w[i, 1, k + 1] - w[i, 1, k]
                 @test Δw ≈ -Δz * discrete_div atol = 1e-10
             end
 
             # --- ZStar grid with PrescribedFreeSurface ---
-            z_faces = MutableVerticalDiscretization((-H, 0))
+            zstar = MutableVerticalDiscretization((-H, 0))
 
             zstar_grid = RectilinearGrid(arch;
                                          size = (Nx, Ny, Nz),
-                                         x = (0, Lx), y = (0, Ly), z = z_faces,
+                                         x = (0, Lx), y = (0, Ly), z = zstar,
                                          halo = (3, 3, 3),
                                          topology = (Periodic, Periodic, Bounded))
 
             A = 0.1
-            η_prescribed(x, y, z, t) = A * sin(2π * t)
+            displacement(x, y, z, t) = A * sin(2π * t)
 
             zstar_velocities = PrescribedVelocityFields(; u = u_prescribed,
                                                           v = v_prescribed,
                                                           w = DiagnosticVerticalVelocity())
 
-            free_surface = PrescribedFreeSurface(displacement = η_prescribed)
+            free_surface = PrescribedFreeSurface(displacement = displacement)
 
             zstar_model = HydrostaticFreeSurfaceModel(zstar_grid;
                                                       velocities = zstar_velocities,
@@ -579,16 +572,16 @@ topos_3d = ((Periodic, Periodic, Bounded),
 
             time_step!(zstar_model, 1.0)
 
-            w_zstar = zstar_model.velocities.w.field
-            @test !all(iszero, interior(w_zstar))
+            wstar = zstar_model.velocities.w.field
+            @test !all(iszero, interior(wstar))
 
             # σ should reflect η at the current time
-            σ_val = zstar_grid.z.σᶜᶜⁿ[1, 1, 1]
-            expected_σ = (H + A * sin(2π * zstar_model.clock.time)) / H
-            @test σ_val ≈ expected_σ atol = 1e-10
+            σ = zstar_grid.z.σᶜᶜⁿ[1, 1, 1]
+            target = (H + A * sin(2π * zstar_model.clock.time)) / H
+            @test σ ≈ target atol = 1e-10
 
-            # The moving-grid ∂t_σ contribution should make w_zstar differ from w_static
-            @test interior(w_zstar) != interior(w_static)
+            # The moving-grid ∂t_σ contribution should make wstar differ from w
+            @test interior(wstar) ≉ interior(w)
 
             @info "    DiagnosticVerticalVelocity test passed"
         end
