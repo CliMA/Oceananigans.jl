@@ -24,7 +24,7 @@ const TripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} = OrthogonalSpheric
 const TripolarGridOfSomeKind = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}}
 
 """
-    TripolarGrid(arch = CPU(), FT::DataType = Float64;
+    TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatType;
                  size,
                  southernmost_latitude = -80,
                  halo = (4, 4, 4),

@@ -11,7 +11,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions,
-                                       time_discretization, implicit_diffusion_solver, closure_required_tracers
+                                       time_discretization, implicit_diffusion_solver, closure_required_tracers, initialize_closure_fields!
 using Oceananigans.Utils: tupleit
 
 import Oceananigans
@@ -52,7 +52,7 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
     transport_velocities :: W  # Container for velocity fields used to transport tracers
     tracers :: C               # Container for tracer fields
     pressure :: Φ              # Container for hydrostatic pressure
-    closure_fields :: K        # Container for turbulent diffusivities
+    closure_fields :: K        # Container for turbulent closure_fields
     timestepper :: TS          # Object containing timestepper fields and parameters
     auxiliary_fields :: AF     # User-specified auxiliary fields for forcing functions and boundary conditions
     vertical_coordinate :: Z   # Rulesets that define the time-evolution of the grid
@@ -291,11 +291,11 @@ function initialization_update_state!(model::HydrostaticFreeSurfaceModel)
     return nothing
 end
 
-transport_velocity_fields(velocities, free_surface) = velocities
-transport_velocity_fields(velocities, ::SplitExplicitFreeSurface) =
-    (u = XFaceField(velocities.u.grid; boundary_conditions=velocities.u.boundary_conditions),
-     v = YFaceField(velocities.v.grid; boundary_conditions=velocities.v.boundary_conditions),
-     w = ZFaceField(velocities.w.grid; boundary_conditions=velocities.w.boundary_conditions))
+transport_velocity_fields(velocities, ::Nothing) = velocities
+transport_velocity_fields(velocities, ::ExplicitFreeSurface) = velocities
+transport_velocity_fields(velocities, free_surface) = (u = XFaceField(velocities.u.grid; boundary_conditions=velocities.u.boundary_conditions),
+                                                       v = YFaceField(velocities.v.grid; boundary_conditions=velocities.v.boundary_conditions),
+                                                       w = ZFaceField(velocities.w.grid; boundary_conditions=velocities.w.boundary_conditions))
 
 validate_velocity_boundary_conditions(grid, velocities) = validate_vertical_velocity_boundary_conditions(velocities.w)
 
@@ -320,6 +320,7 @@ validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGr
 function initialize!(model::HydrostaticFreeSurfaceModel)
     initialize_vertical_coordinate!(model.vertical_coordinate, model, model.grid)
     initialize_free_surface!(model.free_surface, model.grid, model.velocities)
+    initialize_closure_fields!(model.closure_fields, model.closure, model)
     return nothing
 end
 

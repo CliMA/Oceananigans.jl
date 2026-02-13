@@ -12,7 +12,7 @@ grid_type(::LatitudeLongitudeGrid{F, X, Y}) where {F, X, Y} = "LatLon{$X, $Y}"
 
 grid_type(g::ImmersedBoundaryGrid) = "Immersed" * grid_type(g.underlying_grid)
 
-function test_zstar_coordinate(model, Ni, Δt, test_local_conservation=true)
+function test_zstar_coordinate(model, Ni, Δt)
 
     bᵢ = deepcopy(model.tracers.b)
     cᵢ = deepcopy(model.tracers.c)
@@ -51,11 +51,8 @@ function test_zstar_coordinate(model, Ni, Δt, test_local_conservation=true)
         end
         @test condition
 
-        # Constancy preservation test
-        if test_local_conservation
-            @test maximum(model.tracers.constant) ≈ 1
-            @test minimum(model.tracers.constant) ≈ 1
-        end
+        @test maximum(model.tracers.constant) ≈ 1
+        @test minimum(model.tracers.constant) ≈ 1
     end
 
     return nothing
@@ -92,14 +89,14 @@ end
             Random.seed!(1234)
 
             rtgv = RectilinearGrid(arch; size = (40, 40, 10), x = (0, 100kilometers), y = (-10kilometers, 10kilometers), topology, z = z_stretched)
-            irtgv = ImmersedBoundaryGrid(deepcopy(rtgv),  GridFittedBottom((x, y) -> rand() - 10))
-            prtgv = ImmersedBoundaryGrid(deepcopy(rtgv), PartialCellBottom((x, y) -> rand() - 10))
+            irtgv = ImmersedBoundaryGrid(deepcopy(rtgv),  GridFittedBottom((x, y) -> 2rand() - 8))
+            prtgv = ImmersedBoundaryGrid(deepcopy(rtgv), PartialCellBottom((x, y) -> 2rand() - 8))
 
             if topology[2] == Bounded
                 llgv = LatitudeLongitudeGrid(arch; size = (40, 40, 10), latitude = (0, 1), longitude = (0, 1), topology, z = z_stretched)
 
-                illgv = ImmersedBoundaryGrid(deepcopy(llgv),  GridFittedBottom((x, y) -> rand() - 10))
-                pllgv = ImmersedBoundaryGrid(deepcopy(llgv), PartialCellBottom((x, y) -> rand() - 10))
+                illgv = ImmersedBoundaryGrid(deepcopy(llgv),  GridFittedBottom((x, y) -> 2rand() - 8))
+                pllgv = ImmersedBoundaryGrid(deepcopy(llgv), PartialCellBottom((x, y) -> 2rand() - 8))
 
                 # TODO: Partial cell bottom are broken at the moment and do not account for the Δz in the volumes
                 # and vertical areas (see https://github.com/CliMA/Oceananigans.jl/issues/3958)
@@ -146,7 +143,7 @@ end
                         set!(model, c = (x, y, z) -> rand(), b = bᵢ, constant = 1)
 
                         Δt = free_surface isa ExplicitFreeSurface ? 10 : 2minutes
-                        test_zstar_coordinate(model, 100, Δt, !(free_surface isa ImplicitFreeSurface))
+                        test_zstar_coordinate(model, 100, Δt)
                     end
                 end
             end
