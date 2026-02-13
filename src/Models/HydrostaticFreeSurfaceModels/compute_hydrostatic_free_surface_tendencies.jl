@@ -137,8 +137,18 @@ end
     compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters; active_cells_map=nothing)
 
 Compute momentum tendencies for `u` and `v` in the grid interior (or on specified active cells).
+
+Dispatches to `_compute_hydrostatic_momentum_tendencies!` based on the momentum advection scheme.
+For `VectorInvariantUpwindVorticity` (including WENO), the computation is split across multiple
+kernel launches to reduce GPU register pressure and improve occupancy.
 """
 function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters; active_cells_map=nothing)
+    advection = model.advection.momentum
+    _compute_hydrostatic_momentum_tendencies!(advection, model, velocities, kernel_parameters; active_cells_map)
+end
+
+# Fallback: single-kernel momentum tendency computation (original path)
+function _compute_hydrostatic_momentum_tendencies!(advection, model, velocities, kernel_parameters; active_cells_map=nothing)
 
     grid = model.grid
     arch = architecture(grid)
@@ -149,7 +159,7 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     u_forcing = model.forcing.u
     v_forcing = model.forcing.v
 
-    start_momentum_kernel_args = (model.advection.momentum,
+    start_momentum_kernel_args = (advection,
                                   model.coriolis,
                                   model.closure)
 
