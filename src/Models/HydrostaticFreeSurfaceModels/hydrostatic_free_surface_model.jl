@@ -132,7 +132,7 @@ Keyword arguments
 """
 function HydrostaticFreeSurfaceModel(grid;
                                      clock = Clock(grid),
-                                     momentum_advection = default_momentum_advection(grid),
+                                     momentum_advection = default_hydrostatic_momentum_advection(grid),
                                      tracer_advection = Centered(),
                                      buoyancy = nothing,
                                      coriolis = nothing,
