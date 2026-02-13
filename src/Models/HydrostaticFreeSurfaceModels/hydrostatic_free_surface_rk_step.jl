@@ -41,6 +41,8 @@ The order of operations for explicit free surfaces is:
     # Compute z-dependent transport velocities
     compute_transport_velocities!(model, free_surface)
 
+    # correct_velocity_tendency!(model)
+
     @apply_regionally begin
         # compute tracer tendencies
         compute_tracer_tendencies!(model)
@@ -57,6 +59,21 @@ The order of operations for explicit free surfaces is:
     end
 
     return nothing
+end
+
+@kernel function _correct_velocity_tendency!(Gu, Gv, grid, advection, U, Ũ)
+    i, j, k = @index(Global, NTuple)
+    @inbounds Gu[i, j, k] += Oceananigans.Advection.div_𝐯u(i, j, k, grid, advection, U, U.u) -
+                             Oceananigans.Advection.div_𝐯u(i, j, k, grid, advection, Ũ, U.u) 
+    @inbounds Gu[i, j, k] += Oceananigans.Advection.div_𝐯v(i, j, k, grid, advection, U, U.v) -
+                             Oceananigans.Advection.div_𝐯v(i, j, k, grid, advection, Ũ, U.v) 
+end
+
+function correct_velocity_tendency!(model)
+    Gu = model.timestepper.Gⁿ.u
+    Gv = model.timestepper.Gⁿ.v
+    launch!(Oceananigans.CPU(), model.grid, :xyz, _correct_velocity_tendency!, 
+            Gu, Gv, model.grid, model.advection.momentum, model.velocities, model.transport_velocities)
 end
 
 """

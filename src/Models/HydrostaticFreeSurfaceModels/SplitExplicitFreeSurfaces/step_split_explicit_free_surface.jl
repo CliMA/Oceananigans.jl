@@ -35,7 +35,7 @@ end
     cache_previous_free_surface!(timestepper, i, j, k_top, η)
 
     δh_U = (δxTᶜᵃᵃ(i, j, grid.Nz, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
-            δyTᵃᶜᵃ(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) * Az⁻¹ᶜᶜᶠ(i, j, k_top, grid)
+            δyTᵃᶜᵃ(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, V★, timestepper, V)) * Az⁻¹ᶜᶜᶠ(i, j, k_top, grid)
 
     @inbounds begin
         η[i, j, k_top] += Δτ * (F(i, j, k_top, grid, clock, (; η, U, V)) - δh_U)
@@ -59,7 +59,7 @@ const MINIMUM_SUBSTEPS = 5
 @inline calculate_substeps(substepping::FTS, Δt) = max(MINIMUM_SUBSTEPS, ceil(Int, 2 * Δt / substepping.Δt_barotropic))
 
 @inline calculate_adaptive_settings(substepping::FNS, substeps) = substepping.fractional_step_size, substepping.averaging_weights, substepping.transport_weights
-@inline calculate_adaptive_settings(substepping::FTS, substeps) = weights_from_substeps(eltype(substepping.Δt_barotropic), substeps, substepping.averaging_kernel)
+@inline calculate_adaptive_settings(substepping::FTS, substeps, timestepper) = weights_from_substeps(eltype(substepping.Δt_barotropic), substeps, substepping.averaging_kernel, timestepper)
 
 iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps =
     @apply_regionally iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, Val(Nsubsteps))
@@ -159,6 +159,21 @@ end
 end
 
 #####
+##### Finalize split explicit state
+#####
+
+# For ForwardBackwardScheme: copy filtered state (η̅, U̅, V̅) into (η, U, V)
+@inline function finalize_split_explicit_state!(free_surface, grid, ::ForwardBackwardScheme) 
+    U, V  = free_surface.barotropic_velocities
+    state = free_surface.filtered_state
+    η = free_surface.displacement
+    @apply_regionally launch!(architecture(grid), grid, :xy, _update_split_explicit_state!, η, U, V, grid, state)
+end
+
+# For DissipativeForwardBackwardScheme: η, U, V are already at their final values after subcycling
+@inline finalize_split_explicit_state!(free_surface, grid, ::DissipativeForwardBackwardScheme) = nothing
+
+#####
 ##### SplitExplicitFreeSurface barotropic subcycling
 #####
 
@@ -202,8 +217,9 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     # Solve for the free surface at tⁿ⁺¹.
     iterate_split_explicit!(free_surface, free_surface_grid, GUⁿ, GVⁿ, Δτᴮ, F, model.clock, weights, transport_weights, Val(Nsubsteps))
 
-    # Update eta and velocities for the next timestep. The halos are updated in the `update_state!` function.
-    @apply_regionally launch!(architecture(free_surface_grid), free_surface_grid, :xy, _update_split_explicit_state!, η, U, V, free_surface_grid, filtered_state)
+    # For ForwardBackwardScheme: copy η̅, U̅, V̅ → η, U, V.
+    # For DissipativeForwardBackwardScheme: no-op (η, U, V are already final).
+    finalize_split_explicit_state!(free_surface, free_surface_grid, barotropic_timestepper)
 
     # Fill all the barotropic state.
     fill_halo_regions!((filtered_state.Ũ, filtered_state.Ṽ); async=true)

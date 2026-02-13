@@ -1,6 +1,6 @@
 module SplitExplicitFreeSurfaces
 
-export SplitExplicitFreeSurface, ForwardBackwardScheme
+export SplitExplicitFreeSurface, ForwardBackwardScheme, DissipativeForwardBackwardScheme
 export FixedSubstepNumber, FixedTimeStepSize
 
 using Oceananigans.Architectures: convert_to_device, architecture

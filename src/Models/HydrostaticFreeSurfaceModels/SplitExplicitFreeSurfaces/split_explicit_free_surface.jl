@@ -149,7 +149,7 @@ function SplitExplicitFreeSurface(grid = nothing;
     end
 
     gravitational_acceleration = convert(FT, gravitational_acceleration)
-    substepping = split_explicit_substepping(cfl, substeps, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
+    substepping = split_explicit_substepping(cfl, substeps, fixed_Δt, grid, averaging_kernel, timestepper, gravitational_acceleration)
 
     return SplitExplicitFreeSurface{extend_halos}(nothing,
                                                   nothing,
@@ -164,33 +164,33 @@ end
 const FillHaloSplitExplicit = SplitExplicitFreeSurface{false}
 
 # Simplest case: we have the substeps and the averaging kernel
-function split_explicit_substepping(::Nothing, substeps, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
+function split_explicit_substepping(::Nothing, substeps, fixed_Δt, grid, averaging_kernel, timestepper, gravitational_acceleration)
     FT = eltype(gravitational_acceleration)
-    fractional_step_size, averaging_weights, transport_weights = weights_from_substeps(FT, substeps, averaging_kernel)
+    fractional_step_size, averaging_weights, transport_weights = weights_from_substeps(FT, substeps, averaging_kernel, timestepper)
     return FixedSubstepNumber(fractional_step_size, averaging_weights, transport_weights)
 end
 
 # The substeps are calculated dynamically when a cfl without a fixed_Δt is provided
-function split_explicit_substepping(cfl, ::Nothing, ::Nothing, grid, averaging_kernel, gravitational_acceleration)
+function split_explicit_substepping(cfl, ::Nothing, ::Nothing, grid, averaging_kernel, timestepper, gravitational_acceleration)
     cfl = convert(eltype(grid), cfl)
     return FixedTimeStepSize(grid; cfl, averaging_kernel)
 end
 
 # The number of substeps are calculated based on the cfl and the fixed_Δt
-function split_explicit_substepping(cfl, ::Nothing, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
-    substepping = split_explicit_substepping(cfl, nothing, nothing, grid, averaging_kernel, gravitational_acceleration)
+function split_explicit_substepping(cfl, ::Nothing, fixed_Δt, grid, averaging_kernel, timestepper, gravitational_acceleration)
+    substepping = split_explicit_substepping(cfl, nothing, nothing, grid, averaging_kernel, timestepper, gravitational_acceleration)
     substeps    = ceil(Int, 2 * fixed_Δt / substepping.Δt_barotropic)
-    substepping = split_explicit_substepping(nothing, substeps, nothing, grid, averaging_kernel, gravitational_acceleration)
+    substepping = split_explicit_substepping(nothing, substeps, nothing, grid, averaging_kernel, timestepper, gravitational_acceleration)
     return substepping
 end
 
 # Disambiguation for a default `SplitExplicitFreeSurface` constructor
-split_explicit_substepping(::Nothing, ::Nothing, ::Nothing, grid, averaging_kernel, gravitational_acceleration) =
-    split_explicit_substepping(nothing, MINIMUM_SUBSTEPS, nothing, grid, averaging_kernel, gravitational_acceleration)
+split_explicit_substepping(::Nothing, ::Nothing, ::Nothing, grid, averaging_kernel, timestepper, gravitational_acceleration) =
+    split_explicit_substepping(nothing, MINIMUM_SUBSTEPS, nothing, grid, averaging_kernel, timestepper, gravitational_acceleration)
 
 # Disambiguation
-split_explicit_substepping(::Nothing, ::Nothing, fixed_Δt, grid, averaging_kernel, gravitational_acceleration) =
-    split_explicit_substepping(nothing, MINIMUM_SUBSTEPS, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
+split_explicit_substepping(::Nothing, ::Nothing, fixed_Δt, grid, averaging_kernel, timestepper, gravitational_acceleration) =
+    split_explicit_substepping(nothing, MINIMUM_SUBSTEPS, fixed_Δt, grid, averaging_kernel, timestepper, gravitational_acceleration)
 
 # TODO: When open boundary conditions are online
 # We need to calculate the barotropic boundary conditions
@@ -324,7 +324,19 @@ function FixedTimeStepSize(grid;
     return FixedTimeStepSize(Δt_barotropic, averaging_kernel)
 end
 
-@inline function weights_from_substeps(FT, substeps, averaging_kernel)
+@inline function weights_from_substeps(FT, substeps, averaging_kernel, ::DissipativeForwardBackwardScheme)
+    M  = substeps ÷ 2
+    τᶠ = range(FT(0), FT(1), length = substeps+1)
+    Δτ = τᶠ[2] - τᶠ[1]
+
+    averaging_weights = zeros(substeps)
+    averaging_weights[end] = 1
+    transport_weights = [sum(averaging_weights[i:substeps]) for i in 1:substeps] ./ substeps
+
+    return FT(Δτ), map(FT, tuple(averaging_weights...)), map(FT, tuple(transport_weights...))
+end
+
+@inline function weights_from_substeps(FT, substeps, averaging_kernel, timestepper)
     M  = substeps ÷ 2
     τᶠ = range(FT(0), FT(2), length = substeps+1)
     Δτ = τᶠ[2] - τᶠ[1]
@@ -415,7 +427,8 @@ Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface{extend_halos}) 
 
 for Type in (SplitExplicitFreeSurface,
              FixedTimeStepSize,
-             FixedSubstepNumber)
+             FixedSubstepNumber,
+             DissipativeForwardBackwardScheme)
 
     @eval begin
         function Grids.on_architecture(to, fs::$Type)
