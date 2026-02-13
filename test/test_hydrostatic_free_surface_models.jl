@@ -554,8 +554,8 @@ topos_3d = ((Periodic, Periodic, Bounded),
             A = 0.1
             displacement(x, y, z, t) = A * sin(2π * t)
 
-            zstar_velocities = PrescribedVelocityFields(; u = u_prescribed,
-                                                          v = v_prescribed,
+            zstar_velocities = PrescribedVelocityFields(; u = u,
+                                                          v = v,
                                                           w = DiagnosticVerticalVelocity())
 
             free_surface = PrescribedFreeSurface(displacement = displacement)
