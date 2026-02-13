@@ -36,7 +36,7 @@ A type indicating that the vertical velocity `w` should be diagnosed from the
 horizontal velocity fields `u` and `v` via the continuity equation, rather than
 being prescribed.
 
-When used as the `w` argument to [`PrescribedVelocityFields`](@ref), the vertical
+When used as the `w` argument to `PrescribedVelocityFields`, the vertical
 velocity is computed from continuity at each time step via `compute_w_from_continuity!`.
 
 ```jldoctest
