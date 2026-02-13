@@ -11,7 +11,7 @@ export seconds_to_nanosecond, period_to_seconds, time_difference_seconds, add_ti
 export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSchedule, OrSchedule, ConsecutiveIterations
 export apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 export isregional, getregion, _getregion, regions, sync_device!
-export newton_div
+export newton_div, NormalDivision, ConvertingDivision, BackendOptimizedDivision
 export TabulatedFunction
 
 #####
