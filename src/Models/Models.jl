@@ -5,7 +5,7 @@ export
     ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation,
     HydrostaticFreeSurfaceModel, ZStarCoordinate, ZCoordinate,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
-    PrescribedVelocityFields, PressureField,
+    PrescribedVelocityFields, DiagnosticVerticalVelocity, PrescribedFreeSurface, PressureField,
     LagrangianParticles, DroguedParticleDynamics,
     BoundaryConditionOperation, ForcingOperation,
     seawater_density,
@@ -109,7 +109,7 @@ using .NonhydrostaticModels: NonhydrostaticModel, PressureField, BackgroundField
 using .HydrostaticFreeSurfaceModels:
     HydrostaticFreeSurfaceModel,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
-    PrescribedVelocityFields, ZStarCoordinate, ZCoordinate
+    PrescribedVelocityFields, DiagnosticVerticalVelocity, PrescribedFreeSurface, ZStarCoordinate, ZCoordinate
 
 using .ShallowWaterModels: ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation
 using .LagrangianParticleTracking: LagrangianParticles, DroguedParticleDynamics
