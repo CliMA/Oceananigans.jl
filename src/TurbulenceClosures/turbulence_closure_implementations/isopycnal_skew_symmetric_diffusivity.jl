@@ -101,7 +101,7 @@ function Utils.with_tracers(tracers, closure_vector::ISSDVector)
 end
 
 function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfISSD{TD, A}) where {TD, A}
-    diffusivities = if TD() isa VerticallyImplicitTimeDiscretization
+    closure_fields = if TD() isa VerticallyImplicitTimeDiscretization
         # Precompute the _tapered_ 33 component of the isopycnal rotation tensor
         (; ϵ_R₃₃ = Field{Center, Center, Face}(grid))
     else
@@ -110,13 +110,13 @@ function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfI
 
     if A() isa AdvectiveFormulation && !(closure.κ_skew isa Nothing)
         U = VelocityFields(grid)
-        diffusivities = merge(diffusivities, U)
+        closure_fields = merge(closure_fields, U)
     end
 
-    return diffusivities
+    return closure_fields
 end
 
-function compute_diffusivities!(diffusivities, closure::FlavorOfISSD, model; parameters = :xyz)
+function compute_closure_fields!(closure_fields, closure::FlavorOfISSD, model; parameters = :xyz)
 
     arch = model.architecture
     grid = model.grid
@@ -124,10 +124,10 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfISSD, model; par
     buoyancy = buoyancy_force(model)
 
     launch!(arch, grid, parameters,
-            compute_tapered_R₃₃!, diffusivities.ϵ_R₃₃, grid, closure, tracers, buoyancy)
+            compute_tapered_R₃₃!, closure_fields.ϵ_R₃₃, grid, closure, tracers, buoyancy)
 
 
-    compute_eddy_velocities!(diffusivities, closure, model; parameters)
+    compute_eddy_velocities!(closure_fields, closure, model; parameters)
 
     return nothing
 end
