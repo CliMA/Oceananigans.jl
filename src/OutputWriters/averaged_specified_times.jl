@@ -36,7 +36,7 @@ function validate_nonoverlapping_windows(times, window::NumberTypeWindows)
     # Check for overlapping windows between consecutive times
     # Works for both scalar and vector windows through broadcasting
     if length(times) >= 2
-        tol = 100 * overlap_tolerance(eltype(times))
+        tol = overlap_tolerance(eltype(times))
         window_starts = times .- window  # Broadcasts correctly for both scalar and vector
         prev_times = times[1:end-1]
         if any(window_starts[2:end] .- prev_times .< -tol)
@@ -239,7 +239,7 @@ function validate_schedule_runtime(schedule::AveragedSpecifiedTimes, clock)
     # Check if the first window extends before the simulation start time
     window_start = first_time - first_window
 
-    tol = 100 * overlap_tolerance(typeof(clock.time))
+    tol = overlap_tolerance(typeof(clock.time))
 
     if window_start < clock.time - tol
         throw(ArgumentError("The first averaging window starts at $(prettytime(window_start)), " *
