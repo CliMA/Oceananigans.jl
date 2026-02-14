@@ -198,9 +198,10 @@ steps:
           - "CPU"
           - "GPU"
         group:
-          - "🎭 reactant_2"
-          - "👺 enzyme"
-          - "👹 reactant_1"
+          # - "🎭 reactant_2"
+          # - "👺 enzyme"
+          # - "👹 reactant_1"
+          - "🧪 reactant_correctness"
 
     retry:
       automatic:
