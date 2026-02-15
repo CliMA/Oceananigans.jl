@@ -12,7 +12,7 @@ using Oceananigans.TurbulenceClosures:
 
 import Oceananigans.TurbulenceClosures:
                         build_closure_fields,
-                        compute_diffusivities!,
+                        compute_closure_fields!,
                         viscosity,
                         with_tracers,
                         νᶜᶜᶜ
@@ -62,7 +62,7 @@ on_architecture(to, closure::ShallowWaterScalarDiffusivity{B}) where B =
     νₑ[i, j, k] = fields.h[i, j, k] * νᶜᶜᶜ(i, j, k, grid, viscosity_location(closure), closure.ν, clock, fields)
 end
 
-function compute_diffusivities!(closure_fields, closure::ShallowWaterScalarDiffusivity, model)
+function compute_closure_fields!(closure_fields, closure::ShallowWaterScalarDiffusivity, model)
 
     arch  = model.architecture
     grid  = model.grid

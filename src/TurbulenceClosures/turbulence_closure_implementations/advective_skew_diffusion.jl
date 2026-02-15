@@ -3,13 +3,13 @@ using Oceananigans.Grids: inactive_node, peripheral_node
 using Oceananigans.BuoyancyFormulations: ∂x_b, ∂y_b, ∂z_b
 
 # Fallback
-compute_eddy_velocities!(diffusivities, closure, model; parameters = :xyz) = nothing
-compute_eddy_velocities!(diffusivities, ::NoSkewAdvectionISSD, model; parameters = :xyz) = nothing
+compute_eddy_velocities!(closure_fields, closure, model; parameters = :xyz) = nothing
+compute_eddy_velocities!(closure_fields, ::NoSkewAdvectionISSD, model; parameters = :xyz) = nothing
 
-function compute_eddy_velocities!(diffusivities, closure::SkewAdvectionISSD, model; parameters = :xyz)
-    uₑ = diffusivities.u
-    vₑ = diffusivities.v
-    wₑ = diffusivities.w
+function compute_eddy_velocities!(closure_fields, closure::SkewAdvectionISSD, model; parameters = :xyz)
+    uₑ = closure_fields.u
+    vₑ = closure_fields.v
+    wₑ = closure_fields.w
 
     buoyancy = model.buoyancy
     grid     = model.grid
