@@ -114,7 +114,7 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
             map(i -> Val(keys(tracers)[i]), 1:length(tracers)),
             start_tracer_kernel_args...,
             map(i -> tracers[i].boundary_conditions.immersed, 1:length(tracers)),
-            end_tracer_kernel_args...
+            end_tracer_kernel_args...,
             clock,
             forcings[4:end];
             active_cells_map)
