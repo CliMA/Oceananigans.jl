@@ -54,6 +54,7 @@ function pressure_correction_rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
             exclude_periphery = false)
 
     for (i, name) in enumerate(keys(model_fields))
+        field = model_fields[name]
         implicit_step!(field,
                        model.timestepper.implicit_solver,
                        model.closure,
