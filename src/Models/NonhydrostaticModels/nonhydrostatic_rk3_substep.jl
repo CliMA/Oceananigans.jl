@@ -37,7 +37,7 @@ function pressure_correction_rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
 
     launch!(architecture(grid), grid, :xyz, 
             _rk3_substep_fields!, 
-            values(mdoel.velocities), 
+            values(model.velocities), 
             Δt, γⁿ, ζⁿ, 
             values(model.timestepper.Gⁿ[(:u, :v, :w)]), 
             values(model.timestepper.G⁻[(:u, :v, :w)]); 
@@ -47,7 +47,7 @@ function pressure_correction_rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
 
     launch!(architecture(grid), grid, :xyz, 
             _rk3_substep_fields!, 
-            values(mdoel.tracers), 
+            values(model.tracers), 
             Δt, γⁿ, ζⁿ, 
             values(model.timestepper.Gⁿ[tracer_keys]), 
             values(model.timestepper.G⁻[tracer_keys]); 
