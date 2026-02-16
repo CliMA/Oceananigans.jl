@@ -107,22 +107,17 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
     end_tracer_kernel_args   = (buoyancy, biogeochemistry, background_fields, velocities,
                                 tracers, auxiliary_fields, closure_fields)
 
-    for tracer_index in 1:length(tracers)
-        @inbounds c_tendency = tendencies[tracer_index + 3]
-        @inbounds forcing = forcings[tracer_index + 3]
-        @inbounds c_immersed_bc = tracers[tracer_index].boundary_conditions.immersed
-        @inbounds tracer_name = keys(tracers)[tracer_index]
-
-        args = tuple(Val(tracer_index), Val(tracer_name),
-                     start_tracer_kernel_args...,
-                     c_immersed_bc,
-                     end_tracer_kernel_args...,
-                     clock, forcing)
-
-        launch!(arch, grid, kernel_parameters, compute_Gc!,
-                c_tendency, grid, args;
-                active_cells_map)
-    end
+    launch!(arch, grid, kernel_parameters, compute_Gc!,
+            tendencies[4:end],
+            grid,
+            map(i -> Val(i), 1:length(tracers)),
+            map(i -> Val(keys(tracers)[i]), 1:length(tracers)),
+            start_tracer_kernel_args...,
+            map(i -> tracers[i].boundary_conditions.immersed, 1:length(tracers)),
+            end_tracer_kernel_args...
+            clock,
+            forcings[4:end];
+            active_cells_map)
 
     return nothing
 end
@@ -157,6 +152,33 @@ end
 @kernel function compute_Gc!(Gc, grid, args)
     i, j, k = @index(Global, NTuple)
     @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, args...)
+end
+
+@kernel function compute_Gc!(Gc::NTuple{N}, grid, 
+                             val_tracer_index, 
+                             val_tracer_name, 
+                             advection, 
+                             closure,
+                             immersed_bc,
+                             buoyancy, biogeochemistry, background_fields, velocities,
+                             tracers, auxiliary_fields, closure_fields,
+                             clock,
+                             forcing) where N
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds for n in 1:N
+        Gc[n][i, j, k] = 
+            tracer_tendency(i, j, k, grid, 
+                            val_tracer_index[n],
+                            val_tracer_name[n],
+                            advection,
+                            closure,
+                            immersed_bc[n],
+                            buoyancy, biogeochemistry, background_fields, velocities,
+                            tracers, auxiliary_fields, closure_fields,
+                            clock,
+                            forcing[n])
+    end
 end
 
 #####
