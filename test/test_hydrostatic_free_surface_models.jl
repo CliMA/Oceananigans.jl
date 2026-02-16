@@ -552,7 +552,8 @@ topos_3d = ((Periodic, Periodic, Bounded),
                                          topology = (Periodic, Periodic, Bounded))
 
             A = 0.1
-            displacement(x, y, z, t) = A * sin(2π * t)
+            displacement(t) = A * sin(2π / 10 * t)
+            displacement(x, y, z, t) = displacement(t)
 
             zstar_velocities = PrescribedVelocityFields(; u = u,
                                                           v = v,
@@ -575,13 +576,72 @@ topos_3d = ((Periodic, Periodic, Bounded),
             wstar = zstar_model.velocities.w.field
             @test !all(iszero, interior(wstar))
 
+            # η should match prescribed
+            η = view(zstar_grid.z.ηⁿ, 1:Nx, 1:Ny, 1)
+            target = displacement(zstar_model.clock.time) * ones(size(η))
+            @test η ≈ target atol = 1e-10
             # σ should reflect η at the current time
-            σ = zstar_grid.z.σᶜᶜⁿ[1, 1, 1]
-            target = (H + A * sin(2π * zstar_model.clock.time)) / H
+            σ = view(zstar_grid.z.σᶜᶜⁿ, 1:Nx, 1:Ny, 1)
+            target = (H + displacement(zstar_model.clock.time)) / H * ones(size(σ))
             @test σ ≈ target atol = 1e-10
 
             # The moving-grid ∂t_σ contribution should make wstar differ from w
             @test interior(wstar) ≉ interior(w)
+
+            # --- ZStar grid with FieldTimeSeries-prescribed u, v, and displacement ---
+            fts_times = 0:0.5:10.0
+
+            fts_zstar = MutableVerticalDiscretization((-H, 0))
+            fts_grid = RectilinearGrid(arch;
+                                       size = (Nx, Ny, Nz),
+                                       x = (0, Lx), y = (0, Ly), z = fts_zstar,
+                                       halo = (3, 3, 3),
+                                       topology = (Periodic, Periodic, Bounded))
+
+            # Build FieldTimeSeries for u, v, and η with the same physics as
+            # the function-based ZStar sub-case above
+            u_fts = FieldTimeSeries{Face, Center, Center}(fts_grid, fts_times)
+            set!(u_fts, (x, y, z, t) -> sin(2π * x / Lx))
+
+            v_fts = FieldTimeSeries{Center, Face, Center}(fts_grid, fts_times)
+            set!(v_fts, (x, y, z, t) -> 0)
+
+            η_fts = FieldTimeSeries{Center, Center, Face}(fts_grid, fts_times)
+            set!(η_fts, (x, y, z, t) -> displacement(t))
+
+            fts_velocities = PrescribedVelocityFields(; u = u_fts,
+                                                        v = v_fts,
+                                                        w = DiagnosticVerticalVelocity())
+
+            fts_free_surface = PrescribedFreeSurface(displacement = η_fts)
+
+            fts_model = HydrostaticFreeSurfaceModel(fts_grid;
+                                                    velocities = fts_velocities,
+                                                    free_surface = fts_free_surface,
+                                                    tracers = :c,
+                                                    buoyancy = nothing)
+
+            @test fts_model isa HydrostaticFreeSurfaceModel
+            @test fts_model.velocities.w isa DiagnosticVerticalVelocity
+            @test fts_model.free_surface isa PrescribedFreeSurface
+
+            time_step!(fts_model, 1.0)
+
+            w_fts = fts_model.velocities.w.field
+            @test !all(iszero, interior(w_fts))
+
+            # η should match prescribed
+            η_fts_val = view(fts_grid.z.ηⁿ, 1:Nx, 1:Ny, 1)
+            target_fts = displacement(fts_model.clock.time) * ones(size(η_fts_val))
+            @test η_fts_val ≈ target_fts atol = 1e-10
+            # σ should match the prescribed displacement at the current time
+            σ_fts = view(fts_grid.z.σᶜᶜⁿ, 1:Nx, 1:Ny, 1)
+            target_fts = (H + displacement(fts_model.clock.time)) / H * ones(size(σ_fts))
+            @test σ_fts ≈ target_fts atol = 1e-10
+
+            # Diagnosed w from FieldTimeSeries inputs should match the
+            # function-based ZStar result (identical physics)
+            @test interior(w_fts) ≈ interior(wstar)
 
             @info "    DiagnosticVerticalVelocity test passed"
         end
