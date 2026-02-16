@@ -35,13 +35,25 @@ function pressure_correction_rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
     compute_flux_bc_tendencies!(model)
     model_fields = prognostic_fields(model)
 
-    # Prognostic variables stepping
-    for (i, name) in enumerate(keys(model_fields))
-        field = model_fields[name]
-        exclude_periphery = i < 4 # We assume that the first 3 fields are velocity / momentum variables
-        kernel_args = (field, Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[name], model.timestepper.G⁻[name])
-        launch!(architecture(grid), grid, :xyz, _rk3_substep_field!, kernel_args...; exclude_periphery)
+    launch!(architecture(grid), grid, :xyz, 
+            _rk3_substep_fields!, 
+            values(mdoel.velocities), 
+            Δt, γⁿ, ζⁿ, 
+            values(model.timestepper.Gⁿ[(:u, :v, :w)]), 
+            values(model.timestepper.G⁻[(:u, :v, :w)]); 
+            exclude_periphery = true)
 
+    tracer_keys = keys(model.tracers)
+
+    launch!(architecture(grid), grid, :xyz, 
+            _rk3_substep_fields!, 
+            values(mdoel.tracers), 
+            Δt, γⁿ, ζⁿ, 
+            values(model.timestepper.Gⁿ[tracer_keys]), 
+            values(model.timestepper.G⁻[tracer_keys]); 
+            exclude_periphery = false)
+
+    for (i, name) in enumerate(keys(model_fields))
         implicit_step!(field,
                        model.timestepper.implicit_solver,
                        model.closure,
