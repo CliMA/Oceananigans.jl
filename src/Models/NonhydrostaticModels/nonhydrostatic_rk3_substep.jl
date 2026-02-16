@@ -1,4 +1,4 @@
-using Oceananigans.TimeSteppers: _rk3_substep_field!, stage_Δt
+using Oceananigans.TimeSteppers: _rk3_substep_field!, _rk3_substep_fields!, stage_Δt
 import Oceananigans.TimeSteppers: rk3_substep!
 
 """
