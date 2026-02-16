@@ -196,15 +196,17 @@ end
     @inbounds U[i, j, k] += convert(FT, Δt) * γ¹ * G¹[i, j, k]
 end
 
-@kernel function _rk3_substep_fields!(U::NTuple{N}, Δt, γⁿ::FT, ζⁿ, Gⁿ, G⁻) where {N, FT}
+@kernel function _rk3_substep_fields!(U::Tuple, Δt, γⁿ::FT, ζⁿ, Gⁿ, G⁻) where FT
     i, j, k = @index(Global, NTuple)
+    N = length(U)
     for n in 1:N
         @inbounds U[n][i, j, k] += convert(FT, Δt) * (γⁿ * Gⁿ[n][i, j, k] + ζⁿ * G⁻[n][i, j, k])
     end
 end
 
-@kernel function _rk3_substep_fields!(U::NTuple{N}, Δt, γ¹::FT, ::Nothing, G¹, G⁰) where {N, FT}
+@kernel function _rk3_substep_fields!(U::Tuple, Δt, γ¹::FT, ::Nothing, G¹, G⁰) where FT
     i, j, k = @index(Global, NTuple)
+    N = length(U)
     for n in 1:N
         @inbounds U[n][i, j, k] += convert(FT, Δt) * γ¹ * G¹[n][i, j, k]
     end
