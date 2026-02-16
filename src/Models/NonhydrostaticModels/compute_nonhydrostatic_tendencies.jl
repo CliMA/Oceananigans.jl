@@ -108,7 +108,7 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
                                 tracers, auxiliary_fields, closure_fields)
 
     launch!(arch, grid, kernel_parameters, compute_Gc!,
-            tendencies[4:end],
+            values(tendencies)[4:end],
             grid,
             map(i -> Val(i), 1:length(tracers)),
             map(i -> Val(keys(tracers)[i]), 1:length(tracers)),
@@ -116,7 +116,7 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
             map(i -> tracers[i].boundary_conditions.immersed, 1:length(tracers)),
             end_tracer_kernel_args...,
             clock,
-            forcings[4:end];
+            values(forcings)[4:end];
             active_cells_map)
 
     return nothing
