@@ -154,7 +154,7 @@ end
     @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, args...)
 end
 
-@kernel function compute_Gc!(Gc::NTuple{N}, grid, 
+@kernel function compute_Gc!(Gc::Tuple, grid, 
                              val_tracer_index, 
                              val_tracer_name, 
                              advection, 
@@ -163,8 +163,10 @@ end
                              buoyancy, biogeochemistry, background_fields, velocities,
                              tracers, auxiliary_fields, closure_fields,
                              clock,
-                             forcing) where N
+                             forcing)
     i, j, k = @index(Global, NTuple)
+
+    N = length(Gc)
 
     @inbounds for n in 1:N
         Gc[n][i, j, k] = 
