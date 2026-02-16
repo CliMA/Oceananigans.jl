@@ -577,13 +577,12 @@ topos_3d = ((Periodic, Periodic, Bounded),
             @test !all(iszero, interior(wstar))
 
             # η should match prescribed
-            η = view(zstar_grid.z.ηⁿ, 1:Nx, 1:Ny, 1)
-            target = displacement(zstar_model.clock.time) * ones(size(η))
-            @test η ≈ target atol = 1e-10
+            η = zstar_grid.z.ηⁿ[1, 1, 1]
+            @test η ≈ displacement(zstar_model.clock.time) atol = 1e-10
+
             # σ should reflect η at the current time
-            σ = view(zstar_grid.z.σᶜᶜⁿ, 1:Nx, 1:Ny, 1)
-            target = (H + displacement(zstar_model.clock.time)) / H * ones(size(σ))
-            @test σ ≈ target atol = 1e-10
+            σ = zstar_grid.z.σᶜᶜⁿ[1, 1, 1]
+            @test σ ≈ (H + η) / H atol = 1e-10
 
             # The moving-grid ∂t_σ contribution should make wstar differ from w
             @test interior(wstar) ≉ interior(w)
@@ -627,21 +626,19 @@ topos_3d = ((Periodic, Periodic, Bounded),
 
             time_step!(fts_model, 1.0)
 
-            w_fts = fts_model.velocities.w.field
-            @test !all(iszero, interior(w_fts))
+            wstar_fts = fts_model.velocities.w.field
+            @test !all(iszero, interior(wstar_fts))
 
             # η should match prescribed
-            η_fts_val = view(fts_grid.z.ηⁿ, 1:Nx, 1:Ny, 1)
-            target_fts = displacement(fts_model.clock.time) * ones(size(η_fts_val))
-            @test η_fts_val ≈ target_fts atol = 1e-10
+            η = fts_grid.z.ηⁿ[1, 1, 1]
+            @test η ≈ displacement(fts_model.clock.time) atol = 1e-10
             # σ should match the prescribed displacement at the current time
-            σ_fts = view(fts_grid.z.σᶜᶜⁿ, 1:Nx, 1:Ny, 1)
-            target_fts = (H + displacement(fts_model.clock.time)) / H * ones(size(σ_fts))
-            @test σ_fts ≈ target_fts atol = 1e-10
+            σ = fts_grid.z.σᶜᶜⁿ[1, 1, 1]
+            @test σ ≈ (H + η) / H atol = 1e-10
 
             # Diagnosed w from FieldTimeSeries inputs should match the
             # function-based ZStar result (identical physics)
-            @test interior(w_fts) ≈ interior(wstar)
+            @test interior(wstar_fts) ≈ interior(wstar)
 
             @info "    DiagnosticVerticalVelocity test passed"
         end
