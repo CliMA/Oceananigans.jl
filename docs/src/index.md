@@ -141,7 +141,7 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Vankevich, R. Y., Rodionov, А. А., Shpilev, N. N., and Chebotkova, V. V. (2025) [Modeling the origin and evolution of convective vortex structures on a slope. Numerical experiment](https://doi.org/10.59887/2073-6673.2025.18(4)-2), _Fundamental and Applied Hydrophysics_, **18(4)**, 20-27. (in Russian) DOI: [10.59887/2073-6673.2025.18(4)-2](https://doi.org/10.59887/2073-6673.2025.18(4)-2)
 
-1. Vankevich, R. E., Isaev, A. V., and Ryabchenko, V. A. (2025) [On approaches to improving the description of North Sea water inflows in the general circulation models of the Baltic Sea](10.59887/2073-6673.2025.18(3)-3), _Fundamental and Applied Hydrophysics_, **18(3)**, 37-52. (in Russian) DOI: [10.59887/2073-6673.2025.18(3)-3](https://doi.org/10.59887/2073-6673.2025.18(3)-3)
+1. Vankevich, R. E., Isaev, A. V., and Ryabchenko, V. A. (2025) [On approaches to improving the description of North Sea water inflows in the general circulation models of the Baltic Sea](https://doi.org/10.59887/2073-6673.2025.18(3)-3), _Fundamental and Applied Hydrophysics_, **18(3)**, 37-52. (in Russian) DOI: [10.59887/2073-6673.2025.18(3)-3](https://doi.org/10.59887/2073-6673.2025.18(3)-3)
 
 1. Bhadouriya, A., Gayen, B., Naveira Garabato, A., and Silvano, A. (2025) [Overshooting convection drives winter mixed layer under Antarctic sea ice](https://doi.org/10.21203/rs.3.rs-5932119/v1), preprint (Version 1), available at Research Square. DOI: [10.21203/rs.3.rs-5932119/v1](https://doi.org/10.21203/rs.3.rs-5932119/v1)
 
