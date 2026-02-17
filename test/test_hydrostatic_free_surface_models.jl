@@ -553,8 +553,8 @@ topos_3d = ((Periodic, Periodic, Bounded),
                                          topology = (Periodic, Periodic, Bounded))
 
             A = 0.1
-            displacement(t) = A * sin(2π / 10 * t)
-            displacement(x, y, z, t) = displacement(t)
+            uniform_displacement(t) = A * sin(2π / 10 * t)
+            displacement(x, y, z, t) = uniform_displacement(t)
 
             zstar_velocities = PrescribedVelocityFields(; u = u,
                                                           v = v,
@@ -580,7 +580,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
 
             # η should match prescribed
             η = zstar_grid.z.ηⁿ[1, 1, 1]
-            @test η ≈ displacement(zstar_model.clock.time) atol = 1e-10
+            @test η ≈ uniform_displacement(zstar_model.clock.time) atol = 1e-10
 
             # σ should reflect η at the current time
             σ = zstar_grid.z.σᶜᶜⁿ[1, 1, 1]
@@ -608,7 +608,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             set!(v_fts, (x, y, z, t) -> 0)
 
             η_fts = FieldTimeSeries{Center, Center, Face}(fts_grid, fts_times)
-            set!(η_fts, (x, y, z, t) -> displacement(t))
+            set!(η_fts, (x, y, z, t) -> uniform_displacement(t))
 
             fts_velocities = PrescribedVelocityFields(; u = u_fts,
                                                         v = v_fts,
@@ -634,7 +634,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
 
             # η should match prescribed
             η = fts_grid.z.ηⁿ[1, 1, 1]
-            @test η ≈ displacement(fts_model.clock.time) atol = 1e-10
+            @test η ≈ uniform_displacement(fts_model.clock.time) atol = 1e-10
             # σ should match the prescribed displacement at the current time
             σ = fts_grid.z.σᶜᶜⁿ[1, 1, 1]
             @test σ ≈ (H + η) / H atol = 1e-10
