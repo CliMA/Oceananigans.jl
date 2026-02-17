@@ -498,7 +498,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             @info "  Testing DiagnosticVerticalVelocity [$arch]..."
 
             Nx, Ny, Nz = 4, 4, 4
-            Lx, Ly, H = 100.0, 100.0, 10.0
+            Lx, Ly, H = 100.0, 100.0, 5000.0
 
             u(x, y, z, t) = sin(2π * x / Lx)
             v(x, y, z, t) = 0.0
@@ -552,7 +552,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
                                          halo = (3, 3, 3),
                                          topology = (Periodic, Periodic, Bounded))
 
-            A = 0.1
+            A = 1
             uniform_displacement(t) = A * sin(2π / 10 * t)
             displacement(x, y, z, t) = uniform_displacement(t)
 
@@ -576,7 +576,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             time_step!(zstar_model, 1.0)
 
             wstar = zstar_model.velocities.w
-            @test !all(iszero, interior(wstar))
+            @test !all(iszero, interior(wstar))  # ∂t_σ from displacement ≠ -∇·u in general
 
             # η should match prescribed
             η = zstar_grid.z.ηⁿ[1, 1, 1]
@@ -630,7 +630,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
             time_step!(fts_model, 1.0)
 
             wstar_fts = fts_model.velocities.w
-            @test !all(iszero, interior(wstar_fts))
+            @test !all(iszero, interior(wstar_fts))  # ∂t_σ from displacement ≠ -∇·u in general
 
             # η should match prescribed
             η = fts_grid.z.ηⁿ[1, 1, 1]
@@ -640,8 +640,8 @@ topos_3d = ((Periodic, Periodic, Bounded),
             @test σ ≈ (H + η) / H atol = 1e-10
 
             # Diagnosed w from FieldTimeSeries inputs should match the
-            # function-based ZStar result (identical physics)
-            @test interior(wstar_fts) ≈ interior(wstar)
+            # function-based ZStar result (identical physics, values O(100)).
+            @test interior(wstar_fts) ≈ interior(wstar) atol = 1e-10
 
             @info "    DiagnosticVerticalVelocity test passed"
         end

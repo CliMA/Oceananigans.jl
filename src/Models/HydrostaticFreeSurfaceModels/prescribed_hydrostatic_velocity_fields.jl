@@ -418,3 +418,31 @@ on_architecture(to, fs::PrescribedFreeSurface) =
 
 prognostic_state(::PrescribedFreeSurface) = nothing
 restore_prognostic_state!(::PrescribedFreeSurface, ::Nothing) = nothing
+
+#####
+##### PrescribedFreeSurface + ZStarCoordinate: ∂t_σ from prescribed displacement
+#####
+
+# When PrescribedFreeSurface is used with a mutable z-star grid, compute ∂t_σ as a
+# forward finite difference of the prescribed displacement instead of the barotropic
+# transport divergence. At the time this method is called, step_free_surface! has
+# already advanced displacement.clock to t + Δt, while grid.z.ηⁿ still holds η(tⁿ).
+function update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSomeKind,
+                                        ::ZStarCoordinate, fs::PrescribedFreeSurface;
+                                        parameters=surface_kernel_parameters(grid))
+    η_new = fs.displacement
+    Δt    = η_new.clock.time - model.clock.time
+    iszero(Δt) && return nothing   # initialization: leave ∂t_σ = 0
+    ∂t_σ  = grid.z.∂t_σ
+    launch!(architecture(grid), grid, parameters, _update_prescribed_∂t_σ!, ∂t_σ, grid, η_new, Δt)
+    return nothing
+end
+
+@kernel function _update_prescribed_∂t_σ!(∂t_σ, grid, η_new, Δt)
+    i, j  = @index(Global, NTuple)
+    hᶜᶜ   = static_column_depthᶜᶜᵃ(i, j, grid)
+    η_old  = @inbounds grid.z.ηⁿ[i, j, 1]
+    η_next = @inbounds η_new[i, j, grid.Nz+1]
+    ∂t_η   = (η_next - η_old) / Δt
+    @inbounds ∂t_σ[i, j, 1] = ifelse(hᶜᶜ == 0, zero(grid), ∂t_η / hᶜᶜ)
+end
