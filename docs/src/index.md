@@ -119,7 +119,7 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Wei, Z., Li, Q., & Chen, B. (2026). [A direct assessment of Langmuir turbulence parameterizations in idealized coastal merging boundary layers](https://doi.org/10.1029/2025MS004993), _Journal of Advances in Modeling Earth Systems_, **18**, e2025MS004993. DOI:[10.1029/2025MS004993](https://doi.org/10.1029/2025MS004993)
 
-1. Johnston, D. R., Shakespeare, C. J., and Constantinou, N. C. (2026) [Evaluating and improving wave and non-wave stress parametrisations for oceanic flows](https://doi.org/10.1175/JPO-D-25-0064.1), _Journal of Physical Oceanography_, in press. DOI: [10.1175/JPO-D-25-0064.1](https://doi.org/10.1175/JPO-D-25-0064.1)
+1. Johnston, D. R., Shakespeare, C. J., and Constantinou, N. C. (2026) [Evaluating and improving wave and non-wave stress parametrisations for oceanic flows](https://doi.org/10.1175/JPO-D-25-0064.1), _Journal of Physical Oceanography_, **56(3)**, 643–664. DOI: [10.1175/JPO-D-25-0064.1](https://doi.org/10.1175/JPO-D-25-0064.1)
 
 1. Zhang, Y., Bire, S., Wang, S., Nath, A., Ramadhan, A., Kang, W., and Marshall, J. (2025). [Long transit time from the seafloor to the ice shell on Enceladus](https://doi.org/10.1093/mnras/staf1008), _Monthly Notices of the Royal Astronomical Society_, **541(2)**, 859–871. DOI: [10.1093/mnras/staf1008](https://doi.org/10.1093/mnras/staf1008)
 
