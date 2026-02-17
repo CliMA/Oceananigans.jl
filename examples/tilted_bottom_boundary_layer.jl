@@ -214,14 +214,8 @@ run!(simulation)
 
 using CairoMakie
 
-xb, yb, zb = nodes(B)
-xω, yω, zω = nodes(ωy)
-xv, yv, zv = nodes(V)
-
 # Read in the simulation's `output_writer` for the two-dimensional fields and then create an
 # animation showing the ``y``-component of vorticity.
-
-ds = NCDataset(simulation.output_writers[:fields].filepath, "r")
 
 fig = Figure(size = (800, 600))
 
@@ -234,21 +228,22 @@ ax_v = Axis(fig[3, 1]; title = "Along-slope velocity (v)", axis_kwargs...)
 
 n = Observable(1)
 
-ωy = @lift ds["ωy"][:, :, $n]
-B = @lift ds["B"][:, :, $n]
-ωlim = 0.015
-hm_ω = heatmap!(ax_ω, xω, zω, ωy, colorrange = (-ωlim, +ωlim), colormap = :balance)
+ωy_timeseries = FieldTimeSeries(simulation.output_writers[:fields].filepath, "ωy")
+B_timeseries = FieldTimeSeries(simulation.output_writers[:fields].filepath, "B")
+V_timeseries = FieldTimeSeries(simulation.output_writers[:fields].filepath, "V")
+
+ωy = @lift ωy_timeseries[$n]
+B = @lift B_timeseries[$n]
+hm_ω = heatmap!(ax_ω, ωy, colorrange = (-0.015, +0.015), colormap = :balance)
 Colorbar(fig[2, 2], hm_ω; label = "s⁻¹")
-ct_b = contour!(ax_ω, xb, zb, B, levels=-1e-3:5e-5:1e-3, color=:black)
+ct_b = contour!(ax_ω, B, levels=-1e-3:5e-5:1e-3, color=:black)
 
-V = @lift ds["V"][:, :, $n]
-V_max = @lift maximum(abs, ds["V"][:, :, $n])
-
-hm_v = heatmap!(ax_v, xv, zv, V, colorrange = (-V∞, +V∞), colormap = :balance)
+V = @lift V_timeseries[$n]
+hm_v = heatmap!(ax_v, V, colorrange = (-V∞, +V∞), colormap = :balance)
 Colorbar(fig[3, 2], hm_v; label = "m s⁻¹")
-ct_b = contour!(ax_v, xb, zb, B, levels=-1e-3:5e-5:1e-3, color=:black)
+ct_b = contour!(ax_v, B, levels=-1e-3:5e-5:1e-3, color=:black)
 
-times = collect(ds["time"])
+times = ωy_timeseries.times
 title = @lift "t = " * string(prettytime(times[$n]))
 fig[1, :] = Label(fig, title, fontsize=20, tellwidth=false)
 
@@ -265,7 +260,3 @@ end
 nothing #hide
 
 # ![](tilted_bottom_boundary_layer.mp4)
-
-# Don't forget to close the NetCDF file!
-
-close(ds)

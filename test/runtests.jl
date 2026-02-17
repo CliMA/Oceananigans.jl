@@ -125,6 +125,7 @@ CUDA.allowscalar() do
             include("test_datetime_clock.jl")
             include("test_forcings.jl")
             include("test_immersed_advection.jl")
+            include("test_background_flux_divergence.jl")
         end
     end
 
