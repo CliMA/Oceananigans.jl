@@ -511,7 +511,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
 
             static_velocities = PrescribedVelocityFields(; u = u,
                                                            v = v,
-                                                           w = DiagnosticVerticalVelocity())
+                                                           formulation = DiagnosticVerticalVelocity())
 
             static_model = HydrostaticFreeSurfaceModel(static_grid;
                                                        velocities = static_velocities,
@@ -520,7 +520,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
 
             @test static_model isa HydrostaticFreeSurfaceModel
             @test static_model.velocities.w isa Field
-            @test getfield(static_model.velocities, :w) isa DiagnosticVerticalVelocity
+            @test static_model.velocities.formulation isa DiagnosticVerticalVelocity
 
             time_step!(static_model, 1.0)
 
@@ -558,7 +558,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
 
             zstar_velocities = PrescribedVelocityFields(; u = u,
                                                           v = v,
-                                                          w = DiagnosticVerticalVelocity())
+                                                          formulation = DiagnosticVerticalVelocity())
 
             free_surface = PrescribedFreeSurface(displacement = displacement)
 
@@ -570,7 +570,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
 
             @test zstar_model isa HydrostaticFreeSurfaceModel
             @test zstar_model.velocities.w isa Field
-            @test getfield(zstar_model.velocities, :w) isa DiagnosticVerticalVelocity
+            @test zstar_model.velocities.formulation isa DiagnosticVerticalVelocity
             @test zstar_model.free_surface isa PrescribedFreeSurface
 
             time_step!(zstar_model, 1.0)
@@ -612,7 +612,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
 
             fts_velocities = PrescribedVelocityFields(; u = u_fts,
                                                         v = v_fts,
-                                                        w = DiagnosticVerticalVelocity())
+                                                        formulation = DiagnosticVerticalVelocity())
 
             fts_free_surface = PrescribedFreeSurface(displacement = η_fts)
 
@@ -624,7 +624,7 @@ topos_3d = ((Periodic, Periodic, Bounded),
 
             @test fts_model isa HydrostaticFreeSurfaceModel
             @test fts_model.velocities.w isa Field
-            @test getfield(fts_model.velocities, :w) isa DiagnosticVerticalVelocity
+            @test fts_model.velocities.formulation isa DiagnosticVerticalVelocity
             @test fts_model.free_surface isa PrescribedFreeSurface
 
             time_step!(fts_model, 1.0)

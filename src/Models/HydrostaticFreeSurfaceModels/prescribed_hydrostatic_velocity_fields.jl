@@ -16,7 +16,8 @@ import Oceananigans.Models: extract_boundary_conditions
 import Oceananigans.Utils: datatuple, sum_of_velocities
 import Oceananigans.TimeSteppers: time_step!
 
-struct PrescribedVelocityFields{U, V, W, P}
+struct PrescribedVelocityFields{F, U, V, W, P}
+    formulation :: F
     u :: U
     v :: V
     w :: W
@@ -24,10 +25,6 @@ struct PrescribedVelocityFields{U, V, W, P}
 end
 
 const PVF = PrescribedVelocityFields
-
-@inline Base.getproperty(pvf::PVF, property::Symbol) = get_pvf_property(pvf, Val(property))
-@inline get_pvf_property(pvf::PVF, ::Val{property}) where property = getfield(pvf, property)
-@inline get_pvf_property(pvf::PVF, ::Val{:w}) = get_pvf_w(getfield(pvf, :w))
 
 @inline Base.getindex(U::PrescribedVelocityFields, i) = getindex((u=U.u, v=U.v, w=U.w), i)
 
@@ -38,36 +35,30 @@ const PVF = PrescribedVelocityFields
 """
     DiagnosticVerticalVelocity()
 
-A type indicating that the vertical velocity `w` should be diagnosed from the
+A formulation type indicating that the vertical velocity `w` should be diagnosed from the
 horizontal velocity fields `u` and `v` via the continuity equation, rather than
 being prescribed.
 
-When used as the `w` argument to `PrescribedVelocityFields`, the vertical
-velocity is computed from continuity at each time step via `compute_w_from_continuity!`.
+When passed as the `formulation` argument to `PrescribedVelocityFields`, a
+`Field{Center, Center, Face}` is allocated for `w` during model construction
+and filled at each time step via `compute_w_from_continuity!`.
 
 ```jldoctest
 julia> using Oceananigans
 
-julia> w = DiagnosticVerticalVelocity()
+julia> DiagnosticVerticalVelocity()
 DiagnosticVerticalVelocity()
 ```
 """
-struct DiagnosticVerticalVelocity{W}
-    field :: W
-end
+struct DiagnosticVerticalVelocity end
 
-DiagnosticVerticalVelocity() = DiagnosticVerticalVelocity(nothing)
-
-@inline get_pvf_w(w) = w
-@inline get_pvf_w(w::DiagnosticVerticalVelocity) = w.field
-
-Base.show(io::IO, ::DiagnosticVerticalVelocity{Nothing}) = print(io, "DiagnosticVerticalVelocity()")
-Base.show(io::IO, d::DiagnosticVerticalVelocity) = print(io, "DiagnosticVerticalVelocity: ", summary(d.field))
+Base.show(io::IO, ::DiagnosticVerticalVelocity) = print(io, "DiagnosticVerticalVelocity()")
 
 """
     PrescribedVelocityFields(; u = ZeroField(),
                                v = ZeroField(),
                                w = ZeroField(),
+                               formulation = nothing,
                                parameters = nothing)
 
 Build `PrescribedVelocityFields` with prescribed `u`, `v`, and `w`.
@@ -82,10 +73,14 @@ Each of `u`, `v`, and `w` may be:
 - A `FieldTimeSeries`, which is wrapped in a `TimeSeriesInterpolation` that
   interpolates to the model clock time at each time step. The `FieldTimeSeries`
   must already have the correct staggered location.
-- A `DiagnosticVerticalVelocity()` (only valid for `w`), which allocates a
-  `Field{Center, Center, Face}` and computes `w` from the continuity equation
-  at each time step via `compute_w_from_continuity!`.
 - A `ZeroField()` (default).
+
+`formulation` may be:
+
+- `nothing` (default): `w` is prescribed directly.
+- `DiagnosticVerticalVelocity()`: a `Field{Center, Center, Face}` is allocated for `w`
+  during model construction and filled at each time step via `compute_w_from_continuity!`.
+  The `w` keyword is ignored in this case.
 
 ```jldoctest
 julia> using Oceananigans
@@ -129,21 +124,28 @@ julia> PrescribedVelocityFields(u = u_fts).u
     └── max=0.0, min=0.0, mean=0.0
 ```
 
-Using `DiagnosticVerticalVelocity` for `w`:
+Using `DiagnosticVerticalVelocity` as the formulation:
 
 ```jldoctest
 julia> using Oceananigans
 
-julia> PrescribedVelocityFields(w = DiagnosticVerticalVelocity())
-PrescribedVelocityFields{Oceananigans.Fields.ZeroField{Int64, 3}, Oceananigans.Fields.ZeroField{Int64, 3}, DiagnosticVerticalVelocity{Nothing}, Nothing}(ZeroField{Int64}, ZeroField{Int64}, DiagnosticVerticalVelocity(), nothing)
+julia> pvf = PrescribedVelocityFields(formulation = DiagnosticVerticalVelocity());
+
+julia> pvf.formulation
+DiagnosticVerticalVelocity()
 ```
 """
 function PrescribedVelocityFields(; u = ZeroField(),
                                     v = ZeroField(),
                                     w = ZeroField(),
+                                    formulation = nothing,
                                     parameters = nothing)
 
-    return PrescribedVelocityFields(u, v, w, parameters)
+    if formulation isa DiagnosticVerticalVelocity
+        return PrescribedVelocityFields(formulation, u, v, nothing, parameters)
+    else
+        return PrescribedVelocityFields(formulation, u, v, w, parameters)
+    end
 end
 
 materialize_prescribed_velocity(X, Y, Z, f::Function, grid; kwargs...) = FunctionField{X, Y, Z}(f, grid; kwargs...)
@@ -160,8 +162,17 @@ end
 
 materialize_prescribed_velocity(X, Y, Z, f, grid; kwargs...) = field((X, Y, Z), f, grid)
 
-function materialize_prescribed_velocity(X, Y, Z, ::DiagnosticVerticalVelocity{Nothing}, grid; kwargs...)
-    return DiagnosticVerticalVelocity(Field{X, Y, Z}(grid))
+function hydrostatic_velocity_fields(velocities::PrescribedVelocityFields{<:DiagnosticVerticalVelocity}, grid, clock, bcs)
+
+    parameters = velocities.parameters
+    u = materialize_prescribed_velocity(Face, Center, Center, velocities.u, grid; clock, parameters)
+    v = materialize_prescribed_velocity(Center, Face, Center, velocities.v, grid; clock, parameters)
+    w = Field{Center, Center, Face}(grid)
+
+    fill_halo_regions!((u, v))
+    fill_halo_regions!(w)
+
+    return PrescribedVelocityFields(DiagnosticVerticalVelocity(), u, v, w, parameters)
 end
 
 function hydrostatic_velocity_fields(velocities::PrescribedVelocityFields, grid, clock, bcs)
@@ -169,12 +180,12 @@ function hydrostatic_velocity_fields(velocities::PrescribedVelocityFields, grid,
     parameters = velocities.parameters
     u = materialize_prescribed_velocity(Face, Center, Center, velocities.u, grid; clock, parameters)
     v = materialize_prescribed_velocity(Center, Face, Center, velocities.v, grid; clock, parameters)
-    w = materialize_prescribed_velocity(Center, Center, Face, getfield(velocities, :w), grid; clock, parameters)
+    w = materialize_prescribed_velocity(Center, Center, Face, velocities.w, grid; clock, parameters)
 
     fill_halo_regions!((u, v))
     fill_halo_regions!(w)
 
-    return PrescribedVelocityFields(u, v, w, parameters)
+    return PrescribedVelocityFields(nothing, u, v, w, parameters)
 end
 
 # Allow u, v, w = velocities when velocities isa PrescribedVelocityFields
@@ -197,10 +208,7 @@ free_surface_names(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, grid)
 @inline BoundaryConditions.fill_halo_regions!(::PrescribedVelocityFields, args...; kwargs...) = nothing
 @inline BoundaryConditions.fill_halo_regions!(::FunctionField, args...; kwargs...) = nothing
 @inline BoundaryConditions.fill_halo_regions!(::TimeSeriesInterpolation, args...; kwargs...) = nothing
-@inline BoundaryConditions.fill_halo_regions!(d::DiagnosticVerticalVelocity, args...; kwargs...) =
-    fill_halo_regions!(d.field, args...; kwargs...)
 
-@inline datatuple(d::DiagnosticVerticalVelocity) = datatuple(d.field)
 @inline datatuple(obj::PrescribedVelocityFields) = (; u = datatuple(obj.u), v = datatuple(obj.v), w = datatuple(obj.w))
 @inline velocities(obj::PrescribedVelocityFields) = (u = obj.u, v = obj.v, w = obj.w)
 
@@ -217,7 +225,7 @@ rk_substep_velocities!(::PrescribedVelocityFields, args...) = nothing
 step_free_surface!(::Nothing, model, timestepper, Δt) = nothing
 compute_w_from_continuity!(::PrescribedVelocityFields, args...; kwargs...) = nothing
 
-function compute_w_from_continuity!(velocities::PrescribedVelocityFields{<:Any, <:Any, <:DiagnosticVerticalVelocity},
+function compute_w_from_continuity!(velocities::PrescribedVelocityFields{<:DiagnosticVerticalVelocity},
                                     grid; parameters = surface_kernel_parameters(grid))
     w = velocities.w
     vels = (u=velocities.u, v=velocities.v, w=w)
@@ -247,21 +255,18 @@ compute_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields, kern
 
 compute_flux_bcs!(::Nothing, c, arch, clock, model_fields) = nothing
 
-Adapt.adapt_structure(to, d::DiagnosticVerticalVelocity) = Adapt.adapt(to, d.field)
-
-on_architecture(arch, d::DiagnosticVerticalVelocity) =
-    DiagnosticVerticalVelocity(on_architecture(arch, d.field))
-
 Adapt.adapt_structure(to, velocities::PrescribedVelocityFields) =
-    PrescribedVelocityFields(Adapt.adapt(to, velocities.u),
+    PrescribedVelocityFields(velocities.formulation,
+                             Adapt.adapt(to, velocities.u),
                              Adapt.adapt(to, velocities.v),
-                             Adapt.adapt(to, getfield(velocities, :w)),
+                             Adapt.adapt(to, velocities.w),
                              nothing) # Why are parameters not passed here? They probably should...
 
 on_architecture(to, velocities::PrescribedVelocityFields) =
-    PrescribedVelocityFields(on_architecture(to, velocities.u),
+    PrescribedVelocityFields(velocities.formulation,
+                             on_architecture(to, velocities.u),
                              on_architecture(to, velocities.v),
-                             on_architecture(to, getfield(velocities, :w)),
+                             on_architecture(to, velocities.w),
                              on_architecture(to, velocities.parameters))
 
 # If the model only tracks particles... do nothing but that!!!
