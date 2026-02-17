@@ -107,6 +107,8 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
+1. Sjur, A. L. P., Isachsen, P. E., Nilsson, J., and Allen, S. (2026). [Nonlinear dynamics of time-variable slope circulation](https://doi.org/10.5194/egusphere-2026-778), _EGUsphere preprint_. DOI: [10.5194/egusphere-2026-778](https://doi.org/10.5194/egusphere-2026-778)
+
 1. Pan, W. and Li, Q. (2026). [Transient response of Langmuir turbulence to abrupt onset of surface heating](https://doi.org/10.1103/jjdt-zp9n), _Physical Review Fluids_, **11**, 024606. DOI: [10.1175/JPO-D-25-0077.1](https://doi.org/10.1103/jjdt-zp9n)
 
 1. Li, Q. (2026). [Large eddy simulations of stabilizing effects induced by opposing Eulerian shear and Stokes drift shear in an idealized ocean surface boundary layer](https://doi.org/10.1175/JPO-D-25-0077.1), _Journal of Physical Oceanography_, e250077, in press. DOI: [10.1175/JPO-D-25-0077.1](https://doi.org/10.1175/JPO-D-25-0077.1)
@@ -117,7 +119,7 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Wei, Z., Li, Q., & Chen, B. (2026). [A direct assessment of Langmuir turbulence parameterizations in idealized coastal merging boundary layers](https://doi.org/10.1029/2025MS004993), _Journal of Advances in Modeling Earth Systems_, **18**, e2025MS004993. DOI:[10.1029/2025MS004993](https://doi.org/10.1029/2025MS004993)
 
-1. Johnston, D. R., Shakespeare, C. J., and Constantinou, N. C. (2026) [Evaluating and improving wave and non-wave stress parametrisations for oceanic flows](https://doi.org/10.1175/JPO-D-25-0064.1), _Journal of Physical Oceanography_, in press. DOI: [10.1175/JPO-D-25-0064.1](https://doi.org/10.1175/JPO-D-25-0064.1)
+1. Johnston, D. R., Shakespeare, C. J., and Constantinou, N. C. (2026) [Evaluating and improving wave and non-wave stress parametrisations for oceanic flows](https://doi.org/10.1175/JPO-D-25-0064.1), _Journal of Physical Oceanography_, **56(3)**, 643–664. DOI: [10.1175/JPO-D-25-0064.1](https://doi.org/10.1175/JPO-D-25-0064.1)
 
 1. Zhang, Y., Bire, S., Wang, S., Nath, A., Ramadhan, A., Kang, W., and Marshall, J. (2025). [Long transit time from the seafloor to the ice shell on Enceladus](https://doi.org/10.1093/mnras/staf1008), _Monthly Notices of the Royal Astronomical Society_, **541(2)**, 859–871. DOI: [10.1093/mnras/staf1008](https://doi.org/10.1093/mnras/staf1008)
 
@@ -141,7 +143,7 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Vankevich, R. Y., Rodionov, А. А., Shpilev, N. N., and Chebotkova, V. V. (2025) [Modeling the origin and evolution of convective vortex structures on a slope. Numerical experiment](https://doi.org/10.59887/2073-6673.2025.18(4)-2), _Fundamental and Applied Hydrophysics_, **18(4)**, 20-27. (in Russian) DOI: [10.59887/2073-6673.2025.18(4)-2](https://doi.org/10.59887/2073-6673.2025.18(4)-2)
 
-1. Vankevich, R. E., Isaev, A. V., and Ryabchenko, V. A. (2025) [On approaches to improving the description of North Sea water inflows in the general circulation models of the Baltic Sea](10.59887/2073-6673.2025.18(3)-3), _Fundamental and Applied Hydrophysics_, **18(3)**, 37-52. (in Russian) DOI: [10.59887/2073-6673.2025.18(3)-3](https://doi.org/10.59887/2073-6673.2025.18(3)-3)
+1. Vankevich, R. E., Isaev, A. V., and Ryabchenko, V. A. (2025) [On approaches to improving the description of North Sea water inflows in the general circulation models of the Baltic Sea](https://doi.org/10.59887/2073-6673.2025.18(3)-3), _Fundamental and Applied Hydrophysics_, **18(3)**, 37-52. (in Russian) DOI: [10.59887/2073-6673.2025.18(3)-3](https://doi.org/10.59887/2073-6673.2025.18(3)-3)
 
 1. Bhadouriya, A., Gayen, B., Naveira Garabato, A., and Silvano, A. (2025) [Overshooting convection drives winter mixed layer under Antarctic sea ice](https://doi.org/10.21203/rs.3.rs-5932119/v1), preprint (Version 1), available at Research Square. DOI: [10.21203/rs.3.rs-5932119/v1](https://doi.org/10.21203/rs.3.rs-5932119/v1)
 
