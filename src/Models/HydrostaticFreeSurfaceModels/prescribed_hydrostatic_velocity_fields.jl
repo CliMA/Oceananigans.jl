@@ -23,7 +23,13 @@ struct PrescribedVelocityFields{U, V, W, P}
     parameters :: P
 end
 
-@inline Base.getindex(U::PrescribedVelocityFields, i) = getindex((u=U.u, v=U.v, w=unwrap_w(U.w)), i)
+const PVF = PrescribedVelocityFields
+
+@inline Base.getproperty(pvf::PVF, property::Symbol) = get_pvf_property(pvf, Val(property))
+@inline get_pvf_property(pvf::PVF, ::Val{property}) where property = getfield(pvf, property)
+@inline get_pvf_property(pvf::PVF, ::Val{:w}) = get_pvf_w(getfield(pvf, :w))
+
+@inline Base.getindex(U::PrescribedVelocityFields, i) = getindex((u=U.u, v=U.v, w=U.w), i)
 
 #####
 ##### DiagnosticVerticalVelocity
@@ -52,11 +58,8 @@ end
 
 DiagnosticVerticalVelocity() = DiagnosticVerticalVelocity(nothing)
 
-# Helper to unwrap DiagnosticVerticalVelocity to its inner field.
-# Used in velocities(), getindex, and indexed_iterate so that kernels
-# always receive a plain Field for w (important on CPU where Adapt is not called).
-@inline unwrap_w(w) = w
-@inline unwrap_w(d::DiagnosticVerticalVelocity) = d.field
+@inline get_pvf_w(w) = w
+@inline get_pvf_w(w::DiagnosticVerticalVelocity) = w.field
 
 Base.show(io::IO, ::DiagnosticVerticalVelocity{Nothing}) = print(io, "DiagnosticVerticalVelocity()")
 Base.show(io::IO, d::DiagnosticVerticalVelocity) = print(io, "DiagnosticVerticalVelocity: ", summary(d.field))
@@ -131,8 +134,8 @@ Using `DiagnosticVerticalVelocity` for `w`:
 ```jldoctest
 julia> using Oceananigans
 
-julia> PrescribedVelocityFields(w = DiagnosticVerticalVelocity()).w
-DiagnosticVerticalVelocity()
+julia> PrescribedVelocityFields(w = DiagnosticVerticalVelocity())
+PrescribedVelocityFields{Oceananigans.Fields.ZeroField{Int64, 3}, Oceananigans.Fields.ZeroField{Int64, 3}, DiagnosticVerticalVelocity{Nothing}, Nothing}(ZeroField{Int64}, ZeroField{Int64}, DiagnosticVerticalVelocity(), nothing)
 ```
 """
 function PrescribedVelocityFields(; u = ZeroField(),
@@ -166,7 +169,7 @@ function hydrostatic_velocity_fields(velocities::PrescribedVelocityFields, grid,
     parameters = velocities.parameters
     u = materialize_prescribed_velocity(Face, Center, Center, velocities.u, grid; clock, parameters)
     v = materialize_prescribed_velocity(Center, Face, Center, velocities.v, grid; clock, parameters)
-    w = materialize_prescribed_velocity(Center, Center, Face, velocities.w, grid; clock, parameters)
+    w = materialize_prescribed_velocity(Center, Center, Face, getfield(velocities, :w), grid; clock, parameters)
 
     fill_halo_regions!((u, v))
     fill_halo_regions!(w)
@@ -181,7 +184,7 @@ function Base.indexed_iterate(p::PrescribedVelocityFields, i::Int, state=1)
     elseif i == 2
         return p.v, 3
     else
-        return unwrap_w(p.w), 4
+        return p.w, 4
     end
 end
 
@@ -199,7 +202,7 @@ free_surface_names(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, grid)
 
 @inline datatuple(d::DiagnosticVerticalVelocity) = datatuple(d.field)
 @inline datatuple(obj::PrescribedVelocityFields) = (; u = datatuple(obj.u), v = datatuple(obj.v), w = datatuple(obj.w))
-@inline velocities(obj::PrescribedVelocityFields) = (u = obj.u, v = obj.v, w = unwrap_w(obj.w))
+@inline velocities(obj::PrescribedVelocityFields) = (u = obj.u, v = obj.v, w = obj.w)
 
 # Extend sum_of_velocities for `PrescribedVelocityFields`
 @inline sum_of_velocities(U1::PrescribedVelocityFields, U2) = sum_of_velocities(velocities(U1), U2)
@@ -216,7 +219,7 @@ compute_w_from_continuity!(::PrescribedVelocityFields, args...; kwargs...) = not
 
 function compute_w_from_continuity!(velocities::PrescribedVelocityFields{<:Any, <:Any, <:DiagnosticVerticalVelocity},
                                     grid; parameters = surface_kernel_parameters(grid))
-    w = velocities.w.field
+    w = velocities.w
     vels = (u=velocities.u, v=velocities.v, w=w)
     compute_w_from_continuity!(vels, grid; parameters)
 end
@@ -252,13 +255,13 @@ on_architecture(arch, d::DiagnosticVerticalVelocity) =
 Adapt.adapt_structure(to, velocities::PrescribedVelocityFields) =
     PrescribedVelocityFields(Adapt.adapt(to, velocities.u),
                              Adapt.adapt(to, velocities.v),
-                             Adapt.adapt(to, velocities.w),
+                             Adapt.adapt(to, getfield(velocities, :w)),
                              nothing) # Why are parameters not passed here? They probably should...
 
 on_architecture(to, velocities::PrescribedVelocityFields) =
     PrescribedVelocityFields(on_architecture(to, velocities.u),
                              on_architecture(to, velocities.v),
-                             on_architecture(to, velocities.w),
+                             on_architecture(to, getfield(velocities, :w)),
                              on_architecture(to, velocities.parameters))
 
 # If the model only tracks particles... do nothing but that!!!

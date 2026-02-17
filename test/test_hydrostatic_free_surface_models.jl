@@ -519,11 +519,12 @@ topos_3d = ((Periodic, Periodic, Bounded),
                                                        buoyancy = nothing)
 
             @test static_model isa HydrostaticFreeSurfaceModel
-            @test static_model.velocities.w isa DiagnosticVerticalVelocity
+            @test static_model.velocities.w isa Field
+            @test getfield(static_model.velocities, :w) isa DiagnosticVerticalVelocity
 
             time_step!(static_model, 1.0)
 
-            w = static_model.velocities.w.field
+            w = static_model.velocities.w
             Δx = Lx / Nx
             Δz = H / Nz
 
@@ -568,12 +569,13 @@ topos_3d = ((Periodic, Periodic, Bounded),
                                                       buoyancy = nothing)
 
             @test zstar_model isa HydrostaticFreeSurfaceModel
-            @test zstar_model.velocities.w isa DiagnosticVerticalVelocity
+            @test zstar_model.velocities.w isa Field
+            @test getfield(zstar_model.velocities, :w) isa DiagnosticVerticalVelocity
             @test zstar_model.free_surface isa PrescribedFreeSurface
 
             time_step!(zstar_model, 1.0)
 
-            wstar = zstar_model.velocities.w.field
+            wstar = zstar_model.velocities.w
             @test !all(iszero, interior(wstar))
 
             # η should match prescribed
@@ -621,12 +623,13 @@ topos_3d = ((Periodic, Periodic, Bounded),
                                                     buoyancy = nothing)
 
             @test fts_model isa HydrostaticFreeSurfaceModel
-            @test fts_model.velocities.w isa DiagnosticVerticalVelocity
+            @test fts_model.velocities.w isa Field
+            @test getfield(fts_model.velocities, :w) isa DiagnosticVerticalVelocity
             @test fts_model.free_surface isa PrescribedFreeSurface
 
             time_step!(fts_model, 1.0)
 
-            wstar_fts = fts_model.velocities.w.field
+            wstar_fts = fts_model.velocities.w
             @test !all(iszero, interior(wstar_fts))
 
             # η should match prescribed
