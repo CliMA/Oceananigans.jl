@@ -3,7 +3,7 @@ include("data_dependencies.jl")
 
 using Oceananigans.Grids: topology, XRegularLLG, YRegularLLG, ZRegularLLG
 using Oceananigans.Fields: CenterField
-using Oceananigans.TurbulenceClosures: DynamicSmagorinsky, LagrangianAveraging
+using Oceananigans.TurbulenceClosures: LagrangianAveraging
 
 function get_fields_from_checkpoint(filename)
     file = jldopen(filename)

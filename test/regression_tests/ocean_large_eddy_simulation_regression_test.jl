@@ -1,4 +1,4 @@
-using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, DynamicSmagorinsky, LagrangianAveraging
+using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, LagrangianAveraging
 using Oceananigans.TimeSteppers: update_state!
 using Oceananigans.DistributedComputations: cpu_architecture, partition
 
