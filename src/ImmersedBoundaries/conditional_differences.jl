@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Operators, δxTᶜᵃᵃ, δyTᵃᶜᵃ, ℑxyᶠᶠᵃ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ∂xTᶠᶜᶠ, ∂yTᶜᶠᶠ
+using Oceananigans.Operators: Operators, δxTᶜᵃᵃ, δyTᵃᶜᵃ, ℑxyᶠᶠᵃ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ∂xTᶠᶜᶠ, ∂yTᶜᶠᶠ, ∂xᵣTᶠᶜᶠ, ∂yᵣTᶜᶠᶠ
 
 # Conditional differences that are "immersed boundary aware".
 # Here we return `zero(ibg)` rather than `δx` (for example) when _one_ of the
@@ -86,6 +86,10 @@ end
 @inline conditional_∂xTᶠᶜᶠ(i, j, k, ibg::IBG, args...) = ifelse(inactive_node(i, j, k, ibg, c, c, f) | inactive_node(i-1, j, k, ibg, c, c, f), zero(ibg), ∂xTᶠᶜᶠ(i, j, k, ibg.underlying_grid, args...))
 @inline conditional_∂yTᶜᶠᶠ(i, j, k, ibg::IBG, args...) = ifelse(inactive_node(i, j, k, ibg, c, c, f) | inactive_node(i, j-1, k, ibg, c, c, f), zero(ibg), ∂yTᶜᶠᶠ(i, j, k, ibg.underlying_grid, args...))
 
+# Constant-r versions for free surface derivatives
+@inline conditional_∂xᵣTᶠᶜᶠ(i, j, k, ibg::IBG, args...) = ifelse(inactive_node(i, j, k, ibg, c, c, f) | inactive_node(i-1, j, k, ibg, c, c, f), zero(ibg), ∂xᵣTᶠᶜᶠ(i, j, k, ibg.underlying_grid, args...))
+@inline conditional_∂yᵣTᶜᶠᶠ(i, j, k, ibg::IBG, args...) = ifelse(inactive_node(i, j, k, ibg, c, c, f) | inactive_node(i, j-1, k, ibg, c, c, f), zero(ibg), ∂yᵣTᶜᶠᶠ(i, j, k, ibg.underlying_grid, args...))
+
 @inline Operators.δxTᶜᵃᵃ(i, j, k, ibg::IBG, f, args...) = δxTᶜᵃᵃ(i, j, k, ibg.underlying_grid, conditional_uᶠᶜᶜ, f, args...)
 @inline Operators.δyTᵃᶜᵃ(i, j, k, ibg::IBG, f, args...) = δyTᵃᶜᵃ(i, j, k, ibg.underlying_grid, conditional_vᶜᶠᶜ, f, args...)
 
@@ -94,3 +98,10 @@ end
 
 @inline Operators.∂xTᶠᶜᶠ(i, j, k, ibg::IBG, w::AbstractArray) = conditional_∂xTᶠᶜᶠ(i, j, k, ibg, w)
 @inline Operators.∂yTᶜᶠᶠ(i, j, k, ibg::IBG, w::AbstractArray) = conditional_∂yTᶜᶠᶠ(i, j, k, ibg, w)
+
+# Constant-r versions for free surface derivatives on immersed boundaries
+@inline Operators.∂xᵣTᶠᶜᶠ(i, j, k, ibg::IBG, f, args...) = conditional_∂xᵣTᶠᶜᶠ(i, j, k, ibg, f, args...)
+@inline Operators.∂yᵣTᶜᶠᶠ(i, j, k, ibg::IBG, f, args...) = conditional_∂yᵣTᶜᶠᶠ(i, j, k, ibg, f, args...)
+
+@inline Operators.∂xᵣTᶠᶜᶠ(i, j, k, ibg::IBG, η::AbstractArray) = conditional_∂xᵣTᶠᶜᶠ(i, j, k, ibg, η)
+@inline Operators.∂yᵣTᶜᶠᶠ(i, j, k, ibg::IBG, η::AbstractArray) = conditional_∂yᵣTᶜᶠᶠ(i, j, k, ibg, η)
