@@ -43,6 +43,22 @@ const AMG = AbstractMutableGrid
 @inline ∂y_zᶠᶠᶜ(i, j, k, grid) = δyᶠᶠᶜ(i, j, k, grid, znode, F(), C(), C()) * Δy⁻¹ᶠᶠᶜ(i, j, k, grid)
 
 #####
+##### Disambiguation for Number arguments (derivative of a constant is zero)
+#####
+
+@inline ∂xᶠᶜᶜ(i, j, k, grid::AMG, c::Number) = zero(grid)
+@inline ∂xᶜᶜᶜ(i, j, k, grid::AMG, c::Number) = zero(grid)
+@inline ∂xᶠᶜᶠ(i, j, k, grid::AMG, c::Number) = zero(grid)
+@inline ∂xᶜᶠᶜ(i, j, k, grid::AMG, c::Number) = zero(grid)
+@inline ∂xᶠᶠᶜ(i, j, k, grid::AMG, c::Number) = zero(grid)
+
+@inline ∂yᶜᶠᶜ(i, j, k, grid::AMG, c::Number) = zero(grid)
+@inline ∂yᶜᶜᶜ(i, j, k, grid::AMG, c::Number) = zero(grid)
+@inline ∂yᶜᶠᶠ(i, j, k, grid::AMG, c::Number) = zero(grid)
+@inline ∂yᶠᶜᶜ(i, j, k, grid::AMG, c::Number) = zero(grid)
+@inline ∂yᶠᶠᶜ(i, j, k, grid::AMG, c::Number) = zero(grid)
+
+#####
 ##### Chain-rule-correct x-derivatives: ∂ϕ/∂x|_z = ∂ϕ/∂x|_r - (∂z/∂x|_r)(∂ϕ/∂z)
 #####
 

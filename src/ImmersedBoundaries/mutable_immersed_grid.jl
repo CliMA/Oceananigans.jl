@@ -164,6 +164,7 @@ import Oceananigans.Operators: ∂yᶜᶠᶜ, ∂yᶜᶜᶜ, ∂yᶜᶠᶠ, ∂y
 # x-derivatives
 @inline ∂xᶠᶜᶜ(i, j, k, ibg::MutableImmersedGrid, ϕ) = ∂xᶠᶜᶜ(i, j, k, ibg.underlying_grid, ϕ)
 @inline ∂xᶠᶜᶜ(i, j, k, ibg::MutableImmersedGrid, f::Function, args...) = ∂xᶠᶜᶜ(i, j, k, ibg.underlying_grid, f, args...)
+@inline ∂xᶠᶜᶜ(i, j, k, ibg::MutableImmersedGrid, c::Number) = zero(ibg)
 
 @inline ∂xᶜᶜᶜ(i, j, k, ibg::MutableImmersedGrid, ϕ) = ∂xᶜᶜᶜ(i, j, k, ibg.underlying_grid, ϕ)
 @inline ∂xᶜᶜᶜ(i, j, k, ibg::MutableImmersedGrid, f::Function, args...) = ∂xᶜᶜᶜ(i, j, k, ibg.underlying_grid, f, args...)
@@ -171,9 +172,11 @@ import Oceananigans.Operators: ∂yᶜᶠᶜ, ∂yᶜᶜᶜ, ∂yᶜᶠᶠ, ∂y
 
 @inline ∂xᶠᶜᶠ(i, j, k, ibg::MutableImmersedGrid, ϕ) = ∂xᶠᶜᶠ(i, j, k, ibg.underlying_grid, ϕ)
 @inline ∂xᶠᶜᶠ(i, j, k, ibg::MutableImmersedGrid, f::Function, args...) = ∂xᶠᶜᶠ(i, j, k, ibg.underlying_grid, f, args...)
+@inline ∂xᶠᶜᶠ(i, j, k, ibg::MutableImmersedGrid, c::Number) = zero(ibg)
 
 @inline ∂xᶜᶠᶜ(i, j, k, ibg::MutableImmersedGrid, ϕ) = ∂xᶜᶠᶜ(i, j, k, ibg.underlying_grid, ϕ)
 @inline ∂xᶜᶠᶜ(i, j, k, ibg::MutableImmersedGrid, f::Function, args...) = ∂xᶜᶠᶜ(i, j, k, ibg.underlying_grid, f, args...)
+@inline ∂xᶜᶠᶜ(i, j, k, ibg::MutableImmersedGrid, c::Number) = zero(ibg)
 
 @inline ∂xᶠᶠᶜ(i, j, k, ibg::MutableImmersedGrid, ϕ) = ∂xᶠᶠᶜ(i, j, k, ibg.underlying_grid, ϕ)
 @inline ∂xᶠᶠᶜ(i, j, k, ibg::MutableImmersedGrid, f::Function, args...) = ∂xᶠᶠᶜ(i, j, k, ibg.underlying_grid, f, args...)
@@ -198,3 +201,4 @@ import Oceananigans.Operators: ∂yᶜᶠᶜ, ∂yᶜᶜᶜ, ∂yᶜᶠᶠ, ∂y
 
 @inline ∂yᶠᶠᶜ(i, j, k, ibg::MutableImmersedGrid, ϕ) = ∂yᶠᶠᶜ(i, j, k, ibg.underlying_grid, ϕ)
 @inline ∂yᶠᶠᶜ(i, j, k, ibg::MutableImmersedGrid, f::Function, args...) = ∂yᶠᶠᶜ(i, j, k, ibg.underlying_grid, f, args...)
+@inline ∂yᶠᶠᶜ(i, j, k, ibg::MutableImmersedGrid, c::Number) = zero(ibg)
