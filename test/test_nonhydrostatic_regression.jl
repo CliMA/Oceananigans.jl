@@ -72,7 +72,7 @@ include("regression_tests/ocean_large_eddy_simulation_regression_test.jl")
 
                 for (closurename, closure) in [("AnisotropicMinimumDissipation", amd_closure),
                                                 ("SmagorinskyLilly", smag_closure),
-                                                ("DirectionalDynamicSmagorinsky, dyn_smag_directional),
+                                                ("DirectionalDynamicSmagorinsky", dyn_smag_directional),
                                                 ("LagrangianDynamicSmagorinsky", dyn_smag_lagrangian)]
                     @testset "Ocean large eddy simulation [$A, $closurename, $grid_type grid]" begin
                         @info "  Testing oceanic large eddy simulation regression [$A, $closurename, $grid_type grid]"
