@@ -197,7 +197,9 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
     # Tracer update kernels
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
 
-        if catke_in_closures && tracer_name == :e
+        if is_prescribed_tracer(tracers[tracer_name])
+            @debug "Skipping AB2 step for prescribed tracer $tracer_name"
+        elseif catke_in_closures && tracer_name == :e
             @debug "Skipping AB2 step for e"
         elseif td_in_closures && tracer_name == :ϵ
             @debug "Skipping AB2 step for ϵ"

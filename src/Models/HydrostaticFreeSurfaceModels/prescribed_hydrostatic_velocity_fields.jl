@@ -136,7 +136,7 @@ materialize_free_surface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFie
 materialize_free_surface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
 materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, grid) = nothing
 
-hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = tracers
+hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = prognostic_tracers(tracers)
 compute_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields, kernel_parameters; kwargs...) = nothing
 
 compute_flux_bcs!(::Nothing, c, arch, clock, model_fields) = nothing
