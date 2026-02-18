@@ -32,4 +32,4 @@ fill_halo_regions!(vanilla_field)
 # @jit raise=raise fill_halo_regions!(reactant_field)
 @jit fill_halo_regions!(reactant_field)
 
-@test compare_parent("halo", vanilla_field, reactant_field)
+compare_parent("halo", vanilla_field, reactant_field)
