@@ -1,10 +1,17 @@
-using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation
+using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, DynamicSmagorinsky, LagrangianAveraging
 using Oceananigans.TimeSteppers: update_state!
 using Oceananigans.DistributedComputations: cpu_architecture, partition
 
 function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closure)
     if first(closure) isa SmagorinskyLilly
         name = "ocean_large_eddy_simulation_SmagorinskyLilly"
+    elseif first(closure) isa DynamicSmagorinsky
+        averaging = first(closure).coefficient.averaging
+        if averaging isa LagrangianAveraging
+            name = "ocean_large_eddy_simulation_DynamicSmagorinsky_lagrangian"
+        else
+            name = "ocean_large_eddy_simulation_DynamicSmagorinsky_directional"
+        end
     else
         firstclosure = first(closure)
         closurename = typeof(firstclosure).name.wrapper
