@@ -6,8 +6,8 @@ struct MultiaryOperation{LX, LY, LZ, N, O, A, IN, G, T} <: AbstractOperation{LX,
     ▶ :: IN
     grid :: G
 
-    function MultiaryOperation{LX, LY, LZ}(op::O, args::A, ▶::IN, grid::G) where {LX, LY, LZ, O, A, IN, G}
-        T = Base.promote_op(op, map(eltype, args)...)
+    function MultiaryOperation{LX, LY, LZ}(op::O, args::A, ▶::IN, grid::G,
+                                            ::Type{T}=Base.promote_op(op, map(eltype, args)...)) where {LX, LY, LZ, O, A, IN, G, T}
         N = length(args)
         return new{LX, LY, LZ, N, O, A, IN, G, T}(op, args, ▶, grid)
     end
@@ -191,10 +191,12 @@ Adapt.adapt_structure(to, multiary::MultiaryOperation{LX, LY, LZ}) where {LX, LY
     MultiaryOperation{LX, LY, LZ}(Adapt.adapt(to, multiary.op),
                                   Adapt.adapt(to, multiary.args),
                                   Adapt.adapt(to, multiary.▶),
-                                  Adapt.adapt(to, multiary.grid))
+                                  Adapt.adapt(to, multiary.grid),
+                                  eltype(multiary))
 
 Architectures.on_architecture(to, multiary::MultiaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     MultiaryOperation{LX, LY, LZ}(on_architecture(to, multiary.op),
                                   on_architecture(to, multiary.args),
                                   on_architecture(to, multiary.▶),
-                                  on_architecture(to, multiary.grid))
+                                  on_architecture(to, multiary.grid),
+                                  eltype(multiary))
