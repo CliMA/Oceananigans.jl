@@ -317,12 +317,12 @@ for arch in archs
             @test u / 2 isa BinaryOperation
 
             # Comparison operators produce BinaryOperations
-            @test u > v isa BinaryOperation
-            @test u < v isa BinaryOperation
-            @test u >= v isa BinaryOperation
-            @test u <= v isa BinaryOperation
-            @test u > 0 isa BinaryOperation
-            @test 0 < u isa BinaryOperation
+            @test (u > v) isa BinaryOperation
+            @test (u < v) isa BinaryOperation
+            @test (u >= v) isa BinaryOperation
+            @test (u <= v) isa BinaryOperation
+            @test (u > 0) isa BinaryOperation
+            @test (0 < u) isa BinaryOperation
 
             # Eltype inference: arithmetic ops return Float64, comparisons return Bool
             @test eltype(u + v) == Float64

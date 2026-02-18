@@ -170,14 +170,7 @@ julia> using Oceananigans.AbstractOperations: BinaryOperation, GridMetric, choos
 julia> plus_or_times(x, y) = x < 0 ? x + y : x * y
 plus_or_times (generic function with 1 method)
 
-julia> @binary plus_or_times
-Set{Any} with 6 elements:
-  :+
-  :/
-  :^
-  :-
-  :*
-  :plus_or_times
+julia> @binary plus_or_times;
 
 julia> c, d = (CenterField(RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))) for i = 1:2);
 
