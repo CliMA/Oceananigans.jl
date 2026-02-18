@@ -8,7 +8,6 @@ using SeawaterPolynomials: TEOS10EquationOfState
 
 loc = (Center, Center, Center)
 topo = (Periodic, Periodic, Bounded)
-raise = true
 
 # Get vanilla architecture from TEST_ARCHITECTURE env var (set by reactant_test_utils.jl)
 vanilla_arch = Distributed(get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU())
@@ -29,7 +28,7 @@ set!(vanilla_field, data)
 set!(reactant_field, data)
 
 fill_halo_regions!(vanilla_field)
-# @jit raise=raise fill_halo_regions!(reactant_field)
-@jit fill_halo_regions!(reactant_field)
+@jit raise=true fill_halo_regions!(reactant_field)
+# @jit fill_halo_regions!(reactant_field)
 
 compare_parent("halo", vanilla_field, reactant_field)
