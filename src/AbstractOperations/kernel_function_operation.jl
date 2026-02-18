@@ -62,10 +62,8 @@ struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, 
 
 end
 
-# Convenience outer constructor: splat arguments, default T to eltype(grid).
-# Note: we do not use promote_op here because kernel functions are often too complex
-# for reliable return type inference (e.g. SeawaterPolynomials.ρ may infer Float64
-# on a Float32 grid due to Float64 polynomial coefficients).
+# Convenience outer constructor: splat arguments into a tuple.
+# T defaults to eltype(grid) via the inner constructor.
 function KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid, arguments...) where {LX, LY, LZ}
     return KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid, tuple(arguments...))
 end
