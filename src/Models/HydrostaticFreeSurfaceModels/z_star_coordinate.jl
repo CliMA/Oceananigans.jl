@@ -1,10 +1,7 @@
-using Oceananigans.BuoyancyFormulations: buoyancy_perturbationᶜᶜᶜ
-using Oceananigans.Fields: znode
 using Oceananigans.Grids: halo_size, topology, AbstractGrid, Flat,
     column_depthᶜᶜᵃ, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ, column_depthᶠᶠᵃ,
     static_column_depthᶜᶜᵃ, static_column_depthᶜᶠᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶠᶠᵃ
 using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
-using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
 
@@ -178,26 +175,6 @@ end
     i, j, k = @index(Global, NTuple)
     @inbounds G[i, j, k] *= σⁿ(i, j, k, grid, Center(), Center(), Center())
 end
-
-#####
-##### ZStarCoordinate-specific implementation of the additional terms to be included in the momentum equations
-#####
-
-# Fallbacks
-@inline grid_slope_contribution_x(i, j, k, grid, buoyancy, ztype, model_fields) = zero(grid)
-@inline grid_slope_contribution_y(i, j, k, grid, buoyancy, ztype, model_fields) = zero(grid)
-
-@inline grid_slope_contribution_x(i, j, k, grid::MutableGridOfSomeKind, ::Nothing, ::ZStarCoordinate, model_fields) = zero(grid)
-@inline grid_slope_contribution_y(i, j, k, grid::MutableGridOfSomeKind, ::Nothing, ::ZStarCoordinate, model_fields) = zero(grid)
-
-@inline ∂x_z(i, j, k, grid) = ∂xᶠᶜᶜ(i, j, k, grid, znode, Center(), Center(), Center())
-@inline ∂y_z(i, j, k, grid) = ∂yᶜᶠᶜ(i, j, k, grid, znode, Center(), Center(), Center())
-
-@inline grid_slope_contribution_x(i, j, k, grid::MutableGridOfSomeKind, buoyancy, ::ZStarCoordinate, model_fields) =
-    ℑxᶠᵃᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, model_fields) * ∂x_z(i, j, k, grid)
-
-@inline grid_slope_contribution_y(i, j, k, grid::MutableGridOfSomeKind, buoyancy, ::ZStarCoordinate, model_fields) =
-    ℑyᵃᶠᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, model_fields) * ∂y_z(i, j, k, grid)
 
 #####
 ##### Initialize vertical coordinate
