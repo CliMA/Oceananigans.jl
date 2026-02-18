@@ -1,6 +1,26 @@
-# Oceananigans.jl
+```@raw html
+---
+# https://vitepress.dev/reference/default-theme-home-page
+layout: home
 
-*🌊 Fast and friendly fluid dynamics on CPUs and GPUs.*
+hero:
+  name: "Oceananigans.jl"
+  tagline: "🌊 Fast and friendly ocean-flavored Julia software for simulating incompressible fluid dynamics in Cartesian and spherical shell domains on CPUs and GPUs."
+  image:
+    src: /logo.png
+    alt: Oceananigans
+  actions:
+    - theme: brand
+      text: Get Started
+      link: /quick_start
+    - theme: alt
+      text: View on Github
+      link: https://github.com/CliMA/Oceananigans.jl
+    - theme: brand
+      text: Gallery
+      link: /gallery
+---
+```
 
 Oceananigans is a fast, friendly, flexible software package for finite volume simulations of the nonhydrostatic
 and hydrostatic Boussinesq equations on CPUs and GPUs.
