@@ -58,7 +58,7 @@ struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, 
     function KernelFunctionOperation{LX, LY, LZ}(kernel_function::K,
                                                  grid::G,
                                                  arguments...) where {LX, LY, LZ, K, G}
-        T = eltype(grid)
+        T = Base.promote_op(kernel_function, Int, Int, Int, typeof(grid), map(typeof, arguments)...)
         D = typeof(arguments)
         return new{LX, LY, LZ, G, T, K, D}(kernel_function, grid, arguments)
     end

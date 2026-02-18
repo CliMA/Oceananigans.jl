@@ -7,7 +7,7 @@ struct MultiaryOperation{LX, LY, LZ, N, O, A, IN, G, T} <: AbstractOperation{LX,
     grid :: G
 
     function MultiaryOperation{LX, LY, LZ}(op::O, args::A, ▶::IN, grid::G) where {LX, LY, LZ, O, A, IN, G}
-        T = eltype(grid)
+        T = Base.promote_op(op, map(eltype, args)...)
         N = length(args)
         return new{LX, LY, LZ, N, O, A, IN, G, T}(op, args, ▶, grid)
     end

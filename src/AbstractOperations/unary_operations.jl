@@ -16,7 +16,7 @@ struct UnaryOperation{LX, LY, LZ, O, A, IN, G, T} <: AbstractOperation{LX, LY, L
     and subsequent interpolation by `▶` on `grid`.
     """
     function UnaryOperation{LX, LY, LZ}(op::O, arg::A, ▶::IN, grid::G) where {LX, LY, LZ, O, A, IN, G}
-        T = eltype(grid)
+        T = Base.promote_op(op, eltype(arg))
         return new{LX, LY, LZ, O, A, IN, G, T}(op, arg, ▶, grid)
     end
 end

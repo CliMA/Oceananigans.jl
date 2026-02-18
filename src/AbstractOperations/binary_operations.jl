@@ -15,7 +15,7 @@ struct BinaryOperation{LX, LY, LZ, O, A, B, IA, IB, G, T} <: AbstractOperation{L
     `grid`, where `▶a` and `▶b` interpolate `a` and `b` to locations `(LX, LY, LZ)`.
     """
     function BinaryOperation{LX, LY, LZ}(op::O, a::A, b::B, ▶a::IA, ▶b::IB, grid::G) where {LX, LY, LZ, O, A, B, IA, IB, G}
-        T = eltype(grid)
+        T = Base.promote_op(op, eltype(a), eltype(b))
         return new{LX, LY, LZ, O, A, B, IA, IB, G, T}(op, a, b, ▶a, ▶b, grid)
     end
 end
