@@ -39,6 +39,8 @@ end
         grid = LatitudeLongitudeGrid(arch; lat_lon_kw...)
         model = HydrostaticFreeSurfaceModel(grid; hydrostatic_model_kw...)
 
+        @test model.clock.stage == 1
+
         ui = randn(size(model.velocities.u)...)
         vi = randn(size(model.velocities.v)...)
         set!(model, u=ui, v=vi)
@@ -237,6 +239,7 @@ end
     z = (-1, 0)
     rectilinear_kw = (; size=(Nx, Ny, Nz), halo, x=(0, 1), y=(0, 1), z=(0, 1))
     hydrostatic_model_kw = (; free_surface=ExplicitFreeSurface(gravitational_acceleration=1))
+    rungekutta3_kw = merge(hydrostatic_model_kw, (; timestepper=:SplitRungeKutta3))
 
     @info "Testing RectilinearGrid + HydrostaticFreeSurfaceModel Reactant correctness"
     test_reactant_model_correctness(RectilinearGrid,
@@ -244,11 +247,24 @@ end
                                     rectilinear_kw,
                                     hydrostatic_model_kw)
 
+    @info "Testing RectilinearGrid + HydrostaticFreeSurfaceModel + SplitRungeKutta3 Reactant correctness"
+    test_reactant_model_correctness(RectilinearGrid,
+                                    HydrostaticFreeSurfaceModel,
+                                    rectilinear_kw,
+                                    rungekutta3_kw)
+
     @info "Testing immersed RectilinearGrid + HydrostaticFreeSurfaceModel Reactant correctness"
     test_reactant_model_correctness(RectilinearGrid,
                                     HydrostaticFreeSurfaceModel,
                                     rectilinear_kw,
                                     hydrostatic_model_kw,
+                                    immersed_boundary_grid=true)
+
+    @info "Testing immersed RectilinearGrid + HydrostaticFreeSurfaceModel + SplitRungeKutta3 Reactant correctness"
+    test_reactant_model_correctness(RectilinearGrid,
+                                    HydrostaticFreeSurfaceModel,
+                                    rectilinear_kw,
+                                    rungekutta3_kw,
                                     immersed_boundary_grid=true)
 end
 

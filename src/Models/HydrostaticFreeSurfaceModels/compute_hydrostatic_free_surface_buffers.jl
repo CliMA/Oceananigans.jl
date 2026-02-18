@@ -18,7 +18,7 @@ Complete halo communication and compute momentum tendencies in the buffer region
 
 This method is called after interior momentum tendencies are computed to:
 1. synchronize halo communication for tracers and velocities,
-2. compute diagnostic fields (buoyancy gradients, vertical velocity, pressure, diffusivities) in the buffer regions, and
+2. compute diagnostic fields (buoyancy gradients, vertical velocity, pressure, closure_fields) in the buffer regions, and
 3. compute momentum tendencies in cells that depend on halo data.
 """
 function complete_communication_and_compute_momentum_buffer!(model::HydrostaticFreeSurfaceModel, ::DistributedGrid, ::AsynchronousDistributed)
@@ -42,7 +42,7 @@ function complete_communication_and_compute_momentum_buffer!(model::HydrostaticF
     compute_buoyancy_gradients!(model.buoyancy, grid, model.tracers, parameters = volume_params)
     update_vertical_velocities!(model.velocities, grid, model; parameters = surface_params)
     update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers; parameters = surface_params)
-    compute_diffusivities!(model.closure_fields, model.closure, model; parameters = κ_params)
+    compute_closure_fields!(model.closure_fields, model.closure, model; parameters = κ_params)
 
     fill_halo_regions!(model.closure_fields; only_local_halos=true)
 
@@ -102,13 +102,20 @@ function complete_communication_and_compute_tracer_buffer!(model::HydrostaticFre
     grid = model.grid
     arch = architecture(grid)
 
-    ũ, ṽ, _ = model.transport_velocities
-    synchronize_communication!(ũ)
-    synchronize_communication!(ṽ)
+    # synchronize the free surface
     synchronize_communication!(model.free_surface)
 
-    surface_params = buffer_surface_kernel_parameters(grid, arch)
-    update_vertical_velocities!(model.transport_velocities, grid, model; parameters=surface_params)
+    # We do not need to synchronize the transport velocities
+    # for an ExplicitFreeSurface (`transport_velocities === velocities`)
+    if !(model.free_surface isa ExplicitFreeSurface)
+        ũ, ṽ, _ = model.transport_velocities
+        synchronize_communication!(ũ)
+        synchronize_communication!(ṽ)
+
+        surface_params = buffer_surface_kernel_parameters(grid, arch)
+        update_vertical_velocities!(model.transport_velocities, grid, model; parameters=surface_params)
+    end
+
     compute_tracer_buffer_contributions!(grid, arch, model)
 
     return nothing
@@ -158,8 +165,8 @@ function buffer_surface_kernel_parameters(grid, arch)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
-    xside = isa(grid, XFlatGrid) ? UnitRange(1, Nx) : UnitRange(0, Nx+1)
-    yside = isa(grid, YFlatGrid) ? UnitRange(1, Ny) : UnitRange(0, Ny+1)
+    xside = isa(grid, XFlatGrid) ? UnitRange(1, Nx) : UnitRange(-Hx+2, Nx+Hx-1)
+    yside = isa(grid, YFlatGrid) ? UnitRange(1, Ny) : UnitRange(-Hy+2, Ny+Hy-1)
 
     # Offsets in tangential direction are == -1 to
     # cover the required corners
@@ -185,8 +192,8 @@ function buffer_volume_kernel_parameters(grid, arch)
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
 
-    xside = isa(grid, XFlatGrid) ? UnitRange(1, Nx) : UnitRange(0, Nx+1)
-    yside = isa(grid, YFlatGrid) ? UnitRange(1, Ny) : UnitRange(0, Ny+1)
+    xside = isa(grid, XFlatGrid) ? UnitRange(1, Nx) : UnitRange(-Hx+2, Nx+Hx-1)
+    yside = isa(grid, YFlatGrid) ? UnitRange(1, Ny) : UnitRange(-Hy+2, Ny+Hy-1)
 
     # Offsets in tangential direction are == -1 to
     # cover the required corners

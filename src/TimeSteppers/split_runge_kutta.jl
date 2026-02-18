@@ -160,7 +160,8 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
         Δτ = Δt / β
         rk_substep!(model, Δτ, callbacks)
 
-        # Update the state
+        # Step closure prognostics and update the state
+        step_closure_prognostics!(model, Δτ)
         update_state!(model, callbacks)
     end
 
@@ -207,7 +208,7 @@ cache_current_fields!(model::AbstractModel) = error("cache_current_fields! not i
 
 # SplitRungeKuttaTimeStepper is self-starting!
 prognostic_state(ts::SplitRungeKuttaTimeStepper) = nothing
-restore_prognostic_state!(ts::SplitRungeKuttaTimeStepper, ::Nothing) = ts
+restore_prognostic_state!(restored::SplitRungeKuttaTimeStepper, ::Nothing) = restored
 
 #####
 ##### Show methods

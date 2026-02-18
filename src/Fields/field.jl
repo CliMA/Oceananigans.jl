@@ -874,6 +874,10 @@ end
 ##### nodes
 #####
 
+Grids.xnodes(f::Field; kwargs...) = xnodes(f.grid, instantiated_location(f)...; indices=indices(f)[1], kwargs...)
+Grids.ynodes(f::Field; kwargs...) = ynodes(f.grid, instantiated_location(f)...; indices=indices(f)[2], kwargs...)
+Grids.znodes(f::Field; kwargs...) = znodes(f.grid, instantiated_location(f)...; indices=indices(f)[3], kwargs...)
+Grids.rnodes(f::Field; kwargs...) = rnodes(f.grid, instantiated_location(f)...; indices=indices(f)[3], kwargs...)
 Grids.nodes(f::Field; kwargs...) = nodes(f.grid, instantiated_location(f)...; indices=indices(f), kwargs...)
 
 #####
@@ -884,9 +888,9 @@ function prognostic_state(field::Field)
     return (; data = prognostic_state(field.data))
 end
 
-function restore_prognostic_state!(field::Field, state)
-    restore_prognostic_state!(field.data, state.data)
-    return field
+function restore_prognostic_state!(restored::Field, from)
+    restore_prognostic_state!(restored.data, from.data)
+    return restored
 end
 
 restore_prognostic_state!(::Field, ::Nothing) = nothing

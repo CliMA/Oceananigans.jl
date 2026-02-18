@@ -28,12 +28,10 @@ function defVar(ds::AbstractDataset, field_name, fd::AbstractField;
     effective_dim_names = create_field_dimensions!(ds, fd, dimension_name_generator; time_dependent, with_halos, array_type, dimension_type)
 
     # Add location to attributes
-    loc = location(fd) |> convert_for_netcdf
-    loc_attrib = Dict("location" => loc)
     if :attrib ∈ keys(kwargs)
-        attrib = merge(loc_attrib, kwargs[:attrib])
+        attrib = add_location_attribute!(kwargs[:attrib], fd)
     else
-        attrib = loc_attrib
+        attrib = add_location_attribute!(Dict(), fd)
     end
 
     # Add indices to attributes
@@ -54,6 +52,12 @@ function defVar(ds::AbstractDataset, field_name, fd::AbstractField;
 end
 
 defVar(ds::AbstractDataset, field_name::Union{AbstractString, Symbol}, data::Array{Bool}, dim_names; kwargs...) = defVar(ds, field_name, Int8.(data), dim_names; kwargs...)
+
+function add_location_attribute!(attrib, fd::AbstractField)
+    loc = location(fd) |> convert_for_netcdf
+    loc_attrib = Dict("location" => loc)
+    return merge(loc_attrib, attrib)
+end
 
 #####
 ##### Variable attributes
@@ -139,11 +143,6 @@ end
 ##### NetCDFWriter constructor
 #####
 
-"""
-    NetCDFWriter(model, outputs; ...)
-
-See the original OceananigansNCDatasetsExt for full documentation.
-"""
 function NetCDFWriter(model::AbstractModel, outputs;
                       filename,
                       schedule,
@@ -500,7 +499,6 @@ function write_output!(ow::NetCDFWriter, model::AbstractModel)
     update_file_splitting_schedule!(ow.file_splitting, ow.filepath)
 
     ow.dataset = open(ow)
-
     ds, verbose, filepath = ow.dataset, ow.verbose, ow.filepath
 
     time_index = length(ds["time"]) + 1

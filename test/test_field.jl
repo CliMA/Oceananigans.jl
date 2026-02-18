@@ -13,6 +13,7 @@ using Oceananigans.Grids: total_length
 using Oceananigans.Grids: λnode
 using Oceananigans.Grids: RectilinearGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
 using Random
 using GPUArraysCore: @allowscalar
@@ -819,6 +820,7 @@ end
 
     @testset "Field nodes and view consistency" begin
         @info "  Testing that nodes() returns indices consistent with view()..."
+
         for arch in archs, FT in float_types
             # Test RectilinearGrid
             rectilinear_grid = RectilinearGrid(arch, FT, size=(8, 6, 4), extent=(2, 3, 1))
@@ -827,10 +829,6 @@ end
             # Test LatitudeLongitudeGrid
             latlon_grid = LatitudeLongitudeGrid(arch, FT, size=(8, 6, 4), longitude = (-180, 180), latitude = (-85, 85), z = (-100, 0))
             nodes_of_field_views_are_consistent(latlon_grid)
-
-            # Test OrthogonalSphericalShellGrid (TripolarGrid)
-            tripolar_grid = TripolarGrid(arch, FT, size=(8, 6, 4))
-            nodes_of_field_views_are_consistent(tripolar_grid)
 
             # Test Flat topology behavior for RectilinearGrid
             flat_rlgrid = RectilinearGrid(arch, FT, size=(), extent=(), topology=(Flat, Flat, Flat))
@@ -841,6 +839,85 @@ end
             flat_llgrid = LatitudeLongitudeGrid(arch, FT, size=(), topology=(Flat, Flat, Flat))
             c_flat = CenterField(flat_llgrid)
             @test nodes(c_flat) == (nothing, nothing, nothing)
+
+            # Test that xnodes/ynodes/znodes respect windowed indices
+            @info "    Testing xnodes/ynodes/znodes on windowed fields [$(typeof(arch)), $FT]..."
+            Nx, Ny, Nz = 8, 6, 4
+            wgrid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(2, 3, 1))
+
+            # Single-index windows should return a single node
+            f_zwindow = Field{Center, Center, Center}(wgrid, indices=(:, :, Nz))
+            @test length(znodes(f_zwindow)) == 1
+            @test znodes(f_zwindow)[1] == znodes(wgrid, Center())[Nz]
+
+            f_face_top = Field{Center, Center, Face}(wgrid, indices=(:, :, Nz + 1))
+            @test length(znodes(f_face_top)) == 1
+            @test znodes(f_face_top)[1] == znodes(wgrid, Face())[Nz + 1]
+
+            # Range windows should return the corresponding subset
+            f_xwindow = Field{Center, Center, Center}(wgrid, indices=(2:5, :, :))
+            @test length(xnodes(f_xwindow)) == 4
+            @test xnodes(f_xwindow) == xnodes(wgrid, Center())[2:5]
+
+            f_ywindow = Field{Center, Center, Center}(wgrid, indices=(:, 1:3, :))
+            @test length(ynodes(f_ywindow)) == 3
+            @test ynodes(f_ywindow) == ynodes(wgrid, Center())[1:3]
+
+            f_zrange = Field{Center, Center, Center}(wgrid, indices=(:, :, 2:3))
+            @test length(znodes(f_zrange)) == 2
+            @test znodes(f_zrange) == znodes(wgrid, Center())[2:3]
+
+            # Non-windowed field should still return all nodes
+            f_full = CenterField(wgrid)
+            @test length(xnodes(f_full)) == Nx
+            @test length(ynodes(f_full)) == Ny
+            @test length(znodes(f_full)) == Nz
+        end
+
+
+        # Test OrthogonalSphericalShellGrid (TripolarGrid)
+        fold_topologies = (RightCenterFolded, RightFaceFolded)
+        for arch in archs, FT in float_types
+            @testset "$fold_topology TripolarGrid" for fold_topology in fold_topologies
+                grid = TripolarGrid(arch, FT, size = (8, 10, 4), fold_topology = fold_topology)
+                nodes_of_field_views_are_consistent(grid)
+            end
+        end
+    end
+
+    @testset "mask_immersed_field! on windowed fields" begin
+        for arch in archs
+            @info "  Testing mask_immersed_field! on windowed fields [$(typeof(arch))]..."
+
+            Nx, Ny, Nz = 4, 4, 8
+            underlying_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(1, 1, 2))
+            bottom(x, y) = -1.0  # bottom half (k=1:4) is immersed
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
+
+            # Windowed field at top layer (active, should not be masked)
+            f_top = CenterField(grid, indices=(:, :, Nz))
+            set!(f_top, 1.0)
+            mask_immersed_field!(f_top, 0.0)
+            @test all(interior(f_top) .== 1.0)
+
+            # Windowed field at bottom layer (immersed, should all be masked)
+            f_bot = CenterField(grid, indices=(:, :, 1))
+            set!(f_bot, 1.0)
+            mask_immersed_field!(f_bot, 0.0)
+            @test all(interior(f_bot) .== 0.0)
+
+            # Surface face field at Nz+1 (active, should not be masked)
+            f_face = Field{Center, Center, Face}(grid, indices=(:, :, Nz + 1))
+            set!(f_face, 1.0)
+            mask_immersed_field!(f_face, 0.0)
+            @test all(interior(f_face) .== 1.0)
+
+            # Full (non-windowed) field regression test
+            f_full = CenterField(grid)
+            set!(f_full, 1.0)
+            mask_immersed_field!(f_full, 0.0)
+            @test all(interior(f_full, :, :, 1:4) .== 0.0)  # immersed
+            @test all(interior(f_full, :, :, 5:8) .== 1.0)  # active
         end
     end
 

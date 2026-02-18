@@ -20,6 +20,10 @@ abstract type AbstractTimeStepper end
 function update_state! end
 function compute_tendencies! end
 function compute_flux_bc_tendencies! end
+function step_closure_prognostics! end
+
+# Fallback for models without closure prognostics
+step_closure_prognostics!(model, Δt) = nothing
 
 # Interface for time-stepping Lagrangian particles
 abstract type AbstractLagrangianParticles end
@@ -95,10 +99,10 @@ function prognostic_state(timestepper::AbstractTimeStepper)
             G⁻ = prognostic_state(timestepper.G⁻))
 end
 
-function restore_prognostic_state!(timestepper::AbstractTimeStepper, state)
-    restore_prognostic_state!(timestepper.Gⁿ, state.Gⁿ)
-    restore_prognostic_state!(timestepper.G⁻, state.G⁻)
-    return timestepper
+function restore_prognostic_state!(restored::AbstractTimeStepper, from)
+    restore_prognostic_state!(restored.Gⁿ, from.Gⁿ)
+    restore_prognostic_state!(restored.G⁻, from.G⁻)
+    return restored
 end
 
 restore_prognostic_state!(::AbstractTimeStepper, ::Nothing) = nothing
