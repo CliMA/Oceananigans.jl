@@ -567,7 +567,7 @@ surface_c[1:4, 1:5, grid.Nz]
 
 The `indices` keyword is particularly useful in combination with field operations.
 For example, suppose we want to compute and store the vertical vorticity
-``\partial v / \partial x - \partial u / \partial y`` only at the surface:
+``∂v / ∂x - ∂u / ∂y`` only at the surface:
 
 ```jldoctest fields
 u = XFaceField(grid)
@@ -588,7 +588,7 @@ v = YFaceField(grid)
 ```
 
 Computing `ωₛ` with `compute!` evaluates the expression `∂x(v) - ∂y(u)` and
-stores the result only at the surface slice:
+stores the result _only_ at the surface slice:
 
 ```jldoctest fields
 compute!(ωₛ)
