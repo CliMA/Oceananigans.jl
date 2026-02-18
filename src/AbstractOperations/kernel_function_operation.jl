@@ -59,6 +59,11 @@ struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, 
                                                  grid::G,
                                                  arguments...) where {LX, LY, LZ, K, G}
         T = Base.promote_op(kernel_function, Int, Int, Int, typeof(grid), map(typeof, arguments)...)
+        # promote_op can return Union{} or Any for complex kernel functions;
+        # fall back to the grid's eltype in those cases.
+        if T === Union{} || !isconcretetype(T)
+            T = eltype(grid)
+        end
         D = typeof(arguments)
         return new{LX, LY, LZ, G, T, K, D}(kernel_function, grid, arguments)
     end
