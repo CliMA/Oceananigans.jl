@@ -589,6 +589,66 @@ topos_3d = ((Periodic, Periodic, Bounded),
             # The moving-grid ∂t_σ contribution should make wstar differ from w
             @test interior(wstar) ≉ interior(w)
 
+            # --- ZStar grid with constant u and spatially-varying displacement ---
+            # When displacement is constant in time, ∂t_σ = 0.
+            # But w ≠ 0 because the stretched Δz varies with x, creating
+            # a non-zero volume flux divergence even for constant u.
+            U₀ = 1.0
+
+            σx_zstar = MutableVerticalDiscretization((-H, 0))
+            σx_grid = RectilinearGrid(arch;
+                                      size = (Nx, Ny, Nz),
+                                      x = (0, Lx), y = (0, Ly), z = σx_zstar,
+                                      halo = (3, 3, 3),
+                                      topology = (Periodic, Periodic, Bounded))
+
+            σx_velocities = PrescribedVelocityFields(; u = (x, y, z, t) -> U₀,
+                                                       formulation = DiagnosticVerticalVelocity())
+
+            σx_free_surface = PrescribedFreeSurface(displacement = (x, y, z, t) -> A * sin(2π * x / Lx))
+
+            σx_model = HydrostaticFreeSurfaceModel(σx_grid;
+                                                   velocities = σx_velocities,
+                                                   free_surface = σx_free_surface,
+                                                   tracers = :c,
+                                                   buoyancy = nothing)
+
+            @test σx_model isa HydrostaticFreeSurfaceModel
+            @test σx_model.velocities.formulation isa DiagnosticVerticalVelocity
+
+            time_step!(σx_model, 1.0)
+
+            wσ = σx_model.velocities.w
+
+            # ∂t_σ should be zero (displacement is time-independent)
+            @test all(iszero, parent(σx_grid.z.∂t_σ))
+
+            # w should be non-zero (spatially varying σ creates flux divergence)
+            @test !all(iszero, interior(wσ))
+
+            # Bottom BC: w = 0 at k = 1
+            for i in 1:Nx
+                @test wσ[i, 1, 1] == 0
+            end
+
+            # Analytical comparison
+            for i in 1:Nx, k in 1:Nz+1
+                # x coordinates of the cell centers
+                xᶜ = (i - 0.5) * Δx
+                xᶜ⁻ = (i - 1.5) * Δx
+                xᶜ⁺ = (i + 0.5) * Δx
+                # interpolate the free surface and σ on the cell faces
+                ηᶠ = A * (sin(2π * xᶜ⁻ / Lx) + sin(2π * xᶜ / Lx)) / 2
+                ηᶠ⁺ = A * (sin(2π * xᶜ / Lx) + sin(2π * xᶜ⁺ / Lx)) / 2
+                σᶠ = 1 + ηᶠ / H
+                σᶠ⁺ = 1 + ηᶠ⁺ / H
+                # All levels contribute the same Δw with w[1] = 0.
+                Δr = H / Nz
+                Δw = -U₀ * Δr * (σᶠ⁺ - σᶠ) / Δx
+                wₐ = (k - 1) * Δw
+                @test wσ[i, 1, k] ≈ wₐ atol = 1e-10
+            end
+
             # --- ZStar grid with FieldTimeSeries-prescribed u, v, and displacement ---
             fts_times = 0:0.5:10.0
 
