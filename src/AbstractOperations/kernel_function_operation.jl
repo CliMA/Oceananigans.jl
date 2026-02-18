@@ -62,15 +62,12 @@ struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, 
 
 end
 
-# Convenience outer constructor: splat arguments and infer T via promote_op
+# Convenience outer constructor: splat arguments, default T to eltype(grid).
+# Note: we do not use promote_op here because kernel functions are often too complex
+# for reliable return type inference (e.g. SeawaterPolynomials.ρ may infer Float64
+# on a Float32 grid due to Float64 polynomial coefficients).
 function KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid, arguments...) where {LX, LY, LZ}
-    T = Base.promote_op(kernel_function, Int, Int, Int, typeof(grid), map(typeof, arguments)...)
-    # promote_op can return Union{} or Any for complex kernel functions;
-    # fall back to the grid's eltype in those cases.
-    if T === Union{} || !isconcretetype(T)
-        T = eltype(grid)
-    end
-    return KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid, tuple(arguments...), T)
+    return KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid, tuple(arguments...))
 end
 
 @inline Base.getindex(κ::KernelFunctionOperation, i, j, k) = κ.kernel_function(i, j, k, κ.grid, κ.arguments...)
