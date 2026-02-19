@@ -201,9 +201,10 @@ end
 
 add_3rd_index(ij, k) = (ij[1], ij[2], k)
 
-check_interior_xyz(i, j, k, ibg, scheme) = (&&)(check_interior_x(i, j, k, ibg, scheme),
-                                                check_interior_y(i, j, k, ibg, scheme),
-                                                check_interior_z(i, j, k, ibg, scheme))
+check_interior_xyz(i, j, k, ibg, scheme) = reduce(&&, 
+                                                 (check_interior_x(i, j, k, ibg, scheme),
+                                                  check_interior_y(i, j, k, ibg, scheme),
+                                                  check_interior_z(i, j, k, ibg, scheme)))
 
 function check_interior_x(i, j, k, ibg, scheme::AbstractAdvectionScheme{N}) where N
     interior = true
