@@ -93,15 +93,12 @@ for arch in archs
 
             child_arch = child_architecture(arch)
 
-            # TODO: MutableVerticalDiscretization does not lead to exactly equal solutions.
-            # For the moment we remove the offending tests, but we need to investigate this...
-            # z_faces = [(-1, 0), MutableVerticalDiscretization((-1, 0))]
-            z_faces = [(-1, 0)]
+            z_faces = [(-1, 0), MutableVerticalDiscretization((-1, 0))]
 
             for z_face in z_faces
                 underlying_grid = LatitudeLongitudeGrid(arch,
                                                         size = (Nx, Ny, 3),
-                                                        halo = (4, 4, 3),
+                                                        halo = (5, 5, 3),
                                                         latitude = (-80, 80),
                                                         longitude = (-160, 160),
                                                         z = z_face,
@@ -163,7 +160,7 @@ for arch in archs
 
                 catke_grid = LatitudeLongitudeGrid(synchronized_arch,
                                                    size = (Nx, Ny, 3),
-                                                   halo = (4, 4, 3),
+                                                   halo = (5, 5, 3),
                                                    latitude = (-80, 80),
                                                    longitude = (-160, 160),
                                                    z = z_face,
