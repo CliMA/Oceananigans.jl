@@ -280,12 +280,12 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     v_kernel_args_tuple = NamedTuple{(:interior, :boundary)}(tuple(static_momentum_advection, v_kernel_args...), tuple(model.advection.momentum, v_kernel_args...))
 
     launch_conditioned!(arch, grid, kernel_parameters, u_conditioned_maps,
-            compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid,
-            u_kernel_args_tuple)
+                        compute_hydrostatic_free_surface_Gu!, (model.timestepper.Gⁿ.u, grid),
+                        u_kernel_args_tuple)
 
     launch_conditioned!(arch, grid, kernel_parameters, v_conditioned_maps,
-            compute_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid,
-            v_kernel_args_tuple)
+                        compute_hydrostatic_free_surface_Gv!, (model.timestepper.Gⁿ.v, grid),
+                        v_kernel_args_tuple)
 
     return nothing
 end

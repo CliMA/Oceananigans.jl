@@ -360,7 +360,7 @@ function launch_conditioned!(arch, grid, workspec, active_cells_map_tuple::NTupl
 	return nothing
 end
 
-function launch_conditioned!(arch, grid, workspec, active_cells_map_tuple::NamedTuple, common_args..., args::NamedTuple; kwargs...)
+function launch_conditioned!(arch, grid, workspec, active_cells_map_tuple::NamedTuple, common_args, args::NamedTuple; kwargs...)
   condition_keys = keys(active_cells_map_tuple)
   arg_keys = keys(args)
   if condition_keys != arg_keys
