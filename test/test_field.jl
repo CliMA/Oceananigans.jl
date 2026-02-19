@@ -935,4 +935,83 @@ end
         @test restore_prognostic_state!(of, :some_state) === of
         @test restore_prognostic_state!(cf, nothing) === cf
     end
+
+    @testset "FunctionField with reduced indices" begin
+        @info "  Testing FunctionField with reduced indices..."
+
+        # Non-symmetric grid so x, y, z coordinates are clearly distinct at every point
+        grid = RectilinearGrid(size=(4, 4, 4),
+                               x=(0, 1), y=(0, 2), z=(-3, 0),
+                               topology=(Periodic, Periodic, Bounded))
+        clock = Clock(time=π)
+
+        # Interior test point and its physical coordinates
+        i, j, k = 2, 3, 2
+        xc = xnode(i, grid, Center())
+        yc = ynode(j, grid, Center())
+        zc = znode(k, grid, Center())
+        t  = clock.time
+
+        # Case 1: (:, :, :) — baseline, func(x, y, z, t)
+        # All Colon: full 3D node is passed, no coordinate is dropped.
+        f = FunctionField{Center, Center, Center}(
+                (x, y, z, t) -> x + 2y + 3z + t, grid; clock)
+        @test f[i, j, k] ≈ xc + 2yc + 3zc + t
+
+        # Case 2: (:, :, Int) — z dropped, func(x, y, t)
+        # Fixed k in indices: z-coordinate not passed; changing k leaves result unchanged.
+        f = FunctionField{Center, Center, Face}(
+                (x, y, t) -> x + 2y + t, grid; clock,
+                indices = (:, :, grid.Nz+1))
+        @test f[i, j, grid.Nz+1] ≈ xc + 2yc + t
+        @test f[i, j, 1]         ≈ f[i, j, grid.Nz+1]   # k is ignored
+
+        # Case 3: (:, Int, :) — y dropped, func(x, z, t)
+        # Fixed j in indices: y-coordinate not passed; changing j leaves result unchanged.
+        f = FunctionField{Center, Center, Center}(
+                (x, z, t) -> x + 3z + t, grid; clock,
+                indices = (:, 2, :))
+        @test f[i, 2, k] ≈ xc + 3zc + t
+        @test f[i, 1, k] ≈ f[i, 2, k]   # j is ignored
+
+        # Case 4: (Int, :, :) — x dropped, func(y, z, t)
+        # Fixed i in indices: x-coordinate not passed; changing i leaves result unchanged.
+        f = FunctionField{Center, Center, Center}(
+                (y, z, t) -> 2y + 3z + t, grid; clock,
+                indices = (2, :, :))
+        @test f[2, j, k] ≈ 2yc + 3zc + t
+        @test f[1, j, k] ≈ f[2, j, k]   # i is ignored
+
+        # Case 5: (:, Int, Int) — y and z dropped, func(x, t)
+        # Fixed j and k in indices: only x passed spatially.
+        f = FunctionField{Center, Center, Face}(
+                (x, t) -> x + t, grid; clock,
+                indices = (:, 2, grid.Nz+1))
+        @test f[i, 2, grid.Nz+1] ≈ xc + t
+        @test f[i, 1, 1]         ≈ f[i, 2, grid.Nz+1]   # j and k ignored
+
+        # Case 6: (Int, :, Int) — x and z dropped, func(y, t)
+        # Fixed i and k in indices: only y passed spatially.
+        f = FunctionField{Center, Center, Face}(
+                (y, t) -> 2y + t, grid; clock,
+                indices = (2, :, grid.Nz+1))
+        @test f[2, j, grid.Nz+1] ≈ 2yc + t
+        @test f[1, j, 1]         ≈ f[2, j, grid.Nz+1]   # i and k ignored
+
+        # Case 7: (Int, Int, :) — x and y dropped, func(z, t)
+        # Fixed i and j in indices: only z passed spatially.
+        f = FunctionField{Center, Center, Center}(
+                (z, t) -> 3z + t, grid; clock,
+                indices = (2, 2, :))
+        @test f[2, 2, k] ≈ 3zc + t
+        @test f[1, 1, k] ≈ f[2, 2, k]   # i and j ignored
+
+        # Case 8: (Int, Int, Int) — all spatial coords dropped, func(t)
+        # All three indices fixed: node returns an empty tuple, func receives only t.
+        f = FunctionField{Center, Center, Face}(
+                t -> t^2, grid; clock,
+                indices = (2, 2, grid.Nz+1))
+        @test f[2, 2, grid.Nz+1] ≈ t^2
+        @test f[1, 1, 1]         ≈ f[2, 2, grid.Nz+1]   # all spatial indices ignored
+    end
 end

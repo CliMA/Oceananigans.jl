@@ -60,6 +60,18 @@ _node_names(grid, ::Nothing, ::Nothing, ::Nothing) = tuple()
 
 @inline node(i, j, k, grid::XYZFlatGrid, ℓx, ℓy, ℓz) = tuple()
 
+# Omission of reduced-index dimensions: when a dimension's index is a fixed integer
+# rather than a range (Colon), pass `nothing` for that location so _node drops it
+# from the coordinate tuple — the same mechanism used for flat grids above.
+@inline node(i, j, k, grid, ℓx, ℓy, ℓz, ::Tuple{Colon,  Colon,  Colon }) = node(i, j, k, grid, ℓx,      ℓy,      ℓz     )
+@inline node(i, j, k, grid, ℓx, ℓy, ℓz, ::Tuple{Colon,  Colon,  <:Int }) = node(i, j, k, grid, ℓx,      ℓy,      nothing)
+@inline node(i, j, k, grid, ℓx, ℓy, ℓz, ::Tuple{Colon,  <:Int,  Colon }) = node(i, j, k, grid, ℓx,      nothing, ℓz     )
+@inline node(i, j, k, grid, ℓx, ℓy, ℓz, ::Tuple{<:Int,  Colon,  Colon }) = node(i, j, k, grid, nothing, ℓy,      ℓz     )
+@inline node(i, j, k, grid, ℓx, ℓy, ℓz, ::Tuple{Colon,  <:Int,  <:Int }) = node(i, j, k, grid, ℓx,      nothing, nothing)
+@inline node(i, j, k, grid, ℓx, ℓy, ℓz, ::Tuple{<:Int,  Colon,  <:Int }) = node(i, j, k, grid, nothing, ℓy,      nothing)
+@inline node(i, j, k, grid, ℓx, ℓy, ℓz, ::Tuple{<:Int,  <:Int,  Colon }) = node(i, j, k, grid, nothing, nothing, ℓz     )
+@inline node(i, j, k, grid, ℓx, ℓy, ℓz, ::Tuple{<:Int,  <:Int,  <:Int }) = node(i, j, k, grid, nothing, nothing, nothing)
+
 #####
 ##### << Nodes >>
 #####
