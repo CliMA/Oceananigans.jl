@@ -14,6 +14,10 @@ using Oceananigans.TimeSteppers:
     tick!,
     step_lagrangian_particles!,
     QuasiAdamsBashforth2TimeStepper,
+    SplitRungeKuttaTimeStepper,
+    cache_previous_tendencies!,
+    rk_substep!,
+    cache_current_fields!,
     RungeKutta3TimeStepper,
     cache_previous_tendencies!,
     rk3_substep!,
@@ -112,6 +116,41 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}},
 
     # Return χ to initial value
     ab2_timestepper.χ = χ₀
+
+    return nothing
+end
+
+# Method of time_step! for a Reactant Model with SplitRungeKuttaTimeStepper:
+function time_step!(model::ReactantModel{<:SplitRungeKuttaTimeStepper}, Δt; callbacks=[])
+    # This conditional causes problems with Reactant, so we remove it from the method here.
+    # We then modify first_time_step! (seen below) so it always calls update_state for ReactantModels.
+    #=
+    if model.clock.iteration == 0
+        update_state!(model, callbacks)
+    end
+    =#
+
+    cache_current_fields!(model)
+    grid = model.grid
+
+    ####
+    #### Loop over the stages
+    ####
+    for (stage, β) in enumerate(model.timestepper.β)
+        # Update the clock stage
+        model.clock.stage = stage
+
+        # Perform the substep
+        Δτ = Δt / β
+        rk_substep!(model, Δτ, callbacks)
+
+        # Update the state
+        update_state!(model, callbacks)
+    end
+
+    # Finalize step
+    step_lagrangian_particles!(model, Δt)
+    tick!(model.clock, Δt)
 
     return nothing
 end

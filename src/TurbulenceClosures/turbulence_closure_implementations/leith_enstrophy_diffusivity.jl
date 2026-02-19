@@ -94,7 +94,7 @@ end
     @inbounds νₑ[i, j, k] = prefactor * dynamic_ν
 end
 
-function compute_diffusivities!(closure_fields, closure::TwoDimensionalLeith, model; parameters = :xyz)
+function compute_closure_fields!(closure_fields, closure::TwoDimensionalLeith, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
     velocities = model.velocities
@@ -125,10 +125,10 @@ end
 
 # Diffusive fluxes for Leith diffusivities
 
-@inline function diffusive_flux_x(i, j, k, grid, closure::TwoDimensionalLeith, diffusivities,
+@inline function diffusive_flux_x(i, j, k, grid, closure::TwoDimensionalLeith, closure_fields,
                                   ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index
 
-    νₑ = diffusivities.νₑ
+    νₑ = closure_fields.νₑ
 
     C_Redi = closure.C_Redi[tracer_index]
     C_GM = closure.C_GM[tracer_index]
@@ -144,10 +144,10 @@ end
                       + (C_Redi - C_GM) * R₁₃ * ∂z_c)
 end
 
-@inline function diffusive_flux_y(i, j, k, grid, closure::TwoDimensionalLeith, diffusivities,
+@inline function diffusive_flux_y(i, j, k, grid, closure::TwoDimensionalLeith, closure_fields,
                                   ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index
 
-    νₑ = diffusivities.νₑ
+    νₑ = closure_fields.νₑ
 
     C_Redi = closure.C_Redi[tracer_index]
     C_GM = closure.C_GM[tracer_index]
@@ -162,10 +162,10 @@ end
                              + (C_Redi - C_GM) * R₂₃ * ∂z_c)
 end
 
-@inline function diffusive_flux_z(i, j, k, grid, closure::TwoDimensionalLeith, diffusivities,
+@inline function diffusive_flux_z(i, j, k, grid, closure::TwoDimensionalLeith, closure_fields,
                                   ::Val{tracer_index}, c, clock, fields, buoyancy) where tracer_index
 
-    νₑ = diffusivities.νₑ
+    νₑ = closure_fields.νₑ
 
     C_Redi = closure.C_Redi[tracer_index]
     C_GM = closure.C_GM[tracer_index]
