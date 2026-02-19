@@ -6,7 +6,7 @@ struct FunctionField{LX, LY, LZ, C, P, F, G, I, T} <: AbstractField{LX, LY, LZ, 
       indices :: I
 
     @doc """
-        FunctionField{LX, LY, LZ}(func, grid; clock=nothing, parameters=nothing, indices=(:,:,:)) where {LX, LY, LZ}
+        FunctionField{LX, LY, LZ}(func, grid; clock=nothing, parameters=nothing, indices=(:, :, :)) where {LX, LY, LZ}
 
     Returns a `FunctionField` on `grid` and at location `LX, LY, LZ`.
 
