@@ -10,7 +10,7 @@ const C = Center
 const F = Face
 
 @testset "MutableVerticalDiscretization tests" begin
-    @info "testing the MutableVerticalDiscretization in ZCoordinate mode"
+   @info "Testing the MutableVerticalDiscretization in ZCoordinate mode..."
 
     z = MutableVerticalDiscretization((-20, 0))
 
