@@ -12,6 +12,8 @@
 ##### Extend defVar to be able to write fields to NetCDF directly
 #####
 
+using Oceananigans.Fields: ConstantField, OneField, ZeroField
+
 defVar(ds::AbstractDataset, name, op::AbstractOperation; kwargs...) = defVar(ds, name, Field(op); kwargs...)
 defVar(ds::AbstractDataset, name, op::Reduction; kwargs...) = defVar(ds, name, Field(op); kwargs...)
 
@@ -49,6 +51,37 @@ function defVar(ds::AbstractDataset, field_name, fd::AbstractField;
     else
         defVar(ds, field_name, eltype(array_type), effective_dim_names; kwargs...)
     end
+end
+
+function defVar(ds::AbstractDataset, field_name, fd::ConstantField;
+                array_type=Array{eltype(fd)},
+                attrib=Dict(),
+                kwargs...)
+    attrib["type"] = "ConstantField"
+    attrib["location"] = "(Nothing, Nothing, Nothing)"
+    defVar(ds, field_name, eltype(array_type)(fd.constant), (); attrib)
+end
+
+
+function defVar(ds::AbstractDataset, field_name, fd::OneField;
+                array_type=Array{eltype(fd)},
+                attrib=Dict(),
+                kwargs...)
+
+    attrib["type"] = "OneField"
+    attrib["location"] = "(Nothing, Nothing, Nothing)"
+    defVar(ds, field_name, eltype(array_type)(1), (); attrib)
+end
+
+
+function defVar(ds::AbstractDataset, field_name, fd::ZeroField;
+                array_type=Array{eltype(fd)},
+                attrib=Dict(),
+                kwargs...)
+
+    attrib["type"] = "ZeroField"
+    attrib["location"] = "(Nothing, Nothing, Nothing)"
+    defVar(ds, field_name, eltype(array_type)(0), (); attrib)
 end
 
 defVar(ds::AbstractDataset, field_name::Union{AbstractString, Symbol}, data::Array{Bool}, dim_names; kwargs...) = defVar(ds, field_name, Int8.(data), dim_names; kwargs...)
@@ -482,6 +515,8 @@ function save_output!(ds, output::LagrangianParticles, model, ow, time_index, na
 
     return nothing
 end
+
+save_output!(ds, output::Union{ZeroField, OneField, ConstantField}, args...) = nothing
 
 # Convert to a base Julia type (a float or DateTime).
 float_or_date_time(t) = t
