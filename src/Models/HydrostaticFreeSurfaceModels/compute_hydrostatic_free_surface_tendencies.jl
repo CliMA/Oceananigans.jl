@@ -145,7 +145,7 @@ function get_advection_conditioned_map(scheme, grid::ImmersedBoundaryGrid; activ
     fill!(max_scheme_field, false)
     launch!(architecture(grid), grid, :xyz, condition_map!, max_scheme_field, grid, scheme; active_cells_map)
 
-    return split_indices(max_scheme_field, grid; active_cells_map)
+    return NamedTuple{(:interior, :boundary)}(split_indices(max_scheme_field, grid; active_cells_map))
 end
 
 function split_indices(field, grid; active_cells_map=nothing)
@@ -251,8 +251,9 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     grid = model.grid
     arch = architecture(grid)
 
-		u_conditioned_maps = get_advection_conditioned_map(model.advection.momentum, grid; active_cells_map)
-		v_conditioned_maps = get_advection_conditioned_map(model.advection.momentum, grid; active_cells_map)
+		momentum_conditioned_maps = get_advection_conditioned_map(model.advection.momentum, grid; active_cells_map)
+    u_conditioned_maps = momentum_conditioned_maps
+		v_conditioned_maps = momentum_conditioned_maps
 
     u_immersed_bc = immersed_boundary_condition(velocities.u)
     v_immersed_bc = immersed_boundary_condition(velocities.v)
@@ -273,10 +274,10 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     static_momentum_advection = StaticWENOVectorInvariant(model.advection.momentum)
 
     u_kernel_args = tuple(model.coriolis, model.closure, u_immersed_bc, end_momentum_kernel_args..., u_forcing)
-    u_kernel_args_tuple = tuple(tuple(static_momentum_advection, u_kernel_args...), tuple(model.advection.momentum, u_kernel_args...))
+    u_kernel_args_tuple = NamedTuple{(:interior, :boundary)}(tuple(static_momentum_advection, u_kernel_args...), tuple(model.advection.momentum, u_kernel_args...))
 
     v_kernel_args = tuple(model.coriolis, model.closue, v_immersed_bc, end_momentum_kernel_args..., v_forcing)
-    v_kernel_args_tuple = tuple(tuple(static_momentum_advection, v_kernel_args...), tuple(model.advection.momentum, v_kernel_args...))
+    v_kernel_args_tuple = NamedTuple{(:interior, :boundary)}(tuple(static_momentum_advection, v_kernel_args...), tuple(model.advection.momentum, v_kernel_args...))
 
     launch_conditioned!(arch, grid, kernel_parameters, u_conditioned_maps,
             compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid,

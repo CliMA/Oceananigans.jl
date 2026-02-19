@@ -360,11 +360,18 @@ function launch_conditioned!(arch, grid, workspec, active_cells_map_tuple::NTupl
 	return nothing
 end
 
-function launch_conditioned!(arch, grid, workspec, active_cells_map_tuple::NTuple{2}, output, grid, args::NTuple{2}; kwargs...)
-	for (map, t_args) in zip(active_cells_map_tuple, args)
-		_launch!(arch, grid, workspec, output, grid, t_args...; active_cells_map=map, kwargs...)
-	end
-	return nothing
+function launch_conditioned!(arch, grid, workspec, active_cells_map_tuple::NamedTuple, output, grid, args::NamedTuple; kwargs...)
+  condition_keys = keys(active_cells_map_tuple)
+  arg_keys = keys(args)
+  if condition_keys != arg_keys
+    @warn "Active_cells_amp_tuple keys are different to args' keys. The kernel will not be launched"
+  else
+    for key in condition_keys
+      map = active_cells_map_tuple[key]
+      _launch!(arch, grid, workspec, output, grid, args[key]; active_cells_map=map, kwargs...)
+    end
+  end
+  return nothing
 end
 
 # When dims::Val
