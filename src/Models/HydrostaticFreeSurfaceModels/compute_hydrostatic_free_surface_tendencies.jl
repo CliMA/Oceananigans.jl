@@ -7,15 +7,12 @@ using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
-using Oceananigans.Grids: get_active_cells_map
+using Oceananigans.Grids: get_active_cells_map, active_cell
 using Oceananigans.Architectures: CPU
 import Oceananigans.Architectures as AC
 using Oceananigans.Fields: Field, interior
 using Oceananigans.Advection: StaticWENO, near_y_immersed_boundary_biasedᶜ, near_z_immersed_boundary_biasedᶠ, near_x_immersed_boundary_symmetricᶠ, near_x_immersed_boundary_biasedᶠ
 using KernelAbstractions: @kernel, @index
-"""
-    compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
->>>>>>> 6afff2baa (Add stub function for u-advection conditioning)
 
 """
     compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
@@ -204,15 +201,44 @@ end
 
 add_3rd_index(ij, k) = (ij[1], ij[2], k)
 
+check_interior_xyz(i, j, k, ibg, scheme) = (&&)(check_interior_x(i, j, k, ibg, scheme),
+                                                check_interior_y(i, j, k, ibg, scheme),
+                                                check_interior_z(i, j, k, ibg, scheme))
+
+function check_interior_x(i, j, k, ibg, scheme::AbstractAdvectionScheme{N}) where N
+    interior = true
+    
+    buffer = N + 1
+    for di in -buffer:buffer
+        interior &= active_cell(i + di, j, k, ibg)
+    end
+    return interior
+end
+
+function check_interior_y(i, j, k, ibg, scheme::AbstractAdvectionScheme{N}) where N
+    interior = true
+    
+    buffer = N + 1
+    for dj in -buffer:buffer
+        interior &= active_cell(i, j + dj, k, ibg)
+    end
+    return interior
+end
+
+function check_interior_z(i, j, k, ibg, scheme::AbstractAdvectionScheme{N}) where N
+    interior = true
+    
+    buffer = N + 1
+    for dk in -buffer:buffer
+        interior &= active_cell(i, j, k + dk, ibg)
+    end
+    return interior
+end
+
 @kernel function condition_map!(max_scheme_field, ibg, scheme)
     i, j, k = @index(Global, NTuple)
-    near_y = near_y_immersed_boundary_biasedᶜ(i, j, k, ibg, scheme.vorticity_scheme)
-    vert1 = near_x_immersed_boundary_symmetricᶠ(i, j, k, ibg, scheme.vertical_advection_scheme)
-    vert2 = near_z_immersed_boundary_biasedᶠ(i, j, k, ibg, scheme.vertical_advection_scheme)
-    vert3 = false #near_x_immersed_boundary_symmetricᶠ(i, j, k, ibg, scheme.upwinding.cross_scheme)
-    vert4 = near_x_immersed_boundary_biasedᶠ(i, j, k, ibg, scheme.divergence_scheme)
 
-    @inbounds max_scheme_field[i, j, k] = !near_y && !vert1 && !vert2 && !vert3 && !vert4
+    @inbounds max_scheme_field[i, j, k] = check_interior_xyz(i, j, k, ibg, scheme)
 end
 
 function get_v_conditioned_map(scheme, grid; active_cells_map=nothing)
