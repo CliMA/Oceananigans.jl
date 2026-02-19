@@ -360,9 +360,9 @@ function launch_conditioned!(arch, grid, workspec, active_cells_map_tuple::NTupl
 	return nothing
 end
 
-function launch_conditioned!(arch, grid, workspec, active_cells_map_tuple::NTuple{N,T}, args::NTuple{N, T2}; kwargs...) where {N,T,T2}
-	for (map, t_args) in zip(active_cells_map_tuple, args_tuple)
-		_launch!(arch, grid, workspec, t_args...; active_cells_map=map, kwargs...)
+function launch_conditioned!(arch, grid, workspec, active_cells_map_tuple::NTuple{2}, output, grid, args::NTuple{2}; kwargs...)
+	for (map, t_args) in zip(active_cells_map_tuple, args)
+		_launch!(arch, grid, workspec, output, grid, t_args...; active_cells_map=map, kwargs...)
 	end
 	return nothing
 end

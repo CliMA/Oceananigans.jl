@@ -11,7 +11,7 @@ using Oceananigans.Grids: get_active_cells_map, active_cell
 using Oceananigans.Architectures: CPU
 import Oceananigans.Architectures as AC
 using Oceananigans.Fields: Field, interior
-using Oceananigans.Advection: StaticWENO, near_y_immersed_boundary_biasedᶜ, near_z_immersed_boundary_biasedᶠ, near_x_immersed_boundary_symmetricᶠ, near_x_immersed_boundary_biasedᶠ
+using Oceananigans.Advection: StaticWENO, StaticWENOVectorInvariant
 using KernelAbstractions: @kernel, @index
 
 """
@@ -139,7 +139,7 @@ function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active
     return nothing
 end
 
-function get_u_conditioned_map(scheme, grid::ImmersedBoundaryGrid; active_cells_map=nothing)
+function get_advection_conditioned_map(scheme, grid::ImmersedBoundaryGrid; active_cells_map=nothing)
     # Field is true if the max scheme can be used for computing u advection
     max_scheme_field = Field{Center, Center, Center}(grid, Bool)
     fill!(max_scheme_field, false)
@@ -241,10 +241,6 @@ end
     @inbounds max_scheme_field[i, j, k] = check_interior_xyz(i, j, k, ibg, scheme)
 end
 
-function get_v_conditioned_map(scheme, grid; active_cells_map=nothing)
-    return active_cells_map
-end
-
 """
     compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters; active_cells_map=nothing)
 
@@ -255,18 +251,14 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     grid = model.grid
     arch = architecture(grid)
 
-		u_conditioned_maps = get_u_conditioned_map(model.advection.momentum, grid; active_cells_map)
-		v_conditioned_maps = get_v_conditioned_map(model.advection.momentum, grid; active_cells_map)
+		u_conditioned_maps = get_advection_conditioned_map(model.advection.momentum, grid; active_cells_map)
+		v_conditioned_maps = get_advection_conditioned_map(model.advection.momentum, grid; active_cells_map)
 
     u_immersed_bc = immersed_boundary_condition(velocities.u)
     v_immersed_bc = immersed_boundary_condition(velocities.v)
 
     u_forcing = model.forcing.u
     v_forcing = model.forcing.v
-
-    start_momentum_kernel_args = (model.advection.momentum,
-                                  model.coriolis,
-                                  model.closure)
 
     end_momentum_kernel_args = (velocities,
                                 model.free_surface,
@@ -278,26 +270,21 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
                                 model.vertical_coordinate,
                                 model.clock)
 
-    static_momentum_advection = VectorInvariant(
-        vorticity_scheme=StaticWENO(model.advection.momentum.vorticity_scheme),
-	vorticity_stencil=model.advection.momentum.vorticity_stencil,
-	    vertical_advection_scheme=StaticWENO(model.advection.momentum.vertical_advection_scheme),
-	    divergence_scheme=StaticWENO(model.advection.momentum.divergence_scheme),
-	    kinetic_energy_gradient_scheme=model.advection.momentum.kinetic_energy_gradient_scheme,
-	    upwinding=model.advection.momentum.upwinding
-	    )
-    u_kernel_args_1 = tuple(static_momentum_advection, model.coriolis, model.closure, u_immersed_bc, end_momentum_kernel_args..., u_forcing)
-    u_kernel_args_2 = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args..., u_forcing)
-    v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args..., v_forcing)
+    static_momentum_advection = StaticWENOVectorInvariant(model.advection.momentum)
 
-    launch!(arch, grid, kernel_parameters, compute_hydrostatic_free_surface_Gu!,
-		  model.timestepper.Gⁿ.u, grid, u_kernel_args_1; active_cells_map=u_conditioned_maps[1])
-    launch!(arch, grid, kernel_parameters, compute_hydrostatic_free_surface_Gu!,
-		  model.timestepper.Gⁿ.u, grid, u_kernel_args_2; active_cells_map=u_conditioned_maps[2])
+    u_kernel_args = tuple(model.coriolis, model.closure, u_immersed_bc, end_momentum_kernel_args..., u_forcing)
+    u_kernel_args_tuple = tuple(tuple(static_momentum_advection, u_kernel_args...), tuple(model.advection.momentum, u_kernel_args...))
+
+    v_kernel_args = tuple(model.coriolis, model.closue, v_immersed_bc, end_momentum_kernel_args..., v_forcing)
+    v_kernel_args_tuple = tuple(tuple(static_momentum_advection, v_kernel_args...), tuple(model.advection.momentum, v_kernel_args...))
+
+    launch_conditioned!(arch, grid, kernel_parameters, u_conditioned_maps,
+            compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid,
+            u_kernel_args_tuple)
 
     launch_conditioned!(arch, grid, kernel_parameters, v_conditioned_maps,
             compute_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid,
-            v_kernel_args)
+            v_kernel_args_tuple)
 
     return nothing
 end
