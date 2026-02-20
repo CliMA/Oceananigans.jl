@@ -210,6 +210,9 @@ simulation.output_writers[:fields] = NetCDFWriter(model, outputs;
 
 run!(simulation)
 
+# Check for simulation crashes #hide
+any(isnan, model.velocities.u) && error("Simulation crashed: NaN values detected in u-velocity field") #hide
+
 # ## Visualize the results
 #
 # First we load the required package to load NetCDF output files and define the coordinates for
