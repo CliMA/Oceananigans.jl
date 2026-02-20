@@ -186,21 +186,28 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 end
 
 """
-    work_layout(grid, dims, location)
+    work_layout(grid, dims; location=nothing)
 
 Returns the `workgroup` and `worksize` for launching a kernel over `dims`
 on `grid`. The `workgroup` is a tuple specifying the threads per block in each
 dimension. The `worksize` specifies the range of the loop in each dimension.
 
-Specifying `include_right_boundaries=true` will ensure the work layout includes the
-right face end points along bounded dimensions. This requires the field `location`
-to be specified.
+When `location` is provided (a tuple of `Face`/`Center`/`Nothing` types or instances),
+the work size accounts for staggered fields: `Face` on a `Bounded` axis has `N+1`
+interior points rather than `N`.
 
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
-@inline function work_layout(grid, workdims::Symbol, reduced_dimensions)
-    Nx, Ny, Nz = size(grid)
-    Wx, Wy, Wz = flatten_reduced_dimensions((Nx, Ny, Nz), reduced_dimensions) # this seems to be for halo filling
+@inline _work_size(grid, ::Nothing) = size(grid)
+@inline function _work_size(grid, loc::Tuple)
+    Nx₀, Ny₀, Nz₀ = size(grid)
+    Nx, Ny, Nz = size(grid, loc)
+    return (max(Nx₀, Nx), max(Ny₀, Ny), max(Nz₀, Nz))
+end
+
+@inline function work_layout(grid, workdims::Symbol, reduced_dimensions; location=nothing)
+    Nx, Ny, Nz = _work_size(grid, location)
+    Wx, Wy, Wz = flatten_reduced_dimensions((Nx, Ny, Nz), reduced_dimensions)
     workgroup = heuristic_workgroup(Wx, Wy, Wz)
 
     worksize = ifelse(workdims == :xyz, (Wx, Wy, Wz),
@@ -210,7 +217,7 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
     return StaticSize(workgroup), StaticSize(worksize)
 end
 
-@inline function work_layout(grid, worksize::NTuple{N, Int}, reduced_dimensions) where N
+@inline function work_layout(grid, worksize::NTuple{N, Int}, reduced_dimensions; location=nothing) where N
     workgroup = heuristic_workgroup(worksize...)
     return StaticSize(workgroup), StaticSize(worksize)
 end
@@ -270,7 +277,7 @@ end
                                   reduced_dimensions = (),
                                   location = nothing)
 
-    workgroup, worksize = work_layout(grid, workspec, reduced_dimensions)
+    workgroup, worksize = work_layout(grid, workspec, reduced_dimensions; location)
     dev  = Architectures.device(arch)
     loop = kernel!(dev, workgroup, worksize)
 
