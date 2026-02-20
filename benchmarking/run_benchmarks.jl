@@ -85,9 +85,9 @@ function parse_commandline()
             default = "CATKE"
 
         "--timestepper"
-            help = "Time stepping scheme: QuasiAdamsBashforth2, RungeKutta3"
+            help = "Time stepping scheme: SplitRungeKutta3, QuasiAdamsBashforth2"
             arg_type = String
-            default = "QuasiAdamsBashforth2"
+            default = "SplitRungeKutta3"
 
         "--time_steps"
             help = "Number of time steps (benchmark mode only)"

@@ -14,7 +14,7 @@ using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
                 momentum_advection = WENOVectorInvariant(order=9),
                 tracer_advection = WENO(order=7),
                 closure = CATKEVerticalDiffusivity(),
-                timestepper = :QuasiAdamsBashforth2)
+                timestepper = :SplitRungeKutta3)
 
 Create a `HydrostaticFreeSurfaceModel` for the Earth ocean benchmark case.
 
@@ -29,7 +29,7 @@ Uses a TripolarGrid with realistic Earth bathymetry from NumericalEarth.
 - `momentum_advection`: Momentum advection scheme (default: `WENOVectorInvariant(order=9)`)
 - `tracer_advection`: Tracer advection scheme (default: `WENO(order=7)`)
 - `closure`: Turbulence closure (default: `CATKEVerticalDiffusivity()`)
-- `timestepper`: Time stepping scheme (default: `:QuasiAdamsBashforth2`)
+- `timestepper`: Time stepping scheme (default: `:SplitRungeKutta3`)
 """
 function earth_ocean(arch = CPU();
                      float_type = Float32,
@@ -37,7 +37,7 @@ function earth_ocean(arch = CPU();
                      momentum_advection = WENOVectorInvariant(order=9),
                      tracer_advection = WENO(order=7),
                      closure = CATKEVerticalDiffusivity(),
-                     timestepper = :QuasiAdamsBashforth2)
+                     timestepper = :SplitRungeKutta3)
 
     Oceananigans.defaults.FloatType = float_type
 
@@ -56,7 +56,7 @@ function earth_ocean(arch = CPU();
         major_basins = 2
     )
 
-    grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height);
+    grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom_height);
         active_cells_map = true
     )
 
