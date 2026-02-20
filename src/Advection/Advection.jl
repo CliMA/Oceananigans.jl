@@ -24,8 +24,7 @@ using Oceananigans.Grids
 using Oceananigans.Operators
 
 using Oceananigans: fully_supported_float_types
-using Oceananigans.Architectures: architecture, CPU
-using Oceananigans.Grids: with_halo
+using Oceananigans.Architectures: CPU
 using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, ∂t_σ
 using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
 

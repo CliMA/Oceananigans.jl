@@ -1,5 +1,3 @@
-using Oceananigans.Grids: ξnodes, ηnodes, rnodes
-
 # Generic reconstruction methods valid for all reconstruction schemes
 # Unroll the functions to pass the coordinates in case of a stretched grid
 """ same as [`symmetric_interpolate_xᶠᵃᵃ`](@ref) but on `Center`s instead of `Face`s """

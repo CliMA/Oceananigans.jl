@@ -8,8 +8,7 @@ using Oceananigans.Grids: AbstractGrid,
                           Bounded,
                           RightConnected,
                           LeftConnected,
-                          topology,
-                          architecture
+                          topology
 
 const AG  = AbstractGrid
 const AUG = AbstractUnderlyingGrid
