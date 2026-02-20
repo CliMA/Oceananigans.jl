@@ -2,7 +2,7 @@ using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ
 using Oceananigans: defaults
 
 struct PerturbationAdvection{FT, D}
-     inflow_timescale :: FT
+    inflow_timescale :: FT
     outflow_timescale :: FT
     gravity_wave_speed :: FT
     density :: D
