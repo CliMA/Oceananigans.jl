@@ -25,11 +25,7 @@ function step_closure_prognostics! end
 # Fallback for models without closure prognostics
 step_closure_prognostics!(model, Δt) = nothing
 
-"""
-    maybe_initialize_state!(model, callbacks)
-
-Update the model state at iteration 0, in case `run!` is not used.
-"""
+# Update the model state at iteration 0, in case run! is not used.
 function maybe_initialize_state!(model, callbacks)
     if model.clock.iteration == 0
         update_state!(model, callbacks)
