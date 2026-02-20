@@ -1,9 +1,9 @@
 struct FunctionField{LX, LY, LZ, C, P, F, G, I, T} <: AbstractField{LX, LY, LZ, G, T, 3}
-         func :: F
-         grid :: G
-        clock :: C
-   parameters :: P
-      indices :: I
+          func :: F
+          grid :: G
+         clock :: C
+    parameters :: P
+       indices :: I
 
     @doc """
         FunctionField{LX, LY, LZ}(func, grid; clock=nothing, parameters=nothing, indices=(:, :, :)) where {LX, LY, LZ}
@@ -17,9 +17,48 @@ struct FunctionField{LX, LY, LZ, C, P, F, G, I, T} <: AbstractField{LX, LY, LZ, 
     A `FunctionField` will return the result of `func(x, y, z [, t])` at `LX, LY, LZ` on
     `grid` when indexed at `i, j, k`.
 
-    If `indices` reduces a dimension to a single integer (e.g. `indices = (:, :, Nz+1)`),
-    that coordinate is dropped from the node passed to `func`. For example, with
-    `indices = (:, :, Nz+1)` the function signature becomes `func(x, y [, t])`.
+    `indices` restricts the region of the field that is considered active (e.g.,
+    `indices = (:, :, Nz+1)` marks the field as living on a single horizontal slice).
+    The function signature is always `func(x, y, z [, t])` regardless of `indices`.
+
+    Example (default `indices` — the `indices` line is absent from the output):
+
+    ```jldoctest
+    using Oceananigans
+    using Oceananigans.Fields: FunctionField
+
+    f(x, y, z) = sin(x) * cos(y) + z
+    clock = Clock(time=0.0)
+    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    FunctionField{Center, Center, Center}(f, grid; clock)
+
+    # output
+    FunctionField located at (Center, Center, Center)
+    ├── func: f (generic function with 1 method)
+    ├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+    ├── clock: Clock{Float64, Float64}(time=0 seconds, iteration=0, last_Δt=Inf days)
+    └── parameters: nothing
+    ```
+
+    Example (reduced `indices` — the active footprint is a single horizontal slice):
+
+    ```jldoctest
+    using Oceananigans
+    using Oceananigans.Fields: FunctionField
+
+    η(x, y, z) = sin(x) * cos(y)
+    clock = Clock(time=0.0)
+    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+    FunctionField{Center, Center, Face}(η, grid; clock, indices=(:, :, grid.Nz+1))
+
+    # output
+    FunctionField located at (Center, Center, Face)
+    ├── func: η (generic function with 1 method)
+    ├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+    ├── clock: Clock{Float64, Float64}(time=0 seconds, iteration=0, last_Δt=Inf days)
+    ├── indices: (:, :, 2)
+    └── parameters: nothing
+    ```
     """
     @inline function FunctionField{LX, LY, LZ}(func::F,
                                                grid::G;
@@ -33,9 +72,11 @@ struct FunctionField{LX, LY, LZ, C, P, F, G, I, T} <: AbstractField{LX, LY, LZ, 
     @inline function FunctionField{LX, LY, LZ}(f::FunctionField,
                                                grid::G;
                                                clock::C=nothing) where {LX, LY, LZ, G, C}
+        P = typeof(f.parameters)
         T = eltype(grid)
-        return new{LX, LY, LZ, C, typeof(f.parameters), typeof(f.func), G, typeof(f.indices), T}(
-                   f.func, grid, clock, f.parameters, f.indices)
+        F = typeof(f.func)
+        I = typeof(f.indices)
+        return new{LX, LY, LZ, C, P, F, G, I, T}(f.func, grid, clock, f.parameters, f.indices)
     end
 end
 
@@ -58,7 +99,7 @@ fieldify_function(L, a::Function, grid) = FunctionField(L, a, grid)
 @inline call_func(::Nothing, ::Nothing,  func, x...) = func(x...)
 
 @inline function Base.getindex(f::FunctionField{LX, LY, LZ}, i, j, k) where {LX, LY, LZ}
-    f_ijk = call_func(f.clock, f.parameters, f.func, node(i, j, k, f.grid, LX(), LY(), LZ(), f.indices)...)
+    f_ijk = call_func(f.clock, f.parameters, f.func, node(i, j, k, f.grid, LX(), LY(), LZ())...)
     return convert(eltype(f.grid), f_ijk)
 end
 

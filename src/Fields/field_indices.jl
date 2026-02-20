@@ -73,6 +73,12 @@ function compute_index_intersection(to_idx::AbstractUnitRange, from_idx::Abstrac
     return range_intersection
 end
 
+# Int indices (e.g. from a FunctionField with reduced indices) are treated as
+# single-element ranges so that the existing intersection logic applies cleanly.
+compute_index_intersection(to,      from::Int, args...) = compute_index_intersection(to   , from:from, args...)
+compute_index_intersection(to::Int, from     , args...) = compute_index_intersection(to:to, from     , args...)
+compute_index_intersection(to::Int, from::Int, args...) = compute_index_intersection(to:to, from:from, args...)
+
 validate_shifted_index(shifted_idx) = first(shifted_idx) > last(shifted_idx) &&
     throw(ArgumentError("Cannot compute index intersection!"))
 
