@@ -1,5 +1,3 @@
-using Oceananigans.Utils: time_difference_seconds
-
 import Oceananigans: prognostic_state, restore_prognostic_state!
 
 """
@@ -105,7 +103,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     # Be paranoid and update state at iteration 0, in case run! is not used:
-    model.clock.iteration == 0 && update_state!(model, callbacks)
+    maybe_initialize_state!(model, callbacks)
 
     γ¹ = model.timestepper.γ¹
     γ² = model.timestepper.γ²
@@ -155,17 +153,13 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     rk3_substep!(model, Δt, γ³, ζ³, callbacks)
     cache_previous_tendencies!(model)
 
-    # This adjustment of the final time-step reduces the accumulation of
-    # round-off error when Δt is added to model.clock.time. Note that we still use
-    # third_stage_Δt for the substep, pressure correction, and Lagrangian particles step.
-    corrected_third_stage_Δt = time_difference_seconds(tⁿ⁺¹, model.clock.time)
-    tick!(model.clock, corrected_third_stage_Δt)
-    # now model.clock.last_Δt = clock.last_stage_Δt = third_stage_Δt
-    # we correct those below
-    model.clock.last_stage_Δt = corrected_third_stage_Δt
-    model.clock.last_Δt = Δt
+    # Use tick! with Δt so that last_Δt and last_stage_Δt are set to Δt.
+    # Then correct clock.time to the pre-computed tⁿ⁺¹ to reduce floating
+    # point error accumulation.
+    tick!(model.clock, Δt)
+    model.clock.time = tⁿ⁺¹
 
-    step_closure_prognostics!(model, corrected_third_stage_Δt)
+    step_closure_prognostics!(model, third_stage_Δt)
     update_state!(model, callbacks)
     step_lagrangian_particles!(model, third_stage_Δt)
 

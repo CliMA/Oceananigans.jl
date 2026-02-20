@@ -317,10 +317,12 @@ function Oceananigans.TimeSteppers.tick!(clock::Oceananigans.TimeSteppers.Clock{
 
     if stage # tick a stage update
         clock.stage += 1
-        clock.last_stage_Δt = Δt
+        clock.last_stage_Δt.mlir_data = Δt.mlir_data
     else # tick an iteration and reset stage
         clock.iteration.mlir_data = (clock.iteration + 1).mlir_data
         clock.stage = 1
+        clock.last_Δt.mlir_data = Δt.mlir_data
+        clock.last_stage_Δt.mlir_data = Δt.mlir_data
     end
 
     return nothing

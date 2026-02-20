@@ -5,7 +5,8 @@ export
     RungeKutta3TimeStepper,
     SplitRungeKuttaTimeStepper,
     time_step!,
-    Clock
+    Clock,
+    maybe_initialize_state!
 
 using KernelAbstractions: @kernel, @index
 using Oceananigans: AbstractModel, initialize!, prognostic_fields
@@ -24,6 +25,18 @@ function step_closure_prognostics! end
 
 # Fallback for models without closure prognostics
 step_closure_prognostics!(model, Δt) = nothing
+
+"""
+    maybe_initialize_state!(model, callbacks)
+
+Update the model state at iteration 0, in case `run!` is not used.
+"""
+function maybe_initialize_state!(model, callbacks)
+    if model.clock.iteration == 0
+        update_state!(model, callbacks)
+    end
+    return nothing
+end
 
 # Interface for time-stepping Lagrangian particles
 abstract type AbstractLagrangianParticles end
