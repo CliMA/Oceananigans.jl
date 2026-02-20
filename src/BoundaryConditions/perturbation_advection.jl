@@ -1,18 +1,22 @@
 using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ
 using Oceananigans: defaults
 
-struct PerturbationAdvection{FT}
-    inflow_timescale :: FT
-   outflow_timescale :: FT
+struct PerturbationAdvection{FT, D}
+     inflow_timescale :: FT
+    outflow_timescale :: FT
+    gravity_wave_speed :: FT
+    density :: D
 end
 
 """
     PerturbationAdvection(FT = defaults.FloatType;
                           outflow_timescale = Inf,
-                          inflow_timescale = 0)
+                          inflow_timescale = 0,
+                          gravity_wave_speed = 0,
+                          density = nothing)
 
 Create a `PerturbationAdvection` scheme to be used with an `OpenBoundaryCondition`.
-This scheme nudges the boundary velocity to the `OpenBoundaryCondition`'s exterior value `val`,
+This scheme nudges the boundary value to the `OpenBoundaryCondition`'s exterior value `val`,
 using a time-scale `inflow_timescale` for inflow and `outflow_timescale` for outflow.
 
 For cases where we assume that the internal flow is a small perturbation from
@@ -34,10 +38,10 @@ a backwards euler step (in the case that the mean flow is boundary normal) on a 
 
 This can not be solved for general forcing, but if we assume the dominant forcing is
 relaxation to the mean velocity (i.e. u′→0) then Fᵤ = -u′ / τ then we can find u′ⁿ⁺¹:
-    u′ⁿ⁺¹ = (uⁿ + Ũ u′ⁿ⁺¹ᵢ₋₁ - Uⁿ⁺¹) / (1 + Ũ + Δt/τ),
+    u′ⁿ⁺¹ = (uⁿ + Ũ u′ⁿ⁺¹ᵢ₋₁ - Uⁿ⁺¹) / (1 + Ũ + Δt/τ),
 
-where Ũ = U Δt / Δx, then uⁿ⁺¹ is:
-    uⁿ⁺¹ = (uᵢⁿ + Ũ uᵢ₋₁ⁿ⁺¹ + Uⁿ⁺¹τ̃) / (1 + τ̃ + Ũ)
+where Ũ = U Δt / Δx, then uⁿ⁺¹ is:
+    uⁿ⁺¹ = (uᵢⁿ + Ũ uᵢ₋₁ⁿ⁺¹ + Uⁿ⁺¹τ̃) / (1 + τ̃ + Ũ)
 
 where τ̃ = Δt/τ.
 
@@ -53,78 +57,140 @@ to point into the domain.
 
 The ideal value of the timescales probably depend on the grid spacing and details of the
 boundary flow.
+
+# Keyword Arguments
+
+- `outflow_timescale`: relaxation timescale when flow exits the domain [s].
+  Default: `Inf` (pure radiation, no relaxation).
+- `inflow_timescale`: relaxation timescale when flow enters the domain [s].
+  Default: `0` (instant relaxation to exterior value).
+- `gravity_wave_speed`: additional phase speed added to the advective velocity [m/s].
+  Useful for momentum fields where gravity waves propagate faster than the mean flow.
+  Default: `0`.
+- `density`: density field for converting density-weighted fields (ρψ) to intensive
+  fields (ψ) before computing phase speeds and radiation. When provided, the scheme
+  divides by `density` before radiation and multiplies back after. This is required
+  for models with density-weighted prognostic variables (e.g., anelastic models with
+  prognostic ρu, ρθ). Default: `nothing` (no conversion).
 """
 function PerturbationAdvection(FT = defaults.FloatType;
                                outflow_timescale = Inf,
-                               inflow_timescale = 0)
+                               inflow_timescale = 0,
+                               gravity_wave_speed = 0,
+                               density = nothing)
     inflow_timescale = convert(FT, inflow_timescale)
     outflow_timescale = convert(FT, outflow_timescale)
-    return PerturbationAdvection(inflow_timescale, outflow_timescale)
+    gravity_wave_speed = convert(FT, gravity_wave_speed)
+    return PerturbationAdvection(inflow_timescale, outflow_timescale, gravity_wave_speed, density)
 end
 
 Adapt.adapt_structure(to, pe::PerturbationAdvection) =
     PerturbationAdvection(adapt(to, pe.inflow_timescale),
-                          adapt(to, pe.outflow_timescale))
+                          adapt(to, pe.outflow_timescale),
+                          adapt(to, pe.gravity_wave_speed),
+                          adapt(to, pe.density))
 
 const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
 
-@inline function step_right_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
-                                      grid, u, clock, model_fields, ΔX)
+# Helper to convert between density-weighted and intensive fields.
+# When density is nothing, these are no-ops.
+@inline _to_intensive(ψ, ::Nothing, k) = ψ
+@inline _to_intensive(ψ, ρ, k) = ψ / @inbounds ρ[1, 1, k]
+@inline _to_extensive(ψ, ::Nothing, k) = ψ
+@inline _to_extensive(ψ, ρ, k) = ψ * @inbounds ρ[1, 1, k]
+
+@inline function step_right_open_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
+                                           grid, u, clock, model_fields, ΔX, k)
     iᴮ, jᴮ, kᴮ = boundary_indices
     iᴬ, jᴬ, kᴬ = boundary_adjacent_indices
     Δt = clock.last_stage_Δt
-    Δt = ifelse(isinf(Δt), 0, Δt)
-
-    ūⁿ⁺¹    = getbc(bc, l, m, grid, clock, model_fields)
-    uᵢⁿ     = @inbounds getindex(u, iᴮ, jᴮ, kᴮ)
-    uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, iᴬ, jᴬ, kᴬ)
-    U = max(0, min(1, Δt / ΔX * ūⁿ⁺¹))
+    Δt = ifelse(isinf(Δt), zero(Δt), Δt)
 
     pa = bc.classification.scheme
-    τ = ifelse(ūⁿ⁺¹ >= 0, pa.outflow_timescale, pa.inflow_timescale)
-    τ̃ = Δt / τ # last stage Δt normalized by the inflow/output timescale
+    ρ = pa.density
+    cstar = pa.gravity_wave_speed
 
-    relaxed_uᵢⁿ⁺¹ = (uᵢⁿ + U * uᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * τ̃) / (1 + τ̃ + U)
-    uᵢⁿ⁺¹         = ifelse(τ == 0, ūⁿ⁺¹, relaxed_uᵢⁿ⁺¹)
+    # Convert to intensive space (no-op when density is nothing)
+    ψ_b   = _to_intensive(@inbounds(u[iᴮ, jᴮ, kᴮ]), ρ, k)
+    ψ_int = _to_intensive(@inbounds(u[iᴬ, jᴬ, kᴬ]), ρ, k)
 
-    @inbounds setindex!(u, uᵢⁿ⁺¹, iᴮ, jᴮ, kᴮ)
+    # Prescribed exterior value (in intensive units when density is provided)
+    ψ̄ = getbc(bc, l, m, grid, clock, model_fields)
+
+    # Phase speed: exterior value + gravity wave speed
+    c_b = ψ̄ + cstar
+    Ũ = max(0, min(1, Δt / ΔX * c_b))
+
+    # Inflow vs outflow relaxation
+    τ = ifelse(ψ̄ >= 0, pa.outflow_timescale, pa.inflow_timescale)
+    τ̃ = Δt / τ
+
+    ψ_new = (ψ_b + Ũ * ψ_int + ψ̄ * τ̃) / (1 + τ̃ + Ũ)
+    ψ_new = ifelse(τ == 0, ψ̄, ψ_new)
+
+    # Convert back to extensive space (no-op when density is nothing)
+    @inbounds u[iᴮ, jᴮ, kᴮ] = _to_extensive(ψ_new, ρ, k)
 
     return nothing
+end
+
+@inline function step_left_open_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
+                                          grid, u, clock, model_fields, ΔX, k)
+    iᴮ, jᴮ, kᴮ = boundary_indices
+    iᴬ, jᴬ, kᴬ = boundary_adjacent_indices
+    Δt = clock.last_stage_Δt
+    Δt = ifelse(isinf(Δt), zero(Δt), Δt)
+
+    pa = bc.classification.scheme
+    ρ = pa.density
+    cstar = pa.gravity_wave_speed
+
+    ψ_b   = _to_intensive(@inbounds(u[iᴮ, jᴮ, kᴮ]), ρ, k)
+    ψ_int = _to_intensive(@inbounds(u[iᴬ, jᴬ, kᴬ]), ρ, k)
+
+    ψ̄ = getbc(bc, l, m, grid, clock, model_fields)
+
+    # Phase speed: exterior value - gravity wave speed (outflow is -x at west / -y at south)
+    c_b = ψ̄ - cstar
+    Ũ = min(0, max(-1, Δt / ΔX * c_b))
+
+    τ = ifelse(ψ̄ <= 0, pa.outflow_timescale, pa.inflow_timescale)
+    τ̃ = Δt / τ
+
+    ψ_new = (ψ_b - Ũ * ψ_int + ψ̄ * τ̃) / (1 + τ̃ - Ũ)
+    ψ_new = ifelse(τ == 0, ψ̄, ψ_new)
+
+    @inbounds u[iᴮ, jᴮ, kᴮ] = _to_extensive(ψ_new, ρ, k)
+
+    return nothing
+end
+
+# Backward compatibility: old step_right/left_boundary! signatures without k argument
+@inline function step_right_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
+                                      grid, u, clock, model_fields, ΔX)
+    k = boundary_indices[3]
+    step_right_open_boundary!(bc, l, m, boundary_indices, boundary_adjacent_indices,
+                              grid, u, clock, model_fields, ΔX, k)
 end
 
 @inline function step_left_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
                                      grid, u, clock, model_fields, ΔX)
-    iᴮ, jᴮ, kᴮ = boundary_indices
-    iᴬ, jᴬ, kᴬ = boundary_adjacent_indices
-    Δt = clock.last_stage_Δt
-    Δt = ifelse(isinf(Δt), 0, Δt)
-
-    ūⁿ⁺¹    = getbc(bc, l, m, grid, clock, model_fields)
-    uᵢⁿ     = @inbounds getindex(u, iᴮ, jᴮ, kᴮ)
-    uᵢ₋₁ⁿ⁺¹ = @inbounds getindex(u, iᴬ, jᴬ, kᴬ)
-    U = min(0, max(-1, Δt / ΔX * ūⁿ⁺¹))
-
-    pa = bc.classification.scheme
-    τ = ifelse(ūⁿ⁺¹ <= 0, pa.outflow_timescale, pa.inflow_timescale)
-    τ̃ = Δt / τ # last stage Δt normalized by the inflow/output timescale
-
-    relaxed_u₁ⁿ⁺¹ = (uᵢⁿ - U * uᵢ₋₁ⁿ⁺¹ + ūⁿ⁺¹ * τ̃) / (1 + τ̃ - U)
-    u₁ⁿ⁺¹         = ifelse(τ == 0, ūⁿ⁺¹, relaxed_u₁ⁿ⁺¹)
-
-    @inbounds setindex!(u, u₁ⁿ⁺¹, iᴮ, jᴮ, kᴮ)
-
-    return nothing
+    k = boundary_indices[3]
+    step_left_open_boundary!(bc, l, m, boundary_indices, boundary_adjacent_indices,
+                             grid, u, clock, model_fields, ΔX, k)
 end
+
+#####
+##### Halo-filling methods for Face-located fields (velocity/momentum)
+#####
 
 @inline function _fill_east_halo!(j, k, grid, u, bc::PAOBC, ::Tuple{Face, Any, Any}, clock, model_fields)
     i = grid.Nx + 1
     boundary_indices = (i, j, k)
     boundary_adjacent_indices = (i-1, j, k)
-
     Δx = Δxᶠᶜᶜ(i, j, k, grid)
-
-    step_right_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices, grid, u, clock, model_fields, Δx)
-
+    step_right_open_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices,
+                              grid, u, clock, model_fields, Δx, k)
     return nothing
 end
 
@@ -132,8 +198,8 @@ end
     boundary_indices = (1, j, k)
     boundary_adjacent_indices = (2, j, k)
     Δx = Δxᶠᶜᶜ(1, j, k, grid)
-    step_left_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices, grid, u, clock, model_fields, Δx)
-
+    step_left_open_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices,
+                             grid, u, clock, model_fields, Δx, k)
     return nothing
 end
 
@@ -141,20 +207,18 @@ end
     j = grid.Ny + 1
     boundary_indices = (i, j, k)
     boundary_adjacent_indices = (i, j-1, k)
-
     Δy = Δyᶜᶠᶜ(i, j, k, grid)
-    step_right_boundary!(bc, i, k, boundary_indices, boundary_adjacent_indices, grid, u, clock, model_fields, Δy)
-
+    step_right_open_boundary!(bc, i, k, boundary_indices, boundary_adjacent_indices,
+                              grid, u, clock, model_fields, Δy, k)
     return nothing
 end
 
 @inline function _fill_south_halo!(i, k, grid, u, bc::PAOBC, ::Tuple{Any, Face, Any}, clock, model_fields)
     boundary_indices = (i, 1, k)
     boundary_adjacent_indices = (i, 2, k)
-
     Δy = Δyᶜᶠᶜ(i, 1, k, grid)
-    step_left_boundary!(bc, i, k, boundary_indices, boundary_adjacent_indices, grid, u, clock, model_fields, Δy)
-
+    step_left_open_boundary!(bc, i, k, boundary_indices, boundary_adjacent_indices,
+                             grid, u, clock, model_fields, Δy, k)
     return nothing
 end
 
@@ -162,19 +226,59 @@ end
     k = grid.Nz + 1
     boundary_indices = (i, j, k)
     boundary_adjacent_indices = (i, j, k-1)
-
     Δz = Δzᶜᶜᶠ(i, j, k, grid)
-    step_right_boundary!(bc, i, j, boundary_indices, boundary_adjacent_indices, grid, u, clock, model_fields, Δz)
-
+    step_right_open_boundary!(bc, i, j, boundary_indices, boundary_adjacent_indices,
+                              grid, u, clock, model_fields, Δz, k)
     return nothing
 end
 
 @inline function _fill_bottom_halo!(i, j, grid, u, bc::PAOBC, ::Tuple{Any, Any, Face}, clock, model_fields)
     boundary_indices = (i, j, 1)
     boundary_adjacent_indices = (i, j, 2)
-
     Δz = Δzᶜᶜᶠ(i, j, 1, grid)
-    step_left_boundary!(bc, i, j, boundary_indices, boundary_adjacent_indices, grid, u, clock, model_fields, Δz)
+    step_left_open_boundary!(bc, i, j, boundary_indices, boundary_adjacent_indices,
+                             grid, u, clock, model_fields, Δz, 1)
+    return nothing
+end
 
+#####
+##### Halo-filling methods for Center-located fields (scalars like ρθ, ρq, tracers)
+#####
+
+@inline function _fill_east_halo!(j, k, grid, c, bc::PAOBC, ::Tuple{Center, Any, Any}, clock, model_fields)
+    i = grid.Nx + 1
+    boundary_indices = (i, j, k)
+    boundary_adjacent_indices = (i-1, j, k)
+    Δx = Δxᶠᶜᶜ(i, j, k, grid)
+    step_right_open_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices,
+                              grid, c, clock, model_fields, Δx, k)
+    return nothing
+end
+
+@inline function _fill_west_halo!(j, k, grid, c, bc::PAOBC, ::Tuple{Center, Any, Any}, clock, model_fields)
+    boundary_indices = (1, j, k)
+    boundary_adjacent_indices = (2, j, k)
+    Δx = Δxᶠᶜᶜ(1, j, k, grid)
+    step_left_open_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices,
+                             grid, c, clock, model_fields, Δx, k)
+    return nothing
+end
+
+@inline function _fill_north_halo!(i, k, grid, c, bc::PAOBC, ::Tuple{Any, Center, Any}, clock, model_fields)
+    j = grid.Ny + 1
+    boundary_indices = (i, j, k)
+    boundary_adjacent_indices = (i, j-1, k)
+    Δy = Δyᶜᶠᶜ(i, j, k, grid)
+    step_right_open_boundary!(bc, i, k, boundary_indices, boundary_adjacent_indices,
+                              grid, c, clock, model_fields, Δy, k)
+    return nothing
+end
+
+@inline function _fill_south_halo!(i, k, grid, c, bc::PAOBC, ::Tuple{Any, Center, Any}, clock, model_fields)
+    boundary_indices = (i, 1, k)
+    boundary_adjacent_indices = (i, 2, k)
+    Δy = Δyᶜᶠᶜ(i, 1, k, grid)
+    step_left_open_boundary!(bc, i, k, boundary_indices, boundary_adjacent_indices,
+                             grid, c, clock, model_fields, Δy, k)
     return nothing
 end
