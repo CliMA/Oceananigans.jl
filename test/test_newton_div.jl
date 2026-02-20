@@ -8,7 +8,7 @@ function test_data_in_single_binade(::Type{FT}, size) where {FT}
     return rand(prng, FT, size) .+ 1.0
 end
 
-@testset "CPU newton_div" for (FT, WCT) in Iterators.product((Float32, Float64),
+@testset "CPU newton_div: $FT $WCT" for (FT, WCT) in Iterators.product((Float32, Float64),
                                                             (Oceananigans.Utils.NormalDivision,
                                                              Oceananigans.Utils.ConvertingDivision{Float32}))
     test_input = test_data_in_single_binade(FT, 1024)
@@ -22,19 +22,23 @@ end
     @test isapprox(ref, output)
 end
 
-@testset "CUDA newton_div" for FT in (Float32, Float64)
-    test_input = CuArray(test_data_in_single_binade(FT, 1024))
+if CUDA.functional()
 
-    WCT = Oceananigans.Utils.BackendOptimizedDivision
+    @testset "CUDA newton_div: $FT" for FT in (Float32, Float64)
+        test_input = CuArray(test_data_in_single_binade(FT, 1024))
 
-    ref = similar(test_input)
-    output = similar(test_input)
+        WCT = Oceananigans.Utils.BackendOptimizedDivision
 
-    ref .= FT(π) ./ test_input
-    output .= Oceananigans.Utils.newton_div.(WCT, FT(π), test_input)
+        ref = similar(test_input)
+        output = similar(test_input)
 
-    @test isapprox(ref, output)
+        ref .= FT(π) ./ test_input
+        output .= Oceananigans.Utils.newton_div.(WCT, FT(π), test_input)
+
+        @test isapprox(ref, output)
+    end
 end
+
 
 function append_weight_computation_type!(list, weno::WENO{<:Any, <:Any, WCT}) where {WCT}
     push!(list, WCT)
