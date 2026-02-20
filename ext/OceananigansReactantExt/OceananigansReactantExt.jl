@@ -315,6 +315,10 @@ end
 function Oceananigans.TimeSteppers.tick!(clock::Oceananigans.TimeSteppers.Clock{<:Any, <:Any, <:Reactant.TracedRNumber}, Δt; stage=false)
     Oceananigans.TimeSteppers.tick_time!(clock, Δt)
 
+    # Promote Δt to TracedRNumber if it's a concrete value (e.g., Float64).
+    # This is needed because .mlir_data only exists on TracedRNumber.
+    Δt = Δt + zero(clock.time)
+
     if stage # tick a stage update
         clock.stage += 1
         clock.last_stage_Δt.mlir_data = Δt.mlir_data

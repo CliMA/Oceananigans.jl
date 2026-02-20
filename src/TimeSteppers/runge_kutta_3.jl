@@ -117,6 +117,9 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     second_stage_Δt = stage_Δt(Δt, γ², ζ²)      # = (γ² + ζ²) * Δt
     third_stage_Δt  = stage_Δt(Δt, γ³, ζ³)      # = (γ³ + ζ³) * Δt
 
+    # Compute tⁿ⁺¹ a priori to reduce floating point error accumulation
+    tⁿ⁺¹ = next_time(model.clock, Δt)
+
     #
     # First stage
     #
@@ -150,7 +153,10 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     rk3_substep!(model, Δt, γ³, ζ³, callbacks)
     cache_previous_tendencies!(model)
 
-    tick!(model.clock, third_stage_Δt)
+    # Correct the third stage Δt to reduce floating point error accumulation.
+    # This matters especially for Float32 (e.g., Metal GPU).
+    corrected_third_stage_Δt = tⁿ⁺¹ - model.clock.time
+    tick!(model.clock, corrected_third_stage_Δt)
 
     step_closure_prognostics!(model, third_stage_Δt)
     update_state!(model, callbacks)
