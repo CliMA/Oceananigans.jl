@@ -1,5 +1,6 @@
 include("dependencies_for_runtests.jl")
 
+using CUDA
 
 # Generate some random points in a single binade [1;2) interval
 function test_data_in_single_binade(::Type{FT}, size) where {FT}
@@ -21,6 +22,19 @@ end
     @test isapprox(ref, output)
 end
 
+@testset "CUDA newton_div" for FT in (Float32, Float64)
+    test_input = CuArray(test_data_in_single_binade(FT, 1024))
+
+    WCT = Oceananigans.Utils.BackendOptimizedDivision
+
+    ref = similar(test_input)
+    output = similar(test_input)
+
+    ref .= FT(π) ./ test_input
+    output .= Oceananigans.Utils.newton_div.(WCT, FT(π), test_input)
+
+    @test isapprox(ref, output)
+end
 
 function append_weight_computation_type!(list, weno::WENO{<:Any, <:Any, WCT}) where {WCT}
     push!(list, WCT)
