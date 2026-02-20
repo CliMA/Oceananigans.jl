@@ -21,18 +21,23 @@ struct FunctionField{LX, LY, LZ, C, P, F, G, I, T} <: AbstractField{LX, LY, LZ, 
     `indices = (:, :, Nz+1)` marks the field as living on a single horizontal slice).
     The function signature is always `func(x, y, z [, t])` regardless of `indices`.
 
-    Example (default `indices` — the `indices` line is absent from the output):
+    Examples
+    ========
+
+    Default `indices` — the `indices` line is absent from the output:
 
     ```jldoctest
-    using Oceananigans
-    using Oceananigans.Fields: FunctionField
+    julia> using Oceananigans
 
-    f(x, y, z) = sin(x) * cos(y) + z
-    clock = Clock(time=0.0)
-    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    FunctionField{Center, Center, Center}(f, grid; clock)
+    julia> using Oceananigans.Fields: FunctionField
 
-    # output
+    julia> f(x, y, z) = sin(x) * cos(y) + z;
+
+    julia> clock = Clock(time=0.0);
+
+    julia> grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1));
+
+    julia> FunctionField{Center, Center, Center}(f, grid; clock)
     FunctionField located at (Center, Center, Center)
     ├── func: f (generic function with 1 method)
     ├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
@@ -40,18 +45,20 @@ struct FunctionField{LX, LY, LZ, C, P, F, G, I, T} <: AbstractField{LX, LY, LZ, 
     └── parameters: nothing
     ```
 
-    Example (reduced `indices` — the active footprint is a single horizontal slice):
+    Reduced `indices` — the active footprint is a single horizontal slice:
 
     ```jldoctest
-    using Oceananigans
-    using Oceananigans.Fields: FunctionField
+    julia> using Oceananigans
 
-    η(x, y, z) = sin(x) * cos(y)
-    clock = Clock(time=0.0)
-    grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-    FunctionField{Center, Center, Face}(η, grid; clock, indices=(:, :, grid.Nz+1))
+    julia> using Oceananigans.Fields: FunctionField
 
-    # output
+    julia> η(x, y, z) = sin(x) * cos(y);
+
+    julia> clock = Clock(time=0.0);
+
+    julia> grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1));
+
+    julia> FunctionField{Center, Center, Face}(η, grid; clock, indices=(:, :, grid.Nz+1))
     FunctionField located at (Center, Center, Face)
     ├── func: η (generic function with 1 method)
     ├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
