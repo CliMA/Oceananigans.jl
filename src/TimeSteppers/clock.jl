@@ -121,7 +121,7 @@ unit_time(t) = t
 unit_time(t::Millisecond) = t.value / 1_000
 unit_time(t::Nanosecond) = t.value / 1_000_000_000
 
-function tick!(clock, Δt; stage=false)
+function tick!(clock, Δt; stage=false, last_Δt=Δt)
 
     tick_time!(clock, Δt)
 
@@ -131,7 +131,7 @@ function tick!(clock, Δt; stage=false)
     else # tick an iteration and reset stage
         clock.iteration += 1
         clock.stage = 1
-        clock.last_Δt = Δt
+        clock.last_Δt = last_Δt
         clock.last_stage_Δt = Δt
     end
 

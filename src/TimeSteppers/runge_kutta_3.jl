@@ -156,7 +156,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     # Correct the third stage Δt to reduce floating point error accumulation.
     # This matters especially for Float32 (e.g., Metal GPU).
     corrected_third_stage_Δt = tⁿ⁺¹ - model.clock.time
-    tick!(model.clock, corrected_third_stage_Δt)
+    tick!(model.clock, corrected_third_stage_Δt; last_Δt=Δt)
 
     step_closure_prognostics!(model, third_stage_Δt)
     update_state!(model, callbacks)
