@@ -121,7 +121,7 @@ unit_time(t) = t
 unit_time(t::Millisecond) = t.value / 1_000
 unit_time(t::Nanosecond) = t.value / 1_000_000_000
 
-"""Advance clock by a full time step `Δt`. Increments iteration and resets stage."""
+# Advance clock by a full time step Δt. Increments iteration and resets stage.
 function tick!(clock, Δt)
     tick_time!(clock, Δt)
     clock.iteration += 1
@@ -131,7 +131,7 @@ function tick!(clock, Δt)
     return nothing
 end
 
-"""Advance clock by `stage_Δt` for an intermediate stage. Increments stage counter."""
+# Advance clock by stage_Δt for an intermediate stage. Increments stage counter.
 function tick_stage!(clock, stage_Δt)
     tick_time!(clock, stage_Δt)
     clock.stage += 1
@@ -139,8 +139,8 @@ function tick_stage!(clock, stage_Δt)
     return nothing
 end
 
-"""Advance clock by `stage_Δt` for the final stage of a multi-stage method.
-Records `step_Δt` as `last_Δt` (the full time step size). Increments iteration and resets stage."""
+# Advance clock by stage_Δt for the final stage of a multi-stage method.
+# Records step_Δt as last_Δt (the full time step size). Increments iteration and resets stage.
 function tick_stage!(clock, stage_Δt, step_Δt)
     tick_time!(clock, stage_Δt)
     clock.iteration += 1
