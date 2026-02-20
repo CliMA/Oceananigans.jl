@@ -84,6 +84,10 @@ function PerturbationAdvection(FT = defaults.FloatType;
     return PerturbationAdvection(inflow_timescale, outflow_timescale, gravity_wave_speed, density)
 end
 
+# Backward compatibility: support old 2-positional-arg constructor
+PerturbationAdvection(inflow_timescale::Number, outflow_timescale::Number) =
+    PerturbationAdvection(inflow_timescale, outflow_timescale, zero(inflow_timescale), nothing)
+
 Adapt.adapt_structure(to, pe::PerturbationAdvection) =
     PerturbationAdvection(adapt(to, pe.inflow_timescale),
                           adapt(to, pe.outflow_timescale),
