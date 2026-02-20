@@ -11,6 +11,7 @@ using Oceananigans.Grids: architecture
 using Oceananigans.TimeSteppers:
     update_state!,
     tick!,
+    tick_stage!,
     step_lagrangian_particles!,
     QuasiAdamsBashforth2TimeStepper,
     cache_previous_tendencies!

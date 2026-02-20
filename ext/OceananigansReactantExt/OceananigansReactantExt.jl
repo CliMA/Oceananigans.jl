@@ -312,24 +312,38 @@ function Oceananigans.TimeSteppers.tick_time!(clock::Oceananigans.TimeSteppers.C
     nt
 end
 
-function Oceananigans.TimeSteppers.tick!(clock::Oceananigans.TimeSteppers.Clock{<:Any, <:Any, <:Reactant.TracedRNumber}, Δt; stage=false, last_Δt=Δt)
+const ReactantClock = Oceananigans.TimeSteppers.Clock{<:Any, <:Any, <:Reactant.TracedRNumber}
+
+# Promote a value to TracedRNumber via addition with zero(clock.time).
+# This is needed because .mlir_data only exists on TracedRNumber.
+promote_to_traced(Δt, clock) = Δt + zero(clock.time)
+
+function Oceananigans.TimeSteppers.tick!(clock::ReactantClock, Δt)
     Oceananigans.TimeSteppers.tick_time!(clock, Δt)
+    Δt = promote_to_traced(Δt, clock)
+    clock.iteration.mlir_data = (clock.iteration + 1).mlir_data
+    clock.stage = 1
+    clock.last_Δt.mlir_data = Δt.mlir_data
+    clock.last_stage_Δt.mlir_data = Δt.mlir_data
+    return nothing
+end
 
-    # Promote to TracedRNumber if concrete (e.g., Float64).
-    # This is needed because .mlir_data only exists on TracedRNumber.
-    Δt = Δt + zero(clock.time)
-    last_Δt = last_Δt + zero(clock.time)
+function Oceananigans.TimeSteppers.tick_stage!(clock::ReactantClock, stage_Δt)
+    Oceananigans.TimeSteppers.tick_time!(clock, stage_Δt)
+    stage_Δt = promote_to_traced(stage_Δt, clock)
+    clock.stage += 1
+    clock.last_stage_Δt.mlir_data = stage_Δt.mlir_data
+    return nothing
+end
 
-    if stage # tick a stage update
-        clock.stage += 1
-        clock.last_stage_Δt.mlir_data = Δt.mlir_data
-    else # tick an iteration and reset stage
-        clock.iteration.mlir_data = (clock.iteration + 1).mlir_data
-        clock.stage = 1
-        clock.last_Δt.mlir_data = last_Δt.mlir_data
-        clock.last_stage_Δt.mlir_data = Δt.mlir_data
-    end
-
+function Oceananigans.TimeSteppers.tick_stage!(clock::ReactantClock, stage_Δt, step_Δt)
+    Oceananigans.TimeSteppers.tick_time!(clock, stage_Δt)
+    stage_Δt = promote_to_traced(stage_Δt, clock)
+    step_Δt = promote_to_traced(step_Δt, clock)
+    clock.iteration.mlir_data = (clock.iteration + 1).mlir_data
+    clock.stage = 1
+    clock.last_Δt.mlir_data = step_Δt.mlir_data
+    clock.last_stage_Δt.mlir_data = stage_Δt.mlir_data
     return nothing
 end
 

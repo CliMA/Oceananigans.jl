@@ -1,4 +1,5 @@
 import Oceananigans: prognostic_state, restore_prognostic_state!
+using Oceananigans.Utils: time_difference_seconds
 
 """
     RungeKutta3TimeStepper{FT, TG} <: AbstractTimeStepper
@@ -127,7 +128,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     rk3_substep!(model, Δt, γ¹, nothing, callbacks)
     cache_previous_tendencies!(model)
 
-    tick!(model.clock, first_stage_Δt; stage=true)
+    tick_stage!(model.clock, first_stage_Δt)
 
     step_closure_prognostics!(model, first_stage_Δt)
     update_state!(model, callbacks)
@@ -140,7 +141,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     rk3_substep!(model, Δt, γ², ζ², callbacks)
     cache_previous_tendencies!(model)
 
-    tick!(model.clock, second_stage_Δt; stage=true)
+    tick_stage!(model.clock, second_stage_Δt)
 
     step_closure_prognostics!(model, second_stage_Δt)
     update_state!(model, callbacks)
@@ -155,8 +156,9 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
 
     # Correct the third stage Δt to reduce floating point error accumulation.
     # This matters especially for Float32 (e.g., Metal GPU).
-    corrected_third_stage_Δt = tⁿ⁺¹ - model.clock.time
-    tick!(model.clock, corrected_third_stage_Δt; last_Δt=Δt)
+    # Use time_difference_seconds for DateTime compatibility.
+    corrected_third_stage_Δt = time_difference_seconds(tⁿ⁺¹, model.clock.time)
+    tick_stage!(model.clock, corrected_third_stage_Δt, Δt)
 
     step_closure_prognostics!(model, third_stage_Δt)
     update_state!(model, callbacks)
