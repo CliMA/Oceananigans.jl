@@ -765,6 +765,29 @@ end
         test_field_time_series_reductions_with_dims()
     end
 
+    @testset "FieldTimeSeries with singleton integer indices" begin
+        @info "  Testing FieldTimeSeries with singleton integer indices..."
+        grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+        times = [0.0, 1.0]
+
+        # Integer indices should work the same as UnitRange indices
+        fts_int = FieldTimeSeries{Center, Center, Center}(grid, times; indices=(:, :, 4))
+        fts_range = FieldTimeSeries{Center, Center, Center}(grid, times; indices=(:, :, 4:4))
+        @test size(fts_int) == size(fts_range)
+        @test indices(fts_int) == indices(fts_range)
+
+        # Also test integer indices in other dimensions
+        fts_i = FieldTimeSeries{Center, Center, Center}(grid, times; indices=(2, :, :))
+        @test size(fts_i) == (1, 4, 4, 2)
+
+        fts_j = FieldTimeSeries{Center, Center, Center}(grid, times; indices=(:, 3, :))
+        @test size(fts_j) == (4, 1, 4, 2)
+
+        # Test with loc/grid constructor directly
+        fts_loc = FieldTimeSeries((Center(), Center(), Center()), grid, times; indices=(:, :, 4))
+        @test size(fts_loc) == (4, 4, 1, 2)
+    end
+
     @testset "Time Interpolation" begin
         test_time_interpolation()
     end
