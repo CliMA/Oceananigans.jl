@@ -64,6 +64,7 @@ include("show_abstract_operations.jl")
 import Base: -, +, /, ^, *
 import Base: sqrt, sin, cos, exp, tanh, abs
 import Base: log10, log, tan, sinh, cosh
+import Base: >, <, >=, <=
 
 @unary sqrt sin cos exp tanh abs log10 log tan sinh cosh
 @unary -
@@ -73,6 +74,10 @@ import Base: log10, log, tan, sinh, cosh
 @binary -
 @binary /
 @binary ^
+@binary >
+@binary <
+@binary >=
+@binary <=
 
 @multiary +
 
