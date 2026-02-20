@@ -8,15 +8,8 @@ using Oceananigans
 
 using Oceananigans: AbstractModel, Distributed
 using Oceananigans.Grids: architecture
-using Oceananigans.TimeSteppers:
-    update_state!,
-    tick!,
-    step_lagrangian_particles!,
-    QuasiAdamsBashforth2TimeStepper,
-    cache_previous_tendencies!
 
-import Oceananigans.TimeSteppers: Clock, first_time_step!, time_step!,
-                                  ab2_step!, maybe_initialize_state!
+import Oceananigans.TimeSteppers: Clock, first_time_step!, maybe_initialize_state!
 import Oceananigans: initialize!
 
 const ReactantModel{TS} = Union{
@@ -50,37 +43,6 @@ end
 maybe_initialize_state!(::ReactantModel, callbacks) = nothing
 
 #####
-##### QuasiAdamsBashforth2TimeStepper for Reactant
-#####
-# AB2 still needs a Reactant override because:
-# - `euler = euler || (Δt != model.clock.last_Δt)` — `||` on traced bool fails
-# - The `@debug` macro with traced conditional
-
-function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}}, Δt;
-                    callbacks=[], euler=false) where FT
-
-    # If euler, then set χ = -0.5
-    minus_point_five = convert(FT, -0.5)
-    ab2_timestepper = model.timestepper
-    χ = ifelse(euler, minus_point_five, ab2_timestepper.χ)
-    χ₀ = ab2_timestepper.χ # Save initial value
-    ab2_timestepper.χ = χ
-
-    ab2_step!(model, Δt, callbacks)
-    cache_previous_tendencies!(model)
-
-    tick!(model.clock, Δt)
-
-    update_state!(model, callbacks)
-    step_lagrangian_particles!(model, Δt)
-
-    # Return χ to initial value
-    ab2_timestepper.χ = χ₀
-
-    return nothing
-end
-
-#####
 ##### first_time_step! for Reactant
 #####
 
@@ -91,7 +53,7 @@ function first_time_step!(model::ReactantModel, Δt)
     return nothing
 end
 
-function first_time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper}, Δt)
+function first_time_step!(model::ReactantModel{<:Oceananigans.TimeSteppers.QuasiAdamsBashforth2TimeStepper}, Δt)
     initialize!(model)
     update_state!(model)
     time_step!(model, Δt, euler=true)
