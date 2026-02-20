@@ -5,10 +5,7 @@
 ##### with a TripolarGrid and realistic Earth bathymetry from NumericalEarth.
 #####
 
-using Oceananigans.BuoyancyFormulations: SeawaterBuoyancy
 using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
-using Oceananigans.Coriolis: HydrostaticSphericalCoriolis
-using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 
 """
     earth_ocean(arch = CPU();

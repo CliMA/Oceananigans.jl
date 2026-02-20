@@ -18,15 +18,14 @@ using Printf
 using Statistics
 
 using Oceananigans
-using Oceananigans.Architectures: GPU
+using Oceananigans.Architectures: architecture
+using Oceananigans.Utils: sync_device!
 using Oceananigans.Units
-using Oceananigans.TimeSteppers: time_step!
-using Oceananigans.OutputWriters: JLD2Writer, IterationInterval, TimeInterval, write_output!
-using Oceananigans.Simulations: SpecifiedTimes
+using Oceananigans.OutputWriters: write_output!
 
 using NumericalEarth
 
-using CUDA: CUDA, CUDABackend
+using CUDA: CUDA
 
 # Base functionalities
 include("metadata.jl")

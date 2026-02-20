@@ -24,7 +24,7 @@ function benchmark_time_stepping(model;
                                  verbose = true)
 
     grid = model.grid
-    arch = Oceananigans.Architectures.architecture(grid)
+    arch = architecture(grid)
     FT = eltype(grid)
     Nx, Ny, Nz = size(grid)
     total_points = Nx * Ny * Nz
@@ -46,7 +46,7 @@ function benchmark_time_stepping(model;
     many_time_steps!(model, Δt, warmup_steps)
 
     # Synchronize device before timing
-    synchronize_device(arch)
+    sync_device!(arch)
 
     # Benchmark phase
     if verbose
@@ -54,7 +54,7 @@ function benchmark_time_stepping(model;
     end
     start_time = time_ns()
     many_time_steps!(model, Δt, time_steps)
-    synchronize_device(arch)
+    sync_device!(arch)
     end_time = time_ns()
 
     total_time_seconds = (end_time - start_time) / 1e9
@@ -124,7 +124,7 @@ function run_benchmark_simulation(model;
                                   verbose = true)
 
     grid = model.grid
-    arch = Oceananigans.Architectures.architecture(grid)
+    arch = architecture(grid)
     FT = eltype(grid)
     Nx, Ny, Nz = size(grid)
     total_points = Nx * Ny * Nz
@@ -191,7 +191,7 @@ function run_benchmark_simulation(model;
     end
     simulation.callbacks[:final_snapshot] = Callback(save_final_snapshot, SpecifiedTimes(stop_time))
 
-    synchronize_device(arch)
+    sync_device!(arch)
 
     if verbose
         @info "  Starting simulation..."
@@ -199,7 +199,7 @@ function run_benchmark_simulation(model;
 
     start_time = time_ns()
     run!(simulation)
-    synchronize_device(arch)
+    sync_device!(arch)
     end_time = time_ns()
 
     wall_time_seconds = (end_time - start_time) / 1e9
@@ -245,15 +245,4 @@ function run_benchmark_simulation(model;
     end
 
     return result
-end
-
-#####
-##### Device synchronization
-#####
-
-synchronize_device(::Oceananigans.Architectures.CPU) = nothing
-
-function synchronize_device(::Oceananigans.Architectures.GPU)
-    CUDA.synchronize()
-    return nothing
 end
