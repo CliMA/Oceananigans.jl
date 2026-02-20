@@ -248,7 +248,7 @@ function HydrostaticFreeSurfaceModel(grid;
 
     arch = architecture(grid)
     free_surface = validate_free_surface(arch, free_surface)
-    free_surface = materialize_free_surface(free_surface, velocities, grid)
+    free_surface = materialize_free_surface(free_surface, velocities, grid, clock)
 
     # Instantiate timestepper if not already instantiated
     implicit_solver   = implicit_diffusion_solver(time_discretization(closure), grid)
