@@ -79,10 +79,13 @@ Architectures.on_architecture(to, f::FunctionField{LX, LY, LZ}) where {LX, LY, L
                               parameters = on_architecture(to, f.parameters),
                               indices    = f.indices)
 
-Base.show(io::IO, field::FunctionField) =
+function Base.show(io::IO, field::FunctionField)
+    idx = indices_summary(field)
+    idx_str = idx == "(:, :, :)" ? "" : "├── indices: $idx\n"
     print(io, "FunctionField located at ", show_location(field), "\n",
           "├── func: $(prettysummary(field.func))", "\n",
           "├── grid: $(summary(field.grid))\n",
           "├── clock: $(summary(field.clock))\n",
-          "├── indices: $(field.indices)\n",
+          idx_str,
           "└── parameters: $(field.parameters)")
+end
