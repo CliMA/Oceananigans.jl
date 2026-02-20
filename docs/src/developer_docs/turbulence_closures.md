@@ -139,11 +139,11 @@ nothing # hide
 ```
 
 The returned `NamedTuple` becomes `model.closure_fields` and is passed to
-`compute_diffusivities!` and flux functions.
+`compute_closure_fields!` and flux functions.
 
 ### Step 5: Implement diffusivity computation
 
-The core of the closure is `compute_diffusivities!`, which updates diffusivity fields
+The core of the closure is `compute_closure_fields!`, which updates diffusivity fields
 each time step. First, helper functions for the Richardson number:
 
 ```@example pp_closure
@@ -178,7 +178,7 @@ using Oceananigans.Utils: launch!
 using Oceananigans.TurbulenceClosures: buoyancy_tracers, buoyancy_force
 using KernelAbstractions: @kernel, @index
 
-function TurbulenceClosures.compute_diffusivities!(diffusivities, closure::PPVD, model; parameters = :xyz)
+function TurbulenceClosures.compute_closure_fields!(diffusivities, closure::PPVD, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
     tracers = buoyancy_tracers(model)
@@ -388,7 +388,7 @@ The comparison reveals differences in how the closures parameterize mixing:
 
 ## How diffusivities become fluxes
 
-1. `compute_diffusivities!` is called during `update_state!`
+1. `compute_closure_fields!` is called during `update_state!`
 2. Precomputed diffusivities are stored in `model.closure_fields`
 3. During tendency computation, flux functions (`diffusive_flux_z`, `viscous_flux_uz`, etc.) use the `viscosity()` and `diffusivity()` accessors
 
@@ -520,7 +520,7 @@ To implement a turbulence closure:
 2. **Create a constructor** with sensible defaults
 3. **Specify locations and accessors** for viscosity/diffusivity
 4. **Build fields** with `build_closure_fields`
-5. **Compute diffusivities** with `compute_diffusivities!`
+5. **Compute closure fields** with `compute_closure_fields!`
 6. **Add display methods** with `summary` and `show`
 
 That's it! Your closure is ready to use. Contributing to Oceananigans is optional

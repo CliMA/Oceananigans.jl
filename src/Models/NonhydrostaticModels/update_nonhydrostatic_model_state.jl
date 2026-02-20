@@ -4,7 +4,8 @@ using Oceananigans.BoundaryConditions
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.BoundaryConditions: update_boundary_conditions!
 using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
-using Oceananigans.TurbulenceClosures: compute_diffusivities!
+using Oceananigans.TurbulenceClosures: compute_closure_fields!
+import Oceananigans.TurbulenceClosures: step_closure_prognostics!
 using Oceananigans.Fields: compute!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models: update_model_field_time_series!, surface_kernel_parameters
@@ -12,7 +13,7 @@ using Oceananigans.Models: update_model_field_time_series!, surface_kernel_param
 """
     update_state!(model::NonhydrostaticModel, callbacks=[])
 
-Update peripheral aspects of the model (halo regions, diffusivities, hydrostatic
+Update peripheral aspects of the model (halo regions, closure_fields, hydrostatic
 pressure) to the current model state. If `callbacks` are provided (in an array),
 they are called in the end.
 """
@@ -37,7 +38,7 @@ function update_state!(model::NonhydrostaticModel, callbacks=[])
         compute!(aux_field)
     end
 
-    # Calculate diffusivities and hydrostatic pressure
+    # Calculate closure_fields and hydrostatic pressure
     compute_auxiliaries!(model)
 
     fill_halo_regions!(model.closure_fields; only_local_halos=true)
@@ -58,18 +59,21 @@ function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = surface
 
     grid = model.grid
     closure = model.closure
-    diffusivity = model.closure_fields
+    closure_fields = model.closure_fields
     tracers = model.tracers
     buoyancy = model.buoyancy
 
     # Maybe compute buoyancy gradients
     compute_buoyancy_gradients!(buoyancy, grid, tracers; parameters = κ_parameters)
 
-    # Compute diffusivities
-    compute_diffusivities!(diffusivity, closure, model; parameters = κ_parameters)
+    # Compute closure_fields
+    compute_closure_fields!(closure_fields, closure, model; parameters = κ_parameters)
 
     # Update hydrostatic pressure
     update_hydrostatic_pressure!(model; parameters = p_parameters)
 
     return nothing
 end
+
+step_closure_prognostics!(model::NonhydrostaticModel, Δt) =
+    step_closure_prognostics!(model.closure_fields, model.closure, model, Δt)

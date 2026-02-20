@@ -14,8 +14,8 @@ struct BinaryOperation{LX, LY, LZ, O, A, B, IA, IB, G, T} <: AbstractOperation{L
     Return an abstract representation of the binary operation `op(▶a(a), ▶b(b))` on
     `grid`, where `▶a` and `▶b` interpolate `a` and `b` to locations `(LX, LY, LZ)`.
     """
-    function BinaryOperation{LX, LY, LZ}(op::O, a::A, b::B, ▶a::IA, ▶b::IB, grid::G) where {LX, LY, LZ, O, A, B, IA, IB, G}
-        T = eltype(grid)
+    function BinaryOperation{LX, LY, LZ}(op::O, a::A, b::B, ▶a::IA, ▶b::IB, grid::G,
+                                         ::Type{T}=Base.promote_op(op, eltype(a), eltype(b))) where {LX, LY, LZ, O, A, B, IA, IB, G, T}
         return new{LX, LY, LZ, O, A, B, IA, IB, G, T}(op, a, b, ▶a, ▶b, grid)
     end
 end
@@ -170,14 +170,7 @@ julia> using Oceananigans.AbstractOperations: BinaryOperation, GridMetric, choos
 julia> plus_or_times(x, y) = x < 0 ? x + y : x * y
 plus_or_times (generic function with 1 method)
 
-julia> @binary plus_or_times
-Set{Any} with 6 elements:
-  :+
-  :/
-  :^
-  :-
-  :*
-  :plus_or_times
+julia> @binary plus_or_times;
 
 julia> c, d = (CenterField(RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))) for i = 1:2);
 
@@ -229,7 +222,8 @@ Adapt.adapt_structure(to, binary::BinaryOperation{LX, LY, LZ}) where {LX, LY, LZ
                                 Adapt.adapt(to, binary.b),
                                 Adapt.adapt(to, binary.▶a),
                                 Adapt.adapt(to, binary.▶b),
-                                Adapt.adapt(to, binary.grid))
+                                Adapt.adapt(to, binary.grid),
+                                eltype(binary))
 
 
 Architectures.on_architecture(to, binary::BinaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
@@ -238,4 +232,5 @@ Architectures.on_architecture(to, binary::BinaryOperation{LX, LY, LZ}) where {LX
                                 on_architecture(to, binary.b),
                                 on_architecture(to, binary.▶a),
                                 on_architecture(to, binary.▶b),
-                                on_architecture(to, binary.grid))
+                                on_architecture(to, binary.grid),
+                                eltype(binary))

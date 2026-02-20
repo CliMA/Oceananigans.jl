@@ -18,9 +18,11 @@ using Oceananigans.ImmersedBoundaries: column_depthTᶠᶜᵃ, column_depthTᶜ�
     Hᶜᶠ = column_depthTᶜᶠᵃ(i, j, k_top, grid, η) # topology-aware column
 
     # ∂τ(U) = - ∇η + G
+    # Note: use ∂xᵣT and ∂yᵣT (derivatives at constant r) for the free surface,
+    # since η lives on the surface and doesn't have vertical structure
     @inbounds begin
-        U[i, j, 1] += Δτ * (- g * Hᶠᶜ * ∂xTᶠᶜᶠ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
-        V[i, j, 1] += Δτ * (- g * Hᶜᶠ * ∂yTᶜᶠᶠ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
+        U[i, j, 1] += Δτ * (- g * Hᶠᶜ * ∂xᵣTᶠᶜᶠ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
+        V[i, j, 1] += Δτ * (- g * Hᶜᶠ * ∂yᵣTᶜᶠᶠ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
 
         # Averaging the transport
         Ũ[i, j, 1] += transport_weight * U[i, j, 1]

@@ -20,6 +20,11 @@ docs/Manifest.toml
 docs/src/developer_docs/AGENTS.md
 docs/.CondaPkg/
 
+# Vitepress and node
+node_modules
+!package.json
+!logo.png
+
 # Model output
 *.dat
 *.data

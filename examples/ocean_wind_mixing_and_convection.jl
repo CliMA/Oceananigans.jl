@@ -208,7 +208,7 @@ progress_message(sim) = @printf("Iteration: %04d, time: %s, Δt: %s, max(|w|) = 
                                 iteration(sim), prettytime(sim), prettytime(sim.Δt),
                                 maximum(abs, sim.model.velocities.w), prettytime(sim.run_wall_time))
 
-add_callback!(simulation, progress_message, IterationInterval(100))
+add_callback!(simulation, progress_message, IterationInterval(200))
 
 # We then set up the simulation:
 
@@ -248,16 +248,12 @@ time_series = (w = FieldTimeSeries(filepath, "w"),
                S = FieldTimeSeries(filepath, "S"),
                νₑ = FieldTimeSeries(filepath, "νₑ"))
 
-# We start the animation at ``t = 10`` minutes since things are pretty boring till then:
-
-times = time_series.w.times
-intro = searchsortedfirst(times, 10minutes)
-
 # We are now ready to animate using Makie. We use Makie's `Observable` to animate
 # the data. To dive into how `Observable`s work we refer to
 # [Makie.jl's Documentation](https://docs.makie.org/stable/explanations/observables).
 
-n = Observable(intro)
+times = time_series.w.times
+n = Observable(length(times))
 
  wₙ = @lift time_series.w[$n]
  Tₙ = @lift time_series.T[$n]
@@ -300,8 +296,10 @@ fig[1, 1:4] = Label(fig, title, fontsize=24, tellwidth=false)
 current_figure() #hide
 fig
 
-# And now record a movie.
+# And now record a movie. We start the animation at ``t = 10`` minutes since
+# things are pretty boring till then:
 
+intro = searchsortedfirst(times, 10minutes)
 frames = intro:length(times)
 
 @info "Making a motion picture of ocean wind mixing and convection..."

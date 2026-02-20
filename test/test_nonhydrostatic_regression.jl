@@ -3,6 +3,7 @@ include("data_dependencies.jl")
 
 using Oceananigans.Grids: topology, XRegularLLG, YRegularLLG, ZRegularLLG
 using Oceananigans.Fields: CenterField
+using Oceananigans.TurbulenceClosures: LagrangianAveraging
 
 function get_fields_from_checkpoint(filename)
     file = jldopen(filename)
@@ -66,10 +67,17 @@ include("regression_tests/ocean_large_eddy_simulation_regression_test.jl")
 
                 amd_closure = (AnisotropicMinimumDissipation(C=1/12), ScalarDiffusivity(ν=1.05e-6, κ=1.46e-7))
                 smag_closure = (SmagorinskyLilly(C=0.23, Cb=1, Pr=1), ScalarDiffusivity(ν=1.05e-6, κ=1.46e-7))
+                dyn_smag_directional = (DynamicSmagorinsky(averaging=(1, 2)),)
+                dyn_smag_lagrangian = (DynamicSmagorinsky(averaging=LagrangianAveraging()),)
 
-                for closure in (amd_closure, smag_closure)
-                    closurename = string(typeof(first(closure)).name.wrapper)
-                    @testset "Ocean large eddy simulation [$A, $closurename, $grid_type grid]" begin
+                for (closurename, closure) in [("AnisotropicMinimumDissipation", amd_closure),
+                                                ("SmagorinskyLilly", smag_closure),
+                                                ("DirectionalDynamicSmagorinsky", dyn_smag_directional),
+                                                ("LagrangianDynamicSmagorinsky", dyn_smag_lagrangian)]
+                for (closurename, closure) in [("AnisotropicMinimumDissipation", amd_closure),
+                                               ("SmagorinskyLilly", smag_closure),
+                                               ("DirectionalDynamicSmagorinsky", dyn_smag_directional),
+                                               ("LagrangianDynamicSmagorinsky", dyn_smag_lagrangian)]
                         @info "  Testing oceanic large eddy simulation regression [$A, $closurename, $grid_type grid]"
                         run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closure)
                     end

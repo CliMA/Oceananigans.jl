@@ -126,6 +126,7 @@ CUDA.allowscalar() do
             include("test_datetime_clock.jl")
             include("test_forcings.jl")
             include("test_immersed_advection.jl")
+            include("test_background_flux_divergence.jl")
         end
     end
 
@@ -268,6 +269,7 @@ CUDA.allowscalar() do
     if group == :reactant_1 || group == :all
         @testset "Reactant extension tests 1" begin
             include("test_reactant.jl")
+            include("test_reactant_fft_models.jl")
         end
     end
 

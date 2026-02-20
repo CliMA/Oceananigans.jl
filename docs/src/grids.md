@@ -452,8 +452,6 @@ scatter!(ax, Δx / 1e3)
 fig
 ```
 
-![](plot_lat_lon_spacings.svg)
-
 ## `LatitudeLongitudeGrid` with variable spacing
 
 The syntax for building a grid with variably-spaced cells is the same as for `RectilinearGrid`.
@@ -944,9 +942,10 @@ nothing # hide
 ```
 
 That's what it looks like to build a [`Distributed`](@ref) architecture.
-Notice we chose to display only if we're on rank 0 -- because otherwise, all the ranks print
-to the terminal at once, talking over each other, and things get messy. Also, we used the
-"default communicator" `MPI.COMM_WORLD` to determine whether we were on rank 0. This works
+Notice we can choose whether or not to display from a given rank (`@onrank 0 @show ...`.)
+In this case we choose to display from both ranks, but sometimes it is useful to display
+only from a single rank, since otherwise ranks can talk over each other making things messy.
+Also, we used the "default communicator" `MPI.COMM_WORLD` to determine whether we were on rank 0. This works
 because `Distributed` uses `communicator = MPI.COMM_WORLD` by default (and this should be
 changed only with great intention). See the [`Distributed`](@ref) docstring for more information.
 
@@ -974,6 +973,7 @@ grid = RectilinearGrid(architecture,
 
 write("distributed_grid_example.jl", make_distributed_grid)
 
+using MPI
 run(`$(mpiexec()) -n 2 $(Base.julia_cmd()) --project distributed_grid_example.jl`)
 nothing # hide
 ```
@@ -1031,6 +1031,7 @@ end
 
 write("partition_example.jl", make_y_partition)
 
+using MPI
 run(`$(mpiexec()) -n 2 $(Base.julia_cmd()) --project partition_example.jl`)
 nothing # hide
 ```
@@ -1073,6 +1074,7 @@ end
 
 write("programmatic_partition_example.jl", make_xy_partition)
 
+using MPI
 run(`$(mpiexec()) -n 6 $(Base.julia_cmd()) --project programmatic_partition_example.jl`)
 nothing # hide
 ```
@@ -1121,6 +1123,7 @@ end
 
 write("equally_partitioned_grids.jl", partitioned_grid_example)
 
+using MPI
 run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project equally_partitioned_grids.jl`)
 nothing # hide
 ```
