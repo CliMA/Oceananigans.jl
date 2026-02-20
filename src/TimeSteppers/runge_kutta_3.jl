@@ -117,9 +117,6 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     second_stage_Δt = stage_Δt(Δt, γ², ζ²)      # = (γ² + ζ²) * Δt
     third_stage_Δt  = stage_Δt(Δt, γ³, ζ³)      # = (γ³ + ζ³) * Δt
 
-    # Compute the next time step a priori to reduce floating point error accumulation
-    tⁿ⁺¹ = next_time(model.clock, Δt)
-
     #
     # First stage
     #
@@ -153,11 +150,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     rk3_substep!(model, Δt, γ³, ζ³, callbacks)
     cache_previous_tendencies!(model)
 
-    # Use tick! with Δt so that last_Δt and last_stage_Δt are set to Δt.
-    # Then correct clock.time to the pre-computed tⁿ⁺¹ to reduce floating
-    # point error accumulation.
-    tick!(model.clock, Δt)
-    model.clock.time = tⁿ⁺¹
+    tick!(model.clock, third_stage_Δt)
 
     step_closure_prognostics!(model, third_stage_Δt)
     update_state!(model, callbacks)
