@@ -286,6 +286,7 @@ perturbation_vorticity = Field(∂z(u) - ∂x(w))
 # We initialize the power iteration with random noise and rescale to have a `target_kinetic_energy`
 
 using Random, Statistics
+Random.seed!(1234) # for reproducible results
 
 mean_perturbation_kinetic_energy = Field(Average(1/2 * (u^2 + w^2)))
 noise(x, z) = randn()

@@ -24,6 +24,9 @@
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours
 using CUDA
+using Random
+
+Random.seed!(1234) # for reproducible results
 
 # ## Model set-up
 #

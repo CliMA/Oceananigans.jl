@@ -26,6 +26,8 @@ using Oceananigans.Units
 using CUDA
 using Random
 using Printf
+
+Random.seed!(1234) # for reproducible results
 using CairoMakie
 using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
 
