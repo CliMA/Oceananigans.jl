@@ -127,12 +127,23 @@ const TBB = Union{BottomAndTop, Bottom, Top}
 @inline fill_halo_size(::Tuple, ::SNB, args...) = :xz
 @inline fill_halo_size(::Tuple, ::TBB, args...) = :xy
 
-# If indices are colon, and locations are _not_ Nothing, fill the whole boundary plane!
-# If locations are _Nothing_, then the kwarg `reduced_dimensions` will allow the size `:xz`
-# to be correctly interpreted inside `launch!`.
-@inline fill_halo_size(::OffsetArray, ::WEB, ::Tuple{<:Any, <:Colon, <:Colon}, args...) = :yz
-@inline fill_halo_size(::OffsetArray, ::SNB, ::Tuple{<:Colon, <:Any, <:Colon}, args...) = :xz
-@inline fill_halo_size(::OffsetArray, ::TBB, ::Tuple{<:Colon, <:Colon, <:Any}, args...) = :xy
+# For non-periodic (bounded) BCs with colon indices, use `size(grid, loc)` so that
+# Face fields on Bounded axes get N+1 (include_right_boundaries).
+@inline function fill_halo_size(::OffsetArray, ::WEB, ::Tuple{<:Any, <:Colon, <:Colon}, args...; include_right_boundaries=true)
+    bc, loc, grid = args
+    _, Ny, Nz = include_right_boundaries ? size(grid, loc) : size(grid)
+    return (Ny, Nz)
+end
+@inline function fill_halo_size(::OffsetArray, ::SNB, ::Tuple{<:Colon, <:Any, <:Colon}, args...; include_right_boundaries=true)
+    bc, loc, grid = args
+    Nx, _, Nz = include_right_boundaries ? size(grid, loc) : size(grid)
+    return (Nx, Nz)
+end
+@inline function fill_halo_size(::OffsetArray, ::TBB, ::Tuple{<:Colon, <:Colon, <:Any}, args...; include_right_boundaries=true)
+    bc, loc, grid = args
+    Nx, Ny, _ = include_right_boundaries ? size(grid, loc) : size(grid)
+    return (Nx, Ny)
+end
 
 # If the index is a Colon and the location is _NOT_ a `Nothing` (i.e. not a `ReducedField`),
 # then fill the whole boundary, otherwise fill the size of the corresponding array
@@ -144,13 +155,13 @@ const TBB = Union{BottomAndTop, Bottom, Top}
 # Calculate kernel size for windowed fields. This code is only called when
 # one or more of the elements of `idx` is not Colon in the two direction perpendicular
 # to the halo region and `bc` is not `PeriodicBoundaryCondition`.
-@inline function fill_halo_size(c::OffsetArray, ::WEB, idx, bc, loc, grid)
+@inline function fill_halo_size(c::OffsetArray, ::WEB, idx, bc, loc, grid; include_right_boundaries=true)
     @inbounds begin
         whole_y_halo = whole_halo(idx[2], loc[2])
         whole_z_halo = whole_halo(idx[3], loc[3])
     end
 
-    _, Ny, Nz = size(grid)
+    _, Ny, Nz = include_right_boundaries ? size(grid, loc) : size(grid)
     _, Cy, Cz = size(c)
 
     Sy = ifelse(whole_y_halo, Ny, Cy)
@@ -159,13 +170,13 @@ const TBB = Union{BottomAndTop, Bottom, Top}
     return (Sy, Sz)
 end
 
-@inline function fill_halo_size(c::OffsetArray, ::SNB, idx, bc, loc, grid)
+@inline function fill_halo_size(c::OffsetArray, ::SNB, idx, bc, loc, grid; include_right_boundaries=true)
     @inbounds begin
         whole_x_halo = whole_halo(idx[1], loc[1])
         whole_z_halo = whole_halo(idx[3], loc[3])
     end
 
-    Nx, _, Nz = size(grid)
+    Nx, _, Nz = include_right_boundaries ? size(grid, loc) : size(grid)
     Cx, _, Cz = size(c)
 
     Sx = ifelse(whole_x_halo, Nx, Cx)
@@ -174,13 +185,13 @@ end
     return (Sx, Sz)
 end
 
-@inline function fill_halo_size(c::OffsetArray, ::TBB, idx, bc, loc, grid)
+@inline function fill_halo_size(c::OffsetArray, ::TBB, idx, bc, loc, grid; include_right_boundaries=true)
     @inbounds begin
         whole_x_halo = whole_halo(idx[1], loc[1])
         whole_y_halo = whole_halo(idx[2], loc[2])
     end
 
-    Nx, Ny, _ = size(grid)
+    Nx, Ny, _ = include_right_boundaries ? size(grid, loc) : size(grid)
     Cx, Cy, _ = size(c)
 
     Sx = ifelse(whole_x_halo, Nx, Cx)
