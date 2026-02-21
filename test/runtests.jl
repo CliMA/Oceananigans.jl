@@ -276,6 +276,7 @@ CUDA.allowscalar() do
     if group == :reactant_2 || group == :all
         @testset "Reactant extension tests 2" begin
             include("test_reactant_latitude_longitude_grid.jl")
+            include("test_reactant_hydrostatic_free_surface_models.jl")
         end
     end
 
