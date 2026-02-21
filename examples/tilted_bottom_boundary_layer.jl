@@ -210,8 +210,7 @@ simulation.output_writers[:fields] = NetCDFWriter(model, outputs;
 
 run!(simulation)
 
-# Check for simulation crashes #hide
-any(isnan, model.velocities.u) && error("Simulation crashed: NaN values detected in u-velocity field") #hide
+any(isnan, model.velocities.u) && error("Simulation crashed: NaN values detected in u-velocity field"); #hide
 
 # ## Visualize the results
 #
