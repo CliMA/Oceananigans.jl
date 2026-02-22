@@ -146,6 +146,9 @@ function define_binary_operator(op)
 
         $op(a::Number, b::ConstantField) = ConstantField($op(a, b.constant))
         $op(a::ConstantField, b::Number) = ConstantField($op(a.constant, b))
+
+        # Disambiguate ConstantField vs ConstantField (ConstantField <: AbstractField)
+        $op(a::ConstantField, b::ConstantField) = ConstantField($op(a.constant, b.constant))
     end
 end
 
