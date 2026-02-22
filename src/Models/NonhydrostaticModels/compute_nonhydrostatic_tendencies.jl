@@ -103,20 +103,17 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
             tendencies.w, grid, w_kernel_args;
             active_cells_map, exclude_periphery)
 
-    start_tracer_kernel_args = (advection, closure)
-    end_tracer_kernel_args   = (buoyancy, biogeochemistry, background_fields, velocities,
-                                tracers, auxiliary_fields, closure_fields)
-
-    launch!(arch, grid, kernel_parameters, compute_Gc!,
-            values(tendencies)[4:end],
+    launch!(arch, grid, kernel_parameters, compute_Gcs!,
+            values(tendencies),
             grid,
-            map(i -> Val(i), 1:length(tracers)),
-            map(i -> Val(keys(tracers)[i]), 1:length(tracers)),
-            start_tracer_kernel_args...,
-            map(i -> tracers[i].boundary_conditions.immersed, 1:length(tracers)),
-            end_tracer_kernel_args...,
+            tuple(map(i -> Val(i), 1:length(tracers))...),
+            tuple(map(i -> Val(keys(tracers)[i]), 1:length(tracers))...),
+            advection, closure,
+            tuple(map(i -> tracers[i].boundary_conditions.immersed, 1:length(tracers))...),
+            buoyancy, biogeochemistry, background_fields, velocities,
+            tracers, auxiliary_fields, closure_fields,
             clock,
-            values(forcings)[4:end];
+            values(forcings);
             active_cells_map)
 
     return nothing
@@ -154,22 +151,22 @@ end
     @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, args...)
 end
 
-@kernel function compute_Gc!(Gc::Tuple, grid, 
-                             val_tracer_index, 
-                             val_tracer_name, 
-                             advection, 
-                             closure,
-                             immersed_bc,
-                             buoyancy, biogeochemistry, background_fields, velocities,
-                             tracers, auxiliary_fields, closure_fields,
-                             clock,
-                             forcing)# TODO: check if its faster to pass Val{N} so its a constant
+@kernel function compute_Gcs!(Gc, grid, 
+                              val_tracer_index, 
+                              val_tracer_name, 
+                              advection, 
+                              closure,
+                              immersed_bc,
+                              buoyancy, biogeochemistry, background_fields, velocities,
+                              tracers, auxiliary_fields, closure_fields,
+                              clock,
+                              forcing) # TODO: check if its faster to pass Val{N} so its a constant
     i, j, k = @index(Global, NTuple)
 
-    N = length(Gc)
+    N = length(val_tracer_index)
 
     @inbounds for n in 1:N
-        Gc[n][i, j, k] = 
+        Gc[n+3][i, j, k] = 
             tracer_tendency(i, j, k, grid, 
                             val_tracer_index[n],
                             val_tracer_name[n],
@@ -179,7 +176,7 @@ end
                             buoyancy, biogeochemistry, background_fields, velocities,
                             tracers, auxiliary_fields, closure_fields,
                             clock,
-                            forcing[n])
+                            forcing[n+3])
     end
 end
 
