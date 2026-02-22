@@ -163,7 +163,7 @@ end
                              buoyancy, biogeochemistry, background_fields, velocities,
                              tracers, auxiliary_fields, closure_fields,
                              clock,
-                             forcing)
+                             forcing)# TODO: check if its faster to pass Val{N} so its a constant
     i, j, k = @index(Global, NTuple)
 
     N = length(Gc)
