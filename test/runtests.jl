@@ -99,6 +99,7 @@ CUDA.allowscalar() do
             include("test_implicit_diffusion_diagnostic.jl")
             include("test_output_writers.jl")
             include("test_output_readers.jl")
+            include("test_averaged_specified_times.jl")
             include("test_set_field_time_series.jl")
         end
     end
@@ -125,6 +126,7 @@ CUDA.allowscalar() do
             include("test_datetime_clock.jl")
             include("test_forcings.jl")
             include("test_immersed_advection.jl")
+            include("test_background_flux_divergence.jl")
         end
     end
 

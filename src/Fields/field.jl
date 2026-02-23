@@ -861,6 +861,10 @@ end
 ##### nodes
 #####
 
+Grids.xnodes(f::Field; kwargs...) = xnodes(f.grid, instantiated_location(f)...; indices=indices(f)[1], kwargs...)
+Grids.ynodes(f::Field; kwargs...) = ynodes(f.grid, instantiated_location(f)...; indices=indices(f)[2], kwargs...)
+Grids.znodes(f::Field; kwargs...) = znodes(f.grid, instantiated_location(f)...; indices=indices(f)[3], kwargs...)
+Grids.rnodes(f::Field; kwargs...) = rnodes(f.grid, instantiated_location(f)...; indices=indices(f)[3], kwargs...)
 Grids.nodes(f::Field; kwargs...) = nodes(f.grid, instantiated_location(f)...; indices=indices(f), kwargs...)
 
 #####

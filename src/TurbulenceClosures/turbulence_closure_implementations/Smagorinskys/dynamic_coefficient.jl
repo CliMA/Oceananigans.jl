@@ -1,7 +1,6 @@
 using Oceananigans.Architectures: architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: CenterField, Field, compute!, interpolate, xnode, ynode, znode
-using Oceananigans.Utils: time_difference_seconds
 using Statistics: mean
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
@@ -315,10 +314,6 @@ function compute_coefficient_fields!(closure_fields, closure::DirectionallyAvera
     arch = architecture(grid)
     velocities = model.velocities
     cˢ = closure.coefficient
-    clock = model.clock
-
-    # For RK3 only compute coefficients at the final stage.
-    clock.stage == 1 || return nothing
 
     if cˢ.schedule(model)
         Σ = closure_fields.Σ
@@ -417,25 +412,48 @@ const c = Center()
     end
 end
 
-function compute_coefficient_fields!(closure_fields, closure::LagrangianAveragedDynamicSmagorinsky, model; parameters)
+function initialize_closure_fields!(closure_fields, closure::LagrangianAveragedDynamicSmagorinsky, model)
     grid = model.grid
     arch = architecture(grid)
     clock = model.clock
     cˢ = closure.coefficient
-    previous_compute_time = closure_fields.previous_compute_time
     u, v, w = model.velocities
 
-    # For RK3 only compute coefficients at the final stage.
-    clock.stage == 1 || return nothing
+    Σ = closure_fields.Σ
+    Σ̄ = closure_fields.Σ̄
+    launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, u, v, w)
+    launch!(arch, grid, :xyz, _compute_Σ̄!, Σ̄, grid, u, v, w)
 
-    Δt = time_difference_seconds(clock.time, previous_compute_time[])
+    # Fill Σ, Σ̄ halos because the M tensor computation uses `filter`
+    # which reads from neighboring cells (including halo cells).
+    fill_halo_regions!(Σ; only_local_halos=true)
+    fill_halo_regions!(Σ̄; only_local_halos=true)
 
-    # After restoring from a checkpoint, previous_compute_time matches clock.time
-    # (since both QAB2 and RK3 call update_state! after tick!), so Δt == 0.
-    # Skip the computation in that case — the restored fields are already correct.
-    Δt == 0 && return nothing
+    𝒥ᴸᴹ  = closure_fields.𝒥ᴸᴹ
+    𝒥ᴹᴹ  = closure_fields.𝒥ᴹᴹ
+    𝒥ᴸᴹ_min = cˢ.minimum_numerator
 
-    if cˢ.schedule(model)
+    # Compute instantaneous LM, MM and spatially average for initialization
+    launch!(arch, grid, :xyz, _compute_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, Σ, Σ̄, grid, u, v, w)
+    parent(𝒥ᴸᴹ) .= max(mean(𝒥ᴸᴹ), 𝒥ᴸᴹ_min)
+    parent(𝒥ᴹᴹ) .= mean(𝒥ᴹᴹ)
+
+    # Initialize previous_compute_time to current time
+    closure_fields.previous_compute_time[] = clock.time
+
+    return nothing
+end
+
+function step_closure_prognostics!(closure_fields, closure::LagrangianAveragedDynamicSmagorinsky, model, Δt)
+    grid = model.grid
+    arch = architecture(grid)
+    clock = model.clock
+    cˢ = closure.coefficient
+    u, v, w = model.velocities
+
+    time_to_compute = isnothing(cˢ.schedule) || (cˢ.schedule(model) && clock.stage == 1)
+
+    if time_to_compute
         Σ = closure_fields.Σ
         Σ̄ = closure_fields.Σ̄
         launch!(arch, grid, :xyz, _compute_Σ!, Σ, grid, u, v, w)
@@ -455,27 +473,19 @@ function compute_coefficient_fields!(closure_fields, closure::LagrangianAveraged
         𝒥ᴹᴹ  = closure_fields.𝒥ᴹᴹ
         𝒥ᴸᴹ_min = cˢ.minimum_numerator
 
-        if isnan(previous_compute_time[])
-            # Compute instantaneous LM, MM and spatially average for initialization.
-            # Don't commit previous_compute_time at iteration 0 because the model
-            # constructor calls update_state! before set! populates the velocities.
-            # This allows run! → initialize! to re-compute with the actual velocities.
-            launch!(arch, grid, :xyz, _compute_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, Σ, Σ̄, grid, u, v, w)
-            parent(𝒥ᴸᴹ) .= max(mean(𝒥ᴸᴹ), 𝒥ᴸᴹ_min)
-            parent(𝒥ᴹᴹ) .= mean(𝒥ᴹᴹ)
+        # Compute time elapsed since last coefficient computation
+        Δt_lagrangian = clock.time - closure_fields.previous_compute_time[]
+        closure_fields.previous_compute_time[] = clock.time
 
-            if clock.iteration > 0
-                previous_compute_time[] = clock.time
-            end
-        else
-            previous_compute_time[] = clock.time
-            launch!(arch, grid, :xyz,
-                    _lagrangian_average_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, 𝒥ᴸᴹ_min, Σ, Σ̄, grid, Δt, u, v, w)
-        end
+        launch!(arch, grid, :xyz,
+                _lagrangian_average_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, 𝒥ᴸᴹ_min, Σ, Σ̄, grid, Δt_lagrangian, u, v, w)
     end
 
     return nothing
 end
+
+# Lagrangian-averaged coefficients are now stepped via step_closure_prognostics!
+compute_coefficient_fields!(closure_fields, closure::LagrangianAveragedDynamicSmagorinsky, model; parameters) = nothing
 
 function allocate_coefficient_fields(closure::LagrangianAveragedDynamicSmagorinsky, grid, clock)
     𝒥ᴸᴹ⁻ = CenterField(grid)
@@ -487,7 +497,8 @@ function allocate_coefficient_fields(closure::LagrangianAveragedDynamicSmagorins
     Σ = CenterField(grid)
     Σ̄ = CenterField(grid)
 
-    previous_compute_time = Ref(oftype(clock.time, NaN))
+    # Initialize to clock.time; will be properly set during initialize_closure_fields!
+    previous_compute_time = Ref(clock.time)
 
     return (; Σ, Σ̄, 𝒥ᴸᴹ, 𝒥ᴹᴹ, 𝒥ᴸᴹ⁻, 𝒥ᴹᴹ⁻, previous_compute_time)
 end
