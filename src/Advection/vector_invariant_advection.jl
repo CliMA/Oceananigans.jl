@@ -106,6 +106,7 @@ function VectorInvariant(FT = Oceananigans.defaults.FloatType;
                                                              upwinding)
 end
 
+
 #                                                                 buffer eltype
 #                                                 VectorInvariant{N,     FT,    M (multi-dimensionality)
 const MultiDimensionalVectorInvariant           = VectorInvariant{<:Any, <:Any, true}
@@ -128,6 +129,18 @@ const VectorInvariantCrossVerticalUpwinding     = VectorInvariant{<:Any, <:Any, 
 const VectorInvariantSelfVerticalUpwinding      = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any,  <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:OnlySelfUpwinding}
 
 const WENOVectorInvariant{N} = VectorInvariant{<:Any, <:Any, <:Any, <:WENO{N}} where N
+
+function StaticWENOVectorInvariant(scheme::WENOVectorInvariant)
+
+    return VectorInvariant(
+        vorticity_scheme=StaticWENO(scheme.vorticity_scheme),
+        vorticity_stencil=scheme.vorticity_stencil,
+        vertical_advection_scheme=StaticWENO(scheme.vertical_advection_scheme),
+        divergence_scheme=StaticWENO(scheme.divergence_scheme),
+        kinetic_energy_gradient_scheme=scheme.kinetic_energy_gradient_scheme,
+        upwinding=scheme.momentum.upwinding
+	    )
+end
 
 Base.summary(a::VectorInvariant)                 = "VectorInvariant"
 Base.summary(a::MultiDimensionalVectorInvariant) = "VectorInvariant, multidimensional reconstruction"
