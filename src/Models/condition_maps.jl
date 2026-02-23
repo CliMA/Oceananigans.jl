@@ -14,20 +14,21 @@ using KernelAbstractions: @kernel, @index
     active_cells_map = get_active_cells_map(grid, Val(:interior))
 
     map_keys = keys(advection)
-    condition_maps = NamedTuple{map_keys}
+    Nkeys = length(map_keys)
+    condition_maps = NamedTuple{map_keys}(NTuple{Nkeys}([nothing for _ in range(1, Nkeys)]))
 
     for key in keys(advection)
       if key == :momentum
         if condition_momentum_advection
-          condition_maps[:momentum] = compute_advection_conditioned_map(advection.momentum,
-                                                                        grid;
-                                                                        active_cells_map)
-        end
+            condition_maps[:momentum] = compute_advection_conditioned_map(advection.momentum,
+                                                                          grid;
+                                                                          active_cells_map)
+        end 
       else
         if condition_tracer_advection
-          condition_maps[key] = compute_advection_conditioned_map(advection[:key],
-                                                                  grid;
-                                                                  active_cells_map)
+            condition_maps[key] = compute_advection_conditioned_map(advection[:key],
+                                                                    grid;
+                                                                    active_cells_map)
         end
       end
     end 
