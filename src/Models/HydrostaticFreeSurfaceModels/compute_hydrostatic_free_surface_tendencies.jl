@@ -146,6 +146,21 @@ function generate_momentum_kernel_args(scheme, common_args; momentum_condition_m
     end
 end
 
+function prepend_args(first_args, args)
+    return (first_args..., args...)
+end
+
+function prepend_args(first_args, args::NamedTuple)
+    Nkeys = length(keys(args))
+    new_args = NamedTuple{keys(args)}(NTuple{Nkeys}([nothing for _ in range(1, Nkeys)]))
+
+    for key in keys(args)
+        new_args[key] = (first_args..., args[key]...)
+    end
+    return new_args
+end
+
+
 """
     compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters; active_cells_map=nothing)
 
@@ -185,7 +200,8 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
             grid,
             kernel_parameters,
             compute_hydrostatic_free_surface_Gu!,
-            (model.timestepper.Gⁿ.u, grid),
+	    model.timestepper.Gⁿ.u,
+	    grid,
             u_kernel_args_tuple;
             active_cells_map=momentum_conditioned_maps)
 
@@ -193,7 +209,8 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
             grid, 
             kernel_parameters, 
             compute_hydrostatic_free_surface_Gv!, 
-            (model.timestepper.Gⁿ.v, grid),
+	    model.timestepper.Gⁿ.v,
+	    grid,
             v_kernel_args_tuple; 
             active_cells_map=momentum_conditioned_maps)
 
