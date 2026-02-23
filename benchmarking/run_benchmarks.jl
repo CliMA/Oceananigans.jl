@@ -27,7 +27,8 @@ using ArgParse: @add_arg_table!, ArgParseSettings, parse_args
 using OceananigsBenchmarks: earth_ocean, benchmark_time_stepping, run_benchmark_simulation, run_io_benchmark
 using JSON: JSON
 using Oceananigans
-using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, SmagorinskyLilly
+using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, SmagorinskyLilly,
+    IsopycnalSkewSymmetricDiffusivity, HorizontalScalarBiharmonicDiffusivity
 
 using Printf: @printf
 using Dates: DateTime, now, UTC
@@ -66,7 +67,7 @@ function parse_commandline()
             default = "earth_ocean"
 
         "--grid_type"
-            help = "Grid type: tripolar or lat_lon (LatitudeLongitudeGrid from -80 to 85)"
+            help = "Grid type: tripolar, lat_lon (with bathymetry), or lat_lon_flat (no bathymetry)"
             arg_type = String
             default = "tripolar"
 
@@ -89,8 +90,10 @@ function parse_commandline()
             default = "WENO7"
 
         "--closure"
-            help = "Turbulence closure: nothing, CATKE, SmagorinskyLilly. " *
-                   "Multiple closures can be specified as comma-separated list."
+            help = "Turbulence closure: nothing, CATKE, SmagorinskyLilly, " *
+                   "CATKE+Biharmonic, CATKE+GM+Biharmonic. " *
+                   "Multiple closures can be specified as comma-separated list " *
+                   "(use semicolons to separate multiple compound closures)."
             arg_type = String
             default = "CATKE"
 
@@ -143,6 +146,11 @@ function parse_commandline()
             help = "Output file format for IO benchmark mode: jld2 or netcdf"
             arg_type = String
             default = "jld2"
+
+        "--tracers"
+            help = "Tracer names as comma-separated list (e.g., T,S or T,S,C1,C2,C3)"
+            arg_type = String
+            default = "T,S"
 
         "--clear"
             help = "Clear existing results file before writing"
@@ -210,7 +218,12 @@ function make_closure(name, FT)
     name == "nothing" && return nothing
     name == "CATKE" && return CATKEVerticalDiffusivity()
     name == "SmagorinskyLilly" && return SmagorinskyLilly(FT)
-    error("Unknown closure: $name. Use nothing, CATKE, SmagorinskyLilly.")
+    name == "CATKE+Biharmonic" && return (CATKEVerticalDiffusivity(),
+                                          HorizontalScalarBiharmonicDiffusivity(ν=1e12))
+    name == "CATKE+GM+Biharmonic" && return (CATKEVerticalDiffusivity(),
+                                              IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3),
+                                              HorizontalScalarBiharmonicDiffusivity(ν=1e12))
+    error("Unknown closure: $name. Use nothing, CATKE, SmagorinskyLilly, CATKE+Biharmonic, CATKE+GM+Biharmonic.")
 end
 
 make_timestepper(name) = Symbol(name)
@@ -232,6 +245,7 @@ function run_benchmarks(args)
     tracer_advections = parse_list(args["tracer_advection"])
     closures = parse_list(args["closure"])
     timestepper = make_timestepper(args["timestepper"])
+    tracers = Tuple(Symbol(strip(s)) for s in split(args["tracers"], ","))
 
     # Mode-specific parameters
     Δt = args["dt"]
@@ -263,6 +277,7 @@ function run_benchmarks(args)
     println("Momentum advection: ", momentum_advections)
     println("Tracer advection: ", tracer_advections)
     println("Closures: ", closures)
+    println("Tracers: ", tracers)
     println("Timestepper: ", timestepper)
     if mode == "benchmark"
         println("Time steps: ", time_steps, " (warmup: ", warmup_steps, ")")
@@ -306,6 +321,7 @@ function run_benchmarks(args)
                 momentum_advection,
                 tracer_advection,
                 closure,
+                tracers,
                 timestepper
             )
         else

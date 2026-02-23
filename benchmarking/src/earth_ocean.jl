@@ -15,7 +15,8 @@ using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
                 momentum_advection = WENOVectorInvariant(order=9),
                 tracer_advection = WENO(order=7),
                 closure = CATKEVerticalDiffusivity(),
-                timestepper = :SplitRungeKutta3)
+                timestepper = :SplitRungeKutta3,
+                tracers = (:T, :S))
 
 Create a `HydrostaticFreeSurfaceModel` for the Earth ocean benchmark case
 with realistic Earth bathymetry from NumericalEarth.
@@ -26,11 +27,12 @@ with realistic Earth bathymetry from NumericalEarth.
 # Keyword Arguments
 - `float_type`: Floating point precision (`Float32` or `Float64`)
 - `Nx, Ny, Nz`: Grid resolution (longitude, latitude, vertical)
-- `grid_type`: `"tripolar"` for a TripolarGrid or `"lat_lon"` for a LatitudeLongitudeGrid (-80 to 85)
+- `grid_type`: `"tripolar"` for a TripolarGrid, `"lat_lon"` for a LatitudeLongitudeGrid with bathymetry, or `"lat_lon_flat"` for a plain LatitudeLongitudeGrid without bathymetry
 - `momentum_advection`: Momentum advection scheme (default: `WENOVectorInvariant(order=9)`)
 - `tracer_advection`: Tracer advection scheme (default: `WENO(order=7)`)
 - `closure`: Turbulence closure (default: `CATKEVerticalDiffusivity()`)
 - `timestepper`: Time stepping scheme (default: `:SplitRungeKutta3`)
+- `tracers`: Tuple of tracer names (default: `(:T, :S)`)
 """
 function earth_ocean(arch = CPU();
                      float_type = Float32,
@@ -39,10 +41,11 @@ function earth_ocean(arch = CPU();
                      momentum_advection = WENOVectorInvariant(order=9),
                      tracer_advection = WENO(order=7),
                      closure = CATKEVerticalDiffusivity(),
-                     timestepper = :SplitRungeKutta3)
+                     timestepper = :SplitRungeKutta3,
+                     tracers = (:T, :S))
 
-    grid_type in ("tripolar", "lat_lon") ||
-        error("Unknown grid_type: $grid_type. Use \"tripolar\" or \"lat_lon\".")
+    grid_type in ("tripolar", "lat_lon", "lat_lon_flat") ||
+        error("Unknown grid_type: $grid_type. Use \"tripolar\", \"lat_lon\", or \"lat_lon_flat\".")
 
     Oceananigans.defaults.FloatType = float_type
 
@@ -55,7 +58,7 @@ function earth_ocean(arch = CPU();
             halo = (7, 7, 7),
             z
         )
-    else # lat_lon
+    else # lat_lon or lat_lon_flat
         underlying_grid = LatitudeLongitudeGrid(arch;
             size = (Nx, Ny, Nz),
             halo = (7, 7, 7),
@@ -65,17 +68,19 @@ function earth_ocean(arch = CPU();
         )
     end
 
-    bottom_height = NumericalEarth.regrid_bathymetry(underlying_grid;
-        minimum_depth = 10,
-        interpolation_passes = 10,
-        major_basins = 2
-    )
+    if grid_type == "lat_lon_flat"
+        grid = underlying_grid
+    else
+        bottom_height = NumericalEarth.regrid_bathymetry(underlying_grid;
+            minimum_depth = 10,
+            interpolation_passes = 10,
+            major_basins = 2
+        )
 
-    grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom_height);
-        active_cells_map = true
-    )
-
-    tracers = (:T, :S)
+        grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom_height);
+            active_cells_map = true
+        )
+    end
 
     free_surface = SplitExplicitFreeSurface(; substeps=30)
     buoyancy = SeawaterBuoyancy(equation_of_state=TEOS10EquationOfState())
@@ -95,7 +100,13 @@ function earth_ocean(arch = CPU();
     # Initial conditions: baroclinic wave excitation
     Tᵢ(λ, φ, z) = 30 * (1 - tanh((abs(φ) - 45) / 8)) / 2 + rand()
     Sᵢ(λ, φ, z) = 28 - 5e-3 * z + rand()
-    set!(model, T=Tᵢ, S=Sᵢ)
+
+    ic = Dict{Symbol,Any}()
+    :T in tracers && (ic[:T] = Tᵢ)
+    :S in tracers && (ic[:S] = Sᵢ)
+    # Extra tracers beyond T/S get zero (default)
+
+    set!(model; ic...)
 
     return model
 end
