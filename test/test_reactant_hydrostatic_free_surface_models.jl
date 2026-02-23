@@ -7,13 +7,8 @@ using Statistics: mean
 #####
 ##### Reactant HydrostaticFreeSurfaceModel tests (ExplicitFreeSurface, FFT-free)
 #####
-# Blueprint phases (a)+(c)+(d): construction, compiled time-stepping with raise=true,
-# and Enzyme reverse-mode differentiation.
-# HFSM requires Bounded in z (free surface); we only test z=Bounded topologies.
-# See test-blueprint.md in cursor-toolchain/rules/domains/differentiability/.
 
 @testset "Reactant HydrostaticFreeSurfaceModel (ExplicitFreeSurface)" begin
-    @info "Testing Reactant HydrostaticFreeSurfaceModel (ExplicitFreeSurface)..."
     arch = ReactantState()
 
     function run_timesteps!(model, Δt, Nt)
@@ -24,16 +19,17 @@ using Statistics: mean
     end
 
     topologies = [
-        ((Periodic, Periodic, Bounded), (4, 4, 4), (1, 1, 1)),
-        ((Bounded,  Bounded,  Bounded), (4, 4, 4), (1, 1, 1)),
+        (topology = (Periodic, Periodic, Bounded), size = (4, 4, 4), extent = (1, 1, 1),
+         name = "3D (Periodic, Periodic, Bounded) — ExplicitFreeSurface, QB2"),
+        (topology = (Bounded,  Bounded,  Bounded), size = (4, 4, 4), extent = (1, 1, 1),
+         name = "3D (Bounded, Bounded, Bounded) — ExplicitFreeSurface, QB2"),
     ]
 
-    for (topo, sz, ext) in topologies
-        topo_str = join(nameof.(typeof.(topo)), ", ")
+    for config in topologies
+        topo_str = config.name
 
-        @testset "($topo_str)" begin
-            @info "  Testing ($topo_str)..."
-            grid = RectilinearGrid(arch; size=sz, extent=ext, topology=topo)
+        @testset "$topo_str" begin
+            grid = RectilinearGrid(arch; size=config.size, extent=config.extent, topology=config.topology)
             model = HydrostaticFreeSurfaceModel(grid;
                         free_surface = ExplicitFreeSurface(),
                         timestepper  = :QuasiAdamsBashforth2,
@@ -47,7 +43,6 @@ using Statistics: mean
             end
 
             @testset "Compiled time_step! (raise=true)" begin
-                @info "    Compiling and running time_step!..."
                 Δt = 0.001
                 Nt = 4
                 compiled_run! = @compile raise=true raise_first=true sync=true run_timesteps!(model, Δt, Nt)
@@ -56,7 +51,6 @@ using Statistics: mean
             end
 
             @testset "Enzyme reverse-mode gradient" begin
-                @info "    Compiling and running Enzyme gradient..."
                 dmodel = Enzyme.make_zero(model)
 
                 T_init  = CenterField(grid)
