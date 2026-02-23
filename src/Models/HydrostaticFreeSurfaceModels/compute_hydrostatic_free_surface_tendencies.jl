@@ -181,13 +181,21 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     v_kernel_args = tuple(model.coriolis, model.closure, v_immersed_bc, end_momentum_kernel_args..., v_forcing)
     v_kernel_args_tuple = generate_momentum_kernel_args(model.advection.momentum, v_kernel_args)
 
-    launch_conditioned!(arch, grid, kernel_parameters, momentum_conditioned_maps,
-                        compute_hydrostatic_free_surface_Gu!, (model.timestepper.Gⁿ.u, grid),
-                        u_kernel_args_tuple)
+    launch!(arch,
+            grid,
+            kernel_parameters,
+            compute_hydrostatic_free_surface_Gu!,
+            (model.timestepper.Gⁿ.u, grid),
+            u_kernel_args_tuple;
+            active_cells_map=momentum_conditioned_maps)
 
-    launch_conditioned!(arch, grid, kernel_parameters, momentum_conditioned_maps,
-                        compute_hydrostatic_free_surface_Gv!, (model.timestepper.Gⁿ.v, grid),
-                        v_kernel_args_tuple)
+    launch!(arch,
+            grid, 
+            kernel_parameters, 
+            compute_hydrostatic_free_surface_Gv!, 
+            (model.timestepper.Gⁿ.v, grid),
+            v_kernel_args_tuple; 
+            active_cells_map=momentum_conditioned_maps)
 
     return nothing
 end

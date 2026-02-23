@@ -348,6 +348,20 @@ end
     return nothing
 end
 
+function launch!(arch, grid, workspec, common_args, args::NamedTuple; active_cells_map::NamedTuple, kwargs...)
+  condition_keys = keys(active_cells_map)
+  arg_keys = keys(args)
+  if condition_keys != arg_keys
+    @warn "Active_cells_amp_tuple keys are different to args' keys. The kernel will not be launched"
+  else
+    for key in condition_keys
+      map = active_cells_map[key]
+      _launch!(arch, grid, workspec, common_args..., args[key]; active_cells_map=map, kwargs...)
+    end
+  end
+  return nothing
+end
+
 function launch_conditioned!(arch, grid, workspec, active_cells_map_tuple, args...; kwargs...)
     _launch!(arch, grid, workspec, args...; active_cells_map=active_cells_map_tuple, kwargs...)
 	return nothing
