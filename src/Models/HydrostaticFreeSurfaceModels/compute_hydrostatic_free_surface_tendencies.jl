@@ -169,7 +169,7 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     u_kernel_args_tuple = (; interior = (static_momentum_advection, u_kernel_args...),
                              boundary = (model.advection.momentum, u_kernel_args...))
 
-    v_kernel_args = tuple(model.coriolis, model.closue, v_immersed_bc, end_momentum_kernel_args..., v_forcing)
+    v_kernel_args = tuple(model.coriolis, model.closure, v_immersed_bc, end_momentum_kernel_args..., v_forcing)
     v_kernel_args_tuple = (; interior = (static_momentum_advection, v_kernel_args...), 
                              boundary = (model.advection.momentum, v_kernel_args...))
 
