@@ -166,10 +166,12 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     static_momentum_advection = StaticWENOVectorInvariant(model.advection.momentum)
 
     u_kernel_args = tuple(model.coriolis, model.closure, u_immersed_bc, end_momentum_kernel_args..., u_forcing)
-    u_kernel_args_tuple = NamedTuple{(:interior, :boundary)}(tuple(static_momentum_advection, u_kernel_args...), tuple(model.advection.momentum, u_kernel_args...))
+    u_kernel_args_tuple = (; interior = (static_momentum_advection, u_kernel_args...),
+                             boundary = (model.advection.momentum, u_kernel_args...))
 
     v_kernel_args = tuple(model.coriolis, model.closue, v_immersed_bc, end_momentum_kernel_args..., v_forcing)
-    v_kernel_args_tuple = NamedTuple{(:interior, :boundary)}(tuple(static_momentum_advection, v_kernel_args...), tuple(model.advection.momentum, v_kernel_args...))
+    v_kernel_args_tuple = (; interior = (static_momentum_advection, v_kernel_args...), 
+                             boundary = (model.advection.momentum, v_kernel_args...))
 
     launch_conditioned!(arch, grid, kernel_parameters, momentum_conditioned_maps,
                         compute_hydrostatic_free_surface_Gu!, (model.timestepper.Gⁿ.u, grid),
