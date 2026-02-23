@@ -8,7 +8,7 @@ using Oceananigans.Fields: CenterField, tracernames, TracerFields
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions, generate_condition_maps
+using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions,
                                        time_discretization, implicit_diffusion_solver, closure_required_tracers, initialize_closure_fields!
@@ -16,7 +16,7 @@ using Oceananigans.Utils: tupleit
 
 import Oceananigans
 import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
-import Oceananigans.Models: initialization_update_state!, total_velocities
+import Oceananigans.Models: initialization_update_state!, total_velocities, generate_condition_maps
 import Oceananigans.TimeSteppers: update_state!
 import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
 
@@ -147,8 +147,8 @@ function HydrostaticFreeSurfaceModel(grid;
                                      closure_fields = nothing,
                                      auxiliary_fields = NamedTuple(),
                                      vertical_coordinate = default_vertical_coordinate(grid),
-                                     momentum_advection_condition_map=false,
-                                     tracer_advection_condition_map=false)
+                                     condition_momentum_advection=false,
+                                     condition_tracer_advection=false)
 
     # Check halos and throw an error if the grid's halo is too small
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
@@ -270,8 +270,8 @@ function HydrostaticFreeSurfaceModel(grid;
 
     condition_maps = generate_condition_maps(grid,
                                              advection;
-                                             momentum_advection_condition_map,
-                                             tracer_advection_condition_map)
+                                             condition_momentum_advection,
+                                             condition_tracer_advection)
 
     model = HydrostaticFreeSurfaceModel(arch, grid, clock, advection, buoyancy, coriolis,
                                         free_surface, forcing, closure, particles, biogeochemistry, velocities, transport_velocities,
