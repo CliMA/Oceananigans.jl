@@ -8,7 +8,7 @@ using Oceananigans.Fields: CenterField, tracernames, TracerFields
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions
+using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions, generate_condition_maps
 using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions,
                                        time_discretization, implicit_diffusion_solver, closure_required_tracers, initialize_closure_fields!
@@ -35,7 +35,7 @@ function default_vertical_coordinate(grid)
 end
 
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
-                                           G, T, V, B, R, F, P, BGC, U, W, C, Φ, K, AF, Z} <: AbstractModel{TS, A}
+                                           G, T, V, B, R, F, P, BGC, U, W, C, Φ, K, AF, Z, CM} <: AbstractModel{TS, A}
 
     architecture :: A          # Computer `Architecture` on which `Model` is run
     grid :: G                  # Grid of physical points on which `Model` is solved
@@ -56,6 +56,7 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
     timestepper :: TS          # Object containing timestepper fields and parameters
     auxiliary_fields :: AF     # User-specified auxiliary fields for forcing functions and boundary conditions
     vertical_coordinate :: Z   # Rulesets that define the time-evolution of the grid
+    condition_maps :: CM       # Cell maps split according to some condition 
 end
 
 supported_timesteppers = (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5)
@@ -145,7 +146,9 @@ function HydrostaticFreeSurfaceModel(grid;
                                      pressure = nothing,
                                      closure_fields = nothing,
                                      auxiliary_fields = NamedTuple(),
-                                     vertical_coordinate = default_vertical_coordinate(grid))
+                                     vertical_coordinate = default_vertical_coordinate(grid),
+                                     momentum_advection_condition_map=false,
+                                     tracer_advection_condition_map=false)
 
     # Check halos and throw an error if the grid's halo is too small
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
@@ -265,9 +268,14 @@ function HydrostaticFreeSurfaceModel(grid;
 
     !isnothing(particles) && arch isa Distributed && error("LagrangianParticles are not supported on Distributed architectures.")
 
+    condition_maps = generate_condition_maps(grid,
+                                             advection;
+                                             momentum_advection_condition_map,
+                                             tracer_advection_condition_map)
+
     model = HydrostaticFreeSurfaceModel(arch, grid, clock, advection, buoyancy, coriolis,
                                         free_surface, forcing, closure, particles, biogeochemistry, velocities, transport_velocities,
-                                        tracers, pressure, closure_fields, timestepper, auxiliary_fields, vertical_coordinate)
+                                        tracers, pressure, closure_fields, timestepper, auxiliary_fields, vertical_coordinate, condition_maps)
 
     initialization_update_state!(model)
 

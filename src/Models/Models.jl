@@ -12,6 +12,7 @@ export
     BulkDrag, BulkDragFunction, BulkDragBoundaryCondition,
     XDirectionBulkDragFunction, YDirectionBulkDragFunction, ZDirectionBulkDragFunction,
     LinearFormulation, QuadraticFormulation
+export generate_condition_maps
 
 using Oceananigans: AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation
@@ -222,6 +223,9 @@ include("boundary_mean.jl")
 include("boundary_condition_operation.jl")
 include("forcing_operation.jl")
 include("set_model.jl")
+
+# Implementation of condition map generation
+include("condition_maps.jl")
 
 # Implementation of the diagnostic for computing the dissipation rate
 include("VarianceDissipationComputations/VarianceDissipationComputations.jl")

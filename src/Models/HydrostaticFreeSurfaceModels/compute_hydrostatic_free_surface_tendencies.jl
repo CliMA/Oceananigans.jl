@@ -7,13 +7,8 @@ using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
-using Oceananigans.Grids: get_active_cells_map, active_cell
-using Oceananigans.Architectures: CPU
-import Oceananigans.Architectures as AC
-using Oceananigans.Fields: Field, interior
+using Oceananigans.Grids: get_active_cells_map
 using Oceananigans.Advection: StaticWENO, StaticWENOVectorInvariant
-using KernelAbstractions: @kernel, @index
-
 """
     compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
 
@@ -139,108 +134,6 @@ function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active
     return nothing
 end
 
-function get_advection_conditioned_map(scheme, grid::ImmersedBoundaryGrid; active_cells_map=nothing)
-    # Field is true if the max scheme can be used for computing u advection
-    max_scheme_field = Field{Center, Center, Center}(grid, Bool)
-    fill!(max_scheme_field, false)
-    launch!(architecture(grid), grid, :xyz, condition_map!, max_scheme_field, grid, scheme; active_cells_map)
-
-    return NamedTuple{(:interior, :boundary)}(split_indices(max_scheme_field, grid; active_cells_map))
-end
-
-function split_indices(field, grid; active_cells_map=nothing)
-    if isnothing(active_cells_map)
-        return split_indices_full(field, grid)
-    else
-        return split_indices_mapped(field, grid, active_cells_map)
-    end
-end
-
-function split_indices_mapped(field, grid, active_cells_map)
-    IndexType = Tuple{Int64,Int64,Int64}
-    vals = AC.on_architecture(CPU(), interior(field))
-    active_indices = AC.on_architecture(CPU(), active_cells_map)
-    map1 = Vector{eltype(active_indices)}()
-    map2 = Vector{eltype(active_indices)}()
-    for index in active_indices
-        val = vals[convert(IndexType, index)...]
-	if val
-	    push!(map1, index)
-	else
-	    push!(map2, index)
-	end
-    end
-    println(size(map1))
-    println(size(map2))
-    map1 = AC.on_architecture(architecture(grid), map1) 
-    map2 = AC.on_architecture(architecture(grid), map2) 
-    return (map1, map2)
-end
-
-function split_indices_full(field, grid)
-    IndicesType = Tuple{Int16, Int16, Int16}
-    map1 = IndicesType[]
-    map2 = IndicesType[]
-    for k in 1:size(grid, 3)
-        vals = AC.on_architecture(CPU(), interior(field, :, :, k)) 
-	map1 = vcat(map1, convert_interior_indices(findall(x->x, vals), k, IndicesType))
-	map2 = vcat(map2, convert_interior_indices(findall(x->!x, vals), k, IndicesType))
-	GC.gc()
-    end
-    map1 = AC.on_architecture(architecture(grid), map1) 
-    map2 = AC.on_architecture(architecture(grid), map2) 
-    return (map1, map2)
-end
-
-
-function convert_interior_indices(interior_indices, k, IndicesType)
-    interior_indices =   getproperty.(interior_indices, :I)
-    interior_indices = add_3rd_index.(interior_indices, k) |> Array{IndicesType}
-    return interior_indices
-end
-
-add_3rd_index(ij, k) = (ij[1], ij[2], k)
-
-check_interior_xyz(i, j, k, ibg, scheme) = reduce(&, 
-                                                 (check_interior_x(i, j, k, ibg, scheme),
-                                                  check_interior_y(i, j, k, ibg, scheme),
-                                                  check_interior_z(i, j, k, ibg, scheme)))
-
-function check_interior_x(i, j, k, ibg, scheme::AbstractAdvectionScheme{N}) where N
-    interior = true
-    
-    buffer = N + 1
-    for di in -buffer:buffer
-        interior &= active_cell(i + di, j, k, ibg)
-    end
-    return interior
-end
-
-function check_interior_y(i, j, k, ibg, scheme::AbstractAdvectionScheme{N}) where N
-    interior = true
-    
-    buffer = N + 1
-    for dj in -buffer:buffer
-        interior &= active_cell(i, j + dj, k, ibg)
-    end
-    return interior
-end
-
-function check_interior_z(i, j, k, ibg, scheme::AbstractAdvectionScheme{N}) where N
-    interior = true
-    
-    buffer = N + 1
-    for dk in -buffer:buffer
-        interior &= active_cell(i, j, k + dk, ibg)
-    end
-    return interior
-end
-
-@kernel function condition_map!(max_scheme_field, ibg, scheme)
-    i, j, k = @index(Global, NTuple)
-
-    @inbounds max_scheme_field[i, j, k] = check_interior_xyz(i, j, k, ibg, scheme)
-end
 
 """
     compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters; active_cells_map=nothing)
@@ -252,9 +145,7 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     grid = model.grid
     arch = architecture(grid)
 
-		momentum_conditioned_maps = get_advection_conditioned_map(model.advection.momentum, grid; active_cells_map)
-    u_conditioned_maps = momentum_conditioned_maps
-		v_conditioned_maps = momentum_conditioned_maps
+		momentum_conditioned_maps = model.condition_maps.momentum
 
     u_immersed_bc = immersed_boundary_condition(velocities.u)
     v_immersed_bc = immersed_boundary_condition(velocities.v)
@@ -280,11 +171,11 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     v_kernel_args = tuple(model.coriolis, model.closue, v_immersed_bc, end_momentum_kernel_args..., v_forcing)
     v_kernel_args_tuple = NamedTuple{(:interior, :boundary)}(tuple(static_momentum_advection, v_kernel_args...), tuple(model.advection.momentum, v_kernel_args...))
 
-    launch_conditioned!(arch, grid, kernel_parameters, u_conditioned_maps,
+    launch_conditioned!(arch, grid, kernel_parameters, momentum_conditioned_maps,
                         compute_hydrostatic_free_surface_Gu!, (model.timestepper.Gⁿ.u, grid),
                         u_kernel_args_tuple)
 
-    launch_conditioned!(arch, grid, kernel_parameters, v_conditioned_maps,
+    launch_conditioned!(arch, grid, kernel_parameters, momentum_conditioned_maps,
                         compute_hydrostatic_free_surface_Gv!, (model.timestepper.Gⁿ.v, grid),
                         v_kernel_args_tuple)
 
