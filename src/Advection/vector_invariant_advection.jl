@@ -130,6 +130,9 @@ const VectorInvariantSelfVerticalUpwinding      = VectorInvariant{<:Any, <:Any, 
 
 const WENOVectorInvariant{N} = VectorInvariant{<:Any, <:Any, <:Any, <:WENO{N}} where N
 
+# Default, returns scheme un-modified
+StaticWENOVectorInvariant(scheme) = scheme
+
 function StaticWENOVectorInvariant(scheme::WENOVectorInvariant)
 
     return VectorInvariant(
