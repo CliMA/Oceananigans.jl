@@ -11,14 +11,14 @@ using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
     earth_ocean(arch = CPU();
                 float_type = Float32,
                 Nx = 360, Ny = 180, Nz = 50,
+                grid_type = "tripolar",
                 momentum_advection = WENOVectorInvariant(order=9),
                 tracer_advection = WENO(order=7),
                 closure = CATKEVerticalDiffusivity(),
                 timestepper = :SplitRungeKutta3)
 
-Create a `HydrostaticFreeSurfaceModel` for the Earth ocean benchmark case.
-
-Uses a TripolarGrid with realistic Earth bathymetry from NumericalEarth.
+Create a `HydrostaticFreeSurfaceModel` for the Earth ocean benchmark case
+with realistic Earth bathymetry from NumericalEarth.
 
 # Arguments
 - `arch`: Architecture to run on (`CPU()` or `GPU()`)
@@ -26,6 +26,7 @@ Uses a TripolarGrid with realistic Earth bathymetry from NumericalEarth.
 # Keyword Arguments
 - `float_type`: Floating point precision (`Float32` or `Float64`)
 - `Nx, Ny, Nz`: Grid resolution (longitude, latitude, vertical)
+- `grid_type`: `"tripolar"` for a TripolarGrid or `"lat_lon"` for a LatitudeLongitudeGrid (-80 to 85)
 - `momentum_advection`: Momentum advection scheme (default: `WENOVectorInvariant(order=9)`)
 - `tracer_advection`: Tracer advection scheme (default: `WENO(order=7)`)
 - `closure`: Turbulence closure (default: `CATKEVerticalDiffusivity()`)
@@ -34,21 +35,35 @@ Uses a TripolarGrid with realistic Earth bathymetry from NumericalEarth.
 function earth_ocean(arch = CPU();
                      float_type = Float32,
                      Nx = 360, Ny = 180, Nz = 50,
+                     grid_type = "tripolar",
                      momentum_advection = WENOVectorInvariant(order=9),
                      tracer_advection = WENO(order=7),
                      closure = CATKEVerticalDiffusivity(),
                      timestepper = :SplitRungeKutta3)
+
+    grid_type in ("tripolar", "lat_lon") ||
+        error("Unknown grid_type: $grid_type. Use \"tripolar\" or \"lat_lon\".")
 
     Oceananigans.defaults.FloatType = float_type
 
     depth = 5000  # meters
     z = ExponentialDiscretization(Nz, -depth, 0; scale=depth/4)
 
-    underlying_grid = TripolarGrid(arch;
-        size = (Nx, Ny, Nz),
-        halo = (7, 7, 7),
-        z
-    )
+    if grid_type == "tripolar"
+        underlying_grid = TripolarGrid(arch;
+            size = (Nx, Ny, Nz),
+            halo = (7, 7, 7),
+            z
+        )
+    else # lat_lon
+        underlying_grid = LatitudeLongitudeGrid(arch;
+            size = (Nx, Ny, Nz),
+            halo = (7, 7, 7),
+            longitude = (0, 360),
+            latitude = (-80, 85),
+            z
+        )
+    end
 
     bottom_height = NumericalEarth.regrid_bathymetry(underlying_grid;
         minimum_depth = 10,

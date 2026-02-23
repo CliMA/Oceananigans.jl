@@ -246,3 +246,165 @@ function run_benchmark_simulation(model;
 
     return result
 end
+
+#####
+##### IO benchmark (measuring performance with heavy 3D output)
+#####
+
+"""
+    run_io_benchmark(model;
+                     time_steps = 1440,
+                     Δt = 60,
+                     warmup_steps = 10,
+                     output_iteration_interval = 1,
+                     output_format = "jld2",
+                     output_dir = ".",
+                     name = "io_benchmark",
+                     verbose = true)
+
+Run a benchmark that measures the performance impact of writing heavy 3D output.
+Outputs 5 full 3D fields (u, v, w, T, S) at the specified `output_iteration_interval`.
+
+The `output_format` can be `"jld2"` or `"netcdf"`.
+
+Returns an `IOBenchmarkResult` containing timing information, output file path, and total output size.
+"""
+function run_io_benchmark(model;
+                          time_steps = 1440,
+                          Δt = 60,
+                          warmup_steps = 10,
+                          output_iteration_interval = 1,
+                          output_format = "jld2",
+                          output_dir = ".",
+                          name = "io_benchmark",
+                          verbose = true)
+
+    output_format in ("jld2", "netcdf") ||
+        error("Unknown output_format: $output_format. Use \"jld2\" or \"netcdf\".")
+
+    grid = model.grid
+    arch = architecture(grid)
+    FT = eltype(grid)
+    Nx, Ny, Nz = size(grid)
+    total_points = Nx * Ny * Nz
+
+    ext = output_format == "jld2" ? "jld2" : "nc"
+    timestamp = Dates.format(now(UTC), "yyyy-mm-dd_HHMMSS")
+    output_filename = joinpath(output_dir, "$(name)_$(timestamp).$ext")
+
+    if verbose
+        @info "IO Benchmark: $name"
+        @info "  Architecture: $arch"
+        @info "  Float type: $FT"
+        @info "  Grid size: $Nx × $Ny × $Nz ($total_points points)"
+        @info "  Time step: $Δt s"
+        @info "  Time steps: $time_steps"
+        @info "  Warmup steps: $warmup_steps"
+        @info "  Output format: $output_format"
+        @info "  Output iteration interval: $output_iteration_interval"
+        @info "  Output fields: u, v, w, T, S (full 3D)"
+        @info "  Output file: $output_filename"
+    end
+
+    # Warmup phase (no output, just JIT compilation)
+    if verbose
+        @info "  Running warmup..."
+    end
+    many_time_steps!(model, Δt, warmup_steps)
+    sync_device!(arch)
+
+    # Reset clock for the timed run
+    model.clock.iteration = 0
+    model.clock.time = 0
+
+    # Build simulation for the timed run
+    simulation = Simulation(model; Δt, stop_iteration=time_steps)
+
+    # Build outputs dictionary: 5 full 3D fields
+    output_fields = (:u, :v, :w, :T, :S)
+    outputs = Dict{Symbol, Any}()
+    for field_name in output_fields
+        if haskey(model.velocities, field_name)
+            outputs[field_name] = model.velocities[field_name]
+        elseif hasproperty(model, :tracers) && haskey(model.tracers, field_name)
+            outputs[field_name] = model.tracers[field_name]
+        end
+    end
+
+    Writer = output_format == "jld2" ? JLD2Writer : NetCDFWriter
+
+    simulation.output_writers[:fields_3d] = Writer(model, outputs;
+        filename = output_filename,
+        schedule = IterationInterval(output_iteration_interval),
+        overwrite_existing = true
+    )
+
+    if verbose
+        wall_time_ref = Ref(time_ns())
+        function progress(sim)
+            elapsed = (time_ns() - wall_time_ref[]) / 1e9
+            wall_time_ref[] = time_ns()
+            @info @sprintf("  Step %d/%d, wall: %.1f s",
+                           iteration(sim), time_steps, elapsed)
+        end
+        # Report progress ~10 times during the run
+        progress_interval = max(1, time_steps ÷ 10)
+        simulation.callbacks[:progress] = Callback(progress, IterationInterval(progress_interval))
+    end
+
+    if verbose
+        @info "  Starting IO benchmark..."
+    end
+
+    start_time = time_ns()
+    run!(simulation)
+    sync_device!(arch)
+    end_time = time_ns()
+
+    total_time_seconds = (end_time - start_time) / 1e9
+    time_per_step_seconds = total_time_seconds / time_steps
+    steps_per_second = time_steps / total_time_seconds
+    grid_points_per_second = total_points / time_per_step_seconds
+
+    # Compute total output file size
+    total_output_size_bytes = isfile(output_filename) ? filesize(output_filename) : 0
+
+    gpu_memory_used = arch isa GPU ? CUDA.MemoryInfo().pool_used_bytes : 0
+    metadata = BenchmarkMetadata(arch)
+
+    result = IOBenchmarkResult(
+        name,
+        string(FT),
+        (Nx, Ny, Nz),
+        time_steps,
+        Float64(Δt),
+        output_format,
+        output_iteration_interval,
+        total_time_seconds,
+        time_per_step_seconds,
+        steps_per_second,
+        grid_points_per_second,
+        output_filename,
+        Int64(total_output_size_bytes),
+        gpu_memory_used,
+        metadata,
+    )
+
+    if verbose
+        @info "  IO Benchmark complete!"
+        @info "    Total time: $(@sprintf("%.3f", total_time_seconds)) s"
+        @info "    Time per step: $(@sprintf("%.6f", time_per_step_seconds)) s"
+        @info "    Grid points/s: $(@sprintf("%.2e", grid_points_per_second))"
+        @info "    Output file: $output_filename"
+        @info "    Output size: $(Base.format_bytes(total_output_size_bytes))"
+        if arch isa GPU
+            @info "    GPU memory usage: $(Base.format_bytes(gpu_memory_used))"
+        end
+    end
+
+    if arch isa GPU
+        CUDA.reclaim()
+    end
+
+    return result
+end

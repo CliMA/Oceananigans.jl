@@ -7,6 +7,7 @@
 ##### Modes:
 #####   - benchmark: Quick performance benchmarks (default)
 #####   - simulate: Full runs with output for validation
+#####   - io: IO-heavy benchmarks measuring 3D output performance
 #####
 ##### Usage (benchmark mode):
 #####   julia --project run_benchmarks.jl                                     # Default: 360x180x50, GPU, Float32
@@ -17,9 +18,13 @@
 ##### Usage (simulate mode):
 #####   julia --project run_benchmarks.jl --mode=simulate --size=360x180x50 --stop_time=24.0
 #####
+##### Usage (io mode):
+#####   julia --project run_benchmarks.jl --mode=io --size=360x180x50 --output_iteration_interval=1
+#####   julia --project run_benchmarks.jl --mode=io --device=CPU --size=90x45x10 --time_steps=10 --output_iteration_interval=2
+#####
 
 using ArgParse: @add_arg_table!, ArgParseSettings, parse_args
-using OceananigsBenchmarks: earth_ocean, benchmark_time_stepping, run_benchmark_simulation
+using OceananigsBenchmarks: earth_ocean, benchmark_time_stepping, run_benchmark_simulation, run_io_benchmark
 using JSON: JSON
 using Oceananigans
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, SmagorinskyLilly
@@ -40,7 +45,7 @@ function parse_commandline()
 
     @add_arg_table! s begin
         "--mode"
-            help = "Mode: 'benchmark' for quick performance tests, 'simulate' for full runs with output"
+            help = "Mode: 'benchmark' for quick performance tests, 'simulate' for full runs with output, 'io' for IO-heavy benchmarks"
             arg_type = String
             default = "benchmark"
 
@@ -59,6 +64,11 @@ function parse_commandline()
             help = "Benchmark case: earth_ocean"
             arg_type = String
             default = "earth_ocean"
+
+        "--grid_type"
+            help = "Grid type: tripolar or lat_lon (LatitudeLongitudeGrid from -80 to 85)"
+            arg_type = String
+            default = "tripolar"
 
         "--float_type"
             help = "Floating point type: Float32 or Float64. " *
@@ -120,9 +130,19 @@ function parse_commandline()
             default = "benchmark_results.json"
 
         "--output_dir"
-            help = "Directory for simulation output files (simulate mode only)"
+            help = "Directory for simulation output files (simulate and io modes)"
             arg_type = String
             default = "."
+
+        "--output_iteration_interval"
+            help = "Output iteration interval for IO benchmark mode (e.g., 1, 2, 6, 144)"
+            arg_type = Int
+            default = 1
+
+        "--output_format"
+            help = "Output file format for IO benchmark mode: jld2 or netcdf"
+            arg_type = String
+            default = "jld2"
 
         "--clear"
             help = "Clear existing results file before writing"
@@ -203,6 +223,7 @@ function run_benchmarks(args)
     mode = args["mode"]
     arch = make_architecture(args["device"])
     case = args["case"]
+    grid_type = args["grid_type"]
 
     # Parse lists from arguments
     sizes = [parse_size(s) for s in parse_list(args["size"])]
@@ -219,6 +240,13 @@ function run_benchmarks(args)
     stop_time = args["stop_time"] * 3600  # Convert hours to seconds
     output_interval = args["output_interval"] * 3600  # Convert hours to seconds
     output_dir = args["output_dir"]
+    output_iteration_interval = args["output_iteration_interval"]
+    output_format = args["output_format"]
+
+    # Default to 1440 time steps for IO mode when the user hasn't explicitly set it
+    if mode == "io" && time_steps == 100
+        time_steps = 1440
+    end
 
     results = []
 
@@ -228,6 +256,7 @@ function run_benchmarks(args)
     println("Date: ", now(UTC))
     println("Mode: ", mode)
     println("Case: ", case)
+    println("Grid type: ", grid_type)
     println("Architecture: ", arch)
     println("Sizes: ", sizes)
     println("Float types: ", float_types)
@@ -237,6 +266,11 @@ function run_benchmarks(args)
     println("Timestepper: ", timestepper)
     if mode == "benchmark"
         println("Time steps: ", time_steps, " (warmup: ", warmup_steps, ")")
+    elseif mode == "io"
+        println("Time steps: ", time_steps, " (warmup: ", warmup_steps, ")")
+        println("Output format: ", output_format)
+        println("Output iteration interval: ", output_iteration_interval)
+        println("Output fields: u, v, w, T, S (full 3D)")
     else
         println("Stop time: ", args["stop_time"], " hours")
         println("Output interval: ", args["output_interval"], " hours")
@@ -267,6 +301,7 @@ function run_benchmarks(args)
         if case == "earth_ocean"
             model = earth_ocean(arch;
                 Nx, Ny, Nz,
+                grid_type,
                 float_type = FT,
                 momentum_advection,
                 tracer_advection,
@@ -283,8 +318,11 @@ function run_benchmarks(args)
         elseif mode == "simulate"
             run_benchmark_simulation(model;
                 stop_time, Δt, output_interval, output_dir, name, verbose=true)
+        elseif mode == "io"
+            run_io_benchmark(model;
+                time_steps, Δt, warmup_steps, output_iteration_interval, output_format, output_dir, name, verbose=true)
         else
-            error("Unknown mode: $mode. Use 'benchmark' or 'simulate'.")
+            error("Unknown mode: $mode. Use 'benchmark', 'simulate', or 'io'.")
         end
         push!(results, result)
     end

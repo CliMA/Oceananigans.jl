@@ -8,8 +8,10 @@ export
     many_time_steps!,
     benchmark_time_stepping,
     run_benchmark_simulation,
+    run_io_benchmark,
     BenchmarkResult,
     SimulationResult,
+    IOBenchmarkResult,
     BenchmarkMetadata
 
 using Dates
@@ -22,6 +24,8 @@ using Oceananigans.Architectures: architecture
 using Oceananigans.Utils: sync_device!
 using Oceananigans.Units
 using Oceananigans.OutputWriters: write_output!
+
+using NCDatasets
 
 using NumericalEarth
 

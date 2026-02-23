@@ -75,3 +75,48 @@ function Base.show(io::IO, ::MIME"text/plain", r::SimulationResult)
     println(io, "├── gpu_memory_used: ", Base.format_bytes(r.gpu_memory_used))
     print(io,   "└── metadata: ", r.metadata.architecture, " @ ", r.metadata.timestamp)
 end
+
+#####
+##### IO benchmark result container (for measuring IO-heavy workloads)
+#####
+
+struct IOBenchmarkResult
+    name::String
+    float_type::String
+    grid_size::Tuple{Int, Int, Int}
+    time_steps::Int
+    Δt::Float64
+    output_format::String
+    output_iteration_interval::Int
+    total_time_seconds::Float64
+    time_per_step_seconds::Float64
+    steps_per_second::Float64
+    grid_points_per_second::Float64
+    output_file::String
+    total_output_size_bytes::Int64
+    gpu_memory_used::Int64
+    metadata::BenchmarkMetadata
+end
+
+function Base.show(io::IO, r::IOBenchmarkResult)
+    print(io, "IOBenchmarkResult: ", r.name, " (output every ", r.output_iteration_interval, " steps)")
+end
+
+function Base.show(io::IO, ::MIME"text/plain", r::IOBenchmarkResult)
+    println(io, "IOBenchmarkResult")
+    println(io, "├── name: ", r.name)
+    println(io, "├── float_type: ", r.float_type)
+    println(io, "├── grid_size: ", r.grid_size)
+    println(io, "├── time_steps: ", r.time_steps)
+    println(io, "├── Δt: ", r.Δt)
+    println(io, "├── output_format: ", r.output_format)
+    println(io, "├── output_iteration_interval: ", r.output_iteration_interval)
+    println(io, "├── total_time: ", @sprintf("%.3f s", r.total_time_seconds))
+    println(io, "├── time_per_step: ", @sprintf("%.6f s", r.time_per_step_seconds))
+    println(io, "├── steps_per_second: ", @sprintf("%.6f/s", r.steps_per_second))
+    println(io, "├── grid_points_per_second: ", @sprintf("%.2e", r.grid_points_per_second))
+    println(io, "├── output_file: ", r.output_file)
+    println(io, "├── total_output_size: ", Base.format_bytes(r.total_output_size_bytes))
+    println(io, "├── gpu_memory_used: ", Base.format_bytes(r.gpu_memory_used))
+    print(io,   "└── metadata: ", r.metadata.architecture, " @ ", r.metadata.timestamp)
+end
