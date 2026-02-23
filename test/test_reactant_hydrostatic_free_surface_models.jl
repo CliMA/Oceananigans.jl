@@ -8,12 +8,12 @@ using Reactant: @trace
 # with ExplicitFreeSurface (no FFT) on various topologies including Bounded.
 # Uses raise=true and raise_first=true to surface any MLIR compilation errors.
 
-@testset "Reactant HydrostaticFreeSurfaceModel (non-FFT)" begin
-    @info "Performing Reactant HydrostaticFreeSurfaceModel (non-FFT) tests..."
+@testset "Reactant HydrostaticFreeSurfaceModel (ExplicitFreeSurface)" begin
+    @info "Performing Reactant HydrostaticFreeSurfaceModel with ExplicitFreeSurface tests..."
     reactant_arch = ReactantState()
 
     function run_timesteps!(model, Δt, Nt)
-        @trace track_numbers=false for i in 1:Nt
+        @trace track_numbers=false for _ in 1:Nt
             time_step!(model, Δt)
         end
         return nothing
