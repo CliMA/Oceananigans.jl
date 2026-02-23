@@ -270,13 +270,13 @@ CUDA.allowscalar() do
         @testset "Reactant extension tests 1" begin
             include("test_reactant.jl")
             include("test_reactant_fft_models.jl")
+            include("test_reactant_hydrostatic_free_surface_models.jl")
         end
     end
 
     if group == :reactant_2 || group == :all
         @testset "Reactant extension tests 2" begin
             include("test_reactant_latitude_longitude_grid.jl")
-            include("test_reactant_hydrostatic_free_surface_models.jl")
         end
     end
 
