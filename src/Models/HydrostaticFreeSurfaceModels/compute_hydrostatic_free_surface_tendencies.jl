@@ -135,6 +135,17 @@ function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active
 end
 
 
+# Generate arguments, potentially a NamedTuple for each mapped condition
+function generate_momentum_kernel_args(scheme, common_args; momentum_condition_maps=nothing)
+    if isnothing(momentum_condition_maps)
+        return (scheme, common_args...)
+    else
+        static_momentum_advection = StaticWENOVectorInvariant(scheme)
+        return (; interior = (static_momentum_advection, common_args...),
+                  boundary = (scheme, common_args...))
+    end
+end
+
 """
     compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters; active_cells_map=nothing)
 
@@ -163,15 +174,12 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
                                 model.vertical_coordinate,
                                 model.clock)
 
-    static_momentum_advection = StaticWENOVectorInvariant(model.advection.momentum)
 
     u_kernel_args = tuple(model.coriolis, model.closure, u_immersed_bc, end_momentum_kernel_args..., u_forcing)
-    u_kernel_args_tuple = (; interior = (static_momentum_advection, u_kernel_args...),
-                             boundary = (model.advection.momentum, u_kernel_args...))
+    u_kernel_args_tuple = generate_momentum_kernel_args(model.advection.momentum, u_kernel_args)
 
     v_kernel_args = tuple(model.coriolis, model.closure, v_immersed_bc, end_momentum_kernel_args..., v_forcing)
-    v_kernel_args_tuple = (; interior = (static_momentum_advection, v_kernel_args...), 
-                             boundary = (model.advection.momentum, v_kernel_args...))
+    v_kernel_args_tuple = generate_momentum_kernel_args(model.advection.momentum, v_kernel_args)
 
     launch_conditioned!(arch, grid, kernel_parameters, momentum_conditioned_maps,
                         compute_hydrostatic_free_surface_Gu!, (model.timestepper.Gⁿ.u, grid),
