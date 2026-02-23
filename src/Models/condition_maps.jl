@@ -1,3 +1,4 @@
+using Oceananigans.Advection: AbstractAdvectionScheme
 using Oceananigans.ImmersedBoundaries
 using Oceananigans.Grids: get_active_cells_map, active_cell
 using Oceananigans.Architectures: CPU
@@ -5,7 +6,7 @@ import Oceananigans.Architectures as AC
 using Oceananigans.Fields: Field, interior
 using KernelAbstractions: @kernel, @index
 
-function generate_condition_maps(grid,
+@inline function generate_condition_maps(grid,
                                  advection;
                                  condition_momentum_advection=false,
                                  condition_tracer_advection=false)
@@ -72,7 +73,7 @@ check_interior_xyz(i, j, k, ibg, scheme) = reduce(&,
                                                   check_interior_y(i, j, k, ibg, scheme),
                                                   check_interior_z(i, j, k, ibg, scheme)))
 
-function check_interior_x(i, j, k, ibg, scheme::AbstractAdvectionScheme{N}) where N
+function check_interior_x(i, j, k, ibg, ::AbstractAdvectionScheme{N}) where N
     interior = true
     
     buffer = N + 1
@@ -82,7 +83,7 @@ function check_interior_x(i, j, k, ibg, scheme::AbstractAdvectionScheme{N}) wher
     return interior
 end
 
-function check_interior_y(i, j, k, ibg, scheme::AbstractAdvectionScheme{N}) where N
+function check_interior_y(i, j, k, ibg, ::AbstractAdvectionScheme{N}) where N
     interior = true
     
     buffer = N + 1
@@ -92,7 +93,7 @@ function check_interior_y(i, j, k, ibg, scheme::AbstractAdvectionScheme{N}) wher
     return interior
 end
 
-function check_interior_z(i, j, k, ibg, scheme::AbstractAdvectionScheme{N}) where N
+function check_interior_z(i, j, k, ibg, ::AbstractAdvectionScheme{N}) where N
     interior = true
     
     buffer = N + 1
