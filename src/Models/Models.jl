@@ -96,6 +96,9 @@ function materialize_free_surface end
 # Communication - Computation overlap in distributed models
 include("interleave_communication_and_computation.jl")
 
+# Implementation of condition map generation
+include("condition_maps.jl")
+
 #####
 ##### All the code
 #####
@@ -223,9 +226,6 @@ include("boundary_mean.jl")
 include("boundary_condition_operation.jl")
 include("forcing_operation.jl")
 include("set_model.jl")
-
-# Implementation of condition map generation
-include("condition_maps.jl")
 
 # Implementation of the diagnostic for computing the dissipation rate
 include("VarianceDissipationComputations/VarianceDissipationComputations.jl")
