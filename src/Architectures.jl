@@ -58,7 +58,6 @@ struct ReactantState <: AbstractSerialArchitecture end
 
 device(a::CPU) = KA.CPU()
 device(a::GPU) = a.device
-device(a::AbstractArray) = device(architecture(a))
 device!(::CPU, i) = nothing
 device!(::CPU) = nothing
 ndevices(a::CPU) = KA.ndevices(KA.CPU())
