@@ -129,17 +129,17 @@ const TBB = Union{BottomAndTop, Bottom, Top}
 
 # For non-periodic (bounded) BCs with colon indices, use `size(grid, loc)` so that
 # Face fields on Bounded axes get N+1 (include_right_boundaries).
-@inline function fill_halo_size(::OffsetArray, ::WEB, ::Tuple{<:Any, <:Colon, <:Colon}, args...; include_right_boundaries=true)
+@inline function fill_halo_size(::OffsetArray, ::WEB, ::Tuple{<:Any, <:Colon, <:Colon}, args...)
     bc, loc, grid = args
     _, Ny, Nz = size(grid, loc)
     return (Ny, Nz)
 end
-@inline function fill_halo_size(::OffsetArray, ::SNB, ::Tuple{<:Colon, <:Any, <:Colon}, args...; include_right_boundaries=true)
+@inline function fill_halo_size(::OffsetArray, ::SNB, ::Tuple{<:Colon, <:Any, <:Colon}, args...)
     bc, loc, grid = args
     Nx, _, Nz = size(grid, loc)
     return (Nx, Nz)
 end
-@inline function fill_halo_size(::OffsetArray, ::TBB, ::Tuple{<:Colon, <:Colon, <:Any}, args...; include_right_boundaries=true)
+@inline function fill_halo_size(::OffsetArray, ::TBB, ::Tuple{<:Colon, <:Colon, <:Any}, args...)
     bc, loc, grid = args
     Nx, Ny, _ = size(grid, loc)
     return (Nx, Ny)
