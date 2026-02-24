@@ -1,6 +1,17 @@
 using KernelAbstractions.Extras.LoopInfo: @unroll
 using Oceananigans.ImmersedBoundaries: column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ
 
+
+@inline x_derivative_operator(::Val{false}) = ∂xᵣTᶠᶜᶠ
+@inline x_derivative_operator(::Val{true})  = ∂xᵣᶠᶜᶠ
+@inline y_derivative_operator(::Val{false}) = ∂yᵣTᶜᶠᶠ
+@inline y_derivative_operator(::Val{true})  = ∂yᵣᶜᶠᶠ
+
+@inline x_difference_operator(::Val{false}) = δxTᶜᵃᵃ
+@inline x_difference_operator(::Val{true})  = δxᶜᵃᵃ
+@inline y_difference_operator(::Val{false}) = δyTᵃᶜᵃ
+@inline y_difference_operator(::Val{true})  = δyᵃᶜᵃ
+
 # Evolution Kernels
 #
 # ∂t(η) = - ∇⋅U
@@ -17,8 +28,8 @@ using Oceananigans.ImmersedBoundaries: column_depthTᶠᶜᵃ, column_depthTᶜ�
     Hᶠᶜ = column_depthTᶠᶜᵃ(i, j, k_top, grid, η) # topology-aware column
     Hᶜᶠ = column_depthTᶜᶠᵃ(i, j, k_top, grid, η) # topology-aware column
 
-    ∂xᵣ = ifelse(filled_halos, ∂xᵣᶠᶜᶠ, ∂xᵣTᶠᶜᶠ)
-    ∂yᵣ = ifelse(filled_halos, ∂yᵣᶜᶠᶠ, ∂yᵣTᶜᶠᶠ)
+    ∂xᵣ = x_derivative_operator(filled_halos)
+    ∂yᵣ = y_derivative_operator(filled_halos)
 
     # ∂τ(U) = - ∇η + G
     # Note: use ∂xᵣT and ∂yᵣT (derivatives at constant r) for the free surface,
@@ -39,11 +50,11 @@ end
 
     cache_previous_free_surface!(timestepper, i, j, k_top, η)
 
-    δx = ifelse(filled_halos, δxᶠᶜᶠ, δxTᶠᶜᶠ)
-    δy = ifelse(filled_halos, δyᶜᶠᶠ, δyTᶜᶠᶠ)
+    δx = x_difference_operator(filled_halos)
+    δy = y_difference_operator(filled_halos)
 
-    δh_U = (δxTᶜᵃᵃ(i, j, grid.Nz, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
-            δyTᵃᶜᵃ(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) * Az⁻¹ᶜᶜᶠ(i, j, k_top, grid)
+    δh_U = (δx(i, j, grid.Nz, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
+            δy(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) * Az⁻¹ᶜᶜᶠ(i, j, k_top, grid)
 
     @inbounds begin
         η[i, j, k_top] += Δτ * (F(i, j, k_top, grid, clock, (; η, U, V)) - δh_U)
@@ -90,8 +101,8 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
     @apply_regionally velocity_kernel!, _     = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
     @apply_regionally free_surface_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
 
-    U_args = (grid, true, Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
-    η_args = (grid, true, Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
+    U_args = (grid, Val(true), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
+    η_args = (grid, Val(true), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
 
     GC.@preserve U_args η_args begin
         # We need to perform ~50 time-steps which means launching ~100 very small kernels: we are limited by latency of
@@ -134,8 +145,8 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
     barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
     free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
 
-    U_args = (grid, false, Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
-    η_args = (grid, false, Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
+    U_args = (grid, Val(false), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
+    η_args = (grid, Val(false), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
 
     GC.@preserve U_args η_args begin
         # We need to perform ~50 time-steps which means launching ~100 very small kernels: we are limited by latency of
