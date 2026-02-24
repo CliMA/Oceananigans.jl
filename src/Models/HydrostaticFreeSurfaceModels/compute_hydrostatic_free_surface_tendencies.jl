@@ -8,7 +8,7 @@ using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
 using Oceananigans.Grids: get_active_cells_map
-using Oceananigans.Advection: StaticWENO, StaticWENOVectorInvariant, fixed_order_scheme
+using Oceananigans.Advection: fixed_order_scheme
 """
     compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
 

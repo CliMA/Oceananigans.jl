@@ -11,7 +11,8 @@ export
     VectorInvariant, WENOVectorInvariant,
     FluxFormAdvection,
     EnergyConserving,
-    EnstrophyConserving
+    EnstrophyConserving,
+    fixed_order_scheme
 
 using DocStringExtensions
 
