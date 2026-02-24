@@ -24,7 +24,7 @@ using KernelAbstractions: @kernel, @index
                                                                           grid;
                                                                           active_cells_map)
         else
-            condition_maps[:momentum] = nothing
+            condition_maps[:momentum] = active_cells_map
         end 
       else
         if condition_tracer_advection
@@ -32,7 +32,7 @@ using KernelAbstractions: @kernel, @index
                                                                     grid;
                                                                     active_cells_map)
         else
-            condition_maps[key] = nothing
+            condition_maps[key] = active_cells_map
         end
       end
     end 
