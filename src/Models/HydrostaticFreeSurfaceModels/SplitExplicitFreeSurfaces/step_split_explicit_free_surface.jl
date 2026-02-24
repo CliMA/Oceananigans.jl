@@ -1,5 +1,6 @@
 using KernelAbstractions.Extras.LoopInfo: @unroll
-using Oceananigans.ImmersedBoundaries: column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ
+using Oceananigans.ImmersedBoundaries: column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ, column_depthᶠᶜᵃ, column_depthᶜᶠᵃ
+using Oceananigans.Operators: ∂xᵣTᶠᶜᶠ, ∂xᵣᶠᶜᶠ, ∂yᵣTᶜᶠᶠ, ∂yᵣᶜᶠᶠ, δxTᶜᵃᵃ, δxᶜᵃᵃ, δyTᵃᶜᵃ, δyᵃᶜᵃ 
 
 # Selection between topology aware and non-aware operators
 # depending on whether we fill halos or not in between substeps
@@ -12,6 +13,11 @@ using Oceananigans.ImmersedBoundaries: column_depthTᶠᶜᵃ, column_depthTᶜ�
 @inline x_difference_operator(::Val{true})  = δxᶜᵃᵃ
 @inline y_difference_operator(::Val{false}) = δyTᵃᶜᵃ
 @inline y_difference_operator(::Val{true})  = δyᵃᶜᵃ
+
+@inline x_column_depth(i, j, k, grid, ::Val{false}, η) = column_depthTᶠᶜᵃ(i, j, k, grid, η)
+@inline x_column_depth(i, j, k, grid, ::Val{true},  η) =  column_depthᶠᶜᵃ(i, j, k, grid, η)
+@inline y_column_depth(i, j, k, grid, ::Val{false}, η) = column_depthTᶜᶠᵃ(i, j, k, grid, η)
+@inline y_column_depth(i, j, k, grid, ::Val{true},  η) =  column_depthᶜᶠᵃ(i, j, k, grid, η)
 
 # Evolution Kernels
 #
@@ -26,9 +32,8 @@ using Oceananigans.ImmersedBoundaries: column_depthTᶠᶜᵃ, column_depthTᶜ�
 
     cache_previous_velocities!(timestepper, i, j, 1, U, V)
 
-    Hᶠᶜ = column_depthTᶠᶜᵃ(i, j, k_top, grid, η) # topology-aware column
-    Hᶜᶠ = column_depthTᶜᶠᵃ(i, j, k_top, grid, η) # topology-aware column
-
+    Hᶠᶜ = x_column_depth(i, j, k_top, grid, filled_halos, η) # topology-aware column
+    Hᶜᶠ = y_column_depth(i, j, k_top, grid, filled_halos, η) # topology-aware column
     ∂xᵣ = x_derivative_operator(filled_halos)
     ∂yᵣ = y_derivative_operator(filled_halos)
 
