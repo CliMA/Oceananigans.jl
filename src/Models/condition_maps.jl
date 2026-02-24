@@ -23,12 +23,16 @@ using KernelAbstractions: @kernel, @index
             condition_maps[:momentum] = compute_advection_conditioned_map(advection.momentum,
                                                                           grid;
                                                                           active_cells_map)
+        else
+            condition_maps[:momentum] = nothing
         end 
       else
         if condition_tracer_advection
             condition_maps[key] = compute_advection_conditioned_map(advection[:key],
                                                                     grid;
                                                                     active_cells_map)
+        else
+            condition_maps[key] = nothing
         end
       end
     end 
