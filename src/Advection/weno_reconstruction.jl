@@ -16,7 +16,6 @@ struct WENO{N, FT, FT2, PP, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT
     end
 end
 
-const StaticWENO{N, FT, FT2, PP, SI} = WENO{N, FT, FT2, PP, Nothing, SI}
 """
     WENO([FT=Float64, FT2=Float32;]
          order = 5,
@@ -93,16 +92,6 @@ WENO{5, Float64, Float32}(order=9, bounds=(0.0, 1.0))
 └── advecting_velocity_scheme: Centered(order=8)
 ```
 """
-
-function StaticWENO(FT::DataType=Oceananigans.defaults.FloatType, FT2::DataType=Float32;
-              order = 5,
-              bounds = nothing)
-	return WENO(FT, FT2; order=order, buffer_scheme=nothing, bounds=bounds)
-end
- 
-function StaticWENO(weno::WENO{N, FT, FT2}) where {N, FT, FT2}
-	return StaticWENO(FT, FT2; order=weno_order(weno))
-end
 
 function WENO(FT::DataType=Oceananigans.defaults.FloatType, FT2::DataType=Float32;
               order = 5,

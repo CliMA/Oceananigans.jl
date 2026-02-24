@@ -8,7 +8,7 @@ using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
 using Oceananigans.Grids: get_active_cells_map
-using Oceananigans.Advection: StaticWENO, StaticWENOVectorInvariant
+using Oceananigans.Advection: StaticWENO, StaticWENOVectorInvariant, fixed_order_scheme
 """
     compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
 
@@ -136,12 +136,12 @@ end
 
 
 """ Generate arguments for each mapped condition """
-function generate_momentum_kernel_args(scheme, common_args; momentum_condition_maps=nothing)
-    if isnothing(momentum_condition_maps)
+function generate_kernel_args(scheme, common_args; condition_maps=nothing)
+    if isnothing(condition_maps)
         return (scheme, common_args...)
     else
-        static_momentum_advection = StaticWENOVectorInvariant(scheme)
-        return (; interior = (static_momentum_advection, common_args...),
+        static_advection = fixed_order_scheme(scheme)
+        return (; interior = (static_advection, common_args...),
                   boundary = (scheme, common_args...))
     end
 end
@@ -176,10 +176,10 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
 
 
     u_kernel_args = tuple(model.coriolis, model.closure, u_immersed_bc, end_momentum_kernel_args..., u_forcing)
-    u_kernel_args_tuple = generate_momentum_kernel_args(model.advection.momentum, u_kernel_args; momentum_condition_maps)
+    u_kernel_args_tuple = generate_kernel_args(model.advection.momentum, u_kernel_args; condition_maps=momentum_condition_maps)
 
     v_kernel_args = tuple(model.coriolis, model.closure, v_immersed_bc, end_momentum_kernel_args..., v_forcing)
-    v_kernel_args_tuple = generate_momentum_kernel_args(model.advection.momentum, v_kernel_args; momentum_condition_maps)
+    v_kernel_args_tuple = generate_kernel_args(model.advection.momentum, v_kernel_args; condition_maps=momentum_condition_maps)
 
     launch!(arch,
             grid,

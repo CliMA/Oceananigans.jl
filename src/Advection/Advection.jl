@@ -7,7 +7,7 @@ export
     advective_tracer_flux_y,
     advective_tracer_flux_z,
 
-    Centered, UpwindBiased, WENO, StaticWENO,
+    Centered, UpwindBiased, WENO,
     VectorInvariant, WENOVectorInvariant,
     FluxFormAdvection,
     EnergyConserving,
@@ -79,5 +79,6 @@ include("tracer_advection_operators.jl")
 include("bounds_preserving_tracer_advection_operators.jl")
 include("cell_advection_timescale.jl")
 include("adapt_advection_order.jl")
+include("fixed_order_schemes.jl")
 
 end # module
