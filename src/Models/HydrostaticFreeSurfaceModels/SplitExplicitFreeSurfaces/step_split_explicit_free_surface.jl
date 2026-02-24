@@ -104,21 +104,25 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
 
     U_args = (grid, Val(true), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
     η_args = (grid, Val(true), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
-
-    GC.@preserve U_args η_args begin
+    U_halo_args = ((U, V), clock, fields(model))
+    η_halo_args = (η,     clock, fields(model))
+    
+    GC.@preserve U_args η_args U_halo_args η_halo_args begin
         # We need to perform ~50 time-steps which means launching ~100 very small kernels: we are limited by latency of
         # argument conversion to GPU-compatible values. To alleviate this penalty we convert first and then we substep!
         @apply_regionally converted_U_args = convert_to_device(arch, U_args)
         @apply_regionally converted_η_args = convert_to_device(arch, η_args)
+        @apply_regionally converted_U_halo_args = convert_to_device(arch, U_halo_args)
+        @apply_regionally converted_η_halo_args = convert_to_device(arch, η_halo_args)
 
         @unroll for substep in 1:Nsubsteps
             @inbounds averaging_weight = weights[substep]
             @inbounds transport_weight = transport_weights[substep]
 
-            fill_halo_regions!(η)
+            fill_halo_regions!(converted_η_halo_args...; only_local_halos = true)
             @apply_regionally apply_barotropic_kernel!(velocity_kernel!, transport_weight, converted_U_args)
 
-            fill_halo_regions!((U, V))
+            fill_halo_regions!(converted_U_halo_args...; only_local_halos = true)
             @apply_regionally apply_barotropic_kernel!(free_surface_kernel!, averaging_weight, converted_η_args)
         end
     end
