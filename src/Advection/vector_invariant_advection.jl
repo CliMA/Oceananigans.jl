@@ -141,7 +141,7 @@ function StaticWENOVectorInvariant(scheme::WENOVectorInvariant)
         vertical_advection_scheme=StaticWENO(scheme.vertical_advection_scheme),
         divergence_scheme=StaticWENO(scheme.divergence_scheme),
         kinetic_energy_gradient_scheme=scheme.kinetic_energy_gradient_scheme,
-        upwinding=scheme.momentum.upwinding
+        upwinding=scheme.upwinding
 	    )
 end
 
