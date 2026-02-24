@@ -131,17 +131,17 @@ const TBB = Union{BottomAndTop, Bottom, Top}
 # Face fields on Bounded axes get N+1 (include_right_boundaries).
 @inline function fill_halo_size(::OffsetArray, ::WEB, ::Tuple{<:Any, <:Colon, <:Colon}, args...; include_right_boundaries=true)
     bc, loc, grid = args
-    _, Ny, Nz = include_right_boundaries ? size(grid, loc) : size(grid)
+    _, Ny, Nz = size(grid, loc)
     return (Ny, Nz)
 end
 @inline function fill_halo_size(::OffsetArray, ::SNB, ::Tuple{<:Colon, <:Any, <:Colon}, args...; include_right_boundaries=true)
     bc, loc, grid = args
-    Nx, _, Nz = include_right_boundaries ? size(grid, loc) : size(grid)
+    Nx, _, Nz = size(grid, loc)
     return (Nx, Nz)
 end
 @inline function fill_halo_size(::OffsetArray, ::TBB, ::Tuple{<:Colon, <:Colon, <:Any}, args...; include_right_boundaries=true)
     bc, loc, grid = args
-    Nx, Ny, _ = include_right_boundaries ? size(grid, loc) : size(grid)
+    Nx, Ny, _ = size(grid, loc)
     return (Nx, Ny)
 end
 
