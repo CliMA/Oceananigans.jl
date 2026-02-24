@@ -103,15 +103,14 @@ function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active
 
     for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
 
+        condition_maps = model.condition_maps.tracer_name
         @inbounds c_tendency    = model.timestepper.Gⁿ[tracer_name]
         @inbounds c_advection   = model.advection[tracer_name]
         @inbounds c_forcing     = model.forcing[tracer_name]
         @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
 
-        args = tuple(Val(tracer_index),
-                     Val(tracer_name),
-                     c_advection,
-                     model.closure,
+        pre_args = (Val(tracer_index), Val(tracer_name))
+        post_args = (model.closure,
                      c_immersed_bc,
                      model.buoyancy,
                      model.biogeochemistry,
@@ -121,19 +120,32 @@ function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active
                      model.closure_fields,
                      model.auxiliary_fields,
                      model.clock,
-                     c_forcing)
+                     c_forcing )
+
+        args = prepend_args(pre_args, generate_kernel_args(c_advection, post_args))
 
         launch!(arch, grid, kernel_parameters,
                 compute_hydrostatic_free_surface_Gc!,
                 c_tendency,
                 grid,
                 args;
-                active_cells_map)
+                active_cells_map=condition_maps)
     end
 
     return nothing
 end
 
+
+prepend_args(args1, args2) = (args1..., args2...)
+
+function prepend_args(args1, args2::NamedTuple)
+    new_args = Dict()
+    
+    for key in keys(args2)
+        new_args[key] = (args1..., args2[key]...)
+    end
+    return (; new_args...)
+end
 
 """ Generate arguments for each mapped condition """
 function generate_kernel_args(scheme, common_args; condition_maps=nothing)
@@ -185,8 +197,8 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
             grid,
             kernel_parameters,
             compute_hydrostatic_free_surface_Gu!,
-	    model.timestepper.Gⁿ.u,
-	    grid,
+            model.timestepper.Gⁿ.u,
+            grid,
             u_kernel_args_tuple;
             active_cells_map=momentum_condition_maps)
 
