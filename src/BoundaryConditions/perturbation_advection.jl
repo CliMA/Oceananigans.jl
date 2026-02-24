@@ -26,54 +26,49 @@ and perturbation components.
 We begin with the equation governing the fluid in the interior:
 
 ```math
-\\partial_t u + u \\cdot \\nabla u = -\\nabla P + F,
+∂ₜu + u ⋅ ∇u = -∇P + F
 ```
 
 and note that on the boundary the pressure gradient is zero.
-We can then assume that the flow composes of mean (``\\vec{U}``) and perturbation (``\\vec{u'}``) components,
-and considering the ``x``-component of velocity, we can rewrite the equation as
+We can then assume that the flow composes of mean (`U⃗`) and perturbation (`u⃗'`) components,
+and considering the `x`-component of velocity, we can rewrite the equation as
 
 ```math
-\\partial_t u_1 = -u_1 \\partial_1 u - u_2 \\partial_2 u_1 - u_3 \\partial_3 u_1 + F_1
-              \\approx -U_1 \\partial_1 u_1' - U_2 \\partial_2 u_1' - U_3 \\partial_3 u_1' + F.
+∂ₜu₁ = -u₁ ∂₁u - u₂ ∂₂u₁ - u₃ ∂₃u₁ + F₁
+      ≈ -U₁ ∂₁u₁' - U₂ ∂₂u₁' - U₃ ∂₃u₁' + F
 ```
 
-Simplify by assuming that ``\\vec{U} = U \\hat{x}``, and then take a numerical step to find ``u_1``.
+Simplify by assuming that `U⃗ = U x̂`, and then take a numerical step to find `u₁`.
 While derived for velocity, the resulting scheme generalizes to any prognostic field
-``\\psi`` with prescribed exterior value ``\\bar{\\psi}``. Denoting the boundary value
-as ``\\psi^B`` and the adjacent interior value as ``\\psi^A``, and noting that the
-perturbation is ``\\psi' = \\psi - \\bar{\\psi}``, we take a backwards Euler step
+`ψ` with prescribed exterior value `ψ̄`. Denoting the boundary value
+as `ψᴮ` and the adjacent interior value as `ψᴬ`, and noting that the
+perturbation is `ψ' = ψ - ψ̄`, we take a backwards Euler step
 on a right boundary:
 
 ```math
-\\frac{\\bar{\\psi}^{n+1} - \\bar{\\psi}^n}{\\Delta t}
-    + \\frac{\\psi'^{B, n+1} - \\psi'^{B, n}}{\\Delta t}
-    = -\\bar{\\psi}^{n+1}
-      \\frac{\\psi'^{B, n+1} - \\psi'^{A, n+1}}{\\Delta x} + F_\\psi.
+(ψ̄ⁿ⁺¹ - ψ̄ⁿ) / Δt + (ψ'ᴮⁿ⁺¹ - ψ'ᴮⁿ) / Δt = -ψ̄ⁿ⁺¹ (ψ'ᴮⁿ⁺¹ - ψ'ᴬⁿ⁺¹) / Δx + Fψ
 ```
 
 This cannot be solved for general forcing, but if we assume the dominant forcing is
-relaxation to the exterior value (i.e. ``\\psi' \\to 0``) then ``F_\\psi = -\\psi' / \\tau``,
-and we can find ``\\psi'^{B, n+1}``:
+relaxation to the exterior value (i.e. `ψ' → 0`) then `Fψ = -ψ' / τ`,
+and we can find `ψ'ᴮⁿ⁺¹`:
 
 ```math
-\\psi'^{B, n+1} = \\frac{\\psi^{B, n} + \\tilde{U} \\, \\psi'^{A, n+1} - \\bar{\\psi}^{n+1}}
-                       {1 + \\tilde{U} + \\Delta t / \\tau},
+ψ'ᴮⁿ⁺¹ = (ψᴮⁿ + Ũ ψ'ᴬⁿ⁺¹ - ψ̄ⁿ⁺¹) / (1 + Ũ + Δt / τ)
 ```
 
-where ``\\tilde{U} = \\bar{\\psi} \\, \\Delta t / \\Delta x``. Then ``\\psi^{B, n+1}`` is:
+where `Ũ = ψ̄ Δt / Δx`. Then `ψᴮⁿ⁺¹` is:
 
 ```math
-\\psi^{B, n+1} = \\frac{\\psi^{B, n} + \\tilde{U} \\, \\psi^{A, n+1} + \\bar{\\psi}^{n+1} \\tilde{\\tau}}
-                      {1 + \\tilde{\\tau} + \\tilde{U}}
+ψᴮⁿ⁺¹ = (ψᴮⁿ + Ũ ψᴬⁿ⁺¹ + ψ̄ⁿ⁺¹ τ̃) / (1 + τ̃ + Ũ)
 ```
 
-where ``\\tilde{\\tau} = \\Delta t / \\tau``.
+where `τ̃ = Δt / τ`.
 
 The same operation can be repeated for left boundaries.
 
-The relaxation timescale ``τ`` can be set to different values depending on whether
-``U`` points in or out of the domain (`inflow_timescale`/`outflow_timescale`). Since the
+The relaxation timescale `τ` can be set to different values depending on whether
+`U` points in or out of the domain (`inflow_timescale`/`outflow_timescale`). Since the
 scheme is only valid when the flow is directed out of the domain the boundary condition
 falls back to relaxation to the prescribed value. By default this happens instantly but
 if the direction varies this may not be preferable. It is beneficial to relax the outflow
