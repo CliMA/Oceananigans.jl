@@ -141,9 +141,7 @@ After all substeps, Lagrangian particles are stepped and the clock is advanced.
 """
 function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; callbacks=[])
 
-    if model.clock.iteration == 0
-        update_state!(model, callbacks)
-    end
+    maybe_initialize_state!(model, callbacks)
 
     cache_current_fields!(model)
     grid = model.grid
