@@ -24,26 +24,51 @@ an external prescribed or coarser flow, we can split the velocity into backgroun
 and perturbation components.
 
 We begin with the equation governing the fluid in the interior:
-    ∂ₜu + u⋅∇u = −∇P + F,
+
+```math
+\\partial_t u + u \\cdot \\nabla u = -\\nabla P + F,
+```
+
 and note that on the boundary the pressure gradient is zero.
-We can then assume that the flow composes of mean (U⃗) and pertubation (u⃗′) components,
-and considering the x-component of velocity, we can rewrite the equation as
-    ∂ₜu₁ = -u₁∂₁u - u₂∂₂u₁ - u₃∂₃u₁ + F₁ ≈ - U₁∂₁u₁′ - U₂∂₂u₁′ - U₃∂₃u₁′ + F.
+We can then assume that the flow composes of mean (``\\vec{U}``) and perturbation (``\\vec{u'}``) components,
+and considering the ``x``-component of velocity, we can rewrite the equation as
 
-Simplify by assuming that U⃗ = Ux̂, an then take a numerical step to find u₁.
+```math
+\\partial_t u_1 = -u_1 \\partial_1 u - u_2 \\partial_2 u_1 - u_3 \\partial_3 u_1 + F_1
+              \\approx -U_1 \\partial_1 u_1' - U_2 \\partial_2 u_1' - U_3 \\partial_3 u_1' + F.
+```
 
-When the boundaries are filled the interior is at time tₙ₊₁ so we can take
-a backwards euler step (in the case that the mean flow is boundary normal) on a right boundary:
-    (Uⁿ⁺¹ - Uⁿ) / Δt + (u′ⁿ⁺¹ - u′ⁿ) / Δt = - Uⁿ⁺¹ (u′ⁿ⁺¹ᵢ - u′ⁿ⁺¹ᵢ₋₁) / Δx + Fᵤ.
+Simplify by assuming that ``\\vec{U} = U \\hat{x}``, and then take a numerical step to find ``u_1``.
+While derived for velocity, the resulting scheme generalizes to any prognostic field
+``\\psi`` with prescribed exterior value ``\\bar{\\psi}``. Denoting the boundary value
+as ``\\psi^B`` and the adjacent interior value as ``\\psi^A``, and noting that the
+perturbation is ``\\psi' = \\psi - \\bar{\\psi}``, we take a backwards Euler step
+on a right boundary:
 
-This can not be solved for general forcing, but if we assume the dominant forcing is
-relaxation to the mean velocity (i.e. u′→0) then Fᵤ = -u′ / τ then we can find u′ⁿ⁺¹:
-    u′ⁿ⁺¹ = (uⁿ + Ũ u′ⁿ⁺¹ᵢ₋₁ - Uⁿ⁺¹) / (1 + Ũ + Δt/τ),
+```math
+\\frac{\\bar{\\psi}^{n+1} - \\bar{\\psi}^n}{\\Delta t}
+    + \\frac{\\psi'^{B, n+1} - \\psi'^{B, n}}{\\Delta t}
+    = -\\bar{\\psi}^{n+1}
+      \\frac{\\psi'^{B, n+1} - \\psi'^{A, n+1}}{\\Delta x} + F_\\psi.
+```
 
-where Ũ = U Δt / Δx, then uⁿ⁺¹ is:
-    uⁿ⁺¹ = (uᵢⁿ + Ũ uᵢ₋₁ⁿ⁺¹ + Uⁿ⁺¹τ̃) / (1 + τ̃ + Ũ)
+This cannot be solved for general forcing, but if we assume the dominant forcing is
+relaxation to the exterior value (i.e. ``\\psi' \\to 0``) then ``F_\\psi = -\\psi' / \\tau``,
+and we can find ``\\psi'^{B, n+1}``:
 
-where τ̃ = Δt/τ.
+```math
+\\psi'^{B, n+1} = \\frac{\\psi^{B, n} + \\tilde{U} \\, \\psi'^{A, n+1} - \\bar{\\psi}^{n+1}}
+                       {1 + \\tilde{U} + \\Delta t / \\tau},
+```
+
+where ``\\tilde{U} = \\bar{\\psi} \\, \\Delta t / \\Delta x``. Then ``\\psi^{B, n+1}`` is:
+
+```math
+\\psi^{B, n+1} = \\frac{\\psi^{B, n} + \\tilde{U} \\, \\psi^{A, n+1} + \\bar{\\psi}^{n+1} \\tilde{\\tau}}
+                      {1 + \\tilde{\\tau} + \\tilde{U}}
+```
+
+where ``\\tilde{\\tau} = \\Delta t / \\tau``.
 
 The same operation can be repeated for left boundaries.
 
@@ -98,13 +123,13 @@ const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
 
 # Helper to convert between density-weighted and intensive fields.
 # When density is nothing, these are no-ops.
-@inline _to_intensive(ψ, ::Nothing, k) = ψ
-@inline _to_intensive(ψ, ρ, k) = ψ / @inbounds ρ[1, 1, k]
-@inline _to_extensive(ψ, ::Nothing, k) = ψ
-@inline _to_extensive(ψ, ρ, k) = ψ * @inbounds ρ[1, 1, k]
+@inline to_intensive(::Nothing, ψ, k) = ψ
+@inline to_intensive(ρ, ψ, k) = ψ / @inbounds ρ[1, 1, k]
+@inline to_extensive(::Nothing, ψ, k) = ψ
+@inline to_extensive(ρ, ψ, k) = @inbounds ρ[1, 1, k] * ψ
 
 @inline function step_right_open_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
-                                           grid, u, clock, model_fields, ΔX, k)
+                                           grid, ψ, clock, model_fields, ΔX, k)
     iᴮ, jᴮ, kᴮ = boundary_indices
     iᴬ, jᴬ, kᴬ = boundary_adjacent_indices
     Δt = clock.last_stage_Δt
@@ -112,34 +137,34 @@ const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
 
     pa = bc.classification.scheme
     ρ = pa.density
-    cstar = pa.gravity_wave_speed
+    c★ = pa.gravity_wave_speed
 
     # Convert to intensive space (no-op when density is nothing)
-    ψ_b   = _to_intensive(@inbounds(u[iᴮ, jᴮ, kᴮ]), ρ, k)
-    ψ_int = _to_intensive(@inbounds(u[iᴬ, jᴬ, kᴬ]), ρ, k)
+    ψᴮ = to_intensive(ρ, @inbounds(ψ[iᴮ, jᴮ, kᴮ]), k)
+    ψᴬ = to_intensive(ρ, @inbounds(ψ[iᴬ, jᴬ, kᴬ]), k)
 
     # Prescribed exterior value (in intensive units when density is provided)
     ψ̄ = getbc(bc, l, m, grid, clock, model_fields)
 
     # Phase speed: exterior value + gravity wave speed
-    c_b = ψ̄ + cstar
-    Ũ = max(0, min(1, Δt / ΔX * c_b))
+    c = ψ̄ + c★
+    Ũ = max(0, min(1, Δt / ΔX * c))
 
     # Inflow vs outflow relaxation
     τ = ifelse(ψ̄ >= 0, pa.outflow_timescale, pa.inflow_timescale)
     τ̃ = Δt / τ
 
-    ψ_new = (ψ_b + Ũ * ψ_int + ψ̄ * τ̃) / (1 + τ̃ + Ũ)
+    ψ_new = (ψᴮ + Ũ * ψᴬ + ψ̄ * τ̃) / (1 + τ̃ + Ũ)
     ψ_new = ifelse(τ == 0, ψ̄, ψ_new)
 
     # Convert back to extensive space (no-op when density is nothing)
-    @inbounds u[iᴮ, jᴮ, kᴮ] = _to_extensive(ψ_new, ρ, k)
+    @inbounds ψ[iᴮ, jᴮ, kᴮ] = to_extensive(ρ, ψ_new, k)
 
     return nothing
 end
 
 @inline function step_left_open_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
-                                          grid, u, clock, model_fields, ΔX, k)
+                                          grid, ψ, clock, model_fields, ΔX, k)
     iᴮ, jᴮ, kᴮ = boundary_indices
     iᴬ, jᴬ, kᴬ = boundary_adjacent_indices
     Δt = clock.last_stage_Δt
@@ -147,41 +172,41 @@ end
 
     pa = bc.classification.scheme
     ρ = pa.density
-    cstar = pa.gravity_wave_speed
+    c★ = pa.gravity_wave_speed
 
-    ψ_b   = _to_intensive(@inbounds(u[iᴮ, jᴮ, kᴮ]), ρ, k)
-    ψ_int = _to_intensive(@inbounds(u[iᴬ, jᴬ, kᴬ]), ρ, k)
+    ψᴮ = to_intensive(ρ, @inbounds(ψ[iᴮ, jᴮ, kᴮ]), k)
+    ψᴬ = to_intensive(ρ, @inbounds(ψ[iᴬ, jᴬ, kᴬ]), k)
 
     ψ̄ = getbc(bc, l, m, grid, clock, model_fields)
 
     # Phase speed: exterior value - gravity wave speed (outflow is -x at west / -y at south)
-    c_b = ψ̄ - cstar
-    Ũ = min(0, max(-1, Δt / ΔX * c_b))
+    c = ψ̄ - c★
+    Ũ = min(0, max(-1, Δt / ΔX * c))
 
     τ = ifelse(ψ̄ <= 0, pa.outflow_timescale, pa.inflow_timescale)
     τ̃ = Δt / τ
 
-    ψ_new = (ψ_b - Ũ * ψ_int + ψ̄ * τ̃) / (1 + τ̃ - Ũ)
+    ψ_new = (ψᴮ - Ũ * ψᴬ + ψ̄ * τ̃) / (1 + τ̃ - Ũ)
     ψ_new = ifelse(τ == 0, ψ̄, ψ_new)
 
-    @inbounds u[iᴮ, jᴮ, kᴮ] = _to_extensive(ψ_new, ρ, k)
+    @inbounds ψ[iᴮ, jᴮ, kᴮ] = to_extensive(ρ, ψ_new, k)
 
     return nothing
 end
 
 # Backward compatibility: old step_right/left_boundary! signatures without k argument
 @inline function step_right_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
-                                      grid, u, clock, model_fields, ΔX)
+                                      grid, ψ, clock, model_fields, ΔX)
     k = boundary_indices[3]
     step_right_open_boundary!(bc, l, m, boundary_indices, boundary_adjacent_indices,
-                              grid, u, clock, model_fields, ΔX, k)
+                              grid, ψ, clock, model_fields, ΔX, k)
 end
 
 @inline function step_left_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
-                                     grid, u, clock, model_fields, ΔX)
+                                     grid, ψ, clock, model_fields, ΔX)
     k = boundary_indices[3]
     step_left_open_boundary!(bc, l, m, boundary_indices, boundary_adjacent_indices,
-                             grid, u, clock, model_fields, ΔX, k)
+                             grid, ψ, clock, model_fields, ΔX, k)
 end
 
 #####
