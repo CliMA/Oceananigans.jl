@@ -135,7 +135,7 @@ function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active
 end
 
 
-# Generate arguments, potentially a NamedTuple for each mapped condition
+""" Generate arguments for each mapped condition """
 function generate_momentum_kernel_args(scheme, common_args; momentum_condition_maps=nothing)
     if isnothing(momentum_condition_maps)
         return (scheme, common_args...)
@@ -145,21 +145,6 @@ function generate_momentum_kernel_args(scheme, common_args; momentum_condition_m
                   boundary = (scheme, common_args...))
     end
 end
-
-function prepend_args(first_args, args)
-    return (first_args..., args...)
-end
-
-function prepend_args(first_args, args::NamedTuple)
-    Nkeys = length(keys(args))
-    new_args = NamedTuple{keys(args)}(NTuple{Nkeys}([nothing for _ in range(1, Nkeys)]))
-
-    for key in keys(args)
-        new_args[key] = (first_args..., args[key]...)
-    end
-    return new_args
-end
-
 
 """
     compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters; active_cells_map=nothing)
@@ -172,7 +157,6 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     arch = architecture(grid)
 
     momentum_condition_maps = model.condition_maps.momentum
-    println(momentum_condition_maps)
 
     u_immersed_bc = immersed_boundary_condition(velocities.u)
     v_immersed_bc = immersed_boundary_condition(velocities.v)

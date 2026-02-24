@@ -330,12 +330,12 @@ Kernels run on the default stream.
 See [configure_kernel](@ref) for more information and also a list of the
 keyword arguments `kw`.
 """
-launch!(args...; kwargs...) = _launch!(args...; kwargs...)
+@inline launch!(args...; kwargs...) = _launch!(args...; kwargs...)
 
-launch!(arch, grid, workspec::NTuple{N, Int}, args...; kwargs...) where N =
+@inline launch!(arch, grid, workspec::NTuple{N, Int}, args...; kwargs...) where N =
     _launch!(arch, grid, workspec, args...; kwargs...)
 
-function launch!(arch, grid, workspec_tuple::Tuple, args...; kwargs...)
+@inline function launch!(arch, grid, workspec_tuple::Tuple, args...; kwargs...)
     for workspec in workspec_tuple
         _launch!(arch, grid, workspec, args...; kwargs...)
     end
@@ -343,16 +343,17 @@ function launch!(arch, grid, workspec_tuple::Tuple, args...; kwargs...)
 end
 
 # launching with an empty tuple has no effect
-function launch!(arch, grid, workspec_tuple::Tuple{}, kernel, args...; kwargs...)
+@inline function launch!(arch, grid, workspec_tuple::Tuple{}, kernel, args...; kwargs...)
     @warn "trying to launch kernel $kernel with workspec == (). The kernel will not be launched."
     return nothing
 end
 
-function launch!(arch, grid, workspec, kernel, first_arg, second_arg, args::NamedTuple; active_cells_map::NamedTuple, kwargs...)
+# Launch kernels over conditioned cell maps
+@inline function launch!(arch, grid, workspec, kernel, first_arg, second_arg, args::NamedTuple; active_cells_map::NamedTuple, kwargs...)
     launch_conditioned!(arch, grid, workspec, active_cells_map, (kernel, first_arg, second_arg), args; kwargs...)
 end
 
-function launch_conditioned!(arch, grid, workspec, active_cells_map_tuple::NamedTuple, common_args, args::NamedTuple; kwargs...)
+@inline function launch_conditioned!(arch, grid, workspec, active_cells_map_tuple::NamedTuple, common_args, args::NamedTuple; kwargs...)
   condition_keys = keys(active_cells_map_tuple)
   arg_keys = keys(args)
   if condition_keys != arg_keys
