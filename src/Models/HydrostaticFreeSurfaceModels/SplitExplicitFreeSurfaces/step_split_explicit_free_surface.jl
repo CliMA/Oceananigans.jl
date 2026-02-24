@@ -1,7 +1,8 @@
 using KernelAbstractions.Extras.LoopInfo: @unroll
 using Oceananigans.ImmersedBoundaries: column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ
 
-
+# Selection between topology aware and non-aware operators
+# depending on whether we fill halos or not in between substeps
 @inline x_derivative_operator(::Val{false}) = ∂xᵣTᶠᶜᶠ
 @inline x_derivative_operator(::Val{true})  = ∂xᵣᶠᶜᶠ
 @inline y_derivative_operator(::Val{false}) = ∂yᵣTᶜᶠᶠ
