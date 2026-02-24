@@ -171,7 +171,8 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     grid = model.grid
     arch = architecture(grid)
 
-		momentum_conditioned_maps = model.condition_maps.momentum
+    momentum_condition_maps = model.condition_maps.momentum
+    println(momentum_condition_maps)
 
     u_immersed_bc = immersed_boundary_condition(velocities.u)
     v_immersed_bc = immersed_boundary_condition(velocities.v)
@@ -191,10 +192,10 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
 
 
     u_kernel_args = tuple(model.coriolis, model.closure, u_immersed_bc, end_momentum_kernel_args..., u_forcing)
-    u_kernel_args_tuple = generate_momentum_kernel_args(model.advection.momentum, u_kernel_args)
+    u_kernel_args_tuple = generate_momentum_kernel_args(model.advection.momentum, u_kernel_args; momentum_condition_maps)
 
     v_kernel_args = tuple(model.coriolis, model.closure, v_immersed_bc, end_momentum_kernel_args..., v_forcing)
-    v_kernel_args_tuple = generate_momentum_kernel_args(model.advection.momentum, v_kernel_args)
+    v_kernel_args_tuple = generate_momentum_kernel_args(model.advection.momentum, v_kernel_args; momentum_condition_maps)
 
     launch!(arch,
             grid,
@@ -203,7 +204,7 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
 	    model.timestepper.Gⁿ.u,
 	    grid,
             u_kernel_args_tuple;
-            active_cells_map=momentum_conditioned_maps)
+            active_cells_map=momentum_condition_maps)
 
     launch!(arch,
             grid, 
@@ -212,7 +213,7 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
 	    model.timestepper.Gⁿ.v,
 	    grid,
             v_kernel_args_tuple; 
-            active_cells_map=momentum_conditioned_maps)
+            active_cells_map=momentum_condition_maps)
 
     return nothing
 end
