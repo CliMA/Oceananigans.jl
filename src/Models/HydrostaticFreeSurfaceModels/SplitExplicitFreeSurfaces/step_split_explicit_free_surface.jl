@@ -87,12 +87,12 @@ iterate_split_explicit!(free_surface, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, wei
 function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
     arch = architecture(grid)
 
-    η            = free_surface.displacement
-    grid         = free_surface.displacement.grid
-    state        = free_surface.filtered_state
-    timestepper  = free_surface.timestepper
-    g            = free_surface.gravitational_acceleration
-    parameters   = free_surface.kernel_parameters
+    η           = free_surface.displacement
+    grid        = free_surface.displacement.grid
+    state       = free_surface.filtered_state
+    timestepper = free_surface.timestepper
+    g           = free_surface.gravitational_acceleration
+    parameters  = free_surface.kernel_parameters
 
     # Unpack state quantities, parameters and forcing terms.
     U, V    = free_surface.barotropic_velocities
