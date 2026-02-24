@@ -15,7 +15,7 @@ using KernelAbstractions: @kernel, @index
 
     map_keys = keys(advection)
     Nkeys = length(map_keys)
-    condition_maps = NamedTuple{map_keys}(NTuple{Nkeys}([nothing for _ in range(1, Nkeys)]))
+    condition_maps = Dict()
 
     for key in keys(advection)
       if key == :momentum
@@ -33,7 +33,7 @@ using KernelAbstractions: @kernel, @index
       end
     end 
 
-    return condition_maps
+    return (; condition_maps...)
 end
 
 function compute_advection_conditioned_map(scheme,
