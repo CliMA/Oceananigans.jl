@@ -71,6 +71,7 @@ include("vector_invariant_advection.jl")
 include("vector_invariant_self_upwinding.jl")
 include("vector_invariant_cross_upwinding.jl")
 include("flux_form_advection.jl")
+include("fixed_order_schemes.jl")
 
 include("topologically_conditional_interpolation.jl")
 include("flat_advective_fluxes.jl")
@@ -80,6 +81,5 @@ include("tracer_advection_operators.jl")
 include("bounds_preserving_tracer_advection_operators.jl")
 include("cell_advection_timescale.jl")
 include("adapt_advection_order.jl")
-include("fixed_order_schemes.jl")
 
 end # module
