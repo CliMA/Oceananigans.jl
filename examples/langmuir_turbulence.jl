@@ -3,7 +3,9 @@
 # This example implements a Langmuir turbulence simulation similar to the one
 # reported in section 4 of
 #
-# > [Wagner et al., "Near-inertial waves and turbulence driven by the growth of swell", Journal of Physical Oceanography (2021)](https://journals.ametsoc.org/view/journals/phoc/51/5/JPO-D-20-0178.1.xml)
+# ```@bibliography
+# Wagner2021
+# ```
 #
 # This example demonstrates
 #
@@ -32,13 +34,13 @@ using CUDA
 #
 # ### Domain and numerical grid specification
 #
-# We use a modest resolution and the same total extent as Wagner et al. (2021),
+# We use a modest resolution and the same total extent as [Wagner2021](@citet),
 
 grid = RectilinearGrid(GPU(), size=(128, 128, 64), extent=(128, 128, 64))
 
 # ### The Stokes Drift profile
 #
-# The surface wave Stokes drift profile prescribed in Wagner et al. (2021),
+# The surface wave Stokes drift profile prescribed by [Wagner2021](@citet),
 # corresponds to a 'monochromatic' (that is, single-frequency) wave field.
 #
 # A monochromatic wave field is characterized by its wavelength and amplitude
@@ -79,7 +81,7 @@ uˢ(z) = Uˢ * exp(z / vertical_scale)
 #     as a prognostic variable, but has the advantage that ``u`` accounts for the total advection
 #     of tracers and momentum, and that ``u = v = w = 0`` is a steady solution even when Coriolis
 #     forces are present. See the
-#     [physics documentation](https://clima.github.io/OceananigansDocumentation/stable/physics/surface_gravity_waves/)
+#     [physics documentation](@ref surface_gravity_waves)
 #     for more information.
 #
 # Finally, we note that the time-derivative of the Stokes drift must be provided
@@ -89,12 +91,12 @@ uˢ(z) = Uˢ * exp(z / vertical_scale)
 
 # ### Boundary conditions
 #
-# At the surface ``z = 0``, Wagner et al. (2021) impose
+# At the surface ``z = 0``, [Wagner2021](@citet) impose
 
 τx = -3.72e-5 # m² s⁻², surface kinematic momentum flux
 u_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
 
-# Wagner et al. (2021) impose a linear buoyancy gradient `N²` at the bottom
+# [Wagner2021](@citet) impose a linear buoyancy gradient `N²` at the bottom
 # along with a weak, destabilizing flux of buoyancy at the surface to faciliate
 # spin-up from rest.
 
@@ -111,7 +113,7 @@ b_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(Jᵇ
 
 # ### Coriolis parameter
 #
-# Wagner et al. (2021) use
+# [Wagner2021](@citet) use
 
 coriolis = FPlane(f=1e-4) # s⁻¹
 
@@ -147,7 +149,7 @@ stratification(z) = z < - initial_mixed_layer_depth ? N² * z : N² * (-initial_
 
 bᵢ(x, y, z) = stratification(z) + 1e-1 * Ξ(z) * N² * model.grid.Lz
 
-# The simulation we reproduce from Wagner et al. (2021) is zero Lagrangian-mean velocity.
+# The simulation we reproduce from [Wagner2021](@citet) is zero Lagrangian-mean velocity.
 # This initial condition is consistent with a wavy, quiescent ocean suddenly impacted
 # by winds. To this quiescent state we add noise scaled by the friction velocity to ``u`` and ``w``.
 

@@ -271,6 +271,7 @@ CUDA.allowscalar() do
         @testset "Reactant extension tests 1" begin
             include("test_reactant.jl")
             include("test_reactant_fft_models.jl")
+            include("test_reactant_hydrostatic_free_surface_models.jl")
         end
     end
 

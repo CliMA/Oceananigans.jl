@@ -46,7 +46,7 @@ steps:
       juliaup add $JULIA_VERSION_ENZYME
       cd "$OCEANANIGANS_DIR"
 
-      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
+      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project -e 'using Pkg; Pkg.test(julia_args=["--check-bounds=auto"])' # Remove --check-bounds=auto when https://github.com/EnzymeAD/Reactant.jl/issues/2347 is fixed
       # After we have instantiated the Enzyme environment, move manifest to the
       # version-specific filename, not to clash with the general manifest.
       # mv -v Manifest.toml Manifest-v$(echo "${JULIA_VERSION_ENZYME}" | cut -d. -f1-2).toml
@@ -168,7 +168,7 @@ steps:
 
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
-      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(coverage="user")'
+      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(coverage="user", julia_args=["--check-bounds=auto"])' # Remove --check-bounds=auto when https://github.com/EnzymeAD/Reactant.jl/issues/2347 is fixed
       test_status=$$?
       set -e
 
