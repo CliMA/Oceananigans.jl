@@ -494,6 +494,50 @@ topos_3d = ((Periodic, Periodic, Bounded),
             @info "    PrescribedFreeSurface with PrescribedVelocityFields and ZStar test passed"
         end
 
+        @testset "PrescribedFreeSurface with constant Field displacement and ZStar [$arch]" begin
+            @info "  Testing PrescribedFreeSurface with constant Field displacement and ZStar [$arch]..."
+
+            H = 10
+            zstar = MutableVerticalDiscretization((-H, 0))
+            grid = RectilinearGrid(arch;
+                                   size = (4, 4, 4),
+                                   x = (0, 100), y = (0, 100),
+                                   z = zstar,
+                                   halo = (3, 3, 3),
+                                   topology = (Periodic, Periodic, Bounded))
+
+            # Constant (time-independent) plain Fields for u, v, and η
+            u = XFaceField(grid)
+            v = YFaceField(grid)
+            η = Field{Center, Center, Nothing}(grid; indices = (:, :, 1))
+            set!(η, 0.1)  # constant 0.1 m displacement
+
+            velocities   = PrescribedVelocityFields(; u=u, v=v, formulation=DiagnosticVerticalVelocity())
+            free_surface = PrescribedFreeSurface(displacement=η)
+
+            # Model construction must not throw (regression test for Field-has-no-clock bug)
+            model = HydrostaticFreeSurfaceModel(grid;
+                                                 velocities,
+                                                 free_surface,
+                                                 tracers = :T,
+                                                 buoyancy = nothing,
+                                                 closure = nothing)
+
+            @test model isa HydrostaticFreeSurfaceModel
+            @test model.free_surface isa PrescribedFreeSurface
+
+            # Time-stepping must not throw, and σ must stay constant (∂t_η = 0 ⟹ ∂t_σ = 0)
+            simulation = Simulation(model; Δt=0.1, stop_time=1.0)
+            run!(simulation)
+
+            Nx, Ny, _ = size(grid, (Center, Center, Center))
+            σ = view(grid.z.σᶜᶜⁿ, 1:Nx, 1:Ny, 1)
+            expected_σ = (H + 0.1) / H
+            @test all(≈(expected_σ, atol=1e-10), σ)
+
+            @info "    PrescribedFreeSurface with constant Field displacement and ZStar test passed"
+        end
+
         @testset "DiagnosticVerticalVelocity [$arch]" begin
             @info "  Testing DiagnosticVerticalVelocity [$arch]..."
 

@@ -351,6 +351,9 @@ materialize_free_surface(fs::PrescribedFreeSurface, ::PrescribedVelocityFields, 
 ##### PrescribedFreeSurface time stepping
 #####
 
+# For a constant (time-independent) plain Field displacement: no clock to advance.
+step_free_surface!(fs::PrescribedFreeSurface{<:Field}, model, timestepper, Δt) = nothing
+
 # Advance the displacement's clock to tⁿ⁺¹ so the FunctionField /
 # TimeSeriesInterpolation evaluates η at the new time, consistent with how
 # a prognostic free surface is stepped forward before the grid update.
@@ -422,6 +425,11 @@ restore_prognostic_state!(::PrescribedFreeSurface, ::Nothing) = nothing
 #####
 ##### PrescribedFreeSurface + ZStarCoordinate: ∂t_σ from prescribed displacement
 #####
+
+# For a constant (time-independent) plain Field displacement: ∂t_η = 0 so ∂t_σ = 0.
+update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSomeKind,
+                               ::ZStarCoordinate, fs::PrescribedFreeSurface{<:Field};
+                               parameters = surface_kernel_parameters(grid)) = nothing
 
 # When PrescribedFreeSurface is used with a mutable z-star grid, compute ∂t_σ as a
 # forward finite difference of the prescribed displacement instead of the barotropic
