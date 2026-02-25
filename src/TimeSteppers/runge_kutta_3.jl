@@ -1,6 +1,5 @@
-using Oceananigans.Utils: time_difference_seconds
-
 import Oceananigans: prognostic_state, restore_prognostic_state!
+using Oceananigans.Utils: time_difference_seconds
 
 """
     RungeKutta3TimeStepper{FT, TG} <: AbstractTimeStepper
@@ -105,7 +104,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     # Be paranoid and update state at iteration 0, in case run! is not used:
-    model.clock.iteration == 0 && update_state!(model, callbacks)
+    maybe_initialize_state!(model, callbacks)
 
     γ¹ = model.timestepper.γ¹
     γ² = model.timestepper.γ²
@@ -119,7 +118,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     second_stage_Δt = stage_Δt(Δt, γ², ζ²)      # = (γ² + ζ²) * Δt
     third_stage_Δt  = stage_Δt(Δt, γ³, ζ³)      # = (γ³ + ζ³) * Δt
 
-    # Compute the next time step a priori to reduce floating point error accumulation
+    # Compute tⁿ⁺¹ a priori to reduce floating point error accumulation
     tⁿ⁺¹ = next_time(model.clock, Δt)
 
     #
@@ -129,7 +128,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     rk3_substep!(model, Δt, γ¹, nothing, callbacks)
     cache_previous_tendencies!(model)
 
-    tick!(model.clock, first_stage_Δt; stage=true)
+    tick_stage!(model.clock, first_stage_Δt)
 
     step_closure_prognostics!(model, first_stage_Δt)
     update_state!(model, callbacks)
@@ -142,7 +141,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     rk3_substep!(model, Δt, γ², ζ², callbacks)
     cache_previous_tendencies!(model)
 
-    tick!(model.clock, second_stage_Δt; stage=true)
+    tick_stage!(model.clock, second_stage_Δt)
 
     step_closure_prognostics!(model, second_stage_Δt)
     update_state!(model, callbacks)
@@ -155,17 +154,13 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     rk3_substep!(model, Δt, γ³, ζ³, callbacks)
     cache_previous_tendencies!(model)
 
-    # This adjustment of the final time-step reduces the accumulation of
-    # round-off error when Δt is added to model.clock.time. Note that we still use
-    # third_stage_Δt for the substep, pressure correction, and Lagrangian particles step.
+    # Correct the third stage Δt to reduce floating point error accumulation.
+    # This matters especially for Float32 (e.g., Metal GPU).
+    # Use time_difference_seconds for DateTime compatibility.
     corrected_third_stage_Δt = time_difference_seconds(tⁿ⁺¹, model.clock.time)
-    tick!(model.clock, corrected_third_stage_Δt)
-    # now model.clock.last_Δt = clock.last_stage_Δt = third_stage_Δt
-    # we correct those below
-    model.clock.last_stage_Δt = corrected_third_stage_Δt
-    model.clock.last_Δt = Δt
+    tick_stage!(model.clock, corrected_third_stage_Δt, Δt)
 
-    step_closure_prognostics!(model, corrected_third_stage_Δt)
+    step_closure_prognostics!(model, third_stage_Δt)
     update_state!(model, callbacks)
     step_lagrangian_particles!(model, third_stage_Δt)
 
