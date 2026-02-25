@@ -102,9 +102,9 @@ end
 """
     run!(simulation; pickup=false, checkpoint_at_end=false)
 
-Run a `simulation` until one of `simulation.callbacks` such as `stop_time_exceeded` or
-`wall_time_limit_exceeded` sets `simulation.running` to `false`. The simulation will then
-stop.
+Run a [`simulation`](@ref Oceananigans.Simulations.Simulation) until one of `simulation.callbacks`
+such as `stop_time` or `wall_time_limit` are exceeded, sets `simulation.running` to `false`.
+The simulation will the stop.
 
 # Picking simulations up from a checkpoint
 
@@ -130,7 +130,8 @@ more than one checkpointer.
 # Checkpointing at end
 
 Set `checkpoint_at_end=true` to automatically checkpoint the simulation when it stops running.
-This ensures the final state is saved even if the simulation stops due to wall time limits.
+This ensures the final state is saved even if the simulation stops due to wall time limits (i.e.,
+`wall_time_limit`).
 """
 function run!(sim; pickup=false, checkpoint_at_end=false)
 
