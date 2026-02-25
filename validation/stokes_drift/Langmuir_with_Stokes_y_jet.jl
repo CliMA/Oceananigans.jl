@@ -11,13 +11,13 @@ using Oceananigans.Units: minute, minutes, hours
 #
 # ### Domain and numerical grid specification
 #
-# We use a modest resolution and the same total extent as [Wagner2021](@citet),
+# We use a modest resolution and the same total extent as Wagner et al. (2021),
 
 grid = RectilinearGrid(size=(64, 32, 32), extent=(256, 128, 64))
 
 # ### The Stokes Drift profile
 #
-# We utilize the same monochromatic wave parameters as [Wagner2021](@citet),
+# We utilize the same monochromatic wave parameters as Wagner et al. (2021),
 
 g = Oceananigans.defaults.gravitational_acceleration
 amplitude = 0.8 # m
@@ -140,13 +140,13 @@ wˢ(x, y, z, t) = 2π / grid.Ly *vertical_scale * Uˢ * ( exp(z / vertical_scale
 
 # ### Boundary conditions
 #
-# At the surface ``z=0``, [Wagner2021](@citet) impose
+# At the surface ``z=0``, Wagner et al. (2021) impose
 
 Qᵛ = -3.72e-5 # m² s⁻², surface kinematic momentum flux
 
 v_boundary_conditions = FieldBoundaryConditions(top = FluxBoundaryCondition(Qᵛ))
 
-# [Wagner2021](@citet) impose a linear buoyancy gradient `N²` at the bottom
+# Wagner et al. (2021) impose a linear buoyancy gradient `N²` at the bottom
 # along with a weak, destabilizing flux of buoyancy at the surface to faciliate
 # spin-up from rest.
 
@@ -202,7 +202,7 @@ stratification(z) = z < - initial_mixed_layer_depth ? N² * z : N² * (-initial_
 
 bᵢ(x, y, z) = stratification(z) + 1e-1 * Ξ(z) * N² * model.grid.Lz
 
-# The simulation we reproduce from [Wagner2021](@citet) is zero Lagrangian-mean velocity.
+# The simulation we reproduce from Wagner et al. (2021) is zero Lagrangian-mean velocity.
 # This initial condition is consistent with a wavy, quiescent ocean suddenly impacted
 # by winds. To this quiescent state we add noise scaled by the friction velocity to ``u`` and ``w``.
 
