@@ -307,7 +307,7 @@ end
 
 const FFTIFS = ImplicitFreeSurface{<:Any, <:Any, <:FFTImplicitFreeSurfaceSolver}
 
-validate_free_surface(arch::Distributed, ::FFTIFS) = error("$(typeof(free_surface)) is not supported with $(typeof(arch))")
+validate_free_surface(arch::Distributed, ::FFTIFS) = error("$(FFTIFS) is not supported with $(typeof(arch))")
 validate_free_surface(arch, free_surface) = free_surface
 
 validate_momentum_advection(momentum_advection, ibg::ImmersedBoundaryGrid) = validate_momentum_advection(momentum_advection, ibg.underlying_grid)

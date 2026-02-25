@@ -127,6 +127,8 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
+1. Gupta, M., Thompon, A. F., and Klein P. (2026). [Energetics of the upper‐ocean under sea ice: Frictional dissipation versus baroclinic production](https://doi.org/10.1029/2025JC023026), _Journal of Geophysical Research: Oceans_, **131(2)**, e2025JC023026. DOI: [10.1029/2025JC023026](https://doi.org/10.1029/2025JC023026)
+
 1. Sjur, A. L. P., Isachsen, P. E., Nilsson, J., and Allen, S. (2026). [Nonlinear dynamics of time-variable slope circulation](https://doi.org/10.5194/egusphere-2026-778), _EGUsphere preprint_. DOI: [10.5194/egusphere-2026-778](https://doi.org/10.5194/egusphere-2026-778)
 
 1. Pan, W. and Li, Q. (2026). [Transient response of Langmuir turbulence to abrupt onset of surface heating](https://doi.org/10.1103/jjdt-zp9n), _Physical Review Fluids_, **11**, 024606. DOI: [10.1175/JPO-D-25-0077.1](https://doi.org/10.1103/jjdt-zp9n)
