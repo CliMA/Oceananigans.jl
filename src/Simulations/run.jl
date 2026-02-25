@@ -66,15 +66,16 @@ Keyword arguments
 
 - `checkpoint`: Specifies the checkpoint source. Can be:
   - `:latest` to restore from the latest checkpoint associated with
-    the `Checkpointer` in `simulation.output_writers`.
+    the [`Checkpointer`](@ref) in `simulation.output_writers`.
   - A `String` filepath to restore from checkpointer data in that file.
 
 - `iteration`: An `Integer` specifying the iteration number to restore from.
   Uses the `Checkpointer` in `simulation.output_writers` to locate the file.
 
-Note: Only one of `checkpoint` or `iteration` should be specified.
-The `iteration` keyword and `checkpoint=:latest` require that `simulation.output_writers`
-contains exactly one checkpointer.
+!!! note
+    Only one of `checkpoint` or `iteration` should be specified.
+    The `iteration` keyword and `checkpoint=:latest` require that
+    `simulation.output_writers` contains exactly one checkpointer.
 
 See also [`run!`](@ref), which accepts a `pickup` keyword argument.
 """
@@ -102,7 +103,7 @@ end
 """
     run!(simulation; pickup=false, checkpoint_at_end=false)
 
-Run a [`simulation`](@ref Oceananigans.Simulations.Simulation) until one of `simulation.callbacks`
+Run a [`simulation`](@ref Oceananigans.Simulation) until one of `simulation.callbacks`
 such as `stop_time` or `wall_time_limit` are exceeded, sets `simulation.running` to `false`.
 The simulation will the stop.
 
@@ -117,7 +118,7 @@ leaving all other simulation properties unchanged.
 Possible values for `pickup` are:
 
   * `pickup=true` picks a simulation up from the latest checkpoint associated with
-    the `Checkpointer` in `simulation.output_writers`.
+    the [`Checkpointer`](@ref) in `simulation.output_writers`.
 
   * `pickup=iteration::Int` picks a simulation up from the checkpointed file associated
      with `iteration` and the `Checkpointer` in `simulation.output_writers`.
@@ -249,7 +250,7 @@ we_want_to_pickup(pickup::String) = true
 we_want_to_pickup(pickup) = throw(ArgumentError("Cannot run! with pickup=$pickup"))
 
 """
-    initialize!(sim::Simulation, pickup=false)
+    initialize!(sim::Simulation)
 
 Initialize a simulation:
 
