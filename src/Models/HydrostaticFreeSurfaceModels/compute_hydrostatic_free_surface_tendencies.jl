@@ -103,7 +103,7 @@ function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active
 
     for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
 
-        condition_maps = model.condition_maps.tracer_name
+        condition_maps = model.condition_maps[tracer_name]
         @inbounds c_tendency    = model.timestepper.Gⁿ[tracer_name]
         @inbounds c_advection   = model.advection[tracer_name]
         @inbounds c_forcing     = model.forcing[tracer_name]
@@ -122,7 +122,7 @@ function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active
                      model.clock,
                      c_forcing )
 
-        args = prepend_args(pre_args, generate_kernel_args(c_advection, post_args))
+        args = prepend_args(pre_args, generate_kernel_args(c_advection, post_args; condition_maps))
 
         launch!(arch, grid, kernel_parameters,
                 compute_hydrostatic_free_surface_Gc!,

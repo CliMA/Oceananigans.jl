@@ -28,7 +28,7 @@ using KernelAbstractions: @kernel, @index
         end 
       else
         if condition_tracer_advection
-            condition_maps[key] = compute_advection_conditioned_map(advection[:key],
+            condition_maps[key] = compute_advection_conditioned_map(advection[key],
                                                                     grid;
                                                                     active_cells_map)
         else
