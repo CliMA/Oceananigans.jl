@@ -144,7 +144,7 @@ function prepend_args(args1, args2::NamedTuple)
     for key in keys(args2)
         new_args[key] = (args1..., args2[key]...)
     end
-    return (; new_args...)
+    return NamedTuple{keys(args2)}(new_args[key] for key in keys(args2))
 end
 
 """ Generate arguments for each mapped condition """
