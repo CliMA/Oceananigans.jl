@@ -206,11 +206,12 @@ simulation.output_writers[:fields] = NetCDFWriter(model, outputs;
                                                   schedule = TimeInterval(20minutes),
                                                   overwrite_existing = true)
 
+nan_checker = Oceananigans.Diagnostics.NaNChecker(; erroring=true, fields=(; model.velocities.u)) # hide
+add_callback!(simulation, nan_checker, name=:nan_checker) # hide
+
 # Now we just run it!
 
 run!(simulation)
-
-any(isnan, model.velocities.u) && error("Simulation crashed: NaN values detected in u-velocity field"); #hide
 
 # ## Visualize the results
 #
