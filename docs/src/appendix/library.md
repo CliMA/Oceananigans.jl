@@ -16,7 +16,7 @@ Modules = [Oceananigans.AbstractOperations]
 Private = false
 ```
 
-## Advection
+## [Advection](@id lib-advection)
 
 ```@autodocs
 Modules = [Oceananigans.Advection]

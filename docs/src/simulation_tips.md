@@ -195,7 +195,7 @@ For large simulations on the GPU, careful management of memory allocation may be
 
 - Try to use higher-order advection schemes. In general when you use a higher-order scheme you need
   fewer grid points to achieve the same accuracy that you would with a lower-order one. Refer to the
-  [documentation](https://clima.github.io/OceananigansDocumentation/stable/appendix/library/#Advection)
+  [documentation](@ref "lib-advection")
   for available advection schemes.
 
 - Manually define scratch space to be reused in diagnostics. By default, every time a user-defined
