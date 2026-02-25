@@ -130,7 +130,7 @@ wˢ(x, y, z, t) = 2π / grid.Ly *vertical_scale * Uˢ * ( exp(z / vertical_scale
 #     as a prognostic variable, but has the advantage that ``u`` accounts for the total advection
 #     of tracers and momentum, and that ``u = v = w = 0`` is a steady solution even when Coriolis
 #     forces are present. See the
-#     [physics documentation](https://clima.github.io/OceananigansDocumentation/stable/physics/surface_gravity_waves/)
+#     [physics documentation](https://clima.github.io/OceananigansDocumentation/dev/physics/surface_gravity_waves)
 #     for more information.
 #
 # Finally, we note that the time-derivative of the Stokes drift must be provided
