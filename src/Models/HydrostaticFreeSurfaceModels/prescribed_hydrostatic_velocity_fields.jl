@@ -202,6 +202,12 @@ end
 hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracer_names, bcs) =
     merge((u=nothing, v=nothing), TracerFields(tracer_names, grid))
 
+# Disambiguation: PVF always suppresses u, v tendencies regardless of free surface type
+hydrostatic_tendency_fields(::PrescribedVelocityFields, ::ExplicitFreeSurface, grid, tracer_names, bcs) =
+    merge((u=nothing, v=nothing), TracerFields(tracer_names, grid))
+hydrostatic_tendency_fields(::PrescribedVelocityFields, ::SplitExplicitFreeSurface, grid, tracer_names, bcs) =
+    merge((u=nothing, v=nothing), TracerFields(tracer_names, grid))
+
 free_surface_names(free_surface, ::PrescribedVelocityFields, grid) = tuple()
 free_surface_names(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, grid) = tuple()
 
@@ -212,13 +218,18 @@ free_surface_names(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, grid)
 @inline datatuple(obj::PrescribedVelocityFields) = (; u = datatuple(obj.u), v = datatuple(obj.v), w = datatuple(obj.w))
 @inline velocities(obj::PrescribedVelocityFields) = (u = obj.u, v = obj.v, w = obj.w)
 
-# Extend sum_of_velocities for `PrescribedVelocityFields`
-@inline sum_of_velocities(U1::PrescribedVelocityFields, U2) = sum_of_velocities(velocities(U1), U2)
-@inline sum_of_velocities(U1, U2::PrescribedVelocityFields) = sum_of_velocities(U1, velocities(U2))
+# Extend sum_of_velocities for `PrescribedVelocityFields` (`PVF` alias)
+@inline sum_of_velocities(U1::PVF, U2) = sum_of_velocities(velocities(U1), U2)
+@inline sum_of_velocities(U1, U2::PVF) = sum_of_velocities(U1, velocities(U2))
+@inline sum_of_velocities(U1::PVF, U2::PVF) = sum_of_velocities(velocities(U1), velocities(U2))
 
-@inline sum_of_velocities(U1::PrescribedVelocityFields, U2, U3) = sum_of_velocities(velocities(U1), U2, U3)
-@inline sum_of_velocities(U1, U2::PrescribedVelocityFields, U3) = sum_of_velocities(U1, velocities(U2), U3)
-@inline sum_of_velocities(U1, U2, U3::PrescribedVelocityFields) = sum_of_velocities(U1, U2, velocities(U3))
+@inline sum_of_velocities(U1::PVF, U2, U3) = sum_of_velocities(velocities(U1), U2, U3)
+@inline sum_of_velocities(U1, U2::PVF, U3) = sum_of_velocities(U1, velocities(U2), U3)
+@inline sum_of_velocities(U1, U2, U3::PVF) = sum_of_velocities(U1, U2, velocities(U3))
+@inline sum_of_velocities(U1::PVF, U2::PVF, U3) = sum_of_velocities(velocities(U1), velocities(U2), U3)
+@inline sum_of_velocities(U1::PVF, U2, U3::PVF) = sum_of_velocities(velocities(U1), U2, velocities(U3))
+@inline sum_of_velocities(U1, U2::PVF, U3::PVF) = sum_of_velocities(U1, velocities(U2), velocities(U3))
+@inline sum_of_velocities(U1::PVF, U2::PVF, U3::PVF) = sum_of_velocities(velocities(U1), velocities(U2), velocities(U3))
 
 ab2_step_velocities!(::PrescribedVelocityFields, args...) = nothing
 rk_substep_velocities!(::PrescribedVelocityFields, args...) = nothing
