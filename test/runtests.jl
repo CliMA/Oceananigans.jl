@@ -342,7 +342,6 @@ CUDA.allowscalar() do
     if group == :convergence
         include("test_convergence.jl")
     end
-    =#
 end
 
 end #CUDA.allowscalar()
