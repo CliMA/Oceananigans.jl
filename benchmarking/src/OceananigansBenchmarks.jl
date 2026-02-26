@@ -1,4 +1,4 @@
-module OceananigsBenchmarks
+module OceananigansBenchmarks
 
 export
     # Benchmark cases

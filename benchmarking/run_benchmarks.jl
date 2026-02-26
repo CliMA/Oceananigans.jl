@@ -24,7 +24,7 @@
 #####
 
 using ArgParse: @add_arg_table!, ArgParseSettings, parse_args
-using OceananigsBenchmarks: earth_ocean, benchmark_time_stepping, run_benchmark_simulation, run_io_benchmark
+using OceananigansBenchmarks: earth_ocean, benchmark_time_stepping, run_benchmark_simulation, run_io_benchmark
 using JSON: JSON
 using Oceananigans
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, SmagorinskyLilly,
