@@ -33,9 +33,11 @@ end
 @inline Utils.getregion(κ::KernelFunctionOperation{LX, LY, LZ}, r) where {LX, LY, LZ} =
                         KernelFunctionOperation{LX, LY, LZ}(_getregion(κ.kernel_function, r),
                                                             _getregion(κ.grid, r),
-                                                            _getregion(κ.arguments, r)...)
+                                                            _getregion(κ.arguments, r),
+                                                            eltype(κ))
 
 @inline Utils._getregion(κ::KernelFunctionOperation{LX, LY, LZ}, r) where {LX, LY, LZ} =
                          KernelFunctionOperation{LX, LY, LZ}(getregion(κ.kernel_function, r),
                                                              getregion(κ.grid, r),
-                                                             getregion(κ.arguments, r)...)
+                                                             getregion(κ.arguments, r),
+                                                             eltype(κ))

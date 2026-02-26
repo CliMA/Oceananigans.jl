@@ -3,7 +3,7 @@ using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: _top_tke_flux, CATKEVDArray
 
 import Oceananigans.Grids: validate_size, validate_halo, XYRegularRG
-import Oceananigans.TurbulenceClosures: time_discretization, compute_diffusivities!, with_tracers
+import Oceananigans.TurbulenceClosures: time_discretization, compute_closure_fields!, with_tracers
 import Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
 import Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: top_tke_flux
 import Oceananigans.Coriolis: x_f_cross_U, y_f_cross_U, z_f_cross_U

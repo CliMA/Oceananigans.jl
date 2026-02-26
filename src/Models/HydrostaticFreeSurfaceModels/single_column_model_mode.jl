@@ -10,7 +10,7 @@ using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: CATKEVDArra
 
 import Oceananigans.Models: validate_tracer_advection
 import Oceananigans.BoundaryConditions: fill_halo_regions!
-import Oceananigans.TurbulenceClosures: time_discretization, compute_diffusivities!
+import Oceananigans.TurbulenceClosures: time_discretization, compute_closure_fields!
 import Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ
 import Oceananigans.Coriolis: x_f_cross_U, y_f_cross_U, z_f_cross_U
 
@@ -72,8 +72,8 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
     # Compute auxiliaries
     compute_auxiliary_fields!(model.auxiliary_fields)
 
-    # Calculate diffusivities
-    compute_diffusivities!(model.closure_fields, model.closure, model)
+    # Calculate closure fields
+    compute_closure_fields!(model.closure_fields, model.closure, model)
 
     fill_halo_regions!(model.closure_fields, model.clock, fields(model))
 

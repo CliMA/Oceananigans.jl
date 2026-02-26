@@ -14,7 +14,7 @@ using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Fields
 
-using Oceananigans.Grids: topology, total_size, interior_parent_indices, AbstractGrid
+using Oceananigans.Grids: topology, total_size, interior_parent_indices, AbstractGrid, validate_indices
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 
 using Oceananigans.Fields: interior_view_indices,
@@ -518,6 +518,7 @@ function FieldTimeSeries(loc::Tuple{<:LX, <:LY, <:LZ}, grid, times=();
                          boundary_conditions = FieldBoundaryConditions(grid, loc),
                          reader_kw = NamedTuple()) where {LX, LY, LZ}
 
+    indices = validate_indices(indices, loc, grid)
     Nt = time_indices_length(backend, times)
     @apply_regionally data = new_data(eltype(grid), grid, loc, indices, Nt)
 
@@ -819,6 +820,8 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
     isnothing(location) && (location = handle["timeseries/$name/serialized/location"])
     LX, LY, LZ = location
     loc = (LX(), LY(), LZ())
+
+    indices = validate_indices(indices, loc, grid)
 
     if isnothing(Nparts)
         isnothing(iterations) && (iterations = parse.(Int, keys(handle["timeseries/t"])))

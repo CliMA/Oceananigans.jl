@@ -6,6 +6,7 @@ using Oceananigans.Grids: topology, _node, φnode, φnodes, λnode, λnodes,
                           ZRegOrthogonalSphericalShellGrid
 
 using Oceananigans.Operators: Δx, Δy, Δz
+using Oceananigans.Utils: interpolator, _interpolate
 
 # GPU-compatile middle point calculation
 @inline middle_point(l, h) = Base.unsafe_trunc(Int, (l + h) / 2)
@@ -277,59 +278,7 @@ end
     return _interpolate(from_field, ix, iy, iz)
 end
 
-"""
-    interpolator(fractional_idx)
-
-Return an ``interpolator tuple'' from the fractional index `fractional_idx`
-defined as the 3-tuple
-
-```
-(i⁻, i⁺, ξ)
-```
-
-where `i⁻` is the index to the left of `i`, `i⁺` is the index to the
-right of `i`, and `ξ` is the fractional distance between `i` and the
-left bound `i⁻`, such that `ξ ∈ [0, 1)`.
-"""
-@inline function interpolator(fractional_idx)
-    # For why we use Base.unsafe_trunc instead of trunc see:
-    # https://github.com/CliMA/Oceananigans.jl/issues/828
-    # https://github.com/CliMA/Oceananigans.jl/pull/997
-
-    i⁻ = Base.unsafe_trunc(Int, fractional_idx)
-    i⁺ = i⁻ + 1
-    ξ = mod(fractional_idx, 1)
-
-    return (i⁻, i⁺, ξ)
-end
-
-@inline interpolator(::Nothing) = (1, 1, 0)
-
-# Trilinear Lagrange polynomials
-@inline ϕ₁(ξ, η, ζ) = (1 - ξ) * (1 - η) * (1 - ζ)
-@inline ϕ₂(ξ, η, ζ) = (1 - ξ) * (1 - η) *      ζ
-@inline ϕ₃(ξ, η, ζ) = (1 - ξ) *      η  * (1 - ζ)
-@inline ϕ₄(ξ, η, ζ) = (1 - ξ) *      η  *      ζ
-@inline ϕ₅(ξ, η, ζ) =      ξ  * (1 - η) * (1 - ζ)
-@inline ϕ₆(ξ, η, ζ) =      ξ  * (1 - η) *      ζ
-@inline ϕ₇(ξ, η, ζ) =      ξ  *      η  * (1 - ζ)
-@inline ϕ₈(ξ, η, ζ) =      ξ  *      η  *      ζ
-
-@inline function _interpolate(data, ix, iy, iz, in...)
-    # Unpack the "interpolators"
-    i⁻, i⁺, ξ = ix
-    j⁻, j⁺, η = iy
-    k⁻, k⁺, ζ = iz
-
-    return @inbounds ϕ₁(ξ, η, ζ) * getindex(data, i⁻, j⁻, k⁻, in...) +
-                     ϕ₂(ξ, η, ζ) * getindex(data, i⁻, j⁻, k⁺, in...) +
-                     ϕ₃(ξ, η, ζ) * getindex(data, i⁻, j⁺, k⁻, in...) +
-                     ϕ₄(ξ, η, ζ) * getindex(data, i⁻, j⁺, k⁺, in...) +
-                     ϕ₅(ξ, η, ζ) * getindex(data, i⁺, j⁻, k⁻, in...) +
-                     ϕ₆(ξ, η, ζ) * getindex(data, i⁺, j⁻, k⁺, in...) +
-                     ϕ₇(ξ, η, ζ) * getindex(data, i⁺, j⁺, k⁻, in...) +
-                     ϕ₈(ξ, η, ζ) * getindex(data, i⁺, j⁺, k⁺, in...)
-end
+# interpolator, _interpolate, and ϕ₁-ϕ₈ are imported from Oceananigans.Utils
 
 """
     interpolate(to_node, from_field)

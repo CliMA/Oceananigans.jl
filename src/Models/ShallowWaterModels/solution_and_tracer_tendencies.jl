@@ -31,7 +31,7 @@ Compute the tendency for the x-directional transport, uh
                                       bathymetry,
                                       solution,
                                       tracers,
-                                      diffusivities,
+                                      closure_fields,
                                       clock,
                                       formulation,
                                       forcing)
@@ -44,7 +44,7 @@ Compute the tendency for the x-directional transport, uh
              - x_pressure_gradient(i, j, k, grid, g, solution.h, bathymetry, formulation)
              - x_f_cross_U(i, j, k, grid, coriolis, solution)
              - bathymetry_contribution_x(i, j, k, grid, g, solution.h, bathymetry, formulation)
-             - sw_∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, formulation)
+             - sw_∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, closure_fields, clock, model_fields, formulation)
              + forcing(i, j, k, grid, clock, merge(solution, tracers)))
 end
 
@@ -60,7 +60,7 @@ Compute the tendency for the y-directional transport, vh.
                                       bathymetry,
                                       solution,
                                       tracers,
-                                      diffusivities,
+                                      closure_fields,
                                       clock,
                                       formulation,
                                       forcing)
@@ -73,7 +73,7 @@ Compute the tendency for the y-directional transport, vh.
              - y_pressure_gradient(i, j, k, grid, g, solution.h, bathymetry, formulation)
              - y_f_cross_U(i, j, k, grid, coriolis, solution)
              - bathymetry_contribution_y(i, j, k, grid, g, solution.h, bathymetry, formulation)
-             - sw_∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, formulation)
+             - sw_∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, closure_fields, clock, model_fields, formulation)
              + forcing(i, j, k, grid, clock, merge(solution, tracers)))
 end
 
@@ -87,7 +87,7 @@ Compute the tendency for the height, h.
                                      closure,
                                      solution,
                                      tracers,
-                                     diffusivities,
+                                     closure_fields,
                                      clock,
                                      formulation,
                                      forcing)
@@ -102,7 +102,7 @@ end
                                  closure,
                                  solution,
                                  tracers,
-                                 diffusivities,
+                                 closure_fields,
                                  clock,
                                  formulation,
                                  forcing) where tracer_index

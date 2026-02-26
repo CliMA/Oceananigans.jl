@@ -29,7 +29,7 @@ implicitly during time-stepping.
                                                               free_surface,
                                                               tracers,
                                                               buoyancy,
-                                                              diffusivities,
+                                                              closure_fields,
                                                               hydrostatic_pressure_anomaly,
                                                               auxiliary_fields,
                                                               ztype,
@@ -38,13 +38,14 @@ implicitly during time-stepping.
 
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
+    # Note: For mutable grids (z-star), the chain-rule correction for grid slope
+    # is automatically included in ∂xᶠᶜᶜ, so no explicit grid_slope_contribution is needed.
     return ( - U_dot_∇u(i, j, k, grid, advection, velocities)
              - explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface)
              - x_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂xᶠᶜᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
-             - grid_slope_contribution_x(i, j, k, grid, buoyancy, ztype, model_fields)
-             - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
-             - immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, velocities, u_immersed_bc, closure, diffusivities, clock, model_fields)
+             - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, closure_fields, clock, model_fields, buoyancy)
+             - immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, velocities, u_immersed_bc, closure, closure_fields, clock, model_fields)
              + forcing(i, j, k, grid, clock, model_fields))
 end
 
@@ -70,7 +71,7 @@ implicitly during time-stepping.
                                                               free_surface,
                                                               tracers,
                                                               buoyancy,
-                                                              diffusivities,
+                                                              closure_fields,
                                                               hydrostatic_pressure_anomaly,
                                                               auxiliary_fields,
                                                               ztype,
@@ -79,13 +80,14 @@ implicitly during time-stepping.
 
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
+    # Note: For mutable grids (z-star), the chain-rule correction for grid slope
+    # is automatically included in ∂yᶜᶠᶜ, so no explicit grid_slope_contribution is needed.
     return ( - U_dot_∇v(i, j, k, grid, advection, velocities)
              - explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface)
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂yᶜᶠᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
-             - grid_slope_contribution_y(i, j, k, grid, buoyancy, ztype, model_fields)
-             - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, diffusivities, clock, model_fields, buoyancy)
-             - immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, velocities, v_immersed_bc, closure, diffusivities, clock, model_fields)
+             - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, closure_fields, clock, model_fields, buoyancy)
+             - immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, velocities, v_immersed_bc, closure, closure_fields, clock, model_fields)
              + forcing(i, j, k, grid, clock, model_fields))
 end
 
@@ -112,7 +114,7 @@ where `c = C[tracer_index]`.
                                                           velocities,
                                                           free_surface,
                                                           tracers,
-                                                          diffusivities,
+                                                          closure_fields,
                                                           auxiliary_fields,
                                                           clock,
                                                           forcing) where tracer_index
@@ -123,14 +125,14 @@ where `c = C[tracer_index]`.
                          biogeochemical_auxiliary_fields(biogeochemistry))
 
     biogeochemical_velocities = biogeochemical_drift_velocity(biogeochemistry, val_tracer_name)
-    closure_velocities = closure_auxiliary_velocity(closure, diffusivities, val_tracer_name)
+    closure_velocities = closure_auxiliary_velocity(closure, closure_fields, val_tracer_name)
 
     total_velocities = sum_of_velocities(velocities, biogeochemical_velocities, closure_velocities)
     total_velocities = with_advective_forcing(forcing, total_velocities)
 
     return ( - div_Uc(i, j, k, grid, advection, total_velocities, c)
-             - ∇_dot_qᶜ(i, j, k, grid, closure, diffusivities, val_tracer_index, c, clock, model_fields, buoyancy)
-             - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, diffusivities, val_tracer_index, clock, model_fields)
+             - ∇_dot_qᶜ(i, j, k, grid, closure, closure_fields, val_tracer_index, c, clock, model_fields, buoyancy)
+             - immersed_∇_dot_qᶜ(i, j, k, grid, c, c_immersed_bc, closure, closure_fields, val_tracer_index, clock, model_fields)
              + biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields)
              + forcing(i, j, k, grid, clock, model_fields))
 end

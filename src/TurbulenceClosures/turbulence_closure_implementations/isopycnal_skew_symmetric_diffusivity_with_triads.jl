@@ -92,7 +92,7 @@ end
 build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfTISSD) =
     DiffusivityFields(grid, tracer_names, bcs, closure)
 
-function compute_diffusivities!(diffusivities, closure::FlavorOfTISSD{TD}, model; parameters = :xyz) where TD
+function compute_closure_fields!(closure_fields, closure::FlavorOfTISSD{TD}, model; parameters = :xyz) where TD
 
     arch = model.architecture
     grid = model.grid
@@ -103,7 +103,7 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfTISSD{TD}, model
     if TD() isa VerticallyImplicitTimeDiscretization
         launch!(arch, grid, parameters,
                 triad_compute_tapered_R₃₃!,
-                diffusivities, grid, closure, clock, buoyancy, tracers)
+                closure_fields, grid, closure, clock, buoyancy, tracers)
     end
 
     return nothing

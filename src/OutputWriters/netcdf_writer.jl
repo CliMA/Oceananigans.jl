@@ -236,7 +236,7 @@ NetCDFWriter scheduled on TimeInterval(1 minute):
 ├── 2 outputs: (c, u)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
-└── file size: 32.6 KiB
+└── file size: 32.7 KiB
 ```
 
 ```jldoctest netcdf1
@@ -269,7 +269,7 @@ NetCDFWriter scheduled on TimeInterval(1 minute):
 ├── 2 outputs: (c, u) averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
-└── file size: 33.8 KiB
+└── file size: 33.9 KiB
 ```
 
 `NetCDFWriter` also accepts output functions that write scalars and arrays to disk,
@@ -320,7 +320,7 @@ NetCDFWriter scheduled on IterationInterval(1):
 ├── 3 outputs: (profile, slice, scalar)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
-└── file size: 34.0 KiB
+└── file size: 34.1 KiB
 ```
 
 `NetCDFWriter` can also be configured for `outputs` that are interpolated or regridded

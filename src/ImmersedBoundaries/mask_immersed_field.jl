@@ -1,4 +1,6 @@
 using KernelAbstractions: @kernel, @index
+using Oceananigans.Grids: interior_indices
+using Oceananigans.Utils: KernelParameters
 using Oceananigans.AbstractOperations: BinaryOperation
 using Oceananigans.Fields: location, Field, ReducedField
 using Oceananigans.Fields: ConstantField, OneField, ZeroField
@@ -52,7 +54,8 @@ masks `field` defined on `grid` with a value `val` at locations where `periphera
 function mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, value)
     arch = architecture(field)
     loc  = instantiate.(loc)
-    launch!(arch, grid, :xyz, _mask_immersed_field!, field, loc, grid, value)
+    kp = KernelParameters(interior_indices(field)...)
+    launch!(arch, grid, kp, _mask_immersed_field!, field, loc, grid, value)
     return nothing
 end
 

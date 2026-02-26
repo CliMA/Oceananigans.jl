@@ -3,7 +3,7 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.TurbulenceClosures: TriadIsopycnalSkewSymmetricDiffusivity
 using Oceananigans.TurbulenceClosures: diffusive_flux_x, diffusive_flux_y, diffusive_flux_z,
                                        ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization,
-                                       compute_diffusivities!
+                                       compute_closure_fields!
 
 """
 Test that TriadIsopycnalSkewSymmetricDiffusivity can be constructed and timestepped

@@ -2,6 +2,7 @@ using Distributed
 Distributed.addprocs(2)
 
 @everywhere begin
+    using DocumenterVitepress
     using Documenter
     using DocumenterCitations
     using Literate
@@ -183,37 +184,51 @@ developer_pages = [
 ]
 
 pages = [
-    "Home" => "index.md",
-    "Quick start" => "quick_start.md",
-    "Examples" => example_pages,
-    "Grids" => "grids.md",
-    "Fields" => "fields.md",
-    "Operations" => "operations.md",
-    # TODO:
-    #   - Develop the following tutorials on reductions and post-processing
-    #   - Refactor the model setup pages and make them more tutorial-like.
-    # "Averages, integrals, and cumulative integrals" => "reductions_and_accumulations.md",
-    # "FieldTimeSeries and post-processing" => field_time_series.md,
-    "Models" => model_pages,
-    "Simulations" => simulation_pages,
-    "Physics" => physics_pages,
-    "Numerical implementation" => numerical_pages,
-    "Simulation tips" => "simulation_tips.md",
-    "For developers" => developer_pages,
-    "Gallery" => "gallery.md",
-    "References" => "references.md",
-    "Appendix" => appendix_pages
+    "Manual" => [
+        "Quick Start" => "quick_start.md",
+        "Grids" => "grids.md",
+        "Fields" => "fields.md",
+        "Operations" => "operations.md",
+        "Simulation Tips" => "simulation_tips.md",
+        # Future tutorials:
+        # "Reductions & Accumulations" => "reductions_and_accumulations.md",
+        # "FieldTimeSeries & Post-Processing" => field_time_series.md
+        "Examples" => example_pages,
+        "Gallery" => "gallery.md",
+    ],
+    "Workflows" => [
+        "Models" => model_pages,
+        "Simulations" => simulation_pages
+    ],
+    "Concepts" => [
+        "Physics" => physics_pages,
+        "Numerical Implementation" => numerical_pages
+    ],
+    "Developer" => developer_pages,
+    "Resources" => [
+        "References" => "references.md",
+        "Appendix" => appendix_pages
+    ]
 ]
 
 #####
 ##### Build and deploy docs
 #####
 
-format = Documenter.HTML(collapselevel = 1,
-                         canonical = "https://clima.github.io/OceananigansDocumentation/stable/",
-                         mathengine = MathJax3(),
-                         size_threshold = 2^20,
-                         assets = String["assets/citations.css"])
+deploy_config = Documenter.auto_detect_deploy_system()
+deploy_decision = Documenter.deploy_folder(
+    deploy_config; repo="github.com/CliMA/OceananigansDocumentation.git",
+    devbranch="main", devurl="dev", push_preview=true
+)
+
+format = DocumenterVitepress.MarkdownVitepress(;
+        repo = "github.com/CliMA/Oceananigans.jl.git",
+        devbranch = "main",
+        devurl = "dev",
+        deploy_url = "./OceananigansDocumentation/",
+        deploy_decision,
+        keep = :patch, # keep all versions of docs
+    )
 
 DocMeta.setdocmeta!(Oceananigans, :DocTestSetup, :(using Oceananigans); recursive=true)
 
@@ -269,8 +284,10 @@ for pattern in [r"\.jld2", r"\.nc"]
     end
 end
 
-deploydocs(repo = "github.com/CliMA/OceananigansDocumentation.git",
-           versions = ["stable" => "v^", "dev" => "dev", "v#.#.#"],
-           forcepush = true,
-           push_preview = true,
-           devbranch = "main")
+DocumenterVitepress.deploydocs(repo = "github.com/CliMA/Oceananigans.jl.git",
+                               deploy_repo = "github.com/CliMA/OceananigansDocumentation.git",
+                               target = "build",
+                               branch = "gh-pages",
+                               forcepush = true,
+                               push_preview = true,
+                               devbranch = "main")

@@ -518,3 +518,93 @@ nothing
 (parent(c))[1:2, 2, 2] = [1.75, 0.25]
 c.data[1:2, 1, 1] = [0.25, 0.75]
 ```
+
+## Reduced-dimension fields with `indices`
+
+By default, `Field`s span the full extent of the grid: their `indices` are `(:, :, :)`.
+But sometimes we want a field that lives on only a _slice_ of the grid -- for example,
+a two-dimensional horizontal field representing the surface vorticity, or a one-dimensional
+field along a single column.
+This is achieved by passing the `indices` keyword argument to the `Field` constructor.
+
+For example, to create a two-dimensional ``x``-``y`` field at the top of the domain
+(corresponding to the last `Center` index, `k = grid.Nz`):
+
+```jldoctest fields
+surface_c = Field{Center, Center, Center}(grid, indices=(:, :, grid.Nz))
+
+# output
+4×5×1 Field{Center, Center, Center} on RectilinearGrid on CPU
+├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: Nothing
+├── indices: (:, :, 4:4)
+└── data: 6×7×1 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 4:4) with eltype Float64 with indices 0:5×0:6×4:4
+    └── max=0.0, min=0.0, mean=0.0
+```
+
+Notice that the resulting field is `4×5×1` instead of `4×5×4` -- it occupies
+only a single index in the vertical.
+Also notice the `indices: (:, :, 4:4)` line in the output: the integer index
+`grid.Nz = 4` has been converted to the range `4:4`.
+
+We can `set!` reduced fields the same way as full fields:
+
+```jldoctest fields
+set!(surface_c, (x, y, z) -> x + y)
+
+surface_c[1:4, 1:5, grid.Nz]
+
+# output
+4×5 Matrix{Float64}:
+ 0.225  0.425  0.625  0.825  1.025
+ 0.475  0.675  0.875  1.075  1.275
+ 0.725  0.925  1.125  1.325  1.525
+ 0.975  1.175  1.375  1.575  1.775
+```
+
+### Reduced fields from operations
+
+The `indices` keyword is particularly useful in combination with field operations.
+For example, suppose we want to compute and store the vertical vorticity
+``∂v / ∂x - ∂u / ∂y`` only at the surface:
+
+```jldoctest fields
+u = XFaceField(grid)
+v = YFaceField(grid)
+
+ωₛ = Field(∂x(v) - ∂y(u), indices=(:, :, grid.Nz))
+
+# output
+4×5×1 Field{Face, Face, Center} on RectilinearGrid on CPU
+├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: Nothing
+├── indices: (:, :, 4:4)
+├── operand: BinaryOperation at (Face, Face, Center)
+├── status: time=0.0
+└── data: 6×7×1 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 4:4) with eltype Float64 with indices 0:5×0:6×4:4
+    └── max=0.0, min=0.0, mean=0.0
+```
+
+Computing `ωₛ` with `compute!` evaluates the expression `∂x(v) - ∂y(u)` and
+stores the result _only_ at the surface slice:
+
+```jldoctest fields
+compute!(ωₛ)
+
+# output
+4×5×1 Field{Face, Face, Center} on RectilinearGrid on CPU
+├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: Nothing
+├── indices: (:, :, 4:4)
+├── operand: BinaryOperation at (Face, Face, Center)
+├── status: time=0.0
+└── data: 6×7×1 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 4:4) with eltype Float64 with indices 0:5×0:6×4:4
+    └── max=0.0, min=0.0, mean=0.0
+```
+
+This is useful both to save memory (only one vertical level is allocated)
+and for output: reduced fields can be passed directly to an `OutputWriter`
+so that only the desired slice is saved to disk.

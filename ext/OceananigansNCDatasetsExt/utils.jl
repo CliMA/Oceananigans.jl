@@ -119,6 +119,7 @@ materialize_from_netcdf(dict::AbstractDict) = OrderedDict(Symbol(key) => materia
 materialize_from_netcdf(x::Number) = x
 materialize_from_netcdf(x::Array) = Tuple(x)
 materialize_from_netcdf(x::String) = @eval $(Meta.parse(x))
+materialize_from_netcdf(x) = x
 
 #####
 ##### Extension utilities

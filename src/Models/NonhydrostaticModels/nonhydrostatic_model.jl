@@ -12,7 +12,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, AbstractLagrangianParticles
-using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, time_discretization, implicit_diffusion_solver
+using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, time_discretization, implicit_diffusion_solver, initialize_closure_fields!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.Utils: tupleit
 
@@ -323,6 +323,17 @@ end
 @inline total_velocities(m::NonhydrostaticModel) = sum_of_velocities(m.velocities, m.background_fields.velocities)
 buoyancy_force(model::NonhydrostaticModel) = model.buoyancy
 buoyancy_tracers(model::NonhydrostaticModel) = model.tracers
+
+#####
+##### Initialization
+#####
+
+import Oceananigans: initialize!
+
+function initialize!(model::NonhydrostaticModel)
+    initialize_closure_fields!(model.closure_fields, model.closure, model)
+    return nothing
+end
 
 #####
 ##### Checkpointing
