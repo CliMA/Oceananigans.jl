@@ -289,7 +289,6 @@ CUDA.allowscalar() do
         end
     end
 
-    #=
     # Tests for XESMF extension
     if group == :xesmf || group == :all
         @testset "XESMF extension tests" begin
