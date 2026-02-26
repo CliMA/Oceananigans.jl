@@ -66,15 +66,16 @@ Keyword arguments
 
 - `checkpoint`: Specifies the checkpoint source. Can be:
   - `:latest` to restore from the latest checkpoint associated with
-    the `Checkpointer` in `simulation.output_writers`.
+    the [`Checkpointer`](@ref) in `simulation.output_writers`.
   - A `String` filepath to restore from checkpointer data in that file.
 
 - `iteration`: An `Integer` specifying the iteration number to restore from.
   Uses the `Checkpointer` in `simulation.output_writers` to locate the file.
 
-Note: Only one of `checkpoint` or `iteration` should be specified.
-The `iteration` keyword and `checkpoint=:latest` require that `simulation.output_writers`
-contains exactly one checkpointer.
+!!! note
+    Only one of `checkpoint` or `iteration` should be specified.
+    The `iteration` keyword and `checkpoint=:latest` require that
+    `simulation.output_writers` contains exactly one checkpointer.
 
 See also [`run!`](@ref), which accepts a `pickup` keyword argument.
 """
@@ -102,9 +103,9 @@ end
 """
     run!(simulation; pickup=false, checkpoint_at_end=false)
 
-Run a `simulation` until one of `simulation.callbacks` such as `stop_time_exceeded` or
-`wall_time_limit_exceeded` sets `simulation.running` to `false`. The simulation will then
-stop.
+Run a [`simulation`](@ref Oceananigans.Simulation) until one of `simulation.callbacks`
+such as `stop_time` or `wall_time_limit` are exceeded, sets `simulation.running` to `false`.
+The simulation will the stop.
 
 # Picking simulations up from a checkpoint
 
@@ -117,7 +118,7 @@ leaving all other simulation properties unchanged.
 Possible values for `pickup` are:
 
   * `pickup=true` picks a simulation up from the latest checkpoint associated with
-    the `Checkpointer` in `simulation.output_writers`.
+    the [`Checkpointer`](@ref) in `simulation.output_writers`.
 
   * `pickup=iteration::Int` picks a simulation up from the checkpointed file associated
      with `iteration` and the `Checkpointer` in `simulation.output_writers`.
@@ -130,7 +131,8 @@ more than one checkpointer.
 # Checkpointing at end
 
 Set `checkpoint_at_end=true` to automatically checkpoint the simulation when it stops running.
-This ensures the final state is saved even if the simulation stops due to wall time limits.
+This ensures the final state is saved even if the simulation stops due to wall time limits (i.e.,
+`wall_time_limit`).
 """
 function run!(sim; pickup=false, checkpoint_at_end=false)
 
@@ -248,7 +250,7 @@ we_want_to_pickup(pickup::String) = true
 we_want_to_pickup(pickup) = throw(ArgumentError("Cannot run! with pickup=$pickup"))
 
 """
-    initialize!(sim::Simulation, pickup=false)
+    initialize!(sim::Simulation)
 
 Initialize a simulation:
 
