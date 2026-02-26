@@ -24,31 +24,31 @@ Returns (passed::Bool, error_message::String)
 function test_fake_halo_fill(Nx, Ny, Nz, topo_x, topo_y, topo_z; raise=true)
     # Create vanilla (CPU) array
     vanilla_c = create_offset_array(Nx, Ny, Nz)
-    
+
     # Create Reactant array (must use ConcreteRArray)
     reactant_data = zeros(Float64, Nx+2, Ny+2, Nz+2)
     reactant_raw = Reactant.to_rarray(reactant_data)
     reactant_c = OffsetArray(reactant_raw, 0:(Nx+1), 0:(Ny+1), 0:(Nz+1))
-    
+
     # Set random interior data
     Random.seed!(12345)
     interior_data = randn(Nx, Ny, Nz)
     set_interior!(vanilla_c, interior_data, Nx, Ny, Nz)
-    
+
     # Set the same data in reactant array
     for k in 1:Nz, j in 1:Ny, i in 1:Nx
         reactant_raw[i, j, k] = interior_data[i, j, k]
     end
-    
+
     # Fill halos on vanilla array
     fake_fill_halo_regions!(vanilla_c, Nx, Ny, Nz, topo_x, topo_y, topo_z, CPU())
-    
+
     # Fill halos on reactant array using @jit
     function do_fake_fill!(c, Nx, Ny, Nz, topo_x, topo_y, topo_z)
         fake_fill_halo_regions!(c, Nx, Ny, Nz, topo_x, topo_y, topo_z, CPU())
         return nothing
     end
-    
+
     try
         @jit raise=raise do_fake_fill!(reactant_c, Nx, Ny, Nz, topo_x, topo_y, topo_z)
     catch e
@@ -56,7 +56,7 @@ function test_fake_halo_fill(Nx, Ny, Nz, topo_x, topo_y, topo_z; raise=true)
         err_lines = split(err_msg, "\n")
         return (false, first(err_lines))
     end
-    
+
     # Compare results
     if compare_arrays("halo", vanilla_c, reactant_c)
         return (true, "")
@@ -79,37 +79,37 @@ end
 
 function run_fake_halo_tests(; raise=true)
     Nx, Ny, Nz = 4, 5, 3
-    
+
     topologies = [:periodic, :bounded]
-    
+
     results = Tuple{String, Bool, String}[]
-    
+
     println("=" ^ 80)
     println("Testing FAKE halo fill kernels with raise=$raise")
     println("Pure KernelAbstractions + OffsetArrays (no Oceananigans)")
     println("Julia ", VERSION)
     println("=" ^ 80)
     println()
-    
+
     test_count = 0
     for topo_x in topologies, topo_y in topologies, topo_z in topologies
         test_count += 1
         test_name = "topo=($topo_x, $topo_y, $topo_z)"
-        
+
         print("[$test_count/8] $test_name ... ")
         flush(stdout)
-        
+
         try
             # Set random interior data (same seed for both)
             Random.seed!(12345)
-            
+
             # Create vanilla (CPU) array with data already set
             vanilla_data = zeros(Float64, Nx+2, Ny+2, Nz+2)
             for k in 1:Nz, j in 1:Ny, i in 1:Nx
                 vanilla_data[i, j, k] = randn()
             end
             vanilla_c = OffsetArray(vanilla_data, 0:(Nx+1), 0:(Ny+1), 0:(Nz+1))
-            
+
             # Create Reactant array with same data (set BEFORE converting to RArray)
             Random.seed!(12345)  # Reset seed to get same random numbers
             reactant_data = zeros(Float64, Nx+2, Ny+2, Nz+2)
@@ -118,13 +118,13 @@ function run_fake_halo_tests(; raise=true)
             end
             reactant_raw = Reactant.to_rarray(reactant_data)
             reactant_c = OffsetArray(reactant_raw, 0:(Nx+1), 0:(Ny+1), 0:(Nz+1))
-            
+
             # Fill halos on vanilla array
             fake_fill_halo_regions!(vanilla_c, Nx, Ny, Nz, topo_x, topo_y, topo_z, CPU())
-            
+
             # Fill halos on reactant array using @jit
             @jit raise=raise jit_fake_fill_halo_regions!(reactant_c, Nx, Ny, Nz, topo_x, topo_y, topo_z)
-            
+
             # Compare results
             if compare_arrays("halo", vanilla_c, reactant_c)
                 push!(results, (test_name, true, ""))
@@ -146,26 +146,26 @@ function run_fake_halo_tests(; raise=true)
             println("  → $err_summary")
         end
     end
-    
+
     # Summary
     println("\n" * "=" ^ 80)
     println("SUMMARY")
     println("=" ^ 80)
-    
+
     passed = filter(r -> r[2], results)
     failed = filter(r -> !r[2], results)
-    
+
     println("\nTotal: $(length(results))")
     println("Passed: $(length(passed))")
     println("Failed: $(length(failed))")
-    
+
     if length(passed) > 0
         println("\n### Passed tests:")
         for (name, _, _) in passed
             println("  ✓ $name")
         end
     end
-    
+
     if length(failed) > 0
         println("\n### Failed tests:")
         for (name, _, msg) in failed
@@ -173,7 +173,7 @@ function run_fake_halo_tests(; raise=true)
             println("    $msg")
         end
     end
-    
+
     return results
 end
 
@@ -184,4 +184,3 @@ end
 if abspath(PROGRAM_FILE) == @__FILE__
     run_fake_halo_tests(raise=true)
 end
-

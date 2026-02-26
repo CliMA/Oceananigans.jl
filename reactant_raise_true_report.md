@@ -1,8 +1,8 @@
 # Reactant Correctness Tests - `raise=true` Report
 
-**Julia Version**: 1.11.8  
-**Reactant Version**: 0.2.114  
-**Test Date**: January 14, 2026  
+**Julia Version**: 1.11.8
+**Reactant Version**: 0.2.114
+**Test Date**: January 14, 2026
 **Architecture**: CPU (arm64 macOS)
 
 ## Summary

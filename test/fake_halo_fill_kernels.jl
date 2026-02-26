@@ -191,11 +191,11 @@ function create_offset_array(Nx, Ny, Nz; halo=1)
     total_x = Nx + 2*halo
     total_y = Ny + 2*halo
     total_z = Nz + 2*halo
-    
+
     # Create array and wrap with offset
     data = zeros(Float64, total_x, total_y, total_z)
     offset_data = OffsetArray(data, (1-halo):(Nx+halo), (1-halo):(Ny+halo), (1-halo):(Nz+halo))
-    
+
     return offset_data
 end
 
@@ -221,28 +221,27 @@ function compare_arrays(name, a, b; rtol=1e-10, atol=1e-10)
     # Get underlying data, converting RArray to Array if needed
     pa = parent(a)
     pb = parent(b)
-    
+
     # Convert Reactant RArray to regular Array if needed
     pa_arr = pa isa Array ? pa : Array(pa)
     pb_arr = pb isa Array ? pb : Array(pb)
-    
+
     if size(pa_arr) != size(pb_arr)
         println("Size mismatch: $(size(pa_arr)) vs $(size(pb_arr))")
         return false
     end
-    
+
     max_diff = 0.0
     for i in eachindex(pa_arr)
         diff = abs(pa_arr[i] - pb_arr[i])
         max_diff = max(max_diff, diff)
     end
-    
+
     passed = max_diff < atol || max_diff < rtol * max(maximum(abs, pa_arr), maximum(abs, pb_arr))
-    
+
     if !passed
         println("$name comparison failed: max_diff = $max_diff")
     end
-    
+
     return passed
 end
-
