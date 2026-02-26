@@ -100,6 +100,7 @@ CUDA.allowscalar() do
             include("test_implicit_diffusion_diagnostic.jl")
             include("test_output_writers.jl")
             include("test_output_readers.jl")
+            include("test_averaged_specified_times.jl")
             include("test_set_field_time_series.jl")
         end
     end
@@ -270,6 +271,7 @@ CUDA.allowscalar() do
         @testset "Reactant extension tests 1" begin
             include("test_reactant.jl")
             include("test_reactant_fft_models.jl")
+            include("test_reactant_hydrostatic_free_surface_models.jl")
         end
     end
 
