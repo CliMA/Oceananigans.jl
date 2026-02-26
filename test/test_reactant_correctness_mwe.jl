@@ -42,7 +42,7 @@ data = reshape(Float64.(collect(rank * N + 1 : (rank + 1) * N)), size(vanilla_fi
 set!(vanilla_field, data)
 set!(reactant_field, data)
 
-# fill_halo_regions!(vanilla_field)
+fill_halo_regions!(vanilla_field)
 @jit fill_halo_regions!(reactant_field)
 
 compare_parent("halo", vanilla_field, reactant_field)
