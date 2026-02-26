@@ -15,7 +15,7 @@ using Oceananigans.ImmersedBoundaries: GridFittedBottom, AbstractImmersedBoundar
 
 import ..OceananigansReactantExt: deconcretize
 import Oceananigans.Grids: LatitudeLongitudeGrid, RectilinearGrid, OrthogonalSphericalShellGrid
-import Oceananigans.Grids: total_length, offset_data
+import Oceananigans.Grids: total_length
 import Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid, TripolarGrid
 import Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, materialize_immersed_boundary
 
@@ -41,7 +41,7 @@ const ShardedGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:ShardedDistri
 include("serial_grids.jl")
 include("sharded_grids.jl")
 
-function total_size(grid::ReactantGrid, loc, indices)
+function total_size(grid::ShardedGrid, loc, indices)
     sz = size(grid)
     halo_sz = halo_size(grid)
     topo = topology(grid)
@@ -64,18 +64,18 @@ reactant_offset_indices(ℓ,         topo, N, H, ::Colon) = reactant_offset_indi
 reactant_offset_indices(ℓ,         topo, N, H, r::AbstractUnitRange) = r
 reactant_offset_indices(::Nothing, topo, N, H, ::AbstractUnitRange) = 1:1
 
-function Oceananigans.Grids.new_data(FT::DataType, arch::Union{ReactantState, ShardedDistributed},
+function Oceananigans.Grids.new_data(FT::DataType, arch::ShardedDistributed,
         loc, topo, sz, halo_sz, indices=default_indices(length(loc)))
 
     Tsz = reactant_total_size(loc, topo, sz, halo_sz, indices)
     underlying_data = zeros(arch, FT, Tsz...)
     indices = validate_indices(indices, loc, topo, sz, halo_sz)
 
-    return offset_data(underlying_data, loc, topo, sz, halo_sz, indices)
+    return reactant_offset_data(underlying_data, loc, topo, sz, halo_sz, indices)
 end
 
 # The type parameter for indices helps / encourages the compiler to fully type infer `offset_data`
-function offset_data(underlying_data::ConcreteRArray, loc, topo, N, H, indices::T=default_indices(length(loc))) where T
+function reactant_offset_data(underlying_data::ConcreteRArray, loc, topo, N, H, indices::T=default_indices(length(loc))) where T
     loc = map(instantiate, loc)
     topo = map(instantiate, topo)
     ii = map(reactant_offset_indices, loc, topo, N, H, indices)

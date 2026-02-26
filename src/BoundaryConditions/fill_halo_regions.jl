@@ -33,7 +33,8 @@ end
 
 const NoBCs = Union{Nothing, Missing, Tuple{Vararg{Nothing}}}
 
-@inline fill_halo_event!(c, kernel!, bcs, loc, grid, args...; kwargs...) = kernel!(c, bcs..., loc, grid, Tuple(args))
+@inline fill_halo_event!(c, kernel!, bcs::Tuple{Any, Any}, loc, grid, args...; kwargs...) = kernel!(c, bcs[1], bcs[2], loc, grid, Tuple(args))
+@inline fill_halo_event!(c, kernel!, bcs::Tuple{Any}, loc, grid, args...; kwargs...) = kernel!(c, bcs[1], loc, grid, Tuple(args))
 @inline fill_halo_event!(c, ::Nothing, ::NoBCs, loc, grid, args...; kwargs...) = nothing
 
 #####
