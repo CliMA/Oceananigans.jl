@@ -49,7 +49,7 @@ end
 @inline convert_to_device(::MetalGPU, args) = Metal.mtlconvert(args)
 @inline convert_to_device(::MetalGPU, args::Tuple) = map(Metal.mtlconvert, args)
 
-device(a::Base.ReshapedArray) = device(parent(a))
+device(a::AbstractArray) = device(parent(a)) # it's more general than Base.ReshapedArray
 
 Metal.@device_override @inline function __validindex(ctx::MappedCompilerMetadata)
     if __dynamic_checkbounds(ctx)
