@@ -27,7 +27,7 @@ with realistic Earth bathymetry from NumericalEarth.
 # Keyword Arguments
 - `float_type`: Floating point precision (`Float32` or `Float64`)
 - `Nx, Ny, Nz`: Grid resolution (longitude, latitude, vertical)
-- `grid_type`: `"tripolar"` for a TripolarGrid, `"lat_lon"` for a LatitudeLongitudeGrid with bathymetry, or `"lat_lon_flat"` for a plain LatitudeLongitudeGrid without bathymetry
+- `grid_type`: `"tripolar"` for a TripolarGrid, `"lat_lon"` for a plain LatitudeLongitudeGrid, or `"immersed_lat_lon"` for a LatitudeLongitudeGrid with bathymetry
 - `momentum_advection`: Momentum advection scheme (default: `WENOVectorInvariant(order=9)`)
 - `tracer_advection`: Tracer advection scheme (default: `WENO(order=7)`)
 - `closure`: Turbulence closure (default: `CATKEVerticalDiffusivity()`)
@@ -44,8 +44,8 @@ function earth_ocean(arch = CPU();
                      timestepper = :SplitRungeKutta3,
                      tracers = (:T, :S))
 
-    grid_type in ("tripolar", "lat_lon", "lat_lon_flat") ||
-        error("Unknown grid_type: $grid_type. Use \"tripolar\", \"lat_lon\", or \"lat_lon_flat\".")
+    grid_type in ("tripolar", "lat_lon", "immersed_lat_lon") ||
+        error("Unknown grid_type: $grid_type. Use \"tripolar\", \"lat_lon\", or \"immersed_lat_lon\".")
 
     Oceananigans.defaults.FloatType = float_type
 
@@ -58,7 +58,7 @@ function earth_ocean(arch = CPU();
             halo = (7, 7, 7),
             z
         )
-    else # lat_lon or lat_lon_flat
+    else # lat_lon or immersed_lat_lon
         underlying_grid = LatitudeLongitudeGrid(arch;
             size = (Nx, Ny, Nz),
             halo = (7, 7, 7),
@@ -68,7 +68,7 @@ function earth_ocean(arch = CPU();
         )
     end
 
-    if grid_type == "lat_lon_flat"
+    if grid_type == "lat_lon"
         grid = underlying_grid
     else
         bottom_height = NumericalEarth.regrid_bathymetry(underlying_grid;

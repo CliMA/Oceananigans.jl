@@ -67,7 +67,7 @@ function parse_commandline()
             default = "earth_ocean"
 
         "--grid_type"
-            help = "Grid type: tripolar, lat_lon (with bathymetry), or lat_lon_flat (no bathymetry)"
+            help = "Grid type: tripolar, lat_lon (no bathymetry), or immersed_lat_lon (with bathymetry)"
             arg_type = String
             default = "tripolar"
 
