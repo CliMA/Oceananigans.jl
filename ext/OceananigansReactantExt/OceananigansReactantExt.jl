@@ -9,6 +9,8 @@ using Oceananigans: Distributed, DistributedComputations, ReactantState, CPU,
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.Grids: Bounded, Periodic, RightConnected
 
+using MPI
+
 deconcretize(obj) = obj # fallback
 deconcretize(a::OffsetArray) = OffsetArray(Array(a.parent), a.offsets...)
 
@@ -41,6 +43,9 @@ using .OutputReaders
 
 include("Solvers.jl")
 using .Solvers
+
+import Oceananigans.Utils
+
 
 #####
 ##### Telling Reactant how to construct types
@@ -370,5 +375,11 @@ Base.getindex(array::OffsetVector{T, <:Reactant.AbstractConcreteArray{T, 1}}, ::
 # using .Fields
 # using .MultiRegion
 # using .Solvers
+
+@inline Oceananigans.Utils.sync_device!(::ReactantState) = nothing
+
+Oceananigans.DistributedComputations.cooperative_waitall!(
+    req::Array{Reactant.TracedRNumber{Int32}},
+) = MPI.Waitall(vcat(req...))
 
 end # module

@@ -43,7 +43,7 @@ unified_array(::ReactantState, a) = a
 @inline device_copy_to!(dst::AnyConcreteReactantArray, src::AnyConcreteReactantArray; kw...) = Base.copyto!(dst, src)
 
 # Distributed computations
-function Oceananigans.Distributed(arch::ReactantState; devices=nothing,
+function ShardedDistributed(arch::ReactantState; devices=nothing,
     partition=nothing, kw...)
     if devices === nothing
         devices = Reactant.devices()
