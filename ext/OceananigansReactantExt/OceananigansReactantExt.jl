@@ -41,12 +41,11 @@ using .Simulations
 include("OutputReaders.jl")
 using .OutputReaders
 
-<<<<<<< HEAD
 include("Solvers.jl")
 using .Solvers
-=======
+
 import Oceananigans.Utils
->>>>>>> d2830227b (Add method sync_device(::ReactantState))
+
 
 #####
 ##### Telling Reactant how to construct types
