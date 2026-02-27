@@ -172,7 +172,7 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
                                          grid,
                                          kernel_parameters,
                                          model.timestepper.Gⁿ.u,
-                                         u_kernel_args;
+                                         u_kernel_args...;
                                          active_cells_map)
 
     launch!(arch, grid, kernel_parameters,
