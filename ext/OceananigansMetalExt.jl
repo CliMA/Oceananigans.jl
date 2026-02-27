@@ -1,7 +1,6 @@
 module OceananigansMetalExt
 
 using Metal
-import Metal: device
 using Metal: thread_position_in_threadgroup_1d, threadgroup_position_in_grid_1d
 using Oceananigans
 using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
@@ -49,7 +48,7 @@ end
 @inline convert_to_device(::MetalGPU, args) = Metal.mtlconvert(args)
 @inline convert_to_device(::MetalGPU, args::Tuple) = map(Metal.mtlconvert, args)
 
-device(a::AbstractArray) = device(parent(a)) # it's more general than Base.ReshapedArray
+Metal.device(a::Base.ReshapedArray) = Metal.device(parent(a))
 
 Metal.@device_override @inline function __validindex(ctx::MappedCompilerMetadata)
     if __dynamic_checkbounds(ctx)
