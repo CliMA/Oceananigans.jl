@@ -253,8 +253,7 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
         ϕ .= ϕ .- mean(ϕ)
     end
 
-    arch = architecture(solver)
-    launch!(arch, solver.grid, :xyz, copy_real_component!, x, ϕ, indices(x))
+    copy_real_component!(solver.grid, x, ϕ, indices(x))
 
     return nothing
 end
