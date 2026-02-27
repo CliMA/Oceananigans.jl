@@ -31,7 +31,7 @@ function StaticWENO(FT::DataType=Oceananigans.defaults.FloatType, FT2::DataType=
               bounds = nothing)
     return WENO(FT, FT2; order=order, buffer_scheme=nothing, bounds=bounds)
 end
- 
+
 function StaticWENO(weno::WENO{N, FT, FT2}) where {N, FT, FT2}
     return StaticWENO(FT, FT2; order=weno_order(weno))
 end

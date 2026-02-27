@@ -25,7 +25,7 @@ using KernelAbstractions: @kernel, @index
                                                                           active_cells_map)
         else
             condition_maps[:momentum] = active_cells_map
-        end 
+        end
       else
         if condition_tracer_advection
             condition_maps[key] = compute_advection_conditioned_map(advection[key],
@@ -35,7 +35,7 @@ using KernelAbstractions: @kernel, @index
             condition_maps[key] = active_cells_map
         end
       end
-    end 
+    end
 
     return (; condition_maps...)
 end
@@ -73,14 +73,14 @@ function split_indices(field, grid; active_cells_map=nothing)
 end
 
 
-check_interior_xyz(i, j, k, ibg, scheme) = reduce(&, 
+check_interior_xyz(i, j, k, ibg, scheme) = reduce(&,
                                                  (check_interior_x(i, j, k, ibg, scheme),
                                                   check_interior_y(i, j, k, ibg, scheme),
                                                   check_interior_z(i, j, k, ibg, scheme)))
 
 function check_interior_x(i, j, k, ibg, ::AbstractAdvectionScheme{N}) where N
     interior = true
-    
+
     buffer = N + 1
     for di in -buffer:buffer
         interior &= active_cell(i + di, j, k, ibg)
@@ -90,7 +90,7 @@ end
 
 function check_interior_y(i, j, k, ibg, ::AbstractAdvectionScheme{N}) where N
     interior = true
-    
+
     buffer = N + 1
     for dj in -buffer:buffer
         interior &= active_cell(i, j + dj, k, ibg)
@@ -100,7 +100,7 @@ end
 
 function check_interior_z(i, j, k, ibg, ::AbstractAdvectionScheme{N}) where N
     interior = true
-    
+
     buffer = N + 1
     for dk in -buffer:buffer
         interior &= active_cell(i, j, k + dk, ibg)

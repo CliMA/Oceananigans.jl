@@ -204,7 +204,7 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
             active_cells_map=momentum_condition_maps)
 
     launch!(arch,
-            grid, 
+            grid,
             kernel_parameters,
             compute_hydrostatic_free_surface_Gv!,
             model.timestepper.Gⁿ.v,
@@ -240,4 +240,3 @@ end
     i, j, k = @index(Global, NTuple)
     @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
 end
-
