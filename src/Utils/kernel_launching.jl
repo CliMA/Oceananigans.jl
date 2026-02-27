@@ -349,11 +349,7 @@ end
 end
 
 # Launch kernels over conditioned cell maps
-@inline function launch!(arch, grid, workspec, kernel, first_arg, second_arg, args::NamedTuple; active_cells_map::NamedTuple, kwargs...)
-    launch_conditioned!(arch, grid, workspec, active_cells_map, (kernel, first_arg, second_arg), args; kwargs...)
-end
-
-@inline function launch_conditioned!(arch, grid, workspec, active_cells_map_tuple::NamedTuple, common_args, args::NamedTuple; kwargs...)
+@inline function launch!(arch, grid, workspec, common_args, args::NamedTuple, active_cells_map_tuple::NamedTuple; kwargs...)
   condition_keys = keys(active_cells_map_tuple)
   arg_keys = keys(args)
   if condition_keys != arg_keys
