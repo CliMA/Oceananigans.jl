@@ -32,7 +32,7 @@ Arguments
 Keyword arguments
 =================
 - `weight_computation`: The type of approximate division to used when computing WENO weights.
-                        Default: `Oceananigans.Utils.NewtonDivWithConversion{Float32}`
+                        Default: `Oceananigans.Utils.ConvertingDivision{Float32}`
 - `order`: The order of the WENO advection scheme. Default: 5
 - `bounds` (experimental): Whether to use bounds-preserving WENO, which produces a reconstruction
                            that attempts to restrict a quantity to lie between a `bounds` tuple.
@@ -51,8 +51,8 @@ To build the default 5th-order scheme:
 julia> using Oceananigans
 
 julia> WENO()
-WENO{3, Float64, Oceananigans.Utils.NewtonDivWithConversion{Float32}}(order=5)
-├── buffer_scheme: WENO{2, Float64, Oceananigans.Utils.NewtonDivWithConversion{Float32}}(order=3)
+WENO{3, Float64, Oceananigans.Utils.ConvertingDivision{Float32}}(order=5)
+├── buffer_scheme: WENO{2, Float64, Oceananigans.Utils.ConvertingDivision{Float32}}(order=3)
 │   └── buffer_scheme: Centered(order=2)
 └── advecting_velocity_scheme: Centered(order=4)
 ```
@@ -62,10 +62,10 @@ yet minimally-dissipative advection scheme):
 
 ```jldoctest weno
 julia> WENO(order=9)
-WENO{5, Float64, Oceananigans.Utils.NewtonDivWithConversion{Float32}}(order=9)
-├── buffer_scheme: WENO{4, Float64, Oceananigans.Utils.NewtonDivWithConversion{Float32}}(order=7)
-│   └── buffer_scheme: WENO{3, Float64, Oceananigans.Utils.NewtonDivWithConversion{Float32}}(order=5)
-│       └── buffer_scheme: WENO{2, Float64, Oceananigans.Utils.NewtonDivWithConversion{Float32}}(order=3)
+WENO{5, Float64, Oceananigans.Utils.ConvertingDivision{Float32}}(order=9)
+├── buffer_scheme: WENO{4, Float64, Oceananigans.Utils.ConvertingDivision{Float32}}(order=7)
+│   └── buffer_scheme: WENO{3, Float64, Oceananigans.Utils.ConvertingDivision{Float32}}(order=5)
+│       └── buffer_scheme: WENO{2, Float64, Oceananigans.Utils.ConvertingDivision{Float32}}(order=3)
 │           └── buffer_scheme: Centered(order=2)
 └── advecting_velocity_scheme: Centered(order=8)
 ```
@@ -75,34 +75,34 @@ which uses `Centered(order=2)` as the innermost buffer scheme:
 
 ```jldoctest weno
 julia> WENO(order=9, minimum_buffer_upwind_order=5)
-WENO{5, Float64, Oceananigans.Utils.NewtonDivWithConversion{Float32}}(order=9)
-├── buffer_scheme: WENO{4, Float64, Oceananigans.Utils.NewtonDivWithConversion{Float32}}(order=7)
-│   └── buffer_scheme: WENO{3, Float64, Oceananigans.Utils.NewtonDivWithConversion{Float32}}(order=5)
+WENO{5, Float64, Oceananigans.Utils.ConvertingDivision{Float32}}(order=9)
+├── buffer_scheme: WENO{4, Float64, Oceananigans.Utils.ConvertingDivision{Float32}}(order=7)
+│   └── buffer_scheme: WENO{3, Float64, Oceananigans.Utils.ConvertingDivision{Float32}}(order=5)
 │       └── buffer_scheme: Centered(order=2)
 └── advecting_velocity_scheme: Centered(order=8)
 ```
 
 ```jldoctest weno
 julia> WENO(order=9, bounds=(0, 1))
-WENO{5, Float64, Oceananigans.Utils.NewtonDivWithConversion{Float32}}(order=9, bounds=(0.0, 1.0))
-├── buffer_scheme: WENO{4, Float64, Oceananigans.Utils.NewtonDivWithConversion{Float32}}(order=7, bounds=(0.0, 1.0))
-│   └── buffer_scheme: WENO{3, Float64, Oceananigans.Utils.NewtonDivWithConversion{Float32}}(order=5, bounds=(0.0, 1.0))
-│       └── buffer_scheme: WENO{2, Float64, Oceananigans.Utils.NewtonDivWithConversion{Float32}}(order=3, bounds=(0.0, 1.0))
+WENO{5, Float64, Oceananigans.Utils.ConvertingDivision{Float32}}(order=9, bounds=(0.0, 1.0))
+├── buffer_scheme: WENO{4, Float64, Oceananigans.Utils.ConvertingDivision{Float32}}(order=7, bounds=(0.0, 1.0))
+│   └── buffer_scheme: WENO{3, Float64, Oceananigans.Utils.ConvertingDivision{Float32}}(order=5, bounds=(0.0, 1.0))
+│       └── buffer_scheme: WENO{2, Float64, Oceananigans.Utils.ConvertingDivision{Float32}}(order=3, bounds=(0.0, 1.0))
 │           └── buffer_scheme: Centered(order=2)
 └── advecting_velocity_scheme: Centered(order=8)
 ```
 
 To build a WENO scheme that uses approximate division on a GPU to execute faster:
 ```jldoctest weno
-julia> WENO(;weight_computation=Oceananigans.Utils.BackendOptimizedNewtonDiv)
-WENO{3, Float64, Oceananigans.Utils.BackendOptimizedNewtonDiv}(order=5)
-├── buffer_scheme: WENO{2, Float64, Oceananigans.Utils.BackendOptimizedNewtonDiv}(order=3)
+julia> WENO(;weight_computation=Oceananigans.Utils.BackendOptimizedDivision)
+WENO{3, Float64, Oceananigans.Utils.BackendOptimizedDivision}(order=5)
+├── buffer_scheme: WENO{2, Float64, Oceananigans.Utils.BackendOptimizedDivision}(order=3)
 │   └── buffer_scheme: Centered(order=2)
 └── advecting_velocity_scheme: Centered(order=4)
 ```
 """
 function WENO(FT::DataType=Oceananigans.defaults.FloatType;
-              weight_computation::DataType=Oceananigans.Utils.NewtonDivWithConversion{Float32},
+              weight_computation::DataType=Oceananigans.Utils.ConvertingDivision{Float32},
               order = 5,
               buffer_scheme = DecreasingOrderAdvectionScheme(),
               bounds = nothing,
