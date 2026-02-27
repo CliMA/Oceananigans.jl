@@ -4,15 +4,15 @@ import Oceananigans
 ##### Weighted Essentially Non-Oscillatory (WENO) advection scheme
 #####
 
-struct WENO{N, FT, NDC, PP, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
+struct WENO{N, FT, WCT, PP, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
     bounds :: PP
     buffer_scheme :: CA
     advecting_velocity_scheme :: SI
 
-    function WENO{N, FT, NDC}(bounds::PP, buffer_scheme::CA,
-                              advecting_velocity_scheme :: SI) where {N, FT, NDC, PP, CA, SI}
+    function WENO{N, FT, WCT}(bounds::PP, buffer_scheme::CA,
+                              advecting_velocity_scheme :: SI) where {N, FT, WCT, PP, CA, SI}
 
-        return new{N, FT, NDC, PP, CA, SI}(bounds, buffer_scheme, advecting_velocity_scheme)
+        return new{N, FT, WCT, PP, CA, SI}(bounds, buffer_scheme, advecting_velocity_scheme)
     end
 end
 
@@ -31,8 +31,8 @@ Arguments
 
 Keyword arguments
 =================
-- `newton_div`: The type of approximate division to use in performance-critical parts of the scheme.
-                  Default: `Oceananigans.Utils.NewtonDivWithConversion{Float32}`
+- `weight_computation`: The type of approximate division to used when computing WENO weights.
+                        Default: `Oceananigans.Utils.NewtonDivWithConversion{Float32}`
 - `order`: The order of the WENO advection scheme. Default: 5
 - `bounds` (experimental): Whether to use bounds-preserving WENO, which produces a reconstruction
                            that attempts to restrict a quantity to lie between a `bounds` tuple.
@@ -94,7 +94,7 @@ WENO{5, Float64, Oceananigans.Utils.NewtonDivWithConversion{Float32}}(order=9, b
 
 To build a WENO scheme that uses approximate division on a GPU to execute faster:
 ```jldoctest weno
-julia> WENO(;newton_div=Oceananigans.Utils.BackendOptimizedNewtonDiv)
+julia> WENO(;weight_computation=Oceananigans.Utils.BackendOptimizedNewtonDiv)
 WENO{3, Float64, Oceananigans.Utils.BackendOptimizedNewtonDiv}(order=5)
 ├── buffer_scheme: WENO{2, Float64, Oceananigans.Utils.BackendOptimizedNewtonDiv}(order=3)
 │   └── buffer_scheme: Centered(order=2)
@@ -102,7 +102,7 @@ WENO{3, Float64, Oceananigans.Utils.BackendOptimizedNewtonDiv}(order=5)
 ```
 """
 function WENO(FT::DataType=Oceananigans.defaults.FloatType;
-              newton_div::DataType=Oceananigans.Utils.NewtonDivWithConversion{Float32},
+              weight_computation::DataType=Oceananigans.Utils.NewtonDivWithConversion{Float32},
               order = 5,
               buffer_scheme = DecreasingOrderAdvectionScheme(),
               bounds = nothing,
@@ -126,19 +126,19 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
                 # At minimum order, switch to Centered scheme
                 buffer_scheme = Centered(FT; order=2)
             else
-                buffer_scheme = WENO(FT; order=order-2, bounds, minimum_buffer_upwind_order, newton_div)
+                buffer_scheme = WENO(FT; order=order-2, bounds, minimum_buffer_upwind_order, weight_computation)
             end
         end
 
         N = Int((order + 1) ÷ 2)
-        return WENO{N, FT, newton_div}(bounds, buffer_scheme, advecting_velocity_scheme)
+        return WENO{N, FT, weight_computation}(bounds, buffer_scheme, advecting_velocity_scheme)
     end
 end
 
 weno_order(::WENO{N}) where N = 2N-1
 Base.eltype(::WENO{N, FT}) where {N, FT} = FT
-Base.summary(a::WENO{N, FT, NDC, Nothing}) where {N, FT, NDC} = string("WENO{$N, $FT, $NDC}(order=", 2N-1, ")")
-Base.summary(a::WENO{N, FT, NDC, PP}) where {N, FT, NDC, PP} = string("WENO{$N, $FT, $NDC}(order=", 2N-1, ", bounds=", string(a.bounds), ")")
+Base.summary(a::WENO{N, FT, WCT, Nothing}) where {N, FT, WCT} = string("WENO{$N, $FT, $WCT}(order=", 2N-1, ")")
+Base.summary(a::WENO{N, FT, WCT, PP}) where {N, FT, WCT, PP} = string("WENO{$N, $FT, $WCT}(order=", 2N-1, ", bounds=", string(a.bounds), ")")
 
 function Base.show(io::IO, a::WENO)
     print(io, summary(a), '\n')
@@ -154,12 +154,12 @@ function Base.show(io::IO, a::WENO)
     print(io, "└── advecting_velocity_scheme: ", summary(a.advecting_velocity_scheme))
 end
 
-Adapt.adapt_structure(to, scheme::WENO{N, FT, NDC}) where {N, FT, NDC} =
-     WENO{N, FT, NDC}(Adapt.adapt(to, scheme.bounds),
-                           Adapt.adapt(to, scheme.buffer_scheme),
-                           Adapt.adapt(to, scheme.advecting_velocity_scheme))
+Adapt.adapt_structure(to, scheme::WENO{N, FT, WCT}) where {N, FT, WCT} =
+     WENO{N, FT, WCT}(Adapt.adapt(to, scheme.bounds),
+                      Adapt.adapt(to, scheme.buffer_scheme),
+                      Adapt.adapt(to, scheme.advecting_velocity_scheme))
 
-on_architecture(to, scheme::WENO{N, FT, NDC}) where {N, FT, NDC} =
-    WENO{N, FT, NDC}(on_architecture(to, scheme.bounds),
-                          on_architecture(to, scheme.buffer_scheme),
-                          on_architecture(to, scheme.advecting_velocity_scheme))
+on_architecture(to, scheme::WENO{N, FT, WCT}) where {N, FT, WCT} =
+    WENO{N, FT, WCT}(on_architecture(to, scheme.bounds),
+                     on_architecture(to, scheme.buffer_scheme),
+                     on_architecture(to, scheme.advecting_velocity_scheme))
