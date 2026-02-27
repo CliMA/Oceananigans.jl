@@ -1,3 +1,4 @@
+using CubedSphere.SphericalGeometry: cartesian_to_lat_lon, lat_lon_to_cartesian
 using Oceananigans.Grids: LatitudeLongitudeGrid, validate_lat_lon_grid_args
 using Oceananigans.Utils: KernelParameters, launch!
 using StaticArrays: @SMatrix, SVector
@@ -34,12 +35,10 @@ end
                                  radius = Oceananigans.defaults.planet_radius,
                                  topology = (Bounded, Bounded, Bounded))
 
-Return a `RotatedLatitudeLongitudeGrid` with arbitrary `north_pole`, a 2-tuple
-giving the longitude and latitude of the "grid north pole", which may differ from the
-geographic north pole at `(0, 90)`.
+Return a `RotatedLatitudeLongitudeGrid` with arbitrary `north_pole`, a 2-tuple giving the longitude and latitude of the
+"grid north pole", which may differ from the geographic north pole at `(0, 90)`.
 
-Note that `longitude` and `latitude` are interpreted as applying to the grid _before_
-the pole is rotated.
+Note that `longitude` and `latitude` are interpreted as applying to the grid _before_ the pole is rotated.
 
 All other arguments are the same as for [`LatitudeLongitudeGrid`](@ref).
 
@@ -64,9 +63,8 @@ grid = RotatedLatitudeLongitudeGrid(; size, longitude, latitude, z, north_pole=(
 └── z:         Bounded  z ∈ [0.0, 1.0]        regularly spaced with Δz=1.0
 ```
 
-Note that the center latitude ``λ = -110`` follows from ``180 + 70 - 360 = -110``:
-a clockwise rotation of 70 degrees modulo 360 degrees.
-We can also make an ordinary LatitudeLongitudeGrid using `north_pole = (0, 90)`:
+Note that the center latitude ``λ = -110`` follows from ``180 + 70 - 360 = -110``: a clockwise rotation of 70 degrees
+modulo 360 degrees. We can also make an ordinary LatitudeLongitudeGrid using `north_pole = (0, 90)`:
 
 ```jldoctest rllg
 grid = RotatedLatitudeLongitudeGrid(; size, longitude, latitude, z, north_pole=(0, 90))
@@ -122,27 +120,6 @@ function rotate_metrics!(grid, shifted_lat_lon_grid)
     return nothing
 end
 
-# Convert from Spherical to Cartesian
-function spherical_to_cartesian(φ, λ; radius = 1, check_latitude_bounds = true)
-    check_latitude_bounds && abs(φ) > π/2 && error("Latitude φ must be within -90 ≤ φ ≤ 90 degrees.")
-    x = radius * cos(λ) * cos(φ)
-    y = radius * sin(λ) * cos(φ)
-    z = radius * sin(φ)
-    return x, y, z
-end
-
-# Convert from Cartesian to Spherical
-function cartesian_to_spherical(x, y, z)
-    φ = atan(z, sqrt(x*x + y*y))
-    λ = atan(y, x)
-    return φ, λ
-end
-
-function cartesian_to_spherical(X)
-    x, y, z = X
-    return cartesian_to_spherical(x, y, z)
-end
-
 # Rotation about x-axis by dλ (Change in Longitude)
 x_rotation_matrix(dλ) = @SMatrix [1        0       0
                                   0  cos(dλ) -sin(dλ)
@@ -161,22 +138,16 @@ z_rotation_matrix(dλ) = @SMatrix [cos(dλ) -sin(dλ) 0
 """
     rotate_coordinates(λ′, φ′, λ₀, φ₀)
 
-Return the geographic longitude and latitude `(λ, φ)` corresponding to the rotated
-coordinates `(λ′, φ′)` on a grid whose north pole is located at `(λ₀, φ₀)`. All
-arguments are interpreted in degrees. The rotation aligns the grid pole with the
-geographic pole, then maps the rotated point back to geographic coordinates.
+Return the geographic longitude and latitude `(λ, φ)` corresponding to the rotated coordinates `(λ′, φ′)` on a grid
+whose north pole is located at `(λ₀, φ₀)`. All arguments are interpreted in degrees. The rotation aligns the grid pole
+with the geographic pole, then maps the rotated point back to geographic coordinates.
 """
 function rotate_coordinates(λ′, φ′, λ₀, φ₀)
-    λ′ *= π / 180
-    φ′ *= π / 180
-    λ₀ *= π / 180
-    φ₀ *= π / 180
-
-    dλ = λ₀
-    dφ = π/2 - φ₀
-
     # Convert to Cartesian
-    X′ = SVector(spherical_to_cartesian(φ′, λ′; check_latitude_bounds = false)...)
+    X′ = SVector(lat_lon_to_cartesian(φ′, λ′; check_latitude_bounds = false)...)
+
+    dφ = π / 2 - φ₀ * π / 180
+    dλ = λ₀ * π / 180
 
     # Rotate Cartesian coordinates
     Ry = y_rotation_matrix(dφ)
@@ -184,10 +155,7 @@ function rotate_coordinates(λ′, φ′, λ₀, φ₀)
     X = Rz * Ry * X′
 
     # Convert back to Spherical
-    φ, λ = cartesian_to_spherical(X)
-
-    λ *= 180 / π
-    φ *= 180 / π
+    φ, λ = cartesian_to_lat_lon(X)
 
     return λ, φ
 end
