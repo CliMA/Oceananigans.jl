@@ -52,8 +52,8 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     tracers = model.tracers
 
     # Fill the halos of the prognostic fields. Note that the halos of the
-    # free-surface variables are filled after the barotropic step.
-    fill_halo_regions!((u, v),  model.clock, fields(model); async=true)
+    # free-surface variables are filled after the barotropic step and the velocities
+    # halos are filled after the velocity stepping.
     fill_halo_regions!(tracers, model.clock, fields(model); async=true)
 
     # Compute diagnostic quantities
