@@ -40,8 +40,6 @@ using Oceananigans.OutputReaders: FieldTimeSeries, InMemory
 
             # No NaN values should be present
             @test isfinite(model.tracers.b[1, 1, 1])
-
-            @info "    Basic construction test passed [$arch]"
         end
 
         #####
@@ -72,8 +70,6 @@ using Oceananigans.OutputReaders: FieldTimeSeries, InMemory
 
             @test !(model.tracers.b isa Field)
             @test isfinite(model.tracers.b[1, 1, 1])
-
-            @info "    PrescribedTracer with Function test passed [$arch]"
         end
 
         #####
@@ -107,8 +103,6 @@ using Oceananigans.OutputReaders: FieldTimeSeries, InMemory
             @test !(model.tracers.b isa Field)
             @test model.tracers.c isa Field
             @test !any(isnan, model.tracers.c)
-
-            @info "    Prescribed + prognostic tracers test passed [$arch]"
         end
 
         #####
@@ -183,8 +177,6 @@ using Oceananigans.OutputReaders: FieldTimeSeries, InMemory
 
             # The prognostic tracer c in run 2 should not contain NaN
             @test !any(isnan, model2.tracers.c)
-
-            @info "    GM replication test passed [$arch]"
         end
 
         #####
@@ -239,8 +231,6 @@ using Oceananigans.OutputReaders: FieldTimeSeries, InMemory
             for i in 2:nx-1, k in 2:nz
                 @test ϵ_R₃₃[i, 1, k] ≈ expected_R₃₃ atol=1e-10
             end
-
-            @info "    Analytical isopycnal slope test passed [$arch]"
         end
 
     end

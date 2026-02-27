@@ -8,6 +8,11 @@ import Oceananigans.Models: extract_boundary_conditions
 ##### PrescribedTracer
 #####
 
+struct PrescribedTracer{F, P}
+    field :: F
+    parameters :: P
+end
+
 """
     PrescribedTracer(field; parameters=nothing)
 
@@ -19,30 +24,35 @@ Supported input types:
 - `FieldTimeSeries`: interpolated to the current model time via `TimeSeriesInterpolation`
 - `Function(x, y, z, t)` or `Function(x, y, z, t, parameters)`: wrapped in a `FunctionField`
 
-Example
-=======
+Examples
+========
 
-```julia
-using Oceananigans
+Prescribe buoyancy with a `Function`:
 
-grid = RectilinearGrid(size=(16, 16, 16), extent=(1e5, 1e5, 1e3))
+```jldoctest prescribed
+julia> using Oceananigans
 
-T_fts = FieldTimeSeries{Center, Center, Center}(grid, [0.0, 86400.0])
-S_fts = FieldTimeSeries{Center, Center, Center}(grid, [0.0, 86400.0])
+julia> using Oceananigans.Models.HydrostaticFreeSurfaceModels: PrescribedTracer
 
-# ... fill T_fts and S_fts with data ...
+julia> b(x, y, z, t) = 1e-7 * x + 1e-5 * z;
 
-model = HydrostaticFreeSurfaceModel(; grid,
-    tracers = (T = PrescribedTracer(T_fts), S = PrescribedTracer(S_fts), c = :c),
-    buoyancy = SeawaterBuoyancy(),
-    closure = IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3))
+julia> PrescribedTracer(b)
+PrescribedTracer wrapping b (generic function with 1 method)
+```
+
+Prescribe temperature and salinity with `FieldTimeSeries`:
+
+```jldoctest prescribed
+julia> grid = RectilinearGrid(size=(4, 4, 4), extent=(1e5, 1e5, 1e3));
+
+julia> T = FieldTimeSeries{Center, Center, Center}(grid, [0.0, 86400.0]);
+
+julia> S = FieldTimeSeries{Center, Center, Center}(grid, [0.0, 86400.0]);
+
+julia> PrescribedTracer(T)
+PrescribedTracer wrapping 4×4×4×2 FieldTimeSeries{InMemory} located at (Center, Center, Center) on CPU
 ```
 """
-struct PrescribedTracer{F, P}
-    field :: F
-    parameters :: P
-end
-
 PrescribedTracer(field; parameters=nothing) = PrescribedTracer(field, parameters)
 
 Base.summary(pt::PrescribedTracer) = "PrescribedTracer wrapping $(summary(pt.field))"
