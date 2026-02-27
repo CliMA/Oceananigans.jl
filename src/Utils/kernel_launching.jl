@@ -361,7 +361,7 @@ end
   else
     for key in condition_keys
       map = active_cells_map_tuple[key]
-      _launch!(arch, grid, workspec, common_args..., args[key]...; active_cells_map=map, kwargs...)
+      _launch!(arch, grid, workspec, common_args..., args[key]; active_cells_map=map, kwargs...)
     end
   end
   return nothing
