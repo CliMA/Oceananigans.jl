@@ -48,24 +48,23 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
 
     # Update transport velocities
     compute_transport_velocities!(model, model.free_surface)
+
+    # Update velocities
     @apply_regionally ab2_step_velocities!(model.velocities, model, Δt, χ)
 
-    u = model.velocities.u
-    v = model.velocities.v
-    fill_halo_regions!((u, v),  model.clock, fields(model); async=true)
-    
+    # Fill velocity halos
+    u, v, _ = model.velocities
+    fill_halo_regions!((u, v), model.clock, fields(model); async=true)
+
     # Computing tracer tendencies
     @apply_regionally begin
         compute_tracer_tendencies!(model)
 
-        # Advance grid and velocities
+        # Advance grid
         ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
 
-        # Correct the barotropic mode
+        # Correct the barotropic mode and advance tracers
         correct_barotropic_mode!(model, Δt)
-
-        # TODO: fill halo regions for horizontal velocities should be here before the tracer update.
-        # Finally advance tracers:
         ab2_step_tracers!(model.tracers, model, Δt, χ)
     end
 
@@ -107,14 +106,17 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
     # Compute transport velocities
     compute_transport_velocities!(model, free_surface)
 
-    u = model.velocities.u
-    v = model.velocities.v
+    # Fill velocity halos
+    u, v, _ = model.velocities
     fill_halo_regions!((u, v), model.clock, fields(model); async=true)
 
     @apply_regionally begin
         compute_tracer_tendencies!(model)
+
         ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
         correct_barotropic_mode!(model, Δt)
+
+        # Finally step tracers
         ab2_step_tracers!(model.tracers, model, Δt, χ)
     end
 
@@ -156,7 +158,7 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
         velocity_field = model.velocities[name]
 
         launch!(model.architecture, model.grid, :xyz,
-                _ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻)
+                _ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻; exclude_periphery=true)
 
         implicit_step!(velocity_field,
                        model.timestepper.implicit_solver,

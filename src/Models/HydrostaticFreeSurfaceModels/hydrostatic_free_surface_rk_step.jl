@@ -40,23 +40,21 @@ The order of operations for explicit free surfaces is:
 
     # Compute z-dependent transport velocities
     compute_transport_velocities!(model, free_surface)
-
     @apply_regionally rk_substep_velocities!(model.velocities, model, Δτ)
 
-    u = model.velocities.u
-    v = model.velocities.v
-    fill_halo_regions!((u, v),  model.clock, fields(model); async=true)
+    # Fill velocity halos
+    u, v, _ = model.velocities
+    fill_halo_regions!((u, v), model.clock, fields(model); async=true)
 
     @apply_regionally begin
         # compute tracer tendencies
         compute_tracer_tendencies!(model)
 
-        # Advance grid and velocities
+        # Advance grid
         rk_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
 
         # Correct for the updated barotropic mode
         correct_barotropic_mode!(model, Δτ)
-
         rk_substep_tracers!(model.tracers, model, Δτ)
     end
 
@@ -94,12 +92,13 @@ For implicit free surfaces, a predictor-corrector approach is used:
 
     compute_transport_velocities!(model, free_surface)
 
-    u = model.velocities.u
-    v = model.velocities.v
-    fill_halo_regions!((u, v),  model.clock, fields(model); async=true)
+    # Fill velocity halos
+    u, v, _ = model.velocities
+    fill_halo_regions!((u, v), model.clock, fields(model); async=true)
 
     @apply_regionally begin
-        compute_tracer_tendencies!(model)        
+        compute_tracer_tendencies!(model)
+
         rk_substep_grid!(model.grid, model, model.vertical_coordinate, Δτ)
         correct_barotropic_mode!(model, Δτ)
 
@@ -149,7 +148,7 @@ function rk_substep_velocities!(velocities, model, Δt)
         velocity_field = velocities[name]
 
         launch!(architecture(grid), grid, :xyz,
-                _rk_substep_field!, velocity_field, convert(FT, Δt), Gⁿ, Ψ⁻)
+                _rk_substep_field!, velocity_field, convert(FT, Δt), Gⁿ, Ψ⁻; exclude_periphery=true)
 
         implicit_step!(velocity_field,
                        model.timestepper.implicit_solver,
