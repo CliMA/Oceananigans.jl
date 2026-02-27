@@ -47,6 +47,9 @@ Reactant = "3c362404-f566-11ee-1572-e11a4b42c853"
 XESMF = "2e0b0046-e7a1-486f-88de-807ee8ffabe5"
 oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 
+[sources]
+OffsetArrays = {url="https://github.com/simone-silvestri/OffsetArrays.jl"}
+
 [extensions]
 OceananigansAMDGPUExt = ["AMDGPU", "AbstractFFTs"]
 OceananigansCUDAExt = ["CUDA", "GPUArrays", "GPUArraysCore"]

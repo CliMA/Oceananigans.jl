@@ -3,6 +3,8 @@ using Oceananigans.Grids: Grids, Bounded, Flat, OrthogonalSphericalShellGrid, Pe
     architecture, cpu_face_constructor_z, validate_dimension_specification,
     RightCenterFolded, RightFaceFolded
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Fields: Field
+using OffsetArrays: OffsetArray
 
 """
     struct Tripolar{N, F, S}
@@ -209,14 +211,14 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
     )
 
     # Coordinates
-    λᶠᶠᵃ = dropdims(λFF.data, dims=3)
-    φᶠᶠᵃ = dropdims(φFF.data, dims=3)
-    λᶠᶜᵃ = dropdims(λFC.data, dims=3)
-    φᶠᶜᵃ = dropdims(φFC.data, dims=3)
-    λᶜᶠᵃ = dropdims(λCF.data, dims=3)
-    φᶜᶠᵃ = dropdims(φCF.data, dims=3)
-    λᶜᶜᵃ = dropdims(λCC.data, dims=3)
-    φᶜᶜᵃ = dropdims(φCC.data, dims=3)
+    λᶠᶠᵃ = copy_metric_as_offset_array(λFF)
+    φᶠᶠᵃ = copy_metric_as_offset_array(φFF)
+    λᶠᶜᵃ = copy_metric_as_offset_array(λFC)
+    φᶠᶜᵃ = copy_metric_as_offset_array(φFC)
+    λᶜᶠᵃ = copy_metric_as_offset_array(λCF)
+    φᶜᶠᵃ = copy_metric_as_offset_array(φCF)
+    λᶜᶜᵃ = copy_metric_as_offset_array(λCC)
+    φᶜᶜᵃ = copy_metric_as_offset_array(φCC)
 
     # Boundary conditions to fill halos of the metric terms
     # We define them manually because the helper RectilinearGrid
@@ -278,18 +280,18 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
     fill_halo_regions!(Azᶜᶜᵃ)
 
     # Copy metrics as offset arrays
-    Δxᶠᶠᵃ = deepcopy(dropdims(Δxᶠᶠᵃ.data, dims=3))
-    Δxᶜᶠᵃ = deepcopy(dropdims(Δxᶜᶠᵃ.data, dims=3))
-    Δxᶠᶜᵃ = deepcopy(dropdims(Δxᶠᶜᵃ.data, dims=3))
-    Δxᶜᶜᵃ = deepcopy(dropdims(Δxᶜᶜᵃ.data, dims=3))
-    Δyᶠᶠᵃ = deepcopy(dropdims(Δyᶠᶠᵃ.data, dims=3))
-    Δyᶜᶠᵃ = deepcopy(dropdims(Δyᶜᶠᵃ.data, dims=3))
-    Δyᶠᶜᵃ = deepcopy(dropdims(Δyᶠᶜᵃ.data, dims=3))
-    Δyᶜᶜᵃ = deepcopy(dropdims(Δyᶜᶜᵃ.data, dims=3))
-    Azᶠᶠᵃ = deepcopy(dropdims(Azᶠᶠᵃ.data, dims=3))
-    Azᶜᶠᵃ = deepcopy(dropdims(Azᶜᶠᵃ.data, dims=3))
-    Azᶠᶜᵃ = deepcopy(dropdims(Azᶠᶜᵃ.data, dims=3))
-    Azᶜᶜᵃ = deepcopy(dropdims(Azᶜᶜᵃ.data, dims=3))
+    Δxᶠᶠᵃ = copy_metric_as_offset_array(Δxᶠᶠᵃ)
+    Δxᶜᶠᵃ = copy_metric_as_offset_array(Δxᶜᶠᵃ)
+    Δxᶠᶜᵃ = copy_metric_as_offset_array(Δxᶠᶜᵃ)
+    Δxᶜᶜᵃ = copy_metric_as_offset_array(Δxᶜᶜᵃ)
+    Δyᶠᶠᵃ = copy_metric_as_offset_array(Δyᶠᶠᵃ)
+    Δyᶜᶠᵃ = copy_metric_as_offset_array(Δyᶜᶠᵃ)
+    Δyᶠᶜᵃ = copy_metric_as_offset_array(Δyᶠᶜᵃ)
+    Δyᶜᶜᵃ = copy_metric_as_offset_array(Δyᶜᶜᵃ)
+    Azᶠᶠᵃ = copy_metric_as_offset_array(Azᶠᶠᵃ)
+    Azᶜᶠᵃ = copy_metric_as_offset_array(Azᶜᶠᵃ)
+    Azᶠᶜᵃ = copy_metric_as_offset_array(Azᶠᶜᵃ)
+    Azᶜᶜᵃ = copy_metric_as_offset_array(Azᶜᶜᵃ)
 
     # Continue the metrics to the south with a LatitudeLongitudeGrid
     # metrics (probably we don't even need to do this, since the tripolar grid should
@@ -347,6 +349,14 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
                                                      Tripolar(north_poles_latitude, first_pole_longitude, southernmost_latitude))
 
     return grid
+end
+
+copy_metric_as_offset_array(metric::Field) = copy_metric_as_offset_array(metric.data)
+
+function copy_metric_as_offset_array(metric::OffsetArray)
+    arr = deepcopy(dropdims(metric.parent, dims=3))
+    off = metric.offsets
+    return OffsetArray(arr, off[1], off[2])
 end
 
 # Continue the metrics to the south with LatitudeLongitudeGrid metrics

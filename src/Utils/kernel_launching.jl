@@ -87,20 +87,20 @@ end
 KernelParameters(args::Tuple) = KernelParameters(args...)
 
 contiguousrange(range::StaticSize{S}, offset) where S = contiguousrange(S, offset)
-contiguousrange(range::NTuple{N, Int}, offset::NTuple{N, Int}) where N = Tuple(1+o:r+o for (r, o) in zip(range, offset))
+contiguousrange(range::NTuple{N, IT1}, offset::NTuple{N, IT2}) where {N, IT1 <: Integer, IT2 <: Integer} = Tuple(1+o:r+o for (r, o) in zip(range, offset))
 
 # Heuristic for 1-tuple, 2-tuple and 3-tuple of integers
-contiguousrange(range::NTuple{1, Int}, offset::NTuple{1, Int}) = @inbounds (1+offset[1]:range[1]+offset[1], )
-contiguousrange(range::NTuple{2, Int}, offset::NTuple{2, Int}) = @inbounds (1+offset[1]:range[1]+offset[1], 1+offset[2]:range[2]+offset[2])
-contiguousrange(range::NTuple{3, Int}, offset::NTuple{3, Int}) = @inbounds (1+offset[1]:range[1]+offset[1], 1+offset[2]:range[2]+offset[2], 1+offset[3]:range[3]+offset[3])
+contiguousrange(range::NTuple{1, IT1}, offset::NTuple{1, IT2}) where {IT1 <: Integer, IT2 <: Integer} = @inbounds (1+offset[1]:range[1]+offset[1], )
+contiguousrange(range::NTuple{2, IT1}, offset::NTuple{2, IT2}) where {IT1 <: Integer, IT2 <: Integer} = @inbounds (1+offset[1]:range[1]+offset[1], 1+offset[2]:range[2]+offset[2])
+contiguousrange(range::NTuple{3, IT1}, offset::NTuple{3, IT2}) where {IT1 <: Integer, IT2 <: Integer} = @inbounds (1+offset[1]:range[1]+offset[1], 1+offset[2]:range[2]+offset[2], 1+offset[3]:range[3]+offset[3])
 
 flatten_reduced_dimensions(worksize, dims) = Tuple(d ∈ dims ? 1 : worksize[d] for d = 1:3)
 
 # Heuristic for a 3-tuple of integers (our main case)
-flatten_reduced_dimensions(worksize::Tuple{Int, Int, Int}, dims) =
-    (1 ∈ dims ? 1 : worksize[1],
-     2 ∈ dims ? 1 : worksize[2],
-     3 ∈ dims ? 1 : worksize[3])
+flatten_reduced_dimensions(worksize::Tuple{IT, IT, IT}, dims) where {IT <: Integer} =
+    (1 ∈ dims ? IT(1) : worksize[1],
+     2 ∈ dims ? IT(1) : worksize[2],
+     3 ∈ dims ? IT(1) : worksize[3])
 
 """
     MappedFunction(func, index_map)
