@@ -122,7 +122,7 @@ function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active
                      model.clock,
                      c_forcing )
 
-        args = prepend_args(pre_args, generate_kernel_args(c_advection, post_args; condition_maps))
+        args = prepend_args(pre_args, generate_kernel_args(c_advection, post_args, condition_maps))
 
         launch!(arch, grid, kernel_parameters,
                 compute_hydrostatic_free_surface_Gc!,
@@ -147,15 +147,16 @@ function prepend_args(args1, args2::NamedTuple)
     return NamedTuple{keys(args2)}(new_args[key] for key in keys(args2))
 end
 
+""" Fallback for non-conditioned cases (with or without active_cells_map)"""
+function generate_kernel_args(scheme, common_args, condition_maps)
+    return (scheme, common_args...)
+end
+
 """ Generate arguments for each mapped condition """
-function generate_kernel_args(scheme, common_args; condition_maps=nothing)
-    if isnothing(condition_maps)
-        return (scheme, common_args...)
-    else
+function generate_kernel_args(scheme, common_args, condition_maps::NamedTuple)
         static_advection = fixed_order_scheme(scheme)
         return (; interior = (static_advection, common_args...),
                   boundary = (scheme, common_args...))
-    end
 end
 
 """
@@ -188,10 +189,10 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
 
 
     u_kernel_args = tuple(model.coriolis, model.closure, u_immersed_bc, end_momentum_kernel_args..., u_forcing)
-    u_kernel_args_tuple = generate_kernel_args(model.advection.momentum, u_kernel_args; condition_maps=momentum_condition_maps)
+    u_kernel_args_tuple = generate_kernel_args(model.advection.momentum, u_kernel_args, momentum_condition_maps)
 
     v_kernel_args = tuple(model.coriolis, model.closure, v_immersed_bc, end_momentum_kernel_args..., v_forcing)
-    v_kernel_args_tuple = generate_kernel_args(model.advection.momentum, v_kernel_args; condition_maps=momentum_condition_maps)
+    v_kernel_args_tuple = generate_kernel_args(model.advection.momentum, v_kernel_args, momentum_condition_maps)
 
     launch!(arch,
             grid,
