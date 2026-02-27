@@ -9,7 +9,7 @@ using KernelAbstractions: @index, @kernel
 using Adapt: Adapt
 
 using Oceananigans.Architectures: architecture
-using Oceananigans.Utils: launch!, launch_conditioned!,@apply_regionally
+using Oceananigans.Utils: launch!, apply_regionally
 using Oceananigans.Grids: AbstractGrid, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid
 using Oceananigans.Fields: ZFaceField
 using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid
