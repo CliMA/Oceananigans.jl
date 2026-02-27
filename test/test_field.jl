@@ -935,4 +935,104 @@ end
         @test restore_prognostic_state!(of, :some_state) === of
         @test restore_prognostic_state!(cf, nothing) === cf
     end
+
+    @testset "FunctionField with reduced indices" begin
+        @info "  Testing FunctionField with reduced indices..."
+
+        grid = RectilinearGrid(size=(4, 4, 4),
+                               x=(0, 1), y=(0, 2), z=(-3, 0),
+                               topology=(Periodic, Periodic, Bounded))
+        clock = Clock(time=π)
+
+        i, j, k = 2, 3, 2
+        xc = xnode(i, grid, Center())
+        yc = ynode(j, grid, Center())
+        zc = znode(k, grid, Center())
+        t  = clock.time
+
+        # Default indices: func always receives (x, y, z, t)
+        f = FunctionField{Center, Center, Center}(
+                (x, y, z, t) -> x + 2y + 3z + t, grid; clock)
+        @test f[i, j, k] ≈ xc + 2yc + 3zc + t
+        @test indices(f) === (:, :, :)
+
+        # Non-default indices: func still receives full (x, y, z, t);
+        # indices only marks the active footprint, it does not drop coordinates.
+        f2d = FunctionField{Center, Center, Face}(
+                  (x, y, z, t) -> x + 2y + 3z + t, grid; clock,
+                  indices = (:, :, grid.Nz+1))
+        @test indices(f2d) === (:, :, grid.Nz+1)
+        zface_top = znode(grid.Nz+1, grid, Face())
+        @test f2d[i, j, grid.Nz+1] ≈ xc + 2yc + 3zface_top + t
+        # z still varies with k — coordinates are never dropped
+        @test f2d[i, j, 1] ≉ f2d[i, j, grid.Nz+1]
+
+        # Two reduced dimensions
+        f1d = FunctionField{Center, Center, Face}(
+                  (x, y, z, t) -> x + 2y + 3z + t, grid; clock,
+                  indices = (:, 2, grid.Nz+1))
+        @test indices(f1d) === (:, 2, grid.Nz+1)
+        ynode2 = ynode(2, grid, Center())
+        @test f1d[i, 2, grid.Nz+1] ≈ xc + 2ynode2 + 3zface_top + t
+
+        # Materializing a FunctionField with reduced indices creates a Field whose
+        # data array covers only the active slice (one z-level here).
+        cf = Field(f2d)
+        @test cf.indices[3] == (grid.Nz+1:grid.Nz+1)
+        @test cf[i, j, grid.Nz+1] ≈ xc + 2yc + 3zface_top + t
+
+        # Indices propagate through AbstractOperations: an operation on a surface
+        # FunctionField also reports the reduced indices, and its materialization
+        # allocates only the active slice.
+        g2d = FunctionField{Center, Center, Face}(
+                  (x, y, z, t) -> x - y - z, grid; clock,
+                  indices = (:, :, grid.Nz+1))
+        op = f2d + g2d
+        @test indices(op)[3] == (grid.Nz+1:grid.Nz+1)
+        cf_op = Field(op)
+        @test cf_op.indices[3] == (grid.Nz+1:grid.Nz+1)
+        @test cf_op[i, j, grid.Nz+1] ≈ (xc + 2yc + 3zface_top + t) + (xc - yc - zface_top)
+
+        # FunctionField + Field: the FunctionField's restricted indices narrow the result.
+        h_full = Field{Center, Center, Face}(grid)
+        set!(h_full, 1)
+        op_mixed = f2d + h_full
+        @test indices(op_mixed)[3] == (grid.Nz+1:grid.Nz+1)
+        cf_mixed = Field(op_mixed)
+        @test cf_mixed.indices[3] == (grid.Nz+1:grid.Nz+1)
+        @test cf_mixed[i, j, grid.Nz+1] ≈ (xc + 2yc + 3zface_top + t) + 1
+
+        # Non-overlapping indices: materializing the operation throws because
+        # the index ranges have an empty intersection.
+        h_bottom = view(h_full, :, :, 1:2)
+        @test_throws ArgumentError Field(f2d + h_bottom)
+
+        # Value equivalence: a FunctionField and a Field set to the same
+        # (time-independent) function must agree at every interior point.
+        func_static = (x, y, z) -> sin(x) + cos(y) * z
+
+        ff_static = FunctionField{Center, Center, Center}(func_static, grid)
+        f_static  = CenterField(grid)
+        set!(f_static, func_static)
+        @test all(interior(Field(ff_static)) .≈ interior(f_static))
+
+        # Same for a surface-only (reduced-indices) FunctionField.
+        func_surf = (x, y, z) -> sin(x) + cos(y)
+
+        ff_surf = FunctionField{Center, Center, Face}(func_surf, grid; indices=(:, :, grid.Nz+1))
+        f_surf  = Field{Center, Center, Face}(grid; indices=(:, :, grid.Nz+1:grid.Nz+1))
+        set!(f_surf, func_surf)
+        @test all(interior(Field(ff_surf)) .≈ interior(f_surf))
+
+        # Operation equivalence: (FunctionField + Field) must agree with
+        # (equivalent materialized Field + Field) at every interior point.
+        h_ops = CenterField(grid)
+        set!(h_ops, (x, y, z) -> x * y + z)
+        @test all(interior(Field(ff_static + h_ops)) .≈ interior(Field(f_static + h_ops)))
+
+        # Same check for the surface slice.
+        h_surf = Field{Center, Center, Face}(grid; indices=(:, :, grid.Nz+1:grid.Nz+1))
+        set!(h_surf, (x, y, z) -> x + y)
+        @test all(interior(Field(ff_surf + h_surf)) .≈ interior(Field(f_surf + h_surf)))
+    end
 end
