@@ -116,14 +116,14 @@ function split_indices_mapped(field, grid, active_cells_map)
     map2 = Vector{eltype(active_indices)}()
     for index in active_indices
         val = vals[convert(IndexType, index)...]
-	if val
-	    push!(map1, index)
-	else
-	    push!(map2, index)
-	end
+    if val
+            push!(map1, index)
+        else
+            push!(map2, index)
+        end
     end
-    map1 = AC.on_architecture(architecture(grid), map1) 
-    map2 = AC.on_architecture(architecture(grid), map2) 
+    map1 = AC.on_architecture(architecture(grid), map1)
+    map2 = AC.on_architecture(architecture(grid), map2)
     return (map1, map2)
 end
 
@@ -132,13 +132,13 @@ function split_indices_full(field, grid)
     map1 = IndicesType[]
     map2 = IndicesType[]
     for k in 1:size(grid, 3)
-        vals = AC.on_architecture(CPU(), interior(field, :, :, k)) 
-	map1 = vcat(map1, convert_interior_indices(findall(x->x, vals), k, IndicesType))
-	map2 = vcat(map2, convert_interior_indices(findall(x->!x, vals), k, IndicesType))
-	GC.gc()
+        vals = AC.on_architecture(CPU(), interior(field, :, :, k))
+        map1 = vcat(map1, convert_interior_indices(findall(x->x, vals), k, IndicesType))
+        map2 = vcat(map2, convert_interior_indices(findall(x->!x, vals), k, IndicesType))
+        GC.gc()
     end
-    map1 = AC.on_architecture(architecture(grid), map1) 
-    map2 = AC.on_architecture(architecture(grid), map2) 
+    map1 = AC.on_architecture(architecture(grid), map1)
+    map2 = AC.on_architecture(architecture(grid), map2)
     return (map1, map2)
 end
 
