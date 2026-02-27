@@ -48,14 +48,18 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
 
     # Update transport velocities
     compute_transport_velocities!(model, model.free_surface)
+    @apply_regionally ab2_step_velocities!(model.velocities, model, Δt, χ)
 
+    u = model.velocities.u
+    v = model.velocities.v
+    fill_halo_regions!((u, v),  model.clock, fields(model); async=true)
+    
     # Computing tracer tendencies
     @apply_regionally begin
         compute_tracer_tendencies!(model)
 
         # Advance grid and velocities
         ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
-        ab2_step_velocities!(model.velocities, model, Δt, χ)
 
         # Correct the barotropic mode
         correct_barotropic_mode!(model, Δt)
@@ -100,16 +104,17 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
     # Advancing free surface in preparation for the correction step
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
 
-    # Correct for the updated barotropic mode
-    @apply_regionally correct_barotropic_mode!(model, Δt)
-
     # Compute transport velocities
     compute_transport_velocities!(model, free_surface)
 
+    u = model.velocities.u
+    v = model.velocities.v
+    fill_halo_regions!((u, v), model.clock, fields(model); async=true)
+
     @apply_regionally begin
         compute_tracer_tendencies!(model)
-
         ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
+        correct_barotropic_mode!(model, Δt)
         ab2_step_tracers!(model.tracers, model, Δt, χ)
     end
 
