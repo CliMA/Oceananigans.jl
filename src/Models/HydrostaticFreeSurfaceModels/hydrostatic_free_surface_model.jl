@@ -240,7 +240,7 @@ function HydrostaticFreeSurfaceModel(grid;
 
     # Either check grid-correctness, or construct tuples of fields
     velocities         = hydrostatic_velocity_fields(velocities, grid, clock, boundary_conditions)
-    tracers            = TracerFields(tracers, grid, boundary_conditions)
+    tracers            = materialize_tracer_fields(tracers, grid, clock, boundary_conditions)
     pressure           = PressureField(grid)
     closure_fields = build_closure_fields(closure_fields, grid, clock, tracernames(tracers), boundary_conditions, closure)
 
@@ -254,8 +254,9 @@ function HydrostaticFreeSurfaceModel(grid;
     implicit_solver   = implicit_diffusion_solver(time_discretization(closure), grid)
     prognostic_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers)
 
-    Gⁿ = hydrostatic_tendency_fields(velocities, free_surface, grid, tracernames(tracers), boundary_conditions)
-    G⁻ = previous_hydrostatic_tendency_fields(timestepper, velocities, free_surface, grid, tracernames(tracers), boundary_conditions)
+    prog_tracer_names = prognostic_tracer_names(tracers)
+    Gⁿ = hydrostatic_tendency_fields(velocities, free_surface, grid, prog_tracer_names, boundary_conditions)
+    G⁻ = previous_hydrostatic_tendency_fields(timestepper, velocities, free_surface, grid, prog_tracer_names, boundary_conditions)
     timestepper = TimeStepper(timestepper, grid, prognostic_fields; implicit_solver, Gⁿ, G⁻)
 
     # Materialize forcing for model tracer and velocity fields.
@@ -307,7 +308,7 @@ end
 
 const FFTIFS = ImplicitFreeSurface{<:Any, <:Any, <:FFTImplicitFreeSurfaceSolver}
 
-validate_free_surface(arch::Distributed, ::FFTIFS) = error("$(typeof(free_surface)) is not supported with $(typeof(arch))")
+validate_free_surface(arch::Distributed, ::FFTIFS) = error("$(FFTIFS) is not supported with $(typeof(arch))")
 validate_free_surface(arch, free_surface) = free_surface
 
 validate_momentum_advection(momentum_advection, ibg::ImmersedBoundaryGrid) = validate_momentum_advection(momentum_advection, ibg.underlying_grid)

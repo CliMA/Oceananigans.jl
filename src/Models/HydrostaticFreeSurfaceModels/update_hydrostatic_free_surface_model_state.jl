@@ -91,7 +91,7 @@ at immersed boundaries. This is called at the beginning of `update_state!`.
 """
 function mask_immersed_model_fields!(model)
     mask_immersed_velocities!(model.velocities)
-    foreach(mask_immersed_field!, model.tracers)
+    foreach(mask_immersed_field!, prognostic_tracers(model.tracers))
     return nothing
 end
 
