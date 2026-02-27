@@ -187,10 +187,10 @@ end
 #####
 
 """ Calculate the right-hand-side of the u-velocity equation. """
-function compute_hydrostatic_free_surface_Gu!(arch,  
-                                              grid, 
-                                              kernel_parameters, 
-                                              Gu, 
+function compute_hydrostatic_free_surface_Gu!(arch,
+                                              grid,
+                                              kernel_parameters,
+                                              Gu,
                                               advection,
                                               coriolis,
                                               closure,
@@ -204,7 +204,7 @@ function compute_hydrostatic_free_surface_Gu!(arch,
                                               auxiliary_fields,
                                               ztype,
                                               clock,
-                                              forcing; 
+                                              forcing;
                                               active_cells_map)
     args = tuple(advection,
                  coriolis,
@@ -230,8 +230,8 @@ function compute_hydrostatic_free_surface_Gu!(arch,
 end
 
 function compute_U_dot_∇u!(arch, grid, kernel_parameters, Gu, advection, velocities; active_cells_map)
-  launch!(arch, grid, kernel_parameters, 
-          compute_U_dot_∇u!, Gu, grid, (advection, velocities); 
+  launch!(arch, grid, kernel_parameters,
+          compute_U_dot_∇u!, Gu, grid, (advection, velocities);
           active_cells_map)
 end
 
@@ -241,14 +241,14 @@ end
 end
 
 function compute_U_dot_∇u!(arch, grid, kernel_parameters, Gu, advection::VectorInvariant, velocities; active_cells_map)
-  launch!(arch, grid, kernel_parameters, 
-          horizontal_advection_U!, Gu, grid, (advection, velocities); 
+  launch!(arch, grid, kernel_parameters,
+          horizontal_advection_U!, Gu, grid, (advection, velocities);
           active_cells_map)
-  launch!(arch, grid, kernel_parameters, 
-          vertical_advection_U!, Gu, grid, (advection, velocities); 
+  launch!(arch, grid, kernel_parameters,
+          vertical_advection_U!, Gu, grid, (advection, velocities);
           active_cells_map)
-  launch!(arch, grid, kernel_parameters, 
-          bernoulli_head_U!, Gu, grid, (advection, velocities); 
+  launch!(arch, grid, kernel_parameters,
+          bernoulli_head_U!, Gu, grid, (advection, velocities);
           active_cells_map)
 end
 
@@ -289,7 +289,7 @@ function compute_corrections_Gu(i, j, k, grid,
                                 auxiliary_fields,
                                 ztype,
                                 clock,
-                                forcing) 
+                                forcing)
 
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
 
