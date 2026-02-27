@@ -52,13 +52,11 @@ Base.show(io::IO, pt::PrescribedTracer) = print(io, summary(pt))
 ##### Materialization: convert PrescribedTracer to a concrete field type
 #####
 
-function materialize_prescribed_tracer(pt::PrescribedTracer{<:FieldTimeSeries}, grid; clock)
-    return TimeSeriesInterpolation(pt.field, grid; clock)
-end
+materialize_prescribed_tracer(pt::PrescribedTracer{<:FieldTimeSeries}, grid; clock) =
+    TimeSeriesInterpolation(pt.field, grid; clock)
 
-function materialize_prescribed_tracer(pt::PrescribedTracer{<:Function}, grid; clock)
-    return FunctionField{Center, Center, Center}(pt.field, grid; clock, parameters=pt.parameters)
-end
+materialize_prescribed_tracer(pt::PrescribedTracer{<:Function}, grid; clock) =
+    FunctionField{Center, Center, Center}(pt.field, grid; clock, parameters=pt.parameters)
 
 # Fallback: if already a Field or similar, just return it
 materialize_prescribed_tracer(pt::PrescribedTracer, grid; clock) = pt.field
