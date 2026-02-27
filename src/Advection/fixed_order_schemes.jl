@@ -29,13 +29,12 @@ const StaticWENO{N, FT, FT2, PP, SI} = WENO{N, FT, FT2, PP, Nothing, SI}
 function StaticWENO(FT::DataType=Oceananigans.defaults.FloatType, FT2::DataType=Float32;
               order = 5,
               bounds = nothing)
-	return WENO(FT, FT2; order=order, buffer_scheme=nothing, bounds=bounds)
+    return WENO(FT, FT2; order=order, buffer_scheme=nothing, bounds=bounds)
 end
  
 function StaticWENO(weno::WENO{N, FT, FT2}) where {N, FT, FT2}
-	return StaticWENO(FT, FT2; order=weno_order(weno))
+    return StaticWENO(FT, FT2; order=weno_order(weno))
 end
-
 
 StaticWENOVectorInvariant(scheme) = scheme
 
@@ -49,6 +48,5 @@ function StaticWENOVectorInvariant(scheme::WENOVectorInvariant)
         divergence_scheme=StaticWENO(scheme.divergence_scheme),
         kinetic_energy_gradient_scheme=scheme.kinetic_energy_gradient_scheme,
         upwinding=scheme.upwinding
-	    )
+    )
 end
-

@@ -28,7 +28,7 @@ function compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callba
     arch = architecture(grid)
 
     active_cells_map = get_active_cells_map(model.grid, Val(:interior))
-		
+
     kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
 
     compute_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters; active_cells_map)
@@ -140,7 +140,7 @@ prepend_args(args1, args2) = (args1..., args2...)
 
 function prepend_args(args1, args2::NamedTuple)
     new_args = Dict()
-    
+
     for key in keys(args2)
         new_args[key] = (args1..., args2[key]...)
     end
@@ -205,11 +205,11 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
 
     launch!(arch,
             grid, 
-            kernel_parameters, 
-            compute_hydrostatic_free_surface_Gv!, 
-	    model.timestepper.Gⁿ.v,
-	    grid,
-            v_kernel_args_tuple; 
+            kernel_parameters,
+            compute_hydrostatic_free_surface_Gv!,
+            model.timestepper.Gⁿ.v,
+            grid,
+            v_kernel_args_tuple;
             active_cells_map=momentum_condition_maps)
 
     return nothing
