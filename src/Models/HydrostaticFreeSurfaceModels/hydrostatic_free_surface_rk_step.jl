@@ -186,7 +186,9 @@ function rk_substep_tracers!(tracers, model, Δt)
     # Tracer update kernels
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
 
-        if catke_in_closures && tracer_name == :e
+        if is_prescribed_tracer(tracers[tracer_name])
+            @debug "Skipping RK substep for prescribed tracer $tracer_name"
+        elseif catke_in_closures && tracer_name == :e
             @debug "Skipping RK substep for e"
         else
             Gⁿ = model.timestepper.Gⁿ[tracer_name]

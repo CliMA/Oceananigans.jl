@@ -3,7 +3,8 @@ module HydrostaticFreeSurfaceModels
 export
     HydrostaticFreeSurfaceModel,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
-    PrescribedVelocityFields, ZStarCoordinate, ZCoordinate
+    PrescribedVelocityFields, PrescribedTracer,
+    ZStarCoordinate, ZCoordinate
 
 using KernelAbstractions: @index, @kernel
 using Adapt: Adapt
@@ -102,6 +103,9 @@ include("implicit_free_surface.jl")
 # ZStarCoordinate implementation
 include("z_star_coordinate.jl")
 
+# Prescribed tracers
+include("prescribed_tracers.jl")
+
 # Hydrostatic model implementation
 include("hydrostatic_free_surface_model.jl")
 include("show_hydrostatic_free_surface_model.jl")
@@ -155,7 +159,7 @@ Return a flattened `NamedTuple` of the prognostic fields associated with `Hydros
                                                                        V = free_surface.barotropic_velocities.V)
 
 @inline hydrostatic_prognostic_fields(velocities, free_surface, tracers) =
-    merge(horizontal_velocities(velocities), tracers, free_surface_fields(free_surface))
+    merge(horizontal_velocities(velocities), prognostic_tracers(tracers), free_surface_fields(free_surface))
 
 # Include vertical velocity
 @inline hydrostatic_fields(velocities, free_surface, tracers) =
