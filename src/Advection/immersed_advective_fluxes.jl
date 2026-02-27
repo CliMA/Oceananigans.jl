@@ -186,6 +186,7 @@ for bias in (:symmetric, :biased)
             @eval begin
                 # Fallback for low order interpolation
                 @inline $alt1_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::LOADV, args...) = $interp(i, j, k, ibg, scheme, args...)
+                @inline $alt1_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::StaticWENO, args...) = $interp(i, j, k, ibg, scheme, args...)
 
                 # Conditional high-order interpolation in Bounded directions
                 @inline $alt1_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::HOADV, args...) =

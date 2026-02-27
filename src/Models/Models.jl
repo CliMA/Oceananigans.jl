@@ -12,6 +12,7 @@ export
     BulkDrag, BulkDragFunction, BulkDragBoundaryCondition,
     XDirectionBulkDragFunction, YDirectionBulkDragFunction, ZDirectionBulkDragFunction,
     LinearFormulation, QuadraticFormulation
+export generate_condition_maps
 
 using Oceananigans: AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation
@@ -94,6 +95,9 @@ function materialize_free_surface end
 
 # Communication - Computation overlap in distributed models
 include("interleave_communication_and_computation.jl")
+
+# Implementation of condition map generation
+include("condition_maps.jl")
 
 #####
 ##### All the code

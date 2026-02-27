@@ -8,7 +8,7 @@ using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
 using Oceananigans.Grids: get_active_cells_map
-
+using Oceananigans.Advection: fixed_order_scheme
 """
     compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
 
@@ -28,6 +28,7 @@ function compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callba
     arch = architecture(grid)
 
     active_cells_map = get_active_cells_map(model.grid, Val(:interior))
+
     kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
 
     compute_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters; active_cells_map)
@@ -102,15 +103,14 @@ function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active
 
     for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
 
+        condition_maps = model.condition_maps[tracer_name]
         @inbounds c_tendency    = model.timestepper.Gⁿ[tracer_name]
         @inbounds c_advection   = model.advection[tracer_name]
         @inbounds c_forcing     = model.forcing[tracer_name]
         @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
 
-        args = tuple(Val(tracer_index),
-                     Val(tracer_name),
-                     c_advection,
-                     model.closure,
+        pre_args = (Val(tracer_index), Val(tracer_name))
+        post_args = (model.closure,
                      c_immersed_bc,
                      model.buoyancy,
                      model.biogeochemistry,
@@ -120,17 +120,43 @@ function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active
                      model.closure_fields,
                      model.auxiliary_fields,
                      model.clock,
-                     c_forcing)
+                     c_forcing )
+
+        args = prepend_args(pre_args, generate_kernel_args(c_advection, post_args, condition_maps))
 
         launch!(arch, grid, kernel_parameters,
                 compute_hydrostatic_free_surface_Gc!,
                 c_tendency,
                 grid,
-                args;
-                active_cells_map)
+                args,
+                active_cells_map=condition_maps)
     end
 
     return nothing
+end
+
+
+prepend_args(args1, args2) = (args1..., args2...)
+
+function prepend_args(args1, args2::NamedTuple)
+    new_args = Dict()
+
+    for key in keys(args2)
+        new_args[key] = (args1..., args2[key]...)
+    end
+    return NamedTuple{keys(args2)}(new_args[key] for key in keys(args2))
+end
+
+""" Fallback for non-conditioned cases (with or without active_cells_map)"""
+function generate_kernel_args(scheme, common_args, condition_maps)
+    return (scheme, common_args...)
+end
+
+""" Generate arguments for each mapped condition """
+function generate_kernel_args(scheme, common_args, condition_maps::NamedTuple)
+        static_advection = fixed_order_scheme(scheme)
+        return (; interior = (static_advection, common_args...),
+                  boundary = (scheme, common_args...))
 end
 
 """
@@ -143,15 +169,13 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     grid = model.grid
     arch = architecture(grid)
 
+    momentum_condition_maps = model.condition_maps.momentum
+
     u_immersed_bc = immersed_boundary_condition(velocities.u)
     v_immersed_bc = immersed_boundary_condition(velocities.v)
 
     u_forcing = model.forcing.u
     v_forcing = model.forcing.v
-
-    start_momentum_kernel_args = (model.advection.momentum,
-                                  model.coriolis,
-                                  model.closure)
 
     end_momentum_kernel_args = (velocities,
                                 model.free_surface,
@@ -163,16 +187,30 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
                                 model.vertical_coordinate,
                                 model.clock)
 
-    u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args..., u_forcing)
-    v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args..., v_forcing)
 
-    launch!(arch, grid, kernel_parameters,
-            compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid,
-            u_kernel_args; active_cells_map)
+    u_kernel_args = tuple(model.coriolis, model.closure, u_immersed_bc, end_momentum_kernel_args..., u_forcing)
+    u_kernel_args_tuple = generate_kernel_args(model.advection.momentum, u_kernel_args, momentum_condition_maps)
 
-    launch!(arch, grid, kernel_parameters,
-            compute_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid,
-            v_kernel_args; active_cells_map)
+    v_kernel_args = tuple(model.coriolis, model.closure, v_immersed_bc, end_momentum_kernel_args..., v_forcing)
+    v_kernel_args_tuple = generate_kernel_args(model.advection.momentum, v_kernel_args, momentum_condition_maps)
+
+    launch!(arch,
+            grid,
+            kernel_parameters,
+            compute_hydrostatic_free_surface_Gu!,
+            model.timestepper.Gⁿ.u,
+            grid,
+            u_kernel_args_tuple,
+            active_cells_map=momentum_condition_maps)
+
+    launch!(arch,
+            grid,
+            kernel_parameters,
+            compute_hydrostatic_free_surface_Gv!,
+            model.timestepper.Gⁿ.v,
+            grid,
+            v_kernel_args_tuple,
+            active_cells_map=momentum_condition_maps)
 
     return nothing
 end

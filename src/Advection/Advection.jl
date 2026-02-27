@@ -11,7 +11,8 @@ export
     VectorInvariant, WENOVectorInvariant,
     FluxFormAdvection,
     EnergyConserving,
-    EnstrophyConserving
+    EnstrophyConserving,
+    fixed_order_scheme
 
 using DocStringExtensions
 
@@ -70,6 +71,7 @@ include("vector_invariant_advection.jl")
 include("vector_invariant_self_upwinding.jl")
 include("vector_invariant_cross_upwinding.jl")
 include("flux_form_advection.jl")
+include("fixed_order_schemes.jl")
 
 include("topologically_conditional_interpolation.jl")
 include("flat_advective_fluxes.jl")

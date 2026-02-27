@@ -348,6 +348,21 @@ end
     return nothing
 end
 
+# Launch kernels over conditioned cell maps
+@inline function launch!(arch, grid, workspec, common_args, args::NamedTuple, active_cells_map_tuple::NamedTuple; kwargs...)
+  condition_keys = keys(active_cells_map_tuple)
+  arg_keys = keys(args)
+  if condition_keys != arg_keys
+    @warn "active_cells_map_tuple keys are different to args' keys. The kernel will not be launched"
+  else
+    for key in condition_keys
+      map = active_cells_map_tuple[key]
+      _launch!(arch, grid, workspec, common_args..., args[key]; active_cells_map=map, kwargs...)
+    end
+  end
+  return nothing
+end
+
 # When dims::Val
 @inline launch!(arch, grid, ::Val{workspec}, args...; kw...) where workspec =
     _launch!(arch, grid, workspec, args...; kw...)
