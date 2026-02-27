@@ -75,7 +75,7 @@ end
 const HOADV = Union{WENO,
                     Tuple(Centered{N} for N in advection_buffers[2:end])...,
                     Tuple(UpwindBiased{N} for N in advection_buffers[2:end])...}
-const LOADV = Union{UpwindBiased{1}, Centered{1}, StaticWENO}
+const LOADV = Union{UpwindBiased{1}, Centered{1}, StaticWENO, StaticCentered, StaticUpwindBiased}
 
 for bias in (:symmetric, :biased)
     for (d, ξ) in enumerate((:x, :y, :z))
@@ -92,7 +92,6 @@ for bias in (:symmetric, :biased)
             # Simple translation for Periodic directions and low-order advection schemes (fallback)
             @eval @inline $alt1_interp(i, j, k, grid::AG, scheme::HOADV, args...) = $interp(i, j, k, grid, scheme, args...)
             @eval @inline $alt1_interp(i, j, k, grid::AG, scheme::LOADV, args...) = $interp(i, j, k, grid, scheme, args...)
-            @eval @inline $alt1_interp(i, j, k, grid::AG, scheme::StaticWENO, args...) = $interp(i, j, k, grid, scheme, args...)
 
             outside_buffer = Symbol(:outside_, bias, :_halo_, ξ, loc)
 
