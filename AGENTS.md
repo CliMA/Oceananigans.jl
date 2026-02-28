@@ -136,8 +136,6 @@ Detailed reference docs are in `.agents/` — read on demand:
 | [`.agents/documentation.md`](.agents/documentation.md) | Building docs, fast builds, doctest details, writing examples |
 | [`.agents/validation.md`](.agents/validation.md) | Reproducing paper results step-by-step |
 | [`.agents/physics.md`](.agents/physics.md) | Ocean/fluid dynamics and numerical methods background |
-| [`.agents/mcprepl.md`](.agents/mcprepl.md) | MCPRepl.jl setup for interactive Julia REPL via MCP |
-| [`.agents/important-files.md`](.agents/important-files.md) | Key files and directories to know |
 
 ### Auto-loading Rules
 
@@ -147,7 +145,6 @@ Rules in `.claude/rules/` load automatically when you touch matching files:
 - `testing-rules.md` — test writing and running (test/)
 - `docs-rules.md` — documentation building and style (docs/)
 - `examples-rules.md` — Literate.jl example conventions (examples/)
-- `validation-rules.md` — validation case workflow (validation/)
 
 ### Skills (slash commands)
 
