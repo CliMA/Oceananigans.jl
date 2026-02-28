@@ -166,9 +166,12 @@ interfaces in `x` and cell centers in `y` and `z`.
 """
 @inline function ∂x_b(i, j, k, grid, b::SeawaterBuoyancy, C)
     T, S = get_temperature_and_salinity(b, C)
-    return b.gravitational_acceleration * (
-           thermal_expansionᶠᶜᶜ(i, j, k, grid, b.equation_of_state, T, S) * ∂xᶠᶜᶜ(i, j, k, grid, T)
-        - haline_contractionᶠᶜᶜ(i, j, k, grid, b.equation_of_state, T, S) * ∂xᶠᶜᶜ(i, j, k, grid, S) )
+    g = b.gravitational_acceleration
+    α = thermal_expansionᶠᶜᶜ(i, j, k, grid, b.equation_of_state, T, S)
+    β = haline_contractionᶠᶜᶜ(i, j, k, grid, b.equation_of_state, T, S)
+    dTdx = ∂xᶠᶜᶜ(i, j, k, grid, T)
+    dSdx = ∂xᶠᶜᶜ(i, j, k, grid, S)
+    return g * (α * dTdx - β * dSdx)
 end
 
 """
@@ -192,9 +195,12 @@ interfaces in `y` and cell centers in `x` and `z`.
 """
 @inline function ∂y_b(i, j, k, grid, b::SeawaterBuoyancy, C)
     T, S = get_temperature_and_salinity(b, C)
-    return b.gravitational_acceleration * (
-           thermal_expansionᶜᶠᶜ(i, j, k, grid, b.equation_of_state, T, S) * ∂yᶜᶠᶜ(i, j, k, grid, T)
-        - haline_contractionᶜᶠᶜ(i, j, k, grid, b.equation_of_state, T, S) * ∂yᶜᶠᶜ(i, j, k, grid, S) )
+    g = b.gravitational_acceleration
+    α = thermal_expansionᶜᶠᶜ(i, j, k, grid, b.equation_of_state, T, S)
+    β = haline_contractionᶜᶠᶜ(i, j, k, grid, b.equation_of_state, T, S)
+    dTdy = ∂yᶜᶠᶜ(i, j, k, grid, T)
+    dSdy = ∂yᶜᶠᶜ(i, j, k, grid, S)
+    return g * (α * dTdy - β * dSdy)
 end
 
 """
@@ -218,9 +224,22 @@ interfaces in `z` and cell centers in `x` and `y`.
 """
 @inline function ∂z_b(i, j, k, grid, b::SeawaterBuoyancy, C)
     T, S = get_temperature_and_salinity(b, C)
-    return b.gravitational_acceleration * (
-           thermal_expansionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, T, S) * ∂zᶜᶜᶠ(i, j, k, grid, T)
-        - haline_contractionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, T, S) * ∂zᶜᶜᶠ(i, j, k, grid, S) )
+    g = b.gravitational_acceleration
+    α = thermal_expansionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, T, S)
+    β = haline_contractionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, T, S)
+    dTdz = ∂zᶜᶜᶠ(i, j, k, grid, T)
+    dSdz = ∂zᶜᶜᶠ(i, j, k, grid, S)
+    return g * (α * dTdz - β * dSdz)
+end
+
+@inline function ∂z_bᶠᶠᶠ(i, j, k, grid, b::SeawaterBuoyancy, C)
+    T, S = get_temperature_and_salinity(b, C)
+    dTdz = ∂zᶠᶠᶠ(i, j, k, grid, ℑxyᶠᶠᵃ, T)
+    dSdz = ∂zᶠᶠᶠ(i, j, k, grid, ℑxyᶠᶠᵃ, S)
+    α = thermal_expansionᶠᶠᶠ(i, j, k, grid, b.equation_of_state, T, S)
+    β = haline_contractionᶠᶠᶠ(i, j, k, grid, b.equation_of_state, T, S)
+    g = b.gravitational_acceleration
+    return g * (α * dTdz - β * dSdz)
 end
 
 #####
@@ -234,13 +253,12 @@ end
 @inline function top_bottom_buoyancy_flux(i, j, k, grid, b::SeawaterBuoyancy, top_bottom_tracer_bcs, clock, fields)
     T, S = get_temperature_and_salinity(b, fields)
     T_flux_bc, S_flux_bc = get_temperature_and_salinity_flux(b, top_bottom_tracer_bcs)
-
-    T_flux = getbc(T_flux_bc, i, j, grid, clock, fields)
-    S_flux = getbc(S_flux_bc, i, j, grid, clock, fields)
-
-    return b.gravitational_acceleration * (
-              thermal_expansionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, T, S) * T_flux
-           - haline_contractionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, T, S) * S_flux)
+    Jᵀ = getbc(T_flux_bc, i, j, grid, clock, fields)
+    Jˢ = getbc(S_flux_bc, i, j, grid, clock, fields)
+    α = thermal_expansionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, T, S)
+    β = haline_contractionᶜᶜᶠ(i, j, k, grid, b.equation_of_state, T, S)
+    g = b.gravitational_acceleration
+    return g * (α * Jᵀ - β * Jˢ)
 end
 
 @inline    top_buoyancy_flux(i, j, grid, b::SeawaterBuoyancy, args...) = top_bottom_buoyancy_flux(i, j, grid.Nz+1, grid, b, args...)
