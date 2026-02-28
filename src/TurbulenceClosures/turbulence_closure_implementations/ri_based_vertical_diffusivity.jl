@@ -1,5 +1,5 @@
 using Oceananigans.Architectures: architecture
-using Oceananigans.BuoyancyFormulations: ∂z_b, top_buoyancy_flux
+using Oceananigans.BuoyancyFormulations: ∂z_b, top_buoyancy_flux, ∂z_bᶠᶠᶠ
 using Oceananigans.Operators
 using Oceananigans.Grids: inactive_node
 using Oceananigans.Operators: ℑzᵃᵃᶜ
@@ -263,14 +263,21 @@ const Tanh   = HyperbolicTangentRiDependentTapering
     return ∂z_u² + ∂z_v²
 end
 
-@inline function Riᶜᶜᶠ(i, j, k, grid, velocities, buoyancy, tracers)
-    S² = shear_squaredᶜᶜᶠ(i, j, k, grid, velocities)
-    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    Ri = N² / S²
+@inline function shear_squaredᶠᶠᶠ(i, j, k, grid, velocities)
+    ∂z_u² = ∂zᶠᶠᶠ(i, j, k, grid, ℑyᵃᶠᵃ, velocities.u)^2
+    ∂z_v² = ∂zᶠᶠᶠ(i, j, k, grid, ℑxᶠᵃᵃ, velocities.v)^2
+    return ∂z_u² + ∂z_v²
+end
 
-    # Clip N² and avoid NaN
+@inline function Riᶠᶠᶠ(i, j, k, grid, velocities, buoyancy, tracers)
+    S² = shear_squaredᶠᶠᶠ(i, j, k, grid, velocities)
+    N² = ∂z_bᶠᶠᶠ(i, j, k, grid, buoyancy, tracers)
+    Ri = N² / S²
     return ifelse(N² <= 0, zero(grid), Ri)
 end
+
+@inline Riᶜᶜᶠ(i, j, k, grid, velocities, buoyancy, tracers) =
+    ℑxyᶜᶜᵃ(i, j, k, grid, Riᶠᶠᶠ, velocities, buoyancy, tracers)
 
 @kernel function compute_ri_number!(closure_fields, grid, closure::FlavorOfRBVD,
                                     velocities, tracers, buoyancy, tracer_bcs, clock)

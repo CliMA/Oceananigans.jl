@@ -1,5 +1,5 @@
 using Oceananigans.Grids: Center, Face, znode, ZFlatGrid
-using Oceananigans.Operators: Δzᶜᶜᶠ, Δzᶜᶜᶜ
+using Oceananigans.Operators: Δzᶜᶜᶠ, Δzᶜᶜᶜ, Δzᶠᶠᶜ
 
 const c = Center()
 const f = Face()
@@ -16,9 +16,15 @@ const f = Face()
     ifelse(k > grid.Nz + 1, znode(i, j, grid.Nz + 1, grid, c, c, f) + (k - grid.Nz - 1) * Δzᶜᶜᶜ(i, j, grid.Nz, grid),
                             znode(i, j,           k, grid, c, c, f)))
 
+@inline Zᶠᶠᶠ(i, j, k, grid) =
+    ifelse(k < 1,           znode(i, j,           1, grid, f, f, f) + (1 - k) * Δzᶠᶠᶜ(i, j, 1, grid),
+    ifelse(k > grid.Nz + 1, znode(i, j, grid.Nz + 1, grid, f, f, f) + (k - grid.Nz - 1) * Δzᶠᶠᶜ(i, j, grid.Nz, grid),
+                            znode(i, j,           k, grid, f, f, f)))
+
 # Fallbacks for ZFlatGrids (assumed to be at z = 0 for buoyancy purposes)
 @inline Zᶜᶜᶜ(i, j, k, grid::ZFlatGrid) = zero(grid)
 @inline Zᶜᶜᶠ(i, j, k, grid::ZFlatGrid) = zero(grid)
+@inline Zᶠᶠᶠ(i, j, k, grid::ZFlatGrid) = zero(grid)
 
 # Dispatch shenanigans
 @inline θ_and_sᴬ(i, j, k, θ::AbstractArray, sᴬ::AbstractArray) = @inbounds θ[i, j, k], sᴬ[i, j, k]
@@ -33,8 +39,10 @@ const f = Face()
 @inline thermal_expansionᶠᶜᶜ(i, j, k, grid, eos, θ, sᴬ) = thermal_expansion(ℑxᶠᵃᵃ(i, j, k, grid, θ), ℑxᶠᵃᵃ(i, j, k, grid, sᴬ), Zᶜᶜᶜ(i, j, k, grid), eos)
 @inline thermal_expansionᶜᶠᶜ(i, j, k, grid, eos, θ, sᴬ) = thermal_expansion(ℑyᵃᶠᵃ(i, j, k, grid, θ), ℑyᵃᶠᵃ(i, j, k, grid, sᴬ), Zᶜᶜᶜ(i, j, k, grid), eos)
 @inline thermal_expansionᶜᶜᶠ(i, j, k, grid, eos, θ, sᴬ) = thermal_expansion(ℑzᵃᵃᶠ(i, j, k, grid, θ), ℑzᵃᵃᶠ(i, j, k, grid, sᴬ), Zᶜᶜᶠ(i, j, k, grid), eos)
+@inline thermal_expansionᶠᶠᶠ(i, j, k, grid, eos, θ, sᴬ) = thermal_expansion(ℑxyzᶠᶠᶠ(i, j, k, grid, θ), ℑxyzᶠᶠᶠ(i, j, k, grid, sᴬ), Zᶠᶠᶠ(i, j, k, grid), eos)
 
 @inline haline_contractionᶜᶜᶜ(i, j, k, grid, eos, θ, sᴬ) = haline_contraction(θ_and_sᴬ(i, j, k, θ, sᴬ)..., Zᶜᶜᶜ(i, j, k, grid), eos)
 @inline haline_contractionᶠᶜᶜ(i, j, k, grid, eos, θ, sᴬ) = haline_contraction(ℑxᶠᵃᵃ(i, j, k, grid, θ), ℑxᶠᵃᵃ(i, j, k, grid, sᴬ), Zᶜᶜᶜ(i, j, k, grid), eos)
 @inline haline_contractionᶜᶠᶜ(i, j, k, grid, eos, θ, sᴬ) = haline_contraction(ℑyᵃᶠᵃ(i, j, k, grid, θ), ℑyᵃᶠᵃ(i, j, k, grid, sᴬ), Zᶜᶜᶜ(i, j, k, grid), eos)
 @inline haline_contractionᶜᶜᶠ(i, j, k, grid, eos, θ, sᴬ) = haline_contraction(ℑzᵃᵃᶠ(i, j, k, grid, θ), ℑzᵃᵃᶠ(i, j, k, grid, sᴬ), Zᶜᶜᶠ(i, j, k, grid), eos)
+@inline haline_contractionᶠᶠᶠ(i, j, k, grid, eos, θ, sᴬ) = haline_contraction(ℑxyzᶠᶠᶠ(i, j, k, grid, θ), ℑxyzᶠᶠᶠ(i, j, k, grid, sᴬ), Zᶠᶠᶠ(i, j, k, grid), eos)
