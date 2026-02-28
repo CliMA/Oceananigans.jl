@@ -50,7 +50,7 @@ using Printf
 using CairoMakie
 using Random
 
-Random.seed!(1234) # for reproducible results
+Random.seed!(314159) # for reproducible results
 
 # We start by setting up grid parameters. We use 1.5-degree resolution to produce
 # reasonable runtimes while still resolving the instability.

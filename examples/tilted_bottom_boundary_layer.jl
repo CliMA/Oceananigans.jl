@@ -26,7 +26,7 @@ using Oceananigans
 using Oceananigans.Units
 using Random
 
-Random.seed!(1234) # for reproducible results
+Random.seed!(42) # for reproducible results
 
 Lx = 200meters
 Lz = 100meters
@@ -205,9 +205,6 @@ simulation.output_writers[:fields] = NetCDFWriter(model, outputs;
                                                   filename = joinpath(@__DIR__, "tilted_bottom_boundary_layer.nc"),
                                                   schedule = TimeInterval(20minutes),
                                                   overwrite_existing = true)
-
-nan_checker = Oceananigans.Diagnostics.NaNChecker(; erroring=true, fields=(; model.velocities.u)) # hide
-add_callback!(simulation, nan_checker, name=:nan_checker) # hide
 
 # Now we just run it!
 

@@ -27,7 +27,7 @@ using Oceananigans
 using Oceananigans.Models: ShallowWaterModel
 using Random
 
-Random.seed!(1234) # for reproducible results
+Random.seed!(90210) # for reproducible results
 
 # ## Two-dimensional domain
 #

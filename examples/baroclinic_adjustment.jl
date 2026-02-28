@@ -16,7 +16,7 @@ using Oceananigans
 using Oceananigans.Units
 using Random
 
-Random.seed!(1234) # for reproducible results
+Random.seed!(8675309) # for reproducible results
 
 # ## Grid
 

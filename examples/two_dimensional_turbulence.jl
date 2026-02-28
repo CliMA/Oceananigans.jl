@@ -24,7 +24,7 @@
 using Oceananigans
 using Random
 
-Random.seed!(1234) # for reproducible results
+Random.seed!(404) # for reproducible results
 
 grid = RectilinearGrid(size=(128, 128), extent=(2π, 2π), topology=(Periodic, Periodic, Flat))
 

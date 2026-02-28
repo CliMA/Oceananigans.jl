@@ -27,7 +27,7 @@ using CUDA
 using Random
 using Printf
 
-Random.seed!(1234) # for reproducible results
+Random.seed!(1969) # for reproducible results
 using CairoMakie
 using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
 
