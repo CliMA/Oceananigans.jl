@@ -112,7 +112,7 @@ grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
   true
   ```
 - Example of what TO do:
-  ```julia
+  ```jldoctest
   x, y, z = spherical_coordinates(0.0, 0.0)
   (x, y, z)  # GOOD: shows the actual output
   # output
