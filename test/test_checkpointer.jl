@@ -1680,6 +1680,61 @@ function test_checkpoint_at_end(arch)
     return nothing
 end
 
+"""
+Test checkpointing for models with OpenBoundaryCondition using PerturbationAdvection.
+Verifies that every element of model.boundary_mass_fluxes is correctly saved and restored.
+"""
+function test_open_boundary_perturbation_advection_checkpointing(arch, timestepper)
+    Nx, Ny, Nz = 4, 4, 4
+    Δt = 0.5
+
+    function make_model()
+        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(10, 10, 10))
+        u_west_obc = OpenBoundaryCondition(0.1, scheme=PerturbationAdvection(inflow_timescale=2.0))
+        u_bcs = FieldBoundaryConditions(west=u_west_obc)
+        return NonhydrostaticModel(grid; timestepper, boundary_conditions=(u=u_bcs,), tracers=:c)
+    end
+
+    # Run simulation and checkpoint
+    model = make_model()
+    set!(model, c=1)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=3)
+
+    prefix = "obc_perturbation_checkpoint_$(timestepper)_$(typeof(arch))"
+    simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(3), prefix=prefix)
+    @test_nowarn run!(simulation)
+
+    # Store original boundary mass fluxes
+    original_bmf = model.boundary_mass_fluxes
+
+    # Restore from checkpoint and verify boundary_mass_fluxes match exactly
+    restored_model = make_model()
+    restored_simulation = Simulation(restored_model, Δt=Δt, stop_iteration=3)
+    @test_nowarn set!(restored_simulation; checkpoint=:latest)
+
+    restored_bmf = restored_model.boundary_mass_fluxes
+
+    # Test that structure is identical
+    @test propertynames(original_bmf) == propertynames(restored_bmf)
+
+    # Test that every element matches exactly
+    for field_name in propertynames(original_bmf)
+        original_field = getproperty(original_bmf, field_name)
+        restored_field = getproperty(restored_bmf, field_name)
+
+        if original_field isa Field
+            @test all(interior(original_field) .== interior(restored_field))
+            @test size(original_field) == size(restored_field)
+        else
+            @test original_field == restored_field
+        end
+    end
+
+    # Clean up
+    rm.(glob(prefix * "*"), force=true)
+    return nothing
+end
+
 for arch in archs
     for model_type in (:nonhydrostatic, :hydrostatic)
         for pickup_method in (:boolean, :iteration, :filepath)
@@ -1842,6 +1897,13 @@ for arch in archs
         @testset "WindowedTimeAverage continuation correctness [$WriterType] [$(typeof(arch))]" begin
             @info "  Testing WindowedTimeAverage continuation correctness [$WriterType] [$(typeof(arch))]..."
             test_windowed_time_average_continuation_correctness(arch, WriterType)
+        end
+    end
+
+    for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
+        @testset "OpenBoundaryCondition with PerturbationAdvection checkpointing [$(typeof(arch)), $timestepper]" begin
+            @info "  Testing OpenBoundaryCondition with PerturbationAdvection checkpointing [$(typeof(arch)), $timestepper]..."
+            test_open_boundary_perturbation_advection_checkpointing(arch, timestepper)
         end
     end
 
