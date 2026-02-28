@@ -1681,16 +1681,16 @@ function test_checkpoint_at_end(arch)
 end
 
 """
-Test checkpointing for models with OpenBoundaryCondition using PerturbationAdvection.
+Test checkpointing for models with OpenBoundaryCondition using the specified scheme.
 Verifies that every element of model.boundary_mass_fluxes is correctly saved and restored.
 """
-function test_open_boundary_perturbation_advection_checkpointing(arch, timestepper)
+function test_open_boundary_condition_scheme_checkpointing(arch, timestepper, scheme)
     Nx, Ny, Nz = 4, 4, 4
     Δt = 0.5
 
     function make_model()
         grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(10, 10, 10))
-        u_west_obc = OpenBoundaryCondition(0.1, scheme=PerturbationAdvection(inflow_timescale=2.0))
+        u_west_obc = OpenBoundaryCondition(0.1, scheme=scheme)
         u_bcs = FieldBoundaryConditions(west=u_west_obc)
         return NonhydrostaticModel(grid; timestepper, boundary_conditions=(u=u_bcs,), tracers=:c)
     end
@@ -1700,7 +1700,8 @@ function test_open_boundary_perturbation_advection_checkpointing(arch, timestepp
     set!(model, c=1)
     simulation = Simulation(model, Δt=Δt, stop_iteration=3)
 
-    prefix = "obc_perturbation_checkpoint_$(timestepper)_$(typeof(arch))"
+    scheme_name = replace(string(typeof(scheme)), "." => "_")
+    prefix = "obc_$(scheme_name)_checkpoint_$(timestepper)_$(typeof(arch))"
     simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(3), prefix=prefix)
     @test_nowarn run!(simulation)
 
@@ -1900,10 +1901,15 @@ for arch in archs
         end
     end
 
-    for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3)
-        @testset "OpenBoundaryCondition with PerturbationAdvection checkpointing [$(typeof(arch)), $timestepper]" begin
-            @info "  Testing OpenBoundaryCondition with PerturbationAdvection checkpointing [$(typeof(arch)), $timestepper]..."
-            test_open_boundary_perturbation_advection_checkpointing(arch, timestepper)
+    schemes = [
+        PerturbationAdvection(inflow_timescale=2, outflow_timescale=1),
+    ]
+
+    for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3), scheme in schemes
+        scheme_name = replace(string(typeof(scheme)), "." => "_")
+        @testset "OpenBoundaryCondition with $scheme_name checkpointing [$(typeof(arch)), $timestepper]" begin
+            @info "  Testing OpenBoundaryCondition with $scheme_name checkpointing [$(typeof(arch)), $timestepper]..."
+            test_open_boundary_condition_scheme_checkpointing(arch, timestepper, scheme)
         end
     end
 
