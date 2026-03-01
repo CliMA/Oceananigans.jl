@@ -135,7 +135,6 @@ Detailed reference docs are in `.agents/` — read on demand:
 | `.agents/testing.md` | Full testing guidelines, running tests, debugging |
 | `.agents/documentation.md` | Building docs, fast builds, doctest details, writing examples |
 | `.agents/validation.md` | Reproducing paper results step-by-step |
-| `.agents/physics.md` | Ocean/fluid dynamics and numerical methods background |
 
 ### Auto-loading Rules
 
