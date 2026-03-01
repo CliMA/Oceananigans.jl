@@ -1744,7 +1744,7 @@ function test_open_boundary_condition_scheme_checkpointing(arch, timestepper, sc
     @test restored_simulation.model.clock.time ≈ 6 * Δt
 
     # Clean up
-    rm.(glob(prefix * "*"), force=true)
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
     return nothing
 end
 
