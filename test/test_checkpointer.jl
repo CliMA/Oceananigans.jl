@@ -1733,13 +1733,7 @@ function test_open_boundary_condition_scheme_checkpointing(arch, timestepper, sc
     for field_name in propertynames(original_bmf)
         original_field = getproperty(original_bmf, field_name)
         restored_field = getproperty(restored_bmf, field_name)
-
-        if original_field isa Field
-            @test all(interior(original_field) .== interior(restored_field))
-            @test size(original_field) == size(restored_field)
-        else
-            @test original_field == restored_field
-        end
+        @test original_field == restored_field
     end
 
     # Test that the restored simulation can continue running
