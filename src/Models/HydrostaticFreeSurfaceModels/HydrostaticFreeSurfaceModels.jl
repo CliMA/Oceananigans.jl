@@ -3,7 +3,7 @@ module HydrostaticFreeSurfaceModels
 export
     HydrostaticFreeSurfaceModel,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
-    PrescribedVelocityFields, ZStarCoordinate, ZCoordinate
+    PrescribedVelocityFields, DiagnosticVerticalVelocity, PrescribedFreeSurface, ZStarCoordinate, ZCoordinate
 
 using KernelAbstractions: @index, @kernel
 using Adapt: Adapt
