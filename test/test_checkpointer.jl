@@ -1681,39 +1681,50 @@ function test_checkpoint_at_end(arch)
 end
 
 """
-Test checkpointing for models with OpenBoundaryCondition using the specified scheme.
-Verifies that every element of model.boundary_mass_fluxes is correctly saved and restored.
+Test checkpointing for simulations with OpenBoundaryCondition using the specified scheme.
+Uses a make_simulation() function to create identical simulations for testing.
+Verifies that:
+1. Every element of model.boundary_mass_fluxes is correctly saved and restored
+2. The restored simulation can continue running from the checkpoint
+3. Simulation state (iteration, time) is properly restored
+
+# Arguments
+- `arch`: Architecture (CPU, GPU, etc.)
+- `timestepper`: Time stepping scheme (:QuasiAdamsBashforth2, :RungeKutta3, etc.)
+- `scheme`: OpenBoundaryCondition scheme (e.g., PerturbationAdvection(...))
 """
 function test_open_boundary_condition_scheme_checkpointing(arch, timestepper, scheme)
     Nx, Ny, Nz = 4, 4, 4
     Δt = 0.5
 
-    function make_model()
+    function make_simulation(stop_iteration)
         grid = RectilinearGrid(arch, topology=(Bounded, Bounded, Bounded), size=(Nx, Ny, Nz), extent=(10, 10, 10))
         obc = OpenBoundaryCondition(0.1, scheme=scheme)
         u_bcs = FieldBoundaryConditions(west=obc, east=obc)
-        return NonhydrostaticModel(grid; timestepper, boundary_conditions=(u=u_bcs,), tracers=:c)
+        model = NonhydrostaticModel(grid; timestepper, boundary_conditions=(u=u_bcs,), tracers=:c)
+        set!(model, c=1)
+        return Simulation(model, Δt=Δt, stop_iteration=stop_iteration)
     end
 
     # Run simulation and checkpoint
-    model = make_model()
-    set!(model, c=1)
-    simulation = Simulation(model, Δt=Δt, stop_iteration=3)
+    simulation = make_simulation(3)
 
     scheme_name = replace(string(typeof(scheme)), "." => "_")
     prefix = "obc_$(scheme_name)_checkpoint_$(timestepper)_$(typeof(arch))"
-    simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(3), prefix=prefix)
+    simulation.output_writers[:checkpointer] = Checkpointer(simulation.model, schedule=IterationInterval(3), prefix=prefix)
     @test_nowarn run!(simulation)
 
     # Store original boundary mass fluxes
-    original_bmf = model.boundary_mass_fluxes
+    original_bmf = simulation.model.boundary_mass_fluxes
 
-    # Restore from checkpoint and verify boundary_mass_fluxes match exactly
-    restored_model = make_model()
-    restored_simulation = Simulation(restored_model, Δt=Δt, stop_iteration=3)
+    # Restore entire simulation from checkpoint and verify boundary_mass_fluxes match exactly
+    restored_simulation = make_simulation(6)
+    restored_simulation.output_writers[:checkpointer] = Checkpointer(restored_simulation.model,
+                                                                     schedule=IterationInterval(3),
+                                                                     prefix=prefix)
     @test_nowarn set!(restored_simulation; checkpoint=:latest)
 
-    restored_bmf = restored_model.boundary_mass_fluxes
+    restored_bmf = restored_simulation.model.boundary_mass_fluxes
 
     # Test that structure is identical
     @test propertynames(original_bmf) == propertynames(restored_bmf)
@@ -1730,6 +1741,13 @@ function test_open_boundary_condition_scheme_checkpointing(arch, timestepper, sc
             @test original_field == restored_field
         end
     end
+
+    # Test that the restored simulation can continue running
+    @test_nowarn run!(restored_simulation)
+
+    # Verify simulation state after continuation
+    @test restored_simulation.model.clock.iteration == 6
+    @test restored_simulation.model.clock.time ≈ 6 * Δt
 
     # Clean up
     rm.(glob(prefix * "*"), force=true)
