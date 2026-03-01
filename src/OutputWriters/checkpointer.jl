@@ -319,6 +319,11 @@ function restore_prognostic_state!(restored::OffsetArray, from::OffsetArray)
     return restore_prognostic_state!(restored_parent, from_parent)
 end
 
+function restore_prognostic_state!(restored::Number, from::Number)
+    restored = from
+    return restored
+end
+
 #####
 ##### Manual checkpointing
 #####
