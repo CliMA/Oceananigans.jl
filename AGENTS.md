@@ -132,10 +132,12 @@ Detailed reference docs are in `.agents/` — read on demand:
 
 | Document | Content |
 |----------|---------|
-| [`.agents/testing.md`](.agents/testing.md) | Full testing guidelines, running tests, debugging |
-| [`.agents/documentation.md`](.agents/documentation.md) | Building docs, fast builds, doctest details, writing examples |
-| [`.agents/validation.md`](.agents/validation.md) | Reproducing paper results step-by-step |
-| [`.agents/physics.md`](.agents/physics.md) | Ocean/fluid dynamics and numerical methods background |
+| `.agents/testing.md` | Full testing guidelines, running tests, debugging |
+| `.agents/documentation.md` | Building docs, fast builds, doctest details, writing examples |
+| `.agents/validation.md` | Reproducing paper results step-by-step |
+| `.agents/physics.md` | Ocean/fluid dynamics and numerical methods background |
+| `.agents/mcprepl.md` | MCPRepl.jl setup for interactive Julia REPL via MCP |
+| `.agents/important-files.md` | Key files and directories to know |
 
 ### Auto-loading Rules
 
