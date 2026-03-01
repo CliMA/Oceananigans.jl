@@ -24,6 +24,9 @@
 
 using Oceananigans
 using Oceananigans.Units
+using Random
+
+Random.seed!(42) # for reproducible results
 
 Lx = 200meters
 Lz = 100meters
