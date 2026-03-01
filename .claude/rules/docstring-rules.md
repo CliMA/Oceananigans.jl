@@ -15,7 +15,7 @@ paths:
 Plain code blocks (`` ```julia ``) are NOT tested and can become stale or incorrect.
 Doctests (`` ```jldoctest ``) are automatically tested and verified to work.
 
-### Correct - use `jldoctest`:
+### Example:
 
 ~~~~
 """
@@ -31,19 +31,6 @@ typeof(grid)
 
 # output
 RectilinearGrid{Float64, Periodic, Periodic, Bounded, Nothing, Nothing, Nothing, Nothing}
-```
-"""
-~~~~
-
-### Wrong - never use plain `julia` blocks:
-
-~~~~
-"""
-    my_function(x)
-
-```julia
-# This code is NOT tested and may be wrong!
-grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
 ```
 """
 ~~~~
