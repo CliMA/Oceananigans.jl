@@ -1689,9 +1689,9 @@ function test_open_boundary_condition_scheme_checkpointing(arch, timestepper, sc
     Δt = 0.5
 
     function make_model()
-        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(10, 10, 10))
-        u_west_obc = OpenBoundaryCondition(0.1, scheme=scheme)
-        u_bcs = FieldBoundaryConditions(west=u_west_obc)
+        grid = RectilinearGrid(arch, topology=(Bounded, Bounded, Bounded), size=(Nx, Ny, Nz), extent=(10, 10, 10))
+        obc = OpenBoundaryCondition(0.1, scheme=scheme)
+        u_bcs = FieldBoundaryConditions(west=obc, east=obc)
         return NonhydrostaticModel(grid; timestepper, boundary_conditions=(u=u_bcs,), tracers=:c)
     end
 
