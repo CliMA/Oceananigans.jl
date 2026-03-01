@@ -136,8 +136,6 @@ Detailed reference docs are in `.agents/` — read on demand:
 | `.agents/documentation.md` | Building docs, fast builds, doctest details, writing examples |
 | `.agents/validation.md` | Reproducing paper results step-by-step |
 | `.agents/physics.md` | Ocean/fluid dynamics and numerical methods background |
-| `.agents/mcprepl.md` | MCPRepl.jl setup for interactive Julia REPL via MCP |
-| `.agents/important-files.md` | Key files and directories to know |
 
 ### Auto-loading Rules
 
