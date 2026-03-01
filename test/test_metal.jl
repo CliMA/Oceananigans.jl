@@ -10,6 +10,7 @@ Oceananigans.defaults.FloatType = Float32
 # * https://github.com/CliMA/Oceananigans.jl/pull/4124#discussion_r1976449272
 # * https://github.com/CliMA/Oceananigans.jl/pull/4152
 
+
 @testset "MetalGPU extension" begin
     metal = Metal.MetalBackend()
     arch = GPU(metal)
@@ -72,7 +73,7 @@ end
 
     @test eltype(grid) == Float32
 
-    Qᵀ = 1e-4
+    Qᵀ = -1e-4 # downward heat flux
     T_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(Qᵀ))
 
     Qᵘ = -1e-4
@@ -97,6 +98,8 @@ end
 
     @test iteration(simulation) == 10
     @test time(simulation) == 10seconds
+    @test maximum(simulation.model.tracers.T) > 0.01
+    @test maximum(simulation.model.velocities.u) > 0.01
 end
 
 @testset "MetalGPU: test for reductions" begin
