@@ -375,8 +375,10 @@ end
 
 # Copy interior data from old grid into a new Field, then fill halos
 # using the proper boundary conditions (periodic in x, fold at north, no-flux at south).
-function transfer_horizontal_field(old_data, bcs, LX, LY)
-    new_field = Field{LX, LY, Center}(helper_grid; boundary_conditions=bcs)
+function transfer_horizontal_field(old_data, helper_grid, bcs, LX, LY)
+    TX, TY, _ = topology(helper_grid)
+    Nx, Ny, _ = size(helper_grid)
+    new_field = Field{LX, LY, Center}(helper_grid; boundary_conditions = bcs)
     Ni = Base.length(LX(), TX(), Nx)
     Nj = Base.length(LY(), TY(), Ny)
     cpu_old_data = on_architecture(CPU(), old_data)
@@ -413,31 +415,30 @@ function Grids.with_halo(new_halo, old_grid::TripolarGrid)
                                   top    = nothing,
                                   bottom = nothing)
 
-    λᶜᶜᵃ = transfer_horizontal_field(old_grid.λᶜᶜᵃ, bcs, Center, Center)
-    λᶠᶜᵃ = transfer_horizontal_field(old_grid.λᶠᶜᵃ, bcs, Face,   Center)
-    λᶜᶠᵃ = transfer_horizontal_field(old_grid.λᶜᶠᵃ, bcs, Center, Face)
-    λᶠᶠᵃ = transfer_horizontal_field(old_grid.λᶠᶠᵃ, bcs, Face,   Face)
+    λᶜᶜᵃ  = transfer_horizontal_field(old_grid.λᶜᶜᵃ,  helper_grid, bcs, Center, Center)
+    λᶠᶜᵃ  = transfer_horizontal_field(old_grid.λᶠᶜᵃ,  helper_grid, bcs, Face,   Center)
+    λᶜᶠᵃ  = transfer_horizontal_field(old_grid.λᶜᶠᵃ,  helper_grid, bcs, Center, Face)
+    λᶠᶠᵃ  = transfer_horizontal_field(old_grid.λᶠᶠᵃ,  helper_grid, bcs, Face,   Face)
 
-    φᶜᶜᵃ = transfer_horizontal_field(old_grid.φᶜᶜᵃ, bcs, Center, Center)
-    φᶠᶜᵃ = transfer_horizontal_field(old_grid.φᶠᶜᵃ, bcs, Face,   Center)
-    φᶜᶠᵃ = transfer_horizontal_field(old_grid.φᶜᶠᵃ, bcs, Center, Face)
-    φᶠᶠᵃ = transfer_horizontal_field(old_grid.φᶠᶠᵃ, bcs, Face,   Face)
+    φᶜᶜᵃ  = transfer_horizontal_field(old_grid.φᶜᶜᵃ,  helper_grid, bcs, Center, Center)
+    φᶠᶜᵃ  = transfer_horizontal_field(old_grid.φᶠᶜᵃ,  helper_grid, bcs, Face,   Center)
+    φᶜᶠᵃ  = transfer_horizontal_field(old_grid.φᶜᶠᵃ,  helper_grid, bcs, Center, Face)
+    φᶠᶠᵃ  = transfer_horizontal_field(old_grid.φᶠᶠᵃ,  helper_grid, bcs, Face,   Face)
 
-    # Transfer all metric fields
-    Δxᶜᶜᵃ = transfer_horizontal_field(old_grid.Δxᶜᶜᵃ, bcs, Center, Center)
-    Δxᶠᶜᵃ = transfer_horizontal_field(old_grid.Δxᶠᶜᵃ, bcs, Face,   Center)
-    Δxᶜᶠᵃ = transfer_horizontal_field(old_grid.Δxᶜᶠᵃ, bcs, Center, Face)
-    Δxᶠᶠᵃ = transfer_horizontal_field(old_grid.Δxᶠᶠᵃ, bcs, Face,   Face)
+    Δxᶜᶜᵃ = transfer_horizontal_field(old_grid.Δxᶜᶜᵃ, helper_grid, bcs, Center, Center)
+    Δxᶠᶜᵃ = transfer_horizontal_field(old_grid.Δxᶠᶜᵃ, helper_grid, bcs, Face,   Center)
+    Δxᶜᶠᵃ = transfer_horizontal_field(old_grid.Δxᶜᶠᵃ, helper_grid, bcs, Center, Face)
+    Δxᶠᶠᵃ = transfer_horizontal_field(old_grid.Δxᶠᶠᵃ, helper_grid, bcs, Face,   Face)
 
-    Δyᶜᶜᵃ = transfer_horizontal_field(old_grid.Δyᶜᶜᵃ, bcs, Center, Center)
-    Δyᶠᶜᵃ = transfer_horizontal_field(old_grid.Δyᶠᶜᵃ, bcs, Face,   Center)
-    Δyᶜᶠᵃ = transfer_horizontal_field(old_grid.Δyᶜᶠᵃ, bcs, Center, Face)
-    Δyᶠᶠᵃ = transfer_horizontal_field(old_grid.Δyᶠᶠᵃ, bcs, Face,   Face)
+    Δyᶜᶜᵃ = transfer_horizontal_field(old_grid.Δyᶜᶜᵃ, helper_grid, bcs, Center, Center)
+    Δyᶠᶜᵃ = transfer_horizontal_field(old_grid.Δyᶠᶜᵃ, helper_grid, bcs, Face,   Center)
+    Δyᶜᶠᵃ = transfer_horizontal_field(old_grid.Δyᶜᶠᵃ, helper_grid, bcs, Center, Face)
+    Δyᶠᶠᵃ = transfer_horizontal_field(old_grid.Δyᶠᶠᵃ, helper_grid, bcs, Face,   Face)
 
-    Azᶜᶜᵃ = transfer_horizontal_field(old_grid.Azᶜᶜᵃ, bcs, Center, Center)
-    Azᶠᶜᵃ = transfer_horizontal_field(old_grid.Azᶠᶜᵃ, bcs, Face,   Center)
-    Azᶜᶠᵃ = transfer_horizontal_field(old_grid.Azᶜᶠᵃ, bcs, Center, Face)
-    Azᶠᶠᵃ = transfer_horizontal_field(old_grid.Azᶠᶠᵃ, bcs, Face,   Face)
+    Azᶜᶜᵃ = transfer_horizontal_field(old_grid.Azᶜᶜᵃ, helper_grid, bcs, Center, Center)
+    Azᶠᶜᵃ = transfer_horizontal_field(old_grid.Azᶠᶜᵃ, helper_grid, bcs, Face,   Center)
+    Azᶜᶠᵃ = transfer_horizontal_field(old_grid.Azᶜᶠᵃ, helper_grid, bcs, Center, Face)
+    Azᶠᶠᵃ = transfer_horizontal_field(old_grid.Azᶠᶠᵃ, helper_grid, bcs, Face,   Face)
 
     new_grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(arch,
                                                          Nx, Ny, Nz,

@@ -346,13 +346,14 @@ using Oceananigans.Grids: with_halo, topology, halo_size
                 @test all(old_cpu[1:Nx, 1:Ny] .== new_cpu[1:Nx, 1:Ny])
             end
 
-            # Longitudes may differ by multiples of 360° at the fold row (physically identical)
+            # Longitudes may differ by multiples of 180° at the fold row
+            # (the fold BC can wrap longitudes or map to antipodal points at pivots)
             for (old_f, new_f) in [(grid.λᶜᶜᵃ, new_grid.λᶜᶜᵃ), (grid.λᶠᶜᵃ, new_grid.λᶠᶜᵃ),
                                    (grid.λᶜᶠᵃ, new_grid.λᶜᶠᵃ), (grid.λᶠᶠᵃ, new_grid.λᶠᶠᵃ)]
                 old_cpu = on_architecture(CPU(), old_f)
                 new_cpu = on_architecture(CPU(), new_f)
                 diff = old_cpu[1:Nx, 1:Ny] .- new_cpu[1:Nx, 1:Ny]
-                @test all(mod.(diff, 360) .≈ 0)
+                @test all(mod.(diff, 180) .≈ 0)
             end
         end
     end
