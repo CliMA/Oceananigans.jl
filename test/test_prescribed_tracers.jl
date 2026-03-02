@@ -33,7 +33,7 @@ using Oceananigans.OutputReaders: FieldTimeSeries, InMemory
                 tracers = (b = PrescribedTracer(b_fts),))
 
             # Time-step the model
-            time_step!(model, 1.0)
+            time_step!(model, 1)
 
             # Prescribed tracer b should be a TimeSeriesInterpolation, not a Field
             @test !(model.tracers.b isa Field)
@@ -65,7 +65,7 @@ using Oceananigans.OutputReaders: FieldTimeSeries, InMemory
 
             # Time-step the model
             for _ in 1:5
-                time_step!(model, 1.0)
+                time_step!(model, 1)
             end
 
             @test !(model.tracers.b isa Field)
@@ -97,8 +97,8 @@ using Oceananigans.OutputReaders: FieldTimeSeries, InMemory
                 closure = closure,
                 tracers = (b = PrescribedTracer(b_fts), c = c_field))
 
-            set!(model, c = 1.0)
-            time_step!(model, 1.0)
+            set!(model, c = 1)
+            time_step!(model, 1)
 
             @test !(model.tracers.b isa Field)
             @test model.tracers.c isa Field
@@ -115,11 +115,11 @@ using Oceananigans.OutputReaders: FieldTimeSeries, InMemory
         @testset "Replicate GM test with prescribed tracer [$arch]" begin
             @info "  Testing GM replication with prescribed tracer [$arch]..."
 
-            nx = 8
-            nz = 8
+            Nx = 8
+            Nz = 8
 
             grid = RectilinearGrid(arch,
-                                   size = (nx, nz),
+                                   size = (Nx, Nz),
                                    x = (0, 1),
                                    z = (-1, 0),
                                    topology = (Bounded, Flat, Bounded))
@@ -132,10 +132,10 @@ using Oceananigans.OutputReaders: FieldTimeSeries, InMemory
                 closure = closure,
                 tracers = (:b, :c))
 
-            set!(model1, b = (x, z) -> x / 10000, c = 1.0)
+            set!(model1, b = (x, z) -> x / 10000, c = 1)
 
             Nsteps = 5
-            Δt = 1.0
+            Δt = 1
 
             # Save b field at each time step
             saved_times = Float64[0.0]
@@ -164,7 +164,7 @@ using Oceananigans.OutputReaders: FieldTimeSeries, InMemory
                 closure = closure,
                 tracers = (b = PrescribedTracer(b_fts), c = c_field))
 
-            set!(model2, c = 1.0)
+            set!(model2, c = 1)
 
             for n in 1:Nsteps
                 time_step!(model2, Δt)
@@ -191,11 +191,11 @@ using Oceananigans.OutputReaders: FieldTimeSeries, InMemory
         @testset "Analytical isopycnal slope with prescribed tracer [$arch]" begin
             @info "  Testing analytical isopycnal slope [$arch]..."
 
-            nx = 4
-            nz = 4
+            Nx = 4
+            Nz = 4
 
             grid = RectilinearGrid(arch,
-                                   size = (nx, nz),
+                                   size = (Nx, Nz),
                                    x = (0, 1e5),
                                    z = (-1e3, 0),
                                    topology = (Bounded, Flat, Bounded))
@@ -214,7 +214,7 @@ using Oceananigans.OutputReaders: FieldTimeSeries, InMemory
                 tracers = (b = PrescribedTracer(b_func),))
 
             # Trigger state update which computes closure fields
-            time_step!(model, 1.0)
+            time_step!(model, 1)
 
             # Expected isopycnal slope
             Sx = M² / N²  # = 0.01
@@ -228,7 +228,7 @@ using Oceananigans.OutputReaders: FieldTimeSeries, InMemory
             ϵ_R₃₃ = interior(model.closure_fields.ϵ_R₃₃)
 
             # Check interior points (avoiding boundaries where stencils may differ)
-            for i in 2:nx-1, k in 2:nz
+            for i in 2:Nx-1, k in 2:Nz
                 @test ϵ_R₃₃[i, 1, k] ≈ expected_R₃₃ atol=1e-10
             end
         end

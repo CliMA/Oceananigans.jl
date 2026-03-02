@@ -80,8 +80,9 @@ end
 compute_free_surface_tendency!(grid, model, free_surface) = nothing
 
 @inline function top_tracer_boundary_conditions(grid, tracers)
-    names = Tuple(n for n in propertynames(tracers) if !is_prescribed_tracer(tracers[n]))
-    values = Tuple(tracers[c].boundary_conditions.top for c in names)
+    prog = prognostic_tracers(tracers)
+    names = propertynames(prog)
+    values = Tuple(prog[c].boundary_conditions.top for c in names)
 
     # Some shenanigans for type stability?
     return NamedTuple{names}(tuple(values...))
@@ -101,37 +102,42 @@ function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active
     grid = model.grid
 
     for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
-
-        # Skip prescribed (non-prognostic) tracers — they have no tendency fields
-        is_prescribed_tracer(model.tracers[tracer_name]) && continue
-
-        @inbounds c_tendency    = model.timestepper.Gⁿ[tracer_name]
-        @inbounds c_advection   = model.advection[tracer_name]
-        @inbounds c_forcing     = model.forcing[tracer_name]
-        @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
-
-        args = tuple(Val(tracer_index),
-                     Val(tracer_name),
-                     c_advection,
-                     model.closure,
-                     c_immersed_bc,
-                     model.buoyancy,
-                     model.biogeochemistry,
-                     model.transport_velocities,
-                     model.free_surface,
-                     model.tracers,
-                     model.closure_fields,
-                     model.auxiliary_fields,
-                     model.clock,
-                     c_forcing)
-
-        launch!(arch, grid, kernel_parameters,
-                compute_hydrostatic_free_surface_Gc!,
-                c_tendency,
-                grid,
-                args;
-                active_cells_map)
+        _compute_tracer_tendency!(model.tracers[tracer_name], model, tracer_index, tracer_name,
+                                  kernel_parameters, arch, grid; active_cells_map)
     end
+
+    return nothing
+end
+
+function _compute_tracer_tendency!(tracer, model, tracer_index, tracer_name,
+                                   kernel_parameters, arch, grid; active_cells_map=nothing)
+
+    @inbounds c_tendency    = model.timestepper.Gⁿ[tracer_name]
+    @inbounds c_advection   = model.advection[tracer_name]
+    @inbounds c_forcing     = model.forcing[tracer_name]
+    @inbounds c_immersed_bc = immersed_boundary_condition(tracer)
+
+    args = tuple(Val(tracer_index),
+                 Val(tracer_name),
+                 c_advection,
+                 model.closure,
+                 c_immersed_bc,
+                 model.buoyancy,
+                 model.biogeochemistry,
+                 model.transport_velocities,
+                 model.free_surface,
+                 model.tracers,
+                 model.closure_fields,
+                 model.auxiliary_fields,
+                 model.clock,
+                 c_forcing)
+
+    launch!(arch, grid, kernel_parameters,
+            compute_hydrostatic_free_surface_Gc!,
+            c_tendency,
+            grid,
+            args;
+            active_cells_map)
 
     return nothing
 end

@@ -103,9 +103,6 @@ include("implicit_free_surface.jl")
 # ZStarCoordinate implementation
 include("z_star_coordinate.jl")
 
-# Prescribed tracers
-include("prescribed_tracers.jl")
-
 # Hydrostatic model implementation
 include("hydrostatic_free_surface_model.jl")
 include("show_hydrostatic_free_surface_model.jl")

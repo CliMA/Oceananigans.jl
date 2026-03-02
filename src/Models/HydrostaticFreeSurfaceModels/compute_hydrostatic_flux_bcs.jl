@@ -30,9 +30,8 @@ end
     arch = architecture(grid)
     args = (model.clock, fields(model), model.closure, model.buoyancy)
 
-    for i in propertynames(model.tracers)
-        is_prescribed_tracer(model.tracers[i]) && continue
-        compute_flux_bcs!(Gⁿ[i], model.tracers[i], arch, args)
+    for name in propertynames(model.tracers)
+        compute_flux_bcs!(get(Gⁿ, name, nothing), model.tracers[name], arch, args)
     end
 
     return nothing
