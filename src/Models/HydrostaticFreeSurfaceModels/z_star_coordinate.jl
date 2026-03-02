@@ -154,6 +154,7 @@ function scale_by_stretching_factor!(Gⁿ, tracers, grid::MutableGridOfSomeKind)
     # Multiply the Gⁿ tendencies by the grid scaling
     for i in propertynames(tracers)
         @inbounds G = Gⁿ[i]
+        isnothing(G) && continue
         launch!(architecture(grid), grid, :xyz, _scale_by_stretching_factor!, G, grid)
     end
 

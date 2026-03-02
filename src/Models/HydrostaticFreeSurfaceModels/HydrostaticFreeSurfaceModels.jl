@@ -156,7 +156,9 @@ Return a flattened `NamedTuple` of the prognostic fields associated with `Hydros
                                                                        V = free_surface.barotropic_velocities.V)
 
 @inline hydrostatic_prognostic_fields(velocities, free_surface, tracers) =
-    merge(horizontal_velocities(velocities), prognostic_tracers(tracers), free_surface_fields(free_surface))
+    merge(horizontal_velocities(velocities),
+          filter(c -> !(c isa PrescribedField), tracers),
+          free_surface_fields(free_surface))
 
 # Include vertical velocity
 @inline hydrostatic_fields(velocities, free_surface, tracers) =

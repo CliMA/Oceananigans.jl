@@ -69,7 +69,7 @@ function compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel)
     complete_communication_and_compute_tracer_buffer!(model, grid, arch)
     compute_tracer_flux_bcs!(model)
 
-    scale_by_stretching_factor!(model.timestepper.Gⁿ, prognostic_tracers(model.tracers), model.grid)
+    scale_by_stretching_factor!(model.timestepper.Gⁿ, model.tracers, model.grid)
 
     update_tendencies!(model.biogeochemistry, model)
 
@@ -80,11 +80,9 @@ end
 compute_free_surface_tendency!(grid, model, free_surface) = nothing
 
 @inline function top_tracer_boundary_conditions(grid, tracers)
-    prog = prognostic_tracers(tracers)
-    names = propertynames(prog)
-    values = Tuple(prog[c].boundary_conditions.top for c in names)
-
-    # Some shenanigans for type stability?
+    names = Tuple(n for n in propertynames(tracers) if !(tracers[n] isa PrescribedField))
+    isempty(names) && return NamedTuple()
+    values = Tuple(tracers[c].boundary_conditions.top for c in names)
     return NamedTuple{names}(tuple(values...))
 end
 
