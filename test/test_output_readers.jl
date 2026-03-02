@@ -816,6 +816,46 @@ end
         @test fts_x[grid.Nx + 1, 2, 2, 1] == 3.0
     end
 
+    @testset "Reduced TimeSeriesInterpolation indexing collapses reduced dimensions" begin
+        @info "  Testing reduced TimeSeriesInterpolation indexing..."
+        using Oceananigans.TimeSteppers: Clock
+        using Oceananigans.OutputReaders: TimeSeriesInterpolation
+
+        grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+        times = [0.0, 1.0]
+        clock = Clock(time=0.0)
+
+        # z-reduced TSI should collapse k to 1
+        fts_z = FieldTimeSeries{Center, Center, Nothing}(grid, times)
+        field_z = Field{Center, Center, Nothing}(grid)
+        set!(field_z, 1.0)
+        set!(fts_z, field_z, 1)
+        set!(fts_z, field_z, 2)
+        tsi_z = TimeSeriesInterpolation(fts_z, grid; clock)
+        @test tsi_z[2, 2, 1] == 1.0
+        @test tsi_z[2, 2, grid.Nz + 1] == 1.0  # k collapsed to 1
+
+        # y-reduced TSI
+        fts_y = FieldTimeSeries{Center, Nothing, Center}(grid, times)
+        field_y = Field{Center, Nothing, Center}(grid)
+        set!(field_y, 2.0)
+        set!(fts_y, field_y, 1)
+        set!(fts_y, field_y, 2)
+        tsi_y = TimeSeriesInterpolation(fts_y, grid; clock)
+        @test tsi_y[2, 1, 2] == 2.0
+        @test tsi_y[2, grid.Ny + 1, 2] == 2.0  # j collapsed to 1
+
+        # x-reduced TSI
+        fts_x = FieldTimeSeries{Nothing, Center, Center}(grid, times)
+        field_x = Field{Nothing, Center, Center}(grid)
+        set!(field_x, 3.0)
+        set!(fts_x, field_x, 1)
+        set!(fts_x, field_x, 2)
+        tsi_x = TimeSeriesInterpolation(fts_x, grid; clock)
+        @test tsi_x[1, 2, 2] == 3.0
+        @test tsi_x[grid.Nx + 1, 2, 2] == 3.0  # i collapsed to 1
+    end
+
     @testset "Time Interpolation" begin
         test_time_interpolation()
     end
