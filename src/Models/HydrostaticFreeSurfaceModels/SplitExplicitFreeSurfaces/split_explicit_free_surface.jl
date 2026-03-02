@@ -192,46 +192,13 @@ split_explicit_substepping(::Nothing, ::Nothing, ::Nothing, grid, averaging_kern
 split_explicit_substepping(::Nothing, ::Nothing, fixed_Δt, grid, averaging_kernel, gravitational_acceleration) =
     split_explicit_substepping(nothing, MINIMUM_SUBSTEPS, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
 
-# Convert baroclinic boundary conditions to barotropic boundary conditions.
-# Any Open BC on the 3D velocity is converted to a Flather OBC for the
-# barotropic transport, with zero external values by default.
-@inline barotropic_boundary_condition(bc, g) = bc
-@inline barotropic_boundary_condition(bc::BoundaryCondition{<:Open}, g) =
-    OpenBoundaryCondition(nothing; scheme = Flather(external_values = (η = 0.0, U = 0.0),
-                                                    gravitational_acceleration = g))
-
-@inline  west_barotropic_velocity_boundary_condition(baroclinic_velocity, g) = barotropic_boundary_condition(baroclinic_velocity.boundary_conditions.west, g)
-@inline  east_barotropic_velocity_boundary_condition(baroclinic_velocity, g) = barotropic_boundary_condition(baroclinic_velocity.boundary_conditions.east, g)
-@inline south_barotropic_velocity_boundary_condition(baroclinic_velocity, g) = barotropic_boundary_condition(baroclinic_velocity.boundary_conditions.south, g)
-@inline north_barotropic_velocity_boundary_condition(baroclinic_velocity, g) = barotropic_boundary_condition(baroclinic_velocity.boundary_conditions.north, g)
-
-# If already user-provided, keep the user-provided ones.
-@inline barotropic_velocity_boundary_conditions(baroclinic_velocity, user_bcs, g) =
-    FieldBoundaryConditions(west = user_bcs.west, 
-                            east = user_bcs.east, 
-                            south = user_bcs.south,
-                            north = user_bcs.north,
-                            top = nothing,
-                            bottom = nothing)
-
-@inline barotropic_velocity_boundary_conditions(baroclinic_velocity, ::Nothing, g) = FieldBoundaryConditions(
-    west   = west_barotropic_velocity_boundary_condition(baroclinic_velocity, g),
-    east   = east_barotropic_velocity_boundary_condition(baroclinic_velocity, g),
-    south  = south_barotropic_velocity_boundary_condition(baroclinic_velocity, g),
-    north  = north_barotropic_velocity_boundary_condition(baroclinic_velocity, g),
-    top    = nothing,
-    bottom = nothing
-)
-
 function hydrostatic_tendency_fields(velocities, free_surface::SplitExplicitFreeSurface, grid, tracer_names, bcs)
     u = XFaceField(grid, boundary_conditions=bcs.u)
     v = YFaceField(grid, boundary_conditions=bcs.v)
-    @apply_regionally U_bcs = barotropic_velocity_boundary_conditions(velocities.u, nothing, free_surface.gravitational_acceleration)
-    @apply_regionally V_bcs = barotropic_velocity_boundary_conditions(velocities.v, nothing, free_surface.gravitational_acceleration)
 
     free_surface_grid = free_surface.displacement.grid
-    U = Field{Face, Center, Nothing}(free_surface_grid, boundary_conditions=U_bcs)
-    V = Field{Center, Face, Nothing}(free_surface_grid, boundary_conditions=V_bcs)
+    U = Field{Face, Center, Nothing}(free_surface_grid, boundary_conditions=bcs.U)
+    V = Field{Center, Face, Nothing}(free_surface_grid, boundary_conditions=bcs.V)
 
     tracers = TracerFields(tracer_names, grid, bcs)
 
@@ -265,18 +232,12 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     u_baroclinic = velocities.u
     v_baroclinic = velocities.v
 
-    U_bcs = haskey(bcs, :U) ? bcs.U : nothing
-    V_bcs = haskey(bcs, :V) ? bcs.V : nothing
-    
-    @apply_regionally u_bcs = barotropic_velocity_boundary_conditions(u_baroclinic, U_bcs, gravitational_acceleration)
-    @apply_regionally v_bcs = barotropic_velocity_boundary_conditions(v_baroclinic, V_bcs, gravitational_acceleration)
-
-    U = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bcs)
-    V = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = v_bcs)
-    U̅ = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bcs)
-    V̅ = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = v_bcs)
-    Ũ = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bcs)
-    Ṽ = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = v_bcs)
+    U = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = bcs.U)
+    V = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = bcs.V)
+    U̅ = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = bcs.U)
+    V̅ = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = bcs.V)
+    Ũ = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = bcs.U)
+    Ṽ = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = bcs.V)
 
     filtered_state = (η̅ = η̅, U̅ = U̅, V̅ = V̅, Ũ = Ũ, Ṽ = Ṽ)
     barotropic_velocities = (U = U, V = V)

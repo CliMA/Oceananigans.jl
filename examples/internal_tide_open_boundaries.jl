@@ -88,8 +88,8 @@ const ωm = ω₂
 
 @inline tidal_forcing(i, grid::Oceananigans.Grids.AbstractGrid, clock) = Um * sin(ωm * clock.time) * 2kilometers
 
-u_east_bc = OpenBoundaryCondition(0; scheme = radiation) #, parameters=(; U₂, ω₂))
-u_west_bc = OpenBoundaryCondition(0; scheme = radiation) #, parameters=(; U₂, ω₂))
+u_east_bc = OpenBoundaryCondition(tidal_forcing; scheme = radiation, parameters=(; U₂, ω₂))
+u_west_bc = OpenBoundaryCondition(tidal_forcing; scheme = radiation, parameters=(; U₂, ω₂))
 u_bcs     = FieldBoundaryConditions(east = u_east_bc, west = u_west_bc)
 
 U_west_bc = OpenBoundaryCondition(nothing; scheme = Flather(external_values = (; U = tidal_forcing, η = 0)))
@@ -102,9 +102,9 @@ U_bcs     = FieldBoundaryConditions(grid, (Center(), Center(), nothing); east = 
 # the boundary, which drives reflected velocity waves. We nudge toward the
 # background stratification `N²z` on inflow.
 
-@inline b_bg(z, t) = Nᵢ² * z
-b_east_bc = OpenBoundaryCondition(b_bg; scheme = radiation)
-b_west_bc = OpenBoundaryCondition(b_bg; scheme = radiation)
+@inline b_background(z, t, Nᵢ²) = Nᵢ² * z
+b_east_bc = OpenBoundaryCondition(b_background; scheme = radiation, parameters = Nᵢ²)
+b_west_bc = OpenBoundaryCondition(b_background; scheme = radiation, parameters = Nᵢ²)
 b_bcs = FieldBoundaryConditions(east = b_east_bc, west = b_west_bc)
 
 # ## Sponge layers
@@ -153,7 +153,8 @@ b_sponge = Forcing(b_sponge_forcing, discrete_form = true, parameters = sponge_p
 
 free_surface = SplitExplicitFreeSurface(grid; substeps = 30, extend_halos = false)
 
-model = HydrostaticFreeSurfaceModel(grid; coriolis,
+model = HydrostaticFreeSurfaceModel(grid; 
+                                    coriolis,
                                     buoyancy = BuoyancyTracer(),
                                     tracers = :b,
                                     momentum_advection = WENO(),
@@ -226,6 +227,7 @@ run!(simulation)
 
 saved_output_filename = filename * ".jld2"
 
+ u_t = FieldTimeSeries(saved_output_filename, "u")
 u′_t = FieldTimeSeries(saved_output_filename, "u′")
  w_t = FieldTimeSeries(saved_output_filename, "w")
 N²_t = FieldTimeSeries(saved_output_filename, "N²")
@@ -256,6 +258,8 @@ u′ₙ = @lift interior(u′_t[$n], :, 1, :)
 N²ₙ = @lift interior(N²_t[$n], :, 1, :)
  ηₙ = @lift interior( η_t[$n], :, 1, :)
  Uₙ = @lift interior( U_t[$n], :, 1, :)
+u1ₙ = @lift interior( u_t[$n], 1, 1, :)
+ueₙ = @lift interior( u_t[$n], grid.Nx+1, 1, :)
 
 axis_kwargs = (xlabel = "x [km]",
                ylabel = "z [m]",
@@ -265,17 +269,17 @@ fig = Figure(size = (700, 1100))
 
 fig[1, :] = Label(fig, title, fontsize=24, tellwidth=false)
 
-ax_u = Axis(fig[2, 1]; title = "u'-velocity", axis_kwargs...)
+ax_u = Axis(fig[2, 1:2]; title = "u'-velocity", axis_kwargs...)
 hm_u = heatmap!(ax_u, u′ₙ; nan_color=:gray, colorrange=(-umax, umax), colormap=:balance)
-Colorbar(fig[2, 2], hm_u, label = "m s⁻¹")
+Colorbar(fig[2, 3], hm_u, label = "m s⁻¹")
 
-ax_w = Axis(fig[3, 1]; title = "w-velocity", axis_kwargs...)
+ax_w = Axis(fig[3, 1:2]; title = "w-velocity", axis_kwargs...)
 hm_w = heatmap!(ax_w, wₙ; nan_color=:gray, colorrange=(-wmax, wmax), colormap=:balance)
-Colorbar(fig[3, 2], hm_w, label = "m s⁻¹")
+Colorbar(fig[3, 3], hm_w, label = "m s⁻¹")
 
-ax_N² = Axis(fig[4, 1]; title = "stratification N²", axis_kwargs...)
+ax_N² = Axis(fig[4, 1:2]; title = "stratification N²", axis_kwargs...)
 hm_N² = heatmap!(ax_N², N²ₙ; nan_color=:gray, colorrange=(0.9Nᵢ², 1.1Nᵢ²), colormap=:magma)
-Colorbar(fig[4, 2], hm_N², label = "s⁻²")
+Colorbar(fig[4, 3], hm_N², label = "s⁻²")
 
 ax_η = Axis(fig[5, 1]; title = "free surface η",
             xlabel = "x [km]",
@@ -283,15 +287,14 @@ ax_η = Axis(fig[5, 1]; title = "free surface η",
             ylabel = "η [m]")
 ηₙ_line = @lift interior(η_t[$n], :, 1, 1)
 lines!(ax_η, ηₙ_line, color=:dodgerblue)
-ylims!(ax_η, -0.1, 1.1)
+ylims!(ax_η, -4.0, 4.0)
 
-ax_U = Axis(fig[6, 1]; title = "Barotropic velocity",
+ax_U = Axis(fig[5, 2]; title = "Boundary velocities",
             xlabel = "x [km]",
             titlesize = 20,
-            ylabel = "η [m]")
-Uₙ_line = @lift interior(U_t[$n], :, 1, 1)
-lines!(ax_U, Uₙ_line, color=:dodgerblue)
-ylims!(ax_U, -50, 50)
+            ylabel = "ub [m]")
+lines!(ax_U, u1ₙ, color=:dodgerblue)
+lines!(ax_U, ueₙ, color=:blue)
 
 fig
 
