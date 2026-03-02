@@ -396,7 +396,7 @@ function Grids.with_halo(new_halo, old_grid::TripolarGrid)
     TX,  TY,  TZ  = topology(old_grid)
     Hxo, Hyo, Hzo = halo_size(old_grid)
     Hxn, Hyn, Hzn = new_halo
-    
+
     # Reconstruct vertical coordinate with new halo
     z = cpu_face_constructor_z(old_grid)
     Lz, new_z = generate_coordinate(FT, topology(old_grid), (Nx, Ny, Nz), new_halo, z, :z, 3, CPU())
