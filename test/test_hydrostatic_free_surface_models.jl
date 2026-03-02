@@ -7,6 +7,7 @@ using Oceananigans.Advection: EnergyConserving, EnstrophyConserving, FluxFormAdv
 using Oceananigans.TurbulenceClosures
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using Oceananigans.Grids: MutableVerticalDiscretization
+using Oceananigans.OutputReaders: Cyclical, InMemory, OnDisk
 
 function time_step_hydrostatic_model_works(grid;
                                            coriolis = nothing,
@@ -536,6 +537,64 @@ topos_3d = ((Periodic, Periodic, Bounded),
             @test all(≈(expected_σ, atol=1e-10), σ)
 
             @info "    PrescribedFreeSurface with constant Field displacement and ZStar test passed"
+        end
+
+        @testset "PrescribedFreeSurface with PartlyInMemory FieldTimeSeries and ZStar [$arch]" begin
+            @info "  Testing PrescribedFreeSurface with PartlyInMemory FieldTimeSeries and ZStar [$arch]..."
+
+            Nz = 4
+            H = 100
+            z_faces = collect(range(-H, 0, length = Nz + 1))
+            grid = RectilinearGrid(arch;
+                                   size = (4, 4, Nz),
+                                   x = (0, 100), y = (0, 100),
+                                   z = MutableVerticalDiscretization(z_faces),
+                                   halo = (4, 4, 4),
+                                   topology = (Periodic, Periodic, Bounded))
+
+            # Write η FieldTimeSeries to a temporary JLD2 file with 12 monthly snapshots
+            year = years = 365days
+            month = year / 12
+            fts_times = collect(((1:12) .- 0.5) * month)
+
+            eta_file = "eta.jld2"
+
+            η_ts_ondisk = FieldTimeSeries{Center, Center, Face}(grid, fts_times;
+                indices = (:, :, Nz + 1),
+                backend = OnDisk(), path = eta_file, name = "eta",
+                time_indexing = Cyclical(year))
+
+            for n in 1:12
+                η = Field{Center, Center, Face}(grid; indices = (:, :, Nz + 1))
+                set!(η, sin(2π * n / 12))
+                set!(η_ts_ondisk, η, n)
+            end
+
+            # Reload with InMemory(4) — only 4 of 12 snapshots fit in memory
+            η_ts = FieldTimeSeries(eta_file, "eta";
+                architecture = arch, grid,
+                backend = InMemory(4),
+                time_indexing = Cyclical(year))
+
+            free_surface = PrescribedFreeSurface(displacement = η_ts)
+            model = HydrostaticFreeSurfaceModel(grid;
+                tracers = :c,
+                free_surface,
+                velocities = PrescribedVelocityFields(; formulation = DiagnosticVerticalVelocity()))
+
+            set!(model, c = 1.0)
+
+            # Run long enough to cross a buffer boundary and loop around cyclical year
+            stop_time = 2years
+            simulation = Simulation(model; Δt = 5400seconds, stop_time)
+            run!(simulation)
+
+            @test simulation.model.clock.time ≈ stop_time
+
+            # Clean up
+            rm(eta_file)
+
+            @info "    PrescribedFreeSurface with PartlyInMemory FieldTimeSeries and ZStar test passed"
         end
 
         @testset "DiagnosticVerticalVelocity [$arch]" begin

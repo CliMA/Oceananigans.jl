@@ -7,7 +7,8 @@ using Oceananigans.Grids: Center, Face
 using Oceananigans.Fields: FunctionField, Field, field
 using Oceananigans.TimeSteppers: tick!, step_lagrangian_particles!, Clock
 using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!
-using Oceananigans.OutputReaders: FieldTimeSeries, TimeSeriesInterpolation
+using Oceananigans.OutputReaders: FieldTimeSeries, TimeSeriesInterpolation, update_field_time_series!
+using Oceananigans.Units: Time
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
@@ -365,11 +366,22 @@ materialize_free_surface(fs::PrescribedFreeSurface, ::PrescribedVelocityFields, 
 # For a constant (time-independent) plain Field displacement: no clock to advance.
 step_free_surface!(fs::PrescribedFreeSurface{<:Field}, model, timestepper, Δt) = nothing
 
-# Advance the displacement's clock to tⁿ⁺¹ so the FunctionField /
-# TimeSeriesInterpolation evaluates η at the new time, consistent with how
-# a prognostic free surface is stepped forward before the grid update.
+# Advance the displacement's clock to tⁿ⁺¹ so the FunctionField evaluates
+# η at the new time, consistent with how a prognostic free surface is stepped
+# forward before the grid update.
 function step_free_surface!(fs::PrescribedFreeSurface, model, timestepper, Δt)
     fs.displacement.clock.time = model.clock.time + Δt
+    return nothing
+end
+
+# When the displacement is a TimeSeriesInterpolation backed by a FieldTimeSeries,
+# ensure the in-memory buffer covers tⁿ⁺¹ before advancing the clock.
+# Without this, PartlyInMemory backends can hit a BoundsError when the grid
+# update kernel reads the interpolated displacement at tⁿ⁺¹.
+function step_free_surface!(fs::PrescribedFreeSurface{<:TimeSeriesInterpolation}, model, timestepper, Δt)
+    tⁿ⁺¹ = model.clock.time + Δt
+    update_field_time_series!(fs.displacement.time_series, Time(tⁿ⁺¹))
+    fs.displacement.clock.time = tⁿ⁺¹
     return nothing
 end
 
