@@ -310,3 +310,50 @@ end
         end
     end
 end
+
+using Oceananigans.Grids: with_halo, topology, halo_size
+
+@testset "with_halo for TripolarGrid" begin
+    for arch in archs
+        @testset "$fold_topology fold topology [$arch]" for fold_topology in fold_topologies
+            grid = TripolarGrid(arch; size = (20, 10, 4), z = (-100, 0), halo = (3, 3, 3),
+                                fold_topology)
+
+            new_grid = with_halo((5, 5, 5), grid)
+
+            # Basic properties preserved
+            @test new_grid.Nx == grid.Nx
+            @test new_grid.Ny == grid.Ny
+            @test new_grid.Nz == grid.Nz
+            @test halo_size(new_grid) == (5, 5, 5)
+            @test topology(new_grid) == topology(grid)
+            @test new_grid.radius == grid.radius
+            @test new_grid.conformal_mapping == grid.conformal_mapping
+
+            Nx, Ny = grid.Nx, grid.Ny
+
+            # Interior metrics (Δx, Δy, Az) and latitudes (φ) must be preserved exactly
+            for (old_f, new_f) in [(grid.φᶜᶜᵃ, new_grid.φᶜᶜᵃ), (grid.φᶠᶜᵃ, new_grid.φᶠᶜᵃ),
+                                   (grid.φᶜᶠᵃ, new_grid.φᶜᶠᵃ), (grid.φᶠᶠᵃ, new_grid.φᶠᶠᵃ),
+                                   (grid.Δxᶜᶜᵃ, new_grid.Δxᶜᶜᵃ), (grid.Δxᶠᶜᵃ, new_grid.Δxᶠᶜᵃ),
+                                   (grid.Δxᶜᶠᵃ, new_grid.Δxᶜᶠᵃ), (grid.Δxᶠᶠᵃ, new_grid.Δxᶠᶠᵃ),
+                                   (grid.Δyᶜᶜᵃ, new_grid.Δyᶜᶜᵃ), (grid.Δyᶠᶜᵃ, new_grid.Δyᶠᶜᵃ),
+                                   (grid.Δyᶜᶠᵃ, new_grid.Δyᶜᶠᵃ), (grid.Δyᶠᶠᵃ, new_grid.Δyᶠᶠᵃ),
+                                   (grid.Azᶜᶜᵃ, new_grid.Azᶜᶜᵃ), (grid.Azᶠᶜᵃ, new_grid.Azᶠᶜᵃ),
+                                   (grid.Azᶜᶠᵃ, new_grid.Azᶜᶠᵃ), (grid.Azᶠᶠᵃ, new_grid.Azᶠᶠᵃ)]
+                old_cpu = on_architecture(CPU(), old_f)
+                new_cpu = on_architecture(CPU(), new_f)
+                @test all(old_cpu[1:Nx, 1:Ny] .== new_cpu[1:Nx, 1:Ny])
+            end
+
+            # Longitudes may differ by multiples of 360° at the fold row (physically identical)
+            for (old_f, new_f) in [(grid.λᶜᶜᵃ, new_grid.λᶜᶜᵃ), (grid.λᶠᶜᵃ, new_grid.λᶠᶜᵃ),
+                                   (grid.λᶜᶠᵃ, new_grid.λᶜᶠᵃ), (grid.λᶠᶠᵃ, new_grid.λᶠᶠᵃ)]
+                old_cpu = on_architecture(CPU(), old_f)
+                new_cpu = on_architecture(CPU(), new_f)
+                diff = old_cpu[1:Nx, 1:Ny] .- new_cpu[1:Nx, 1:Ny]
+                @test all(mod.(diff, 360) .≈ 0)
+            end
+        end
+    end
+end
