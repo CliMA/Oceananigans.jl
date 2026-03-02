@@ -13,9 +13,8 @@ export
     EnergyConserving,
     EnstrophyConserving
 
-using DocStringExtensions
-
 using Adapt
+using DocStringExtensions
 using OffsetArrays
 using MuladdMacro: @muladd
 
@@ -29,10 +28,8 @@ using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, ∂t_σ
 using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
 
 import Base: summary, Callable
-import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 import Oceananigans.Architectures: on_architecture
-
-using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
+import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 
 abstract type AbstractAdvectionScheme{B, FT} end
 abstract type AbstractCenteredAdvectionScheme{B, FT} <: AbstractAdvectionScheme{B, FT} end
