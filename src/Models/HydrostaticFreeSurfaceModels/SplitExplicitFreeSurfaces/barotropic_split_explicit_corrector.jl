@@ -1,4 +1,4 @@
-using Oceananigans: fields
+using Oceananigans.Models: surface_kernel_parameters, volume_kernel_parameters
 
 # Kernels to compute the vertical integral of the velocities
 @kernel function _compute_barotropic_mode!(U̅, V̅, grid, u, v)
