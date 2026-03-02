@@ -1,3 +1,5 @@
+using Dates: unix2datetime
+
 using Oceananigans.OutputWriters: WindowedTimeAverage
 using Oceananigans.TimeSteppers: update_state!, unit_time
 
@@ -93,6 +95,11 @@ function set!(sim::Simulation; checkpoint=nothing, iteration=nothing)
         checkpoint_path(checkpoint, sim.output_writers)
     else
         throw(ArgumentError("Invalid checkpoint=$checkpoint. Expected :latest or a String filepath."))
+    end
+
+    if checkpoint_filepath !== nothing
+        last_modified_utc = unix2datetime(round(Int, stat(checkpoint_filepath).mtime))
+        @info "Picking up simulation from checkpoint file $(abspath(checkpoint_filepath)); last modified (UTC): $(last_modified_utc)"
     end
 
     state = load_checkpoint_state(checkpoint_filepath)
