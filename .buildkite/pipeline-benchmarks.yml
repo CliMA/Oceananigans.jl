@@ -56,17 +56,17 @@ steps:
       echo "========================================"
       echo "  Group 3: Closure sweep (1/2 deg)"
       echo "========================================"
-      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --closure=nothing              --output=$OUTPUT_FILE
-      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --closure=CATKE                --output=$OUTPUT_FILE
-      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --closure=CATKE+Biharmonic     --output=$OUTPUT_FILE
-      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --closure=CATKE+GM+Biharmonic  --output=$OUTPUT_FILE
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --closure=nothing             --output=$OUTPUT_FILE
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --closure=CATKE               --output=$OUTPUT_FILE
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --closure=CATKE+Biharmonic    --output=$OUTPUT_FILE
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --closure=CATKE+GM+Biharmonic --output=$OUTPUT_FILE
 
       echo "========================================"
       echo "  Group 4: Advection sweep (1/2 deg)"
       echo "========================================"
-      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --momentum_advection=nothing                --tracer_advection=nothing --output=$OUTPUT_FILE
-      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --momentum_advection=WENOVectorInvariant5   --tracer_advection=WENO5   --output=$OUTPUT_FILE
-      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --momentum_advection=WENOVectorInvariant9   --tracer_advection=WENO9   --output=$OUTPUT_FILE
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --momentum_advection=nothing              --tracer_advection=nothing --output=$OUTPUT_FILE
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --momentum_advection=WENOVectorInvariant5 --tracer_advection=WENO5   --output=$OUTPUT_FILE
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --momentum_advection=WENOVectorInvariant9 --tracer_advection=WENO9   --output=$OUTPUT_FILE
 
       echo "========================================"
       echo "  Group 5: Grid type sweep (1/2 deg)"
@@ -82,6 +82,11 @@ steps:
       $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --tracers=T,S,C1           --output=$OUTPUT_FILE
       $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --tracers=T,S,C1,C2        --output=$OUTPUT_FILE
       $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --tracers=T,S,C1,C2,C3,C4  --output=$OUTPUT_FILE
+
+      echo "========================================"
+      echo "  Group 7: I/O sweep (1/2 deg)"
+      echo "========================================"
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --tracers=T,S,C1 --mode=io --output=$OUTPUT_FILE
 
     artifact_paths:
       - "benchmark_results.json"

@@ -87,7 +87,7 @@ function parse_commandline()
             help = "Momentum advection scheme: WENOVectorInvariant5, WENOVectorInvariant9. " *
                    "Multiple schemes can be specified as comma-separated list."
             arg_type = String
-            default = "WENOVectorInvariant9"
+            default = "WENOVectorInvariantDefault"
 
         "--tracer_advection"
             help = "Tracer advection scheme: WENO5, WENO7, WENO9, Centered2. " *
@@ -201,13 +201,17 @@ make_float_type(name) = @eval $(Symbol(name))
 function make_momentum_advection(name, FT)
     name == "nothing" && return nothing
 
+    if name == "WENOVectorInvariantDefault"
+        return WENOVectorInvariant(FT)
+    end
+
     m = match(r"^WENOVectorInvariant(\d+)$", name)
     if !isnothing(m)
         order = parse(Int, m[1])
         return WENOVectorInvariant(FT; order)
     end
 
-    error("Unknown momentum advection: $name. Use WENOVectorInvariant5, WENOVectorInvariant9.")
+    error("Unknown momentum advection: $name. Use WENOVectorInvariantDefault, WENOVectorInvariant5, WENOVectorInvariant9.")
 end
 
 function make_tracer_advection(name, FT)
