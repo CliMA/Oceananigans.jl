@@ -80,10 +80,12 @@ end
 compute_free_surface_tendency!(grid, model, free_surface) = nothing
 
 @inline function top_tracer_boundary_conditions(grid, tracers)
-    names = Tuple(n for n in propertynames(tracers) if !(tracers[n] isa PrescribedField))
-    isempty(names) && return NamedTuple()
+    tracers = prognostic_tracers(tracers)
+    names = propertynames(tracers)
     values = Tuple(tracers[c].boundary_conditions.top for c in names)
-    return NamedTuple{names}(tuple(values...))
+
+    # Some shenanigans for type stability?
+    return NamedTuple{tuple(names...)}(tuple(values...))
 end
 
 """
@@ -100,14 +102,15 @@ function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active
     grid = model.grid
 
     for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
-        _compute_tracer_tendency!(model.tracers[tracer_name], model, tracer_index, tracer_name,
+        compute_tracer_tendency!(model.tracers[tracer_name], model, tracer_index, tracer_name,
                                   kernel_parameters, arch, grid; active_cells_map)
     end
 
     return nothing
 end
 
-function _compute_tracer_tendency!(tracer, model, tracer_index, tracer_name,
+# compute tendency for a single tracer.
+function compute_tracer_tendency!(tracer, model, tracer_index, tracer_name,
                                    kernel_parameters, arch, grid; active_cells_map=nothing)
 
     @inbounds c_tendency    = model.timestepper.Gⁿ[tracer_name]

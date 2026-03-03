@@ -196,35 +196,41 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
 
     # Tracer update kernels
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
-        _ab2_step_tracer!(tracers[tracer_name], tracer_name, tracer_index,
-                          model, closure, Δt, χ, catke_in_closures, td_in_closures)
+        ab2_step_tracer!(tracers[tracer_name], tracer_name, tracer_index,
+                         model, closure, Δt, χ, catke_in_closures, td_in_closures)
     end
 
     return nothing
 end
 
-function _ab2_step_tracer!(tracer_field, tracer_name, tracer_index,
-                           model, closure, Δt, χ, catke_in_closures, td_in_closures)
+# TODO: use dispatch for all no-ops
+# (ab2_step_tracer! dispatches to no-op for prescribed tracers)
+function ab2_step_tracer!(tracer_field, tracer_name, tracer_index,
+                          model, closure, Δt, χ, catke_in_closures, td_in_closures)
 
-    catke_in_closures && tracer_name == :e && return nothing
-    td_in_closures    && tracer_name == :ϵ && return nothing
-    td_in_closures    && tracer_name == :e && return nothing
+    if catke_in_closures && tracer_name == :e
+        @debug "Skipping AB2 step for e"
+    elseif td_in_closures && tracer_name == :ϵ
+        @debug "Skipping AB2 step for ϵ"
+    elseif td_in_closures && tracer_name == :e
+        @debug "Skipping AB2 step for e"
+    else
+        Gⁿ = model.timestepper.Gⁿ[tracer_name]
+        G⁻ = model.timestepper.G⁻[tracer_name]
+        grid = model.grid
 
-    Gⁿ = model.timestepper.Gⁿ[tracer_name]
-    G⁻ = model.timestepper.G⁻[tracer_name]
-    grid = model.grid
+        FT = eltype(grid)
+        launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_field!, tracer_field, grid, convert(FT, Δt), χ, Gⁿ, G⁻)
 
-    FT = eltype(grid)
-    launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_field!, tracer_field, grid, convert(FT, Δt), χ, Gⁿ, G⁻)
-
-    implicit_step!(tracer_field,
-                   model.timestepper.implicit_solver,
-                   closure,
-                   model.closure_fields,
-                   Val(tracer_index),
-                   model.clock,
-                   fields(model),
-                   Δt)
+        implicit_step!(tracer_field,
+                       model.timestepper.implicit_solver,
+                       closure,
+                       model.closure_fields,
+                       Val(tracer_index),
+                       model.clock,
+                       fields(model),
+                       Δt)
+    end
 
     return nothing
 end

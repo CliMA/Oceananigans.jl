@@ -25,7 +25,7 @@ function complete_communication_and_compute_momentum_buffer!(model::HydrostaticF
     grid = model.grid
     arch = architecture(grid)
 
-    # Synchronize tracers; prescribed tracers are no-ops via dispatch
+    # Synchronize tracers
     for tracer in model.tracers
         synchronize_communication!(tracer)
     end

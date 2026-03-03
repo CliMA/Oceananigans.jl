@@ -5,7 +5,7 @@ function hydrostatic_velocity_fields(::Nothing, grid, clock, bcs)
     return (u=u, v=v, w=w)
 end
 
-function hydrostatic_tendency_fields(velocities, free_surface, grid, tracers::NamedTuple, bcs)
+function hydrostatic_tendency_fields(velocities, free_surface, grid, tracers, bcs)
     u = XFaceField(grid, boundary_conditions=bcs.u)
     v = YFaceField(grid, boundary_conditions=bcs.v)
     tracer_tendencies = tracer_tendency_fields(tracers, grid, bcs)

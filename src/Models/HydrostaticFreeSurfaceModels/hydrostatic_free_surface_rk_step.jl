@@ -184,14 +184,14 @@ function rk_substep_tracers!(tracers, model, Δt)
 
     # Tracer update kernels
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
-        _rk_substep_tracer!(tracers[tracer_name], tracer_name, tracer_index,
+        rk_substep_tracer!(tracers[tracer_name], tracer_name, tracer_index,
                             model, grid, closure, Δt, catke_in_closures)
     end
 
     return nothing
 end
 
-function _rk_substep_tracer!(tracer_field, tracer_name, tracer_index,
+function rk_substep_tracer!(tracer_field, tracer_name, tracer_index,
                              model, grid, closure, Δt, catke_in_closures)
 
     catke_in_closures && tracer_name == :e && return nothing

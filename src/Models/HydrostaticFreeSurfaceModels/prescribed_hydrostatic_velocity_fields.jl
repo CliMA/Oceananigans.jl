@@ -19,6 +19,8 @@ import Oceananigans.TimeSteppers: time_step!
 
 const PrescribedField = Union{TimeSeriesInterpolation, FunctionField}
 
+prognostic_tracers(tracers) = filter(c -> !(c isa PrescribedField), tracers)
+
 struct PrescribedVelocityFields{U, V, W, P}
     u :: U
     v :: V
@@ -97,7 +99,7 @@ function Base.indexed_iterate(p::PrescribedVelocityFields, i::Int, state=1)
     end
 end
 
-hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracers::NamedTuple, bcs) =
+hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracers, bcs) =
     merge((u=nothing, v=nothing), tracer_tendency_fields(tracers, grid, bcs))
 
 free_surface_names(free_surface, ::PrescribedVelocityFields, grid) = tuple()
@@ -141,7 +143,7 @@ materialize_free_surface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFie
 materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, grid) = nothing
 
 hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) =
-    filter(c -> !(c isa PrescribedField), tracers)
+    prognostic_tracers(tracers)
 compute_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields, kernel_parameters; kwargs...) = nothing
 
 compute_flux_bcs!(::Nothing, c, arch, args) = nothing
@@ -286,23 +288,21 @@ into `TimeSeriesInterpolation` or `FunctionField` objects.
 function materialize_tracer_fields(tracers::NamedTuple, grid, clock, boundary_conditions)
     all_names = propertynames(tracers)
 
-    # Check if any entries are PrescribedTracer
-    has_prescribed = any(tracers[n] isa PrescribedTracer for n in all_names)
-    has_prescribed || return TracerFields(tracers, grid, boundary_conditions)
-
-    # Separate prescribed and prognostic tracer entries
     fields = map(all_names) do name
-        entry = tracers[name]
-        if entry isa PrescribedTracer
-            materialize_prescribed_tracer(entry, grid; clock)
-        else
-            # entry is either a Field (user-provided) or a CenterField from closure tracers
-            entry isa Field ? entry : CenterField(grid, boundary_conditions=boundary_conditions[name])
-        end
+        bcs = get(boundary_conditions, name, FieldBoundaryConditions())
+        materialize_tracer_field(tracers[name], grid, clock, bcs)
     end
 
     return NamedTuple{all_names}(Tuple(fields))
 end
+
+materialize_tracer_field(entry::PrescribedTracer, grid, clock, bcs) =
+    materialize_prescribed_tracer(entry, grid; clock)
+
+materialize_tracer_field(entry::Field, grid, clock, bcs) = entry
+
+materialize_tracer_field(entry, grid, clock, bcs) =
+    CenterField(grid, boundary_conditions=bcs)
 
 # Fallback: when tracers is a Tuple of Symbols (no prescribed tracers possible)
 materialize_tracer_fields(tracers::Tuple, grid, clock, boundary_conditions) =
@@ -320,6 +320,6 @@ extract_boundary_conditions(::FunctionField) = FieldBoundaryConditions()
 ##### Dispatch-based no-ops for prescribed tracers in tendency and stepping loops
 #####
 
-_compute_tracer_tendency!(::PrescribedField, args...; kwargs...) = nothing
-_rk_substep_tracer!(::PrescribedField, args...) = nothing
-_ab2_step_tracer!(::PrescribedField, args...) = nothing
+compute_tracer_tendency!(::PrescribedField, args...; kwargs...) = nothing
+rk_substep_tracer!(::PrescribedField, args...) = nothing
+ab2_step_tracer!(::PrescribedField, args...) = nothing
