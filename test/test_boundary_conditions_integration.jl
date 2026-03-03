@@ -370,8 +370,8 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             inflow_timescale = 1e-1
             outflow_timescale = Inf
 
-            u_bcs = FieldBoundaryConditions(west = OpenBoundaryCondition(U₀; scheme = PerturbationAdvection(inflow_timescale, outflow_timescale)),
-                                            east = OpenBoundaryCondition(U₀; scheme = PerturbationAdvection(inflow_timescale, outflow_timescale)))
+            u_bcs = FieldBoundaryConditions(west = OpenBoundaryCondition(U₀; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)),
+                                            east = OpenBoundaryCondition(U₀; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)))
             boundary_conditions = (; u = u_bcs)
             test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions)
         end
