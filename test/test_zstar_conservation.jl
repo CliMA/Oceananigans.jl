@@ -183,7 +183,7 @@ end
                 h  = - zb + 10
                 gaussian_islands(λ, φ) = zb + h * mtns(λ, φ)
 
-                grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(gaussian_islands))
+                grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(gaussian_islands))
                 free_surface = SplitExplicitFreeSurface(grid; substeps=8)
 
                 model = HydrostaticFreeSurfaceModel(grid;
