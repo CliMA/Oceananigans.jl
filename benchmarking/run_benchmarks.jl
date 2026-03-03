@@ -10,10 +10,10 @@
 #####   - io: IO-heavy benchmarks measuring 3D output performance
 #####
 ##### Usage (benchmark mode):
-#####   julia --project run_benchmarks.jl                                     # Default: 360x180x50, GPU, Float32
-#####   julia --project run_benchmarks.jl --size=180x90x25                    # Smaller grid on GPU
+#####   julia --project run_benchmarks.jl                                    # Default: 360x180x50, GPU, Float32
+#####   julia --project run_benchmarks.jl --size=180x90x25                   # Smaller grid on GPU
 #####   julia --project run_benchmarks.jl --size="180x90x25, 360x180x50"     # Multiple sizes
-#####   julia --project run_benchmarks.jl --device=CPU --size=90x45x10        # CPU benchmark
+#####   julia --project run_benchmarks.jl --device=CPU --size=90x45x10       # CPU benchmark
 #####
 ##### Usage (simulate mode):
 #####   julia --project run_benchmarks.jl --mode=simulate --size=360x180x50 --stop_time=24.0
@@ -75,7 +75,13 @@ function parse_commandline()
             help = "Floating point type: Float32 or Float64. " *
                    "Multiple types can be specified as comma-separated list."
             arg_type = String
-            default = "Float32"
+            default = "Float64"
+
+        "--zstar_coordinate"
+            help = "Using ZStarCoordinate:" * 
+                   "true or false."
+            arg_type = Bool
+            default = false
 
         "--momentum_advection"
             help = "Momentum advection scheme: WENOVectorInvariant5, WENOVectorInvariant9. " *
