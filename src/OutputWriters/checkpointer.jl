@@ -99,7 +99,7 @@ checkpoint file.
 """
 function checkpoint_path(pickup::Bool, checkpointer::Checkpointer)
     pickup || return nothing
-    return checkpoint_path(:time_stamp, checkpointer)
+    return checkpoint_path(:recent_time_stamp, checkpointer)
 end
 
 """
@@ -107,13 +107,13 @@ end
 
 For symbol-based pickup modes:
 
-- `pickup=:time_stamp` returns the most recently modified checkpoint file.
-- `pickup=:iteration` returns the checkpoint file with the largest iteration in its name.
-- `pickup=:latest` is an alias for `:time_stamp`.
+- `pickup=:recent_time_stamp` returns the most recently modified checkpoint file.
+- `pickup=:highest_iteration` returns the checkpoint file with the largest iteration in its name.
+- `pickup=:latest` is an alias for `:recent_time_stamp`.
 """
 function checkpoint_path(pickup::Symbol, checkpointer::Checkpointer)
-    mode = pickup === :latest ? :time_stamp : pickup
-    mode in (:time_stamp, :iteration) || throw(ArgumentError("Unsupported pickup mode $pickup. Supported modes are :time_stamp and :iteration."))
+    mode = pickup === :latest ? :recent_time_stamp : pickup
+    mode in (:recent_time_stamp, :highest_iteration) || throw(ArgumentError("Unsupported pickup mode $pickup. Supported modes are :recent_time_stamp and :highest_iteration."))
 
     filepaths = glob(checkpoint_superprefix(checkpointer.prefix) * "*.jld2", checkpointer.dir)
 
@@ -121,7 +121,7 @@ function checkpoint_path(pickup::Symbol, checkpointer::Checkpointer)
         # https://github.com/CliMA/Oceananigans.jl/issues/1159
         @warn "pickup=$pickup but no checkpoints were found. Simulation will run without picking up."
         return nothing
-    elseif mode === :iteration
+    elseif mode === :highest_iteration
         return latest_checkpoint_by_iteration(checkpointer, filepaths)
     else
         return latest_checkpoint_by_time_stamp(checkpointer, filepaths)
@@ -152,7 +152,7 @@ end
 
 # Backward-compatibility shim: historical "latest_checkpoint" means "latest by iteration".
 # Keep this behavior for existing internal/external callsites (for example cleanup logic),
-# while the new :time_stamp mode is selected explicitly via checkpoint_path(::Symbol, ...).
+# while the new :recent_time_stamp mode is selected explicitly via checkpoint_path(::Symbol, ...).
 latest_checkpoint(checkpointer, filepaths) = latest_checkpoint_by_iteration(checkpointer, filepaths)
 
 #####

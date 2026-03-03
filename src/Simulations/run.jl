@@ -67,11 +67,11 @@ Keyword arguments
 =================
 
 - `checkpoint`: Specifies the checkpoint source. Can be:
-  - `:time_stamp` to restore from the most recently modified checkpoint associated with
+  - `:recent_time_stamp` to restore from the most recently modified checkpoint associated with
     the [`Checkpointer`](@ref) in `simulation.output_writers`.
-  - `:iteration` to restore from the checkpoint with the largest iteration number
+  - `:highest_iteration` to restore from the checkpoint with the largest iteration number
     associated with the [`Checkpointer`](@ref) in `simulation.output_writers`.
-  - `:latest` as an alias for `:time_stamp`.
+  - `:latest` as an alias for `:recent_time_stamp`.
   - A `String` filepath to restore from checkpointer data in that file.
 
 - `iteration`: An `Integer` specifying the iteration number to restore from.
@@ -79,7 +79,7 @@ Keyword arguments
 
 !!! note
     Only one of `checkpoint` or `iteration` should be specified.
-    The `iteration` keyword and symbolic `checkpoint` modes (`:time_stamp`, `:iteration`,
+    The `iteration` keyword and symbolic `checkpoint` modes (`:recent_time_stamp`, `:highest_iteration`,
     and `:latest`) require that
     `simulation.output_writers` contains exactly one checkpointer.
 
@@ -98,7 +98,7 @@ function set!(sim::Simulation; checkpoint=nothing, iteration=nothing)
     elseif checkpoint isa String
         checkpoint_path(checkpoint, sim.output_writers)
     else
-        throw(ArgumentError("Invalid checkpoint=$checkpoint. Expected :time_stamp, :iteration, :latest, or a String filepath."))
+        throw(ArgumentError("Invalid checkpoint=$checkpoint. Expected :recent_time_stamp, :highest_iteration, :latest, or a String filepath."))
     end
 
     if checkpoint_filepath !== nothing
@@ -131,10 +131,10 @@ Possible values for `pickup` are:
   * `pickup=true` picks a simulation up from the latest checkpoint associated with
     the [`Checkpointer`](@ref) in `simulation.output_writers`, chosen by most recent file timestamp.
 
-  * `pickup=:time_stamp` picks a simulation up from the most recently modified checkpoint
+  * `pickup=:recent_time_stamp` picks a simulation up from the most recently modified checkpoint
     associated with the [`Checkpointer`](@ref) in `simulation.output_writers`.
 
-  * `pickup=:iteration` picks a simulation up from the checkpoint with the largest iteration
+  * `pickup=:highest_iteration` picks a simulation up from the checkpoint with the largest iteration
     associated with the [`Checkpointer`](@ref) in `simulation.output_writers`.
 
   * `pickup=iteration::Int` picks a simulation up from the checkpointed file associated
@@ -142,7 +142,7 @@ Possible values for `pickup` are:
 
   * `pickup=filepath::String` picks a simulation up from checkpointer data in `filepath`.
 
-Note that `pickup=true`, `pickup=:time_stamp`, `pickup=:iteration`, and `pickup=iteration`
+Note that `pickup=true`, `pickup=:recent_time_stamp`, `pickup=:highest_iteration`, and `pickup=iteration`
 fail if `simulation.output_writers` contains more than one checkpointer.
 
 # Checkpointing at end
@@ -155,7 +155,7 @@ function run!(sim; pickup=false, checkpoint_at_end=false)
 
     if we_want_to_pickup(pickup)
         if pickup === true
-            set!(sim; checkpoint=:time_stamp)
+            set!(sim; checkpoint=:recent_time_stamp)
         elseif pickup isa Integer
             set!(sim; iteration=pickup)
         elseif pickup isa Symbol
