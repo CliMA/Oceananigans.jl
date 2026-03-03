@@ -12,10 +12,6 @@ abstract type AbstractHistogramWeights end
 
 struct HistogramCountWeights <: AbstractHistogramWeights end
 
-struct HistogramVolumeWeights{V} <: AbstractHistogramWeights
-    volume :: V
-end
-
 struct HistogramFieldWeights{W} <: AbstractHistogramWeights
     field :: W
 end
@@ -29,7 +25,16 @@ struct HistogramIntegralFieldWeights{W, M} <: AbstractHistogramWeights
     metric :: M
 end
 
-struct HistogramOperation{G, T, A, B, BN, E1, E2, W, H, C, K} <: AbstractOperation{Center, Center, Center, G, T}
+struct HistogramAverageCountWeights{M} <: AbstractHistogramWeights
+    metric :: M
+end
+
+struct HistogramAverageFieldWeights{W, M} <: AbstractHistogramWeights
+    field :: W
+    metric :: M
+end
+
+struct HistogramOperation{G, T, A, B, BN, E1, E2, W, H, LN, C, GN, K} <: AbstractOperation{Center, Center, Center, G, T}
     grid :: G
     a :: A
     b :: B
@@ -38,7 +43,9 @@ struct HistogramOperation{G, T, A, B, BN, E1, E2, W, H, C, K} <: AbstractOperati
     edges2 :: E2
     weights :: W
     local_histogram :: H
+    local_normalization :: LN
     global_cache :: C
+    global_normalization :: GN
     launch_parameters :: K
     dims :: NTuple{N, Int} where N
     method :: Symbol
@@ -48,27 +55,31 @@ struct HistogramOperation{G, T, A, B, BN, E1, E2, W, H, C, K} <: AbstractOperati
 end
 
 function HistogramOperation(grid::G, a::A, b::B, bins::BN, edges1::E1, edges2::E2,
-                            weights::W, local_histogram::H, global_cache::C,
+                            weights::W, local_histogram::H, local_normalization::LN,
+                            global_cache::C, global_normalization::GN,
                             launch_parameters::K, dims::NTuple{N, Int}, method::Symbol,
                             reduced_dimensions::NTuple{3, Bool},
                             retained_offsets::NTuple{3, Int},
-                            retained_lengths::NTuple{3, Int}) where {G, A, B, BN, E1, E2, W, H, C, K, N}
+                            retained_lengths::NTuple{3, Int}) where {G, A, B, BN, E1, E2, W, H, LN, C, GN, K, N}
     T = eltype(global_cache)
-    return HistogramOperation{G, T, A, B, BN, E1, E2, W, H, C, K}(grid, a, b, bins, edges1, edges2,
-                                                                   weights, local_histogram, global_cache,
+    return HistogramOperation{G, T, A, B, BN, E1, E2, W, H, LN, C, GN, K}(grid, a, b, bins, edges1, edges2,
+                                                                   weights, local_histogram, local_normalization,
+                                                                   global_cache, global_normalization,
                                                                    launch_parameters, dims, method,
                                                                    reduced_dimensions, retained_offsets,
                                                                    retained_lengths)
 end
 
-struct Histogram1DOperation{G, T, A, BN, E1, W, H, C, K} <: AbstractOperation{Center, Center, Center, G, T}
+struct Histogram1DOperation{G, T, A, BN, E1, W, H, LN, C, GN, K} <: AbstractOperation{Center, Center, Center, G, T}
     grid :: G
     a :: A
     bins :: BN
     edges1 :: E1
     weights :: W
     local_histogram :: H
+    local_normalization :: LN
     global_cache :: C
+    global_normalization :: GN
     launch_parameters :: K
     dims :: NTuple{N, Int} where N
     method :: Symbol
@@ -78,14 +89,16 @@ struct Histogram1DOperation{G, T, A, BN, E1, W, H, C, K} <: AbstractOperation{Ce
 end
 
 function Histogram1DOperation(grid::G, a::A, bins::BN, edges1::E1,
-                              weights::W, local_histogram::H, global_cache::C,
+                              weights::W, local_histogram::H, local_normalization::LN,
+                              global_cache::C, global_normalization::GN,
                               launch_parameters::K, dims::NTuple{N, Int}, method::Symbol,
                               reduced_dimensions::NTuple{3, Bool},
                               retained_offsets::NTuple{3, Int},
-                              retained_lengths::NTuple{3, Int}) where {G, A, BN, E1, W, H, C, K, N}
+                              retained_lengths::NTuple{3, Int}) where {G, A, BN, E1, W, H, LN, C, GN, K, N}
     T = eltype(global_cache)
-    return Histogram1DOperation{G, T, A, BN, E1, W, H, C, K}(grid, a, bins, edges1,
-                                                              weights, local_histogram, global_cache,
+    return Histogram1DOperation{G, T, A, BN, E1, W, H, LN, C, GN, K}(grid, a, bins, edges1,
+                                                              weights, local_histogram, local_normalization,
+                                                              global_cache, global_normalization,
                                                               launch_parameters, dims, method,
                                                               reduced_dimensions, retained_offsets,
                                                               retained_lengths)
@@ -106,13 +119,19 @@ Constraints:
   - 2D histogram: exactly two edge vectors.
   - 1D histogram: exactly one edge vector.
 - `weights` must be:
-  - with `method=:sum`: `:count`, a metric-weight symbol (`:volume` / legacy aliases), or an `AbstractField`;
+  - with `method=:sum`: `:count` or an `AbstractField`;
   - with `method=:integral`: `:count` or an `AbstractField`.
+  - with `method=:average`: `:count` or an `AbstractField`.
 - `:count` with `method=:sum` accumulates one count per sample.
 - `:count` with `method=:integral` accumulates the geometric integration metric for `dims`
   (`Δx`, `Δy`, `Δz`, `Az`, `Ay`, `Ax`, or `volume`), matching `Integral` semantics.
+- `:average` computes a metric-weighted mean:
+  `Histogram(...; weights=w, method=:integral) / Histogram(...; weights=:count, method=:integral)`
+  with zero returned for bins whose denominator is zero.
+- Typical use: `weights=tracer_field, method=:average` to compute a binned mean tracer.
+- `weights=:count, method=:average` yields one for populated bins and zero for empty bins.
 - `dims` is the subset of spatial dimensions to reduce over. `dims=:` is shorthand for `(1, 2, 3)`.
-- `method` must be `:sum` or `:integral`.
+- `method` must be `:sum`, `:integral`, or `:average`.
 - Distributed architectures are not supported yet.
 
 For partial reductions, retained dimensions are flattened into histogram output indices.
@@ -149,7 +168,8 @@ function Histogram(a::AbstractField, b::AbstractField;
     reduced_dimensions, retained_offsets, retained_lengths, retained_count =
         histogram_reduction_metadata(launch_indices, dims)
 
-    maybe_warn_histogram_memory((nbin1, nbin2, retained_count), FT; dims)
+    buffers = method === :average ? 4 : 2
+    maybe_warn_histogram_memory((nbin1, nbin2, retained_count), FT; dims, buffers)
 
     histogram_grid = RectilinearGrid(CPU(), FT;
                                      size = (nbin1, nbin2, retained_count),
@@ -164,9 +184,12 @@ function Histogram(a::AbstractField, b::AbstractField;
 
     local_histogram = zeros(arch, FT, nbin1, nbin2, retained_count)
     global_cache = zeros(FT, nbin1, nbin2, retained_count)
+    local_normalization = method === :average ? zeros(arch, FT, nbin1, nbin2, retained_count) : nothing
+    global_normalization = method === :average ? zeros(FT, nbin1, nbin2, retained_count) : nothing
 
     return HistogramOperation(histogram_grid, a, b, bins, edges1, edges2, weights,
-                              local_histogram, global_cache, launch_parameters,
+                              local_histogram, local_normalization,
+                              global_cache, global_normalization, launch_parameters,
                               dims, method, reduced_dimensions,
                               retained_offsets, retained_lengths)
 end
@@ -200,7 +223,8 @@ function Histogram(a::AbstractField;
     reduced_dimensions, retained_offsets, retained_lengths, retained_count =
         histogram_reduction_metadata(launch_indices, dims)
 
-    maybe_warn_histogram_memory((nbin1, retained_count, 1), FT; dims)
+    buffers = method === :average ? 4 : 2
+    maybe_warn_histogram_memory((nbin1, retained_count, 1), FT; dims, buffers)
 
     histogram_grid = RectilinearGrid(CPU(), FT;
                                      size = (nbin1, retained_count),
@@ -213,9 +237,12 @@ function Histogram(a::AbstractField;
 
     local_histogram = zeros(arch, FT, nbin1, retained_count, 1)
     global_cache = zeros(FT, nbin1, retained_count, 1)
+    local_normalization = method === :average ? zeros(arch, FT, nbin1, retained_count, 1) : nothing
+    global_normalization = method === :average ? zeros(FT, nbin1, retained_count, 1) : nothing
 
     return Histogram1DOperation(histogram_grid, a, bins, edges1, weights,
-                                local_histogram, global_cache, launch_parameters,
+                                local_histogram, local_normalization,
+                                global_cache, global_normalization, launch_parameters,
                                 dims, method, reduced_dimensions,
                                 retained_offsets, retained_lengths)
 end
@@ -253,10 +280,11 @@ function Histogram(fields::NamedTuple;
 end
 
 Base.summary(::HistogramCountWeights) = ":count"
-Base.summary(::HistogramVolumeWeights) = ":cell_volume"
 Base.summary(w::HistogramFieldWeights) = "field ($(summary(w.field)))"
 Base.summary(w::HistogramIntegralCountWeights) = "integral(:count)"
 Base.summary(w::HistogramIntegralFieldWeights) = "integral(field ($(summary(w.field))))"
+Base.summary(w::HistogramAverageCountWeights) = "average(:count)"
+Base.summary(w::HistogramAverageFieldWeights) = "average(field ($(summary(w.field))))"
 
 function Base.summary(op::HistogramOperation)
     nbin1, nbin2, nret = size(op.global_cache)
@@ -300,13 +328,26 @@ function compute_at!(op::HistogramOperation, time)
     grid = op.a.grid
     arch = architecture(grid)
 
-    launch!(arch, grid, op.launch_parameters, _accumulate_histogram_2d!,
-            op.local_histogram, op.a, op.b, op.edges1, op.edges2,
-            grid, op.weights, instantiated_location(op.a),
-            op.reduced_dimensions, op.retained_offsets, op.retained_lengths)
+    if op.method === :average
+        fill!(op.local_normalization, zero(eltype(op.local_normalization)))
 
-    local_histogram_cpu = on_architecture(CPU(), op.local_histogram)
-    copyto!(op.global_cache, local_histogram_cpu)
+        launch!(arch, grid, op.launch_parameters, _accumulate_histogram_2d_average!,
+                op.local_histogram, op.local_normalization, op.a, op.b, op.edges1, op.edges2,
+                grid, op.weights, instantiated_location(op.a),
+                op.reduced_dimensions, op.retained_offsets, op.retained_lengths)
+
+        copyto!(op.global_cache, on_architecture(CPU(), op.local_histogram))
+        copyto!(op.global_normalization, on_architecture(CPU(), op.local_normalization))
+        finalize_average_histogram!(op.global_cache, op.global_normalization)
+    else
+        launch!(arch, grid, op.launch_parameters, _accumulate_histogram_2d!,
+                op.local_histogram, op.a, op.b, op.edges1, op.edges2,
+                grid, op.weights, instantiated_location(op.a),
+                op.reduced_dimensions, op.retained_offsets, op.retained_lengths)
+
+        local_histogram_cpu = on_architecture(CPU(), op.local_histogram)
+        copyto!(op.global_cache, local_histogram_cpu)
+    end
 
     return nothing
 end
@@ -320,19 +361,36 @@ function compute_at!(op::Histogram1DOperation, time)
     grid = op.a.grid
     arch = architecture(grid)
 
-    launch!(arch, grid, op.launch_parameters, _accumulate_histogram_1d!,
-            op.local_histogram, op.a, op.edges1,
-            grid, op.weights, instantiated_location(op.a),
-            op.reduced_dimensions, op.retained_offsets, op.retained_lengths)
+    if op.method === :average
+        fill!(op.local_normalization, zero(eltype(op.local_normalization)))
 
-    local_histogram_cpu = on_architecture(CPU(), op.local_histogram)
-    copyto!(op.global_cache, local_histogram_cpu)
+        launch!(arch, grid, op.launch_parameters, _accumulate_histogram_1d_average!,
+                op.local_histogram, op.local_normalization, op.a, op.edges1,
+                grid, op.weights, instantiated_location(op.a),
+                op.reduced_dimensions, op.retained_offsets, op.retained_lengths)
+
+        copyto!(op.global_cache, on_architecture(CPU(), op.local_histogram))
+        copyto!(op.global_normalization, on_architecture(CPU(), op.local_normalization))
+        finalize_average_histogram!(op.global_cache, op.global_normalization)
+    else
+        launch!(arch, grid, op.launch_parameters, _accumulate_histogram_1d!,
+                op.local_histogram, op.a, op.edges1,
+                grid, op.weights, instantiated_location(op.a),
+                op.reduced_dimensions, op.retained_offsets, op.retained_lengths)
+
+        local_histogram_cpu = on_architecture(CPU(), op.local_histogram)
+        copyto!(op.global_cache, local_histogram_cpu)
+    end
 
     return nothing
 end
 
+@inline function finalize_average_histogram!(numerator, denominator)
+    @. numerator = ifelse(denominator > 0, numerator / denominator, zero(eltype(numerator)))
+    return nothing
+end
+
 @inline compute_histogram_weights_at!(::HistogramCountWeights, time) = nothing
-@inline compute_histogram_weights_at!(weights::HistogramVolumeWeights, time) = compute_at!(weights.volume, time)
 @inline compute_histogram_weights_at!(weights::HistogramFieldWeights, time) = compute_at!(weights.field, time)
 @inline compute_histogram_weights_at!(weights::HistogramIntegralCountWeights, time) = compute_at!(weights.metric, time)
 @inline function compute_histogram_weights_at!(weights::HistogramIntegralFieldWeights, time)
@@ -340,12 +398,22 @@ end
     compute_at!(weights.metric, time)
     return nothing
 end
+@inline compute_histogram_weights_at!(weights::HistogramAverageCountWeights, time) = compute_at!(weights.metric, time)
+@inline function compute_histogram_weights_at!(weights::HistogramAverageFieldWeights, time)
+    compute_at!(weights.field, time)
+    compute_at!(weights.metric, time)
+    return nothing
+end
 
 @inline histogram_weight(i, j, k, grid, ::HistogramCountWeights) = 1
-@inline histogram_weight(i, j, k, grid, weights::HistogramVolumeWeights) = @inbounds weights.volume[i, j, k]
 @inline histogram_weight(i, j, k, grid, weights::HistogramFieldWeights) = @inbounds weights.field[i, j, k]
 @inline histogram_weight(i, j, k, grid, weights::HistogramIntegralCountWeights) = @inbounds weights.metric[i, j, k]
 @inline histogram_weight(i, j, k, grid, weights::HistogramIntegralFieldWeights) = @inbounds weights.field[i, j, k] * weights.metric[i, j, k]
+@inline histogram_weight(i, j, k, grid, weights::HistogramAverageCountWeights) = @inbounds weights.metric[i, j, k]
+@inline histogram_weight(i, j, k, grid, weights::HistogramAverageFieldWeights) = @inbounds weights.field[i, j, k] * weights.metric[i, j, k]
+
+@inline histogram_normalization_weight(i, j, k, grid, weights::HistogramAverageCountWeights) = @inbounds weights.metric[i, j, k]
+@inline histogram_normalization_weight(i, j, k, grid, weights::HistogramAverageFieldWeights) = @inbounds weights.metric[i, j, k]
 
 @inline function find_histogram_bin(value, edges)
     N = length(edges)
@@ -407,6 +475,31 @@ end
     end
 end
 
+@kernel function _accumulate_histogram_2d_average!(histogram, normalization, a, b, edges1, edges2,
+                                                   grid, weights, loc,
+                                                   reduced_dimensions,
+                                                   retained_offsets,
+                                                   retained_lengths)
+    i, j, k = @index(Global, NTuple)
+
+    if !inactive_node(i, j, k, grid, loc...)
+        @inbounds aᵢ = a[i, j, k]
+        @inbounds bᵢ = b[i, j, k]
+
+        ibin1 = find_histogram_bin(aᵢ, edges1)
+        ibin2 = find_histogram_bin(bᵢ, edges2)
+
+        in_range = (ibin1 > 0) & (ibin2 > 0)
+        if in_range
+            retained_index = retained_linear_index(i, j, k, reduced_dimensions, retained_offsets, retained_lengths)
+            numerator_weight = convert(eltype(histogram), histogram_weight(i, j, k, grid, weights))
+            denominator_weight = convert(eltype(normalization), histogram_normalization_weight(i, j, k, grid, weights))
+            @atomic histogram[ibin1, ibin2, retained_index] += numerator_weight
+            @atomic normalization[ibin1, ibin2, retained_index] += denominator_weight
+        end
+    end
+end
+
 @kernel function _accumulate_histogram_1d!(histogram, a, edges1,
                                            grid, weights, loc,
                                            reduced_dimensions,
@@ -427,11 +520,34 @@ end
     end
 end
 
+@kernel function _accumulate_histogram_1d_average!(histogram, normalization, a, edges1,
+                                                   grid, weights, loc,
+                                                   reduced_dimensions,
+                                                   retained_offsets,
+                                                   retained_lengths)
+    i, j, k = @index(Global, NTuple)
+
+    if !inactive_node(i, j, k, grid, loc...)
+        @inbounds aᵢ = a[i, j, k]
+
+        ibin1 = find_histogram_bin(aᵢ, edges1)
+
+        if ibin1 > 0
+            retained_index = retained_linear_index(i, j, k, reduced_dimensions, retained_offsets, retained_lengths)
+            numerator_weight = convert(eltype(histogram), histogram_weight(i, j, k, grid, weights))
+            denominator_weight = convert(eltype(normalization), histogram_normalization_weight(i, j, k, grid, weights))
+            @atomic histogram[ibin1, retained_index, 1] += numerator_weight
+            @atomic normalization[ibin1, retained_index, 1] += denominator_weight
+        end
+    end
+end
+
 @inline histogram_weight_operands(::HistogramCountWeights) = ()
-@inline histogram_weight_operands(weights::HistogramVolumeWeights) = (weights.volume,)
 @inline histogram_weight_operands(weights::HistogramFieldWeights) = (weights.field,)
 @inline histogram_weight_operands(weights::HistogramIntegralCountWeights) = (weights.metric,)
 @inline histogram_weight_operands(weights::HistogramIntegralFieldWeights) = (weights.field, weights.metric)
+@inline histogram_weight_operands(weights::HistogramAverageCountWeights) = (weights.metric,)
+@inline histogram_weight_operands(weights::HistogramAverageFieldWeights) = (weights.field, weights.metric)
 
 function histogram_launch_indices(a, b, weights)
     loc = instantiated_location(a)
@@ -480,8 +596,8 @@ function histogram_reduction_metadata(launch_indices::NTuple{3, <:AbstractUnitRa
     return reduced_dimensions, retained_offsets, retained_lengths, retained_count
 end
 
-function maybe_warn_histogram_memory(shape, ::Type{FT}; dims) where FT
-    bytes = 2 * sizeof(FT) * prod(shape)
+function maybe_warn_histogram_memory(shape, ::Type{FT}; dims, buffers=2) where FT
+    bytes = buffers * sizeof(FT) * prod(shape)
 
     if bytes > HISTOGRAM_MEMORY_WARNING_BYTES
         gib = round(bytes / 1024^3; digits=3)
@@ -530,13 +646,13 @@ function validate_histogram_dims(dims)
 end
 
 function validate_histogram_method(method::Symbol)
-    method ∈ (:sum, :integral) ||
-        throw(ArgumentError("Histogram currently only supports method = :sum or method = :integral."))
+    method ∈ (:sum, :integral, :average) ||
+        throw(ArgumentError("Histogram currently only supports method = :sum, :integral, or :average."))
     return method
 end
 
 validate_histogram_method(method) =
-    throw(ArgumentError("Histogram currently only supports method = :sum or method = :integral."))
+    throw(ArgumentError("Histogram currently only supports method = :sum, :integral, or :average."))
 
 function validate_histogram_architecture(arch)
     if isdefined(Oceananigans, :DistributedComputations) &&
@@ -618,21 +734,24 @@ function validate_histogram_weights(weights::Symbol, method::Symbol, dims, a::Ab
     if method === :sum
         if weights === :count
             return HistogramCountWeights()
-        elseif weights === :cell_volume || weights === :volume
-            volume_field = grid_metric_operation(instantiated_location(a), volume, a.grid)
-            return HistogramVolumeWeights(volume_field)
         else
-            throw(ArgumentError("Unsupported Histogram weights = $weights for method=:sum. Use :count, :cell_volume, :volume, or an AbstractField."))
+            throw(ArgumentError("Unsupported Histogram weights = $weights for method=:sum. Use :count or an AbstractField."))
         end
-    else # method === :integral
+    elseif method === :integral
         metric = histogram_integral_metric(a, dims)
 
         if weights === :count
             return HistogramIntegralCountWeights(metric)
-        elseif weights === :cell_volume || weights === :volume
-            throw(ArgumentError("Histogram weights=:cell_volume is not supported with method=:integral because it would double-apply metrics. Use weights=:count or an AbstractField."))
         else
             throw(ArgumentError("Unsupported Histogram weights = $weights for method=:integral. Use :count or an AbstractField."))
+        end
+    else # method === :average
+        metric = histogram_integral_metric(a, dims)
+
+        if weights === :count
+            return HistogramAverageCountWeights(metric)
+        else
+            throw(ArgumentError("Unsupported Histogram weights = $weights for method=:average. Use :count or an AbstractField."))
         end
     end
 end
@@ -646,9 +765,12 @@ function validate_histogram_weights(weights::AbstractField, method::Symbol, dims
 
     if method === :sum
         return HistogramFieldWeights(weights)
-    else
+    elseif method === :integral
         metric = histogram_integral_metric(a, dims)
         return HistogramIntegralFieldWeights(weights, metric)
+    else
+        metric = histogram_integral_metric(a, dims)
+        return HistogramAverageFieldWeights(weights, metric)
     end
 end
 
@@ -663,15 +785,6 @@ end
 @inline function histogram_eltype(a, b, bins, ::HistogramCountWeights)
     edges1, edges2 = values(bins)
     return promote_type(float(eltype(a)), float(eltype(b)), float(eltype(edges1)), float(eltype(edges2)))
-end
-
-@inline function histogram_eltype(a, b, bins, ::HistogramVolumeWeights)
-    edges1, edges2 = values(bins)
-    return promote_type(float(eltype(a)),
-                        float(eltype(b)),
-                        float(eltype(edges1)),
-                        float(eltype(edges2)),
-                        float(eltype(a.grid)))
 end
 
 @inline function histogram_eltype(a, b, bins, weights::HistogramFieldWeights)
@@ -702,14 +815,28 @@ end
                         float(eltype(weights.metric)))
 end
 
+@inline function histogram_eltype(a, b, bins, weights::HistogramAverageCountWeights)
+    edges1, edges2 = values(bins)
+    return promote_type(float(eltype(a)),
+                        float(eltype(b)),
+                        float(eltype(edges1)),
+                        float(eltype(edges2)),
+                        float(eltype(weights.metric)))
+end
+
+@inline function histogram_eltype(a, b, bins, weights::HistogramAverageFieldWeights)
+    edges1, edges2 = values(bins)
+    return promote_type(float(eltype(a)),
+                        float(eltype(b)),
+                        float(eltype(edges1)),
+                        float(eltype(edges2)),
+                        float(eltype(weights.field)),
+                        float(eltype(weights.metric)))
+end
+
 @inline function histogram_eltype(a, bins, ::HistogramCountWeights)
     edges1 = first(values(bins))
     return promote_type(float(eltype(a)), float(eltype(edges1)))
-end
-
-@inline function histogram_eltype(a, bins, ::HistogramVolumeWeights)
-    edges1 = first(values(bins))
-    return promote_type(float(eltype(a)), float(eltype(edges1)), float(eltype(a.grid)))
 end
 
 @inline function histogram_eltype(a, bins, weights::HistogramFieldWeights)
@@ -723,6 +850,16 @@ end
 end
 
 @inline function histogram_eltype(a, bins, weights::HistogramIntegralFieldWeights)
+    edges1 = first(values(bins))
+    return promote_type(float(eltype(a)), float(eltype(edges1)), float(eltype(weights.field)), float(eltype(weights.metric)))
+end
+
+@inline function histogram_eltype(a, bins, weights::HistogramAverageCountWeights)
+    edges1 = first(values(bins))
+    return promote_type(float(eltype(a)), float(eltype(edges1)), float(eltype(weights.metric)))
+end
+
+@inline function histogram_eltype(a, bins, weights::HistogramAverageFieldWeights)
     edges1 = first(values(bins))
     return promote_type(float(eltype(a)), float(eltype(edges1)), float(eltype(weights.field)), float(eltype(weights.metric)))
 end

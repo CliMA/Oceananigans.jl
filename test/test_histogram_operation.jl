@@ -46,8 +46,6 @@ function reference_histogram(a, b, grid, edges1, edges2; weights=:count, dims=(1
         if in_range
             weight = if weights === :count
                 1
-            elseif weights === :cell_volume
-                Vᶜᶜᶜ(i, j, k, grid)
             else
                 weights[i, j, k]
             end
@@ -76,8 +74,6 @@ function reference_histogram_1d(a, grid, edges1; weights=:count, dims=(1, 2, 3))
         if i1 > 0
             weight = if weights === :count
                 1
-            elseif weights === :cell_volume
-                Vᶜᶜᶜ(i, j, k, grid)
             else
                 weights[i, j, k]
             end
@@ -109,18 +105,26 @@ function histogram_constructor_validation()
     @test_throws ArgumentError Histogram(a, b; bins=valid_bins, dims=())
     @test_throws ArgumentError Histogram(a, b; bins=valid_bins, dims=(1, 4))
     @test_throws ArgumentError Histogram(a, b; bins=valid_bins, weights=:mass)
+    @test_throws ArgumentError Histogram(a, b; bins=valid_bins, weights=:cell_volume)
+    @test_throws ArgumentError Histogram(a, b; bins=valid_bins, weights=:volume)
     @test_throws ArgumentError Histogram(a, b; bins=valid_bins, weights=w_face)
     @test_throws ArgumentError Histogram(a, b; bins=valid_bins, weights=w_other)
     @test_throws ArgumentError Histogram(a, b; bins=valid_bins, weights=:cell_volume, method=:integral)
+    @test_throws ArgumentError Histogram(a, b; bins=valid_bins, weights=:cell_volume, method=:average)
 
     @test_throws ArgumentError Histogram(a; bins=valid_bins, weights=:count)
     @test_throws ArgumentError Histogram(a; bins=[0.0, 1.0, 0.5], weights=:count)
+    @test_throws ArgumentError Histogram(a; bins=[0.0, 1.0], weights=:cell_volume)
+    @test_throws ArgumentError Histogram(a; bins=[0.0, 1.0], weights=:volume)
     @test_throws ArgumentError Histogram(a; bins=[0.0, 1.0], weights=w_face)
     @test_throws ArgumentError Histogram(a; bins=[0.0, 1.0], weights=w_other)
     @test_throws ArgumentError Histogram(a; bins=[0.0, 1.0], weights=:cell_volume, method=:integral)
+    @test_throws ArgumentError Histogram(a; bins=[0.0, 1.0], weights=:cell_volume, method=:average)
 
     @test Histogram(a, b; bins=valid_bins, weights=:count, method=:integral) isa AbstractOperation
     @test Histogram(a; bins=[0.0, 1.0], weights=:count, method=:integral) isa AbstractOperation
+    @test Histogram(a, b; bins=valid_bins, weights=a, method=:average) isa AbstractOperation
+    @test Histogram(a; bins=[0.0, 1.0], weights=a, method=:average) isa AbstractOperation
 end
 
 function histogram_is_correct(arch, FT)
@@ -140,19 +144,15 @@ function histogram_is_correct(arch, FT)
     w_cpu = Array(interior(model.tracers.w))
 
     count_field = Field(Histogram(model.tracers.a, model.tracers.b; bins, weights=:count))
-    volume_field = Field(Histogram(model.tracers.a, model.tracers.b; bins, weights=:cell_volume))
     weighted_field = Field(Histogram(model.tracers.a, model.tracers.b; bins, weights=model.tracers.w))
 
     count_hist = Array(interior(count_field))
-    volume_hist = Array(interior(volume_field))
     weighted_hist = Array(interior(weighted_field))
 
     expected_count = reference_histogram(a_cpu, b_cpu, grid, edges1, edges2; weights=:count)
-    expected_volume = reference_histogram(a_cpu, b_cpu, grid, edges1, edges2; weights=:cell_volume)
     expected_weighted = reference_histogram(a_cpu, b_cpu, grid, edges1, edges2; weights=w_cpu)
 
     @test count_hist == expected_count
-    @test volume_hist ≈ expected_volume
     @test weighted_hist ≈ expected_weighted
 end
 
@@ -264,6 +264,51 @@ function histogram_integral_method_matches_sum_with_metric_1d(arch, FT)
     @test Array(interior(count_integral)) ≈ Array(interior(count_sum))
 end
 
+function histogram_average_method_matches_integral_ratio_2d(arch, FT)
+    grid = RectilinearGrid(arch, FT, size=(6, 5, 4), extent=(6, 5, 4))
+    model = NonhydrostaticModel(grid; tracers=(:a, :b, :c))
+
+    set!(model, a=(x, y, z) -> FT(0.8x + 0.2z),
+                b=(x, y, z) -> FT(31 + 0.3y - 0.1z),
+                c=(x, y, z) -> FT(2 + 0.1x + 0.2y + 0.3z))
+
+    edges1 = FT[0, 1, 2, 3, 4, 5, 6]
+    edges2 = FT[30, 30.5, 31, 31.5, 32, 32.5, 33]
+    bins = (a = edges1, b = edges2)
+    dims = (1, 2)
+
+    average_field = Field(Histogram(model.tracers.a, model.tracers.b; bins, weights=model.tracers.c, dims, method=:average))
+    numerator = Field(Histogram(model.tracers.a, model.tracers.b; bins, weights=model.tracers.c, dims, method=:integral))
+    denominator = Field(Histogram(model.tracers.a, model.tracers.b; bins, weights=:count, dims, method=:integral))
+
+    expected = Array(interior(numerator))
+    denom = Array(interior(denominator))
+    @. expected = ifelse(denom > 0, expected / denom, zero(eltype(expected)))
+
+    @test Array(interior(average_field)) ≈ expected
+end
+
+function histogram_average_method_matches_integral_ratio_1d(arch, FT)
+    grid = RectilinearGrid(arch, FT, size=(6, 5, 4), extent=(6, 5, 4))
+    model = NonhydrostaticModel(grid; tracers=(:a, :c))
+
+    set!(model, a=(x, y, z) -> FT(0.8x + 0.2z),
+                c=(x, y, z) -> FT(2 + 0.1x + 0.2y + 0.3z))
+
+    bins = FT[0, 1, 2, 3, 4, 5, 6]
+    dims = (1, 2)
+
+    average_field = Field(Histogram(model.tracers.a; bins, weights=model.tracers.c, dims, method=:average))
+    numerator = Field(Histogram(model.tracers.a; bins, weights=model.tracers.c, dims, method=:integral))
+    denominator = Field(Histogram(model.tracers.a; bins, weights=:count, dims, method=:integral))
+
+    expected = Array(interior(numerator))
+    denom = Array(interior(denominator))
+    @. expected = ifelse(denom > 0, expected / denom, zero(eltype(expected)))
+
+    @test Array(interior(average_field)) ≈ expected
+end
+
 function histogram_edge_semantics()
     grid = RectilinearGrid(CPU(), size=(2, 2, 1), extent=(1, 1, 1))
     a = CenterField(grid)
@@ -326,7 +371,7 @@ function histogram_face_location_includes_bounded_boundary_faces(arch, FT)
     @test sum(histogram_cpu) == length(a_cpu)
 end
 
-function histogram_cell_volume_conservation(arch, FT)
+function histogram_integral_count_conservation(arch, FT)
     grid = RectilinearGrid(arch, FT, size=(6, 5, 4), extent=(6, 5, 4))
     a = CenterField(grid)
     b = CenterField(grid)
@@ -337,7 +382,7 @@ function histogram_cell_volume_conservation(arch, FT)
     a_edges = FT[-1, 0, 1, 2, 3, 4, 5]
     b_edges = FT[32, 33, 34, 35, 36]
 
-    histogram = Field(Histogram(a, b; bins=(a=a_edges, b=b_edges), weights=:cell_volume))
+    histogram = Field(Histogram(a, b; bins=(a=a_edges, b=b_edges), weights=:count, method=:integral))
     total_histogram_volume = sum(histogram)
     total_grid_volume = sum(KernelFunctionOperation{Center, Center, Center}(Vᶜᶜᶜ, grid))
 
@@ -410,9 +455,11 @@ end
                 histogram_1d_is_correct(arch, FT)
                 histogram_integral_method_matches_sum_with_metric_2d(arch, FT)
                 histogram_integral_method_matches_sum_with_metric_1d(arch, FT)
+                histogram_average_method_matches_integral_ratio_2d(arch, FT)
+                histogram_average_method_matches_integral_ratio_1d(arch, FT)
                 histogram_named_operands_map_bins_by_key(arch, FT)
                 histogram_face_location_includes_bounded_boundary_faces(arch, FT)
-                histogram_cell_volume_conservation(arch, FT)
+                histogram_integral_count_conservation(arch, FT)
             end
         end
     end
