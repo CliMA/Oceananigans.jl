@@ -54,6 +54,7 @@ function histogram_constructor_validation()
     @test_throws ArgumentError Histogram(a, b; bins=(x=[0.0, 1.0],), weights=:count)
     @test_throws ArgumentError Histogram(a, b; bins=(x=[0.0, 1.0, 0.5], y=[0.0, 1.0]), weights=:count)
     @test_throws ArgumentError Histogram(a, b_face; bins=valid_bins, weights=:count)
+    @test_throws ArgumentError Histogram((S=a, T=b); bins=valid_bins, weights=:count)
     @test_throws ArgumentError Histogram(a, b; bins=valid_bins, method=:mean)
     @test_throws ArgumentError Histogram(a, b; bins=valid_bins, dims=(1, 2))
     @test_throws ArgumentError Histogram(a, b; bins=valid_bins, weights=:mass)
@@ -107,6 +108,31 @@ function histogram_edge_semantics()
     histogram = Array(interior(h))[:, :, 1]
 
     @test histogram == [1.0 0.0; 0.0 2.0]
+end
+
+function histogram_named_operands_map_bins_by_key(arch, FT)
+    grid = RectilinearGrid(arch, FT, size=(6, 5, 4), extent=(6, 5, 4))
+    model = NonhydrostaticModel(grid; tracers=(:a, :b))
+
+    set!(model, a=(x, y, z) -> FT(0.8x + 0.2z),
+                b=(x, y, z) -> FT(31 + 0.3y - 0.1z))
+
+    a_edges = FT[0, 1, 2, 3, 4, 5, 6]
+    b_edges = FT[30, 30.5, 31, 31.5, 32, 32.5, 33]
+
+    # Named operands map bins by key, not by tuple order.
+    h1 = Field(Histogram((S=model.tracers.b, T=model.tracers.a); bins=(T=a_edges, S=b_edges), weights=:count))
+    h2 = Field(Histogram((S=model.tracers.b, T=model.tracers.a); bins=(S=b_edges, T=a_edges), weights=:count))
+
+    h1_cpu = Array(interior(h1))
+    h2_cpu = Array(interior(h2))
+
+    @test h1_cpu == h2_cpu
+
+    a_cpu = Array(interior(model.tracers.a))
+    b_cpu = Array(interior(model.tracers.b))
+    expected = reference_histogram(b_cpu, a_cpu, grid, b_edges, a_edges; weights=:count)
+    @test h1_cpu[:, :, 1] == expected
 end
 
 function histogram_writer_smoke_test()
@@ -163,6 +189,7 @@ end
             @info "  Testing Histogram correctness [$(typeof(arch))]..."
             for FT in float_types
                 histogram_is_correct(arch, FT)
+                histogram_named_operands_map_bins_by_key(arch, FT)
             end
         end
     end

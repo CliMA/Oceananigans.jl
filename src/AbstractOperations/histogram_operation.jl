@@ -44,6 +44,7 @@ end
 
 """
     Histogram(a::AbstractField, b::AbstractField; bins=NamedTuple(), weights=:count, dims=(1, 2, 3), method=:sum)
+    Histogram(fields::NamedTuple; bins=NamedTuple(), weights=:count, dims=(1, 2, 3), method=:sum)
 
 Construct a 2D histogram operation from field operands `a` and `b`.
 
@@ -56,6 +57,11 @@ MVP constraints:
   on the same grid and location as `a` and `b`.
 - `dims` must be `:` or `(1, 2, 3)`.
 - `method` must be `:sum`.
+
+Bin mapping behavior:
+- `Histogram(a, b; bins=(..., ...))` maps bins by value order.
+- `Histogram((name1=a, name2=b); bins=(...))` maps bins by key and then reorders
+  to operand order. This allows bin tuple order to differ from operand order.
 
 Example
 =======
@@ -77,6 +83,25 @@ julia> h = Field(Histogram(T, S; bins=(T=T_edges, S=S_edges), weights=:count));
 
 julia> size(h)
 (4, 6, 1)
+```
+
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1));
+
+julia> T = CenterField(grid); S = CenterField(grid);
+
+julia> set!(T, (x, y, z) -> x + z); set!(S, (x, y, z) -> y - z);
+
+julia> T_edges = collect(range(0.0, stop=2.0, length=5));
+
+julia> S_edges = collect(range(-1.0, stop=2.0, length=7));
+
+julia> h_named = Field(Histogram((S=S, T=T); bins=(T=T_edges, S=S_edges), weights=:count));
+
+julia> size(h_named)
+(6, 4, 1)
 ```
 """
 function Histogram(a::AbstractField, b::AbstractField;
@@ -119,6 +144,28 @@ function Histogram(a::AbstractField, b::AbstractField;
     return HistogramOperation(histogram_grid, a, b, bins, edges1, edges2, weights,
                               local_histogram, global_cache, launch_parameters,
                               dims, method)
+end
+
+function Histogram(fields::NamedTuple;
+                   bins = NamedTuple(),
+                   weights = :count,
+                   dims = (1, 2, 3),
+                   method = :sum)
+
+    length(fields) == 2 ||
+        throw(ArgumentError("Histogram(fields=...) requires exactly two named field operands."))
+
+    operand_names = keys(fields)
+    a, b = values(fields)
+
+    a isa AbstractField ||
+        throw(ArgumentError("Histogram(fields=...) requires field operands, but `$(operand_names[1])` is $(typeof(a))."))
+
+    b isa AbstractField ||
+        throw(ArgumentError("Histogram(fields=...) requires field operands, but `$(operand_names[2])` is $(typeof(b))."))
+
+    bins = reorder_histogram_bins_for_named_operands(bins, operand_names)
+    return Histogram(a, b; bins, weights, dims, method)
 end
 
 Base.summary(::HistogramCountWeights) = ":count"
@@ -311,6 +358,20 @@ end
 
 validate_histogram_bins(bins) =
     throw(ArgumentError("Histogram requires bins to be a NamedTuple with exactly two entries."))
+
+function reorder_histogram_bins_for_named_operands(bins::NamedTuple, operand_names::Tuple{Symbol, Symbol})
+    bins = validate_histogram_bins(bins)
+    first_name, second_name = operand_names
+
+    first_name ∈ keys(bins) ||
+        throw(ArgumentError("Histogram bins are missing key `$first_name` required by named operand mapping."))
+
+    second_name ∈ keys(bins) ||
+        throw(ArgumentError("Histogram bins are missing key `$second_name` required by named operand mapping."))
+
+    return NamedTuple{operand_names}((getproperty(bins, first_name),
+                                      getproperty(bins, second_name)))
+end
 
 function validate_histogram_weights(weights::Symbol, a, b)
     if weights === :count
