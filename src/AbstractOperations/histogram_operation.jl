@@ -2,7 +2,7 @@ using Oceananigans.Fields: AbstractField, instantiated_location, compute_at!, in
 using Oceananigans.Grids: RectilinearGrid, Center, Bounded, Flat, topology, interior_indices
 using Oceananigans.Architectures: architecture, on_architecture, CPU
 using Oceananigans.Utils: KernelParameters, launch!, tupleit
-using Oceananigans.Grids: inactive_cell
+using Oceananigans.Grids: inactive_node
 
 using KernelAbstractions: @kernel, @index, @atomic
 
@@ -57,6 +57,7 @@ MVP constraints:
   on the same grid and location as `a` and `b`.
 - `dims` must be `:` or `(1, 2, 3)`.
 - `method` must be `:sum`.
+- Distributed architectures are not supported yet.
 
 Bin mapping behavior:
 - `Histogram(a, b; bins=(..., ...))` maps bins by value order.
@@ -84,25 +85,6 @@ julia> h = Field(Histogram(T, S; bins=(T=T_edges, S=S_edges), weights=:count));
 julia> size(h)
 (4, 6, 1)
 ```
-
-```jldoctest
-julia> using Oceananigans
-
-julia> grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1));
-
-julia> T = CenterField(grid); S = CenterField(grid);
-
-julia> set!(T, (x, y, z) -> x + z); set!(S, (x, y, z) -> y - z);
-
-julia> T_edges = collect(range(0.0, stop=2.0, length=5));
-
-julia> S_edges = collect(range(-1.0, stop=2.0, length=7));
-
-julia> h_named = Field(Histogram((S=S, T=T); bins=(T=T_edges, S=S_edges), weights=:count));
-
-julia> size(h_named)
-(6, 4, 1)
-```
 """
 function Histogram(a::AbstractField, b::AbstractField;
                    bins = NamedTuple(),
@@ -116,6 +98,9 @@ function Histogram(a::AbstractField, b::AbstractField;
     method = validate_histogram_method(method)
     bins = validate_histogram_bins(bins)
     weights = validate_histogram_weights(weights, a, b)
+
+    arch = architecture(a.grid)
+    validate_histogram_architecture(arch)
 
     FT = histogram_eltype(a, b, bins, weights)
     bins = convert_histogram_bins_eltype(bins, FT)
@@ -133,7 +118,6 @@ function Histogram(a::AbstractField, b::AbstractField;
                                      x = edges1_cpu,
                                      y = edges2_cpu)
 
-    arch = architecture(a.grid)
     edges1 = on_architecture(arch, edges1_cpu)
     edges2 = on_architecture(arch, edges2_cpu)
 
@@ -200,20 +184,11 @@ function compute_at!(op::HistogramOperation, time)
     arch = architecture(grid)
 
     launch!(arch, grid, op.launch_parameters, _accumulate_histogram!,
-            op.local_histogram, op.a, op.b, op.edges1, op.edges2, grid, op.weights)
+            op.local_histogram, op.a, op.b, op.edges1, op.edges2, grid, op.weights, instantiated_location(op.a))
 
     local_histogram_cpu = on_architecture(CPU(), op.local_histogram)
     copyto!(view(op.global_cache, :, :, 1), local_histogram_cpu)
-    histogram_all_reduce!(+, op.global_cache, arch)
-
     return nothing
-end
-
-@inline function histogram_all_reduce!(op, val, arch::Any)
-    if isdefined(Oceananigans, :DistributedComputations)
-        Oceananigans.DistributedComputations.all_reduce!(op, val, arch)
-    end
-    return val
 end
 
 @inline compute_histogram_weights_at!(::HistogramCountWeights, time) = nothing
@@ -250,10 +225,10 @@ end
     return ifelse(1 <= hi < N, hi, 0)
 end
 
-@kernel function _accumulate_histogram!(histogram, a, b, edges1, edges2, grid, weights)
+@kernel function _accumulate_histogram!(histogram, a, b, edges1, edges2, grid, weights, loc)
     i, j, k = @index(Global, NTuple)
 
-    if !inactive_cell(i, j, k, grid)
+    if !inactive_node(i, j, k, grid, loc...)
         @inbounds aᵢ = a[i, j, k]
         @inbounds bᵢ = b[i, j, k]
 
@@ -335,6 +310,15 @@ end
 
 validate_histogram_method(method) =
     throw(ArgumentError("Histogram currently only supports method = :sum."))
+
+function validate_histogram_architecture(arch)
+    if isdefined(Oceananigans, :DistributedComputations) &&
+       arch isa Oceananigans.DistributedComputations.Distributed
+        throw(ArgumentError("Histogram does not support distributed architectures yet."))
+    end
+
+    return nothing
+end
 
 function validate_histogram_bins(bins::NamedTuple)
     length(bins) == 2 ||

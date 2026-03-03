@@ -135,6 +135,28 @@ function histogram_named_operands_map_bins_by_key(arch, FT)
     @test h1_cpu[:, :, 1] == expected
 end
 
+function histogram_face_location_includes_bounded_boundary_faces(arch, FT)
+    grid = RectilinearGrid(arch, FT, topology=(Bounded, Periodic, Bounded), size=(6, 5, 4), extent=(6, 5, 4))
+    a = XFaceField(grid)
+    b = XFaceField(grid)
+
+    set!(a, FT(0.5))
+    set!(b, FT(34.5))
+
+    a_edges = FT[0, 1]
+    b_edges = FT[34, 35]
+
+    histogram = Field(Histogram(a, b; bins=(a=a_edges, b=b_edges), weights=:count))
+    histogram_cpu = Array(interior(histogram))[:, :, 1]
+
+    a_cpu = Array(interior(a))
+    b_cpu = Array(interior(b))
+    expected = reference_histogram(a_cpu, b_cpu, grid, a_edges, b_edges; weights=:count)
+
+    @test histogram_cpu == expected
+    @test sum(histogram_cpu) == length(a_cpu)
+end
+
 function histogram_cell_volume_conservation(arch, FT)
     grid = RectilinearGrid(arch, FT, size=(6, 5, 4), extent=(6, 5, 4))
     a = CenterField(grid)
@@ -208,6 +230,7 @@ end
             for FT in float_types
                 histogram_is_correct(arch, FT)
                 histogram_named_operands_map_bins_by_key(arch, FT)
+                histogram_face_location_includes_bounded_boundary_faces(arch, FT)
                 histogram_cell_volume_conservation(arch, FT)
             end
         end
