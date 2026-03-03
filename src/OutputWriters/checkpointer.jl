@@ -145,10 +145,14 @@ function latest_checkpoint_by_time_stamp(checkpointer, filepaths)
 
     length(candidate_paths) == 1 && return first(candidate_paths)
 
-    # Deterministic tie-breaker when multiple files share identical mtime resolution.
+    # Deterministic tie-breaker for coarse filesystem mtimes:
+    # if multiple files have the same latest timestamp, pick the highest iteration.
     return latest_checkpoint_by_iteration(checkpointer, candidate_paths)
 end
 
+# Backward-compatibility shim: historical "latest_checkpoint" means "latest by iteration".
+# Keep this behavior for existing internal/external callsites (for example cleanup logic),
+# while the new :time_stamp mode is selected explicitly via checkpoint_path(::Symbol, ...).
 latest_checkpoint(checkpointer, filepaths) = latest_checkpoint_by_iteration(checkpointer, filepaths)
 
 #####
