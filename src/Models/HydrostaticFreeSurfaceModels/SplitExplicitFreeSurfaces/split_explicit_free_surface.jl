@@ -2,7 +2,7 @@ using Oceananigans: Oceananigans
 using Oceananigans.Grids: Grids, Flat, LeftConnected, RightConnected, FullyConnected,
     RightCenterFolded, RightFaceFolded,
     halo_size, on_architecture, minimum_xspacing, minimum_yspacing, with_halo
-using Oceananigans.Fields: TracerFields, XFaceField, YFaceField
+using Oceananigans.Fields: XFaceField, YFaceField
 using Oceananigans.Utils: prettytime
 using Adapt: Adapt
 
