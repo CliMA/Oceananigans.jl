@@ -85,7 +85,8 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                         set!(reactant_field, data)
 
                         fill_halo_regions!(vanilla_field)
-                        @jit fill_halo_regions!(reactant_field)
+                        rfill! = @compile raise=true raise_first=true fill_halo_regions!(reactant_field)
+                        rfill!(reactant_field)
 
                         @test compare_parent("halo", vanilla_field, reactant_field)
                     end
