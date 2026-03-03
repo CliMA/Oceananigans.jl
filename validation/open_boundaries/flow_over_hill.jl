@@ -148,6 +148,14 @@ function plot_flow_over_hill_animation(filepath;
     return fig
 end
 
-simulation = flow_over_hill_simulation(; model_type = :nonhydrostatic)
+# Run and plot non-hydrostatic flow over hill
+model_type = :nonhydrostatic
+simulation = flow_over_hill_simulation(; model_type)
 run!(simulation)
-plot_flow_over_hill_animation(simulation.output_writers[:snaps].filepath)
+plot_flow_over_hill_animation(simulation.output_writers[:snaps].filepath; model_type)
+
+# Run and plot hydrostatic flow over hill
+model_type = :hydrostatic_with_implicit_surface
+simulation = flow_over_hill_simulation(; model_type)
+run!(simulation)
+plot_flow_over_hill_animation(simulation.output_writers[:snaps].filepath; model_type)
