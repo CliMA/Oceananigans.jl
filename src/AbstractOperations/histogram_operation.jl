@@ -33,6 +33,15 @@ struct HistogramOperation{G, T, A, B, BN, E1, E2, W, H, C, K} <: AbstractOperati
     method :: Symbol
 end
 
+function HistogramOperation(grid::G, a::A, b::B, bins::BN, edges1::E1, edges2::E2,
+                            weights::W, local_histogram::H, global_cache::C,
+                            launch_parameters::K, dims::NTuple{3, Int}, method::Symbol) where {G, A, B, BN, E1, E2, W, H, C, K}
+    T = eltype(global_cache)
+    return HistogramOperation{G, T, A, B, BN, E1, E2, W, H, C, K}(grid, a, b, bins, edges1, edges2,
+                                                                   weights, local_histogram, global_cache,
+                                                                   launch_parameters, dims, method)
+end
+
 """
     Histogram(a::AbstractField, b::AbstractField; bins=NamedTuple(), weights=:count, dims=(1, 2, 3), method=:sum)
 
@@ -93,12 +102,11 @@ function Histogram(a::AbstractField, b::AbstractField;
     # Keep histogram data on host for deterministic indexing/output while computing
     # local contributions on the operand architecture.
     histogram_grid = RectilinearGrid(CPU(), FT;
-                                     size = (nbin1, nbin2, 1),
+                                     size = (nbin1, nbin2),
                                      topology = (Bounded, Bounded, Flat),
-                                     halo = (0, 0, 0),
+                                     halo = (1, 1),
                                      x = edges1_cpu,
-                                     y = edges2_cpu,
-                                     z = zero(FT))
+                                     y = edges2_cpu)
 
     arch = architecture(a.grid)
     edges1 = on_architecture(arch, edges1_cpu)
