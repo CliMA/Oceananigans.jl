@@ -93,14 +93,9 @@ end
             prtgv = ImmersedBoundaryGrid(deepcopy(rtgv), PartialCellBottom((x, y) -> 2rand() - 8))
 
             if topology[2] == Bounded
-                llgv = LatitudeLongitudeGrid(arch; size = (40, 40, 10), latitude = (0, 1), longitude = (0, 1), topology, z = z_stretched)
-
+                llgv  = LatitudeLongitudeGrid(arch; size = (40, 40, 10), latitude = (0, 1), longitude = (0, 1), topology, z = z_stretched)
                 illgv = ImmersedBoundaryGrid(deepcopy(llgv),  GridFittedBottom((x, y) -> 2rand() - 8))
                 pllgv = ImmersedBoundaryGrid(deepcopy(llgv), PartialCellBottom((x, y) -> 2rand() - 8))
-
-                # TODO: Partial cell bottom are broken at the moment and do not account for the Δz in the volumes
-                # and vertical areas (see https://github.com/CliMA/Oceananigans.jl/issues/3958)
-                # When this is issue is fixed we can add the partial cells to the testing.
                 grids = [llgv, rtgv, illgv, irtgv, pllgv, prtgv]
             else
                 grids = [rtgv, irtgv, prtgv]
