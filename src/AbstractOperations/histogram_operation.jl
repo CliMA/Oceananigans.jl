@@ -51,7 +51,7 @@ Construct a 2D histogram operation from field operands `a` and `b`.
 The result is an `AbstractOperation` that can be used with `Field(...)` and output writers,
 for example `Field(Histogram(...))`.
 
-MVP constraints:
+Method constraints:
 - `bins` must be a `NamedTuple` with exactly two strictly-increasing edge vectors.
 - `weights` must be one of `:count`, `:cell_volume` (or `:volume`), or an `AbstractField`
   on the same grid and location as `a` and `b`.

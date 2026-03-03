@@ -300,7 +300,7 @@ Like other operations, it is typically materialized with `Field(Histogram(...))`
 standard output writers.
 For example, `JLD2Writer(model, (; histogram = Field(Histogram(...))), ...)` writes time series of histogram fields.
 
-Current MVP limits are:
+Current limits are:
 - `method = :sum` only.
 - `dims = :` or `dims = (1, 2, 3)` only.
 - `bins` must have exactly two edge vectors in a `NamedTuple`.
