@@ -79,10 +79,11 @@ function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
     return simulation
 end
 
-function plot_2d_flow_over_hill(filepath;
+function plot_flow_over_hill_animation(filepath;
                                 model_type = :nonhydrostatic,
                                 framerate = 16,
                                 compression = 20)
+    @info "Plotting flow over hill from $filepath"
 
     # Load results
     u_ts = FieldTimeSeries(filepath, "u")
@@ -147,4 +148,4 @@ end
 
 simulation = flow_over_hill_simulation(; model_type = :nonhydrostatic)
 run!(simulation)
-plot_2d_flow_over_hill(; filepath = simulation.output_writers[:snaps].filepath)
+plot_flow_over_hill_animation(simulation.output_writers[:snaps].filepath)
