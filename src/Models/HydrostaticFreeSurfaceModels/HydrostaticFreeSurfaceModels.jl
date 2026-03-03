@@ -82,6 +82,14 @@ initialize_free_surface!(free_surface, grid, velocities) = nothing
 # Transport velocity computation (only for a SplitExplicitFreeSurface)
 compute_transport_velocities!(model, free_surface) = nothing
 
+"""
+    tracer_tendency_fields(tracers, grid, boundary_conditions)
+
+Return tendency fields for `tracers`. Prescribed tracers get `nothing`
+(no tendency); prognostic tracers get a `CenterField`.
+"""
+function tracer_tendency_fields end
+
 include("compute_w_from_continuity.jl")
 include("hydrostatic_free_surface_field_tuples.jl")
 
