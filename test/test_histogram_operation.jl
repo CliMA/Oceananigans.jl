@@ -135,6 +135,24 @@ function histogram_named_operands_map_bins_by_key(arch, FT)
     @test h1_cpu[:, :, 1] == expected
 end
 
+function histogram_cell_volume_conservation(arch, FT)
+    grid = RectilinearGrid(arch, FT, size=(6, 5, 4), extent=(6, 5, 4))
+    a = CenterField(grid)
+    b = CenterField(grid)
+
+    set!(a, (x, y, z) -> FT(0.5x + 0.25y + 0.1z))
+    set!(b, (x, y, z) -> FT(34 + 0.2x - 0.3y - 0.05z))
+
+    a_edges = FT[-1, 0, 1, 2, 3, 4, 5]
+    b_edges = FT[32, 33, 34, 35, 36]
+
+    histogram = Field(Histogram(a, b; bins=(a=a_edges, b=b_edges), weights=:cell_volume))
+    total_histogram_volume = sum(histogram)
+    total_grid_volume = sum(KernelFunctionOperation{Center, Center, Center}(Vᶜᶜᶜ, grid))
+
+    @test total_histogram_volume ≈ total_grid_volume
+end
+
 function histogram_writer_smoke_test()
     mktempdir() do dir
         grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
@@ -190,6 +208,7 @@ end
             for FT in float_types
                 histogram_is_correct(arch, FT)
                 histogram_named_operands_map_bins_by_key(arch, FT)
+                histogram_cell_volume_conservation(arch, FT)
             end
         end
     end

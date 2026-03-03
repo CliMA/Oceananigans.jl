@@ -24,6 +24,8 @@ MPI.Init()
 using Oceananigans.BoundaryConditions: fill_halo_regions!, DCBC
 using Oceananigans.DistributedComputations: Distributed, index2rank, cpu_architecture, child_architecture
 using Oceananigans.Fields: AbstractField
+using Oceananigans.AbstractOperations: Histogram, KernelFunctionOperation
+using Oceananigans.Operators: Vᶜᶜᶜ
 using Oceananigans.Grids:
     architecture,
     halo_size,
@@ -444,6 +446,26 @@ function test_triply_periodic_halo_communication_with_221_ranks(halo, child_arch
     return nothing
 end
 
+function test_distributed_histogram_volume_conservation(partition, child_arch)
+    arch = Distributed(child_arch; partition)
+    grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
+    a = CenterField(grid)
+    b = CenterField(grid)
+
+    set!(a, (x, y, z) -> 0.5x + 0.25y + 0.1z)
+    set!(b, (x, y, z) -> 34 + 0.2x - 0.3y - 0.05z)
+
+    a_edges = collect(range(-2.0, stop=2.0, length=17))
+    b_edges = collect(range(32.0, stop=36.0, length=17))
+
+    histogram = Field(Histogram(a, b; bins=(a=a_edges, b=b_edges), weights=:cell_volume))
+    total_histogram_volume = sum(histogram)
+    total_grid_volume = sum(KernelFunctionOperation{Center, Center, Center}(Vᶜᶜᶜ, grid))
+
+    @test total_histogram_volume ≈ total_grid_volume
+    return nothing
+end
+
 #####
 ##### Run tests!
 #####
@@ -561,6 +583,15 @@ end
 
             all!(cbool_reduced, cbool)
             @test @allowscalar cbool_reduced[1, 1, 1] == false
+        end
+    end
+
+    @testset "Distributed histogram operation" begin
+        child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
+
+        for partition in [Partition(1, 4), Partition(2, 2), Partition(4, 1)]
+            @info "Testing the closure of a histogram code with partition $partition..."
+            test_distributed_histogram_volume_conservation(partition, child_arch)
         end
     end
 
