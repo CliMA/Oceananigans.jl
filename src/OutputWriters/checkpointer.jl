@@ -94,29 +94,62 @@ end
     checkpoint_path(pickup::Bool, checkpointer::Checkpointer)
 
 For `pickup=true`, parse the filenames in `checkpointer.dir` associated with
-`checkpointer.prefix` and return the path to the file whose name contains
-the largest iteration.
+`checkpointer.prefix` and return the path to the most recently modified
+checkpoint file.
 """
 function checkpoint_path(pickup::Bool, checkpointer::Checkpointer)
+    pickup || return nothing
+    return checkpoint_path(:time_stamp, checkpointer)
+end
+
+"""
+    checkpoint_path(pickup::Symbol, checkpointer::Checkpointer)
+
+For symbol-based pickup modes:
+
+- `pickup=:time_stamp` returns the most recently modified checkpoint file.
+- `pickup=:iteration` returns the checkpoint file with the largest iteration in its name.
+- `pickup=:latest` is an alias for `:time_stamp`.
+"""
+function checkpoint_path(pickup::Symbol, checkpointer::Checkpointer)
+    mode = pickup === :latest ? :time_stamp : pickup
+    mode in (:time_stamp, :iteration) || throw(ArgumentError("Unsupported pickup mode $pickup. Supported modes are :time_stamp and :iteration."))
+
     filepaths = glob(checkpoint_superprefix(checkpointer.prefix) * "*.jld2", checkpointer.dir)
 
     if length(filepaths) == 0 # no checkpoint files found
         # https://github.com/CliMA/Oceananigans.jl/issues/1159
-        @warn "pickup=true but no checkpoints were found. Simulation will run without picking up."
+        @warn "pickup=$pickup but no checkpoints were found. Simulation will run without picking up."
         return nothing
+    elseif mode === :iteration
+        return latest_checkpoint_by_iteration(checkpointer, filepaths)
     else
-        return latest_checkpoint(checkpointer, filepaths)
+        return latest_checkpoint_by_time_stamp(checkpointer, filepaths)
     end
 end
 
-function latest_checkpoint(checkpointer, filepaths)
+function latest_checkpoint_by_iteration(checkpointer, filepaths)
     filenames = basename.(filepaths)
     leading = length(checkpoint_superprefix(checkpointer.prefix))
     trailing = length(".jld2") # 5
     iterations = map(name -> parse(Int, chop(name, head=leading, tail=trailing)), filenames)
-    latest_iteration, idx = findmax(iterations)
+    _, idx = findmax(iterations)
     return filepaths[idx]
 end
+
+function latest_checkpoint_by_time_stamp(checkpointer, filepaths)
+    modification_times = map(filepath -> stat(filepath).mtime, filepaths)
+    latest_time = maximum(modification_times)
+    indices_with_latest_time = findall(==(latest_time), modification_times)
+    candidate_paths = filepaths[indices_with_latest_time]
+
+    length(candidate_paths) == 1 && return first(candidate_paths)
+
+    # Deterministic tie-breaker when multiple files share identical mtime resolution.
+    return latest_checkpoint_by_iteration(checkpointer, candidate_paths)
+end
+
+latest_checkpoint(checkpointer, filepaths) = latest_checkpoint_by_iteration(checkpointer, filepaths)
 
 #####
 ##### Writing checkpoints
