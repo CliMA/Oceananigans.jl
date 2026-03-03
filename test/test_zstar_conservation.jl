@@ -101,9 +101,9 @@ end
                 # TODO: Partial cell bottom are broken at the moment and do not account for the Δz in the volumes
                 # and vertical areas (see https://github.com/CliMA/Oceananigans.jl/issues/3958)
                 # When this is issue is fixed we can add the partial cells to the testing.
-                grids = [llgv, rtgv, illgv, irtgv] # , pllgv, prtgv]
+                grids = [llgv, rtgv, illgv, irtgv, pllgv, prtgv]
             else
-                grids = [rtgv, irtgv] #, prtgv]
+                grids = [rtgv, irtgv, prtgv]
             end
 
             # We test only SKR3 because AB2 is not conservative
