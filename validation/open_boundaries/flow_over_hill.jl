@@ -7,6 +7,7 @@ function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
                                      model_type = :nonhydrostatic,
                                      Nz = 16,
                                      H = 1,
+                                     Lz = 3 * H,
                                      Lx = 10,
                                      U = 1,
                                      pressure_solver_constructor = nothing,
@@ -16,7 +17,6 @@ function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
                                      base_simulation_name = "2d_flow_over_hill")
 
     # Grid definition
-    Lz = 2 * H
     Nx = (Nz * Lx) ÷ Lz
     x₀ = Lx / 3
 
@@ -104,32 +104,38 @@ function plot_flow_over_hill_animation(filepath;
 
     # Create visualization
     n = Observable(1)
-    fig = Figure(size = (600, 600))
+    fig = Figure(size = (600, 800))
 
+    # Top panel: surface displacement for hydrostatic models, blank for nonhydrostatic
     if model_type == :hydrostatic_with_implicit_surface
         # Plot free surface elevation (1D line plot)
         η_plt = @lift η_ts[$n]
         ax_η = Axis(fig[1, 1], xlabel = "x", ylabel = "η (m)", title = "Free surface elevation")
         lines!(ax_η, η_plt, linewidth = 2, color = :blue)
     else
-        # Plot vorticity (2D heatmap)
-        ω_plt = @lift ω_ts[$n]
-        ax_ω = Axis(fig[1, 1], aspect = DataAspect(), xlabel = "x", ylabel = "z", title = "ω (vorticity)")
-        hm_ω = heatmap!(ax_ω, ω_plt, colorrange = (-12 * U / H, 12 * U / H), colormap = :curl)
-        Colorbar(fig[1, 2], hm_ω, tellwidth = false, height = Relative(0.5))
+        # Create blank axis for nonhydrostatic models
+        ax_blank = Axis(fig[1, 1], xlabel = "", ylabel = "", title = "")
+        hidedecorations!(ax_blank)
+        hidespines!(ax_blank)
     end
 
-    # Plot u velocity
-    u_plt = @lift u_ts[$n]
-    ax_u = Axis(fig[2, 1], aspect = DataAspect(), xlabel = "x", ylabel = "z", title = "u (m/s)")
-    hm_u = heatmap!(ax_u, u_plt, colorrange = (-1.5 * U, 1.5 * U), colormap = :balance)
-    Colorbar(fig[2, 2], hm_u, tellwidth = false, height = Relative(0.5))
+    # Second panel: always plot vorticity (2D heatmap)
+    ω_plt = @lift ω_ts[$n]
+    ax_ω = Axis(fig[2, 1], aspect = DataAspect(), xlabel = "x", ylabel = "z", title = "ω (vorticity)")
+    hm_ω = heatmap!(ax_ω, ω_plt, colorrange = (-12 * U / H, 12 * U / H), colormap = :curl)
+    Colorbar(fig[2, 2], hm_ω, tellwidth = false, height = Relative(0.5))
 
-    # Plot w velocity
+    # Third panel: u velocity
+    u_plt = @lift u_ts[$n]
+    ax_u = Axis(fig[3, 1], aspect = DataAspect(), xlabel = "x", ylabel = "z", title = "u (m/s)")
+    hm_u = heatmap!(ax_u, u_plt, colorrange = (-1.5 * U, 1.5 * U), colormap = :balance)
+    Colorbar(fig[3, 2], hm_u, tellwidth = false, height = Relative(0.5))
+
+    # Fourth panel: w velocity
     w_plt = @lift w_ts[$n]
-    ax_w = Axis(fig[3, 1], aspect = DataAspect(), xlabel = "x", ylabel = "z", title = "w (m/s)")
+    ax_w = Axis(fig[4, 1], aspect = DataAspect(), xlabel = "x", ylabel = "z", title = "w (m/s)")
     hm_w = heatmap!(ax_w, w_plt, colorrange = (-0.5 * U, 0.5 * U), colormap = :balance)
-    Colorbar(fig[3, 2], hm_w, tellwidth = false, height = Relative(0.5))
+    Colorbar(fig[4, 2], hm_w, tellwidth = false, height = Relative(0.5))
 
     colsize!(fig.layout, 2, Fixed(30))
     resize_to_layout!(fig)
