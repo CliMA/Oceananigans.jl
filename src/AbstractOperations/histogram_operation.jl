@@ -1,10 +1,12 @@
-using Oceananigans.Fields: AbstractField, instantiated_location, compute_at!, indices
+using Oceananigans.Fields: AbstractField, instantiated_location, compute_at!, indices, filter_nothing_dims
 using Oceananigans.Grids: RectilinearGrid, Center, Bounded, Flat, topology, interior_indices
 using Oceananigans.Architectures: architecture, on_architecture, CPU
 using Oceananigans.Utils: KernelParameters, launch!, tupleit
 using Oceananigans.Grids: inactive_node
 
 using KernelAbstractions: @kernel, @index, @atomic
+
+const HISTOGRAM_MEMORY_WARNING_BYTES = 512 * 1024^2 # 0.5 GiB across local + global buffers
 
 abstract type AbstractHistogramWeights end
 
@@ -18,6 +20,15 @@ struct HistogramFieldWeights{W} <: AbstractHistogramWeights
     field :: W
 end
 
+struct HistogramIntegralCountWeights{M} <: AbstractHistogramWeights
+    metric :: M
+end
+
+struct HistogramIntegralFieldWeights{W, M} <: AbstractHistogramWeights
+    field :: W
+    metric :: M
+end
+
 struct HistogramOperation{G, T, A, B, BN, E1, E2, W, H, C, K} <: AbstractOperation{Center, Center, Center, G, T}
     grid :: G
     a :: A
@@ -29,62 +40,82 @@ struct HistogramOperation{G, T, A, B, BN, E1, E2, W, H, C, K} <: AbstractOperati
     local_histogram :: H
     global_cache :: C
     launch_parameters :: K
-    dims :: NTuple{3, Int}
+    dims :: NTuple{N, Int} where N
     method :: Symbol
+    reduced_dimensions :: NTuple{3, Bool}
+    retained_offsets :: NTuple{3, Int}
+    retained_lengths :: NTuple{3, Int}
 end
 
 function HistogramOperation(grid::G, a::A, b::B, bins::BN, edges1::E1, edges2::E2,
                             weights::W, local_histogram::H, global_cache::C,
-                            launch_parameters::K, dims::NTuple{3, Int}, method::Symbol) where {G, A, B, BN, E1, E2, W, H, C, K}
+                            launch_parameters::K, dims::NTuple{N, Int}, method::Symbol,
+                            reduced_dimensions::NTuple{3, Bool},
+                            retained_offsets::NTuple{3, Int},
+                            retained_lengths::NTuple{3, Int}) where {G, A, B, BN, E1, E2, W, H, C, K, N}
     T = eltype(global_cache)
     return HistogramOperation{G, T, A, B, BN, E1, E2, W, H, C, K}(grid, a, b, bins, edges1, edges2,
                                                                    weights, local_histogram, global_cache,
-                                                                   launch_parameters, dims, method)
+                                                                   launch_parameters, dims, method,
+                                                                   reduced_dimensions, retained_offsets,
+                                                                   retained_lengths)
+end
+
+struct Histogram1DOperation{G, T, A, BN, E1, W, H, C, K} <: AbstractOperation{Center, Center, Center, G, T}
+    grid :: G
+    a :: A
+    bins :: BN
+    edges1 :: E1
+    weights :: W
+    local_histogram :: H
+    global_cache :: C
+    launch_parameters :: K
+    dims :: NTuple{N, Int} where N
+    method :: Symbol
+    reduced_dimensions :: NTuple{3, Bool}
+    retained_offsets :: NTuple{3, Int}
+    retained_lengths :: NTuple{3, Int}
+end
+
+function Histogram1DOperation(grid::G, a::A, bins::BN, edges1::E1,
+                              weights::W, local_histogram::H, global_cache::C,
+                              launch_parameters::K, dims::NTuple{N, Int}, method::Symbol,
+                              reduced_dimensions::NTuple{3, Bool},
+                              retained_offsets::NTuple{3, Int},
+                              retained_lengths::NTuple{3, Int}) where {G, A, BN, E1, W, H, C, K, N}
+    T = eltype(global_cache)
+    return Histogram1DOperation{G, T, A, BN, E1, W, H, C, K}(grid, a, bins, edges1,
+                                                              weights, local_histogram, global_cache,
+                                                              launch_parameters, dims, method,
+                                                              reduced_dimensions, retained_offsets,
+                                                              retained_lengths)
 end
 
 """
     Histogram(a::AbstractField, b::AbstractField; bins=NamedTuple(), weights=:count, dims=(1, 2, 3), method=:sum)
     Histogram(fields::NamedTuple; bins=NamedTuple(), weights=:count, dims=(1, 2, 3), method=:sum)
+    Histogram(a::AbstractField; bins, weights=:count, dims=(1, 2, 3), method=:sum)
 
-Construct a 2D histogram operation from field operands `a` and `b`.
+Construct a weighted histogram operation from field operand(s).
 
 The result is an `AbstractOperation` that can be used with `Field(...)` and output writers,
 for example `Field(Histogram(...))`.
 
-MVP constraints:
-- `bins` must be a `NamedTuple` with exactly two strictly-increasing edge vectors.
-- `weights` must be one of `:count`, `:cell_volume` (or `:volume`), or an `AbstractField`
-  on the same grid and location as `a` and `b`.
-- `dims` must be `:` or `(1, 2, 3)`.
-- `method` must be `:sum`.
+Constraints:
+- `bins` must be strictly-increasing edge vectors:
+  - 2D histogram: exactly two edge vectors.
+  - 1D histogram: exactly one edge vector.
+- `weights` must be:
+  - with `method=:sum`: `:count`, a metric-weight symbol (`:volume` / legacy aliases), or an `AbstractField`;
+  - with `method=:integral`: `:count` or an `AbstractField`.
+- `:count` with `method=:sum` accumulates one count per sample.
+- `:count` with `method=:integral` accumulates the geometric integration metric for `dims`
+  (`Δx`, `Δy`, `Δz`, `Az`, `Ay`, `Ax`, or `volume`), matching `Integral` semantics.
+- `dims` is the subset of spatial dimensions to reduce over. `dims=:` is shorthand for `(1, 2, 3)`.
+- `method` must be `:sum` or `:integral`.
 - Distributed architectures are not supported yet.
 
-Bin mapping behavior:
-- `Histogram(a, b; bins=(..., ...))` maps bins by value order.
-- `Histogram((name1=a, name2=b); bins=(...))` maps bins by key and then reorders
-  to operand order. This allows bin tuple order to differ from operand order.
-
-Example
-=======
-
-```jldoctest
-julia> using Oceananigans
-
-julia> grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1));
-
-julia> T = CenterField(grid); S = CenterField(grid);
-
-julia> set!(T, (x, y, z) -> x + z); set!(S, (x, y, z) -> y - z);
-
-julia> T_edges = collect(range(0.0, stop=2.0, length=5));
-
-julia> S_edges = collect(range(-1.0, stop=2.0, length=7));
-
-julia> h = Field(Histogram(T, S; bins=(T=T_edges, S=S_edges), weights=:count));
-
-julia> size(h)
-(4, 6, 1)
-```
+For partial reductions, retained dimensions are flattened into histogram output indices.
 """
 function Histogram(a::AbstractField, b::AbstractField;
                    bins = NamedTuple(),
@@ -95,9 +126,12 @@ function Histogram(a::AbstractField, b::AbstractField;
     validate_histogram_operands(a, b)
 
     dims = validate_histogram_dims(dims)
+    dims = filter_nothing_dims(dims, instantiated_location(a))
+    isempty(dims) &&
+        throw(ArgumentError("Histogram dims cannot be empty after filtering dimensions absent from operand location $(instantiated_location(a))."))
     method = validate_histogram_method(method)
-    bins = validate_histogram_bins(bins)
-    weights = validate_histogram_weights(weights, a, b)
+    bins = validate_histogram_bins_2d(bins)
+    weights = validate_histogram_weights(weights, method, dims, a, b)
 
     arch = architecture(a.grid)
     validate_histogram_architecture(arch)
@@ -109,25 +143,81 @@ function Histogram(a::AbstractField, b::AbstractField;
     nbin1 = length(edges1_cpu) - 1
     nbin2 = length(edges2_cpu) - 1
 
-    # Keep histogram data on host for deterministic indexing/output while computing
-    # local contributions on the operand architecture.
+    launch_indices = histogram_launch_indices(a, b, weights)
+    launch_parameters = KernelParameters(launch_indices...)
+
+    reduced_dimensions, retained_offsets, retained_lengths, retained_count =
+        histogram_reduction_metadata(launch_indices, dims)
+
+    maybe_warn_histogram_memory((nbin1, nbin2, retained_count), FT; dims)
+
     histogram_grid = RectilinearGrid(CPU(), FT;
-                                     size = (nbin1, nbin2),
-                                     topology = (Bounded, Bounded, Flat),
-                                     halo = (1, 1),
+                                     size = (nbin1, nbin2, retained_count),
+                                     topology = (Bounded, Bounded, Bounded),
+                                     halo = (1, 1, 1),
                                      x = edges1_cpu,
-                                     y = edges2_cpu)
+                                     y = edges2_cpu,
+                                     z = (zero(FT), FT(retained_count)))
 
     edges1 = on_architecture(arch, edges1_cpu)
     edges2 = on_architecture(arch, edges2_cpu)
 
-    local_histogram = zeros(arch, FT, nbin1, nbin2)
-    global_cache = zeros(FT, nbin1, nbin2, 1)
-    launch_parameters = KernelParameters(histogram_launch_indices(a, b, weights)...)
+    local_histogram = zeros(arch, FT, nbin1, nbin2, retained_count)
+    global_cache = zeros(FT, nbin1, nbin2, retained_count)
 
     return HistogramOperation(histogram_grid, a, b, bins, edges1, edges2, weights,
                               local_histogram, global_cache, launch_parameters,
-                              dims, method)
+                              dims, method, reduced_dimensions,
+                              retained_offsets, retained_lengths)
+end
+
+function Histogram(a::AbstractField;
+                   bins = NamedTuple(),
+                   weights = :count,
+                   dims = (1, 2, 3),
+                   method = :sum)
+
+    dims = validate_histogram_dims(dims)
+    dims = filter_nothing_dims(dims, instantiated_location(a))
+    isempty(dims) &&
+        throw(ArgumentError("Histogram dims cannot be empty after filtering dimensions absent from operand location $(instantiated_location(a))."))
+    method = validate_histogram_method(method)
+    bins = validate_histogram_bins_1d(bins)
+    weights = validate_histogram_weights(weights, method, dims, a)
+
+    arch = architecture(a.grid)
+    validate_histogram_architecture(arch)
+
+    FT = histogram_eltype(a, bins, weights)
+    bins = convert_histogram_bins_eltype(bins, FT)
+    edges1_cpu = first(values(bins))
+
+    nbin1 = length(edges1_cpu) - 1
+
+    launch_indices = histogram_launch_indices(a, weights)
+    launch_parameters = KernelParameters(launch_indices...)
+
+    reduced_dimensions, retained_offsets, retained_lengths, retained_count =
+        histogram_reduction_metadata(launch_indices, dims)
+
+    maybe_warn_histogram_memory((nbin1, retained_count, 1), FT; dims)
+
+    histogram_grid = RectilinearGrid(CPU(), FT;
+                                     size = (nbin1, retained_count),
+                                     topology = (Bounded, Bounded, Flat),
+                                     halo = (1, 1),
+                                     x = edges1_cpu,
+                                     y = (zero(FT), FT(retained_count)))
+
+    edges1 = on_architecture(arch, edges1_cpu)
+
+    local_histogram = zeros(arch, FT, nbin1, retained_count, 1)
+    global_cache = zeros(FT, nbin1, retained_count, 1)
+
+    return Histogram1DOperation(histogram_grid, a, bins, edges1, weights,
+                                local_histogram, global_cache, launch_parameters,
+                                dims, method, reduced_dimensions,
+                                retained_offsets, retained_lengths)
 end
 
 function Histogram(fields::NamedTuple;
@@ -136,29 +226,46 @@ function Histogram(fields::NamedTuple;
                    dims = (1, 2, 3),
                    method = :sum)
 
-    length(fields) == 2 ||
-        throw(ArgumentError("Histogram(fields=...) requires exactly two named field operands."))
+    if length(fields) == 2
+        operand_names = keys(fields)
+        a, b = values(fields)
 
-    operand_names = keys(fields)
-    a, b = values(fields)
+        a isa AbstractField ||
+            throw(ArgumentError("Histogram(fields=...) requires field operands, but `$(operand_names[1])` is $(typeof(a))."))
 
-    a isa AbstractField ||
-        throw(ArgumentError("Histogram(fields=...) requires field operands, but `$(operand_names[1])` is $(typeof(a))."))
+        b isa AbstractField ||
+            throw(ArgumentError("Histogram(fields=...) requires field operands, but `$(operand_names[2])` is $(typeof(b))."))
 
-    b isa AbstractField ||
-        throw(ArgumentError("Histogram(fields=...) requires field operands, but `$(operand_names[2])` is $(typeof(b))."))
+        bins = reorder_histogram_bins_for_named_operands(bins, operand_names)
+        return Histogram(a, b; bins, weights, dims, method)
+    elseif length(fields) == 1
+        operand_name = first(keys(fields))
+        a = first(values(fields))
 
-    bins = reorder_histogram_bins_for_named_operands(bins, operand_names)
-    return Histogram(a, b; bins, weights, dims, method)
+        a isa AbstractField ||
+            throw(ArgumentError("Histogram(fields=...) requires field operands, but `$(operand_name)` is $(typeof(a))."))
+
+        bins = bins isa NamedTuple ? reorder_histogram_bins_for_named_operand(bins, operand_name) : bins
+        return Histogram(a; bins, weights, dims, method)
+    else
+        throw(ArgumentError("Histogram(fields=...) requires exactly one or two named field operands."))
+    end
 end
 
 Base.summary(::HistogramCountWeights) = ":count"
 Base.summary(::HistogramVolumeWeights) = ":cell_volume"
 Base.summary(w::HistogramFieldWeights) = "field ($(summary(w.field)))"
+Base.summary(w::HistogramIntegralCountWeights) = "integral(:count)"
+Base.summary(w::HistogramIntegralFieldWeights) = "integral(field ($(summary(w.field))))"
 
 function Base.summary(op::HistogramOperation)
-    nbin1, nbin2 = size(op.global_cache)[1:2]
-    return "Histogram ($nbin1 × $nbin2 bins)"
+    nbin1, nbin2, nret = size(op.global_cache)
+    return "Histogram2D ($nbin1 × $nbin2 bins, retained=$nret)"
+end
+
+function Base.summary(op::Histogram1DOperation)
+    nbin1, nret, _ = size(op.global_cache)
+    return "Histogram1D ($nbin1 bins, retained=$nret)"
 end
 
 function Base.show(io::IO, op::HistogramOperation)
@@ -171,7 +278,17 @@ function Base.show(io::IO, op::HistogramOperation)
               "└── operand 2: ", summary(op.b))
 end
 
+function Base.show(io::IO, op::Histogram1DOperation)
+    print(io, summary(op), '\n',
+              "├── method: ", op.method, '\n',
+              "├── dims: ", op.dims, '\n',
+              "├── bins: ", keys(op.bins), '\n',
+              "├── weights: ", summary(op.weights), '\n',
+              "└── operand: ", summary(op.a))
+end
+
 @inline Base.getindex(op::HistogramOperation, i, j, k) = @inbounds op.global_cache[i, j, k]
+@inline Base.getindex(op::Histogram1DOperation, i, j, k) = @inbounds op.global_cache[i, j, k]
 
 function compute_at!(op::HistogramOperation, time)
     compute_at!(op.a, time)
@@ -183,21 +300,52 @@ function compute_at!(op::HistogramOperation, time)
     grid = op.a.grid
     arch = architecture(grid)
 
-    launch!(arch, grid, op.launch_parameters, _accumulate_histogram!,
-            op.local_histogram, op.a, op.b, op.edges1, op.edges2, grid, op.weights, instantiated_location(op.a))
+    launch!(arch, grid, op.launch_parameters, _accumulate_histogram_2d!,
+            op.local_histogram, op.a, op.b, op.edges1, op.edges2,
+            grid, op.weights, instantiated_location(op.a),
+            op.reduced_dimensions, op.retained_offsets, op.retained_lengths)
 
     local_histogram_cpu = on_architecture(CPU(), op.local_histogram)
-    copyto!(view(op.global_cache, :, :, 1), local_histogram_cpu)
+    copyto!(op.global_cache, local_histogram_cpu)
+
+    return nothing
+end
+
+function compute_at!(op::Histogram1DOperation, time)
+    compute_at!(op.a, time)
+    compute_histogram_weights_at!(op.weights, time)
+
+    fill!(op.local_histogram, zero(eltype(op.local_histogram)))
+
+    grid = op.a.grid
+    arch = architecture(grid)
+
+    launch!(arch, grid, op.launch_parameters, _accumulate_histogram_1d!,
+            op.local_histogram, op.a, op.edges1,
+            grid, op.weights, instantiated_location(op.a),
+            op.reduced_dimensions, op.retained_offsets, op.retained_lengths)
+
+    local_histogram_cpu = on_architecture(CPU(), op.local_histogram)
+    copyto!(op.global_cache, local_histogram_cpu)
+
     return nothing
 end
 
 @inline compute_histogram_weights_at!(::HistogramCountWeights, time) = nothing
 @inline compute_histogram_weights_at!(weights::HistogramVolumeWeights, time) = compute_at!(weights.volume, time)
 @inline compute_histogram_weights_at!(weights::HistogramFieldWeights, time) = compute_at!(weights.field, time)
+@inline compute_histogram_weights_at!(weights::HistogramIntegralCountWeights, time) = compute_at!(weights.metric, time)
+@inline function compute_histogram_weights_at!(weights::HistogramIntegralFieldWeights, time)
+    compute_at!(weights.field, time)
+    compute_at!(weights.metric, time)
+    return nothing
+end
 
 @inline histogram_weight(i, j, k, grid, ::HistogramCountWeights) = 1
 @inline histogram_weight(i, j, k, grid, weights::HistogramVolumeWeights) = @inbounds weights.volume[i, j, k]
 @inline histogram_weight(i, j, k, grid, weights::HistogramFieldWeights) = @inbounds weights.field[i, j, k]
+@inline histogram_weight(i, j, k, grid, weights::HistogramIntegralCountWeights) = @inbounds weights.metric[i, j, k]
+@inline histogram_weight(i, j, k, grid, weights::HistogramIntegralFieldWeights) = @inbounds weights.field[i, j, k] * weights.metric[i, j, k]
 
 @inline function find_histogram_bin(value, edges)
     N = length(edges)
@@ -225,7 +373,22 @@ end
     return ifelse(1 <= hi < N, hi, 0)
 end
 
-@kernel function _accumulate_histogram!(histogram, a, b, edges1, edges2, grid, weights, loc)
+@inline function retained_linear_index(i, j, k,
+                                       reduced_dimensions::NTuple{3, Bool},
+                                       retained_offsets::NTuple{3, Int},
+                                       retained_lengths::NTuple{3, Int})
+    iR = reduced_dimensions[1] ? 1 : i - retained_offsets[1] + 1
+    jR = reduced_dimensions[2] ? 1 : j - retained_offsets[2] + 1
+    kR = reduced_dimensions[3] ? 1 : k - retained_offsets[3] + 1
+
+    return iR + retained_lengths[1] * ((jR - 1) + retained_lengths[2] * (kR - 1))
+end
+
+@kernel function _accumulate_histogram_2d!(histogram, a, b, edges1, edges2,
+                                           grid, weights, loc,
+                                           reduced_dimensions,
+                                           retained_offsets,
+                                           retained_lengths)
     i, j, k = @index(Global, NTuple)
 
     if !inactive_node(i, j, k, grid, loc...)
@@ -237,15 +400,38 @@ end
 
         in_range = (ibin1 > 0) & (ibin2 > 0)
         if in_range
+            retained_index = retained_linear_index(i, j, k, reduced_dimensions, retained_offsets, retained_lengths)
             weight = convert(eltype(histogram), histogram_weight(i, j, k, grid, weights))
-            @atomic histogram[ibin1, ibin2] += weight
+            @atomic histogram[ibin1, ibin2, retained_index] += weight
         end
     end
 end
 
-@inline histogram_weight_operand(::HistogramCountWeights) = nothing
-@inline histogram_weight_operand(weights::HistogramVolumeWeights) = weights.volume
-@inline histogram_weight_operand(weights::HistogramFieldWeights) = weights.field
+@kernel function _accumulate_histogram_1d!(histogram, a, edges1,
+                                           grid, weights, loc,
+                                           reduced_dimensions,
+                                           retained_offsets,
+                                           retained_lengths)
+    i, j, k = @index(Global, NTuple)
+
+    if !inactive_node(i, j, k, grid, loc...)
+        @inbounds aᵢ = a[i, j, k]
+
+        ibin1 = find_histogram_bin(aᵢ, edges1)
+
+        if ibin1 > 0
+            retained_index = retained_linear_index(i, j, k, reduced_dimensions, retained_offsets, retained_lengths)
+            weight = convert(eltype(histogram), histogram_weight(i, j, k, grid, weights))
+            @atomic histogram[ibin1, retained_index, 1] += weight
+        end
+    end
+end
+
+@inline histogram_weight_operands(::HistogramCountWeights) = ()
+@inline histogram_weight_operands(weights::HistogramVolumeWeights) = (weights.volume,)
+@inline histogram_weight_operands(weights::HistogramFieldWeights) = (weights.field,)
+@inline histogram_weight_operands(weights::HistogramIntegralCountWeights) = (weights.metric,)
+@inline histogram_weight_operands(weights::HistogramIntegralFieldWeights) = (weights.field, weights.metric)
 
 function histogram_launch_indices(a, b, weights)
     loc = instantiated_location(a)
@@ -259,14 +445,50 @@ function histogram_launch_indices(a, b, weights)
     idx2 = intersect_histogram_ranges(idx2, restricted_field_indices(b, 2, loc, grid))
     idx3 = intersect_histogram_ranges(idx3, restricted_field_indices(b, 3, loc, grid))
 
-    weight_operand = histogram_weight_operand(weights)
-    if !isnothing(weight_operand)
+    for weight_operand in histogram_weight_operands(weights)
         idx1 = intersect_histogram_ranges(idx1, restricted_field_indices(weight_operand, 1, loc, grid))
         idx2 = intersect_histogram_ranges(idx2, restricted_field_indices(weight_operand, 2, loc, grid))
         idx3 = intersect_histogram_ranges(idx3, restricted_field_indices(weight_operand, 3, loc, grid))
     end
 
     return (idx1, idx2, idx3)
+end
+
+function histogram_launch_indices(a, weights)
+    loc = instantiated_location(a)
+    grid = a.grid
+
+    idx1 = restricted_field_indices(a, 1, loc, grid)
+    idx2 = restricted_field_indices(a, 2, loc, grid)
+    idx3 = restricted_field_indices(a, 3, loc, grid)
+
+    for weight_operand in histogram_weight_operands(weights)
+        idx1 = intersect_histogram_ranges(idx1, restricted_field_indices(weight_operand, 1, loc, grid))
+        idx2 = intersect_histogram_ranges(idx2, restricted_field_indices(weight_operand, 2, loc, grid))
+        idx3 = intersect_histogram_ranges(idx3, restricted_field_indices(weight_operand, 3, loc, grid))
+    end
+
+    return (idx1, idx2, idx3)
+end
+
+function histogram_reduction_metadata(launch_indices::NTuple{3, <:AbstractUnitRange}, dims)
+    reduced_dimensions = (1 in dims, 2 in dims, 3 in dims)
+    retained_offsets = ntuple(d -> first(launch_indices[d]), 3)
+    retained_lengths = ntuple(d -> reduced_dimensions[d] ? 1 : length(launch_indices[d]), 3)
+    retained_count = prod(retained_lengths)
+
+    return reduced_dimensions, retained_offsets, retained_lengths, retained_count
+end
+
+function maybe_warn_histogram_memory(shape, ::Type{FT}; dims) where FT
+    bytes = 2 * sizeof(FT) * prod(shape)
+
+    if bytes > HISTOGRAM_MEMORY_WARNING_BYTES
+        gib = round(bytes / 1024^3; digits=3)
+        @warn "Histogram allocation is large (local + global buffers)." dims shape eltype=FT estimated_gib=gib
+    end
+
+    return nothing
 end
 
 function restricted_field_indices(field, dim, loc, grid)
@@ -296,20 +518,25 @@ end
 validate_histogram_dims(::Colon) = (1, 2, 3)
 
 function validate_histogram_dims(dims)
-    dims_tuple = tupleit(dims)
-    dims_tuple == (1, 2, 3) ||
-        throw(ArgumentError("Histogram currently only supports dims = : or dims = (1, 2, 3)."))
+    dims_tuple = Tuple(sort(unique(tupleit(dims))))
+
+    isempty(dims_tuple) &&
+        throw(ArgumentError("Histogram dims cannot be empty. Use dims=: to reduce over all dimensions."))
+
+    all(d -> d in (1, 2, 3), dims_tuple) ||
+        throw(ArgumentError("Histogram dims must be a subset of (1, 2, 3), but got dims=$dims."))
+
     return dims_tuple
 end
 
 function validate_histogram_method(method::Symbol)
-    method === :sum ||
-        throw(ArgumentError("Histogram currently only supports method = :sum."))
+    method ∈ (:sum, :integral) ||
+        throw(ArgumentError("Histogram currently only supports method = :sum or method = :integral."))
     return method
 end
 
 validate_histogram_method(method) =
-    throw(ArgumentError("Histogram currently only supports method = :sum."))
+    throw(ArgumentError("Histogram currently only supports method = :sum or method = :integral."))
 
 function validate_histogram_architecture(arch)
     if isdefined(Oceananigans, :DistributedComputations) &&
@@ -321,8 +548,8 @@ function validate_histogram_architecture(arch)
 end
 
 function validate_histogram_bins(bins::NamedTuple)
-    length(bins) == 2 ||
-        throw(ArgumentError("Histogram requires bins to be a NamedTuple with exactly two entries."))
+    length(bins) >= 1 ||
+        throw(ArgumentError("Histogram requires bins to be a NamedTuple with at least one entry."))
 
     edge_values = map(collect, values(bins))
     edge_names = keys(bins)
@@ -341,10 +568,28 @@ function validate_histogram_bins(bins::NamedTuple)
 end
 
 validate_histogram_bins(bins) =
-    throw(ArgumentError("Histogram requires bins to be a NamedTuple with exactly two entries."))
+    throw(ArgumentError("Histogram requires bins to be a NamedTuple, or a single edge vector for 1D histograms."))
+
+function validate_histogram_bins_2d(bins)
+    bins = validate_histogram_bins(bins)
+    length(bins) == 2 ||
+        throw(ArgumentError("2D Histogram requires bins to be a NamedTuple with exactly two entries."))
+
+    return bins
+end
+
+function validate_histogram_bins_1d(bins::NamedTuple)
+    bins = validate_histogram_bins(bins)
+    length(bins) == 1 ||
+        throw(ArgumentError("1D Histogram requires bins to be a NamedTuple with exactly one entry."))
+
+    return bins
+end
+
+validate_histogram_bins_1d(edges) = validate_histogram_bins_1d((a = edges,))
 
 function reorder_histogram_bins_for_named_operands(bins::NamedTuple, operand_names::Tuple{Symbol, Symbol})
-    bins = validate_histogram_bins(bins)
+    bins = validate_histogram_bins_2d(bins)
     first_name, second_name = operand_names
 
     first_name ∈ keys(bins) ||
@@ -357,29 +602,63 @@ function reorder_histogram_bins_for_named_operands(bins::NamedTuple, operand_nam
                                       getproperty(bins, second_name)))
 end
 
-function validate_histogram_weights(weights::Symbol, a, b)
-    if weights === :count
-        return HistogramCountWeights()
-    elseif weights === :cell_volume || weights === :volume
-        volume_field = grid_metric_operation(instantiated_location(a), volume, a.grid)
-        return HistogramVolumeWeights(volume_field)
-    else
-        throw(ArgumentError("Unsupported Histogram weights = $weights. Use :count, :cell_volume, :volume, or an AbstractField."))
+function reorder_histogram_bins_for_named_operand(bins::NamedTuple, operand_name::Symbol)
+    bins = validate_histogram_bins_1d(bins)
+
+    operand_name ∈ keys(bins) ||
+        throw(ArgumentError("Histogram bins are missing key `$operand_name` required by named operand mapping."))
+
+    return NamedTuple{(operand_name,)}((getproperty(bins, operand_name),))
+end
+
+@inline histogram_integral_metric(a, dims) =
+    grid_metric_operation(instantiated_location(a), reduction_grid_metric(dims), a.grid)
+
+function validate_histogram_weights(weights::Symbol, method::Symbol, dims, a::AbstractField)
+    if method === :sum
+        if weights === :count
+            return HistogramCountWeights()
+        elseif weights === :cell_volume || weights === :volume
+            volume_field = grid_metric_operation(instantiated_location(a), volume, a.grid)
+            return HistogramVolumeWeights(volume_field)
+        else
+            throw(ArgumentError("Unsupported Histogram weights = $weights for method=:sum. Use :count, :cell_volume, :volume, or an AbstractField."))
+        end
+    else # method === :integral
+        metric = histogram_integral_metric(a, dims)
+
+        if weights === :count
+            return HistogramIntegralCountWeights(metric)
+        elseif weights === :cell_volume || weights === :volume
+            throw(ArgumentError("Histogram weights=:cell_volume is not supported with method=:integral because it would double-apply metrics. Use weights=:count or an AbstractField."))
+        else
+            throw(ArgumentError("Unsupported Histogram weights = $weights for method=:integral. Use :count or an AbstractField."))
+        end
     end
 end
 
-function validate_histogram_weights(weights::AbstractField, a, b)
+function validate_histogram_weights(weights::AbstractField, method::Symbol, dims, a::AbstractField)
     weights.grid == a.grid ||
-        throw(ArgumentError("Histogram weight field must be on the same grid as the operands."))
+        throw(ArgumentError("Histogram weight field must be on the same grid as the operand."))
 
     instantiated_location(weights) == instantiated_location(a) ||
-        throw(ArgumentError("Histogram weight field must have the same location as the operands."))
+        throw(ArgumentError("Histogram weight field must have the same location as the operand."))
 
-    return HistogramFieldWeights(weights)
+    if method === :sum
+        return HistogramFieldWeights(weights)
+    else
+        metric = histogram_integral_metric(a, dims)
+        return HistogramIntegralFieldWeights(weights, metric)
+    end
 end
 
-validate_histogram_weights(weights, a, b) =
-    throw(ArgumentError("Unsupported Histogram weights = $weights. Use :count, :cell_volume, :volume, or an AbstractField."))
+validate_histogram_weights(weights, method::Symbol, dims, a::AbstractField) =
+    throw(ArgumentError("Unsupported Histogram weights = $weights for method=$method."))
+
+function validate_histogram_weights(weights, method::Symbol, dims, a::AbstractField, b::AbstractField)
+    validate_histogram_operands(a, b)
+    return validate_histogram_weights(weights, method, dims, a)
+end
 
 @inline function histogram_eltype(a, b, bins, ::HistogramCountWeights)
     edges1, edges2 = values(bins)
@@ -402,6 +681,50 @@ end
                         float(eltype(edges1)),
                         float(eltype(edges2)),
                         float(eltype(weights.field)))
+end
+
+@inline function histogram_eltype(a, b, bins, weights::HistogramIntegralCountWeights)
+    edges1, edges2 = values(bins)
+    return promote_type(float(eltype(a)),
+                        float(eltype(b)),
+                        float(eltype(edges1)),
+                        float(eltype(edges2)),
+                        float(eltype(weights.metric)))
+end
+
+@inline function histogram_eltype(a, b, bins, weights::HistogramIntegralFieldWeights)
+    edges1, edges2 = values(bins)
+    return promote_type(float(eltype(a)),
+                        float(eltype(b)),
+                        float(eltype(edges1)),
+                        float(eltype(edges2)),
+                        float(eltype(weights.field)),
+                        float(eltype(weights.metric)))
+end
+
+@inline function histogram_eltype(a, bins, ::HistogramCountWeights)
+    edges1 = first(values(bins))
+    return promote_type(float(eltype(a)), float(eltype(edges1)))
+end
+
+@inline function histogram_eltype(a, bins, ::HistogramVolumeWeights)
+    edges1 = first(values(bins))
+    return promote_type(float(eltype(a)), float(eltype(edges1)), float(eltype(a.grid)))
+end
+
+@inline function histogram_eltype(a, bins, weights::HistogramFieldWeights)
+    edges1 = first(values(bins))
+    return promote_type(float(eltype(a)), float(eltype(edges1)), float(eltype(weights.field)))
+end
+
+@inline function histogram_eltype(a, bins, weights::HistogramIntegralCountWeights)
+    edges1 = first(values(bins))
+    return promote_type(float(eltype(a)), float(eltype(edges1)), float(eltype(weights.metric)))
+end
+
+@inline function histogram_eltype(a, bins, weights::HistogramIntegralFieldWeights)
+    edges1 = first(values(bins))
+    return promote_type(float(eltype(a)), float(eltype(edges1)), float(eltype(weights.field)), float(eltype(weights.metric)))
 end
 
 function convert_histogram_bins_eltype(bins::NamedTuple, ::Type{FT}) where FT
