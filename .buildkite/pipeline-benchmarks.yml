@@ -52,7 +52,7 @@ steps:
       echo "  Group 2: Number type sweep"
       echo "========================================"
       $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --float_type=Float32 --output=$OUTPUT_FILE
-      
+
       echo "========================================"
       echo "  Group 3: Closure sweep (1/2 deg)"
       echo "========================================"
