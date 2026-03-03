@@ -80,9 +80,11 @@ function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
 end
 
 function plot_flow_over_hill_animation(filepath;
-                                model_type = :nonhydrostatic,
-                                framerate = 16,
-                                compression = 20)
+                                       model_type = :nonhydrostatic,
+                                       U = 1,
+                                       H = 1,
+                                       framerate = 16,
+                                       compression = 20)
     @info "Plotting flow over hill from $filepath"
 
     # Load results
@@ -136,7 +138,7 @@ function plot_flow_over_hill_animation(filepath;
 
     @info "Recording animation"
     animation_filename = "$filepath.mp4"
-    CairoMakie.record(fig, animation_filename, frames, framerate, compression) do i
+    CairoMakie.record(fig, animation_filename, frames; framerate, compression) do i
         n[] = i
         i % 10 == 0 && @info "  Frame $(i) of $(length(frames))"
     end
