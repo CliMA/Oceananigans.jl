@@ -163,7 +163,8 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                         set!(vf, data)
                         set!(rf, data)
                         fill_halo_regions!(vf)
-                        @jit fill_halo_regions!(rf)
+                        rfill! = @compile raise=true raise_first=true fill_halo_regions!(rf)
+                        rfill!(rf)
                     end
 
                     vanilla_Gu = XFaceField(vanilla_grid)
@@ -177,7 +178,13 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                                 fill!(vanilla_Gu, 0)
                                 fill!(reactant_Gu, 0)
                                 compute_simple_Gu!(vanilla_Gu, advection, nothing, vanilla_velocities)
-                                @jit compute_simple_Gu!(reactant_Gu, advection, nothing, reactant_velocities)
+                                # Temporary workaround: raise=true is currently broken with WENO, Bounded x-axis topology here.
+                                rcompute_Gu! = if advection isa WENO && topo[1] == Bounded
+                                    @compile compute_simple_Gu!(reactant_Gu, advection, nothing, reactant_velocities)
+                                else
+                                    @compile raise=true raise_first=true compute_simple_Gu!(reactant_Gu, advection, nothing, reactant_velocities)
+                                end
+                                rcompute_Gu!(reactant_Gu, advection, nothing, reactant_velocities)
                                 @test compare_interior("Gu", vanilla_Gu, reactant_Gu)
                             end
                         end
@@ -192,7 +199,13 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                                 fill!(vanilla_Gu, 0)
                                 fill!(reactant_Gu, 0)
                                 compute_simple_Gu!(vanilla_Gu, advection, coriolis, vanilla_velocities)
-                                @jit compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
+                                # Temporary workaround: raise=true is currently broken with WENO, Bounded x-axis topology here.
+                                rcompute_Gu! = if advection isa WENO && topo[1] == Bounded
+                                    @compile compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
+                                else
+                                    @compile raise=true raise_first=true compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
+                                end
+                                rcompute_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
                                 @test compare_interior("Gu", vanilla_Gu, reactant_Gu)
                             end
                         end
@@ -217,7 +230,8 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                 set!(vf, data)
                 set!(rf, data)
                 fill_halo_regions!(vf)
-                @jit fill_halo_regions!(rf)
+                rfill! = @compile raise=true raise_first=true fill_halo_regions!(rf)
+                rfill!(rf)
             end
 
             vanilla_Gu = XFaceField(vanilla_grid)
@@ -231,7 +245,13 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                         fill!(vanilla_Gu, 0)
                         fill!(reactant_Gu, 0)
                         compute_simple_Gu!(vanilla_Gu, advection, nothing, vanilla_velocities)
-                        @jit compute_simple_Gu!(reactant_Gu, advection, nothing, reactant_velocities)
+                        # Temporary workaround: raise=true is currently broken with WENO here.
+                        rcompute_Gu! = if advection isa WENO
+                            @compile compute_simple_Gu!(reactant_Gu, advection, nothing, reactant_velocities)
+                        else
+                            @compile raise=true raise_first=true compute_simple_Gu!(reactant_Gu, advection, nothing, reactant_velocities)
+                        end
+                        rcompute_Gu!(reactant_Gu, advection, nothing, reactant_velocities)
                         @test compare_interior("Gu", vanilla_Gu, reactant_Gu)
                     end
                 end
@@ -246,7 +266,13 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                         fill!(vanilla_Gu, 0)
                         fill!(reactant_Gu, 0)
                         compute_simple_Gu!(vanilla_Gu, advection, coriolis, vanilla_velocities)
-                        @jit compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
+                        # Temporary workaround: raise=true is currently broken with WENO here.
+                        rcompute_Gu! = if advection isa WENO
+                            @compile compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
+                        else
+                            @compile raise=true raise_first=true compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
+                        end
+                        rcompute_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
                         @test compare_interior("Gu", vanilla_Gu, reactant_Gu)
                     end
                 end
