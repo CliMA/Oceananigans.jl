@@ -12,8 +12,9 @@ using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
                 float_type = Float32,
                 Nx = 360, Ny = 180, Nz = 50,
                 grid_type = "tripolar",
-                momentum_advection = WENOVectorInvariant(order=9),
+                momentum_advection = WENOVectorInvariant(),
                 tracer_advection = WENO(order=7),
+                zstar_coordinate = false,
                 closure = CATKEVerticalDiffusivity(),
                 timestepper = :SplitRungeKutta3,
                 tracers = (:T, :S))
@@ -28,7 +29,8 @@ with realistic Earth bathymetry from NumericalEarth.
 - `float_type`: Floating point precision (`Float32` or `Float64`)
 - `Nx, Ny, Nz`: Grid resolution (longitude, latitude, vertical)
 - `grid_type`: `"tripolar"` for a TripolarGrid, `"lat_lon"` for a plain LatitudeLongitudeGrid, or `"immersed_lat_lon"` for a LatitudeLongitudeGrid with bathymetry
-- `momentum_advection`: Momentum advection scheme (default: `WENOVectorInvariant(order=9)`)
+- `zstar_coordinate`: zstar if `true`, z coordinate if `false`
+- `momentum_advection`: Momentum advection scheme (default: `WENOVectorInvariant()`)
 - `tracer_advection`: Tracer advection scheme (default: `WENO(order=7)`)
 - `closure`: Turbulence closure (default: `CATKEVerticalDiffusivity()`)
 - `timestepper`: Time stepping scheme (default: `:SplitRungeKutta3`)
@@ -38,7 +40,8 @@ function earth_ocean(arch = CPU();
                      float_type = Float32,
                      Nx = 360, Ny = 180, Nz = 50,
                      grid_type = "tripolar",
-                     momentum_advection = WENOVectorInvariant(order=9),
+                     zstar_coordinate = false,
+                     momentum_advection = WENOVectorInvariant(),
                      tracer_advection = WENO(order=7),
                      closure = CATKEVerticalDiffusivity(),
                      timestepper = :SplitRungeKutta3,
@@ -50,7 +53,7 @@ function earth_ocean(arch = CPU();
     Oceananigans.defaults.FloatType = float_type
 
     depth = 5000  # meters
-    z = ExponentialDiscretization(Nz, -depth, 0; scale=depth/4)
+    z = ExponentialDiscretization(Nz, -depth, 0; scale=depth/4, mutable=zstar_coordinate)
 
     if grid_type == "tripolar"
         underlying_grid = TripolarGrid(arch;
