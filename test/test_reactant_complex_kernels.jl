@@ -4,6 +4,7 @@ using Oceananigans.Architectures: ReactantState
 using Oceananigans.Models.NonhydrostaticModels: compute_source_term!
 using Oceananigans.Solvers: FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver, solve!
 using Oceananigans.Fields: interior
+using CUDA
 
 #####
 ##### Tests for FFT solver kernels that previously hit the ComplexF64 MLIR bug (B.6.7).
@@ -21,7 +22,7 @@ using Oceananigans.Fields: interior
 
     @testset "FFTBasedPoissonSolver (Periodic, Periodic, Flat)" begin
         @info "  Setting up FFTBased 2D (Periodic, Periodic, Flat)..."
-        grid = RectilinearGrid(reactant_arch; size=(4, 4), extent=(1, 1),
+        grid = RectilinearGrid(reactant_arch; size=(5, 5), extent=(1, 1),
                                halo=(3, 3), topology=(Periodic, Periodic, Flat))
         model = NonhydrostaticModel(grid; timestepper=:QuasiAdamsBashforth2)
         solver = model.pressure_solver
@@ -54,7 +55,7 @@ using Oceananigans.Fields: interior
 
     @testset "FFTBasedPoissonSolver (Periodic, Periodic, Periodic)" begin
         @info "  Setting up FFTBased 3D (Periodic, Periodic, Periodic)..."
-        grid = RectilinearGrid(reactant_arch; size=(4, 4, 4), extent=(1, 1, 1),
+        grid = RectilinearGrid(reactant_arch; size=(5, 5, 5), extent=(1, 1, 1),
                                topology=(Periodic, Periodic, Periodic))
         model = NonhydrostaticModel(grid; timestepper=:RungeKutta3)
         solver = model.pressure_solver
@@ -91,8 +92,8 @@ using Oceananigans.Fields: interior
     @testset "FourierTridiagonalPoissonSolver (Periodic, Periodic, Bounded)" begin
         @info "  Setting up FourierTridiagonal (Periodic, Periodic, Bounded) with stretched z..."
         # Stretched z-faces produce a non-regular z → XYRegularRG → FourierTridiagonalPoissonSolver
-        z_faces = [0, 0.2, 0.5, 0.8, 1.0]
-        grid = RectilinearGrid(reactant_arch; size=(4, 4, 4), x=(0, 1), y=(0, 1), z=z_faces,
+        z_faces = [0, 0.2, 0.5, 0.8, 0.9, 1.0]
+        grid = RectilinearGrid(reactant_arch; size=(5, 5, 5), x=(0, 1), y=(0, 1), z=z_faces,
                                topology=(Periodic, Periodic, Bounded))
         model = NonhydrostaticModel(grid; timestepper=:QuasiAdamsBashforth2)
         solver = model.pressure_solver
