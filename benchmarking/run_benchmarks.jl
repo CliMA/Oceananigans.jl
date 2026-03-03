@@ -78,7 +78,7 @@ function parse_commandline()
             default = "Float64"
 
         "--zstar_coordinate"
-            help = "Using ZStarCoordinate:" * 
+            help = "Using ZStarCoordinate:" *
                    "true or false."
             arg_type = Bool
             default = false
