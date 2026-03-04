@@ -55,6 +55,8 @@ model.velocities.u
             ϕ = getproperty(model.velocities, fldname)
         elseif fldname ∈ propertynames(model.tracers)
             ϕ = getproperty(model.tracers, fldname)
+        elseif fldname ∈ propertynames(model.prescribed_tracers)
+            ϕ = getproperty(model.prescribed_tracers, fldname)
         elseif fldname ∈ propertynames(model.free_surface)
             ϕ = getproperty(model.free_surface, fldname)
         elseif fldname === :η
@@ -62,7 +64,7 @@ model.velocities.u
             # but the public interface uses `η` as the canonical name.
             ϕ = model.free_surface.displacement
         else
-            throw(ArgumentError("name $fldname not found in model.velocities, model.tracers, or model.free_surface"))
+            throw(ArgumentError("name $fldname not found in model.velocities, model.tracers, model.prescribed_tracers, or model.free_surface"))
         end
 
         @apply_regionally set!(ϕ, value)

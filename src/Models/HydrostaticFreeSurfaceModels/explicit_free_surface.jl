@@ -173,7 +173,7 @@ function compute_explicit_free_surface_tendency!(grid, model)
 
     args = tuple(model.velocities,
                  model.free_surface,
-                 model.tracers,
+                 all_tracers(model),
                  model.auxiliary_fields,
                  model.forcing,
                  model.clock)
