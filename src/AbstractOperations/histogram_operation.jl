@@ -821,7 +821,7 @@ end
 
 @inline function histogram_eltype(a, b, bins, ::HistogramCountWeights)
     edges1, edges2 = values(bins)
-    return promote_type(float(eltype(a)), float(eltype(b)), float(eltype(edges1)), float(eltype(edges2)))
+    return promote_type(Float64, float(eltype(a)), float(eltype(b)), float(eltype(edges1)), float(eltype(edges2)))
 end
 
 @inline function histogram_eltype(a, b, bins, weights::HistogramFieldWeights)
@@ -873,7 +873,7 @@ end
 
 @inline function histogram_eltype(a, bins, ::HistogramCountWeights)
     edges1 = first(values(bins))
-    return promote_type(float(eltype(a)), float(eltype(edges1)))
+    return promote_type(Float64, float(eltype(a)), float(eltype(edges1)))
 end
 
 @inline function histogram_eltype(a, bins, weights::HistogramFieldWeights)

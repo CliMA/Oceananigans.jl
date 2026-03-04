@@ -389,6 +389,25 @@ function histogram_integral_count_conservation(arch, FT)
     @test total_histogram_volume ≈ total_grid_volume
 end
 
+function histogram_count_accumulator_uses_float64(arch)
+    FT = Float32
+    grid = RectilinearGrid(arch, FT, size=(4, 4, 4), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid; tracers=(:a, :b))
+
+    set!(model, a=(x, y, z) -> FT(0.8x + 0.2z),
+                b=(x, y, z) -> FT(31 + 0.3y - 0.1z))
+
+    bins_2d = (a = FT[0, 1, 2, 3, 4, 5],
+               b = FT[30, 30.5, 31, 31.5, 32, 32.5, 33])
+    bins_1d = FT[0, 1, 2, 3, 4, 5]
+
+    histogram_2d = Field(Histogram(model.tracers.a, model.tracers.b; bins=bins_2d, weights=:count))
+    histogram_1d = Field(Histogram(model.tracers.a; bins=bins_1d, weights=:count))
+
+    @test eltype(histogram_2d) == Float64
+    @test eltype(histogram_1d) == Float64
+end
+
 function histogram_retained_axis_coordinates_are_preserved(arch, FT)
     z_faces = FT[-6, -2, -0.5, 0]
     grid = RectilinearGrid(arch, FT, size=(6, 5, 3), x=(0, 6), y=(0, 5), z=z_faces)
@@ -486,6 +505,12 @@ end
                 histogram_integral_count_conservation(arch, FT)
                 histogram_retained_axis_coordinates_are_preserved(arch, FT)
             end
+        end
+    end
+
+    @testset "Count precision" begin
+        for arch in archs
+            histogram_count_accumulator_uses_float64(arch)
         end
     end
 
