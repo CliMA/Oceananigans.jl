@@ -356,6 +356,11 @@ end
 
 Base.getindex(array::OffsetVector{T, <:Reactant.AbstractConcreteArray{T, 1}}, ::Colon) where T = array
 
+# Reactant uses CUDA version of the code to uplift program description to MLIR.
+# Since default `weno_weight_computation` on CUDA uses LLVM's NVPTX intrinsics
+# it causes Reactant to crash.
+# We need to fall back to diffrent optimization when running with Reactant
+Oceananigans.defaults.weno_weight_computation = Oceananigans.Utils.ConvertingDivision{Float32}
 
 # These are additional modules that may need to be Reactantified in the future:
 #
