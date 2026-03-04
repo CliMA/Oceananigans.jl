@@ -50,3 +50,6 @@ end
 
 # Exact division if requested
 @inline newton_div(::Type{NormalDivision}, a, b) = a / b
+
+# Backend-optimized on CPU means Float32 converting division
+@inline newton_div(::Type{BackendOptimizedDivision}, a, b) = newton_div(ConvertingDivision{Float32}, a, b)
