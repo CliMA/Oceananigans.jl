@@ -1,6 +1,7 @@
 using Oceananigans.TimeSteppers: _ab2_step_field!
 using Oceananigans.Operators: σ⁻, σⁿ, ∂t_σ
 using Oceananigans.TurbulenceClosures: implicit_step!
+using Oceananigans.Advection: update_advection_timestep!
 
 import Oceananigans.TimeSteppers: ab2_step!
 
@@ -49,9 +50,12 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
     # Update transport velocities
     compute_transport_velocities!(model, model.free_surface)
 
+    # Update adaptive implicit advection time step before tracer tendencies
+    update_advection_timestep!(model.advection, Δt)
+
     # Computing tracer tendencies
     @apply_regionally begin
-        compute_tracer_tendencies!(model)
+        compute_tracer_tendencies!(model, Δt)
 
         # Advance grid and velocities
         ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
@@ -106,8 +110,11 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
     # Compute transport velocities
     compute_transport_velocities!(model, free_surface)
 
+    # Update adaptive implicit advection time step before tracer tendencies
+    update_advection_timestep!(model.advection, Δt)
+
     @apply_regionally begin
-        compute_tracer_tendencies!(model)
+        compute_tracer_tendencies!(model, Δt)
 
         ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
         ab2_step_tracers!(model.tracers, model, Δt, χ)
@@ -160,7 +167,9 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
                        nothing,
                        model.clock,
                        fields(model),
-                       Δt)
+                       Δt,
+                       model.advection.momentum,
+                       model.transport_velocities)
     end
 
     return nothing
@@ -212,6 +221,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
             FT = eltype(grid)
             launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_field!, tracer_field, grid, convert(FT, Δt), χ, Gⁿ, G⁻)
 
+            @inbounds c_advection = model.advection[tracer_name]
             implicit_step!(tracer_field,
                            model.timestepper.implicit_solver,
                            closure,
@@ -219,7 +229,9 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
                            Val(tracer_index),
                            model.clock,
                            fields(model),
-                           Δt)
+                           Δt,
+                           c_advection,
+                           model.transport_velocities)
         end
     end
 

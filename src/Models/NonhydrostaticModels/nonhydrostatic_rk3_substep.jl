@@ -1,4 +1,5 @@
 using Oceananigans.TimeSteppers: _rk3_substep_field!, stage_Δt
+using Oceananigans.Advection: update_advection_timestep!
 import Oceananigans.TimeSteppers: rk3_substep!
 
 """
@@ -32,6 +33,9 @@ function pressure_correction_rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
     Δτ   = stage_Δt(Δt, γⁿ, ζⁿ)
     grid = model.grid
 
+    # Update the time step stored in adaptive implicit advection schemes
+    update_advection_timestep!(model.advection, Δτ)
+
     compute_flux_bc_tendencies!(model)
     model_fields = prognostic_fields(model)
 
@@ -49,7 +53,9 @@ function pressure_correction_rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
                        Val(i-3), # We assume that the first 3 fields are velocity / momentum variables
                        model.clock,
                        fields(model),
-                       Δτ)
+                       Δτ,
+                       model.advection,
+                       model.velocities)
     end
 
     compute_pressure_correction!(model, Δτ)

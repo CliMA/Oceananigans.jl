@@ -1,4 +1,5 @@
 using Oceananigans.TimeSteppers: _ab2_step_field!, implicit_step!
+using Oceananigans.Advection: update_advection_timestep!
 import Oceananigans.TimeSteppers: ab2_step!
 
 """
@@ -26,6 +27,9 @@ This predictor-corrector scheme:
 function pressure_correction_ab2_step!(model, Δt, callbacks)
     grid = model.grid
 
+    # Update the time step stored in adaptive implicit advection schemes
+    update_advection_timestep!(model.advection, Δt)
+
     # Compute flux bc tendencies
     compute_flux_bc_tendencies!(model)
     model_fields = prognostic_fields(model)
@@ -44,7 +48,9 @@ function pressure_correction_ab2_step!(model, Δt, callbacks)
                        Val(i-3), # We assume that the first 3 fields are velocity / momentum variables
                        model.clock,
                        fields(model),
-                       Δt)
+                       Δt,
+                       model.advection,
+                       model.velocities)
     end
 
     compute_pressure_correction!(model, Δt)

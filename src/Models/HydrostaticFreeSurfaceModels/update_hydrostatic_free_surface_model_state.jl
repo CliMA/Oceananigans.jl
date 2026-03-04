@@ -35,9 +35,9 @@ This function performs the following steps:
 
 Note: Halo regions for free surface fields are filled separately after the barotropic step.
 """
-update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]) = update_state!(model, model.grid, callbacks)
+update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; Δt=nothing) = update_state!(model, model.grid, callbacks; Δt)
 
-function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
+function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; Δt=nothing)
 
     arch = architecture(grid)
 
@@ -76,7 +76,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
     update_biogeochemical_state!(model.biogeochemistry, model)
 
-    @apply_regionally compute_momentum_tendencies!(model, callbacks)
+    @apply_regionally compute_momentum_tendencies!(model, Δt, callbacks)
 
     return nothing
 end

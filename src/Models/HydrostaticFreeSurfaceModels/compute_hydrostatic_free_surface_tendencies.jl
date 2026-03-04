@@ -22,7 +22,7 @@ This function:
 
 Momentum tendencies are stored in `model.timestepper.Gⁿ.u` and `model.timestepper.Gⁿ.v`.
 """
-function compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
+function compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, Δt, callbacks)
 
     grid = model.grid
     arch = architecture(grid)
@@ -57,7 +57,7 @@ when using split-explicit free surfaces (transport velocities include barotropic
 
 Tracer tendencies are stored in `model.timestepper.Gⁿ[tracer_name]`.
 """
-function compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel)
+function compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel, Δt)
 
     grid = model.grid
     arch = architecture(grid)

@@ -3,6 +3,10 @@ using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Fields: location
 using Oceananigans.Grids: Periodic, ZDirection, topology
+using Oceananigans.Advection: AdaptiveImplicitVerticalAdvection,
+                              implicit_advection_upper_diagonal,
+                              implicit_advection_lower_diagonal,
+                              implicit_advection_diagonal
 
 import Oceananigans.Solvers: get_coefficient
 import Oceananigans.TimeSteppers: implicit_step!
@@ -124,6 +128,11 @@ end
 @inline _ivd_lower_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock, fields) =
     ivd_lower_diagonal(i, j, k, grid, closure, K, id, ℓx, ℓy, ℓz, Δt, clock, fields)
 
+# When closure is `nothing` (e.g. AIVA without turbulence closure), diffusion contributions are zero
+@inline _implicit_linear_coefficient(i, j, k, grid, ::Nothing, args...) = zero(grid)
+@inline _ivd_upper_diagonal(i, j, k, grid, ::Nothing, args...) = zero(grid)
+@inline _ivd_lower_diagonal(i, j, k, grid, ::Nothing, args...) = zero(grid)
+
 #####
 ##### Solver constructor
 #####
@@ -190,6 +199,10 @@ tridiagonal system for vertically-implicit diffusion, passing the arguments into
 functions that return coefficients of the lower diagonal, diagonal, and upper diagonal of the
 resulting tridiagonal system.
 """
+# When closure is nothing but solver exists (e.g., created for AIVA),
+# the pure-diffusion implicit step is a no-op (no diffusion to solve).
+implicit_step!(::Field, ::BatchedTridiagonalSolver, ::Nothing, closure_fields, tracer_index, clock, fields, Δt) = nothing
+
 function implicit_step!(field::Field,
                         implicit_solver::BatchedTridiagonalSolver,
                         closure::Union{AbstractTurbulenceClosure, AbstractArray{<:AbstractTurbulenceClosure}, Tuple},
@@ -214,4 +227,77 @@ function implicit_step!(field::Field,
     return solve!(field, implicit_solver, field,
                   # ivd_*_diagonal gets called with these args after (i, j, k, grid):
                   vi_closure, vi_closure_fields, tracer_index, LX(), LY(), LZ(), Δt, clock, fields)
+end
+
+#####
+##### Extended get_coefficient methods for combined implicit diffusion + advection
+#####
+##### When `advection` and `velocities` are passed as extra args (from the extended implicit_step!),
+##### the advection contribution is added to the diffusion coefficients.
+#####
+
+const AIVA = AdaptiveImplicitVerticalAdvection
+
+# With AdaptiveImplicitVerticalAdvection: add advection contribution
+@inline function get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionUpperDiagonal, p, ::ZDirection,
+                                 clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
+                                 advection::AIVA, w)
+    du_diff = _ivd_upper_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
+    du_adv = implicit_advection_upper_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy)
+    return du_diff + du_adv
+end
+
+@inline function get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionLowerDiagonal, p, ::ZDirection,
+                                 clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
+                                 advection::AIVA, w)
+    dl_diff = _ivd_lower_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
+    dl_adv = implicit_advection_lower_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy)
+    return dl_diff + dl_adv
+end
+
+@inline function get_coefficient(i, j, k, grid, ::VerticallyImplicitDiffusionDiagonal, p, ::ZDirection,
+                                 clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields,
+                                 advection::AIVA, w)
+    d_diff = ivd_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
+    d_adv = implicit_advection_diagonal(i, j, k, grid, advection, w, Δt, ℓx, ℓy)
+    return d_diff + d_adv
+end
+
+# Fallback: non-adaptive advection schemes contribute nothing to the implicit system
+@inline get_coefficient(i, j, k, grid, d::VerticallyImplicitDiffusionUpperDiagonal, p, dir::ZDirection,
+                        clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields, advection, w) =
+    _ivd_upper_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
+
+@inline get_coefficient(i, j, k, grid, d::VerticallyImplicitDiffusionLowerDiagonal, p, dir::ZDirection,
+                        clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields, advection, w) =
+    _ivd_lower_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
+
+@inline get_coefficient(i, j, k, grid, d::VerticallyImplicitDiffusionDiagonal, p, dir::ZDirection,
+                        clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields, advection, w) =
+    ivd_diagonal(i, j, k, grid, clo, K, id, ℓx, ℓy, ℓz, Δt, clk, fields)
+
+#####
+##### Extended implicit_step! that passes advection and vertical velocity through
+#####
+
+function implicit_step!(field::Field,
+                        implicit_solver::BatchedTridiagonalSolver,
+                        closure, closure_fields, tracer_index,
+                        clock, fields, Δt,
+                        advection, velocities)
+
+    if closure isa Tuple
+        N = length(closure)
+        vi_closure        = Tuple(closure[n]        for n = 1:N if is_vertically_implicit(closure[n]))
+        vi_closure_fields = Tuple(closure_fields[n] for n = 1:N if is_vertically_implicit(closure[n]))
+    else
+        vi_closure = closure
+        vi_closure_fields = closure_fields
+    end
+
+    LX, LY, LZ = location(field)
+    return solve!(field, implicit_solver, field,
+                  vi_closure, vi_closure_fields, tracer_index,
+                  LX(), LY(), LZ(), Δt, clock, fields,
+                  advection, velocities.w)
 end

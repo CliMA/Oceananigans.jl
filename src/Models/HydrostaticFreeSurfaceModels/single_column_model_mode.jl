@@ -65,7 +65,7 @@ compute_free_surface_tendency!(::SingleColumnGrid, model, ::SplitExplicitFreeSur
 
 # Fast state update and halo filling
 
-function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid, callbacks)
+function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid, callbacks; Δt=nothing)
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
 
@@ -83,7 +83,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
 
     update_biogeochemical_state!(model.biogeochemistry, model)
 
-    compute_momentum_tendencies!(model, callbacks)
+    compute_momentum_tendencies!(model, Δt, callbacks)
 
     return nothing
 end

@@ -11,7 +11,9 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions,
-                                       time_discretization, implicit_diffusion_solver, closure_required_tracers, initialize_closure_fields!
+                                       time_discretization, implicit_diffusion_solver, VerticallyImplicitTimeDiscretization,
+                                       closure_required_tracers, initialize_closure_fields!
+using Oceananigans.Advection: needs_implicit_solver
 using Oceananigans.Utils: tupleit
 
 import Oceananigans
@@ -251,7 +253,13 @@ function HydrostaticFreeSurfaceModel(grid;
     free_surface = materialize_free_surface(free_surface, velocities, grid)
 
     # Instantiate timestepper if not already instantiated
-    implicit_solver   = implicit_diffusion_solver(time_discretization(closure), grid)
+    implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
+
+    # Also create the implicit solver if adaptive implicit advection requires it
+    if isnothing(implicit_solver) && needs_implicit_solver(advection)
+        implicit_solver = implicit_diffusion_solver(VerticallyImplicitTimeDiscretization(), grid)
+    end
+
     prognostic_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers)
 
     Gⁿ = hydrostatic_tendency_fields(velocities, free_surface, grid, tracernames(tracers), boundary_conditions)
