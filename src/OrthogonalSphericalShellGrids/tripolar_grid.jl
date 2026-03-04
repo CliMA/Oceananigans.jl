@@ -373,23 +373,100 @@ function continue_south!(new_metric, lat_lon_metric::AbstractArray{<:Any, 1})
     return nothing
 end
 
+# Copy interior data from old grid into a new Field, then fill halos
+# using the proper boundary conditions (periodic in x, fold at north, no-flux at south).
+function transfer_horizontal_field(old_data, helper_grid, bcs, LX, LY)
+    TX, TY, _ = topology(helper_grid)
+    Nx, Ny, _ = size(helper_grid)
+    new_field = Field{LX, LY, Center}(helper_grid; boundary_conditions = bcs)
+    Ni = Base.length(LX(), TX(), Nx)
+    Nj = Base.length(LY(), TY(), Ny)
+    cpu_old_data = on_architecture(CPU(), old_data)
+    new_field.data[1:Ni, 1:Nj, 1] .= cpu_old_data[1:Ni, 1:Nj]
+    fill_halo_regions!(new_field)
+    return deepcopy(dropdims(new_field.data, dims=3))
+end
+
 function Grids.with_halo(new_halo, old_grid::TripolarGrid)
 
-    size = (old_grid.Nx, old_grid.Ny, old_grid.Nz)
+    arch = architecture(old_grid)
+    FT = eltype(old_grid)
 
+    Nx,  Ny,  Nz  = size(old_grid)
+    TX,  TY,  TZ  = topology(old_grid)
+    Hxo, Hyo, Hzo = halo_size(old_grid)
+    Hxn, Hyn, Hzn = new_halo
+
+    # Reconstruct vertical coordinate with new halo
     z = cpu_face_constructor_z(old_grid)
+    Lz, new_z = generate_coordinate(FT, topology(old_grid), (Nx, Ny, Nz), new_halo, z, :z, 3, CPU())
 
-    north_poles_latitude = old_grid.conformal_mapping.north_poles_latitude
-    first_pole_longitude = old_grid.conformal_mapping.first_pole_longitude
-    southernmost_latitude = old_grid.conformal_mapping.southernmost_latitude
+    # Helper grid for halo filling (same approach as the TripolarGrid constructor)
+    helper_grid = RectilinearGrid(; size = (Nx, Ny),
+                                    halo = (Hxn, Hyn),
+                                    x = (0, 1), y = (0, 1),
+                                    topology = (TX, TY, Flat))
 
-    new_grid = TripolarGrid(architecture(old_grid), eltype(old_grid);
-                            size, z, halo = new_halo,
-                            radius = old_grid.radius,
-                            north_poles_latitude,
-                            first_pole_longitude,
-                            southernmost_latitude,
-                            fold_topology = topology(old_grid, 2))
+    # Boundary conditions for halo filling (same as in the TripolarGrid constructor)
+    bcs = FieldBoundaryConditions(north  = north_fold_boundary_condition(TY)(),
+                                  south  = NoFluxBoundaryCondition(),
+                                  west   = Oceananigans.PeriodicBoundaryCondition(),
+                                  east   = Oceananigans.PeriodicBoundaryCondition(),
+                                  top    = nothing,
+                                  bottom = nothing)
+
+    λᶜᶜᵃ  = transfer_horizontal_field(old_grid.λᶜᶜᵃ,  helper_grid, bcs, Center, Center)
+    λᶠᶜᵃ  = transfer_horizontal_field(old_grid.λᶠᶜᵃ,  helper_grid, bcs, Face,   Center)
+    λᶜᶠᵃ  = transfer_horizontal_field(old_grid.λᶜᶠᵃ,  helper_grid, bcs, Center, Face)
+    λᶠᶠᵃ  = transfer_horizontal_field(old_grid.λᶠᶠᵃ,  helper_grid, bcs, Face,   Face)
+
+    φᶜᶜᵃ  = transfer_horizontal_field(old_grid.φᶜᶜᵃ,  helper_grid, bcs, Center, Center)
+    φᶠᶜᵃ  = transfer_horizontal_field(old_grid.φᶠᶜᵃ,  helper_grid, bcs, Face,   Center)
+    φᶜᶠᵃ  = transfer_horizontal_field(old_grid.φᶜᶠᵃ,  helper_grid, bcs, Center, Face)
+    φᶠᶠᵃ  = transfer_horizontal_field(old_grid.φᶠᶠᵃ,  helper_grid, bcs, Face,   Face)
+
+    Δxᶜᶜᵃ = transfer_horizontal_field(old_grid.Δxᶜᶜᵃ, helper_grid, bcs, Center, Center)
+    Δxᶠᶜᵃ = transfer_horizontal_field(old_grid.Δxᶠᶜᵃ, helper_grid, bcs, Face,   Center)
+    Δxᶜᶠᵃ = transfer_horizontal_field(old_grid.Δxᶜᶠᵃ, helper_grid, bcs, Center, Face)
+    Δxᶠᶠᵃ = transfer_horizontal_field(old_grid.Δxᶠᶠᵃ, helper_grid, bcs, Face,   Face)
+
+    Δyᶜᶜᵃ = transfer_horizontal_field(old_grid.Δyᶜᶜᵃ, helper_grid, bcs, Center, Center)
+    Δyᶠᶜᵃ = transfer_horizontal_field(old_grid.Δyᶠᶜᵃ, helper_grid, bcs, Face,   Center)
+    Δyᶜᶠᵃ = transfer_horizontal_field(old_grid.Δyᶜᶠᵃ, helper_grid, bcs, Center, Face)
+    Δyᶠᶠᵃ = transfer_horizontal_field(old_grid.Δyᶠᶠᵃ, helper_grid, bcs, Face,   Face)
+
+    Azᶜᶜᵃ = transfer_horizontal_field(old_grid.Azᶜᶜᵃ, helper_grid, bcs, Center, Center)
+    Azᶠᶜᵃ = transfer_horizontal_field(old_grid.Azᶠᶜᵃ, helper_grid, bcs, Face,   Center)
+    Azᶜᶠᵃ = transfer_horizontal_field(old_grid.Azᶜᶠᵃ, helper_grid, bcs, Center, Face)
+    Azᶠᶠᵃ = transfer_horizontal_field(old_grid.Azᶠᶠᵃ, helper_grid, bcs, Face,   Face)
+
+    new_grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(arch,
+                                                         Nx, Ny, Nz,
+                                                         Hxn, Hyn, Hzn,
+                                                         convert(FT, Lz),
+                                                         on_architecture(arch, λᶜᶜᵃ),
+                                                         on_architecture(arch, λᶠᶜᵃ),
+                                                         on_architecture(arch, λᶜᶠᵃ),
+                                                         on_architecture(arch, λᶠᶠᵃ),
+                                                         on_architecture(arch, φᶜᶜᵃ),
+                                                         on_architecture(arch, φᶠᶜᵃ),
+                                                         on_architecture(arch, φᶜᶠᵃ),
+                                                         on_architecture(arch, φᶠᶠᵃ),
+                                                         on_architecture(arch, new_z),
+                                                         on_architecture(arch, Δxᶜᶜᵃ),
+                                                         on_architecture(arch, Δxᶠᶜᵃ),
+                                                         on_architecture(arch, Δxᶜᶠᵃ),
+                                                         on_architecture(arch, Δxᶠᶠᵃ),
+                                                         on_architecture(arch, Δyᶜᶜᵃ),
+                                                         on_architecture(arch, Δyᶠᶜᵃ),
+                                                         on_architecture(arch, Δyᶜᶠᵃ),
+                                                         on_architecture(arch, Δyᶠᶠᵃ),
+                                                         on_architecture(arch, Azᶜᶜᵃ),
+                                                         on_architecture(arch, Azᶠᶜᵃ),
+                                                         on_architecture(arch, Azᶜᶠᵃ),
+                                                         on_architecture(arch, Azᶠᶠᵃ),
+                                                         convert(FT, old_grid.radius),
+                                                         old_grid.conformal_mapping)
 
     return new_grid
 end
