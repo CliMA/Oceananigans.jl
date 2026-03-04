@@ -147,6 +147,7 @@ mutable struct Defaults
     gravitational_acceleration :: Float64
     planet_radius :: Float64
     planet_rotation_rate :: Float64
+    weno_weight_computation
 end
 
 function Defaults(;
@@ -159,10 +160,16 @@ function Defaults(;
     # [s⁻¹] Earth's angular speed; see https://en.wikipedia.org/wiki/Earth%27s_rotation#Angular_speed
     planet_rotation_rate = 7.292115e-5)
 
+    # Default optimisation for computing WENO weights
+    # Since the options live in Oceananigans.Utils, we put a placeholder here and
+    # set the default later in the module
+    weno_weight_computation = nothing
+
     return Defaults(FloatType,
                     gravitational_acceleration,
                     planet_radius,
-                    planet_rotation_rate)
+                    planet_rotation_rate,
+                    weno_weight_computation)
 end
 
 const defaults = Defaults()
@@ -266,6 +273,9 @@ include("Models/Models.jl")
 
 # Abstractions for distributed and multi-region models
 include("MultiRegion/MultiRegion.jl")
+
+### Set default WENO weight computation to backend-optimized division
+defaults.weno_weight_computation = Utils.BackendOptimizedDivision
 
 #####
 ##### Needed so we can export names from sub-modules at the top-level
