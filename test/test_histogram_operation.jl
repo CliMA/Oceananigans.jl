@@ -389,6 +389,30 @@ function histogram_integral_count_conservation(arch, FT)
     @test total_histogram_volume ≈ total_grid_volume
 end
 
+function histogram_retained_axis_coordinates_are_preserved(arch, FT)
+    z_faces = FT[-6, -2, -0.5, 0]
+    grid = RectilinearGrid(arch, FT, size=(6, 5, 3), x=(0, 6), y=(0, 5), z=z_faces)
+    model = NonhydrostaticModel(grid; tracers=(:a, :b))
+
+    set!(model, a=(x, y, z) -> FT(0.8x + 0.2z),
+                b=(x, y, z) -> FT(31 + 0.3y - 0.1z))
+
+    bins_1d = FT[0, 1, 2, 3, 4, 5, 6]
+    bins_2d = (a = FT[0, 1, 2, 3, 4, 5, 6],
+               b = FT[30, 30.5, 31, 31.5, 32, 32.5, 33])
+
+    histogram_1d = Field(Histogram(model.tracers.a; bins=bins_1d, weights=:count, dims=(1, 2)))
+    histogram_2d = Field(Histogram(model.tracers.a, model.tracers.b; bins=bins_2d, weights=:count, dims=(1, 2)))
+
+    expected_z = collect(znodes(model.tracers.a))
+    observed_z_1d = collect(ynodes(histogram_1d))
+    observed_z_2d = collect(znodes(histogram_2d))
+
+    @test !all(diff(expected_z) .≈ first(diff(expected_z)))
+    @test observed_z_1d ≈ expected_z
+    @test observed_z_2d ≈ expected_z
+end
+
 function histogram_writer_smoke_test()
     mktempdir() do dir
         grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
@@ -460,6 +484,7 @@ end
                 histogram_named_operands_map_bins_by_key(arch, FT)
                 histogram_face_location_includes_bounded_boundary_faces(arch, FT)
                 histogram_integral_count_conservation(arch, FT)
+                histogram_retained_axis_coordinates_are_preserved(arch, FT)
             end
         end
     end

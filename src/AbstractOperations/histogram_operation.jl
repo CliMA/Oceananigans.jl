@@ -1,5 +1,6 @@
 using Oceananigans.Fields: AbstractField, instantiated_location, compute_at!, indices, filter_nothing_dims
-using Oceananigans.Grids: RectilinearGrid, Center, Bounded, Flat, topology, interior_indices
+using Oceananigans.Grids: RectilinearGrid, Face, Center, Bounded, Flat, topology, interior_indices
+using Oceananigans.Grids: ξnodes, ηnodes, rnodes
 using Oceananigans.Architectures: architecture, on_architecture, CPU
 using Oceananigans.Utils: KernelParameters, launch!, tupleit
 using Oceananigans.Grids: inactive_node
@@ -33,6 +34,13 @@ struct HistogramAverageFieldWeights{W, M} <: AbstractHistogramWeights
     field :: W
     metric :: M
 end
+
+Adapt.adapt_structure(to, ::HistogramCountWeights) = HistogramCountWeights()
+Adapt.adapt_structure(to, weights::HistogramFieldWeights) = HistogramFieldWeights(adapt(to, weights.field))
+Adapt.adapt_structure(to, weights::HistogramIntegralCountWeights) = HistogramIntegralCountWeights(adapt(to, weights.metric))
+Adapt.adapt_structure(to, weights::HistogramIntegralFieldWeights) = HistogramIntegralFieldWeights(adapt(to, weights.field), adapt(to, weights.metric))
+Adapt.adapt_structure(to, weights::HistogramAverageCountWeights) = HistogramAverageCountWeights(adapt(to, weights.metric))
+Adapt.adapt_structure(to, weights::HistogramAverageFieldWeights) = HistogramAverageFieldWeights(adapt(to, weights.field), adapt(to, weights.metric))
 
 struct HistogramOperation{G, T, A, B, BN, E1, E2, W, H, LN, C, GN, K} <: AbstractOperation{Center, Center, Center, G, T}
     grid :: G
@@ -104,6 +112,33 @@ function Histogram1DOperation(grid::G, a::A, bins::BN, edges1::E1,
                                                               retained_lengths)
 end
 
+@inline retained_dimension_face_nodes(grid, retained_dimension, face_indices) =
+    retained_dimension === 1 ? ξnodes(grid, Face(); indices=face_indices) :
+    retained_dimension === 2 ? ηnodes(grid, Face(); indices=face_indices) :
+                               rnodes(grid, Face(); indices=face_indices)
+
+function histogram_retained_coordinate(a, launch_indices, reduced_dimensions, retained_count, ::Type{FT}) where FT
+    retained_dimensions = Tuple(d for d in 1:3 if !reduced_dimensions[d])
+
+    if length(retained_dimensions) != 1
+        return (zero(FT), FT(retained_count))
+    end
+
+    retained_dimension = only(retained_dimensions)
+    retained_location = instantiated_location(a)[retained_dimension]
+
+    if !(retained_location isa Center) || topology(a.grid, retained_dimension) !== Bounded
+        return (zero(FT), FT(retained_count))
+    end
+
+    retained_indices = launch_indices[retained_dimension]
+    face_indices = first(retained_indices):(last(retained_indices) + 1)
+    retained_faces = retained_dimension_face_nodes(a.grid, retained_dimension, face_indices)
+    retained_faces_cpu = collect(on_architecture(CPU(), retained_faces))
+
+    return convert(Vector{FT}, retained_faces_cpu)
+end
+
 """
     Histogram(a::AbstractField, b::AbstractField; bins=NamedTuple(), weights=:count, dims=(1, 2, 3), method=:sum)
     Histogram(fields::NamedTuple; bins=NamedTuple(), weights=:count, dims=(1, 2, 3), method=:sum)
@@ -167,6 +202,7 @@ function Histogram(a::AbstractField, b::AbstractField;
 
     reduced_dimensions, retained_offsets, retained_lengths, retained_count =
         histogram_reduction_metadata(launch_indices, dims)
+    retained_coordinate = histogram_retained_coordinate(a, launch_indices, reduced_dimensions, retained_count, FT)
 
     buffers = method === :average ? 4 : 2
     maybe_warn_histogram_memory((nbin1, nbin2, retained_count), FT; dims, buffers)
@@ -177,7 +213,7 @@ function Histogram(a::AbstractField, b::AbstractField;
                                      halo = (1, 1, 1),
                                      x = edges1_cpu,
                                      y = edges2_cpu,
-                                     z = (zero(FT), FT(retained_count)))
+                                     z = retained_coordinate)
 
     edges1 = on_architecture(arch, edges1_cpu)
     edges2 = on_architecture(arch, edges2_cpu)
@@ -222,6 +258,7 @@ function Histogram(a::AbstractField;
 
     reduced_dimensions, retained_offsets, retained_lengths, retained_count =
         histogram_reduction_metadata(launch_indices, dims)
+    retained_coordinate = histogram_retained_coordinate(a, launch_indices, reduced_dimensions, retained_count, FT)
 
     buffers = method === :average ? 4 : 2
     maybe_warn_histogram_memory((nbin1, retained_count, 1), FT; dims, buffers)
@@ -231,7 +268,7 @@ function Histogram(a::AbstractField;
                                      topology = (Bounded, Bounded, Flat),
                                      halo = (1, 1),
                                      x = edges1_cpu,
-                                     y = (zero(FT), FT(retained_count)))
+                                     y = retained_coordinate)
 
     edges1 = on_architecture(arch, edges1_cpu)
 
