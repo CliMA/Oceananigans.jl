@@ -19,7 +19,7 @@ import Oceananigans.TimeSteppers: time_step!
 
 const PrescribedField = Union{TimeSeriesInterpolation, FunctionField}
 
-prognostic_tracers(tracers) = filter(c -> !(c isa PrescribedField), tracers)
+prognostic_tracers(tracers) = NamedTuple(k => v for (k, v) in pairs(tracers) if !(v isa PrescribedField))
 
 struct PrescribedVelocityFields{U, V, W, P}
     u :: U
