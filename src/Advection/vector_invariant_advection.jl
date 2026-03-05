@@ -175,7 +175,6 @@ nothing_to_default(user_value; default=nothing) = isnothing(user_value) ? defaul
                         divergence_order = nothing,
                         kinetic_energy_gradient_order = nothing,
                         multi_dimensional_stencil = false,
-                        minimum_buffer_upwind_order = 1,
                         weno_kw...)
 
 Return a vector-invariant weighted essentially non-oscillatory (WENO) scheme.
@@ -211,7 +210,6 @@ function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
                              divergence_order = nothing,
                              kinetic_energy_gradient_order = nothing,
                              multi_dimensional_stencil = false,
-                             minimum_buffer_upwind_order = 1,
                              weno_kw...)
 
     if isnothing(order) # apply global defaults
@@ -226,10 +224,10 @@ function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
         kinetic_energy_gradient_order = nothing_to_default(kinetic_energy_gradient_order, default = order)
     end
 
-    vorticity_scheme               = WENO(FT; order=vorticity_order, minimum_buffer_upwind_order, weno_kw...)
-    vertical_advection_scheme      = WENO(FT; order=vertical_order, minimum_buffer_upwind_order, weno_kw...)
-    kinetic_energy_gradient_scheme = WENO(FT; order=kinetic_energy_gradient_order, minimum_buffer_upwind_order, weno_kw...)
-    divergence_scheme              = WENO(FT; order=divergence_order, minimum_buffer_upwind_order, weno_kw...)
+    vorticity_scheme               = WENO(FT; order=vorticity_order, weno_kw...)
+    vertical_advection_scheme      = WENO(FT; order=vertical_order, weno_kw...)
+    kinetic_energy_gradient_scheme = WENO(FT; order=kinetic_energy_gradient_order, weno_kw...)
+    divergence_scheme              = WENO(FT; order=divergence_order, weno_kw...)
 
     default_upwinding = OnlySelfUpwinding(cross_scheme = divergence_scheme)
     upwinding = nothing_to_default(upwinding; default = default_upwinding)
@@ -445,12 +443,12 @@ const AS = AbstractSmoothnessStencil
 # To adapt passing smoothness stencils to upwind biased schemes and centered schemes (not WENO)
 for b in advection_buffers, FT in fully_supported_float_types
     @eval begin
-        @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s::Centered{$b, $FT}, f::Callable, ::AS, args...) = symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s, f, args...)
-        @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s::Centered{$b, $FT}, f::Callable, ::AS, args...) = symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s, f, args...)
-        @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s::Centered{$b, $FT}, f::Callable, ::AS, args...) = symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s, f, args...)
+        @inline symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s::Centered{$b, $FT}, r::Int, f::Callable, ::AS, args...) = symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, s, r, f, args...)
+        @inline symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s::Centered{$b, $FT}, r::Int, f::Callable, ::AS, args...) = symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, s, r, f, args...)
+        @inline symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s::Centered{$b, $FT}, r::Int, f::Callable, ::AS, args...) = symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, s, r, f, args...)
 
-        @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s::UpwindBiased{$b, $FT}, bias, f::Callable, ::AS, args...) = biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, bias, f, args...)
-        @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s::UpwindBiased{$b, $FT}, bias, f::Callable, ::AS, args...) = biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, bias, f, args...)
-        @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s::UpwindBiased{$b, $FT}, bias, f::Callable, ::AS, args...) = biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, bias, f, args...)
+        @inline biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s::UpwindBiased{$b, $FT}, r::Int, bias, f::Callable, ::AS, args...) = biased_interpolate_xᶠᵃᵃ(i, j, k, grid, s, r, bias, f, args...)
+        @inline biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s::UpwindBiased{$b, $FT}, r::Int, bias, f::Callable, ::AS, args...) = biased_interpolate_yᵃᶠᵃ(i, j, k, grid, s, r, bias, f, args...)
+        @inline biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s::UpwindBiased{$b, $FT}, r::Int, bias, f::Callable, ::AS, args...) = biased_interpolate_zᵃᵃᶠ(i, j, k, grid, s, r, bias, f, args...)
     end
 end
