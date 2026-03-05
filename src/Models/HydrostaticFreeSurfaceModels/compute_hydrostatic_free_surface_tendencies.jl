@@ -9,6 +9,8 @@ using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCAT
 
 using Oceananigans.Grids: get_active_cells_map
 
+using Oceananigans.Advection: horizontal_advection_U, vertical_advection_U, bernoulli_head_U
+
 """
     compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
 
@@ -166,9 +168,12 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args..., u_forcing)
     v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args..., v_forcing)
 
-    launch!(arch, grid, kernel_parameters,
-            compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid,
-            u_kernel_args; active_cells_map)
+    compute_hydrostatic_free_surface_Gu!(arch,
+                                         grid,
+                                         kernel_parameters,
+                                         model.timestepper.Gⁿ.u,
+                                         u_kernel_args...;
+                                         active_cells_map)
 
     launch!(arch, grid, kernel_parameters,
             compute_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid,
@@ -182,10 +187,120 @@ end
 #####
 
 """ Calculate the right-hand-side of the u-velocity equation. """
-@kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid, args)
-    i, j, k = @index(Global, NTuple)
-    @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
+function compute_hydrostatic_free_surface_Gu!(arch,
+                                              grid,
+                                              kernel_parameters,
+                                              Gu,
+                                              advection,
+                                              coriolis,
+                                              closure,
+                                              u_immersed_bc,
+                                              velocities,
+                                              free_surface,
+                                              tracers,
+                                              buoyancy,
+                                              closure_fields,
+                                              hydrostatic_pressure_anomaly,
+                                              auxiliary_fields,
+                                              ztype,
+                                              clock,
+                                              forcing;
+                                              active_cells_map)
+    args = tuple(advection,
+                 coriolis,
+                 closure,
+                 u_immersed_bc,
+                 velocities,
+                 free_surface,
+                 tracers,
+                 buoyancy,
+                 closure_fields,
+                 hydrostatic_pressure_anomaly,
+                 auxiliary_fields,
+                 ztype,
+                 clock,
+                 forcing)
+
+
+    compute_U_dot_∇u!(arch, grid, kernel_parameters, Gu, advection, velocities; active_cells_map)
+
+    launch!(arch, grid, kernel_parameters,
+            compute_corrections_Gu!, Gu, grid,
+            args; active_cells_map)
 end
+
+function compute_U_dot_∇u!(arch, grid, kernel_parameters, Gu, advection, velocities; active_cells_map)
+  launch!(arch, grid, kernel_parameters,
+          compute_U_dot_∇u!, Gu, grid, (advection, velocities);
+          active_cells_map)
+end
+
+@kernel function compute_U_dot_∇u(Gu, grid, args)
+    i, j, k = @index(Global, NTuple)
+    @inbounds Gu[i, j, k] = - U_dot_∇u(i, j, k, grid, args...)
+end
+
+function compute_U_dot_∇u!(arch, grid, kernel_parameters, Gu, advection::VectorInvariant, velocities; active_cells_map)
+  launch!(arch, grid, kernel_parameters,
+          horizontal_advection_U!, Gu, grid, (advection, velocities);
+          active_cells_map)
+  launch!(arch, grid, kernel_parameters,
+          vertical_advection_U!, Gu, grid, (advection, velocities);
+          active_cells_map)
+  launch!(arch, grid, kernel_parameters,
+          bernoulli_head_U!, Gu, grid, (advection, velocities);
+          active_cells_map)
+end
+
+@kernel function horizontal_advection_U!(Gu, grid, args)
+    i, j, k = @index(Global, NTuple)
+    (scheme, U) = args
+    @inbounds Gu[i, j, k] = horizontal_advection_U(i, j, k, grid, scheme, U.u, U.v)
+end
+
+@kernel function vertical_advection_U!(Gu, grid, args)
+    i, j, k = @index(Global, NTuple)
+    (scheme, U) = args
+    @inbounds Gu[i, j, k] -= vertical_advection_U(i, j, k, grid, scheme, U)
+end
+
+@kernel function bernoulli_head_U!(Gu, grid, args)
+    i, j, k = @index(Global, NTuple)
+    (scheme, U) = args
+    @inbounds Gu[i, j, k] -= bernoulli_head_U(i, j, k, grid, scheme, U.u, U.v)
+end
+
+@kernel function compute_corrections_Gu!(Gu, grid, args)
+    i, j, k = @index(Global, NTuple)
+    @inbounds Gu[i, j, k] += compute_corrections_Gu(i, j, k, grid, args...)
+end
+
+function compute_corrections_Gu(i, j, k, grid,
+                                advection,
+                                coriolis,
+                                closure,
+                                u_immersed_bc,
+                                velocities,
+                                free_surface,
+                                tracers,
+                                buoyancy,
+                                closure_fields,
+                                hydrostatic_pressure_anomaly,
+                                auxiliary_fields,
+                                ztype,
+                                clock,
+                                forcing)
+
+    model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
+
+    return (- explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface)
+             - x_f_cross_U(i, j, k, grid, coriolis, velocities)
+             - ∂xᶠᶜᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
+             - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, closure_fields, clock, model_fields, buoyancy)
+             - immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, velocities, u_immersed_bc, closure, closure_fields, clock, model_fields)
+             + forcing(i, j, k, grid, clock, model_fields))
+end
+
 
 """ Calculate the right-hand-side of the v-velocity equation. """
 @kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid, args)
