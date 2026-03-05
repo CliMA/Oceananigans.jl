@@ -1,4 +1,5 @@
 include("dependencies_for_runtests.jl")
+include("dependencies_for_poisson_solvers.jl")
 
 using Metal
 
@@ -141,4 +142,8 @@ end
     sim = Simulation(model, Δt=5, stop_iteration=2)
     run!(sim)
     @test time(sim) == 10seconds
+    
+    topo = (TX, TY, TZ) =  topology(grid)
+    λx = poisson_eigenvalues(grid, grid.Nx, grid.Lx, 1, TX())
+    @test eltype(λx) == Float32
 end
