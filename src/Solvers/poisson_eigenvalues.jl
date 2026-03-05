@@ -3,7 +3,7 @@
 
 Return the eigenvalues satisfying the discrete form of Poisson's equation
 with periodic boundary conditions along the dimension `dim` with `N` grid
-points and domain extent `L`. `grid` is passed for dispatch and possible 
+points and domain extent `L`. `grid` is passed for dispatch and possible
 future use for setting float type of the eigenvalues.
 """
 function poisson_eigenvalues(grid::AbstractGrid, N, L, dim, ::Periodic)
@@ -16,7 +16,7 @@ end
 
 Return the eigenvalues satisfying the discrete form of Poisson's equation
 with staggered Neumann boundary conditions along the dimension `dim` with
-`N` grid points and domain extent `L`. `grid` is passed for dispatch and 
+`N` grid points and domain extent `L`. `grid` is passed for dispatch and
 possible future use for setting float type of the eigenvalues.
 """
 function poisson_eigenvalues(grid::AbstractGrid, N, L, dim, ::Bounded)
@@ -29,7 +29,7 @@ end
 
 Return N-element array of `0.0` reshaped to three-dimensions.
 This is also the first `poisson_eigenvalue` for `Bounded` and `Periodic` directions.
-`grid` is passed for dispatch and possible future use for setting float type of the 
+`grid` is passed for dispatch and possible future use for setting float type of the
 eigenvalues.
 """
 poisson_eigenvalues(grid::AbstractGrid, N, L, dim, ::Flat) = reshape(zeros(N), reshaped_size(N, dim)...)
