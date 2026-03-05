@@ -16,6 +16,7 @@ import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid,
 const DistributedGrid{FT, TX, TY, TZ} = Union{
     AbstractGrid{FT, TX, TY, TZ, <:Distributed{<:CPU}},
     AbstractGrid{FT, TX, TY, TZ, <:Distributed{<:GPU}},
+    AbstractGrid{FT, TX, TY, TZ, <:Distributed{<:ReactantState}},
 }
 
 const DistributedRectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY} =
