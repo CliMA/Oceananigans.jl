@@ -2,7 +2,7 @@ using Oceananigans: Oceananigans
 using Oceananigans.Grids: Grids, Flat, LeftConnected, RightConnected, FullyConnected,
     RightCenterFolded, RightFaceFolded,
     halo_size, on_architecture, minimum_xspacing, minimum_yspacing, with_halo
-using Oceananigans.Fields: TracerFields, XFaceField, YFaceField
+using Oceananigans.Fields: XFaceField, YFaceField
 using Oceananigans.Utils: prettytime
 using Adapt: Adapt
 
@@ -209,7 +209,7 @@ split_explicit_substepping(::Nothing, ::Nothing, fixed_Δt, grid, averaging_kern
     bottom = nothing
 )
 
-function hydrostatic_tendency_fields(velocities, free_surface::SplitExplicitFreeSurface, grid, tracer_names, bcs)
+function hydrostatic_tendency_fields(velocities, free_surface::SplitExplicitFreeSurface, grid, tracers, bcs)
     u = XFaceField(grid, boundary_conditions=bcs.u)
     v = YFaceField(grid, boundary_conditions=bcs.v)
 
@@ -220,9 +220,9 @@ function hydrostatic_tendency_fields(velocities, free_surface::SplitExplicitFree
     U = Field{Face, Center, Nothing}(free_surface_grid, boundary_conditions=U_bcs)
     V = Field{Center, Face, Nothing}(free_surface_grid, boundary_conditions=V_bcs)
 
-    tracers = TracerFields(tracer_names, grid, bcs)
+    tracer_tendencies = tracer_tendency_fields(tracers, grid, bcs)
 
-    return merge((u=u, v=v, U=U, V=V), tracers)
+    return merge((u=u, v=v, U=U, V=V), tracer_tendencies)
 end
 
 const ConnectedTopology = Union{LeftConnected, RightConnected, FullyConnected, RightCenterFolded, RightFaceFolded}
