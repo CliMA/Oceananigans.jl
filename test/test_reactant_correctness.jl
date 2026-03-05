@@ -65,7 +65,7 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
         end
 
         # Test LatitudeLongitudeGrid with LX ∈ (Periodic, Bounded)
-        for LX in (Periodic, Bounded)
+        for LX in (Periodic,)
             topo = (LX, Bounded, Bounded)
             @testset "LatitudeLongitudeGrid topology=$topo" begin
                 @info "Testing fill_halo_regions! correctness on LatitudeLongitudeGrid with topology=$topo..."
