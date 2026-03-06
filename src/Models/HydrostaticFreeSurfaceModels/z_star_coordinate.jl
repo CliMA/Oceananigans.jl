@@ -84,19 +84,30 @@ end
 end
 
 """
-    update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSomeKind, ::ZStarCoordinate; parameters)
+    update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSomeKind, vc::ZStarCoordinate; parameters)
 
 Compute the time derivative of the z-star grid stretching factor `∂t_σ`.
 
-For z-star coordinates, `∂t_σ = -∇·U / H` where `U` is the barotropic transport
-and `H` is the static column depth. This represents the rate of change of the
-vertical grid spacing due to free surface motion.
+Dispatches on the free surface type (`model.free_surface`):
 
-The barotropic transport is obtained from `barotropic_velocities` for prognostic
-velocities or `barotropic_transport` for transport velocities (which may differ
-when using split-explicit free surface).
+- For all free surface types except `PrescribedFreeSurface`:
+  `∂t_σ = -∇·U / H` where `U` is the barotropic transport
+  and `H` is the static column depth. This represents the rate of change of the
+  vertical grid spacing due to free surface motion.
+
+  The barotropic transport is obtained from `barotropic_velocities` for prognostic
+  velocities or `barotropic_transport` for transport velocities (which may differ
+  when using split-explicit free surface).
+
+- For `PrescribedFreeSurface`: `∂t_σ ≈ (η(tⁿ⁺¹) - η(tⁿ)) / (Δt · H)` using a
+  forward finite difference of the prescribed displacement.
 """
-function update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSomeKind, ::ZStarCoordinate; parameters=surface_kernel_parameters(grid))
+function update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSomeKind, vc::ZStarCoordinate; parameters=surface_kernel_parameters(grid))
+    update_grid_vertical_velocity!(velocities, model, grid, vc, model.free_surface; parameters)
+end
+
+# Default: compute ∂t_σ from the barotropic transport divergence.
+function update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSomeKind, ::ZStarCoordinate, free_surface; parameters=surface_kernel_parameters(grid))
 
     # the barotropic velocities are retrieved from the free surface model for a
     # SplitExplicitFreeSurface and are calculated for other free surface models
