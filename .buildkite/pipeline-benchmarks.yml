@@ -79,7 +79,9 @@ steps:
       echo "========================================"
       echo "  Group 6: Tracer count sweep (1/2 deg)"
       echo "========================================"
-      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --tracers="T,S,C1 T,S,C1,C2 T,S,C1,C2,C3,C4" --output=$OUTPUT_FILE
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --tracers="T,S,C1" --output=$OUTPUT_FILE
+       $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --tracers="T,S,C1,C2,C3" --output=$OUTPUT_FILE
+
 
       echo "========================================"
       echo "  Group 7: I/O sweep (1/2 deg)"
