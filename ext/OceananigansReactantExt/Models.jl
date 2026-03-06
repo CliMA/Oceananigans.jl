@@ -3,6 +3,7 @@ module Models
 import Oceananigans
 
 import Oceananigans.Models: initialization_update_state!
+import Oceananigans.TimeSteppers: maybe_initialize_state!
 import Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: maybe_extend_halos, FixedSubstepNumber
 import Oceananigans: initialize!
 
@@ -53,5 +54,10 @@ end
 function initialization_update_state!(model::ReactantHFSM)
     return nothing
 end
+
+# No-op for Reactant: the iteration == 0 check evaluates at trace time,
+# causing a redundant update_state! to be compiled into every time_step!.
+# Instead, first_time_step! handles initialization explicitly.
+maybe_initialize_state!(model::ReactantHFSM, callbacks) = nothing
 
 end # module
