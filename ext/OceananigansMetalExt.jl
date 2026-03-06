@@ -72,18 +72,18 @@ end
 const MetalGrid = GD.AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:MetalGPU}
 Clock(grid::MetalGrid) = Clock{Float32}(time=0)
 
-# Poisson eigenvalues must be Float32 on Metal
+# Poisson eigenvalues should be the same float type as the grid, as Metal doesn't support Float64.
 function poisson_eigenvalues(grid::MetalGrid, N, L, dim, ::Periodic)
     inds = reshape(1:N, reshaped_size(N, dim)...)
-    return convert.(Float32, @. (2sin((inds - 1) * π / N) / (L / N))^2)
+    return convert.(eltype(grid), @. (2sin((inds - 1) * π / N) / (L / N))^2)
 end
 
 function poisson_eigenvalues(grid::MetalGrid, N, L, dim, ::Bounded)
     inds = reshape(1:N, reshaped_size(N, dim)...)
-    return convert.(Float32, @. (2sin((inds - 1) * π / 2N) / (L / N))^2)
+    return convert.(eltype(grid), @. (2sin((inds - 1) * π / 2N) / (L / N))^2)
 end
 
-poisson_eigenvalues(grid::MetalGrid, N, L, dim, ::Flat) = convert.(Float32, reshape(zeros(N), reshaped_size(N, dim)...))
+poisson_eigenvalues(grid::MetalGrid, N, L, dim, ::Flat) = convert.(eltype(grid), reshape(zeros(N), reshaped_size(N, dim)...))
 
 nonhydrostatic_pressure_solver(::MetalGPU, grid::XYZRegularRG, ::Nothing) = ConjugateGradientPoissonSolver(grid)
 
