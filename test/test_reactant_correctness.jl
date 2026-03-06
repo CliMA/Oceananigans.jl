@@ -138,10 +138,14 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
         adv_name(a) = string(nameof(typeof(a)))
 
         # Topologies to test
+        # Note: topologies with Periodic directions are commented out because
+        # Reactant's MLIR raise pass fails on the periodic halo-filling kernel
+        # with halo ≥ 2 ("cannot raise if yet" error). See MWE in
+        # test/reactant_raise_periodic_halo_mwe.jl
         gu_topologies = (
-            (Periodic, Periodic, Bounded),
-            (Periodic, Bounded, Bounded),
-            (Bounded, Periodic, Bounded),
+            #(Periodic, Periodic, Bounded),
+            #(Periodic, Bounded, Bounded),
+            #(Bounded, Periodic, Bounded),
             (Bounded, Bounded, Bounded),
         )
 
