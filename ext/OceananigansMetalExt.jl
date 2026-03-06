@@ -37,12 +37,12 @@ on_architecture(::MetalGPU, a::MtlArray) = a
 on_architecture(::MetalGPU, a::SubArray{<:Any, <:Any, <:MtlArray}) = a
 
 # Convert StepRangeLen with ref/step::Float64 to ref/step::Float32 for Metal architecture
-function on_architecture(::MetalGPU, s::StepRangeLen{Float32, Float64, Float64})
+function on_architecture(::MetalGPU, s::StepRangeLen{FT, Float64, Float64})
     ref = convert(Float32, s.ref)
     step = convert(Float32, s.step)
     len = s.len
     offset = s.offset
-    return StepRangeLen(ref, step, len, offset)
+    return StepRangeLen{FT}(ref, step, len, offset)
 end
 
 @inline convert_to_device(::MetalGPU, args) = Metal.mtlconvert(args)
