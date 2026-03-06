@@ -185,7 +185,6 @@ end
 @kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid, args)
     i, j, k = @index(Global, NTuple)
     @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
-    nothing
 end
 
 """ Calculate the right-hand-side of the v-velocity equation. """
