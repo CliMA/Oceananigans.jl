@@ -29,18 +29,70 @@ jobs:
       pull-requests: write
       statuses: read
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 600
     steps:
       - uses: actions/checkout@v4
 
       - name: Download Buildkite Artifacts
         id: download
-        uses: EnricoMi/download-buildkite-artifact-action@v1
-        with:
-          buildkite_token: ${{ secrets.BUILDKITE_TOKEN }}
-          ignore_build_states: blocked,canceled,skipped,not_run
-          ignore_job_states: timed_out,failed
-          output_path: artifacts
+        env:
+          BUILDKITE_TOKEN: ${{ secrets.BUILDKITE_TOKEN }}
+        run: |
+          # For PRs, use the head commit SHA (what Buildkite sees)
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            COMMIT_SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            COMMIT_SHA="${{ github.sha }}"
+          fi
+          echo "Looking for benchmark build for commit $COMMIT_SHA on oceananigans-benchmarks-1"
+
+          # Poll until the benchmark build finishes (max ~9.5 hours)
+          for ATTEMPT in $(seq 1 1140); do
+            BUILD_JSON=$(curl -s -H "Authorization: Bearer $BUILDKITE_TOKEN" \
+              "https://api.buildkite.com/v2/organizations/clima/pipelines/oceananigans-benchmarks-1/builds?commit=$COMMIT_SHA&per_page=1")
+
+            BUILD_NUM=$(echo "$BUILD_JSON" | jq -r '.[0].number // empty')
+            BUILD_STATE=$(echo "$BUILD_JSON" | jq -r '.[0].state // empty')
+
+            if [ -z "$BUILD_NUM" ]; then
+              echo "[$ATTEMPT/1140] No build found yet, waiting 30s..."
+              sleep 30
+              continue
+            fi
+
+            echo "[$ATTEMPT/1140] Build #$BUILD_NUM state: $BUILD_STATE"
+
+            case "$BUILD_STATE" in
+              passed|failed|soft_failed) break ;;
+              canceled|blocked|skipped|not_run)
+                echo "download-state=skipped" >> "$GITHUB_OUTPUT"
+                exit 0 ;;
+              *) sleep 30 ;;
+            esac
+          done
+
+          if [ -z "$BUILD_NUM" ]; then
+            echo "No benchmark build found for this commit"
+            echo "download-state=not_found" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # List and download artifacts from the benchmarks pipeline
+          ARTIFACTS_JSON=$(curl -s -H "Authorization: Bearer $BUILDKITE_TOKEN" \
+            "https://api.buildkite.com/v2/organizations/clima/pipelines/oceananigans-benchmarks-1/builds/$BUILD_NUM/artifacts")
+
+          COUNT=$(echo "$ARTIFACTS_JSON" | jq 'length')
+          echo "Found $COUNT artifacts in build #$BUILD_NUM"
+          mkdir -p artifacts
+
+          for ROW in $(echo "$ARTIFACTS_JSON" | jq -r '.[] | @base64'); do
+            FILENAME=$(echo "$ROW" | base64 -d | jq -r '.filename')
+            DL_URL=$(echo "$ROW" | base64 -d | jq -r '.download_url')
+            echo "  Downloading $FILENAME..."
+            curl -s -L -H "Authorization: Bearer $BUILDKITE_TOKEN" "$DL_URL" -o "artifacts/$FILENAME"
+          done
+
+          echo "download-state=success" >> "$GITHUB_OUTPUT"
 
       - name: Locate benchmark results
         id: locate
