@@ -278,7 +278,7 @@ z_domain(grid) = domain(topology(grid, 3)(), grid.Nz, grid.z.cᵃᵃᶠ)
     Nz = size(grid, 3)
     nodes = rnodes(grid, Face(); with_halos=true)
     cpu_nodes = on_architecture(CPU(), nodes)
-    return cpu_nodes[1:Nz+1]
+    return view(cpu_nodes, 1:Nz+1)
 end
 
 @inline cpu_face_constructor_z(grid) = cpu_face_constructor_r(grid)
