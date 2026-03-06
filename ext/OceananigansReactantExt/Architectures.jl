@@ -29,6 +29,10 @@ on_architecture(::ReactantState, a::Reactant.AnyTracedRArray) = a
 on_architecture(::CPU, a::AnyConcreteReactantArray) = Array(a)
 on_architecture(::CPU, a::SubArray{<:Any,<:Any,<:AnyConcreteReactantArray}) = Array(a)
 
+using OffsetArrays: OffsetArray
+on_architecture(::CPU, a::OffsetArray{<:Any,<:Any,<:AnyConcreteReactantArray}) =
+    OffsetArray(Array(parent(a)), a.offsets)
+
 const ArraysToRArray = Union{Array,
     Reactant.AnyConcretePJRTArray,
     # Reactant.AnyConcreteIFRTArray, # needed?
