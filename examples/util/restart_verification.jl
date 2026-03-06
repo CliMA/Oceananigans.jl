@@ -1,5 +1,6 @@
 include(joinpath(@__DIR__, "compare_checkpoints.jl"))
 using .compare_checkpoints: compare_all
+using Glob
 using JLD2
 using Oceananigans: CPU, GPU
 
@@ -43,7 +44,8 @@ end
 #   - Append keyword arguments to the `run!` call
 #   - If `restarted=true`: comment out `set!` lines and add `pickup` kwarg
 #   - Comment out / uncomment `using CUDA` and substitute CPU()/GPU() to match `arch`
-function generate_script(src_path, dest_path, prefix; restarted=false, pickup_file=nothing)
+function generate_script(src_path, dest_path, prefix; pickup_file=nothing)
+    restarted = !isnothing(pickup_file)
     lines = readlines(src_path)
 
     # If GPU and no CUDA import exists, insert one after the last `using` line
@@ -51,6 +53,9 @@ function generate_script(src_path, dest_path, prefix; restarted=false, pickup_fi
         last_using = findlast(l -> startswith(l, "using "), lines)
         insert!(lines, isnothing(last_using) ? 1 : last_using + 1, "using CUDA")
     end
+
+    # HACK: handle multiple cases run per script
+    amend_prefix = (basename(src_path) == "spherical_baroclinic_instability.jl")
 
     open(dest_path, "w") do out
         for line in lines
@@ -75,15 +80,35 @@ function generate_script(src_path, dest_path, prefix; restarted=false, pickup_fi
             if occursin(r"^\s*run!", line)
                 idx = findfirst("run!", line).start
                 indent = repeat(" ", idx-1)
+                @assert !xor(length(indent) > 0, amend_prefix) # spherical_baroclinic_instability.jl example
+
                 println(out, "")
                 println(out, "$(indent)simulation.stop_time = 9e99")
                 println(out, "$(indent)simulation.stop_iteration = 200")
-                println(out, "$(indent)simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(100), prefix=\"$prefix\")")
+                if amend_prefix
+                    println(out, "$(indent)simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(100), prefix=\"$(prefix)_\"*name)")
+                else
+                    println(out, "$(indent)simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(100), prefix=\"$prefix\")")
+                end
                 println(out, "")
-                suffix = restarted ? ", checkpoint_at_end=true; pickup=\"$pickup_file\")" :
-                                     ", checkpoint_at_end=true)"
+
+                suffix = if restarted && amend_prefix
+                    # in the spherical_baroclinic_instability.jl example, multiple cases are run
+                    varpickup_file = "\"" * replace(pickup_file, "_" => "_\" * name * \"_") * "\""
+                    ", checkpoint_at_end=true, pickup=$varpickup_file)"
+                elseif restarted
+                    # default
+                    ", checkpoint_at_end=true, pickup=\"$pickup_file\")"
+                else
+                    ", checkpoint_at_end=true)"
+                end
                 println(out, arch_sub(replace(rstrip(line), r"\)$" => suffix)))
-                break
+
+                if amend_prefix
+                    continue # and keep writing out remaidner of script
+                else
+                    break # stop after run!(...)
+                end
             end
 
             println(out, arch_sub(line))
@@ -99,32 +124,53 @@ function process_example(src_path)
 
     norestart_script = joinpath(casedir, "$(casename)_0.jl")
     restarted_script = joinpath(casedir, "$(casename)_1.jl")
-    norestart_chk    = joinpath(casedir, "norestart_iteration200.jld2")
-    restarted_chk    = joinpath(casedir, "restarted_iteration200.jld2")
 
     isfile(norestart_script) || generate_script(src_path, norestart_script, "norestart")
     isfile(restarted_script) || generate_script(src_path, restarted_script, "restarted";
-                                                restarted=true,
                                                 pickup_file="norestart_iteration100.jld2")
 
-    isfile(norestart_chk) || run_simulation(norestart_script, "log.run0")
-    isfile(restarted_chk) || run_simulation(restarted_script, "log.run1")
+    # in the spherical_baroclinic_instability.jl example, multiple cases are run
+    norestart_chkpts = glob(joinpath(casedir, "norestart*_iteration200.jld2"))
+    restarted_chkpts = glob(joinpath(casedir, "restarted*_iteration200.jld2"))
 
-    log_path = joinpath(casename, "compare_restart.log")
-    chk1 = jldopen(norestart_chk, "r")
-    chk2 = jldopen(restarted_chk, "r")
-    output = mktemp() do _, io
-        redirect_stdout(io) do
-            compare_all(chk1["simulation"]["model"], chk2["simulation"]["model"]; verbose=verbose)
+    length(norestart_chkpts) > 0 || run_simulation(norestart_script, "log.run0")
+    length(restarted_chkpts) > 0 || run_simulation(restarted_script, "log.run1")
+
+    @info "---------- COMPARING CHECKPOINTS ----------"
+    norestart_chkpts = glob(joinpath(casedir, "norestart*_iteration200.jld2"))
+    restarted_chkpts = glob(joinpath(casedir, "restarted*_iteration200.jld2"))
+
+    for (norestart_chk, restarted_chk) in zip(norestart_chkpts, restarted_chkpts)
+        fname = basename(restarted_chk)
+        idx_start = findfirst("_", fname).start + 1
+        idx_end = findlast("_", fname).start - 1
+        if idx_start == idx_end
+            # default path
+            log_path = joinpath(casename, "compare_restart.log")
+        else
+            # workaround for spherical_baroclinic_instability.jl
+            name = fname[idx_start:idx_end]
+            log_path = joinpath(casename, "compare_restart_$name.log")
         end
-        flush(io)
-        seek(io, 0)
-        read(io, String)
+
+        @info "compare $norestart_chk -vs- $restarted_chk ($log_path)"
+
+        chk1 = jldopen(norestart_chk, "r")
+        chk2 = jldopen(restarted_chk, "r")
+
+        output = mktemp() do _, io
+            redirect_stdout(io) do
+                compare_all(chk1["simulation"]["model"], chk2["simulation"]["model"]; verbose=verbose)
+            end
+            flush(io)
+            seek(io, 0)
+            read(io, String)
+        end
+        close(chk1)
+        close(chk2)
+        print(output)
+        write(log_path, output)
     end
-    close(chk1)
-    close(chk2)
-    print(output)
-    write(log_path, output)
 end
 
 for script in ARGS
