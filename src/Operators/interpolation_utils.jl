@@ -88,6 +88,8 @@ function assumed_field_location(name)
     name === :ρv && return (Center(), Face(), Center())
     name === :w  && return (Center(), Center(), Face())
     name === :ρw && return (Center(), Center(), Face())
+    name === :U  && return (Face(), Center(), nothing)
+    name === :V  && return (Center(), Face(), nothing)
     return (Center(), Center(), Center())
 end
 
