@@ -4,7 +4,6 @@ using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Solvers: solve!
 using Oceananigans.Utils: prettytime, prettysummary
 using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
-using Oceananigans.TimeSteppers: kernel_clock
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.DistributedComputations: synchronize_communication!
@@ -138,7 +137,7 @@ function step_free_surface!(free_surface::ImplicitFreeSurface, model, timesteppe
         mask_immersed_field!(v)
     end
 
-    fill_halo_regions!((u, v), kernel_clock(model.clock), fields(model))
+    fill_halo_regions!((u, v), model.clock, fields(model))
     compute_implicit_free_surface_right_hand_side!(rhs, solver, g, Δt, model.velocities, η)
 
     # Solve for the free surface at tⁿ⁺¹
@@ -176,7 +175,7 @@ function compute_transport_velocities!(model, free_surface::ImplicitFreeSurface)
     launch!(architecture(grid), grid, :xy, _compute_transport_velocities!, ũ, ṽ, grid, u, v)
 
     # Fill transport velocities
-    fill_halo_regions!((ũ, ṽ), kernel_clock(model.clock), fields(model); async=true)
+    fill_halo_regions!((ũ, ṽ), model.clock, fields(model); async=true)
 
     # Update grid velocity and vertical transport velocity
     @apply_regionally update_vertical_velocities!(model.transport_velocities, model.grid, model)

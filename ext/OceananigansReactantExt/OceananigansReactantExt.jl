@@ -314,16 +314,6 @@ end
 
 const ReactantClock = Oceananigans.TimeSteppers.Clock{<:Any, <:Any, <:Reactant.TracedRNumber}
 
-# Convert Clock to a NamedTuple for kernel args.
-# Workaround for Reactant/MLIR bug where mutable structs with traced scalar fields
-# in tuples generate mismatched LLVM function signatures (extra phantom pointer).
-Oceananigans.TimeSteppers.kernel_clock(clock::Oceananigans.TimeSteppers.Clock) =
-    (time          = clock.time,
-     last_Δt       = clock.last_Δt,
-     last_stage_Δt = clock.last_stage_Δt,
-     iteration     = clock.iteration,
-     stage         = clock.stage)
-
 # Promote a value to TracedRNumber via addition with zero(clock.time).
 # This is needed because .mlir_data only exists on TracedRNumber.
 promote_to_traced(Δt, clock) = Δt + zero(clock.time)

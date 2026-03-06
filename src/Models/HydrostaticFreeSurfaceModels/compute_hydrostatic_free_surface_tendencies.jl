@@ -6,7 +6,6 @@ using Oceananigans.Grids: halo_size
 using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
-using Oceananigans.TimeSteppers: kernel_clock
 
 using Oceananigans.Grids: get_active_cells_map
 
@@ -120,7 +119,7 @@ function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active
                      model.tracers,
                      model.closure_fields,
                      model.auxiliary_fields,
-                     kernel_clock(model.clock),
+                     model.clock,
                      c_forcing)
 
         launch!(arch, grid, kernel_parameters,
@@ -162,7 +161,7 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
                                 model.pressure.pHY′,
                                 model.auxiliary_fields,
                                 model.vertical_coordinate,
-                                kernel_clock(model.clock))
+                                model.clock)
 
     u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args..., u_forcing)
     v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args..., v_forcing)

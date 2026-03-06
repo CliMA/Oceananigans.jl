@@ -2,7 +2,6 @@ using Adapt: Adapt
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.Operators: Az⁻¹ᶜᶜᶜ, Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, δxᶜᶜᶜ, δyᶜᶜᶜ, ∂xᵣᶠᶜᶜ, ∂yᵣᶜᶠᶜ
-using Oceananigans.TimeSteppers: kernel_clock
 
 import Oceananigans.DistributedComputations: synchronize_communication!
 import Oceananigans: prognostic_state, restore_prognostic_state!
@@ -177,13 +176,13 @@ function compute_explicit_free_surface_tendency!(grid, model)
                  model.tracers,
                  model.auxiliary_fields,
                  model.forcing,
-                 kernel_clock(model.clock))
+                 model.clock)
 
     launch!(arch, grid, :xy,
             compute_hydrostatic_free_surface_Gη!, model.timestepper.Gⁿ.η,
             grid, model.vertical_coordinate, args)
 
-    args = (kernel_clock(model.clock),
+    args = (model.clock,
             fields(model),
             model.closure,
             model.buoyancy)

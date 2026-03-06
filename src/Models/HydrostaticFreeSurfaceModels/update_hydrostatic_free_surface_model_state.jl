@@ -8,7 +8,6 @@ using Oceananigans.Models: update_model_field_time_series!, surface_kernel_param
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
 using Oceananigans.TurbulenceClosures: compute_closure_fields!
 import Oceananigans.TurbulenceClosures: step_closure_prognostics!
-using Oceananigans.TimeSteppers: kernel_clock
 using Oceananigans.Utils: KernelParameters
 
 compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxiliary_fields)
@@ -54,8 +53,8 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
     # Fill the halos of the prognostic fields. Note that the halos of the
     # free-surface variables are filled after the barotropic step.
-    fill_halo_regions!((u, v),  kernel_clock(model.clock), fields(model); async=true)
-    fill_halo_regions!(tracers, kernel_clock(model.clock), fields(model); async=true)
+    fill_halo_regions!((u, v),  model.clock, fields(model); async=true)
+    fill_halo_regions!(tracers, model.clock, fields(model); async=true)
 
     # Compute diagnostic quantities
     @apply_regionally begin
@@ -73,8 +72,8 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     # Note: we pass model.clock and fields(model) to avoid empty args tuple,
     # which causes Reactant MLIR compilation failures (empty tuples get
     # eliminated at call sites but not in function definitions).
-    fill_halo_regions!(model.closure_fields, kernel_clock(model.clock), fields(model); only_local_halos=true)
-    fill_halo_regions!(model.pressure.pHY′, kernel_clock(model.clock), fields(model); only_local_halos=true)
+    fill_halo_regions!(model.closure_fields, model.clock, fields(model); only_local_halos=true)
+    fill_halo_regions!(model.pressure.pHY′, model.clock, fields(model); only_local_halos=true)
 
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
 

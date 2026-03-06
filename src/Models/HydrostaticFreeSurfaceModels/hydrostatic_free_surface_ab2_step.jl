@@ -1,7 +1,6 @@
 using Oceananigans.TimeSteppers: _ab2_step_field!
 using Oceananigans.Operators: σ⁻, σⁿ, ∂t_σ
 using Oceananigans.TurbulenceClosures: implicit_step!
-using Oceananigans.TimeSteppers: kernel_clock
 
 import Oceananigans.TimeSteppers: ab2_step!
 
@@ -159,7 +158,7 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
                        model.closure,
                        model.closure_fields,
                        nothing,
-                       kernel_clock(model.clock),
+                       model.clock,
                        fields(model),
                        Δt)
     end
@@ -218,7 +217,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
                            closure,
                            model.closure_fields,
                            Val(tracer_index),
-                           kernel_clock(model.clock),
+                           model.clock,
                            fields(model),
                            Δt)
         end
