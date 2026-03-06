@@ -1,12 +1,11 @@
 # MWE: Reactant MLIR pass failure on periodic halo-filling kernel
 #
-# Standalone reproducer (no Oceananigans dependency) for the MLIR
-# optimization pass bug on Linux x64 with halo size H=3.
-# Passes with H=1, fails with H=3.
+# Standalone reproducer (no Oceananigans dependency).
+# Run WITHOUT `using CUDA` to reproduce the ka_with_reactant MethodError.
 
 using KernelAbstractions
 using Reactant
-using CUDA
+# using CUDA  # uncomment to load ReactantCUDAExt (provides ka_with_reactant)
 using OffsetArrays
 
 const RBackend = Base.get_extension(Reactant, :ReactantKernelAbstractionsExt).ReactantBackend
@@ -23,11 +22,10 @@ N, H = 4, 3
 total = N + 2H
 raw = Reactant.to_rarray(randn(total, total, total))
 c = OffsetArray(raw, -H:N+H-1, -H:N+H-1, -H:N+H-1)
-
 kernel = fill_periodic_halo!(RBackend(), (16, 16), (total, total))
 
 println("Compiling with raise=true (H=$H)...")
-compiled! = @compile raise=true raise_first=true kernel(c, N, H)
+compiled = @compile raise=true raise_first=true kernel(c, N, H)
 println("Running...")
-compiled!(c, N, H)
+compiled(c, N, H)
 println("Success!")
