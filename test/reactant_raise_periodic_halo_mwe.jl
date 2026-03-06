@@ -9,10 +9,12 @@
 # and (Bounded, Periodic, Bounded).
 #
 # Usage:
-#   julia --project test/reactant_raise_periodic_halo_mwe.jl
+#   julia --project=test test/reactant_raise_periodic_halo_mwe.jl
 
-using Oceananigans
 using Reactant
+using Oceananigans
+using Oceananigans.Architectures: ReactantState
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 using CUDA
 
 arch = ReactantState()
