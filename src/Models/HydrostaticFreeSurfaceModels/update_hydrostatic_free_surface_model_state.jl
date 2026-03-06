@@ -69,11 +69,8 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
     # Fill only local halos for diagnostic quantities since the parameters used
     # above include regions inside the (horizontal) halos.
-    # Note: we pass model.clock and fields(model) to avoid empty args tuple,
-    # which causes Reactant MLIR compilation failures (empty tuples get
-    # eliminated at call sites but not in function definitions).
-    fill_halo_regions!(model.closure_fields, model.clock, fields(model); only_local_halos=true)
-    fill_halo_regions!(model.pressure.pHY′, model.clock, fields(model); only_local_halos=true)
+    fill_halo_regions!(model.closure_fields; only_local_halos=true)
+    fill_halo_regions!(model.pressure.pHY′; only_local_halos=true)
 
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
 
