@@ -1,0 +1,167 @@
+using Oceananigans
+using Oceananigans.Solvers: ConjugateGradientPoissonSolver
+using CairoMakie
+
+function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
+                                     arch = CPU(),
+                                     model_type = :nonhydrostatic,
+                                     Nz = 16,
+                                     H = 1,
+                                     Lz = 3 * H,
+                                     Lx = 10,
+                                     U = 1,
+                                     pressure_solver_constructor = nothing,
+                                     stop_time = 50,
+                                     cfl = 0.8,
+                                     debug = false,
+                                     base_simulation_name = "2d_flow_over_hill")
+
+    # Grid definition
+    Nx = (Nz * Lx) ÷ Lz
+    x₀ = Lx / 3
+
+    if model_type == :nonhydrostatic
+        z = (-Lz, 0)
+    elseif model_type == :hydrostatic_with_implicit_surface
+        z = MutableVerticalDiscretization(-Lz:(Lz/Nz):0)
+    else
+        error("Unknown model_type: $model_type. Expected :nonhydrostatic or :hydrostatic_with_implicit_surface")
+    end
+    grid_base = RectilinearGrid(arch; topology = (Bounded, Flat, Bounded), size = (Nx, Nz), x = (0, Lx), z, halo = (8, 8))
+    hill(x) = H * exp(-((x - x₀)/2)^2) - Lz
+    grid = ImmersedBoundaryGrid(grid_base, GridFittedBottom(hill))
+
+    # Create boundary conditions
+    u_boundaries = FieldBoundaryConditions(west = OpenBoundaryCondition(U; scheme), east = OpenBoundaryCondition(U; scheme))
+    boundary_conditions = (u = u_boundaries,)
+
+    # Model kwargs
+    kwargs = (; boundary_conditions,)
+    advection = WENO(; order=5, minimum_buffer_upwind_order=1)
+
+    if model_type == :nonhydrostatic
+        pressure_solver = isnothing(pressure_solver_constructor) ? ConjugateGradientPoissonSolver(grid, maxiter=10) : pressure_solver_constructor(grid)
+        kwargs = merge(kwargs, (; pressure_solver, advection))
+        model = NonhydrostaticModel(grid; kwargs...)
+    elseif model_type == :hydrostatic_with_implicit_surface
+        kwargs = merge(kwargs, (; free_surface = ImplicitFreeSurface(), momentum_advection = advection, tracer_advection = advection, vertical_coordinate = ZStarCoordinate()))
+        model = HydrostaticFreeSurfaceModel(grid; kwargs...)
+    else
+        error("Unknown model_type: $model_type. Expected :nonhydrostatic or :hydrostatic_with_implicit_surface")
+    end
+    set!(model, u=U)
+
+    Δt = 0.1 * minimum_xspacing(grid) / abs(U)
+    simulation = Simulation(model; Δt = Δt, stop_time, verbose = debug)
+
+    conjure_time_step_wizard!(simulation, IterationInterval(1); cfl)
+
+    if debug
+        progress = ProgressMessengers.TimedMessenger()
+        add_callback!(simulation, progress, IterationInterval(100))
+    end
+
+    u, v, w = model.velocities
+    ω = ∂z(u) - ∂x(w)
+    outputs = (; ω, model.velocities...)
+
+    if model_type == :hydrostatic_with_implicit_surface
+        outputs = merge(outputs, (; η = model.free_surface.displacement))
+    end
+
+    simname = "$(base_simulation_name)_$(string(model_type))_Nz=$Nz"
+    simulation.output_writers[:snaps] = JLD2Writer(model, outputs,
+                                                   schedule = TimeInterval(0.5),
+                                                   filename = simname,
+                                                   overwrite_existing = true,
+                                                   with_halos = true)
+
+    return simulation
+end
+
+function plot_flow_over_hill_animation(filepath;
+                                       model_type = :nonhydrostatic,
+                                       U = 1,
+                                       H = 1,
+                                       framerate = 16,
+                                       compression = 20)
+    @info "Plotting flow over hill from $filepath"
+
+    # Load results
+    u_ts = FieldTimeSeries(filepath, "u")
+    w_ts = FieldTimeSeries(filepath, "w")
+    ω_ts = FieldTimeSeries(filepath, "ω")
+    grid = u_ts.grid
+    @info "Loaded results"
+
+    # Load model-specific field
+    if model_type == :hydrostatic_with_implicit_surface
+        η_ts = FieldTimeSeries(filepath, "η")
+        timeseries = η_ts
+    else
+        timeseries = u_ts
+    end
+
+    # Create visualization
+    n = Observable(1)
+    fig = Figure(size = (600, 800))
+
+    # Top panel: surface displacement for hydrostatic models, blank for nonhydrostatic
+    if model_type == :hydrostatic_with_implicit_surface
+        # Plot free surface elevation (1D line plot)
+        η_plt = @lift η_ts[$n]
+        ax_η = Axis(fig[1, 1], xlabel = "x", ylabel = "η (m)", title = "Free surface elevation")
+        lines!(ax_η, η_plt, linewidth = 2, color = :blue)
+    else
+        # Create blank axis for nonhydrostatic models
+        ax_blank = Axis(fig[1, 1], xlabel = "", ylabel = "", title = "")
+        hidedecorations!(ax_blank)
+        hidespines!(ax_blank)
+    end
+
+    # Second panel: always plot vorticity (2D heatmap)
+    ω_plt = @lift ω_ts[$n]
+    ax_ω = Axis(fig[2, 1], aspect = DataAspect(), xlabel = "x", ylabel = "z", title = "ω (vorticity)")
+    hm_ω = heatmap!(ax_ω, ω_plt, colorrange = (-12 * U / H, 12 * U / H), colormap = :curl)
+    Colorbar(fig[2, 2], hm_ω, tellwidth = false, height = Relative(0.5))
+
+    # Third panel: u velocity
+    u_plt = @lift u_ts[$n]
+    ax_u = Axis(fig[3, 1], aspect = DataAspect(), xlabel = "x", ylabel = "z", title = "u (m/s)")
+    hm_u = heatmap!(ax_u, u_plt, colorrange = (-1.5 * U, 1.5 * U), colormap = :balance)
+    Colorbar(fig[3, 2], hm_u, tellwidth = false, height = Relative(0.5))
+
+    # Fourth panel: w velocity
+    w_plt = @lift w_ts[$n]
+    ax_w = Axis(fig[4, 1], aspect = DataAspect(), xlabel = "x", ylabel = "z", title = "w (m/s)")
+    hm_w = heatmap!(ax_w, w_plt, colorrange = (-0.5 * U, 0.5 * U), colormap = :balance)
+    Colorbar(fig[4, 2], hm_w, tellwidth = false, height = Relative(0.5))
+
+    colsize!(fig.layout, 2, Fixed(30))
+    resize_to_layout!(fig)
+
+    frames = 1:length(timeseries.times)
+
+    @info "Recording animation"
+    animation_filename = "$filepath.mp4"
+    CairoMakie.record(fig, animation_filename, frames; framerate, compression) do i
+        n[] = i
+        i % 10 == 0 && @info "  Frame $(i) of $(length(frames))"
+    end
+
+    @info "Saved animation to $animation_filename"
+
+    return fig
+end
+
+# Run and plot non-hydrostatic flow over hill
+model_type = :nonhydrostatic
+simulation = flow_over_hill_simulation(; model_type)
+run!(simulation)
+plot_flow_over_hill_animation(simulation.output_writers[:snaps].filepath; model_type)
+
+# Run and plot hydrostatic flow over hill
+model_type = :hydrostatic_with_implicit_surface
+simulation = flow_over_hill_simulation(; model_type)
+run!(simulation)
+plot_flow_over_hill_animation(simulation.output_writers[:snaps].filepath; model_type)
