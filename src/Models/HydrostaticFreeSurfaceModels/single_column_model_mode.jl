@@ -1,6 +1,7 @@
 using GPUArraysCore: @allowscalar
 
 using Oceananigans: UpdateStateCallsite
+using Oceananigans.TimeSteppers: kernel_clock
 using Oceananigans.Advection: AbstractAdvectionScheme
 using Oceananigans.Grids: Flat, Bounded
 using Oceananigans.Fields: XFaceField, YFaceField, ZeroField
@@ -67,7 +68,7 @@ compute_free_surface_tendency!(::SingleColumnGrid, model, ::SplitExplicitFreeSur
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid, callbacks)
 
-    fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
+    fill_halo_regions!(prognostic_fields(model), kernel_clock(model.clock), fields(model))
 
     # Compute auxiliaries
     compute_auxiliary_fields!(model.auxiliary_fields)
@@ -75,7 +76,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
     # Calculate closure fields
     compute_closure_fields!(model.closure_fields, model.closure, model)
 
-    fill_halo_regions!(model.closure_fields, model.clock, fields(model))
+    fill_halo_regions!(model.closure_fields, kernel_clock(model.clock), fields(model))
 
     for callback in callbacks
         callback.callsite isa UpdateStateCallsite && callback(model)

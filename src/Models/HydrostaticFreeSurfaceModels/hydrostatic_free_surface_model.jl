@@ -9,7 +9,7 @@ using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions
-using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles
+using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles, kernel_clock
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions,
                                        time_discretization, implicit_diffusion_solver, closure_required_tracers, initialize_closure_fields!
 using Oceananigans.Utils: tupleit
@@ -285,7 +285,7 @@ function initialization_update_state!(model::HydrostaticFreeSurfaceModel)
     # Update state may have asynchronous fill halo, so we refill all the
     # halos here (in a synchronous fashion) for initialization
     for field in prognostic_fields(model)
-        fill_halo_regions!(field, model.clock, fields(model))
+        fill_halo_regions!(field, kernel_clock(model.clock), fields(model))
     end
 
     # Finally, initialize the model (e.g., free surface, vertical coordinate...)

@@ -1,4 +1,5 @@
 using Oceananigans.Operators: intrinsic_vector, ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ
+using Oceananigans.TimeSteppers: kernel_clock
 using Oceananigans.Utils: @apply_regionally
 
 import Oceananigans.Fields: set!
@@ -68,7 +69,7 @@ model.velocities.u
         @apply_regionally set!(ϕ, value)
 
         if fldname ∈ propertynames(model.free_surface)
-            fill_halo_regions!(ϕ, model.grid, model.clock, fields(model))
+            fill_halo_regions!(ϕ, model.grid, kernel_clock(model.clock), fields(model))
         end
     end
 

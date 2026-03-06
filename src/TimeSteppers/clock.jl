@@ -157,6 +157,16 @@ Adapt.adapt_structure(to, clock::Clock) = (time          = clock.time,
                                            iteration     = clock.iteration,
                                            stage         = clock.stage)
 
+"""
+    kernel_clock(clock)
+
+Return the clock in a form suitable for passing to KA kernel arguments.
+Default returns `clock` unchanged. Overridden by Reactant extension to return
+a NamedTuple, working around an MLIR/LLVM lowering bug where mutable structs
+with traced scalar fields in tuples generate phantom pointer parameters.
+"""
+kernel_clock(clock) = clock
+
 """Restore the clock from a checkpointed state."""
 function restore_prognostic_state!(restored::Clock, from)
     restored.time = from.time

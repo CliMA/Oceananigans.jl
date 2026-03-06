@@ -1,5 +1,5 @@
 using Oceananigans.BoundaryConditions: compute_x_bcs!, compute_y_bcs!, compute_z_bcs!
-using Oceananigans.TimeSteppers: TimeSteppers
+using Oceananigans.TimeSteppers: TimeSteppers, kernel_clock
 
 #####
 ##### Boundary contributions to hydrostatic free surface model
@@ -16,7 +16,7 @@ end
     Gⁿ   = model.timestepper.Gⁿ
     grid = model.grid
     arch = architecture(grid)
-    args = (model.clock, fields(model), model.closure, model.buoyancy)
+    args = (kernel_clock(model.clock), fields(model), model.closure, model.buoyancy)
 
     compute_flux_bcs!(Gⁿ.u, model.velocities.u, arch, args)
     compute_flux_bcs!(Gⁿ.v, model.velocities.v, arch, args)
@@ -28,7 +28,7 @@ end
     Gⁿ   = model.timestepper.Gⁿ
     grid = model.grid
     arch = architecture(grid)
-    args = (model.clock, fields(model), model.closure, model.buoyancy)
+    args = (kernel_clock(model.clock), fields(model), model.closure, model.buoyancy)
 
     for i in propertynames(model.tracers)
         compute_flux_bcs!(Gⁿ[i], model.tracers[i], arch, args)

@@ -1,5 +1,6 @@
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.ImmersedBoundaries: peripheral_node, MutableGridOfSomeKind
+using Oceananigans.TimeSteppers: kernel_clock
 
 import Oceananigans.TimeSteppers: rk_substep!, cache_current_fields!
 
@@ -149,7 +150,7 @@ function rk_substep_velocities!(velocities, model, Δt)
                        model.closure,
                        model.closure_fields,
                        nothing,
-                       model.clock,
+                       kernel_clock(model.clock),
                        fields(model),
                        Δt)
     end
@@ -201,7 +202,7 @@ function rk_substep_tracers!(tracers, model, Δt)
                            closure,
                            model.closure_fields,
                            Val(tracer_index),
-                           model.clock,
+                           kernel_clock(model.clock),
                            fields(model),
                            Δt)
         end
