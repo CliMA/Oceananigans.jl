@@ -13,6 +13,7 @@ arch_sub(line) = arch isa GPU ? replace(line, "CPU()" => "GPU()") :
 
 # Stream output from `cmd` (run in `dir`) to both stdout and `log_path`.
 function run_simulation(script_path, log_name)
+    @info "---------- RUNNING: $script_path ----------"
     casedir, script_name = splitdir(script_path)
     log_path = joinpath(casedir, log_name)
     #launcher = nprocs > 1 ? `julia -p $nprocs $script_path` : `julia $script_path`
@@ -65,17 +66,19 @@ function generate_script(src_path, dest_path, prefix; restarted=false, pickup_fi
             end
 
             # Comment out set! calls (restarted only, to skip re-initialization)
-            if restarted && startswith(line, "set!")
-                println(out, "#" * line)
+            if restarted && occursin(r"^\s*set!", line)
+                println(out, replace(line, "set!" => "#set!"))
                 continue
             end
 
             # Insert before run!, modify the run! call, then truncate
-            if startswith(line, "run!")
+            if occursin(r"^\s*run!", line)
+                idx = findfirst("run!", line).start
+                indent = repeat(" ", idx-1)
                 println(out, "")
-                println(out, "simulation.stop_time = 9e99")
-                println(out, "simulation.stop_iteration = 200")
-                println(out, "simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(100), prefix=\"$prefix\")")
+                println(out, "$(indent)simulation.stop_time = 9e99")
+                println(out, "$(indent)simulation.stop_iteration = 200")
+                println(out, "$(indent)simulation.output_writers[:checkpointer] = Checkpointer(model, schedule=IterationInterval(100), prefix=\"$prefix\")")
                 println(out, "")
                 suffix = restarted ? ", checkpoint_at_end=true; pickup=\"$pickup_file\")" :
                                      ", checkpoint_at_end=true)"
