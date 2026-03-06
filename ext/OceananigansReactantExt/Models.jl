@@ -46,4 +46,12 @@ function initialize!(model::ReactantHFSM)
     return nothing
 end
 
+# Skip initialization_update_state! during model construction.
+# Operations like update_state!, fill_halo_regions!, and initialize_free_surface!
+# invoke KA.Kernel{ReactantBackend} which requires a @compile context.
+# These are instead performed inside first_time_step! (which runs within @compile).
+function initialization_update_state!(model::ReactantHFSM)
+    return nothing
+end
+
 end # module

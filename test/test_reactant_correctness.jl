@@ -39,7 +39,7 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
         for topo in all_topologies
             @testset "RectilinearGrid topology=$topo" begin
                 @info "Testing fill_halo_regions! correctness on RectilinearGrid with topology=$topo..."
-                kw = (size=(3, 4, 2), halo=(1, 1, 1), extent=(1, 1, 1), topology=topo)
+                kw = (size=(4, 4, 4), halo=(3, 3, 3), extent=(1, 1, 1), topology=topo)
                 vanilla_grid = RectilinearGrid(vanilla_arch; kw...)
                 reactant_grid = RectilinearGrid(reactant_arch; kw...)
 
@@ -65,11 +65,11 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
         end
 
         # Test LatitudeLongitudeGrid with LX ∈ (Periodic, Bounded)
-        for LX in (Periodic,)
+        for LX in (Periodic, Bounded)
             topo = (LX, Bounded, Bounded)
             @testset "LatitudeLongitudeGrid topology=$topo" begin
                 @info "Testing fill_halo_regions! correctness on LatitudeLongitudeGrid with topology=$topo..."
-                kw = (size=(4, 4, 2), halo=(1, 1, 1), longitude=(0, 10), latitude=(0, 10), z=(0, 1), topology=topo)
+                kw = (size=(4, 4, 4), halo=(3, 3, 3), longitude=(0, 10), latitude=(0, 10), z=(0, 1), topology=topo)
                 vanilla_grid = LatitudeLongitudeGrid(vanilla_arch; kw...)
                 reactant_grid = LatitudeLongitudeGrid(reactant_arch; kw...)
 
