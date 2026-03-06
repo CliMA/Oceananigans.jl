@@ -7,15 +7,18 @@ env:
   JULIA_NUM_PRECOMPILE_TASKS: 24
   JULIA_NUM_THREADS: 8
   NSYS: "/storage6/nsight/bin/nsys"
-  CUDA_VISIBLE_DEVICES: "0" # Tartarus device for GPU Benchmarking TODO: Find a better solution, i.e. an idle device
+  CUDA_VISIBLE_DEVICES: "0"
   TMPDIR: "$TARTARUS_HOME/tmp"
+  JULIA: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia"
+  JULIA_ARGS: "--color=yes --project=benchmarking --check-bounds=no"
+  BENCHMARK_SCRIPT: "benchmarking/run_benchmarks.jl"
+  OUTPUT_FILE: "benchmark_results.json"
 
 steps:
-  - label: "🏕️ initialize tartarus environment"
+  - label: "🏕️ Initialize tartarus environment"
     key: "init"
     env:
       JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
-      TEST_GROUP: "init"
       JULIA_BINDIR: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin"
     command: |
       # Download julia binaries
@@ -30,87 +33,212 @@ steps:
 
   - wait
 
-  - label: "🚀 Oceananigans GPU benchmarks"
+  - label: "🚀 Run benchmarks"
     key: "benchmarks"
     agents:
       queue: "Oceananigans-benchmarks"
-
     command: |
-      # Instantiate
-      $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no -e 'using Pkg; Pkg.add("CUDA"); Pkg.instantiate()'
+      # Instantiate benchmarking environment
+      $JULIA $JULIA_ARGS -e 'using Pkg; Pkg.instantiate()'
 
-      # List of benchmark groups
-      BENCHMARK_GROUPS=(
-        "periodic"
-        "bounded"
-        "periodic_cheap_advection"
-        "bounded_cheap_advection"
-        "immersed"
-      )
+      echo "========================================"
+      echo "  Group 1: Resolution sweep"
+      echo "========================================"
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=180x90x50  --output=$OUTPUT_FILE --clear
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --output=$OUTPUT_FILE
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --output=$OUTPUT_FILE
 
-      # Profile each benchmark group, save output in txt and remove profiles
-      for BENCHMARK_GROUP in "\${BENCHMARK_GROUPS[@]}"; do
-        # Run benchmarks
-        export BENCHMARK_GROUP
-        OUTPUT_PREFIX="\${BENCHMARK_GROUP}_output"
+      echo "========================================"
+      echo "  Group 2: Number type sweep"
+      echo "========================================"
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --float_type=Float32 --output=$OUTPUT_FILE
 
-        $NSYS profile --output=\${OUTPUT_PREFIX} --force-overwrite true --trace=cuda $TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia --color=yes --project --check-bounds=no test/benchmark_tests.jl
-        $NSYS stats \${OUTPUT_PREFIX}.nsys-rep > \${OUTPUT_PREFIX}.txt
+      echo "========================================"
+      echo "  Group 3: Closure sweep (1/2 deg)"
+      echo "========================================"
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --closure=nothing             --output=$OUTPUT_FILE
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --closure=CATKE               --output=$OUTPUT_FILE
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --closure=CATKE+Biharmonic    --output=$OUTPUT_FILE
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --closure=CATKE+GM+Biharmonic --output=$OUTPUT_FILE
 
-        # Remove generated output files
-        rm \${OUTPUT_PREFIX}.nsys-rep
-        rm \${OUTPUT_PREFIX}.sqlite
-      done
+      echo "========================================"
+      echo "  Group 4: Advection sweep (1/2 deg)"
+      echo "========================================"
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --momentum_advection=nothing              --tracer_advection=nothing --output=$OUTPUT_FILE
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --momentum_advection=WENOVectorInvariant5 --tracer_advection=WENO5   --output=$OUTPUT_FILE
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --momentum_advection=WENOVectorInvariant9 --tracer_advection=WENO9   --output=$OUTPUT_FILE
+
+      echo "========================================"
+      echo "  Group 5: Grid type sweep (1/2 deg)"
+      echo "========================================"
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --grid_type=lat_lon          --output=$OUTPUT_FILE
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --grid_type=immersed_lat_lon --output=$OUTPUT_FILE
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --grid_type=tripolar         --output=$OUTPUT_FILE
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --zstar_coordinate=true      --output=$OUTPUT_FILE
+
+      echo "========================================"
+      echo "  Group 6: Tracer count sweep (1/2 deg)"
+      echo "========================================"
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --tracers="T,S,C1" --output=$OUTPUT_FILE
+       $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --tracers="T,S,C1,C2,C3" --output=$OUTPUT_FILE
+
+
+      echo "========================================"
+      echo "  Group 7: I/O sweep (1/2 deg)"
+      echo "========================================"
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --tracers=T,S,C1 --mode=io --output=$OUTPUT_FILE
 
     artifact_paths:
-      - "periodic_output.txt"
-      - "bounded_output.txt"
-      - "periodic_cheap_advection_output.txt"
-      - "bounded_cheap_advection_output.txt"
-      - "immersed_output.txt"
+      - "benchmark_results.json"
+      - "benchmark_results.md"
     soft_fail:
       - exit_status: 3
 
-  - label: "⬇ Fetch and compare with main"
-    key: "fetch-compare"
+  - wait
+
+  - label: "🔬 NSYS kernel profiling"
+    key: "nsys-profiling"
     agents:
       queue: "Oceananigans-benchmarks"
-
     command: |
-      # First we download the artifacts from the current PR build
-      buildkite-agent artifact download "*.txt" .
+      # Instantiate (may already be cached)
+      $JULIA $JULIA_ARGS -e 'using Pkg; Pkg.instantiate()'
 
-      # Getting the JSON file of the latest passing main build
-      MAIN_BUILD_JSON=\$(curl -s -H "Authorization: Bearer ${BUILDKITE_API_TOKEN}" "https://api.buildkite.com/v2/organizations/clima/pipelines/oceananigans-benchmarks-1/builds?branch=main&state=passed&per_page=1")
+      # Define NSYS profiling cases as "name:args" pairs
+      NSYS_CASES=(
+        "nsys_default:--size=720x360x50"
+        "nsys_zstar:--size=720x360x50 --zstar_coordinate=true --closure=CATKE"
+        "nsys_full_physics:--size=720x360x50 --zstar_coordinate=true --closure=CATKE+GM+Biharmonic"
+      )
 
-      export MAIN_BUILD_NUM=\$(echo "\$MAIN_BUILD_JSON" | jq -r '.[0].number')
-      echo \$MAIN_BUILD_NUM
+      for CASE in "\${NSYS_CASES[@]}"; do
+        CASE_NAME="\${CASE%%:*}"
+        CASE_ARGS="\${CASE#*:}"
+        echo "========================================"
+        echo "  NSYS profiling: \$CASE_NAME"
+        echo "========================================"
 
-      # Then we fetch the artifacts from the main branch build
-      curl -s -H "Authorization: Bearer ${BUILDKITE_API_TOKEN}" \
-        "https://api.buildkite.com/v2/organizations/clima/pipelines/oceananigans-benchmarks-1/builds/\${MAIN_BUILD_NUM}/artifacts" \
-        -o artifacts.json
+        # Profile with NSYS (fewer time steps for profiling)
+        $NSYS profile \
+          --output=\${CASE_NAME} \
+          --force-overwrite true \
+          --trace=cuda \
+          $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT \$CASE_ARGS \
+            --time_steps=10 --warmup_steps=5 \
+            --output=\${CASE_NAME}.json
 
-      echo "🔍 artifacts.json contents:"
-      cat artifacts.json
+        # Extract kernel statistics as CSV and parse top 10 kernels by total time.
+        # nsys stats CSV header: "Time (%)","Total Time (ns)","Instances","Avg (ns)","Med (ns)","Min (ns)","Max (ns)","StdDev (ns)","Name"
+        $NSYS stats --report cuda_gpu_kern_sum --format csv \${CASE_NAME}.nsys-rep > \${CASE_NAME}_kernels.csv
 
-      # Comparing the artifacts, creating the diff files and uploading them
-      for file in \$(jq -r '.[] | select(.filename | endswith(".txt")) | .filename' artifacts.json); do
-          echo "Downloading \$file from main..."
-          url=$(jq -r --arg filename "\$file" '.[] | select(.filename == \$filename) | .download_url' artifacts.json)
-          curl -s -L -H "Authorization: Bearer ${BUILDKITE_API_TOKEN}" "\$url" -o "baseline_\$file"
+        # Build a JSON array of the top 10 kernels sorted by total time (column 2) using awk.
+        # Skip the CSV header, sort numerically descending on field 2, take top 10.
+        KERNELS_JSON=\$(tail -n +2 \${CASE_NAME}_kernels.csv \
+          | sort -t',' -k2 -rn \
+          | head -10 \
+          | awk -F',' '{
+              gsub(/"/, "", \$9); name=\$9;
+              gsub(/"/, "", \$2); total=\$2;
+              gsub(/"/, "", \$3); inst=\$3;
+              gsub(/"/, "", \$4); avg=\$4;
+              gsub(/"/, "", \$6); mn=\$6;
+              gsub(/"/, "", \$7); mx=\$7;
+              if (NR > 1) printf ",";
+              printf "{\"name\":\"%s\",\"total_time_ns\":%s,\"instances\":%s,\"avg_time_ns\":%s,\"min_time_ns\":%s,\"max_time_ns\":%s}", name, total, inst, avg, mn, mx
+            }')
+        KERNELS_JSON="[\${KERNELS_JSON}]"
 
-          echo "Comparing \$file with baseline..."
-          if [ -f "\$file" ]; then
-              diff -u "baseline_\$file" "\$file" > "diff_\$file" || true
-          else
-              echo "\$file not found in PR build. Skipping diff." > "diff_\$file"
-          fi
+        echo "Top 10 CUDA kernels:"
+        echo "\$KERNELS_JSON" | jq -r '.[] | "  \(.name[0:80])  total=\(.total_time_ns / 1e6)ms  instances=\(.instances)"'
+
+        # Merge kernel data into each entry of the benchmark JSON
+        jq --argjson kernels "\$KERNELS_JSON" '[.[] | . + {nsys_top_kernels: \$kernels}]' \${CASE_NAME}.json > \${CASE_NAME}_tmp.json
+        mv \${CASE_NAME}_tmp.json \${CASE_NAME}.json
+
+        # Clean up NSYS artifacts
+        rm -f \${CASE_NAME}.nsys-rep \${CASE_NAME}.sqlite \${CASE_NAME}_kernels.csv
       done
 
     artifact_paths:
-      - "diff_periodic_output.txt"
-      - "diff_bounded_output.txt"
-      - "diff_periodic_cheap_advection_output.txt"
-      - "diff_bounded_cheap_advection_output.txt"
-      - "diff_immersed_output.txt"
+      - "nsys_default.json"
+      - "nsys_full_physics.json"
+    soft_fail:
+      - exit_status: 3
+
+  - wait
+
+  - label: "📊 Merge results and compare with main"
+    key: "merge-compare"
+    agents:
+      queue: "Oceananigans-benchmarks"
+    command: |
+      # Download all artifacts from this build
+      buildkite-agent artifact download "*.json" .
+      buildkite-agent artifact download "*.md" . || true
+
+      # Merge benchmark_results.json + nsys_*.json into a single file
+      MERGED="benchmark_results.json"
+      for NSYS_FILE in nsys_*.json; do
+        [ -f "\$NSYS_FILE" ] || continue
+        echo "Merging \$NSYS_FILE"
+        jq -s '.[0] + .[1]' "\$MERGED" "\$NSYS_FILE" > merged_tmp.json
+        mv merged_tmp.json "\$MERGED"
+      done
+      echo "Total benchmark entries: \$(jq length \$MERGED)"
+
+      # Fetch latest passing main build for comparison
+      MAIN_BUILD_JSON=\$(curl -s -H "Authorization: Bearer ${BUILDKITE_API_TOKEN}" \
+        "https://api.buildkite.com/v2/organizations/clima/pipelines/oceananigans-benchmarks-1/builds?branch=main&state=passed&per_page=1")
+
+      MAIN_BUILD_NUM=\$(echo "\$MAIN_BUILD_JSON" | jq -r '.[0].number')
+
+      if [ "\$MAIN_BUILD_NUM" != "null" ] && [ -n "\$MAIN_BUILD_NUM" ]; then
+        echo "Comparing with main build #\$MAIN_BUILD_NUM"
+
+        # Fetch artifacts list from main build
+        curl -s -H "Authorization: Bearer ${BUILDKITE_API_TOKEN}" \
+          "https://api.buildkite.com/v2/organizations/clima/pipelines/oceananigans-benchmarks-1/builds/\${MAIN_BUILD_NUM}/artifacts" \
+          -o artifacts.json
+
+        # Download benchmark_results.json from main
+        MAIN_URL=\$(jq -r '.[] | select(.filename == "benchmark_results.json") | .download_url' artifacts.json | head -1)
+
+        if [ -n "\$MAIN_URL" ] && [ "\$MAIN_URL" != "null" ]; then
+          curl -s -L -H "Authorization: Bearer ${BUILDKITE_API_TOKEN}" "\$MAIN_URL" -o baseline_benchmark_results.json
+
+          # Compare PR vs main: build a markdown table with percentage change
+          echo "# Benchmark Comparison: PR vs Main" > benchmark_comparison.md
+          echo "" >> benchmark_comparison.md
+          echo "| Benchmark | PR (pts/s) | Main (pts/s) | Change |" >> benchmark_comparison.md
+          echo "|-----------|------------|--------------|--------|" >> benchmark_comparison.md
+
+          # Use jq to join PR and main results by name and compute change
+          jq -r --slurpfile main baseline_benchmark_results.json '
+            (\$main[0] | map({(.name): .grid_points_per_second}) | add // {}) as \$baseline |
+            .[] |
+            .name as \$name |
+            .grid_points_per_second as \$pr_pps |
+            (\$baseline[\$name] // null) as \$main_pps |
+            if \$main_pps != null and \$main_pps > 0 then
+              ((\$pr_pps - \$main_pps) / \$main_pps * 100) as \$change |
+              "| \(\$name) | \(\$pr_pps | tostring | .[0:12]) | \(\$main_pps | tostring | .[0:12]) | \(if \$change >= 0 then "+" else "" end)\(\$change | . * 10 | round / 10)% |"
+            elif \$main_pps != null then
+              "| \(\$name) | \(\$pr_pps | tostring | .[0:12]) | N/A | N/A |"
+            else
+              "| \(\$name) | \(\$pr_pps | tostring | .[0:12]) | (new) | |"
+            end
+          ' "\$MERGED" >> benchmark_comparison.md
+
+          echo "Comparison saved to benchmark_comparison.md"
+          cat benchmark_comparison.md
+        else
+          echo "No benchmark_results.json found in main build artifacts"
+        fi
+      else
+        echo "No passing main build found for comparison"
+      fi
+
+    artifact_paths:
+      - "benchmark_results.json"
+      - "benchmark_results.md"
+      - "benchmark_comparison.md"
