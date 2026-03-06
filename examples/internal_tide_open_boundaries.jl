@@ -132,6 +132,8 @@ end
     return -p.rate * mask * (@inbounds fields.u[i, j, k] - ut)
 end
 
+@inline b_bg(z, p) = p.N² * z
+
 @inline function b_sponge_forcing(i, j, k, grid, clock, fields, p)
     x = xnode(i, grid, Center())
     z = znode(k, grid, Center())

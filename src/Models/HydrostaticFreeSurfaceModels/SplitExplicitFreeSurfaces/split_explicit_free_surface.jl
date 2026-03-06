@@ -249,7 +249,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     end
 
     timestepper = materialize_timestepper(free_surface.timestepper, maybe_extended_grid, free_surface, velocities,
-                                          u_bcs, v_bcs)
+                                          bcs.U, bcs.V)
 
     return SplitExplicitFreeSurface{extend_halos}(η,
                                                   barotropic_velocities,
