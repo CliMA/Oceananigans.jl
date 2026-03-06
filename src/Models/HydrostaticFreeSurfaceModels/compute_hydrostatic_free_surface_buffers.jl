@@ -44,7 +44,7 @@ function complete_communication_and_compute_momentum_buffer!(model::HydrostaticF
     update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers; parameters = surface_params)
     compute_closure_fields!(model.closure_fields, model.closure, model; parameters = κ_params)
 
-    fill_halo_regions!(model.closure_fields, model.clock, fields(model); only_local_halos=true)
+    fill_halo_regions!(model.closure_fields; only_local_halos=true)
 
     # parameters for communicating North / South / East / West side
     @apply_regionally compute_momentum_buffer_contributions!(grid, arch, model)
