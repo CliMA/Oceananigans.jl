@@ -191,7 +191,6 @@ end
 @kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid, args)
     i, j, k = @index(Global, NTuple)
     @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
-    nothing
 end
 
 #####
