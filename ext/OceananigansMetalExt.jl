@@ -48,6 +48,12 @@ end
 @inline convert_to_device(::MetalGPU, args) = Metal.mtlconvert(args)
 @inline convert_to_device(::MetalGPU, args::Tuple) = map(Metal.mtlconvert, args)
 
+
+# This method extension for Metal.device(::ReshapedArray) should live in Metal.jl,
+# specifically in array.jl alongside:
+# device(a::SubArray) = device(parent(a))
+Metal.device(a::Base.ReshapedArray) = Metal.device(parent(a))
+
 Metal.@device_override @inline function __validindex(ctx::MappedCompilerMetadata)
     if __dynamic_checkbounds(ctx)
         I = @inbounds linear_expand(__iterspace(ctx), threadgroup_position_in_grid_1d(),
@@ -56,16 +62,6 @@ Metal.@device_override @inline function __validindex(ctx::MappedCompilerMetadata
     else
         return true
     end
-end
-
-
-function FD.maybe_copy_interior(::MetalGPU, r::FD.AbstractField)
-    interior_r = interior(r)
-
-    if parent(interior_r) !== interior_r
-        interior_r = copy(interior_r)
-    end
-    return interior_r
 end
 
 const MetalGrid = GD.AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:MetalGPU}
