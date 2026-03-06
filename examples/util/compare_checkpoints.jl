@@ -45,14 +45,29 @@ function compare_all(a, b; name="", verbose=false)
             else
                 println("$name DIFFER!?")
             end
-            @show a
-            @show b
+            println(a)
+            println(b)
         elseif verbose
             println("$name are identical")
         end
 
-    #else
-    elseif !endswith(name, "boundary_conditions") # dont try to compare BCs
+    elseif a isa AbstractFloat
+        @assert b isa AbstractFloat
+
+        if a != b
+            if a ≈ b
+                println("$name are approximately equal")
+            else
+                println("$name DIFFER!?")
+            end
+            println("$a $b")
+        elseif verbose
+            println("$name are identical")
+        end
+
+    elseif endswith(name, "boundary_conditions")
+        verbose && println("Skip comparison of ",name)
+    else
         if a != b
             println("Compare arrays $name")
             @assert a isa Array
