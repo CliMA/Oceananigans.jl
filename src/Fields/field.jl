@@ -52,7 +52,6 @@ end
 
 validate_boundary_condition_location(bc, ::Center, side) = nothing          # anything goes for centers
 validate_boundary_condition_location(::Nothing, ::Nothing, side) = nothing  # its nothing or nothing
-validate_boundary_condition_location(bc, ::Nothing, side) = nothing         # anything goes on Nothing-dimension fields
 
 const ValidFaceBCS = Union{OBC, Nothing, Missing, MCBC}
 validate_boundary_condition_location(::ValidFaceBCS, ::Face, side) = nothing  # only open, connected or nothing on faces
