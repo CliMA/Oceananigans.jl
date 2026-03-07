@@ -125,6 +125,18 @@ function histogram_constructor_validation()
     @test Histogram(a; bins=[0.0, 1.0], weights=:count, method=:integral) isa AbstractOperation
     @test Histogram(a, b; bins=valid_bins, weights=a, method=:average) isa AbstractOperation
     @test Histogram(a; bins=[0.0, 1.0], weights=a, method=:average) isa AbstractOperation
+
+    # Partial reductions (retained dimensions) are unsupported on orthogonal shell grids.
+    shell_grid = TripolarGrid(CPU(); size=(16, 8, 1), southernmost_latitude=-45, z=(-1, 0))
+    a_shell = CenterField(shell_grid)
+    b_shell = CenterField(shell_grid)
+
+    @test_throws ArgumentError Histogram(a_shell, b_shell; bins=valid_bins, weights=:count, dims=(1, 2))
+    @test_throws ArgumentError Histogram(a_shell; bins=[0.0, 1.0], weights=:count, dims=(1, 2))
+
+    # Full reduction remains supported.
+    @test Histogram(a_shell, b_shell; bins=valid_bins, weights=:count, dims=(1, 2, 3)) isa AbstractOperation
+    @test Histogram(a_shell; bins=[0.0, 1.0], weights=:count, dims=(1, 2, 3)) isa AbstractOperation
 end
 
 function histogram_is_correct(arch, FT)

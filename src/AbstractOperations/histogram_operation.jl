@@ -1,5 +1,6 @@
 using Oceananigans.Fields: AbstractField, instantiated_location, compute_at!, indices, filter_nothing_dims
 using Oceananigans.Grids: RectilinearGrid, Face, Center, Bounded, Flat, topology, interior_indices
+using Oceananigans.Grids: OrthogonalSphericalShellGrid
 using Oceananigans.Grids: ξnodes, ηnodes, rnodes
 using Oceananigans.Architectures: architecture, on_architecture, CPU
 using Oceananigans.Utils: KernelParameters, launch!, tupleit
@@ -139,6 +140,21 @@ function histogram_retained_coordinate(a, launch_indices, reduced_dimensions, re
     return convert(Vector{FT}, retained_faces_cpu)
 end
 
+@inline histogram_retained_dimensions(dims) = Tuple(d for d in 1:3 if !(d in dims))
+
+function validate_histogram_retained_dims_grid_compatibility(grid, dims)
+    if hasproperty(grid, :underlying_grid)
+        return validate_histogram_retained_dims_grid_compatibility(getproperty(grid, :underlying_grid), dims)
+    end
+
+    retained_dims = histogram_retained_dimensions(dims)
+    if !isempty(retained_dims) && grid isa OrthogonalSphericalShellGrid
+        throw(ArgumentError("Histogram with retained dimensions $(retained_dims) is not supported on $(typeof(grid)). " *
+                            "For OrthogonalSphericalShellGrid/Tripolar grids, reduce over all dimensions with dims=(1, 2, 3)."))
+    end
+    return nothing
+end
+
 """
     Histogram(a::AbstractField, b::AbstractField; bins=NamedTuple(), weights=:count, dims=(1, 2, 3), method=:sum)
     Histogram(fields::NamedTuple; bins=NamedTuple(), weights=:count, dims=(1, 2, 3), method=:sum)
@@ -183,6 +199,7 @@ function Histogram(a::AbstractField, b::AbstractField;
     dims = filter_nothing_dims(dims, instantiated_location(a))
     isempty(dims) &&
         throw(ArgumentError("Histogram dims cannot be empty after filtering dimensions absent from operand location $(instantiated_location(a))."))
+    validate_histogram_retained_dims_grid_compatibility(a.grid, dims)
     method = validate_histogram_method(method)
     bins = validate_histogram_bins_2d(bins)
     weights = validate_histogram_weights(weights, method, dims, a, b)
@@ -240,6 +257,7 @@ function Histogram(a::AbstractField;
     dims = filter_nothing_dims(dims, instantiated_location(a))
     isempty(dims) &&
         throw(ArgumentError("Histogram dims cannot be empty after filtering dimensions absent from operand location $(instantiated_location(a))."))
+    validate_histogram_retained_dims_grid_compatibility(a.grid, dims)
     method = validate_histogram_method(method)
     bins = validate_histogram_bins_1d(bins)
     weights = validate_histogram_weights(weights, method, dims, a)
