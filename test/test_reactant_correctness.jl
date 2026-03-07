@@ -31,10 +31,6 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
             #(Periodic, Periodic, Periodic),
     )
 
-    # Note: raise=true mode is needed for autodiff but triggers non-deterministic
-    # segfaults in Reactant's CanonicalizeLoopsPass (MLIR bug). All tests below
-    # use only the default raise=false mode until this is resolved upstream.
-
     #####
     ##### Halo filling tests
     #####
