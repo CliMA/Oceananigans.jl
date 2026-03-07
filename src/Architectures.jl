@@ -106,7 +106,7 @@ on_architecture(::CPU, A::SparseMatrixCSC) = A
 on_architecture(arch::AbstractSerialArchitecture, a::OffsetArray) =
     OffsetArray(on_architecture(arch, a.parent), a.offsets...)
 
-function on_architecture(arch::AbstractSerialArchitecture, a::SubArray)
+function on_architecture(arch::AbstractArchitecture, a::SubArray)
     p = on_architecture(arch, parent(a))
     return SubArray(p, parentindices(a))
 end
