@@ -218,7 +218,7 @@ jobs:
       fail-fast: false
       matrix:
         version:
-          - '1.12'
+          - '1.11.9'
         os:
           - ubuntu-latest
         arch:
@@ -231,9 +231,17 @@ jobs:
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v2
       - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
+      - name: Run Reactant tests
+        shell: bash
+        run: |
+          julia --project --color=yes --check-bounds=auto -e '
+            using Pkg
+            Pkg.test(; coverage=true,
+                       julia_args=["--check-bounds=auto", "-O0"],
+                       force_latest_compatible_version=false,
+                       allow_reresolve=true)'
         env:
-          TEST_GROUP: "reactant"
+          TEST_GROUP: "reactant_correctness"
       - uses: julia-actions/julia-processcoverage@v1
         with:
           # default is src,ext — include others if you need them
