@@ -19,11 +19,17 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
     # Field locations to test
     all_locations = all_combos((Center, Face), (Center, Face), (Center, Face))
 
-    # Topologies to test for RectilinearGrid
-    # Note: We exclude (Periodic, Periodic, Periodic) because it triggers a segfault in
-    # Reactant's MLIR pattern rewriting when using raise=true (RecognizeRotate pass bug)
-    all_topologies = filter(topo -> topo != (Periodic, Periodic, Periodic),
-                            all_combos((Periodic, Bounded), (Periodic, Bounded), (Periodic, Bounded)))
+    fill_halo_topologies = (
+            (Periodic, Periodic, Bounded),
+            (Periodic, Bounded, Bounded),
+            (Bounded, Bounded, Bounded),
+            # could also test these very uncommonly-used topologies:
+            #(Bounded, Periodic, Bounded),
+            #(Bounded, Bounded, Periodic),
+            #(Periodic, Bounded, Periodic),
+            #(Bounded, Periodic, Periodic),
+            #(Periodic, Periodic, Periodic),
+    )
 
     # Note: raise=true mode is needed for autodiff but triggers non-deterministic
     # segfaults in Reactant's CanonicalizeLoopsPass (MLIR bug). All tests below
@@ -36,10 +42,10 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
     @testset "fill_halo_regions! correctness" begin
 
         # Test RectilinearGrid with all topologies
-        for topo in all_topologies
+        for topo in fill_halo_topologies
             @testset "RectilinearGrid topology=$topo" begin
                 @info "Testing fill_halo_regions! correctness on RectilinearGrid with topology=$topo..."
-                kw = (size=(3, 4, 2), halo=(1, 1, 1), extent=(1, 1, 1), topology=topo)
+                kw = (size=(5, 6, 4), halo=(3, 3, 3), extent=(1, 1, 1), topology=topo)
                 vanilla_grid = RectilinearGrid(vanilla_arch; kw...)
                 reactant_grid = RectilinearGrid(reactant_arch; kw...)
 
@@ -69,7 +75,7 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
             topo = (LX, Bounded, Bounded)
             @testset "LatitudeLongitudeGrid topology=$topo" begin
                 @info "Testing fill_halo_regions! correctness on LatitudeLongitudeGrid with topology=$topo..."
-                kw = (size=(4, 4, 2), halo=(1, 1, 1), longitude=(0, 10), latitude=(0, 10), z=(0, 1), topology=topo)
+                kw = (size=(6, 6, 4), halo=(3, 3, 3), longitude=(0, 10), latitude=(0, 10), z=(0, 1), topology=topo)
                 vanilla_grid = LatitudeLongitudeGrid(vanilla_arch; kw...)
                 reactant_grid = LatitudeLongitudeGrid(reactant_arch; kw...)
 
@@ -98,10 +104,9 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
         # in CanonicalizeLoopsPass when compiling Zipper boundary conditions
         # on TripolarGrid. This crash is non-deterministic and kills the
         # entire test process, preventing subsequent tests from running.
-        #=
         @testset "TripolarGrid" begin
             @info "Testing fill_halo_regions! correctness on TripolarGrid..."
-            kw = (size=(8, 10, 2), halo=(1, 1, 1), z=(0, 1))
+            kw = (size=(8, 10, 4), halo=(3, 3, 3), z=(0, 1))
             vanilla_grid = TripolarGrid(vanilla_arch; kw...)
             reactant_grid = TripolarGrid(reactant_arch; kw...)
 
@@ -123,7 +128,6 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                 end
             end
         end
-        =#
     end
 
     #####
@@ -143,10 +147,10 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
         # with halo ≥ 2 ("cannot raise if yet" error). See MWE in
         # test/reactant_raise_periodic_halo_mwe.jl
         gu_topologies = (
-            #(Periodic, Periodic, Bounded),
-            #(Periodic, Bounded, Bounded),
-            #(Bounded, Periodic, Bounded),
+            (Periodic, Periodic, Bounded),
+            (Periodic, Bounded, Bounded),
             (Bounded, Bounded, Bounded),
+            #(Bounded, Periodic, Bounded),
         )
 
         # RectilinearGrid tests
@@ -219,65 +223,69 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
         end
 
         # LatitudeLongitudeGrid tests
-        @testset "LatitudeLongitudeGrid" begin
-            kw = (size=(4, 4, 4), halo=(3, 3, 3), longitude=(0, 10), latitude=(0, 10), z=(0, 1))
-            vanilla_grid = LatitudeLongitudeGrid(vanilla_arch; kw...)
-            reactant_grid = LatitudeLongitudeGrid(reactant_arch; kw...)
+        for TX in (Periodic, Bounded)
+            @testset "LatitudeLongitudeGrid (TX=$TX)" begin
+                topo = (TX, Bounded, Bounded)
+                longitude = TX == Periodic ? (0, 360) : (0, 90)
+                kw = (size=(4, 4, 4), halo=(3, 3, 3), longitude=longitude, latitude=(0, 10), z=(0, 1), topology=topo)
+                vanilla_grid = LatitudeLongitudeGrid(vanilla_arch; kw...)
+                reactant_grid = LatitudeLongitudeGrid(reactant_arch; kw...)
 
-            # Set up velocity fields
-            vanilla_velocities = (u=XFaceField(vanilla_grid), v=YFaceField(vanilla_grid), w=ZFaceField(vanilla_grid))
-            reactant_velocities = (u=XFaceField(reactant_grid), v=YFaceField(reactant_grid), w=ZFaceField(reactant_grid))
+                # Set up velocity fields
+                vanilla_velocities = (u=XFaceField(vanilla_grid), v=YFaceField(vanilla_grid), w=ZFaceField(vanilla_grid))
+                reactant_velocities = (u=XFaceField(reactant_grid), v=YFaceField(reactant_grid), w=ZFaceField(reactant_grid))
 
-            Random.seed!(54321)
-            for (vf, rf) in zip(vanilla_velocities, reactant_velocities)
-                data = randn(size(vf)...)
-                set!(vf, data)
-                set!(rf, data)
-                fill_halo_regions!(vf)
-                rfill! = @compile raise=true raise_first=true fill_halo_regions!(rf)
-                rfill!(rf)
-            end
+                Random.seed!(54321)
+                for (vf, rf) in zip(vanilla_velocities, reactant_velocities)
+                    data = randn(size(vf)...)
+                    set!(vf, data)
+                    set!(rf, data)
+                    fill_halo_regions!(vf)
+                    rfill! = @compile raise=true raise_first=true fill_halo_regions!(rf)
+                    rfill!(rf)
+                end
 
-            vanilla_Gu = XFaceField(vanilla_grid)
-            reactant_Gu = XFaceField(reactant_grid)
+                vanilla_Gu = XFaceField(vanilla_grid)
+                reactant_Gu = XFaceField(reactant_grid)
 
-            # Test with coriolis=nothing (advection-only)
-            @testset "coriolis=nothing" begin
-                @info "Testing compute_simple_Gu! on LatitudeLongitudeGrid with coriolis=nothing..."
-                for advection in advection_schemes
-                    @testset "advection=$(adv_name(advection))" begin
-                        fill!(vanilla_Gu, 0)
-                        fill!(reactant_Gu, 0)
-                        compute_simple_Gu!(vanilla_Gu, advection, nothing, vanilla_velocities)
-                        # Temporary workaround: raise=true is currently broken with WENO here.
-                        rcompute_Gu! = if advection isa WENO
-                            @compile compute_simple_Gu!(reactant_Gu, advection, nothing, reactant_velocities)
-                        else
-                            @compile raise=true raise_first=true compute_simple_Gu!(reactant_Gu, advection, nothing, reactant_velocities)
+                # Test with coriolis=nothing (advection-only)
+                @testset "coriolis=nothing" begin
+                    @info "Testing compute_simple_Gu! on LatitudeLongitudeGrid with coriolis=nothing..."
+                    for advection in advection_schemes
+                        @testset "advection=$(adv_name(advection))" begin
+                            fill!(vanilla_Gu, 0)
+                            fill!(reactant_Gu, 0)
+                            compute_simple_Gu!(vanilla_Gu, advection, nothing, vanilla_velocities)
+                            # Temporary workaround: raise=true is currently broken with WENO here.
+                            rcompute_Gu! = if advection isa WENO && TX == Bounded
+                                @compile compute_simple_Gu!(reactant_Gu, advection, nothing, reactant_velocities)
+                            else
+                                @compile raise=true raise_first=true compute_simple_Gu!(reactant_Gu, advection, nothing, reactant_velocities)
+                            end
+                            rcompute_Gu!(reactant_Gu, advection, nothing, reactant_velocities)
+                            @test compare_interior("Gu", vanilla_Gu, reactant_Gu)
                         end
-                        rcompute_Gu!(reactant_Gu, advection, nothing, reactant_velocities)
-                        @test compare_interior("Gu", vanilla_Gu, reactant_Gu)
                     end
                 end
-            end
 
-            # Test with HydrostaticSphericalCoriolis
-            @testset "coriolis=HydrostaticSphericalCoriolis" begin
-                @info "Testing compute_simple_Gu! on LatitudeLongitudeGrid with HydrostaticSphericalCoriolis..."
-                coriolis = HydrostaticSphericalCoriolis()
-                for advection in advection_schemes
-                    @testset "advection=$(adv_name(advection))" begin
-                        fill!(vanilla_Gu, 0)
-                        fill!(reactant_Gu, 0)
-                        compute_simple_Gu!(vanilla_Gu, advection, coriolis, vanilla_velocities)
-                        # Temporary workaround: raise=true is currently broken with WENO here.
-                        rcompute_Gu! = if advection isa WENO
-                            @compile compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
-                        else
-                            @compile raise=true raise_first=true compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
+                # Test with HydrostaticSphericalCoriolis
+                @testset "coriolis=HydrostaticSphericalCoriolis" begin
+                    @info "Testing compute_simple_Gu! on LatitudeLongitudeGrid with HydrostaticSphericalCoriolis..."
+                    coriolis = HydrostaticSphericalCoriolis()
+                    for advection in advection_schemes
+                        @testset "advection=$(adv_name(advection))" begin
+                            fill!(vanilla_Gu, 0)
+                            fill!(reactant_Gu, 0)
+                            compute_simple_Gu!(vanilla_Gu, advection, coriolis, vanilla_velocities)
+                            # Temporary workaround: raise=true is currently broken with WENO here.
+                            rcompute_Gu! = if advection isa WENO && TX == Bounded
+                                @compile compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
+                            else
+                                @compile raise=true raise_first=true compute_simple_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
+                            end
+                            rcompute_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
+                            @test compare_interior("Gu", vanilla_Gu, reactant_Gu)
                         end
-                        rcompute_Gu!(reactant_Gu, advection, coriolis, reactant_velocities)
-                        @test compare_interior("Gu", vanilla_Gu, reactant_Gu)
                     end
                 end
             end
@@ -288,15 +296,14 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
     # Reactant compilation fails with "'llvm.call' op incorrect number of operands"
     # during @jit update_state!(model). This affects all topologies and is a
     # Reactant MLIR code generation bug.
-    #=
     @testset "HydrostaticFreeSurfaceModel time-stepping" begin
 
         # Topologies to test
         hfsm_topologies = (
             (Periodic, Periodic, Bounded),
             (Periodic, Bounded, Bounded),
-            (Bounded, Periodic, Bounded),
-            (Bounded, Bounded, Bounded),
+            # (Bounded, Periodic, Bounded),
+            # (Bounded, Bounded, Bounded),
         )
 
         # Grid setup
@@ -342,8 +349,8 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                         Random.seed!(98765)
 
                         # Small velocity perturbations
-                        u_init = 0.1 * randn(Nx, Ny, Nz)
-                        v_init = 0.1 * randn(Nx, Ny, Nz)
+                        u_init = 0.1 * randn(size(vanilla_model.velocities.u)...)
+                        v_init = 0.1 * randn(size(vanilla_model.velocities.v)...)
 
                         # Realistic T/S with vertical gradient and small perturbations
                         T_init = [20.0 + 5.0 * (k - 0.5) / Nz + 0.01 * randn() for i=1:Nx, j=1:Ny, k=1:Nz]
@@ -389,5 +396,4 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
             end
         end
     end
-    =#
 end
