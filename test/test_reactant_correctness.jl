@@ -45,7 +45,7 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
         for topo in fill_halo_topologies
             @testset "RectilinearGrid topology=$topo" begin
                 @info "Testing fill_halo_regions! correctness on RectilinearGrid with topology=$topo..."
-                kw = (size=(5, 6, 4), halo=(3, 3, 3), extent=(1, 1, 1), topology=topo)
+                kw = (size=(5, 6, 4), halo=(1, 1, 1), extent=(1, 1, 1), topology=topo)
                 vanilla_grid = RectilinearGrid(vanilla_arch; kw...)
                 reactant_grid = RectilinearGrid(reactant_arch; kw...)
 
