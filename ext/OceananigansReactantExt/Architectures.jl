@@ -15,7 +15,8 @@ const ReactantKernelAbstractionsExt = Base.get_extension(
 )
 
 const ReactantBackend = ReactantKernelAbstractionsExt.ReactantBackend
-const AnyConcreteReactantArray = Union{Reactant.AnyConcretePJRTArray,Reactant.AnyConcreteIFRTArray}
+const AnyConcreteReactantArray = Union{Reactant.AnyConcretePJRTArray,
+                                       Reactant.AnyConcreteIFRTArray}
 
 device(::ReactantState) = ReactantBackend()
 
@@ -27,11 +28,10 @@ array_type(::ReactantState) = ConcreteRArray
 
 on_architecture(::ReactantState, a::Reactant.AnyTracedRArray) = a
 on_architecture(::CPU, a::AnyConcreteReactantArray) = Array(a)
-on_architecture(::CPU, a::SubArray{<:Any,<:Any,<:AnyConcreteReactantArray}) = Array(a)
 
 using OffsetArrays: OffsetArray
-on_architecture(::CPU, a::OffsetArray{<:Any, <:Any, <:AnyConcreteReactantArray}) =
-    OffsetArray(Array(parent(a)), a.offsets)
+const ConcreteReactantOffsetArray = OffsetArray{<:Any, <:Any, <:AnyConcreteReactantArray}
+on_architecture(::CPU, a::ConcreteReactantOffsetArray) = OffsetArray(Array(parent(a)), a.offsets)
 
 const ArraysToRArray = Union{Array,
     Reactant.AnyConcretePJRTArray,
