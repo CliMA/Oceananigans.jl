@@ -49,7 +49,7 @@ end
 ##### fill halo event, splat the args...
 #####
 
-BoundaryConditions.fill_halo_event!(c, kernel!::MultiRegionFillHalo, bcs, loc, grid, buffers, args...; kwargs...) = kernel!(c, bcs..., loc, grid, buffers)
+BoundaryConditions.fill_halo_event!(c, kernel!::MultiRegionFillHalo, bcs::Tuple, loc, grid, buffers, args...; kwargs...) = kernel!(c, bcs..., loc, grid, buffers)
 
 getside(x, ::North) = x.north
 getside(x, ::South) = x.south
