@@ -5,20 +5,26 @@ using Oceananigans.Grids: Grids, Bounded, Flat, OrthogonalSphericalShellGrid, Pe
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 """
-    struct Tripolar{N, F, S}
+    struct Tripolar{N, F, S, FT}
 
 A structure to represent a tripolar grid on an orthogonal spherical shell.
 """
-struct Tripolar{N, F, S}
+struct Tripolar{N, F, S, FT}
     north_poles_latitude :: N
     first_pole_longitude :: F
     southernmost_latitude :: S
+    fold_topology :: FT
 end
+
+# Backward-compatible constructor (defaults to UPivot)
+Tripolar(north_poles_latitude, first_pole_longitude, southernmost_latitude) =
+    Tripolar(north_poles_latitude, first_pole_longitude, southernmost_latitude, RightCenterFolded)
 
 Adapt.adapt_structure(to, t::Tripolar) =
     Tripolar(Adapt.adapt(to, t.north_poles_latitude),
              Adapt.adapt(to, t.first_pole_longitude),
-             Adapt.adapt(to, t.southernmost_latitude))
+             Adapt.adapt(to, t.southernmost_latitude),
+             t.fold_topology)
 
 const TripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} = OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, Arch}
 const TripolarGridOfSomeKind = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}}
@@ -344,7 +350,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
                                                      on_architecture(arch, map(FT, Azᶜᶠᵃ)),
                                                      on_architecture(arch, map(FT, Azᶠᶠᵃ)),
                                                      convert(FT, radius),
-                                                     Tripolar(north_poles_latitude, first_pole_longitude, southernmost_latitude))
+                                                     Tripolar(north_poles_latitude, first_pole_longitude, southernmost_latitude, fold_topology))
 
     return grid
 end
