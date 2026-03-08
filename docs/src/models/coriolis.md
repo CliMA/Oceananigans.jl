@@ -57,8 +57,10 @@ values is:
 julia> using LinearAlgebra: norm
 
 julia> (fx, fy, fz) = (0, 2e-4, 1e-4)
+(0, 0.0002, 0.0001)
 
 julia> f = norm((fx, fy, fz))
+0.00022360679774997898
 
 julia> rotation_axis = (fx, fy, fz) ./ f # rotation_axis has to be a unit vector
 (0.0, 0.8944271909999159, 0.4472135954999579)
