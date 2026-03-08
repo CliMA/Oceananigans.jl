@@ -27,8 +27,8 @@ julia> coriolis = FPlane(f=1e-4)
 FPlane{Float64}(f=0.0001)
 ```
 
-An ``f``-plane can also be specified at some latitude on a spherical planet with a planetary rotation rate. For example,
-to specify an ``f``-plane at a latitude of ``\varphi = 45°\text{N}`` on Earth which has a rotation rate of
+An ``f``-plane can also be specified at some latitude on a spherical planet with a planetary rotation rate.
+For example, to specify an ``f``-plane at a latitude of ``\varphi = 45°\text{N}`` on Earth that has a rotation rate of
 ``\Omega = 7.292115 \times 10^{-5} \text{s}^{-1}``
 
 ```jldoctest
@@ -54,10 +54,16 @@ frequency `f` and the `rotation_axis`. So another way to get a Coriolis accelera
 values is:
 
 ```jldoctest
-julia> rotation_axis = (0, 2e-4, 1e-4)./√(2e-4^2 + 1e-4^2) # rotation_axis has to be a unit vector
+julia> using LinearAlgebra: norm
+
+julia> (fx, fy, fz) = (0, 2e-4, 1e-4)
+
+julia> f = norm((fx, fy, fz))
+
+julia> rotation_axis = (fx, fy, fz) ./ f # rotation_axis has to be a unit vector
 (0.0, 0.8944271909999159, 0.4472135954999579)
 
-julia> coriolis = ConstantCartesianCoriolis(f=√(2e-4^2+1e-4^2), rotation_axis=rotation_axis)
+julia> coriolis = ConstantCartesianCoriolis(; f, rotation_axis)
 ConstantCartesianCoriolis{Float64}: fx = 0.00e+00, fy = 2.00e-04, fz = 1.00e-04
 ```
 
@@ -72,7 +78,7 @@ ConstantCartesianCoriolis{Float64}: fx = 0.00e+00, fy = 1.03e-04, fz = 1.03e-04
 
 in which case ``f_z = 2\Omega\sin\varphi`` and ``f_y = 2\Omega\cos\varphi``.
 
-## Traditional ``\beta``-plane
+## [Traditional ``\beta``-plane](@id traditional_beta_plane_section)
 
 To set up a ``\beta``-plane the background rotation rate ``f_0`` and the ``\beta`` parameter must be specified. For example,
 a ``\beta``-plane with ``f_0 = 10^{-4} \text{s}^{-1}`` and ``\beta = 1.5 \times 10^{-11} \text{s}^{-1}\text{m}^{-1}`` can be
@@ -94,7 +100,7 @@ BetaPlane{Float64}(f₀=-2.53252e-5, β=2.25438e-11)
 
 in which case ``f_0 = 2\Omega\sin\varphi`` and ``\beta = 2\Omega\cos\varphi / R``.
 
-## Non-traditional ``\beta``-plane
+## [Non-traditional ``\beta``-plane](@id non_traditional_beta_plane_section)
 
 A non-traditional ``\beta``-plane requires either 5 parameters (by default Earth's radius and
 rotation rate are used):
