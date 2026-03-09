@@ -10,6 +10,7 @@ env:
   JULIA_NUM_PRECOMPILE_TASKS: 8
   OMPI_MCA_opal_warn_on_missing_libcuda: 0
   MPI_TEST: "true"
+  DATADEPS_ALWAYS_ACCEPT: true
 
 definitions:
   test_groups: &test_groups
