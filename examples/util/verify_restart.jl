@@ -132,14 +132,14 @@ function process_example(src_path)
 
     for (norestart_chk, restarted_chk) in zip(norestart_chkpts, restarted_chkpts)
         fname = basename(restarted_chk)
-        idx_start = findfirst("_", fname).start + 1
-        idx_end = findlast("_", fname).start - 1
+        idx_start = findfirst("_", fname).start
+        idx_end = findlast("_", fname).start
         if idx_start == idx_end
             # default path
             log_path = joinpath(casename, "compare_restart.log")
         else
             # workaround for spherical_baroclinic_instability.jl
-            name = fname[idx_start:idx_end]
+            name = fname[idx_start+1:idx_end-1]
             log_path = joinpath(casename, "compare_restart_$name.log")
         end
 
