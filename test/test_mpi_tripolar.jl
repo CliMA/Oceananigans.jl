@@ -38,6 +38,41 @@ tripolar_reconstructed_grid = """
     end
 """
 
+fpivot_reconstructed_grid = """
+    using MPI
+    MPI.Init()
+    using Test
+
+    include("distributed_tests_utils.jl")
+
+    archs = [Distributed(CPU(), partition=Partition(1, 4)),
+             Distributed(CPU(), partition=Partition(2, 2))]
+
+    for arch in archs
+        local_grid  = TripolarGrid(arch; size = (12, 21, 1), z = (-1000, 0), halo = (2, 2, 2), fold_topology = RightFaceFolded)
+        global_grid = TripolarGrid(size = (12, 21, 1), z = (-1000, 0), halo = (2, 2, 2), fold_topology = RightFaceFolded)
+
+        reconstruct_grid = reconstruct_global_grid(local_grid)
+
+        @test reconstruct_grid == global_grid
+
+        nx, ny, _ = size(local_grid)
+        rx, ry, _ = arch.local_index .- 1
+
+        jrange = 1 + ry * ny : (ry + 1) * ny
+        irange = 1 + rx * nx : (rx + 1) * nx
+
+        for var in [:Δxᶠᶠᵃ, :Δxᶜᶜᵃ, :Δxᶠᶜᵃ, :Δxᶜᶠᵃ,
+                    :Δyᶠᶠᵃ, :Δyᶜᶜᵃ, :Δyᶠᶜᵃ, :Δyᶜᶠᵃ,
+                    :Azᶠᶠᵃ, :Azᶜᶜᵃ, :Azᶠᶜᵃ, :Azᶜᶠᵃ]
+
+            @test getproperty(local_grid, var)[1:nx, 1:ny] == getproperty(global_grid, var)[irange, jrange]
+            @test getproperty(local_grid, var)[1:nx, 1:ny] == getproperty(global_grid, var)[irange, jrange]
+            @test getproperty(local_grid, var)[1:nx, 1:ny] == getproperty(global_grid, var)[irange, jrange]
+        end
+    end
+"""
+
 tripolar_reconstructed_field = """
     using MPI
     MPI.Init()
@@ -79,6 +114,47 @@ tripolar_reconstructed_field = """
     end
 """
 
+fpivot_reconstructed_field = """
+    using MPI
+    MPI.Init()
+    using Test
+
+    include("distributed_tests_utils.jl")
+
+    archs = [Distributed(CPU(), partition=Partition(1, 4)),
+             Distributed(CPU(), partition=Partition(2, 2))]
+
+    u = [i + 10 * j for i in 1:40, j in 1:41]
+    v = [i + 10 * j for i in 1:40, j in 1:41]
+    c = [i + 10 * j for i in 1:40, j in 1:41]
+
+    for arch in archs
+        local_grid = TripolarGrid(arch; size = (40, 41, 1), z = (-1000, 0), halo = (5, 5, 5), fold_topology = RightFaceFolded)
+
+        up = XFaceField(local_grid)
+        vp = YFaceField(local_grid)
+        cp = CenterField(local_grid)
+
+        set!(up, u)
+        set!(vp, v)
+        set!(cp, c)
+
+        global_grid = TripolarGrid(size = (40, 41, 1), z = (-1000, 0), halo = (5, 5, 5), fold_topology = RightFaceFolded)
+
+        us = XFaceField(global_grid)
+        vs = YFaceField(global_grid)
+        cs = CenterField(global_grid)
+
+        set!(us, u)
+        set!(vs, v)
+        set!(cs, c)
+
+        @test us == reconstruct_global_field(up)
+        @test vs == reconstruct_global_field(vp)
+        @test cs == reconstruct_global_field(cp)
+    end
+"""
+
 @testset "Test distributed TripolarGrid..." begin
     write("distributed_tripolar_grid.jl", tripolar_reconstructed_grid)
     run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 distributed_tripolar_grid.jl`)
@@ -87,6 +163,16 @@ tripolar_reconstructed_field = """
     write("distributed_tripolar_field.jl", tripolar_reconstructed_field)
     run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 distributed_tripolar_field.jl`)
     rm("distributed_tripolar_field.jl")
+end
+
+@testset "Test distributed FPivot TripolarGrid..." begin
+    write("distributed_fpivot_tripolar_grid.jl", fpivot_reconstructed_grid)
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 distributed_fpivot_tripolar_grid.jl`)
+    rm("distributed_fpivot_tripolar_grid.jl")
+
+    write("distributed_fpivot_tripolar_field.jl", fpivot_reconstructed_field)
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 distributed_fpivot_tripolar_field.jl`)
+    rm("distributed_fpivot_tripolar_field.jl")
 end
 
 tripolar_boundary_conditions = """
@@ -155,6 +241,81 @@ tripolar_boundary_conditions = """
     vp3 = jldopen("distributed_tripolar_boundary_conditions_3.jld2")["v"];
     cp3 = jldopen("distributed_tripolar_boundary_conditions_3.jld2")["c"];
 
+    @test v.data[-3:14, end-3:end-1, 1] ≈ vp1.parent[:, end-3:end-1, 5]
+    @test c.data[-3:14, end-3:end-1, 1] ≈ cp1.parent[:, end-3:end-1, 5]
+    @test v.data[7:end, 7:end-1, 1] ≈ vp3.parent[:, 1:end-1, 5]
+    @test c.data[7:end, 7:end-1, 1] ≈ cp3.parent[:, 1:end-1, 5]
+end
+
+fpivot_boundary_conditions = """
+    using MPI
+    MPI.Init()
+
+    include("distributed_tests_utils.jl")
+
+    arch = Distributed(CPU(), partition = Partition(2, 2))
+    grid = TripolarGrid(arch; size = (20, 21, 1), z = (-1000, 0), fold_topology = RightFaceFolded)
+
+    # Build initial condition
+    serial_grid = TripolarGrid(size = (20, 21, 1), z = (-1000, 0), fold_topology = RightFaceFolded)
+
+    vs =  YFaceField(serial_grid)
+    cs = CenterField(serial_grid)
+
+    I1 = [i + j * 100 for i in 1:20, j in 1:21]
+
+    set!(vs, I1)
+    set!(cs, I1)
+
+    fill_halo_regions!((vs, cs))
+
+    v =  YFaceField(grid)
+    c = CenterField(grid)
+
+    set!(v, vs)
+    set!(c, cs)
+
+    fill_halo_regions!((v, c))
+    filename = "distributed_fpivot_boundary_conditions_" * string(arch.local_rank) * ".jld2"
+
+    jldopen(filename, "w") do file
+        file["v"] = v.data
+        file["c"] = c.data
+    end
+
+    MPI.Barrier(MPI.COMM_WORLD)
+    MPI.Finalize()
+"""
+
+@testset "Test distributed FPivot TripolarGrid boundary conditions..." begin
+    # Run the serial computation
+    grid = TripolarGrid(size = (20, 21, 1), z = (-1000, 0), fold_topology = RightFaceFolded)
+
+    I1 = [i + j * 100 for i in 1:20, j in 1:21]
+
+    v = YFaceField(grid)
+    c = CenterField(grid)
+
+    set!(v, I1)
+    set!(c, I1)
+
+    fill_halo_regions!((v, c))
+
+    write("distributed_fpivot_boundary_tests.jl", fpivot_boundary_conditions)
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 distributed_fpivot_boundary_tests.jl`)
+    rm("distributed_fpivot_boundary_tests.jl")
+
+    # Retrieve Parallel quantities from rank 1 (the north-west rank)
+    vp1 = jldopen("distributed_fpivot_boundary_conditions_1.jld2")["v"];
+    cp1 = jldopen("distributed_fpivot_boundary_conditions_1.jld2")["c"];
+
+    # Retrieve Parallel quantities from rank 3 (the north-east rank)
+    vp3 = jldopen("distributed_fpivot_boundary_conditions_3.jld2")["v"];
+    cp3 = jldopen("distributed_fpivot_boundary_conditions_3.jld2")["c"];
+
+    # Ny=21 with Partition(2,2) means each y-rank gets ~10-11 rows.
+    # Rank 1 (NW) covers rows 1:10 in x and 12:21 in y (the northern half).
+    # With halo=3, compare the north halo region of rank 1 with serial data.
     @test v.data[-3:14, end-3:end-1, 1] ≈ vp1.parent[:, end-3:end-1, 5]
     @test c.data[-3:14, end-3:end-1, 1] ≈ cp1.parent[:, end-3:end-1, 5]
     @test v.data[7:end, 7:end-1, 1] ≈ vp3.parent[:, 1:end-1, 5]
@@ -254,6 +415,51 @@ run_large_pencil_distributed_grid = """
 
     rm("distributed_large_pencil_tripolar.jld2")
 
+    @test all(us .≈ up)
+    @test all(vs .≈ vp)
+    @test all(cs .≈ cp)
+    @test all(ηs .≈ ηp)
+end
+
+run_fpivot_slab_distributed_grid = """
+    using MPI
+    MPI.Init()
+
+    include("distributed_tests_utils.jl")
+    arch = Distributed(CPU(), partition = Partition(1, 4))
+    run_distributed_tripolar_grid(arch, "distributed_fpivot_yslab_tripolar.jld2";
+                                  fold_topology = RightFaceFolded, Ny = 41)
+"""
+
+@testset "Test distributed FPivot TripolarGrid simulations..." begin
+    # Run the serial computation
+    grid  = TripolarGrid(size = (40, 41, 1), z = (-1000, 0), halo = (5, 5, 5), fold_topology = RightFaceFolded)
+    grid  = analytical_immersed_tripolar_grid(grid)
+    model = run_distributed_simulation(grid)
+
+    # Retrieve Serial quantities
+    us, vs, ws = model.velocities
+    cs = model.tracers.c
+    ηs = model.free_surface.displacement
+
+    us = interior(us, :, :, 1)
+    vs = interior(vs, :, :, 1)
+    cs = interior(cs, :, :, 1)
+
+    # Run the distributed grid simulation with a slab configuration
+    write("distributed_fpivot_slab_tests.jl", run_fpivot_slab_distributed_grid)
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 distributed_fpivot_slab_tests.jl`)
+    rm("distributed_fpivot_slab_tests.jl")
+
+    # Retrieve Parallel quantities
+    up = jldopen("distributed_fpivot_yslab_tripolar.jld2")["u"]
+    vp = jldopen("distributed_fpivot_yslab_tripolar.jld2")["v"]
+    cp = jldopen("distributed_fpivot_yslab_tripolar.jld2")["c"]
+    ηp = jldopen("distributed_fpivot_yslab_tripolar.jld2")["η"]
+
+    rm("distributed_fpivot_yslab_tripolar.jld2")
+
+    # Test slab partitioning
     @test all(us .≈ up)
     @test all(vs .≈ vp)
     @test all(cs .≈ cp)

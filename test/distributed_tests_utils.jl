@@ -6,7 +6,7 @@ using Reactant
 using Oceananigans.TimeSteppers: first_time_step!
 
 import Oceananigans.BoundaryConditions: _fill_north_halo!
-using Oceananigans.BoundaryConditions: UZBC, CCLocation, FCLocation
+using Oceananigans.BoundaryConditions: UZBC, FZBC, CCLocation, FCLocation
 
 include("dependencies_for_runtests.jl")
 
@@ -67,9 +67,40 @@ end
     return nothing
 end
 
+# FPivot overrides for BC comparison test
+@inline _fill_north_halo!(i, k, grid, c, bc::FZBC, ::CCLocation, args...) = my_fold_north_center_center_fpivot!(i, k, grid, bc.condition, c)
+@inline _fill_north_halo!(i, k, grid, u, bc::FZBC, ::FCLocation, args...) = my_fold_north_face_center_fpivot!(i, k, grid, bc.condition, u)
+
+@inline function my_fold_north_face_center_fpivot!(i, k, grid, sign, u)
+    Nx, Ny, _ = size(grid)
+
+    i′ = Nx - i + 2
+    i′ = ifelse(i′ > Nx, i′ - Nx, i′)
+    Hy = grid.Hy
+
+    for j in 1:Hy + 1
+        @inbounds u[i, Ny + j - 1, k] = sign * u[i′, Ny - j, k]
+    end
+
+    return nothing
+end
+
+@inline function my_fold_north_center_center_fpivot!(i, k, grid, sign, c)
+    Nx, Ny, _ = size(grid)
+
+    i′ = Nx + 1 - i
+    Hy = grid.Hy
+
+    for j in 1:Hy + 1
+        @inbounds c[i, Ny - 1 + j, k] = sign * c[i′, Ny - j, k]
+    end
+
+    return nothing
+end
+
 # Run the distributed grid simulation and save down reconstructed results
-function run_distributed_tripolar_grid(arch, filename)
-    distributed_grid = TripolarGrid(arch; size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))
+function run_distributed_tripolar_grid(arch, filename; fold_topology = RightCenterFolded, Ny = 40)
+    distributed_grid = TripolarGrid(arch; size = (40, Ny, 1), z = (-1000, 0), halo = (5, 5, 5), fold_topology)
     distributed_grid = analytical_immersed_tripolar_grid(distributed_grid)
     model            = run_distributed_simulation(distributed_grid)
 
