@@ -3,6 +3,7 @@ module Coriolis
 export
     FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane,
     SphericalCoriolis, HydrostaticSphericalCoriolis,
+    ActiveWeightedEnstrophyConserving, ActiveWeightedEnergyConserving, EENConserving,
     x_f_cross_U, y_f_cross_U, z_f_cross_U
 
 using Printf: @sprintf
@@ -14,16 +15,18 @@ using Oceananigans.Operators: active_weighted_ℑxyᶜᶠᶜ, active_weighted_�
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 """
-    AbstractRotation
+    AbstractRotation{S}
 
 Abstract supertype for parameters related to background rotation rates.
+`S` is the type of the scheme implemented.
 """
-abstract type AbstractRotation end
+abstract type AbstractRotation{S} end
 
 const face = Face()
 const center = Center()
 
 include("no_rotation.jl")
+include("coriolis_schemes.jl")
 include("f_plane.jl")
 include("constant_cartesian_coriolis.jl")
 include("beta_plane.jl")

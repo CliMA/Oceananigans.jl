@@ -1,10 +1,12 @@
-struct BetaPlane{FT} <: AbstractRotation
+struct BetaPlane{S, FT} <: AbstractRotation{S}
+    scheme :: S
     f₀ :: FT
     β :: FT
 end
 
 """
     BetaPlane([FT=Float64;] f₀=nothing, β=nothing,
+              scheme = EENConserving(),
               rotation_rate=Oceananigans.defaults.planet_rotation_rate,
               latitude=nothing, radius=Oceananigans.defaults.planet_radius)
 
@@ -21,6 +23,7 @@ and `radius` according to the relations `f₀ = 2 * rotation_rate * sind(latitud
 By default, the `rotation_rate` and planet `radius` are assumed to be Earth's.
 """
 function BetaPlane(FT=Oceananigans.defaults.FloatType;
+                   scheme = EENConserving(),
                    f₀ = nothing,
                    β = nothing,
                    rotation_rate = Oceananigans.defaults.planet_rotation_rate,
@@ -38,28 +41,16 @@ function BetaPlane(FT=Oceananigans.defaults.FloatType;
     if use_planet_parameters
         f₀ = 2rotation_rate * sind(latitude)
          β = 2rotation_rate * cosd(latitude) / radius
-     end
+    end
 
-    return BetaPlane{FT}(f₀, β)
+    f₀ = convert(FT, f₀)
+    β = convert(FT, β)
+
+    return BetaPlane{FT}(scheme, f₀, β)
 end
 
 @inline fᶠᶠᵃ(i, j, k, grid, coriolis::BetaPlane) = coriolis.f₀ + coriolis.β * ynode(i, j, k, grid, face, face, center)
-
-@inline function x_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U)
-    f₀ = coriolis.f₀
-    β = coriolis.β
-    y = ynode(i, j, k, grid, face, center, center)
-    return - (f₀ + β*y) * active_weighted_ℑxyᶠᶜᶜ(i, j, k, grid, U[2])
-end
-
-@inline function y_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U)
-    f₀ = coriolis.f₀
-    β = coriolis.β
-    y = ynode(i, j, k, grid, center, face, center)
-    return (f₀ + β*y) * active_weighted_ℑxyᶜᶠᶜ(i, j, k, grid, U[1])
-end
-
-@inline z_f_cross_U(i, j, k, grid, coriolis::BetaPlane, U) = zero(grid)
+@inline fᶜᶜᵃ(i, j, k, grid, coriolis::BetaPlane) = coriolis.f₀ + coriolis.β * ynode(i, j, k, grid, center, center, center)
 
 function Base.summary(βplane::BetaPlane{FT}) where FT
     fstr = prettysummary(βplane.f₀)
