@@ -6,7 +6,8 @@ using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 """
     ActiveWeightedEnstrophyConserving
 
-Enstrophy-conserving Coriolis scheme with Jamart wet-point correction.
+Enstrophy-conserving Coriolis scheme with the wet-point correction
+of [Jamart and Ozer (1986)](@cite JamartOzer1986).
 Near immersed boundaries, the interpolation weights are divided by the number
 of active (non-masked) nodes to compensate for missing neighbors.
 """
@@ -15,7 +16,8 @@ struct ActiveWeightedEnstrophyConserving end
 """
     ActiveWeightedEnergyConserving
 
-Energy-conserving Coriolis scheme with Jamart wet-point correction.
+Energy-conserving Coriolis scheme with the wet-point correction
+of [Jamart and Ozer (1986)](@cite JamartOzer1986).
 Near immersed boundaries, the interpolation weights are divided by the number
 of active (non-masked) nodes to compensate for missing neighbors.
 """
@@ -24,7 +26,8 @@ struct ActiveWeightedEnergyConserving end
 """
     EENConserving
 
-Energy- and enstrophy-conserving Coriolis scheme based on the Arakawa & Lamb (1981) triad formulation.
+Energy- and enstrophy-conserving Coriolis scheme based on the triad formulation
+of [Arakawa and Lamb (1981)](@cite ArakawaLamb1981).
 Each triad at a tracer point sums three of the four surrounding vorticity
 values, paired with transports at diagonally adjacent velocity points.
 """
@@ -100,7 +103,7 @@ end
 end
 
 #####
-##### EEN (Energy and Enstrophy conserving, Arakawa & Lamb 1981) scheme
+##### EEN (Energy and Enstrophy conserving, Arakawa & Lamb, 1981) scheme
 #####
 
 # Uses triads at the two Center points flanking u and v (respectively).
