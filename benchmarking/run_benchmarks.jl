@@ -247,6 +247,7 @@ function run_benchmarks(args)
     arch = make_architecture(args["device"])
     case = args["case"]
     grid_type = args["grid_type"]
+    zstar_coordinate = args["zstar_coordinate"]
 
     # Parse lists from arguments
     sizes = [parse_size(s) for s in parse_list(args["size"])]
@@ -311,7 +312,8 @@ function run_benchmarks(args)
         # Build benchmark name
         size_str = "$(Nx)x$(Ny)x$(Nz)"
         ft_str = FT == Float32 ? "F32" : "F64"
-        name = "EarthOcean_$(grid_type)_$(size_str)_$(ft_str)_$(mom_adv_name)_$(trc_adv_name)_$(cls_name)"
+        zst_str = zstar_coordinate ? "_zstar" : ""
+        name = "EarthOcean_$(grid_type)$(zst_str)_$(size_str)_$(ft_str)_$(mom_adv_name)_$(trc_adv_name)_$(cls_name)"
 
         println("\n", "-" ^ 70)
         println("Running: $name")
@@ -328,6 +330,7 @@ function run_benchmarks(args)
                 Nx, Ny, Nz,
                 grid_type,
                 float_type = FT,
+                zstar_coordinate,
                 momentum_advection,
                 tracer_advection,
                 closure,
