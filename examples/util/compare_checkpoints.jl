@@ -1,13 +1,12 @@
 module compare_checkpoints
 
 using JLD2
-#using Base: isapprox
 using Oceananigans.TimeSteppers: Clock
 using Oceananigans.BoundaryConditions: BoundaryCondition
 
 export compare_all
 
-function compare_clock_struct(a, b)
+function compare_clock_struct(a::Clock, b::Clock)
     return a.time ≈ b.time &&
            a.last_Δt ≈ b.last_Δt &&
            a.last_stage_Δt ≈ b.last_stage_Δt &&

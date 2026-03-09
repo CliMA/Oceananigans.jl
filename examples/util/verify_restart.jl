@@ -18,7 +18,7 @@ function run_simulation(script_path, log_name)
     casedir, script_name = splitdir(script_path)
     log_path = joinpath(casedir, log_name)
     #launcher = nprocs > 1 ? `julia -p $nprocs $script_path` : `julia $script_path`
-    launcher = `julia $script_name`
+    launcher = `$(Base.julia_cmd()) $script_name`
     cmd = Cmd(launcher; dir=casedir)
     open(log_path, "w") do logfile
         out_pipe = Pipe()
@@ -43,14 +43,14 @@ end
 #   - Insert stop conditions and a Checkpointer output writer before `run!`
 #   - Append keyword arguments to the `run!` call
 #   - If `restarted=true`: comment out `set!` lines and add `pickup` kwarg
-#   - Comment out / uncomment `using CUDA` and substitute CPU()/GPU() to match `arch`
+#   - Substitute CPU()/GPU() to match `arch`; add "using CUDA" if arch is GPU
 function generate_script(src_path, dest_path, prefix; pickup_file=nothing)
     restarted = !isnothing(pickup_file)
     lines = readlines(src_path)
 
     # If GPU and no CUDA import exists, insert one after the last `using` line
-    if arch isa GPU && !any(occursin(r"^#?\s*using CUDA", l) for l in lines)
-        last_using = findlast(l -> startswith(l, "using "), lines)
+    if arch isa GPU && !any(occursin(r"^#?\s*using CUDA"), lines)
+        last_using = findlast(startswith("using "), lines)
         insert!(lines, isnothing(last_using) ? 1 : last_using + 1, "using CUDA")
     end
 
@@ -59,16 +59,6 @@ function generate_script(src_path, dest_path, prefix; pickup_file=nothing)
 
     open(dest_path, "w") do out
         for line in lines
-
-            # Handle `using CUDA`: uncomment for GPU, comment out for CPU
-            if occursin(r"^#?\s*using CUDA", line)
-                if arch isa GPU
-                    println(out, replace(line, r"^#\s*" => ""))
-                else
-                    println(out, startswith(line, "#") ? line : "#" * line)
-                end
-                continue
-            end
 
             # Comment out set! calls (restarted only, to skip re-initialization)
             if restarted && occursin(r"^\s*set!", line)
