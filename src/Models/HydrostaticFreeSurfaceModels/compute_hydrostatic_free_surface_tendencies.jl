@@ -242,13 +242,13 @@ end
 
 function compute_U_dot_∇u!(arch, grid, kernel_parameters, Gu, advection::VectorInvariant, velocities; active_cells_map)
   launch!(arch, grid, kernel_parameters,
-          horizontal_advection_U!, Gu, grid, (advection, velocities);
+          horizontal_advection_U!, Gu, grid, advection, velocities;
           active_cells_map)
   launch!(arch, grid, kernel_parameters,
-          vertical_advection_U!, Gu, grid, (advection, velocities);
+          vertical_advection_U!, Gu, grid, advection, velocities;
           active_cells_map)
   launch!(arch, grid, kernel_parameters,
-          bernoulli_head_U!, Gu, grid, (advection, velocities);
+          bernoulli_head_U!, Gu, grid, advection, velocities;
           active_cells_map)
 end
 
@@ -275,7 +275,7 @@ end
     @inbounds Gu[i, j, k] += compute_corrections_Gu(i, j, k, grid, args...)
 end
 
-function compute_corrections_Gu(i, j, k, grid,
+@inline function compute_corrections_Gu(i, j, k, grid,
                                 advection,
                                 coriolis,
                                 closure,
