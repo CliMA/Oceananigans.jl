@@ -14,9 +14,9 @@ struct ConstantCartesianCoriolis{FT} <: AbstractRotation{Nothing}
 end
 
 """
-    ConstantCartesianCoriolis([FT=Float64;] fx=nothing, fy=nothing, fz=nothing,
+    ConstantCartesianCoriolis([FT = Float64;] fx=nothing, fy=nothing, fz=nothing,
                               f=nothing, rotation_axis=ZDirection(),
-                              rotation_rate=Oceananigans.defaults.planet_rotation_rate,
+                              rotation_rate = Oceananigans.defaults.planet_rotation_rate,
                               latitude=nothing)
 
 Return a parameter object for a constant rotation decomposed into the `x`, `y`, and `z` directions.
@@ -79,6 +79,11 @@ end
 @inline x_f_cross_U(i, j, k, grid, coriolis::ConstantCartesianCoriolis, U) = ℑxᶠᵃᵃ(i, j, k, grid, fʸw_minus_fᶻv, coriolis, U)
 @inline y_f_cross_U(i, j, k, grid, coriolis::ConstantCartesianCoriolis, U) = ℑyᵃᶠᵃ(i, j, k, grid, fᶻu_minus_fˣw, coriolis, U)
 @inline z_f_cross_U(i, j, k, grid, coriolis::ConstantCartesianCoriolis, U) = ℑzᵃᵃᶠ(i, j, k, grid, fˣv_minus_fʸu, coriolis, U)
+
+Adapt.adapt_structure(to, coriolis::ConstantCartesianCoriolis) =
+    ConstantCartesianCoriolis{typeof(coriolis.fx)}(Adapt.adapt(to, coriolis.fx),
+                                                   Adapt.adapt(to, coriolis.fy),
+                                                   Adapt.adapt(to, coriolis.fz))
 
 Base.show(io::IO, f_plane::ConstantCartesianCoriolis{FT}) where FT =
     print(io, "ConstantCartesianCoriolis{$FT}: ", @sprintf("fx = %.2e, fy = %.2e, fz = %.2e", f_plane.fx, f_plane.fy, f_plane.fz))

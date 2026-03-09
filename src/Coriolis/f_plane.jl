@@ -11,7 +11,7 @@ struct FPlane{S, FT} <: AbstractRotation{S}
 end
 
 """
-    FPlane([FT = Oceananigans.defaults.FloatType;]
+    FPlane([FT = Float64;]
            f = nothing,
            scheme = EENConserving(),
            rotation_rate = Oceananigans.defaults.planet_rotation_rate,
@@ -53,7 +53,11 @@ end
 @inline fᶠᶠᵃ(i, j, k, grid, coriolis::FPlane) = coriolis.f
 @inline fᶜᶜᵃ(i, j, k, grid, coriolis::FPlane) = coriolis.f
 
-function Base.summary(fplane::FPlane{FT}) where FT
+Adapt.adapt_structure(to, fplane::FPlane) =
+    FPlane(Adapt.adapt(to, fplane.scheme),
+           Adapt.adapt(to, fplane.f))
+
+function Base.summary(fplane::FPlane{S, FT}) where {S, FT}
     fstr = prettysummary(fplane.f)
     return "FPlane{$FT}(f=$fstr)"
 end

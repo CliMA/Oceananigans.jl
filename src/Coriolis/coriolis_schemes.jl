@@ -3,10 +3,36 @@ using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 # Typically zero!
 @inline z_f_cross_U(i, j, k, grid, ::AbstractRotation, U) = zero(grid)
 
-# Some usefull types to dispatch on
+"""
+    ActiveWeightedEnstrophyConserving
+
+Enstrophy-conserving Coriolis scheme with Jamart wet-point correction.
+Near immersed boundaries, the interpolation weights are divided by the number
+of active (non-masked) nodes to compensate for missing neighbors.
+"""
 struct ActiveWeightedEnstrophyConserving end
+
+"""
+    ActiveWeightedEnergyConserving
+
+Energy-conserving Coriolis scheme with Jamart wet-point correction.
+Near immersed boundaries, the interpolation weights are divided by the number
+of active (non-masked) nodes to compensate for missing neighbors.
+"""
 struct ActiveWeightedEnergyConserving end
+
+"""
+    EENConserving
+
+Energy- and enstrophy-conserving Coriolis scheme based on the Arakawa & Lamb (1981) triad formulation.
+Each triad at a tracer point sums three of the four surrounding vorticity
+values, paired with transports at diagonally adjacent velocity points.
+"""
 struct EENConserving end
+
+Base.summary(::ActiveWeightedEnstrophyConserving) = "ActiveWeightedEnstrophyConserving"
+Base.summary(::ActiveWeightedEnergyConserving) = "ActiveWeightedEnergyConserving"
+Base.summary(::EENConserving) = "EENConserving"
 
 #####
 ##### Active Point Enstrophy-conserving scheme

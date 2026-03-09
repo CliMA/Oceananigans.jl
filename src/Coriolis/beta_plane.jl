@@ -1,3 +1,8 @@
+"""
+    struct BetaPlane{S, FT} <: AbstractRotation{S}
+
+A Coriolis parameter that varies linearly in `y`: `f = f₀ + β y`.
+"""
 struct BetaPlane{S, FT} <: AbstractRotation{S}
     scheme :: S
     f₀ :: FT
@@ -5,16 +10,16 @@ struct BetaPlane{S, FT} <: AbstractRotation{S}
 end
 
 """
-    BetaPlane([FT=Float64;] f₀=nothing, β=nothing,
+    BetaPlane([FT = Float64;] f₀=nothing, β=nothing,
               scheme = EENConserving(),
-              rotation_rate=Oceananigans.defaults.planet_rotation_rate,
-              latitude=nothing, radius=Oceananigans.defaults.planet_radius)
+              rotation_rate = Oceananigans.defaults.planet_rotation_rate,
+              latitude = nothing, radius = Oceananigans.defaults.planet_radius)
 
-Return a ``β``-plane Coriolis parameter, ``f = f₀ + β y`` with floating-point type `FT`.
+Return a β-plane Coriolis parameter, `f = f₀ + β y`, with floating-point type `FT`.
 
 The user may specify both `f₀` and `β`, or the three parameters `rotation_rate`, `latitude`
 (in degrees), and `radius` that specify the rotation rate and radius of a planet, and
-the central latitude (where ``y = 0``) at which the `β`-plane approximation is to be made.
+the central latitude (where `y = 0`) at which the β-plane approximation is to be made.
 
 If `f₀` and `β` are not specified, they are calculated from `rotation_rate`, `latitude`,
 and `radius` according to the relations `f₀ = 2 * rotation_rate * sind(latitude)` and
@@ -46,13 +51,18 @@ function BetaPlane(FT=Oceananigans.defaults.FloatType;
     f₀ = convert(FT, f₀)
     β = convert(FT, β)
 
-    return BetaPlane{FT}(scheme, f₀, β)
+    return BetaPlane(scheme, f₀, β)
 end
 
 @inline fᶠᶠᵃ(i, j, k, grid, coriolis::BetaPlane) = coriolis.f₀ + coriolis.β * ynode(i, j, k, grid, face, face, center)
 @inline fᶜᶜᵃ(i, j, k, grid, coriolis::BetaPlane) = coriolis.f₀ + coriolis.β * ynode(i, j, k, grid, center, center, center)
 
-function Base.summary(βplane::BetaPlane{FT}) where FT
+Adapt.adapt_structure(to, βplane::BetaPlane) =
+    BetaPlane(Adapt.adapt(to, βplane.scheme),
+              Adapt.adapt(to, βplane.f₀),
+              Adapt.adapt(to, βplane.β))
+
+function Base.summary(βplane::BetaPlane{S, FT}) where {S, FT}
     fstr = prettysummary(βplane.f₀)
     βstr = prettysummary(βplane.β)
     return "BetaPlane{$FT}(f₀=$fstr, β=$βstr)"
