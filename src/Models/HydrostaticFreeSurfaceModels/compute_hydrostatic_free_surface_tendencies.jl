@@ -231,11 +231,11 @@ end
 
 function compute_U_dot_∇u!(arch, grid, kernel_parameters, Gu, advection, velocities; active_cells_map)
   launch!(arch, grid, kernel_parameters,
-          compute_U_dot_∇u!, Gu, grid, (advection, velocities);
+          U_dot_∇u!, Gu, grid, (advection, velocities);
           active_cells_map)
 end
 
-@kernel function compute_U_dot_∇u(Gu, grid, args)
+@kernel function U_dot_∇u!(Gu, grid, args)
     i, j, k = @index(Global, NTuple)
     @inbounds Gu[i, j, k] = - U_dot_∇u(i, j, k, grid, args...)
 end
