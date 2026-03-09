@@ -93,12 +93,9 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     #     need to take an euler step. Note that model.clock.last_Δt is
     #     initialized as Inf
     #   * The user has passed euler=true to time_step!
-    euler = euler || (Δt != model.clock.last_Δt)
-    euler && @debug "Taking a forward Euler step."
+    euler = euler | (Δt != model.clock.last_Δt)
 
-    if model.clock.iteration == 0
-        update_state!(model, callbacks)
-    end
+    maybe_initialize_state!(model, callbacks)
 
     # If euler, then set χ = -0.5
     minus_point_five = convert(eltype(model.grid), -0.5)
