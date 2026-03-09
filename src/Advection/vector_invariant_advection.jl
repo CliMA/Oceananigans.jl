@@ -318,8 +318,8 @@ end
 @inline ϕ²(i, j, k, grid, ϕ)       = @inbounds ϕ[i, j, k]^2
 @inline Khᶜᶜᶜ(i, j, k, grid, u, v) = (ℑxᶜᵃᵃ(i, j, k, grid, ϕ², u) + ℑyᵃᶜᵃ(i, j, k, grid, ϕ², v)) / 2
 
-@inline bernoulli_head_U(i, j, k, grid, ::VectorInvariantKEGradientEnergyConserving, u, v) = ∂xᶠᶜᶜ(i, j, k, grid, Khᶜᶜᶜ, u, v)
-@inline bernoulli_head_V(i, j, k, grid, ::VectorInvariantKEGradientEnergyConserving, u, v) = ∂yᶜᶠᶜ(i, j, k, grid, Khᶜᶜᶜ, u, v)
+@inline bernoulli_head_U(i, j, k, grid, ::VectorInvariantKEGradientEnergyConserving, u, v) = δxᶠᶜᶜ(i, j, k, grid, Khᶜᶜᶜ, u, v) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
+@inline bernoulli_head_V(i, j, k, grid, ::VectorInvariantKEGradientEnergyConserving, u, v) = δyᶜᶠᶜ(i, j, k, grid, Khᶜᶜᶜ, u, v) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
 
 #####
 ##### Conservative vertical advection

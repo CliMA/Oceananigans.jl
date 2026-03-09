@@ -1,21 +1,27 @@
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
-# Selection between topology aware and non-aware operators
-# depending on whether we fill halos or not in between substeps
-@inline x_derivative_operator(::Val{false}) = ∂xᵣᶠᶜᶠ
-@inline x_derivative_operator(::Val{true})  = ∂xᵣTᶠᶜᶠ
-@inline y_derivative_operator(::Val{false}) = ∂yᵣᶜᶠᶠ
-@inline y_derivative_operator(::Val{true})  = ∂yᵣTᶜᶠᶠ
+# Selection between topology-aware and non-aware operators depending on
+# whether we fill halos or not in between substeps.
+#
+# filled_halos = Val(false): halos are NOT filled each substep (extend_halos mode).
+#   → Use topology-aware operators because halo data goes stale after the first substep.
+#
+# filled_halos = Val(true): halos ARE filled each substep (fill_halos mode).
+#   → Use non-topology-aware operators because halo data is always fresh.
+@inline x_derivative_operator(::Val{false}) = ∂xᵣTᶠᶜᶠ
+@inline x_derivative_operator(::Val{true})  = ∂xᵣᶠᶜᶠ
+@inline y_derivative_operator(::Val{false}) = ∂yᵣTᶜᶠᶠ
+@inline y_derivative_operator(::Val{true})  = ∂yᵣᶜᶠᶠ
 
-@inline x_difference_operator(::Val{false}) = δxᶜᵃᵃ
-@inline x_difference_operator(::Val{true})  = δxTᶜᵃᵃ
-@inline y_difference_operator(::Val{false}) = δyᵃᶜᵃ
-@inline y_difference_operator(::Val{true})  = δyTᵃᶜᵃ
+@inline x_difference_operator(::Val{false}) = δxTᶜᵃᵃ
+@inline x_difference_operator(::Val{true})  = δxᶜᵃᵃ
+@inline y_difference_operator(::Val{false}) = δyTᵃᶜᵃ
+@inline y_difference_operator(::Val{true})  = δyᵃᶜᵃ
 
-@inline x_column_depth(i, j, k, grid, ::Val{false}, η) =  column_depthᶠᶜᵃ(i, j, k, grid, η)
-@inline x_column_depth(i, j, k, grid, ::Val{true},  η) = column_depthTᶠᶜᵃ(i, j, k, grid, η)
-@inline y_column_depth(i, j, k, grid, ::Val{false}, η) =  column_depthᶜᶠᵃ(i, j, k, grid, η)
-@inline y_column_depth(i, j, k, grid, ::Val{true},  η) = column_depthTᶜᶠᵃ(i, j, k, grid, η)
+@inline x_column_depth(i, j, k, grid, ::Val{false}, η) = column_depthTᶠᶜᵃ(i, j, k, grid, η)
+@inline x_column_depth(i, j, k, grid, ::Val{true},  η) =  column_depthᶠᶜᵃ(i, j, k, grid, η)
+@inline y_column_depth(i, j, k, grid, ::Val{false}, η) = column_depthTᶜᶠᵃ(i, j, k, grid, η)
+@inline y_column_depth(i, j, k, grid, ::Val{true},  η) =  column_depthᶜᶠᵃ(i, j, k, grid, η)
 
 # Evolution Kernels
 #
