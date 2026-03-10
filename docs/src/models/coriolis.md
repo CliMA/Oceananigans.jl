@@ -119,14 +119,20 @@ grid's latitude:
 
 ```jldoctest
 julia> coriolis = HydrostaticSphericalCoriolis()
-HydrostaticSphericalCoriolis{Float64}: rotation_rate = 7.29e-05
+SphericalCoriolis
+├─ rotation rate: 7.29e-05 s⁻¹ = 1.00 Ω_Earth
+├─ formulation: HydrostaticFormulation
+└─ scheme: ActiveWeightedEnstrophyConserving
 ```
 
 A custom rotation rate can be specified:
 
 ```jldoctest
 julia> coriolis = HydrostaticSphericalCoriolis(rotation_rate=1e-4)
-HydrostaticSphericalCoriolis{Float64}: rotation_rate = 1.00e-04
+SphericalCoriolis
+├─ rotation rate: 1.00e-04 s⁻¹ = 1.37 Ω_Earth
+├─ formulation: HydrostaticFormulation
+└─ scheme: ActiveWeightedEnstrophyConserving
 ```
 
 ## Discretization schemes
@@ -146,7 +152,8 @@ Five schemes are available:
 | `ActiveWeightedEnstrophyConserving()` | Potential enstrophy | Yes |
 | `ActiveWeightedEnergyConserving()` | Kinetic energy | Yes |
 
-The default scheme is `EENConserving()` for `FPlane`, `BetaPlane`, and `HydrostaticSphericalCoriolis`.
+The default scheme is `ActiveWeightedEnstrophyConserving()` for `HydrostaticSphericalCoriolis`
+and `EENConserving()` for `FPlane` and `BetaPlane`.
 
 ### Selecting a scheme
 
@@ -162,7 +169,10 @@ julia> coriolis = FPlane(f=1e-4, scheme=EnstrophyConserving())
 FPlane{Float64}(f=0.0001)
 
 julia> coriolis = HydrostaticSphericalCoriolis(scheme=EnergyConserving())
-HydrostaticSphericalCoriolis{Float64}: rotation_rate = 7.29e-05
+SphericalCoriolis
+├─ rotation rate: 7.29e-05 s⁻¹ = 1.00 Ω_Earth
+├─ formulation: HydrostaticFormulation
+└─ scheme: Oceananigans.Advection.EnergyConserving{Float64}
 ```
 
 ### Active-weighted schemes for immersed boundaries
@@ -181,7 +191,10 @@ julia> coriolis = FPlane(f=1e-4, scheme=ActiveWeightedEnstrophyConserving())
 FPlane{Float64}(f=0.0001)
 
 julia> coriolis = HydrostaticSphericalCoriolis(scheme=ActiveWeightedEnergyConserving())
-HydrostaticSphericalCoriolis{Float64}: rotation_rate = 7.29e-05
+SphericalCoriolis
+├─ rotation rate: 7.29e-05 s⁻¹ = 1.00 Ω_Earth
+├─ formulation: HydrostaticFormulation
+└─ scheme: ActiveWeightedEnergyConserving
 ```
 
 !!! tip "When to use active-weighted schemes"
