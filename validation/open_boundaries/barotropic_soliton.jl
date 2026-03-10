@@ -150,40 +150,31 @@ function analytic_η(x_dim, y_dim, t_dim, p::SolitonParameters)
 end
 #---
 
-#+++ Simulation setup
+# Simulation setup
 function setup_simulation(params::SolitonParameters;
                           Nx = 200, Ny = 100, Nz = 4,
                           stop_time_nd = 10.0,
-                          x_boundary_conditions = :periodic,
                           scheme = PerturbationAdvection(),
-                          outfile = joinpath("output", "hydrostatic_soliton_$(x_boundary_conditions).jld2"))
+                          outfile = joinpath("output", "hydrostatic_soliton.jld2"))
 
-    #+++ Grid
-    @assert x_boundary_conditions ∈ (:periodic, :open) "x_boundary_conditions must be :periodic or :open"
-    x_topology = x_boundary_conditions == :open ? Bounded : Periodic
-
+    # Grid
     z = MutableVerticalDiscretization(range(-params.H_dim, 0, length = Nz + 1))
 
     grid = RectilinearGrid(CPU();
-        topology = (x_topology, Bounded, Bounded),
+        topology = (Bounded, Bounded, Bounded),
         size = (Nx, Ny, Nz),
         x = (params.x_min, params.x_max),
         y = (params.y_min, params.y_max),
         z,
         halo = (8, 8, 8))
-    #---
 
-    #+++ Model
+    # Model:
     # Dimensional β: from β_nd = 1 = β_dim * L² / U  →  β_dim = U / L²
     β_dim = params.U_dim / params.L_dim^2 # [m⁻¹ s⁻¹] ≈ 2.27e-11
 
-    if x_boundary_conditions == :open
-        obc = OpenBoundaryCondition(0; scheme)
-        u_bcs = FieldBoundaryConditions(west = obc, east = obc)
-        boundary_conditions = (; u = u_bcs)
-    else
-        boundary_conditions = NamedTuple()
-    end
+    obc = OpenBoundaryCondition(0; scheme)
+    u_bcs = FieldBoundaryConditions(west = obc, east = obc)
+    boundary_conditions = (; u = u_bcs)
 
     model = HydrostaticFreeSurfaceModel(grid;
         free_surface        = ImplicitFreeSurface(reltol = 1e-10, abstol = 1e-10, maxiter = 100,
@@ -192,18 +183,16 @@ function setup_simulation(params::SolitonParameters;
         vertical_coordinate = ZStarCoordinate(),
         coriolis            = BetaPlane(f₀ = 0, β = β_dim),
         boundary_conditions)
-    #---
 
-    #+++ Initial conditions (soliton at t = 0)
+    # Initial conditions (soliton at t = 0)
     set!(model,
         u = (x, y, z) -> analytic_u(x, y, 0.0, params),
         v = (x, y, z) -> analytic_v(x, y, 0.0, params),
         η = (x, y, z) -> analytic_η(x, y, 0.0, params))
-    #---
 
-    #+++ Simulation
+    # Simulation
     stop_time = stop_time_nd * params.T_dim
-    c_grav    = sqrt(g * params.H_dim) # surface gravity wave speed [m/s]
+    c_grav    = √(g * params.H_dim) # surface gravity wave speed [m/s]
     max_Δt    = 0.5 * minimum_xspacing(grid) / c_grav # CFL limit from gravity waves
     Δt₀       = 0.1 * max_Δt
     simulation = Simulation(model; Δt = Δt₀, stop_time)
@@ -218,23 +207,20 @@ function setup_simulation(params::SolitonParameters;
                 maximum(abs, u), maximum(abs, η), cg_solver.iteration)
     end
     simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(50))
-    #---
 
-    #+++ Output
+    # Output
     mkpath(dirname(outfile))
     u, v, w = model.velocities
-    η_field = model.free_surface.displacement
+    η = model.free_surface.displacement
 
     simulation.output_writers[:fields] = JLD2Writer(model,
-        (; u, v, η = η_field);
+        (; u, v, w, η);
         schedule           = TimeInterval(params.T_dim),
         filename           = outfile,
         overwrite_existing = true)
-    #---
 
     return simulation
 end
-#---
 
 #+++ Animation: numerical vs analytical
 function plot_soliton(simulation::Simulation, params::SolitonParameters;
@@ -317,7 +303,7 @@ end
 #---
 
 params     = default_parameters(B = 0.5)
-simulation = setup_simulation(params; stop_time_nd = 50, x_boundary_conditions = :periodic)
+simulation = setup_simulation(params; stop_time_nd = 70)
 run!(simulation)
 @info "Simulation complete."
 plot_soliton(simulation, params)
