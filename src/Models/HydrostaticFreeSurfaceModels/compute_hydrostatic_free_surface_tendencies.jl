@@ -252,21 +252,18 @@ function compute_U_dot_∇u!(arch, grid, kernel_parameters, Gu, advection::Vecto
           active_cells_map)
 end
 
-@kernel function horizontal_advection_U!(Gu, grid, args)
+@kernel function horizontal_advection_U!(Gu, grid, scheme, U)
     i, j, k = @index(Global, NTuple)
-    (scheme, U) = args
     @inbounds Gu[i, j, k] = horizontal_advection_U(i, j, k, grid, scheme, U.u, U.v)
 end
 
-@kernel function vertical_advection_U!(Gu, grid, args)
+@kernel function vertical_advection_U!(Gu, grid, scheme, U)
     i, j, k = @index(Global, NTuple)
-    (scheme, U) = args
     @inbounds Gu[i, j, k] -= vertical_advection_U(i, j, k, grid, scheme, U)
 end
 
-@kernel function bernoulli_head_U!(Gu, grid, args)
+@kernel function bernoulli_head_U!(Gu, grid, scheme, U)
     i, j, k = @index(Global, NTuple)
-    (scheme, U) = args
     @inbounds Gu[i, j, k] -= bernoulli_head_U(i, j, k, grid, scheme, U.u, U.v)
 end
 
