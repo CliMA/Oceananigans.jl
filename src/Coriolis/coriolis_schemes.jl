@@ -1,4 +1,5 @@
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
+using Oceananigans.Grids: XFlatGrid, YFlatGrid, XYFlatGrid
 
 # Typically zero!
 @inline z_f_cross_U(i, j, k, grid, ::AbstractRotation, U) = zero(grid)
@@ -137,3 +138,15 @@ end
             𝒯⁺⁻(i, j,   k, grid, coriolis) * Δy_qᶠᶜᶜ(i+1, j,   k, grid, U[1]))
     end
 end
+
+#####
+##### Flat grid fallbacks for EEN scheme
+#####
+
+# On Flat grids, fall back to the enstrophy-conserving scheme
+@inline x_f_cross_U(i, j, k, grid::YFlatGrid,  coriolis::EENC, U) = @inbounds - ℑxᶠᵃᵃ(i, j, k, grid, fᶜᶜᵃ, coriolis) * ℑxyᶠᶜᵃ(i, j, k, grid, U[2])
+@inline y_f_cross_U(i, j, k, grid::YFlatGrid,  coriolis::EENC, U) = @inbounds + ℑyᵃᶠᵃ(i, j, k, grid, fᶜᶜᵃ, coriolis) * ℑxyᶜᶠᵃ(i, j, k, grid, U[1])
+@inline x_f_cross_U(i, j, k, grid::XFlatGrid,  coriolis::EENC, U) = @inbounds - ℑxᶠᵃᵃ(i, j, k, grid, fᶜᶜᵃ, coriolis) * ℑxyᶠᶜᵃ(i, j, k, grid, U[2])
+@inline y_f_cross_U(i, j, k, grid::XFlatGrid,  coriolis::EENC, U) = @inbounds + ℑyᵃᶠᵃ(i, j, k, grid, fᶜᶜᵃ, coriolis) * ℑxyᶜᶠᵃ(i, j, k, grid, U[1])
+@inline x_f_cross_U(i, j, k, grid::XYFlatGrid, coriolis::EENC, U) = @inbounds - ℑxᶠᵃᵃ(i, j, k, grid, fᶜᶜᵃ, coriolis) * ℑxyᶠᶜᵃ(i, j, k, grid, U[2])
+@inline y_f_cross_U(i, j, k, grid::XYFlatGrid, coriolis::EENC, U) = @inbounds + ℑyᵃᶠᵃ(i, j, k, grid, fᶜᶜᵃ, coriolis) * ℑxyᶜᶠᵃ(i, j, k, grid, U[1])

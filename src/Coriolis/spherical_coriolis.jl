@@ -60,12 +60,12 @@ julia> SphericalCoriolis()
 SphericalCoriolis
 ├─ rotation rate: 7.29e-05 s⁻¹ = 1.00 Ω_Earth
 ├─ formulation: NonhydrostaticFormulation
-└─ scheme: Oceananigans.Advection.EnstrophyConserving{Float64}
+└─ scheme: ActiveWeightedEnstrophyConserving
 ```
 """
 function SphericalCoriolis(FT::DataType = Oceananigans.defaults.FloatType;
                            rotation_rate = Oceananigans.defaults.planet_rotation_rate,
-                           scheme = EnstrophyConserving(FT),
+                           scheme = ActiveWeightedEnstrophyConserving(),
                            formulation = NonhydrostaticFormulation())
     rotation_rate = convert(FT, rotation_rate)
 
@@ -94,12 +94,12 @@ julia> HydrostaticSphericalCoriolis()
 SphericalCoriolis
 ├─ rotation rate: 7.29e-05 s⁻¹ = 1.00 Ω_Earth
 ├─ formulation: HydrostaticFormulation
-└─ scheme: EENConserving
+└─ scheme: ActiveWeightedEnstrophyConserving
 ```
 """
 function HydrostaticSphericalCoriolis(FT::DataType = Oceananigans.defaults.FloatType;
                                       rotation_rate = Oceananigans.defaults.planet_rotation_rate,
-                                      scheme = EENConserving())
+                                      scheme = ActiveWeightedEnstrophyConserving())
     return SphericalCoriolis(FT; rotation_rate, scheme, formulation=HydrostaticFormulation())
 end
 
