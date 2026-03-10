@@ -145,5 +145,5 @@ end
   
     topo = (TX, TY, TZ) =  topology(grid)
     λx = poisson_eigenvalues(grid, grid.Nx, grid.Lx, 1, TX())
-    @test eltype(λx) == Float32
+    @test eltype(λx) == eltype(grid)
 end
