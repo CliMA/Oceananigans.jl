@@ -44,8 +44,8 @@ Base.summary(::EENConserving) = "EENConserving"
 
 const ESC = AbstractRotation{<:EnstrophyConserving}
 
-@inline x_f_cross_U(i, j, k, grid, coriolis::ESC, U) = @inbounds - ℑxᶠᵃᵃ(i, j, k, grid, fᶜᶜᵃ, coriolis) * ℑxyᶠᶜᵃ(i, j, k, grid, U[2])
-@inline y_f_cross_U(i, j, k, grid, coriolis::ESC, U) = @inbounds + ℑyᵃᶠᵃ(i, j, k, grid, fᶜᶜᵃ, coriolis) * ℑxyᶜᶠᵃ(i, j, k, grid, U[1])
+@inline x_f_cross_U(i, j, k, grid, coriolis::ESC, U) = @inbounds - ℑxᶠᵃᵃ(i, j, k, grid, fᶜᶜᵃ, coriolis) * ℑxyᶠᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, U[2]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
+@inline y_f_cross_U(i, j, k, grid, coriolis::ESC, U) = @inbounds + ℑyᵃᶠᵃ(i, j, k, grid, fᶜᶜᵃ, coriolis) * ℑxyᶜᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, U[1]) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
 
 #####
 ##### Energy-conserving scheme
@@ -53,7 +53,7 @@ const ESC = AbstractRotation{<:EnstrophyConserving}
 
 const ENC = AbstractRotation{<:EnergyConserving}
 
-@inline f_ℑy_uᶠᶠᶜ(i, j, k, grid, coriolis::AbstractRotation, u) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u)
+@inline f_ℑy_uᶠᶠᶜ(i, j, k, grid, coriolis::AbstractRotation, u) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, u) 
 @inline f_ℑx_vᶠᶠᶜ(i, j, k, grid, coriolis::AbstractRotation, v) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, v)
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::ENC, U) = @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, f_ℑx_vᶠᶠᶜ, coriolis, U[2]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
@@ -72,16 +72,16 @@ const AESC = AbstractRotation{<:ActiveWeightedEnstrophyConserving}
 @inline function x_f_cross_U(i, j, k, grid, coriolis::AESC, U)
     @inbounds begin
         active_nodes = ℑxyᶠᶜᵃ(i, j, k, grid, not_peripheral_nodeᶜᶠᶜ)
-        result = - ℑxᶠᵃᵃ(i, j, k, grid, fᶜᶜᵃ, coriolis) * ℑxyᶠᶜᵃ(i, j, k, grid, U[2])
-        return ifelse(active_nodes == 0, zero(grid), result / active_nodes)
+        result = - ℑyᵃᶜᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * ℑxyᶠᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶜ, U[2])
+        return ifelse(active_nodes == 0, zero(grid), result / active_nodes) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
     end
 end
 
 @inline function y_f_cross_U(i, j, k, grid, coriolis::AESC, U)
     @inbounds begin
         active_nodes = ℑxyᶜᶠᵃ(i, j, k, grid, not_peripheral_nodeᶠᶜᶜ)
-        result = ℑyᵃᶠᵃ(i, j, k, grid, fᶜᶜᵃ, coriolis) * ℑxyᶜᶠᵃ(i, j, k, grid, U[1])
-        return ifelse(active_nodes == 0, zero(grid), result / active_nodes)
+        result = ℑxᶜᵃᵃ(i, j, k, grid, fᶠᶠᵃ, coriolis) * ℑxyᶜᶠᵃ(i, j, k, grid, Δy_qᶠᶜᶜ, U[1])
+        return ifelse(active_nodes == 0, zero(grid), result / active_nodes) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
     end
 end
 
