@@ -1,5 +1,5 @@
 """
-    struct NonTraditionalBetaPlane{FT} <: AbstractRotation{Nothing}
+    struct NonTraditionalBetaPlane{FT} <: AbstractRotation{EnstrophyConserving}
 
 A Coriolis implementation that accounts for the latitudinal variation of both
 the locally vertical and the locally horizontal components of the rotation vector.
@@ -16,7 +16,7 @@ Dellar, P. (2011). Variations on a beta-plane: Derivation of non-traditional
     beta-plane equations from Hamilton's principle on a sphere. Journal of
     Fluid Mechanics, 674, 174-195. doi:10.1017/S0022112010006464
 """
-struct NonTraditionalBetaPlane{FT} <: AbstractRotation{Nothing}
+struct NonTraditionalBetaPlane{FT} <: AbstractRotation{EnstrophyConserving}
     fz :: FT
     fy :: FT
     β  :: FT
