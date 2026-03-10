@@ -12,7 +12,11 @@
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Advection: EnstrophyConserving, EnergyConserving
-using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization
+using Oceananigans.Operators: Δz
+using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization,
+                                       AbstractTurbulenceClosure,
+                                       implicit_linear_coefficient
+using Oceananigans.ImmersedBoundaries: inactive_cell
 
 using Printf
 using CairoMakie
@@ -53,25 +57,35 @@ wall_bottom(x, y) = (x < 0 || x > Lx || y < 0 || y > Ly) ? 0.0 : -H
 grid = ImmersedBoundaryGrid(grid, GridFittedBottom(wall_bottom))
 
 #####
-##### Boundary conditions
+##### Implicit bottom drag closure
+#####
+#
+# Bottom drag -κu is a linear term that can be absorbed into the diagonal
+# of the implicit vertical diffusion tridiagonal solve, making it
+# unconditionally stable (no CFL constraint on κ).
+
+struct ImplicitBottomDrag{T} <: AbstractTurbulenceClosure{VerticallyImplicitTimeDiscretization, 1}
+    κ :: T
+end
+
+# Returns -κ/Δz at the bottom-most active cell, zero elsewhere.
+# This adds +Δt κ/Δz to the tridiagonal diagonal → unconditionally stable damping.
+@inline function implicit_linear_coefficient(i, j, k, grid, closure::ImplicitBottomDrag,
+                                             K, id, ℓx, ℓy, ℓz, Δt, clock, fields)
+    at_bottom = inactive_cell(i, j, k - 1, grid) & !inactive_cell(i, j, k, grid)
+    return ifelse(at_bottom, -closure.κ / Δz(i, j, k, grid, ℓx, ℓy, ℓz), zero(grid))
+end
+
+#####
+##### Boundary conditions and closure
 #####
 
-# Strong linear bottom drag approximating no-slip.
-# CFL constraint: κ < Δz/Δt = 5/600 ≈ 8.3e-3 m/s.
-κ = 5e-3
+κ_drag = Aᵥ / (H / Nz)   # = Aᵥ / Δz ≈ 0.013 m/s (strong, approximates no-slip)
 
-@inline u_drag(i, j, grid, clock, fields, κ) = @inbounds -κ * fields.u[i, j, 1]
-@inline v_drag(i, j, grid, clock, fields, κ) = @inbounds -κ * fields.v[i, j, 1]
+v_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τʸ / ρ₀))
 
-u_bcs = FieldBoundaryConditions(bottom = FluxBoundaryCondition(u_drag, discrete_form=true, parameters=κ))
-v_bcs = FieldBoundaryConditions(top    = FluxBoundaryCondition(τʸ / ρ₀),
-                                bottom = FluxBoundaryCondition(v_drag, discrete_form=true, parameters=κ))
-
-#####
-##### Closure
-#####
-
-closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=Aᵥ)
+closure = (VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=Aᵥ),
+           ImplicitBottomDrag(κ_drag))
 
 #####
 ##### Simulation helper
@@ -89,7 +103,7 @@ function run_jamart(grid, scheme; label, Δt=600, stop_time=144hours)
         tracer_advection    = nothing,
         tracers             = (),
         buoyancy            = nothing,
-        boundary_conditions = (; u=u_bcs, v=v_bcs))
+        boundary_conditions = (; v=v_bcs))
 
     simulation = Simulation(model; Δt, stop_time)
 
