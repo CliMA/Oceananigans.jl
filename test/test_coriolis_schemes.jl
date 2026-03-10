@@ -89,7 +89,7 @@ function test_enstrophy_conserving_uniform_u(FT)
 end
 
 #####
-##### 3. Active-weighted = plain on flat bottom 
+##### 3. Active-weighted = plain on flat bottom
 #####
 ##### On a flat-bottom grid, all neighboring velocity nodes are active,
 #####
