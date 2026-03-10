@@ -17,9 +17,8 @@ import Oceananigans.Grids as GD
 import Oceananigans: Clock
 
 using Oceananigans.Grids: XYZRegularRG
-using Oceananigans.Solvers: ConjugateGradientPoissonSolver, reshaped_size
+using Oceananigans.Solvers: ConjugateGradientPoissonSolver
 import Oceananigans.Models.NonhydrostaticModels: nonhydrostatic_pressure_solver
-import Oceananigans.Solvers: poisson_eigenvalues
 
 const MetalGPU = GPU{<:Metal.MetalBackend}
 MetalGPU() = GPU(Metal.MetalBackend())
@@ -68,19 +67,6 @@ end
 
 const MetalGrid = GD.AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:MetalGPU}
 Clock(grid::MetalGrid) = Clock{Float32}(time=0)
-
-# Poisson eigenvalues should be the same float type as the grid, as Metal doesn't support Float64.
-function poisson_eigenvalues(grid::MetalGrid, N, L, dim, ::Periodic)
-    inds = reshape(1:N, reshaped_size(N, dim)...)
-    return convert.(eltype(grid), @. (2sin((inds - 1) * π / N) / (L / N))^2)
-end
-
-function poisson_eigenvalues(grid::MetalGrid, N, L, dim, ::Bounded)
-    inds = reshape(1:N, reshaped_size(N, dim)...)
-    return convert.(eltype(grid), @. (2sin((inds - 1) * π / 2N) / (L / N))^2)
-end
-
-poisson_eigenvalues(grid::MetalGrid, N, L, dim, ::Flat) = convert.(eltype(grid), reshape(zeros(N), reshaped_size(N, dim)...))
 
 nonhydrostatic_pressure_solver(::MetalGPU, grid::XYZRegularRG, ::Nothing) = ConjugateGradientPoissonSolver(grid)
 
