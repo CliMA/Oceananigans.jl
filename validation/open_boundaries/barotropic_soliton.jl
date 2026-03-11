@@ -169,8 +169,7 @@ function setup_simulation(params::SolitonParameters;
         halo = (8, 8, 8))
 
     # Model:
-    # Dimensional β: from β_nd = 1 = β_dim * L² / U  →  β_dim = U / L²
-    β_dim = params.U_dim / params.L_dim^2 # [m⁻¹ s⁻¹] ≈ 2.27e-11
+    β_dim = params.U_dim / params.L_dim^2
 
     obc = OpenBoundaryCondition(0; scheme)
     u_bcs = FieldBoundaryConditions(west = obc, east = obc)
@@ -302,7 +301,7 @@ function plot_soliton(simulation::Simulation, params::SolitonParameters;
 end
 #---
 
-params     = default_parameters(B = 0.5)
+params = default_parameters(B = 0.5)
 simulation = setup_simulation(params; stop_time_nd = 70)
 run!(simulation)
 @info "Simulation complete."
