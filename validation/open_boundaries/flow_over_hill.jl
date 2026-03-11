@@ -6,9 +6,10 @@ function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
                                      arch = CPU(),
                                      model_type = :nonhydrostatic,
                                      Nz = 16,
-                                     H = 1,
-                                     Lz = 3 * H,
-                                     Lx = 10,
+                                     hill_height = 1,
+                                     hill_width = 2,
+                                     Lz = 3 * hill_height,
+                                     Lx = 5 * hill_width,
                                      U = 1,
                                      pressure_solver_constructor = nothing,
                                      stop_time = 50,
@@ -28,8 +29,8 @@ function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
         error("Unknown model_type: $model_type. Expected :nonhydrostatic or :hydrostatic_with_implicit_surface")
     end
     grid_base = RectilinearGrid(arch; topology = (Bounded, Flat, Bounded), size = (Nx, Nz), x = (0, Lx), z, halo = (8, 8))
-    hill(x) = H * exp(-((x - x₀)/2)^2) - Lz
-    grid = ImmersedBoundaryGrid(grid_base, GridFittedBottom(hill))
+    hill(x) = hill_height * exp(-((x - x₀)/hill_width)^2) - Lz
+    grid = ImmersedBoundaryGrid(grid_base, PartialCellBottom(hill))
 
     # Create boundary conditions
     u_boundaries = FieldBoundaryConditions(west = OpenBoundaryCondition(U; scheme), east = OpenBoundaryCondition(U; scheme))
@@ -82,7 +83,7 @@ end
 function plot_flow_over_hill_animation(filepath;
                                        model_type = :nonhydrostatic,
                                        U = 1,
-                                       H = 1,
+                                       hill_height = 1,
                                        framerate = 16,
                                        compression = 20)
     @info "Plotting flow over hill from $filepath"
@@ -122,7 +123,7 @@ function plot_flow_over_hill_animation(filepath;
     # Second panel: always plot vorticity (2D heatmap)
     ω_plt = @lift ω_ts[$n]
     ax_ω = Axis(fig[2, 1], aspect = DataAspect(), xlabel = "x", ylabel = "z", title = "ω (vorticity)")
-    hm_ω = heatmap!(ax_ω, ω_plt, colorrange = (-12 * U / H, 12 * U / H), colormap = :curl)
+    hm_ω = heatmap!(ax_ω, ω_plt, colorrange = (-12 * U / hill_height, 12 * U / hill_height), colormap = :curl)
     Colorbar(fig[2, 2], hm_ω, tellwidth = false, height = Relative(0.5))
 
     # Third panel: u velocity
