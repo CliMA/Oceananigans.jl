@@ -9,16 +9,17 @@ function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
                                      hill_height = 1,
                                      hill_width = 2,
                                      Lz = 3 * hill_height,
-                                     Lx = 5 * hill_width,
+                                     Lx = 10 * hill_width,
                                      U = 1,
                                      pressure_solver_constructor = nothing,
                                      stop_time = 50,
                                      cfl = 0.8,
+                                     cell_aspect_ratio = 4,
                                      debug = false,
                                      base_simulation_name = "2d_flow_over_hill")
 
     # Grid definition
-    Nx = (Nz * Lx) ÷ Lz
+    Nx = ceil(Int, Nz * Lx / (Lz * cell_aspect_ratio))
     x₀ = Lx / 3
 
     if model_type == :nonhydrostatic
