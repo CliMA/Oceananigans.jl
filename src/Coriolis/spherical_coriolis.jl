@@ -1,6 +1,5 @@
 using Oceananigans.Grids: LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, φnode, hack_sind, hack_cosd, peripheral_node
-using Oceananigans.Operators
-using Oceananigans.Operators: Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δz_qᶠᶜᶜ, Δx_qᶜᶜᶠ, Δx⁻¹ᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ, Δz⁻¹ᶜᶜᶠ, ℑxyᶠᶜᵃ, ℑxyᶠᶜᵃ
+using Oceananigans.Operators: Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, Δz_qᶠᶜᶜ, Δx_qᶜᶜᶠ, Δx⁻¹ᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ, Δz⁻¹ᶜᶜᶠ, ℑxyᶠᶜᵃ
 
 """
     HydrostaticFormulation
@@ -60,12 +59,12 @@ julia> SphericalCoriolis()
 SphericalCoriolis
 ├─ rotation rate: 7.29e-05 s⁻¹ = 1.00 Ω_Earth
 ├─ formulation: NonhydrostaticFormulation
-└─ scheme: Oceananigans.Advection.EnstrophyConserving{Float64}
+└─ scheme: EnstrophyConserving
 ```
 """
 function SphericalCoriolis(FT::DataType = Oceananigans.defaults.FloatType;
                            rotation_rate = Oceananigans.defaults.planet_rotation_rate,
-                           scheme = EnstrophyConserving(FT),
+                           scheme = EnstrophyConserving(),
                            formulation = NonhydrostaticFormulation())
     rotation_rate = convert(FT, rotation_rate)
 
@@ -94,7 +93,7 @@ julia> HydrostaticSphericalCoriolis()
 SphericalCoriolis
 ├─ rotation rate: 7.29e-05 s⁻¹ = 1.00 Ω_Earth
 ├─ formulation: HydrostaticFormulation
-└─ scheme: EENConserving
+└─ scheme: EnstrophyConserving
 ```
 """
 function HydrostaticSphericalCoriolis(FT::DataType = Oceananigans.defaults.FloatType;

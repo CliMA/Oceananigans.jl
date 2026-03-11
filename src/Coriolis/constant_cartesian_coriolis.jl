@@ -1,13 +1,13 @@
 using Oceananigans.Grids: ZDirection, validate_unit_vector
 
 """
-    struct ConstantCartesianCoriolis{FT} <: AbstractRotation{Nothing}
+    struct ConstantCartesianCoriolis{FT} <: AbstractRotation{EnergyConserving}
 
 A Coriolis implementation that accounts for the locally vertical and possibly both local horizontal
 components of a constant rotation vector. This is a more general implementation of [`FPlane`](@ref),
 which only accounts for the locally vertical component.
 """
-struct ConstantCartesianCoriolis{FT} <: AbstractRotation{Nothing}
+struct ConstantCartesianCoriolis{FT} <: AbstractRotation{EnergyConserving}
     fx :: FT
     fy :: FT
     fz :: FT

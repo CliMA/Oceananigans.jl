@@ -1,7 +1,7 @@
 # Coriolis
 
-The Coriolis option determines whether the fluid experiences the effect of the Coriolis force, or rotation. Currently
-three options are available: no rotation, ``f``-plane, and ``\beta``-plane.
+The Coriolis option determines whether the fluid experiences the effect of the Coriolis force, or rotation.
+Several Coriolis approximations are available, from the simple ``f``-plane to full spherical Coriolis.
 
 !!! info "Coriolis vs. rotation"
     If you are wondering why this option is called "Coriolis" it is because rotational effects could include the
@@ -110,3 +110,107 @@ or the rotation rate, radius, and latitude:
 julia> NonTraditionalBetaPlane(rotation_rate=5.31e-5, radius=252.1e3, latitude=10)
 NonTraditionalBetaPlane{Float64}(fz = 1.84e-05, fy = 1.05e-04, β = 4.15e-10, γ = -1.46e-10, R = 2.52e+05)
 ```
+
+## Spherical Coriolis
+
+For simulations on latitude-longitude grids, use [`HydrostaticSphericalCoriolis`](@ref) (for hydrostatic models)
+or [`SphericalCoriolis`](@ref) (for nonhydrostatic models). These evaluate the Coriolis parameter from the
+grid's latitude:
+
+```jldoctest
+julia> coriolis = HydrostaticSphericalCoriolis()
+SphericalCoriolis
+├─ rotation rate: 7.29e-05 s⁻¹ = 1.00 Ω_Earth
+├─ formulation: HydrostaticFormulation
+└─ scheme: ActiveWeightedEnstrophyConserving
+```
+
+A custom rotation rate can be specified:
+
+```jldoctest
+julia> coriolis = HydrostaticSphericalCoriolis(rotation_rate=1e-4)
+SphericalCoriolis
+├─ rotation rate: 1.00e-04 s⁻¹ = 1.37 Ω_Earth
+├─ formulation: HydrostaticFormulation
+└─ scheme: ActiveWeightedEnstrophyConserving
+```
+
+## Discretization schemes
+
+The Coriolis term ``\boldsymbol{f} \times \boldsymbol{v}`` requires interpolating velocities on the C-grid,
+since ``u`` and ``v`` are not collocated. The `scheme` keyword argument controls how this
+interpolation is performed. Different schemes have different conservation properties and different
+behavior near immersed boundaries.
+
+Five schemes are available:
+
+| Scheme | Conserves | Immersed boundary correction |
+|--------|-----------|------------------------------|
+| `EnstrophyConserving()` | Potential enstrophy | No |
+| `EnergyConserving()` | Kinetic energy | No |
+| `EENConserving()` | Both energy and enstrophy | No |
+| `ActiveWeightedEnstrophyConserving()` | Potential enstrophy | Yes |
+| `ActiveWeightedEnergyConserving()` | Kinetic energy | Yes |
+
+The default scheme is `ActiveWeightedEnstrophyConserving()` for `HydrostaticSphericalCoriolis`
+and `EENConserving()` for `FPlane` and `BetaPlane`.
+
+### Selecting a scheme
+
+Pass the `scheme` keyword to any Coriolis constructor:
+
+```jldoctest
+julia> using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
+
+julia> coriolis = FPlane(f=1e-4, scheme=EnergyConserving())
+FPlane{Float64}(f=0.0001)
+
+julia> coriolis = FPlane(f=1e-4, scheme=EnstrophyConserving())
+FPlane{Float64}(f=0.0001)
+
+julia> coriolis = HydrostaticSphericalCoriolis(scheme=EnergyConserving())
+SphericalCoriolis
+├─ rotation rate: 7.29e-05 s⁻¹ = 1.00 Ω_Earth
+├─ formulation: HydrostaticFormulation
+└─ scheme: Oceananigans.Advection.EnergyConserving{Float64}
+```
+
+### Active-weighted schemes for immersed boundaries
+
+When using immersed boundaries, the standard 4-point averaging of velocities in the Coriolis
+term includes masked (land) points where velocity is zero. This dilutes the Coriolis force
+near boundaries, creating spurious numerical boundary layers
+[JamartOzer1986](@citep).
+
+The `ActiveWeightedEnstrophyConserving` and `ActiveWeightedEnergyConserving` schemes correct this by
+dividing the interpolated result by the number of active (non-masked) nodes in the stencil,
+rather than the full stencil size:
+
+```jldoctest
+julia> coriolis = FPlane(f=1e-4, scheme=ActiveWeightedEnstrophyConserving())
+FPlane{Float64}(f=0.0001)
+
+julia> coriolis = HydrostaticSphericalCoriolis(scheme=ActiveWeightedEnergyConserving())
+SphericalCoriolis
+├─ rotation rate: 7.29e-05 s⁻¹ = 1.00 Ω_Earth
+├─ formulation: HydrostaticFormulation
+└─ scheme: ActiveWeightedEnergyConserving
+```
+
+!!! tip "When to use active-weighted schemes"
+    The active-weighted correction is recommended for simulations with immersed boundaries
+    (e.g., realistic ocean bathymetry). For simulations without immersed boundaries, the
+    standard schemes and the active-weighted schemes are equivalent.
+
+### EEN (Energy- and Enstrophy-Conserving) scheme
+
+The `EENConserving` scheme is based on the triad formulation of [ArakawaLamb1981](@citet).
+It uses a 12-point stencil that conserves both kinetic energy and potential enstrophy in
+the limit of horizontally non-divergent flow:
+
+```jldoctest
+julia> coriolis = FPlane(f=1e-4, scheme=EENConserving())
+FPlane{Float64}(f=0.0001)
+```
+
+This is the default scheme for `FPlane`, `BetaPlane`, and `HydrostaticSphericalCoriolis`.
