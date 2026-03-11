@@ -34,10 +34,10 @@ g = Oceananigans.defaults.gravitational_acceleration
 # Haidvogel & Beckmann (1999), section 6.1; following Boyd (1980, 1985)
 struct SolitonParameters
     # Physical scales (SI units)
-    H_dim::Float64  # Depth scale [m]
-    L_dim::Float64  # Length scale [m]
-    T_dim::Float64  # Time scale [s]
-    U_dim::Float64  # Velocity scale [m/s] = sqrt(g * H_dim)
+    H::Float64  # Depth scale [m]
+    L::Float64  # Length scale [m]
+    T::Float64  # Time scale [s]
+    U::Float64  # Velocity scale [m/s] = sqrt(g * H)
 
     # Dimensional domain bounds [m]
     x_min::Float64
@@ -54,14 +54,14 @@ end
 
 function default_parameters(; B = 0.5)
     @assert B < 0.6 "B should be kept smaller than 0.6 for accuracy"
-    H_dim = 0.40meters
-    L_dim = 295kilometers
-    U_dim = sqrt(g * H_dim)  # [m/s] ≈ 1.981; ensures non-dim gravity wave speed = 1
-    T_dim = L_dim / U_dim    # [s]   ≈ 148,914 s ≈ 1.72 days
+    H = 0.40meters
+    L = 295kilometers
+    U = sqrt(g * H)  # [m/s] ≈ 1.981; ensures non-dim gravity wave speed = 1
+    T = L / U        # [s]   ≈ 148,914 s ≈ 1.72 days
     return SolitonParameters(
-        H_dim, L_dim, T_dim, U_dim,
-        -24.0 * L_dim,  24.0 * L_dim,   # x domain [m]
-         -8.0 * L_dim,   8.0 * L_dim,   # y domain [m]
+        H, L, T, U,
+        -24.0 * L,  24.0 * L,   # x domain [m]
+         -8.0 * L,   8.0 * L,   # y domain [m]
         B,
         0.771 * B^2,    # A
         -1.0/3.0,       # c⁰
@@ -83,10 +83,10 @@ function hermite_polynomial(n::Int, x::Real)
 end
 hermite_polynomial(n::Int, x::AbstractArray) = hermite_polynomial.(n, x)
 
-# Non-dimensional moving coordinate ξ = (x - c_dim·t) / L, from dimensional inputs
-function ξ_nd(x_dim, t_dim, p::SolitonParameters)
-    c_dim = (p.c⁰ + p.c¹) * p.U_dim   # dimensional phase speed [m/s]
-    return (x_dim - c_dim * t_dim) / p.L_dim
+# Non-dimensional moving coordinate ξ = (x - c·t) / L, from dimensional inputs
+function ξ_nd(x, t, p::SolitonParameters)
+    c = (p.c⁰ + p.c¹) * p.U   # dimensional phase speed [m/s]
+    return (x - c * t) / p.L
 end
 
 # Soliton envelope (non-dimensional): η_nd(ξ) = A · sech²(B·ξ)
@@ -128,25 +128,25 @@ function h¹(y, e_val, p::SolitonParameters, h_coeffs = Float64[])
 end
 
 # Dimensional analytical functions: accept (x, y, t) in [m, m, s], return SI units
-function analytic_u(x_dim, y_dim, t_dim, p::SolitonParameters)
-    ξ = ξ_nd(x_dim, t_dim, p)
-    y = y_dim / p.L_dim
+function analytic_u(x, y, t, p::SolitonParameters)
+    ξ = ξ_nd(x, t, p)
+    ŷ = y / p.L
     e_val = envelope(ξ, p)
-    return (u⁰(y, e_val) + u¹(y, e_val, p)) * p.U_dim   # [m/s]
+    return (u⁰(ŷ, e_val) + u¹(ŷ, e_val, p)) * p.U   # [m/s]
 end
 
-function analytic_v(x_dim, y_dim, t_dim, p::SolitonParameters)
-    ξ = ξ_nd(x_dim, t_dim, p)
-    y = y_dim / p.L_dim
+function analytic_v(x, y, t, p::SolitonParameters)
+    ξ = ξ_nd(x, t, p)
+    ŷ = y / p.L
     e_val = envelope(ξ, p)
-    return v⁰(y, ∂envelope_∂ξ(ξ, e_val, p)) * p.U_dim   # [m/s]
+    return v⁰(ŷ, ∂envelope_∂ξ(ξ, e_val, p)) * p.U   # [m/s]
 end
 
-function analytic_η(x_dim, y_dim, t_dim, p::SolitonParameters)
-    ξ = ξ_nd(x_dim, t_dim, p)
-    y = y_dim / p.L_dim
+function analytic_η(x, y, t, p::SolitonParameters)
+    ξ = ξ_nd(x, t, p)
+    ŷ = y / p.L
     e_val = envelope(ξ, p)
-    return (h⁰(y, e_val) + h¹(y, e_val, p)) * p.H_dim   # [m]
+    return (h⁰(ŷ, e_val) + h¹(ŷ, e_val, p)) * p.H   # [m]
 end
 #---
 
@@ -158,7 +158,7 @@ function setup_simulation(params::SolitonParameters;
                           outfile = joinpath("output", "hydrostatic_soliton.jld2"))
 
     # Grid
-    z = MutableVerticalDiscretization(range(-params.H_dim, 0, length = Nz + 1))
+    z = MutableVerticalDiscretization(range(-params.H, 0, length = Nz + 1))
 
     grid = RectilinearGrid(CPU();
         topology = (Bounded, Bounded, Bounded),
@@ -169,7 +169,7 @@ function setup_simulation(params::SolitonParameters;
         halo = (8, 8, 8))
 
     # Model:
-    β_dim = params.U_dim / params.L_dim^2
+    β = params.U / params.L^2
 
     obc = OpenBoundaryCondition(0; scheme)
     u_bcs = FieldBoundaryConditions(west = obc, east = obc)
@@ -180,7 +180,7 @@ function setup_simulation(params::SolitonParameters;
                                                   gravitational_acceleration = g),
         momentum_advection  = WENO(order=5, minimum_buffer_upwind_order=1),
         vertical_coordinate = ZStarCoordinate(),
-        coriolis            = BetaPlane(f₀ = 0, β = β_dim),
+        coriolis            = BetaPlane(f₀ = 0, β = β),
         boundary_conditions)
 
     # Initial conditions (soliton at t = 0)
@@ -190,8 +190,8 @@ function setup_simulation(params::SolitonParameters;
         η = (x, y, z) -> analytic_η(x, y, 0.0, params))
 
     # Simulation
-    stop_time = stop_time_nd * params.T_dim
-    c_grav    = √(g * params.H_dim) # surface gravity wave speed [m/s]
+    stop_time = stop_time_nd * params.T
+    c_grav    = √(g * params.H) # surface gravity wave speed [m/s]
     max_Δt    = 0.5 * minimum_xspacing(grid) / c_grav # CFL limit from gravity waves
     Δt₀       = 0.1 * max_Δt
     simulation = Simulation(model; Δt = Δt₀, stop_time)
@@ -214,7 +214,7 @@ function setup_simulation(params::SolitonParameters;
 
     simulation.output_writers[:fields] = JLD2Writer(model,
         (; u, v, w, η);
-        schedule           = TimeInterval(params.T_dim),
+        schedule           = TimeInterval(params.T),
         filename           = outfile,
         overwrite_existing = true)
 
@@ -254,7 +254,7 @@ function plot_soliton(simulation::Simulation, params::SolitonParameters;
 
     n     = Observable(1)
     title = @lift @sprintf("Equatorial soliton — t = %.2f T  (%.1f days)",
-                           times[$n] / params.T_dim, times[$n] / 86400)
+                           times[$n] / params.T, times[$n] / 86400)
 
     num_u = @lift interior(u_ts[$n], :, :, Nz)
     num_v = @lift interior(v_ts[$n], :, :, Nz)
