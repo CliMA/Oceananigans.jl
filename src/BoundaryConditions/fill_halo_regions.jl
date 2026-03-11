@@ -135,11 +135,13 @@ const TBB = Union{BottomAndTop, Bottom, Top}
     _, Ny, Nz = size(grid, loc)
     return (Ny, Nz)
 end
+
 @inline function fill_halo_size(::OffsetArray, ::SNB, ::Tuple{<:Colon, <:Any, <:Colon}, args...)
     bc, loc, grid = args
     Nx, _, Nz = size(grid, loc)
     return (Nx, Nz)
 end
+
 @inline function fill_halo_size(::OffsetArray, ::TBB, ::Tuple{<:Colon, <:Colon, <:Any}, args...)
     bc, loc, grid = args
     Nx, Ny, _ = size(grid, loc)
