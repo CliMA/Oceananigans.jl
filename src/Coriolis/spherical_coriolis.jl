@@ -99,7 +99,7 @@ SphericalCoriolis
 """
 function HydrostaticSphericalCoriolis(FT::DataType = Oceananigans.defaults.FloatType;
                                       rotation_rate = Oceananigans.defaults.planet_rotation_rate,
-                                      scheme = EENConserving())
+                                      scheme = EnstrophyConserving())
     return SphericalCoriolis(FT; rotation_rate, scheme, formulation=HydrostaticFormulation())
 end
 
