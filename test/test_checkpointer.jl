@@ -1532,7 +1532,7 @@ function test_pickup_mode_selection_and_default(arch)
                                                               schedule = IterationInterval(1),
                                                               prefix = prefix,
                                                               cleanup = false)
-        @test_logs (:info, r"iteration2\\.jld2") set!(iter_sim; iteration=2)
+        @test_logs (:info, r"iteration2\.jld2") set!(iter_sim; iteration=2)
         @test iteration(iter_sim) == 2
 
         # Explicit recent-timestamp pickup.
@@ -1541,7 +1541,7 @@ function test_pickup_mode_selection_and_default(arch)
                                                                 schedule = IterationInterval(1),
                                                                 prefix = prefix,
                                                                 cleanup = false)
-        @test_logs (:info, r"iteration1\\.jld2") set!(recent_sim; checkpoint=:recent_time_stamp)
+        @test_logs (:info, r"iteration1\.jld2") set!(recent_sim; checkpoint=:recent_time_stamp)
         @test iteration(recent_sim) == 1
 
         # Explicit highest-iteration pickup.
@@ -1550,17 +1550,17 @@ function test_pickup_mode_selection_and_default(arch)
                                                                  schedule = IterationInterval(1),
                                                                  prefix = prefix,
                                                                  cleanup = false)
-        @test_logs (:info, r"iteration3\\.jld2") set!(highest_sim; checkpoint=:highest_iteration)
+        @test_logs (:info, r"iteration3\.jld2") set!(highest_sim; checkpoint=:highest_iteration)
         @test iteration(highest_sim) == 3
 
         # pickup=true should default to :recent_time_stamp.
-        default_sim = make_simulation(stop_iteration=0)
+        default_sim = make_simulation(stop_iteration=1)
         default_sim.output_writers[:checkpointer] = Checkpointer(default_sim.model,
                                                                  schedule = IterationInterval(1),
                                                                  prefix = prefix,
                                                                  cleanup = false)
         @test_nowarn run!(default_sim; pickup=true)
-        @test iteration(default_sim) == 1
+        @test iteration(default_sim) == 2
     finally
         rm.(glob("$(prefix)_iteration*.jld2"), force=true)
     end
