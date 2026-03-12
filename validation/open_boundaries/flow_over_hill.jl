@@ -23,13 +23,7 @@ function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
     Nx = ceil(Int, Nz * Lx / (Lz * cell_aspect_ratio))
     x₀ = Lx / 3
 
-    if model_type == :nonhydrostatic
-        z = (-Lz, 0)
-    elseif model_type == :hydrostatic_with_implicit_surface
-        z = MutableVerticalDiscretization(-Lz:(Lz/Nz):0)
-    else
-        error("Unknown model_type: $model_type. Expected :nonhydrostatic or :hydrostatic_with_implicit_surface")
-    end
+    z = MutableVerticalDiscretization(-Lz:(Lz/Nz):0)
     grid_base = RectilinearGrid(arch; topology = (Bounded, Flat, Bounded), size = (Nx, Nz), x = (0, Lx), z, halo = (8, 8))
     hill(x) = hill_height * exp(-((x - x₀)/hill_width)^2) - Lz
     grid = ImmersedBoundaryGrid(grid_base, PartialCellBottom(hill))
@@ -161,12 +155,12 @@ end
 
 # Run and plot non-hydrostatic flow over hill
 model_type = :nonhydrostatic
-simulation = flow_over_hill_simulation(; model_type, cell_aspect_ratio=5, hill_width=10, Nz=16, debug=true)
-run!(simulation)
-plot_flow_over_hill_animation(simulation.output_writers[:snaps].filepath; model_type)
+nh_simulation = flow_over_hill_simulation(; model_type, cell_aspect_ratio=5, hill_width=10, Nz=16, debug=true)
+run!(nh_simulation)
+plot_flow_over_hill_animation(nh_simulation.output_writers[:snaps].filepath; model_type)
 
 # Run and plot hydrostatic flow over hill
 model_type = :hydrostatic_with_implicit_surface
-simulation = flow_over_hill_simulation(; model_type, cell_aspect_ratio=100, hill_width=100, Nz=16, debug=true)
-run!(simulation)
-plot_flow_over_hill_animation(simulation.output_writers[:snaps].filepath; model_type)
+hs_simulation = flow_over_hill_simulation(; model_type, cell_aspect_ratio=100, hill_width=100, Nz=16, debug=true)
+run!(hs_simulation)
+plot_flow_over_hill_animation(hs_simulation.output_writers[:snaps].filepath; model_type)
