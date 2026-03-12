@@ -9,28 +9,40 @@
 - Key finding: `set!` triggers `fold_set!` which is broken for FPivot distributed — bypassed by writing directly to `interior()` instead
 - Key finding: index mapping is `serial_parent_index = local_offset_index + rank_offset + H`
 
-### Step 2: Fix local halo index mapping in `index_tracing_halo_test.jl`
-- Status: IN PROGRESS
+### Step 2: Fix local halo index mapping in `index_tracing_halo_test.jl` — COMPLETE
+- Fixed two bugs: (1) `fill_index_field!` bypasses `set!`/`fold_set!` by writing to `interior()`, (2) k-index `di.data[:,:,1]` not `1+Hz`
+- Output: `index_halo_test.o162931660`
+- Results: Partition(1,4) PASS for both UPivot and FPivot (all 4 locations)
+- Partition(2,2) fails only at the fold row — confirms Step 3 is the root cause
+- UPivot Partition(2,2): CC/FC fail at j=Ny=40 (serial reflects right half, distributed doesn't)
+- FPivot Partition(2,2): CF/FF fail at j=Ny=21 on northernmost ranks (same fold issue)
 
-## Deferred Steps
+### Step 2b: Generic `global_index_offset` + expanded Ny tests — COMPLETE
+- Added canonical `global_index_offset(N, R, local_index)` to `src/DistributedComputations/distributed_grids.jl`
+- Convenience method `global_index_offset(arch::Distributed, global_sz)` returns 3-tuple of offsets
+- Exported from `DistributedComputations.jl`
+- Updated `index_tracing_halo_test.jl` and `print_index_common.jl` to use generic offset
+- Expanded test matrix: 4 Ny values (UPivot 40/43, FPivot 41/42) × 2 partitions = 8 configs
+- Output: `index_halo_test.o162934499` — 8/8 PASS (after Step 3 fix applied simultaneously)
 
-### Step 3: Investigate fold at row Ny
+### Step 3: Fix distributed fold-line overwrite — COMPLETE
+- **Root cause**: Serial fold kernels overwrite the right half of the fold row with x-reversed values.
+  The distributed code in `distributed_zipper.jl` was missing this overwrite for:
+  - UPivot: CC (Center,Center) and FC (Face,Center) at j=Ny
+  - FPivot: CF (Center,Face) and FF (Face,Face) — had interior overwrite but missing corner writes
+- **Fix** in `src/OrthogonalSphericalShellGrids/distributed_zipper.jl`:
+  1. Added `_fold_line_from_buffer!` methods for UPivot Center-y (CC via Center-x, FC via Face-x)
+  2. Added `_fold_line_parent_y` helper to dispatch on location/topology
+  3. Added fold-line corner writes in `switch_north_halos!` via `_fold_corner_write!`
+  4. Updated comment to reflect both UPivot and FPivot coverage
+- Output: `index_halo_test.o162934499` — **8/8 configurations PASS** (all locations, both topologies, both partitions, multiple Ny values)
 
-The serial `fill_halo_regions!` for UPivot CC does:
-```julia
-c[i, Ny, k] = ifelse(i > Nx ÷ 2, sign * c[i′, Ny, k], c[i, Ny, k])
-```
-This overwrites the right half of row Ny. The distributed case should do the same.
+## Next Steps
 
-- Check `src/OrthogonalSphericalShellGrids/distributed_zipper.jl`
-- If the distributed fold doesn't apply the same interior overwrite, fix it
-- Files: `src/OrthogonalSphericalShellGrids/distributed_zipper.jl`
+### Step 4: Fix `reconstruct_global_field` for FPivot (may be resolved)
 
-### Step 4: Fix `reconstruct_global_field` for FPivot
-
-FPivot Partition(1,4) shows zeros from row 11+ in the reconstructed global field.
-- `construct_global_array` may have size mismatch for FPivot Center-y fields
-- Center-y `size(field)` may return different values on different ranks
+Previous issue: FPivot Partition(1,4) showed zeros from row 11+. But job 162931660 shows FPivot Partition(1,4) PASSES interior check. Possibly already fixed by commit 915f929e2.
+- Recheck if still needed after running full test suite.
 - Files: `src/DistributedComputations/partition_assemble.jl`, `distributed_fields.jl`
 
 ### Step 5: Fix `set!` crash for FPivot Partition(2,2)
@@ -54,3 +66,4 @@ PBS job 162913183: FPivot simulation 3/4 fail (u, v, η) with `all(.≈)` too st
 - Field data: `src/Fields/field.jl`, `src/Grids/new_data.jl` (OffsetArray construction)
 - Global reconstruction: `src/DistributedComputations/distributed_fields.jl`, `partition_assemble.jl`
 - Distributed TripolarGrid set!: `src/OrthogonalSphericalShellGrids/distributed_tripolar_grid.jl`
+- Generic index offset: `src/DistributedComputations/distributed_grids.jl` (`global_index_offset`)

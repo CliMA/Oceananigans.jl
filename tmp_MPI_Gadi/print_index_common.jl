@@ -6,6 +6,7 @@ using Oceananigans.Grids: halo_size, topology
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: set!, interior
 using Oceananigans.DistributedComputations
+using Oceananigans.DistributedComputations: global_index_offset
 
 const rank = MPI.Comm_rank(MPI.COMM_WORLD)
 const nranks = MPI.Comm_size(MPI.COMM_WORLD)
@@ -90,10 +91,7 @@ function run_diagnostic(; loc, loc_name, fold_topology, partition, global_Nx, gl
     arch = Distributed(CPU(); partition)
     dist_grid = TripolarGrid(arch; size=(global_Nx, global_Ny, 1), z=(-1000, 0), halo, fold_topology)
 
-    rx, ry, _ = arch.local_index .- 1
-    Rx, Ry, _ = arch.ranks
-    x_offset = rx * (global_Nx ÷ Rx)
-    y_offset = ry * (global_Ny ÷ Ry)
+    x_offset, y_offset, _ = global_index_offset(arch, (global_Nx, global_Ny, 1))
 
     di = Field(loc, dist_grid)
     dj = Field(loc, dist_grid)

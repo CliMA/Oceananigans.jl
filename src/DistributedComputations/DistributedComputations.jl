@@ -2,7 +2,7 @@ module DistributedComputations
 
 export
     Distributed, Partition, Equal, Fractional,
-    child_architecture, reconstruct_global_grid, partition,
+    child_architecture, reconstruct_global_grid, partition, global_index_offset,
     inject_halo_communication_boundary_conditions,
     DistributedFFTBasedPoissonSolver, mpi_initialized, mpi_rank,
     mpi_size, global_barrier, global_communicator,
