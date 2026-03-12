@@ -318,6 +318,8 @@ struct GPUAdaptedFieldTimeSeries{LX, LY, LZ, TI, K, ET, D, χ} <: AbstractField{
     end
 end
 
+Adapt.parent_type(::Type{<:FieldTimeSeries{LX, LY, LZ, TI, K, I, D}}) where {LX, LY, LZ, TI, K, I, D} = D
+
 function Adapt.adapt_structure(to, fts::FieldTimeSeries)
     LX, LY, LZ = location(fts)
     return GPUAdaptedFieldTimeSeries{LX, LY, LZ}(adapt(to, fts.data),
