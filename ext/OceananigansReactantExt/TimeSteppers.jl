@@ -53,8 +53,8 @@ function Base.setproperty!(clock::Clock, prop::Symbol, value)
             sharding = clock_val.sharding
             converted_val = convert(innertype(clock_val), value)
             sharded_val = ConcreteRNumber(converted_val; sharding)
+            return setfield!(clock, prop, sharded_val)
         end
-        return setfield!(clock, prop, sharded_val)
     else
         return setfield!(clock, prop, value)
     end
