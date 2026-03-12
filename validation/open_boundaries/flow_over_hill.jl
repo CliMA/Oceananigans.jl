@@ -14,47 +14,58 @@ function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
                                      U = 1,
                                      pressure_solver_constructor = nothing,
                                      cycle_periods = 5,
-                                     cfl = 0.8,
+                                     cfl = 0.7,
                                      cell_aspect_ratio = 4,
                                      debug = false,
-                                     base_simulation_name = "2d_flow_over_hill")
+                                     base_simulation_name = "flow_over_hill")
 
     # Grid definition
     Nx = ceil(Int, Nz * Lx / (Lz * cell_aspect_ratio))
     x₀ = Lx / 3
 
-    z = MutableVerticalDiscretization(-Lz:(Lz/Nz):0)
+    # Determine vertical coordinate based on model type
+    if (model_type == :nonhydrostatic) && !isnothing(pressure_solver_constructor)
+        z = (-Lz, 0)  # Default for nonhydrostatic without free surface
+    elseif model_type == :hydrostatic_with_implicit_surface
+        z = MutableVerticalDiscretization(-Lz:(Lz/Nz):0)
+    else
+        error("Unknown model_type: $model_type. Expected :nonhydrostatic or :hydrostatic_with_implicit_surface")
+    end
+
+    # Create grid first
     grid_base = RectilinearGrid(arch; topology = (Bounded, Flat, Bounded), size = (Nx, Nz), x = (0, Lx), z, halo = (8, 8))
     hill(x) = hill_height * exp(-((x - x₀)/hill_width)^2) - Lz
     grid = ImmersedBoundaryGrid(grid_base, PartialCellBottom(hill))
 
-    # Create boundary conditions
-    u_boundaries = FieldBoundaryConditions(west = OpenBoundaryCondition(U; scheme), east = OpenBoundaryCondition(U; scheme))
-    boundary_conditions = (u = u_boundaries,)
-
     # Model kwargs
-    kwargs = (; boundary_conditions,)
+    u_boundaries = FieldBoundaryConditions(west = OpenBoundaryCondition(U), east = OpenBoundaryCondition(U; scheme))
+    boundary_conditions = (u = u_boundaries,)
     advection = WENO(; order=5, minimum_buffer_upwind_order=1)
+
+    model_kwargs = (; boundary_conditions)
 
     if model_type == :nonhydrostatic
         # atm [2026-03-12] ConjugateGradientPoissonSolver doesn't work with the free surface boundary condition
         pressure_solver = isnothing(pressure_solver_constructor) ? nothing : pressure_solver_constructor(grid)
-        kwargs = merge(kwargs, (; free_surface = ImplicitFreeSurface(), pressure_solver, advection))
-        model = NonhydrostaticModel(grid; kwargs...)
+        free_surface = isnothing(pressure_solver) ? ImplicitFreeSurface() : nothing
+
+        model_kwargs = merge(model_kwargs, (; free_surface, pressure_solver, advection))
+        model_constructor = NonhydrostaticModel
     elseif model_type == :hydrostatic_with_implicit_surface
-        kwargs = merge(kwargs, (; free_surface = ImplicitFreeSurface(), momentum_advection = advection, tracer_advection = advection, vertical_coordinate = ZStarCoordinate()))
-        model = HydrostaticFreeSurfaceModel(grid; kwargs...)
+        free_surface = ImplicitFreeSurface()
+
+        model_kwargs = merge(model_kwargs, (; free_surface, momentum_advection = advection, tracer_advection = advection, vertical_coordinate = ZStarCoordinate()))
+        model_constructor = HydrostaticFreeSurfaceModel
     else
         error("Unknown model_type: $model_type. Expected :nonhydrostatic or :hydrostatic_with_implicit_surface")
     end
+
+    model = model_constructor(grid; model_kwargs...)
+
     set!(model, u=U)
 
-    # Calculate stop_time based on cycle_periods (time it takes a parcel to cycle through the domain)
     stop_time = cycle_periods * Lx / U
-
-    Δt = 0.1 * minimum_xspacing(grid) / abs(U)
-    simulation = Simulation(model; Δt = Δt, stop_time, verbose = debug)
-
+    simulation = Simulation(model; Δt = 0.1 * minimum_xspacing(grid) / abs(U), stop_time, verbose = debug)
     conjure_time_step_wizard!(simulation, IterationInterval(1); cfl)
 
     if debug
@@ -104,20 +115,26 @@ function plot_flow_over_hill_animation(filepath;
     grid = u_ts.grid
     @info "Loaded results"
 
-    # Load free surface field (available for both model types)
-    η_ts = FieldTimeSeries(filepath, "η")
-    timeseries = η_ts
 
     # Create visualization
     n = Observable(1)
     fig = Figure(size = (600, 800))
 
-    # Top panel: free surface elevation (1D line plot)
-    η_plt = @lift η_ts[$n]
-    ax_η = Axis(fig[1, 1], xlabel = "x", ylabel = "η (m)", title = "Free surface elevation", width = 500, height = 150)
-    lines!(ax_η, η_plt, linewidth = 2, color = :blue)
-    η_max = maximum(abs, η_ts)
-    ylims!(ax_η, -η_max, η_max)
+    # Top panel: free surface elevation (1D line plot) - only if η exists in the file
+    try
+        η_ts = FieldTimeSeries(filepath, "η")
+        η_plt = @lift η_ts[$n]
+        ax_η = Axis(fig[1, 1], xlabel = "x", ylabel = "η (m)", title = "Free surface elevation", width = 500, height = 150)
+        lines!(ax_η, η_plt, linewidth = 2, color = :blue)
+        η_max = maximum(abs, η_ts)
+        ylims!(ax_η, -η_max, η_max)
+    catch e
+        @info "η not found in file, skipping free surface elevation panel"
+        # Create blank axis as placeholder
+        ax_blank = Axis(fig[1, 1], xlabel = "", ylabel = "", title = "")
+        hidedecorations!(ax_blank)
+        hidespines!(ax_blank)
+    end
 
     # Second panel: always plot vorticity (2D heatmap)
     ω_plt = @lift ω_ts[$n]
@@ -140,7 +157,7 @@ function plot_flow_over_hill_animation(filepath;
     colsize!(fig.layout, 2, Fixed(30))
     resize_to_layout!(fig)
 
-    frames = 1:length(timeseries.times)
+    frames = 1:length(u_ts.times)
 
     @info "Recording animation"
     animation_filename = "$filepath.mp4"
@@ -154,14 +171,21 @@ function plot_flow_over_hill_animation(filepath;
     return fig
 end
 
-# Run and plot non-hydrostatic flow over hill
+# Run and plot an approximately hydrostatic flow over a very flat hill using a nonhydrostatic model with an implicit free surface
+hydrostatic_physics_options = (; cell_aspect_ratio=100, hill_width=100, Nz=16, base_simulation_name = "flow_over_flat_hill")
 model_type = :nonhydrostatic
-nh_simulation = flow_over_hill_simulation(; model_type, cell_aspect_ratio=100, hill_width=100, Nz=16, debug=true)
+nh_simulation = flow_over_hill_simulation(; model_type, hydrostatic_physics_options..., debug=false)
 run!(nh_simulation)
 plot_flow_over_hill_animation(nh_simulation.output_writers[:snaps].filepath; model_type)
 
-# Run and plot hydrostatic flow over hill
+# Run and plot the same flow using a hydrostatic model with an implicit free surface
 model_type = :hydrostatic_with_implicit_surface
-hs_simulation = flow_over_hill_simulation(; model_type, cell_aspect_ratio=100, hill_width=100, Nz=16, debug=true)
+hs_simulation = flow_over_hill_simulation(; model_type, hydrostatic_physics_options..., debug=true)
 run!(hs_simulation)
 plot_flow_over_hill_animation(hs_simulation.output_writers[:snaps].filepath; model_type)
+
+# Run and plot a fully nonhydrostatic flow over a steep hill using a nonhydrostatic model with an implicit free surface
+model_type = :nonhydrostatic
+nh_simulation2 = flow_over_hill_simulation(; model_type, cell_aspect_ratio=4, hill_width=2, Nz=32, pressure_solver_constructor=ConjugateGradientPoissonSolver, debug=true, base_simulation_name = "flow_over_steep_hill")
+run!(nh_simulation2)
+plot_flow_over_hill_animation(nh_simulation2.output_writers[:snaps].filepath; model_type)
