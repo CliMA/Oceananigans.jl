@@ -5,15 +5,7 @@ using Oceananigans.Units
 using Reactant
 using Oceananigans.TimeSteppers: first_time_step!
 
-import Oceananigans.BoundaryConditions: _fill_north_halo!
-using Oceananigans.BoundaryConditions: UZBC, FZBC, CCLocation, FCLocation
-
 include("dependencies_for_runtests.jl")
-
-# The serial version of the TripolarGrid substitutes the second half of the last row of the grid
-# This is not done in the distributed version, so we need to undo this substitution if we want to
-# compare the results. Otherwise very tiny differences caused by finite precision compuations
-# will appear in the last row of the grid.
 
 # Mask the singularity of the grid in a region of `radius` degrees around the singularities
 function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius = 5) # degrees
@@ -31,71 +23,6 @@ function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius
     grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
 
     return grid
-end
-
-# tracers or similar fields
-@inline _fill_north_halo!(i, k, grid, c, bc::UZBC, ::CCLocation, args...) = my_fold_north_center_center_upivot!(i, k, grid, bc.condition, c)
-@inline _fill_north_halo!(i, k, grid, u, bc::UZBC, ::FCLocation, args...) = my_fold_north_face_center_upivot!(i, k, grid, bc.condition, u)
-
-@inline function my_fold_north_face_center_upivot!(i, k, grid, sign, c)
-    Nx, Ny, _ = size(grid)
-
-    i′ = Nx - i + 2 # Remember! elemesnt Nx + 1 does not exist!
-    sign  = ifelse(i′ > Nx , abs(sign), sign) # for periodic elements we change the sign
-    i′ = ifelse(i′ > Nx, i′ - Nx, i′) # Periodicity is hardcoded in the x-direction!!
-    Hy = grid.Hy
-
-    for j = 1 : Hy
-        @inbounds begin
-            c[i, Ny + j, k] = sign * c[i′, Ny - j, k] # The Ny line is duplicated so we substitute starting Ny-1
-        end
-    end
-
-    return nothing
-end
-
-@inline function my_fold_north_center_center_upivot!(i, k, grid, sign, c)
-    Nx, Ny, _ = size(grid)
-
-    i′ = Nx - i + 1
-    Hy = grid.Hy
-
-    for j = 1 : Hy
-        @inbounds c[i, Ny + j, k] = sign * c[i′, Ny - j, k] # The Ny line is duplicated so we substitute starting Ny-1
-    end
-
-    return nothing
-end
-
-# FPivot overrides for BC comparison test
-@inline _fill_north_halo!(i, k, grid, c, bc::FZBC, ::CCLocation, args...) = my_fold_north_center_center_fpivot!(i, k, grid, bc.condition, c)
-@inline _fill_north_halo!(i, k, grid, u, bc::FZBC, ::FCLocation, args...) = my_fold_north_face_center_fpivot!(i, k, grid, bc.condition, u)
-
-@inline function my_fold_north_face_center_fpivot!(i, k, grid, sign, u)
-    Nx, Ny, _ = size(grid)
-
-    i′ = Nx - i + 2
-    i′ = ifelse(i′ > Nx, i′ - Nx, i′)
-    Hy = grid.Hy
-
-    for j in 1:Hy + 1
-        @inbounds u[i, Ny + j - 1, k] = sign * u[i′, Ny - j, k]
-    end
-
-    return nothing
-end
-
-@inline function my_fold_north_center_center_fpivot!(i, k, grid, sign, c)
-    Nx, Ny, _ = size(grid)
-
-    i′ = Nx + 1 - i
-    Hy = grid.Hy
-
-    for j in 1:Hy + 1
-        @inbounds c[i, Ny - 1 + j, k] = sign * c[i′, Ny - j, k]
-    end
-
-    return nothing
 end
 
 # Run the distributed grid simulation and save down reconstructed results
