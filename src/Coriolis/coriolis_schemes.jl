@@ -43,12 +43,12 @@ Base.summary(::EENConserving) = "EENConserving"
 @inline not_peripheral_nodeᶜᶠᶜ(i, j, k, grid) = !peripheral_node(i, j, k, grid, Center(), Face(), Center())
 @inline not_peripheral_nodeᶠᶜᶜ(i, j, k, grid) = !peripheral_node(i, j, k, grid, Face(), Center(), Center())
 
-@inline function masked_Ax_qᶠᶜᶜ(i, j, k, grid, q) 
+@inline function masked_Ax_qᶠᶜᶜ(i, j, k, grid, q)
     active = !immersed_peripheral_node(i, j, k, grid, Face(), Center(), Center())
     return ifelse(active, Ax_qᶠᶜᶜ(i, j, k, grid, q), zero(grid))
 end
 
-@inline function masked_Ay_qᶜᶠᶜ(i, j, k, grid, q) 
+@inline function masked_Ay_qᶜᶠᶜ(i, j, k, grid, q)
     active = !immersed_peripheral_node(i, j, k, grid, Center(), Face(), Center())
     return ifelse(active, Ay_qᶜᶠᶜ(i, j, k, grid, q), zero(grid))
 end
@@ -69,7 +69,7 @@ const ESC = AbstractRotation{<:EnstrophyConserving}
 const ENC = AbstractRotation{<:EnergyConserving}
 
 @inline f_ℑx_Ay_vᶠᶠᶜ(i, j, k, grid, coriolis::AbstractRotation, v) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑxᶠᵃᵃ(i, j, k, grid, masked_Ay_qᶜᶠᶜ, v)
-@inline f_ℑy_Ax_uᶠᶠᶜ(i, j, k, grid, coriolis::AbstractRotation, u) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, masked_Ax_qᶠᶜᶜ, u) 
+@inline f_ℑy_Ax_uᶠᶠᶜ(i, j, k, grid, coriolis::AbstractRotation, u) = fᶠᶠᵃ(i, j, k, grid, coriolis) * ℑyᵃᶠᵃ(i, j, k, grid, masked_Ax_qᶠᶜᶜ, u)
 
 @inline x_f_cross_U(i, j, k, grid, coriolis::ENC, U) = @inbounds - ℑyᵃᶜᵃ(i, j, k, grid, f_ℑx_Ay_vᶠᶠᶜ, coriolis, U[2]) * Ay⁻¹ᶠᶜᶜ(i, j, k, grid)
 @inline y_f_cross_U(i, j, k, grid, coriolis::ENC, U) = @inbounds + ℑxᶜᵃᵃ(i, j, k, grid, f_ℑy_Ax_uᶠᶠᶜ, coriolis, U[1]) * Ax⁻¹ᶜᶠᶜ(i, j, k, grid)
