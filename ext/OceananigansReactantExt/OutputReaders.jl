@@ -1,6 +1,6 @@
 module OutputReaders
 
-using Oceananigans.Architectures: ReactantState
+using Oceananigans.Architectures: ReactantState, on_architecture
 using Reactant: TracedStepRangeLen
 using Oceananigans.OutputReaders: TimeInterpolator
 import Oceananigans.OutputReaders: find_time_index, cpu_interpolating_time_indices
