@@ -170,3 +170,29 @@ where ``N_{\text{active}}`` is the count of non-peripheral (wet) velocity nodes 
     with immersed boundaries, where it eliminates spurious boundary layers. However, the
     correction is generally not necessary for vertically integrated (2D) models, where the
     boundary condition of zero normal transport is sufficient.
+
+## Validation
+
+### Jamart basin test
+
+The figure below shows the steady-state free surface elevation ``\eta`` in a rectangular basin
+on a ``\beta``-plane with a uniform zonal flow impinging on a vertical wall.
+Without the wet-points-only correction (Enstrophy, Energy, EEN columns), a spurious
+numerical boundary layer develops along the wall where the Coriolis force is artificially
+weakened. The active-weighted schemes (AW Enstrophy, AW Energy) eliminate this artifact
+and recover the correct geostrophic balance along the boundary.
+
+![Jamart basin comparison](../assets/jamart_basin_comparison.png)
+
+### Immersed boundary stress test
+
+A more demanding test places a strong barotropic jet on a latitude-longitude grid with
+complex immersed topography: a large island with a narrow strait, isolated islands, a thin
+cape, and a jagged continental shelf. The Coriolis term is the only active tendency
+(no momentum advection). After 30 days, the standard schemes (ES, EN, EEN) produce clean
+velocity fields, while the active-weighted schemes (AWES, AWEN) develop grid-scale
+checkerboard artifacts along every coastline — a consequence of the discontinuous
+amplification factor ``1/N_{\text{active}}`` varying between neighboring cells along
+irregular boundaries.
+
+![Coriolis stress test](../assets/coriolis_stress_test.png)
