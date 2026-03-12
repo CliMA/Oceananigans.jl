@@ -20,7 +20,7 @@ Nhosts = 1
     cs = interior(cs, :, :, 1)
 
     # Run the distributed grid simulations in all the configurations
-    run(`$(mpiexec()) -n $(Nhosts) $(Base.julia_cmd()) --project -O0 run_sharding_tests.jl "tripolar"`)
+    run(`$(mpiexec()) -n $(Nhosts) $(Base.julia_cmd()) -O0 run_sharding_tests.jl "tripolar"`)
 
     # Retrieve Parallel quantities
     up1 = jldopen("distributed_xslab_trg.jld2")["u"]
