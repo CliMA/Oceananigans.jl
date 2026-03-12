@@ -126,7 +126,6 @@ function compute_closure_fields!(closure_fields, closure::FlavorOfISSD, model; p
     launch!(arch, grid, parameters,
             compute_tapered_R₃₃!, closure_fields.ϵ_R₃₃, grid, closure, tracers, buoyancy)
 
-
     compute_eddy_velocities!(closure_fields, closure, model; parameters)
 
     return nothing
@@ -237,10 +236,10 @@ end
     κ_skewᶠᶜᶜ = skew_diffusivity(i, j, k, grid, closure, κᶠᶜᶜ, issd_coefficient_loc, κ_skew, clock, fields)
     κ_symmetricᶠᶜᶜ = κᶠᶜᶜ(i, j, k, grid, issd_coefficient_loc, κ_symmetric, clock, fields)
 
-    ∂x_c = ∂xᶠᶜᶜ(i, j, k, grid, c)
+    ∂x_c = ∂xᵣᶠᶜᶜ(i, j, k, grid, c)
 
     # Average... of... the gradient!
-    ∂y_c = ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, c)
+    ∂y_c = ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᵣᶜᶠᶜ, c)
     ∂z_c = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
 
     R₁₁ = one(grid)
@@ -267,10 +266,10 @@ end
     κ_skewᶜᶠᶜ = skew_diffusivity(i, j, k, grid, closure, κᶜᶠᶜ, issd_coefficient_loc, κ_skew, clock, fields)
     κ_symmetricᶜᶠᶜ = κᶜᶠᶜ(i, j, k, grid, issd_coefficient_loc, κ_symmetric, clock, fields)
 
-    ∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
+    ∂y_c = ∂yᵣᶜᶠᶜ(i, j, k, grid, c)
 
     # Average... of... the gradient!
-    ∂x_c = ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᶜᶜ, c)
+    ∂x_c = ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᵣᶠᶜᶜ, c)
     ∂z_c = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
 
     R₂₁ = zero(grid)
@@ -298,8 +297,8 @@ end
     κ_symmetricᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ_symmetric, clock, fields)
 
     # Average... of... the gradient!
-    ∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᶜᶜ, c)
-    ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, c)
+    ∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᵣᶠᶜᶜ, c)
+    ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᵣᶜᶠᶜ, c)
 
     R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor)
     R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor)
