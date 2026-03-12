@@ -1,18 +1,19 @@
 using Oceananigans
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver
 using CairoMakie
+using Printf
 
 function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
                                      arch = CPU(),
                                      model_type = :nonhydrostatic,
                                      Nz = 16,
                                      hill_height = 1,
-                                     hill_width = 2,
+                                     hill_width = 10,
                                      Lz = 3 * hill_height,
                                      Lx = 10 * hill_width,
                                      U = 1,
                                      pressure_solver_constructor = nothing,
-                                     stop_time = 50,
+                                     cycle_periods = 5,
                                      cfl = 0.8,
                                      cell_aspect_ratio = 4,
                                      debug = false,
@@ -53,13 +54,25 @@ function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
     end
     set!(model, u=U)
 
+    # Calculate stop_time based on cycle_periods (time it takes a parcel to cycle through the domain)
+    stop_time = cycle_periods * Lx / U
+
     Δt = 0.1 * minimum_xspacing(grid) / abs(U)
     simulation = Simulation(model; Δt = Δt, stop_time, verbose = debug)
 
     conjure_time_step_wizard!(simulation, IterationInterval(1); cfl)
 
     if debug
-        progress = ProgressMessengers.TimedMessenger()
+        function progress(simulation)
+            iter = simulation.model.clock.iteration
+            time = simulation.model.clock.time
+            dt = simulation.Δt
+            progress_pct = 100 * time / stop_time
+
+            @printf("Iteration: %05d, time: %s, Δt: %s, progress: %5.1f%%\n",
+                    iter, prettytime(time), prettytime(dt), progress_pct)
+        end
+
         add_callback!(simulation, progress, IterationInterval(100))
     end
 
@@ -73,7 +86,7 @@ function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
 
     simname = "$(base_simulation_name)_$(string(model_type))_Nz=$Nz"
     simulation.output_writers[:snaps] = JLD2Writer(model, outputs,
-                                                   schedule = TimeInterval(0.5),
+                                                   schedule = TimeInterval(simulation.stop_time / 100),
                                                    filename = simname,
                                                    overwrite_existing = true,
                                                    with_halos = true)
@@ -112,30 +125,30 @@ function plot_flow_over_hill_animation(filepath;
     if model_type == :hydrostatic_with_implicit_surface
         # Plot free surface elevation (1D line plot)
         η_plt = @lift η_ts[$n]
-        ax_η = Axis(fig[1, 1], xlabel = "x", ylabel = "η (m)", title = "Free surface elevation")
+        ax_η = Axis(fig[1, 1], xlabel = "x", ylabel = "η (m)", title = "Free surface elevation", width = 500, height = 150)
         lines!(ax_η, η_plt, linewidth = 2, color = :blue)
     else
         # Create blank axis for nonhydrostatic models
-        ax_blank = Axis(fig[1, 1], xlabel = "", ylabel = "", title = "")
+        ax_blank = Axis(fig[1, 1], xlabel = "", ylabel = "", title = "", width = 500, height = 150)
         hidedecorations!(ax_blank)
         hidespines!(ax_blank)
     end
 
     # Second panel: always plot vorticity (2D heatmap)
     ω_plt = @lift ω_ts[$n]
-    ax_ω = Axis(fig[2, 1], aspect = DataAspect(), xlabel = "x", ylabel = "z", title = "ω (vorticity)")
+    ax_ω = Axis(fig[2, 1], xlabel = "x", ylabel = "z", title = "ω (vorticity)", width = 500, height = 150)
     hm_ω = heatmap!(ax_ω, ω_plt, colorrange = (-12 * U / hill_height, 12 * U / hill_height), colormap = :curl)
     Colorbar(fig[2, 2], hm_ω, tellwidth = false, height = Relative(0.5))
 
     # Third panel: u velocity
     u_plt = @lift u_ts[$n]
-    ax_u = Axis(fig[3, 1], aspect = DataAspect(), xlabel = "x", ylabel = "z", title = "u (m/s)")
+    ax_u = Axis(fig[3, 1], xlabel = "x", ylabel = "z", title = "u (m/s)", width = 500, height = 150)
     hm_u = heatmap!(ax_u, u_plt, colorrange = (-1.5 * U, 1.5 * U), colormap = :balance)
     Colorbar(fig[3, 2], hm_u, tellwidth = false, height = Relative(0.5))
 
     # Fourth panel: w velocity
     w_plt = @lift w_ts[$n]
-    ax_w = Axis(fig[4, 1], aspect = DataAspect(), xlabel = "x", ylabel = "z", title = "w (m/s)")
+    ax_w = Axis(fig[4, 1], xlabel = "x", ylabel = "z", title = "w (m/s)", width = 500, height = 150)
     hm_w = heatmap!(ax_w, w_plt, colorrange = (-0.5 * U, 0.5 * U), colormap = :balance)
     Colorbar(fig[4, 2], hm_w, tellwidth = false, height = Relative(0.5))
 
@@ -158,12 +171,12 @@ end
 
 # Run and plot non-hydrostatic flow over hill
 model_type = :nonhydrostatic
-simulation = flow_over_hill_simulation(; model_type)
+simulation = flow_over_hill_simulation(; model_type, cell_aspect_ratio=5, hill_width=10, Nz=16, debug=true)
 run!(simulation)
 plot_flow_over_hill_animation(simulation.output_writers[:snaps].filepath; model_type)
 
 # Run and plot hydrostatic flow over hill
 model_type = :hydrostatic_with_implicit_surface
-simulation = flow_over_hill_simulation(; model_type)
+simulation = flow_over_hill_simulation(; model_type, cell_aspect_ratio=100, hill_width=100, Nz=16, debug=true)
 run!(simulation)
 plot_flow_over_hill_animation(simulation.output_writers[:snaps].filepath; model_type)
