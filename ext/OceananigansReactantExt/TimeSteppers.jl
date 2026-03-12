@@ -44,9 +44,10 @@ function Clock(grid::ReactantGrid)
     return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
 end
 
-innertype(::ConcreteIFRTNumber{T}) where T = T
+innertype(::ConcreteRNumber{T}) where T = T
+const ReactantClock = Clock{<:ConcreteRNumber}
 
-function Base.setproperty!(clock::Clock, prop::Symbol, value)
+function Base.setproperty!(clock::ReactantClock, prop::Symbol, value)
     if prop in (:last_Δt, :last_stage_Δt, :time, :iteration)
         clock_val = getproperty(clock, prop)
         if Reactant.Sharding.is_sharded(clock_val)
