@@ -48,13 +48,13 @@ innertype(::ConcreteIFRTNumber{T}) where T = T
 
 function Base.setproperty!(clock::Clock, prop::Symbol, value)
     if prop in (:last_Δt, :last_stage_Δt, :time, :iteration)
-        val = getproperty(clock, prop)
-        if Reactant.is_sharded(prop)
-            sharding = prop.sharding
-            converted_value = convert(innertype(val), value)
-            concrete_value = ConcreteRNumber(converted_value, sharding)
+        clock_val = getproperty(clock, prop)
+        if Reactant.Sharding.is_sharded(clock_val)
+            sharding = clock_val.sharding
+            converted_val = convert(innertype(clock_val), value)
+            sharded_val = ConcreteRNumber(converted_val; sharding)
         end
-        return setfield!(clock, prop, concrete_value)
+        return setfield!(clock, prop, sharded_val)
     else
         return setfield!(clock, prop, value)
     end
