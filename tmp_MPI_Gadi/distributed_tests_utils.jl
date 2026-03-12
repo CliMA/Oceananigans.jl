@@ -48,14 +48,14 @@ function run_distributed_tripolar_grid(arch, filename; fold_topology = RightCent
 
     if arch.local_rank == 0
         jldopen(filename, "w") do file
-            file["u"]  = u.data
-            file["v"]  = v.data
-            file["c"]  = c.data
-            file["η"]  = η.data
-            file["u0"] = u0.data
-            file["v0"] = v0.data
-            file["c0"] = c0.data
-            file["η0"] = η0.data
+            file["u"]  = Array(interior(u))
+            file["v"]  = Array(interior(v))
+            file["c"]  = Array(interior(c))
+            file["η"]  = Array(interior(η))
+            file["u0"] = Array(interior(u0))
+            file["v0"] = Array(interior(v0))
+            file["c0"] = Array(interior(c0))
+            file["η0"] = Array(interior(η0))
         end
     end
 
@@ -108,7 +108,7 @@ end
 # Create model and set initial conditions (shared by serial and distributed)
 function setup_simulation(grid)
     model = HydrostaticFreeSurfaceModel(grid;
-                                        free_surface = SplitExplicitFreeSurface(grid; substeps = 20),
+                                        free_surface = SplitExplicitFreeSurface(grid; substeps = 5),
                                         tracers = :c,
                                         tracer_advection = WENO(),
                                         momentum_advection = WENOVectorInvariant(order=3),

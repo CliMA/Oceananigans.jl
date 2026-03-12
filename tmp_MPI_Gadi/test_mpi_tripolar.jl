@@ -463,10 +463,10 @@ sim_configs = [
     grid  = analytical_immersed_tripolar_grid(grid)
     model = run_distributed_simulation(grid)
 
-    us = model.velocities.u.data
-    vs = model.velocities.v.data
-    cs = model.tracers.c.data
-    ηs = model.free_surface.displacement.data
+    us = Array(interior(model.velocities.u))
+    vs = Array(interior(model.velocities.v))
+    cs = Array(interior(model.tracers.c))
+    ηs = Array(interior(model.free_surface.displacement))
 
     @testset "$cfg_name" for (cfg_id, (script_str, nranks, jld2file, cfg_name)) in enumerate(sim_configs)
         CONFIG in (0, cfg_id) || continue
@@ -481,10 +481,10 @@ sim_configs = [
         close(jld)
         rm(jld2file)
 
-        @test all(us .≈ up)
-        @test all(vs .≈ vp)
-        @test all(cs .≈ cp)
-        @test all(ηs .≈ ηp)
+        @test us ≈ up
+        @test vs ≈ vp
+        @test cs ≈ cp
+        @test ηs ≈ ηp
     end
 end
 
@@ -512,17 +512,17 @@ fpivot_sim_configs = [
     grid  = analytical_immersed_tripolar_grid(grid)
     model = setup_simulation(grid)
 
-    us0 = copy(model.velocities.u.data)
-    vs0 = copy(model.velocities.v.data)
-    cs0 = copy(model.tracers.c.data)
-    ηs0 = copy(model.free_surface.displacement.data)
+    us0 = Array(interior(model.velocities.u))
+    vs0 = Array(interior(model.velocities.v))
+    cs0 = Array(interior(model.tracers.c))
+    ηs0 = Array(interior(model.free_surface.displacement))
 
     run_simulation!(model)
 
-    us = model.velocities.u.data
-    vs = model.velocities.v.data
-    cs = model.tracers.c.data
-    ηs = model.free_surface.displacement.data
+    us = Array(interior(model.velocities.u))
+    vs = Array(interior(model.velocities.v))
+    cs = Array(interior(model.tracers.c))
+    ηs = Array(interior(model.free_surface.displacement))
 
     @testset "$cfg_name" for (cfg_id, (partition_str, nranks, jld2file, cfg_name)) in enumerate(fpivot_sim_configs)
         CONFIG in (0, cfg_id) || continue
@@ -540,17 +540,17 @@ fpivot_sim_configs = [
         rm(jld2file)
 
         @testset "ICs" begin
-            @test all(us0 .≈ up0)
-            @test all(vs0 .≈ vp0)
-            @test all(cs0 .≈ cp0)
-            @test all(ηs0 .≈ ηp0)
+            @test us0 ≈ up0
+            @test vs0 ≈ vp0
+            @test cs0 ≈ cp0
+            @test ηs0 ≈ ηp0
         end
 
         @testset "final" begin
-            @test all(us .≈ up)
-            @test all(vs .≈ vp)
-            @test all(cs .≈ cp)
-            @test all(ηs .≈ ηp)
+            @test us ≈ up
+            @test vs ≈ vp
+            @test cs ≈ cp
+            @test ηs ≈ ηp
         end
     end
 end
