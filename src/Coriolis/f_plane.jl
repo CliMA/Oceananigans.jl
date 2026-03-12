@@ -13,7 +13,7 @@ end
 """
     FPlane([FT = Float64;]
            f = nothing,
-           scheme = EENConserving(),
+           scheme = EnstrophyConserving(),
            rotation_rate = Oceananigans.defaults.planet_rotation_rate,
            latitude = nothing)
 
@@ -29,7 +29,7 @@ a planet's rotation in a planar coordinate system tangent to the planet's surfac
 """
 function FPlane(FT::DataType=Oceananigans.defaults.FloatType;
                 f = nothing,
-                scheme = EENConserving(),
+                scheme = EnstrophyConserving(),
                 rotation_rate = Oceananigans.defaults.planet_rotation_rate,
                 latitude = nothing)
 

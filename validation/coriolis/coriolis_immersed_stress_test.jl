@@ -37,7 +37,7 @@ grid = LatitudeLongitudeGrid(CPU(),
                              latitude  = (30, 60),
                              longitude = (0, 30),
                              halo = (3, 3, 3),
-                             z = MutableVerticalDiscretization((-H, 0)),
+                             z = (-H, 0),
                              topology = (Bounded, Bounded, Bounded))
 
 # Stress-inducing topography: multiple features combined
@@ -154,10 +154,9 @@ function run_stress_test(grid, scheme; label, Δt, stop_time, save_interval, out
                                         coriolis,
                                         closure,
                                         free_surface,
-                                        momentum_advection  = VectorInvariant(),
+                                        momentum_advection  = nothing,
                                         tracer_advection    = nothing,
                                         tracers             = (),
-                                        timestepper         = :SplitRungeKutta3,
                                         buoyancy            = nothing,
                                         boundary_conditions = (; u=u_bcs, v=v_bcs))
 

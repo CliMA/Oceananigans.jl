@@ -77,11 +77,11 @@ const NonhydrostaticSphericalCoriolis{S, FT}   = SphericalCoriolis{S, FT, <:Nonh
 """
     HydrostaticSphericalCoriolis([FT = Float64;]
                                  rotation_rate = Oceananigans.defaults.planet_rotation_rate,
-                                 scheme = EENConserving())
+                                 scheme = EnstrophyConserving())
 
 Return a `SphericalCoriolis` with `HydrostaticFormulation`. This is a convenience
 constructor that sets `formulation = HydrostaticFormulation()` and defaults to the
-`EENConserving` scheme.
+`EnstrophyConserving` scheme.
 
 Example
 =======
