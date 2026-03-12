@@ -65,14 +65,14 @@ const AMG = AbstractMutableGrid
 # ∂xᶠᶜᶜ: tracer/buoyancy/pressure x-derivatives (most common)
 @inline function ∂xᶠᶜᶜ(i, j, k, grid::AMG, ϕ)
     ∂x_at_r = δxᶠᶜᶜ(i, j, k, grid, ϕ) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
-    ∂z_ϕ = ∂zᶠᶜᶜ(i, j, k, grid, ϕ)
+    ∂z_ϕ = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, ϕ)
     ∂x_z = ∂x_zᶠᶜᶜ(i, j, k, grid)
     return ∂x_at_r - ∂x_z * ∂z_ϕ
 end
 
 @inline function ∂xᶠᶜᶜ(i, j, k, grid::AMG, f::Function, args...)
     ∂x_at_r = δxᶠᶜᶜ(i, j, k, grid, f, args...) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
-    ∂z_ϕ = ∂zᶠᶜᶜ(i, j, k, grid, f, args...)
+    ∂z_ϕ = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, f, args...)
     ∂x_z = ∂x_zᶠᶜᶜ(i, j, k, grid)
     return ∂x_at_r - ∂x_z * ∂z_ϕ
 end
@@ -80,14 +80,14 @@ end
 # ∂xᶜᶜᶜ: filtered velocity derivatives (Smagorinsky)
 @inline function ∂xᶜᶜᶜ(i, j, k, grid::AMG, ϕ)
     ∂x_at_r = δxᶜᶜᶜ(i, j, k, grid, ϕ) * Δx⁻¹ᶜᶜᶜ(i, j, k, grid)
-    ∂z_ϕ = ∂zᶜᶜᶜ(i, j, k, grid, ϕ)
+    ∂z_ϕ = ℑxzᶜᵃᶜ(i, j, k, grid, ∂zᶠᶜᶠ, ϕ)
     ∂x_z = ∂x_zᶜᶜᶜ(i, j, k, grid)
     return ∂x_at_r - ∂x_z * ∂z_ϕ
 end
 
 @inline function ∂xᶜᶜᶜ(i, j, k, grid::AMG, f::Function, args...)
     ∂x_at_r = δxᶜᶜᶜ(i, j, k, grid, f, args...) * Δx⁻¹ᶜᶜᶜ(i, j, k, grid)
-    ∂z_ϕ = ∂zᶜᶜᶜ(i, j, k, grid, f, args...)
+    ∂z_ϕ = ℑxzᶜᵃᶜ(i, j, k, grid, ∂zᶠᶜᶠ, f, args...)
     ∂x_z = ∂x_zᶜᶜᶜ(i, j, k, grid)
     return ∂x_at_r - ∂x_z * ∂z_ϕ
 end
@@ -95,14 +95,14 @@ end
 # ∂xᶠᶜᶠ: w x-derivative
 @inline function ∂xᶠᶜᶠ(i, j, k, grid::AMG, ϕ)
     ∂x_at_r = δxᶠᶜᶠ(i, j, k, grid, ϕ) * Δx⁻¹ᶠᶜᶠ(i, j, k, grid)
-    ∂z_ϕ = ∂zᶠᶜᶠ(i, j, k, grid, ϕ)
+    ∂z_ϕ = ℑxzᶠᵃᶠ(i, j, k, grid, ∂zᶜᶜᶜ, ϕ)
     ∂x_z = ∂x_zᶠᶜᶠ(i, j, k, grid)
     return ∂x_at_r - ∂x_z * ∂z_ϕ
 end
 
 @inline function ∂xᶠᶜᶠ(i, j, k, grid::AMG, f::Function, args...)
     ∂x_at_r = δxᶠᶜᶠ(i, j, k, grid, f, args...) * Δx⁻¹ᶠᶜᶠ(i, j, k, grid)
-    ∂z_ϕ = ∂zᶠᶜᶠ(i, j, k, grid, f, args...)
+    ∂z_ϕ = ℑxzᶠᵃᶠ(i, j, k, grid, ∂zᶜᶜᶜ, f, args...)
     ∂x_z = ∂x_zᶠᶜᶠ(i, j, k, grid)
     return ∂x_at_r - ∂x_z * ∂z_ϕ
 end
@@ -110,14 +110,14 @@ end
 # ∂xᶜᶠᶜ: vorticity x-derivative (Leith)
 @inline function ∂xᶜᶠᶜ(i, j, k, grid::AMG, ϕ)
     ∂x_at_r = δxᶜᶠᶜ(i, j, k, grid, ϕ) * Δx⁻¹ᶜᶠᶜ(i, j, k, grid)
-    ∂z_ϕ = ∂zᶜᶠᶜ(i, j, k, grid, ϕ)
+    ∂z_ϕ = ℑxzᶜᵃᶜ(i, j, k, grid, ∂zᶠᶠᶠ, ϕ)
     ∂x_z = ∂x_zᶜᶠᶜ(i, j, k, grid)
     return ∂x_at_r - ∂x_z * ∂z_ϕ
 end
 
 @inline function ∂xᶜᶠᶜ(i, j, k, grid::AMG, f::Function, args...)
     ∂x_at_r = δxᶜᶠᶜ(i, j, k, grid, f, args...) * Δx⁻¹ᶜᶠᶜ(i, j, k, grid)
-    ∂z_ϕ = ∂zᶜᶠᶜ(i, j, k, grid, f, args...)
+    ∂z_ϕ = ℑxzᶜᵃᶜ(i, j, k, grid, ∂zᶠᶠᶠ, f, args...)
     ∂x_z = ∂x_zᶜᶠᶜ(i, j, k, grid)
     return ∂x_at_r - ∂x_z * ∂z_ϕ
 end
@@ -125,14 +125,14 @@ end
 # ∂xᶠᶠᶜ: filtered v x-derivative
 @inline function ∂xᶠᶠᶜ(i, j, k, grid::AMG, ϕ)
     ∂x_at_r = δxᶠᶠᶜ(i, j, k, grid, ϕ) * Δx⁻¹ᶠᶠᶜ(i, j, k, grid)
-    ∂z_ϕ = ∂zᶠᶠᶜ(i, j, k, grid, ϕ)
+    ∂z_ϕ = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶠᶠ, ϕ)
     ∂x_z = ∂x_zᶠᶠᶜ(i, j, k, grid)
     return ∂x_at_r - ∂x_z * ∂z_ϕ
 end
 
 @inline function ∂xᶠᶠᶜ(i, j, k, grid::AMG, f::Function, args...)
     ∂x_at_r = δxᶠᶠᶜ(i, j, k, grid, f, args...) * Δx⁻¹ᶠᶠᶜ(i, j, k, grid)
-    ∂z_ϕ = ∂zᶠᶠᶜ(i, j, k, grid, f, args...)
+    ∂z_ϕ = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶠᶠ, f, args...)
     ∂x_z = ∂x_zᶠᶠᶜ(i, j, k, grid)
     return ∂x_at_r - ∂x_z * ∂z_ϕ
 end
@@ -144,14 +144,14 @@ end
 # ∂yᶜᶠᶜ: tracer/buoyancy/pressure y-derivatives (most common)
 @inline function ∂yᶜᶠᶜ(i, j, k, grid::AMG, ϕ)
     ∂y_at_r = δyᶜᶠᶜ(i, j, k, grid, ϕ) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
-    ∂z_ϕ = ∂zᶜᶠᶜ(i, j, k, grid, ϕ)
+    ∂z_ϕ = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, ϕ)
     ∂y_z = ∂y_zᶜᶠᶜ(i, j, k, grid)
     return ∂y_at_r - ∂y_z * ∂z_ϕ
 end
 
 @inline function ∂yᶜᶠᶜ(i, j, k, grid::AMG, f::Function, args...)
     ∂y_at_r = δyᶜᶠᶜ(i, j, k, grid, f, args...) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
-    ∂z_ϕ = ∂zᶜᶠᶜ(i, j, k, grid, f, args...)
+    ∂z_ϕ = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, f, args...)
     ∂y_z = ∂y_zᶜᶠᶜ(i, j, k, grid)
     return ∂y_at_r - ∂y_z * ∂z_ϕ
 end
@@ -159,14 +159,14 @@ end
 # ∂yᶜᶜᶜ: filtered velocity derivatives
 @inline function ∂yᶜᶜᶜ(i, j, k, grid::AMG, ϕ)
     ∂y_at_r = δyᶜᶜᶜ(i, j, k, grid, ϕ) * Δy⁻¹ᶜᶜᶜ(i, j, k, grid)
-    ∂z_ϕ = ∂zᶜᶜᶜ(i, j, k, grid, ϕ)
+    ∂z_ϕ = ℑyzᵃᶜᶜ(i, j, k, grid, ∂zᶜᶠᶠ, ϕ)
     ∂y_z = ∂y_zᶜᶜᶜ(i, j, k, grid)
     return ∂y_at_r - ∂y_z * ∂z_ϕ
 end
 
 @inline function ∂yᶜᶜᶜ(i, j, k, grid::AMG, f::Function, args...)
     ∂y_at_r = δyᶜᶜᶜ(i, j, k, grid, f, args...) * Δy⁻¹ᶜᶜᶜ(i, j, k, grid)
-    ∂z_ϕ = ∂zᶜᶜᶜ(i, j, k, grid, f, args...)
+    ∂z_ϕ = ℑyzᵃᶜᶜ(i, j, k, grid, ∂zᶜᶠᶠ, f, args...)
     ∂y_z = ∂y_zᶜᶜᶜ(i, j, k, grid)
     return ∂y_at_r - ∂y_z * ∂z_ϕ
 end
@@ -174,14 +174,14 @@ end
 # ∂yᶜᶠᶠ: w y-derivative
 @inline function ∂yᶜᶠᶠ(i, j, k, grid::AMG, ϕ)
     ∂y_at_r = δyᶜᶠᶠ(i, j, k, grid, ϕ) * Δy⁻¹ᶜᶠᶠ(i, j, k, grid)
-    ∂z_ϕ = ∂zᶜᶠᶠ(i, j, k, grid, ϕ)
+    ∂z_ϕ = ℑyzᵃᶠᶠ(i, j, k, grid, ∂zᶜᶜᶜ, ϕ)
     ∂y_z = ∂y_zᶜᶠᶠ(i, j, k, grid)
     return ∂y_at_r - ∂y_z * ∂z_ϕ
 end
 
 @inline function ∂yᶜᶠᶠ(i, j, k, grid::AMG, f::Function, args...)
     ∂y_at_r = δyᶜᶠᶠ(i, j, k, grid, f, args...) * Δy⁻¹ᶜᶠᶠ(i, j, k, grid)
-    ∂z_ϕ = ∂zᶜᶠᶠ(i, j, k, grid, f, args...)
+    ∂z_ϕ = ℑyzᵃᶠᶠ(i, j, k, grid, ∂zᶜᶜᶜ, f, args...)
     ∂y_z = ∂y_zᶜᶠᶠ(i, j, k, grid)
     return ∂y_at_r - ∂y_z * ∂z_ϕ
 end
@@ -189,14 +189,14 @@ end
 # ∂yᶠᶜᶜ: vorticity y-derivative
 @inline function ∂yᶠᶜᶜ(i, j, k, grid::AMG, ϕ)
     ∂y_at_r = δyᶠᶜᶜ(i, j, k, grid, ϕ) * Δy⁻¹ᶠᶜᶜ(i, j, k, grid)
-    ∂z_ϕ = ∂zᶠᶜᶜ(i, j, k, grid, ϕ)
+    ∂z_ϕ = ℑyzᵃᶜᶜ(i, j, k, grid, ∂zᶠᶠᶠ, ϕ)
     ∂y_z = ∂y_zᶠᶜᶜ(i, j, k, grid)
     return ∂y_at_r - ∂y_z * ∂z_ϕ
 end
 
 @inline function ∂yᶠᶜᶜ(i, j, k, grid::AMG, f::Function, args...)
     ∂y_at_r = δyᶠᶜᶜ(i, j, k, grid, f, args...) * Δy⁻¹ᶠᶜᶜ(i, j, k, grid)
-    ∂z_ϕ = ∂zᶠᶜᶜ(i, j, k, grid, f, args...)
+    ∂z_ϕ = ℑyzᵃᶜᶜ(i, j, k, grid, ∂zᶠᶠᶠ, f, args...)
     ∂y_z = ∂y_zᶠᶜᶜ(i, j, k, grid)
     return ∂y_at_r - ∂y_z * ∂z_ϕ
 end
@@ -204,14 +204,14 @@ end
 # ∂yᶠᶠᶜ: filtered u y-derivative
 @inline function ∂yᶠᶠᶜ(i, j, k, grid::AMG, ϕ)
     ∂y_at_r = δyᶠᶠᶜ(i, j, k, grid, ϕ) * Δy⁻¹ᶠᶠᶜ(i, j, k, grid)
-    ∂z_ϕ = ∂zᶠᶠᶜ(i, j, k, grid, ϕ)
+    ∂z_ϕ = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶠᶜᶠ, ϕ)
     ∂y_z = ∂y_zᶠᶠᶜ(i, j, k, grid)
     return ∂y_at_r - ∂y_z * ∂z_ϕ
 end
 
 @inline function ∂yᶠᶠᶜ(i, j, k, grid::AMG, f::Function, args...)
     ∂y_at_r = δyᶠᶠᶜ(i, j, k, grid, f, args...) * Δy⁻¹ᶠᶠᶜ(i, j, k, grid)
-    ∂z_ϕ = ∂zᶠᶠᶜ(i, j, k, grid, f, args...)
+    ∂z_ϕ = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶠᶜᶠ, f, args...)
     ∂y_z = ∂y_zᶠᶠᶜ(i, j, k, grid)
     return ∂y_at_r - ∂y_z * ∂z_ϕ
 end

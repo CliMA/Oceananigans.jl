@@ -337,6 +337,39 @@ function test_settling_tracer_comparison(arch; open_bottom=true)
     return true
 end
 
+"""
+Verify that ContinuousForcing with field_dependencies produces the same
+tendency as an equivalent DiscreteForcing on HydrostaticFreeSurfaceModel.
+
+Regression test for a bug where the model_fields NamedTuple used during
+forcing materialization excluded w, causing field_dependencies_indices
+to be off by one (e.g. reading w instead of T).
+"""
+function test_hydrostatic_continuous_discrete_forcing_consistency(arch)
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+
+    continuous_T_forcing = Forcing((x, y, z, t, T) -> -T, field_dependencies=:T)
+    @inline discrete_T_forcing_func(i, j, k, grid, clock, model_fields) =
+        @inbounds -model_fields.T[i, j, k]
+    discrete_T_forcing = Forcing(discrete_T_forcing_func, discrete_form=true)
+
+    model_c = HydrostaticFreeSurfaceModel(grid; forcing=(; T=continuous_T_forcing),
+                                          tracers=:T, buoyancy=nothing)
+    model_d = HydrostaticFreeSurfaceModel(grid; forcing=(; T=discrete_T_forcing),
+                                          tracers=:T, buoyancy=nothing)
+
+    set!(model_c, T=3.0)
+    set!(model_d, T=3.0)
+
+    time_step!(model_c, 1)
+    time_step!(model_d, 1)
+
+    Gc = Array(interior(model_c.timestepper.Gⁿ.T))
+    Gd = Array(interior(model_d.timestepper.Gⁿ.T))
+
+    return all(Gc .≈ Gd) && all(Gc .≈ -3)
+end
+
 @testset "Forcings" begin
     @info "Testing forcings..."
 
@@ -367,6 +400,11 @@ end
 
                 @test time_step_with_multiple_field_dependent_forcing(arch)
                 @test time_step_with_parameterized_field_dependent_forcing(arch)
+            end
+
+            @testset "HydrostaticFreeSurfaceModel continuous/discrete forcing consistency [$A]" begin
+                @info "      Testing hydrostatic continuous/discrete forcing consistency [$A]..."
+                @test test_hydrostatic_continuous_discrete_forcing_consistency(arch)
             end
 
             @testset "Relaxation forcing functions [$A]" begin
