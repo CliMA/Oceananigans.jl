@@ -25,21 +25,22 @@ const ReactantModel{TS} = Union{
     AbstractModel{TS, <:Distributed{<:ReactantState}}
 }
 
-function Clock(::ReactantGrid)
+function Clock(grid::ReactantGrid)
     FT = Oceananigans.defaults.FloatType
     arch = architecture(grid)
-    
+
     sharding = if arch isa Distributed
         Sharding.Replicated(arch.connectivity)
     else
         Sharding.NoSharding()
     end
-    
+
     t = ConcreteRNumber(zero(FT), sharding=sharding)
     iter = ConcreteRNumber(0, sharding=sharding)
     stage = 1
     last_Δt = ConcreteRNumber(convert(FT, Inf), sharding=sharding)
     last_stage_Δt = ConcreteRNumber(convert(FT, Inf), sharding=sharding)
+
     return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
 end
 
