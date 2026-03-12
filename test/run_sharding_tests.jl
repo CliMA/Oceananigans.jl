@@ -6,6 +6,45 @@ using MPI
 MPI.Init()
 include("distributed_tests_utils.jl")
 
+using Reactant
+using Oceananigans.TimeSteppers: first_time_step!
+
+# Override run_distributed_simulation with Reactant-aware version
+function run_distributed_simulation(grid)
+
+    model = HydrostaticFreeSurfaceModel(grid;
+                                        free_surface = SplitExplicitFreeSurface(grid; substeps = 20),
+                                        tracers = :c,
+                                        tracer_advection = WENO(),
+                                        momentum_advection = WENOVectorInvariant(order=3),
+                                        coriolis = HydrostaticSphericalCoriolis())
+
+    ηᵢ(λ, φ, z) = exp(- (φ - 90)^2 / 10^2) + exp(- φ^2 / 10^2)
+    set!(model, c=ηᵢ, η=ηᵢ)
+
+    Δt = 5minutes
+    arch = architecture(grid)
+    if arch isa ReactantState || arch isa Distributed{<:ReactantState}
+        @info "Compiling first_time_step..."
+        r_first_time_step! = @compile sync=true raise=true first_time_step!(model, Δt)
+
+        @info "Compiling time_step..."
+        r_time_step! = @compile sync=true raise=true time_step!(model, Δt)
+    else
+        r_first_time_step! = first_time_step!
+        r_time_step! = time_step!
+    end
+
+    @info "Running first time step..."
+    r_first_time_step!(model, Δt)
+    @info "Running time step..."
+    for N in 2:100
+        r_time_step!(model, Δt)
+    end
+
+    return model
+end
+
 ENV["XLA_FLAGS"] = "--xla_force_host_platform_device_count=4"
 ENV["JULIA_DEBUG"] = "Reactant, Reactant_jll"
 

@@ -6,7 +6,6 @@ using JLD2
 using MPI
 using Oceananigans.DistributedComputations: reconstruct_global_field, reconstruct_global_grid
 using Oceananigans.Units
-using Reactant
 using Oceananigans.TimeSteppers: first_time_step!
 
 import Oceananigans.BoundaryConditions: _fill_north_halo!
@@ -146,23 +145,12 @@ function run_distributed_simulation(grid)
     set!(model, c=ηᵢ, η=ηᵢ)
 
     Δt = 5minutes
-    arch = architecture(grid)
-    if arch isa ReactantState || arch isa Distributed{<:ReactantState}
-        @info "Compiling first_time_step..."
-        r_first_time_step! = @compile sync=true raise=true first_time_step!(model, Δt)
-
-        @info "Compiling time_step..."
-        r_time_step! = @compile sync=true raise=true time_step!(model, Δt)
-    else
-        r_first_time_step! = first_time_step!
-        r_time_step! = time_step!
-    end
 
     @info "Running first time step..."
-    r_first_time_step!(model, Δt)
+    first_time_step!(model, Δt)
     @info "Running time step..."
     for N in 2:100
-        r_time_step!(model, Δt)
+        time_step!(model, Δt)
     end
 
     return model
