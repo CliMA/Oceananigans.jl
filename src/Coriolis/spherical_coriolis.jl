@@ -59,12 +59,12 @@ julia> SphericalCoriolis()
 SphericalCoriolis
 ├─ rotation rate: 7.29e-05 s⁻¹ = 1.00 Ω_Earth
 ├─ formulation: NonhydrostaticFormulation
-└─ scheme: ActiveWeightedEnstrophyConserving
+└─ scheme: EnstrophyConserving
 ```
 """
 function SphericalCoriolis(FT::DataType = Oceananigans.defaults.FloatType;
                            rotation_rate = Oceananigans.defaults.planet_rotation_rate,
-                           scheme = ActiveWeightedEnstrophyConserving(),
+                           scheme = EnstrophyConserving(),
                            formulation = NonhydrostaticFormulation())
     rotation_rate = convert(FT, rotation_rate)
 
@@ -77,11 +77,11 @@ const NonhydrostaticSphericalCoriolis{S, FT}   = SphericalCoriolis{S, FT, <:Nonh
 """
     HydrostaticSphericalCoriolis([FT = Float64;]
                                  rotation_rate = Oceananigans.defaults.planet_rotation_rate,
-                                 scheme = EENConserving())
+                                 scheme = EnstrophyConserving())
 
 Return a `SphericalCoriolis` with `HydrostaticFormulation`. This is a convenience
 constructor that sets `formulation = HydrostaticFormulation()` and defaults to the
-`EENConserving` scheme.
+`EnstrophyConserving` scheme.
 
 Example
 =======
@@ -93,12 +93,12 @@ julia> HydrostaticSphericalCoriolis()
 SphericalCoriolis
 ├─ rotation rate: 7.29e-05 s⁻¹ = 1.00 Ω_Earth
 ├─ formulation: HydrostaticFormulation
-└─ scheme: ActiveWeightedEnstrophyConserving
+└─ scheme: EnstrophyConserving
 ```
 """
 function HydrostaticSphericalCoriolis(FT::DataType = Oceananigans.defaults.FloatType;
                                       rotation_rate = Oceananigans.defaults.planet_rotation_rate,
-                                      scheme = ActiveWeightedEnstrophyConserving())
+                                      scheme = EnstrophyConserving())
     return SphericalCoriolis(FT; rotation_rate, scheme, formulation=HydrostaticFormulation())
 end
 

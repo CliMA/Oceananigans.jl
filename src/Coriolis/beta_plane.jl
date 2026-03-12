@@ -11,7 +11,7 @@ end
 
 """
     BetaPlane([FT = Float64;] f₀=nothing, β=nothing,
-              scheme = EENConserving(),
+              scheme = EnstrophyConserving(),
               rotation_rate = Oceananigans.defaults.planet_rotation_rate,
               latitude = nothing, radius = Oceananigans.defaults.planet_radius)
 
@@ -28,7 +28,7 @@ and `radius` according to the relations `f₀ = 2 * rotation_rate * sind(latitud
 By default, the `rotation_rate` and planet `radius` are assumed to be Earth's.
 """
 function BetaPlane(FT=Oceananigans.defaults.FloatType;
-                   scheme = EENConserving(),
+                   scheme = EnstrophyConserving(),
                    f₀ = nothing,
                    β = nothing,
                    rotation_rate = Oceananigans.defaults.planet_rotation_rate,
