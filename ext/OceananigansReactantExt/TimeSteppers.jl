@@ -55,9 +55,8 @@ function Base.setproperty!(clock::Clock, prop::Symbol, value)
             sharded_val = ConcreteRNumber(converted_val; sharding)
             return setfield!(clock, prop, sharded_val)
         end
-    else
-        return setfield!(clock, prop, value)
     end
+    return setfield!(clock, prop, value)
 end
 
 # Reactant handles initialization via first_time_step!, so this is a no-op.
