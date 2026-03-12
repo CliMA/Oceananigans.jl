@@ -49,9 +49,9 @@ const ReactantClock = Clock{<:ConcreteRNumber}
 
 function Base.setproperty!(clock::ReactantClock, prop::Symbol, value)
     clock_val = getproperty(clock, prop)
-    converted_val = convert(innertype(clock_val), value)
 
     if prop in (:last_Δt, :last_stage_Δt, :time, :iteration)
+        converted_val = convert(innertype(clock_val), value)
         if Reactant.Sharding.is_sharded(clock_val)
             sharding = clock_val.sharding
             sharded_val = ConcreteRNumber(converted_val; sharding)
@@ -59,7 +59,7 @@ function Base.setproperty!(clock::ReactantClock, prop::Symbol, value)
         end
     end
 
-    return setfield!(clock, prop, converted_val)
+    return setfield!(clock, prop, convert(typeof(clock_val), value))
 end
 
 # Reactant handles initialization via first_time_step!, so this is a no-op.
