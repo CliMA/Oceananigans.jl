@@ -44,6 +44,22 @@ function Clock(grid::ReactantGrid)
     return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
 end
 
+innertype(::ConcreteIFRTNumber{T}) where T = T
+
+function Base.setproperty!(clock::Clock, prop::Symbol, value)
+    if prop in (:last_Δt, :last_stage_Δt, :time, :iteration)
+        val = getproperty(clock, prop)
+        if Reactant.is_sharded(prop)
+            sharding = prop.sharding
+            converted_value = convert(innertype(val), value)
+            concrete_value = ConcreteRNumber(converted_value, sharding)
+        end
+        return setfield!(clock, prop, concrete_value)
+    else
+        return setfield!(clock, prop, value)
+    end
+end
+
 # Reactant handles initialization via first_time_step!, so this is a no-op.
 maybe_initialize_state!(::ReactantModel, callbacks) = nothing
 
