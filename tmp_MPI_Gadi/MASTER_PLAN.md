@@ -147,28 +147,23 @@ zero halos while serial field has filled halos. Interior values match.
    `@test local_data[:, :, 1] ≈ serial_data[irange, jrange, 1]` (~12 tests per config)
 
 **Run 4 results (162971102–162971117)**:
-- Testset 1: cfg2 **PASS** (60/60), cfg3 **PASS** (60/60), cfg4 **PASS** (60/60), cfg1 slow (still running)
+- Testset 1: **4/4 PASS** (60/60 each) — cfg1 took 8 min (job 162971102), cfg2-4 ~3 min each
 - Testset 2: all 4 configs — 24000+ local tests **PASS**, 3 global recon **FAIL** (fixed in run 5)
 - Testsets 3 & 4: **PASS** (confirmed again)
 - Testsets 5 & 6: **ALL FAIL** (confirmed again)
 
-**Run 5 (testset 2 only, 162971698–162971701)**: pending
-
-### Current job status (2026-03-13, run 5 — testset 2 rerun)
-
-| Job ID    | Testset | Config               | Status  |
-|-----------|---------|----------------------|---------|
-| 162971698 | 2       | UPivot × 1×4         | Running |
-| 162971699 | 2       | UPivot × 2×2         | Running |
-| 162971700 | 2       | FPivot × 1×4         | Running |
-| 162971701 | 2       | FPivot × 2×2         | Running |
+**Run 5 results (testset 2 only, 162971698–162971701)**: **ALL PASS**
+- cfg1 (UPivot × 1×4): **39/39 PASS** (job 162971698)
+- cfg2 (UPivot × 2×2): **39/39 PASS** (job 162971699)
+- cfg3 (FPivot × 1×4): **39/39 PASS** (job 162971700)
+- cfg4 (FPivot × 2×2): **39/39 PASS** (job 162971701)
 
 ### Summary of confirmed results across all runs
 
 | Testset | Description | Status | Notes |
 |---------|-------------|--------|-------|
-| 1 | Grid reconstruction | **PASS** (3/4 configs) | cfg1 slow; cfg2-4 pass (60/60 each) |
-| 2 | Field reconstruction | **PENDING** | Global recon fix applied, awaiting run 5 |
+| 1 | Grid reconstruction | **PASS** (4/4 configs) | 60/60 tests each |
+| 2 | Field reconstruction | **PASS** (4/4 configs) | 39/39 tests each (run 5) |
 | 3 | UPivot boundary conditions | **PASS** (4/4) | Confirmed across multiple runs |
 | 4 | FPivot boundary conditions | **PASS** (4/4) | Confirmed across multiple runs |
 | 5 | UPivot simulations | **FAIL** | ALL configs fail (slab, pencil, large-pencil) |
