@@ -20,9 +20,7 @@ sign(::Type{Center}, ::Type{Face})   = - 1 # v-velocity type
 sign(::Type{Center}, ::Type{Center}) = 1
 
 # Determine the appropriate north fold boundary condition based on grid topology.
-# The AbstractTopology fallback defaults to UPivot for safety; distributed grids
-# dispatch via their Tripolar conformal_mapping instead (see distributed_tripolar_grid.jl).
-north_fold_boundary_condition(::Type{<:AbstractTopology})  = UPivotZipperBoundaryCondition
+# Distributed grids dispatch via their Tripolar conformal_mapping instead (see distributed_tripolar_grid.jl).
 north_fold_boundary_condition(::Type{RightCenterFolded})   = UPivotZipperBoundaryCondition
 north_fold_boundary_condition(::Type{RightFaceFolded})     = FPivotZipperBoundaryCondition
 north_fold_boundary_condition(grid::TripolarGridOfSomeKind) = north_fold_boundary_condition(topology(grid, 2))

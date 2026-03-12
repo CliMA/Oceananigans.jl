@@ -1,5 +1,5 @@
 using Oceananigans.BoundaryConditions: DistributedCommunicationBoundaryCondition
-using Oceananigans.Fields: validate_indices, validate_field_data
+using Oceananigans.Fields: validate_indices, validate_field_data, set_to_array!, set_to_field!, location, interior
 using Oceananigans.DistributedComputations:
     DistributedComputations,
     Distributed,
@@ -9,11 +9,14 @@ using Oceananigans.DistributedComputations:
     ranks,
     inject_halo_communication_boundary_conditions,
     concatenate_local_sizes,
-    communication_buffers
+    communication_buffers,
+    global_size,
+    partition,
+    _set!
 
 using Oceananigans.Grids: topology, RightConnected, FullyConnected
 
-import Oceananigans.Fields: Field, validate_indices, validate_boundary_conditions
+import Oceananigans.Fields: Field, set!, validate_indices, validate_boundary_conditions
 
 const DistributedTripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
     OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, <:Distributed{<:Union{CPU, GPU}}}
@@ -22,6 +25,74 @@ const DistributedTripolarGridOfSomeKind = Union{
     DistributedTripolarGrid,
     ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedTripolarGrid}
 }
+
+const DistributedTripolarField = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedTripolarGrid}
+
+#####
+##### Fold-aware set! for distributed TripolarGrid fields
+#####
+##### On distributed grids, the y-topology is overwritten to FullyConnected/RightConnected
+##### for MPI, so global_size returns the raw sum of local sizes (Ny). For RightFaceFolded
+##### grids, Center fields have Ny-1 interior points globally. fold_set! handles this by
+##### clipping the last y-rank's partition range to the array bounds.
+#####
+
+function set!(u::DistributedTripolarField, V::Union{Array, OffsetArray})
+    return fold_set!(u, V, u.grid.conformal_mapping, location(u, 2))
+end
+
+function set!(u::DistributedTripolarField, V::Field)
+    return fold_set!(u, V, u.grid.conformal_mapping, location(u, 2))
+end
+
+# Extract fold_topology from Tripolar
+fold_set!(u, V, t::Tripolar, loc_y) = fold_set!(u, V, t.fold_topology, loc_y)
+
+# Fallbacks for non-folded topologies
+fold_set!(u, V, ::Type{<:AbstractTopology}, loc_y) = _set!(u, V)
+
+function fold_set!(u, V::Field, ::Type{<:AbstractTopology}, loc_y)
+    if size(V) == global_size(u)
+        v = partition(V, u)
+        return set_to_array!(u, v)
+    else
+        return set_to_field!(u, V)
+    end
+end
+
+# RightFaceFolded + Center: pass Field's interior to the array path
+fold_set!(u, V::Field, ::Type{RightFaceFolded}, ::Type{Center}) =
+    fold_set!(u, interior(V), RightFaceFolded, Center)
+
+function fold_set!(u, V, ::Type{RightFaceFolded}, ::Type{Center})
+    arch = architecture(u)
+    V = on_architecture(CPU(), V)
+    ri, rj, rk = arch.local_index
+    nxs, nys, nzs = concatenate_local_sizes(size(u), arch)
+    nx, ny, nz = nxs[ri], nys[rj], nzs[1]
+
+    i₁ = sum(nxs[1:ri-1]) + 1
+    i₂ = sum(nxs[1:ri])
+    j₁ = sum(nys[1:rj-1]) + 1
+    j₂ = min(sum(nys[1:rj]), size(V, 2))
+    ny_v = j₂ - j₁ + 1
+
+    a = fold_local_slice(V, i₁, i₂, j₁, j₂, ny_v, nx, ny, nz)
+    v = on_architecture(child_architecture(arch), a)
+    return set_to_array!(u, v)
+end
+
+function fold_local_slice(V::AbstractMatrix, i₁, i₂, j₁, j₂, ny_v, nx, ny, nz)
+    a = zeros(eltype(V), nx, ny)
+    a[:, 1:ny_v] .= V[i₁:i₂, j₁:j₂]
+    return a
+end
+
+function fold_local_slice(V::AbstractArray{<:Any, 3}, i₁, i₂, j₁, j₂, ny_v, nx, ny, nz)
+    a = zeros(eltype(V), nx, ny, nz)
+    a[:, 1:ny_v, :] .= V[i₁:i₂, j₁:j₂, 1:nz]
+    return a
+end
 
 """
     TripolarGrid(arch::Distributed, FT::DataType = Float64; halo = (4, 4, 4), kwargs...)
@@ -74,6 +145,20 @@ function TripolarGrid(arch::Distributed, FT::DataType=Float64;
     # Extracting the local range
     nxlocal = concatenate_local_sizes(lsize, arch, 1)
     nylocal = concatenate_local_sizes(lsize, arch, 2)
+
+    # Warn if the top-rank y-partition has fewer interior rows than Hy+2.
+    # The extended north send buffer reads parent[:, Ny-1:Ny+Hy, :] (Hy+2 rows).
+    # When Ny_local < Hy+2, the first buffer row falls in the south halo region,
+    # which contains data from a non-fold-partner rank, potentially producing
+    # incorrect fold halo values. This can happen when SplitExplicitFreeSurface
+    # extends halos beyond the original grid halo size.
+    ny_top = last(nylocal)
+    if ny_top < Hy + 2
+        @warn "Distributed TripolarGrid: the y-partition size on the top rank " *
+              "($ny_top) is smaller than Hy + 2 = $(Hy + 2). Fold halo " *
+              "communication may produce incorrect corner values."
+    end
+
     xrank   = ifelse(isnothing(arch.partition.x), 0, arch.local_index[1] - 1)
     yrank   = ifelse(isnothing(arch.partition.y), 0, arch.local_index[2] - 1)
 
@@ -111,7 +196,11 @@ function TripolarGrid(arch::Distributed, FT::DataType=Float64;
     Azᶜᶠᵃ = partition_tripolar_metric(global_grid, :Azᶜᶠᵃ, irange, jrange)
     Azᶠᶠᵃ = partition_tripolar_metric(global_grid, :Azᶠᶠᵃ, irange, jrange)
 
-    LY = yrank == 0 ? RightConnected : FullyConnected
+    if yrank == 0
+        LY = RightConnected
+    else
+        LY = FullyConnected
+    end
     LX = workers[1] == 1 ? Periodic : FullyConnected
     ny = nylocal[yrank+1]
     nx = nxlocal[xrank+1]
@@ -233,10 +322,8 @@ end
 # Dispatch north_fold_boundary_condition for distributed tripolar grids.
 # The grid's y-topology is overwritten to RightConnected/FullyConnected for MPI,
 # so we read the fold topology from the Tripolar conformal_mapping struct instead.
-north_fold_boundary_condition(grid::DistributedTripolarGrid) =
+north_fold_boundary_condition(grid::DistributedTripolarGridOfSomeKind) =
     north_fold_boundary_condition(grid.conformal_mapping)
-north_fold_boundary_condition(grid::ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedTripolarGrid}) =
-    north_fold_boundary_condition(grid.underlying_grid.conformal_mapping)
 
 # A distributed `TripolarGrid` needs a `ZipperBoundaryCondition` for the north boundary
 # only on the last rank. The zipper type (UPivot or FPivot) is determined by the grid's fold topology.
