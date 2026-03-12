@@ -43,8 +43,10 @@ function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
     advection = WENO(; order=5, minimum_buffer_upwind_order=1)
 
     if model_type == :nonhydrostatic
-        pressure_solver = isnothing(pressure_solver_constructor) ? ConjugateGradientPoissonSolver(grid, maxiter=10) : pressure_solver_constructor(grid)
-        kwargs = merge(kwargs, (; pressure_solver, advection))
+        # When using ImplicitFreeSurface, let the model auto-select the appropriate pressure solver
+        # (ConjugateGradientPoissonSolver is incompatible with the free surface boundary condition)
+        pressure_solver = isnothing(pressure_solver_constructor) ? nothing : pressure_solver_constructor(grid)
+        kwargs = merge(kwargs, (; free_surface = ImplicitFreeSurface(), pressure_solver, advection))
         model = NonhydrostaticModel(grid; kwargs...)
     elseif model_type == :hydrostatic_with_implicit_surface
         kwargs = merge(kwargs, (; free_surface = ImplicitFreeSurface(), momentum_advection = advection, tracer_advection = advection, vertical_coordinate = ZStarCoordinate()))
@@ -80,7 +82,7 @@ function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
     ω = ∂z(u) - ∂x(w)
     outputs = (; ω, model.velocities...)
 
-    if model_type == :hydrostatic_with_implicit_surface
+    if !isnothing(model.free_surface)
         outputs = merge(outputs, (; η = model.free_surface.displacement))
     end
 
@@ -109,30 +111,18 @@ function plot_flow_over_hill_animation(filepath;
     grid = u_ts.grid
     @info "Loaded results"
 
-    # Load model-specific field
-    if model_type == :hydrostatic_with_implicit_surface
-        η_ts = FieldTimeSeries(filepath, "η")
-        timeseries = η_ts
-    else
-        timeseries = u_ts
-    end
+    # Load free surface field (available for both model types)
+    η_ts = FieldTimeSeries(filepath, "η")
+    timeseries = η_ts
 
     # Create visualization
     n = Observable(1)
     fig = Figure(size = (600, 800))
 
-    # Top panel: surface displacement for hydrostatic models, blank for nonhydrostatic
-    if model_type == :hydrostatic_with_implicit_surface
-        # Plot free surface elevation (1D line plot)
-        η_plt = @lift η_ts[$n]
-        ax_η = Axis(fig[1, 1], xlabel = "x", ylabel = "η (m)", title = "Free surface elevation", width = 500, height = 150)
-        lines!(ax_η, η_plt, linewidth = 2, color = :blue)
-    else
-        # Create blank axis for nonhydrostatic models
-        ax_blank = Axis(fig[1, 1], xlabel = "", ylabel = "", title = "", width = 500, height = 150)
-        hidedecorations!(ax_blank)
-        hidespines!(ax_blank)
-    end
+    # Top panel: free surface elevation (1D line plot)
+    η_plt = @lift η_ts[$n]
+    ax_η = Axis(fig[1, 1], xlabel = "x", ylabel = "η (m)", title = "Free surface elevation", width = 500, height = 150)
+    lines!(ax_η, η_plt, linewidth = 2, color = :blue)
 
     # Second panel: always plot vorticity (2D heatmap)
     ω_plt = @lift ω_ts[$n]
