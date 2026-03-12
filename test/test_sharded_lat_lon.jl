@@ -14,7 +14,12 @@ run_xslab_distributed_grid = """
     include("distributed_tests_utils.jl")
     Reactant.Distributed.initialize(; single_gpu_per_process=false)
     arch = Distributed(ReactantState(), partition = Partition(4, 1))
-    run_distributed_latitude_longitude_grid(arch, "distributed_xslab_llg.jld2")
+    model = run_distributed_latitude_longitude_grid(arch, "distributed_xslab_llg.jld2")
+
+    @test model.clock.last_Δt.sharding == Sharding.Replicated(arch.connectivity)
+    @test model.clock.last_stage_Δt.sharding == Sharding.Replicated(arch.connectivity)
+    @test model.clock.time.sharding == Sharding.Replicated(arch.connectivity)
+    @test model.clock.iteration.sharding == Sharding.Replicated(arch.connectivity)
 """
 
 run_yslab_distributed_grid = """
@@ -23,7 +28,12 @@ run_yslab_distributed_grid = """
     include("distributed_tests_utils.jl")
     Reactant.Distributed.initialize(; single_gpu_per_process=false)
     arch = Distributed(ReactantState(), partition = Partition(1, 4))
-    run_distributed_latitude_longitude_grid(arch, "distributed_yslab_llg.jld2")
+    model = run_distributed_latitude_longitude_grid(arch, "distributed_yslab_llg.jld2")
+
+    @test model.clock.last_Δt.sharding == Sharding.Replicated(arch.connectivity)
+    @test model.clock.last_stage_Δt.sharding == Sharding.Replicated(arch.connectivity)
+    @test model.clock.time.sharding == Sharding.Replicated(arch.connectivity)
+    @test model.clock.iteration.sharding == Sharding.Replicated(arch.connectivity)
 """
 
 run_pencil_distributed_grid = """
@@ -34,7 +44,12 @@ run_pencil_distributed_grid = """
     @test_throws ArgumentError Distributed(ReactantState(), partition = Partition(3, 2))
     @test_throws ArgumentError Distributed(ReactantState(), partition = Partition(1, 2))
     arch = Distributed(ReactantState(), partition = Partition(2, 2))
-    run_distributed_latitude_longitude_grid(arch, "distributed_pencil_llg.jld2")
+    model = run_distributed_latitude_longitude_grid(arch, "distributed_pencil_llg.jld2")
+
+    @test model.clock.last_Δt.sharding == Sharding.Replicated(arch.connectivity)
+    @test model.clock.last_stage_Δt.sharding == Sharding.Replicated(arch.connectivity)
+    @test model.clock.time.sharding == Sharding.Replicated(arch.connectivity)
+    @test model.clock.iteration.sharding == Sharding.Replicated(arch.connectivity)
 """
 
 @testset "Test distributed LatitudeLongitudeGrid simulations..." begin

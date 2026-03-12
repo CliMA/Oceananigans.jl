@@ -126,7 +126,7 @@ function run_distributed_latitude_longitude_grid(arch, filename)
                           η = Array(interior(η, :, :, 1)))
     end
 
-    return nothing
+    return model
 end
 
 # Just a random simulation on a tripolar grid
