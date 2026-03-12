@@ -37,8 +37,7 @@ function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
     advection = WENO(; order=5, minimum_buffer_upwind_order=1)
 
     if model_type == :nonhydrostatic
-        # When using ImplicitFreeSurface, let the model auto-select the appropriate pressure solver
-        # (ConjugateGradientPoissonSolver is incompatible with the free surface boundary condition)
+        # atm [2026-03-12] ConjugateGradientPoissonSolver doesn't work with the free surface boundary condition
         pressure_solver = isnothing(pressure_solver_constructor) ? nothing : pressure_solver_constructor(grid)
         kwargs = merge(kwargs, (; free_surface = ImplicitFreeSurface(), pressure_solver, advection))
         model = NonhydrostaticModel(grid; kwargs...)
@@ -117,6 +116,8 @@ function plot_flow_over_hill_animation(filepath;
     η_plt = @lift η_ts[$n]
     ax_η = Axis(fig[1, 1], xlabel = "x", ylabel = "η (m)", title = "Free surface elevation", width = 500, height = 150)
     lines!(ax_η, η_plt, linewidth = 2, color = :blue)
+    η_max = maximum(abs, η_ts)
+    ylims!(ax_η, -η_max, η_max)
 
     # Second panel: always plot vorticity (2D heatmap)
     ω_plt = @lift ω_ts[$n]
@@ -155,7 +156,7 @@ end
 
 # Run and plot non-hydrostatic flow over hill
 model_type = :nonhydrostatic
-nh_simulation = flow_over_hill_simulation(; model_type, cell_aspect_ratio=5, hill_width=10, Nz=16, debug=true)
+nh_simulation = flow_over_hill_simulation(; model_type, cell_aspect_ratio=100, hill_width=100, Nz=16, debug=true)
 run!(nh_simulation)
 plot_flow_over_hill_animation(nh_simulation.output_writers[:snaps].filepath; model_type)
 
