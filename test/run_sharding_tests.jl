@@ -9,8 +9,11 @@ include("distributed_tests_utils.jl")
 using Reactant
 using Oceananigans.TimeSteppers: first_time_step!
 
-# Override run_distributed_simulation with Reactant-aware version
-function run_distributed_simulation(grid)
+# Dispatch on Reactant grids to compile with @compile before time stepping
+const ReactantArch = Union{ReactantState, Distributed{<:ReactantState}}
+const ReactantTestGrid = AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:ReactantArch}
+
+function run_distributed_simulation(grid::ReactantTestGrid)
 
     model = HydrostaticFreeSurfaceModel(grid;
                                         free_surface = SplitExplicitFreeSurface(grid; substeps = 20),
@@ -23,17 +26,12 @@ function run_distributed_simulation(grid)
     set!(model, c=ηᵢ, η=ηᵢ)
 
     Δt = 5minutes
-    arch = architecture(grid)
-    if arch isa ReactantState || arch isa Distributed{<:ReactantState}
-        @info "Compiling first_time_step..."
-        r_first_time_step! = @compile sync=true raise=true first_time_step!(model, Δt)
 
-        @info "Compiling time_step..."
-        r_time_step! = @compile sync=true raise=true time_step!(model, Δt)
-    else
-        r_first_time_step! = first_time_step!
-        r_time_step! = time_step!
-    end
+    @info "Compiling first_time_step..."
+    r_first_time_step! = @compile sync=true raise=true first_time_step!(model, Δt)
+
+    @info "Compiling time_step..."
+    r_time_step! = @compile sync=true raise=true time_step!(model, Δt)
 
     @info "Running first time step..."
     r_first_time_step!(model, Δt)
