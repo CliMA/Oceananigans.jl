@@ -22,10 +22,14 @@ tripolar_reconstructed_grid = """
         @test reconstruct_grid == global_grid
 
         nx, ny, _ = size(local_grid)
+        Nx, Ny, _ = size(global_grid)
+        Rx, Ry, _ = arch.ranks
         rx, ry, _ = arch.local_index .- 1
 
-        jrange = 1 + ry * ny : (ry + 1) * ny
-        irange = 1 + rx * nx : (rx + 1) * nx
+        # Use base partition size for offset to handle uneven partitions
+        # (remainder is added to the last rank)
+        jrange = 1 + ry * (Ny ÷ Ry) : ry * (Ny ÷ Ry) + ny
+        irange = 1 + rx * (Nx ÷ Rx) : rx * (Nx ÷ Rx) + nx
 
         for var in [:Δxᶠᶠᵃ, :Δxᶜᶜᵃ, :Δxᶠᶜᵃ, :Δxᶜᶠᵃ,
                     :Δyᶠᶠᵃ, :Δyᶜᶜᵃ, :Δyᶠᶜᵃ, :Δyᶜᶠᵃ,
@@ -57,10 +61,14 @@ fpivot_reconstructed_grid = """
         @test reconstruct_grid == global_grid
 
         nx, ny, _ = size(local_grid)
+        Nx, Ny, _ = size(global_grid)
+        Rx, Ry, _ = arch.ranks
         rx, ry, _ = arch.local_index .- 1
 
-        jrange = 1 + ry * ny : (ry + 1) * ny
-        irange = 1 + rx * nx : (rx + 1) * nx
+        # Use base partition size for offset to handle uneven partitions
+        # (remainder is added to the last rank)
+        jrange = 1 + ry * (Ny ÷ Ry) : ry * (Ny ÷ Ry) + ny
+        irange = 1 + rx * (Nx ÷ Rx) : rx * (Nx ÷ Rx) + nx
 
         for var in [:Δxᶠᶠᵃ, :Δxᶜᶜᵃ, :Δxᶠᶜᵃ, :Δxᶜᶠᵃ,
                     :Δyᶠᶠᵃ, :Δyᶜᶜᵃ, :Δyᶠᶜᵃ, :Δyᶜᶠᵃ,
@@ -124,9 +132,9 @@ fpivot_reconstructed_field = """
     archs = [Distributed(CPU(), partition=Partition(1, 4)),
              Distributed(CPU(), partition=Partition(2, 2))]
 
-    u = [i + 10 * j for i in 1:40, j in 1:41]
+    u = [i + 10 * j for i in 1:40, j in 1:40]
     v = [i + 10 * j for i in 1:40, j in 1:41]
-    c = [i + 10 * j for i in 1:40, j in 1:41]
+    c = [i + 10 * j for i in 1:40, j in 1:40]
 
     for arch in archs
         local_grid = TripolarGrid(arch; size = (40, 41, 1), z = (-1000, 0), halo = (5, 5, 5), fold_topology = RightFaceFolded)
@@ -157,21 +165,21 @@ fpivot_reconstructed_field = """
 
 @testset "Test distributed TripolarGrid..." begin
     write("distributed_tripolar_grid.jl", tripolar_reconstructed_grid)
-    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 distributed_tripolar_grid.jl`)
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 --check-bounds=yes distributed_tripolar_grid.jl`)
     rm("distributed_tripolar_grid.jl")
 
     write("distributed_tripolar_field.jl", tripolar_reconstructed_field)
-    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 distributed_tripolar_field.jl`)
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 --check-bounds=yes distributed_tripolar_field.jl`)
     rm("distributed_tripolar_field.jl")
 end
 
 @testset "Test distributed FPivot TripolarGrid..." begin
     write("distributed_fpivot_tripolar_grid.jl", fpivot_reconstructed_grid)
-    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 distributed_fpivot_tripolar_grid.jl`)
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 --check-bounds=yes distributed_fpivot_tripolar_grid.jl`)
     rm("distributed_fpivot_tripolar_grid.jl")
 
     write("distributed_fpivot_tripolar_field.jl", fpivot_reconstructed_field)
-    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 distributed_fpivot_tripolar_field.jl`)
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 --check-bounds=yes distributed_fpivot_tripolar_field.jl`)
     rm("distributed_fpivot_tripolar_field.jl")
 end
 
@@ -230,7 +238,7 @@ tripolar_boundary_conditions = """
     fill_halo_regions!((v, c))
 
     write("distributed_boundary_tests.jl", tripolar_boundary_conditions)
-    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 distributed_boundary_tests.jl`)
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 --check-bounds=yes distributed_boundary_tests.jl`)
     rm("distributed_boundary_tests.jl")
 
     # Retrieve Parallel quantities from rank 1 (the north-west rank)
@@ -262,10 +270,11 @@ fpivot_boundary_conditions = """
     vs =  YFaceField(serial_grid)
     cs = CenterField(serial_grid)
 
-    I1 = [i + j * 100 for i in 1:20, j in 1:21]
+    I_v = [i + j * 100 for i in 1:20, j in 1:21]
+    I_c = [i + j * 100 for i in 1:20, j in 1:20]
 
-    set!(vs, I1)
-    set!(cs, I1)
+    set!(vs, I_v)
+    set!(cs, I_c)
 
     fill_halo_regions!((vs, cs))
 
@@ -291,18 +300,19 @@ fpivot_boundary_conditions = """
     # Run the serial computation
     grid = TripolarGrid(size = (20, 21, 1), z = (-1000, 0), fold_topology = RightFaceFolded)
 
-    I1 = [i + j * 100 for i in 1:20, j in 1:21]
+    I_v = [i + j * 100 for i in 1:20, j in 1:21]
+    I_c = [i + j * 100 for i in 1:20, j in 1:20]
 
     v = YFaceField(grid)
     c = CenterField(grid)
 
-    set!(v, I1)
-    set!(c, I1)
+    set!(v, I_v)
+    set!(c, I_c)
 
     fill_halo_regions!((v, c))
 
     write("distributed_fpivot_boundary_tests.jl", fpivot_boundary_conditions)
-    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 distributed_fpivot_boundary_tests.jl`)
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 --check-bounds=yes distributed_fpivot_boundary_tests.jl`)
     rm("distributed_fpivot_boundary_tests.jl")
 
     # Retrieve Parallel quantities from rank 1 (the north-west rank)
@@ -365,7 +375,7 @@ run_large_pencil_distributed_grid = """
     cs = interior(cs, :, :, 1)
     # Run the distributed grid simulation with a slab configuration
     write("distributed_slab_tests.jl", run_slab_distributed_grid)
-    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 distributed_slab_tests.jl`)
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 --check-bounds=yes distributed_slab_tests.jl`)
     rm("distributed_slab_tests.jl")
 
     # Retrieve Parallel quantities
@@ -384,7 +394,7 @@ run_large_pencil_distributed_grid = """
 
     # Run the distributed grid simulation with a pencil configuration
     write("distributed_tests.jl", run_pencil_distributed_grid)
-    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 distributed_tests.jl`)
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 --check-bounds=yes distributed_tests.jl`)
     rm("distributed_tests.jl")
 
     # Retrieve Parallel quantities
@@ -404,7 +414,7 @@ run_large_pencil_distributed_grid = """
     # test as we are now splitting, not only where the singularities are, but
     # also in the middle of the north fold. This is a more challenging test
     write("distributed_large_pencil_tests.jl", run_large_pencil_distributed_grid)
-    run(`$(mpiexec()) -n 8 $(Base.julia_cmd()) -O0 distributed_large_pencil_tests.jl`)
+    run(`$(mpiexec()) -n 8 $(Base.julia_cmd()) -O0 --check-bounds=yes distributed_large_pencil_tests.jl`)
     rm("distributed_large_pencil_tests.jl")
 
     # Retrieve Parallel quantities
@@ -428,12 +438,12 @@ run_fpivot_slab_distributed_grid = """
     include("distributed_tests_utils.jl")
     arch = Distributed(CPU(), partition = Partition(1, 4))
     run_distributed_tripolar_grid(arch, "distributed_fpivot_yslab_tripolar.jld2";
-                                  fold_topology = RightFaceFolded, Ny = 41)
+                                  fold_topology = RightFaceFolded, Ny = 121)
 """
 
 @testset "Test distributed FPivot TripolarGrid simulations..." begin
     # Run the serial computation
-    grid  = TripolarGrid(size = (40, 41, 1), z = (-1000, 0), halo = (5, 5, 5), fold_topology = RightFaceFolded)
+    grid  = TripolarGrid(size = (40, 121, 1), z = (-1000, 0), halo = (5, 5, 5), fold_topology = RightFaceFolded)
     grid  = analytical_immersed_tripolar_grid(grid)
     model = run_distributed_simulation(grid)
 
@@ -448,7 +458,7 @@ run_fpivot_slab_distributed_grid = """
 
     # Run the distributed grid simulation with a slab configuration
     write("distributed_fpivot_slab_tests.jl", run_fpivot_slab_distributed_grid)
-    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 distributed_fpivot_slab_tests.jl`)
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 --check-bounds=yes distributed_fpivot_slab_tests.jl`)
     rm("distributed_fpivot_slab_tests.jl")
 
     # Retrieve Parallel quantities
