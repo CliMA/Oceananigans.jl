@@ -24,8 +24,12 @@ function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
     x₀ = Lx / 3
 
     # Determine vertical coordinate based on model type
-    if (model_type == :nonhydrostatic) && !isnothing(pressure_solver_constructor)
-        z = (-Lz, 0)  # Default for nonhydrostatic without free surface
+    if (model_type == :nonhydrostatic)
+        if !isnothing(pressure_solver_constructor)
+            z = (-Lz, 0)  # Default for nonhydrostatic without free surface
+        else
+            z = MutableVerticalDiscretization(-Lz:(Lz/Nz):0)
+        end
     elseif model_type == :hydrostatic_with_implicit_surface
         z = MutableVerticalDiscretization(-Lz:(Lz/Nz):0)
     else
