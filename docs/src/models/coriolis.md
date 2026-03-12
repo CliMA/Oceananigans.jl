@@ -80,7 +80,7 @@ ConstantCartesianCoriolis{Float64}: fx = 0.00e+00, fy = 1.03e-04, fz = 1.03e-04
 
 in which case ``f_z = 2\Omega\sin\varphi`` and ``f_y = 2\Omega\cos\varphi``.
 
-## [Traditional ``\beta``-plane](@id traditional_beta_plane_section)
+## Traditional ``β``-plane
 
 To set up a ``\beta``-plane the background rotation rate ``f_0`` and the ``\beta`` parameter must be specified. For example,
 a ``\beta``-plane with ``f_0 = 10^{-4} \text{s}^{-1}`` and ``\beta = 1.5 \times 10^{-11} \text{s}^{-1}\text{m}^{-1}`` can be
@@ -102,7 +102,7 @@ BetaPlane{Float64}(f₀=-2.53252e-5, β=2.25438e-11)
 
 in which case ``f_0 = 2\Omega\sin\varphi`` and ``\beta = 2\Omega\cos\varphi / R``.
 
-## [Non-traditional ``\beta``-plane](@id non_traditional_beta_plane_section)
+## Non-traditional ``β``-plane
 
 A non-traditional ``\beta``-plane requires either 5 parameters (by default Earth's radius and
 rotation rate are used):
