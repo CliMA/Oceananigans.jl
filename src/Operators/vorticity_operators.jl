@@ -9,7 +9,5 @@ using Oceananigans.Grids: peripheral_node, Face, Center
 The vertical vorticity associated with horizontal velocities ``u`` and ``v``.
 """
 @inline function ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) 
-    ζᶠᶠᶜ = Γᶠᶠᶜ(i, j, k, grid, u, v) * Az⁻¹ᶠᶠᶜ(i, j, k, grid)
-    immersed = peripheral_node(i, j, k, grid, Face(), Face(), Center())
-    return ifelse(immersed, zero(grid), ζᶠᶠᶜ)
+    return Γᶠᶠᶜ(i, j, k, grid, u, v) * Az⁻¹ᶠᶠᶜ(i, j, k, grid)
 end
