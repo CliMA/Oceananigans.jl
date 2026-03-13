@@ -203,11 +203,11 @@ end
 # data from source rows below:
 #
 #   Ny+Hy ─▶  ┌───────────────────────┐  ← fold row Hy (dest, filled from buffer)
-#             │  ...                   │
+#             │  ...                  │
 #   Ny+1  ─▶  ├───────────────────────┤  ← fold row 1  (dest, filled from buffer)
 #   Ny    ─▶  ╞═══════════════════════╡  ← fold line    (half-row substitution)
 #   Ny-1  ─▶  ├───────────────────────┤  ← source row 1 (read by partner buffer)
-#             │  ...                   │
+#             │  ...                  │
 #
 # In serial, the fold kernel operates element-wise over the full array, then
 # the Periodic x-halo exchange fills fold-row x-halos. In distributed:
@@ -265,26 +265,26 @@ end
 # buffer[:, k, :] where k=1..Hy+2: k=1 = partner offset ny-Hy-1, k=Hy+2 = partner offset ny.
 # Partner offset ny-m → buffer k = Hy+2-m.
 #
-# Pattern A (UPivot Face-y): nj=Hy, dest(j)=Ny+Hy+j, src_k(j)=Hy+3-j
-# Pattern B (UPivot Center-y, FPivot Face-y): nj=Hy, dest(j)=Ny+Hy+j, src_k(j)=Hy+2-j
-# Pattern C (FPivot Center-y): nj=Hy+1, dest(j)=Ny+Hy-1+j, src_k(j)=Hy+2-j
+# Pattern A (UPivot, YFace): nj=Hy, dest(j)=Ny+Hy+j, src_k(j)=Hy+3-j
+# Pattern B (UPivot YCenter, FPivot YFace): nj=Hy, dest(j)=Ny+Hy+j, src_k(j)=Hy+2-j
+# Pattern C (FPivot, YCenter): nj=Hy+1, dest(j)=Ny+Hy-1+j, src_k(j)=Hy+2-j
 
-# Pattern A: UPivot Face-y (source: partner ny-j+1, dest: Ny+j)
+# Pattern A: UPivot, YFace (source: partner ny-j+1, dest: Ny+j)
 @inline fold_nj(     ::Tuple{<:Any, <:Face,   <:Any}, Hy, ::Type{RightCenterFolded}) = Hy
 @inline fold_dest_y( ::Tuple{<:Any, <:Face,   <:Any}, Ny, Hy, j, ::Type{RightCenterFolded}) = Ny + Hy + j
 @inline fold_src_k(  ::Tuple{<:Any, <:Face,   <:Any}, Hy, j, ::Type{RightCenterFolded}) = Hy + 3 - j
 
-# Pattern B: UPivot Center-y (source: partner ny-j, dest: Ny+j)
+# Pattern B: UPivot, YCenter (source: partner ny-j, dest: Ny+j)
 @inline fold_nj(     ::Tuple{<:Any, <:Center, <:Any}, Hy, ::Type{RightCenterFolded}) = Hy
 @inline fold_dest_y( ::Tuple{<:Any, <:Center, <:Any}, Ny, Hy, j, ::Type{RightCenterFolded}) = Ny + Hy + j
 @inline fold_src_k(  ::Tuple{<:Any, <:Center, <:Any}, Hy, j, ::Type{RightCenterFolded}) = Hy + 2 - j
 
-# Pattern B: FPivot Face-y (same indexing as UPivot Center-y)
+# Pattern B: FPivot, YFace (same indexing as UPivot YCenter)
 @inline fold_nj(     ::Tuple{<:Any, <:Face,   <:Any}, Hy, ::Type{RightFaceFolded}) = Hy
 @inline fold_dest_y( ::Tuple{<:Any, <:Face,   <:Any}, Ny, Hy, j, ::Type{RightFaceFolded}) = Ny + Hy + j
 @inline fold_src_k(  ::Tuple{<:Any, <:Face,   <:Any}, Hy, j, ::Type{RightFaceFolded}) = Hy + 2 - j
 
-# Pattern C: FPivot Center-y (source: partner ny-j, dest: Ny-1+j, Hy+1 rows)
+# Pattern C: FPivot, YCenter (source: partner ny-j, dest: Ny-1+j, Hy+1 rows)
 @inline fold_nj(     ::Tuple{<:Any, <:Center, <:Any}, Hy, ::Type{RightFaceFolded}) = Hy + 1
 @inline fold_dest_y( ::Tuple{<:Any, <:Center, <:Any}, Ny, Hy, j, ::Type{RightFaceFolded}) = Ny + Hy - 1 + j
 @inline fold_src_k(  ::Tuple{<:Any, <:Center, <:Any}, Hy, j, ::Type{RightFaceFolded}) = Hy + 2 - j
@@ -310,52 +310,54 @@ end
 # Buffer k=Hy+2 holds the partner's fold-line row (partner parent y = Ny+Hy).
 fill_half_north_fold_line!(c, recv, loc, sign, Nx, Ny, Hx, Hy, fold_topo, buf_x, fold_i_start) = nothing
 
-# CF: Center-x, Face-y, FPivot — all Nx columns from reversed partner buffer
-function fill_half_north_fold_line!(c, recv, ::Tuple{<:Center, <:Face, <:Any}, sign, Nx, Ny, Hx, Hy,
-                                    ::Type{RightFaceFolded}, buf_x, fold_i_start)
-    fold_y = Ny + Hy
-    fold_k = Hy + 2
+# CC/CF: all Nx columns from reversed partner buffer
+@inline function _fill_fold_line_all_columns!(c, recv, sign, Nx, Hx, fold_y, fold_k, buf_x, fold_i_start)
     reversed = sign .* reverse(view(recv, buf_x, fold_k:fold_k, :), dims=1)
     view(c, Hx+fold_i_start:Hx+Nx, fold_y:fold_y, :) .= view(reversed, fold_i_start:Nx, :, :)
 end
 
-# FF: Face-x, Face-y, FPivot — columns 2..Nx from reversed partner buffer
-# Column 1 handled by fill_north_fold_halo_west_column!
-function fill_half_north_fold_line!(c, recv, ::Tuple{<:Face, <:Face, <:Any}, sign, Nx, Ny, Hx, Hy,
-                                    ::Type{RightFaceFolded}, buf_x, fold_i_start)
-    fold_y = Ny + Hy
-    fold_k = Hy + 2
+# FC/FF: columns 2..Nx from reversed partner buffer (column 1 handled by fill_north_fold_halo_west_column!)
+@inline function _fill_fold_line_skip_column1!(c, recv, sign, Nx, Hx, fold_y, fold_k, buf_x, fold_i_start)
     i_start = max(2, fold_i_start)
     reversed = sign .* reverse(view(recv, buf_x[2]:buf_x[end], fold_k:fold_k, :), dims=1)
-    p_start = i_start - 1  # index into reversed buffer (which has Nx-1 elements)
-    view(c, Hx+i_start:Hx+Nx, fold_y:fold_y, :) .= view(reversed, p_start:Nx-1, :, :)
+    view(c, Hx+i_start:Hx+Nx, fold_y:fold_y, :) .= view(reversed, i_start-1:Nx-1, :, :)
 end
 
-# CC: Center-x, Center-y, UPivot — same reversal pattern as CF
-function fill_half_north_fold_line!(c, recv, ::Tuple{<:Center, <:Center, <:Any}, sign, Nx, Ny, Hx, Hy,
-                                    ::Type{RightCenterFolded}, buf_x, fold_i_start)
-    fold_y = Ny + Hy
-    fold_k = Hy + 2
-    reversed = sign .* reverse(view(recv, buf_x, fold_k:fold_k, :), dims=1)
-    view(c, Hx+fold_i_start:Hx+Nx, fold_y:fold_y, :) .= view(reversed, fold_i_start:Nx, :, :)
-end
+# CF (Center, Face), FPivot
+fill_half_north_fold_line!(c, recv, ::Tuple{<:Center, <:Face, <:Any}, sign, Nx, Ny, Hx, Hy,
+                            ::Type{RightFaceFolded}, buf_x, fi) =
+    _fill_fold_line_all_columns!(c, recv, sign, Nx, Hx, Ny+Hy, Hy+2, buf_x, fi)
 
-# FC: Face-x, Center-y, UPivot — columns 2..Nx from reversed partner buffer
-# Column 1 handled by fill_north_fold_halo_west_column!
-function fill_half_north_fold_line!(c, recv, ::Tuple{<:Face, <:Center, <:Any}, sign, Nx, Ny, Hx, Hy,
-                                    ::Type{RightCenterFolded}, buf_x, fold_i_start)
-    fold_y = Ny + Hy
-    fold_k = Hy + 2
-    i_start = max(2, fold_i_start)
-    reversed = sign .* reverse(view(recv, buf_x[2]:buf_x[end], fold_k:fold_k, :), dims=1)
-    p_start = i_start - 1
-    view(c, Hx+i_start:Hx+Nx, fold_y:fold_y, :) .= view(reversed, p_start:Nx-1, :, :)
-end
+# CC (Center, Center), UPivot
+fill_half_north_fold_line!(c, recv, ::Tuple{<:Center, <:Center, <:Any}, sign, Nx, Ny, Hx, Hy,
+                            ::Type{RightCenterFolded}, buf_x, fi) =
+    _fill_fold_line_all_columns!(c, recv, sign, Nx, Hx, Ny+Hy, Hy+2, buf_x, fi)
+
+# FF (Face, Face), FPivot
+fill_half_north_fold_line!(c, recv, ::Tuple{<:Face, <:Face, <:Any}, sign, Nx, Ny, Hx, Hy,
+                            ::Type{RightFaceFolded}, buf_x, fi) =
+    _fill_fold_line_skip_column1!(c, recv, sign, Nx, Hx, Ny+Hy, Hy+2, buf_x, fi)
+
+# FC (Face, Center), UPivot
+fill_half_north_fold_line!(c, recv, ::Tuple{<:Face, <:Center, <:Any}, sign, Nx, Ny, Hx, Hy,
+                            ::Type{RightCenterFolded}, buf_x, fi) =
+    _fill_fold_line_skip_column1!(c, recv, sign, Nx, Hx, Ny+Hy, Hy+2, buf_x, fi)
 
 # Fold-line parent y for cases that need fold-line overwrite; nothing otherwise.
 _fold_line_parent_y(loc, Ny, Hy, fold_topo) = nothing
 _fold_line_parent_y(::Tuple{<:Any, <:Center, <:Any}, Ny, Hy, ::Type{RightCenterFolded}) = Ny + Hy
 _fold_line_parent_y(::Tuple{<:Any, <:Face, <:Any}, Ny, Hy, ::Type{RightFaceFolded}) = Ny + Hy
+
+# Contiguous parent y-range of all fold-affected rows (halo rows + fold line).
+# Used by exchange_north_fold_halos! to batch MPI exchanges.
+@inline function fold_y_range(loc, Ny, Hy, fold_topo)
+    nj = fold_nj(loc, Hy, fold_topo)
+    y_first = fold_dest_y(loc, Ny, Hy, 1, fold_topo)
+    y_last  = fold_dest_y(loc, Ny, Hy, nj, fold_topo)
+    fold_line_y = _fold_line_parent_y(loc, Ny, Hy, fold_topo)
+    y_start = fold_line_y !== nothing ? min(y_first, fold_line_y) : y_first
+    return y_start:y_last
+end
 
 # Step 1: Fill fold halo rows (above the fold line) from partner buffer.
 # Writes non-halo columns of each fold halo row with x-reversed partner data.
@@ -393,59 +395,44 @@ function fill_north_fold_halo_west_column!(c, loc::Tuple{<:Face, <:Any, <:Any}, 
     arch = architecture(grid)
     Rx, Ry, Rz = ranks(arch)
     rx = arch.local_index[1] - 1  # 0-based x-rank
-    ry = arch.local_index[2]      # 1-based y-rank
-    rz = arch.local_index[3]      # 1-based z-rank
     rx_conj = mod(Rx - rx, Rx)    # 0-based conjugate x-rank
-
     nj = fold_nj(loc, Hy, fold_topo)
-    Nz_parent = size(c, 3)
     col1 = Hx + 1  # parent index of column 1
-
-    # Collect all y-rows that need column 1 exchange:
-    # - All fold halo rows (all ranks get these from step 1)
-    # - Fold line (if present for this loc/fold_topo combination)
-    # For fold-line rows, only right-half ranks write the result, but both
-    # conjugates must participate in the MPI exchange to avoid deadlock.
-    fix_rows = Tuple{Int, Int, Bool}[]  # (dest_y, src_parent_y, should_write)
-    for j in 1:nj
-        dest_y = fold_dest_y(loc, Ny, Hy, j, fold_topo)
-        src_k  = fold_src_k(loc, Hy, j, fold_topo)
-        src_parent_y = Ny + src_k - 2
-        push!(fix_rows, (dest_y, src_parent_y, true))
-    end
 
     fold_line_y = _fold_line_parent_y(loc, Ny, Hy, fold_topo)
     is_right_half = (Rx == 1) || (arch.local_index[1] > Rx ÷ 2)
-    if fold_line_y !== nothing
-        # All ranks include fold line in exchange; only right-half writes the result
-        push!(fix_rows, (fold_line_y, fold_line_y, is_right_half))
-    end
 
     if rx_conj == rx
         # Fixed point: column 1 maps to self — local copy
-        for (dest_y, src_parent_y, should_write) in fix_rows
-            if should_write
-                for k in 1:Nz_parent
-                    c[col1, dest_y, k] = sign * c[col1, src_parent_y, k]
-                end
-            end
+        for j in 1:nj
+            dest_y = fold_dest_y(loc, Ny, Hy, j, fold_topo)
+            src_y  = Ny + fold_src_k(loc, Hy, j, fold_topo) - 2
+            view(c, col1:col1, dest_y:dest_y, :) .= sign .* view(c, col1:col1, src_y:src_y, :)
+        end
+        if fold_line_y !== nothing && is_right_half
+            view(c, col1:col1, fold_line_y:fold_line_y, :) .*= sign
         end
     else
         # Non-fixed point: exchange column 1 with conjugate rank
+        ry, rz = arch.local_index[2], arch.local_index[3]
         conj_rank = index2rank(rx_conj + 1, ry, rz, Rx, Ry, Rz)
         comm = arch.communicator
+        send_buf = similar(c, 1, 1, size(c, 3))
+        recv_buf = similar(send_buf)
 
-        for (idx, (dest_y, src_parent_y, should_write)) in enumerate(fix_rows)
-            send_buf = view(c, col1:col1, src_parent_y:src_parent_y, :)
-            recv_buf = similar(send_buf)
-
-            tag = 9999 - idx + 1
-            MPI.Sendrecv!(send_buf, recv_buf, comm; dest=conj_rank, source=conj_rank, sendtag=tag, recvtag=tag)
-
-            if should_write
-                for k in 1:Nz_parent
-                    c[col1, dest_y, k] = sign * recv_buf[1, 1, k]
-                end
+        tag = 10000
+        for j in 1:nj
+            dest_y = fold_dest_y(loc, Ny, Hy, j, fold_topo)
+            src_y  = Ny + fold_src_k(loc, Hy, j, fold_topo) - 2
+            send_buf .= view(c, col1:col1, src_y:src_y, :)
+            MPI.Sendrecv!(send_buf, recv_buf, comm; dest=conj_rank, source=conj_rank, sendtag=tag-j, recvtag=tag-j)
+            view(c, col1:col1, dest_y:dest_y, :) .= sign .* recv_buf
+        end
+        if fold_line_y !== nothing
+            send_buf .= view(c, col1:col1, fold_line_y:fold_line_y, :)
+            MPI.Sendrecv!(send_buf, recv_buf, comm; dest=conj_rank, source=conj_rank, sendtag=tag-nj-1, recvtag=tag-nj-1)
+            if is_right_half
+                view(c, col1:col1, fold_line_y:fold_line_y, :) .= sign .* recv_buf
             end
         end
     end
@@ -463,44 +450,26 @@ end
 function exchange_north_fold_halos!(c, loc, grid, Nx, Ny, Hx, Hy, fold_topo)
     arch = architecture(grid)
     Rx = ranks(arch)[1]
-
-    # Only need x-halo exchange if there are multiple x-ranks
     Rx == 1 && return nothing
 
     comm = arch.communicator
-    rx = arch.local_index[1]  # 1-based
+    rx = arch.local_index[1]
+    west_rank = index2rank(mod1(rx - 1, Rx), arch.local_index[2], arch.local_index[3], ranks(arch)...)
+    east_rank = index2rank(mod1(rx + 1, Rx), arch.local_index[2], arch.local_index[3], ranks(arch)...)
 
-    # East/west neighbor ranks (periodic in x)
-    west_rx = mod1(rx - 1, Rx)
-    east_rx = mod1(rx + 1, Rx)
-    west_rank = index2rank(west_rx, arch.local_index[2], arch.local_index[3], ranks(arch)...)
-    east_rank = index2rank(east_rx, arch.local_index[2], arch.local_index[3], ranks(arch)...)
+    yr = fold_y_range(loc, Ny, Hy, fold_topo)
 
-    # Collect all fold-affected y-rows (halo rows + fold line)
-    nj = fold_nj(loc, Hy, fold_topo)
-    fold_rows = Int[]
-    for j in 1:nj
-        push!(fold_rows, fold_dest_y(loc, Ny, Hy, j, fold_topo))
-    end
-    fold_line_y = _fold_line_parent_y(loc, Ny, Hy, fold_topo)
-    if fold_line_y !== nothing
-        push!(fold_rows, fold_line_y)
-    end
+    # Send westmost Hx columns to west neighbor, recv from east neighbor into east halo
+    send_west = copy(view(c, Hx+1:2Hx, yr, :))
+    recv_east = similar(send_west)
+    MPI.Sendrecv!(send_west, recv_east, comm; dest=west_rank, source=east_rank, sendtag=9997, recvtag=9997)
+    view(c, Nx+Hx+1:Nx+2Hx, yr, :) .= recv_east
 
-    # Exchange west halo (columns 1:Hx) and east halo (columns Nx+Hx+1:Nx+2Hx)
-    for y in fold_rows
-        # Send our Hx westmost columns to west neighbor, recv from east neighbor into east halo
-        send_west = copy(view(c, Hx+1:2Hx, y:y, :))
-        recv_east = similar(send_west)
-        MPI.Sendrecv!(send_west, recv_east, comm; dest=west_rank, source=east_rank, sendtag=9997, recvtag=9997)
-        view(c, Nx+Hx+1:Nx+2Hx, y:y, :) .= recv_east
-
-        # Send our Hx eastmost columns to east neighbor, recv from west neighbor into west halo
-        send_east = copy(view(c, Nx+1:Nx+Hx, y:y, :))
-        recv_west = similar(send_east)
-        MPI.Sendrecv!(send_east, recv_west, comm; dest=east_rank, source=west_rank, sendtag=9996, recvtag=9996)
-        view(c, 1:Hx, y:y, :) .= recv_west
-    end
+    # Send eastmost Hx columns to east neighbor, recv from west neighbor into west halo
+    send_east = copy(view(c, Nx+1:Nx+Hx, yr, :))
+    recv_west = similar(send_east)
+    MPI.Sendrecv!(send_east, recv_west, comm; dest=east_rank, source=west_rank, sendtag=9996, recvtag=9996)
+    view(c, 1:Hx, yr, :) .= recv_west
 
     return nothing
 end

@@ -318,6 +318,29 @@ With Rx=4, this is false:
 **Next step**: Run `index_tracing_halo_test.jl` with Partition(4,2) on 80×80/81 grids to get
 exact cell-level diagnosis of which halo cells are incorrect, then fix `_fold_corner_write!`.
 
+### Step 12: Fix fold-corner and FC/FF column 1 bugs for Rx > 2 — COMPLETE
+
+**Two bugs confirmed by Partition(4,2) index tracing (job 163006343)**:
+1. `_fold_corner_write!` fills fold-row x-halos from LOCAL data — wrong for Rx>2 where the
+   fold's x-reversal maps halo positions to OTHER x-ranks' data (120 mismatches per field)
+2. FC/FF column 1 assumed local column 1 = global i=1 (fixed point) — wrong for non-zero
+   x-ranks where column 1 maps to a different "conjugate" x-rank (1 mismatch per FC/FF field)
+
+**Fix**: Replaced the old fold approach with a 4-step pipeline in `switch_north_halos!`:
+1. `fill_north_fold_halo!` — fold halo rows from partner buffer (renamed from `_switch_north_halos_from_buffer!`)
+2. `fill_half_north_fold_line!` — fold-line half-row substitution (renamed from `_fold_line_from_buffer!`)
+3. `fill_north_fold_halo_west_column!` — **NEW**: FC/FF column 1 MPI exchange with conjugate rank
+4. `exchange_north_fold_halos!` — **NEW**: re-exchange x-halos at fold rows with east/west neighbors
+
+Deleted `_fold_corner_write!` entirely (was wrong for Rx>2). Modified FC/FF variants of
+`fill_north_fold_halo_row!` and `fill_half_north_fold_line!` to skip column 1 (handled by step 3).
+
+**Verification results**:
+- 4-rank regression (Partition(1,4) + Partition(2,2)): **8/8 PASS** (job 163028780)
+- 8-rank bug fix (Partition(4,2)): **2/2 PASS** (job 163032308)
+
+Commit: `6d524eaa9`
+
 ### Summary of confirmed results across all runs
 
 | Testset | Description | Status | Notes |
@@ -326,8 +349,10 @@ exact cell-level diagnosis of which halo cells are incorrect, then fix `_fold_co
 | 2 | Field reconstruction | **PASS** (4/4 configs) | 39/39 tests each (run 5) |
 | 3 | UPivot boundary conditions | **PASS** (4/4) | Confirmed across multiple runs |
 | 4 | FPivot boundary conditions | **PASS** (4/4) | Confirmed across multiple runs |
-| 5 | UPivot simulations | **PARTIAL** | slab+pencil PASS, large-pencil 4×2 FAIL (u,v,η) |
-| 6 | FPivot simulations | **PARTIAL** | slab+pencil PASS, large-pencil 4×2 FAIL (u only) |
+| 5 | UPivot simulations | **PARTIAL** | slab+pencil PASS, large-pencil 4×2 FAIL (u,v,η) — pre-Step 12 |
+| 6 | FPivot simulations | **PARTIAL** | slab+pencil PASS, large-pencil 4×2 FAIL (u only) — pre-Step 12 |
+| index | Index tracing (4-rank) | **PASS** (8/8) | All UPivot/FPivot configs, job 163028780 |
+| index | Index tracing (8-rank) | **PASS** (2/2) | Partition(4,2), job 163032308 |
 
 ## Key references
 
