@@ -122,7 +122,7 @@ julia> coriolis = HydrostaticSphericalCoriolis()
 SphericalCoriolis
 ├─ rotation rate: 7.29e-05 s⁻¹ = 1.00 Ω_Earth
 ├─ formulation: HydrostaticFormulation
-└─ scheme: ActiveWeightedEnstrophyConserving
+└─ scheme: EnstrophyConserving
 ```
 
 A custom rotation rate can be specified:
@@ -132,7 +132,7 @@ julia> coriolis = HydrostaticSphericalCoriolis(rotation_rate=1e-4)
 SphericalCoriolis
 ├─ rotation rate: 1.00e-04 s⁻¹ = 1.37 Ω_Earth
 ├─ formulation: HydrostaticFormulation
-└─ scheme: ActiveWeightedEnstrophyConserving
+└─ scheme: EnstrophyConserving
 ```
 
 ## Discretization schemes
@@ -152,8 +152,8 @@ Five schemes are available:
 | `ActiveWeightedEnstrophyConserving()` | Potential enstrophy | Yes |
 | `ActiveWeightedEnergyConserving()` | Kinetic energy | Yes |
 
-The default scheme is `ActiveWeightedEnstrophyConserving()` for `HydrostaticSphericalCoriolis`
-and `EENConserving()` for `FPlane` and `BetaPlane`.
+The default scheme is `EnstrophyConserving()` for `HydrostaticSphericalCoriolis`,
+`FPlane`, and `BetaPlane`.
 
 ### Selecting a scheme
 
@@ -172,7 +172,7 @@ julia> coriolis = HydrostaticSphericalCoriolis(scheme=EnergyConserving())
 SphericalCoriolis
 ├─ rotation rate: 7.29e-05 s⁻¹ = 1.00 Ω_Earth
 ├─ formulation: HydrostaticFormulation
-└─ scheme: Oceananigans.Advection.EnergyConserving{Float64}
+└─ scheme: EnergyConserving
 ```
 
 ### Active-weighted schemes for immersed boundaries
@@ -213,4 +213,4 @@ julia> coriolis = FPlane(f=1e-4, scheme=EENConserving())
 FPlane{Float64}(f=0.0001)
 ```
 
-This is the default scheme for `FPlane`, `BetaPlane`, and `HydrostaticSphericalCoriolis`.
+The default scheme for `FPlane`, `BetaPlane`, and `HydrostaticSphericalCoriolis` is `EnstrophyConserving`.

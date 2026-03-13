@@ -75,8 +75,8 @@ julia> using Oceananigans
 
 julia> VectorInvariant()
 VectorInvariant
-├── vorticity_scheme: Oceananigans.Advection.EnstrophyConserving{Float64}
-└── vertical_advection_scheme: Oceananigans.Advection.EnergyConserving{Float64}
+├── vorticity_scheme: EnstrophyConserving
+└── vertical_advection_scheme: EnergyConserving
 ```
 """
 function VectorInvariant(FT = Oceananigans.defaults.FloatType;

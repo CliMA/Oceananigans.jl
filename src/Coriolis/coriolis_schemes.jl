@@ -35,6 +35,8 @@ values, paired with transports at diagonally adjacent velocity points.
 """
 struct EENConserving end
 
+Base.summary(::EnstrophyConserving) = "EnstrophyConserving"
+Base.summary(::EnergyConserving) = "EnergyConserving"
 Base.summary(::ActiveWeightedEnstrophyConserving) = "ActiveWeightedEnstrophyConserving"
 Base.summary(::ActiveWeightedEnergyConserving) = "ActiveWeightedEnergyConserving"
 Base.summary(::EENConserving) = "EENConserving"
