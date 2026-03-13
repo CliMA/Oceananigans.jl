@@ -51,11 +51,13 @@ LinearEquationOfState(FT=Oceananigans.defaults.FloatType; thermal_expansion=1.67
 @inline  thermal_expansionᶠᶜᶜ(i, j, k, grid, eos::LinearEquationOfState, C) = eos.thermal_expansion
 @inline  thermal_expansionᶜᶠᶜ(i, j, k, grid, eos::LinearEquationOfState, C) = eos.thermal_expansion
 @inline  thermal_expansionᶜᶜᶠ(i, j, k, grid, eos::LinearEquationOfState, C) = eos.thermal_expansion
+@inline  thermal_expansionᶠᶠᶠ(i, j, k, grid, eos::LinearEquationOfState, C) = eos.thermal_expansion
 
 @inline haline_contractionᶜᶜᶜ(i, j, k, grid, eos::LinearEquationOfState, C) = eos.haline_contraction
 @inline haline_contractionᶠᶜᶜ(i, j, k, grid, eos::LinearEquationOfState, C) = eos.haline_contraction
 @inline haline_contractionᶜᶠᶜ(i, j, k, grid, eos::LinearEquationOfState, C) = eos.haline_contraction
 @inline haline_contractionᶜᶜᶠ(i, j, k, grid, eos::LinearEquationOfState, C) = eos.haline_contraction
+@inline haline_contractionᶠᶠᶠ(i, j, k, grid, eos::LinearEquationOfState, C) = eos.haline_contraction
 
 #####
 ##### Convinient aliases to dispatch on

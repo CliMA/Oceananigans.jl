@@ -530,4 +530,34 @@ end
                                                           AnisotropicMinimumDissipation()))
         end
     end
+
+    @testset "Vertical mixing closures with various buoyancy models" begin
+        grid = RectilinearGrid(CPU(), size=(4, 4, 4), extent=(1, 1, 1))
+
+        buoyancy_configs = [
+            ("BuoyancyTracer",       BuoyancyTracer(),                                                   :b,       (b = (x, y, z) -> z,)),
+            ("LinearEquationOfState", SeawaterBuoyancy(equation_of_state=LinearEquationOfState()),        (:T, :S), (T = (x, y, z) -> 20 + z, S = (x, y, z) -> 35 - z)),
+            ("TEOS10EquationOfState", SeawaterBuoyancy(equation_of_state=SeawaterPolynomials.TEOS10EquationOfState()), (:T, :S), (T = (x, y, z) -> 20 + z, S = (x, y, z) -> 35 - z)),
+        ]
+
+        closures = [
+            ("RiBasedVerticalDiffusivity", RiBasedVerticalDiffusivity(warning=false)),
+            ("CATKEVerticalDiffusivity",   CATKEVerticalDiffusivity()),
+        ]
+
+        for (closure_name, closure) in closures
+            @testset "$closure_name" begin
+                @info "  Testing $closure_name with different buoyancy formulations..."
+                for (buoyancy_name, buoyancy, tracers, initial_conditions) in buoyancy_configs
+                    @testset "$buoyancy_name" begin
+                        @info "    Testing $closure_name with $buoyancy_name..."
+                        model = HydrostaticFreeSurfaceModel(grid; closure, buoyancy, tracers)
+                        set!(model; u = (x, y, z) -> z, initial_conditions...)
+                        time_step!(model, 1)
+                        @test model isa HydrostaticFreeSurfaceModel
+                    end
+                end
+            end
+        end
+    end
 end
