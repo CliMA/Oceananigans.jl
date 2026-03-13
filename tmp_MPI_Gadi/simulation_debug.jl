@@ -17,10 +17,10 @@ Ry = parse(Int, ARGS[3])
 
 if fold_arg == "upivot"
     fold_topology = RightCenterFolded
-    Ny = 120
+    Ny = 80
 elseif fold_arg == "fpivot"
     fold_topology = RightFaceFolded
-    Ny = 121
+    Ny = 81
 else
     error("Unknown fold topology: $fold_arg. Use 'upivot' or 'fpivot'.")
 end
@@ -34,9 +34,11 @@ function analytical_immersed_tripolar_grid(underlying_grid; radius = 5)
     φm = underlying_grid.conformal_mapping.southernmost_latitude
     Lz = underlying_grid.Lz
 
+    # Use φm + radius (not φm) to ensure the south boundary is immersed for FPivot grids,
+    # where southernmost_latitude is at the cell face, leaving j=1 centers slightly north of φm.
     bottom_height(λ, φ) = ((abs(λ - λp) < radius)       & (abs(φp - φ) < radius)) |
                           ((abs(λ - λp - 180) < radius) & (abs(φp - φ) < radius)) |
-                          ((abs(λ - λp - 360) < radius) & (abs(φp - φ) < radius)) | (φ < φm) ? 0 : - Lz
+                          ((abs(λ - λp - 360) < radius) & (abs(φp - φ) < radius)) | (φ < φm + radius) ? 0 : - Lz
 
     return ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
 end
@@ -115,10 +117,10 @@ end
 # Setup
 arch = Distributed(CPU(); partition = Partition(Rx, Ry))
 
-dist_grid = TripolarGrid(arch; size=(40, Ny, 1), z=(-1000, 0), halo=(5, 5, 5), fold_topology)
+dist_grid = TripolarGrid(arch; size=(80, Ny, 1), z=(-1000, 0), halo=(5, 5, 5), fold_topology)
 dist_grid = analytical_immersed_tripolar_grid(dist_grid)
 
-serial_grid = TripolarGrid(; size=(40, Ny, 1), z=(-1000, 0), halo=(5, 5, 5), fold_topology)
+serial_grid = TripolarGrid(; size=(80, Ny, 1), z=(-1000, 0), halo=(5, 5, 5), fold_topology)
 serial_grid = analytical_immersed_tripolar_grid(serial_grid)
 
 if rank == 0

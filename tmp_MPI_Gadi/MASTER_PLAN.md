@@ -274,6 +274,20 @@ zero halos while serial field has filled halos. Interior values match.
 - cfg3 (FPivot × 1×4): **39/39 PASS** (job 162971700)
 - cfg4 (FPivot × 2×2): **39/39 PASS** (job 162971701)
 
+**Run 6 results (162999325–162999340)**: Full verification after south masking fix + grid size increase.
+- Testsets 1–4: **ALL PASS** (unchanged)
+- Testset 5 cfg1 (slab 1×4): **PASS**, cfg2 (pencil 2×2): **PASS**
+- Testset 5 cfg3 (large-pencil 4×2): **FAIL** — u, v, η fail; c passes (1 pass / 3 fail)
+- Testset 6 cfg1 (slab 1×4): **PASS**, cfg2 (pencil 2×2): **PASS**
+- Testset 6 cfg3 (large-pencil 4×2): **FAIL** — u fails; v, c, η pass (3 pass / 1 fail)
+
+**Analysis**: The H>=N theory was incorrect — with 80×80 and Partition(4,2), Nx_local=20 > H=16.
+The failures are FP-accumulation differences specific to 4 x-ranks. Slab (1×4) and pencil (2×2)
+both pass, so the issue is specific to having 4 ranks in the x-direction.
+
+**Next step**: Run `simulation_debug.jl` with Partition(4,2) on the 80×80/81 grids to pinpoint
+where divergence starts (step 0, 1, 10, or 100) and which rows/fields are affected.
+
 ### Summary of confirmed results across all runs
 
 | Testset | Description | Status | Notes |
@@ -282,8 +296,8 @@ zero halos while serial field has filled halos. Interior values match.
 | 2 | Field reconstruction | **PASS** (4/4 configs) | 39/39 tests each (run 5) |
 | 3 | UPivot boundary conditions | **PASS** (4/4) | Confirmed across multiple runs |
 | 4 | FPivot boundary conditions | **PASS** (4/4) | Confirmed across multiple runs |
-| 5 | UPivot simulations | **PENDING** | Grid increased to (80,80,1) so Nx_local=20 > H=16 for cfg3. Awaiting re-run. |
-| 6 | FPivot simulations | **PENDING** | South masking fixed: `(φ < φm + radius)`. Grid changed to (80,81,1). Awaiting re-run. |
+| 5 | UPivot simulations | **PARTIAL** | slab+pencil PASS, large-pencil 4×2 FAIL (u,v,η) |
+| 6 | FPivot simulations | **PARTIAL** | slab+pencil PASS, large-pencil 4×2 FAIL (u only) |
 
 ## Key references
 
