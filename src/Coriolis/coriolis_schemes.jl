@@ -1,6 +1,6 @@
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 using Oceananigans.Grids: XFlatGrid, YFlatGrid, XYFlatGrid, inactive_node, peripheral_node
-using Oceananigans.ImmersedBoundaries: immersed_peripheral_node
+using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, IBG
 
 # Typically zero!
 @inline z_f_cross_U(i, j, k, grid, ::AbstractRotation, U) = zero(grid)
@@ -43,12 +43,15 @@ Base.summary(::EENConserving) = "EENConserving"
 @inline not_peripheral_nodeᶜᶠᶜ(i, j, k, grid) = !peripheral_node(i, j, k, grid, Center(), Face(), Center())
 @inline not_peripheral_nodeᶠᶜᶜ(i, j, k, grid) = !peripheral_node(i, j, k, grid, Face(), Center(), Center())
 
-@inline function masked_Ax_qᶠᶜᶜ(i, j, k, grid, q)
+@inline masked_Ax_qᶠᶜᶜ(i, j, k, grid, q) = Ax_qᶠᶜᶜ(i, j, k, grid, q)
+@inline masked_Ay_qᶜᶠᶜ(i, j, k, grid, q) = Ay_qᶜᶠᶜ(i, j, k, grid, q)
+
+@inline function masked_Ax_qᶠᶜᶜ(i, j, k, grid::IBG, q)
     active = !immersed_peripheral_node(i, j, k, grid, Face(), Center(), Center())
     return ifelse(active, Ax_qᶠᶜᶜ(i, j, k, grid, q), zero(grid))
 end
 
-@inline function masked_Ay_qᶜᶠᶜ(i, j, k, grid, q)
+@inline function masked_Ay_qᶜᶠᶜ(i, j, k, grid::IBG, q)
     active = !immersed_peripheral_node(i, j, k, grid, Center(), Face(), Center())
     return ifelse(active, Ay_qᶜᶠᶜ(i, j, k, grid, q), zero(grid))
 end
