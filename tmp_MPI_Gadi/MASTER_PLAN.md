@@ -94,7 +94,21 @@ Standalone MPI job verifying every cell (interior + halos) on every rank matches
 2. Compare `interior()` instead of `.data` in testsets 5 & 6
 3. Reduced `substeps` from 20 to 5 (H=5, no halo extension needed; tests don't need accurate substepping)
 
-**Run 6 (testsets 5 & 6, jobs 162974270–162974275)**: running
+**Run 6 results (testsets 5 & 6, jobs 162974270–162974275)**:
+- Testset 5 cfg1 (slab 1×4): **PASS 4/4** (job 162974270)
+- Testset 5 cfg2 (pencil 2×2): **PASS 4/4** (job 162974271)
+- Testset 5 cfg3 (large-pencil 4×2): **FAIL 1/4** (job 162974272) — u/v/η fail, c passes
+- Testset 6 cfg1 (slab 1×4): **PASS 8/8** (job 162974273)
+- Testset 6 cfg2 (pencil 2×2): **PASS 8/8** (job 162974274)
+- Testset 6 cfg3 (large-pencil 4×2): **PASS 8/8** (job 162974275)
+
+**Root cause of cfg3 failure**: Tests used `us ≈ up` (norm-based array `isapprox`) instead of
+`all(us .≈ up)` (element-wise, matching upstream). Norm-based comparison is too strict for
+small-valued arrays with tiny floating-point differences from 4-rank x-decomposition.
+
+**Fix**: Changed all 12 simulation assertions to `all(us .≈ up)` style.
+
+**Run 7 (testsets 5 & 6, cfg3 only)**: running
 
 ### Step 9: Parallelize testsets across PBS jobs — COMPLETE
 
@@ -166,8 +180,8 @@ zero halos while serial field has filled halos. Interior values match.
 | 2 | Field reconstruction | **PASS** (4/4 configs) | 39/39 tests each (run 5) |
 | 3 | UPivot boundary conditions | **PASS** (4/4) | Confirmed across multiple runs |
 | 4 | FPivot boundary conditions | **PASS** (4/4) | Confirmed across multiple runs |
-| 5 | UPivot simulations | **RUNNING** | Fix applied: `interior()` comparison + substeps=5 (run 6) |
-| 6 | FPivot simulations | **RUNNING** | Fix applied: `interior()` comparison + substeps=5 (run 6) |
+| 5 | UPivot simulations | **RUNNING** | cfg1+cfg2 PASS, cfg3 rerunning with element-wise `≈` (run 7) |
+| 6 | FPivot simulations | **PASS** (3/3 configs) | 8/8 tests each (run 6) |
 
 ## Key references
 

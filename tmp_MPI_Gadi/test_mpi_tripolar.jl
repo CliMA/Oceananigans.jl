@@ -481,10 +481,10 @@ sim_configs = [
         close(jld)
         rm(jld2file)
 
-        @test us ≈ up
-        @test vs ≈ vp
-        @test cs ≈ cp
-        @test ηs ≈ ηp
+        @test all(us .≈ up)
+        @test all(vs .≈ vp)
+        @test all(cs .≈ cp)
+        @test all(ηs .≈ ηp)
     end
 end
 
@@ -540,17 +540,17 @@ fpivot_sim_configs = [
         rm(jld2file)
 
         @testset "ICs" begin
-            @test us0 ≈ up0
-            @test vs0 ≈ vp0
-            @test cs0 ≈ cp0
-            @test ηs0 ≈ ηp0
+            @test all(us0 .≈ up0)
+            @test all(vs0 .≈ vp0)
+            @test all(cs0 .≈ cp0)
+            @test all(ηs0 .≈ ηp0)
         end
 
         @testset "final" begin
-            @test us ≈ up
-            @test vs ≈ vp
-            @test cs ≈ cp
-            @test ηs ≈ ηp
+            @test all(us .≈ up)
+            @test all(vs .≈ vp)
+            @test all(cs .≈ cp)
+            @test all(ηs .≈ ηp)
         end
     end
 end
