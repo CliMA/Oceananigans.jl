@@ -13,7 +13,7 @@ using Oceananigans: Clock
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, ImplicitFreeSurface
 using Oceananigans.OutputWriters: trilocation_dim_name
 using Oceananigans.Grids: ξname, ηname, rname, ξnodes, ηnodes
-using Oceananigans.Fields: interpolate!
+using Oceananigans.Fields: interpolate!, OneField, ZeroField, ConstantField
 
 function test_datetime_netcdf_output(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
@@ -3008,7 +3008,7 @@ function test_netcdf_writer_different_grid(arch)
                                  overwrite_existing = true)
 
     # Run simulation to write output
-    simulation = Simulation(model, Δt=0.1, stop_iteration=2)
+    simulation = Simulation(model, Δt=0.1, stop_iteration=2, verbose=false)
     simulation.output_writers[:coarse] = output_writer
     run!(simulation)
 
@@ -3049,7 +3049,7 @@ function test_singleton_dimension_behavior(arch)
     u_xavg = Field(Average(model.velocities.u, dims=(1)))
 
     Nt = 5
-    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt, verbose=false)
 
     Arch = typeof(arch)
     filepath_full = "test_singleton_full_u_$Arch.nc"
@@ -3103,7 +3103,7 @@ function test_netcdf_dimension_type(arch)
     model = NonhydrostaticModel(grid)
 
     Nt = 3
-    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt)
+    simulation = Simulation(model, Δt=0.1, stop_iteration=Nt, verbose=false)
 
     Arch = typeof(arch)
 
@@ -3118,11 +3118,11 @@ function test_netcdf_dimension_type(arch)
     # Test with Float32 dimension_type
     filepath_float32 = "test_dimension_type_float32_$Arch.nc"
     simulation.output_writers[:float32] = NetCDFWriter(model, (; u = model.velocities.u),
-                                                        filename = filepath_float32,
-                                                        schedule = IterationInterval(1),
-                                                        dimension_type = Float32,
-                                                        include_grid_metrics = false,
-                                                        overwrite_existing = true)
+                                                       filename = filepath_float32,
+                                                       schedule = IterationInterval(1),
+                                                       dimension_type = Float32,
+                                                       include_grid_metrics = false,
+                                                       overwrite_existing = true)
 
     run!(simulation)
 
@@ -3150,6 +3150,39 @@ function test_netcdf_dimension_type(arch)
     close(ds_float32)
     rm(filepath_float32)
 
+    return nothing
+end
+
+function test_constant_fields_output_writing(grid)
+    model = NonhydrostaticModel(grid)
+    simulation = Simulation(model, Δt = 1, stop_iteration = 1)
+    outputs = (z = ZeroField(), o = OneField(), c = ConstantField(10))
+
+    simulation.output_writers[:constants] = NetCDFWriter(model, outputs,
+                                                         schedule = TimeInterval(1),
+                                                         dir = ".",
+                                                         filename = "test_constants.nc",
+                                                         overwrite_existing = true,
+                                                         verbose = false)
+    run!(simulation)
+
+    file = NCDataset("test_constants.nc")
+
+    z = file["z"]
+    o = file["o"]
+    c = file["c"]
+
+    @test z[] == 0
+    @test z.attrib["type"] == "ZeroField"
+
+    @test o[] == 1
+    @test o.attrib["type"] == "OneField"
+
+    @test c[] == 10
+    @test c.attrib["type"] == "ConstantField"
+
+    close(file)
+    rm("test_constants.nc")
     return nothing
 end
 
@@ -3292,6 +3325,10 @@ end
                 test_netcdf_multiple_grids_defvar(grid1, grid2, immersed=false)
                 test_netcdf_multiple_grids_defvar(grid1, grid2, immersed=true)
             end
+        end
+
+        @testset "Constant fields output writing" begin
+            test_constant_fields_output_writing(rectilinear_grid1)
         end
     end
 end

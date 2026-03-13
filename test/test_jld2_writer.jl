@@ -1,10 +1,34 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Fields: FunctionField
+using Oceananigans.Fields: FunctionField, ZeroField, OneField, ConstantField
 
 #####
 ##### JLD2Writer tests
 #####
+
+function jld2_constant_field_output(model)
+    simulation = Simulation(model, Δt=1, stop_iteration=1)
+
+    outputs = (z = ZeroField(), o = OneField(), c = ConstantField(10))
+
+    simulation.output_writers[:constantx] = JLD2Writer(model, outputs,
+                                                       schedule = TimeInterval(1),
+                                                       dir = ".",
+                                                       filename = "test_constants.jld2",
+                                                       overwrite_existing = true)
+
+    run!(simulation)
+
+    file = jldopen("test_constants.jld2")
+    z = file["timeseries/z/0"]
+    o = file["timeseries/o/0"]
+    c = file["timeseries/c/0"]
+    close(file)
+
+    rm("test_constants.jld2")
+
+    return z == 0 && o == 1 && c == 10
+end
 
 function jld2_sliced_field_output(model, outputs=model.velocities)
 
@@ -477,5 +501,8 @@ for arch in archs
         run!(simulation)
         ηt = FieldTimeSeries(filename, "η")
         @test size(parent(ηt[1])) == (4, 4, 1)
+
+        # Constant field outputs
+        @test jld2_constant_field_output(model)
     end
 end
