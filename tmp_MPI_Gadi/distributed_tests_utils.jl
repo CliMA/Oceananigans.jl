@@ -108,7 +108,7 @@ end
 # Create model and set initial conditions (shared by serial and distributed)
 function setup_simulation(grid)
     model = HydrostaticFreeSurfaceModel(grid;
-                                        free_surface = SplitExplicitFreeSurface(grid; substeps = 5),
+                                        free_surface = SplitExplicitFreeSurface(grid; substeps = 20),
                                         tracers = :c,
                                         tracer_advection = WENO(),
                                         momentum_advection = WENOVectorInvariant(order=3),

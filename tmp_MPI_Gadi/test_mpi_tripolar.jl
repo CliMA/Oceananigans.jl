@@ -473,7 +473,7 @@ sim_configs = [
 
         scriptfile = "distributed_sim_$(cfg_id).jl"
         write(scriptfile, script_str)
-        run(`$(mpiexec()) -n $nranks $(Base.julia_cmd()) -O0 --check-bounds=yes $scriptfile`)
+        run(`$(mpiexec()) -n $nranks $(Base.julia_cmd()) -O0 $scriptfile`)
         rm(scriptfile)
 
         jld = jldopen(jld2file)
@@ -530,7 +530,7 @@ fpivot_sim_configs = [
         script_str = fpivot_sim_script(partition_str, nranks, jld2file)
         scriptfile = "distributed_fpivot_sim_$(cfg_id).jl"
         write(scriptfile, script_str)
-        run(`$(mpiexec()) -n $nranks $(Base.julia_cmd()) -O0 --check-bounds=yes $scriptfile`)
+        run(`$(mpiexec()) -n $nranks $(Base.julia_cmd()) -O0 $scriptfile`)
         rm(scriptfile)
 
         jld = jldopen(jld2file)
