@@ -220,6 +220,7 @@ end
 # ============================================================================
 
 partitions_4 = [Partition(1, 4), Partition(2, 2)]
+partitions_8 = [Partition(4, 2)]
 partitions_16 = [Partition(4, 4)]
 
 results = Dict{String, Bool}()
@@ -230,27 +231,45 @@ results = Dict{String, Bool}()
 #   Ny=41 FPivot: 10,10,10,11 (remainder 1) / 20,21 (remainder 1)
 #   Ny=42 FPivot: 10,10,10,12 (remainder 2) / 21,21 (even)
 
-test_cases = [
-    (RightCenterFolded, 40),  # UPivot, even
-    (RightCenterFolded, 43),  # UPivot, remainder
-    (RightFaceFolded,   41),  # FPivot, remainder
-    (RightFaceFolded,   42),  # FPivot, different remainder
+test_cases_4 = [
+    (RightCenterFolded, 40, 40),  # UPivot, even
+    (RightCenterFolded, 40, 43),  # UPivot, remainder
+    (RightFaceFolded,   40, 41),  # FPivot, remainder
+    (RightFaceFolded,   40, 42),  # FPivot, different remainder
 ]
 
-for (fold_topology, global_Ny) in test_cases
+for (fold_topology, global_Nx, global_Ny) in test_cases_4
     fold_name = fold_topology == RightCenterFolded ? "UPivot" : "FPivot"
 
     if nranks >= 4
         for partition in partitions_4
-            key = "$fold_name Ny=$global_Ny $(partition)"
-            results[key] = test_halo_fill(; partition, fold_topology, global_Nx=40, global_Ny)
+            key = "$fold_name Nx=$global_Nx Ny=$global_Ny $(partition)"
+            results[key] = test_halo_fill(; partition, fold_topology, global_Nx, global_Ny)
         end
     end
 
     if nranks >= 16
         for partition in partitions_16
-            key = "$fold_name Ny=$global_Ny $(partition)"
-            results[key] = test_halo_fill(; partition, fold_topology, global_Nx=40, global_Ny)
+            key = "$fold_name Nx=$global_Nx Ny=$global_Ny $(partition)"
+            results[key] = test_halo_fill(; partition, fold_topology, global_Nx, global_Ny)
+        end
+    end
+end
+
+# Partition(4,2) tests: match the exact grids from failing simulation tests.
+# These test the _fold_corner_write! bug with Rx=4 where fold x-reversal
+# maps corners to a DIFFERENT rank's data (not local).
+test_cases_8 = [
+    (RightCenterFolded, 80, 80),  # UPivot, matches testset 5 cfg3
+    (RightFaceFolded,   80, 81),  # FPivot, matches testset 6 cfg3
+]
+
+if nranks >= 8
+    for (fold_topology, global_Nx, global_Ny) in test_cases_8
+        fold_name = fold_topology == RightCenterFolded ? "UPivot" : "FPivot"
+        for partition in partitions_8
+            key = "$fold_name Nx=$global_Nx Ny=$global_Ny $(partition)"
+            results[key] = test_halo_fill(; partition, fold_topology, global_Nx, global_Ny)
         end
     end
 end

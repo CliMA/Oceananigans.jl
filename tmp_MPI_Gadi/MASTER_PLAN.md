@@ -285,8 +285,38 @@ zero halos while serial field has filled halos. Interior values match.
 The failures are FP-accumulation differences specific to 4 x-ranks. Slab (1×4) and pencil (2×2)
 both pass, so the issue is specific to having 4 ranks in the x-direction.
 
-**Next step**: Run `simulation_debug.jl` with Partition(4,2) on the 80×80/81 grids to pinpoint
-where divergence starts (step 0, 1, 10, or 100) and which rows/fields are affected.
+### Diagnostic run 11: simulation_debug.jl with Partition(4,2) — COMPLETE
+
+Used `simulation_debug.jl` to run serial + distributed models side-by-side, comparing at
+steps 0, 1, 10, 100 with per-j-row mismatch analysis. Jobs 163002356 (UPivot), 163002357 (FPivot).
+
+**UPivot Partition(4,2) results (80×80 grid)**:
+- Steps 0, 1: ALL MATCH
+- Step 10: u/v/η/U/V MISMATCH at j=79-80 (fold rows), worst at i=61 (rank 3 boundary), 5-6 mismatches
+- Step 100: 545-626 mismatches spreading j=66..80, maxdiff ~5e-7 (u), ~1.8e-6 (η)
+- c always matches — only SplitExplicit fields affected (fold errors propagate via barotropic solver)
+
+**FPivot Partition(4,2) results (80×81 grid)**:
+- Steps 0, 1, 10: ALL MATCH
+- Step 100: u/U have 2 mismatches at j=77 (near fold), maxdiff ~7e-12 (near machine epsilon)
+- v, c, η: MATCH
+
+**Root cause identified: `_fold_corner_write!` assumes Rx ≤ 2**
+
+In `distributed_zipper.jl:283-305`, corner writes fill x-halo at fold rows from LOCAL data.
+The comment at line 284 says: "For 2 equal-Nx x-ranks, the fold's x-reversal maps corner
+positions back to the SAME rank's interior columns (no additional MPI needed)."
+
+With Rx=4, this is false:
+- Rank 3 (rightmost, global i=61..80) west halo at fold rows needs fold-reversed data from
+  global i≈1..5 — which lives on rank 0, not rank 3
+- Rank 0 (leftmost, global i=1..20) east halo at fold rows needs fold-reversed data from
+  global i≈76..80 — which lives on rank 3, not rank 0
+- UPivot is severely affected because the fold writes to j=Ny (the grid boundary row)
+- FPivot is minimally affected because the fold writes to j=Ny+1 (one row into the halo)
+
+**Next step**: Run `index_tracing_halo_test.jl` with Partition(4,2) on 80×80/81 grids to get
+exact cell-level diagnosis of which halo cells are incorrect, then fix `_fold_corner_write!`.
 
 ### Summary of confirmed results across all runs
 
