@@ -106,9 +106,66 @@ Standalone MPI job verifying every cell (interior + halos) on every rank matches
 `all(us .≈ up)` (element-wise, matching upstream). Norm-based comparison is too strict for
 small-valued arrays with tiny floating-point differences from 4-rank x-decomposition.
 
-**Fix**: Changed all 12 simulation assertions to `all(us .≈ up)` style.
+**Fix attempt 1**: Changed all 12 simulation assertions to `all(us .≈ up)` style (element-wise).
 
-**Run 7 (testsets 5 & 6, cfg3 only)**: running
+**Run 7 results (all testsets 5 & 6, jobs 162975907–162975912)**: **WORSE**
+- Testset 5 cfg1 (slab 1×4): **PASS 4/4** (job 162975907)
+- Testset 5 cfg2 (pencil 2×2): **PASS 4/4** (job 162975908)
+- Testset 5 cfg3 (large-pencil 4×2): **FAIL 0/4** (job 162975909) — all 4 fail (c now fails too)
+- Testset 6 cfg1 (slab 1×4): **FAIL 5/8** (job 162975910) — ICs pass, final u/v/η fail
+- Testset 6 cfg2 (pencil 2×2): **FAIL 5/8** (job 162975911) — ICs pass, final u/v/η fail
+- Testset 6 cfg3 (large-pencil 4×2): **FAIL 5/8** (job 162975912) — ICs pass, final u/v/η fail
+
+**Revised root cause**: The real issue is `substeps=5`, not the comparison method.
+- Element-wise `all(.≈)` is STRICTER than norm-based `≈` for individual cells with near-zero values
+- `substeps=5` under-resolves barotropic dynamics, producing noisy near-zero values in η/u/v
+- `isapprox(a, b)` fails when both a,b are tiny: `|a-b| > rtol * max(|a|, |b|)`
+- The original "halo overflow" concern was a misdiagnosis: `Gⁿ.U`/`Gⁿ.V` are on the extended
+  free surface grid (halo=H), not the model grid (halo=5). Ghost zone expansion self-corrects
+  even when H > N — the +2 margin in H=Nsubsteps+2 protects interior values.
+
+**Fix attempt 2**: Reverted `substeps` from 5 to 20 (matching upstream). Removed `--check-bounds=yes`
+from simulation mpiexec commands. Kept `all(.≈)` comparison.
+
+**Run 8 results (all testsets 5 & 6, jobs 162977900–162977906)**:
+- Testset 5 cfg1 (slab 1×4): **PASS 4/4** (job 162977900)
+- Testset 5 cfg2 (pencil 2×2): **PASS 4/4** (job 162977902)
+- Testset 5 cfg3 (large-pencil 4×2): **FAIL 0/4** (job 162977903) — H=16 >= Nx_local=10
+- Testset 6 cfg1 (slab 1×4): **FAIL 5/8** (job 162977904) — ICs pass, final u/v/η fail
+- Testset 6 cfg2 (pencil 2×2): **FAIL 5/8** (job 162977905) — ICs pass, final u/v/η fail
+- Testset 6 cfg3 (large-pencil 4×2): **FAIL 5/8** (job 162977906) — ICs pass, final u/v/η fail
+
+**Analysis**: substeps=20 fixed UPivot slab/pencil (testset 5), but FPivot still fails across ALL
+configs. The actual Nsubsteps after weight trimming ≈ 14 (not 20), giving H = 14+2 = 16.
+
+Key observations:
+- FPivot ICs pass (grid + field setup correct), only u/v/η fail after time-stepping
+- Tracer c passes — it's only advected by 3D time stepper with standard halo fills
+- u/v/η are all updated by SplitExplicit barotropic substep loop
+- Testset 5 cfg3 fails because H=16 >= Nx_local=10 (upstream doesn't test this config)
+- **The FPivot simulation test is entirely new on this branch** (not in upstream)
+
+**Diagnostic run 9**: Testing `SplitExplicitFreeSurface(grid; substeps=20, extend_halos=false)`
+(fill-halo mode = fill_halo_regions! between each substep, no ghost zone expansion).
+
+**Run 9a (job 162980503)**: ERRORED — used invalid `SplitExplicitFreeSurface{false}(grid; substeps=20)`
+syntax. The type parameter `{false}` is the inner constructor; the correct API uses the `extend_halos`
+keyword: `SplitExplicitFreeSurface(grid; substeps=20, extend_halos=false)`.
+
+**Run 9b (job 162981449)**: **FAIL 5/8** — same pattern as ghost zone mode. ICs pass, final u/v/η
+fail, c passes. Fill-halo mode did NOT fix the problem.
+
+**Conclusion**: The bug is **not** specific to ghost zone temporal blocking. It is in FPivot fold
+communication generally during distributed `fill_halo_regions!`. The distributed zipper fold
+operations produce incorrect results for FPivot fields during time-stepping.
+
+**Diagnostic run 10**: Enhanced `simulation_debug.jl` to run serial + distributed side-by-side
+within the same MPI job, comparing at steps 0, 1, 10, 100. Reports per-field:
+- Max |diff| and (i,j,k) location
+- Whether max diff is near the fold line (j > Ny-10)
+- Per-j-row mismatch counts near the fold boundary
+- Barotropic velocities U, V in addition to u, v, c, η
+Job 162982382 submitted.
 
 ### Step 9: Parallelize testsets across PBS jobs — COMPLETE
 
@@ -180,8 +237,8 @@ zero halos while serial field has filled halos. Interior values match.
 | 2 | Field reconstruction | **PASS** (4/4 configs) | 39/39 tests each (run 5) |
 | 3 | UPivot boundary conditions | **PASS** (4/4) | Confirmed across multiple runs |
 | 4 | FPivot boundary conditions | **PASS** (4/4) | Confirmed across multiple runs |
-| 5 | UPivot simulations | **RUNNING** | cfg1+cfg2 PASS, cfg3 rerunning with element-wise `≈` (run 7) |
-| 6 | FPivot simulations | **PASS** (3/3 configs) | 8/8 tests each (run 6) |
+| 5 | UPivot simulations | **PARTIAL** | cfg1+cfg2 PASS (run 8); cfg3 FAIL (H>=N, known limitation, upstream doesn't test) |
+| 6 | FPivot simulations | **FAIL** | All configs: ICs pass, final u/v/η fail, c passes. Both ghost zone and fill-halo mode fail. Bug is in distributed FPivot fold communication. Running diagnostic (run 10) |
 
 ## Key references
 
