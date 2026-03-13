@@ -52,6 +52,7 @@ export
 
     # Coriolis forces
     FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane, HydrostaticSphericalCoriolis,
+    ActiveWeightedEnstrophyConserving, ActiveWeightedEnergyConserving, EENConserving,
 
     # BuoyancyFormulations and equations of state
     BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy,
