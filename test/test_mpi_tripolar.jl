@@ -753,12 +753,12 @@ upivot_sim_configs = [
         scriptfile = "distributed_upivot_sim.jl"
         write(scriptfile, script_str)
         run(`$(mpiexec()) -n $nranks $(Base.julia_cmd()) -O0 --check-bounds=yes $scriptfile`)
-        rm(scriptfile)
+        rm(scriptfile, force=true)
 
         jld = jldopen(jld2file)
         up = jld["u"]; vp = jld["v"]; cp = jld["c"]; ηp = jld["η"]
         close(jld)
-        rm(jld2file)
+        rm(jld2file, force=true)
 
         @test all(us .≈ up)
         @test all(vs .≈ vp)
@@ -803,12 +803,12 @@ fpivot_sim_configs = [
         scriptfile = "distributed_fpivot_sim.jl"
         write(scriptfile, script_str)
         run(`$(mpiexec()) -n $nranks $(Base.julia_cmd()) -O0 --check-bounds=yes $scriptfile`)
-        rm(scriptfile)
+        rm(scriptfile, force=true)
 
         jld = jldopen(jld2file)
         up = jld["u"]; vp = jld["v"]; cp = jld["c"]; ηp = jld["η"]
         close(jld)
-        rm(jld2file)
+        rm(jld2file, force=true)
 
         @test all(us .≈ up)
         @test all(vs .≈ vp)
