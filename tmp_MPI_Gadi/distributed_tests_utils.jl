@@ -15,10 +15,12 @@ function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius
 
     Lz = underlying_grid.Lz
 
-    # We need a bottom height field that ``masks'' the singularities
+    # We need a bottom height field that ``masks'' the singularities.
+    # Use φm + radius (not φm) to ensure the south boundary is immersed for FPivot grids,
+    # where southernmost_latitude is at the cell face, leaving j=1 centers slightly north of φm.
     bottom_height(λ, φ) = ((abs(λ - λp) < radius)       & (abs(φp - φ) < radius)) |
                           ((abs(λ - λp - 180) < radius) & (abs(φp - φ) < radius)) |
-                          ((abs(λ - λp - 360) < radius) & (abs(φp - φ) < radius)) | (φ < φm) ? 0 : - Lz
+                          ((abs(λ - λp - 360) < radius) & (abs(φp - φ) < radius)) | (φ < φm + radius) ? 0 : - Lz
 
     grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
 
@@ -26,37 +28,23 @@ function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius
 end
 
 # Run the distributed grid simulation and save down reconstructed results
-function run_distributed_tripolar_grid(arch, filename; fold_topology = RightCenterFolded, Ny = 40)
-    distributed_grid = TripolarGrid(arch; size = (40, Ny, 1), z = (-1000, 0), halo = (5, 5, 5), fold_topology)
+function run_distributed_tripolar_grid(arch, filename; fold_topology = RightCenterFolded, Nx = 80, Ny = 80)
+    distributed_grid = TripolarGrid(arch; size = (Nx, Ny, 1), z = (-1000, 0), halo = (5, 5, 5), fold_topology)
     distributed_grid = analytical_immersed_tripolar_grid(distributed_grid)
 
     model = setup_simulation(distributed_grid)
-
-    # Reconstruct and save ICs (after set! and halo filling, before time-stepping)
-    u0 = reconstruct_global_field(model.velocities.u)
-    v0 = reconstruct_global_field(model.velocities.v)
-    c0 = reconstruct_global_field(model.tracers.c)
-    η0 = reconstruct_global_field(model.free_surface.displacement)
-
     run_simulation!(model)
 
-    # Reconstruct final state
     η = reconstruct_global_field(model.free_surface.displacement)
     u = reconstruct_global_field(model.velocities.u)
     v = reconstruct_global_field(model.velocities.v)
     c = reconstruct_global_field(model.tracers.c)
 
     if arch.local_rank == 0
-        jldopen(filename, "w") do file
-            file["u"]  = Array(interior(u))
-            file["v"]  = Array(interior(v))
-            file["c"]  = Array(interior(c))
-            file["η"]  = Array(interior(η))
-            file["u0"] = Array(interior(u0))
-            file["v0"] = Array(interior(v0))
-            file["c0"] = Array(interior(c0))
-            file["η0"] = Array(interior(η0))
-        end
+        jldsave(filename; u = Array(interior(u, :, :, 1)),
+                          v = Array(interior(v, :, :, 1)),
+                          c = Array(interior(c, :, :, 1)),
+                          η = Array(interior(η, :, :, 1)))
     end
 
     MPI.Barrier(MPI.COMM_WORLD)

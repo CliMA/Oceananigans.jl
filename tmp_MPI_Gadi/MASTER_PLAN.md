@@ -155,17 +155,62 @@ keyword: `SplitExplicitFreeSurface(grid; substeps=20, extend_halos=false)`.
 **Run 9b (job 162981449)**: **FAIL 5/8** — same pattern as ghost zone mode. ICs pass, final u/v/η
 fail, c passes. Fill-halo mode did NOT fix the problem.
 
-**Conclusion**: The bug is **not** specific to ghost zone temporal blocking. It is in FPivot fold
-communication generally during distributed `fill_halo_regions!`. The distributed zipper fold
-operations produce incorrect results for FPivot fields during time-stepping.
+**Conclusion from run 9**: The bug is **not** specific to ghost zone temporal blocking — it
+fails in both modes.
 
-**Diagnostic run 10**: Enhanced `simulation_debug.jl` to run serial + distributed side-by-side
-within the same MPI job, comparing at steps 0, 1, 10, 100. Reports per-field:
-- Max |diff| and (i,j,k) location
-- Whether max diff is near the fold line (j > Ny-10)
-- Per-j-row mismatch counts near the fold boundary
-- Barotropic velocities U, V in addition to u, v, c, η
-Job 162982382 submitted.
+**Diagnostic run 10** (job 162983558): Enhanced `simulation_debug.jl` — serial + distributed
+side-by-side in same MPI job, comparing at steps 0, 1, 10, 100 with per-j-row mismatch analysis.
+
+**Run 10 results — CRITICAL FINDING: errors are at SOUTH boundary, NOT the fold!**
+
+| Step | u | v | c | η | U | V |
+|------|---|---|---|---|---|---|
+| 0 | MATCH | MATCH | MATCH | MATCH | MATCH | MATCH |
+| 1 | MATCH | MATCH | MATCH | MATCH | MATCH | MATCH |
+| 10 | j=1..3 ~1e-28 | j=2..4 ~1e-29 | MATCH | j=1..3 ~1e-29 | j=1..3 ~1e-25 | j=2..4 ~1e-26 |
+| 100 | j=1..6 ~1e-13 | j=2..6 ~1e-15 | MATCH (3e-39) | j=1..6 ~1e-14 | j=1..6 ~1e-10 | j=2..6 ~1e-12 |
+
+Key observations:
+- **Mismatches at j=1..6 (south/Bounded boundary), NOT near j=121 (fold)**
+- The FPivot fold communication appears CORRECT — no errors near fold line
+- Errors are tiny (~1e-28 at step 10) and grow over baroclinic steps (~1e-13 at step 100)
+- Only SplitExplicit fields (u/v/η/U/V) affected; tracer c always matches
+- 120 mismatches per step-10 row = exactly Nx=40 × Nz=3(?), suggesting entire rows
+- Barotropic U/V errors are ~1000× larger than u/v (consistent with depth integration)
+- Pattern: errors diffuse northward over time (j=1..3 → j=1..6)
+
+**Revised diagnosis**: This is NOT a fold communication bug. It appears to be floating-point
+accumulation differences at the south boundary between serial (single-domain kernel) and
+distributed (partitioned kernel) SplitExplicit solvers. The `isapprox` test fails because
+both serial and distributed values are very tiny near the south boundary, and `isapprox(a,b)`
+with default rtol≈1.5e-8 fails when `rtol * max(|a|,|b|)` is smaller than `|a-b|`.
+
+**Run 10b — UPivot comparison** (job 162987377): **ALL MATCH through 100 steps** (maxdiff=0.0).
+UPivot has ZERO mismatches at any step. The south-boundary errors are **FPivot-specific**.
+
+This rules out the "generic FP accumulation" hypothesis. Something specific to `RightFaceFolded`
+(FPivot) causes tiny differences at the south boundary that `RightCenterFolded` (UPivot) doesn't.
+
+Possible FPivot-specific differences to investigate:
+1. `split_explicit_kernel_size(::Type{RightFaceFolded}, N, H) = 1:N+H-1` vs
+   `split_explicit_kernel_size(::Type{RightCenterFolded}, N, H) = 1:N+H` — differs by 1 at north end
+2. FPivot fold writes to interior row Ny (Pattern C in distributed_zipper.jl) — could contaminate
+   the ghost zone kernel computation differently
+3. `Ny=121` (odd, FPivot) vs `Ny=120` (even, UPivot) — uneven partition 30+30+30+31 vs even 30×4
+4. `fold_set!` in `distributed_tripolar_grid.jl` — FPivot-specific fold-line initialization
+
+**Root cause confirmed**: FPivot places `southernmost_latitude` at the cell **face** of j=1,
+so the cell center is at ~φm + Δφ/2 ≈ -79.3°. The condition `(φ < φm)` evaluates to FALSE
+at the center, leaving j=1 as water instead of immersed. Active cells at j=1 expose tiny FP
+accumulation differences between serial and distributed SplitExplicit solvers.
+
+**Confirmed fix** (job 162991727): Using `(φ < 0)` makes ALL MATCH through 100 steps.
+Applied fix: `(φ < φm + radius)` which gives `φ < -75°`, safely immersing j=1 (~-79.3° < -75°).
+
+**Additional fix**: Increased grid sizes from (40,40,1)/(40,121,1) to (80,80,1)/(80,81,1)
+to ensure Nx_local > H for Partition(4,2) configs. With Nx=80 and 4 x-ranks, Nx_local=20 > H=16.
+
+**Status**: Fixes applied, awaiting verification run.
 
 ### Step 9: Parallelize testsets across PBS jobs — COMPLETE
 
@@ -237,8 +282,8 @@ zero halos while serial field has filled halos. Interior values match.
 | 2 | Field reconstruction | **PASS** (4/4 configs) | 39/39 tests each (run 5) |
 | 3 | UPivot boundary conditions | **PASS** (4/4) | Confirmed across multiple runs |
 | 4 | FPivot boundary conditions | **PASS** (4/4) | Confirmed across multiple runs |
-| 5 | UPivot simulations | **PARTIAL** | cfg1+cfg2 PASS (run 8); cfg3 FAIL (H>=N, known limitation, upstream doesn't test) |
-| 6 | FPivot simulations | **FAIL** | All configs: ICs pass, final u/v/η fail, c passes. Both ghost zone and fill-halo mode fail. Bug is in distributed FPivot fold communication. Running diagnostic (run 10) |
+| 5 | UPivot simulations | **PENDING** | Grid increased to (80,80,1) so Nx_local=20 > H=16 for cfg3. Awaiting re-run. |
+| 6 | FPivot simulations | **PENDING** | South masking fixed: `(φ < φm + radius)`. Grid changed to (80,81,1). Awaiting re-run. |
 
 ## Key references
 

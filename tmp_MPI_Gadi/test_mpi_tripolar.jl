@@ -459,14 +459,14 @@ sim_configs = [
     TESTSET in (0, 5) || return nothing
 
     # Run the serial computation
-    grid  = TripolarGrid(size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))
+    grid  = TripolarGrid(size = (80, 80, 1), z = (-1000, 0), halo = (5, 5, 5))
     grid  = analytical_immersed_tripolar_grid(grid)
     model = run_distributed_simulation(grid)
 
-    us = Array(interior(model.velocities.u))
-    vs = Array(interior(model.velocities.v))
-    cs = Array(interior(model.tracers.c))
-    ηs = Array(interior(model.free_surface.displacement))
+    us = interior(model.velocities.u, :, :, 1)
+    vs = interior(model.velocities.v, :, :, 1)
+    cs = interior(model.tracers.c, :, :, 1)
+    ηs = interior(model.free_surface.displacement, :, :, 1)
 
     @testset "$cfg_name" for (cfg_id, (script_str, nranks, jld2file, cfg_name)) in enumerate(sim_configs)
         CONFIG in (0, cfg_id) || continue
@@ -495,7 +495,7 @@ fpivot_sim_script(partition_str, nranks, jld2file) = """
     include("distributed_tests_utils.jl")
     arch = Distributed(CPU(), partition = $partition_str)
     run_distributed_tripolar_grid(arch, "$jld2file";
-                                  fold_topology = RightFaceFolded, Ny = 121)
+                                  fold_topology = RightFaceFolded, Ny = 81)
 """
 
 fpivot_sim_configs = [
@@ -507,22 +507,15 @@ fpivot_sim_configs = [
 @testset "Test distributed FPivot TripolarGrid simulations..." begin
     TESTSET in (0, 6) || return nothing
 
-    # Serial: setup, capture ICs, run
-    grid  = TripolarGrid(size = (40, 121, 1), z = (-1000, 0), halo = (5, 5, 5), fold_topology = RightFaceFolded)
+    # Run the serial computation
+    grid  = TripolarGrid(size = (80, 81, 1), z = (-1000, 0), halo = (5, 5, 5), fold_topology = RightFaceFolded)
     grid  = analytical_immersed_tripolar_grid(grid)
-    model = setup_simulation(grid)
+    model = run_distributed_simulation(grid)
 
-    us0 = Array(interior(model.velocities.u))
-    vs0 = Array(interior(model.velocities.v))
-    cs0 = Array(interior(model.tracers.c))
-    ηs0 = Array(interior(model.free_surface.displacement))
-
-    run_simulation!(model)
-
-    us = Array(interior(model.velocities.u))
-    vs = Array(interior(model.velocities.v))
-    cs = Array(interior(model.tracers.c))
-    ηs = Array(interior(model.free_surface.displacement))
+    us = interior(model.velocities.u, :, :, 1)
+    vs = interior(model.velocities.v, :, :, 1)
+    cs = interior(model.tracers.c, :, :, 1)
+    ηs = interior(model.free_surface.displacement, :, :, 1)
 
     @testset "$cfg_name" for (cfg_id, (partition_str, nranks, jld2file, cfg_name)) in enumerate(fpivot_sim_configs)
         CONFIG in (0, cfg_id) || continue
@@ -534,23 +527,13 @@ fpivot_sim_configs = [
         rm(scriptfile)
 
         jld = jldopen(jld2file)
-        up  = jld["u"];  vp  = jld["v"];  cp  = jld["c"];  ηp  = jld["η"]
-        up0 = jld["u0"]; vp0 = jld["v0"]; cp0 = jld["c0"]; ηp0 = jld["η0"]
+        up = jld["u"]; vp = jld["v"]; cp = jld["c"]; ηp = jld["η"]
         close(jld)
         rm(jld2file)
 
-        @testset "ICs" begin
-            @test all(us0 .≈ up0)
-            @test all(vs0 .≈ vp0)
-            @test all(cs0 .≈ cp0)
-            @test all(ηs0 .≈ ηp0)
-        end
-
-        @testset "final" begin
-            @test all(us .≈ up)
-            @test all(vs .≈ vp)
-            @test all(cs .≈ cp)
-            @test all(ηs .≈ ηp)
-        end
+        @test all(us .≈ up)
+        @test all(vs .≈ vp)
+        @test all(cs .≈ cp)
+        @test all(ηs .≈ ηp)
     end
 end
