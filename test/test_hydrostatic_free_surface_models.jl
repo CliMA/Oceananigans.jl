@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields, all_tracers
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, ImplicitFreeSurface
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving, FluxFormAdvection, CrossAndSelfUpwinding
@@ -418,6 +418,228 @@ topos_3d = ((Periodic, Periodic, Bounded),
             rm(test_filename)
 
             @info "    PrescribedVelocityFields with FieldTimeSeries output test passed"
+        end
+
+        #####
+        ##### Prescribed tracer tests
+        #####
+
+        @testset "Basic prescribed_tracers construction and non-stepping [$arch]" begin
+            @info "  Testing basic prescribed_tracers construction [$arch]..."
+
+            grid = RectilinearGrid(arch, size=(4, 4),
+                                   x=(0, 1), z=(-1, 0),
+                                   topology=(Bounded, Flat, Bounded))
+
+            times = [0.0, 10.0]
+            b_fts = FieldTimeSeries{Center, Center, Center}(grid, times)
+            set!(b_fts, (x, z) -> x / 1000 + 1e-5 * z, 1)
+            set!(b_fts, (x, z) -> x / 1000 + 1e-5 * z, 2)
+
+            closure = IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3)
+
+            model = HydrostaticFreeSurfaceModel(grid;
+                buoyancy = BuoyancyTracer(),
+                closure = closure,
+                tracers = nothing,
+                prescribed_tracers = (b = b_fts,))
+
+            # Time-step the model
+            time_step!(model, 1)
+
+            # Prescribed tracer b should be accessible via all_tracers, not in model.tracers
+            @test isempty(model.tracers)
+            @test :b ∈ keys(model.prescribed_tracers)
+            @test :b ∈ keys(all_tracers(model))
+
+            # No NaN values should be present
+            @test isfinite(model.prescribed_tracers.b[1, 1, 1])
+        end
+
+        @testset "prescribed_tracers with Function [$arch]" begin
+            @info "  Testing prescribed_tracers with Function [$arch]..."
+
+            grid = RectilinearGrid(arch, size=(4, 4),
+                                   x=(0, 1), z=(-1, 0),
+                                   topology=(Bounded, Flat, Bounded))
+
+            # On Flat y-topology, FunctionField expects func(x, z, t)
+            b_func(x, z, t) = x / 1000 + 1e-5 * z
+
+            closure = IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3)
+
+            model = HydrostaticFreeSurfaceModel(grid;
+                buoyancy = BuoyancyTracer(),
+                closure = closure,
+                tracers = nothing,
+                prescribed_tracers = (b = b_func,))
+
+            # Time-step the model
+            for _ in 1:5
+                time_step!(model, 1)
+            end
+
+            @test :b ∈ keys(model.prescribed_tracers)
+            @test isfinite(model.prescribed_tracers.b[1, 1, 1])
+        end
+
+        @testset "Prescribed and prognostic tracers [$arch]" begin
+            @info "  Testing prescribed + prognostic tracers [$arch]..."
+
+            grid = RectilinearGrid(arch, size=(4, 4),
+                                   x=(0, 1), z=(-1, 0),
+                                   topology=(Bounded, Flat, Bounded))
+
+            times = [0.0, 10.0]
+            b_fts = FieldTimeSeries{Center, Center, Center}(grid, times)
+            set!(b_fts, (x, z) -> x / 1000 + 1e-5 * z, 1)
+            set!(b_fts, (x, z) -> x / 1000 + 1e-5 * z, 2)
+
+            closure = IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3)
+
+            model = HydrostaticFreeSurfaceModel(grid;
+                buoyancy = BuoyancyTracer(),
+                closure = closure,
+                tracers = :c,
+                prescribed_tracers = (b = b_fts,))
+
+            set!(model, c = 1)
+            time_step!(model, 1)
+
+            # Prescribed b is in prescribed_tracers, prognostic c is in tracers
+            @test :b ∈ keys(model.prescribed_tracers)
+            @test :c ∈ keys(model.tracers)
+            @test model.tracers.c isa Field
+            @test !any(isnan, model.tracers.c)
+        end
+
+        @testset "Replicate GM test with prescribed tracer [$arch]" begin
+            @info "  Testing GM replication with prescribed tracer [$arch]..."
+
+            Nx = 8
+            Nz = 8
+
+            grid = RectilinearGrid(arch,
+                                   size = (Nx, Nz),
+                                   x = (0, 1),
+                                   z = (-1, 0),
+                                   topology = (Bounded, Flat, Bounded))
+
+            closure = IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3)
+
+            # --- Run 1: Standard prognostic simulation ---
+            model1 = HydrostaticFreeSurfaceModel(grid;
+                buoyancy = BuoyancyTracer(),
+                closure = closure,
+                tracers = (:b, :c))
+
+            set!(model1, b = (x, z) -> x / 10000, c = 1)
+
+            Nsteps = 5
+            Δt = 1
+
+            # Save b field at each time step
+            saved_times = Float64[0.0]
+            b_snapshots = [deepcopy(interior(model1.tracers.b))]
+
+            for n in 1:Nsteps
+                time_step!(model1, Δt)
+                push!(saved_times, model1.clock.time)
+                push!(b_snapshots, deepcopy(interior(model1.tracers.b)))
+            end
+
+            # Also save the closure field ϵ_R₃₃ from the last step of run 1
+            ϵ_R₃₃_run1 = deepcopy(interior(model1.closure_fields.ϵ_R₃₃))
+
+            # --- Build FieldTimeSeries from saved data ---
+            b_fts = FieldTimeSeries{Center, Center, Center}(grid, saved_times)
+            for (n, snapshot) in enumerate(b_snapshots)
+                interior(b_fts[n]) .= snapshot
+                fill_halo_regions!(b_fts[n])
+            end
+
+            # --- Run 2: Same setup but with prescribed b ---
+            model2 = HydrostaticFreeSurfaceModel(grid;
+                buoyancy = BuoyancyTracer(),
+                closure = closure,
+                tracers = :c,
+                prescribed_tracers = (b = b_fts,))
+
+            set!(model2, c = 1)
+
+            for n in 1:Nsteps
+                time_step!(model2, Δt)
+            end
+
+            # The closure field ϵ_R₃₃ should match between the two runs
+            # (both use the same b field at the final time step)
+            ϵ_R₃₃_run2 = interior(model2.closure_fields.ϵ_R₃₃)
+            @test ϵ_R₃₃_run1 ≈ ϵ_R₃₃_run2
+
+            # The prognostic tracer c in run 2 should not contain NaN
+            @test !any(isnan, model2.tracers.c)
+        end
+
+        @testset "Analytical isopycnal slope with prescribed tracer [$arch]" begin
+            @info "  Testing analytical isopycnal slope [$arch]..."
+
+            Nx = 4
+            Nz = 4
+
+            grid = RectilinearGrid(arch,
+                                   size = (Nx, Nz),
+                                   x = (0, 1e5),
+                                   z = (-1e3, 0),
+                                   topology = (Bounded, Flat, Bounded))
+
+            M² = 1e-7  # horizontal buoyancy gradient
+            N² = 1e-5  # vertical buoyancy gradient (stratification)
+
+            # On Flat y-topology, FunctionField expects func(x, z, t)
+            b_func(x, z, t) = M² * x + N² * z
+
+            closure = IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3)
+
+            model = HydrostaticFreeSurfaceModel(grid;
+                buoyancy = BuoyancyTracer(),
+                closure = closure,
+                tracers = nothing,
+                prescribed_tracers = (b = b_func,))
+
+            # Trigger state update which computes closure fields
+            time_step!(model, 1)
+
+            # Expected isopycnal slope
+            Sx = M² / N²  # = 0.01
+            expected_R₃₃ = Sx^2
+
+            # The tapering factor ϵ = min(1, max_slope² / slope²)
+            # With Sx = 0.01 and max_slope = 0.1 (default FluxTapering):
+            # ϵ = min(1, 0.01 / 0.0001) = min(1, 100) = 1
+            # So ϵ_R₃₃ should be ≈ Sx² = 1e-4
+
+            ϵ_R₃₃ = interior(model.closure_fields.ϵ_R₃₃)
+
+            # Check interior points (avoiding boundaries where stencils may differ)
+            for i in 2:Nx-1, k in 2:Nz
+                @test ϵ_R₃₃[i, 1, k] ≈ expected_R₃₃ atol=1e-10
+            end
+        end
+
+        @testset "prescribed_tracers overlap validation [$arch]" begin
+            @info "  Testing prescribed_tracers overlap validation [$arch]..."
+
+            grid = RectilinearGrid(arch, size=(4, 4),
+                                   x=(0, 1), z=(-1, 0),
+                                   topology=(Bounded, Flat, Bounded))
+
+            b_func(x, z, t) = 1e-5 * z
+
+            # Should throw when prescribed tracer name overlaps with prognostic tracer name
+            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid;
+                buoyancy = nothing,
+                tracers = :b,
+                prescribed_tracers = (b = b_func,))
         end
 
         @testset "HydrostaticFreeSurfaceModel with tracers and forcings [$arch]" begin
