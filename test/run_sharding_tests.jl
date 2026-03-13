@@ -1,0 +1,69 @@
+# We need to initiate MPI for sharding because we are using a multi-host implementation:
+# i.e. we are launching the tests with `mpiexec` and on Github actions the default MPI
+# implementation is MPICH which requires calling MPI.Init(). In the case of OpenMPI,
+# MPI.Init() is not necessary.
+using MPI
+MPI.Init()
+include("distributed_tests_utils.jl")
+
+using Reactant
+using Oceananigans.TimeSteppers: first_time_step!
+
+# Dispatch on Reactant grids to compile with @compile before time stepping
+const ReactantArch = Union{ReactantState, Distributed{<:ReactantState}}
+const ReactantTestGrid = AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:ReactantArch}
+
+function run_distributed_simulation(grid::ReactantTestGrid)
+
+    model = HydrostaticFreeSurfaceModel(grid;
+                                        free_surface = SplitExplicitFreeSurface(grid; substeps = 20),
+                                        tracers = :c,
+                                        tracer_advection = WENO(),
+                                        momentum_advection = WENOVectorInvariant(order=3),
+                                        coriolis = HydrostaticSphericalCoriolis())
+
+    ηᵢ(λ, φ, z) = exp(- (φ - 90)^2 / 10^2) + exp(- φ^2 / 10^2)
+    set!(model, c=ηᵢ, η=ηᵢ)
+
+    Δt = 5minutes
+
+    @info "Compiling first_time_step..."
+    r_first_time_step! = @compile sync=true raise=true first_time_step!(model, Δt)
+
+    @info "Compiling time_step..."
+    r_time_step! = @compile sync=true raise=true time_step!(model, Δt)
+
+    @info "Running first time step..."
+    r_first_time_step!(model, Δt)
+    @info "Running time step..."
+    for N in 2:100
+        r_time_step!(model, Δt)
+    end
+
+    return model
+end
+
+ENV["XLA_FLAGS"] = "--xla_force_host_platform_device_count=4"
+ENV["JULIA_DEBUG"] = "Reactant, Reactant_jll"
+
+if Base.ARGS[1] == "tripolar"
+    run_function = run_distributed_tripolar_grid
+    suffix = "trg"
+else
+    run_function = run_distributed_latitude_longitude_grid
+    suffix = "llg"
+end
+
+Reactant.Distributed.initialize(; single_gpu_per_process=false)
+
+arch = Distributed(ReactantState(), partition = Partition(4, 1))
+filename = "distributed_xslab_$(suffix).jld2"
+run_function(arch, filename)
+
+arch = Distributed(ReactantState(), partition = Partition(1, 4))
+filename = "distributed_yslab_$(suffix).jld2"
+run_function(arch, filename)
+
+arch = Distributed(ReactantState(), partition = Partition(2, 2))
+filename = "distributed_pencil_$(suffix).jld2"
+run_function(arch, filename)

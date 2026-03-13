@@ -1,8 +1,11 @@
+if !@isdefined(_DISTRIBUTED_TESTS_UTILS_LOADED)
+
+const _DISTRIBUTED_TESTS_UTILS_LOADED = true
+
 using JLD2
 using MPI
 using Oceananigans.DistributedComputations: reconstruct_global_field, reconstruct_global_grid
 using Oceananigans.Units
-using Reactant
 using Oceananigans.TimeSteppers: first_time_step!
 
 import Oceananigans.BoundaryConditions: _fill_north_halo!
@@ -69,24 +72,21 @@ end
 
 # Run the distributed grid simulation and save down reconstructed results
 function run_distributed_tripolar_grid(arch, filename)
-    distributed_grid = TripolarGrid(arch; size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))
-    distributed_grid = analytical_immersed_tripolar_grid(distributed_grid)
-    model            = run_distributed_simulation(distributed_grid)
+    grid  = TripolarGrid(arch; size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))
+    grid  = analytical_immersed_tripolar_grid(grid)
+    model = run_distributed_simulation(grid)
 
     η = reconstruct_global_field(model.free_surface.displacement)
     u = reconstruct_global_field(model.velocities.u)
     v = reconstruct_global_field(model.velocities.v)
     c = reconstruct_global_field(model.tracers.c)
 
-    if arch.local_rank == 0
+    if MPI.Comm_rank(MPI.COMM_WORLD) == 0
         jldsave(filename; u = Array(interior(u, :, :, 1)),
                           v = Array(interior(v, :, :, 1)),
                           c = Array(interior(c, :, :, 1)),
                           η = Array(interior(η, :, :, 1)))
     end
-
-    MPI.Barrier(MPI.COMM_WORLD)
-    MPI.Finalize()
 
     return nothing
 end
@@ -119,14 +119,14 @@ function run_distributed_latitude_longitude_grid(arch, filename)
     v = reconstruct_global_field(model.velocities.v)
     c = reconstruct_global_field(model.tracers.c)
 
-    if arch.local_rank == 0
+    if MPI.Comm_rank(MPI.COMM_WORLD) == 0
         jldsave(filename; u = Array(interior(u, :, :, 10)),
                           v = Array(interior(v, :, :, 10)),
                           c = Array(interior(c, :, :, 10)),
                           η = Array(interior(η, :, :, 1)))
     end
 
-    return nothing
+    return model
 end
 
 # Just a random simulation on a tripolar grid
@@ -145,24 +145,15 @@ function run_distributed_simulation(grid)
     set!(model, c=ηᵢ, η=ηᵢ)
 
     Δt = 5minutes
-    arch = architecture(grid)
-    if arch isa ReactantState || arch isa Distributed{<:ReactantState}
-        @info "Compiling first_time_step..."
-        r_first_time_step! = @compile sync=true raise=true first_time_step!(model, Δt)
-
-        @info "Compiling time_step..."
-        r_time_step! = @compile sync=true raise=true time_step!(model, Δt)
-    else
-        r_first_time_step! = first_time_step!
-        r_time_step! = time_step!
-    end
 
     @info "Running first time step..."
-    r_first_time_step!(model, Δt)
-    @info "Running time steps..."
+    first_time_step!(model, Δt)
+    @info "Running time step..."
     for N in 2:100
-        r_time_step!(model, Δt)
+        time_step!(model, Δt)
     end
 
     return model
 end
+
+end # if !@isdefined(_DISTRIBUTED_TESTS_UTILS_LOADED)
