@@ -24,7 +24,7 @@ sign(::Type{Center}, ::Type{Center}) = 1
 north_fold_boundary_condition(::Type{RightCenterFolded})   = UPivotZipperBoundaryCondition
 north_fold_boundary_condition(::Type{RightFaceFolded})     = FPivotZipperBoundaryCondition
 north_fold_boundary_condition(grid::TripolarGridOfSomeKind) = north_fold_boundary_condition(topology(grid, 2))
-north_fold_boundary_condition(t::Tripolar) = north_fold_boundary_condition(t.fold_topology)
+north_fold_boundary_condition(t::Tripolar) = north_fold_boundary_condition(fold_topology(t))
 
 # a `TripolarGrid` needs a `UPivotZipperBoundaryCondition` for the north boundary
 # The `sign` 1 for regular tracers and -1 for velocities and signed vectors

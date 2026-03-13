@@ -227,7 +227,7 @@ switch_north_halos!(c, north_bc, grid, loc, buffers) = nothing
 
 function switch_north_halos!(c, north_bc::DistributedZipper, grid, loc, buffers)
     sign = north_bc.condition.sign
-    fold_topo = grid.conformal_mapping.fold_topology
+    fold_topo = fold_topology(grid.conformal_mapping)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
     buf_x = buffer_x_interior(buffers.north, Hx, Nx)

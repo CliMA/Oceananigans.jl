@@ -46,7 +46,7 @@ function set!(u::DistributedTripolarField, V::Field)
 end
 
 # Extract fold_topology from Tripolar
-fold_set!(u, V, t::Tripolar, loc_y) = fold_set!(u, V, t.fold_topology, loc_y)
+fold_set!(u, V, t::Tripolar, loc_y) = fold_set!(u, V, fold_topology(t), loc_y)
 
 # Fallbacks for non-folded topologies
 fold_set!(u, V, ::Type{<:AbstractTopology}, loc_y) = _set!(u, V)
@@ -436,7 +436,7 @@ function DistributedComputations.reconstruct_global_grid(grid::DistributedTripol
     north_poles_latitude = grid.conformal_mapping.north_poles_latitude
     first_pole_longitude = grid.conformal_mapping.first_pole_longitude
     southernmost_latitude = grid.conformal_mapping.southernmost_latitude
-    fold_topology = grid.conformal_mapping.fold_topology
+    fold_topo = fold_topology(grid.conformal_mapping)
 
     return TripolarGrid(child_arch, FT;
                         halo,
@@ -444,7 +444,7 @@ function DistributedComputations.reconstruct_global_grid(grid::DistributedTripol
                         north_poles_latitude,
                         first_pole_longitude,
                         southernmost_latitude,
-                        fold_topology,
+                        fold_topology = fold_topo,
                         z)
 end
 
@@ -459,7 +459,7 @@ function Grids.with_halo(new_halo, old_grid::DistributedTripolarGrid)
     north_poles_latitude = old_grid.conformal_mapping.north_poles_latitude
     first_pole_longitude = old_grid.conformal_mapping.first_pole_longitude
     southernmost_latitude = old_grid.conformal_mapping.southernmost_latitude
-    fold_topology = old_grid.conformal_mapping.fold_topology
+    fold_topo = fold_topology(old_grid.conformal_mapping)
 
     return TripolarGrid(arch, eltype(old_grid);
                         halo = new_halo,
@@ -467,6 +467,6 @@ function Grids.with_halo(new_halo, old_grid::DistributedTripolarGrid)
                         north_poles_latitude,
                         first_pole_longitude,
                         southernmost_latitude,
-                        fold_topology,
+                        fold_topology = fold_topo,
                         z)
 end

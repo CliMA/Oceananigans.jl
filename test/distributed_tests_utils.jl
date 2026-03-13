@@ -15,10 +15,12 @@ function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius
 
     Lz = underlying_grid.Lz
 
-    # We need a bottom height field that ``masks'' the singularities
+    # We need a bottom height field that ``masks'' the singularities.
+    # Use φm + radius (not φm) to ensure the south boundary is immersed for FPivot grids,
+    # where southernmost_latitude is at the cell face, leaving j=1 centers slightly north of φm.
     bottom_height(λ, φ) = ((abs(λ - λp) < radius)       & (abs(φp - φ) < radius)) |
                           ((abs(λ - λp - 180) < radius) & (abs(φp - φ) < radius)) |
-                          ((abs(λ - λp - 360) < radius) & (abs(φp - φ) < radius)) | (φ < φm) ? 0 : - Lz
+                          ((abs(λ - λp - 360) < radius) & (abs(φp - φ) < radius)) | (φ < φm + radius) ? 0 : - Lz
 
     grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
 
@@ -26,8 +28,8 @@ function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius
 end
 
 # Run the distributed grid simulation and save down reconstructed results
-function run_distributed_tripolar_grid(arch, filename; fold_topology = RightCenterFolded, Ny = 40)
-    distributed_grid = TripolarGrid(arch; size = (40, Ny, 1), z = (-1000, 0), halo = (5, 5, 5), fold_topology)
+function run_distributed_tripolar_grid(arch, filename; fold_topology = RightCenterFolded, Nx = 80, Ny = 80)
+    distributed_grid = TripolarGrid(arch; size = (Nx, Ny, 1), z = (-1000, 0), halo = (5, 5, 5), fold_topology)
     distributed_grid = analytical_immersed_tripolar_grid(distributed_grid)
     model            = run_distributed_simulation(distributed_grid)
 
@@ -87,9 +89,8 @@ function run_distributed_latitude_longitude_grid(arch, filename)
     return nothing
 end
 
-# Just a random simulation on a tripolar grid
-function run_distributed_simulation(grid)
-
+# Create model and set initial conditions (shared by serial and distributed)
+function setup_simulation(grid)
     model = HydrostaticFreeSurfaceModel(grid;
                                         free_surface = SplitExplicitFreeSurface(grid; substeps = 20),
                                         tracers = :c,
@@ -100,10 +101,14 @@ function run_distributed_simulation(grid)
     # Setup the model with a gaussian sea surface height
     # near the physical north poles and one near the equator
     ηᵢ(λ, φ, z) = exp(- (φ - 90)^2 / 10^2) + exp(- φ^2 / 10^2)
-    set!(model, c=ηᵢ, η=ηᵢ)
+    set!(model; c=ηᵢ, η=ηᵢ)
 
-    Δt = 5minutes
-    arch = architecture(grid)
+    return model
+end
+
+# Time-step a model (shared by serial and distributed)
+function run_simulation!(model; Δt = 5minutes, Nt = 100)
+    arch = architecture(model.grid)
     if arch isa ReactantState || arch isa Distributed{<:ReactantState}
         @info "Compiling first_time_step..."
         r_first_time_step! = @compile sync=true raise=true first_time_step!(model, Δt)
@@ -118,9 +123,15 @@ function run_distributed_simulation(grid)
     @info "Running first time step..."
     r_first_time_step!(model, Δt)
     @info "Running time steps..."
-    for N in 2:100
+    for N in 2:Nt
         r_time_step!(model, Δt)
     end
 
     return model
+end
+
+# Convenience wrapper: setup + run (backward compat for LatLon tests etc.)
+function run_distributed_simulation(grid)
+    model = setup_simulation(grid)
+    return run_simulation!(model)
 end

@@ -1,30 +1,37 @@
 using Oceananigans.BoundaryConditions: UPivotZipperBoundaryCondition, FPivotZipperBoundaryCondition, NoFluxBoundaryCondition
 using Oceananigans.Grids: Grids, Bounded, Flat, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid,
     architecture, cpu_face_constructor_z, validate_dimension_specification,
-    RightCenterFolded, RightFaceFolded
+    AbstractTopology, RightCenterFolded, RightFaceFolded
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 """
-    struct Tripolar{N, F, S, FT}
+    struct Tripolar{N, F, S, FT<:AbstractTopology}
 
 A structure to represent a tripolar grid on an orthogonal spherical shell.
+The fold topology `FT` (e.g., `RightCenterFolded` or `RightFaceFolded`) is stored
+as a type parameter rather than a field, keeping the struct `isbits` for GPU kernels.
 """
-struct Tripolar{N, F, S, FT}
+struct Tripolar{N, F, S, FT<:AbstractTopology}
     north_poles_latitude :: N
     first_pole_longitude :: F
     southernmost_latitude :: S
-    fold_topology :: FT
 end
 
-# Backward-compatible constructor (defaults to UPivot)
-Tripolar(north_poles_latitude, first_pole_longitude, southernmost_latitude) =
-    Tripolar(north_poles_latitude, first_pole_longitude, southernmost_latitude, RightCenterFolded)
+# Getter: returns the fold topology Type (for dispatch on ::Type{RightCenterFolded} etc.)
+fold_topology(::Tripolar{<:Any, <:Any, <:Any, FT}) where FT = FT
 
-Adapt.adapt_structure(to, t::Tripolar) =
+# Constructor accepting fold topology as a Type argument
+Tripolar(n, f, s, ::Type{FT}) where {FT<:AbstractTopology} =
+    Tripolar{typeof(n), typeof(f), typeof(s), FT}(n, f, s)
+
+# Backward-compatible constructor (defaults to UPivot)
+Tripolar(n, f, s) = Tripolar(n, f, s, RightCenterFolded)
+
+Adapt.adapt_structure(to, t::Tripolar{<:Any, <:Any, <:Any, FT}) where FT =
     Tripolar(Adapt.adapt(to, t.north_poles_latitude),
              Adapt.adapt(to, t.first_pole_longitude),
              Adapt.adapt(to, t.southernmost_latitude),
-             t.fold_topology)
+             FT)
 
 const TripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} = OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, Arch}
 const TripolarGridOfSomeKind = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}}
