@@ -46,6 +46,11 @@ Adapt.adapt_structure(to, scheme::FluxFormAdvection{N, FT}) where {N, FT} =
                              Adapt.adapt(to, scheme.y),
                              Adapt.adapt(to, scheme.z))
 
+on_architecture(to, scheme::FluxFormAdvection{N, FT}) where {N, FT} =
+    FluxFormAdvection{N, FT}(on_architecture(to, scheme.x),
+                             on_architecture(to, scheme.y),
+                             on_architecture(to, scheme.z))
+
 @inline _advective_tracer_flux_x(i, j, k, grid, scheme::FluxFormAdvection, U, c) = _advective_tracer_flux_x(i, j, k, grid, scheme.x, U, c)
 @inline _advective_tracer_flux_y(i, j, k, grid, scheme::FluxFormAdvection, V, c) = _advective_tracer_flux_y(i, j, k, grid, scheme.y, V, c)
 @inline _advective_tracer_flux_z(i, j, k, grid, scheme::FluxFormAdvection, W, c) = _advective_tracer_flux_z(i, j, k, grid, scheme.z, W, c)
