@@ -241,14 +241,14 @@ test_cases_4 = [
 for (fold_topology, global_Nx, global_Ny) in test_cases_4
     fold_name = fold_topology == RightCenterFolded ? "UPivot" : "FPivot"
 
-    if nranks >= 4
+    if nranks == 4
         for partition in partitions_4
             key = "$fold_name Nx=$global_Nx Ny=$global_Ny $(partition)"
             results[key] = test_halo_fill(; partition, fold_topology, global_Nx, global_Ny)
         end
     end
 
-    if nranks >= 16
+    if nranks == 16
         for partition in partitions_16
             key = "$fold_name Nx=$global_Nx Ny=$global_Ny $(partition)"
             results[key] = test_halo_fill(; partition, fold_topology, global_Nx, global_Ny)
@@ -264,7 +264,7 @@ test_cases_8 = [
     (RightFaceFolded,   80, 81),  # FPivot, matches testset 6 cfg3
 ]
 
-if nranks >= 8
+if nranks == 8
     for (fold_topology, global_Nx, global_Ny) in test_cases_8
         fold_name = fold_topology == RightCenterFolded ? "UPivot" : "FPivot"
         for partition in partitions_8
