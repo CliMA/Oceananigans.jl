@@ -185,6 +185,7 @@ end
 ##### SplitExplicitFreeSurface barotropic subcycling
 #####
 
+# vvvv
 function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroclinic_timestepper, Δt)
     # Note: free_surface.displacement.grid != model.grid for DistributedSplitExplicitFreeSurface since
     # halo_size(free_surface.displacement.grid) != halo_size(model.grid)

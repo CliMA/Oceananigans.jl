@@ -74,26 +74,27 @@ maybe_initialize_state!(::ReactantModel, callbacks) = nothing
 # returns TracedRNumber{Float64}, and `ab2_timestepper.χ = TracedRNumber{Float64}`
 # fails because the field type is Float64.
 
+using InteractiveUtils
 function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}}, Δt;
                     callbacks=[], euler=false) where FT
 
-    # If euler, then set χ = -0.5
-    minus_point_five = convert(FT, -0.5)
-    ab2_timestepper = model.timestepper
-    χ = ifelse(euler, minus_point_five, ab2_timestepper.χ)
-    χ₀ = ab2_timestepper.χ # Save initial value
-    ab2_timestepper.χ = χ
+    # # If euler, then set χ = -0.5
+    # minus_point_five = convert(FT, -0.5)
+    # ab2_timestepper = model.timestepper
+    # χ = ifelse(euler, minus_point_five, ab2_timestepper.χ)
+    # χ₀ = ab2_timestepper.χ # Save initial value
+    # ab2_timestepper.χ = χ
 
-    ab2_step!(model, Δt, callbacks)
-    cache_previous_tendencies!(model)
+    ab2_step!(model, Δt, callbacks) # this line fails
+    # cache_previous_tendencies!(model)
 
-    tick!(model.clock, Δt)
+    # tick!(model.clock, Δt)
 
-    update_state!(model, callbacks)
-    step_lagrangian_particles!(model, Δt)
+    # update_state!(model, callbacks)
+    # step_lagrangian_particles!(model, Δt)
 
-    # Return χ to initial value
-    ab2_timestepper.χ = χ₀
+    # # Return χ to initial value
+    # ab2_timestepper.χ = χ₀
 
     return nothing
 end

@@ -18,6 +18,7 @@ Dispatches to the appropriate method based on the free surface type (explicit or
 ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, callbacks) =
     hydrostatic_ab2_step!(model, model.free_surface, model.grid, Δt, callbacks)
 
+using InteractiveUtils
 """
     hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
 
@@ -39,33 +40,40 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
     χ  = convert(FT, model.timestepper.χ)
     Δt = convert(FT, Δt)
 
-    # Computing momentum flux boundary conditions
-    @apply_regionally compute_momentum_flux_bcs!(model)
+    # # Computing momentum flux boundary conditions
+    # @apply_regionally compute_momentum_flux_bcs!(model)
 
-    # Advance the free surface
-    compute_free_surface_tendency!(grid, model, model.free_surface)
+
+    # # Advance the free surface
+    # compute_free_surface_tendency!(grid, model, model.free_surface)
+
+
+    # println("HMMMMM\n $( @which step_free_surface!(model.free_surface, model, model.timestepper, Δt)), \n $( @which compute_transport_velocities!(model, model.free_surface))")
+
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
 
     # Update transport velocities
     compute_transport_velocities!(model, model.free_surface)
 
-    # Computing tracer tendencies
-    @apply_regionally begin
-        compute_tracer_tendencies!(model)
 
-        # Advance grid and velocities
-        ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
-        ab2_step_velocities!(model.velocities, model, Δt, χ)
 
-        # Correct the barotropic mode
-        correct_barotropic_mode!(model, Δt)
+    # # Computing tracer tendencies
+    # @apply_regionally begin
+    #     compute_tracer_tendencies!(model)
 
-        # TODO: fill halo regions for horizontal velocities should be here before the tracer update.
-        # Finally advance tracers:
-        ab2_step_tracers!(model.tracers, model, Δt, χ)
-    end
+    #     # Advance grid and velocities
+    #     ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
+    #     ab2_step_velocities!(model.velocities, model, Δt, χ)
 
-    return nothing
+    #     # Correct the barotropic mode
+    #     correct_barotropic_mode!(model, Δt)
+
+    #     # TODO: fill halo regions for horizontal velocities should be here before the tracer update.
+    #     # Finally advance tracers:
+    #     ab2_step_tracers!(model.tracers, model, Δt, χ)
+    # end
+
+    # return nothing
 end
 
 """
