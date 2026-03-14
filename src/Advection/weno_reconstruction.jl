@@ -92,6 +92,7 @@ WENO{5, Float64, Float32}(order=9, bounds=(0.0, 1.0))
 └── advecting_velocity_scheme: Centered(order=8)
 ```
 """
+
 function WENO(FT::DataType=Oceananigans.defaults.FloatType, FT2::DataType=Float32;
               order = 5,
               buffer_scheme = DecreasingOrderAdvectionScheme(),
