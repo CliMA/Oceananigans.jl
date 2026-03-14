@@ -65,7 +65,7 @@ Return the topology of the `grid` for the `dim`-th dimension.
 
 Return the architecture that the `grid` lives on.
 """
-@inline architecture(grid::AbstractGrid) = grid.architecture
+@inline Architectures.architecture(grid::AbstractGrid) = grid.architecture
 
 """
     size(grid)
