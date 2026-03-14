@@ -37,13 +37,27 @@ function CommunicationBuffers(grid::DistributedTripolarGridOfSomeKind, data,
                               boundary_conditions::FieldBoundaryConditions)
     Hx, Hy, Hz = halo_size(grid)
     arch = architecture(grid)
+    Rx = ranks(arch)[1]
 
     Hy_north = is_north_fold_rank(grid) ? Hy + 2 : Hy
 
     west  = x_communication_buffer(arch, grid, data, Hx, boundary_conditions.west)
     east  = x_communication_buffer(arch, grid, data, Hx, boundary_conditions.east)
     south = y_communication_buffer(arch, grid, data, Hy, boundary_conditions.south)
-    north = y_communication_buffer(arch, grid, data, Hy_north, boundary_conditions.north)
+
+    # For fold ranks with Rx > 1, widen north buffer to Nx+2Hx columns (full parent width)
+    # so the fold partner's buffer includes x-halo data from their x-neighbors.
+    # This eliminates step 3 (FC/FF conjugate MPI) and step 4 (x-halo re-exchange) for CC/CF.
+    if is_north_fold_rank(grid) && Rx > 1
+        Tx = size(parent(data), 1)  # = Nx + 2Hx
+        FT = eltype(data)
+        Tz = size(parent(data), 3)
+        north_send = on_architecture(arch, zeros(FT, Tx, Hy_north, Tz))
+        north_recv = on_architecture(arch, zeros(FT, Tx, Hy_north, Tz))
+        north = TwoDBuffer(north_send, north_recv)
+    else
+        north = y_communication_buffer(arch, grid, data, Hy_north, boundary_conditions.north)
+    end
 
     sw = corner_communication_buffer(arch, grid, data, Hx, Hy, west, south)
     se = corner_communication_buffer(arch, grid, data, Hx, Hy, east, south)
@@ -60,7 +74,7 @@ end
 _fill_north_send_extended!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) =
     buff.send .= view(c, :, Ny-1:Ny+Hy, :)
 _fill_north_send_extended!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) =
-    buff.send .= view(c, 1+Hx:Nx+Hx, Ny-1:Ny+Hy, :)
+    buff.send .= view(c, 1:size(buff.send, 1), Ny-1:Ny+Hy, :)
 _fill_north_send_extended!(c, ::Nothing, Hx, Hy, Nx, Ny) = nothing
 
 _fill_nw_send_extended!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) =
@@ -119,7 +133,7 @@ end
 _recv_from_north_buffer_fold!(c, buff::OneDBuffer, Hx, Hy, Nx, Ny) =
     view(c, :, 1+Ny+Hy:Ny+2Hy, :) .= view(buff.recv, :, size(buff.recv, 2)-Hy+1:size(buff.recv, 2), :)
 _recv_from_north_buffer_fold!(c, buff::TwoDBuffer, Hx, Hy, Nx, Ny) =
-    view(c, 1+Hx:Nx+Hx, 1+Ny+Hy:Ny+2Hy, :) .= view(buff.recv, :, size(buff.recv, 2)-Hy+1:size(buff.recv, 2), :)
+    view(c, 1:size(buff.recv, 1), 1+Ny+Hy:Ny+2Hy, :) .= view(buff.recv, :, size(buff.recv, 2)-Hy+1:size(buff.recv, 2), :)
 _recv_from_north_buffer_fold!(c, ::Nothing, Hx, Hy, Nx, Ny) = nothing
 
 _recv_from_northwest_buffer_fold!(c, buff::CornerBuffer, Hx, Hy, Nx, Ny) =
@@ -212,14 +226,18 @@ end
 # In serial, the fold kernel operates element-wise over the full array, then
 # the Periodic x-halo exchange fills fold-row x-halos. In distributed:
 #
-#   1. Async MPI exchanges all halos (x, y, corners) simultaneously
+#   1. MPI exchanges x-halos first (synchronous), then y-halos + corners
 #   2. switch_north_halos! runs the fold → overwrites fold halo rows
-#   3. Fold-row x-halos are now stale (still hold pre-fold values)
 #
-# To fix this, switch_north_halos! runs four steps:
+# The north buffer is widened to Nx+2Hx columns (when Rx > 1) so the fold
+# partner's buffer includes x-halo data from their x-neighbors. This enables:
+#   - CC/CF: full reversal fills all parent columns (no x-halo re-exchange needed)
+#   - FC/FF: shifted reversal fills all except parent col 1 (x-halo re-exchange needed)
+#
+# switch_north_halos! runs two steps:
 #   fill_north_fold_halo!              — fold halo rows from partner buffer
 #   fill_half_north_fold_line!         — fold-line half-row substitution
-#   fill_north_fold_halo_west_column!  — FC/FF column 1 fix (MPI with conjugate rank)
+# Plus for FC/FF only:
 #   exchange_north_fold_halos!         — re-exchange x-halos at fold rows (MPI with x-neighbors)
 #####
 
@@ -248,18 +266,15 @@ function switch_north_halos!(c, north_bc::DistributedZipper, grid, loc, buffers)
         fill_half_north_fold_line!(parent(c), buffers.north.recv, loc, sign, Nx, Ny, Hx, Hy, fold_topo, buf_x, 1)
     end
 
-    # Step 3: FC/FF column 1 fix (no-op for CC/CF)
-    fill_north_fold_halo_west_column!(parent(c), loc, sign, grid, Nx, Ny, Hx, Hy, fold_topo)
-
-    # Step 4: Re-exchange x-halos at fold rows with east/west x-neighbors
+    # Step 3: Re-exchange x-halos at fold rows (FC/FF only — CC/CF handled by wider buffer)
     exchange_north_fold_halos!(parent(c), loc, grid, Nx, Ny, Hx, Hy, fold_topo)
 
     return nothing
 end
 
-# Buffer x-range dispatch (OneDBuffer has full x, TwoDBuffer has interior only)
+# Buffer x-range dispatch (OneDBuffer has full x, TwoDBuffer adapts to buffer width)
 @inline buffer_x_interior(::OneDBuffer, Hx, Nx) = Hx+1:Nx+Hx
-@inline buffer_x_interior(::TwoDBuffer, Hx, Nx) = 1:Nx
+@inline buffer_x_interior(buff::TwoDBuffer, Hx, Nx) = 1:size(buff.send, 1)
 
 # Fold parameters: (nj, dest_offset, src_k_fn) for each (fold_topo, y_location) pair.
 # buffer[:, k, :] where k=1..Hy+2: k=1 = partner offset ny-Hy-1, k=Hy+2 = partner offset ny.
@@ -289,19 +304,18 @@ end
 @inline fold_dest_y( ::Tuple{<:Any, <:Center, <:Any}, Ny, Hy, j, ::Type{RightFaceFolded}) = Ny + Hy - 1 + j
 @inline fold_src_k(  ::Tuple{<:Any, <:Center, <:Any}, Hy, j, ::Type{RightFaceFolded}) = Hy + 2 - j
 
-# CC/CF fold: all Nx columns from reversed partner buffer (i' = Nx+1-i).
+# CC/CF fold: full reversal over buf_x range (all parent columns for wider buffer).
 @inline function fill_north_fold_halo_row!(c, sign, Hx, Nx, dest_y, north_recv, buf_x, src_k,
                                            ::Tuple{<:Center, <:Any, <:Any})
-    view(c, Hx+1:Hx+Nx, dest_y:dest_y, :) .= sign .* reverse(view(north_recv, buf_x, src_k:src_k, :), dims=1)
+    view(c, buf_x, dest_y:dest_y, :) .= sign .* reverse(view(north_recv, buf_x, src_k:src_k, :), dims=1)
 end
 
-# FC/FF fold: columns 2..Nx from reversed partner buffer (i' = Nx+2-i).
-# Column 1 handled by fill_north_fold_halo_west_column! because the FC/FF fixed point
-# (global i=1 → i=1) only holds for x-rank 0; other x-ranks need column 1
-# from a different rank (the "conjugate" — see fill_north_fold_halo_west_column!).
+# FC/FF fold: shifted reversal skipping first column (i' = Nx+2-i).
+# The wider buffer provides conjugate data via fold partner's east halo, so interior
+# column 1 is correct. Only parent column 1 (west halo col 1) is left for step 4.
 @inline function fill_north_fold_halo_row!(c, sign, Hx, Nx, dest_y, north_recv, buf_x, src_k,
                                            ::Tuple{<:Face, <:Any, <:Any})
-    view(c, Hx+2:Hx+Nx, dest_y:dest_y, :) .= sign .* reverse(view(north_recv, buf_x[2]:buf_x[end], src_k:src_k, :), dims=1)
+    view(c, buf_x[1]+1:buf_x[end], dest_y:dest_y, :) .= sign .* reverse(view(north_recv, buf_x[1]+1:buf_x[end], src_k:src_k, :), dims=1)
 end
 
 # Fold-line half-row substitution from buffer.
@@ -310,17 +324,19 @@ end
 # Buffer k=Hy+2 holds the partner's fold-line row (partner parent y = Ny+Hy).
 fill_half_north_fold_line!(c, recv, loc, sign, Nx, Ny, Hx, Hy, fold_topo, buf_x, fold_i_start) = nothing
 
-# CC/CF: all Nx columns from reversed partner buffer
+# CC/CF: full reversal over buf_x range
 @inline function _fill_fold_line_all_columns!(c, recv, sign, Nx, Hx, fold_y, fold_k, buf_x, fold_i_start)
     reversed = sign .* reverse(view(recv, buf_x, fold_k:fold_k, :), dims=1)
-    view(c, Hx+fold_i_start:Hx+Nx, fold_y:fold_y, :) .= view(reversed, fold_i_start:Nx, :, :)
+    nbuf = length(buf_x)
+    view(c, buf_x[fold_i_start]:buf_x[end], fold_y:fold_y, :) .= view(reversed, fold_i_start:nbuf, :, :)
 end
 
-# FC/FF: columns 2..Nx from reversed partner buffer (column 1 handled by fill_north_fold_halo_west_column!)
+# FC/FF: shifted reversal skipping first column
 @inline function _fill_fold_line_skip_column1!(c, recv, sign, Nx, Hx, fold_y, fold_k, buf_x, fold_i_start)
     i_start = max(2, fold_i_start)
-    reversed = sign .* reverse(view(recv, buf_x[2]:buf_x[end], fold_k:fold_k, :), dims=1)
-    view(c, Hx+i_start:Hx+Nx, fold_y:fold_y, :) .= view(reversed, i_start-1:Nx-1, :, :)
+    reversed = sign .* reverse(view(recv, buf_x[1]+1:buf_x[end], fold_k:fold_k, :), dims=1)
+    nbuf = length(buf_x)
+    view(c, buf_x[i_start]:buf_x[end], fold_y:fold_y, :) .= view(reversed, i_start-1:nbuf-1, :, :)
 end
 
 # CF (Center, Face), FPivot
@@ -360,8 +376,8 @@ _fold_line_parent_y(::Tuple{<:Any, <:Face, <:Any}, Ny, Hy, ::Type{RightFaceFolde
 end
 
 # Step 1: Fill fold halo rows (above the fold line) from partner buffer.
-# Writes non-halo columns of each fold halo row with x-reversed partner data.
-# CC/CF: all Nx columns; FC/FF: columns 2..Nx (column 1 handled separately).
+# CC/CF: full reversal over buf_x range (all parent cols with wider buffer).
+# FC/FF: shifted reversal skipping first column of buf_x range.
 function fill_north_fold_halo!(c, north_recv, loc, sign, Nx, Ny, Hx, Hy, fold_topo, buf_x)
     nj = fold_nj(loc, Hy, fold_topo)
 
@@ -375,77 +391,14 @@ function fill_north_fold_halo!(c, north_recv, loc, sign, Nx, Ny, Hx, Hy, fold_to
 end
 
 #####
-##### Step 3: FC/FF column 1 fix — fill_north_fold_halo_west_column!
+##### Step 3: Re-exchange x-halos at fold rows — exchange_north_fold_halos!
 #####
-# The FC/FF fold maps global i → Nx_global + 2 - i (shifted by 1 from CC/CF).
-# Column 1 of each x-rank maps to column 1 of a "conjugate" x-rank:
-#   rx_conj = (Rx - rx) % Rx   (0-based x-rank indices)
-# Fixed points (self-map): rx=0, and rx=Rx/2 (when Rx is even).
-# For non-fixed points, column 1 data must be exchanged via MPI with the conjugate.
-# No-op for CC/CF (Center first component) since their fold has no column 1 shift.
+# After the fold writes (steps 1-2), the x-halos at fold rows may be stale.
+# CC/CF fields: wider buffer's full reversal provides correct x-halo values → no-op.
+# FC/FF fields: shifted reversal leaves parent col 1 unset → x-halo exchange needed.
 
-# CC/CF: no column 1 fix needed
-fill_north_fold_halo_west_column!(c, loc, sign, grid, Nx, Ny, Hx, Hy, fold_topo) = nothing
-fill_north_fold_halo_west_column!(c, ::Tuple{<:Center, <:Any, <:Any}, sign, grid, Nx, Ny, Hx, Hy, fold_topo) = nothing
-
-# FC/FF: fill column 1 at fold halo rows via MPI with conjugate x-rank.
-# The fold line column 1 is only WRITTEN on right-half ranks (same condition as step 2),
-# but both conjugate ranks must PARTICIPATE in the MPI exchange to avoid deadlock.
-function fill_north_fold_halo_west_column!(c, loc::Tuple{<:Face, <:Any, <:Any}, sign, grid, Nx, Ny, Hx, Hy, fold_topo)
-    arch = architecture(grid)
-    Rx, Ry, Rz = ranks(arch)
-    rx = arch.local_index[1] - 1  # 0-based x-rank
-    rx_conj = mod(Rx - rx, Rx)    # 0-based conjugate x-rank
-    nj = fold_nj(loc, Hy, fold_topo)
-    col1 = Hx + 1  # parent index of column 1
-
-    fold_line_y = _fold_line_parent_y(loc, Ny, Hy, fold_topo)
-    is_right_half = (Rx == 1) || (arch.local_index[1] > Rx ÷ 2)
-
-    if rx_conj == rx
-        # Fixed point: column 1 maps to self — local copy
-        for j in 1:nj
-            dest_y = fold_dest_y(loc, Ny, Hy, j, fold_topo)
-            src_y  = Ny + fold_src_k(loc, Hy, j, fold_topo) - 2
-            view(c, col1:col1, dest_y:dest_y, :) .= sign .* view(c, col1:col1, src_y:src_y, :)
-        end
-        if fold_line_y !== nothing && is_right_half
-            view(c, col1:col1, fold_line_y:fold_line_y, :) .*= sign
-        end
-    else
-        # Non-fixed point: exchange column 1 with conjugate rank
-        ry, rz = arch.local_index[2], arch.local_index[3]
-        conj_rank = index2rank(rx_conj + 1, ry, rz, Rx, Ry, Rz)
-        comm = arch.communicator
-        send_buf = similar(c, 1, 1, size(c, 3))
-        recv_buf = similar(send_buf)
-
-        tag = 10000
-        for j in 1:nj
-            dest_y = fold_dest_y(loc, Ny, Hy, j, fold_topo)
-            src_y  = Ny + fold_src_k(loc, Hy, j, fold_topo) - 2
-            send_buf .= view(c, col1:col1, src_y:src_y, :)
-            MPI.Sendrecv!(send_buf, recv_buf, comm; dest=conj_rank, source=conj_rank, sendtag=tag-j, recvtag=tag-j)
-            view(c, col1:col1, dest_y:dest_y, :) .= sign .* recv_buf
-        end
-        if fold_line_y !== nothing
-            send_buf .= view(c, col1:col1, fold_line_y:fold_line_y, :)
-            MPI.Sendrecv!(send_buf, recv_buf, comm; dest=conj_rank, source=conj_rank, sendtag=tag-nj-1, recvtag=tag-nj-1)
-            if is_right_half
-                view(c, col1:col1, fold_line_y:fold_line_y, :) .= sign .* recv_buf
-            end
-        end
-    end
-
-    return nothing
-end
-
-#####
-##### Step 4: Re-exchange x-halos at fold rows — exchange_north_fold_halos!
-#####
-# After the fold writes (steps 1-3), the x-halos at fold rows are stale because
-# the initial async MPI x-halo exchange ran BEFORE the fold overwrote these rows.
-# This function performs a targeted x-halo exchange for just the fold-affected rows.
+# CC/CF: wider buffer provides correct x-halo values, no re-exchange needed
+exchange_north_fold_halos!(c, ::Tuple{<:Center, <:Any, <:Any}, grid, Nx, Ny, Hx, Hy, fold_topo) = nothing
 
 function exchange_north_fold_halos!(c, loc, grid, Nx, Ny, Hx, Hy, fold_topo)
     arch = architecture(grid)
