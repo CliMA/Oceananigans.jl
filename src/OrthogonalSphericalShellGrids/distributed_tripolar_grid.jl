@@ -230,9 +230,16 @@ function receiving_rank(arch; receive_idx_x = ranks(arch)[1] - arch.local_index[
     return receive_rank
 end
 
-# a distributed `TripolarGrid` needs a `UPivotZipperBoundaryCondition` for the north boundary
-# only on the last rank
-# TODO: generalize to any ZipperBoundaryCondition
+# Dispatch north_fold_boundary_condition for distributed tripolar grids.
+# The grid's y-topology is overwritten to RightConnected/FullyConnected for MPI,
+# so we read the fold topology from the Tripolar conformal_mapping struct instead.
+north_fold_boundary_condition(grid::DistributedTripolarGrid) =
+    north_fold_boundary_condition(grid.conformal_mapping)
+north_fold_boundary_condition(grid::ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedTripolarGrid}) =
+    north_fold_boundary_condition(grid.underlying_grid.conformal_mapping)
+
+# A distributed `TripolarGrid` needs a `ZipperBoundaryCondition` for the north boundary
+# only on the last rank. The zipper type (UPivot or FPivot) is determined by the grid's fold topology.
 function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                               grid::DistributedTripolarGridOfSomeKind,
                                               field_name::Symbol,
@@ -250,7 +257,7 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
     south = regularize_boundary_condition(bcs.south, grid, loc, 2, LeftBoundary,  prognostic_names)
 
     north = if yrank == processor_size[2] - 1 && processor_size[1] == 1
-        UPivotZipperBoundaryCondition(sign)
+        north_fold_boundary_condition(grid)(sign)
 
     elseif yrank == processor_size[2] - 1 && processor_size[1] != 1
         from = arch.local_rank
@@ -282,7 +289,7 @@ function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedTripolarGridOfSome
     validate_field_data(loc, data, grid, indices)
     validate_boundary_conditions(loc, grid, old_bcs)
 
-    default_zipper = UPivotZipperBoundaryCondition(sign(LX, LY))
+    default_zipper = north_fold_boundary_condition(grid)(sign(LX, LY))
 
     if isnothing(old_bcs) || ismissing(old_bcs)
         new_bcs = old_bcs
@@ -294,14 +301,14 @@ function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedTripolarGridOfSome
         # a zipper boundary condition. Otherwise we always substitute because we need to
         # inject the halo boundary conditions.
         if yrank == processor_size[2] - 1 && processor_size[1] == 1
-            north_bc = if !(old_bcs.north isa UZBC)
+            north_bc = if !(old_bcs.north isa ZBC)
                 default_zipper
             else
                 old_bcs.north
             end
 
         elseif yrank == processor_size[2] - 1 && processor_size[1] != 1
-            sgn  = old_bcs.north isa UZBC ? old_bcs.north.condition : sign(LX, LY)
+            sgn  = old_bcs.north isa ZBC ? old_bcs.north.condition : sign(LX, LY)
             from = arch.local_rank
             to   = arch.connectivity.north
             halo_communication = ZipperHaloCommunicationRanks(sgn; from, to)
@@ -342,6 +349,7 @@ function DistributedComputations.reconstruct_global_grid(grid::DistributedTripol
     north_poles_latitude = grid.conformal_mapping.north_poles_latitude
     first_pole_longitude = grid.conformal_mapping.first_pole_longitude
     southernmost_latitude = grid.conformal_mapping.southernmost_latitude
+    fold_topology = grid.conformal_mapping.fold_topology
 
     return TripolarGrid(child_arch, FT;
                         halo,
@@ -349,6 +357,7 @@ function DistributedComputations.reconstruct_global_grid(grid::DistributedTripol
                         north_poles_latitude,
                         first_pole_longitude,
                         southernmost_latitude,
+                        fold_topology,
                         z)
 end
 
@@ -363,6 +372,7 @@ function Grids.with_halo(new_halo, old_grid::DistributedTripolarGrid)
     north_poles_latitude = old_grid.conformal_mapping.north_poles_latitude
     first_pole_longitude = old_grid.conformal_mapping.first_pole_longitude
     southernmost_latitude = old_grid.conformal_mapping.southernmost_latitude
+    fold_topology = old_grid.conformal_mapping.fold_topology
 
     return TripolarGrid(arch, eltype(old_grid);
                         halo = new_halo,
@@ -370,5 +380,6 @@ function Grids.with_halo(new_halo, old_grid::DistributedTripolarGrid)
                         north_poles_latitude,
                         first_pole_longitude,
                         southernmost_latitude,
+                        fold_topology,
                         z)
 end
