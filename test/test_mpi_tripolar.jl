@@ -167,9 +167,9 @@ field_recon_script = let
 
         # For FPivot, center-y interior is Ny-1; for UPivot it's Ny
         center_Ny = fold_topology == RightFaceFolded ? Ny - 1 : Ny
-        u_init = [Float64(i + 10 * j) for i in 1:Nx, j in 1:center_Ny]
-        v_init = [Float64(i + 10 * j) for i in 1:Nx, j in 1:Ny]
-        c_init = [Float64(i + 10 * j) for i in 1:Nx, j in 1:center_Ny]
+        u_init = [i + 10j for i in 1:Nx, j in 1:center_Ny]
+        v_init = [i + 10j for i in 1:Nx, j in 1:Ny]
+        c_init = [i + 10j for i in 1:Nx, j in 1:center_Ny]
 
         up = XFaceField(local_grid); set!(up, u_init)
         vp = YFaceField(local_grid); set!(vp, v_init)
@@ -222,9 +222,9 @@ end
         serial_grid = TripolarGrid(; size = (Nx, Ny, 1), z = (-1000, 0), halo, fold_topology)
 
         center_Ny = fold_topology == RightFaceFolded ? Ny - 1 : Ny
-        u_init = [Float64(i + 10 * j) for i in 1:Nx, j in 1:center_Ny]
-        v_init = [Float64(i + 10 * j) for i in 1:Nx, j in 1:Ny]
-        c_init = [Float64(i + 10 * j) for i in 1:Nx, j in 1:center_Ny]
+        u_init = [i + 10j for i in 1:Nx, j in 1:center_Ny]
+        v_init = [i + 10j for i in 1:Nx, j in 1:Ny]
+        c_init = [i + 10j for i in 1:Nx, j in 1:center_Ny]
 
         us = XFaceField(serial_grid);  set!(us, u_init)
         vs = YFaceField(serial_grid);  set!(vs, v_init)
@@ -411,7 +411,7 @@ index_tracing_4rank_script = """
     function fill_index_field!(field, dim; offset=0)
         int = interior(field)
         for I in CartesianIndices(int)
-            int[I] = Float64(I.I[dim] + offset)
+            int[I] = I.I[dim] + offset
         end
         return nothing
     end
@@ -571,7 +571,7 @@ index_tracing_8rank_script = """
     function fill_index_field!(field, dim; offset=0)
         int = interior(field)
         for I in CartesianIndices(int)
-            int[I] = Float64(I.I[dim] + offset)
+            int[I] = I.I[dim] + offset
         end
         return nothing
     end
