@@ -1,5 +1,5 @@
 using Oceananigans.Grids: halo_size, topology, AbstractGrid, Flat,
-    column_depthᶜᶜᵃ, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ, column_depthᶠᶠᵃ,
+    column_depthᶜᶜᵃ, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ, column_depthᶠᶠᵃ, znode,
     static_column_depthᶜᶜᵃ, static_column_depthᶜᶠᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶠᶠᵃ
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
