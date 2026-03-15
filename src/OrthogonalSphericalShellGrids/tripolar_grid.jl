@@ -136,7 +136,9 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
                       z = (0, 1),
                       north_poles_latitude = 55,
                       first_pole_longitude = 70, # second pole is at longitude `first_pole_longitude + 180ᵒ`
-                      fold_topology = RightCenterFolded)
+                      fold_topology = RightCenterFolded,
+                      φ_transformation = nothing,
+                      λ_transformation = nothing)
 
     # Set the topology
     topology = (Periodic, fold_topology, Bounded)
@@ -205,7 +207,9 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
         λFF, φFF, λCF, φCF,
         λᶠᵃᵃ, λᶜᵃᵃ, φᵃᶜᵃ, φᵃᶠᵃ,
         first_pole_longitude,
-        focal_distance, Nx, Ny
+        focal_distance, Nx, Ny,
+        φ_transformation,
+        λ_transformation
     )
 
     # Coordinates
