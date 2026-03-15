@@ -61,7 +61,9 @@ Murray, R. J. (1996). Explicit generation of orthogonal grids for ocean models.
         λFF, φFF, λCF, φCF,
         λF, λC, φC, φF,
         first_pole_longitude,
-        focal_distance, Nx, Ny
+        focal_distance, Nx, Ny,
+        φ_transformation,
+        λ_transformation
     )
 
     i, j = @index(Global, NTuple)
@@ -105,6 +107,16 @@ Murray, R. J. (1996). Explicit generation of orthogonal grids for ocean models.
         # Make sure the singularities are at longitude we want them to be at.
         # (`first_pole_longitude` and `first_pole_longitude` + 180)
         λ2D[i, j] += first_pole_longitude + 180
+
+        λ, φ = λ2D[i, j], φ2D[i, j]
+
+        if !isnothing(λ_transformation)
+            λ2D[i, j] = λ_transformation(λ, φ)
+        end
+
+        if !isnothing(φ_transformation)
+            φ2D[i, j] = φ_transformation(λ, φ)
+        end
     end
 end
 
@@ -153,3 +165,16 @@ end
         Azᶠᶠᵃ[i, j] = spherical_area_quadrilateral(a, b, c, d) * radius^2
     end
 end
+
+#####
+##### Transformations for stretching
+#####
+
+@kwdef struct ArctanRefinedEquator{FT}
+      magnitude :: FT = 0.7
+          width :: FT = 15.0
+  linear_factor :: FT = 1 + magnitude * atan(width) / width
+end
+
+@inline (re::ArctanRefinedEquator)(λ::FT, φ::FT) where FT = 
+    convert(FT, re.linear_factor * φ - 90 * re.magnitude * atan(re.width * φ/90) / re.width)
