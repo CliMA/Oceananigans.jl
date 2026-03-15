@@ -27,7 +27,7 @@ end
 #####
 ##### The implicit system (I - Δt * L) cⁿ⁺¹ = c★ gives:
 #####
-##### Upper diagonal (coeff of c_{k+1}): Δt / V_k * Az_{k+1} * min(wⁱ_{k+1}, 0)
+##### Upper diagonal (coeff of c_{k+1}):  Δt / V_k * Az_{k+1} * min(wⁱ_{k+1}, 0)
 ##### Lower diagonal (coeff of c_{k-1}): -Δt / V_k * Az_k * max(wⁱ_k, 0)
 ##### Diagonal: -(upper at k) - (lower at k-1)
 #####

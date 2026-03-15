@@ -216,7 +216,7 @@ function implicit_step!(field::Field,
     if closure isa Tuple
         closure_tuple = closure
         N = length(closure_tuple)
-        vi_closure            = Tuple(closure[n]            for n = 1:N if is_vertically_implicit(closure[n]))
+        vi_closure        = Tuple(closure[n]        for n = 1:N if is_vertically_implicit(closure[n]))
         vi_closure_fields = Tuple(closure_fields[n] for n = 1:N if is_vertically_implicit(closure[n]))
     else
         vi_closure = closure

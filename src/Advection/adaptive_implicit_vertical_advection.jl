@@ -27,14 +27,14 @@ Keyword Arguments
 struct AdaptiveImplicitVerticalAdvection{S, FT, R} <: AbstractAdvectionScheme{1, FT}
     explicit_scheme :: S
     cfl :: FT
-    Δt :: R # Ref{FT} storing the current time step, updated before each tendency computation
+    Δt  :: R # Ref{FT} storing the current time step, updated before each tendency computation
 end
 
 function AdaptiveImplicitVerticalAdvection(FT::DataType = Float64;
                                            explicit_scheme = Centered(FT),
-                                           cfl = 0.9)
+                                           cfl = 0.1)
     cfl = convert(FT, cfl)
-    Δt = Ref(zero(FT))
+    Δt  = Ref(zero(FT))
     return AdaptiveImplicitVerticalAdvection(explicit_scheme, cfl, Δt)
 end
 
@@ -79,11 +79,8 @@ end
 #####
 
 # Horizontal fluxes: pass through
-@inline _advective_tracer_flux_x(i, j, k, grid, a::AdaptiveImplicitVerticalAdvection, U, c) =
-    _advective_tracer_flux_x(i, j, k, grid, a.explicit_scheme, U, c)
-
-@inline _advective_tracer_flux_y(i, j, k, grid, a::AdaptiveImplicitVerticalAdvection, V, c) =
-    _advective_tracer_flux_y(i, j, k, grid, a.explicit_scheme, V, c)
+@inline _advective_tracer_flux_x(i, j, k, grid, a::AdaptiveImplicitVerticalAdvection, U, c) = _advective_tracer_flux_x(i, j, k, grid, a.explicit_scheme, U, c)
+@inline _advective_tracer_flux_y(i, j, k, grid, a::AdaptiveImplicitVerticalAdvection, V, c) = _advective_tracer_flux_y(i, j, k, grid, a.explicit_scheme, V, c)
 
 # Vertical tracer flux: scale w → wᵉ, then use explicit scheme
 # We compute the flux as: Az * wᵉ * interpolated(c)
@@ -100,23 +97,15 @@ end
 end
 
 # Horizontal momentum fluxes: pass through to explicit_scheme unchanged
-@inline _advective_momentum_flux_Uu(i, j, k, grid, a::AdaptiveImplicitVerticalAdvection, U, u) =
-    _advective_momentum_flux_Uu(i, j, k, grid, a.explicit_scheme, U, u)
-@inline _advective_momentum_flux_Vu(i, j, k, grid, a::AdaptiveImplicitVerticalAdvection, V, u) =
-    _advective_momentum_flux_Vu(i, j, k, grid, a.explicit_scheme, V, u)
-
-@inline _advective_momentum_flux_Uv(i, j, k, grid, a::AdaptiveImplicitVerticalAdvection, U, v) =
-    _advective_momentum_flux_Uv(i, j, k, grid, a.explicit_scheme, U, v)
-@inline _advective_momentum_flux_Vv(i, j, k, grid, a::AdaptiveImplicitVerticalAdvection, V, v) =
-    _advective_momentum_flux_Vv(i, j, k, grid, a.explicit_scheme, V, v)
+@inline _advective_momentum_flux_Uu(i, j, k, grid, a::AdaptiveImplicitVerticalAdvection, U, u) = _advective_momentum_flux_Uu(i, j, k, grid, a.explicit_scheme, U, u)
+@inline _advective_momentum_flux_Vu(i, j, k, grid, a::AdaptiveImplicitVerticalAdvection, V, u) = _advective_momentum_flux_Vu(i, j, k, grid, a.explicit_scheme, V, u)
+@inline _advective_momentum_flux_Uv(i, j, k, grid, a::AdaptiveImplicitVerticalAdvection, U, v) = _advective_momentum_flux_Uv(i, j, k, grid, a.explicit_scheme, U, v)
+@inline _advective_momentum_flux_Vv(i, j, k, grid, a::AdaptiveImplicitVerticalAdvection, V, v) = _advective_momentum_flux_Vv(i, j, k, grid, a.explicit_scheme, V, v)
 
 # Vertical advection of w: pass through (w is at Face in z, not treated implicitly here)
-@inline _advective_momentum_flux_Uw(i, j, k, grid, a::AdaptiveImplicitVerticalAdvection, U, w) =
-    _advective_momentum_flux_Uw(i, j, k, grid, a.explicit_scheme, U, w)
-@inline _advective_momentum_flux_Vw(i, j, k, grid, a::AdaptiveImplicitVerticalAdvection, V, w) =
-    _advective_momentum_flux_Vw(i, j, k, grid, a.explicit_scheme, V, w)
-@inline _advective_momentum_flux_Ww(i, j, k, grid, a::AdaptiveImplicitVerticalAdvection, W, w) =
-    _advective_momentum_flux_Ww(i, j, k, grid, a.explicit_scheme, W, w)
+@inline _advective_momentum_flux_Uw(i, j, k, grid, a::AdaptiveImplicitVerticalAdvection, U, w) = _advective_momentum_flux_Uw(i, j, k, grid, a.explicit_scheme, U, w)
+@inline _advective_momentum_flux_Vw(i, j, k, grid, a::AdaptiveImplicitVerticalAdvection, V, w) = _advective_momentum_flux_Vw(i, j, k, grid, a.explicit_scheme, V, w)
+@inline _advective_momentum_flux_Ww(i, j, k, grid, a::AdaptiveImplicitVerticalAdvection, W, w) = _advective_momentum_flux_Ww(i, j, k, grid, a.explicit_scheme, W, w)
 
 # Vertical advection of horizontal momentum: scale by explicit_velocity_scale
 # Wu flux is at (Face, Center, Face); use Δzᶠᶜᶠ for the local CFL
