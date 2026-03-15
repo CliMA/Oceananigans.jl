@@ -433,7 +433,7 @@ function initialize_closure_fields!(closure_fields, closure::LagrangianAveragedD
     𝒥ᴹᴹ  = closure_fields.𝒥ᴹᴹ
     𝒥ᴸᴹ_min = cˢ.minimum_numerator
 
-    # Compute instantaneous LM, MM and spatially average for initialization.
+    # Compute instantaneous LM, MM and spatially average for initialization
     launch!(arch, grid, :xyz, _compute_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, Σ, Σ̄, grid, u, v, w)
     parent(𝒥ᴸᴹ) .= max(mean(𝒥ᴸᴹ), 𝒥ᴸᴹ_min)
     parent(𝒥ᴹᴹ) .= mean(𝒥ᴹᴹ)
