@@ -1,3 +1,43 @@
+# ============================================================================
+# Index-Tracing Halo Fill Test
+# ============================================================================
+#
+# PURPOSE: Verify that distributed TripolarGrid halo filling produces exactly
+# the same values as serial halo filling, for all field locations (CC, FC, CF, FF).
+#
+# METHODOLOGY - INDEX ENCODING:
+# Each field cell is filled with its own global index value before halo filling:
+#   field_i[x,y] = global x-index of that cell
+#   field_j[x,y] = global y-index of that cell
+#
+# After fill_halo_regions!, halo cells (including fold halos at the north boundary)
+# should contain the index values of the SOURCE cell they were copied from.
+# For fold halos, this means x-reversed indices from the fold partner.
+#
+# HOW TO INTERPRET MISMATCHES:
+# The VALUE in a mismatched cell tells you WHERE the data came from:
+#
+#   "WRONG SOURCE - got data from global(36,40), expected from global(5,40)"
+#     → The cell received data from global column 36 instead of column 5.
+#       This means the fold reversal or MPI communication used the wrong source.
+#       The j-value tells you which row the data came from.
+#
+#   "NEVER WRITTEN (zero) - expected data from global(5,40)"
+#     → The cell was never filled (still zero-initialized).
+#       This means the MPI buffer was empty, recv didn't copy data, or the
+#       fold reversal skipped this cell entirely.
+#
+# STRUCTURAL ANALYSIS:
+# The test also reports which regions are affected (north halo, west halo,
+# corners, interior) and whether entire rows or columns are failing, with
+# labels for the fold line and parent column 1 (common failure points).
+#
+# TWO LEVELS OF COMPARISON:
+#   1. Interior comparison: reconstructed global field vs serial (rank 0 only)
+#   2. Local halo comparison: each rank's full local data vs serial parent array
+#      This catches per-rank halo fill bugs that interior comparison misses.
+# ============================================================================
+
 using MPI
 MPI.Init()
 
@@ -17,6 +57,26 @@ function print_rank0(args...)
     return nothing
 end
 
+function print_methodology()
+    print_rank0("""
+
+    INDEX-TRACING HALO FILL TEST
+    ============================
+    Each cell is filled with its own global index (field_i = x-index, field_j = y-index).
+    After halo fill, the VALUE in each cell tells you WHERE the data came from.
+
+    How to read mismatches:
+      WRONG SOURCE  = cell got data from the wrong global position (fold bug or wrong MPI source)
+      NEVER WRITTEN = cell is still zero (MPI buffer empty, recv skipped, or fold didn't write it)
+
+    Structural labels:
+      fold line     = the y-row at the fold boundary (Ny for UPivot CC/FC, FPivot CF/FF)
+      fold halo N   = the Nth row above the fold line
+      parent col 1  = first column of parent array (west halo col 1, common FC/FF failure point)
+      west/east halo = x-halo columns, NW/NE corner = x-halo AND north halo overlap
+    """)
+end
+
 # Fill a field with its interior index values along dimension `dim`
 # offset shifts values so distributed fields match global serial indices
 function fill_index_field!(field, dim; offset=0)
@@ -27,22 +87,200 @@ function fill_index_field!(field, dim; offset=0)
     return nothing
 end
 
-# Compare two arrays element-wise; report mismatches with (i,j) location and values
+# Classify a local index position into a human-readable region name
+function classify_region(li, lj, Nx, Ny)
+    in_west  = li < 1
+    in_east  = li > Nx
+    in_north = lj > Ny
+    in_south = lj < 1
+
+    if in_north && in_west
+        return "NW corner"
+    elseif in_north && in_east
+        return "NE corner"
+    elseif in_south && in_west
+        return "SW corner"
+    elseif in_south && in_east
+        return "SE corner"
+    elseif in_north
+        return "north halo"
+    elseif in_south
+        return "south halo"
+    elseif in_west
+        return "west halo"
+    elseif in_east
+        return "east halo"
+    else
+        return "interior"
+    end
+end
+
+# Label a local y-index relative to fold structure
+function label_y(lj, Ny, Hy, fold_topology)
+    if fold_topology == RightCenterFolded
+        # UPivot: fold line at y=Ny for CC/FC
+        if lj == Ny
+            return "y=$lj (FOLD LINE for CC/FC)"
+        elseif lj > Ny
+            return "y=$lj (fold halo $(lj - Ny))"
+        end
+    else  # RightFaceFolded
+        # FPivot: fold line at y=Ny for CF/FF, extra row at y=Ny for CC
+        if lj == Ny
+            return "y=$lj (FOLD LINE for CF/FF)"
+        elseif lj > Ny
+            return "y=$lj (fold halo $(lj - Ny))"
+        end
+    end
+    return "y=$lj"
+end
+
+# Label a local x-index
+function label_x(li, Nx)
+    if li == 1 - size_parent_offset(Nx)
+        return "x=$li (parent col 1)"
+    elseif li < 1
+        return "x=$li (west halo)"
+    elseif li > Nx
+        return "x=$li (east halo)"
+    else
+        return "x=$li"
+    end
+end
+
+# Parent col 1 corresponds to local offset index 1-Hx, but we don't know Hx here.
+# Use a simpler approach: just label the extremes.
+size_parent_offset(Nx) = 0  # placeholder, not used
+
+# Format a single mismatch as plain English
+function format_mismatch(li, lj, spi, spj, loc_i, loc_j, ser_i, ser_j)
+    if loc_i == 0 && loc_j == 0
+        return "local($li,$lj) [= global($spi,$spj)]: " *
+               "NEVER WRITTEN (zero) - expected data from global($ser_i,$ser_j)"
+    else
+        return "local($li,$lj) [= global($spi,$spj)]: " *
+               "WRONG SOURCE - got data from global($loc_i,$loc_j), expected from global($ser_i,$ser_j)"
+    end
+end
+
+# Analyze and report structural patterns in mismatches
+function analyze_mismatches(mismatch_list, Nx, Ny, Hy, fold_topology)
+    # mismatch_list: Vector of (li, lj, spi, spj, loc_i, loc_j, ser_i, ser_j)
+    isempty(mismatch_list) && return String[]
+
+    lines = String[]
+
+    # Count by region
+    region_counts = Dict{String, Int}()
+    for (li, lj, _, _, _, _, _, _) in mismatch_list
+        region = classify_region(li, lj, Nx, Ny)
+        region_counts[region] = get(region_counts, region, 0) + 1
+    end
+    region_str = join(["$r ($n)" for (r, n) in sort(collect(region_counts), by=x->-x[2])], ", ")
+    push!(lines, "Affected regions: $region_str")
+
+    # Count mismatches per y-row and check if entire rows are affected
+    y_counts = Dict{Int, Int}()
+    y_expected = Dict{Int, Int}()  # how many x-positions exist for this y
+    all_li = Set{Int}()
+    for (li, lj, _, _, _, _, _, _) in mismatch_list
+        y_counts[lj] = get(y_counts, lj, 0) + 1
+        push!(all_li, li)
+    end
+
+    # Determine total x-positions checked (from the range of li values in mismatches)
+    # For "entire row", we check if all x-positions that appear in mismatches for ANY row
+    # also appear for THIS row. This is approximate but useful.
+    li_range = sort(collect(all_li))
+
+    affected_rows = String[]
+    for lj in sort(collect(keys(y_counts)))
+        count = y_counts[lj]
+        label = label_y(lj, Ny, Hy, fold_topology)
+        if count >= length(li_range) && length(li_range) > 1
+            push!(affected_rows, "ENTIRE $label ($count cells)")
+        else
+            push!(affected_rows, "$label ($count cells)")
+        end
+    end
+    if !isempty(affected_rows)
+        push!(lines, "Affected rows: " * join(affected_rows, ", "))
+    end
+
+    # Count mismatches per x-column
+    x_counts = Dict{Int, Int}()
+    all_lj = Set{Int}()
+    for (li, lj, _, _, _, _, _, _) in mismatch_list
+        x_counts[li] = get(x_counts, li, 0) + 1
+        push!(all_lj, li)
+    end
+    lj_range = sort(collect(all_lj))
+
+    affected_cols = String[]
+    for li in sort(collect(keys(x_counts)))
+        count = x_counts[li]
+        if li < 1
+            desc = "x=$li (west halo)"
+        elseif li > Nx
+            desc = "x=$li (east halo)"
+        elseif li == 1
+            desc = "x=$li (parent col 1 interior)"
+        elseif li == Nx + 1
+            desc = "x=$li (parent col Nx+1)"
+        else
+            desc = "x=$li"
+        end
+        push!(affected_cols, "$desc ($count cells)")
+    end
+    if length(affected_cols) <= 20
+        push!(lines, "Affected cols: " * join(affected_cols, ", "))
+    else
+        push!(lines, "Affected cols: $(length(affected_cols)) columns (too many to list)")
+    end
+
+    # Categorize by error type
+    n_zero = count(m -> m[5] == 0 && m[6] == 0, mismatch_list)
+    n_wrong = length(mismatch_list) - n_zero
+    if n_zero > 0 && n_wrong > 0
+        push!(lines, "Error types: $n_zero NEVER WRITTEN, $n_wrong WRONG SOURCE")
+    elseif n_zero > 0
+        push!(lines, "Error type: ALL $n_zero cells NEVER WRITTEN (zero)")
+    else
+        push!(lines, "Error type: ALL $n_wrong cells WRONG SOURCE")
+    end
+
+    # First N mismatches in plain English
+    push!(lines, "First mismatches:")
+    for (i, m) in enumerate(mismatch_list)
+        i > 20 && break
+        li, lj, spi, spj, loc_i, loc_j, ser_i, ser_j = m
+        push!(lines, "  " * format_mismatch(li, lj, spi, spj, loc_i, loc_j, ser_i, ser_j))
+    end
+
+    return lines
+end
+
+# Compare two arrays element-wise; report mismatches with decoded meaning
 function compare_arrays(name, a, b; atol=0)
     mismatches = 0
     first_mismatches = String[]
     for j in axes(a, 2), i in axes(a, 1)
         if abs(a[i, j] - b[i, j]) > atol
             mismatches += 1
+            ai, bi = Int(a[i,j]), Int(b[i,j])
             if length(first_mismatches) < 10
-                push!(first_mismatches, "  [$i,$j]: serial=$(Int(a[i,j])) vs distributed=$(Int(b[i,j]))")
+                if bi == 0
+                    push!(first_mismatches, "  [$i,$j]: NEVER WRITTEN (zero), expected $ai")
+                else
+                    push!(first_mismatches, "  [$i,$j]: got $bi, expected $ai (WRONG SOURCE)")
+                end
             end
         end
     end
     return mismatches, first_mismatches
 end
 
-# Test one configuration: partition × fold_topology
+# Test one configuration: partition x fold_topology
 function test_halo_fill(; partition, fold_topology, global_Nx, global_Ny)
     fold_name = fold_topology == RightCenterFolded ? "UPivot" : "FPivot"
     print_rank0("\n", "="^70)
@@ -90,6 +328,7 @@ function test_halo_fill(; partition, fold_topology, global_Nx, global_Ny)
     ]
 
     all_pass = true
+    Nx, Ny, _ = size(dist_grid)
 
     # Compute global offsets for this rank using generic function
     x_offset, y_offset, _ = global_index_offset(arch, (global_Nx, global_Ny, 1))
@@ -109,14 +348,7 @@ function test_halo_fill(; partition, fold_topology, global_Nx, global_Ny)
             si = serial_fields["$(loc_name)_i"]
             sj = serial_fields["$(loc_name)_j"]
 
-            # Compare full data arrays (interior + halos) of reconstructed global vs serial
-            s_data_i = Int.(si[:, :, 1])
-            s_data_j = Int.(sj[:, :, 1])
-            g_data_i = Int.(gi[:, :, 1])
-            g_data_j = Int.(gj[:, :, 1])
-
             # Compare only interior (reconstructed global doesn't have halos filled)
-            Nx, Ny, _ = size(gi)
             s_int_i = Int.(interior(si, :, :, 1))
             s_int_j = Int.(interior(sj, :, :, 1))
             g_int_i = Int.(interior(gi, :, :, 1))
@@ -141,8 +373,7 @@ function test_halo_fill(; partition, fold_topology, global_Nx, global_Ny)
 
         # --- Local field halo check ---
         # Each rank checks its local field halos against the serial field
-        # We need the serial field data broadcast to all ranks
-        # Use parent() to get 1-based Array from OffsetArray
+        # Broadcast serial parent data to all ranks
         if rank == 0
             si = serial_fields["$(loc_name)_i"]
             sj = serial_fields["$(loc_name)_j"]
@@ -157,36 +388,34 @@ function test_halo_fill(; partition, fold_topology, global_Nx, global_Ny)
         s_full_j = MPI.bcast(s_full_j, 0, MPI.COMM_WORLD)
 
         # Compare local field data (including halos) with serial
-        # local_i/local_j are OffsetArrays with indices from 1-Hx to Nx+Hx
         local_i = di.data[:, :, 1]
         local_j = dj.data[:, :, 1]
 
         local_mismatches = 0
-        local_details = String[]
+        # Store full mismatch tuples for structural analysis
+        mismatch_list = Tuple{Int,Int,Int,Int,Int,Int,Int,Int}[]
 
         for lj in axes(local_i, 2), li in axes(local_i, 1)
             # Map local offset index to serial parent (1-based) index
-            # local offset index li corresponds to global offset index li + x_offset
-            # parent array index = global offset index + Hx (since parent[1] = global[-Hx+1])
             spi = li + x_offset + Hx
             spj = lj + y_offset + Hy
 
             # Check bounds in serial parent array
             if spi in axes(s_full_i, 1) && spj in axes(s_full_i, 2)
-                if Int(local_i[li, lj]) != Int(s_full_i[spi, spj]) ||
-                   Int(local_j[li, lj]) != Int(s_full_j[spi, spj])
+                loc_iv = Int(local_i[li, lj])
+                loc_jv = Int(local_j[li, lj])
+                ser_iv = Int(s_full_i[spi, spj])
+                ser_jv = Int(s_full_j[spi, spj])
+                if loc_iv != ser_iv || loc_jv != ser_jv
                     local_mismatches += 1
-                    if length(local_details) < 5
-                        push!(local_details,
-                            "  local[$li,$lj]→serial_parent[$spi,$spj]: " *
-                            "local_i=$(Int(local_i[li,lj])) serial_i=$(Int(s_full_i[spi,spj])) " *
-                            "local_j=$(Int(local_j[li,lj])) serial_j=$(Int(s_full_j[spi,spj]))")
+                    if length(mismatch_list) < 200  # keep enough for structural analysis
+                        push!(mismatch_list, (li, lj, spi, spj, loc_iv, loc_jv, ser_iv, ser_jv))
                     end
                 end
             end
         end
 
-        # Gather mismatch counts (Int is isbitstype, works with MPI)
+        # Gather mismatch counts
         all_local_mis = MPI.Gather(local_mismatches, 0, MPI.COMM_WORLD)
 
         if rank == 0
@@ -195,16 +424,18 @@ function test_halo_fill(; partition, fold_topology, global_Nx, global_Ny)
                 print_rank0("  $loc_name local halos: PASS (all ranks match serial)")
             else
                 all_pass = false
-                print_rank0("  $loc_name local halos: FAIL ($total_local_mis total mismatches)")
+                per_rank = join(["r$r=$(all_local_mis[r+1])" for r in 0:nranks-1 if all_local_mis[r+1] > 0], ", ")
+                print_rank0("  $loc_name local halos: FAIL ($total_local_mis total: $per_rank)")
             end
         end
 
-        # Print per-rank details sequentially (avoids MPI.Gather of String)
+        # Print per-rank structural analysis sequentially
         for r in 0:(nranks - 1)
-            if rank == r && !isempty(local_details)
-                println("    Rank $r:")
-                for d in local_details
-                    println("      ", d)
+            if rank == r && !isempty(mismatch_list)
+                println("    Rank $r ($local_mismatches mismatches):")
+                analysis = analyze_mismatches(mismatch_list, Nx, Ny, Hy, fold_topology)
+                for line in analysis
+                    println("      ", line)
                 end
             end
             MPI.Barrier(MPI.COMM_WORLD)
@@ -218,6 +449,8 @@ end
 # ============================================================================
 # Run test matrix
 # ============================================================================
+
+print_methodology()
 
 partitions_4 = [Partition(1, 4), Partition(2, 2)]
 partitions_8 = [Partition(4, 2)]
@@ -257,8 +490,6 @@ for (fold_topology, global_Nx, global_Ny) in test_cases_4
 end
 
 # Partition(4,2) tests: match the exact grids from failing simulation tests.
-# These test the _fold_corner_write! bug with Rx=4 where fold x-reversal
-# maps corners to a DIFFERENT rank's data (not local).
 test_cases_8 = [
     (RightCenterFolded, 80, 80),  # UPivot, matches testset 5 cfg3
     (RightFaceFolded,   80, 81),  # FPivot, matches testset 6 cfg3
