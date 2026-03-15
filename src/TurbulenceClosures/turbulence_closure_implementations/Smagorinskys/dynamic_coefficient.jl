@@ -438,7 +438,7 @@ function initialize_closure_fields!(closure_fields, closure::LagrangianAveragedD
     # for random or weakly-turbulent velocity fields, which would set 𝒥ᴸᴹ to minimum_numerator
     # and cause the Lagrangian time scale to diverge, preventing any evolution.
     launch!(arch, grid, :xyz, _compute_LM_MM!, 𝒥ᴸᴹ, 𝒥ᴹᴹ, Σ, Σ̄, grid, u, v, w)
-    parent(𝒥ᴸᴹ) .= max(mean(x -> max(x, zero(𝒥ᴸᴹ_min)), 𝒥ᴸᴹ), 𝒥ᴸᴹ_min)
+    parent(𝒥ᴸᴹ) .= max(mean(𝒥ᴸᴹ), 𝒥ᴸᴹ_min)
     parent(𝒥ᴹᴹ) .= mean(𝒥ᴹᴹ)
 
     # Initialize previous_compute_time to current time
