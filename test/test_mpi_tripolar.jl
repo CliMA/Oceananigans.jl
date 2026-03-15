@@ -4,18 +4,9 @@ include("distributed_tests_utils.jl")
 using MPI
 using Oceananigans.DistributedComputations: global_index_offset
 
-# ============================================================================
-# Helper: grid variable names tested in grid reconstruction
-# ============================================================================
-
 grid_var_names = [:Δxᶠᶠᵃ, :Δxᶜᶜᵃ, :Δxᶠᶜᵃ, :Δxᶜᶠᵃ,
                   :Δyᶠᶠᵃ, :Δyᶜᶜᵃ, :Δyᶠᶜᵃ, :Δyᶜᶠᵃ,
                   :Azᶠᶠᵃ, :Azᶜᶜᵃ, :Azᶠᶜᵃ, :Azᶜᶠᵃ]
-
-# ============================================================================
-# Testset 1: Grid Reconstruction
-# UPivot + FPivot × slab + pencil = 4 configs, all in one 4-rank mpiexec
-# ============================================================================
 
 grid_recon_configs = [
     # (fold_name, fold_kw, Nx, Ny, halo)
@@ -130,11 +121,6 @@ end
         end
     end
 end
-
-# ============================================================================
-# Testset 2: Field Reconstruction
-# UPivot + FPivot × slab + pencil = 4 configs, all in one 4-rank mpiexec
-# ============================================================================
 
 field_recon_configs = [
     # (fold_name, fold_kw, Nx, Ny, halo)
@@ -265,10 +251,6 @@ end
     end
 end
 
-# ============================================================================
-# Testset 3: UPivot Boundary Conditions (Partition(2,2), 4 ranks)
-# ============================================================================
-
 tripolar_boundary_conditions = """
     using MPI
     MPI.Init()
@@ -326,10 +308,6 @@ tripolar_boundary_conditions = """
         rm("distributed_tripolar_boundary_conditions_$(r).jld2", force=true)
     end
 end
-
-# ============================================================================
-# Testset 4: FPivot Boundary Conditions (Partition(2,2), 4 ranks)
-# ============================================================================
 
 fpivot_boundary_conditions = """
     using MPI
@@ -391,13 +369,6 @@ fpivot_boundary_conditions = """
     end
 end
 
-# ============================================================================
-# Testset 5: Index Tracing Halo Tests (4 ranks)
-# Tests that distributed halo fills map indices correctly for all stagger
-# locations (CC, FC, CF, FF). Each field is filled with its global index
-# value, halos are filled, then compared with serial.
-# ============================================================================
-
 index_tracing_4rank_script = """
     using MPI
     MPI.Init()
@@ -407,6 +378,81 @@ index_tracing_4rank_script = """
     using Oceananigans.DistributedComputations: global_index_offset
 
     rank = MPI.Comm_rank(MPI.COMM_WORLD)
+    nranks = MPI.Comm_size(MPI.COMM_WORLD)
+
+    function print_rank0(args...)
+        rank == 0 && println(args...)
+        return nothing
+    end
+
+    function classify_region(li, lj, Nx, Ny)
+        in_west  = li < 1
+        in_east  = li > Nx
+        in_north = lj > Ny
+        in_south = lj < 1
+        if in_north && in_west;  return "NW corner"
+        elseif in_north && in_east;  return "NE corner"
+        elseif in_south && in_west;  return "SW corner"
+        elseif in_south && in_east;  return "SE corner"
+        elseif in_north;  return "north halo"
+        elseif in_south;  return "south halo"
+        elseif in_west;   return "west halo"
+        elseif in_east;   return "east halo"
+        else;             return "interior"
+        end
+    end
+
+    function format_mismatch(li, lj, spi, spj, loc_i, loc_j, ser_i, ser_j)
+        if loc_i == 0 && loc_j == 0
+            return "local(\$li,\$lj) [= global(\$spi,\$spj)]: NEVER WRITTEN (zero) - expected global(\$ser_i,\$ser_j)"
+        else
+            return "local(\$li,\$lj) [= global(\$spi,\$spj)]: WRONG SOURCE - got global(\$loc_i,\$loc_j), expected global(\$ser_i,\$ser_j)"
+        end
+    end
+
+    function analyze_mismatches(mismatch_list, Nx, Ny, Hy)
+        isempty(mismatch_list) && return String[]
+        lines = String[]
+        region_counts = Dict{String, Int}()
+        for (li, lj, _, _, _, _, _, _) in mismatch_list
+            r = classify_region(li, lj, Nx, Ny)
+            region_counts[r] = get(region_counts, r, 0) + 1
+        end
+        push!(lines, "Affected regions: " * join(["\$r (\$n)" for (r, n) in sort(collect(region_counts), by=x->-x[2])], ", "))
+        y_counts = Dict{Int,Int}()
+        all_li = Set{Int}()
+        for (li, lj, _, _, _, _, _, _) in mismatch_list
+            y_counts[lj] = get(y_counts, lj, 0) + 1
+            push!(all_li, li)
+        end
+        li_range = sort(collect(all_li))
+        row_strs = String[]
+        for lj in sort(collect(keys(y_counts)))
+            n = y_counts[lj]
+            label = lj > Ny ? "y=\$lj (fold halo \$(lj-Ny))" : lj == Ny ? "y=\$lj (fold line)" : "y=\$lj"
+            prefix = n >= length(li_range) && length(li_range) > 1 ? "ENTIRE " : ""
+            push!(row_strs, "\$prefix\$label (\$n cells)")
+        end
+        !isempty(row_strs) && push!(lines, "Affected rows: " * join(row_strs, ", "))
+        x_counts = Dict{Int,Int}()
+        for (li, _, _, _, _, _, _, _) in mismatch_list
+            x_counts[li] = get(x_counts, li, 0) + 1
+        end
+        col_strs = ["x=\$li (\$(li < 1 ? "west halo" : li > Nx ? "east halo" : li == 1 ? "col 1" : "interior")) (\$n cells)" for (li, n) in sort(collect(x_counts))]
+        length(col_strs) <= 20 && push!(lines, "Affected cols: " * join(col_strs, ", "))
+        n_zero  = count(m -> m[5] == 0 && m[6] == 0, mismatch_list)
+        n_wrong = length(mismatch_list) - n_zero
+        if n_zero > 0 && n_wrong > 0;    push!(lines, "Error types: \$n_zero NEVER WRITTEN, \$n_wrong WRONG SOURCE")
+        elseif n_zero > 0;               push!(lines, "Error type: ALL \$n_zero NEVER WRITTEN")
+        else;                            push!(lines, "Error type: ALL \$n_wrong WRONG SOURCE")
+        end
+        push!(lines, "First mismatches:")
+        for (k, m) in enumerate(mismatch_list)
+            k > 20 && break
+            push!(lines, "  " * format_mismatch(m...))
+        end
+        return lines
+    end
 
     function fill_index_field!(field, dim; offset=0)
         int = interior(field)
@@ -433,6 +479,8 @@ index_tracing_4rank_script = """
     Hx, Hy, Hz = 5, 5, 5
 
     results = Dict{String, Bool}()
+
+    rank == 0 && println("\\nRunning index-tracing halo fill tests...")
 
     for (fold_topology, global_Nx, global_Ny) in test_cases
         fold_name = fold_topology == RightCenterFolded ? "UPivot" : "FPivot"
@@ -476,9 +524,13 @@ index_tracing_4rank_script = """
                 if rank == 0
                     si = serial_fields["\$(loc_name)_i"]
                     sj = serial_fields["\$(loc_name)_j"]
-                    if interior(gi, :, :, 1) != interior(si, :, :, 1) ||
-                       interior(gj, :, :, 1) != interior(sj, :, :, 1)
+                    mis_i = count(interior(gi, :, :, 1) .!= interior(si, :, :, 1))
+                    mis_j = count(interior(gj, :, :, 1) .!= interior(sj, :, :, 1))
+                    if mis_i == 0 && mis_j == 0
+                        print_rank0("  \$(fold_name) \$(loc_name) interior: PASS")
+                    else
                         config_pass = false
+                        print_rank0("  \$(fold_name) \$(loc_name) interior: FAIL (\$(mis_i) i-mismatches, \$(mis_j) j-mismatches)")
                     end
                 end
 
@@ -497,21 +549,45 @@ index_tracing_4rank_script = """
 
                 local_i = di.data[:, :, 1]
                 local_j = dj.data[:, :, 1]
-                local_mis = 0
+                local_mismatches = 0
+                mismatch_list = Tuple{Int,Int,Int,Int,Int,Int,Int,Int}[]
                 for lj in axes(local_i, 2), li in axes(local_i, 1)
                     spi = li + x_offset + Hx
                     spj = lj + y_offset + Hy
                     if spi in axes(s_full_i, 1) && spj in axes(s_full_i, 2)
-                        if Int(local_i[li, lj]) != Int(s_full_i[spi, spj]) ||
-                           Int(local_j[li, lj]) != Int(s_full_j[spi, spj])
-                            local_mis += 1
+                        loc_iv = Int(local_i[li, lj])
+                        loc_jv = Int(local_j[li, lj])
+                        ser_iv = Int(s_full_i[spi, spj])
+                        ser_jv = Int(s_full_j[spi, spj])
+                        if loc_iv != ser_iv || loc_jv != ser_jv
+                            local_mismatches += 1
+                            length(mismatch_list) < 200 && push!(mismatch_list, (li, lj, spi, spj, loc_iv, loc_jv, ser_iv, ser_jv))
                         end
                     end
                 end
 
-                all_mis = MPI.Gather(local_mis, 0, MPI.COMM_WORLD)
-                if rank == 0 && sum(all_mis) > 0
-                    config_pass = false
+                all_local_mis = MPI.Gather(local_mismatches, 0, MPI.COMM_WORLD)
+                if rank == 0
+                    total_mis = sum(all_local_mis)
+                    if total_mis == 0
+                        print_rank0("  \$(fold_name) \$(loc_name) local halos: PASS (all ranks match serial)")
+                    else
+                        config_pass = false
+                        per_rank = join(["r\$r=\$(all_local_mis[r+1])" for r in 0:nranks-1 if all_local_mis[r+1] > 0], ", ")
+                        print_rank0("  \$(fold_name) \$(loc_name) local halos: FAIL (\$(total_mis) total: \$(per_rank))")
+                    end
+                end
+
+                # Per-rank structural analysis (sequential to avoid interleaving)
+                Nx_loc, Ny_loc, _ = size(grid)
+                for r in 0:(nranks - 1)
+                    if rank == r && !isempty(mismatch_list)
+                        println("    Rank \$r (\$(local_mismatches) mismatches):")
+                        for line in analyze_mismatches(mismatch_list, Nx_loc, Ny_loc, Hy)
+                            println("      ", line)
+                        end
+                    end
+                    MPI.Barrier(MPI.COMM_WORLD)
                 end
             end
 
@@ -522,6 +598,18 @@ index_tracing_4rank_script = """
             end
             MPI.Barrier(MPI.COMM_WORLD)
         end
+    end
+
+    if rank == 0
+        println("\\n", "="^60)
+        println("INDEX TRACING SUMMARY")
+        println("="^60)
+        for (key, pass) in sort(collect(results))
+            println("  \$(key): \$(pass ? "PASS" : "FAIL")")
+        end
+        n_pass = count(values(results))
+        println("\\n  \$(n_pass) / \$(length(results)) configurations passed")
+        println("="^60)
     end
 
     # Save results (rank 0 only)
@@ -552,12 +640,6 @@ index_tracing_4rank_script = """
     rm("index_tracing_4rank_results.jld2")
 end
 
-# ============================================================================
-# Testset 6: Index Tracing Halo Tests (8 ranks, Partition(4,2))
-# Tests the fold corner case where fold x-reversal maps corners to a
-# different rank's data.
-# ============================================================================
-
 index_tracing_8rank_script = """
     using MPI
     MPI.Init()
@@ -567,6 +649,81 @@ index_tracing_8rank_script = """
     using Oceananigans.DistributedComputations: global_index_offset
 
     rank = MPI.Comm_rank(MPI.COMM_WORLD)
+    nranks = MPI.Comm_size(MPI.COMM_WORLD)
+
+    function print_rank0(args...)
+        rank == 0 && println(args...)
+        return nothing
+    end
+
+    function classify_region(li, lj, Nx, Ny)
+        in_west  = li < 1
+        in_east  = li > Nx
+        in_north = lj > Ny
+        in_south = lj < 1
+        if in_north && in_west;  return "NW corner"
+        elseif in_north && in_east;  return "NE corner"
+        elseif in_south && in_west;  return "SW corner"
+        elseif in_south && in_east;  return "SE corner"
+        elseif in_north;  return "north halo"
+        elseif in_south;  return "south halo"
+        elseif in_west;   return "west halo"
+        elseif in_east;   return "east halo"
+        else;             return "interior"
+        end
+    end
+
+    function format_mismatch(li, lj, spi, spj, loc_i, loc_j, ser_i, ser_j)
+        if loc_i == 0 && loc_j == 0
+            return "local(\$li,\$lj) [= global(\$spi,\$spj)]: NEVER WRITTEN (zero) - expected global(\$ser_i,\$ser_j)"
+        else
+            return "local(\$li,\$lj) [= global(\$spi,\$spj)]: WRONG SOURCE - got global(\$loc_i,\$loc_j), expected global(\$ser_i,\$ser_j)"
+        end
+    end
+
+    function analyze_mismatches(mismatch_list, Nx, Ny, Hy)
+        isempty(mismatch_list) && return String[]
+        lines = String[]
+        region_counts = Dict{String, Int}()
+        for (li, lj, _, _, _, _, _, _) in mismatch_list
+            r = classify_region(li, lj, Nx, Ny)
+            region_counts[r] = get(region_counts, r, 0) + 1
+        end
+        push!(lines, "Affected regions: " * join(["\$r (\$n)" for (r, n) in sort(collect(region_counts), by=x->-x[2])], ", "))
+        y_counts = Dict{Int,Int}()
+        all_li = Set{Int}()
+        for (li, lj, _, _, _, _, _, _) in mismatch_list
+            y_counts[lj] = get(y_counts, lj, 0) + 1
+            push!(all_li, li)
+        end
+        li_range = sort(collect(all_li))
+        row_strs = String[]
+        for lj in sort(collect(keys(y_counts)))
+            n = y_counts[lj]
+            label = lj > Ny ? "y=\$lj (fold halo \$(lj-Ny))" : lj == Ny ? "y=\$lj (fold line)" : "y=\$lj"
+            prefix = n >= length(li_range) && length(li_range) > 1 ? "ENTIRE " : ""
+            push!(row_strs, "\$prefix\$label (\$n cells)")
+        end
+        !isempty(row_strs) && push!(lines, "Affected rows: " * join(row_strs, ", "))
+        x_counts = Dict{Int,Int}()
+        for (li, _, _, _, _, _, _, _) in mismatch_list
+            x_counts[li] = get(x_counts, li, 0) + 1
+        end
+        col_strs = ["x=\$li (\$(li < 1 ? "west halo" : li > Nx ? "east halo" : li == 1 ? "col 1" : "interior")) (\$n cells)" for (li, n) in sort(collect(x_counts))]
+        length(col_strs) <= 20 && push!(lines, "Affected cols: " * join(col_strs, ", "))
+        n_zero  = count(m -> m[5] == 0 && m[6] == 0, mismatch_list)
+        n_wrong = length(mismatch_list) - n_zero
+        if n_zero > 0 && n_wrong > 0;    push!(lines, "Error types: \$n_zero NEVER WRITTEN, \$n_wrong WRONG SOURCE")
+        elseif n_zero > 0;               push!(lines, "Error type: ALL \$n_zero NEVER WRITTEN")
+        else;                            push!(lines, "Error type: ALL \$n_wrong WRONG SOURCE")
+        end
+        push!(lines, "First mismatches:")
+        for (k, m) in enumerate(mismatch_list)
+            k > 20 && break
+            push!(lines, "  " * format_mismatch(m...))
+        end
+        return lines
+    end
 
     function fill_index_field!(field, dim; offset=0)
         int = interior(field)
@@ -591,6 +748,8 @@ index_tracing_8rank_script = """
     Hx, Hy, Hz = 5, 5, 5
 
     results = Dict{String, Bool}()
+
+    rank == 0 && println("\\nRunning index-tracing halo fill tests...")
 
     for (fold_topology, global_Nx, global_Ny) in test_cases
         fold_name = fold_topology == RightCenterFolded ? "UPivot" : "FPivot"
@@ -628,12 +787,17 @@ index_tracing_8rank_script = """
             gi = reconstruct_global_field(di)
             gj = reconstruct_global_field(dj)
 
+            # Interior check (rank 0)
             if rank == 0
                 si = serial_fields["\$(loc_name)_i"]
                 sj = serial_fields["\$(loc_name)_j"]
-                if interior(gi, :, :, 1) != interior(si, :, :, 1) ||
-                   interior(gj, :, :, 1) != interior(sj, :, :, 1)
+                mis_i = count(interior(gi, :, :, 1) .!= interior(si, :, :, 1))
+                mis_j = count(interior(gj, :, :, 1) .!= interior(sj, :, :, 1))
+                if mis_i == 0 && mis_j == 0
+                    print_rank0("  \$(fold_name) \$(loc_name) interior: PASS")
+                else
                     config_pass = false
+                    print_rank0("  \$(fold_name) \$(loc_name) interior: FAIL (\$(mis_i) i-mismatches, \$(mis_j) j-mismatches)")
                 end
             end
 
@@ -651,21 +815,45 @@ index_tracing_8rank_script = """
 
             local_i = di.data[:, :, 1]
             local_j = dj.data[:, :, 1]
-            local_mis = 0
+            local_mismatches = 0
+            mismatch_list = Tuple{Int,Int,Int,Int,Int,Int,Int,Int}[]
             for lj in axes(local_i, 2), li in axes(local_i, 1)
                 spi = li + x_offset + Hx
                 spj = lj + y_offset + Hy
                 if spi in axes(s_full_i, 1) && spj in axes(s_full_i, 2)
-                    if Int(local_i[li, lj]) != Int(s_full_i[spi, spj]) ||
-                       Int(local_j[li, lj]) != Int(s_full_j[spi, spj])
-                        local_mis += 1
+                    loc_iv = Int(local_i[li, lj])
+                    loc_jv = Int(local_j[li, lj])
+                    ser_iv = Int(s_full_i[spi, spj])
+                    ser_jv = Int(s_full_j[spi, spj])
+                    if loc_iv != ser_iv || loc_jv != ser_jv
+                        local_mismatches += 1
+                        length(mismatch_list) < 200 && push!(mismatch_list, (li, lj, spi, spj, loc_iv, loc_jv, ser_iv, ser_jv))
                     end
                 end
             end
 
-            all_mis = MPI.Gather(local_mis, 0, MPI.COMM_WORLD)
-            if rank == 0 && sum(all_mis) > 0
-                config_pass = false
+            all_local_mis = MPI.Gather(local_mismatches, 0, MPI.COMM_WORLD)
+            if rank == 0
+                total_mis = sum(all_local_mis)
+                if total_mis == 0
+                    print_rank0("  \$(fold_name) \$(loc_name) local halos: PASS (all ranks match serial)")
+                else
+                    config_pass = false
+                    per_rank = join(["r\$r=\$(all_local_mis[r+1])" for r in 0:nranks-1 if all_local_mis[r+1] > 0], ", ")
+                    print_rank0("  \$(fold_name) \$(loc_name) local halos: FAIL (\$(total_mis) total: \$(per_rank))")
+                end
+            end
+
+            # Per-rank structural analysis (sequential to avoid interleaving)
+            Nx_loc, Ny_loc, _ = size(grid)
+            for r in 0:(nranks - 1)
+                if rank == r && !isempty(mismatch_list)
+                    println("    Rank \$r (\$(local_mismatches) mismatches):")
+                    for line in analyze_mismatches(mismatch_list, Nx_loc, Ny_loc, Hy)
+                        println("      ", line)
+                    end
+                end
+                MPI.Barrier(MPI.COMM_WORLD)
             end
         end
 
@@ -674,6 +862,18 @@ index_tracing_8rank_script = """
             results[key] = config_pass
         end
         MPI.Barrier(MPI.COMM_WORLD)
+    end
+
+    if rank == 0
+        println("\\n", "="^60)
+        println("INDEX TRACING SUMMARY")
+        println("="^60)
+        for (key, pass) in sort(collect(results))
+            println("  \$(key): \$(pass ? "PASS" : "FAIL")")
+        end
+        n_pass = count(values(results))
+        println("\\n  \$(n_pass) / \$(length(results)) configurations passed")
+        println("="^60)
     end
 
     if rank == 0
@@ -703,38 +903,34 @@ index_tracing_8rank_script = """
     rm("index_tracing_8rank_results.jld2")
 end
 
-# ============================================================================
-# Testset 7: UPivot Simulations (slab, pencil, large-pencil)
-# ============================================================================
-
-run_upivot_slab = """
+run_slab_upivot_distributed_grid = """
     using MPI
     MPI.Init()
     include("distributed_tests_utils.jl")
     arch = Distributed(CPU(), partition = Partition(1, 4))
-    run_distributed_tripolar_grid(arch, "distributed_upivot_slab.jld2")
+    run_distributed_tripolar_grid(arch, "distributed_yslab_upivot_tripolar.jld2")
 """
 
-run_upivot_pencil = """
+run_pencil_upivot_distributed_grid = """
     using MPI
     MPI.Init()
     include("distributed_tests_utils.jl")
     arch = Distributed(CPU(), partition = Partition(2, 2))
-    run_distributed_tripolar_grid(arch, "distributed_upivot_pencil.jld2")
+    run_distributed_tripolar_grid(arch, "distributed_pencil_upivot_tripolar.jld2")
 """
 
-run_upivot_large_pencil = """
+run_large_pencil_upivot_distributed_grid = """
     using MPI
     MPI.Init()
     include("distributed_tests_utils.jl")
     arch = Distributed(CPU(), partition = Partition(4, 2))
-    run_distributed_tripolar_grid(arch, "distributed_upivot_large_pencil.jld2")
+    run_distributed_tripolar_grid(arch, "distributed_large_pencil_upivot_tripolar.jld2")
 """
 
 upivot_sim_configs = [
-    (run_upivot_slab,         4, "distributed_upivot_slab.jld2",         "slab 1×4"),
-    (run_upivot_pencil,       4, "distributed_upivot_pencil.jld2",       "pencil 2×2"),
-    (run_upivot_large_pencil, 8, "distributed_upivot_large_pencil.jld2", "large-pencil 4×2"),
+    (run_slab_upivot_distributed_grid,         4, "distributed_yslab_upivot_tripolar.jld2",         "slab 1×4"),
+    (run_pencil_upivot_distributed_grid,       4, "distributed_pencil_upivot_tripolar.jld2",       "pencil 2×2"),
+    (run_large_pencil_upivot_distributed_grid, 8, "distributed_large_pencil_upivot_tripolar.jld2", "large-pencil 4×2"),
 ]
 
 @testset "Test distributed TripolarGrid simulations..." begin
@@ -752,7 +948,7 @@ upivot_sim_configs = [
     @testset "$cfg_name" for (script_str, nranks, jld2file, cfg_name) in upivot_sim_configs
         scriptfile = "distributed_upivot_sim.jl"
         write(scriptfile, script_str)
-        run(`$(mpiexec()) -n $nranks $(Base.julia_cmd()) -O0 --check-bounds=yes $scriptfile`)
+        run(`$(mpiexec()) -n $nranks $(Base.julia_cmd()) -O0 $scriptfile`)
         rm(scriptfile, force=true)
 
         jld = jldopen(jld2file)
@@ -767,23 +963,37 @@ upivot_sim_configs = [
     end
 end
 
-# ============================================================================
-# Testset 8: FPivot Simulations (slab, pencil, large-pencil)
-# ============================================================================
-
-fpivot_sim_script(partition_str, jld2file) = """
+run_slab_fpivot_distributed_grid = """
     using MPI
     MPI.Init()
     include("distributed_tests_utils.jl")
-    arch = Distributed(CPU(), partition = $partition_str)
-    run_distributed_tripolar_grid(arch, "$jld2file";
+    arch = Distributed(CPU(), partition = Partition(1, 4))
+    run_distributed_tripolar_grid(arch, "distributed_yslab_fpivot_tripolar.jld2";
+                                  fold_topology = RightFaceFolded, Ny = 81)
+"""
+
+run_pencil_fpivot_distributed_grid = """
+    using MPI
+    MPI.Init()
+    include("distributed_tests_utils.jl")
+    arch = Distributed(CPU(), partition = Partition(2, 2))
+    run_distributed_tripolar_grid(arch, "distributed_pencil_fpivot_tripolar.jld2";
+                                  fold_topology = RightFaceFolded, Ny = 81)
+"""
+
+run_large_pencil_fpivot_distributed_grid = """
+    using MPI
+    MPI.Init()
+    include("distributed_tests_utils.jl")
+    arch = Distributed(CPU(), partition = Partition(4, 2))
+    run_distributed_tripolar_grid(arch, "distributed_large_pencil_fpivot_tripolar.jld2";
                                   fold_topology = RightFaceFolded, Ny = 81)
 """
 
 fpivot_sim_configs = [
-    ("Partition(1, 4)", 4, "distributed_fpivot_slab.jld2",         "slab 1×4"),
-    ("Partition(2, 2)", 4, "distributed_fpivot_pencil.jld2",       "pencil 2×2"),
-    ("Partition(4, 2)", 8, "distributed_fpivot_large_pencil.jld2", "large-pencil 4×2"),
+    (run_slab_fpivot_distributed_grid,         4, "distributed_yslab_fpivot_tripolar.jld2",         "slab 1×4"),
+    (run_pencil_fpivot_distributed_grid,       4, "distributed_pencil_fpivot_tripolar.jld2",       "pencil 2×2"),
+    (run_large_pencil_fpivot_distributed_grid, 8, "distributed_large_pencil_fpivot_tripolar.jld2", "large-pencil 4×2"),
 ]
 
 @testset "Test distributed FPivot TripolarGrid simulations..." begin
@@ -798,8 +1008,7 @@ fpivot_sim_configs = [
     cs = interior(model.tracers.c, :, :, 1)
     ηs = interior(model.free_surface.displacement, :, :, 1)
 
-    @testset "$cfg_name" for (partition_str, nranks, jld2file, cfg_name) in fpivot_sim_configs
-        script_str = fpivot_sim_script(partition_str, jld2file)
+    @testset "$cfg_name" for (script_str, nranks, jld2file, cfg_name) in fpivot_sim_configs
         scriptfile = "distributed_fpivot_sim.jl"
         write(scriptfile, script_str)
         run(`$(mpiexec()) -n $nranks $(Base.julia_cmd()) -O0 --check-bounds=yes $scriptfile`)
