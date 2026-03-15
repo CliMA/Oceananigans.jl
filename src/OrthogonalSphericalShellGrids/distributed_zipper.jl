@@ -1,4 +1,4 @@
-using MPI
+using MPI: Sendrecv!
 using Oceananigans.BoundaryConditions: get_boundary_kernels, DistributedCommunication, North, SouthAndNorth
 using Oceananigans.DistributedComputations: cooperative_waitall!, distributed_fill_halo_event!
 using Oceananigans.DistributedComputations: CommunicationBuffers, fill_corners!, loc_id
@@ -439,7 +439,7 @@ function exchange_fold_column1!(c, loc, grid, sign, Nx, Ny, Hx, Hy, fold_topo)
     # Exchange col 1 at source rows with conjugate rank
     send_col = copy(view(c, Hx+1:Hx+1, src_range, :))
     recv_col = similar(send_col)
-    MPI.Sendrecv!(send_col, recv_col, comm;
+    Sendrecv!(send_col, recv_col, comm;
                   dest=conj_rank, source=conj_rank, sendtag=9995, recvtag=9995)
 
     # Overwrite fold halo rows col 1 with conjugate data
@@ -485,13 +485,13 @@ function exchange_north_fold_halos!(c, loc, grid, Nx, Ny, Hx, Hy, fold_topo)
     # Send westmost Hx columns to west neighbor, recv from east neighbor into east halo
     send_west = copy(view(c, Hx+1:2Hx, yr, :))
     recv_east = similar(send_west)
-    MPI.Sendrecv!(send_west, recv_east, comm; dest=west_rank, source=east_rank, sendtag=9997, recvtag=9997)
+    Sendrecv!(send_west, recv_east, comm; dest=west_rank, source=east_rank, sendtag=9997, recvtag=9997)
     view(c, Nx+Hx+1:Nx+2Hx, yr, :) .= recv_east
 
     # Send eastmost Hx columns to east neighbor, recv from west neighbor into west halo
     send_east = copy(view(c, Nx+1:Nx+Hx, yr, :))
     recv_west = similar(send_east)
-    MPI.Sendrecv!(send_east, recv_west, comm; dest=east_rank, source=west_rank, sendtag=9996, recvtag=9996)
+    Sendrecv!(send_east, recv_west, comm; dest=east_rank, source=west_rank, sendtag=9996, recvtag=9996)
     view(c, 1:Hx, yr, :) .= recv_west
 
     return nothing
