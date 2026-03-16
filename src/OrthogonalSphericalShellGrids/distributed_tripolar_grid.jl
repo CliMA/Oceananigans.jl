@@ -26,7 +26,7 @@ const DistributedTripolarGridOfSomeKind = Union{
     ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:DistributedTripolarGrid}
 }
 
-const DistributedTripolarField = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedTripolarGrid}
+const DistributedTripolarField = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedTripolarGridOfSomeKind}
 
 #####
 ##### Fold-aware set! for distributed TripolarGrid fields
