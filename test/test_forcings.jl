@@ -253,6 +253,67 @@ function seven_forcings(arch)
     return true
 end
 
+"""
+Test that momentum advective fluxes are zero at immersed peripheral nodes, for all
+advection schemes. This verifies that removing the explicit `conditional_flux` zeroing
+from `_advective_momentum_flux_*` on `ImmersedBoundaryGrid` is safe: the combination of
+velocity masking in immersed cells and the no-penetration boundary condition at the
+immersed boundary face is sufficient to ensure zero momentum flux at peripheral nodes,
+independently of the velocity magnitude in the active fluid region.
+
+Tests on CPU only since the flux functions are called with scalar indices.
+"""
+function test_momentum_flux_zero_at_peripheral_nodes(scheme)
+    Nz = 8
+    grid = RectilinearGrid(CPU(), size=(4, 4, Nz), extent=(1, 1, 1), halo=(4, 4, 4))
+
+    # Flat bottom at z = -0.5: cells k=1..Nz÷2 are immersed, k=Nz÷2+1..Nz are active.
+    ibg = ImmersedBoundaryGrid(grid, GridFittedBottom(-0.5))
+    model = NonhydrostaticModel(ibg, advection=scheme)
+
+    # Set non-zero velocities in the entire domain, then mask to zero in immersed region.
+    # This ensures the active region has non-trivial velocities (u=v=w=1 in active cells)
+    # while immersed cells and the immersed boundary face are zeroed out.
+    set!(model, u=1, v=1, w=1)
+    mask_immersed_field!(model.velocities.u)
+    mask_immersed_field!(model.velocities.v)
+    mask_immersed_field!(model.velocities.w)
+    fill_halo_regions!(model.velocities)
+
+    u, v, w = model.velocities
+
+    # k_immersed: index of the last immersed cell center.
+    # Peripheral nodes for (Center, Center, Center) and (Face, Face, Center) are at immersed cells.
+    # Velocities there are zero by masking, so fluxes must be zero.
+    k_immersed = Nz ÷ 2
+
+    # k_face: index of the immersed boundary face (ZFace between immersed k and active k+1).
+    # Peripheral nodes for (Face, Center, Face) and (Center, Face, Face) are at this face.
+    # w = 0 at this face (no-penetration + masking), so z-momentum fluxes must be zero.
+    k_face = Nz ÷ 2 + 1
+
+    i, j = 2, 2  # Interior horizontal position, away from domain boundaries
+
+    # Fluxes at (Center, Center, Center) peripheral nodes — immersed cells, all velocities masked
+    @test Oceananigans.Advection._advective_momentum_flux_Uu(i, j, k_immersed, ibg, scheme, u, u) == 0
+    @test Oceananigans.Advection._advective_momentum_flux_Vv(i, j, k_immersed, ibg, scheme, v, v) == 0
+    @test Oceananigans.Advection._advective_momentum_flux_Ww(i, j, k_immersed, ibg, scheme, w, w) == 0
+
+    # Fluxes at (Face, Face, Center) peripheral nodes — immersed cells, all velocities masked
+    @test Oceananigans.Advection._advective_momentum_flux_Vu(i, j, k_immersed, ibg, scheme, v, u) == 0
+    @test Oceananigans.Advection._advective_momentum_flux_Uv(i, j, k_immersed, ibg, scheme, u, v) == 0
+
+    # Fluxes at (Face, Center, Face) peripheral nodes — immersed boundary face, w = 0
+    @test Oceananigans.Advection._advective_momentum_flux_Wu(i, j, k_face, ibg, scheme, w, u) == 0
+    @test Oceananigans.Advection._advective_momentum_flux_Uw(i, j, k_face, ibg, scheme, u, w) == 0
+
+    # Fluxes at (Center, Face, Face) peripheral nodes — immersed boundary face, w = 0
+    @test Oceananigans.Advection._advective_momentum_flux_Wv(i, j, k_face, ibg, scheme, w, v) == 0
+    @test Oceananigans.Advection._advective_momentum_flux_Vw(i, j, k_face, ibg, scheme, v, w) == 0
+
+    return true
+end
+
 function test_settling_tracer_comparison(arch; open_bottom=true)
     """
     Test that compares settling tracer simulations on regular vs immersed boundary grids.
@@ -424,6 +485,13 @@ end
 
                 @test two_forcings(arch)
                 @test seven_forcings(arch)
+            end
+
+            @testset "Momentum flux zero at immersed peripheral nodes" begin
+                @info "      Testing momentum flux is zero at immersed peripheral nodes..."
+                for scheme in (Centered(order=2), UpwindBiased(order=3), WENO(order=5))
+                    @test test_momentum_flux_zero_at_peripheral_nodes(scheme)
+                end
             end
 
             @testset "FieldTimeSeries forcing on [$A]" begin
