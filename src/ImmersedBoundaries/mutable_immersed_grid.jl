@@ -160,8 +160,8 @@ end
 
 import Oceananigans.Operators: ∂xᶠᶜᶜ, ∂xᶜᶜᶜ, ∂xᶠᶜᶠ, ∂xᶜᶠᶜ, ∂xᶠᶠᶜ
 import Oceananigans.Operators: ∂yᶜᶠᶜ, ∂yᶜᶜᶜ, ∂yᶜᶠᶠ, ∂yᶠᶜᶜ, ∂yᶠᶠᶜ
-import Oceananigans.Operators: ∂x_zᶠᶜᶜ, ∂x_zᶜᶜᶜ, ∂x_zᶠᶜᶠ, ∂x_zᶜᶠᶜ, ∂x_zᶠᶠᶜ
-import Oceananigans.Operators: ∂y_zᶜᶠᶜ, ∂y_zᶜᶜᶜ, ∂y_zᶜᶠᶠ, ∂y_zᶠᶜᶜ, ∂y_zᶠᶠᶜ
+import Oceananigans.Operators: ∂x_zᶠᶜᶜ, ∂x_zᶜᶜᶜ, ∂x_zᶠᶜᶠ, ∂x_zᶜᶠᶜ, ∂x_zᶠᶠᶜ, ∂x_zᶜᶜᶠ
+import Oceananigans.Operators: ∂y_zᶜᶠᶜ, ∂y_zᶜᶜᶜ, ∂y_zᶜᶠᶠ, ∂y_zᶠᶜᶜ, ∂y_zᶠᶠᶜ, ∂y_zᶜᶜᶠ
 
 #####
 ##### Generalized coordinate derivatives for mutable vertical grids
@@ -182,9 +182,11 @@ import Oceananigans.Operators: ∂y_zᶜᶠᶜ, ∂y_zᶜᶜᶜ, ∂y_zᶜᶠᶠ
 ##### (not derivatives) to avoid recursion.
 #####
 
-using Oceananigans.Grids: znode
+using Oceananigans.Grids: znode, Center, Face
 
 const AMG = MutableGridOfSomeKind
+const C = Center
+const F = Face
 
 #####
 ##### Grid slope functions: ∂z/∂x|_r and ∂z/∂y|_r at various staggerings
@@ -199,6 +201,7 @@ const AMG = MutableGridOfSomeKind
 @inline ∂x_zᶠᶜᶠ(i, j, k, grid::AMG) = δxᶠᶜᶠ(i, j, k, grid, znode, C(), C(), F()) * Δx⁻¹ᶠᶜᶠ(i, j, k, grid)
 @inline ∂x_zᶜᶠᶜ(i, j, k, grid::AMG) = δxᶜᶠᶜ(i, j, k, grid, znode, F(), F(), C()) * Δx⁻¹ᶜᶠᶜ(i, j, k, grid)
 @inline ∂x_zᶠᶠᶜ(i, j, k, grid::AMG) = δxᶠᶠᶜ(i, j, k, grid, znode, C(), F(), C()) * Δx⁻¹ᶠᶠᶜ(i, j, k, grid)
+@inline ∂x_zᶜᶜᶠ(i, j, k, grid::AMG) = δxᶜᶜᶠ(i, j, k, grid, znode, F(), C(), F()) * Δx⁻¹ᶜᶜᶠ(i, j, k, grid)
 
 # y-direction slopes at different staggerings
 @inline ∂y_zᶜᶠᶜ(i, j, k, grid::AMG) = δyᶜᶠᶜ(i, j, k, grid, znode, C(), C(), C()) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
@@ -206,6 +209,7 @@ const AMG = MutableGridOfSomeKind
 @inline ∂y_zᶜᶠᶠ(i, j, k, grid::AMG) = δyᶜᶠᶠ(i, j, k, grid, znode, C(), C(), F()) * Δy⁻¹ᶜᶠᶠ(i, j, k, grid)
 @inline ∂y_zᶠᶜᶜ(i, j, k, grid::AMG) = δyᶠᶜᶜ(i, j, k, grid, znode, F(), F(), C()) * Δy⁻¹ᶠᶜᶜ(i, j, k, grid)
 @inline ∂y_zᶠᶠᶜ(i, j, k, grid::AMG) = δyᶠᶠᶜ(i, j, k, grid, znode, F(), C(), C()) * Δy⁻¹ᶠᶠᶜ(i, j, k, grid)
+@inline ∂y_zᶜᶜᶠ(i, j, k, grid::AMG) = δyᶜᶜᶠ(i, j, k, grid, znode, C(), F(), F()) * Δy⁻¹ᶜᶜᶠ(i, j, k, grid)
 
 #####
 ##### Disambiguation for Number arguments (derivative of a constant is zero)

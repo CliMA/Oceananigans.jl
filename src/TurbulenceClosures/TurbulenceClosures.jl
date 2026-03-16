@@ -55,6 +55,8 @@ using Oceananigans.Operators: Operators,
     ζ₃ᶠᶠᶜ,
     ℑxyzᶠᶠᶜ, ℑxyᶜᶜᵃ, ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ, ℑxzᶜᵃᶜ, ℑxzᶜᵃᶠ, ℑxzᶠᵃᶜ, ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyzᵃᶜᶜ, ℑyzᵃᶜᶠ, ℑyzᵃᶠᶜ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶠ,
     ∂xᵣᶜᶜᶜ, ∂xᵣᶜᶠᶜ, ∂xᵣᶠᶜᶜ, ∂xᵣᶠᶜᶠ, ∂xᵣᶠᶠᶜ, ∂yᵣᶜᶜᶜ, ∂yᵣᶜᶠᶜ, ∂yᵣᶜᶠᶠ, ∂yᵣᶠᶜᶜ, ∂yᵣᶠᶠᶜ, ∂zᶜᶜᶜ, ∂zᶜᶜᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ, ∂²zᶜᶜᶠ, ∂²zᶜᶠᶜ, ∂²zᶠᶜᶜ, ∂³zᶜᶜᶠ,
+    ∂x_zᶠᶜᶜ, ∂x_zᶜᶜᶜ, ∂x_zᶠᶜᶠ, ∂x_zᶜᶠᶜ, ∂x_zᶠᶠᶜ, ∂x_zᶜᶜᶠ,
+    ∂y_zᶜᶠᶜ, ∂y_zᶜᶜᶜ, ∂y_zᶜᶠᶠ, ∂y_zᶠᶜᶜ, ∂y_zᶠᶠᶜ, ∂y_zᶜᶜᶠ,
     ∇²hᶜᶜᶜ, ∇²hᶜᶠᶜ, ∇²hᶠᶜᶜ, ∇²ᶜᶜᶜ, ∇²ᶜᶜᶠ, ∇²ᶜᶠᶜ, ∇²ᶠᶜᶜ
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, fill_halo_regions!
 using Oceananigans.Utils: Utils, launch!, prettysummary, with_tracers

@@ -99,6 +99,7 @@ end
 @inline ∂x_zᶠᶜᶠ(i, j, k, grid) = zero(grid)
 @inline ∂x_zᶜᶠᶜ(i, j, k, grid) = zero(grid)
 @inline ∂x_zᶠᶠᶜ(i, j, k, grid) = zero(grid)
+@inline ∂x_zᶜᶜᶠ(i, j, k, grid) = zero(grid)
 
 # y-direction slopes at different staggerings
 @inline ∂y_zᶜᶠᶜ(i, j, k, grid) = zero(grid)
@@ -106,3 +107,4 @@ end
 @inline ∂y_zᶜᶠᶠ(i, j, k, grid) = zero(grid)
 @inline ∂y_zᶠᶜᶜ(i, j, k, grid) = zero(grid)
 @inline ∂y_zᶠᶠᶜ(i, j, k, grid) = zero(grid)
+@inline ∂y_zᶜᶜᶠ(i, j, k, grid) = zero(grid)

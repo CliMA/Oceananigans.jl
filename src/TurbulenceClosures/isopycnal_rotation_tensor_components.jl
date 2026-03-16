@@ -1,5 +1,7 @@
 # tracer components of the Redi rotation tensor
 
+using Oceananigans.BuoyancyFormulations: ∂xᵣ_b, ∂yᵣ_b, ∂z_b
+
 """
     AbstractIsopycnalTensor
 
