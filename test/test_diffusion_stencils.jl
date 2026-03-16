@@ -174,9 +174,9 @@ function horizontal_diffusion_variance(arch)
 
     launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, η, grid)
           
-    c₀ = [0.0154  -0.1784  -0.1625   0.491;
-          0.0427  -0.1266  -0.4875   0.2083;
-          0.0179  -0.2037  -0.1866   0.57]
+    c₀ = [0.0168  -0.1936  -0.177   0.5344;
+          0.0423  -0.1258  -0.4813  0.2036;
+          0.0168  -0.1936  -0.177   0.5344]
 
     c = CenterField(grid)
     set!(c, c₀)
@@ -230,11 +230,8 @@ end
         end
 
         @testset "Horizontal diffusion variance on z-star [$arch]" begin
-            @info "  Testing r-derivative diffusion decreases variance [$arch]..."
-            @test r_horizontal_diffusion_decreases_variance(arch)
-
-            @info "  Testing z-derivative diffusion produces variance [$arch]..."
-            @test z_horizontal_diffusion_produces_variance(arch)
+            @info "  Testing horizontal diffusion variance properties [$arch]..."
+            @test horizontal_diffusion_variance(arch)
         end
     end
 end
