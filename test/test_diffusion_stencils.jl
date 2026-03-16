@@ -62,17 +62,19 @@ function isopycnal_static_and_mutable_grids_agree(arch, closure)
     static_model  = HydrostaticFreeSurfaceModel(static_grid; kw...)
     mutable_model = HydrostaticFreeSurfaceModel(mutable_grid; kw...)
 
-    b_init(x, y, z) = 1e-5 * z + 1e-7 * sin(2π * x / Lx)
-    set!(static_model,  b = b_init)
-    set!(mutable_model, b = b_init)
+    bᵢ(x, y, z) = 1e-5 * z + 1e-7 * sin(2π * x / Lx)
+    set!(static_model,  b = bᵢ)
+    set!(mutable_model, b = bᵢ)
 
-    time_step!(static_model, 10.0)
-    time_step!(mutable_model, 10.0)
+    for i in 1:20
+        time_step!(static_model,  10.0)
+        time_step!(mutable_model, 10.0)
+    end
+    
+    bs = Array(interior(static_model.tracers.b))
+    bm = Array(interior(mutable_model.tracers.b))
 
-    b_s = Array(interior(static_model.tracers.b))
-    b_m = Array(interior(mutable_model.tracers.b))
-
-    return all(b_s .≈ b_m)
+    return all(bs .≈ bm)
 end
 
 function redi_preserves_stratification(arch)
@@ -89,7 +91,9 @@ function redi_preserves_stratification(arch)
     set!(model, b = (x, y, z) -> 1e-5 * z)
 
     b⁰ = Array(interior(model.tracers.b))
-    time_step!(model, 10.0)
+    for i in 1:10
+        time_step!(model, 10.0)
+    end
     bⁿ = Array(interior(model.tracers.b))
 
     return all(b⁰ .≈ bⁿ)
@@ -121,7 +125,9 @@ function redi_preserves_stratification_on_zstar(arch)
     set!(model, b = (x, y, z) -> 1e-5 * z)
 
     b⁰ = Array(interior(model.tracers.b))
-    time_step!(model, 10.0)
+    for i in 1:10
+        time_step!(model, 10.0)
+    end
     bⁿ = Array(interior(model.tracers.b))
 
     return all(b⁰ .≈ bⁿ)
