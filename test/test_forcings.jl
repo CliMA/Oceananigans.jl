@@ -3,7 +3,7 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
 using Oceananigans.Fields: Field
 using Oceananigans.Forcings: MultipleForcings
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!, immersed_peripheral_node
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!, immersed_peripheral_node, peripheral_node
 
 """ Take one time step with three forcing arrays on u, v, w. """
 function time_step_with_forcing_array(arch)
@@ -275,15 +275,15 @@ end
     f = Face()
 
     @inbounds begin
-        tuu[i, j, k] = !immersed_peripheral_node(i, j, k, grid, c, c, c) | (Fuu == 0)
-        tuv[i, j, k] = !immersed_peripheral_node(i, j, k, grid, f, f, c) | (Fuv == 0)
-        tuw[i, j, k] = !immersed_peripheral_node(i, j, k, grid, f, c, f) | (Fuw == 0)
-        tvu[i, j, k] = !immersed_peripheral_node(i, j, k, grid, f, f, c) | (Fvu == 0)
-        tvv[i, j, k] = !immersed_peripheral_node(i, j, k, grid, c, c, c) | (Fvv == 0)
-        tvw[i, j, k] = !immersed_peripheral_node(i, j, k, grid, c, f, f) | (Fvw == 0)
-        twu[i, j, k] = !immersed_peripheral_node(i, j, k, grid, f, c, f) | (Fwu == 0)
-        twv[i, j, k] = !immersed_peripheral_node(i, j, k, grid, c, f, f) | (Fwv == 0)
-        tww[i, j, k] = !immersed_peripheral_node(i, j, k, grid, c, c, c) | (Fww == 0)
+        tuu[i, j, k] = !peripheral_node(i, j, k, grid, c, c, c) | (Fuu == 0)
+        tuv[i, j, k] = !peripheral_node(i, j, k, grid, f, f, c) | (Fuv == 0)
+        tuw[i, j, k] = !peripheral_node(i, j, k, grid, f, c, f) | (Fuw == 0)
+        tvu[i, j, k] = !peripheral_node(i, j, k, grid, f, f, c) | (Fvu == 0)
+        tvv[i, j, k] = !peripheral_node(i, j, k, grid, c, c, c) | (Fvv == 0)
+        tvw[i, j, k] = !peripheral_node(i, j, k, grid, c, f, f) | (Fvw == 0)
+        twu[i, j, k] = !peripheral_node(i, j, k, grid, f, c, f) | (Fwu == 0)
+        twv[i, j, k] = !peripheral_node(i, j, k, grid, c, f, f) | (Fwv == 0)
+        tww[i, j, k] = !peripheral_node(i, j, k, grid, c, c, c) | (Fww == 0)
     end
 end
 
@@ -326,7 +326,7 @@ function test_momentum_flux_zero_at_peripheral_nodes(scheme)
     twv = Field{Center, Face, Face}(ibg)
     tww = Field{Center, Center, Center}(ibg)
 
-    launch!(CPU(), ibg, :xyz, _populate_momentum_flux_tests!,
+    launch!(CPU(), ibg,  KernelParameters(0:9, 0:9, 0:9), _populate_momentum_flux_tests!,
             tuu, tuv, tuw, tvu, tvv, tvw, twu, twv, tww,
             ibg, scheme, u, v, w)
 
