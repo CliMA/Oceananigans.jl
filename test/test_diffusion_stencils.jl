@@ -49,7 +49,7 @@ function isopycnal_static_and_mutable_grids_agree(arch, closure)
                                   topology=(Periodic, Periodic, Bounded))
 
     mutable_grid = RectilinearGrid(arch; size=(4, 4, 8),
-                                    x=(0, Lx), y=(0, Ly), 
+                                    x=(0, Lx), y=(0, Ly),
                                     z=MutableVerticalDiscretization((-H, 0)),
                                     topology=(Periodic, Periodic, Bounded))
 
@@ -173,7 +173,7 @@ function horizontal_diffusion_variance(arch)
     fill_halo_regions!(η)
 
     launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, η, grid)
-          
+
     c₀ = [0.0168  -0.1936  -0.177   0.5344;
           0.0423  -0.1258  -0.4813  0.2036;
           0.0168  -0.1936  -0.177   0.5344]
@@ -185,7 +185,7 @@ function horizontal_diffusion_variance(arch)
     dc²ᶻ = compute_variance_tendency(arch, grid, c, horizontal_z_flux_divergence!)
     dc²ʳ = compute_variance_tendency(arch, grid, c, horizontal_r_flux_divergence!)
 
-    return dc²ᶻ > 0 && dc²ʳ < 0 
+    return dc²ᶻ > 0 && dc²ʳ < 0
 end
 
 @testset "Isopycnal closures with r-based derivatives" begin
