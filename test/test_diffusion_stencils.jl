@@ -30,7 +30,7 @@ function isopycnal_closure_zstar_produces_no_nans(arch, closure)
     # Sinusoidal perturbation to create non-zero slopes and drive dynamics
     set!(model, b = (x, y, z) -> 1e-5 * z + 1e-7 * sin(2π * x / Lx))
 
-    for n in 1:10
+    for n in 1:20
         time_step!(model, 1.0)
     end
 
