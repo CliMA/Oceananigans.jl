@@ -95,27 +95,24 @@ Keyword Arguments
     ```
     See [`UPivotZipperBoundaryCondition`](@ref) for more information on the fold.
 
-    For a `RightFaceFolded` y-topology, The north singularities are located on `(Face, Face)`,
-    at: `i = 1`, `j = grid.Ny` and `i = grid.Nx ÷ 2 + 1`, `j = grid.Ny`. This means that the last
-    row of the tracers is redundant and, despite being advanced dynamically, it is then replaced
-    by the interior of the domain when folding.
+    For a `RightFaceFolded` y-topology, the fold is located between
+    `face[Ny]` and `face[Ny+1]`, i.e., the fold does not coincide with an interior grid point.
+    The north singularities are located on `(Face, Face)`.
 
-    !!! warning "Add `1` to `Ny` when you build a `RightFaceFolded` tripolar grid"
-        Otherwise you might end up with one less row than what you expected.
-
-    Pivot points are indicated by the `↻` symbols below:
+    The fold is located between the last interior face row and the first halo face row.
+    Pivot points (↻) are located on `(Face, Face)`:
     ```
               │           │           │           │           │           │           │
-    Ny+1 ─▶ ──╔═══════════╪═══════════╪═══════════╪═══════════╪═══════════╪═══════════╗──
-              ║           │           │           │           │           │           ║
-    Ny   ─▶   u     c     u     c     u     c     u     c     u     c     u     c     ║
-              ║           │           │           │           │           │           ║
-    Ny   ─▶ ─ ↻ ─── v ────┼──── v ────┼──── v ─── ↻ ─── v ────┼──── v ────┼──── v ─── ↻ ◀─ Fold
-              ║           │           │           │           │           │           ║
-    Ny-1 ─▶   u     c     u     c     u     c     u     c     u     c     u     c     ║
-              ║           │           │           │           │           │           ║
-    Ny-1 ─▶ ──╫──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────╫──
-              ║           │           │           │           │           │           ║
+    Ny+1 ─▶ ─ ↻ ─── v ────┼──── v ────┼──── v ─── ↻ ─── v ────┼──── v ────┼──── v ─── ↻ ◀─ Fold (between Ny and Ny+1)
+              │           │           │           │           │           │           │
+    Ny   ─▶   u     c     u     c     u     c     u     c     u     c     u     c     u
+              │           │           │           │           │           │           │
+    Ny   ─▶ ──┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──
+              │           │           │           │           │           │           │
+    Ny-1 ─▶   u     c     u     c     u     c     u     c     u     c     u     c     u
+              │           │           │           │           │           │           │
+    Ny-1 ─▶ ──┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──
+              │           │           │           │           │           │           │
               ▲     ▲     ▲                       ▲                       ▲     ▲     ▲
               1     1     2                     Nx÷2+1                    Nx    Nx    Nx+1
     ```
@@ -153,10 +150,11 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
     Nx, Ny, Nz = size
     Hx, Hy, Hz = halo
 
-    # In case of a `RightFaceFolded` y-topology, we must add an extra row on the northern boundary.
-    # This is because the topology folds on `v` velocities, which are located "south" of center locations
-    # by convention in Oceananigans. Thus the `Ny` row of `v` is half prognostic but is entirely computed
-    # during time-stepping, before the `FPivot` zipper boundary condition is applied.
+    # A right-face folded has prognostic values in Ny + 1,
+    # therefore, we need an extra halo point in y
+    if fold_topology == RightFaceFolded
+        Hy = Hy + 1
+    end 
 
     if isodd(Nx)
         throw(ArgumentError("The number of cells in the longitude dimension should be even!"))
