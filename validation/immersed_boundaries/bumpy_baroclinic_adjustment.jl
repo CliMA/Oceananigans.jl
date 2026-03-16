@@ -32,7 +32,7 @@ free_surface = ImplicitFreeSurface(solver_method=:PreconditionedConjugateGradien
 diffusive_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=κz, κ=κz)
 horizontal_closure = HorizontalScalarBiharmonicDiffusivity(ν=κ₄h, κ=κ₄h)
 
-model = HydrostaticFreeSurfaceModel(; grid, free_surface,
+model = HydrostaticFreeSurfaceModel(grid; free_surface,
                                     coriolis = BetaPlane(latitude = -45),
                                     buoyancy = BuoyancyTracer(),
                                     closure = (diffusive_closure, horizontal_closure),

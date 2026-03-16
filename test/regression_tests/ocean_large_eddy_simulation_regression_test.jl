@@ -1,10 +1,17 @@
-using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation
+using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, LagrangianAveraging
 using Oceananigans.TimeSteppers: update_state!
 using Oceananigans.DistributedComputations: cpu_architecture, partition
 
 function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closure)
     if first(closure) isa SmagorinskyLilly
         name = "ocean_large_eddy_simulation_SmagorinskyLilly"
+    elseif first(closure) isa DynamicSmagorinsky
+        averaging = first(closure).coefficient.averaging
+        if averaging isa LagrangianAveraging
+            name = "ocean_large_eddy_simulation_DynamicSmagorinsky_lagrangian"
+        else
+            name = "ocean_large_eddy_simulation_DynamicSmagorinsky_directional"
+        end
     else
         firstclosure = first(closure)
         closurename = typeof(firstclosure).name.wrapper
@@ -38,7 +45,7 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
     equation_of_state = LinearEquationOfState(thermal_expansion=2e-4, haline_contraction=8e-4)
 
     # Model instantiation
-    model = NonhydrostaticModel(; grid, closure,
+    model = NonhydrostaticModel(grid; closure,
                                 timestepper = :QuasiAdamsBashforth2,
                                 coriolis = FPlane(f=1e-4),
                                 buoyancy = SeawaterBuoyancy(; equation_of_state),
@@ -131,7 +138,7 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
     model.clock.time = spinup_steps * Δt
     model.clock.iteration = spinup_steps
 
-    update_state!(model; compute_tendencies = true)
+    update_state!(model)
     model.clock.last_Δt = Δt
 
     for n in 1:test_steps

@@ -4,7 +4,7 @@
 DocTestSetup = quote
     using Oceananigans
     using CairoMakie
-    CairoMakie.activate!(type = "svg")
+    CairoMakie.activate!(type = "png")
     set_theme!(Theme(fontsize=20))
 end
 ```
@@ -88,8 +88,7 @@ The shape of the physical domain determines what grid type should be used:
 
 !!! note "OrthogonalSphericalShellGrids"
     See the auxiliary module [`OrthogonalSphericalShellGrids`](@ref)
-    for recipes that implement some useful `OrthogonalSphericalShellGrid`s, including the
-    ["tripolar" grid](https://www.sciencedirect.com/science/article/abs/pii/S0021999196901369).
+    for recipes that implement some useful `OrthogonalSphericalShellGrid`s, including the ["tripolar" grid](@cite Murray1996).
 
 For example, to make a `LatitudeLongitudeGrid` that wraps around the sphere, extends for 60 degrees latitude on either side of the equator, and has 5 vertical levels down to 1000 meters, we write
 
@@ -103,7 +102,7 @@ grid = LatitudeLongitudeGrid(architecture,
                              z = (-1000, 0))
 
 # output
-180×10×5 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+180×10×5 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── longitude: Periodic λ ∈ [-180.0, 180.0) regularly spaced with Δλ=2.0
 ├── latitude:  Bounded  φ ∈ [-60.0, 60.0]   regularly spaced with Δφ=12.0
 └── z:         Bounded  z ∈ [-1000.0, 0.0]  regularly spaced with Δz=200.0
@@ -133,7 +132,7 @@ grid = LatitudeLongitudeGrid(size = (60, 10, 5),
                              z = (-1000, 0))
 
 # output
-60×10×5 LatitudeLongitudeGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+60×10×5 LatitudeLongitudeGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── longitude: Bounded  λ ∈ [0.0, 60.0]    regularly spaced with Δλ=1.0
 ├── latitude:  Bounded  φ ∈ [-60.0, 60.0]  regularly spaced with Δφ=12.0
 └── z:         Bounded  z ∈ [-1000.0, 0.0] regularly spaced with Δz=200.0
@@ -191,7 +190,7 @@ using Oceananigans
 using Oceananigans.Units
 
 using CairoMakie
-CairoMakie.activate!(type = "svg")
+CairoMakie.activate!(type = "png")
 set_theme!(Theme(fontsize=20))
 
 grid = RectilinearGrid(topology = (Bounded, Bounded, Bounded),
@@ -369,7 +368,7 @@ grid = RectilinearGrid(size = (Nx, Ny, Nz),
 using Oceananigans
 using CairoMakie
 set_theme!(Theme(Lines = (linewidth = 3,)))
-CairoMakie.activate!(type="svg")
+CairoMakie.activate!(type="png")
 set_theme!(Theme(fontsize=20))
 
 Nx, Ny, Nz = 64, 64, 32
@@ -453,8 +452,6 @@ scatter!(ax, Δx / 1e3)
 fig
 ```
 
-![](plot_lat_lon_spacings.svg)
-
 ## `LatitudeLongitudeGrid` with variable spacing
 
 The syntax for building a grid with variably-spaced cells is the same as for `RectilinearGrid`.
@@ -487,7 +484,7 @@ grid = LatitudeLongitudeGrid(size = (Nx, Ny),
                              topology = (Bounded, Bounded, Flat))
 
 # output
-180×28×1 LatitudeLongitudeGrid{Float64, Bounded, Bounded, Flat} on CPU with 3×3×0 halo and with precomputed metrics
+180×28×1 LatitudeLongitudeGrid{Float64, Bounded, Bounded, Flat} on CPU with 3×3×0 halo
 ├── longitude: Bounded  λ ∈ [0.0, 360.0]   regularly spaced with Δλ=2.0
 ├── latitude:  Bounded  φ ∈ [0.0, 77.2679] variably spaced with min(Δφ)=2.0003, max(Δφ)=6.95319
 └── z:         Flat z
@@ -945,9 +942,10 @@ nothing # hide
 ```
 
 That's what it looks like to build a [`Distributed`](@ref) architecture.
-Notice we chose to display only if we're on rank 0 -- because otherwise, all the ranks print
-to the terminal at once, talking over each other, and things get messy. Also, we used the
-"default communicator" `MPI.COMM_WORLD` to determine whether we were on rank 0. This works
+Notice we can choose whether or not to display from a given rank (`@onrank 0 @show ...`.)
+In this case we choose to display from both ranks, but sometimes it is useful to display
+only from a single rank, since otherwise ranks can talk over each other making things messy.
+Also, we used the "default communicator" `MPI.COMM_WORLD` to determine whether we were on rank 0. This works
 because `Distributed` uses `communicator = MPI.COMM_WORLD` by default (and this should be
 changed only with great intention). See the [`Distributed`](@ref) docstring for more information.
 
@@ -975,6 +973,7 @@ grid = RectilinearGrid(architecture,
 
 write("distributed_grid_example.jl", make_distributed_grid)
 
+using MPI
 run(`$(mpiexec()) -n 2 $(Base.julia_cmd()) --project distributed_grid_example.jl`)
 nothing # hide
 ```
@@ -1032,6 +1031,7 @@ end
 
 write("partition_example.jl", make_y_partition)
 
+using MPI
 run(`$(mpiexec()) -n 2 $(Base.julia_cmd()) --project partition_example.jl`)
 nothing # hide
 ```
@@ -1048,7 +1048,7 @@ mpiexec -n 6 julia --project a_program.jl
 
 #### Programmatically specifying ranks in ``x, y``
 
-Programatic specification of ranks is often better for applications that need to scale.
+Programmatic specification of ranks is often better for applications that need to scale.
 For this the specification `Equal` is useful: if the number of ranks in one dimension is specified,
 and the other is `Equal`, then the `Equal` dimension is allocated
 the remaining workers. For example,
@@ -1074,6 +1074,7 @@ end
 
 write("programmatic_partition_example.jl", make_xy_partition)
 
+using MPI
 run(`$(mpiexec()) -n 6 $(Base.julia_cmd()) --project programmatic_partition_example.jl`)
 nothing # hide
 ```
@@ -1122,6 +1123,7 @@ end
 
 write("equally_partitioned_grids.jl", partitioned_grid_example)
 
+using MPI
 run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project equally_partitioned_grids.jl`)
 nothing # hide
 ```

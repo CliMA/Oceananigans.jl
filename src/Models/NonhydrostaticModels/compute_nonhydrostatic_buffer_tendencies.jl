@@ -51,7 +51,7 @@ function buffer_p_kernel_parameters(grid, arch)
     return buffer_parameters(params, grid, arch)
 end
 
-# diffusivities need recomputing in the range 0 : B and N - B + 1 : N + 1
+# closure_fields need recomputing in the range 0 : B and N - B + 1 : N + 1
 function buffer_κ_kernel_parameters(grid, closure, arch)
     Nx, Ny, Nz = size(grid)
 
@@ -81,4 +81,3 @@ function buffer_parameters(parameters, grid, arch)
 
     return Tuple(KernelParameters(parameters[i]...) for i in findall(include_side))
 end
-

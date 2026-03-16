@@ -1,5 +1,5 @@
 using Statistics: Statistics
-using LinearAlgebra: LinearAlgebra
+using LinearAlgebra: LinearAlgebra, dot
 
 reductions = (:(Base.sum), :(Base.maximum), :(Base.minimum), :(Base.prod), :(Base.any), :(Base.all), :(Statistics.mean))
 

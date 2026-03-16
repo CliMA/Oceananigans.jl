@@ -91,6 +91,8 @@ const ZFBC = BoundaryCondition{Flux, Nothing} # "zero" flux
 const MCBC = BoundaryCondition{<:MultiRegionCommunication}
 const DCBC = BoundaryCondition{<:DistributedCommunication}
 const ZBC  = BoundaryCondition{<:Zipper}
+const UZBC = BoundaryCondition{<:Zipper{UPivot}}
+const FZBC = BoundaryCondition{<:Zipper{FPivot}}
 
 const NoFluxBoundaryCondition = ZFBC
 const DistributedCommunicationBoundaryCondition = BoundaryCondition{<:DistributedCommunication}
@@ -100,14 +102,16 @@ const DistributedCommunicationBoundaryCondition = BoundaryCondition{<:Distribute
                   NoFluxBoundaryCondition() = BoundaryCondition(Flux(),                     nothing)
             ImpenetrableBoundaryCondition() = BoundaryCondition(Open(), nothing)
 MultiRegionCommunicationBoundaryCondition() = BoundaryCondition(MultiRegionCommunication(), nothing)
-                  ZipperBoundaryCondition() = BoundaryCondition(Zipper(), 1) # 1 means that the sign will not be switched
+            UPivotZipperBoundaryCondition() = BoundaryCondition(Zipper{UPivot}(), 1) # 1 means that the sign will not be switched
+            FPivotZipperBoundaryCondition() = BoundaryCondition(Zipper{FPivot}(), 1) # 1 means that the sign will not be switched
 
                     FluxBoundaryCondition(val; kwargs...) = BoundaryCondition(Flux(), val; kwargs...)
                    ValueBoundaryCondition(val; kwargs...) = BoundaryCondition(Value(), val; kwargs...)
                 GradientBoundaryCondition(val; kwargs...) = BoundaryCondition(Gradient(), val; kwargs...)
   OpenBoundaryCondition(val; scheme = nothing, kwargs...) = BoundaryCondition(Open(scheme), val; kwargs...)
 MultiRegionCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(MultiRegionCommunication(), val; kwargs...)
-                  ZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper(), val; kwargs...)
+            UPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{UPivot}(), val; kwargs...)
+            FPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{FPivot}(), val; kwargs...)
 DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(DistributedCommunication(), val; kwargs...)
 
 #####
@@ -118,6 +122,18 @@ struct MixedCondition{A, B}
     coefficient :: A
     inhomogeneity :: B
 end
+
+# Helper to unwrap Ref values (Ref is not isbits and can't be passed to GPU kernels)
+_unwrap_for_gpu(r::Base.RefValue) = r[]
+_unwrap_for_gpu(x) = x
+
+Adapt.adapt_structure(to, mc::MixedCondition) =
+    MixedCondition(_unwrap_for_gpu(mc.coefficient),
+                   Adapt.adapt(to, mc.inhomogeneity))
+
+on_architecture(to, mc::MixedCondition) =
+    MixedCondition(on_architecture(to, mc.coefficient),
+                   on_architecture(to, mc.inhomogeneity))
 
 """
     MixedBoundaryCondition(coefficient, inhomogeneity=0; kwargs...)

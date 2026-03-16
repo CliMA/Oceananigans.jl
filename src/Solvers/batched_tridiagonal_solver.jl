@@ -1,8 +1,6 @@
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.Grids: XDirection, YDirection, ZDirection
 
-import Oceananigans.Architectures: architecture
-
 """
     struct BatchedTridiagonalSolver{A, B, C, T, G, P}
 
@@ -33,7 +31,7 @@ const XTridiagonalSolver = BatchedTridiagonalSolver{A, B, C, T, G, P, <:XDirecti
 const YTridiagonalSolver = BatchedTridiagonalSolver{A, B, C, T, G, P, <:YDirection} where {A, B, C, T, G, P}
 const ZTridiagonalSolver = BatchedTridiagonalSolver{A, B, C, T, G, P, <:ZDirection} where {A, B, C, T, G, P}
 
-architecture(solver::BatchedTridiagonalSolver) = architecture(solver.grid)
+Architectures.architecture(solver::BatchedTridiagonalSolver) = architecture(solver.grid)
 
 """
     BatchedTridiagonalSolver(grid;

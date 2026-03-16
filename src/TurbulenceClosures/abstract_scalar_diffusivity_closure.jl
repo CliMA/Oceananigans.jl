@@ -1,3 +1,4 @@
+using Oceananigans.Grids: node
 using Oceananigans.Operators: ℑxyᶠᶠᵃ, ℑxzᶠᵃᶠ, ℑyzᵃᶠᶠ
 
 """
@@ -49,7 +50,7 @@ Specifies a `ScalarDiffusivity` acting only in the vertical direction.
 struct VerticalFormulation <: AbstractDiffusivityFormulation end
 
 """
-    viscosity(closure, diffusivities)
+    viscosity(closure, closure_fields)
 
 Returns the scalar viscosity associated with `closure`.
 """
@@ -111,7 +112,7 @@ const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 @inline κᶠᶜᶠ(i, j, k, grid, closure::ASD, K, id, clk, fields) = κᶠᶜᶠ(i, j, k, grid, diffusivity_location(closure), diffusivity(closure, K, id), clk, fields)
 @inline κᶜᶠᶠ(i, j, k, grid, closure::ASD, K, id, clk, fields) = κᶜᶠᶠ(i, j, k, grid, diffusivity_location(closure), diffusivity(closure, K, id), clk, fields)
 
-# Vertical and horizontal diffusivity 
+# Vertical and horizontal diffusivity
 
 # Viscosities without explicit passing of `id`
 @inline νzᶜᶜᶜ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields)
@@ -284,7 +285,7 @@ end
                   zero(grid))
 end
 
-@inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::AIDorAVD, K, id, c, clk, fields, b) 
+@inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::AIDorAVD, K, id, c, clk, fields, b)
     return ifelse((k == 1) | (k == grid.Nz+1),
                   diffusive_flux_z(i, j, k, grid, ExplicitTimeDiscretization(), closure, K, id, c, clk, fields, b),
                   zero(grid))
@@ -312,6 +313,7 @@ end
 @inline νᶜᶠᶠ(i, j, k, grid, loc, ν::Number, clk, fields) = ν
 @inline νᶠᶠᶜ(i, j, k, grid, loc, ν::Number, clk, fields) = ν
 
+@inline κᶜᶜᶜ(i, j, k, grid, loc, κ::Number, clk, fields) = κ
 @inline κᶠᶜᶜ(i, j, k, grid, loc, κ::Number, clk, fields) = κ
 @inline κᶜᶠᶜ(i, j, k, grid, loc, κ::Number, clk, fields) = κ
 @inline κᶜᶜᶠ(i, j, k, grid, loc, κ::Number, clk, fields) = κ

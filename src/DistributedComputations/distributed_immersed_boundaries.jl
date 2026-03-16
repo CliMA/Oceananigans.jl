@@ -68,7 +68,7 @@ resize_immersed_boundary(ib::GridFittedBoundary, grid) = ib
 function resize_immersed_boundary(ib::GridFittedBoundary{<:OffsetArray}, grid)
 
     Nx, Ny, Nz = size(grid)
-    Hx, Hy, Nz = halo_size(grid)
+    Hx, Hy, Hz = halo_size(grid)
 
     mask_size = (Nx, Ny, Nz) .+ 2 .* (Hx, Hy, Hz)
 

@@ -1,10 +1,11 @@
-using Oceananigans.Utils
-using Oceananigans.Fields
-using Oceananigans.Grids: NegativeZDirection, validate_unit_vector, architecture
-using Oceananigans.BoundaryConditions
+using Oceananigans.Architectures: architecture
+using Oceananigans.Utils: launch!
+using Oceananigans.Fields: XFaceField, YFaceField, ZFaceField
+using Oceananigans.Grids: NegativeZDirection, validate_unit_vector
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 
 using KernelAbstractions: @kernel, @index
-using Adapt
+using Adapt: Adapt
 
 struct BuoyancyForce{M, G, B}
     formulation :: M
@@ -34,7 +35,7 @@ g̃ = (0, -sind(θ), -cosd(θ))
 
 buoyancy = BuoyancyForce(BuoyancyTracer(), gravity_unit_vector=g̃)
 
-model = NonhydrostaticModel(; grid, buoyancy, tracers=:b)
+model = NonhydrostaticModel(grid; buoyancy, tracers=:b)
 
 # output
 
@@ -65,12 +66,12 @@ function BuoyancyForce(grid, formulation::AbstractBuoyancyFormulation; gravity_u
 end
 
 # Fallback for when no grid is available, we overwrite `materialize_gradients` to false
-BuoyancyForce(formulation::AbstractBuoyancyFormulation; materialize_gradients=false, kwargs...) = 
+BuoyancyForce(formulation::AbstractBuoyancyFormulation; materialize_gradients=false, kwargs...) =
     BuoyancyForce(nothing, formulation; materialize_gradients=false, kwargs...)
 
-Adapt.adapt_structure(to, bf::BuoyancyForce) = 
-    BuoyancyForce(Adapt.adapt(to, bf.formulation), 
-                  Adapt.adapt(to, bf.gravity_unit_vector), 
+Adapt.adapt_structure(to, bf::BuoyancyForce) =
+    BuoyancyForce(Adapt.adapt(to, bf.formulation),
+                  Adapt.adapt(to, bf.gravity_unit_vector),
                   Adapt.adapt(to, bf.gradients))
 
 @inline ĝ_x(bf) = @inbounds - bf.gravity_unit_vector[1]
@@ -100,7 +101,7 @@ materialize_buoyancy(formulation::AbstractBuoyancyFormulation, grid; kw...) = Bu
 
 # Fallback
 compute_buoyancy_gradients!(::BuoyancyForce{<:Any, <:Any, <:Nothing}, grid, tracers; kw...) = nothing
-compute_buoyancy_gradients!(::Nothing, grid, tracers; kw...) = nothing     
+compute_buoyancy_gradients!(::Nothing, grid, tracers; kw...) = nothing
 
 Base.summary(bf::BuoyancyForce) = string(summary(bf.formulation),
                                          " with ĝ = ",
@@ -126,7 +127,7 @@ end
 @inline ∂y_b(i, j, k, grid, b::BuoyancyForce, C) = @inbounds b.gradients.∂y_b[i, j, k]
 @inline ∂z_b(i, j, k, grid, b::BuoyancyForce, C) = @inbounds b.gradients.∂z_b[i, j, k]
 
-function compute_buoyancy_gradients!(buoyancy, grid, tracers; parameters=:xyz)     
+function compute_buoyancy_gradients!(buoyancy, grid, tracers; parameters=:xyz)
     gradients = buoyancy.gradients
     formulation = buoyancy.formulation
     launch!(architecture(grid), grid, parameters, _compute_buoyancy_gradients!, gradients, grid, formulation, tracers)

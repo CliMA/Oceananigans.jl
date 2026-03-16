@@ -1,10 +1,7 @@
-using Oceananigans
-using Oceananigans.Utils
-using Oceananigans.Grids: AbstractGrid
-
+using Oceananigans.Architectures: CPU
+using Oceananigans.Fields: Field, interior
+using Oceananigans.Grids: Grids, AbstractGrid
 using KernelAbstractions: @kernel, @index
-
-import Oceananigans.Grids: get_active_column_map, get_active_cells_map
 
 # REMEMBER: since the active map is stripped out of the grid when `Adapt`ing to the GPU,
 # The following types cannot be used to dispatch in kernels!!!
@@ -18,15 +15,15 @@ const WholeActiveCellsMapIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, 
 # (; halo_independent_cells), and the "halo-dependent" regions in the west, east, north, and south, respectively
 const SplitActiveCellsMapIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:NamedTuple}
 
-@inline get_active_column_map(grid::ActiveZColumnsIBG) = grid.active_z_columns
+@inline Grids.get_active_column_map(grid::ActiveZColumnsIBG) = grid.active_z_columns
 
-@inline get_active_cells_map(grid::WholeActiveCellsMapIBG, ::Val{:interior}) = grid.interior_active_cells
-@inline get_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:interior}) = grid.interior_active_cells.halo_independent_cells
-@inline get_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:west})     = grid.interior_active_cells.west_halo_dependent_cells
-@inline get_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:east})     = grid.interior_active_cells.east_halo_dependent_cells
-@inline get_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:south})    = grid.interior_active_cells.south_halo_dependent_cells
-@inline get_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:north})    = grid.interior_active_cells.north_halo_dependent_cells
-@inline get_active_cells_map(grid::ActiveZColumnsIBG,      ::Val{:surface})  = grid.active_z_columns
+@inline Grids.get_active_cells_map(grid::WholeActiveCellsMapIBG, ::Val{:interior}) = grid.interior_active_cells
+@inline Grids.get_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:interior}) = grid.interior_active_cells.halo_independent_cells
+@inline Grids.get_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:west})     = grid.interior_active_cells.west_halo_dependent_cells
+@inline Grids.get_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:east})     = grid.interior_active_cells.east_halo_dependent_cells
+@inline Grids.get_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:south})    = grid.interior_active_cells.south_halo_dependent_cells
+@inline Grids.get_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:north})    = grid.interior_active_cells.north_halo_dependent_cells
+@inline Grids.get_active_cells_map(grid::ActiveZColumnsIBG,      ::Val{:surface})  = grid.active_z_columns
 
 """
     linear_index_to_tuple(idx, map, grid)
@@ -177,4 +174,3 @@ function build_active_z_columns(grid, ib)
 
     return columns_map
 end
-

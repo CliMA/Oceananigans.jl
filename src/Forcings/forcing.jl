@@ -85,7 +85,7 @@ Note that because forcing locations are regularized within the
 
 ```jldoctest forcing
 grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-model = NonhydrostaticModel(grid=grid, forcing=(v=v_forcing,))
+model = NonhydrostaticModel(grid; forcing=(v=v_forcing,))
 
 model.forcing.v
 
@@ -184,4 +184,3 @@ Return a `Forcing` by a `FieldTimeSeries`, which can be added to the tendency of
 Forcing is computed by calling `fts[i, j, k, Time(clock.time)]`, so the `FieldTimeSeries` must have the spatial dimensions of the `grid`.
 """
 Forcing(fts::FlavorOfFTS) = Forcing(field_time_series_forcing_func; discrete_form=true, parameters=fts)
-

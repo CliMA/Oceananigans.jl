@@ -2,20 +2,17 @@
 ##### Utilities for launching kernels
 #####
 
-using Oceananigans.Architectures: Architectures
 using Adapt: Adapt
 using Base: @pure
-using KernelAbstractions: Kernel
+using KernelAbstractions: Kernel,
+                          ndrange, workgroupsize,
+                          __iterspace, __groupindex, __dynamic_checkbounds,
+                          CompilerMetadata
 using KernelAbstractions.NDIteration: NDIteration, NDRange, blocks, workitems, _Size
-
-using KernelAbstractions: ndrange, workgroupsize
-
-using KernelAbstractions: __iterspace, __groupindex, __dynamic_checkbounds
-using KernelAbstractions: CompilerMetadata
+using Oceananigans.Architectures: Architectures
 
 import Oceananigans
 import KernelAbstractions: get, expand, StaticSize
-import Base
 
 struct KernelParameters{S, O} end
 
@@ -414,7 +411,14 @@ end
 @inline getrange(::OffsetStaticSize{S}) where {S} = worksize(S), offsets(S)
 @inline getrange(::Type{OffsetStaticSize{S}}) where {S} = worksize(S), offsets(S)
 
-@inline offsets(ranges::NTuple{N, UnitRange}) where N = Tuple(r.start - 1 for r in ranges)::NTuple{N}
+# Makes sense to explicitly define the offsets for up to 3 dimensions,
+# since Oceananigans typically runs kernels with up to 3 dimensions.
+@inline offsets(ranges::NTuple{1, UnitRange}) = @inbounds (ranges[1].start - 1, )
+@inline offsets(ranges::NTuple{2, UnitRange}) = @inbounds (ranges[1].start - 1, ranges[2].start - 1)
+@inline offsets(ranges::NTuple{3, UnitRange}) = @inbounds (ranges[1].start - 1, ranges[2].start - 1, ranges[3].start - 1)
+
+# Generic case for any number of dimensions
+@inline offsets(ranges::NTuple{N, UnitRange}) where N = @inbounds Tuple(ranges[t].start - 1 for t in 1:N)
 
 @inline worksize(t::Tuple) = map(worksize, t)
 @inline worksize(sz::Int) = sz

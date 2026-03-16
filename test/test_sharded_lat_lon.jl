@@ -49,7 +49,7 @@ run_pencil_distributed_grid = """
     # Retrieve Serial quantities
     us, vs, ws = model.velocities
     cs = model.tracers.c
-    ηs = model.free_surface.η
+    ηs = model.free_surface.displacement
 
     us = interior(us, :, :, 10)
     vs = interior(vs, :, :, 10)
@@ -113,4 +113,3 @@ run_pencil_distributed_grid = """
     @test all(cs .≈ cp)
     @test all(ηs .≈ ηp)
 end
-

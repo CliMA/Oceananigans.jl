@@ -41,10 +41,8 @@ progress(sim) = @info "Iteration: $(iteration(sim)), time: $(time(sim))"
 
 #### Multi region model ----------------------------------------------------------
 
-model_1 = HydrostaticFreeSurfaceModel(; grid = mrg, momentum_advection, free_surface,
-                                    tracers = :T,
-                                    buoyancy = nothing,
-                                    closure = ScalarDiffusivity(ν=1e-4))
+model_1 = HydrostaticFreeSurfaceModel(mrg; momentum_advection, free_surface, tracers = :T,
+                                           closure = ScalarDiffusivity(ν=1e-4))
 
 set!(model_1, u=u_init_mrg, v=v_init_mrg)
 
@@ -69,10 +67,7 @@ v_1 = reconstruct_global_field(v)
 
 #### Single region model ----------------------------------------------------------
 
-model_2 = HydrostaticFreeSurfaceModel(; grid, momentum_advection, free_surface,
-                                    tracers = (),
-                                    buoyancy = nothing,
-                                    closure = ScalarDiffusivity(ν=1e-4))
+model_2 = HydrostaticFreeSurfaceModel(grid; momentum_advection, free_surface, closure = ScalarDiffusivity(ν=1e-4))
 
 set!(model_2, u=u_init, v=v_init)
 
@@ -91,4 +86,3 @@ elapsed_time = 1e-9 * (time_ns() - start_time)
 u_2, v_2, w = model_2.velocities
 
 ζ_2 = compute!(Field(∂x(v_2) - ∂y(u_2)))
-

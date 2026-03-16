@@ -10,7 +10,7 @@ struct UpwindBiased{N, FT, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
         new{N, FT, CA, SI}(buffer_scheme, advecting_velocity_scheme)
 end
 
-function UpwindBiased(FT::DataType = Float64; 
+function UpwindBiased(FT::DataType = Float64;
                       order = 3,
                       buffer_scheme = DecreasingOrderAdvectionScheme(),
                       minimum_buffer_upwind_order = 1)
@@ -48,7 +48,7 @@ Base.summary(a::UpwindBiased{N}) where N = string("UpwindBiased(order=", 2N-1, "
 function print_buffer_scheme_tree(io::IO, scheme, prefix::String, is_last::Bool)
     connector = is_last ? "└── " : "├── "
     print(io, prefix, connector, "buffer_scheme: ", summary(scheme))
-    
+
     # Check if this scheme has a nested buffer_scheme to display
     if hasproperty(scheme, :buffer_scheme) && !isnothing(scheme.buffer_scheme)
         println(io)

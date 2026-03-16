@@ -113,7 +113,7 @@ function ConditionalOperation(c::ConditionalOperation;
                               func = c.func,
                               condition = c.condition,
                               mask = c.mask)
-    condition = validate_condition(condition, operand)
+    condition = validate_condition(condition, c.operand)
     LX, LY, LZ = location(c)
     compined_func = func ∘ c.func
 
@@ -124,7 +124,7 @@ function ConditionalOperation(c::NoFuncCO;
                               func = c.func,
                               condition = c.condition,
                               mask = c.mask)
-    condition = validate_condition(condition, operand)
+    condition = validate_condition(condition, c.operand)
     LX, LY, LZ = location(c)
     return ConditionalOperation{LX, LY, LZ}(c.operand, func, c.grid, condition, mask)
 end

@@ -11,7 +11,7 @@ using Benchmarks
 function benchmark_advection_scheme(Arch, Scheme, order)
     grid = RectilinearGrid(Arch(); size=(192, 192, 192), extent=(1, 1, 1))
     order = Scheme == Centered ? order + 1 : order
-    model = NonhydrostaticModel(grid=grid, advection=Scheme(; order))
+    model = NonhydrostaticModel(grid; advection=Scheme(; order))
 
     time_step!(model, 1) # warmup
 

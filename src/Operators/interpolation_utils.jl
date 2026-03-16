@@ -1,4 +1,3 @@
-using Random
 using Oceananigans.Utils: instantiate
 using Oceananigans.Grids: Face, Center
 

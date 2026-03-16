@@ -38,7 +38,7 @@ lagrangian_particles = LagrangianParticles(x=x₀, y=y₀, z=z₀)
 then pass it to a model constructor
 
 ```jldoctest particles
-model = NonhydrostaticModel(grid=grid, particles=lagrangian_particles)
+model = NonhydrostaticModel(grid; particles=lagrangian_particles)
 
 # output
 NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
@@ -117,7 +117,7 @@ x₀ = zeros(Nparticles)
 y₀ = rand(Nparticles)
 z₀ = -0.5 * ones(Nparticles)
 lagrangian_particles = LagrangianParticles(x=x₀, y=y₀, z=z₀)
-model = NonhydrostaticModel(; grid, particles=lagrangian_particles)
+model = NonhydrostaticModel(grid; particles=lagrangian_particles)
 ```
 
 ```@example particles

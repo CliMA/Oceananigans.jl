@@ -11,7 +11,11 @@ export
     # Grids
     Center, Face,
     Periodic, Bounded, Flat,
-    RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, TripolarGrid,
+    RightConnected, LeftConnected, FullyConnected,
+    RightFaceFolded, RightCenterFolded,
+    RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
+    TripolarGrid, RotatedLatitudeLongitudeGrid,
+    MutableVerticalDiscretization,
     ExponentialDiscretization, ReferenceToStretchedDiscretization, PowerLawStretching, LinearStretching,
     nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
     xspacings, yspacings, rspacings, zspacings, λspacings, φspacings,
@@ -47,7 +51,7 @@ export
     Forcing, Relaxation, LinearTarget, GaussianMask, PiecewiseLinearMask, AdvectiveForcing,
 
     # Coriolis forces
-    FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane,
+    FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane, HydrostaticSphericalCoriolis,
 
     # BuoyancyFormulations and equations of state
     BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy,
@@ -80,10 +84,12 @@ export
     NonhydrostaticModel, HydrostaticFreeSurfaceModel, ShallowWaterModel,
     ConservativeFormulation, VectorInvariantFormulation,
     PressureField, fields, ZCoordinate, ZStarCoordinate,
+    BulkDrag, LinearFormulation, QuadraticFormulation,
+    BoundaryConditionOperation,
 
     # Hydrostatic free surface model stuff
     VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
-    HydrostaticSphericalCoriolis, PrescribedVelocityFields,
+    SphericalCoriolis, PrescribedVelocityFields,
 
     # Time stepping
     Clock, TimeStepWizard, conjure_time_step_wizard!, time_step!,
@@ -130,7 +136,7 @@ end
 # List of fully-supported floating point types where applicable.
 # Currently used only in the Advection module to specialize
 # reconstruction schemes (WENO, UpwindBiased, and Centered).
-const fully_supported_float_types = (Float32, Float64)
+const fully_supported_float_types = (Float32, Float64, BigFloat)
 
 #####
 ##### Default settings for constructors
@@ -204,6 +210,8 @@ function instantiated_location end
 function tupleit end
 function fields end
 function prognostic_fields end
+function prognostic_state end
+function restore_prognostic_state! end
 function tracer_tendency_kernel_function end
 function boundary_conditions end
 

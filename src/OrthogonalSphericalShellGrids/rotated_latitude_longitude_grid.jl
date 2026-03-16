@@ -57,7 +57,7 @@ z = (0, 1)
 grid = RotatedLatitudeLongitudeGrid(; size, longitude, latitude, z, north_pole=(70, 55))
 
 # output
-90×40×1 OrthogonalSphericalShellGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+90×40×1 OrthogonalSphericalShellGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── centered at (λ, φ) = (-110.0, 35.0)
 ├── longitude: Periodic  extent 360.0 degrees variably spaced with min(Δλ)=0.694593, max(Δλ)=4.0
 ├── latitude:  Bounded  extent 160.0 degrees  variably spaced with min(Δφ)=4.0, max(Δφ)=4.0
@@ -72,7 +72,7 @@ We can also make an ordinary LatitudeLongitudeGrid using `north_pole = (0, 90)`:
 grid = RotatedLatitudeLongitudeGrid(; size, longitude, latitude, z, north_pole=(0, 90))
 
 # output
-90×40×1 OrthogonalSphericalShellGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+90×40×1 OrthogonalSphericalShellGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── centered at (λ, φ) = (180.0, 0.0)
 ├── longitude: Periodic  extent 360.0 degrees variably spaced with min(Δλ)=0.694593, max(Δλ)=4.0
 ├── latitude:  Bounded  extent 160.0 degrees  variably spaced with min(Δφ)=4.0, max(Δφ)=4.0

@@ -1,5 +1,5 @@
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.TimeSteppers: update_state!, compute_pressure_correction!, make_pressure_correction!
+using Oceananigans.TimeSteppers: update_state!
 
 import Oceananigans.Fields: set!
 
@@ -14,8 +14,11 @@ a function with arguments `(x, y, z)`, or any data type for which a
 
 Example
 =======
-```julia
-model = NonhydrostaticModel(grid=RectilinearGrid(size=(32, 32, 32), length=(1, 1, 1))
+
+```@example
+using Oceananigans
+grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
+model = NonhydrostaticModel(grid, tracers=:T)
 
 # Set u to a parabolic function of z, v to random numbers damped
 # at top and bottom, and T to some silly array of half zeros,
@@ -28,6 +31,8 @@ T₀ = rand(size(model.grid)...)
 T₀[T₀ .< 0.5] .= 0
 
 set!(model, u=u₀, v=v₀, T=T₀)
+
+model.tracers.T
 ```
 """
 function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs...)
@@ -49,13 +54,13 @@ function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs
     # Apply a mask
     foreach(mask_immersed_field!, model.tracers)
     foreach(mask_immersed_field!, model.velocities)
-    update_state!(model; compute_tendencies = false)
+    update_state!(model)
 
     if enforce_incompressibility
         FT = eltype(model.grid)
         compute_pressure_correction!(model, one(FT))
         make_pressure_correction!(model, one(FT))
-        update_state!(model; compute_tendencies = false)
+        update_state!(model)
     end
 
     return nothing

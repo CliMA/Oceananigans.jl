@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 include("dependencies_for_poisson_solvers.jl")
 
 using Oceananigans.Solvers: fft_poisson_solver, ConjugateGradientPoissonSolver, DiagonallyDominantPreconditioner
-using Oceananigans.TimeSteppers: compute_pressure_correction!
+using Oceananigans.Models.NonhydrostaticModels: compute_pressure_correction!
 using Oceananigans.Grids: XYZRegularRG
 using LinearAlgebra: norm
 using Random: seed!
@@ -97,10 +97,8 @@ function test_conjugate_gradient_with_nonhydrostatic_model(grid, preconditioner)
     seed!(198)  # For reproducible results
 
     # Create model with CG pressure solver using specified preconditioner
-    model = NonhydrostaticModel(
-        grid = grid,
-        pressure_solver = ConjugateGradientPoissonSolver(grid, preconditioner=preconditioner, maxiter=50)
-    )
+    pressure_solver = ConjugateGradientPoissonSolver(grid, preconditioner=preconditioner, maxiter=50)
+    model = NonhydrostaticModel(grid; pressure_solver)
 
     @test model.pressure_solver isa ConjugateGradientPoissonSolver
 
@@ -156,9 +154,9 @@ function test_conjugate_gradient_with_immersed_boundary_grid_and_flux_boundary_c
     @info "  Testing CGSolver with ImmersedBoundaryGrid with a flux boundary condition using $preconditioner_name..."
 
     grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(-0.5))
-    model = NonhydrostaticModel(; grid,
-                                  pressure_solver = ConjugateGradientPoissonSolver(grid),
-                                  boundary_conditions = (; u = FieldBoundaryConditions(top=FluxBoundaryCondition(1.0))))
+    model = NonhydrostaticModel(grid;
+                                pressure_solver = ConjugateGradientPoissonSolver(grid),
+                                boundary_conditions = (; u = FieldBoundaryConditions(top=FluxBoundaryCondition(1.0))))
     @test model.pressure_solver isa ConjugateGradientPoissonSolver
 
     time_step!(model, 1)
@@ -167,7 +165,7 @@ function test_conjugate_gradient_with_immersed_boundary_grid_and_flux_boundary_c
     return nothing
 end
 
-function test_CGSolver_with_immersed_boundary_and_open_boundaries(underlying_grid, preconditioner, immersed_bottom)
+function test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_grid, preconditioner, immersed_bottom)
     preconditioner_name = typeof(preconditioner).name.wrapper
     immersed_bottom_name = typeof(immersed_bottom).name.wrapper
     underlying_grid_name = underlying_grid isa XYZRegularRG ? "regular grid" : "stretched grid"
@@ -182,10 +180,10 @@ function test_CGSolver_with_immersed_boundary_and_open_boundaries(underlying_gri
     U = 1
     inflow_timescale = 1e-4
     outflow_timescale = Inf
-    u_boundaries = FieldBoundaryConditions(west = OpenBoundaryCondition(U; scheme = PerturbationAdvection(inflow_timescale, outflow_timescale)),
-                                           east = OpenBoundaryCondition(U; scheme = PerturbationAdvection(inflow_timescale, outflow_timescale)))
+    u_boundaries = FieldBoundaryConditions(west = OpenBoundaryCondition(U; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)),
+                                           east = OpenBoundaryCondition(U; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)))
 
-    model = NonhydrostaticModel(grid = grid,
+    model = NonhydrostaticModel(grid;
                                 boundary_conditions = (u = u_boundaries,),
                                 pressure_solver = cg_solver,
                                 advection = WENO(order=5))
@@ -297,16 +295,16 @@ end
             bottom = GridFittedBottom(-0.6)
             for (underlying_grid_name, underlying_grid) in underlying_grids
                 @info "  Testing $underlying_grid_name with different bottom types and open boundary conditions [$(typeof(arch))]..."
-                @test test_CGSolver_with_immersed_boundary_and_open_boundaries(underlying_grid, DiagonallyDominantPreconditioner(), bottom)
-                @test test_CGSolver_with_immersed_boundary_and_open_boundaries(underlying_grid, fft_poisson_solver(underlying_grid), bottom)
+                @test test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_grid, DiagonallyDominantPreconditioner(), bottom)
+                @test test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_grid, fft_poisson_solver(underlying_grid), bottom)
             end
         end
 
         @testset "Conjugate gradient solver with ImmersedBoundaryGrid, a PartialCellBottom and open boundary conditions [$(typeof(arch))]" begin
             bottom = PartialCellBottom(-0.5)
             for (underlying_grid_name, underlying_grid) in underlying_grids
-                @test test_CGSolver_with_immersed_boundary_and_open_boundaries(underlying_grid, DiagonallyDominantPreconditioner(), bottom)
-                @test test_CGSolver_with_immersed_boundary_and_open_boundaries(underlying_grid, fft_poisson_solver(underlying_grid), bottom)
+                @test test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_grid, DiagonallyDominantPreconditioner(), bottom)
+                @test test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_grid, fft_poisson_solver(underlying_grid), bottom)
             end
         end
 
@@ -314,8 +312,8 @@ end
             sinusoidal_bottom(x, y) = -0.8 + 0.1 * sin(2π * x) * cos(2π * y)
             bottom = GridFittedBottom(sinusoidal_bottom)
             for (underlying_grid_name, underlying_grid) in underlying_grids
-                @test test_CGSolver_with_immersed_boundary_and_open_boundaries(underlying_grid, DiagonallyDominantPreconditioner(), bottom)
-                @test test_CGSolver_with_immersed_boundary_and_open_boundaries(underlying_grid, fft_poisson_solver(underlying_grid), bottom)
+                @test test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_grid, DiagonallyDominantPreconditioner(), bottom)
+                @test test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_grid, fft_poisson_solver(underlying_grid), bottom)
             end
         end
     end

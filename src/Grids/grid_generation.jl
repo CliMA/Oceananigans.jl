@@ -68,9 +68,9 @@ function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name
 
     # Trim face locations for periodic domains
     TF = total_length(Face(), topo, N, H)
-    F  = F[1:TF]
+    trimmed_F = F[1:TF]
 
-    Δᶜ = [F[i + 1] - F[i] for i = 1:TF-1]
+    Δᶜ = [trimmed_F[i + 1] - trimmed_F[i] for i = 1:TF-1]
 
     Δᶠ = [Δᶠ[1], Δᶠ..., Δᶠ[end]]
     for i = length(Δᶠ):-1:2
@@ -80,18 +80,52 @@ function generate_coordinate(FT, topo::AT, N, H, node_generator, coordinate_name
     Δᶜ = OffsetArray(on_architecture(arch, Δᶜ), -H)
     Δᶠ = OffsetArray(on_architecture(arch, Δᶠ), -H - 1)
 
-    F = OffsetArray(F, -H)
-    C = OffsetArray(C, -H)
+    OF = OffsetArray(trimmed_F, -H)
+    OC = OffsetArray(        C, -H)
 
     # Convert to appropriate array type for arch
-    F = OffsetArray(on_architecture(arch, F.parent), F.offsets...)
-    C = OffsetArray(on_architecture(arch, C.parent), C.offsets...)
+    OF = OffsetArray(on_architecture(arch, OF.parent), OF.offsets...)
+    OC = OffsetArray(on_architecture(arch, OC.parent), OC.offsets...)
 
     if coordinate_name == :z
-        return L, StaticVerticalDiscretization(F, C, Δᶠ, Δᶜ)
+        return L, StaticVerticalDiscretization(OF, OC, Δᶠ, Δᶜ)
     else
-        return L, F, C, Δᶠ, Δᶜ
+        return L, OF, OC, Δᶠ, Δᶜ
     end
+end
+
+# Special case for tripolar grids.
+# For RightCenterFolded, we want to generate coordinates that start and end at center locations,
+# but the default `generate_coordinate` assumes that the interval is located on faces,
+# so we must extend the interval by half a cell on both sides:
+# Example with N = 4
+# interval wanted:          c₁                      c₂
+#                           │◀───────── L ─────────▶│
+#                           │◀─ Δ ─▶│               │
+# face and centers:     f   c   f   c   f   c   f   c   f
+#                       │                               │
+# extended interval:    f₁                              f₂
+extend_node_interval(::AT, N, node_interval::Tuple{<:Number, <:Number}) = node_interval
+function extend_node_interval(::RightCenterFolded, N, node_interval::Tuple{<:Number, <:Number})
+    c₁, c₂ = @. BigFloat(node_interval)
+    L = c₂ - c₁
+    Δ = L / (N - 1)
+    return (c₁ - Δ/2, c₂ + Δ/2)
+end
+# For RightFaceFolded, we want to generate coordinates that start and end at face locations,
+# but we have an extra row at Ny, so we must extend the interval by one cell on the right:
+# Example with N = 4
+# interval wanted:      c₁                      c₂
+#                       │◀───────── L ─────────▶│
+#                       │◀─ Δ ─▶│               │
+# face and centers:     f   c   f   c   f   c   f   c   f
+#                       │                               │
+# extended interval:    f₁                              f₂
+function extend_node_interval(::RightFaceFolded, N, node_interval::Tuple{<:Number, <:Number})
+    c₁, c₂ = @. BigFloat(node_interval)
+    L = c₂ - c₁
+    Δ = L / (N - 1)
+    return (c₁, c₂ + Δ)
 end
 
 # Generate a regularly-spaced coordinate passing the domain extent (2-tuple) and number of points
@@ -101,6 +135,8 @@ function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, 
         msg = "$coordinate_name must be an increasing interval!"
         throw(ArgumentError(msg))
     end
+
+    node_interval = extend_node_interval(topo, N, node_interval)
 
     c₁, c₂ = @. BigFloat(node_interval)
     @assert c₁ < c₂

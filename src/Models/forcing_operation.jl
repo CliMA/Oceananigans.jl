@@ -35,7 +35,7 @@ grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
 
 damping(x, y, z, t, c, τ) = - c / τ
 c_forcing = Forcing(damping, field_dependencies=:c, parameters=60)
-model = NonhydrostaticModel(; grid, tracers=:c, forcing=(; c=c_forcing))
+model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=c_forcing))
 
 c_forcing_op = ForcingOperation(:c, model)
 

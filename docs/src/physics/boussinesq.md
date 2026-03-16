@@ -50,4 +50,3 @@ abuse notation a bit and denote the kinematic pressure simply as ``p``.
       for an oceanographic introduction to the Boussinesq equations and Vallis (2017, Section 2.A)
       for an asymptotic derivation. See Kundu (2015, Section 4.9) for an engineering
       introduction.
-

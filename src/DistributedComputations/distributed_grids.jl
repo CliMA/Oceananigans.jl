@@ -1,15 +1,17 @@
 using MPI
 using OffsetArrays
-using Oceananigans.Utils: getnamewrapper
-using Oceananigans.Grids: AbstractGrid, topology, size, halo_size, architecture, pop_flat_elements
-using Oceananigans.Grids: validate_rectilinear_grid_args, validate_lat_lon_grid_args
-using Oceananigans.Grids: generate_coordinate, with_precomputed_metrics
-using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
-using Oceananigans.Grids: metrics_precomputed
 
 using Oceananigans.Fields
+using Oceananigans.Grids: AbstractGrid, topology, size, halo_size, architecture, pop_flat_elements,
+                          validate_rectilinear_grid_args, validate_lat_lon_grid_args,
+                          generate_coordinate, with_precomputed_metrics,
+                          cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
+                          metrics_precomputed, constructor_arguments
+using Oceananigans.Utils: getnamewrapper
 
-import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, with_halo
+
+import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid,
+                           with_halo, with_number_type, size_summary
 
 const DistributedGrid{FT, TX, TY, TZ} = Union{
     AbstractGrid{FT, TX, TY, TZ, <:Distributed{<:CPU}},
@@ -355,6 +357,8 @@ in `T` direction (`R`) and the local rank index `r`.
 
 If all ranks have `FullyConnected` topologies, the global topology is `Periodic`;
 otherwise it is `Bounded`.
+
+This version uses MPI communication to gather topology information from all ranks.
 """
 function reconstruct_global_topology(T, R, r, r1, r2, arch)
     if R == 1
@@ -373,4 +377,49 @@ function reconstruct_global_topology(T, R, r, r1, r2, arch)
     else
         return Bounded
     end
+end
+
+"""
+    reconstruct_global_topology(local_topologies, R)
+
+Reconstruct global topology from a collection of local topologies without MPI.
+
+If `R == 1`, returns the single topology. Otherwise, if all local topologies
+are `FullyConnected`, returns `Periodic`; otherwise returns `Bounded`.
+
+This is an offline version that works with pre-collected topology information
+(e.g., from JLD2 files), in contrast to the MPI-based version above.
+"""
+function reconstruct_global_topology(local_topologies::AbstractVector, R::Int)
+    R == 1 && return first(local_topologies)
+    return all(==(FullyConnected), local_topologies) ? Periodic : Bounded
+end
+
+function with_number_type(FT, local_grid::DistributedRectilinearGrid)
+    global_grid = reconstruct_global_grid(local_grid)
+    args_local, _ = constructor_arguments(local_grid)
+    _, kwargs_global = constructor_arguments(global_grid)
+    arch = args_local[:architecture]
+    kwargs = kwargs_global
+    return RectilinearGrid(arch, FT; kwargs...)
+end
+
+#####
+##### Show
+#####
+
+function size_summary(grid::DistributedGrid)
+    local_summary = size_summary(size(grid))
+    arch = architecture(grid)
+
+    Rx, Ry, Rz = arch.ranks
+    Nr = prod(arch.ranks)
+
+    distributed_info = if Nr == 1
+        "(distributed on 1 rank)"
+    else
+        "(distributed across $Rx×$Ry×$Rz ranks)"
+    end
+
+    return string(local_summary, " ", distributed_info)
 end

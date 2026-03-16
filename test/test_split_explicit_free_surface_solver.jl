@@ -33,7 +33,7 @@ clock = Clock(time=0)
             sefs = SplitExplicitFreeSurface(substeps = 200, averaging_kernel = constant_averaging_kernel)
             sefs = materialize_free_surface(sefs, velocities, grid)
 
-            sefs.η .= 0
+            sefs.displacement .= 0
             GU = Field{Face, Center, Nothing}(grid)
             GV = Field{Center, Face, Nothing}(grid)
 
@@ -42,7 +42,7 @@ clock = Clock(time=0)
                 U, V  = sefs.barotropic_velocities
                 η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
 
-                η = sefs.η
+                η = sefs.displacement
                 Δτ = 1.0
 
                 η₀(x, y, z) = sin(x)
@@ -63,7 +63,7 @@ clock = Clock(time=0)
                 state = sefs.filtered_state
                 U, V = sefs.barotropic_velocities
                 η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
-                η = sefs.η
+                η = sefs.displacement
 
                 T  = 2π
                 Δτ = 2π / maximum([Nx, Ny]) * 5e-2 # the last factor is essentially the order of accuracy
@@ -106,13 +106,13 @@ clock = Clock(time=0)
             sefs = SplitExplicitFreeSurface(substeps = 200, averaging_kernel = constant_averaging_kernel)
             sefs = materialize_free_surface(sefs, velocities, grid)
 
-            sefs.η .= 0
+            sefs.displacement .= 0
 
             @testset "Averaging / Do Nothing test " begin
                 state = sefs.filtered_state
                 U, V  = sefs.barotropic_velocities
                 η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
-                η = sefs.η
+                η = sefs.displacement
                 g = sefs.gravitational_acceleration
 
                 Δτ = 2π / maximum([Nx, Ny]) * 1e-2 # the last factor is essentially the order of accuracy
@@ -130,7 +130,6 @@ clock = Clock(time=0)
                 fill!(V̅ , 0)
                 fill!(GU, 0)
                 fill!(GV, 0)
-
 
                 Nsubsteps  = calculate_substeps(sefs.substepping, 1)
                 fractional_Δt, weights, transport_weights = calculate_adaptive_settings(sefs.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
@@ -176,7 +175,7 @@ clock = Clock(time=0)
                 state = sefs.filtered_state
                 U, V = sefs.barotropic_velocities
                 η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
-                η = sefs.η
+                η = sefs.displacement
                 g = sefs.gravitational_acceleration
 
                 # set!(η, f(x, y)) k² = ω²

@@ -8,7 +8,10 @@ export
     PrescribedVelocityFields, PressureField,
     LagrangianParticles, DroguedParticleDynamics,
     BoundaryConditionOperation, ForcingOperation,
-    seawater_density
+    seawater_density,
+    BulkDrag, BulkDragFunction, BulkDragBoundaryCondition,
+    XDirectionBulkDragFunction, YDirectionBulkDragFunction, ZDirectionBulkDragFunction,
+    LinearFormulation, QuadraticFormulation
 
 using Oceananigans: AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation
@@ -23,25 +26,22 @@ import Oceananigans: initialize!
 import Oceananigans.Architectures: architecture
 import Oceananigans.Fields: set!
 import Oceananigans.Solvers: iteration
-import Oceananigans.Simulations: timestepper
+import Oceananigans.OutputWriters: default_included_properties
 import Oceananigans.TimeSteppers: reset!
 
 # A prototype interface for AbstractModel.
 #
-# TODO: decide if we like this.
-#
-# We assume that model has some properties, eg:
+# We assume that model has some properties:
 #   - model.clock::Clock
-#   - model.architecture.
-#   - model.timestepper with timestepper.G⁻ and timestepper.Gⁿ :spiral_eyes:
+#
+# Models with grids should override `architecture` and `eltype`.
 
 iteration(model::AbstractModel) = model.clock.iteration
 Base.time(model::AbstractModel) = model.clock.time
-Base.eltype(model::AbstractModel) = eltype(model.grid)
-architecture(model::AbstractModel) = model.grid.architecture
+Base.eltype(model::AbstractModel) = Float64
+architecture(model::AbstractModel) = nothing
 initialize!(model::AbstractModel) = nothing
 total_velocities(model::AbstractModel) = nothing
-timestepper(model::AbstractModel) = model.timestepper
 initialization_update_state!(model::AbstractModel; kw...) = update_state!(model; kw...) # fallback
 
 # Fallback for any abstract model that does not contain `FieldTimeSeries`es
@@ -114,9 +114,19 @@ using .HydrostaticFreeSurfaceModels:
 using .ShallowWaterModels: ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation
 using .LagrangianParticleTracking: LagrangianParticles, DroguedParticleDynamics
 
+# BulkDrag for quadratic drag boundary conditions
+include("BulkDragBoundaryConditions.jl")
+using .BulkDragBoundaryConditions: BulkDrag, BulkDragFunction, BulkDragBoundaryCondition,
+                                  XDirectionBulkDragFunction, YDirectionBulkDragFunction, ZDirectionBulkDragFunction,
+                                  LinearFormulation, QuadraticFormulation
+
 const OceananigansModels = Union{HydrostaticFreeSurfaceModel,
                                  NonhydrostaticModel,
                                  ShallowWaterModel}
+
+# OceananigansModels have grids, so we can use grid-based implementations
+Base.eltype(model::OceananigansModels) = eltype(model.grid)
+architecture(model::OceananigansModels) = model.grid.architecture
 
 set!(model::OceananigansModels, new_clock::Clock) = set!(model.clock, new_clock)
 
@@ -193,8 +203,7 @@ default_nan_checker(::OnlyParticleTrackingModel) = nothing
 
 # Extend output writer functionality to custom Oceananigans.Models
 import Oceananigans.OutputWriters: default_included_properties,
-                                   checkpointer_address,
-                                   required_checkpoint_properties
+                                   checkpointer_address
 
 default_included_properties(::NonhydrostaticModel) = [:grid, :coriolis, :buoyancy, :closure]
 default_included_properties(::HydrostaticFreeSurfaceModel) = [:grid, :coriolis, :buoyancy, :closure]
@@ -204,16 +213,7 @@ checkpointer_address(::ShallowWaterModel) = "ShallowWaterModel"
 checkpointer_address(::NonhydrostaticModel) = "NonhydrostaticModel"
 checkpointer_address(::HydrostaticFreeSurfaceModel) = "HydrostaticFreeSurfaceModel"
 
-function required_checkpoint_properties(model::OceananigansModels)
-    properties = [:grid, :clock]
-    if !isnothing(timestepper(model))
-       push!(properties, :timestepper)
-    end
-    if !isnothing(model.particles)
-       push!(properties, :particles)
-    end
-    return properties
-end
+default_included_properties(::OceananigansModels) = [:grid]
 
 # Implementation of diagnostics applicable to both `NonhydrostaticModel` and `HydrostaticFreeSurfaceModel`
 include("seawater_density.jl")

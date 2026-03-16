@@ -1,37 +1,115 @@
 include("dependencies_for_runtests.jl")
 
 using AMDGPU
+using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
 
-@testset "AMDGPU extension" begin
+function build_and_timestep_simulation(model)
+    FT = eltype(model)
+
+    for field in merge(model.velocities, model.tracers)
+        @test parent(field) isa ROCArray
+    end
+
+    simulation = Simulation(model, Δt=1minute, stop_iteration=3, verbose=false)
+    run!(simulation)
+
+    @test iteration(simulation) == 3
+    @test time(simulation) ≈ FT(3minutes)
+
+    return nothing
+end
+
+@testset "AMDGPU on RectilinearGrids" begin
+    roc = AMDGPU.ROCBackend()
+    arch = GPU(roc)
+
+    for FT in float_types
+        @info "Testing grids on $arch with $FT..."
+
+        regular_grid = RectilinearGrid(arch, FT, size=(4, 8, 16), x=(0, 4), y=(0, 1), z=(0, 16))
+        horizontally_stretched_grid = RectilinearGrid(arch, FT, size=(4, 8, 16), x=[0, 1, 2, 3, 4], y=(0, 1), z=(0, 16))
+        vertically_stretched_grid = RectilinearGrid(arch, FT, size=(16, 8, 4), x=(0, 16), y=(0, 1), z=[0, 1, 2, 3, 4])
+
+        @test parent(horizontally_stretched_grid.xᶠᵃᵃ) isa ROCArray
+        @test parent(horizontally_stretched_grid.xᶜᵃᵃ) isa ROCArray
+
+        @test parent(vertically_stretched_grid.z.cᵃᵃᶠ) isa ROCArray
+        @test parent(vertically_stretched_grid.z.cᵃᵃᶜ) isa ROCArray
+        @test parent(vertically_stretched_grid.z.Δᵃᵃᶠ) isa ROCArray
+        @test parent(vertically_stretched_grid.z.Δᵃᵃᶜ) isa ROCArray
+
+        for grid in (regular_grid, horizontally_stretched_grid, vertically_stretched_grid)
+            @test eltype(grid) == FT
+            @test architecture(grid) isa GPU
+        end
+
+        @info "Testing HydrostaticFreeSurfaceModel on $arch with $FT..."
+
+        coriolis = FPlane(latitude=45)
+        buoyancy = BuoyancyTracer()
+        tracers = :b
+        advection = WENO(order=5)
+
+        for grid in (regular_grid, horizontally_stretched_grid, vertically_stretched_grid)
+            momentum_advection = tracer_advection = advection
+
+            free_surface = SplitExplicitFreeSurface(grid; substeps=60)
+
+            model = HydrostaticFreeSurfaceModel(grid; free_surface,
+                                                coriolis, buoyancy, tracers,
+                                                momentum_advection, tracer_advection)
+
+            build_and_timestep_simulation(model)
+        end
+
+        @info "Testing NonhydrostaticModel on $arch with $FT..."
+
+        for grid in (regular_grid, vertically_stretched_grid)
+            model_kw = (; coriolis, buoyancy, tracers, advection)
+            cg_solver = Oceananigans.Solvers.ConjugateGradientPoissonSolver(grid;
+                maxiter=10, reltol=1e-7, abstol=1e-7, preconditioner=nothing)
+
+            # With default pressure solver
+            model = NonhydrostaticModel(grid; model_kw...)
+            build_and_timestep_simulation(model)
+
+            # With CG pressure solver
+            model = NonhydrostaticModel(grid; pressure_solver=cg_solver, model_kw...)
+            build_and_timestep_simulation(model)
+        end
+    end
+end
+
+@testset "AMDGPU on LatitudeLongitudeGrid with HydrostaticFreeSurfaceModel" begin
     roc = AMDGPU.ROCBackend()
     arch = GPU(roc)
 
     for FT in float_types
         @info "    Testing on $arch with $FT"
 
-        grid = RectilinearGrid(arch, FT, size=(4, 8, 16), x=[0, 1, 2, 3, 4], y=(0, 1), z=(0, 16))
+        grid = LatitudeLongitudeGrid(arch, FT, size=(4, 8, 16), longitude=(-60, 60), latitude=(0, 60), z=(0, 1))
 
-        @test parent(grid.xᶠᵃᵃ) isa ROCArray
-        @test parent(grid.xᶜᵃᵃ) isa ROCArray
+        @test parent(grid.Δxᶜᶜᵃ) isa ROCArray
+        @test parent(grid.Δxᶠᶜᵃ) isa ROCArray
+        @test parent(grid.Δxᶜᶠᵃ) isa ROCArray
+        @test parent(grid.Δxᶠᶠᵃ) isa ROCArray
+        @test parent(grid.Azᶜᶜᵃ) isa ROCArray
+        @test parent(grid.Azᶠᶜᵃ) isa ROCArray
+        @test parent(grid.Azᶜᶠᵃ) isa ROCArray
+        @test parent(grid.Azᶠᶠᵃ) isa ROCArray
         @test eltype(grid) == FT
         @test architecture(grid) isa GPU
 
-        model = HydrostaticFreeSurfaceModel(; grid,
+        equation_of_state = TEOS10EquationOfState()
+        buoyancy = SeawaterBuoyancy(; equation_of_state)
+
+        model = HydrostaticFreeSurfaceModel(grid; buoyancy,
                                             coriolis = FPlane(latitude=45),
-                                            buoyancy = BuoyancyTracer(),
-                                            tracers = :b,
+                                            tracers = (:T, :S),
                                             momentum_advection = WENO(order=5),
                                             tracer_advection = WENO(order=5),
                                             free_surface = SplitExplicitFreeSurface(grid; substeps=60))
 
-        for field in merge(model.velocities, model.tracers)
-            @test parent(field) isa ROCArray
-        end
-
-        simulation = Simulation(model, Δt=1minute, stop_iteration=3)
-        run!(simulation)
-
-        @test iteration(simulation) == 3
-        @test time(simulation) == 3minutes
+        build_and_timestep_simulation(model)
     end
 end

@@ -1,4 +1,3 @@
-import Adapt
 using Oceananigans.Utils: prettysummary
 
 struct ScalarDiffusivity{TD, F, N, V, K} <: AbstractScalarDiffusivity{TD, F, N}
@@ -185,7 +184,7 @@ Shorthand for a `ScalarDiffusivity` with `HorizontalDivergenceFormulation()`. Se
           HorizontalScalarDiffusivity(FT::DataType; kwargs...) = ScalarDiffusivity(ExplicitTimeDiscretization(), HorizontalFormulation(), FT; kwargs...)
 HorizontalDivergenceScalarDiffusivity(FT::DataType; kwargs...) = ScalarDiffusivity(ExplicitTimeDiscretization(), HorizontalDivergenceFormulation(), FT; kwargs...)
 
-@inline function with_tracers(tracers, closure::ScalarDiffusivity{TD, F, N}) where {TD, F, N}
+@inline function Utils.with_tracers(tracers, closure::ScalarDiffusivity{TD, F, N}) where {TD, F, N}
     κ = tracer_diffusivities(tracers, closure.κ)
     return ScalarDiffusivity{TD, F, N}(closure.ν, κ)
 end
@@ -193,14 +192,7 @@ end
 @inline viscosity(closure::ScalarDiffusivity, K) = closure.ν
 @inline diffusivity(closure::ScalarDiffusivity, K, ::Val{id}) where id = closure.κ[id]
 
-compute_diffusivities!(diffusivities, ::ScalarDiffusivity, args...) = nothing
-
-# Note: we could compute ν and κ (if they are Field):
-# function compute_diffusivities!(diffusivities, closure::ScalarDiffusivity, args...)
-#     compute!(viscosity(closure, diffusivities))
-#     !isnothing(closure.κ) && Tuple(compute!(diffusivity(closure, Val(c), diffusivities) for c=1:length(closure.κ)))
-#     return nothing
-# end
+compute_closure_fields!(closure_fields, ::ScalarDiffusivity, args...) = nothing
 
 function Base.summary(closure::ScalarDiffusivity)
     TD = summary(time_discretization(closure))
@@ -224,7 +216,7 @@ function Adapt.adapt_structure(to, closure::ScalarDiffusivity{TD, F, <:Any, <:An
     return ScalarDiffusivity{TD, F, N}(ν, κ)
 end
 
-function on_architecture(to, closure::ScalarDiffusivity{TD, F, <:Any, <:Any, N}) where {TD, F, N}
+function Architectures.on_architecture(to, closure::ScalarDiffusivity{TD, F, <:Any, <:Any, N}) where {TD, F, N}
     ν = on_architecture(to, closure.ν)
     κ = on_architecture(to, closure.κ)
     return ScalarDiffusivity{TD, F, N}(ν, κ)

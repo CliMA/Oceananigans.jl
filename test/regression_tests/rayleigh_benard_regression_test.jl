@@ -48,20 +48,20 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     bbcs = FieldBoundaryConditions(top = BoundaryCondition(Value(), 0.0),
                                    bottom = BoundaryCondition(Value(), Δb))
 
-    model = NonhydrostaticModel(; grid,
-                                  timestepper = :QuasiAdamsBashforth2,
-                                  closure = ScalarDiffusivity(ν=ν, κ=κ),
-                                  tracers = (:b, :c),
-                                  buoyancy = BuoyancyForce(BuoyancyTracer()),
-                                  boundary_conditions = (; b=bbcs),
-                                  hydrostatic_pressure_anomaly = CenterField(grid),
-                                  forcing = (; c=cforcing))
+    model = NonhydrostaticModel(grid;
+                                timestepper = :QuasiAdamsBashforth2,
+                                closure = ScalarDiffusivity(ν=ν, κ=κ),
+                                tracers = (:b, :c),
+                                buoyancy = BuoyancyForce(BuoyancyTracer()),
+                                boundary_conditions = (; b=bbcs),
+                                hydrostatic_pressure_anomaly = CenterField(grid),
+                                forcing = (; c=cforcing))
 
     # Lz/Nz will work for both the :regular and :vertically_unstretched grids.
     Δt = 0.01 * min(model.grid.Δxᶜᵃᵃ, model.grid.Δyᵃᶜᵃ, Lz/Nz)^2 / ν
 
     # We will manually change the stop_iteration as needed.
-    simulation = Simulation(model, Δt=Δt, stop_iteration=0)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=0, verbose=false)
 
     # The type of the underlying data, not the offset array.
     ArrayType = typeof(model.velocities.u.data.parent)
@@ -91,7 +91,7 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     simulation.stop_iteration = spinup_steps-test_steps
     run!(simulation)
 
-    push!(simulation.output_writers, checkpointer)
+    simulation.output_writers[:checkpointer] = checkpointer
     simulation.stop_iteration += 2test_steps
     run!(simulation)
     =#

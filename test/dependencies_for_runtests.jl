@@ -54,7 +54,7 @@ using Oceananigans.Grids: architecture
 using Oceananigans.Fields: ZeroField, ConstantField, FunctionField, compute_at!, indices, instantiated_location
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: tracernames
 using Oceananigans.ImmersedBoundaries: conditional_length
-using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ, hack_cosd
+using Oceananigans.Operators: ℑxyᶠᶜᵃ, hack_cosd
 using Oceananigans.TurbulenceClosures: with_tracers
 using Oceananigans.MultiRegion: reconstruct_global_grid, reconstruct_global_field
 using Oceananigans.Utils: prettysummary

@@ -9,7 +9,7 @@ using GLMakie: Figure, heatmap!, Colorbar, Axis, recordframe!, VideoStream, save
 using Printf
 using CUDA
 
-function create_mass_conservation_simulation(; 
+function create_mass_conservation_simulation(;
     use_open_boundary_condition = true,
     stratification = nothing,
     immersed_bottom = nothing,
@@ -54,8 +54,8 @@ function create_mass_conservation_simulation(;
     #+++ Set boundary conditions
     if use_open_boundary_condition
         u_boundary_conditions = FieldBoundaryConditions(
-            west = OpenBoundaryCondition(U₀; scheme = PerturbationAdvection(inflow_timescale, outflow_timescale)),
-            east = OpenBoundaryCondition(U₀; scheme = PerturbationAdvection(inflow_timescale, outflow_timescale))
+            west = OpenBoundaryCondition(U₀; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)),
+            east = OpenBoundaryCondition(U₀; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale))
         )
         boundary_conditions = (; u = u_boundary_conditions)
     else
@@ -72,8 +72,13 @@ function create_mass_conservation_simulation(;
         buoyancy = BuoyancyTracer()
         bᵢ(x, z) = stratification * z
     end
-    model = NonhydrostaticModel(; grid, boundary_conditions, pressure_solver, timestepper,
-                                  advection = WENO(order=5), tracers = :b, buoyancy)
+    model = NonhydrostaticModel(grid;
+                                boundary_conditions,
+                                pressure_solver,
+                                timestepper,
+                                advection = WENO(order=5),
+                                tracers = :b,
+                                buoyancy)
     set!(model, u=uᵢ, b=bᵢ)
 
     # Calculate time step

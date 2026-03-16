@@ -1,9 +1,7 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Operators: hack_cosd
-using Oceananigans.ImmersedBoundaries: get_active_column_map,
-                                       get_active_cells_map,
-                                       immersed_cell
+using Oceananigans.Grids: get_active_column_map, get_active_cells_map
+using Oceananigans.ImmersedBoundaries: immersed_cell
 
 function Δ_min(grid)
     Δx_min = minimum_xspacing(grid, Center(), Center(), Center())
@@ -18,14 +16,11 @@ function solid_body_rotation_test(grid)
     free_surface = SplitExplicitFreeSurface(grid; substeps = 10, gravitational_acceleration = 1)
     coriolis     = HydrostaticSphericalCoriolis(rotation_rate = 1)
 
-    model = HydrostaticFreeSurfaceModel(; grid,
+    model = HydrostaticFreeSurfaceModel(grid;
                                         momentum_advection = VectorInvariant(),
-                                        free_surface = free_surface,
-                                        coriolis = coriolis,
+                                        free_surface, coriolis,
                                         tracers = :c,
-                                        tracer_advection = WENO(),
-                                        buoyancy = nothing,
-                                        closure = nothing)
+                                        tracer_advection = WENO())
 
     g = model.free_surface.gravitational_acceleration
     R = grid.radius
@@ -46,7 +41,7 @@ function solid_body_rotation_test(grid)
     simulation = Simulation(model; Δt, stop_iteration = 10)
     run!(simulation)
 
-    return merge(model.velocities, model.tracers, (; η = model.free_surface.η))
+    return merge(model.velocities, model.tracers, (; η = model.free_surface.displacement))
 end
 
 Nx = 16

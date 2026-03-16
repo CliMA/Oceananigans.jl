@@ -18,11 +18,16 @@ default_prognostic_bc(::Flat,           loc,      default)  = nothing
 default_prognostic_bc(::Bounded,        ::Center, default)  = default.boundary_condition
 default_prognostic_bc(::LeftConnected,  ::Center, default)  = default.boundary_condition
 default_prognostic_bc(::RightConnected, ::Center, default)  = default.boundary_condition
+default_prognostic_bc(::RightFaceFolded, ::Center, default) = default.boundary_condition
+default_prognostic_bc(::RightCenterFolded, ::Center, default) = default.boundary_condition
+
 
 # TODO: make model constructors enforce impenetrability on velocity components to simplify this code
 default_prognostic_bc(::Bounded,        ::Face, default) = ImpenetrableBoundaryCondition()
 default_prognostic_bc(::LeftConnected,  ::Face, default) = ImpenetrableBoundaryCondition()
 default_prognostic_bc(::RightConnected, ::Face, default) = ImpenetrableBoundaryCondition()
+default_prognostic_bc(::RightFaceFolded, ::Face, default) = ImpenetrableBoundaryCondition()
+default_prognostic_bc(::RightCenterFolded, ::Face, default) = ImpenetrableBoundaryCondition()
 
 default_prognostic_bc(::Bounded,        ::Nothing, default) = nothing
 default_prognostic_bc(::Flat,           ::Nothing, default) = nothing
@@ -30,11 +35,15 @@ default_prognostic_bc(::Grids.Periodic, ::Nothing, default) = nothing
 default_prognostic_bc(::FullyConnected, ::Nothing, default) = nothing
 default_prognostic_bc(::LeftConnected,  ::Nothing, default) = nothing
 default_prognostic_bc(::RightConnected, ::Nothing, default) = nothing
+default_prognostic_bc(::RightFaceFolded, ::Nothing, default) = nothing
+default_prognostic_bc(::RightCenterFolded, ::Nothing, default) = nothing
 
 _default_auxiliary_bc(topo, loc) = default_prognostic_bc(topo, loc, DefaultBoundaryCondition())
 _default_auxiliary_bc(::Bounded, ::Face)        = nothing
 _default_auxiliary_bc(::RightConnected, ::Face) = nothing
 _default_auxiliary_bc(::LeftConnected,  ::Face) = nothing
+_default_auxiliary_bc(::RightFaceFolded, ::Face) = nothing
+_default_auxiliary_bc(::RightCenterFolded, ::Face) = nothing
 
 default_auxiliary_bc(grid, ::Val{:east}, loc)   = _default_auxiliary_bc(topology(grid, 1)(), loc[1])
 default_auxiliary_bc(grid, ::Val{:west}, loc)   = _default_auxiliary_bc(topology(grid, 1)(), loc[1])
@@ -171,14 +180,24 @@ and the topology in the boundary-normal direction is used:
 - `nothing` for `Bounded` directions and `Face`-located fields
 - `nothing` for `Flat` directions and/or `Nothing`-located fields
 """
-function FieldBoundaryConditions(grid::AbstractGrid, loc, indices=(:, :, :);
-                                 west     = default_auxiliary_bc(grid, Val(:west),   loc),
-                                 east     = default_auxiliary_bc(grid, Val(:east),   loc),
-                                 south    = default_auxiliary_bc(grid, Val(:south),  loc),
-                                 north    = default_auxiliary_bc(grid, Val(:north),  loc),
-                                 bottom   = default_auxiliary_bc(grid, Val(:bottom), loc),
-                                 top      = default_auxiliary_bc(grid, Val(:top),    loc),
-                                 immersed = DefaultBoundaryCondition())
+function FieldBoundaryConditions(grid::AbstractGrid, loc::Tuple, indices=(:, :, :); kwargs...)
+
+    for ℓ in loc
+        if !(ℓ isa Union{Nothing, Face, Center})
+            msg = string("Location $ℓ in $loc is not a valid location!", '\n',
+                         "Locations must be Center(), Face(), or nothing.")
+            throw(ArgumentError(msg))
+        end
+    end
+
+    # Build defaults _after_ validating the location
+    west     = get(kwargs, :west,     default_auxiliary_bc(grid, Val(:west),   loc))
+    east     = get(kwargs, :east,     default_auxiliary_bc(grid, Val(:east),   loc))
+    south    = get(kwargs, :south,    default_auxiliary_bc(grid, Val(:south),  loc))
+    north    = get(kwargs, :north,    default_auxiliary_bc(grid, Val(:north),  loc))
+    bottom   = get(kwargs, :bottom,   default_auxiliary_bc(grid, Val(:bottom), loc))
+    top      = get(kwargs, :top,      default_auxiliary_bc(grid, Val(:top),    loc))
+    immersed = get(kwargs, :immersed, DefaultBoundaryCondition())
 
     bcs = FieldBoundaryConditions(indices, west, east, south, north, bottom, top, immersed)
     return regularize_field_boundary_conditions(bcs, grid, loc)

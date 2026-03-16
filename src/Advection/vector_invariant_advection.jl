@@ -8,7 +8,7 @@ EnstrophyConserving(FT::DataType = Oceananigans.defaults.FloatType) = EnstrophyC
 struct VectorInvariant{N, FT, M, Z, ZS, V, K, D, U} <: AbstractAdvectionScheme{N, FT}
     vorticity_scheme               :: Z  # reconstruction scheme for vorticity flux
     vorticity_stencil              :: ZS # stencil used for assessing vorticity smoothness
-    vertical_advection_scheme      :: V  # recontruction scheme for vertical advection
+    vertical_advection_scheme      :: V  # reconstruction scheme for vertical advection
     kinetic_energy_gradient_scheme :: K  # reconstruction scheme for kinetic energy gradient
     divergence_scheme              :: D  # reconstruction scheme for divergence flux
     upwinding                      :: U  # treatment of upwinding for divergence flux and kinetic energy gradient
@@ -64,7 +64,7 @@ Keyword arguments
   * `OnlySelfUpwinding()`
 
 - `multi_dimensional_stencil`: whether or not to use a horizontal two-dimensional stencil for the reconstruction
-                               of vorticity, divergence and kinetic energy gradient. Currently the "tangential"
+                               of vorticity, divergence, and kinetic energy gradient. Currently the "tangential"
                                direction uses 5th-order centered WENO reconstruction. Default: false
 
 Examples
@@ -175,6 +175,7 @@ nothing_to_default(user_value; default=nothing) = isnothing(user_value) ? defaul
                         divergence_order = nothing,
                         kinetic_energy_gradient_order = nothing,
                         multi_dimensional_stencil = false,
+                        minimum_buffer_upwind_order = 1,
                         weno_kw...)
 
 Return a vector-invariant weighted essentially non-oscillatory (WENO) scheme.
@@ -210,6 +211,7 @@ function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
                              divergence_order = nothing,
                              kinetic_energy_gradient_order = nothing,
                              multi_dimensional_stencil = false,
+                             minimum_buffer_upwind_order = 1,
                              weno_kw...)
 
     if isnothing(order) # apply global defaults
@@ -224,10 +226,10 @@ function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
         kinetic_energy_gradient_order = nothing_to_default(kinetic_energy_gradient_order, default = order)
     end
 
-    vorticity_scheme               = WENO(FT; order=vorticity_order, weno_kw...)
-    vertical_advection_scheme      = WENO(FT; order=vertical_order, weno_kw...)
-    kinetic_energy_gradient_scheme = WENO(FT; order=kinetic_energy_gradient_order, weno_kw...)
-    divergence_scheme              = WENO(FT; order=divergence_order, weno_kw...)
+    vorticity_scheme               = WENO(FT; order=vorticity_order, minimum_buffer_upwind_order, weno_kw...)
+    vertical_advection_scheme      = WENO(FT; order=vertical_order, minimum_buffer_upwind_order, weno_kw...)
+    kinetic_energy_gradient_scheme = WENO(FT; order=kinetic_energy_gradient_order, minimum_buffer_upwind_order, weno_kw...)
+    divergence_scheme              = WENO(FT; order=divergence_order, minimum_buffer_upwind_order, weno_kw...)
 
     default_upwinding = OnlySelfUpwinding(cross_scheme = divergence_scheme)
     upwinding = nothing_to_default(upwinding; default = default_upwinding)

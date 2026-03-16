@@ -128,21 +128,23 @@ add_biogeochemical_tracer(tracers::NamedTuple, name, grid) = merge(tracers, (; n
 @inline function has_biogeochemical_tracers(fields, required_fields, grid)
     user_specified_tracers = [name in tracernames(fields) for name in required_fields]
 
-    if !all(user_specified_tracers) && any(user_specified_tracers)
+    flds = if !all(user_specified_tracers) && any(user_specified_tracers)
         throw(ArgumentError("The biogeochemical model you have selected requires $required_fields.\n" *
                             "You have specified some but not all of these as tracers so may be attempting\n" *
                             "to use them for a different purpose. Please either specify all of the required\n" *
                             "fields, or none and allow them to be automatically added."))
 
     elseif !any(user_specified_tracers)
+        f = fields
         for field_name in required_fields
-            fields = add_biogeochemical_tracer(fields, field_name, grid)
+            f = add_biogeochemical_tracer(f, field_name, grid)
         end
+        f
     else
-        fields = fields
+        fields
     end
 
-    return fields
+    return flds
 end
 
 """

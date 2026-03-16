@@ -1,6 +1,5 @@
 using Oceananigans.Fields: indices, offset_compute_index
-
-import Oceananigans.Architectures: architecture
+using GPUArraysCore: @allowscalar
 
 struct FFTBasedPoissonSolver{G, Λ, S, B, T}
             grid :: G
@@ -10,7 +9,7 @@ struct FFTBasedPoissonSolver{G, Λ, S, B, T}
       transforms :: T
 end
 
-architecture(solver::FFTBasedPoissonSolver) = architecture(solver.grid)
+Architectures.architecture(solver::FFTBasedPoissonSolver) = architecture(solver.grid)
 
 transform_str(transform) = string(typeof(transform).name.wrapper, ", ")
 

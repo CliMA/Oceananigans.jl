@@ -1,4 +1,3 @@
-using Oceananigans.Grids: AbstractGrid
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
 
 #####
@@ -54,18 +53,14 @@ Fill halo regions for all `fields`. The algorithm:
   4. In every direction, the halo regions in each of the remaining `Field` tuple
      are filled simultaneously.
 """
-function fill_halo_regions!(fields::Union{NamedTuple, Tuple}, args...; kwargs...)
+function BoundaryConditions.fill_halo_regions!(fields::Union{NamedTuple, Tuple}, args...; kwargs...)
 
-    for field in fields
-        fill_halo_regions!(field, args...; kwargs...)
+    for i in eachindex(fields)
+        @inbounds fill_halo_regions!(fields[i], args...; kwargs...)
     end
 
     return nothing
 end
-
-# This is a convenience function that allows `fill_halo_regions!` to be dispatched on the grid type.
-fill_halo_regions!(fields::NamedTuple, grid::AbstractGrid, args...; signed=true, kwargs...) = fill_halo_regions!(fields, args...; kwargs...)
-fill_halo_regions!(fields::Tuple,      grid::AbstractGrid, args...; signed=true, kwargs...) = fill_halo_regions!(fields, args...; kwargs...)
 
 #####
 ##### Tracer names
@@ -136,7 +131,7 @@ function VelocityFields(grid::AbstractGrid, user_bcs = NamedTuple())
     u = XFaceField(grid, boundary_conditions=bcs.u)
     v = YFaceField(grid, boundary_conditions=bcs.v)
     w = ZFaceField(grid, boundary_conditions=bcs.w)
-    
+
     return (u=u, v=v, w=w)
 end
 

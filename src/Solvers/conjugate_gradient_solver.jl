@@ -1,10 +1,5 @@
-using Oceananigans.Architectures: architecture
-using Oceananigans.Utils: prettysummary
+using Oceananigans.Utils: prettysummary, @apply_regionally
 using LinearAlgebra: norm, dot
-using LinearAlgebra
-using KernelAbstractions: @kernel, @index
-
-import Oceananigans.Architectures: architecture
 
 mutable struct ConjugateGradientSolver{A, G, L, T, F, M, P, E}
                 architecture :: A
@@ -23,7 +18,7 @@ mutable struct ConjugateGradientSolver{A, G, L, T, F, M, P, E}
     enforce_gauge_condition! :: E
 end
 
-architecture(solver::ConjugateGradientSolver) = solver.architecture
+Architectures.architecture(solver::ConjugateGradientSolver) = solver.architecture
 iteration(cgs::ConjugateGradientSolver) = cgs.iteration
 
 initialize_precondition_product(preconditioner, template_field) = similar(template_field)
@@ -39,19 +34,19 @@ Base.summary(::ConjugateGradientSolver) = "ConjugateGradientSolver"
 
 """
     ConjugateGradientSolver(linear_operation;
-                                          template_field,
-                                          maxiter = size(template_field.grid),
-                                          reltol = sqrt(eps(template_field.grid)),
-                                          abstol = 0,
-                                          preconditioner = nothing,
-                                          enforce_gauge_condition! = no_gauge_enforcement!)
+                            template_field,
+                            maxiter = size(template_field.grid),
+                            reltol = sqrt(eps(template_field.grid)),
+                            abstol = 0,
+                            preconditioner = nothing,
+                            enforce_gauge_condition! = no_gauge_enforcement!)
 
-Returns a `ConjugateGradientSolver` that solves the linear equation
-``A x = b`` using a iterative conjugate gradient method with optional preconditioning.
+Return a `ConjugateGradientSolver` that solves the linear equation ``A x = b``
+using a iterative conjugate gradient method with optional preconditioning.
 
 The solver is used by calling
 
-```
+```julia
 solve!(x, solver::PreconditionedConjugateGradientOperator, b, args...)
 ```
 
@@ -101,7 +96,7 @@ function ConjugateGradientSolver(linear_operation;
     # Create work arrays for solver
     linear_operator_product = similar(template_field) # A*xᵢ = qᵢ
     search_direction = similar(template_field) # pᵢ
-            residual = similar(template_field) # rᵢ
+    residual = similar(template_field) # rᵢ
 
     # Either nothing (no preconditioner) or P*xᵢ = zᵢ
     precondition_product = initialize_precondition_product(preconditioner, template_field)

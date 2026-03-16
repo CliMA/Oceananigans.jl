@@ -291,4 +291,3 @@ end
 
     return num / den
 end
-
