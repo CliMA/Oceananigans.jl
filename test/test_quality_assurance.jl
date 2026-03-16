@@ -65,7 +65,7 @@ end
         # Oceananigans.DistributedComputations,
         Oceananigans.Fields,
         Oceananigans.Forcings,
-        # Oceananigans.Grids,
+        Oceananigans.Grids,
         Oceananigans.ImmersedBoundaries,
         # Oceananigans.Logger,
         # Oceananigans.Models,
