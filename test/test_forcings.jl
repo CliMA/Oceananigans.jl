@@ -3,7 +3,7 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
 using Oceananigans.Fields: Field
 using Oceananigans.Forcings: MultipleForcings
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!, immersed_peripheral_node
 
 """ Take one time step with three forcing arrays on u, v, w. """
 function time_step_with_forcing_array(arch)
@@ -253,27 +253,59 @@ function seven_forcings(arch)
     return true
 end
 
-"""
-Test that momentum advective fluxes are zero at immersed peripheral nodes, for all
-advection schemes. This verifies that removing the explicit `conditional_flux` zeroing
-from `_advective_momentum_flux_*` on `ImmersedBoundaryGrid` is safe: the combination of
-velocity masking in immersed cells and the no-penetration boundary condition at the
-immersed boundary face is sufficient to ensure zero momentum flux at peripheral nodes,
-independently of the velocity magnitude in the active fluid region.
+# For each node (i, j, k), store whether the condition
+# "if immersed peripheral node then flux == 0" holds.
+# That is: !immersed_peripheral_node | (flux == 0).
+# @test all(interior(t**)) then verifies zero flux everywhere it is required.
+@kernel function _populate_momentum_flux_tests!(tuu, tuv, tuw, tvu, tvv, tvw, twu, twv, tww,
+                                                grid, scheme, u, v, w)
+    i, j, k = @index(Global, NTuple)
 
-Tests on CPU only since the flux functions are called with scalar indices.
+    Fuu = Oceananigans.Advection._advective_momentum_flux_Uu(i, j, k, grid, scheme, u, u)
+    Fuv = Oceananigans.Advection._advective_momentum_flux_Uv(i, j, k, grid, scheme, u, v)
+    Fuw = Oceananigans.Advection._advective_momentum_flux_Uw(i, j, k, grid, scheme, u, w)
+    Fvu = Oceananigans.Advection._advective_momentum_flux_Vu(i, j, k, grid, scheme, v, u)
+    Fvv = Oceananigans.Advection._advective_momentum_flux_Vv(i, j, k, grid, scheme, v, v)
+    Fvw = Oceananigans.Advection._advective_momentum_flux_Vw(i, j, k, grid, scheme, v, w)
+    Fwu = Oceananigans.Advection._advective_momentum_flux_Wu(i, j, k, grid, scheme, w, u)
+    Fwv = Oceananigans.Advection._advective_momentum_flux_Wv(i, j, k, grid, scheme, w, v)
+    Fww = Oceananigans.Advection._advective_momentum_flux_Ww(i, j, k, grid, scheme, w, w)
+
+    c = Center()
+    f = Face()
+
+    @inbounds begin
+        tuu[i, j, k] = !immersed_peripheral_node(i, j, k, grid, c, c, c) | (Fuu == 0)
+        tuv[i, j, k] = !immersed_peripheral_node(i, j, k, grid, f, f, c) | (Fuv == 0)
+        tuw[i, j, k] = !immersed_peripheral_node(i, j, k, grid, f, c, f) | (Fuw == 0)
+        tvu[i, j, k] = !immersed_peripheral_node(i, j, k, grid, f, f, c) | (Fvu == 0)
+        tvv[i, j, k] = !immersed_peripheral_node(i, j, k, grid, c, c, c) | (Fvv == 0)
+        tvw[i, j, k] = !immersed_peripheral_node(i, j, k, grid, c, f, f) | (Fvw == 0)
+        twu[i, j, k] = !immersed_peripheral_node(i, j, k, grid, f, c, f) | (Fwu == 0)
+        twv[i, j, k] = !immersed_peripheral_node(i, j, k, grid, c, f, f) | (Fwv == 0)
+        tww[i, j, k] = !immersed_peripheral_node(i, j, k, grid, c, c, c) | (Fww == 0)
+    end
+end
+
+"""
+Test that all 9 advective momentum flux kernels are zero at every immersed peripheral node,
+for a grid with a random bottom boundary. This verifies that removing the explicit
+`conditional_flux` zeroing from `_advective_momentum_flux_*` on `ImmersedBoundaryGrid` is
+safe: velocity masking in immersed cells and the no-penetration boundary condition at the
+immersed boundary face are sufficient to guarantee zero momentum flux at all peripheral
+nodes, independently of the velocity magnitude in the active fluid region.
 """
 function test_momentum_flux_zero_at_peripheral_nodes(scheme)
-    Nz = 8
-    grid = RectilinearGrid(CPU(), size=(4, 4, Nz), extent=(1, 1, 1), halo=(4, 4, 4))
+    Nx, Ny, Nz = 8, 8, 8
+    underlying_grid = RectilinearGrid(CPU(), size=(Nx, Ny, Nz), extent=(1, 1, 1), halo=(4, 4, 4))
 
-    # Flat bottom at z = -0.5: cells k=1..Nz÷2 are immersed, k=Nz÷2+1..Nz are active.
-    ibg = ImmersedBoundaryGrid(grid, GridFittedBottom(-0.5))
+    # Random bottom creates a varied immersed boundary topology, stressing all peripheral
+    # node configurations (not just a uniform flat slab).
+    bottom_height = -1 .+ rand(Nx, Ny) .* 0.8  # varies between -1 and -0.2
+    ibg = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
     model = NonhydrostaticModel(ibg, advection=scheme)
 
-    # Set non-zero velocities in the entire domain, then mask to zero in immersed region.
-    # This ensures the active region has non-trivial velocities (u=v=w=1 in active cells)
-    # while immersed cells and the immersed boundary face are zeroed out.
+    # Set non-zero velocities everywhere, then zero out immersed cells via masking.
     set!(model, u=1, v=1, w=1)
     mask_immersed_field!(model.velocities.u)
     mask_immersed_field!(model.velocities.v)
@@ -282,34 +314,31 @@ function test_momentum_flux_zero_at_peripheral_nodes(scheme)
 
     u, v, w = model.velocities
 
-    # k_immersed: index of the last immersed cell center.
-    # Peripheral nodes for (Center, Center, Center) and (Face, Face, Center) are at immersed cells.
-    # Velocities there are zero by masking, so fluxes must be zero.
-    k_immersed = Nz ÷ 2
+    # Test fields: store true (1) where the "zero-flux at peripheral node" property holds,
+    # false (0) where it is violated.
+    tuu = Field{Center, Center, Center}(ibg)
+    tuv = Field{Face, Face, Center}(ibg)
+    tuw = Field{Face, Center, Face}(ibg)
+    tvu = Field{Face, Face, Center}(ibg)
+    tvv = Field{Center, Center, Center}(ibg)
+    tvw = Field{Center, Face, Face}(ibg)
+    twu = Field{Face, Center, Face}(ibg)
+    twv = Field{Center, Face, Face}(ibg)
+    tww = Field{Center, Center, Center}(ibg)
 
-    # k_face: index of the immersed boundary face (ZFace between immersed k and active k+1).
-    # Peripheral nodes for (Face, Center, Face) and (Center, Face, Face) are at this face.
-    # w = 0 at this face (no-penetration + masking), so z-momentum fluxes must be zero.
-    k_face = Nz ÷ 2 + 1
+    launch!(CPU(), ibg, :xyz, _populate_momentum_flux_tests!,
+            tuu, tuv, tuw, tvu, tvv, tvw, twu, twv, tww,
+            ibg, scheme, u, v, w)
 
-    i, j = 2, 2  # Interior horizontal position, away from domain boundaries
-
-    # Fluxes at (Center, Center, Center) peripheral nodes — immersed cells, all velocities masked
-    @test Oceananigans.Advection._advective_momentum_flux_Uu(i, j, k_immersed, ibg, scheme, u, u) == 0
-    @test Oceananigans.Advection._advective_momentum_flux_Vv(i, j, k_immersed, ibg, scheme, v, v) == 0
-    @test Oceananigans.Advection._advective_momentum_flux_Ww(i, j, k_immersed, ibg, scheme, w, w) == 0
-
-    # Fluxes at (Face, Face, Center) peripheral nodes — immersed cells, all velocities masked
-    @test Oceananigans.Advection._advective_momentum_flux_Vu(i, j, k_immersed, ibg, scheme, v, u) == 0
-    @test Oceananigans.Advection._advective_momentum_flux_Uv(i, j, k_immersed, ibg, scheme, u, v) == 0
-
-    # Fluxes at (Face, Center, Face) peripheral nodes — immersed boundary face, w = 0
-    @test Oceananigans.Advection._advective_momentum_flux_Wu(i, j, k_face, ibg, scheme, w, u) == 0
-    @test Oceananigans.Advection._advective_momentum_flux_Uw(i, j, k_face, ibg, scheme, u, w) == 0
-
-    # Fluxes at (Center, Face, Face) peripheral nodes — immersed boundary face, w = 0
-    @test Oceananigans.Advection._advective_momentum_flux_Wv(i, j, k_face, ibg, scheme, w, v) == 0
-    @test Oceananigans.Advection._advective_momentum_flux_Vw(i, j, k_face, ibg, scheme, v, w) == 0
+    @test all(!iszero, Array(interior(tuu)))
+    @test all(!iszero, Array(interior(tuv)))
+    @test all(!iszero, Array(interior(tuw)))
+    @test all(!iszero, Array(interior(tvu)))
+    @test all(!iszero, Array(interior(tvv)))
+    @test all(!iszero, Array(interior(tvw)))
+    @test all(!iszero, Array(interior(twu)))
+    @test all(!iszero, Array(interior(twv)))
+    @test all(!iszero, Array(interior(tww)))
 
     return true
 end
