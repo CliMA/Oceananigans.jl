@@ -138,15 +138,15 @@ end
 #####
 
 @inline function triad_Sx(ix, iz, j, kx, kz, grid, buoyancy, tracers)
-    bx = ∂x_b(ix, j, kx, grid, buoyancy, tracers)
-    bz = ∂z_b(iz, j, kz, grid, buoyancy, tracers)
+    bx = ∂xᵣ_b(ix, j, kx, grid, buoyancy, tracers)
+    bz =  ∂z_b(iz, j, kz, grid, buoyancy, tracers)
     bz = max(bz, zero(grid))
     return ifelse(bz == 0, zero(grid), - bx / bz)
 end
 
 @inline function triad_Sy(i, jy, jz, ky, kz, grid, buoyancy, tracers)
-    by = ∂y_b(i, jy, ky, grid, buoyancy, tracers)
-    bz = ∂z_b(i, jz, kz, grid, buoyancy, tracers)
+    by = ∂yᵣ_b(i, jy, ky, grid, buoyancy, tracers)
+    bz =  ∂z_b(i, jz, kz, grid, buoyancy, tracers)
     bz = max(bz, zero(grid))
     return ifelse(bz == 0, zero(grid), - by / bz)
 end
