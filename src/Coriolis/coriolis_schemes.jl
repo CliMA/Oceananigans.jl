@@ -1,5 +1,5 @@
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
-using Oceananigans.Grids: XFlatGrid, YFlatGrid, XYFlatGrid, inactive_node, peripheral_node
+using Oceananigans.Grids: peripheral_node
 using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, IBG
 
 # Typically zero!
