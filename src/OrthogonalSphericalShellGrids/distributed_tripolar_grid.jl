@@ -3,6 +3,7 @@ using Oceananigans.Fields: validate_indices, validate_field_data, set_to_array!,
 using Oceananigans.DistributedComputations:
     DistributedComputations,
     Distributed,
+    DistributedField,
     local_size,
     all_reduce,
     child_architecture,
@@ -60,7 +61,10 @@ function fold_set!(u, V::Field, ::Type{<:AbstractTopology}, loc_y)
     end
 end
 
-# RightFaceFolded + Center: pass Field's interior to the array path
+# RightFaceFolded + Center: distributed (local-sized) Field → direct copy
+fold_set!(u, V::DistributedField, ::Type{RightFaceFolded}, ::Type{Center}) = set_to_field!(u, V)
+
+# RightFaceFolded + Center: non-distributed (global-sized) Field → fold-aware partitioning
 fold_set!(u, V::Field, ::Type{RightFaceFolded}, ::Type{Center}) =
     fold_set!(u, interior(V), RightFaceFolded, Center)
 
