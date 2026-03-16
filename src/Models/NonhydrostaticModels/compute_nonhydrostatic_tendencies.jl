@@ -59,7 +59,7 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
     tracers              = model.tracers
     auxiliary_fields     = model.auxiliary_fields
     hydrostatic_pressure = model.pressures.pHY′
-    diffusivities        = model.closure_fields
+    closure_fields       = model.closure_fields
     forcings             = model.forcing
     clock                = model.clock
     u_immersed_bc        = velocities.u.boundary_conditions.immersed
@@ -76,7 +76,7 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
                                 velocities,
                                 tracers,
                                 auxiliary_fields,
-                                diffusivities)
+                                closure_fields)
 
     u_kernel_args = tuple(start_momentum_kernel_args...,
                           u_immersed_bc, end_momentum_kernel_args...,
@@ -105,7 +105,7 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
 
     start_tracer_kernel_args = (advection, closure)
     end_tracer_kernel_args   = (buoyancy, biogeochemistry, background_fields, velocities,
-                                tracers, auxiliary_fields, diffusivities)
+                                tracers, auxiliary_fields, closure_fields)
 
     for tracer_index in 1:length(tracers)
         @inbounds c_tendency = tendencies[tracer_index + 3]

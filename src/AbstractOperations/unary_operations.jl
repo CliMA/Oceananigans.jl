@@ -15,8 +15,8 @@ struct UnaryOperation{LX, LY, LZ, O, A, IN, G, T} <: AbstractOperation{LX, LY, L
     Returns an abstract `UnaryOperation` representing the action of `op` on `arg`,
     and subsequent interpolation by `▶` on `grid`.
     """
-    function UnaryOperation{LX, LY, LZ}(op::O, arg::A, ▶::IN, grid::G) where {LX, LY, LZ, O, A, IN, G}
-        T = eltype(grid)
+    function UnaryOperation{LX, LY, LZ}(op::O, arg::A, ▶::IN, grid::G,
+                                        ::Type{T}=Base.promote_op(op, eltype(arg))) where {LX, LY, LZ, O, A, IN, G, T}
         return new{LX, LY, LZ, O, A, IN, G, T}(op, arg, ▶, grid)
     end
 end
@@ -135,10 +135,12 @@ Adapt.adapt_structure(to, unary::UnaryOperation{LX, LY, LZ}) where {LX, LY, LZ} 
     UnaryOperation{LX, LY, LZ}(Adapt.adapt(to, unary.op),
                                Adapt.adapt(to, unary.arg),
                                Adapt.adapt(to, unary.▶),
-                               Adapt.adapt(to, unary.grid))
+                               Adapt.adapt(to, unary.grid),
+                               eltype(unary))
 
 Architectures.on_architecture(to, unary::UnaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     UnaryOperation{LX, LY, LZ}(on_architecture(to, unary.op),
                                on_architecture(to, unary.arg),
                                on_architecture(to, unary.▶),
-                               on_architecture(to, unary.grid))
+                               on_architecture(to, unary.grid),
+                               eltype(unary))

@@ -24,6 +24,14 @@ function compute_plus(model)
     return all(result .≈ eltype(model.grid)(π + 42))
 end
 
+function compute_comparison(model)
+    set!(model; S=π, T=42)
+    T, S = model.tracers
+    @compute cmp = Field(S > T)  # S=π ≈ 3.14 < T=42, so should be all false
+    result = Array(interior(cmp))
+    return eltype(cmp) == Bool && all(result .== false)
+end
+
 function compute_many_plus(model)
     set!(model; u=2, S=π, T=42)
     T, S = model.tracers
@@ -381,6 +389,9 @@ for arch in archs
                 # Basic compilation test for nested BinaryOperations...
                 u, v, w = model.velocities
                 @test try compute!(Field(u + v - w)); true; catch; false; end
+
+                # Bool-valued computed fields from comparison operations
+                @test compute_comparison(model)
             end
 
             @testset "Multiary computations [$A, $G]" begin
