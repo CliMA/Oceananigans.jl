@@ -78,10 +78,10 @@ function parse_commandline()
             default = "Float64"
 
         "--zstar_coordinate"
-            help = "Using ZStarCoordinate:" *
-                   "true or false."
-            arg_type = Bool
-            default = false
+            help = "Using ZStarCoordinate: true or false. " *
+                   "Multiple values can be specified as comma-separated list."
+            arg_type = String
+            default = "false"
 
         "--momentum_advection"
             help = "Momentum advection scheme: WENOVectorInvariant5, WENOVectorInvariant9. " *
@@ -259,7 +259,7 @@ function run_benchmarks(args)
     tracer_advections = parse_list(args["tracer_advection"])
     closures = parse_list(args["closure"])
     grid_types = [s for s in parse_list(args["grid_type"])]
-    zstar_coordinates = [s for s in parse_list(args["zstar_coordinate"])]
+    zstar_coordinates = [lowercase(s) == "true" for s in parse_list(args["zstar_coordinate"])]
     timestepper = make_timestepper(args["timestepper"])
     tracers = Tuple(Symbol(strip(s)) for s in split(args["tracers"], ","))
 
