@@ -112,7 +112,7 @@ jobs:
         if: ${{ steps.locate.outputs.path != '' }}
         shell: python3 {0}
         run: |
-          import json, re, sys, glob
+          import json, re, glob
 
           # Merge all benchmark JSON files (benchmark_results.json + nsys_*.json)
           all_data = []
@@ -127,52 +127,85 @@ jobs:
           with open("benchmark_results_merged.json", "w") as f:
               json.dump(all_data, f, ensure_ascii=False, indent=2)
 
-          data = []
-          for d in all_data:
-              name = d["name"]
-              ft = d["float_type"]
-              grid = d["grid_size"]
-              grid_str = f"{grid[0]}x{grid[1]}x{grid[2]}"
-              gpu = d.get("metadata", {}).get("gpu_name", "GPU")
-              pps = d["grid_points_per_second"]
+          def build_chart_name(d):
+              """Build a 4-level chart name: group / fixed_params / GPU / variant.
 
-              # Extract advection and closure from name
-              # Name pattern: EarthOcean_{size}_{ft}_{mom_adv}_{trc_adv}_{closure}
+              The 'variant' is the parameter being swept within each group,
+              so that different sweep values appear as lines on the same chart.
+              """
+              name = d["name"]
+              group = d.get("group", "")
+              gpu = d.get("metadata", {}).get("gpu_name", "GPU")
+              grid = d["grid_size"]
+              size_str = f"{grid[0]}x{grid[1]}x{grid[2]}"
+              ft = d["float_type"]
+              ft_short = "F32" if "32" in ft else "F64"
+
+              if not group:
+                  # Fallback: use flat name if no group tag
+                  return f"Other/{name}/{gpu}/{size_str}"
+
+              # Parse name components to extract the variant
+              # Name format: EarthOcean_{grid_type}{_zstar}_{size}_{ft}_{mom_adv}_{trc_adv}_{closure}_{N}tr
               m = re.match(
-                  r"EarthOcean_(\d+x\d+x\d+)_(F\d+)_(.+?)_(WENO\d+|Centered\d+|nothing)_(.+)",
+                  r"EarthOcean_(.+?)_(\d+x\d+x\d+)_(F\d+)_([^_]+)_([^_]+)_(.+)_(\d+)tr$",
                   name,
               )
               if not m:
-                  # IO benchmark or other format - use the full name
-                  chart_name = f"Other/{name}/{gpu}"
-                  data.append({"name": chart_name, "unit": "points/s", "value": pps})
-              else:
-                  size_str = m.group(1)
-                  ft_short = m.group(2)
-                  mom_adv = m.group(3)
-                  trc_adv = m.group(4)
-                  closure = m.group(5)
+                  return f"{group}/{name}/{gpu}/{size_str}"
 
-                  chart_name = f"EarthOcean [{ft_short}]/{mom_adv} + {trc_adv}/{closure}/{gpu}/{size_str}"
-                  data.append({"name": chart_name, "unit": "points/s", "value": pps})
+              grid_info = m.group(1)   # e.g. "tripolar", "lat_lon_zstar"
+              mom_adv = m.group(4)
+              trc_adv = m.group(5)
+              closure = m.group(6)
+              n_tracers = m.group(7)
+
+              if group == "Resolution Sweep":
+                  fixed = f"{grid_info} {ft_short} {mom_adv}+{trc_adv} {closure}"
+                  variant = size_str
+              elif group == "Float Type Sweep":
+                  fixed = f"{grid_info} {size_str} {mom_adv}+{trc_adv} {closure}"
+                  variant = ft_short
+              elif group == "Closure Sweep":
+                  fixed = f"{grid_info} {size_str} {ft_short} {mom_adv}+{trc_adv}"
+                  variant = closure
+              elif group == "Advection Sweep":
+                  fixed = f"{grid_info} {size_str} {ft_short} {closure}"
+                  variant = f"{mom_adv}+{trc_adv}"
+              elif group == "Grid Type Sweep":
+                  fixed = f"{size_str} {ft_short} {mom_adv}+{trc_adv} {closure}"
+                  variant = grid_info
+              elif group == "Tracer Count Sweep":
+                  fixed = f"{grid_info} {size_str} {ft_short} {closure}"
+                  variant = f"{n_tracers} tracers"
+              elif group == "NSYS Profiling":
+                  fixed = f"{grid_info} {size_str} {ft_short}"
+                  variant = f"{mom_adv}+{trc_adv} {closure}"
+              else:
+                  fixed = name
+                  variant = size_str
+
+              return f"{group}/{fixed}/{gpu}/{variant}"
+
+          data = []
+          for d in all_data:
+              pps = d["grid_points_per_second"]
+              chart_name = build_chart_name(d)
+              data.append({"name": chart_name, "unit": "points/s", "value": pps})
 
               # Add nsys kernel data as separate chart entries if present
               if "nsys_top_kernels" in d:
+                  name = d["name"]
+                  gpu = d.get("metadata", {}).get("gpu_name", "GPU")
                   for kernel in d["nsys_top_kernels"]:
-                      # Use shorter kernel name (strip template parameters)
                       kname = kernel["name"]
                       # Truncate long CUDA kernel names at first '<' or '(' for readability
                       short_kname = re.split(r"[<(]", kname)[0].strip()
                       if len(short_kname) > 60:
                           short_kname = short_kname[:57] + "..."
 
-                      # Total kernel time in milliseconds (smaller is better, but we track
-                      # instances and avg time as "customSmallerIsBetter" isn't available
-                      # in the same chart, so we report throughput = instances / total_time_ms)
                       total_ms = kernel["total_time_ns"] / 1e6
-                      instances = kernel["instances"]
-
-                      kernel_chart = f"NSYS Kernels/{name}/{short_kname}"
+                      kernel_chart = f"NSYS Kernels/{name}/{gpu}/{short_kname}"
                       data.append({
                           "name": kernel_chart,
                           "unit": "ms (total GPU time)",
@@ -188,19 +221,54 @@ jobs:
 
       - name: Create job summary
         if: ${{ steps.locate.outputs.path != '' }}
+        shell: python3 {0}
         run: |
-          # Copy markdown report if available
-          MD_FILE=$(find artifacts -type f -name "benchmark_results.md" 2>/dev/null | head -1)
-          if [ -n "$MD_FILE" ]; then
-            cat "$MD_FILE" >> "$GITHUB_STEP_SUMMARY"
-          fi
+          import json, glob, os, re
 
-          # Also show comparison if available
-          COMP_FILE=$(find artifacts -type f -name "benchmark_comparison.md" 2>/dev/null | head -1)
-          if [ -n "$COMP_FILE" ]; then
-            echo "" >> "$GITHUB_STEP_SUMMARY"
-            cat "$COMP_FILE" >> "$GITHUB_STEP_SUMMARY"
-          fi
+          summary = ""
+
+          # Copy markdown report if available
+          md_files = glob.glob("artifacts/**/benchmark_results.md", recursive=True)
+          if md_files:
+              with open(md_files[0]) as f:
+                  summary += f.read() + "\n"
+
+          # Copy comparison if available
+          comp_files = glob.glob("artifacts/**/benchmark_comparison.md", recursive=True)
+          if comp_files:
+              with open(comp_files[0]) as f:
+                  summary += "\n" + f.read() + "\n"
+
+          # Add nsys kernel profiling data from merged results
+          if os.path.exists("benchmark_results_merged.json"):
+              with open("benchmark_results_merged.json") as f:
+                  all_data = json.load(f)
+
+              nsys_entries = [d for d in all_data if "nsys_top_kernels" in d]
+              if nsys_entries:
+                  summary += "\n## NSYS Kernel Profiling\n\n"
+                  for entry in nsys_entries:
+                      name = entry["name"]
+                      kernels = entry["nsys_top_kernels"]
+                      summary += f"### {name}\n\n"
+                      summary += "| Kernel | Total (ms) | Instances | Avg (ms) | Min (ms) | Max (ms) |\n"
+                      summary += "|--------|-----------|-----------|----------|----------|----------|\n"
+                      for k in kernels:
+                          kname = k["name"]
+                          # Shorten long CUDA kernel names
+                          short_name = re.split(r"[<(]", kname)[0].strip()
+                          if len(short_name) > 60:
+                              short_name = short_name[:57] + "..."
+                          total_ms = k["total_time_ns"] / 1e6
+                          avg_ms = k["avg_time_ns"] / 1e6
+                          min_ms = k["min_time_ns"] / 1e6
+                          max_ms = k["max_time_ns"] / 1e6
+                          instances = k["instances"]
+                          summary += f"| `{short_name}` | {total_ms:.2f} | {instances} | {avg_ms:.3f} | {min_ms:.3f} | {max_ms:.3f} |\n"
+                      summary += "\n"
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write(summary)
 
       - name: Push results to OceananigansBenchmarks repo
         if: ${{ github.event_name == 'push' && steps.locate.outputs.path != '' }}
@@ -225,7 +293,7 @@ jobs:
           benchmark-data-dir-path: "."
           gh-repository: "github.com/NumericalEarth/OceananigansBenchmarks"
           github-token: ${{ secrets.BENCHMARKS_TOKEN }}
-          comment-always: false
+          comment-always: true
           summary-always: true
           alert-threshold: "110%"
           fail-on-alert: false

@@ -158,6 +158,11 @@ function parse_commandline()
             arg_type = String
             default = "T,S"
 
+        "--group"
+            help = "Benchmark group name for chart organization (e.g., 'Resolution Sweep')"
+            arg_type = String
+            default = ""
+
         "--clear"
             help = "Clear existing results file before writing"
             action = :store_true
@@ -246,8 +251,6 @@ function run_benchmarks(args)
     mode = args["mode"]
     arch = make_architecture(args["device"])
     case = args["case"]
-    grid_type = args["grid_type"]
-    zstar_coordinate = args["zstar_coordinate"]
 
     # Parse lists from arguments
     sizes = [parse_size(s) for s in parse_list(args["size"])]
@@ -255,8 +258,12 @@ function run_benchmarks(args)
     momentum_advections = parse_list(args["momentum_advection"])
     tracer_advections = parse_list(args["tracer_advection"])
     closures = parse_list(args["closure"])
+    grid_types = [s for s in parse_list(args["grid_type"])]
+    zstar_coordinates = [s for s in parse_list(args["zstar_coordinate"])]
     timestepper = make_timestepper(args["timestepper"])
     tracers = Tuple(Symbol(strip(s)) for s in split(args["tracers"], ","))
+
+    group = args["group"]
 
     # Mode-specific parameters
     Δt = args["dt"]
@@ -306,14 +313,15 @@ function run_benchmarks(args)
     println()
 
     # Loop over all combinations using Iterators.product
-    for ((Nx, Ny, Nz), FT, mom_adv_name, trc_adv_name, cls_name) in
-            Iterators.product(sizes, float_types, momentum_advections, tracer_advections, closures)
+    for ((Nx, Ny, Nz), FT, grid_type, zstar_coordinate, mom_adv_name, trc_adv_name, cls_name) in
+            Iterators.product(sizes, float_types, grid_types, zstar_coordinates, momentum_advections, tracer_advections, closures)
 
         # Build benchmark name
         size_str = "$(Nx)x$(Ny)x$(Nz)"
         ft_str = FT == Float32 ? "F32" : "F64"
         zst_str = zstar_coordinate ? "_zstar" : ""
-        name = "EarthOcean_$(grid_type)$(zst_str)_$(size_str)_$(ft_str)_$(mom_adv_name)_$(trc_adv_name)_$(cls_name)"
+        n_tracers = length(tracers)
+        name = "EarthOcean_$(grid_type)$(zst_str)_$(size_str)_$(ft_str)_$(mom_adv_name)_$(trc_adv_name)_$(cls_name)_$(n_tracers)tr"
 
         println("\n", "-" ^ 70)
         println("Running: $name")
@@ -343,13 +351,13 @@ function run_benchmarks(args)
 
         # Run based on mode
         result = if mode == "benchmark"
-            benchmark_time_stepping(model; time_steps, Δt, warmup_steps, name, verbose=true)
+            benchmark_time_stepping(model; time_steps, Δt, warmup_steps, name, group, verbose=true)
         elseif mode == "simulate"
             run_benchmark_simulation(model;
-                stop_time, Δt, output_interval, output_dir, name, verbose=true)
+                stop_time, Δt, output_interval, output_dir, name, group, verbose=true)
         elseif mode == "io"
             run_io_benchmark(model;
-                time_steps, Δt, warmup_steps, output_iteration_interval, output_format, output_dir, name, verbose=true)
+                time_steps, Δt, warmup_steps, output_iteration_interval, output_format, output_dir, name, group, verbose=true)
         else
             error("Unknown mode: $mode. Use 'benchmark', 'simulate', or 'io'.")
         end

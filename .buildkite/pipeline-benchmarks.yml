@@ -44,49 +44,40 @@ steps:
       echo "========================================"
       echo "  Group 1: Resolution sweep"
       echo "========================================"
-      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=180x90x50  --output=$OUTPUT_FILE --clear
-      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --output=$OUTPUT_FILE
-      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --output=$OUTPUT_FILE
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size="180x90x50, 360x180x50, 720x360x50" --group="Resolution Sweep" --output=$OUTPUT_FILE --clear
 
-      # echo "========================================"
-      # echo "  Group 2: Number type sweep"
-      # echo "========================================"
-      # $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --float_type=Float32 --output=$OUTPUT_FILE
+      echo "========================================"
+      echo "  Group 2: Number type sweep"
+      echo "========================================"
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --float_type=Float32 --group="Float Type Sweep" --output=$OUTPUT_FILE
 
-      # echo "========================================"
-      # echo "  Group 3: Closure sweep (1/2 deg)"
-      # echo "========================================"
-      # $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --closure=nothing             --output=$OUTPUT_FILE
-      # $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --closure=CATKE               --output=$OUTPUT_FILE
-      # $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --closure=CATKE+Biharmonic    --output=$OUTPUT_FILE
-      # $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --closure=CATKE+GM+Biharmonic --output=$OUTPUT_FILE
+      echo "========================================"
+      echo "  Group 3: Closure sweep (1/2 deg)"
+      echo "========================================"
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --closure="nothing, CATKE, CATKE+Biharmonic, CATKE+GM+Biharmonic" --group="Closure Sweep" --output=$OUTPUT_FILE
 
-      # echo "========================================"
-      # echo "  Group 4: Advection sweep (1/2 deg)"
-      # echo "========================================"
-      # $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --momentum_advection=nothing              --tracer_advection=nothing --output=$OUTPUT_FILE
-      # $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --momentum_advection=WENOVectorInvariant5 --tracer_advection=WENO5   --output=$OUTPUT_FILE
-      # $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --momentum_advection=WENOVectorInvariant9 --tracer_advection=WENO9   --output=$OUTPUT_FILE
+      echo "========================================"
+      echo "  Group 4: Advection sweep (1/2 deg)"
+      echo "========================================"
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --momentum_advection=nothing              --tracer_advection=nothing --group="Advection Sweep" --output=$OUTPUT_FILE
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --momentum_advection=WENOVectorInvariant5 --tracer_advection=WENO5   --group="Advection Sweep" --output=$OUTPUT_FILE
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --momentum_advection=WENOVectorInvariant9 --tracer_advection=WENO9   --group="Advection Sweep" --output=$OUTPUT_FILE
 
-      # echo "========================================"
-      # echo "  Group 5: Grid type sweep (1/2 deg)"
-      # echo "========================================"
-      # $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --grid_type=lat_lon          --output=$OUTPUT_FILE
-      # $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --grid_type=immersed_lat_lon --output=$OUTPUT_FILE
-      # $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --grid_type=tripolar         --output=$OUTPUT_FILE
-      # $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --zstar_coordinate=true      --output=$OUTPUT_FILE
+      echo "========================================"
+      echo "  Group 5: Grid type sweep (1/2 deg)"
+      echo "========================================"
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --grid_type="lat_lon, immersed_lat_lon, tripolar" --zstar_coordinate="true, false" --group="Grid Type Sweep" --output=$OUTPUT_FILE
 
-      # echo "========================================"
-      # echo "  Group 6: Tracer count sweep (1/2 deg)"
-      # echo "========================================"
-      # $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --tracers="T,S,C1" --output=$OUTPUT_FILE
-      #  $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --tracers="T,S,C1,C2,C3" --output=$OUTPUT_FILE
-
+      echo "========================================"
+      echo "  Group 6: Tracer count sweep (1/2 deg)"
+      echo "========================================"
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --tracers="T,S,C1" --group="Tracer Count Sweep" --output=$OUTPUT_FILE
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --tracers="T,S,C1,C2,C3" --group="Tracer Count Sweep" --output=$OUTPUT_FILE
 
       # echo "========================================"
       # echo "  Group 7: I/O sweep (1/2 deg)"
       # echo "========================================"
-      # $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=720x360x50 --tracers=T,S,C1 --mode=io --output=$OUTPUT_FILE
+      # $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --tracers=T,S,C1 --mode=io --group="IO Sweep" --output=$OUTPUT_FILE
 
     artifact_paths:
       - "benchmark_results.json"
@@ -125,6 +116,7 @@ steps:
           --trace=cuda \
           $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT \$CASE_ARGS \
             --time_steps=10 --warmup_steps=5 \
+            --group="NSYS Profiling" \
             --output=\${CASE_NAME}.json
 
         # Extract kernel statistics as CSV and parse top 10 kernels by total time.

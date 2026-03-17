@@ -21,6 +21,7 @@ function benchmark_time_stepping(model;
                                  Δt = 60,
                                  warmup_steps = 10,
                                  name = "benchmark",
+                                 group = "",
                                  verbose = true)
 
     grid = model.grid
@@ -67,6 +68,7 @@ function benchmark_time_stepping(model;
 
     result = BenchmarkResult(
         name,
+        group,
         string(FT),
         (Nx, Ny, Nz),
         time_steps,
@@ -120,6 +122,7 @@ function run_benchmark_simulation(model;
                                   output_interval = 1hour,
                                   output_dir = ".",
                                   name = "benchmark_simulation",
+                                  group = "",
                                   output_fields = (:u, :v, :T, :S),
                                   verbose = true)
 
@@ -213,6 +216,7 @@ function run_benchmark_simulation(model;
 
     result = SimulationResult(
         name,
+        group,
         string(FT),
         (Nx, Ny, Nz),
         Float64(stop_time),
@@ -277,6 +281,7 @@ function run_io_benchmark(model;
                           output_format = "jld2",
                           output_dir = ".",
                           name = "io_benchmark",
+                          group = "",
                           verbose = true)
 
     output_format in ("jld2", "netcdf") ||
@@ -374,6 +379,7 @@ function run_io_benchmark(model;
 
     result = IOBenchmarkResult(
         name,
+        group,
         string(FT),
         (Nx, Ny, Nz),
         time_steps,

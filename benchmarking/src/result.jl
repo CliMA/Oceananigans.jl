@@ -4,6 +4,7 @@
 
 struct BenchmarkResult
     name::String
+    group::String
     float_type::String
     grid_size::Tuple{Int, Int, Int}
     time_steps::Int
@@ -23,6 +24,7 @@ end
 function Base.show(io::IO, ::MIME"text/plain", r::BenchmarkResult)
     println(io, "BenchmarkResult")
     println(io, "├── name: ", r.name)
+    println(io, "├── group: ", r.group)
     println(io, "├── float_type: ", r.float_type)
     println(io, "├── grid_size: ", r.grid_size)
     println(io, "├── time_steps: ", r.time_steps)
@@ -41,6 +43,7 @@ end
 
 struct SimulationResult
     name::String
+    group::String
     float_type::String
     grid_size::Tuple{Int, Int, Int}
     simulation_time_seconds::Float64
@@ -62,6 +65,7 @@ end
 function Base.show(io::IO, ::MIME"text/plain", r::SimulationResult)
     println(io, "SimulationResult")
     println(io, "├── name: ", r.name)
+    println(io, "├── group: ", r.group)
     println(io, "├── float_type: ", r.float_type)
     println(io, "├── grid_size: ", r.grid_size)
     println(io, "├── simulation_time: ", @sprintf("%.1f s (%.2f hours)", r.simulation_time_seconds, r.simulation_time_seconds / 3600))
@@ -82,6 +86,7 @@ end
 
 struct IOBenchmarkResult
     name::String
+    group::String
     float_type::String
     grid_size::Tuple{Int, Int, Int}
     time_steps::Int
@@ -105,6 +110,7 @@ end
 function Base.show(io::IO, ::MIME"text/plain", r::IOBenchmarkResult)
     println(io, "IOBenchmarkResult")
     println(io, "├── name: ", r.name)
+    println(io, "├── group: ", r.group)
     println(io, "├── float_type: ", r.float_type)
     println(io, "├── grid_size: ", r.grid_size)
     println(io, "├── time_steps: ", r.time_steps)
