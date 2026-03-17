@@ -50,8 +50,8 @@ fills the halo regions by mirroring interior values across the fold.
     i′ = ifelse(i′ > Nx, i′ - Nx, i′) # Periodicity is hardcoded in the x-direction!!
     Hy = grid.Hy
 
-    # The Ny + 1 line is the fold so we substitute starting from Ny
-    for j in 1:Hy - 1
+    # The Ny+1 line is the fold so we substitute starting from Ny + 2
+    for j in 1:Hy
         @inbounds ζ[i, Ny + 1 + j, k] = sign * ζ[i′, Ny + 1 - j, k]
     end
 
@@ -82,8 +82,8 @@ end
     i′ = Nx + 1 - i
     Hy = grid.Hy
 
-    # The Ny + 1 line is the fold so we substitute starting from Ny
-    for j in 1:Hy - 1
+    # The Ny + 1 line is the fold so we substitute starting from Ny + 2
+    for j in 1:Hy
         @inbounds v[i, Ny + 1 + j, k] = sign * v[i′, Ny + 1 - j, k]
     end
 
