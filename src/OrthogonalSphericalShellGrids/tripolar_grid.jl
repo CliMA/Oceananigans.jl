@@ -154,6 +154,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
     # therefore, we need an extra halo point in y
     if fold_topology == RightFaceFolded
         Hy = Hy + 1
+        halo = (Hx, Hy, Hz)
     end
 
     if isodd(Nx)
