@@ -52,8 +52,9 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
     # Update velocities
     @apply_regionally ab2_step_velocities!(model.velocities, model, Δt, χ)
 
-    # Fill velocity halos
+    # Mask and fill velocity halos
     u, v, _ = model.velocities
+    mask_immersed_velocities!(model.velocities)
     fill_halo_regions!((u, v), model.clock, fields(model); async=true)
 
     # Computing tracer tendencies
