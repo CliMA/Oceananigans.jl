@@ -1,7 +1,7 @@
 using Oceananigans.Architectures: CPU, AbstractArchitecture
 using Oceananigans.Architectures: device, AbstractArchitecture
 
-import KernelAbstractions
+using KernelAbstractions: KernelAbstractions
 
 unwrapped_eltype(::Type{T}) where {T} = T
 
