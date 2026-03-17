@@ -190,25 +190,32 @@ end
     end
 end
 
-# helper function for generating "valid" indices around the pivot point of zipper
-# "valid" here meaning that the rotated and unrotated indices remain within the interior + halo.
-function pivoted_indices(idxmin, idxmax, idxpivot)
-    idx = idxmin:idxmax
-    rotidx = Int.(2idxpivot .- idx)
-    valid = @. idxmin ≤ rotidx ≤ idxmax
-    return idx[valid], rotidx[valid]
+# We cannot rotate the entire grid because most of it is not symmetric around the pivot point,
+# So here is a helper function for generating "valid" j indices around the pivot point of zipper.
+# "valid" here meaning that the rotated and unrotated j indices remain within the interior + halo.
+function pivotable_indices(jmin, jmax, jpivot)
+    idx = jmin:jmax
+    rotidx = Int.(2jpivot .- idx)
+    valid = @. jmin ≤ rotidx ≤ jmax
+    return idx[valid]
 end
+
+# Helper functions to test symmetry and antisymmetry with 180° rotation around the pivot point
+isrot180symmetric(arr) = arr == rot180(arr)
+isrot180antisymmetric(arr) = arr == -rot180(arr)
 
 @testset "Zipper boundary conditions..." begin
     for arch in archs
         @testset "$fold_topology fold topology" for fold_topology in fold_topologies
+
             grid = TripolarGrid(arch; size = (10, 10, 1), fold_topology = fold_topology)
             Nx, Ny, _ = size(grid)
             Hx, Hy, _ = halo_size(grid)
 
-            c = CenterField(grid)
-            cx = XFaceField(grid)
-            cy = YFaceField(grid)
+            CC = CenterField(grid)
+            FC = XFaceField(grid)
+            CF = YFaceField(grid)
+            FF = Field((Face(), Face(), Center()), grid)
 
             bcs = FieldBoundaryConditions()
             u_bcs = Oceananigans.BoundaryConditions.regularize_field_boundary_conditions(bcs, grid, :u)
@@ -218,32 +225,37 @@ end
 
             Pivot = (fold_topology == RightCenterFolded) ? UPivot : FPivot
 
-            @test c.boundary_conditions.north.classification isa Zipper{Pivot}
-            @test cx.boundary_conditions.north.classification isa Zipper{Pivot}
-            @test cy.boundary_conditions.north.classification isa Zipper{Pivot}
-            @test u.boundary_conditions.north.classification isa Zipper{Pivot}
-            @test v.boundary_conditions.north.classification isa Zipper{Pivot}
+            fields = (CC, FC, CF, FF, u, v)
+
+            @testset "BC type" for f in fields
+                @test f.boundary_conditions.north.classification isa Zipper{Pivot}
+            end
 
             # The velocity fields are reversed at the north boundary
             # boundary_conditions.north.condition == -1, while the tracer
             # is not: boundary_conditions.north.condition == 1
-            @test c.boundary_conditions.north.condition == 1
-            @test cx.boundary_conditions.north.condition == 1
-            @test cy.boundary_conditions.north.condition == 1
-            @test u.boundary_conditions.north.condition == -1
-            @test v.boundary_conditions.north.condition == -1
+            @testset "BC sign" begin
+                @test CC.boundary_conditions.north.condition == 1
+                @test FC.boundary_conditions.north.condition == 1
+                @test CF.boundary_conditions.north.condition == 1
+                @test FF.boundary_conditions.north.condition == 1
+                @test u.boundary_conditions.north.condition == -1
+                @test v.boundary_conditions.north.condition == -1
+            end
 
-            set!(c, (x, y, z) -> rand())
-            set!(cx, (x, y, z) -> rand())
-            set!(cy, (x, y, z) -> rand())
-            set!(u, (x, y, z) -> rand())
-            set!(v, (x, y, z) -> rand())
+            # set! random values then fill halos
+            for f in fields
+                set!(f, (x, y, z) -> rand())
+                fill_halo_regions!(f)
+            end
 
-            fill_halo_regions!(c)
-            fill_halo_regions!(cx)
-            fill_halo_regions!(cy)
-            fill_halo_regions!(u)
-            fill_halo_regions!(v)
+            # We use CPU architecture for scalar indexing.
+            CC = on_architecture(CPU(), CC)
+            CF = on_architecture(CPU(), CF)
+            FC = on_architecture(CPU(), FC)
+            FF = on_architecture(CPU(), FF)
+            v = on_architecture(CPU(), v)
+            u = on_architecture(CPU(), u)
 
             # Illustrated below are both cases with the pivot point (F or U) indicated.
             #          │           │           │           │           │           │           │
@@ -251,11 +263,11 @@ end
             #          │           │           │           │           │           │           │
             # Ny+1 ─▶  u     c     u     c     u     c     u     c     u     c     u     c     u
             #          │           │           │           │           │           │           │
-            # Ny+1 ─▶  ├──── v ────┼──── v ────┼──── v ─── F ─── v ────┼──── v ────┼───  v ────┤
+            # Ny+1 ─▶  ├──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼───  v ────┤
             #          │           │           │           │           │           │           │
             #   Ny ─▶  u     c     u     c     u     c     U     c     u     c     u     c     u ◀─ Fold (RightCenterFolded)
             #          │           │           │           │           │           │           │
-            #   Ny ─▶  ├──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┤ ◀─ Fold (RightFaceFolded)
+            #   Ny ─▶  ├──── v ────┼──── v ────┼──── v ─── F ─── v ────┼──── v ────┼──── v ────┤ ◀─ Fold (RightFaceFolded)
             #          │           │           │           │           │           │           │
             # Ny-1 ─▶  u     c     u     c     u     c     u     c     u     c     u     c     u
             #          │           │           │           │           │           │           │
@@ -264,49 +276,62 @@ end
             #          ▲     ▲     ▲                       ▲                       ▲     ▲     ▲
             #          1     1     2                     Nx÷2+1                    Nx    Nx    Nx+1
             # For testing, rotate the entire grid around the central pivot point!
-            # Note that the pivot-point indices below include half indices to accurately
-            # represent the pivot point location. For example, for a (Center, Center) location
-            # in a RightFaceFolded topology, the pivot point is located at (Nx/2 + 0.5, Ny - 0.5).
-            pivot_iᶜ = Nx ÷ 2 + 0.5
-            pivot_iᶠ = pivot_iᶜ + 0.5
-            pivot_jᶜ = (fold_topology == RightCenterFolded) ? Ny : Ny - 0.5
-            pivot_jᶠ = pivot_jᶜ + 0.5
-            # Then we take views centered around the pivot and rotate the view by 180°.
+            # Note that the pivot-point index depends on the topology and location of the field.
+            pivotjᶜ, pivotjᶠ = (fold_topology == RightFaceFolded) ? (Ny - 1/2, Ny) : (Ny, Ny + 1/2)
+
+            # Then we take views centered around the pivot and rotate that view by 180°.
             # However we cannot rotate the entire grid and must restrict ourselves to those indices
             # that remain within the interior + halo after 180° rotation.
-            imin, imax = 1 - Hx, Nx + Hx
-            jmin, jmax = 1 - Hy, Ny + Hy
-            c_i, c_i′ = pivoted_indices(imin, imax, pivot_iᶜ)
-            c_j, c_j′ = pivoted_indices(jmin, jmax, pivot_jᶜ)
-            u_i, u_i′ = pivoted_indices(imin, imax, pivot_iᶠ)
-            u_j, u_j′ = pivoted_indices(jmin, jmax, pivot_jᶜ)
-            v_i, v_i′ = pivoted_indices(imin, imax, pivot_iᶜ)
-            v_j, v_j′ = pivoted_indices(jmin, jmax, pivot_jᶠ)
+            jᶜ = pivotable_indices(1 - Hy, Ny + Hy, pivotjᶜ)
+            jᶠ = pivotable_indices(1 - Hy, Ny + Hy, pivotjᶠ)
 
-            # Test that the northern halo region has been correctly rotated and sign-changed
-            c = on_architecture(CPU(), c)
-            cy = on_architecture(CPU(), cy)
-            v = on_architecture(CPU(), v)
-            cx = on_architecture(CPU(), cx)
-            u = on_architecture(CPU(), u)
-            # Before we run the tests, enforce zero velocities on the pivot points!
-            # Only u can be on pivot point for UPointPivot grid (RightCenterFolded)
-            # Maybe this can be avoided with some land over the pivot points?
+            # Enforce zero velocities on the pivot points where u = -u and v = -v!
+            # Only u velocity can be on pivot point for UPointPivot grid (RightCenterFolded)
             if fold_topology == RightCenterFolded
-                u.data[[1, Int(pivot_iᶠ), Nx + 1], pivot_jᶜ, :] .= 0.0
+                u.data[[1, Nx ÷ 2 + 1, Nx + 1], pivotjᶜ, :] .= 0.0
             end
-            @test all(view(c.data, c_i, c_j, 1) .== view(c.data, c_i′, c_j′, 1))
-            @test all(view(cy.data, v_i, v_j, 1) .== view(cy.data, v_i′, v_j′, 1))
-            @test all(view(v.data, v_i, v_j, 1) .== -view(v.data, v_i′, v_j′, 1))
-            @test all(view(cx.data, u_i, u_j, 1) .== view(cx.data, u_i′, u_j′, 1))
-            @test all(view(u.data, u_i, u_j, 1) .== -view(u.data, u_i′, u_j′, 1))
 
-            grid = TripolarGrid(arch; size = (10, 10, 1), fold_topology = fold_topology)
-            bottom(x, y) = rand()
-            grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
-            bottom_height = grid.immersed_boundary.bottom_height
+            # Test part of the halo with 180° rotation
+            # (We cannot do it over all i indices because of the staggered grid)
+            iᶜ = 1-Hx:Nx+Hx
+            iᶠ = 1-Hx+1:Nx+Hx # <- skip the first (= westmost) index for rot180
+            @testset "Test halo fill with rot180" begin
+                @test isrot180symmetric(view(CC.data, iᶜ, jᶜ, 1))
+                @test isrot180symmetric(view(FC.data, iᶠ, jᶜ, 1))
+                @test isrot180symmetric(view(CF.data, iᶜ, jᶠ, 1))
+                @test isrot180symmetric(view(FF.data, iᶠ, jᶠ, 1))
+                @test isrot180antisymmetric(view(u.data, iᶠ, jᶜ, 1))
+                @test isrot180antisymmetric(view(v.data, iᶜ, jᶠ, 1))
+            end
 
-            @test on_architecture(CPU(), view(bottom_height.data, c_i, c_j, 1)) == on_architecture(CPU(), view(bottom_height.data, c_i′, c_j′, 1))
+            # Test over all i indices by applying reverse on each index and mod1 for i indices
+            iᶜ = 1-Hx:Nx+Hx
+            iᶜ′ = mod1.(reverse(iᶜ), Nx)
+            iᶠ = 1-Hx:Nx+Hx
+            iᶠ′ = mod1.(reverse(iᶠ) .+ 1, Nx)
+            jᶜ′ = reverse(jᶜ)
+            jᶠ′ = reverse(jᶠ)
+            # Test that the northern halo region has been correctly rotated and sign-changed
+            # We use CPU architecture for scalar indexing.
+            @testset "Test entire halo fill" begin
+                @test view(CC.data, iᶜ, jᶜ, 1) ==  view(CC.data, iᶜ′, jᶜ′, 1)
+                @test view(FC.data, iᶠ, jᶜ, 1) ==  view(FC.data, iᶠ′, jᶜ′, 1)
+                @test view(CF.data, iᶜ, jᶠ, 1) ==  view(CF.data, iᶜ′, jᶠ′, 1)
+                @test view(FF.data, iᶠ, jᶠ, 1) ==  view(FF.data, iᶠ′, jᶠ′, 1)
+                @test view( u.data, iᶠ, jᶜ, 1) == -view( u.data, iᶠ′, jᶜ′, 1)
+                @test view( v.data, iᶜ, jᶠ, 1) == -view( v.data, iᶜ′, jᶠ′, 1)
+            end
+
+            # Test that bottom height for an immersed boundary grid is also
+            # correctly rotated and symmetric around the pivot point
+            @testset "Test GridFittedBottom halo fill" begin
+                grid = TripolarGrid(arch; size = (10, 10, 1), fold_topology = fold_topology)
+                bottom(x, y) = rand()
+                grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
+                bottom_height = on_architecture(CPU(), grid.immersed_boundary.bottom_height.data)
+                @test view(bottom_height, iᶜ, jᶜ, 1) == view(bottom_height, iᶜ′, jᶜ′, 1)
+            end
+
         end
     end
 end
