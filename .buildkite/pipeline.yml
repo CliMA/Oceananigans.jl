@@ -2,7 +2,7 @@ env:
   JULIA_VERSION: "1.12.4"
   JULIA_VERSION_ENZYME: "1.10.10"
   BUILDKITE_HOME: "/var/lib/buildkite-agent"
-  JULIA_DEPOT_PATH: "$BUILDKITE_HOME/.julia-oceananigans"
+  JULIA_DEPOT_PATH: "$BUILDKITE_HOME/.julia"
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
   XLA_REACTANT_GPU_PREALLOCATE: false
   OCEANANIGANS_DIR: "$HOME/Oceananigans.jl-$BUILDKITE_BUILD_NUMBER"
@@ -46,7 +46,7 @@ steps:
       juliaup add $JULIA_VERSION_ENZYME
       cd "$OCEANANIGANS_DIR"
 
-      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
+      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project -e 'using Pkg; Pkg.test(julia_args=["--check-bounds=auto"])' # Remove --check-bounds=auto when https://github.com/EnzymeAD/Reactant.jl/issues/2347 is fixed
       # After we have instantiated the Enzyme environment, move manifest to the
       # version-specific filename, not to clash with the general manifest.
       # mv -v Manifest.toml Manifest-v$(echo "${JULIA_VERSION_ENZYME}" | cut -d. -f1-2).toml
@@ -168,7 +168,7 @@ steps:
 
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
-      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(coverage="user")'
+      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(coverage="user", julia_args=["--check-bounds=auto"])' # Remove --check-bounds=auto when https://github.com/EnzymeAD/Reactant.jl/issues/2347 is fixed
       test_status=$$?
       set -e
 
@@ -180,7 +180,6 @@ steps:
       group_slug="{{ matrix.group }}"
       group_slug="$${group_slug//[^A-Za-z0-9_.-]/_}"
       tarball="coverage-${BUILDKITE_BUILD_NUMBER}-${BUILDKITE_JOB_ID}-{{ matrix.architecture }}-$${group_slug}.tgz"
-
 
       find . -type f -name "*.cov" > cov_list.txt
       echo "Coverage files found:" `wc -l < cov_list.txt`
@@ -202,6 +201,7 @@ steps:
           - "🎭 reactant_2"
           - "👺 enzyme"
           - "👹 reactant_1"
+          - "🧪 reactant_correctness"
 
     retry:
       automatic:

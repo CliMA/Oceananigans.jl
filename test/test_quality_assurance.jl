@@ -8,8 +8,9 @@ using Test: @testset, @test, detect_ambiguities
     Aqua.test_all(Oceananigans; ambiguities=false)
 
     # Until we resolve all ambiguities, we make sure we don't increase them.
+    # Do not increase this number. If ambiguities increase, resolve them before merging.
     number_of_ambiguities = length(detect_ambiguities(Oceananigans; recursive=true))
-    @test number_of_ambiguities <= 345
+    @test number_of_ambiguities <= 334
     @info "Number of ambiguities: $number_of_ambiguities"
 
     modules = (
@@ -64,12 +65,12 @@ end
         # Oceananigans.DistributedComputations,
         Oceananigans.Fields,
         Oceananigans.Forcings,
-        # Oceananigans.Grids,
+        Oceananigans.Grids,
         Oceananigans.ImmersedBoundaries,
         # Oceananigans.Logger,
         # Oceananigans.Models,
         Oceananigans.Models.HydrostaticFreeSurfaceModels,
-        # Oceananigans.MultiRegion,
+        Oceananigans.MultiRegion,
         Oceananigans.Operators,
         Oceananigans.OrthogonalSphericalShellGrids,
         # Oceananigans.OutputReaders,

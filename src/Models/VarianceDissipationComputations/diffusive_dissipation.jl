@@ -69,7 +69,7 @@ end
     compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, clo, K, b, c, c_id, clk, fields)
 end
 
-# Deal with tuples of closures and diffusivities
+# Deal with tuples of closures and closure_fields
 @inline compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, clo::Tuple{<:Any}, K, args...) =
     compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, clo[1], K[1], args...)
 

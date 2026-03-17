@@ -35,6 +35,10 @@ dh = DataDep("regression_truth_data",
      path * "ocean_large_eddy_simulation_AnisotropicMinimumDissipation_iteration10010.jld2",
      path * "ocean_large_eddy_simulation_SmagorinskyLilly_iteration10000.jld2",
      path * "ocean_large_eddy_simulation_SmagorinskyLilly_iteration10010.jld2",
+     path * "ocean_large_eddy_simulation_DynamicSmagorinsky_directional_iteration10000.jld2",
+     path * "ocean_large_eddy_simulation_DynamicSmagorinsky_directional_iteration10010.jld2",
+     path * "ocean_large_eddy_simulation_DynamicSmagorinsky_lagrangian_iteration10000.jld2",
+     path * "ocean_large_eddy_simulation_DynamicSmagorinsky_lagrangian_iteration10010.jld2",
      path * "rayleigh_benard_iteration1000.jld2",
      path * "rayleigh_benard_iteration1100.jld2",
      path * "thermal_bubble_regression.nc"]
@@ -42,4 +46,15 @@ dh = DataDep("regression_truth_data",
 
 DataDeps.register(dh)
 
-datadep"regression_truth_data"
+# Invalidate stale DataDeps cache if new files are missing
+dd_path = try; datadep"regression_truth_data"; catch; nothing; end
+if dd_path !== nothing
+    expected = joinpath(dd_path, "ocean_large_eddy_simulation_DynamicSmagorinsky_directional_iteration10000.jld2")
+    if !isfile(expected)
+        @info "Regression truth data cache is stale, re-downloading..."
+        rm(dd_path; recursive=true)
+        datadep"regression_truth_data"
+    end
+else
+    datadep"regression_truth_data"
+end
