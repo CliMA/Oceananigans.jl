@@ -9,6 +9,7 @@ export
 
 using KernelAbstractions: @kernel, @index
 using Oceananigans: AbstractModel, initialize!, prognostic_fields
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 
 """
     abstract type AbstractTimeStepper
@@ -29,6 +30,7 @@ step_closure_prognostics!(model, Δt) = nothing
 function maybe_initialize_state!(model, callbacks)
     if model.clock.iteration == 0
         update_state!(model, callbacks)
+        fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))    
     end
     return nothing
 end
