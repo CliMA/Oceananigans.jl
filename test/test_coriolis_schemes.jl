@@ -20,35 +20,6 @@ function make_velocity_fields(grid, FT; u_val=FT(0), v_val=FT(0))
 end
 
 #####
-##### 1. Instantiation tests for new scheme types
-#####
-
-@testset "Coriolis scheme instantiation" begin
-    @info "Testing Coriolis scheme instantiation..."
-
-    for FT in float_types
-        coriolis = SphericalCoriolis(FT, scheme=ActiveWeightedEnstrophyConserving())
-        @test coriolis.scheme isa ActiveWeightedEnstrophyConserving
-
-        coriolis = SphericalCoriolis(FT, scheme=ActiveWeightedEnergyConserving())
-        @test coriolis.scheme isa ActiveWeightedEnergyConserving
-
-        coriolis = SphericalCoriolis(FT, scheme=EENConserving())
-        @test coriolis.scheme isa EENConserving
-
-        coriolis = HydrostaticSphericalCoriolis(FT, scheme=ActiveWeightedEnstrophyConserving())
-        @test coriolis.scheme isa ActiveWeightedEnstrophyConserving
-
-        coriolis = HydrostaticSphericalCoriolis(FT, scheme=EENConserving())
-        @test coriolis.scheme isa EENConserving
-
-        # Default scheme for HydrostaticSphericalCoriolis is EENConserving
-        coriolis = HydrostaticSphericalCoriolis(FT)
-        @test coriolis.scheme isa EENConserving
-    end
-end
-
-#####
 ##### 2. Stencil correctness: uniform velocity on LatLonGrid
 #####
 ##### On a regular-in-longitude LatLonGrid, fᶜᶜᵃ depends only on j.
@@ -198,35 +169,6 @@ function test_coriolis_antisymmetry(FT, scheme)
     @test fy > 0
 end
 
-@testset "Coriolis scheme stencil correctness" begin
-    @info "Testing Coriolis scheme stencil correctness..."
-
-    for FT in float_types
-        @testset "EnstrophyConserving uniform velocity [$FT]" begin
-            test_enstrophy_conserving_uniform_v(FT)
-            test_enstrophy_conserving_uniform_u(FT)
-        end
-
-        @testset "ActiveWeighted = plain on flat bottom [$FT]" begin
-            test_active_weighted_equals_plain_flat_bottom(FT)
-        end
-
-        @testset "EEN triad structure [$FT]" begin
-            test_een_triad_structure(FT)
-        end
-
-        @testset "Antisymmetry [$FT]" begin
-            for scheme in (EnstrophyConserving(),
-                           EnergyConserving(),
-                           ActiveWeightedEnstrophyConserving(),
-                           ActiveWeightedEnergyConserving(),
-                           EENConserving())
-                test_coriolis_antisymmetry(FT, scheme)
-            end
-        end
-    end
-end
-
 #####
 ##### 6. Immersed boundary: Jamart wet-point correction
 #####
@@ -272,13 +214,6 @@ function test_jamart_correction_near_topography(FT)
     @test abs(result_aw) >= abs(result_plain) - eps(FT)
 end
 
-@testset "Immersed boundary Coriolis (Jamart correction)" begin
-    @info "Testing Coriolis Jamart correction near topography..."
-    for FT in float_types
-        test_jamart_correction_near_topography(FT)
-    end
-end
-
 #####
 ##### 7. Geostrophic balance test (NEMO CANAL style)
 #####
@@ -287,8 +222,8 @@ end
 ##### We test that the Coriolis tendency -fv ≈ 0 when v = 0 in geostrophic balance.
 #####
 
-function test_geostrophic_balance_steady(FT, scheme)
-    grid = LatitudeLongitudeGrid(CPU(), FT,
+function test_geostrophic_balance_steady(FT, arch, scheme)
+    grid = LatitudeLongitudeGrid(arch, FT,
                                  size = (8, 8, 1),
                                  latitude = (44, 46),
                                  longitude = (0, 8),
@@ -321,19 +256,6 @@ function test_geostrophic_balance_steady(FT, scheme)
     @test v_max < U₀ # v should not grow to the scale of u
 end
 
-@testset "Geostrophic balance" begin
-    @info "Testing geostrophic balance..."
-
-    for scheme in (EnstrophyConserving(),
-                   EnergyConserving(),
-                   ActiveWeightedEnstrophyConserving(),
-                   EENConserving())
-        @testset "scheme=$(summary(scheme))" begin
-            test_geostrophic_balance_steady(Float64, scheme)
-        end
-    end
-end
-
 #####
 ##### 8. Energy conservation under Coriolis
 #####
@@ -342,8 +264,8 @@ end
 ##### Run for a few time steps and check KE is conserved.
 #####
 
-function test_coriolis_energy_conservation(FT, scheme)
-    grid = LatitudeLongitudeGrid(CPU(), FT,
+function test_coriolis_energy_conservation(FT, arch, scheme)
+    grid = LatitudeLongitudeGrid(arch, FT,
                                  size = (16, 16, 1),
                                  latitude = (30, 60),
                                  longitude = (0, 30),
@@ -353,10 +275,10 @@ function test_coriolis_energy_conservation(FT, scheme)
     coriolis = HydrostaticSphericalCoriolis(FT, scheme=scheme)
 
     model = HydrostaticFreeSurfaceModel(grid; coriolis,
-                                          momentum_advection = nothing,
-                                          buoyancy = nothing,
-                                          tracers = nothing,
-                                          closure = nothing)
+                                              momentum_advection = nothing,
+                                              buoyancy = nothing,
+                                              tracers = nothing,
+                                              closure = nothing)
 
     # Gaussian anticyclonic eddy initial condition (simplified NEMO VORTEX)
     λ₀, φ₀ = FT(15), FT(45)  # eddy center
@@ -367,9 +289,9 @@ function test_coriolis_energy_conservation(FT, scheme)
 
     u, v, w = model.velocities
     KE_op = @at (Center, Center, Center) (u^2 + v^2) / 2
-    KE_field = Field(KE_op)
-    compute!(KE_field)
-    KE_initial = sum(KE_field)
+    KE = Field(KE_op)
+    compute!(KE)
+    KEᵢ = sum(KE)
 
     Ω = coriolis.rotation_rate
     f_mid = 2Ω * sind(FT(45))
@@ -379,24 +301,11 @@ function test_coriolis_energy_conservation(FT, scheme)
     simulation = Simulation(model, Δt=Δt, stop_time=5Δt)
     run!(simulation)
 
-    compute!(KE_field)
-    KE_final = sum(KE_field)
+    compute!(KE)
+    KEₑ = sum(KE)
 
     # Coriolis should not inject or remove energy
-    @test abs(KE_final - KE_initial) / abs(KE_initial) < 0.05
-end
-
-@testset "Energy conservation (NEMO VORTEX style)" begin
-    @info "Testing energy conservation under Coriolis..."
-
-    for scheme in (EnstrophyConserving(),
-                   EnergyConserving(),
-                   ActiveWeightedEnstrophyConserving(),
-                   EENConserving())
-        @testset "scheme=$(summary(scheme))" begin
-            test_coriolis_energy_conservation(Float64, scheme)
-        end
-    end
+    @test abs(KEₑ - KEᵢ) / abs(KEᵢ) < 0.05
 end
 
 #####
@@ -407,8 +316,8 @@ end
 ##### Uses doubly-periodic to avoid boundary effects on v-points.
 #####
 
-function test_inertial_oscillation(FT, scheme)
-    grid = RectilinearGrid(CPU(), FT,
+function test_inertial_oscillation(FT, arch, scheme)
+    grid = RectilinearGrid(arch, FT,
                            size = (4, 4, 1),
                            x = (0, 1e5),
                            y = (0, 1e5),
@@ -432,23 +341,95 @@ function test_inertial_oscillation(FT, scheme)
     simulation = Simulation(model, Δt=Δt, stop_time=T_inertial)
     run!(simulation)
 
-    u_final = model.velocities.u[2, 2, 1]
-    v_final = model.velocities.v[2, 2, 1]
+    CUDA.@allowscalar u_final = model.velocities.u[2, 2, 1]
+    CUDA.@allowscalar v_final = model.velocities.v[2, 2, 1]
 
     @test abs(u_final - u₀) / u₀ < 0.05
     @test abs(v_final) / u₀ < 0.05
 end
 
-@testset "Inertial oscillation (f-plane)" begin
-    @info "Testing inertial oscillation on f-plane..."
+#####
+##### 1. Instantiation tests for new scheme types
+#####
 
-    for scheme in (EnstrophyConserving(),
-                   EnergyConserving(),
-                   ActiveWeightedEnstrophyConserving(),
-                   ActiveWeightedEnergyConserving(),
-                   EENConserving())
-        @testset "scheme=$(summary(scheme))" begin
-            test_inertial_oscillation(Float64, scheme)
+for arch in archs
+    @testset "Coriolis scheme instantiation" begin
+        @info "Testing Coriolis scheme instantiation..."
+
+        for FT in float_types
+            coriolis = SphericalCoriolis(FT, scheme=ActiveWeightedEnstrophyConserving())
+            @test coriolis.scheme isa ActiveWeightedEnstrophyConserving
+
+            coriolis = SphericalCoriolis(FT, scheme=ActiveWeightedEnergyConserving())
+            @test coriolis.scheme isa ActiveWeightedEnergyConserving
+
+            coriolis = SphericalCoriolis(FT, scheme=EENConserving())
+            @test coriolis.scheme isa EENConserving
+
+            coriolis = HydrostaticSphericalCoriolis(FT, scheme=ActiveWeightedEnstrophyConserving())
+            @test coriolis.scheme isa ActiveWeightedEnstrophyConserving
+
+            coriolis = HydrostaticSphericalCoriolis(FT, scheme=EENConserving())
+            @test coriolis.scheme isa EENConserving
+
+            # Default scheme for HydrostaticSphericalCoriolis is EENConserving
+            coriolis = HydrostaticSphericalCoriolis(FT)
+            @test coriolis.scheme isa EENConserving
+        end
+    end
+
+    @testset "Coriolis scheme stencil correctness" begin
+        @info "Testing Coriolis scheme stencil correctness..."
+
+        for FT in float_types
+            @testset "EnstrophyConserving uniform velocity [$FT]" begin
+                test_enstrophy_conserving_uniform_v(FT)
+                test_enstrophy_conserving_uniform_u(FT)
+            end
+
+            @testset "ActiveWeighted = plain on flat bottom [$FT]" begin
+                test_active_weighted_equals_plain_flat_bottom(FT)
+            end
+
+            @testset "Immersed boundary Coriolis (Jamart correction)" begin
+                test_jamart_correction_near_topography(FT)
+            end
+
+            @testset "EEN triad structure [$FT]" begin
+                test_een_triad_structure(FT)
+            end
+        end
+    end
+
+    for FT in float_types, scheme in (EnstrophyConserving(),
+                                      EnergyConserving(),
+                                      ActiveWeightedEnstrophyConserving(),
+                                      ActiveWeightedEnergyConserving(),
+                                      EENConserving())
+    
+        @testset "Antisymmetry [$FT]" begin
+            @testset "scheme=$(summary(scheme))" begin
+                test_coriolis_antisymmetry(FT, CPU(), scheme)
+            end
+        end
+
+        @testset "Geostrophic balance" begin
+            @testset "scheme=$(summary(scheme))" begin
+                test_geostrophic_balance_steady(FT, arch, scheme)
+            end
+        end
+
+
+        @testset "Energy conservation (NEMO VORTEX style)" begin
+            @testset "scheme=$(summary(scheme))" begin
+                test_coriolis_energy_conservation(FT, arch, scheme)
+            end
+        end
+
+        @testset "Inertial oscillation (f-plane)" begin
+            @testset "scheme=$(summary(scheme))" begin
+                test_inertial_oscillation(FT, arch, scheme)
+            end
         end
     end
 end
