@@ -312,7 +312,6 @@ isrot180antisymmetric(arr) = arr == -rot180(arr)
             jᶜ′ = reverse(jᶜ)
             jᶠ′ = reverse(jᶠ)
             # Test that the northern halo region has been correctly rotated and sign-changed
-            # We use CPU architecture for scalar indexing.
             @testset "Test entire halo fill" begin
                 @test view(CC.data, iᶜ, jᶜ, 1) ==  view(CC.data, iᶜ′, jᶜ′, 1)
                 @test view(FC.data, iᶠ, jᶜ, 1) ==  view(FC.data, iᶠ′, jᶜ′, 1)
