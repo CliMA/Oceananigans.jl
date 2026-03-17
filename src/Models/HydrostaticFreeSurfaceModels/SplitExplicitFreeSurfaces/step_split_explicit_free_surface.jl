@@ -1,5 +1,21 @@
 using KernelAbstractions.Extras.LoopInfo: @unroll
-using Oceananigans.ImmersedBoundaries: column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ
+
+# Selection between topology aware and non-aware operators
+# depending on whether we fill halos or not in between substeps
+@inline x_derivative_operator(::Val{false}) = ∂xᵣTᶠᶜᶠ
+@inline x_derivative_operator(::Val{true})  = ∂xᵣᶠᶜᶠ
+@inline y_derivative_operator(::Val{false}) = ∂yᵣTᶜᶠᶠ
+@inline y_derivative_operator(::Val{true})  = ∂yᵣᶜᶠᶠ
+
+@inline x_difference_operator(::Val{false}) = δxTᶜᵃᵃ
+@inline x_difference_operator(::Val{true})  = δxᶜᵃᵃ
+@inline y_difference_operator(::Val{false}) = δyTᵃᶜᵃ
+@inline y_difference_operator(::Val{true})  = δyᵃᶜᵃ
+
+@inline x_column_depth(i, j, k, grid, ::Val{false}, η) = column_depthTᶠᶜᵃ(i, j, k, grid, η)
+@inline x_column_depth(i, j, k, grid, ::Val{true},  η) =  column_depthᶠᶜᵃ(i, j, k, grid, η)
+@inline y_column_depth(i, j, k, grid, ::Val{false}, η) = column_depthTᶜᶠᵃ(i, j, k, grid, η)
+@inline y_column_depth(i, j, k, grid, ::Val{true},  η) =  column_depthᶜᶠᵃ(i, j, k, grid, η)
 
 # Selection between topology aware and non-aware operators
 # depending on whether we fill halos or not in between substeps
@@ -24,8 +40,8 @@ using Oceananigans.ImmersedBoundaries: column_depthTᶠᶜᵃ, column_depthTᶜ�
 # ∂t(U) = - gH∇η + f
 #
 # The free surface field η and its average η̄ are located on `Face`s at the surface (grid.Nz +1). All other intermediate
-# variables (U, V, Ū, V̄) are barotropic fields (`ReducedField`) for which a k index is not defined.
-@kernel function _split_explicit_barotropic_velocity!(transport_weight, grid, filled_halos, Δτ, η, U, V, Gᵁ, Gⱽ, g, Ũ, Ṽ, timestepper)
+# variables (U, V, Ū, V̄) are barotropic fields (`ReducedField`) for which a k index is not defined.
+@kernel function _split_explicit_barotropic_velocity!(transport_weight, grid, filled_halos, Δτ, η, U, V, Gᵁ, Gⱽ, g, Ũ, Ṽ, timestepper)
     i, j = @index(Global, NTuple)
     k_top = grid.Nz+1
 
@@ -106,7 +122,7 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
     @apply_regionally velocity_kernel!, _     = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
     @apply_regionally free_surface_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
 
-    U_args = (grid, Val(true), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
+    U_args = (grid, Val(true), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
     η_args = (grid, Val(true), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
 
     # Barotropic model fields for open boundary condition halo filling (e.g. Flather).
@@ -158,7 +174,7 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
     barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
     free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
 
-    U_args = (grid, Val(false), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
+    U_args = (grid, Val(false), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
     η_args = (grid, Val(false), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
 
     GC.@preserve U_args η_args begin

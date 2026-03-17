@@ -90,6 +90,12 @@ For implicit free surfaces, a predictor-corrector approach is used:
     # Advancing free surface in preparation for the correction step
     step_free_surface!(free_surface, model, model.timestepper, Δτ)
 
+    # Fill velocity halos
+    u, v, _ = model.velocities
+    fill_halo_regions!((u, v), model.clock, fields(model))
+
+    @apply_regionally correct_barotropic_mode!(model, Δτ)
+
     compute_transport_velocities!(model, free_surface)
 
     # Fill velocity halos
@@ -100,7 +106,6 @@ For implicit free surfaces, a predictor-corrector approach is used:
         compute_tracer_tendencies!(model)
 
         rk_substep_grid!(model.grid, model, model.vertical_coordinate, Δτ)
-        correct_barotropic_mode!(model, Δτ)
 
         # Finally step tracers
         rk_substep_tracers!(model.tracers, model, Δτ)

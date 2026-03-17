@@ -175,7 +175,7 @@ function compute_transport_velocities!(model, free_surface::ImplicitFreeSurface)
     launch!(architecture(grid), grid, :xy, _compute_transport_velocities!, ũ, ṽ, grid, u, v)
 
     # Fill transport velocities
-    fill_halo_regions!((ũ, ṽ), model.clock, fields(model); async=true)
+    fill_halo_regions!((ũ, ṽ), model.clock, fields(model))
 
     # Update grid velocity and vertical transport velocity
     @apply_regionally update_vertical_velocities!(model.transport_velocities, model.grid, model)
