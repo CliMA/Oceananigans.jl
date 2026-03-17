@@ -1,6 +1,6 @@
 using Oceananigans: prognostic_fields
 using Oceananigans.Grids
-using Oceananigans.Utils: KernelParameters
+using Oceananigans.Utils: KernelParameters, grid_worksize
 using Oceananigans.Grids: halo_size, topology, architecture
 using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: DistributedGrid
@@ -30,7 +30,7 @@ function interior_tendency_kernel_parameters(arch::AsynchronousDistributed, grid
     Rx, Ry, _ = arch.ranks
     Hx, Hy, _ = halo_size(grid)
     Tx, Ty, _ = topology(grid)
-    Nx, Ny, Nz = size(grid)
+    Nx, Ny, Nz = grid_worksize(grid)
 
     # Kernel parameters to compute the tendencies in all the interior if the direction is local (`R == 1`) and only in
     # the part of the domain that does not depend on the halo cells if the direction is partitioned.

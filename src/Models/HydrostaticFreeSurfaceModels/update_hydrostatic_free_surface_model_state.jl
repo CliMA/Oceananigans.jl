@@ -8,7 +8,7 @@ using Oceananigans.Models: update_model_field_time_series!, surface_kernel_param
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
 using Oceananigans.TurbulenceClosures: compute_closure_fields!
 import Oceananigans.TurbulenceClosures: step_closure_prognostics!
-using Oceananigans.Utils: KernelParameters
+using Oceananigans.Utils: KernelParameters, grid_worksize
 
 compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxiliary_fields)
 
@@ -113,7 +113,7 @@ cell faces require data from neighboring cells. This ensures that viscous fluxes
 can be computed correctly at domain boundaries without requiring (possibly costly) halo exchanges.
 """
 @inline function diffusivity_kernel_parameters(grid)
-    Nx, Ny, Nz = size(grid)
+    Nx, Ny, Nz = grid_worksize(grid)
     Tx, Ty, Tz = topology(grid)
 
     ii = ifelse(Tx == Flat, 1:Nx, 0:Nx+1)

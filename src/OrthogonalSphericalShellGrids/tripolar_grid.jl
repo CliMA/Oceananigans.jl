@@ -21,7 +21,7 @@ Adapt.adapt_structure(to, t::Tripolar) =
              Adapt.adapt(to, t.southernmost_latitude))
 
 const TripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} = OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, Arch}
-const TripolarGridOfSomeKind = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}}
+const TripolarGridOfSomeKind{TX, TY, TZ} = Union{TripolarGrid{<:Any, TX, TY, TZ}, ImmersedBoundaryGrid{<:Any, TX, TY, TZ, <:TripolarGrid}}
 
 """
     TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatType;

@@ -133,14 +133,13 @@ end
 # This makes the computation a little heavier but avoids OOM errors (this computation
 # is performed only once on setup)
 function findall_active_indices!(active_indices, active_cells_field, grid, IndicesType)
-
-    for k in 1:size(grid, 3)
-        interior_indices = findall(on_architecture(CPU(), interior(active_cells_field, :, :, k:k)))
-        interior_indices = convert_interior_indices(interior_indices, k, IndicesType)
+    Nx, Ny, Nz = grid_worksize(grid)
+    for k in 1:Nz
+        interior_indices = findall(on_architecture(CPU(), view(active_cells_field.data, 1:Nx, 1:Ny+1, k:k)))
+        interior_indices = ImmersedBoundaries.convert_interior_indices(interior_indices, k, IndicesType)
         active_indices   = vcat(active_indices, interior_indices)
         GC.gc()
     end
-
     return active_indices
 end
 
@@ -160,12 +159,12 @@ build_active_cells_map(grid, ib) = serially_build_active_cells_map(grid, ib; par
 # If we eventually want to perform also barotropic step, `w` computation and `p`
 # computation only on active `columns`
 function build_active_z_columns(grid, ib)
-    field = compute_active_z_columns(grid, ib)
-    field_interior = on_architecture(CPU(), interior(field, :, :, 1))
+    field = ImmersedBoundaries.compute_active_z_columns(grid, ib)
+    Nx, Ny, Nz = grid_worksize(grid)
+    field_data = on_architecture(CPU(), view(field.data, 1:Nx, 1:Ny, 1))
 
     full_indices = findall(field_interior)
 
-    Nx, Ny, _ = size(grid)
     # Reduce the size of the active_cells_map (originally a tuple of Int64)
     N = max(Nx, Ny)
     IntType = N > MAXUInt8 ? (N > MAXUInt16 ? (N > MAXUInt32 ? UInt64 : UInt32) : UInt16) : UInt8
