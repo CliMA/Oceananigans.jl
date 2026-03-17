@@ -50,9 +50,6 @@ Base.length(::Center,  ::AT,              N) = N
 Base.length(::Nothing, ::Flat,            N) = N
 Base.length(::Face,    ::Flat,            N) = N
 Base.length(::Center,  ::Flat,            N) = N
-Base.length(::Nothing, ::RightFaceFolded, N) = 1
-Base.length(::Face,    ::RightFaceFolded, N) = N + 1
-Base.length(::Center,  ::RightFaceFolded, N) = N 
 
 # "Indices-aware" length
 Base.length(loc, topo::AT, N, ::Colon) = length(loc, topo, N)
