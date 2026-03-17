@@ -406,7 +406,7 @@ for arch in archs
                                       ActiveWeightedEnstrophyConserving(),
                                       ActiveWeightedEnergyConserving(),
                                       EENConserving())
-    
+
         @testset "Antisymmetry [$FT]" begin
             @testset "scheme=$(summary(scheme))" begin
                 test_coriolis_antisymmetry(FT, CPU(), scheme)
