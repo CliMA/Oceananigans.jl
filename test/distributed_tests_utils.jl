@@ -1,7 +1,3 @@
-if !@isdefined(_DISTRIBUTED_TESTS_UTILS_LOADED)
-
-const _DISTRIBUTED_TESTS_UTILS_LOADED = true
-
 using JLD2
 using MPI
 using Oceananigans.DistributedComputations: reconstruct_global_field, reconstruct_global_grid
@@ -155,5 +151,3 @@ function run_distributed_simulation(grid)
 
     return model
 end
-
-end # if !@isdefined(_DISTRIBUTED_TESTS_UTILS_LOADED)
