@@ -64,4 +64,5 @@ function prettytimeunits(t, longform=true)
 end
 
 prettytime(dt::AbstractTime) = "$dt"
+prettytime(t::Array) = map(prettytime, t)
 prettytime(dt::AbstractTime, ::Bool) = prettytime(dt)

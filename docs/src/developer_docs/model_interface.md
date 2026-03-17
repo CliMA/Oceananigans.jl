@@ -148,7 +148,7 @@ state variables `x`, `y`, and `z`.
 using Oceananigans
 using Oceananigans.Models: AbstractModel
 using Oceananigans.Simulations: Simulation, run!
-using Oceananigans.TimeSteppers: Clock, tick!
+using Oceananigans.TimeSteppers: Clock, tick!, tick_stage!
 using Oceananigans: TendencyCallsite, UpdateStateCallsite
 
 import Oceananigans.TimeSteppers: update_state!, time_step!
@@ -330,18 +330,18 @@ function time_step!(model::KuramotoSivashinskyModel, Δt; callbacks = [])
     # Stage 1: u = u + Δt * γ¹ * Gⁿ
     u .+= Δt * γ¹ .* Gⁿ
     G⁻ .= Gⁿ
-    tick!(model.clock, Δt * γ¹; stage=true)
+    tick_stage!(model.clock, Δt * γ¹)
     update_state!(model, callbacks)
 
     # Stage 2: u = u + Δt * (γ² * Gⁿ + ζ² * G⁻)
     u .+= Δt * γ² .* Gⁿ .+ Δt * ζ² .* G⁻
     G⁻ .= Gⁿ
-    tick!(model.clock, Δt * (γ² + ζ²); stage=true)
+    tick_stage!(model.clock, Δt * (γ² + ζ²))
     update_state!(model, callbacks)
 
     # Stage 3: u = u + Δt * (γ³ * Gⁿ + ζ³ * G⁻)
     u .+= Δt * γ³ .* Gⁿ .+ Δt * ζ³ .* G⁻
-    tick!(model.clock, Δt * (γ³ + ζ³))  # final tick increments iteration, resets stage
+    tick_stage!(model.clock, Δt * (γ³ + ζ³), Δt)  # final stage: pass full Δt as step size
     update_state!(model, callbacks)
 
     return nothing

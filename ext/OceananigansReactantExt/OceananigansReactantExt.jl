@@ -170,7 +170,7 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     M2 = Reactant.traced_type_inner(M, seen, mode, track_numbers, sharding, runtime)
     S2 = Reactant.traced_type_inner(S, seen, mode, track_numbers, sharding, runtime)
     FT2 = eltype(G2)
-    return Oceananigans.Grids.ImmersedBoundaryGrid{FT2, TX2, TY2, TZ2, G2, I2, M2, S2, Arch}
+    return Oceananigans.ImmersedBoundaries.ImmersedBoundaryGrid{FT2, TX2, TY2, TZ2, G2, I2, M2, S2, Arch}
 end
 
 Base.@nospecializeinfer function Reactant.traced_type_inner(
@@ -312,17 +312,38 @@ function Oceananigans.TimeSteppers.tick_time!(clock::Oceananigans.TimeSteppers.C
     nt
 end
 
-function Oceananigans.TimeSteppers.tick!(clock::Oceananigans.TimeSteppers.Clock{<:Any, <:Any, <:Reactant.TracedRNumber}, Δt; stage=false)
+const ReactantClock = Oceananigans.TimeSteppers.Clock{<:Any, <:Any, <:Reactant.TracedRNumber}
+
+# Promote a value to TracedRNumber via addition with zero(clock.time).
+# This is needed because .mlir_data only exists on TracedRNumber.
+promote_to_traced(Δt, clock) = Δt + zero(clock.time)
+
+function Oceananigans.TimeSteppers.tick!(clock::ReactantClock, Δt)
     Oceananigans.TimeSteppers.tick_time!(clock, Δt)
+    Δt = promote_to_traced(Δt, clock)
+    clock.iteration.mlir_data = (clock.iteration + 1).mlir_data
+    clock.stage = 1
+    clock.last_Δt.mlir_data = Δt.mlir_data
+    clock.last_stage_Δt.mlir_data = Δt.mlir_data
+    return nothing
+end
 
-    if stage # tick a stage update
-        clock.stage += 1
-        clock.last_stage_Δt = Δt
-    else # tick an iteration and reset stage
-        clock.iteration.mlir_data = (clock.iteration + 1).mlir_data
-        clock.stage = 1
-    end
+function Oceananigans.TimeSteppers.tick_stage!(clock::ReactantClock, stage_Δt)
+    Oceananigans.TimeSteppers.tick_time!(clock, stage_Δt)
+    stage_Δt = promote_to_traced(stage_Δt, clock)
+    clock.stage += 1
+    clock.last_stage_Δt.mlir_data = stage_Δt.mlir_data
+    return nothing
+end
 
+function Oceananigans.TimeSteppers.tick_stage!(clock::ReactantClock, stage_Δt, step_Δt)
+    Oceananigans.TimeSteppers.tick_time!(clock, stage_Δt)
+    stage_Δt = promote_to_traced(stage_Δt, clock)
+    step_Δt = promote_to_traced(step_Δt, clock)
+    clock.iteration.mlir_data = (clock.iteration + 1).mlir_data
+    clock.stage = 1
+    clock.last_Δt.mlir_data = step_Δt.mlir_data
+    clock.last_stage_Δt.mlir_data = stage_Δt.mlir_data
     return nothing
 end
 

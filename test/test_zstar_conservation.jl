@@ -106,7 +106,7 @@ end
                 grids = [rtgv, irtgv] #, prtgv]
             end
 
-            # We test only SKR3 because AB2 is not conservative
+            # We test only SRK3 because AB2 is not conservative
             timestepper = :SplitRungeKutta3
 
             for grid in grids
