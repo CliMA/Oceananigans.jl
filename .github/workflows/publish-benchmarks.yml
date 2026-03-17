@@ -189,9 +189,9 @@ jobs:
 
           data = []
           for d in all_data:
-              pps = d["grid_points_per_second"]
+              tps = d["time_per_step_seconds"]
               chart_name = build_chart_name(d)
-              data.append({"name": chart_name, "unit": "points/s", "value": pps})
+              data.append({"name": chart_name, "unit": "s/timestep", "value": tps})
 
               # Add nsys kernel data as separate chart entries if present
               if "nsys_top_kernels" in d:
@@ -288,7 +288,7 @@ jobs:
         if: ${{ steps.locate.outputs.path != '' }}
         with:
           name: Oceananigans.jl Benchmarks
-          tool: "customBiggerIsBetter"
+          tool: "customSmallerIsBetter"
           output-file-path: "github-action-benchmark.json"
           benchmark-data-dir-path: "."
           gh-repository: "github.com/NumericalEarth/OceananigansBenchmarks"
