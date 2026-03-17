@@ -400,7 +400,7 @@ function with_halo(halo, grid::LatitudeLongitudeGrid)
     return LatitudeLongitudeGrid(arch, FT; kwargs...)
 end
 
-function on_architecture(arch::AbstractSerialArchitecture, grid::LatitudeLongitudeGrid)
+function Architectures.on_architecture(arch::AbstractSerialArchitecture, grid::LatitudeLongitudeGrid)
     if arch == architecture(grid)
         return grid
     end

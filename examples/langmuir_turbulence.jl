@@ -4,6 +4,9 @@
 # reported in section 4 of
 #
 # ```@bibliography
+# Pages = []
+# Canonical = false
+#
 # Wagner2021
 # ```
 #
