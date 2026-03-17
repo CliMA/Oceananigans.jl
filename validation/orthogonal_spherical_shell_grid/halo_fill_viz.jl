@@ -20,7 +20,7 @@ for fold_topology in fold_topologies
     pivotjᶜ, pivotjᶠ = (fold_topology == RightFaceFolded) ? (Ny - 1/2, Ny) : (Ny, Ny + 1/2)
     pivotiᶜ, pivotiᶠ = Nx ÷ 2 + 1/2, Nx ÷ 2 + 1
 
-    fig = Figure(size = (1200, 800))
+    fig = Figure(size = (1000, 1200))
     legenddone = false
 
     for (ilocx, locx) in enumerate(locations), (ilocy, locy) in enumerate(locations)
@@ -61,10 +61,9 @@ for fold_topology in fold_topologies
         )
         # default grid underlay
         offset = (fold_topology == RightFaceFolded) ? 1 : 1/2 # how much more grid north of pivots
-        band!(ax, [pivotj - Hy - 2, pivotj + offset],
-            (pivoti - Nx ÷ 2) * [1, 1], (pivoti + Nx ÷ 2) * [1, 1],
-            direction = :y, color = (:black, 0.1),
-        )
+        interior_poly_x = pivoti .+ [-Nx ÷ 2, Nx ÷ 2, Nx ÷ 2, -Nx ÷ 2]
+        interior_poly_y = pivotj + offset .+ [0, 0, -Ny, -Ny]
+        poly!(ax, interior_poly_x, interior_poly_y, color = (:black, 0.05), strokecolor = :black, strokewidth = 1)
 
         # Plot arcs from halo points to their source
         for i in (1-Hx):(Nxfield+Hx), j in (1-Hy):(Nyfield+Hy)
@@ -90,7 +89,10 @@ for fold_topology in fold_topologies
 
             # add legend once
             if !legenddone
-                axislegend(ax, [scpivots, scsrc, scdest], ["Pivot points / north poles", "Interior \"source\" points", "Points filled when folding"]; position = :rt)
+                axislegend(ax, [scpivots, scsrc, scdest],
+                    ["Pivot points / north poles", "Interior \"source\" points", "Points filled when folding"];
+                    position = :rb
+                )
                 legenddone = true
             end
         end
