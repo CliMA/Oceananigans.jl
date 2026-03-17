@@ -372,9 +372,9 @@ for arch in archs
             coriolis = HydrostaticSphericalCoriolis(FT, scheme=EENConserving())
             @test coriolis.scheme isa EENConserving
 
-            # Default scheme for HydrostaticSphericalCoriolis is EENConserving
+            # Default scheme for HydrostaticSphericalCoriolis is EnstrophyConserving
             coriolis = HydrostaticSphericalCoriolis(FT)
-            @test coriolis.scheme isa EENConserving
+            @test coriolis.scheme isa EnstrophyConserving
         end
     end
 
