@@ -145,7 +145,7 @@ for arch in archs
     end
 
     @testset "Immersed momentum reconstruction" begin
-        @info "Running immersed momentum recontruction tests..."
+        @info "Running immersed momentum reconstruction tests..."
 
         grid = RectilinearGrid(arch, size=(20, 20), extent=(20, 20), halo = (6, 6), topology=(Bounded, Bounded, Flat))
         ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y) -> (x < 5 || y < 5)))

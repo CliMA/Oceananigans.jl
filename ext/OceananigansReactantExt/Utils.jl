@@ -10,6 +10,8 @@ function prettytime(concrete_number::Union{ConcretePJRTNumber,ConcreteIFRTNumber
     return prettytime(number)
 end
 
+prettytime(t::Reactant.TracedRNumber) = "TracedRNumber"
+
 function prettysummary(concrete_number::ConcretePJRTNumber)
     number = Reactant.to_number(concrete_number)
     return string("ConcretePJRTNumber(", prettysummary(number), ")")
