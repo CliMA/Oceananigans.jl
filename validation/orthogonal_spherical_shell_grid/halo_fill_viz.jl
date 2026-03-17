@@ -21,6 +21,7 @@ for fold_topology in fold_topologies
     pivotiᶜ, pivotiᶠ = Nx ÷ 2 + 1/2, Nx ÷ 2 + 1
 
     fig = Figure(size = (1200, 800))
+    legenddone = false
 
     for (ilocx, locx) in enumerate(locations), (ilocy, locy) in enumerate(locations)
 
@@ -51,10 +52,19 @@ for fold_topology in fold_topologies
             yticks = (1 - Hy):(Nyfield + Hy),
         )
 
+
         # Plot pivot points in red
         pivoti = (locx == Center()) ? pivotiᶜ : pivotiᶠ
         pivotj = (locy == Center()) ? pivotjᶜ : pivotjᶠ
-        scatter!(ax, pivoti .+ [-Nx ÷ 2, 0, Nx ÷ 2], pivotj .+ [0, 0, 0]; color = :red, marker = :star5, markersize = 15)
+        scpivots = scatter!(ax, pivoti .+ [-Nx ÷ 2, 0, Nx ÷ 2], pivotj .+ [0, 0, 0];
+        color = :red, marker = :star5, markersize = 15, label = "Pivot points"
+        )
+        # default grid underlay
+        offset = (fold_topology == RightFaceFolded) ? 1 : 1/2 # how much more grid north of pivots
+        band!(ax, [pivotj - Hy - 2, pivotj + offset],
+            (pivoti - Nx ÷ 2) * [1, 1], (pivoti + Nx ÷ 2) * [1, 1],
+            direction = :y, color = (:black, 0.1),
+        )
 
         # Plot arcs from halo points to their source
         for i in (1-Hx):(Nxfield+Hx), j in (1-Hy):(Nyfield+Hy)
@@ -65,20 +75,29 @@ for fold_topology in fold_topologies
             radius = sqrt(sum((source .- destination) .^ 2)) / 2
             start_angle = atan(destination[2] - origin[2], destination[1] - origin[1])
             stop_angle = start_angle - π
-            scatter!(ax, source...; color = Cycled(j))
-            scatter!(ax, destination...; marker = :rect, color = Cycled(j), markersize = 20)
-            sc = scatter!(ax, destination...; marker = :rect, color = :white, markersize = 15)
-            translate!(sc, 0, 0, 1) # Hack to put the white marker on top of the colored one
+            scsrc = scatter!(ax, source...; color = Cycled(j), label = "Interior source points")
+            # scatter!(ax, destination...; marker = :rect, color = Cycled(j), markersize = 20)
+            scdest = scatter!(ax, destination...;
+                marker = :rect, color = :white, markersize = 15,
+                strokecolor = :black, strokewidth = 1, label = "Folded points",
+            )
+            translate!(scdest, 0, 0, 1) # Hack to put the white marker on top of the colored one
             # dtriangle = Polygon([Point(0, 0), Point(1, 1), Point(-1, 1)])
-            sc = scatter!(ax, destination...; marker = :dtriangle, rotation = stop_angle, color = Cycled(j))
-            translate!(sc, 0, 0, 2) # Hack more
+            scutri = scatter!(ax, destination...; marker = :dtriangle, rotation = stop_angle, color = Cycled(j))
+            translate!(scutri, 0, 0, 2) # Hack more
             ar = arc!(ax, origin, radius, start_angle, stop_angle, color = Cycled(j))
             translate!(ar, 0, 0, 2) # Hack more
+
+            # add legend once
+            if !legenddone
+                axislegend(ax, [scpivots, scsrc, scdest], ["Pivot points / north poles", "Interior \"source\" points", "Points filled when folding"]; position = :rt)
+                legenddone = true
+            end
         end
 
     end
 
-    Label(fig[0, :], "$fold_topology halo fill visualisation", fontsize = 20)
+    Label(fig[0, :], "$fold_topology ($Nx×$Ny) TripolarGrid with ($Hx, $Hy) halo: fold visualisation", fontsize = 20)
 
     save("halo_fill_viz_$(fold_topology).png", fig)
 
