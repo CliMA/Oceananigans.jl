@@ -21,7 +21,7 @@ Consider the northern edge of a tripolar grid where P indicates the pivot point,
 then there must be a 180° rotation symmetry around the pivot point:
 ```
                     │            │            │            │            │
-Ny + 1 (face)   ─▶  ├──── v₄ ────┼──── v₃ ─── P ─── v₂ ────┼──── v₁ ────┤ ─── Fold
+Ny + 1 (face)   ─▶  ├──── v₅ ────┼──── v₆ ─── P ── -v₆ ────┼─── -v₅ ────┤ ─── Fold
                     │            │            │            │            │
 Ny     (center) ─▶  u₁    c₁     u₂    c₂     u₃    c₃     u₄    c₄     u₁
                     │            │            │            │            │
@@ -35,8 +35,8 @@ Ny - 1 (center) ─▶  u₅    c₅     u₆    c₆     u₇    c₇     u₈ 
 ```
 
 Note that for the `RightFaceFolded` topology used here,
-the fold is located between `face[Ny]` and `face[Ny+1]` (i.e., the fold
-does not coincide with an interior grid point). The boundary condition
+the fold is located along the y-direction faces at `j = Ny+1` (i.e., the fold
+is exactly on the northern boundary of the grid). The boundary condition
 fills the halo regions by mirroring interior values across the fold.
 """
 
@@ -46,7 +46,8 @@ fills the halo regions by mirroring interior values across the fold.
 
 @inline function fold_north_face_face_fpivot!(i, k, grid, sign, ζ)
     Nx, Ny, _ = size(grid)
-    i′ = Nx - i + 2 # Element Nx + 1 does not exist?
+    # We use Nx - i + 2 because west y-faces map to east y-faces after folding
+    i′ = Nx - i + 2 # but element Nx + 1 does not exist so we use periodicity
     i′ = ifelse(i′ > Nx, i′ - Nx, i′) # Periodicity is hardcoded in the x-direction!!
     Hy = grid.Hy
 
@@ -63,7 +64,8 @@ end
 
 @inline function fold_north_face_center_fpivot!(i, k, grid, sign, u)
     Nx, Ny, _ = size(grid)
-    i′ = Nx - i + 2 # Element Nx + 1 does not exist?
+    # We use Nx - i + 2 because west y-faces map to east y-faces after folding
+    i′ = Nx - i + 2 # but element Nx + 1 does not exist so we use periodicity
     i′ = ifelse(i′ > Nx, i′ - Nx, i′) # Periodicity is hardcoded in the x-direction!!
     Hy = grid.Hy
 
