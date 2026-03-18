@@ -195,14 +195,14 @@ dividing the interpolated result by the number of active (non-masked) nodes in t
 rather than the full stencil size:
 
 ```jldoctest
-julia> coriolis = FPlane(f=1e-4, scheme=ActiveWeightedEnstrophyConserving())
+julia> coriolis = FPlane(f=1e-4, scheme=Oceananigans.Coriolis.ActiveWeightedEnstrophyConserving())
 FPlane{Float64}(f=0.0001)
 
-julia> coriolis = HydrostaticSphericalCoriolis(scheme=ActiveWeightedEnergyConserving())
+julia> coriolis = HydrostaticSphericalCoriolis(scheme=Oceananigans.Coriolis.ActiveWeightedEnergyConserving())
 SphericalCoriolis
 ├─ rotation rate: 7.29e-05 s⁻¹ = 1.00 Ω_Earth
 ├─ formulation: HydrostaticFormulation
-└─ scheme: ActiveWeightedEnergyConserving
+└─ scheme: Oceananigans.Coriolis.ActiveWeightedEnergyConserving
 ```
 
 !!! tip "When to use active-weighted schemes"
@@ -217,7 +217,7 @@ It uses a 12-point stencil that conserves both kinetic energy and potential enst
 the limit of horizontally non-divergent flow:
 
 ```jldoctest
-julia> coriolis = FPlane(f=1e-4, scheme=EENConserving())
+julia> coriolis = FPlane(f=1e-4, scheme=Oceananigans.Coriolis.EENConserving())
 FPlane{Float64}(f=0.0001)
 ```
 

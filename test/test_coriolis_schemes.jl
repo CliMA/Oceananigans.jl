@@ -1,8 +1,9 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
-using Oceananigans.Coriolis: fᶜᶜᵃ, fᶠᶠᵃ, HydrostaticFormulation
+using Oceananigans.Coriolis: fᶜᶜᵃ, fᶠᶠᵃ, HydrostaticFormulation, EENConserving, ActiveWeightedEnergyConserving, ActiveWeightedEnstrophyConserving
 using Oceananigans.Coriolis: 𝒯⁺⁺, 𝒯⁻⁺, 𝒯⁺⁻, 𝒯⁻⁻
+using Oceananigans.Operators: Ayᶜᶠᶜ, Ayᶠᶜᶜ
 
 #####
 ##### Helpers
@@ -22,14 +23,15 @@ end
 #####
 ##### 2. Stencil correctness: uniform velocity on LatLonGrid
 #####
-##### On a regular-in-longitude LatLonGrid, fᶜᶜᵃ depends only on j.
-##### For uniform v, ℑxᶠᵃᵃ(fᶜᶜᵃ) = fᶜᶜᵃ and ℑxyᶠᶜᵃ(v) = v,
-##### so EnstrophyConserving gives exactly -fᶜᶜᵃ(i,j) * v.
+##### On a regular-in-longitude LatLonGrid, fᶠᶠᵃ depends only on j.
+##### For uniform v, the EnstrophyConserving x-tendency uses
+##### ℑyᵃᶜᵃ(fᶠᶠᵃ) = (fᶠᶠᵃ(j) + fᶠᶠᵃ(j+1))/2 as the f-factor.
+##### Area-weighted interpolation of v is approximately v on a LatLonGrid.
 #####
 
 function test_enstrophy_conserving_uniform_v(FT)
     grid = LatitudeLongitudeGrid(CPU(), FT,
-                                 size = (8, 8, 1),
+                                 size = (6, 6, 1),
                                  latitude = (44, 46),
                                  longitude = (0, 8),
                                  z = (0, 1))
@@ -37,25 +39,29 @@ function test_enstrophy_conserving_uniform_v(FT)
     coriolis = HydrostaticSphericalCoriolis(FT, scheme=EnstrophyConserving())
     U = make_velocity_fields(grid, FT; v_val=FT(1))
 
-    i, j, k = 4, 4, 1
+    i, j, k = 3, 3, 1
     result = x_f_cross_U(i, j, k, grid, coriolis, U)
-    expected = -fᶜᶜᵃ(i, j, k, grid, coriolis)
+    # f-factor: ℑyᵃᶜᵃ(fᶠᶠᵃ) averages f at the two face latitudes bracketing center j
+    f_interp = FT(0.5) * (fᶠᶠᵃ(i, j, k, grid, coriolis) + fᶠᶠᵃ(i, j+1, k, grid, coriolis))
+    # area ratio: ℑxyᶠᶜᵃ(Ayᶜᶠ) / Ayᶠᶜ accounts for Ay varying with latitude
+    area_ratio = FT(0.5) * (Ayᶜᶠᶜ(i, j, k, grid) + Ayᶜᶠᶜ(i, j+1, k, grid)) / Ayᶠᶜᶜ(i, j, k, grid)
+    expected = -f_interp * area_ratio
     @test result ≈ expected
 end
 
 function test_enstrophy_conserving_uniform_u(FT)
     grid = LatitudeLongitudeGrid(CPU(), FT,
-                                 size = (8, 8, 1),
+                                 size = (6, 6, 1),
                                  latitude = (44, 46),
                                  longitude = (0, 8),
                                  z = (0, 1))
     coriolis = HydrostaticSphericalCoriolis(FT, scheme=EnstrophyConserving())
     U = make_velocity_fields(grid, FT; u_val=FT(1))
 
-    i, j, k = 4, 4, 1
+    i, j, k = 3, 3, 1
     result = y_f_cross_U(i, j, k, grid, coriolis, U)
-    # ℑyᵃᶠᵃ(fᶜᶜᵃ) averages f at j-1 and j (two center latitudes → face latitude)
-    expected = FT(0.5) * (fᶜᶜᵃ(i, j-1, k, grid, coriolis) + fᶜᶜᵃ(i, j, k, grid, coriolis))
+    # ℑxᶜᵃᵃ(fᶠᶠᵃ) is i-independent on a LatLonGrid, so equals fᶠᶠᵃ at face latitude j
+    expected = fᶠᶠᵃ(i, j, k, grid, coriolis)
     @test result ≈ expected
 end
 
@@ -244,16 +250,15 @@ function test_geostrophic_balance_steady(FT, arch, scheme)
     set!(model, u=U₀)
 
     Ω = coriolis.rotation_rate
-    f_mid = 2Ω * sind(FT(45))
-    T_inertial = 2π / f_mid
-    Δt = T_inertial / 200
+    T = 2π / (2Ω * sind(FT(45)))
+    Δt = T / 200
 
     simulation = Simulation(model, Δt=Δt, stop_time=10Δt)
     run!(simulation)
 
     # v should remain small (not excited by Coriolis alone without pressure imbalance)
-    v_max = maximum(abs, interior(model.velocities.v))
-    @test v_max < U₀ # v should not grow to the scale of u
+    vmax = maximum(abs, interior(model.velocities.v))
+    @test vmax < U₀ # v should not grow to the scale of u
 end
 
 #####
@@ -261,7 +266,7 @@ end
 #####
 ##### Initialize with a Gaussian anticyclonic eddy.
 ##### Coriolis is a rotation — it should not change total kinetic energy.
-##### Run for a few time steps and check KE is conserved.
+##### Run for a few time steps and check KE is within bounds.
 #####
 
 function test_coriolis_energy_conservation(FT, arch, scheme)
@@ -294,9 +299,8 @@ function test_coriolis_energy_conservation(FT, arch, scheme)
     KEᵢ = sum(KE)
 
     Ω = coriolis.rotation_rate
-    f_mid = 2Ω * sind(FT(45))
-    T_inertial = 2π / f_mid
-    Δt = T_inertial / 100
+    T = 2π / (2Ω * sind(FT(45)))
+    Δt = T / 100
 
     simulation = Simulation(model, Δt=Δt, stop_time=5Δt)
     run!(simulation)
@@ -305,7 +309,7 @@ function test_coriolis_energy_conservation(FT, arch, scheme)
     KEₑ = sum(KE)
 
     # Coriolis should not inject or remove energy
-    @test abs(KEₑ - KEᵢ) / abs(KEᵢ) < 0.05
+    @test abs(KEₑ - KEᵢ) / abs(KEᵢ) < 0.003
 end
 
 #####
@@ -336,16 +340,16 @@ function test_inertial_oscillation(FT, arch, scheme)
     u₀ = FT(0.1)
     set!(model, u=u₀)
 
-    T_inertial = 2π / f₀
-    Δt = T_inertial / 400
-    simulation = Simulation(model, Δt=Δt, stop_time=T_inertial)
+    T = 2π / f₀
+    Δt = T / 400
+    simulation = Simulation(model, Δt=Δt, stop_time=T)
     run!(simulation)
 
-    CUDA.@allowscalar u_final = model.velocities.u[2, 2, 1]
-    CUDA.@allowscalar v_final = model.velocities.v[2, 2, 1]
+    CUDA.@allowscalar uₑ = model.velocities.u[2, 2, 1]
+    CUDA.@allowscalar vₑ = model.velocities.v[2, 2, 1]
 
-    @test abs(u_final - u₀) / u₀ < 0.05
-    @test abs(v_final) / u₀ < 0.05
+    @test abs(uₑ - u₀) / u₀ < 0.01
+    @test abs(vₑ) / u₀ < 0.01
 end
 
 #####
@@ -409,7 +413,7 @@ for arch in archs
 
         @testset "Antisymmetry [$FT]" begin
             @testset "scheme=$(summary(scheme))" begin
-                test_coriolis_antisymmetry(FT, CPU(), scheme)
+                test_coriolis_antisymmetry(FT, scheme)
             end
         end
 
@@ -420,7 +424,7 @@ for arch in archs
         end
 
 
-        @testset "Energy conservation (NEMO VORTEX style)" begin
+        @testset "Energy conservation" begin
             @testset "scheme=$(summary(scheme))" begin
                 test_coriolis_energy_conservation(FT, arch, scheme)
             end
