@@ -74,7 +74,7 @@ For hydrostatic models, only the vertical component of the Coriolis force is ret
 meridional momentum equations respectively.
 
 For nonhydrostatic models, the full Coriolis force includes additional terms involving
-the horizontal component ``\tilde{f} = 2\Omega \cos \varphi``, which couples the horizontal
+the horizontal component ``\tilde{f} = 2\Omega \cos \varphi`` that couples the horizontal
 and vertical momentum equations.
 
 ## Discretization of the Coriolis term
