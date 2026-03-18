@@ -465,6 +465,17 @@ end
         end
     end
 
+    @testset "Lagrangian averaged Smagorinsky produces non-zero eddy viscosity" begin
+        @info "  Testing that Lagrangian averaged Smagorinsky produces non-zero eddy viscosity after setting random velocities..."
+        for arch in archs
+            grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+            model = NonhydrostaticModel(grid, closure=DynamicSmagorinsky(averaging=LagrangianAveraging()))
+            set!(model, u = (x, y, z) -> randn())
+            νₑ = Array(interior(model.closure_fields.νₑ))
+            @test any(νₑ .> 0)
+        end
+    end
+
     @testset "Time-stepping with CATKE closure" begin
         @info "  Testing time-stepping with CATKE closure and closure tuples with CATKE..."
         for arch in archs
