@@ -279,14 +279,17 @@ end
 
 function initialization_update_state!(model::HydrostaticFreeSurfaceModel)
 
-    # Update the state of the model
-    update_state!(model)
+    # Mask immersed velocities after halo fill to ensure
+    # velocities are zero at immersed cells
+    foreach(mask_immersed_field!, prognostic_fields(model))
 
-    # Update state may have asynchronous fill halo, so we refill all the
-    # halos here (in a synchronous fashion) for initialization
+    # Paranoic fill halo update, also necessary for velocity fields
     for field in prognostic_fields(model)
         fill_halo_regions!(field, model.clock, fields(model))
     end
+
+    # Update the state of the model
+    update_state!(model)
 
     # Finally, initialize the model (e.g., free surface, vertical coordinate...)
     initialize!(model)

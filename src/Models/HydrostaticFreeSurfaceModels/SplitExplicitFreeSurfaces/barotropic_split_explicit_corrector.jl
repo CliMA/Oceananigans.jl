@@ -70,14 +70,17 @@ end
     Hᶠᶜ = column_depthᶠᶜᵃ(i, j, grid)
     Hᶜᶠ = column_depthᶜᶠᵃ(i, j, grid)
 
+    immersedᶠᶜᶜ = peripheral_node(i, j, k, grid, Face(), Center(), Center())
+    immersedᶜᶠᶜ = peripheral_node(i, j, k, grid, Center(), Face(), Center())
+
     δuᵢ = @inbounds U[i, j, 1] - U̅[i, j, 1]
     δvⱼ = @inbounds V[i, j, 1] - V̅[i, j, 1]
 
     u_correction = ifelse(Hᶠᶜ == 0, zero(grid), δuᵢ / Hᶠᶜ)
     v_correction = ifelse(Hᶜᶠ == 0, zero(grid), δvⱼ / Hᶜᶠ)
 
-    @inbounds u[i, j, k] = u[i, j, k] + u_correction
-    @inbounds v[i, j, k] = v[i, j, k] + v_correction
+    @inbounds u[i, j, k] = ifelse(immersedᶠᶜᶜ, zero(grid), u[i, j, k] + u_correction)
+    @inbounds v[i, j, k] = ifelse(immersedᶜᶠᶜ, zero(grid), v[i, j, k] + v_correction)
 end
 
 @kernel function _compute_transport_velocities!(ũ, ṽ, grid, Ũ, Ṽ, u, v, U̅, V̅)
