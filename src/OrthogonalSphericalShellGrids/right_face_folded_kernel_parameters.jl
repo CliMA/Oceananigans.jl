@@ -26,7 +26,7 @@ const RFTRG = TripolarGridOfSomeKind{<:Any, <:Any, <:RightFaceFolded}
 #####
 ##### Covers the symbols kernel parameters as well as
 ##### `interior_tendency_kernel_parameters(grid)` and `diffusivity_kernel_parameters(grid)`
-##### and the active cells maps which use `grid_worksize` to find all the active indices
+##### and the active cells maps which use `worksize` to find all the active indices
 #####
 
-Utils.grid_worksize(grid::RFTRG) = grid.Nx, grid.Ny+1, grid.Nz
+Utils.worksize(grid::RFTRG) = grid.Nx, grid.Ny+1, grid.Nz
