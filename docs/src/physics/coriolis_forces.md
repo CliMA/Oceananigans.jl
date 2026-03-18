@@ -63,7 +63,7 @@ as can be found in the paper by [Dellar2011](@citet), where
 
 ## Spherical Coriolis
 
-On latitude-longitude grids, the Coriolis parameter varies with latitude according to
+On curvilinear grids on the sphere, the Coriolis parameter varies with latitude according to
 ```math
     f(\varphi) = 2 \Omega \sin \varphi \, ,
 ```
