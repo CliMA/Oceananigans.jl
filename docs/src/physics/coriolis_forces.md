@@ -142,7 +142,7 @@ enstrophy in the limit of horizontally non-divergent flow.
 
 ### Active-weighted (wet-points-only) correction
 
-Near immersed boundaries on a C-grid, the conventional averaging of velocities in the
+Near immersed boundaries on a C grid, the conventional averaging of velocities in the
 Coriolis term includes masked (land) points where velocity is zero. As shown by
 [JamartOzer1986](@citet), this underestimates the Coriolis force along solid boundaries:
 
