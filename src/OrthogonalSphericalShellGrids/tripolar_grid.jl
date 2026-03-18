@@ -95,24 +95,24 @@ Keyword Arguments
     ```
     See [`UPivotZipperBoundaryCondition`](@ref) for more information on the fold.
 
-    For a `RightFaceFolded` y-topology, the fold is located between
-    `face[Ny]` and `face[Ny+1]`, i.e., the fold does not coincide with an interior grid point.
+    For a `RightFaceFolded` y-topology, the fold is located along the y-direction faces
+    at `j = Ny+1` (i.e., the fold is exactly on the northern boundary of the grid).
     The north singularities are located on `(Face, Face)`.
 
     The fold is located between the last interior face row and the first halo face row.
     Pivot points (↻) are located on `(Face, Face)`:
     ```
               │           │           │           │           │           │           │
-    Ny+1 ─▶ ─ ↻ ─── v ────┼──── v ────┼──── v ─── ↻ ─── v ────┼──── v ────┼──── v ─── ↻ ◀─ Fold (between Ny and Ny+1)
-              │           │           │           │           │           │           │
-    Ny   ─▶   u     c     u     c     u     c     u     c     u     c     u     c     u
-              │           │           │           │           │           │           │
-    Ny   ─▶ ──┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──
-              │           │           │           │           │           │           │
-    Ny-1 ─▶   u     c     u     c     u     c     u     c     u     c     u     c     u
-              │           │           │           │           │           │           │
-    Ny-1 ─▶ ──┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──
-              │           │           │           │           │           │           │
+    Ny+1 ─▶ ─ ↻ ═══ v ════╪════ v ════╪════ v ═══ ↻ ═══ v ════╪════ v ════╪════ v ═══ ↻ ◀─ Fold
+              ║           │           │           │           │           │           ║ (at yface[Ny+1])
+    Ny   ─▶   u     c     u     c     u     c     u     c     u     c     u     c     ║
+              ║           │           │           │           │           │           ║
+    Ny   ─▶ ──╫──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────╫──
+              ║           │           │           │           │           │           ║
+    Ny-1 ─▶   u     c     u     c     u     c     u     c     u     c     u     c     ║
+              ║           │           │           │           │           │           ║
+    Ny-1 ─▶ ──╫──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────╫──
+              ║           │           │           │           │           │           ║
               ▲     ▲     ▲                       ▲                       ▲     ▲     ▲
               1     1     2                     Nx÷2+1                    Nx    Nx    Nx+1
     ```
