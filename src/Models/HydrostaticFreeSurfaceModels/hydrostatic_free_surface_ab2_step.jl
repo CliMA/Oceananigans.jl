@@ -50,11 +50,13 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
     compute_transport_velocities!(model, model.free_surface)
 
     # Update velocities
-    @apply_regionally ab2_step_velocities!(model.velocities, model, Δt, χ)
+    @apply_regionally begin
+        ab2_step_velocities!(model.velocities, model, Δt, χ)
+        mask_immersed_horizontal_velocities!(model.velocities)
+    end
 
     # Mask and fill velocity halos
     u, v, _ = model.velocities
-    mask_immersed_velocities!(model.velocities)
     fill_halo_regions!((u, v), model.clock, fields(model); async=true)
 
     # Computing tracer tendencies
@@ -99,11 +101,12 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
 
         # Finally Substep! Advance grid, tracers, (predictor) momentum
         ab2_step_velocities!(model.velocities, model, Δt, χ)
+        mask_immersed_horizontal_velocities!(model.velocities)
     end
-
+    
     # Advancing free surface in preparation for the correction step
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
-
+    
     u, v, _ = model.velocities
     fill_halo_regions!((u, v), model.clock, fields(model))
 

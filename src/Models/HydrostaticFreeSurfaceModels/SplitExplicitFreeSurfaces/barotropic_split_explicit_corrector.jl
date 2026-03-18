@@ -1,4 +1,4 @@
-using Oceananigans.Models: all_halo_surface_kernel_parameters, all_halo_volume_kernel_parameters
+using Oceananigans.Models: surface_kernel_parameters, volume_kernel_parameters
 
 # Kernels to compute the vertical integral of the velocities
 @kernel function _compute_barotropic_mode!(U̅, V̅, grid, u, v)
@@ -22,7 +22,7 @@ The barotropic transport is computed as: `U̅ = ∫ u dz` and `V̅ = ∫ v dz`.
 This function is used both during split-explicit correction and initialization.
 """
 function compute_barotropic_mode!(U̅, V̅, grid, u, v)
-    launch!(architecture(grid), grid, all_halo_surface_kernel_parameters(grid),
+    launch!(architecture(grid), grid, surface_kernel_parameters(grid),
             _compute_barotropic_mode!,
             U̅, V̅, grid, u, v)
 
@@ -59,7 +59,7 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     compute_barotropic_mode!(U̅, V̅, grid, u, v)
 
     # add in "good" barotropic mode
-    launch!(arch, grid, all_halo_volume_kernel_parameters(grid), _barotropic_split_explicit_corrector!,
+    launch!(arch, grid, volume_kernel_parameters(grid), _barotropic_split_explicit_corrector!,
             u, v, U, V, U̅, V̅, grid)
 
     return nothing
@@ -130,7 +130,7 @@ function compute_transport_velocities!(model, free_surface::SplitExplicitFreeSur
 
     @apply_regionally begin
         compute_barotropic_mode!(U̅, V̅, grid, u, v)
-        launch!(architecture(grid), grid, all_halo_volume_kernel_parameters(grid), _compute_transport_velocities!, ũ, ṽ, grid, Ũ, Ṽ, u, v, U̅, V̅)
+        launch!(architecture(grid), grid, volume_kernel_parameters(grid), _compute_transport_velocities!, ũ, ṽ, grid, Ũ, Ṽ, u, v, U̅, V̅)
     end
 
     # Update grid velocity and vertical transport velocity
