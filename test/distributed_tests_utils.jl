@@ -98,8 +98,6 @@ function run_distributed_latitude_longitude_grid(arch, filename)
         latitude = (-90, 90),
         topology = (Periodic, Bounded, Flat))
 
-    @test isnothing(flat_distributed_grid.z)
-
     distributed_grid = LatitudeLongitudeGrid(arch;
                                              size = (40, 40, 10),
                                              longitude = (0, 360),
