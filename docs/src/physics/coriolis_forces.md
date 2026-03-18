@@ -80,7 +80,7 @@ and vertical momentum equations.
 ## Discretization of the Coriolis term
 
 On the Arakawa C-grid, the two velocity components ``u`` and ``v`` are staggered: ``u`` is
-defined at the west and east faces of each cell, while ``v`` is defined at the south and north
+defined at the west faces of each cell, while ``v`` is defined at the south
 faces. Computing the Coriolis acceleration (e.g., ``-fv`` in the ``u``-equation) therefore requires
 **interpolating** ``v`` to the ``u``-point, and vice versa.
 
