@@ -192,4 +192,3 @@ end
 
 @inline fill_halo_event!(c, pfh::PeriodicFillHalo{K, N, H}, bcs::Tuple{Any}, loc, grid, args...; kwargs...) where {K, N, H} =
     pfh.kernel(c, Val(N), Val(H))
-end
