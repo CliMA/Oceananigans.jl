@@ -273,8 +273,8 @@ end
 ##### Directions (for tilted domains)
 #####
 
--(::NegativeZDirection) = ZDirection()
--(::ZDirection) = NegativeZDirection()
+Base.:-(::NegativeZDirection) = ZDirection()
+Base.:-(::ZDirection) = NegativeZDirection()
 
 #####
 ##### Show utils
