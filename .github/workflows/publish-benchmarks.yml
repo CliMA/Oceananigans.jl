@@ -1,0 +1,302 @@
+name: Publish Benchmarks
+
+on:
+  push:
+    branches:
+      - main
+    paths:
+      - ".github/workflows/publish-benchmarks.yml"
+      - ".buildkite/pipeline-benchmarks.yml"
+      - "benchmarking/**"
+      - "src/**"
+  pull_request:
+    paths:
+      - ".github/workflows/publish-benchmarks.yml"
+      - ".buildkite/pipeline-benchmarks.yml"
+      - "benchmarking/**"
+      - "src/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  publish-benchmarks:
+    name: "Publish benchmarks"
+    permissions:
+      actions: write
+      contents: write
+      pull-requests: write
+      statuses: read
+    runs-on: ubuntu-latest
+    timeout-minutes: 600
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Download Buildkite Artifacts
+        id: download
+        env:
+          BUILDKITE_TOKEN: ${{ secrets.BUILDKITE_TOKEN }}
+        run: |
+          # For PRs, use the head commit SHA (what Buildkite sees)
+          if [ "${{ github.event_name }}" = "pull_request" ]; then
+            COMMIT_SHA="${{ github.event.pull_request.head.sha }}"
+          else
+            COMMIT_SHA="${{ github.sha }}"
+          fi
+          echo "Looking for benchmark build for commit $COMMIT_SHA on oceananigans-benchmarks-1"
+
+          # Poll until the benchmark build finishes (max ~9.5 hours)
+          for ATTEMPT in $(seq 1 1140); do
+            BUILD_JSON=$(curl -s -H "Authorization: Bearer $BUILDKITE_TOKEN" \
+              "https://api.buildkite.com/v2/organizations/clima/pipelines/oceananigans-benchmarks-1/builds?commit=$COMMIT_SHA&per_page=1")
+
+            BUILD_NUM=$(echo "$BUILD_JSON" | jq -r '.[0].number // empty')
+            BUILD_STATE=$(echo "$BUILD_JSON" | jq -r '.[0].state // empty')
+
+            if [ -z "$BUILD_NUM" ]; then
+              echo "[$ATTEMPT/1140] No build found yet, waiting 30s..."
+              sleep 30
+              continue
+            fi
+
+            echo "[$ATTEMPT/1140] Build #$BUILD_NUM state: $BUILD_STATE"
+
+            case "$BUILD_STATE" in
+              passed|failed|soft_failed) break ;;
+              canceled|blocked|skipped|not_run)
+                echo "download-state=skipped" >> "$GITHUB_OUTPUT"
+                exit 0 ;;
+              *) sleep 30 ;;
+            esac
+          done
+
+          if [ -z "$BUILD_NUM" ]; then
+            echo "No benchmark build found for this commit"
+            echo "download-state=not_found" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+
+          # List and download artifacts from the benchmarks pipeline
+          ARTIFACTS_JSON=$(curl -s -H "Authorization: Bearer $BUILDKITE_TOKEN" \
+            "https://api.buildkite.com/v2/organizations/clima/pipelines/oceananigans-benchmarks-1/builds/$BUILD_NUM/artifacts")
+
+          COUNT=$(echo "$ARTIFACTS_JSON" | jq 'length')
+          echo "Found $COUNT artifacts in build #$BUILD_NUM"
+          mkdir -p artifacts
+
+          for ROW in $(echo "$ARTIFACTS_JSON" | jq -r '.[] | @base64'); do
+            FILENAME=$(echo "$ROW" | base64 -d | jq -r '.filename')
+            DL_URL=$(echo "$ROW" | base64 -d | jq -r '.download_url')
+            echo "  Downloading $FILENAME..."
+            curl -s -L -H "Authorization: Bearer $BUILDKITE_TOKEN" "$DL_URL" -o "artifacts/$FILENAME"
+          done
+
+          echo "download-state=success" >> "$GITHUB_OUTPUT"
+
+      - name: Locate benchmark results
+        id: locate
+        if: ${{ steps.download.outputs.download-state == 'success' }}
+        run: |
+          BENCHMARK_FILE=$(find artifacts -type f -name "benchmark_results.json" 2>/dev/null | head -1)
+          if [ -n "$BENCHMARK_FILE" ]; then
+            echo "path=$BENCHMARK_FILE" >> "$GITHUB_OUTPUT"
+            echo "Found benchmark results: $BENCHMARK_FILE"
+            echo "Number of entries: $(jq length "$BENCHMARK_FILE")"
+          else
+            echo "No benchmark_results.json found in artifacts"
+            echo "path=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Transform results for github-action-benchmark
+        if: ${{ steps.locate.outputs.path != '' }}
+        shell: python3 {0}
+        run: |
+          import json, re, glob
+
+          # Merge all benchmark JSON files (benchmark_results.json + nsys_*.json)
+          all_data = []
+          for path in sorted(glob.glob("artifacts/**/benchmark_results.json", recursive=True)):
+              with open(path) as f:
+                  all_data.extend(json.load(f))
+          for path in sorted(glob.glob("artifacts/**/nsys_*.json", recursive=True)):
+              with open(path) as f:
+                  all_data.extend(json.load(f))
+
+          # Save merged results
+          with open("benchmark_results_merged.json", "w") as f:
+              json.dump(all_data, f, ensure_ascii=False, indent=2)
+
+          def build_chart_name(d):
+              """Build a 4-level chart name: group / fixed_params / GPU / variant.
+
+              The 'variant' is the parameter being swept within each group,
+              so that different sweep values appear as lines on the same chart.
+              """
+              name = d["name"]
+              group = d.get("group", "")
+              gpu = d.get("metadata", {}).get("gpu_name", "GPU")
+              grid = d["grid_size"]
+              size_str = f"{grid[0]}x{grid[1]}x{grid[2]}"
+              ft = d["float_type"]
+              ft_short = "F32" if "32" in ft else "F64"
+
+              if not group:
+                  # Fallback: use flat name if no group tag
+                  return f"Other/{name}/{gpu}/{size_str}"
+
+              # Parse name components to extract the variant
+              # Name format: EarthOcean_{grid_type}{_zstar}_{size}_{ft}_{mom_adv}_{trc_adv}_{closure}_{N}tr
+              m = re.match(
+                  r"EarthOcean_(.+?)_(\d+x\d+x\d+)_(F\d+)_([^_]+)_([^_]+)_(.+)_(\d+)tr$",
+                  name,
+              )
+              if not m:
+                  return f"{group}/{name}/{gpu}/{size_str}"
+
+              grid_info = m.group(1)   # e.g. "tripolar", "lat_lon_zstar"
+              mom_adv = m.group(4)
+              trc_adv = m.group(5)
+              closure = m.group(6)
+              n_tracers = m.group(7)
+
+              if group == "Resolution Sweep":
+                  fixed = f"{grid_info} {ft_short} {mom_adv}+{trc_adv} {closure}"
+                  variant = size_str
+              elif group == "Float Type Sweep":
+                  fixed = f"{grid_info} {size_str} {mom_adv}+{trc_adv} {closure}"
+                  variant = ft_short
+              elif group == "Closure Sweep":
+                  fixed = f"{grid_info} {size_str} {ft_short} {mom_adv}+{trc_adv}"
+                  variant = closure
+              elif group == "Advection Sweep":
+                  fixed = f"{grid_info} {size_str} {ft_short} {closure}"
+                  variant = f"{mom_adv}+{trc_adv}"
+              elif group == "Grid Type Sweep":
+                  fixed = f"{size_str} {ft_short} {mom_adv}+{trc_adv} {closure}"
+                  variant = grid_info
+              elif group == "Tracer Count Sweep":
+                  fixed = f"{grid_info} {size_str} {ft_short} {closure}"
+                  variant = f"{n_tracers} tracers"
+              elif group == "NSYS Profiling":
+                  fixed = f"{grid_info} {size_str} {ft_short}"
+                  variant = f"{mom_adv}+{trc_adv} {closure}"
+              else:
+                  fixed = name
+                  variant = size_str
+
+              return f"{group}/{fixed}/{gpu}/{variant}"
+
+          data = []
+          for d in all_data:
+              tps = d["time_per_step_seconds"]
+              chart_name = build_chart_name(d)
+              data.append({"name": chart_name, "unit": "s/timestep", "value": tps})
+
+              # Add nsys kernel data as separate chart entries if present
+              if "nsys_top_kernels" in d:
+                  name = d["name"]
+                  gpu = d.get("metadata", {}).get("gpu_name", "GPU")
+                  for kernel in d["nsys_top_kernels"]:
+                      kname = kernel["name"]
+                      # Truncate long CUDA kernel names at first '<' or '(' for readability
+                      short_kname = re.split(r"[<(]", kname)[0].strip()
+                      if len(short_kname) > 60:
+                          short_kname = short_kname[:57] + "..."
+
+                      total_ms = kernel["total_time_ns"] / 1e6
+                      kernel_chart = f"NSYS Kernels/{name}/{gpu}/{short_kname}"
+                      data.append({
+                          "name": kernel_chart,
+                          "unit": "ms (total GPU time)",
+                          "value": total_ms,
+                      })
+
+          with open("github-action-benchmark.json", "w") as f:
+              json.dump(data, f, indent=2)
+
+          print(f"Transformed {len(data)} benchmark entries for visualization")
+          for d in data:
+              print(f"  {d['name']}: {d['value']:.4g} {d['unit']}")
+
+      - name: Create job summary
+        if: ${{ steps.locate.outputs.path != '' }}
+        shell: python3 {0}
+        run: |
+          import json, glob, os, re
+
+          summary = ""
+
+          # Copy markdown report if available
+          md_files = glob.glob("artifacts/**/benchmark_results.md", recursive=True)
+          if md_files:
+              with open(md_files[0]) as f:
+                  summary += f.read() + "\n"
+
+          # Copy comparison if available
+          comp_files = glob.glob("artifacts/**/benchmark_comparison.md", recursive=True)
+          if comp_files:
+              with open(comp_files[0]) as f:
+                  summary += "\n" + f.read() + "\n"
+
+          # Add nsys kernel profiling data from merged results
+          if os.path.exists("benchmark_results_merged.json"):
+              with open("benchmark_results_merged.json") as f:
+                  all_data = json.load(f)
+
+              nsys_entries = [d for d in all_data if "nsys_top_kernels" in d]
+              if nsys_entries:
+                  summary += "\n## NSYS Kernel Profiling\n\n"
+                  for entry in nsys_entries:
+                      name = entry["name"]
+                      kernels = entry["nsys_top_kernels"]
+                      summary += f"### {name}\n\n"
+                      summary += "| Kernel | Total (ms) | Instances | Avg (ms) | Min (ms) | Max (ms) |\n"
+                      summary += "|--------|-----------|-----------|----------|----------|----------|\n"
+                      for k in kernels:
+                          kname = k["name"]
+                          # Shorten long CUDA kernel names
+                          short_name = re.split(r"[<(]", kname)[0].strip()
+                          if len(short_name) > 60:
+                              short_name = short_name[:57] + "..."
+                          total_ms = k["total_time_ns"] / 1e6
+                          avg_ms = k["avg_time_ns"] / 1e6
+                          min_ms = k["min_time_ns"] / 1e6
+                          max_ms = k["max_time_ns"] / 1e6
+                          instances = k["instances"]
+                          summary += f"| `{short_name}` | {total_ms:.2f} | {instances} | {avg_ms:.3f} | {min_ms:.3f} | {max_ms:.3f} |\n"
+                      summary += "\n"
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write(summary)
+
+      - name: Push results to OceananigansBenchmarks repo
+        if: ${{ github.event_name == 'push' && steps.locate.outputs.path != '' }}
+        run: |
+          git clone https://x-access-token:${{ secrets.BENCHMARKS_TOKEN }}@github.com/NumericalEarth/OceananigansBenchmarks.git
+          cd OceananigansBenchmarks
+          DIRNAME="benchmarks/by_branch/${{ github.head_ref || github.ref_name }}/${{ github.sha }}"
+          mkdir -vp "${DIRNAME}"
+          cp -v "../benchmark_results_merged.json" "${DIRNAME}/benchmark_results.json"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Save benchmark results for commit ${{ github.sha }}"
+          git push -u origin main
+
+      - uses: benchmark-action/github-action-benchmark@v1
+        if: ${{ steps.locate.outputs.path != '' }}
+        with:
+          name: Oceananigans.jl Benchmarks
+          tool: "customSmallerIsBetter"
+          output-file-path: "github-action-benchmark.json"
+          benchmark-data-dir-path: "."
+          gh-repository: "github.com/NumericalEarth/OceananigansBenchmarks"
+          github-token: ${{ secrets.BENCHMARKS_TOKEN }}
+          comment-always: true
+          summary-always: true
+          alert-threshold: "110%"
+          fail-on-alert: false
+          auto-push: ${{ github.event_name == 'push' }}
+          max-items-in-chart: 50
+          comment-on-alert: true
