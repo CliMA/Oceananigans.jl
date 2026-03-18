@@ -63,7 +63,7 @@ as can be found in the paper by [Dellar2011](@citet), where
 
 ## Spherical Coriolis
 
-On latitude-longitude grids, the Coriolis parameter varies with latitude according to
+On curvilinear grids on the sphere, the Coriolis parameter varies with latitude according to
 ```math
     f(\varphi) = 2 \Omega \sin \varphi \, ,
 ```
@@ -74,13 +74,13 @@ For hydrostatic models, only the vertical component of the Coriolis force is ret
 meridional momentum equations respectively.
 
 For nonhydrostatic models, the full Coriolis force includes additional terms involving
-the horizontal component ``\tilde{f} = 2\Omega \cos \varphi``, which couples the horizontal
+the horizontal component ``\tilde{f} = 2\Omega \cos \varphi`` that couples the horizontal
 and vertical momentum equations.
 
 ## Discretization of the Coriolis term
 
 On the Arakawa C-grid, the two velocity components ``u`` and ``v`` are staggered: ``u`` is
-defined at the west and east faces of each cell, while ``v`` is defined at the south and north
+defined at the west faces of each cell, while ``v`` is defined at the south
 faces. Computing the Coriolis acceleration (e.g., ``-fv`` in the ``u``-equation) therefore requires
 **interpolating** ``v`` to the ``u``-point, and vice versa.
 
@@ -142,7 +142,7 @@ enstrophy in the limit of horizontally non-divergent flow.
 
 ### Active-weighted (wet-points-only) correction
 
-Near immersed boundaries on a C-grid, the conventional averaging of velocities in the
+Near immersed boundaries on a C grid, the conventional averaging of velocities in the
 Coriolis term includes masked (land) points where velocity is zero. As shown by
 [JamartOzer1986](@citet), this underestimates the Coriolis force along solid boundaries:
 
