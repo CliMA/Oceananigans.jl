@@ -85,5 +85,5 @@ for Arch in Archs
     suite_arch = speedups_suite(suite[@tagged Arch], base_case=(Arch, 1, "-α"))
     df_arch = speedups_dataframe(suite_arch, slowdown=true)
     sort!(df_arch, :ID)
-    benchmarks_pretty_table(df_arch, title="Abstract operations relative peformance ($Arch)")
+    benchmarks_pretty_table(df_arch, title="Abstract operations relative performance ($Arch)")
 end

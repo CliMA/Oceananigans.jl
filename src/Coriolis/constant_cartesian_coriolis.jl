@@ -23,7 +23,7 @@ Return a parameter object for a constant rotation decomposed into the `x`, `y`, 
 In oceanography the components `x`, `y`, `z` correspond to the directions east, north, and up. This
 constant rotation can be specified in three different ways:
 
-- Specifying all components `fx`, `fy` and `fz` directly.
+- Specifying all components `fx`, `fy`, and `fz` directly.
 - Specifying the Coriolis parameter `f` and (optionally) a `rotation_axis` (which defaults to the
   `z` direction if not specified).
 - Specifying `latitude` (in degrees) and (optionally) a `rotation_rate` in radians per second
@@ -55,7 +55,7 @@ function ConstantCartesianCoriolis(FT=Oceananigans.defaults.FloatType;
         end
 
     elseif all((!isnothing).((fx, fy, fz)))
-        all(isnothing.((latitude, f))) || throw(ArgumentError("Only `fx`, `fy` and `fz` can be specified when setting each component directly."))
+        all(isnothing.((latitude, f))) || throw(ArgumentError("Only `fx`, `fy`, and `fz` can be specified when setting each component directly."))
 
     else
         throw(ArgumentError("Either (i) `latitude`, or (ii) `f`, or (iii) `fx`, `fy` and `fz` must be specified."))
