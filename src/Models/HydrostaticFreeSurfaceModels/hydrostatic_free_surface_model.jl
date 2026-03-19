@@ -297,11 +297,23 @@ function initialization_update_state!(model::HydrostaticFreeSurfaceModel, callba
     return nothing
 end
 
-transport_velocity_fields(velocities, ::Nothing) = velocities
-transport_velocity_fields(velocities, ::ExplicitFreeSurface) = velocities
-transport_velocity_fields(velocities, free_surface) = (u = XFaceField(velocities.u.grid; boundary_conditions=velocities.u.boundary_conditions),
-                                                       v = YFaceField(velocities.v.grid; boundary_conditions=velocities.v.boundary_conditions),
-                                                       w = ZFaceField(velocities.w.grid; boundary_conditions=velocities.w.boundary_conditions))
+transport_velocity_fields(velocities) = (u = XFaceField(velocities.u.grid; boundary_conditions=velocities.u.boundary_conditions),
+                                         v = YFaceField(velocities.v.grid; boundary_conditions=velocities.v.boundary_conditions),
+                                         w = ZFaceField(velocities.w.grid; boundary_conditions=velocities.w.boundary_conditions))
+
+
+# Fallback transport velocities for a generic free surface (just copy velocities over)
+function compute_transport_velocities!(model, free_surface)
+    grid = model.grid
+    u, v, w = model.velocities
+    ũ, ṽ, w̃ = model.transport_velocities
+
+    parent(ũ) .= parent(u)
+    parent(ṽ) .= parent(v)
+    parent(w̃) .= parent(w)
+
+    return nothing
+end
 
 validate_velocity_boundary_conditions(grid, velocities) = validate_vertical_velocity_boundary_conditions(velocities.w)
 
