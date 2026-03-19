@@ -1,4 +1,3 @@
-include("dependencies_for_runtests.jl")
 include("distributed_tests_utils.jl")
 
 Nhosts = 1

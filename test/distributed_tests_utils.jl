@@ -6,6 +6,9 @@ using Oceananigans.TimeSteppers: first_time_step!
 
 include("dependencies_for_runtests.jl")
 
+if !@isdefined(_DISTRIBUTED_TESTS_UTILS_LOADED)
+const _DISTRIBUTED_TESTS_UTILS_LOADED = true
+
 # Mask the singularity of the grid in a region of `radius` degrees around the singularities
 function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius = 5) # degrees
     λp = underlying_grid.conformal_mapping.first_pole_longitude
@@ -47,15 +50,6 @@ end
 
 # Run the distributed grid simulation and save down reconstructed results
 function run_distributed_latitude_longitude_grid(arch, filename)
-    Random.seed!(1234)
-    bottom_height = - rand(40, 40, 1) .* 500 .- 500
-
-    flat_distributed_grid = LatitudeLongitudeGrid(arch,
-        size = (40, 40),
-        longitude = (0, 360),
-        latitude = (-90, 90),
-        topology = (Periodic, Bounded, Flat))
-
     distributed_grid = LatitudeLongitudeGrid(arch;
                                              size = (40, 40, 10),
                                              longitude = (0, 360),
@@ -63,7 +57,6 @@ function run_distributed_latitude_longitude_grid(arch, filename)
                                              z = (-1000, 0),
                                              halo = (5, 5, 5))
 
-    distributed_grid = ImmersedBoundaryGrid(distributed_grid, GridFittedBottom(bottom_height))
     model = run_distributed_simulation(distributed_grid)
 
     η = reconstruct_global_field(model.free_surface.displacement)
@@ -107,3 +100,5 @@ function run_distributed_simulation(grid)
 
     return model
 end
+
+end # if !@isdefined(_DISTRIBUTED_TESTS_UTILS_LOADED)

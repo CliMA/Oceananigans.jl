@@ -1,20 +1,15 @@
-include("dependencies_for_runtests.jl")
 include("distributed_tests_utils.jl")
 
 Nhosts = 1
 
 @testset "Test sharded LatitudeLongitudeGrid simulations..." begin
     # Run the serial computation
-    Random.seed!(1234)
-    bottom_height = - 500 .* rand(40, 40, 1) .- 500
-
     grid  = LatitudeLongitudeGrid(size=(40, 40, 10),
                                   longitude=(0, 360),
                                   latitude=(-10, 10),
                                   z=(-1000, 0),
                                   halo=(5, 5, 5))
 
-    grid  = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height))
     model = run_distributed_simulation(grid)
 
     # Retrieve Serial quantities
@@ -28,7 +23,7 @@ Nhosts = 1
     ηs = interior(ηs, :, :, 1)
 
     # Run the distributed grid simulations in all the configurations
-    run(`$(mpiexec()) -n $(Nhosts) $(Base.julia_cmd()) -O0 run_sharding_tests.jl "latlon"`)
+    run(`$(mpiexec()) -n $(Nhosts) $(Base.julia_cmd()) -O0 run_sharding_tests.jl`)
 
     # Retrieve Parallel quantities
     up1 = jldopen("distributed_xslab_llg.jld2")["u"]

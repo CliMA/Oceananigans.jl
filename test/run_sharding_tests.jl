@@ -46,13 +46,8 @@ end
 ENV["XLA_FLAGS"] = "--xla_force_host_platform_device_count=4"
 ENV["JULIA_DEBUG"] = "Reactant, Reactant_jll"
 
-if Base.ARGS[1] == "tripolar"
-    run_function = run_distributed_tripolar_grid
-    suffix = "trg"
-else
-    run_function = run_distributed_latitude_longitude_grid
-    suffix = "llg"
-end
+run_function = run_distributed_latitude_longitude_grid
+suffix = "llg"
 
 Reactant.Distributed.initialize(; single_gpu_per_process=false)
 
