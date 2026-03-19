@@ -64,12 +64,10 @@ function run_distributed_latitude_longitude_grid(arch, filename)
     v = reconstruct_global_field(model.velocities.v)
     c = reconstruct_global_field(model.tracers.c)
 
-    if MPI.Comm_rank(MPI.COMM_WORLD) == 0
-        jldsave(filename; u = Array(interior(u, :, :, 10)),
-                          v = Array(interior(v, :, :, 10)),
-                          c = Array(interior(c, :, :, 10)),
-                          η = Array(interior(η, :, :, 1)))
-    end
+    jldsave(filename; u = Array(interior(u, :, :, 10)),
+                      v = Array(interior(v, :, :, 10)),
+                      c = Array(interior(c, :, :, 10)),
+                      η = Array(interior(η, :, :, 1)))
 
     return model
 end

@@ -1,9 +1,3 @@
-# We need to initiate MPI for sharding because we are using a multi-host implementation:
-# i.e. we are launching the tests with `mpiexec` and on Github actions the default MPI
-# implementation is MPICH which requires calling MPI.Init(). In the case of OpenMPI,
-# MPI.Init() is not necessary.
-using MPI
-MPI.Init()
 include("distributed_tests_utils.jl")
 
 using Reactant
@@ -11,6 +5,9 @@ using Oceananigans.TimeSteppers: first_time_step!
 
 # Required for Reactant MLIR compilation of sharded models (see GB-25)
 Reactant.Compiler.WHILE_CONCAT[] = true
+
+ENV["XLA_FLAGS"] = "--xla_force_host_platform_device_count=4"
+ENV["JULIA_DEBUG"] = "Reactant, Reactant_jll"
 
 # Dispatch on Reactant grids to compile with @compile before time stepping
 const ReactantArch = Union{ReactantState, Distributed{<:ReactantState}}
@@ -46,13 +43,10 @@ function run_distributed_simulation(grid::ReactantTestGrid)
     return model
 end
 
-ENV["XLA_FLAGS"] = "--xla_force_host_platform_device_count=4"
-ENV["JULIA_DEBUG"] = "Reactant, Reactant_jll"
+Reactant.Distributed.initialize(; single_gpu_per_process=false)
 
 run_function = run_distributed_latitude_longitude_grid
 suffix = "llg"
-
-Reactant.Distributed.initialize(; single_gpu_per_process=false)
 
 arch = Distributed(ReactantState(), partition = Partition(4, 1))
 filename = "distributed_xslab_$(suffix).jld2"

@@ -1,7 +1,5 @@
 include("distributed_tests_utils.jl")
 
-Nhosts = 1
-
 @testset "Test sharded LatitudeLongitudeGrid simulations..." begin
     # Run the serial computation
     grid  = LatitudeLongitudeGrid(size=(40, 40, 10),
@@ -22,8 +20,8 @@ Nhosts = 1
     cs = interior(cs, :, :, 10)
     ηs = interior(ηs, :, :, 1)
 
-    # Run the distributed grid simulations in all the configurations
-    run(`$(mpiexec()) -n $(Nhosts) $(Base.julia_cmd()) -O0 run_sharding_tests.jl`)
+    # Run the sharded Reactant simulations in a subprocess (no MPI needed)
+    run(`$(Base.julia_cmd()) -O0 run_sharding_tests.jl`)
 
     # Retrieve Parallel quantities
     up1 = jldopen("distributed_xslab_llg.jld2")["u"]
