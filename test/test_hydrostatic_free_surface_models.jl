@@ -692,6 +692,15 @@ topos_3d = ((Periodic, Periodic, Bounded),
             # The moving-grid ∂t_σ contribution should make wstar differ from w
             @test interior(wstar) ≉ interior(w)
 
+            # ∂t_σ must be nonzero after a step with time-varying displacement
+            # (regression test: timing bug caused ∂t_σ = 0 always)
+            @test !all(iszero, parent(zstar_grid.z.∂t_σ))
+
+            # ∂t_σ = (σᶜᶜⁿ − σᶜᶜ⁻) / Δt = (η(Δt) − η(0)) / (H · Δt)
+            # Initial η(0) = 0, so expected = uniform_displacement(Δt) / (H * Δt)
+            expected_∂t_σ = uniform_displacement(1.0) / (H * 1.0)
+            @test zstar_grid.z.∂t_σ[1, 1, 1] ≈ expected_∂t_σ atol=1e-10
+
             # --- ZStar grid with constant u and spatially-varying displacement ---
             # When displacement is constant in time, ∂t_σ = 0.
             # But w ≠ 0 because the stretched Δz varies with x, creating

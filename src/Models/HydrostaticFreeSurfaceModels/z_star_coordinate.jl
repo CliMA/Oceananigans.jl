@@ -22,6 +22,12 @@ barotropic_velocities(free_surface::SplitExplicitFreeSurface) =
 barotropic_velocities(free_surface) = nothing, nothing
 barotropic_transport(free_surface)  = nothing, nothing
 
+# Called at the end of ab2_step_grid!/rk_substep_grid!, after _update_zstar_scaling! has set
+# σᶜᶜ⁻ = σ(tⁿ) and σᶜᶜⁿ = σ(tⁿ⁺¹). For PrescribedFreeSurface, computes
+# ∂t_σ = (σᶜᶜⁿ − σᶜᶜ⁻) / Δt before update_state! synchronizes the clocks.
+# No-op for all prognostic free surfaces; overloaded in prescribed_hydrostatic_velocity_fields.jl.
+update_prescribed_∂t_σ!(grid, model, ::Any, Δt) = nothing
+
 """
     ab2_step_grid!(grid::MutableGridOfSomeKind, model, ::ZStarCoordinate, Δt, χ)
 
@@ -34,6 +40,7 @@ The previous scaling `σᶜᶜ⁻` is also updated for use in tracer evolution.
 function ab2_step_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt, χ)
     parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
     launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.displacement, grid)
+    update_prescribed_∂t_σ!(grid, model, model.free_surface, Δt)
     return nothing
 end
 
@@ -48,6 +55,7 @@ Similar to `ab2_step_grid!`, but only updates `σᶜᶜ⁻` on the final substep
 function rk_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt)
     parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
     launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.displacement, grid)
+    update_prescribed_∂t_σ!(grid, model, model.free_surface, Δt)
     return nothing
 end
 
