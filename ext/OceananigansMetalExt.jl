@@ -55,16 +55,6 @@ Metal.@device_override @inline function __validindex(ctx::MappedCompilerMetadata
     end
 end
 
-
-function FD.maybe_copy_interior(::MetalGPU, r::FD.AbstractField)
-    interior_r = interior(r)
-
-    if parent(interior_r) !== interior_r
-        interior_r = copy(interior_r)
-    end
-    return interior_r
-end
-
 const MetalGrid = GD.AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:MetalGPU}
 Clock(grid::MetalGrid) = Clock{Float32}(time=0)
 
