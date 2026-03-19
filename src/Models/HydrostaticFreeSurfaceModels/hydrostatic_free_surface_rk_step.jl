@@ -40,6 +40,7 @@ The order of operations for explicit free surfaces is:
 
     # Compute z-dependent transport velocities
     compute_transport_velocities!(model, free_surface)
+
     @apply_regionally begin
         rk_substep_velocities!(model.velocities, model, Δτ)
         mask_immersed_horizontal_velocities!(model.velocities)
