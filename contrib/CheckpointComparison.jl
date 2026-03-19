@@ -1,4 +1,4 @@
-module compare_checkpoints
+module CheckpointComparison
 
 using JLD2
 using Oceananigans.TimeSteppers: Clock
@@ -6,44 +6,33 @@ using Oceananigans.BoundaryConditions: BoundaryCondition
 
 export compare_all
 
-function compare_clock_struct(a::Clock, b::Clock)
-    return a.time ≈ b.time &&
-           a.last_Δt ≈ b.last_Δt &&
-           a.last_stage_Δt ≈ b.last_stage_Δt &&
-           a.iteration == b.iteration &&
-           a.stage == b.stage
-end
+function compare_all(a::T, b::T; name="", verbose=false) where T
+    success = true
 
-function compare_all(a, b; name="", verbose=false)
     if a isa JLD2.Group
-        @assert b isa JLD2.Group
+        a_keys = keys(a)
+        b_keys = keys(b)
 
-        @assert issetequal(keys(a), keys(b)) "keys(a)=$(keys(a)), keys(b)=$(keys(b))"
-
-        keys1 = keys(a)
-        keys2 = keys(b)
-        @assert keys1 == keys2
+        @assert issetequal(a_keys, b_keys) "a_keys=$(a_keys), b_keys=$(b_keys)"
 
         # recurse
-        for key in keys1
+        for key in a_keys
             fullkey = !isempty(name) ? string(name, ".", key) : key
             if isnothing(a[key])
                 @assert isnothing(b[key])
                 verbose && println("Note: No $fullkey")
             else
-                #println("Comparing $fullkey...")
-                compare_all(a[key], b[key]; name=fullkey, verbose=verbose)
+                success &= compare_all(a[key], b[key]; name=fullkey, verbose=verbose)
             end
         end
 
     elseif a isa Clock
-        @assert b isa Clock
-
         if a != b
-            if compare_clock_struct(a, b)
+            if a ≈ b
                 println("$name are approximately equal")
             else
                 println("$name DIFFER!?")
+                success = false
             end
             println(a)
             println(b)
@@ -52,13 +41,12 @@ function compare_all(a, b; name="", verbose=false)
         end
 
     elseif a isa AbstractFloat
-        @assert b isa AbstractFloat
-
         if a != b
             if a ≈ b
                 println("$name are approximately equal")
             else
                 println("$name DIFFER!?")
+                success = false
             end
             println("$a $b")
         elseif verbose
@@ -70,32 +58,31 @@ function compare_all(a, b; name="", verbose=false)
     else
         if a != b
             println("Compare arrays $name")
-            @assert a isa Array
-            @assert b isa Array
-            abs_diff = abs.(a .- b)
-            rel_diff = [max(abs(aval), abs(bval)) == 0 ? 0.0 : abs(aval-bval)/max(abs(aval),abs(bval)) for (aval,bval) in zip(a, b)]
+            abs_diff = @. abs(a - b)
+            rel_diff = [max(abs(aval), abs(bval)) == 0 ? 0.0 : abs(aval - bval) / max(abs(aval), abs(bval))
+                        for (aval, bval) in zip(a, b)]
 
-            #if all(isapprox.(a, b; atol=1e-8, rtol=1e-5)) # np.allclose default
             if all(a .≈ b)
                 println("$name are approximately equal ", maximum(abs_diff), " ", maximum(rel_diff))
             else
                 println("$name DIFFER!? max abs/rel diff : ", maximum(abs_diff), " ", maximum(rel_diff))
+                success = false
             end
 
             max_idx = argmax(abs_diff)
             i, j, k = Tuple(max_idx)
-            println("  location of max abs diff: ", (i,j,k))
+            println("  location of max abs diff: ", (i, j, k))
 
             max_idx = argmax(rel_diff)
             i, j, k = Tuple(max_idx)
-            println("  location of max rel diff: ", (i,j,k))
+            println("  location of max rel diff: ", (i, j, k))
 
         elseif verbose
             println("$name are identical")
         end
     end
 
-    return nothing
+    return success
 end
 
 """(If only Comonicon worked)
@@ -154,8 +141,8 @@ function main()
     close(chk2)
 end
 
-end # module compare_checkpoints
+end # module CheckpointComparison
 
 if abspath(PROGRAM_FILE) == abspath(@__FILE__)
-    compare_checkpoints.main()
+    CheckpointComparison.main()
 end

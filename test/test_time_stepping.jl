@@ -321,6 +321,37 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 @testset "Time stepping" begin
     @info "Testing time stepping..."
 
+    @testset "Clock equality and isapprox" begin
+        clock1 = Clock(time=0.0, last_Δt=1.0, last_stage_Δt=1.0, iteration=1, stage=1)
+        clock2 = Clock(time=0.0, last_Δt=1.0, last_stage_Δt=1.0, iteration=1, stage=1)
+        @test clock1 == clock2
+        @test clock1 ≈ clock2
+
+        # Different iteration => not equal and not approx
+        clock3 = Clock(time=0.0, last_Δt=1.0, last_stage_Δt=1.0, iteration=2, stage=1)
+        @test clock1 != clock3
+        @test !(clock1 ≈ clock3)
+
+        # Different stage => not equal and not approx
+        clock4 = Clock(time=0.0, last_Δt=1.0, last_stage_Δt=1.0, iteration=1, stage=2)
+        @test clock1 != clock4
+        @test !(clock1 ≈ clock4)
+
+        # Slightly perturbed time => not equal but approx
+        clock5 = Clock(time=1e-15, last_Δt=1.0, last_stage_Δt=1.0, iteration=1, stage=1)
+        @test clock1 != clock5
+        @test clock1 ≈ clock5
+
+        # Slightly perturbed last_Δt => not equal but approx
+        clock6 = Clock(time=0.0, last_Δt=1.0 + 1e-15, last_stage_Δt=1.0, iteration=1, stage=1)
+        @test clock1 != clock6
+        @test clock1 ≈ clock6
+
+        # Significantly different time => not approx
+        clock7 = Clock(time=1.0, last_Δt=1.0, last_stage_Δt=1.0, iteration=1, stage=1)
+        @test !(clock1 ≈ clock7)
+    end
+
     for arch in archs, FT in float_types
         A = typeof(arch)
         Oceananigans.defaults.FloatType = FT
