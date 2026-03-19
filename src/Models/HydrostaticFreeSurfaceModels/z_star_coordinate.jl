@@ -26,7 +26,7 @@ barotropic_transport(free_surface)  = nothing, nothing
 # σᶜᶜ⁻ = σ(tⁿ) and σᶜᶜⁿ = σ(tⁿ⁺¹). For PrescribedFreeSurface, computes
 # ∂t_σ = (σᶜᶜⁿ − σᶜᶜ⁻) / Δt before update_state! synchronizes the clocks.
 # No-op for all prognostic free surfaces; overloaded in prescribed_hydrostatic_velocity_fields.jl.
-update_prescribed_∂t_σ!(grid, model, ::Any, Δt) = nothing
+update_prescribed_∂t_σ!(grid, model, free_surface, Δt) = nothing
 
 """
     ab2_step_grid!(grid::MutableGridOfSomeKind, model, ::ZStarCoordinate, Δt, χ)

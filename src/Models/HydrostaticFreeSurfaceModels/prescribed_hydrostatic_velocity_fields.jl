@@ -481,16 +481,15 @@ end
 # Called from ab2_step_grid!/rk_substep_grid! after _update_zstar_scaling!, at which point
 # σᶜᶜ⁻ = σ(tⁿ) and σᶜᶜⁿ = σ(tⁿ⁺¹), to update ∂t_σ = (σᶜᶜⁿ − σᶜᶜ⁻) / Δt
 # before update_state! synchronizes the clocks.
-function update_prescribed_∂t_σ!(grid::MutableGridOfSomeKind, model,
-                                  ::PrescribedFreeSurface, Δt)
+function update_prescribed_∂t_σ!(grid, model, free_surface::PrescribedFreeSurface, Δt)
     launch!(architecture(grid), grid, surface_kernel_parameters(grid),
-            _compute_∂t_σ!, grid.z.∂t_σ, grid.z.σᶜᶜⁿ, grid.z.σᶜᶜ⁻, Δt)
+            _update_prescribed_∂t_σ!, grid.z.∂t_σ, grid.z.σᶜᶜⁿ, grid.z.σᶜᶜ⁻, Δt)
 end
 
-# Constant-field displacement: σ never changes, ∂t_σ = 0
-update_prescribed_∂t_σ!(grid, model, ::PrescribedFreeSurface{<:Field}, Δt) = nothing
+# Constant-field displacement: σ never changes, ∂t_σ = 0.
+update_prescribed_∂t_σ!(grid, model, free_surface::PrescribedFreeSurface{<:Field}, Δt) = nothing
 
-@kernel function _compute_∂t_σ!(∂t_σ, σⁿ, σ⁻, Δt)
+@kernel function _update_prescribed_∂t_σ!(∂t_σ, σⁿ, σ⁻, Δt)
     i, j = @index(Global, NTuple)
     @inbounds ∂t_σ[i, j, 1] = (σⁿ[i, j, 1] - σ⁻[i, j, 1]) / Δt
 end
