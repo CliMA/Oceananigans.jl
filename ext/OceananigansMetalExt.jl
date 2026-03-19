@@ -30,11 +30,8 @@ architecture(::Type{MtlArray}) = MetalGPU()
 on_architecture(::MetalGPU, a::Number) = a
 on_architecture(::MetalGPU, a::Array) = MtlArray(a)
 on_architecture(::MetalGPU, a::BitArray) = MtlArray(a)
-on_architecture(::MetalGPU, a::SubArray{<:Any, <:Any, <:Array}) = MtlArray(a)
 on_architecture(::CPU, a::MtlArray) = Array(a)
-on_architecture(::CPU, a::SubArray{<:Any, <:Any, <:MtlArray}) = Array(a)
 on_architecture(::MetalGPU, a::MtlArray) = a
-on_architecture(::MetalGPU, a::SubArray{<:Any, <:Any, <:MtlArray}) = a
 
 # Convert StepRangeLen with ref/step::Float64 to ref/step::Float32 for Metal architecture
 function on_architecture(::MetalGPU, s::StepRangeLen{FT, Float64, Float64}) where FT
