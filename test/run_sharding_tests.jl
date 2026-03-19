@@ -9,6 +9,9 @@ include("distributed_tests_utils.jl")
 using Reactant
 using Oceananigans.TimeSteppers: first_time_step!
 
+# Required for Reactant MLIR compilation of sharded models (see GB-25)
+Reactant.Compiler.WHILE_CONCAT[] = true
+
 # Dispatch on Reactant grids to compile with @compile before time stepping
 const ReactantArch = Union{ReactantState, Distributed{<:ReactantState}}
 const ReactantTestGrid = AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:ReactantArch}
