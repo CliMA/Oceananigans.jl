@@ -36,6 +36,15 @@ For each example script provided as an argument:
 To re-run from scratch, delete the `<scriptname>_restart_verification/` directory.
 
 To run on GPU, change `arch = CPU()` to `arch = GPU()` below.
+
+If something breaks
+-------------------
+
+This script is not expected to support complicated simulation workflows. If something breaks, a
+good check is to diff your original script with the automatically generated testing scripts, e.g.:
+
+    vimdiff <scriptname>.jl <scriptname>_restart_verification/<scriptname>*.jl
+
 =#
 
 include(joinpath(@__DIR__, "CheckpointComparison.jl"))
