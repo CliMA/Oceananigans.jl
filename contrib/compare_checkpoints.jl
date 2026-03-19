@@ -17,7 +17,8 @@ end
 function compare_all(a, b; name="", verbose=false)
     if a isa JLD2.Group
         @assert b isa JLD2.Group
-        @assert issetequal(keys(a), keys(b))
+
+        @assert issetequal(keys(a), keys(b)) "keys(a)=$(keys(a)), keys(b)=$(keys(b))"
 
         keys1 = keys(a)
         keys2 = keys(b)
