@@ -6,8 +6,8 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaries, MAXUInt8, MAXUInt16, 
 ##### This file extends all kernel parameters to Ny + 1 for `RightFaceFolded` topologies so that
 ##### the extra row in y is correctly computed
 #####
-
-const RFTRG = TripolarGridOfSomeKind{<:Any, <:RightFaceFolded}
+                                    #  FT     TX     TY
+const RFTRG = TripolarGridOfSomeKind{<:Any, <:Any, <:RightFaceFolded}
 
 # Kernels are typically launched
 # - grid dependent parameters (`surface_kernel_parameters(grid)`, `volume_kernel_parameters(grid)`, `diffusivity_kernel_parameters(grid)`, `buffer_surface_kernel_parameters(grid)`...)

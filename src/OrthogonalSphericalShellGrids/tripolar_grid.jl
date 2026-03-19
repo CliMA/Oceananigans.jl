@@ -21,7 +21,7 @@ Adapt.adapt_structure(to, t::Tripolar) =
              Adapt.adapt(to, t.southernmost_latitude))
 
 const TripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} = OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, Arch}
-const TripolarGridOfSomeKind{TX, TY, TZ} = Union{TripolarGrid{<:Any, TX, TY, TZ}, ImmersedBoundaryGrid{<:Any, TX, TY, TZ, <:TripolarGrid}}
+const TripolarGridOfSomeKind{FT, TX, TY, TZ} = Union{TripolarGrid{FT, TX, TY, TZ}, ImmersedBoundaryGrid{FT, TX, TY, TZ, <:TripolarGrid}}
 
 """
     TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatType;
@@ -252,7 +252,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
 
     # Calculate metrics
     # TODO: rewrite this kernel and split the call to match the indices exactly.
-    kp = KernelParameters(1:Nx, 1:Ny)
+    kp = KernelParameters(1:Nx, 1:Ny+1)
     launch!(CPU(), grid, kp, _calculate_metrics!,
         Δxᶠᶜᵃ, Δxᶜᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
         Δyᶠᶜᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
