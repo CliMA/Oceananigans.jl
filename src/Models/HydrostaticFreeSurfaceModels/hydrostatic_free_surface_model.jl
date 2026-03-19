@@ -283,7 +283,7 @@ function initialization_update_state!(model::HydrostaticFreeSurfaceModel, callba
     # velocities are zero at immersed cells
     foreach(mask_immersed_field!, prognostic_fields(model))
 
-    # Paranoic fill halo update, also necessary for velocity fields
+    # Paranoid fill halo update, also necessary for velocity fields
     for field in prognostic_fields(model)
         fill_halo_regions!(field, model.clock, fields(model))
     end
