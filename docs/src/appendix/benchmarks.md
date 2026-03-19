@@ -470,7 +470,7 @@ Environment:
 
 ### Strong Scaling Multithreaded Nonhydrostatic Model
 
-The notable and continuous decrease in efficiencies for the strong scaling nonhydrostatic model is likely caused by the `256^3` grid not sufficiently saturating 32 threads running on 32 CPUs. At the time this benchmark was produced, multithreading for both nonhydrostatic and shallow water models is still an active area of improvement. Please use the appropriate scripts found in [`benchmarks`](https://github.com/CliMA/Oceananigans.jl/tree/main/benchmark) to obtain more recent and hopefully ameliorated benchmark results.
+The notable and continuous decrease in efficiencies for the strong scaling nonhydrostatic model is likely caused by the `256^3` grid not sufficiently saturating 32 threads running on 32 CPUs. At the time this benchmark was produced, multithreading for both nonhydrostatic and shallow water models is still an active area of improvement. Please use the appropriate scripts found in [`benchmarks`](https://github.com/CliMA/Oceananigans.jl/tree/main/legacy_benchmark) to obtain more recent and hopefully ameliorated benchmark results.
 
 ```
 Oceananigans v0.58.9
