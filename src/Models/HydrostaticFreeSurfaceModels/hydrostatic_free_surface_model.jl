@@ -297,10 +297,14 @@ function initialization_update_state!(model::HydrostaticFreeSurfaceModel, callba
     return nothing
 end
 
-transport_velocity_fields(velocities) = (u = XFaceField(velocities.u.grid; boundary_conditions=velocities.u.boundary_conditions),
-                                         v = YFaceField(velocities.v.grid; boundary_conditions=velocities.v.boundary_conditions),
-                                         w = ZFaceField(velocities.w.grid; boundary_conditions=velocities.w.boundary_conditions))
+transport_velocity_fields(velocities) = (u = copy_velocity(velocities.u), 
+                                         v = copy_velocity(velocities.v),
+                                         w = copy_velocity(velocities.w))
 
+copy_velocity(u::Field{<:Face, <:Center, <:Center}) = XFaceField(u.grid; boundary_conditions=u.boundary_conditions)
+copy_velocity(v::Field{<:Center, <:Face, <:Center}) = YFaceField(v.grid; boundary_conditions=v.boundary_conditions)
+copy_velocity(w::Field{<:Center, <:Center, <:Face}) = ZFaceField(w.grid; boundary_conditions=w.boundary_conditions)
+copy_velocity(c) = deepcopy(c)
 
 # Fallback transport velocities for a generic free surface (just copy velocities over)
 function compute_transport_velocities!(model, free_surface)
