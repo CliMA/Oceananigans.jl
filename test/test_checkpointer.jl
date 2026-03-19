@@ -1498,6 +1498,76 @@ function test_checkpoint_missing_file_warning(arch)
     return nothing
 end
 
+function test_pickup_mode_selection_and_default(arch)
+    N = 4
+    L = 1
+    Δt = 1.0
+
+    function make_simulation(; stop_iteration=3)
+        grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+        model = NonhydrostaticModel(grid)
+        return Simulation(model, Δt=Δt, stop_iteration=stop_iteration)
+    end
+
+    prefix = "pickup_mode_selection_$(typeof(arch))_$(rand(UInt))"
+
+    try
+        simulation = make_simulation(stop_iteration=3)
+        simulation.output_writers[:checkpointer] = Checkpointer(simulation.model,
+                                                                schedule = IterationInterval(1),
+                                                                prefix = prefix,
+                                                                cleanup = false)
+        @test_nowarn run!(simulation)
+
+        first_filepath = "$(prefix)_iteration1.jld2"
+        @test isfile(first_filepath)
+
+        # Make iteration 1 the most recently modified checkpoint.
+        sleep(1.1)
+        touch(first_filepath)
+
+        # Explicit iteration-based pickup.
+        iter_sim = make_simulation(stop_iteration=3)
+        iter_sim.output_writers[:checkpointer] = Checkpointer(iter_sim.model,
+                                                              schedule = IterationInterval(1),
+                                                              prefix = prefix,
+                                                              cleanup = false)
+        @test_logs (:info, r"iteration2\.jld2") set!(iter_sim; iteration=2)
+        @test iteration(iter_sim) == 2
+
+        # Explicit recent-timestamp pickup.
+        recent_sim = make_simulation(stop_iteration=3)
+        recent_sim.output_writers[:checkpointer] = Checkpointer(recent_sim.model,
+                                                                schedule = IterationInterval(1),
+                                                                prefix = prefix,
+                                                                cleanup = false)
+        @test_logs (:info, r"iteration1\.jld2") set!(recent_sim; checkpoint=:recent_time_stamp)
+        @test iteration(recent_sim) == 1
+
+        # Explicit highest-iteration pickup.
+        highest_sim = make_simulation(stop_iteration=3)
+        highest_sim.output_writers[:checkpointer] = Checkpointer(highest_sim.model,
+                                                                 schedule = IterationInterval(1),
+                                                                 prefix = prefix,
+                                                                 cleanup = false)
+        @test_logs (:info, r"iteration3\.jld2") set!(highest_sim; checkpoint=:highest_iteration)
+        @test iteration(highest_sim) == 3
+
+        # pickup=true should default to :recent_time_stamp.
+        default_sim = make_simulation(stop_iteration=1)
+        default_sim.output_writers[:checkpointer] = Checkpointer(default_sim.model,
+                                                                 schedule = IterationInterval(1),
+                                                                 prefix = prefix,
+                                                                 cleanup = false)
+        @test_nowarn run!(default_sim; pickup=true)
+        @test iteration(default_sim) == 2
+    finally
+        rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+    end
+
+    return nothing
+end
+
 function test_manual_checkpoint_with_checkpointer(arch)
     N = 8
     L = 1
@@ -1929,6 +1999,7 @@ for arch in archs
         @info "  Testing edge cases [$(typeof(arch))]..."
         test_checkpoint_empty_tracers(arch)
         test_checkpoint_missing_file_warning(arch)
+        test_pickup_mode_selection_and_default(arch)
     end
 
     @testset "Manual checkpointing [$(typeof(arch))]" begin
