@@ -7,7 +7,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaries, MAXUInt8, MAXUInt16, 
 ##### the extra row in y is correctly computed
 #####
 
-const RFTRG = TripolarGridOfSomeKind{<:Any, <:Any, <:RightFaceFolded}
+const RFTRG = TripolarGridOfSomeKind{<:Any, <:RightFaceFolded}
 
 # Kernels are typically launched
 # - grid dependent parameters (`surface_kernel_parameters(grid)`, `volume_kernel_parameters(grid)`, `diffusivity_kernel_parameters(grid)`, `buffer_surface_kernel_parameters(grid)`...)
