@@ -4,8 +4,7 @@
 The performance benchmarking scripts in the
 [`benchmarks`](https://github.com/CliMA/Oceananigans.jl/tree/main/legacy_benchmark)
 directory of the git repository can be run to benchmark Oceananigans.jl on your machine.
-They use [BenchmarkTools.jl](https://github.com/JuliaCI/BenchmarkTools.jl) to collect data and [PrettyTables.jl](https://github.com/ronisbr/PrettyTables.jl)  to nicely
-format the benchmark results.
+They use [BenchmarkTools.jl](https://github.com/JuliaCI/BenchmarkTools.jl) to collect data and [PrettyTables.jl](https://github.com/ronisbr/PrettyTables.jl) to nicely format the benchmark results.
 
 
 
