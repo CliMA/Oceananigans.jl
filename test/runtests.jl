@@ -53,6 +53,7 @@ CUDA.allowscalar() do
             include("test_utils.jl")
             include("test_schedules.jl")
             include("test_newton_div.jl")
+            include("test_materialize_advection.jl")
         end
     end
 
