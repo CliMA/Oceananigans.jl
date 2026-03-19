@@ -9,7 +9,6 @@ export
 
 using KernelAbstractions: @kernel, @index
 using Oceananigans: AbstractModel, initialize!, prognostic_fields, fields
-using Oceananigans.BoundaryConditions: fill_halo_regions!
 
 """
     abstract type AbstractTimeStepper
@@ -19,6 +18,7 @@ Abstract supertype for time steppers.
 abstract type AbstractTimeStepper end
 
 function update_state! end
+function initialization_update_state! end
 function compute_tendencies! end
 function compute_flux_bc_tendencies! end
 function step_closure_prognostics! end
@@ -29,8 +29,7 @@ step_closure_prognostics!(model, Δt) = nothing
 # Update the model state at iteration 0, in case run! is not used.
 function maybe_initialize_state!(model, callbacks)
     if model.clock.iteration == 0
-        fill_halo_regions!(prognostic_fields(model))
-        update_state!(model, callbacks)
+        initialization_update_state!(model, callbacks)
     end
     return nothing
 end

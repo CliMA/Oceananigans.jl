@@ -51,7 +51,7 @@ end
 # Operations like update_state!, fill_halo_regions!, and initialize_free_surface!
 # invoke KA.Kernel{ReactantBackend} which requires a @compile context.
 # These are instead performed inside first_time_step! (which runs within @compile).
-function initialization_update_state!(model::ReactantHFSM)
+function initialization_update_state!(model::ReactantHFSM, callbacks=[])
     return nothing
 end
 

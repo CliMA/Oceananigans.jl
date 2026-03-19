@@ -277,7 +277,7 @@ function HydrostaticFreeSurfaceModel(grid;
     return model
 end
 
-function initialization_update_state!(model::HydrostaticFreeSurfaceModel)
+function initialization_update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[])
 
     # Mask immersed velocities after halo fill to ensure
     # velocities are zero at immersed cells

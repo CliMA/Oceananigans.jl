@@ -83,7 +83,7 @@ HydrostaticFreeSurfaceModels.validate_tracer_advection(tracer_advection::MultiRe
 
 # A cubed sphere needs to fill u and v separately
 # U and V (in case of a `SplitExplicitFreeSurface`) are filled in `initialize!`
-function Models.initialization_update_state!(model::CubedSphereModel)
+function Models.initialization_update_state!(model::CubedSphereModel, callbacks=[])
 
     # Update the state of the model
     update_state!(model)

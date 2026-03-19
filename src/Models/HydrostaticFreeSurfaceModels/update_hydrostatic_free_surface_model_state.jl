@@ -80,7 +80,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 end
 
 """
-    mask_immersed_velocities!(velocities)
+    mask_immersed_horizontal_velocities!(velocities)
 
 Set velocity field values to zero in immersed (solid) regions of the grid.
 """

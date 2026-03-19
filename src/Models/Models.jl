@@ -20,6 +20,7 @@ using Oceananigans.Fields: Field, flattened_unique_values
 using Oceananigans.Grids: halo_size, inflate_halo_size
 using Oceananigans.OutputReaders: update_field_time_series!, extract_field_time_series
 using Oceananigans.TimeSteppers: Clock, update_state!
+import Oceananigans.TimeSteppers: initialization_update_state!
 using Oceananigans.Units: Time
 
 import Oceananigans: initialize!
@@ -42,7 +43,7 @@ Base.eltype(model::AbstractModel) = Float64
 architecture(model::AbstractModel) = nothing
 initialize!(model::AbstractModel) = nothing
 total_velocities(model::AbstractModel) = nothing
-initialization_update_state!(model::AbstractModel; kw...) = update_state!(model; kw...) # fallback
+initialization_update_state!(model::AbstractModel, callbacks=[]) = update_state!(model, callbacks) # fallback
 
 # Fallback for any abstract model that does not contain `FieldTimeSeries`es
 update_model_field_time_series!(model::AbstractModel, clock::Clock) = nothing
