@@ -1,10 +1,12 @@
 module OceananigansXESMFExt
 
-using XESMF
 using Oceananigans
 using Oceananigans.Architectures: architecture, on_architecture
 using Oceananigans.Fields: AbstractField, topology, location
 using Oceananigans.Grids: AbstractGrid, λnodes, φnodes, Center, Face, total_length
+# Always load XESMF _after_ Oceananigans.jl (and MPI.jl) so that we load Julia's
+# libmpi before XESFM loads its own.
+using XESMF
 
 import Oceananigans.Fields: regrid!
 import Oceananigans.Architectures: on_architecture
