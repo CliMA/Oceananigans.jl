@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
-using Oceananigans.Coriolis: fᶜᶜᵃ, fᶠᶠᵃ, HydrostaticFormulation, EENConserving, ActiveWeightedEnergyConserving, ActiveWeightedEnstrophyConserving
+using Oceananigans.Coriolis: fᶜᶜᵃ, fᶠᶠᵃ, HydrostaticFormulation, TriadScheme, ActiveWeightedEnergyConserving, ActiveWeightedEnstrophyConserving
 using Oceananigans.Coriolis: 𝒯⁺⁺, 𝒯⁻⁺, 𝒯⁺⁻, 𝒯⁻⁻
 using Oceananigans.Operators: Ayᶜᶠᶜ, Ayᶠᶜᶜ
 
@@ -113,7 +113,7 @@ function test_een_triad_structure(FT)
                                  longitude = (0, 4),
                                  z = (0, 1))
 
-    coriolis = HydrostaticSphericalCoriolis(FT, scheme=EENConserving())
+    coriolis = HydrostaticSphericalCoriolis(FT, scheme=TriadScheme())
 
     i, j, k = 2, 2, 1
 
@@ -367,14 +367,14 @@ for arch in archs
             coriolis = SphericalCoriolis(FT, scheme=ActiveWeightedEnergyConserving())
             @test coriolis.scheme isa ActiveWeightedEnergyConserving
 
-            coriolis = SphericalCoriolis(FT, scheme=EENConserving())
-            @test coriolis.scheme isa EENConserving
+            coriolis = SphericalCoriolis(FT, scheme=TriadScheme())
+            @test coriolis.scheme isa TriadScheme
 
             coriolis = HydrostaticSphericalCoriolis(FT, scheme=ActiveWeightedEnstrophyConserving())
             @test coriolis.scheme isa ActiveWeightedEnstrophyConserving
 
-            coriolis = HydrostaticSphericalCoriolis(FT, scheme=EENConserving())
-            @test coriolis.scheme isa EENConserving
+            coriolis = HydrostaticSphericalCoriolis(FT, scheme=TriadScheme())
+            @test coriolis.scheme isa TriadScheme
 
             # Default scheme for HydrostaticSphericalCoriolis is EnstrophyConserving
             coriolis = HydrostaticSphericalCoriolis(FT)
@@ -409,7 +409,7 @@ for arch in archs
                                       EnergyConserving(),
                                       ActiveWeightedEnstrophyConserving(),
                                       ActiveWeightedEnergyConserving(),
-                                      EENConserving())
+                                      TriadScheme())
 
         @testset "Antisymmetry [$FT]" begin
             @testset "scheme=$(summary(scheme))" begin

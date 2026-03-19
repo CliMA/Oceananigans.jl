@@ -156,7 +156,7 @@ Five schemes are available:
 |--------|-----------|------------------------------|
 | `EnstrophyConserving()` | Potential enstrophy | No |
 | `EnergyConserving()` | Kinetic energy | No |
-| `EENConserving()` | Both energy and enstrophy | No |
+| `TriadScheme()` | Both energy and enstrophy | No |
 | `ActiveWeightedEnstrophyConserving()` | Potential enstrophy | Yes |
 | `ActiveWeightedEnergyConserving()` | Kinetic energy | Yes |
 
@@ -205,19 +205,18 @@ SphericalCoriolis
 └─ scheme: Oceananigans.Coriolis.ActiveWeightedEnergyConserving
 ```
 
-!!! tip "When to use active-weighted schemes"
-    The active-weighted correction is recommended for simulations with immersed boundaries
-    (e.g., realistic ocean bathymetry). For simulations without immersed boundaries, the
-    standard schemes and the active-weighted schemes are equivalent.
+!!! warning "When to use active-weighted schemes"
+    The active-weighted correction can reduce spurious numerical boundary layers along simple, flat immersed boundaries. However, for complex topography (narrow passages, sharp capes, jagged coastlines) or large ``\beta`` values, the amplification factor ``1/N_{\text{active}}`` can inject energy and produce grid-scale checkerboard artifacts along coastlines. For this reason, the standard (non-active-weighted) schemes are the default. Users should test the active-weighted  schemes carefully before adopting them
+    in production simulations.
 
-### EEN (Energy- and Enstrophy-Conserving) scheme
+### Triad (Energy- and Enstrophy-Conserving) scheme
 
-The `EENConserving` scheme is based on the triad formulation of [ArakawaLamb1981](@citet).
+The `TriadScheme` scheme is based on the triad formulation of [ArakawaLamb1981](@citet).
 It uses a 12-point stencil that conserves both kinetic energy and potential enstrophy in
 the limit of horizontally non-divergent flow:
 
 ```jldoctest
-julia> coriolis = FPlane(f=1e-4, scheme=Oceananigans.Coriolis.EENConserving())
+julia> coriolis = FPlane(f=1e-4, scheme=Oceananigans.Coriolis.TriadScheme())
 FPlane{Float64}(f=0.0001)
 ```
 

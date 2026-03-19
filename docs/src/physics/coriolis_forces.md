@@ -118,9 +118,9 @@ terms cancel when forming the kinetic energy equation [Dobricic2006](@citep).
 
 This scheme conserves **kinetic energy** but not potential enstrophy.
 
-### EEN (Energy- and Enstrophy-Conserving) scheme
+### Triad (Energy- and Enstrophy-Conserving) scheme
 
-The EEN scheme [ArakawaLamb1981](@citep) uses **triads** to achieve simultaneous conservation
+The Triad scheme [ArakawaLamb1981](@citep) uses **triads** to achieve simultaneous conservation
 of both kinetic energy and potential enstrophy. Each triad at a cell center sums 3 of the 4
 surrounding vorticity values, paired with transports at diagonally adjacent velocity points.
 The four triads at cell center ``(i,j)`` are:
@@ -165,34 +165,5 @@ than the full stencil size:
 where ``N_{\text{active}}`` is the count of non-peripheral (wet) velocity nodes in the
 4-point interpolation stencil. When all nodes are active, this reduces to the standard scheme.
 
-!!! info "When to use the wet-points-only correction"
-    [JamartOzer1986](@citet) found that the wet-points-only method is essential for 3D models
-    with immersed boundaries, where it eliminates spurious boundary layers. However, the
-    correction is generally not necessary for vertically integrated (2D) models, where the
-    boundary condition of zero normal transport is sufficient.
-
-## Validation
-
-### Jamart basin test
-
-The figure below shows the steady-state free surface elevation ``\eta`` in a rectangular basin
-on a ``\beta``-plane with a uniform zonal flow impinging on a vertical wall.
-Without the wet-points-only correction (Enstrophy, Energy, EEN columns), a spurious
-numerical boundary layer develops along the wall where the Coriolis force is artificially
-weakened. The active-weighted schemes (AW Enstrophy, AW Energy) eliminate this artifact
-and recover the correct geostrophic balance along the boundary.
-
-![Jamart basin comparison](../assets/jamart_basin_comparison.png)
-
-### Immersed boundary stress test
-
-A more demanding test places a strong barotropic jet on a latitude-longitude grid with
-complex immersed topography: a large island with a narrow strait, isolated islands, a thin
-cape, and a jagged continental shelf. The Coriolis term is the only active tendency
-(no momentum advection). After 30 days, the standard schemes (ES, EN, EEN) produce clean
-velocity fields, while the active-weighted schemes (AWES, AWEN) develop grid-scale
-checkerboard artifacts along every coastline — a consequence of the discontinuous
-amplification factor ``1/N_{\text{active}}`` varying between neighboring cells along
-irregular boundaries.
-
-![Coriolis stress test](../assets/coriolis_stress_test.png)
+!!! warning "When to use the wet-points-only correction"
+    The active-weighted correction can reduce spurious numerical boundary layers along simple, flat immersed boundaries [JamartOzer1986](@citep). However, for complex topography (narrow passages, sharp capes, jagged coastlines) or large ``\beta`` values, the amplification factor ``1/N_{\text{active}}`` can inject energy and produce grid-scale checkerboard artifacts along coastlines. For this reason, the standard (non-active-weighted) schemes are the default. Users should test the active-weightedschemes carefully and verify the possible benefits before adopting them in production simulations.

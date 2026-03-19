@@ -46,7 +46,7 @@ Keyword arguments
 - `rotation_rate`: Sphere's rotation rate; default: Earth's rotation rate.
 - `scheme`: Discretization scheme. Options include `EnstrophyConserving()` (default),
   `EnergyConserving()`, `ActiveWeightedEnstrophyConserving()`,
-  `ActiveWeightedEnergyConserving()`, and `EENConserving()`.
+  `ActiveWeightedEnergyConserving()`, and `TriadScheme()`.
 - `formulation`: Either `NonhydrostaticFormulation()` (default) or `HydrostaticFormulation()`.
 
 Example

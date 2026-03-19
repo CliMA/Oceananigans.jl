@@ -123,7 +123,7 @@ end
 schemes = [
     (EnstrophyConserving(),                "Enstrophy"),
     (EnergyConserving(),                   "Energy"),
-    (EENConserving(),                      "EEN"),
+    (TriadScheme(),                        "EEN"),
     (ActiveWeightedEnstrophyConserving(),  "AW-Enstrophy"),
     (ActiveWeightedEnergyConserving(),     "AW-Energy"),
 ]

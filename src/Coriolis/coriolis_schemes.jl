@@ -26,20 +26,20 @@ of active (non-masked) nodes to compensate for missing neighbors.
 struct ActiveWeightedEnergyConserving end
 
 """
-    EENConserving
+    TriadScheme
 
 Energy- and enstrophy-conserving Coriolis scheme based on the triad formulation
 of [Arakawa and Lamb (1981)](@cite ArakawaLamb1981).
 Each triad at a tracer point sums three of the four surrounding vorticity
 values, paired with transports at diagonally adjacent velocity points.
 """
-struct EENConserving end
+struct TriadScheme end
 
 Base.summary(::EnstrophyConserving) = "EnstrophyConserving"
 Base.summary(::EnergyConserving) = "EnergyConserving"
 Base.summary(::ActiveWeightedEnstrophyConserving) = "ActiveWeightedEnstrophyConserving"
 Base.summary(::ActiveWeightedEnergyConserving) = "ActiveWeightedEnergyConserving"
-Base.summary(::EENConserving) = "EENConserving"
+Base.summary(::TriadScheme) = "TriadScheme"
 
 # Helpers for counting active velocity nodes in the 4-point stencil
 @inline not_peripheral_nodeᶜᶠᶜ(i, j, k, grid) = !peripheral_node(i, j, k, grid, Center(), Face(), Center())
@@ -132,9 +132,9 @@ end
 @inline 𝒯⁺⁻(i, j, k, grid, coriolis) = fᶠᶠᵃ(i+1, j+1, k, grid, coriolis) + fᶠᶠᵃ(i+1, j,   k, grid, coriolis) + fᶠᶠᵃ(i,   j,   k, grid, coriolis)
 @inline 𝒯⁻⁻(i, j, k, grid, coriolis) = fᶠᶠᵃ(i+1, j,   k, grid, coriolis) + fᶠᶠᵃ(i,   j,   k, grid, coriolis) + fᶠᶠᵃ(i,   j+1, k, grid, coriolis)
 
-const EENC = AbstractRotation{<:EENConserving}
+const TS = AbstractRotation{<:TriadScheme}
 
-@inline function x_f_cross_U(i, j, k, grid, coriolis::EENC, U)
+@inline function x_f_cross_U(i, j, k, grid, coriolis::TS, U)
     @inbounds begin
         return - Ay⁻¹ᶠᶜᶜ(i, j, k, grid) / 12 * (
             𝒯⁺⁺(i-1, j, k, grid, coriolis) * masked_Ay_qᶜᶠᶜ(i-1, j+1, k, grid, U[2]) +
@@ -145,7 +145,7 @@ const EENC = AbstractRotation{<:EENConserving}
 end
 
 # Uses triads at (i,j-1) and (i,j), paired with u-transports (Δy * u).
-@inline function y_f_cross_U(i, j, k, grid, coriolis::EENC, U)
+@inline function y_f_cross_U(i, j, k, grid, coriolis::TS, U)
     @inbounds begin
         return + Ax⁻¹ᶜᶠᶜ(i, j, k, grid) / 12 * (
             𝒯⁻⁻(i, j,   k, grid, coriolis) * masked_Ax_qᶠᶜᶜ(i,   j,   k, grid, U[1]) +

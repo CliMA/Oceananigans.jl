@@ -134,7 +134,7 @@ using Oceananigans.ImmersedBoundaries: peripheral_node
 schemes = [
     (EnstrophyConserving(),                "ES"),
     (EnergyConserving(),                   "EN"),
-    (EENConserving(),                      "EEN"),
+    (TriadScheme(),                        "EEN"),
     (ActiveWeightedEnstrophyConserving(),  "AWES"),
     (ActiveWeightedEnergyConserving(),     "AWEN"),
 ]
