@@ -118,12 +118,11 @@ ab2_step_velocities!(::PrescribedVelocityFields, args...) = nothing
 rk_substep_velocities!(::PrescribedVelocityFields, args...) = nothing
 step_free_surface!(::Nothing, model, timestepper, Δt) = nothing
 compute_w_from_continuity!(::PrescribedVelocityFields, args...; kwargs...) = nothing
+compute_transport_velocities!(model, ::Nothing) = nothing
 mask_immersed_horizontal_velocities!(::PrescribedVelocityFields) = nothing
 
 # No need for extra velocities
-transport_velocity_fields(velocities::PrescribedVelocityFields, free_surface) = velocities
-transport_velocity_fields(velocities::PrescribedVelocityFields, ::ExplicitFreeSurface) = velocities
-transport_velocity_fields(velocities::PrescribedVelocityFields, ::Nothing) = velocities
+transport_velocity_fields(velocities::PrescribedVelocityFields) = velocities
 
 validate_velocity_boundary_conditions(grid, ::PrescribedVelocityFields) = nothing
 extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()

@@ -264,7 +264,7 @@ function HydrostaticFreeSurfaceModel(grid;
     # are consistent between materialization and tendency computation.
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
     forcing = model_forcing(forcing, model_fields, prognostic_fields)
-    transport_velocities = transport_velocity_fields(velocities, free_surface)
+    transport_velocities = transport_velocity_fields(velocities)
 
     !isnothing(particles) && arch isa Distributed && error("LagrangianParticles are not supported on Distributed architectures.")
 
