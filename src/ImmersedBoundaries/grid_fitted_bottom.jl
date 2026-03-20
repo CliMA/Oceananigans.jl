@@ -100,22 +100,19 @@ function materialize_immersed_boundary(grid, ib::GridFittedBottom)
 end
 
 compute_numerical_bottom_height!(bottom_field, grid, ib) =
-    launch!(architecture(grid), grid, :xy, _compute_numerical_bottom_height!, bottom_field, grid, ib, Val(grid.Nz))
+    launch!(architecture(grid), grid, :xy, _compute_numerical_bottom_height!, bottom_field, grid, ib)
 
-@kernel function _compute_numerical_bottom_height!(bottom_field, grid, ib::GridFittedBottom, ::Val{Nz}) where Nz
+@kernel function _compute_numerical_bottom_height!(bottom_field, grid, ib::GridFittedBottom)
     i, j = @index(Global, NTuple)
-    zᵇ = new_zᵇ = @inbounds bottom_field[i, j, 1]
+    zb = @inbounds bottom_field[i, j, 1]
     @inbounds bottom_field[i, j, 1] = rnode(i, j, 1, grid, c, c, f)
     condition = ib.immersed_condition
-    for k in 1:Nz
+    for k in 1:grid.Nz
         z⁺ = rnode(i, j, k+1, grid, c, c, f)
         z  = rnode(i, j, k,   grid, c, c, c)
-        # immersed_cell = ifelse(condition isa CenterImmersedCondition, z ≤ zb, z⁺ ≤ zb)
-        immersed_cell = z ≤ zᵇ
-        new_zᵇ = ifelse(immersed_cell, z⁺, zᵇ)
+        immersed_cell = ifelse(condition isa CenterImmersedCondition, z ≤ zb, z⁺ ≤ zb)
+        @inbounds bottom_field[i, j, 1] = ifelse(immersed_cell, z⁺, bottom_field[i, j, 1])
     end
-    
-    @inbounds bottom_field[i, j, 1] = new_zᵇ
 end
 
 @inline function _immersed_cell(i, j, k, underlying_grid, ib::GridFittedBottom)
