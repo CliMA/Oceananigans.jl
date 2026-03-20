@@ -146,9 +146,6 @@ function advective_timescale_cfl_on_flat_2d_grid(arch, FT)
     return cfl(model) == 0
 end
 
-get_iteration(model) = model.clock.iteration
-get_time(model) = model.clock.time
-
 @testset "Diagnostics" begin
     @info "Testing diagnostics..."
 
@@ -165,5 +162,6 @@ get_time(model) = model.clock.time
                 @test advective_timescale_cfl_on_flat_2d_grid(arch, FT)
             end
         end
+
     end
 end
