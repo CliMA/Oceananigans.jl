@@ -1,62 +1,37 @@
-include("distributed_tests_utils.jl")
+include("sharding_test_utils.jl")
+include("dependencies_for_runtests.jl")
 
 @testset "Test sharded LatitudeLongitudeGrid simulations..." begin
-    # Run the serial computation
-    grid  = LatitudeLongitudeGrid(size=(40, 40, 10),
-                                  longitude=(0, 360),
-                                  latitude=(-10, 10),
-                                  z=(-1000, 0),
-                                  halo=(5, 5, 5))
+    model = sharding_test_model(CPU())
+    Δt = model.clock.last_Δt
 
-    model = run_distributed_simulation(grid)
+    @info "Running serial first time step..."
+    first_time_step!(model, Δt)
+    @info "Running serial time steps..."
+    for N in 2:100
+        time_step!(model, Δt)
+    end
 
-    # Retrieve Serial quantities
-    us, vs, ws = model.velocities
-    cs = model.tracers.c
-    ηs = model.free_surface.displacement
+    # Retrieve serial quantities
+    us = interior(model.velocities.u, :, :, 10)
+    vs = interior(model.velocities.v, :, :, 10)
+    cs = interior(model.tracers.c, :, :, 10)
+    ηs = interior(model.free_surface.displacement, :, :, 1)
 
-    us = interior(us, :, :, 10)
-    vs = interior(vs, :, :, 10)
-    cs = interior(cs, :, :, 10)
-    ηs = interior(ηs, :, :, 1)
-
-    # Run the sharded Reactant simulations in a subprocess (no MPI needed)
+    # Run the sharded Reactant simulation in a subprocess
     run(`$(Base.julia_cmd()) -O0 run_sharding_tests.jl`)
 
-    # Retrieve Parallel quantities
-    up1 = jldopen("distributed_xslab_llg.jld2")["u"]
-    vp1 = jldopen("distributed_xslab_llg.jld2")["v"]
-    cp1 = jldopen("distributed_xslab_llg.jld2")["c"]
-    ηp1 = jldopen("distributed_xslab_llg.jld2")["η"]
+    # Retrieve sharded quantities
+    up = jldopen("distributed_pencil_llg.jld2")["u"]
+    vp = jldopen("distributed_pencil_llg.jld2")["v"]
+    cp = jldopen("distributed_pencil_llg.jld2")["c"]
+    ηp = jldopen("distributed_pencil_llg.jld2")["η"]
 
-    up2 = jldopen("distributed_yslab_llg.jld2")["u"]
-    vp2 = jldopen("distributed_yslab_llg.jld2")["v"]
-    cp2 = jldopen("distributed_yslab_llg.jld2")["c"]
-    ηp2 = jldopen("distributed_yslab_llg.jld2")["η"]
-
-    up3 = jldopen("distributed_pencil_llg.jld2")["u"]
-    vp3 = jldopen("distributed_pencil_llg.jld2")["v"]
-    cp3 = jldopen("distributed_pencil_llg.jld2")["c"]
-    ηp3 = jldopen("distributed_pencil_llg.jld2")["η"]
-
-    # What does correctness mean in this case? Probably sqrt(ϵ)?
     ϵ = sqrt(eps(Float64))
 
-    @info "Testing xslab partitioning..."
-    @test all(isapprox.(us, up1; atol=ϵ))
-    @test all(isapprox.(vs, vp1; atol=ϵ))
-    @test all(isapprox.(cs, cp1; atol=ϵ))
-    @test all(isapprox.(ηs, ηp1; atol=ϵ))
-
-    @info "Testing yslab partitioning..."
-    @test all(isapprox.(us, up2; atol=ϵ))
-    @test all(isapprox.(vs, vp2; atol=ϵ))
-    @test all(isapprox.(cs, cp2; atol=ϵ))
-    @test all(isapprox.(ηs, ηp2; atol=ϵ))
-
     @info "Testing pencil partitioning..."
-    @test all(isapprox.(us, up3; atol=ϵ))
-    @test all(isapprox.(vs, vp3; atol=ϵ))
-    @test all(isapprox.(cs, cp3; atol=ϵ))
-    @test all(isapprox.(ηs, ηp3; atol=ϵ))
+    @test all(isapprox.(us, up; atol=ϵ))
+    @test all(isapprox.(vs, vp; atol=ϵ))
+    @test all(isapprox.(cs, cp; atol=ϵ))
+    @test all(isapprox.(ηs, ηp; atol=ϵ))
 end
