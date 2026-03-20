@@ -71,6 +71,29 @@ Additional indices `in...` are passed through for higher-dimensional arrays.
 end
 
 """
+    _interpolate(data, ix, iy, iz, iw::Tuple{Any, Any, Any})
+
+Perform quadrilinear interpolation on 4D `data` using
+interpolator tuples `ix`, `iy`, `iz`, `iw` of the form `(i⁻, i⁺, ξ)`.
+"""
+@inline function _interpolate(data, ix, iy, iz, iw::Tuple{Any, Any, Any})
+    i⁻, i⁺, ξ = ix
+    j⁻, j⁺, η = iy
+    k⁻, k⁺, ζ = iz
+    l⁻, l⁺, θ = iw
+
+    return @inbounds (
+        ϕ₁(ξ, η, ζ) * (1 - θ) * data[i⁻, j⁻, k⁻, l⁻] + ϕ₁(ξ, η, ζ) * θ * data[i⁻, j⁻, k⁻, l⁺] +
+        ϕ₂(ξ, η, ζ) * (1 - θ) * data[i⁻, j⁻, k⁺, l⁻] + ϕ₂(ξ, η, ζ) * θ * data[i⁻, j⁻, k⁺, l⁺] +
+        ϕ₃(ξ, η, ζ) * (1 - θ) * data[i⁻, j⁺, k⁻, l⁻] + ϕ₃(ξ, η, ζ) * θ * data[i⁻, j⁺, k⁻, l⁺] +
+        ϕ₄(ξ, η, ζ) * (1 - θ) * data[i⁻, j⁺, k⁺, l⁻] + ϕ₄(ξ, η, ζ) * θ * data[i⁻, j⁺, k⁺, l⁺] +
+        ϕ₅(ξ, η, ζ) * (1 - θ) * data[i⁺, j⁻, k⁻, l⁻] + ϕ₅(ξ, η, ζ) * θ * data[i⁺, j⁻, k⁻, l⁺] +
+        ϕ₆(ξ, η, ζ) * (1 - θ) * data[i⁺, j⁻, k⁺, l⁻] + ϕ₆(ξ, η, ζ) * θ * data[i⁺, j⁻, k⁺, l⁺] +
+        ϕ₇(ξ, η, ζ) * (1 - θ) * data[i⁺, j⁺, k⁻, l⁻] + ϕ₇(ξ, η, ζ) * θ * data[i⁺, j⁺, k⁻, l⁺] +
+        ϕ₈(ξ, η, ζ) * (1 - θ) * data[i⁺, j⁺, k⁺, l⁻] + ϕ₈(ξ, η, ζ) * θ * data[i⁺, j⁺, k⁺, l⁺])
+end
+
+"""
     _interpolate(data, ix, iy)
 
 Perform bilinear interpolation on 2D `data` using interpolator tuples `ix`, `iy`.
