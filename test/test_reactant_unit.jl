@@ -7,6 +7,9 @@ using Oceananigans.Architectures: ReactantState
 arch = ReactantState()
 
 @testset "Reactant unit tests" begin
+    @testset "Checkbounds = auto" begin
+        @test Base.JLOptions().check_bounds == 0
+    end
     @testset "KernelFunctionOperation reductions on LatitudeLongitudeGrid" begin
         grid = LatitudeLongitudeGrid(arch;
                                      size = (40, 40, 10),
