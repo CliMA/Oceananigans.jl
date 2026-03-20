@@ -6,7 +6,7 @@ using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Fields: CenterField, tracernames, TracerFields
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization
+using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization, Face, Center
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles
@@ -264,7 +264,7 @@ function HydrostaticFreeSurfaceModel(grid;
     # are consistent between materialization and tendency computation.
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
     forcing = model_forcing(forcing, model_fields, prognostic_fields)
-    transport_velocities = transport_velocity_fields(velocities, free_surface)
+    transport_velocities = transport_velocity_fields(velocities)
 
     !isnothing(particles) && arch isa Distributed && error("LagrangianParticles are not supported on Distributed architectures.")
 
@@ -277,16 +277,19 @@ function HydrostaticFreeSurfaceModel(grid;
     return model
 end
 
-function initialization_update_state!(model::HydrostaticFreeSurfaceModel)
+function initialization_update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[])
 
-    # Update the state of the model
-    update_state!(model)
+    # Mask immersed velocities after halo fill to ensure
+    # velocities are zero at immersed cells
+    foreach(mask_immersed_field!, prognostic_fields(model))
 
-    # Update state may have asynchronous fill halo, so we refill all the
-    # halos here (in a synchronous fashion) for initialization
+    # Paranoid fill halo update, also necessary for velocity fields
     for field in prognostic_fields(model)
         fill_halo_regions!(field, model.clock, fields(model))
     end
+
+    # Update the state of the model
+    update_state!(model)
 
     # Finally, initialize the model (e.g., free surface, vertical coordinate...)
     initialize!(model)
@@ -294,11 +297,27 @@ function initialization_update_state!(model::HydrostaticFreeSurfaceModel)
     return nothing
 end
 
-transport_velocity_fields(velocities, ::Nothing) = velocities
-transport_velocity_fields(velocities, ::ExplicitFreeSurface) = velocities
-transport_velocity_fields(velocities, free_surface) = (u = XFaceField(velocities.u.grid; boundary_conditions=velocities.u.boundary_conditions),
-                                                       v = YFaceField(velocities.v.grid; boundary_conditions=velocities.v.boundary_conditions),
-                                                       w = ZFaceField(velocities.w.grid; boundary_conditions=velocities.w.boundary_conditions))
+transport_velocity_fields(velocities) = (u = copy_velocity(velocities.u), 
+                                         v = copy_velocity(velocities.v),
+                                         w = copy_velocity(velocities.w))
+
+copy_velocity(u::Field{<:Face, <:Center, <:Center}) = XFaceField(u.grid; boundary_conditions=u.boundary_conditions)
+copy_velocity(v::Field{<:Center, <:Face, <:Center}) = YFaceField(v.grid; boundary_conditions=v.boundary_conditions)
+copy_velocity(w::Field{<:Center, <:Center, <:Face}) = ZFaceField(w.grid; boundary_conditions=w.boundary_conditions)
+copy_velocity(c) = deepcopy(c)
+
+# Fallback transport velocities for a generic free surface (just copy velocities over)
+function compute_transport_velocities!(model, free_surface)
+    grid = model.grid
+    u, v, w = model.velocities
+    ũ, ṽ, w̃ = model.transport_velocities
+
+    parent(ũ) .= parent(u)
+    parent(ṽ) .= parent(v)
+    parent(w̃) .= parent(w)
+
+    return nothing
+end
 
 validate_velocity_boundary_conditions(grid, velocities) = validate_vertical_velocity_boundary_conditions(velocities.w)
 

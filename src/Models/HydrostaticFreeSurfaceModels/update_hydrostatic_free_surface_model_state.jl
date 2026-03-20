@@ -42,18 +42,16 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     arch = architecture(grid)
 
     @apply_regionally begin
-        mask_immersed_model_fields!(model)
+        foreach(mask_immersed_field!, model.tracers)
         update_model_field_time_series!(model, model.clock)
         update_boundary_conditions!(fields(model), model)
     end
 
-    u = model.velocities.u
-    v = model.velocities.v
     tracers = model.tracers
 
     # Fill the halos of the prognostic fields. Note that the halos of the
-    # free-surface variables are filled after the barotropic step.
-    fill_halo_regions!((u, v),  model.clock, fields(model); async=true)
+    # free-surface variables and the horizontal velocities
+    # are filled within the time-stepping after the state evolution.
     fill_halo_regions!(tracers, model.clock, fields(model); async=true)
 
     # Compute diagnostic quantities
@@ -82,25 +80,15 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 end
 
 """
-    mask_immersed_model_fields!(model)
-
-Set field values to zero in immersed (solid) regions of the grid.
-
-Masks both velocity fields and tracers to ensure physically meaningful values
-at immersed boundaries. This is called at the beginning of `update_state!`.
-"""
-function mask_immersed_model_fields!(model)
-    mask_immersed_velocities!(model.velocities)
-    foreach(mask_immersed_field!, model.tracers)
-    return nothing
-end
-
-"""
-    mask_immersed_velocities!(velocities)
+    mask_immersed_horizontal_velocities!(velocities)
 
 Set velocity field values to zero in immersed (solid) regions of the grid.
 """
-mask_immersed_velocities!(velocities) = foreach(mask_immersed_field!, velocities)
+function mask_immersed_horizontal_velocities!(velocities) 
+    mask_immersed_field!(velocities.u)
+    mask_immersed_field!(velocities.v)
+    return nothing
+end
 
 """
     diffusivity_kernel_parameters(grid)

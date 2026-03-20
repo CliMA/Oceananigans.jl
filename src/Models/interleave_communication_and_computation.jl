@@ -103,3 +103,4 @@ Similar to `surface_kernel_parameters` but for three-dimensional fields.
 
     return KernelParameters(ii, jj, kk)
 end
+
