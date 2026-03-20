@@ -90,9 +90,12 @@ Adapt.adapt_structure(to, bf::BuoyancyForce) =
 
 @inline get_temperature_and_salinity(bf::BuoyancyForce, C) = get_temperature_and_salinity(bf.formulation, C)
 
-@inline ∂x_b(i, j, k, grid, b::BuoyancyForce{<:Any, <:Any, Nothing}, C) = ∂x_b(i, j, k, grid, b.formulation, C)
-@inline ∂y_b(i, j, k, grid, b::BuoyancyForce{<:Any, <:Any, Nothing}, C) = ∂y_b(i, j, k, grid, b.formulation, C)
-@inline ∂z_b(i, j, k, grid, b::BuoyancyForce{<:Any, <:Any, Nothing}, C) = ∂z_b(i, j, k, grid, b.formulation, C)
+@inline ∂xᵣ_b(i, j, k, grid, b::BuoyancyForce{<:Any, <:Any, Nothing}, C) = ∂xᵣ_b(i, j, k, grid, b.formulation, C)
+@inline ∂yᵣ_b(i, j, k, grid, b::BuoyancyForce{<:Any, <:Any, Nothing}, C) = ∂yᵣ_b(i, j, k, grid, b.formulation, C)
+@inline  ∂z_b(i, j, k, grid, b::BuoyancyForce{<:Any, <:Any, Nothing}, C) =  ∂z_b(i, j, k, grid, b.formulation, C)
+
+@inline  ∂x_b(i, j, k, grid, b::BuoyancyForce, C) = ∂x_b(i, j, k, grid, b.formulation, C)
+@inline  ∂y_b(i, j, k, grid, b::BuoyancyForce, C) = ∂y_b(i, j, k, grid, b.formulation, C)
 
 @inline top_buoyancy_flux(i, j, grid, b::BuoyancyForce, args...) = top_buoyancy_flux(i, j, grid, b.formulation, args...)
 
@@ -123,9 +126,9 @@ end
 ##### Some performance optimizations for models that compute gradients over and over...
 #####
 
-@inline ∂x_b(i, j, k, grid, b::BuoyancyForce, C) = @inbounds b.gradients.∂x_b[i, j, k]
-@inline ∂y_b(i, j, k, grid, b::BuoyancyForce, C) = @inbounds b.gradients.∂y_b[i, j, k]
-@inline ∂z_b(i, j, k, grid, b::BuoyancyForce, C) = @inbounds b.gradients.∂z_b[i, j, k]
+@inline ∂xᵣ_b(i, j, k, grid, b::BuoyancyForce, C) = @inbounds b.gradients.∂xᵣ_b[i, j, k]
+@inline ∂yᵣ_b(i, j, k, grid, b::BuoyancyForce, C) = @inbounds b.gradients.∂yᵣ_b[i, j, k]
+@inline  ∂z_b(i, j, k, grid, b::BuoyancyForce, C) = @inbounds b.gradients.∂z_b[i, j, k]
 
 function compute_buoyancy_gradients!(buoyancy, grid, tracers; parameters=:xyz)
     gradients = buoyancy.gradients
