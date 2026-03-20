@@ -251,11 +251,11 @@ end
             #          │           │           │           │           │           │           │
             # Ny+1 ─▶  u     c     u     c     u     c     u     c     u     c     u     c     u
             #          │           │           │           │           │           │           │
-            # Ny+1 ─▶  ├──── v ────┼──── v ────┼──── v ─── F ─── v ────┼──── v ────┼───  v ────┤
+            # Ny+1 ─▶  ├──── v ────┼──── v ────┼──── v ─── F ─── v ────┼──── v ────┼───  v ────┤ ◀─ Fold (RightFaceFolded)
             #          │           │           │           │           │           │           │
             #   Ny ─▶  u     c     u     c     u     c     U     c     u     c     u     c     u ◀─ Fold (RightCenterFolded)
             #          │           │           │           │           │           │           │
-            #   Ny ─▶  ├──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┤ ◀─ Fold (RightFaceFolded)
+            #   Ny ─▶  ├──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┤
             #          │           │           │           │           │           │           │
             # Ny-1 ─▶  u     c     u     c     u     c     u     c     u     c     u     c     u
             #          │           │           │           │           │           │           │
@@ -266,10 +266,10 @@ end
             # For testing, rotate the entire grid around the central pivot point!
             # Note that the pivot-point indices below include half indices to accurately
             # represent the pivot point location. For example, for a (Center, Center) location
-            # in a RightFaceFolded topology, the pivot point is located at (Nx/2 + 0.5, Ny - 0.5).
+            # in a RightFaceFolded topology, the pivot point is located at (Nx/2 + 0.5, Ny + 0.5).
             pivot_iᶜ = Nx ÷ 2 + 0.5
             pivot_iᶠ = pivot_iᶜ + 0.5
-            pivot_jᶜ = (fold_topology == RightCenterFolded) ? Ny : Ny - 0.5
+            pivot_jᶜ = (fold_topology == RightCenterFolded) ? Ny : Ny + 0.5
             pivot_jᶠ = pivot_jᶜ + 0.5
             # Then we take views centered around the pivot and rotate the view by 180°.
             # However we cannot rotate the entire grid and must restrict ourselves to those indices

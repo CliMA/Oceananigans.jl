@@ -21,7 +21,7 @@ Adapt.adapt_structure(to, t::Tripolar) =
              Adapt.adapt(to, t.southernmost_latitude))
 
 const TripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} = OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, Arch}
-const TripolarGridOfSomeKind = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}}
+const TripolarGridOfSomeKind{FT, TX, TY, TZ} = Union{TripolarGrid{FT, TX, TY, TZ}, ImmersedBoundaryGrid{FT, TX, TY, TZ, <:TripolarGrid}}
 
 """
     TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatType;
@@ -95,22 +95,19 @@ Keyword Arguments
     ```
     See [`UPivotZipperBoundaryCondition`](@ref) for more information on the fold.
 
-    For a `RightFaceFolded` y-topology, The north singularities are located on `(Face, Face)`,
-    at: `i = 1`, `j = grid.Ny` and `i = grid.Nx ÷ 2 + 1`, `j = grid.Ny`. This means that the last
-    row of the tracers is redundant and, despite being advanced dynamically, it is then replaced
-    by the interior of the domain when folding.
+    For a `RightFaceFolded` y-topology, the fold is located along the y-direction faces
+    at `j = Ny+1` (i.e., the fold is exactly on the northern boundary of the grid).
+    The north singularities are located on `(Face, Face)`.
 
-    !!! warning "Add `1` to `Ny` when you build a `RightFaceFolded` tripolar grid"
-        Otherwise you might end up with one less row than what you expected.
-
-    Pivot points are indicated by the `↻` symbols below:
+    The fold is located between the last interior face row and the first halo face row.
+    Pivot points (↻) are located on `(Face, Face)`:
     ```
               │           │           │           │           │           │           │
-    Ny+1 ─▶ ──╔═══════════╪═══════════╪═══════════╪═══════════╪═══════════╪═══════════╗──
-              ║           │           │           │           │           │           ║
+    Ny+1 ─▶ ─ ↻ ═══ v ════╪════ v ════╪════ v ═══ ↻ ═══ v ════╪════ v ════╪════ v ═══ ↻ ◀─ Fold
+              ║           │           │           │           │           │           ║ (at yface[Ny+1])
     Ny   ─▶   u     c     u     c     u     c     u     c     u     c     u     c     ║
               ║           │           │           │           │           │           ║
-    Ny   ─▶ ─ ↻ ─── v ────┼──── v ────┼──── v ─── ↻ ─── v ────┼──── v ────┼──── v ─── ↻ ◀─ Fold
+    Ny   ─▶ ──╫──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────╫──
               ║           │           │           │           │           │           ║
     Ny-1 ─▶   u     c     u     c     u     c     u     c     u     c     u     c     ║
               ║           │           │           │           │           │           ║
@@ -153,10 +150,12 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
     Nx, Ny, Nz = size
     Hx, Hy, Hz = halo
 
-    # In case of a `RightFaceFolded` y-topology, we must add an extra row on the northern boundary.
-    # This is because the topology folds on `v` velocities, which are located "south" of center locations
-    # by convention in Oceananigans. Thus the `Ny` row of `v` is half prognostic but is entirely computed
-    # during time-stepping, before the `FPivot` zipper boundary condition is applied.
+    # A right-face folded has prognostic values in Ny + 1,
+    # therefore, we need an extra halo point in y
+    if fold_topology == RightFaceFolded
+        Hy = Hy + 1
+        halo = (Hx, Hy, Hz)
+    end
 
     if isodd(Nx)
         throw(ArgumentError("The number of cells in the longitude dimension should be even!"))
@@ -253,7 +252,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
 
     # Calculate metrics
     # TODO: rewrite this kernel and split the call to match the indices exactly.
-    kp = KernelParameters(1:Nx, 1:Ny)
+    kp = KernelParameters(1:Nx, 1:Ny+1)
     launch!(CPU(), grid, kp, _calculate_metrics!,
         Δxᶠᶜᵃ, Δxᶜᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
         Δyᶠᶜᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
