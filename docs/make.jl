@@ -13,9 +13,6 @@ Distributed.addprocs(2)
     set_theme!(Theme(fontsize=20))
     CairoMakie.activate!(type = "png")
 
-    using NCDatasets
-    using XESMF
-
     using Oceananigans
     using Oceananigans.AbstractOperations
     using Oceananigans.Operators
@@ -24,6 +21,9 @@ Distributed.addprocs(2)
     using Oceananigans.TimeSteppers
     using Oceananigans.TurbulenceClosures
     using Oceananigans.BoundaryConditions: Flux, Value, Gradient, Open
+
+    using NCDatasets
+    using XESMF
 
     bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
     bib = CitationBibliography(bib_filepath, style=:authoryear)
@@ -166,7 +166,7 @@ appendix_pages = [
     "Staggered grid" => "appendix/staggered_grid.md",
     "Fractional step method" => "appendix/fractional_step.md",
     "Convergence tests" => "appendix/convergence_tests.md",
-    "Performance benchmarks" => "appendix/benchmarks.md",
+    # "Performance benchmarks" => "appendix/benchmarks.md", # commented out after https://github.com/CliMA/Oceananigans.jl/pull/5317, to be reinstated with the new benchmarks
     "Library" => "appendix/library.md",
     "Function index" => "appendix/function_index.md"
 ]

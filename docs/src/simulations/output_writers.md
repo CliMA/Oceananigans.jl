@@ -27,7 +27,7 @@ The `Checkpointer` is discussed in detail on a separate [section](@ref checkpoin
 Other important keyword arguments are
 
 * `indices` for outputting subregions, two- and one-dimensional slices of fields. Specifies the indices to write to disk with a `Tuple`
-  of `Colon`, `UnitRange`, or `Int` elements. For example, `indices = (:, :, 1)` implies outputing ``x``-``y`` slices of the bottom-most
+  of `Colon`, `UnitRange`, or `Int` elements. For example, `indices = (:, :, 1)` implies outputting ``x``-``y`` slices of the bottom-most
   index (`k=1`). Defaults to `(:, :, :)`, i.e., "all indices".
 
 * `with_halos :: Boolean`: whether to output the halos (`true`) or only the interior points (`false`; default).
