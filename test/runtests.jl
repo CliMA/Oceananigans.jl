@@ -207,11 +207,19 @@ CUDA.allowscalar() do
         include("test_distributed_hydrostatic_model.jl")
     end
 
-    if group == :distributed_vertical_coordinate || group == :all
+    if group == :distributed_vertical_coordinate_1 || group == :all
         MPI.Initialized() || MPI.Init()
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
-        include("test_zstar_conservation.jl")
+        include("test_zstar_conservation_explicit.jl")
+    end
+
+    if group == :distributed_vertical_coordinate_2 || group == :all
+        MPI.Initialized() || MPI.Init()
+        # In case CUDA is not found, we reset CUDA and restart the julia session
+        reset_cuda_if_necessary()
+        include("test_zstar_conservation_implicit.jl")
+        include("test_zstar_conservation_tripolar.jl")
     end
 
     if group == :distributed_output || group == :all
@@ -247,7 +255,9 @@ CUDA.allowscalar() do
     if group == :vertical_coordinate || group == :all
         @testset "Vertical coordinate tests" begin
             include("test_zstar_coordinate.jl")
-            include("test_zstar_conservation.jl")
+            include("test_zstar_conservation_explicit.jl")
+            include("test_zstar_conservation_implicit.jl")
+            include("test_zstar_conservation_tripolar.jl")
         end
     end
 
