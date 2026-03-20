@@ -166,7 +166,7 @@ appendix_pages = [
     "Staggered grid" => "appendix/staggered_grid.md",
     "Fractional step method" => "appendix/fractional_step.md",
     "Convergence tests" => "appendix/convergence_tests.md",
-    "Performance benchmarks" => "appendix/benchmarks.md",
+    # "Performance benchmarks" => "appendix/benchmarks.md", # commented out after https://github.com/CliMA/Oceananigans.jl/pull/5317, to be reinstated with the new benchmarks
     "Library" => "appendix/library.md",
     "Function index" => "appendix/function_index.md"
 ]
