@@ -19,7 +19,7 @@ include("dependencies_for_runtests.jl")
     ηs = interior(model.free_surface.displacement, :, :, 1)
 
     # Run the sharded Reactant simulation in a subprocess
-    run(`$(Base.julia_cmd()) -O0 run_sharding_tests.jl`)
+    run(`$(Base.julia_cmd()) --check-bounds=auto -O0 run_sharding_tests.jl`)
 
     # Retrieve sharded quantities
     up = jldopen("distributed_pencil_llg.jld2")["u"]
