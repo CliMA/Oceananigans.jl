@@ -1,3 +1,5 @@
+import Oceananigans: architecture
+
 """
     materialize_advection(advection, grid)
 
@@ -35,7 +37,7 @@ materialize_advection(weno::WENO{N,FT,WCT}, grid) where {N,FT,WCT} = WENO{N,FT,W
 )
 
 materialize_advection(weno::WENO{N,FT,Nothing}, grid) where {N,FT} =
-    WENO{N,FT,Oceananigans.defaults.weno_weight_computation}(
+    WENO{N,FT,default_weno_weight_computation(architecture(grid))}(
         weno.bounds,
         materialize_advection(weno.buffer_scheme, grid),
         materialize_advection(weno.advecting_velocity_scheme, grid),
