@@ -116,7 +116,7 @@ function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active
                      model.biogeochemistry,
                      model.transport_velocities,
                      model.free_surface,
-                     model.tracers,
+                     all_tracers(model),
                      model.closure_fields,
                      model.auxiliary_fields,
                      model.clock,
@@ -155,7 +155,7 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
 
     end_momentum_kernel_args = (velocities,
                                 model.free_surface,
-                                model.tracers,
+                                all_tracers(model),
                                 model.buoyancy,
                                 model.closure_fields,
                                 model.pressure.pHY′,

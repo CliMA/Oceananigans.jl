@@ -117,10 +117,11 @@ cell_advection_timescale(model::HydrostaticFreeSurfaceModel) = cell_advection_ti
     fields(model::HydrostaticFreeSurfaceModel)
 
 Return a flattened `NamedTuple` of the fields in `model.velocities`, `model.free_surface`,
-`model.tracers`, and any auxiliary fields for a `HydrostaticFreeSurfaceModel` model.
+`model.tracers`, `model.prescribed_tracers`, and any auxiliary fields for a `HydrostaticFreeSurfaceModel` model.
 """
 @inline fields(model::HydrostaticFreeSurfaceModel) =
     merge(hydrostatic_fields(model.velocities, model.free_surface, model.tracers),
+          model.prescribed_tracers,
           model.auxiliary_fields,
           biogeochemical_auxiliary_fields(model.biogeochemistry))
 
