@@ -5,15 +5,7 @@ using Oceananigans.Units
 using Reactant
 using Oceananigans.TimeSteppers: first_time_step!
 
-import Oceananigans.BoundaryConditions: _fill_north_halo!
-using Oceananigans.BoundaryConditions: UZBC, CCLocation, FCLocation
-
 include("dependencies_for_runtests.jl")
-
-# The serial version of the TripolarGrid substitutes the second half of the last row of the grid
-# This is not done in the distributed version, so we need to undo this substitution if we want to
-# compare the results. Otherwise very tiny differences caused by finite precision compuations
-# will appear in the last row of the grid.
 
 # Mask the singularity of the grid in a region of `radius` degrees around the singularities
 function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius = 5) # degrees
@@ -23,53 +15,21 @@ function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius
 
     Lz = underlying_grid.Lz
 
-    # We need a bottom height field that ``masks'' the singularities
+    # We need a bottom height field that ``masks'' the singularities.
+    # Use φm + radius (not φm) to ensure the south boundary is immersed for FPivot grids,
+    # where southernmost_latitude is at the cell face, leaving j=1 centers slightly north of φm.
     bottom_height(λ, φ) = ((abs(λ - λp) < radius)       & (abs(φp - φ) < radius)) |
                           ((abs(λ - λp - 180) < radius) & (abs(φp - φ) < radius)) |
-                          ((abs(λ - λp - 360) < radius) & (abs(φp - φ) < radius)) | (φ < φm) ? 0 : - Lz
+                          ((abs(λ - λp - 360) < radius) & (abs(φp - φ) < radius)) | (φ < φm + radius) ? 0 : - Lz
 
     grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
 
     return grid
 end
 
-# tracers or similar fields
-@inline _fill_north_halo!(i, k, grid, c, bc::UZBC, ::CCLocation, args...) = my_fold_north_center_center_upivot!(i, k, grid, bc.condition, c)
-@inline _fill_north_halo!(i, k, grid, u, bc::UZBC, ::FCLocation, args...) = my_fold_north_face_center_upivot!(i, k, grid, bc.condition, u)
-
-@inline function my_fold_north_face_center_upivot!(i, k, grid, sign, c)
-    Nx, Ny, _ = size(grid)
-
-    i′ = Nx - i + 2 # Remember! elemesnt Nx + 1 does not exist!
-    sign  = ifelse(i′ > Nx , abs(sign), sign) # for periodic elements we change the sign
-    i′ = ifelse(i′ > Nx, i′ - Nx, i′) # Periodicity is hardcoded in the x-direction!!
-    Hy = grid.Hy
-
-    for j = 1 : Hy
-        @inbounds begin
-            c[i, Ny + j, k] = sign * c[i′, Ny - j, k] # The Ny line is duplicated so we substitute starting Ny-1
-        end
-    end
-
-    return nothing
-end
-
-@inline function my_fold_north_center_center_upivot!(i, k, grid, sign, c)
-    Nx, Ny, _ = size(grid)
-
-    i′ = Nx - i + 1
-    Hy = grid.Hy
-
-    for j = 1 : Hy
-        @inbounds c[i, Ny + j, k] = sign * c[i′, Ny - j, k] # The Ny line is duplicated so we substitute starting Ny-1
-    end
-
-    return nothing
-end
-
 # Run the distributed grid simulation and save down reconstructed results
-function run_distributed_tripolar_grid(arch, filename)
-    distributed_grid = TripolarGrid(arch; size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))
+function run_distributed_tripolar_grid(arch, filename; fold_topology = RightCenterFolded, Nx = 80, Ny = 80)
+    distributed_grid = TripolarGrid(arch; size = (Nx, Ny, 1), z = (-1000, 0), halo = (5, 5, 5), fold_topology)
     distributed_grid = analytical_immersed_tripolar_grid(distributed_grid)
     model            = run_distributed_simulation(distributed_grid)
 
@@ -129,9 +89,8 @@ function run_distributed_latitude_longitude_grid(arch, filename)
     return nothing
 end
 
-# Just a random simulation on a tripolar grid
-function run_distributed_simulation(grid)
-
+# Create model and set initial conditions (shared by serial and distributed)
+function setup_simulation(grid)
     model = HydrostaticFreeSurfaceModel(grid;
                                         free_surface = SplitExplicitFreeSurface(grid; substeps = 20),
                                         tracers = :c,
@@ -142,10 +101,14 @@ function run_distributed_simulation(grid)
     # Setup the model with a gaussian sea surface height
     # near the physical north poles and one near the equator
     ηᵢ(λ, φ, z) = exp(- (φ - 90)^2 / 10^2) + exp(- φ^2 / 10^2)
-    set!(model, c=ηᵢ, η=ηᵢ)
+    set!(model; c=ηᵢ, η=ηᵢ)
 
-    Δt = 5minutes
-    arch = architecture(grid)
+    return model
+end
+
+# Time-step a model (shared by serial and distributed)
+function run_simulation!(model; Δt = 5minutes, Nt = 100)
+    arch = architecture(model.grid)
     if arch isa ReactantState || arch isa Distributed{<:ReactantState}
         @info "Compiling first_time_step..."
         r_first_time_step! = @compile sync=true raise=true first_time_step!(model, Δt)
@@ -160,9 +123,15 @@ function run_distributed_simulation(grid)
     @info "Running first time step..."
     r_first_time_step!(model, Δt)
     @info "Running time steps..."
-    for N in 2:100
+    for N in 2:Nt
         r_time_step!(model, Δt)
     end
 
     return model
+end
+
+# Convenience wrapper: setup + run (backward compat for LatLon tests etc.)
+function run_distributed_simulation(grid)
+    model = setup_simulation(grid)
+    return run_simulation!(model)
 end

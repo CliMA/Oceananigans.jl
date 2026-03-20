@@ -123,9 +123,11 @@ function reconstruct_global_field(field::DistributedField)
     global_grid = reconstruct_global_grid(field.grid)
     global_field = Field(instantiated_location(field), global_grid; indices=field_indices)
 
-    global_data = construct_global_array(interior(field), arch, size(field))
+    c_interior = interior(field)
+    global_data = construct_global_array(c_interior, arch, size(c_interior))
 
-    set!(global_field, global_data)
+    Nx, Ny, Nz = size(global_field)
+    set!(global_field, view(global_data, 1:Nx, 1:Ny, 1:Nz))
 
     return global_field
 end

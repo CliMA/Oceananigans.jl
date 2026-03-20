@@ -25,7 +25,16 @@ function reconstruct_global_grid(grid::ImmersedBoundaryGrid)
     arch      = grid.architecture
     local_ib  = grid.immersed_boundary
     global_ug = reconstruct_global_grid(grid.underlying_grid)
-    global_ib = getnamewrapper(local_ib)(construct_global_array(local_ib.bottom_height, arch, size(grid)))
+    global_array = construct_global_array(local_ib.bottom_height, arch, size(grid))
+    # Truncate to the global CC interior size to handle topologies like RightFaceFolded
+    # where the CC interior has fewer points than the grid's Ny (e.g., Ny_cc = Ny - 1).
+    Nx, Ny, _ = size(Field{Center, Center, Nothing}(global_ug))
+    if ndims(global_array) >= 3
+        global_array = global_array[1:Nx, 1:Ny, :]
+    else
+        global_array = global_array[1:Nx, 1:Ny]
+    end
+    global_ib = getnamewrapper(local_ib)(global_array)
     return ImmersedBoundaryGrid(global_ug, global_ib; active_cells_map, active_z_columns)
 end
 
@@ -95,7 +104,10 @@ function resize_immersed_boundary(ib::AbstractGridFittedBottom{<:OffsetArray}, g
     if any(size(ib.bottom_height) .!= bottom_heigth_size)
         @warn "Resizing the bottom field to match the grids' halos"
         bottom_field = Field{Center, Center, Nothing}(grid)
-        cpu_bottom   = on_architecture(CPU(), ib.bottom_height)[1:Nx, 1:Ny]
+        # Use the CC field's interior size, which accounts for topology
+        # (e.g., RightFaceFolded has Nyᶜ = Ny - 1)
+        Nxᶜ, Nyᶜ, _ = size(bottom_field)
+        cpu_bottom   = on_architecture(CPU(), ib.bottom_height)[1:Nxᶜ, 1:Nyᶜ]
         set!(bottom_field, cpu_bottom)
         fill_halo_regions!(bottom_field)
         offset_bottom_array = dropdims(bottom_field.data, dims=3)

@@ -99,6 +99,18 @@ function materialize_immersed_boundary(grid, ib::GridFittedBottom)
     return new_ib
 end
 
+# When the bottom height is already a Field (e.g. during halo extension via `with_halo`),
+# copy the interior directly to avoid topology-aware `set!` dispatch issues on distributed
+# TripolarGrids (where `fold_set!` incorrectly treats local interior as a global array).
+function materialize_immersed_boundary(grid, ib::GridFittedBottom{<:Field})
+    bottom_field = Field{Center, Center, Nothing}(grid)
+    interior(bottom_field) .= interior(ib.bottom_height)
+    @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, ib)
+    fill_halo_regions!(bottom_field)
+    new_ib = GridFittedBottom(bottom_field)
+    return new_ib
+end
+
 compute_numerical_bottom_height!(bottom_field, grid, ib) =
     launch!(architecture(grid), grid, :xy, _compute_numerical_bottom_height!, bottom_field, grid, ib)
 
