@@ -282,6 +282,13 @@ CUDA.allowscalar() do
         end
     end
 
+    # Reactant unit tests (grid metrics, reductions, field operations)
+    if group == :reactant_unit || group == :all
+        @testset "Reactant unit tests" begin
+            include("test_reactant_unit.jl")
+        end
+    end
+
     # Tests for XESMF extension
     if group == :xesmf || group == :all
         @testset "XESMF extension tests" begin
