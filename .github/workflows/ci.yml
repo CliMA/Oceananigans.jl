@@ -27,7 +27,7 @@ concurrency:
 
 jobs:
   sharding_tests:
-    name: Sharding Tests - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    name: Sharding - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     strategy:
@@ -212,7 +212,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}  # only needed for some repos (see below)
 
   reactant:
-    name: Reactant - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    name: Reactant Correctness - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     strategy:
