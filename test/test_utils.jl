@@ -263,6 +263,63 @@ using Oceananigans.Utils: TabulatedFunction
         end
 
         #####
+        ##### 5D TabulatedFunction (quintilinear interpolation)
+        #####
+
+        @testset "5D TabulatedFunction" begin
+            g5d(a, b, c, d, e) = a^2 + b^2 + c^2 + d^2 + e^2
+            f5d = TabulatedFunction(g5d; range=((-1, 1), (-1, 1), (-1, 1), (-1, 1), (-1, 1)),
+                                    points=(6, 6, 6, 6, 6))
+            @test f5d isa TabulatedFunction{5}
+            @test size(f5d.table) == (6, 6, 6, 6, 6)
+
+            # Test accuracy
+            @test abs(f5d(0.0, 0.0, 0.0, 0.0, 0.0) - g5d(0.0, 0.0, 0.0, 0.0, 0.0)) < 0.2
+            @test abs(f5d(0.5, 0.5, 0.5, 0.5, 0.5) - g5d(0.5, 0.5, 0.5, 0.5, 0.5)) < 0.2
+
+            # Test with scalar points (broadcast to all dimensions)
+            f5d_scalar = TabulatedFunction(g5d; range=((-1,1), (-1,1), (-1,1), (-1,1), (-1,1)), points=4)
+            @test size(f5d_scalar.table) == (4, 4, 4, 4, 4)
+
+            # Test clamping in 5D
+            h5d(a, b, c, d, e) = a * b * c * d * e
+            t5d = TabulatedFunction(h5d; range=((0,1), (0,1), (0,1), (0,1), (0,1)), points=10)
+            @test t5d(0.5, 0.5, 0.5, 0.5, 0.5) ≈ 0.03125 atol=0.01
+
+            # Test clamping at boundaries
+            @test t5d(-1, 0.5, 0.5, 0.5, 0.5) ≈ 0.0 atol=0.01   # dim 1 clamped to 0
+            @test t5d(0.5, 0.5, 0.5, 0.5, -1) ≈ 0.0 atol=0.01   # dim 5 clamped to 0
+            @test t5d(2, 0.5, 0.5, 0.5, 0.5) ≈ 0.0625 atol=0.01 # dim 1 clamped to 1
+
+            # Test summary for 5D
+            @test contains(summary(f5d), "TabulatedFunction{5}")
+            @test contains(summary(f5d), "6×6×6×6×6")
+
+            # Test exact values at grid points (linear function should be exact)
+            f5d_lin = TabulatedFunction((a, b, c, d, e) -> a + b + c + d + e;
+                                        range=((0,1), (0,1), (0,1), (0,1), (0,1)),
+                                        points=(4, 4, 4, 4, 4))
+            for i in 0:3, j in 0:3, k in 0:3, l in 0:3, m in 0:3
+                a, b, c, d, e = i/3, j/3, k/3, l/3, m/3
+                @test f5d_lin(a, b, c, d, e) ≈ a + b + c + d + e atol=1e-10
+            end
+
+            # Test Float32 for 5D
+            f5d_32 = TabulatedFunction(g5d, CPU(), Float32;
+                                       range=((-1,1), (-1,1), (-1,1), (-1,1), (-1,1)), points=4)
+            @test eltype(f5d_32.table) == Float32
+
+            # Test internal structure
+            @test length(f5d.range) == 5
+            @test length(f5d.inverse_Δ) == 5
+
+            # Test asymmetric points
+            f5d_asym = TabulatedFunction(g5d; range=((-1,1), (-1,1), (-1,1), (-1,1), (-1,1)),
+                                          points=(3, 4, 5, 6, 7))
+            @test size(f5d_asym.table) == (3, 4, 5, 6, 7)
+        end
+
+        #####
         ##### Architecture and Adapt tests
         #####
 
@@ -313,6 +370,17 @@ using Oceananigans.Utils: TabulatedFunction
             f4_adapted = Adapt.adapt_structure(nothing, f4)
             @test f4_adapted.func === nothing
             @test f4_adapted isa TabulatedFunction{4}
+
+            # Test on_architecture for 5D
+            f5 = TabulatedFunction((a, b, c, d, e) -> a + b + c + d + e;
+                                    range=((0,1), (0,1), (0,1), (0,1), (0,1)), points=4)
+            f5_cpu = on_architecture(CPU(), f5)
+            @test f5_cpu.table isa Array{Float64, 5}
+            @test f5_cpu(0.5, 0.5, 0.5, 0.5, 0.5) ≈ f5(0.5, 0.5, 0.5, 0.5, 0.5)
+
+            f5_adapted = Adapt.adapt_structure(nothing, f5)
+            @test f5_adapted.func === nothing
+            @test f5_adapted isa TabulatedFunction{5}
         end
 
         #####
@@ -352,7 +420,7 @@ using Oceananigans.Utils: TabulatedFunction
         #####
 
         @testset "Type aliases" begin
-            using Oceananigans.Utils: TabulatedFunction1D, TabulatedFunction2D, TabulatedFunction3D, TabulatedFunction4D
+            using Oceananigans.Utils: TabulatedFunction1D, TabulatedFunction2D, TabulatedFunction3D, TabulatedFunction4D, TabulatedFunction5D
 
             f1 = TabulatedFunction(sin; range=(0, 1))
             @test f1 isa TabulatedFunction1D
@@ -365,6 +433,9 @@ using Oceananigans.Utils: TabulatedFunction
 
             f4 = TabulatedFunction((x, y, z, w) -> x + y + z + w; range=((0, 1), (0, 1), (0, 1), (0, 1)))
             @test f4 isa TabulatedFunction4D
+
+            f5 = TabulatedFunction((a, b, c, d, e) -> a + b + c + d + e; range=((0,1), (0,1), (0,1), (0,1), (0,1)))
+            @test f5 isa TabulatedFunction5D
         end
     end
 end

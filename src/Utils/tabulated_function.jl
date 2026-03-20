@@ -10,7 +10,7 @@ import Oceananigans.Architectures: on_architecture
 
 A wrapper around a callable that precomputes values in an N-dimensional lookup table
 for fast interpolation. Supports 1D (linear), 2D (bilinear), 3D (trilinear),
-and 4D (quadrilinear) interpolation.
+4D (quadrilinear), and 5D (quintilinear) interpolation.
 """
 struct TabulatedFunction{N, F, T, R, D}
     func :: F
@@ -24,6 +24,7 @@ const TabulatedFunction1D = TabulatedFunction{1}
 const TabulatedFunction2D = TabulatedFunction{2}
 const TabulatedFunction3D = TabulatedFunction{3}
 const TabulatedFunction4D = TabulatedFunction{4}
+const TabulatedFunction5D = TabulatedFunction{5}
 
 #####
 ##### Dimensionality detection and normalization
@@ -34,6 +35,7 @@ _normalize_range(range::Tuple{<:Number, <:Number}) = (range,)
 _normalize_range(range::Tuple{<:Tuple, <:Tuple}) = range
 _normalize_range(range::Tuple{<:Tuple, <:Tuple, <:Tuple}) = range
 _normalize_range(range::Tuple{<:Tuple, <:Tuple, <:Tuple, <:Tuple}) = range
+_normalize_range(range::Tuple{<:Tuple, <:Tuple, <:Tuple, <:Tuple, <:Tuple}) = range
 
 # Normalize points to tuple format
 _normalize_points(points::Integer, ::Val{N}) where N = ntuple(_ -> points, Val(N))
@@ -50,7 +52,7 @@ Construct a `TabulatedFunction` by precomputing values over the specified range(
 for fast linear, bilinear, or trilinear interpolation.
 
 # Arguments
-- `func`: Callable taking 1, 2, 3, or 4 numeric arguments
+- `func`: Callable taking 1, 2, 3, 4, or 5 numeric arguments
 - `arch`: Architecture for the lookup table (`CPU()` or `GPU()`)
 - `FT`: Float type for table values
 
@@ -58,6 +60,7 @@ for fast linear, bilinear, or trilinear interpolation.
 - `range`: For 1D: `(min, max)`. For 2D: `((x_min, x_max), (y_min, y_max))`.
            For 3D: `((x_min, x_max), (y_min, y_max), (z_min, z_max))`.
            For 4D: `((x_min, x_max), (y_min, y_max), (z_min, z_max), (w_min, w_max))`.
+           For 5D: `((x₁_min, x₁_max), ..., (x₅_min, x₅_max))`.
 - `points`: Number of points per dimension. Scalar (applied to all dims) or tuple.
 
 # Examples
@@ -184,6 +187,20 @@ end
     end
 end
 
+@kernel function _build_table_5d_kernel!(table, func, range, inverse_Δ)
+    i, j, k, l, m = @index(Global, NTuple)
+    @inbounds begin
+        r₁, r₂, r₃, r₄, r₅ = range
+        x₁, x₂, x₃, x₄, x₅ = r₁[1], r₂[1], r₃[1], r₄[1], r₅[1]
+        d₁, d₂, d₃, d₄, d₅ = inverse_Δ
+        table[i, j, k, l, m] = func(x₁ + (i - 1) / d₁,
+                                     x₂ + (j - 1) / d₂,
+                                     x₃ + (k - 1) / d₃,
+                                     x₄ + (l - 1) / d₄,
+                                     x₅ + (m - 1) / d₅)
+    end
+end
+
 #####
 ##### Table builders for each dimensionality
 #####
@@ -220,6 +237,15 @@ function build_table(arch, func, range::NTuple{4}, points::NTuple{4}, inverse_Δ
     FT = eltype(inverse_Δ)
     table = KernelAbstractions.zeros(dev, FT, points...)
     kernel! = _build_table_4d_kernel!(dev, (4, 4, 4, 4))
+    kernel!(table, func, range, inverse_Δ; ndrange=points)
+    return table
+end
+
+function build_table(arch, func, range::NTuple{5}, points::NTuple{5}, inverse_Δ)
+    dev = device(arch)
+    FT = eltype(inverse_Δ)
+    table = KernelAbstractions.zeros(dev, FT, points...)
+    kernel! = _build_table_5d_kernel!(dev, (4, 4, 4, 4, 4))
     kernel!(table, func, range, inverse_Δ; ndrange=points)
     return table
 end
@@ -338,6 +364,50 @@ end
     l⁺ = min(l⁺ + 1, nw)
 
     return _interpolate(f.table, (i⁻, i⁺, ξ), (j⁻, j⁺, η), (k⁻, k⁺, ζ), (l⁻, l⁺, θ))
+end
+
+#####
+##### Evaluation: 5D quintilinear interpolation
+#####
+
+@inline function (f::TabulatedFunction5D)(x₁, x₂, x₃, x₄, x₅)
+    a₁, b₁ = f.range[1]
+    a₂, b₂ = f.range[2]
+    a₃, b₃ = f.range[3]
+    a₄, b₄ = f.range[4]
+    a₅, b₅ = f.range[5]
+
+    c₁ = clamp(x₁, a₁, b₁)
+    c₂ = clamp(x₂, a₂, b₂)
+    c₃ = clamp(x₃, a₃, b₃)
+    c₄ = clamp(x₄, a₄, b₄)
+    c₅ = clamp(x₅, a₅, b₅)
+
+    frac_i = (c₁ - a₁) * f.inverse_Δ[1]
+    frac_j = (c₂ - a₂) * f.inverse_Δ[2]
+    frac_k = (c₃ - a₃) * f.inverse_Δ[3]
+    frac_l = (c₄ - a₄) * f.inverse_Δ[4]
+    frac_m = (c₅ - a₅) * f.inverse_Δ[5]
+
+    i⁻, i⁺, ξ = interpolator(frac_i)
+    j⁻, j⁺, η = interpolator(frac_j)
+    k⁻, k⁺, ζ = interpolator(frac_k)
+    l⁻, l⁺, θ = interpolator(frac_l)
+    m⁻, m⁺, ψ = interpolator(frac_m)
+
+    n₁, n₂, n₃, n₄, n₅ = size(f.table)
+    i⁻ = i⁻ + 1
+    i⁺ = min(i⁺ + 1, n₁)
+    j⁻ = j⁻ + 1
+    j⁺ = min(j⁺ + 1, n₂)
+    k⁻ = k⁻ + 1
+    k⁺ = min(k⁺ + 1, n₃)
+    l⁻ = l⁻ + 1
+    l⁺ = min(l⁺ + 1, n₄)
+    m⁻ = m⁻ + 1
+    m⁺ = min(m⁺ + 1, n₅)
+
+    return _interpolate(f.table, (i⁻, i⁺, ξ), (j⁻, j⁺, η), (k⁻, k⁺, ζ), (l⁻, l⁺, θ), (m⁻, m⁺, ψ))
 end
 
 #####

@@ -94,6 +94,54 @@ interpolator tuples `ix`, `iy`, `iz`, `iw` of the form `(i⁻, i⁺, ξ)`.
 end
 
 """
+    _interpolate(data, ix, iy, iz, iw::Tuple{Any, Any, Any}, iv::Tuple{Any, Any, Any})
+
+Perform quintilinear interpolation on 5D `data` using
+interpolator tuples `ix`, `iy`, `iz`, `iw`, `iv` of the form `(i⁻, i⁺, ξ)`.
+"""
+@inline function _interpolate(data, ix, iy, iz, iw::Tuple{Any, Any, Any}, iv::Tuple{Any, Any, Any})
+    i⁻, i⁺, ξ = ix
+    j⁻, j⁺, η = iy
+    k⁻, k⁺, ζ = iz
+    l⁻, l⁺, θ = iw
+    m⁻, m⁺, ψ = iv
+
+    return @inbounds (
+        ϕ₁(ξ, η, ζ) * (1 - θ) * (1 - ψ) * data[i⁻, j⁻, k⁻, l⁻, m⁻] +
+        ϕ₁(ξ, η, ζ) * (1 - θ) *      ψ  * data[i⁻, j⁻, k⁻, l⁻, m⁺] +
+        ϕ₁(ξ, η, ζ) *      θ  * (1 - ψ) * data[i⁻, j⁻, k⁻, l⁺, m⁻] +
+        ϕ₁(ξ, η, ζ) *      θ  *      ψ  * data[i⁻, j⁻, k⁻, l⁺, m⁺] +
+        ϕ₂(ξ, η, ζ) * (1 - θ) * (1 - ψ) * data[i⁻, j⁻, k⁺, l⁻, m⁻] +
+        ϕ₂(ξ, η, ζ) * (1 - θ) *      ψ  * data[i⁻, j⁻, k⁺, l⁻, m⁺] +
+        ϕ₂(ξ, η, ζ) *      θ  * (1 - ψ) * data[i⁻, j⁻, k⁺, l⁺, m⁻] +
+        ϕ₂(ξ, η, ζ) *      θ  *      ψ  * data[i⁻, j⁻, k⁺, l⁺, m⁺] +
+        ϕ₃(ξ, η, ζ) * (1 - θ) * (1 - ψ) * data[i⁻, j⁺, k⁻, l⁻, m⁻] +
+        ϕ₃(ξ, η, ζ) * (1 - θ) *      ψ  * data[i⁻, j⁺, k⁻, l⁻, m⁺] +
+        ϕ₃(ξ, η, ζ) *      θ  * (1 - ψ) * data[i⁻, j⁺, k⁻, l⁺, m⁻] +
+        ϕ₃(ξ, η, ζ) *      θ  *      ψ  * data[i⁻, j⁺, k⁻, l⁺, m⁺] +
+        ϕ₄(ξ, η, ζ) * (1 - θ) * (1 - ψ) * data[i⁻, j⁺, k⁺, l⁻, m⁻] +
+        ϕ₄(ξ, η, ζ) * (1 - θ) *      ψ  * data[i⁻, j⁺, k⁺, l⁻, m⁺] +
+        ϕ₄(ξ, η, ζ) *      θ  * (1 - ψ) * data[i⁻, j⁺, k⁺, l⁺, m⁻] +
+        ϕ₄(ξ, η, ζ) *      θ  *      ψ  * data[i⁻, j⁺, k⁺, l⁺, m⁺] +
+        ϕ₅(ξ, η, ζ) * (1 - θ) * (1 - ψ) * data[i⁺, j⁻, k⁻, l⁻, m⁻] +
+        ϕ₅(ξ, η, ζ) * (1 - θ) *      ψ  * data[i⁺, j⁻, k⁻, l⁻, m⁺] +
+        ϕ₅(ξ, η, ζ) *      θ  * (1 - ψ) * data[i⁺, j⁻, k⁻, l⁺, m⁻] +
+        ϕ₅(ξ, η, ζ) *      θ  *      ψ  * data[i⁺, j⁻, k⁻, l⁺, m⁺] +
+        ϕ₆(ξ, η, ζ) * (1 - θ) * (1 - ψ) * data[i⁺, j⁻, k⁺, l⁻, m⁻] +
+        ϕ₆(ξ, η, ζ) * (1 - θ) *      ψ  * data[i⁺, j⁻, k⁺, l⁻, m⁺] +
+        ϕ₆(ξ, η, ζ) *      θ  * (1 - ψ) * data[i⁺, j⁻, k⁺, l⁺, m⁻] +
+        ϕ₆(ξ, η, ζ) *      θ  *      ψ  * data[i⁺, j⁻, k⁺, l⁺, m⁺] +
+        ϕ₇(ξ, η, ζ) * (1 - θ) * (1 - ψ) * data[i⁺, j⁺, k⁻, l⁻, m⁻] +
+        ϕ₇(ξ, η, ζ) * (1 - θ) *      ψ  * data[i⁺, j⁺, k⁻, l⁻, m⁺] +
+        ϕ₇(ξ, η, ζ) *      θ  * (1 - ψ) * data[i⁺, j⁺, k⁻, l⁺, m⁻] +
+        ϕ₇(ξ, η, ζ) *      θ  *      ψ  * data[i⁺, j⁺, k⁻, l⁺, m⁺] +
+        ϕ₈(ξ, η, ζ) * (1 - θ) * (1 - ψ) * data[i⁺, j⁺, k⁺, l⁻, m⁻] +
+        ϕ₈(ξ, η, ζ) * (1 - θ) *      ψ  * data[i⁺, j⁺, k⁺, l⁻, m⁺] +
+        ϕ₈(ξ, η, ζ) *      θ  * (1 - ψ) * data[i⁺, j⁺, k⁺, l⁺, m⁻] +
+        ϕ₈(ξ, η, ζ) *      θ  *      ψ  * data[i⁺, j⁺, k⁺, l⁺, m⁺])
+end
+
+"""
     _interpolate(data, ix, iy)
 
 Perform bilinear interpolation on 2D `data` using interpolator tuples `ix`, `iy`.
