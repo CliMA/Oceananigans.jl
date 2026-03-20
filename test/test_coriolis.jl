@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
-using Oceananigans.Coriolis: NonhydrostaticFormulation
+using Oceananigans.Coriolis: NonhydrostaticFormulation, TriadScheme
 
 test_fplane(::Nothing) = FPlane(f=π)
 test_fplane(FT)        = FPlane(FT, f=π)
@@ -86,7 +86,7 @@ end
 function instantiate_hydrostatic_spherical_coriolis2(FT)
     coriolis = HydrostaticSphericalCoriolis(FT, rotation_rate=π)
     @test coriolis.rotation_rate == FT(π)
-    @test coriolis.scheme isa EnstrophyConserving # default
+    @test coriolis.scheme isa TriadScheme # default
 end
 
 function instantiate_spherical_coriolis1(FT)
@@ -162,7 +162,7 @@ end
         # Test show functions
         ✈ = FPlane(FT, latitude=45)
         show(✈); println()
-        @test ✈ isa FPlane{FT}
+        @test ✈ isa FPlane{<:Any, FT}
 
         ✈ = ConstantCartesianCoriolis(FT, f=1e-4)
         show(✈); println()
@@ -170,7 +170,7 @@ end
 
         ✈ = BetaPlane(FT, latitude=45)
         show(✈); println()
-        @test ✈ isa BetaPlane{FT}
+        @test ✈ isa BetaPlane{<:Any, FT}
 
         ✈ = NonTraditionalBetaPlane(FT, latitude=45)
         show(✈); println()
