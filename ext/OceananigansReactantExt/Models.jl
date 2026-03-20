@@ -6,6 +6,7 @@ import Oceananigans.Models: initialization_update_state!
 import Oceananigans.TimeSteppers: maybe_initialize_state!
 import Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: maybe_extend_halos, FixedSubstepNumber
 import Oceananigans: initialize!
+import Oceananigans.Advection: default_weno_weight_computation
 
 using Oceananigans.Architectures: ReactantState
 using Oceananigans.DistributedComputations: Distributed
@@ -59,5 +60,11 @@ end
 # causing a redundant update_state! to be compiled into every time_step!.
 # Instead, first_time_step! handles initialization explicitly.
 maybe_initialize_state!(model::ReactantHFSM, callbacks) = nothing
+
+# Reactant uses CUDA version of the code to uplift program description to MLIR.
+# Since default `weno_weight_computation` on CUDA uses LLVM's NVPTX intrinsics
+# it causes Reactant to crash.
+# We need to fall back to different optimization when running with Reactant
+default_weno_weight_computation(::ReactantState) = Oceananigans.Utils.ConvertingDivision{Float32}
 
 end # module
