@@ -81,28 +81,8 @@ end
 
 HydrostaticFreeSurfaceModels.validate_tracer_advection(tracer_advection::MultiRegionObject, grid::MultiRegionGrids) = tracer_advection, NamedTuple()
 
-# A cubed sphere needs to fill u and v separately
-# U and V (in case of a `SplitExplicitFreeSurface`) are filled in `initialize!`
-function Models.initialization_update_state!(model::CubedSphereModel)
-
-    # Update the state of the model
-    update_state!(model)
-
-    u = model.velocities.u
-    v = model.velocities.v
-
-    fill_halo_regions!((u, v), model.clock, Oceananigans.fields(model))
-    fields = Oceananigans.prognostic_fields(model)
-
-    for key in keys(fields)
-        !(key ∈ (:u, :v, :U, :V)) && fill_halo_regions!(fields[key], model.clock, Oceananigans.fields(model))
-    end
-
-    # Finally, initialize the model (e.g., free surface, vertical coordinate...)
-    Oceananigans.initialize!(model)
-
-    return nothing
-end
+# At construction time all fields are zero, so just update_state!.
+# reconcile_state! and halo filling happen later via initialize! or set!.
 
 @inline Utils.isregional(mrm::MultiRegionModel) = true
 @inline Utils.regions(mrm::MultiRegionModel) = regions(mrm.grid)

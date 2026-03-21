@@ -42,7 +42,7 @@ Base.eltype(model::AbstractModel) = Float64
 architecture(model::AbstractModel) = nothing
 initialize!(model::AbstractModel) = nothing
 total_velocities(model::AbstractModel) = nothing
-initialization_update_state!(model::AbstractModel; kw...) = update_state!(model; kw...) # fallback
+reconcile_state!(model::AbstractModel) = nothing # fallback
 
 # Fallback for any abstract model that does not contain `FieldTimeSeries`es
 update_model_field_time_series!(model::AbstractModel, clock::Clock) = nothing
