@@ -1,11 +1,8 @@
 
 # [Performance benchmarks](@id performance_benchmarks)
 
-The performance benchmarking scripts in the
-[`benchmarks`](https://github.com/CliMA/Oceananigans.jl/tree/main/legacy_benchmark)
-directory of the git repository can be run to benchmark Oceananigans.jl on your machine.
-They use [BenchmarkTools.jl](https://github.com/JuliaCI/BenchmarkTools.jl) to collect data and [PrettyTables.jl](https://github.com/ronisbr/PrettyTables.jl) to nicely format the benchmark results.
-
+We run performance benchmarks with continuous integration (CI) via scripts located at [`benchmarking`](https://github.com/CliMA/Oceananigans.jl/tree/main/benchmarking) directory.
+The benchmark results are published at [https://numericalearth.github.io/OceananigansBenchmarks/](https://numericalearth.github.io/OceananigansBenchmarks/).
 
 
 ## Shallow Water Model
