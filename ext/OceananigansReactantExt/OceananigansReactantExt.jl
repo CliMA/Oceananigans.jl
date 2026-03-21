@@ -324,12 +324,7 @@ function Oceananigans.TimeSteppers.tick!(clock::ReactantClock, Δt)
     clock.iteration.mlir_data = (clock.iteration + 1).mlir_data
     clock.stage = 1
     clock.last_Δt.mlir_data = Δt.mlir_data
-    # Use optimization_barrier to prevent last_Δt and last_stage_Δt from aliasing
-    # the same MLIR buffer, which causes XLA buffer donation errors in compiled loops.
-    # TODO: replace with a proper buffer copy op when available in Reactant
-    # (see https://github.com/CliMA/Oceananigans.jl/pull/5389#discussion_r2969696801).
-    (last_stage_Δt,) = Reactant.Ops.optimization_barrier(Δt)
-    clock.last_stage_Δt.mlir_data = last_stage_Δt.mlir_data
+    clock.last_stage_Δt.mlir_data = Δt.mlir_data
     return nothing
 end
 
