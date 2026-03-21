@@ -81,7 +81,8 @@ implement (or inherit sane fallbacks for) the items listed below.
   (or equivalent) so that `time(model)` and `iteration(model)` remain consistent.
   At iteration 0, `time_step!` calls `maybe_initialize!(model, callbacks)` as a
   safety net for bare model time-stepping (without `Simulation`). This calls
-  `initialize!(model)` followed by `update_state!(model, callbacks)`.
+  `update_state!(model, callbacks)` to ensure the model state is current before
+  the first tendency computation.
 
 - `set!(model, kw...)`: not strictly required, but strongly recommended as an
   interface for users to modify the model's prognostic state. After setting fields,
