@@ -17,7 +17,7 @@ using Oceananigans.Utils: tupleit
 import Oceananigans
 import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
 import Oceananigans.Models: total_velocities
-import Oceananigans.TimeSteppers: update_state!, reconcile_state!
+import Oceananigans.TimeSteppers: update_state!, reconcile_state!, materialize_clock!
 import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
@@ -272,6 +272,7 @@ function HydrostaticFreeSurfaceModel(grid;
                                         free_surface, forcing, closure, particles, biogeochemistry, velocities, transport_velocities,
                                         tracers, pressure, closure_fields, timestepper, auxiliary_fields, vertical_coordinate)
 
+    materialize_clock!(clock, timestepper)
     update_state!(model)
 
     return model

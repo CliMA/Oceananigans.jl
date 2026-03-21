@@ -41,6 +41,10 @@ end
 abstract type AbstractLagrangianParticles end
 step_lagrangian_particles!(model, Δt) = nothing
 
+# Materialize clock fields to avoid aliasing issues with Reactant.
+# For QAB2, last_Δt and last_stage_Δt must be distinct objects.
+materialize_clock!(clock, timestepper) = nothing
+
 reset!(timestepper) = nothing
 implicit_step!(field, ::Nothing, args...; kwargs...) = nothing
 

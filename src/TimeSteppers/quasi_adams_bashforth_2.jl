@@ -186,3 +186,11 @@ function Base.show(io::IO, ts::QuasiAdamsBashforth2TimeStepper{FT}) where FT
     print(io, "├── χ: ", ts.χ, '\n')
     print(io, "└── implicit_solver: ", isnothing(ts.implicit_solver) ? "nothing" : nameof(typeof(ts.implicit_solver)))
 end
+
+# Materialize clock fields so that last_Δt and last_stage_Δt are distinct objects.
+# This is needed for Reactant, where aliased ConcreteRNumber fields cause
+# XLA buffer donation errors in compiled loops.
+function materialize_clock!(clock, ::QuasiAdamsBashforth2TimeStepper)
+    clock.last_Δt = clock.last_stage_Δt
+    return nothing
+end
