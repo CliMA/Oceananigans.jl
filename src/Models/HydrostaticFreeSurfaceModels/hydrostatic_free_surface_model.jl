@@ -16,8 +16,8 @@ using Oceananigans.Utils: tupleit
 
 import Oceananigans
 import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
-import Oceananigans.Models: reconcile_state!, total_velocities
-import Oceananigans.TimeSteppers: update_state!
+import Oceananigans.Models: total_velocities
+import Oceananigans.TimeSteppers: update_state!, reconcile_state!
 import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
 
 PressureField(grid) = (; pHY′ = CenterField(grid))

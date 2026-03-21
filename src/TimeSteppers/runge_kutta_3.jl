@@ -103,8 +103,8 @@ The specific implementation of `rk3_substep!` varies by model type.
 function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbacks=[])
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
-    # Be paranoid and initialize at iteration 0, in case run! is not used:
-    maybe_initialize!(model, callbacks)
+    # Be paranoid and prepare at iteration 0, in case run! is not used:
+    maybe_prepare_first_time_step!(model, callbacks)
 
     γ¹ = model.timestepper.γ¹
     γ² = model.timestepper.γ²

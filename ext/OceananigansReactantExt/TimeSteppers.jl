@@ -17,7 +17,7 @@ using Oceananigans.TimeSteppers:
     cache_previous_tendencies!
 
 import Oceananigans.TimeSteppers: Clock, first_time_step!, time_step!,
-                                  ab2_step!, maybe_initialize!
+                                  ab2_step!, maybe_prepare_first_time_step!
 import Oceananigans: initialize!
 
 const ReactantModel{TS} = Union{
@@ -48,7 +48,7 @@ function Clock(grid::ShardedGrid)
 end
 
 # Reactant handles initialization via first_time_step!, so this is a no-op.
-maybe_initialize!(::ReactantModel, callbacks) = nothing
+maybe_prepare_first_time_step!(::ReactantModel, callbacks) = nothing
 
 #####
 ##### QuasiAdamsBashforth2TimeStepper for Reactant

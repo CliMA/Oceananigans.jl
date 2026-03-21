@@ -25,9 +25,13 @@ function step_closure_prognostics! end
 # Fallback for models without closure prognostics
 step_closure_prognostics!(model, Δt) = nothing
 
-# Update the model state at iteration 0, in case run! is not used.
-function maybe_initialize!(model, callbacks)
+# Reconcile auxiliary state with prognostic fields (fallback is a no-op).
+reconcile_state!(model) = nothing
+
+# Prepare the model for the first time step, in case run! is not used.
+function maybe_prepare_first_time_step!(model, callbacks)
     if model.clock.iteration == 0
+        reconcile_state!(model)
         update_state!(model, callbacks)
     end
     return nothing

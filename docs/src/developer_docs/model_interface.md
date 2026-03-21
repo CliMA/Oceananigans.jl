@@ -79,10 +79,10 @@ implement (or inherit sane fallbacks for) the items listed below.
   `TendencyCallsite` (before tendencies are applied) and `UpdateStateCallsite`
   callbacks (after auxiliary updates). The method must call `tick!(model.clock, Δt)`
   (or equivalent) so that `time(model)` and `iteration(model)` remain consistent.
-  At iteration 0, `time_step!` calls `maybe_initialize!(model, callbacks)` as a
-  safety net for bare model time-stepping (without `Simulation`). This calls
-  `update_state!(model, callbacks)` to ensure the model state is current before
-  the first tendency computation.
+  At iteration 0, `time_step!` calls `maybe_prepare_first_time_step!(model, callbacks)`
+  as a safety net for bare model time-stepping (without `Simulation`). This calls
+  `reconcile_state!(model)` and `update_state!(model, callbacks)` to ensure the
+  model state is current before the first tendency computation.
 
 - `set!(model, kw...)`: not strictly required, but strongly recommended as an
   interface for users to modify the model's prognostic state. After setting fields,
@@ -169,7 +169,7 @@ using Oceananigans.Simulations: Simulation, run!
 using Oceananigans.TimeSteppers: Clock, tick!, tick_stage!
 using Oceananigans: TendencyCallsite, UpdateStateCallsite
 
-import Oceananigans.TimeSteppers: update_state!, time_step!, maybe_initialize!
+import Oceananigans.TimeSteppers: update_state!, time_step!, maybe_prepare_first_time_step!
 import Oceananigans.Fields: set!
 
 mutable struct LorenzModel{FT, P, S} <: AbstractModel{Nothing, Nothing}
@@ -198,7 +198,7 @@ Base.summary(::LorenzModel) = "LorenzModel"
 update_state!(model::LorenzModel, cb=nothing; compute_tendencies=true) = nothing
 
 function time_step!(model::LorenzModel, Δt; callbacks = ())
-    maybe_initialize!(model, callbacks)
+    maybe_prepare_first_time_step!(model, callbacks)
 
     (; σ, ρ, β) = model.parameters
     (; x, y, z) = model.state
@@ -333,7 +333,7 @@ end
 
 function time_step!(model::KuramotoSivashinskyModel, Δt; callbacks = [])
     # First stage: initialize
-    maybe_initialize!(model, callbacks)
+    maybe_prepare_first_time_step!(model, callbacks)
     [callback(model) for callback in callbacks if callback.callsite isa TendencyCallsite]
 
     # RK3 coefficients (Williamson's low-storage scheme)
