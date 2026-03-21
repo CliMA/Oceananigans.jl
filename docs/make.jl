@@ -256,7 +256,6 @@ makedocs(; sitename = "Oceananigans.jl",
          linkcheck_ignore = [
             r"jstor\.org",
             r"^https://github\.com/.*?/blob/",
-            r"legacy_benchmark",
          ],
          draft = false,        # set to true to speed things up
          doctest = true,       # set to false to speed things up
