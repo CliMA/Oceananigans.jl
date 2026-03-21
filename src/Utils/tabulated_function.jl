@@ -109,7 +109,7 @@ f = TabulatedFunction(q; range=((0, 1), (0, 1), (0, 1), (0, 1)), points=(10, 10,
 f(0.5, 0.5, 0.5, 0.5)
 
 # output
-0.0625
+0.06250000000000001
 ```
 
 Values outside `range` are clamped to the nearest table boundary.
