@@ -17,7 +17,8 @@ using Oceananigans.TimeSteppers:
     cache_previous_tendencies!
 
 import Oceananigans.TimeSteppers: Clock, first_time_step!, time_step!,
-                                  ab2_step!, maybe_prepare_first_time_step!
+                                  ab2_step!, maybe_prepare_first_time_step!,
+                                  materialize_clock!
 import Oceananigans: initialize!
 
 const ReactantModel{TS} = Union{
@@ -49,6 +50,17 @@ end
 
 # Reactant handles initialization via first_time_step!, so this is a no-op.
 maybe_prepare_first_time_step!(::ReactantModel, callbacks) = nothing
+
+# For QAB2, last_Δt and last_stage_Δt are always the same value after tick!.
+# Alias them so Reactant's tracer sees one buffer, avoiding XLA buffer donation errors.
+# We use setfield! to bypass the ReactantClock setproperty! override, which would
+# convert through Float64 and create a new ConcreteRNumber (breaking the alias).
+const ConcreteClock = Clock{<:Reactant.ConcreteRNumber}
+
+function materialize_clock!(clock::ConcreteClock, ::QuasiAdamsBashforth2TimeStepper)
+    setfield!(clock, :last_stage_Δt, getfield(clock, :last_Δt))
+    return nothing
+end
 
 #####
 ##### QuasiAdamsBashforth2TimeStepper for Reactant
