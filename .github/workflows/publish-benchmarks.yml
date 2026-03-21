@@ -4,17 +4,7 @@ on:
   push:
     branches:
       - main
-    paths:
-      - ".github/workflows/publish-benchmarks.yml"
-      - ".buildkite/pipeline-benchmarks.yml"
-      - "benchmarking/**"
-      - "src/**"
   pull_request:
-    paths:
-      - ".github/workflows/publish-benchmarks.yml"
-      - ".buildkite/pipeline-benchmarks.yml"
-      - "benchmarking/**"
-      - "src/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
