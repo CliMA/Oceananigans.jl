@@ -4,6 +4,9 @@ using Oceananigans.DistributedComputations: reconstruct_global_field, reconstruc
 using Oceananigans.Units
 using Oceananigans.TimeSteppers: first_time_step!
 
+import Oceananigans.BoundaryConditions: _fill_north_halo!
+using Oceananigans.BoundaryConditions: UZBC, CCLocation, FCLocation
+
 include("dependencies_for_runtests.jl")
 
 if !@isdefined(_DISTRIBUTED_TESTS_UTILS_LOADED)
@@ -27,6 +30,45 @@ function analytical_immersed_tripolar_grid(underlying_grid::TripolarGrid; radius
     return grid
 end
 
+# The serial version of the TripolarGrid substitutes the second half of the last row of the grid.
+# This is not done in the distributed version, so we need to undo this substitution if we want to
+# compare the results. Otherwise very tiny differences caused by finite precision computations
+# will appear in the last row of the grid.
+
+# tracers or similar fields
+@inline _fill_north_halo!(i, k, grid, c, bc::UZBC, ::CCLocation, args...) = my_fold_north_center_center_upivot!(i, k, grid, bc.condition, c)
+@inline _fill_north_halo!(i, k, grid, u, bc::UZBC, ::FCLocation, args...) = my_fold_north_face_center_upivot!(i, k, grid, bc.condition, u)
+
+@inline function my_fold_north_face_center_upivot!(i, k, grid, sign, c)
+    Nx, Ny, _ = size(grid)
+
+    i′ = Nx - i + 2 # Remember! element Nx + 1 does not exist!
+    sign  = ifelse(i′ > Nx , abs(sign), sign) # for periodic elements we change the sign
+    i′ = ifelse(i′ > Nx, i′ - Nx, i′) # Periodicity is hardcoded in the x-direction!!
+    Hy = grid.Hy
+
+    for j = 1 : Hy
+        @inbounds begin
+            c[i, Ny + j, k] = sign * c[i′, Ny - j, k] # The Ny line is duplicated so we substitute starting Ny-1
+        end
+    end
+
+    return nothing
+end
+
+@inline function my_fold_north_center_center_upivot!(i, k, grid, sign, c)
+    Nx, Ny, _ = size(grid)
+
+    i′ = Nx - i + 1
+    Hy = grid.Hy
+
+    for j = 1 : Hy
+        @inbounds c[i, Ny + j, k] = sign * c[i′, Ny - j, k] # The Ny line is duplicated so we substitute starting Ny-1
+    end
+
+    return nothing
+end
+
 # Run the distributed grid simulation and save down reconstructed results
 function run_distributed_tripolar_grid(arch, filename)
     grid  = TripolarGrid(arch; size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5))
@@ -44,6 +86,9 @@ function run_distributed_tripolar_grid(arch, filename)
                           c = Array(interior(c, :, :, 1)),
                           η = Array(interior(η, :, :, 1)))
     end
+
+    MPI.Barrier(MPI.COMM_WORLD)
+    MPI.Finalize()
 
     return nothing
 end

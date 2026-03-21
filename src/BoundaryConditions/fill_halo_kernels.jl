@@ -69,11 +69,10 @@ end
 @inline function periodic_offset(c, dim1, dim2, kernel_offset)
     field_offsets = (c.offsets[dim1], c.offsets[dim2])
 
-    # Windowed fields (from `view(field, indices...)`) have positive OffsetArray offsets                                                                                                                                         
+    # Windowed fields (from `view(field, indices...)`) have positive OffsetArray offsets
     # in windowed dimensions. Subtract these to avoid double-counting the kernel launch offset.
     offset1 = kernel_offset[1] - max(0, field_offsets[1])
     offset2 = kernel_offset[2] - max(0, field_offsets[2])
-    
     return (offset1, offset2)
 end
 

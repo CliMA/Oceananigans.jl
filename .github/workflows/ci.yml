@@ -55,6 +55,8 @@ jobs:
           cat LocalPreferences.toml
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
+        with:
+          check_bounds: auto
         env:
           XLA_FLAGS: "--xla_force_host_platform_device_count=4"
           JULIA_DEBUG: "Reactant, Reactant_jll"
@@ -275,6 +277,8 @@ jobs:
       - uses: julia-actions/cache@v3
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
+        with:
+          check_bounds: auto
         env:
           TEST_GROUP: "reactant_unit"
       - uses: julia-actions/julia-processcoverage@v1
