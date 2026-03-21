@@ -25,26 +25,41 @@ const ReactantModel{TS} = Union{
     AbstractModel{TS, <:Distributed{<:ReactantState}}
 }
 
-function Clock(::ReactantGrid)
+function Clock(grid::ReactantGrid)
     FT = Oceananigans.defaults.FloatType
-    t = ConcreteRNumber(zero(FT))
-    iter = ConcreteRNumber(0)
+    arch = architecture(grid)
+
+    sharding = if arch isa Distributed
+        Sharding.Replicated(arch.connectivity)
+    else
+        Sharding.NoSharding()
+    end
+
+    t = ConcreteRNumber(zero(FT), sharding=sharding)
+    iter = ConcreteRNumber(0, sharding=sharding)
     stage = 1
-    last_Δt = ConcreteRNumber(convert(FT, Inf))
-    last_stage_Δt = ConcreteRNumber(convert(FT, Inf))
+    last_Δt = ConcreteRNumber(convert(FT, Inf), sharding=sharding)
+    last_stage_Δt = ConcreteRNumber(convert(FT, Inf), sharding=sharding)
+
     return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
 end
 
-function Clock(grid::ShardedGrid)
-    FT = Oceananigans.defaults.FloatType
-    arch = architecture(grid)
-    replicate = Sharding.Replicated(arch.connectivity)
-    t = ConcreteRNumber(zero(FT), sharding=replicate)
-    iter = ConcreteRNumber(0, sharding=replicate)
-    stage = 1
-    last_Δt = ConcreteRNumber(convert(FT, Inf), sharding=replicate)
-    last_stage_Δt = ConcreteRNumber(convert(FT, Inf), sharding=replicate)
-    return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
+innertype(::ConcreteRNumber{T}) where T = T
+const ReactantClock = Clock{<:ConcreteRNumber}
+
+function Base.setproperty!(clock::ReactantClock, prop::Symbol, value)
+    clock_val = getproperty(clock, prop)
+
+    if prop in (:last_Δt, :last_stage_Δt, :time, :iteration)
+        converted_val = convert(innertype(clock_val), value)
+        if Reactant.Sharding.is_sharded(clock_val)
+            sharding = clock_val.sharding
+            sharded_val = ConcreteRNumber(converted_val; sharding)
+            return setfield!(clock, prop, sharded_val)
+        end
+    end
+
+    return setfield!(clock, prop, convert(typeof(clock_val), value))
 end
 
 # Reactant handles initialization via first_time_step!, so this is a no-op.
