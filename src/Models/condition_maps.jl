@@ -150,4 +150,3 @@ function convert_interior_indices(interior_indices, k, IndicesType)
 end
 
 add_3rd_index(ij, k) = (ij[1], ij[2], k)
-
