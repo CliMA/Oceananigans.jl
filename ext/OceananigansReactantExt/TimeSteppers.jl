@@ -153,12 +153,15 @@ end
 
 function Oceananigans.TimeSteppers.tick_stage!(clock::TracedReactantClock, stage_Δt, step_Δt)
     Oceananigans.TimeSteppers.tick_time!(clock, stage_Δt)
-    stage_Δt = promote_to_traced(stage_Δt, clock)
-    step_Δt = promote_to_traced(step_Δt, clock)
     clock.iteration.mlir_data = (clock.iteration + 1).mlir_data
     clock.stage = 1
+    
+    step_Δt = promote_to_traced(step_Δt, clock)
     clock.last_Δt.mlir_data = step_Δt.mlir_data
+    
+    stage_Δt = promote_to_traced(stage_Δt, clock)
     clock.last_stage_Δt.mlir_data = stage_Δt.mlir_data
+
     return nothing
 end
 
