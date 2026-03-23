@@ -1,3 +1,5 @@
+using Dates: unix2datetime
+
 using Oceananigans.OutputWriters: WindowedTimeAverage
 using Oceananigans.TimeSteppers: update_state!, unit_time
 
@@ -65,8 +67,11 @@ Keyword arguments
 =================
 
 - `checkpoint`: Specifies the checkpoint source. Can be:
-  - `:latest` to restore from the latest checkpoint associated with
+  - `:recent_time_stamp` to restore from the most recently modified checkpoint associated with
     the [`Checkpointer`](@ref) in `simulation.output_writers`.
+  - `:highest_iteration` to restore from the checkpoint with the largest iteration number
+    associated with the [`Checkpointer`](@ref) in `simulation.output_writers`.
+  - `:latest` as an alias for `:recent_time_stamp`.
   - A `String` filepath to restore from checkpointer data in that file.
 
 - `iteration`: An `Integer` specifying the iteration number to restore from.
@@ -74,7 +79,8 @@ Keyword arguments
 
 !!! note
     Only one of `checkpoint` or `iteration` should be specified.
-    The `iteration` keyword and `checkpoint=:latest` require that
+    The `iteration` keyword and symbolic `checkpoint` modes (`:recent_time_stamp`, `:highest_iteration`,
+    and `:latest`) require that
     `simulation.output_writers` contains exactly one checkpointer.
 
 See also [`run!`](@ref), which accepts a `pickup` keyword argument.
@@ -87,12 +93,17 @@ function set!(sim::Simulation; checkpoint=nothing, iteration=nothing)
 
     checkpoint_filepath = if !isnothing(iteration)
         checkpoint_path(iteration, sim.output_writers)
-    elseif checkpoint === :latest
-        checkpoint_path(true, sim.output_writers)
+    elseif checkpoint isa Symbol
+        checkpoint_path(checkpoint, sim.output_writers)
     elseif checkpoint isa String
         checkpoint_path(checkpoint, sim.output_writers)
     else
-        throw(ArgumentError("Invalid checkpoint=$checkpoint. Expected :latest or a String filepath."))
+        throw(ArgumentError("Invalid checkpoint=$checkpoint. Expected :recent_time_stamp, :highest_iteration, :latest, or a String filepath."))
+    end
+
+    if checkpoint_filepath !== nothing
+        last_modified_utc = unix2datetime(round(Int, stat(checkpoint_filepath).mtime))
+        @info "Picking up simulation from checkpoint file $(abspath(checkpoint_filepath)); last modified (UTC): $(last_modified_utc)"
     end
 
     state = load_checkpoint_state(checkpoint_filepath)
@@ -109,8 +120,8 @@ The simulation will the stop.
 
 # Picking simulations up from a checkpoint
 
-Simulations are "picked up" from a checkpoint if `pickup` is either `true`, a `String`, or an
-`Integer` greater than 0.
+Simulations are "picked up" from a checkpoint if `pickup` is `true`, a `Symbol`, a `String`,
+or an `Integer` greater than 0.
 
 Picking up a simulation restores the simulation's prognostic state to the specified checkpoint,
 leaving all other simulation properties unchanged.
@@ -118,15 +129,21 @@ leaving all other simulation properties unchanged.
 Possible values for `pickup` are:
 
   * `pickup=true` picks a simulation up from the latest checkpoint associated with
-    the [`Checkpointer`](@ref) in `simulation.output_writers`.
+    the [`Checkpointer`](@ref) in `simulation.output_writers`, chosen by most recent file timestamp.
+
+  * `pickup=:recent_time_stamp` picks a simulation up from the most recently modified checkpoint
+    associated with the [`Checkpointer`](@ref) in `simulation.output_writers`.
+
+  * `pickup=:highest_iteration` picks a simulation up from the checkpoint with the largest iteration
+    associated with the [`Checkpointer`](@ref) in `simulation.output_writers`.
 
   * `pickup=iteration::Int` picks a simulation up from the checkpointed file associated
      with `iteration` and the `Checkpointer` in `simulation.output_writers`.
 
   * `pickup=filepath::String` picks a simulation up from checkpointer data in `filepath`.
 
-Note that `pickup=true` and `pickup=iteration` fail if `simulation.output_writers` contains
-more than one checkpointer.
+Note that `pickup=true`, `pickup=:recent_time_stamp`, `pickup=:highest_iteration`, and `pickup=iteration`
+fail if `simulation.output_writers` contains more than one checkpointer.
 
 # Checkpointing at end
 
@@ -138,9 +155,11 @@ function run!(sim; pickup=false, checkpoint_at_end=false)
 
     if we_want_to_pickup(pickup)
         if pickup === true
-            set!(sim; checkpoint=:latest)
+            set!(sim; checkpoint=:recent_time_stamp)
         elseif pickup isa Integer
             set!(sim; iteration=pickup)
+        elseif pickup isa Symbol
+            set!(sim; checkpoint=pickup)
         elseif pickup isa String
             set!(sim; checkpoint=pickup)
         end
@@ -246,6 +265,7 @@ add_dependencies!(sim, ::Checkpointer) = nothing # Checkpointer does not have "o
 
 we_want_to_pickup(pickup::Bool) = pickup
 we_want_to_pickup(pickup::Integer) = true
+we_want_to_pickup(pickup::Symbol) = true
 we_want_to_pickup(pickup::String) = true
 we_want_to_pickup(pickup) = throw(ArgumentError("Cannot run! with pickup=$pickup"))
 

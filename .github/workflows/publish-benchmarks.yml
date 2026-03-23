@@ -4,17 +4,7 @@ on:
   push:
     branches:
       - main
-    paths:
-      - ".github/workflows/publish-benchmarks.yml"
-      - ".buildkite/pipeline-benchmarks.yml"
-      - "benchmarking/**"
-      - "src/**"
   pull_request:
-    paths:
-      - ".github/workflows/publish-benchmarks.yml"
-      - ".buildkite/pipeline-benchmarks.yml"
-      - "benchmarking/**"
-      - "src/**"
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -31,7 +21,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 600
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v6
 
       - name: Download Buildkite Artifacts
         id: download
