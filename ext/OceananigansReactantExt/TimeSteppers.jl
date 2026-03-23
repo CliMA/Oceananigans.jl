@@ -45,9 +45,11 @@ function Clock(grid::ReactantGrid)
 end
 
 innertype(::ConcreteRNumber{T}) where T = T
-const ReactantClock = Clock{<:ConcreteRNumber}
 
-function Base.setproperty!(clock::ReactantClock, prop::Symbol, value)
+const ConcreteReactantClock = Clock{<:ConcreteRNumber}
+const TracedReactantClock = Oceananigans.TimeSteppers.Clock{<:Reactant.TracedRNumber}
+
+function Base.setproperty!(clock::ConcreteReactantClock, prop::Symbol, value)
     clock_val = getproperty(clock, prop)
 
     if prop in (:last_Δt, :last_stage_Δt, :time, :iteration)
@@ -122,13 +124,11 @@ function Oceananigans.TimeSteppers.tick_time!(clock::Oceananigans.TimeSteppers.C
     return t_next
 end
 
-const ReactantClock = Oceananigans.TimeSteppers.Clock{<:Any, <:Any, <:Reactant.TracedRNumber}
-
 # Promote a value to TracedRNumber via addition with zero(clock.time).
 # This is needed because .mlir_data only exists on TracedRNumber.
 promote_to_traced(Δt, clock) = Δt + zero(clock.time)
 
-function Oceananigans.TimeSteppers.tick!(clock::ReactantClock, Δt)
+function Oceananigans.TimeSteppers.tick!(clock::TracedReactantClock, Δt)
     Oceananigans.TimeSteppers.tick_time!(clock, Δt)
 
     clock.iteration.mlir_data = (clock.iteration + 1).mlir_data
@@ -143,7 +143,7 @@ function Oceananigans.TimeSteppers.tick!(clock::ReactantClock, Δt)
     return nothing
 end
 
-function Oceananigans.TimeSteppers.tick_stage!(clock::ReactantClock, stage_Δt)
+function Oceananigans.TimeSteppers.tick_stage!(clock::TracedReactantClock, stage_Δt)
     Oceananigans.TimeSteppers.tick_time!(clock, stage_Δt)
     stage_Δt = promote_to_traced(stage_Δt, clock)
     clock.stage += 1
@@ -151,7 +151,7 @@ function Oceananigans.TimeSteppers.tick_stage!(clock::ReactantClock, stage_Δt)
     return nothing
 end
 
-function Oceananigans.TimeSteppers.tick_stage!(clock::ReactantClock, stage_Δt, step_Δt)
+function Oceananigans.TimeSteppers.tick_stage!(clock::TracedReactantClock, stage_Δt, step_Δt)
     Oceananigans.TimeSteppers.tick_time!(clock, stage_Δt)
     stage_Δt = promote_to_traced(stage_Δt, clock)
     step_Δt = promote_to_traced(step_Δt, clock)
