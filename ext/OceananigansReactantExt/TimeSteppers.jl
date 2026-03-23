@@ -76,9 +76,9 @@ maybe_initialize_state!(::ReactantModel, callbacks) = nothing
 # returns TracedRNumber{Float64}, and `ab2_timestepper.χ = TracedRNumber{Float64}`
 # fails because the field type is Float64.
 
-function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}}, Δt;
-                    callbacks=[], euler=false) where FT
+const QAB2TS{FT} = QuasiAdamsBashforth2TimeStepper{FT}
 
+function time_step!(model::ReactantModel{<:QAB2TS{FT}}, Δt; callbacks=[], euler=false) where FT
     # If euler, then set χ = -0.5
     minus_point_five = convert(FT, -0.5)
     ab2_timestepper = model.timestepper
@@ -133,13 +133,15 @@ function Oceananigans.TimeSteppers.tick!(clock::TracedReactantClock, Δt)
 
     clock.iteration.mlir_data = (clock.iteration + 1).mlir_data
     clock.stage = 1
-    
+
     Δt = promote_to_traced(Δt, clock)
     clock.last_Δt.mlir_data = Δt.mlir_data
 
-    # Add zero to avoid aliasing last_stage_Δt with last_Δt
-    clock.last_stage_Δt.mlir_data = (Δt + 0).mlir_data
-    
+    # Will this work?
+    # last_stage_Δt = Δt + 0
+    # clock.last_stage_Δt.mlir_data = last_stage_Δt.mlir_data
+    setfield!(clock, :last_stage_Δt, Δt)
+
     return nothing
 end
 
@@ -155,10 +157,10 @@ function Oceananigans.TimeSteppers.tick_stage!(clock::TracedReactantClock, stage
     Oceananigans.TimeSteppers.tick_time!(clock, stage_Δt)
     clock.iteration.mlir_data = (clock.iteration + 1).mlir_data
     clock.stage = 1
-    
+
     step_Δt = promote_to_traced(step_Δt, clock)
     clock.last_Δt.mlir_data = step_Δt.mlir_data
-    
+
     stage_Δt = promote_to_traced(stage_Δt, clock)
     clock.last_stage_Δt.mlir_data = stage_Δt.mlir_data
 
