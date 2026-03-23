@@ -129,7 +129,7 @@ function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active
                 c_tendency,
                 grid,
                 args,
-                active_cells_map=condition_maps)
+                condition_maps)
     end
 
     return nothing
@@ -201,7 +201,7 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
             model.timestepper.Gⁿ.u,
             grid,
             u_kernel_args_tuple,
-            active_cells_map=momentum_condition_maps)
+            momentum_condition_maps)
 
     launch!(arch,
             grid,
@@ -210,7 +210,7 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
             model.timestepper.Gⁿ.v,
             grid,
             v_kernel_args_tuple,
-            active_cells_map=momentum_condition_maps)
+            momentum_condition_maps)
 
     return nothing
 end
