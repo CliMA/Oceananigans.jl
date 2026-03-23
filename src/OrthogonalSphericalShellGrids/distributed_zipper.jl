@@ -1,6 +1,6 @@
 using Oceananigans.BoundaryConditions: get_boundary_kernels, DistributedCommunication
 using Oceananigans.DistributedComputations: cooperative_waitall!, recv_from_buffers!, distributed_fill_halo_event!
-using Oceananigans.DistributedComputations: CommunicationBuffers, fill_corners!, loc_id
+using Oceananigans.DistributedComputations: CommunicationBuffers, fill_corners!, loc_id, AsynchronousDistributed
 using Oceananigans.Fields: instantiated_location
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
@@ -52,9 +52,9 @@ end
 end
 
 # Disambiguation
-fill_halo_regions!(c::OffsetArray, ::Nothing, indices, loc, ::DistributedTripolarGridOfSomeKind, args...; kwargs...) = nothing
+fill_halo_regions!(c::OffsetArray, ::Nothing, indices, loc, ::MPITripolarGridOfSomeKind, args...; kwargs...) = nothing
 
-function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedTripolarGridOfSomeKind, buffers::CommunicationBuffers, args...; kwargs...)
+function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::MPITripolarGridOfSomeKind, buffers::CommunicationBuffers, args...; kwargs...)
 
     arch = architecture(grid)
     kernels!, ordered_bcs = get_boundary_kernels(bcs, c, grid, loc, indices)
@@ -83,24 +83,26 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     return nothing
 end
 
-function synchronize_communication!(field::Field{<:Any, <:Any, <:Any, <:Any, <:DistributedTripolarGridOfSomeKind})
+function synchronize_communication!(field::Field{<:Any, <:Any, <:Any, <:Any, <:MPITripolarGridOfSomeKind})
     arch = architecture(field.grid)
 
-    # Wait for outstanding requests
-    if !isempty(arch.mpi_requests)
-        cooperative_waitall!(arch.mpi_requests)
+    if arch isa AsynchronousDistributed # Otherwise no need to synchronize
+        # Wait for outstanding requests
+        if !isempty(arch.mpi_requests)
+            cooperative_waitall!(arch.mpi_requests)
 
-        # Reset MPI tag
-        arch.mpi_tag[] = 0
+            # Reset MPI tag
+            arch.mpi_tag[] = 0
 
-        # Reset MPI requests
-        empty!(arch.mpi_requests)
+            # Reset MPI requests
+            empty!(arch.mpi_requests)
+        end
+
+        recv_from_buffers!(field.data, field.communication_buffers, field.grid)
+
+        north_bc = field.boundary_conditions.north
+        switch_north_halos!(field, north_bc, field.grid, instantiated_location(field))
     end
-
-    recv_from_buffers!(field.data, field.communication_buffers, field.grid)
-
-    north_bc = field.boundary_conditions.north
-    switch_north_halos!(field, north_bc, field.grid, instantiated_location(field))
 
     return nothing
 end
