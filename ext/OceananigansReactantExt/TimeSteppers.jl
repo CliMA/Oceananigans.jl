@@ -137,11 +137,6 @@ function Oceananigans.TimeSteppers.tick!(clock::TracedReactantClock, Δt)
     Δt = promote_to_traced(Δt, clock)
     clock.last_Δt.mlir_data = Δt.mlir_data
 
-    # Will this work?
-    # last_stage_Δt = Δt + 0
-    # clock.last_stage_Δt.mlir_data = last_stage_Δt.mlir_data
-    setfield!(clock, :last_stage_Δt, Δt)
-
     return nothing
 end
 
