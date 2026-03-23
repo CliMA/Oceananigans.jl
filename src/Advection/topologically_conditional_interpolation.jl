@@ -75,7 +75,7 @@ end
 const HOADV = Union{WENO,
                     Tuple(Centered{N} for N in advection_buffers[2:end])...,
                     Tuple(UpwindBiased{N} for N in advection_buffers[2:end])...}
-const LOADV = Union{UpwindBiased{1}, Centered{1}, StaticWENO, StaticCentered, StaticUpwindBiased}
+const LOADV = Union{UpwindBiased{1}, Centered{1}}
 
 for bias in (:symmetric, :biased)
     for (d, ξ) in enumerate((:x, :y, :z))

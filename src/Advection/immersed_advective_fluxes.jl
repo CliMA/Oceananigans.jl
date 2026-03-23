@@ -190,6 +190,8 @@ for side in (:ᶜ, :ᶠ)
     end
 end
 
+const StaticAS = {StaticWENO, StaticCentered, StaticUpwindBiased}
+
 for bias in (:symmetric, :biased)
     for (d, ξ) in enumerate((:x, :y, :z))
         code = [:ᵃ, :ᵃ, :ᵃ]
@@ -215,6 +217,7 @@ for bias in (:symmetric, :biased)
             @eval begin
                 # Fallback for low order interpolation
                 @inline $alt1_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::LOADV, args...) = $interp(i, j, k, ibg, scheme, args...)
+                @inline $alt1_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::StaticAS, args...) = $interp(i, j, k, ibg, scheme, args...)
 
                 # Conditional high-order interpolation in Bounded directions
                 @inline $alt1_interp(i, j, k, ibg::ImmersedBoundaryGrid, scheme::HOADV, args...) =
