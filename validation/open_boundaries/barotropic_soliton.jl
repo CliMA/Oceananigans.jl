@@ -155,6 +155,8 @@ function setup_simulation(params::SolitonParameters;
                           Nx = 200, Ny = 100, Nz = 4,
                           stop_time_nd = 10.0,
                           scheme = PerturbationAdvection(),
+                          ν_sponge = 1e4,          # peak viscosity in sponge [m²/s]
+                          sponge_width = 1000kilometers,
                           outfile = joinpath("output", "hydrostatic_soliton.jld2"))
 
     # Grid
@@ -171,9 +173,25 @@ function setup_simulation(params::SolitonParameters;
     # Model:
     β = params.U / params.L^2
 
-    obc = OpenBoundaryCondition(0; scheme)
-    u_bcs = FieldBoundaryConditions(west = obc, east = obc)
-    boundary_conditions = (; u = u_bcs)
+    west_obc  = OpenBoundaryCondition((y, z, t) -> analytic_u(params.x_min, y, t, params); scheme)
+    east_obc  = OpenBoundaryCondition((y, z, t) -> analytic_u(params.x_max, y, t, params); scheme)
+    south_obc = OpenBoundaryCondition((x, z, t) -> analytic_v(x, params.y_min, t, params); scheme)
+    north_obc = OpenBoundaryCondition((x, z, t) -> analytic_v(x, params.y_max, t, params); scheme)
+    u_bcs = FieldBoundaryConditions(west = west_obc, east = east_obc)
+    v_bcs = FieldBoundaryConditions(south = south_obc, north = north_obc)
+    boundary_conditions = (; u = u_bcs, v = v_bcs)
+
+    # Sponge layers: spatially varying horizontal viscosity that ramps from
+    # ν_sponge at each boundary to zero at sponge_width inside the domain.
+    west_mask  = PiecewiseLinearMask{:x}(center = params.x_min, width = sponge_width)
+    east_mask  = PiecewiseLinearMask{:x}(center = params.x_max, width = sponge_width)
+    south_mask = PiecewiseLinearMask{:y}(center = params.y_min, width = sponge_width)
+    north_mask = PiecewiseLinearMask{:y}(center = params.y_max, width = sponge_width)
+
+    @inline sponge_ν(x, y, z, t) = ν_sponge * (west_mask(x, y, z)  + east_mask(x, y, z) +
+                                                 south_mask(x, y, z) + north_mask(x, y, z))
+
+    closure = HorizontalScalarDiffusivity(ν = sponge_ν)
 
     model = HydrostaticFreeSurfaceModel(grid;
         free_surface        = ImplicitFreeSurface(reltol = 1e-10, abstol = 1e-10, maxiter = 100,
@@ -181,6 +199,7 @@ function setup_simulation(params::SolitonParameters;
         momentum_advection  = WENO(order=5, minimum_buffer_upwind_order=1),
         vertical_coordinate = ZStarCoordinate(),
         coriolis            = BetaPlane(f₀ = 0, β = β),
+        closure,
         boundary_conditions)
 
     # Initial conditions (soliton at t = 0)
