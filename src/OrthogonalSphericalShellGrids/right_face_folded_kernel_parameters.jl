@@ -1,3 +1,4 @@
+using Oceananigans.Utils: Utils
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaries
 
 #####
