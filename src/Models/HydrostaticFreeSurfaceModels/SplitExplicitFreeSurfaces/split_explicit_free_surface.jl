@@ -228,7 +228,7 @@ end
 const ConnectedTopology = Union{LeftConnected, RightConnected, FullyConnected, RightCenterFolded, RightFaceFolded}
 
 # Internal function for HydrostaticFreeSurfaceModel
-function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_halos}, velocities, grid) where {extend_halos}
+function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_halos}, velocities, grid, η_bcs=nothing) where {extend_halos}
     TX, TY, _   = topology(grid)
     substepping = free_surface.substepping
 
@@ -244,7 +244,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
         grid
     end
 
-    η = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid)
+    η = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid, η_bcs)
     η̅ = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid)
 
     u_baroclinic = velocities.u

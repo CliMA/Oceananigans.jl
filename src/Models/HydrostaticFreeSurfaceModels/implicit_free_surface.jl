@@ -95,8 +95,8 @@ on_architecture(to, free_surface::ImplicitFreeSurface) =
                         on_architecture(to, free_surface.solver_settings))
 
 # Internal function for HydrostaticFreeSurfaceModel
-function materialize_free_surface(free_surface::ImplicitFreeSurface{Nothing}, velocities, grid)
-    η = free_surface_displacement_field(velocities, free_surface, grid)
+function materialize_free_surface(free_surface::ImplicitFreeSurface{Nothing}, velocities, grid, η_bcs=nothing)
+    η = free_surface_displacement_field(velocities, free_surface, grid, η_bcs)
     gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
 
     user_solver_method = free_surface.solver_method # could be = :Default

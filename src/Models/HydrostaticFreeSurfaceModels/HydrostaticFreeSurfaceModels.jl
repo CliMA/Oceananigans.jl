@@ -9,6 +9,7 @@ using KernelAbstractions: @index, @kernel
 using Adapt: Adapt
 
 using Oceananigans.Architectures: architecture
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions
 using Oceananigans.Fields: ZFaceField
 using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid
 using Oceananigans.Operators: Δzᶜᶠᶜ, Δzᶠᶜᶜ
@@ -72,8 +73,21 @@ end
 ##### HydrostaticFreeSurfaceModel definition
 #####
 
-free_surface_displacement_field(velocities, free_surface, grid) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
-free_surface_displacement_field(velocities, ::Nothing, grid) = nothing
+function free_surface_displacement_field(velocities, free_surface, grid, η_bcs=nothing)
+    indices = (:, :, size(grid, 3)+1)
+    if isnothing(η_bcs)
+        return ZFaceField(grid; indices)
+    else
+        # The displacement field is windowed at z = Nz+1 (Face location),
+        # so bottom/top BCs must be nothing. Extract only horizontal BCs.
+        field_bcs = FieldBoundaryConditions(η_bcs.west, η_bcs.east,
+                                            η_bcs.south, η_bcs.north,
+                                            nothing, nothing, η_bcs.immersed)
+        return ZFaceField(grid; indices, boundary_conditions=field_bcs)
+    end
+end
+
+free_surface_displacement_field(velocities, ::Nothing, grid, η_bcs=nothing) = nothing
 
 # free surface initialization functions
 initialize_free_surface!(free_surface, grid, velocities) = nothing
