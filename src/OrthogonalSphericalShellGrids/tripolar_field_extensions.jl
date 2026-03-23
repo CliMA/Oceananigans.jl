@@ -19,13 +19,12 @@ sign(::Type{Face},   ::Type{Center}) = - 1 # u-velocity type
 sign(::Type{Center}, ::Type{Face})   = - 1 # v-velocity type
 sign(::Type{Center}, ::Type{Center}) = 1
 
-# Determine the appropriate north fold boundary condition based on grid topology
-# TODO: Implement proper topologies for distributed tripolar grids
-#       and remove the default fallback for AbstractTopology
-north_fold_boundary_condition(::Type{<:AbstractTopology})  = UPivotZipperBoundaryCondition # Default fallback for distribtuted to work
+# Determine the appropriate north fold boundary condition based on grid topology.
+# Distributed grids dispatch via their Tripolar conformal_mapping instead (see distributed_tripolar_grid.jl).
 north_fold_boundary_condition(::Type{RightCenterFolded})   = UPivotZipperBoundaryCondition
 north_fold_boundary_condition(::Type{RightFaceFolded})     = FPivotZipperBoundaryCondition
 north_fold_boundary_condition(grid::TripolarGridOfSomeKind) = north_fold_boundary_condition(topology(grid, 2))
+north_fold_boundary_condition(t::Tripolar) = north_fold_boundary_condition(fold_topology(t))
 
 # a `TripolarGrid` needs a `UPivotZipperBoundaryCondition` for the north boundary
 # The `sign` 1 for regular tracers and -1 for velocities and signed vectors

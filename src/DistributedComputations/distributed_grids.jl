@@ -66,6 +66,16 @@ end
     return R.sizes
 end
 
+# 0-based global index offset for a rank in one dimension.
+# Local interior index 1 corresponds to global interior index `offset + 1`.
+global_index_offset(N, R, local_index) = sum(local_sizes(N, R)[1:local_index-1]; init=0)
+global_index_offset(N, ::Nothing, local_index) = 0
+
+global_index_offset(arch::Distributed, global_sz) =
+    (global_index_offset(global_sz[1], arch.partition.x, arch.local_index[1]),
+     global_index_offset(global_sz[2], arch.partition.y, arch.local_index[2]),
+     global_index_offset(global_sz[3], arch.partition.z, arch.local_index[3]))
+
 # Global size from local size
 global_size(arch, local_size) = map(sum, concatenate_local_sizes(local_size, arch))
 
