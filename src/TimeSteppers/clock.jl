@@ -41,6 +41,8 @@ function Clock(; time,
     return Clock{TT, DT, IT, typeof(stage)}(time, last_Δt, last_stage_Δt, iteration, stage)
 end
 
+materialize_clock!(clock::Clock, timestepper) = nothing
+
 function reset!(clock::Clock{TT, DT, IT, S}) where {TT, DT, IT, S}
     clock.time = zero(TT)
     clock.iteration = zero(IT)
