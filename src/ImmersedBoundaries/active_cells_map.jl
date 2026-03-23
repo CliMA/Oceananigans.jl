@@ -1,5 +1,5 @@
 using Oceananigans.Architectures: CPU
-using Oceananigans.Fields: Field, interior
+using Oceananigans.Fields: Field
 using Oceananigans.Grids: Grids, AbstractGrid
 using Oceananigans.Utils: worksize
 using KernelAbstractions: @kernel, @index
