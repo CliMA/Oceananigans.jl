@@ -73,6 +73,14 @@ function Base.:(==)(clock1::Clock, clock2::Clock)
            clock1.stage == clock2.stage
 end
 
+function Base.isapprox(a::Clock, b::Clock; kw...)
+    return isapprox(a.time, b.time; kw...) &&
+           isapprox(a.last_Δt, b.last_Δt; kw...) &&
+           isapprox(a.last_stage_Δt, b.last_stage_Δt; kw...) &&
+           a.iteration == b.iteration &&
+           a.stage == b.stage
+end
+
 # TODO: when supporting DateTime, this function will have to be extended
 time_step_type(TT) = TT
 
