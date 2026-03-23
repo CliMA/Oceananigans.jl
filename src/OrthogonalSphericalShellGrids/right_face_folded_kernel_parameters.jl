@@ -1,5 +1,4 @@
-using Oceananigans.Utils: Utils, flatten_reduced_dimensions, heuristic_workgroup, StaticSize
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaries, MAXUInt8, MAXUInt16, MAXUInt32
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaries
 
 #####
 ##### `RightFaceFolded` topologies have prognostic values at Ny+1 for `Face` fields in y

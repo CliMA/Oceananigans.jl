@@ -137,7 +137,7 @@ function findall_active_indices!(active_indices, active_cells_field, grid, Indic
     Wx, Wy, Wz = worksize(grid)
     for k in 1:Wz
         interior_indices = findall(on_architecture(CPU(), view(active_cells_field.data, 1:Wx, 1:Wy, k:k)))
-        interior_indices = ImmersedBoundaries.convert_interior_indices(interior_indices, k, IndicesType)
+        interior_indices = convert_interior_indices(interior_indices, k, IndicesType)
         active_indices   = vcat(active_indices, interior_indices)
         GC.gc()
     end
@@ -160,7 +160,7 @@ build_active_cells_map(grid, ib) = serially_build_active_cells_map(grid, ib; par
 # If we eventually want to perform also barotropic step, `w` computation and `p`
 # computation only on active `columns`
 function build_active_z_columns(grid, ib)
-    field = ImmersedBoundaries.compute_active_z_columns(grid, ib)
+    field = compute_active_z_columns(grid, ib)
     Wx, Wy, Wz = worksize(grid)
     field_data = on_architecture(CPU(), view(field.data, 1:Wx, 1:Wy, 1))
     full_indices = findall(field_data)
