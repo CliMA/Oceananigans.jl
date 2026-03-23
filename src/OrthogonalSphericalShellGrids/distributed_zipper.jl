@@ -314,7 +314,8 @@ end
 # CC/CF fold: full reversal over buf_x range (all parent columns for wider buffer).
 @inline function fill_north_fold_halo_row!(c, sign, Hx, Nx, Ny, dest_y, north_recv, buf_x, src_k,
                                            ::Tuple{<:Center, <:Any, <:Any})
-    view(c, buf_x, dest_y:dest_y, :) .= sign .* reverse(view(north_recv, buf_x, src_k:src_k, :), dims=1)
+    rev_buf_x = buf_x[end]:-1:buf_x[1]
+    view(c, buf_x, dest_y:dest_y, :) .= sign .* view(north_recv, rev_buf_x, src_k:src_k, :)
 end
 
 # FC/FF fold: shifted reversal (i' = Nx+2-i) for columns 2..Nx, plus column 1
@@ -325,7 +326,7 @@ end
 @inline function fill_north_fold_halo_row!(c, sign, Hx, Nx, Ny, dest_y, north_recv, buf_x, src_k,
                                            ::Tuple{<:Face, <:Any, <:Any})
     # Columns 2..Nx: reversed from partner buffer
-    view(c, buf_x[1]+1:buf_x[end], dest_y:dest_y, :) .= sign .* reverse(view(north_recv, buf_x[1]+1:buf_x[end], src_k:src_k, :), dims=1)
+    view(c, buf_x[1]+1:buf_x[end], dest_y:dest_y, :) .= sign .* view(north_recv, buf_x[end]:-1:buf_x[1]+1, src_k:src_k, :)
     # Column 1: identity mapping (corrected by exchange_fold_column1! for non-fixed-point ranks)
     source_y = Ny + src_k - 2
     view(c, Hx+1:Hx+1, dest_y:dest_y, :) .= sign .* view(c, Hx+1:Hx+1, source_y:source_y, :)
@@ -339,19 +340,19 @@ fill_half_north_fold_line!(c, recv, loc, sign, Nx, Ny, Hx, Hy, fold_topo, buf_x,
 
 # CC/CF: full reversal over buf_x range
 @inline function _fill_fold_line_all_columns!(c, recv, sign, Nx, Hx, fold_y, fold_k, buf_x, fold_i_start)
-    reversed = sign .* reverse(view(recv, buf_x, fold_k:fold_k, :), dims=1)
-    nbuf = length(buf_x)
-    view(c, buf_x[fold_i_start]:buf_x[end], fold_y:fold_y, :) .= view(reversed, fold_i_start:nbuf, :, :)
+    src_start = buf_x[end] + 1 - fold_i_start
+    src_end   = buf_x[1]
+    view(c, buf_x[fold_i_start]:buf_x[end], fold_y:fold_y, :) .= sign .* view(recv, src_start:-1:src_end, fold_k:fold_k, :)
 end
 
 # FC/FF: shifted reversal for columns 2..Nx, plus column 1.
 # Column 1 maps i=1 → i'=Nx+1 (periodicity wrap). Identity mapping is correct for
 # fixed-point ranks; non-fixed-point ranks are corrected by exchange_fold_column1!.
 @inline function _fill_fold_line_skip_column1!(c, recv, sign, Nx, Hx, fold_y, fold_k, buf_x, fold_i_start)
-    i_start = max(2, fold_i_start)
-    reversed = sign .* reverse(view(recv, buf_x[1]+1:buf_x[end], fold_k:fold_k, :), dims=1)
-    nbuf = length(buf_x)
-    view(c, buf_x[i_start]:buf_x[end], fold_y:fold_y, :) .= view(reversed, i_start-1:nbuf-1, :, :)
+    i_start   = max(2, fold_i_start)
+    src_start = buf_x[end] - i_start + 2
+    src_end   = buf_x[1] + 1
+    view(c, buf_x[i_start]:buf_x[end], fold_y:fold_y, :) .= sign .* view(recv, src_start:-1:src_end, fold_k:fold_k, :)
     # Column 1: identity (corrected by exchange_fold_column1! for non-fixed-point ranks)
     view(c, Hx+1:Hx+1, fold_y:fold_y, :) .= sign .* view(c, Hx+1:Hx+1, fold_y:fold_y, :)
 end
