@@ -149,8 +149,8 @@ function HydrostaticFreeSurfaceModel(grid;
                                      closure_fields = nothing,
                                      auxiliary_fields = NamedTuple(),
                                      vertical_coordinate = default_vertical_coordinate(grid),
-                                     condition_momentum_advection=false,
-                                     condition_tracer_advection=false)
+                                     condition_momentum_advection=true,
+                                     condition_tracer_advection=true)
 
     # Check halos and throw an error if the grid's halo is too small
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
