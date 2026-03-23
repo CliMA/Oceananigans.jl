@@ -155,7 +155,8 @@ function setup_simulation(params::SolitonParameters;
                           Nx = 200, Ny = 100, Nz = 4,
                           stop_time_nd = 10.0,
                           scheme = PerturbationAdvection(),
-                          ν_sponge = 1e4,          # peak viscosity in sponge [m²/s]
+                          ν_sponge = 1e4meters^2 / second, # peak viscosity
+                          nudging_rate = 1 / (2days),
                           sponge_width = 1000kilometers,
                           outfile = joinpath("output", "hydrostatic_soliton.jld2"))
 
@@ -188,10 +189,14 @@ function setup_simulation(params::SolitonParameters;
     south_mask = PiecewiseLinearMask{:y}(center = params.y_min, width = sponge_width)
     north_mask = PiecewiseLinearMask{:y}(center = params.y_max, width = sponge_width)
 
-    @inline sponge_ν(x, y, z, t) = ν_sponge * (west_mask(x, y, z)  + east_mask(x, y, z) +
-                                                 south_mask(x, y, z) + north_mask(x, y, z))
+    @inline sponge_mask(x, y, z) = west_mask(x, y, z) + east_mask(x, y, z) + south_mask(x, y, z) + north_mask(x, y, z)
+    @inline sponge_ν(x, y, z, t) = ν_sponge * sponge_mask(x, y, z)
 
     closure = HorizontalScalarDiffusivity(ν = sponge_ν)
+
+    # Nudging: relax u and v toward the analytical solution in the sponge regions
+    u_nudging = Relaxation(; rate = nudging_rate, mask = sponge_mask, target = (x, y, z, t) -> analytic_u(x, y, t, params))
+    v_nudging = Relaxation(; rate = nudging_rate, mask = sponge_mask, target = (x, y, z, t) -> analytic_v(x, y, t, params))
 
     model = HydrostaticFreeSurfaceModel(grid;
         free_surface        = ImplicitFreeSurface(reltol = 1e-10, abstol = 1e-10, maxiter = 100,
@@ -200,6 +205,7 @@ function setup_simulation(params::SolitonParameters;
         vertical_coordinate = ZStarCoordinate(),
         coriolis            = BetaPlane(f₀ = 0, β = β),
         closure,
+        forcing             = (; u = u_nudging, v = v_nudging),
         boundary_conditions)
 
     # Initial conditions (soliton at t = 0)
