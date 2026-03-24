@@ -41,7 +41,7 @@ using KernelAbstractions: @kernel, @index
 end
 
 function compute_advection_conditioned_map(scheme,
-                                           grid::ImmersedBoundaryGrid;
+                                           grid;
                                            active_cells_map=nothing)
     # Field is true if the max scheme can be used for computing u advection
     max_scheme_field = Field{Center, Center, Center}(grid, Bool)
