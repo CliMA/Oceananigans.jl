@@ -26,26 +26,43 @@ const ReactantModel{TS} = Union{
     AbstractModel{TS, <:Distributed{<:ReactantState}}
 }
 
-function Clock(::ReactantGrid)
+function Clock(grid::ReactantGrid)
     FT = Oceananigans.defaults.FloatType
-    t = ConcreteRNumber(zero(FT))
-    iter = ConcreteRNumber(0)
+    arch = architecture(grid)
+
+    sharding = if arch isa Distributed
+        Sharding.Replicated(arch.connectivity)
+    else
+        Sharding.NoSharding()
+    end
+
+    t = ConcreteRNumber(zero(FT), sharding=sharding)
+    iter = ConcreteRNumber(0, sharding=sharding)
     stage = 1
-    last_Δt = ConcreteRNumber(convert(FT, Inf))
-    last_stage_Δt = ConcreteRNumber(convert(FT, Inf))
+    last_Δt = ConcreteRNumber(convert(FT, Inf), sharding=sharding)
+    last_stage_Δt = ConcreteRNumber(convert(FT, Inf), sharding=sharding)
+
     return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
 end
 
-function Clock(grid::ShardedGrid)
-    FT = Oceananigans.defaults.FloatType
-    arch = architecture(grid)
-    replicate = Sharding.Replicated(arch.connectivity)
-    t = ConcreteRNumber(zero(FT), sharding=replicate)
-    iter = ConcreteRNumber(0, sharding=replicate)
-    stage = 1
-    last_Δt = ConcreteRNumber(convert(FT, Inf), sharding=replicate)
-    last_stage_Δt = ConcreteRNumber(convert(FT, Inf), sharding=replicate)
-    return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
+innertype(::ConcreteRNumber{T}) where T = T
+
+const ConcreteReactantClock = Clock{<:ConcreteRNumber}
+const TracedReactantClock = Oceananigans.TimeSteppers.Clock{<:Reactant.TracedRNumber}
+
+function Base.setproperty!(clock::ConcreteReactantClock, prop::Symbol, value)
+    clock_val = getproperty(clock, prop)
+
+    if prop in (:last_Δt, :last_stage_Δt, :time, :iteration)
+        converted_val = convert(innertype(clock_val), value)
+        if Reactant.Sharding.is_sharded(clock_val)
+            sharding = clock_val.sharding
+            sharded_val = ConcreteRNumber(converted_val; sharding)
+            return setfield!(clock, prop, sharded_val)
+        end
+    end
+
+    return setfield!(clock, prop, convert(typeof(clock_val), value))
 end
 
 # Reactant handles initialization via first_time_step!, so this is a no-op.
@@ -71,9 +88,9 @@ end
 # returns TracedRNumber{Float64}, and `ab2_timestepper.χ = TracedRNumber{Float64}`
 # fails because the field type is Float64.
 
-function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}}, Δt;
-                    callbacks=[], euler=false) where FT
+const QAB2TS{FT} = QuasiAdamsBashforth2TimeStepper{FT}
 
+function time_step!(model::ReactantModel{<:QAB2TS{FT}}, Δt; callbacks=[], euler=false) where FT
     # If euler, then set χ = -0.5
     minus_point_five = convert(FT, -0.5)
     ab2_timestepper = model.timestepper
@@ -110,6 +127,50 @@ function first_time_step!(model::ReactantModel{<:Oceananigans.TimeSteppers.Quasi
     initialize!(model)
     update_state!(model)
     time_step!(model, Δt, euler=true)
+    return nothing
+end
+
+function Oceananigans.TimeSteppers.tick_time!(clock::Oceananigans.TimeSteppers.Clock{<:Reactant.TracedRNumber}, Δt)
+    t_next = Oceananigans.TimeSteppers.next_time(clock, Δt)
+    clock.time.mlir_data = t_next.mlir_data
+    return t_next
+end
+
+# Promote a value to TracedRNumber via addition with zero(clock.time).
+# This is needed because .mlir_data only exists on TracedRNumber.
+promote_to_traced(Δt, clock) = Δt + zero(clock.time)
+
+function Oceananigans.TimeSteppers.tick!(clock::TracedReactantClock, Δt)
+    Oceananigans.TimeSteppers.tick_time!(clock, Δt)
+
+    clock.iteration.mlir_data = (clock.iteration + 1).mlir_data
+    clock.stage = 1
+
+    Δt = promote_to_traced(Δt, clock)
+    clock.last_Δt.mlir_data = Δt.mlir_data
+
+    return nothing
+end
+
+function Oceananigans.TimeSteppers.tick_stage!(clock::TracedReactantClock, stage_Δt)
+    Oceananigans.TimeSteppers.tick_time!(clock, stage_Δt)
+    stage_Δt = promote_to_traced(stage_Δt, clock)
+    clock.stage += 1
+    clock.last_stage_Δt.mlir_data = stage_Δt.mlir_data
+    return nothing
+end
+
+function Oceananigans.TimeSteppers.tick_stage!(clock::TracedReactantClock, stage_Δt, step_Δt)
+    Oceananigans.TimeSteppers.tick_time!(clock, stage_Δt)
+    clock.iteration.mlir_data = (clock.iteration + 1).mlir_data
+    clock.stage = 1
+
+    step_Δt = promote_to_traced(step_Δt, clock)
+    clock.last_Δt.mlir_data = step_Δt.mlir_data
+
+    stage_Δt = promote_to_traced(stage_Δt, clock)
+    clock.last_stage_Δt.mlir_data = stage_Δt.mlir_data
+
     return nothing
 end
 

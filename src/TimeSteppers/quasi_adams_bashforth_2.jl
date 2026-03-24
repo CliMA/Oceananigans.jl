@@ -50,6 +50,11 @@ end
 
 reset!(timestepper::QuasiAdamsBashforth2TimeStepper) = nothing
 
+function materialize_clock!(clock::Clock, timestepper::QuasiAdamsBashforth2TimeStepper)
+    clock.last_Δt = clock.last_stage_Δt
+    return nothing
+end
+
 """
     QuasiAdamsBashforth2TimeStepper(; χ = 0.1)
 
