@@ -16,7 +16,7 @@ function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
                                      cycle_periods = 5,
                                      cfl = 0.7,
                                      cell_aspect_ratio = 4,
-                                     debug = false,
+                                     verbose = false,
                                      base_simulation_name = "flow_over_hill")
 
     # Grid definition
@@ -68,7 +68,7 @@ function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
     set!(model, u=U)
 
     stop_time = cycle_periods * Lx / U
-    simulation = Simulation(model; Δt = 0.1 * minimum_xspacing(grid) / abs(U), stop_time, verbose = debug)
+    simulation = Simulation(model; Δt = 0.1 * minimum_xspacing(grid) / abs(U), stop_time, verbose)
     conjure_time_step_wizard!(simulation, IterationInterval(1); cfl)
 
     function progress(simulation)
@@ -174,18 +174,18 @@ end
 # Run and plot an approximately hydrostatic flow over a very flat hill using a nonhydrostatic model with an implicit free surface
 hydrostatic_physics_options = (; cell_aspect_ratio=100, hill_width=100, Nz=16, base_simulation_name = "flow_over_flat_hill")
 model_type = :nonhydrostatic
-nh_simulation = flow_over_hill_simulation(; model_type, hydrostatic_physics_options..., debug=false)
+nh_simulation = flow_over_hill_simulation(; model_type, hydrostatic_physics_options...)
 run!(nh_simulation)
 plot_flow_over_hill_animation(nh_simulation.output_writers[:snaps].filepath; model_type)
 
 # Run and plot the same flow using a hydrostatic model with an implicit free surface
 model_type = :hydrostatic_with_implicit_surface
-hs_simulation = flow_over_hill_simulation(; model_type, hydrostatic_physics_options..., debug=true)
+hs_simulation = flow_over_hill_simulation(; model_type, hydrostatic_physics_options...)
 run!(hs_simulation)
 plot_flow_over_hill_animation(hs_simulation.output_writers[:snaps].filepath; model_type)
 
 # Run and plot a fully nonhydrostatic flow over a steep hill using a nonhydrostatic model with an implicit free surface
 model_type = :nonhydrostatic
-nh_simulation2 = flow_over_hill_simulation(; model_type, cell_aspect_ratio=4, hill_width=2, Nz=32, pressure_solver_constructor=ConjugateGradientPoissonSolver, debug=true, base_simulation_name = "flow_over_steep_hill")
+nh_simulation2 = flow_over_hill_simulation(; model_type, cell_aspect_ratio=4, hill_width=2, Nz=32, pressure_solver_constructor=ConjugateGradientPoissonSolver, base_simulation_name = "flow_over_steep_hill")
 run!(nh_simulation2)
 plot_flow_over_hill_animation(nh_simulation2.output_writers[:snaps].filepath; model_type)
