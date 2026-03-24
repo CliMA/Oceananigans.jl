@@ -50,3 +50,25 @@ function StaticWENOVectorInvariant(scheme::WENOVectorInvariant)
         upwinding=scheme.upwinding
     )
 end
+
+# Overload all interpolation functions to skip any boundary checks
+for static_scheme in (:StaticWENO, :StaticCentered, :StaticUpwindBiased)
+  for bias in (:symmetric, :biased)
+      for (d, ξ) in enumerate((:x, :y, :z))
+
+          code = [:ᵃ, :ᵃ, :ᵃ]
+
+          for loc in (:ᶜ, :ᶠ)
+              code[d] = loc
+              interp = Symbol(bias, :_interpolate_, ξ, code...)
+              _interp = Symbol(:_, interp)
+
+              @eval begin
+                  @inline function $_interp(i, j, k, grid, scheme::$static_scheme, args...)
+                      return $interp(i, j, k, grid, scheme, args...)
+                  end
+              end
+          end
+      end
+  end
+end
