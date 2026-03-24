@@ -281,3 +281,13 @@ using Oceananigans.OutputReaders: cpu_interpolating_time_indices
     # Test I can index into a Reactant FieldTimeSeries
     @test fts[5] isa Field
 end
+
+@testset "Field materialize traced" begin
+    Nx, Nz = (128, 64)
+    Lx, Lz = (1_000, 200)
+    grid_ad = RectilinearGrid(ReactantState(); size = (Nx, Nz),
+                              x = (-Lx/2, Lx/2), z = (0, Lz),
+                              topology = (Periodic, Flat, Bounded))
+    δρᵢ  = CenterField(grid_ad)
+    @test maximum(δρᵢ) == maximum(Array(interior(δρᵢ)))
+end
