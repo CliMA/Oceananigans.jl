@@ -202,7 +202,7 @@ julia> coriolis = HydrostaticSphericalCoriolis(scheme=Oceananigans.Coriolis.Acti
 SphericalCoriolis
 ├─ rotation rate: 7.29e-05 s⁻¹ = 1.00 Ω_Earth
 ├─ formulation: HydrostaticFormulation
-└─ scheme: Oceananigans.Coriolis.ActiveWeightedEnergyConserving
+└─ scheme: ActiveWeightedEnergyConserving
 ```
 
 !!! warning "When to use active-weighted schemes"
