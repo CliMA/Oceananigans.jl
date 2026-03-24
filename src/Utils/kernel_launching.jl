@@ -353,10 +353,10 @@ end
   condition_keys = keys(active_cells_map)
   arg_keys = keys(args)
   if condition_keys != arg_keys
-    @warn "active_cells_map_tuple keys are different to args' keys. The kernel will not be launched"
+    @warn "active_cells_map keys are different to args' keys. The kernel will not be launched"
   else
     for key in condition_keys
-      map = active_cells_map_tuple[key]
+      map = active_cells_map[key]
       _launch!(arch, grid, workspec, kernel, first_arg, second_arg, args[key]; active_cells_map=map, kwargs...)
     end
   end
