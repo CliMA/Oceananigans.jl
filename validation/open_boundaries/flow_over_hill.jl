@@ -71,19 +71,16 @@ function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
     simulation = Simulation(model; Δt = 0.1 * minimum_xspacing(grid) / abs(U), stop_time, verbose = debug)
     conjure_time_step_wizard!(simulation, IterationInterval(1); cfl)
 
-    if debug
-        function progress(simulation)
-            iter = simulation.model.clock.iteration
-            time = simulation.model.clock.time
-            dt = simulation.Δt
-            progress_pct = 100 * time / stop_time
+    function progress(simulation)
+        iter = simulation.model.clock.iteration
+        time = simulation.model.clock.time
+        dt = simulation.Δt
+        progress_pct = 100 * time / stop_time
 
-            @printf("Iteration: %05d, time: %s, Δt: %s, progress: %5.1f%%\n",
-                    iter, prettytime(time), prettytime(dt), progress_pct)
-        end
-
-        add_callback!(simulation, progress, IterationInterval(100))
+        @printf("Iteration: %05d, time: %s, Δt: %s, progress: %5.1f%%\n",
+                iter, prettytime(time), prettytime(dt), progress_pct)
     end
+    add_callback!(simulation, progress, IterationInterval(100))
 
     u, v, w = model.velocities
     ω = ∂z(u) - ∂x(w)
