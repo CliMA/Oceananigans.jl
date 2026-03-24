@@ -20,6 +20,8 @@ function test_zstar_coordinate(model, Ni, Δt)
     compute!(∫bᵢ)
     compute!(∫cᵢ)
 
+    Bᵢ = interior(∫bᵢ, 1, 1, 1)
+    Cᵢ = interior(∫cᵢ, 1, 1, 1)
     w   = model.velocities.w
     Nz  = model.grid.Nz
 
@@ -31,21 +33,23 @@ function test_zstar_coordinate(model, Ni, Δt)
         compute!(∫b)
         compute!(∫c)
 
-        condition = interior(∫b, 1, 1, 1) ≈ interior(∫bᵢ, 1, 1, 1)
+        Bₙ = interior(∫b, 1, 1, 1)
+        condition = Bₙ ≈ Bᵢ
         if !condition
-            @info "Stopping early: buoyancy not conserved at step $step"
+            @info "Stopping early: buoyancy not conserved at step $step, initial: $Bᵢ, final: $Bₙ"
         end
         @test condition
 
-        condition = interior(∫c, 1, 1, 1) ≈ interior(∫cᵢ, 1, 1, 1)
+        Cₙ = interior(∫c, 1, 1, 1)
+        condition = Cₙ ≈ Cᵢ
         if !condition
-            @info "Stopping early: c tracer not conserved at step $step"
+            @info "Stopping early: c tracer not conserved at step $step, initial: $Cᵢ, final: $Cₙ"
         end
         @test condition
 
         condition = maximum(abs, interior(w, :, :, Nz+1)) < eps(eltype(w))
         if !condition
-            @info "Stopping early: nonzero vertical velocity at top at step $step"
+            @info "Stopping early: nonzero vertical velocity at top at step $step with value: $(maximum(abs, interior(w, :, :, Nz+1)))"
         end
         @test condition
 
