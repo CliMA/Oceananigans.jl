@@ -10,6 +10,7 @@ using LinearAlgebra: LinearAlgebra
 using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
 using GPUArraysCore: @allowscalar
+using ReactantCore: ReactantCore
 using Statistics: Statistics
 
 #####
@@ -423,6 +424,9 @@ interior(f::Field) = interior(f.data, location(f), f.grid, f.indices)
 interior(a::OffsetArray, loc, grid, indices) = interior(a, loc, topology(grid), size(grid), halo_size(grid), indices)
 interior(f::Field, I...) = view(interior(f), I...)
 
+ReactantCore.materialize_traced_array(f::Field) =
+    ReactantCore.materialize_traced_array(interior(f))
+
 # Don't use axes(f) to checkbounds; use axes(f.data)
 Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
 
@@ -730,19 +734,6 @@ const Identity = typeof(Base.identity)
 end
 
 # Allocating and in-place reductions
-
-"""
-    maybe_copy_interior(r::AbstractField)
-
-Return the interior view of `r`, materialized if necessary to be GPU-native on MetalGPU.
-MetalGPU does not support ReshapedArray in kernels,
-so copying ensures the reduction operates on a GPU-native array.
-"""
-maybe_copy_interior(r::AbstractField) = maybe_copy_interior(architecture(r), r)
-
-# Extended in the OceananigansMetalExt for compatibility with Metal
-maybe_copy_interior(arch, r) = interior(r)
-
 for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 
     reduction! = Symbol(reduction, '!')
@@ -760,7 +751,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             operand = condition_operand(f, a, condition, mask)
 
             return Base.$(reduction!)(identity,
-                                      maybe_copy_interior(r),
+                                      interior(r),
                                       operand;
                                       kwargs...)
         end
@@ -774,7 +765,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 
             mask = convert(eltype(a), mask)
             return Base.$(reduction!)(identity,
-                                      maybe_copy_interior(r),
+                                      interior(r),
                                       condition_operand(a, condition, mask);
                                       kwargs...)
         end
@@ -792,7 +783,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             loc = reduced_location(instantiated_location(c); dims)
             r = Field(loc, c.grid, T; indices=indices(c))
             initialize_reduced_field!(Base.$(reduction!), identity, r, conditioned_c)
-            Base.$(reduction!)(identity, maybe_copy_interior(r), conditioned_c, init=false)
+            Base.$(reduction!)(identity, interior(r), conditioned_c, init=false)
 
             if dims isa Colon
                 return @allowscalar first(r)
