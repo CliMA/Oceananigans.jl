@@ -42,10 +42,10 @@ end
 
 # Slope in x-direction at F, C, F locations, zeroed out on peripheries
 @inline function Sxᶠᶜᶠ(i, j, k, grid, b, C)
-    bx = ℑzᵃᵃᶠ(i, j, k, grid, ∂xᵣ_b, b, C)
-    bz = ℑxᶠᵃᵃ(i, j, k, grid, ∂z_b, b, C)
-    Sg = ∂x_zᶠᶜᶠ(i, j, k, grid)
-    Sx = ifelse(bz == 0, Sg, - bx / bz)
+    bx   = ℑzᵃᵃᶠ(i, j, k, grid, ∂xᵣ_b, b, C)
+    bz   = ℑxᶠᵃᵃ(i, j, k, grid, ∂z_b, b, C)
+    ∂x_z = ∂x_zᶠᶜᶠ(i, j, k, grid)
+    Sx   = ifelse(bz == 0, ∂x_z, - bx / bz + ∂x_z)
 
     # Impose a boundary condition on immersed peripheries
     inactive = peripheral_node(i, j, k, grid, Face(), Center(), Face())
@@ -56,10 +56,10 @@ end
 
 # Slope in y-direction at F, C, F locations, zeroed out on peripheries
 @inline function Syᶜᶠᶠ(i, j, k, grid, b, C)
-    by = ℑzᵃᵃᶠ(i, j, k, grid, ∂yᵣ_b, b, C)
-    bz = ℑyᵃᶠᵃ(i, j, k, grid, ∂z_b, b, C)
-    Sg = ∂y_zᶜᶠᶠ(i, j, k, grid)
-    Sy = ifelse(bz == 0, Sg, - by / bz + Sg)
+    by   = ℑzᵃᵃᶠ(i, j, k, grid, ∂yᵣ_b, b, C)
+    bz   = ℑyᵃᶠᵃ(i, j, k, grid, ∂z_b, b, C)
+    ∂y_z = ∂y_zᶜᶠᶠ(i, j, k, grid)
+    Sy   = ifelse(bz == 0, Sg, - by / bz + ∂y_z)
 
     # Impose a boundary condition on immersed peripheries
     inactive = peripheral_node(i, j, k, grid, Center(), Face(), Face())
