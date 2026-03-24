@@ -103,9 +103,9 @@ end
 @inline function isopycnal_rotation_tensor_yz_ccf(i, j, k, grid::AbstractGrid, buoyancy, tracers,
                                                   slope_model::SmallSlopeIsopycnalTensor)
 
-    by  = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᵣ_b, buoyancy, tracers)
-    bz  =   ∂z_b(i, j, k, grid, buoyancy, tracers)
-    bz  = max(bz, slope_model.minimum_bz)
+    by   = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᵣ_b, buoyancy, tracers)
+    bz   =   ∂z_b(i, j, k, grid, buoyancy, tracers)
+    bz   = max(bz, slope_model.minimum_bz)
     ∂y_z = ∂y_zᶜᶜᶠ(i, j, k, grid)
     Sy   = - by / bz + Sgy
 
