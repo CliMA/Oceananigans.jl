@@ -1,5 +1,3 @@
-using Oceananigans.Grids: AbstractGrid,
-
 fixed_order_scheme(scheme::Centered) = FixedOrderCentered(scheme)
 
 fixed_order_scheme(scheme::UpwindBiased) = FixedOrderUpwindBiased(scheme)
@@ -56,7 +54,7 @@ for static_scheme in (:FixedOrderWENO, :FixedOrderCentered, :FixedOrderUpwindBia
               _interp = Symbol(:_, interp)
 
               @eval begin
-                  @inline function $_interp(i, j, k, grid::AbstractGrid, scheme::$static_scheme, args...)
+                  @inline function $_interp(i, j, k, grid, scheme::$static_scheme, args...)
                       return $interp(i, j, k, grid, scheme, args...)
                   end
               end
