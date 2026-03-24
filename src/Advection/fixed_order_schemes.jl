@@ -1,10 +1,21 @@
+using Oceananigans.Grids: AbstractGrid,
+
 fixed_order_scheme(scheme::Centered) = FixedOrderCentered(scheme)
 
 fixed_order_scheme(scheme::UpwindBiased) = FixedOrderUpwindBiased(scheme)
 
 fixed_order_scheme(scheme::WENO) = FixedOrderWENO(scheme)
 
-fixed_order_scheme(scheme::WENOVectorInvariant) = FixedOrderWENOVectorInvariant(scheme)
+function fixed_order_scheme(scheme::VectorInvariant)
+    return VectorInvariant(
+        vorticity_scheme=fixed_order_scheme(scheme.vorticity_scheme),
+        vorticity_stencil=scheme.vorticity_stencil,
+        vertical_advection_scheme=fixed_order_scheme(scheme.vertical_advection_scheme),
+        divergence_scheme=fixed_order_scheme(scheme.divergence_scheme),
+        kinetic_energy_gradient_scheme=fixed_order_scheme(scheme.kinetic_energy_gradient_scheme),
+        upwinding=scheme.upwinding
+    )
+end
 
 #Fallback, maybe should use a warning if not implemented?
 fixed_order_scheme(scheme) = scheme
@@ -32,25 +43,6 @@ function FixedOrderWENO(FT::DataType=Oceananigans.defaults.FloatType, FT2::DataT
     return WENO(FT, FT2; order=order, buffer_scheme=nothing, bounds=bounds)
 end
 
-function FixedOrderWENO(weno::WENO{N, FT, FT2}) where {N, FT, FT2}
-    return FixedOrderWENO(FT, FT2; order=weno_order(weno))
-end
-
-FixedOrderWENOVectorInvariant(scheme) = scheme
-
-"""Construct a WENOVectorInvariant scheme with fixed order"""
-function FixedOrderWENOVectorInvariant(scheme::WENOVectorInvariant)
-
-    return VectorInvariant(
-        vorticity_scheme=FixedOrderWENO(scheme.vorticity_scheme),
-        vorticity_stencil=scheme.vorticity_stencil,
-        vertical_advection_scheme=FixedOrderWENO(scheme.vertical_advection_scheme),
-        divergence_scheme=FixedOrderWENO(scheme.divergence_scheme),
-        kinetic_energy_gradient_scheme=scheme.kinetic_energy_gradient_scheme,
-        upwinding=scheme.upwinding
-    )
-end
-
 # Overload all interpolation functions to skip any boundary checks
 for static_scheme in (:FixedOrderWENO, :FixedOrderCentered, :FixedOrderUpwindBiased)
   for bias in (:symmetric, :biased)
@@ -64,7 +56,7 @@ for static_scheme in (:FixedOrderWENO, :FixedOrderCentered, :FixedOrderUpwindBia
               _interp = Symbol(:_, interp)
 
               @eval begin
-                  @inline function $_interp(i, j, k, grid, scheme::$static_scheme, args...)
+                  @inline function $_interp(i, j, k, grid::AbstractGrid, scheme::$static_scheme, args...)
                       return $interp(i, j, k, grid, scheme, args...)
                   end
               end
