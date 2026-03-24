@@ -357,7 +357,7 @@ end
   else
     for key in condition_keys
       map = active_cells_map[key]
-      _launch!(arch, grid, workspec, kernel, first_arg, second_arg, args[key]; active_cells_map=map, kwargs...)
+      launch!(arch, grid, workspec, kernel, first_arg, second_arg, args[key]; active_cells_map=map, kwargs...)
     end
   end
   return nothing
