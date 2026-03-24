@@ -149,28 +149,28 @@ predictor velocity and stay the same after the pressure correction (so the bound
 with the final corrected velocity at the predictor step).
 
 The restriction arises as the boundary condition is specifying the wall normal velocity,
-``\hat{\boldsymbol{n}}\cdot\boldsymbol{u}``, which leads to the pressure boundary condition
+``\hat{\boldsymbol{n}} \boldsymbol{\cdot} \boldsymbol{u}``, which leads to the pressure boundary condition
 ```math
     \begin{equation}
     \label{eq:pressure_boundary_condition}
-    \Delta t \, \hat{\boldsymbol{n}} \cdot \boldsymbol{\nabla} p^{n+1} \big |_{\partial\Omega} = \left[\Delta t \, \hat{\boldsymbol{n}} \cdot \boldsymbol{u}^\star - \hat{\boldsymbol{n}} \cdot \boldsymbol{u}^{n+1} \right],
+    \Delta t \, \hat{\boldsymbol{n}} \boldsymbol{\cdot} \boldsymbol{\nabla} p^{n+1} \big |_{\partial\Omega} = \left[\Delta t \, \hat{\boldsymbol{n}} \boldsymbol{\cdot} \boldsymbol{u}^\star - \hat{\boldsymbol{n}} \boldsymbol{\cdot} \boldsymbol{u}^{n+1} \right],
     \end{equation}
 ```
 implying that there is a pressure gradient across the boundary. Since we solve the pressure poisson
-equation (``\nabla^2p^{n+1}=\frac{\boldsymbol{\nabla}\cdot\boldsymbol{u}^\star}{\Delta t}``)
-using the method described by [Schumann88](@citet) we have to move inhomogeneous boundary conditions
+equation (``\nabla^2p^{n+1} = \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{u}^\star / \Delta t``)
+using the method described by [Schumann88](@citet), we have to move inhomogeneous boundary conditions
 on the pressure to the right hand side. In order to do this we define a new field ``\phi`` where
 ```math
     \begin{equation}
     \label{eq:modified_pressure_field}
-    \phi = p^{n+1} \quad \text{inside} \quad \Omega \quad \text{but} \quad \boldsymbol{\nabla} \cdot \boldsymbol{\nabla} \phi \, \big |_{\partial\Omega} = 0.
+    \phi = p^{n+1} \quad \text{inside} \quad \Omega \quad \text{but} \quad \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\nabla} \phi \, \big |_{\partial\Omega} = 0.
     \end{equation}
 ```
 This moves the boundary condition to the right hand side as ``\phi`` becomes
 ```math
     \begin{equation}
     \label{eq:modified_pressure_poisson}
-    \boldsymbol{\nabla}^2\phi^{n+1} = \boldsymbol{\nabla}\cdot\left[\frac{\boldsymbol{u}^\star}{\Delta t} - \delta\left(\boldsymbol{x} - \boldsymbol{x}_\Omega\right)\boldsymbol{\nabla}p\right].
+    \boldsymbol{\nabla}^2\phi^{n+1} = \boldsymbol{\nabla} \boldsymbol{\cdot} \left[\frac{\boldsymbol{u}^\star}{\Delta t} - \delta\left(\boldsymbol{x} - \boldsymbol{x}_\Omega\right)\boldsymbol{\nabla}p\right].
     \end{equation}
 ```
 Given the boundary condition on pressure given above, we can define a new modified predictor velocity
@@ -182,7 +182,7 @@ corrected field,
     \tilde{\boldsymbol{u}}^\star \equiv \boldsymbol{u}^\star + \delta\left(\boldsymbol{x} - \boldsymbol{x}_\Omega\right)(\boldsymbol{u}^{n+1} - \boldsymbol{u}^\star).
     \end{equation}
 ```
-The modified pressure Poisson equation becomes ``\nabla^2 p^{n+1} = \frac{\boldsymbol{\nabla} \cdot \tilde{\boldsymbol{u}}^\star}{\Delta t}``
+The modified pressure Poisson equation becomes ``\nabla^2 p^{n+1} = \frac{\boldsymbol{\nabla} \boldsymbol{\cdot} \tilde{\boldsymbol{u}}^\star}{\Delta t}``
 which can easily be solved.
 
 Perhaps a more intuitive way to consider this is to recall that the corrector step projects ``\boldsymbol{u}^\star``
@@ -206,14 +206,14 @@ point to
 ```math
     \begin{equation}
     \label{eq:zero_wall_normal_velocity_gradient}
-    u^\star_{1jk} \approx u^\star_{3jk} + (u^\star_{2jk} - u^\star_{4jk}) / 2 + \mathcal{O}(\Delta x^2),
+    u^\star_{1jk} \approx u^\star_{3jk} + \frac{1}{2}(u^\star_{2jk} - u^\star_{4jk}) + \mathcal{O}(\Delta x^2),
     \end{equation}
 ```
 but we then pressure correct the interior so a new ``\mathcal{O}(\Delta t)`` error is introduced as
 ```math
     \begin{align}
     u^{n+1}_{1jk} &\approx u^{n+1}_{3jk} + (u^{n+1}_{2jk} - u^{n+1}_{4jk}) / 2 + \mathcal{O}(\Delta x^2),\\
-    &= u^\star_{1jk} - \Delta t \left[ \boldsymbol{\nabla} p^{n+1}_{3jk} + (\boldsymbol{\nabla} p^{n+1}_{2jk} - \boldsymbol{\nabla} p^{n+1}_{4jk}) / 2 \right] + \mathcal{O}(\Delta x^2),\\
+    &= u^\star_{1jk} - \Delta t \left[ \boldsymbol{\nabla} p^{n+1}_{3jk} + \frac{1}{2}(\boldsymbol{\nabla} p^{n+1}_{2jk} - \boldsymbol{\nabla} p^{n+1}_{4jk}) \right] + \mathcal{O}(\Delta x^2),\\
     &\approx u^\star_{1jk} + \mathcal{O}(\Delta x^2) + \mathcal{O}(\Delta t).
     \end{align}
 ```
@@ -238,7 +238,7 @@ locally determined phase speed. We can show that this is the first-order approxi
 of motion in the predictor velocity step. Consider a right boundary normal to the `u` velocity
 component (the east boundary):
 ```math
-    \partial_t u + u \partial_x u + v \partial_y u + w \partial_z u = (\boldsymbol{\nabla} \cdot \boldsymbol{\tau})_x + F,
+    \partial_t u + u \partial_x u + v \partial_y u + w \partial_z u = (\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau})_x + F,
 ```
 let ``\boldsymbol{u} = \boldsymbol{U} + \boldsymbol{u}'`` with ``\boldsymbol{U} = U(x, y, z, t) \hat{\boldsymbol{x}}``
 where ``U`` is an externally determined "background" wall-normal flow in the proximity of the boundary,
