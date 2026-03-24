@@ -41,6 +41,8 @@ function Clock(; time,
     return Clock{TT, DT, IT, typeof(stage)}(time, last_Δt, last_stage_Δt, iteration, stage)
 end
 
+materialize_clock!(clock::Clock, timestepper) = nothing
+
 function reset!(clock::Clock{TT, DT, IT, S}) where {TT, DT, IT, S}
     clock.time = zero(TT)
     clock.iteration = zero(IT)
@@ -71,6 +73,14 @@ function Base.:(==)(clock1::Clock, clock2::Clock)
            clock1.last_Δt == clock2.last_Δt &&
            clock1.last_stage_Δt == clock2.last_stage_Δt &&
            clock1.stage == clock2.stage
+end
+
+function Base.isapprox(a::Clock, b::Clock; kw...)
+    return isapprox(a.time, b.time; kw...) &&
+           isapprox(a.last_Δt, b.last_Δt; kw...) &&
+           isapprox(a.last_stage_Δt, b.last_stage_Δt; kw...) &&
+           a.iteration == b.iteration &&
+           a.stage == b.stage
 end
 
 # TODO: when supporting DateTime, this function will have to be extended
@@ -121,20 +131,32 @@ unit_time(t) = t
 unit_time(t::Millisecond) = t.value / 1_000
 unit_time(t::Nanosecond) = t.value / 1_000_000_000
 
-function tick!(clock, Δt; stage=false)
-
+# Advance clock by a full time step Δt. Increments iteration and resets stage.
+function tick!(clock, Δt)
     tick_time!(clock, Δt)
+    clock.iteration += 1
+    clock.stage = 1
+    clock.last_Δt = Δt
+    clock.last_stage_Δt = Δt
+    return nothing
+end
 
-    if stage # tick a stage update
-        clock.stage += 1
-        clock.last_stage_Δt = Δt
-    else # tick an iteration and reset stage
-        clock.iteration += 1
-        clock.stage = 1
-        clock.last_Δt = Δt
-        clock.last_stage_Δt = Δt
-    end
+# Advance clock by stage_Δt for an intermediate stage. Increments stage counter.
+function tick_stage!(clock, stage_Δt)
+    tick_time!(clock, stage_Δt)
+    clock.stage += 1
+    clock.last_stage_Δt = stage_Δt
+    return nothing
+end
 
+# Advance clock by stage_Δt for the final stage of a multi-stage method.
+# Records step_Δt as last_Δt (the full time step size). Increments iteration and resets stage.
+function tick_stage!(clock, stage_Δt, step_Δt)
+    tick_time!(clock, stage_Δt)
+    clock.iteration += 1
+    clock.stage = 1
+    clock.last_Δt = step_Δt
+    clock.last_stage_Δt = stage_Δt
     return nothing
 end
 

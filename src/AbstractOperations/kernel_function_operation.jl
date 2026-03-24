@@ -55,14 +55,17 @@ struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, 
     └── arguments: ("Field", "Field")
     ```
     """
-    function KernelFunctionOperation{LX, LY, LZ}(kernel_function::K,
-                                                 grid::G,
-                                                 arguments...) where {LX, LY, LZ, K, G}
-        T = eltype(grid)
-        D = typeof(arguments)
+    function KernelFunctionOperation{LX, LY, LZ}(kernel_function::K, grid::G, arguments::D,
+                                                 ::Type{T}=eltype(grid)) where {LX, LY, LZ, G, T, K, D<:Tuple}
         return new{LX, LY, LZ, G, T, K, D}(kernel_function, grid, arguments)
     end
 
+end
+
+# Convenience outer constructor: splat arguments into a tuple.
+# T defaults to eltype(grid) via the inner constructor.
+function KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid, arguments...) where {LX, LY, LZ}
+    return KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid, tuple(arguments...))
 end
 
 @inline Base.getindex(κ::KernelFunctionOperation, i, j, k) = κ.kernel_function(i, j, k, κ.grid, κ.arguments...)
@@ -73,12 +76,14 @@ compute_at!(κ::KernelFunctionOperation, time) = Tuple(compute_at!(d, time) for 
 Adapt.adapt_structure(to, κ::KernelFunctionOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     KernelFunctionOperation{LX, LY, LZ}(Adapt.adapt(to, κ.kernel_function),
                                         Adapt.adapt(to, κ.grid),
-                                        Tuple(Adapt.adapt(to, a) for a in κ.arguments)...)
+                                        Tuple(Adapt.adapt(to, a) for a in κ.arguments),
+                                        eltype(κ))
 
 Architectures.on_architecture(to, κ::KernelFunctionOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     KernelFunctionOperation{LX, LY, LZ}(on_architecture(to, κ.kernel_function),
                                         on_architecture(to, κ.grid),
-                                        Tuple(on_architecture(to, a) for a in κ.arguments)...)
+                                        Tuple(on_architecture(to, a) for a in κ.arguments),
+                                        eltype(κ))
 
 Base.show(io::IO, kfo::KernelFunctionOperation) =
     print(io,

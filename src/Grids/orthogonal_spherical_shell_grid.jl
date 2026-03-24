@@ -1,12 +1,3 @@
-using CubedSphere
-using JLD2
-using OffsetArrays
-using Adapt
-using Distances
-
-using Oceananigans
-using GPUArraysCore
-
 const AHCG = AbstractHorizontallyCurvilinearGrid
 
 struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, FT2} <: AHCG{FT, TX, TY, TZ, Z, Arch}
@@ -260,7 +251,7 @@ function fill_metric_halo_regions!(grid)
     return nothing
 end
 
-function on_architecture(arch::AbstractSerialArchitecture, grid::OrthogonalSphericalShellGrid)
+function Architectures.on_architecture(arch::AbstractSerialArchitecture, grid::OrthogonalSphericalShellGrid)
     coordinates = (:λᶜᶜᵃ,
                    :λᶠᶜᵃ,
                    :λᶜᶠᵃ,

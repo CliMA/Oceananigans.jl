@@ -7,28 +7,17 @@ using Reactant
 using Oceananigans
 
 using Oceananigans: AbstractModel, Distributed
-using Oceananigans.Grids: AbstractGrid, architecture
-using Oceananigans.Utils: @apply_regionally, apply_regionally!, time_difference_seconds
+using Oceananigans.Grids: architecture
 using Oceananigans.TimeSteppers:
     update_state!,
     tick!,
+    tick_stage!,
     step_lagrangian_particles!,
     QuasiAdamsBashforth2TimeStepper,
-    SplitRungeKuttaTimeStepper,
-    cache_previous_tendencies!,
-    rk_substep!,
-    cache_current_fields!,
-    RungeKutta3TimeStepper,
-    cache_previous_tendencies!,
-    rk3_substep!,
-    stage_Δt,
-    next_time
+    cache_previous_tendencies!
 
-using Oceananigans.Models.HydrostaticFreeSurfaceModels:
-    step_free_surface!,
-    compute_free_surface_tendency!
-
-import Oceananigans.TimeSteppers: Clock, unit_time, first_time_step!, time_step!, ab2_step!
+import Oceananigans.TimeSteppers: Clock, first_time_step!, time_step!,
+                                  ab2_step!, maybe_initialize_state!
 import Oceananigans: initialize!
 
 const ReactantModel{TS} = Union{
@@ -36,55 +25,60 @@ const ReactantModel{TS} = Union{
     AbstractModel{TS, <:Distributed{<:ReactantState}}
 }
 
-function Clock(::ReactantGrid)
-    FT = Oceananigans.defaults.FloatType
-    t = ConcreteRNumber(zero(FT))
-    iter = ConcreteRNumber(0)
-    stage = 1
-    last_Δt = convert(FT, Inf)
-    last_stage_Δt = convert(FT, Inf)
-    return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
-end
-
-function Clock(grid::ShardedGrid)
+function Clock(grid::ReactantGrid)
     FT = Oceananigans.defaults.FloatType
     arch = architecture(grid)
-    replicate = Sharding.Replicated(arch.connectivity)
-    t = ConcreteRNumber(zero(FT), sharding=replicate)
-    iter = ConcreteRNumber(0, sharding=replicate)
+
+    sharding = if arch isa Distributed
+        Sharding.Replicated(arch.connectivity)
+    else
+        Sharding.NoSharding()
+    end
+
+    t = ConcreteRNumber(zero(FT), sharding=sharding)
+    iter = ConcreteRNumber(0, sharding=sharding)
     stage = 1
-    last_Δt = convert(FT, Inf)
-    last_stage_Δt = convert(FT, Inf)
+    last_Δt = ConcreteRNumber(convert(FT, Inf), sharding=sharding)
+    last_stage_Δt = ConcreteRNumber(convert(FT, Inf), sharding=sharding)
+
     return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
 end
 
-function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}}, Δt;
-                    callbacks=[], euler=false) where FT
+innertype(::ConcreteRNumber{T}) where T = T
 
-    # Note: Δt cannot change
-    if model.clock.last_Δt isa Reactant.TracedRNumber
-        model.clock.last_Δt.mlir_data = Δt.mlir_data
-    else
-        model.clock.last_Δt = Δt
+const ConcreteReactantClock = Clock{<:ConcreteRNumber}
+const TracedReactantClock = Oceananigans.TimeSteppers.Clock{<:Reactant.TracedRNumber}
+
+function Base.setproperty!(clock::ConcreteReactantClock, prop::Symbol, value)
+    clock_val = getproperty(clock, prop)
+
+    if prop in (:last_Δt, :last_stage_Δt, :time, :iteration)
+        converted_val = convert(innertype(clock_val), value)
+        if Reactant.Sharding.is_sharded(clock_val)
+            sharding = clock_val.sharding
+            sharded_val = ConcreteRNumber(converted_val; sharding)
+            return setfield!(clock, prop, sharded_val)
+        end
     end
 
-    #=
-    # Be paranoid and update state at iteration 0
-    @trace if model.clock.iteration == 0
-        update_state!(model, callbacks; compute_tendencies=true)
-    end
+    return setfield!(clock, prop, convert(typeof(clock_val), value))
+end
 
-    # Take an euler step if:
-    #   * We detect that the time-step size has changed.
-    #   * We detect that this is the "first" time-step, which means we
-    #     need to take an euler step. Note that model.clock.last_Δt is
-    #     initialized as Inf
-    #   * The user has passed euler=true to time_step!
-    @trace if Δt != model.clock.last_Δt
-        euler = true
-    end
-    =#
+# Reactant handles initialization via first_time_step!, so this is a no-op.
+maybe_initialize_state!(::ReactantModel, callbacks) = nothing
 
+#####
+##### QuasiAdamsBashforth2TimeStepper for Reactant
+#####
+# AB2 needs a Reactant override because the src/ code does:
+#   euler = euler | (Δt != model.clock.last_Δt)
+# which makes `euler` a TracedRNumber{Bool}, then ifelse(traced_bool, ...)
+# returns TracedRNumber{Float64}, and `ab2_timestepper.χ = TracedRNumber{Float64}`
+# fails because the field type is Float64.
+
+const QAB2TS{FT} = QuasiAdamsBashforth2TimeStepper{FT}
+
+function time_step!(model::ReactantModel{<:QAB2TS{FT}}, Δt; callbacks=[], euler=false) where FT
     # If euler, then set χ = -0.5
     minus_point_five = convert(FT, -0.5)
     ab2_timestepper = model.timestepper
@@ -92,24 +86,10 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}},
     χ₀ = ab2_timestepper.χ # Save initial value
     ab2_timestepper.χ = χ
 
-    # Full step for tracers, fractional step for velocities.
     ab2_step!(model, Δt, callbacks)
     cache_previous_tendencies!(model)
 
     tick!(model.clock, Δt)
-
-    if model.clock.last_Δt isa Reactant.TracedRNumber
-        model.clock.last_Δt.mlir_data = Δt.mlir_data
-    else
-        model.clock.last_Δt = Δt
-    end
-
-    # just one stage
-    if model.clock.last_stage_Δt isa Reactant.TracedRNumber
-        model.clock.last_stage_Δt.mlir_data = Δt.mlir_data
-    else
-        model.clock.last_stage_Δt = Δt
-    end
 
     update_state!(model, callbacks)
     step_lagrangian_particles!(model, Δt)
@@ -120,131 +100,64 @@ function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}},
     return nothing
 end
 
-# Method of time_step! for a Reactant Model with SplitRungeKuttaTimeStepper:
-function time_step!(model::ReactantModel{<:SplitRungeKuttaTimeStepper}, Δt; callbacks=[])
-    # This conditional causes problems with Reactant, so we remove it from the method here.
-    # We then modify first_time_step! (seen below) so it always calls update_state for ReactantModels.
-    #=
-    if model.clock.iteration == 0
-        update_state!(model, callbacks)
-    end
-    =#
-
-    cache_current_fields!(model)
-    grid = model.grid
-
-    ####
-    #### Loop over the stages
-    ####
-    for (stage, β) in enumerate(model.timestepper.β)
-        # Update the clock stage
-        model.clock.stage = stage
-
-        # Perform the substep
-        Δτ = Δt / β
-        rk_substep!(model, Δτ, callbacks)
-
-        # Update the state
-        update_state!(model, callbacks)
-    end
-
-    # Finalize step
-    step_lagrangian_particles!(model, Δt)
-    tick!(model.clock, Δt)
-
-    return nothing
-end
+#####
+##### first_time_step! for Reactant
+#####
 
 function first_time_step!(model::ReactantModel, Δt)
     initialize!(model)
-    # The first update_state is conditionally gated from within time_step! normally, but not Reactant
     update_state!(model)
     time_step!(model, Δt)
     return nothing
 end
 
-function first_time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper}, Δt)
+function first_time_step!(model::ReactantModel{<:Oceananigans.TimeSteppers.QuasiAdamsBashforth2TimeStepper}, Δt)
     initialize!(model)
-    # The first update_state is conditionally gated from within time_step! normally, but not Reactant
     update_state!(model)
     time_step!(model, Δt, euler=true)
     return nothing
 end
 
-#####
-##### RungeKutta3TimeStepper for Reactant
-#####
-# The standard RK3 time_step! uses `model.clock.iteration == 0 && update_state!(...)`
-# which fails with Reactant because TracedRNumber{Bool} cannot be used in boolean context.
-# This implementation removes that conditional and relies on first_time_step! for initialization.
+function Oceananigans.TimeSteppers.tick_time!(clock::Oceananigans.TimeSteppers.Clock{<:Reactant.TracedRNumber}, Δt)
+    t_next = Oceananigans.TimeSteppers.next_time(clock, Δt)
+    clock.time.mlir_data = t_next.mlir_data
+    return t_next
+end
 
-function time_step!(model::ReactantModel{<:RungeKutta3TimeStepper}, Δt; callbacks=[])
-    γ¹ = model.timestepper.γ¹
-    γ² = model.timestepper.γ²
-    γ³ = model.timestepper.γ³
+# Promote a value to TracedRNumber via addition with zero(clock.time).
+# This is needed because .mlir_data only exists on TracedRNumber.
+promote_to_traced(Δt, clock) = Δt + zero(clock.time)
 
-    ζ² = model.timestepper.ζ²
-    ζ³ = model.timestepper.ζ³
+function Oceananigans.TimeSteppers.tick!(clock::TracedReactantClock, Δt)
+    Oceananigans.TimeSteppers.tick_time!(clock, Δt)
 
-    first_stage_Δt  = stage_Δt(Δt, γ¹, nothing)
-    second_stage_Δt = stage_Δt(Δt, γ², ζ²)
-    third_stage_Δt  = stage_Δt(Δt, γ³, ζ³)
+    clock.iteration.mlir_data = (clock.iteration + 1).mlir_data
+    clock.stage = 1
 
-    # Compute the next time step a priori to reduce floating point error accumulation
-    tⁿ⁺¹ = next_time(model.clock, Δt)
+    Δt = promote_to_traced(Δt, clock)
+    clock.last_Δt.mlir_data = Δt.mlir_data
 
-    #
-    # First stage
-    #
+    return nothing
+end
 
-    rk3_substep!(model, Δt, γ¹, nothing, callbacks)
-    cache_previous_tendencies!(model)
+function Oceananigans.TimeSteppers.tick_stage!(clock::TracedReactantClock, stage_Δt)
+    Oceananigans.TimeSteppers.tick_time!(clock, stage_Δt)
+    stage_Δt = promote_to_traced(stage_Δt, clock)
+    clock.stage += 1
+    clock.last_stage_Δt.mlir_data = stage_Δt.mlir_data
+    return nothing
+end
 
-    tick!(model.clock, first_stage_Δt; stage=true)
+function Oceananigans.TimeSteppers.tick_stage!(clock::TracedReactantClock, stage_Δt, step_Δt)
+    Oceananigans.TimeSteppers.tick_time!(clock, stage_Δt)
+    clock.iteration.mlir_data = (clock.iteration + 1).mlir_data
+    clock.stage = 1
 
-    update_state!(model, callbacks)
-    step_lagrangian_particles!(model, first_stage_Δt)
+    step_Δt = promote_to_traced(step_Δt, clock)
+    clock.last_Δt.mlir_data = step_Δt.mlir_data
 
-    #
-    # Second stage
-    #
-
-    rk3_substep!(model, Δt, γ², ζ², callbacks)
-    cache_previous_tendencies!(model)
-
-    tick!(model.clock, second_stage_Δt; stage=true)
-
-    update_state!(model, callbacks)
-    step_lagrangian_particles!(model, second_stage_Δt)
-
-    #
-    # Third stage
-    #
-
-    rk3_substep!(model, Δt, γ³, ζ³, callbacks)
-    cache_previous_tendencies!(model)
-
-    # This adjustment of the final time-step reduces the accumulation of
-    # round-off error when Δt is added to model.clock.time. Note that we still use
-    # third_stage_Δt for the substep and Lagrangian particles step.
-    corrected_third_stage_Δt = time_difference_seconds(tⁿ⁺¹, model.clock.time)
-    tick!(model.clock, corrected_third_stage_Δt)
-
-    # Update clock fields - handle TracedRNumber vs regular Float64
-    if model.clock.last_stage_Δt isa Reactant.TracedRNumber
-        model.clock.last_stage_Δt.mlir_data = corrected_third_stage_Δt.mlir_data
-    elseif !(corrected_third_stage_Δt isa Reactant.TracedRNumber)
-        model.clock.last_stage_Δt = corrected_third_stage_Δt
-    end
-
-    if model.clock.last_Δt isa Reactant.TracedRNumber
-        model.clock.last_Δt.mlir_data = Δt.mlir_data
-    elseif !(Δt isa Reactant.TracedRNumber)
-        model.clock.last_Δt = Δt
-    end
-
-    update_state!(model, callbacks)
-    step_lagrangian_particles!(model, third_stage_Δt)
+    stage_Δt = promote_to_traced(stage_Δt, clock)
+    clock.last_stage_Δt.mlir_data = stage_Δt.mlir_data
 
     return nothing
 end

@@ -99,6 +99,7 @@ CUDA.allowscalar() do
             include("test_implicit_diffusion_diagnostic.jl")
             include("test_output_writers.jl")
             include("test_output_readers.jl")
+            include("test_averaged_specified_times.jl")
             include("test_set_field_time_series.jl")
         end
     end
@@ -269,12 +270,22 @@ CUDA.allowscalar() do
         @testset "Reactant extension tests 1" begin
             include("test_reactant.jl")
             include("test_reactant_fft_models.jl")
+            include("test_reactant_hydrostatic_free_surface_models.jl")
+            include("test_reactant_latitude_longitude_grid.jl")
         end
     end
 
-    if group == :reactant_2 || group == :all
-        @testset "Reactant extension tests 2" begin
-            include("test_reactant_latitude_longitude_grid.jl")
+    # Tests for Reactant correctness (comparing vanilla vs ReactantState)
+    if group == :reactant_correctness || group == :all
+        @testset "Reactant correctness tests" begin
+            include("test_reactant_correctness.jl")
+        end
+    end
+
+    # Reactant unit tests (grid metrics, reductions, field operations)
+    if group == :reactant_unit || group == :all
+        @testset "Reactant unit tests" begin
+            include("test_reactant_unit.jl")
         end
     end
 
@@ -294,9 +305,8 @@ CUDA.allowscalar() do
 
     if group == :sharding || group == :all
         @testset "Sharding Reactant extension tests" begin
-            # Broken for the moment (trying to fix them in https://github.com/CliMA/Oceananigans.jl/pull/4293)
-            # include("test_sharded_lat_lon.jl")
-            # include("test_sharded_tripolar.jl")
+            include("test_sharded_lat_lon.jl")
+            # include("test_sharded_tripolar.jl") # disabled: TripolarGrid + ImmersedBoundaryGrid cause Reactant MLIR errors
         end
     end
 

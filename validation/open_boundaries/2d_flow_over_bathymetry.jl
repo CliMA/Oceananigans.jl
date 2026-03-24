@@ -54,8 +54,8 @@ function create_mass_conservation_simulation(;
     #+++ Set boundary conditions
     if use_open_boundary_condition
         u_boundary_conditions = FieldBoundaryConditions(
-            west = OpenBoundaryCondition(U₀; scheme = PerturbationAdvection(inflow_timescale, outflow_timescale)),
-            east = OpenBoundaryCondition(U₀; scheme = PerturbationAdvection(inflow_timescale, outflow_timescale))
+            west = OpenBoundaryCondition(U₀; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)),
+            east = OpenBoundaryCondition(U₀; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale))
         )
         boundary_conditions = (; u = u_boundary_conditions)
     else
