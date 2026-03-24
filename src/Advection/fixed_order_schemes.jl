@@ -35,6 +35,11 @@ end
 """WENO advection scheme with fixed order"""
 const FixedOrderWENO{N, FT, FT2, PP, SI} = WENO{N, FT, FT2, PP, Nothing, SI}
 
+function FixedOrderWENO(scheme::WENO{N, FT, FT2, PP}) where {N, FT, FT2, PP}
+    order = weno_order(scheme)
+    return WENO(FT, FT2; order=order, buffer_scheme=nothing, bounds=scheme.bounds)
+end
+
 function FixedOrderWENO(FT::DataType=Oceananigans.defaults.FloatType, FT2::DataType=Float32;
               order = 5,
               bounds = nothing)
