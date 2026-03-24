@@ -70,7 +70,7 @@ function isopycnal_static_and_mutable_grids_agree(arch, closure)
         time_step!(static_model,  10.0)
         time_step!(mutable_model, 10.0)
     end
-    
+
     bs = Array(interior(static_model.tracers.b))
     bm = Array(interior(mutable_model.tracers.b))
 
