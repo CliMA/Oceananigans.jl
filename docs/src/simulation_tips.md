@@ -168,7 +168,7 @@ requires understanding the C-grid, but incurs only one iteration over the domain
 [Oceanostics.jl](https://github.com/tomchor/Oceanostics.jl/blob/3b8f67338656557877ef8ef5ebe3af9e7b2974e2/src/TurbulentKineticEnergyTerms.jl#L35-L57),
 
 ```julia
-using Oceanostics: IsotropicPseudoViscousDissipationRate
+using Oceanostics: IsotropicViscousDissipationRate
 
 ε = IsotropicViscousDissipationRate(model, u, v, w, ν)
 compute!(ε)
