@@ -221,8 +221,8 @@ are called [`CUDA.CuArray`](https://cuda.juliagpu.org/stable/usage/array/).
 One limitation of `GPUArray`s compared to the `Array`s used for
 CPU computations is that `GPUArray` elements in general cannot be accessed outside kernels
 launched through, e.g., CUDA.jl or KernelAbstractions.jl. (You can learn more about GPU kernels
-[here](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#kernels) and
-[here](https://cuda.juliagpu.org/stable/usage/overview/#Kernel-programming-with-@cuda).)
+[through Nvidia docs](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#kernels) and
+[CUDA.jl docs](https://cuda.juliagpu.org/stable/usage/overview/#Kernel-programming-with-@cuda).)
 Doing so requires individual elements to be copied from or to the GPU for processing,
 which is very slow and can result in huge slowdowns. To avoid such unintentional slowdowns,
 Oceananigans disables scalar indexing by default. See the
