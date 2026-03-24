@@ -349,8 +349,8 @@ end
 end
 
 # Launch kernels over conditioned cell maps
-@inline function launch!(arch, grid, workspec, kernel, first_arg, second_arg, args::NamedTuple, active_cells_map_tuple::NamedTuple; kwargs...)
-  condition_keys = keys(active_cells_map_tuple)
+@inline function launch!(arch, grid, workspec, kernel, first_arg, second_arg, args::NamedTuple; active_cells_map::NamedTuple; kwargs...)
+  condition_keys = keys(active_cells_map)
   arg_keys = keys(args)
   if condition_keys != arg_keys
     @warn "active_cells_map_tuple keys are different to args' keys. The kernel will not be launched"
