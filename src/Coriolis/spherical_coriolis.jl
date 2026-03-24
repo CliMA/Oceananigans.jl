@@ -35,7 +35,7 @@ end
 """
     SphericalCoriolis([FT = Float64;]
                       rotation_rate = Oceananigans.defaults.planet_rotation_rate,
-                      scheme = EnstrophyConserving(FT),
+                      scheme = EnstrophyConserving(),
                       formulation = NonhydrostaticFormulation())
 
 Return a parameter object for Coriolis forces on a sphere rotating at `rotation_rate`.
