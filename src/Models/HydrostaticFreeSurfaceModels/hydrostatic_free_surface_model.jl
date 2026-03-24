@@ -11,7 +11,7 @@ using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions,
-                                       time_discretization, implicit_diffusion_solver, closure_required_tracers
+                                       time_discretization, implicit_diffusion_solver, closure_required_tracers, initialize_closure_fields!
 using Oceananigans.Utils: tupleit
 
 import Oceananigans
@@ -52,7 +52,7 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
     transport_velocities :: W  # Container for velocity fields used to transport tracers
     tracers :: C               # Container for tracer fields
     pressure :: Φ              # Container for hydrostatic pressure
-    closure_fields :: K        # Container for turbulent diffusivities
+    closure_fields :: K        # Container for turbulent closure_fields
     timestepper :: TS          # Object containing timestepper fields and parameters
     auxiliary_fields :: AF     # User-specified auxiliary fields for forcing functions and boundary conditions
     vertical_coordinate :: Z   # Rulesets that define the time-evolution of the grid
@@ -263,7 +263,10 @@ function HydrostaticFreeSurfaceModel(grid;
     timestepper = TimeStepper(timestepper, grid, prognostic_fields; implicit_solver, Gⁿ, G⁻)
 
     # Materialize forcing for model tracer and velocity fields.
-    model_fields = merge(prognostic_fields, auxiliary_fields)
+    # Use hydrostatic_fields (which includes w) to match the model_fields
+    # constructed inside tendency kernels, ensuring field dependency indices
+    # are consistent between materialization and tendency computation.
+    model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
     forcing = model_forcing(forcing, model_fields, prognostic_fields)
     transport_velocities = transport_velocity_fields(velocities, free_surface)
 
@@ -311,7 +314,7 @@ end
 
 const FFTIFS = ImplicitFreeSurface{<:Any, <:Any, <:FFTImplicitFreeSurfaceSolver}
 
-validate_free_surface(arch::Distributed, ::FFTIFS) = error("$(typeof(free_surface)) is not supported with $(typeof(arch))")
+validate_free_surface(arch::Distributed, ::FFTIFS) = error("$(FFTIFS) is not supported with $(typeof(arch))")
 validate_free_surface(arch, free_surface) = free_surface
 
 validate_momentum_advection(momentum_advection, ibg::ImmersedBoundaryGrid) = validate_momentum_advection(momentum_advection, ibg.underlying_grid)
@@ -324,6 +327,7 @@ validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGr
 function initialize!(model::HydrostaticFreeSurfaceModel)
     initialize_vertical_coordinate!(model.vertical_coordinate, model, model.grid)
     initialize_free_surface!(model.free_surface, model.grid, model.velocities)
+    initialize_closure_fields!(model.closure_fields, model.closure, model)
     return nothing
 end
 

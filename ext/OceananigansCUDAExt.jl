@@ -68,12 +68,8 @@ AC.on_architecture(::AC.CPU, a::CuArray) = Array(a)
 AC.on_architecture(::CUDAGPU, a::Array) = CuArray(a)
 AC.on_architecture(::CUDAGPU, a::CuArray) = a
 AC.on_architecture(::CUDAGPU, a::BitArray) = CuArray(a)
-AC.on_architecture(::CUDAGPU, a::SubArray{<:Any, <:Any, <:CuArray}) = a
-AC.on_architecture(::CUDAGPU, a::SubArray{<:Any, <:Any, <:Array}) = CuArray(a)
-AC.on_architecture(::AC.CPU, a::SubArray{<:Any, <:Any, <:CuArray}) = Array(a)
 AC.on_architecture(::CUDAGPU, a::StepRangeLen) = a
 AC.on_architecture(arch::Distributed, a::CuArray) = AC.on_architecture(AC.child_architecture(arch), a)
-AC.on_architecture(arch::Distributed, a::SubArray{<:Any, <:Any, <:CuArray}) = AC.on_architecture(child_architecture(arch), a)
 
 @inline AC.sparse_matrix_constructors(::AC.GPU{CUDABackend}, A::SparseMatrixCSC) = (CuArray(A.colptr), CuArray(A.rowval), CuArray(A.nzval),  (A.m, A.n))
 @inline AC.sparse_matrix_constructors(::AC.CPU, A::CuSparseMatrixCSC) = (A.dims[1], A.dims[2], Int64.(Array(A.colPtr)), Int64.(Array(A.rowVal)), Array(A.nzVal))

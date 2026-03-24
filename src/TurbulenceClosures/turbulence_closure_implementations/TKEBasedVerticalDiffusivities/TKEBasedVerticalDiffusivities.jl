@@ -49,7 +49,8 @@ import Oceananigans.TurbulenceClosures:
     buoyancy_tracers,
     add_closure_specific_boundary_conditions,
     closure_required_tracers,
-    compute_diffusivities!,
+    compute_closure_fields!,
+    step_closure_prognostics!,
     build_closure_fields,
     implicit_linear_coefficient,
     viscosity,
@@ -110,14 +111,14 @@ end
 
 # To reconstruct buoyancy flux "conservatively" (ie approximately corresponding to production/destruction
 # of mean potential energy):
-@inline function buoyancy_fluxᶜᶜᶠ(i, j, k, grid, tracers, buoyancy, diffusivities)
-    κc = @inbounds diffusivities.κc[i, j, k]
+@inline function buoyancy_fluxᶜᶜᶠ(i, j, k, grid, tracers, buoyancy, closure_fields)
+    κc = @inbounds closure_fields.κc[i, j, k]
     N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
     return - κc * N²
 end
 
-@inline explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, diffusivities) =
-    ℑbzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, tracers, buoyancy, diffusivities)
+@inline explicit_buoyancy_flux(i, j, k, grid, closure, velocities, tracers, buoyancy, closure_fields) =
+    ℑbzᵃᵃᶜ(i, j, k, grid, buoyancy_fluxᶜᶜᶠ, tracers, buoyancy, closure_fields)
 
 # Note special attention paid to averaging the vertical grid spacing correctly
 @inline Δz_νₑ_az_bzᶠᶜᶠ(i, j, k, grid, νₑ, a, b) = ℑxᶠᵃᵃ(i, j, k, grid, νₑ) * ∂zᶠᶜᶠ(i, j, k, grid, a) *

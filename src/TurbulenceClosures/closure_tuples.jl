@@ -73,10 +73,17 @@ end
 
 Utils.with_tracers(tracers, closure_tuple::Tuple) = Tuple(with_tracers(tracers, closure) for closure in closure_tuple)
 
-function compute_diffusivities!(closure_fields_tuple, closure_tuple::Tuple, args...; kwargs...)
+function compute_closure_fields!(closure_fields_tuple, closure_tuple::Tuple, args...; kwargs...)
     for (α, closure) in enumerate(closure_tuple)
         closure_fields = closure_fields_tuple[α]
-        compute_diffusivities!(closure_fields, closure, args...; kwargs...)
+        compute_closure_fields!(closure_fields, closure, args...; kwargs...)
+    end
+    return nothing
+end
+
+function step_closure_prognostics!(closure_fields_tuple, closure_tuple::Tuple, args...)
+    for (α, closure) in enumerate(closure_tuple)
+        step_closure_prognostics!(closure_fields_tuple[α], closure, args...)
     end
     return nothing
 end

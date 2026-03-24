@@ -1,68 +1,63 @@
-include("dependencies_for_runtests.jl")
+using Oceananigans.Models.NonhydrostaticModels: BackgroundField, BackgroundFields
 
-"""
-    function run_with_background_fields(arch; with_background=true)
+N² = 1e-6
+@inline linear_stratification(z, t, p) = p.N² * z
+background_b = BackgroundField(linear_stratification, parameters=(; N²))
 
-Run a model with or without background fields and compare the two.
-"""
-function run_with_background_fields(arch; with_background=true)
+function total_buoyancy_with_background_closure_fluxes(arch)
     grid = RectilinearGrid(arch, size=10, z=(0, 1), topology=(Flat, Flat, Bounded))
-    # Setup model with or without background fields
-    if with_background
-        background_fields = Oceananigans.BackgroundFields(;
-                             background_closure_fluxes=true, b=B̄_field)
-        # we want no flux bottom boundary (∂B∂z = 0) and infinite ocean at the top boundary
-        B_bcs = FieldBoundaryConditions(
-            bottom = GradientBoundaryCondition(-N^2), # ∂B∂z = 0 → ∂b∂z = -∂B∂z = -N²
-            top = GradientBoundaryCondition(0.) # ∂B∂z = ∂B̄∂z+∂b∂z = N² → ∂b∂z = 0
-        );
-        model = NonhydrostaticModel(grid; background_fields, tracers = :b, buoyancy=BuoyancyTracer(),
-                                boundary_conditions=(; b = B_bcs))
-        b = model.tracers.b
-        B̄ = model.background_fields.tracers.b
-        B = interior(compute!(Field(B̄ + b)))    # total buoyancy field
-    else
-        # again we want no flux bottom boundary (∂B∂z = 0) and infinite ocean at the top boundary
-        B_bcs = FieldBoundaryConditions(
-            bottom = GradientBoundaryCondition(0), # ∂B∂z = 0
-            top = GradientBoundaryCondition(N^2) # ∂B∂z =  N²
-        );
-        model = NonhydrostaticModel(grid; tracers = :b, buoyancy=BuoyancyTracer(),
-                                boundary_conditions=(b = B_bcs,))
-        Bᵢ(z) = constant_stratification(z, 0, (; N² = N^2))
-        set!(model, b=Bᵢ)  # add background buoyancy as an initial condition
-        b = model.tracers.b
-        B = interior(b) # total buoyancy field = perturbation buoyancy because there is no background buoyancy
-    end
 
-    # Run for a few iterations
+    background_fields = BackgroundFields(; background_closure_fluxes=true, b=background_b)
+
+    # With background closure fluxes, the boundary conditions are on the perturbation b.
+    # Total buoyancy B = B̄ + b, where B̄(z) = N² z.
+    # For zero total flux at the bottom: ∂B/∂z = 0 → ∂b/∂z = -N²
+    # For ∂B/∂z = N² at the top: ∂b/∂z = 0
+    b_bcs = FieldBoundaryConditions(
+        bottom = GradientBoundaryCondition(-N²),
+        top    = GradientBoundaryCondition(0.0),
+    )
+
+    model = NonhydrostaticModel(grid; background_fields, tracers=:b,
+                                buoyancy=BuoyancyTracer(),
+                                boundary_conditions=(; b=b_bcs))
+
     simulation = Simulation(model, Δt=0.1, stop_iteration=5)
     run!(simulation)
 
-    return B
+    B̄ = model.background_fields.tracers.b
+    b = model.tracers.b
+    return interior(compute!(Field(B̄ + b)))
 end
 
-# Linear background stratification
-N = 1e-3
-@inline constant_stratification(z, t, p) = p.N² * z
-B̄_field = BackgroundField(constant_stratification, parameters=(; N² = N^2))
+function total_buoyancy_without_background_fields(arch)
+    grid = RectilinearGrid(arch, size=10, z=(0, 1), topology=(Flat, Flat, Bounded))
 
-test_archs = has_cuda() ? [CPU(), GPU()] : [CPU()]
+    # Without background fields, the boundary conditions are directly on B.
+    # Zero total flux at bottom: ∂B/∂z = 0
+    # ∂B/∂z = N² at the top
+    B_bcs = FieldBoundaryConditions(
+        bottom = GradientBoundaryCondition(0),
+        top    = GradientBoundaryCondition(N²),
+    )
 
-@testset "Background Fields Tests" begin
-    for arch in test_archs
+    model = NonhydrostaticModel(grid; tracers=:b, buoyancy=BuoyancyTracer(),
+                                boundary_conditions=(; b=B_bcs))
 
-        # Test model runs with background fields
-        @test run_with_background_fields(arch, with_background=true) !== nothing
+    Bᵢ(z) = linear_stratification(z, 0, (; N²))
+    set!(model, b=Bᵢ)
 
-        # Test model runs without background fields
-        @test run_with_background_fields(arch, with_background=false) !== nothing
+    simulation = Simulation(model, Δt=0.1, stop_iteration=5)
+    run!(simulation)
 
-        # Test that background fields affect the solution
-        b_with = run_with_background_fields(arch, with_background=true)
-        b_without = run_with_background_fields(arch, with_background=false)
+    return interior(model.tracers.b)
+end
 
-        # to pass the test, both total buoyancy should be the same even the method is not the same
-        @test all(isapprox.(b_with, b_without, rtol=1e-10))
+@testset "Background closure flux divergence" begin
+    for arch in archs
+        @info "  Testing background closure flux divergence [$(typeof(arch))]..."
+        B_with    = total_buoyancy_with_background_closure_fluxes(arch)
+        B_without = total_buoyancy_without_background_fields(arch)
+        @test all(isapprox.(B_with, B_without, rtol=1e-10))
     end
 end

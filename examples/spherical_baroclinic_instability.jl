@@ -48,6 +48,9 @@ using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
 using CUDA
 using Printf
 using CairoMakie
+using Random
+
+Random.seed!(314159) # for reproducible results
 
 # We start by setting up grid parameters. We use 1.5-degree resolution to produce
 # reasonable runtimes while still resolving the instability.
@@ -274,6 +277,9 @@ save("spherical_baroclinic_instability.png", fig, px_per_unit=2) #hide
 
 # ## References
 #
-# - Murray, R. J. (1996). Explicit generation of orthogonal grids for ocean models.
-#   *Journal of Computational Physics*, 126(2), 251-273.
-#   doi:[10.1006/jcph.1996.0136](https://doi.org/10.1006/jcph.1996.0136)
+# ```@bibliography
+# Pages = []
+# Canonical = false
+#
+# Murray1996
+# ```
