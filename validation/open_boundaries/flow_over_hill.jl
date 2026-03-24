@@ -42,7 +42,8 @@ function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
     grid = ImmersedBoundaryGrid(grid_base, PartialCellBottom(hill))
 
     # Model kwargs
-    u_boundaries = FieldBoundaryConditions(west = OpenBoundaryCondition(U), east = OpenBoundaryCondition(U; scheme))
+    u_boundaries = FieldBoundaryConditions(west = OpenBoundaryCondition(U), # No scheme here for a perfectly barotropic inflow
+                                           east = OpenBoundaryCondition(U; scheme))
     boundary_conditions = (u = u_boundaries,)
     advection = WENO(; order=5, minimum_buffer_upwind_order=1)
 
@@ -60,8 +61,6 @@ function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
 
         model_kwargs = merge(model_kwargs, (; free_surface, momentum_advection = advection, tracer_advection = advection, vertical_coordinate = ZStarCoordinate()))
         model_constructor = HydrostaticFreeSurfaceModel
-    else
-        error("Unknown model_type: $model_type. Expected :nonhydrostatic or :hydrostatic_with_implicit_surface")
     end
 
     model = model_constructor(grid; model_kwargs...)
