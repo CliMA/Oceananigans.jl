@@ -25,7 +25,7 @@ function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
 
     # Determine vertical coordinate based on model type
     if (model_type == :nonhydrostatic)
-        z = (-Lz, 0)  
+        z = (-Lz, 0)
     elseif model_type == :hydrostatic_with_implicit_surface
         z = MutableVerticalDiscretization(-Lz:(Lz/Nz):0)
     else
