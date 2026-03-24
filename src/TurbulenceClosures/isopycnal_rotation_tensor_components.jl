@@ -107,7 +107,7 @@ end
     bz   =   ∂z_b(i, j, k, grid, buoyancy, tracers)
     bz   = max(bz, slope_model.minimum_bz)
     ∂y_z = ∂y_zᶜᶜᶠ(i, j, k, grid)
-    Sy   = - by / bz + Sgy
+    Sy   = - by / bz
 
     return ifelse(bz == 0, zero(grid), Sy) + ∂y_z
 end

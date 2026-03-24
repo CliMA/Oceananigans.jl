@@ -174,43 +174,43 @@ end
 
 @inline function tapering_factorᶠᶜᶜ(i, j, k, grid, closure, tracers, buoyancy)
 
-    by  = ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᵣ_b, buoyancy, tracers)
-    bz  = ℑxzᶠᵃᶜ(i, j, k, grid, ∂z_b,  buoyancy, tracers)
-    bx  =  ∂xᵣ_b(i, j, k, grid, buoyancy, tracers)
-    Sgx = ∂x_zᶠᶜᶜ(i, j, k, grid)
-    Sgy = ∂y_zᶠᶜᶜ(i, j, k, grid)
+    by   = ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᵣ_b, buoyancy, tracers)
+    bz   = ℑxzᶠᵃᶜ(i, j, k, grid, ∂z_b,  buoyancy, tracers)
+    bx   =  ∂xᵣ_b(i, j, k, grid, buoyancy, tracers)
+    ∂x_z = ∂x_zᶠᶜᶜ(i, j, k, grid)
+    ∂y_z = ∂y_zᶠᶜᶜ(i, j, k, grid)
 
-    return calc_tapering(bx, by, bz, Sgx, Sgy, grid, closure.isopycnal_tensor, closure.slope_limiter)
+    return calc_tapering(bx, by, bz, ∂x_z, ∂y_z, grid, closure.isopycnal_tensor, closure.slope_limiter)
 end
 
 @inline function tapering_factorᶜᶠᶜ(i, j, k, grid, closure, tracers, buoyancy)
 
-    bx  = ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᵣ_b, buoyancy, tracers)
-    bz  = ℑyzᵃᶠᶜ(i, j, k, grid, ∂z_b,  buoyancy, tracers)
-    by  =  ∂yᵣ_b(i, j, k, grid, buoyancy, tracers)
-    Sgx = ∂x_zᶜᶠᶜ(i, j, k, grid)
-    Sgy = ∂y_zᶜᶠᶜ(i, j, k, grid)
+    bx   = ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᵣ_b, buoyancy, tracers)
+    bz   = ℑyzᵃᶠᶜ(i, j, k, grid, ∂z_b,  buoyancy, tracers)
+    by   =  ∂yᵣ_b(i, j, k, grid, buoyancy, tracers)
+    ∂x_z = ∂x_zᶜᶠᶜ(i, j, k, grid)
+    ∂y_z = ∂y_zᶜᶠᶜ(i, j, k, grid)
 
-    return calc_tapering(bx, by, bz, Sgx, Sgy, grid, closure.isopycnal_tensor, closure.slope_limiter)
+    return calc_tapering(bx, by, bz, ∂x_z, ∂y_z, grid, closure.isopycnal_tensor, closure.slope_limiter)
 end
 
 @inline function tapering_factorᶜᶜᶠ(i, j, k, grid, closure, tracers, buoyancy)
 
-    bx = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᵣ_b, buoyancy, tracers)
-    by = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᵣ_b, buoyancy, tracers)
-    bz =  ∂z_b(i, j, k, grid, buoyancy, tracers)
-    Sgx = ∂x_zᶜᶜᶠ(i, j, k, grid)
-    Sgy = ∂y_zᶜᶜᶠ(i, j, k, grid)
+    bx   = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᵣ_b, buoyancy, tracers)
+    by   = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᵣ_b, buoyancy, tracers)
+    bz   =  ∂z_b(i, j, k, grid, buoyancy, tracers)
+    ∂x_z = ∂x_zᶜᶜᶠ(i, j, k, grid)
+    ∂y_z = ∂y_zᶜᶜᶠ(i, j, k, grid)
 
-    return calc_tapering(bx, by, bz, Sgx, Sgy, grid, closure.isopycnal_tensor, closure.slope_limiter)
+    return calc_tapering(bx, by, bz, ∂x_z, ∂y_z, grid, closure.isopycnal_tensor, closure.slope_limiter)
 end
 
-@inline function calc_tapering(bx, by, bz, Sgx, Sgy, grid, slope_model, slope_limiter)
+@inline function calc_tapering(bx, by, bz, ∂x_z, ∂y_z, grid, slope_model, slope_limiter)
 
     bz = max(bz, slope_model.minimum_bz)
 
-    Sx = - bx / bz + Sgx
-    Sy = - by / bz + Sgy
+    Sx = - bx / bz + ∂x_z
+    Sy = - by / bz + ∂y_z
 
     return ifelse(bz <= 0, zero(grid), min(one(grid), slope_limiter.max_slope^2 / (Sx^2 + Sy^2)))
 end
