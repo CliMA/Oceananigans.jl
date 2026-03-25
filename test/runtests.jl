@@ -47,11 +47,17 @@ CUDA.allowscalar() do
             include("test_regrid.jl")
             include("test_field_scans.jl")
             include("test_halo_regions.jl")
-            include("test_coriolis.jl")
             include("test_buoyancy.jl")
             include("test_stokes_drift.jl")
             include("test_utils.jl")
             include("test_schedules.jl")
+        end
+    end
+
+    if group == :coriolis || group == :all
+        @testset "Coriolis" begin
+            include("test_coriolis.jl")
+            include("test_coriolis_schemes.jl")
         end
     end
 
