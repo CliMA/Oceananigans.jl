@@ -1,17 +1,18 @@
 using Oceananigans.Grids: AbstractGrid
 using Oceananigans.ImmersedBoundaries
+using Oceananigans.Advection: Centered, UpwindBiased, WENO, VectorInvariant
 
-struct CenteredFixedOrderAdvectionScheme{S <: AbstractCenteredAdvectionScheme} <: AbstractCenteredAdvectionScheme
+struct CenteredFixedOrderAdvectionScheme{N, FT, S <: AbstractCenteredAdvectionScheme} <: AbstractCenteredAdvectionScheme{N, FT}
     scheme::S
-    function CenteredFixedOrderAdvectionScheme(scheme::S) where {S <: AbstractCenteredAdvectionScheme}
-        return new{S}(scheme)
+    function CenteredFixedOrderAdvectionScheme(scheme::S) where {N, FT, S <: AbstractCenteredAdvectionScheme{N, FT}}
+        return new{N, FT, S}(scheme)
     end
 end
 
-struct UpwindBiasedFixedOrderAdvectionScheme{S <: AbstractUpwindBiasedAdvectionScheme} <: AbstractUpwindBiasedAdvectionScheme
+struct UpwindBiasedFixedOrderAdvectionScheme{N, FT, S <: AbstractUpwindBiasedAdvectionScheme} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
     scheme::S
-    function UpwindBiasedFixedOrderAdvectionScheme(scheme::S) where {S <: AbstractUpwindBiasedAdvectionScheme}
-        return new{S}(scheme)
+    function UpwindBiasedFixedOrderAdvectionScheme(scheme::S) where {N, FT, S <: AbstractUpwindBiasedAdvectionScheme{N, FT}}
+        return new{N, FT, S}(scheme)
     end
 end
 
