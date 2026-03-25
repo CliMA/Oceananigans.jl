@@ -82,7 +82,7 @@ HydrostaticFreeSurfaceModels.validate_tracer_advection(tracer_advection::MultiRe
 
 # reconcile_state! for a multi-region model.
 # A cubed-sphere grid needs to fill u and v velocity halos together.
-function TimeSteppers.reconcile_state!(model::HydrostaticFreeSurfaceModel)
+function TimeSteppers.reconcile_state!(model::MultiRegionModel)
 
     u = model.velocities.u
     v = model.velocities.v
