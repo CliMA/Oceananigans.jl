@@ -3,7 +3,7 @@ using Oceananigans.ImmersedBoundaries
 
 struct FixedOrderScheme{N, FT, S} <: AbstractAdvectionScheme{N, FT}
     scheme::S
-    function FixedOrderScheme{N, FT}(scheme::S) where {N, FT}
+    function FixedOrderScheme{N, FT}(scheme::S) where {N, FT, S}
         return new{N, FT, S}(scheme)
     end
 end
@@ -11,7 +11,7 @@ end
 """UpwindBiased advection scheme with fixed order"""
 struct FixedOrderUBScheme{N, FT, S} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
     scheme::S
-    function FixedOrderUBScheme{N, FT}(scheme::S) where {N, FT}
+    function FixedOrderUBScheme{N, FT}(scheme::S) where {N, FT, S}
         return new{N, FT, S}(scheme)
     end
 end
