@@ -4,6 +4,7 @@ using Oceananigans.Grids: get_active_cells_map, active_cell
 using Oceananigans.Architectures: CPU
 import Oceananigans.Architectures as AC
 using Oceananigans.Fields: Field, interior
+using Oceananigans.Utils: InteriorBoundarySet
 using KernelAbstractions: @kernel, @index
 
 @inline function generate_condition_maps(grid,
@@ -55,7 +56,8 @@ function compute_advection_conditioned_map(scheme,
             scheme;
             active_cells_map)
 
-    return NamedTuple{(:interior, :boundary)}(split_indices(max_scheme_field, grid; active_cells_map))
+    interior_indices, boundary_indices = split_indices(max_scheme_field, grid; active_cells_map)
+    return InteriorBoundarySet(interior_indices, boundary_indices)
 end
 
 @kernel function condition_map!(max_scheme_field, ibg, scheme)

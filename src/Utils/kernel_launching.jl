@@ -353,18 +353,20 @@ end
     return nothing
 end
 
-# Launch kernels over conditioned cell maps
-@inline function launch!(arch, grid, workspec, kernel, first_arg, second_arg, args::NamedTuple; active_cells_map::NamedTuple, kwargs...)
-  condition_keys = keys(active_cells_map)
-  arg_keys = keys(args)
-  if condition_keys != arg_keys
-    @warn "active_cells_map keys are different to args' keys. The kernel will not be launched"
-  else
-    for key in condition_keys
-      map = active_cells_map[key]
-      launch!(arch, grid, workspec, kernel, first_arg, second_arg, args[key]; active_cells_map=map, kwargs...)
+struct InteriorBoundarySet
+    interior
+    boundary
+    function InteriorBoundarySet(interior, boundary)
+        new(interior, boundary)
     end
-  end
+end
+# Launch kernels over conditioned cell maps
+@inline function launch!(arch, grid, workspec, kernel, first_arg, second_arg, args::InteriorBoundarySet;
+                         active_cells_map::InteriorBoundarySet, kwargs...)
+  launch!(arch, grid, workspec, kernel, first_arg, second_arg, args.interior;
+          active_cells_map=active_cells_map.interior, kwargs...)
+  launch!(arch, grid, workspec, kernel, first_arg, second_arg, args.boundary;
+          active_cells_map=active_cells_map.boundary, kwargs...)
   return nothing
 end
 

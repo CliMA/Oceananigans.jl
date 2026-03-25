@@ -15,6 +15,7 @@ export newton_div
 export TabulatedFunction
 export interpolator, _interpolate
 export ϕ₁, ϕ₂, ϕ₃, ϕ₄, ϕ₅, ϕ₆, ϕ₇, ϕ₈
+export InteriorBoundarySet
 
 #####
 ##### Misc. small utils
