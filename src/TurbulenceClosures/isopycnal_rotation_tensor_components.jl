@@ -86,7 +86,7 @@ end
     Sx   = - bx / bz
 
     return ifelse(bz == 0, zero(grid), Sx) + ∂x_z
-end 
+end
 
 @inline function isopycnal_rotation_tensor_yz_cfc(i, j, k, grid::AbstractGrid, buoyancy, tracers,
                                                   slope_model::SmallSlopeIsopycnalTensor)
