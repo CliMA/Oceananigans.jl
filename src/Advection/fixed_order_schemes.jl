@@ -4,23 +4,23 @@ using Oceananigans.Advection: Centered, UpwindBiased, WENO, VectorInvariant
 
 struct CenteredFixedOrderAdvectionScheme{N, FT, S <: AbstractCenteredAdvectionScheme} <: AbstractCenteredAdvectionScheme{N, FT}
     scheme::S
-    function CenteredFixedOrderAdvectionScheme(scheme::S <: AbstractCenteredAdvectionScheme{N, FT}) where {N, FT, S}
+    function CenteredFixedOrderAdvectionScheme{N, FT}(scheme::S <: AbstractCenteredAdvectionScheme) where {N, FT, S}
         return new{N, FT, S}(scheme)
     end
 end
 
 struct UpwindBiasedFixedOrderAdvectionScheme{N, FT, S <: AbstractUpwindBiasedAdvectionScheme} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
     scheme::S
-    function UpwindBiasedFixedOrderAdvectionScheme(scheme::S <: AbstractUpwindBiasedAdvectionScheme{N, FT}) where {N, FT, S}
+    function UpwindBiasedFixedOrderAdvectionScheme{N, FT}(scheme::S <: AbstractUpwindBiasedAdvectionScheme) where {N, FT, S}
         return new{N, FT, S}(scheme)
     end
 end
 
-fixed_order_scheme(scheme::Centered) = CenteredFixedOrderAdvectionScheme(scheme)
+fixed_order_scheme(scheme::Centered{N, FT}) where {N, FT} = CenteredFixedOrderAdvectionScheme{N, FT}(scheme)
 
-fixed_order_scheme(scheme::UpwindBiased) = UpwindBiasedFixedOrderAdvectionScheme(scheme)
+fixed_order_scheme(scheme::UpwindBiased{N, FT}) where {N, FT} = UpwindBiasedFixedOrderAdvectionScheme{N, FT}(scheme)
 
-fixed_order_scheme(scheme::WENO) = UpwindBiasedFixedOrderAdvectionScheme(scheme)
+fixed_order_scheme(scheme::WENO{N, FT}) where {N, FT} = UpwindBiasedFixedOrderAdvectionScheme{N, FT}(scheme)
 
 function fixed_order_scheme(scheme::VectorInvariant)
     return VectorInvariant(
