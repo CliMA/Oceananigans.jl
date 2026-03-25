@@ -6,7 +6,8 @@ import Oceananigans.Fields: condition_operand, conditional_length
 
 #####
 ##### Reduction operations involving tripolar grids exclude the repeated row at the top
-##### of the domain for Fields located on `Center`s in meridional direction.
+##### of the domain for Fields located on `Center`s in meridional direction in case of a `RightCenterFolded`
+##### topology and Fields located on `Field`s in the meridional direction in case of a `RightFaceFolded`.
 #####
 
 struct PrognosticTripolarCells{F} <: Function
@@ -40,6 +41,9 @@ Adapt.adapt_structure(to, vd::PrognosticTripolarCells) = PrognosticTripolarCells
     face_folded_domain   = ifelse(Ly == Face, !last_half_row_face,   true)
     center_folded_domain = ifelse(Ly == Face, true, !last_half_row_center)
 
+    # At the moment it does not work for UPivot distributed tripolar grids since
+    # if TY != RightFaceFolded it assumes an FPivot which is the default distributed tripolar grids.
+    # TODO: add support for a `UPivot` distributed tripolar grid.
     return ifelse(TY == RightFaceFolded, face_folded_domain, center_folded_domain)
 end
 
