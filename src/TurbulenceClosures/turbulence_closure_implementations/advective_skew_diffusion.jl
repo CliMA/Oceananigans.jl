@@ -59,7 +59,7 @@ end
     by   = ℑzᵃᵃᶠ(i, j, k, grid, ∂yᵣ_b, b, C)
     bz   = ℑyᵃᶠᵃ(i, j, k, grid, ∂z_b, b, C)
     ∂y_z = ∂y_zᶜᶠᶠ(i, j, k, grid)
-    Sy   = ifelse(bz == 0, Sg, - by / bz + ∂y_z)
+    Sy   = ifelse(bz == 0, ∂y_z, - by / bz + ∂y_z)
 
     # Impose a boundary condition on immersed peripheries
     inactive = peripheral_node(i, j, k, grid, Center(), Face(), Face())
