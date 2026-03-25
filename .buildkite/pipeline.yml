@@ -126,6 +126,7 @@ steps:
           - "🕊 poisson_solvers_1"
           - "🦤 general_solvers"
           - "🎣 turbulence_closures"
+          - "🏀 coriolis"
           - "🦀 time_stepping_1"
           - "🦈 time_stepping_2"
           - "🦟 time_stepping_3"

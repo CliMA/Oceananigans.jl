@@ -138,6 +138,10 @@ end
 # for all other cases, `periphery_offset` is zero.
 periphery_offset(loc, grid, side) = 0
 
+# Returns the default worksize given a particular grid
+# defaults to the size of the grid.
+worksize(grid) = size(grid)
+
 """
     interior_work_layout(grid, dims, location)
 
@@ -153,7 +157,7 @@ to be specified.
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
 @inline function interior_work_layout(grid, workdims::Symbol, (LX, LY, LZ))
-    Nx, Ny, Nz = size(grid)
+    Fx, Fy, Fz = worksize(grid)
 
     # just an example for :xyz
     ℓx = instantiate(LX)
@@ -166,23 +170,23 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
     oz = periphery_offset(ℓz, grid, 3)
 
     # Worksize
-    Wx, Wy, Wz = (Nx-ox, Ny-oy, Nz-oz)
+    Wx, Wy, Wz = (Fx-ox, Fy-oy, Fz-oz)
     workgroup = heuristic_workgroup(Wx, Wy, Wz)
     workgroup = StaticSize(workgroup)
 
     # Adapt to workdims
-    worksize = ifelse(workdims == :xyz, (Wx, Wy, Wz),
-               ifelse(workdims == :xy,  (Wx, Wy),
-               ifelse(workdims == :xz,  (Wx, Wz), (Wy, Wz))))
+    _worksize = ifelse(workdims == :xyz, (Wx, Wy, Wz),
+                ifelse(workdims == :xy,  (Wx, Wy),
+                ifelse(workdims == :xz,  (Wx, Wz), (Wy, Wz))))
 
     offsets = ifelse(workdims == :xyz, (ox, oy, oz),
               ifelse(workdims == :xy,  (ox, oy),
               ifelse(workdims == :xz,  (ox, oz), (oy, oz))))
 
-    range = contiguousrange(worksize, offsets)
-    worksize = OffsetStaticSize(range)
+    range = contiguousrange(_worksize, offsets)
+    _worksize = OffsetStaticSize(range)
 
-    return workgroup, worksize
+    return workgroup, _worksize
 end
 
 """
@@ -199,15 +203,16 @@ to be specified.
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
 @inline function work_layout(grid, workdims::Symbol, reduced_dimensions)
-    Nx, Ny, Nz = size(grid)
-    Wx, Wy, Wz = flatten_reduced_dimensions((Nx, Ny, Nz), reduced_dimensions) # this seems to be for halo filling
-    workgroup = heuristic_workgroup(Wx, Wy, Wz)
+    Fx, Fy, Fz = worksize(grid)
+    Wx, Wy, Wz = flatten_reduced_dimensions((Fx, Fy, Fz), reduced_dimensions) # this seems to be for halo filling
+    workgroup  = heuristic_workgroup(Wx, Wy, Wz)
 
-    worksize = ifelse(workdims == :xyz, (Wx, Wy, Wz),
-               ifelse(workdims == :xy, (Wx, Wy),
-               ifelse(workdims == :xz, (Wx, Wz), (Wy, Wz))))
+    _worksize = ifelse(workdims == :xyz, (Wx, Wy, Wz),
+                ifelse(workdims == :xy,  (Wx, Wy),
+                ifelse(workdims == :xz,  (Wx, Wz),
+                                         (Wy, Wz))))
 
-    return StaticSize(workgroup), StaticSize(worksize)
+    return StaticSize(workgroup), StaticSize(_worksize)
 end
 
 @inline function work_layout(grid, worksize::NTuple{N, Int}, reduced_dimensions) where N
