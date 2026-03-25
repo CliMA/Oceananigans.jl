@@ -34,11 +34,11 @@ Adapt.adapt_structure(to, vd::PrognosticTripolarCells) = PrognosticTripolarCells
     Ly = Oceananigans.Fields.location(co)[2]
     TY = Oceananigans.Grids.topology(grid, 2)
 
-    last_half_row  = ((i > Nx÷2) & (j == Ny))
-    full_final_row = (j == Ny)
+    last_half_row_center = ((i > Nx÷2) & (j == Ny))
+    last_half_row_face   = ((i > Nx÷2) & (j == Ny + 1))
 
-    face_folded_domain   = ifelse(Ly == Face, !last_half_row, !full_final_row)
-    center_folded_domain = ifelse(Ly == Face, true,           !last_half_row)
+    face_folded_domain   = ifelse(Ly == Face, !last_half_row_face,   true)
+    center_folded_domain = ifelse(Ly == Face, true, !last_half_row_center)
 
     return ifelse(TY == RightFaceFolded, face_folded_domain, center_folded_domain)
 end
