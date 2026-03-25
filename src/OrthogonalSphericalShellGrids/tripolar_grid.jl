@@ -150,13 +150,6 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
     Nx, Ny, Nz = size
     Hx, Hy, Hz = halo
 
-    # A right-face folded has prognostic values in Ny + 1,
-    # therefore, we need an extra halo point in y
-    if fold_topology == RightFaceFolded
-        Hy = Hy + 1
-        halo = (Hx, Hy, Hz)
-    end
-
     if isodd(Nx)
         throw(ArgumentError("The number of cells in the longitude dimension should be even!"))
     end
