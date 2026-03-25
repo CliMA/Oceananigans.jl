@@ -36,6 +36,7 @@ end
 #Fallback, maybe should use a warning if not implemented?
 fixed_order_scheme(scheme) = scheme
 
+const FixedOrderAdvectionScheme = Union{CenteredFixedOrderAdvectionScheme, UpwindBiasedFixedOrderAdvectionScheme}
 # Overload all interpolation functions to skip any boundary checks
 for bias in (:symmetric, :biased)
     for (d, ξ) in enumerate((:x, :y, :z))
@@ -48,10 +49,7 @@ for bias in (:symmetric, :biased)
             _interp = Symbol(:_, interp)
 
             @eval begin
-                @inline function $_interp(i, j, k, grid::AbstractGrid, scheme::CenteredFixedOrderAdvectionScheme, args...)
-                    return $interp(i, j, k, grid, scheme.scheme, args...)
-                end
-                @inline function $_interp(i, j, k, grid::AbstractGrid, scheme::UpwindBiasedFixedOrderAdvectionScheme, args...)
+                @inline function $_interp(i, j, k, grid::AbstractGrid, scheme::FixedOrderAdvectionScheme, args...)
                     return $interp(i, j, k, grid, scheme.scheme, args...)
                 end
             end
