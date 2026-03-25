@@ -76,7 +76,12 @@ free_surface_displacement_field(velocities, free_surface, grid) = ZFaceField(gri
 free_surface_displacement_field(velocities, ::Nothing, grid) = nothing
 
 # Reconcile free surface state with prognostic velocity fields
-reconcile_free_surface!(free_surface, grid, velocities) = nothing
+# The free-surface halos are filled within time-stepping, not in `update_state!`.
+# Therefore, we need to fill them in the reconciliation step to make sure the first time step is correct.
+reconcile_free_surface!(free_surface, grid, velocities) = fill_halo_regions!(free_surface.displacement)
+
+# Fallback for `nothing` free-surfaces
+reconcile_free_surface!(::Nothing, grid, velocities) = nothing
 
 # Transport velocity computation (only for a SplitExplicitFreeSurface)
 compute_transport_velocities!(model, free_surface) = nothing
