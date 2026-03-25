@@ -1,3 +1,20 @@
+using Oceananigans.Grids: AbstractGrid
+using Oceananigans.ImmersedBoundaries
+
+struct FixedOrderScheme{N, FT, S} <: AbstractAdvectionScheme{N, FT}
+    scheme::S
+    function FixedOrderScheme{N, FT}(scheme::S) where {N, FT}
+        return new{N, FT, S}(scheme)
+end
+
+"""UpwindBiased advection scheme with fixed order"""
+struct FixedOrderUBScheme{N, FT, S} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
+    scheme::S
+    function FixedOrderUBScheme{N, FT}(scheme::S) where {N, FT}
+        return new{N, FT, S}(scheme)
+    end
+end
+
 fixed_order_scheme(scheme::Centered) = FixedOrderCentered(scheme)
 
 fixed_order_scheme(scheme::UpwindBiased) = FixedOrderUpwindBiased(scheme)
@@ -18,52 +35,38 @@ end
 #Fallback, maybe should use a warning if not implemented?
 fixed_order_scheme(scheme) = scheme
 
-"""Centered advection scheme with fixed order"""
-const FixedOrderCentered{N, FT} = Centered{N, FT, Nothing}
-
 function FixedOrderCentered(scheme::Centered{N, FT}) where {N, FT}
-    return Centered(FT; order=scheme_order(scheme), buffer_scheme=nothing)
+    return FixedOrderScheme{N, FT}(scheme)
 end
 
-"""UpwindBiased advection scheme with fixed order"""
-const FixedOrderUpwindBiased{N, FT, SI} = UpwindBiased{N, FT, Nothing, SI}
 
 function FixedOrderUpwindBiased(scheme::UpwindBiased{N, FT}) where {N, FT}
-    return UpwindBiased(FT; order=scheme_order(scheme), buffer_scheme=nothing)
+    return FixedOrderUBScheme{N, FT}(scheme)
 end
 
-"""WENO advection scheme with fixed order"""
-const FixedOrderWENO{N, FT, FT2, PP, SI} = WENO{N, FT, FT2, PP, Nothing, SI}
-
-function FixedOrderWENO(scheme::WENO{N, FT, FT2, PP}) where {N, FT, FT2, PP}
-    order = weno_order(scheme)
-    return WENO(FT, FT2; order=order, buffer_scheme=nothing, bounds=scheme.bounds)
-end
-
-function FixedOrderWENO(FT::DataType=Oceananigans.defaults.FloatType, FT2::DataType=Float32;
-              order = 5,
-              bounds = nothing)
-    return WENO(FT, FT2; order=order, buffer_scheme=nothing, bounds=bounds)
+function FixedOrderWENO(scheme::WENO{N, FT}) where {N, FT}
+    return FixedOrderUBScheme{N, FT}(scheme)
 end
 
 # Overload all interpolation functions to skip any boundary checks
-for static_scheme in (:FixedOrderWENO, :FixedOrderCentered, :FixedOrderUpwindBiased)
-  for bias in (:symmetric, :biased)
-      for (d, ξ) in enumerate((:x, :y, :z))
+for bias in (:symmetric, :biased)
+    for (d, ξ) in enumerate((:x, :y, :z))
 
-          code = [:ᵃ, :ᵃ, :ᵃ]
+        code = [:ᵃ, :ᵃ, :ᵃ]
 
-          for loc in (:ᶜ, :ᶠ)
-              code[d] = loc
-              interp = Symbol(bias, :_interpolate_, ξ, code...)
-              _interp = Symbol(:_, interp)
+        for loc in (:ᶜ, :ᶠ)
+            code[d] = loc
+            interp = Symbol(bias, :_interpolate_, ξ, code...)
+            _interp = Symbol(:_, interp)
 
-              @eval begin
-                  @inline function $_interp(i, j, k, grid, scheme::$static_scheme, args...)
-                      return $interp(i, j, k, grid, scheme, args...)
-                  end
-              end
-          end
-      end
-  end
+            @eval begin
+                @inline function $_interp(i, j, k, grid::AbstractGrid, scheme::FixedOrderScheme, args...)
+                    return $interp(i, j, k, grid, scheme, args...)
+                end
+                @inline function $_interp(i, j, k, grid::AbstractGrid, scheme::FixedOrderUBScheme, args...)
+                    return $interp(i, j, k, grid, scheme, args...)
+                end
+            end
+        end
+    end
 end
