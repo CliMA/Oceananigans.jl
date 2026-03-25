@@ -142,8 +142,8 @@ end
 @kernel function _compute_buoyancy_gradients!(g, grid, b, C)
     i, j, k = @index(Global, NTuple)
     @inbounds begin
-        g.∂x_b[i, j, k] = ∂x_b(i, j, k, grid, b, C)
-        g.∂y_b[i, j, k] = ∂y_b(i, j, k, grid, b, C)
-        g.∂z_b[i, j, k] = ∂z_b(i, j, k, grid, b, C)
+        g.∂xᵣ_b[i, j, k] = ∂xᵣ_b(i, j, k, grid, b, C)
+        g.∂yᵣ_b[i, j, k] = ∂yᵣ_b(i, j, k, grid, b, C)
+         g.∂z_b[i, j, k] =  ∂z_b(i, j, k, grid, b, C)
     end
 end
