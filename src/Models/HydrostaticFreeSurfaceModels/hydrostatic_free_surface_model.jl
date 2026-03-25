@@ -306,6 +306,11 @@ validate_momentum_advection(momentum_advection::VectorInvariant, grid::Orthogona
 validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGrid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
 
 function reconcile_state!(model::HydrostaticFreeSurfaceModel)
+
+    for field in prognostic_fields(model)
+        fill_halo_regions!(field, model.clock, fields(model))
+    end
+
     reconcile_free_surface!(model.free_surface, model.grid, model.velocities)
     reconcile_vertical_coordinate!(model.vertical_coordinate, model, model.grid)
     return nothing
@@ -313,13 +318,6 @@ end
 
 function initialize!(model::HydrostaticFreeSurfaceModel)
     reconcile_state!(model)
-
-    # update_state! fills halos asynchronously; refill synchronously here
-    # to ensure halos are fully populated before time-stepping begins.
-    for field in prognostic_fields(model)
-        fill_halo_regions!(field, model.clock, fields(model))
-    end
-
     initialize_closure_fields!(model.closure_fields, model.closure, model)
     return nothing
 end
