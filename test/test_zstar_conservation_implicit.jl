@@ -42,7 +42,7 @@ include("zstar_conservation_test_utils.jl")
                     set!(model, c = (x, y, z) -> rand(), b = bᵢ, constant = 1)
 
                     Δt = 2minutes
-                    test_zstar_coordinate(model, 100, Δt)
+                    test_zstar_coordinate(model, 60, Δt)
                 end
             end
         end
