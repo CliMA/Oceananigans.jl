@@ -5,6 +5,7 @@ version = "0.96.26"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
+BFloat16s = "ab4f0b2a-ad5b-11e8-123f-65d77653426b"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 Crayons = "a8cc5b0e-0ffa-5ad4-8c14-923d3ee1735f"
 CubedSphere = "7445602f-e544-4518-8976-18f8e8ae6cdb"
@@ -61,6 +62,7 @@ OceananigansReactantExt = ["Reactant", "KernelAbstractions", "ConstructionBase"]
 [compat]
 AMDGPU = "1.2.7"
 Adapt = "4.1.1"
+BFloat16s = "0.6.1"
 CUDA = "5.7"
 ConstructionBase = "1"
 Crayons = "4"
