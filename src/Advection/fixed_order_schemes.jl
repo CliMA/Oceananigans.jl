@@ -4,14 +4,14 @@ using Oceananigans.Advection: Centered, UpwindBiased, WENO, VectorInvariant
 
 struct CenteredFixedOrderAdvectionScheme{N, FT, S <: AbstractCenteredAdvectionScheme} <: AbstractCenteredAdvectionScheme{N, FT}
     scheme::S
-    function CenteredFixedOrderAdvectionScheme(scheme::S) where {N, FT, S <: AbstractCenteredAdvectionScheme{N, FT}}
+    function CenteredFixedOrderAdvectionScheme(scheme::S <: AbstractCenteredAdvectionScheme{N, FT}) where {N, FT, S}
         return new{N, FT, S}(scheme)
     end
 end
 
 struct UpwindBiasedFixedOrderAdvectionScheme{N, FT, S <: AbstractUpwindBiasedAdvectionScheme} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
     scheme::S
-    function UpwindBiasedFixedOrderAdvectionScheme(scheme::S) where {N, FT, S <: AbstractUpwindBiasedAdvectionScheme{N, FT}}
+    function UpwindBiasedFixedOrderAdvectionScheme(scheme::S <: AbstractUpwindBiasedAdvectionScheme{N, FT}) where {N, FT, S}
         return new{N, FT, S}(scheme)
     end
 end
