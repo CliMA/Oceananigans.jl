@@ -1,7 +1,6 @@
 using Oceananigans.Advection: Advection, WENO, VectorInvariant, adapt_advection_order, cell_advection_timescale
-using Oceananigans.BuoyancyFormulations: BuoyancyFormulations, BuoyancyForce,
-    NegativeZDirection, AbstractBuoyancyFormulation, validate_unit_vector
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
+using Oceananigans.BuoyancyFormulations: BuoyancyFormulations, BuoyancyForce, NegativeZDirection, AbstractBuoyancyFormulation, validate_unit_vector
+using Oceananigans.TimeSteppers: TimeSteppers, QuasiAdamsBashforth2TimeStepper
 using Oceananigans.Models: Models, ExplicitFreeSurface, HydrostaticFreeSurfaceModel, ImplicitFreeSurface, PrescribedVelocityFields
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModels
 using Oceananigans.TurbulenceClosures: TurbulenceClosures, VerticallyImplicitTimeDiscretization, implicit_diffusion_solver
@@ -81,8 +80,24 @@ end
 
 HydrostaticFreeSurfaceModels.validate_tracer_advection(tracer_advection::MultiRegionObject, grid::MultiRegionGrids) = tracer_advection, NamedTuple()
 
-# At construction time all fields are zero, so just update_state!.
-# reconcile_state! and halo filling happen later via initialize! or set!.
+# reconcile_state! for a multi-region model.
+# A cubed-sphere grid needs to fill u and v velocity halos together.
+function TimeSteppers.reconcile_state!(model::HydrostaticFreeSurfaceModel)
+
+    u = model.velocities.u
+    v = model.velocities.v
+
+    fill_halo_regions!((u, v), model.clock, Oceananigans.fields(model))
+    fields = Oceananigans.prognostic_fields(model)
+
+    for key in keys(fields)
+        !(key ∈ (:u, :v, :U, :V)) && fill_halo_regions!(fields[key], model.clock, Oceananigans.fields(model))
+    end
+
+    Models.HydrostaticFreeSurfaceModels.reconcile_free_surface!(model.free_surface, model.grid, model.velocities)
+    Models.HydrostaticFreeSurfaceModels.reconcile_vertical_coordinate!(model.vertical_coordinate, model, model.grid)
+    return nothing
+end
 
 @inline Utils.isregional(mrm::MultiRegionModel) = true
 @inline Utils.regions(mrm::MultiRegionModel) = regions(mrm.grid)
