@@ -116,7 +116,7 @@ function parse_commandline()
         "--warmup_steps"
             help = "Number of warmup time steps (benchmark mode only)"
             arg_type = Int
-            default = 10
+            default = 5
 
         "--dt"
             help = "Time step size in seconds"
@@ -258,6 +258,14 @@ function run_benchmarks(args)
     momentum_advections = parse_list(args["momentum_advection"])
     tracer_advections = parse_list(args["tracer_advection"])
     closures = parse_list(args["closure"])
+
+    # Zip advection lists when they have the same length (paired sweeps),
+    # otherwise fall back to full product
+    advection_pairs = if length(momentum_advections) == length(tracer_advections)
+        collect(zip(momentum_advections, tracer_advections))
+    else
+        [(m, t) for (m, t) in Iterators.product(momentum_advections, tracer_advections)]
+    end
     grid_types = [s for s in parse_list(args["grid_type"])]
     zstar_coordinates = [lowercase(s) == "true" for s in parse_list(args["zstar_coordinate"])]
     timestepper = make_timestepper(args["timestepper"])
@@ -313,8 +321,9 @@ function run_benchmarks(args)
     println()
 
     # Loop over all combinations using Iterators.product
-    for ((Nx, Ny, Nz), FT, grid_type, zstar_coordinate, mom_adv_name, trc_adv_name, cls_name) in
-            Iterators.product(sizes, float_types, grid_types, zstar_coordinates, momentum_advections, tracer_advections, closures)
+    # Advection pairs are zipped (not crossed) when both lists have the same length
+    for ((Nx, Ny, Nz), FT, grid_type, zstar_coordinate, (mom_adv_name, trc_adv_name), cls_name) in
+            Iterators.product(sizes, float_types, grid_types, zstar_coordinates, advection_pairs, closures)
 
         # Build benchmark name
         size_str = "$(Nx)x$(Ny)x$(Nz)"
