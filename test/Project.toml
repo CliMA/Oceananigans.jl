@@ -78,3 +78,6 @@ StructArrays = "0.4, 0.5, 0.6, 0.7"
 XESMF = "0.1.5"
 julia = "1.10"
 oneAPI = "2.0.1"
+
+[preferences.Reactant]
+xla_runtime = "IFRT"
