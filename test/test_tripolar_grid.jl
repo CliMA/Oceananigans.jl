@@ -263,11 +263,11 @@ isrot180antisymmetric(arr) = arr == -rot180(arr)
             #          │           │           │           │           │           │           │
             # Ny+1 ─▶  u     c     u     c     u     c     u     c     u     c     u     c     u
             #          │           │           │           │           │           │           │
-            # Ny+1 ─▶  ├──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼───  v ────┤
+            # Ny+1 ─▶  ├──── v ────┼──── v ────┼──── v ─── F ─── v ────┼──── v ────┼───  v ────┤ ◀─ Fold (RightFaceFolded)
             #          │           │           │           │           │           │           │
             #   Ny ─▶  u     c     u     c     u     c     U     c     u     c     u     c     u ◀─ Fold (RightCenterFolded)
             #          │           │           │           │           │           │           │
-            #   Ny ─▶  ├──── v ────┼──── v ────┼──── v ─── F ─── v ────┼──── v ────┼──── v ────┤ ◀─ Fold (RightFaceFolded)
+            #   Ny ─▶  ├──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┤
             #          │           │           │           │           │           │           │
             # Ny-1 ─▶  u     c     u     c     u     c     u     c     u     c     u     c     u
             #          │           │           │           │           │           │           │
@@ -276,14 +276,18 @@ isrot180antisymmetric(arr) = arr == -rot180(arr)
             #          ▲     ▲     ▲                       ▲                       ▲     ▲     ▲
             #          1     1     2                     Nx÷2+1                    Nx    Nx    Nx+1
             # For testing, rotate the entire grid around the central pivot point!
-            # Note that the pivot-point index depends on the topology and location of the field.
-            pivotjᶜ, pivotjᶠ = (fold_topology == RightFaceFolded) ? (Ny - 1/2, Ny) : (Ny, Ny + 1/2)
+
+            # Use half-indices for the pivot-point index, which depends on the topology and location.
+            # pivotjᶜ is the pivot index for center fields, and pivotjᶠ for face fields.
+            pivotjᶜ, pivotjᶠ = (fold_topology == RightFaceFolded) ? (Ny + 1/2, Ny + 1) : (Ny, Ny + 1/2)
 
             # Then we take views centered around the pivot and rotate that view by 180°.
             # However we cannot rotate the entire grid and must restrict ourselves to those indices
             # that remain within the interior + halo after 180° rotation.
-            jᶜ = pivotable_indices(1 - Hy, Ny + Hy, pivotjᶜ)
-            jᶠ = pivotable_indices(1 - Hy, Ny + Hy, pivotjᶠ)
+            maxjᶜ = Ny + Hy # max j for center fields
+            maxjᶠ = Ny + Hy + (fold_topology == RightFaceFolded) # +1 for y-face fields if FPivot
+            jᶜ = pivotable_indices(1 - Hy, maxjᶜ, pivotjᶜ)
+            jᶠ = pivotable_indices(1 - Hy, maxjᶠ, pivotjᶠ)
 
             # Enforce zero velocities on the pivot points where u = -u and v = -v!
             # Only u velocity can be on pivot point for UPointPivot grid (RightCenterFolded)

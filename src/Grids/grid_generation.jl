@@ -112,21 +112,6 @@ function extend_node_interval(::RightCenterFolded, N, node_interval::Tuple{<:Num
     Δ = L / (N - 1)
     return (c₁ - Δ/2, c₂ + Δ/2)
 end
-# For RightFaceFolded, we want to generate coordinates that start and end at face locations,
-# but we have an extra row at Ny, so we must extend the interval by one cell on the right:
-# Example with N = 4
-# interval wanted:      c₁                      c₂
-#                       │◀───────── L ─────────▶│
-#                       │◀─ Δ ─▶│               │
-# face and centers:     f   c   f   c   f   c   f   c   f
-#                       │                               │
-# extended interval:    f₁                              f₂
-function extend_node_interval(::RightFaceFolded, N, node_interval::Tuple{<:Number, <:Number})
-    c₁, c₂ = @. BigFloat(node_interval)
-    L = c₂ - c₁
-    Δ = L / (N - 1)
-    return (c₁, c₂ + Δ)
-end
 
 # Generate a regularly-spaced coordinate passing the domain extent (2-tuple) and number of points
 function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, <:Number}, coordinate_name, arch)
