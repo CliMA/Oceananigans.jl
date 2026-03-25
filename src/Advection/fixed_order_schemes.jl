@@ -62,10 +62,10 @@ for bias in (:symmetric, :biased)
 
             @eval begin
                 @inline function $_interp(i, j, k, grid::AbstractGrid, scheme::FixedOrderScheme, args...)
-                    return $interp(i, j, k, grid, scheme, args...)
+                    return $interp(i, j, k, grid, scheme.scheme, args...)
                 end
                 @inline function $_interp(i, j, k, grid::AbstractGrid, scheme::FixedOrderUBScheme, args...)
-                    return $interp(i, j, k, grid, scheme, args...)
+                    return $interp(i, j, k, grid, scheme.scheme, args...)
                 end
             end
         end
