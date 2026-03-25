@@ -53,11 +53,11 @@ function BuoyancyForce(grid, formulation::AbstractBuoyancyFormulation; gravity_u
     gravity_unit_vector = validate_unit_vector(gravity_unit_vector)
 
     if materialize_gradients
-        ∂x_b = XFaceField(grid)
-        ∂y_b = YFaceField(grid)
+        ∂xᵣ_b = XFaceField(grid)
+        ∂yᵣ_b = YFaceField(grid)
         ∂z_b = ZFaceField(grid)
 
-        gradients = (; ∂x_b, ∂y_b, ∂z_b)
+        gradients = (; ∂xᵣ_b, ∂yᵣ_b, ∂z_b)
     else
         gradients = nothing
     end
