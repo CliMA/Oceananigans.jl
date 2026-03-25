@@ -5,6 +5,7 @@ struct FixedOrderScheme{N, FT, S} <: AbstractAdvectionScheme{N, FT}
     scheme::S
     function FixedOrderScheme{N, FT}(scheme::S) where {N, FT}
         return new{N, FT, S}(scheme)
+    end
 end
 
 """UpwindBiased advection scheme with fixed order"""
