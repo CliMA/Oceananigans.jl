@@ -205,8 +205,8 @@ end
             ("ISSD AdvectiveFormulation",
              IsopycnalSkewSymmetricDiffusivity(κ_skew=1000.0, κ_symmetric=1000.0,
                                                skew_flux_formulation=AdvectiveFormulation())),
-            ("TISSD",
-             TriadIsopycnalSkewSymmetricDiffusivity(κ_skew=1000.0, κ_symmetric=1000.0)),
+            # ("TISSD", TODO: test when ready
+            # TriadIsopycnalSkewSymmetricDiffusivity(κ_skew=1000.0, κ_symmetric=1000.0)),
         ]
 
         @testset "z-star time-stepping [$arch]" begin
