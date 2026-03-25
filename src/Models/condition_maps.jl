@@ -41,6 +41,8 @@ using KernelAbstractions: @kernel, @index
     return (; condition_maps...)
 end
 
+compute_advection_conditioned_map(scheme::Nothing, grid; active_cells_map=nothing) = nothing
+
 function compute_advection_conditioned_map(scheme,
                                            grid;
                                            active_cells_map=nothing)
