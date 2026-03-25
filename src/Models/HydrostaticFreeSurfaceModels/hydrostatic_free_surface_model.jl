@@ -16,8 +16,8 @@ using Oceananigans.Utils: tupleit
 
 import Oceananigans
 import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
-import Oceananigans.Models: initialization_update_state!, total_velocities
-import Oceananigans.TimeSteppers: update_state!
+import Oceananigans.Models: total_velocities
+import Oceananigans.TimeSteppers: update_state!, reconcile_state!, materialize_clock!
 import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
@@ -273,29 +273,10 @@ function HydrostaticFreeSurfaceModel(grid;
                                         free_surface, forcing, closure, particles, biogeochemistry, velocities, transport_velocities,
                                         tracers, pressure, closure_fields, timestepper, auxiliary_fields, vertical_coordinate)
 
-    initialization_update_state!(model)
-
-    return model
-end
-
-function initialization_update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[])
-
-    # Mask immersed velocities after halo fill to ensure
-    # velocities are zero at immersed cells
-    foreach(mask_immersed_field!, prognostic_fields(model))
-
-    # Paranoid fill halo update, also necessary for velocity fields
-    for field in prognostic_fields(model)
-        fill_halo_regions!(field, model.clock, fields(model))
-    end
-
-    # Update the state of the model
+    materialize_clock!(clock, timestepper)
     update_state!(model)
 
-    # Finally, initialize the model (e.g., free surface, vertical coordinate...)
-    initialize!(model)
-
-    return nothing
+    return model
 end
 
 transport_velocity_fields(velocities) = (u = copy_velocity(velocities.u), 
@@ -340,9 +321,19 @@ validate_momentum_advection(momentum_advection::Nothing,         grid::Orthogona
 validate_momentum_advection(momentum_advection::VectorInvariant, grid::OrthogonalSphericalShellGrid) = momentum_advection
 validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGrid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
 
+function reconcile_state!(model::HydrostaticFreeSurfaceModel)
+
+    for field in prognostic_fields(model)
+        fill_halo_regions!(field, model.clock, fields(model))
+    end
+
+    reconcile_free_surface!(model.free_surface, model.grid, model.velocities)
+    reconcile_vertical_coordinate!(model.vertical_coordinate, model, model.grid)
+    return nothing
+end
+
 function initialize!(model::HydrostaticFreeSurfaceModel)
-    initialize_vertical_coordinate!(model.vertical_coordinate, model, model.grid)
-    initialize_free_surface!(model.free_surface, model.grid, model.velocities)
+    reconcile_state!(model)
     initialize_closure_fields!(model.closure_fields, model.closure, model)
     return nothing
 end

@@ -75,8 +75,8 @@ end
 free_surface_displacement_field(velocities, free_surface, grid) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
 free_surface_displacement_field(velocities, ::Nothing, grid) = nothing
 
-# free surface initialization functions
-initialize_free_surface!(free_surface, grid, velocities) = nothing
+# Fallback
+reconcile_free_surface!(free_surface, grid, velocities) = nothing
 
 # Transport velocity computation
 function compute_transport_velocities! end
