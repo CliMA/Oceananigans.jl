@@ -40,8 +40,8 @@ steps:
     agents:
       queue: "Oceananigans-benchmarks"
     command: |
-      # Instantiate and precompile benchmarking environment
-      $JULIA $JULIA_ARGS -e 'using Pkg; Pkg.instantiate(); using OceananigansBenchmarks'
+      # Instantiate, precompile, and pre-download bathymetry data (before parallel GPU runs)
+      $JULIA $JULIA_ARGS -e 'using Pkg; Pkg.instantiate(); using OceananigansBenchmarks, DataDeps; datadep"benchmark_bathymetry"'
 
       # Helper: extract NSYS top-10 kernel stats and merge into benchmark results JSON
       nsys_extract() {
