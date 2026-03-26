@@ -109,6 +109,7 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, Î
     @apply_regionally correct_barotropic_mode!(model, Î”t)
 
     u, v, _ = model.velocities
+    mask_immersed_horizontal_velocities!(model.velocities)
     fill_halo_regions!((u, v), model.clock, fields(model))
 
     # Compute transport velocities

@@ -99,8 +99,8 @@ For implicit free surfaces, a predictor-corrector approach is used:
 
     # Mask and fill velocity halos
     u, v, _ = model.velocities
+    mask_immersed_horizontal_velocities!(model.velocities)
     fill_halo_regions!((u, v), model.clock, fields(model))
-
 
     compute_transport_velocities!(model, free_surface)
 
