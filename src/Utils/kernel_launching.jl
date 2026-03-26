@@ -370,6 +370,13 @@ end
   return nothing
 end
 
+@inline function launch!(arch, grid, workspec_tuple::Tuple, args::InteriorBoundarySet; kwargs...)
+    for workspec in workspec_tuple
+        launch!(arch, grid, workspec, args...; kwargs...)
+    end
+    return nothing
+end
+
 # When dims::Val
 @inline launch!(arch, grid, ::Val{workspec}, args...; kw...) where workspec =
     _launch!(arch, grid, workspec, args...; kw...)
