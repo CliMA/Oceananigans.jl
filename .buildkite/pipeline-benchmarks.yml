@@ -7,12 +7,12 @@ env:
   JULIA_NUM_PRECOMPILE_TASKS: 24
   JULIA_NUM_THREADS: 8
   NSYS: "/storage6/nsight/bin/nsys"
-  CUDA_VISIBLE_DEVICES: "0"
   TMPDIR: "$TARTARUS_HOME/tmp"
   JULIA: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia"
   JULIA_ARGS: "--color=yes --project=benchmarking --check-bounds=no"
   BENCHMARK_SCRIPT: "benchmarking/run_benchmarks.jl"
   OUTPUT_FILE: "benchmark_results.json"
+  OUTPUT_FILE_GPU2: "benchmark_results_gpu2.json"
 
 steps:
   - label: "🏕️ Initialize tartarus environment"
@@ -40,8 +40,8 @@ steps:
     agents:
       queue: "Oceananigans-benchmarks"
     command: |
-      # Instantiate benchmarking environment
-      $JULIA $JULIA_ARGS -e 'using Pkg; Pkg.instantiate()'
+      # Instantiate and precompile benchmarking environment
+      $JULIA $JULIA_ARGS -e 'using Pkg; Pkg.instantiate(); using OceananigansBenchmarks'
 
       # Helper: extract NSYS top-10 kernel stats and merge into benchmark results JSON
       nsys_extract() {
@@ -79,44 +79,73 @@ steps:
         rm -f \${REPORT} \${REPORT%.nsys-rep}.sqlite nsys_kernels.csv
       }
 
+      # ==========================================
+      #  GPU 2 benchmarks (background)
+      # ==========================================
+      (
+        export CUDA_VISIBLE_DEVICES=2
+
+        echo "========================================"
+        echo "  Group 4: Advection sweep (1/2 deg) [GPU 2]"
+        echo "========================================"
+        $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --momentum_advection="nothing, WENOVectorInvariant5, WENOVectorInvariant9" --tracer_advection="nothing, WENO5, WENO9" --group="Advection Sweep" --output=$OUTPUT_FILE_GPU2 --clear
+
+        echo "========================================"
+        echo "  Group 5: Grid type sweep (1/2 deg) [GPU 2]"
+        echo "========================================"
+        $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --grid_type="lat_lon, immersed_lat_lon, tripolar" --zstar_coordinate=true --group="Grid Type Sweep" --output=$OUTPUT_FILE_GPU2
+        $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --grid_type="lat_lon, immersed_lat_lon" --zstar_coordinate=false --group="Grid Type Sweep" --output=$OUTPUT_FILE_GPU2
+
+        echo "========================================"
+        echo "  Group 6: Tracer count sweep (1/2 deg) [GPU 2]"
+        echo "========================================"
+        $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --tracers="T,S,C1" --group="Tracer Count Sweep" --output=$OUTPUT_FILE_GPU2
+      ) &
+      GPU2_PID=$!
+
+      # ==========================================
+      #  GPU 0 benchmarks (foreground)
+      # ==========================================
+      export CUDA_VISIBLE_DEVICES=0
+
       echo "========================================"
-      echo "  Default configuration (baseline, NSYS profiled)"
+      echo "  Default configuration (baseline, NSYS profiled) [GPU 0]"
       echo "========================================"
       $NSYS profile --output=nsys_default --force-overwrite true --trace=cuda \
         $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --group="Default" --output=$OUTPUT_FILE --clear
       nsys_extract nsys_default.nsys-rep Default
 
       echo "========================================"
-      echo "  Group 1: Resolution sweep"
+      echo "  Group 1: Resolution sweep [GPU 0]"
       echo "========================================"
       $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size="180x90x50, 720x360x50" --group="Resolution Sweep" --output=$OUTPUT_FILE
 
       echo "========================================"
-      echo "  Group 2: Number type sweep"
+      echo "  Group 2: Number type sweep [GPU 0]"
       echo "========================================"
       $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --float_type=Float32 --group="Float Type Sweep" --output=$OUTPUT_FILE
 
       echo "========================================"
-      echo "  Group 3: Closure sweep (1/2 deg)"
+      echo "  Group 3: Closure sweep (1/2 deg) [GPU 0]"
       echo "========================================"
       $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --closure="nothing, CATKE+Biharmonic, CATKE+GM+Biharmonic" --group="Closure Sweep" --output=$OUTPUT_FILE
 
-      echo "========================================"
-      echo "  Group 4: Advection sweep (1/2 deg)"
-      echo "========================================"
-      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --momentum_advection="nothing, WENOVectorInvariant5, WENOVectorInvariant9" --tracer_advection="nothing, WENO5, WENO9" --group="Advection Sweep" --output=$OUTPUT_FILE
+      # ==========================================
+      #  Wait for GPU 2 and merge results
+      # ==========================================
+      echo "Waiting for GPU 2 benchmarks to finish..."
+      wait $GPU2_PID
+      GPU2_STATUS=$?
+      if [ $GPU2_STATUS -ne 0 ]; then
+        echo "WARNING: GPU 2 benchmarks exited with status $GPU2_STATUS"
+      fi
 
-      echo "========================================"
-      echo "  Group 5: Grid type sweep (1/2 deg)"
-      echo "========================================"
-      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --grid_type="lat_lon, immersed_lat_lon, tripolar" --zstar_coordinate=true --group="Grid Type Sweep" --output=$OUTPUT_FILE
-      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --grid_type="lat_lon, immersed_lat_lon" --zstar_coordinate=false --group="Grid Type Sweep" --output=$OUTPUT_FILE
-
-      echo "========================================"
-      echo "  Group 6: Tracer count sweep (1/2 deg)"
-      echo "========================================"
-      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --tracers="T,S,C1" --group="Tracer Count Sweep" --output=$OUTPUT_FILE
-      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --tracers="T,S,C1,C2,C3" --group="Tracer Count Sweep" --output=$OUTPUT_FILE
+      if [ -f "$OUTPUT_FILE_GPU2" ]; then
+        jq -s 'add' $OUTPUT_FILE $OUTPUT_FILE_GPU2 > merged_tmp.json
+        mv merged_tmp.json $OUTPUT_FILE
+        rm -f $OUTPUT_FILE_GPU2
+        echo "Merged GPU 2 results into $OUTPUT_FILE"
+      fi
 
     artifact_paths:
       - "benchmark_results.json"
