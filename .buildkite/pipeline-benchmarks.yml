@@ -101,7 +101,7 @@ steps:
         echo "========================================"
         $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --tracers="T,S,C1" --group="Tracer Count Sweep" --output=$OUTPUT_FILE_GPU2
       ) &
-      GPU2_PID=$!
+      GPU2_PID=$$!
 
       # ==========================================
       #  GPU 0 benchmarks (foreground)
@@ -135,7 +135,7 @@ steps:
       # ==========================================
       echo "Waiting for GPU 2 benchmarks to finish..."
       wait $GPU2_PID
-      GPU2_STATUS=$?
+      GPU2_STATUS=$$?
       if [ $GPU2_STATUS -ne 0 ]; then
         echo "WARNING: GPU 2 benchmarks exited with status $GPU2_STATUS"
       fi
