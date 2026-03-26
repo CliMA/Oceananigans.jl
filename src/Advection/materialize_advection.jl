@@ -18,6 +18,18 @@ materialize_advection(advection::FluxFormAdvection, grid) = FluxFormAdvection(
     materialize_advection(advection.z, grid),
 )
 
+# Upwinding treatments hold a cross_scheme that may contain deferred WENO weight computation
+materialize_advection(u::OnlySelfUpwinding, grid) =
+    OnlySelfUpwinding(materialize_advection(u.cross_scheme, grid),
+                      u.δU_stencil, u.δV_stencil, u.δu²_stencil, u.δv²_stencil)
+
+materialize_advection(u::CrossAndSelfUpwinding, grid) =
+    CrossAndSelfUpwinding(materialize_advection(u.cross_scheme, grid),
+                          u.divergence_stencil, u.δu²_stencil, u.δv²_stencil)
+
+materialize_advection(u::VelocityUpwinding, grid) =
+    VelocityUpwinding(materialize_advection(u.cross_scheme, grid))
+
 # VectorInvariant wraps multiple sub-schemes; recurse into each
 materialize_advection(vi::VectorInvariant{N,FT,M}, grid) where {N,FT,M} =
     VectorInvariant{N,FT,M}(
@@ -26,7 +38,7 @@ materialize_advection(vi::VectorInvariant{N,FT,M}, grid) where {N,FT,M} =
         materialize_advection(vi.vertical_advection_scheme, grid),
         materialize_advection(vi.kinetic_energy_gradient_scheme, grid),
         materialize_advection(vi.divergence_scheme, grid),
-        vi.upwinding,
+        materialize_advection(vi.upwinding, grid),
     )
 
 
