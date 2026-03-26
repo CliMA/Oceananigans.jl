@@ -11,7 +11,7 @@ end
 
 struct UpwindBiasedFixedOrderAdvectionScheme{N, FT, S <: AbstractUpwindBiasedAdvectionScheme} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
     scheme::S
-    function UpwindBiasedFixedOrderAdvectionScheme{N, FT}(scheme::S) where {N, FT, S<:AbstractCenteredAdvectionScheme}
+    function UpwindBiasedFixedOrderAdvectionScheme{N, FT}(scheme::S) where {N, FT, S<:AbstractUpwindBiasedAdvectionScheme}
         return new{N, FT, S}(scheme)
     end
 end
