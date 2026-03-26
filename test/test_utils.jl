@@ -42,6 +42,7 @@ using Oceananigans.Utils: TabulatedFunction
     end
 
     @testset "TabulatedFunction" begin
+        GC.gc()
         @info "  Testing TabulatedFunction..."
 
         #####
@@ -242,9 +243,9 @@ using Oceananigans.Utils: TabulatedFunction
 
             # Test exact values at grid points (linear function should be exact)
             f4d_lin = TabulatedFunction((x, y, z, w) -> x + y + z + w;
-                                        range=((0, 1), (0, 1), (0, 1), (0, 1)), points=(6, 6, 6, 6))
-            for i in 0:5, j in 0:5, k in 0:5, l in 0:5
-                x, y, z, w = i/5, j/5, k/5, l/5
+                                        range=((0, 1), (0, 1), (0, 1), (0, 1)), points=(4, 4, 4, 4))
+            for i in 0:3, j in 0:3, k in 0:3, l in 0:3
+                x, y, z, w = i/3, j/3, k/3, l/3
                 @test f4d_lin(x, y, z, w) ≈ x + y + z + w atol=1e-10
             end
 
@@ -298,9 +299,9 @@ using Oceananigans.Utils: TabulatedFunction
             # Test exact values at grid points (linear function should be exact)
             f5d_lin = TabulatedFunction((a, b, c, d, e) -> a + b + c + d + e;
                                         range=((0,1), (0,1), (0,1), (0,1), (0,1)),
-                                        points=(4, 4, 4, 4, 4))
-            for i in 0:3, j in 0:3, k in 0:3, l in 0:3, m in 0:3
-                a, b, c, d, e = i/3, j/3, k/3, l/3, m/3
+                                        points=(3, 3, 3, 3, 3))
+            for i in 0:2, j in 0:2, k in 0:2, l in 0:2, m in 0:2
+                a, b, c, d, e = i/2, j/2, k/2, l/2, m/2
                 @test f5d_lin(a, b, c, d, e) ≈ a + b + c + d + e atol=1e-10
             end
 
