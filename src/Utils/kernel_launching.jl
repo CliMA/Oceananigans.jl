@@ -370,9 +370,10 @@ end
   return nothing
 end
 
-@inline function launch!(arch, grid, workspec_tuple::Tuple, kernel, first_arg, second_arg, args::InteriorBoundarySet; kwargs...)
+@inline function launch!(arch, grid, workspec_tuple::Tuple, kernel, first_arg, second_arg, args::InteriorBoundarySet;
+                         active_cells_map::InteriorBoundarySet, kwargs...)
     for workspec in workspec_tuple
-        launch!(arch, grid, workspec, args...; kwargs...)
+        launch!(arch, grid, workspec, kernel, first_arg, second_arg, args; active_cells_map, kwargs...)
     end
     return nothing
 end
