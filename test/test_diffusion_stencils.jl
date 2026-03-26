@@ -66,7 +66,7 @@ function isopycnal_static_and_mutable_grids_agree(arch, closure)
     set!(static_model,  b = bᵢ)
     set!(mutable_model, b = bᵢ)
 
-    for i in 1:20
+    for i in 1:100
         time_step!(static_model,  5.0)
         time_step!(mutable_model, 5.0)
     end
@@ -219,7 +219,15 @@ end
         end
 
         @testset "Static vs mutable grid agreement [$arch]" begin
-            for (name, closure) in issd_closures
+            closures = [
+                ("ISSD DiffusiveFormulation",
+                 IsopycnalSkewSymmetricDiffusivity(κ_skew=10.0, κ_symmetric=10.0,
+                                                    skew_flux_formulation=DiffusiveFormulation())),
+                ("ISSD AdvectiveFormulation",
+                 IsopycnalSkewSymmetricDiffusivity(κ_skew=10.0, κ_symmetric=10.0,
+                                                    skew_flux_formulation=AdvectiveFormulation())),
+            ]
+            for (name, closure) in closures
                 @testset "$name" begin
                     @info "  Testing $name: static vs mutable grid [$arch]..."
                     @test isopycnal_static_and_mutable_grids_agree(arch, closure)
