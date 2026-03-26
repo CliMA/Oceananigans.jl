@@ -25,9 +25,13 @@ function step_closure_prognostics! end
 # Fallback for models without closure prognostics
 step_closure_prognostics!(model, Δt) = nothing
 
-# Update the model state at iteration 0, in case run! is not used.
-function maybe_initialize_state!(model, callbacks)
+# Reconcile auxiliary state with prognostic fields (fallback is a no-op).
+reconcile_state!(model) = nothing
+
+# Prepare the model for the first time step, in case run! is not used.
+function maybe_prepare_first_time_step!(model, callbacks)
     if model.clock.iteration == 0
+        reconcile_state!(model)
         update_state!(model, callbacks)
     end
     return nothing
@@ -36,6 +40,10 @@ end
 # Interface for time-stepping Lagrangian particles
 abstract type AbstractLagrangianParticles end
 step_lagrangian_particles!(model, Δt) = nothing
+
+# Materialize clock fields to avoid aliasing issues with Reactant.
+# For QAB2, last_Δt and last_stage_Δt must be distinct objects.
+materialize_clock!(clock, timestepper) = nothing
 
 reset!(timestepper) = nothing
 implicit_step!(field, ::Nothing, args...; kwargs...) = nothing
