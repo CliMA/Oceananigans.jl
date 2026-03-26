@@ -1,3 +1,4 @@
+using Oceananigans: fields
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 # Selection between topology-aware and non-aware operators depending on
