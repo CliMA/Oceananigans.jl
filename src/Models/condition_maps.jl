@@ -1,6 +1,7 @@
 using Oceananigans.Advection: AbstractAdvectionScheme
 using Oceananigans.ImmersedBoundaries
 using Oceananigans.Grids: get_active_cells_map, active_cell
+using Oceananigans.DistributedComputations: DistributedGrid
 using Oceananigans.Architectures: CPU
 import Oceananigans.Architectures as AC
 using Oceananigans.Fields: Field, interior
@@ -39,6 +40,10 @@ using KernelAbstractions: @kernel, @index
     end
 
     return (; condition_maps...)
+end
+
+@inline function generate_condition_maps(grid::DistributedGrid, advection; kwargs...)
+    return get_active_cells_map(grid, Val(:interior))
 end
 
 compute_advection_conditioned_map(scheme::Nothing, grid; active_cells_map=nothing) = nothing
