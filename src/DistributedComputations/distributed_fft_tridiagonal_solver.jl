@@ -220,8 +220,9 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
     x_buffer_needed = child_arch isa GPU && TX == Bounded
     z_buffer_needed = child_arch isa GPU && TZ == Bounded
 
-    # We cannot really batch anything, so on GPUs we always have to permute indices in the y direction
-    y_buffer_needed = child_arch isa GPU
+    # Y-buffer is only needed for Bounded y-topology on GPU (for index permutation/twiddle).
+    # For Periodic y, we now plan the FFT along dim 2 directly, avoiding permutedims.
+    y_buffer_needed = child_arch isa GPU && TY == Bounded
 
     buffer_x = x_buffer_needed ? on_architecture(child_arch, zeros(T, size(storage.xfield)...)) : nothing
     buffer_y = y_buffer_needed ? on_architecture(child_arch, zeros(T, size(storage.yfield)...)) : nothing
