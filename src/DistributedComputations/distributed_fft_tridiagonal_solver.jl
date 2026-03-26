@@ -31,6 +31,7 @@ const XStretchedDistributedSolver = DistributedFourierTridiagonalPoissonSolver{<
 const YStretchedDistributedSolver = DistributedFourierTridiagonalPoissonSolver{<:Any, <:Any, <:YTridiagonalSolver}
 const ZStretchedDistributedSolver = DistributedFourierTridiagonalPoissonSolver{<:Any, <:Any, <:ZTridiagonalSolver}
 
+
 architecture(solver::DistributedFourierTridiagonalPoissonSolver) =
     architecture(solver.global_grid)
 
@@ -181,6 +182,9 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
     λy = dropdims(poisson_eigenvalues(global_grid.Ny, global_grid.Ly, 2, ty), dims=(1, 3))
     λz = dropdims(poisson_eigenvalues(global_grid.Nz, global_grid.Lz, 3, tz), dims=(1, 2))
 
+    Rx, Ry, _ = local_grid.architecture.ranks
+    slab_x = Ry == 1 && Rx > 1  # slab decomposition in x only
+
     if tridiagonal_dim == 1
         arch = architecture(storage.xfield.grid)
         grid = storage.xfield.grid
@@ -191,6 +195,14 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
         grid = storage.yfield.grid
         λ1 = partition_coordinate(λx, size(grid, 1), arch, 1)
         λ2 = partition_coordinate(λz, size(grid, 3), arch, 3)
+    elseif tridiagonal_dim == 3 && slab_x
+        # Optimization: for slab-x decomposition, solve tridiagonal in x-local space.
+        # In x-local, z is fully local (all Nz points), so the tridiag solve works directly.
+        # This avoids 2 MPI transposes (x→y + y→z before solve, and z→y + y→x after solve).
+        arch = architecture(storage.xfield.grid)
+        grid = storage.xfield.grid
+        λ1 = on_architecture(child_arch, λx)  # x is local: all eigenvalues available
+        λ2 = partition_coordinate(λy, size(grid, 2), arch, 2)  # y is partitioned
     elseif tridiagonal_dim == 3
         arch = architecture(storage.zfield.grid)
         grid = storage.zfield.grid
@@ -263,30 +275,68 @@ end
 # is copied in the solver storage
 # See: Models/NonhydrostaticModels/solve_for_pressure.jl
 function solve!(x, solver::ZStretchedDistributedSolver)
+    storage = solver.storage
+
+    # Detect slab-x optimization: if tridiag solver grid matches xfield grid,
+    # we solve in x-local space with only 2 MPI transposes instead of 4.
+    if storage isa SlabYFields
+        return _slab_x_solve!(x, solver)
+    else
+        return _general_z_solve!(x, solver)
+    end
+end
+
+# Optimized solve for slab-x (Ry=1) Z-stretched: only 2 MPI transposes.
+# In slab-x, z is always fully local. After forward FFTs and one transpose
+# to x-local space, we can solve the tridiagonal directly without transposing back.
+function _slab_x_solve!(x, solver::ZStretchedDistributedSolver)
     arch    = architecture(solver)
     storage = solver.storage
     buffer  = solver.buffer
 
-    transpose_z_to_y!(storage) # copy data from storage.zfield to storage.yfield
+    # Forward: y-FFT (local) → transpose to x-local → x-FFT
     solver.plan.forward.y!(parent(storage.yfield), buffer.y)
-    transpose_y_to_x!(storage) # copy data from storage.yfield to storage.xfield
+    transpose_y_to_x!(storage)
     solver.plan.forward.x!(parent(storage.xfield), buffer.x)
-    transpose_x_to_y!(storage) # copy data from storage.xfield to storage.yfield
-    transpose_y_to_z!(storage) # copy data from storage.yfield to storage.zfield
 
-    # copy results in the source term
+    # Tridiagonal solve in x-local space (z is fully local)
+    parent(solver.source_term) .= parent(storage.xfield)
+    solve!(storage.xfield, solver.batched_tridiagonal_solver, solver.source_term)
+
+    # Backward: x-IFFT → transpose to y-local → y-IFFT
+    solver.plan.backward.x!(parent(storage.xfield), buffer.x)
+    transpose_x_to_y!(storage)
+    solver.plan.backward.y!(parent(storage.yfield), buffer.y)
+
+    # Copy the real component (yfield aliases zfield for slab-x)
+    launch!(arch, solver.local_grid, :xyz,
+            _copy_real_component!, x, parent(storage.zfield))
+
+    return x
+end
+
+# General Z-stretched solve (pencil decomposition): 4+ MPI transposes.
+function _general_z_solve!(x, solver::ZStretchedDistributedSolver)
+    arch    = architecture(solver)
+    storage = solver.storage
+    buffer  = solver.buffer
+
+    transpose_z_to_y!(storage)
+    solver.plan.forward.y!(parent(storage.yfield), buffer.y)
+    transpose_y_to_x!(storage)
+    solver.plan.forward.x!(parent(storage.xfield), buffer.x)
+    transpose_x_to_y!(storage)
+    transpose_y_to_z!(storage)
+
     parent(solver.source_term) .= parent(storage.zfield)
-
-    # Perform the implicit vertical solve here on storage.zfield...
-    # Solve tridiagonal system of linear equations at every z-column.
     solve!(storage.zfield, solver.batched_tridiagonal_solver, solver.source_term)
 
     transpose_z_to_y!(storage)
-    transpose_y_to_x!(storage) # copy data from storage.yfield to storage.xfield
+    transpose_y_to_x!(storage)
     solver.plan.backward.x!(parent(storage.xfield), buffer.x)
-    transpose_x_to_y!(storage) # copy data from storage.xfield to storage.yfield
+    transpose_x_to_y!(storage)
     solver.plan.backward.y!(parent(storage.yfield), buffer.y)
-    transpose_y_to_z!(storage) # copy data from storage.yfield to storage.zfield
+    transpose_y_to_z!(storage)
 
     # Copy the real component of xc to x.
     launch!(arch, solver.local_grid, :xyz,
