@@ -84,7 +84,7 @@ end
 
 Set velocity field values to zero in immersed (solid) regions of the grid.
 """
-function mask_immersed_horizontal_velocities!(velocities) 
+function mask_immersed_horizontal_velocities!(velocities)
     mask_immersed_field!(velocities.u)
     mask_immersed_field!(velocities.v)
     return nothing

@@ -103,7 +103,7 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
         ab2_step_velocities!(model.velocities, model, Δt, χ)
         mask_immersed_horizontal_velocities!(model.velocities)
     end
-    
+
     # Advancing free surface in preparation for the correction step
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
     @apply_regionally correct_barotropic_mode!(model, Δt)

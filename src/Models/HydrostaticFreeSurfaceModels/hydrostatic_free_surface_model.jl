@@ -279,7 +279,7 @@ function HydrostaticFreeSurfaceModel(grid;
     return model
 end
 
-transport_velocity_fields(velocities) = (u = copy_velocity(velocities.u), 
+transport_velocity_fields(velocities) = (u = copy_velocity(velocities.u),
                                          v = copy_velocity(velocities.v),
                                          w = copy_velocity(velocities.w))
 
