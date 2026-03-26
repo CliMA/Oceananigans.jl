@@ -24,7 +24,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        downgrade_mode: ['deps', 'all_deps']
+        downgrade_mode: ['deps', 'alldeps']
         version:
           - '1.11.9'
         os:
