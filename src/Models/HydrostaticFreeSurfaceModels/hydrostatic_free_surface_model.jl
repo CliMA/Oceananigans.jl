@@ -322,6 +322,7 @@ validate_momentum_advection(momentum_advection::VectorInvariant, grid::Orthogona
 validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGrid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
 
 function reconcile_state!(model::HydrostaticFreeSurfaceModel)
+    mask_immersed_horizontal_velocities!(model.velocities)
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
     reconcile_free_surface!(model.free_surface, model.grid, model.velocities)
     reconcile_vertical_coordinate!(model.vertical_coordinate, model, model.grid)
