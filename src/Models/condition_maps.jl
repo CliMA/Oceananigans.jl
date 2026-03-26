@@ -43,7 +43,11 @@ using KernelAbstractions: @kernel, @index
 end
 
 @inline function generate_condition_maps(grid::DistributedGrid, advection; kwargs...)
-    return get_active_cells_map(grid, Val(:interior))
+    active_cells_map = get_active_cells_map(grid, Val(:interior))
+    condition_maps = Dict()
+    for key in keys(advection)
+        condition_maps[key] = active_cells_map
+    end
 end
 
 compute_advection_conditioned_map(scheme::Nothing, grid; active_cells_map=nothing) = nothing
