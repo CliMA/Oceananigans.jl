@@ -40,10 +40,15 @@ The order of operations for explicit free surfaces is:
 
     # Compute z-dependent transport velocities
     compute_transport_velocities!(model, free_surface)
-    @apply_regionally rk_substep_velocities!(model.velocities, model, Δτ)
 
-    # Fill velocity halos
+    @apply_regionally begin
+        rk_substep_velocities!(model.velocities, model, Δτ)
+        mask_immersed_horizontal_velocities!(model.velocities)
+    end
+
+    # Mask and fill velocity halos
     u, v, _ = model.velocities
+    mask_immersed_horizontal_velocities!(model.velocities)
     fill_halo_regions!((u, v), model.clock, fields(model); async=true)
 
     @apply_regionally begin
@@ -85,16 +90,17 @@ For implicit free surfaces, a predictor-corrector approach is used:
 
         # Finally Substep! Advance grid, tracers, (predictor) momentum
         rk_substep_velocities!(model.velocities, model, Δτ)
+        mask_immersed_horizontal_velocities!(model.velocities)
     end
 
     # Advancing free surface in preparation for the correction step
     step_free_surface!(free_surface, model, model.timestepper, Δτ)
+    @apply_regionally correct_barotropic_mode!(model, Δτ)
 
-    # Fill velocity halos
+    # Mask and fill velocity halos
     u, v, _ = model.velocities
     fill_halo_regions!((u, v), model.clock, fields(model))
 
-    @apply_regionally correct_barotropic_mode!(model, Δτ)
 
     compute_transport_velocities!(model, free_surface)
 

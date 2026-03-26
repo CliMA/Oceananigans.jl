@@ -47,11 +47,17 @@ CUDA.allowscalar() do
             include("test_regrid.jl")
             include("test_field_scans.jl")
             include("test_halo_regions.jl")
-            include("test_coriolis.jl")
             include("test_buoyancy.jl")
             include("test_stokes_drift.jl")
             include("test_utils.jl")
             include("test_schedules.jl")
+        end
+    end
+
+    if group == :coriolis || group == :all
+        @testset "Coriolis" begin
+            include("test_coriolis.jl")
+            include("test_coriolis_schemes.jl")
         end
     end
 
@@ -282,6 +288,13 @@ CUDA.allowscalar() do
         end
     end
 
+    # Reactant unit tests (grid metrics, reductions, field operations)
+    if group == :reactant_unit || group == :all
+        @testset "Reactant unit tests" begin
+            include("test_reactant_unit.jl")
+        end
+    end
+
     # Tests for XESMF extension
     if group == :xesmf || group == :all
         @testset "XESMF extension tests" begin
@@ -298,9 +311,8 @@ CUDA.allowscalar() do
 
     if group == :sharding || group == :all
         @testset "Sharding Reactant extension tests" begin
-            # Broken for the moment (trying to fix them in https://github.com/CliMA/Oceananigans.jl/pull/4293)
-            # include("test_sharded_lat_lon.jl")
-            # include("test_sharded_tripolar.jl")
+            include("test_sharded_lat_lon.jl")
+            # include("test_sharded_tripolar.jl") # disabled: TripolarGrid + ImmersedBoundaryGrid cause Reactant MLIR errors
         end
     end
 

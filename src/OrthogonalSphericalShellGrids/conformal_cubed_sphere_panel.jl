@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: select_bc, fill_halo_kernel!
+using Oceananigans.BoundaryConditions: select_bc, fill_halo_kernel
 using Oceananigans.Grids: Bounded, offset_data, xnodes, ynodes, static_column_depthᶜᶜᵃ
 using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom
 using Oceananigans.Operators: Δx_qᶠᶜᶜ, Δy_qᶜᶠᶜ, δxᶠᶠᶜ, δyᶠᶠᶜ
@@ -843,7 +843,7 @@ import Oceananigans.BoundaryConditions: fill_halo_kernels
     side    = Oceananigans.BoundaryConditions.BottomAndTop()
     bcs     = (bcs.bottom, bcs.top)
     bc      = select_bc(bcs)
-    kernel! = fill_halo_kernel!(side, bc, grid, size, offset, data, reduced_dimensions)
+    kernel! = fill_halo_kernel(side, bc, grid, size, offset, data, reduced_dimensions)
 
     return (; bottom_and_top = kernel!), (; bottom_and_top = bcs)
 end

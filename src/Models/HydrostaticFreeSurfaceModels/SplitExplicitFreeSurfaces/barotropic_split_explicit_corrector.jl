@@ -1,4 +1,4 @@
-using Oceananigans: fields
+using Oceananigans.ImmersedBoundaries: immersed_peripheral_node
 using Oceananigans.Models: surface_kernel_parameters, volume_kernel_parameters
 
 # Kernels to compute the vertical integral of the velocities
@@ -23,11 +23,9 @@ The barotropic transport is computed as: `U̅ = ∫ u dz` and `V̅ = ∫ v dz`.
 This function is used both during split-explicit correction and initialization.
 """
 function compute_barotropic_mode!(U̅, V̅, grid, u, v)
-    active_cells_map = get_active_column_map(grid) # may be nothing
-
     launch!(architecture(grid), grid, surface_kernel_parameters(grid),
             _compute_barotropic_mode!,
-            U̅, V̅, grid, u, v; active_cells_map)
+            U̅, V̅, grid, u, v)
 
     return nothing
 end
@@ -73,14 +71,17 @@ end
     Hᶠᶜ = column_depthᶠᶜᵃ(i, j, grid)
     Hᶜᶠ = column_depthᶜᶠᵃ(i, j, grid)
 
+    immersedᶠᶜᶜ = immersed_peripheral_node(i, j, k, grid, Face(), Center(), Center())
+    immersedᶜᶠᶜ = immersed_peripheral_node(i, j, k, grid, Center(), Face(), Center())
+
     δuᵢ = @inbounds U[i, j, 1] - U̅[i, j, 1]
     δvⱼ = @inbounds V[i, j, 1] - V̅[i, j, 1]
 
     u_correction = ifelse(Hᶠᶜ == 0, zero(grid), δuᵢ / Hᶠᶜ)
     v_correction = ifelse(Hᶜᶠ == 0, zero(grid), δvⱼ / Hᶜᶠ)
 
-    @inbounds u[i, j, k] = u[i, j, k] + u_correction
-    @inbounds v[i, j, k] = v[i, j, k] + v_correction
+    @inbounds u[i, j, k] = ifelse(immersedᶠᶜᶜ, zero(grid), u[i, j, k] + u_correction)
+    @inbounds v[i, j, k] = ifelse(immersedᶜᶠᶜ, zero(grid), v[i, j, k] + v_correction)
 end
 
 @kernel function _compute_transport_velocities!(ũ, ṽ, grid, Ũ, Ṽ, u, v, U̅, V̅)
@@ -88,8 +89,8 @@ end
     Hᶠᶜ = column_depthᶠᶜᵃ(i, j, grid)
     Hᶜᶠ = column_depthᶜᶠᵃ(i, j, grid)
 
-    immersedᶜᶠᶜ = peripheral_node(i, j, k, grid, Center(), Face(), Center())
-    immersedᶠᶜᶜ = peripheral_node(i, j, k, grid, Face(), Center(), Center())
+    immersedᶜᶠᶜ = immersed_peripheral_node(i, j, k, grid, Center(), Face(), Center())
+    immersedᶠᶜᶜ = immersed_peripheral_node(i, j, k, grid, Face(), Center(), Center())
 
     δuᵢ = @inbounds Ũ[i, j, 1] - U̅[i, j, 1]
     δvⱼ = @inbounds Ṽ[i, j, 1] - V̅[i, j, 1]

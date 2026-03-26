@@ -21,7 +21,7 @@ using KernelAbstractions: @index, @kernel
 using Oceananigans.Grids: column_depthᶜᶠᵃ,
                           column_depthᶠᶜᵃ
 
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: initialize_free_surface!,
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: reconcile_free_surface!,
                                                          materialize_free_surface,
                                                          step_free_surface!,
                                                          compute_free_surface_tendency!,

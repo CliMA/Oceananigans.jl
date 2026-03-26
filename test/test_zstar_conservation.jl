@@ -197,7 +197,7 @@ end
 
                 # Instead of initializing with random velocities, infer them from a random initial streamfunction
                 # to ensure the velocity field is divergence-free at initialization.
-                ψ = Field{Center, Center, Center}(grid)
+                ψ = Field{Face, Face, Center}(grid)
                 set!(ψ, rand(size(ψ)...))
                 uᵢ = ∂y(ψ)
                 vᵢ = -∂x(ψ)
