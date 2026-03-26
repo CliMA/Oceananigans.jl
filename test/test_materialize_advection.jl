@@ -3,6 +3,12 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.Advection: materialize_advection
 using Oceananigans.Utils: NormalDivision, ConvertingDivision, BackendOptimizedDivision
 
+
+# We need to Mock a grid since it provides an architecture for materialization.
+struct MockGrid end
+Oceananigans.Grids.architecture(::MockGrid) = CPU()
+
+
 @testset "materialize weno scheme chain with placeholders" begin
 
     # Construct an advection chain by hand with intermediate non-WENO buffer schemes
@@ -22,7 +28,7 @@ using Oceananigans.Utils: NormalDivision, ConvertingDivision, BackendOptimizedDi
 
     # Materialize using materialize_advection; Nothing WCTs are replaced by the global default
     # (Oceananigans.defaults.weno_weight_computation == BackendOptimizedDivision)
-    materialized = materialize_advection(level_5, nothing)
+    materialized = materialize_advection(level_5, MockGrid())
 
     # Check that all WENO schemes in the chain have the correct weight computation type
     get_nth_buffer_scheme(scheme, n) =
