@@ -1,4 +1,4 @@
-using Oceananigans.Grids: AbstractGrid, RectilinearGrid
+using Oceananigans.Grids: RectilinearGrid
 using Oceananigans.Operators
 
 #####
@@ -41,30 +41,36 @@ end
 ##### MITgcm equations 2.105–2.107.
 #####
 
-# --- Non-hydrostatic u-metric at (f, c, c): -u w / R ---
+# --- Non-hydrostatic u-metric at (f, c, c): +u w / R ---
+# Sign convention: the metric *source* is -uw/a (MITgcm eq 2.105).
+# Since the tendency subtracts U_dot_∇u_metric, we return +uw/R
+# so that -(+uw/R) = -uw/R in the equation of motion.
 
 @inline function _nonhydrostatic_metric_u(i, j, k, grid, U, V)
     ŵ = ℑxᶠᵃᵃ(i, j, k, grid, ℑzᵃᵃᶜ, V[3])
     û₁ = @inbounds U[1][i, j, k]
-    return -û₁ * ŵ / grid.radius
+    return û₁ * ŵ / grid.radius
 end
 
-# --- Non-hydrostatic v-metric at (c, f, c): -v w / R ---
+# --- Non-hydrostatic v-metric at (c, f, c): +v w / R ---
 
 @inline function _nonhydrostatic_metric_v(i, j, k, grid, U, V)
     ŵ = ℑyᵃᶠᵃ(i, j, k, grid, ℑzᵃᵃᶜ, V[3])
     v̂₂ = @inbounds U[2][i, j, k]
-    return -v̂₂ * ŵ / grid.radius
+    return v̂₂ * ŵ / grid.radius
 end
 
-# --- w-metric at (c, c, f): +(u² + v²) / R ---
+# --- w-metric at (c, c, f): -(u² + v²) / R ---
+# The metric source is +(u²+v²)/a (MITgcm eq 2.107).
+# Since the tendency subtracts U_dot_∇w_metric, we return -(u²+v²)/R
+# so that -(-(u²+v²)/R) = +(u²+v²)/R in the equation of motion.
 
 @inline function U_dot_∇w_metric(i, j, k, grid, advection, U, V)
     û₁ = ℑzᵃᵃᶠ(i, j, k, grid, ℑxᶜᵃᵃ, U[1])
     v̂₂ = ℑzᵃᵃᶠ(i, j, k, grid, ℑyᵃᶜᵃ, U[2])
     Û₁ = ℑzᵃᵃᶠ(i, j, k, grid, ℑxᶜᵃᵃ, V[1])
     V̂₂ = ℑzᵃᵃᶠ(i, j, k, grid, ℑyᵃᶜᵃ, V[2])
-    return (û₁ * Û₁ + v̂₂ * V̂₂) / grid.radius
+    return -(û₁ * Û₁ + v̂₂ * V̂₂) / grid.radius
 end
 
 #####
