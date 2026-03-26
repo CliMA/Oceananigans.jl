@@ -11,7 +11,7 @@ HaloCommunicationRanks(; from, to) = HaloCommunicationRanks(from, to)
 
 Base.summary(hcr::HaloCommunicationRanks) = "HaloCommunicationRanks from rank $(hcr.from) to rank $(hcr.to)"
 
-function inject_halo_communication_boundary_conditions(field_bcs, local_rank, connectivity, topology, loc)
+function inject_halo_communication_boundary_conditions(field_bcs, loc, local_rank, connectivity, topology)
     rank_east   = connectivity.east
     rank_west   = connectivity.west
     rank_north  = connectivity.north
@@ -33,10 +33,10 @@ function inject_halo_communication_boundary_conditions(field_bcs, local_rank, co
     # Communication is required only if the direction is "connected"
     # Remember `RightConnected` means bounded on the left and viceversa
     # `LeftConnected` means bounded on the right
-    inject_west  = !isnothing(rank_west)  && (TX != RightConnected) && !(loc[1] isa Nothing)
-    inject_east  = !isnothing(rank_east)  && (TX != LeftConnected)  && !(loc[1] isa Nothing)
-    inject_south = !isnothing(rank_south) && (TY != RightConnected) && !(loc[2] isa Nothing)
-    inject_north = !isnothing(rank_north) && (TY != LeftConnected)  && !(loc[2] isa Nothing)
+    inject_west  = !isnothing(rank_west)  && (TX != RightConnected) && !isnothing(loc[1])
+    inject_east  = !isnothing(rank_east)  && (TX != LeftConnected)  && !isnothing(loc[1])
+    inject_south = !isnothing(rank_south) && (TY != RightConnected) && !isnothing(loc[2])
+    inject_north = !isnothing(rank_north) && (TY != LeftConnected)  && !isnothing(loc[2])
 
     west  = inject_west  ? west_comm_bc  : field_bcs.west
     east  = inject_east  ? east_comm_bc  : field_bcs.east
