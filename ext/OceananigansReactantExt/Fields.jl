@@ -6,9 +6,8 @@ using Oceananigans: Oceananigans
 using Oceananigans.Architectures: on_architecture, CPU
 using Oceananigans.Fields: Field, interior
 
-using KernelAbstractions: @index, @kernel
-
 import Oceananigans.Fields: set_to_field!, set_to_function!, set!
+import Oceananigans.DistributedComputations: reconstruct_global_field, synchronize_communication!
 
 import ..OceananigansReactantExt: deconcretize
 import ..Grids: ReactantGrid
@@ -16,6 +15,8 @@ import ..Grids: ShardedGrid
 
 const ReactantField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ReactantGrid}
 const ShardedDistributedField{LX, LY, LZ, O} = Field{LX, LY, LZ, O, <:ShardedGrid}
+
+reconstruct_global_field(field::ShardedDistributedField) = field
 
 deconcretize(field::Field{LX, LY, LZ}) where {LX, LY, LZ} =
     Field{LX, LY, LZ}(field.grid,
@@ -38,19 +39,10 @@ function set_to_function!(u::ReactantField, f)
     return nothing
 end
 
-function set_to_function!(u::ShardedDistributedField, f)
-    grid = u.grid
-    arch = grid.architecture
-    Oceananigans.Utils.launch!(arch, grid, size(u), _set_to_function_on_device!,
-                               u, f, grid, Oceananigans.Fields.location(u))
-    return nothing
-end
+# keepin it simple
+set_to_field!(u::ReactantField, v::ReactantField) = interior(u) .= interior(v)
 
-@kernel function _set_to_function_on_device!(u, f, grid, loc)
-    i, j, k = @index(Global, NTuple)
-    LX, LY, LZ = loc
-    x = Oceananigans.Grids.node(i, j, k, grid, LX(), LY(), LZ())
-    @inbounds u[i, j, k] = f(x...)
-end
+# No need to synchronize -> it should be implicit
+synchronize_communication!(::ShardedDistributedField) = nothing
 
 end

@@ -168,10 +168,9 @@ requires understanding the C-grid, but incurs only one iteration over the domain
 [Oceanostics.jl](https://github.com/tomchor/Oceanostics.jl/blob/3b8f67338656557877ef8ef5ebe3af9e7b2974e2/src/TurbulentKineticEnergyTerms.jl#L35-L57),
 
 ```julia
-using Oceanostics: IsotropicPseudoViscousDissipationRate
+using Oceanostics.KineticEnergyEquation: IsotropicDissipationRate
 
-ε = IsotropicViscousDissipationRate(model, u, v, w, ν)
-compute!(ε)
+ε = IsotropicDissipationRate(model) |> Field
 ```
 [Start an issue on Github](https://github.com/CliMA/Oceananigans.jl/issues/new) if more help is needed.
 
@@ -221,8 +220,8 @@ are called [`CUDA.CuArray`](https://cuda.juliagpu.org/stable/usage/array/).
 One limitation of `GPUArray`s compared to the `Array`s used for
 CPU computations is that `GPUArray` elements in general cannot be accessed outside kernels
 launched through, e.g., CUDA.jl or KernelAbstractions.jl. (You can learn more about GPU kernels
-[here](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#kernels) and
-[here](https://cuda.juliagpu.org/stable/usage/overview/#Kernel-programming-with-@cuda).)
+[through Nvidia docs](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#kernels) and
+[CUDA.jl docs](https://cuda.juliagpu.org/stable/usage/overview/#Kernel-programming-with-@cuda).)
 Doing so requires individual elements to be copied from or to the GPU for processing,
 which is very slow and can result in huge slowdowns. To avoid such unintentional slowdowns,
 Oceananigans disables scalar indexing by default. See the

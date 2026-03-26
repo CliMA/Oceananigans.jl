@@ -12,6 +12,7 @@ export
     fill_halo_regions!,
     WestAndEast, SouthAndNorth, BottomAndTop,
     West, East, South, North, Bottom, Top,
+    PeriodicFillHalo,
     DistributedFillHalo
 
 using Adapt
