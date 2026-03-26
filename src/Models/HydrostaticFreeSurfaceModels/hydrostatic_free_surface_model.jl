@@ -18,8 +18,8 @@ using Oceananigans.Utils: tupleit
 
 import Oceananigans
 import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
-import Oceananigans.Models: initialization_update_state!, total_velocities
-import Oceananigans.TimeSteppers: update_state!
+import Oceananigans.Models: total_velocities
+import Oceananigans.TimeSteppers: update_state!, reconcile_state!, materialize_clock!
 import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
@@ -283,26 +283,10 @@ function HydrostaticFreeSurfaceModel(grid;
                                         free_surface, forcing, closure, particles, biogeochemistry, velocities, transport_velocities,
                                         tracers, pressure, closure_fields, timestepper, auxiliary_fields, vertical_coordinate, condition_maps)
 
-    initialization_update_state!(model)
-
-    return model
-end
-
-function initialization_update_state!(model::HydrostaticFreeSurfaceModel)
-
-    # Update the state of the model
+    materialize_clock!(clock, timestepper)
     update_state!(model)
 
-    # Update state may have asynchronous fill halo, so we refill all the
-    # halos here (in a synchronous fashion) for initialization
-    for field in prognostic_fields(model)
-        fill_halo_regions!(field, model.clock, fields(model))
-    end
-
-    # Finally, initialize the model (e.g., free surface, vertical coordinate...)
-    initialize!(model)
-
-    return nothing
+    return model
 end
 
 transport_velocity_fields(velocities, ::Nothing) = velocities
@@ -331,9 +315,15 @@ validate_momentum_advection(momentum_advection::Nothing,         grid::Orthogona
 validate_momentum_advection(momentum_advection::VectorInvariant, grid::OrthogonalSphericalShellGrid) = momentum_advection
 validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGrid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
 
+function reconcile_state!(model::HydrostaticFreeSurfaceModel)
+    fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
+    reconcile_free_surface!(model.free_surface, model.grid, model.velocities)
+    reconcile_vertical_coordinate!(model.vertical_coordinate, model, model.grid)
+    return nothing
+end
+
 function initialize!(model::HydrostaticFreeSurfaceModel)
-    initialize_vertical_coordinate!(model.vertical_coordinate, model, model.grid)
-    initialize_free_surface!(model.free_surface, model.grid, model.velocities)
+    reconcile_state!(model)
     initialize_closure_fields!(model.closure_fields, model.closure, model)
     return nothing
 end
