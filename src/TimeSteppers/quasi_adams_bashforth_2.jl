@@ -50,6 +50,11 @@ end
 
 reset!(timestepper::QuasiAdamsBashforth2TimeStepper) = nothing
 
+function materialize_clock!(clock::Clock, timestepper::QuasiAdamsBashforth2TimeStepper)
+    clock.last_Δt = clock.last_stage_Δt
+    return nothing
+end
+
 """
     QuasiAdamsBashforth2TimeStepper(; χ = 0.1)
 
@@ -95,7 +100,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     #   * The user has passed euler=true to time_step!
     euler = euler | (Δt != model.clock.last_Δt)
 
-    maybe_initialize_state!(model, callbacks)
+    maybe_prepare_first_time_step!(model, callbacks)
 
     # If euler, then set χ = -0.5
     minus_point_five = convert(eltype(model.grid), -0.5)

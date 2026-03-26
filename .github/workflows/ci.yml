@@ -27,19 +27,25 @@ concurrency:
 
 jobs:
   sharding_tests:
-    name: Sharding Tests - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    name: Sharding - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     strategy:
       fail-fast: false
       matrix:
         version:
-          - '1.12'
+          - '1.11.9'
         os:
           - ubuntu-latest
         arch:
           - x64
     steps:
+      - uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: julia-actions/cache@v3
       - run: |
           touch LocalPreferences.toml
 
@@ -47,15 +53,12 @@ jobs:
           echo "xla_runtime = \"IFRT\"" >> LocalPreferences.toml
 
           cat LocalPreferences.toml
-      - uses: actions/checkout@v6
-      - uses: julia-actions/setup-julia@v2
-        with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v3
       - uses: julia-actions/julia-buildpkg@v1
       - uses: julia-actions/julia-runtest@v1
+        with:
+          check_bounds: auto
         env:
+          XLA_FLAGS: "--xla_force_host_platform_device_count=4"
           JULIA_DEBUG: "Reactant, Reactant_jll"
           REACTANT_TEST: true
           TEST_GROUP: "sharding"
@@ -211,7 +214,7 @@ jobs:
           token: ${{ secrets.CODECOV_TOKEN }}  # only needed for some repos (see below)
 
   reactant:
-    name: Reactant - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    name: Reactant Correctness - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
     strategy:
@@ -244,14 +247,49 @@ jobs:
           TEST_GROUP: "reactant_correctness"
       - uses: julia-actions/julia-processcoverage@v1
         with:
-          # default is src,ext — include others if you need them
           directories: src,ext
 
       - uses: codecov/codecov-action@v5
         with:
           files: lcov.info
-          flags: ${{ env.TEST_GROUP }}   # optional but strongly recommended
-          token: ${{ secrets.CODECOV_TOKEN }}  # only needed for some repos (see below)
+          flags: ${{ env.TEST_GROUP }}
+          token: ${{ secrets.CODECOV_TOKEN }}
+
+  reactant_unit:
+    name: Reactant Unit - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1.11.9'
+        os:
+          - ubuntu-latest
+        arch:
+          - x64
+    steps:
+      - uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: julia-actions/cache@v3
+      - uses: julia-actions/julia-buildpkg@v1
+      - uses: julia-actions/julia-runtest@v1
+        with:
+          check_bounds: auto
+        env:
+          TEST_GROUP: "reactant_unit"
+      - uses: julia-actions/julia-processcoverage@v1
+        with:
+          directories: src,ext
+
+      - uses: codecov/codecov-action@v5
+        with:
+          files: lcov.info
+          flags: reactant_unit
+          token: ${{ secrets.CODECOV_TOKEN }}
 
   metal:
     name: Metal - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
