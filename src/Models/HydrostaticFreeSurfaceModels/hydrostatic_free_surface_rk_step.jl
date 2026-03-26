@@ -95,12 +95,12 @@ For implicit free surfaces, a predictor-corrector approach is used:
 
     # Advancing free surface in preparation for the correction step
     step_free_surface!(free_surface, model, model.timestepper, Δτ)
+    @apply_regionally correct_barotropic_mode!(model, Δτ)
 
     # Mask and fill velocity halos
     u, v, _ = model.velocities
     fill_halo_regions!((u, v), model.clock, fields(model))
 
-    @apply_regionally correct_barotropic_mode!(model, Δτ)
 
     compute_transport_velocities!(model, free_surface)
 

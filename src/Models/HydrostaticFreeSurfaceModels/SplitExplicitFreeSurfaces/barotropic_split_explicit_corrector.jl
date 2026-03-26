@@ -1,3 +1,4 @@
+using Oceananigans.ImmersedBoundaries: immersed_peripheral_node
 using Oceananigans.Models: surface_kernel_parameters, volume_kernel_parameters
 
 # Kernels to compute the vertical integral of the velocities
@@ -70,8 +71,8 @@ end
     Hᶠᶜ = column_depthᶠᶜᵃ(i, j, grid)
     Hᶜᶠ = column_depthᶜᶠᵃ(i, j, grid)
 
-    immersedᶠᶜᶜ = peripheral_node(i, j, k, grid, Face(), Center(), Center())
-    immersedᶜᶠᶜ = peripheral_node(i, j, k, grid, Center(), Face(), Center())
+    immersedᶠᶜᶜ = immersed_peripheral_node(i, j, k, grid, Face(), Center(), Center())
+    immersedᶜᶠᶜ = immersed_peripheral_node(i, j, k, grid, Center(), Face(), Center())
 
     δuᵢ = @inbounds U[i, j, 1] - U̅[i, j, 1]
     δvⱼ = @inbounds V[i, j, 1] - V̅[i, j, 1]
@@ -88,8 +89,8 @@ end
     Hᶠᶜ = column_depthᶠᶜᵃ(i, j, grid)
     Hᶜᶠ = column_depthᶜᶠᵃ(i, j, grid)
 
-    immersedᶜᶠᶜ = peripheral_node(i, j, k, grid, Center(), Face(), Center())
-    immersedᶠᶜᶜ = peripheral_node(i, j, k, grid, Face(), Center(), Center())
+    immersedᶜᶠᶜ = immersed_peripheral_node(i, j, k, grid, Center(), Face(), Center())
+    immersedᶠᶜᶜ = immersed_peripheral_node(i, j, k, grid, Face(), Center(), Center())
 
     δuᵢ = @inbounds Ũ[i, j, 1] - U̅[i, j, 1]
     δvⱼ = @inbounds Ṽ[i, j, 1] - V̅[i, j, 1]
