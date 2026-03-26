@@ -40,7 +40,7 @@ end
     end
 end
 
-const BoundedTopology = Union{Bounded, LeftConnected}
+const BoundedTopology = Union{Bounded, LeftConnected, RightFaceFolded}
 const AT = AbstractTopology
 
 Base.length(::Face,    ::BoundedTopology, N) = N + 1
@@ -50,9 +50,6 @@ Base.length(::Center,  ::AT,              N) = N
 Base.length(::Nothing, ::Flat,            N) = N
 Base.length(::Face,    ::Flat,            N) = N
 Base.length(::Center,  ::Flat,            N) = N
-Base.length(::Nothing, ::RightFaceFolded, N) = 1
-Base.length(::Face,    ::RightFaceFolded, N) = N
-Base.length(::Center,  ::RightFaceFolded, N) = N - 1
 
 # "Indices-aware" length
 Base.length(loc, topo::AT, N, ::Colon) = length(loc, topo, N)
@@ -171,11 +168,6 @@ regular_dimensions(grid) = ()
 @inline interior_parent_indices(::Face,    ::BoundedTopology, N, H) = 1+H:N+1+H
 @inline interior_parent_indices(loc,       ::AT,              N, H) = 1+H:N+H
 
-# For RightFaceFolded, remove the last index from the interior (fully diagnostic).
-# But keep it for the Face location (half prognostic).
-@inline interior_parent_indices(::Nothing, ::RightFaceFolded, N, H) = 1:1
-@inline interior_parent_indices(loc,       ::RightFaceFolded, N, H) = 1+H:N-1+H
-@inline interior_parent_indices(::Face,    ::RightFaceFolded, N, H) = 1+H:N+H
 
 @inline interior_parent_indices(::Nothing, ::Flat, N, H) = 1:N
 @inline interior_parent_indices(::Face,    ::Flat, N, H) = 1:N
@@ -273,8 +265,8 @@ end
 ##### Directions (for tilted domains)
 #####
 
--(::NegativeZDirection) = ZDirection()
--(::ZDirection) = NegativeZDirection()
+Base.:-(::NegativeZDirection) = ZDirection()
+Base.:-(::ZDirection) = NegativeZDirection()
 
 #####
 ##### Show utils

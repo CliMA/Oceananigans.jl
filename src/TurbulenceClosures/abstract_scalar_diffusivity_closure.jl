@@ -50,7 +50,7 @@ Specifies a `ScalarDiffusivity` acting only in the vertical direction.
 struct VerticalFormulation <: AbstractDiffusivityFormulation end
 
 """
-    viscosity(closure, diffusivities)
+    viscosity(closure, closure_fields)
 
 Returns the scalar viscosity associated with `closure`.
 """

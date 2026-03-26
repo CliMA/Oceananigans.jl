@@ -1,7 +1,7 @@
 using Adapt: Adapt
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Grids: AbstractGrid
-using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ, Az⁻¹ᶜᶜᶜ, Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, δxᶜᶜᶜ, δyᶜᶜᶜ
+using Oceananigans.Operators: Az⁻¹ᶜᶜᶜ, Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, δxᶜᶜᶜ, δyᶜᶜᶜ, ∂xᵣᶠᶜᶜ, ∂yᵣᶜᶠᶜ
 
 import Oceananigans.DistributedComputations: synchronize_communication!
 import Oceananigans: prognostic_state, restore_prognostic_state!
@@ -54,10 +54,10 @@ end
 #####
 
 @inline explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface::ExplicitFreeSurface) =
-    free_surface.gravitational_acceleration * ∂xᶠᶜᶜ(i, j, grid.Nz+1, grid, free_surface.displacement)
+    free_surface.gravitational_acceleration * ∂xᵣᶠᶜᶜ(i, j, grid.Nz+1, grid, free_surface.displacement)
 
 @inline explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface::ExplicitFreeSurface) =
-    free_surface.gravitational_acceleration * ∂yᶜᶠᶜ(i, j, grid.Nz+1, grid, free_surface.displacement)
+    free_surface.gravitational_acceleration * ∂yᵣᶜᶠᶜ(i, j, grid.Nz+1, grid, free_surface.displacement)
 
 #####
 ##### Time stepping
@@ -157,8 +157,8 @@ end
 
 @inline function free_surface_vertical_velocity(i, j, k_top, grid, ::ZStarCoordinate, velocities)
     u, v, _ = velocities
-    δx_U = δxᶜᶜᶜ(i, j, k_top-1, grid, Δy_qᶠᶜᶜ, barotropic_U, nothing, u)
-    δy_V = δyᶜᶜᶜ(i, j, k_top-1, grid, Δx_qᶜᶠᶜ, barotropic_V, nothing, v)
+    δx_U = δxᶜᶜᶜ(i, j, k_top-1, grid, Δy_qᶠᶜᶜ, barotropic_U, u)
+    δy_V = δyᶜᶜᶜ(i, j, k_top-1, grid, Δx_qᶜᶠᶜ, barotropic_V, v)
     δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, k_top-1, grid)
     return - δh_U
 end
@@ -197,7 +197,7 @@ end
 #####
 
 function prognostic_state(fs::ExplicitFreeSurface)
-    return (; η = prognostic_state(fs.η))
+    return (; η = prognostic_state(fs.displacement))
 end
 
 function restore_prognostic_state!(restored::ExplicitFreeSurface, from)

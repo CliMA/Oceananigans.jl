@@ -24,16 +24,14 @@ export column_depthᶜᶜᵃ, column_depthᶠᶜᵃ, column_depthᶜᶠᵃ, colu
 export offset_data, new_data
 export on_architecture
 
-using Adapt
-using GPUArraysCore
-using OffsetArrays
-using Printf
+using Adapt: Adapt, adapt
+using GPUArraysCore: @allowscalar
+using OffsetArrays: OffsetArray
+using Printf: @sprintf
+using DocStringExtensions: FIELDS
 
-using Oceananigans
-using Oceananigans.Architectures
-
-import Base: size, length, eltype, -
-import Oceananigans.Architectures: architecture, on_architecture
+using Oceananigans: Oceananigans
+using Oceananigans.Architectures: Architectures, AbstractSerialArchitecture, architecture, on_architecture
 
 #####
 ##### Abstract types

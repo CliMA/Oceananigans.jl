@@ -239,6 +239,7 @@ end
     z = (-1, 0)
     rectilinear_kw = (; size=(Nx, Ny, Nz), halo, x=(0, 1), y=(0, 1), z=(0, 1))
     hydrostatic_model_kw = (; free_surface=ExplicitFreeSurface(gravitational_acceleration=1))
+    rungekutta3_kw = merge(hydrostatic_model_kw, (; timestepper=:SplitRungeKutta3))
 
     @info "Testing RectilinearGrid + HydrostaticFreeSurfaceModel Reactant correctness"
     test_reactant_model_correctness(RectilinearGrid,
@@ -246,11 +247,24 @@ end
                                     rectilinear_kw,
                                     hydrostatic_model_kw)
 
+    @info "Testing RectilinearGrid + HydrostaticFreeSurfaceModel + SplitRungeKutta3 Reactant correctness"
+    test_reactant_model_correctness(RectilinearGrid,
+                                    HydrostaticFreeSurfaceModel,
+                                    rectilinear_kw,
+                                    rungekutta3_kw)
+
     @info "Testing immersed RectilinearGrid + HydrostaticFreeSurfaceModel Reactant correctness"
     test_reactant_model_correctness(RectilinearGrid,
                                     HydrostaticFreeSurfaceModel,
                                     rectilinear_kw,
                                     hydrostatic_model_kw,
+                                    immersed_boundary_grid=true)
+
+    @info "Testing immersed RectilinearGrid + HydrostaticFreeSurfaceModel + SplitRungeKutta3 Reactant correctness"
+    test_reactant_model_correctness(RectilinearGrid,
+                                    HydrostaticFreeSurfaceModel,
+                                    rectilinear_kw,
+                                    rungekutta3_kw,
                                     immersed_boundary_grid=true)
 end
 
@@ -266,4 +280,14 @@ using Oceananigans.OutputReaders: cpu_interpolating_time_indices
 
     # Test I can index into a Reactant FieldTimeSeries
     @test fts[5] isa Field
+end
+
+@testset "Field materialize traced" begin
+    Nx, Nz = (128, 64)
+    Lx, Lz = (1_000, 200)
+    grid_ad = RectilinearGrid(ReactantState(); size = (Nx, Nz),
+                              x = (-Lx/2, Lx/2), z = (0, Lz),
+                              topology = (Periodic, Flat, Bounded))
+    δρᵢ  = CenterField(grid_ad)
+    @test maximum(δρᵢ) == maximum(Array(interior(δρᵢ)))
 end

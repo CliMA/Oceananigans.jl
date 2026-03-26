@@ -1,5 +1,4 @@
 using Oceananigans.Fields: Field
-using Oceananigans.Utils: time_difference_seconds
 using Oceananigans.Units: minute
 
 struct CATKEVerticalDiffusivity{TD, CL, FT, DT, TKE} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 2}
@@ -173,32 +172,28 @@ catke_first(catke1::FlavorOfCATKE, catke2::FlavorOfCATKE) = error("Can't have tw
 ##### Diffusivities and diffusivity fields utilities
 #####
 
-struct CATKEDiffusivityFields{K, L, J, T, U, KC, LC, S}
+struct CATKEClosureFields{K, L, J, U, KC, LC}
     κu :: K
     κc :: K
     κe :: K
     Le :: L
     Jᵇ :: J
-    previous_compute_time :: T
     previous_velocities :: U
     _tupled_tracer_diffusivities :: KC
     _tupled_implicit_linear_coefficients :: LC
-    _skip_next_compute :: S  # Used for checkpointing
 end
 
-Adapt.adapt_structure(to, catke_closure_fields::CATKEDiffusivityFields) =
-    CATKEDiffusivityFields(adapt(to, catke_closure_fields.κu),
+Adapt.adapt_structure(to, catke_closure_fields::CATKEClosureFields) =
+    CATKEClosureFields(adapt(to, catke_closure_fields.κu),
                            adapt(to, catke_closure_fields.κc),
                            adapt(to, catke_closure_fields.κe),
                            adapt(to, catke_closure_fields.Le),
                            adapt(to, catke_closure_fields.Jᵇ),
-                           catke_closure_fields.previous_compute_time[],
                            adapt(to, catke_closure_fields.previous_velocities),
                            adapt(to, catke_closure_fields._tupled_tracer_diffusivities),
-                           adapt(to, catke_closure_fields._tupled_implicit_linear_coefficients),
-                           catke_closure_fields._skip_next_compute[])
+                           adapt(to, catke_closure_fields._tupled_implicit_linear_coefficients))
 
-function BoundaryConditions.fill_halo_regions!(catke_closure_fields::CATKEDiffusivityFields, args...; kw...)
+function BoundaryConditions.fill_halo_regions!(catke_closure_fields::CATKEClosureFields, args...; kw...)
     κ = (catke_closure_fields.κu,
          catke_closure_fields.κc,
          catke_closure_fields.κe)
@@ -218,7 +213,6 @@ function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfC
     κe = ZFaceField(grid, boundary_conditions=bcs.κe)
     Le = CenterField(grid)
     Jᵇ = Field{Center, Center, Nothing}(grid)
-    previous_compute_time = Ref(clock.time)
 
     # Note: we may be able to avoid using the "previous velocities" in favor of a "fully implicit"
     # discretization of shear production
@@ -230,32 +224,16 @@ function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfC
     _tupled_tracer_diffusivities         = NamedTuple(name => name === :e ? κe : κc          for name in tracer_names)
     _tupled_implicit_linear_coefficients = NamedTuple(name => name === :e ? Le : ZeroField() for name in tracer_names)
 
-    _skip_next_compute = Ref(false)
-
-    return CATKEDiffusivityFields(κu, κc, κe, Le, Jᵇ,
-                                  previous_compute_time, previous_velocities,
-                                  _tupled_tracer_diffusivities, _tupled_implicit_linear_coefficients,
-                                  _skip_next_compute)
+    return CATKEClosureFields(κu, κc, κe, Le, Jᵇ,
+                                  previous_velocities,
+                                  _tupled_tracer_diffusivities,
+                                  _tupled_implicit_linear_coefficients)
 end
 
 @inline viscosity_location(::FlavorOfCATKE) = (c, c, f)
 @inline diffusivity_location(::FlavorOfCATKE) = (c, c, f)
 
-function update_previous_compute_time!(diffusivities, model)
-    Δt = time_difference_seconds(model.clock.time, diffusivities.previous_compute_time[])
-    diffusivities.previous_compute_time[] = model.clock.time
-    return Δt
-end
-
-function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; parameters = :xyz)
-    # Skip the first compute after restoring from a checkpoint to preserve the restored state.
-    # This flag is set during `restore_prognostic_state!` and cleared here.
-    if diffusivities._skip_next_compute[]
-        diffusivities._skip_next_compute[] = false
-        diffusivities.previous_compute_time[] = model.clock.time
-        return nothing
-    end
-
+function step_closure_prognostics!(closure_fields, closure::FlavorOfCATKE, model, Δt)
     arch = model.architecture
     grid = model.grid
     velocities = model.velocities
@@ -263,32 +241,33 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfCATKE, model; pa
     buoyancy = buoyancy_force(model)
     clock = model.clock
     top_tracer_bcs = get_top_tracer_bcs(buoyancy, tracers)
-    Δt = update_previous_compute_time!(diffusivities, model)
 
-    # Step TKE equation on new iterations (Δt > 0) or later stages of multi-stage timesteppers.
-    # Skip at iteration 0 when stage > 1 because clock.last_Δt is Inf (causes NaN).
-    if Δt > 0 || (clock.stage > 1 && clock.iteration > 0)
-        # Compute e at the current time:
-        #   * update tendency Gⁿ using current and previous velocity field
-        #   * use tridiagonal solve to take an implicit step
-        time_step_catke_equation!(model, model.timestepper)
-    end
+    # Step TKE equation with the provided timestep
+    time_step_catke_equation!(model, model.timestepper, Δt)
 
-    # Update previous velocities and surface buoyancy flux only on new iterations.
-    if Δt > 0
-        u, v, w = model.velocities
-        u⁻, v⁻ = diffusivities.previous_velocities
-        parent(u⁻) .= parent(u)
-        parent(v⁻) .= parent(v)
+    # Update previous velocities and surface buoyancy flux
+    u, v, w = model.velocities
+    u⁻, v⁻ = closure_fields.previous_velocities
+    parent(u⁻) .= parent(u)
+    parent(v⁻) .= parent(v)
 
-        launch!(arch, grid, :xy,
-                compute_average_surface_buoyancy_flux!,
-                diffusivities.Jᵇ, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt)
-    end
+    launch!(arch, grid, :xy,
+            compute_average_surface_buoyancy_flux!,
+            closure_fields.Jᵇ, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt)
+
+    return nothing
+end
+
+function compute_closure_fields!(closure_fields, closure::FlavorOfCATKE, model; parameters = :xyz)
+    arch = model.architecture
+    grid = model.grid
+    velocities = model.velocities
+    tracers = buoyancy_tracers(model)
+    buoyancy = buoyancy_force(model)
 
     launch!(arch, grid, parameters,
-            compute_CATKE_diffusivities!,
-            diffusivities, grid, closure, velocities, tracers, buoyancy)
+            compute_CATKE_closure_fields!,
+            closure_fields, grid, closure, velocities, tracers, buoyancy)
 
     return nothing
 end
@@ -313,12 +292,12 @@ end
     @inbounds Jᵇ[i, j, 1] = (Jᵇᵢⱼ + ϵ * Jᵇ★) / (1 + ϵ)
 end
 
-@kernel function compute_CATKE_diffusivities!(diffusivities, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy)
+@kernel function compute_CATKE_closure_fields!(closure_fields, grid, closure::FlavorOfCATKE, velocities, tracers, buoyancy)
     i, j, k = @index(Global, NTuple)
 
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
     closure_ij = getclosure(i, j, closure)
-    Jᵇ = diffusivities.Jᵇ
+    Jᵇ = closure_fields.Jᵇ
 
     # Note: we also compute the TKE diffusivity here for diagnostic purposes, even though it
     # is recomputed in time_step_turbulent_kinetic_energy.
@@ -331,9 +310,9 @@ end
     κe★ = mask_diffusivity(i, j, k, grid, κe★)
 
     @inbounds begin
-        diffusivities.κu[i, j, k] = κu★
-        diffusivities.κc[i, j, k] = κc★
-        diffusivities.κe[i, j, k] = κe★
+        closure_fields.κu[i, j, k] = κu★
+        closure_fields.κc[i, j, k] = κc★
+        closure_fields.κe[i, j, k] = κe★
     end
 end
 
@@ -367,8 +346,8 @@ end
     return FT(κe★)
 end
 
-@inline viscosity(::FlavorOfCATKE, diffusivities) = diffusivities.κu
-@inline diffusivity(::FlavorOfCATKE, diffusivities, ::Val{id}) where id = diffusivities._tupled_tracer_diffusivities[id]
+@inline viscosity(::FlavorOfCATKE, closure_fields) = closure_fields.κu
+@inline diffusivity(::FlavorOfCATKE, closure_fields, ::Val{id}) where id = closure_fields._tupled_tracer_diffusivities[id]
 
 #####
 ##### Show
@@ -424,26 +403,21 @@ end
 ##### Checkpointing
 #####
 
-function prognostic_state(cf::CATKEDiffusivityFields)
-    return (previous_compute_time = cf.previous_compute_time[],
-            previous_velocities = prognostic_state(cf.previous_velocities),
+function prognostic_state(cf::CATKEClosureFields)
+    return (previous_velocities = prognostic_state(cf.previous_velocities),
             Jᵇ = prognostic_state(cf.Jᵇ),
             κu = prognostic_state(cf.κu),
             κc = prognostic_state(cf.κc),
             κe = prognostic_state(cf.κe))
 end
 
-function restore_prognostic_state!(restored::CATKEDiffusivityFields, from)
-    restored.previous_compute_time[] = from.previous_compute_time
+function restore_prognostic_state!(restored::CATKEClosureFields, from)
     restore_prognostic_state!(restored.previous_velocities, from.previous_velocities)
     restore_prognostic_state!(restored.Jᵇ, from.Jᵇ)
     restore_prognostic_state!(restored.κu, from.κu)
     restore_prognostic_state!(restored.κc, from.κc)
     restore_prognostic_state!(restored.κe, from.κe)
-
-    # Skip the first compute_diffusivities! call after restore to preserve the restored state
-    restored._skip_next_compute[] = true
     return restored
 end
 
-restore_prognostic_state!(::CATKEDiffusivityFields, ::Nothing) = nothing
+restore_prognostic_state!(::CATKEClosureFields, ::Nothing) = nothing

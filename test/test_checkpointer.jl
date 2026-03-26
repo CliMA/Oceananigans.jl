@@ -1498,6 +1498,76 @@ function test_checkpoint_missing_file_warning(arch)
     return nothing
 end
 
+function test_pickup_mode_selection_and_default(arch)
+    N = 4
+    L = 1
+    Δt = 1.0
+
+    function make_simulation(; stop_iteration=3)
+        grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+        model = NonhydrostaticModel(grid)
+        return Simulation(model, Δt=Δt, stop_iteration=stop_iteration)
+    end
+
+    prefix = "pickup_mode_selection_$(typeof(arch))_$(rand(UInt))"
+
+    try
+        simulation = make_simulation(stop_iteration=3)
+        simulation.output_writers[:checkpointer] = Checkpointer(simulation.model,
+                                                                schedule = IterationInterval(1),
+                                                                prefix = prefix,
+                                                                cleanup = false)
+        @test_nowarn run!(simulation)
+
+        first_filepath = "$(prefix)_iteration1.jld2"
+        @test isfile(first_filepath)
+
+        # Make iteration 1 the most recently modified checkpoint.
+        sleep(1.1)
+        touch(first_filepath)
+
+        # Explicit iteration-based pickup.
+        iter_sim = make_simulation(stop_iteration=3)
+        iter_sim.output_writers[:checkpointer] = Checkpointer(iter_sim.model,
+                                                              schedule = IterationInterval(1),
+                                                              prefix = prefix,
+                                                              cleanup = false)
+        @test_logs (:info, r"iteration2\.jld2") set!(iter_sim; iteration=2)
+        @test iteration(iter_sim) == 2
+
+        # Explicit recent-timestamp pickup.
+        recent_sim = make_simulation(stop_iteration=3)
+        recent_sim.output_writers[:checkpointer] = Checkpointer(recent_sim.model,
+                                                                schedule = IterationInterval(1),
+                                                                prefix = prefix,
+                                                                cleanup = false)
+        @test_logs (:info, r"iteration1\.jld2") set!(recent_sim; checkpoint=:recent_time_stamp)
+        @test iteration(recent_sim) == 1
+
+        # Explicit highest-iteration pickup.
+        highest_sim = make_simulation(stop_iteration=3)
+        highest_sim.output_writers[:checkpointer] = Checkpointer(highest_sim.model,
+                                                                 schedule = IterationInterval(1),
+                                                                 prefix = prefix,
+                                                                 cleanup = false)
+        @test_logs (:info, r"iteration3\.jld2") set!(highest_sim; checkpoint=:highest_iteration)
+        @test iteration(highest_sim) == 3
+
+        # pickup=true should default to :recent_time_stamp.
+        default_sim = make_simulation(stop_iteration=1)
+        default_sim.output_writers[:checkpointer] = Checkpointer(default_sim.model,
+                                                                 schedule = IterationInterval(1),
+                                                                 prefix = prefix,
+                                                                 cleanup = false)
+        @test_nowarn run!(default_sim; pickup=true)
+        @test iteration(default_sim) == 2
+    finally
+        rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+    end
+
+    return nothing
+end
+
 function test_manual_checkpoint_with_checkpointer(arch)
     N = 8
     L = 1
@@ -1680,6 +1750,74 @@ function test_checkpoint_at_end(arch)
     return nothing
 end
 
+"""
+Test checkpointing for simulations with OpenBoundaryCondition using the specified scheme.
+Uses a make_simulation() function to create identical simulations for testing.
+Verifies that:
+1. Every element of model.boundary_mass_fluxes is correctly saved and restored
+2. The restored simulation can continue running from the checkpoint
+3. Simulation state (iteration, time) is properly restored
+
+# Arguments
+- `arch`: Architecture (CPU, GPU, etc.)
+- `timestepper`: Time stepping scheme (:QuasiAdamsBashforth2, :RungeKutta3, etc.)
+- `scheme`: OpenBoundaryCondition scheme (e.g., PerturbationAdvection(...))
+"""
+function test_open_boundary_condition_scheme_checkpointing(arch, timestepper, scheme)
+    Nx, Ny, Nz = 4, 4, 4
+    Δt = 0.5
+
+    function make_simulation(stop_iteration)
+        grid = RectilinearGrid(arch, topology=(Bounded, Bounded, Bounded), size=(Nx, Ny, Nz), extent=(10, 10, 10))
+        obc = OpenBoundaryCondition(0.1, scheme=scheme)
+        u_bcs = FieldBoundaryConditions(west=obc, east=obc)
+        model = NonhydrostaticModel(grid; timestepper, boundary_conditions=(u=u_bcs,), tracers=:c)
+        set!(model, c=1)
+        return Simulation(model, Δt=Δt, stop_iteration=stop_iteration)
+    end
+
+    # Run simulation and checkpoint
+    simulation = make_simulation(3)
+
+    scheme_name = replace(string(typeof(scheme)), "." => "_")
+    prefix = "obc_$(scheme_name)_checkpoint_$(timestepper)_$(typeof(arch))"
+    simulation.output_writers[:checkpointer] = Checkpointer(simulation.model, schedule=IterationInterval(3), prefix=prefix)
+    @test_nowarn run!(simulation)
+
+    # Store original boundary mass fluxes
+    original_bmf = simulation.model.boundary_mass_fluxes
+
+    # Restore entire simulation from checkpoint and verify boundary_mass_fluxes match exactly
+    restored_simulation = make_simulation(6)
+    restored_simulation.output_writers[:checkpointer] = Checkpointer(restored_simulation.model,
+                                                                     schedule=IterationInterval(3),
+                                                                     prefix=prefix)
+    @test_nowarn set!(restored_simulation; checkpoint=:latest)
+
+    restored_bmf = restored_simulation.model.boundary_mass_fluxes
+
+    # Test that structure is identical
+    @test propertynames(original_bmf) == propertynames(restored_bmf)
+
+    # Test that every element matches exactly
+    for field_name in propertynames(original_bmf)
+        original_field = getproperty(original_bmf, field_name)
+        restored_field = getproperty(restored_bmf, field_name)
+        @test original_field == restored_field
+    end
+
+    # Test that the restored simulation can continue running
+    @test_nowarn run!(restored_simulation)
+
+    # Verify simulation state after continuation
+    @test restored_simulation.model.clock.iteration == 6
+    @test restored_simulation.model.clock.time ≈ 6 * Δt
+
+    # Clean up
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+    return nothing
+end
+
 for arch in archs
     for model_type in (:nonhydrostatic, :hydrostatic)
         for pickup_method in (:boolean, :iteration, :filepath)
@@ -1845,10 +1983,23 @@ for arch in archs
         end
     end
 
+    schemes = [
+        PerturbationAdvection(inflow_timescale=2, outflow_timescale=1),
+    ]
+
+    for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3), scheme in schemes
+        scheme_name = replace(string(typeof(scheme)), "." => "_")
+        @testset "OpenBoundaryCondition with $scheme_name checkpointing [$(typeof(arch)), $timestepper]" begin
+            @info "  Testing OpenBoundaryCondition with $scheme_name checkpointing [$(typeof(arch)), $timestepper]..."
+            test_open_boundary_condition_scheme_checkpointing(arch, timestepper, scheme)
+        end
+    end
+
     @testset "Edge cases [$(typeof(arch))]" begin
         @info "  Testing edge cases [$(typeof(arch))]..."
         test_checkpoint_empty_tracers(arch)
         test_checkpoint_missing_file_warning(arch)
+        test_pickup_mode_selection_and_default(arch)
     end
 
     @testset "Manual checkpointing [$(typeof(arch))]" begin
