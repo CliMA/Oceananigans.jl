@@ -1,7 +1,7 @@
 using Oceananigans.Grids: architecture
 using Oceananigans.Architectures: on_architecture
 using KernelAbstractions: @index, @kernel
-using MPI: VBuffer, Alltoallv!
+using MPI: VBuffer, Alltoallv!, Alltoall!, UBuffer
 
 # Transpose directions are assumed to work only in the following configuration
 # z -> y -> x -> y -> z
@@ -183,10 +183,22 @@ for (from, to, buff) in zip([:y, :z, :y, :x], [:z, :y, :x, :y], [:yz, :yz, :xy, 
           * For 2D fields in XY (flat z-direction) we can traspose only if the partitioning is in X
         """
         function $transpose!(pf::TransposableField)
-            $pack_buffer!(pf.$buffer, pf.$fromfield) # pack the one-dimensional buffer for Alltoallv! call
-            sync_device!(architecture(pf.$fromfield)) # Device needs to be synched with host before MPI call
-            Alltoallv!(VBuffer(pf.$buffer.send, pf.counts.$buff), VBuffer(pf.$buffer.recv, pf.counts.$buff), pf.comms.$buff) # Actually transpose!
-            $unpack_buffer!(pf.$tofield, pf.$fromfield, pf.$buffer) # unpack the one-dimensional buffer into the 3D field
+            $pack_buffer!(pf.$buffer, pf.$fromfield)
+            sync_device!(architecture(pf.$fromfield))
+            # Use Alltoall (equal-size) instead of Alltoallv (variable-size) when all
+            # chunks are the same size. Alltoall is dramatically faster on GPU-aware MPI
+            # (up to 28x on Cray MPICH with A100 GPUs over NVLink).
+            counts = pf.counts.$buff
+            if all(c -> c == counts[1], counts)
+                Alltoall!(UBuffer(pf.$buffer.send, counts[1]),
+                          UBuffer(pf.$buffer.recv, counts[1]),
+                          pf.comms.$buff)
+            else
+                Alltoallv!(VBuffer(pf.$buffer.send, counts),
+                           VBuffer(pf.$buffer.recv, counts),
+                           pf.comms.$buff)
+            end
+            $unpack_buffer!(pf.$tofield, pf.$fromfield, pf.$buffer)
             return nothing
         end
     end
