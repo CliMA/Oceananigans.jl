@@ -64,5 +64,5 @@ jobs:
           arch: ${{ matrix.arch }}
       - run: |
           cd ${{ matrix.dir }}
-          julia --color=yes -e 'import Pkg; Pkg.Registry.update()'
+          julia --color=yes -e 'import Pkg; Pkg.Registry.add("General"); Pkg.Registry.update()'
           julia --color=yes -e 'import Pkg; Pkg.activate("./"); Pkg.resolve()'
