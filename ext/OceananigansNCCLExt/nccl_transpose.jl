@@ -1,3 +1,120 @@
+#####
+##### NCCL subcommunicator cache for TransposableField transposes
+#####
+##### The TransposableField creates MPI subcommunicators (comms.xy, comms.yz)
+##### via MPI.Comm_split. We create matching NCCL communicators lazily and
+##### cache them in a global dictionary keyed by the MPI comm.
+#####
+
+const _nccl_subcomm_cache = Dict{MPI.Comm, NCCL.Communicator}()
+
+function _get_nccl_subcomm(mpi_subcomm)
+    get!(_nccl_subcomm_cache, mpi_subcomm) do
+        create_nccl_comm_from_mpi(mpi_subcomm)
+    end
+end
+
+# Override the generated transpose functions for NCCLDistributed grids.
+# These are called as transpose_y_to_x!(storage) where storage is a TransposableField.
+# We detect NCCL by checking the field's architecture communicator.
+
+function DC.transpose_y_to_x!(pf::DC.TransposableField)
+    arch = DC.architecture(pf.yfield)
+    @debug "transpose_y_to_x! called, arch.communicator = $(typeof(arch.communicator))"
+    if arch.communicator isa NCCLCommunicator
+        @debug "  → NCCL path"
+        nccl_comm = _get_nccl_subcomm(pf.comms.xy)
+        nccl_transpose_y_to_x!(pf, nccl_comm)
+    else
+        @debug "  → MPI fallback"
+        # Fall back to original — pack, sync, Alltoall, unpack
+        DC.pack_buffer_y_to_x!(pf.xybuff, pf.yfield)
+        DC.sync_device!(arch)
+        counts = pf.counts.xy
+        if all(c -> c == counts[1], counts)
+            MPI.Alltoall!(MPI.UBuffer(pf.xybuff.send, counts[1]),
+                          MPI.UBuffer(pf.xybuff.recv, counts[1]),
+                          pf.comms.xy)
+        else
+            MPI.Alltoallv!(MPI.VBuffer(pf.xybuff.send, counts),
+                           MPI.VBuffer(pf.xybuff.recv, counts),
+                           pf.comms.xy)
+        end
+        DC.unpack_buffer_x_from_y!(pf.xfield, pf.yfield, pf.xybuff)
+    end
+    return nothing
+end
+
+function DC.transpose_x_to_y!(pf::DC.TransposableField)
+    arch = DC.architecture(pf.yfield)  # yfield always carries the original arch
+    if arch.communicator isa NCCLCommunicator
+        nccl_comm = _get_nccl_subcomm(pf.comms.xy)
+        nccl_transpose_x_to_y!(pf, nccl_comm)
+    else
+        DC.pack_buffer_x_to_y!(pf.xybuff, pf.xfield)
+        DC.sync_device!(arch)
+        counts = pf.counts.xy
+        if all(c -> c == counts[1], counts)
+            MPI.Alltoall!(MPI.UBuffer(pf.xybuff.send, counts[1]),
+                          MPI.UBuffer(pf.xybuff.recv, counts[1]),
+                          pf.comms.xy)
+        else
+            MPI.Alltoallv!(MPI.VBuffer(pf.xybuff.send, counts),
+                           MPI.VBuffer(pf.xybuff.recv, counts),
+                           pf.comms.xy)
+        end
+        DC.unpack_buffer_y_from_x!(pf.yfield, pf.xfield, pf.xybuff)
+    end
+    return nothing
+end
+
+function DC.transpose_z_to_y!(pf::DC.TransposableField)
+    arch = DC.architecture(pf.yfield)  # yfield always carries the original arch
+    if arch.communicator isa NCCLCommunicator
+        nccl_comm = _get_nccl_subcomm(pf.comms.yz)
+        nccl_transpose_z_to_y!(pf, nccl_comm)
+    else
+        DC.pack_buffer_z_to_y!(pf.yzbuff, pf.zfield)
+        DC.sync_device!(arch)
+        counts = pf.counts.yz
+        if all(c -> c == counts[1], counts)
+            MPI.Alltoall!(MPI.UBuffer(pf.yzbuff.send, counts[1]),
+                          MPI.UBuffer(pf.yzbuff.recv, counts[1]),
+                          pf.comms.yz)
+        else
+            MPI.Alltoallv!(MPI.VBuffer(pf.yzbuff.send, counts),
+                           MPI.VBuffer(pf.yzbuff.recv, counts),
+                           pf.comms.yz)
+        end
+        DC.unpack_buffer_y_from_z!(pf.yfield, pf.zfield, pf.yzbuff)
+    end
+    return nothing
+end
+
+function DC.transpose_y_to_z!(pf::DC.TransposableField)
+    arch = DC.architecture(pf.yfield)
+    if arch.communicator isa NCCLCommunicator
+        nccl_comm = _get_nccl_subcomm(pf.comms.yz)
+        nccl_transpose_y_to_z!(pf, nccl_comm)
+    else
+        DC.pack_buffer_y_to_z!(pf.yzbuff, pf.yfield)
+        DC.sync_device!(arch)
+        counts = pf.counts.yz
+        if all(c -> c == counts[1], counts)
+            MPI.Alltoall!(MPI.UBuffer(pf.yzbuff.send, counts[1]),
+                          MPI.UBuffer(pf.yzbuff.recv, counts[1]),
+                          pf.comms.yz)
+        else
+            MPI.Alltoallv!(MPI.VBuffer(pf.yzbuff.send, counts),
+                           MPI.VBuffer(pf.yzbuff.recv, counts),
+                           pf.comms.yz)
+        end
+        DC.unpack_buffer_z_from_y!(pf.zfield, pf.yfield, pf.yzbuff)
+    end
+    return nothing
+end
+
+# Keep existing standalone functions for NCCLDistributedFFTSolver
 """
     nccl_alltoall!(buffer, counts, nccl_comm)
 
@@ -36,47 +153,30 @@ Replaces the MPI path: pack → sync_device! → Alltoall → unpack
 with:                   pack → NCCL grouped Send/Recv → unpack
 (no sync_device! needed).
 """
-function nccl_transpose_y_to_x!(storage, nccl_comm)
-    DC.pack_buffer_y_to_x!(storage.xybuff, storage.yfield)
-    # No sync_device! — NCCL is stream-ordered
-    nccl_alltoall!(storage.xybuff, storage.counts.xy, nccl_comm)
-    DC.unpack_buffer_x_from_y!(storage.xfield, storage.yfield, storage.xybuff)
+function nccl_transpose_y_to_x!(pf, nccl_comm)
+    DC.pack_buffer_y_to_x!(pf.xybuff, pf.yfield)
+    nccl_alltoall!(pf.xybuff, pf.counts.xy, nccl_comm)
+    DC.unpack_buffer_x_from_y!(pf.xfield, pf.yfield, pf.xybuff)
     return nothing
 end
 
-"""
-    nccl_transpose_x_to_y!(storage, nccl_comm)
-
-NCCL-based transpose from x-local to y-local configuration.
-"""
-function nccl_transpose_x_to_y!(storage, nccl_comm)
-    DC.pack_buffer_x_to_y!(storage.xybuff, storage.xfield)
-    # No sync_device! — NCCL is stream-ordered
-    nccl_alltoall!(storage.xybuff, storage.counts.xy, nccl_comm)
-    DC.unpack_buffer_y_from_x!(storage.yfield, storage.xfield, storage.xybuff)
+function nccl_transpose_x_to_y!(pf, nccl_comm)
+    DC.pack_buffer_x_to_y!(pf.xybuff, pf.xfield)
+    nccl_alltoall!(pf.xybuff, pf.counts.xy, nccl_comm)
+    DC.unpack_buffer_y_from_x!(pf.yfield, pf.xfield, pf.xybuff)
     return nothing
 end
 
-"""
-    nccl_transpose_z_to_y!(storage, nccl_comm)
-
-NCCL-based transpose from z-local to y-local configuration.
-"""
-function nccl_transpose_z_to_y!(storage, nccl_comm)
-    DC.pack_buffer_z_to_y!(storage.yzbuff, storage.zfield)
-    nccl_alltoall!(storage.yzbuff, storage.counts.yz, nccl_comm)
-    DC.unpack_buffer_y_from_z!(storage.yfield, storage.zfield, storage.yzbuff)
+function nccl_transpose_z_to_y!(pf, nccl_comm)
+    DC.pack_buffer_z_to_y!(pf.yzbuff, pf.zfield)
+    nccl_alltoall!(pf.yzbuff, pf.counts.yz, nccl_comm)
+    DC.unpack_buffer_y_from_z!(pf.yfield, pf.zfield, pf.yzbuff)
     return nothing
 end
 
-"""
-    nccl_transpose_y_to_z!(storage, nccl_comm)
-
-NCCL-based transpose from y-local to z-local configuration.
-"""
-function nccl_transpose_y_to_z!(storage, nccl_comm)
-    DC.pack_buffer_y_to_z!(storage.yzbuff, storage.yfield)
-    nccl_alltoall!(storage.yzbuff, storage.counts.yz, nccl_comm)
-    DC.unpack_buffer_z_from_y!(storage.zfield, storage.yfield, storage.yzbuff)
+function nccl_transpose_y_to_z!(pf, nccl_comm)
+    DC.pack_buffer_y_to_z!(pf.yzbuff, pf.yfield)
+    nccl_alltoall!(pf.yzbuff, pf.counts.yz, nccl_comm)
+    DC.unpack_buffer_z_from_y!(pf.zfield, pf.yfield, pf.yzbuff)
     return nothing
 end

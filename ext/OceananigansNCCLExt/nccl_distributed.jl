@@ -18,9 +18,13 @@ MPI.Comm_rank(c::NCCLCommunicator) = MPI.Comm_rank(c.mpi)
 MPI.Comm_size(c::NCCLCommunicator) = MPI.Comm_size(c.mpi)
 MPI.Allreduce!(sendbuf, recvbuf, op, c::NCCLCommunicator) = MPI.Allreduce!(sendbuf, recvbuf, op, c.mpi)
 MPI.Allreduce!(buf, op, c::NCCLCommunicator) = MPI.Allreduce!(buf, op, c.mpi)
+MPI.Allreduce(buf, op, c::NCCLCommunicator) = MPI.Allreduce(buf, op, c.mpi)
 MPI.Comm_split(c::NCCLCommunicator, color, key) = MPI.Comm_split(c.mpi, color, key)
+MPI.Comm_split_type(c::NCCLCommunicator, t, key; kwargs...) = MPI.Comm_split_type(c.mpi, t, key; kwargs...)
 MPI.Barrier(c::NCCLCommunicator) = MPI.Barrier(c.mpi)
 MPI.Bcast!(buf, c::NCCLCommunicator; kwargs...) = MPI.Bcast!(buf, c.mpi; kwargs...)
+MPI.Isend(buf, dest, tag, c::NCCLCommunicator) = MPI.Isend(buf, dest, tag, c.mpi)
+MPI.Irecv!(buf, src, tag, c::NCCLCommunicator) = MPI.Irecv!(buf, src, tag, c.mpi)
 
 """
     NCCLDistributed(child_arch = GPU(); partition, kwargs...)
@@ -54,106 +58,75 @@ function NCCLDistributed(child_arch = GPU(); partition = nothing, kwargs...)
                           mpi_arch.devices)
 end
 
-# Helper to check if an architecture uses NCCL
-_uses_nccl(arch) = false
-_uses_nccl(arch::Distributed) = arch.communicator isa NCCLCommunicator
+# Type alias for dispatch
+const _NCCLArch = Distributed{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:NCCLCommunicator}
+
+# sync_device! is a no-op for NCCLDistributed — NCCL ops are GPU-stream-native
+import Oceananigans.Utils: sync_device!
+sync_device!(::_NCCLArch) = nothing
 
 #####
-##### NCCL halo communication — replaces MPI Isend/Irecv
+##### NCCL halo communication
+#####
+##### The existing distributed_fill_halo_event! flow calls:
+#####   fill_send_buffers! → sync_device!(arch) → kernel!(c, bcs..., grid, arch, buffers) → pool_requests
+#####
+##### With NCCLDistributed:
+#####   - sync_device! is a no-op (defined above)
+#####   - The DistributedFillHalo callables use NCCL grouped Send/Recv instead of MPI
+#####   - They return nothing (no MPI requests), so pool_requests_or_complete_comm! skips waitall
+#####   - recv_from_buffers! is called inside the callable since pool skips it for nothing
 #####
 
-# Override distributed_fill_halo_event! to skip sync_device! and use NCCL
-function DC.distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
-                                         grid::DC.DistributedGrid, buffers, args...;
-                                         async = false, only_local_halos = false, kwargs...)
-
-    only_local_halos && return nothing
-
-    arch = DC.architecture(grid)
-    buffer_side = kernel!.side
-
-    if _uses_nccl(arch)
-        # NCCL path: no sync_device!, batch sends/recvs in NCCL group
-        DC.fill_send_buffers!(c, buffers, grid, buffer_side)
-        _nccl_halo_exchange!(kernel!, bcs, arch, buffers)
-        DC.recv_from_buffers!(c, buffers, grid, buffer_side)
-    else
-        # Original MPI path
-        DC.fill_send_buffers!(c, buffers, grid, buffer_side)
-        DC.sync_device!(arch)
-        requests = kernel!(c, bcs..., loc, grid, arch, buffers)
-        DC.pool_requests_or_complete_comm!(c, arch, grid, buffers, requests, async, buffer_side)
+# Helper: perform NCCL exchange and recv_from_buffers! in one step
+function _nccl_exchange_and_recv!(nccl_comm, send_recv_pairs, c, buffers, grid, side)
+    NCCL.groupStart()
+    for (send_buf, recv_buf, peer) in send_recv_pairs
+        NCCL.Send(send_buf, nccl_comm; dest=peer)
+        NCCL.Recv!(recv_buf, nccl_comm; source=peer)
     end
-
-    return nothing
-end
-
-#####
-##### NCCL grouped Send/Recv for each halo exchange pattern
-#####
-
-function _nccl_halo_exchange!(::DistributedFillHalo{<:WestAndEast}, bcs, arch, buffers)
-    west_bc, east_bc = bcs
-    nccl_comm = arch.communicator.nccl
-    NCCL.groupStart()
-    NCCL.Send(buffers.west.send, nccl_comm; dest=west_bc.condition.to)
-    NCCL.Recv!(buffers.west.recv, nccl_comm; source=west_bc.condition.to)
-    NCCL.Send(buffers.east.send, nccl_comm; dest=east_bc.condition.to)
-    NCCL.Recv!(buffers.east.recv, nccl_comm; source=east_bc.condition.to)
     NCCL.groupEnd()
+    DC.recv_from_buffers!(c, buffers, grid, side)
+    return nothing  # no MPI requests
 end
 
-function _nccl_halo_exchange!(::DistributedFillHalo{<:SouthAndNorth}, bcs, arch, buffers)
-    south_bc, north_bc = bcs
+function (k::DistributedFillHalo{<:WestAndEast})(c, west_bc, east_bc, loc, grid, arch::_NCCLArch, buffers)
     nccl_comm = arch.communicator.nccl
-    NCCL.groupStart()
-    NCCL.Send(buffers.south.send, nccl_comm; dest=south_bc.condition.to)
-    NCCL.Recv!(buffers.south.recv, nccl_comm; source=south_bc.condition.to)
-    NCCL.Send(buffers.north.send, nccl_comm; dest=north_bc.condition.to)
-    NCCL.Recv!(buffers.north.recv, nccl_comm; source=north_bc.condition.to)
-    NCCL.groupEnd()
+    pairs = ((buffers.west.send, buffers.west.recv, west_bc.condition.to),
+             (buffers.east.send, buffers.east.recv, east_bc.condition.to))
+    _nccl_exchange_and_recv!(nccl_comm, pairs, c, buffers, grid, k.side)
 end
 
-function _nccl_halo_exchange!(::DistributedFillHalo{<:West}, bcs, arch, buffers)
-    bc = bcs[1]
+function (k::DistributedFillHalo{<:SouthAndNorth})(c, south_bc, north_bc, loc, grid, arch::_NCCLArch, buffers)
     nccl_comm = arch.communicator.nccl
-    NCCL.groupStart()
-    NCCL.Send(buffers.west.send, nccl_comm; dest=bc.condition.to)
-    NCCL.Recv!(buffers.west.recv, nccl_comm; source=bc.condition.to)
-    NCCL.groupEnd()
+    pairs = ((buffers.south.send, buffers.south.recv, south_bc.condition.to),
+             (buffers.north.send, buffers.north.recv, north_bc.condition.to))
+    _nccl_exchange_and_recv!(nccl_comm, pairs, c, buffers, grid, k.side)
 end
 
-function _nccl_halo_exchange!(::DistributedFillHalo{<:East}, bcs, arch, buffers)
-    bc = bcs[1]
+function (k::DistributedFillHalo{<:West})(c, bc, loc, grid, arch::_NCCLArch, buffers)
     nccl_comm = arch.communicator.nccl
-    NCCL.groupStart()
-    NCCL.Send(buffers.east.send, nccl_comm; dest=bc.condition.to)
-    NCCL.Recv!(buffers.east.recv, nccl_comm; source=bc.condition.to)
-    NCCL.groupEnd()
+    pairs = ((buffers.west.send, buffers.west.recv, bc.condition.to),)
+    _nccl_exchange_and_recv!(nccl_comm, pairs, c, buffers, grid, k.side)
 end
 
-function _nccl_halo_exchange!(::DistributedFillHalo{<:South}, bcs, arch, buffers)
-    bc = bcs[1]
+function (k::DistributedFillHalo{<:East})(c, bc, loc, grid, arch::_NCCLArch, buffers)
     nccl_comm = arch.communicator.nccl
-    NCCL.groupStart()
-    NCCL.Send(buffers.south.send, nccl_comm; dest=bc.condition.to)
-    NCCL.Recv!(buffers.south.recv, nccl_comm; source=bc.condition.to)
-    NCCL.groupEnd()
+    pairs = ((buffers.east.send, buffers.east.recv, bc.condition.to),)
+    _nccl_exchange_and_recv!(nccl_comm, pairs, c, buffers, grid, k.side)
 end
 
-function _nccl_halo_exchange!(::DistributedFillHalo{<:North}, bcs, arch, buffers)
-    bc = bcs[1]
+function (k::DistributedFillHalo{<:South})(c, bc, loc, grid, arch::_NCCLArch, buffers)
     nccl_comm = arch.communicator.nccl
-    NCCL.groupStart()
-    NCCL.Send(buffers.north.send, nccl_comm; dest=bc.condition.to)
-    NCCL.Recv!(buffers.north.recv, nccl_comm; source=bc.condition.to)
-    NCCL.groupEnd()
+    pairs = ((buffers.south.send, buffers.south.recv, bc.condition.to),)
+    _nccl_exchange_and_recv!(nccl_comm, pairs, c, buffers, grid, k.side)
 end
 
-# No vertical communication needed
-_nccl_halo_exchange!(::DistributedFillHalo{<:BottomAndTop}, args...) = nothing
-_nccl_halo_exchange!(::DistributedFillHalo{<:Bottom}, args...) = nothing
-_nccl_halo_exchange!(::DistributedFillHalo{<:Top}, args...) = nothing
+function (k::DistributedFillHalo{<:North})(c, bc, loc, grid, arch::_NCCLArch, buffers)
+    nccl_comm = arch.communicator.nccl
+    pairs = ((buffers.north.send, buffers.north.recv, bc.condition.to),)
+    _nccl_exchange_and_recv!(nccl_comm, pairs, c, buffers, grid, k.side)
+end
 
 #####
 ##### NCCL corner communication
