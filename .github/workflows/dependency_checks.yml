@@ -2,7 +2,7 @@ name: Dependency Checks
 
 on:
   pull_request:
-    paths:
+    paths: &paths
       - '.github/workflows/dependency_checks.yml'
       - 'test/Project.toml'
       - 'benchmarks/Project.toml'
@@ -11,16 +11,12 @@ on:
     branches:
       - main
     tags: '*'
-    paths:
-      - '.github/workflows/dependency_checks.yml'
-      - 'test/Project.toml'
-      - 'benchmarking/Project.toml'
-      - 'Project.toml'
+    paths: *paths
 jobs:
   check_minimum_version:
     name: Check Minimum Dependency Versions
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -43,7 +39,7 @@ jobs:
           projects: '., test, benchmarking'
   resolve_dependencies:
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
+    timeout-minutes: 10
     strategy:
       fail-fast: false
       matrix:
@@ -62,7 +58,10 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - run: |
-          cd ${{ matrix.dir }}
-          julia --color=yes -e 'import Pkg; Pkg.Registry.add("General"); Pkg.Registry.update()'
-          julia --color=yes -e 'import Pkg; Pkg.activate("./"); Pkg.resolve()'
+      - name: Resolve environment in ${{ matrix.dir }}
+        shell: julia --color=yes --project=${{ matrix.dir }} {0}
+        run: |
+          using Pkg
+          Pkg.Registry.add("General")
+          Pkg.Registry.update()
+          Pkg.resolve()
