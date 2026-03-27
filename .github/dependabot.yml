@@ -12,3 +12,8 @@ updates:
       - "/test"
     schedule:
       interval: "weekly"
+    ignore:
+      - dependency-name: "Oceananigans"
+    groups:
+      per-dependency:
+        group-by: dependency-name
