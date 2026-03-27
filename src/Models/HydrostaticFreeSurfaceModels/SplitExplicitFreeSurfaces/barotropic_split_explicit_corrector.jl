@@ -1,4 +1,5 @@
-using Oceananigans: fields
+using Oceananigans.ImmersedBoundaries: immersed_peripheral_node
+using Oceananigans.Models: surface_kernel_parameters, volume_kernel_parameters
 
 # Kernels to compute the vertical integral of the velocities
 @kernel function _compute_barotropic_mode!(U̅, V̅, grid, u, v)
@@ -22,11 +23,9 @@ The barotropic transport is computed as: `U̅ = ∫ u dz` and `V̅ = ∫ v dz`.
 This function is used both during split-explicit correction and initialization.
 """
 function compute_barotropic_mode!(U̅, V̅, grid, u, v)
-    active_cells_map = get_active_column_map(grid) # may be nothing
-
-    launch!(architecture(grid), grid, :xy,
+    launch!(architecture(grid), grid, surface_kernel_parameters(grid),
             _compute_barotropic_mode!,
-            U̅, V̅, grid, u, v; active_cells_map)
+            U̅, V̅, grid, u, v)
 
     return nothing
 end
@@ -61,7 +60,7 @@ function barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     compute_barotropic_mode!(U̅, V̅, grid, u, v)
 
     # add in "good" barotropic mode
-    launch!(arch, grid, :xyz, _barotropic_split_explicit_corrector!,
+    launch!(arch, grid, volume_kernel_parameters(grid), _barotropic_split_explicit_corrector!,
             u, v, U, V, U̅, V̅, grid)
 
     return nothing
@@ -72,14 +71,17 @@ end
     Hᶠᶜ = column_depthᶠᶜᵃ(i, j, grid)
     Hᶜᶠ = column_depthᶜᶠᵃ(i, j, grid)
 
+    immersedᶠᶜᶜ = immersed_peripheral_node(i, j, k, grid, Face(), Center(), Center())
+    immersedᶜᶠᶜ = immersed_peripheral_node(i, j, k, grid, Center(), Face(), Center())
+
     δuᵢ = @inbounds U[i, j, 1] - U̅[i, j, 1]
     δvⱼ = @inbounds V[i, j, 1] - V̅[i, j, 1]
 
     u_correction = ifelse(Hᶠᶜ == 0, zero(grid), δuᵢ / Hᶠᶜ)
     v_correction = ifelse(Hᶜᶠ == 0, zero(grid), δvⱼ / Hᶜᶠ)
 
-    @inbounds u[i, j, k] = u[i, j, k] + u_correction
-    @inbounds v[i, j, k] = v[i, j, k] + v_correction
+    @inbounds u[i, j, k] = ifelse(immersedᶠᶜᶜ, zero(grid), u[i, j, k] + u_correction)
+    @inbounds v[i, j, k] = ifelse(immersedᶜᶠᶜ, zero(grid), v[i, j, k] + v_correction)
 end
 
 @kernel function _compute_transport_velocities!(ũ, ṽ, grid, Ũ, Ṽ, u, v, U̅, V̅)
@@ -87,8 +89,8 @@ end
     Hᶠᶜ = column_depthᶠᶜᵃ(i, j, grid)
     Hᶜᶠ = column_depthᶜᶠᵃ(i, j, grid)
 
-    immersedᶜᶠᶜ = peripheral_node(i, j, k, grid, Center(), Face(), Center())
-    immersedᶠᶜᶜ = peripheral_node(i, j, k, grid, Face(), Center(), Center())
+    immersedᶜᶠᶜ = immersed_peripheral_node(i, j, k, grid, Center(), Face(), Center())
+    immersedᶠᶜᶜ = immersed_peripheral_node(i, j, k, grid, Face(), Center(), Center())
 
     δuᵢ = @inbounds Ũ[i, j, 1] - U̅[i, j, 1]
     δvⱼ = @inbounds Ṽ[i, j, 1] - V̅[i, j, 1]
@@ -130,13 +132,13 @@ function compute_transport_velocities!(model, free_surface::SplitExplicitFreeSur
     U̅ = free_surface.filtered_state.U̅
     V̅ = free_surface.filtered_state.V̅
 
+    synchronize_communication!(Ũ)
+    synchronize_communication!(Ṽ)
+
     @apply_regionally begin
         compute_barotropic_mode!(U̅, V̅, grid, u, v)
-        launch!(architecture(grid), grid, :xyz, _compute_transport_velocities!, ũ, ṽ, grid, Ũ, Ṽ, u, v, U̅, V̅)
+        launch!(architecture(grid), grid, volume_kernel_parameters(grid), _compute_transport_velocities!, ũ, ṽ, grid, Ũ, Ṽ, u, v, U̅, V̅)
     end
-
-    # Fill transport velocities
-    fill_halo_regions!((ũ, ṽ), model.clock, fields(model); async=true)
 
     # Update grid velocity and vertical transport velocity
     @apply_regionally update_vertical_velocities!(model.transport_velocities, model.grid, model)
