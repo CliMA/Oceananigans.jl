@@ -39,7 +39,6 @@ if CUDA.functional()
     end
 end
 
-
 function append_weight_computation_type!(list, weno::WENO{<:Any, <:Any, WCT}) where {WCT}
     push!(list, WCT)
     append_weight_computation_type!(list, weno.buffer_scheme)

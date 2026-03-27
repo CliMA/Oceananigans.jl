@@ -3,8 +3,6 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.Advection: materialize_advection
 using Oceananigans.Utils: NormalDivision, ConvertingDivision, BackendOptimizedDivision
 
-
-
 @testset "materialize weno scheme chain with placeholders" begin
 
     # Construct an advection chain by hand with intermediate non-WENO buffer schemes
