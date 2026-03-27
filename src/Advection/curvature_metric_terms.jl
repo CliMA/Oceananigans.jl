@@ -2,75 +2,95 @@ using Oceananigans.Grids: RectilinearGrid
 using Oceananigans.Operators
 
 #####
-##### Hydrostatic curvature metric terms
+##### Curvature metric terms for flux-form momentum advection
 #####
-##### These correct the flux-form momentum advection operator for the rotation
-##### of basis vectors on curvilinear grids. They arise from the Christoffel
-##### symbols and are NOT part of the flux divergence ∇·(v⊗v).
+##### These correct for the rotation of basis vectors on curvilinear grids.
+##### They arise from the Christoffel symbols and are NOT part of the flux
+##### divergence ∇·(v⊗v).
 #####
-##### The metric-ratio approach is used: tan(φ)/a ≈ -δy(Δx)/Az, which
-##### generalises to any orthogonal curvilinear grid (not just LatitudeLongitudeGrid).
+##### Argument convention matches div_𝐯u(i, j, k, grid, advection, U, V):
+#####   U = advector (transport / mass-flux)
+#####   V = advectee (velocity)
+#####
+##### The metric-ratio approach is used for the hydrostatic terms:
+#####   tan(φ)/a ≈ −δy(Δx)/Az
+##### which generalises to any orthogonal curvilinear grid.
 #####
 
 # --- Hydrostatic u-metric at (f, c, c) ---
 
 @inline function U_dot_∇u_hydrostatic_metric(i, j, k, grid, advection, U, V)
-    V̂₂ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, V[2]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
     Û₂ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, U[2]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
-    û₁ = @inbounds U[1][i, j, k]
+    V̂₂ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, V[2]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
+    v̂₁ = @inbounds V[1][i, j, k]
 
-    return + V̂₂ * û₁ * δyᵃᶜᵃ(i, j, k, grid, Δxᶠᶠᶜ) * Az⁻¹ᶠᶜᶜ(i, j, k, grid) -
-             V̂₂ * Û₂ * δxᶠᵃᵃ(i, j, k, grid, Δyᶜᶜᶜ) * Az⁻¹ᶠᶜᶜ(i, j, k, grid)
+    return + Û₂ * v̂₁ * δyᵃᶜᵃ(i, j, k, grid, Δxᶠᶠᶜ) * Az⁻¹ᶠᶜᶜ(i, j, k, grid) -
+             Û₂ * V̂₂ * δxᶠᵃᵃ(i, j, k, grid, Δyᶜᶜᶜ) * Az⁻¹ᶠᶜᶜ(i, j, k, grid)
 end
 
 # --- Hydrostatic v-metric at (c, f, c) ---
 
 @inline function U_dot_∇v_hydrostatic_metric(i, j, k, grid, advection, U, V)
-    V̂₁ = ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, V[1]) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
     Û₁ = ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, U[1]) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
-    v̂₂ = @inbounds U[2][i, j, k]
+    V̂₁ = ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, V[1]) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
+    v̂₂ = @inbounds V[2][i, j, k]
 
-    return + V̂₁ * v̂₂ * δxᶜᵃᵃ(i, j, k, grid, Δyᶠᶠᶜ) * Az⁻¹ᶜᶠᶜ(i, j, k, grid) -
-             V̂₁ * Û₁ * δyᵃᶠᵃ(i, j, k, grid, Δxᶜᶜᶜ) * Az⁻¹ᶜᶠᶜ(i, j, k, grid)
+    return + Û₁ * v̂₂ * δxᶜᵃᵃ(i, j, k, grid, Δyᶠᶠᶜ) * Az⁻¹ᶜᶠᶜ(i, j, k, grid) -
+             Û₁ * V̂₁ * δyᵃᶠᵃ(i, j, k, grid, Δxᶜᶜᶜ) * Az⁻¹ᶜᶠᶜ(i, j, k, grid)
 end
 
 #####
 ##### Non-hydrostatic curvature metric terms (w-coupling)
 #####
 ##### These arise when the thin-atmosphere approximation is dropped.
-##### MITgcm equations 2.105–2.107.
+##### Energy-conserving volume-weighted discretization (MITgcm eqs 2.105–2.107):
+#####   V_u G_u = − ī[ ū^i w̄^k V_c / a ]       (2.105)
+#####   V_v G_v = − j̄[ v̄^j w̄^k V_c / a ]       (2.106)
+#####   V_w G_w = + k̄[ (ū^i² + v̄^j²) V_c / a ]  (2.107)
 #####
 
-# --- Non-hydrostatic u-metric at (f, c, c): +u w / R ---
-# Sign convention: the metric *source* is -uw/a (MITgcm eq 2.105).
-# Since the tendency subtracts U_dot_∇u_metric, we return +uw/R
-# so that -(+uw/R) = -uw/R in the equation of motion.
+# --- Volume-weighted products at (c, c, c) for interpolation back to velocity points ---
+
+@inline function _uw_Vᶜᶜᶜ(i, j, k, grid, U, V)
+    ū = ℑxᶜᵃᵃ(i, j, k, grid, V[1])
+    w̄ = ℑzᵃᵃᶜ(i, j, k, grid, U[3])
+    return ū * w̄ * Vᶜᶜᶜ(i, j, k, grid)
+end
+
+@inline function _vw_Vᶜᶜᶜ(i, j, k, grid, U, V)
+    v̄ = ℑyᵃᶜᵃ(i, j, k, grid, V[2])
+    w̄ = ℑzᵃᵃᶜ(i, j, k, grid, U[3])
+    return v̄ * w̄ * Vᶜᶜᶜ(i, j, k, grid)
+end
+
+@inline function _u²v²_Vᶜᶜᶜ(i, j, k, grid, U, V)
+    ū = ℑxᶜᵃᵃ(i, j, k, grid, V[1])
+    v̄ = ℑyᵃᶜᵃ(i, j, k, grid, V[2])
+    Ū = ℑxᶜᵃᵃ(i, j, k, grid, U[1])
+    V̄ = ℑyᵃᶜᵃ(i, j, k, grid, U[2])
+    return (ū * Ū + v̄ * V̄) * Vᶜᶜᶜ(i, j, k, grid)
+end
+
+# --- Non-hydrostatic u-metric at (f, c, c): eq 2.105 ---
+# G_u = −(1/a V_u) ī[ ū w̄ V_c ]
+# Returns −G_u (positive) since the tendency subtracts U_dot_∇u_metric.
 
 @inline function _nonhydrostatic_metric_u(i, j, k, grid, U, V)
-    ŵ = ℑxᶠᵃᵃ(i, j, k, grid, ℑzᵃᵃᶜ, V[3])
-    û₁ = @inbounds U[1][i, j, k]
-    return û₁ * ŵ / grid.radius
+    return V⁻¹ᶠᶜᶜ(i, j, k, grid) / grid.radius * ℑxᶠᵃᵃ(i, j, k, grid, _uw_Vᶜᶜᶜ, U, V)
 end
 
-# --- Non-hydrostatic v-metric at (c, f, c): +v w / R ---
+# --- Non-hydrostatic v-metric at (c, f, c): eq 2.106 ---
 
 @inline function _nonhydrostatic_metric_v(i, j, k, grid, U, V)
-    ŵ = ℑyᵃᶠᵃ(i, j, k, grid, ℑzᵃᵃᶜ, V[3])
-    v̂₂ = @inbounds U[2][i, j, k]
-    return v̂₂ * ŵ / grid.radius
+    return V⁻¹ᶜᶠᶜ(i, j, k, grid) / grid.radius * ℑyᵃᶠᵃ(i, j, k, grid, _vw_Vᶜᶜᶜ, U, V)
 end
 
-# --- w-metric at (c, c, f): -(u² + v²) / R ---
-# The metric source is +(u²+v²)/a (MITgcm eq 2.107).
-# Since the tendency subtracts U_dot_∇w_metric, we return -(u²+v²)/R
-# so that -(-(u²+v²)/R) = +(u²+v²)/R in the equation of motion.
+# --- w-metric at (c, c, f): eq 2.107 ---
+# G_w = +(1/a V_w) k̄[ (ū² + v̄²) V_c ]
+# Returns −G_w (negative) since the tendency subtracts U_dot_∇w_metric.
 
 @inline function U_dot_∇w_metric(i, j, k, grid, advection, U, V)
-    û₁ = ℑzᵃᵃᶠ(i, j, k, grid, ℑxᶜᵃᵃ, U[1])
-    v̂₂ = ℑzᵃᵃᶠ(i, j, k, grid, ℑyᵃᶜᵃ, U[2])
-    Û₁ = ℑzᵃᵃᶠ(i, j, k, grid, ℑxᶜᵃᵃ, V[1])
-    V̂₂ = ℑzᵃᵃᶠ(i, j, k, grid, ℑyᵃᶜᵃ, V[2])
-    return -(û₁ * Û₁ + v̂₂ * V̂₂) / grid.radius
+    return -V⁻¹ᶜᶜᶠ(i, j, k, grid) / grid.radius * ℑzᵃᵃᶠ(i, j, k, grid, _u²v²_Vᶜᶜᶜ, U, V)
 end
 
 #####
