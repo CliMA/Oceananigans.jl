@@ -246,10 +246,8 @@ include("Simulations/Simulations.jl")
 # include("Diagnostics/Diagnostics.jl") # or just delete
 # include("OutputWriters/OutputWriters.jl")
 
-# Abstractions for distributed and multi-region models
-include("MultiRegion/MultiRegion.jl")
-
-include("Models/Models.jl")
+# TODO: move here
+#include("MultiRegion/MultiRegion.jl")
 
 # Physics, time-stepping, and models
 # TODO: move here
@@ -262,6 +260,12 @@ include("StokesDrifts.jl")
 include("TurbulenceClosures/TurbulenceClosures.jl")
 include("Forcings/Forcings.jl")
 include("Biogeochemistry.jl")
+
+# TODO: move above
+include("Models/Models.jl")
+
+# Abstractions for distributed and multi-region models
+include("MultiRegion/MultiRegion.jl")
 
 #####
 ##### Needed so we can export names from sub-modules at the top-level
