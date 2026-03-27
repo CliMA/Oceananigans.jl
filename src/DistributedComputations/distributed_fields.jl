@@ -26,7 +26,7 @@ function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedGrid, data, old_bc
 
     arch = architecture(grid)
     rank = arch.local_rank
-    new_bcs = inject_halo_communication_boundary_conditions(old_bcs, rank, arch.connectivity, topology(grid))
+    new_bcs = inject_halo_communication_boundary_conditions(old_bcs, loc, rank, arch.connectivity, topology(grid))
     buffers = communication_buffers(grid, data, new_bcs)
 
     return Field{LX, LY, LZ}(grid, data, new_bcs, indices, op, status, buffers)
