@@ -349,6 +349,28 @@ insert_connected_topology(::Type{Bounded}, R, r) = ifelse(R == 1, Bounded,
 
 insert_connected_topology(::Type{Periodic}, R, r) = ifelse(R == 1, Periodic, FullyConnected)
 
+# Fold-aware topology insertion for distributed tripolar grids.
+# These take 5 arguments: (global_y_topology, Ry, ry, Rx, rx) where
+# Ry/ry are y-rank count/index and Rx/rx are x-rank count/index (all 1-based).
+
+pivot_side(Rx, rx) = rx ≤ Rx ÷ 2 ? WestOfPivot : EastOfPivot
+
+local_fold_topology(::Type{RightCenterFolded}, Rx, rx) =
+    Rx == 1 ? LeftConnectedRightCenterFolded : LeftConnectedRightCenterConnected{pivot_side(Rx, rx)}
+
+local_fold_topology(::Type{RightFaceFolded}, Rx, rx) =
+    Rx == 1 ? LeftConnectedRightFaceFolded : LeftConnectedRightFaceConnected{pivot_side(Rx, rx)}
+
+function insert_connected_topology(T::Type{<:Union{RightCenterFolded, RightFaceFolded}}, Ry, ry, Rx, rx)
+    if ry == 1
+        return RightConnected
+    elseif ry == Ry
+        return local_fold_topology(T, Rx, rx)
+    else
+        return FullyConnected
+    end
+end
+
 """
     reconstruct_global_topology(T, R, r, r1, r2, arch)
 

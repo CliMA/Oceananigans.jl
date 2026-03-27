@@ -40,7 +40,9 @@ end
     end
 end
 
-const BoundedTopology = Union{Bounded, LeftConnected, RightFaceFolded}
+const BoundedTopology = Union{Bounded, LeftConnected, RightFaceFolded,
+                              LeftConnectedRightFaceFolded,
+                              LeftConnectedRightFaceConnected}
 const AT = AbstractTopology
 
 Base.length(::Face,    ::BoundedTopology, N) = N + 1

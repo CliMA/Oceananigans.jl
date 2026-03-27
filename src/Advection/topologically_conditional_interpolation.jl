@@ -20,7 +20,9 @@ using Oceananigans.Grids: AbstractGrid,
 const AG = AbstractGrid
 
 # topologies bounded at least on one side
-const BT = Union{Bounded, RightConnected, LeftConnected}
+const BT = Union{Bounded, RightConnected, LeftConnected,
+                  LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
+                  LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected}
 
 # Bounded underlying Grids
 const AGX   = AG{<:Any, <:BT}
