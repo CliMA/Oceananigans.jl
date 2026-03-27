@@ -31,10 +31,6 @@ jobs:
           - ubuntu-latest
         arch:
           - x64
-        dir:
-          - './'
-          - 'test/'
-          - 'benchmarking/'
     steps:
       - uses: actions/checkout@v6
       - uses: julia-actions/setup-julia@v2
@@ -44,10 +40,7 @@ jobs:
       - uses: julia-actions/julia-downgrade-compat@v2
         with:
           mode: ${{ matrix.downgrade_mode }}
-      - run: |
-          cd ${{ matrix.dir }}
-          julia --color=yes -e 'import Pkg; Pkg.Registry.update()'
-          julia --color=yes -e 'import Pkg; Pkg.activate("./"); Pkg.resolve()'
+          projects: '., test, benchmarking'
   resolve_dependencies:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
