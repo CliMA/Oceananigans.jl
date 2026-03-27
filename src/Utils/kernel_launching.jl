@@ -353,6 +353,31 @@ end
     return nothing
 end
 
+struct InteriorBoundarySet
+    interior
+    boundary
+    function InteriorBoundarySet(interior, boundary)
+        new(interior, boundary)
+    end
+end
+# Launch kernels over conditioned cell maps
+@inline function launch!(arch, grid, workspec, kernel, first_arg, second_arg, args::InteriorBoundarySet;
+                         active_cells_map::InteriorBoundarySet, kwargs...)
+  launch!(arch, grid, workspec, kernel, first_arg, second_arg, args.interior;
+          active_cells_map=active_cells_map.interior, kwargs...)
+  launch!(arch, grid, workspec, kernel, first_arg, second_arg, args.boundary;
+          active_cells_map=active_cells_map.boundary, kwargs...)
+  return nothing
+end
+
+@inline function launch!(arch, grid, workspec_tuple::Tuple, kernel, first_arg, second_arg, args::InteriorBoundarySet;
+                         active_cells_map::InteriorBoundarySet, kwargs...)
+    for workspec in workspec_tuple
+        launch!(arch, grid, workspec, kernel, first_arg, second_arg, args; active_cells_map, kwargs...)
+    end
+    return nothing
+end
+
 # When dims::Val
 @inline launch!(arch, grid, ::Val{workspec}, args...; kw...) where workspec =
     _launch!(arch, grid, workspec, args...; kw...)
