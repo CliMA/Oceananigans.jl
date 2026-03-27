@@ -12,11 +12,18 @@ end
 function Base.show(io::IO, model::HydrostaticFreeSurfaceModel)
     TS = nameof(typeof(model.timestepper))
     tracernames = prettykeys(model.tracers)
+    prescribed = prettykeys(model.prescribed_tracers)
 
     print(io, summary(model), "\n",
         "├── grid: ", summary(model.grid), "\n",
         "├── timestepper: ", TS, "\n",
-        "├── tracers: ", tracernames, "\n",
+        "├── tracers: ", tracernames, "\n")
+
+    if !isempty(model.prescribed_tracers)
+        print(io, "├── prescribed_tracers: ", prescribed, "\n")
+    end
+
+    print(io,
         "├── closure: ", closure_summary(model.closure), "\n",
         "├── buoyancy: ", summary(model.buoyancy), "\n")
 
