@@ -1,6 +1,6 @@
 name = "Oceananigans"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
-version = "0.106.0"
+version = "0.106.3"
 authors = ["Climate Modeling Alliance and contributors"]
 
 [deps]
@@ -89,7 +89,7 @@ OffsetArrays = "1.4"
 OrderedCollections = "1.1"
 Pkg = "<0.0.1, 1"
 Printf = "1.9"
-Reactant = "0.2.209"
+Reactant = "0.2.236"
 ReactantCore = "0.1"
 Rotations = "1.0"
 SeawaterPolynomials = "0.3.9"
