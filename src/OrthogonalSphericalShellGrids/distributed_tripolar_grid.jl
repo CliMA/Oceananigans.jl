@@ -285,7 +285,7 @@ function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::MPITripolarGridOfSomeKind, da
     if isnothing(old_bcs) || ismissing(old_bcs)
         new_bcs = old_bcs
     else
-        new_bcs = inject_halo_communication_boundary_conditions(old_bcs, arch.local_rank, arch.connectivity, topology(grid))
+        new_bcs = inject_halo_communication_boundary_conditions(old_bcs, loc, arch.local_rank, arch.connectivity, topology(grid))
 
         # North boundary conditions are "special". If we are at the top of the domain, i.e.
         # the last rank, then we need to substitute the BC only if the old one is not already
