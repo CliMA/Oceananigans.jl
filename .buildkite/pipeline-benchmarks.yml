@@ -223,6 +223,7 @@ steps:
       - "benchmark_results.json"
       - "benchmark_results.md"
       - "benchmark_comparison.md"
+      - "baseline_benchmark_results.json"
 
   - wait
 
