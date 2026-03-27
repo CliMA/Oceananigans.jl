@@ -44,9 +44,10 @@ jobs:
       - uses: julia-actions/julia-downgrade-compat@v2
         with:
           mode: ${{ matrix.downgrade_mode }}
-      - run: cd ${{ matrix.dir }}
-      - run: julia --color=yes -e 'import Pkg; Pkg.Registry.update()'
-      - run: julia --color=yes -e 'import Pkg; Pkg.activate("./"); Pkg.resolve()'
+      - run: |
+          cd ${{ matrix.dir }}
+          julia --color=yes -e 'import Pkg; Pkg.Registry.update()'
+          julia --color=yes -e 'import Pkg; Pkg.activate("./"); Pkg.resolve()'
   resolve_dependencies:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 120
@@ -68,6 +69,7 @@ jobs:
         with:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
-      - run: cd ${{ matrix.dir }}
-      - run: julia --color=yes -e 'import Pkg; Pkg.Registry.update()'
-      - run: julia --color=yes -e 'import Pkg; Pkg.activate("./"); Pkg.resolve()'
+      - run: |
+          cd ${{ matrix.dir }}
+          julia --color=yes -e 'import Pkg; Pkg.Registry.update()'
+          julia --color=yes -e 'import Pkg; Pkg.activate("./"); Pkg.resolve()'
