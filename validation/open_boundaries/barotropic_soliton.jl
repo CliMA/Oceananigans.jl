@@ -153,7 +153,7 @@ end
 # Simulation setup
 function setup_simulation(params::SolitonParameters;
                           Nx = 200, Ny = 100, Nz = 4,
-                          stop_time_nd = 10.0,
+                          stop_time = 70 * params.T,
                           scheme = PerturbationAdvection(),
                           ν_sponge = 1e4meters^2 / second, # peak viscosity
                           nudging_rate = 1 / (2days),
@@ -164,12 +164,12 @@ function setup_simulation(params::SolitonParameters;
     z = MutableVerticalDiscretization(range(-params.H, 0, length = Nz + 1))
 
     grid = RectilinearGrid(CPU();
-        topology = (Bounded, Bounded, Bounded),
-        size = (Nx, Ny, Nz),
-        x = (params.x_min, params.x_max),
-        y = (params.y_min, params.y_max),
-        z,
-        halo = (8, 8, 8))
+                           topology = (Bounded, Bounded, Bounded),
+                           size = (Nx, Ny, Nz),
+                           x = (params.x_min, params.x_max),
+                           y = (params.y_min, params.y_max),
+                           z,
+                           halo = (8, 8, 8))
 
     # Model:
     β = params.U / params.L^2
@@ -202,6 +202,7 @@ function setup_simulation(params::SolitonParameters;
         free_surface        = ImplicitFreeSurface(reltol = 1e-10, abstol = 1e-10, maxiter = 100,
                                                   gravitational_acceleration = g),
         momentum_advection  = WENO(order=5, minimum_buffer_upwind_order=1),
+        timestepper = :SplitRungeKutta3,
         vertical_coordinate = ZStarCoordinate(),
         coriolis            = BetaPlane(f₀ = 0, β = β),
         closure,
@@ -215,12 +216,11 @@ function setup_simulation(params::SolitonParameters;
         η = (x, y, z) -> analytic_η(x, y, 0.0, params))
 
     # Simulation
-    stop_time = stop_time_nd * params.T
     c_grav    = √(g * params.H) # surface gravity wave speed [m/s]
     max_Δt    = 0.5 * minimum_xspacing(grid) / c_grav # CFL limit from gravity waves
     Δt₀       = 0.1 * max_Δt
     simulation = Simulation(model; Δt = Δt₀, stop_time)
-    conjure_time_step_wizard!(simulation, IterationInterval(10); cfl = 0.1, max_Δt)
+    conjure_time_step_wizard!(simulation, IterationInterval(10); cfl = 0.4, max_Δt)
 
     function progress_message(sim)
         u, v, w = sim.model.velocities
@@ -327,7 +327,7 @@ end
 #---
 
 params = default_parameters(B = 0.5)
-simulation = setup_simulation(params; stop_time_nd = 70)
+simulation = setup_simulation(params; stop_time = 150days)
 run!(simulation)
 @info "Simulation complete."
 plot_soliton(simulation, params)
