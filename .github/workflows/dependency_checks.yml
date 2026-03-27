@@ -59,7 +59,8 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - name: Resolve environment in ${{ matrix.dir }}
-        shell: julia --color=yes --project=${{ matrix.dir }} {0}
+        working-directory: ${{ matrix.dir }}
+        shell: julia --color=yes --project=. {0}
         run: |
           using Pkg
           Pkg.Registry.add("General")
