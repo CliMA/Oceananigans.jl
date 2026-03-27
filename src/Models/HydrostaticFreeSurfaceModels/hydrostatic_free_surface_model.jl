@@ -240,7 +240,7 @@ function HydrostaticFreeSurfaceModel(grid;
 
     # Either check grid-correctness, or construct tuples of fields
     velocities         = hydrostatic_velocity_fields(velocities, grid, clock, boundary_conditions)
-    tracers            = TracerFields(tracers, grid, boundary_conditions)
+    tracers            = materialize_tracer_fields(tracers, grid, clock, boundary_conditions)
     pressure           = PressureField(grid)
     closure_fields = build_closure_fields(closure_fields, grid, clock, tracernames(tracers), boundary_conditions, closure)
 
@@ -254,8 +254,8 @@ function HydrostaticFreeSurfaceModel(grid;
     implicit_solver   = implicit_diffusion_solver(time_discretization(closure), grid)
     prognostic_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers)
 
-    Gⁿ = hydrostatic_tendency_fields(velocities, free_surface, grid, tracernames(tracers), boundary_conditions)
-    G⁻ = previous_hydrostatic_tendency_fields(timestepper, velocities, free_surface, grid, tracernames(tracers), boundary_conditions)
+    Gⁿ = hydrostatic_tendency_fields(velocities, free_surface, grid, tracers, boundary_conditions)
+    G⁻ = previous_hydrostatic_tendency_fields(timestepper, velocities, free_surface, grid, tracers, boundary_conditions)
     timestepper = TimeStepper(timestepper, grid, prognostic_fields; implicit_solver, Gⁿ, G⁻)
     materialize_clock!(clock, timestepper)
 

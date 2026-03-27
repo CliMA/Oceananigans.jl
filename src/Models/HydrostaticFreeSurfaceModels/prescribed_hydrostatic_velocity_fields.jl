@@ -4,16 +4,22 @@
 
 using Oceananigans: location
 using Oceananigans.Grids: Center, Face
-using Oceananigans.Fields: FunctionField, field
+using Oceananigans.Fields: FunctionField, Field, field, TracerFields, CenterField, FieldBoundaryConditions
 using Oceananigans.TimeSteppers: tick!, step_lagrangian_particles!
 using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!
 using Oceananigans.OutputReaders: FieldTimeSeries, TimeSeriesInterpolation
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.BoundaryConditions: fill_halo_regions!
+import Oceananigans.DistributedComputations: synchronize_communication!
+import Oceananigans.ImmersedBoundaries: mask_immersed_field!
 import Oceananigans.Models: extract_boundary_conditions
 import Oceananigans.Utils: datatuple, sum_of_velocities
 import Oceananigans.TimeSteppers: time_step!
+
+const PrescribedField = Union{TimeSeriesInterpolation, FunctionField}
+
+prognostic_tracers(tracers) = NamedTuple(k => v for (k, v) in pairs(tracers) if !(v isa PrescribedField))
 
 struct PrescribedVelocityFields{U, V, W, P}
     u :: U
@@ -93,8 +99,8 @@ function Base.indexed_iterate(p::PrescribedVelocityFields, i::Int, state=1)
     end
 end
 
-hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracer_names, bcs) =
-    merge((u=nothing, v=nothing), TracerFields(tracer_names, grid))
+hydrostatic_tendency_fields(::PrescribedVelocityFields, free_surface, grid, tracers, bcs) =
+    merge((u=nothing, v=nothing), tracer_tendency_fields(tracers, grid, bcs))
 
 free_surface_names(free_surface, ::PrescribedVelocityFields, grid) = tuple()
 free_surface_names(::SplitExplicitFreeSurface, ::PrescribedVelocityFields, grid) = tuple()
@@ -136,10 +142,11 @@ materialize_free_surface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFie
 materialize_free_surface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, grid) = nothing
 materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, grid) = nothing
 
-hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) = tracers
+hydrostatic_prognostic_fields(::PrescribedVelocityFields, ::Nothing, tracers) =
+    prognostic_tracers(tracers)
 compute_hydrostatic_momentum_tendencies!(model, ::PrescribedVelocityFields, kernel_parameters; kwargs...) = nothing
 
-compute_flux_bcs!(::Nothing, c, arch, clock, model_fields) = nothing
+compute_flux_bcs!(::Nothing, c, arch, args) = nothing
 
 Adapt.adapt_structure(to, velocities::PrescribedVelocityFields) =
     PrescribedVelocityFields(Adapt.adapt(to, velocities.u),
@@ -172,3 +179,147 @@ update_state!(model::OnlyParticleTrackingModel, callbacks) =
 
 prognostic_state(::PrescribedVelocityFields) = nothing
 restore_prognostic_state!(::PrescribedVelocityFields, ::Nothing) = nothing
+
+#####
+##### PrescribedTracer
+#####
+
+struct PrescribedTracer{F, P}
+    field :: F
+    parameters :: P
+end
+
+"""
+    PrescribedTracer(field; parameters=nothing)
+
+Wrap a `FieldTimeSeries` or `Function` to indicate that a tracer should be prescribed
+(not time-stepped) in the model. Prescribed tracers are available to turbulence closures
+for buoyancy computation but are not advanced by the time-stepper.
+
+Supported input types:
+- `FieldTimeSeries`: interpolated to the current model time via `TimeSeriesInterpolation`
+- `Function(x, y, z, t)` or `Function(x, y, z, t, parameters)`: wrapped in a `FunctionField`
+
+Examples
+========
+
+Prescribe buoyancy with a `Function`:
+
+```jldoctest prescribed
+julia> using Oceananigans
+
+julia> using Oceananigans.Models.HydrostaticFreeSurfaceModels: PrescribedTracer
+
+julia> b(x, y, z, t) = 1e-7 * x + 1e-5 * z;
+
+julia> PrescribedTracer(b)
+PrescribedTracer wrapping b (generic function with 1 method)
+```
+
+Prescribe temperature and salinity with `FieldTimeSeries`:
+
+```jldoctest prescribed
+julia> grid = RectilinearGrid(size=(4, 4, 4), extent=(1e5, 1e5, 1e3));
+
+julia> T = FieldTimeSeries{Center, Center, Center}(grid, [0.0, 86400.0]);
+
+julia> S = FieldTimeSeries{Center, Center, Center}(grid, [0.0, 86400.0]);
+
+julia> PrescribedTracer(T)
+PrescribedTracer wrapping 4×4×4×2 FieldTimeSeries{InMemory} located at (Center, Center, Center) on CPU
+```
+"""
+PrescribedTracer(field; parameters=nothing) = PrescribedTracer(field, parameters)
+
+Base.summary(pt::PrescribedTracer) = "PrescribedTracer wrapping $(summary(pt.field))"
+Base.show(io::IO, pt::PrescribedTracer) = print(io, summary(pt))
+
+#####
+##### Materialization: convert PrescribedTracer to a concrete field type
+#####
+
+materialize_prescribed_tracer(pt::PrescribedTracer{<:FieldTimeSeries}, grid; clock) =
+    TimeSeriesInterpolation(pt.field, grid; clock)
+
+materialize_prescribed_tracer(pt::PrescribedTracer{<:Function}, grid; clock) =
+    FunctionField{Center, Center, Center}(pt.field, grid; clock, parameters=pt.parameters)
+
+# Fallback: if already a Field or similar, just return it
+materialize_prescribed_tracer(pt::PrescribedTracer, grid; clock) = pt.field
+
+#####
+##### Helpers for building tracer tendency fields
+#####
+
+"""
+    tracer_tendency_fields(tracers::NamedTuple, grid, bcs)
+
+Build tendency fields for tracers: `CenterField` for prognostic tracers,
+`nothing` for prescribed tracers (`PrescribedField`).
+This mirrors the `PrescribedVelocityFields` pattern where `Gⁿ.u = nothing`.
+"""
+function tracer_tendency_fields(tracers::NamedTuple, grid, bcs)
+    names = propertynames(tracers)
+    fields = map(names) do name
+        tracers[name] isa PrescribedField ? nothing :
+            CenterField(grid, boundary_conditions=get(bcs, name, FieldBoundaryConditions()))
+    end
+    return NamedTuple{names}(fields)
+end
+
+#####
+##### Dispatch-based no-ops for prescribed fields
+#####
+
+mask_immersed_field!(::PrescribedField) = nothing
+synchronize_communication!(::PrescribedField) = nothing
+
+#####
+##### Materialize tracer fields: handle mixed prescribed and prognostic tracers
+#####
+
+"""
+    materialize_tracer_fields(tracers, grid, clock, boundary_conditions)
+
+Create tracer fields from a tracer specification that may contain `PrescribedTracer` entries.
+Regular tracers become `CenterField`s via `TracerFields`; prescribed tracers are materialized
+into `TimeSeriesInterpolation` or `FunctionField` objects.
+"""
+function materialize_tracer_fields(tracers::NamedTuple, grid, clock, boundary_conditions)
+    all_names = propertynames(tracers)
+
+    fields = map(all_names) do name
+        bcs = get(boundary_conditions, name, FieldBoundaryConditions())
+        materialize_tracer_field(tracers[name], grid, clock, bcs)
+    end
+
+    return NamedTuple{all_names}(Tuple(fields))
+end
+
+materialize_tracer_field(entry::PrescribedTracer, grid, clock, bcs) =
+    materialize_prescribed_tracer(entry, grid; clock)
+
+materialize_tracer_field(entry::Field, grid, clock, bcs) = entry
+
+materialize_tracer_field(entry, grid, clock, bcs) =
+    CenterField(grid, boundary_conditions=bcs)
+
+# Fallback: when tracers is a Tuple of Symbols (no prescribed tracers possible)
+materialize_tracer_fields(tracers::Tuple, grid, clock, boundary_conditions) =
+    TracerFields(tracers, grid, boundary_conditions)
+
+#####
+##### Boundary condition handling for prescribed tracers
+#####
+
+extract_boundary_conditions(::PrescribedTracer) = FieldBoundaryConditions()
+extract_boundary_conditions(::TimeSeriesInterpolation) = FieldBoundaryConditions()
+extract_boundary_conditions(::FunctionField) = FieldBoundaryConditions()
+
+#####
+##### Dispatch-based no-ops for prescribed tracers in tendency and stepping loops
+#####
+
+compute_tracer_tendency!(::PrescribedField, args...; kwargs...) = nothing
+rk_substep_tracer!(::PrescribedField, args...) = nothing
+ab2_step_tracer!(::PrescribedField, args...) = nothing
