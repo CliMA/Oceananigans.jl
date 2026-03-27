@@ -216,7 +216,7 @@ steps:
           echo "No benchmark_results.json found in main build artifacts"
         fi
       else
-        echo "No passing main build found for comparison"
+        echo "No main build found for comparison"
       fi
 
     artifact_paths:
