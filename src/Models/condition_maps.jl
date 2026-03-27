@@ -2,6 +2,7 @@ using Oceananigans.Advection: AbstractAdvectionScheme
 using Oceananigans.ImmersedBoundaries
 using Oceananigans.Grids: get_active_cells_map, active_cell
 using Oceananigans.DistributedComputations: DistributedGrid
+using Oceananigans.MultiRegion: MultiRegionGrids
 using Oceananigans.Architectures: CPU
 import Oceananigans.Architectures as AC
 using Oceananigans.Fields: Field, interior
@@ -42,7 +43,10 @@ using KernelAbstractions: @kernel, @index
     return (; condition_maps...)
 end
 
-@inline function generate_condition_maps(grid::DistributedGrid, advection; kwargs...)
+const SingleColumnGrid = AbstractGrid{<:AbstractFloat, <:Flat, <:Flat, <:Bounded}
+
+const UnsupportedGrids = Union{<:DistributedGrid, <:MultiRegionGrids, SingleColumnGrid}
+@inline function generate_condition_maps(grid::UnsupportedGrids, advection; kwargs...)
     active_cells_map = get_active_cells_map(grid, Val(:interior))
     condition_maps = Dict()
     for key in keys(advection)
