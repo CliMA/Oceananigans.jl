@@ -4,7 +4,7 @@ using Oceananigans.Grids: get_active_cells_map, active_cell
 using Oceananigans.Architectures: CPU
 import Oceananigans.Architectures as AC
 using Oceananigans.Fields: Field, interior
-using Oceananigans.Utils: InteriorBoundarySet
+using Oceananigans.Utils: InteriorBoundarySet, convert_interior_indices
 using KernelAbstractions: @kernel, @index
 
 # Currently maintaining this union until condition mapping works on all
@@ -160,12 +160,3 @@ function split_indices_full(field, grid)
     map2 = AC.on_architecture(architecture(grid), map2)
     return (map1, map2)
 end
-
-
-function convert_interior_indices(interior_indices, k, IndicesType)
-    interior_indices =   getproperty.(interior_indices, :I)
-    interior_indices = add_3rd_index.(interior_indices, k) |> Array{IndicesType}
-    return interior_indices
-end
-
-add_3rd_index(ij, k) = (ij[1], ij[2], k)

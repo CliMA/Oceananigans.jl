@@ -16,6 +16,7 @@ export TabulatedFunction
 export interpolator, _interpolate
 export ϕ₁, ϕ₂, ϕ₃, ϕ₄, ϕ₅, ϕ₆, ϕ₇, ϕ₈
 export InteriorBoundarySet
+export convert_interior_indices
 
 #####
 ##### Misc. small utils
@@ -46,5 +47,6 @@ include("sum_of_arrays.jl")
 include("newton_div.jl")
 include("interpolation.jl")
 include("tabulated_function.jl")
+include("cell_mapping.jl")
 
 end # module
