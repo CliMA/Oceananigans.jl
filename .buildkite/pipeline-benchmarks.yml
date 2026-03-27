@@ -216,13 +216,14 @@ steps:
           echo "No benchmark_results.json found in main build artifacts"
         fi
       else
-        echo "No passing main build found for comparison"
+        echo "No main build found for comparison"
       fi
 
     artifact_paths:
       - "benchmark_results.json"
       - "benchmark_results.md"
       - "benchmark_comparison.md"
+      - "baseline_benchmark_results.json"
 
   - wait
 
