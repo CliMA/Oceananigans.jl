@@ -23,21 +23,18 @@ function compute_eddy_velocities!(closure_fields, closure::SkewAdvectionISSD, mo
     return nothing
 end
 
-"""
-    tapering_factor(Sx, Sy, slope_limiter)
-
-Return the tapering factor `min(1, Sₘₐₓ² / S²)`, where `S² = Sx² + Sy²`
-that multiplies all components of the isopycnal slope tensor.
-
-References
-==========
-R. Gerdes, C. Koberle, and J. Willebrand. (1991), "The influence of numerical advection schemes
-    on the results of ocean general circulation models", Clim. Dynamics, 5 (4), 211–226.
-"""
+""" return the tapering factor for the specific `slope_limiter`"""
 @inline function tapering_factor(Sx, Sy, slope_limiter::FluxTapering)
     S²  = Sx^2 + Sy^2
     Sₘ² = slope_limiter.max_slope^2
     return min(one(Sx), Sₘ² / S²)
+end
+
+@inline function tapering_factor(Sx, Sy, slope_limiter::TanhTapering)
+    S  = sqrt(Sx^2 + Sy^2)
+    Sc = slope_limiter.cutoff_slope
+    Sd = slope_limiter.tapering_width
+    return (one(Sx) + tanh((Sc - S) / Sd)) / 2
 end
 
 # Slope in x-direction at F, C, F locations, zeroed out on peripheries
