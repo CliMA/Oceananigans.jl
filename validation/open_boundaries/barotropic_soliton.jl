@@ -220,7 +220,7 @@ function setup_simulation(params::SolitonParameters;
     max_Δt    = 0.5 * minimum_xspacing(grid) / c_grav # CFL limit from gravity waves
     Δt₀       = 0.1 * max_Δt
     simulation = Simulation(model; Δt = Δt₀, stop_time)
-    conjure_time_step_wizard!(simulation, IterationInterval(10); cfl = 0.4, max_Δt)
+    conjure_time_step_wizard!(simulation, IterationInterval(10); cfl = 0.8, max_Δt)
 
     function progress_message(sim)
         u, v, w = sim.model.velocities
