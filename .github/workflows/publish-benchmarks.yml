@@ -191,14 +191,6 @@ jobs:
               chart_name = build_chart_name(d)
               data.append({"name": chart_name, "unit": "s/timestep", "value": tps})
 
-          # Inject Default entries into each sweep chart as baseline reference
-          for deflt in default_entries:
-              tps = deflt["time_per_step_seconds"]
-              for sweep in sweep_groups:
-                  d_copy = {**deflt, "group": sweep}
-                  chart_name = build_chart_name(d_copy)
-                  data.append({"name": chart_name, "unit": "s/timestep", "value": tps})
-
               # Add nsys kernel data as separate chart entries if present
               if "nsys_top_kernels" in d:
                   name = d["name"]
@@ -217,6 +209,14 @@ jobs:
                           "unit": "ms (median GPU time)",
                           "value": med_ms,
                       })
+
+          # Inject Default entries into each sweep chart as baseline reference
+          for deflt in default_entries:
+              tps = deflt["time_per_step_seconds"]
+              for sweep in sweep_groups:
+                  d_copy = {**deflt, "group": sweep}
+                  chart_name = build_chart_name(d_copy)
+                  data.append({"name": chart_name, "unit": "s/timestep", "value": tps})
 
           with open("github-action-benchmark.json", "w") as f:
               json.dump(data, f, indent=2)
@@ -250,18 +250,39 @@ jobs:
               with open("benchmark_results_merged.json") as f:
                   all_data = json.load(f)
 
+              # Load baseline nsys data for comparison
+              baseline_kernels = {}  # name -> {short_kernel_name: med_time_ns}
+              baseline_files = glob.glob("artifacts/**/baseline_benchmark_results.json", recursive=True)
+              if baseline_files:
+                  with open(baseline_files[0]) as f:
+                      baseline_data = json.load(f)
+                  for bd in baseline_data:
+                      if "nsys_top_kernels" in bd:
+                          bk_map = {}
+                          for bk in bd["nsys_top_kernels"]:
+                              short = re.split(r"[<(]", bk["name"])[0].strip()
+                              if len(short) > 60:
+                                  short = short[:57] + "..."
+                              bk_map[short] = bk["med_time_ns"]
+                          baseline_kernels[bd["name"]] = bk_map
+
               nsys_entries = [d for d in all_data if "nsys_top_kernels" in d]
               if nsys_entries:
+                  has_baseline = bool(baseline_kernels)
                   summary += "\n## NSYS Kernel Profiling\n\n"
                   for entry in nsys_entries:
                       name = entry["name"]
                       kernels = entry["nsys_top_kernels"]
+                      bk_map = baseline_kernels.get(name, {})
                       summary += f"### {name}\n\n"
-                      summary += "| Kernel | Median (ms) | Instances | Avg (ms) | Min (ms) | Max (ms) |\n"
-                      summary += "|--------|------------|-----------|----------|----------|----------|\n"
+                      if has_baseline and bk_map:
+                          summary += "| Kernel | Median (ms) | Main (ms) | Change | Instances | Avg (ms) | Min (ms) | Max (ms) |\n"
+                          summary += "|--------|------------|-----------|--------|-----------|----------|----------|----------|\n"
+                      else:
+                          summary += "| Kernel | Median (ms) | Instances | Avg (ms) | Min (ms) | Max (ms) |\n"
+                          summary += "|--------|------------|-----------|----------|----------|----------|\n"
                       for k in kernels:
                           kname = k["name"]
-                          # Shorten long CUDA kernel names
                           short_name = re.split(r"[<(]", kname)[0].strip()
                           if len(short_name) > 60:
                               short_name = short_name[:57] + "..."
@@ -270,7 +291,17 @@ jobs:
                           min_ms = k["min_time_ns"] / 1e6
                           max_ms = k["max_time_ns"] / 1e6
                           instances = k["instances"]
-                          summary += f"| `{short_name}` | {med_ms:.3f} | {instances} | {avg_ms:.3f} | {min_ms:.3f} | {max_ms:.3f} |\n"
+                          if has_baseline and bk_map:
+                              main_ns = bk_map.get(short_name)
+                              if main_ns is not None:
+                                  main_ms = main_ns / 1e6
+                                  pct = (med_ms - main_ms) / main_ms * 100 if main_ms > 0 else 0
+                                  sign = "+" if pct >= 0 else ""
+                                  summary += f"| `{short_name}` | {med_ms:.3f} | {main_ms:.3f} | {sign}{pct:.1f}% | {instances} | {avg_ms:.3f} | {min_ms:.3f} | {max_ms:.3f} |\n"
+                              else:
+                                  summary += f"| `{short_name}` | {med_ms:.3f} | (new) | | {instances} | {avg_ms:.3f} | {min_ms:.3f} | {max_ms:.3f} |\n"
+                          else:
+                              summary += f"| `{short_name}` | {med_ms:.3f} | {instances} | {avg_ms:.3f} | {min_ms:.3f} | {max_ms:.3f} |\n"
                       summary += "\n"
 
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
@@ -299,7 +330,7 @@ jobs:
           output-file-path: "github-action-benchmark.json"
           benchmark-data-dir-path: "."
           gh-repository: "github.com/NumericalEarth/OceananigansBenchmarks"
-          github-token: ${{ secrets.BENCHMARKS_TOKEN }}
+          github-token: ${{ github.event_name == 'repository_dispatch' && secrets.BENCHMARKS_TOKEN || secrets.GITHUB_TOKEN }}
           comment-always: true
           summary-always: true
           alert-threshold: "110%"
