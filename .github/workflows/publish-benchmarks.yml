@@ -330,7 +330,7 @@ jobs:
           output-file-path: "github-action-benchmark.json"
           benchmark-data-dir-path: "."
           gh-repository: "github.com/NumericalEarth/OceananigansBenchmarks"
-          github-token: ${{ secrets.BENCHMARKS_TOKEN }}
+          github-token: ${{ github.event_name == 'repository_dispatch' && secrets.BENCHMARKS_TOKEN || secrets.GITHUB_TOKEN }}
           comment-always: true
           summary-always: true
           alert-threshold: "110%"
