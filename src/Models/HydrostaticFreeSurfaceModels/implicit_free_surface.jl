@@ -168,22 +168,13 @@ function compute_transport_velocities!(model, free_surface::ImplicitFreeSurface)
     u, v, w = model.velocities
     ũ, ṽ, w̃ = model.transport_velocities
 
-    # Make sure updated velocities are masked
-    mask_immersed_field!(u)
-    mask_immersed_field!(v)
-
-    launch!(architecture(grid), grid, :xy, _compute_transport_velocities!, ũ, ṽ, grid, u, v)
-
-    # Fill transport velocities
-    fill_halo_regions!((ũ, ṽ), model.clock, fields(model))
-
-    # Update grid velocity and vertical transport velocity
-    @apply_regionally update_vertical_velocities!(model.transport_velocities, model.grid, model)
+    launch!(architecture(grid), grid, volume_kernel_parameters(grid), _compute_implicit_transport_velocities!, ũ, ṽ, grid, u, v)
+    update_vertical_velocities!(model.transport_velocities, model.grid, model)
 
     return nothing
 end
 
-@kernel function _compute_transport_velocities!(ũ, ṽ, grid, u, v)
+@kernel function _compute_implicit_transport_velocities!(ũ, ṽ, grid, u, v)
     i, j = @index(Global, NTuple)
     Nz   = size(grid, 3)
     Hᶠᶜ  = column_depthᶠᶜᵃ(i, j, grid)

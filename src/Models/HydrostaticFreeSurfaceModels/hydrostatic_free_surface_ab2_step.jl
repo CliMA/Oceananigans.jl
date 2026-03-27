@@ -46,11 +46,9 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
     compute_free_surface_tendency!(grid, model, model.free_surface)
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
 
-    # Update transport velocities
-    compute_transport_velocities!(model, model.free_surface)
-
     # Update velocities
     @apply_regionally begin
+        compute_transport_velocities!(model, model.free_surface)
         ab2_step_velocities!(model.velocities, model, Δt, χ)
         mask_immersed_horizontal_velocities!(model.velocities)
     end
@@ -112,10 +110,8 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
     mask_immersed_horizontal_velocities!(model.velocities)
     fill_halo_regions!((u, v), model.clock, fields(model))
 
-    # Compute transport velocities
-    compute_transport_velocities!(model, free_surface)
-
     @apply_regionally begin
+        compute_transport_velocities!(model, free_surface)
         compute_tracer_tendencies!(model)
 
         ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)

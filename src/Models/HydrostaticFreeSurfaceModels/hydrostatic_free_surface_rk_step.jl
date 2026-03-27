@@ -38,10 +38,8 @@ The order of operations for explicit free surfaces is:
     compute_free_surface_tendency!(grid, model, free_surface)
     step_free_surface!(free_surface, model, model.timestepper, Δτ)
 
-    # Compute z-dependent transport velocities
-    compute_transport_velocities!(model, free_surface)
-
     @apply_regionally begin
+        compute_transport_velocities!(model, free_surface)
         rk_substep_velocities!(model.velocities, model, Δτ)
         mask_immersed_horizontal_velocities!(model.velocities)
     end
@@ -102,9 +100,8 @@ For implicit free surfaces, a predictor-corrector approach is used:
     mask_immersed_horizontal_velocities!(model.velocities)
     fill_halo_regions!((u, v), model.clock, fields(model))
 
-    compute_transport_velocities!(model, free_surface)
-
     @apply_regionally begin
+        compute_transport_velocities!(model, free_surface)
         compute_tracer_tendencies!(model)
 
         rk_substep_grid!(model.grid, model, model.vertical_coordinate, Δτ)
