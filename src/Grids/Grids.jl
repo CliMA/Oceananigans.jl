@@ -4,6 +4,10 @@ export Center, Face
 export AbstractTopology, topology
 export Periodic, Bounded, Flat, FullyConnected, LeftConnected, RightConnected
 export RightFaceFolded, RightCenterFolded
+export LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded
+export LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected
+export WestOfPivot, EastOfPivot
+export global_fold_topology
 export AbstractGrid, AbstractUnderlyingGrid, halo_size, total_size
 export RectilinearGrid
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
@@ -116,6 +120,58 @@ Grid topology for tripolar U-point pivot connection.
 (folded north boundary along center locations).
 """
 struct RightCenterFolded <: AbstractTopology end
+
+# Pivot side indicators for distributed fold topologies
+struct WestOfPivot end
+struct EastOfPivot end
+
+"""
+    LeftConnectedRightCenterFolded
+
+Local grid topology for the northernmost y-rank of a 1×N distributed tripolar grid
+with U-point pivot (serial fold). Connected to the south neighbor on the left,
+center-folded on the right (north).
+"""
+struct LeftConnectedRightCenterFolded <: AbstractTopology end
+
+"""
+    LeftConnectedRightFaceFolded
+
+Local grid y topology for the northernmost y-rank of a 1×N distributed tripolar grid
+with F-point pivot (serial fold). Connected to the south neighbor on the left,
+face-folded on the right (north). Face-extended (Ny+1 Face points in y).
+"""
+struct LeftConnectedRightFaceFolded <: AbstractTopology end
+
+"""
+    LeftConnectedRightCenterConnected{P}
+
+Local grid y topology for the northernmost y-rank of an M×N distributed tripolar grid
+with U-point pivot (distributed zipper). `P` is `WestOfPivot` or `EastOfPivot`.
+"""
+struct LeftConnectedRightCenterConnected{P} <: AbstractTopology end
+
+"""
+    LeftConnectedRightFaceConnected{P}
+
+Local grid y topology for the northernmost y-rank of an M×N distributed tripolar grid
+with F-point pivot (distributed zipper). `P` is `WestOfPivot` or `EastOfPivot`.
+Face-extended (Ny+1 Face points in y).
+"""
+struct LeftConnectedRightFaceConnected{P} <: AbstractTopology end
+
+"""
+    global_fold_topology(T)
+
+Return the global grid y fold topology (`RightCenterFolded` or `RightFaceFolded`) from
+the local grid y topology type.
+"""
+global_fold_topology(::Type{RightCenterFolded})                    = RightCenterFolded
+global_fold_topology(::Type{RightFaceFolded})                      = RightFaceFolded
+global_fold_topology(::Type{LeftConnectedRightCenterFolded})       = RightCenterFolded
+global_fold_topology(::Type{LeftConnectedRightFaceFolded})         = RightFaceFolded
+global_fold_topology(::Type{<:LeftConnectedRightCenterConnected})  = RightCenterFolded
+global_fold_topology(::Type{<:LeftConnectedRightFaceConnected})    = RightFaceFolded
 
 #####
 ##### Directions (for tilted domains)

@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: DistributedCommunicationBoundaryCondition
+using Oceananigans.BoundaryConditions: DistributedCommunicationBoundaryCondition, FZBC
 using Oceananigans.Fields: validate_indices, validate_field_data
 using Oceananigans.DistributedComputations:
     DistributedComputations,
@@ -11,7 +11,8 @@ using Oceananigans.DistributedComputations:
     concatenate_local_sizes,
     communication_buffers
 
-using Oceananigans.Grids: topology, RightConnected, FullyConnected
+using Oceananigans.Grids: topology, RightConnected, FullyConnected, global_fold_topology
+using Oceananigans.DistributedComputations: insert_connected_topology
 
 import Oceananigans.Fields: Field, validate_indices, validate_boundary_conditions
 
@@ -109,8 +110,14 @@ function TripolarGrid(arch::Distributed, FT::DataType=Float64;
     Azᶜᶠᵃ = partition_tripolar_metric(global_grid, :Azᶜᶠᵃ, irange, jrange)
     Azᶠᶠᵃ = partition_tripolar_metric(global_grid, :Azᶠᶠᵃ, irange, jrange)
 
-    LY = yrank == 0 ? RightConnected : FullyConnected
     LX = workers[1] == 1 ? Periodic : FullyConnected
+
+    global_fold_topology = topology(global_grid, 2)
+
+    # 1-based indices for insert_connected_topology
+    Rx, Ry = workers[1], workers[2]
+    rx, ry = xrank + 1, yrank + 1
+    LY = insert_connected_topology(global_fold_topology, Ry, ry, Rx, rx)
     ny = nylocal[yrank+1]
     nx = nxlocal[xrank+1]
 
@@ -228,9 +235,10 @@ function receiving_rank(arch; receive_idx_x = ranks(arch)[1] - arch.local_index[
     return receive_rank
 end
 
-# a distributed `TripolarGrid` needs a `UPivotZipperBoundaryCondition` for the north boundary
-# only on the last rank
-# TODO: generalize to any ZipperBoundaryCondition
+zipper_bc(::Type{RightCenterFolded}, sign) = UPivotZipperBoundaryCondition(sign)
+zipper_bc(::Type{RightFaceFolded}, sign)  = FPivotZipperBoundaryCondition(sign)
+
+const ZBC = Union{<:UZBC, <:FZBC}
 function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                               grid::MPITripolarGridOfSomeKind,
                                               field_name::Symbol,
@@ -248,7 +256,7 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
     south = regularize_boundary_condition(bcs.south, grid, loc, 2, LeftBoundary,  prognostic_names)
 
     north = if yrank == processor_size[2] - 1 && processor_size[1] == 1
-        UPivotZipperBoundaryCondition(sign)
+        zipper_bc(global_fold_topology(topology(grid, 2)), sign)
 
     elseif yrank == processor_size[2] - 1 && processor_size[1] != 1
         from = arch.local_rank
@@ -280,26 +288,21 @@ function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::MPITripolarGridOfSomeKind, da
     validate_field_data(loc, data, grid, indices)
     validate_boundary_conditions(loc, grid, old_bcs)
 
-    default_zipper = UPivotZipperBoundaryCondition(sign(LX, LY))
-
     if isnothing(old_bcs) || ismissing(old_bcs)
         new_bcs = old_bcs
     else
         new_bcs = inject_halo_communication_boundary_conditions(old_bcs, loc, arch.local_rank, arch.connectivity, topology(grid))
 
-        # North boundary conditions are "special". If we are at the top of the domain, i.e.
-        # the last rank, then we need to substitute the BC only if the old one is not already
-        # a zipper boundary condition. Otherwise we always substitute because we need to
-        # inject the halo boundary conditions.
         if yrank == processor_size[2] - 1 && processor_size[1] == 1
-            north_bc = if !(old_bcs.north isa UZBC)
+            default_zipper = zipper_bc(global_fold_topology(topology(grid, 2)), sign(LX, LY))
+            north_bc = if !(old_bcs.north isa ZBC)
                 default_zipper
             else
                 old_bcs.north
             end
 
         elseif yrank == processor_size[2] - 1 && processor_size[1] != 1
-            sgn  = old_bcs.north isa UZBC ? old_bcs.north.condition : sign(LX, LY)
+            sgn  = old_bcs.north isa ZBC ? old_bcs.north.condition : sign(LX, LY)
             from = arch.local_rank
             to   = arch.connectivity.north
             halo_communication = ZipperHaloCommunicationRanks(sgn; from, to)
@@ -317,7 +320,7 @@ function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::MPITripolarGridOfSomeKind, da
                                             bottom=new_bcs.bottom)
     end
 
-    buffers = communication_buffers(grid, data, new_bcs)
+    buffers = communication_buffers(grid, data, new_bcs, (LX(), LY(), LZ()))
 
     return Field{LX, LY, LZ}(grid, data, new_bcs, indices, op, status, buffers)
 end
