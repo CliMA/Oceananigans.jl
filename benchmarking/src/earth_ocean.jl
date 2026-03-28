@@ -2,7 +2,7 @@
 ##### Earth ocean benchmark case
 #####
 ##### Global ocean simulation using HydrostaticFreeSurfaceModel
-##### with a TripolarGrid and realistic Earth bathymetry from NumericalEarth.
+##### with a TripolarGrid and realistic Earth bathymetry.
 #####
 
 using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
@@ -20,7 +20,7 @@ using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
                 tracers = (:T, :S))
 
 Create a `HydrostaticFreeSurfaceModel` for the Earth ocean benchmark case
-with realistic Earth bathymetry from NumericalEarth.
+with realistic Earth bathymetry.
 
 # Arguments
 - `arch`: Architecture to run on (`CPU()` or `GPU()`)
@@ -74,11 +74,13 @@ function earth_ocean(arch = CPU();
     if grid_type == "lat_lon"
         grid = underlying_grid
     else
-        bottom_height = NumericalEarth.regrid_bathymetry(underlying_grid;
-            minimum_depth = 10,
-            interpolation_passes = 10,
-            major_basins = 2
-        )
+        type_str = grid_type == "tripolar" ? "tripolar" : "latlon"
+        filename = "bathymetry_$(type_str)_$(Nx)x$(Ny).jld2"
+        filepath = joinpath(datadep"benchmark_bathymetry", filename)
+        bottom_height = jldopen(filepath) do file
+            bh = file["bottom_height"]
+            ndims(bh) == 3 ? dropdims(bh, dims=3) : bh
+        end
 
         grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom_height);
             active_cells_map = true
