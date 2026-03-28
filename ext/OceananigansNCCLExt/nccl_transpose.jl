@@ -31,7 +31,7 @@ function DC.transpose_y_to_x!(pf::DC.TransposableField)
         DC.pack_buffer_y_to_x!(pf.xybuff, pf.yfield)
         DC.sync_device!(arch)
         counts = pf.counts.xy
-        if all(c -> c == counts[1], counts)
+        if allequal(counts)
             MPI.Alltoall!(MPI.UBuffer(pf.xybuff.send, counts[1]),
                           MPI.UBuffer(pf.xybuff.recv, counts[1]),
                           pf.comms.xy)
