@@ -95,12 +95,17 @@ function DC.distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, l
     nccl_comm = communicator.nccl
     buffer_side = kernel!.side
 
-    # Pack send buffers (GPU kernel on default stream)
-    DC.fill_send_buffers!(c, buffers, grid, buffer_side)
+    # Pack send buffers using cuMemcpy2D (DMA engine, frees GPU compute units)
+    # Falls back to broadcast kernel for non-WestAndEast sides
+    c_parent = parent(c)
+    if c_parent isa CuArray && kernel! isa DistributedFillHalo{<:WestAndEast}
+        nccl_fill_send_buffers_2d!(c_parent, buffers, grid, kernel!.side)
+    else
+        DC.fill_send_buffers!(c, buffers, grid, buffer_side)
+    end
 
     if async && communicator.comm_stream !== nothing
         # Async: NCCL on comm_stream, defer unpack
-        # Make comm_stream wait for pack kernels on default stream
         CUDA.record(communicator.sync_event)
         CUDA.cuStreamWaitEvent(communicator.comm_stream, communicator.sync_event, UInt32(0))
 
@@ -108,16 +113,12 @@ function DC.distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, l
         enqueue_nccl_send_recv!(kernel!, bcs, nccl_comm, buffers; stream=communicator.comm_stream)
         NCCL.groupEnd()
 
-        # Record completion on comm_stream
         CUDA.record(communicator.sync_event, communicator.comm_stream)
-
-        # Store pending unpack for synchronize_communication!
-        push!(pending_unpacks, (; c, buffers, grid, side=buffer_side))
+        push!(pending_unpacks, (; c, c_parent, buffers, grid, side=buffer_side, kernel=kernel!))
         return nothing
     end
 
-    # Sync with comm_stream: NCCL on comm_stream, wait, then unpack
-    # This avoids blocking the default stream during the NCCL transfer.
+    # Sync with comm_stream
     if communicator.comm_stream !== nothing
         CUDA.record(communicator.sync_event)
         CUDA.cuStreamWaitEvent(communicator.comm_stream, communicator.sync_event, UInt32(0))
@@ -126,17 +127,21 @@ function DC.distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, l
         enqueue_nccl_send_recv!(kernel!, bcs, nccl_comm, buffers; stream=communicator.comm_stream)
         NCCL.groupEnd()
 
-        # Wait for NCCL to complete before unpacking
         CUDA.record(communicator.sync_event, communicator.comm_stream)
         CUDA.cuStreamWaitEvent(CUDA.stream(), communicator.sync_event, UInt32(0))
     else
-        # Fallback: NCCL on default stream
         NCCL.groupStart()
         enqueue_nccl_send_recv!(kernel!, bcs, nccl_comm, buffers)
         NCCL.groupEnd()
     end
 
-    DC.recv_from_buffers!(c, buffers, grid, buffer_side)
+    # Unpack using cuMemcpy2D where possible
+    if c_parent isa CuArray && kernel! isa DistributedFillHalo{<:WestAndEast}
+        nccl_recv_from_buffers_2d!(c_parent, buffers, grid, kernel!.side)
+    else
+        DC.recv_from_buffers!(c, buffers, grid, buffer_side)
+    end
+
     return nothing
 end
 
@@ -153,7 +158,12 @@ function synchronize_communication!(field::NCCLDistributedField)
         CUDA.cuStreamWaitEvent(CUDA.stream(), arch.communicator.sync_event, UInt32(0))
 
         for pending in pending_unpacks
-            DC.recv_from_buffers!(pending.c, pending.buffers, pending.grid, pending.side)
+            cp = pending.c_parent
+            if cp isa CuArray && pending.kernel isa DistributedFillHalo{<:WestAndEast}
+                nccl_recv_from_buffers_2d!(cp, pending.buffers, pending.grid, pending.kernel.side)
+            else
+                DC.recv_from_buffers!(pending.c, pending.buffers, pending.grid, pending.side)
+            end
         end
         empty!(pending_unpacks)
     end
