@@ -89,7 +89,11 @@ function DiscreteTransform(plan, direction, grid, dims)
     topo = topology(grid)
     normalization = prod(normalization_factor(arch, topo[d](), direction, N[d]) for d in dims)
     twiddle = twiddle_factors(arch, grid, dims)
-    transpose = arch isa GPU && dims == [2] ? (2, 1, 3) : nothing
+    # Only transpose for dim-2 GPU transforms when the topology is Bounded
+    # (Bounded requires twiddle factors computed on a reshaped dim-1 layout).
+    # For Periodic dim-2, cuFFT handles strided transforms efficiently and
+    # the permutedims overhead exceeds any strided-access penalty.
+    transpose = arch isa GPU && dims == [2] && topo[2] == Bounded ? (2, 1, 3) : nothing
 
     topos = [topology(grid)[d]() for d in dims]
     topos = length(topos) == 1 ? topos[1] : topos
