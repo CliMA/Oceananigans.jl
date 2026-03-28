@@ -17,6 +17,7 @@ const WholeActiveCellsMapIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, 
 const SplitActiveCellsMapIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:NamedTuple}
 
 @inline Grids.get_active_column_map(grid::ActiveZColumnsIBG) = grid.active_z_columns
+@inline Grids.get_interior_active_cells(grid::ActiveInteriorIBG) = grid.interior_active_cells
 
 @inline Grids.get_active_cells_map(grid::WholeActiveCellsMapIBG, ::Val{:interior}) = grid.interior_active_cells
 @inline Grids.get_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:interior}) = grid.interior_active_cells.halo_independent_cells

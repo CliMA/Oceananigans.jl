@@ -45,6 +45,7 @@ isrectilinear(grid) = false
 # Fallback
 @inline get_active_column_map(::AbstractGrid) = nothing
 @inline get_active_cells_map(::AbstractGrid, any_map_type) = nothing
+@inline get_interior_active_cells(::AbstractGrid) = nothing
 
 """
     topology(grid)

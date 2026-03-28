@@ -326,6 +326,29 @@ end
 end
 
 """
+    launch_over_active_cells!(arch, grid, kernel!, kernel_args...; active_cells_map = nothing)
+
+Launch `kernel!` over all active cells in the grid.
+
+When `active_cells_map` is `nothing`, launches with `:xyz` workspec (full grid).
+When `active_cells_map` is an `AbstractArray`, launches once with that map.
+When `active_cells_map` is a `NamedTuple` (distributed grids with split maps),
+launches once for each non-nothing sub-map.
+"""
+function launch_over_active_cells!(arch, grid, kernel!, args...; active_cells_map = nothing, kwargs...)
+    if active_cells_map isa NamedTuple
+        for map in active_cells_map
+            if !isnothing(map)
+                launch!(arch, grid, :xyz, kernel!, args...; active_cells_map = map, kwargs...)
+            end
+        end
+    else
+        launch!(arch, grid, :xyz, kernel!, args...; active_cells_map, kwargs...)
+    end
+    return nothing
+end
+
+"""
     launch!(arch, grid, workspec, kernel!, kernel_args...; kw...)
 
 Launches `kernel!` with arguments `kernel_args`
