@@ -11,7 +11,7 @@ using Oceananigans: Oceananigans
 using Oceananigans.Grids: Center, Face, peripheral_node, inactive_node, inactive_cell, static_column_depthᶜᶜᵃ
 using Oceananigans.Fields: CenterField, XFaceField, YFaceField, ZFaceField, ZeroField
 using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶠᶜᶠ, Δz⁻¹ᶜᶠᶜ, Δz⁻¹ᶠᶜᶜ,
-    ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
+    ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ, ℑxyᶜᶜᵃ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ, ∂zᶠᶠᶠ
 using Oceananigans.Utils: Utils, launch!, prettysummary
 
 using Oceananigans.BoundaryConditions:
@@ -30,6 +30,7 @@ using Oceananigans.BuoyancyFormulations:
     TemperatureSeawaterBuoyancy,
     SalinitySeawaterBuoyancy,
     ∂z_b,
+    ∂z_bᶠᶠᶠ,
     top_buoyancy_flux
 
 using Oceananigans.TurbulenceClosures:
@@ -78,17 +79,24 @@ end
     return S²
 end
 
+@inline function shear_squaredᶠᶠᶠ(i, j, k, grid, velocities)
+    ∂z_u² = ∂zᶠᶠᶠ(i, j, k, grid, ℑyᵃᶠᵃ, velocities.u)^2
+    ∂z_v² = ∂zᶠᶠᶠ(i, j, k, grid, ℑxᶠᵃᵃ, velocities.v)^2
+    return ∂z_u² + ∂z_v²
+end
+
+@inline function Riᶠᶠᶠ(i, j, k, grid, velocities, tracers, buoyancy)
+    S² = shear_squaredᶠᶠᶠ(i, j, k, grid, velocities)
+    N² = ∂z_bᶠᶠᶠ(i, j, k, grid, buoyancy, tracers)
+    Ri = N² / S²
+    return ifelse(N² <= 0, zero(grid), Ri)
+end
+
+@inline Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy) =
+    ℑxyᶜᶜᵃ(i, j, k, grid, Riᶠᶠᶠ, velocities, tracers, buoyancy)
+
 @inline Riᶜᶜᶜ(i, j, k, grid, velocities, tracers, buoyancy) =
     ℑbzᵃᵃᶜ(i, j, k, grid, Riᶜᶜᶠ, velocities, tracers, buoyancy)
-
-@inline function Riᶜᶜᶠ(i, j, k, grid, velocities, tracers, buoyancy)
-    u = velocities.u
-    v = velocities.v
-    S² = shearᶜᶜᶠ(i, j, k, grid, u, v)
-    N² = ∂z_b(i, j, k, grid, buoyancy, tracers)
-    Ri = N² / S²
-    return ifelse(N² == 0, zero(grid), Ri)
-end
 
 # @inline ℑbzᵃᵃᶜ(i, j, k, grid, fᵃᵃᶠ, args...) = ℑzᵃᵃᶜ(i, j, k, grid, fᵃᵃᶠ, args...)
 

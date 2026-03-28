@@ -144,3 +144,5 @@ end
         g.∂z_b[i, j, k] = ∂z_b(i, j, k, grid, b, C)
     end
 end
+
+@inline ∂z_bᶠᶠᶠ(i, j, k, grid, b::BuoyancyForce{<:Any, <:Any, Nothing}, C) = ∂z_bᶠᶠᶠ(i, j, k, grid, b.formulation, C)
