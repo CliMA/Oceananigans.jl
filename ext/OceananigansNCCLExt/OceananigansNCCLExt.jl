@@ -16,5 +16,6 @@ include("nccl_distributed.jl")
 include("nccl_zero_copy_halos.jl")
 include("nccl_transpose.jl")
 include("nccl_solver.jl")
+include("nccl_pipelined_rk3.jl")
 
 end # module
