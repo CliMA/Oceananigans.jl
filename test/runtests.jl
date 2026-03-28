@@ -213,11 +213,19 @@ CUDA.allowscalar() do
         include("test_distributed_hydrostatic_model.jl")
     end
 
-    if group == :distributed_vertical_coordinate || group == :all
+    if group == :distributed_vertical_coordinate_1 || group == :all
         MPI.Initialized() || MPI.Init()
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
-        include("test_zstar_conservation.jl")
+        include("test_zstar_conservation_explicit.jl")
+    end
+
+    if group == :distributed_vertical_coordinate_2 || group == :all
+        MPI.Initialized() || MPI.Init()
+        # In case CUDA is not found, we reset CUDA and restart the julia session
+        reset_cuda_if_necessary()
+        include("test_zstar_conservation_implicit.jl")
+        include("test_zstar_conservation_tripolar.jl")
     end
 
     if group == :distributed_output || group == :all
@@ -250,10 +258,17 @@ CUDA.allowscalar() do
         end
     end
 
-    if group == :vertical_coordinate || group == :all
-        @testset "Vertical coordinate tests" begin
+    if group == :vertical_coordinate_1 || group == :all
+        @testset "Vertical coordinate tests (1)" begin
             include("test_zstar_coordinate.jl")
-            include("test_zstar_conservation.jl")
+            include("test_zstar_conservation_explicit.jl")
+        end
+    end
+
+    if group == :vertical_coordinate_2 || group == :all
+        @testset "Vertical coordinate tests (2)" begin
+            include("test_zstar_conservation_implicit.jl")
+            include("test_zstar_conservation_tripolar.jl")
         end
     end
 
@@ -271,12 +286,25 @@ CUDA.allowscalar() do
         end
     end
 
-    # Tests for Reactant extension
+    # Reactant unit tests (grids, fields, reductions, FieldTimeSeries)
     if group == :reactant_1 || group == :all
-        @testset "Reactant extension tests 1" begin
+        @testset "Reactant unit tests" begin
+            include("test_reactant_unit.jl")
+        end
+    end
+
+    # Reactant simulation tests (RectilinearGrid simulations, FFT models, HFSM)
+    if group == :reactant_2 || group == :all
+        @testset "Reactant simulation tests" begin
             include("test_reactant.jl")
             include("test_reactant_fft_models.jl")
             include("test_reactant_hydrostatic_free_surface_models.jl")
+        end
+    end
+
+    # Reactant LatitudeLongitudeGrid simulation tests
+    if group == :reactant_3 || group == :all
+        @testset "Reactant LatitudeLongitudeGrid simulation tests" begin
             include("test_reactant_latitude_longitude_grid.jl")
         end
     end
@@ -285,13 +313,6 @@ CUDA.allowscalar() do
     if group == :reactant_correctness || group == :all
         @testset "Reactant correctness tests" begin
             include("test_reactant_correctness.jl")
-        end
-    end
-
-    # Reactant unit tests (grid metrics, reductions, field operations)
-    if group == :reactant_unit || group == :all
-        @testset "Reactant unit tests" begin
-            include("test_reactant_unit.jl")
         end
     end
 
