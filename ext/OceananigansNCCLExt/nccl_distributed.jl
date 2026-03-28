@@ -116,10 +116,25 @@ function DC.distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, l
         return nothing
     end
 
-    # Sync: NCCL on default stream, unpack immediately
-    NCCL.groupStart()
-    enqueue_nccl_send_recv!(kernel!, bcs, nccl_comm, buffers)
-    NCCL.groupEnd()
+    # Sync with comm_stream: NCCL on comm_stream, wait, then unpack
+    # This avoids blocking the default stream during the NCCL transfer.
+    if communicator.comm_stream !== nothing
+        CUDA.record(communicator.sync_event)
+        CUDA.cuStreamWaitEvent(communicator.comm_stream, communicator.sync_event, UInt32(0))
+
+        NCCL.groupStart()
+        enqueue_nccl_send_recv!(kernel!, bcs, nccl_comm, buffers; stream=communicator.comm_stream)
+        NCCL.groupEnd()
+
+        # Wait for NCCL to complete before unpacking
+        CUDA.record(communicator.sync_event, communicator.comm_stream)
+        CUDA.cuStreamWaitEvent(CUDA.stream(), communicator.sync_event, UInt32(0))
+    else
+        # Fallback: NCCL on default stream
+        NCCL.groupStart()
+        enqueue_nccl_send_recv!(kernel!, bcs, nccl_comm, buffers)
+        NCCL.groupEnd()
+    end
 
     DC.recv_from_buffers!(c, buffers, grid, buffer_side)
     return nothing

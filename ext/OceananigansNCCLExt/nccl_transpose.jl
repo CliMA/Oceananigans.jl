@@ -24,7 +24,7 @@ function DC.transpose_y_to_x!(pf::DC.TransposableField)
     if arch.communicator isa NCCLCommunicator
         @debug "  → NCCL path"
         nccl_comm = _get_nccl_subcomm(pf.comms.xy)
-        nccl_transpose_y_to_x!(pf, nccl_comm)
+        nccl_transpose_y_to_x!(pf, nccl_comm; comm_stream=arch.communicator.comm_stream)
     else
         @debug "  → MPI fallback"
         # Fall back to original — pack, sync, Alltoall, unpack
@@ -49,7 +49,7 @@ function DC.transpose_x_to_y!(pf::DC.TransposableField)
     arch = DC.architecture(pf.yfield)  # yfield always carries the original arch
     if arch.communicator isa NCCLCommunicator
         nccl_comm = _get_nccl_subcomm(pf.comms.xy)
-        nccl_transpose_x_to_y!(pf, nccl_comm)
+        nccl_transpose_x_to_y!(pf, nccl_comm; comm_stream=arch.communicator.comm_stream)
     else
         DC.pack_buffer_x_to_y!(pf.xybuff, pf.xfield)
         DC.sync_device!(arch)
@@ -72,7 +72,7 @@ function DC.transpose_z_to_y!(pf::DC.TransposableField)
     arch = DC.architecture(pf.yfield)  # yfield always carries the original arch
     if arch.communicator isa NCCLCommunicator
         nccl_comm = _get_nccl_subcomm(pf.comms.yz)
-        nccl_transpose_z_to_y!(pf, nccl_comm)
+        nccl_transpose_z_to_y!(pf, nccl_comm; comm_stream=arch.communicator.comm_stream)
     else
         DC.pack_buffer_z_to_y!(pf.yzbuff, pf.zfield)
         DC.sync_device!(arch)
@@ -95,7 +95,7 @@ function DC.transpose_y_to_z!(pf::DC.TransposableField)
     arch = DC.architecture(pf.yfield)
     if arch.communicator isa NCCLCommunicator
         nccl_comm = _get_nccl_subcomm(pf.comms.yz)
-        nccl_transpose_y_to_z!(pf, nccl_comm)
+        nccl_transpose_y_to_z!(pf, nccl_comm; comm_stream=arch.communicator.comm_stream)
     else
         DC.pack_buffer_y_to_z!(pf.yzbuff, pf.yfield)
         DC.sync_device!(arch)
@@ -125,7 +125,7 @@ No `sync_device!` / `CUDA.synchronize()` is needed before calling this —
 the NCCL ops are enqueued on the same CUDA stream as the preceding
 pack kernel, so hardware stream ordering guarantees correctness.
 """
-function nccl_alltoall!(buffer, counts, nccl_comm)
+function nccl_alltoall!(buffer, counts, nccl_comm; stream_kw...)
     nranks = NCCL.size(nccl_comm)
     count_per_rank = counts[1]  # equal-size chunks for uniform partition
 
@@ -137,8 +137,8 @@ function nccl_alltoall!(buffer, counts, nccl_comm)
         offset = r * count_per_rank
         send_view = view(send, (offset + 1):(offset + count_per_rank))
         recv_view = view(recv, (offset + 1):(offset + count_per_rank))
-        NCCL.Send(send_view, nccl_comm; dest=r)
-        NCCL.Recv!(recv_view, nccl_comm; source=r)
+        NCCL.Send(send_view, nccl_comm; dest=r, stream_kw...)
+        NCCL.Recv!(recv_view, nccl_comm; source=r, stream_kw...)
     end
     NCCL.groupEnd()
 
@@ -153,30 +153,53 @@ Replaces the MPI path: pack → sync_device! → Alltoall → unpack
 with:                   pack → NCCL grouped Send/Recv → unpack
 (no sync_device! needed).
 """
-function nccl_transpose_y_to_x!(pf, nccl_comm)
+function nccl_transpose_y_to_x!(pf, nccl_comm; comm_stream=nothing)
     DC.pack_buffer_y_to_x!(pf.xybuff, pf.yfield)
-    nccl_alltoall!(pf.xybuff, pf.counts.xy, nccl_comm)
+    nccl_alltoall_with_stream!(pf.xybuff, pf.counts.xy, nccl_comm, comm_stream)
     DC.unpack_buffer_x_from_y!(pf.xfield, pf.yfield, pf.xybuff)
     return nothing
 end
 
-function nccl_transpose_x_to_y!(pf, nccl_comm)
+function nccl_transpose_x_to_y!(pf, nccl_comm; comm_stream=nothing)
     DC.pack_buffer_x_to_y!(pf.xybuff, pf.xfield)
-    nccl_alltoall!(pf.xybuff, pf.counts.xy, nccl_comm)
+    nccl_alltoall_with_stream!(pf.xybuff, pf.counts.xy, nccl_comm, comm_stream)
     DC.unpack_buffer_y_from_x!(pf.yfield, pf.xfield, pf.xybuff)
     return nothing
 end
 
-function nccl_transpose_z_to_y!(pf, nccl_comm)
+function nccl_transpose_z_to_y!(pf, nccl_comm; comm_stream=nothing)
     DC.pack_buffer_z_to_y!(pf.yzbuff, pf.zfield)
-    nccl_alltoall!(pf.yzbuff, pf.counts.yz, nccl_comm)
+    nccl_alltoall_with_stream!(pf.yzbuff, pf.counts.yz, nccl_comm, comm_stream)
     DC.unpack_buffer_y_from_z!(pf.yfield, pf.zfield, pf.yzbuff)
     return nothing
 end
 
-function nccl_transpose_y_to_z!(pf, nccl_comm)
+function nccl_transpose_y_to_z!(pf, nccl_comm; comm_stream=nothing)
     DC.pack_buffer_y_to_z!(pf.yzbuff, pf.yfield)
-    nccl_alltoall!(pf.yzbuff, pf.counts.yz, nccl_comm)
+    nccl_alltoall_with_stream!(pf.yzbuff, pf.counts.yz, nccl_comm, comm_stream)
     DC.unpack_buffer_z_from_y!(pf.zfield, pf.yfield, pf.yzbuff)
+    return nothing
+end
+
+"""
+    nccl_alltoall_with_stream!(buffer, counts, nccl_comm, comm_stream)
+
+NCCL alltoall on comm_stream if available, with event-based synchronization.
+Pack kernels on default stream complete before NCCL reads (via event wait).
+NCCL writes complete before unpack kernels read (via event wait back).
+"""
+function nccl_alltoall_with_stream!(buffer, counts, nccl_comm, comm_stream)
+    if comm_stream !== nothing
+        event = CUDA.CuEvent()
+        CUDA.record(event)
+        CUDA.cuStreamWaitEvent(comm_stream, event, UInt32(0))
+
+        nccl_alltoall!(buffer, counts, nccl_comm; stream=comm_stream)
+
+        CUDA.record(event, comm_stream)
+        CUDA.cuStreamWaitEvent(CUDA.stream(), event, UInt32(0))
+    else
+        nccl_alltoall!(buffer, counts, nccl_comm)
+    end
     return nothing
 end
