@@ -1,6 +1,6 @@
 module Utils
 
-export configure_kernel, launch!, launch_over_active_cells!, KernelParameters
+export configure_kernel, launch!, KernelParameters
 export prettytime, pretty_filesize
 export tupleit, parenttuple, datatuple, datatuples
 export ordered_dict_show

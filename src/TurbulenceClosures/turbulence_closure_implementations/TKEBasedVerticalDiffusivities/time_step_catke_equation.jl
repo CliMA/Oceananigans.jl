@@ -28,7 +28,7 @@ function time_step_catke_equation!(model, ::QuasiAdamsBashforth2TimeStepper, Δt
     previous_velocities = closure_fields.previous_velocities
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
-    active_cells_map = get_interior_active_cells(grid)
+    active_cells_map = get_active_cells_map(grid, Val(:xyz))
 
     Δτ = get_time_step(closure)
 
@@ -53,20 +53,20 @@ function time_step_catke_equation!(model, ::QuasiAdamsBashforth2TimeStepper, Δt
         buoyancy = buoyancy_force(model)
 
         # Compute the linear implicit component of the RHS (closure_fields, L)...
-        launch_over_active_cells!(arch, grid,
-                                  compute_TKE_diffusivity!,
-                                  κe, grid, closure,
-                                  model.velocities, tracers, buoyancy, closure_fields;
-                                  active_cells_map)
+        launch!(arch, grid, :xyz,
+                compute_TKE_diffusivity!,
+                κe, grid, closure,
+                model.velocities, tracers, buoyancy, closure_fields;
+                active_cells_map)
 
         # ... and step forward.
-        launch_over_active_cells!(arch, grid,
-                                  _ab2_substep_turbulent_kinetic_energy!,
-                                  Le, grid, closure,
-                                  model.velocities, previous_velocities,
-                                  tracers, buoyancy, closure_fields,
-                                  Δτ, χ, Gⁿe, G⁻e;
-                                  active_cells_map)
+        launch!(arch, grid, :xyz,
+                _ab2_substep_turbulent_kinetic_energy!,
+                Le, grid, closure,
+                model.velocities, previous_velocities,
+                tracers, buoyancy, closure_fields,
+                Δτ, χ, Gⁿe, G⁻e;
+                active_cells_map)
 
         implicit_step!(e, implicit_solver, closure,
                        closure_fields, Val(tracer_index),
@@ -100,7 +100,7 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper, Δt)
     previous_velocities = closure_fields.previous_velocities
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
-    active_cells_map = get_interior_active_cells(grid)
+    active_cells_map = get_active_cells_map(grid, Val(:xyz))
 
     Δτ = get_time_step(closure)
 
@@ -117,30 +117,30 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper, Δt)
 
     for m = 1:M
         # Compute the linear implicit component of the RHS (closure_fields, L)...
-        launch_over_active_cells!(arch, grid,
-                                  compute_TKE_diffusivity!,
-                                  κe, grid, closure,
-                                  model.velocities, tracers, buoyancy, closure_fields;
-                                  active_cells_map)
+        launch!(arch, grid, :xyz,
+                compute_TKE_diffusivity!,
+                κe, grid, closure,
+                model.velocities, tracers, buoyancy, closure_fields;
+                active_cells_map)
 
         if m == 1
             # First substep: reset from cached state σe⁻
-            launch_over_active_cells!(arch, grid,
-                                      _rk_substep_turbulent_kinetic_energy!,
-                                      Le, σe⁻, grid, closure,
-                                      model.velocities, previous_velocities,
-                                      tracers, buoyancy, closure_fields,
-                                      Δτ, Gⁿ;
-                                      active_cells_map)
+            launch!(arch, grid, :xyz,
+                    _rk_substep_turbulent_kinetic_energy!,
+                    Le, σe⁻, grid, closure,
+                    model.velocities, previous_velocities,
+                    tracers, buoyancy, closure_fields,
+                    Δτ, Gⁿ;
+                    active_cells_map)
         else
             # Subsequent substeps: Euler increment from current state
-            launch_over_active_cells!(arch, grid,
-                                      _rk_euler_substep_turbulent_kinetic_energy!,
-                                      Le, grid, closure,
-                                      model.velocities, previous_velocities,
-                                      tracers, buoyancy, closure_fields,
-                                      Δτ, Gⁿ;
-                                      active_cells_map)
+            launch!(arch, grid, :xyz,
+                    _rk_euler_substep_turbulent_kinetic_energy!,
+                    Le, grid, closure,
+                    model.velocities, previous_velocities,
+                    tracers, buoyancy, closure_fields,
+                    Δτ, Gⁿ;
+                    active_cells_map)
         end
 
         implicit_step!(e, implicit_solver, closure,

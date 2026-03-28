@@ -251,7 +251,7 @@ function step_closure_prognostics!(closure_fields, closure::FlavorOfCATKE, model
     parent(u⁻) .= parent(u)
     parent(v⁻) .= parent(v)
 
-    active_cells_map = get_active_column_map(grid)
+    active_cells_map = get_active_cells_map(grid, Val(:xy))
 
     launch!(arch, grid, :xy,
             compute_average_surface_buoyancy_flux!,
@@ -267,12 +267,12 @@ function compute_closure_fields!(closure_fields, closure::FlavorOfCATKE, model; 
     velocities = model.velocities
     tracers = buoyancy_tracers(model)
     buoyancy = buoyancy_force(model)
-    active_cells_map = get_interior_active_cells(grid)
+    active_cells_map = get_active_cells_map(grid, Val(:xyz))
 
-    launch_over_active_cells!(arch, grid,
-                              compute_CATKE_closure_fields!,
-                              closure_fields, grid, closure, velocities, tracers, buoyancy;
-                              active_cells_map)
+    launch!(arch, grid, :xyz,
+            compute_CATKE_closure_fields!,
+            closure_fields, grid, closure, velocities, tracers, buoyancy;
+            active_cells_map)
 
     return nothing
 end
