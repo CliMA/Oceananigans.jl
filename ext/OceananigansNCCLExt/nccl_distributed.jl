@@ -65,38 +65,34 @@ end
 sync_device!(::NCCLDistributedArch) = nothing
 
 #####
-##### DistributedFillHalo callables — NCCL grouped Send/Recv
+##### distributed_fill_halo_event! for NCCLDistributedGrid
+#####
+##### This extends (not overwrites!) the base method by dispatching on NCCLDistributedGrid.
+##### Replaces sync_device! + MPI Isend/Irecv with NCCL grouped Send/Recv.
+##### No sync_device! needed — NCCL ops are GPU-stream-ordered.
 #####
 
-function nccl_exchange_and_recv!(nccl_comm, send_recv_pairs, c, buffers, grid, side)
+function DC.distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
+                                         grid::NCCLDistributedGrid, buffers, args...;
+                                         async = false, only_local_halos = false, kwargs...)
+    only_local_halos && return nothing
+
+    arch = DC.architecture(grid)
+    nccl_comm = arch.communicator.nccl
+    buffer_side = kernel!.side
+
+    # Pack send buffers (GPU kernel on default stream)
+    DC.fill_send_buffers!(c, buffers, grid, buffer_side)
+
+    # NCCL grouped Send/Recv (no sync_device! needed)
     NCCL.groupStart()
-    for (send_buf, recv_buf, peer) in send_recv_pairs
-        NCCL.Send(send_buf, nccl_comm; dest=peer)
-        NCCL.Recv!(recv_buf, nccl_comm; source=peer)
-    end
+    enqueue_nccl_send_recv!(kernel!, bcs, nccl_comm, buffers)
     NCCL.groupEnd()
-    DC.recv_from_buffers!(c, buffers, grid, side)
+
+    # Unpack recv buffers
+    DC.recv_from_buffers!(c, buffers, grid, buffer_side)
+
     return nothing
-end
-
-function (k::DistributedFillHalo{<:WestAndEast})(c, west_bc, east_bc, loc, grid, arch::NCCLDistributedArch, buffers)
-    pairs = ((buffers.west.send, buffers.west.recv, west_bc.condition.to),
-             (buffers.east.send, buffers.east.recv, east_bc.condition.to))
-    return nccl_exchange_and_recv!(arch.communicator.nccl, pairs, c, buffers, grid, k.side)
-end
-
-function (k::DistributedFillHalo{<:SouthAndNorth})(c, south_bc, north_bc, loc, grid, arch::NCCLDistributedArch, buffers)
-    pairs = ((buffers.south.send, buffers.south.recv, south_bc.condition.to),
-             (buffers.north.send, buffers.north.recv, north_bc.condition.to))
-    return nccl_exchange_and_recv!(arch.communicator.nccl, pairs, c, buffers, grid, k.side)
-end
-
-for side in (:West, :East, :South, :North)
-    side_sym = Symbol(lowercase(String(side)))
-    @eval function (k::DistributedFillHalo{<:$side})(c, bc, loc, grid, arch::NCCLDistributedArch, buffers)
-        pairs = ((buffers.$side_sym.send, buffers.$side_sym.recv, bc.condition.to),)
-        return nccl_exchange_and_recv!(arch.communicator.nccl, pairs, c, buffers, grid, k.side)
-    end
 end
 
 #####
