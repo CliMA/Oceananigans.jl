@@ -39,6 +39,7 @@ function time_step_tke_dissipation_equations!(model, Δt)
     e_index = findfirst(k -> k == :e, keys(model.tracers))
     ϵ_index = findfirst(k -> k == :ϵ, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
+    active_cells_map = get_active_cells_map(grid, Val(:xyz))
 
     FT = eltype(model.tracers.e)
     Δt = convert(FT, Δt)
@@ -63,7 +64,8 @@ function time_step_tke_dissipation_equations!(model, Δt)
                 compute_tke_dissipation_closure_fields!,
                 κe, κϵ,
                 grid, closure,
-                model.velocities, model.tracers, buoyancy_force(model))
+                model.velocities, model.tracers, buoyancy_force(model);
+                active_cells_map)
 
         # Compute the linear implicit component of the RHS (closure_fields, L)
         # and step forward
@@ -71,9 +73,10 @@ function time_step_tke_dissipation_equations!(model, Δt)
                 substep_tke_dissipation!,
                 Le, Lϵ,
                 grid, closure,
-                model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
+                model.velocities, previous_velocities,
                 model.tracers, buoyancy_force(model), closure_fields,
-                Δτ, χ, Gⁿe, G⁻e, Gⁿϵ, G⁻ϵ)
+                Δτ, χ, Gⁿe, G⁻e, Gⁿϵ, G⁻ϵ;
+                active_cells_map)
 
         implicit_step!(e, implicit_solver, closure,
                        model.closure_fields, Val(e_index),
