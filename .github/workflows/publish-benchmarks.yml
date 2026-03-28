@@ -322,19 +322,37 @@ jobs:
           git commit -m "Save benchmark results for commit ${COMMIT}"
           git push -u origin main
 
+      # For repository_dispatch (main branch): push results to external benchmarks repo
       - uses: benchmark-action/github-action-benchmark@v1
-        if: ${{ steps.locate.outputs.path != '' }}
+        if: ${{ github.event_name == 'repository_dispatch' && steps.locate.outputs.path != '' }}
         with:
           name: Oceananigans.jl Benchmarks
           tool: "customSmallerIsBetter"
           output-file-path: "github-action-benchmark.json"
           benchmark-data-dir-path: "."
           gh-repository: "github.com/NumericalEarth/OceananigansBenchmarks"
-          github-token: ${{ github.event_name == 'repository_dispatch' && secrets.BENCHMARKS_TOKEN || secrets.GITHUB_TOKEN }}
+          github-token: ${{ secrets.BENCHMARKS_TOKEN }}
+          comment-always: false
+          summary-always: true
+          alert-threshold: "110%"
+          fail-on-alert: false
+          auto-push: true
+          max-items-in-chart: 50
+          comment-on-alert: false
+
+      # For pull_request: comment on the PR with benchmark comparison
+      - uses: benchmark-action/github-action-benchmark@v1
+        if: ${{ github.event_name == 'pull_request' && steps.locate.outputs.path != '' }}
+        with:
+          name: Oceananigans.jl Benchmarks
+          tool: "customSmallerIsBetter"
+          output-file-path: "github-action-benchmark.json"
+          benchmark-data-dir-path: "."
+          github-token: ${{ github.token }}
           comment-always: true
           summary-always: true
           alert-threshold: "110%"
           fail-on-alert: false
-          auto-push: ${{ github.event_name == 'repository_dispatch' }}
+          auto-push: false
           max-items-in-chart: 50
           comment-on-alert: true
