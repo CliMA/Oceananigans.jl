@@ -5,15 +5,20 @@ using Oceananigans.BoundaryConditions: DistributedFillHalo, WestAndEast, SouthAn
                                        get_boundary_kernels
 
 import Oceananigans.Utils: sync_device!
+import Oceananigans.DistributedComputations: synchronize_communication!
 
 #####
 ##### NCCLCommunicator
 #####
 
-struct NCCLCommunicator{NC, MC}
-    nccl :: NC   # NCCL.Communicator
-    mpi  :: MC   # MPI.Comm
+struct NCCLCommunicator{NC, MC, CS, EV}
+    nccl        :: NC   # NCCL.Communicator
+    mpi         :: MC   # MPI.Comm
+    comm_stream :: CS   # Dedicated CUDA stream for async NCCL ops
+    sync_event  :: EV   # CUDA event for cross-stream synchronization
 end
+
+NCCLCommunicator(nccl, mpi) = NCCLCommunicator(nccl, mpi, nothing, nothing)
 
 # Forward MPI operations to the inner MPI comm
 MPI.Comm_rank(c::NCCLCommunicator) = MPI.Comm_rank(c.mpi)
@@ -43,7 +48,9 @@ const NCCLDistributedField = Oceananigans.Fields.Field{<:Any, <:Any, <:Any, <:An
 function NCCLDistributed(child_arch = GPU(); partition = nothing, kwargs...)
     mpi_arch = Distributed(child_arch; partition, kwargs...)
     nccl_comm = create_nccl_comm_from_mpi(mpi_arch.communicator)
-    nccl_communicator = NCCLCommunicator(nccl_comm, mpi_arch.communicator)
+    comm_stream = CUDA.CuStream(; flags=CUDA.STREAM_NON_BLOCKING)
+    sync_event = CUDA.CuEvent()
+    nccl_communicator = NCCLCommunicator(nccl_comm, mpi_arch.communicator, comm_stream, sync_event)
 
     S = mpi_arch isa DC.SynchronizedDistributed
     return Distributed{S}(mpi_arch.child_architecture,
@@ -67,10 +74,16 @@ sync_device!(::NCCLDistributedArch) = nothing
 #####
 ##### distributed_fill_halo_event! for NCCLDistributedGrid
 #####
-##### This extends (not overwrites!) the base method by dispatching on NCCLDistributedGrid.
-##### Replaces sync_device! + MPI Isend/Irecv with NCCL grouped Send/Recv.
-##### No sync_device! needed — NCCL ops are GPU-stream-ordered.
+##### Extends the base method (dispatches on more specific NCCLDistributedGrid).
 #####
+##### Sync mode (async=false):  pack → NCCL on default stream → unpack
+##### Async mode (async=true):  pack → NCCL on comm_stream → return (defer unpack)
+#####   Interior computation proceeds on default stream while NCCL transfers on comm_stream.
+#####   synchronize_communication!() later waits for comm_stream and unpacks.
+#####
+
+# Storage for pending async unpacks: (data, buffers, grid, side) tuples
+const pending_unpacks = Vector{Any}()
 
 function DC.distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
                                          grid::NCCLDistributedGrid, buffers, args...;
@@ -78,20 +91,57 @@ function DC.distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, l
     only_local_halos && return nothing
 
     arch = DC.architecture(grid)
-    nccl_comm = arch.communicator.nccl
+    communicator = arch.communicator
+    nccl_comm = communicator.nccl
     buffer_side = kernel!.side
 
     # Pack send buffers (GPU kernel on default stream)
     DC.fill_send_buffers!(c, buffers, grid, buffer_side)
 
-    # NCCL grouped Send/Recv (no sync_device! needed)
+    if async && communicator.comm_stream !== nothing
+        # Async: NCCL on comm_stream, defer unpack
+        # Make comm_stream wait for pack kernels on default stream
+        CUDA.record(communicator.sync_event)
+        CUDA.cuStreamWaitEvent(communicator.comm_stream, communicator.sync_event, UInt32(0))
+
+        NCCL.groupStart()
+        enqueue_nccl_send_recv!(kernel!, bcs, nccl_comm, buffers; stream=communicator.comm_stream)
+        NCCL.groupEnd()
+
+        # Record completion on comm_stream
+        CUDA.record(communicator.sync_event, communicator.comm_stream)
+
+        # Store pending unpack for synchronize_communication!
+        push!(pending_unpacks, (; c, buffers, grid, side=buffer_side))
+        return nothing
+    end
+
+    # Sync: NCCL on default stream, unpack immediately
     NCCL.groupStart()
     enqueue_nccl_send_recv!(kernel!, bcs, nccl_comm, buffers)
     NCCL.groupEnd()
 
-    # Unpack recv buffers
     DC.recv_from_buffers!(c, buffers, grid, buffer_side)
+    return nothing
+end
 
+#####
+##### synchronize_communication! for NCCLDistributedField
+#####
+##### Waits for async NCCL comm_stream to complete, then unpacks recv buffers.
+#####
+
+function synchronize_communication!(field::NCCLDistributedField)
+    if !isempty(pending_unpacks)
+        arch = DC.architecture(field.grid)
+        # Make default stream wait for comm_stream completion
+        CUDA.cuStreamWaitEvent(CUDA.stream(), arch.communicator.sync_event, UInt32(0))
+
+        for pending in pending_unpacks
+            DC.recv_from_buffers!(pending.c, pending.buffers, pending.grid, pending.side)
+        end
+        empty!(pending_unpacks)
+    end
     return nothing
 end
 
@@ -129,19 +179,29 @@ function nccl_corner_send_recv!(nccl_comm, corner_rank, buffers)
 end
 
 #####
-##### Batched multi-field halo fill
+##### Batched multi-field halo fill (synchronous only)
 #####
-##### Pack all fields → one NCCL group for all Send/Recv → unpack all fields.
-##### No extra memory needed — each field uses its own existing buffers.
+##### For single-field fill_halo_regions! calls (like pressure), batch
+##### all sides into one NCCL group. For multi-field async calls from
+##### update_state!, the base code iterates per-field through our
+##### distributed_fill_halo_event! which handles async properly.
 #####
 
-using Oceananigans.Fields: instantiated_location
-
-function Oceananigans.BoundaryConditions.fill_halo_regions!(field::NCCLDistributedField, args...; kwargs...)
+function Oceananigans.BoundaryConditions.fill_halo_regions!(field::NCCLDistributedField, args...;
+                                                             async=false, kwargs...)
+    if async
+        # Async: use per-task path via distributed_fill_halo_event! (handles comm_stream)
+        return Oceananigans.BoundaryConditions.fill_halo_regions!(
+            field.data, field.boundary_conditions, field.indices,
+            instantiated_location(field), field.grid, field.communication_buffers,
+            args...; async, kwargs...)
+    end
+    # Synchronous: use batched path (all sides in one NCCL group)
     return nccl_fill_halo_regions!((field,), args...; kwargs...)
 end
 
-function nccl_fill_halo_regions!(fields, args...; only_local_halos=false, async=false, kwargs...)
+
+function nccl_fill_halo_regions!(fields, args...; only_local_halos=false, kwargs...)
     isempty(fields) && return nothing
 
     grid = first(fields).grid
@@ -151,7 +211,6 @@ function nccl_fill_halo_regions!(fields, args...; only_local_halos=false, async=
     has_corners = !(isnothing(conn.southwest) && isnothing(conn.southeast) &&
                     isnothing(conn.northwest) && isnothing(conn.northeast))
 
-    # Pre-compute kernel info for all fields
     field_infos = map(fields) do field
         c    = field.data
         bcs  = field.boundary_conditions
@@ -223,34 +282,34 @@ function nccl_fill_halo_regions!(fields, args...; only_local_halos=false, async=
 end
 
 #####
-##### Enqueue NCCL Send/Recv for each halo side (called inside groupStart/groupEnd)
+##### Enqueue NCCL Send/Recv (called inside groupStart/groupEnd)
 #####
 
-function enqueue_nccl_send_recv!(::DistributedFillHalo{<:WestAndEast}, bcs, nccl_comm, bufs)
-    NCCL.Send(bufs.west.send, nccl_comm; dest=bcs[1].condition.to)
-    NCCL.Recv!(bufs.west.recv, nccl_comm; source=bcs[1].condition.to)
-    NCCL.Send(bufs.east.send, nccl_comm; dest=bcs[2].condition.to)
-    NCCL.Recv!(bufs.east.recv, nccl_comm; source=bcs[2].condition.to)
+function enqueue_nccl_send_recv!(::DistributedFillHalo{<:WestAndEast}, bcs, nccl_comm, bufs; stream_kw...)
+    NCCL.Send(bufs.west.send, nccl_comm; dest=bcs[1].condition.to, stream_kw...)
+    NCCL.Recv!(bufs.west.recv, nccl_comm; source=bcs[1].condition.to, stream_kw...)
+    NCCL.Send(bufs.east.send, nccl_comm; dest=bcs[2].condition.to, stream_kw...)
+    NCCL.Recv!(bufs.east.recv, nccl_comm; source=bcs[2].condition.to, stream_kw...)
     return nothing
 end
 
-function enqueue_nccl_send_recv!(::DistributedFillHalo{<:SouthAndNorth}, bcs, nccl_comm, bufs)
-    NCCL.Send(bufs.south.send, nccl_comm; dest=bcs[1].condition.to)
-    NCCL.Recv!(bufs.south.recv, nccl_comm; source=bcs[1].condition.to)
-    NCCL.Send(bufs.north.send, nccl_comm; dest=bcs[2].condition.to)
-    NCCL.Recv!(bufs.north.recv, nccl_comm; source=bcs[2].condition.to)
+function enqueue_nccl_send_recv!(::DistributedFillHalo{<:SouthAndNorth}, bcs, nccl_comm, bufs; stream_kw...)
+    NCCL.Send(bufs.south.send, nccl_comm; dest=bcs[1].condition.to, stream_kw...)
+    NCCL.Recv!(bufs.south.recv, nccl_comm; source=bcs[1].condition.to, stream_kw...)
+    NCCL.Send(bufs.north.send, nccl_comm; dest=bcs[2].condition.to, stream_kw...)
+    NCCL.Recv!(bufs.north.recv, nccl_comm; source=bcs[2].condition.to, stream_kw...)
     return nothing
 end
 
 for side in (:West, :East, :South, :North)
     side_sym = Symbol(lowercase(String(side)))
-    @eval function enqueue_nccl_send_recv!(::DistributedFillHalo{<:$side}, bcs, nccl_comm, bufs)
-        NCCL.Send(bufs.$side_sym.send, nccl_comm; dest=bcs[1].condition.to)
-        NCCL.Recv!(bufs.$side_sym.recv, nccl_comm; source=bcs[1].condition.to)
+    @eval function enqueue_nccl_send_recv!(::DistributedFillHalo{<:$side}, bcs, nccl_comm, bufs; stream_kw...)
+        NCCL.Send(bufs.$side_sym.send, nccl_comm; dest=bcs[1].condition.to, stream_kw...)
+        NCCL.Recv!(bufs.$side_sym.recv, nccl_comm; source=bcs[1].condition.to, stream_kw...)
         return nothing
     end
 end
 
-enqueue_nccl_send_recv!(::DistributedFillHalo{<:BottomAndTop}, args...) = nothing
-enqueue_nccl_send_recv!(::DistributedFillHalo{<:Bottom}, args...) = nothing
-enqueue_nccl_send_recv!(::DistributedFillHalo{<:Top}, args...) = nothing
+enqueue_nccl_send_recv!(::DistributedFillHalo{<:BottomAndTop}, args...; kw...) = nothing
+enqueue_nccl_send_recv!(::DistributedFillHalo{<:Bottom}, args...; kw...) = nothing
+enqueue_nccl_send_recv!(::DistributedFillHalo{<:Top}, args...; kw...) = nothing
