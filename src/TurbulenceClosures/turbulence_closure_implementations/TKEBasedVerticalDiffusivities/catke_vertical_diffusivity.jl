@@ -267,12 +267,10 @@ function compute_closure_fields!(closure_fields, closure::FlavorOfCATKE, model; 
     velocities = model.velocities
     tracers = buoyancy_tracers(model)
     buoyancy = buoyancy_force(model)
-    active_cells_map = get_active_cells_map(grid, Val(:xyz))
 
-    launch!(arch, grid, :xyz,
+    launch!(arch, grid, parameters,
             compute_CATKE_closure_fields!,
-            closure_fields, grid, closure, velocities, tracers, buoyancy;
-            active_cells_map)
+            closure_fields, grid, closure, velocities, tracers, buoyancy)
 
     return nothing
 end
