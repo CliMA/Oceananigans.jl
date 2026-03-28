@@ -180,79 +180,113 @@ using Oceananigans.BoundaryConditions: get_boundary_kernels, DistributedFillHalo
 
 const DistributedField = Oceananigans.Fields.Field{<:Any, <:Any, <:Any, <:Any, <:DC.DistributedGrid}
 
+# Single-field dispatch
 function Oceananigans.BoundaryConditions.fill_halo_regions!(field::DistributedField, args...; kwargs...)
     arch = DC.architecture(field.grid)
     if arch.communicator isa NCCLCommunicator
-        _nccl_fill_halo_regions!(field, args...; kwargs...)
+        _nccl_fill_halo_regions!((field,), args...; kwargs...)
     else
-        # Fall through to default per-field path
         invoke(Oceananigans.BoundaryConditions.fill_halo_regions!,
                Tuple{Oceananigans.Fields.Field, typeof.(args)...},
                field, args...; kwargs...)
     end
 end
 
-function _nccl_fill_halo_regions!(field, args...; only_local_halos=false, kwargs...)
-    grid = field.grid
+# Multi-field dispatch — batch ALL fields into one NCCL group
+function Oceananigans.BoundaryConditions.fill_halo_regions!(fields::Union{NamedTuple, Tuple},
+                                                             args...; kwargs...)
+    isempty(fields) && return nothing
+    first_field = first(fields)
+    if first_field isa Oceananigans.Fields.Field
+        arch = DC.architecture(first_field.grid)
+        if arch.communicator isa NCCLCommunicator
+            _nccl_fill_halo_regions!(values(fields), args...; kwargs...)
+            return nothing
+        end
+    end
+    # Fallback: per-field sequential
+    for i in eachindex(fields)
+        @inbounds Oceananigans.BoundaryConditions.fill_halo_regions!(fields[i], args...; kwargs...)
+    end
+    return nothing
+end
+
+function _nccl_fill_halo_regions!(fields, args...; only_local_halos=false, kwargs...)
+    isempty(fields) && return nothing
+
+    grid = first(fields).grid
     arch = DC.architecture(grid)
     nccl_comm = arch.communicator.nccl
+    conn = arch.connectivity
+    has_corners = !(isnothing(conn.southwest) && isnothing(conn.southeast) &&
+                    isnothing(conn.northwest) && isnothing(conn.northeast))
 
-    c    = field.data
-    bcs  = field.boundary_conditions
-    idx  = field.indices
-    loc  = instantiated_location(field)
-    bufs = field.communication_buffers
-
-    kernels!, bc_tuples = get_boundary_kernels(bcs, c, grid, loc, idx)
+    # Pre-compute kernel info for all fields
+    field_infos = map(fields) do field
+        c    = field.data
+        bcs  = field.boundary_conditions
+        idx  = field.indices
+        loc  = instantiated_location(field)
+        bufs = field.communication_buffers
+        ks!, bts = get_boundary_kernels(bcs, c, grid, loc, idx)
+        (; c, loc, bufs, kernels=ks!, bc_tuples=bts)
+    end
 
     if only_local_halos
-        # Only fill local (non-communicating) halos
-        for task in 1:length(kernels!)
-            k = kernels![task]
-            k isa DistributedFillHalo && continue
-            Oceananigans.BoundaryConditions.fill_halo_event!(c, k, bc_tuples[task], loc, grid, args...; kwargs...)
+        for info in field_infos
+            for task in 1:length(info.kernels)
+                k = info.kernels[task]
+                k isa DistributedFillHalo && continue
+                Oceananigans.BoundaryConditions.fill_halo_event!(info.c, k, info.bc_tuples[task],
+                    info.loc, grid, args...; kwargs...)
+            end
         end
         return nothing
     end
 
-    # Phase 1: Pack send buffers for all distributed sides
-    for task in 1:length(kernels!)
-        k = kernels![task]
-        k isa DistributedFillHalo || continue
-        DC.fill_send_buffers!(c, bufs, grid, k.side)
+    # Phase 1: Pack ALL fields' send buffers (GPU kernels, all on same stream)
+    for info in field_infos
+        for task in 1:length(info.kernels)
+            k = info.kernels[task]
+            k isa DistributedFillHalo || continue
+            DC.fill_send_buffers!(info.c, info.bufs, grid, k.side)
+        end
+        if has_corners
+            DC.fill_send_buffers!(info.c, info.bufs, grid, Val(:corners))
+        end
     end
 
-    # Phase 2: One NCCL group for all distributed sends/recvs
+    # Phase 2: ONE NCCL group for ALL fields' distributed Send/Recv
     NCCL.groupStart()
-    for task in 1:length(kernels!)
-        k = kernels![task]
-        k isa DistributedFillHalo || continue
-        _enqueue_nccl_send_recv!(k, bc_tuples[task], nccl_comm, bufs)
-    end
-    # Also corners
-    conn = arch.connectivity
-    if !(isnothing(conn.southwest) && isnothing(conn.southeast) &&
-         isnothing(conn.northwest) && isnothing(conn.northeast))
-        DC.fill_send_buffers!(c, bufs, grid, Val(:corners))
-        _nccl_corner_send_recv!(nccl_comm, conn.southwest, bufs.southwest)
-        _nccl_corner_send_recv!(nccl_comm, conn.southeast, bufs.southeast)
-        _nccl_corner_send_recv!(nccl_comm, conn.northwest, bufs.northwest)
-        _nccl_corner_send_recv!(nccl_comm, conn.northeast, bufs.northeast)
+    for info in field_infos
+        for task in 1:length(info.kernels)
+            k = info.kernels[task]
+            k isa DistributedFillHalo || continue
+            _enqueue_nccl_send_recv!(k, info.bc_tuples[task], nccl_comm, info.bufs)
+        end
+        if has_corners
+            _nccl_corner_send_recv!(nccl_comm, conn.southwest, info.bufs.southwest)
+            _nccl_corner_send_recv!(nccl_comm, conn.southeast, info.bufs.southeast)
+            _nccl_corner_send_recv!(nccl_comm, conn.northwest, info.bufs.northwest)
+            _nccl_corner_send_recv!(nccl_comm, conn.northeast, info.bufs.northeast)
+        end
     end
     NCCL.groupEnd()
 
-    # Phase 3: Unpack recv buffers + fill local halos
-    for task in 1:length(kernels!)
-        k = kernels![task]
-        if k isa DistributedFillHalo
-            DC.recv_from_buffers!(c, bufs, grid, k.side)
-        else
-            Oceananigans.BoundaryConditions.fill_halo_event!(c, k, bc_tuples[task], loc, grid, args...; kwargs...)
+    # Phase 3: Unpack ALL fields' recv buffers + fill local halos
+    for info in field_infos
+        for task in 1:length(info.kernels)
+            k = info.kernels[task]
+            if k isa DistributedFillHalo
+                DC.recv_from_buffers!(info.c, info.bufs, grid, k.side)
+            else
+                Oceananigans.BoundaryConditions.fill_halo_event!(info.c, k, info.bc_tuples[task],
+                    info.loc, grid, args...; kwargs...)
+            end
         end
-    end
-    if !(isnothing(conn.southwest) && isnothing(conn.southeast) &&
-         isnothing(conn.northwest) && isnothing(conn.northeast))
-        DC.recv_from_buffers!(c, bufs, grid, Val(:corners))
+        if has_corners
+            DC.recv_from_buffers!(info.c, info.bufs, grid, Val(:corners))
+        end
     end
 
     return nothing
