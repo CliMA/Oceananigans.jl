@@ -348,6 +348,7 @@ jobs:
           tool: "customSmallerIsBetter"
           output-file-path: "github-action-benchmark.json"
           benchmark-data-dir-path: "."
+          gh-repository: "github.com/NumericalEarth/OceananigansBenchmarks"
           github-token: ${{ github.token }}
           comment-always: true
           summary-always: true
