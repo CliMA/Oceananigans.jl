@@ -11,7 +11,7 @@ using Oceananigans.DistributedComputations:
     concatenate_local_sizes,
     communication_buffers
 
-using Oceananigans.Grids: topology, RightConnected, FullyConnected, global_fold_topology
+using Oceananigans.Grids: topology, RightConnected, FullyConnected
 using Oceananigans.DistributedComputations: insert_connected_topology
 
 import Oceananigans.Fields: Field, validate_indices, validate_boundary_conditions
@@ -256,7 +256,7 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
     south = regularize_boundary_condition(bcs.south, grid, loc, 2, LeftBoundary,  prognostic_names)
 
     north = if yrank == processor_size[2] - 1 && processor_size[1] == 1
-        zipper_bc(global_fold_topology(topology(grid, 2)), sign)
+        zipper_bc(fold_topology(grid.conformal_mapping), sign)
 
     elseif yrank == processor_size[2] - 1 && processor_size[1] != 1
         from = arch.local_rank
@@ -294,9 +294,8 @@ function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::MPITripolarGridOfSomeKind, da
         new_bcs = inject_halo_communication_boundary_conditions(old_bcs, arch.local_rank, arch.connectivity, topology(grid))
 
         if yrank == processor_size[2] - 1 && processor_size[1] == 1
-            default_zipper = zipper_bc(global_fold_topology(topology(grid, 2)), sign(LX, LY))
             north_bc = if !(old_bcs.north isa ZBC)
-                default_zipper
+                zipper_bc(fold_topology(grid.conformal_mapping), sign(LX, LY))
             else
                 old_bcs.north
             end
@@ -344,13 +343,16 @@ function DistributedComputations.reconstruct_global_grid(grid::MPITripolarGrid)
     first_pole_longitude = grid.conformal_mapping.first_pole_longitude
     southernmost_latitude = grid.conformal_mapping.southernmost_latitude
 
+    fold_topology = Oceananigans.OrthogonalSphericalShellGrids.fold_topology(grid.conformal_mapping)
+
     return TripolarGrid(child_arch, FT;
                         halo,
                         size,
                         north_poles_latitude,
                         first_pole_longitude,
                         southernmost_latitude,
-                        z)
+                        z,
+                        fold_topology)
 end
 
 function Grids.with_halo(new_halo, old_grid::MPITripolarGrid)
@@ -364,6 +366,7 @@ function Grids.with_halo(new_halo, old_grid::MPITripolarGrid)
     north_poles_latitude = old_grid.conformal_mapping.north_poles_latitude
     first_pole_longitude = old_grid.conformal_mapping.first_pole_longitude
     southernmost_latitude = old_grid.conformal_mapping.southernmost_latitude
+    fold_topology = Oceananigans.OrthogonalSphericalShellGrids.fold_topology(old_grid.conformal_mapping)
 
     return TripolarGrid(arch, eltype(old_grid);
                         halo = new_halo,
@@ -371,5 +374,6 @@ function Grids.with_halo(new_halo, old_grid::MPITripolarGrid)
                         north_poles_latitude,
                         first_pole_longitude,
                         southernmost_latitude,
-                        z)
+                        z,
+                        fold_topology)
 end

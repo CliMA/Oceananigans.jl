@@ -7,7 +7,6 @@ export RightFaceFolded, RightCenterFolded
 export LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded
 export LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected
 export WestOfPivot, EastOfPivot
-export global_fold_topology
 export AbstractGrid, AbstractUnderlyingGrid, halo_size, total_size
 export RectilinearGrid
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
@@ -159,19 +158,6 @@ with F-point pivot (distributed zipper). `P` is `WestOfPivot` or `EastOfPivot`.
 Face-extended (Ny+1 Face points in y).
 """
 struct LeftConnectedRightFaceConnected{P} <: AbstractTopology end
-
-"""
-    global_fold_topology(T)
-
-Return the global grid y fold topology (`RightCenterFolded` or `RightFaceFolded`) from
-the local grid y topology type.
-"""
-global_fold_topology(::Type{RightCenterFolded})                    = RightCenterFolded
-global_fold_topology(::Type{RightFaceFolded})                      = RightFaceFolded
-global_fold_topology(::Type{LeftConnectedRightCenterFolded})       = RightCenterFolded
-global_fold_topology(::Type{LeftConnectedRightFaceFolded})         = RightFaceFolded
-global_fold_topology(::Type{<:LeftConnectedRightCenterConnected})  = RightCenterFolded
-global_fold_topology(::Type{<:LeftConnectedRightFaceConnected})    = RightFaceFolded
 
 #####
 ##### Directions (for tilted domains)
