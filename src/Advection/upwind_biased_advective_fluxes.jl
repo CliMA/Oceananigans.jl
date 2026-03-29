@@ -15,9 +15,7 @@ const UpwindScheme = AbstractUpwindBiasedAdvectionScheme
 ##### Note the convention "advective_momentum_flux_AB" corresponds to the advection _of_ B _by_ A.
 #####
 
-@enum Bias LeftBias RightBias
-
-@inline bias(u::Number) = ifelse(u > 0, LeftBias, RightBias)
+@inline bias(u::Number) = u > 0
 
 @inline function advective_momentum_flux_Uu(i, j, k, grid, scheme::UpwindScheme, U, u)
 
