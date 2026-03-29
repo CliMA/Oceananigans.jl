@@ -62,10 +62,19 @@ jobs:
           earlyoom -m 3 -s 100 -r 5 --prefer 'julia' &
           julia --project --color=yes --check-bounds=auto -e 'using Pkg; Pkg.test(; coverage=true, julia_args=["--check-bounds=auto", "--compiled-modules=yes", "--depwarn=yes", "-O0"], force_latest_compatible_version=false, allow_reresolve=true)'
         env:
-          XLA_FLAGS: "--xla_force_host_platform_device_count=4"
+          XLA_FLAGS: "--xla_force_host_platform_device_count=4 --xla_dump_to=xla_dump"
           JULIA_DEBUG: "Reactant, Reactant_jll"
           REACTANT_TEST: true
           TEST_GROUP: "sharding"
+      - name: Upload XLA dump
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        timeout-minutes: 10
+        if: ${{ always() }}
+        with:
+          name: 'sharding-xla-dump-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.arch }}'
+          path: '**/xla_dump'
+          retention-days: 90
+          overwrite: false
       - uses: julia-actions/julia-processcoverage@03114f09f119417c3242a9fb6e0b722676aedf38 # v1.2.2
         with:
           # default is src,ext — include others if you need them
