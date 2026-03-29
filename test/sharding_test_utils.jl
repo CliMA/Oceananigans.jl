@@ -1,4 +1,4 @@
-ENV["XLA_FLAGS"] = "--xla_force_host_platform_device_count=4"
+ENV["XLA_FLAGS"] = get(ENV, "XLA_FLAGS", "--xla_force_host_platform_device_count=4")
 ENV["JULIA_DEBUG"] = "Reactant, Reactant_jll"
 
 using Reactant
