@@ -1,7 +1,5 @@
 module OceananigansNCCLExt
 
-__precompile__(false)  # Required: extension overwrites base methods for NCCL dispatch
-
 using NCCL
 using CUDA
 using MPI
