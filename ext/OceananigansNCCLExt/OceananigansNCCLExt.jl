@@ -1,5 +1,7 @@
 module OceananigansNCCLExt
 
+__precompile__(false)
+
 using NCCL
 using CUDA
 using MPI
