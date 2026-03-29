@@ -353,13 +353,11 @@ insert_connected_topology(::Type{Periodic}, R, r) = ifelse(R == 1, Periodic, Ful
 # These take 5 arguments: (global_y_topology, Ry, ry, Rx, rx) where
 # Ry/ry are y-rank count/index and Rx/rx are x-rank count/index (all 1-based).
 
-pivot_side(Rx, rx) = rx ≤ Rx ÷ 2 ? WestOfPivot : EastOfPivot
-
 local_fold_topology(::Type{RightCenterFolded}, Rx, rx) =
-    Rx == 1 ? LeftConnectedRightCenterFolded : LeftConnectedRightCenterConnected{pivot_side(Rx, rx)}
+    Rx == 1 ? LeftConnectedRightCenterFolded : LeftConnectedRightCenterConnected
 
 local_fold_topology(::Type{RightFaceFolded}, Rx, rx) =
-    Rx == 1 ? LeftConnectedRightFaceFolded : LeftConnectedRightFaceConnected{pivot_side(Rx, rx)}
+    Rx == 1 ? LeftConnectedRightFaceFolded : LeftConnectedRightFaceConnected
 
 function insert_connected_topology(T::Type{<:Union{RightCenterFolded, RightFaceFolded}}, Ry, ry, Rx, rx)
     if ry == 1

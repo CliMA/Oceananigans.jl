@@ -4,8 +4,7 @@ using Oceananigans.DistributedComputations: CommunicationBuffers, fill_corners!,
 using Oceananigans.Grids: AbstractGrid, topology,
     RightCenterFolded, RightFaceFolded,
     LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
-    LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected,
-    WestOfPivot, EastOfPivot
+    LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected
 using Oceananigans.DistributedComputations: Distributed, on_architecture, ranks, x_communication_buffer
 using Oceananigans.Fields: instantiated_location
 
@@ -45,6 +44,33 @@ has_fold_line(::Type{<:UPivotTopology}, ::Face)   = false
 has_fold_line(::Type{<:FPivotTopology}, ::Center) = false
 has_fold_line(::Type{<:FPivotTopology}, ::Face)   = true
 
+# The fold has two pivot points due to x-periodicity:
+#   1st pivot: between rx = Rx÷2 and rx = Rx÷2+1
+#   2nd pivot: at the periodic boundary between rx = Rx and rx = 1
+# The serial ifelse(i > Nx÷2, ...) writes the east half only.
+# Corner conditions account for periodic wrap at rx=1 (NW) and rx=Rx (NE).
+
+# North buffer: east-of-pivot ranks write fold line
+function north_writes_fold_line(arch)
+    rx = arch.local_index[1]
+    Rx = ranks(arch)[1]
+    return rx > Rx ÷ 2
+end
+
+# NW corner: west edge past pivot, or rx=1 (periodic wrap to east half)
+function northwest_writes_fold_line(arch)
+    rx = arch.local_index[1]
+    Rx = ranks(arch)[1]
+    return rx > Rx ÷ 2 + 1 || rx == 1
+end
+
+# NE corner: east edge past pivot, but not rx=Rx (periodic wrap to west half)
+function northeast_writes_fold_line(arch)
+    rx = arch.local_index[1]
+    Rx = ranks(arch)[1]
+    return rx >= Rx ÷ 2 && rx < Rx
+end
+
 #####
 ##### Zipper communication buffers with fold-aware packing
 #####
@@ -55,13 +81,13 @@ struct OneDZipperBuffer{Loc, FoT, B, S}
     sign :: S
 end
 
-struct TwoDZipperBuffer{Loc, FoT, B, S}
+struct TwoDZipperBuffer{Loc, FoT, B, S, FL, WFL}
     send :: B
     recv :: B
     sign :: S
 end
 
-struct ZipperCornerBuffer{Loc, FoT, B, S}
+struct ZipperCornerBuffer{Loc, FoT, B, S, FL, WFL}
     send :: B
     recv :: B
     sign :: S
@@ -69,8 +95,12 @@ end
 
 # Value-argument constructors: all types inferred
 OneDZipperBuffer(loc::Loc, fot::FoT, send::B, recv::B, sign::S) where {Loc, FoT, B, S} = OneDZipperBuffer{Loc, FoT, B, S}(send, recv, sign)
-TwoDZipperBuffer(loc::Loc, fot::FoT, send::B, recv::B, sign::S) where {Loc, FoT, B, S} = TwoDZipperBuffer{Loc, FoT, B, S}(send, recv, sign)
-ZipperCornerBuffer(loc::Loc, fot::FoT, send::B, recv::B, sign::S) where {Loc, FoT, B, S} = ZipperCornerBuffer{Loc, FoT, B, S}(send, recv, sign)
+TwoDZipperBuffer(loc, fot, send, recv, sign, ::Val{FL}, ::Val{WFL}) where {FL, WFL} =
+    TwoDZipperBuffer{typeof(loc), typeof(fot), typeof(send), typeof(sign), FL, WFL}(send, recv, sign)
+ZipperCornerBuffer(loc, fot, send, recv, sign, ::Val{FL}, ::Val{WFL}) where {FL, WFL} =
+    ZipperCornerBuffer{typeof(loc), typeof(fot), typeof(send), typeof(sign), FL, WFL}(send, recv, sign)
+ZipperCornerBuffer(::Type{Loc}, ::Type{FoT}, send, recv, sign, ::Val{FL}, ::Val{WFL}) where {Loc, FoT, FL, WFL} =
+    ZipperCornerBuffer{Loc, FoT, typeof(send), typeof(sign), FL, WFL}(send, recv, sign)
 
 Adapt.adapt_structure(to, buff::OneDZipperBuffer) = nothing
 Adapt.adapt_structure(to, buff::TwoDZipperBuffer) = nothing
@@ -118,10 +148,12 @@ function y_tripolar_buffer(arch, grid::AbstractGrid{<:Any, <:Any, Topo},
     _, _, Tz = size(parent(data))
     FT = eltype(data)
     sgn = bc.condition.sign
-    Hy′ = has_fold_line(Topo, loc[2]) ? Hy + 1 : Hy
+    fl = has_fold_line(Topo, loc[2])
+    Hy′ = fl ? Hy + 1 : Hy
+    wfl = fl && north_writes_fold_line(arch)
     send = on_architecture(arch, zeros(FT, Nx, Hy′, Tz))
     recv = on_architecture(arch, zeros(FT, Nx, Hy′, Tz))
-    return TwoDZipperBuffer(loc, Topo(), send, recv, sgn)
+    return TwoDZipperBuffer(loc, Topo(), send, recv, sgn, Val(fl), Val(wfl))
 end
 
 # Fallbacks: non-zipper corners
@@ -129,47 +161,56 @@ northwest_tripolar_buffer(arch, grid, data, Hx, Hy, xedge, yedge) = corner_commu
 northeast_tripolar_buffer(arch, grid, data, Hx, Hy, xedge, yedge) = corner_communication_buffer(arch, grid, data, Hx, Hy, xedge, yedge)
 
 # Corner buffers are only needed for 2D (MxN) partitions.
-# For FPivot CF/FF the fold line sits at Face-y, requiring Hy′ = Hy + 1 rows
-# (mirroring the TwoDZipperBuffer). All other cases use Hy′ = Hy.
+# FL (fold line in buffer) is true for ALL corners when has_fold_line, to ensure
+# MPI size matching between mirror partners. WFL (writes fold line) is per-corner,
+# based on whether the corner's global x-position is past the pivot.
 
 # ── NW corner: Center-x (Hx columns) ──
 function northwest_tripolar_buffer(arch, grid, data, Hx, Hy, xedge,
                                    yedge::TwoDZipperBuffer{Loc, FoT}) where {Loc <: Tuple{<:Center, <:Any, <:Any}, FoT}
     Tz = size(parent(data), 3); FT = eltype(data); sgn = yedge.sign
-    Hy′ = has_fold_line(FoT, Loc.parameters[2]()) ? Hy + 1 : Hy
+    fl = has_fold_line(FoT, Loc.parameters[2]())
+    Hy′ = fl ? Hy + 1 : Hy
+    wfl = fl && northwest_writes_fold_line(arch)
     send = on_architecture(arch, zeros(FT, Hx, Hy′, Tz))
     recv = on_architecture(arch, zeros(FT, Hx, Hy′, Tz))
-    return ZipperCornerBuffer{Loc, FoT, typeof(send), typeof(sgn)}(send, recv, sgn)
+    return ZipperCornerBuffer(Loc, FoT, send, recv, sgn, Val(fl), Val(wfl))
 end
 
 # ── NW corner: Face-x (Hx+1 columns for the Face-x shift) ──
 function northwest_tripolar_buffer(arch, grid, data, Hx, Hy, xedge,
                                    yedge::TwoDZipperBuffer{Loc, FoT}) where {Loc <: Tuple{<:Face, <:Any, <:Any}, FoT}
     Tz = size(parent(data), 3); FT = eltype(data); sgn = yedge.sign
-    Hy′ = has_fold_line(FoT, Loc.parameters[2]()) ? Hy + 1 : Hy
+    fl = has_fold_line(FoT, Loc.parameters[2]())
+    Hy′ = fl ? Hy + 1 : Hy
+    wfl = fl && northwest_writes_fold_line(arch)
     send = on_architecture(arch, zeros(FT, Hx+1, Hy′, Tz))
     recv = on_architecture(arch, zeros(FT, Hx+1, Hy′, Tz))
-    return ZipperCornerBuffer{Loc, FoT, typeof(send), typeof(sgn)}(send, recv, sgn)
+    return ZipperCornerBuffer(Loc, FoT, send, recv, sgn, Val(fl), Val(wfl))
 end
 
 # ── NE corner: Center-x (Hx columns) ──
 function northeast_tripolar_buffer(arch, grid, data, Hx, Hy, xedge,
                                    yedge::TwoDZipperBuffer{Loc, FoT}) where {Loc <: Tuple{<:Center, <:Any, <:Any}, FoT}
     Tz = size(parent(data), 3); FT = eltype(data); sgn = yedge.sign
-    Hy′ = has_fold_line(FoT, Loc.parameters[2]()) ? Hy + 1 : Hy
+    fl = has_fold_line(FoT, Loc.parameters[2]())
+    Hy′ = fl ? Hy + 1 : Hy
+    wfl = fl && northeast_writes_fold_line(arch)
     send = on_architecture(arch, zeros(FT, Hx, Hy′, Tz))
     recv = on_architecture(arch, zeros(FT, Hx, Hy′, Tz))
-    return ZipperCornerBuffer{Loc, FoT, typeof(send), typeof(sgn)}(send, recv, sgn)
+    return ZipperCornerBuffer(Loc, FoT, send, recv, sgn, Val(fl), Val(wfl))
 end
 
 # ── NE corner: Face-x (Hx-1 columns, TwoDBuffer covers the extra) ──
 function northeast_tripolar_buffer(arch, grid, data, Hx, Hy, xedge,
                                    yedge::TwoDZipperBuffer{Loc, FoT}) where {Loc <: Tuple{<:Face, <:Any, <:Any}, FoT}
     Tz = size(parent(data), 3); FT = eltype(data); sgn = yedge.sign
-    Hy′ = has_fold_line(FoT, Loc.parameters[2]()) ? Hy + 1 : Hy
+    fl = has_fold_line(FoT, Loc.parameters[2]())
+    Hy′ = fl ? Hy + 1 : Hy
+    wfl = fl && northeast_writes_fold_line(arch)
     send = on_architecture(arch, zeros(FT, Hx - 1, Hy′, Tz))
     recv = on_architecture(arch, zeros(FT, Hx - 1, Hy′, Tz))
-    return ZipperCornerBuffer{Loc, FoT, typeof(send), typeof(sgn)}(send, recv, sgn)
+    return ZipperCornerBuffer(Loc, FoT, send, recv, sgn, Val(fl), Val(wfl))
 end
 
 #####
@@ -300,60 +341,60 @@ _fill_northeast_send_buffer!(c, b::ZipperCornerBuffer{<:FF, <:FPivotTopology}, H
 #####
 ##### Recv methods: direct placement (data is already folded by sender)
 #####
-##### For TwoD fold-line fields (Hy+1 buffer):
-#####   EastOfPivot: write fold line + halos
-#####   WestOfPivot: write halos only (skip fold line in row 1)
+##### For TwoD fold-line fields (FL=true, Hy+1 buffer):
+#####   WFL=true:  write fold line (row 1) + halos (rows 2:Hy+1)
+#####   WFL=false: write halos only (rows 2:Hy+1, skip fold line)
 #####
 ##### For FPivot Face-y: halos start at parent Ny+Hy+2 (field Ny+2, past fold line at Ny+1)
 #####
 
-# ── TwoDZipperBuffer: UPivot CC/FC — fold line dispatch on WoP/EoP ──
+# ── TwoDZipperBuffer: UPivot CC/FC — FL=true, dispatch on WFL ──
 
-function _recv_from_north_buffer!(c, buff::TwoDZipperBuffer{<:CC, <:LeftConnectedRightCenterConnected{EastOfPivot}}, Hx, Hy, Nx, Ny)
+function _recv_from_north_buffer!(c, buff::TwoDZipperBuffer{<:CC, <:LeftConnectedRightCenterConnected, <:Any, <:Any, true, true}, Hx, Hy, Nx, Ny)
     view(c, 1+Hx:Nx+Hx, Ny+Hy:Ny+Hy, :)   .= view(buff.recv, :, 1:1, :)
     view(c, 1+Hx:Nx+Hx, 1+Ny+Hy:Ny+2Hy, :) .= view(buff.recv, :, 2:Hy+1, :)
 end
 
-function _recv_from_north_buffer!(c, buff::TwoDZipperBuffer{<:CC, <:LeftConnectedRightCenterConnected{WestOfPivot}}, Hx, Hy, Nx, Ny)
+function _recv_from_north_buffer!(c, buff::TwoDZipperBuffer{<:CC, <:LeftConnectedRightCenterConnected, <:Any, <:Any, true, false}, Hx, Hy, Nx, Ny)
     view(c, 1+Hx:Nx+Hx, 1+Ny+Hy:Ny+2Hy, :) .= view(buff.recv, :, 2:Hy+1, :)
 end
 
-function _recv_from_north_buffer!(c, buff::TwoDZipperBuffer{<:FC, <:LeftConnectedRightCenterConnected{EastOfPivot}}, Hx, Hy, Nx, Ny)
+function _recv_from_north_buffer!(c, buff::TwoDZipperBuffer{<:FC, <:LeftConnectedRightCenterConnected, <:Any, <:Any, true, true}, Hx, Hy, Nx, Ny)
     view(c, 2+Hx:Nx+Hx+1, Ny+Hy:Ny+Hy, :)   .= view(buff.recv, :, 1:1, :)
     view(c, 2+Hx:Nx+Hx+1, 1+Ny+Hy:Ny+2Hy, :) .= view(buff.recv, :, 2:Hy+1, :)
 end
 
-function _recv_from_north_buffer!(c, buff::TwoDZipperBuffer{<:FC, <:LeftConnectedRightCenterConnected{WestOfPivot}}, Hx, Hy, Nx, Ny)
+function _recv_from_north_buffer!(c, buff::TwoDZipperBuffer{<:FC, <:LeftConnectedRightCenterConnected, <:Any, <:Any, true, false}, Hx, Hy, Nx, Ny)
     view(c, 2+Hx:Nx+Hx+1, 1+Ny+Hy:Ny+2Hy, :) .= view(buff.recv, :, 2:Hy+1, :)
 end
 
-# ── TwoDZipperBuffer: UPivot CF/FF — no fold line, standard placement ──
+# ── TwoDZipperBuffer: UPivot CF/FF — FL=false, no fold line ──
 
 _recv_from_north_buffer!(c, buff::TwoDZipperBuffer{<:CF, <:UPivotTopology}, Hx, Hy, Nx, Ny) = view(c, 1+Hx:Nx+Hx, 1+Ny+Hy:Ny+2Hy, :) .= buff.recv
 _recv_from_north_buffer!(c, buff::TwoDZipperBuffer{<:FF, <:UPivotTopology}, Hx, Hy, Nx, Ny) = view(c, 2+Hx:Nx+Hx+1, 1+Ny+Hy:Ny+2Hy, :) .= buff.recv
 
-# ── TwoDZipperBuffer: FPivot CC/FC — no fold line, standard placement ──
+# ── TwoDZipperBuffer: FPivot CC/FC — FL=false, no fold line ──
 
 _recv_from_north_buffer!(c, buff::TwoDZipperBuffer{<:CC, <:FPivotTopology}, Hx, Hy, Nx, Ny) = view(c, 1+Hx:Nx+Hx, 1+Ny+Hy:Ny+2Hy, :) .= buff.recv
 _recv_from_north_buffer!(c, buff::TwoDZipperBuffer{<:FC, <:FPivotTopology}, Hx, Hy, Nx, Ny) = view(c, 2+Hx:Nx+Hx+1, 1+Ny+Hy:Ny+2Hy, :) .= buff.recv
 
-# ── TwoDZipperBuffer: FPivot CF/FF — fold line dispatch, shifted +1 for Face-extended ──
+# ── TwoDZipperBuffer: FPivot CF/FF — FL=true, dispatch on WFL, shifted +1 for Face-y ──
 
-function _recv_from_north_buffer!(c, buff::TwoDZipperBuffer{<:CF, <:LeftConnectedRightFaceConnected{EastOfPivot}}, Hx, Hy, Nx, Ny)
+function _recv_from_north_buffer!(c, buff::TwoDZipperBuffer{<:CF, <:LeftConnectedRightFaceConnected, <:Any, <:Any, true, true}, Hx, Hy, Nx, Ny)
     view(c, 1+Hx:Nx+Hx, Ny+1+Hy:Ny+1+Hy, :) .= view(buff.recv, :, 1:1, :)
     view(c, 1+Hx:Nx+Hx, 2+Ny+Hy:1+Ny+2Hy, :) .= view(buff.recv, :, 2:Hy+1, :)
 end
 
-function _recv_from_north_buffer!(c, buff::TwoDZipperBuffer{<:CF, <:LeftConnectedRightFaceConnected{WestOfPivot}}, Hx, Hy, Nx, Ny)
+function _recv_from_north_buffer!(c, buff::TwoDZipperBuffer{<:CF, <:LeftConnectedRightFaceConnected, <:Any, <:Any, true, false}, Hx, Hy, Nx, Ny)
     view(c, 1+Hx:Nx+Hx, 2+Ny+Hy:1+Ny+2Hy, :) .= view(buff.recv, :, 2:Hy+1, :)
 end
 
-function _recv_from_north_buffer!(c, buff::TwoDZipperBuffer{<:FF, <:LeftConnectedRightFaceConnected{EastOfPivot}}, Hx, Hy, Nx, Ny)
+function _recv_from_north_buffer!(c, buff::TwoDZipperBuffer{<:FF, <:LeftConnectedRightFaceConnected, <:Any, <:Any, true, true}, Hx, Hy, Nx, Ny)
     view(c, 2+Hx:Nx+Hx+1, Ny+1+Hy:Ny+1+Hy, :) .= view(buff.recv, :, 1:1, :)
     view(c, 2+Hx:Nx+Hx+1, 2+Ny+Hy:1+Ny+2Hy, :) .= view(buff.recv, :, 2:Hy+1, :)
 end
 
-function _recv_from_north_buffer!(c, buff::TwoDZipperBuffer{<:FF, <:LeftConnectedRightFaceConnected{WestOfPivot}}, Hx, Hy, Nx, Ny)
+function _recv_from_north_buffer!(c, buff::TwoDZipperBuffer{<:FF, <:LeftConnectedRightFaceConnected, <:Any, <:Any, true, false}, Hx, Hy, Nx, Ny)
     view(c, 2+Hx:Nx+Hx+1, 2+Ny+Hy:1+Ny+2Hy, :) .= view(buff.recv, :, 2:Hy+1, :)
 end
 
@@ -371,31 +412,71 @@ _recv_from_north_buffer!(c, buff::OneDZipperBuffer{<:FC, <:FPivotTopology}, Hx, 
 _recv_from_north_buffer!(c, buff::OneDZipperBuffer{<:CF, <:FPivotTopology}, Hx, Hy, Nx, Ny) = view(c, :, 2+Ny+Hy:1+Ny+2Hy, :) .= buff.recv
 _recv_from_north_buffer!(c, buff::OneDZipperBuffer{<:FF, <:FPivotTopology}, Hx, Hy, Nx, Ny) = view(c, :, 2+Ny+Hy:1+Ny+2Hy, :) .= buff.recv
 
-# ── Corner recv: UPivot — standard placement ──
+# ── Corner recv: UPivot CC/FC — FL=true, dispatch on WFL ──
 
-_recv_from_northwest_buffer!(c, buff::ZipperCornerBuffer{<:CC, <:UPivotTopology}, Hx, Hy, Nx, Ny) = view(c, 1:Hx, Ny+Hy:Ny+2Hy, :) .= buff.recv
+# WFL=true: write fold line + halos
+function _recv_from_northwest_buffer!(c, buff::ZipperCornerBuffer{<:CC, <:UPivotTopology, <:Any, <:Any, true, true}, Hx, Hy, Nx, Ny)
+    view(c, 1:Hx, Ny+Hy:Ny+Hy, :)    .= view(buff.recv, :, 1:1, :)
+    view(c, 1:Hx, 1+Ny+Hy:Ny+2Hy, :) .= view(buff.recv, :, 2:size(buff.recv,2), :)
+end
+function _recv_from_northwest_buffer!(c, buff::ZipperCornerBuffer{<:FC, <:UPivotTopology, <:Any, <:Any, true, true}, Hx, Hy, Nx, Ny)
+    view(c, 1:Hx+1, Ny+Hy:Ny+Hy, :)    .= view(buff.recv, :, 1:1, :)
+    view(c, 1:Hx+1, 1+Ny+Hy:Ny+2Hy, :) .= view(buff.recv, :, 2:size(buff.recv,2), :)
+end
+function _recv_from_northeast_buffer!(c, buff::ZipperCornerBuffer{<:CC, <:UPivotTopology, <:Any, <:Any, true, true}, Hx, Hy, Nx, Ny)
+    view(c, 1+Nx+Hx:Nx+2Hx, Ny+Hy:Ny+Hy, :)    .= view(buff.recv, :, 1:1, :)
+    view(c, 1+Nx+Hx:Nx+2Hx, 1+Ny+Hy:Ny+2Hy, :) .= view(buff.recv, :, 2:size(buff.recv,2), :)
+end
+function _recv_from_northeast_buffer!(c, buff::ZipperCornerBuffer{<:FC, <:UPivotTopology, <:Any, <:Any, true, true}, Hx, Hy, Nx, Ny)
+    view(c, 2+Nx+Hx:Nx+2Hx, Ny+Hy:Ny+Hy, :)    .= view(buff.recv, :, 1:1, :)
+    view(c, 2+Nx+Hx:Nx+2Hx, 1+Ny+Hy:Ny+2Hy, :) .= view(buff.recv, :, 2:size(buff.recv,2), :)
+end
+
+# WFL=false: write halos only (skip fold line)
+_recv_from_northwest_buffer!(c, buff::ZipperCornerBuffer{<:CC, <:UPivotTopology, <:Any, <:Any, true, false}, Hx, Hy, Nx, Ny) = view(c, 1:Hx, 1+Ny+Hy:Ny+2Hy, :) .= view(buff.recv, :, 2:size(buff.recv,2), :)
+_recv_from_northwest_buffer!(c, buff::ZipperCornerBuffer{<:FC, <:UPivotTopology, <:Any, <:Any, true, false}, Hx, Hy, Nx, Ny) = view(c, 1:Hx+1, 1+Ny+Hy:Ny+2Hy, :) .= view(buff.recv, :, 2:size(buff.recv,2), :)
+_recv_from_northeast_buffer!(c, buff::ZipperCornerBuffer{<:CC, <:UPivotTopology, <:Any, <:Any, true, false}, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1+Ny+Hy:Ny+2Hy, :) .= view(buff.recv, :, 2:size(buff.recv,2), :)
+_recv_from_northeast_buffer!(c, buff::ZipperCornerBuffer{<:FC, <:UPivotTopology, <:Any, <:Any, true, false}, Hx, Hy, Nx, Ny) = view(c, 2+Nx+Hx:Nx+2Hx, 1+Ny+Hy:Ny+2Hy, :) .= view(buff.recv, :, 2:size(buff.recv,2), :)
+
+# ── Corner recv: UPivot CF/FF — FL=false, no fold line, Hy rows ──
+
 _recv_from_northwest_buffer!(c, buff::ZipperCornerBuffer{<:CF, <:UPivotTopology}, Hx, Hy, Nx, Ny) = view(c, 1:Hx, 1+Ny+Hy:Ny+2Hy, :) .= buff.recv
-_recv_from_northwest_buffer!(c, buff::ZipperCornerBuffer{<:FC, <:UPivotTopology}, Hx, Hy, Nx, Ny) = view(c, 1:Hx+1, Ny+Hy:Ny+2Hy, :) .= buff.recv
 _recv_from_northwest_buffer!(c, buff::ZipperCornerBuffer{<:FF, <:UPivotTopology}, Hx, Hy, Nx, Ny) = view(c, 1:Hx+1, 1+Ny+Hy:Ny+2Hy, :) .= buff.recv
-
-_recv_from_northeast_buffer!(c, buff::ZipperCornerBuffer{<:CC, <:UPivotTopology}, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, Ny+Hy:Ny+2Hy, :) .= buff.recv
 _recv_from_northeast_buffer!(c, buff::ZipperCornerBuffer{<:CF, <:UPivotTopology}, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1+Ny+Hy:Ny+2Hy, :) .= buff.recv
-_recv_from_northeast_buffer!(c, buff::ZipperCornerBuffer{<:FC, <:UPivotTopology}, Hx, Hy, Nx, Ny) = view(c, 2+Nx+Hx:Nx+2Hx, Ny+Hy:Ny+2Hy, :) .= buff.recv
 _recv_from_northeast_buffer!(c, buff::ZipperCornerBuffer{<:FF, <:UPivotTopology}, Hx, Hy, Nx, Ny) = view(c, 2+Nx+Hx:Nx+2Hx, 1+Ny+Hy:Ny+2Hy, :) .= buff.recv
 
-# ── Corner recv: FPivot CC/FC — standard placement ──
+# ── Corner recv: FPivot CC/FC — FL=false, no fold line, Hy rows ──
 
 _recv_from_northwest_buffer!(c, buff::ZipperCornerBuffer{<:CC, <:FPivotTopology}, Hx, Hy, Nx, Ny) = view(c, 1:Hx, 1+Ny+Hy:Ny+2Hy, :) .= buff.recv
 _recv_from_northwest_buffer!(c, buff::ZipperCornerBuffer{<:FC, <:FPivotTopology}, Hx, Hy, Nx, Ny) = view(c, 1:Hx+1, 1+Ny+Hy:Ny+2Hy, :) .= buff.recv
 _recv_from_northeast_buffer!(c, buff::ZipperCornerBuffer{<:CC, <:FPivotTopology}, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1+Ny+Hy:Ny+2Hy, :) .= buff.recv
 _recv_from_northeast_buffer!(c, buff::ZipperCornerBuffer{<:FC, <:FPivotTopology}, Hx, Hy, Nx, Ny) = view(c, 2+Nx+Hx:Nx+2Hx, 1+Ny+Hy:Ny+2Hy, :) .= buff.recv
 
-# ── Corner recv: FPivot CF/FF — shifted +1 for Face-extended ──
+# ── Corner recv: FPivot CF/FF — FL=true, dispatch on WFL, shifted +1 for Face-y ──
 
-_recv_from_northwest_buffer!(c, buff::ZipperCornerBuffer{<:CF, <:FPivotTopology}, Hx, Hy, Nx, Ny) = view(c, 1:Hx, 1+Ny+Hy:1+Ny+2Hy, :) .= buff.recv
-_recv_from_northwest_buffer!(c, buff::ZipperCornerBuffer{<:FF, <:FPivotTopology}, Hx, Hy, Nx, Ny) = view(c, 1:Hx+1, 1+Ny+Hy:1+Ny+2Hy, :) .= buff.recv
-_recv_from_northeast_buffer!(c, buff::ZipperCornerBuffer{<:CF, <:FPivotTopology}, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 1+Ny+Hy:1+Ny+2Hy, :) .= buff.recv
-_recv_from_northeast_buffer!(c, buff::ZipperCornerBuffer{<:FF, <:FPivotTopology}, Hx, Hy, Nx, Ny) = view(c, 2+Nx+Hx:Nx+2Hx, 1+Ny+Hy:1+Ny+2Hy, :) .= buff.recv
+# WFL=true: write fold line + halos
+function _recv_from_northwest_buffer!(c, buff::ZipperCornerBuffer{<:CF, <:FPivotTopology, <:Any, <:Any, true, true}, Hx, Hy, Nx, Ny)
+    view(c, 1:Hx, 1+Ny+Hy:1+Ny+Hy, :)    .= view(buff.recv, :, 1:1, :)
+    view(c, 1:Hx, 2+Ny+Hy:1+Ny+2Hy, :)    .= view(buff.recv, :, 2:size(buff.recv,2), :)
+end
+function _recv_from_northwest_buffer!(c, buff::ZipperCornerBuffer{<:FF, <:FPivotTopology, <:Any, <:Any, true, true}, Hx, Hy, Nx, Ny)
+    view(c, 1:Hx+1, 1+Ny+Hy:1+Ny+Hy, :)    .= view(buff.recv, :, 1:1, :)
+    view(c, 1:Hx+1, 2+Ny+Hy:1+Ny+2Hy, :)    .= view(buff.recv, :, 2:size(buff.recv,2), :)
+end
+function _recv_from_northeast_buffer!(c, buff::ZipperCornerBuffer{<:CF, <:FPivotTopology, <:Any, <:Any, true, true}, Hx, Hy, Nx, Ny)
+    view(c, 1+Nx+Hx:Nx+2Hx, 1+Ny+Hy:1+Ny+Hy, :)    .= view(buff.recv, :, 1:1, :)
+    view(c, 1+Nx+Hx:Nx+2Hx, 2+Ny+Hy:1+Ny+2Hy, :)    .= view(buff.recv, :, 2:size(buff.recv,2), :)
+end
+function _recv_from_northeast_buffer!(c, buff::ZipperCornerBuffer{<:FF, <:FPivotTopology, <:Any, <:Any, true, true}, Hx, Hy, Nx, Ny)
+    view(c, 2+Nx+Hx:Nx+2Hx, 1+Ny+Hy:1+Ny+Hy, :)    .= view(buff.recv, :, 1:1, :)
+    view(c, 2+Nx+Hx:Nx+2Hx, 2+Ny+Hy:1+Ny+2Hy, :)    .= view(buff.recv, :, 2:size(buff.recv,2), :)
+end
+
+# WFL=false: write halos only (skip fold line)
+_recv_from_northwest_buffer!(c, buff::ZipperCornerBuffer{<:CF, <:FPivotTopology, <:Any, <:Any, true, false}, Hx, Hy, Nx, Ny) = view(c, 1:Hx, 2+Ny+Hy:1+Ny+2Hy, :) .= view(buff.recv, :, 2:size(buff.recv,2), :)
+_recv_from_northwest_buffer!(c, buff::ZipperCornerBuffer{<:FF, <:FPivotTopology, <:Any, <:Any, true, false}, Hx, Hy, Nx, Ny) = view(c, 1:Hx+1, 2+Ny+Hy:1+Ny+2Hy, :) .= view(buff.recv, :, 2:size(buff.recv,2), :)
+_recv_from_northeast_buffer!(c, buff::ZipperCornerBuffer{<:CF, <:FPivotTopology, <:Any, <:Any, true, false}, Hx, Hy, Nx, Ny) = view(c, 1+Nx+Hx:Nx+2Hx, 2+Ny+Hy:1+Ny+2Hy, :) .= view(buff.recv, :, 2:size(buff.recv,2), :)
+_recv_from_northeast_buffer!(c, buff::ZipperCornerBuffer{<:FF, <:FPivotTopology, <:Any, <:Any, true, false}, Hx, Hy, Nx, Ny) = view(c, 2+Nx+Hx:Nx+2Hx, 2+Ny+Hy:1+Ny+2Hy, :) .= view(buff.recv, :, 2:size(buff.recv,2), :)
 
 #####
 ##### _switch_north_halos! — no-op (fold logic in send buffers)

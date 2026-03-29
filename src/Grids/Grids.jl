@@ -6,7 +6,6 @@ export Periodic, Bounded, Flat, FullyConnected, LeftConnected, RightConnected
 export RightFaceFolded, RightCenterFolded
 export LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded
 export LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected
-export WestOfPivot, EastOfPivot
 export AbstractGrid, AbstractUnderlyingGrid, halo_size, total_size
 export RectilinearGrid
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
@@ -120,10 +119,6 @@ Grid topology for tripolar U-point pivot connection.
 """
 struct RightCenterFolded <: AbstractTopology end
 
-# Pivot side indicators for distributed fold topologies
-struct WestOfPivot end
-struct EastOfPivot end
-
 """
     LeftConnectedRightCenterFolded
 
@@ -143,21 +138,21 @@ face-folded on the right (north). Face-extended (Ny+1 Face points in y).
 struct LeftConnectedRightFaceFolded <: AbstractTopology end
 
 """
-    LeftConnectedRightCenterConnected{P}
+    LeftConnectedRightCenterConnected
 
 Local grid y topology for the northernmost y-rank of an M×N distributed tripolar grid
-with U-point pivot (distributed zipper). `P` is `WestOfPivot` or `EastOfPivot`.
+with U-point pivot (distributed zipper).
 """
-struct LeftConnectedRightCenterConnected{P} <: AbstractTopology end
+struct LeftConnectedRightCenterConnected <: AbstractTopology end
 
 """
-    LeftConnectedRightFaceConnected{P}
+    LeftConnectedRightFaceConnected
 
 Local grid y topology for the northernmost y-rank of an M×N distributed tripolar grid
-with F-point pivot (distributed zipper). `P` is `WestOfPivot` or `EastOfPivot`.
+with F-point pivot (distributed zipper).
 Face-extended (Ny+1 Face points in y).
 """
-struct LeftConnectedRightFaceConnected{P} <: AbstractTopology end
+struct LeftConnectedRightFaceConnected <: AbstractTopology end
 
 #####
 ##### Directions (for tilted domains)
