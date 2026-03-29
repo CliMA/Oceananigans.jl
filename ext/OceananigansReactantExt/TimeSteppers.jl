@@ -39,8 +39,9 @@ function Clock(grid::ReactantGrid)
     t = ConcreteRNumber(zero(FT), sharding=sharding)
     iter = ConcreteRNumber(0, sharding=sharding)
     stage = 1
-    last_Δt = ConcreteRNumber(convert(FT, Inf), sharding=sharding)
-    last_stage_Δt = ConcreteRNumber(convert(FT, Inf), sharding=sharding)
+
+    last_Δt = convert(FT, Inf)
+    last_stage_Δt = convert(FT, Inf)
 
     return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
 end
@@ -53,7 +54,7 @@ const TracedReactantClock = Oceananigans.TimeSteppers.Clock{<:Reactant.TracedRNu
 function Base.setproperty!(clock::ConcreteReactantClock, prop::Symbol, value)
     clock_val = getproperty(clock, prop)
 
-    if prop in (:last_Δt, :last_stage_Δt, :time, :iteration)
+    if prop in (:time, :iteration)
         converted_val = convert(innertype(clock_val), value)
         if Reactant.Sharding.is_sharded(clock_val)
             sharding = clock_val.sharding
@@ -69,9 +70,6 @@ end
 maybe_prepare_first_time_step!(::ReactantModel, callbacks) = nothing
 
 # For QAB2, last_Δt and last_stage_Δt are always the same value after tick!.
-# Alias them so Reactant's tracer sees one buffer, avoiding XLA buffer donation errors.
-# We use setfield! to bypass the ReactantClock setproperty! override, which would
-# convert through Float64 and create a new ConcreteRNumber (breaking the alias).
 const ConcreteClock = Clock{<:Reactant.ConcreteRNumber}
 
 function materialize_clock!(clock::ConcreteClock, ::QuasiAdamsBashforth2TimeStepper)
@@ -136,27 +134,21 @@ function Oceananigans.TimeSteppers.tick_time!(clock::Oceananigans.TimeSteppers.C
     return t_next
 end
 
-# Promote a value to TracedRNumber via addition with zero(clock.time).
-# This is needed because .mlir_data only exists on TracedRNumber.
-promote_to_traced(Δt, clock) = Δt + zero(clock.time)
-
 function Oceananigans.TimeSteppers.tick!(clock::TracedReactantClock, Δt)
     Oceananigans.TimeSteppers.tick_time!(clock, Δt)
 
     clock.iteration.mlir_data = (clock.iteration + 1).mlir_data
     clock.stage = 1
 
-    Δt = promote_to_traced(Δt, clock)
-    clock.last_Δt.mlir_data = Δt.mlir_data
+    clock.last_Δt = Δt
 
     return nothing
 end
 
 function Oceananigans.TimeSteppers.tick_stage!(clock::TracedReactantClock, stage_Δt)
     Oceananigans.TimeSteppers.tick_time!(clock, stage_Δt)
-    stage_Δt = promote_to_traced(stage_Δt, clock)
     clock.stage += 1
-    clock.last_stage_Δt.mlir_data = stage_Δt.mlir_data
+    clock.last_stage_Δt = stage_Δt
     return nothing
 end
 
@@ -165,11 +157,8 @@ function Oceananigans.TimeSteppers.tick_stage!(clock::TracedReactantClock, stage
     clock.iteration.mlir_data = (clock.iteration + 1).mlir_data
     clock.stage = 1
 
-    step_Δt = promote_to_traced(step_Δt, clock)
-    clock.last_Δt.mlir_data = step_Δt.mlir_data
-
-    stage_Δt = promote_to_traced(stage_Δt, clock)
-    clock.last_stage_Δt.mlir_data = stage_Δt.mlir_data
+    clock.last_Δt = step_Δt
+    clock.last_stage_Δt = stage_Δt
 
     return nothing
 end
