@@ -29,6 +29,7 @@ using CUDA: has_cuda
 using Adapt
 using OffsetArrays
 using Printf
+using BFloat16s: BFloat16
 
 using Oceananigans
 using Oceananigans.Architectures
