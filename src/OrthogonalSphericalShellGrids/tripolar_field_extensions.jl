@@ -30,8 +30,8 @@ north_fold_boundary_condition(::Type{RightCenterFolded})                = UPivot
 north_fold_boundary_condition(::Type{RightFaceFolded})                  = FPivotZipperBoundaryCondition
 north_fold_boundary_condition(::Type{LeftConnectedRightCenterFolded})   = UPivotZipperBoundaryCondition
 north_fold_boundary_condition(::Type{LeftConnectedRightFaceFolded})     = FPivotZipperBoundaryCondition
-north_fold_boundary_condition(::Type{<:LeftConnectedRightCenterConnected}) = UPivotZipperBoundaryCondition
-north_fold_boundary_condition(::Type{<:LeftConnectedRightFaceConnected})   = FPivotZipperBoundaryCondition
+north_fold_boundary_condition(::Type{LeftConnectedRightCenterConnected}) = UPivotZipperBoundaryCondition
+north_fold_boundary_condition(::Type{LeftConnectedRightFaceConnected})   = FPivotZipperBoundaryCondition
 north_fold_boundary_condition(grid::TripolarGridOfSomeKind) = north_fold_boundary_condition(topology(grid, 2))
 
 # a `TripolarGrid` needs a `UPivotZipperBoundaryCondition` for the north boundary
