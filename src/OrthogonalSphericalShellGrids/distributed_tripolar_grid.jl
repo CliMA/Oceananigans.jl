@@ -287,7 +287,7 @@ function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::MPITripolarGridOfSomeKind, da
     if isnothing(old_bcs) || ismissing(old_bcs)
         new_bcs = old_bcs
     else
-        new_bcs = inject_halo_communication_boundary_conditions(old_bcs, arch.local_rank, arch.connectivity, topology(grid))
+        new_bcs = inject_halo_communication_boundary_conditions(old_bcs, loc, arch.local_rank, arch.connectivity, topology(grid))
 
         if yrank == processor_size[2] - 1 && processor_size[1] == 1
             north_bc = if !(old_bcs.north isa ZBC)
