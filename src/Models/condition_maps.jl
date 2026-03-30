@@ -7,6 +7,26 @@ using Oceananigans.Fields: Field, interior
 using Oceananigans.Utils: InteriorBoundarySet, convert_interior_indices
 using KernelAbstractions: @kernel, @index
 
+
+# Generic fallback for any grids that aren't specifically supported
+@inline generate_condition_maps(grid, advection; kwargs...) = _generate_condition_maps(grid, advection)
+
+@inline function _generate_condition_maps(grid, advection)
+    active_cells_map = get_active_cells_map(grid, Val(:interior))
+    condition_maps = Dict()
+    for key in keys(advection)
+        condition_maps[key] = active_cells_map
+    end
+end
+
+const FlattenedGrid = {AbstractGrid{<:Any, <:Any, <:Any, Flat},
+                       AbstractGrid{<:Any, <:Any, Flat, <:Any},
+                       AbstractGrid{<:Any, Flat, <:Any, <:Any}}
+
+# At the moment, there is no directionality for advection so just fallback to default
+# implementation
+@inline generate_condition_maps(grid::FlattenedGrid, advection; kwargs...) = _generate_condition_maps(grid, advection)
+
 # Currently maintaining this union until condition mapping works on all
 # types of grids
 const SupportedGrids = Union{LatitudeLongitudeGrid,
@@ -46,14 +66,6 @@ const SupportedGrids = Union{LatitudeLongitudeGrid,
     end
 
     return (; condition_maps...)
-end
-
-@inline function generate_condition_maps(grid, advection; kwargs...)
-    active_cells_map = get_active_cells_map(grid, Val(:interior))
-    condition_maps = Dict()
-    for key in keys(advection)
-        condition_maps[key] = active_cells_map
-    end
 end
 
 compute_advection_conditioned_map(scheme::Nothing, grid; active_cells_map=nothing) = nothing
