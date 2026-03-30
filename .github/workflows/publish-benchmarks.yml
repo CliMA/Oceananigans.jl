@@ -294,6 +294,7 @@ jobs:
           benchmark-data-dir-path: "."
           gh-repository: "github.com/NumericalEarth/OceananigansBenchmarks"
           github-token: ${{ secrets.BENCHMARKS_TOKEN }}
+          ref: ${{ github.event.client_payload.commit }}
           comment-always: false
           summary-always: true
           alert-threshold: "110%"
