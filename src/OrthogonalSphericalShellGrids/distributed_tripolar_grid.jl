@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: DistributedCommunicationBoundaryCondition, FZBC
+using Oceananigans.BoundaryConditions: DistributedCommunicationBoundaryCondition, FZBC, ZBC
 using Oceananigans.Fields: validate_indices, validate_field_data
 using Oceananigans.DistributedComputations:
     DistributedComputations,
@@ -235,10 +235,6 @@ function receiving_rank(arch; receive_idx_x = ranks(arch)[1] - arch.local_index[
     return receive_rank
 end
 
-zipper_bc(::Type{RightCenterFolded}, sign) = UPivotZipperBoundaryCondition(sign)
-zipper_bc(::Type{RightFaceFolded}, sign)  = FPivotZipperBoundaryCondition(sign)
-
-const ZBC = Union{<:UZBC, <:FZBC}
 function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                               grid::MPITripolarGridOfSomeKind,
                                               field_name::Symbol,
@@ -256,7 +252,7 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
     south = regularize_boundary_condition(bcs.south, grid, loc, 2, LeftBoundary,  prognostic_names)
 
     north = if yrank == processor_size[2] - 1 && processor_size[1] == 1
-        zipper_bc(fold_topology(grid.conformal_mapping), sign)
+        north_fold_boundary_condition(fold_topology(grid.conformal_mapping))(sign)
 
     elseif yrank == processor_size[2] - 1 && processor_size[1] != 1
         from = arch.local_rank
@@ -295,7 +291,7 @@ function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::MPITripolarGridOfSomeKind, da
 
         if yrank == processor_size[2] - 1 && processor_size[1] == 1
             north_bc = if !(old_bcs.north isa ZBC)
-                zipper_bc(fold_topology(grid.conformal_mapping), sign(LX, LY))
+                north_fold_boundary_condition(fold_topology(grid.conformal_mapping))(sign(LX, LY))
             else
                 old_bcs.north
             end
