@@ -182,9 +182,11 @@ for (from, to, buff) in zip([:y, :z, :y, :x], [:z, :y, :x, :y], [:yz, :yz, :xy, 
 
           * For 2D fields in XY (flat z-direction) we can traspose only if the partitioning is in X
         """
-        function $transpose!(pf::TransposableField)
+        $transpose!(pf::TransposableField) = $transpose!(architecture(pf.$fromfield), pf)
+
+        function $transpose!(arch, pf::TransposableField)
             $pack_buffer!(pf.$buffer, pf.$fromfield)
-            sync_device!(architecture(pf.$fromfield))
+            sync_device!(arch)
             # Use Alltoall (equal-size) instead of Alltoallv (variable-size) when all
             # chunks are the same size. Alltoall is dramatically faster on GPU-aware MPI
             # (up to 28x on Cray MPICH with A100 GPUs over NVLink).
