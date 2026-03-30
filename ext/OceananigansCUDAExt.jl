@@ -2,7 +2,7 @@ module OceananigansCUDAExt
 
 using InteractiveUtils: versioninfo
 using CUDA: CUDA, CuArray, CuContext, CuDevice, CuDeviceArray, CuPtr, context,
-    context!, cu, CUDA.CUDABackend
+    context!, cu, CUDA.CUDABackend, CUDACore
 using CUDA.CUSPARSE: CuSparseMatrixCSC
 using GPUArraysCore: allowscalar
 using GPUArrays: unsafe_free!
