@@ -1,4 +1,5 @@
 using Oceananigans.Grids: AbstractGrid, XYRegularRG, static_column_depthᶜᶜᵃ
+using Oceananigans.Models: surface_kernel_parameters
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Solvers: solve!
@@ -168,7 +169,7 @@ function compute_transport_velocities!(model, free_surface::ImplicitFreeSurface)
     u, v, w = model.velocities
     ũ, ṽ, w̃ = model.transport_velocities
 
-    launch!(architecture(grid), grid, volume_kernel_parameters(grid), _compute_implicit_transport_velocities!, ũ, ṽ, grid, u, v)
+    launch!(architecture(grid), grid, surface_kernel_parameters(grid), _compute_implicit_transport_velocities!, ũ, ṽ, grid, u, v)
     update_vertical_velocities!(model.transport_velocities, model.grid, model)
 
     return nothing
