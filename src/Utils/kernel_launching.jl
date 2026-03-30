@@ -360,6 +360,7 @@ struct InteriorBoundarySet
         new(interior, boundary)
     end
 end
+
 # Launch kernels over conditioned cell maps
 @inline function launch!(arch, grid, workspec, kernel, first_arg, second_arg, args::InteriorBoundarySet;
                          active_cells_map::InteriorBoundarySet, kwargs...)
