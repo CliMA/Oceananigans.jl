@@ -274,11 +274,13 @@ function HydrostaticFreeSurfaceModel(grid;
 
     !isnothing(particles) && arch isa Distributed && error("LagrangianParticles are not supported on Distributed architectures.")
 
-    (split_momentum_advection, split_tracer_advection) = check_advection_splitting.(grid, (condition_momentum_advection, condition_tracer_advection))
+    split_momentum_advection = check_advection_splitting(grid, condition_momentum_advection)
+    split_tracer_advection = check_advection_splitting(grid, condition_tracer_advection)
+
     condition_maps = generate_condition_maps(grid,
                                              advection;
-                                             condition_momentum_advection,
-                                             condition_tracer_advection)
+                                             split_momentum_advection,
+                                             split_tracer_advection)
 
     model = HydrostaticFreeSurfaceModel(arch, grid, clock, advection, buoyancy, coriolis,
                                         free_surface, forcing, closure, particles, biogeochemistry, velocities, transport_velocities,
@@ -366,6 +368,7 @@ end
 
 restore_prognostic_state!(::HydrostaticFreeSurfaceModel, ::Nothing) = nothing
 
+# Reactant arch does not support condition mapping or mapped kernels
 function check_advection_splitting(grid, condition)
     if architecture(grid) == ReactantState
       return false
