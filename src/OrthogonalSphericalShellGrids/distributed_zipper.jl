@@ -108,46 +108,81 @@ Adapt.adapt_structure(to, buff::OneDZipperBuffer) = nothing
 Adapt.adapt_structure(to, buff::TwoDZipperBuffer) = nothing
 Adapt.adapt_structure(to, buff::ZipperCornerBuffer) = nothing
 
-# X-direction buffer for tripolar grids: like TwoDBuffer but with location-aware y-size.
-# For fold-line fields on the north row, the x-buffer needs Ny+1 y-rows so that the
-# fold-line row is exchanged periodically. Corners then overwrite where needed (WFL=true).
-struct TripolarXBuffer{B}
+# X-direction buffer for tripolar grids: like TwoDBuffer but with location-aware y-size
+# and fold-line awareness. FL/WFL mirror the corner buffer pattern:
+# - FL: buffer has fold-line row (same as corners, for MPI size matching)
+# - WFL: recv writes the fold-line row (complement of the adjacent corner)
+#   West WFL = !NW corner WFL, East WFL = !NE corner WFL.
+struct TripolarXBuffer{B, FL, WFL}
     send :: B
     recv :: B
 end
 
 Adapt.adapt_structure(to, buff::TripolarXBuffer) = nothing
 
-# TripolarXBuffer send/recv: use the buffer's actual y-size
-function _fill_west_send_buffer!(c, buff::TripolarXBuffer, Hx, Hy, Nx, Ny)
+TripolarXBuffer(send, recv, ::Val{FL}, ::Val{WFL}) where {FL, WFL} =
+    TripolarXBuffer{typeof(send), FL, WFL}(send, recv)
+
+# X-buffers WFL: complement of the ADJACENT corner.
+west_writes_fold_line(arch) = !northwest_writes_fold_line(arch)
+east_writes_fold_line(arch) = !northeast_writes_fold_line(arch)
+
+# TripolarXBuffer send: always pack full buffer (Ny_buf rows)
+_fill_west_send_buffer!(c, buff::TripolarXBuffer, Hx, Hy, Nx, Ny) =
     buff.send .= view(c, 1+Hx:2Hx, 1+Hy:size(buff.send,2)+Hy, :)
-end
-function _fill_east_send_buffer!(c, buff::TripolarXBuffer, Hx, Hy, Nx, Ny)
+_fill_east_send_buffer!(c, buff::TripolarXBuffer, Hx, Hy, Nx, Ny) =
     buff.send .= view(c, 1+Nx:Nx+Hx, 1+Hy:size(buff.send,2)+Hy, :)
-end
-function _recv_from_west_buffer!(c, buff::TripolarXBuffer, Hx, Hy, Nx, Ny)
+
+# TripolarXBuffer recv FL=false: no fold line, write all Ny_buf rows
+_recv_from_west_buffer!(c, buff::TripolarXBuffer{<:Any, false}, Hx, Hy, Nx, Ny) =
     view(c, 1:Hx, 1+Hy:size(buff.recv,2)+Hy, :) .= buff.recv
-end
-function _recv_from_east_buffer!(c, buff::TripolarXBuffer, Hx, Hy, Nx, Ny)
-    tgt_x, tgt_y = Nx+Hx+1, size(buff.recv,2)+Hy
+_recv_from_east_buffer!(c, buff::TripolarXBuffer{<:Any, false}, Hx, Hy, Nx, Ny) =
     view(c, 1+Nx+Hx:Nx+2Hx, 1+Hy:size(buff.recv,2)+Hy, :) .= buff.recv
-end
 
-# Fold-aware x-buffer: uniform Ny+1 for fold-line fields on north row.
+# TripolarXBuffer recv FL=true, WFL=true: write all Ny_buf rows (fold line included)
+_recv_from_west_buffer!(c, buff::TripolarXBuffer{<:Any, true, true}, Hx, Hy, Nx, Ny) =
+    view(c, 1:Hx, 1+Hy:size(buff.recv,2)+Hy, :) .= buff.recv
+_recv_from_east_buffer!(c, buff::TripolarXBuffer{<:Any, true, true}, Hx, Hy, Nx, Ny) =
+    view(c, 1+Nx+Hx:Nx+2Hx, 1+Hy:size(buff.recv,2)+Hy, :) .= buff.recv
+
+# TripolarXBuffer recv FL=true, WFL=false: skip last row (the fold line)
+_recv_from_west_buffer!(c, buff::TripolarXBuffer{<:Any, true, false}, Hx, Hy, Nx, Ny) =
+    view(c, 1:Hx, 1+Hy:size(buff.recv,2)-1+Hy, :) .= view(buff.recv, :, 1:size(buff.recv,2)-1, :)
+_recv_from_east_buffer!(c, buff::TripolarXBuffer{<:Any, true, false}, Hx, Hy, Nx, Ny) =
+    view(c, 1+Nx+Hx:Nx+2Hx, 1+Hy:size(buff.recv,2)-1+Hy, :) .= view(buff.recv, :, 1:size(buff.recv,2)-1, :)
+
+# Fold-aware x-buffer constructors.
 # Fallback for non-zipper north (south ranks): standard x-communication.
-x_tripolar_buffer(arch, grid, data, Hx, bc, loc, north) = x_communication_buffer(arch, grid, data, Hx, bc)
-
-# When north IS a TwoDZipperBuffer (fold north row): use location-aware y-size
-# (Ny+1 for BoundedTopology Face-y, i.e., FPivot CF/FF; Ny otherwise)
-function x_tripolar_buffer(arch, grid, data, Hx, bc, loc,
-                           north::TwoDZipperBuffer{Loc, FoT}) where {Loc, FoT}
-    Ny_buf = length(Loc.parameters[2](), FoT(), size(grid, 2))
+# Separate west/east constructors since they complement different corners.
+function west_tripolar_buffer(arch, grid, data, Hx, bc, loc,
+                              north::TwoDZipperBuffer{Loc, FoT}) where {Loc, FoT}
+    loc_y = Loc.parameters[2]()
+    fl = has_fold_line(FoT, loc_y)
+    Ny_buf = length(loc_y, FoT(), size(grid, 2))
+    wfl = fl && west_writes_fold_line(arch)
     _, _, Tz = size(parent(data))
     FT = eltype(data)
     send = on_architecture(arch, zeros(FT, Hx, Ny_buf, Tz))
     recv = on_architecture(arch, zeros(FT, Hx, Ny_buf, Tz))
-    return TripolarXBuffer(send, recv)
+    return TripolarXBuffer(send, recv, Val(fl), Val(wfl))
 end
+
+function east_tripolar_buffer(arch, grid, data, Hx, bc, loc,
+                              north::TwoDZipperBuffer{Loc, FoT}) where {Loc, FoT}
+    loc_y = Loc.parameters[2]()
+    fl = has_fold_line(FoT, loc_y)
+    Ny_buf = length(loc_y, FoT(), size(grid, 2))
+    wfl = fl && east_writes_fold_line(arch)
+    _, _, Tz = size(parent(data))
+    FT = eltype(data)
+    send = on_architecture(arch, zeros(FT, Hx, Ny_buf, Tz))
+    recv = on_architecture(arch, zeros(FT, Hx, Ny_buf, Tz))
+    return TripolarXBuffer(send, recv, Val(fl), Val(wfl))
+end
+
+# Fallback when north is not a zipper (south ranks)
+west_tripolar_buffer(arch, grid, data, Hx, bc, loc, north) = x_communication_buffer(arch, grid, data, Hx, bc)
+east_tripolar_buffer(arch, grid, data, Hx, bc, loc, north) = x_communication_buffer(arch, grid, data, Hx, bc)
 
 #####
 ##### Buffer construction for tripolar grids
@@ -160,9 +195,9 @@ function communication_buffers(grid::MPITripolarGridOfSomeKind, data, bcs, loc)
     south = y_communication_buffer(arch, grid, data, Hy, bcs.south)
     north = y_tripolar_buffer(arch, grid, data, Hy, bcs.north, loc)
 
-    # x-buffers dispatch on north: Ny+1 for fold-line fields on north row
-    west  = x_tripolar_buffer(arch, grid, data, Hx, bcs.west, loc, north)
-    east  = x_tripolar_buffer(arch, grid, data, Hx, bcs.east, loc, north)
+    # x-buffers: separate west/east since they complement different corners (NW/NE)
+    west  = west_tripolar_buffer(arch, grid, data, Hx, bcs.west, loc, north)
+    east  = east_tripolar_buffer(arch, grid, data, Hx, bcs.east, loc, north)
 
 
     sw = corner_communication_buffer(arch, grid, data, Hx, Hy, west, south)
