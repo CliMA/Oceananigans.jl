@@ -209,6 +209,7 @@ jobs:
                   summary += "\n" + f.read() + "\n"
 
           # Add nsys kernel profiling data from merged results
+          nsys_section = ""
           if os.path.exists("benchmark_results_merged.json"):
               with open("benchmark_results_merged.json") as f:
                   all_data = json.load(f)
@@ -232,18 +233,18 @@ jobs:
               nsys_entries = [d for d in all_data if "nsys_top_kernels" in d]
               if nsys_entries:
                   has_baseline = bool(baseline_kernels)
-                  summary += "\n## NSYS Kernel Profiling\n\n"
+                  nsys_section += "\n## NSYS Kernel Profiling\n\n"
                   for entry in nsys_entries:
                       name = entry["name"]
                       kernels = entry["nsys_top_kernels"]
                       bk_map = baseline_kernels.get(name, {})
-                      summary += f"### {name}\n\n"
+                      nsys_section += f"### {name}\n\n"
                       if has_baseline and bk_map:
-                          summary += "| Kernel | Median (ms) | Main (ms) | Change | Instances | Avg (ms) | Min (ms) | Max (ms) |\n"
-                          summary += "|--------|------------|-----------|--------|-----------|----------|----------|----------|\n"
+                          nsys_section += "| Kernel | Median (ms) | Main (ms) | Change | Instances | Avg (ms) | Min (ms) | Max (ms) |\n"
+                          nsys_section += "|--------|------------|-----------|--------|-----------|----------|----------|----------|\n"
                       else:
-                          summary += "| Kernel | Median (ms) | Instances | Avg (ms) | Min (ms) | Max (ms) |\n"
-                          summary += "|--------|------------|-----------|----------|----------|----------|\n"
+                          nsys_section += "| Kernel | Median (ms) | Instances | Avg (ms) | Min (ms) | Max (ms) |\n"
+                          nsys_section += "|--------|------------|-----------|----------|----------|----------|\n"
                       for k in kernels:
                           kname = k["name"]
                           short_name = re.split(r"[<(]", kname)[0].strip()
@@ -260,15 +261,20 @@ jobs:
                                   main_ms = main_ns / 1e6
                                   pct = (med_ms - main_ms) / main_ms * 100 if main_ms > 0 else 0
                                   sign = "+" if pct >= 0 else ""
-                                  summary += f"| `{short_name}` | {med_ms:.3f} | {main_ms:.3f} | {sign}{pct:.1f}% | {instances} | {avg_ms:.3f} | {min_ms:.3f} | {max_ms:.3f} |\n"
+                                  nsys_section += f"| `{short_name}` | {med_ms:.3f} | {main_ms:.3f} | {sign}{pct:.1f}% | {instances} | {avg_ms:.3f} | {min_ms:.3f} | {max_ms:.3f} |\n"
                               else:
-                                  summary += f"| `{short_name}` | {med_ms:.3f} | (new) | | {instances} | {avg_ms:.3f} | {min_ms:.3f} | {max_ms:.3f} |\n"
+                                  nsys_section += f"| `{short_name}` | {med_ms:.3f} | (new) | | {instances} | {avg_ms:.3f} | {min_ms:.3f} | {max_ms:.3f} |\n"
                           else:
-                              summary += f"| `{short_name}` | {med_ms:.3f} | {instances} | {avg_ms:.3f} | {min_ms:.3f} | {max_ms:.3f} |\n"
-                      summary += "\n"
+                              nsys_section += f"| `{short_name}` | {med_ms:.3f} | {instances} | {avg_ms:.3f} | {min_ms:.3f} | {max_ms:.3f} |\n"
+                      nsys_section += "\n"
+              summary += nsys_section
 
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
               f.write(summary)
+
+          # Also save NSYS section to a separate file for the PR comment
+          with open("nsys_comparison.md", "w") as f:
+              f.write(nsys_section)
 
       - name: Push results to OceananigansBenchmarks repo
         if: ${{ github.event.client_payload.branch == 'main' && steps.locate.outputs.path != '' }}
@@ -324,7 +330,7 @@ jobs:
 
           echo "Posting benchmark results to PR #$PR_NUMBER"
 
-          # Build comment from comparison artifact
+          # Build comment from comparison artifact and NSYS kernel data
           {
             echo "## Benchmark Comparison"
             echo ""
@@ -332,6 +338,10 @@ jobs:
               cat artifacts/benchmark_comparison.md
             else
               echo "No benchmark comparison available."
+            fi
+            if [ -f "nsys_comparison.md" ]; then
+              echo ""
+              cat nsys_comparison.md
             fi
           } > pr_comment.md
 
