@@ -104,17 +104,18 @@ function split_indices(field, grid; active_cells_map=nothing)
 end
 
 
-check_interior_xyz(i, j, k, ibg, scheme) = reduce(&,
-                                                 (check_interior_x(i, j, k, ibg, scheme),
-                                                  check_interior_y(i, j, k, ibg, scheme),
-                                                  check_interior_z(i, j, k, ibg, scheme)))
+function check_interior_xyz(i, j, k, ibg, scheme)
+    return (check_interior_x(i, j, k, ibg, scheme)
+         && check_interior_y(i, j, k, ibg, scheme)
+         && check_interior_z(i, j, k, ibg, scheme))
+end
 
 function check_interior_x(i, j, k, ibg, ::AbstractAdvectionScheme{N}) where N
     interior = true
 
     buffer = N + 1
     for di in -buffer:buffer
-        interior &= active_cell(i + di, j, k, ibg)
+        interior = interior && active_cell(i + di, j, k, ibg)
     end
     return interior
 end
@@ -124,7 +125,7 @@ function check_interior_y(i, j, k, ibg, ::AbstractAdvectionScheme{N}) where N
 
     buffer = N + 1
     for dj in -buffer:buffer
-        interior &= active_cell(i, j + dj, k, ibg)
+        interior = interior && active_cell(i, j + dj, k, ibg)
     end
     return interior
 end
@@ -134,7 +135,7 @@ function check_interior_z(i, j, k, ibg, ::AbstractAdvectionScheme{N}) where N
 
     buffer = N + 1
     for dk in -buffer:buffer
-        interior &= active_cell(i, j, k + dk, ibg)
+        interior = interior && active_cell(i, j, k + dk, ibg)
     end
     return interior
 end
