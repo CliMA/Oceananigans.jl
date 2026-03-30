@@ -134,8 +134,8 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
                       north_poles_latitude = 55,
                       first_pole_longitude = 70, # second pole is at longitude `first_pole_longitude + 180ᵒ`
                       fold_topology = RightCenterFolded,
-                      φ_transformation = nothing,
-                      λ_transformation = nothing)
+                      latitude  = (southernmost_latitude, 90),
+                      transition_latitude = 20)
 
     # Set the topology
     topology = (Periodic, fold_topology, Bounded)
@@ -144,7 +144,6 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
     # to construct the grid on the GPU. This is not a huge problem as
     # grid generation is quite fast, but it might become slow for
     # sub-kilometer resolution grids.
-    latitude  = (southernmost_latitude, 90)
     longitude = (-180, 180)
 
     focal_distance = tand((90 - north_poles_latitude) / 2)
@@ -200,8 +199,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
         λᶠᵃᵃ, λᶜᵃᵃ, φᵃᶜᵃ, φᵃᶠᵃ,
         first_pole_longitude,
         focal_distance, Nx, Ny,
-        φ_transformation,
-        λ_transformation
+        transition_latitude
     )
 
     # Coordinates

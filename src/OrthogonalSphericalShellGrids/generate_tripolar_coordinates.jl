@@ -62,8 +62,7 @@ Murray, R. J. (1996). Explicit generation of orthogonal grids for ocean models.
         λF, λC, φC, φF,
         first_pole_longitude,
         focal_distance, Nx, Ny,
-        φ_transformation,
-        λ_transformation
+        transition_latitude
     )
 
     i, j = @index(Global, NTuple)
@@ -74,13 +73,17 @@ Murray, R. J. (1996). Explicit generation of orthogonal grids for ocean models.
     φ1Ds = (φC , φC , φF , φF )
     isxfaces = (true, false, true, false)
 
+    ψ₀ = asinh(tand(90 - transition_latitude) / 2)
+    α  = asinh(abs(cosh(ψ₀)))/ψ₀
+
     for (λ2D, φ2D, λ1D, φ1D, isxface) in zip(λ2Ds, φ2Ds, λ1Ds, φ1Ds, isxfaces)
         # We chose the formulae below for λ ∈ (-180, 180) and φ ∈ (-90, 90)
         # so that the grid of (x,y) never crosses the negative x-axis,
-        # overwhich atan is discontinuous, which we want to avoid.
+        # overwhich atan is discontinuous, which we want to avoid.      
         ψ = asinh(tand((90 - max(φ1D[j], -90)) / 2) / focal_distance)
+
         x = focal_distance * cosd(λ1D[i]) * cosh(ψ)
-        y = focal_distance * sind(λ1D[i]) * sinh(ψ)
+        y = focal_distance * sind(λ1D[i]) * ifelse(ψ < ψ₀, sinh(α * ψ), cosh(ψ))
         R = sqrt(x^2 + y^2)
 
         # λ is simply atan(y,x)
@@ -107,16 +110,6 @@ Murray, R. J. (1996). Explicit generation of orthogonal grids for ocean models.
         # Make sure the singularities are at longitude we want them to be at.
         # (`first_pole_longitude` and `first_pole_longitude` + 180)
         λ2D[i, j] += first_pole_longitude + 180
-
-        λ, φ = λ2D[i, j], φ2D[i, j]
-
-        if !isnothing(λ_transformation)
-            λ2D[i, j] = λ_transformation(λ, φ)
-        end
-
-        if !isnothing(φ_transformation)
-            φ2D[i, j] = φ_transformation(λ, φ)
-        end
     end
 end
 
