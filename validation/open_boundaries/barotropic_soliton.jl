@@ -116,9 +116,9 @@ function u¹(y, e_val, p::SolitonParameters, u_coeffs = Float64[])
     return term1 .+ e_val.^2 .* hermite_series(y, u_coeffs, 10)
 end
 
-function v¹(y, de_val, e_val, v_coeffs = Float64[])
+function v¹(y, de_val, v_coeffs = Float64[])
     isempty(v_coeffs) && return zero(y)
-    return de_val .* e_val .* hermite_series(y, v_coeffs, 10)
+    return de_val .* hermite_series(y, v_coeffs, 10)
 end
 
 function h¹(y, e_val, p::SolitonParameters, h_coeffs = Float64[])
