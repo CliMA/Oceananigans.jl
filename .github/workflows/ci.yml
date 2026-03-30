@@ -133,7 +133,7 @@ jobs:
           # default is src,ext — include others if you need them
           directories: src,ext
 
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v6
         with:
           files: lcov.info
           flags: ${{ env.TEST_GROUP }}   # optional but strongly recommended
@@ -168,7 +168,7 @@ jobs:
           # default is src,ext — include others if you need them
           directories: src,ext
 
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v6
         with:
           files: lcov.info
           flags: ${{ env.TEST_GROUP }}   # optional but strongly recommended
@@ -203,7 +203,7 @@ jobs:
           # default is src,ext — include others if you need them
           directories: src,ext
 
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v6
         with:
           files: lcov.info
           flags: ${{ env.TEST_GROUP }}   # optional but strongly recommended
@@ -238,7 +238,7 @@ jobs:
           # default is src,ext — include others if you need them
           directories: src,ext
 
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v6
         with:
           files: lcov.info
           flags: ${{ env.TEST_GROUP }}   # optional but strongly recommended
@@ -280,7 +280,7 @@ jobs:
         with:
           directories: src,ext
 
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v6
         with:
           files: lcov.info
           flags: ${{ env.TEST_GROUP }}
@@ -316,7 +316,7 @@ jobs:
         with:
           directories: src,ext
 
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v6
         with:
           files: lcov.info
           flags: reactant_1
@@ -352,7 +352,7 @@ jobs:
         with:
           directories: src,ext
 
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v6
         with:
           files: lcov.info
           flags: reactant_2
@@ -388,7 +388,7 @@ jobs:
         with:
           directories: src,ext
 
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v6
         with:
           files: lcov.info
           flags: reactant_3
@@ -423,13 +423,13 @@ jobs:
           # default is src,ext — include others if you need them
           directories: src,ext
 
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v6
         with:
           files: lcov.info
           flags: ${{ env.TEST_GROUP }}   # optional but strongly recommended
           token: ${{ secrets.CODECOV_TOKEN }}  # only needed for some repos (see below)
 
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v6
         with:
           files: lcov.info
           flags: ${{ env.TEST_GROUP }}   # optional but strongly recommended
