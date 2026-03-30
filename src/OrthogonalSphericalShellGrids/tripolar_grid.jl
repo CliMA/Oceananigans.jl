@@ -5,7 +5,7 @@ using Oceananigans.Grids: Grids, Bounded, Flat, OrthogonalSphericalShellGrid, Pe
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 """
-    struct Tripolar{N, F, S, FT<:AbstractTopology}
+    struct Tripolar{N, F, S, TY<:AbstractTopology}
 
 A structure to represent a tripolar grid on an orthogonal spherical shell.
 The fold topology `FT` (e.g., `RightCenterFolded` or `RightFaceFolded`) is stored
