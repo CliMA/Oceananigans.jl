@@ -25,12 +25,12 @@ sign(::Type{Center}, ::Type{Center}) = 1
 # Non-fold topologies (FullyConnected, RightConnected, etc.) default to UPivot — this
 # value is only used as a placeholder; these ranks get their north BC overridden by
 # inject_halo_communication_boundary_conditions or regularize_field_boundary_conditions.
-north_fold_boundary_condition(::Type{<:AbstractTopology})               = UPivotZipperBoundaryCondition
-north_fold_boundary_condition(::Type{RightCenterFolded})                = UPivotZipperBoundaryCondition
-north_fold_boundary_condition(::Type{RightFaceFolded})                  = FPivotZipperBoundaryCondition
-north_fold_boundary_condition(::Type{LeftConnectedRightCenterFolded})   = UPivotZipperBoundaryCondition
-north_fold_boundary_condition(::Type{LeftConnectedRightFaceFolded})     = FPivotZipperBoundaryCondition
+north_fold_boundary_condition(::Type{<:AbstractTopology})                = UPivotZipperBoundaryCondition
+north_fold_boundary_condition(::Type{RightCenterFolded})                 = UPivotZipperBoundaryCondition
+north_fold_boundary_condition(::Type{LeftConnectedRightCenterFolded})    = UPivotZipperBoundaryCondition
 north_fold_boundary_condition(::Type{LeftConnectedRightCenterConnected}) = UPivotZipperBoundaryCondition
+north_fold_boundary_condition(::Type{RightFaceFolded})                   = FPivotZipperBoundaryCondition
+north_fold_boundary_condition(::Type{LeftConnectedRightFaceFolded})      = FPivotZipperBoundaryCondition
 north_fold_boundary_condition(::Type{LeftConnectedRightFaceConnected})   = FPivotZipperBoundaryCondition
 north_fold_boundary_condition(grid::TripolarGridOfSomeKind) = north_fold_boundary_condition(topology(grid, 2))
 

@@ -407,10 +407,10 @@ split_explicit_kernel_size(::Type{RightCenterFolded}, N, H) = 1:N+H-1
 split_explicit_kernel_size(::Type{RightFaceFolded}, N, H)   = 1:N+H-1
 
 # Distributed fold topologies: connected on both sides (left=MPI, right=fold/zipper)
-split_explicit_kernel_size(::Type{LeftConnectedRightCenterFolded},        N, H) = -H+2:N+H-1
-split_explicit_kernel_size(::Type{LeftConnectedRightFaceFolded},          N, H) = -H+2:N+H-1
-split_explicit_kernel_size(::Type{<:LeftConnectedRightCenterConnected},   N, H) = -H+2:N+H-1
-split_explicit_kernel_size(::Type{<:LeftConnectedRightFaceConnected},     N, H) = -H+2:N+H-1
+split_explicit_kernel_size(::Type{LeftConnectedRightCenterFolded},    N, H) = -H+2:N+H-1
+split_explicit_kernel_size(::Type{LeftConnectedRightFaceFolded},      N, H) = -H+2:N+H-1
+split_explicit_kernel_size(::Type{LeftConnectedRightCenterConnected}, N, H) = -H+2:N+H-1
+split_explicit_kernel_size(::Type{LeftConnectedRightFaceConnected},   N, H) = -H+2:N+H-1
 
 # Adapt
 Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface{extend_halos}) where {extend_halos} =
