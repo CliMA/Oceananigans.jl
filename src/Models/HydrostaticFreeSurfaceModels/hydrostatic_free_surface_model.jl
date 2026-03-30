@@ -370,7 +370,7 @@ restore_prognostic_state!(::HydrostaticFreeSurfaceModel, ::Nothing) = nothing
 
 # Reactant arch does not support condition mapping or mapped kernels
 function check_advection_splitting(grid, condition)
-    if architecture(grid) == ReactantState
+    if architecture(grid) isa ReactantState
       return false
     elseif isnothing(condition)
       return true
