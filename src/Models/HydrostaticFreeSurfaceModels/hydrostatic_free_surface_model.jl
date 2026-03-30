@@ -1,5 +1,5 @@
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, adapt_advection_order
-using Oceananigans.Architectures: AbstractArchitecture
+using Oceananigans.Architectures: AbstractArchitecture, ReactantState
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
 using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
@@ -274,6 +274,7 @@ function HydrostaticFreeSurfaceModel(grid;
 
     !isnothing(particles) && arch isa Distributed && error("LagrangianParticles are not supported on Distributed architectures.")
 
+    (split_momentum_advection, split_tracer_advection) = check_advection_splitting.(grid, (condition_momentum_advection, condition_tracer_advection))
     condition_maps = generate_condition_maps(grid,
                                              advection;
                                              condition_momentum_advection,
@@ -364,3 +365,13 @@ function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
 end
 
 restore_prognostic_state!(::HydrostaticFreeSurfaceModel, ::Nothing) = nothing
+
+function check_advection_splitting(grid, condition)
+    if architecture(grid) == ReactantState
+      return false
+    elseif isnothing(condition)
+      return true
+    else
+      return condition
+    end
+end
