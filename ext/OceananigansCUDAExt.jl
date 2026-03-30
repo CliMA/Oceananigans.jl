@@ -2,7 +2,7 @@ module OceananigansCUDAExt
 
 using InteractiveUtils: versioninfo
 using CUDA: CUDA, CuArray, CuContext, CuDevice, CuDeviceArray, CuPtr, context,
-    context!, cu, CUDA.CUDABackend, CUDACore
+    context!, cu, CUDA.CUDABackend
 using CUDA.CUSPARSE: CuSparseMatrixCSC
 using GPUArraysCore: allowscalar
 using GPUArrays: unsafe_free!
@@ -119,7 +119,7 @@ end
 
 # CUDA version, the indices are passed implicitly
 # You must not use KA here as this code is executed in another scope
-CUDA.CUDACore.@device_override @inline function __validindex(ctx::MappedCompilerMetadata)
+CUDA.@device_override @inline function __validindex(ctx::MappedCompilerMetadata)
     if __dynamic_checkbounds(ctx)
         index = @inbounds linear_expand(__iterspace(ctx), CUDA.blockIdx().x, CUDA.threadIdx().x)
         return index ≤ __linear_ndrange(ctx)

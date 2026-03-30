@@ -32,16 +32,16 @@ XESMF = "2e0b0046-e7a1-486f-88de-807ee8ffabe5"
 
 [sources]
 Oceananigans = {path = ".."}
-CUDACore = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "d95add6ebb5ebb87806e399730d063d95b46a833", subdir = "CUDACore"}
-CUPTI = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "d95add6ebb5ebb87806e399730d063d95b46a833", subdir = "lib/cupti"}
-NVML = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "d95add6ebb5ebb87806e399730d063d95b46a833", subdir = "lib/nvml"}
-CUDATools = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "d95add6ebb5ebb87806e399730d063d95b46a833", subdir = "CUDATools"}
-cuBLAS = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "d95add6ebb5ebb87806e399730d063d95b46a833", subdir = "lib/cublas"}
-cuFFT = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "d95add6ebb5ebb87806e399730d063d95b46a833", subdir = "lib/cufft"}
-cuRAND = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "d95add6ebb5ebb87806e399730d063d95b46a833", subdir = "lib/curand"}
-cuSOLVER = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "d95add6ebb5ebb87806e399730d063d95b46a833", subdir = "lib/cusolver"}
-cuSPARSE = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "d95add6ebb5ebb87806e399730d063d95b46a833", subdir = "lib/cusparse"}
-CUDA = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "d95add6ebb5ebb87806e399730d063d95b46a833"}
+CUDACore = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "87da92883c37f2fc0c10846a568a71bd8588b5bb", subdir = "CUDACore"}
+CUPTI = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "87da92883c37f2fc0c10846a568a71bd8588b5bb", subdir = "lib/cupti"}
+NVML = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "87da92883c37f2fc0c10846a568a71bd8588b5bb", subdir = "lib/nvml"}
+CUDATools = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "87da92883c37f2fc0c10846a568a71bd8588b5bb", subdir = "CUDATools"}
+cuBLAS = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "87da92883c37f2fc0c10846a568a71bd8588b5bb", subdir = "lib/cublas"}
+cuFFT = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "87da92883c37f2fc0c10846a568a71bd8588b5bb", subdir = "lib/cufft"}
+cuRAND = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "87da92883c37f2fc0c10846a568a71bd8588b5bb", subdir = "lib/curand"}
+cuSOLVER = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "87da92883c37f2fc0c10846a568a71bd8588b5bb", subdir = "lib/cusolver"}
+cuSPARSE = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "87da92883c37f2fc0c10846a568a71bd8588b5bb", subdir = "lib/cusparse"}
+CUDA = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "87da92883c37f2fc0c10846a568a71bd8588b5bb"}
 
 [compat]
 CairoMakie = "0.15"
