@@ -2,7 +2,7 @@
 const c = Center()
 const f = Face()
 
-using ReactantCore
+using ReactantCore: ReactantCore
 
 function build_condition(Topo, side, dim, array::Bool)
     if Topo == :Bounded

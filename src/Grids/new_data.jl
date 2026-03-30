@@ -1,6 +1,3 @@
-using OffsetArrays: OffsetArray
-
-
 #####
 ##### Creating offset arrays for field data by dispatching on architecture.
 #####
