@@ -92,7 +92,7 @@ end
 @kernel function condition_map!(max_scheme_field, ibg, scheme)
     i, j, k = @index(Global, NTuple)
 
-    @inbounds max_scheme_field[i, j, k] = check_interior_xyz(i, j, k, ibg, scheme)
+    @inbounds max_scheme_field[i, j, k] = convert(Bool, check_interior_xyz(i, j, k, ibg, scheme))
 end
 
 function split_indices(field, grid; active_cells_map=nothing)
