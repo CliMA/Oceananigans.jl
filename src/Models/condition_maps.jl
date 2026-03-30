@@ -19,9 +19,9 @@ using KernelAbstractions: @kernel, @index
     end
 end
 
-const FlattenedGrid = {AbstractGrid{<:Any, <:Any, <:Any, Flat},
-                       AbstractGrid{<:Any, <:Any, Flat, <:Any},
-                       AbstractGrid{<:Any, Flat, <:Any, <:Any}}
+const FlattenedGrid = Union{AbstractGrid{<:Any, <:Any, <:Any, Flat},
+                            AbstractGrid{<:Any, <:Any, Flat, <:Any},
+                            AbstractGrid{<:Any, Flat, <:Any, <:Any}}
 
 # At the moment, there is no directionality for advection so just fallback to default
 # implementation
