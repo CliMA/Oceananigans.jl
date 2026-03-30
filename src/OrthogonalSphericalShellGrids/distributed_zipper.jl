@@ -486,7 +486,6 @@ function _recv_from_north_buffer!(c, buff::TwoDZipperBuffer{<:FC, <:LeftConnecte
 end
 
 function _recv_from_north_buffer!(c, buff::TwoDZipperBuffer{<:FC, <:LeftConnectedRightCenterConnected, <:Any, <:Any, true, false}, Hx, Hy, Nx, Ny)
-    tgt_x, tgt_y, tgt_z = Nx+Hx+1, 1+Ny+Hy, (size(c,3)+1)÷2
     view(c, 2+Hx:Nx+Hx+1, 1+Ny+Hy:Ny+2Hy, :) .= view(buff.recv, :, 2:Hy+1, :)
 end
 
