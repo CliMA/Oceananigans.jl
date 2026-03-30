@@ -1,4 +1,5 @@
 name: Publish Benchmarks
+run-name: "${{ github.event.client_payload.pr_number && github.event.client_payload.pr_number != 'false' && format('{0} — PR #{1}', github.event.client_payload.branch, github.event.client_payload.pr_number) || format('{0} @ {1}', github.event.client_payload.branch, github.event.client_payload.commit) }}"
 
 on:
   repository_dispatch:
