@@ -1,7 +1,7 @@
 using Oceananigans.Advection: AbstractAdvectionScheme
 using Oceananigans.ImmersedBoundaries
 using Oceananigans.Grids: get_active_cells_map, active_cell
-using Oceananigans.Architectures: CPU
+using Oceananigans.Architectures: CPU, ReactantState
 import Oceananigans.Architectures as AC
 using Oceananigans.Fields: Field, interior
 using Oceananigans.Utils: InteriorBoundarySet, convert_interior_indices
@@ -26,6 +26,9 @@ const FlattenedGrid = Union{AbstractGrid{<:Any, <:Any, <:Any, Flat},
 # At the moment, there is no directionality for advection so just fallback to default
 # implementation
 @inline generate_condition_maps(grid::FlattenedGrid, advection; kwargs...) = _generate_condition_maps(grid, advection)
+
+# Reactant breaks for a number of reasons when trying to use this, so disable by default
+@inline generate_condition_maps(grid::AbstractGrid{ReactantState}, advection; kwargs...) = _generate_condition_maps(grid, advection)
 
 # Currently maintaining this union until condition mapping works on all
 # types of grids
