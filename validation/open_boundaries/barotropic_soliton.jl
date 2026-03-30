@@ -189,7 +189,10 @@ function setup_simulation(params::SolitonParameters;
     south_mask = PiecewiseLinearMask{:y}(center = params.y_min, width = sponge_width)
     north_mask = PiecewiseLinearMask{:y}(center = params.y_max, width = sponge_width)
 
-    @inline sponge_mask(x, y, z) = west_mask(x, y, z) + east_mask(x, y, z) + south_mask(x, y, z) + north_mask(x, y, z)
+    @inline sponge_mask(x, y, z) = min(west_mask(x, y, z) +
+                                       east_mask(x, y, z) +
+                                       south_mask(x, y, z) +
+                                       north_mask(x, y, z), 1.0)
     @inline sponge_ν(x, y, z, t) = ν_sponge * sponge_mask(x, y, z)
 
     closure = HorizontalScalarDiffusivity(ν = sponge_ν)
