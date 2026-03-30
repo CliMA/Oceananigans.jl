@@ -290,7 +290,7 @@ copy_velocity(c) = c
 
 # Fallback transport velocities for a generic free surface (just copy velocities over)
 compute_transport_velocities!(model, free_surface) = copy_transport_velocities!(model.transport_velocities, model.velocities)
-    
+
 # Not if `transport === velocities`
 function copy_transport_velocities!(transport_velocities, velocities)
     transport_velocities === velocities && return nothing
