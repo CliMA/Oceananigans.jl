@@ -102,9 +102,9 @@ h⁰(y, e_val)  = e_val .* ((3.0 .+ 6.0 * y.^2) / 4.0) .* exp.(-y.^2 / 2.0)
 
 # First-order Hermite series  f(y) = exp(-y²/2) · Σ fₙ · Hₙ(y)
 function hermite_series(y, coeffs, n_max)
-    result = zero(y)
+    result = zero.(y)
     for n in 0:min(n_max, length(coeffs) - 1)
-        result .+= coeffs[n+1] .* hermite_polynomial(n, y)
+        result += coeffs[n+1] .* hermite_polynomial(n, y)
     end
     return exp.(-y.^2 / 2.0) .* result
 end
