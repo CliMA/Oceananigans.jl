@@ -322,20 +322,14 @@ jobs:
 
           echo "Posting benchmark results to PR #$PR_NUMBER"
 
-          # Build comment from artifact files
+          # Build comment from comparison artifact
           {
-            echo "## Benchmark Results"
+            echo "## Benchmark Comparison"
             echo ""
             if [ -f "artifacts/benchmark_comparison.md" ]; then
               cat artifacts/benchmark_comparison.md
-            fi
-            if [ -f "artifacts/benchmark_results.md" ]; then
-              echo ""
-              echo "<details><summary>Full benchmark results</summary>"
-              echo ""
-              cat artifacts/benchmark_results.md
-              echo ""
-              echo "</details>"
+            else
+              echo "No benchmark comparison available."
             fi
           } > pr_comment.md
 
