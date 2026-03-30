@@ -301,7 +301,7 @@ jobs:
           fail-on-alert: false
           auto-push: true
           max-items-in-chart: 50
-          comment-on-alert: false
+          comment-on-alert: true
 
       # For PRs: comment benchmark comparison on the PR
       - name: Comment benchmark results on PR
