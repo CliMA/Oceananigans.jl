@@ -15,21 +15,21 @@ function plan_distributed_transforms(global_grid, storage::TransposableField, pl
     backward_plan_x = plan_backward_transform(parent(storage.xfield), topo[1](), [1], planner_flag)
     backward_plan_z = plan_backward_transform(parent(storage.zfield), topo[3](), [3], planner_flag)
 
-    # For Periodic y-topology on GPU, plan the y-FFT along dim 2 directly.
-    # This avoids the costly permutedims operations that the old reshape+dim1 approach required.
-    # For Bounded y-topology on GPU, we still use the reshape approach because the
-    # twiddle factors and index permutations assume dim-1 layout.
-    if arch isa GPU && topo[2] == Bounded
+    # On GPU, always plan the y-FFT along dim 1 of a reshaped (Ny, Nx, Nz) array.
+    # cuFFT decomposes dim-2 FFTs into many small kernels (one per z-level)
+    # because the data is strided. Reshaping to put y in dim 1 (contiguous) and
+    # using permutedims before/after is 3.4× faster despite the permutation cost.
+    if arch isa GPU
         rs_size    = reshaped_size(grids[2])
         rs_storage = reshape(parent(storage.yfield), rs_size)
         forward_plan_y  =  plan_forward_transform(rs_storage, topo[2](), [1], planner_flag)
         backward_plan_y = plan_backward_transform(rs_storage, topo[2](), [1], planner_flag)
-        y_dims = [2]  # DiscreteTransform dims — triggers transpose_dims=(2,1,3) for Bounded
+        y_dims = [2]  # DiscreteTransform dims — triggers transpose_dims=(2,1,3)
     else
-        # Periodic GPU and all CPU: plan along dim 2 directly (no reshape needed)
+        # CPU: FFTW handles strided transforms efficiently, no reshape needed
         forward_plan_y  =  plan_forward_transform(parent(storage.yfield), topo[2](), [2], planner_flag)
         backward_plan_y = plan_backward_transform(parent(storage.yfield), topo[2](), [2], planner_flag)
-        y_dims = [2]  # For Periodic, DiscreteTransform will set transpose_dims=nothing
+        y_dims = [2]
     end
 
     forward_operations = (

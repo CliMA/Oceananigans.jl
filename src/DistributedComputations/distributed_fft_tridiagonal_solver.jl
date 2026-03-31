@@ -232,9 +232,9 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
     x_buffer_needed = child_arch isa GPU && TX == Bounded
     z_buffer_needed = child_arch isa GPU && TZ == Bounded
 
-    # Y-buffer is only needed for Bounded y-topology on GPU (for index permutation/twiddle).
-    # For Periodic y, we now plan the FFT along dim 2 directly, avoiding permutedims.
-    y_buffer_needed = child_arch isa GPU && TY == Bounded
+    # Y-buffer is needed on GPU for permutedims before/after the y-FFT.
+    # All GPU y-FFTs now use dim-1 layout with permutedims (both Periodic and Bounded).
+    y_buffer_needed = child_arch isa GPU
 
     buffer_x = x_buffer_needed ? on_architecture(child_arch, zeros(T, size(storage.xfield)...)) : nothing
     buffer_y = y_buffer_needed ? on_architecture(child_arch, zeros(T, size(storage.yfield)...)) : nothing
