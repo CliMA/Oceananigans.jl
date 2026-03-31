@@ -4,7 +4,7 @@ using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochem
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
 using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
 using Oceananigans.DistributedComputations: Distributed
-using Oceananigans.Fields: Field, CenterField, tracernames, TracerFields
+using Oceananigans.Fields: Field, CenterField, ZeroField, tracernames, TracerFields
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization, Face, Center
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
@@ -286,20 +286,23 @@ transport_velocity_fields(velocities) = (u = copy_velocity(velocities.u),
 copy_velocity(u::Field{<:Face, <:Center, <:Center}) = XFaceField(u.grid; boundary_conditions=u.boundary_conditions)
 copy_velocity(v::Field{<:Center, <:Face, <:Center}) = YFaceField(v.grid; boundary_conditions=v.boundary_conditions)
 copy_velocity(w::Field{<:Center, <:Center, <:Face}) = ZFaceField(w.grid; boundary_conditions=w.boundary_conditions)
-copy_velocity(c) = deepcopy(c)
+copy_velocity(c) = c
 
 # Fallback transport velocities for a generic free surface (just copy velocities over)
-function compute_transport_velocities!(model, free_surface)
-    grid = model.grid
-    u, v, w = model.velocities
-    ũ, ṽ, w̃ = model.transport_velocities
+compute_transport_velocities!(model, free_surface) = update_transport_velocities!(model.transport_velocities, model.velocities)
 
-    parent(ũ) .= parent(u)
-    parent(ṽ) .= parent(v)
-    parent(w̃) .= parent(w)
-
+# Not if `transport === velocities`
+function update_transport_velocities!(transport_velocities, velocities)
+    transport_velocities === velocities && return nothing
+    for name in propertynames(transport_velocities)
+        update_transport_velocity_data!(transport_velocities[name], velocities[name])
+    end
     return nothing
 end
+
+# Only concrete Field types are duplicated (see `copy_velocity` above)
+update_transport_velocity_data!(dst::Field, src::Field) = parent(dst) .= parent(src)
+update_transport_velocity_data!(dst, src) = nothing
 
 validate_velocity_boundary_conditions(grid, velocities) = validate_vertical_velocity_boundary_conditions(velocities.w)
 

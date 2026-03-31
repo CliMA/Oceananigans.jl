@@ -8,7 +8,7 @@ export
     Clock
 
 using KernelAbstractions: @kernel, @index
-using Oceananigans: AbstractModel, initialize!, prognostic_fields, fields
+using Oceananigans: AbstractModel, initialize!, prognostic_fields
 
 """
     abstract type AbstractTimeStepper

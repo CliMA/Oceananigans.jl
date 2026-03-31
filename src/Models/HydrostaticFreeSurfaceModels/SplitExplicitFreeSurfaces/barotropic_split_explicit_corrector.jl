@@ -84,7 +84,7 @@ end
     @inbounds v[i, j, k] = ifelse(immersedᶜᶠᶜ, zero(grid), v[i, j, k] + v_correction)
 end
 
-@kernel function _compute_transport_velocities!(ũ, ṽ, grid, Ũ, Ṽ, u, v, U̅, V̅)
+@kernel function _compute_split_explicit_transport_velocities!(ũ, ṽ, grid, Ũ, Ṽ, u, v, U̅, V̅)
     i, j, k = @index(Global, NTuple)
     Hᶠᶜ = column_depthᶠᶜᵃ(i, j, grid)
     Hᶜᶠ = column_depthᶜᶠᵃ(i, j, grid)
@@ -134,14 +134,12 @@ function compute_transport_velocities!(model, free_surface::SplitExplicitFreeSur
 
     synchronize_communication!(Ũ)
     synchronize_communication!(Ṽ)
+    compute_barotropic_mode!(U̅, V̅, grid, u, v)
+    launch!(architecture(grid), grid, volume_kernel_parameters(grid),
+            _compute_split_explicit_transport_velocities!,
+            ũ, ṽ, grid, Ũ, Ṽ, u, v, U̅, V̅)
 
-    @apply_regionally begin
-        compute_barotropic_mode!(U̅, V̅, grid, u, v)
-        launch!(architecture(grid), grid, volume_kernel_parameters(grid), _compute_transport_velocities!, ũ, ṽ, grid, Ũ, Ṽ, u, v, U̅, V̅)
-    end
-
-    # Update grid velocity and vertical transport velocity
-    @apply_regionally update_vertical_velocities!(model.transport_velocities, model.grid, model)
+    update_vertical_velocities!(model.transport_velocities, model.grid, model)
 
     return nothing
 end

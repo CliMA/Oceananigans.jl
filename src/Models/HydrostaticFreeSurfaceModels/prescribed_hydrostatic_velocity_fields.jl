@@ -118,7 +118,6 @@ ab2_step_velocities!(::PrescribedVelocityFields, args...) = nothing
 rk_substep_velocities!(::PrescribedVelocityFields, args...) = nothing
 step_free_surface!(::Nothing, model, timestepper, Δt) = nothing
 compute_w_from_continuity!(::PrescribedVelocityFields, args...; kwargs...) = nothing
-compute_transport_velocities!(model, ::Nothing) = nothing
 mask_immersed_horizontal_velocities!(::PrescribedVelocityFields) = nothing
 
 # No need for extra velocities
