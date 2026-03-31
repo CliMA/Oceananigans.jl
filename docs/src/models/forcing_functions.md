@@ -240,7 +240,7 @@ ContinuousForcing{Nothing} at (Center, Center, Face)
 
 The constructor for `Relaxation` accepts the keyword arguments `mask`, and `target`,
 which specify a `mask(x, y, z)` function that multiplies the forcing, and a `target(x, y, z, t)`
-distribution for the quantity in question. By default, `mask` uncovered the whole domain
+distribution for the quantity in question. By default, `mask` equals 1 everywhere so the forcing applies over the full domain,
 and `target` restores the field in question to 0.
 
 ### Mask types
