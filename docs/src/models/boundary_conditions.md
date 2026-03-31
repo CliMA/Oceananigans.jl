@@ -673,12 +673,12 @@ FluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), Nothing, Cᴰ=0.
 
 and then we use that to create boundary conditions
 
-```jldoctest
+```jldoctest bulk_drag
 u_bcs = FieldBoundaryConditions(bottom=drag)
 v_bcs = FieldBoundaryConditions(bottom=drag)
 
 grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
-model = NonhydrostaticModel(grid; boundary_conditions=(; u=u_bcs, v=v_bcs));
+model = NonhydrostaticModel(grid; boundary_conditions=(; u=u_bcs, v=v_bcs))
 
 model.velocities.u.boundary_conditions.bottom
 
@@ -728,12 +728,12 @@ background velocity values to `background_velocities` so that the drag coefficie
 the full flow magnitude:
 
 ```jldoctest
-julia> using Oceananigans
+using Oceananigans
 
-julia> V∞ = 0.1  # background meridional current, matches BackgroundField (m s⁻¹)
-0.1
+V∞ = 0.1  # background meridional current, matches BackgroundField (m s⁻¹)
+drag = BulkDrag(coefficient=2e-3, background_velocities=(0, V∞, 0))
 
-julia> drag = BulkDrag(coefficient=2e-3, background_velocities=(0, V∞, 0))
+# output
 FluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), Nothing, Cᴰ=0.002)
 ```
 
