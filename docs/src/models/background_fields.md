@@ -118,7 +118,6 @@ and pass it to the model:
 using Oceananigans
 
 U(x, y, z, t) = 0.2 * z  # linear shear background velocity
-
 background_fields = BackgroundFields(background_closure_fluxes=true, u=U)
 
 grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
