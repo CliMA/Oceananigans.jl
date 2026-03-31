@@ -17,6 +17,7 @@ using KernelAbstractions: @kernel, @index
     for key in keys(advection)
         condition_maps[key] = active_cells_map
     end
+    return (; condition_maps...)
 end
 
 const FlattenedGrid = Union{AbstractGrid{<:Any, <:Any, <:Any, Flat},
