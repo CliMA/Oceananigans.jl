@@ -248,7 +248,7 @@ and `target` restores the field in question to 0.
 Two built-in mask types are available for the `mask` keyword:
 
 - `GaussianMask{D}(center, width)`: smooth Gaussian profile, equal to 1 at `center` and falling off as
-  `exp(-(D - center)² / 2width²)`.
+  `exp(-(D - center)^2 / (2 * width^2))`.
 - `PiecewiseLinearMask{D}(center, width)`: tent function, equal to 1 at `center`, decreasing linearly
   to 0 at `|D - center| = width`, and 0 outside.
 
