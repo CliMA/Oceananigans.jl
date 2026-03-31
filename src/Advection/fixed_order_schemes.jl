@@ -1,4 +1,4 @@
-using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Grids: AbstractGrid, XFlatGrid, YFlatGrid, ZFlatGrid
 using Oceananigans.ImmersedBoundaries
 using Oceananigans.Advection: Centered, UpwindBiased, WENO, VectorInvariant
 
@@ -39,7 +39,7 @@ fixed_order_scheme(scheme) = scheme
 const FixedOrderAdvectionScheme = Union{CenteredFixedOrderAdvectionScheme, UpwindBiasedFixedOrderAdvectionScheme}
 # Overload all interpolation functions to skip any boundary checks
 for bias in (:symmetric, :biased)
-    for (d, (ξ, FG)) in enumerate(zip((:x, :y, :z), (:XFG, :YFG, :ZFG)))
+    for (d, (ξ, FG)) in enumerate(zip((:x, :y, :z), (:XFlatGrid, :YFlatGrid, :ZFlatGrid)))
 
         code = [:ᵃ, :ᵃ, :ᵃ]
 
