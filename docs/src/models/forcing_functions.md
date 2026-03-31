@@ -264,9 +264,9 @@ julia> PiecewiseLinearMask{:z}(center=-500, width=100)
 PiecewiseLinearMask{:z, Int64}(-500, 100)
 ```
 
-`GaussianMask` is smooth and suitable for most sponge layers. `PiecewiseLinearMask` has compact
-support (exactly zero outside its width) and a sharper boundary, which can be useful when the
-sponge region must not extend beyond a precise depth.
+While `GaussianMask` offer a smooth transition from 0 to 1, `PiecewiseLinearMask` has a sharper
+boundary, and is faster to evaluate — which can matter when the mask is applied every time step over
+a large grid.
 
 We illustrate usage of `mask` and `target` by implementing a sponge layer that relaxes
 velocity fields to zero and restores temperature to a linear gradient in the bottom
