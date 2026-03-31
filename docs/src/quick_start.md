@@ -99,6 +99,33 @@ See how we did that? We passed the positional argument `GPU()` to `RectilinearGr
 (This only works if a GPU is available, of course, and
 [CUDA.jl is configured](https://cuda.juliagpu.org/stable/installation/overview/).)
 
+## Units
+
+`Oceananigans.Units` provides `Float64` constants for expressing physical quantities
+as plain numeric products — no special types, just multiplication:
+
+```julia
+using Oceananigans.Units
+
+Δt = 5minutes      # = 300.0
+stop_time = 10days # = 864000.0
+Lx = 500kilometers # = 500000.0
+```
+
+Available units:
+
+| Quantity | Constants | Value (SI) |
+|----------|-----------|------------|
+| Time     | `second`, `seconds` | 1 s |
+| Time     | `minute`, `minutes` | 60 s |
+| Time     | `hour`, `hours`     | 3600 s |
+| Time     | `day`, `days`       | 86400 s |
+| Length   | `meter`, `meters`   | 1 m |
+| Length   | `kilometer`, `kilometers` | 1000 m |
+
+Singular and plural forms are identical (`1day == 1days`).
+The file-size constants `KiB`, `MiB`, `GiB`, and `TiB` are also available (for use with output writers).
+
 ## Well, that was tantalizing
 
 But you'll need to know a lot more to become a productive, Oceananigans-wielding computational scientist (spherical grids, forcing, boundary conditions,
