@@ -102,7 +102,7 @@ See how we did that? We passed the positional argument `GPU()` to `RectilinearGr
 ## Units
 
 `Oceananigans.Units` provides `Float64` constants for expressing physical quantities
-as plain numeric products — no special types, just multiplication:
+as plain numeric products. These are not special types, just multiplication to convert to SI units:
 
 ```julia
 using Oceananigans.Units
