@@ -714,14 +714,15 @@ all non-normal facets of immersed cells, which is appropriate for rough topograp
 
 ### Background velocities
 
-When the flow has a significant mean current (for example a tilted-domain simulation
-or a flow past a fixed structure), the drag should act on the total velocity including
-the background. Use the `background_velocities` keyword:
+When using [background fields](@ref "Background fields") to represent a mean current,
+the drag should act on the total velocity — resolved plus background. Pass the same
+background velocity values to `background_velocities` so that the drag coefficient sees
+the full flow magnitude:
 
 ```jldoctest
 julia> using Oceananigans
 
-julia> V∞ = 0.1  # background meridional current (m s⁻¹)
+julia> V∞ = 0.1  # background meridional current, matches BackgroundField (m s⁻¹)
 0.1
 
 julia> drag = BulkDrag(coefficient=2e-3, background_velocities=(0, V∞, 0))
@@ -729,5 +730,6 @@ FluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), nothing, Cᴰ=0.
 ```
 
 The tuple `(U∞, V∞, W∞)` is added to the prognostic velocities when computing both the
-speed `|U|` and the drag flux, so the boundary stress reflects the full flow magnitude
-relative to the boundary.
+speed `|U|` and the drag flux. Without this, the drag would only see the resolved
+perturbation velocity and underestimate the stress in the presence of a strong background
+current.
