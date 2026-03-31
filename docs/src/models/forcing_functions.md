@@ -264,7 +264,7 @@ julia> PiecewiseLinearMask{:z}(center=-500, width=100)
 PiecewiseLinearMask{:z, Int64}(-500, 100)
 ```
 
-While `GaussianMask` offer a smooth transition from 0 to 1, `PiecewiseLinearMask` has a sharper
+While `GaussianMask` offers a smooth transition from 0 to 1, `PiecewiseLinearMask` has a sharper
 boundary, and is faster to evaluate — which can matter when the mask is applied every time step over
 a large grid.
 
