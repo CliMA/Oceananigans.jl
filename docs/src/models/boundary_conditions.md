@@ -646,14 +646,14 @@ redirect_stderr(original_stderr)
 
 [`BulkDrag`](@ref) is a convenient constructor for velocity-flux boundary conditions
 that implement drag proportional to the near-boundary flow speed. It can be applied to
-any combination of domain boundaries and immersed boundaries.
+any combination of domain boundaries and [immersed boundaries](@ref "Immersed boundary conditions").
 
 Two drag formulations are available:
 
-- `QuadraticFormulation()` (default): ``\tau^x = -C^D \, |U| \, u``, where ``|U|`` is the
+- [`QuadraticFormulation`](@ref) (default): ``\tau^x = -C^D \, |U| \, u``, where ``|U|`` is the
   total 3D speed. Non-dimensional drag coefficient ``C^D``. Standard bottom drag for
   ocean models.
-- `LinearFormulation()` (Rayleigh friction): ``\tau^x = -C^D \, u``. The coefficient
+- [`LinearFormulation`](@ref) (Rayleigh friction): ``\tau^x = -C^D \, u``. The coefficient
   ``C^D`` has units of velocity (m s⁻¹).
 
 ### Bottom drag on domain boundaries
@@ -683,8 +683,8 @@ the velocity component during model construction.
 
 ### Drag on immersed boundaries
 
-For grids with `ImmersedBoundaryGrid`, wrap the drag condition in
-`ImmersedBoundaryCondition` to target specific facets of immersed cells:
+For grids with [`ImmersedBoundaryGrid`](@ref), wrap the drag condition in
+[`ImmersedBoundaryCondition`](@ref) to target specific facets of immersed cells:
 
 ```jldoctest
 using Oceananigans
@@ -709,7 +709,7 @@ ImmersedBoundaryCondition:
 └── top: Nothing
 ```
 
-Passing `immersed=drag` directly (without `ImmersedBoundaryCondition`) applies drag to
+Passing `immersed=drag` directly (without [`ImmersedBoundaryCondition`](@ref)) applies drag to
 all non-normal facets of immersed cells, which is appropriate for rough topography.
 
 ### Background velocities
