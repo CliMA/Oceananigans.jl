@@ -20,14 +20,6 @@ using KernelAbstractions: @kernel, @index
     return (; condition_maps...)
 end
 
-const FlattenedGrid = Union{AbstractGrid{<:Any, <:Any, <:Any, Flat},
-                            AbstractGrid{<:Any, <:Any, Flat, <:Any},
-                            AbstractGrid{<:Any, Flat, <:Any, <:Any}}
-
-# At the moment, there is no directionality for advection so just fallback to default
-# implementation
-@inline generate_condition_maps(grid::FlattenedGrid, advection; kwargs...) = _generate_condition_maps(grid, advection)
-
 # Currently maintaining this union until condition mapping works on all
 # types of grids
 const SupportedGrids = Union{LatitudeLongitudeGrid,
