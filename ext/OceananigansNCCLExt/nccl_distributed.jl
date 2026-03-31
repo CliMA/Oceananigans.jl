@@ -95,14 +95,8 @@ function DC.distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, l
     nccl_comm = communicator.nccl
     buffer_side = kernel!.side
 
-    # Pack send buffers using cuMemcpy2D (DMA engine, frees GPU compute units)
-    # Falls back to broadcast kernel for non-WestAndEast sides
-    c_parent = parent(c)
-    if c_parent isa CuArray && kernel! isa DistributedFillHalo{<:WestAndEast}
-        nccl_fill_send_buffers_2d!(c_parent, buffers, grid, kernel!.side)
-    else
-        DC.fill_send_buffers!(c, buffers, grid, buffer_side)
-    end
+    # Pack send buffers (GPU broadcast kernel)
+    DC.fill_send_buffers!(c, buffers, grid, buffer_side)
 
     if async && communicator.comm_stream !== nothing
         # Async: NCCL on comm_stream, defer unpack
@@ -114,7 +108,7 @@ function DC.distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, l
         NCCL.groupEnd()
 
         CUDA.record(communicator.sync_event, communicator.comm_stream)
-        push!(pending_unpacks, (; c, c_parent, buffers, grid, side=buffer_side, kernel=kernel!))
+        push!(pending_unpacks, (; c, buffers, grid, side=buffer_side))
         return nothing
     end
 
@@ -135,12 +129,7 @@ function DC.distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, l
         NCCL.groupEnd()
     end
 
-    # Unpack using cuMemcpy2D where possible
-    if c_parent isa CuArray && kernel! isa DistributedFillHalo{<:WestAndEast}
-        nccl_recv_from_buffers_2d!(c_parent, buffers, grid, kernel!.side)
-    else
-        DC.recv_from_buffers!(c, buffers, grid, buffer_side)
-    end
+    DC.recv_from_buffers!(c, buffers, grid, buffer_side)
 
     return nothing
 end
@@ -158,12 +147,7 @@ function synchronize_communication!(field::NCCLDistributedField)
         CUDA.cuStreamWaitEvent(CUDA.stream(), arch.communicator.sync_event, UInt32(0))
 
         for pending in pending_unpacks
-            cp = pending.c_parent
-            if cp isa CuArray && pending.kernel isa DistributedFillHalo{<:WestAndEast}
-                nccl_recv_from_buffers_2d!(cp, pending.buffers, pending.grid, pending.kernel.side)
-            else
-                DC.recv_from_buffers!(pending.c, pending.buffers, pending.grid, pending.side)
-            end
+            DC.recv_from_buffers!(pending.c, pending.buffers, pending.grid, pending.side)
         end
         empty!(pending_unpacks)
     end
