@@ -650,10 +650,10 @@ any combination of domain boundaries and immersed boundaries.
 
 Two drag formulations are available:
 
-- `QuadraticFormulation()` (default): ``\tau^u = -C^D \, |U| \, u``, where ``|U|`` is the
+- `QuadraticFormulation()` (default): ``\tau^x = -C^D \, |U| \, u``, where ``|U|`` is the
   total 3D speed. Non-dimensional drag coefficient ``C^D``. Standard bottom drag for
   ocean models.
-- `LinearFormulation()` (Rayleigh friction): ``\tau^u = -C^D \, u``. The coefficient
+- `LinearFormulation()` (Rayleigh friction): ``\tau^x = -C^D \, u``. The coefficient
   ``C^D`` has units of velocity (m s⁻¹).
 
 ### Bottom drag on domain boundaries
