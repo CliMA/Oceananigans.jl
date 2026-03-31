@@ -650,31 +650,39 @@ any combination of domain boundaries and [immersed boundaries](@ref "Immersed bo
 
 Two drag formulations are available:
 
-- [`QuadraticFormulation`](@ref) (default): ``\tau^x = -C^D \, |U| \, u``, where ``|U|`` is the
-  total 3D speed. Non-dimensional drag coefficient ``C^D``. Standard bottom drag for
-  ocean models.
+- [`QuadraticFormulation`](@ref) (default): ``\tau^x = -C^D \, |\boldsymbol{U}| \, u``,
+  where ``|\boldsymbol{U}|`` is the total 3D speed. Non-dimensional drag coefficient ``C^D``.
+  Standard bottom drag for ocean models.
 - [`LinearFormulation`](@ref) (Rayleigh friction): ``\tau^x = -C^D \, u``. The coefficient
   ``C^D`` has units of velocity (m s⁻¹).
 
 ### Bottom drag on domain boundaries
 
-The simplest usage applies quadratic drag to the domain bottom:
+The simplest usage applies quadratic drag to the domain bottom. First we create
+a BulkDrag:
 
 ```jldoctest bulk_drag
-julia> using Oceananigans
+using Oceananigans
 
-julia> drag = BulkDrag(coefficient=2e-3)
-FluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), nothing, Cᴰ=0.002)
+drag = BulkDrag(coefficient=2e-3)
 
-julia> u_bcs = FieldBoundaryConditions(bottom=drag);
+# output
 
-julia> v_bcs = FieldBoundaryConditions(bottom=drag);
+FluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), Nothing, Cᴰ=0.002)
+```
 
-julia> grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1));
+and then we use that to create boundary conditions
 
-julia> model = NonhydrostaticModel(grid; boundary_conditions=(; u=u_bcs, v=v_bcs));
+```jldoctest
+u_bcs = FieldBoundaryConditions(bottom=drag)
+v_bcs = FieldBoundaryConditions(bottom=drag)
 
-julia> model.velocities.u.boundary_conditions.bottom
+grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+model = NonhydrostaticModel(grid; boundary_conditions=(; u=u_bcs, v=v_bcs));
+
+model.velocities.u.boundary_conditions.bottom
+
+# output
 FluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), XDirection(), Cᴰ=0.002)
 ```
 
@@ -726,7 +734,7 @@ julia> V∞ = 0.1  # background meridional current, matches BackgroundField (m s
 0.1
 
 julia> drag = BulkDrag(coefficient=2e-3, background_velocities=(0, V∞, 0))
-FluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), nothing, Cᴰ=0.002)
+FluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), Nothing, Cᴰ=0.002)
 ```
 
 The tuple `(U∞, V∞, W∞)` is added to the prognostic velocities when computing both the
