@@ -341,8 +341,6 @@ function DistributedComputations.reconstruct_global_grid(grid::MPITripolarGrid)
     first_pole_longitude = grid.conformal_mapping.first_pole_longitude
     southernmost_latitude = grid.conformal_mapping.southernmost_latitude
 
-    fold_topology = OrthogonalSphericalShellGrids.fold_topology(grid.conformal_mapping)
-
     return TripolarGrid(child_arch, FT;
                         halo,
                         size,
@@ -350,7 +348,7 @@ function DistributedComputations.reconstruct_global_grid(grid::MPITripolarGrid)
                         first_pole_longitude,
                         southernmost_latitude,
                         z,
-                        fold_topology)
+                        fold_topology = fold_topology(grid.conformal_mapping))
 end
 
 function Grids.with_halo(new_halo, old_grid::MPITripolarGrid)
@@ -364,8 +362,6 @@ function Grids.with_halo(new_halo, old_grid::MPITripolarGrid)
     north_poles_latitude = old_grid.conformal_mapping.north_poles_latitude
     first_pole_longitude = old_grid.conformal_mapping.first_pole_longitude
     southernmost_latitude = old_grid.conformal_mapping.southernmost_latitude
-    fold_topology = OrthogonalSphericalShellGrids.fold_topology(old_grid.conformal_mapping)
-
     return TripolarGrid(arch, eltype(old_grid);
                         halo = new_halo,
                         size = N,
@@ -373,7 +369,7 @@ function Grids.with_halo(new_halo, old_grid::MPITripolarGrid)
                         first_pole_longitude,
                         southernmost_latitude,
                         z,
-                        fold_topology)
+                        fold_topology = fold_topology(old_grid.conformal_mapping))
 end
 
 #####
