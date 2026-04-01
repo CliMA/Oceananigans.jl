@@ -11,18 +11,18 @@ A structure to represent a tripolar grid on an orthogonal spherical shell.
 The fold topology `FT` (e.g., `RightCenterFolded` or `RightFaceFolded`) is stored
 as a type parameter rather than a field, keeping the struct `isbits` for GPU kernels.
 """
-struct Tripolar{N, F, S, FT<:AbstractTopology}
+struct Tripolar{N, F, S, TY<:AbstractTopology}
     north_poles_latitude :: N
     first_pole_longitude :: F
     southernmost_latitude :: S
 end
 
 # Getter: returns the fold topology Type
-fold_topology(::Tripolar{<:Any, <:Any, <:Any, FT}) where FT = FT
+fold_topology(::Tripolar{<:Any, <:Any, <:Any, TY}) where TY = TY
 
 # Constructor accepting fold topology as a Type argument
-Tripolar(n, f, s, ::Type{FT}) where {FT<:AbstractTopology} =
-    Tripolar{typeof(n), typeof(f), typeof(s), FT}(n, f, s)
+Tripolar(n, f, s, ::Type{TY}) where {TY<:AbstractTopology} =
+    Tripolar{typeof(n), typeof(f), typeof(s), TY}(n, f, s)
 
 # Backward-compatible constructor (defaults to UPivot)
 Tripolar(n, f, s) = Tripolar(n, f, s, RightCenterFolded)

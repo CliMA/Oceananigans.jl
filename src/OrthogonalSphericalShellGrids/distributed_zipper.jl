@@ -456,11 +456,6 @@ _recv_from_northeast_buffer!(c, buff::ZipperCornerBuffer{true, false}, Hx, Hy, N
 _recv_from_northeast_buffer!(c, buff::ZipperCornerBuffer{false}, Hx, Hy, Nx, Ny) =
     view(c, ne_recv_x(loc_x(buff), Hx, Nx), recv_halo_y(fold_topo(buff), loc_y(buff), Hy, Ny), :) .= buff.recv
 
-#####
-##### _switch_north_halos! — no-op (fold logic in send buffers)
-#####
-
-switch_north_halos!(c, north_bc, grid, loc) = nothing
 
 #####
 ##### fill_halo_regions! for distributed tripolar grids
