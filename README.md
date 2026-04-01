@@ -53,6 +53,9 @@
   <a href="https://codecov.io/gh/CliMA/Oceananigans.jl" >
     <img src="https://codecov.io/gh/CliMA/Oceananigans.jl/graph/badge.svg?token=1eev6VdKD0"/>
   </a>
+  <a href="https://numericalearth.github.io/OceananigansBenchmarks/">
+    <img alt="Performance dashboard" src="https://img.shields.io/badge/Performance-Dashboard-informational?style=flat-square&logo=github"/>
+  </a>
 </p>
 
 
@@ -229,7 +232,7 @@ For more information check out our [contributor's guide](https://clima.github.io
 
 ## Performance benchmarks
 
-We perform some performance benchmarks (see the [performance benchmarks](https://clima.github.io/OceananigansDocumentation/stable/appendix/benchmarks/) section of the documentation) by initializing models of various sizes and measuring the wall clock time taken per model iteration (or time step).
+We continuously measure the performance of Oceananigans by initializing models of various sizes with different schemes and closures and measuring the wall clock time taken per model iteration (or time step). These benchmarks are run on every commit in main and tracked on our [performance dashboard](https://numericalearth.github.io/OceananigansBenchmarks/).
 
 To make full use of or fully saturate the computing power of a GPU such as an Nvidia Tesla V100 or
 a Titan V, the model should have around ~10 million grid points or more.
