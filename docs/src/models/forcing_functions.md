@@ -240,8 +240,33 @@ ContinuousForcing{Nothing} at (Center, Center, Face)
 
 The constructor for `Relaxation` accepts the keyword arguments `mask`, and `target`,
 which specify a `mask(x, y, z)` function that multiplies the forcing, and a `target(x, y, z, t)`
-distribution for the quantity in question. By default, `mask` uncovered the whole domain
-and `target` restores the field in question to 0
+distribution for the quantity in question. By default, `mask` equals 1 everywhere so the forcing applies over the full domain,
+and `target` restores the field in question to 0.
+
+### Mask types
+
+Two built-in mask types are available for the `mask` keyword:
+
+- `GaussianMask{D}(center, width)`: smooth Gaussian profile, equal to 1 at `center` and falling off as
+  `exp(-(D - center)^2 / (2 * width^2))`.
+- `PiecewiseLinearMask{D}(center, width)`: tent function, equal to 1 at `center`, decreasing linearly
+  to 0 at `|D - center| = width`, and 0 outside.
+
+Both accept `D ∈ {:x, :y, :z}`. For example:
+
+```jldoctest
+julia> using Oceananigans
+
+julia> GaussianMask{:z}(center=-500, width=100)
+GaussianMask{:z, Int64}(-500, 100)
+
+julia> PiecewiseLinearMask{:z}(center=-500, width=100)
+PiecewiseLinearMask{:z, Int64}(-500, 100)
+```
+
+While `GaussianMask` offers a smooth transition from 0 to 1, `PiecewiseLinearMask` has a sharper
+boundary, and is faster to evaluate — which can matter when the mask is applied every time step over
+a large grid.
 
 We illustrate usage of `mask` and `target` by implementing a sponge layer that relaxes
 velocity fields to zero and restores temperature to a linear gradient in the bottom
