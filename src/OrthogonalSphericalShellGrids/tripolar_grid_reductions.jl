@@ -64,7 +64,7 @@ ITG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}
 
 const TF = Union{<:AbstractField{<:Any, <:Any, <:Any, <:TripolarGridOfSomeKind},
                  <:AbstractField{<:Any, <:Any, <:Any, <:ITG}}
-                 
+
 @inline conditional_length(c::TF) = sum(conditional_one(c, 0))
 @inline conditional_length(c::TF, dims::Int) = sum(conditional_one(c, 0); dims)
 @inline conditional_length(c::TF, dims::Tuple) = sum(conditional_one(c, 0); dims)
