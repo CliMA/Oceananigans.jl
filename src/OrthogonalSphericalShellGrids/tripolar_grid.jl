@@ -27,11 +27,11 @@ Tripolar(n, f, s, ::Type{TY}) where {TY<:AbstractTopology} =
 # Backward-compatible constructor (defaults to UPivot)
 Tripolar(n, f, s) = Tripolar(n, f, s, RightCenterFolded)
 
-Adapt.adapt_structure(to, t::Tripolar{<:Any, <:Any, <:Any, FT}) where FT =
+Adapt.adapt_structure(to, t::Tripolar{<:Any, <:Any, <:Any, TY}) where TY =
     Tripolar(Adapt.adapt(to, t.north_poles_latitude),
              Adapt.adapt(to, t.first_pole_longitude),
              Adapt.adapt(to, t.southernmost_latitude),
-             FT)
+             TY)
 
 const TripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} = OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, Arch}
 const TripolarGridOfSomeKind{FT, TX, TY, TZ} = Union{TripolarGrid{FT, TX, TY, TZ}, ImmersedBoundaryGrid{FT, TX, TY, TZ, <:TripolarGrid}}
