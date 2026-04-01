@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: DistributedCommunicationBoundaryCondition, FZBC, ZBC
+using Oceananigans.BoundaryConditions: DistributedCommunicationBoundaryCondition, ZBC
 using Oceananigans.Fields: validate_indices, validate_field_data
 using Oceananigans.DistributedComputations:
     DistributedComputations,
@@ -11,8 +11,10 @@ using Oceananigans.DistributedComputations:
     concatenate_local_sizes,
     communication_buffers
 
-using Oceananigans.Grids: topology, RightConnected, FullyConnected
+using Oceananigans.Grids: topology, FullyConnected,
+    LeftConnectedRightFaceFolded, LeftConnectedRightFaceConnected
 using Oceananigans.DistributedComputations: insert_connected_topology
+using Oceananigans.Utils: Utils
 
 import Oceananigans.Fields: Field, validate_indices, validate_boundary_conditions
 
@@ -339,7 +341,7 @@ function DistributedComputations.reconstruct_global_grid(grid::MPITripolarGrid)
     first_pole_longitude = grid.conformal_mapping.first_pole_longitude
     southernmost_latitude = grid.conformal_mapping.southernmost_latitude
 
-    fold_topology = Oceananigans.OrthogonalSphericalShellGrids.fold_topology(grid.conformal_mapping)
+    fold_topology = OrthogonalSphericalShellGrids.fold_topology(grid.conformal_mapping)
 
     return TripolarGrid(child_arch, FT;
                         halo,
@@ -362,7 +364,7 @@ function Grids.with_halo(new_halo, old_grid::MPITripolarGrid)
     north_poles_latitude = old_grid.conformal_mapping.north_poles_latitude
     first_pole_longitude = old_grid.conformal_mapping.first_pole_longitude
     southernmost_latitude = old_grid.conformal_mapping.southernmost_latitude
-    fold_topology = Oceananigans.OrthogonalSphericalShellGrids.fold_topology(old_grid.conformal_mapping)
+    fold_topology = OrthogonalSphericalShellGrids.fold_topology(old_grid.conformal_mapping)
 
     return TripolarGrid(arch, eltype(old_grid);
                         halo = new_halo,
@@ -373,3 +375,13 @@ function Grids.with_halo(new_halo, old_grid::MPITripolarGrid)
                         z,
                         fold_topology)
 end
+
+#####
+##### Extend worksize for distributed FPivot grids (matches RFTRG worksize for serial FPivot)
+#####
+
+const DistributedFPivotTopology = Union{LeftConnectedRightFaceFolded, LeftConnectedRightFaceConnected}
+const DRFTRG = Union{MPITripolarGrid{<:Any, <:Any, <:DistributedFPivotTopology},
+                     ImmersedBoundaryGrid{<:Any, <:Any, <:DistributedFPivotTopology, <:Any, <:MPITripolarGrid}}
+
+Utils.worksize(grid::DRFTRG) = grid.Nx, grid.Ny+1, grid.Nz
