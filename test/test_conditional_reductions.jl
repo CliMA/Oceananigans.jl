@@ -11,6 +11,10 @@ include("dependencies_for_runtests.jl")
         fimm = Field{Center, Center, Center}(ibg)
 
         @test conditional_length(fimm) == length(fimm) / 2
+        @test conditional_length(fimm, :) == length(fimm) / 2
+        @test conditional_length(fimm, 1) isa AbstractField
+        @test conditional_length(fimm, (1, 2)) isa AbstractField
+        @test conditional_length(fimm, (1, 2, 3)) isa AbstractField
 
         fful .= 2
         fimm .= 2
@@ -25,6 +29,7 @@ include("dependencies_for_runtests.jl")
         for reduc in (mean, maximum, minimum)
             @test reduc(fful) == reduc(fimm)
             @test all(Array(interior(reduc(fful, dims=1)) .== interior(reduc(fimm, dims=1))))
+            @test all(Array(interior(reduc(fful, dims=(1,))) .== interior(reduc(fimm, dims=(1,)))))
         end
 
         @test sum(fful) == sum(fimm) * 2
