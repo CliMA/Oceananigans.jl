@@ -3,6 +3,20 @@ using Oceananigans.Architectures: on_architecture
 using KernelAbstractions: @index, @kernel
 using MPI: VBuffer, Alltoallv!, Alltoall!, UBuffer
 
+# Default: direct MPI Alltoall on GPU buffers (requires GPU-aware MPI).
+# Extensions (e.g., NCCL) can override for non-GPU-aware MPI.
+function alltoall_transpose!(buffer, counts, comm)
+    if all(c -> c == counts[1], counts)
+        Alltoall!(UBuffer(buffer.send, counts[1]),
+                  UBuffer(buffer.recv, counts[1]),
+                  comm)
+    else
+        Alltoallv!(VBuffer(buffer.send, counts),
+                   VBuffer(buffer.recv, counts),
+                   comm)
+    end
+end
+
 # Transpose directions are assumed to work only in the following configuration
 # z -> y -> x -> y -> z
 # where z stands for z-local data, y for y-local data, and x for x-local data
@@ -187,19 +201,8 @@ for (from, to, buff) in zip([:y, :z, :y, :x], [:z, :y, :x, :y], [:yz, :yz, :xy, 
         function $transpose!(arch, pf::TransposableField)
             $pack_buffer!(pf.$buffer, pf.$fromfield)
             sync_device!(arch)
-            # Use Alltoall (equal-size) instead of Alltoallv (variable-size) when all
-            # chunks are the same size. Alltoall is dramatically faster on GPU-aware MPI
-            # (up to 28x on Cray MPICH with A100 GPUs over NVLink).
             counts = pf.counts.$buff
-            if all(c -> c == counts[1], counts)
-                Alltoall!(UBuffer(pf.$buffer.send, counts[1]),
-                          UBuffer(pf.$buffer.recv, counts[1]),
-                          pf.comms.$buff)
-            else
-                Alltoallv!(VBuffer(pf.$buffer.send, counts),
-                           VBuffer(pf.$buffer.recv, counts),
-                           pf.comms.$buff)
-            end
+            alltoall_transpose!(pf.$buffer, counts, pf.comms.$buff)
             $unpack_buffer!(pf.$tofield, pf.$fromfield, pf.$buffer)
             return nothing
         end
