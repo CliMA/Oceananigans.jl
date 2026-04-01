@@ -64,13 +64,10 @@ ITG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}
 
 const TF = Union{<:AbstractField{<:Any, <:Any, <:Any, <:TripolarGridOfSomeKind},
                  <:AbstractField{<:Any, <:Any, <:Any, <:ITG}}
-
-@inline conditional_length(c::TF) = conditional_length(condition_operand(identity, c, PrognosticTripolarCells(), 0))
-@inline conditional_length(c::TF, ::Colon) = conditional_length(c)
-@inline conditional_length(c::TF, ::NTuple{3}) = conditional_length(c)
-@inline conditional_length(c::TF, d::Int) = conditional_length(condition_operand(identity, c, PrognosticTripolarCells(), 0), d)
-@inline conditional_length(c::TF, dims::NTuple{1}) = conditional_length(c, dims[1])
-@inline conditional_length(c::TF, dims::NTuple{2}) = conditional_length(condition_operand(identity, c, PrognosticTripolarCells(), 0), dims)
+                 
+@inline conditional_length(c::TF) = sum(conditional_one(c, 0))
+@inline conditional_length(c::TF, dims::Int) = sum(conditional_one(c, 0); dims)
+@inline conditional_length(c::TF, dims::Tuple) = sum(conditional_one(c, 0); dims)
 
 @inline function tripolar_condition_operand(func, op, condition, mask)
     arch = architecture(op)
