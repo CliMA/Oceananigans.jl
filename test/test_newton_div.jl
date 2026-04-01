@@ -5,7 +5,7 @@ using CUDA
 # Generate some random points in a single binade [1;2) interval
 function test_data_in_single_binade(::Type{FT}, size) where {FT}
     prng = Random.Xoshiro(44)
-    return rand(prng, FT, size) .+ 1.0
+    return rand(prng, FT, size) .+ 1
 end
 
 @testset "CPU newton_div: $FT $WCT" for (FT, WCT) in Iterators.product((Float32, Float64),

@@ -155,7 +155,7 @@ function fast_inv_cuda(a::Float32)
     # This instruction just computes reciprocal flushing subnormals to 0.0
     # Hence for subnormal inputs it returns Inf
     # For large number whose reciprocal is subnormal it underflows to 0.0
-    inv_a = ccall("llvm.nvvm.rcp.approx.ftz.f32", llvmcall, Float32, (Float32,), a)
+    inv_a = ccall("llvm.nvvm.rcp.approx.ftz.f", llvmcall, Float32, (Float32,), a)
     return inv_a
 end
 
