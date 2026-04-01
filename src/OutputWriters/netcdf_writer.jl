@@ -370,6 +370,8 @@ function NetCDFWriter(model, outputs; kw...)
     """)
 end
 
+function default_output_attributes end
+function add_schedule_metadata! end
 function write_grid_reconstruction_data! end
 function convert_for_netcdf end
 function materialize_from_netcdf end

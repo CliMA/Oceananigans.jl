@@ -70,6 +70,8 @@ import Oceananigans: write_output!
 import Oceananigans.OutputReaders: FieldTimeSeries, set_from_netcdf!
 import Oceananigans.OutputWriters:
     NetCDFWriter,
+    default_output_attributes,
+    add_schedule_metadata!,
     write_grid_reconstruction_data!,
     convert_for_netcdf,
     materialize_from_netcdf,
