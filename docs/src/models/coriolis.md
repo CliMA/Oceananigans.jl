@@ -138,9 +138,9 @@ SphericalCoriolis
 
 julia> coriolis = SphericalCoriolis()
 SphericalCoriolis
-├─ rotation rate: 7.29e-05 s⁻¹ = 7.29e-05 Ω_Earth
-├─ formulation: Oceananigans.Coriolis.NonhydrostaticFormulation
-└─ scheme: Oceananigans.Advection.EnstrophyConserving{Float64}
+├─ rotation rate: 7.29e-05 s⁻¹ = 1.00 Ω_Earth
+├─ formulation: NonhydrostaticFormulation
+└─ scheme: EnstrophyConserving
 ```
 
 A custom rotation rate can be specified for either:

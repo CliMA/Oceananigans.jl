@@ -116,6 +116,7 @@ and pass it to the model:
 
 ```jldoctest
 using Oceananigans
+using Oceananigans.Models.NonhydrostaticModels: BackgroundFields
 
 U(x, y, z, t) = 0.2 * z  # linear shear background velocity
 background_fields = BackgroundFields(background_closure_fluxes=true, u=U)
