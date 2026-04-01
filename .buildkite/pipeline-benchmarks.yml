@@ -7,12 +7,12 @@ env:
   JULIA_NUM_PRECOMPILE_TASKS: 24
   JULIA_NUM_THREADS: 8
   NSYS: "/storage6/nsight/bin/nsys"
-  CUDA_VISIBLE_DEVICES: "0"
   TMPDIR: "$TARTARUS_HOME/tmp"
   JULIA: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin/julia"
   JULIA_ARGS: "--color=yes --project=benchmarking --check-bounds=no"
   BENCHMARK_SCRIPT: "benchmarking/run_benchmarks.jl"
   OUTPUT_FILE: "benchmark_results.json"
+  OUTPUT_FILE_GPU2: "benchmark_results_gpu2.json"
 
 steps:
   - label: "🏕️ Initialize tartarus environment"
@@ -35,49 +35,117 @@ steps:
 
   - label: "🚀 Run benchmarks"
     key: "benchmarks"
+    concurrency: 1
+    concurrency_group: "oceananigans-benchmarks/gpu"
     agents:
       queue: "Oceananigans-benchmarks"
     command: |
-      # Instantiate benchmarking environment
-      $JULIA $JULIA_ARGS -e 'using Pkg; Pkg.instantiate()'
+      # Instantiate, precompile, and pre-download bathymetry data (before parallel GPU runs)
+      $JULIA $JULIA_ARGS -e 'using Pkg; Pkg.instantiate(); using OceananigansBenchmarks, DataDeps; datadep"benchmark_bathymetry"'
+
+      # Helper: extract NSYS top-10 kernel stats and merge into benchmark results JSON
+      nsys_extract() {
+        local REPORT=\$1   # e.g. nsys_default.nsys-rep
+        local GROUP=\$2    # group name to tag with kernel data
+
+        $NSYS stats --report cuda_gpu_kern_sum --format csv \${REPORT} > nsys_kernels.csv
+
+        # nsys stats CSV header: "Time (%)","Total Time (ns)","Instances","Avg (ns)","Med (ns)","Min (ns)","Max (ns)","StdDev (ns)","Name"
+        KERNELS_JSON=\$(tail -n +2 nsys_kernels.csv \
+          | sort -t',' -k2 -rn \
+          | head -10 \
+          | awk -F',' '{
+              gsub(/"/, "", \$9); name=\$9;
+              gsub(/"/, "", \$2); total=\$2;
+              gsub(/"/, "", \$3); inst=\$3;
+              gsub(/"/, "", \$4); avg=\$4;
+              gsub(/"/, "", \$5); med=\$5;
+              gsub(/"/, "", \$6); mn=\$6;
+              gsub(/"/, "", \$7); mx=\$7;
+              if (NR > 1) printf ",";
+              printf "{\"name\":\"%s\",\"total_time_ns\":%s,\"instances\":%s,\"avg_time_ns\":%s,\"med_time_ns\":%s,\"min_time_ns\":%s,\"max_time_ns\":%s}", name, total, inst, avg, med, mn, mx
+            }')
+        KERNELS_JSON="[\${KERNELS_JSON}]"
+
+        echo "Top 10 CUDA kernels (\$GROUP):"
+        echo "\$KERNELS_JSON" | jq -r '.[] | "  \(.name[0:80])  median=\(.med_time_ns / 1e6)ms  instances=\(.instances)"'
+
+        # Merge kernel data into entries matching the group
+        jq --argjson kernels "\$KERNELS_JSON" --arg grp "\$GROUP" \
+          '[.[] | if .group == \$grp then . + {nsys_top_kernels: \$kernels} else . end]' \
+          $OUTPUT_FILE > nsys_tmp.json
+        mv nsys_tmp.json $OUTPUT_FILE
+
+        rm -f \${REPORT} \${REPORT%.nsys-rep}.sqlite nsys_kernels.csv
+      }
+
+      # ==========================================
+      #  GPU 2 benchmarks (background)
+      # ==========================================
+      (
+        export CUDA_VISIBLE_DEVICES=2
+
+        echo "========================================"
+        echo "  Group 4: Advection sweep (1/2 deg) [GPU 2]"
+        echo "========================================"
+        $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --momentum_advection="nothing, WENOVectorInvariant5, WENOVectorInvariant9" --tracer_advection="nothing, WENO5, WENO9" --group="Advection Sweep" --output=$OUTPUT_FILE_GPU2 --clear
+
+        echo "========================================"
+        echo "  Group 5: Grid type sweep (1/2 deg) [GPU 2]"
+        echo "========================================"
+        $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --grid_type="lat_lon, immersed_lat_lon, tripolar" --zstar_coordinate=true --group="Grid Type Sweep" --output=$OUTPUT_FILE_GPU2
+        $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --grid_type="lat_lon, immersed_lat_lon" --zstar_coordinate=false --group="Grid Type Sweep" --output=$OUTPUT_FILE_GPU2
+
+        echo "========================================"
+        echo "  Group 6: Tracer count sweep (1/2 deg) [GPU 2]"
+        echo "========================================"
+        $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --tracers="T,S,C1" --group="Tracer Count Sweep" --output=$OUTPUT_FILE_GPU2
+      ) &
+      GPU2_PID=$$!
+
+      # ==========================================
+      #  GPU 0 benchmarks (foreground)
+      # ==========================================
+      export CUDA_VISIBLE_DEVICES=0
 
       echo "========================================"
-      echo "  Group 1: Resolution sweep"
+      echo "  Default configuration (baseline, NSYS profiled) [GPU 0]"
       echo "========================================"
-      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size="180x90x50, 360x180x50, 720x360x50" --group="Resolution Sweep" --output=$OUTPUT_FILE --clear
+      $NSYS profile --output=nsys_default --force-overwrite true --trace=cuda \
+        $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --group="Default" --output=$OUTPUT_FILE --clear
+      nsys_extract nsys_default.nsys-rep Default
 
       echo "========================================"
-      echo "  Group 2: Number type sweep"
+      echo "  Group 1: Resolution sweep [GPU 0]"
+      echo "========================================"
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size="180x90x50, 720x360x50" --group="Resolution Sweep" --output=$OUTPUT_FILE
+
+      echo "========================================"
+      echo "  Group 2: Number type sweep [GPU 0]"
       echo "========================================"
       $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --float_type=Float32 --group="Float Type Sweep" --output=$OUTPUT_FILE
 
       echo "========================================"
-      echo "  Group 3: Closure sweep (1/2 deg)"
+      echo "  Group 3: Closure sweep (1/2 deg) [GPU 0]"
       echo "========================================"
-      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --closure="nothing, CATKE, CATKE+Biharmonic, CATKE+GM+Biharmonic" --group="Closure Sweep" --output=$OUTPUT_FILE
+      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --closure="nothing, CATKE+Biharmonic, CATKE+GM+Biharmonic" --group="Closure Sweep" --output=$OUTPUT_FILE
 
-      echo "========================================"
-      echo "  Group 4: Advection sweep (1/2 deg)"
-      echo "========================================"
-      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --momentum_advection=nothing              --tracer_advection=nothing --group="Advection Sweep" --output=$OUTPUT_FILE
-      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --momentum_advection=WENOVectorInvariant5 --tracer_advection=WENO5   --group="Advection Sweep" --output=$OUTPUT_FILE
-      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --momentum_advection=WENOVectorInvariant9 --tracer_advection=WENO9   --group="Advection Sweep" --output=$OUTPUT_FILE
+      # ==========================================
+      #  Wait for GPU 2 and merge results
+      # ==========================================
+      echo "Waiting for GPU 2 benchmarks to finish..."
+      wait $GPU2_PID
+      GPU2_STATUS=$$?
+      if [ $GPU2_STATUS -ne 0 ]; then
+        echo "WARNING: GPU 2 benchmarks exited with status $GPU2_STATUS"
+      fi
 
-      echo "========================================"
-      echo "  Group 5: Grid type sweep (1/2 deg)"
-      echo "========================================"
-      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --grid_type="lat_lon, immersed_lat_lon, tripolar" --zstar_coordinate="true, false" --group="Grid Type Sweep" --output=$OUTPUT_FILE
-
-      echo "========================================"
-      echo "  Group 6: Tracer count sweep (1/2 deg)"
-      echo "========================================"
-      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --tracers="T,S,C1" --group="Tracer Count Sweep" --output=$OUTPUT_FILE
-      $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --tracers="T,S,C1,C2,C3" --group="Tracer Count Sweep" --output=$OUTPUT_FILE
-
-      # echo "========================================"
-      # echo "  Group 7: I/O sweep (1/2 deg)"
-      # echo "========================================"
-      # $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT --size=360x180x50 --tracers=T,S,C1 --mode=io --group="IO Sweep" --output=$OUTPUT_FILE
+      if [ -f "$OUTPUT_FILE_GPU2" ]; then
+        jq -s 'add' $OUTPUT_FILE $OUTPUT_FILE_GPU2 > merged_tmp.json
+        mv merged_tmp.json $OUTPUT_FILE
+        rm -f $OUTPUT_FILE_GPU2
+        echo "Merged GPU 2 results into $OUTPUT_FILE"
+      fi
 
     artifact_paths:
       - "benchmark_results.json"
@@ -87,79 +155,7 @@ steps:
 
   - wait
 
-  - label: "🔬 NSYS kernel profiling"
-    key: "nsys-profiling"
-    agents:
-      queue: "Oceananigans-benchmarks"
-    command: |
-      # Instantiate (may already be cached)
-      $JULIA $JULIA_ARGS -e 'using Pkg; Pkg.instantiate()'
-
-      # Define NSYS profiling cases as "name:args" pairs
-      NSYS_CASES=(
-        "nsys_default:--size=720x360x50"
-        "nsys_zstar:--size=720x360x50 --zstar_coordinate=true --closure=CATKE"
-        "nsys_full_physics:--size=720x360x50 --zstar_coordinate=true --closure=CATKE+GM+Biharmonic"
-      )
-
-      for CASE in "\${NSYS_CASES[@]}"; do
-        CASE_NAME="\${CASE%%:*}"
-        CASE_ARGS="\${CASE#*:}"
-        echo "========================================"
-        echo "  NSYS profiling: \$CASE_NAME"
-        echo "========================================"
-
-        # Profile with NSYS (fewer time steps for profiling)
-        $NSYS profile \
-          --output=\${CASE_NAME} \
-          --force-overwrite true \
-          --trace=cuda \
-          $JULIA $JULIA_ARGS $BENCHMARK_SCRIPT \$CASE_ARGS \
-            --time_steps=10 --warmup_steps=5 \
-            --group="NSYS Profiling" \
-            --output=\${CASE_NAME}.json
-
-        # Extract kernel statistics as CSV and parse top 10 kernels by total time.
-        # nsys stats CSV header: "Time (%)","Total Time (ns)","Instances","Avg (ns)","Med (ns)","Min (ns)","Max (ns)","StdDev (ns)","Name"
-        $NSYS stats --report cuda_gpu_kern_sum --format csv \${CASE_NAME}.nsys-rep > \${CASE_NAME}_kernels.csv
-
-        # Build a JSON array of the top 10 kernels sorted by total time (column 2) using awk.
-        # Skip the CSV header, sort numerically descending on field 2, take top 10.
-        KERNELS_JSON=\$(tail -n +2 \${CASE_NAME}_kernels.csv \
-          | sort -t',' -k2 -rn \
-          | head -10 \
-          | awk -F',' '{
-              gsub(/"/, "", \$9); name=\$9;
-              gsub(/"/, "", \$2); total=\$2;
-              gsub(/"/, "", \$3); inst=\$3;
-              gsub(/"/, "", \$4); avg=\$4;
-              gsub(/"/, "", \$6); mn=\$6;
-              gsub(/"/, "", \$7); mx=\$7;
-              if (NR > 1) printf ",";
-              printf "{\"name\":\"%s\",\"total_time_ns\":%s,\"instances\":%s,\"avg_time_ns\":%s,\"min_time_ns\":%s,\"max_time_ns\":%s}", name, total, inst, avg, mn, mx
-            }')
-        KERNELS_JSON="[\${KERNELS_JSON}]"
-
-        echo "Top 10 CUDA kernels:"
-        echo "\$KERNELS_JSON" | jq -r '.[] | "  \(.name[0:80])  total=\(.total_time_ns / 1e6)ms  instances=\(.instances)"'
-
-        # Merge kernel data into each entry of the benchmark JSON
-        jq --argjson kernels "\$KERNELS_JSON" '[.[] | . + {nsys_top_kernels: \$kernels}]' \${CASE_NAME}.json > \${CASE_NAME}_tmp.json
-        mv \${CASE_NAME}_tmp.json \${CASE_NAME}.json
-
-        # Clean up NSYS artifacts
-        rm -f \${CASE_NAME}.nsys-rep \${CASE_NAME}.sqlite \${CASE_NAME}_kernels.csv
-      done
-
-    artifact_paths:
-      - "nsys_default.json"
-      - "nsys_full_physics.json"
-    soft_fail:
-      - exit_status: 3
-
-  - wait
-
-  - label: "📊 Merge results and compare with main"
+  - label: "📊 Compare with main"
     key: "merge-compare"
     agents:
       queue: "Oceananigans-benchmarks"
@@ -168,14 +164,7 @@ steps:
       buildkite-agent artifact download "*.json" .
       buildkite-agent artifact download "*.md" . || true
 
-      # Merge benchmark_results.json + nsys_*.json into a single file
       MERGED="benchmark_results.json"
-      for NSYS_FILE in nsys_*.json; do
-        [ -f "\$NSYS_FILE" ] || continue
-        echo "Merging \$NSYS_FILE"
-        jq -s '.[0] + .[1]' "\$MERGED" "\$NSYS_FILE" > merged_tmp.json
-        mv merged_tmp.json "\$MERGED"
-      done
       echo "Total benchmark entries: \$(jq length \$MERGED)"
 
       # Fetch latest passing main build for comparison
@@ -227,10 +216,27 @@ steps:
           echo "No benchmark_results.json found in main build artifacts"
         fi
       else
-        echo "No passing main build found for comparison"
+        echo "No main build found for comparison"
       fi
 
     artifact_paths:
       - "benchmark_results.json"
       - "benchmark_results.md"
       - "benchmark_comparison.md"
+      - "baseline_benchmark_results.json"
+
+  - wait
+
+  - label: "📢 Notify GitHub to publish results"
+    key: "notify-github"
+    agents:
+      queue: "Oceananigans-benchmarks"
+    command: |
+      # Trigger the Publish Benchmarks workflow via repository_dispatch.
+      # Requires GITHUB_DISPATCH_TOKEN (a GitHub PAT with repo scope) in Buildkite secrets.
+      curl -sS -f -X POST \
+        -H "Authorization: token ${GITHUB_DISPATCH_TOKEN}" \
+        -H "Accept: application/vnd.github.v3+json" \
+        "https://api.github.com/repos/CliMA/Oceananigans.jl/dispatches" \
+        -d "{\"event_type\":\"benchmarks_complete\",\"client_payload\":{\"build_number\":\"${BUILDKITE_BUILD_NUMBER}\",\"commit\":\"${BUILDKITE_COMMIT}\",\"branch\":\"${BUILDKITE_BRANCH}\",\"pr_number\":\"${BUILDKITE_PULL_REQUEST}\"}}"
+    soft_fail: true

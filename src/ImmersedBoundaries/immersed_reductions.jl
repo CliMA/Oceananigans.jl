@@ -63,11 +63,8 @@ function ConditionalOperation(operand::IF;
 end
 
 @inline conditional_length(c::IF) = conditional_length(condition_operand(identity, c, NotImmersed(), 0))
-@inline conditional_length(c::IF, ::Colon) = conditional_length(c)
-@inline conditional_length(c::IF, ::NTuple{3}) = conditional_length(c)
-@inline conditional_length(c::IF, d::Int) = conditional_length(condition_operand(identity, c, NotImmersed(), 0), d)
-@inline conditional_length(c::IF, dims::NTuple{1}) = conditional_length(c, dims[1])
-@inline conditional_length(c::IF, dims::NTuple{2}) = conditional_length(condition_operand(identity, c, NotImmersed(), 0), dims)
+@inline conditional_length(c::IF, dims::Int) = conditional_length(condition_operand(identity, c, NotImmersed(), 0), dims)
+@inline conditional_length(c::IF, dims::Tuple) = conditional_length(condition_operand(identity, c, NotImmersed(), 0), dims)
 
 @inline function evaluate_condition(::NotImmersed{Nothing},
                                     i, j, k,
@@ -155,11 +152,8 @@ const NICO{LX, LY, LZ, F, C} = Union{
 }
 
 @inline conditional_length(c::NICO) = sum(conditional_one(c, 0))
-@inline conditional_length(c::NICO, ::Colon) = conditional_length(c)
-@inline conditional_length(c::NICO, ::NTuple{3}) = conditional_length(c)
 @inline conditional_length(c::NICO, dims::Int) = sum(conditional_one(c, 0); dims)
-@inline conditional_length(c::NICO, dims::NTuple{1}) = sum(conditional_one(c, 0); dims)
-@inline conditional_length(c::NICO, dims::NTuple{2}) = sum(conditional_one(c, 0); dims)
+@inline conditional_length(c::NICO, dims::Tuple) = sum(conditional_one(c, 0); dims)
 
 #####
 ##### conditional_operand extension

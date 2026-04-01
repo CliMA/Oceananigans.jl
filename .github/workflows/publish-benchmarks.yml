@@ -1,14 +1,13 @@
 name: Publish Benchmarks
+run-name: "${{ github.event.client_payload.pr_number && github.event.client_payload.pr_number != 'false' && format('{0} — PR #{1}', github.event.client_payload.branch, github.event.client_payload.pr_number) || format('{0} @ {1}', github.event.client_payload.branch, github.event.client_payload.commit) }}"
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
+  repository_dispatch:
+    types: [benchmarks_complete]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.ref }}
-  cancel-in-progress: true
+  group: ${{ github.workflow }}-${{ github.event.client_payload.branch }}
+  cancel-in-progress: ${{ github.event.client_payload.branch != 'main' }}
 
 jobs:
   publish-benchmarks:
@@ -19,55 +18,21 @@ jobs:
       pull-requests: write
       statuses: read
     runs-on: ubuntu-latest
-    timeout-minutes: 600
     steps:
       - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.client_payload.commit || '' }}
 
       - name: Download Buildkite Artifacts
         id: download
         env:
           BUILDKITE_TOKEN: ${{ secrets.BUILDKITE_TOKEN }}
         run: |
-          # For PRs, use the head commit SHA (what Buildkite sees)
-          if [ "${{ github.event_name }}" = "pull_request" ]; then
-            COMMIT_SHA="${{ github.event.pull_request.head.sha }}"
-          else
-            COMMIT_SHA="${{ github.sha }}"
-          fi
-          echo "Looking for benchmark build for commit $COMMIT_SHA on oceananigans-benchmarks-1"
+          # Buildkite triggered this workflow — build is already done, use build number directly
+          BUILD_NUM="${{ github.event.client_payload.build_number }}"
+          echo "Buildkite build #$BUILD_NUM completed (dispatched by Buildkite)"
 
-          # Poll until the benchmark build finishes (max ~9.5 hours)
-          for ATTEMPT in $(seq 1 1140); do
-            BUILD_JSON=$(curl -s -H "Authorization: Bearer $BUILDKITE_TOKEN" \
-              "https://api.buildkite.com/v2/organizations/clima/pipelines/oceananigans-benchmarks-1/builds?commit=$COMMIT_SHA&per_page=1")
-
-            BUILD_NUM=$(echo "$BUILD_JSON" | jq -r '.[0].number // empty')
-            BUILD_STATE=$(echo "$BUILD_JSON" | jq -r '.[0].state // empty')
-
-            if [ -z "$BUILD_NUM" ]; then
-              echo "[$ATTEMPT/1140] No build found yet, waiting 30s..."
-              sleep 30
-              continue
-            fi
-
-            echo "[$ATTEMPT/1140] Build #$BUILD_NUM state: $BUILD_STATE"
-
-            case "$BUILD_STATE" in
-              passed|failed|soft_failed) break ;;
-              canceled|blocked|skipped|not_run)
-                echo "download-state=skipped" >> "$GITHUB_OUTPUT"
-                exit 0 ;;
-              *) sleep 30 ;;
-            esac
-          done
-
-          if [ -z "$BUILD_NUM" ]; then
-            echo "No benchmark build found for this commit"
-            echo "download-state=not_found" >> "$GITHUB_OUTPUT"
-            exit 0
-          fi
-
-          # List and download artifacts from the benchmarks pipeline
+          # Download artifacts from the resolved build
           ARTIFACTS_JSON=$(curl -s -H "Authorization: Bearer $BUILDKITE_TOKEN" \
             "https://api.buildkite.com/v2/organizations/clima/pipelines/oceananigans-benchmarks-1/builds/$BUILD_NUM/artifacts")
 
@@ -104,12 +69,9 @@ jobs:
         run: |
           import json, re, glob
 
-          # Merge all benchmark JSON files (benchmark_results.json + nsys_*.json)
+          # Load benchmark results (nsys kernel data is already embedded)
           all_data = []
           for path in sorted(glob.glob("artifacts/**/benchmark_results.json", recursive=True)):
-              with open(path) as f:
-                  all_data.extend(json.load(f))
-          for path in sorted(glob.glob("artifacts/**/nsys_*.json", recursive=True)):
               with open(path) as f:
                   all_data.extend(json.load(f))
 
@@ -168,14 +130,23 @@ jobs:
               elif group == "Tracer Count Sweep":
                   fixed = f"{grid_info} {size_str} {ft_short} {closure}"
                   variant = f"{n_tracers} tracers"
-              elif group == "NSYS Profiling":
+              elif group == "Default":
                   fixed = f"{grid_info} {size_str} {ft_short}"
-                  variant = f"{mom_adv}+{trc_adv} {closure}"
+                  variant = "default"
               else:
                   fixed = name
                   variant = size_str
 
               return f"{group}/{fixed}/{gpu}/{variant}"
+
+          # Collect Default group entries so we can inject them into every sweep chart
+          default_entries = [d for d in all_data if d.get("group") == "Default"]
+
+          # All sweep groups that should include the Default baseline
+          sweep_groups = [
+              "Resolution Sweep", "Float Type Sweep", "Closure Sweep",
+              "Advection Sweep", "Grid Type Sweep", "Tracer Count Sweep",
+          ]
 
           data = []
           for d in all_data:
@@ -194,13 +165,21 @@ jobs:
                       if len(short_kname) > 60:
                           short_kname = short_kname[:57] + "..."
 
-                      total_ms = kernel["total_time_ns"] / 1e6
+                      med_ms = kernel["med_time_ns"] / 1e6
                       kernel_chart = f"NSYS Kernels/{name}/{gpu}/{short_kname}"
                       data.append({
                           "name": kernel_chart,
-                          "unit": "ms (total GPU time)",
-                          "value": total_ms,
+                          "unit": "ms (median GPU time)",
+                          "value": med_ms,
                       })
+
+          # Inject Default entries into each sweep chart as baseline reference
+          for deflt in default_entries:
+              tps = deflt["time_per_step_seconds"]
+              for sweep in sweep_groups:
+                  d_copy = {**deflt, "group": sweep}
+                  chart_name = build_chart_name(d_copy)
+                  data.append({"name": chart_name, "unit": "s/timestep", "value": tps})
 
           with open("github-action-benchmark.json", "w") as f:
               json.dump(data, f, indent=2)
@@ -230,52 +209,91 @@ jobs:
                   summary += "\n" + f.read() + "\n"
 
           # Add nsys kernel profiling data from merged results
+          nsys_section = ""
           if os.path.exists("benchmark_results_merged.json"):
               with open("benchmark_results_merged.json") as f:
                   all_data = json.load(f)
 
+              # Load baseline nsys data for comparison
+              baseline_kernels = {}  # name -> {short_kernel_name: med_time_ns}
+              baseline_files = glob.glob("artifacts/**/baseline_benchmark_results.json", recursive=True)
+              if baseline_files:
+                  with open(baseline_files[0]) as f:
+                      baseline_data = json.load(f)
+                  for bd in baseline_data:
+                      if "nsys_top_kernels" in bd:
+                          bk_map = {}
+                          for bk in bd["nsys_top_kernels"]:
+                              short = re.split(r"[<(]", bk["name"])[0].strip()
+                              if len(short) > 60:
+                                  short = short[:57] + "..."
+                              bk_map[short] = bk["med_time_ns"]
+                          baseline_kernels[bd["name"]] = bk_map
+
               nsys_entries = [d for d in all_data if "nsys_top_kernels" in d]
               if nsys_entries:
-                  summary += "\n## NSYS Kernel Profiling\n\n"
+                  has_baseline = bool(baseline_kernels)
+                  nsys_section += "\n## NSYS Kernel Profiling\n\n"
                   for entry in nsys_entries:
                       name = entry["name"]
                       kernels = entry["nsys_top_kernels"]
-                      summary += f"### {name}\n\n"
-                      summary += "| Kernel | Total (ms) | Instances | Avg (ms) | Min (ms) | Max (ms) |\n"
-                      summary += "|--------|-----------|-----------|----------|----------|----------|\n"
+                      bk_map = baseline_kernels.get(name, {})
+                      nsys_section += f"### {name}\n\n"
+                      if has_baseline and bk_map:
+                          nsys_section += "| Kernel | Median (ms) | Main (ms) | Change | Instances | Avg (ms) | Min (ms) | Max (ms) |\n"
+                          nsys_section += "|--------|------------|-----------|--------|-----------|----------|----------|----------|\n"
+                      else:
+                          nsys_section += "| Kernel | Median (ms) | Instances | Avg (ms) | Min (ms) | Max (ms) |\n"
+                          nsys_section += "|--------|------------|-----------|----------|----------|----------|\n"
                       for k in kernels:
                           kname = k["name"]
-                          # Shorten long CUDA kernel names
                           short_name = re.split(r"[<(]", kname)[0].strip()
                           if len(short_name) > 60:
                               short_name = short_name[:57] + "..."
-                          total_ms = k["total_time_ns"] / 1e6
+                          med_ms = k["med_time_ns"] / 1e6
                           avg_ms = k["avg_time_ns"] / 1e6
                           min_ms = k["min_time_ns"] / 1e6
                           max_ms = k["max_time_ns"] / 1e6
                           instances = k["instances"]
-                          summary += f"| `{short_name}` | {total_ms:.2f} | {instances} | {avg_ms:.3f} | {min_ms:.3f} | {max_ms:.3f} |\n"
-                      summary += "\n"
+                          if has_baseline and bk_map:
+                              main_ns = bk_map.get(short_name)
+                              if main_ns is not None:
+                                  main_ms = main_ns / 1e6
+                                  pct = (med_ms - main_ms) / main_ms * 100 if main_ms > 0 else 0
+                                  sign = "+" if pct >= 0 else ""
+                                  nsys_section += f"| `{short_name}` | {med_ms:.3f} | {main_ms:.3f} | {sign}{pct:.1f}% | {instances} | {avg_ms:.3f} | {min_ms:.3f} | {max_ms:.3f} |\n"
+                              else:
+                                  nsys_section += f"| `{short_name}` | {med_ms:.3f} | (new) | | {instances} | {avg_ms:.3f} | {min_ms:.3f} | {max_ms:.3f} |\n"
+                          else:
+                              nsys_section += f"| `{short_name}` | {med_ms:.3f} | {instances} | {avg_ms:.3f} | {min_ms:.3f} | {max_ms:.3f} |\n"
+                      nsys_section += "\n"
+              summary += nsys_section
 
           with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
               f.write(summary)
 
+          # Also save NSYS section to a separate file for the PR comment
+          with open("nsys_comparison.md", "w") as f:
+              f.write(nsys_section)
+
       - name: Push results to OceananigansBenchmarks repo
-        if: ${{ github.event_name == 'push' && steps.locate.outputs.path != '' }}
+        if: ${{ github.event.client_payload.branch == 'main' && steps.locate.outputs.path != '' }}
         run: |
           git clone https://x-access-token:${{ secrets.BENCHMARKS_TOKEN }}@github.com/NumericalEarth/OceananigansBenchmarks.git
           cd OceananigansBenchmarks
-          DIRNAME="benchmarks/by_branch/${{ github.head_ref || github.ref_name }}/${{ github.sha }}"
+          COMMIT="${{ github.event.client_payload.commit || github.sha }}"
+          DIRNAME="benchmarks/by_branch/main/${COMMIT}"
           mkdir -vp "${DIRNAME}"
           cp -v "../benchmark_results_merged.json" "${DIRNAME}/benchmark_results.json"
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
           git add .
-          git commit -m "Save benchmark results for commit ${{ github.sha }}"
+          git commit -m "Save benchmark results for commit ${COMMIT}"
           git push -u origin main
 
+      # For main branch: push results to external benchmarks repo
       - uses: benchmark-action/github-action-benchmark@v1
-        if: ${{ steps.locate.outputs.path != '' }}
+        if: ${{ github.event.client_payload.branch == 'main' && steps.locate.outputs.path != '' }}
         with:
           name: Oceananigans.jl Benchmarks
           tool: "customSmallerIsBetter"
@@ -283,10 +301,48 @@ jobs:
           benchmark-data-dir-path: "."
           gh-repository: "github.com/NumericalEarth/OceananigansBenchmarks"
           github-token: ${{ secrets.BENCHMARKS_TOKEN }}
-          comment-always: true
+          ref: ${{ github.event.client_payload.commit }}
+          comment-always: false
           summary-always: true
           alert-threshold: "110%"
           fail-on-alert: false
-          auto-push: ${{ github.event_name == 'push' }}
+          auto-push: true
           max-items-in-chart: 50
           comment-on-alert: true
+
+      # For PRs: comment benchmark comparison on the PR
+      - name: Comment benchmark results on PR
+        if: ${{ github.event.client_payload.branch != 'main' && steps.locate.outputs.path != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUMBER="${{ github.event.client_payload.pr_number }}"
+
+          # If no PR number from Buildkite, look it up by branch
+          if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "false" ]; then
+            PR_NUMBER=$(gh pr list --head "${{ github.event.client_payload.branch }}" --json number --jq '.[0].number')
+          fi
+
+          if [ -z "$PR_NUMBER" ]; then
+            echo "No open PR found for branch ${{ github.event.client_payload.branch }}, skipping comment"
+            exit 0
+          fi
+
+          echo "Posting benchmark results to PR #$PR_NUMBER"
+
+          # Build comment from comparison artifact and NSYS kernel data
+          {
+            echo "## Benchmark Comparison"
+            echo ""
+            if [ -f "artifacts/benchmark_comparison.md" ]; then
+              cat artifacts/benchmark_comparison.md
+            else
+              echo "No benchmark comparison available."
+            fi
+            if [ -f "nsys_comparison.md" ]; then
+              echo ""
+              cat nsys_comparison.md
+            fi
+          } > pr_comment.md
+
+          gh pr comment "$PR_NUMBER" --body-file pr_comment.md
