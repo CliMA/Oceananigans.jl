@@ -12,6 +12,16 @@ import Oceananigans.Fields: Field, compute!
 const OperationOrFunctionField = Union{AbstractOperation, FunctionField}
 const ComputedField = Field{<:Any, <:Any, <:Any, <:OperationOrFunctionField}
 
+function Field(operand::Union{HistogramOperation, Histogram1DOperation}; kwargs...)
+    if haskey(kwargs, :method)
+        throw(ArgumentError("`method` is a keyword argument for `Histogram`, not `Field`. " *
+                            "Move it inside `Histogram(...; method=...)`, for example:\n" *
+                            "`Field(Histogram((T=T_ocean,); bins=(T=T_bins,), weights=:count, dims=(1, 2), method=:integral))`"))
+    end
+
+    return invoke(Field, Tuple{OperationOrFunctionField}, operand; kwargs...)
+end
+
 """
     Field(operand::OperationOrFunctionField;
           data = nothing,
