@@ -143,7 +143,7 @@ components in wall-normal directions.
 !!! warn "`ImpenetrableBoundaryCondition`"
     `ImpenetrableBoundaryCondition` is internally enforced for fields created inside the model constructor.
     As a result, `ImpenetrableBoundaryCondition` is only used for _additional_ velocity components
-    that are not evolved by a model, such as a velocity component used for (`AdvectiveForcing`)[@ref].
+    that are not evolved by a model, such as a velocity component used for [`AdvectiveForcing`](@ref).
 
 Finally, note that `Periodic` boundary conditions are internally enforced for `Periodic` directions,
 and `DefaultBoundaryCondition`s may exist before boundary conditions are "materialized" by a model.
@@ -174,9 +174,9 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 Oceananigans uses a hierarchical structure to express boundary conditions:
 
 1. Each boundary of each field has one [`BoundaryCondition`](@ref)
-2. Each field has seven [`BoundaryCondition`](@ref) (`west`, `east`, `south`, `north`, `bottom`, `top` and
-   `immersed`)
-3. A set of `FieldBoundaryConditions`, up to one for each field, are grouped into a `NamedTuple` and passed
+2. Each field has seven [`BoundaryCondition`](@ref)s (`west`, `east`, `south`, `north`, `bottom`, `top`,
+   and `immersed`)
+1. A set of `FieldBoundaryConditions`, up to one for each field, are grouped into a `NamedTuple` and passed
    to the model constructor.
 
 ## Specifying boundary conditions for a model
