@@ -663,7 +663,6 @@ a BulkDrag:
 
 ```jldoctest bulk_drag
 using Oceananigans
-
 drag = BulkDrag(coefficient=2e-3)
 
 # output
@@ -730,7 +729,7 @@ the full flow magnitude:
 ```jldoctest
 using Oceananigans
 
-V∞ = 0.1  # background meridional current, matches BackgroundField (m s⁻¹)
+V∞ = 0.1  # background meridional current; should match the value used in BackgroundField
 drag = BulkDrag(coefficient=2e-3, background_velocities=(0, V∞, 0))
 
 # output
