@@ -1,5 +1,5 @@
 using Oceananigans.BoundaryConditions: DistributedCommunication
-using Oceananigans.DistributedComputations: CommunicationBuffers
+using Oceananigans.DistributedComputations: CommunicationBuffers, loc_id
 using Oceananigans.Grids: AbstractGrid, topology,
     RightCenterFolded, RightFaceFolded,
     LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
@@ -31,9 +31,6 @@ const FPivotTopology = Union{RightFaceFolded,
                              LeftConnectedRightFaceFolded,
                              LeftConnectedRightFaceConnected}
 
-# 1D fold (1xN, y-partitioned only) vs 2D fold (MxN, x+y partitioned)
-const OneDFoldTopology = Union{LeftConnectedRightCenterFolded,
-                               LeftConnectedRightFaceFolded}
 const TwoDFoldTopology = Union{LeftConnectedRightCenterConnected,
                                LeftConnectedRightFaceConnected}
 
@@ -74,12 +71,6 @@ end
 ##### Zipper communication buffers with fold-aware packing
 #####
 
-struct OneDZipperBuffer{Loc, FoT, B, S}
-    send :: B
-    recv :: B
-    sign :: S
-end
-
 struct TwoDZipperBuffer{FL, WFL, Loc, FoT, B, S}
     send :: B
     recv :: B
@@ -93,7 +84,6 @@ struct ZipperCornerBuffer{FL, WFL, Loc, FoT, B, S}
 end
 
 # Value-argument constructors: all types inferred
-OneDZipperBuffer(loc::Loc, fot::FoT, send::B, recv::B, sign::S) where {Loc, FoT, B, S} = OneDZipperBuffer{Loc, FoT, B, S}(send, recv, sign)
 TwoDZipperBuffer(loc, fot, send, recv, sign, ::Val{FL}, ::Val{WFL}) where {FL, WFL} =
     TwoDZipperBuffer{FL, WFL, typeof(loc), typeof(fot), typeof(send), typeof(sign)}(send, recv, sign)
 ZipperCornerBuffer(loc, fot, send, recv, sign, ::Val{FL}, ::Val{WFL}) where {FL, WFL} =
@@ -101,7 +91,6 @@ ZipperCornerBuffer(loc, fot, send, recv, sign, ::Val{FL}, ::Val{WFL}) where {FL,
 ZipperCornerBuffer(::Type{Loc}, ::Type{FoT}, send, recv, sign, ::Val{FL}, ::Val{WFL}) where {Loc, FoT, FL, WFL} =
     ZipperCornerBuffer{FL, WFL, Loc, FoT, typeof(send), typeof(sign)}(send, recv, sign)
 
-Adapt.adapt_structure(to, buff::OneDZipperBuffer) = nothing
 Adapt.adapt_structure(to, buff::TwoDZipperBuffer) = nothing
 Adapt.adapt_structure(to, buff::ZipperCornerBuffer) = nothing
 
@@ -208,17 +197,6 @@ end
 # Fallback: non-zipper north BC uses standard buffer
 y_tripolar_buffer(arch, grid, data, Hy, bc, loc) = y_communication_buffer(arch, grid, data, Hy, bc)
 
-# 1D fold (1xN) → OneDZipperBuffer (full-width)
-function y_tripolar_buffer(arch, grid::AbstractGrid{<:Any, <:Any, Topo},
-                           data, Hy, bc::DistributedZipper, loc::Loc) where {Topo <: OneDFoldTopology, Loc}
-    Tx, _, Tz = size(parent(data))
-    FT = eltype(data)
-    sgn = bc.condition.sign
-    send = on_architecture(arch, zeros(FT, Tx, Hy, Tz))
-    recv = on_architecture(arch, zeros(FT, Tx, Hy, Tz))
-    return OneDZipperBuffer(loc, Topo(), send, recv, sgn)
-end
-
 # 2D fold (MxN) → TwoDZipperBuffer (interior-width, Hy′ = Hy or Hy+1 rows for fold line)
 function y_tripolar_buffer(arch, grid::AbstractGrid{<:Any, <:Any, Topo},
                            data, Hy, bc::DistributedZipper, loc::Loc) where {Topo <: TwoDFoldTopology, Loc}
@@ -290,10 +268,6 @@ const FF = Tuple{<:Face,   <:Face,   <:Any}
 @inline loc_x(::ZipperCornerBuffer{<:Any, <:Any, Loc}) where Loc = instantiate(Loc.parameters[1])
 @inline loc_y(::ZipperCornerBuffer{<:Any, <:Any, Loc}) where Loc = instantiate(Loc.parameters[2])
 @inline fold_topo(::ZipperCornerBuffer{<:Any, <:Any, <:Any, FoT}) where FoT = FoT()
-
-@inline loc_x(::OneDZipperBuffer{Loc}) where Loc = instantiate(Loc.parameters[1])
-@inline loc_y(::OneDZipperBuffer{Loc}) where Loc = instantiate(Loc.parameters[2])
-@inline fold_topo(::OneDZipperBuffer{<:Any, FoT}) where FoT = FoT()
 
 # Send y-ranges (source rows, reversed for fold)
 @inline send_fold_y(::UPivotTopology, ::Center, Hy, Ny) = Ny + Hy
@@ -368,27 +342,6 @@ function _recv_from_north_buffer!(c, buff::TwoDZipperBuffer{false}, Hx, Hy, Nx, 
     xr = recv_x_range(loc_x(buff), Hx, Nx)
     view(c, xr, recv_halo_y(fold_topo(buff), loc_y(buff), Hy, Ny), :) .= buff.recv
 end
-
-#####
-##### OneDZipperBuffer: north send (Center-x full reverse, Face-x partial reverse)
-#####
-
-function _fill_north_send_buffer!(c, b::OneDZipperBuffer{<:Union{CC,CF}}, Hx, Hy, Nx, Ny)
-    b.send .= b.sign .* view(c, size(c,1):-1:1, send_halo_y(fold_topo(b), loc_y(b), Hy, Ny), :)
-end
-
-function _fill_north_send_buffer!(c, b::OneDZipperBuffer{<:Union{FC,FF}}, Hx, Hy, Nx, Ny)
-    Tx = size(c, 1)
-    hy = send_halo_y(fold_topo(b), loc_y(b), Hy, Ny)
-    view(b.send, 2:Tx, :, :) .= b.sign .* view(c, Tx:-1:2, hy, :)
-    view(b.send, 1:1,  :, :) .= b.sign .* view(c,     1:1, hy, :)
-end
-
-#####
-##### OneDZipperBuffer: north recv
-#####
-
-_recv_from_north_buffer!(c, buff::OneDZipperBuffer, Hx, Hy, Nx, Ny) = view(c, :, recv_halo_y(fold_topo(buff), loc_y(buff), Hy, Ny), :) .= buff.recv
 
 #####
 ##### Corner send: NW and NE (FL=true includes fold line, FL=false halo only)
