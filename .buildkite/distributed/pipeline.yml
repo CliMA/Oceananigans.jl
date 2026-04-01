@@ -41,6 +41,7 @@ steps:
       MPI_TEST: "false"
     command:
       - echo "--- Initialize distributed tests"
+      - sed -i '/^\[deps\]/a CUDA_Runtime_jll = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"' test/Project.toml
       - printf '\n[preferences.CUDA_Runtime_jll]\nversion = "local"\n' >> test/Project.toml
       - cat test/Project.toml
       - "julia -O0 --project -e 'using Pkg; Pkg.test()'"
