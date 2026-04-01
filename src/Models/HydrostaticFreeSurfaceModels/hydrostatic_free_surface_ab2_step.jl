@@ -99,15 +99,17 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
 
         # Finally Substep! Advance grid, tracers, (predictor) momentum
         ab2_step_velocities!(model.velocities, model, Δt, χ)
-        mask_immersed_horizontal_velocities!(model.velocities)
     end
 
     # Advancing free surface in preparation for the correction step
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
-    @apply_regionally correct_barotropic_mode!(model, Δt)
+    
+    @apply_regionally begin
+        correct_barotropic_mode!(model, Δt)
+        mask_immersed_horizontal_velocities!(model.velocities)
+    end
 
     u, v, _ = model.velocities
-    mask_immersed_horizontal_velocities!(model.velocities)
     fill_halo_regions!((u, v), model.clock, fields(model))
 
     @apply_regionally begin
