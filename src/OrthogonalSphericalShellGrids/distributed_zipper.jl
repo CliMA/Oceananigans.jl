@@ -1,14 +1,12 @@
-using Oceananigans.BoundaryConditions: get_boundary_kernels, DistributedCommunication
-using Oceananigans.DistributedComputations: cooperative_waitall!, recv_from_buffers!, distributed_fill_halo_event!
-using Oceananigans.DistributedComputations: CommunicationBuffers, fill_corners!, loc_id, AsynchronousDistributed
+using Oceananigans.BoundaryConditions: DistributedCommunication
+using Oceananigans.DistributedComputations: CommunicationBuffers
 using Oceananigans.Grids: AbstractGrid, topology,
     RightCenterFolded, RightFaceFolded,
     LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
     LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected
 using Oceananigans.DistributedComputations: Distributed, on_architecture, ranks, x_communication_buffer
 
-import Oceananigans.BoundaryConditions: fill_halo_regions!
-import Oceananigans.DistributedComputations: synchronize_communication!,
+import Oceananigans.DistributedComputations:
     y_communication_buffer, corner_communication_buffer,
     _fill_north_send_buffer!, _recv_from_north_buffer!,
     _fill_northwest_send_buffer!, _fill_northeast_send_buffer!,
@@ -455,47 +453,3 @@ _recv_from_northeast_buffer!(c, buff::ZipperCornerBuffer{true, false}, Hx, Hy, N
 
 _recv_from_northeast_buffer!(c, buff::ZipperCornerBuffer{false}, Hx, Hy, Nx, Ny) =
     view(c, ne_recv_x(loc_x(buff), Hx, Nx), recv_halo_y(fold_topo(buff), loc_y(buff), Hy, Ny), :) .= buff.recv
-
-
-#####
-##### fill_halo_regions! for distributed tripolar grids
-#####
-
-fill_halo_regions!(c::OffsetArray, ::Nothing, indices, loc, ::MPITripolarGridOfSomeKind, args...; kwargs...) = nothing
-
-function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::MPITripolarGridOfSomeKind, buffers::CommunicationBuffers, args...; kwargs...)
-
-    arch = architecture(grid)
-    kernels!, ordered_bcs = get_boundary_kernels(bcs, c, grid, loc, indices)
-
-    number_of_tasks = length(kernels!)
-    outstanding_requests = length(arch.mpi_requests)
-
-    for task = 1:number_of_tasks
-        @inbounds distributed_fill_halo_event!(c, kernels![task], ordered_bcs[task], loc, grid, buffers, args...; kwargs...)
-    end
-
-    fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; kwargs...)
-
-    if length(arch.mpi_requests) > outstanding_requests
-        arch.mpi_tag[] += 1
-    end
-
-    return nothing
-end
-
-function synchronize_communication!(field::Field{<:Any, <:Any, <:Any, <:Any, <:MPITripolarGridOfSomeKind})
-    arch = architecture(field.grid)
-
-    if arch isa AsynchronousDistributed
-        if !isempty(arch.mpi_requests)
-            cooperative_waitall!(arch.mpi_requests)
-            arch.mpi_tag[] = 0
-            empty!(arch.mpi_requests)
-        end
-
-        recv_from_buffers!(field.data, field.communication_buffers, field.grid)
-    end
-
-    return nothing
-end
