@@ -196,7 +196,7 @@ for (from, to, buff) in zip([:y, :z, :y, :x], [:z, :y, :x, :y], [:yz, :yz, :xy, 
 
           * For 2D fields in XY (flat z-direction) we can traspose only if the partitioning is in X
         """
-        $transpose!(pf::TransposableField) = $transpose!(architecture(pf.$fromfield), pf)
+        $transpose!(pf::TransposableField) = $transpose!(architecture(pf.zfield), pf)
 
         function $transpose!(arch, pf::TransposableField)
             $pack_buffer!(pf.$buffer, pf.$fromfield)

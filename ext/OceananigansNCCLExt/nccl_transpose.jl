@@ -52,10 +52,10 @@ No `sync_device!` needed — NCCL ops are GPU-stream-native.
 function nccl_alltoall!(buffer, counts, nccl_comm; stream_kw...)
     nranks = NCCL.size(nccl_comm)
     count_per_rank = counts[1]
-
     send = buffer.send
     recv = buffer.recv
 
+    # Grouped Send/Recv achieves same performance as native ncclAlltoAll
     NCCL.groupStart()
     for r in 0:(nranks - 1)
         offset = r * count_per_rank
@@ -65,7 +65,6 @@ function nccl_alltoall!(buffer, counts, nccl_comm; stream_kw...)
         NCCL.Recv!(recv_view, nccl_comm; source=r, stream_kw...)
     end
     NCCL.groupEnd()
-
     return nothing
 end
 

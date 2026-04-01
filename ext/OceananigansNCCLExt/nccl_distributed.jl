@@ -52,9 +52,6 @@ function NCCLDistributed(child_arch = GPU(); partition = nothing, kwargs...)
     sync_event = CUDA.CuEvent()
     nccl_communicator = NCCLCommunicator(nccl_comm, mpi_arch.communicator, comm_stream, sync_event)
 
-    # Store NCCL comm for use by alltoall_transpose! (distributed FFT solver)
-    _nccl_comm_ref[] = nccl_comm
-
     S = mpi_arch isa DC.SynchronizedDistributed
     return Distributed{S}(mpi_arch.child_architecture,
                           mpi_arch.partition,
@@ -327,71 +324,23 @@ enqueue_nccl_send_recv!(::DistributedFillHalo{<:Bottom}, args...; kw...) = nothi
 enqueue_nccl_send_recv!(::DistributedFillHalo{<:Top}, args...; kw...) = nothing
 
 #####
-##### NCCL Alltoall for distributed FFT solver transposes
+##### CPU-staged MPI transpose fallback
 #####
-# The distributed FFT solver uses MPI.Alltoall! on sub-communicators.
-# We implement Alltoall via grouped NCCL Send/Recv on the global NCCL comm,
-# mapping sub-communicator ranks to global ranks.
+# For non-NCCL distributed grids with CuArray buffers.
+# NCCL distributed grids use nccl_transpose.jl which dispatches on NCCLDistributedArch.
 
 import Oceananigans.DistributedComputations: alltoall_transpose!
 
-# Cache for sub-comm → global rank mapping (avoids repeated MPI_Comm_group calls)
-const _rank_map_cache = Dict{UInt64, Vector{Int}}()
-
-function _get_global_ranks(subcomm::MPI.Comm)
-    key = UInt64(subcomm.val)
-    get!(_rank_map_cache, key) do
-        sub_size = MPI.Comm_size(subcomm)
-        # Gather world ranks from all members of the sub-communicator
-        my_world_rank = MPI.Comm_rank(MPI.COMM_WORLD)
-        all_world_ranks = MPI.Allgather(Int32(my_world_rank), subcomm)
-        return Int.(all_world_ranks)
-    end
-end
-
 function alltoall_transpose!(buffer::NamedTuple{(:send, :recv), <:Tuple{<:CuArray, <:CuArray}}, counts, comm::MPI.Comm)
-    # Get the global NCCL communicator from thread-local storage or module global
-    nccl_comm = _get_nccl_comm()
-
-    if isnothing(nccl_comm)
-        # Fallback: CPU staging if no NCCL comm available
-        send_cpu = Array(buffer.send)
-        recv_cpu = similar(send_cpu, length(buffer.recv))
-        if all(c -> c == counts[1], counts)
-            MPI.Alltoall!(MPI.UBuffer(send_cpu, counts[1]),
-                          MPI.UBuffer(recv_cpu, counts[1]), comm)
-        else
-            MPI.Alltoallv!(MPI.VBuffer(send_cpu, counts),
-                           MPI.VBuffer(recv_cpu, counts), comm)
-        end
-        copyto!(buffer.recv, recv_cpu)
-        return nothing
+    send_cpu = Array(buffer.send)
+    recv_cpu = similar(send_cpu, length(buffer.recv))
+    if all(c -> c == counts[1], counts)
+        MPI.Alltoall!(MPI.UBuffer(send_cpu, counts[1]),
+                      MPI.UBuffer(recv_cpu, counts[1]), comm)
+    else
+        MPI.Alltoallv!(MPI.VBuffer(send_cpu, counts),
+                       MPI.VBuffer(recv_cpu, counts), comm)
     end
-
-    global_ranks = _get_global_ranks(comm)
-    n = length(global_ranks)
-
-    NCCL.groupStart()
-    send_offset = 0
-    recv_offset = 0
-    for i in 1:n
-        count = counts[i]
-        dest_global = global_ranks[i]
-        send_view = view(buffer.send, (send_offset + 1):(send_offset + count))
-        recv_view = view(buffer.recv, (recv_offset + 1):(recv_offset + count))
-        NCCL.Send(send_view, nccl_comm; dest=dest_global)
-        NCCL.Recv!(recv_view, nccl_comm; source=dest_global)
-        send_offset += count
-        recv_offset += count
-    end
-    NCCL.groupEnd()
-
+    copyto!(buffer.recv, recv_cpu)
     return nothing
-end
-
-# Thread-local NCCL communicator reference — set during NCCLDistributed construction
-const _nccl_comm_ref = Ref{Any}(nothing)
-
-function _get_nccl_comm()
-    return _nccl_comm_ref[]
 end
