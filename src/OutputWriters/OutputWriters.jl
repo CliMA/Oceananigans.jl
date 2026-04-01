@@ -13,7 +13,12 @@ using Oceananigans: boundary_conditions
 using Oceananigans: AbstractOutputWriter
 using Oceananigans.Grids: interior_indices
 using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, instantiate
-using Oceananigans.Utils: pretty_filesize
+using Oceananigans.Utils: pretty_filesize, prettytime
+
+using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
+using Oceananigans.Models: ShallowWaterModel
+
+using SeawaterPolynomials: BoussinesqEquationOfState
 
 using OffsetArrays
 
