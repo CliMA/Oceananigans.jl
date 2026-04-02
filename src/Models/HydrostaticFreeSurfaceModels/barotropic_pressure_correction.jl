@@ -34,7 +34,7 @@ adding the barotropic pressure gradient: `u -= g * Δt * ∂η/∂x`, `v -= g * 
 """
 function correct_barotropic_mode!(model, ::ImplicitFreeSurface, Δt)
 
-    launch!(model.architecture, model.grid, :xyz,
+    launch!(model.architecture, model.grid, volume_kernel_parameters(model.grid),
             _barotropic_pressure_correction!,
             model.velocities,
             model.grid,
@@ -57,6 +57,27 @@ function correct_barotropic_mode!(model, ::SplitExplicitFreeSurface, Δt)
     grid = model.grid
     barotropic_split_explicit_corrector!(u, v, model.free_surface, grid)
 
+    return nothing
+end
+
+"""
+    correct_velocity_barotropic_mode!(velocities, free_surface, grid)
+
+Correct the barotropic component of 3D velocities to match the barotropic transport
+from split-explicit substepping.
+
+After `fill_halo_regions!`, open boundary schemes (e.g. Radiation) may modify 3D
+velocities at boundary cells, making their depth-integral inconsistent with the
+barotropic velocity computed by the split-explicit solver (Flather). This correction
+ensures `∫u dz = U_barotropic`, preserving the baroclinic structure from Radiation
+while enforcing the barotropic transport from Flather. This is necessary for
+`w = 0` at the surface in z-star coordinates.
+"""
+correct_velocity_barotropic_mode!(velocities, free_surface, grid) = nothing
+
+function correct_velocity_barotropic_mode!(velocities, free_surface::SplitExplicitFreeSurface, grid)
+    u, v, _ = velocities
+    barotropic_split_explicit_corrector!(u, v, free_surface, grid)
     return nothing
 end
 

@@ -1,4 +1,5 @@
 using Oceananigans.Grids: AbstractGrid, XYRegularRG, static_column_depthᶜᶜᵃ
+using Oceananigans.Models: surface_kernel_parameters
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Solvers: solve!
@@ -95,7 +96,7 @@ on_architecture(to, free_surface::ImplicitFreeSurface) =
                         on_architecture(to, free_surface.solver_settings))
 
 # Internal function for HydrostaticFreeSurfaceModel
-function materialize_free_surface(free_surface::ImplicitFreeSurface{Nothing}, velocities, grid)
+function materialize_free_surface(free_surface::ImplicitFreeSurface{Nothing}, velocities, grid, bcs)
     η = free_surface_displacement_field(velocities, free_surface, grid)
     gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
 
@@ -168,22 +169,13 @@ function compute_transport_velocities!(model, free_surface::ImplicitFreeSurface)
     u, v, w = model.velocities
     ũ, ṽ, w̃ = model.transport_velocities
 
-    # Make sure updated velocities are masked
-    mask_immersed_field!(u)
-    mask_immersed_field!(v)
-
-    launch!(architecture(grid), grid, :xy, _compute_transport_velocities!, ũ, ṽ, grid, u, v)
-
-    # Fill transport velocities
-    fill_halo_regions!((ũ, ṽ), model.clock, fields(model); async=true)
-
-    # Update grid velocity and vertical transport velocity
-    @apply_regionally update_vertical_velocities!(model.transport_velocities, model.grid, model)
+    launch!(architecture(grid), grid, surface_kernel_parameters(grid), _compute_implicit_transport_velocities!, ũ, ṽ, grid, u, v)
+    update_vertical_velocities!(model.transport_velocities, model.grid, model)
 
     return nothing
 end
 
-@kernel function _compute_transport_velocities!(ũ, ṽ, grid, u, v)
+@kernel function _compute_implicit_transport_velocities!(ũ, ṽ, grid, u, v)
     i, j = @index(Global, NTuple)
     Nz   = size(grid, 3)
     Hᶠᶜ  = column_depthᶠᶜᵃ(i, j, grid)

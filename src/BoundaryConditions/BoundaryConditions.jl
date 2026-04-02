@@ -6,6 +6,7 @@ export
     PeriodicBoundaryCondition, OpenBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, DistributedCommunicationBoundaryCondition,
     PerturbationAdvection,
+    Flather, Radiation, CosineSquaredBoundarySponge,
     validate_boundary_condition_topology, validate_boundary_condition_architecture,
     FieldBoundaryConditions,
     compute_x_bcs!, compute_y_bcs!, compute_z_bcs!,
@@ -57,4 +58,6 @@ include("update_boundary_conditions.jl")
 include("polar_boundary_condition.jl")
 
 include("perturbation_advection.jl")
+include("open_boundary_schemes.jl")
+
 end # module
