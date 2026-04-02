@@ -2,8 +2,12 @@
 ##### Variable attributes
 #####
 
+using .Grids: RectilinearGrid, LatitudeLongitudeGrid
+using .ImmersedBoundaries: ImmersedBoundaryGrid
 using .BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
 using .Models: ShallowWaterModel
+using .Utils: prettytime, TimeInterval, IterationInterval, WallTimeInterval
+using .OutputWriters: AveragedTimeInterval
 
 using SeawaterPolynomials: BoussinesqEquationOfState
 
