@@ -3,6 +3,7 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.BoundaryConditions: PBC, ZFBC, VBC, OBC, Zipper
 using Oceananigans.BoundaryConditions: Mixed, MixedBoundaryCondition
 using Oceananigans.BoundaryConditions: Zipper, ContinuousBoundaryFunction, DiscreteBoundaryFunction, regularize_field_boundary_conditions
+using Oceananigans.BoundaryConditions: compute_x_bcs!, compute_y_bcs!, compute_z_bcs!
 using Oceananigans.Fields: Face, Center
 
 simple_bc(ξ, η, t) = exp(ξ) * cos(η) * sin(t)
@@ -343,6 +344,49 @@ end
 
         @test all(f.data[1:10, 0,  1:10] .== f.data[1:10, 1, 1:10])
         @test all(f.data[1:10, 11, 1:10] .== f.data[1:10, 10, 1:10])
+
+        # ContinuousBoundaryFunction on Flat topologies (dispatch disambiguation)
+        @info "  Testing ContinuousBoundaryFunction on Flat topologies..."
+        for topo in ((Flat, Flat, Bounded), (Flat, Bounded, Flat), (Bounded, Flat, Flat))
+            bounded_dim = findfirst(t -> t === Bounded, topo)
+
+            grid_kw = Dict{Symbol,Any}(:topology => topo)
+            if topo[1] !== Flat; grid_kw[:x] = (0, 1); end
+            if topo[2] !== Flat; grid_kw[:y] = (0, 1); end
+            if topo[3] !== Flat; grid_kw[:z] = (0, 1); end
+            grid_kw[:size] = Tuple(4 for i in 1:3 if topo[i] !== Flat)
+
+            grid = RectilinearGrid(; grid_kw...)
+            loc = (Center(), Center(), Center())
+
+            bc_func(t) = 1.0
+            left_bc  = FluxBoundaryCondition(bc_func)
+            right_bc = FluxBoundaryCondition(bc_func)
+
+            bc_kw = Dict{Symbol,Any}()
+            if bounded_dim == 1
+                bc_kw[:west] = left_bc; bc_kw[:east] = right_bc
+            elseif bounded_dim == 2
+                bc_kw[:south] = left_bc; bc_kw[:north] = right_bc
+            else
+                bc_kw[:bottom] = left_bc; bc_kw[:top] = right_bc
+            end
+
+            bcs = FieldBoundaryConditions(grid, loc; bc_kw...)
+            c = CenterField(grid; boundary_conditions=bcs)
+            Gc = CenterField(grid)
+            clock = (; time = 0.0)
+
+            if bounded_dim == 1
+                compute_x_bcs!(Gc, c, CPU(), clock, tuple())
+            elseif bounded_dim == 2
+                compute_y_bcs!(Gc, c, CPU(), clock, tuple())
+            else
+                compute_z_bcs!(Gc, c, CPU(), clock, tuple())
+            end
+
+            @test !all(Array(interior(Gc)) .== 0)
+        end
 
         # Minimal test for PolarValueBoundaryCondition
         polar_grid = LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(-90, 90), longitude=(0, 360), z = (0, 1))
