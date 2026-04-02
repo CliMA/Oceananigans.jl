@@ -41,6 +41,10 @@ steps:
       MPI_TEST: "false"
     command:
       - echo "--- Initialize distributed tests"
+      - printf '\n[preferences.CUDA_Runtime_jll]\nlocal = "true"\n' >> test/Project.toml
+      - "julia --project=test -O0 -e 'import Pkg; Pkg.instantiate(); using CUDA; CUDA.set_runtime_version!(CUDA.runtime_version(); local_toolkit=true)'"
+      - cat test/LocalPreferences.toml
+      - cat test/Project.toml
       - "julia -O0 --project -e 'using Pkg; Pkg.test()'"
     agents:
       slurm_mem: 50G
