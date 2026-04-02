@@ -264,9 +264,6 @@ include("Biogeochemistry.jl")
 # TODO: move above
 include("Models/Models.jl")
 
-# Output attributes depend on BuoyancyFormulations and Models, so must be defined after them
-include("OutputWriters/output_attributes.jl")
-
 # Abstractions for distributed and multi-region models
 include("MultiRegion/MultiRegion.jl")
 
