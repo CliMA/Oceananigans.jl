@@ -67,7 +67,11 @@ end
             δy(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) * Az⁻¹ᶜᶜᶠ(i, j, k_top, grid)
 
     @inbounds begin
-        η[i, j, k_top] += Δτ * (F(i, j, k_top, grid, clock, (; η, U, V)) - δh_U)
+        if F isa Returns && iszero(F.value)
+            η[i, j, k_top] -= Δτ * δh_U
+        else
+            η[i, j, k_top] += Δτ * (F(i, j, k_top, grid, clock, (; η, U, V)) - δh_U)
+        end
 
         # Time-averaging
         η̅[i, j, k_top] += averaging_weight * η[i, j, k_top]
