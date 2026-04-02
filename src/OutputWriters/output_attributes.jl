@@ -2,46 +2,45 @@
 ##### Variable attributes
 #####
 
-using .Grids: RectilinearGrid, LatitudeLongitudeGrid
-using .ImmersedBoundaries: ImmersedBoundaryGrid
-using .BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
-using .Models: ShallowWaterModel
-using .Utils: prettytime, TimeInterval, IterationInterval, WallTimeInterval
-using .OutputWriters: AveragedTimeInterval
+using Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
+using Oceananigans.Models: ShallowWaterModel
+using Oceananigans.Utils: prettytime, TimeInterval, IterationInterval, WallTimeInterval
 
 using SeawaterPolynomials: BoussinesqEquationOfState
 
 const BoussinesqSeawaterBuoyancy = SeawaterBuoyancy{FT, <:BoussinesqEquationOfState, T, S} where {FT, T, S}
 const BuoyancyBoussinesqEOSModel = BuoyancyForce{<:BoussinesqSeawaterBuoyancy, g} where {g}
 
-OutputWriters.default_velocity_attributes(::RectilinearGrid) = Dict(
+default_velocity_attributes(::RectilinearGrid) = Dict(
     "u" => Dict("long_name" => "Velocity in the +x-direction.", "units" => "m/s"),
     "v" => Dict("long_name" => "Velocity in the +y-direction.", "units" => "m/s"),
     "w" => Dict("long_name" => "Velocity in the +z-direction.", "units" => "m/s"))
 
-OutputWriters.default_velocity_attributes(::LatitudeLongitudeGrid) = Dict(
+default_velocity_attributes(::LatitudeLongitudeGrid) = Dict(
     "u"            => Dict("long_name" => "Velocity in the zonal direction (+ = east).", "units" => "m/s"),
     "v"            => Dict("long_name" => "Velocity in the meridional direction (+ = north).", "units" => "m/s"),
     "w"            => Dict("long_name" => "Velocity in the vertical direction (+ = up).", "units" => "m/s"),
     "displacement" => Dict("long_name" => "Sea surface height displacement", "units" => "m"))
 
-OutputWriters.default_velocity_attributes(ibg::ImmersedBoundaryGrid) = OutputWriters.default_velocity_attributes(ibg.underlying_grid)
+default_velocity_attributes(ibg::ImmersedBoundaryGrid) = OutputWriters.default_velocity_attributes(ibg.underlying_grid)
 
-OutputWriters.default_tracer_attributes(::Nothing) = Dict()
+default_tracer_attributes(::Nothing) = Dict()
 
-OutputWriters.default_tracer_attributes(::BuoyancyForce{<:BuoyancyTracer}) = Dict("b" => Dict("long_name" => "Buoyancy", "units" => "m/s²"))
+default_tracer_attributes(::BuoyancyForce{<:BuoyancyTracer}) = Dict("b" => Dict("long_name" => "Buoyancy", "units" => "m/s²"))
 
-OutputWriters.default_tracer_attributes(::BuoyancyForce{<:SeawaterBuoyancy{FT, <:LinearEquationOfState}}) where FT = Dict(
+default_tracer_attributes(::BuoyancyForce{<:SeawaterBuoyancy{FT, <:LinearEquationOfState}}) where FT = Dict(
     "T" => Dict("long_name" => "Temperature", "units" => "°C"),
     "S" => Dict("long_name" => "Salinity",    "units" => "practical salinity unit (psu)"))
 
-OutputWriters.default_tracer_attributes(::BuoyancyBoussinesqEOSModel) = Dict("T" => Dict("long_name" => "Conservative temperature", "units" => "°C"),
+default_tracer_attributes(::BuoyancyBoussinesqEOSModel) = Dict("T" => Dict("long_name" => "Conservative temperature", "units" => "°C"),
                                                                              "S" => Dict("long_name" => "Absolute salinity",        "units" => "g/kg"))
 
-function OutputWriters.default_output_attributes(model)
-    velocity_attrs = OutputWriters.default_velocity_attributes(model.grid)
+function default_output_attributes(model)
+    velocity_attrs = default_velocity_attributes(model.grid)
     buoyancy = model isa ShallowWaterModel ? nothing : model.buoyancy
-    tracer_attrs = OutputWriters.default_tracer_attributes(buoyancy)
+    tracer_attrs = default_tracer_attributes(buoyancy)
     return merge(velocity_attrs, tracer_attrs)
 end
 
@@ -49,9 +48,9 @@ end
 ##### Saving schedule metadata as global attributes
 #####
 
-OutputWriters.add_schedule_metadata!(attributes, schedule) = nothing
+add_schedule_metadata!(attributes, schedule) = nothing
 
-function OutputWriters.add_schedule_metadata!(global_attributes, schedule::IterationInterval)
+function add_schedule_metadata!(global_attributes, schedule::IterationInterval)
     global_attributes["schedule"] = "IterationInterval"
     global_attributes["interval"] = schedule.interval
     global_attributes["output iteration interval"] = "Output was saved every $(schedule.interval) iteration(s)."
@@ -59,7 +58,7 @@ function OutputWriters.add_schedule_metadata!(global_attributes, schedule::Itera
     return nothing
 end
 
-function OutputWriters.add_schedule_metadata!(global_attributes, schedule::TimeInterval)
+function add_schedule_metadata!(global_attributes, schedule::TimeInterval)
     global_attributes["schedule"] = "TimeInterval"
     global_attributes["interval"] = schedule.interval
     global_attributes["output time interval"] = "Output was saved every $(prettytime(schedule.interval))."
@@ -67,7 +66,7 @@ function OutputWriters.add_schedule_metadata!(global_attributes, schedule::TimeI
     return nothing
 end
 
-function OutputWriters.add_schedule_metadata!(global_attributes, schedule::WallTimeInterval)
+function add_schedule_metadata!(global_attributes, schedule::WallTimeInterval)
     global_attributes["schedule"] = "WallTimeInterval"
     global_attributes["interval"] = schedule.interval
     global_attributes["output time interval"] =
@@ -76,7 +75,7 @@ function OutputWriters.add_schedule_metadata!(global_attributes, schedule::WallT
     return nothing
 end
 
-function OutputWriters.add_schedule_metadata!(global_attributes, schedule::AveragedTimeInterval)
+function add_schedule_metadata!(global_attributes, schedule::AveragedTimeInterval)
     global_attributes["schedule"] = "AveragedTimeInterval"
     global_attributes["interval"] = schedule.interval
     global_attributes["output time interval"] = "Output was time-averaged and saved every $(prettytime(schedule.interval))."

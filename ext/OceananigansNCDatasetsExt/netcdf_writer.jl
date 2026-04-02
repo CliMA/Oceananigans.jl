@@ -8,6 +8,8 @@
 # grid metrics.
 #
 
+using Oceananigans.OutputWriters: add_schedule_metadata!, default_output_attributes
+
 #####
 ##### Extend defVar to be able to write fields to NetCDF directly
 #####
