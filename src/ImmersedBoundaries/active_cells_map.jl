@@ -1,7 +1,7 @@
 using Oceananigans.Architectures: CPU
 using Oceananigans.Fields: Field
 using Oceananigans.Grids: Grids, AbstractGrid
-using Oceananigans.Utils: worksize
+using Oceananigans.Utils: Utils, worksize
 using KernelAbstractions: @kernel, @index
 
 # REMEMBER: since the active map is stripped out of the grid when `Adapt`ing to the GPU,
