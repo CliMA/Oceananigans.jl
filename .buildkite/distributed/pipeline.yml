@@ -42,8 +42,9 @@ steps:
     timeout_in_minutes: 5440
     command:
       - echo "--- Initialize distributed tests"
-      - "julia --project=test -O0 -e 'smi = read(`nvidia-smi`, String); ver = VersionNumber(match(r\"CUDA Version: (\\d+\\.\\d+)\", smi).captures[1]); import Pkg; Pkg.instantiate(); using CUDA; CUDA.set_runtime_version!(ver; local_toolkit=true)'"
-      - cat test/LocalPreferences.toml || true
+      - mv test/ProjectDistributed.toml test/Project.toml
+      - "CUDA_VER=$(nvidia-smi | grep 'CUDA Version' | awk '{print $9}') && printf '[CUDA_Runtime_jll]\\nversion = \"%s\"\\nlocal = \"true\"\\n' \"$CUDA_VER\" > test/LocalPreferences.toml"
+      - cat test/LocalPreferences.toml
       - cat test/Project.toml
       - "julia -O0 --project -e 'using Pkg; Pkg.test()'"
     agents:
