@@ -1,7 +1,7 @@
 agents:
   queue: central
   slurm_mem: 8G
-  modules: climacommon/2025_07_30
+  modules: climacommon/2025_05_15
 
 env:
   JULIA_DEPOT_PATH: "${BUILDKITE_BUILD_PATH}/${BUILDKITE_PIPELINE_SLUG}/depot/default:"
@@ -41,8 +41,6 @@ steps:
       MPI_TEST: "false"
     command:
       - echo "--- Initialize distributed tests"
-      - printf '\n[preferences.CUDA_Runtime_jll]\nversion = "local"\n' >> test/Project.toml
-      - cat test/Project.toml
       - "julia -O0 --project -e 'using Pkg; Pkg.test()'"
     agents:
       slurm_mem: 50G

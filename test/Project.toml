@@ -77,8 +77,5 @@ XESMF = "0.1.5"
 julia = "1.10"
 oneAPI = "2.0.1"
 
-[extras]
-CUDA_Runtime_jll = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
-
 [preferences.Reactant]
 xla_runtime = "IFRT"
