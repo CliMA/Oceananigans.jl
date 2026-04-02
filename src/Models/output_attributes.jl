@@ -30,6 +30,8 @@ default_velocity_attributes(ibg::ImmersedBoundaryGrid) = default_velocity_attrib
 ##### Specialized tracer attributes
 #####
 
+default_tracer_attributes(::Nothing) = Dict{String, Any}()
+
 default_tracer_attributes(::BuoyancyForce{<:BuoyancyTracer}) = Dict("b" => Dict("long_name" => "Buoyancy", "units" => "m/s²"))
 
 default_tracer_attributes(::BuoyancyForce{<:SeawaterBuoyancy{FT, <:LinearEquationOfState}}) where FT = Dict(
