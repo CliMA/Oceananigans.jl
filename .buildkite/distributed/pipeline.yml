@@ -39,9 +39,10 @@ steps:
       TEST_GROUP: "init"
       TEST_ARCHITECTURE: "GPU"
       MPI_TEST: "false"
+    timeout_in_minutes: 5440
     command:
       - echo "--- Initialize distributed tests"
-      - "julia --project=test -O0 -e 'import Pkg; Pkg.instantiate(); using CUDA; CUDA.set_runtime_version!(CUDA.runtime_version(); local_toolkit=true)'"
+      - "julia --project=test -O0 -e 'nvcc_out = read(`nvcc --version`, String); ver = VersionNumber(match(r\"release (\\d+\\.\\d+)\", nvcc_out).captures[1]); import Pkg; Pkg.instantiate(); using CUDA; CUDA.set_runtime_version!(ver; local_toolkit=true)'"
       - cat test/LocalPreferences.toml || true
       - cat test/Project.toml
       - "julia -O0 --project -e 'using Pkg; Pkg.test()'"
