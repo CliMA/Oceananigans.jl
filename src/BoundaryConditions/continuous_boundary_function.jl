@@ -1,5 +1,6 @@
 using Oceananigans.Architectures: Architectures, on_architecture
 using Oceananigans.Operators: index_and_interp_dependencies
+import Oceananigans.Operators: interpolation_code
 using Oceananigans.Utils: Utils, tupleit, user_function_arguments, prettysummary
 using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid, YZFlatGrid, XZFlatGrid, XYFlatGrid
 using Oceananigans.Grids: ξnode, ηnode, rnode
@@ -8,6 +9,25 @@ import Oceananigans: location
 
 struct LeftBoundary end
 struct RightBoundary end
+
+"""
+    BoundaryNormal
+
+Sentinel type used as the location in the boundary-normal direction for
+`ContinuousBoundaryFunction`. Unlike `Nothing` (which also represents `Flat`
+dimensions), `BoundaryNormal` unambiguously marks the boundary-normal direction,
+preventing dispatch ambiguities on grids with `Flat` topologies.
+"""
+struct BoundaryNormal end
+
+# BoundaryNormal acts like Nothing for interpolation purposes
+interpolation_code(::Type{BoundaryNormal}) = :ᵃ
+interpolation_code(::BoundaryNormal) = :ᵃ
+interpolation_code(::BoundaryNormal, to) = :ᵃ
+interpolation_code(from, ::BoundaryNormal) = :ᵃ
+interpolation_code(::BoundaryNormal, ::BoundaryNormal) = :ᵃ
+interpolation_code(::BoundaryNormal, ::Nothing) = :ᵃ
+interpolation_code(::Nothing, ::BoundaryNormal) = :ᵃ
 
 """
     struct ContinuousBoundaryFunction{X, Y, Z, I, F, P, D, N, ℑ} <: Function
@@ -61,7 +81,7 @@ returning `BoundaryCondition(C, regularized_condition)`.
 The regularization of `bc.condition::ContinuousBoundaryFunction` requries
 
 1. Setting the boundary location to `LX, LY, LZ`.
-   The location in the boundary-normal direction is `Nothing`.
+   The location in the boundary-normal direction is `BoundaryNormal`.
 
 2. Setting the boundary-normal index `I` for indexing into `field_dependencies`.
    `I` is either `1` (for left boundaries) or
@@ -76,8 +96,8 @@ The regularization of `bc.condition::ContinuousBoundaryFunction` requries
 function regularize_boundary_condition(boundary_func::ContinuousBoundaryFunction,
                                        grid, loc, dim, Side, field_names)
 
-    # Set boundary-normal location to Nothing:
-    LX, LY, LZ = Tuple(i == dim ? Nothing : destantiate(loc[i]) for i = 1:3)
+    # Set boundary-normal location to BoundaryNormal:
+    LX, LY, LZ = Tuple(i == dim ? BoundaryNormal : destantiate(loc[i]) for i = 1:3)
 
     indices, interps = index_and_interp_dependencies(LX, LY, LZ,
                                                      boundary_func.field_dependencies,
@@ -116,9 +136,9 @@ end
 @inline z_boundary_node(i, j, k, grid::YFlatGrid,  ℓx, ℓy) = tuple(ξnode(i, j, k, grid, ℓx, nothing, Face()))
 @inline z_boundary_node(i, j, k, grid::XYFlatGrid, ℓx, ℓy) = tuple()
 
-const XBoundaryFunction{LY, LZ, S} = ContinuousBoundaryFunction{Nothing, LY, LZ, S} where {LY, LZ, S}
-const YBoundaryFunction{LX, LZ, S} = ContinuousBoundaryFunction{LX, Nothing, LZ, S} where {LX, LZ, S}
-const ZBoundaryFunction{LX, LY, S} = ContinuousBoundaryFunction{LX, LY, Nothing, S} where {LX, LY, S}
+const XBoundaryFunction{LY, LZ, S} = ContinuousBoundaryFunction{BoundaryNormal, LY, LZ, S} where {LY, LZ, S}
+const YBoundaryFunction{LX, LZ, S} = ContinuousBoundaryFunction{LX, BoundaryNormal, LZ, S} where {LX, LZ, S}
+const ZBoundaryFunction{LX, LY, S} = ContinuousBoundaryFunction{LX, LY, BoundaryNormal, S} where {LX, LY, S}
 
 # Return ContinuousBoundaryFunction on east or west boundaries.
 @inline function getbc(cbf::XBoundaryFunction{LY, LZ, S}, j::Integer, k::Integer,
@@ -150,97 +170,6 @@ end
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
     X = z_boundary_node(i, j, k′, grid, LX(), LY())
 
-    return cbf.func(X..., clock.time, args...)
-end
-
-#####
-##### Disambiguation for grids with Flat dimensions
-#####
-# When a dimension is Flat, its location is Nothing, colliding with the
-# boundary-normal Nothing convention. The grid topology resolves the ambiguity.
-
-# --- {Nothing, Nothing, LZ}: XBoundary and YBoundary both match ---
-# On YFlatGrid, y is Flat → must be x-boundary
-@inline function getbc(cbf::ContinuousBoundaryFunction{Nothing, Nothing, LZ, S}, j::Integer, k::Integer,
-                       grid::YFlatGrid, clock, model_fields, args...) where {LZ, S}
-    i, i′ = domain_boundary_indices(S(), grid.Nx)
-    args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
-    X = x_boundary_node(i′, j, k, grid, Nothing(), LZ())
-    return cbf.func(X..., clock.time, args...)
-end
-
-# On XFlatGrid, x is Flat → must be y-boundary
-@inline function getbc(cbf::ContinuousBoundaryFunction{Nothing, Nothing, LZ, S}, i::Integer, k::Integer,
-                       grid::XFlatGrid, clock, model_fields, args...) where {LZ, S}
-    j, j′ = domain_boundary_indices(S(), grid.Ny)
-    args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
-    X = y_boundary_node(i, j′, k, grid, Nothing(), LZ())
-    return cbf.func(X..., clock.time, args...)
-end
-
-# --- {Nothing, LY, Nothing}: XBoundary and ZBoundary both match ---
-# On XFlatGrid, x is Flat → must be z-boundary
-@inline function getbc(cbf::ContinuousBoundaryFunction{Nothing, LY, Nothing, S}, i::Integer, j::Integer,
-                       grid::XFlatGrid, clock, model_fields, args...) where {LY, S}
-    k, k′ = domain_boundary_indices(S(), grid.Nz)
-    args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
-    X = z_boundary_node(i, j, k′, grid, Nothing(), LY())
-    return cbf.func(X..., clock.time, args...)
-end
-
-# On ZFlatGrid, z is Flat → must be x-boundary
-@inline function getbc(cbf::ContinuousBoundaryFunction{Nothing, LY, Nothing, S}, j::Integer, k::Integer,
-                       grid::ZFlatGrid, clock, model_fields, args...) where {LY, S}
-    i, i′ = domain_boundary_indices(S(), grid.Nx)
-    args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
-    X = x_boundary_node(i′, j, k, grid, LY(), Nothing())
-    return cbf.func(X..., clock.time, args...)
-end
-
-# --- {LX, Nothing, Nothing}: YBoundary and ZBoundary both match ---
-# On YFlatGrid, y is Flat → must be z-boundary
-@inline function getbc(cbf::ContinuousBoundaryFunction{LX, Nothing, Nothing, S}, i::Integer, j::Integer,
-                       grid::YFlatGrid, clock, model_fields, args...) where {LX, S}
-    k, k′ = domain_boundary_indices(S(), grid.Nz)
-    args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
-    X = z_boundary_node(i, j, k′, grid, LX(), Nothing())
-    return cbf.func(X..., clock.time, args...)
-end
-
-# On ZFlatGrid, z is Flat → must be y-boundary
-@inline function getbc(cbf::ContinuousBoundaryFunction{LX, Nothing, Nothing, S}, i::Integer, k::Integer,
-                       grid::ZFlatGrid, clock, model_fields, args...) where {LX, S}
-    j, j′ = domain_boundary_indices(S(), grid.Ny)
-    args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
-    X = y_boundary_node(i, j′, k, grid, LX(), Nothing())
-    return cbf.func(X..., clock.time, args...)
-end
-
-# --- {Nothing, Nothing, Nothing}: all three match ---
-# On XYFlatGrid → z-boundary
-@inline function getbc(cbf::ContinuousBoundaryFunction{Nothing, Nothing, Nothing, S}, i::Integer, j::Integer,
-                       grid::XYFlatGrid, clock, model_fields, args...) where S
-    k, k′ = domain_boundary_indices(S(), grid.Nz)
-    args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
-    X = z_boundary_node(i, j, k′, grid, Nothing(), Nothing())
-    return cbf.func(X..., clock.time, args...)
-end
-
-# On XZFlatGrid → y-boundary
-@inline function getbc(cbf::ContinuousBoundaryFunction{Nothing, Nothing, Nothing, S}, i::Integer, k::Integer,
-                       grid::XZFlatGrid, clock, model_fields, args...) where S
-    j, j′ = domain_boundary_indices(S(), grid.Ny)
-    args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
-    X = y_boundary_node(i, j′, k, grid, Nothing(), Nothing())
-    return cbf.func(X..., clock.time, args...)
-end
-
-# On YZFlatGrid → x-boundary
-@inline function getbc(cbf::ContinuousBoundaryFunction{Nothing, Nothing, Nothing, S}, j::Integer, k::Integer,
-                       grid::YZFlatGrid, clock, model_fields, args...) where S
-    i, i′ = domain_boundary_indices(S(), grid.Nx)
-    args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
-    X = x_boundary_node(i′, j, k, grid, Nothing(), Nothing())
     return cbf.func(X..., clock.time, args...)
 end
 
@@ -278,89 +207,6 @@ end
     args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
     X = node(i, j, k′, grid, LX(), LY(), Face())
 
-    return cbf.func(X..., clock.time, args...)
-end
-
-# --- Immersed boundary Flat-dimension disambiguation (3-index) ---
-
-# {Nothing, Nothing, LZ}: YFlatGrid → x-boundary
-@inline function getbc(cbf::ContinuousBoundaryFunction{Nothing, Nothing, LZ, S}, i::Integer, j::Integer, k::Integer,
-                       grid::YFlatGrid, clock, model_fields, args...) where {LZ, S}
-    i′ = cell_boundary_index(S(), i)
-    args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
-    X = node(i′, j, k, grid, Face(), Nothing(), LZ())
-    return cbf.func(X..., clock.time, args...)
-end
-
-# {Nothing, Nothing, LZ}: XFlatGrid → y-boundary
-@inline function getbc(cbf::ContinuousBoundaryFunction{Nothing, Nothing, LZ, S}, i::Integer, j::Integer, k::Integer,
-                       grid::XFlatGrid, clock, model_fields, args...) where {LZ, S}
-    j′ = cell_boundary_index(S(), j)
-    args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
-    X = node(i, j′, k, grid, Nothing(), Face(), LZ())
-    return cbf.func(X..., clock.time, args...)
-end
-
-# {Nothing, LY, Nothing}: XFlatGrid → z-boundary
-@inline function getbc(cbf::ContinuousBoundaryFunction{Nothing, LY, Nothing, S}, i::Integer, j::Integer, k::Integer,
-                       grid::XFlatGrid, clock, model_fields, args...) where {LY, S}
-    k′ = cell_boundary_index(S(), k)
-    args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
-    X = node(i, j, k′, grid, Nothing(), LY(), Face())
-    return cbf.func(X..., clock.time, args...)
-end
-
-# {Nothing, LY, Nothing}: ZFlatGrid → x-boundary
-@inline function getbc(cbf::ContinuousBoundaryFunction{Nothing, LY, Nothing, S}, i::Integer, j::Integer, k::Integer,
-                       grid::ZFlatGrid, clock, model_fields, args...) where {LY, S}
-    i′ = cell_boundary_index(S(), i)
-    args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
-    X = node(i′, j, k, grid, Face(), LY(), Nothing())
-    return cbf.func(X..., clock.time, args...)
-end
-
-# {LX, Nothing, Nothing}: YFlatGrid → z-boundary
-@inline function getbc(cbf::ContinuousBoundaryFunction{LX, Nothing, Nothing, S}, i::Integer, j::Integer, k::Integer,
-                       grid::YFlatGrid, clock, model_fields, args...) where {LX, S}
-    k′ = cell_boundary_index(S(), k)
-    args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
-    X = node(i, j, k′, grid, LX(), Nothing(), Face())
-    return cbf.func(X..., clock.time, args...)
-end
-
-# {LX, Nothing, Nothing}: ZFlatGrid → y-boundary
-@inline function getbc(cbf::ContinuousBoundaryFunction{LX, Nothing, Nothing, S}, i::Integer, j::Integer, k::Integer,
-                       grid::ZFlatGrid, clock, model_fields, args...) where {LX, S}
-    j′ = cell_boundary_index(S(), j)
-    args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
-    X = node(i, j′, k, grid, LX(), Face(), Nothing())
-    return cbf.func(X..., clock.time, args...)
-end
-
-# {Nothing, Nothing, Nothing}: XYFlatGrid → z-boundary
-@inline function getbc(cbf::ContinuousBoundaryFunction{Nothing, Nothing, Nothing, S}, i::Integer, j::Integer, k::Integer,
-                       grid::XYFlatGrid, clock, model_fields, args...) where S
-    k′ = cell_boundary_index(S(), k)
-    args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
-    X = node(i, j, k′, grid, Nothing(), Nothing(), Face())
-    return cbf.func(X..., clock.time, args...)
-end
-
-# {Nothing, Nothing, Nothing}: XZFlatGrid → y-boundary
-@inline function getbc(cbf::ContinuousBoundaryFunction{Nothing, Nothing, Nothing, S}, i::Integer, j::Integer, k::Integer,
-                       grid::XZFlatGrid, clock, model_fields, args...) where S
-    j′ = cell_boundary_index(S(), j)
-    args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
-    X = node(i, j′, k, grid, Nothing(), Face(), Nothing())
-    return cbf.func(X..., clock.time, args...)
-end
-
-# {Nothing, Nothing, Nothing}: YZFlatGrid → x-boundary
-@inline function getbc(cbf::ContinuousBoundaryFunction{Nothing, Nothing, Nothing, S}, i::Integer, j::Integer, k::Integer,
-                       grid::YZFlatGrid, clock, model_fields, args...) where S
-    i′ = cell_boundary_index(S(), i)
-    args = user_function_arguments(i, j, k, grid, model_fields, cbf.parameters, cbf)
-    X = node(i′, j, k, grid, Face(), Nothing(), Nothing())
     return cbf.func(X..., clock.time, args...)
 end
 
