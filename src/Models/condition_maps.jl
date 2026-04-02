@@ -26,10 +26,12 @@ end
 
 # Currently maintaining this union until condition mapping works on all
 # types of grids
-const SupportedGrids = Union{LatitudeLongitudeGrid,
-                             RectilinearGrid,
-                             OrthogonalSphericalShellGrid,
-                             ImmersedBoundaryGrid}
+const SupportedUnderlyingGrids = Union{LatitudeLongitudeGrid,
+                                       RectilinearGrid,
+                                       OrthogonalSphericalShellGrid}
+
+const SupportedGrids = Union{SupportedUnderlyingGrids,
+                             ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:SupportedUnderlyingGrids}}
 
 @inline function generate_condition_maps(grid::SupportedGrids,
                                  advection;
