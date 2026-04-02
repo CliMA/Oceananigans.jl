@@ -389,6 +389,18 @@ end
                           reduced_dimensions = (),
                           active_cells_map = nothing)
 
+    # When active_cells_map is a NamedTuple (distributed grids with split maps),
+    # launch once for each non-nothing sub-map.
+    if active_cells_map isa NamedTuple
+        for map in active_cells_map
+            if !isnothing(map)
+                _launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...;
+                         exclude_periphery, reduced_dimensions, active_cells_map = map)
+            end
+        end
+        return nothing
+    end
+
     location = Oceananigans.location(first_kernel_arg)
 
     loop!, worksize = configure_kernel(arch, grid, workspec, kernel!, active_cells_map, Val(exclude_periphery);

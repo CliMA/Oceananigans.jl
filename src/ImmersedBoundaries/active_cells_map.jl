@@ -18,6 +18,8 @@ const SplitActiveCellsMapIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, 
 
 @inline Grids.get_active_column_map(grid::ActiveZColumnsIBG) = grid.active_z_columns
 
+@inline Grids.get_active_cells_map(grid::ActiveInteriorIBG,     ::Val{:xyz})     = grid.interior_active_cells
+@inline Grids.get_active_cells_map(grid::ActiveZColumnsIBG,     ::Val{:xy})      = grid.active_z_columns
 @inline Grids.get_active_cells_map(grid::WholeActiveCellsMapIBG, ::Val{:interior}) = grid.interior_active_cells
 @inline Grids.get_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:interior}) = grid.interior_active_cells.halo_independent_cells
 @inline Grids.get_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:west})     = grid.interior_active_cells.west_halo_dependent_cells
