@@ -363,16 +363,16 @@ end
             left_bc  = FluxBoundaryCondition(bc_func)
             right_bc = FluxBoundaryCondition(bc_func)
 
-            bc_kw = Dict{Symbol,Any}()
             if bounded_dim == 1
-                bc_kw[:west] = left_bc; bc_kw[:east] = right_bc
+                bcs = FieldBoundaryConditions(west=left_bc, east=right_bc)
             elseif bounded_dim == 2
-                bc_kw[:south] = left_bc; bc_kw[:north] = right_bc
+                bcs = FieldBoundaryConditions(south=left_bc, north=right_bc)
             else
-                bc_kw[:bottom] = left_bc; bc_kw[:top] = right_bc
+                bcs = FieldBoundaryConditions(bottom=left_bc, top=right_bc)
             end
 
-            bcs = FieldBoundaryConditions(grid, loc; bc_kw...)
+            # Regularize like model constructors do
+            bcs = regularize_field_boundary_conditions(bcs, grid, loc)
             c = CenterField(grid; boundary_conditions=bcs)
             Gc = CenterField(grid)
             clock = (; time = 0.0)
