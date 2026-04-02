@@ -1,7 +1,7 @@
 using CUDA
-using Metal
-using AMDGPU
-using oneAPI
+try using Metal catch end
+try using AMDGPU catch end
+try using oneAPI catch end
 
 Pkg.instantiate(; verbose=true)
 Pkg.precompile(; strict=true)
