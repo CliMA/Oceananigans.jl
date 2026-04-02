@@ -392,11 +392,11 @@ end
 end
 
 # Fallback, use always the provided map
-possibly_load_active_cells_map(active_cells_map, grid, worskpec) = active_cells_map
+possibly_load_active_cells_map(active_cells_map, grid, workspec) = active_cells_map
 
 # If we use standard dimensions, load the corresponding map
-@inline function possibly_load_active_cells_map(::Nothing, grid, worskpec::Symbol)
-    if worskpec == :xyz
+@inline function possibly_load_active_cells_map(::Nothing, grid, workspec::Symbol)
+    if workspec == :xyz
         return get_active_cells_map(grid, Val(:xyz))
     elseif workspec == :xy
         return get_active_cells_map(grid, Val(:xy))
