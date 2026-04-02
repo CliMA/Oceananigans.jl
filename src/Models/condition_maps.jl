@@ -4,7 +4,7 @@ using Oceananigans.Grids: get_active_cells_map, active_cell
 using Oceananigans.Architectures: CPU
 import Oceananigans.Architectures as AC
 using Oceananigans.Fields: Field, interior
-using Oceananigans.Utils: InteriorBoundarySet, convert_interior_indices
+using Oceananigans.Utils: InteriorBoundarySet, convert_interior_indices, @apply_regionally
 using KernelAbstractions: @kernel, @index
 
 
@@ -18,6 +18,10 @@ using KernelAbstractions: @kernel, @index
         condition_maps[key] = active_cells_map
     end
     return (; condition_maps...)
+end
+
+function generate_condition_maps(grid, advection::MultiRegionObject; kwargs...)
+  return @apply_regionally generate_condition_maps(grid, advection; kwargs...)
 end
 
 # Currently maintaining this union until condition mapping works on all
