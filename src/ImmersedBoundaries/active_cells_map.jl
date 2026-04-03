@@ -1,7 +1,7 @@
 using Oceananigans.Architectures: CPU
 using Oceananigans.Fields: Field
 using Oceananigans.Grids: Grids, AbstractGrid
-using Oceananigans.Utils: worksize
+using Oceananigans.Utils: worksize, convert_interior_indices
 using KernelAbstractions: @kernel, @index
 
 # REMEMBER: since the active map is stripped out of the grid when `Adapt`ing to the GPU,
@@ -145,14 +145,6 @@ function findall_active_indices!(active_indices, active_cells_field, grid, Indic
     end
     return active_indices
 end
-
-function convert_interior_indices(interior_indices, k, IndicesType)
-    interior_indices =   getproperty.(interior_indices, :I)
-    interior_indices = add_3rd_index.(interior_indices, k) |> Array{IndicesType}
-    return interior_indices
-end
-
-@inline add_3rd_index(ij::Tuple, k) = (ij[1], ij[2], k)
 
 # In case of a serial grid, the interior computations are performed over the whole three-dimensional
 # domain. Therefore, the `interior_active_cells` field contains the indices of all the active cells in
