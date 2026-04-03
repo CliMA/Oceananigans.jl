@@ -94,10 +94,15 @@ end
 NCCL alltoall on comm_stream if available, with event-based synchronization.
 """
 function nccl_alltoall_with_stream!(buffer, counts, nccl_comm, comm_stream)
-    # Always use default stream for ncclAlltoAll (comm_stream not needed
-    # since ncclAlltoAll is a blocking collective on the comm)
-    CUDA.synchronize()
-    nccl_alltoall!(buffer, counts, nccl_comm)
-    CUDA.synchronize()
+    if comm_stream !== nothing
+        event = CUDA.CuEvent()
+        CUDA.record(event)
+        CUDA.cuStreamWaitEvent(comm_stream, event, UInt32(0))
+        nccl_alltoall!(buffer, counts, nccl_comm; stream=comm_stream)
+        CUDA.record(event, comm_stream)
+        CUDA.cuStreamWaitEvent(CUDA.stream(), event, UInt32(0))
+    else
+        nccl_alltoall!(buffer, counts, nccl_comm)
+    end
     return nothing
 end
