@@ -26,52 +26,83 @@ concurrency:
   cancel-in-progress: ${{ startsWith(github.ref, 'refs/pull/') }}
 
 jobs:
-  # sharding_tests:
-  #   name: Sharding - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
-  #   runs-on: ${{ matrix.os }}
-  #   timeout-minutes: 120
-  #   strategy:
-  #     fail-fast: false
-  #     matrix:
-  #       version:
-  #         - '1.11.9'
-  #       os:
-  #         - ubuntu-latest
-  #       arch:
-  #         - x64
-  #   steps:
-  #     - uses: actions/checkout@v6
-  #     - uses: julia-actions/setup-julia@v2
-  #       with:
-  #         version: ${{ matrix.version }}
-  #         arch: ${{ matrix.arch }}
-  #     - uses: julia-actions/cache@v3
-  #     - run: |
-  #         touch LocalPreferences.toml
+  sharding_tests:
+    name: Sharding - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 60
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1.11.9'
+        os:
+          - ubuntu-latest
+        arch:
+          - default
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+      - uses: julia-actions/setup-julia@4c0cb0fce8556fdb04a90347310e5db8b1f98fb9 # v2.7.0
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: julia-actions/cache@e97f6fc1a6e21c82253c85e269be7340376aa425 # v3.0.1
+      - name: Set IFRT runtime for Reactant
+        run: |
+          echo "[Reactant]" >> LocalPreferences.toml
+          echo 'xla_runtime = "IFRT"' >> LocalPreferences.toml
 
-  #         echo "[Reactant]" >> LocalPreferences.toml
-  #         echo "xla_runtime = \"IFRT\"" >> LocalPreferences.toml
+          cat LocalPreferences.toml
+      - name: Install earlyoom
+        shell: bash
+        run: |
+          sudo apt-get install -y earlyoom
+      - name: Set TMPDIR and create directory
+        # We have to use `${GITHUB_WORKSPACE}` instead of `github.workspace` because GitHub
+        # is terrible and the two don't match inside containers:
+        # https://github.com/actions/runner/issues/2058
+        run: |
+          export TMPDIR="${GITHUB_WORKSPACE}/tmp"
+          mkdir -vp "${TMPDIR}"
+          echo "TMPDIR=${TMPDIR}" | tee -a "${GITHUB_ENV}"
+      - name: Run tests
+        shell: bash
+        run: |
+          earlyoom -m 3 -s 100 -r 5 --prefer 'julia' &
+          julia --project --color=yes --check-bounds=auto -e 'using Pkg; Pkg.test(; coverage=true, julia_args=["--check-bounds=auto", "--compiled-modules=yes", "--depwarn=yes", "-O0"], force_latest_compatible_version=false, allow_reresolve=true)'
+        env:
+          XLA_FLAGS: "--xla_force_host_platform_device_count=4 --xla_dump_to=xla_dump"
+          JULIA_DEBUG: "Reactant, Reactant_jll"
+          REACTANT_TEST: true
+          TEST_GROUP: "sharding"
+      - name: Upload XLA dump
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        timeout-minutes: 10
+        if: ${{ always() }}
+        with:
+          name: 'sharding-xla-dump-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.arch }}'
+          path: '**/xla_dump'
+          retention-days: 90
+          overwrite: false
+      - name: Upload MLIR and XLA modules
+        uses: actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f # v7.0.0
+        timeout-minutes: 10
+        if: ${{ always() }}
+        with:
+          name: 'sharding-mlir-${{ matrix.version }}-${{ matrix.os }}-${{ matrix.arch }}'
+          path: |
+            **/*.mlir
+          retention-days: 90
+          overwrite: false
+      - uses: julia-actions/julia-processcoverage@03114f09f119417c3242a9fb6e0b722676aedf38 # v1.2.2
+        with:
+          # default is src,ext — include others if you need them
+          directories: src,ext
 
-  #         cat LocalPreferences.toml
-  #     - uses: julia-actions/julia-buildpkg@v1
-  #     - uses: julia-actions/julia-runtest@v1
-  #       with:
-  #         check_bounds: auto
-  #       env:
-  #         XLA_FLAGS: "--xla_force_host_platform_device_count=4"
-  #         JULIA_DEBUG: "Reactant, Reactant_jll"
-  #         REACTANT_TEST: true
-  #         TEST_GROUP: "sharding"
-  #     - uses: julia-actions/julia-processcoverage@v1
-  #       with:
-  #         # default is src,ext — include others if you need them
-  #         directories: src,ext
-
-  #     - uses: codecov/codecov-action@v5
-  #       with:
-  #         files: lcov.info
-  #         flags: ${{ env.TEST_GROUP }}   # optional but strongly recommended
-  #         token: ${{ secrets.CODECOV_TOKEN }}  # only needed for some repos (see below)
+      - uses: codecov/codecov-action@57e3a136b779b570ffcdbf80b3bdc90e7fab3de2 # v6.0.0
+        with:
+          files: lcov.info
+          flags: ${{ env.TEST_GROUP }}   # optional but strongly recommended
+          token: ${{ secrets.CODECOV_TOKEN }}  # only needed for some repos (see below)
 
   mpi_tripolar:
     name: Distributed MPI Tripolar Grid - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
@@ -102,7 +133,7 @@ jobs:
           # default is src,ext — include others if you need them
           directories: src,ext
 
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v6
         with:
           files: lcov.info
           flags: ${{ env.TEST_GROUP }}   # optional but strongly recommended
@@ -137,42 +168,7 @@ jobs:
           # default is src,ext — include others if you need them
           directories: src,ext
 
-      - uses: codecov/codecov-action@v5
-        with:
-          files: lcov.info
-          flags: ${{ env.TEST_GROUP }}   # optional but strongly recommended
-          token: ${{ secrets.CODECOV_TOKEN }}  # only needed for some repos (see below)
-
-  turbulent_closures:
-    name: Turbulence closures - Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }}
-    runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
-    strategy:
-      fail-fast: false
-      matrix:
-        version:
-          - '1.12'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
-    steps:
-      - uses: actions/checkout@v6
-      - uses: julia-actions/setup-julia@v2
-        with:
-          version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v3
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
-        env:
-          TEST_GROUP: "turbulence_closures"
-      - uses: julia-actions/julia-processcoverage@v1
-        with:
-          # default is src,ext — include others if you need them
-          directories: src,ext
-
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v6
         with:
           files: lcov.info
           flags: ${{ env.TEST_GROUP }}   # optional but strongly recommended
@@ -207,7 +203,7 @@ jobs:
           # default is src,ext — include others if you need them
           directories: src,ext
 
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v6
         with:
           files: lcov.info
           flags: ${{ env.TEST_GROUP }}   # optional but strongly recommended
@@ -249,7 +245,7 @@ jobs:
         with:
           directories: src,ext
 
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v6
         with:
           files: lcov.info
           flags: ${{ env.TEST_GROUP }}
@@ -285,7 +281,7 @@ jobs:
         with:
           directories: src,ext
 
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v6
         with:
           files: lcov.info
           flags: reactant_1
@@ -321,7 +317,7 @@ jobs:
         with:
           directories: src,ext
 
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v6
         with:
           files: lcov.info
           flags: reactant_2
@@ -357,7 +353,7 @@ jobs:
         with:
           directories: src,ext
 
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v6
         with:
           files: lcov.info
           flags: reactant_3
@@ -392,13 +388,13 @@ jobs:
           # default is src,ext — include others if you need them
           directories: src,ext
 
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v6
         with:
           files: lcov.info
           flags: ${{ env.TEST_GROUP }}   # optional but strongly recommended
           token: ${{ secrets.CODECOV_TOKEN }}  # only needed for some repos (see below)
 
-      - uses: codecov/codecov-action@v5
+      - uses: codecov/codecov-action@v6
         with:
           files: lcov.info
           flags: ${{ env.TEST_GROUP }}   # optional but strongly recommended
