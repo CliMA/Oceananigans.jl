@@ -3,6 +3,39 @@ using Oceananigans.Operators: Vᶜᶜᶜ, V⁻¹ᶜᶜᶜ, Ax_∂xᶠᶜᶜ, Ax�
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Statistics: mean
 
+#####
+##### Volume-inverse-weighted residual norm
+#####
+##### The V∇² system has residuals that scale with cell volume.
+##### Using ||V⁻¹r|| instead of ||r|| for convergence makes the
+##### criterion independent of cell volume, allowing universal tolerances.
+#####
+
+struct VolumeInverseNorm{G}
+    grid :: G
+end
+
+@kernel function _scale_by_volume_inverse!(r, grid)
+    i, j, k = @index(Global, NTuple)
+    @inbounds r[i, j, k] = r[i, j, k] * V⁻¹ᶜᶜᶜ(i, j, k, grid)
+end
+
+@kernel function _scale_by_volume!(r, grid)
+    i, j, k = @index(Global, NTuple)
+    @inbounds r[i, j, k] = r[i, j, k] * Vᶜᶜᶜ(i, j, k, grid)
+end
+
+function (vin::VolumeInverseNorm)(r)
+    grid = vin.grid
+    arch = architecture(grid)
+    launch!(arch, grid, :xyz, _scale_by_volume_inverse!, r, grid)
+    n = norm(r)
+    launch!(arch, grid, :xyz, _scale_by_volume!, r, grid)
+    return n
+end
+
+Base.summary(::VolumeInverseNorm) = "VolumeInverseNorm"
+
 struct ConjugateGradientPoissonSolver{G, R, S}
     grid :: G
     right_hand_side :: R
@@ -80,8 +113,8 @@ struct DefaultPreconditioner end
 """
     ConjugateGradientPoissonSolver(grid;
                                    preconditioner = DefaultPreconditioner(),
-                                   reltol = min(100 * eps(grid), 100 * eps(grid) * minimum_cell_volume(grid)^2, sqrt(eps(grid))),
-                                   abstol = min(100 * eps(grid), sqrt(eps(grid))),
+                                   reltol = sqrt(eps(grid)),
+                                   abstol = sqrt(eps(grid)),
                                    enforce_gauge_condition! = enforce_zero_mean_gauge!,
                                    kw...)
 
@@ -89,15 +122,20 @@ Creates a `ConjugateGradientPoissonSolver` on `grid` using a `preconditioner`.
 `ConjugateGradientPoissonSolver` is iterative, and will stop when both the relative error in the
 pressure solution is smaller than `reltol` and the absolute error is smaller than `abstol`. Other
 keyword arguments are passed to `ConjugateGradientSolver`.
-The Poisson solver has a zero mean gauge condition enforced with `enforce_gauge_condition! = enforce_zero_mean_gauge!`, which pins the pressure field to have a mean of zero.
+
+Convergence is measured using a volume-inverse-weighted residual norm, `||V⁻¹r||₂`, which
+normalizes out the cell volume scaling introduced by the symmetric volume-weighted Laplacian
+operator `V∇²`. This makes convergence behavior independent of cell volume.
+
+The Poisson solver has a zero mean gauge condition enforced with `enforce_gauge_condition! = enforce_zero_mean_gauge!`,
+which pins the pressure field to have a mean of zero.
 This is because the pressure field is defined only up to an arbitrary constant, and the zero mean gauge condition
 is a common choice to remove this degree of freedom.
-
 """
 function ConjugateGradientPoissonSolver(grid;
                                         preconditioner = DefaultPreconditioner(),
-                                        reltol = min(100 * eps(grid), 100 * eps(grid) * minimum_cell_volume(grid)^2, sqrt(eps(grid))),
-                                        abstol = min(100 * eps(grid), sqrt(eps(grid))),
+                                        reltol = sqrt(eps(grid)),
+                                        abstol = sqrt(eps(grid)),
                                         enforce_gauge_condition! = enforce_zero_mean_gauge!,
                                         kw...)
 
@@ -111,12 +149,15 @@ function ConjugateGradientPoissonSolver(grid;
 
     rhs = CenterField(grid)
 
+    volume_inverse_norm = VolumeInverseNorm(grid)
+
     conjugate_gradient_solver = ConjugateGradientSolver(compute_symmetric_laplacian!;
                                                         reltol,
                                                         abstol,
                                                         preconditioner,
                                                         template_field = rhs,
                                                         enforce_gauge_condition!,
+                                                        residual_norm = volume_inverse_norm,
                                                         kw...)
 
     return ConjugateGradientPoissonSolver(grid, rhs, conjugate_gradient_solver)
