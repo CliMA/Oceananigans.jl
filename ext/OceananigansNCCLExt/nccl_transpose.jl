@@ -14,32 +14,14 @@ function _get_nccl_subcomm(mpi_subcomm)
     end
 end
 
-# Dispatch on NCCLDistributedArch — proper extension, no method overwriting.
-# The base code calls transpose_y_to_x!(arch, pf) which dispatches here.
-
-function DC.transpose_y_to_x!(arch::NCCLDistributedArch, pf::DC.TransposableField)
-    nccl_comm = _get_nccl_subcomm(pf.comms.xy)
-    nccl_transpose_y_to_x!(pf, nccl_comm; comm_stream=arch.communicator.comm_stream)
-    return nothing
-end
-
-function DC.transpose_x_to_y!(arch::NCCLDistributedArch, pf::DC.TransposableField)
-    nccl_comm = _get_nccl_subcomm(pf.comms.xy)
-    nccl_transpose_x_to_y!(pf, nccl_comm; comm_stream=arch.communicator.comm_stream)
-    return nothing
-end
-
-function DC.transpose_z_to_y!(arch::NCCLDistributedArch, pf::DC.TransposableField)
-    nccl_comm = _get_nccl_subcomm(pf.comms.yz)
-    nccl_transpose_z_to_y!(pf, nccl_comm; comm_stream=arch.communicator.comm_stream)
-    return nothing
-end
-
-function DC.transpose_y_to_z!(arch::NCCLDistributedArch, pf::DC.TransposableField)
-    nccl_comm = _get_nccl_subcomm(pf.comms.yz)
-    nccl_transpose_y_to_z!(pf, nccl_comm; comm_stream=arch.communicator.comm_stream)
-    return nothing
-end
+# TEMPORARILY DISABLED: NCCL dispatch for transposes
+# Falls back to base alltoall_transpose! (CPU staging in nccl_distributed.jl)
+# to isolate whether the NCCL transpose or something else causes NHM garbage.
+#
+# function DC.transpose_y_to_x!(arch::NCCLDistributedArch, pf::DC.TransposableField) ...
+# function DC.transpose_x_to_y!(arch::NCCLDistributedArch, pf::DC.TransposableField) ...
+# function DC.transpose_z_to_y!(arch::NCCLDistributedArch, pf::DC.TransposableField) ...
+# function DC.transpose_y_to_z!(arch::NCCLDistributedArch, pf::DC.TransposableField) ...
 
 # Standalone NCCL transpose implementations
 
@@ -49,14 +31,13 @@ end
 Replace MPI Alltoall with NCCL grouped Send/Recv.
 No `sync_device!` needed — NCCL ops are GPU-stream-native.
 """
-function nccl_alltoall!(buffer, counts, nccl_comm; stream_kw...)
+function nccl_alltoall!(buffer, counts, nccl_comm)
     T = eltype(buffer.send)
     count_per_rank = T <: Complex ? 2 * counts[1] : counts[1]
     datatype = NCCL.ncclDataType_t(T)
-    stream = get(stream_kw, :stream, CUDA.stream())
     NCCL.LibNCCL.ncclAlltoAll(pointer(buffer.send), pointer(buffer.recv),
                                Int32(count_per_rank), datatype,
-                               nccl_comm.handle, stream)
+                               nccl_comm.handle, CUDA.stream())
     return nothing
 end
 
@@ -91,18 +72,11 @@ end
 """
     nccl_alltoall_with_stream!(buffer, counts, nccl_comm, comm_stream)
 
-NCCL alltoall on comm_stream if available, with event-based synchronization.
+Run ncclAlltoAll on the default (task-local) CUDA stream. The comm_stream
+argument is accepted for API compatibility but ignored — solver transposes
+must run on the same stream as pack/unpack/FFT kernels to guarantee ordering.
 """
 function nccl_alltoall_with_stream!(buffer, counts, nccl_comm, comm_stream)
-    if comm_stream !== nothing
-        event = CUDA.CuEvent()
-        CUDA.record(event)
-        CUDA.cuStreamWaitEvent(comm_stream, event, UInt32(0))
-        nccl_alltoall!(buffer, counts, nccl_comm; stream=comm_stream)
-        CUDA.record(event, comm_stream)
-        CUDA.cuStreamWaitEvent(CUDA.stream(), event, UInt32(0))
-    else
-        nccl_alltoall!(buffer, counts, nccl_comm)
-    end
+    nccl_alltoall!(buffer, counts, nccl_comm)
     return nothing
 end

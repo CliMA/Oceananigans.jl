@@ -69,6 +69,9 @@ end
 ##### sync_device! no-op for NCCL (stream-native)
 #####
 
+# No-op: NCCL is stream-native, sync handled by events
+# in the DistributedFFTBasedPoissonSolver's halo fills. Need to investigate which
+# specific sync point is required.
 sync_device!(::NCCLDistributedArch) = nothing
 
 #####
