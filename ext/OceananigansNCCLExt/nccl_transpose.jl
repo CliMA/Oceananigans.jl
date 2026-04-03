@@ -14,14 +14,29 @@ function _get_nccl_subcomm(mpi_subcomm)
     end
 end
 
-# TEMPORARILY DISABLED: NCCL dispatch for transposes
-# Falls back to base alltoall_transpose! (CPU staging in nccl_distributed.jl)
-# to isolate whether the NCCL transpose or something else causes NHM garbage.
-#
-# function DC.transpose_y_to_x!(arch::NCCLDistributedArch, pf::DC.TransposableField) ...
-# function DC.transpose_x_to_y!(arch::NCCLDistributedArch, pf::DC.TransposableField) ...
-# function DC.transpose_z_to_y!(arch::NCCLDistributedArch, pf::DC.TransposableField) ...
-# function DC.transpose_y_to_z!(arch::NCCLDistributedArch, pf::DC.TransposableField) ...
+function DC.transpose_y_to_x!(arch::NCCLDistributedArch, pf::DC.TransposableField)
+    nccl_comm = _get_nccl_subcomm(pf.comms.xy)
+    nccl_transpose_y_to_x!(pf, nccl_comm)
+    return nothing
+end
+
+function DC.transpose_x_to_y!(arch::NCCLDistributedArch, pf::DC.TransposableField)
+    nccl_comm = _get_nccl_subcomm(pf.comms.xy)
+    nccl_transpose_x_to_y!(pf, nccl_comm)
+    return nothing
+end
+
+function DC.transpose_z_to_y!(arch::NCCLDistributedArch, pf::DC.TransposableField)
+    nccl_comm = _get_nccl_subcomm(pf.comms.yz)
+    nccl_transpose_z_to_y!(pf, nccl_comm)
+    return nothing
+end
+
+function DC.transpose_y_to_z!(arch::NCCLDistributedArch, pf::DC.TransposableField)
+    nccl_comm = _get_nccl_subcomm(pf.comms.yz)
+    nccl_transpose_y_to_z!(pf, nccl_comm)
+    return nothing
+end
 
 # Standalone NCCL transpose implementations
 
