@@ -16,29 +16,25 @@ end
 
 function DC.transpose_y_to_x!(arch::NCCLDistributedArchitecture, pf::DC.TransposableField)
     nccl_comm = _get_nccl_subcomm(pf.comms.xy)
-    comm_stream = arch.communicator.comm_stream
-    nccl_transpose_y_to_x!(pf, nccl_comm, comm_stream)
+    nccl_transpose_y_to_x!(pf, nccl_comm)
     return nothing
 end
 
 function DC.transpose_x_to_y!(arch::NCCLDistributedArchitecture, pf::DC.TransposableField)
     nccl_comm = _get_nccl_subcomm(pf.comms.xy)
-    comm_stream = arch.communicator.comm_stream
-    nccl_transpose_x_to_y!(pf, nccl_comm, comm_stream)
+    nccl_transpose_x_to_y!(pf, nccl_comm)
     return nothing
 end
 
 function DC.transpose_z_to_y!(arch::NCCLDistributedArchitecture, pf::DC.TransposableField)
     nccl_comm = _get_nccl_subcomm(pf.comms.yz)
-    comm_stream = arch.communicator.comm_stream
-    nccl_transpose_z_to_y!(pf, nccl_comm, comm_stream)
+    nccl_transpose_z_to_y!(pf, nccl_comm)
     return nothing
 end
 
 function DC.transpose_y_to_z!(arch::NCCLDistributedArchitecture, pf::DC.TransposableField)
     nccl_comm = _get_nccl_subcomm(pf.comms.yz)
-    comm_stream = arch.communicator.comm_stream
-    nccl_transpose_y_to_z!(pf, nccl_comm, comm_stream)
+    nccl_transpose_y_to_z!(pf, nccl_comm)
     return nothing
 end
 
