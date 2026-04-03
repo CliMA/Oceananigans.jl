@@ -16,25 +16,29 @@ end
 
 function DC.transpose_y_to_x!(arch::NCCLDistributedArchitecture, pf::DC.TransposableField)
     nccl_comm = _get_nccl_subcomm(pf.comms.xy)
-    nccl_transpose_y_to_x!(pf, nccl_comm)
+    comm_stream = arch.communicator.comm_stream
+    nccl_transpose_y_to_x!(pf, nccl_comm, comm_stream)
     return nothing
 end
 
 function DC.transpose_x_to_y!(arch::NCCLDistributedArchitecture, pf::DC.TransposableField)
     nccl_comm = _get_nccl_subcomm(pf.comms.xy)
-    nccl_transpose_x_to_y!(pf, nccl_comm)
+    comm_stream = arch.communicator.comm_stream
+    nccl_transpose_x_to_y!(pf, nccl_comm, comm_stream)
     return nothing
 end
 
 function DC.transpose_z_to_y!(arch::NCCLDistributedArchitecture, pf::DC.TransposableField)
     nccl_comm = _get_nccl_subcomm(pf.comms.yz)
-    nccl_transpose_z_to_y!(pf, nccl_comm)
+    comm_stream = arch.communicator.comm_stream
+    nccl_transpose_z_to_y!(pf, nccl_comm, comm_stream)
     return nothing
 end
 
 function DC.transpose_y_to_z!(arch::NCCLDistributedArchitecture, pf::DC.TransposableField)
     nccl_comm = _get_nccl_subcomm(pf.comms.yz)
-    nccl_transpose_y_to_z!(pf, nccl_comm)
+    comm_stream = arch.communicator.comm_stream
+    nccl_transpose_y_to_z!(pf, nccl_comm, comm_stream)
     return nothing
 end
 
@@ -112,32 +116,37 @@ function wait_for_nccl!(comm_stream)
     return nothing
 end
 
-# Non-pipelined transpose functions (used by the base dispatch path)
+# Pipelined transpose: pack on default stream, NCCL on comm_stream,
+# wait for comm_stream, unpack on default stream.
 
-function nccl_transpose_y_to_x!(pf, nccl_comm)
+function nccl_transpose_y_to_x!(pf, nccl_comm, comm_stream=nothing)
     DC.pack_buffer_y_to_x!(pf.xybuff, pf.yfield)
-    nccl_alltoall!(pf.xybuff, pf.counts.xy, nccl_comm)
+    nccl_alltoall!(pf.xybuff, pf.counts.xy, nccl_comm, comm_stream)
+    comm_stream !== nothing && wait_for_nccl!(comm_stream)
     DC.unpack_buffer_x_from_y!(pf.xfield, pf.yfield, pf.xybuff)
     return nothing
 end
 
-function nccl_transpose_x_to_y!(pf, nccl_comm)
+function nccl_transpose_x_to_y!(pf, nccl_comm, comm_stream=nothing)
     DC.pack_buffer_x_to_y!(pf.xybuff, pf.xfield)
-    nccl_alltoall!(pf.xybuff, pf.counts.xy, nccl_comm)
+    nccl_alltoall!(pf.xybuff, pf.counts.xy, nccl_comm, comm_stream)
+    comm_stream !== nothing && wait_for_nccl!(comm_stream)
     DC.unpack_buffer_y_from_x!(pf.yfield, pf.xfield, pf.xybuff)
     return nothing
 end
 
-function nccl_transpose_z_to_y!(pf, nccl_comm)
+function nccl_transpose_z_to_y!(pf, nccl_comm, comm_stream=nothing)
     DC.pack_buffer_z_to_y!(pf.yzbuff, pf.zfield)
-    nccl_alltoall!(pf.yzbuff, pf.counts.yz, nccl_comm)
+    nccl_alltoall!(pf.yzbuff, pf.counts.yz, nccl_comm, comm_stream)
+    comm_stream !== nothing && wait_for_nccl!(comm_stream)
     DC.unpack_buffer_y_from_z!(pf.yfield, pf.zfield, pf.yzbuff)
     return nothing
 end
 
-function nccl_transpose_y_to_z!(pf, nccl_comm)
+function nccl_transpose_y_to_z!(pf, nccl_comm, comm_stream=nothing)
     DC.pack_buffer_y_to_z!(pf.yzbuff, pf.yfield)
-    nccl_alltoall!(pf.yzbuff, pf.counts.yz, nccl_comm)
+    nccl_alltoall!(pf.yzbuff, pf.counts.yz, nccl_comm, comm_stream)
+    comm_stream !== nothing && wait_for_nccl!(comm_stream)
     DC.unpack_buffer_z_from_y!(pf.zfield, pf.yfield, pf.yzbuff)
     return nothing
 end

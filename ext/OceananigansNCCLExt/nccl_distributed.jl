@@ -37,7 +37,7 @@ MPI.Irecv!(buf, src, tag, c::NCCLCommunicator) = MPI.Irecv!(buf, src, tag, c.mpi
 ##### Type aliases for dispatch
 #####
 
-const NCCLDistributedArchitecture = Distributed{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:NCCLCommunicator}
+const NCCLDistributedArchitecture = Distributed{<:GPU, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:NCCLCommunicator}
 const NCCLDistributedGrid{FT, TX, TY, TZ}  = Oceananigans.Grids.AbstractGrid{FT, TX, TY, TZ, <:NCCLDistributedArchitecture}
 const NCCLDistributedField = Oceananigans.Fields.Field{<:Any, <:Any, <:Any, <:Any, <:NCCLDistributedGrid}
 
@@ -184,6 +184,8 @@ function DC.fill_corners!(c, connectivity, indices, loc, arch::NCCLDistributedAr
 end
 
 nccl_corner_send_recv!(nccl_comm, ::Nothing, buffers) = nothing
+nccl_corner_send_recv!(nccl_comm, corner_rank, ::Nothing) = nothing
+nccl_corner_send_recv!(nccl_comm, ::Nothing, ::Nothing) = nothing
 
 function nccl_corner_send_recv!(nccl_comm, corner_rank, buffers)
     NCCL.Send(buffers.send, nccl_comm; dest=corner_rank)
@@ -289,27 +291,29 @@ end
 ##### Enqueue NCCL Send/Recv (called inside groupStart/groupEnd)
 #####
 
+function _nccl_send_recv_pair!(buf, bc, nccl_comm; stream_kw...)
+    isnothing(buf) && return nothing
+    NCCL.Send(buf.send, nccl_comm; dest=bc.condition.to, stream_kw...)
+    NCCL.Recv!(buf.recv, nccl_comm; source=bc.condition.to, stream_kw...)
+    return nothing
+end
+
 function enqueue_nccl_send_recv!(::DistributedFillHalo{<:WestAndEast}, bcs, nccl_comm, bufs; stream_kw...)
-    NCCL.Send(bufs.west.send, nccl_comm; dest=bcs[1].condition.to, stream_kw...)
-    NCCL.Recv!(bufs.west.recv, nccl_comm; source=bcs[1].condition.to, stream_kw...)
-    NCCL.Send(bufs.east.send, nccl_comm; dest=bcs[2].condition.to, stream_kw...)
-    NCCL.Recv!(bufs.east.recv, nccl_comm; source=bcs[2].condition.to, stream_kw...)
+    _nccl_send_recv_pair!(bufs.west, bcs[1], nccl_comm; stream_kw...)
+    _nccl_send_recv_pair!(bufs.east, bcs[2], nccl_comm; stream_kw...)
     return nothing
 end
 
 function enqueue_nccl_send_recv!(::DistributedFillHalo{<:SouthAndNorth}, bcs, nccl_comm, bufs; stream_kw...)
-    NCCL.Send(bufs.south.send, nccl_comm; dest=bcs[1].condition.to, stream_kw...)
-    NCCL.Recv!(bufs.south.recv, nccl_comm; source=bcs[1].condition.to, stream_kw...)
-    NCCL.Send(bufs.north.send, nccl_comm; dest=bcs[2].condition.to, stream_kw...)
-    NCCL.Recv!(bufs.north.recv, nccl_comm; source=bcs[2].condition.to, stream_kw...)
+    _nccl_send_recv_pair!(bufs.south, bcs[1], nccl_comm; stream_kw...)
+    _nccl_send_recv_pair!(bufs.north, bcs[2], nccl_comm; stream_kw...)
     return nothing
 end
 
 for side in (:West, :East, :South, :North)
     side_sym = Symbol(lowercase(String(side)))
     @eval function enqueue_nccl_send_recv!(::DistributedFillHalo{<:$side}, bcs, nccl_comm, bufs; stream_kw...)
-        NCCL.Send(bufs.$side_sym.send, nccl_comm; dest=bcs[1].condition.to, stream_kw...)
-        NCCL.Recv!(bufs.$side_sym.recv, nccl_comm; source=bcs[1].condition.to, stream_kw...)
+        _nccl_send_recv_pair!(bufs.$side_sym, bcs[1], nccl_comm; stream_kw...)
         return nothing
     end
 end
