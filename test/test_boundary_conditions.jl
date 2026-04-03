@@ -388,6 +388,19 @@ end
             @test !all(Array(interior(Gc)) .== 0)
         end
 
+        # ContinuousBoundaryFunction with field_dependencies on a Flat topology
+        @info "  Testing ContinuousBoundaryFunction with field_dependencies on Flat topology..."
+        grid = RectilinearGrid(size=4, z=(0, 1), topology=(Flat, Flat, Bounded))
+        dep_bc(t, T) = T  # no spatial args on (Flat, Flat, Bounded)
+        bottom_bc = FluxBoundaryCondition(dep_bc, field_dependencies=:T)
+        bcs = FieldBoundaryConditions(bottom=bottom_bc)
+        bcs = regularize_field_boundary_conditions(bcs, grid, (Center(), Center(), Center()), (:T,))
+        T = CenterField(grid; boundary_conditions=bcs)
+        set!(T, 1)
+        GT = CenterField(grid)
+        compute_z_bcs!(GT, T, CPU(), (; time=0.0), (T=T,))
+        @test !all(Array(interior(GT)) .== 0)
+
         # Minimal test for PolarValueBoundaryCondition
         polar_grid = LatitudeLongitudeGrid(size=(10, 10, 10), latitude=(-90, 90), longitude=(0, 360), z = (0, 1))
         c = CenterField(polar_grid)
