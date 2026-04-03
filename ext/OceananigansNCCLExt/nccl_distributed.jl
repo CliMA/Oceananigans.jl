@@ -37,8 +37,8 @@ MPI.Irecv!(buf, src, tag, c::NCCLCommunicator) = MPI.Irecv!(buf, src, tag, c.mpi
 ##### Type aliases for dispatch
 #####
 
-const NCCLDistributedArch  = Distributed{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:NCCLCommunicator}
-const NCCLDistributedGrid  = Oceananigans.Grids.AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:NCCLDistributedArch}
+const NCCLDistributedArchitecture = Distributed{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:NCCLCommunicator}
+const NCCLDistributedGrid  = Oceananigans.Grids.AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:NCCLDistributedArchitecture}
 const NCCLDistributedField = Oceananigans.Fields.Field{<:Any, <:Any, <:Any, <:Any, <:NCCLDistributedGrid}
 
 #####
@@ -72,7 +72,7 @@ end
 # No-op: NCCL is stream-native, sync handled by events
 # in the DistributedFFTBasedPoissonSolver's halo fills. Need to investigate which
 # specific sync point is required.
-sync_device!(::NCCLDistributedArch) = nothing
+sync_device!(::NCCLDistributedArchitecture) = nothing
 
 #####
 ##### distributed_fill_halo_event! for NCCLDistributedGrid
@@ -161,7 +161,7 @@ end
 ##### NCCL corner communication
 #####
 
-function DC.fill_corners!(c, connectivity, indices, loc, arch::NCCLDistributedArch,
+function DC.fill_corners!(c, connectivity, indices, loc, arch::NCCLDistributedArchitecture,
                           grid, buffers, args...; async=false, only_local_halos=false, kw...)
     only_local_halos && return nothing
 
@@ -330,7 +330,7 @@ enqueue_nccl_send_recv!(::DistributedFillHalo{<:Top}, args...; kw...) = nothing
 ##### CPU-staged MPI transpose fallback
 #####
 # For non-NCCL distributed grids with CuArray buffers.
-# NCCL distributed grids use nccl_transpose.jl which dispatches on NCCLDistributedArch.
+# NCCL distributed grids use nccl_transpose.jl which dispatches on NCCLDistributedArchitecture.
 
 import Oceananigans.DistributedComputations: alltoall_transpose!
 

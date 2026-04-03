@@ -30,7 +30,7 @@ using Oceananigans.Models: prognostic_fields
 import Oceananigans.TimeSteppers: rk3_substep!
 
 const NCCLNonhydrostaticModel = Oceananigans.Models.NonhydrostaticModels.NonhydrostaticModel{
-    <:Any, <:Any, <:NCCLDistributedArch, <:NCCLDistributedGrid}
+    <:Any, <:Any, <:NCCLDistributedArchitecture, <:NCCLDistributedGrid}
 
 function rk3_substep!(model::NCCLNonhydrostaticModel, Δt, γⁿ, ζⁿ, callbacks)
     Δτ = stage_Δt(Δt, γⁿ, ζⁿ)

@@ -14,25 +14,25 @@ function _get_nccl_subcomm(mpi_subcomm)
     end
 end
 
-function DC.transpose_y_to_x!(arch::NCCLDistributedArch, pf::DC.TransposableField)
+function DC.transpose_y_to_x!(arch::NCCLDistributedArchitecture, pf::DC.TransposableField)
     nccl_comm = _get_nccl_subcomm(pf.comms.xy)
     nccl_transpose_y_to_x!(pf, nccl_comm)
     return nothing
 end
 
-function DC.transpose_x_to_y!(arch::NCCLDistributedArch, pf::DC.TransposableField)
+function DC.transpose_x_to_y!(arch::NCCLDistributedArchitecture, pf::DC.TransposableField)
     nccl_comm = _get_nccl_subcomm(pf.comms.xy)
     nccl_transpose_x_to_y!(pf, nccl_comm)
     return nothing
 end
 
-function DC.transpose_z_to_y!(arch::NCCLDistributedArch, pf::DC.TransposableField)
+function DC.transpose_z_to_y!(arch::NCCLDistributedArchitecture, pf::DC.TransposableField)
     nccl_comm = _get_nccl_subcomm(pf.comms.yz)
     nccl_transpose_z_to_y!(pf, nccl_comm)
     return nothing
 end
 
-function DC.transpose_y_to_z!(arch::NCCLDistributedArch, pf::DC.TransposableField)
+function DC.transpose_y_to_z!(arch::NCCLDistributedArchitecture, pf::DC.TransposableField)
     nccl_comm = _get_nccl_subcomm(pf.comms.yz)
     nccl_transpose_y_to_z!(pf, nccl_comm)
     return nothing
@@ -41,44 +41,78 @@ end
 # Standalone NCCL transpose implementations
 
 """
-    nccl_alltoall!(buffer, counts, nccl_comm)
+    nccl_alltoall!(buffer, counts, nccl_comm, comm_stream)
 
-ncclAlltoAll with local copy bypass: the self-to-self chunk is copied
-directly on the GPU without going through NCCL, and remote chunks use
-grouped NCCL Send/Recv. Complex types have their count doubled since
-NCCL treats ComplexF32 as 2× Float32.
+Pipelined alltoall: local copy on default stream, remote transfers on
+comm_stream. The caller can do work on the default stream while remote
+data is in flight, then call `wait_for_nccl!(comm_stream)` before
+accessing remote data.
+
+If comm_stream is nothing, runs everything on the default stream (no overlap).
 """
-function nccl_alltoall!(buffer, counts, nccl_comm)
+function nccl_alltoall!(buffer, counts, nccl_comm, comm_stream=nothing)
     my_rank = NCCL.rank(nccl_comm)
     nranks = NCCL.size(nccl_comm)
     count = counts[1]
 
-    # Local copy: skip NCCL for self-to-self chunk
+    # Local copy on default stream (available immediately)
     local_offset = my_rank * count
     copyto!(buffer.recv, local_offset + 1, buffer.send, local_offset + 1, count)
 
-    # Remote transfers via NCCL
     nranks == 1 && return nothing
 
     T = eltype(buffer.send)
     nccl_count = T <: Complex ? 2 * count : count
     datatype = NCCL.ncclDataType_t(T)
-    stream = CUDA.stream()
 
-    NCCL.groupStart()
-    for r in 0:(nranks - 1)
-        r == my_rank && continue
-        send_offset = r * count
-        recv_offset = r * count
-        send_ptr = pointer(buffer.send, send_offset + 1)
-        recv_ptr = pointer(buffer.recv, recv_offset + 1)
-        NCCL.LibNCCL.ncclSend(send_ptr, Int32(nccl_count), datatype, Int32(r), nccl_comm.handle, stream)
-        NCCL.LibNCCL.ncclRecv(recv_ptr, Int32(nccl_count), datatype, Int32(r), nccl_comm.handle, stream)
+    if comm_stream !== nothing
+        # Pipelined: remote transfers on comm_stream
+        # Make comm_stream wait for pack kernel on default stream
+        event = CUDA.CuEvent()
+        CUDA.record(event)
+        CUDA.cuStreamWaitEvent(comm_stream, event, UInt32(0))
+
+        NCCL.groupStart()
+        for r in 0:(nranks - 1)
+            r == my_rank && continue
+            send_ptr = pointer(buffer.send, r * count + 1)
+            recv_ptr = pointer(buffer.recv, r * count + 1)
+            NCCL.LibNCCL.ncclSend(send_ptr, Int32(nccl_count), datatype, Int32(r), nccl_comm.handle, comm_stream)
+            NCCL.LibNCCL.ncclRecv(recv_ptr, Int32(nccl_count), datatype, Int32(r), nccl_comm.handle, comm_stream)
+        end
+        NCCL.groupEnd()
+        # NOTE: caller must call wait_for_nccl!(comm_stream) before accessing remote data
+    else
+        # Non-pipelined: everything on default stream
+        stream = CUDA.stream()
+        NCCL.groupStart()
+        for r in 0:(nranks - 1)
+            r == my_rank && continue
+            send_ptr = pointer(buffer.send, r * count + 1)
+            recv_ptr = pointer(buffer.recv, r * count + 1)
+            NCCL.LibNCCL.ncclSend(send_ptr, Int32(nccl_count), datatype, Int32(r), nccl_comm.handle, stream)
+            NCCL.LibNCCL.ncclRecv(recv_ptr, Int32(nccl_count), datatype, Int32(r), nccl_comm.handle, stream)
+        end
+        NCCL.groupEnd()
     end
-    NCCL.groupEnd()
 
     return nothing
 end
+
+"""
+    wait_for_nccl!(comm_stream)
+
+Make the default CUDA stream wait for comm_stream to complete.
+Call this before accessing remote data after a pipelined nccl_alltoall!.
+"""
+function wait_for_nccl!(comm_stream)
+    event = CUDA.CuEvent()
+    CUDA.record(event, comm_stream)
+    CUDA.cuStreamWaitEvent(CUDA.stream(), event, UInt32(0))
+    return nothing
+end
+
+# Non-pipelined transpose functions (used by the base dispatch path)
 
 function nccl_transpose_y_to_x!(pf, nccl_comm)
     DC.pack_buffer_y_to_x!(pf.xybuff, pf.yfield)
