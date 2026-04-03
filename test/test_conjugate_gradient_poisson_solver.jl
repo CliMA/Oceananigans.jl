@@ -324,7 +324,7 @@ end
             set!(r, (x, y, z) -> sin(x) * cos(y) * z)
             r_before = Array(interior(r))
 
-            vin = VolumeInverseNorm(grid, r)
+            vin = VolumeInverseNorm(grid)
             computed = vin(r)
 
             # Check r is restored after in-place scaling
