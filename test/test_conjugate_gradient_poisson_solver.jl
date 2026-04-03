@@ -1,8 +1,9 @@
 include("dependencies_for_runtests.jl")
 include("dependencies_for_poisson_solvers.jl")
 
-using Oceananigans.Solvers: fft_poisson_solver, ConjugateGradientPoissonSolver, DiagonallyDominantPreconditioner
-using Oceananigans.Models.NonhydrostaticModels: compute_pressure_correction!
+using Oceananigans.Solvers: fft_poisson_solver, ConjugateGradientPoissonSolver, DiagonallyDominantPreconditioner, iteration, VolumeInverseNorm
+using Oceananigans.Models.NonhydrostaticModels: compute_pressure_correction!, solve_for_pressure!
+using Oceananigans.Operators: V⁻¹ᶜᶜᶜ
 using Oceananigans.Grids: XYZRegularRG
 using LinearAlgebra: norm
 using Random: seed!
@@ -314,6 +315,58 @@ end
             for (underlying_grid_name, underlying_grid) in underlying_grids
                 @test test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_grid, DiagonallyDominantPreconditioner(), bottom)
                 @test test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_grid, fft_poisson_solver(underlying_grid), bottom)
+            end
+        end
+
+        @testset "VolumeInverseNorm correctness [$(typeof(arch))]" begin
+            grid = RectilinearGrid(arch; topology=(Periodic, Periodic, Bounded), size=(4, 4, 4), extent=(2, 3, 5))
+            r = CenterField(grid)
+            set!(r, (x, y, z) -> sin(x) * cos(y) * z)
+            r_before = Array(interior(r))
+
+            vin = VolumeInverseNorm(grid, r)
+            computed = vin(r)
+
+            # Check r is restored after in-place scaling
+            @test Array(interior(r)) ≈ r_before
+
+            # Check norm value against manual computation
+            expected = 0.0
+            for k in 1:4, j in 1:4, i in 1:4
+                v_inv = @allowscalar V⁻¹ᶜᶜᶜ(i, j, k, grid)
+                expected += (r_before[i, j, k] * v_inv)^2
+            end
+            @test computed ≈ sqrt(expected) rtol=1e-10
+        end
+
+        @testset "PCG volume-independent convergence [$(typeof(arch))]" begin
+            N = 8
+            topo = (Periodic, Periodic, Bounded)
+            z_stretched(L) = L .* [-1 + (tanh(2(k/N - 1)) + tanh(2)) / (2tanh(2)) for k in 0:N]
+            Ls = [1, 1e-3, 1e4]
+
+            for (grid_type, make_grid) in [
+                ("uniform",   L -> RectilinearGrid(arch; topology=topo, size=(N, N, N), extent=(L, L, L))),
+                ("stretched", L -> RectilinearGrid(arch; topology=topo, size=(N, N, N), x=(0, L), y=(0, L), z=z_stretched(L)))
+            ]
+                iters = map(Ls) do L
+                    grid = make_grid(L)
+                    ibg = ImmersedBoundaryGrid(grid, GridFittedBottom(-L * 0.6))
+                    solver = ConjugateGradientPoissonSolver(ibg; maxiter=5000)
+
+                    u, v, w = XFaceField(ibg), YFaceField(ibg), ZFaceField(ibg)
+                    seed!(42)
+                    set!(u, (x, y, z) -> rand())
+                    set!(v, (x, y, z) -> rand())
+                    set!(w, (x, y, z) -> rand())
+                    fill_halo_regions!((u, v, w))
+
+                    pressure = CenterField(ibg)
+                    solve_for_pressure!(pressure, solver, nothing, (u=u, v=v, w=w), 1.0)
+                    iteration(solver)
+                end
+                @info "  PCG $grid_type iterations on $(typeof(arch)): $(collect(zip(Ls, iters)))"
+                @test maximum(iters) / max(minimum(iters), 1) < 2
             end
         end
     end
