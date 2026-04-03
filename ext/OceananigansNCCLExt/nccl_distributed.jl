@@ -165,6 +165,13 @@ function DC.fill_corners!(c, connectivity, indices, loc, arch::NCCLDistributedAr
     isnothing(connectivity.southwest) && isnothing(connectivity.southeast) &&
     isnothing(connectivity.northwest) && isnothing(connectivity.northeast) && return nothing
 
+    # Skip corner communication entirely if this field has no corner buffers.
+    # All ranks must agree (if one rank has Nothing corners, all do for a given field),
+    # so skipping here avoids NCCL group deadlocks from asymmetric sends.
+    has_corner_bufs = !isnothing(buffers.southwest) || !isnothing(buffers.southeast) ||
+                      !isnothing(buffers.northwest) || !isnothing(buffers.northeast)
+    has_corner_bufs || return nothing
+
     DC.fill_send_buffers!(c, buffers, grid, Val(:corners))
 
     nccl_comm = arch.communicator.nccl
@@ -180,6 +187,8 @@ function DC.fill_corners!(c, connectivity, indices, loc, arch::NCCLDistributedAr
 end
 
 nccl_corner_send_recv!(nccl_comm, ::Nothing, buffers) = nothing
+nccl_corner_send_recv!(nccl_comm, ::Nothing, ::Nothing) = nothing
+nccl_corner_send_recv!(nccl_comm, corner_rank, ::Nothing) = nothing
 
 function nccl_corner_send_recv!(nccl_comm, corner_rank, buffers)
     NCCL.Send(buffers.send, nccl_comm; dest=corner_rank)
@@ -242,6 +251,10 @@ function nccl_fill_halo_regions!(fields, args...; only_local_halos=false, kwargs
         return nothing
     end
 
+    # Helper: does this field have corner buffers?
+    _has_corner_bufs(bufs) = !isnothing(bufs.southwest) || !isnothing(bufs.southeast) ||
+                             !isnothing(bufs.northwest) || !isnothing(bufs.northeast)
+
     # Phase 1: Pack ALL fields' send buffers
     for info in field_infos
         for task in 1:length(info.kernels)
@@ -249,7 +262,7 @@ function nccl_fill_halo_regions!(fields, args...; only_local_halos=false, kwargs
             k isa DistributedFillHalo || continue
             DC.fill_send_buffers!(info.c, info.bufs, grid, k.side)
         end
-        if has_corners
+        if has_corners && _has_corner_bufs(info.bufs)
             DC.fill_send_buffers!(info.c, info.bufs, grid, Val(:corners))
         end
     end
@@ -262,7 +275,7 @@ function nccl_fill_halo_regions!(fields, args...; only_local_halos=false, kwargs
             k isa DistributedFillHalo || continue
             enqueue_nccl_send_recv!(k, info.bc_tuples[task], nccl_comm, info.bufs)
         end
-        if has_corners
+        if has_corners && _has_corner_bufs(info.bufs)
             nccl_corner_send_recv!(nccl_comm, conn.southwest, info.bufs.southwest)
             nccl_corner_send_recv!(nccl_comm, conn.southeast, info.bufs.southeast)
             nccl_corner_send_recv!(nccl_comm, conn.northwest, info.bufs.northwest)
@@ -282,7 +295,7 @@ function nccl_fill_halo_regions!(fields, args...; only_local_halos=false, kwargs
                     info.loc, grid, args...; kwargs...)
             end
         end
-        if has_corners
+        if has_corners && _has_corner_bufs(info.bufs)
             DC.recv_from_buffers!(info.c, info.bufs, grid, Val(:corners))
         end
     end
