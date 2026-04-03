@@ -89,6 +89,9 @@ function DiscreteTransform(plan, direction, grid, dims)
     topo = topology(grid)
     normalization = prod(normalization_factor(arch, topo[d](), direction, N[d]) for d in dims)
     twiddle = twiddle_factors(arch, grid, dims)
+    # Always transpose for dim-2 GPU transforms: reshape to (Ny, Nx, Nz) so the
+    # FFT operates along contiguous dim 1. cuFFT decomposes strided dim-2 FFTs
+    # into many small kernels (one per z-level); permutedims + dim-1 is 3.4× faster.
     transpose = arch isa GPU && dims == [2] ? (2, 1, 3) : nothing
 
     topos = [topology(grid)[d]() for d in dims]

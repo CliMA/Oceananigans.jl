@@ -44,6 +44,7 @@ Makie = "ee78f7c6-11fb-53f2-987a-cfe4a2b5a57a"
 Metal = "dde4c033-4e86-420c-a63e-0dd931031962"
 NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
 Reactant = "3c362404-f566-11ee-1572-e11a4b42c853"
+NCCL = "3fe64909-d7a1-4096-9b7d-7a0f12cf0f6b"
 XESMF = "2e0b0046-e7a1-486f-88de-807ee8ffabe5"
 oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 
@@ -56,6 +57,7 @@ OceananigansMetalExt = "Metal"
 OceananigansNCDatasetsExt = "NCDatasets"
 OceananigansOneAPIExt = "oneAPI"
 OceananigansReactantExt = ["Reactant", "KernelAbstractions", "ConstructionBase", "AbstractFFTs"]
+OceananigansNCCLExt = ["NCCL", "CUDA"]
 OceananigansXESMFExt = ["XESMF"]
 
 [compat]
@@ -81,6 +83,7 @@ Krylov = "0.10.0"
 LinearAlgebra = "1.9"
 Logging = "1.9"
 MPI = "0.16, 0.17, 0.18, 0.19, 0.20"
+NCCL = "0.1"
 Makie = "0.24"
 Metal = "1.5"
 MuladdMacro = "0.2"
