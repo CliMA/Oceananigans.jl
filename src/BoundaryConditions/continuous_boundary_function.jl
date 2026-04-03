@@ -11,23 +11,23 @@ struct LeftBoundary end
 struct RightBoundary end
 
 """
-    BoundaryNormal
+    BoundaryAdjacent
 
 Sentinel type used as the location in the boundary-normal direction for
 `ContinuousBoundaryFunction`. Unlike `Nothing` (which also represents `Flat`
-dimensions), `BoundaryNormal` unambiguously marks the boundary-normal direction,
+dimensions), `BoundaryAdjacent` unambiguously marks the boundary-normal direction,
 preventing dispatch ambiguities on grids with `Flat` topologies.
 """
-struct BoundaryNormal end
+struct BoundaryAdjacent end
 
-# BoundaryNormal acts like Nothing for interpolation purposes
-interpolation_code(::Type{BoundaryNormal}) = :ᵃ
-interpolation_code(::BoundaryNormal) = :ᵃ
-interpolation_code(::BoundaryNormal, to) = :ᵃ
-interpolation_code(from, ::BoundaryNormal) = :ᵃ
-interpolation_code(::BoundaryNormal, ::BoundaryNormal) = :ᵃ
-interpolation_code(::BoundaryNormal, ::Nothing) = :ᵃ
-interpolation_code(::Nothing, ::BoundaryNormal) = :ᵃ
+# BoundaryAdjacent acts like Nothing for interpolation purposes
+interpolation_code(::Type{BoundaryAdjacent}) = :ᵃ
+interpolation_code(::BoundaryAdjacent) = :ᵃ
+interpolation_code(::BoundaryAdjacent, to) = :ᵃ
+interpolation_code(from, ::BoundaryAdjacent) = :ᵃ
+interpolation_code(::BoundaryAdjacent, ::BoundaryAdjacent) = :ᵃ
+interpolation_code(::BoundaryAdjacent, ::Nothing) = :ᵃ
+interpolation_code(::Nothing, ::BoundaryAdjacent) = :ᵃ
 
 """
     struct ContinuousBoundaryFunction{X, Y, Z, I, F, P, D, N, ℑ} <: Function
@@ -81,7 +81,7 @@ returning `BoundaryCondition(C, regularized_condition)`.
 The regularization of `bc.condition::ContinuousBoundaryFunction` requries
 
 1. Setting the boundary location to `LX, LY, LZ`.
-   The location in the boundary-normal direction is `BoundaryNormal`.
+   The location in the boundary-normal direction is `BoundaryAdjacent`.
 
 2. Setting the boundary-normal index `I` for indexing into `field_dependencies`.
    `I` is either `1` (for left boundaries) or
@@ -96,8 +96,8 @@ The regularization of `bc.condition::ContinuousBoundaryFunction` requries
 function regularize_boundary_condition(boundary_func::ContinuousBoundaryFunction,
                                        grid, loc, dim, Side, field_names)
 
-    # Set boundary-normal location to BoundaryNormal:
-    LX, LY, LZ = Tuple(i == dim ? BoundaryNormal : destantiate(loc[i]) for i = 1:3)
+    # Set boundary-normal location to BoundaryAdjacent:
+    LX, LY, LZ = Tuple(i == dim ? BoundaryAdjacent : destantiate(loc[i]) for i = 1:3)
 
     indices, interps = index_and_interp_dependencies(LX, LY, LZ,
                                                      boundary_func.field_dependencies,
@@ -136,9 +136,9 @@ end
 @inline z_boundary_node(i, j, k, grid::YFlatGrid,  ℓx, ℓy) = tuple(ξnode(i, j, k, grid, ℓx, nothing, Face()))
 @inline z_boundary_node(i, j, k, grid::XYFlatGrid, ℓx, ℓy) = tuple()
 
-const XBoundaryFunction{LY, LZ, S} = ContinuousBoundaryFunction{BoundaryNormal, LY, LZ, S} where {LY, LZ, S}
-const YBoundaryFunction{LX, LZ, S} = ContinuousBoundaryFunction{LX, BoundaryNormal, LZ, S} where {LX, LZ, S}
-const ZBoundaryFunction{LX, LY, S} = ContinuousBoundaryFunction{LX, LY, BoundaryNormal, S} where {LX, LY, S}
+const XBoundaryFunction{LY, LZ, S} = ContinuousBoundaryFunction{BoundaryAdjacent, LY, LZ, S} where {LY, LZ, S}
+const YBoundaryFunction{LX, LZ, S} = ContinuousBoundaryFunction{LX, BoundaryAdjacent, LZ, S} where {LX, LZ, S}
+const ZBoundaryFunction{LX, LY, S} = ContinuousBoundaryFunction{LX, LY, BoundaryAdjacent, S} where {LX, LY, S}
 
 # Return ContinuousBoundaryFunction on east or west boundaries.
 @inline function getbc(cbf::XBoundaryFunction{LY, LZ, S}, j::Integer, k::Integer,

@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction, BoundaryNormal,
+using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction, BoundaryAdjacent,
                                        fill_halo_regions!
 
 using Oceananigans: prognostic_fields
@@ -234,7 +234,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
 
         model = NonhydrostaticModel(grid; boundary_conditions, buoyancy = SeawaterBuoyancy(), tracers = (:T, :S))
 
-        BN = BoundaryNormal
+        BN = BoundaryAdjacent
         @test location(model.velocities.u.boundary_conditions.bottom.condition) == (Face, Center, BN)
         @test location(model.velocities.u.boundary_conditions.top.condition)    == (Face, Center, BN)
         @test location(model.velocities.u.boundary_conditions.north.condition)  == (Face, BN, Center)
