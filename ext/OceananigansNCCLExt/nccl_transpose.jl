@@ -50,8 +50,9 @@ Replace MPI Alltoall with NCCL grouped Send/Recv.
 No `sync_device!` needed — NCCL ops are GPU-stream-native.
 """
 function nccl_alltoall!(buffer, counts, nccl_comm; stream_kw...)
-    count_per_rank = counts[1]
     T = eltype(buffer.send)
+    # NCCL treats Complex as 2× real elements
+    count_per_rank = T <: Complex ? 2 * counts[1] : counts[1]
     datatype = NCCL.ncclDataType_t(T)
     stream = get(stream_kw, :stream, CUDA.stream())
     NCCL.LibNCCL.ncclAlltoAll(pointer(buffer.send), pointer(buffer.recv),
