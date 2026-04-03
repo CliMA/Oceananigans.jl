@@ -50,22 +50,13 @@ Replace MPI Alltoall with NCCL grouped Send/Recv.
 No `sync_device!` needed — NCCL ops are GPU-stream-native.
 """
 function nccl_alltoall!(buffer, counts, nccl_comm; stream_kw...)
-    nranks = NCCL.size(nccl_comm)
-    count_per_rank = counts[1]
-    send = buffer.send
-    recv = buffer.recv
-
-    NCCL.groupStart()
-    for r in 0:(nranks - 1)
-        offset = r * count_per_rank
-        send_view = view(send, (offset + 1):(offset + count_per_rank))
-        recv_view = view(recv, (offset + 1):(offset + count_per_rank))
-        NCCL.Send(send_view, nccl_comm; dest=r, stream_kw...)
-        NCCL.Recv!(recv_view, nccl_comm; source=r, stream_kw...)
-    end
-    NCCL.groupEnd()
-    return nothing
-end
+    T = eltype(buffer.send)
+    count_per_rank = T <: Complex ? 2 * counts[1] : counts[1]
+    datatype = NCCL.ncclDataType_t(T)
+    stream = get(stream_kw, :stream, CUDA.stream())
+    NCCL.LibNCCL.ncclAlltoAll(pointer(buffer.send), pointer(buffer.recv),
+                               Int32(count_per_rank), datatype,
+                               nccl_comm.handle, stream)
     return nothing
 end
 
@@ -103,17 +94,10 @@ end
 NCCL alltoall on comm_stream if available, with event-based synchronization.
 """
 function nccl_alltoall_with_stream!(buffer, counts, nccl_comm, comm_stream)
-    if comm_stream !== nothing
-        event = CUDA.CuEvent()
-        CUDA.record(event)
-        CUDA.cuStreamWaitEvent(comm_stream, event, UInt32(0))
-
-        nccl_alltoall!(buffer, counts, nccl_comm; stream=comm_stream)
-
-        CUDA.record(event, comm_stream)
-        CUDA.cuStreamWaitEvent(CUDA.stream(), event, UInt32(0))
-    else
-        nccl_alltoall!(buffer, counts, nccl_comm)
-    end
+    # Always use default stream for ncclAlltoAll (comm_stream not needed
+    # since ncclAlltoAll is a blocking collective on the comm)
+    CUDA.synchronize()
+    nccl_alltoall!(buffer, counts, nccl_comm)
+    CUDA.synchronize()
     return nothing
 end
