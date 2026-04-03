@@ -178,9 +178,9 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
 
     TX, TY, TZ = topology(global_grid)
     tx, ty, tz = TX(), TY(), TZ()
-    λx = dropdims(poisson_eigenvalues(global_grid.Nx, global_grid.Lx, 1, tx), dims=(2, 3))
-    λy = dropdims(poisson_eigenvalues(global_grid.Ny, global_grid.Ly, 2, ty), dims=(1, 3))
-    λz = dropdims(poisson_eigenvalues(global_grid.Nz, global_grid.Lz, 3, tz), dims=(1, 2))
+    λx = dropdims(poisson_eigenvalues(global_grid, global_grid.Nx, global_grid.Lx, 1, tx), dims=(2, 3))
+    λy = dropdims(poisson_eigenvalues(global_grid, global_grid.Ny, global_grid.Ly, 2, ty), dims=(1, 3))
+    λz = dropdims(poisson_eigenvalues(global_grid, global_grid.Nz, global_grid.Lz, 3, tz), dims=(1, 2))
 
     Rx, Ry, _ = local_grid.architecture.ranks
     slab_x = Ry == 1 && Rx > 1  # slab decomposition in x only
