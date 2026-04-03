@@ -38,7 +38,7 @@ MPI.Irecv!(buf, src, tag, c::NCCLCommunicator) = MPI.Irecv!(buf, src, tag, c.mpi
 #####
 
 const NCCLDistributedArchitecture = Distributed{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:NCCLCommunicator}
-const NCCLDistributedGrid  = Oceananigans.Grids.AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:NCCLDistributedArchitecture}
+const NCCLDistributedGrid{FT, TX, TY, TZ}  = Oceananigans.Grids.AbstractGrid{FT, TX, TY, TZ, <:NCCLDistributedArchitecture}
 const NCCLDistributedField = Oceananigans.Fields.Field{<:Any, <:Any, <:Any, <:Any, <:NCCLDistributedGrid}
 
 #####
@@ -90,7 +90,8 @@ const pending_unpacks = Vector{Any}()
 
 function DC.distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
                                          grid::NCCLDistributedGrid, buffers, args...;
-                                         async = false, only_local_halos = false, kwargs...)
+                                         async = false, only_local_halos = false,
+                                         fill_open_bcs = true, kwargs...)
     only_local_halos && return nothing
 
     arch = DC.architecture(grid)
@@ -199,18 +200,9 @@ end
 ##### distributed_fill_halo_event! which handles async properly.
 #####
 
-function Oceananigans.BoundaryConditions.fill_halo_regions!(field::NCCLDistributedField, args...;
-                                                             async=false, kwargs...)
-    if async
-        # Async: use per-task path via distributed_fill_halo_event! (handles comm_stream)
-        return Oceananigans.BoundaryConditions.fill_halo_regions!(
-            field.data, field.boundary_conditions, field.indices,
-            instantiated_location(field), field.grid, field.communication_buffers,
-            args...; async, kwargs...)
-    end
-    # Synchronous: use batched path (all sides in one NCCL group)
-    return nccl_fill_halo_regions!((field,), args...; kwargs...)
-end
+# No custom fill_halo_regions! for NCCLDistributedField.
+# The base Field method dispatches through distributed_fill_halo_event!
+# which is overridden for NCCLDistributedGrid above.
 
 
 function nccl_fill_halo_regions!(fields, args...; only_local_halos=false, kwargs...)
