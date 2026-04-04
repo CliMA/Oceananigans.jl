@@ -186,6 +186,7 @@ developer_pages = [
 pages = [
     "Manual" => [
         "Quick Start" => "quick_start.md",
+        "Units" => "units.md",
         "Grids" => "grids.md",
         "Fields" => "fields.md",
         "Operations" => "operations.md",
