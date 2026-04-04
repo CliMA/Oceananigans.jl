@@ -40,6 +40,7 @@ const ArraysToRArray = Union{Array,
     SubArray{<:Any,<:Any,<:Array}}
 
 on_architecture(::ReactantState, a::ArraysToRArray) = Reactant.to_rarray(a)
+on_architecture(::ReactantState, a::StepRangeLen) = Reactant.to_rarray(collect(a))
 Oceananigans.Architectures.cpu_architecture(arch::Distributed{<:ReactantState}) = CPU()
 
 unified_array(::ReactantState, a) = a

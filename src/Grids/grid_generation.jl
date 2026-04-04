@@ -139,8 +139,8 @@ function generate_coordinate(FT, topo::AT, N, H, node_interval::Tuple{<:Number, 
     TF = total_length(Face(),   topo, N, H)
     TC = total_length(Center(), topo, N, H)
 
-    F = range(FT(F₋), FT(F₊), length = TF)
-    C = range(FT(C₋), FT(C₊), length = TC)
+    F = StepRangeLen(FT(F₋), FT(Δ), TF)
+    C = StepRangeLen(FT(C₋), FT(Δ), TC)
 
     F = on_architecture(arch, F)
     C = on_architecture(arch, C)
@@ -158,9 +158,9 @@ end
 # Flat domains
 function generate_coordinate(FT, ::Flat, N, H, c::Number, coordinate_name, arch)
     if coordinate_name == :z
-        return FT(1), StaticVerticalDiscretization(range(FT(c), FT(c), length=N), range(FT(c), FT(c), length=N), FT(1), FT(1))
+        return FT(1), StaticVerticalDiscretization(StepRangeLen(FT(c), FT(0), N), StepRangeLen(FT(c), FT(0), N), FT(1), FT(1))
     else
-        return FT(1), range(FT(c), FT(c), length=N), range(FT(c), FT(c), length=N), FT(1), FT(1)
+        return FT(1), StepRangeLen(FT(c), FT(0), N), StepRangeLen(FT(c), FT(0), N), FT(1), FT(1)
     end
 end
 
