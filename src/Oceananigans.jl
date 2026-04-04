@@ -146,10 +146,12 @@ function __init__()
     end
 end
 
+using BFloat16s: BFloat16
+
 # List of fully-supported floating point types where applicable.
 # Currently used only in the Advection module to specialize 
 # reconstruction schemes (WENO, UpwindBiased, and Centered).
-const fully_supported_float_types = (Float32, Float64)
+const fully_supported_float_types = (Float32, Float64, BFloat16)
 
 #####
 ##### Default settings for constructors
