@@ -4,9 +4,10 @@ using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochem
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
 using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
 using Oceananigans.DistributedComputations: Distributed
-using Oceananigans.Fields: CenterField, tracernames, TracerFields
+using Oceananigans.Fields: CenterField, FunctionField, tracernames, TracerFields
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization
+using Oceananigans.OutputReaders: FieldTimeSeries, TimeSeriesInterpolation
+using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, Center, architecture, halo_size, MutableVerticalDiscretization
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions
 using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles, materialize_clock!
@@ -35,7 +36,7 @@ function default_vertical_coordinate(grid)
 end
 
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
-                                           G, T, V, B, R, F, P, BGC, U, W, C, Φ, K, AF, Z} <: AbstractModel{TS, A}
+                                           G, T, V, B, R, F, P, BGC, U, W, C, PC, Φ, K, AF, Z} <: AbstractModel{TS, A}
 
     architecture :: A          # Computer `Architecture` on which `Model` is run
     grid :: G                  # Grid of physical points on which `Model` is solved
@@ -50,7 +51,8 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
     biogeochemistry :: BGC     # Biogeochemistry for Oceananigans tracers
     velocities :: U            # Container for velocity fields `u`, `v`, and `w`
     transport_velocities :: W  # Container for velocity fields used to transport tracers
-    tracers :: C               # Container for tracer fields
+    tracers :: C               # Container for prognostic tracer fields
+    prescribed_tracers :: PC   # Container for prescribed (non-prognostic) tracer fields
     pressure :: Φ              # Container for hydrostatic pressure
     closure_fields :: K        # Container for turbulent closure_fields
     timestepper :: TS          # Object containing timestepper fields and parameters
@@ -59,6 +61,32 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
 end
 
 supported_timesteppers = (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5)
+
+"""Return all tracers (prognostic + prescribed) merged into a single NamedTuple."""
+@inline all_tracers(model::HydrostaticFreeSurfaceModel) = merge(model.tracers, model.prescribed_tracers)
+
+#####
+##### Prescribed tracer materialization
+#####
+
+
+"""Materialize a single prescribed tracer entry into a concrete field type."""
+materialize_prescribed_tracer(f::Function, grid, clock) = FunctionField{Center, Center, Center}(f, grid; clock)
+
+function materialize_prescribed_tracer(fts::FieldTimeSeries, grid, clock)
+    return TimeSeriesInterpolation(fts, grid; clock)
+end
+
+# Passthrough for already-materialized fields (Field, FunctionField, TimeSeriesInterpolation, etc.)
+materialize_prescribed_tracer(f, grid, clock) = f
+
+"""Materialize all prescribed tracers in a NamedTuple."""
+function materialize_prescribed_tracers(prescribed_tracers::NamedTuple, grid, clock)
+    names = keys(prescribed_tracers)
+    isempty(names) && return prescribed_tracers
+    materialized = map(f -> materialize_prescribed_tracer(f, grid, clock), values(prescribed_tracers))
+    return NamedTuple{names}(materialized)
+end
 
 default_free_surface(grid::XYRegularStaticRG; gravitational_acceleration=defaults.gravitational_acceleration) =
     ImplicitFreeSurface(; gravitational_acceleration)
@@ -108,8 +136,11 @@ Keyword arguments
                     regularly spaced in the horizontal the default is an `ImplicitFreeSurface`
                     solver with `solver_method = :FFTBasedPoissonSolver`. In all other cases,
                     the default is a `SplitExplicitFreeSurface`.
-  - `tracers`: A tuple of symbols defining the names of the modeled tracers, or a `NamedTuple` of
+  - `tracers`: A tuple of symbols defining the names of the modeled (prognostic) tracers, or a `NamedTuple` of
                preallocated `CenterField`s.
+  - `prescribed_tracers`: `NamedTuple` of prescribed (non-prognostic) tracer fields. Prescribed tracers are
+                           not time-stepped but are available to turbulence closures for buoyancy computation.
+                           Values can be `FieldTimeSeries`, `Function(x, y, z, t)`, or any field-like object.
   - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
   - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
   - `timestepper`: A symbol or a `TimeStepper` object that specifies the time-stepping method.
@@ -135,6 +166,7 @@ function HydrostaticFreeSurfaceModel(grid;
                                      coriolis = nothing,
                                      free_surface = default_free_surface(grid, gravitational_acceleration=defaults.gravitational_acceleration),
                                      tracers = nothing,
+                                     prescribed_tracers::NamedTuple = NamedTuple(),
                                      forcing::NamedTuple = NamedTuple(),
                                      closure = nothing,
                                      timestepper = :QuasiAdamsBashforth2,
@@ -189,18 +221,32 @@ function HydrostaticFreeSurfaceModel(grid;
         tracers = tuple(user_tracer_names..., closure_tracer_names...)
     end
 
+    # Validate prescribed tracers don't overlap with prognostic tracers
+    prescribed_tracer_names = keys(prescribed_tracers)
+    prognostic_tracer_names = tracernames(tracers)
+    overlapping = filter(n -> n ∈ prognostic_tracer_names, prescribed_tracer_names)
+    if !isempty(overlapping)
+        throw(ArgumentError("Prescribed tracer names $overlapping overlap with prognostic tracer names."))
+    end
+
+    # Materialize prescribed tracers (FieldTimeSeries → TimeSeriesInterpolation, Function → FunctionField, etc.)
+    prescribed_tracers = materialize_prescribed_tracers(prescribed_tracers, grid, clock)
+
+    # All tracer names (prognostic + prescribed) for buoyancy/closure validation
+    all_tracer_names = tuple(prognostic_tracer_names..., prescribed_tracer_names...)
+
     # Reduce the advection order in directions that do not have enough grid points
     @apply_regionally momentum_advection = validate_momentum_advection(momentum_advection, grid)
     default_tracer_advection, tracer_advection = validate_tracer_advection(tracer_advection, grid)
     default_generator(name, tracer_advection) = default_tracer_advection
 
-    # Generate tracer advection scheme for each tracer
-    tracer_advection_tuple = with_tracers(tracernames(tracers), tracer_advection, default_generator, with_velocities=false)
+    # Generate tracer advection scheme for each prognostic tracer
+    tracer_advection_tuple = with_tracers(prognostic_tracer_names, tracer_advection, default_generator, with_velocities=false)
     momentum_advection_tuple = (; momentum = momentum_advection)
     advection = merge(momentum_advection_tuple, tracer_advection_tuple)
     advection = NamedTuple(name => adapt_advection_order(scheme, grid) for (name, scheme) in pairs(advection))
 
-    validate_buoyancy(buoyancy, tracernames(tracers))
+    validate_buoyancy(buoyancy, all_tracer_names)
     buoyancy = materialize_buoyancy(buoyancy, grid)
 
     # Collect boundary conditions for all model prognostic fields and, if specified, some model
@@ -229,11 +275,11 @@ function HydrostaticFreeSurfaceModel(grid;
     boundary_conditions = add_closure_specific_boundary_conditions(closure,
                                                                    boundary_conditions,
                                                                    grid,
-                                                                   tracernames(tracers),
+                                                                   all_tracer_names,
                                                                    buoyancy)
 
-    # Ensure `closure` describes all tracers
-    closure = with_tracers(tracernames(tracers), closure)
+    # Ensure `closure` describes all tracers (prognostic + prescribed)
+    closure = with_tracers(all_tracer_names, closure)
 
     # Put CATKE first in the list of closures
     closure = validate_closure(closure)
@@ -242,7 +288,7 @@ function HydrostaticFreeSurfaceModel(grid;
     velocities         = hydrostatic_velocity_fields(velocities, grid, clock, boundary_conditions)
     tracers            = TracerFields(tracers, grid, boundary_conditions)
     pressure           = PressureField(grid)
-    closure_fields = build_closure_fields(closure_fields, grid, clock, tracernames(tracers), boundary_conditions, closure)
+    closure_fields     = build_closure_fields(closure_fields, grid, clock, all_tracer_names, boundary_conditions, closure)
 
     @apply_regionally validate_velocity_boundary_conditions(grid, velocities)
 
@@ -271,7 +317,7 @@ function HydrostaticFreeSurfaceModel(grid;
 
     model = HydrostaticFreeSurfaceModel(arch, grid, clock, advection, buoyancy, coriolis,
                                         free_surface, forcing, closure, particles, biogeochemistry, velocities, transport_velocities,
-                                        tracers, pressure, closure_fields, timestepper, auxiliary_fields, vertical_coordinate)
+                                        tracers, prescribed_tracers, pressure, closure_fields, timestepper, auxiliary_fields, vertical_coordinate)
 
     materialize_clock!(clock, timestepper)
     update_state!(model)
@@ -322,7 +368,7 @@ end
 @inline total_velocities(model::HydrostaticFreeSurfaceModel) = model.velocities
 timestepper(model::HydrostaticFreeSurfaceModel) = model.timestepper
 buoyancy_force(model::HydrostaticFreeSurfaceModel) = model.buoyancy
-buoyancy_tracers(model::HydrostaticFreeSurfaceModel) = model.tracers
+buoyancy_tracers(model::HydrostaticFreeSurfaceModel) = all_tracers(model)
 
 #####
 ##### Checkpointing
