@@ -214,6 +214,9 @@ checkpointer_address(::HydrostaticFreeSurfaceModel) = "HydrostaticFreeSurfaceMod
 
 default_included_properties(::OceananigansModels) = [:grid]
 
+# Specialized output attributes for velocity and tracer fields
+include("output_attributes.jl")
+
 # Implementation of diagnostics applicable to both `NonhydrostaticModel` and `HydrostaticFreeSurfaceModel`
 include("seawater_density.jl")
 include("buoyancy_operation.jl")
