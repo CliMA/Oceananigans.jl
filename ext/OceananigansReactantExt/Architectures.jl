@@ -102,8 +102,9 @@ _to_reactant(a::Number) = a
 _to_reactant(::Nothing) = nothing
 _to_reactant(a::AbstractArray) = Reactant.to_rarray(collect(a))
 _to_reactant(a::OffsetArray) = OffsetArray(Reactant.to_rarray(collect(parent(a))), a.offsets...)
+
 function _to_reactant(s::Oceananigans.Grids.StaticVerticalDiscretization)
-    Oceananigans.Grids.StaticVerticalDiscretization(
+    return Oceananigans.Grids.StaticVerticalDiscretization(
         _to_reactant(s.cᵃᵃᶠ), _to_reactant(s.cᵃᵃᶜ), _to_reactant(s.Δᵃᵃᶠ), _to_reactant(s.Δᵃᵃᶜ))
 end
 
