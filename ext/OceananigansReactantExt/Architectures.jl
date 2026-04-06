@@ -40,7 +40,6 @@ const ArraysToRArray = Union{Array,
     SubArray{<:Any,<:Any,<:Array}}
 
 on_architecture(::ReactantState, a::ArraysToRArray) = Reactant.to_rarray(a)
-on_architecture(::ReactantState, a::StepRangeLen) = Reactant.to_rarray(collect(a))
 Oceananigans.Architectures.cpu_architecture(arch::Distributed{<:ReactantState}) = CPU()
 
 unified_array(::ReactantState, a) = a
@@ -97,6 +96,33 @@ end
 Oceananigans.Grids.unwrapped_eltype(T::Type{<:Reactant.ConcretePJRTNumber}) = Reactant.unwrapped_eltype(T)
 Oceananigans.Grids.unwrapped_eltype(T::Type{<:Reactant.ConcreteIFRTNumber}) = Reactant.unwrapped_eltype(T)
 
+
+# Materialize CPU data (including StepRangeLen with TwicePrecision internals) into ConcreteRArray
+_to_reactant(a::Number) = a
+_to_reactant(::Nothing) = nothing
+_to_reactant(a::AbstractArray) = Reactant.to_rarray(collect(a))
+_to_reactant(a::OffsetArray) = OffsetArray(Reactant.to_rarray(collect(parent(a))), a.offsets...)
+function _to_reactant(s::Oceananigans.Grids.StaticVerticalDiscretization)
+    Oceananigans.Grids.StaticVerticalDiscretization(
+        _to_reactant(s.cᵃᵃᶠ), _to_reactant(s.cᵃᵃᶜ), _to_reactant(s.Δᵃᵃᶠ), _to_reactant(s.Δᵃᵃᶜ))
+end
+
+# Build LLG on CPU (evaluating TwicePrecision + precomputing metrics in plain Julia),
+# then transfer the materialized arrays to Reactant. This avoids Float64 leakage from
+# StepRangeLen internals during Reactant tracing, while keeping RectilinearGrid unaffected
+# (RG retains StepRangeLen coordinates which sidestep the CuTracedArray VX type constraint).
+function LatitudeLongitudeGrid(arch::ReactantState, FT::DataType = Oceananigans.defaults.FloatType; kwargs...)
+    return on_architecture(arch, LatitudeLongitudeGrid(CPU(), FT; kwargs...))
+end
+
+function on_architecture(arch::ReactantState, grid::LatitudeLongitudeGrid)
+    TX, TY, TZ = topology(grid)
+    props = Tuple(_to_reactant(getfield(grid, n)) for n in fieldnames(typeof(grid))
+                  if n ∉ (:architecture, :Nx, :Ny, :Nz, :Hx, :Hy, :Hz, :Lx, :Ly, :Lz, :radius))
+    return LatitudeLongitudeGrid{TX, TY, TZ}(arch,
+        grid.Nx, grid.Ny, grid.Nz, grid.Hx, grid.Hy, grid.Hz,
+        grid.Lx, grid.Ly, grid.Lz, props..., grid.radius)
+end
 
 function on_architecture(new_arch::Distributed{<:ReactantState}, old_grid::LatitudeLongitudeGrid)
     child_arch = child_architecture(new_arch)
