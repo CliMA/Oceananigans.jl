@@ -22,7 +22,7 @@ The barotropic transport is computed as: `U̅ = ∫ u dz` and `V̅ = ∫ v dz`.
 This function is used both during split-explicit correction and initialization.
 """
 function compute_barotropic_mode!(U̅, V̅, grid, u, v)
-    active_cells_map = get_active_column_map(grid) # may be nothing
+    active_cells_map = get_active_cells_map(grid, Val(:xy))
 
     launch!(architecture(grid), grid, :xy,
             _compute_barotropic_mode!,
