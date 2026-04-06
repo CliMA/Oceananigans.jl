@@ -40,7 +40,7 @@ end
     end
 end
 
-const BoundedTopology = Union{Bounded, LeftConnected}
+const BoundedTopology = Union{Bounded, LeftConnected, RightFaceFolded}
 const AT = AbstractTopology
 
 Base.length(::Face,    ::BoundedTopology, N) = N + 1
@@ -168,6 +168,7 @@ regular_dimensions(grid) = ()
 @inline interior_parent_indices(::Face,    ::BoundedTopology, N, H) = 1+H:N+1+H
 @inline interior_parent_indices(loc,       ::AT,              N, H) = 1+H:N+H
 
+
 @inline interior_parent_indices(::Nothing, ::Flat, N, H) = 1:N
 @inline interior_parent_indices(::Face,    ::Flat, N, H) = 1:N
 @inline interior_parent_indices(::Center,  ::Flat, N, H) = 1:N
@@ -264,8 +265,8 @@ end
 ##### Directions (for tilted domains)
 #####
 
--(::NegativeZDirection) = ZDirection()
--(::ZDirection) = NegativeZDirection()
+Base.:-(::NegativeZDirection) = ZDirection()
+Base.:-(::ZDirection) = NegativeZDirection()
 
 #####
 ##### Show utils
@@ -278,6 +279,7 @@ Base.summary(::NegativeZDirection) = "NegativeZDirection()"
 
 Base.show(io::IO, dir::AbstractDirection) = print(io, summary(dir))
 
+size_summary(grid::AbstractGrid) = size_summary(size(grid))
 size_summary(sz) = string(sz[1], "×", sz[2], "×", sz[3])
 Utils.prettysummary(σ::AbstractFloat, plus=false) = writeshortest(σ, plus, false, true, -1, UInt8('e'), false, UInt8('.'), false, true)
 
@@ -286,13 +288,16 @@ domain_summary(topo::Flat, name, coord::Number) = "Flat $name = $coord"
 
 function domain_summary(topo, name, (left, right))
     interval = (topo isa Bounded) ||
-               (topo isa LeftConnected) ? "]" : ")"
+               (topo isa LeftConnected) ||
+               (topo isa RightFaceFolded) ? "]" : ")"
 
     topo_string = topo isa Periodic ? "Periodic " :
                   topo isa Bounded ? "Bounded  " :
                   topo isa FullyConnected ? "FullyConnected " :
                   topo isa LeftConnected ? "LeftConnected  " :
                   topo isa RightConnected ? "RightConnected  " :
+                  topo isa RightFaceFolded ? "RightFaceFolded  " :
+                  topo isa RightCenterFolded ? "RightCenterFolded  " :
                   error("Unexpected topology $topo together with the domain end points ($left, $right)")
 
     return string(topo_string, name, " ∈ [",

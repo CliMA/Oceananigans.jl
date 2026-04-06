@@ -4,19 +4,19 @@ using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 using Oceananigans.Coriolis: NonhydrostaticFormulation
 
 test_fplane(::Nothing) = FPlane(f=π)
-test_fplane(FT)        = FPlane(FT, f=π)
+test_fplane(FT)        = FPlane(FT, f=π, scheme=EnstrophyConserving(FT))
 test_bplane(::Nothing) = BetaPlane(f₀=π, β=2π)
-test_bplane(FT)        = BetaPlane(FT, f₀=π, β=2π)
+test_bplane(FT)        = BetaPlane(FT, f₀=π, β=2π, scheme=EnstrophyConserving(FT))
 test_ccc(::Nothing)    = ConstantCartesianCoriolis(f=1, rotation_axis=[0, cosd(45), sind(45)])
 test_ccc(FT)           = ConstantCartesianCoriolis(FT, f=1, rotation_axis=[0, cosd(45), sind(45)])
 test_hsc(::Nothing)    = HydrostaticSphericalCoriolis(scheme=EnergyConserving())
 test_hsc(FT)           = HydrostaticSphericalCoriolis(FT, scheme=EnergyConserving(FT))
 test_hsc2(::Nothing)   = HydrostaticSphericalCoriolis(rotation_rate=π)
-test_hsc2(FT)          = HydrostaticSphericalCoriolis(FT, rotation_rate=π)
+test_hsc2(FT)          = HydrostaticSphericalCoriolis(FT, rotation_rate=π, scheme=EnstrophyConserving(FT))
 test_sc(::Nothing)     = SphericalCoriolis(scheme=EnergyConserving())
 test_sc(FT)            = SphericalCoriolis(FT, scheme=EnergyConserving(FT))
 test_sc2(::Nothing)    = SphericalCoriolis(rotation_rate=π)
-test_sc2(FT)           = SphericalCoriolis(FT, rotation_rate=π)
+test_sc2(FT)           = SphericalCoriolis(FT, rotation_rate=π, scheme=EnstrophyConserving(FT))
 test_ntbp(::Nothing)   = NonTraditionalBetaPlane(rotation_rate=π, latitude=17, radius=ℯ)
 test_ntbp(FT)          = NonTraditionalBetaPlane(FT, rotation_rate=π, latitude=17, radius=ℯ)
 
@@ -113,7 +113,7 @@ end
     @info "Testing Coriolis..."
     # Save for later use
     FT₀ = Oceananigans.defaults.FloatType
-    
+
     for FT in float_types
         @test instantiate_fplane_1(FT)
         @test instantiate_fplane_2(FT)
@@ -162,7 +162,7 @@ end
         # Test show functions
         ✈ = FPlane(FT, latitude=45)
         show(✈); println()
-        @test ✈ isa FPlane{FT}
+        @test ✈ isa FPlane{<:Any, FT}
 
         ✈ = ConstantCartesianCoriolis(FT, f=1e-4)
         show(✈); println()
@@ -170,7 +170,7 @@ end
 
         ✈ = BetaPlane(FT, latitude=45)
         show(✈); println()
-        @test ✈ isa BetaPlane{FT}
+        @test ✈ isa BetaPlane{<:Any, FT}
 
         ✈ = NonTraditionalBetaPlane(FT, latitude=45)
         show(✈); println()

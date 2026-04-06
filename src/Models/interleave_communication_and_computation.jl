@@ -1,6 +1,6 @@
 using Oceananigans: prognostic_fields
 using Oceananigans.Grids
-using Oceananigans.Utils: KernelParameters
+using Oceananigans.Utils: KernelParameters, worksize
 using Oceananigans.Grids: halo_size, topology, architecture
 using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: DistributedGrid
@@ -30,7 +30,7 @@ function interior_tendency_kernel_parameters(arch::AsynchronousDistributed, grid
     Rx, Ry, _ = arch.ranks
     Hx, Hy, _ = halo_size(grid)
     Tx, Ty, _ = topology(grid)
-    Nx, Ny, Nz = size(grid)
+    Wx, Wy, Wz = worksize(grid)
 
     # Kernel parameters to compute the tendencies in all the interior if the direction is local (`R == 1`) and only in
     # the part of the domain that does not depend on the halo cells if the direction is partitioned.
@@ -41,28 +41,65 @@ function interior_tendency_kernel_parameters(arch::AsynchronousDistributed, grid
 
     # Sizes
     Sx = if local_x
-        Nx
+        Wx
     elseif one_sided_x
-        Nx - Hx
+        Wx - Hx
     else # two sided
-        Nx - 2Hx
+        Wx - 2Hx
     end
 
     Sy = if local_y
-        Ny
+        Wy
     elseif one_sided_y
-        Ny - Hy
+        Wy - Hy
     else # two sided
-        Ny - 2Hy
+        Wy - 2Hy
     end
 
     # Offsets
     Ox = Rx == 1 || Tx == RightConnected ? 0 : Hx
     Oy = Ry == 1 || Ty == RightConnected ? 0 : Hy
 
-    sizes = (Sx, Sy, Nz)
+    sizes = (Sx, Sy, Wz)
     offsets = (Ox, Oy, 0)
 
     return KernelParameters(sizes, offsets)
 end
 
+"""
+    surface_kernel_parameters(grid)
+
+Return kernel parameters for computing 2D (surface) variables including halo regions.
+
+The returned `KernelParameters` cover the total domain minus one halo cell on each side
+(indices `-Hx+2:Nx+Hx-1` and `-Hy+2:Ny+Hy-1`), which is sufficient for computing
+quantities that require neighbor data (like derivatives and interpolations).
+"""
+@inline function surface_kernel_parameters(grid)
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+    Tx, Ty, _ = topology(grid)
+
+    ii = ifelse(Tx == Flat, 1:Nx, -Hx+2:Nx+Hx-1)
+    jj = ifelse(Ty == Flat, 1:Ny, -Hy+2:Ny+Hy-1)
+
+    return KernelParameters(ii, jj)
+end
+
+"""
+    volume_kernel_parameters(grid)
+
+Return kernel parameters for computing 3D (volume) variables including halo regions.
+Similar to `surface_kernel_parameters` but for three-dimensional fields.
+"""
+@inline function volume_kernel_parameters(grid)
+    Nx, Ny, Nz = size(grid)
+    Hx, Hy, Hz = halo_size(grid)
+    Tx, Ty, Tz = topology(grid)
+
+    ii = ifelse(Tx == Flat, 1:Nx, -Hx+2:Nx+Hx-1)
+    jj = ifelse(Ty == Flat, 1:Ny, -Hy+2:Ny+Hy-1)
+    kk = ifelse(Tz == Flat, 1:Nz, -Hz+2:Nz+Hz-1)
+
+    return KernelParameters(ii, jj, kk)
+end

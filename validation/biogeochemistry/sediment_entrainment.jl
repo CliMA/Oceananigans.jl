@@ -22,7 +22,7 @@ r_sediment = 1e-4 # m (Fine sand)
 @show w_sediment = 2/9 * Δb / ν_molecular * r_sediment^2
 sinking = AdvectiveForcing(w=w_sediment)
 
-model = NonhydrostaticModel(; grid,
+model = NonhydrostaticModel(grid;
                             advection = WENO(),
                             timestepper = :RungeKutta3,
                             tracers = (:b, :sediment),
@@ -149,4 +149,3 @@ display(fig)
 record(fig, "sediment_entrainment.mp4", 1:Nt, framerate=160) do nn
     n[] = nn
 end
-

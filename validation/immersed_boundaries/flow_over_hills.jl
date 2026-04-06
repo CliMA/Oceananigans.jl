@@ -59,7 +59,9 @@ function hilly_simulation(; Nx = 64,
         boundary_conditions = NamedTuple()
     end
 
-    model = NonhydrostaticModel(; grid, closure, boundary_conditions,
+    model = NonhydrostaticModel(grid;
+                                closure,
+                                boundary_conditions,
                                 advection = WENO(),
                                 timestepper = :RungeKutta3,
                                 tracers = :b,
@@ -214,4 +216,3 @@ moviename = @sprintf("flow_over_hills_%dd_h%d.mp4", Nx, 10h)
 record(fig, moviename, 1:Nt, framerate=24) do nn
     n[] = nn
 end
-

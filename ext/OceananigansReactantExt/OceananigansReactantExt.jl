@@ -39,6 +39,9 @@ using .Simulations
 include("OutputReaders.jl")
 using .OutputReaders
 
+include("Solvers.jl")
+using .Solvers
+
 #####
 ##### Telling Reactant how to construct types
 #####
@@ -134,10 +137,10 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     CF2 = Reactant.traced_type_inner(CF, seen, mode, track_numbers, sharding, runtime)
     FF2 = Reactant.traced_type_inner(FF, seen, mode, track_numbers, sharding, runtime)
     for NF in (CC2, FC2, CF2, FF2)
-	if NF === Nothing
-	   continue
-	end
-	FT2 = Reactant.promote_traced_type(FT2, eltype(NF))
+        if NF === Nothing
+           continue
+        end
+        FT2 = Reactant.promote_traced_type(FT2, eltype(NF))
     end
     rFT2 = Reactant.traced_type_inner(rFT, seen, mode, track_numbers, sharding, runtime)
     return Oceananigans.Grids.OrthogonalSphericalShellGrid{FT2, TX2, TY2, TZ2, Z2, Map2, CC2, FC2, CF2, FF2, Arch, rFT2}
@@ -149,6 +152,15 @@ end
     args...;
     kwargs...
     ) = Reactant.make_tracer_via_immutable_constructor(seen, prev, args...; kwargs...)
+
+# Distributed architecture is infrastructure, not traced computation.
+# Returning it unchanged avoids issues with Ref fields (mpi_tag).
+@inline Reactant.make_tracer(
+    seen,
+    prev::Oceananigans.DistributedComputations.Distributed,
+    @nospecialize(args...);
+    kwargs...
+    ) = prev
 
 # https://github.com/CliMA/Oceananigans.jl/blob/d9b3b142d8252e8e11382d1b3118ac2a092b38a2/src/ImmersedBoundaries/immersed_boundary_grid.jl#L8
 Base.@nospecializeinfer function Reactant.traced_type_inner(
@@ -167,18 +179,18 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     M2 = Reactant.traced_type_inner(M, seen, mode, track_numbers, sharding, runtime)
     S2 = Reactant.traced_type_inner(S, seen, mode, track_numbers, sharding, runtime)
     FT2 = eltype(G2)
-    return Oceananigans.Grids.ImmersedBoundaryGrid{FT2, TX2, TY2, TZ2, G2, I2, M2, S2, Arch}
+    return Oceananigans.ImmersedBoundaries.ImmersedBoundaryGrid{FT2, TX2, TY2, TZ2, G2, I2, M2, S2, Arch}
 end
 
 Base.@nospecializeinfer function Reactant.traced_type_inner(
-    @nospecialize(OA::Type{LatitudeLongitudeGrid{FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC, 
+    @nospecialize(OA::Type{LatitudeLongitudeGrid{FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC,
                                                  DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I}}),
     seen,
     mode::Reactant.TraceMode,
     @nospecialize(track_numbers::Type),
     @nospecialize(sharding),
     @nospecialize(runtime)
-) where {FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC, DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I} 
+) where {FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC, DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I}
     TX2 = Reactant.traced_type_inner(TX, seen, mode, track_numbers, sharding, runtime)
     TY2 = Reactant.traced_type_inner(TY, seen, mode, track_numbers, sharding, runtime)
     TZ2 = Reactant.traced_type_inner(TZ, seen, mode, track_numbers, sharding, runtime)
@@ -202,14 +214,14 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     FT2 = Reactant.traced_type_inner(FT, seen, mode, track_numbers, sharding, runtime)
 
     for NF in (XF2, XC2, YF2, YC2, DXCC2, DXFC2, DYCF2, DYCF2, DXFF2)
-	if NF === Nothing
-	   continue
-	end
-	FT2 = Reactant.promote_traced_type(FT2, eltype(NF))
+        if NF === Nothing
+           continue
+        end
+        FT2 = Reactant.promote_traced_type(FT2, eltype(NF))
     end
 
-    res = Oceananigans.Grids.LatitudeLongitudeGrid{FT2, TX2, TY2, TZ2, Z2, DXF2, DXC2, XF2, XC2, DYF2, DYC2, YF2, YC2, 
-                                                 DXCC2, DXFC2, DXCF2, DXFF2, DYFC2, DYCF2, Arch, I2}
+    res = Oceananigans.Grids.LatitudeLongitudeGrid{FT2, TX2, TY2, TZ2, Z2, DXF2, DXC2, XF2, XC2, DYF2, DYC2, YF2, YC2,
+                                                   DXCC2, DXFC2, DXCF2, DXFF2, DYFC2, DYCF2, Arch, I2}
     return res
 end
 
@@ -266,13 +278,13 @@ end
     @assert size(tvals) == size(c)
     gf =  Reactant.call_with_reactant(getindex, c.operand, axes2...)
     if gf isa AbstractFloat
-	 gf = Reactant.Ops.fill(gf, size(c))
+         gf = Reactant.Ops.fill(gf, size(c))
     end
     Reactant.TracedRArrayOverrides._copyto!(tvals, Base.broadcasted(c.func isa Nothing ? Base.identity : c.func, gf))
 
     mask = c.mask
     if mask isa AbstractFloat && typeof(mask) != Reactant.unwrapped_eltype(Base.eltype(c))
-	mask = Base.eltype(c)(mask)
+        mask = Base.eltype(c)(mask)
     end
 
     return Reactant.Ops.select(
@@ -282,8 +294,8 @@ end
     )
 end
 
-function evalkern(kern, i, j, k)
-    kern.kernel_function(i, j, k, kern.grid, kern.arguments...)
+function eval_kernel_function(kfo, i, j, k)
+    return kfo.kernel_function(i, j, k, kfo.grid, kfo.arguments...)
 end
 
 @inline function Reactant.TracedUtils.materialize_traced_array(c::Oceananigans.AbstractOperations.KernelFunctionOperation)
@@ -298,29 +310,20 @@ end
         end)...)
     end
 
-    tvals = Reactant.Ops.fill(Reactant.unwrapped_eltype(Base.eltype(c)), size(c))
-    Reactant.TracedRArrayOverrides._copyto!(tvals, Base.broadcasted(Fix1v2(evalkern, c), axes2...))
-    return tvals
-end
+    tvals = Reactant.Ops.fill(zero(Reactant.unwrapped_eltype(Base.eltype(c))), size(c))
 
-function Oceananigans.TimeSteppers.tick_time!(clock::Oceananigans.TimeSteppers.Clock{<:Reactant.TracedRNumber}, Δt)
-    nt = Oceananigans.TimeSteppers.next_time(clock, Δt)
-    clock.time.mlir_data = nt.mlir_data
-    nt
-end
+    fix1 = Fix1v2(eval_kernel_function, c)
+    called_fix1 = Reactant.call_with_reactant(fix1, axes2...)
 
-function Oceananigans.TimeSteppers.tick!(clock::Oceananigans.TimeSteppers.Clock{<:Any, <:Any, <:Reactant.TracedRNumber}, Δt; stage=false)
-    Oceananigans.TimeSteppers.tick_time!(clock, Δt)
-
-    if stage # tick a stage update
-        clock.stage += 1
-        clock.last_stage_Δt = Δt
-    else # tick an iteration and reset stage
-        clock.iteration.mlir_data = (clock.iteration + 1).mlir_data
-        clock.stage = 1
+    if called_fix1 isa Number
+        fill!(tvals, called_fix1)
+    else
+        @assert called_fix1 isa AbstractArray
+        @assert size(called_fix1) == size(c)
+        Base.copyto!(tvals, called_fix1)
     end
 
-    return nothing
+    return tvals
 end
 
 @inline function Reactant.TracedUtils.broadcast_to_size(c::Oceananigans.AbstractOperations.KernelFunctionOperation, rsize)
@@ -331,7 +334,6 @@ end
 end
 
 Base.getindex(array::OffsetVector{T, <:Reactant.AbstractConcreteArray{T, 1}}, ::Colon) where T = array
-
 
 # These are additional modules that may need to be Reactantified in the future:
 #
@@ -348,4 +350,3 @@ Base.getindex(array::OffsetVector{T, <:Reactant.AbstractConcreteArray{T, 1}}, ::
 # using .Solvers
 
 end # module
-

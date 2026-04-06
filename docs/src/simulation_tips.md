@@ -108,7 +108,7 @@ For example, in the example below, calculating `u²` works in both CPUs and GPUs
 using Oceananigans
 
 grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
-model = NonhydrostaticModel(; grid, closure=ScalarDiffusivity(ν=1e-6))
+model = NonhydrostaticModel(grid; closure=ScalarDiffusivity(ν=1e-6))
 
 u, v, w = model.velocities
 ν = model.closure.ν
@@ -168,10 +168,9 @@ requires understanding the C-grid, but incurs only one iteration over the domain
 [Oceanostics.jl](https://github.com/tomchor/Oceanostics.jl/blob/3b8f67338656557877ef8ef5ebe3af9e7b2974e2/src/TurbulentKineticEnergyTerms.jl#L35-L57),
 
 ```julia
-using Oceanostics: IsotropicPseudoViscousDissipationRate
+using Oceanostics.KineticEnergyEquation: IsotropicDissipationRate
 
-ε = IsotropicViscousDissipationRate(model, u, v, w, ν)
-compute!(ε)
+ε = IsotropicDissipationRate(model) |> Field
 ```
 [Start an issue on Github](https://github.com/CliMA/Oceananigans.jl/issues/new) if more help is needed.
 
@@ -184,7 +183,7 @@ than 512 × 512 × 512. (The maximum grid size depends on some user-specified fa
 like the number of passive tracers or computed diagnostics.)
 For large simulations on the GPU, careful management of memory allocation may be required:
 
-- Use the [`nvidia-smi`](https://developer.nvidia.com/nvidia-system-management-interface) command
+- Use the [`nvidia-smi`](https://developer.nvidia.com/system-management-interface) command
   line utility to monitor the memory usage of the GPU. It should tell you how much memory there is
   on your GPU and how much of it you're using and you can run it from Julia via
 
@@ -195,7 +194,7 @@ For large simulations on the GPU, careful management of memory allocation may be
 
 - Try to use higher-order advection schemes. In general when you use a higher-order scheme you need
   fewer grid points to achieve the same accuracy that you would with a lower-order one. Refer to the
-  [documentation](https://clima.github.io/OceananigansDocumentation/stable/appendix/library/#Advection)
+  [documentation](@ref lib_advection)
   for available advection schemes.
 
 - Manually define scratch space to be reused in diagnostics. By default, every time a user-defined
@@ -204,7 +203,7 @@ For large simulations on the GPU, careful management of memory allocation may be
   the memory requirements. However, if you explicitly create a scratch space and pass that same
   scratch space for as many diagnostics as you can, you minimize the memory requirements of your
   calculations by reusing the same chunk of memory. Have a look at an
-  [example for how to create scratch space](https://github.com/CliMA/LESbrary.jl/blob/cf31b0ec20219d5ad698af334811d448c27213b0/examples/three_layer_ constant_fluxes.jl#L380-L383) and how it can be
+  [example for how to create scratch space](https://github.com/CliMA/LESbrary.jl/blob/cf31b0ec20219d5ad698af334811d448c27213b0/examples/three_layer_constant_fluxes.jl#L380-L383) and how it can be
   [used in calculations](https://github.com/CliMA/LESbrary.jl/blob/cf31b0ec20219d5ad698af334811d448c27213b0/src/TurbulenceStatistics/first_through_third_order.jl#L109-L112).
 
 
@@ -221,12 +220,12 @@ are called [`CUDA.CuArray`](https://cuda.juliagpu.org/stable/usage/array/).
 One limitation of `GPUArray`s compared to the `Array`s used for
 CPU computations is that `GPUArray` elements in general cannot be accessed outside kernels
 launched through, e.g., CUDA.jl or KernelAbstractions.jl. (You can learn more about GPU kernels
-[here](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#kernels) and
-[here](https://cuda.juliagpu.org/stable/usage/overview/#Kernel-programming-with-@cuda).)
+[through Nvidia docs](https://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#kernels) and
+[CUDA.jl docs](https://cuda.juliagpu.org/stable/usage/overview/#Kernel-programming-with-@cuda).)
 Doing so requires individual elements to be copied from or to the GPU for processing,
 which is very slow and can result in huge slowdowns. To avoid such unintentional slowdowns,
 Oceananigans disables scalar indexing by default. See the
-[scalar indexing](https://juliagpu.github.io/CUDA.jl/dev/usage/workflow/#UsageWorkflowScalar)
+[scalar indexing](https://cuda.juliagpu.org/stable/usage/workflow/#UsageWorkflowScalar)
 section of the CUDA.jl documentation for more information on scalar indexing.
 
 For example, if can be difficult to just view a `CuArray` since Julia needs to access
@@ -236,7 +235,7 @@ its elements to do that. Consider the example below:
 using Oceananigans, CUDA
 
 grid = RectilinearGrid(GPU(); size=(1, 1, 1), extent=(1, 1, 1), halo=(1, 1, 1))
-model = NonhydrostaticModel(; grid)
+model = NonhydrostaticModel(grid)
 typeof(model.velocities.u.data)
 ```
 
@@ -274,5 +273,5 @@ prototyping -- never in production-ready scripts.
 You might also need to keep these differences in mind when using arrays
 to define initial conditions, boundary conditions or
 forcing functions on a GPU. To learn more about working with `CuArray`s, see the
-[array programming](https://juliagpu.github.io/CUDA.jl/dev/usage/array/) section
+[array programming](https://cuda.juliagpu.org/stable/usage/array/) section
 of the CUDA.jl documentation.

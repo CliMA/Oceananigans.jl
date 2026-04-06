@@ -17,7 +17,7 @@ Return an object for computing the Courant-Freidrichs-Lewy (CFL) number
 associated with time step `Δt` or `TimeStepWizard` and `timescale`.
 
 See also [`AdvectiveCFL`](@ref Oceananigans.Diagnostics.AdvectiveCFL)
-and [`DiffusiveCFL`](Oceananigans.Diagnostics.DiffusiveCFL).
+and [`DiffusiveCFL`](@ref Oceananigans.Diagnostics.DiffusiveCFL).
 """
 CFL(Δt) = CFL(Δt, cell_advection_timescale)
 
@@ -35,7 +35,7 @@ Example
 ```jldoctest
 julia> using Oceananigans
 
-julia> model = NonhydrostaticModel(grid = RectilinearGrid(size=(16, 16, 16), extent=(8, 8, 8)));
+julia> model = NonhydrostaticModel(RectilinearGrid(size=(16, 16, 16), extent=(8, 8, 8)));
 
 julia> Δt = 1.0;
 
@@ -65,7 +65,7 @@ Example
 ```jldoctest
 julia> using Oceananigans
 
-julia> model = NonhydrostaticModel(grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1)),
+julia> model = NonhydrostaticModel(RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1)),
                                    closure = ScalarDiffusivity(; ν = 1e-2));
 
 julia> Δt = 0.1;

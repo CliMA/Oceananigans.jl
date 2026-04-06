@@ -34,7 +34,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 0, order,
     domain = (x=(0, 10), y=(-5, 5))
     grid = RectilinearGrid(architecture, topology=topo, size=(Nx, Nx), halo=(6, 6); domain...)
 
-    model = ShallowWaterModel( grid = grid,
+    model = ShallowWaterModel(grid;
          gravitational_acceleration = 2.0,
                  momentum_advection = VectorInvariant(vorticity_scheme = WENO(; order)),
                      mass_advection = WENO(; order),
@@ -80,7 +80,7 @@ function run_test(; Nx, Δt, stop_iteration, U = 0, order,
     ##### Test advection of an isoentropic vortex with a ConservativeFormulation
     #####
 
-    model = ShallowWaterModel( grid = grid,
+    model = ShallowWaterModel(grid;
          gravitational_acceleration = 1.0,
                  momentum_advection = WENO(order = order),
                      mass_advection = WENO(order = order),

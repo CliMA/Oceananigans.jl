@@ -1,7 +1,7 @@
 # Coriolis
 
-The Coriolis option determines whether the fluid experiences the effect of the Coriolis force, or rotation. Currently
-three options are available: no rotation, ``f``-plane, and ``\beta``-plane.
+The Coriolis option determines whether the fluid experiences the effect of the Coriolis force, or rotation.
+Several Coriolis approximations are available, from the simple ``f``-plane to full spherical Coriolis.
 
 !!! info "Coriolis vs. rotation"
     If you are wondering why this option is called "Coriolis" it is because rotational effects could include the
@@ -27,8 +27,8 @@ julia> coriolis = FPlane(f=1e-4)
 FPlane{Float64}(f=0.0001)
 ```
 
-An ``f``-plane can also be specified at some latitude on a spherical planet with a planetary rotation rate. For example,
-to specify an ``f``-plane at a latitude of ``\varphi = 45°\text{N}`` on Earth which has a rotation rate of
+An ``f``-plane can also be specified at some latitude on a spherical planet with a planetary rotation rate.
+For example, to specify an ``f``-plane at a latitude of ``\varphi = 45°\text{N}`` on Earth that has a rotation rate of
 ``\Omega = 7.292115 \times 10^{-5} \text{s}^{-1}``
 
 ```jldoctest
@@ -54,10 +54,18 @@ frequency `f` and the `rotation_axis`. So another way to get a Coriolis accelera
 values is:
 
 ```jldoctest
-julia> rotation_axis = (0, 2e-4, 1e-4)./√(2e-4^2 + 1e-4^2) # rotation_axis has to be a unit vector
+julia> using LinearAlgebra: norm
+
+julia> (fx, fy, fz) = (0, 2e-4, 1e-4)
+(0, 0.0002, 0.0001)
+
+julia> f = norm((fx, fy, fz))
+0.00022360679774997898
+
+julia> rotation_axis = (fx, fy, fz) ./ f # rotation_axis has to be a unit vector
 (0.0, 0.8944271909999159, 0.4472135954999579)
 
-julia> coriolis = ConstantCartesianCoriolis(f=√(2e-4^2+1e-4^2), rotation_axis=rotation_axis)
+julia> coriolis = ConstantCartesianCoriolis(; f, rotation_axis)
 ConstantCartesianCoriolis{Float64}: fx = 0.00e+00, fy = 2.00e-04, fz = 1.00e-04
 ```
 
@@ -72,7 +80,7 @@ ConstantCartesianCoriolis{Float64}: fx = 0.00e+00, fy = 1.03e-04, fz = 1.03e-04
 
 in which case ``f_z = 2\Omega\sin\varphi`` and ``f_y = 2\Omega\cos\varphi``.
 
-## Traditional ``\beta``-plane
+## Traditional ``β``-plane
 
 To set up a ``\beta``-plane the background rotation rate ``f_0`` and the ``\beta`` parameter must be specified. For example,
 a ``\beta``-plane with ``f_0 = 10^{-4} \text{s}^{-1}`` and ``\beta = 1.5 \times 10^{-11} \text{s}^{-1}\text{m}^{-1}`` can be
@@ -94,7 +102,7 @@ BetaPlane{Float64}(f₀=-2.53252e-5, β=2.25438e-11)
 
 in which case ``f_0 = 2\Omega\sin\varphi`` and ``\beta = 2\Omega\cos\varphi / R``.
 
-## Non-traditional ``\beta``-plane
+## Non-traditional ``β``-plane
 
 A non-traditional ``\beta``-plane requires either 5 parameters (by default Earth's radius and
 rotation rate are used):
@@ -110,3 +118,116 @@ or the rotation rate, radius, and latitude:
 julia> NonTraditionalBetaPlane(rotation_rate=5.31e-5, radius=252.1e3, latitude=10)
 NonTraditionalBetaPlane{Float64}(fz = 1.84e-05, fy = 1.05e-04, β = 4.15e-10, γ = -1.46e-10, R = 2.52e+05)
 ```
+
+## Spherical Coriolis
+
+For simulations on latitude-longitude grids, use [`HydrostaticSphericalCoriolis`](@ref) (for hydrostatic models)
+or [`SphericalCoriolis`](@ref) (for nonhydrostatic models). Both evaluate the Coriolis parameter
+``f = 2\Omega\sin\varphi`` from the grid's latitude.
+
+`HydrostaticSphericalCoriolis` uses the traditional approximation (only the locally vertical component
+of rotation). `SphericalCoriolis` additionally includes the horizontal component
+(the non-traditional terms), which matter in strongly stratified or near-equatorial regimes.
+
+```jldoctest
+julia> coriolis = HydrostaticSphericalCoriolis()
+SphericalCoriolis
+├─ rotation rate: 7.29e-05 s⁻¹ = 1.00 Ω_Earth
+├─ formulation: HydrostaticFormulation
+└─ scheme: EnstrophyConserving
+
+julia> coriolis = SphericalCoriolis()
+SphericalCoriolis
+├─ rotation rate: 7.29e-05 s⁻¹ = 1.00 Ω_Earth
+├─ formulation: NonhydrostaticFormulation
+└─ scheme: EnstrophyConserving
+```
+
+A custom rotation rate can be specified for either:
+
+```jldoctest
+julia> coriolis = HydrostaticSphericalCoriolis(rotation_rate=1e-4)
+SphericalCoriolis
+├─ rotation rate: 1.00e-04 s⁻¹ = 1.37 Ω_Earth
+├─ formulation: HydrostaticFormulation
+└─ scheme: EnstrophyConserving
+```
+
+## Discretization schemes
+
+The Coriolis term ``\boldsymbol{f} \times \boldsymbol{v}`` requires interpolating velocities on the C-grid,
+since ``u`` and ``v`` are not collocated. The `scheme` keyword argument controls how this
+interpolation is performed. Different schemes have different conservation properties and different
+behavior near immersed boundaries.
+
+Five schemes are available:
+
+| Scheme | Conserves | Immersed boundary correction |
+|--------|-----------|------------------------------|
+| `EnstrophyConserving()` | Potential enstrophy | No |
+| `EnergyConserving()` | Kinetic energy | No |
+| `TriadScheme()` | Both energy and enstrophy | No |
+| `ActiveWeightedEnstrophyConserving()` | Potential enstrophy | Yes |
+| `ActiveWeightedEnergyConserving()` | Kinetic energy | Yes |
+
+The default scheme is `EnstrophyConserving()` for `HydrostaticSphericalCoriolis`,
+`FPlane`, and `BetaPlane`.
+
+### Selecting a scheme
+
+Pass the `scheme` keyword to any Coriolis constructor:
+
+```jldoctest
+julia> using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
+
+julia> coriolis = FPlane(f=1e-4, scheme=EnergyConserving())
+FPlane{Float64}(f=0.0001)
+
+julia> coriolis = FPlane(f=1e-4, scheme=EnstrophyConserving())
+FPlane{Float64}(f=0.0001)
+
+julia> coriolis = HydrostaticSphericalCoriolis(scheme=EnergyConserving())
+SphericalCoriolis
+├─ rotation rate: 7.29e-05 s⁻¹ = 1.00 Ω_Earth
+├─ formulation: HydrostaticFormulation
+└─ scheme: EnergyConserving
+```
+
+### Active-weighted schemes for immersed boundaries
+
+When using immersed boundaries, the standard 4-point averaging of velocities in the Coriolis
+term includes masked (land) points where velocity is zero. This dilutes the Coriolis force
+near boundaries, creating spurious numerical boundary layers
+[JamartOzer1986](@citep).
+
+The `ActiveWeightedEnstrophyConserving` and `ActiveWeightedEnergyConserving` schemes correct this by
+dividing the interpolated result by the number of active (non-masked) nodes in the stencil,
+rather than the full stencil size:
+
+```jldoctest
+julia> coriolis = FPlane(f=1e-4, scheme=Oceananigans.Coriolis.ActiveWeightedEnstrophyConserving())
+FPlane{Float64}(f=0.0001)
+
+julia> coriolis = HydrostaticSphericalCoriolis(scheme=Oceananigans.Coriolis.ActiveWeightedEnergyConserving())
+SphericalCoriolis
+├─ rotation rate: 7.29e-05 s⁻¹ = 1.00 Ω_Earth
+├─ formulation: HydrostaticFormulation
+└─ scheme: ActiveWeightedEnergyConserving
+```
+
+!!! warning "When to use active-weighted schemes"
+    The active-weighted correction can reduce spurious numerical boundary layers along simple, flat immersed boundaries. However, for complex topography (narrow passages, sharp capes, jagged coastlines) or large ``\beta`` values, the amplification factor ``1/N_{\text{active}}`` can inject energy and produce grid-scale checkerboard artifacts along coastlines. For this reason, the standard (non-active-weighted) schemes are the default. Users should test the active-weighted  schemes carefully before adopting them
+    in production simulations.
+
+### Triad (Energy- and Enstrophy-Conserving) scheme
+
+The `TriadScheme` scheme is based on the triad formulation of [ArakawaLamb1981](@citet).
+It uses a 12-point stencil that conserves both kinetic energy and potential enstrophy in
+the limit of horizontally non-divergent flow:
+
+```jldoctest
+julia> coriolis = FPlane(f=1e-4, scheme=Oceananigans.Coriolis.TriadScheme())
+FPlane{Float64}(f=0.0001)
+```
+
+The default scheme for `FPlane`, `BetaPlane`, and `HydrostaticSphericalCoriolis` is `EnstrophyConserving`.

@@ -2,7 +2,10 @@ using Pkg
 
 include("dependencies_for_runtests.jl")
 
+# TEST_GROUP=unit julia --project -e 'using Pkg; Pkg.test()'
 group = get(ENV, "TEST_GROUP", "all") |> Symbol
+
+# TEST_FILE=test_coriolis.jl julia --project -e 'using Pkg; Pkg.test()'
 test_file = get(ENV, "TEST_FILE", :none) |> Symbol
 
 # if we are testing just a single file then group = :none
@@ -44,11 +47,17 @@ CUDA.allowscalar() do
             include("test_regrid.jl")
             include("test_field_scans.jl")
             include("test_halo_regions.jl")
-            include("test_coriolis.jl")
             include("test_buoyancy.jl")
             include("test_stokes_drift.jl")
             include("test_utils.jl")
             include("test_schedules.jl")
+        end
+    end
+
+    if group == :coriolis || group == :all
+        @testset "Coriolis" begin
+            include("test_coriolis.jl")
+            include("test_coriolis_schemes.jl")
         end
     end
 
@@ -96,6 +105,7 @@ CUDA.allowscalar() do
             include("test_implicit_diffusion_diagnostic.jl")
             include("test_output_writers.jl")
             include("test_output_readers.jl")
+            include("test_averaged_specified_times.jl")
             include("test_set_field_time_series.jl")
         end
     end
@@ -122,6 +132,7 @@ CUDA.allowscalar() do
             include("test_datetime_clock.jl")
             include("test_forcings.jl")
             include("test_immersed_advection.jl")
+            include("test_background_flux_divergence.jl")
         end
     end
 
@@ -132,6 +143,7 @@ CUDA.allowscalar() do
             include("test_seawater_density.jl")
             include("test_model_diagnostics.jl")
             include("test_orthogonal_spherical_shell_time_stepping.jl")
+            include("test_bulk_drag.jl")
         end
     end
 
@@ -201,11 +213,28 @@ CUDA.allowscalar() do
         include("test_distributed_hydrostatic_model.jl")
     end
 
-    # if group == :distributed_output || group == :all
-    #     @testset "Distributed output writing and reading tests" begin
-    #         include("test_distributed_output.jl")
-    #     end
-    # end
+    if group == :distributed_vertical_coordinate_1 || group == :all
+        MPI.Initialized() || MPI.Init()
+        # In case CUDA is not found, we reset CUDA and restart the julia session
+        reset_cuda_if_necessary()
+        include("test_zstar_conservation_explicit.jl")
+    end
+
+    if group == :distributed_vertical_coordinate_2 || group == :all
+        MPI.Initialized() || MPI.Init()
+        # In case CUDA is not found, we reset CUDA and restart the julia session
+        reset_cuda_if_necessary()
+        include("test_zstar_conservation_implicit.jl")
+        include("test_zstar_conservation_tripolar.jl")
+    end
+
+    if group == :distributed_output || group == :all
+        MPI.Initialized() || MPI.Init()
+        reset_cuda_if_necessary()
+        @testset "Distributed output combining tests" begin
+            include("test_distributed_output_combining.jl")
+        end
+    end
 
     if group == :distributed_nonhydrostatic_regression || group == :all
         MPI.Initialized() || MPI.Init()
@@ -229,9 +258,17 @@ CUDA.allowscalar() do
         end
     end
 
-    if group == :vertical_coordinate || group == :all
-        @testset "Vertical coordinate tests" begin
+    if group == :vertical_coordinate_1 || group == :all
+        @testset "Vertical coordinate tests (1)" begin
             include("test_zstar_coordinate.jl")
+            include("test_zstar_conservation_explicit.jl")
+        end
+    end
+
+    if group == :vertical_coordinate_2 || group == :all
+        @testset "Vertical coordinate tests (2)" begin
+            include("test_zstar_conservation_implicit.jl")
+            include("test_zstar_conservation_tripolar.jl")
         end
     end
 
@@ -249,16 +286,34 @@ CUDA.allowscalar() do
         end
     end
 
-    # Tests for Reactant extension
+    # Reactant unit tests (grids, fields, reductions, FieldTimeSeries)
     if group == :reactant_1 || group == :all
-        @testset "Reactant extension tests 1" begin
-            include("test_reactant.jl")
+        @testset "Reactant unit tests" begin
+            include("test_reactant_unit.jl")
         end
     end
 
+    # Reactant simulation tests (RectilinearGrid simulations, FFT models, HFSM)
     if group == :reactant_2 || group == :all
-        @testset "Reactant extension tests 2" begin
+        @testset "Reactant simulation tests" begin
+            include("test_reactant.jl")
+            include("test_reactant_fft_models.jl")
+            include("test_reactant_hydrostatic_free_surface_models.jl")
+            include("test_reactant_single_column_models.jl")
+        end
+    end
+
+    # Reactant LatitudeLongitudeGrid simulation tests
+    if group == :reactant_3 || group == :all
+        @testset "Reactant LatitudeLongitudeGrid simulation tests" begin
             include("test_reactant_latitude_longitude_grid.jl")
+        end
+    end
+
+    # Tests for Reactant correctness (comparing vanilla vs ReactantState)
+    if group == :reactant_correctness || group == :all
+        @testset "Reactant correctness tests" begin
+            include("test_reactant_correctness.jl")
         end
     end
 
@@ -269,11 +324,17 @@ CUDA.allowscalar() do
         end
     end
 
+    # Tests for ConservativeRegridding extension
+    if group == :conservative_regridding || group == :all
+        @testset "ConservativeRegridding extension tests" begin
+            include("test_conservative_regridding.jl")
+        end
+    end
+
     if group == :sharding || group == :all
         @testset "Sharding Reactant extension tests" begin
-            # Broken for the moment (trying to fix them in https://github.com/CliMA/Oceananigans.jl/pull/4293)
-            # include("test_sharded_lat_lon.jl")
-            # include("test_sharded_tripolar.jl")
+            include("test_sharded_lat_lon.jl")
+            # include("test_sharded_tripolar.jl") # disabled: TripolarGrid + ImmersedBoundaryGrid cause Reactant MLIR errors
         end
     end
 

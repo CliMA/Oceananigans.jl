@@ -1,10 +1,5 @@
-using Oceananigans.Architectures: architecture
-using Oceananigans.Utils: prettysummary
+using Oceananigans.Utils: prettysummary, @apply_regionally
 using LinearAlgebra: norm, dot
-using LinearAlgebra
-using KernelAbstractions: @kernel, @index
-
-import Oceananigans.Architectures: architecture
 
 mutable struct ConjugateGradientSolver{A, G, L, T, F, M, P, E}
                 architecture :: A
@@ -23,7 +18,7 @@ mutable struct ConjugateGradientSolver{A, G, L, T, F, M, P, E}
     enforce_gauge_condition! :: E
 end
 
-architecture(solver::ConjugateGradientSolver) = solver.architecture
+Architectures.architecture(solver::ConjugateGradientSolver) = solver.architecture
 iteration(cgs::ConjugateGradientSolver) = cgs.iteration
 
 initialize_precondition_product(preconditioner, template_field) = similar(template_field)

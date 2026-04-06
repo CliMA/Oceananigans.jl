@@ -1,5 +1,3 @@
-import Adapt
-
 using Oceananigans.Grids: node
 using Oceananigans.Operators: index_and_interp_dependencies
 using Oceananigans.Fields: show_location
@@ -162,7 +160,7 @@ Adapt.adapt_structure(to, forcing::ContinuousForcing{LX, LY, LZ}) where {LX, LY,
                                   Adapt.adapt(to, forcing.field_dependencies_indices),
                                   Adapt.adapt(to, forcing.field_dependencies_interp))
 
-on_architecture(to, forcing::ContinuousForcing{LX, LY, LZ}) where {LX, LY, LZ} =
+Architectures.on_architecture(to, forcing::ContinuousForcing{LX, LY, LZ}) where {LX, LY, LZ} =
     ContinuousForcing{LX, LY, LZ}(on_architecture(to, forcing.func),
                                   on_architecture(to, forcing.parameters),
                                   on_architecture(to, forcing.field_dependencies),

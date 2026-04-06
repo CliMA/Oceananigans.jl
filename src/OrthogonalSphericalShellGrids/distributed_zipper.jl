@@ -1,17 +1,10 @@
-using Oceananigans.BoundaryConditions: fill_halo_event!, get_boundary_kernels,
-                                       DistributedCommunication
-
-using Oceananigans.DistributedComputations: cooperative_waitall!,
-                                            recv_from_buffers!,
-                                            fill_corners!,
-                                            loc_id
-
-using Oceananigans.Fields: location
+using Oceananigans.BoundaryConditions: get_boundary_kernels, DistributedCommunication
+using Oceananigans.DistributedComputations: cooperative_waitall!, recv_from_buffers!, distributed_fill_halo_event!
+using Oceananigans.DistributedComputations: CommunicationBuffers, fill_corners!, loc_id, AsynchronousDistributed
+using Oceananigans.Fields: instantiated_location
 
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.DistributedComputations: synchronize_communication!
-
-using OffsetArrays: OffsetArray
 
 @inline instantiate(T::DataType) = T()
 @inline instantiate(T) = T
@@ -58,8 +51,11 @@ end
     return nothing
 end
 
-function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::DistributedTripolarGridOfSomeKind, buffers, args...; kwargs...)
-  
+# Disambiguation
+fill_halo_regions!(c::OffsetArray, ::Nothing, indices, loc, ::MPITripolarGridOfSomeKind, args...; kwargs...) = nothing
+
+function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::MPITripolarGridOfSomeKind, buffers::CommunicationBuffers, args...; kwargs...)
+
     arch = architecture(grid)
     kernels!, ordered_bcs = get_boundary_kernels(bcs, c, grid, loc, indices)
 
@@ -67,7 +63,7 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
     outstanding_requests = length(arch.mpi_requests)
 
     for task = 1:number_of_tasks
-        @inbounds fill_halo_event!(c, kernels![task], ordered_bcs[task], loc, grid, buffers, args...; kwargs...)
+        @inbounds distributed_fill_halo_event!(c, kernels![task], ordered_bcs[task], loc, grid, buffers, args...; kwargs...)
     end
 
     fill_corners!(c, arch.connectivity, indices, loc, arch, grid, buffers, args...; kwargs...)
@@ -83,30 +79,30 @@ function fill_halo_regions!(c::OffsetArray, bcs, indices, loc, grid::Distributed
         north_bc = bcs.north
         switch_north_halos!(c, north_bc, grid, loc)
     end
-  
+
     return nothing
 end
 
-function synchronize_communication!(field::Field{<:Any, <:Any, <:Any, <:Any, <:DistributedTripolarGridOfSomeKind})
+function synchronize_communication!(field::Field{<:Any, <:Any, <:Any, <:Any, <:MPITripolarGridOfSomeKind})
     arch = architecture(field.grid)
 
-    # Wait for outstanding requests
-    if !isempty(arch.mpi_requests)
-        cooperative_waitall!(arch.mpi_requests)
+    if arch isa AsynchronousDistributed # Otherwise no need to synchronize
+        # Wait for outstanding requests
+        if !isempty(arch.mpi_requests)
+            cooperative_waitall!(arch.mpi_requests)
 
-        # Reset MPI tag
-        arch.mpi_tag[] = 0
+            # Reset MPI tag
+            arch.mpi_tag[] = 0
 
-        # Reset MPI requests
-        empty!(arch.mpi_requests)
+            # Reset MPI requests
+            empty!(arch.mpi_requests)
+        end
+
+        recv_from_buffers!(field.data, field.communication_buffers, field.grid)
+
+        north_bc = field.boundary_conditions.north
+        switch_north_halos!(field, north_bc, field.grid, instantiated_location(field))
     end
-
-    recv_from_buffers!(field.data, field.communication_buffers, field.grid)
-
-    north_bc = field.boundary_conditions.north
-    instantiated_location = map(instantiate, location(field))
-
-    switch_north_halos!(field, north_bc, field.grid, instantiated_location)
 
     return nothing
 end

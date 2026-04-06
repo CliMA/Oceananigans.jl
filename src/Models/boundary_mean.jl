@@ -26,21 +26,15 @@ struct BoundaryAdjacentMean{FF, BV}
 
     julia> cf = CenterField(grid);
 
-    julia> set!(cf, (x, y, z) -> sin(2π * y / 4))
-    16×16×16 Field{Center, Center, Center} on RectilinearGrid on CPU
-    ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-    ├── boundary conditions: FieldBoundaryConditions
-    │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
-    └── data: 22×22×22 OffsetArray(::Array{Float64, 3}, -2:19, -2:19, -2:19) with eltype Float64 with indices -2:19×-2:19×-2:19
-        └── max=0.980785, min=-0.980785, mean=-5.52808e-17
+    julia> set!(cf, (x, y, z) -> sin(2π * y / 4)); # hide output
 
     julia> bam = BoundaryAdjacentMean(grid, :east)
     BoundaryAdjacentMean: (0.0)
 
-    julia> bam(:east, cf)
+    julia> bam(:east, cf); # computes boundary-adjacent mean
 
-    julia> bam
-    BoundaryAdjacentMean: (-1.5612511283791264e-18)
+    julia> abs(bam.value[]) < 1e-10  # essentially zero
+    true
     ```
     """
     BoundaryAdjacentMean(grid, side;

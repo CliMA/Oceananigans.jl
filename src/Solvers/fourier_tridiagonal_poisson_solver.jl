@@ -1,7 +1,5 @@
-using Oceananigans.Operators: Δxᶜᵃᵃ, Δxᶠᵃᵃ, Δyᵃᶜᵃ, Δyᵃᶠᵃ, Δzᵃᵃᶜ, Δzᵃᵃᶠ
+using Oceananigans.Operators: Δxᶜᶜᶜ, Δxᶜᵃᵃ, Δxᶠᵃᵃ, Δyᵃᶜᵃ, Δyᵃᶠᵃ, Δyᶜᶜᶜ, Δzᵃᵃᶜ, Δzᵃᵃᶠ, Δzᶜᶜᶜ
 using Oceananigans.Grids: XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG
-
-import Oceananigans.Architectures: architecture
 
 struct FourierTridiagonalPoissonSolver{G, F, Λ, B, R, S, β, T}
     grid :: G
@@ -20,7 +18,7 @@ function Base.show(io::IO, solver::FourierTridiagonalPoissonSolver)
     print(io, "└── grid: ", prettysummary(solver.grid))
 end
 
-architecture(solver::FourierTridiagonalPoissonSolver) = architecture(solver.grid)
+Architectures.architecture(solver::FourierTridiagonalPoissonSolver) = architecture(solver.grid)
 
 stretched_direction(::YZRegularRG) = XDirection()
 stretched_direction(::XZRegularRG) = YDirection()
@@ -109,8 +107,8 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT; tridia
     T1, T2 = Tuple(el for (i, el) in enumerate(topology(grid)) if i ≠ tridiagonal_dim)
     L1, L2 = Tuple(el for (i, el) in enumerate(extent(grid))   if i ≠ tridiagonal_dim)
 
-    λ1 = poisson_eigenvalues(N1, L1, 1, T1())
-    λ2 = poisson_eigenvalues(N2, L2, 2, T2())
+    λ1 = poisson_eigenvalues(grid, N1, L1, 1, T1())
+    λ2 = poisson_eigenvalues(grid, N2, L2, 2, T2())
 
     arch = architecture(grid)
     λ1 = on_architecture(arch, λ1)

@@ -11,12 +11,12 @@ Poisson equation for the non-hydrostatic kinematic pressure
    \nabla^2 p_{NH} = \frac{\boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{v}^n}{\Delta t} + \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{G}_{\boldsymbol{v}} \equiv \mathscr{F} \, ,
    \end{equation}
 ```
-along with homogenous Neumann boundary conditions ``\boldsymbol{v} \cdot \boldsymbol{\hat{n}} = 0``
+along with homogeneous Neumann boundary conditions ``\boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\hat{n}} = 0``
 (Neumann on ``p`` for wall-bounded directions and periodic otherwise) and where ``\mathscr{F}``
 denotes the source term for the Poisson equation.
 
 !!! note "Dividing small timesteps"
-    In practice, in order to avoid division by extremely small numbers when ``\Delta t \lesssim \epsilon``, 
+    In practice, in order to avoid division by extremely small numbers when ``\Delta t \lesssim \epsilon``,
     we solve the Poisson equation for ``p_{NH} \Delta t`` instead.
     ``\Delta t`` is then removed from the pressure field after the elliptic solve routine.
 

@@ -1,5 +1,4 @@
 using CubedSphere.SphericalGeometry: lat_lon_to_x, lat_lon_to_y, lat_lon_to_z
-using GPUArraysCore: @allowscalar
 
 longitude_in_same_window(λ₁, λ₂) = mod(λ₁ - λ₂ + 180, 360) + λ₂ - 180
 
@@ -14,16 +13,16 @@ vertex is the cell's Southern-Western one and the rest follow in counter-clockwi
 """
 function get_longitude_vertices(i, j, k, grid::Union{LatitudeLongitudeGrid, OrthogonalSphericalShellGrid}, ℓx, ℓy, ℓz)
 
-    if ℓx == Center()
-        i₀ = i
+    i₀ = if ℓx == Center()
+        i
     elseif ℓx == Face()
-        i₀ = i-1
+        i-1
     end
 
-    if ℓy == Center()
-        j₀ = j
+    j₀ = if ℓy == Center()
+        j
     elseif ℓy == Face()
-        j₀ = j-1
+        j-1
     end
 
     λ₁ = λnode( i₀,   j₀,  k, grid, flip_location(ℓx), flip_location(ℓy), ℓz)
@@ -42,16 +41,16 @@ is the cell's Southern-Western one and the rest follow in counter-clockwise orde
 """
 function get_latitude_vertices(i, j, k, grid::Union{LatitudeLongitudeGrid, OrthogonalSphericalShellGrid}, ℓx, ℓy, ℓz)
 
-    if ℓx == Center()
-        i₀ = i
+    i₀ = if ℓx == Center()
+        i
     elseif ℓx == Face()
-        i₀ = i-1
+        i-1
     end
 
-    if ℓy == Center()
-        j₀ = j
+    j₀ = if ℓy == Center()
+        j
     elseif ℓy == Face()
-        j₀ = j-1
+        j-1
     end
 
     φ₁ = φnode( i₀,   j₀,  k, grid, flip_location(ℓx), flip_location(ℓy), ℓz)

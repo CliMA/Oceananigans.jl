@@ -43,7 +43,7 @@ function test_vector_rotation(grid)
     d = compute!(Field(x₁ * x₂ + y₁ * y₂))
     c = compute!(Field(x₁ * y₂ - y₁ * x₂))
 
-    @info "  Testing the conversion of a vector between to the Intrinsice reference frame on $(summary(grid))"
+    @info "  Testing the conversion of a vector between to the Intrinsic reference frame on $(summary(grid))"
     xᵢ₁ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_x_component, grid, x₁, y₁)
     yᵢ₁ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_y_component, grid, x₁, y₁)
     xᵢ₂ = KernelFunctionOperation{Center, Center, Center}(intrinsic_vector_x_component, grid, x₂, y₂)
@@ -92,7 +92,8 @@ end
                 # that geometric factors related with spherical geometry don't come into play.
                 Δ = 1e-3
 
-                angles = [-22.5, 30, 45, 60]
+                angles_degrees = [-22.5, 30, 45, 60]
+                angles = angles_degrees .* (π / 180) # Convert to Radians
 
                 for θᵢ in angles
                     radius = 1
@@ -104,9 +105,9 @@ end
                     φᶠᶠᵃ = grid.φᶠᶠᵃ
 
                     # fill in coordinates
-                    sinθ = sind(θᵢ)
-                    cosθ = cosd(θᵢ)
-                    for i in 1:Nx+1, j in 1:Ny+1
+                    sinθ = sin(θᵢ)
+                    cosθ = cos(θᵢ)
+                    for j in 1:Ny+1, i in 1:Nx+1
                         λᶠᶠᵃ[i, j, 1] =   (i-1) * Δ * cosθ + (j-1) * Δ * sinθ
                         φᶠᶠᵃ[i, j, 1] = - (i-1) * Δ * sinθ + (j-1) * Δ * cosθ
                     end

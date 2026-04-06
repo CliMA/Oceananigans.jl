@@ -4,7 +4,7 @@ export
     QuasiAdamsBashforth2TimeStepper,
     RungeKutta3TimeStepper,
     FastRungeKutta3TimeStepper,
-    SplitRungeKutta3TimeStepper,
+    SplitRungeKuttaTimeStepper,
     time_step!,
     Clock
 
@@ -21,23 +21,39 @@ abstract type AbstractTimeStepper end
 function update_state! end
 function compute_tendencies! end
 function compute_flux_bc_tendencies! end
+function step_closure_prognostics! end
 
-compute_pressure_correction!(model, Δt) = nothing
-make_pressure_correction!(model, Δt) = nothing
+# Fallback for models without closure prognostics
+step_closure_prognostics!(model, Δt) = nothing
+
+# Reconcile auxiliary state with prognostic fields (fallback is a no-op).
+reconcile_state!(model) = nothing
+
+# Prepare the model for the first time step, in case run! is not used.
+function maybe_prepare_first_time_step!(model, callbacks)
+    if model.clock.iteration == 0
+        reconcile_state!(model)
+        update_state!(model, callbacks)
+    end
+    return nothing
+end
 
 # Interface for time-stepping Lagrangian particles
 abstract type AbstractLagrangianParticles end
 step_lagrangian_particles!(model, Δt) = nothing
 
+# Materialize clock fields to avoid aliasing issues with Reactant.
+# For QAB2, last_Δt and last_stage_Δt must be distinct objects.
+materialize_clock!(clock, timestepper) = nothing
+
 reset!(timestepper) = nothing
 implicit_step!(field, ::Nothing, args...; kwargs...) = nothing
 
 include("clock.jl")
-include("store_tendencies.jl")
 include("quasi_adams_bashforth_2.jl")
 include("runge_kutta_3.jl")
 include("fast_runge_kutta_3.jl")
-include("split_hydrostatic_runge_kutta_3.jl")
+include("split_runge_kutta.jl")
 
 """
     TimeStepper(name::Symbol, args...; kwargs...)
@@ -66,8 +82,18 @@ TimeStepper(::Val{:RungeKutta3}, args...; kwargs...) =
 TimeStepper(::Val{:FastRungeKutta3}, args...; kwargs...) =
     FastRungeKutta3TimeStepper(args...; kwargs...)
 
-TimeStepper(::Val{:SplitRungeKutta3}, args...; kwargs...) =
-    SplitRungeKutta3TimeStepper(args...; kwargs...)
+# Convenience constructors for SplitRungeKuttaTimeStepper with 2 to 5 stages
+# By calling TimeStepper(:SplitRungeKuttaN, ...)
+for stages in 2:5
+    @eval TimeStepper(::Val{Symbol(:SplitRungeKutta, $stages)}, args...; kwargs...) =
+              SplitRungeKuttaTimeStepper(args...; coefficients=tuple(collect($stages:-1:1)...), kwargs...)
+end
+
+TimeStepper(ts::SplitRungeKuttaTimeStepper, grid, prognostic_fields; kw...) =
+    SplitRungeKuttaTimeStepper(grid, prognostic_fields; coefficients=ts.β, kw...)
+
+TimeStepper(ts::QuasiAdamsBashforth2TimeStepper, grid, prognostic_fields; kw...) =
+    QuasiAdamsBashforth2TimeStepper(grid, prognostic_fields; χ=ts.χ, kw...)
 
 function first_time_step!(model::AbstractModel, Δt)
     initialize!(model)
@@ -84,5 +110,22 @@ function first_time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper
     time_step!(model, Δt, euler=true)
     return nothing
 end
+
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(timestepper::AbstractTimeStepper)
+    return (Gⁿ = prognostic_state(timestepper.Gⁿ),
+            G⁻ = prognostic_state(timestepper.G⁻))
+end
+
+function restore_prognostic_state!(restored::AbstractTimeStepper, from)
+    restore_prognostic_state!(restored.Gⁿ, from.Gⁿ)
+    restore_prognostic_state!(restored.G⁻, from.G⁻)
+    return restored
+end
+
+restore_prognostic_state!(::AbstractTimeStepper, ::Nothing) = nothing
 
 end # module

@@ -85,7 +85,7 @@ end
 # function add_inhomogeneous_boundary_terms!(rhs, free_surface::ImplicitFreeSurface, grid, Ũ, Δt)
 function add_inhomogeneous_boundary_terms!(rhs, free_surface, grid, Ũ, Δt)
     g = free_surface.gravitational_acceleration
-    η = free_surface.η
+    η = free_surface.displacement
     arch = grid.architecture
     launch!(arch, grid, :xy, _add_inhomogeneous_boundary_terms!, rhs, grid, Ũ.w, Δt, g, η)
     return nothing
@@ -129,7 +129,7 @@ update_fourier_tridiagonal_solver!(solver, ::Nothing, Ũ, Δt) = nothing
 
 function update_fourier_tridiagonal_solver!(solver, free_surface, Ũ, Δt)
     g = free_surface.gravitational_acceleration
-    η = free_surface.η
+    η = free_surface.displacement
     λx, λy = solver.poisson_eigenvalues
     grid = solver.grid
     arch = grid.architecture

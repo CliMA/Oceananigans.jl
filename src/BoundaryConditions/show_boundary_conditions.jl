@@ -15,7 +15,8 @@ bc_str(::DFBC)                   = "Default"
 bc_str(::MCBC)                   = "MultiRegionCommunication"
 bc_str(::DCBC)                   = "DistributedCommunication"
 bc_str(::Nothing)                = "Nothing"
-bc_str(zbc::ZBC)                 = "Zipper($(zbc.condition))"
+bc_str(bc::UZBC)                 = "U-point Zipper($(bc.condition))"
+bc_str(bc::FZBC)                 = "F-Pivot Zipper($(bc.condition))"
 
 #####
 ##### BoundaryCondition
@@ -29,7 +30,8 @@ Base.summary(bc::VBC)                     = string("ValueBoundaryCondition: ", p
 Base.summary(bc::GBC)                     = string("GradientBoundaryCondition: ", prettysummary(bc.condition))
 Base.summary(::PBC)                       = string("PeriodicBoundaryCondition")
 Base.summary(bc::DCBC)                    = string("DistributedBoundaryCondition: ", prettysummary(bc.condition))
-Base.summary(bc::ZBC)                     = string("ZipperBoundaryCondition: ", prettysummary(bc.condition))
+Base.summary(bc::UZBC)                    = string("UPivotZipperBoundaryCondition: ", prettysummary(bc.condition))
+Base.summary(bc::FZBC)                    = string("FPivotZipperBoundaryCondition: ", prettysummary(bc.condition))
 
 function Base.summary(bc::MBC)
     string("MixedBoundaryCondition: ",

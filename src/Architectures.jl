@@ -100,16 +100,24 @@ on_architecture(arch::AbstractSerialArchitecture, nt::NamedTuple) = NamedTuple{k
 # On architecture for array types
 on_architecture(::CPU, a::Array) = a
 on_architecture(::CPU, a::BitArray) = a
-on_architecture(::CPU, a::SubArray{<:Any, <:Any, <:Array}) = a
 on_architecture(::CPU, a::StepRangeLen) = a
 on_architecture(::CPU, A::SparseMatrixCSC) = A
 
 on_architecture(arch::AbstractSerialArchitecture, a::OffsetArray) =
     OffsetArray(on_architecture(arch, a.parent), a.offsets...)
 
+function on_architecture(arch::AbstractArchitecture, a::SubArray)
+    p = on_architecture(arch, parent(a))
+    return SubArray(p, parentindices(a))
+end
+
 cpu_architecture(::CPU) = CPU()
 cpu_architecture(::GPU) = CPU()
 cpu_architecture(::ReactantState) = CPU()
+
+Base.summary(::CPU) = "CPU"
+Base.summary(gpu::GPU) = "GPU{$(typeof(gpu.device))}"
+Base.summary(::ReactantState) = "ReactantState"
 
 unified_array(::CPU, a) = a
 unified_array(::GPU, a) = a

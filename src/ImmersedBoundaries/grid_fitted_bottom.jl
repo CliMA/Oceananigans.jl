@@ -110,8 +110,8 @@ compute_numerical_bottom_height!(bottom_field, grid, ib) =
     for k in 1:grid.Nz
         z⁺ = rnode(i, j, k+1, grid, c, c, f)
         z  = rnode(i, j, k,   grid, c, c, c)
-        bottom_cell = ifelse(condition isa CenterImmersedCondition, z ≤ zb, z⁺ ≤ zb)
-        @inbounds bottom_field[i, j, 1] = ifelse(bottom_cell, z⁺, bottom_field[i, j, 1])
+        immersed_cell = ifelse(condition isa CenterImmersedCondition, z ≤ zb, z⁺ ≤ zb)
+        @inbounds bottom_field[i, j, 1] = ifelse(immersed_cell, z⁺, bottom_field[i, j, 1])
     end
 end
 
@@ -128,8 +128,8 @@ end
     # wetting or drying that could happen for a moving grid if we use znode
     z  = rnode(i, j, k, underlying_grid, c, c, c)
     zb = @inbounds ib.bottom_height[i, j, 1]
-    zb = Base.stack(collect(zb for _ in k))
-    return z .≤ zb
+    _zb = Base.stack(collect(zb for _ in k))
+    return z .≤ _zb
 end
 
 #####

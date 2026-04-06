@@ -66,17 +66,16 @@ end
 
 function fill_halo_event!(c, kernel!, bcs::SouthPolarBC, loc, grid, args...; kwargs...)
     update_pole_value!(bcs[1].condition, c, grid, loc)
-    return kernel!(c, bcs..., loc, grid, Tuple(args))
+    return kernel!(c, bcs[1], bcs[2], loc, grid, Tuple(args))
 end
 
 function fill_halo_event!(c, kernel!, bcs::NorthPolarBC, loc, grid, args...; kwargs...)
     update_pole_value!(bcs[2].condition, c, grid, loc)
-    return kernel!(c, bcs..., loc, grid, Tuple(args))
+    return kernel!(c, bcs[1], bcs[2], loc, grid, Tuple(args))
 end
 
 function fill_halo_event!(c, kernel!, bcs::SouthAndNorthPolarBC, loc, grid, args...; kwargs...)
     update_pole_value!(bcs[1].condition, c, grid, loc)
     update_pole_value!(bcs[2].condition, c, grid, loc)
-    return kernel!(c, bcs..., loc, grid, Tuple(args))
+    return kernel!(c, bcs[1], bcs[2], loc, grid, Tuple(args))
 end
-

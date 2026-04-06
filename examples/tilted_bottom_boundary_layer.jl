@@ -24,6 +24,9 @@
 
 using Oceananigans
 using Oceananigans.Units
+using Random
+
+Random.seed!(42) # for reproducible results
 
 Lx = 200meters
 Lz = 100meters
@@ -110,23 +113,21 @@ b_bcs = FieldBoundaryConditions(bottom = negative_background_diffusive_flux)
 
 # ## Bottom drag and along-slope interior velocity
 #
-# We impose bottom drag that follows Monin--Obukhov theory:
+# We impose bottom drag that follows Monin--Obukhov theory.
+# We use `BulkDrag` to create the drag boundary conditions, which computes a
+# quadratic drag proportional to the total velocity (including the background velocity):
 
 V∞ = 0.1 # m s⁻¹
-z₀ = 0.1 # m (roughness length)
+ℓ = 0.1 # m (roughness length)
 ϰ = 0.4  # von Karman constant
 
 z₁ = first(znodes(grid, Center())) # Closest grid center to the bottom
-cᴰ = (ϰ / log(z₁ / z₀))^2 # Drag coefficient
+cᴰ = (ϰ / log(z₁ / ℓ))^2 # Drag coefficient
 
-@inline drag_u(x, t, u, v, p) = - p.cᴰ * √(u^2 + (v + p.V∞)^2) * u
-@inline drag_v(x, t, u, v, p) = - p.cᴰ * √(u^2 + (v + p.V∞)^2) * (v + p.V∞)
+drag_bc = BulkDrag(coefficient=cᴰ, background_velocities=(0, V∞, 0))
 
-drag_bc_u = FluxBoundaryCondition(drag_u, field_dependencies=(:u, :v), parameters=(; cᴰ, V∞))
-drag_bc_v = FluxBoundaryCondition(drag_v, field_dependencies=(:u, :v), parameters=(; cᴰ, V∞))
-
-u_bcs = FieldBoundaryConditions(bottom = drag_bc_u)
-v_bcs = FieldBoundaryConditions(bottom = drag_bc_v)
+u_bcs = FieldBoundaryConditions(bottom=drag_bc)
+v_bcs = FieldBoundaryConditions(bottom=drag_bc)
 
 # Note that, similar to the buoyancy boundary conditions, we had to
 # include the background flow in the drag calculation.
@@ -143,7 +144,7 @@ V∞_field = BackgroundField(V∞)
 
 closure = ScalarDiffusivity(ν=1e-4, κ=1e-4)
 
-model = NonhydrostaticModel(; grid, buoyancy, coriolis, closure,
+model = NonhydrostaticModel(grid; buoyancy, coriolis, closure,
                             advection = UpwindBiased(order=5),
                             tracers = :b,
                             boundary_conditions = (u=u_bcs, v=v_bcs, b=b_bcs),
@@ -216,14 +217,8 @@ run!(simulation)
 
 using CairoMakie
 
-xb, yb, zb = nodes(B)
-xω, yω, zω = nodes(ωy)
-xv, yv, zv = nodes(V)
-
 # Read in the simulation's `output_writer` for the two-dimensional fields and then create an
 # animation showing the ``y``-component of vorticity.
-
-ds = NCDataset(simulation.output_writers[:fields].filepath, "r")
 
 fig = Figure(size = (800, 600))
 
@@ -236,21 +231,22 @@ ax_v = Axis(fig[3, 1]; title = "Along-slope velocity (v)", axis_kwargs...)
 
 n = Observable(1)
 
-ωy = @lift ds["ωy"][:, :, $n]
-B = @lift ds["B"][:, :, $n]
-ωlim = 0.015
-hm_ω = heatmap!(ax_ω, xω, zω, ωy, colorrange = (-ωlim, +ωlim), colormap = :balance)
+ωy_timeseries = FieldTimeSeries(simulation.output_writers[:fields].filepath, "ωy")
+B_timeseries = FieldTimeSeries(simulation.output_writers[:fields].filepath, "B")
+V_timeseries = FieldTimeSeries(simulation.output_writers[:fields].filepath, "V")
+
+ωy = @lift ωy_timeseries[$n]
+B = @lift B_timeseries[$n]
+hm_ω = heatmap!(ax_ω, ωy, colorrange = (-0.015, +0.015), colormap = :balance)
 Colorbar(fig[2, 2], hm_ω; label = "s⁻¹")
-ct_b = contour!(ax_ω, xb, zb, B, levels=-1e-3:5e-5:1e-3, color=:black)
+ct_b = contour!(ax_ω, B, levels=-1e-3:5e-5:1e-3, color=:black)
 
-V = @lift ds["V"][:, :, $n]
-V_max = @lift maximum(abs, ds["V"][:, :, $n])
-
-hm_v = heatmap!(ax_v, xv, zv, V, colorrange = (-V∞, +V∞), colormap = :balance)
+V = @lift V_timeseries[$n]
+hm_v = heatmap!(ax_v, V, colorrange = (-V∞, +V∞), colormap = :balance)
 Colorbar(fig[3, 2], hm_v; label = "m s⁻¹")
-ct_b = contour!(ax_v, xb, zb, B, levels=-1e-3:5e-5:1e-3, color=:black)
+ct_b = contour!(ax_v, B, levels=-1e-3:5e-5:1e-3, color=:black)
 
-times = collect(ds["time"])
+times = ωy_timeseries.times
 title = @lift "t = " * string(prettytime(times[$n]))
 fig[1, :] = Label(fig, title, fontsize=20, tellwidth=false)
 
@@ -267,7 +263,3 @@ end
 nothing #hide
 
 # ![](tilted_bottom_boundary_layer.mp4)
-
-# Don't forget to close the NetCDF file!
-
-close(ds)

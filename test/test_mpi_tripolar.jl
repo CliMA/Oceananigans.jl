@@ -81,11 +81,11 @@ tripolar_reconstructed_field = """
 
 @testset "Test distributed TripolarGrid..." begin
     write("distributed_tripolar_grid.jl", tripolar_reconstructed_grid)
-    run(`$(mpiexec()) -n 4 julia --project -O0 distributed_tripolar_grid.jl`)
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 distributed_tripolar_grid.jl`)
     rm("distributed_tripolar_grid.jl")
 
     write("distributed_tripolar_field.jl", tripolar_reconstructed_field)
-    run(`$(mpiexec()) -n 4 julia --project -O0 distributed_tripolar_field.jl`)
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 distributed_tripolar_field.jl`)
     rm("distributed_tripolar_field.jl")
 end
 
@@ -144,7 +144,7 @@ tripolar_boundary_conditions = """
     fill_halo_regions!((v, c))
 
     write("distributed_boundary_tests.jl", tripolar_boundary_conditions)
-    run(`$(mpiexec()) -n 4 julia --project -O0 distributed_boundary_tests.jl`)
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 distributed_boundary_tests.jl`)
     rm("distributed_boundary_tests.jl")
 
     # Retrieve Parallel quantities from rank 1 (the north-west rank)
@@ -197,14 +197,14 @@ run_large_pencil_distributed_grid = """
     # Retrieve Serial quantities
     us, vs, ws = model.velocities
     cs = model.tracers.c
-    ηs = model.free_surface.η
+    ηs = model.free_surface.displacement
 
     us = interior(us, :, :, 1)
     vs = interior(vs, :, :, 1)
     cs = interior(cs, :, :, 1)
     # Run the distributed grid simulation with a slab configuration
     write("distributed_slab_tests.jl", run_slab_distributed_grid)
-    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project -O0 distributed_slab_tests.jl`)
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 distributed_slab_tests.jl`)
     rm("distributed_slab_tests.jl")
 
     # Retrieve Parallel quantities
@@ -223,7 +223,7 @@ run_large_pencil_distributed_grid = """
 
     # Run the distributed grid simulation with a pencil configuration
     write("distributed_tests.jl", run_pencil_distributed_grid)
-    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project -O0 distributed_tests.jl`)
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 distributed_tests.jl`)
     rm("distributed_tests.jl")
 
     # Retrieve Parallel quantities
@@ -243,7 +243,7 @@ run_large_pencil_distributed_grid = """
     # test as we are now splitting, not only where the singularities are, but
     # also in the middle of the north fold. This is a more challenging test
     write("distributed_large_pencil_tests.jl", run_large_pencil_distributed_grid)
-    run(`$(mpiexec()) -n 8 $(Base.julia_cmd()) --project -O0 distributed_large_pencil_tests.jl`)
+    run(`$(mpiexec()) -n 8 $(Base.julia_cmd()) -O0 distributed_large_pencil_tests.jl`)
     rm("distributed_large_pencil_tests.jl")
 
     # Retrieve Parallel quantities

@@ -12,6 +12,7 @@ export
     fill_halo_regions!,
     WestAndEast, SouthAndNorth, BottomAndTop,
     West, East, South, North, Bottom, Top,
+    PeriodicFillHalo,
     DistributedFillHalo
 
 using Adapt
@@ -46,7 +47,8 @@ include("fill_halo_regions_value_gradient.jl")
 include("fill_halo_regions_open.jl")
 include("fill_halo_regions_periodic.jl")
 include("fill_halo_regions_flux.jl")
-include("fill_halo_regions_zipper.jl")
+include("fill_halo_regions_upivotzipper.jl")
+include("fill_halo_regions_fpivotzipper.jl")
 include("fill_halo_kernels.jl")
 
 include("compute_flux_bcs.jl")

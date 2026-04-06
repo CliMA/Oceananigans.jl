@@ -1,6 +1,3 @@
-using OffsetArrays: OffsetArray
-
-
 #####
 ##### Creating offset arrays for field data by dispatching on architecture.
 #####
@@ -74,4 +71,3 @@ new_data(FT::DataType, grid::AbstractGrid, loc, indices=default_indices(length(l
     new_data(FT, architecture(grid), loc, topology(grid), size(grid), halo_size(grid), indices)
 
 new_data(grid::AbstractGrid, loc, indices=default_indices) = new_data(eltype(grid), grid, loc, indices)
-

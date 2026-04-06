@@ -26,7 +26,7 @@ function run_forcing_simulation(arch, FT, start_time; Δt, stop_time)
     end
 
     clock = Clock(time=start_time)
-    model = HydrostaticFreeSurfaceModel(; grid, clock, forcing=(; u=u_forcing))
+    model = HydrostaticFreeSurfaceModel(grid; clock, forcing=(; u=u_forcing))
     simulation = Simulation(model; Δt, stop_time, verbose=false)
 
     forcing_history = FT[]

@@ -1,14 +1,15 @@
 include("dependencies_for_runtests.jl")
 
 using Statistics
-using Oceananigans.Grids: get_cartesian_nodes_and_vertices
+using Oceananigans.Grids: get_cartesian_nodes_and_vertices, RightFaceFolded, RightCenterFolded
 using Oceananigans.ImmersedBoundaries: immersed_cell
-using Oceananigans.BoundaryConditions: Zipper
+using Oceananigans.BoundaryConditions: Zipper, FPivot, UPivot
 
 using Oceananigans.Utils: KernelParameters
 import Oceananigans.Utils: contiguousrange
 
 contiguousrange(::KernelParameters{spec, offset}) where {spec, offset} = contiguousrange(spec, offset)
+fold_topologies = (RightCenterFolded, RightFaceFolded)
 
 @kernel function compute_nonorthogonality_angle!(angle, grid, xF, yF, zF)
     i, j = @index(Global, NTuple)
@@ -38,230 +39,350 @@ contiguousrange(::KernelParameters{spec, offset}) where {spec, offset} = contigu
     end
 end
 
+
 @testset "Unit tests..." begin
     for arch in archs
-        grid = TripolarGrid(arch, size = (4, 5, 1), z = (0, 1),
-                            first_pole_longitude = 75,
-                            north_poles_latitude = 35,
-                            southernmost_latitude = -80)
+        @testset "$fold_topology fold topology" for fold_topology in fold_topologies
+            first_pole_longitude = 75
+            north_poles_latitude = 35
+            southernmost_latitude = -35
+            grid = TripolarGrid(arch;
+                                size = (4, 5, 1),
+                                z = (0, 1),
+                                first_pole_longitude,
+                                north_poles_latitude,
+                                southernmost_latitude,
+                                fold_topology = fold_topology)
 
-        @test grid isa TripolarGrid
+            @test grid isa TripolarGrid
 
-        @test grid.Nx == 4
-        @test grid.Ny == 5
-        @test grid.Nz == 1
+            @test grid.Nx == 4
+            @test grid.Ny == 5
+            @test grid.Nz == 1
 
-        @test grid.conformal_mapping.first_pole_longitude == 75
-        @test grid.conformal_mapping.north_poles_latitude == 35
-        @test grid.conformal_mapping.southernmost_latitude == -80
+            @test grid.conformal_mapping.first_pole_longitude == first_pole_longitude
+            @test grid.conformal_mapping.north_poles_latitude == north_poles_latitude
+            @test grid.conformal_mapping.southernmost_latitude == southernmost_latitude
 
-        λᶜᶜᵃ = λnodes(grid, Center(), Center())
-        φᶜᶜᵃ = φnodes(grid, Center(), Center())
+            λᶜᶜᵃ = λnodes(grid, Center(), Center())
+            φᶜᶜᵃ = φnodes(grid, Center(), Center())
+            λᶠᶠᵃ = λnodes(grid, Face(), Face())
+            φᶠᶠᵃ = φnodes(grid, Face(), Face())
 
-        min_Δφ = @allowscalar minimum(φᶜᶜᵃ[:, 2] .- φᶜᶜᵃ[:, 1])
-        @allowscalar begin
-            @test minimum(λᶜᶜᵃ) ≥ 0
-            @test maximum(λᶜᶜᵃ) ≤ 360
-            @test maximum(φᶜᶜᵃ) ≤ 90
+            min_Δφ = @allowscalar minimum(φᶜᶜᵃ[:, 2] .- φᶜᶜᵃ[:, 1])
+            @allowscalar begin
+                # The tripolar grid should cover the whole longitude range
+                # from the first_pole_longitude to first_pole_longitude + 360
+                @test minimum(λᶜᶜᵃ) ≥ first_pole_longitude
+                @test maximum(λᶜᶜᵃ) ≤ first_pole_longitude + 360
+                @test minimum(λᶠᶠᵃ) ≥ first_pole_longitude
+                @test maximum(λᶠᶠᵃ) ≤ first_pole_longitude + 360
+                @test maximum(φᶜᶜᵃ) ≤ 90
+                @test maximum(φᶠᶠᵃ) ≤ 90
+                @test minimum(φᶜᶜᵃ) ≥ -90
+                @test minimum(φᶠᶠᵃ) ≥ -90
 
-            # The minimum latitude is not exactly the southermost latitude because the grid
-            # undulates slightly to maintain the same analytical description in the whole sphere
-            # (i.e. constant latitude lines do not exist anywhere in this grid)
-            @test minimum(φᶜᶜᵃ .+ min_Δφ / 10) ≥ grid.conformal_mapping.southernmost_latitude
+                # The minimum latitude is not exactly the southernmost latitude because the grid
+                # undulates slightly to maintain the same analytical description in the whole sphere
+                # (i.e. constant latitude lines do not exist anywhere in this grid)
+                @test minimum(φᶜᶜᵃ .+ min_Δφ / 10) ≥ grid.conformal_mapping.southernmost_latitude
+            end
         end
     end
 end
 
 @testset "Model tests..." begin
     for arch in archs
-        grid = TripolarGrid(arch, size = (10, 10, 1))
+        @testset "$fold_topology fold topology" for fold_topology in fold_topologies
+            grid = TripolarGrid(arch; size = (10, 10, 1), fold_topology = fold_topology)
 
-        # Wrong free surface
-        @test_throws ArgumentError HydrostaticFreeSurfaceModel(; grid)
+            # Wrong free surface
+            @test_throws ArgumentError HydrostaticFreeSurfaceModel(grid)
 
-        free_surface = SplitExplicitFreeSurface(grid; substeps = 12)
-        model = HydrostaticFreeSurfaceModel(; grid, free_surface)
+            free_surface = SplitExplicitFreeSurface(grid; substeps = 12)
+            model = HydrostaticFreeSurfaceModel(grid; free_surface)
 
-        # Tests the grid has been extended
-        η = model.free_surface.η
-        P = model.free_surface.kernel_parameters
+            # Tests the grid has been extended
+            η = model.free_surface.displacement
+            P = model.free_surface.kernel_parameters
 
-        range = contiguousrange(P)
+            range = contiguousrange(P)
 
-        # Should have extended halos in the north
-        Hx, Hy, _ = halo_size(η.grid)
-        Nx, Ny, _ = size(grid)
+            # Should have extended halos in the north
+            Hx, Hy, _ = halo_size(η.grid)
+            Nx, Ny, _ = size(grid)
 
-        @test P isa KernelParameters
-        @test range[1] == 1:Nx
-        @test range[2] == 1:Ny+Hy-1
+            @test P isa KernelParameters
+            @test range[1] == 1:Nx
+            @test range[2] == 1:Ny+Hy-1
 
-        @test Hx == halo_size(grid, 1)
-        @test Hy != halo_size(grid, 2)
-        @test Hy == length(free_surface.substepping.averaging_weights) + 1
+            @test Hx == halo_size(grid, 1)
+            @test Hy != halo_size(grid, 2)
+            @test Hy == length(free_surface.substepping.averaging_weights) + 2
 
-        @test begin
-            time_step!(model, 1.0)
-            true
+            @test begin
+                time_step!(model, 1.0)
+                true
+            end
         end
     end
 end
 
 @testset "Grid construction error tests..." begin
     for FT in float_types
-        @test_throws ArgumentError TripolarGrid(CPU(), FT, size=(10, 10, 4), z=[-50.0, -30.0, -20.0, 0.0]) # too few z-faces
-        @test_throws ArgumentError TripolarGrid(CPU(), FT, size=(10, 10, 4), z=[-2000.0, -1000.0, -50.0, -30.0, -20.0, 0.0]) # too many z-faces
+        @testset "$fold_topology fold topology" for fold_topology in fold_topologies
+            @test_throws ArgumentError TripolarGrid(CPU(), FT; size=(10, 10, 4), fold_topology = fold_topology, z=[-50.0, -30.0, -20.0, 0.0]) # too few z-faces
+            @test_throws ArgumentError TripolarGrid(CPU(), FT; size=(10, 10, 4), fold_topology = fold_topology, z=[-2000.0, -1000.0, -50.0, -30.0, -20.0, 0.0]) # too many z-faces
+        end
     end
 end
 
 @testset "Orthogonality of family of ellipses and hyperbolae..." begin
     for arch in archs
-        # Test the orthogonality of a tripolar grid based on the orthogonality of a
-        # cubed sphere of the same size (1ᵒ in latitude and longitude)
-        cubed_sphere_grid = ConformalCubedSphereGrid(arch, panel_size = (90, 90, 1), z = (0, 1))
-        cubed_sphere_panel = getregion(cubed_sphere_grid, 1)
+        @testset "$fold_topology fold topology" for fold_topology in fold_topologies
+            # Test the orthogonality of a tripolar grid based on the orthogonality of a
+            # cubed sphere of the same size (1ᵒ in latitude and longitude)
+            cubed_sphere_grid = ConformalCubedSphereGrid(arch, panel_size = (90, 90, 1), z = (0, 1))
+            cubed_sphere_panel = getregion(cubed_sphere_grid, 1)
 
-        angle_cubed_sphere = on_architecture(arch, zeros(size(cubed_sphere_panel)...))
-        cartesian_nodes, _ = get_cartesian_nodes_and_vertices(cubed_sphere_panel, Face(), Face(), Center())
-        xF, yF, zF = cartesian_nodes
-        xF = on_architecture(arch, xF)
-        yF = on_architecture(arch, yF)
-        zF = on_architecture(arch, zF)
-        Nx, Ny, _  = size(cubed_sphere_panel)
+            angle_cubed_sphere = on_architecture(arch, zeros(size(cubed_sphere_panel)...))
+            cartesian_nodes, _ = get_cartesian_nodes_and_vertices(cubed_sphere_panel, Face(), Face(), Center())
+            xF, yF, zF = cartesian_nodes
+            xF = on_architecture(arch, xF)
+            yF = on_architecture(arch, yF)
+            zF = on_architecture(arch, zF)
+            Nx, Ny, _  = size(cubed_sphere_panel)
 
-        # Exclude the corners from the computation! (They are definitely not orthogonal)
-        params = KernelParameters(5:Nx-5, 5:Ny-5)
+            # Exclude the corners from the computation! (They are definitely not orthogonal)
+            params = KernelParameters(5:Nx-5, 5:Ny-5)
 
-        launch!(arch, cubed_sphere_panel, params, compute_nonorthogonality_angle!, angle_cubed_sphere, cubed_sphere_panel, xF, yF, zF)
+            launch!(arch, cubed_sphere_panel, params, compute_nonorthogonality_angle!, angle_cubed_sphere, cubed_sphere_panel, xF, yF, zF)
 
-        first_pole_longitude = λ¹ₚ = 75
-        north_poles_latitude = φₚ  = 35
+            first_pole_longitude = λ¹ₚ = 75
+            north_poles_latitude = φₚ  = 35
 
-        λ²ₚ = λ¹ₚ + 180
+            λ²ₚ = λ¹ₚ + 180
+            λ³ₚ = λ²ₚ + 180
 
-        # Build a tripolar grid at 1ᵒ
-        underlying_grid = TripolarGrid(arch; size = (360, 180, 1), first_pole_longitude, north_poles_latitude)
+            # Build a tripolar grid at 1ᵒ
+            underlying_grid = TripolarGrid(arch; size = (360, 180, 1), first_pole_longitude, north_poles_latitude, fold_topology = fold_topology)
 
-        # We need a bottom height field that ``masks'' the singularities
-        bottom_height(λ, φ) = ((abs(λ - λ¹ₚ) < 5) & (abs(φₚ - φ) < 5)) |
-                              ((abs(λ - λ²ₚ) < 5) & (abs(φₚ - φ) < 5)) | (φ < -78) ? 1 : 0
+            # We need a bottom height field that ``masks'' the singularities
+            bottom_height(λ, φ) = ((abs(λ - λ¹ₚ) < 5) & (abs(φₚ - φ) < 5)) |
+                                ((abs(λ - λ²ₚ) < 5) & (abs(φₚ - φ) < 5)) |
+                                ((abs(λ - λ³ₚ) < 5) & (abs(φₚ - φ) < 5)) | (φ < -78) ? 1 : 0
 
-        # Exclude the singularities from the computation! (They are definitely not orthogonal)
-        tripolar_grid      = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
-        angle_tripolar     = on_architecture(arch, zeros(size(tripolar_grid)...))
-        cartesian_nodes, _ = get_cartesian_nodes_and_vertices(tripolar_grid.underlying_grid, Face(), Face(), Center())
-        xF, yF, zF = cartesian_nodes
-        xF = on_architecture(arch, xF)
-        yF = on_architecture(arch, yF)
-        zF = on_architecture(arch, zF)
-        Nx, Ny, _  = size(tripolar_grid)
+            # Exclude the singularities from the computation! (They are definitely not orthogonal)
+            tripolar_grid      = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
+            angle_tripolar     = on_architecture(arch, zeros(size(tripolar_grid)...))
+            cartesian_nodes, _ = get_cartesian_nodes_and_vertices(tripolar_grid.underlying_grid, Face(), Face(), Center())
+            xF, yF, zF = cartesian_nodes
+            xF = on_architecture(arch, xF)
+            yF = on_architecture(arch, yF)
+            zF = on_architecture(arch, zF)
+            Nx, Ny, _  = size(tripolar_grid)
 
-        launch!(arch, tripolar_grid, (Nx-1, Ny-1), compute_nonorthogonality_angle!, angle_tripolar, tripolar_grid, xF, yF, zF)
+            launch!(arch, tripolar_grid, (Nx-1, Ny-1), compute_nonorthogonality_angle!, angle_tripolar, tripolar_grid, xF, yF, zF)
 
-        @test maximum(angle_tripolar) < maximum(angle_cubed_sphere)
-        @test minimum(angle_tripolar) > minimum(angle_cubed_sphere)
+            @test maximum(angle_tripolar) < maximum(angle_cubed_sphere)
+            @test minimum(angle_tripolar) > minimum(angle_cubed_sphere)
+        end
     end
 end
 
+# We cannot rotate the entire grid because most of it is not symmetric around the pivot point,
+# So here is a helper function for generating "valid" j indices around the pivot point of zipper.
+# "valid" here meaning that the rotated and unrotated j indices remain within the interior + halo.
+function pivotable_indices(jmin, jmax, jpivot)
+    idx = jmin:jmax
+    rotidx = Int.(2jpivot .- idx)
+    valid = @. jmin ≤ rotidx ≤ jmax
+    return idx[valid]
+end
+
+# Helper functions to test symmetry and antisymmetry with 180° rotation around the pivot point
+isrot180symmetric(arr) = arr == rot180(arr)
+isrot180antisymmetric(arr) = arr == -rot180(arr)
+
 @testset "Zipper boundary conditions..." begin
     for arch in archs
-        grid = TripolarGrid(arch; size = (10, 10, 1))
-        Nx, Ny, _ = size(grid)
-        Hx, Hy, _ = halo_size(grid)
+        @testset "$fold_topology fold topology" for fold_topology in fold_topologies
 
-        c = CenterField(grid)
-        cx = XFaceField(grid)
-        cy = YFaceField(grid)
+            grid = TripolarGrid(arch; size = (10, 10, 1), fold_topology = fold_topology)
+            Nx, Ny, _ = size(grid)
+            Hx, Hy, _ = halo_size(grid)
 
-        bcs = FieldBoundaryConditions()
-        u_bcs = Oceananigans.BoundaryConditions.regularize_field_boundary_conditions(bcs, grid, :u)
-        v_bcs = Oceananigans.BoundaryConditions.regularize_field_boundary_conditions(bcs, grid, :v)
-        u = XFaceField(grid, boundary_conditions=u_bcs)
-        v = YFaceField(grid, boundary_conditions=v_bcs)
+            CC = CenterField(grid)
+            FC = XFaceField(grid)
+            CF = YFaceField(grid)
+            FF = Field((Face(), Face(), Center()), grid)
 
-        @test c.boundary_conditions.north.classification isa Zipper
-        @test cx.boundary_conditions.north.classification isa Zipper
-        @test cy.boundary_conditions.north.classification isa Zipper
-        @test u.boundary_conditions.north.classification isa Zipper
-        @test v.boundary_conditions.north.classification isa Zipper
+            bcs = FieldBoundaryConditions()
+            u_bcs = Oceananigans.BoundaryConditions.regularize_field_boundary_conditions(bcs, grid, :u)
+            v_bcs = Oceananigans.BoundaryConditions.regularize_field_boundary_conditions(bcs, grid, :v)
+            u = XFaceField(grid, boundary_conditions=u_bcs)
+            v = YFaceField(grid, boundary_conditions=v_bcs)
 
-        # The velocity fields are reversed at the north boundary
-        # boundary_conditions.north.condition == -1, while the tracer
-        # is not: boundary_conditions.north.condition == 1
-        @test c.boundary_conditions.north.condition == 1
-        @test cx.boundary_conditions.north.condition == 1
-        @test cy.boundary_conditions.north.condition == 1
-        @test u.boundary_conditions.north.condition == -1
-        @test v.boundary_conditions.north.condition == -1
+            Pivot = (fold_topology == RightCenterFolded) ? UPivot : FPivot
 
-        set!(c, 1)
-        set!(cx, 1)
-        set!(cy, 1)
-        set!(u, 1)
-        set!(v, 1)
+            fields = (CC, FC, CF, FF, u, v)
 
-        fill_halo_regions!(c)
-        fill_halo_regions!(cx)
-        fill_halo_regions!(cy)
-        fill_halo_regions!(u)
-        fill_halo_regions!(v)
+            @testset "BC type" for f in fields
+                @test f.boundary_conditions.north.classification isa Zipper{Pivot}
+            end
 
-        c = on_architecture(CPU(), c)
-        cy = on_architecture(CPU(), cy)
-        v = on_architecture(CPU(), v)
-        north_boundary_c = view(c.data, :, Ny+1:Ny+Hy, 1)
-        north_boundary_cy = view(cy.data, :, Ny+1:Ny+Hy, 1)
-        north_boundary_v = view(v.data, :, Ny+1:Ny+Hy, 1)
-        @test all(north_boundary_c .== 1)
-        @test all(north_boundary_cy .== 1)
-        @test all(north_boundary_v .== -1)
+            # The velocity fields are reversed at the north boundary
+            # boundary_conditions.north.condition == -1, while the tracer
+            # is not: boundary_conditions.north.condition == 1
+            @testset "BC sign" begin
+                @test CC.boundary_conditions.north.condition == 1
+                @test FC.boundary_conditions.north.condition == 1
+                @test CF.boundary_conditions.north.condition == 1
+                @test FF.boundary_conditions.north.condition == 1
+                @test u.boundary_conditions.north.condition == -1
+                @test v.boundary_conditions.north.condition == -1
+            end
 
-        cx = on_architecture(CPU(), cx)
-        u = on_architecture(CPU(), u)
-        north_interior_boundary_cx = view(cx.data, 2:Nx-1, Ny+1:Ny+Hy, 1)
-        north_interior_boundary_u = view(u.data, 2:Nx-1, Ny+1:Ny+Hy, 1)
+            # set! random values then fill halos
+            for f in fields
+                set!(f, (x, y, z) -> rand())
+                fill_halo_regions!(f)
+            end
 
-        @test all(north_interior_boundary_cx .== 1)
-        @test all(north_interior_boundary_u .== -1)
+            # We use CPU architecture for scalar indexing.
+            CC = on_architecture(CPU(), CC)
+            CF = on_architecture(CPU(), CF)
+            FC = on_architecture(CPU(), FC)
+            FF = on_architecture(CPU(), FF)
+            v = on_architecture(CPU(), v)
+            u = on_architecture(CPU(), u)
 
-        north_boundary_u_left  = view(u.data, 1, Ny+1:Ny+Hy, 1)
-        north_boundary_u_right = view(u.data, Nx+1, Ny+1:Ny+Hy, 1)
-        @test all(north_boundary_u_left  .== 1)
-        @test all(north_boundary_u_right .== 1)
+            # Illustrated below are both cases with the pivot point (F or U) indicated.
+            #          │           │           │           │           │           │           │
+            # Ny+2 ─▶  ├──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼───  v ────┤
+            #          │           │           │           │           │           │           │
+            # Ny+1 ─▶  u     c     u     c     u     c     u     c     u     c     u     c     u
+            #          │           │           │           │           │           │           │
+            # Ny+1 ─▶  ├──── v ────┼──── v ────┼──── v ─── F ─── v ────┼──── v ────┼───  v ────┤ ◀─ Fold (RightFaceFolded)
+            #          │           │           │           │           │           │           │
+            #   Ny ─▶  u     c     u     c     u     c     U     c     u     c     u     c     u ◀─ Fold (RightCenterFolded)
+            #          │           │           │           │           │           │           │
+            #   Ny ─▶  ├──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┤
+            #          │           │           │           │           │           │           │
+            # Ny-1 ─▶  u     c     u     c     u     c     u     c     u     c     u     c     u
+            #          │           │           │           │           │           │           │
+            # Ny-1 ─▶  ├──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┤
+            #          │           │           │           │           │           │           │
+            #          ▲     ▲     ▲                       ▲                       ▲     ▲     ▲
+            #          1     1     2                     Nx÷2+1                    Nx    Nx    Nx+1
+            # For testing, rotate the entire grid around the central pivot point!
 
-        grid = TripolarGrid(arch; size = (10, 10, 1))
-        bottom(x, y) = rand()
-        grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
-        bottom_height = grid.immersed_boundary.bottom_height
+            # Use half-indices for the pivot-point index, which depends on the topology and location.
+            # pivotjᶜ is the pivot index for center fields, and pivotjᶠ for face fields.
+            pivotjᶜ, pivotjᶠ = (fold_topology == RightFaceFolded) ? (Ny + 1/2, Ny + 1) : (Ny, Ny + 1/2)
 
-        @test on_architecture(CPU(), interior(bottom_height, :, 10, 1)) == on_architecture(CPU(), interior(bottom_height, 10:-1:1, 10, 1))
+            # Then we take views centered around the pivot and rotate that view by 180°.
+            # However we cannot rotate the entire grid and must restrict ourselves to those indices
+            # that remain within the interior + halo after 180° rotation.
+            maxjᶜ = Ny + Hy # max j for center fields
+            maxjᶠ = Ny + Hy + (fold_topology == RightFaceFolded) # +1 for y-face fields if FPivot
+            jᶜ = pivotable_indices(1 - Hy, maxjᶜ, pivotjᶜ)
+            jᶠ = pivotable_indices(1 - Hy, maxjᶠ, pivotjᶠ)
 
-        c = CenterField(grid)
-        cx = XFaceField(grid)
-        u = XFaceField(grid, boundary_conditions=u_bcs)
+            # Enforce zero velocities on the pivot points where u = -u and v = -v!
+            # Only u velocity can be on pivot point for UPointPivot grid (RightCenterFolded)
+            if fold_topology == RightCenterFolded
+                u.data[[1, Nx ÷ 2 + 1, Nx + 1], pivotjᶜ, :] .= 0.0
+            end
 
-        set!(c, (x, y, z) -> x)
-        set!(cx, (x, y, z) -> x)
-        set!(u, (x, y, z) -> x)
+            # Test part of the halo with 180° rotation
+            # (We cannot do it over all i indices because of the staggered grid)
+            iᶜ = 1-Hx:Nx+Hx
+            iᶠ = 1-Hx+1:Nx+Hx # <- skip the first (= westmost) index for rot180
+            @testset "Test halo fill with rot180" begin
+                @test isrot180symmetric(view(CC.data, iᶜ, jᶜ, 1))
+                @test isrot180symmetric(view(FC.data, iᶠ, jᶜ, 1))
+                @test isrot180symmetric(view(CF.data, iᶜ, jᶠ, 1))
+                @test isrot180symmetric(view(FF.data, iᶠ, jᶠ, 1))
+                @test isrot180antisymmetric(view(u.data, iᶠ, jᶜ, 1))
+                @test isrot180antisymmetric(view(v.data, iᶜ, jᶠ, 1))
+            end
 
-        fill_halo_regions!(c)
-        fill_halo_regions!(cx)
-        fill_halo_regions!(u)
+            # Test over all i indices by applying reverse on each index and mod1 for i indices
+            iᶜ = 1-Hx:Nx+Hx
+            iᶜ′ = mod1.(reverse(iᶜ), Nx)
+            iᶠ = 1-Hx:Nx+Hx
+            iᶠ′ = mod1.(reverse(iᶠ) .+ 1, Nx)
+            jᶜ′ = reverse(jᶜ)
+            jᶠ′ = reverse(jᶠ)
+            # Test that the northern halo region has been correctly rotated and sign-changed
+            @testset "Test entire halo fill" begin
+                @test view(CC.data, iᶜ, jᶜ, 1) ==  view(CC.data, iᶜ′, jᶜ′, 1)
+                @test view(FC.data, iᶠ, jᶜ, 1) ==  view(FC.data, iᶠ′, jᶜ′, 1)
+                @test view(CF.data, iᶜ, jᶠ, 1) ==  view(CF.data, iᶜ′, jᶠ′, 1)
+                @test view(FF.data, iᶠ, jᶠ, 1) ==  view(FF.data, iᶠ′, jᶠ′, 1)
+                @test view( u.data, iᶠ, jᶜ, 1) == -view( u.data, iᶠ′, jᶜ′, 1)
+                @test view( v.data, iᶜ, jᶠ, 1) == -view( v.data, iᶜ′, jᶠ′, 1)
+            end
 
-        @test on_architecture(CPU(), interior(c, :, 10, 1)) == on_architecture(CPU(), interior(c, 10:-1:1, 10, 1))
-        # For x face fields the first element is unique and we remove the
-        # north pole that is exactly at Nx+1
-        left_side  = on_architecture(CPU(), interior(cx, 2:5, 10, 1))
-        right_side = on_architecture(CPU(), interior(cx, 7:10, 10, 1))
+            # Test that bottom height for an immersed boundary grid is also
+            # correctly rotated and symmetric around the pivot point
+            @testset "Test GridFittedBottom halo fill" begin
+                grid = TripolarGrid(arch; size = (10, 10, 1), fold_topology = fold_topology)
+                bottom(x, y) = rand()
+                grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
+                bottom_height = on_architecture(CPU(), grid.immersed_boundary.bottom_height.data)
+                @test view(bottom_height, iᶜ, jᶜ, 1) == view(bottom_height, iᶜ′, jᶜ′, 1)
+            end
 
-        # The sign of auxiliary XFaceField are _not_ reversed at the north boundary
-        @test left_side == reverse(right_side)
+        end
+    end
+end
 
-        left_side  = on_architecture(CPU(), interior(u, 2:5, 10, 1))
-        right_side = on_architecture(CPU(), interior(u, 7:10, 10, 1))
+using Oceananigans.Grids: with_halo, topology, halo_size
 
-        # The sign of `u` is reversed at the north boundary
-        @test left_side == - reverse(right_side)
+@testset "with_halo for TripolarGrid" begin
+    for arch in archs
+        @testset "$fold_topology fold topology [$arch]" for fold_topology in fold_topologies
+            grid = TripolarGrid(arch; size = (20, 10, 4), z = (-100, 0), halo = (3, 3, 3),
+                                fold_topology)
 
+            new_grid = with_halo((5, 5, 5), grid)
+
+            # Basic properties preserved
+            @test new_grid.Nx == grid.Nx
+            @test new_grid.Ny == grid.Ny
+            @test new_grid.Nz == grid.Nz
+            @test halo_size(new_grid) == (5, 5, 5)
+            @test topology(new_grid) == topology(grid)
+            @test new_grid.radius == grid.radius
+            @test new_grid.conformal_mapping == grid.conformal_mapping
+
+            Nx, Ny = grid.Nx, grid.Ny
+
+            # Interior metrics (Δx, Δy, Az) and latitudes (φ) must be preserved exactly
+            for (old_f, new_f) in [(grid.φᶜᶜᵃ, new_grid.φᶜᶜᵃ), (grid.φᶠᶜᵃ, new_grid.φᶠᶜᵃ),
+                                   (grid.φᶜᶠᵃ, new_grid.φᶜᶠᵃ), (grid.φᶠᶠᵃ, new_grid.φᶠᶠᵃ),
+                                   (grid.Δxᶜᶜᵃ, new_grid.Δxᶜᶜᵃ), (grid.Δxᶠᶜᵃ, new_grid.Δxᶠᶜᵃ),
+                                   (grid.Δxᶜᶠᵃ, new_grid.Δxᶜᶠᵃ), (grid.Δxᶠᶠᵃ, new_grid.Δxᶠᶠᵃ),
+                                   (grid.Δyᶜᶜᵃ, new_grid.Δyᶜᶜᵃ), (grid.Δyᶠᶜᵃ, new_grid.Δyᶠᶜᵃ),
+                                   (grid.Δyᶜᶠᵃ, new_grid.Δyᶜᶠᵃ), (grid.Δyᶠᶠᵃ, new_grid.Δyᶠᶠᵃ),
+                                   (grid.Azᶜᶜᵃ, new_grid.Azᶜᶜᵃ), (grid.Azᶠᶜᵃ, new_grid.Azᶠᶜᵃ),
+                                   (grid.Azᶜᶠᵃ, new_grid.Azᶜᶠᵃ), (grid.Azᶠᶠᵃ, new_grid.Azᶠᶠᵃ)]
+                old_cpu = on_architecture(CPU(), old_f)
+                new_cpu = on_architecture(CPU(), new_f)
+                @test all(old_cpu[1:Nx, 1:Ny] .== new_cpu[1:Nx, 1:Ny])
+            end
+
+            # Longitudes may differ by multiples of 180° at the fold row
+            # (the fold BC can wrap longitudes or map to antipodal points at pivots)
+            for (old_f, new_f) in [(grid.λᶜᶜᵃ, new_grid.λᶜᶜᵃ), (grid.λᶠᶜᵃ, new_grid.λᶠᶜᵃ),
+                                   (grid.λᶜᶠᵃ, new_grid.λᶜᶠᵃ), (grid.λᶠᶠᵃ, new_grid.λᶠᶠᵃ)]
+                old_cpu = on_architecture(CPU(), old_f)
+                new_cpu = on_architecture(CPU(), new_f)
+                diff = old_cpu[1:Nx, 1:Ny] .- new_cpu[1:Nx, 1:Ny]
+                @test all(mod.(diff, 180) .≈ 0)
+            end
+        end
     end
 end

@@ -47,7 +47,7 @@ function run_cylinder(grid, boundary_conditions; plot=true, stop_time = 50, simn
 
     cylinder_forcing = Relaxation(; rate = 1 / (2 * Δt), mask = cylinder)
 
-    global model = NonhydrostaticModel(; grid,
+    global model = NonhydrostaticModel(grid;
                                        advection = UpwindBiased(order=5),
                                        forcing = (u = cylinder_forcing, v = cylinder_forcing, w = cylinder_forcing),
                                        boundary_conditions)
@@ -126,12 +126,12 @@ inflow_timescale = outflow_timescale = 1/4
 scheme_name(obc) = string(nameof(typeof(obc.classification.scheme)))
 for grid in (xygrid, xzgrid)
 
-    u_boundaries_pa = FieldBoundaryConditions(west   = OpenBoundaryCondition(u∞; scheme = PerturbationAdvection(inflow_timescale, outflow_timescale), parameters = (; U, T)),
-                                              east   = OpenBoundaryCondition(u∞; scheme = PerturbationAdvection(inflow_timescale, outflow_timescale), parameters = (; U, T)))
-    v_boundaries_pa = FieldBoundaryConditions(south  = OpenBoundaryCondition(v∞; scheme = PerturbationAdvection(inflow_timescale, outflow_timescale), parameters = (; U, T)),
-                                              north  = OpenBoundaryCondition(v∞; scheme = PerturbationAdvection(inflow_timescale, outflow_timescale), parameters = (; U, T)))
-    w_boundaries_pa = FieldBoundaryConditions(bottom = OpenBoundaryCondition(v∞; scheme = PerturbationAdvection(inflow_timescale, outflow_timescale), parameters = (; U, T)),
-                                              top    = OpenBoundaryCondition(v∞; scheme = PerturbationAdvection(inflow_timescale, outflow_timescale), parameters = (; U, T)))
+    u_boundaries_pa = FieldBoundaryConditions(west   = OpenBoundaryCondition(u∞; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale), parameters = (; U, T)),
+                                              east   = OpenBoundaryCondition(u∞; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale), parameters = (; U, T)))
+    v_boundaries_pa = FieldBoundaryConditions(south  = OpenBoundaryCondition(v∞; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale), parameters = (; U, T)),
+                                              north  = OpenBoundaryCondition(v∞; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale), parameters = (; U, T)))
+    w_boundaries_pa = FieldBoundaryConditions(bottom = OpenBoundaryCondition(v∞; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale), parameters = (; U, T)),
+                                              top    = OpenBoundaryCondition(v∞; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale), parameters = (; U, T)))
     paobcs = (u = u_boundaries_pa, v = v_boundaries_pa, w = w_boundaries_pa)
 
     for obcs in tuple(paobcs)
@@ -146,4 +146,3 @@ for grid in (xygrid, xzgrid)
         run_cylinder(grid, boundary_conditions, simname = simname, stop_time = T)
     end
 end
-

@@ -52,4 +52,3 @@ end
         @test test_transpose((16, 44, 8), (2, 2, 1), topology, child_arch)
     end
 end
-

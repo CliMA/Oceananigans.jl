@@ -7,11 +7,13 @@ using Oceananigans.Fields: VelocityFields, TracerFields, interpolate, interpolat
 using Oceananigans.Fields: reduced_location
 using Oceananigans.Fields: FractionalIndices, interpolator, instantiate
 using Oceananigans.Fields: convert_to_0_360, convert_to_λ₀_λ₀_plus360
+using Oceananigans.Fields: ZeroField, OneField, ConstantField, prognostic_state, restore_prognostic_state!
 using Oceananigans.Grids: ξnode, ηnode, rnode
 using Oceananigans.Grids: total_length
 using Oceananigans.Grids: λnode
 using Oceananigans.Grids: RectilinearGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
 using Random
 using GPUArraysCore: @allowscalar
@@ -147,8 +149,8 @@ function run_field_interpolation_tests(grid)
 
         result = true
         @allowscalar begin
-            for i in size(f, 1), j in size(f, 2), k in size(f, 3)
-                x, y, z = node(i, j, k, f)
+            for k in size(f, 3), j in size(f, 2), i in size(f, 1)
+                x, y, z = Oceananigans.node(i, j, k, f)
                 ℑf = interpolate((x, y, z), f, loc, f.grid)
                 true_value = interior(f, i, j, k)[]
 
@@ -179,8 +181,8 @@ function run_field_interpolation_tests(grid)
         for f in (u, v, w, c)
             loc = Tuple(L() for L in location(f))
             result = true
-            for i in size(f, 1), j in size(f, 2), k in size(f, 3)
-                xi, yi, zi = node(i, j, k, f)
+            for k in size(f, 3), j in size(f, 2), i in size(f, 1)
+                xi, yi, zi = Oceananigans.node(i, j, k, f)
                 ℑf = interpolate((xi, yi, zi), f, loc, f.grid)
                 true_value = func(xi, yi, zi)
 
@@ -500,7 +502,7 @@ end
             number_data = FT(1)
             f = field((Center, Center, Center), number_data, grid)
             @test f.constant == 1
-            
+
             function_data = (x, y, z) -> 1
             f = field((Center, Center, Center), function_data, grid)
             @test @allowscalar all(isone, interior(f))
@@ -702,6 +704,41 @@ end
             for grid in grids
                 run_field_interpolation_tests(grid)
             end
+
+            x = y = z = (0, 1)
+            grid = RectilinearGrid(arch, FT; size=(2, 2, 2), x, y, z)
+
+            # Test 2D interpolation on xy-field
+            # Note: Cell centers are at 0.25 and 0.75, so test points must be
+            # within the interpolation domain [0.25, 0.75] in each direction
+            xy_field = Field{Center, Center, Nothing}(grid)
+            set!(xy_field, (x, y) -> x + y)
+
+            node = convert.(FT, (0.4, 0.5))
+            @test @allowscalar interpolate(node, xy_field) ≈ node[1] + node[2]
+            node = convert.(FT, (0.5, 0.4))
+            @test @allowscalar interpolate(node, xy_field) ≈ node[1] + node[2]
+
+            # Test 2D interpolation on xz-field
+            xz_field = Field{Center, Nothing, Center}(grid)
+            set!(xz_field, (x, z) -> x + z)
+            node = convert.(FT, (0.4, 0.5))
+            @test @allowscalar interpolate(node, xz_field) ≈ node[1] + node[2]
+            node = convert.(FT, (0.5, 0.4))
+            @test @allowscalar interpolate(node, xz_field) ≈ node[1] + node[2]
+
+            # Test 2D interpolation on yz-field
+            yz_field = Field{Nothing, Center, Center}(grid)
+            set!(yz_field, (y, z) -> y + z)
+            node = convert.(FT, (0.5, 0.4))
+            @test @allowscalar interpolate(node, yz_field) ≈ node[1] + node[2]
+            node = convert.(FT, (0.4, 0.5))
+            @test @allowscalar interpolate(node, yz_field) ≈ node[1] + node[2]
+
+            # Test 1D interpolation on z-field
+            z_field = Field{Nothing, Nothing, Center}(grid)
+            set!(z_field, z -> z)
+            @test @allowscalar interpolate(FT(0.4), z_field) ≈ FT(0.4)
         end
     end
 
@@ -783,6 +820,7 @@ end
 
     @testset "Field nodes and view consistency" begin
         @info "  Testing that nodes() returns indices consistent with view()..."
+
         for arch in archs, FT in float_types
             # Test RectilinearGrid
             rectilinear_grid = RectilinearGrid(arch, FT, size=(8, 6, 4), extent=(2, 3, 1))
@@ -791,10 +829,6 @@ end
             # Test LatitudeLongitudeGrid
             latlon_grid = LatitudeLongitudeGrid(arch, FT, size=(8, 6, 4), longitude = (-180, 180), latitude = (-85, 85), z = (-100, 0))
             nodes_of_field_views_are_consistent(latlon_grid)
-
-            # Test OrthogonalSphericalShellGrid (TripolarGrid)
-            tripolar_grid = TripolarGrid(arch, FT, size=(8, 6, 4))
-            nodes_of_field_views_are_consistent(tripolar_grid)
 
             # Test Flat topology behavior for RectilinearGrid
             flat_rlgrid = RectilinearGrid(arch, FT, size=(), extent=(), topology=(Flat, Flat, Flat))
@@ -805,6 +839,100 @@ end
             flat_llgrid = LatitudeLongitudeGrid(arch, FT, size=(), topology=(Flat, Flat, Flat))
             c_flat = CenterField(flat_llgrid)
             @test nodes(c_flat) == (nothing, nothing, nothing)
+
+            # Test that xnodes/ynodes/znodes respect windowed indices
+            @info "    Testing xnodes/ynodes/znodes on windowed fields [$(typeof(arch)), $FT]..."
+            Nx, Ny, Nz = 8, 6, 4
+            wgrid = RectilinearGrid(arch, FT, size=(Nx, Ny, Nz), extent=(2, 3, 1))
+
+            # Single-index windows should return a single node
+            f_zwindow = Field{Center, Center, Center}(wgrid, indices=(:, :, Nz))
+            @test length(znodes(f_zwindow)) == 1
+            @test znodes(f_zwindow)[1] == znodes(wgrid, Center())[Nz]
+
+            f_face_top = Field{Center, Center, Face}(wgrid, indices=(:, :, Nz + 1))
+            @test length(znodes(f_face_top)) == 1
+            @test znodes(f_face_top)[1] == znodes(wgrid, Face())[Nz + 1]
+
+            # Range windows should return the corresponding subset
+            f_xwindow = Field{Center, Center, Center}(wgrid, indices=(2:5, :, :))
+            @test length(xnodes(f_xwindow)) == 4
+            @test xnodes(f_xwindow) == xnodes(wgrid, Center())[2:5]
+
+            f_ywindow = Field{Center, Center, Center}(wgrid, indices=(:, 1:3, :))
+            @test length(ynodes(f_ywindow)) == 3
+            @test ynodes(f_ywindow) == ynodes(wgrid, Center())[1:3]
+
+            f_zrange = Field{Center, Center, Center}(wgrid, indices=(:, :, 2:3))
+            @test length(znodes(f_zrange)) == 2
+            @test znodes(f_zrange) == znodes(wgrid, Center())[2:3]
+
+            # Non-windowed field should still return all nodes
+            f_full = CenterField(wgrid)
+            @test length(xnodes(f_full)) == Nx
+            @test length(ynodes(f_full)) == Ny
+            @test length(znodes(f_full)) == Nz
         end
+
+
+        # Test OrthogonalSphericalShellGrid (TripolarGrid)
+        fold_topologies = (RightCenterFolded, RightFaceFolded)
+        for arch in archs, FT in float_types
+            @testset "$fold_topology TripolarGrid" for fold_topology in fold_topologies
+                grid = TripolarGrid(arch, FT, size = (8, 10, 4), fold_topology = fold_topology)
+                nodes_of_field_views_are_consistent(grid)
+            end
+        end
+    end
+
+    @testset "mask_immersed_field! on windowed fields" begin
+        for arch in archs
+            @info "  Testing mask_immersed_field! on windowed fields [$(typeof(arch))]..."
+
+            Nx, Ny, Nz = 4, 4, 8
+            underlying_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(1, 1, 2))
+            bottom(x, y) = -1.0  # bottom half (k=1:4) is immersed
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom))
+
+            # Windowed field at top layer (active, should not be masked)
+            f_top = CenterField(grid, indices=(:, :, Nz))
+            set!(f_top, 1.0)
+            mask_immersed_field!(f_top, 0.0)
+            @test all(interior(f_top) .== 1.0)
+
+            # Windowed field at bottom layer (immersed, should all be masked)
+            f_bot = CenterField(grid, indices=(:, :, 1))
+            set!(f_bot, 1.0)
+            mask_immersed_field!(f_bot, 0.0)
+            @test all(interior(f_bot) .== 0.0)
+
+            # Surface face field at Nz+1 (active, should not be masked)
+            f_face = Field{Center, Center, Face}(grid, indices=(:, :, Nz + 1))
+            set!(f_face, 1.0)
+            mask_immersed_field!(f_face, 0.0)
+            @test all(interior(f_face) .== 1.0)
+
+            # Full (non-windowed) field regression test
+            f_full = CenterField(grid)
+            set!(f_full, 1.0)
+            mask_immersed_field!(f_full, 0.0)
+            @test all(interior(f_full, :, :, 1:4) .== 0.0)  # immersed
+            @test all(interior(f_full, :, :, 5:8) .== 1.0)  # active
+        end
+    end
+
+    @testset "Constant field prognostic state" begin
+        @info "  Testing prognostic_state for constant fields..."
+        zf = ZeroField()
+        of = OneField()
+        cf = ConstantField(42)
+
+        @test prognostic_state(zf) === nothing
+        @test prognostic_state(of) === nothing
+        @test prognostic_state(cf) === nothing
+
+        @test restore_prognostic_state!(zf, nothing) === zf
+        @test restore_prognostic_state!(of, :some_state) === of
+        @test restore_prognostic_state!(cf, nothing) === cf
     end
 end

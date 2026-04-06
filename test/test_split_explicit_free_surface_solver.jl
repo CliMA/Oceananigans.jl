@@ -33,7 +33,7 @@ clock = Clock(time=0)
             sefs = SplitExplicitFreeSurface(substeps = 200, averaging_kernel = constant_averaging_kernel)
             sefs = materialize_free_surface(sefs, velocities, grid)
 
-            sefs.η .= 0
+            sefs.displacement .= 0
             GU = Field{Face, Center, Nothing}(grid)
             GV = Field{Center, Face, Nothing}(grid)
 
@@ -42,7 +42,7 @@ clock = Clock(time=0)
                 U, V  = sefs.barotropic_velocities
                 η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
 
-                η = sefs.η
+                η = sefs.displacement
                 Δτ = 1.0
 
                 η₀(x, y, z) = sin(x)
@@ -63,7 +63,7 @@ clock = Clock(time=0)
                 state = sefs.filtered_state
                 U, V = sefs.barotropic_velocities
                 η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
-                η = sefs.η
+                η = sefs.displacement
 
                 T  = 2π
                 Δτ = 2π / maximum([Nx, Ny]) * 5e-2 # the last factor is essentially the order of accuracy
@@ -106,13 +106,13 @@ clock = Clock(time=0)
             sefs = SplitExplicitFreeSurface(substeps = 200, averaging_kernel = constant_averaging_kernel)
             sefs = materialize_free_surface(sefs, velocities, grid)
 
-            sefs.η .= 0
+            sefs.displacement .= 0
 
             @testset "Averaging / Do Nothing test " begin
                 state = sefs.filtered_state
                 U, V  = sefs.barotropic_velocities
                 η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
-                η = sefs.η
+                η = sefs.displacement
                 g = sefs.gravitational_acceleration
 
                 Δτ = 2π / maximum([Nx, Ny]) * 1e-2 # the last factor is essentially the order of accuracy
@@ -130,7 +130,6 @@ clock = Clock(time=0)
                 fill!(V̅ , 0)
                 fill!(GU, 0)
                 fill!(GV, 0)
-
 
                 Nsubsteps  = calculate_substeps(sefs.substepping, 1)
                 fractional_Δt, weights, transport_weights = calculate_adaptive_settings(sefs.substepping, Nsubsteps) # barotropic time step in fraction of baroclinic step and averaging weights
@@ -176,7 +175,7 @@ clock = Clock(time=0)
                 state = sefs.filtered_state
                 U, V = sefs.barotropic_velocities
                 η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
-                η = sefs.η
+                η = sefs.displacement
                 g = sefs.gravitational_acceleration
 
                 # set!(η, f(x, y)) k² = ω²
@@ -244,3 +243,78 @@ clock = Clock(time=0)
         end # end of architecture loop
     end # end of float type loop
 end # end of testset loop
+
+@testset "extend_halos vs fill_halos consistency" begin
+    for arch in archs
+        topology = (Periodic, Periodic, Bounded)
+        Nx, Ny, Nz = 32, 32, 1
+        Lx = Ly = 2π
+        Lz = 1 / Oceananigans.defaults.gravitational_acceleration
+
+        grid = RectilinearGrid(arch, Float64;
+                               topology, size = (Nx, Ny, Nz),
+                               x = (0, Lx), y = (0, Ly), z = (-Lz, 0),
+                               halo = (1, 1, 1))
+
+        velocities = VelocityFields(grid)
+        Nsubsteps = 30
+
+        # Create two free surfaces: one with extended halos, one that fills halos each substep
+        sefs_extend = SplitExplicitFreeSurface(grid; substeps = Nsubsteps,
+                                               averaging_kernel = constant_averaging_kernel,
+                                               extend_halos = true)
+        sefs_extend = materialize_free_surface(sefs_extend, velocities, grid)
+
+        sefs_fill = SplitExplicitFreeSurface(grid; substeps = Nsubsteps,
+                                             averaging_kernel = constant_averaging_kernel,
+                                             extend_halos = false)
+        sefs_fill = materialize_free_surface(sefs_fill, velocities, grid)
+
+        # Slow barotropic forcing
+        GU = Field{Face, Center, Nothing}(grid)
+        GV = Field{Center, Face, Nothing}(grid)
+        GU .= 0
+        GV .= 0
+
+        # Initial condition
+        η₀(x, y, z) = sin(x) * cos(y)
+
+        for (label, sefs) in [("extend_halos", sefs_extend), ("fill_halos", sefs_fill)]
+            set!(sefs.displacement, η₀)
+            sefs.barotropic_velocities.U .= 0
+            sefs.barotropic_velocities.V .= 0
+            for field in sefs.filtered_state
+                fill!(field, 0)
+            end
+        end
+
+        Δτ = 1.0
+        fractional_Δt, weights, transport_weights = calculate_adaptive_settings(sefs_extend.substepping, Nsubsteps)
+
+        iterate_split_explicit!(sefs_extend, sefs_extend.displacement.grid, GU, GV, Δτ, noforcing, clock, weights, transport_weights, Val(Nsubsteps))
+
+        fractional_Δt, weights, transport_weights = calculate_adaptive_settings(sefs_fill.substepping, Nsubsteps)
+
+        iterate_split_explicit!(sefs_fill, grid, GU, GV, Δτ, noforcing, clock, weights, transport_weights, Val(Nsubsteps))
+
+        # Compare: both should give the same interior result
+        η_extend = Array(interior(sefs_extend.displacement))
+        η_fill   = Array(interior(sefs_fill.displacement))
+        U_extend = Array(interior(sefs_extend.barotropic_velocities.U))
+        U_fill   = Array(interior(sefs_fill.barotropic_velocities.U))
+        V_extend = Array(interior(sefs_extend.barotropic_velocities.V))
+        V_fill   = Array(interior(sefs_fill.barotropic_velocities.V))
+
+        @test η_extend ≈ η_fill
+        @test U_extend ≈ U_fill
+        @test V_extend ≈ V_fill
+
+        η̅_extend = Array(interior(sefs_extend.filtered_state.η̅))
+        η̅_fill   = Array(interior(sefs_fill.filtered_state.η̅))
+        U̅_extend = Array(interior(sefs_extend.filtered_state.U̅))
+        U̅_fill   = Array(interior(sefs_fill.filtered_state.U̅))
+
+        @test η̅_extend ≈ η̅_fill
+        @test U̅_extend ≈ U̅_fill
+    end
+end

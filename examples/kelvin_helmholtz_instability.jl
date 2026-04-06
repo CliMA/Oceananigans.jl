@@ -138,7 +138,7 @@ fig
 
 # # The model
 
-model = NonhydrostaticModel(; grid,
+model = NonhydrostaticModel(grid;
                             advection = UpwindBiased(order=5),
                             background_fields = (u=U, b=B),
                             closure = ScalarDiffusivity(ν=2e-4, κ=2e-4),
@@ -286,6 +286,7 @@ perturbation_vorticity = Field(∂z(u) - ∂x(w))
 # We initialize the power iteration with random noise and rescale to have a `target_kinetic_energy`
 
 using Random, Statistics
+Random.seed!(2001) # for reproducible results
 
 mean_perturbation_kinetic_energy = Field(Average(1/2 * (u^2 + w^2)))
 noise(x, z) = randn()

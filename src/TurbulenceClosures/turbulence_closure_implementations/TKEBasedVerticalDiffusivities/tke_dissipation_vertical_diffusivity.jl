@@ -1,3 +1,5 @@
+import Oceananigans: prognostic_state, restore_prognostic_state!
+
 struct TKEDissipationVerticalDiffusivity{TD, KE, ST, LMIN, FT, DT} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 2}
     tke_dissipation_equations :: KE
     stability_functions :: ST
@@ -154,6 +156,9 @@ function Utils.with_tracers(tracer_names, closure::FlavorOfTD)
     return closure
 end
 
+# Required tracer names for TKEDissipation
+closure_required_tracers(::FlavorOfTD) = (:e, :ϵ)
+
 #####
 ##### Stratified displacement length scale limiter
 #####
@@ -167,7 +172,7 @@ end
 ##### Diffusivities and diffusivity fields utilities
 #####
 
-struct TKEDissipationDiffusivityFields{K, L, U, KC, LC}
+struct TKEDissipationClosureFields{K, L, U, KC, LC}
     κu :: K
     κc :: K
     κe :: K
@@ -179,8 +184,8 @@ struct TKEDissipationDiffusivityFields{K, L, U, KC, LC}
     _tupled_implicit_linear_coefficients :: LC
 end
 
-Adapt.adapt_structure(to, tke_dissipation_closure_fields::TKEDissipationDiffusivityFields) =
-    TKEDissipationDiffusivityFields(adapt(to, tke_dissipation_closure_fields.κu),
+Adapt.adapt_structure(to, tke_dissipation_closure_fields::TKEDissipationClosureFields) =
+    TKEDissipationClosureFields(adapt(to, tke_dissipation_closure_fields.κu),
                                     adapt(to, tke_dissipation_closure_fields.κc),
                                     adapt(to, tke_dissipation_closure_fields.κe),
                                     adapt(to, tke_dissipation_closure_fields.κϵ),
@@ -190,7 +195,7 @@ Adapt.adapt_structure(to, tke_dissipation_closure_fields::TKEDissipationDiffusiv
                                     adapt(to, tke_dissipation_closure_fields._tupled_tracer_diffusivities),
                                     adapt(to, tke_dissipation_closure_fields._tupled_implicit_linear_coefficients))
 
-function BoundaryConditions.fill_halo_regions!(tke_dissipation_closure_fields::TKEDissipationDiffusivityFields, args...; kw...)
+function BoundaryConditions.fill_halo_regions!(tke_dissipation_closure_fields::TKEDissipationClosureFields, args...; kw...)
     fields_with_halos_to_fill = (tke_dissipation_closure_fields.κu,
                                  tke_dissipation_closure_fields.κc,
                                  tke_dissipation_closure_fields.κe,
@@ -225,55 +230,54 @@ function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfT
     _tupled_tracer_diffusivities = Dict{Symbol, Any}(name => κc for name in tracer_names)
     _tupled_tracer_diffusivities[:e] = κe
     _tupled_tracer_diffusivities[:ϵ] = κϵ
-    _tupled_tracer_diffusivities = NamedTuple(name => _tupled_tracer_diffusivities[name]
-                                              for name in tracer_names)
+    _ntupled_tracer_diffusivities = NamedTuple(name => _tupled_tracer_diffusivities[name]
+                                               for name in tracer_names)
 
     _tupled_implicit_linear_coefficients = Dict{Symbol, Any}(name => ZeroField() for name in tracer_names)
     _tupled_implicit_linear_coefficients[:e] = Le
     _tupled_implicit_linear_coefficients[:ϵ] = Lϵ
-    _tupled_implicit_linear_coefficients = NamedTuple(name => _tupled_implicit_linear_coefficients[name]
-                                                      for name in tracer_names)
+    _ntupled_implicit_linear_coefficients = NamedTuple(name => _tupled_implicit_linear_coefficients[name]
+                                                       for name in tracer_names)
 
-    return TKEDissipationDiffusivityFields(κu, κc, κe, κϵ, Le, Lϵ,
+    return TKEDissipationClosureFields(κu, κc, κe, κϵ, Le, Lϵ,
                                            previous_velocities,
-                                           _tupled_tracer_diffusivities,
-                                           _tupled_implicit_linear_coefficients)
+                                           _ntupled_tracer_diffusivities,
+                                           _ntupled_implicit_linear_coefficients)
 end
 
 @inline viscosity_location(::FlavorOfTD) = (c, c, f)
 @inline diffusivity_location(::FlavorOfTD) = (c, c, f)
 
-function compute_diffusivities!(diffusivities, closure::FlavorOfTD, model; parameters = :xyz)
+function step_closure_prognostics!(closure_fields, closure::FlavorOfTD, model, Δt)
+    # Step TKE/dissipation equations with the provided timestep
+    time_step_tke_dissipation_equations!(model, Δt)
 
+    # Update previous velocities
+    u, v, w = model.velocities
+    u⁻, v⁻ = closure_fields.previous_velocities
+    parent(u⁻) .= parent(u)
+    parent(v⁻) .= parent(v)
+
+    return nothing
+end
+
+function compute_closure_fields!(closure_fields, closure::FlavorOfTD, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
     velocities = model.velocities
     tracers = buoyancy_tracers(model)
     buoyancy = buoyancy_force(model)
-    clock = model.clock
-    top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
+    active_cells_map = get_active_cells_map(grid, Val(:xyz))
 
-    if isfinite(model.clock.last_Δt) # Check that we have taken a valid time-step first.
-        # Compute e at the current time:
-        #   * update tendency Gⁿ using current and previous velocity field
-        #   * use tridiagonal solve to take an implicit step
-        time_step_tke_dissipation_equations!(model)
-    end
-
-    # Update "previous velocities"
-    u, v, w = model.velocities
-    u⁻, v⁻ = diffusivities.previous_velocities
-    parent(u⁻) .= parent(u)
-    parent(v⁻) .= parent(v)
-
-    launch!(arch, grid, parameters,
-            compute_TKEDissipation_diffusivities!,
-            diffusivities, grid, closure, velocities, tracers, buoyancy)
+    launch!(arch, grid, :xyz,
+            compute_TKEDissipation_closure_fields!,
+            closure_fields, grid, closure, velocities, tracers, buoyancy;
+            active_cells_map)
 
     return nothing
 end
 
-@kernel function compute_TKEDissipation_diffusivities!(diffusivities, grid, closure::FlavorOfTD,
+@kernel function compute_TKEDissipation_closure_fields!(closure_fields, grid, closure::FlavorOfTD,
                                                        velocities, tracers, buoyancy)
     i, j, k = @index(Global, NTuple)
 
@@ -293,10 +297,10 @@ end
     κϵ★ = mask_diffusivity(i, j, k, grid, κϵ★)
 
     @inbounds begin
-        diffusivities.κu[i, j, k] = κu★
-        diffusivities.κc[i, j, k] = κc★
-        diffusivities.κe[i, j, k] = κe★
-        diffusivities.κϵ[i, j, k] = κϵ★
+        closure_fields.κu[i, j, k] = κu★
+        closure_fields.κc[i, j, k] = κc★
+        closure_fields.κe[i, j, k] = κe★
+        closure_fields.κϵ[i, j, k] = κϵ★
     end
 end
 
@@ -371,8 +375,8 @@ end
     return min(κϵ, κϵ_max)
 end
 
-@inline viscosity(::FlavorOfTD, diffusivities) = diffusivities.κu
-@inline diffusivity(::FlavorOfTD, diffusivities, ::Val{id}) where id = diffusivities._tupled_tracer_diffusivities[id]
+@inline viscosity(::FlavorOfTD, closure_fields) = closure_fields.κu
+@inline diffusivity(::FlavorOfTD, closure_fields, ::Val{id}) where id = closure_fields._tupled_tracer_diffusivities[id]
 
 #####
 ##### Show
@@ -402,3 +406,26 @@ function Base.show(io::IO, clo::TDVD)
               "│   └── CᵂwΔ: ", prettysummary(clo.tke_dissipation_equations.CᵂwΔ), '\n')
     print(io, "└── stability_functions: ", summarize_stability_functions(clo.stability_functions), "", "    ")
 end
+
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(cf::TKEDissipationClosureFields)
+    return (previous_velocities = prognostic_state(cf.previous_velocities),
+            κu = prognostic_state(cf.κu),
+            κc = prognostic_state(cf.κc),
+            κe = prognostic_state(cf.κe),
+            κϵ = prognostic_state(cf.κϵ))
+end
+
+function restore_prognostic_state!(restored::TKEDissipationClosureFields, from)
+    restore_prognostic_state!(restored.previous_velocities, from.previous_velocities)
+    restore_prognostic_state!(restored.κu, from.κu)
+    restore_prognostic_state!(restored.κc, from.κc)
+    restore_prognostic_state!(restored.κe, from.κe)
+    restore_prognostic_state!(restored.κϵ, from.κϵ)
+    return restored
+end
+
+restore_prognostic_state!(::TKEDissipationClosureFields, ::Nothing) = nothing

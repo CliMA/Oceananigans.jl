@@ -3,7 +3,7 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.TurbulenceClosures: TriadIsopycnalSkewSymmetricDiffusivity
 using Oceananigans.TurbulenceClosures: diffusive_flux_x, diffusive_flux_y, diffusive_flux_z,
                                        ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization,
-                                       compute_diffusivities!
+                                       compute_closure_fields!
 
 """
 Test that TriadIsopycnalSkewSymmetricDiffusivity can be constructed and timestepped
@@ -17,7 +17,7 @@ function time_step_with_triad_isopycnal_diffusivity(arch, time_discretization)
                                                      κ_symmetric = 100.0)
 
     # TriadIsopycnalSkewSymmetricDiffusivity only works with HydrostaticFreeSurfaceModel
-    model = HydrostaticFreeSurfaceModel(; grid, closure,
+    model = HydrostaticFreeSurfaceModel(grid; closure,
                                         buoyancy = BuoyancyTracer(),
                                         tracers = (:b, :c))
 

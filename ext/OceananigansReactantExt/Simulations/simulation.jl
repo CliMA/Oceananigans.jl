@@ -31,4 +31,3 @@ time(sim::ReactantSimulation) = Reactant.to_number(time(sim.model))
 
 add_callback!(::ReactantSimulation, args...) =
     error("Cannot add callbacks to a Simulation with ReactantState architecture!")
-

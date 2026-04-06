@@ -27,7 +27,9 @@ export
     VerticallyImplicitTimeDiscretization,
 
     build_closure_fields,
-    compute_diffusivities!,
+    compute_closure_fields!,
+    step_closure_prognostics!,
+    initialize_closure_fields!,
 
     viscosity, diffusivity,
 
@@ -36,7 +38,8 @@ export
     ∂ⱼ_τ₂ⱼ,
     ∂ⱼ_τ₃ⱼ,
 
-    cell_diffusion_timescale
+    cell_diffusion_timescale,
+    closure_required_tracers
 
 using KernelAbstractions: @index, @kernel
 using Adapt: Adapt, adapt
@@ -78,7 +81,41 @@ abstract type AbstractTurbulenceClosure{TimeDiscretization, RequiredHalo} end
 validate_closure(closure) = closure
 closure_summary(closure) = summary(closure)
 Utils.with_tracers(tracers, closure::AbstractTurbulenceClosure) = closure
-compute_diffusivities!(K, closure::AbstractTurbulenceClosure, args...; kwargs...) = nothing
+compute_closure_fields!(K, closure::AbstractTurbulenceClosure, args...; kwargs...) = nothing
+
+import Oceananigans.TimeSteppers: step_closure_prognostics!
+step_closure_prognostics!(K, closure::AbstractTurbulenceClosure, args...) = nothing
+step_closure_prognostics!(K, closure::AbstractArray{<:AbstractTurbulenceClosure}, args...) = nothing
+
+# Initialize closure fields when simulation starts (after velocities are properly set)
+initialize_closure_fields!(K, closure::AbstractTurbulenceClosure, args...) = nothing
+initialize_closure_fields!(K, closure::AbstractArray{<:AbstractTurbulenceClosure}, args...) = nothing
+initialize_closure_fields!(K, ::Nothing, args...) = nothing
+
+# Handle tuple of closures (iterate through each closure and its fields)
+function initialize_closure_fields!(closure_fields_tuple::Tuple, closures::Tuple, args...)
+    for (fields, closure) in zip(closure_fields_tuple, closures)
+        initialize_closure_fields!(fields, closure, args...)
+    end
+    return nothing
+end
+
+# Tracer names that a closure requires (eg TKE-based closures)
+# Fallbacks: by default closures do not require extra tracers.
+closure_required_tracers(::Nothing) = ()
+closure_required_tracers(::AbstractTurbulenceClosure) = ()
+closure_required_tracers(::AbstractArray{<:AbstractTurbulenceClosure}) = ()
+closure_required_tracers(closures::Tuple) = begin
+    names = Symbol[]
+    for c in closures
+        for n in closure_required_tracers(c)
+            if !(n in names)
+                push!(names, n)
+            end
+        end
+    end
+    return Tuple(names)
+end
 
 # The required halo size to calculate diffusivities. Take care that if the diffusivity can
 # be calculated from local information, still `B = 1`, because we need at least one additional

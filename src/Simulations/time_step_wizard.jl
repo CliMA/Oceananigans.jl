@@ -41,8 +41,7 @@ max(min_Δt, min_change * last_Δt) ≤ new_Δt ≤ min(max_Δt, max_change * la
 
 where `new_Δt` is the new time step calculated by the `TimeStepWizard`.
 
-For more information on the CFL number, see its [wikipedia entry]
-(https://en.wikipedia.org/wiki/Courant%E2%80%93Friedrichs%E2%80%93Lewy_condition).
+For more information on the CFL number, see its [wikipedia entry](https://en.wikipedia.org/wiki/Courant%E2%80%93Friedrichs%E2%80%93Lewy_condition).
 
 Example
 =======
@@ -127,4 +126,3 @@ function conjure_time_step_wizard!(simulation, schedule=IterationInterval(10); w
     simulation.callbacks[:time_step_wizard] = Callback(wizard, schedule)
     return nothing
 end
-

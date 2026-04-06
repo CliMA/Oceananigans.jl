@@ -14,8 +14,8 @@ Base.summary(eos::LinearEquationOfState) =
 
 Base.show(io::IO, eos::LinearEquationOfState) = print(io, summary(eos))
 
-with_float_type(FT::DataType, eos::LinearEquationOfState) = LinearEquationOfState(convert(FT, eos.thermal_expansion),
-                                                                                  convert(FT, eos.haline_contraction))
+SeawaterPolynomials.with_float_type(FT::DataType, eos::LinearEquationOfState) = LinearEquationOfState(convert(FT, eos.thermal_expansion),
+                                                                                                      convert(FT, eos.haline_contraction))
 
 """
     LinearEquationOfState([FT=Float64;] thermal_expansion=1.67e-4, haline_contraction=7.80e-4)
@@ -43,8 +43,8 @@ LinearEquationOfState(FT=Oceananigans.defaults.FloatType; thermal_expansion=1.67
 ##### Thermal expansion and haline contraction coefficients
 #####
 
-@inline  thermal_expansion(Θ, sᴬ, D, eos::LinearEquationOfState) = eos.thermal_expansion
-@inline haline_contraction(Θ, sᴬ, D, eos::LinearEquationOfState) = eos.haline_contraction
+@inline SeawaterPolynomials.thermal_expansion(Θ, sᴬ, D, eos::LinearEquationOfState)  = eos.thermal_expansion
+@inline SeawaterPolynomials.haline_contraction(Θ, sᴬ, D, eos::LinearEquationOfState) = eos.haline_contraction
 
 # Shortcuts
 @inline  thermal_expansionᶜᶜᶜ(i, j, k, grid, eos::LinearEquationOfState, C) = eos.thermal_expansion
@@ -78,4 +78,3 @@ const LinearSalinitySeawaterBuoyancy = SeawaterBuoyancy{FT, <:LinearEquationOfSt
 
 @inline buoyancy_perturbationᶜᶜᶜ(i, j, k, grid, b::LinearSalinitySeawaterBuoyancy, C) =
     @inbounds - b.gravitational_acceleration * b.equation_of_state.haline_contraction * C.S[i, j, k]
-

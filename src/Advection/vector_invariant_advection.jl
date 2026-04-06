@@ -8,7 +8,7 @@ EnstrophyConserving(FT::DataType = Oceananigans.defaults.FloatType) = EnstrophyC
 struct VectorInvariant{N, FT, M, Z, ZS, V, K, D, U} <: AbstractAdvectionScheme{N, FT}
     vorticity_scheme               :: Z  # reconstruction scheme for vorticity flux
     vorticity_stencil              :: ZS # stencil used for assessing vorticity smoothness
-    vertical_advection_scheme      :: V  # recontruction scheme for vertical advection
+    vertical_advection_scheme      :: V  # reconstruction scheme for vertical advection
     kinetic_energy_gradient_scheme :: K  # reconstruction scheme for kinetic energy gradient
     divergence_scheme              :: D  # reconstruction scheme for divergence flux
     upwinding                      :: U  # treatment of upwinding for divergence flux and kinetic energy gradient
@@ -64,7 +64,7 @@ Keyword arguments
   * `OnlySelfUpwinding()`
 
 - `multi_dimensional_stencil`: whether or not to use a horizontal two-dimensional stencil for the reconstruction
-                               of vorticity, divergence and kinetic energy gradient. Currently the "tangential"
+                               of vorticity, divergence, and kinetic energy gradient. Currently the "tangential"
                                direction uses 5th-order centered WENO reconstruction. Default: false
 
 Examples
@@ -75,8 +75,8 @@ julia> using Oceananigans
 
 julia> VectorInvariant()
 VectorInvariant
-├── vorticity_scheme: Oceananigans.Advection.EnstrophyConserving{Float64}
-└── vertical_advection_scheme: Oceananigans.Advection.EnergyConserving{Float64}
+├── vorticity_scheme: EnstrophyConserving
+└── vertical_advection_scheme: EnergyConserving
 ```
 """
 function VectorInvariant(FT = Oceananigans.defaults.FloatType;
@@ -318,8 +318,8 @@ end
 @inline ϕ²(i, j, k, grid, ϕ)       = @inbounds ϕ[i, j, k]^2
 @inline Khᶜᶜᶜ(i, j, k, grid, u, v) = (ℑxᶜᵃᵃ(i, j, k, grid, ϕ², u) + ℑyᵃᶜᵃ(i, j, k, grid, ϕ², v)) / 2
 
-@inline bernoulli_head_U(i, j, k, grid, ::VectorInvariantKEGradientEnergyConserving, u, v) = ∂xᶠᶜᶜ(i, j, k, grid, Khᶜᶜᶜ, u, v)
-@inline bernoulli_head_V(i, j, k, grid, ::VectorInvariantKEGradientEnergyConserving, u, v) = ∂yᶜᶠᶜ(i, j, k, grid, Khᶜᶜᶜ, u, v)
+@inline bernoulli_head_U(i, j, k, grid, ::VectorInvariantKEGradientEnergyConserving, u, v) = δxᶠᶜᶜ(i, j, k, grid, Khᶜᶜᶜ, u, v) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
+@inline bernoulli_head_V(i, j, k, grid, ::VectorInvariantKEGradientEnergyConserving, u, v) = δyᶜᶠᶜ(i, j, k, grid, Khᶜᶜᶜ, u, v) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
 
 #####
 ##### Conservative vertical advection

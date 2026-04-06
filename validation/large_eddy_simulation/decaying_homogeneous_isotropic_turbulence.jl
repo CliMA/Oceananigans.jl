@@ -5,7 +5,7 @@ using  Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_w_from_continui
 arch = CPU()
 grid = RectilinearGrid(arch, size = (32, 32, 32), extent = (1, 1, 1))
 closure = AnisotropicMinimumDissipation(VerticallyImplicitTimeDiscretization(), C=1/3)
-model = NonhydrostaticModel(; grid, closure)
+model = NonhydrostaticModel(grid; closure)
 
 ϵ(x, y, z) = randn()
 set!(model, u=ϵ, v=ϵ)
@@ -59,7 +59,7 @@ add_callback!(simulation, add_line!, TimeInterval(0.1))
 run!(simulation)
 
 lines!(ax, [exp(1), exp(3)], x->(x/exp(1))^(-5/3)*exp(15), color = :red, linestyle = :dash)
-text!(ax, exp(0.8), exp(13); text = L"$E(k)\sim k^{-5/3}$", color = :white) 
+text!(ax, exp(0.8), exp(13); text = L"$E(k)\sim k^{-5/3}$", color = :white)
 Colorbar(fig[1, 2], colormap = :oslo, colorrange = (0, 10), label = "Time (s)")
 
 k_filt = 1/sqrt(closure.Cν * 3 / (1/(2*minimum_xspacing(grid))^2 + 1/(2*minimum_yspacing(grid))^2 + 1/(2*minimum_zspacing(grid))^2))

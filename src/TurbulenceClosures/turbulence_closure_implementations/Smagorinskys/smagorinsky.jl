@@ -17,7 +17,7 @@ import ..TurbulenceClosures:
     κᶠᶜᶜ,
     κᶜᶠᶜ,
     κᶜᶜᶠ,
-    compute_diffusivities!,
+    compute_closure_fields!,
     build_closure_fields,
     tracer_diffusivities
 
@@ -108,7 +108,7 @@ end
 
 compute_coefficient_fields!(closure_fields, closure, model; parameters) = nothing
 
-function compute_diffusivities!(closure_fields, closure::Smagorinsky, model; parameters = :xyz)
+function compute_closure_fields!(closure_fields, closure::Smagorinsky, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
     tracers = buoyancy_tracers(model)
@@ -123,10 +123,10 @@ function compute_diffusivities!(closure_fields, closure::Smagorinsky, model; par
     return nothing
 end
 
-allocate_coefficient_fields(closure, grid) = NamedTuple()
+allocate_coefficient_fields(closure, grid, clock) = NamedTuple()
 
 function build_closure_fields(grid, clock, tracer_names, bcs, closure::Smagorinsky)
-    coefficient_fields = allocate_coefficient_fields(closure, grid)
+    coefficient_fields = allocate_coefficient_fields(closure, grid, clock)
 
     default_eddy_viscosity_bcs = (; νₑ = FieldBoundaryConditions(grid, (Center(), Center(), Center())))
     bcs = merge(default_eddy_viscosity_bcs, bcs)

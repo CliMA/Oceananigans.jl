@@ -8,7 +8,7 @@ struct Centered{N, FT, CA} <: AbstractCenteredAdvectionScheme{N, FT}
     Centered{N, FT}(buffer_scheme::CA) where {N, FT, CA} = new{N, FT, CA}(buffer_scheme)
 end
 
-function Centered(FT::DataType=Oceananigans.defaults.FloatType; 
+function Centered(FT::DataType=Oceananigans.defaults.FloatType;
                   order = 2,
                   buffer_scheme = DecreasingOrderAdvectionScheme())
 

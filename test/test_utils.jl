@@ -1,5 +1,7 @@
 include("dependencies_for_runtests.jl")
 
+using Oceananigans.Utils: TabulatedFunction
+
 @testset "Utils" begin
     @info "Testing utils..."
 
@@ -37,5 +39,404 @@ include("dependencies_for_runtests.jl")
         @test prettysummary(prettysummary, false) == "prettysummary"
         @test contains(prettysummary(prettysummary, true), r"^prettysummary \(generic function with \d+ methods\)$")
         @test contains(prettysummary(x -> x, true), r"^#\d+ \(generic function with 1 method\)$")
+    end
+
+    @testset "TabulatedFunction" begin
+        GC.gc()
+        @info "  Testing TabulatedFunction..."
+
+        #####
+        ##### 1D TabulatedFunction
+        #####
+
+        @testset "1D TabulatedFunction" begin
+            # Test basic construction and evaluation
+            f = TabulatedFunction(sin; range=(0, 2π), points=1000)
+            @test f isa TabulatedFunction{1}
+            @test abs(f(π/4) - sin(π/4)) < 0.001
+            @test abs(f(π/2) - sin(π/2)) < 0.001
+            @test abs(f(π) - sin(π)) < 0.001
+
+            # Test with anonymous function
+            g = TabulatedFunction(x -> x^2; range=(-5, 5), points=500)
+            @test g isa TabulatedFunction{1}
+            @test abs(g(2.0) - 4.0) < 0.01
+            @test abs(g(-3.0) - 9.0) < 0.01
+
+            # Test clamping at boundaries
+            h = TabulatedFunction(identity; range=(0, 1), points=100)
+            @test h(-0.5) ≈ 0.0  # Clamped to x_min
+            @test h(1.5) ≈ 1.0   # Clamped to x_max
+
+            # Test with Float32
+            f32 = TabulatedFunction(cos, CPU(), Float32; range=(0, π), points=100)
+            @test eltype(f32.table) == Float32
+            @test abs(f32(π/2) - cos(Float32(π/2))) < 0.01
+
+            # Test expensive function (what it's designed for)
+            expensive_func(x) = log(1 + exp(x)) + sqrt(abs(x))
+            t = TabulatedFunction(expensive_func; range=(-10, 10), points=10000)
+            @test abs(t(0.0) - expensive_func(0.0)) < 0.1  # sqrt has a singularity at 0
+            @test abs(t(5.0) - expensive_func(5.0)) < 0.01
+
+            # Test summary/show
+            @test contains(summary(f), "TabulatedFunction{1}")
+            @test contains(summary(f), "1000 points")
+
+            # Test exact values at grid points
+            f_lin = TabulatedFunction(identity; range=(0, 10), points=11)
+            for i in 0:10
+                @test f_lin(Float64(i)) ≈ Float64(i)
+            end
+
+            # Test internal structure
+            @test length(f.range) == 1
+            @test length(f.inverse_Δ) == 1
+            @test f.range[1][1] ≈ 0.0
+            @test f.range[1][2] ≈ 2π
+        end
+
+        #####
+        ##### 2D TabulatedFunction (bilinear interpolation)
+        #####
+
+        @testset "2D TabulatedFunction" begin
+            g2d(x, y) = sin(x) * cos(y)
+            f2d = TabulatedFunction(g2d; range=((0, π), (0, 2π)), points=(100, 200))
+            @test f2d isa TabulatedFunction{2}
+            @test size(f2d.table) == (100, 200)
+
+            # Test accuracy
+            @test abs(f2d(π/4, π/4) - g2d(π/4, π/4)) < 0.01
+            @test abs(f2d(π/2, π) - g2d(π/2, π)) < 0.01
+
+            # Test with scalar points (broadcast to both dimensions)
+            f2d_scalar = TabulatedFunction(g2d; range=((0, π), (0, 2π)), points=50)
+            @test size(f2d_scalar.table) == (50, 50)
+
+            # Test clamping in 2D
+            h2d(x, y) = x + y
+            t2d = TabulatedFunction(h2d; range=((0, 1), (0, 1)), points=100)
+            @test t2d(-0.5, 0.5) ≈ 0.5  # x clamped to 0
+            @test t2d(0.5, 1.5) ≈ 1.5   # y clamped to 1
+            @test t2d(1.5, 1.5) ≈ 2.0   # both clamped
+
+            # Test summary for 2D
+            @test contains(summary(f2d), "TabulatedFunction{2}")
+            @test contains(summary(f2d), "100×200")
+
+            # Test exact values at grid points (linear function should be exact)
+            f2d_lin = TabulatedFunction((x, y) -> x + y; range=((0, 1), (0, 1)), points=(11, 11))
+            for i in 0:10, j in 0:10
+                x, y = i/10, j/10
+                @test f2d_lin(x, y) ≈ x + y atol=1e-10
+            end
+
+            # Test Float32 for 2D
+            f2d_32 = TabulatedFunction(g2d, CPU(), Float32; range=((0, π), (0, 2π)), points=(50, 50))
+            @test eltype(f2d_32.table) == Float32
+
+            # Test internal structure
+            @test length(f2d.range) == 2
+            @test length(f2d.inverse_Δ) == 2
+            @test f2d.range[1][1] ≈ 0.0
+            @test f2d.range[1][2] ≈ π
+            @test f2d.range[2][1] ≈ 0.0
+            @test f2d.range[2][2] ≈ 2π
+
+            # Test asymmetric points
+            f2d_asym = TabulatedFunction(g2d; range=((0, 1), (0, 2)), points=(10, 50))
+            @test size(f2d_asym.table) == (10, 50)
+        end
+
+        #####
+        ##### 3D TabulatedFunction (trilinear interpolation)
+        #####
+
+        @testset "3D TabulatedFunction" begin
+            g3d(x, y, z) = x^2 + y^2 + z^2
+            f3d = TabulatedFunction(g3d; range=((-1, 1), (-1, 1), (-1, 1)), points=(20, 20, 20))
+            @test f3d isa TabulatedFunction{3}
+            @test size(f3d.table) == (20, 20, 20)
+
+            # Test accuracy
+            @test abs(f3d(0.0, 0.0, 0.0) - g3d(0.0, 0.0, 0.0)) < 0.01
+            @test abs(f3d(0.5, 0.5, 0.5) - g3d(0.5, 0.5, 0.5)) < 0.05
+
+            # Test with scalar points (broadcast to all dimensions)
+            f3d_scalar = TabulatedFunction(g3d; range=((-1, 1), (-1, 1), (-1, 1)), points=15)
+            @test size(f3d_scalar.table) == (15, 15, 15)
+
+            # Test clamping in 3D
+            h3d(x, y, z) = x * y * z
+            t3d = TabulatedFunction(h3d; range=((0, 1), (0, 1), (0, 1)), points=50)
+            @test t3d(0.5, 0.5, 0.5) ≈ 0.125 atol=0.01
+
+            # Test clamping at all boundaries
+            @test t3d(-1, 0.5, 0.5) ≈ 0.0 atol=0.01  # x clamped to 0
+            @test t3d(0.5, -1, 0.5) ≈ 0.0 atol=0.01  # y clamped to 0
+            @test t3d(0.5, 0.5, -1) ≈ 0.0 atol=0.01  # z clamped to 0
+            @test t3d(2, 0.5, 0.5) ≈ 0.25 atol=0.01  # x clamped to 1
+            @test t3d(0.5, 2, 0.5) ≈ 0.25 atol=0.01  # y clamped to 1
+            @test t3d(0.5, 0.5, 2) ≈ 0.25 atol=0.01  # z clamped to 1
+
+            # Test summary for 3D
+            @test contains(summary(f3d), "TabulatedFunction{3}")
+            @test contains(summary(f3d), "20×20×20")
+
+            # Test exact values at grid points (linear function should be exact)
+            f3d_lin = TabulatedFunction((x, y, z) -> x + y + z; range=((0, 1), (0, 1), (0, 1)), points=(11, 11, 11))
+            for i in 0:10, j in 0:10, k in 0:10
+                x, y, z = i/10, j/10, k/10
+                @test f3d_lin(x, y, z) ≈ x + y + z atol=1e-10
+            end
+
+            # Test Float32 for 3D
+            f3d_32 = TabulatedFunction(g3d, CPU(), Float32; range=((-1, 1), (-1, 1), (-1, 1)), points=10)
+            @test eltype(f3d_32.table) == Float32
+
+            # Test internal structure
+            @test length(f3d.range) == 3
+            @test length(f3d.inverse_Δ) == 3
+
+            # Test asymmetric points
+            f3d_asym = TabulatedFunction(g3d; range=((-1, 1), (-1, 1), (-1, 1)), points=(10, 20, 30))
+            @test size(f3d_asym.table) == (10, 20, 30)
+        end
+
+        #####
+        ##### 4D TabulatedFunction (quadrilinear interpolation)
+        #####
+
+        @testset "4D TabulatedFunction" begin
+            g4d(x, y, z, w) = x^2 + y^2 + z^2 + w^2
+            f4d = TabulatedFunction(g4d; range=((-1, 1), (-1, 1), (-1, 1), (-1, 1)), points=(10, 10, 10, 10))
+            @test f4d isa TabulatedFunction{4}
+            @test size(f4d.table) == (10, 10, 10, 10)
+
+            # Test accuracy
+            @test abs(f4d(0.0, 0.0, 0.0, 0.0) - g4d(0.0, 0.0, 0.0, 0.0)) < 0.1
+            @test abs(f4d(0.5, 0.5, 0.5, 0.5) - g4d(0.5, 0.5, 0.5, 0.5)) < 0.1
+
+            # Test with scalar points (broadcast to all dimensions)
+            f4d_scalar = TabulatedFunction(g4d; range=((-1, 1), (-1, 1), (-1, 1), (-1, 1)), points=8)
+            @test size(f4d_scalar.table) == (8, 8, 8, 8)
+
+            # Test clamping in 4D
+            h4d(x, y, z, w) = x * y * z * w
+            t4d = TabulatedFunction(h4d; range=((0, 1), (0, 1), (0, 1), (0, 1)), points=20)
+            @test t4d(0.5, 0.5, 0.5, 0.5) ≈ 0.0625 atol=0.01
+
+            # Test clamping at all boundaries
+            @test t4d(-1, 0.5, 0.5, 0.5) ≈ 0.0 atol=0.01  # x clamped to 0
+            @test t4d(0.5, -1, 0.5, 0.5) ≈ 0.0 atol=0.01  # y clamped to 0
+            @test t4d(0.5, 0.5, -1, 0.5) ≈ 0.0 atol=0.01  # z clamped to 0
+            @test t4d(0.5, 0.5, 0.5, -1) ≈ 0.0 atol=0.01  # w clamped to 0
+            @test t4d(2, 0.5, 0.5, 0.5) ≈ 0.125 atol=0.01 # x clamped to 1
+            @test t4d(0.5, 2, 0.5, 0.5) ≈ 0.125 atol=0.01 # y clamped to 1
+            @test t4d(0.5, 0.5, 2, 0.5) ≈ 0.125 atol=0.01 # z clamped to 1
+            @test t4d(0.5, 0.5, 0.5, 2) ≈ 0.125 atol=0.01 # w clamped to 1
+
+            # Test summary for 4D
+            @test contains(summary(f4d), "TabulatedFunction{4}")
+            @test contains(summary(f4d), "10×10×10×10")
+
+            # Test exact values at grid points (linear function should be exact)
+            f4d_lin = TabulatedFunction((x, y, z, w) -> x + y + z + w;
+                                        range=((0, 1), (0, 1), (0, 1), (0, 1)), points=(4, 4, 4, 4))
+            for i in 0:3, j in 0:3, k in 0:3, l in 0:3
+                x, y, z, w = i/3, j/3, k/3, l/3
+                @test f4d_lin(x, y, z, w) ≈ x + y + z + w atol=1e-10
+            end
+
+            # Test Float32 for 4D
+            f4d_32 = TabulatedFunction(g4d, CPU(), Float32;
+                                       range=((-1, 1), (-1, 1), (-1, 1), (-1, 1)), points=5)
+            @test eltype(f4d_32.table) == Float32
+
+            # Test internal structure
+            @test length(f4d.range) == 4
+            @test length(f4d.inverse_Δ) == 4
+
+            # Test asymmetric points
+            f4d_asym = TabulatedFunction(g4d; range=((-1, 1), (-1, 1), (-1, 1), (-1, 1)), points=(5, 10, 15, 20))
+            @test size(f4d_asym.table) == (5, 10, 15, 20)
+        end
+
+        #####
+        ##### 5D TabulatedFunction (quintilinear interpolation)
+        #####
+
+        @testset "5D TabulatedFunction" begin
+            g5d(a, b, c, d, e) = a^2 + b^2 + c^2 + d^2 + e^2
+            f5d = TabulatedFunction(g5d; range=((-1, 1), (-1, 1), (-1, 1), (-1, 1), (-1, 1)),
+                                    points=(6, 6, 6, 6, 6))
+            @test f5d isa TabulatedFunction{5}
+            @test size(f5d.table) == (6, 6, 6, 6, 6)
+
+            # Test accuracy
+            @test abs(f5d(0.0, 0.0, 0.0, 0.0, 0.0) - g5d(0.0, 0.0, 0.0, 0.0, 0.0)) < 0.2
+            @test abs(f5d(0.5, 0.5, 0.5, 0.5, 0.5) - g5d(0.5, 0.5, 0.5, 0.5, 0.5)) < 0.2
+
+            # Test with scalar points (broadcast to all dimensions)
+            f5d_scalar = TabulatedFunction(g5d; range=((-1,1), (-1,1), (-1,1), (-1,1), (-1,1)), points=4)
+            @test size(f5d_scalar.table) == (4, 4, 4, 4, 4)
+
+            # Test clamping in 5D
+            h5d(a, b, c, d, e) = a * b * c * d * e
+            t5d = TabulatedFunction(h5d; range=((0,1), (0,1), (0,1), (0,1), (0,1)), points=10)
+            @test t5d(0.5, 0.5, 0.5, 0.5, 0.5) ≈ 0.03125 atol=0.01
+
+            # Test clamping at boundaries
+            @test t5d(-1, 0.5, 0.5, 0.5, 0.5) ≈ 0.0 atol=0.01   # dim 1 clamped to 0
+            @test t5d(0.5, 0.5, 0.5, 0.5, -1) ≈ 0.0 atol=0.01   # dim 5 clamped to 0
+            @test t5d(2, 0.5, 0.5, 0.5, 0.5) ≈ 0.0625 atol=0.01 # dim 1 clamped to 1
+
+            # Test summary for 5D
+            @test contains(summary(f5d), "TabulatedFunction{5}")
+            @test contains(summary(f5d), "6×6×6×6×6")
+
+            # Test exact values at grid points (linear function should be exact)
+            f5d_lin = TabulatedFunction((a, b, c, d, e) -> a + b + c + d + e;
+                                        range=((0,1), (0,1), (0,1), (0,1), (0,1)),
+                                        points=(3, 3, 3, 3, 3))
+            for i in 0:2, j in 0:2, k in 0:2, l in 0:2, m in 0:2
+                a, b, c, d, e = i/2, j/2, k/2, l/2, m/2
+                @test f5d_lin(a, b, c, d, e) ≈ a + b + c + d + e atol=1e-10
+            end
+
+            # Test Float32 for 5D
+            f5d_32 = TabulatedFunction(g5d, CPU(), Float32;
+                                       range=((-1,1), (-1,1), (-1,1), (-1,1), (-1,1)), points=4)
+            @test eltype(f5d_32.table) == Float32
+
+            # Test internal structure
+            @test length(f5d.range) == 5
+            @test length(f5d.inverse_Δ) == 5
+
+            # Test asymmetric points
+            f5d_asym = TabulatedFunction(g5d; range=((-1,1), (-1,1), (-1,1), (-1,1), (-1,1)),
+                                          points=(3, 4, 5, 6, 7))
+            @test size(f5d_asym.table) == (3, 4, 5, 6, 7)
+        end
+
+        #####
+        ##### Architecture and Adapt tests
+        #####
+
+        @testset "Architecture and Adapt" begin
+            using Oceananigans.Architectures: on_architecture
+            using Adapt
+
+            # Test on_architecture for 1D
+            f1 = TabulatedFunction(sin; range=(0, 2π), points=100)
+            f1_cpu = on_architecture(CPU(), f1)
+            @test f1_cpu.table isa Vector
+            @test f1_cpu(π/2) ≈ f1(π/2)
+
+            # Test on_architecture for 2D
+            f2 = TabulatedFunction((x, y) -> x * y; range=((0, 1), (0, 1)), points=50)
+            f2_cpu = on_architecture(CPU(), f2)
+            @test f2_cpu.table isa Matrix
+            @test f2_cpu(0.5, 0.5) ≈ f2(0.5, 0.5)
+
+            # Test on_architecture for 3D
+            f3 = TabulatedFunction((x, y, z) -> x + y + z; range=((0, 1), (0, 1), (0, 1)), points=20)
+            f3_cpu = on_architecture(CPU(), f3)
+            @test f3_cpu.table isa Array{Float64, 3}
+            @test f3_cpu(0.5, 0.5, 0.5) ≈ f3(0.5, 0.5, 0.5)
+
+            # Test on_architecture for 4D
+            f4 = TabulatedFunction((x, y, z, w) -> x + y + z + w;
+                                    range=((0, 1), (0, 1), (0, 1), (0, 1)), points=10)
+            f4_cpu = on_architecture(CPU(), f4)
+            @test f4_cpu.table isa Array{Float64, 4}
+            @test f4_cpu(0.5, 0.5, 0.5, 0.5) ≈ f4(0.5, 0.5, 0.5, 0.5)
+
+            # Test Adapt.adapt_structure (used for GPU kernels)
+            # When adapted, func should be replaced with nothing
+            f1_adapted = Adapt.adapt_structure(nothing, f1)
+            @test f1_adapted.func === nothing
+            @test f1_adapted.range == f1.range
+            @test f1_adapted.inverse_Δ == f1.inverse_Δ
+
+            f2_adapted = Adapt.adapt_structure(nothing, f2)
+            @test f2_adapted.func === nothing
+            @test f2_adapted isa TabulatedFunction{2}
+
+            f3_adapted = Adapt.adapt_structure(nothing, f3)
+            @test f3_adapted.func === nothing
+            @test f3_adapted isa TabulatedFunction{3}
+
+            f4_adapted = Adapt.adapt_structure(nothing, f4)
+            @test f4_adapted.func === nothing
+            @test f4_adapted isa TabulatedFunction{4}
+
+            # Test on_architecture for 5D
+            f5 = TabulatedFunction((a, b, c, d, e) -> a + b + c + d + e;
+                                    range=((0,1), (0,1), (0,1), (0,1), (0,1)), points=4)
+            f5_cpu = on_architecture(CPU(), f5)
+            @test f5_cpu.table isa Array{Float64, 5}
+            @test f5_cpu(0.5, 0.5, 0.5, 0.5, 0.5) ≈ f5(0.5, 0.5, 0.5, 0.5, 0.5)
+
+            f5_adapted = Adapt.adapt_structure(nothing, f5)
+            @test f5_adapted.func === nothing
+            @test f5_adapted isa TabulatedFunction{5}
+        end
+
+        #####
+        ##### Edge cases and special values
+        #####
+
+        @testset "Edge cases" begin
+            # Test with very small range
+            f_small = TabulatedFunction(sin; range=(0, 1e-10), points=100)
+            @test f_small(0.5e-10) isa Float64
+
+            # Test evaluation at exact min/max
+            f = TabulatedFunction(identity; range=(0, 1), points=101)
+            @test f(0.0) ≈ 0.0
+            @test f(1.0) ≈ 1.0
+
+            # Test with negative range
+            f_neg = TabulatedFunction(identity; range=(-10, -5), points=100)
+            @test f_neg(-7.5) ≈ -7.5 atol=0.1
+
+            # Test with 2 points (minimum for interpolation)
+            f_min = TabulatedFunction(identity; range=(0, 1), points=2)
+            @test f_min(0.0) ≈ 0.0
+            @test f_min(1.0) ≈ 1.0
+            @test f_min(0.5) ≈ 0.5
+
+            # Test that show works with nothing func (after adapt)
+            f_adapted = Adapt.adapt_structure(nothing, TabulatedFunction(sin; range=(0, 1)))
+            @test contains(summary(f_adapted), "TabulatedFunction{1}")
+            io = IOBuffer()
+            show(io, f_adapted)
+            @test length(String(take!(io))) > 0
+        end
+
+        #####
+        ##### Type alias tests
+        #####
+
+        @testset "Type aliases" begin
+            using Oceananigans.Utils: TabulatedFunction1D, TabulatedFunction2D, TabulatedFunction3D, TabulatedFunction4D, TabulatedFunction5D
+
+            f1 = TabulatedFunction(sin; range=(0, 1))
+            @test f1 isa TabulatedFunction1D
+
+            f2 = TabulatedFunction((x, y) -> x + y; range=((0, 1), (0, 1)))
+            @test f2 isa TabulatedFunction2D
+
+            f3 = TabulatedFunction((x, y, z) -> x + y + z; range=((0, 1), (0, 1), (0, 1)))
+            @test f3 isa TabulatedFunction3D
+
+            f4 = TabulatedFunction((x, y, z, w) -> x + y + z + w; range=((0, 1), (0, 1), (0, 1), (0, 1)))
+            @test f4 isa TabulatedFunction4D
+
+            f5 = TabulatedFunction((a, b, c, d, e) -> a + b + c + d + e; range=((0,1), (0,1), (0,1), (0,1), (0,1)))
+            @test f5 isa TabulatedFunction5D
+        end
     end
 end

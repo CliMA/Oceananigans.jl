@@ -58,4 +58,3 @@ field_time_series_suffix(fts::OnDiskFTS) =
     string("├── backend: ", summary(fts.backend), '\n',
            "├── path: ", fts.path, '\n',
            "└── name: ", fts.name)
-

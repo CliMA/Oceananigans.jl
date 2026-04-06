@@ -132,30 +132,19 @@ convective_adjustment = ConvectiveAdjustmentVerticalDiffusivity(convective_κz =
 
 # Model Setup
 if hydrostatic
-    model = HydrostaticFreeSurfaceModel(
-            grid = grid,
-            free_surface = ImplicitFreeSurface(),
-            momentum_advection = WENO(),
-            tracer_advection = WENO(),
-            buoyancy = BuoyancyTracer(),
-            coriolis = coriolis,
-            closure = (horizontal_closure, vertical_closure, convective_adjustment),
-            tracers = (:b,),
-            boundary_conditions = bcs,
-            forcing = forcings,
-            )
+    model = HydrostaticFreeSurfaceModel(grid; free_surface = ImplicitFreeSurface(),
+                                              momentum_advection = WENO(),
+                                              tracer_advection = WENO(),
+                                              buoyancy = BuoyancyTracer(),
+                                              coriolis,
+                                              closure = (horizontal_closure, vertical_closure, convective_adjustment),
+                                              tracers = (:b,),
+                                              boundary_conditions = bcs,
+                                              forcing = forcings)
 else
-    model = NonhydrostaticModel(
-                    grid = grid,
-                coriolis = coriolis,
-                buoyancy = buoyancy,
-                    closure = (horizontal_closure, vertical_closure),
-                    tracers = (:b,),
-        boundary_conditions = bcs,
-                    forcing = forcings,
-                advection = advection,
-                timestepper = timestepper,
-    )
+    model = NonhydrostaticModel(grid; coriolis, buoyancy, advection, timestepper,
+                                      closure = (horizontal_closure, vertical_closure),
+                                      tracers = :b, boundary_conditions = bcs, forcing = forcings)
 end
 
 # Timestep

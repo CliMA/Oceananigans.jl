@@ -1,5 +1,5 @@
-import Krylov
-import Krylov.FloatOrComplex
+using LinearAlgebra: LinearAlgebra, I
+using Krylov: Krylov, FloatOrComplex
 
 ## Wrapper for AbstractField so that it behaves as a vector for Krylov.jl
 struct KrylovField{T, F <: AbstractField} <: AbstractVector{T}
@@ -68,7 +68,7 @@ end
 
 Krylov.knorm(n::Integer, x::KrylovField{T}) where T <: FloatOrComplex = norm(x.field)
 Krylov.kdot(n::Integer, x::KrylovField{T}, y::KrylovField{T}) where T <: FloatOrComplex = dot(x.field, y.field)
-Krylov.kcopy!(n::Integer, y::KrylovField{T}, x::KrylovField{T}) where T <: FloatOrComplex = copyto!(y.field, x.field)
+Krylov.kcopy!(n::Integer, y::KrylovField{T}, x::KrylovField{T}) where T <: FloatOrComplex = Base.copyto!(y.field, x.field)
 Krylov.kfill!(x::KrylovField{T}, val::T) where T <: FloatOrComplex = fill!(x.field, val)
 
 ## Structure representing linear operators so that we can define mul! on it
@@ -111,7 +111,7 @@ mutable struct KrylovSolver{A,G,L,S,P,T}
     maxtime::Float64
 end
 
-architecture(solver::KrylovSolver) = solver.architecture
+Architectures.architecture(solver::KrylovSolver) = solver.architecture
 Base.summary(solver::KrylovSolver) = "KrylovSolver"
 
 """

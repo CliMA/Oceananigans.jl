@@ -68,14 +68,12 @@ Utils.with_tracers(tracers, closure::TISSD{TD, N}) where {TD, N} =
 function Utils.with_tracers(tracers, closure_vector::TISSDVector)
     arch = architecture(closure_vector)
 
-    if arch isa Architectures.GPU
-        closure_vector = Vector(closure_vector)
-    end
+    _closure_vector = arch isa Architectures.GPU ? Vector(closure_vector) : closure_vector
 
-    Ex = length(closure_vector)
-    closure_vector = [with_tracers(tracers, closure_vector[i]) for i=1:Ex]
+    Ex = length(_closure_vector)
+    vec = [with_tracers(tracers, _closure_vector[i]) for i=1:Ex]
 
-    return on_architecture(arch, closure_vector)
+    return on_architecture(arch, vec)
 end
 
 # Note: computing diffusivities at cell centers for now.
@@ -94,7 +92,7 @@ end
 build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfTISSD) =
     DiffusivityFields(grid, tracer_names, bcs, closure)
 
-function compute_diffusivities!(diffusivities, closure::FlavorOfTISSD{TD}, model; parameters = :xyz) where TD
+function compute_closure_fields!(closure_fields, closure::FlavorOfTISSD{TD}, model; parameters = :xyz) where TD
 
     arch = model.architecture
     grid = model.grid
@@ -105,7 +103,7 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfTISSD{TD}, model
     if TD() isa VerticallyImplicitTimeDiscretization
         launch!(arch, grid, parameters,
                 triad_compute_tapered_R₃₃!,
-                diffusivities, grid, closure, clock, buoyancy, tracers)
+                closure_fields, grid, closure, clock, buoyancy, tracers)
     end
 
     return nothing

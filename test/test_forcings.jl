@@ -3,7 +3,7 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
 using Oceananigans.Fields: Field
 using Oceananigans.Forcings: MultipleForcings
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!, immersed_peripheral_node, peripheral_node
 
 """ Take one time step with three forcing arrays on u, v, w. """
 function time_step_with_forcing_array(arch)
@@ -17,7 +17,7 @@ function time_step_with_forcing_array(arch)
     set!(Fv, (x, y, z) -> 1)
     set!(Fw, (x, y, z) -> 1)
 
-    model = NonhydrostaticModel(; grid, forcing=(u=Fu, v=Fv, w=Fw))
+    model = NonhydrostaticModel(grid; forcing=(u=Fu, v=Fv, w=Fw))
     time_step!(model, 1)
 
     return true
@@ -30,7 +30,7 @@ function time_step_with_forcing_functions(arch)
     @inline Fw(x, y, z, t) = 1.0
 
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(; grid, forcing=(u=Fu, v=Fv, w=Fw))
+    model = NonhydrostaticModel(grid; forcing=(u=Fu, v=Fv, w=Fw))
     time_step!(model, 1)
 
     return true
@@ -44,7 +44,7 @@ end
 function time_step_with_discrete_forcing(arch)
     Fu = Forcing(Fu_discrete_func, discrete_form=true)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(; grid, forcing=(; u=Fu))
+    model = NonhydrostaticModel(grid; forcing=(; u=Fu))
     time_step!(model, 1)
 
     return true
@@ -57,7 +57,7 @@ function time_step_with_parameterized_discrete_forcing(arch)
     Fw = Forcing(Fw_discrete_func, parameters=(; τ=60), discrete_form=true)
 
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(; grid, forcing=(v=Fv, w=Fw))
+    model = NonhydrostaticModel(grid; forcing=(v=Fv, w=Fw))
     time_step!(model, 1)
 
     return true
@@ -67,7 +67,7 @@ end
 function time_step_with_parameterized_continuous_forcing(arch)
     Fu = Forcing((x, y, z, t, ω) -> sin(ω * x), parameters=π)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(; grid, forcing=(; u=Fu))
+    model = NonhydrostaticModel(grid; forcing=(; u=Fu))
     time_step!(model, 1)
     return true
 end
@@ -85,7 +85,7 @@ function time_step_with_single_field_dependent_forcing(arch, fld)
 
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     A = Field{Center, Center, Center}(grid)
-    model = NonhydrostaticModel(; grid, forcing,
+    model = NonhydrostaticModel(grid; forcing,
                                 buoyancy = SeawaterBuoyancy(),
                                 tracers = (:T, :S),
                                 auxiliary_fields = (; A))
@@ -101,7 +101,7 @@ function time_step_with_multiple_field_dependent_forcing(arch)
 
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     A = Field{Center, Center, Center}(grid)
-    model = NonhydrostaticModel(; grid,
+    model = NonhydrostaticModel(grid;
                                 forcing = (; u=Fu),
                                 buoyancy = SeawaterBuoyancy(),
                                 tracers = (:T, :S),
@@ -116,7 +116,7 @@ end
 function time_step_with_parameterized_field_dependent_forcing(arch)
     Fu = Forcing((x, y, z, t, u, p) -> sin(p.ω * x) * u, parameters=(ω=π,), field_dependencies=:u)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(; grid, forcing=(; u=Fu))
+    model = NonhydrostaticModel(grid; forcing=(; u=Fu))
     time_step!(model, 1)
     return true
 end
@@ -132,13 +132,13 @@ function time_step_with_field_time_series_forcing(arch)
         set!(u_forcing[t], (x, y, z) -> sin(π * x) * time)
     end
 
-    model = NonhydrostaticModel(; grid, forcing=(; u=u_forcing))
+    model = NonhydrostaticModel(grid; forcing=(; u=u_forcing))
     time_step!(model, 1)
 
     # Make sure the field time series updates correctly
     u_forcing = FieldTimeSeries{Face, Center, Center}(grid, 0:1:4; backend = InMemory(2))
 
-    model = NonhydrostaticModel(; grid, forcing=(; u=u_forcing))
+    model = NonhydrostaticModel(grid; forcing=(; u=u_forcing))
     time_step!(model, 2)
     time_step!(model, 2)
 
@@ -158,7 +158,7 @@ function relaxed_time_stepping(arch, mask_type)
                                       target = π)
 
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
-    model = NonhydrostaticModel(; grid, forcing=(u=x_relax, v=y_relax, w=z_relax))
+    model = NonhydrostaticModel(grid; forcing=(u=x_relax, v=y_relax, w=z_relax))
     time_step!(model, 1)
 
     return true
@@ -182,7 +182,7 @@ function advective_and_multiple_forcing(grid; model_type=NonhydrostaticModel, im
     zero_forcing(x, y, z, t) = 0
     one_forcing(x, y, z, t) = 1
 
-    model = model_type(; grid,
+    model = model_type(grid;
                        timestepper = :QuasiAdamsBashforth2,
                        tracers = (:a, :b, :c),
                        forcing = (a = constant_slip,
@@ -219,7 +219,7 @@ function two_forcings(arch)
                v = MultipleForcings(forcing1, forcing2),
                w = MultipleForcings((forcing1, forcing2)))
 
-    model = NonhydrostaticModel(; grid, forcing)
+    model = NonhydrostaticModel(grid; forcing)
     time_step!(model, 1)
 
     return true
@@ -246,9 +246,99 @@ function seven_forcings(arch)
 
     Ft = (F1, F2, F3, F4, F5, F6, F7)
     forcing = (u=Ft, v=MultipleForcings(Ft...), w=MultipleForcings(Ft))
-    model = NonhydrostaticModel(; grid, forcing)
+    model = NonhydrostaticModel(grid; forcing)
 
     time_step!(model, 1)
+
+    return true
+end
+
+# For each node (i, j, k), store whether the condition
+# "if immersed peripheral node then flux == 0" holds.
+# That is: !immersed_peripheral_node | (flux == 0).
+# @test all(interior(t**)) then verifies zero flux everywhere it is required.
+@kernel function _populate_momentum_flux_tests!(tuu, tuv, tuw, tvu, tvv, tvw, twu, twv, tww,
+                                                grid, scheme, u, v, w)
+    i, j, k = @index(Global, NTuple)
+
+    Fuu = Oceananigans.Advection._advective_momentum_flux_Uu(i, j, k, grid, scheme, u, u)
+    Fuv = Oceananigans.Advection._advective_momentum_flux_Uv(i, j, k, grid, scheme, u, v)
+    Fuw = Oceananigans.Advection._advective_momentum_flux_Uw(i, j, k, grid, scheme, u, w)
+    Fvu = Oceananigans.Advection._advective_momentum_flux_Vu(i, j, k, grid, scheme, v, u)
+    Fvv = Oceananigans.Advection._advective_momentum_flux_Vv(i, j, k, grid, scheme, v, v)
+    Fvw = Oceananigans.Advection._advective_momentum_flux_Vw(i, j, k, grid, scheme, v, w)
+    Fwu = Oceananigans.Advection._advective_momentum_flux_Wu(i, j, k, grid, scheme, w, u)
+    Fwv = Oceananigans.Advection._advective_momentum_flux_Wv(i, j, k, grid, scheme, w, v)
+    Fww = Oceananigans.Advection._advective_momentum_flux_Ww(i, j, k, grid, scheme, w, w)
+
+    c = Center()
+    f = Face()
+
+    @inbounds begin
+        tuu[i, j, k] = !peripheral_node(i, j, k, grid, c, c, c) | (Fuu == 0)
+        tuv[i, j, k] = !peripheral_node(i, j, k, grid, f, f, c) | (Fuv == 0)
+        tuw[i, j, k] = !peripheral_node(i, j, k, grid, f, c, f) | (Fuw == 0)
+        tvu[i, j, k] = !peripheral_node(i, j, k, grid, f, f, c) | (Fvu == 0)
+        tvv[i, j, k] = !peripheral_node(i, j, k, grid, c, c, c) | (Fvv == 0)
+        tvw[i, j, k] = !peripheral_node(i, j, k, grid, c, f, f) | (Fvw == 0)
+        twu[i, j, k] = !peripheral_node(i, j, k, grid, f, c, f) | (Fwu == 0)
+        twv[i, j, k] = !peripheral_node(i, j, k, grid, c, f, f) | (Fwv == 0)
+        tww[i, j, k] = !peripheral_node(i, j, k, grid, c, c, c) | (Fww == 0)
+    end
+end
+
+"""
+Test that all 9 advective momentum flux kernels are zero at every immersed peripheral node,
+for a grid with a random bottom boundary. This verifies that removing the explicit
+`conditional_flux` zeroing from `_advective_momentum_flux_*` on `ImmersedBoundaryGrid` is
+safe: velocity masking in immersed cells and the no-penetration boundary condition at the
+immersed boundary face are sufficient to guarantee zero momentum flux at all peripheral
+nodes, independently of the velocity magnitude in the active fluid region.
+"""
+function test_momentum_flux_zero_at_peripheral_nodes(scheme)
+    Nx, Ny, Nz = 8, 8, 8
+    underlying_grid = RectilinearGrid(CPU(), size=(Nx, Ny, Nz), extent=(1, 1, 1), halo=(4, 4, 4))
+
+    # Random bottom creates a varied immersed boundary topology, stressing all peripheral
+    # node configurations (not just a uniform flat slab).
+    bottom_height = -1 .+ rand(Nx, Ny) .* 0.8  # varies between -1 and -0.2
+    ibg = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
+    model = NonhydrostaticModel(ibg, advection=scheme)
+
+    # Set non-zero velocities everywhere, then zero out immersed cells via masking.
+    set!(model, u=1, v=1, w=1)
+    mask_immersed_field!(model.velocities.u)
+    mask_immersed_field!(model.velocities.v)
+    mask_immersed_field!(model.velocities.w)
+    fill_halo_regions!(model.velocities)
+
+    u, v, w = model.velocities
+
+    # Test fields: store true (1) where the "zero-flux at peripheral node" property holds,
+    # false (0) where it is violated.
+    tuu = Field{Center, Center, Center}(ibg)
+    tuv = Field{Face, Face, Center}(ibg)
+    tuw = Field{Face, Center, Face}(ibg)
+    tvu = Field{Face, Face, Center}(ibg)
+    tvv = Field{Center, Center, Center}(ibg)
+    tvw = Field{Center, Face, Face}(ibg)
+    twu = Field{Face, Center, Face}(ibg)
+    twv = Field{Center, Face, Face}(ibg)
+    tww = Field{Center, Center, Center}(ibg)
+
+    launch!(CPU(), ibg,  KernelParameters(0:9, 0:9, 0:9), _populate_momentum_flux_tests!,
+            tuu, tuv, tuw, tvu, tvv, tvw, twu, twv, tww,
+            ibg, scheme, u, v, w)
+
+    @test all(!iszero, Array(interior(tuu)))
+    @test all(!iszero, Array(interior(tuv)))
+    @test all(!iszero, Array(interior(tuw)))
+    @test all(!iszero, Array(interior(tvu)))
+    @test all(!iszero, Array(interior(tvv)))
+    @test all(!iszero, Array(interior(tvw)))
+    @test all(!iszero, Array(interior(twu)))
+    @test all(!iszero, Array(interior(twv)))
+    @test all(!iszero, Array(interior(tww)))
 
     return true
 end
@@ -284,7 +374,7 @@ function test_settling_tracer_comparison(arch; open_bottom=true)
 
         # Create settling forcing with the velocity field
         settling_forcing = AdvectiveForcing(w = w_settle_field)
-        model = NonhydrostaticModel(; grid, advection=WENO(order=5), tracers = :c, forcing = (c = settling_forcing,))
+        model = NonhydrostaticModel(grid; advection=WENO(order=5), tracers = :c, forcing = (c = settling_forcing,))
 
         # Initial condition: patch of tracer c=1 in the upper part
         z_center = -Lz/4  # Upper quarter of domain
@@ -337,6 +427,39 @@ function test_settling_tracer_comparison(arch; open_bottom=true)
     return true
 end
 
+"""
+Verify that ContinuousForcing with field_dependencies produces the same
+tendency as an equivalent DiscreteForcing on HydrostaticFreeSurfaceModel.
+
+Regression test for a bug where the model_fields NamedTuple used during
+forcing materialization excluded w, causing field_dependencies_indices
+to be off by one (e.g. reading w instead of T).
+"""
+function test_hydrostatic_continuous_discrete_forcing_consistency(arch)
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+
+    continuous_T_forcing = Forcing((x, y, z, t, T) -> -T, field_dependencies=:T)
+    @inline discrete_T_forcing_func(i, j, k, grid, clock, model_fields) =
+        @inbounds -model_fields.T[i, j, k]
+    discrete_T_forcing = Forcing(discrete_T_forcing_func, discrete_form=true)
+
+    model_c = HydrostaticFreeSurfaceModel(grid; forcing=(; T=continuous_T_forcing),
+                                          tracers=:T, buoyancy=nothing)
+    model_d = HydrostaticFreeSurfaceModel(grid; forcing=(; T=discrete_T_forcing),
+                                          tracers=:T, buoyancy=nothing)
+
+    set!(model_c, T=3.0)
+    set!(model_d, T=3.0)
+
+    time_step!(model_c, 1)
+    time_step!(model_d, 1)
+
+    Gc = Array(interior(model_c.timestepper.Gⁿ.T))
+    Gd = Array(interior(model_d.timestepper.Gⁿ.T))
+
+    return all(Gc .≈ Gd) && all(Gc .≈ -3)
+end
+
 @testset "Forcings" begin
     @info "Testing forcings..."
 
@@ -369,6 +492,11 @@ end
                 @test time_step_with_parameterized_field_dependent_forcing(arch)
             end
 
+            @testset "HydrostaticFreeSurfaceModel continuous/discrete forcing consistency [$A]" begin
+                @info "      Testing hydrostatic continuous/discrete forcing consistency [$A]..."
+                @test test_hydrostatic_continuous_discrete_forcing_consistency(arch)
+            end
+
             @testset "Relaxation forcing functions [$A]" begin
                 @info "      Testing relaxation forcing functions [$A]..."
                 @test relaxed_time_stepping(arch, GaussianMask)
@@ -386,6 +514,13 @@ end
 
                 @test two_forcings(arch)
                 @test seven_forcings(arch)
+            end
+
+            @testset "Momentum flux zero at immersed peripheral nodes" begin
+                @info "      Testing momentum flux is zero at immersed peripheral nodes..."
+                for scheme in (Centered(order=2), UpwindBiased(order=3), WENO(order=5))
+                    @test test_momentum_flux_zero_at_peripheral_nodes(scheme)
+                end
             end
 
             @testset "FieldTimeSeries forcing on [$A]" begin

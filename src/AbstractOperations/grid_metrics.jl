@@ -85,7 +85,7 @@ grid_metric_operation(Loc::Tuple, metric, grid) = grid_metric_operation((Loc[1](
 
 const NodeMetric = Union{XNode, YNode, ZNode, ΛNode, ΦNode, RNode}
 
-function grid_metric_operation(loc::Tuple{LX, LY, LZ}, metric::NodeMetric, grid) where {LX<:Location, LY<:Location, LZ<:Location} 
+function grid_metric_operation(loc::Tuple{LX, LY, LZ}, metric::NodeMetric, grid) where {LX<:Location, LY<:Location, LZ<:Location}
     ℓx, ℓy, ℓz = loc
     ξnode = metric_function(loc, metric)
     return KernelFunctionOperation{LX, LY, LZ}(ξnode, grid, ℓx, ℓy, ℓz)
@@ -217,7 +217,7 @@ julia> grid = LatitudeLongitudeGrid(size=(36, 34, 25),
 
 julia> λspacings(grid, Center(), Face(), Center())
 KernelFunctionOperation at (Center, Face, Center)
-├── grid: 36×34×25 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+├── grid: 36×34×25 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── kernel_function: Δλ (generic function with 20 methods)
 └── arguments: ("Center", "Face", "Center")
 ```
@@ -246,7 +246,7 @@ julia> grid = LatitudeLongitudeGrid(size=(36, 34, 25),
 
 julia> φspacings(grid, Center(), Face(), Center())
 KernelFunctionOperation at (Center, Face, Center)
-├── grid: 36×34×25 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo and with precomputed metrics
+├── grid: 36×34×25 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── kernel_function: Δφ (generic function with 20 methods)
 └── arguments: ("Center", "Face", "Center")
 ```

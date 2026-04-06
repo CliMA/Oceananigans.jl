@@ -1,4 +1,5 @@
 using Oceananigans.Fields: AbstractField, OneField, instantiated_location
+using Oceananigans.AbstractOperations: conditional_one
 
 import Oceananigans.AbstractOperations: ConditionalOperation, evaluate_condition, validate_condition
 import Oceananigans.Fields: condition_operand, conditional_length
@@ -62,7 +63,8 @@ function ConditionalOperation(operand::IF;
 end
 
 @inline conditional_length(c::IF) = conditional_length(condition_operand(identity, c, NotImmersed(), 0))
-@inline conditional_length(c::IF, dims) = conditional_length(condition_operand(identity, c, NotImmersed(), 0), dims)
+@inline conditional_length(c::IF, dims::Int) = conditional_length(condition_operand(identity, c, NotImmersed(), 0), dims)
+@inline conditional_length(c::IF, dims::Tuple) = conditional_length(condition_operand(identity, c, NotImmersed(), 0), dims)
 
 @inline function evaluate_condition(::NotImmersed{Nothing},
                                     i, j, k,
@@ -175,4 +177,5 @@ const NICO{LX, LY, LZ, F, C} = Union{
     ConditionalOperation{LX, LY, LZ, F, C, <:NotImmersedColumn, <:ImmersedBoundaryGrid},
 }
 @inline conditional_length(c::NICO) = sum(conditional_one(c, 0))
-@inline conditional_length(c::NICO, dims) = sum(conditional_one(c, 0); dims = dims)
+@inline conditional_length(c::NICO, dims::Int) = sum(conditional_one(c, 0); dims)
+@inline conditional_length(c::NICO, dims::Tuple) = sum(conditional_one(c, 0); dims)

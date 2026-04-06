@@ -10,7 +10,7 @@ b_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(1e-8))
 growth = Forcing(growth_func, parameters=(τ=1hour, h=4.0))
 sinking = AdvectiveForcing(w=-1)
 
-model = NonhydrostaticModel(; grid,
+model = NonhydrostaticModel(grid;
                             tracers = (:b, :P),
                             buoyancy = BuoyancyTracer(),
                             boundary_conditions = (; b=b_bcs),
@@ -40,4 +40,3 @@ simulation.callbacks[:plot] = Callback(update!, IterationInterval(100))
 display(fig)
 
 run!(simulation)
-
