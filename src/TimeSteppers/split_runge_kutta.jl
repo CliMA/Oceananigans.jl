@@ -158,7 +158,7 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
         Δτ = Δt / β
         rk_substep!(model, Δτ, callbacks)
 
-        # Step closure prognostics 
+        # Step closure prognostics
         step_closure_prognostics!(model, Δτ)
 
         # Tick the clock if we ended the stages
