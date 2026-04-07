@@ -166,7 +166,7 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
             tick!(model.clock, Δt)
         end
 
-        # Finally, update the state
+        # Update the state
         update_state!(model, callbacks)
     end
 
