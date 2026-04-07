@@ -33,7 +33,7 @@ end
 end
 
 @inline function compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, timestepper::QuasiAdamsBashforth2TimeStepper)
-    active_cells_map = get_active_column_map(grid)
+    active_cells_map = get_active_cells_map(grid, Val(:xy))
 
     Gu⁻ = timestepper.G⁻.u
     Gv⁻ = timestepper.G⁻.v
@@ -65,7 +65,7 @@ end
 
 @inline compute_split_explicit_forcing!(GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ, ::SplitRungeKuttaTimeStepper) =
     launch!(architecture(grid), grid, :xy, _compute_integrated_rk_tendencies!,
-            GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ; active_cells_map = get_active_column_map(grid))
+            GUⁿ, GVⁿ, grid, Guⁿ, Gvⁿ; active_cells_map = get_active_cells_map(grid, Val(:xy)))
 
 #####
 ##### Free surface setup
