@@ -28,7 +28,7 @@ function compute_tendencies!(model::NonhydrostaticModel, callbacks)
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
     kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
-    active_cells_map  = get_active_cells_map(model.grid, Val(:interior))
+    active_cells_map  = get_active_cells_map(model.grid, Val(:core))
 
     compute_interior_tendency_contributions!(model, kernel_parameters; active_cells_map)
     complete_communication_and_compute_buffer!(model, grid, arch)

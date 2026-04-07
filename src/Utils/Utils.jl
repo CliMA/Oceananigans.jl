@@ -26,7 +26,6 @@ instantiate(t) = t
 getnamewrapper(type) = typeof(type).name.wrapper
 
 function get_active_cells_map end
-function get_active_column_map end
 
 #####
 ##### Include utils
