@@ -16,6 +16,42 @@ const WholeActiveCellsMapIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, 
 # (; halo_independent_cells), and the "halo-dependent" regions in the west, east, north, and south, respectively
 const SplitActiveCellsMapIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:NamedTuple}
 
+# `get_active_cells_map` returns the precomputed list of active (non-immersed) cell indices
+# associated with a given iteration region. The `Val{...}` symbol selects which region.
+#
+# When a kernel is launched with one of these workspecs (via `launch!(arch, grid, workspec, ...)`)
+# and the grid carries the corresponding map, the kernel is rewritten as a one-dimensional
+# loop over the entries of the map, so only active (i, j[, k]) tuples are visited and the
+# immersed cells are skipped entirely.
+#
+#   :xyz   -- the full three-dimensional interior. The map is the flat list of active cells
+#             in the range 1:Nx, 1:Ny, 1:Nz. Used by any kernel that would otherwise loop
+#             over every interior (i, j, k) point (e.g. tendency computations).
+#
+#   :xy    -- the "surface" interior: one entry per active horizontal column, i.e. only the
+#             (i, j) columns that contain at least one active cell. Used by 2D / column-wise
+#             kernels (free-surface / barotropic step, vertical integrals, surface bottom-
+#             height computations, masking of horizontal slabs, ...) so that fully immersed
+#             columns are skipped.
+#
+# The remaining symbols are only meaningful for `SplitActiveCellsMapIBG`, where the 3D
+# interior map is partitioned into a "halo-independent" core and four "halo-dependent"
+# boundary strips. This split lets distributed runs overlap MPI halo communication with
+# computation: the core can be advanced while halo exchanges are still in flight, and the
+# boundary strips are launched only after the matching halo exchange completes.
+#
+#   :core  -- the halo-independent part of the 3D interior, i.e. cells far enough from the
+#             local subdomain edges that their stencils never reach into halo points. For a
+#             `WholeActiveCellsMapIBG` (no split, e.g. serial runs) this is just the full
+#             interior map and is equivalent to `:xyz`.
+#
+#   :west  -- halo-dependent strip on the western (-x) edge of the local subdomain.
+#   :east  -- halo-dependent strip on the eastern (+x) edge of the local subdomain.
+#   :south -- halo-dependent strip on the southern (-y) edge of the local subdomain.
+#   :north -- halo-dependent strip on the northern (+y) edge of the local subdomain.
+#
+# Each of these four strips contains the active cells whose stencils touch the corresponding
+# halo region, and must therefore wait for the matching halo exchange before being computed.
 @inline Utils.get_active_cells_map(grid::ActiveInteriorIBG,      ::Val{:xyz})   = grid.interior_active_cells
 @inline Utils.get_active_cells_map(grid::ActiveZColumnsIBG,      ::Val{:xy})    = grid.active_z_columns
 @inline Utils.get_active_cells_map(grid::WholeActiveCellsMapIBG, ::Val{:core})  = grid.interior_active_cells
