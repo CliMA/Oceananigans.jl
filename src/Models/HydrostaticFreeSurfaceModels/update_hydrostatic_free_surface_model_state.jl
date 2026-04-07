@@ -23,7 +23,7 @@ Update the model state to be consistent with the current prognostic fields.
 This function performs the following steps:
 1. Mask immersed boundary regions (set field values to zero in solid regions)
 2. Update time-dependent field boundary conditions
-3. Fill halo regions for velocities and tracers
+3. Fill halo regions for tracers
 4. Compute diagnostic quantities:
    - Buoyancy gradients (for turbulence closures)
    - Vertical velocity `w` from continuity equation
@@ -33,7 +33,8 @@ This function performs the following steps:
 6. Execute any callbacks registered for `UpdateStateCallsite`
 7. Update biogeochemical state
 
-Note: Halo regions for free surface fields are filled separately after the barotropic step.
+Note: Halo regions for free surface fields are filled separately after the barotropic step,
+while for velocities they are filled in the time-stepping function.
 """
 update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]) = update_state!(model, model.grid, callbacks)
 
