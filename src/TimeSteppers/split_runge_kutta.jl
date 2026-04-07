@@ -163,7 +163,7 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
 
         # Tick the clock if we ended the stages
         if stage == model.timestepper.Nstages
-            tick!(model.clock, Δt)
+            tick_time!(model.clock, Δt)
         end
 
         # Update the state
@@ -172,6 +172,8 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
 
     # Step particles
     step_lagrangian_particles!(model, Δt)
+
+    model.clock.iteration += 1
 
     return nothing
 end
