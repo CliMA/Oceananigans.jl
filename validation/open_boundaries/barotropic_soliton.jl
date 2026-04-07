@@ -14,6 +14,11 @@ The analytical solution uses perturbation expansions from Boyd (1980, 1985).
 Runs the simulation with a β-plane Coriolis force, saves JLD2 output, then
 animates the numerical solution side by side with the analytical solution.
 
+The `setup_simulation` function accepts a `free_surface_type` keyword:
+  - `:implicit`       (default) — ImplicitFreeSurface with PerturbationAdvection OBCs
+  - `:split_explicit` — SplitExplicitFreeSurface with Radiation (Orlanski) OBCs on
+                        the 3D velocities and Flather OBCs on the barotropic transports
+
 References:
     Boyd, J. P. (1980). Equatorial Solitary Waves. Part 1: Rossby Solitons.
         Journal of Physical Oceanography, 10, 1699–1717.
@@ -21,10 +26,16 @@ References:
         Modons. Journal of Physical Oceanography, 15, 46–54.
     Haidvogel, D. B., and A. Beckmann (1999). Numerical Ocean Circulation
         Modeling. Imperial College Press, section 6.1.
+    Marchesiello, P., McWilliams, J. C., & Shchepetkin, A. (2001). Open boundary
+        conditions for long-term integration of regional oceanic models.
+        Ocean Modelling, 3(1-2), 1-20.
+    Flather, R. A. (1976). A tidal model of the north-west European continental shelf.
+        Memoires de la Societe Royale des Sciences de Liege, 6(10), 141-164.
 """
 
 using Oceananigans
 using Oceananigans.Units
+using Oceananigans.Grids: xnode, ynode
 using CairoMakie
 using Printf
 
@@ -155,6 +166,7 @@ function setup_simulation(params::SolitonParameters;
                           Nx = 200, Ny = 100, Nz = 4,
                           stop_time = 70 * params.T,
                           scheme = PerturbationAdvection(),
+                          free_surface_type = :implicit,
                           ν_sponge = 1e4meters^2 / second, # peak viscosity
                           nudging_rate = 1 / (2days),
                           sponge_width = 1000kilometers,
@@ -171,16 +183,7 @@ function setup_simulation(params::SolitonParameters;
                            z,
                            halo = (8, 8, 8))
 
-    # Model:
     β = params.U / params.L^2
-
-    west_obc  = OpenBoundaryCondition((y, z, t) -> analytic_u(params.x_min, y, t, params); scheme)
-    east_obc  = OpenBoundaryCondition((y, z, t) -> analytic_u(params.x_max, y, t, params); scheme)
-    south_obc = OpenBoundaryCondition((x, z, t) -> analytic_v(x, params.y_min, t, params); scheme)
-    north_obc = OpenBoundaryCondition((x, z, t) -> analytic_v(x, params.y_max, t, params); scheme)
-    u_bcs = FieldBoundaryConditions(west = west_obc, east = east_obc)
-    v_bcs = FieldBoundaryConditions(south = south_obc, north = north_obc)
-    boundary_conditions = (; u = u_bcs, v = v_bcs)
 
     # Sponge layers: spatially varying horizontal viscosity that ramps from
     # ν_sponge at each boundary to zero at sponge_width inside the domain.
@@ -201,9 +204,70 @@ function setup_simulation(params::SolitonParameters;
     u_nudging = Relaxation(; rate = nudging_rate, mask = sponge_mask, target = (x, y, z, t) -> analytic_u(x, y, t, params))
     v_nudging = Relaxation(; rate = nudging_rate, mask = sponge_mask, target = (x, y, z, t) -> analytic_v(x, y, t, params))
 
+    if free_surface_type == :implicit
+
+        # Boundary conditions: PerturbationAdvection OBCs for u and v
+        west_obc  = OpenBoundaryCondition((y, z, t) -> analytic_u(params.x_min, y, t, params); scheme)
+        east_obc  = OpenBoundaryCondition((y, z, t) -> analytic_u(params.x_max, y, t, params); scheme)
+        south_obc = OpenBoundaryCondition((x, z, t) -> analytic_v(x, params.y_min, t, params); scheme)
+        north_obc = OpenBoundaryCondition((x, z, t) -> analytic_v(x, params.y_max, t, params); scheme)
+        u_bcs = FieldBoundaryConditions(west = west_obc, east = east_obc)
+        v_bcs = FieldBoundaryConditions(south = south_obc, north = north_obc)
+        boundary_conditions = (; u = u_bcs, v = v_bcs)
+
+        free_surface = ImplicitFreeSurface(reltol = 1e-10, abstol = 1e-10, maxiter = 100,
+                                           gravitational_acceleration = g)
+
+    elseif free_surface_type == :split_explicit
+
+        # Radiation (Orlanski 1976) OBCs for the 3D baroclinic velocities.
+        # Outflow radiates freely; inflow nudges toward the analytical solution
+        # on the same timescale as the explicit sponge nudging.
+        radiation = Radiation(outflow_relaxation_timescale = Inf,
+                              inflow_relaxation_timescale = 1 / nudging_rate)
+
+        u_west_bc  = OpenBoundaryCondition((y, z, t) -> analytic_u(params.x_min, y, t, params); scheme = radiation)
+        u_east_bc  = OpenBoundaryCondition((y, z, t) -> analytic_u(params.x_max, y, t, params); scheme = radiation)
+        v_south_bc = OpenBoundaryCondition((x, z, t) -> analytic_v(x, params.y_min, t, params); scheme = radiation)
+        v_north_bc = OpenBoundaryCondition((x, z, t) -> analytic_v(x, params.y_max, t, params); scheme = radiation)
+        u_bcs = FieldBoundaryConditions(west = u_west_bc, east = u_east_bc)
+        v_bcs = FieldBoundaryConditions(south = v_south_bc, north = v_north_bc)
+
+        # Flather OBCs for the barotropic (depth-integrated) transports.
+        # The Flather scheme prescribes the incoming Riemann invariant:
+        #   Uᵇ = Uᵉˣᵗ ± √(gH) ⋅ (ηᵇ − ηᵉˣᵗ)
+        # External values are evaluated at the boundary-parallel index (j for x-faces,
+        # i for y-faces) via the (index, grid, clock) function signature.
+        #
+        # The barotropic transport U = H · u_analytic (velocity is depth-uniform).
+        U_west_ext_U = (j, grid, clock) -> params.H * analytic_u(params.x_min, ynode(j, grid, Center()), clock.time, params)
+        U_west_ext_η = (j, grid, clock) -> analytic_η(params.x_min, ynode(j, grid, Center()), clock.time, params)
+        U_east_ext_U = (j, grid, clock) -> params.H * analytic_u(params.x_max, ynode(j, grid, Center()), clock.time, params)
+        U_east_ext_η = (j, grid, clock) -> analytic_η(params.x_max, ynode(j, grid, Center()), clock.time, params)
+
+        U_west_bc = OpenBoundaryCondition(nothing; scheme = Flather(external_values = (; U = U_west_ext_U, η = U_west_ext_η)))
+        U_east_bc = OpenBoundaryCondition(nothing; scheme = Flather(external_values = (; U = U_east_ext_U, η = U_east_ext_η)))
+        U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing); west = U_west_bc, east = U_east_bc)
+
+        V_south_ext_V = (i, grid, clock) -> params.H * analytic_v(xnode(i, grid, Center()), params.y_min, clock.time, params)
+        V_south_ext_η = (i, grid, clock) -> analytic_η(xnode(i, grid, Center()), params.y_min, clock.time, params)
+        V_north_ext_V = (i, grid, clock) -> params.H * analytic_v(xnode(i, grid, Center()), params.y_max, clock.time, params)
+        V_north_ext_η = (i, grid, clock) -> analytic_η(xnode(i, grid, Center()), params.y_max, clock.time, params)
+
+        V_south_bc = OpenBoundaryCondition(nothing; scheme = Flather(external_values = (; U = V_south_ext_V, η = V_south_ext_η)))
+        V_north_bc = OpenBoundaryCondition(nothing; scheme = Flather(external_values = (; U = V_north_ext_V, η = V_north_ext_η)))
+        V_bcs = FieldBoundaryConditions(grid, (Center(), Face(), nothing); south = V_south_bc, north = V_north_bc)
+
+        boundary_conditions = (; u = u_bcs, v = v_bcs, U = U_bcs, V = V_bcs)
+
+        free_surface = SplitExplicitFreeSurface(grid; substeps = 30, extend_halos = false)
+
+    else
+        error("Unknown free_surface_type: $(free_surface_type). Use :implicit or :split_explicit.")
+    end
+
     model = HydrostaticFreeSurfaceModel(grid;
-        free_surface        = ImplicitFreeSurface(reltol = 1e-10, abstol = 1e-10, maxiter = 100,
-                                                  gravitational_acceleration = g),
+        free_surface,
         momentum_advection  = WENO(order=5, minimum_buffer_upwind_order=1),
         timestepper = :SplitRungeKutta3,
         vertical_coordinate = ZStarCoordinate(),
@@ -228,10 +292,9 @@ function setup_simulation(params::SolitonParameters;
     function progress_message(sim)
         u, v, w = sim.model.velocities
         η = sim.model.free_surface.displacement
-        cg_solver = sim.model.free_surface.implicit_step_solver.preconditioned_conjugate_gradient_solver
-        @printf("Iter: %5d, t: %s, Δt: %s, max|u|: %.3e m/s, max|η|: %.3e m, CG: %d\n",
+        @printf("Iter: %5d, t: %s, Δt: %s, max|u|: %.3e m/s, max|η|: %.3e m\n",
                 iteration(sim), prettytime(time(sim)), prettytime(sim.Δt),
-                maximum(abs, u), maximum(abs, η), cg_solver.iteration)
+                maximum(abs, u), maximum(abs, η))
     end
     simulation.callbacks[:progress] = Callback(progress_message, IterationInterval(50))
 
@@ -330,7 +393,13 @@ end
 #---
 
 params = default_parameters(B = 0.5)
-simulation = setup_simulation(params; stop_time = 150days)
+
+simulation = setup_simulation(params; stop_time = 150days, free_surface_type = :implicit, outfile = "output/barotropic_soliton_implicit.jld2")
 run!(simulation)
 @info "Simulation complete."
-plot_soliton(simulation, params)
+plot_soliton(simulation, params, animation_file = "output/barotropic_soliton_implicit.mp4")
+
+simulation = setup_simulation(params; stop_time = 150days, free_surface_type = :split_explicit, outfile = "output/barotropic_soliton_split_explicit.jld2")
+run!(simulation)
+@info "Simulation complete."
+plot_soliton(simulation, params, animation_file = "output/barotropic_soliton_split_explicit.mp4")
