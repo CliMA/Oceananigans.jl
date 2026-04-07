@@ -220,16 +220,10 @@ function setup_simulation(params::SolitonParameters;
 
     elseif free_surface_type == :split_explicit
 
-        # Radiation (Orlanski 1976) OBCs for the 3D baroclinic velocities.
-        # Outflow radiates freely; inflow nudges toward the analytical solution
-        # on the same timescale as the explicit sponge nudging.
-        radiation = Radiation(outflow_relaxation_timescale = Inf,
-                              inflow_relaxation_timescale = 1 / nudging_rate)
-
-        u_west_bc  = OpenBoundaryCondition((y, z, t) -> analytic_u(params.x_min, y, t, params); scheme = radiation)
-        u_east_bc  = OpenBoundaryCondition((y, z, t) -> analytic_u(params.x_max, y, t, params); scheme = radiation)
-        v_south_bc = OpenBoundaryCondition((x, z, t) -> analytic_v(x, params.y_min, t, params); scheme = radiation)
-        v_north_bc = OpenBoundaryCondition((x, z, t) -> analytic_v(x, params.y_max, t, params); scheme = radiation)
+        u_west_bc  = OpenBoundaryCondition((y, z, t) -> analytic_u(params.x_min, y, t, params); scheme)
+        u_east_bc  = OpenBoundaryCondition((y, z, t) -> analytic_u(params.x_max, y, t, params); scheme)
+        v_south_bc = OpenBoundaryCondition((x, z, t) -> analytic_v(x, params.y_min, t, params); scheme)
+        v_north_bc = OpenBoundaryCondition((x, z, t) -> analytic_v(x, params.y_max, t, params); scheme)
         u_bcs = FieldBoundaryConditions(west = u_west_bc, east = u_east_bc)
         v_bcs = FieldBoundaryConditions(south = v_south_bc, north = v_north_bc)
 
@@ -393,13 +387,29 @@ end
 #---
 
 params = default_parameters(B = 0.5)
+stop_time = 150days
 
-simulation = setup_simulation(params; stop_time = 150days, free_surface_type = :implicit, outfile = "output/barotropic_soliton_implicit.jld2")
-run!(simulation)
-@info "Simulation complete."
-plot_soliton(simulation, params, animation_file = "output/barotropic_soliton_implicit.mp4")
+outflow_timescale = 50days
+inflow_timescale = 1day
+pa = PerturbationAdvection(; outflow_timescale, inflow_timescale)
 
-simulation = setup_simulation(params; stop_time = 150days, free_surface_type = :split_explicit, outfile = "output/barotropic_soliton_split_explicit.jld2")
-run!(simulation)
+simulation1 = setup_simulation(params; stop_time, free_surface_type = :implicit, scheme = pa, outfile = "output/soliton_implicit_PA.jld2")
+run!(simulation1)
 @info "Simulation complete."
-plot_soliton(simulation, params, animation_file = "output/barotropic_soliton_split_explicit.mp4")
+plot_soliton(simulation1, params, animation_file = "output/soliton_implicit_PA.mp4")
+
+simulation2 = setup_simulation(params; stop_time, free_surface_type = :split_explicit, scheme = pa, outfile = "output/soliton_split_explicit_PA.jld2")
+run!(simulation2)
+@info "Simulation complete."
+plot_soliton(simulation2, params, animation_file = "output/soliton_split_explicit_PA.mp4")
+
+rd = Radiation(; outflow_relaxation_timescale = outflow_timescale, inflow_relaxation_timescale = inflow_timescale)
+simulation3 = setup_simulation(params; stop_time, free_surface_type = :implicit, scheme = rd, outfile = "output/soliton_implicit_RD.jld2")
+run!(simulation3)
+@info "Simulation complete."
+plot_soliton(simulation3, params, animation_file = "output/soliton_implicit_RD.mp4")
+
+simulation4 = setup_simulation(params; stop_time, free_surface_type = :split_explicit, scheme = rd, outfile = "output/soliton_split_explicit_RD.jld2")
+run!(simulation4)
+@info "Simulation complete."
+plot_soliton(simulation4, params, animation_file = "output/soliton_split_explicit_RD.mp4")
