@@ -49,6 +49,9 @@ As well as
 @inline inactive_cell(i, j, k, ibg::IBG) = immersed_cell(i, j, k, ibg) | inactive_cell(i, j, k, ibg.underlying_grid)
 @inline inactive_cell(i::AbstractArray, j::AbstractArray, k::AbstractArray, ibg::IBG) = immersed_cell(i, j, k, ibg) .| inactive_cell(i, j, k, ibg.underlying_grid)
 
+# Fallback for non-immersed grids: no immersed periphery
+@inline immersed_peripheral_node(i, j, k, grid, LX, LY, LZ) = false
+
 # Isolate periphery of the immersed boundary
 @inline immersed_peripheral_node(i, j, k, ibg::IBG, LX, LY, LZ) =  peripheral_node(i, j, k, ibg, LX, LY, LZ) &
                                                                   !peripheral_node(i, j, k, ibg.underlying_grid, LX, LY, LZ)
