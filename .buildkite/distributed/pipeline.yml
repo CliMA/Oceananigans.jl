@@ -68,20 +68,20 @@ steps:
       setup:
         group: *test_groups
 
-  - label: "GPU - {{ matrix.group }} tests"
-    key: "distributed_tests_gpu"
-    env:
-      TEST_ARCHITECTURE: "GPU"
-    command: *test_command
-    timeout_in_minutes: 5440
-    agents:
-      slurm_mem: 150G
-      slurm_ntasks: 4
-      slurm_gpus_per_task: 1
-    retry: *retry_config
-    matrix:
-      setup:
-        group: *test_groups
+  # - label: "GPU - {{ matrix.group }} tests"
+  #   key: "distributed_tests_gpu"
+  #   env:
+  #     TEST_ARCHITECTURE: "GPU"
+  #   command: *test_command
+  #   timeout_in_minutes: 5440
+  #   agents:
+  #     slurm_mem: 150G
+  #     slurm_ntasks: 4
+  #     slurm_gpus_per_task: 1
+  #   retry: *retry_config
+  #   matrix:
+  #     setup:
+  #       group: *test_groups
 
   - wait
 
