@@ -300,6 +300,7 @@ CUDA.allowscalar() do
             include("test_reactant.jl")
             include("test_reactant_fft_models.jl")
             include("test_reactant_hydrostatic_free_surface_models.jl")
+            include("test_reactant_single_column_models.jl")
         end
     end
 
