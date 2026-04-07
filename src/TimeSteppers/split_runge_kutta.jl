@@ -160,12 +160,15 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
 
         # Step closure prognostics and update the state
         step_closure_prognostics!(model, Δτ)
+
+        # Finalize step with ticking the clock
+        if stage == model.timestepper.Nstages
+            step_lagrangian_particles!(model, Δt)
+            tick!(model.clock, Δt)
+        end
+
         update_state!(model, callbacks)
     end
-
-    # Finalize step
-    step_lagrangian_particles!(model, Δt)
-    tick!(model.clock, Δt)
 
     return nothing
 end
