@@ -152,6 +152,7 @@ CUDA.allowscalar() do
             include("test_turbulence_closures.jl")
             include("test_triad_isopycnal_diffusivity.jl")
             include("test_gm_infinite_slope.jl")
+            include("test_diffusion_stencils.jl")
         end
     end
 
