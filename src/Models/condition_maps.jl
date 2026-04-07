@@ -20,10 +20,6 @@ using KernelAbstractions: @kernel, @index
     return (; condition_maps...)
 end
 
-function generate_condition_maps(grid, advection::MultiRegionObject; kwargs...)
-  return @apply_regionally generate_condition_maps(grid, advection; kwargs...)
-end
-
 # Currently maintaining this union until condition mapping works on all
 # types of grids
 const SupportedUnderlyingGrids = Union{LatitudeLongitudeGrid,
