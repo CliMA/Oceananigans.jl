@@ -292,7 +292,7 @@ function validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitud
 
     # Validate longitude and latitude
     λ₁, λ₂ = get_domain_extent(longitude, Nλ)
-    λ₂ - λ₁ ≤ 360 || throw(ArgumentError("Longitudinal extent cannot be greater than 360 degrees."))
+    λ₂ - λ₁ ≤ 360 + 10 * eps(FT(360)) || throw(ArgumentError("Longitudinal extent cannot be greater than 360 degrees."))
     λ₁ <= λ₂      || throw(ArgumentError("Longitudes must increase west to east."))
 
     φ₁, φ₂ = get_domain_extent(latitude, Nφ)

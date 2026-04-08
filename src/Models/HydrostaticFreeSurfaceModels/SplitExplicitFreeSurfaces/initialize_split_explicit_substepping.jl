@@ -1,4 +1,5 @@
-using Oceananigans.Grids: get_active_column_map, peripheral_node
+using Oceananigans.Utils
+using Oceananigans.Grids: peripheral_node
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper
 
 # This file contains two different methods performed at different stages of the simulation.

@@ -143,6 +143,7 @@ CUDA.allowscalar() do
             include("test_seawater_density.jl")
             include("test_model_diagnostics.jl")
             include("test_orthogonal_spherical_shell_time_stepping.jl")
+            include("test_curvature_metric_terms.jl")
             include("test_bulk_drag.jl")
         end
     end
@@ -152,6 +153,7 @@ CUDA.allowscalar() do
             include("test_turbulence_closures.jl")
             include("test_triad_isopycnal_diffusivity.jl")
             include("test_gm_infinite_slope.jl")
+            include("test_diffusion_stencils.jl")
         end
     end
 
@@ -299,6 +301,7 @@ CUDA.allowscalar() do
             include("test_reactant.jl")
             include("test_reactant_fft_models.jl")
             include("test_reactant_hydrostatic_free_surface_models.jl")
+            include("test_reactant_single_column_models.jl")
         end
     end
 
