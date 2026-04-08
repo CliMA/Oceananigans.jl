@@ -294,7 +294,9 @@ function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::MPITripolarGridOfSomeKind, da
 
         if yrank == processor_size[2] - 1 && processor_size[1] == 1
             north_bc = if !(old_bcs.north isa ZBC)
-                north_fold_boundary_condition(fold_topology(grid.conformal_mapping))(sign(LX, LY))
+                TY = fold_topology(grid.conformal_mapping)
+                north_fold_boundary_condition(TY)(sign(LX, LY))
+
             else
                 old_bcs.north
             end
