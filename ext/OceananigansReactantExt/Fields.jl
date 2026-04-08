@@ -36,7 +36,7 @@ function set_to_function!(u::ReactantField, f)
     f_field = Oceananigans.Fields.field(Oceananigans.Fields.instantiated_location(u), f, cpu_grid)
     set!(cpu_u, f_field)
     copyto!(interior(u), interior(cpu_u))
-    return nothing
+    return u
 end
 
 # keepin it simple
