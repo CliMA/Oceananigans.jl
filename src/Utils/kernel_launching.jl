@@ -363,7 +363,7 @@ end
                           reduced_dimensions = (),
                           active_cells_map = nothing)
 
-    active_map = possibly_load_active_cells_map(active_cells_map, grid, workspec)
+    active_map = possibly_load_active_cells_map(active_cells_map, grid, workspec, exclude_periphery)
 
     # When active_cells_map is a NamedTuple (distributed grids with split maps),
     # launch once for each non-nothing sub-map.
@@ -392,10 +392,14 @@ end
 end
 
 # Fallback, use always the provided map
-possibly_load_active_cells_map(active_cells_map, grid, workspec) = active_cells_map
+possibly_load_active_cells_map(active_cells_map, grid, workspec, exclude_periphery) = active_cells_map
 
 # If we use standard dimensions, load the corresponding map
-@inline function possibly_load_active_cells_map(::Nothing, grid, workspec::Symbol)
+@inline function possibly_load_active_cells_map(::Nothing, grid, workspec::Symbol, exclude_periphery)
+    if exclude_periphery # The active cell map includes borders
+        return nothing
+    end
+
     if workspec == :xyz
         return get_active_cells_map(grid, Val(:xyz))
     elseif workspec == :xy
