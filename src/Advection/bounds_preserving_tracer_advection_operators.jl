@@ -5,7 +5,10 @@ const _ω̂ₙ = 5/18
 const _ε₂ = 1e-20
 
 # Note: this can probably be generalized to include UpwindBiased
-const BoundsPreservingWENO = WENO{<:Any, <:Any, <:Any, <:Tuple}
+const BoundsPreservingWENO = Union{
+    WENO{<:Any, <:Any, <:Any, <:Tuple},
+    UpwindBiasedFixedOrderAdvectionScheme{<:Any, <:Any, WENO{<:Any, <:Any, <:Any, <:Tuple}}
+}
 
 @inline div_Uc(i, j, k, grid, advection::BoundsPreservingWENO, U, ::ZeroField) = zero(grid)
 
