@@ -138,7 +138,6 @@ _recv_from_east_buffer!(c, buff::TripolarXBuffer{<:Any, true, false}, Hx, Hy, Nx
     view(c, 1+Nx+Hx:Nx+2Hx, 1+Hy:size(buff.recv,2)-1+Hy, :) .= view(buff.recv, :, 1:size(buff.recv,2)-1, :)
 
 # Fold-aware x-buffer constructors.
-# Fallback for non-zipper north (south ranks): standard x-communication.
 # Separate west/east constructors since they complement different corners.
 function west_tripolar_buffer(arch, grid, data, Hx, bc, loc,
                               north::TwoDZipperBuffer{<:Any, <:Any, Loc, TY}) where {Loc, TY}
