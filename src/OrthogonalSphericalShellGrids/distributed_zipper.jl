@@ -71,25 +71,25 @@ end
 ##### Zipper communication buffers with fold-aware packing
 #####
 
-struct TwoDZipperBuffer{FL, WFL, Loc, FoT, B, S}
+struct TwoDZipperBuffer{FL, WFL, Loc, TY, B, S}
     send :: B
     recv :: B
     sign :: S
 end
 
-struct ZipperCornerBuffer{FL, WFL, Loc, FoT, B, S}
+struct ZipperCornerBuffer{FL, WFL, Loc, TY, B, S}
     send :: B
     recv :: B
     sign :: S
 end
 
 # Value-argument constructors: all types inferred
-TwoDZipperBuffer(loc, fot, send, recv, sign, ::Val{FL}, ::Val{WFL}) where {FL, WFL} =
-    TwoDZipperBuffer{FL, WFL, typeof(loc), typeof(fot), typeof(send), typeof(sign)}(send, recv, sign)
-ZipperCornerBuffer(loc, fot, send, recv, sign, ::Val{FL}, ::Val{WFL}) where {FL, WFL} =
-    ZipperCornerBuffer{FL, WFL, typeof(loc), typeof(fot), typeof(send), typeof(sign)}(send, recv, sign)
-ZipperCornerBuffer(::Type{Loc}, ::Type{FoT}, send, recv, sign, ::Val{FL}, ::Val{WFL}) where {Loc, FoT, FL, WFL} =
-    ZipperCornerBuffer{FL, WFL, Loc, FoT, typeof(send), typeof(sign)}(send, recv, sign)
+TwoDZipperBuffer(loc::Loc, fold_topology::TY, send::B, recv::B, sign::S, ::Val{FL}, ::Val{WFL}) where {FL, WFL, Loc, TY, B, S} =
+    TwoDZipperBuffer{FL, WFL, Loc, TY, B, S}(send, recv, sign)
+ZipperCornerBuffer(loc::Loc, fold_topology::TY, send::B, recv::B, sign::S, ::Val{FL}, ::Val{WFL}) where {FL, WFL, Loc, TY, B, S} =
+    ZipperCornerBuffer{FL, WFL, Loc, TY, B, S}(send, recv, sign)
+ZipperCornerBuffer(::Type{Loc}, ::Type{TY}, send::B, recv::B, sign::S, ::Val{FL}, ::Val{WFL}) where {Loc, TY, FL, WFL, B, S} =
+    ZipperCornerBuffer{FL, WFL, Loc, TY, B, S}(send, recv, sign)
 
 Adapt.adapt_structure(to, buff::TwoDZipperBuffer) = nothing
 Adapt.adapt_structure(to, buff::ZipperCornerBuffer) = nothing
@@ -106,8 +106,8 @@ end
 
 Adapt.adapt_structure(to, buff::TripolarXBuffer) = nothing
 
-TripolarXBuffer(send, recv, ::Val{FL}, ::Val{WFL}) where {FL, WFL} =
-    TripolarXBuffer{typeof(send), FL, WFL}(send, recv)
+TripolarXBuffer(send::B, recv::B, ::Val{FL}, ::Val{WFL}) where {B, FL, WFL} =
+    TripolarXBuffer{B, FL, WFL}(send, recv)
 
 # X-buffers WFL: complement of the ADJACENT corner.
 west_writes_fold_line(arch) = !northwest_writes_fold_line(arch)
@@ -141,10 +141,10 @@ _recv_from_east_buffer!(c, buff::TripolarXBuffer{<:Any, true, false}, Hx, Hy, Nx
 # Fallback for non-zipper north (south ranks): standard x-communication.
 # Separate west/east constructors since they complement different corners.
 function west_tripolar_buffer(arch, grid, data, Hx, bc, loc,
-                              north::TwoDZipperBuffer{<:Any, <:Any, Loc, FoT}) where {Loc, FoT}
+                              north::TwoDZipperBuffer{<:Any, <:Any, Loc, TY}) where {Loc, TY}
     loc_y = Loc.parameters[2]()
-    fl = has_fold_line(FoT, loc_y)
-    Ny_buf = length(loc_y, FoT(), size(grid, 2))
+    fl = has_fold_line(TY, loc_y)
+    Ny_buf = length(loc_y, TY(), size(grid, 2))
     wfl = fl && west_writes_fold_line(arch)
     _, _, Tz = size(parent(data))
     FT = eltype(data)
@@ -154,10 +154,10 @@ function west_tripolar_buffer(arch, grid, data, Hx, bc, loc,
 end
 
 function east_tripolar_buffer(arch, grid, data, Hx, bc, loc,
-                              north::TwoDZipperBuffer{<:Any, <:Any, Loc, FoT}) where {Loc, FoT}
+                              north::TwoDZipperBuffer{<:Any, <:Any, Loc, TY}) where {Loc, TY}
     loc_y = Loc.parameters[2]()
-    fl = has_fold_line(FoT, loc_y)
-    Ny_buf = length(loc_y, FoT(), size(grid, 2))
+    fl = has_fold_line(TY, loc_y)
+    Ny_buf = length(loc_y, TY(), size(grid, 2))
     wfl = fl && east_writes_fold_line(arch)
     _, _, Tz = size(parent(data))
     FT = eltype(data)
@@ -222,29 +222,29 @@ northeast_tripolar_buffer(arch, grid, data, Hx, Hy, xedge, yedge) = corner_commu
 # based on whether the corner's global x-position is past the pivot.
 
 function northwest_tripolar_buffer(arch, grid, data, Hx, Hy, xedge,
-                                   yedge::TwoDZipperBuffer{<:Any, <:Any, Loc, FoT}) where {Loc, FoT}
+                                   yedge::TwoDZipperBuffer{<:Any, <:Any, Loc, TY}) where {Loc, TY}
     Tz = size(parent(data), 3); FT = eltype(data); sgn = yedge.sign
     loc_x_inst = instantiate(Loc.parameters[1])
-    fl = has_fold_line(FoT, Loc.parameters[2]())
+    fl = has_fold_line(TY, Loc.parameters[2]())
     Hy′ = fl ? Hy + 1 : Hy
     wfl = fl && northwest_writes_fold_line(arch)
     Hx′ = nw_corner_nx(loc_x_inst, Hx)
     send = on_architecture(arch, zeros(FT, Hx′, Hy′, Tz))
     recv = on_architecture(arch, zeros(FT, Hx′, Hy′, Tz))
-    return ZipperCornerBuffer(Loc, FoT, send, recv, sgn, Val(fl), Val(wfl))
+    return ZipperCornerBuffer(Loc, TY, send, recv, sgn, Val(fl), Val(wfl))
 end
 
 function northeast_tripolar_buffer(arch, grid, data, Hx, Hy, xedge,
-                                   yedge::TwoDZipperBuffer{<:Any, <:Any, Loc, FoT}) where {Loc, FoT}
+                                   yedge::TwoDZipperBuffer{<:Any, <:Any, Loc, TY}) where {Loc, TY}
     Tz = size(parent(data), 3); FT = eltype(data); sgn = yedge.sign
     loc_x_inst = instantiate(Loc.parameters[1])
-    fl = has_fold_line(FoT, Loc.parameters[2]())
+    fl = has_fold_line(TY, Loc.parameters[2]())
     Hy′ = fl ? Hy + 1 : Hy
     wfl = fl && northeast_writes_fold_line(arch)
     Hx′ = ne_corner_nx(loc_x_inst, Hx)
     send = on_architecture(arch, zeros(FT, Hx′, Hy′, Tz))
     recv = on_architecture(arch, zeros(FT, Hx′, Hy′, Tz))
-    return ZipperCornerBuffer(Loc, FoT, send, recv, sgn, Val(fl), Val(wfl))
+    return ZipperCornerBuffer(Loc, TY, send, recv, sgn, Val(fl), Val(wfl))
 end
 
 #####
@@ -263,11 +263,11 @@ const FF = Tuple{<:Face,   <:Face,   <:Any}
 # Type-parameter accessors
 @inline loc_x(::TwoDZipperBuffer{<:Any, <:Any, Loc}) where Loc = instantiate(Loc.parameters[1])
 @inline loc_y(::TwoDZipperBuffer{<:Any, <:Any, Loc}) where Loc = instantiate(Loc.parameters[2])
-@inline fold_topo(::TwoDZipperBuffer{<:Any, <:Any, <:Any, FoT}) where FoT = FoT()
+@inline fold_topo(::TwoDZipperBuffer{<:Any, <:Any, <:Any, TY}) where TY = TY()
 
 @inline loc_x(::ZipperCornerBuffer{<:Any, <:Any, Loc}) where Loc = instantiate(Loc.parameters[1])
 @inline loc_y(::ZipperCornerBuffer{<:Any, <:Any, Loc}) where Loc = instantiate(Loc.parameters[2])
-@inline fold_topo(::ZipperCornerBuffer{<:Any, <:Any, <:Any, FoT}) where FoT = FoT()
+@inline fold_topo(::ZipperCornerBuffer{<:Any, <:Any, <:Any, TY}) where TY = TY()
 
 # Send y-ranges (source rows, reversed for fold)
 @inline send_fold_y(::UPivotTopology, ::Center, Hy, Ny) = Ny + Hy
