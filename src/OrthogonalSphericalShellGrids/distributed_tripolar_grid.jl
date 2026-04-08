@@ -120,8 +120,8 @@ function TripolarGrid(arch::Distributed, FT::DataType=Float64;
     Rx, Ry = workers[1], workers[2]
     rx, ry = xrank + 1, yrank + 1
     LY = insert_connected_topology(global_fold_topology, Ry, ry, Rx, rx)
-    ny = nylocal[yrank+1]
-    nx = nxlocal[xrank+1]
+    ny = nylocal[ry]
+    nx = nxlocal[rx]
 
     z = on_architecture(arch, global_grid.z)
     radius = global_grid.radius
@@ -254,7 +254,8 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
     south = regularize_boundary_condition(bcs.south, grid, loc, 2, LeftBoundary,  prognostic_names)
 
     north = if yrank == processor_size[2] - 1 && processor_size[1] == 1
-        north_fold_boundary_condition(fold_topology(grid.conformal_mapping))(sign)
+        TY = fold_topology(grid.conformal_mapping)
+        north_fold_boundary_condition(TY)(sign)
 
     elseif yrank == processor_size[2] - 1 && processor_size[1] != 1
         from = arch.local_rank
