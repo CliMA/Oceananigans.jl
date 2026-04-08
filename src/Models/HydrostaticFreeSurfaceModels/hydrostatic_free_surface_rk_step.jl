@@ -87,6 +87,7 @@ For implicit free surfaces, a predictor-corrector approach is used:
 
         # Finally Substep! Advance grid, tracers, (predictor) momentum
         rk_substep_velocities!(model.velocities, model, Δτ)
+        mask_immersed_horizontal_velocities!(model.velocities)
     end
 
     # Advancing free surface in preparation for the correction step
@@ -97,7 +98,7 @@ For implicit free surfaces, a predictor-corrector approach is used:
         mask_immersed_horizontal_velocities!(model.velocities)
     end
 
-    # Mask and fill velocity halos
+    # Fill velocity halos
     u, v, _ = model.velocities
     fill_halo_regions!((u, v), model.clock, fields(model))
 
