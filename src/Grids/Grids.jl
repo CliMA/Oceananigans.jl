@@ -33,6 +33,7 @@ using Printf: @sprintf
 using DocStringExtensions: FIELDS
 
 using Oceananigans: Oceananigans
+using Oceananigans.Utils: Utils
 using Oceananigans.Architectures: Architectures, AbstractSerialArchitecture, architecture, on_architecture
 
 #####
