@@ -1,4 +1,5 @@
-using Oceananigans.Grids: RectilinearGrid
+using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Operators
 
 #####
@@ -17,9 +18,32 @@ using Oceananigans.Operators
 ##### which generalises to any orthogonal curvilinear grid.
 #####
 
-# --- Hydrostatic u-metric at (f, c, c) ---
+# Grids with horizontal curvature: LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
+# and ImmersedBoundaryGrid wrapping either of those.
+const HCG = AbstractHorizontallyCurvilinearGrid
+const HCGOrIBG = Union{HCG, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:HCG}}
 
-@inline function U_dot_∇u_hydrostatic_metric(i, j, k, grid, advection, U, V)
+#####
+##### Default fallbacks: no curvature → zero metric.
+##### These cover RectilinearGrid, ImmersedBoundaryGrid wrapping RectilinearGrid,
+##### Nothing advection, VectorInvariant advection (which already includes the
+##### horizontal metric in its vorticity / Bernoulli decomposition), and any
+##### combination thereof.
+#####
+
+@inline U_dot_∇u_hydrostatic_metric(i, j, k, grid, advection, U, V) = zero(grid)
+@inline U_dot_∇v_hydrostatic_metric(i, j, k, grid, advection, U, V) = zero(grid)
+
+@inline U_dot_∇u_metric(i, j, k, grid, advection, U, V) = zero(grid)
+@inline U_dot_∇v_metric(i, j, k, grid, advection, U, V) = zero(grid)
+@inline U_dot_∇w_metric(i, j, k, grid, advection, U, V) = zero(grid)
+
+#####
+##### Hydrostatic curvature metric terms — active on horizontally-curvilinear grids.
+#####
+
+# u-metric at (f, c, c)
+@inline function U_dot_∇u_hydrostatic_metric(i, j, k, grid::HCGOrIBG, advection, U, V)
     Û₂ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, U[2]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
     V̂₂ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, V[2]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
     v̂₁ = @inbounds V[1][i, j, k]
@@ -28,9 +52,8 @@ using Oceananigans.Operators
              Û₂ * V̂₂ * δxᶠᵃᵃ(i, j, k, grid, Δyᶜᶜᶜ) * Az⁻¹ᶠᶜᶜ(i, j, k, grid)
 end
 
-# --- Hydrostatic v-metric at (c, f, c) ---
-
-@inline function U_dot_∇v_hydrostatic_metric(i, j, k, grid, advection, U, V)
+# v-metric at (c, f, c)
+@inline function U_dot_∇v_hydrostatic_metric(i, j, k, grid::HCGOrIBG, advection, U, V)
     Û₁ = ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, U[1]) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
     V̂₁ = ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, V[1]) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
     v̂₂ = @inbounds V[2][i, j, k]
@@ -40,7 +63,7 @@ end
 end
 
 #####
-##### Non-hydrostatic curvature metric terms (w-coupling)
+##### Non-hydrostatic curvature metric terms (w-coupling) — active on horizontally-curvilinear grids.
 #####
 ##### These arise when the thin-atmosphere approximation is dropped.
 ##### Energy-conserving volume-weighted discretization (MITgcm eqs 2.105–2.107):
@@ -49,7 +72,7 @@ end
 #####   V_w G_w = + k̄[ (ū^i² + v̄^j²) V_c / a ]  (2.107)
 #####
 
-# --- Volume-weighted products at (c, c, c) for interpolation back to velocity points ---
+# Volume-weighted products at (c, c, c) for interpolation back to velocity points
 
 @inline function _uw_Vᶜᶜᶜ(i, j, k, grid, U, V)
     ū = ℑxᶜᵃᵃ(i, j, k, grid, V[1])
@@ -71,84 +94,66 @@ end
     return (ū * Ū + v̄ * V̄) * Vᶜᶜᶜ(i, j, k, grid)
 end
 
-# --- Non-hydrostatic u-metric at (f, c, c): eq 2.105 ---
+# u-metric (nonhydrostatic w-coupling part) at (f, c, c): eq 2.105
 # G_u = −(1/a V_u) ī[ ū w̄ V_c ]
-# Returns −G_u (positive) since the tendency subtracts U_dot_∇u_metric.
+# Returns −G_u (positive) since the tendency subtracts U_dot_∇u_nonhydrostatic_metric.
 
-@inline function _nonhydrostatic_metric_u(i, j, k, grid, U, V)
+@inline function U_dot_∇u_nonhydrostatic_metric(i, j, k, grid::HCGOrIBG, U, V)
     return V⁻¹ᶠᶜᶜ(i, j, k, grid) / grid.radius * ℑxᶠᵃᵃ(i, j, k, grid, _uw_Vᶜᶜᶜ, U, V)
 end
 
-# --- Non-hydrostatic v-metric at (c, f, c): eq 2.106 ---
+# v-metric (nonhydrostatic w-coupling part) at (c, f, c): eq 2.106
 
-@inline function _nonhydrostatic_metric_v(i, j, k, grid, U, V)
+@inline function U_dot_∇v_nonhydrostatic_metric(i, j, k, grid::HCGOrIBG, U, V)
     return V⁻¹ᶜᶠᶜ(i, j, k, grid) / grid.radius * ℑyᵃᶠᵃ(i, j, k, grid, _vw_Vᶜᶜᶜ, U, V)
 end
 
-# --- w-metric at (c, c, f): eq 2.107 ---
+# w-metric at (c, c, f): eq 2.107
 # G_w = +(1/a V_w) k̄[ (ū² + v̄²) V_c ]
 # Returns −G_w (negative) since the tendency subtracts U_dot_∇w_metric.
 
-@inline function U_dot_∇w_metric(i, j, k, grid, advection, U, V)
+@inline function U_dot_∇w_metric(i, j, k, grid::HCGOrIBG, advection, U, V)
     return -V⁻¹ᶜᶜᶠ(i, j, k, grid) / grid.radius * ℑzᵃᵃᶠ(i, j, k, grid, _u²v²_Vᶜᶜᶜ, U, V)
 end
 
 #####
-##### Full (non-hydrostatic) metric = hydrostatic + w-coupling
+##### Full (non-hydrostatic) metric on horizontally-curvilinear grids = hydrostatic + w-coupling
 #####
 
-@inline function U_dot_∇u_metric(i, j, k, grid, advection, U, V)
+@inline function U_dot_∇u_metric(i, j, k, grid::HCGOrIBG, advection, U, V)
     return U_dot_∇u_hydrostatic_metric(i, j, k, grid, advection, U, V) +
-           _nonhydrostatic_metric_u(i, j, k, grid, U, V)
+           U_dot_∇u_nonhydrostatic_metric(i, j, k, grid, U, V)
 end
 
-@inline function U_dot_∇v_metric(i, j, k, grid, advection, U, V)
+@inline function U_dot_∇v_metric(i, j, k, grid::HCGOrIBG, advection, U, V)
     return U_dot_∇v_hydrostatic_metric(i, j, k, grid, advection, U, V) +
-           _nonhydrostatic_metric_v(i, j, k, grid, U, V)
+           U_dot_∇v_nonhydrostatic_metric(i, j, k, grid, U, V)
 end
 
 #####
-##### Zero dispatches
+##### VectorInvariant on curvilinear grids: vorticity / Bernoulli decomposition already
+##### accounts for horizontal curvature, so the hydrostatic metric is zero. The
+##### nonhydrostatic w-coupling terms still apply.
 #####
 
-# RectilinearGrid: no curvature
-@inline U_dot_∇u_hydrostatic_metric(i, j, k, grid::RectilinearGrid, advection, U, V) = zero(grid)
-@inline U_dot_∇v_hydrostatic_metric(i, j, k, grid::RectilinearGrid, advection, U, V) = zero(grid)
-@inline U_dot_∇u_metric(i, j, k, grid::RectilinearGrid, advection, U, V) = zero(grid)
-@inline U_dot_∇v_metric(i, j, k, grid::RectilinearGrid, advection, U, V) = zero(grid)
-@inline U_dot_∇w_metric(i, j, k, grid::RectilinearGrid, advection, U, V) = zero(grid)
+@inline U_dot_∇u_hydrostatic_metric(i, j, k, grid::HCGOrIBG, ::VectorInvariant, U, V) = zero(grid)
+@inline U_dot_∇v_hydrostatic_metric(i, j, k, grid::HCGOrIBG, ::VectorInvariant, U, V) = zero(grid)
 
-# No advection: no metric corrections
-@inline U_dot_∇u_hydrostatic_metric(i, j, k, grid, ::Nothing, U, V) = zero(grid)
-@inline U_dot_∇v_hydrostatic_metric(i, j, k, grid, ::Nothing, U, V) = zero(grid)
-@inline U_dot_∇u_metric(i, j, k, grid, ::Nothing, U, V) = zero(grid)
-@inline U_dot_∇v_metric(i, j, k, grid, ::Nothing, U, V) = zero(grid)
-@inline U_dot_∇w_metric(i, j, k, grid, ::Nothing, U, V) = zero(grid)
-
-# Ambiguity resolution: RectilinearGrid + Nothing
-@inline U_dot_∇u_hydrostatic_metric(i, j, k, grid::RectilinearGrid, ::Nothing, U, V) = zero(grid)
-@inline U_dot_∇v_hydrostatic_metric(i, j, k, grid::RectilinearGrid, ::Nothing, U, V) = zero(grid)
-@inline U_dot_∇u_metric(i, j, k, grid::RectilinearGrid, ::Nothing, U, V) = zero(grid)
-@inline U_dot_∇v_metric(i, j, k, grid::RectilinearGrid, ::Nothing, U, V) = zero(grid)
-@inline U_dot_∇w_metric(i, j, k, grid::RectilinearGrid, ::Nothing, U, V) = zero(grid)
-
-# VectorInvariant already accounts for horizontal curvature via vorticity/Bernoulli decomposition,
-# so the hydrostatic metric functions return zero. The full (non-hydrostatic) functions still
-# contribute the w-coupling terms.
-@inline U_dot_∇u_hydrostatic_metric(i, j, k, grid, ::VectorInvariant, U, V) = zero(grid)
-@inline U_dot_∇v_hydrostatic_metric(i, j, k, grid, ::VectorInvariant, U, V) = zero(grid)
-
-@inline function U_dot_∇u_metric(i, j, k, grid, ::VectorInvariant, U, V)
-    return _nonhydrostatic_metric_u(i, j, k, grid, U, V)
+@inline function U_dot_∇u_metric(i, j, k, grid::HCGOrIBG, ::VectorInvariant, U, V)
+    return U_dot_∇u_nonhydrostatic_metric(i, j, k, grid, U, V)
 end
 
-@inline function U_dot_∇v_metric(i, j, k, grid, ::VectorInvariant, U, V)
-    return _nonhydrostatic_metric_v(i, j, k, grid, U, V)
+@inline function U_dot_∇v_metric(i, j, k, grid::HCGOrIBG, ::VectorInvariant, U, V)
+    return U_dot_∇v_nonhydrostatic_metric(i, j, k, grid, U, V)
 end
 
-# VectorInvariant + RectilinearGrid ambiguity
-@inline U_dot_∇u_hydrostatic_metric(i, j, k, grid::RectilinearGrid, ::VectorInvariant, U, V) = zero(grid)
-@inline U_dot_∇v_hydrostatic_metric(i, j, k, grid::RectilinearGrid, ::VectorInvariant, U, V) = zero(grid)
-@inline U_dot_∇u_metric(i, j, k, grid::RectilinearGrid, ::VectorInvariant, U, V) = zero(grid)
-@inline U_dot_∇v_metric(i, j, k, grid::RectilinearGrid, ::VectorInvariant, U, V) = zero(grid)
-@inline U_dot_∇w_metric(i, j, k, grid::RectilinearGrid, ::VectorInvariant, U, V) = zero(grid)
+#####
+##### Nothing advection on curvilinear grids: no advection ⇒ no metric correction.
+##### These exist purely for ambiguity resolution against the generic Nothing fallback above.
+#####
+
+@inline U_dot_∇u_hydrostatic_metric(i, j, k, grid::HCGOrIBG, ::Nothing, U, V) = zero(grid)
+@inline U_dot_∇v_hydrostatic_metric(i, j, k, grid::HCGOrIBG, ::Nothing, U, V) = zero(grid)
+@inline U_dot_∇u_metric(i, j, k, grid::HCGOrIBG, ::Nothing, U, V) = zero(grid)
+@inline U_dot_∇v_metric(i, j, k, grid::HCGOrIBG, ::Nothing, U, V) = zero(grid)
+@inline U_dot_∇w_metric(i, j, k, grid::HCGOrIBG, ::Nothing, U, V) = zero(grid)

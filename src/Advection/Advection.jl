@@ -4,6 +4,7 @@ export
     div_𝐯u, div_𝐯v, div_𝐯w, div_Uc,
 
     U_dot_∇u_hydrostatic_metric, U_dot_∇v_hydrostatic_metric,
+    U_dot_∇u_nonhydrostatic_metric, U_dot_∇v_nonhydrostatic_metric,
     U_dot_∇u_metric, U_dot_∇v_metric, U_dot_∇w_metric,
 
     advective_tracer_flux_x,
