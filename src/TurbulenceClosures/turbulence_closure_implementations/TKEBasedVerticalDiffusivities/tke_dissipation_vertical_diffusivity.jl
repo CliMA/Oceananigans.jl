@@ -172,14 +172,13 @@ end
 ##### Diffusivities and diffusivity fields utilities
 #####
 
-struct TKEDissipationClosureFields{K, L, U, KC, LC}
+struct TKEDissipationClosureFields{K, L, KC, LC}
     κu :: K
     κc :: K
     κe :: K
     κϵ :: K
     Le :: L
     Lϵ :: L
-    previous_velocities :: U
     _tupled_tracer_diffusivities :: KC
     _tupled_implicit_linear_coefficients :: LC
 end
@@ -191,7 +190,6 @@ Adapt.adapt_structure(to, tke_dissipation_closure_fields::TKEDissipationClosureF
                                     adapt(to, tke_dissipation_closure_fields.κϵ),
                                     adapt(to, tke_dissipation_closure_fields.Le),
                                     adapt(to, tke_dissipation_closure_fields.Lϵ),
-                                    adapt(to, tke_dissipation_closure_fields.previous_velocities),
                                     adapt(to, tke_dissipation_closure_fields._tupled_tracer_diffusivities),
                                     adapt(to, tke_dissipation_closure_fields._tupled_implicit_linear_coefficients))
 
@@ -220,12 +218,6 @@ function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfT
     Le = CenterField(grid)
     Lϵ = CenterField(grid)
 
-    # Note: we may be able to avoid using the "previous velocities" in favor of a "fully implicit"
-    # discretization of shear production
-    u⁻ = XFaceField(grid)
-    v⁻ = YFaceField(grid)
-    previous_velocities = (; u=u⁻, v=v⁻)
-
     # Secret tuple for getting tracer diffusivities with tuple[tracer_index]
     _tupled_tracer_diffusivities = Dict{Symbol, Any}(name => κc for name in tracer_names)
     _tupled_tracer_diffusivities[:e] = κe
@@ -240,26 +232,14 @@ function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfT
                                                        for name in tracer_names)
 
     return TKEDissipationClosureFields(κu, κc, κe, κϵ, Le, Lϵ,
-                                           previous_velocities,
-                                           _ntupled_tracer_diffusivities,
-                                           _ntupled_implicit_linear_coefficients)
+                                       _ntupled_tracer_diffusivities,
+                                       _ntupled_implicit_linear_coefficients)
 end
 
 @inline viscosity_location(::FlavorOfTD) = (c, c, f)
 @inline diffusivity_location(::FlavorOfTD) = (c, c, f)
 
-function step_closure_prognostics!(closure_fields, closure::FlavorOfTD, model, Δt)
-    # Step TKE/dissipation equations with the provided timestep
-    time_step_tke_dissipation_equations!(model, Δt)
-
-    # Update previous velocities
-    u, v, w = model.velocities
-    u⁻, v⁻ = closure_fields.previous_velocities
-    parent(u⁻) .= parent(u)
-    parent(v⁻) .= parent(v)
-
-    return nothing
-end
+step_closure_prognostics!(closure_fields, closure::FlavorOfTD, model, Δt) = time_step_tke_dissipation_equations!(model, Δt)
 
 function compute_closure_fields!(closure_fields, closure::FlavorOfTD, model; parameters = :xyz)
     arch = model.architecture

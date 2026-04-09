@@ -172,13 +172,12 @@ catke_first(catke1::FlavorOfCATKE, catke2::FlavorOfCATKE) = error("Can't have tw
 ##### Diffusivities and diffusivity fields utilities
 #####
 
-struct CATKEClosureFields{K, L, J, U, KC, LC}
+struct CATKEClosureFields{K, L, J, KC, LC}
     κu :: K
     κc :: K
     κe :: K
     Le :: L
     Jᵇ :: J
-    previous_velocities :: U
     _tupled_tracer_diffusivities :: KC
     _tupled_implicit_linear_coefficients :: LC
 end
@@ -189,7 +188,6 @@ Adapt.adapt_structure(to, catke_closure_fields::CATKEClosureFields) =
                            adapt(to, catke_closure_fields.κe),
                            adapt(to, catke_closure_fields.Le),
                            adapt(to, catke_closure_fields.Jᵇ),
-                           adapt(to, catke_closure_fields.previous_velocities),
                            adapt(to, catke_closure_fields._tupled_tracer_diffusivities),
                            adapt(to, catke_closure_fields._tupled_implicit_linear_coefficients))
 
@@ -213,12 +211,6 @@ function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfC
     κe = ZFaceField(grid, boundary_conditions=bcs.κe)
     Le = CenterField(grid)
     Jᵇ = Field{Center, Center, Nothing}(grid)
-
-    # Note: we may be able to avoid using the "previous velocities" in favor of a "fully implicit"
-    # discretization of shear production
-    u⁻ = XFaceField(grid)
-    v⁻ = YFaceField(grid)
-    previous_velocities = (; u=u⁻, v=v⁻)
 
     # Secret tuple for getting tracer diffusivities with tuple[tracer_index]
     _tupled_tracer_diffusivities         = NamedTuple(name => name === :e ? κe : κc          for name in tracer_names)
@@ -245,18 +237,9 @@ function step_closure_prognostics!(closure_fields, closure::FlavorOfCATKE, model
     # Step TKE equation with the provided timestep
     time_step_catke_equation!(model, model.timestepper, Δt)
 
-    # Update previous velocities and surface buoyancy flux
-    u, v, w = model.velocities
-    u⁻, v⁻ = closure_fields.previous_velocities
-    parent(u⁻) .= parent(u)
-    parent(v⁻) .= parent(v)
-
-    active_cells_map = get_active_cells_map(grid, Val(:xy))
-
     launch!(arch, grid, :xy,
             compute_average_surface_buoyancy_flux!,
-            closure_fields.Jᵇ, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt;
-            active_cells_map)
+            closure_fields.Jᵇ, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt)
 
     return nothing
 end
