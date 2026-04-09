@@ -4,6 +4,8 @@ export Center, Face
 export AbstractTopology, topology
 export Periodic, Bounded, Flat, FullyConnected, LeftConnected, RightConnected
 export RightFaceFolded, RightCenterFolded
+export LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded
+export LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected
 export AbstractGrid, AbstractUnderlyingGrid, halo_size, total_size
 export RectilinearGrid
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
@@ -117,6 +119,41 @@ Grid topology for tripolar U-point pivot connection.
 (folded north boundary along center locations).
 """
 struct RightCenterFolded <: AbstractTopology end
+
+"""
+    LeftConnectedRightCenterFolded
+
+Local grid topology for the northernmost y-rank of a 1×N distributed tripolar grid
+with U-point pivot (serial fold). Connected to the south neighbor on the left,
+center-folded on the right (north).
+"""
+struct LeftConnectedRightCenterFolded <: AbstractTopology end
+
+"""
+    LeftConnectedRightFaceFolded
+
+Local grid y topology for the northernmost y-rank of a 1×N distributed tripolar grid
+with F-point pivot (serial fold). Connected to the south neighbor on the left,
+face-folded on the right (north). Face-extended (Ny+1 Face points in y).
+"""
+struct LeftConnectedRightFaceFolded <: AbstractTopology end
+
+"""
+    LeftConnectedRightCenterConnected
+
+Local grid y topology for the northernmost y-rank of an M×N distributed tripolar grid
+with U-point pivot (distributed zipper).
+"""
+struct LeftConnectedRightCenterConnected <: AbstractTopology end
+
+"""
+    LeftConnectedRightFaceConnected
+
+Local grid y topology for the northernmost y-rank of an M×N distributed tripolar grid
+with F-point pivot (distributed zipper).
+Face-extended (Ny+1 Face points in y).
+"""
+struct LeftConnectedRightFaceConnected <: AbstractTopology end
 
 #####
 ##### Directions (for tilted domains)
