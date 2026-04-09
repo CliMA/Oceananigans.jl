@@ -35,7 +35,6 @@ function time_step_tke_dissipation_equations!(model, Δt)
     κϵ = closure_fields.κϵ
     Le = closure_fields.Le
     Lϵ = closure_fields.Lϵ
-    previous_velocities = closure_fields.previous_velocities
     e_index = findfirst(k -> k == :e, keys(model.tracers))
     ϵ_index = findfirst(k -> k == :ϵ, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver

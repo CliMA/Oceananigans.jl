@@ -25,7 +25,6 @@ function time_step_catke_equation!(model, ::QuasiAdamsBashforth2TimeStepper, Δt
 
     κe = closure_fields.κe
     Le = closure_fields.Le
-    previous_velocities = closure_fields.previous_velocities
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
 
@@ -94,7 +93,6 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper, Δt)
 
     κe = closure_fields.κe
     Le = closure_fields.Le
-    previous_velocities = closure_fields.previous_velocities
     tracer_index = findfirst(k -> k == :e, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
 

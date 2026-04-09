@@ -392,15 +392,13 @@ end
 #####
 
 function prognostic_state(cf::TKEDissipationClosureFields)
-    return (previous_velocities = prognostic_state(cf.previous_velocities),
-            κu = prognostic_state(cf.κu),
+    return (κu = prognostic_state(cf.κu),
             κc = prognostic_state(cf.κc),
             κe = prognostic_state(cf.κe),
             κϵ = prognostic_state(cf.κϵ))
 end
 
 function restore_prognostic_state!(restored::TKEDissipationClosureFields, from)
-    restore_prognostic_state!(restored.previous_velocities, from.previous_velocities)
     restore_prognostic_state!(restored.κu, from.κu)
     restore_prognostic_state!(restored.κc, from.κc)
     restore_prognostic_state!(restored.κe, from.κe)

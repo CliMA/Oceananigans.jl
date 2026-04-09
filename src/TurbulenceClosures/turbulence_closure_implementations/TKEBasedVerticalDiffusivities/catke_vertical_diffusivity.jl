@@ -390,15 +390,13 @@ end
 #####
 
 function prognostic_state(cf::CATKEClosureFields)
-    return (previous_velocities = prognostic_state(cf.previous_velocities),
-            Jᵇ = prognostic_state(cf.Jᵇ),
+    return (Jᵇ = prognostic_state(cf.Jᵇ),
             κu = prognostic_state(cf.κu),
             κc = prognostic_state(cf.κc),
             κe = prognostic_state(cf.κe))
 end
 
 function restore_prognostic_state!(restored::CATKEClosureFields, from)
-    restore_prognostic_state!(restored.previous_velocities, from.previous_velocities)
     restore_prognostic_state!(restored.Jᵇ, from.Jᵇ)
     restore_prognostic_state!(restored.κu, from.κu)
     restore_prognostic_state!(restored.κc, from.κc)

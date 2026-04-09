@@ -1061,8 +1061,6 @@ function test_checkpointing_tke_dissipation_closure(arch, timestepper)
     @test_nowarn run!(new_simulation)
 
     # Verify previous_velocities state matches reference at iteration 10
-    ref_pv = ref_model.closure_fields.previous_velocities
-    new_pv = new_model.closure_fields.previous_velocities
     @test all(Array(interior(new_pv.u)) .≈ Array(interior(ref_pv.u)))
     @test all(Array(interior(new_pv.v)) .≈ Array(interior(ref_pv.v)))
 
