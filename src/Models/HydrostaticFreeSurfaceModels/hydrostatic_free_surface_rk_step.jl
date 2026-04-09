@@ -190,33 +190,38 @@ function rk_substep_tracers!(tracers, model, Δt)
 
     closure = model.closure
     grid = model.grid
-    FT = eltype(grid)
 
     catke_in_closures = hasclosure(closure, FlavorOfCATKE)
 
     # Tracer update kernels
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
-
-        if catke_in_closures && tracer_name == :e
-            @debug "Skipping RK substep for e"
-        else
-            Gⁿ = model.timestepper.Gⁿ[tracer_name]
-            Ψ⁻ = model.timestepper.Ψ⁻[tracer_name]
-            c  = tracers[tracer_name]
-
-            launch!(architecture(grid), grid, :xyz,
-                    _rk_substep_tracer_field!, c, grid, convert(FT, Δt), Gⁿ, Ψ⁻)
-
-            implicit_step!(c,
-                           model.timestepper.implicit_solver,
-                           closure,
-                           model.closure_fields,
-                           Val(tracer_index),
-                           model.clock,
-                           fields(model),
-                           Δt)
-        end
+        rk_substep_tracer!(tracers[tracer_name], tracer_name, tracer_index,
+                            model, grid, closure, Δt, catke_in_closures)
     end
+
+    return nothing
+end
+
+function rk_substep_tracer!(tracer_field, tracer_name, tracer_index,
+                             model, grid, closure, Δt, catke_in_closures)
+
+    catke_in_closures && tracer_name == :e && return nothing
+
+    FT = eltype(grid)
+    Gⁿ = model.timestepper.Gⁿ[tracer_name]
+    Ψ⁻ = model.timestepper.Ψ⁻[tracer_name]
+
+    launch!(architecture(grid), grid, :xyz,
+            _rk_substep_tracer_field!, tracer_field, grid, convert(FT, Δt), Gⁿ, Ψ⁻)
+
+    implicit_step!(tracer_field,
+                   model.timestepper.implicit_solver,
+                   closure,
+                   model.closure_fields,
+                   Val(tracer_index),
+                   model.clock,
+                   fields(model),
+                   Δt)
 
     return nothing
 end
