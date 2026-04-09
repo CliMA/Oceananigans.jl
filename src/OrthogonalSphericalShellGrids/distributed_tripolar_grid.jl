@@ -1,15 +1,27 @@
 using Oceananigans.BoundaryConditions: DistributedCommunicationBoundaryCondition, ZBC
 using Oceananigans.Fields: validate_indices, validate_field_data
+using Oceananigans.ImmersedBoundaries: AbstractImmersedBoundary
 using Oceananigans.DistributedComputations:
     DistributedComputations,
     Distributed,
+    DistributedGrid,
+    Partition,
+    Sizes,
+    RankLayout,
     local_size,
     all_reduce,
     child_architecture,
     ranks,
     inject_halo_communication_boundary_conditions,
     concatenate_local_sizes,
-    communication_buffers
+    communication_buffers,
+    balanced_1d_partition,
+    build_rank_layout,
+    compute_column_loads,
+    _tile_loads,
+    _cell_to_tile,
+    _aggregate,
+    _print_layout_banner
 
 using Oceananigans.Grids: topology, FullyConnected,
     LeftConnectedRightFaceFolded, LeftConnectedRightFaceConnected
@@ -17,6 +29,7 @@ using Oceananigans.DistributedComputations: insert_connected_topology
 using Oceananigans.Utils: Utils
 
 import Oceananigans.Fields: Field, validate_indices, validate_boundary_conditions
+import Oceananigans.DistributedComputations: load_balanced_layout
 
 const DistributedTripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
     OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, <:Distributed{<:Union{CPU, GPU}}}
@@ -384,3 +397,77 @@ const DRFTRG = Union{MPITripolarGrid{<:Any, <:Any, <:DistributedFPivotTopology},
                      ImmersedBoundaryGrid{<:Any, <:Any, <:DistributedFPivotTopology, <:Any, <:MPITripolarGrid}}
 
 Utils.worksize(grid::DRFTRG) = grid.Nx, grid.Ny+1, grid.Nz
+
+"""
+    load_balanced_layout(grid::TripolarGrid, immersed_boundary, (Rx, Ry); kwargs...)
+
+Tripolar specialization of `load_balanced_layout`.
+
+Tripolar distributed grids perform a fold communication on the northernmost row of
+ranks; the fold-aware zipper buffers introduced in PR #5439 rely on the fold partner
+pairing `(ix, Ry) ↔ (Rx − ix + 1, Ry)` being rank-symmetric. To preserve that
+symmetry we keep `x` as a uniform `Int` partition and balance only `y`. This method
+therefore imposes two constraints on top of the generic path:
+
+1. `Rx` must be even and must evenly divide `Nx`.
+2. Every tile in the north row `(ix, Ry)` must be active; an entirely-empty
+   north tile would leave the zipper buffers undefined.
+
+This specialization lives here (rather than in
+`src/DistributedComputations/load_balanced_layout.jl`) because `TripolarGrid` is
+only defined after `DistributedComputations` has finished loading, so the generic
+method cannot reference it at parse time.
+"""
+function load_balanced_layout(grid::TripolarGrid,
+                              immersed_boundary::AbstractImmersedBoundary,
+                              tile_shape_target::Tuple{Integer, Integer};
+                              weight::Symbol = :active_cells,
+                              report::Bool = true)
+
+    weight === :active_cells || throw(ArgumentError("weight=$weight not supported (only :active_cells for now)"))
+
+    grid isa DistributedGrid &&
+        throw(ArgumentError("load_balanced_layout requires a serial grid; received a DistributedGrid."))
+
+    Rx, Ry = tile_shape_target
+    iseven(Rx) || throw(ArgumentError("TripolarGrid requires an even Rx; got Rx=$Rx"))
+
+    Nx, Ny, _ = size(grid)
+    Rx <= Nx || throw(ArgumentError("Rx=$Rx exceeds Nx=$Nx; tile_shape_target[1] must be ≤ Nx"))
+    Ry <= Ny || throw(ArgumentError("Ry=$Ry exceeds Ny=$Ny; tile_shape_target[2] must be ≤ Ny"))
+    Nx % Rx == 0 || throw(ArgumentError(
+        "TripolarGrid requires Nx=$Nx to be divisible by Rx=$Rx (for uniform-x partitioning)"))
+
+    col_load = compute_column_loads(grid, immersed_boundary)
+    total = sum(col_load)
+    total > 0 || throw(ArgumentError(
+        "all cells are immersed — nothing to load-balance. " *
+        "Check that your immersed_boundary does not mask the entire domain " *
+        "(e.g. sign error in GridFittedBottom height)."))
+
+    # Uniform x: equal-size split (required by fold symmetry)
+    sizes_x = fill(Nx ÷ Rx, Rx)
+
+    # Optimize y using multi-profile partition (one step of alternating min, x fixed)
+    y_profiles = _aggregate(col_load, sizes_x, 1)   # Ny × Rx
+    sizes_y = balanced_1d_partition(y_profiles, Ry)
+
+    tile_loads = _tile_loads(col_load, sizes_x, sizes_y)
+
+    # Enforce: every tile in the north row must be active.
+    # This is required by the fold-aware zipper buffers introduced in PR #5439.
+    empty_ix = [ix for ix in 1:Rx if tile_loads[ix, Ry] == 0]
+    isempty(empty_ix) || throw(ArgumentError(
+        "TripolarGrid requires the entire north tile row (iy=$Ry) to be active, " *
+        "but tiles at ix=$empty_ix are empty. " *
+        "Try a smaller Rx, a different Ry, or shift Ry away from a fully-land latitude band."))
+
+    # Reuse the generic assembly loop, then swap the partition for a uniform-Int x form
+    # (preserves rank-symmetric fold pairing required by PR #5439's zipper buffers).
+    layout0   = build_rank_layout(sizes_x, sizes_y, tile_loads)
+    partition = Partition(Rx, Sizes(sizes_y...), 1)
+    layout    = RankLayout(partition, layout0.tile_to_rank, layout0.rank_to_tile)
+
+    report && _print_layout_banner(layout, tile_loads, total)
+    return layout
+end

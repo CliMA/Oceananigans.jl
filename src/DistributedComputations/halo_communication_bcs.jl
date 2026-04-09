@@ -1,6 +1,9 @@
 using Oceananigans.BoundaryConditions:
     DistributedCommunicationBoundaryCondition,
-    FieldBoundaryConditions
+    FieldBoundaryConditions,
+    BoundaryCondition,
+    MultiRegionCommunication,
+    Flux
 
 struct HaloCommunicationRanks{F, T}
     from :: F
@@ -10,6 +13,10 @@ end
 HaloCommunicationRanks(; from, to) = HaloCommunicationRanks(from, to)
 
 Base.summary(hcr::HaloCommunicationRanks) = "HaloCommunicationRanks from rank $(hcr.from) to rank $(hcr.to)"
+
+# Zero-flux BC used for empty-tile neighbors in load-balanced layouts.
+# When a tile is absent, the halo is inland (fully immersed), so zero-flux is safe.
+const ZFBC_instance = BoundaryCondition(Flux(), nothing)
 
 function inject_halo_communication_boundary_conditions(field_bcs, loc, local_rank, connectivity, topology)
     rank_east   = connectivity.east
@@ -29,19 +36,21 @@ function inject_halo_communication_boundary_conditions(field_bcs, loc, local_ran
 
     TX, TY, _ = topology
 
-    # `rank == nothing`indicates no partitioning in that specific direction.
-    # Communication is required only if the direction is "connected"
-    # Remember `RightConnected` means bounded on the left and viceversa
-    # `LeftConnected` means bounded on the right
-    inject_west  = !isnothing(rank_west)  && (TX != RightConnected) && !isnothing(loc[1])
-    inject_east  = !isnothing(rank_east)  && (TX != LeftConnected)  && !isnothing(loc[1])
-    inject_south = !isnothing(rank_south) && (TY != RightConnected) && !isnothing(loc[2])
-    inject_north = !isnothing(rank_north) && (TY != LeftConnected)  && !isnothing(loc[2])
+    # A direction is "connected" when the topology says it should have a neighbor
+    # (i.e. it's not a global boundary). `RightConnected` = bounded on the left,
+    # `LeftConnected` = bounded on the right.
+    west_connected  = (TX != RightConnected) && !isnothing(loc[1])
+    east_connected  = (TX != LeftConnected)  && !isnothing(loc[1])
+    south_connected = (TY != RightConnected) && !isnothing(loc[2])
+    north_connected = (TY != LeftConnected)  && !isnothing(loc[2])
 
-    west  = inject_west  ? west_comm_bc  : field_bcs.west
-    east  = inject_east  ? east_comm_bc  : field_bcs.east
-    south = inject_south ? south_comm_bc : field_bcs.south
-    north = inject_north ? north_comm_bc : field_bcs.north
+    # For connected directions: use MPI communication if the neighbor exists,
+    # or zero-flux if the neighbor is absent (empty tile in a load-balanced layout).
+    # For non-connected directions (global boundaries): keep the field's original BC.
+    west  = west_connected  ? (isnothing(rank_west)  ? ZFBC_instance : west_comm_bc)  : field_bcs.west
+    east  = east_connected  ? (isnothing(rank_east)  ? ZFBC_instance : east_comm_bc)  : field_bcs.east
+    south = south_connected ? (isnothing(rank_south) ? ZFBC_instance : south_comm_bc) : field_bcs.south
+    north = north_connected ? (isnothing(rank_north) ? ZFBC_instance : north_comm_bc) : field_bcs.north
 
     bottom   = field_bcs.bottom
     top      = field_bcs.top

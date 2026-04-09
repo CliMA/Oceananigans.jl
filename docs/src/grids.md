@@ -1127,3 +1127,73 @@ using MPI
 run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project equally_partitioned_grids.jl`)
 nothing # hide
 ```
+
+## Load balancing immersed grids
+
+When running distributed simulations with immersed boundaries (e.g., ocean basins
+with continents), some MPI ranks may land on tiles with few or zero active cells,
+creating load imbalance and wasting resources.
+
+The `load_balanced_layout` function computes an optimal partition that:
+- Balances the active 3D cell count across tiles via alternating minimization
+- Identifies tiles with zero active cells and excludes them from the MPI layout
+- Reports the recommended number of MPI ranks to launch
+
+### Preprocessing
+
+```julia
+using Oceananigans
+using Oceananigans.DistributedComputations: load_balanced_layout, save_rank_layout
+
+grid = LatitudeLongitudeGrid(CPU(); size=(360, 160, 50),
+                              longitude=(-180, 180), latitude=(-80, 80),
+                              z=(-5000, 0), topology=(Periodic, Bounded, Bounded))
+ib = GridFittedBottom(bottom_height_from_file)
+
+layout = load_balanced_layout(grid, ib, (8, 4))
+save_rank_layout("layout.jld2", layout)
+```
+
+The function prints a diagnostic banner:
+```
+┌─ load_balanced_layout ─────────────────────────────────────
+│  tile shape           : 8 × 4  (32 total)
+│  active tiles         : 28
+│  empty tiles          : 4
+│  total active cells   : 12345678
+│  max / mean load      : 1.12
+│  recommended launch   : mpiexec -n 28 julia ...
+└────────────────────────────────────────────────────────────
+```
+
+Use `inspect_tile_occupancy` to quickly compare factorizations:
+```julia
+using Oceananigans.DistributedComputations: inspect_tile_occupancy
+
+println(inspect_tile_occupancy(grid, ib, (4, 4)))
+println(inspect_tile_occupancy(grid, ib, (8, 4)))
+println(inspect_tile_occupancy(grid, ib, (4, 8)))
+```
+
+### Simulation
+
+```julia
+using Oceananigans
+using Oceananigans.DistributedComputations: load_rank_layout
+
+layout = load_rank_layout("layout.jld2")
+arch = Distributed(GPU(); rank_layout=layout)
+
+grid = LatitudeLongitudeGrid(arch; size=(360, 160, 50),
+                              longitude=(-180, 180), latitude=(-80, 80),
+                              z=(-5000, 0), topology=(Periodic, Bounded, Bounded))
+ibg = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom_height_from_file))
+model = HydrostaticFreeSurfaceModel(ibg)
+```
+
+### Tripolar grids
+
+For `TripolarGrid`, `load_balanced_layout` constrains the partition:
+- `Rx` must be even and must evenly divide `Nx` (uniform x, required by the fold)
+- Only `Ry` (y-direction) is balanced
+- The entire north tile row must be active (required by the zipper fold communication)

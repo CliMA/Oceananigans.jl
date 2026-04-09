@@ -183,6 +183,18 @@ CUDA.allowscalar() do
         end
     end
 
+    if group == :load_balanced_layout || group == :all
+        @testset "Load balanced layout (non-MPI) tests" begin
+            include("test_load_balanced_layout.jl")
+        end
+    end
+
+    if group == :load_balancing_mpi || group == :all
+        @testset "Distributed load balancing (MPI) tests" begin
+            include("test_distributed_load_balancing.jl")
+        end
+    end
+
     if group == :distributed || group == :all
         MPI.Initialized() || MPI.Init()
         # In case CUDA is not found, we reset CUDA and restart the julia session

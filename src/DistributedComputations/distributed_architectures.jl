@@ -239,6 +239,7 @@ Keyword arguments
 """
 function Distributed(child_architecture = CPU();
                      partition = nothing,
+                     rank_layout = nothing,
                      devices = nothing,
                      communicator = nothing,
                      synchronized_communication = false)
@@ -252,6 +253,14 @@ function Distributed(child_architecture = CPU();
         communicator = MPI.COMM_WORLD
     end
 
+    # When a rank_layout is provided, extract its partition and warn if the user also passed one.
+    if rank_layout !== nothing
+        if partition !== nothing
+            @warn "Both `partition` and `rank_layout` provided to Distributed; ignoring `partition`."
+        end
+        partition = rank_layout.partition
+    end
+
     mpi_ranks = MPI.Comm_size(communicator)
 
     if isnothing(partition) # default partition
@@ -261,22 +270,43 @@ function Distributed(child_architecture = CPU();
     ranks = Rx, Ry, Rz = size(partition)
     partition_ranks = Rx * Ry * Rz
 
-    if partition_ranks == 1
-        @warn "We are building a Distributed architecture on a single MPI rank. \n" *
-              "This can occur when MPI is incorrectly configured. \n" *
-              "See https://juliaparallel.org/MPI.jl/stable/configuration/ for more details."
+    if rank_layout !== nothing
+        n_active = n_active_tiles(rank_layout)
+        if n_active != mpi_ranks
+            throw(ArgumentError(
+                "Distributed launched with $mpi_ranks MPI ranks but rank_layout requires " *
+                "$n_active active tiles. Run `mpiexec -n $n_active`."))
+        end
+    else
+        if partition_ranks == 1
+            @warn "We are building a Distributed architecture on a single MPI rank. \n" *
+                  "This can occur when MPI is incorrectly configured. \n" *
+                  "See https://juliaparallel.org/MPI.jl/stable/configuration/ for more details."
+        end
+
+        # TODO: make this error refer to `partition` (user input) rather than `ranks`
+        if partition_ranks != mpi_ranks
+            throw(ArgumentError("Partition($Rx, $Ry, $Rz) [$partition_ranks ranks] inconsistent " *
+                                "with $mpi_ranks MPI ranks"))
+        end
     end
 
-    # TODO: make this error refer to `partition` (user input) rather than `ranks`
-    if partition_ranks != mpi_ranks
-        throw(ArgumentError("Partition($Rx, $Ry, $Rz) [$partition_ranks ranks] inconsistent " *
-                            "with $mpi_ranks MPI ranks"))
+    local_rank = MPI.Comm_rank(communicator)
+
+    local_index = if rank_layout === nothing
+        rank2index(local_rank, Rx, Ry, Rz)
+    else
+        (rank_layout.rank_to_tile[local_rank + 1]..., 1)
     end
 
-    local_rank         = MPI.Comm_rank(communicator)
-    local_index        = rank2index(local_rank, Rx, Ry, Rz)
-    # The rank connectivity _ALWAYS_ wraps around (The cartesian processor "grid" is `Periodic`)
-    local_connectivity = NeighboringRanks(local_index, ranks)
+    # When rank_layout is nothing, connectivity always wraps (existing behavior).
+    # When rank_layout is provided, we conservatively assume (Periodic, Periodic, Periodic);
+    # the actual grid topology will override this later via insert_connected_topology.
+    local_connectivity = if rank_layout === nothing
+        NeighboringRanks(local_index, ranks)
+    else
+        NeighboringRanks(local_index, rank_layout, (Periodic, Periodic, Periodic))
+    end
 
     # Assign GPU device if on GPUs
     if child_architecture isa GPU
@@ -425,6 +455,57 @@ function NeighboringRanks(local_index, ranks)
 
     return NeighboringRanks(west=west_rank, east=east_rank,
                             south=south_rank, north=north_rank,
+                            southwest=southwest_rank,
+                            southeast=southeast_rank,
+                            northwest=northwest_rank,
+                            northeast=northeast_rank)
+end
+
+"""
+    NeighboringRanks(local_index, layout::RankLayout, topology)
+
+Build the eight cardinal and diagonal neighbor rank ids for the rank at
+`local_index = (ix, iy, iz)` (where `iz == 1` for option-A load-balanced
+layouts) by walking `layout.tile_to_rank`. An empty tile (encoded as `-1` in
+`tile_to_rank`) is reported as `nothing`, just like a global-boundary edge in
+the uniform-partition path.
+
+`topology` is the global field topology `(TX, TY, TZ)`. Periodic wrapping in
+`x` and `y` is honored: if `topology[1] === Periodic`, the east neighbor of
+the rightmost `ix` wraps to `ix = 1`, and similarly for `y`. If a wrapped
+lookup lands on an empty tile, the result is `nothing`.
+"""
+function NeighboringRanks(local_index::NTuple{3, Int},
+                          layout::RankLayout,
+                          topology::Tuple)
+    Rx, Ry = tile_shape(layout)
+    ix, iy, _ = local_index
+
+    # Out-of-bounds → nothing; empty tile (-1) → nothing; otherwise the rank id.
+    @inline lookup(i, j) = begin
+        if i < 1 || i > Rx || j < 1 || j > Ry
+            nothing
+        else
+            r = layout.tile_to_rank[i, j]
+            r >= 0 ? r : nothing
+        end
+    end
+
+    @inline wrap_x(i) = topology[1] === Periodic ? mod1(i, Rx) : i
+    @inline wrap_y(j) = topology[2] === Periodic ? mod1(j, Ry) : j
+
+    east_rank  = lookup(wrap_x(ix + 1), iy)
+    west_rank  = lookup(wrap_x(ix - 1), iy)
+    north_rank = lookup(ix, wrap_y(iy + 1))
+    south_rank = lookup(ix, wrap_y(iy - 1))
+
+    northeast_rank = lookup(wrap_x(ix + 1), wrap_y(iy + 1))
+    northwest_rank = lookup(wrap_x(ix - 1), wrap_y(iy + 1))
+    southeast_rank = lookup(wrap_x(ix + 1), wrap_y(iy - 1))
+    southwest_rank = lookup(wrap_x(ix - 1), wrap_y(iy - 1))
+
+    return NeighboringRanks(east=east_rank, west=west_rank,
+                            north=north_rank, south=south_rank,
                             southwest=southwest_rank,
                             southeast=southeast_rank,
                             northwest=northwest_rank,

@@ -6,9 +6,13 @@ export
     inject_halo_communication_boundary_conditions,
     DistributedFFTBasedPoissonSolver, mpi_initialized, mpi_rank,
     mpi_size, global_barrier, global_communicator,
+    RankLayout, n_active_tiles, tile_shape, is_active_tile,
+    load_balanced_layout, inspect_tile_occupancy,
+    save_rank_layout, load_rank_layout,
     @root, @onrank, @distribute, @handshake
 
 using MPI
+using JLD2
 
 using Oceananigans
 using Oceananigans.Utils
@@ -17,13 +21,17 @@ using OffsetArrays
 using Oceananigans.Grids: XYZRegularRG
 using Oceananigans.Solvers: GridWithFourierTridiagonalSolver
 
+using DocStringExtensions: TYPEDFIELDS
+
 import Oceananigans.Solvers: fft_poisson_solver
 
 include("distributed_macros.jl")
+include("rank_layout.jl")
 include("distributed_architectures.jl")
 include("partition_assemble.jl")
 include("distributed_grids.jl")
 include("distributed_immersed_boundaries.jl")
+include("load_balanced_layout.jl")
 include("distributed_on_architecture.jl")
 include("distributed_kernel_launching.jl")
 include("halo_communication_bcs.jl")
