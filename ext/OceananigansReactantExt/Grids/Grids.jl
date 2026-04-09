@@ -3,6 +3,7 @@ module Grids
 export constant_with_arch
 
 using Reactant
+using Reactant: TracedRArray
 using OffsetArrays
 
 using Oceananigans
@@ -75,7 +76,7 @@ function Oceananigans.Grids.new_data(FT::DataType, arch::ShardedDistributed,
 end
 
 # The type parameter for indices helps / encourages the compiler to fully type infer `offset_data`
-function reactant_offset_data(underlying_data::ConcreteRArray, loc, topo, N, H, indices::T=default_indices(length(loc))) where T
+function reactant_offset_data(underlying_data::Union{ConcreteRArray, TracedRArray}, loc, topo, N, H, indices::T=default_indices(length(loc))) where T
     loc = map(instantiate, loc)
     topo = map(instantiate, topo)
     ii = map(reactant_offset_indices, loc, topo, N, H, indices)
