@@ -100,19 +100,19 @@ The effective substep sizes are `γ¹ * Δt`, `(γ² + ζ²) * Δt`, and `(γ³ 
 
 The specific implementation of `rk3_substep!` varies by model type.
 """
-function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbacks=[])
+function time_step!(model, timestepper::RungeKutta3TimeStepper, Δt; callbacks=[])
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     # Be paranoid and prepare at iteration 0, in case run! is not used:
     maybe_prepare_first_time_step!(model, callbacks)
 
-    γ¹ = model.timestepper.γ¹
-    γ² = model.timestepper.γ²
-    γ³ = model.timestepper.γ³
+    γ¹ = timestepper.γ¹
+    γ² = timestepper.γ²
+    γ³ = timestepper.γ³
 
     ζ¹ = nothing
-    ζ² = model.timestepper.ζ²
-    ζ³ = model.timestepper.ζ³
+    ζ² = timestepper.ζ²
+    ζ³ = timestepper.ζ³
 
     first_stage_Δt  = stage_Δt(Δt, γ¹, ζ¹)      # =  γ¹ * Δt
     second_stage_Δt = stage_Δt(Δt, γ², ζ²)      # = (γ² + ζ²) * Δt
@@ -166,6 +166,8 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
 
     return nothing
 end
+
+time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbacks=[]) = time_step!(model, model.timestepper, Δt; callbacks=callbacks)
 
 #####
 ##### Time stepping in each substep
