@@ -191,32 +191,36 @@ Gather the construction parameters for the immersed boundary of the grid. This i
 strictly necessary for grid reconstruction, but it is implemented and used a quality of life improvement
 since it gives users easy access to relevant immersed boundary parameters when opening the NetCDF file.
 """
-function gather_immersed_boundary(grid::PCBorGFBIBG, indices, dim_name_generator)
+function gather_immersed_boundary(grid::PCBorGFBIBG, indices, dim_name_generator; grid_index=nothing)
     op_peripheral_nodes_ccc = KernelFunctionOperation{Center, Center, Center}(peripheral_node, grid, Center(), Center(), Center())
     op_peripheral_nodes_fcc = KernelFunctionOperation{Face, Center, Center}(peripheral_node, grid, Face(), Center(), Center())
     op_peripheral_nodes_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
     op_peripheral_nodes_ccf = KernelFunctionOperation{Center, Center, Face}(peripheral_node, grid, Center(), Center(), Face())
 
-    return Dict("bottom_height" => Field(grid.immersed_boundary.bottom_height; indices),
-                "peripheral_nodes_ccc" => Field(op_peripheral_nodes_ccc; indices),
-                "peripheral_nodes_fcc" => Field(op_peripheral_nodes_fcc; indices),
-                "peripheral_nodes_cfc" => Field(op_peripheral_nodes_cfc; indices),
-                "peripheral_nodes_ccf" => Field(op_peripheral_nodes_ccf; indices))
+    ib_vars = Dict("bottom_height" => Field(grid.immersed_boundary.bottom_height; indices),
+                   "peripheral_nodes_ccc" => Field(op_peripheral_nodes_ccc; indices),
+                   "peripheral_nodes_fcc" => Field(op_peripheral_nodes_fcc; indices),
+                   "peripheral_nodes_cfc" => Field(op_peripheral_nodes_cfc; indices),
+                   "peripheral_nodes_ccf" => Field(op_peripheral_nodes_ccf; indices))
+
+    return suffix_grid_keys(ib_vars, grid_index)
 end
 
 const GFBoundaryIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBoundary}
 
-function gather_immersed_boundary(grid::GFBoundaryIBG, indices, dim_name_generator)
+function gather_immersed_boundary(grid::GFBoundaryIBG, indices, dim_name_generator; grid_index=nothing)
     op_peripheral_nodes_ccc = KernelFunctionOperation{Center, Center, Center}(peripheral_node, grid, Center(), Center(), Center())
     op_peripheral_nodes_fcc = KernelFunctionOperation{Face, Center, Center}(peripheral_node, grid, Face(), Center(), Center())
     op_peripheral_nodes_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
     op_peripheral_nodes_ccf = KernelFunctionOperation{Center, Center, Face}(peripheral_node, grid, Center(), Center(), Face())
 
-    return Dict("mask" => Field(grid.immersed_boundary.mask; indices),
-                "peripheral_nodes_ccc" => Field(op_peripheral_nodes_ccc; indices),
-                "peripheral_nodes_fcc" => Field(op_peripheral_nodes_fcc; indices),
-                "peripheral_nodes_cfc" => Field(op_peripheral_nodes_cfc; indices),
-                "peripheral_nodes_ccf" => Field(op_peripheral_nodes_ccf; indices))
+    ib_vars = Dict("mask" => Field(grid.immersed_boundary.mask; indices),
+                   "peripheral_nodes_ccc" => Field(op_peripheral_nodes_ccc; indices),
+                   "peripheral_nodes_fcc" => Field(op_peripheral_nodes_fcc; indices),
+                   "peripheral_nodes_cfc" => Field(op_peripheral_nodes_cfc; indices),
+                   "peripheral_nodes_ccf" => Field(op_peripheral_nodes_ccf; indices))
+
+    return suffix_grid_keys(ib_vars, grid_index)
 end
 
 
