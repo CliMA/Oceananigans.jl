@@ -163,8 +163,8 @@ function test_targeted_mass_flux_achieved(arch, FT; N = 4)
     # West boundary with a prescribed target flux; east boundary is in the pool.
     Q_target = FT(0.5)
     u_bcs = FieldBoundaryConditions(
-        west = OpenBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1, target_mass_flux=Q_target)),
-        east = OpenBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1))
+        west = OpenBoundaryCondition(1; scheme = PerturbationAdvection(; inflow_timescale=1e-1, target_mass_flux=Q_target)),
+        east = OpenBoundaryCondition(1; scheme = PerturbationAdvection(; inflow_timescale=1e-1))
     )
     model = NonhydrostaticModel(grid; boundary_conditions=(; u=u_bcs), timestepper=:RungeKutta3)
     uᵢ(x, y, z) = 1 + 1e-2 * rand()
