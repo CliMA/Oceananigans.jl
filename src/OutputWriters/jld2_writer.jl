@@ -218,11 +218,16 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
 
     # Serialize the location and boundary conditions of each output.
     for (name, field) in pairs(outputs)
-        try
-            jldopen(filepath, "a+"; jld2_kw...) do file
-                file["timeseries/$name/serialized/location"] = location(field)
+        jldopen(filepath, "a+"; jld2_kw...) do file
+            try 
+                serializeproperty!(file, "timeseries/$name/serialized/grid", field.grid)
+            catch 
+            end
+            try
+                file["timeseries/$name/serialized/location"] = location(field); 
                 file["timeseries/$name/serialized/indices"] = indices(field)
                 serializeproperty!(file, "timeseries/$name/serialized/boundary_conditions", boundary_conditions(field))
+            catch
             end
         catch
         end
