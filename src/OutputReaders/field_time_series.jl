@@ -792,7 +792,7 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
     end
 
     if isnothing(grid)
-        grid = handle["timeseries/$name/serialized/serialized/grid"]
+        grid = handle["timeseries/$name/serialized/grid"]
     end
 
     # If isreconstructed(grid), it probably means that the data was generated prior to
