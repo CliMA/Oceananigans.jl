@@ -336,22 +336,21 @@ model = NonhydrostaticModel(grid)
 coarse_grid = RectilinearGrid(size=(grid.Nx, grid.Ny, grid.Nz÷2), extent=(grid.Lx, grid.Ly, grid.Lz))
 coarse_u = Field{Face, Center, Center}(coarse_grid)
 
-# u lives on coarse_grid, w lives on model.grid — both in the same file
-outputs = (; u = coarse_u, w = model.velocities.w)
+outputs = (; u = coarse_u)
 
 output_writer = NetCDFWriter(model, outputs;
-                             filename = "multi_grid.nc",
+                             filename = "coarse_u.nc",
                              schedule = IterationInterval(1))
 
 # output
 
 NetCDFWriter scheduled on IterationInterval(1):
-├── filepath: multi_grid.nc
-├── dimensions: time(0), y_afa_grid1(1), x_faa_grid1(1), x_caa_grid1(1), y_aca_grid1(1), z_aaf_grid1(5), z_aac_grid1(4), y_afa_grid2(1), x_faa_grid2(1), x_caa_grid2(1), y_aca_grid2(1), z_aaf_grid2(9), z_aac_grid2(8)
-├── 2 outputs: (u, w)
+├── filepath: coarse_u.nc
+├── dimensions: time(0), y_afa(1), x_faa(1), x_caa(1), y_aca(1), z_aaf(5), z_aac(4)
+├── 1 outputs: u
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
-└── file size: 36.7 KiB
+└── file size: 31.7 KiB
 ```
 """
 function NetCDFWriter(model, outputs; kw...)
