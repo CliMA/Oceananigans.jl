@@ -25,6 +25,16 @@ struct CommunicationBuffers{W, E, S, N, SW, SE, NW, NE}
    northeast :: NE
 end
 
+Adapt.adapt_structure(to, buff::CommunicationBuffers) =
+    CommunicationBuffers(Adapt.adapt(to, buff.west),
+                         Adapt.adapt(to, buff.east),
+                         Adapt.adapt(to, buff.south),
+                         Adapt.adapt(to, buff.north),
+                         Adapt.adapt(to, buff.southwest),
+                         Adapt.adapt(to, buff.southeast),
+                         Adapt.adapt(to, buff.northwest),
+                         Adapt.adapt(to, buff.northeast))
+
 on_architecture(arch, buff::CommunicationBuffers) =
     CommunicationBuffers(on_architecture(arch, buff.west),
                          on_architecture(arch, buff.east),
