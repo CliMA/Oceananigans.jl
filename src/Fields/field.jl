@@ -10,6 +10,7 @@ using LinearAlgebra: LinearAlgebra
 using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
 using GPUArraysCore: @allowscalar
+using ReactantCore: ReactantCore
 using Statistics: Statistics
 
 #####
@@ -28,8 +29,8 @@ struct Field{LX, LY, LZ, O, G, I, D, T, B, S, F} <: AbstractField{LX, LY, LZ, G,
     # Inner constructor that does not validate _anything_!
     function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, indices::I, op::O, status::S, buffers::F) where {LX, LY, LZ, G, D, B, O, S, I, F}
         T = eltype(data)
-        @apply_regionally new_bcs = construct_boundary_conditions_kernels(bcs, data, grid, (LX(), LY(), LZ()), indices) # Adding the kernels to the bcs
-        return new{LX, LY, LZ, O, G, I, D, T, typeof(new_bcs), S, F}(grid, data, new_bcs, indices, op, status, buffers)
+        @apply_regionally local_bcs = construct_boundary_conditions_kernels(bcs, data, grid, (LX(), LY(), LZ()), indices) # Adding the kernels to the bcs
+        return new{LX, LY, LZ, O, G, I, D, T, typeof(local_bcs), S, F}(grid, data, local_bcs, indices, op, status, buffers)
     end
 end
 
@@ -423,6 +424,9 @@ interior(f::Field) = interior(f.data, location(f), f.grid, f.indices)
 interior(a::OffsetArray, loc, grid, indices) = interior(a, loc, topology(grid), size(grid), halo_size(grid), indices)
 interior(f::Field, I...) = view(interior(f), I...)
 
+ReactantCore.materialize_traced_array(f::Field) =
+    ReactantCore.materialize_traced_array(interior(f))
+
 # Don't use axes(f) to checkbounds; use axes(f.data)
 Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
 
@@ -715,34 +719,14 @@ Otherwise return `ConditionedOperand`, even when `isnothing(condition)` but `!(f
 # All non-trivial conditioning is found in AbstractOperations/conditional_operations.jl
 const Identity = typeof(Base.identity)
 @inline condition_operand(::Identity, operand, ::Nothing, mask) = operand
-@inline condition_operand(::Nothing, operand, ::Nothing, mask) = operand
+@inline condition_operand(::Nothing,  operand, ::Nothing, mask) = operand
 
 @inline conditional_length(c::AbstractField) = length(c)
 @inline conditional_length(c::AbstractField, ::Colon) = conditional_length(c)
-@inline conditional_length(c::AbstractField, ::NTuple{3}) = conditional_length(c)
-@inline conditional_length(c::AbstractField, d::Int) = size(c, d)
-@inline conditional_length(c::AbstractField, dims::NTuple{1}) = conditional_length(c, dims[1])
-
-@inline function conditional_length(c::AbstractField, dims::NTuple{2})
-    N = size(c)
-    d1, d2 = dims
-    return N[d1] * N[d2]
-end
+@inline conditional_length(c::AbstractField, dims::Int) = size(c, dims)
+@inline conditional_length(c::AbstractField, dims::Tuple) = prod(size(c, d) for d in dims)
 
 # Allocating and in-place reductions
-
-"""
-    maybe_copy_interior(r::AbstractField)
-
-Return the interior view of `r`, materialized if necessary to be GPU-native on MetalGPU.
-MetalGPU does not support ReshapedArray in kernels,
-so copying ensures the reduction operates on a GPU-native array.
-"""
-maybe_copy_interior(r::AbstractField) = maybe_copy_interior(architecture(r), r)
-
-# Extended in the OceananigansMetalExt for compatibility with Metal
-maybe_copy_interior(arch, r) = interior(r)
-
 for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 
     reduction! = Symbol(reduction, '!')
@@ -760,7 +744,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             operand = condition_operand(f, a, condition, mask)
 
             return Base.$(reduction!)(identity,
-                                      maybe_copy_interior(r),
+                                      interior(r),
                                       operand;
                                       kwargs...)
         end
@@ -774,7 +758,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 
             mask = convert(eltype(a), mask)
             return Base.$(reduction!)(identity,
-                                      maybe_copy_interior(r),
+                                      interior(r),
                                       condition_operand(a, condition, mask);
                                       kwargs...)
         end
@@ -792,7 +776,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             loc = reduced_location(instantiated_location(c); dims)
             r = Field(loc, c.grid, T; indices=indices(c))
             initialize_reduced_field!(Base.$(reduction!), identity, r, conditioned_c)
-            Base.$(reduction!)(identity, maybe_copy_interior(r), conditioned_c, init=false)
+            Base.$(reduction!)(identity, interior(r), conditioned_c, init=false)
 
             if dims isa Colon
                 return @allowscalar first(r)

@@ -19,7 +19,7 @@ using Oceananigans.Advection: AbstractAdvectionScheme, Centered
 using Oceananigans.Fields: Field, flattened_unique_values
 using Oceananigans.Grids: halo_size, inflate_halo_size
 using Oceananigans.OutputReaders: update_field_time_series!, extract_field_time_series
-using Oceananigans.TimeSteppers: Clock, update_state!
+using Oceananigans.TimeSteppers: Clock
 using Oceananigans.Units: Time
 
 import Oceananigans: initialize!
@@ -42,7 +42,6 @@ Base.eltype(model::AbstractModel) = Float64
 architecture(model::AbstractModel) = nothing
 initialize!(model::AbstractModel) = nothing
 total_velocities(model::AbstractModel) = nothing
-initialization_update_state!(model::AbstractModel; kw...) = update_state!(model; kw...) # fallback
 
 # Fallback for any abstract model that does not contain `FieldTimeSeries`es
 update_model_field_time_series!(model::AbstractModel, clock::Clock) = nothing
@@ -214,6 +213,9 @@ checkpointer_address(::NonhydrostaticModel) = "NonhydrostaticModel"
 checkpointer_address(::HydrostaticFreeSurfaceModel) = "HydrostaticFreeSurfaceModel"
 
 default_included_properties(::OceananigansModels) = [:grid]
+
+# Specialized output attributes for velocity and tracer fields
+include("output_attributes.jl")
 
 # Implementation of diagnostics applicable to both `NonhydrostaticModel` and `HydrostaticFreeSurfaceModel`
 include("seawater_density.jl")

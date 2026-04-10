@@ -8,7 +8,7 @@ using Oceananigans.Models: update_model_field_time_series!, surface_kernel_param
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
 using Oceananigans.TurbulenceClosures: compute_closure_fields!
 import Oceananigans.TurbulenceClosures: step_closure_prognostics!
-using Oceananigans.Utils: KernelParameters
+using Oceananigans.Utils: KernelParameters, worksize
 
 compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxiliary_fields)
 
@@ -23,7 +23,7 @@ Update the model state to be consistent with the current prognostic fields.
 This function performs the following steps:
 1. Mask immersed boundary regions (set field values to zero in solid regions)
 2. Update time-dependent field boundary conditions
-3. Fill halo regions for velocities and tracers
+3. Fill halo regions for tracers
 4. Compute diagnostic quantities:
    - Buoyancy gradients (for turbulence closures)
    - Vertical velocity `w` from continuity equation
@@ -33,7 +33,8 @@ This function performs the following steps:
 6. Execute any callbacks registered for `UpdateStateCallsite`
 7. Update biogeochemical state
 
-Note: Halo regions for free surface fields are filled separately after the barotropic step.
+Note: Halo regions for free surface fields are filled separately after the barotropic step,
+while for velocities they are filled in the time-stepping function.
 """
 update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]) = update_state!(model, model.grid, callbacks)
 
@@ -42,18 +43,16 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     arch = architecture(grid)
 
     @apply_regionally begin
-        mask_immersed_model_fields!(model)
+        foreach(mask_immersed_field!, model.tracers)
         update_model_field_time_series!(model, model.clock)
         update_boundary_conditions!(fields(model), model)
     end
 
-    u = model.velocities.u
-    v = model.velocities.v
     tracers = model.tracers
 
     # Fill the halos of the prognostic fields. Note that the halos of the
-    # free-surface variables are filled after the barotropic step.
-    fill_halo_regions!((u, v),  model.clock, fields(model); async=true)
+    # free-surface variables and the horizontal velocities
+    # are filled within the time-stepping after the state evolution.
     fill_halo_regions!(tracers, model.clock, fields(model); async=true)
 
     # Compute diagnostic quantities
@@ -82,25 +81,15 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 end
 
 """
-    mask_immersed_model_fields!(model)
-
-Set field values to zero in immersed (solid) regions of the grid.
-
-Masks both velocity fields and tracers to ensure physically meaningful values
-at immersed boundaries. This is called at the beginning of `update_state!`.
-"""
-function mask_immersed_model_fields!(model)
-    mask_immersed_velocities!(model.velocities)
-    foreach(mask_immersed_field!, model.tracers)
-    return nothing
-end
-
-"""
-    mask_immersed_velocities!(velocities)
+    mask_immersed_horizontal_velocities!(velocities)
 
 Set velocity field values to zero in immersed (solid) regions of the grid.
 """
-mask_immersed_velocities!(velocities) = foreach(mask_immersed_field!, velocities)
+function mask_immersed_horizontal_velocities!(velocities)
+    mask_immersed_field!(velocities.u)
+    mask_immersed_field!(velocities.v)
+    return nothing
+end
 
 """
     diffusivity_kernel_parameters(grid)
@@ -113,12 +102,12 @@ cell faces require data from neighboring cells. This ensures that viscous fluxes
 can be computed correctly at domain boundaries without requiring (possibly costly) halo exchanges.
 """
 @inline function diffusivity_kernel_parameters(grid)
-    Nx, Ny, Nz = size(grid)
+    Wx, Wy, Wz = worksize(grid)
     Tx, Ty, Tz = topology(grid)
 
-    ii = ifelse(Tx == Flat, 1:Nx, 0:Nx+1)
-    jj = ifelse(Ty == Flat, 1:Ny, 0:Ny+1)
-    kk = 1:Nz
+    ii = ifelse(Tx == Flat, 1:Wx, 0:Wx+1)
+    jj = ifelse(Ty == Flat, 1:Wy, 0:Wy+1)
+    kk = 1:Wz
 
     return KernelParameters(ii, jj, kk)
 end

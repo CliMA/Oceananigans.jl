@@ -75,8 +75,8 @@ julia> using Oceananigans
 
 julia> VectorInvariant()
 VectorInvariant
-├── vorticity_scheme: Oceananigans.Advection.EnstrophyConserving{Float64}
-└── vertical_advection_scheme: Oceananigans.Advection.EnergyConserving{Float64}
+├── vorticity_scheme: EnstrophyConserving
+└── vertical_advection_scheme: EnergyConserving
 ```
 """
 function VectorInvariant(FT = Oceananigans.defaults.FloatType;
@@ -318,8 +318,8 @@ end
 @inline ϕ²(i, j, k, grid, ϕ)       = @inbounds ϕ[i, j, k]^2
 @inline Khᶜᶜᶜ(i, j, k, grid, u, v) = (ℑxᶜᵃᵃ(i, j, k, grid, ϕ², u) + ℑyᵃᶜᵃ(i, j, k, grid, ϕ², v)) / 2
 
-@inline bernoulli_head_U(i, j, k, grid, ::VectorInvariantKEGradientEnergyConserving, u, v) = ∂xᶠᶜᶜ(i, j, k, grid, Khᶜᶜᶜ, u, v)
-@inline bernoulli_head_V(i, j, k, grid, ::VectorInvariantKEGradientEnergyConserving, u, v) = ∂yᶜᶠᶜ(i, j, k, grid, Khᶜᶜᶜ, u, v)
+@inline bernoulli_head_U(i, j, k, grid, ::VectorInvariantKEGradientEnergyConserving, u, v) = δxᶠᶜᶜ(i, j, k, grid, Khᶜᶜᶜ, u, v) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
+@inline bernoulli_head_V(i, j, k, grid, ::VectorInvariantKEGradientEnergyConserving, u, v) = δyᶜᶠᶜ(i, j, k, grid, Khᶜᶜᶜ, u, v) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
 
 #####
 ##### Conservative vertical advection
@@ -399,39 +399,14 @@ end
 end
 
 #####
-##### Fallback to flux form advection (LatitudeLongitudeGrid)
+##### Fallback to flux form advection
+#####
+##### Curvature metric corrections are now handled separately by the functions in
+##### curvature_metric_terms.jl (U_dot_∇u_hydrostatic_metric, U_dot_∇u_metric, etc.).
 #####
 
-@inline function U_dot_∇u(i, j, k, grid, advection::AbstractAdvectionScheme, U)
-
-    v̂ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, U.v) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
-    û = @inbounds U.u[i, j, k]
-
-    return div_𝐯u(i, j, k, grid, advection, U, U.u) -
-           v̂ * v̂ * δxᶠᵃᵃ(i, j, k, grid, Δyᶜᶜᶜ) * Az⁻¹ᶠᶜᶜ(i, j, k, grid) +
-           v̂ * û * δyᵃᶜᵃ(i, j, k, grid, Δxᶠᶠᶜ) * Az⁻¹ᶠᶜᶜ(i, j, k, grid)
-end
-
-@inline function U_dot_∇v(i, j, k, grid, advection::AbstractAdvectionScheme, U)
-
-    û = ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, U.u) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
-    v̂ = @inbounds U.v[i, j, k]
-
-    return div_𝐯v(i, j, k, grid, advection, U, U.v) +
-           û * v̂ * δxᶜᵃᵃ(i, j, k, grid, Δyᶠᶠᶜ) * Az⁻¹ᶜᶠᶜ(i, j, k, grid) -
-           û * û * δyᵃᶠᵃ(i, j, k, grid, Δxᶜᶜᶜ) * Az⁻¹ᶜᶠᶜ(i, j, k, grid)
-end
-
-#####
-##### Fallback for `RectilinearGrid` with
-##### ACAS == `AbstractCenteredAdvectionScheme`
-##### AUAS == `AbstractUpwindBiasedAdvectionScheme`
-#####
-
-@inline U_dot_∇u(i, j, k, grid::RectilinearGrid, advection::ACAS, U) = div_𝐯u(i, j, k, grid, advection, U, U.u)
-@inline U_dot_∇v(i, j, k, grid::RectilinearGrid, advection::ACAS, U) = div_𝐯v(i, j, k, grid, advection, U, U.v)
-@inline U_dot_∇u(i, j, k, grid::RectilinearGrid, advection::AUAS, U) = div_𝐯u(i, j, k, grid, advection, U, U.u)
-@inline U_dot_∇v(i, j, k, grid::RectilinearGrid, advection::AUAS, U) = div_𝐯v(i, j, k, grid, advection, U, U.v)
+@inline U_dot_∇u(i, j, k, grid, advection::AbstractAdvectionScheme, U) = div_𝐯u(i, j, k, grid, advection, U, U.u)
+@inline U_dot_∇v(i, j, k, grid, advection::AbstractAdvectionScheme, U) = div_𝐯v(i, j, k, grid, advection, U, U.v)
 
 #####
 ##### No advection

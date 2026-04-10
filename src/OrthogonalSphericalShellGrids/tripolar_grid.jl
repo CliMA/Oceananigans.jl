@@ -1,27 +1,40 @@
 using Oceananigans.BoundaryConditions: UPivotZipperBoundaryCondition, FPivotZipperBoundaryCondition, NoFluxBoundaryCondition
 using Oceananigans.Grids: Grids, Bounded, Flat, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid,
     architecture, cpu_face_constructor_z, validate_dimension_specification,
-    RightCenterFolded, RightFaceFolded
+    AbstractTopology, RightCenterFolded, RightFaceFolded
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 """
-    struct Tripolar{N, F, S}
+    struct Tripolar{N, F, S, TY<:AbstractTopology}
 
 A structure to represent a tripolar grid on an orthogonal spherical shell.
+The fold topology `FT` (e.g., `RightCenterFolded` or `RightFaceFolded`) is stored
+as a type parameter rather than a field, keeping the struct `isbits` for GPU kernels.
 """
-struct Tripolar{N, F, S}
+struct Tripolar{N, F, S, TY<:AbstractTopology}
     north_poles_latitude :: N
     first_pole_longitude :: F
     southernmost_latitude :: S
 end
 
-Adapt.adapt_structure(to, t::Tripolar) =
+# Getter: returns the fold topology Type
+fold_topology(::Tripolar{<:Any, <:Any, <:Any, TY}) where TY = TY
+
+# Constructor accepting fold topology as a Type argument
+Tripolar(n, f, s, ::Type{TY}) where {TY<:AbstractTopology} =
+    Tripolar{typeof(n), typeof(f), typeof(s), TY}(n, f, s)
+
+# Backward-compatible constructor (defaults to UPivot)
+Tripolar(n, f, s) = Tripolar(n, f, s, RightCenterFolded)
+
+Adapt.adapt_structure(to, t::Tripolar{<:Any, <:Any, <:Any, TY}) where TY =
     Tripolar(Adapt.adapt(to, t.north_poles_latitude),
              Adapt.adapt(to, t.first_pole_longitude),
-             Adapt.adapt(to, t.southernmost_latitude))
+             Adapt.adapt(to, t.southernmost_latitude),
+             TY)
 
 const TripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} = OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, Arch}
-const TripolarGridOfSomeKind = Union{TripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:TripolarGrid}}
+const TripolarGridOfSomeKind{FT, TX, TY, TZ} = Union{TripolarGrid{FT, TX, TY, TZ}, ImmersedBoundaryGrid{FT, TX, TY, TZ, <:TripolarGrid}}
 
 """
     TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatType;
@@ -95,22 +108,19 @@ Keyword Arguments
     ```
     See [`UPivotZipperBoundaryCondition`](@ref) for more information on the fold.
 
-    For a `RightFaceFolded` y-topology, The north singularities are located on `(Face, Face)`,
-    at: `i = 1`, `j = grid.Ny` and `i = grid.Nx ÷ 2 + 1`, `j = grid.Ny`. This means that the last
-    row of the tracers is redundant and, despite being advanced dynamically, it is then replaced
-    by the interior of the domain when folding.
+    For a `RightFaceFolded` y-topology, the fold is located along the y-direction faces
+    at `j = Ny+1` (i.e., the fold is exactly on the northern boundary of the grid).
+    The north singularities are located on `(Face, Face)`.
 
-    !!! warning "Add `1` to `Ny` when you build a `RightFaceFolded` tripolar grid"
-        Otherwise you might end up with one less row than what you expected.
-
-    Pivot points are indicated by the `↻` symbols below:
+    The fold is located between the last interior face row and the first halo face row.
+    Pivot points (↻) are located on `(Face, Face)`:
     ```
               │           │           │           │           │           │           │
-    Ny+1 ─▶ ──╔═══════════╪═══════════╪═══════════╪═══════════╪═══════════╪═══════════╗──
-              ║           │           │           │           │           │           ║
+    Ny+1 ─▶ ─ ↻ ═══ v ════╪════ v ════╪════ v ═══ ↻ ═══ v ════╪════ v ════╪════ v ═══ ↻ ◀─ Fold
+              ║           │           │           │           │           │           ║ (at yface[Ny+1])
     Ny   ─▶   u     c     u     c     u     c     u     c     u     c     u     c     ║
               ║           │           │           │           │           │           ║
-    Ny   ─▶ ─ ↻ ─── v ────┼──── v ────┼──── v ─── ↻ ─── v ────┼──── v ────┼──── v ─── ↻ ◀─ Fold
+    Ny   ─▶ ──╫──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────┼──── v ────╫──
               ║           │           │           │           │           │           ║
     Ny-1 ─▶   u     c     u     c     u     c     u     c     u     c     u     c     ║
               ║           │           │           │           │           │           ║
@@ -152,11 +162,6 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
 
     Nx, Ny, Nz = size
     Hx, Hy, Hz = halo
-
-    # In case of a `RightFaceFolded` y-topology, we must add an extra row on the northern boundary.
-    # This is because the topology folds on `v` velocities, which are located "south" of center locations
-    # by convention in Oceananigans. Thus the `Ny` row of `v` is half prognostic but is entirely computed
-    # during time-stepping, before the `FPivot` zipper boundary condition is applied.
 
     if isodd(Nx)
         throw(ArgumentError("The number of cells in the longitude dimension should be even!"))
@@ -253,7 +258,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
 
     # Calculate metrics
     # TODO: rewrite this kernel and split the call to match the indices exactly.
-    kp = KernelParameters(1:Nx, 1:Ny)
+    kp = KernelParameters(1:Nx, 1:Ny+1)
     launch!(CPU(), grid, kp, _calculate_metrics!,
         Δxᶠᶜᵃ, Δxᶜᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
         Δyᶠᶜᵃ, Δyᶜᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
@@ -344,7 +349,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
                                                      on_architecture(arch, map(FT, Azᶜᶠᵃ)),
                                                      on_architecture(arch, map(FT, Azᶠᶠᵃ)),
                                                      convert(FT, radius),
-                                                     Tripolar(north_poles_latitude, first_pole_longitude, southernmost_latitude))
+                                                     Tripolar(north_poles_latitude, first_pole_longitude, southernmost_latitude, fold_topology))
 
     return grid
 end

@@ -185,21 +185,21 @@ end
 end
 
 #####
-##### Initialize vertical coordinate
+##### Reconcile vertical coordinate
 #####
 
 """
-    initialize_vertical_coordinate!(vertical_coordinate, model, grid)
+    reconcile_vertical_coordinate!(vertical_coordinate, model, grid)
 
-Initialize the vertical coordinate system at the start of a simulation.
+Reconcile the vertical coordinate with the current free surface displacement.
 
 For `ZCoordinate` (static grids), this is a no-op.
-For `ZStarCoordinate`, initializes the grid stretching factors `σ` from the
-initial free surface height (we assume that `∂t_σ = 0`).
+For `ZStarCoordinate`, recomputes the grid stretching factors `σ` from the
+free surface height (we assume that `∂t_σ = 0`).
 """
-initialize_vertical_coordinate!(::ZCoordinate, model, grid) = nothing
+reconcile_vertical_coordinate!(::ZCoordinate, model, grid) = nothing
 
-function initialize_vertical_coordinate!(::ZStarCoordinate, model, grid::MutableGridOfSomeKind)
+function reconcile_vertical_coordinate!(::ZStarCoordinate, model, grid::MutableGridOfSomeKind)
     launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.displacement, grid)
     parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
     return nothing

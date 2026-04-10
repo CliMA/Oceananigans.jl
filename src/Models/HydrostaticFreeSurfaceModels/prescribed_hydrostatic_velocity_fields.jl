@@ -244,12 +244,10 @@ function compute_w_from_continuity!(velocities::PrescribedVelocityFields{<:Diagn
     compute_w_from_continuity!(vels, grid; parameters)
 end
 
-mask_immersed_velocities!(::PrescribedVelocityFields) = nothing
+mask_immersed_horizontal_velocities!(::PrescribedVelocityFields) = nothing
 
 # No need for extra velocities
-transport_velocity_fields(velocities::PrescribedVelocityFields, free_surface) = velocities
-transport_velocity_fields(velocities::PrescribedVelocityFields, ::ExplicitFreeSurface) = velocities
-transport_velocity_fields(velocities::PrescribedVelocityFields, ::Nothing) = velocities
+transport_velocity_fields(velocities::PrescribedVelocityFields) = velocities
 
 validate_velocity_boundary_conditions(grid, ::PrescribedVelocityFields) = nothing
 extract_boundary_conditions(::PrescribedVelocityFields) = NamedTuple()
