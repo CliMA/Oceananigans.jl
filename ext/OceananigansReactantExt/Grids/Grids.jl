@@ -10,7 +10,7 @@ using Oceananigans
 using Oceananigans: Distributed
 using Oceananigans.Architectures: ReactantState, CPU
 using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, StaticVerticalDiscretization, MutableVerticalDiscretization
-using Oceananigans.Grids: Center, Face, RightConnected, LeftConnected, Periodic, Bounded, Flat, BoundedTopology
+using Oceananigans.Grids: Center, Face, RightConnected, LeftConnected, Periodic, Bounded, Flat, FaceExtendedTopology
 using Oceananigans.Fields: Field
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, AbstractImmersedBoundary
 
@@ -57,7 +57,7 @@ end
 reactant_total_length(loc, topo, N, H, ::Colon) = reactant_total_length(loc, topo, N, H)
 reactant_total_length(loc, topo, N, H, ind::AbstractUnitRange) = min(reactant_total_length(loc, topo, N, H), length(ind))
 reactant_total_length(loc, topo, N, H) = Oceananigans.Grids.total_length(loc, topo, N, H)
-reactant_total_length(::Face, ::BoundedTopology, N, H=0) = N + 2H
+reactant_total_length(::Face, ::FaceExtendedTopology, N, H=0) = N + 2H
 
 reactant_offset_indices(loc, topo, N, H=0) = 1 - H : N + H
 reactant_offset_indices(::Nothing, topo, N, H=0) = 1:1

@@ -277,7 +277,7 @@ end
 
 # Extension of the constructor for a `Field` on a `TRG` grid. We assumes that the north boundary is a zipper
 # with a sign that depends on the location of the field (revert the value of the halos if on edges, keep it if on nodes or centers)
-function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::MPITripolarGridOfSomeKind, data, old_bcs, indices::Tuple, op, status) where {LX, LY, LZ}
+function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::MPITripolarGridOfSomeKind, data, global_bcs, indices::Tuple, op, status) where {LX, LY, LZ}
     arch = architecture(grid)
     yrank = arch.local_index[2] - 1
 
@@ -285,44 +285,44 @@ function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::MPITripolarGridOfSomeKind, da
 
     indices = validate_indices(indices, loc, grid)
     validate_field_data(loc, data, grid, indices)
-    validate_boundary_conditions(loc, grid, old_bcs)
+    validate_boundary_conditions(loc, grid, global_bcs)
 
-    if isnothing(old_bcs) || ismissing(old_bcs)
-        new_bcs = old_bcs
+    if isnothing(global_bcs) || ismissing(global_bcs)
+        local_bcs = global_bcs
     else
-        new_bcs = inject_halo_communication_boundary_conditions(old_bcs, loc, arch.local_rank, arch.connectivity, topology(grid))
+        local_bcs = inject_halo_communication_boundary_conditions(global_bcs, loc, arch.local_rank, arch.connectivity, topology(grid))
 
         if yrank == processor_size[2] - 1 && processor_size[1] == 1
-            north_bc = if !(old_bcs.north isa ZBC)
+            north_bc = if !(global_bcs.north isa ZBC)
                 TY = fold_topology(grid.conformal_mapping)
                 north_fold_boundary_condition(TY)(sign(LX, LY))
 
             else
-                old_bcs.north
+                global_bcs.north
             end
 
         elseif yrank == processor_size[2] - 1 && processor_size[1] != 1
-            sgn  = old_bcs.north isa ZBC ? old_bcs.north.condition : sign(LX, LY)
+            sgn  = global_bcs.north isa ZBC ? global_bcs.north.condition : sign(LX, LY)
             from = arch.local_rank
             to   = arch.connectivity.north
             halo_communication = ZipperHaloCommunicationRanks(sgn; from, to)
             north_bc = DistributedCommunicationBoundaryCondition(halo_communication)
 
         else
-            north_bc = new_bcs.north
+            north_bc = local_bcs.north
         end
 
-        new_bcs = FieldBoundaryConditions(; west=new_bcs.west,
-                                            east=new_bcs.east,
-                                            south=new_bcs.south,
+        local_bcs = FieldBoundaryConditions(; west=local_bcs.west,
+                                            east=local_bcs.east,
+                                            south=local_bcs.south,
                                             north=north_bc,
-                                            top=new_bcs.top,
-                                            bottom=new_bcs.bottom)
+                                            top=local_bcs.top,
+                                            bottom=local_bcs.bottom)
     end
 
-    buffers = communication_buffers(grid, data, new_bcs, (LX(), LY(), LZ()))
+    buffers = communication_buffers(grid, data, local_bcs, (LX(), LY(), LZ()))
 
-    return Field{LX, LY, LZ}(grid, data, new_bcs, indices, op, status, buffers)
+    return Field{LX, LY, LZ}(grid, data, local_bcs, indices, op, status, buffers)
 end
 
 # Reconstruction the global tripolar grid for visualization purposes
