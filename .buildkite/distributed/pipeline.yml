@@ -21,6 +21,7 @@ definitions:
     - "🦍 distributed_nonhydrostatic_regression"
     - "🍊 distributed_vertical_coordinate_1"
     - "🍇 distributed_vertical_coordinate_2"
+    - "⚡ nccl_extension"
 
   retry_config: &retry_config
     automatic:
