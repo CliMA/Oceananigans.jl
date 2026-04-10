@@ -276,7 +276,7 @@ function Distributed(child_architecture = CPU();
     local_rank         = MPI.Comm_rank(communicator)
     local_index        = rank2index(local_rank, Rx, Ry, Rz)
     # The rank connectivity _ALWAYS_ wraps around (The cartesian processor "grid" is `Periodic`)
-    local_connectivity = NeighboringRanks(local_index, ranks)
+    local_connectivity = NeighboringRanks(partition, local_index, ranks)
 
     # Assign GPU device if on GPUs
     if child_architecture isa GPU
@@ -404,7 +404,8 @@ function decrement_index(i, R)
     end
 end
 
-function NeighboringRanks(local_index, ranks)
+# This is our typical "Cartesian" partition
+function NeighboringRanks(::Partition, local_index, ranks)
     i, j, k = local_index
     Rx, Ry, Rz = ranks
 
