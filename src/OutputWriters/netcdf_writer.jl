@@ -152,9 +152,6 @@ Required keyword arguments
 Optional keyword arguments
 ==========================
 
-- `grid`: The grid associated with `outputs`. Default: `model.grid`.
-          Use this to specify a different grid when outputs are interpolated or regridded.
-
 - `dir`: Directory to save output to. Default: `"."`.
 
 - `array_type`: Type to convert outputs to before saving. Default: `Array{Float32}`.
@@ -326,13 +323,12 @@ NetCDFWriter scheduled on IterationInterval(1):
 └── file size: 34.1 KiB
 ```
 
-`NetCDFWriter` can also be configured for `outputs` that are interpolated or regridded
-to a different grid than `model.grid`. To use this functionality, include the keyword argument
-`grid = output_grid`.
+`NetCDFWriter` supports outputs that live on different grids within a single writer.
+The grid is automatically extracted from each output field. When multiple grids are
+present, dimensions are suffixed (e.g., `_grid1`, `_grid2`) to avoid conflicts.
 
 ```jldoctest netcdf3
 using Oceananigans, NCDatasets
-using Oceananigans.Fields: interpolate!
 
 grid = RectilinearGrid(size=(1, 1, 8), extent=(1, 1, 1));
 model = NonhydrostaticModel(grid)
@@ -340,23 +336,22 @@ model = NonhydrostaticModel(grid)
 coarse_grid = RectilinearGrid(size=(grid.Nx, grid.Ny, grid.Nz÷2), extent=(grid.Lx, grid.Ly, grid.Lz))
 coarse_u = Field{Face, Center, Center}(coarse_grid)
 
-interpolate_u(model) = interpolate!(coarse_u, model.velocities.u)
-outputs = (; u = interpolate_u)
+# u lives on coarse_grid, w lives on model.grid — both in the same file
+outputs = (; u = coarse_u, w = model.velocities.w)
 
 output_writer = NetCDFWriter(model, outputs;
-                             grid = coarse_grid,
-                             filename = "coarse_u.nc",
+                             filename = "multi_grid.nc",
                              schedule = IterationInterval(1))
 
 # output
 
 NetCDFWriter scheduled on IterationInterval(1):
-├── filepath: coarse_u.nc
-├── dimensions: time(0), y_afa(1), x_faa(1), x_caa(1), y_aca(1), z_aaf(5), z_aac(4)
-├── 1 outputs: u
+├── filepath: multi_grid.nc
+├── dimensions: time(0), y_afa_grid1(1), x_faa_grid1(1), x_caa_grid1(1), y_aca_grid1(1), z_aaf_grid1(5), z_aac_grid1(4), y_afa_grid2(1), x_faa_grid2(1), x_caa_grid2(1), y_aca_grid2(1), z_aaf_grid2(9), z_aac_grid2(8)
+├── 2 outputs: (u, w)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
-└── file size: 31.4 KiB
+└── file size: 36.7 KiB
 ```
 """
 function NetCDFWriter(model, outputs; kw...)

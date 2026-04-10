@@ -213,10 +213,14 @@ function initialize_nc_file(model,
     # Open the NetCDF dataset file
     dataset = NCDataset(filepath, mode, attrib=sort(collect(pairs(global_attributes)), by=first))
 
+    # Only suffix dimension names when there are multiple grids;
+    # for a single grid, use nothing so add_grid_suffix is a no-op.
+    dim_grid_suffix(idx) = length(grids) == 1 ? nothing : idx
+
     # Merge default dimension attributes from all unique grids
     all_dim_attributes = Dict()
     for (grid_index, grid) in enumerate(grids)
-        merge!(all_dim_attributes, default_dimension_attributes(grid, dimension_name_generator; grid_index))
+        merge!(all_dim_attributes, default_dimension_attributes(grid, dimension_name_generator; grid_index=dim_grid_suffix(grid_index)))
     end
     output_attributes = merge(all_dim_attributes, default_output_attributes(model), output_attributes)
 
@@ -231,26 +235,27 @@ function initialize_nc_file(model,
 
         # Per-grid: dimensions, reconstruction data, metrics, immersed boundary
         time_independent_vars = Dict()
-        time_independent_grid_map = Dict{String, Int}()
+        time_independent_grid_map = Dict{String, Any}()
 
         for (grid_index, grid) in enumerate(grids)
-            dims = gather_dimensions(outputs, grid, indices, with_halos, dimension_name_generator; grid_index)
+            suffix = dim_grid_suffix(grid_index)
+            dims = gather_dimensions(outputs, grid, indices, with_halos, dimension_name_generator; grid_index=suffix)
             create_spatial_dimensions!(dataset, dims, output_attributes; deflatelevel=1, dimension_type)
 
             write_grid_reconstruction_data!(dataset, grid, grid_index; array_type, deflatelevel)
 
             if include_grid_metrics
-                metrics = gather_grid_metrics(grid, indices, dimension_name_generator; grid_index)
+                metrics = gather_grid_metrics(grid, indices, dimension_name_generator; grid_index=suffix)
                 for name in keys(metrics)
-                    time_independent_grid_map[name] = grid_index
+                    time_independent_grid_map[name] = suffix
                 end
                 merge!(time_independent_vars, metrics)
             end
 
             if grid isa ImmersedBoundaryGrid
-                ib_vars = gather_immersed_boundary(grid, indices, dimension_name_generator; grid_index)
+                ib_vars = gather_immersed_boundary(grid, indices, dimension_name_generator; grid_index=suffix)
                 for name in keys(ib_vars)
-                    time_independent_grid_map[name] = grid_index
+                    time_independent_grid_map[name] = suffix
                 end
                 merge!(time_independent_vars, ib_vars)
             end
@@ -283,9 +288,9 @@ function initialize_nc_file(model,
         end
 
         for (output_name, output) in sort(collect(pairs(outputs)), by=first)
-            grid_index = output_grid_map[output_name]
+            grid_index = dim_grid_suffix(output_grid_map[output_name])
             attrib = haskey(output_attributes, output_name) ? output_attributes[output_name] : Dict()
-            attrib = merge(attrib, Dict("grid_index" => grid_index))
+            attrib = merge(attrib, Dict("grid_index" => output_grid_map[output_name]))
             materialized = materialize_output(output, model)
 
             define_output_variable!(model,
