@@ -196,12 +196,12 @@ function test_targeted_mass_flux_conservation(arch, FT; N = 4)
     u, v, w = model.velocities
     Δt = 0.1 * minimum_xspacing(grid) / 2
 
-    ∇u = Field(∂x(u) + ∂y(v) + ∂z(w))
-    ∫∇u = Field(Integral(∇u))
+    δu = Field(∂x(u) + ∂y(v) + ∂z(w))
+    ∫δu = Field(Integral(δu))
 
     run!(Simulation(model; stop_time=1, Δt, verbose=false))
-    compute!(∫∇u)
-    @test Array(interior(∫∇u))[1, 1, 1] ≈ 0 atol = 5 * eps(FT)
+    compute!(∫δu)
+    @test Array(interior(∫δu))[1, 1, 1] ≈ 0 atol = 5 * eps(FT)
 
     # Check each boundary achieved its target flux
     west_flux = Field(Integral(view(u, 1, :, :), dims=(2, 3)))
@@ -224,12 +224,12 @@ function test_open_boundary_condition_mass_conservation(arch, FT, boundary_condi
     Δt = 0.1 * minimum_zspacing(grid) / maximum(abs, u)
     simulation = Simulation(model; stop_time=1, Δt, verbose=false)
 
-    ∇u = Field(∂x(u) + ∂y(v) + ∂z(w))
-    ∫∇u = Field(Integral(∇u))
+    δu = Field(∂x(u) + ∂y(v) + ∂z(w))
+    ∫δu = Field(Integral(δu))
 
     run!(simulation)
-    compute!(∫∇u)
-    @test (@allowscalar ∫∇u[]) ≈ 0 atol=5*eps(FT)
+    compute!(∫δu)
+    @test (@allowscalar ∫δu[]) ≈ 0 atol=5*eps(FT)
 end
 
 test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
