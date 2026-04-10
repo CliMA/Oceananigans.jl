@@ -935,4 +935,91 @@ end
         @test restore_prognostic_state!(of, :some_state) === of
         @test restore_prognostic_state!(cf, nothing) === cf
     end
+
+    @testset "Field slicing" begin
+        @info "  Testing field slicing..."
+
+        for arch in archs, FT in float_types
+            grid = RectilinearGrid(arch, FT, size=(4, 5, 6), x=(0, 1), y=(0, 1), z=(0, 1))
+            Nx, Ny, Nz = size(grid)
+
+            c = CenterField(grid)
+            set!(c, (x, y, z) -> x + 10y + 100z)
+
+            @testset "z-slice [$FT, $(typeof(arch))]" begin
+                s = slice(c, :, :, Nz)
+                @test location(s) == (Center, Center, Nothing)
+                @test size(s) == (Nx, Ny, 1)
+                @test Array(interior(s, :, :, 1)) ≈ Array(interior(c, :, :, Nz))
+            end
+
+            @testset "y-slice [$FT, $(typeof(arch))]" begin
+                s = slice(c, :, 1, :)
+                @test location(s) == (Center, Nothing, Center)
+                @test size(s) == (Nx, 1, Nz)
+                @test Array(interior(s, :, 1, :)) ≈ Array(interior(c, :, 1, :))
+            end
+
+            @testset "x-slice [$FT, $(typeof(arch))]" begin
+                s = slice(c, 2, :, :)
+                @test location(s) == (Nothing, Center, Center)
+                @test size(s) == (1, Ny, Nz)
+                @test Array(interior(s, 1, :, :)) ≈ Array(interior(c, 2, :, :))
+            end
+
+            @testset "Double reduction [$FT, $(typeof(arch))]" begin
+                s = slice(c, 2, :, Nz)
+                @test location(s) == (Nothing, Center, Nothing)
+                @test size(s) == (1, Ny, 1)
+                @test Array(interior(s, 1, :, 1)) ≈ Array(interior(c, 2, :, Nz))
+            end
+
+            @testset "Triple reduction [$FT, $(typeof(arch))]" begin
+                s = slice(c, 2, 3, Nz)
+                @test location(s) == (Nothing, Nothing, Nothing)
+                @test size(s) == (1, 1, 1)
+                @test Array(interior(s)) ≈ Array(interior(c, 2:2, 3:3, Nz:Nz))
+            end
+
+            @testset "Data sharing [$FT, $(typeof(arch))]" begin
+                s = slice(c, :, :, Nz)
+                original_val = Array(interior(c, 1:1, 1:1, Nz:Nz))[1]
+                interior(s)[1, 1, 1] = FT(-999)
+                @test Array(interior(c, 1:1, 1:1, Nz:Nz))[1] == FT(-999)
+                # Restore
+                interior(c)[1, 1, Nz] = original_val
+            end
+
+            @testset "No-op with all Colons [$FT, $(typeof(arch))]" begin
+                @test slice(c, :, :, :) === c
+            end
+
+            @testset "Face field slicing [$FT, $(typeof(arch))]" begin
+                u = XFaceField(grid)
+                set!(u, (x, y, z) -> x + z)
+                s = slice(u, :, :, Nz)
+                @test location(s) == (Face, Center, Nothing)
+                @test Array(interior(s, :, :, 1)) ≈ Array(interior(u, :, :, Nz))
+            end
+
+            @testset "Windowed field slicing [$FT, $(typeof(arch))]" begin
+                w = view(c, :, 2:4, :)
+                s = slice(w, :, :, Nz)
+                @test location(s) == (Center, Center, Nothing)
+                @test size(s) == (Nx, 3, 1)
+                ci = Array(interior(c, :, 2:4, Nz:Nz))
+                si = Array(interior(s))
+                @test si ≈ ci
+            end
+
+            @testset "Slicing an already-reduced field [$FT, $(typeof(arch))]" begin
+                r = Field{Center, Center, Nothing}(grid)
+                set!(r, (x, y) -> x + 10y)
+                s = slice(r, 2, :, :)
+                @test location(s) == (Nothing, Center, Nothing)
+                @test size(s) == (1, Ny, 1)
+                @test Array(interior(s, 1, :, 1)) ≈ Array(interior(r, 2, :, 1))
+            end
+        end
+    end
 end
