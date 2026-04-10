@@ -229,7 +229,6 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
                 serializeproperty!(file, "timeseries/$name/serialized/boundary_conditions", boundary_conditions(field))
             catch
             end
-        catch
         end
     end
 
