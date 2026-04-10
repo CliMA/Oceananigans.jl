@@ -220,8 +220,9 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
     for (name, field) in pairs(outputs)
         jldopen(filepath, "a+"; jld2_kw...) do file
             try 
-                serializeproperty!(file, "timeseries/$name/serialized/grid", field.grid)
-            catch 
+                serializeproperty!(file, "timeseries/$name/serialized/grid", grid(field))
+            catch err
+                @warn "error $err thrown when trying to serialize the grid of $(summary(field))"
             end
             try
                 file["timeseries/$name/serialized/location"] = location(field); 

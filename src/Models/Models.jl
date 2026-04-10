@@ -24,6 +24,7 @@ using Oceananigans.Units: Time
 
 import Oceananigans: initialize!
 import Oceananigans.Architectures: architecture
+import Oceananigans.Grids: grid
 import Oceananigans.Fields: set!
 import Oceananigans.Solvers: iteration
 import Oceananigans.OutputWriters: default_included_properties
@@ -39,6 +40,7 @@ import Oceananigans.TimeSteppers: reset!
 iteration(model::AbstractModel) = model.clock.iteration
 Base.time(model::AbstractModel) = model.clock.time
 Base.eltype(model::AbstractModel) = Float64
+grid(model::AbstractModel) = model.grid
 architecture(model::AbstractModel) = nothing
 initialize!(model::AbstractModel) = nothing
 total_velocities(model::AbstractModel) = nothing

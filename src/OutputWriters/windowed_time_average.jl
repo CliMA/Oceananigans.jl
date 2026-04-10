@@ -6,6 +6,7 @@ using Dates: Period, Second, value
 
 import Oceananigans: run_diagnostic!, prognostic_state, restore_prognostic_state!, initialize!
 import Oceananigans.Utils: TimeInterval, SpecifiedTimes
+import Oceananigans.Grids: grid
 import Oceananigans.Fields: location, indices, set!
 
 """
@@ -190,7 +191,8 @@ end
 get_default_time(schedule::AveragedTimeInterval) = zero(typeof(schedule.interval))
 get_default_time(schedule::AveragedSpecifiedTimes) = zero(eltype(schedule.specified_times.times))
 
-# Time-averaging doesn't change spatial location
+# Time-averaging doesn't change spatial location or grid
+grid(wta::WindowedTimeAverage) = grid(wta.operand)
 location(wta::WindowedTimeAverage) = location(wta.operand)
 indices(wta::WindowedTimeAverage) = indices(wta.operand)
 set!(u::Field, wta::WindowedTimeAverage) = set!(u, wta.result)
