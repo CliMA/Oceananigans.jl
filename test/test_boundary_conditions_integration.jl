@@ -212,6 +212,35 @@ function test_targeted_mass_flux_conservation(arch, FT; N = 4)
     @test Array(interior(east_flux))[1, 1, 1] ≈ Q atol = N^2 * eps(FT)
 end
 
+function test_hydrostatic_targeted_mass_flux_achieved(arch, FT; N = 4)
+    # 2D xy hydrostatic model with open west/east BCs.
+    # West boundary has a targeted flux; east is in the pool (nonhydrostatic-like correction
+    # would apply, but for hydrostatic there is no pool correction — η adjusts instead).
+    # We verify the targeted west boundary achieves its prescribed flux.
+    grid = RectilinearGrid(arch, FT, size=(N, N, 1), extent=(1, 1, 1),
+                           topology=(Bounded, Bounded, Bounded))
+
+    Q_target = FT(0.5)
+    u_bcs = FieldBoundaryConditions(
+        west = OpenBoundaryCondition(1; scheme = PerturbationAdvection(; inflow_timescale=1e-1, target_mass_flux=Q_target)),
+        east = OpenBoundaryCondition(1; scheme = PerturbationAdvection(; inflow_timescale=1e-1))
+    )
+    model = HydrostaticFreeSurfaceModel(grid; boundary_conditions=(; u=u_bcs),
+                                        momentum_advection=nothing, tracer_advection=nothing,
+                                        buoyancy=nothing, tracers=(), coriolis=nothing,
+                                        free_surface=ExplicitFreeSurface())
+    uᵢ(x, y, z) = 1 + 1e-2 * rand()
+    set!(model, u=uᵢ)
+
+    Δt = 0.1 * minimum_xspacing(grid) / 2
+    run!(Simulation(model; stop_time=1, Δt, verbose=false))
+
+    u = model.velocities.u
+    west_flux = Field(Integral(view(u, 1, :, :), dims=(2, 3)))
+    compute!(west_flux)
+    @test Array(interior(west_flux))[1, 1, 1] ≈ Q_target atol = N^2 * eps(FT)
+end
+
 function test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions; N = 8)
     grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
                            topology=(Bounded, Bounded, Bounded))
@@ -433,6 +462,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions)
             test_targeted_mass_flux_achieved(arch, FT)
             test_targeted_mass_flux_conservation(arch, FT)
+            test_hydrostatic_targeted_mass_flux_achieved(arch, FT)
         end
     end
 
