@@ -6,34 +6,37 @@
 ##### cache them in a global dictionary keyed by the MPI comm.
 #####
 
-const _nccl_subcomm_cache = Dict{MPI.Comm, NCCL.Communicator}()
+const nccl_subcomm_cache = Dict{MPI.Comm, NCCL.Communicator}()
+const nccl_subcomm_lock = ReentrantLock()
 
-function _get_nccl_subcomm(mpi_subcomm)
-    get!(_nccl_subcomm_cache, mpi_subcomm) do
-        create_nccl_comm_from_mpi(mpi_subcomm)
+function get_nccl_subcomm(mpi_subcomm)
+    lock(nccl_subcomm_lock) do
+        get!(nccl_subcomm_cache, mpi_subcomm) do
+            create_nccl_comm_from_mpi(mpi_subcomm)
+        end
     end
 end
 
 function DC.transpose_y_to_x!(arch::NCCLDistributedArchitecture, pf::DC.TransposableField)
-    nccl_comm = _get_nccl_subcomm(pf.comms.xy)
+    nccl_comm = get_nccl_subcomm(pf.comms.xy)
     nccl_transpose_y_to_x!(pf, nccl_comm)
     return nothing
 end
 
 function DC.transpose_x_to_y!(arch::NCCLDistributedArchitecture, pf::DC.TransposableField)
-    nccl_comm = _get_nccl_subcomm(pf.comms.xy)
+    nccl_comm = get_nccl_subcomm(pf.comms.xy)
     nccl_transpose_x_to_y!(pf, nccl_comm)
     return nothing
 end
 
 function DC.transpose_z_to_y!(arch::NCCLDistributedArchitecture, pf::DC.TransposableField)
-    nccl_comm = _get_nccl_subcomm(pf.comms.yz)
+    nccl_comm = get_nccl_subcomm(pf.comms.yz)
     nccl_transpose_z_to_y!(pf, nccl_comm)
     return nothing
 end
 
 function DC.transpose_y_to_z!(arch::NCCLDistributedArchitecture, pf::DC.TransposableField)
-    nccl_comm = _get_nccl_subcomm(pf.comms.yz)
+    nccl_comm = get_nccl_subcomm(pf.comms.yz)
     nccl_transpose_y_to_z!(pf, nccl_comm)
     return nothing
 end

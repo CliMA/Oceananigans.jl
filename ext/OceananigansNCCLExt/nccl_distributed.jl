@@ -87,6 +87,7 @@ sync_device!(::NCCLDistributedArchitecture) = nothing
 
 # Storage for pending async unpacks: (data, buffers, grid, side) tuples
 const pending_unpacks = Vector{Any}()
+const pending_unpacks_lock = ReentrantLock()
 
 function DC.distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc,
                                          grid::NCCLDistributedGrid, buffers, args...;
@@ -112,7 +113,9 @@ function DC.distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, l
         NCCL.groupEnd()
 
         CUDA.record(communicator.sync_event, communicator.comm_stream)
-        push!(pending_unpacks, (; c, buffers, grid, side=buffer_side))
+        lock(pending_unpacks_lock) do
+            push!(pending_unpacks, (; c, buffers, grid, side=buffer_side))
+        end
         return nothing
     end
 
@@ -145,15 +148,17 @@ end
 #####
 
 function synchronize_communication!(field::NCCLDistributedField)
-    if !isempty(pending_unpacks)
-        arch = DC.architecture(field.grid)
-        # Make default stream wait for comm_stream completion
-        CUDA.cuStreamWaitEvent(CUDA.stream(), arch.communicator.sync_event, UInt32(0))
+    lock(pending_unpacks_lock) do
+        if !isempty(pending_unpacks)
+            arch = DC.architecture(field.grid)
+            # Make default stream wait for comm_stream completion
+            CUDA.cuStreamWaitEvent(CUDA.stream(), arch.communicator.sync_event, UInt32(0))
 
-        for pending in pending_unpacks
-            DC.recv_from_buffers!(pending.c, pending.buffers, pending.grid, pending.side)
+            for pending in pending_unpacks
+                DC.recv_from_buffers!(pending.c, pending.buffers, pending.grid, pending.side)
+            end
+            empty!(pending_unpacks)
         end
-        empty!(pending_unpacks)
     end
     return nothing
 end

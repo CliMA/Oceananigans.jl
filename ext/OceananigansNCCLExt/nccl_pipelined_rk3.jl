@@ -123,7 +123,10 @@ function update_state!(model::NCCLNonhydrostaticModel, callbacks=[])
     update_boundary_conditions!(Oceananigans.fields(model), model)
 
     # Skip fill_halo_regions! if halos were already started by pipelined rk3_substep!
-    if isempty(pending_unpacks)
+    halos_pending = lock(pending_unpacks_lock) do
+        !isempty(pending_unpacks)
+    end
+    if !halos_pending
         fill_halo_regions!(merge(model.velocities, model.tracers), model.clock,
                            Oceananigans.fields(model); fill_open_bcs=false, async=true)
     end
