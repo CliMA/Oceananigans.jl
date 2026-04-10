@@ -1,11 +1,12 @@
 using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ
 using Oceananigans: defaults
 
-struct PerturbationAdvection{FT, D}
+struct PerturbationAdvection{FT, D, TF}
     inflow_timescale :: FT
     outflow_timescale :: FT
     gravity_wave_speed :: FT
     density :: D
+    target_mass_flux :: TF
 end
 
 """
@@ -92,29 +93,38 @@ boundary flow.
   divides by `density` before radiation and multiplies back after. This is required
   for models with density-weighted prognostic variables (e.g., anelastic models with
   prognostic ρu, ρθ). Default: `nothing` (no conversion).
+- `target_mass_flux`: target net volume flux (m³/s) through this boundary, measured
+  as the integral of the normal velocity in the positive coordinate direction.
+  When set, the boundary velocity is corrected each pressure step to achieve exactly
+  this flux before the global pool correction is applied to the remaining boundaries.
+  Default: `nothing` (boundary participates in the global pool correction instead).
 """
 function PerturbationAdvection(FT = defaults.FloatType;
                                outflow_timescale = Inf,
                                inflow_timescale = 0,
                                gravity_wave_speed = 0,
-                               density = nothing)
+                               density = nothing,
+                               target_mass_flux = nothing)
     inflow_timescale = convert(FT, inflow_timescale)
     outflow_timescale = convert(FT, outflow_timescale)
     gravity_wave_speed = convert(FT, gravity_wave_speed)
-    return PerturbationAdvection(inflow_timescale, outflow_timescale, gravity_wave_speed, density)
+    tmf = isnothing(target_mass_flux) ? nothing : convert(FT, target_mass_flux)
+    return PerturbationAdvection(inflow_timescale, outflow_timescale, gravity_wave_speed, density, tmf)
 end
 
 # Support 2-positional-arg constructor
 PerturbationAdvection(inflow_timescale, outflow_timescale) =
-    PerturbationAdvection(inflow_timescale, outflow_timescale, zero(inflow_timescale), nothing)
+    PerturbationAdvection(inflow_timescale, outflow_timescale, zero(inflow_timescale), nothing, nothing)
 
 Adapt.adapt_structure(to, pe::PerturbationAdvection) =
     PerturbationAdvection(adapt(to, pe.inflow_timescale),
                           adapt(to, pe.outflow_timescale),
                           adapt(to, pe.gravity_wave_speed),
-                          adapt(to, pe.density))
+                          adapt(to, pe.density),
+                          adapt(to, pe.target_mass_flux))
 
 const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
+const TargetedPAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection{<:Any, <:Any, <:Number}}}
 
 # Helper to convert between density-weighted and intensive fields.
 # When density is nothing, these are no-ops.

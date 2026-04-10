@@ -48,6 +48,9 @@ The order of operations for explicit free surfaces is:
     u, v, _ = model.velocities
     fill_halo_regions!((u, v), model.clock, fields(model); async=true)
 
+    # Enforce targeted open boundary fluxes (free surface accommodates any net imbalance)
+    @apply_regionally enforce_targeted_open_boundary_fluxes!(model, model.boundary_mass_fluxes)
+
     @apply_regionally begin
         # compute tracer tendencies
         compute_tracer_tendencies!(model)
@@ -100,6 +103,9 @@ For implicit free surfaces, a predictor-corrector approach is used:
     # Mask and fill velocity halos
     u, v, _ = model.velocities
     fill_halo_regions!((u, v), model.clock, fields(model))
+
+    # Enforce targeted open boundary fluxes (free surface accommodates any net imbalance)
+    @apply_regionally enforce_targeted_open_boundary_fluxes!(model, model.boundary_mass_fluxes)
 
     @apply_regionally begin
         compute_transport_velocities!(model, free_surface)
