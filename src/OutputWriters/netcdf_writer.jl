@@ -66,8 +66,12 @@ trilocation_dim_name(var_name, grid::ImmersedBoundaryGrid, args...) = trilocatio
 dimension_name_generator_free_surface(dimension_name_generator, var_name, grid, LX, LY, LZ, dim) = dimension_name_generator(var_name, grid, LX, LY, LZ, dim)
 dimension_name_generator_free_surface(dimension_name_generator, var_name, grid, LX, LY, LZ, dim::Val{:z}) = dimension_name_generator(var_name, grid, LX, LY, LZ, dim) * "_displacement"
 
-mutable struct NetCDFWriter{G, D, O, T, A, FS, DN, DT} <: AbstractOutputWriter
-    grid :: G
+add_grid_suffix(name, grid_index) = isempty(name) ? name : name * "_grid$(grid_index)"
+add_grid_suffix(name, ::Nothing) = name
+
+mutable struct NetCDFWriter{G, GM, D, O, T, A, FS, DN, DT} <: AbstractOutputWriter
+    grids :: G
+    output_grid_map :: GM
     filepath :: String
     dataset :: D
     outputs :: O
@@ -93,7 +97,6 @@ end
     NetCDFWriter(model::AbstractModel, outputs;
                  filename,
                  schedule,
-                 grid = model.grid,
                  dir = ".",
                  array_type = Array{Float32},
                  indices = (:, :, :),
