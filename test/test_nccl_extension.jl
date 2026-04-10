@@ -10,9 +10,6 @@ if child_arch isa CPU
     @info "NCCL extension tests require GPU — skipping on CPU."
 else
 
-using Pkg
-Pkg.add("NCCL")
-
 include("dependencies_for_poisson_solvers.jl")
 
 using NCCL
