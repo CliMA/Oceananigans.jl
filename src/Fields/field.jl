@@ -416,8 +416,7 @@ true
 ```
 """
 function slice(field::Field, i, j, k)
-    (i isa Int) + (j isa Int) + (k isa Int) == 0 && return field
-
+    
     grid = field.grid
     old_loc = instantiated_location(field)
     new_loc = (slice_loc(i, old_loc[1]),
@@ -451,6 +450,7 @@ function slice(field::Field, i, j, k)
     return Field(new_loc, grid, data, bcs, effective_indices, nothing, nothing)
 end
 
+slice(field::Field, ::Colon, ::Colon, ::Colon) = field
 slice(field::Field, i)    = slice(field, i, :, :)
 slice(field::Field, i, j) = slice(field, i, j, :)
 
