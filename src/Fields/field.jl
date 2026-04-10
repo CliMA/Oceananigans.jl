@@ -375,13 +375,13 @@ Base.view(f::Field, i, j) = view(f, i, j, :)
 ##### Reduced-dimension slicing
 #####
 
-_slice_loc(::Colon, loc) = loc
-_slice_loc(::Int, loc) = nothing
+slice_loc(::Colon, loc) = loc
+slice_loc(::Int, loc) = nothing
 
 # For Colon dimensions, preserve the field's actual indices (handles windowed fields);
 # for Int dimensions, convert to a UnitRange.
-_slice_index(::Colon,  field_index) = field_index
-_slice_index(idx::Int, field_index) = idx:idx
+slice_index(::Colon,  field_index) = field_index
+slice_index(idx::Int, field_index) = idx:idx
 
 """
     slice(field::Field, i, j, k)
@@ -420,18 +420,18 @@ function slice(field::Field, i, j, k)
 
     grid = field.grid
     old_loc = instantiated_location(field)
-    new_loc = (_slice_loc(i, old_loc[1]),
-               _slice_loc(j, old_loc[2]),
-               _slice_loc(k, old_loc[3]))
+    new_loc = (slice_loc(i, old_loc[1]),
+               slice_loc(j, old_loc[2]),
+               slice_loc(k, old_loc[3]))
 
     halo = halo_size(grid)
     topo = map(instantiate, topology(grid))
 
     # Effective indices: Colon dims keep the field's own indices (may be windowed),
     # Int dims become a UnitRange.
-    ei = _slice_index(i, field.indices[1])
-    ej = _slice_index(j, field.indices[2])
-    ek = _slice_index(k, field.indices[3])
+    ei = slice_index(i, field.indices[1])
+    ej = slice_index(j, field.indices[2])
+    ek = slice_index(k, field.indices[3])
     effective_indices = (ei, ej, ek)
 
     # Compute parent (raw array) indices using the original field location
