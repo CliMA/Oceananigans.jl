@@ -280,7 +280,7 @@ function default_dimension_attributes(grid::RectilinearGrid, dim_name_generator;
                                            Δxᶜᵃᵃ_name => Δxᶜᵃᵃ_attrs,
                                            Δyᵃᶠᵃ_name => Δyᵃᶠᵃ_attrs,
                                            Δyᵃᶜᵃ_name => Δyᵃᶜᵃ_attrs)
-    
+
     horizontal_dimension_attributes = suffix_grid_keys(horizontal_dimension_attributes, grid_index)
     vertical_dimension_attributes   = default_vertical_dimension_attributes(grid.z, dim_name_generator; grid_index)
 
@@ -365,7 +365,7 @@ function default_dimension_attributes(grid::LatitudeLongitudeGrid, dim_name_gene
                                            Δyᶜᶠᵃ_name => Δyᶜᶠᵃ_attrs,
                                            Δyᶜᶜᵃ_name => Δyᶜᶜᵃ_attrs)
 
-    horizontal_dimension_attributes = suffix_grid_keys(horizontal_dimension_attributes, grid_index)                                       
+    horizontal_dimension_attributes = suffix_grid_keys(horizontal_dimension_attributes, grid_index)
     vertical_dimension_attributes   = default_vertical_dimension_attributes(grid.z, dim_name_generator; grid_index)
 
     return merge(base_dimension_attributes,

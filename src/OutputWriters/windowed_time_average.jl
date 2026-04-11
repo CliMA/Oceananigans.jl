@@ -81,7 +81,7 @@ JLD2Writer scheduled on TimeInterval(4 days):
 ├── filepath: averaged_velocity_data.jld2
 ├── 3 outputs: (u, v, w) averaged on AveragedTimeInterval(window=2 days, stride=2, interval=4 days)
 ├── array_type: Array{Float32}
-├── including: [:grid, :coriolis, :buoyancy, :closure]
+├── including: [:coriolis, :buoyancy, :closure]
 ├── file_splitting: NoFileSplitting
 └── file size: 0 bytes (file not yet created)
 ```
