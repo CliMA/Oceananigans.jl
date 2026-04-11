@@ -206,15 +206,15 @@ default_nan_checker(::OnlyParticleTrackingModel) = nothing
 import Oceananigans.OutputWriters: default_included_properties,
                                    checkpointer_address
 
-default_included_properties(::NonhydrostaticModel) = [:grid, :coriolis, :buoyancy, :closure]
-default_included_properties(::HydrostaticFreeSurfaceModel) = [:grid, :coriolis, :buoyancy, :closure]
-default_included_properties(::ShallowWaterModel) = [:grid, :coriolis, :closure]
+default_included_properties(::NonhydrostaticModel) = [:coriolis, :buoyancy, :closure]
+default_included_properties(::HydrostaticFreeSurfaceModel) = [:coriolis, :buoyancy, :closure]
+default_included_properties(::ShallowWaterModel) = [:coriolis, :closure]
 
 checkpointer_address(::ShallowWaterModel) = "ShallowWaterModel"
 checkpointer_address(::NonhydrostaticModel) = "NonhydrostaticModel"
 checkpointer_address(::HydrostaticFreeSurfaceModel) = "HydrostaticFreeSurfaceModel"
 
-default_included_properties(::OceananigansModels) = [:grid]
+default_included_properties(::OceananigansModels) = Symbol[]
 
 # Specialized output attributes for velocity and tracer fields
 include("output_attributes.jl")
