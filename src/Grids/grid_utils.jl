@@ -283,6 +283,15 @@ Base.show(io::IO, dir::AbstractDirection) = print(io, summary(dir))
 
 size_summary(grid::AbstractGrid) = size_summary(size(grid))
 size_summary(sz) = string(sz[1], "×", sz[2], "×", sz[3])
+
+function Utils.prettysummary(σ::BFloat16, plus=false)
+    prefix = if plus && σ >= zero(σ)
+        "+"
+    else
+        ""
+    end
+    @sprintf "%s%g" prefix σ
+end
 Utils.prettysummary(σ::AbstractFloat, plus=false) = writeshortest(σ, plus, false, true, -1, UInt8('e'), false, UInt8('.'), false, true)
 
 domain_summary(topo::Flat, name, ::Nothing) = "Flat $name"

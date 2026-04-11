@@ -31,6 +31,7 @@ using GPUArraysCore: @allowscalar
 using OffsetArrays: OffsetArray
 using Printf: @sprintf
 using DocStringExtensions: FIELDS
+using BFloat16s: BFloat16
 
 using Oceananigans: Oceananigans
 using Oceananigans.Utils: Utils
