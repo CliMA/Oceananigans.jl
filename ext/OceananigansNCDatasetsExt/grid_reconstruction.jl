@@ -61,7 +61,7 @@ Gather the grid metrics for the grid. Not strictly necessary for grid reconstruc
 implemented and used as a quality of life improvement since it gives users easy access to relevant grid
 metrics when opening the NetCDF file.
 """
-function gather_grid_metrics(grid::RectilinearGrid, indices, dim_name_generator)
+function gather_grid_metrics(grid::RectilinearGrid, indices, dim_name_generator; grid_index=nothing)
     TX, TY, TZ = topology(grid)
 
     metrics = Dict()
@@ -99,10 +99,10 @@ function gather_grid_metrics(grid::RectilinearGrid, indices, dim_name_generator)
         metrics[Δzᵃᵃᶜ_name] = Δzᵃᵃᶜ_field
     end
 
-    return metrics
+    return suffix_grid_keys(metrics, grid_index)
 end
 
-function gather_grid_metrics(grid::LatitudeLongitudeGrid, indices, dim_name_generator)
+function gather_grid_metrics(grid::LatitudeLongitudeGrid, indices, dim_name_generator; grid_index=nothing)
     TΛ, TΦ, TZ = topology(grid)
 
     metrics = Dict()
@@ -170,14 +170,14 @@ function gather_grid_metrics(grid::LatitudeLongitudeGrid, indices, dim_name_gene
         metrics[Δzᵃᵃᶜ_name] = Δzᵃᵃᶜ_field
     end
 
-    return metrics
+    return suffix_grid_keys(metrics, grid_index)
 end
 
 #####
 ##### Gathering of immersed boundary fields
 #####
 
-gather_grid_metrics(grid::ImmersedBoundaryGrid, args...) = gather_grid_metrics(grid.underlying_grid, args...)
+gather_grid_metrics(grid::ImmersedBoundaryGrid, args...; kw...) = gather_grid_metrics(grid.underlying_grid, args...; kw...)
 
 # TODO: Proper masks for 2D models?
 flat_loc(T, L) = T == Flat ? nothing : L
@@ -191,32 +191,36 @@ Gather the construction parameters for the immersed boundary of the grid. This i
 strictly necessary for grid reconstruction, but it is implemented and used a quality of life improvement
 since it gives users easy access to relevant immersed boundary parameters when opening the NetCDF file.
 """
-function gather_immersed_boundary(grid::PCBorGFBIBG, indices, dim_name_generator)
+function gather_immersed_boundary(grid::PCBorGFBIBG, indices, dim_name_generator; grid_index=nothing)
     op_peripheral_nodes_ccc = KernelFunctionOperation{Center, Center, Center}(peripheral_node, grid, Center(), Center(), Center())
     op_peripheral_nodes_fcc = KernelFunctionOperation{Face, Center, Center}(peripheral_node, grid, Face(), Center(), Center())
     op_peripheral_nodes_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
     op_peripheral_nodes_ccf = KernelFunctionOperation{Center, Center, Face}(peripheral_node, grid, Center(), Center(), Face())
 
-    return Dict("bottom_height" => Field(grid.immersed_boundary.bottom_height; indices),
-                "peripheral_nodes_ccc" => Field(op_peripheral_nodes_ccc; indices),
-                "peripheral_nodes_fcc" => Field(op_peripheral_nodes_fcc; indices),
-                "peripheral_nodes_cfc" => Field(op_peripheral_nodes_cfc; indices),
-                "peripheral_nodes_ccf" => Field(op_peripheral_nodes_ccf; indices))
+    ib_vars = Dict("bottom_height" => Field(grid.immersed_boundary.bottom_height; indices),
+                   "peripheral_nodes_ccc" => Field(op_peripheral_nodes_ccc; indices),
+                   "peripheral_nodes_fcc" => Field(op_peripheral_nodes_fcc; indices),
+                   "peripheral_nodes_cfc" => Field(op_peripheral_nodes_cfc; indices),
+                   "peripheral_nodes_ccf" => Field(op_peripheral_nodes_ccf; indices))
+
+    return suffix_grid_keys(ib_vars, grid_index)
 end
 
 const GFBoundaryIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFittedBoundary}
 
-function gather_immersed_boundary(grid::GFBoundaryIBG, indices, dim_name_generator)
+function gather_immersed_boundary(grid::GFBoundaryIBG, indices, dim_name_generator; grid_index=nothing)
     op_peripheral_nodes_ccc = KernelFunctionOperation{Center, Center, Center}(peripheral_node, grid, Center(), Center(), Center())
     op_peripheral_nodes_fcc = KernelFunctionOperation{Face, Center, Center}(peripheral_node, grid, Face(), Center(), Center())
     op_peripheral_nodes_cfc = KernelFunctionOperation{Center, Face, Center}(peripheral_node, grid, Center(), Face(), Center())
     op_peripheral_nodes_ccf = KernelFunctionOperation{Center, Center, Face}(peripheral_node, grid, Center(), Center(), Face())
 
-    return Dict("mask" => Field(grid.immersed_boundary.mask; indices),
-                "peripheral_nodes_ccc" => Field(op_peripheral_nodes_ccc; indices),
-                "peripheral_nodes_fcc" => Field(op_peripheral_nodes_fcc; indices),
-                "peripheral_nodes_cfc" => Field(op_peripheral_nodes_cfc; indices),
-                "peripheral_nodes_ccf" => Field(op_peripheral_nodes_ccf; indices))
+    ib_vars = Dict("mask" => Field(grid.immersed_boundary.mask; indices),
+                   "peripheral_nodes_ccc" => Field(op_peripheral_nodes_ccc; indices),
+                   "peripheral_nodes_fcc" => Field(op_peripheral_nodes_fcc; indices),
+                   "peripheral_nodes_cfc" => Field(op_peripheral_nodes_cfc; indices),
+                   "peripheral_nodes_ccf" => Field(op_peripheral_nodes_ccf; indices))
+
+    return suffix_grid_keys(ib_vars, grid_index)
 end
 
 
@@ -248,8 +252,8 @@ function netcdf_grid_constructor_info(grid::ImmersedBoundaryGrid)
     return underlying_grid_args, underlying_grid_kwargs, immersed_grid_args, grid_metadata
 end
 
-function write_immersed_boundary_data!(ds, grid::ImmersedBoundaryGrid, immersed_grid_args)
-    group_name = "immersed_grid_reconstruction_args"
+function write_immersed_boundary_data!(ds, grid::ImmersedBoundaryGrid, immersed_grid_args, prefix)
+    group_name = "$(prefix)_immersed_grid_reconstruction_args"
     if (grid.immersed_boundary isa GridFittedBottom) || (grid.immersed_boundary isa PartialCellBottom)
         bottom_height = pop!(immersed_grid_args, :bottom_height)
         ibg_group = defGroup(ds, group_name; attrib=convert_for_netcdf(immersed_grid_args))
@@ -264,68 +268,71 @@ function write_immersed_boundary_data!(ds, grid::ImmersedBoundaryGrid, immersed_
     return ds
 end
 
-write_immersed_boundary_data!(ds, grid, immersed_grid_args) = nothing
+write_immersed_boundary_data!(ds, grid, immersed_grid_args, prefix) = nothing
 
-function write_grid_reconstruction_data!(ds, grid; array_type=Array{eltype(grid)}, deflatelevel=0)
+function write_grid_reconstruction_data!(ds, grid, grid_index; array_type=Array{eltype(grid)}, deflatelevel=0)
     underlying_grid_args, underlying_grid_kwargs, immersed_grid_args, grid_metadata = netcdf_grid_constructor_info(grid)
     underlying_grid_args, underlying_grid_kwargs, grid_metadata = map(convert_for_netcdf, (underlying_grid_args, underlying_grid_kwargs, grid_metadata))
 
-    defGroup(ds, "underlying_grid_reconstruction_args"; attrib = underlying_grid_args)
-    defGroup(ds, "underlying_grid_reconstruction_kwargs"; attrib = underlying_grid_kwargs)
-    defGroup(ds, "grid_reconstruction_metadata"; attrib = grid_metadata)
+    prefix = "grid_$(grid_index)"
+    defGroup(ds, "$(prefix)_underlying_grid_reconstruction_args"; attrib = underlying_grid_args)
+    defGroup(ds, "$(prefix)_underlying_grid_reconstruction_kwargs"; attrib = underlying_grid_kwargs)
+    defGroup(ds, "$(prefix)_grid_reconstruction_metadata"; attrib = grid_metadata)
 
-    write_immersed_boundary_data!(ds, grid, immersed_grid_args)
+    write_immersed_boundary_data!(ds, grid, immersed_grid_args, prefix)
 
     return ds
 end
 
-function reconstruct_grid(filename::String)
+function reconstruct_grid(filename::String; grid_index=1, architecture=nothing)
     ds = NCDataset(filename, "r")
-    grid = reconstruct_grid(ds)
+    grid = reconstruct_grid(ds; grid_index, architecture)
     close(ds)
     return grid
 end
 
-function reconstruct_immersed_boundary(ds, ::Val{:GridFittedBoundary})
-    ibg_group = ds.group["immersed_grid_reconstruction_args"]
+function reconstruct_immersed_boundary(ds, ::Val{:GridFittedBoundary}, prefix)
+    ibg_group = ds.group["$(prefix)_immersed_grid_reconstruction_args"]
     mask = Array(ibg_group["mask"])
     return GridFittedBoundary(mask)
 end
 
-function reconstruct_immersed_boundary(ds, ::Val{:GridFittedBottom})
-    ibg_group = ds.group["immersed_grid_reconstruction_args"]
+function reconstruct_immersed_boundary(ds, ::Val{:GridFittedBottom}, prefix)
+    ibg_group = ds.group["$(prefix)_immersed_grid_reconstruction_args"]
     bottom_height = Array(ibg_group["bottom_height"])
     immersed_condition = ibg_group.attrib["immersed_condition"] |> materialize_from_netcdf
     return GridFittedBottom(bottom_height, immersed_condition)
 end
 
-function reconstruct_immersed_boundary(ds, ::Val{:PartialCellBottom})
-    ibg_group = ds.group["immersed_grid_reconstruction_args"]
+function reconstruct_immersed_boundary(ds, ::Val{:PartialCellBottom}, prefix)
+    ibg_group = ds.group["$(prefix)_immersed_grid_reconstruction_args"]
     bottom_height = Array(ibg_group["bottom_height"])
     minimum_fractional_cell_height = ibg_group.attrib["minimum_fractional_cell_height"] |> materialize_from_netcdf
     return PartialCellBottom(bottom_height, minimum_fractional_cell_height)
 end
 
-reconstruct_immersed_boundary(ds, immersed_boundary_type) = error("Unsupported immersed boundary type: $immersed_boundary_type")
+reconstruct_immersed_boundary(ds, immersed_boundary_type, prefix) = error("Unsupported immersed boundary type: $immersed_boundary_type")
 
-function reconstruct_immersed_boundary(ds)
-    grid_reconstruction_metadata = ds.group["grid_reconstruction_metadata"].attrib
+function reconstruct_immersed_boundary(ds, prefix)
+    grid_reconstruction_metadata = ds.group["$(prefix)_grid_reconstruction_metadata"].attrib
     immersed_boundary_type = grid_reconstruction_metadata[:immersed_boundary_type]
-    immersed_boundary = reconstruct_immersed_boundary(ds, Val(Symbol(immersed_boundary_type)))
+    immersed_boundary = reconstruct_immersed_boundary(ds, Val(Symbol(immersed_boundary_type)), prefix)
     return immersed_boundary
 end
 
-function reconstruct_grid(ds; architecture=nothing)
+function reconstruct_grid(ds; grid_index=1, architecture=nothing)
+    prefix = "grid_$(grid_index)"
+
     # Read back the grid reconstruction metadata
-    underlying_grid_reconstruction_args   = ds.group["underlying_grid_reconstruction_args"].attrib |> Dict
+    underlying_grid_reconstruction_args   = ds.group["$(prefix)_underlying_grid_reconstruction_args"].attrib |> Dict
     if !isnothing(architecture) # If architecture is specified, force it into the underlying grid reconstruction arguments before materializing
         underlying_grid_reconstruction_args["architecture"] = architecture
     end
     underlying_grid_reconstruction_args   = underlying_grid_reconstruction_args |> materialize_from_netcdf
-    underlying_grid_reconstruction_kwargs = ds.group["underlying_grid_reconstruction_kwargs"].attrib |> materialize_from_netcdf
-    grid_reconstruction_metadata          = ds.group["grid_reconstruction_metadata"].attrib |> materialize_from_netcdf
+    underlying_grid_reconstruction_kwargs = ds.group["$(prefix)_underlying_grid_reconstruction_kwargs"].attrib |> materialize_from_netcdf
+    grid_reconstruction_metadata          = ds.group["$(prefix)_grid_reconstruction_metadata"].attrib |> materialize_from_netcdf
 
-    # Pop out infomration about the underlying grid
+    # Pop out information about the underlying grid
     underlying_grid_type = grid_reconstruction_metadata[:underlying_grid_type]
     underlying_grid = underlying_grid_type(values(underlying_grid_reconstruction_args)...; underlying_grid_reconstruction_kwargs...)
 
@@ -333,7 +340,7 @@ function reconstruct_grid(ds; architecture=nothing)
     if isnothing(grid_reconstruction_metadata[:immersed_boundary_type])
         grid = underlying_grid
     else
-        immersed_boundary = reconstruct_immersed_boundary(ds)
+        immersed_boundary = reconstruct_immersed_boundary(ds, prefix)
         immersed_boundary = on_architecture(Architectures.architecture(underlying_grid), immersed_boundary)
         grid = ImmersedBoundaryGrid(underlying_grid, immersed_boundary)
     end

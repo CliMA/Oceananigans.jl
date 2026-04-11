@@ -66,8 +66,12 @@ trilocation_dim_name(var_name, grid::ImmersedBoundaryGrid, args...) = trilocatio
 dimension_name_generator_free_surface(dimension_name_generator, var_name, grid, LX, LY, LZ, dim) = dimension_name_generator(var_name, grid, LX, LY, LZ, dim)
 dimension_name_generator_free_surface(dimension_name_generator, var_name, grid, LX, LY, LZ, dim::Val{:z}) = dimension_name_generator(var_name, grid, LX, LY, LZ, dim) * "_displacement"
 
-mutable struct NetCDFWriter{G, D, O, T, A, FS, DN, DT} <: AbstractOutputWriter
-    grid :: G
+add_grid_suffix(name, grid_index) = isempty(name) ? name : name * "_grid$(grid_index)"
+add_grid_suffix(name, ::Nothing) = name
+
+mutable struct NetCDFWriter{G, GM, D, O, T, A, FS, DN, DT} <: AbstractOutputWriter
+    grids :: G
+    output_grid_map :: GM
     filepath :: String
     dataset :: D
     outputs :: O
@@ -93,7 +97,6 @@ end
     NetCDFWriter(model::AbstractModel, outputs;
                  filename,
                  schedule,
-                 grid = model.grid,
                  dir = ".",
                  array_type = Array{Float32},
                  indices = (:, :, :),
@@ -148,9 +151,6 @@ Required keyword arguments
 
 Optional keyword arguments
 ==========================
-
-- `grid`: The grid associated with `outputs`. Default: `model.grid`.
-          Use this to specify a different grid when outputs are interpolated or regridded.
 
 - `dir`: Directory to save output to. Default: `"."`.
 
@@ -236,7 +236,7 @@ NetCDFWriter scheduled on TimeInterval(1 minute):
 ├── 2 outputs: (c, u)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
-└── file size: 32.7 KiB
+└── file size: 32.8 KiB
 ```
 
 ```jldoctest netcdf1
@@ -252,7 +252,7 @@ NetCDFWriter scheduled on TimeInterval(1 minute):
 ├── 2 outputs: (c, u)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
-└── file size: 32.6 KiB
+└── file size: 32.8 KiB
 ```
 
 ```jldoctest netcdf1
@@ -269,7 +269,7 @@ NetCDFWriter scheduled on TimeInterval(1 minute):
 ├── 2 outputs: (c, u) averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
-└── file size: 33.9 KiB
+└── file size: 34.5 KiB
 ```
 
 `NetCDFWriter` also accepts output functions that write scalars and arrays to disk,
@@ -320,16 +320,15 @@ NetCDFWriter scheduled on IterationInterval(1):
 ├── 3 outputs: (profile, slice, scalar)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
-└── file size: 34.1 KiB
+└── file size: 34.8 KiB
 ```
 
-`NetCDFWriter` can also be configured for `outputs` that are interpolated or regridded
-to a different grid than `model.grid`. To use this functionality, include the keyword argument
-`grid = output_grid`.
+`NetCDFWriter` supports outputs that live on different grids within a single writer.
+The grid is automatically extracted from each output field. When multiple grids are
+present, dimensions are suffixed (e.g., `_grid1`, `_grid2`) to avoid conflicts.
 
 ```jldoctest netcdf3
 using Oceananigans, NCDatasets
-using Oceananigans.Fields: interpolate!
 
 grid = RectilinearGrid(size=(1, 1, 8), extent=(1, 1, 1));
 model = NonhydrostaticModel(grid)
@@ -337,11 +336,9 @@ model = NonhydrostaticModel(grid)
 coarse_grid = RectilinearGrid(size=(grid.Nx, grid.Ny, grid.Nz÷2), extent=(grid.Lx, grid.Ly, grid.Lz))
 coarse_u = Field{Face, Center, Center}(coarse_grid)
 
-interpolate_u(model) = interpolate!(coarse_u, model.velocities.u)
-outputs = (; u = interpolate_u)
+outputs = (; u = coarse_u)
 
 output_writer = NetCDFWriter(model, outputs;
-                             grid = coarse_grid,
                              filename = "coarse_u.nc",
                              schedule = IterationInterval(1))
 
@@ -353,7 +350,7 @@ NetCDFWriter scheduled on IterationInterval(1):
 ├── 1 outputs: u
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
-└── file size: 31.4 KiB
+└── file size: 31.7 KiB
 ```
 """
 function NetCDFWriter(model, outputs; kw...)
