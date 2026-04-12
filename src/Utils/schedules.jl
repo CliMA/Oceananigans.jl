@@ -115,21 +115,28 @@ restore_prognostic_state!(::TimeInterval, ::Nothing) = nothing
 struct IterationInterval <: AbstractSchedule
     interval :: Int
     offset :: Int
+    first_actuation_interval :: Int
 end
 
 """
-    IterationInterval(interval; offset=0)
+    IterationInterval(interval; offset=0, first_actuation_interval=0)
 
 Return a callable `IterationInterval` that "actuates" (i.e., schedules output or callback execution)
-whenever the model iteration (modified by `offset`) is a multiple of `interval`.
+whenever the model iteration (modified by `offset`) is a multiple of `interval` and the current
+iteration ≥ `first_actuation_interval`.
 
 For example,
 
 * `IterationInterval(100)` actuates at iterations `[100, 200, 300, ...]`.
 * `IterationInterval(100, offset=-1)` actuates at iterations `[99, 199, 299, ...]`.
 """
-IterationInterval(interval::Int; offset=0) = IterationInterval(interval, offset)
-(schedule::IterationInterval)(model) = (model.clock.iteration - schedule.offset) % schedule.interval == 0
+function IterationInterval(interval::Int; offset=0, first_actuation_interval=0)
+    return IterationInterval(interval, offset, first_actuation_interval)
+end
+function (schedule::IterationInterval)(model)
+    return model.clock.iteration >= schedule.first_actuation_interval &&
+           (model.clock.iteration - schedule.offset) % schedule.interval == 0
+end
 
 next_actuation_time(schedule::IterationInterval) = Inf
 
