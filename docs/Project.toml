@@ -1,14 +1,5 @@
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
-CUDACore = "bd0ed864-bdfe-4181-a5ed-ce625a5fdea2"
-CUPTI = "9e67e8f6-ba02-4b6c-a7db-3b11ae1e7ab7"
-NVML = "611af6d1-644e-4c5d-bd58-854d7d1254b9"
-CUDATools = "9ec180c6-1c07-47c7-9e6e-ebefa4d1f6d0"
-cuBLAS = "182d3088-87b7-4494-8cad-fc6afaa545bc"
-cuFFT = "533571aa-0936-420e-b4be-9c66f5f626ca"
-cuRAND = "20fd9a0b-12d5-4c2f-a8af-7c34e9e60431"
-cuSOLVER = "887afef0-6a32-4de5-add4-7827692ba8fc"
-cuSPARSE = "b26da814-b3bc-49ef-b0ee-c816305aa060"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 CairoMakie = "13f3f980-e62b-5c42-98c6-ff1f3baf88f0"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
@@ -32,16 +23,6 @@ XESMF = "2e0b0046-e7a1-486f-88de-807ee8ffabe5"
 
 [sources]
 Oceananigans = {path = ".."}
-CUDACore = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "87da92883c37f2fc0c10846a568a71bd8588b5bb", subdir = "CUDACore"}
-CUPTI = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "87da92883c37f2fc0c10846a568a71bd8588b5bb", subdir = "lib/cupti"}
-NVML = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "87da92883c37f2fc0c10846a568a71bd8588b5bb", subdir = "lib/nvml"}
-CUDATools = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "87da92883c37f2fc0c10846a568a71bd8588b5bb", subdir = "CUDATools"}
-cuBLAS = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "87da92883c37f2fc0c10846a568a71bd8588b5bb", subdir = "lib/cublas"}
-cuFFT = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "87da92883c37f2fc0c10846a568a71bd8588b5bb", subdir = "lib/cufft"}
-cuRAND = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "87da92883c37f2fc0c10846a568a71bd8588b5bb", subdir = "lib/curand"}
-cuSOLVER = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "87da92883c37f2fc0c10846a568a71bd8588b5bb", subdir = "lib/cusolver"}
-cuSPARSE = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "87da92883c37f2fc0c10846a568a71bd8588b5bb", subdir = "lib/cusparse"}
-CUDA = {url = "https://github.com/JuliaGPU/CUDA.jl.git", rev = "87da92883c37f2fc0c10846a568a71bd8588b5bb"}
 
 [compat]
 CairoMakie = "0.15"
