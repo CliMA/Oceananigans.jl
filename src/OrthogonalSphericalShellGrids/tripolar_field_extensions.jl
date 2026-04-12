@@ -60,3 +60,4 @@ function BoundaryConditions.regularize_field_boundary_conditions(bcs::FieldBound
 end
 
 BoundaryConditions.default_auxiliary_bc(grid::TripolarGridOfSomeKind, ::Val{:north}, loc) = north_fold_boundary_condition(grid)(1)
+BoundaryConditions.default_auxiliary_bc(grid::TripolarGridOfSomeKind, ::Val{:north}, loc::Tuple{<:Any, Nothing, <:Any}) = nothing

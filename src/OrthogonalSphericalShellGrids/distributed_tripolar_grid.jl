@@ -292,7 +292,11 @@ function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::MPITripolarGridOfSomeKind, da
     else
         local_bcs = inject_halo_communication_boundary_conditions(global_bcs, loc, arch.local_rank, arch.connectivity, topology(grid))
 
-        if yrank == processor_size[2] - 1 && processor_size[1] == 1
+        if isnothing(global_bcs.north)
+            # Reduced fields (Nothing location) have no north boundary
+            north_bc = local_bcs.north
+
+        elseif yrank == processor_size[2] - 1 && processor_size[1] == 1
             north_bc = if !(global_bcs.north isa ZBC)
                 TY = fold_topology(grid.conformal_mapping)
                 north_fold_boundary_condition(TY)(sign(LX, LY))
