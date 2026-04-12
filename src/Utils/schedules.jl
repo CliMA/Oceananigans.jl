@@ -115,7 +115,7 @@ restore_prognostic_state!(::TimeInterval, ::Nothing) = nothing
 struct IterationInterval <: AbstractSchedule
     interval :: Int
     offset :: Int
-    first_actuation_interval :: Int
+    first_actuation_iteration :: Int
 end
 
 """
@@ -130,11 +130,11 @@ For example,
 * `IterationInterval(100)` actuates at iterations `[100, 200, 300, ...]`.
 * `IterationInterval(100, offset=-1)` actuates at iterations `[99, 199, 299, ...]`.
 """
-function IterationInterval(interval::Int; offset=0, first_actuation_interval=0)
-    return IterationInterval(interval, offset, first_actuation_interval)
+function IterationInterval(interval::Int; offset=0, first_actuation_iteration=0)
+    return IterationInterval(interval, offset, first_actuation_iteration)
 end
 function (schedule::IterationInterval)(model)
-    return model.clock.iteration >= schedule.first_actuation_interval &&
+    return model.clock.iteration >= schedule.first_actuation_iteration &&
            (model.clock.iteration - schedule.offset) % schedule.interval == 0
 end
 
