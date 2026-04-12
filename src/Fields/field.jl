@@ -29,8 +29,8 @@ struct Field{LX, LY, LZ, O, G, I, D, T, B, S, F} <: AbstractField{LX, LY, LZ, G,
     # Inner constructor that does not validate _anything_!
     function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, indices::I, op::O, status::S, buffers::F) where {LX, LY, LZ, G, D, B, O, S, I, F}
         T = eltype(data)
-        @apply_regionally new_bcs = construct_boundary_conditions_kernels(bcs, data, grid, (LX(), LY(), LZ()), indices) # Adding the kernels to the bcs
-        return new{LX, LY, LZ, O, G, I, D, T, typeof(new_bcs), S, F}(grid, data, new_bcs, indices, op, status, buffers)
+        @apply_regionally local_bcs = construct_boundary_conditions_kernels(bcs, data, grid, (LX(), LY(), LZ()), indices) # Adding the kernels to the bcs
+        return new{LX, LY, LZ, O, G, I, D, T, typeof(local_bcs), S, F}(grid, data, local_bcs, indices, op, status, buffers)
     end
 end
 
@@ -719,19 +719,12 @@ Otherwise return `ConditionedOperand`, even when `isnothing(condition)` but `!(f
 # All non-trivial conditioning is found in AbstractOperations/conditional_operations.jl
 const Identity = typeof(Base.identity)
 @inline condition_operand(::Identity, operand, ::Nothing, mask) = operand
-@inline condition_operand(::Nothing, operand, ::Nothing, mask) = operand
+@inline condition_operand(::Nothing,  operand, ::Nothing, mask) = operand
 
 @inline conditional_length(c::AbstractField) = length(c)
 @inline conditional_length(c::AbstractField, ::Colon) = conditional_length(c)
-@inline conditional_length(c::AbstractField, ::NTuple{3}) = conditional_length(c)
-@inline conditional_length(c::AbstractField, d::Int) = size(c, d)
-@inline conditional_length(c::AbstractField, dims::NTuple{1}) = conditional_length(c, dims[1])
-
-@inline function conditional_length(c::AbstractField, dims::NTuple{2})
-    N = size(c)
-    d1, d2 = dims
-    return N[d1] * N[d2]
-end
+@inline conditional_length(c::AbstractField, dims::Int) = size(c, dims)
+@inline conditional_length(c::AbstractField, dims::Tuple) = prod(size(c, d) for d in dims)
 
 # Allocating and in-place reductions
 for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)

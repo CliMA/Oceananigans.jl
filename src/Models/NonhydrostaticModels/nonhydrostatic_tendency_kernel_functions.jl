@@ -93,6 +93,7 @@ pressure anomaly.
 
     return ( - div_𝐯u(i, j, k, grid, advection, total_velocities, velocities.u)
              - div_𝐯u(i, j, k, grid, advection, velocities, background_fields.velocities.u)
+             - U_dot_∇u_metric(i, j, k, grid, advection, velocities, velocities)
              + x_dot_g_bᶠᶜᶜ(i, j, k, grid, buoyancy, tracers)
              - x_f_cross_U(i, j, k, grid, coriolis, velocities)
              - hydrostatic_pressure_gradient_x(i, j, k, grid, hydrostatic_pressure)
@@ -155,6 +156,7 @@ pressure anomaly.
 
     return ( - div_𝐯v(i, j, k, grid, advection, total_velocities, velocities.v)
              - div_𝐯v(i, j, k, grid, advection, velocities, background_fields.velocities.v)
+             - U_dot_∇v_metric(i, j, k, grid, advection, velocities, velocities)
              + y_dot_g_bᶜᶠᶜ(i, j, k, grid, buoyancy, tracers)
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
              - hydrostatic_pressure_gradient_y(i, j, k, grid, hydrostatic_pressure)
@@ -220,6 +222,7 @@ velocity components, tracer fields, and precalculated closure_fields where appli
 
     return ( - div_𝐯w(i, j, k, grid, advection, total_velocities, velocities.w)
              - div_𝐯w(i, j, k, grid, advection, velocities, background_fields.velocities.w)
+             - U_dot_∇w_metric(i, j, k, grid, advection, velocities, velocities)
              + maybe_z_dot_g_bᶜᶜᶠ(i, j, k, grid, hydrostatic_pressure, buoyancy, tracers)
              - z_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂ⱼ_τ₃ⱼ(i, j, k, grid, closure, closure_fields, clock, closure_model_fields, buoyancy)

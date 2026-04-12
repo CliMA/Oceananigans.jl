@@ -138,15 +138,15 @@ end
 #####
 
 @inline function triad_Sx(ix, iz, j, kx, kz, grid, buoyancy, tracers)
-    bx = ∂x_b(ix, j, kx, grid, buoyancy, tracers)
-    bz = ∂z_b(iz, j, kz, grid, buoyancy, tracers)
+    bx = ∂xᵣ_b(ix, j, kx, grid, buoyancy, tracers)
+    bz =  ∂z_b(iz, j, kz, grid, buoyancy, tracers)
     bz = max(bz, zero(grid))
     return ifelse(bz == 0, zero(grid), - bx / bz)
 end
 
 @inline function triad_Sy(i, jy, jz, ky, kz, grid, buoyancy, tracers)
-    by = ∂y_b(i, jy, ky, grid, buoyancy, tracers)
-    bz = ∂z_b(i, jz, kz, grid, buoyancy, tracers)
+    by = ∂yᵣ_b(i, jy, ky, grid, buoyancy, tracers)
+    bz =  ∂z_b(i, jz, kz, grid, buoyancy, tracers)
     bz = max(bz, zero(grid))
     return ifelse(bz == 0, zero(grid), - by / bz)
 end
@@ -202,7 +202,7 @@ end
     ϵκ⁻⁻ = ϵκx⁻⁻(i,   j, k, grid, loc, κ, clock, sl, b, C)
 
     # Small slope approximation
-    ∂x_c = ∂xᶠᶜᶜ(i, j, k, grid, c)
+    ∂x_c = ∂xᵣᶠᶜᶜ(i, j, k, grid, c)
 
     #       i-1     i
     # k+1  -------------
@@ -228,7 +228,7 @@ end
     sl = closure.slope_limiter
     loc = (Center(), Center(), Center())
 
-    ∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
+    ∂y_c = ∂yᵣᶜᶠᶜ(i, j, k, grid, c)
 
     ϵκ⁺⁺ = ϵκy⁺⁺(i, j-1, k, grid, loc, κ, clock, sl, b, C)
     ϵκ⁺⁻ = ϵκy⁺⁻(i, j-1, k, grid, loc, κ, clock, sl, b, C)
@@ -276,15 +276,15 @@ end
     # |     |     |     |
     # --------------------
 
-    κR₃₁_∂x_c = (ϵκˣ⁻⁻ * Sx⁻⁻(i, j, k,   grid, b, C) * ∂xᶠᶜᶜ(i,   j, k,   grid, c) +
-                 ϵκˣ⁺⁻ * Sx⁺⁻(i, j, k,   grid, b, C) * ∂xᶠᶜᶜ(i+1, j, k,   grid, c) +
-                 ϵκˣ⁻⁺ * Sx⁻⁺(i, j, k-1, grid, b, C) * ∂xᶠᶜᶜ(i,   j, k-1, grid, c) +
-                 ϵκˣ⁺⁺ * Sx⁺⁺(i, j, k-1, grid, b, C) * ∂xᶠᶜᶜ(i+1, j, k-1, grid, c)) / 4
+    κR₃₁_∂x_c = (ϵκˣ⁻⁻ * Sx⁻⁻(i, j, k,   grid, b, C) * ∂xᵣᶠᶜᶜ(i,   j, k,   grid, c) +
+                 ϵκˣ⁺⁻ * Sx⁺⁻(i, j, k,   grid, b, C) * ∂xᵣᶠᶜᶜ(i+1, j, k,   grid, c) +
+                 ϵκˣ⁻⁺ * Sx⁻⁺(i, j, k-1, grid, b, C) * ∂xᵣᶠᶜᶜ(i,   j, k-1, grid, c) +
+                 ϵκˣ⁺⁺ * Sx⁺⁺(i, j, k-1, grid, b, C) * ∂xᵣᶠᶜᶜ(i+1, j, k-1, grid, c)) / 4
 
-    κR₃₂_∂y_c = (ϵκʸ⁻⁻ * Sy⁻⁻(i, j, k,   grid, b, C) * ∂yᶜᶠᶜ(i, j,   k,   grid, c) +
-                 ϵκʸ⁺⁻ * Sy⁺⁻(i, j, k,   grid, b, C) * ∂yᶜᶠᶜ(i, j+1, k,   grid, c) +
-                 ϵκʸ⁻⁺ * Sy⁻⁺(i, j, k-1, grid, b, C) * ∂yᶜᶠᶜ(i, j,   k-1, grid, c) +
-                 ϵκʸ⁺⁺ * Sy⁺⁺(i, j, k-1, grid, b, C) * ∂yᶜᶠᶜ(i, j+1, k-1, grid, c)) / 4
+    κR₃₂_∂y_c = (ϵκʸ⁻⁻ * Sy⁻⁻(i, j, k,   grid, b, C) * ∂yᵣᶜᶠᶜ(i, j,   k,   grid, c) +
+                 ϵκʸ⁺⁻ * Sy⁺⁻(i, j, k,   grid, b, C) * ∂yᵣᶜᶠᶜ(i, j+1, k,   grid, c) +
+                 ϵκʸ⁻⁺ * Sy⁻⁺(i, j, k-1, grid, b, C) * ∂yᵣᶜᶠᶜ(i, j,   k-1, grid, c) +
+                 ϵκʸ⁺⁺ * Sy⁺⁺(i, j, k-1, grid, b, C) * ∂yᵣᶜᶠᶜ(i, j+1, k-1, grid, c)) / 4
 
     κϵ_R₃₃_∂z_c = explicit_R₃₃_∂z_c(i, j, k, grid, TD(), clock, c, closure, b, C)
 
