@@ -17,13 +17,11 @@ using NCDatasets: AbstractDataset
 using Dates: AbstractTime, UTC, now, DateTime
 using Printf: @sprintf
 using OrderedCollections: OrderedDict
-using SeawaterPolynomials: BoussinesqEquationOfState
 using Statistics: mean
 
 using Oceananigans: initialize!, prettytime, pretty_filesize, AbstractModel
 using Oceananigans.AbstractOperations: KernelFunctionOperation, AbstractOperation
 using Oceananigans.Architectures: CPU, GPU, on_architecture
-using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
 using Oceananigans.Fields
 using Oceananigans.Fields: set!, Reduction, reduced_dimensions, reduced_location, location, indices
 using Oceananigans.Grids:
@@ -35,7 +33,7 @@ using Oceananigans.Grids:
 using Oceananigans.ImmersedBoundaries:
     ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary, PartialCellBottom, PCBIBG,
     CenterImmersedCondition, InterfaceImmersedCondition
-using Oceananigans.Models: ShallowWaterModel, LagrangianParticles
+using Oceananigans.Models: LagrangianParticles
 using Oceananigans.OutputReaders:
     InMemoryFTS,
     time_indices,
@@ -79,8 +77,6 @@ import Oceananigans.OutputWriters:
 
 const c = Center()
 const f = Face()
-const BoussinesqSeawaterBuoyancy = SeawaterBuoyancy{FT, <:BoussinesqEquationOfState, T, S} where {FT, T, S}
-const BuoyancyBoussinesqEOSModel = BuoyancyForce{<:BoussinesqSeawaterBuoyancy, g} where {g}
 
 #####
 ##### Include scripts

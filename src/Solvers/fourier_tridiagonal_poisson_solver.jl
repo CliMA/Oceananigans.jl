@@ -107,8 +107,8 @@ function FourierTridiagonalPoissonSolver(grid, planner_flag=FFTW.PATIENT; tridia
     T1, T2 = Tuple(el for (i, el) in enumerate(topology(grid)) if i ≠ tridiagonal_dim)
     L1, L2 = Tuple(el for (i, el) in enumerate(extent(grid))   if i ≠ tridiagonal_dim)
 
-    λ1 = poisson_eigenvalues(N1, L1, 1, T1())
-    λ2 = poisson_eigenvalues(N2, L2, 2, T2())
+    λ1 = poisson_eigenvalues(grid, N1, L1, 1, T1())
+    λ2 = poisson_eigenvalues(grid, N2, L2, 2, T2())
 
     arch = architecture(grid)
     λ1 = on_architecture(arch, λ1)
