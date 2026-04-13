@@ -86,13 +86,14 @@ end
 Return `(filepath, local_index)` for global time index `n`.
 """
 function file_and_local_index(sfp::SplitFilePath, n)
-    for (i, cl) in enumerate(sfp.cumulative_length)
-        if n <= cl
-            prev = i == 1 ? 0 : sfp.cumulative_length[i-1]
-            return sfp.paths[i], n - prev
-        end
+    i = searchsortedfirst(sfp.cumulative_length, n)
+
+    if i > length(sfp.cumulative_length)
+        error("Time index $n out of range (max $(last(sfp.cumulative_length)))")
     end
-    error("Time index $n out of range (max $(last(sfp.cumulative_length)))")
+
+    prev = i == 1 ? 0 : sfp.cumulative_length[i-1]
+    return sfp.paths[i], n - prev
 end
 
 file_and_local_index(path::AbstractString, n) = (path, n)
