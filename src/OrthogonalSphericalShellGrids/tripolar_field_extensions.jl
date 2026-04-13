@@ -4,7 +4,9 @@ using Oceananigans.BoundaryConditions: FieldBoundaryConditions,
                                        regularize_immersed_boundary_condition,
                                        LeftBoundary,
                                        RightBoundary
-using Oceananigans.Grids: Grids, Center, Face
+using Oceananigans.Grids: Grids, Center, Face,
+                          LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
+                          LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected
 using Oceananigans.BoundaryConditions: BoundaryConditions
 
 # A tripolar grid is always between 0 and 360 in longitude
@@ -19,12 +21,17 @@ sign(::Type{Face},   ::Type{Center}) = - 1 # u-velocity type
 sign(::Type{Center}, ::Type{Face})   = - 1 # v-velocity type
 sign(::Type{Center}, ::Type{Center}) = 1
 
-# Determine the appropriate north fold boundary condition based on grid topology
-# TODO: Implement proper topologies for distributed tripolar grids
-#       and remove the default fallback for AbstractTopology
-north_fold_boundary_condition(::Type{<:AbstractTopology})  = UPivotZipperBoundaryCondition # Default fallback for distribtuted to work
-north_fold_boundary_condition(::Type{RightCenterFolded})   = UPivotZipperBoundaryCondition
-north_fold_boundary_condition(::Type{RightFaceFolded})     = FPivotZipperBoundaryCondition
+# Determine the appropriate north fold boundary condition based on grid topology.
+# Non-fold topologies (FullyConnected, RightConnected, etc.) default to UPivot — this
+# value is only used as a placeholder; these ranks get their north BC overridden by
+# inject_halo_communication_boundary_conditions or regularize_field_boundary_conditions.
+north_fold_boundary_condition(::Type{<:AbstractTopology})                = UPivotZipperBoundaryCondition
+north_fold_boundary_condition(::Type{RightCenterFolded})                 = UPivotZipperBoundaryCondition
+north_fold_boundary_condition(::Type{LeftConnectedRightCenterFolded})    = UPivotZipperBoundaryCondition
+north_fold_boundary_condition(::Type{LeftConnectedRightCenterConnected}) = UPivotZipperBoundaryCondition
+north_fold_boundary_condition(::Type{RightFaceFolded})                   = FPivotZipperBoundaryCondition
+north_fold_boundary_condition(::Type{LeftConnectedRightFaceFolded})      = FPivotZipperBoundaryCondition
+north_fold_boundary_condition(::Type{LeftConnectedRightFaceConnected})   = FPivotZipperBoundaryCondition
 north_fold_boundary_condition(grid::TripolarGridOfSomeKind) = north_fold_boundary_condition(topology(grid, 2))
 
 # a `TripolarGrid` needs a `UPivotZipperBoundaryCondition` for the north boundary

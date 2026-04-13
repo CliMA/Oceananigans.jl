@@ -13,9 +13,6 @@ Distributed.addprocs(2)
     set_theme!(Theme(fontsize=20))
     CairoMakie.activate!(type = "png")
 
-    using NCDatasets
-    using XESMF
-
     using Oceananigans
     using Oceananigans.AbstractOperations
     using Oceananigans.Operators
@@ -24,6 +21,9 @@ Distributed.addprocs(2)
     using Oceananigans.TimeSteppers
     using Oceananigans.TurbulenceClosures
     using Oceananigans.BoundaryConditions: Flux, Value, Gradient, Open
+
+    using NCDatasets
+    using XESMF
 
     bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
     bib = CitationBibliography(bib_filepath, style=:authoryear)
@@ -186,6 +186,7 @@ developer_pages = [
 pages = [
     "Manual" => [
         "Quick Start" => "quick_start.md",
+        "Units" => "units.md",
         "Grids" => "grids.md",
         "Fields" => "fields.md",
         "Operations" => "operations.md",

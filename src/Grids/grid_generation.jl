@@ -12,16 +12,16 @@ get_face_node(coord::AbstractVector, i) = @allowscalar coord[i]
 const AT = AbstractTopology
 
 lower_exterior_Δcoordᶠ(::AT,              Fi, Hcoord) = [Fi[end - Hcoord + i] - Fi[end - Hcoord + i - 1] for i = 1:Hcoord]
-lower_exterior_Δcoordᶠ(::BoundedTopology, Fi, Hcoord) = [Fi[2]  - Fi[1] for _ = 1:Hcoord]
+lower_exterior_Δcoordᶠ(::FaceExtendedTopology, Fi, Hcoord) = [Fi[2]  - Fi[1] for _ = 1:Hcoord]
 
 upper_exterior_Δcoordᶠ(::AT,              Fi, Hcoord) = [Fi[i + 1] - Fi[i] for i = 1:Hcoord]
-upper_exterior_Δcoordᶠ(::BoundedTopology, Fi, Hcoord) = [Fi[end]   - Fi[end - 1] for _ = 1:Hcoord]
+upper_exterior_Δcoordᶠ(::FaceExtendedTopology, Fi, Hcoord) = [Fi[end]   - Fi[end - 1] for _ = 1:Hcoord]
 
 upper_interior_F(::AT, coord, Δ)           = coord - Δ
-upper_interior_F(::BoundedTopology, coord) = coord
+upper_interior_F(::FaceExtendedTopology, coord) = coord
 
 total_interior_length(::AT, N)              = N
-total_interior_length(::BoundedTopology, N) = N + 1
+total_interior_length(::FaceExtendedTopology, N) = N + 1
 
 bad_coordinate_message(ξ::Function, name) = "The values of $name(index) must increase as the index increases!"
 bad_coordinate_message(ξ::AbstractArray, name) = "The elements of $name must be increasing!"
@@ -111,21 +111,6 @@ function extend_node_interval(::RightCenterFolded, N, node_interval::Tuple{<:Num
     L = c₂ - c₁
     Δ = L / (N - 1)
     return (c₁ - Δ/2, c₂ + Δ/2)
-end
-# For RightFaceFolded, we want to generate coordinates that start and end at face locations,
-# but we have an extra row at Ny, so we must extend the interval by one cell on the right:
-# Example with N = 4
-# interval wanted:      c₁                      c₂
-#                       │◀───────── L ─────────▶│
-#                       │◀─ Δ ─▶│               │
-# face and centers:     f   c   f   c   f   c   f   c   f
-#                       │                               │
-# extended interval:    f₁                              f₂
-function extend_node_interval(::RightFaceFolded, N, node_interval::Tuple{<:Number, <:Number})
-    c₁, c₂ = @. BigFloat(node_interval)
-    L = c₂ - c₁
-    Δ = L / (N - 1)
-    return (c₁, c₂ + Δ)
 end
 
 # Generate a regularly-spaced coordinate passing the domain extent (2-tuple) and number of points

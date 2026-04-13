@@ -43,8 +43,7 @@ const XYZFlatGrid = AbstractGrid{<:Any, Flat, Flat, Flat}
 isrectilinear(grid) = false
 
 # Fallback
-@inline get_active_column_map(::AbstractGrid) = nothing
-@inline get_active_cells_map(::AbstractGrid, any_map_type) = nothing
+@inline Utils.get_active_cells_map(::AbstractGrid, any_map_type) = nothing
 
 """
     topology(grid)
@@ -65,7 +64,7 @@ Return the topology of the `grid` for the `dim`-th dimension.
 
 Return the architecture that the `grid` lives on.
 """
-@inline architecture(grid::AbstractGrid) = grid.architecture
+@inline Architectures.architecture(grid::AbstractGrid) = grid.architecture
 
 """
     size(grid)

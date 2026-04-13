@@ -465,6 +465,17 @@ end
         end
     end
 
+    @testset "Lagrangian averaged Smagorinsky produces non-zero eddy viscosity" begin
+        @info "  Testing that Lagrangian averaged Smagorinsky produces non-zero eddy viscosity after setting random velocities..."
+        for arch in archs
+            grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+            model = NonhydrostaticModel(grid, closure=DynamicSmagorinsky(averaging=LagrangianAveraging()))
+            set!(model, u = (x, y, z) -> randn())
+            νₑ = Array(interior(model.closure_fields.νₑ))
+            @test any(νₑ .> 0)
+        end
+    end
+
     @testset "Time-stepping with CATKE closure" begin
         @info "  Testing time-stepping with CATKE closure and closure tuples with CATKE..."
         for arch in archs
@@ -501,6 +512,16 @@ end
             @test first(model.closure) === closure[2]
             closure = (HorizontalScalarDiffusivity(), explicit_catke, VerticalScalarDiffusivity())
             run_catke_tke_substepping_tests(arch, closure)
+
+            @info "    Testing CATKE with ImmersedBoundaryGrid and active_cells_map on $arch..."
+            underlying_grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 2, 3))
+            bottom(x, y) = -2
+            grid_acm = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom), active_cells_map=true)
+            catke_closure = CATKEVerticalDiffusivity()
+            model_acm = HydrostaticFreeSurfaceModel(grid_acm; closure=catke_closure, buoyancy=BuoyancyTracer(), tracers=:b)
+            time_step!(model_acm, 1)
+            time_step!(model_acm, 1)
+            @test model_acm isa HydrostaticFreeSurfaceModel
         end
     end
 

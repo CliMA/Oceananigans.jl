@@ -47,8 +47,16 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
     compute_free_surface_tendency!(grid, model, model.free_surface)
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
 
-    # Update transport velocities
-    compute_transport_velocities!(model, model.free_surface)
+    # Update velocities
+    @apply_regionally begin
+        compute_transport_velocities!(model, model.free_surface)
+        ab2_step_velocities!(model.velocities, model, Δt, χ)
+        mask_immersed_horizontal_velocities!(model.velocities)
+    end
+
+    # Mask and fill velocity halos
+    u, v, _ = model.velocities
+    fill_halo_regions!((u, v), model.clock, fields(model); async=true)
 
     # Update adaptive implicit advection time step before tracer tendencies
     update_advection_timestep!(model.advection, Δt)
@@ -57,15 +65,11 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
     @apply_regionally begin
         compute_tracer_tendencies!(model, Δt)
 
-        # Advance grid and velocities
+        # Advance grid
         ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
-        ab2_step_velocities!(model.velocities, model, Δt, χ)
 
-        # Correct the barotropic mode
+        # Correct the barotropic mode and advance tracers
         correct_barotropic_mode!(model, Δt)
-
-        # TODO: fill halo regions for horizontal velocities should be here before the tracer update.
-        # Finally advance tracers:
         ab2_step_tracers!(model.tracers, model, Δt, χ)
     end
 
@@ -104,19 +108,24 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
     # Advancing free surface in preparation for the correction step
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
 
-    # Correct for the updated barotropic mode
-    @apply_regionally correct_barotropic_mode!(model, Δt)
+    @apply_regionally begin
+        correct_barotropic_mode!(model, Δt)
+        mask_immersed_horizontal_velocities!(model.velocities)
+    end
 
-    # Compute transport velocities
-    compute_transport_velocities!(model, free_surface)
+    u, v, _ = model.velocities
+    fill_halo_regions!((u, v), model.clock, fields(model))
 
     # Update adaptive implicit advection time step before tracer tendencies
     update_advection_timestep!(model.advection, Δt)
 
     @apply_regionally begin
-        compute_tracer_tendencies!(model, Δt)
+        compute_transport_velocities!(model, free_surface)
+        compute_tracer_tendencies!(model)
 
         ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
+
+        # Finally step tracers
         ab2_step_tracers!(model.tracers, model, Δt, χ)
     end
 
@@ -158,7 +167,7 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
         velocity_field = model.velocities[name]
 
         launch!(model.architecture, model.grid, :xyz,
-                _ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻)
+                _ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻; exclude_periphery=true)
 
         implicit_step!(velocity_field,
                        model.timestepper.implicit_solver,

@@ -157,11 +157,9 @@ for arch in archs
                     end
                 end
 
-                # CATKE works only with synchronized communication at the moment
-                synchronized_arch = synchronized(arch)
                 closure = CATKEVerticalDiffusivity()
 
-                catke_grid = LatitudeLongitudeGrid(synchronized_arch,
+                catke_grid = LatitudeLongitudeGrid(arch,
                                                    size = (Nx, Ny, 3),
                                                    halo = (4, 4, 3),
                                                    latitude = (-80, 80),

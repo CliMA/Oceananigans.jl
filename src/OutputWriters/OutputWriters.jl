@@ -34,6 +34,7 @@ include("averaged_specified_times.jl")
 include("windowed_time_average.jl")
 include("output_construction.jl")
 include("jld2_writer.jl")
+include("output_attributes.jl")
 include("netcdf_writer.jl")
 include("checkpointer.jl")
 

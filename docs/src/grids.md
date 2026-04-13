@@ -1048,7 +1048,7 @@ mpiexec -n 6 julia --project a_program.jl
 
 #### Programmatically specifying ranks in ``x, y``
 
-Programatic specification of ranks is often better for applications that need to scale.
+Programmatic specification of ranks is often better for applications that need to scale.
 For this the specification `Equal` is useful: if the number of ranks in one dimension is specified,
 and the other is `Equal`, then the `Equal` dimension is allocated
 the remaining workers. For example,
