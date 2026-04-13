@@ -257,7 +257,7 @@ while for `buffer == 4` unrolls into
 """
 @inline smoothness_indicator(ψ, args...) = zero(ψ[1]) # This is a fallback method, here only for documentation purposes
 
-# Mean-subtract stencil values before computing smoothness indicators to avoid 
+# Mean-subtract stencil values before computing smoothness indicators to avoid
 # precision errors for sums and subtractions of large values.
 @inline function precision_stencil(ψ::NTuple{N, Float32}) where N
     ψ̄ = sum(ψ) / N
