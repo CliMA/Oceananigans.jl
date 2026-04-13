@@ -40,10 +40,12 @@ end
     end
 end
 
-const BoundedTopology = Union{Bounded, LeftConnected, RightFaceFolded}
+const FaceExtendedTopology = Union{Bounded, LeftConnected, RightFaceFolded,
+                              LeftConnectedRightFaceFolded,
+                              LeftConnectedRightFaceConnected}
 const AT = AbstractTopology
 
-Base.length(::Face,    ::BoundedTopology, N) = N + 1
+Base.length(::Face,    ::FaceExtendedTopology, N) = N + 1
 Base.length(::Nothing, ::AT,              N) = 1
 Base.length(::Face,    ::AT,              N) = N
 Base.length(::Center,  ::AT,              N) = N
@@ -65,7 +67,7 @@ is restricted by `length(ind)`.
 """
 total_length(::Face,    ::AT,              N, H=0) = N + 2H
 total_length(::Center,  ::AT,              N, H=0) = N + 2H
-total_length(::Face,    ::BoundedTopology, N, H=0) = N + 1 + 2H
+total_length(::Face,    ::FaceExtendedTopology, N, H=0) = N + 1 + 2H
 total_length(::Nothing, ::AT,              N, H=0) = 1
 total_length(::Nothing, ::Flat,            N, H=0) = N
 total_length(::Face,    ::Flat,            N, H=0) = N
@@ -118,7 +120,7 @@ Return the total extent, including halo regions, of constant-spaced
 constant grid spacing `Δ`, and interior extent `L`.
 """
 @inline total_extent(topo, H, Δ, L) = L + (2H - 1) * Δ
-@inline total_extent(::BoundedTopology, H, Δ, L) = L + 2H * Δ
+@inline total_extent(::FaceExtendedTopology, H, Δ, L) = L + 2H * Δ
 
 # Grid domains
 @inline domain(topo, N, ξ) = @allowscalar ξ[1], ξ[N+1]
@@ -139,18 +141,18 @@ regular_dimensions(grid) = ()
 @inline left_halo_indices(::Nothing, ::AT, N, H) = 1:0 # empty
 
 @inline right_halo_indices(loc, ::AT, N, H) = N+1:N+H
-@inline right_halo_indices(::Face, ::BoundedTopology, N, H) = N+2:N+1+H
+@inline right_halo_indices(::Face, ::FaceExtendedTopology, N, H) = N+2:N+1+H
 @inline right_halo_indices(::Nothing, ::AT, N, H) = 1:0 # empty
 
 @inline underlying_left_halo_indices(loc, ::AT, N, H) = 1:H
 @inline underlying_left_halo_indices(::Nothing, ::AT, N, H) = 1:0 # empty
 
 @inline underlying_right_halo_indices(loc,       ::AT, N, H) = N+1+H:N+2H
-@inline underlying_right_halo_indices(::Face,    ::BoundedTopology, N, H) = N+2+H:N+1+2H
+@inline underlying_right_halo_indices(::Face,    ::FaceExtendedTopology, N, H) = N+2+H:N+1+2H
 @inline underlying_right_halo_indices(::Nothing, ::AT, N, H) = 1:0 # empty
 
 @inline interior_indices(loc,       ::AT,              N) = 1:N
-@inline interior_indices(::Face,    ::BoundedTopology, N) = 1:N+1
+@inline interior_indices(::Face,    ::FaceExtendedTopology, N) = 1:N+1
 @inline interior_indices(::Nothing, ::AT,              N) = 1:1
 
 @inline interior_indices(::Nothing, ::Flat, N) = 1:N
@@ -165,7 +167,7 @@ regular_dimensions(grid) = ()
 @inline interior_parent_offset(::Nothing, ::AT, H) = 0
 
 @inline interior_parent_indices(::Nothing, ::AT,              N, H) = 1:1
-@inline interior_parent_indices(::Face,    ::BoundedTopology, N, H) = 1+H:N+1+H
+@inline interior_parent_indices(::Face,    ::FaceExtendedTopology, N, H) = 1+H:N+1+H
 @inline interior_parent_indices(loc,       ::AT,              N, H) = 1+H:N+H
 
 
@@ -175,7 +177,7 @@ regular_dimensions(grid) = ()
 
 # All indices including halos.
 @inline all_indices(::Nothing, ::AT,              N, H) = 1:1
-@inline all_indices(::Face,    ::BoundedTopology, N, H) = 1-H:N+1+H
+@inline all_indices(::Face,    ::FaceExtendedTopology, N, H) = 1-H:N+1+H
 @inline all_indices(loc,       ::AT,              N, H) = 1-H:N+H
 
 @inline all_indices(::Nothing, ::Flat, N, H) = 1:N
@@ -187,7 +189,7 @@ regular_dimensions(grid) = ()
 @inline all_z_indices(grid, loc) = all_indices(loc[3](), topology(grid, 3)(), size(grid, 3), halo_size(grid, 3))
 
 @inline all_parent_indices(loc,       ::AT,              N, H) = 1:N+2H
-@inline all_parent_indices(::Face,    ::BoundedTopology, N, H) = 1:N+1+2H
+@inline all_parent_indices(::Face,    ::FaceExtendedTopology, N, H) = 1:N+1+2H
 @inline all_parent_indices(::Nothing, ::AT,              N, H) = 1:1
 
 @inline all_parent_indices(::Nothing, ::Flat, N, H) = 1:N
