@@ -257,22 +257,17 @@ while for `buffer == 4` unrolls into
 """
 @inline smoothness_indicator(ψ, args...) = zero(ψ[1]) # This is a fallback method, here only for documentation purposes
 
-# Mean-subtract stencil values before computing smoothness indicators.
-# β measures smoothness (derivatives of the interpolating polynomial), so it is
-# invariant to constant shifts: β(ψ) ≡ β(ψ .- c) for any c.  However, the
-# quadratic-form computation suffers catastrophic cancellation in Float32 when
-# the stencil mean is large (e.g. ρθ ~ 300).  Subtracting the mean reduces the
-# operand magnitudes from O(ψ) to O(Δψ), eliminating the cancellation.
-@inline function _mean_subtracted_stencil(ψ::NTuple{N, Float32}) where N
-    ψ̄ = sum(ψ) / Float32(N)
+# Mean-subtract stencil values before computing smoothness indicators to avoid 
+# precision errors for sums and subtractions of large values.
+@inline function mean_subtracted_stencil(ψ::NTuple{N, Float32}) where N
+    ψ̄ = sum(ψ) / N
     return ntuple(Val(N)) do i
-        @inline
-        ψ[i] - ψ̄
+        @inline ψ[i] - ψ̄
     end
 end
 
 # Fallback: no shift needed for Float64 / BigFloat (enough precision)
-@inline _mean_subtracted_stencil(ψ) = ψ
+@inline mean_subtracted_stencil(ψ) = ψ
 
 # Smoothness indicators for stencil `stencil` for left and right biased reconstruction
 for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
