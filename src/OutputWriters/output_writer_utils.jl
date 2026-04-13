@@ -17,8 +17,6 @@ struct NoFileSplitting end
 Base.summary(::NoFileSplitting) = "NoFileSplitting"
 Base.show(io::IO, nfs::NoFileSplitting) = print(io, summary(nfs))
 initialize!(::NoFileSplitting, model) = nothing
-prognostic_state(::NoFileSplitting) = nothing
-restore_prognostic_state!(::NoFileSplitting, from) = nothing
 
 mutable struct FileSizeLimit <: AbstractSchedule
     size_limit :: Float64

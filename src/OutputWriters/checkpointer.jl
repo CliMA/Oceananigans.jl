@@ -161,6 +161,8 @@ latest_checkpoint(checkpointer, filepaths) = latest_checkpoint_by_iteration(chec
 
 prognostic_state(obj) = obj
 prognostic_state(::NamedTuple{()}) = nothing
+prognostic_state(::NoFileSplitting) = nothing
+restore_prognostic_state!(::NoFileSplitting, from) = nothing
 
 prognostic_state(tuple::Tuple) = Tuple(prognostic_state(t) for t in tuple)
 
