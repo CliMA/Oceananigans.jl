@@ -259,7 +259,7 @@ while for `buffer == 4` unrolls into
 
 # Mean-subtract stencil values before computing smoothness indicators to avoid 
 # precision errors for sums and subtractions of large values.
-@inline function mean_subtracted_stencil(ψ::NTuple{N, Float32}) where N
+@inline function precision_stencil(ψ::NTuple{N, Float32}) where N
     ψ̄ = sum(ψ) / N
     return ntuple(Val(N)) do i
         @inline ψ[i] - ψ̄
@@ -267,7 +267,7 @@ while for `buffer == 4` unrolls into
 end
 
 # Fallback: no shift needed for Float64 / BigFloat (enough precision)
-@inline mean_subtracted_stencil(ψ) = ψ
+@inline precision_stencil(ψ) = ψ
 
 # Smoothness indicators for stencil `stencil` for left and right biased reconstruction
 for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
@@ -275,7 +275,7 @@ for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
 
     for stencil in 0:buffer-1, FT in fully_supported_float_types
         @eval @inline smoothness_indicator(ψ, scheme::WENO{$buffer, $FT}, ::Val{$stencil}) =
-                      smoothness_operation(scheme, _mean_subtracted_stencil(ψ), $(smoothness_coefficients(Val(FT), Val(buffer), Val(stencil))))
+                      smoothness_operation(scheme, precision_stencil(ψ), $(smoothness_coefficients(Val(FT), Val(buffer), Val(stencil))))
     end
 end
 
