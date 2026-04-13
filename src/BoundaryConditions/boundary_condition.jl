@@ -179,6 +179,17 @@ const NumberRef = Base.RefValue{<:Number}
 @inline getbc(condition::Number, args...) = condition
 @inline getbc(condition::AbstractArray, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds condition[i, j]
 
+# Tuple and NamedTuple conditions: apply getbc element-wise.
+# where each element is independently evaluated at (i, j, grid, ...).
+# Explicit heuristics for small tuples avoid map overhead and ensure type stability.
+@inline getbc(condition::Tuple{},             i::Integer, j::Integer, grid::AbstractGrid, args...) = ()
+@inline getbc(condition::Tuple{<:Any},        i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds (getbc(condition[1], i, j, grid, args...),)
+@inline getbc(condition::Tuple{<:Any, <:Any}, i::Integer, j::Integer, grid::AbstractGrid, args...) = @inbounds (getbc(condition[1], i, j, grid, args...), getbc(condition[2], i, j, grid, args...))
+@inline getbc(condition::Tuple,               i::Integer, j::Integer, grid::AbstractGrid, args...) = map(c -> getbc(c, i, j, grid, args...), condition)
+
+# A NamedTuple just returns a tuple output
+@inline getbc(condition::NamedTuple, i::Integer, j::Integer, grid::AbstractGrid, args...) = getbc(values(condition), i, j, grid, args...)
+
 #####
 ##### Validation with topology
 #####

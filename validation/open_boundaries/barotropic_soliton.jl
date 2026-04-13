@@ -230,26 +230,31 @@ function setup_simulation(params::SolitonParameters;
         # Flather OBCs for the barotropic (depth-integrated) transports.
         # The Flather scheme prescribes the incoming Riemann invariant:
         #   Uᵇ = Uᵉˣᵗ ± √(gH) ⋅ (ηᵇ − ηᵉˣᵗ)
-        # External values are evaluated at the boundary-parallel index (j for x-faces,
-        # i for y-faces) via the (index, grid, clock) function signature.
+        # The condition is a discrete function returning a 2-tuple (U, η).
         #
         # The barotropic transport U = H · u_analytic (velocity is depth-uniform).
-        U_west_ext_U = (j, grid, clock) -> params.H * analytic_u(params.x_min, ynode(j, grid, Center()), clock.time, params)
-        U_west_ext_η = (j, grid, clock) -> analytic_η(params.x_min, ynode(j, grid, Center()), clock.time, params)
-        U_east_ext_U = (j, grid, clock) -> params.H * analytic_u(params.x_max, ynode(j, grid, Center()), clock.time, params)
-        U_east_ext_η = (j, grid, clock) -> analytic_η(params.x_max, ynode(j, grid, Center()), clock.time, params)
+        U_west_ext = (i, j, grid, clock, model_fields) ->
+            (params.H * analytic_u(params.x_min, ynode(j, grid, Center()), clock.time, params),
+             analytic_η(params.x_min, ynode(j, grid, Center()), clock.time, params))
 
-        U_west_bc = OpenBoundaryCondition(nothing; scheme = Flather(external_values = (; U = U_west_ext_U, η = U_west_ext_η)))
-        U_east_bc = OpenBoundaryCondition(nothing; scheme = Flather(external_values = (; U = U_east_ext_U, η = U_east_ext_η)))
+        U_east_ext = (i, j, grid, clock, model_fields) ->
+            (params.H * analytic_u(params.x_max, ynode(j, grid, Center()), clock.time, params),
+             analytic_η(params.x_max, ynode(j, grid, Center()), clock.time, params))
+
+        U_west_bc = FlatherBoundaryCondition(U_west_ext; discrete_form = true)
+        U_east_bc = FlatherBoundaryCondition(U_east_ext; discrete_form = true)
         U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing); west = U_west_bc, east = U_east_bc)
 
-        V_south_ext_V = (i, grid, clock) -> params.H * analytic_v(xnode(i, grid, Center()), params.y_min, clock.time, params)
-        V_south_ext_η = (i, grid, clock) -> analytic_η(xnode(i, grid, Center()), params.y_min, clock.time, params)
-        V_north_ext_V = (i, grid, clock) -> params.H * analytic_v(xnode(i, grid, Center()), params.y_max, clock.time, params)
-        V_north_ext_η = (i, grid, clock) -> analytic_η(xnode(i, grid, Center()), params.y_max, clock.time, params)
+        V_south_ext = (i, j, grid, clock, model_fields) ->
+            (params.H * analytic_v(xnode(i, grid, Center()), params.y_min, clock.time, params),
+             analytic_η(xnode(i, grid, Center()), params.y_min, clock.time, params))
 
-        V_south_bc = OpenBoundaryCondition(nothing; scheme = Flather(external_values = (; U = V_south_ext_V, η = V_south_ext_η)))
-        V_north_bc = OpenBoundaryCondition(nothing; scheme = Flather(external_values = (; U = V_north_ext_V, η = V_north_ext_η)))
+        V_north_ext = (i, j, grid, clock, model_fields) ->
+            (params.H * analytic_v(xnode(i, grid, Center()), params.y_max, clock.time, params),
+             analytic_η(xnode(i, grid, Center()), params.y_max, clock.time, params))
+
+        V_south_bc = FlatherBoundaryCondition(V_south_ext; discrete_form = true)
+        V_north_bc = FlatherBoundaryCondition(V_north_ext; discrete_form = true)
         V_bcs = FieldBoundaryConditions(grid, (Center(), Face(), nothing); south = V_south_bc, north = V_north_bc)
 
         boundary_conditions = (; u = u_bcs, v = v_bcs, U = U_bcs, V = V_bcs)

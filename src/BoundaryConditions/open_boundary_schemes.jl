@@ -3,7 +3,7 @@ using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ
 using Oceananigans.Grids: column_depthᶠᶜᵃ, column_depthᶜᶠᵃ
 
 """
-    Flather(; external_values, gravitational_acceleration = defaults.gravitational_acceleration)
+    Flather(; gravitational_acceleration = defaults.gravitational_acceleration)
 
 Flather (1976) characteristic boundary condition for the shallow water equations.
 Prescribes the incoming Riemann invariant while letting the outgoing one radiate freely:
@@ -13,8 +13,12 @@ Prescribes the incoming Riemann invariant while letting the outgoing one radiate
 where `Uᵉˣᵗ` and `ηᵉˣᵗ` are external (prescribed) values, `ηᵇ` is the model free
 surface at the boundary, and `H` is the water column depth.
 
-The `external_values` should be a `NamedTuple` with fields `η` and `U`, each of which
-can be a number, array, or function of `(ξ, η, t)`.
+The external values are provided as the boundary condition value (first argument to
+`OpenBoundaryCondition` or `FlatherBoundaryCondition`) and must be a 2-tuple `(U, η)`.
+Each element can be a number, array, or function:
+
+- Numbers and arrays are evaluated via `getbc` element-wise.
+- Functions follow the standard boundary condition conventions (continuous or discrete form).
 
 This condition is applied to barotropic velocity fields at every barotropic substep in
 the split-explicit free surface solver. It requires `model_fields` to contain `η` (the
@@ -29,25 +33,23 @@ References
 using Oceananigans
 using Oceananigans.BoundaryConditions: Flather
 
-flather = Flather(external_values = (η = 0, U = 0))
+flather = Flather()
 typeof(flather)
 
 # output
-Flather{@NamedTuple{η::Int64, U::Int64}, Float64}
+Flather{Float64}
 ```
 """
-struct Flather{E, FT}
-    external_values :: E
+struct Flather{FT}
     gravitational_acceleration :: FT
 end
 
-function Flather(; external_values,
-                   gravitational_acceleration = defaults.gravitational_acceleration)
-    return Flather(external_values, gravitational_acceleration)
+function Flather(; gravitational_acceleration = defaults.gravitational_acceleration)
+    return Flather(gravitational_acceleration)
 end
 
 Adapt.adapt_structure(to, f::Flather) =
-    Flather(adapt(to, f.external_values), adapt(to, f.gravitational_acceleration))
+    Flather(adapt(to, f.gravitational_acceleration))
 
 const FlatherOBC = BoundaryCondition{<:Open{<:Flather}}
 
@@ -147,16 +149,89 @@ function regularize_boundary_condition(bc::RadiationOBC, grid, loc, dim, args...
 end
 
 #####
-##### Helper to evaluate external values (numbers, arrays, or functions)
+##### Convenience constructors
 #####
 
-@inline get_external_value(val::Number, args...) = val
-@inline get_external_value(val::AbstractArray, i, grid, clock) = @inbounds val[i]
-@inline get_external_value(val::Function, i, grid, clock) = val(i, grid, clock)
+"""
+    FlatherBoundaryCondition(val; gravitational_acceleration = defaults.gravitational_acceleration, kwargs...)
+
+Construct a Flather open boundary condition. `val` must be a 2-tuple `(U, η)` or a
+function returning a 2-tuple, where `U` is the external barotropic transport and
+`η` is the external free surface displacement. Each element of the tuple can be
+a number, array, or function (evaluated via `getbc`).
+
+Example
+=======
+
+```jldoctest
+using Oceananigans
+using Oceananigans.BoundaryConditions: FlatherBoundaryCondition
+
+bc = FlatherBoundaryCondition((0, 0))
+bc isa Oceananigans.BoundaryConditions.BoundaryCondition
+
+# output
+true
+```
+"""
+function FlatherBoundaryCondition(val; gravitational_acceleration = defaults.gravitational_acceleration, kwargs...)
+    validate_flather_condition(val)
+    return OpenBoundaryCondition(val; scheme = Flather(gravitational_acceleration = gravitational_acceleration), kwargs...)
+end
+
+function validate_flather_condition(val)
+    if val isa Union{Tuple, NamedTuple}
+        length(val) == 2 || throw(ArgumentError(
+            "Flather boundary condition requires a 2-tuple (U, η) for " *
+            "external transport and free surface, got a $(length(val))-tuple."))
+    elseif !(val isa Function)
+        throw(ArgumentError(
+            "FlatherBoundaryCondition requires a 2-tuple (U, η) or a function " *
+            "returning a 2-tuple, where U is the external barotropic transport " *
+            "and η is the external free surface displacement. " *
+            "Got an argument of type $(typeof(val))."))
+    end
+    return nothing
+end
+
+"""
+    RadiationBoundaryCondition(val; outflow_relaxation_timescale = Inf, inflow_relaxation_timescale = 300, kwargs...)
+
+Construct a Radiation (Orlanski) open boundary condition. `val` is the external field
+value, which can be a number, array, or function (following the standard `getbc` conventions).
+
+Example
+=======
+
+```jldoctest
+using Oceananigans
+using Oceananigans.BoundaryConditions: RadiationBoundaryCondition
+
+bc = RadiationBoundaryCondition(0)
+bc isa Oceananigans.BoundaryConditions.BoundaryCondition
+
+# output
+true
+```
+"""
+RadiationBoundaryCondition(val; outflow_relaxation_timescale = Inf,
+                                inflow_relaxation_timescale = 300,
+                                kwargs...) =
+    OpenBoundaryCondition(val; scheme = Radiation(outflow_relaxation_timescale = outflow_relaxation_timescale,
+                                                  inflow_relaxation_timescale = inflow_relaxation_timescale),
+                          kwargs...)
 
 #####
 ##### Flather halo filling
 #####
+
+# During initialization (no clock/model_fields available yet), fill halos with zero.
+# This prevents the tuple condition (U, η) from being assigned to a scalar array element
+# via the generic OBC fallback.
+@inline   _fill_east_halo!(j, k, grid, c, bc::FlatherOBC, loc) = @inbounds c[grid.Nx + 1, j, k] = zero(grid)
+@inline   _fill_west_halo!(j, k, grid, c, bc::FlatherOBC, loc) = @inbounds c[1, j, k]           = zero(grid)
+@inline  _fill_north_halo!(i, k, grid, c, bc::FlatherOBC, loc) = @inbounds c[i, grid.Ny + 1, k] = zero(grid)
+@inline  _fill_south_halo!(i, k, grid, c, bc::FlatherOBC, loc) = @inbounds c[i, 1, k]           = zero(grid)
 
 # The Flather condition for normal barotropic transport at a boundary:
 #
@@ -166,6 +241,9 @@ end
 # The sign convention follows from the characteristic decomposition of the
 # shallow water equations: the incoming Riemann invariant is prescribed from
 # external data while the outgoing one radiates freely.
+#
+# The boundary condition value (accessed via getbc) must return a 2-tuple (U, η)
+# of external transport and free surface values.
 #
 # Requires `model_fields` to contain:
 #   - η :: free surface displacement field
@@ -179,9 +257,8 @@ end
     η = model_fields.η
     H = column_depthᶠᶜᵃ(i, j, k_top, grid, η)
 
-    Uᵉˣᵗ = get_external_value(flather.external_values.U, j, grid, clock)
-    ηᵉˣᵗ = get_external_value(flather.external_values.η, j, grid, clock)
-    ηᵇ   = @inbounds η[grid.Nx, j, k_top]
+    Uᵉˣᵗ, ηᵉˣᵗ = getbc(bc, j, k, grid, clock, model_fields)
+    ηᵇ = @inbounds η[grid.Nx, j, k_top]
 
     @inbounds c[i, j, k] = Uᵉˣᵗ + sqrt(g * H) * (ηᵇ - ηᵉˣᵗ)
 
@@ -196,9 +273,8 @@ end
     η = model_fields.η
     H = column_depthᶠᶜᵃ(1, j, k_top, grid, η)
 
-    Uᵉˣᵗ = get_external_value(flather.external_values.U, j, grid, clock)
-    ηᵉˣᵗ = get_external_value(flather.external_values.η, j, grid, clock)
-    ηᵇ   = @inbounds η[1, j, k_top]
+    Uᵉˣᵗ, ηᵉˣᵗ = getbc(bc, j, k, grid, clock, model_fields)
+    ηᵇ = @inbounds η[1, j, k_top]
 
     @inbounds c[1, j, k] = Uᵉˣᵗ - sqrt(g * H) * (ηᵇ - ηᵉˣᵗ)
 
@@ -214,9 +290,8 @@ end
     η = model_fields.η
     H = column_depthᶜᶠᵃ(i, j, k_top, grid, η)
 
-    Vᵉˣᵗ = get_external_value(flather.external_values.U, i, grid, clock)
-    ηᵉˣᵗ = get_external_value(flather.external_values.η, i, grid, clock)
-    ηᵇ   = @inbounds η[i, grid.Ny, k_top]
+    Vᵉˣᵗ, ηᵉˣᵗ = getbc(bc, i, k, grid, clock, model_fields)
+    ηᵇ = @inbounds η[i, grid.Ny, k_top]
 
     @inbounds c[i, j, k] = Vᵉˣᵗ + sqrt(g * H) * (ηᵇ - ηᵉˣᵗ)
 
@@ -231,9 +306,8 @@ end
     η = model_fields.η
     H = column_depthᶜᶠᵃ(i, 1, k_top, grid, η)
 
-    Vᵉˣᵗ = get_external_value(flather.external_values.U, i, grid, clock)
-    ηᵉˣᵗ = get_external_value(flather.external_values.η, i, grid, clock)
-    ηᵇ   = @inbounds η[i, 1, k_top]
+    Vᵉˣᵗ, ηᵉˣᵗ = getbc(bc, i, k, grid, clock, model_fields)
+    ηᵇ = @inbounds η[i, 1, k_top]
 
     @inbounds c[i, 1, k] = Vᵉˣᵗ - sqrt(g * H) * (ηᵇ - ηᵉˣᵗ)
 

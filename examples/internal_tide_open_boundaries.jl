@@ -20,7 +20,7 @@
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Grids: znode, xnode
-using Oceananigans.BoundaryConditions: OpenBoundaryCondition, Radiation
+using Oceananigans.BoundaryConditions: FlatherBoundaryCondition, RadiationBoundaryCondition
 
 # ## Grid
 #
@@ -78,22 +78,16 @@ A₂ = U₂ * (ω₂^2 - coriolis.f^2) / ω₂
 
 Nᵢ² = 1e-4  # [s⁻²] initial buoyancy frequency / stratification
 
-radiation = Radiation(outflow_relaxation_timescale = Inf,
-                      inflow_relaxation_timescale = 300)
-
 @inline tidal_forcing(z, t, p) = p.U₂ * sin(p.ω₂ * t)
 
-const Um = U₂
-const ωm = ω₂
-
-@inline tidal_forcing(i, grid::Oceananigans.Grids.AbstractGrid, clock) = Um * sin(ωm * clock.time) * 2kilometers
-
-u_east_bc = OpenBoundaryCondition(tidal_forcing; scheme = radiation, parameters=(; U₂, ω₂))
-u_west_bc = OpenBoundaryCondition(tidal_forcing; scheme = radiation, parameters=(; U₂, ω₂))
+u_east_bc = RadiationBoundaryCondition(tidal_forcing; parameters=(; U₂, ω₂))
+u_west_bc = RadiationBoundaryCondition(tidal_forcing; parameters=(; U₂, ω₂))
 u_bcs     = FieldBoundaryConditions(east = u_east_bc, west = u_west_bc)
 
-U_west_bc = OpenBoundaryCondition(nothing; scheme = Flather(external_values = (; U = tidal_forcing, η = 0)))
-U_east_bc = OpenBoundaryCondition(nothing; scheme = Flather(external_values = (; U = tidal_forcing, η = 0)))
+@inline barotropic_tidal_forcing(i, j, grid, clock, model_fields) = (U₂ * sin(ω₂ * clock.time) * 2kilometers, 0)
+
+U_west_bc = FlatherBoundaryCondition(barotropic_tidal_forcing; discrete_form = true)
+U_east_bc = FlatherBoundaryCondition(barotropic_tidal_forcing; discrete_form = true)
 U_bcs     = FieldBoundaryConditions(grid, (Center(), Center(), nothing); east = U_east_bc, west = U_west_bc)
 
 # Internal waves carry buoyancy perturbations along with velocity, so the
@@ -103,8 +97,8 @@ U_bcs     = FieldBoundaryConditions(grid, (Center(), Center(), nothing); east = 
 # background stratification `N²z` on inflow.
 
 @inline b_background(z, t, Nᵢ²) = Nᵢ² * z
-b_east_bc = OpenBoundaryCondition(b_background; scheme = radiation, parameters = Nᵢ²)
-b_west_bc = OpenBoundaryCondition(b_background; scheme = radiation, parameters = Nᵢ²)
+b_east_bc = RadiationBoundaryCondition(b_background; parameters = Nᵢ²)
+b_west_bc = RadiationBoundaryCondition(b_background; parameters = Nᵢ²)
 b_bcs = FieldBoundaryConditions(east = b_east_bc, west = b_west_bc)
 
 # ## Sponge layers
