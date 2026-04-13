@@ -135,6 +135,9 @@ end
 import Base: getindex
 
 function getindex(fts::OnDiskFTS, n::Int)
+    # Bounds check before resolving the file/local index
+    1 <= n <= length(fts.times) || throw(BoundsError(fts, n))
+
     # Load data from the correct file (handles split files via SplitFilePath)
     arch = architecture(fts)
     filepath, local_n = file_and_local_index(fts.path, n)
