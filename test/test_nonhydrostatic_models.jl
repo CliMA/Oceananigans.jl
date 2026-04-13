@@ -212,7 +212,12 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
 
                 # Test that enforce_incompressibility works
                 set!(model, u=0, v=0, w=1, T=0, S=0)
-                ϵ = 10 * eps(FT)
+
+                # Note: Before PR #5021, which introduces a volume inverse norm for the conjugate gradient convergence criteria, 
+                # ϵ = 10 * eps(FT), see https://github.com/CliMA/Oceananigans.jl/pull/5021.
+                # We relax the tolerance in order to reduce the number of iterations needed for convergence.
+                # This affects the divergence of the latitude-longitude grid, increasingly it slightly from previous.
+                ϵ = sqrt(eps(FT))
                 set!(w_cpu, w)
                 @test all(abs.(interior(w_cpu)) .< ϵ)
 
