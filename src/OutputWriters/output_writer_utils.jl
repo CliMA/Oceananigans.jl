@@ -17,6 +17,8 @@ struct NoFileSplitting end
 Base.summary(::NoFileSplitting) = "NoFileSplitting"
 Base.show(io::IO, nfs::NoFileSplitting) = print(io, summary(nfs))
 initialize!(::NoFileSplitting, model) = nothing
+prognostic_state(::NoFileSplitting) = nothing
+restore_prognostic_state!(::NoFileSplitting, from) = nothing
 
 mutable struct FileSizeLimit <: AbstractSchedule
     size_limit :: Float64
@@ -60,6 +62,24 @@ writer type `ow`.
 """
 ext(ow::Type{AbstractOutputWriter}) = throw("Extension for $ow is not implemented.")
 ext(ow::AbstractOutputWriter) = ext(typeof(ow))
+
+"""
+    filepath_for_part(filepath, part)
+
+Return the filepath for the given `part` number. Handles both base paths
+(without `_partN` suffix) and paths that already contain a `_partN` suffix.
+"""
+function filepath_for_part(filepath, part)
+    extension = splitext(filepath)[2] # e.g., ".jld2" or ".nc"
+    esc_ext = replace(extension, "." => "\\.")
+    # Strip any existing _partN suffix to get the base path
+    base = replace(filepath, Regex("_part\\d+" * esc_ext * "\$") => extension)
+    if part > 1
+        return replace(base, Regex(esc_ext * "\$") => "_part$(part)" * extension)
+    else
+        return base
+    end
+end
 
 # TODO: add example to docstring below
 

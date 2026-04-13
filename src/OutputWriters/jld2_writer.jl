@@ -346,6 +346,15 @@ function write_output!(writer::JLD2Writer, model)
         # Start a new file if the file_splitting(model) is true
         writer.file_splitting(model) && start_next_file(model, writer)
         update_file_splitting_schedule!(writer.file_splitting, writer.filepath)
+
+        # After a file split, the new file may already contain this iteration
+        # (e.g., when picking up from a checkpoint that predates the latest output).
+        # In that case, skip writing to avoid duplicate key errors.
+        if iteration_exists(writer.filepath, current_iteration)
+            @warn "Iteration $current_iteration already exists in $(writer.filepath) after file split. Skipping."
+            return nothing
+        end
+
         # Write output from `data`
         verbose && @info "Writing JLD2 output $(keys(writer.outputs)) to $(writer.filepath)..."
 
