@@ -182,6 +182,49 @@ function test_jld2_time_averaging_of_horizontal_averages(model)
     return nothing
 end
 
+function test_jld2_with_halos_false_compute_outputs(arch)
+    schedules = (TimeInterval(1), IterationInterval(1), AveragedTimeInterval(2, window=2))
+
+    for schedule in schedules
+        topo = (Periodic, Periodic, Bounded)
+        grid = RectilinearGrid(arch, topology=topo, size=(8, 8, 4), extent=(1, 1, 1))
+        model = NonhydrostaticModel(grid; tracers=:c)
+
+        set!(model,
+             u = (x, y, z) -> sin(2π * x) * cos(2π * y),
+             c = (x, y, z) -> sin(2π * z))
+
+        u = model.velocities.u
+        c = model.tracers.c
+
+        outputs = (; u_squared_surface = Field(u * u; indices=(:, :, grid.Nz)),
+                    cbar = Field(Average(c, dims=3)))
+
+        simulation = Simulation(model, Δt=1, stop_iteration=4)
+
+        filename_prefix = replace(string(typeof(schedule)), r"[^A-Za-z0-9]" => "_")
+        filename = "compute_output_with_halos_false_" * filename_prefix * ".jld2"
+
+        simulation.output_writers[:compute_outputs] = JLD2Writer(model, outputs;
+                                                                 schedule,
+                                                                 filename,
+                                                                 with_halos=false,
+                                                                 overwrite_existing=true)
+
+        run!(simulation)
+
+        u_squared_surface = FieldTimeSeries(filename, "u_squared_surface")
+        cbar = FieldTimeSeries(filename, "cbar")
+
+        @test size(parent(u_squared_surface[1])) == (8, 8, 1)
+        @test size(parent(cbar[1])) == (8, 8, 1)
+
+        rm(filename)
+    end
+
+    return nothing
+end
+
 function test_jld2_time_averaging(arch)
     # Test for both "nice" floating point number and one that is more susceptible
     # to rounding errors
@@ -451,6 +494,11 @@ for arch in archs
 
         test_jld2_size_file_splitting(arch)
         test_jld2_time_file_splitting(arch)
+
+        #####
+        ##### Compute-on-fetch outputs with with_halos=false
+        #####
+        test_jld2_with_halos_false_compute_outputs(arch)
 
         #####
         ##### Time-averaging

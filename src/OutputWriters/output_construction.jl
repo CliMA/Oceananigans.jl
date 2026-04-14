@@ -1,4 +1,4 @@
-using Oceananigans.Fields: validate_indices, Reduction
+using Oceananigans.Fields: Field, validate_indices, Reduction
 using Oceananigans.Grids: default_indices
 using Oceananigans.Utils: @apply_regionally
 
@@ -38,6 +38,11 @@ intersect_index_range(range::UnitRange, ::Colon) = range
 intersect_index_range(::Colon, range::UnitRange) = range
 intersect_index_range(range1::UnitRange, range2::UnitRange) = intersect(range1, range2)
 
+requires_compute_on_fetch(::Any) = false
+requires_compute_on_fetch(::Reduction) = true
+requires_compute_on_fetch(output::Field) = !isnothing(output.operand)
+requires_compute_on_fetch(::WindowedTimeAverage) = true
+
 output_indices(output::AbstractField, indices, with_halos) = output_indices(output, output.grid, indices, with_halos)
 output_indices(output::Reduction, indices, with_halos) = output_indices(output, output.operand.grid, indices, with_halos)
 
@@ -56,12 +61,18 @@ function output_indices(output::Union{AbstractField, Reduction}, grid, indices, 
 end
 
 function construct_output(user_output::Union{AbstractField, Reduction}, user_indices, with_halos)
-    indices = output_indices(user_output, user_indices, with_halos)
+    write_indices = output_indices(user_output, user_indices, with_halos)
 
-    # Don't compute AbstractOperations or Reductions
+    # Do not compute AbstractOperations or Reductions.
     additional_kw = user_output isa Field ? NamedTuple() : (; compute=false)
 
-    return Field(user_output; indices, additional_kw...)
+    if !with_halos && requires_compute_on_fetch(user_output)
+        source_indices = output_indices(user_output, user_indices, true)
+        source_output = Field(user_output; indices=source_indices, additional_kw...)
+        return DeferredSlicedOutput(source_output, write_indices)
+    end
+
+    return Field(user_output; indices=write_indices, additional_kw...)
 end
 
 #####

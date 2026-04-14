@@ -269,3 +269,57 @@ run_large_pencil_distributed_grid(fold_topology) = """
     @test all(cs .≈ cp)
     @test all(ηs .≈ ηp)
 end
+
+tripolar_compute_output_writer_script(fold_topology) = """
+    using MPI
+    MPI.Init()
+    using Test
+
+    include("distributed_tests_utils.jl")
+
+    arch = Distributed(CPU(), partition = Partition(2, 2))
+    grid = TripolarGrid(arch; size = (40, 40, 1), z = (-1000, 0), halo = (5, 5, 5), fold_topology = $fold_topology)
+    grid = analytical_immersed_tripolar_grid(grid)
+
+    model = HydrostaticFreeSurfaceModel(grid;
+                                        free_surface = SplitExplicitFreeSurface(grid; substeps = 20),
+                                        tracers = :c,
+                                        tracer_advection = WENO(),
+                                        momentum_advection = WENOVectorInvariant(order=3),
+                                        coriolis = HydrostaticSphericalCoriolis())
+
+    ηᵢ(λ, φ, z) = exp(- (φ - 90)^2 / 10^2) + exp(- φ^2 / 10^2)
+    set!(model, c=ηᵢ, η=ηᵢ)
+
+    computed_surface = Field(model.tracers.c + 1; indices=(:, :, 1))
+
+    simulation = Simulation(model, Δt=5minutes, stop_iteration=1)
+    filename = "distributed_tripolar_compute_output_writer.jld2"
+
+    simulation.output_writers[:computed_surface] = JLD2Writer(model, (; computed_surface);
+                                                              filename,
+                                                              schedule = IterationInterval(1),
+                                                              with_halos = false,
+                                                              overwrite_existing = true)
+
+    run!(simulation)
+
+    if MPI.Comm_rank(MPI.COMM_WORLD) == 0
+        output = jldopen(filename, "r") do file
+            file["timeseries/computed_surface/0"]
+        end
+
+        @test size(output) == (40, 40, 1)
+        rm(filename, force=true)
+    end
+
+    MPI.Barrier(MPI.COMM_WORLD)
+    MPI.Finalize()
+"""
+
+@testset "Test distributed TripolarGrid compute-output writer regression $fold_topology..." for fold_topology in fold_topologies
+    script = "distributed_tripolar_compute_writer_tests.jl"
+    write(script, tripolar_compute_output_writer_script(fold_topology))
+    run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 $script`)
+    rm(script)
+end

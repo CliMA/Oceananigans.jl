@@ -1,5 +1,10 @@
 using Oceananigans.Fields: AbstractField, compute_at!, ZeroField
 
+struct DeferredSlicedOutput{SO, I}
+    source_output :: SO
+    write_indices :: I
+end
+
 # TODO: figure out how to support this
 # using Oceananigans.OutputReaders: FieldTimeSeries
 # using Oceananigans.Units: Time
@@ -14,6 +19,11 @@ fetch_output(output, model) = output(model)
 function fetch_output(field::AbstractField, model)
     compute_at!(field, time(model))
     return parent(field)
+end
+
+function fetch_output(output::DeferredSlicedOutput, model)
+    full_output = fetch_output(output.source_output, model)
+    return view(full_output, output.write_indices...)
 end
 
 convert_output(output, writer) = output
