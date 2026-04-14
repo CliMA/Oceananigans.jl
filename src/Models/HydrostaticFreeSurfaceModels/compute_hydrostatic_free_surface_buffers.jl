@@ -1,4 +1,5 @@
-using Oceananigans.Grids: halo_size, XFlatGrid, YFlatGrid, get_active_cells_map
+using Oceananigans.Utils: get_active_cells_map
+using Oceananigans.Grids: halo_size, XFlatGrid, YFlatGrid
 using Oceananigans.DistributedComputations: Distributed, DistributedGrid, AsynchronousDistributed, synchronize_communication!
 using Oceananigans.ImmersedBoundaries: CellMaps
 using Oceananigans.Models.NonhydrostaticModels: buffer_tendency_kernel_parameters, buffer_κ_kernel_parameters, buffer_parameters

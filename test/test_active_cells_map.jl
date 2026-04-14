@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Grids: get_active_cells_map
+using Oceananigans.Utils: get_active_cells_map
 using Oceananigans.ImmersedBoundaries: immersed_cell
 
 function Δ_min(grid)
@@ -70,7 +70,7 @@ Nz = 10
 
         @testset "Active cells map construction" begin
             surface_active_cells_map  = get_active_cells_map(immersed_active_grid, Val(:xy))
-            interior_active_cells_map = get_active_cells_map(immersed_active_grid, Val(:interior))
+            interior_active_cells_map = get_active_cells_map(immersed_active_grid, Val(:core))
 
             surface_active_cells_map  = on_architecture(CPU(), surface_active_cells_map)
             interior_active_cells_map = on_architecture(CPU(), interior_active_cells_map)
