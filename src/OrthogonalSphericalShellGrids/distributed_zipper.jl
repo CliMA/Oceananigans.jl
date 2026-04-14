@@ -28,9 +28,6 @@ const FPivotTopology = Union{RightFaceFolded,
                              LeftConnectedRightFaceFolded,
                              LeftConnectedRightFaceConnected}
 
-const TwoDFoldTopology = Union{LeftConnectedRightCenterConnected,
-                               LeftConnectedRightFaceConnected}
-
 # UPivot fold line is at Center-y; FPivot fold line is at Face-y
 has_fold_line(::Type{<:UPivotTopology}, ::Center) = true
 has_fold_line(::Type{<:UPivotTopology}, ::Face)   = false
