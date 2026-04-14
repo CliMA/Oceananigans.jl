@@ -607,12 +607,13 @@ end
     reconstruct_legacy_grid(grid, file, architecture)
 
 Reconstruct a grid from legacy JLD2 output files (prior to Oceananigans 0.95.0)
-that did not serialize grids properly.
+that did not serialize grids properly. Reads raw grid data from the top-level
+`grid/` path written by `saveproperties!`.
 """
-function reconstruct_legacy_grid(grid, file, name, architecture)
+function reconstruct_legacy_grid(grid, file, architecture)
     isibg = grid isa ImmersedBoundaryGrid
     test_grid = isibg ? grid.underlying_grid : grid
-    address = isibg ? "timeseries/$name/grid/underlying_grid" : "timeseries/$name/grid"
+    address = isibg ? "grid/underlying_grid" : "grid"
     Nx = file["$address/Nx"]
     Ny = file["$address/Ny"]
     Nz = file["$address/Nz"]
@@ -648,7 +649,7 @@ function reconstruct_legacy_grid(grid, file, name, architecture)
     end
 
     if isibg
-        bottom_height = file["timeseries/$name/grid/immersed_boundary/bottom_height"]
+        bottom_height = file["grid/immersed_boundary/bottom_height"]
         bottom_height = view(bottom_height, 1+Hx:Nx+Hx, 1+Hy:Ny+Hy, 1)
         grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
     else
@@ -663,23 +664,24 @@ end
 
 Manually reconstruct a RectilinearGrid from file data when `on_architecture` fails.
 This is a fallback for grids saved with CuArrays or generated with a different Julia version.
+Reads raw grid data from the top-level `grid/` path.
 """
-function manually_reconstruct_rectilinear_grid(grid, file, name, architecture)
+function manually_reconstruct_rectilinear_grid(grid, file, architecture)
     @info "Initial attempt to transfer grid to $architecture failed."
     @info "Attempting to reconstruct RectilinearGrid on $architecture manually..."
 
-    Nx = file["timeseries/$name/grid/Nx"]
-    Ny = file["timeseries/$name/grid/Ny"]
-    Nz = file["timeseries/$name/grid/Nz"]
-    Hx = file["timeseries/$name/grid/Hx"]
-    Hy = file["timeseries/$name/grid/Hy"]
-    Hz = file["timeseries/$name/grid/Hz"]
-    xᶠᵃᵃ = file["timeseries/$name/grid/xᶠᵃᵃ"]
-    yᵃᶠᵃ = file["timeseries/$name/grid/yᵃᶠᵃ"]
-    zᵃᵃᶠ = file["timeseries/$name/grid/zᵃᵃᶠ"]
-    x = file["timeseries/$name/grid/Δxᶠᵃᵃ"] isa Number ? (xᶠᵃᵃ[1], xᶠᵃᵃ[Nx+1]) : xᶠᵃᵃ
-    y = file["timeseries/$name/grid/Δyᵃᶠᵃ"] isa Number ? (yᵃᶠᵃ[1], yᵃᶠᵃ[Ny+1]) : yᵃᶠᵃ
-    z = file["timeseries/$name/grid/Δzᵃᵃᶠ"] isa Number ? (zᵃᵃᶠ[1], zᵃᵃᶠ[Nz+1]) : zᵃᵃᶠ
+    Nx = file["grid/Nx"]
+    Ny = file["grid/Ny"]
+    Nz = file["grid/Nz"]
+    Hx = file["grid/Hx"]
+    Hy = file["grid/Hy"]
+    Hz = file["grid/Hz"]
+    xᶠᵃᵃ = file["grid/xᶠᵃᵃ"]
+    yᵃᶠᵃ = file["grid/yᵃᶠᵃ"]
+    zᵃᵃᶠ = file["grid/zᵃᵃᶠ"]
+    x = file["grid/Δxᶠᵃᵃ"] isa Number ? (xᶠᵃᵃ[1], xᶠᵃᵃ[Nx+1]) : xᶠᵃᵃ
+    y = file["grid/Δyᵃᶠᵃ"] isa Number ? (yᵃᶠᵃ[1], yᵃᶠᵃ[Ny+1]) : yᵃᶠᵃ
+    z = file["grid/Δzᵃᵃᶠ"] isa Number ? (zᵃᵃᶠ[1], zᵃᵃᶠ[Nz+1]) : zᵃᵃᶠ
     topo = topology(grid)
 
     N = (Nx, Ny, Nz)
@@ -822,14 +824,14 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
     # and LatitudeLongitudeGrid (but not OrthogonalSphericalShellGrid) and we also assume
     # GridFittedBottom if the grid is an ImmersedBoundaryGrid. If these assumptions can be relaxed
     # in the future, they should.
-    isreconstructed(grid) && (grid = reconstruct_legacy_grid(grid, handle, name, architecture))
+    isreconstructed(grid) && (grid = reconstruct_legacy_grid(grid, handle, architecture))
 
     # This should be removed eventually... (4/5/2022)
     grid = try
         on_architecture(architecture, grid)
     catch err # Likely, the grid was saved with CuArrays or generated with a different Julia version.
         if grid isa RectilinearGrid # we can try...
-            manually_reconstruct_rectilinear_grid(grid, handle, name, architecture)
+            manually_reconstruct_rectilinear_grid(grid, handle, architecture)
         else
             throw(err)
         end
