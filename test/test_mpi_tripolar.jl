@@ -304,7 +304,7 @@ tripolar_compute_output_writer_script(fold_topology) = """
 
     run!(simulation)
 
-    if MPI.Comm_rank(MPI.COMM_WORLD) == 0
+    @root begin
         output = jldopen(filename, "r") do file
             file["timeseries/computed_surface/0"]
         end
@@ -312,8 +312,6 @@ tripolar_compute_output_writer_script(fold_topology) = """
         @test size(output) == (40, 40, 1)
         rm(filename, force=true)
     end
-
-    MPI.Barrier(MPI.COMM_WORLD)
     MPI.Finalize()
 """
 
