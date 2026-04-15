@@ -55,6 +55,20 @@ end
 @inline top_mass_flux_field(w)   = Field(Integral(view(w, :, :, w.grid.Nz + 1), dims=(1, 2)))
 
 #####
+##### Helpers for non-Field velocity components
+#####
+
+# Only `Field`s carry `boundary_conditions`; `ZeroField`, `FunctionField`,
+# `TimeSeriesInterpolation`, etc. do not — return `false` for those.
+@inline _is_targeted(velocity::Field, side) =
+    getproperty(velocity.boundary_conditions, side) isa TargetedPAOBC
+@inline _is_targeted(velocity, side) = false
+
+# Safely retrieve the boundary condition (returns `nothing` for non-Field types).
+@inline _get_bc(velocity::Field, side) = getproperty(velocity.boundary_conditions, side)
+@inline _get_bc(velocity, side) = nothing
+
+#####
 ##### Initialize only targeted boundaries
 #####
 
@@ -73,37 +87,37 @@ function initialize_targeted_boundary_mass_fluxes(velocities)
     boundary_fluxes = NamedTuple()
     has_targeted = false
 
-    if u.boundary_conditions.west isa TargetedPAOBC
+    if _is_targeted(u, :west)
         boundary_fluxes = merge(boundary_fluxes, (; west_mass_flux  = west_mass_flux_field(u),
                                                     west_area = get_west_area(u.grid)))
         has_targeted = true
     end
 
-    if u.boundary_conditions.east isa TargetedPAOBC
+    if _is_targeted(u, :east)
         boundary_fluxes = merge(boundary_fluxes, (; east_mass_flux  = east_mass_flux_field(u),
                                                     east_area = get_east_area(u.grid)))
         has_targeted = true
     end
 
-    if v.boundary_conditions.south isa TargetedPAOBC
+    if _is_targeted(v, :south)
         boundary_fluxes = merge(boundary_fluxes, (; south_mass_flux = south_mass_flux_field(v),
                                                     south_area = get_south_area(v.grid)))
         has_targeted = true
     end
 
-    if v.boundary_conditions.north isa TargetedPAOBC
+    if _is_targeted(v, :north)
         boundary_fluxes = merge(boundary_fluxes, (; north_mass_flux = north_mass_flux_field(v),
                                                     north_area = get_north_area(v.grid)))
         has_targeted = true
     end
 
-    if w.boundary_conditions.bottom isa TargetedPAOBC
+    if _is_targeted(w, :bottom)
         boundary_fluxes = merge(boundary_fluxes, (; bottom_mass_flux = bottom_mass_flux_field(w),
                                                     bottom_area = get_bottom_area(w.grid)))
         has_targeted = true
     end
 
-    if w.boundary_conditions.top isa TargetedPAOBC
+    if _is_targeted(w, :top)
         boundary_fluxes = merge(boundary_fluxes, (; top_mass_flux = top_mass_flux_field(w),
                                                     top_area = get_top_area(w.grid)))
         has_targeted = true
@@ -195,12 +209,12 @@ function enforce_targeted_open_boundary_fluxes!(model, bmf)
     update_targeted_boundary_mass_fluxes!(bmf)
 
     # Apply per-boundary corrections.
-    apply_targeted_left_boundary_correction!(u, u.boundary_conditions.west,   Val(:west),   bmf)
-    apply_targeted_left_boundary_correction!(v, v.boundary_conditions.south,  Val(:south),  bmf)
-    apply_targeted_left_boundary_correction!(w, w.boundary_conditions.bottom, Val(:bottom), bmf)
-    apply_targeted_right_boundary_correction!(u, u.boundary_conditions.east,  Val(:east),   bmf)
-    apply_targeted_right_boundary_correction!(v, v.boundary_conditions.north, Val(:north),  bmf)
-    apply_targeted_right_boundary_correction!(w, w.boundary_conditions.top,   Val(:top),    bmf)
+    apply_targeted_left_boundary_correction!(u, _get_bc(u, :west),   Val(:west),   bmf)
+    apply_targeted_left_boundary_correction!(v, _get_bc(v, :south),  Val(:south),  bmf)
+    apply_targeted_left_boundary_correction!(w, _get_bc(w, :bottom), Val(:bottom), bmf)
+    apply_targeted_right_boundary_correction!(u, _get_bc(u, :east),  Val(:east),   bmf)
+    apply_targeted_right_boundary_correction!(v, _get_bc(v, :north), Val(:north),  bmf)
+    apply_targeted_right_boundary_correction!(w, _get_bc(w, :top),   Val(:top),    bmf)
 
     return nothing
 end
