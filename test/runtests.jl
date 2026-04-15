@@ -51,6 +51,8 @@ CUDA.allowscalar() do
             include("test_stokes_drift.jl")
             include("test_utils.jl")
             include("test_schedules.jl")
+            include("test_newton_div.jl")
+            include("test_materialize_advection.jl")
         end
     end
 
@@ -143,6 +145,7 @@ CUDA.allowscalar() do
             include("test_seawater_density.jl")
             include("test_model_diagnostics.jl")
             include("test_orthogonal_spherical_shell_time_stepping.jl")
+            include("test_curvature_metric_terms.jl")
             include("test_bulk_drag.jl")
         end
     end

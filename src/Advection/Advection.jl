@@ -3,6 +3,10 @@ module Advection
 export
     div_𝐯u, div_𝐯v, div_𝐯w, div_Uc,
 
+    U_dot_∇u_hydrostatic_metric, U_dot_∇v_hydrostatic_metric,
+    U_dot_∇u_nonhydrostatic_metric, U_dot_∇v_nonhydrostatic_metric,
+    U_dot_∇u_metric, U_dot_∇v_metric, U_dot_∇w_metric,
+
     advective_tracer_flux_x,
     advective_tracer_flux_y,
     advective_tracer_flux_z,
@@ -75,9 +79,11 @@ include("topologically_conditional_interpolation.jl")
 include("flat_advective_fluxes.jl")
 include("immersed_advective_fluxes.jl")
 include("momentum_advection_operators.jl")
+include("curvature_metric_terms.jl")
 include("tracer_advection_operators.jl")
 include("bounds_preserving_tracer_advection_operators.jl")
 include("cell_advection_timescale.jl")
 include("adapt_advection_order.jl")
+include("materialize_advection.jl")
 
 end # module
