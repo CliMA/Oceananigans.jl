@@ -242,7 +242,7 @@ function initialize_nc_file(model,
             dims = gather_dimensions(outputs, grid, indices, with_halos, dimension_name_generator; grid_index=suffix)
             create_spatial_dimensions!(dataset, dims, output_attributes; deflatelevel=1, dimension_type)
 
-            write_grid_reconstruction_data!(dataset, grid, grid_index; array_type, deflatelevel)
+            write_grid_reconstruction_data!(dataset, grid, suffix; array_type, deflatelevel)
 
             if include_grid_metrics
                 metrics = gather_grid_metrics(grid, indices, dimension_name_generator; grid_index=suffix)
