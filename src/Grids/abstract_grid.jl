@@ -6,6 +6,8 @@ and `Arch`itecture.
 """
 abstract type AbstractGrid{FT, TX, TY, TZ, Arch} end
 
+grid(g::AbstractGrid) = g
+
 """
     AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch}
 
