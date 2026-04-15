@@ -393,12 +393,9 @@ end
             grid = TripolarGrid(arch; size = (10, 10, 1), fold_topology = fold_topology)
             bad_bcs = FieldBoundaryConditions(north = GradientBoundaryCondition(0))
 
-            # Field constructor path: validation in validate_boundary_conditions
+            # Field validation rejects the non-Zipper north BC. `regularize` does not
+            # throw — it passes user-supplied BCs through and leaves validation to Field.
             @test_throws ArgumentError CenterField(grid; boundary_conditions = bad_bcs)
-
-            # Regularize path (used by model construction): the validate call at the top
-            # of regularize_field_boundary_conditions also rejects it
-            @test_throws ArgumentError Oceananigans.BoundaryConditions.regularize_field_boundary_conditions(bad_bcs, grid, :T)
         end
     end
 end

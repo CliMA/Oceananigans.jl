@@ -6,7 +6,7 @@ export Periodic, Bounded, Flat, FullyConnected, LeftConnected, RightConnected
 export RightFaceFolded, RightCenterFolded
 export LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded
 export LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected
-export FoldedTopology
+export SerialFoldedTopology, SlabFoldedTopology, PencilFoldedTopology, DistributedFoldedTopology, FoldedTopology
 export AbstractGrid, AbstractUnderlyingGrid, halo_size, total_size
 export RectilinearGrid
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
