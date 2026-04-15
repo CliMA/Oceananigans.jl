@@ -43,6 +43,11 @@ end
 const FaceExtendedTopology = Union{Bounded, LeftConnected, RightFaceFolded,
                               LeftConnectedRightFaceFolded,
                               LeftConnectedRightFaceConnected}
+
+const FoldedTopology = Union{RightCenterFolded, RightFaceFolded,
+                             LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
+                             LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected}
+
 const AT = AbstractTopology
 
 Base.length(::Face,    ::FaceExtendedTopology, N) = N + 1

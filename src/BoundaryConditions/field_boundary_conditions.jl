@@ -12,6 +12,12 @@ end
 
 DefaultBoundaryCondition() = DefaultBoundaryCondition(NoFluxBoundaryCondition())
 
+# Accept `DefaultBoundaryCondition` placeholders when validating against a `FoldedTopology`.
+# Placeholders are resolved to concrete BCs later (by `default_prognostic_bc` /
+# `regularize_field_boundary_conditions`), and the resolved BC goes through the
+# `validate_boundary_conditions` call inside the `Field` constructor.
+validate_boundary_condition_topology(::DefaultBoundaryCondition, topo::Grids.FoldedTopology, side) = nothing
+
 default_prognostic_bc(::Grids.Periodic, loc,      default)  = PeriodicBoundaryCondition()
 default_prognostic_bc(::FullyConnected, loc,      default)  = MultiRegionCommunicationBoundaryCondition()
 default_prognostic_bc(::Flat,           loc,      default)  = nothing

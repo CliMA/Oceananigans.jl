@@ -386,3 +386,19 @@ using Oceananigans.Grids: with_halo, topology, halo_size
         end
     end
 end
+
+@testset "Invalid north BC on tripolar grids" begin
+    for arch in archs
+        @testset "$fold_topology fold topology" for fold_topology in fold_topologies
+            grid = TripolarGrid(arch; size = (10, 10, 1), fold_topology = fold_topology)
+            bad_bcs = FieldBoundaryConditions(north = GradientBoundaryCondition(0))
+
+            # Field constructor path: validation in validate_boundary_conditions
+            @test_throws ArgumentError CenterField(grid; boundary_conditions = bad_bcs)
+
+            # Regularize path (used by model construction): the validate call at the top
+            # of regularize_field_boundary_conditions also rejects it
+            @test_throws ArgumentError Oceananigans.BoundaryConditions.regularize_field_boundary_conditions(bad_bcs, grid, :T)
+        end
+    end
+end

@@ -102,16 +102,34 @@ const DistributedCommunicationBoundaryCondition = BoundaryCondition{<:Distribute
                   NoFluxBoundaryCondition() = BoundaryCondition(Flux(),                     nothing)
             ImpenetrableBoundaryCondition() = BoundaryCondition(Open(), nothing)
 MultiRegionCommunicationBoundaryCondition() = BoundaryCondition(MultiRegionCommunication(), nothing)
-            UPivotZipperBoundaryCondition() = BoundaryCondition(Zipper{UPivot}(), 1) # 1 means that the sign will not be switched
-            FPivotZipperBoundaryCondition() = BoundaryCondition(Zipper{FPivot}(), 1) # 1 means that the sign will not be switched
+            UPivotZipperBoundaryCondition() = BoundaryCondition(Zipper{UPivot}(), 1)
+            FPivotZipperBoundaryCondition() = BoundaryCondition(Zipper{FPivot}(), 1)
 
                     FluxBoundaryCondition(val; kwargs...) = BoundaryCondition(Flux(), val; kwargs...)
                    ValueBoundaryCondition(val; kwargs...) = BoundaryCondition(Value(), val; kwargs...)
                 GradientBoundaryCondition(val; kwargs...) = BoundaryCondition(Gradient(), val; kwargs...)
   OpenBoundaryCondition(val; scheme = nothing, kwargs...) = BoundaryCondition(Open(scheme), val; kwargs...)
 MultiRegionCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(MultiRegionCommunication(), val; kwargs...)
-            UPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{UPivot}(), val; kwargs...)
-            FPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{FPivot}(), val; kwargs...)
+
+"""
+    UPivotZipperBoundaryCondition(val=1; kwargs...)
+
+Construct a `Zipper{UPivot}` boundary condition with sign `val` applied when folding halos across
+the pivot. Default `val = 1` for scalars (and vertical velocity `w`); pass `val = -1` for horizontal
+signed vectors (e.g. `u`, `v`). On a [`TripolarGrid`](@ref), the sign is set automatically based on
+field name, so users rarely need to pass it explicitly.
+"""
+UPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{UPivot}(), val; kwargs...)
+
+"""
+    FPivotZipperBoundaryCondition(val=1; kwargs...)
+
+Construct a `Zipper{FPivot}` boundary condition with sign `val` applied when folding halos across
+the pivot. Default `val = 1` for scalars (and vertical velocity `w`); pass `val = -1` for horizontal
+signed vectors (e.g. `u`, `v`). On a [`TripolarGrid`](@ref), the sign is set automatically based on
+field name, so users rarely need to pass it explicitly.
+"""
+FPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{FPivot}(), val; kwargs...)
 DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(DistributedCommunication(), val; kwargs...)
 
 #####
@@ -186,6 +204,18 @@ const NumberRef = Base.RefValue{<:Number}
 validate_boundary_condition_topology(bc::Union{PBC, MCBC, Nothing}, topo::Grids.Periodic, side) = nothing
 validate_boundary_condition_topology(bc, topo::Grids.Periodic, side) =
     throw(ArgumentError("Cannot set $side $bc in a `Periodic` direction!"))
+
+# Validate the north boundary condition on a tripolar (folded) grid.
+# Throws if the user passes anything other than a `Zipper`, a distributed BC,
+# or `nothing`.
+# TODO: also check that the Zipper's pivot tag (UPivot / FPivot) matches the grid's
+# y-topology. The pivot is redundantly encoded in both the topology (e.g. RightCenterFolded
+# ↔ UPivot) and the BC (Zipper{UPivot}), mirroring how `Periodic` is both a topology and a
+# BC classification. Right now a user who supplies the wrong pivot passes validation.
+validate_boundary_condition_topology(::Union{ZBC, DCBC, Nothing}, topo::Grids.FoldedTopology, side) = nothing
+validate_boundary_condition_topology(bc, topo::Grids.FoldedTopology, side) =
+    side == :north ? throw(ArgumentError(
+        "Cannot set north $bc in a `FoldedTopology` direction; only a `Zipper`, distributed communication BC, or `nothing` is allowed.")) : nothing
 
 validate_boundary_condition_topology(::Nothing, topo::Flat, side) = nothing
 validate_boundary_condition_topology(bc, topo::Flat, side) =

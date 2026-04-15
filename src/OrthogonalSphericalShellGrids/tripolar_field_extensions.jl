@@ -2,6 +2,7 @@ using Oceananigans.BoundaryConditions: FieldBoundaryConditions,
                                        regularize_boundary_condition,
                                        assumed_field_location,
                                        regularize_immersed_boundary_condition,
+                                       validate_boundary_condition_topology,
                                        LeftBoundary,
                                        RightBoundary
 using Oceananigans.Grids: Grids, Center, Face,
@@ -13,13 +14,6 @@ using Oceananigans.BoundaryConditions: BoundaryConditions
 # and always caps at the north pole (90°N)
 Grids.x_domain(grid::TripolarGridOfSomeKind) = 0, 360
 Grids.y_domain(grid::TripolarGridOfSomeKind) = minimum(parent(grid.φᶠᶠᵃ)), 90
-
-# Fields living on edges are signed vectors while fields living on nodes and centers are scalars
-sign(LX, LY) = 1
-sign(::Type{Face},   ::Type{Face})   = 1
-sign(::Type{Face},   ::Type{Center}) = - 1 # u-velocity type
-sign(::Type{Center}, ::Type{Face})   = - 1 # v-velocity type
-sign(::Type{Center}, ::Type{Center}) = 1
 
 # Determine the appropriate north fold boundary condition based on grid topology.
 # Non-fold topologies (FullyConnected, RightConnected, etc.) default to UPivot — this
@@ -36,10 +30,22 @@ north_fold_boundary_condition(grid::TripolarGridOfSomeKind) = north_fold_boundar
 
 # a `TripolarGrid` needs a `UPivotZipperBoundaryCondition` for the north boundary
 # The `sign` 1 for regular tracers and -1 for velocities and signed vectors
+"""
+    regularize_field_boundary_conditions(bcs, grid::TripolarGridOfSomeKind, field_name, prognostic_names=nothing)
+
+Regularize `bcs` for a tripolar grid, overriding `bcs.north` with the appropriate
+`Zipper` boundary condition for the grid's y-topology. The north BC is topologically
+required to be a `Zipper`: supplying any other BC (other than a distributed
+communication BC or `nothing`) throws an `ArgumentError`. By default, fields named
+`:u` or `:v` are treated as horizontal signed vectors (sign = -1); all other fields
+use sign = +1.
+"""
 function BoundaryConditions.regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                                                  grid::TripolarGridOfSomeKind,
                                                                  field_name::Symbol,
                                                                  prognostic_names=nothing)
+
+    validate_boundary_condition_topology(bcs.north, topology(grid, 2)(), :north)
 
     loc = assumed_field_location(field_name)
 

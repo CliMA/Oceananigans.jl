@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: DistributedCommunicationBoundaryCondition, ZBC
+using Oceananigans.BoundaryConditions: DistributedCommunicationBoundaryCondition, ZBC, DCBC
 using Oceananigans.Fields: validate_indices, validate_field_data
 using Oceananigans.DistributedComputations:
     DistributedComputations,
@@ -253,6 +253,8 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                               field_name::Symbol,
                                               prognostic_names=nothing)
 
+    validate_boundary_condition_topology(bcs.north, topology(grid, 2)(), :north)
+
     arch = architecture(grid)
     loc  = assumed_field_location(field_name)
     yrank = arch.local_index[2] - 1
@@ -290,9 +292,12 @@ end
 ##### Dispatch on (y-topology, north_bc) to determine the north zipper BC.
 #####
 
-# Sign: from existing ZBC, or location-based fallback
-zipper_sign(bc::ZBC, loc) = bc.condition
-zipper_sign(bc, loc::Tuple{<:LX, <:LY}) where {LX, LY} = sign(LX, LY)
+# Extract the sign carried by the incoming north BC. Both dispatch levels below
+# can receive either a `ZBC` (from default_auxiliary_bc or from the slab regularize
+# branch) or a `DCBC` (from the pencil regularize branch, where the sign is packed
+# inside a `ZipperHaloCommunicationRanks` alongside the MPI rank info).
+zipper_sign(bc::ZBC)  = bc.condition
+zipper_sign(bc::DCBC) = bc.condition.sign
 
 # Non-fold topologies for non-fold ranks: no override
 north_zipper_bc(topo, north_bc, loc, grid) = nothing
@@ -301,15 +306,16 @@ north_zipper_bc(topo, north_bc, loc, grid) = nothing
 north_zipper_bc(::OneDFoldTopology, ::Nothing, loc, grid) = nothing
 north_zipper_bc(::TwoDFoldTopology, ::Nothing, loc, grid) = nothing
 
-##### Slab fold (1xN): local Zipper BC
+##### Slab fold (1xN) or fold-north rank in pencil partition: local Zipper BC
 function north_zipper_bc(::TY, north_bc, loc, grid) where TY <: OneDFoldTopology
-    return north_fold_boundary_condition(TY)(zipper_sign(north_bc, loc))
+    return north_fold_boundary_condition(TY)(zipper_sign(north_bc))
 end
 
-##### Pencil fold (MxN): DistributedZipper BC
+##### Middle rank in pencil partition (north side is MPI neighbor, not a fold):
+##### wrap the sign into a `DistributedZipper` communication BC
 function north_zipper_bc(::TwoDFoldTopology, north_bc, loc, grid)
     arch = architecture(grid)
-    halo_communication = ZipperHaloCommunicationRanks(zipper_sign(north_bc, loc); from=arch.local_rank, to=arch.connectivity.north)
+    halo_communication = ZipperHaloCommunicationRanks(zipper_sign(north_bc); from=arch.local_rank, to=arch.connectivity.north)
     return DistributedCommunicationBoundaryCondition(halo_communication)
 end
 
