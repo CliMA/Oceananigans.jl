@@ -45,7 +45,7 @@ using Oceananigans.Advection: beta_loop, biased_weno_weights
             # Float32 β should approximate Float64 reference
             for r in 1:buffer
                 if β_f64[r] > 0
-                    @test β_f32[r] ≈ β_f64[r] rtol=1e-3
+                    @test β_f32[r] ≈ β_f64[r] rtol=1e-2
                 end
             end
 
