@@ -4,6 +4,11 @@ struct DeferredSlicedOutput{SO, I}
     source_output :: SO
     write_indices :: I
 end
+grid(output::DeferredSlicedOutput) = grid(output.source_output)
+location(output::DeferredSlicedOutput) = location(output.source_output)
+indices(output::DeferredSlicedOutput) = output.write_indices
+boundary_conditions(output::DeferredSlicedOutput) = boundary_conditions(output.source_output)
+
 
 # TODO: figure out how to support this
 # using Oceananigans.OutputReaders: FieldTimeSeries
