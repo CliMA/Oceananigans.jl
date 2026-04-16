@@ -335,6 +335,7 @@ end
 
 Base.getindex(array::OffsetVector{T, <:Reactant.AbstractConcreteArray{T, 1}}, ::Colon) where T = array
 
+
 # These are additional modules that may need to be Reactantified in the future:
 #
 # include("Utils.jl")
