@@ -7,7 +7,6 @@ using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
-using Oceananigans.Grids: get_active_cells_map
 using Oceananigans.Advection: fixed_order_scheme
 using Oceananigans.Utils: get_active_cells_map
 
