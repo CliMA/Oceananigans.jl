@@ -31,11 +31,11 @@ Arguments:
 - `dim_names`: Tuple of dimension names to create/validate
 - `dimension_name_generator`: Function to generate dimension names
 """
-function create_field_dimensions!(ds, fd::AbstractField, dimension_name_generator; time_dependent=false, with_halos=false, array_type=Array{eltype(fd)}, dimension_type=Float64)
+function create_field_dimensions!(ds, fd::AbstractField, dimension_name_generator; time_dependent=false, with_halos=false, array_type=Array{eltype(fd)}, dimension_type=Float64, grid_index=nothing)
     # Assess and create the dimensions for the field
 
-    dimension_attributes = default_dimension_attributes(fd.grid, dimension_name_generator)
-    spatial_dim_names = field_dimensions(fd, dimension_name_generator)
+    dimension_attributes = default_dimension_attributes(grid(fd), dimension_name_generator; grid_index)
+    spatial_dim_names = field_dimensions(fd, dimension_name_generator; grid_index)
     spatial_dim_data = nodes(fd; with_halos)
 
     # Create dictionary of spatial dimensions and their data. Using OrderedDict to ensure the order of the dimensions is preserved.
@@ -97,6 +97,8 @@ function maybe_add_particle_dims!(dims, outputs)
     return dims
 end
 
+suffix_grid_keys(dims, grid_index) = Dict(add_grid_suffix(key, grid_index) => value for (key, value) in dims)
+
 function gather_vertical_dimensions(coordinate::StaticVerticalDiscretization, TZ, Nz, Hz, z_indices, with_halos, dim_name_generator)
     zᵃᵃᶠ_name = dim_name_generator("z", coordinate, nothing, nothing, f, Val(:z))
     zᵃᵃᶜ_name = dim_name_generator("z", coordinate, nothing, nothing, c, Val(:z))
@@ -108,7 +110,7 @@ function gather_vertical_dimensions(coordinate::StaticVerticalDiscretization, TZ
                 zᵃᵃᶜ_name => zᵃᵃᶜ_data)
 end
 
-function gather_dimensions(outputs, grid::RectilinearGrid, indices, with_halos, dim_name_generator)
+function gather_dimensions(outputs, grid::RectilinearGrid, indices, with_halos, dim_name_generator; grid_index=nothing)
     TX, TY, TZ = topology(grid)
     Nx, Ny, Nz = size(grid)
     Hx, Hy, Hz = halo_size(grid)
@@ -144,10 +146,10 @@ function gather_dimensions(outputs, grid::RectilinearGrid, indices, with_halos, 
 
     maybe_add_particle_dims!(dims, outputs)
 
-    return dims
+    return suffix_grid_keys(dims, grid_index)
 end
 
-function gather_dimensions(outputs, grid::LatitudeLongitudeGrid, indices, with_halos, dim_name_generator)
+function gather_dimensions(outputs, grid::LatitudeLongitudeGrid, indices, with_halos, dim_name_generator; grid_index=nothing)
     TΛ, TΦ, TZ = topology(grid)
     Nλ, Nφ, Nz = size(grid)
     Hλ, Hφ, Hz = halo_size(grid)
@@ -183,17 +185,17 @@ function gather_dimensions(outputs, grid::LatitudeLongitudeGrid, indices, with_h
 
     maybe_add_particle_dims!(dims, outputs)
 
-    return dims
+    return suffix_grid_keys(dims, grid_index)
 end
 
-gather_dimensions(outputs, grid::ImmersedBoundaryGrid, args...) =
-    gather_dimensions(outputs, grid.underlying_grid, args...)
+gather_dimensions(outputs, grid::ImmersedBoundaryGrid, args...; kw...) =
+    gather_dimensions(outputs, grid.underlying_grid, args...; kw...)
 
 #####
 ##### Mapping outputs/fields to dimensions
 #####
 
-function field_dimensions(fd::AbstractField, grid::RectilinearGrid, dim_name_generator)
+function field_dimensions(fd::AbstractField, grid::RectilinearGrid, dim_name_generator; grid_index=nothing)
     LX, LY, LZ = location(fd)
     TX, TY, TZ = topology(grid)
 
@@ -201,10 +203,10 @@ function field_dimensions(fd::AbstractField, grid::RectilinearGrid, dim_name_gen
     y_dim_name = LY == Nothing ? "" : dim_name_generator("y", grid, nothing, LY(), nothing, Val(:y))
     z_dim_name = LZ == Nothing ? "" : dim_name_generator("z", grid, nothing, nothing, LZ(), Val(:z))
 
-    return tuple(x_dim_name, y_dim_name, z_dim_name)
+    return Tuple(add_grid_suffix(dim_name, grid_index) for dim_name in (x_dim_name, y_dim_name, z_dim_name))
 end
 
-function field_dimensions(fd::AbstractField, grid::LatitudeLongitudeGrid, dim_name_generator)
+function field_dimensions(fd::AbstractField, grid::LatitudeLongitudeGrid, dim_name_generator; grid_index=nothing)
     LΛ, LΦ, LZ = location(fd)
     TΛ, TΦ, TZ = topology(grid)
 
@@ -212,14 +214,14 @@ function field_dimensions(fd::AbstractField, grid::LatitudeLongitudeGrid, dim_na
     φ_dim_name = LΦ == Nothing ? "" : dim_name_generator("φ", grid, nothing, LΦ(), nothing, Val(:y))
     z_dim_name = LZ == Nothing ? "" : dim_name_generator("z", grid, nothing, nothing, LZ(), Val(:z))
 
-    return tuple(λ_dim_name, φ_dim_name, z_dim_name)
+    return Tuple(add_grid_suffix(dim_name, grid_index) for dim_name in (λ_dim_name, φ_dim_name, z_dim_name))
 end
 
-field_dimensions(fd::AbstractField, grid::ImmersedBoundaryGrid, dim_name_generator) =
-    field_dimensions(fd, grid.underlying_grid, dim_name_generator)
+field_dimensions(fd::AbstractField, grid::ImmersedBoundaryGrid, dim_name_generator; kw...) =
+    field_dimensions(fd, grid.underlying_grid, dim_name_generator; kw...)
 
-field_dimensions(fd::AbstractField, dim_name_generator) =
-    field_dimensions(fd, fd.grid, dim_name_generator)
+field_dimensions(fd::AbstractField, dim_name_generator; kw...) =
+    field_dimensions(fd, grid(fd), dim_name_generator; kw...)
 
 #####
 ##### Dimension attributes
@@ -228,7 +230,7 @@ field_dimensions(fd::AbstractField, dim_name_generator) =
 const base_dimension_attributes = Dict("time"        => Dict("long_name" => "Time", "units" => "s"),
                                        "particle_id" => Dict("long_name" => "Particle ID"))
 
-function default_vertical_dimension_attributes(coordinate::StaticVerticalDiscretization, dim_name_generator)
+function default_vertical_dimension_attributes(coordinate::StaticVerticalDiscretization, dim_name_generator; grid_index=nothing)
     zᵃᵃᶠ_name = dim_name_generator("z", coordinate, nothing, nothing, f, Val(:z))
     zᵃᵃᶜ_name = dim_name_generator("z", coordinate, nothing, nothing, c, Val(:z))
 
@@ -241,13 +243,15 @@ function default_vertical_dimension_attributes(coordinate::StaticVerticalDiscret
     Δzᵃᵃᶠ_attrs = Dict("long_name" => "Spacings between cell centers (located at cell faces) in the z-direction.", "units" => "m")
     Δzᵃᵃᶜ_attrs = Dict("long_name" => "Spacings between cell faces (located at cell centers) in the z-direction.", "units" => "m")
 
-    return Dict(zᵃᵃᶠ_name => zᵃᵃᶠ_attrs,
-                zᵃᵃᶜ_name => zᵃᵃᶜ_attrs,
-                Δzᵃᵃᶠ_name => Δzᵃᵃᶠ_attrs,
-                Δzᵃᵃᶜ_name => Δzᵃᵃᶜ_attrs)
+    vertical_dimension_attributes = Dict(zᵃᵃᶠ_name  => zᵃᵃᶠ_attrs,
+                                         zᵃᵃᶜ_name  => zᵃᵃᶜ_attrs,
+                                         Δzᵃᵃᶠ_name => Δzᵃᵃᶠ_attrs,
+                                         Δzᵃᵃᶜ_name => Δzᵃᵃᶜ_attrs)
+
+    return suffix_grid_keys(vertical_dimension_attributes, grid_index)
 end
 
-function default_dimension_attributes(grid::RectilinearGrid, dim_name_generator)
+function default_dimension_attributes(grid::RectilinearGrid, dim_name_generator; grid_index=nothing)
     xᶠᵃᵃ_name = dim_name_generator("x", grid, f, nothing, nothing, Val(:x))
     xᶜᵃᵃ_name = dim_name_generator("x", grid, c, nothing, nothing, Val(:x))
     yᵃᶠᵃ_name = dim_name_generator("y", grid, nothing, f, nothing, Val(:y))
@@ -277,14 +281,15 @@ function default_dimension_attributes(grid::RectilinearGrid, dim_name_generator)
                                            Δyᵃᶠᵃ_name => Δyᵃᶠᵃ_attrs,
                                            Δyᵃᶜᵃ_name => Δyᵃᶜᵃ_attrs)
 
-    vertical_dimension_attributes = default_vertical_dimension_attributes(grid.z, dim_name_generator)
+    horizontal_dimension_attributes = suffix_grid_keys(horizontal_dimension_attributes, grid_index)
+    vertical_dimension_attributes   = default_vertical_dimension_attributes(grid.z, dim_name_generator; grid_index)
 
     return merge(base_dimension_attributes,
                  horizontal_dimension_attributes,
                  vertical_dimension_attributes)
 end
 
-function default_dimension_attributes(grid::LatitudeLongitudeGrid, dim_name_generator)
+function default_dimension_attributes(grid::LatitudeLongitudeGrid, dim_name_generator; grid_index=nothing)
     λᶠᵃᵃ_name = dim_name_generator("λ", grid, f, nothing, nothing, Val(:x))
     λᶜᵃᵃ_name = dim_name_generator("λ", grid, c, nothing, nothing, Val(:x))
 
@@ -360,12 +365,13 @@ function default_dimension_attributes(grid::LatitudeLongitudeGrid, dim_name_gene
                                            Δyᶜᶠᵃ_name => Δyᶜᶠᵃ_attrs,
                                            Δyᶜᶜᵃ_name => Δyᶜᶜᵃ_attrs)
 
-    vertical_dimension_attributes = default_vertical_dimension_attributes(grid.z, dim_name_generator)
+    horizontal_dimension_attributes = suffix_grid_keys(horizontal_dimension_attributes, grid_index)
+    vertical_dimension_attributes   = default_vertical_dimension_attributes(grid.z, dim_name_generator; grid_index)
 
     return merge(base_dimension_attributes,
                  horizontal_dimension_attributes,
                  vertical_dimension_attributes)
 end
 
-default_dimension_attributes(grid::ImmersedBoundaryGrid, dim_name_generator) =
-    default_dimension_attributes(grid.underlying_grid, dim_name_generator)
+default_dimension_attributes(grid::ImmersedBoundaryGrid, dim_name_generator; kw...) =
+    default_dimension_attributes(grid.underlying_grid, dim_name_generator; kw...)
