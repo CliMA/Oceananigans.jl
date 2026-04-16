@@ -1,4 +1,5 @@
 using Oceananigans.Fields: AbstractField, compute_at!, ZeroField
+import Oceananigans.Fields: indices
 
 struct DeferredSlicedOutput{SO, I}
     source_output :: SO
