@@ -1,10 +1,10 @@
 using Oceananigans.Advection: AbstractAdvectionScheme
 using Oceananigans.ImmersedBoundaries
-using Oceananigans.Grids: get_active_cells_map, active_cell
+using Oceananigans.Grids: active_cell
 using Oceananigans.Architectures: CPU
 import Oceananigans.Architectures as AC
 using Oceananigans.Fields: Field, interior
-using Oceananigans.Utils: InteriorBoundarySet, convert_interior_indices, @apply_regionally
+using Oceananigans.Utils: InteriorBoundarySet, convert_interior_indices, @apply_regionally, get_active_cells_map
 using KernelAbstractions: @kernel, @index
 
 
