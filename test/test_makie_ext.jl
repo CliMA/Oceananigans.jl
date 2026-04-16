@@ -206,7 +206,7 @@ sequential_data(sz::NTuple{N, Int}) where N = reshape(Float64.(1:prod(sz)), sz..
     end
 
     @testset "Scalar field time series as 1D line" begin
-        grid = RectilinearGrid(size = (1, 1, 1), extent = (1, 1, 1)) 
+        grid = RectilinearGrid(size = (1, 1, 1), extent = (1, 1, 1))
         output_times = 0:0.1:1
         field_time_series = FieldTimeSeries{Center, Center, Center}(grid, output_times)
 
@@ -285,7 +285,7 @@ sequential_data(sz::NTuple{N, Int}) where N = reshape(Float64.(1:prod(sz)), sz..
     end
 
     @testset "One-dimensional field time series as heat map" begin
-        grid = RectilinearGrid(size = (1, 1, 10), extent = (1, 1, 1)) 
+        grid = RectilinearGrid(size = (1, 1, 10), extent = (1, 1, 1))
         output_times = 0:0.1:1
         field_time_series = FieldTimeSeries{Center, Center, Center}(grid, output_times)
 
@@ -310,7 +310,7 @@ sequential_data(sz::NTuple{N, Int}) where N = reshape(Float64.(1:prod(sz)), sz..
     end
 
     @testset "One-dimensional field time series as contour plot with coordinate arrays" begin
-        grid = RectilinearGrid(size = (1, 10, 1), extent = (1, 1kilometers, 1)) 
+        grid = RectilinearGrid(size = (1, 10, 1), extent = (1, 1kilometers, 1))
         output_times = 0:0.5hours:24hours
         field_time_series = FieldTimeSeries{Center, Center, Center}(grid, output_times)
 
