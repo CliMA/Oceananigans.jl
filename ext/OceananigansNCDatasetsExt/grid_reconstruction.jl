@@ -253,7 +253,7 @@ function netcdf_grid_constructor_info(grid::ImmersedBoundaryGrid)
 end
 
 function write_immersed_boundary_data!(ds, grid::ImmersedBoundaryGrid, immersed_grid_args, prefix)
-    group_name = "$(prefix)_immersed_grid_reconstruction_args"
+    group_name = "$(prefix)immersed_grid_reconstruction_args"
     if (grid.immersed_boundary isa GridFittedBottom) || (grid.immersed_boundary isa PartialCellBottom)
         bottom_height = pop!(immersed_grid_args, :bottom_height)
         ibg_group = defGroup(ds, group_name; attrib=convert_for_netcdf(immersed_grid_args))
@@ -270,14 +270,17 @@ end
 
 write_immersed_boundary_data!(ds, grid, immersed_grid_args, prefix) = nothing
 
+# When grid_index is nothing (single grid), use unprefixed group names
+# for backward compatibility with the legacy format.
+# When grid_index is an integer (multi-grid), prefix groups with "grid_N_".
 function write_grid_reconstruction_data!(ds, grid, grid_index; array_type=Array{eltype(grid)}, deflatelevel=0)
     underlying_grid_args, underlying_grid_kwargs, immersed_grid_args, grid_metadata = netcdf_grid_constructor_info(grid)
     underlying_grid_args, underlying_grid_kwargs, grid_metadata = map(convert_for_netcdf, (underlying_grid_args, underlying_grid_kwargs, grid_metadata))
 
-    prefix = "grid_$(grid_index)"
-    defGroup(ds, "$(prefix)_underlying_grid_reconstruction_args"; attrib = underlying_grid_args)
-    defGroup(ds, "$(prefix)_underlying_grid_reconstruction_kwargs"; attrib = underlying_grid_kwargs)
-    defGroup(ds, "$(prefix)_grid_reconstruction_metadata"; attrib = grid_metadata)
+    prefix = isnothing(grid_index) ? "" : "grid_$(grid_index)_"
+    defGroup(ds, "$(prefix)underlying_grid_reconstruction_args"; attrib = underlying_grid_args)
+    defGroup(ds, "$(prefix)underlying_grid_reconstruction_kwargs"; attrib = underlying_grid_kwargs)
+    defGroup(ds, "$(prefix)grid_reconstruction_metadata"; attrib = grid_metadata)
 
     write_immersed_boundary_data!(ds, grid, immersed_grid_args, prefix)
 
@@ -292,20 +295,20 @@ function reconstruct_grid(filename::String; grid_index=1, architecture=nothing)
 end
 
 function reconstruct_immersed_boundary(ds, ::Val{:GridFittedBoundary}, prefix)
-    ibg_group = ds.group["$(prefix)_immersed_grid_reconstruction_args"]
+    ibg_group = ds.group["$(prefix)immersed_grid_reconstruction_args"]
     mask = Array(ibg_group["mask"])
     return GridFittedBoundary(mask)
 end
 
 function reconstruct_immersed_boundary(ds, ::Val{:GridFittedBottom}, prefix)
-    ibg_group = ds.group["$(prefix)_immersed_grid_reconstruction_args"]
+    ibg_group = ds.group["$(prefix)immersed_grid_reconstruction_args"]
     bottom_height = Array(ibg_group["bottom_height"])
     immersed_condition = ibg_group.attrib["immersed_condition"] |> materialize_from_netcdf
     return GridFittedBottom(bottom_height, immersed_condition)
 end
 
 function reconstruct_immersed_boundary(ds, ::Val{:PartialCellBottom}, prefix)
-    ibg_group = ds.group["$(prefix)_immersed_grid_reconstruction_args"]
+    ibg_group = ds.group["$(prefix)immersed_grid_reconstruction_args"]
     bottom_height = Array(ibg_group["bottom_height"])
     minimum_fractional_cell_height = ibg_group.attrib["minimum_fractional_cell_height"] |> materialize_from_netcdf
     return PartialCellBottom(bottom_height, minimum_fractional_cell_height)
@@ -314,23 +317,25 @@ end
 reconstruct_immersed_boundary(ds, immersed_boundary_type, prefix) = error("Unsupported immersed boundary type: $immersed_boundary_type")
 
 function reconstruct_immersed_boundary(ds, prefix)
-    grid_reconstruction_metadata = ds.group["$(prefix)_grid_reconstruction_metadata"].attrib
+    grid_reconstruction_metadata = ds.group["$(prefix)grid_reconstruction_metadata"].attrib
     immersed_boundary_type = grid_reconstruction_metadata[:immersed_boundary_type]
     immersed_boundary = reconstruct_immersed_boundary(ds, Val(Symbol(immersed_boundary_type)), prefix)
     return immersed_boundary
 end
 
 function reconstruct_grid(ds; grid_index=1, architecture=nothing)
-    prefix = "grid_$(grid_index)"
+    # Try prefixed format (multi-grid) first, fall back to unprefixed format (single-grid / legacy)
+    prefixed_key = "grid_$(grid_index)_underlying_grid_reconstruction_args"
+    prefix = haskey(ds.group, prefixed_key) ? "grid_$(grid_index)_" : ""
 
     # Read back the grid reconstruction metadata
-    underlying_grid_reconstruction_args   = ds.group["$(prefix)_underlying_grid_reconstruction_args"].attrib |> Dict
+    underlying_grid_reconstruction_args   = ds.group["$(prefix)underlying_grid_reconstruction_args"].attrib |> Dict
     if !isnothing(architecture) # If architecture is specified, force it into the underlying grid reconstruction arguments before materializing
         underlying_grid_reconstruction_args["architecture"] = architecture
     end
     underlying_grid_reconstruction_args   = underlying_grid_reconstruction_args |> materialize_from_netcdf
-    underlying_grid_reconstruction_kwargs = ds.group["$(prefix)_underlying_grid_reconstruction_kwargs"].attrib |> materialize_from_netcdf
-    grid_reconstruction_metadata          = ds.group["$(prefix)_grid_reconstruction_metadata"].attrib |> materialize_from_netcdf
+    underlying_grid_reconstruction_kwargs = ds.group["$(prefix)underlying_grid_reconstruction_kwargs"].attrib |> materialize_from_netcdf
+    grid_reconstruction_metadata          = ds.group["$(prefix)grid_reconstruction_metadata"].attrib |> materialize_from_netcdf
 
     # Pop out information about the underlying grid
     underlying_grid_type = grid_reconstruction_metadata[:underlying_grid_type]

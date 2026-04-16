@@ -635,7 +635,8 @@ end
     reconstruct_legacy_grid(grid, file, architecture)
 
 Reconstruct a grid from legacy JLD2 output files (prior to Oceananigans 0.95.0)
-that did not serialize grids properly.
+that did not serialize grids properly. Reads raw grid data from the top-level
+`grid/` path written by `saveproperties!`.
 """
 function reconstruct_legacy_grid(grid, file, name, architecture)
     isibg = grid isa ImmersedBoundaryGrid
@@ -691,6 +692,7 @@ end
 
 Manually reconstruct a RectilinearGrid from file data when `on_architecture` fails.
 This is a fallback for grids saved with CuArrays or generated with a different Julia version.
+Reads raw grid data from the top-level `grid/` path.
 """
 function manually_reconstruct_rectilinear_grid(grid, file, name, architecture)
     @info "Initial attempt to transfer grid to $architecture failed."

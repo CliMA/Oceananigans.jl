@@ -269,7 +269,7 @@ NetCDFWriter scheduled on TimeInterval(1 minute):
 ├── 2 outputs: (c, u) averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
-└── file size: 34.5 KiB
+└── file size: 34.4 KiB
 ```
 
 `NetCDFWriter` also accepts output functions that write scalars and arrays to disk,
@@ -320,7 +320,7 @@ NetCDFWriter scheduled on IterationInterval(1):
 ├── 3 outputs: (profile, slice, scalar)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
-└── file size: 34.8 KiB
+└── file size: 34.7 KiB
 ```
 
 `NetCDFWriter` supports outputs that live on different grids within a single writer.
