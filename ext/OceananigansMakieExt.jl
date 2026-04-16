@@ -30,7 +30,7 @@ end
 """
     deduce_dimensionality(f)
 
-Deduce the dimensionality of the field `f` and return a 3-tuple `d1, d2, D`, where
+Deduce the dimensionality of the field (time series) `f` and return a 3-tuple `d1, d2, D`, where
 `d1` is the first dimension along which `f` varies, `d2` is the second dimension (if any),
 and `D` is the total dimensionality of `f`.
 """
@@ -40,20 +40,21 @@ function deduce_dimensionality(f)
     d2 =  findlast(n -> n > 1, size(f))
 
     # Deduce total dimensionality
-    Nx, Ny, Nz = size(f)
-    D = (Nx > 1) + (Ny > 1) + (Nz > 1)
+    D = sum((d > 1) for d in size(f))
 
     return d1, d2, D
-end
+end   
 
-axis_str(::RectilinearGrid, dim) = ("x", "y", "z")[dim]
-axis_str(::LatitudeLongitudeGrid, dim) = ("Longitude (deg)", "Latitude (deg)", "z")[dim]
+axis_str(::RectilinearGrid, dim) = ("x", "y", "z", "Time")[dim]
+axis_str(::LatitudeLongitudeGrid, dim) = ("Longitude (deg)", "Latitude (deg)", "z", "Time")[dim]
 axis_str(::OrthogonalSphericalShellGrid, dim) = ""
 axis_str(grid::ImmersedBoundaryGrid, dim) = axis_str(grid.underlying_grid, dim)
 
 const LLGOrIBLLG = Union{LatitudeLongitudeGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:LatitudeLongitudeGrid}}
 
-function _create_plot(F::Function, attributes::Dict, f::Field)
+const FieldOrFTS = Union{Field, FieldTimeSeries}
+
+function _create_plot(F::Function, attributes::Dict, f::FieldOrFTS)
     converted_args = convert_field_argument(f)
 
     if !(:axis ∈ keys(attributes)) # Let's try to automatically add labels and ticks
@@ -63,14 +64,19 @@ function _create_plot(F::Function, attributes::Dict, f::Field)
         if D === 1 # 1D plot
 
             # See `convert_field_argument` for this horizontal/vertical plotting convention.
-            if d1 === 1 # This is a horizontal plot, so we add xlabel
-                axis = (; xlabel=axis_str(grid, 1))
+            if d1 === 1 || d1 === 4 # This is a horizontal or time series plot, so we add xlabel
+                axis = (; xlabel=axis_str(grid, d1))
             else # vertical plot with a ylabel
                 axis = (; ylabel=axis_str(grid, d1))
             end
 
         elseif D === 2 # it's a two-dimensional plot
-            axis = (xlabel=axis_str(grid, d1), ylabel=axis_str(grid, d2))
+            if d2 === 4
+                # Always plot time on horizontal axis
+                axis = (xlabel=axis_str(grid, d2), ylabel=axis_str(grid, d1))
+            else
+                axis = (xlabel=axis_str(grid, d1), ylabel=axis_str(grid, d2))
+            end
         else
             throw(ArgumentError("Cannot create axis labels for a 3D field!"))
         end
@@ -94,7 +100,7 @@ end
 _create_plot(F::Function, attributes::Dict, f::Observable{<:Field}) =
     _create_plot(F, attributes, f[])
 
-convert_arguments(pl::Type{<:AbstractPlot}, f::Field) =
+convert_arguments(pl::Type{<:AbstractPlot}, f::FieldOrFTS) =
     convert_arguments(pl, convert_field_argument(f)...)
 
 function convert_arguments(pl::Type{<:AbstractPlot}, op::AbstractOperation)
@@ -144,11 +150,24 @@ function make_plottable_array(f)
     return fi_cpu
 end
 
-function convert_field_argument(f::Field)
+"""
+    make_plottable_array(f)
+
+Convert a field time series `fts` to an array tha can be plotted with Makie by
+iterating fields corresponding to all time indices, converting each field to a
+plottable array and stacking along first dimension as time is always assumed to
+be plotted on horizontal axis.
+"""
+make_plottable_array(fts::FieldTimeSeries) = stack(make_plottable_array(fts[i]) for i in 1:length(fts); dims=1)
+
+nodes_and_possibly_times(f::Field) = nodes(f)
+nodes_and_possibly_times(f::FieldTimeSeries) = (nodes(f)..., f.times)
+
+function convert_field_argument(f::FieldOrFTS)
 
     fi_cpu = make_plottable_array(f)
     d1, d2, D = deduce_dimensionality(f)
-    fnodes = nodes(f)
+    fnodes = nodes_and_possibly_times(f)
 
     if D == 1
 
@@ -156,7 +175,7 @@ function convert_field_argument(f::Field)
         ξ1_cpu = on_architecture(CPU(), ξ1)
 
         # Shenanigans
-        if d1 === 1 # horizontal plot, in x
+        if d1 === 1 || d1 === 4 # horizontal or time series plot, in x
             return ξ1_cpu, fi_cpu
         else # vertical plot instead
             return fi_cpu, ξ1_cpu
@@ -164,6 +183,8 @@ function convert_field_argument(f::Field)
 
     elseif D == 2
 
+        # If time series plot swap time to be horizontal (x) axis
+        d1, d2 = (d2 == 4) ? (d2, d1) : (d1, d2)
         ξ1 = fnodes[d1]
         ξ2 = fnodes[d2]
 
@@ -188,18 +209,18 @@ convert_field_argument(f::OSSGField) = make_plottable_array(f)
 ##### When nodes are provided
 #####
 
-function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, f::Field)
+function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, f::FieldOrFTS)
     fi_cpu = make_plottable_array(f)
     return convert_arguments(pl, ξ1, fi_cpu)
 end
 
-function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, ξ2::AbstractArray, f::Field)
+function convert_arguments(pl::Type{<:AbstractPlot}, ξ1::AbstractArray, ξ2::AbstractArray, f::FieldOrFTS)
     fi_cpu = make_plottable_array(f)
     return convert_arguments(pl, ξ1, ξ2, fi_cpu)
 end
 
 # For vertical plots
-function convert_arguments(pl::Type{<:AbstractPlot}, f::Field, ξ1::AbstractArray)
+function convert_arguments(pl::Type{<:AbstractPlot}, f::FieldOrFTS, ξ1::AbstractArray)
     fi_cpu = make_plottable_array(f)
     return convert_arguments(pl, fi_cpu, ξ1)
 end
