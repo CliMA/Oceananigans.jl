@@ -1,4 +1,3 @@
-import Oceananigans: architecture
 
 """
     materialize_advection(advection, grid)

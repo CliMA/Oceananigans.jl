@@ -1,5 +1,6 @@
 using Oceananigans.Fields: AbstractField, compute_at!, ZeroField
-import Oceananigans.Fields: indices
+import Oceananigans.Grids: grid
+import Oceananigans.Fields: location, indices
 
 struct DeferredSlicedOutput{SO, I}
     source_output :: SO
