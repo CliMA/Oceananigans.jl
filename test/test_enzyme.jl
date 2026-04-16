@@ -146,7 +146,7 @@ end
     topology = (Periodic, Periodic, Bounded)
 
     underlying_grid = RectilinearGrid(size=(Nx, Ny, Nz); x, y, z, topology)
-    ibg  = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary((x, y) -> (x < 5 || y < 5)))
+    ibg  = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary((x, y, z) -> (x < 5 || y < 5)))
 
     grids = [underlying_grid, ibg]
 
