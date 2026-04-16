@@ -215,7 +215,7 @@ sequential_data(sz::NTuple{N, Int}) where N = reshape(Float64.(1:prod(sz)), sz..
             set!(field, Returns(t))
             set!(field_time_series, field, i)
         end
-    
+
         fig = CairoMakie.Figure()
         ax = CairoMakie.Axis(fig[1, 1])
         line_plot = lines!(ax, field_time_series)
@@ -241,7 +241,7 @@ sequential_data(sz::NTuple{N, Int}) where N = reshape(Float64.(1:prod(sz)), sz..
             set!(field, Returns(sinpi(t / 1hours)))
             set!(field_time_series, field, i)
         end
-    
+
         fig = CairoMakie.Figure()
         ax = CairoMakie.Axis(fig[1, 1])
         times_in_hours = field_time_series.times / 1hours
@@ -268,7 +268,7 @@ sequential_data(sz::NTuple{N, Int}) where N = reshape(Float64.(1:prod(sz)), sz..
             set!(field, Returns(log2(t)))
             set!(field_time_series, field, i)
         end
-    
+
         fig = CairoMakie.Figure()
         ax = CairoMakie.Axis(fig[1, 1])
         line_plot = lines!(ax, field_time_series, field_time_series.times)
@@ -294,11 +294,11 @@ sequential_data(sz::NTuple{N, Int}) where N = reshape(Float64.(1:prod(sz)), sz..
             set!(field, (x, y, z) -> z * t^2)
             set!(field_time_series, field, i)
         end
-    
+
         fig = CairoMakie.Figure()
         ax = CairoMakie.Axis(fig[1, 1])
         hm = heatmap!(ax, field_time_series)
-    
+
         converted = hm.converted[]
 
         @test hm isa CairoMakie.Heatmap
@@ -319,13 +319,13 @@ sequential_data(sz::NTuple{N, Int}) where N = reshape(Float64.(1:prod(sz)), sz..
             set!(field, (x, y, z) -> y * sinpi(t / 4hours))
             set!(field_time_series, field, i)
         end
-    
+
         fig = CairoMakie.Figure()
         ax = CairoMakie.Axis(fig[1, 1])
         times_in_hours = field_time_series.times / 1hours
         y_in_km = ynodes(field_time_series) / 1kilometer
         cf = contourf!(ax, times_in_hours, y_in_km, field_time_series)
-    
+
         converted = cf.converted[]
 
         @test cf isa CairoMakie.Contourf

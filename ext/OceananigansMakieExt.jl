@@ -43,7 +43,7 @@ function deduce_dimensionality(f)
     D = sum((d > 1) for d in size(f))
 
     return d1, d2, D
-end   
+end
 
 axis_str(::RectilinearGrid, dim) = ("x", "y", "z", "Time")[dim]
 axis_str(::LatitudeLongitudeGrid, dim) = ("Longitude (deg)", "Latitude (deg)", "z", "Time")[dim]
