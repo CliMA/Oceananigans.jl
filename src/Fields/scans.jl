@@ -1,4 +1,5 @@
 using KernelAbstractions: @kernel, @index
+import Oceananigans.Grids: grid
 
 #####
 ##### "Scans" of AbstractField.
@@ -33,6 +34,8 @@ Base.summary(::Accumulating) = "Accumulating"
 
 const Reduction = Scan{<:AbstractReducing}
 const Accumulation = Scan{<:AbstractAccumulating}
+
+grid(s::Scan) = grid(s.operand)
 
 scan_indices(::AbstractReducing, indices, dims) = Tuple(i ∈ dims ? Colon() : indices[i] for i in 1:3)
 scan_indices(::AbstractAccumulating, indices, dims) = indices
