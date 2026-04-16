@@ -349,10 +349,11 @@ end
                 ("uniform",   L -> RectilinearGrid(arch; topology=topo, size=(N, N, N), extent=(L, L, L))),
                 ("stretched", L -> RectilinearGrid(arch; topology=topo, size=(N, N, N), x=(0, L), y=(0, L), z=z_stretched(L)))
             ]
-                iters = map(Ls) do L
+                for L in Ls
                     grid = make_grid(L)
                     ibg = ImmersedBoundaryGrid(grid, GridFittedBottom(-L * 0.6))
                     solver = ConjugateGradientPoissonSolver(ibg; maxiter=5000)
+                    vin = VolumeInverseNorm(ibg)
 
                     u, v, w = XFaceField(ibg), YFaceField(ibg), ZFaceField(ibg)
                     seed!(42)
@@ -363,10 +364,15 @@ end
 
                     pressure = CenterField(ibg)
                     solve_for_pressure!(pressure, solver, nothing, (u=u, v=v, w=w), 1.0)
-                    iteration(solver)
+
+                    cgs = solver.conjugate_gradient_solver
+                    initial_weighted_residual = vin(solver.right_hand_side)
+                    final_weighted_residual = vin(cgs.residual)
+                    tolerance = max(cgs.reltol * initial_weighted_residual, cgs.abstol)
+
+                    @info "  PCG $grid_type convergence on $(typeof(arch))" L iteration=iteration(solver) initial_weighted_residual final_weighted_residual tolerance
+                    @test final_weighted_residual ≤ tolerance
                 end
-                @info "  PCG $grid_type iterations on $(typeof(arch)): $(collect(zip(Ls, iters)))"
-                @test maximum(iters) / max(minimum(iters), 1) < 2
             end
         end
     end
