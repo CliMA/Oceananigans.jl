@@ -1,12 +1,12 @@
-using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, adapt_advection_order
+using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, adapt_advection_order, materialize_advection
 using Oceananigans.Architectures: AbstractArchitecture, ReactantState
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
 using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
 using Oceananigans.DistributedComputations: Distributed
-using Oceananigans.Fields: CenterField, tracernames, TracerFields
+using Oceananigans.Fields: Field, CenterField, ZeroField, tracernames, TracerFields
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization
+using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization, Face, Center
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions
 using Oceananigans.Models: generate_condition_maps
@@ -205,6 +205,10 @@ function HydrostaticFreeSurfaceModel(grid;
     advection = merge(momentum_advection_tuple, tracer_advection_tuple)
     advection = NamedTuple(name => adapt_advection_order(scheme, grid) for (name, scheme) in pairs(advection))
 
+    # Fill any settings in advection scheme that might have been deferred until
+    # the grid and backend is known
+    advection = NamedTuple(name => materialize_advection(scheme, grid) for (name, scheme) in pairs(advection))
+
     validate_buoyancy(buoyancy, tracernames(tracers))
     buoyancy = materialize_buoyancy(buoyancy, grid)
 
@@ -270,7 +274,7 @@ function HydrostaticFreeSurfaceModel(grid;
     # are consistent between materialization and tendency computation.
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
     forcing = model_forcing(forcing, model_fields, prognostic_fields)
-    transport_velocities = transport_velocity_fields(velocities, free_surface)
+    transport_velocities = transport_velocity_fields(velocities)
 
     !isnothing(particles) && arch isa Distributed && error("LagrangianParticles are not supported on Distributed architectures.")
 
@@ -292,11 +296,30 @@ function HydrostaticFreeSurfaceModel(grid;
     return model
 end
 
-transport_velocity_fields(velocities, ::Nothing) = velocities
-transport_velocity_fields(velocities, ::ExplicitFreeSurface) = velocities
-transport_velocity_fields(velocities, free_surface) = (u = XFaceField(velocities.u.grid; boundary_conditions=velocities.u.boundary_conditions),
-                                                       v = YFaceField(velocities.v.grid; boundary_conditions=velocities.v.boundary_conditions),
-                                                       w = ZFaceField(velocities.w.grid; boundary_conditions=velocities.w.boundary_conditions))
+transport_velocity_fields(velocities) = (u = copy_velocity(velocities.u),
+                                         v = copy_velocity(velocities.v),
+                                         w = copy_velocity(velocities.w))
+
+copy_velocity(u::Field{<:Face, <:Center, <:Center}) = XFaceField(u.grid; boundary_conditions=u.boundary_conditions)
+copy_velocity(v::Field{<:Center, <:Face, <:Center}) = YFaceField(v.grid; boundary_conditions=v.boundary_conditions)
+copy_velocity(w::Field{<:Center, <:Center, <:Face}) = ZFaceField(w.grid; boundary_conditions=w.boundary_conditions)
+copy_velocity(c) = c
+
+# Fallback transport velocities for a generic free surface (just copy velocities over)
+compute_transport_velocities!(model, free_surface) = update_transport_velocities!(model.transport_velocities, model.velocities)
+
+# Not if `transport === velocities`
+function update_transport_velocities!(transport_velocities, velocities)
+    transport_velocities === velocities && return nothing
+    for name in propertynames(transport_velocities)
+        update_transport_velocity_data!(transport_velocities[name], velocities[name])
+    end
+    return nothing
+end
+
+# Only concrete Field types are duplicated (see `copy_velocity` above)
+update_transport_velocity_data!(dst::Field, src::Field) = parent(dst) .= parent(src)
+update_transport_velocity_data!(dst, src) = nothing
 
 validate_velocity_boundary_conditions(grid, velocities) = validate_vertical_velocity_boundary_conditions(velocities.w)
 
@@ -319,6 +342,7 @@ validate_momentum_advection(momentum_advection::VectorInvariant, grid::Orthogona
 validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGrid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
 
 function reconcile_state!(model::HydrostaticFreeSurfaceModel)
+    mask_immersed_horizontal_velocities!(model.velocities)
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
     reconcile_free_surface!(model.free_surface, model.grid, model.velocities)
     reconcile_vertical_coordinate!(model.vertical_coordinate, model, model.grid)
