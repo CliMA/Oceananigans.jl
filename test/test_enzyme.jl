@@ -145,7 +145,19 @@ end
     z = (-0.5, 0.5)
     topology = (Periodic, Periodic, Bounded)
 
-    grid = RectilinearGrid(size=(Nx, Ny, Nz); x, y, z, topology)
+    underlying_grid = RectilinearGrid(size=(Nx, Ny, Nz); x, y, z, topology)
+    ibg  = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary((x, y) -> (x < 5 || y < 5)))
+
+    grids = [underlying_grid, ibg]
+
+    for grid in grids
+        broadcast_kernel_test(grid, x, y, z)
+    end
+
+end
+
+function broadcast_kernel_test(grid, x, y, z)
+
     model = HydrostaticFreeSurfaceModel(grid; tracers=:c)
     model_tracer = model.tracers.c
 
