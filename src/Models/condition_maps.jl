@@ -12,7 +12,7 @@ using KernelAbstractions: @kernel, @index
 @inline generate_condition_maps(grid, advection; kwargs...) = _generate_condition_maps(grid, advection)
 
 @inline function _generate_condition_maps(grid, advection)
-    active_cells_map = get_active_cells_map(grid, Val(:interior))
+    active_cells_map = get_active_cells_map(grid, Val(:core))
     condition_maps = Dict()
     for key in keys(advection)
         condition_maps[key] = active_cells_map
@@ -34,7 +34,7 @@ const SupportedGrids = Union{SupportedUnderlyingGrids,
                                  condition_momentum_advection=false,
                                  condition_tracer_advection=false)
 
-    active_cells_map = get_active_cells_map(grid, Val(:interior))
+    active_cells_map = get_active_cells_map(grid, Val(:core))
 
     map_keys = keys(advection)
     Nkeys = length(map_keys)
