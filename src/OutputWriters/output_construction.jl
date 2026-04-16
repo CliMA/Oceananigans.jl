@@ -31,7 +31,7 @@ end
 #####
 
 intersect_indices(output, indices) = indices
-intersect_indices(output::Field, indices) = map(intersect_index_range, indices, output.indices)
+intersect_indices(output::AbstractField, indices) = map(intersect_index_range, indices, Oceananigans.Fields.indices(output))
 
 intersect_index_range(::Colon, ::Colon) = Colon()
 intersect_index_range(range::UnitRange, ::Colon) = range

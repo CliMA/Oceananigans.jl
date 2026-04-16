@@ -583,10 +583,32 @@ end
 struct UnspecifiedBoundaryConditions end
 
 """
+    load_serialized_grid(file, name)
+
+Load the grid associated with the output variable `name` from a JLD2 `file`.
+
+Grids are looked up in the following order:
+
+1. If `timeseries/\$name/serialized/grid_index` is present, use it to select
+   `serialized/grid_\$i` (multi-grid JLD2Writer output).
+2. `serialized/grid` (single-grid JLD2Writer output, or the legacy path
+   written by the `including` mechanism).
+"""
+function load_serialized_grid(file, name)
+    if haskey(file, "timeseries/$name/serialized/grid_index")
+        grid_index = file["timeseries/$name/serialized/grid_index"]
+        return file["serialized/grid_$grid_index"]
+    end
+
+    return file["serialized/grid"]
+end
+
+"""
     reconstruct_legacy_grid(grid, file, architecture)
 
 Reconstruct a grid from legacy JLD2 output files (prior to Oceananigans 0.95.0)
-that did not serialize grids properly.
+that did not serialize grids properly. Reads raw grid data from the top-level
+`grid/` path written by `saveproperties!`.
 """
 function reconstruct_legacy_grid(grid, file, architecture)
     isibg = grid isa ImmersedBoundaryGrid
@@ -642,6 +664,7 @@ end
 
 Manually reconstruct a RectilinearGrid from file data when `on_architecture` fails.
 This is a fallback for grids saved with CuArrays or generated with a different Julia version.
+Reads raw grid data from the top-level `grid/` path.
 """
 function manually_reconstruct_rectilinear_grid(grid, file, architecture)
     @info "Initial attempt to transfer grid to $architecture failed."
@@ -792,7 +815,7 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
     end
 
     if isnothing(grid)
-        grid = handle["serialized/grid"]
+        grid = load_serialized_grid(handle, name)
     end
 
     # If isreconstructed(grid), it probably means that the data was generated prior to
@@ -969,7 +992,7 @@ function Field(location, file::JLD2.JLDFile, name::String, iter;
         end
     end
 
-    isnothing(grid) && (grid = file["serialized/grid"])
+    isnothing(grid) && (grid = load_serialized_grid(file, name))
     raw_data = file["timeseries/$name/$iter"]
 
     # Change grid to specified architecture?
