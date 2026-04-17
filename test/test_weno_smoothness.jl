@@ -26,8 +26,8 @@ using Oceananigans.Advection: beta_loop, biased_weno_weights
             ntuple(j -> S_f32[start + j - 1], Val(buffer))
         end
 
-        scheme_f64 = WENO(Float64; order)
-        scheme_f32 = WENO(Float32; order)
+        scheme_f64 = WENO(Float64; order, weight_computation=Oceananigans.Utils.NormalDivision)
+        scheme_f32 = WENO(Float32; order, weight_computation=Oceananigans.Utils.NormalDivision)
 
         β_f64 = beta_loop(scheme_f64, ψ_f64)
         β_f32 = beta_loop(scheme_f32, ψ_f32)
