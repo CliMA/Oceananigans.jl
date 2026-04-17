@@ -333,60 +333,64 @@ end
     z = (0, 1)
     ν₀ = 1e-2
 
-    grid = RectilinearGrid(arch, size=(Nx, Ny, 1); x, y, z, topology=(Periodic, Periodic, Bounded))
+    underlying_grid = RectilinearGrid(arch, size=(Nx, Ny, 1); x, y, z, topology=(Periodic, Periodic, Bounded))
+    ibg  = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary((x, y) -> (x < 5 || y < 5)))
+    grids = [underlying_grid, ibg]
     closure = ScalarDiffusivity(ν=ν₀)
     momentum_advection = Centered(order=2)
 
     g = 4^2
     c = sqrt(g)
     free_surface = ExplicitFreeSurface(gravitational_acceleration=g)
-    model = HydrostaticFreeSurfaceModel(grid; momentum_advection, free_surface, closure)
+    for grid in grids
+      model = HydrostaticFreeSurfaceModel(grid; momentum_advection, free_surface, closure)
 
-    ϵ(x, y, z) = 2randn() - 1
-    set!(model, u=ϵ, v=ϵ)
+      ϵ(x, y, z) = 2randn() - 1
+      set!(model, u=ϵ, v=ϵ)
 
-    u_init = deepcopy(model.velocities.u)
-    v_init = deepcopy(model.velocities.v)
+      u_init = deepcopy(model.velocities.u)
+      v_init = deepcopy(model.velocities.v)
 
-    Δx = minimum_xspacing(grid)
-    Δt = 0.01 * Δx / c
-    for n = 1:10
-        time_step!(model, Δt)
-    end
+      Δx = minimum_xspacing(grid)
+      Δt = 0.01 * Δx / c
+      for n = 1:10
+          time_step!(model, Δt)
+      end
 
-    u_truth = deepcopy(model.velocities.u)
-    v_truth = deepcopy(model.velocities.v)
+      u_truth = deepcopy(model.velocities.u)
+      v_truth = deepcopy(model.velocities.v)
 
-    # Use a manual finite difference (central difference) to compute the gradient at ν1 = ν₀ + Δν
-    Δν = 1e-6
-    ν0 = ν₀
-    ν1 = ν₀ + Δν
-    ν2 = ν₀ + 2Δν
-    e0 = viscous_hydrostatic_turbulence(ν0, model, u_init, v_init, Δt, u_truth, v_truth)
-    e2 = viscous_hydrostatic_turbulence(ν2, model, u_init, v_init, Δt, u_truth, v_truth)
-    ΔeΔν = (e2 - e0) / 2Δν
+      # Use a manual finite difference (central difference) to compute the gradient at ν1 = ν₀ + Δν
+      Δν = 1e-6
+      ν0 = ν₀
+      ν1 = ν₀ + Δν
+      ν2 = ν₀ + 2Δν
+      e0 = viscous_hydrostatic_turbulence(ν0, model, u_init, v_init, Δt, u_truth, v_truth)
+      e2 = viscous_hydrostatic_turbulence(ν2, model, u_init, v_init, Δt, u_truth, v_truth)
+      ΔeΔν = (e2 - e0) / 2Δν
 
-    @info "Finite difference computed: $ΔeΔν"
+      @info "Finite difference computed: $ΔeΔν"
 
-    @info "Now with autodiff..."
-    start_time = time_ns()
+      @info "Now with autodiff..."
+      start_time = time_ns()
 
-    # Use autodiff to compute a gradient at ν1 = ν₀ + Δν
-    dmodel = Enzyme.make_zero(model)
-    dedν = autodiff(set_runtime_activity(Enzyme.Reverse),
-                    viscous_hydrostatic_turbulence,
-                    Active(ν1),
-                    Duplicated(model, dmodel),
-                    Const(u_init),
-                    Const(v_init),
-                    Const(Δt),
-                    Const(u_truth),
-                    Const(v_truth))
+      # Use autodiff to compute a gradient at ν1 = ν₀ + Δν
+      dmodel = Enzyme.make_zero(model)
+      dedν = autodiff(set_runtime_activity(Enzyme.Reverse),
+                      viscous_hydrostatic_turbulence,
+                      Active(ν1),
+                      Duplicated(model, dmodel),
+                      Const(u_init),
+                      Const(v_init),
+                      Const(Δt),
+                      Const(u_truth),
+                      Const(v_truth))
 
-    @info "Automatically computed: $dedν."
-    @info "Elapsed time: " * prettytime(1e-9 * (time_ns() - start_time))
+      @info "Automatically computed: $dedν."
+      @info "Elapsed time: " * prettytime(1e-9 * (time_ns() - start_time))
 
-    tol = 1e-1
-    rel_error = abs(dedν[1][1] - ΔeΔν) / abs(ΔeΔν)
-    @test rel_error < tol
+      tol = 1e-1
+      rel_error = abs(dedν[1][1] - ΔeΔν) / abs(ΔeΔν)
+      @test rel_error < tol
+  end
 end
