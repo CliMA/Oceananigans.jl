@@ -739,6 +739,40 @@ end
             z_field = Field{Nothing, Nothing, Center}(grid)
             set!(z_field, z -> z)
             @test @allowscalar interpolate(FT(0.4), z_field) ≈ FT(0.4)
+
+            flat_test_cases = (
+                (topology = (Flat, Periodic, Bounded),
+                 size = (2, 4),
+                 source = (; y = (0, 1), z = (-1, 0)),
+                 target = (; x = FT(3), y = (0, 1), z = (-1, 0)),
+                 values = (y, z) -> y + z),
+                (topology = (Flat, Flat, Bounded),
+                 size = 4,
+                 source = (; z = (-1, 0)),
+                 target = (; x = FT(-144.9), y = FT(50.1), z = (-1, 0)),
+                 values = z -> z)
+            )
+
+            for case in flat_test_cases
+                source_grid = RectilinearGrid(arch, FT; size=case.size, topology=case.topology, case.source...)
+                target_grid = RectilinearGrid(arch, FT; size=case.size, topology=case.topology, case.target...)
+
+                source_field = CenterField(source_grid)
+                set!(source_field, case.values)
+
+                interpolated_field = CenterField(target_grid)
+                reference_field = CenterField(target_grid)
+
+                interpolate!(interpolated_field, source_field)
+
+                @allowscalar for k in axes(reference_field, 3), j in axes(reference_field, 2), i in axes(reference_field, 1)
+                    target_node = Oceananigans.node(i, j, k, reference_field)
+                    flattened_node = Oceananigans.Fields.flatten_node(target_node...)
+                    reference_field[i, j, k] = interpolate(flattened_node, source_field)
+                end
+
+                @test all(interior(interpolated_field) .≈ interior(reference_field))
+            end
         end
     end
 
