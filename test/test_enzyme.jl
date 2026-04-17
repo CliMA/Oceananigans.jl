@@ -328,7 +328,7 @@ end
     ν₀ = 1e-2
 
     underlying_grid = RectilinearGrid(arch, size=(Nx, Ny, 1), halo=(3, 3, 3) ; x, y, z, topology=(Periodic, Periodic, Bounded))
-    ibg  = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary((x, y, z) -> (x < 5 || y < 5)))
+    ibg  = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary((x, y, z) -> (x < 5 || y < 5)); active_cells_map=true)
     grids = [underlying_grid, ibg]
     closure = ScalarDiffusivity(ν=ν₀)
     momentum_advection = Centered(order=2)
