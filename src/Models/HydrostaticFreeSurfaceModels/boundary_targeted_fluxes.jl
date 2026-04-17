@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: TargetedPAOBC
+using Oceananigans.BoundaryConditions: TargetedPAOBC, FieldBoundaryConditions
 using Oceananigans.AbstractOperations: Integral, Ax, Ay, Az, grid_metric_operation
 using Oceananigans.Fields: Field, interior, compute!
 using GPUArraysCore: @allowscalar
@@ -61,11 +61,14 @@ end
 # Only `Field`s carry `boundary_conditions`; `ZeroField`, `FunctionField`,
 # `TimeSeriesInterpolation`, etc. do not — return `false` for those.
 @inline _is_targeted(velocity::Field, side) =
+    velocity.boundary_conditions isa FieldBoundaryConditions &&
     getproperty(velocity.boundary_conditions, side) isa TargetedPAOBC
 @inline _is_targeted(velocity, side) = false
 
-# Safely retrieve the boundary condition (returns `nothing` for non-Field types).
-@inline _get_bc(velocity::Field, side) = getproperty(velocity.boundary_conditions, side)
+# Safely retrieve the boundary condition (returns `nothing` for non-Field or MultiRegion types).
+@inline _get_bc(velocity::Field, side) =
+    velocity.boundary_conditions isa FieldBoundaryConditions ?
+    getproperty(velocity.boundary_conditions, side) : nothing
 @inline _get_bc(velocity, side) = nothing
 
 #####
