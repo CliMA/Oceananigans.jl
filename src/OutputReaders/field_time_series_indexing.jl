@@ -138,7 +138,15 @@ function getindex(fts::OnDiskFTS, n::Int)
     # Load data
     arch = architecture(fts)
     file = jldopen(fts.path; fts.reader_kw...)
-    iter = keys(file["timeseries/t"])[n]
+    time = fts.times[n]
+    file_times = file["timeseries/t"]
+    iter = keys(file_times)[n]
+    if file_times[iter] != time
+        # times in fts not aligned with those in file so search for match
+        file_n = findfirst(k -> file_times[k] == time, keys(file_times))
+        isnothing(file_n) && error("No data for time $time (local time index $n) found for $(fts.name) at $(fts.path).")
+        iter = keys(file["timeseries/t"])[file_n]
+    end
     raw_data = on_architecture(arch, file["timeseries/$(fts.name)/$iter"])
     close(file)
 
@@ -146,7 +154,7 @@ function getindex(fts::OnDiskFTS, n::Int)
     loc = instantiated_location(fts)
     @apply_regionally field_data = offset_data(raw_data, fts.grid, loc, fts.indices)
 
-    status = @allowscalar FixedTime(fts.times[n])
+    status = @allowscalar FixedTime(time)
 
     field = Field(loc, fts.grid;
                   indices = fts.indices,
