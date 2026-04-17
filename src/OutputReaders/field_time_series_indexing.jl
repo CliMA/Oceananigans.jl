@@ -145,7 +145,7 @@ function getindex(fts::OnDiskFTS, n::Int)
         # times in fts not aligned with those in file so search for match
         file_n = findfirst(k -> file_times[k] == time, keys(file_times))
         isnothing(file_n) && error("No data for time $time (local time index $n) found for $(fts.name) at $(fts.path).")
-        iter = keys(file["timeseries/t"])[file_n]
+        iter = keys(file_times)[file_n]
     end
     raw_data = on_architecture(arch, file["timeseries/$(fts.name)/$iter"])
     close(file)
