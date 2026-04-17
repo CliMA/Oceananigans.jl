@@ -366,11 +366,12 @@ struct InteriorBoundarySet
 end
 
 # Launch kernels over conditioned cell maps
-@inline function _launch!(arch, grid, workspec, kernel, first_arg, second_arg, args::InteriorBoundarySet;
-                         active_cells_map::InteriorBoundarySet, kwargs...)
-  _launch!(arch, grid, workspec, kernel, first_arg, second_arg, args.interior;
+@inline function _launch!(arch, grid, workspec, kernel!,
+                          first_kernel_arg, second_kernel_arg, other_kernel_args::InteriorBoundarySet;
+                          active_cells_map::InteriorBoundarySet, kwargs...)
+  _launch!(arch, grid, workspec, kernel!, first_kernel_arg, second_kernel_arg, other_kernel_args.interior;
           active_cells_map=active_cells_map.interior, kwargs...)
-  _launch!(arch, grid, workspec, kernel, first_arg, second_arg, args.boundary;
+  _launch!(arch, grid, workspec, kernel!, first_kernel_arg, second_kernel_arg, other_kernel_args.boundary;
           active_cells_map=active_cells_map.boundary, kwargs...)
   return nothing
 end
