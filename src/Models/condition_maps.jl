@@ -27,7 +27,7 @@ const SupportedUnderlyingGrids = Union{LatitudeLongitudeGrid,
                                        OrthogonalSphericalShellGrid}
 
 const SupportedGrids = Union{SupportedUnderlyingGrids,
-                             ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:SupportedUnderlyingGrids}}
+                             ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:SupportedUnderlyingGrids}}
 
 @inline function generate_condition_maps(grid::SupportedGrids,
                                  advection;
