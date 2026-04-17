@@ -151,26 +151,19 @@ end
     grids = [underlying_grid, ibg]
 
     for grid in grids
-        broadcast_kernel_test(grid, x, y, z)
-    end
+      model = HydrostaticFreeSurfaceModel(grid; tracers=:c)
+      model_tracer = model.tracers.c
 
-end
+      amplitude = 1.0
+      amplitude = Ref(amplitude)
+      cᵢ(x, y, z) = amplitude[]
+      temp = Base.broadcasted(Base.identity, FunctionField((Center, Center, Center), cᵢ, model_tracer.grid))
 
-function broadcast_kernel_test(grid, x, y, z)
+      temp = convert(Base.Broadcast.Broadcasted{Nothing}, temp)
+      grid = model_tracer.grid
+      arch = architecture(model_tracer)
 
-    model = HydrostaticFreeSurfaceModel(grid; tracers=:c)
-    model_tracer = model.tracers.c
-
-    amplitude = 1.0
-    amplitude = Ref(amplitude)
-    cᵢ(x, y, z) = amplitude[]
-    temp = Base.broadcasted(Base.identity, FunctionField((Center, Center, Center), cᵢ, model_tracer.grid))
-
-    temp = convert(Base.Broadcast.Broadcasted{Nothing}, temp)
-    grid = model_tracer.grid
-    arch = architecture(model_tracer)
-
-    if arch == CPU()
+      if arch == CPU()
         param = Oceananigans.Utils.KernelParameters(size(model_tracer),
                                                     map(Oceananigans.Fields.offset_index, model_tracer.indices))
         dmodel_tracer = Enzyme.make_zero(model_tracer)
@@ -197,6 +190,7 @@ function broadcast_kernel_test(grid, x, y, z)
                  set_initial_condition!,
                  Duplicated(model, dmodel),
                  Active(1.0))
+      end
     end
 end
 
@@ -334,7 +328,7 @@ end
     ν₀ = 1e-2
 
     underlying_grid = RectilinearGrid(arch, size=(Nx, Ny, 1); x, y, z, topology=(Periodic, Periodic, Bounded))
-    ibg  = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary((x, y) -> (x < 5 || y < 5)))
+    ibg  = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary((x, y, z) -> (x < 5 || y < 5)))
     grids = [underlying_grid, ibg]
     closure = ScalarDiffusivity(ν=ν₀)
     momentum_advection = Centered(order=2)
