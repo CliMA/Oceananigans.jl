@@ -6,6 +6,7 @@ using Dates: Period, Second, value
 
 import Oceananigans: run_diagnostic!, prognostic_state, restore_prognostic_state!, initialize!
 import Oceananigans.Utils: TimeInterval, SpecifiedTimes
+import Oceananigans.Grids: grid
 import Oceananigans.Fields: location, indices, set!
 
 """
@@ -80,7 +81,7 @@ JLD2Writer scheduled on TimeInterval(4 days):
 ├── filepath: averaged_velocity_data.jld2
 ├── 3 outputs: (u, v, w) averaged on AveragedTimeInterval(window=2 days, stride=2, interval=4 days)
 ├── array_type: Array{Float32}
-├── including: [:grid, :coriolis, :buoyancy, :closure]
+├── including: [:coriolis, :buoyancy, :closure]
 ├── file_splitting: NoFileSplitting
 └── file size: 0 bytes (file not yet created)
 ```
@@ -190,7 +191,8 @@ end
 get_default_time(schedule::AveragedTimeInterval) = zero(typeof(schedule.interval))
 get_default_time(schedule::AveragedSpecifiedTimes) = zero(eltype(schedule.specified_times.times))
 
-# Time-averaging doesn't change spatial location
+# Time-averaging doesn't change spatial location or grid
+grid(wta::WindowedTimeAverage) = grid(wta.operand)
 location(wta::WindowedTimeAverage) = location(wta.operand)
 indices(wta::WindowedTimeAverage) = indices(wta.operand)
 set!(u::Field, wta::WindowedTimeAverage) = set!(u, wta.result)

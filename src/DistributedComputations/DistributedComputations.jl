@@ -59,4 +59,9 @@ function precondition!(p, preconditioner::DistributedFourierTridiagonalPoissonSo
     return p
 end
 
+# Correctly pass architecture to determine the default weno_weight_computation
+Oceananigans.Advection.default_weno_weight_computation(arch::Distributed) =
+    Oceananigans.Advection.default_weno_weight_computation(child_architecture(arch))
+
+
 end # module
