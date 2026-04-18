@@ -90,7 +90,6 @@ for bias in (:symmetric, :biased)
 
         for loc in (:ᶜ, :ᶠ), (alt1, alt2) in zip((:_, :__, :___, :____, :_____), (:_____, :_, :__, :___, :____))
             code[d] = loc
-            second_order_interp = Symbol(:ℑ, ξ, code...)
             interp = Symbol(bias, :_interpolate_, ξ, code...)
             alt1_interp = Symbol(alt1, interp)
             alt2_interp = Symbol(alt2, interp)
