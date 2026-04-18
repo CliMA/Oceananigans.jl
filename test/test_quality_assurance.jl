@@ -31,7 +31,7 @@ using Test: @testset, @test, detect_ambiguities
         # Oceananigans.Models,
         # Oceananigans.MultiRegion,
         # Oceananigans.Operators,
-        # Oceananigans.OrthogonalSphericalShellGrids,
+        Oceananigans.OrthogonalSphericalShellGrids,
         # Oceananigans.OutputReaders,
         # Oceananigans.OutputWriters,
         Oceananigans.Simulations,
