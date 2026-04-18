@@ -193,7 +193,7 @@ for bias in (:symmetric, :biased)
     for (d, ξ) in enumerate((:x, :y, :z))
         code = [:ᵃ, :ᵃ, :ᵃ]
 
-        for loc in (:ᶜ, :ᶠ), alt in (:_, :__, :___, :____, :_____)
+        for loc in (:ᶜ, :ᶠ)
             code[d] = loc
             interp = Symbol(bias, :_interpolate_, ξ, code...)
             @eval begin
