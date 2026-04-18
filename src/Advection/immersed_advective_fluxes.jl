@@ -1,4 +1,3 @@
-using Oceananigans.ImmersedBoundaries
 using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, inactive_node
 using Oceananigans.Fields: ZeroField
 
@@ -197,9 +196,7 @@ for bias in (:symmetric, :biased)
         for loc in (:ᶜ, :ᶠ), alt in (:_, :__, :___, :____, :_____)
             code[d] = loc
             interp = Symbol(bias, :_interpolate_, ξ, code...)
-            alt_interp = Symbol(alt, interp)
             @eval begin
-                import Oceananigans.Advection: $alt_interp
                 using Oceananigans.Advection: $interp
             end
         end

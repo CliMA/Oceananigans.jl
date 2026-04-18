@@ -75,7 +75,7 @@ Adapt.adapt_structure(to, scheme::UpwindBiased{N, FT}) where {N, FT} =
     UpwindBiased{N, FT}(Adapt.adapt(to, scheme.buffer_scheme),
                         Adapt.adapt(to, scheme.advecting_velocity_scheme))
 
-on_architecture(to, scheme::UpwindBiased{N, FT}) where {N, FT} =
+Architectures.on_architecture(to, scheme::UpwindBiased{N, FT}) where {N, FT} =
     UpwindBiased{N, FT}(on_architecture(to, scheme.buffer_scheme),
                         on_architecture(to, scheme.advecting_velocity_scheme))
 

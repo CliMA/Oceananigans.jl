@@ -15,7 +15,11 @@ using Oceananigans.Grids: AbstractGrid,
                           RightConnected,
                           LeftConnected,
                           topology,
-                          architecture
+                          architecture,
+                          LeftConnectedRightCenterConnected,
+                          LeftConnectedRightCenterFolded,
+                          LeftConnectedRightFaceConnected,
+                          LeftConnectedRightFaceFolded
 
 const AG = AbstractGrid
 
