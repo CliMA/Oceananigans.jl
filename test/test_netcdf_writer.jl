@@ -2992,17 +2992,15 @@ function test_netcdf_writer_different_grid(arch)
     coarse_grid = RectilinearGrid(arch, size=(grid.Nx, grid.Ny, grid.Nz÷2), extent=(grid.Lx, grid.Ly, grid.Lz))
     coarse_u = Field{Face, Center, Center}(coarse_grid)
 
-    interpolate_u(model) = interpolate!(coarse_u, model.velocities.u)
-    outputs = (; u = interpolate_u)
+    outputs = (; u = coarse_u)
 
     Arch = typeof(arch)
     filepath = "test_coarse_u_$Arch.nc"
     isfile(filepath) && rm(filepath)
 
-    # This should work: NetCDFWriter should use coarse_grid for dimensions
-    # when grid parameter is provided, not model.grid
+    # NetCDFWriter should automatically use coarse_grid for dimensions
+    # since coarse_u is a field on coarse_grid
     output_writer = NetCDFWriter(model, outputs;
-                                 grid = coarse_grid,
                                  filename = filepath,
                                  schedule = IterationInterval(1),
                                  overwrite_existing = true)
