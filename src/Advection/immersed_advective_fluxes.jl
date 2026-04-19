@@ -193,14 +193,6 @@ for bias in (:symmetric, :biased)
     for (d, ξ) in enumerate((:x, :y, :z))
         code = [:ᵃ, :ᵃ, :ᵃ]
 
-        for loc in (:ᶜ, :ᶠ)
-            code[d] = loc
-            interp = Symbol(bias, :_interpolate_, ξ, code...)
-            @eval begin
-                using Oceananigans.Advection: $interp
-            end
-        end
-
         for loc in (:ᶜ, :ᶠ), (alt1, alt2) in zip((:_, :__, :___, :____, :_____), (:_____, :_, :__, :___, :____))
             code[d] = loc
             interp = Symbol(bias, :_interpolate_, ξ, code...)
