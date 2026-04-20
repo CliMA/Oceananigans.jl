@@ -1,7 +1,7 @@
 using Oceananigans.Utils: prettysummary, @apply_regionally
 using LinearAlgebra: norm, dot
 
-mutable struct ConjugateGradientSolver{A, G, L, T, F, M, P, E}
+mutable struct ConjugateGradientSolver{A, G, L, T, F, M, P, E, N}
                 architecture :: A
                         grid :: G
            linear_operation! :: L
@@ -16,6 +16,7 @@ mutable struct ConjugateGradientSolver{A, G, L, T, F, M, P, E}
               preconditioner :: M
       preconditioner_product :: P
     enforce_gauge_condition! :: E
+               residual_norm :: N
 end
 
 Architectures.architecture(solver::ConjugateGradientSolver) = solver.architecture
@@ -88,7 +89,8 @@ function ConjugateGradientSolver(linear_operation;
                                  reltol = sqrt(eps(eltype(template_field.grid))),
                                  abstol = 0,
                                  preconditioner = nothing,
-                                 enforce_gauge_condition! = no_gauge_enforcement!)
+                                 enforce_gauge_condition! = no_gauge_enforcement!,
+                                 residual_norm = norm)
 
     arch = architecture(template_field)
     grid = template_field.grid
@@ -116,7 +118,8 @@ function ConjugateGradientSolver(linear_operation;
                                    residual,
                                    preconditioner,
                                    precondition_product,
-                                   enforce_gauge_condition!)
+                                   enforce_gauge_condition!,
+                                   residual_norm)
 end
 
 """
@@ -177,7 +180,7 @@ function solve!(x, solver::ConjugateGradientSolver, b, args...)
 
     @apply_regionally initialize_solution!(q, x, b, solver, args...)
 
-    residual_norm = norm(solver.residual)
+    residual_norm = solver.residual_norm(solver.residual)
     tolerance = max(solver.reltol * residual_norm, solver.abstol)
 
     @debug "ConjugateGradientSolver, |b|: $(norm(b))"
@@ -273,7 +276,7 @@ end
 function iterating(solver, tolerance)
     # End conditions
     solver.iteration >= solver.maxiter && return false
-    norm(solver.residual) <= tolerance && return false
+    solver.residual_norm(solver.residual) <= tolerance && return false
     return true
 end
 
@@ -285,5 +288,6 @@ function Base.show(io::IO, solver::ConjugateGradientSolver)
               "├── preconditioner: ", prettysummary(solver.preconditioner), "\n",
               "├── reltol: ", prettysummary(solver.reltol), "\n",
               "├── abstol: ", prettysummary(solver.abstol), "\n",
+              "├── residual_norm: ", prettysummary(solver.residual_norm), "\n",
               "└── maxiter: ", solver.maxiter)
 end
