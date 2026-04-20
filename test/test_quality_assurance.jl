@@ -55,7 +55,7 @@ end
 
     modules = (
         Oceananigans.AbstractOperations,
-        # Oceananigans.Advection,
+        Oceananigans.Advection,
         # Oceananigans.Architectures,
         Oceananigans.Biogeochemistry,
         # Oceananigans.BoundaryConditions,

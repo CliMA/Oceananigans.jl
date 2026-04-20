@@ -37,9 +37,9 @@ Base.show(io::IO, scheme::FluxFormAdvection) =
               "├── y: ", summary(scheme.y), "\n",
               "└── z: ", summary(scheme.z))
 
-@inline required_halo_size_x(scheme::FluxFormAdvection) = required_halo_size_x(scheme.x)
-@inline required_halo_size_y(scheme::FluxFormAdvection) = required_halo_size_y(scheme.y)
-@inline required_halo_size_z(scheme::FluxFormAdvection) = required_halo_size_z(scheme.z)
+@inline Grids.required_halo_size_x(scheme::FluxFormAdvection) = required_halo_size_x(scheme.x)
+@inline Grids.required_halo_size_y(scheme::FluxFormAdvection) = required_halo_size_y(scheme.y)
+@inline Grids.required_halo_size_z(scheme::FluxFormAdvection) = required_halo_size_z(scheme.z)
 
 Adapt.adapt_structure(to, scheme::FluxFormAdvection{N, FT}) where {N, FT} =
     FluxFormAdvection{N, FT}(Adapt.adapt(to, scheme.x),

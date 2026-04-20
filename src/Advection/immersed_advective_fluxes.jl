@@ -1,4 +1,3 @@
-using Oceananigans.ImmersedBoundaries
 using Oceananigans.ImmersedBoundaries: immersed_peripheral_node, inactive_node
 using Oceananigans.Fields: ZeroField
 
@@ -193,16 +192,6 @@ end
 for bias in (:symmetric, :biased)
     for (d, ξ) in enumerate((:x, :y, :z))
         code = [:ᵃ, :ᵃ, :ᵃ]
-
-        for loc in (:ᶜ, :ᶠ), alt in (:_, :__, :___, :____, :_____)
-            code[d] = loc
-            interp = Symbol(bias, :_interpolate_, ξ, code...)
-            alt_interp = Symbol(alt, interp)
-            @eval begin
-                import Oceananigans.Advection: $alt_interp
-                using Oceananigans.Advection: $interp
-            end
-        end
 
         for loc in (:ᶜ, :ᶠ), (alt1, alt2) in zip((:_, :__, :___, :____, :_____), (:_____, :_, :__, :___, :____))
             code[d] = loc
