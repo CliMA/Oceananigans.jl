@@ -201,17 +201,20 @@ end
 # This expression is the output of metaprogrammed_smoothness_operation(4)
 
 # Trick to force compilation of Val(stencil-1) and avoid loops on the GPU
-@inline function metaprogrammed_smoothness_operation(buffer)
+@inline function metaprogrammed_smoothness_operation(buffer; shift=false)
     elem = Vector{Expr}(undef, buffer)
     c_idx = 1
+
+    ψ_expr(i) = shift ? :(ψ[$i] - ψ̂) : :(ψ[$i])
+
     for stencil = 1:buffer - 1
         local c = c_idx # Avoid capturing `c_idx` in the generator expression below
-        stencil_sum   = Expr(:call, :+, (:(C[$(c + i - stencil)] * ψ[$i]) for i in stencil:buffer)...)
-        elem[stencil] = :(ψ[$stencil] * $stencil_sum)
+        stencil_sum   = Expr(:call, :+, (:(C[$(c + i - stencil)] * $(ψ_expr(i))) for i in stencil:buffer)...)
+        elem[stencil] = :($(ψ_expr(stencil)) * $stencil_sum)
         c_idx += buffer - stencil + 1
     end
 
-    elem[buffer] = :(ψ[$buffer] * ψ[$buffer] * C[$c_idx])
+    elem[buffer] = :($(ψ_expr(buffer)) * $(ψ_expr(buffer)) * C[$c_idx])
 
     return Expr(:call, :+, elem...)
 end
@@ -262,8 +265,20 @@ for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
     @eval @inline smoothness_operation(scheme::WENO{$buffer}, ψ, C) = @inbounds @muladd $(metaprogrammed_smoothness_operation(buffer))
 
     for stencil in 0:buffer-1, FT in fully_supported_float_types
-        @eval @inline smoothness_indicator(ψ, scheme::WENO{$buffer, $FT}, ::Val{$stencil}) =
-                      smoothness_operation(scheme, ψ, $(smoothness_coefficients(Val(FT), Val(buffer), Val(stencil))))
+        if FT in (Float64, BigFloat)
+            @eval @inline smoothness_indicator(ψ, scheme::WENO{$buffer, $FT}, ::Val{$stencil}) =
+                          smoothness_operation(scheme, ψ, $(smoothness_coefficients(Val(FT), Val(buffer), Val(stencil))))
+        else
+            # Subtract central stencil value before computing smoothness indicators to avoid
+            # catastrophic cancellation for Float32 when stencil values are large.
+            # β is invariant to constant shifts (it measures polynomial derivatives),
+            # so subtracting any constant preserves correctness.
+            @eval @inline function smoothness_indicator(ψ, scheme::WENO{$buffer, $FT}, ::Val{$stencil})
+                C = $(smoothness_coefficients(Val(FT), Val(buffer), Val(stencil)))
+                ψ̂ = ψ[$(buffer ÷ 2 + 1)]
+                @inbounds @muladd $(metaprogrammed_smoothness_operation(buffer; shift=true))
+            end
+        end
     end
 end
 
