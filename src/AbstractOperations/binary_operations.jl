@@ -8,17 +8,19 @@ struct BinaryOperation{LX, LY, LZ, O, A, B, IA, IB, G, T} <: AbstractOperation{L
     ▶b :: IB
     grid :: G
 
-    @doc """
-        BinaryOperation{LX, LY, LZ}(op, a, b, ▶a, ▶b, grid)
-
-    Return an abstract representation of the binary operation `op(▶a(a), ▶b(b))` on
-    `grid`, where `▶a` and `▶b` interpolate `a` and `b` to locations `(LX, LY, LZ)`.
-    """
     function BinaryOperation{LX, LY, LZ}(op::O, a::A, b::B, ▶a::IA, ▶b::IB, grid::G,
                                          ::Type{T}=Base.promote_op(op, eltype(a), eltype(b))) where {LX, LY, LZ, O, A, B, IA, IB, G, T}
         return new{LX, LY, LZ, O, A, B, IA, IB, G, T}(op, a, b, ▶a, ▶b, grid)
     end
 end
+
+"""
+    BinaryOperation{LX, LY, LZ}(op, a, b, ▶a, ▶b, grid)
+
+Return an abstract representation of the binary operation `op(▶a(a), ▶b(b))` on
+`grid`, where `▶a` and `▶b` interpolate `a` and `b` to locations `(LX, LY, LZ)`.
+"""
+BinaryOperation
 
 @inline Base.getindex(β::BinaryOperation, i, j, k) = β.op(i, j, k, β.grid, β.▶a, β.▶b, β.a, β.b)
 

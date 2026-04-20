@@ -9,17 +9,19 @@ struct UnaryOperation{LX, LY, LZ, O, A, IN, G, T} <: AbstractOperation{LX, LY, L
     ▶ :: IN
     grid :: G
 
-    @doc """
-        UnaryOperation{LX, LY, LZ}(op, arg, ▶, grid)
-
-    Returns an abstract `UnaryOperation` representing the action of `op` on `arg`,
-    and subsequent interpolation by `▶` on `grid`.
-    """
     function UnaryOperation{LX, LY, LZ}(op::O, arg::A, ▶::IN, grid::G,
                                         ::Type{T}=Base.promote_op(op, eltype(arg))) where {LX, LY, LZ, O, A, IN, G, T}
         return new{LX, LY, LZ, O, A, IN, G, T}(op, arg, ▶, grid)
     end
 end
+
+"""
+    UnaryOperation{LX, LY, LZ}(op, arg, ▶, grid)
+
+Returns an abstract `UnaryOperation` representing the action of `op` on `arg`,
+and subsequent interpolation by `▶` on `grid`.
+"""
+UnaryOperation
 
 @inline Base.getindex(υ::UnaryOperation, i, j, k) = υ.▶(i, j, k, υ.grid, υ.op, υ.arg)
 

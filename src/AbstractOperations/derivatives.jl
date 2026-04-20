@@ -7,18 +7,20 @@ struct Derivative{LX, LY, LZ, D, A, IN, AD, G, T} <: AbstractOperation{LX, LY, L
       abstract_∂ :: AD
             grid :: G
 
-    @doc """
-        Derivative{LX, LY, LZ}(∂, arg, ▶, grid)
-
-    Return an abstract representation of the derivative `∂` on `arg`,
-    and subsequent interpolation by `▶` on `grid`.
-    """
     function Derivative{LX, LY, LZ}(∂::D, arg::A, ▶::IN, abstract_∂::AD,
                                     grid::G) where {LX, LY, LZ, D, A, IN, AD, G}
         T = eltype(grid)
         return new{LX, LY, LZ, D, A, IN, AD, G, T}(∂, arg, ▶, abstract_∂, grid)
     end
 end
+
+"""
+    Derivative{LX, LY, LZ}(∂, arg, ▶, grid)
+
+Return an abstract representation of the derivative `∂` on `arg`,
+and subsequent interpolation by `▶` on `grid`.
+"""
+Derivative
 
 @inline Base.getindex(d::Derivative, i, j, k) = d.▶(i, j, k, d.grid, d.∂, d.arg)
 
