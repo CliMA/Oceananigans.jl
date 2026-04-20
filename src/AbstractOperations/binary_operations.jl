@@ -1,5 +1,11 @@
 const binary_operators = Set()
 
+"""
+    BinaryOperation{LX, LY, LZ}(op, a, b, ▶a, ▶b, grid)
+
+Return an abstract representation of the binary operation `op(▶a(a), ▶b(b))` on
+`grid`, where `▶a` and `▶b` interpolate `a` and `b` to locations `(LX, LY, LZ)`.
+"""
 struct BinaryOperation{LX, LY, LZ, O, A, B, IA, IB, G, T} <: AbstractOperation{LX, LY, LZ, G, T}
     op :: O
     a :: A
@@ -8,12 +14,6 @@ struct BinaryOperation{LX, LY, LZ, O, A, B, IA, IB, G, T} <: AbstractOperation{L
     ▶b :: IB
     grid :: G
 
-    @doc """
-        BinaryOperation{LX, LY, LZ}(op, a, b, ▶a, ▶b, grid)
-
-    Return an abstract representation of the binary operation `op(▶a(a), ▶b(b))` on
-    `grid`, where `▶a` and `▶b` interpolate `a` and `b` to locations `(LX, LY, LZ)`.
-    """
     function BinaryOperation{LX, LY, LZ}(op::O, a::A, b::B, ▶a::IA, ▶b::IB, grid::G,
                                          ::Type{T}=Base.promote_op(op, eltype(a), eltype(b))) where {LX, LY, LZ, O, A, B, IA, IB, G, T}
         return new{LX, LY, LZ, O, A, B, IA, IB, G, T}(op, a, b, ▶a, ▶b, grid)
