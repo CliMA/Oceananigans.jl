@@ -6,15 +6,6 @@ using Oceananigans.BoundaryConditions: BoundaryCondition, Open
 
 import Oceananigans.BoundaryConditions: update_boundary_condition!
 
-struct BoundaryAdjacentMean{FF, BV}
-    flux_field :: FF
-         value :: BV
-
-    BoundaryAdjacentMean(grid, side;
-                         flux_field::FF = boundary_reduced_field(Val(side), grid),
-                         value::BV = Ref(zero(grid))) where {FF, BV} =
-        new{FF, BV}(flux_field, value)
-end
 
 """
     BoundaryAdjacentMean(grid, side;
@@ -43,7 +34,15 @@ julia> abs(bam.value[]) < 1e-10  # essentially zero
 true
 ```
 """
-BoundaryAdjacentMean
+struct BoundaryAdjacentMean{FF, BV}
+    flux_field :: FF
+         value :: BV
+
+    BoundaryAdjacentMean(grid, side;
+                         flux_field::FF = boundary_reduced_field(Val(side), grid),
+                         value::BV = Ref(zero(grid))) where {FF, BV} =
+        new{FF, BV}(flux_field, value)
+end
 
 @inline (bam::BoundaryAdjacentMean)(args...) = bam.value[]
 

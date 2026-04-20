@@ -3,6 +3,12 @@ using Oceananigans.Fields: AbstractField, instantiated_location
 
 const unary_operators = Set()
 
+"""
+    UnaryOperation{LX, LY, LZ}(op, arg, ▶, grid)
+
+Returns an abstract `UnaryOperation` representing the action of `op` on `arg`,
+and subsequent interpolation by `▶` on `grid`.
+"""
 struct UnaryOperation{LX, LY, LZ, O, A, IN, G, T} <: AbstractOperation{LX, LY, LZ, G, T}
     op :: O
     arg :: A
@@ -14,14 +20,6 @@ struct UnaryOperation{LX, LY, LZ, O, A, IN, G, T} <: AbstractOperation{LX, LY, L
         return new{LX, LY, LZ, O, A, IN, G, T}(op, arg, ▶, grid)
     end
 end
-
-"""
-    UnaryOperation{LX, LY, LZ}(op, arg, ▶, grid)
-
-Returns an abstract `UnaryOperation` representing the action of `op` on `arg`,
-and subsequent interpolation by `▶` on `grid`.
-"""
-UnaryOperation
 
 @inline Base.getindex(υ::UnaryOperation, i, j, k) = υ.▶(i, j, k, υ.grid, υ.op, υ.arg)
 

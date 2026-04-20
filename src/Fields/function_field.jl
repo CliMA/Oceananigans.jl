@@ -1,3 +1,15 @@
+"""
+    FunctionField{LX, LY, LZ}(func, grid; clock=nothing, parameters=nothing) where {LX, LY, LZ}
+
+Returns a `FunctionField` on `grid` and at location `LX, LY, LZ`.
+
+If `clock` is not specified, then `func` must be a function with signature
+`func(x, y, z)`. If clock is specified, `func` must be a function with signature
+`func(x, y, z, t)`, where `t` is internally determined from `clock.time`.
+
+A `FunctionField` will return the result of `func(x, y, z [, t])` at `LX, LY, LZ` on
+`grid` when indexed at `i, j, k`.
+"""
 struct FunctionField{LX, LY, LZ, C, P, F, G, T} <: AbstractField{LX, LY, LZ, G, T, 3}
           func :: F
           grid :: G
@@ -21,20 +33,6 @@ struct FunctionField{LX, LY, LZ, C, P, F, G, T} <: AbstractField{LX, LY, LZ, G, 
         return new{LX, LY, LZ, C, P, F, G, T}(f.func, grid, clock, f.parameters)
     end
 end
-
-"""
-    FunctionField{LX, LY, LZ}(func, grid; clock=nothing, parameters=nothing) where {LX, LY, LZ}
-
-Returns a `FunctionField` on `grid` and at location `LX, LY, LZ`.
-
-If `clock` is not specified, then `func` must be a function with signature
-`func(x, y, z)`. If clock is specified, `func` must be a function with signature
-`func(x, y, z, t)`, where `t` is internally determined from `clock.time`.
-
-A `FunctionField` will return the result of `func(x, y, z [, t])` at `LX, LY, LZ` on
-`grid` when indexed at `i, j, k`.
-"""
-FunctionField
 
 Adapt.parent_type(T::Type{<:FunctionField}) = T
 

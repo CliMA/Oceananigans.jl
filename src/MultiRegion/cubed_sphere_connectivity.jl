@@ -38,24 +38,9 @@ The connectivity among various regions for a cubed sphere grid. Parameter `R`
 denotes the rotation of the `from_rank` region to the current region.
 
 $(TYPEDFIELDS)
-"""
-struct CubedSphereRegionalConnectivity{S, FS, R} <: AbstractConnectivity
-    "the current region rank"
-            rank :: Int
-    "the region from which boundary condition comes from"
-       from_rank :: Int
-    "the current region side"
-            side :: S
-    "the side of the region from which boundary condition comes from"
-       from_side :: FS
-    "rotation of the region from which boundary condition comes from compare to host region"
-        rotation :: R
 
-    CubedSphereRegionalConnectivity(rank, from_rank, side, from_side, rotation=nothing) =
-        new{typeof(side), typeof(from_side), typeof(rotation)}(rank, from_rank, side, from_side, rotation)
-end
+---
 
-"""
     CubedSphereRegionalConnectivity(rank, from_rank, side, from_side, rotation=nothing)
 
 Return a `CubedSphereRegionalConnectivity`: `from_rank :: Int` → `rank :: Int` and
@@ -92,7 +77,21 @@ CubedSphereRegionalConnectivity
 └── counter-clockwise rotation ↺
 ```
 """
-CubedSphereRegionalConnectivity
+struct CubedSphereRegionalConnectivity{S, FS, R} <: AbstractConnectivity
+    "the current region rank"
+            rank :: Int
+    "the region from which boundary condition comes from"
+       from_rank :: Int
+    "the current region side"
+            side :: S
+    "the side of the region from which boundary condition comes from"
+       from_side :: FS
+    "rotation of the region from which boundary condition comes from compare to host region"
+        rotation :: R
+
+    CubedSphereRegionalConnectivity(rank, from_rank, side, from_side, rotation=nothing) =
+        new{typeof(side), typeof(from_side), typeof(rotation)}(rank, from_rank, side, from_side, rotation)
+end
 
 function Base.summary(c::CubedSphereRegionalConnectivity)
     return "CubedSphereRegionalConnectivity: from $(typeof(c.from_side)) region #$(c.from_rank) → $(typeof(c.side)) region #$(c.rank)"

@@ -1,17 +1,5 @@
 using Oceananigans.Utils: shortsummary, construct_regionally, prettysummary
 
-struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, LY, LZ, G, T}
-    kernel_function :: K
-    grid :: G
-    arguments :: D
-
-    function KernelFunctionOperation{LX, LY, LZ}(kernel_function::K, grid::G, arguments::D,
-                                                 ::Type{T}=eltype(grid)) where {LX, LY, LZ, G, T, K, D<:Tuple}
-        return new{LX, LY, LZ, G, T, K, D}(kernel_function, grid, arguments)
-    end
-
-end
-
 """
     KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid, arguments...)
 
@@ -62,7 +50,17 @@ KernelFunctionOperation at (Face, Face, Center)
 └── arguments: ("Field", "Field")
 ```
 """
-KernelFunctionOperation
+struct KernelFunctionOperation{LX, LY, LZ, G, T, K, D} <: AbstractOperation{LX, LY, LZ, G, T}
+    kernel_function :: K
+    grid :: G
+    arguments :: D
+
+    function KernelFunctionOperation{LX, LY, LZ}(kernel_function::K, grid::G, arguments::D,
+                                                 ::Type{T}=eltype(grid)) where {LX, LY, LZ, G, T, K, D<:Tuple}
+        return new{LX, LY, LZ, G, T, K, D}(kernel_function, grid, arguments)
+    end
+
+end
 
 # Convenience outer constructor: splat arguments into a tuple.
 # T defaults to eltype(grid) via the inner constructor.
