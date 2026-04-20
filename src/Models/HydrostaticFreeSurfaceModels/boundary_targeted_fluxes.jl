@@ -1,49 +1,10 @@
 using Oceananigans.BoundaryConditions: BoundaryCondition, Open, has_target_mass_flux, get_target_mass_flux, FieldBoundaryConditions
-
-const OBC = BoundaryCondition{<:Open}
-using Oceananigans.AbstractOperations: Integral, Ax, Ay, Az, grid_metric_operation
+using Oceananigans.AbstractOperations: Integral
 using Oceananigans.Fields: Field, interior, compute!
+using Oceananigans.Models: boundary_total_area
 using GPUArraysCore: @allowscalar
 
-#####
-##### Boundary area helpers
-#####
-
-function get_west_area(grid)
-    dA = grid_metric_operation((Face, Center, Center), Ax, grid)
-    ∫dA = sum(dA, dims=(2, 3))
-    return @allowscalar ∫dA[1, 1, 1]
-end
-
-function get_east_area(grid)
-    dA = grid_metric_operation((Face, Center, Center), Ax, grid)
-    ∫dA = sum(dA, dims=(2, 3))
-    return @allowscalar ∫dA[grid.Nx+1, 1, 1]
-end
-
-function get_south_area(grid)
-    dA = grid_metric_operation((Center, Face, Center), Ay, grid)
-    ∫dA = sum(dA, dims=(1, 3))
-    return @allowscalar ∫dA[1, 1, 1]
-end
-
-function get_north_area(grid)
-    dA = grid_metric_operation((Center, Face, Center), Ay, grid)
-    ∫dA = sum(dA, dims=(1, 3))
-    return @allowscalar ∫dA[1, grid.Ny+1, 1]
-end
-
-function get_bottom_area(grid)
-    dA = grid_metric_operation((Center, Center, Face), Az, grid)
-    ∫dA = sum(dA, dims=(1, 2))
-    return @allowscalar ∫dA[1, 1, 1]
-end
-
-function get_top_area(grid)
-    dA = grid_metric_operation((Center, Center, Face), Az, grid)
-    ∫dA = sum(dA, dims=(1, 2))
-    return @allowscalar ∫dA[1, 1, grid.Nz+1]
-end
+const OBC = BoundaryCondition{<:Open}
 
 #####
 ##### Boundary mass flux field constructors
@@ -96,37 +57,37 @@ function initialize_targeted_boundary_mass_fluxes(velocities)
 
     if _is_targeted(u, :west)
         boundary_fluxes = merge(boundary_fluxes, (; west_mass_flux  = west_mass_flux_field(u),
-                                                    west_area = get_west_area(u.grid)))
+                                                    west_area = boundary_total_area(Val(:west), u.grid)))
         has_targeted = true
     end
 
     if _is_targeted(u, :east)
         boundary_fluxes = merge(boundary_fluxes, (; east_mass_flux  = east_mass_flux_field(u),
-                                                    east_area = get_east_area(u.grid)))
+                                                    east_area = boundary_total_area(Val(:east), u.grid)))
         has_targeted = true
     end
 
     if _is_targeted(v, :south)
         boundary_fluxes = merge(boundary_fluxes, (; south_mass_flux = south_mass_flux_field(v),
-                                                    south_area = get_south_area(v.grid)))
+                                                    south_area = boundary_total_area(Val(:south), v.grid)))
         has_targeted = true
     end
 
     if _is_targeted(v, :north)
         boundary_fluxes = merge(boundary_fluxes, (; north_mass_flux = north_mass_flux_field(v),
-                                                    north_area = get_north_area(v.grid)))
+                                                    north_area = boundary_total_area(Val(:north), v.grid)))
         has_targeted = true
     end
 
     if _is_targeted(w, :bottom)
         boundary_fluxes = merge(boundary_fluxes, (; bottom_mass_flux = bottom_mass_flux_field(w),
-                                                    bottom_area = get_bottom_area(w.grid)))
+                                                    bottom_area = boundary_total_area(Val(:bottom), w.grid)))
         has_targeted = true
     end
 
     if _is_targeted(w, :top)
         boundary_fluxes = merge(boundary_fluxes, (; top_mass_flux = top_mass_flux_field(w),
-                                                    top_area = get_top_area(w.grid)))
+                                                    top_area = boundary_total_area(Val(:top), w.grid)))
         has_targeted = true
     end
 

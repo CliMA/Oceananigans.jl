@@ -1,48 +1,13 @@
 using Oceananigans.BoundaryConditions: BoundaryCondition, Open, has_target_mass_flux, get_target_mass_flux
-using Oceananigans.AbstractOperations: Integral, Ax, Ay, Az, grid_metric_operation
+using Oceananigans.AbstractOperations: Integral
 using Oceananigans.Fields: Field, interior
+using Oceananigans.Models: boundary_total_area
 using GPUArraysCore: @allowscalar
 
 const OBC  = BoundaryCondition{<:Open} # OpenBoundaryCondition
 const IOBC = BoundaryCondition{<:Open{<:Nothing}} # "Imposed-velocity" OpenBoundaryCondition (with no scheme)
 const FIOBC = BoundaryCondition{<:Open{<:Nothing}, <:Number} # "Fixed-imposed-velocity" OpenBoundaryCondition
 const ZIOBC = BoundaryCondition{<:Open{<:Nothing}, <:Nothing} # "Zero-imposed-velocity" OpenBoundaryCondition (no-inflow)
-
-function get_west_area(grid)
-    dA = grid_metric_operation((Face, Center, Center), Ax, grid)
-    ∫dA = sum(dA, dims=(2, 3))
-    return @allowscalar ∫dA[1, 1, 1]
-end
-
-function get_east_area(grid)
-    dA = grid_metric_operation((Face, Center, Center), Ax, grid)
-    ∫dA = sum(dA, dims=(2, 3))
-    return @allowscalar ∫dA[grid.Nx+1, 1, 1]
-end
-
-function get_south_area(grid)
-    dA = grid_metric_operation((Center, Face, Center), Ay, grid)
-    ∫dA = sum(dA, dims=(1, 3))
-    return @allowscalar ∫dA[1, 1, 1]
-end
-
-function get_north_area(grid)
-    dA = grid_metric_operation((Center, Face, Center), Ay, grid)
-    ∫dA = sum(dA, dims=(1, 3))
-    return @allowscalar ∫dA[1, grid.Ny+1, 1]
-end
-
-function get_bottom_area(grid)
-    dA = grid_metric_operation((Center, Center, Face), Az, grid)
-    ∫dA = sum(dA, dims=(1, 2))
-    return @allowscalar ∫dA[1, 1, 1]
-end
-
-function get_top_area(grid)
-    dA = grid_metric_operation((Center, Center, Face), Az, grid)
-    ∫dA = sum(dA, dims=(1, 2))
-    return @allowscalar ∫dA[1, 1, grid.Nz+1]
-end
 
 # Left boundary integrals for normal velocity components
 @inline west_mass_flux(u)   = Field(Integral(view(u, 1, :, :), dims=(2, 3)))
@@ -54,12 +19,12 @@ end
 @inline north_mass_flux(v)  = Field(Integral(view(v, :, v.grid.Ny + 1, :), dims=(1, 3)))
 @inline top_mass_flux(w)    = Field(Integral(view(w, :, :, w.grid.Nz + 1), dims=(1, 2)))
 
-initialize_boundary_mass_flux(u, bc::OBC, ::Val{:west})   = (; west_mass_flux = west_mass_flux(u), west_area = get_west_area(u.grid))
-initialize_boundary_mass_flux(u, bc::OBC, ::Val{:east})   = (; east_mass_flux = east_mass_flux(u), east_area = get_east_area(u.grid))
-initialize_boundary_mass_flux(v, bc::OBC, ::Val{:south})  = (; south_mass_flux = south_mass_flux(v), south_area = get_south_area(v.grid))
-initialize_boundary_mass_flux(v, bc::OBC, ::Val{:north})  = (; north_mass_flux = north_mass_flux(v), north_area = get_north_area(v.grid))
-initialize_boundary_mass_flux(w, bc::OBC, ::Val{:bottom}) = (; bottom_mass_flux = bottom_mass_flux(w), bottom_area = get_bottom_area(w.grid))
-initialize_boundary_mass_flux(w, bc::OBC, ::Val{:top})    = (; top_mass_flux = top_mass_flux(w), top_area = get_top_area(w.grid))
+initialize_boundary_mass_flux(u, bc::OBC, ::Val{:west})   = (; west_mass_flux = west_mass_flux(u), west_area = boundary_total_area(Val(:west), u.grid))
+initialize_boundary_mass_flux(u, bc::OBC, ::Val{:east})   = (; east_mass_flux = east_mass_flux(u), east_area = boundary_total_area(Val(:east), u.grid))
+initialize_boundary_mass_flux(v, bc::OBC, ::Val{:south})  = (; south_mass_flux = south_mass_flux(v), south_area = boundary_total_area(Val(:south), v.grid))
+initialize_boundary_mass_flux(v, bc::OBC, ::Val{:north})  = (; north_mass_flux = north_mass_flux(v), north_area = boundary_total_area(Val(:north), v.grid))
+initialize_boundary_mass_flux(w, bc::OBC, ::Val{:bottom}) = (; bottom_mass_flux = bottom_mass_flux(w), bottom_area = boundary_total_area(Val(:bottom), w.grid))
+initialize_boundary_mass_flux(w, bc::OBC, ::Val{:top})    = (; top_mass_flux = top_mass_flux(w), top_area = boundary_total_area(Val(:top), w.grid))
 
 initialize_boundary_mass_flux(u, bc::ZIOBC, ::Val{:west})   = NamedTuple()
 initialize_boundary_mass_flux(u, bc::ZIOBC, ::Val{:east})   = NamedTuple()
@@ -68,12 +33,12 @@ initialize_boundary_mass_flux(v, bc::ZIOBC, ::Val{:north})  = NamedTuple()
 initialize_boundary_mass_flux(w, bc::ZIOBC, ::Val{:bottom}) = NamedTuple()
 initialize_boundary_mass_flux(w, bc::ZIOBC, ::Val{:top})    = NamedTuple()
 
-initialize_boundary_mass_flux(u, bc::FIOBC, ::Val{:west})   = (; west_mass_flux = bc.condition * get_west_area(u.grid), west_area = get_west_area(u.grid))
-initialize_boundary_mass_flux(u, bc::FIOBC, ::Val{:east})   = (; east_mass_flux = bc.condition * get_east_area(u.grid), east_area = get_east_area(u.grid))
-initialize_boundary_mass_flux(v, bc::FIOBC, ::Val{:south})  = (; south_mass_flux = bc.condition * get_south_area(v.grid), south_area = get_south_area(v.grid))
-initialize_boundary_mass_flux(v, bc::FIOBC, ::Val{:north})  = (; north_mass_flux = bc.condition * get_north_area(v.grid), north_area = get_north_area(v.grid))
-initialize_boundary_mass_flux(w, bc::FIOBC, ::Val{:bottom}) = (; bottom_mass_flux = bc.condition * get_bottom_area(w.grid), bottom_area = get_bottom_area(w.grid))
-initialize_boundary_mass_flux(w, bc::FIOBC, ::Val{:top})    = (; top_mass_flux = bc.condition * get_top_area(w.grid), top_area = get_top_area(w.grid))
+initialize_boundary_mass_flux(u, bc::FIOBC, ::Val{:west})   = (; west_mass_flux = bc.condition * boundary_total_area(Val(:west), u.grid), west_area = boundary_total_area(Val(:west), u.grid))
+initialize_boundary_mass_flux(u, bc::FIOBC, ::Val{:east})   = (; east_mass_flux = bc.condition * boundary_total_area(Val(:east), u.grid), east_area = boundary_total_area(Val(:east), u.grid))
+initialize_boundary_mass_flux(v, bc::FIOBC, ::Val{:south})  = (; south_mass_flux = bc.condition * boundary_total_area(Val(:south), v.grid), south_area = boundary_total_area(Val(:south), v.grid))
+initialize_boundary_mass_flux(v, bc::FIOBC, ::Val{:north})  = (; north_mass_flux = bc.condition * boundary_total_area(Val(:north), v.grid), north_area = boundary_total_area(Val(:north), v.grid))
+initialize_boundary_mass_flux(w, bc::FIOBC, ::Val{:bottom}) = (; bottom_mass_flux = bc.condition * boundary_total_area(Val(:bottom), w.grid), bottom_area = boundary_total_area(Val(:bottom), w.grid))
+initialize_boundary_mass_flux(w, bc::FIOBC, ::Val{:top})    = (; top_mass_flux = bc.condition * boundary_total_area(Val(:top), w.grid), top_area = boundary_total_area(Val(:top), w.grid))
 
 initialize_boundary_mass_flux(velocity, ::Nothing, side) = NamedTuple()
 initialize_boundary_mass_flux(velocity, bc, side) = NamedTuple()

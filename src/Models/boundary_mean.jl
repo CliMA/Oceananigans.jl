@@ -102,3 +102,35 @@ end
 
 const MOOBC = BoundaryCondition{<:Open, <:BoundaryAdjacentMean}
 @inline update_boundary_condition!(bc::MOOBC, val_side, u, model) = bc.condition(val_side, u)
+
+function boundary_total_area(::Val{:west}, grid)
+    ∫dA = sum(boundary_normal_area(Val(:west), grid), dims=(2, 3))
+    return @allowscalar ∫dA[1, 1, 1]
+end
+
+function boundary_total_area(::Val{:east}, grid)
+    ∫dA = sum(boundary_normal_area(Val(:east), grid), dims=(2, 3))
+    return @allowscalar ∫dA[grid.Nx+1, 1, 1]
+end
+
+function boundary_total_area(::Val{:south}, grid)
+    ∫dA = sum(boundary_normal_area(Val(:south), grid), dims=(1, 3))
+    return @allowscalar ∫dA[1, 1, 1]
+end
+
+function boundary_total_area(::Val{:north}, grid)
+    ∫dA = sum(boundary_normal_area(Val(:north), grid), dims=(1, 3))
+    return @allowscalar ∫dA[1, grid.Ny+1, 1]
+end
+
+function boundary_total_area(::Val{:bottom}, grid)
+    ∫dA = sum(boundary_normal_area(Val(:bottom), grid), dims=(1, 2))
+    return @allowscalar ∫dA[1, 1, 1]
+end
+
+function boundary_total_area(::Val{:top}, grid)
+    ∫dA = sum(boundary_normal_area(Val(:top), grid), dims=(1, 2))
+    return @allowscalar ∫dA[1, 1, grid.Nz+1]
+end
+
+boundary_total_area(side::Symbol, grid) = boundary_total_area(Val(side), grid)
