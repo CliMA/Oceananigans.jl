@@ -2,8 +2,14 @@ module OceananigansCUDAExt
 
 using InteractiveUtils: versioninfo
 using CUDA: CUDA, CuArray, CuContext, CuDevice, CuDeviceArray, CuPtr, context,
-    context!, cu, CUDA.CUDAKernels.CUDABackend
-using CUDA.CUSPARSE: CuSparseMatrixCSC
+    context!, cu, CUDA.CUDABackend
+# TODO: when we'll support CUDA.jl v6 only, add `cuSPARSE`/`CUDACore` to list of
+# triggers of this extensions, and simplify the condition below.
+if isdefined(CUDA, :cuSPARSE)
+    using CUDA.cuSPARSE: CuSparseMatrixCSC
+else
+    using CUDA.CUSPARSE: CuSparseMatrixCSC
+end
 using GPUArraysCore: allowscalar
 using GPUArrays: unsafe_free!
 using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
