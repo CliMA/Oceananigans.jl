@@ -1818,6 +1818,145 @@ function test_open_boundary_condition_scheme_checkpointing(arch, timestepper, sc
     return nothing
 end
 
+function test_checkpointing_with_file_splitting(arch)
+    dir = mktempdir()
+
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid, tracers=:c)
+    simulation = Simulation(model, Δt=1, stop_time=10)
+
+    simulation.output_writers[:fields] = JLD2Writer(model, model.tracers;
+                                                     filename = "split_ckpt",
+                                                     dir = dir,
+                                                     schedule = IterationInterval(1),
+                                                     file_splitting = TimeInterval(3),
+                                                     overwrite_existing = true)
+
+    simulation.output_writers[:checkpointer] = Checkpointer(model;
+                                                              schedule = IterationInterval(5),
+                                                              dir = dir,
+                                                              prefix = "checkpoint",
+                                                              overwrite_existing = true,
+                                                              cleanup = true)
+    run!(simulation)
+
+    w = simulation.output_writers[:fields]
+    @test w.part == 4
+    @test occursin("_part4.jld2", w.filepath)
+
+    # Pickup from checkpoint and continue
+    grid2 = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    model2 = NonhydrostaticModel(grid2, tracers=:c)
+    sim2 = Simulation(model2, Δt=1, stop_time=20)
+
+    sim2.output_writers[:fields] = JLD2Writer(model2, model2.tracers;
+                                               filename = "split_ckpt",
+                                               dir = dir,
+                                               schedule = IterationInterval(1),
+                                               file_splitting = TimeInterval(3),
+                                               overwrite_existing = false)
+
+    sim2.output_writers[:checkpointer] = Checkpointer(model2;
+                                                        schedule = IterationInterval(5),
+                                                        dir = dir,
+                                                        prefix = "checkpoint",
+                                                        overwrite_existing = true,
+                                                        cleanup = true)
+
+    run!(sim2, pickup=true)
+
+    w2 = sim2.output_writers[:fields]
+
+    # Writer should have continued from part 4 and split correctly
+    @test occursin("_part", w2.filepath)
+    @test w2.part > 4
+
+    # Verify all output files have contiguous data
+    output_files = sort(filter(f -> startswith(f, "split_ckpt_part"), readdir(dir)))
+    @test length(output_files) > 4
+
+    all_iterations = Int[]
+    for f in output_files
+        jldopen(joinpath(dir, f), "r") do file
+            append!(all_iterations, parse.(Int, keys(file["timeseries/t"])))
+        end
+    end
+
+    # Should have iterations 0 through 20 without gaps (some overlap at 10 is ok)
+    unique_iters = sort(unique(all_iterations))
+    @test 0 ∈ unique_iters
+    @test 20 ∈ unique_iters
+
+    # Test reading back with FieldTimeSeries (InMemory)
+    fts = FieldTimeSeries(joinpath(dir, "split_ckpt.jld2"), "c", architecture=arch)
+    @test length(fts.times) >= 21
+
+    rm(dir, recursive=true, force=true)
+    return nothing
+end
+
+function test_checkpointing_with_moved_parts(arch)
+    dir = mktempdir()
+    archive_dir = mktempdir()
+
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid, tracers=:c)
+    simulation = Simulation(model, Δt=1, stop_time=10)
+
+    simulation.output_writers[:fields] = JLD2Writer(model, model.tracers;
+                                                     filename = "moved_test",
+                                                     dir = dir,
+                                                     schedule = IterationInterval(1),
+                                                     file_splitting = TimeInterval(3),
+                                                     overwrite_existing = true)
+
+    simulation.output_writers[:checkpointer] = Checkpointer(model;
+                                                              schedule = IterationInterval(10),
+                                                              dir = dir,
+                                                              prefix = "checkpoint",
+                                                              overwrite_existing = true,
+                                                              cleanup = true)
+    run!(simulation)
+
+    # Move old parts away, keep only the latest
+    for f in filter(f -> occursin(r"_part[123]\.", f), readdir(dir))
+        mv(joinpath(dir, f), joinpath(archive_dir, f))
+    end
+
+    # Only part4 + checkpoint should remain
+    @test isfile(joinpath(dir, "moved_test_part4.jld2"))
+    @test !isfile(joinpath(dir, "moved_test_part1.jld2"))
+
+    # Pickup and continue
+    grid2 = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    model2 = NonhydrostaticModel(grid2, tracers=:c)
+    sim2 = Simulation(model2, Δt=1, stop_time=15)
+
+    sim2.output_writers[:fields] = JLD2Writer(model2, model2.tracers;
+                                               filename = "moved_test",
+                                               dir = dir,
+                                               schedule = IterationInterval(1),
+                                               file_splitting = TimeInterval(3),
+                                               overwrite_existing = false)
+
+    sim2.output_writers[:checkpointer] = Checkpointer(model2;
+                                                        schedule = IterationInterval(10),
+                                                        dir = dir,
+                                                        prefix = "checkpoint",
+                                                        overwrite_existing = true,
+                                                        cleanup = true)
+
+    # Should not error — writer appends to existing part4
+    run!(sim2, pickup=true)
+
+    w2 = sim2.output_writers[:fields]
+    @test w2.part > 4
+
+    rm(dir, recursive=true, force=true)
+    rm(archive_dir, recursive=true, force=true)
+    return nothing
+end
+
 for arch in archs
     for model_type in (:nonhydrostatic, :hydrostatic)
         for pickup_method in (:boolean, :iteration, :filepath)
@@ -2008,5 +2147,15 @@ for arch in archs
         test_manual_checkpoint_without_checkpointer(arch)
         test_manual_checkpoint_with_filepath(arch)
         test_checkpoint_at_end(arch)
+    end
+
+    @testset "Checkpointing with file splitting [$(typeof(arch))]" begin
+        @info "  Testing checkpointing with file splitting [$(typeof(arch))]..."
+        test_checkpointing_with_file_splitting(arch)
+    end
+
+    @testset "Checkpointing with moved-away part files [$(typeof(arch))]" begin
+        @info "  Testing checkpointing with moved-away part files [$(typeof(arch))]..."
+        test_checkpointing_with_moved_parts(arch)
     end
 end

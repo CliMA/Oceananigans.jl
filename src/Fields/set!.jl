@@ -18,7 +18,7 @@ tuple_string(tup::Tuple{}) = ""
 ##### set!
 #####
 
-set!(obj, ::Nothing) = nothing
+set!(obj::AbstractField, ::Nothing) = nothing
 
 function set!(Φ::NamedTuple; kwargs...)
     for (fldname, value) in kwargs

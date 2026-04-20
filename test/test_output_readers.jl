@@ -319,6 +319,42 @@ function test_field_time_series_in_memory_split(arch, split_filepath, unsplit_fi
     return nothing
 end
 
+function test_field_time_series_split_files(arch)
+    dir = mktempdir()
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid, tracers=:c)
+    simulation = Simulation(model, Δt=1, stop_time=10)
+
+    simulation.output_writers[:fields] = JLD2Writer(model, model.tracers;
+                                                     filename = "split_test",
+                                                     dir = dir,
+                                                     schedule = IterationInterval(1),
+                                                     file_splitting = TimeInterval(3),
+                                                     overwrite_existing = true)
+    run!(simulation)
+
+    # Use absolute path (tests glob fix)
+    abs_path = joinpath(dir, "split_test.jld2")
+
+    # Test InMemory backend with split files
+    fts_mem = FieldTimeSeries(abs_path, "c", architecture=arch)
+    @test length(fts_mem.times) == 11
+    @test fts_mem[1] isa Field
+    @test fts_mem[11] isa Field
+
+    # Test OnDisk backend with split files
+    fts_disk = FieldTimeSeries(abs_path, "c"; backend=OnDisk(), architecture=arch)
+    @test length(fts_disk.times) == 11
+
+    # Access from each part file
+    for n in 1:length(fts_disk.times)
+        @test fts_disk[n] isa Field
+    end
+
+    rm(dir, recursive=true, force=true)
+    return nothing
+end
+
 function test_field_time_series_pickup(arch)
     Random.seed!(1234)
     for n in -4:4
@@ -704,6 +740,13 @@ end
                 @testset "FieldTimeSeries pickup" begin
                     @info "  Testing FieldTimeSeries pickup with $output_writer"
                     test_field_time_series_pickup(arch)
+                end
+            end
+
+            if output_writer == JLD2Writer
+                @testset "FieldTimeSeries with split files [$(typeof(arch))]" begin
+                    @info "  Testing FieldTimeSeries with split files [$(typeof(arch))]..."
+                    test_field_time_series_split_files(arch)
                 end
             end
 

@@ -1,3 +1,4 @@
+using Oceananigans.Operators: V⁻¹ᶜᶜᶜ
 
 @inline _advective_tracer_flux_x(i, j, k, grid, scheme, U, c) = advective_tracer_flux_x(i, j, k, grid, scheme, U, c)
 @inline _advective_tracer_flux_y(i, j, k, grid, scheme, V, c) = advective_tracer_flux_y(i, j, k, grid, scheme, V, c)
