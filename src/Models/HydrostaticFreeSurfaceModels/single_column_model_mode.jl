@@ -67,6 +67,12 @@ compute_free_surface_tendency!(::SingleColumnGrid, model, ::SplitExplicitFreeSur
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid, callbacks)
 
+    # Paranoid masking of single column immersed regions
+    mask_immersed_model_fields!(model, grid)
+
+    # update FieldTimeSeries that might be part of the forcing or BC
+    update_model_field_time_series!(model, model.clock)
+
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
 
     # Compute auxiliaries
