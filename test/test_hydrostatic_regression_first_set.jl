@@ -62,35 +62,37 @@ include("regression_tests/hydrostatic_free_turbulence_regression_test.jl")
     @info "Running hydrostatic regression tests..."
 
     for arch in archs
-        longitudes = [(-180, 180), (-160, 160)]
-        latitudes  = [(-60, 60)]
-        zs         = [(-90, 0)]
+        @testset "Free turbulence tests" begin
+            longitudes = [(-180, 180), (-160, 160)]
+            latitudes  = [(-60, 60)]
+            zs         = [(-90, 0)]
 
-        explicit_free_surface = ExplicitFreeSurface(gravitational_acceleration = 1.0)
-        implicit_free_surface = ImplicitFreeSurface(gravitational_acceleration = 1.0,
-                                                    solver_method = :PreconditionedConjugateGradient,
-                                                    reltol = 0, abstol = 1e-15)
+            explicit_free_surface = ExplicitFreeSurface(gravitational_acceleration = 1.0)
+            implicit_free_surface = ImplicitFreeSurface(gravitational_acceleration = 1.0,
+                                                        solver_method = :PreconditionedConjugateGradient,
+                                                        reltol = 0, abstol = 1e-15)
 
-        for longitude in longitudes, latitude in latitudes, z in zs, precompute_metrics in (true, false)
-            longitude[1] == -180 ? size = (180, 60, 3) : size = (160, 60, 3)
-            grid  = LatitudeLongitudeGrid(arch; size, longitude, latitude, z, precompute_metrics, halo=(2, 2, 2))
+            for longitude in longitudes, latitude in latitudes, z in zs, precompute_metrics in (true, false)
+                longitude[1] == -180 ? size = (180, 60, 3) : size = (160, 60, 3)
+                grid  = LatitudeLongitudeGrid(arch; size, longitude, latitude, z, precompute_metrics, halo=(2, 2, 2))
 
-            split_explicit_free_surface = SplitExplicitFreeSurface(grid,
-                                                                   gravitational_acceleration = 1.0,
-                                                                   substeps = 5)
+                split_explicit_free_surface = SplitExplicitFreeSurface(grid,
+                                                                    gravitational_acceleration = 1.0,
+                                                                    substeps = 5)
 
-            for free_surface in [explicit_free_surface, implicit_free_surface, split_explicit_free_surface]
+                for free_surface in [explicit_free_surface, implicit_free_surface, split_explicit_free_surface]
 
-                # GPU + ImplicitFreeSurface + precompute metrics cannot be tested on sverdrup at the moment
-                # because "uses too much parameter space (maximum 0x1100 bytes)" error
-                if !(precompute_metrics && free_surface isa ImplicitFreeSurface && arch isa GPU) &&
-                   !(free_surface isa ImplicitFreeSurface && arch isa Distributed) # Also no implicit free surface on distributed
+                    # GPU + ImplicitFreeSurface + precompute metrics combo results in
+                    # "uses too much parameter space (maximum 0x1100 bytes)" error
+                    if !(precompute_metrics && free_surface isa ImplicitFreeSurface && arch isa GPU) &&
+                    !(free_surface isa ImplicitFreeSurface && arch isa Distributed) # Also no implicit free surface on distributed
 
-                    testset_str, info_str = show_hydrostatic_test(grid, free_surface, precompute_metrics)
+                        testset_str, info_str = show_hydrostatic_test(grid, free_surface, precompute_metrics)
 
-                    @testset "$testset_str" begin
-                        @info "$info_str"
-                        run_hydrostatic_free_turbulence_regression_test(grid, free_surface)
+                        @testset "$testset_str" begin
+                            @info "$info_str"
+                            run_hydrostatic_free_turbulence_regression_test(grid, free_surface)
+                        end
                     end
                 end
             end
