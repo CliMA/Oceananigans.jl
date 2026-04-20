@@ -124,7 +124,30 @@ Adapt.adapt_structure(to, pe::PerturbationAdvection) =
                           adapt(to, pe.target_mass_flux))
 
 const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
-const TargetedPAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection{<:Any, <:Any, <:Number}}}
+
+"""
+    has_target_mass_flux(scheme)
+
+Return `true` if `scheme` carries a prescribed `target_mass_flux`, `false` otherwise.
+
+Extend this function for custom open-boundary schemes defined outside Oceananigans so that
+the targeted-flux correction machinery picks them up automatically:
+
+```julia
+MyPkg.has_target_mass_flux(s::MyScheme) = s.target_mass_flux !== nothing
+MyPkg.get_target_mass_flux(s::MyScheme) = s.target_mass_flux
+```
+"""
+has_target_mass_flux(scheme) = false
+has_target_mass_flux(scheme::PerturbationAdvection{<:Any, <:Any, <:Number}) = true
+
+"""
+    get_target_mass_flux(scheme)
+
+Return the prescribed target mass flux stored in `scheme`.
+Only called when `has_target_mass_flux(scheme)` is `true`.
+"""
+get_target_mass_flux(scheme::PerturbationAdvection) = scheme.target_mass_flux
 
 # Helper to convert between density-weighted and intensive fields.
 # When density is nothing, these are no-ops.

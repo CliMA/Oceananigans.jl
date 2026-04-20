@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: BoundaryCondition, Open, TargetedPAOBC
+using Oceananigans.BoundaryConditions: BoundaryCondition, Open, has_target_mass_flux, get_target_mass_flux
 using Oceananigans.AbstractOperations: Integral, Ax, Ay, Az, grid_metric_operation
 using Oceananigans.Fields: Field, interior
 using GPUArraysCore: @allowscalar
@@ -84,10 +84,9 @@ needs_mass_flux_correction(::Nothing) = false
 needs_mass_flux_correction(bc) = false
 
 # True for scheme boundaries that participate in the global pool correction.
-# Targeted boundaries (TargetedPAOBC) are corrected independently and excluded from the pool.
+# Boundaries with a target_mass_flux are corrected independently and excluded from the pool.
 needs_pool_correction(::IOBC) = false
-needs_pool_correction(::OBC) = true
-needs_pool_correction(::TargetedPAOBC) = false
+needs_pool_correction(bc::OBC) = !has_target_mass_flux(bc.classification.scheme)
 needs_pool_correction(::Nothing) = false
 needs_pool_correction(bc) = false
 
@@ -217,24 +216,36 @@ function open_boundary_mass_inflow(model)
     return total_flux
 end
 
-# Targeted boundaries are corrected independently; skip them in the pool correction.
-correct_left_boundary_mass_flux!(u, bc::TargetedPAOBC, ::Val{:west},    A⁻¹_∮udA) = nothing
-correct_left_boundary_mass_flux!(v, bc::TargetedPAOBC, ::Val{:south},   A⁻¹_∮udA) = nothing
-correct_left_boundary_mass_flux!(w, bc::TargetedPAOBC, ::Val{:bottom},  A⁻¹_∮udA) = nothing
-correct_left_boundary_mass_flux!(u, bc::OBC, ::Val{:west},    A⁻¹_∮udA) = interior(u, 1, :, :) .-= A⁻¹_∮udA
-correct_left_boundary_mass_flux!(v, bc::OBC, ::Val{:south},   A⁻¹_∮udA) = interior(v, :, 1, :) .-= A⁻¹_∮udA
-correct_left_boundary_mass_flux!(w, bc::OBC, ::Val{:bottom},  A⁻¹_∮udA) = interior(w, :, :, 1) .-= A⁻¹_∮udA
+# Boundaries with a target_mass_flux are corrected independently; skip them in the pool correction.
+function correct_left_boundary_mass_flux!(u, bc::OBC, ::Val{:west}, A⁻¹_∮udA)
+    has_target_mass_flux(bc.classification.scheme) && return nothing
+    interior(u, 1, :, :) .-= A⁻¹_∮udA
+end
+function correct_left_boundary_mass_flux!(v, bc::OBC, ::Val{:south}, A⁻¹_∮udA)
+    has_target_mass_flux(bc.classification.scheme) && return nothing
+    interior(v, :, 1, :) .-= A⁻¹_∮udA
+end
+function correct_left_boundary_mass_flux!(w, bc::OBC, ::Val{:bottom}, A⁻¹_∮udA)
+    has_target_mass_flux(bc.classification.scheme) && return nothing
+    interior(w, :, :, 1) .-= A⁻¹_∮udA
+end
 correct_left_boundary_mass_flux!(u, bc::IOBC, ::Val{:west},   A⁻¹_∮udA) = nothing
 correct_left_boundary_mass_flux!(v, bc::IOBC, ::Val{:south},  A⁻¹_∮udA) = nothing
 correct_left_boundary_mass_flux!(w, bc::IOBC, ::Val{:bottom}, A⁻¹_∮udA) = nothing
 correct_left_boundary_mass_flux!(u, bc, side, A⁻¹_∮udA) = nothing
 
-correct_right_boundary_mass_flux!(u, bc::TargetedPAOBC, ::Val{:east},   A⁻¹_∮udA) = nothing
-correct_right_boundary_mass_flux!(v, bc::TargetedPAOBC, ::Val{:north},  A⁻¹_∮udA) = nothing
-correct_right_boundary_mass_flux!(w, bc::TargetedPAOBC, ::Val{:top},    A⁻¹_∮udA) = nothing
-correct_right_boundary_mass_flux!(u, bc::OBC, ::Val{:east},   A⁻¹_∮udA) = interior(u, u.grid.Nx + 1, :, :) .+= A⁻¹_∮udA
-correct_right_boundary_mass_flux!(v, bc::OBC, ::Val{:north},  A⁻¹_∮udA) = interior(v, :, v.grid.Ny + 1, :) .+= A⁻¹_∮udA
-correct_right_boundary_mass_flux!(w, bc::OBC, ::Val{:top},    A⁻¹_∮udA) = interior(w, :, :, w.grid.Nz + 1) .+= A⁻¹_∮udA
+function correct_right_boundary_mass_flux!(u, bc::OBC, ::Val{:east}, A⁻¹_∮udA)
+    has_target_mass_flux(bc.classification.scheme) && return nothing
+    interior(u, u.grid.Nx + 1, :, :) .+= A⁻¹_∮udA
+end
+function correct_right_boundary_mass_flux!(v, bc::OBC, ::Val{:north}, A⁻¹_∮udA)
+    has_target_mass_flux(bc.classification.scheme) && return nothing
+    interior(v, :, v.grid.Ny + 1, :) .+= A⁻¹_∮udA
+end
+function correct_right_boundary_mass_flux!(w, bc::OBC, ::Val{:top}, A⁻¹_∮udA)
+    has_target_mass_flux(bc.classification.scheme) && return nothing
+    interior(w, :, :, w.grid.Nz + 1) .+= A⁻¹_∮udA
+end
 correct_right_boundary_mass_flux!(u, bc::IOBC, ::Val{:east},  A⁻¹_∮udA) = nothing
 correct_right_boundary_mass_flux!(v, bc::IOBC, ::Val{:north}, A⁻¹_∮udA) = nothing
 correct_right_boundary_mass_flux!(w, bc::IOBC, ::Val{:top},   A⁻¹_∮udA) = nothing
@@ -243,43 +254,49 @@ correct_right_boundary_mass_flux!(u, bc, side, A⁻¹_∮udA) = nothing
 # Apply a per-boundary correction to reach the prescribed target_mass_flux.
 # target_mass_flux is the desired integral of the normal velocity in the positive
 # coordinate direction (e.g., eastward for west/east boundaries).
-function apply_targeted_left_boundary_correction!(u, bc::TargetedPAOBC, ::Val{:west}, boundary_mass_fluxes)
-    target = bc.classification.scheme.target_mass_flux
+function apply_targeted_left_boundary_correction!(u, bc::OBC, ::Val{:west}, boundary_mass_fluxes)
+    has_target_mass_flux(bc.classification.scheme) || return nothing
+    target = get_target_mass_flux(bc.classification.scheme)
     Q_actual = @allowscalar boundary_mass_fluxes.west_mass_flux[]
     interior(u, 1, :, :) .-= (Q_actual - target) / boundary_mass_fluxes.west_area
     return nothing
 end
 
-function apply_targeted_left_boundary_correction!(v, bc::TargetedPAOBC, ::Val{:south}, boundary_mass_fluxes)
-    target = bc.classification.scheme.target_mass_flux
+function apply_targeted_left_boundary_correction!(v, bc::OBC, ::Val{:south}, boundary_mass_fluxes)
+    has_target_mass_flux(bc.classification.scheme) || return nothing
+    target = get_target_mass_flux(bc.classification.scheme)
     Q_actual = @allowscalar boundary_mass_fluxes.south_mass_flux[]
     interior(v, :, 1, :) .-= (Q_actual - target) / boundary_mass_fluxes.south_area
     return nothing
 end
 
-function apply_targeted_left_boundary_correction!(w, bc::TargetedPAOBC, ::Val{:bottom}, boundary_mass_fluxes)
-    target = bc.classification.scheme.target_mass_flux
+function apply_targeted_left_boundary_correction!(w, bc::OBC, ::Val{:bottom}, boundary_mass_fluxes)
+    has_target_mass_flux(bc.classification.scheme) || return nothing
+    target = get_target_mass_flux(bc.classification.scheme)
     Q_actual = @allowscalar boundary_mass_fluxes.bottom_mass_flux[]
     interior(w, :, :, 1) .-= (Q_actual - target) / boundary_mass_fluxes.bottom_area
     return nothing
 end
 
-function apply_targeted_right_boundary_correction!(u, bc::TargetedPAOBC, ::Val{:east}, boundary_mass_fluxes)
-    target = bc.classification.scheme.target_mass_flux
+function apply_targeted_right_boundary_correction!(u, bc::OBC, ::Val{:east}, boundary_mass_fluxes)
+    has_target_mass_flux(bc.classification.scheme) || return nothing
+    target = get_target_mass_flux(bc.classification.scheme)
     Q_actual = @allowscalar boundary_mass_fluxes.east_mass_flux[]
     interior(u, u.grid.Nx + 1, :, :) .-= (Q_actual - target) / boundary_mass_fluxes.east_area
     return nothing
 end
 
-function apply_targeted_right_boundary_correction!(v, bc::TargetedPAOBC, ::Val{:north}, boundary_mass_fluxes)
-    target = bc.classification.scheme.target_mass_flux
+function apply_targeted_right_boundary_correction!(v, bc::OBC, ::Val{:north}, boundary_mass_fluxes)
+    has_target_mass_flux(bc.classification.scheme) || return nothing
+    target = get_target_mass_flux(bc.classification.scheme)
     Q_actual = @allowscalar boundary_mass_fluxes.north_mass_flux[]
     interior(v, :, v.grid.Ny + 1, :) .-= (Q_actual - target) / boundary_mass_fluxes.north_area
     return nothing
 end
 
-function apply_targeted_right_boundary_correction!(w, bc::TargetedPAOBC, ::Val{:top}, boundary_mass_fluxes)
-    target = bc.classification.scheme.target_mass_flux
+function apply_targeted_right_boundary_correction!(w, bc::OBC, ::Val{:top}, boundary_mass_fluxes)
+    has_target_mass_flux(bc.classification.scheme) || return nothing
+    target = get_target_mass_flux(bc.classification.scheme)
     Q_actual = @allowscalar boundary_mass_fluxes.top_mass_flux[]
     interior(w, :, :, w.grid.Nz + 1) .-= (Q_actual - target) / boundary_mass_fluxes.top_area
     return nothing

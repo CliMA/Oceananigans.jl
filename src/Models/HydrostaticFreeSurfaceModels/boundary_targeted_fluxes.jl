@@ -1,4 +1,6 @@
-using Oceananigans.BoundaryConditions: TargetedPAOBC, FieldBoundaryConditions
+using Oceananigans.BoundaryConditions: BoundaryCondition, Open, has_target_mass_flux, get_target_mass_flux, FieldBoundaryConditions
+
+const OBC = BoundaryCondition{<:Open}
 using Oceananigans.AbstractOperations: Integral, Ax, Ay, Az, grid_metric_operation
 using Oceananigans.Fields: Field, interior, compute!
 using GPUArraysCore: @allowscalar
@@ -60,9 +62,11 @@ end
 
 # Only `Field`s carry `boundary_conditions`; `ZeroField`, `FunctionField`,
 # `TimeSeriesInterpolation`, etc. do not — return `false` for those.
-@inline _is_targeted(velocity::Field, side) =
-    velocity.boundary_conditions isa FieldBoundaryConditions &&
-    getproperty(velocity.boundary_conditions, side) isa TargetedPAOBC
+@inline function _is_targeted(velocity::Field, side)
+    velocity.boundary_conditions isa FieldBoundaryConditions || return false
+    bc = getproperty(velocity.boundary_conditions, side)
+    return bc isa OBC && has_target_mass_flux(bc.classification.scheme)
+end
 @inline _is_targeted(velocity, side) = false
 
 # Safely retrieve the boundary condition (returns `nothing` for non-Field or MultiRegion types).
@@ -145,43 +149,49 @@ end
 ##### Per-boundary targeted corrections
 #####
 
-function apply_targeted_left_boundary_correction!(u, bc::TargetedPAOBC, ::Val{:west}, bmf)
-    target   = bc.classification.scheme.target_mass_flux
+function apply_targeted_left_boundary_correction!(u, bc::OBC, ::Val{:west}, bmf)
+    has_target_mass_flux(bc.classification.scheme) || return nothing
+    target   = get_target_mass_flux(bc.classification.scheme)
     Q_actual = @allowscalar bmf.west_mass_flux[]
     interior(u, 1, :, :) .-= (Q_actual - target) / bmf.west_area
     return nothing
 end
 
-function apply_targeted_left_boundary_correction!(v, bc::TargetedPAOBC, ::Val{:south}, bmf)
-    target   = bc.classification.scheme.target_mass_flux
+function apply_targeted_left_boundary_correction!(v, bc::OBC, ::Val{:south}, bmf)
+    has_target_mass_flux(bc.classification.scheme) || return nothing
+    target   = get_target_mass_flux(bc.classification.scheme)
     Q_actual = @allowscalar bmf.south_mass_flux[]
     interior(v, :, 1, :) .-= (Q_actual - target) / bmf.south_area
     return nothing
 end
 
-function apply_targeted_left_boundary_correction!(w, bc::TargetedPAOBC, ::Val{:bottom}, bmf)
-    target   = bc.classification.scheme.target_mass_flux
+function apply_targeted_left_boundary_correction!(w, bc::OBC, ::Val{:bottom}, bmf)
+    has_target_mass_flux(bc.classification.scheme) || return nothing
+    target   = get_target_mass_flux(bc.classification.scheme)
     Q_actual = @allowscalar bmf.bottom_mass_flux[]
     interior(w, :, :, 1) .-= (Q_actual - target) / bmf.bottom_area
     return nothing
 end
 
-function apply_targeted_right_boundary_correction!(u, bc::TargetedPAOBC, ::Val{:east}, bmf)
-    target   = bc.classification.scheme.target_mass_flux
+function apply_targeted_right_boundary_correction!(u, bc::OBC, ::Val{:east}, bmf)
+    has_target_mass_flux(bc.classification.scheme) || return nothing
+    target   = get_target_mass_flux(bc.classification.scheme)
     Q_actual = @allowscalar bmf.east_mass_flux[]
     interior(u, u.grid.Nx + 1, :, :) .-= (Q_actual - target) / bmf.east_area
     return nothing
 end
 
-function apply_targeted_right_boundary_correction!(v, bc::TargetedPAOBC, ::Val{:north}, bmf)
-    target   = bc.classification.scheme.target_mass_flux
+function apply_targeted_right_boundary_correction!(v, bc::OBC, ::Val{:north}, bmf)
+    has_target_mass_flux(bc.classification.scheme) || return nothing
+    target   = get_target_mass_flux(bc.classification.scheme)
     Q_actual = @allowscalar bmf.north_mass_flux[]
     interior(v, :, v.grid.Ny + 1, :) .-= (Q_actual - target) / bmf.north_area
     return nothing
 end
 
-function apply_targeted_right_boundary_correction!(w, bc::TargetedPAOBC, ::Val{:top}, bmf)
-    target   = bc.classification.scheme.target_mass_flux
+function apply_targeted_right_boundary_correction!(w, bc::OBC, ::Val{:top}, bmf)
+    has_target_mass_flux(bc.classification.scheme) || return nothing
+    target   = get_target_mass_flux(bc.classification.scheme)
     Q_actual = @allowscalar bmf.top_mass_flux[]
     interior(w, :, :, w.grid.Nz + 1) .-= (Q_actual - target) / bmf.top_area
     return nothing
@@ -200,7 +210,7 @@ enforce_targeted_open_boundary_fluxes!(model, ::Nothing) = nothing
     enforce_targeted_open_boundary_fluxes!(model, boundary_mass_fluxes)
 
 Correct boundary velocities to achieve the prescribed `target_mass_flux` for all open
-boundaries that carry a `TargetedPAOBC`.
+boundaries whose scheme returns `true` from `has_target_mass_flux`.
 
 Unlike the nonhydrostatic version, no global pool correction is applied after the targeted
 step: the free surface (η) is free to rise or fall to accommodate any net mass imbalance.

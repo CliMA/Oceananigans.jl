@@ -292,9 +292,9 @@ end
 
 function test_targeted_south_mass_flux_achieved(arch, FT; N = 4)
     # v.south = targeted OBC, v.north = pool OBC
-    # Exercises: apply_targeted_left_boundary_correction! for south (lines 253–258),
-    #            correct_left TargetedPAOBC skip in pool step for south (line 222),
-    #            correct_right OBC for north in pool step (line 236)
+    # Exercises: apply_targeted_left_boundary_correction! for south,
+    #            targeted boundary skipped in pool step for south,
+    #            pool correction applied to north OBC
     grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
                            topology=(Bounded, Bounded, Bounded))
     Q_target = FT(0.5)
@@ -316,8 +316,8 @@ end
 
 function test_targeted_east_with_west_pool(arch, FT; N = 4)
     # u.west = pool OBC, u.east = targeted OBC
-    # Exercises: correct_right TargetedPAOBC skip in pool step for east (line 232),
-    #            correct_left OBC pool correction for west (line 224)
+    # Exercises: targeted boundary skipped in pool correction for east,
+    #            pool correction applied to west OBC
     grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
                            topology=(Bounded, Bounded, Bounded))
     Q_target = FT(0.5)
