@@ -1726,6 +1726,9 @@ function test_checkpoint_at_end(arch)
     L = 1
     Δt = 0.1
     expected_filepath = "checkpoint_iteration5.jld2"
+    nan_expected_filepath = "checkpoint_iteration1.jld2"
+
+    rm.(glob("checkpoint_iteration*.jld2"), force=true)
 
     # Test with checkpoint_at_end=false (default) - should NOT create checkpoint
     grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
@@ -1746,6 +1749,17 @@ function test_checkpoint_at_end(arch)
 
     @test isfile(expected_filepath)
     rm(expected_filepath, force=true)
+
+    # Test with checkpoint_at_end=true and NaN-triggered stop - should NOT create checkpoint
+    grid3 = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+    model3 = NonhydrostaticModel(grid3)
+    simulation3 = Simulation(model3, Δt=Δt, stop_iteration=5)
+    model3.velocities.u[1, 1, 1] = NaN
+
+    @test_logs (:info, r"NaN found in field") (:info, r"Skipping end-of-run checkpoint")
+               match_mode=:any run!(simulation3, checkpoint_at_end=true)
+    @test !isfile(nan_expected_filepath)
+    rm.(glob("checkpoint_iteration*.jld2"), force=true)
 
     return nothing
 end
