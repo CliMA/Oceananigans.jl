@@ -1,3 +1,5 @@
+using Oceananigans.Operators: Axᶜᶜᶜ, Axᶠᶜᶠ, Axᶠᶠᶜ, Ayᶜᶜᶜ, Ayᶜᶠᶠ, Ayᶠᶠᶜ, Azᶜᶠᶠ, Azᶠᶜᶠ
+
 #####
 ##### Momentum and advective tracer flux operators for centered advection schemes
 #####

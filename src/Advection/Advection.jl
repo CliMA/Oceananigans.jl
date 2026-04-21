@@ -18,25 +18,19 @@ export
     EnstrophyConserving,
     fixed_order_scheme
 
-using DocStringExtensions
-
-using Adapt
-using OffsetArrays
+using Adapt: Adapt
+using OffsetArrays: OffsetArray
 using MuladdMacro: @muladd
 
-using Oceananigans
-using Oceananigans.Grids
-using Oceananigans.Operators
-
-using Oceananigans: fully_supported_float_types
-using Oceananigans.Architectures: architecture, CPU
-using Oceananigans.Grids: with_halo
-using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, ∂t_σ
-using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
-
-import Base: summary, Callable
-import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
-import Oceananigans.Architectures: on_architecture
+using Oceananigans: Oceananigans, fully_supported_float_types
+using Oceananigans.Architectures: Architectures, architecture, on_architecture, CPU
+using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, XFlatGrid, YFlatGrid, ZFlatGrid, with_halo,
+    required_halo_size_x, required_halo_size_y, required_halo_size_z
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, ∂t_σ, Ax_qᶠᶜᶜ, Axᶠᶜᶜ, Ay_qᶜᶠᶜ, Ayᶜᶠᶜ, Az_qᶜᶜᶠ,
+    Azᶜᶜᶜ, Azᶜᶜᶠ, Az⁻¹ᶜᶠᶜ, Az⁻¹ᶠᶜᶜ, V⁻¹ᶜᶜᶠ, V⁻¹ᶜᶠᶜ, V⁻¹ᶠᶜᶜ, Δx_qᶜᶠᶜ, Δx⁻¹ᶠᶜᶜ, Δy_qᶠᶜᶜ,
+    Δy⁻¹ᶜᶠᶜ, δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶜᵃ, δyᵃᶠᵃ, δzᵃᵃᶜ, ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ
+using Base: Callable
 
 abstract type AbstractAdvectionScheme{B, FT} end
 abstract type AbstractCenteredAdvectionScheme{B, FT} <: AbstractAdvectionScheme{B, FT} end
@@ -54,9 +48,9 @@ const advection_buffers = [1, 2, 3, 4, 5, 6]
 
 @inline Base.eltype(::AbstractAdvectionScheme{<:Any, FT}) where FT = FT
 
-@inline required_halo_size_x(::AbstractAdvectionScheme{B}) where B = B
-@inline required_halo_size_y(::AbstractAdvectionScheme{B}) where B = B
-@inline required_halo_size_z(::AbstractAdvectionScheme{B}) where B = B
+@inline Grids.required_halo_size_x(::AbstractAdvectionScheme{B}) where B = B
+@inline Grids.required_halo_size_y(::AbstractAdvectionScheme{B}) where B = B
+@inline Grids.required_halo_size_z(::AbstractAdvectionScheme{B}) where B = B
 
 struct DecreasingOrderAdvectionScheme end
 
