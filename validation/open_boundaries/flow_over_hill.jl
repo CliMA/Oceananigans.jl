@@ -40,11 +40,11 @@ function flow_over_hill_simulation(; arch = CPU(),
 
     # Live target transport: recomputes U * east_area at every correction step,
     # so it tracks the current column height under ZStarCoordinate.
-    target_mass_flux = LiveBoundaryTransport(U, :east)
+    target_volume_flux = LiveBoundaryTransport(U, :east)
 
     # Model kwargs
     u_boundaries = FieldBoundaryConditions(west = OpenBoundaryCondition(U), # No scheme here for a perfectly barotropic inflow
-                                           east = OpenBoundaryCondition(U; scheme = scheme_type(; target_mass_flux)))
+                                           east = OpenBoundaryCondition(U; scheme = scheme_type(; target_volume_flux)))
     boundary_conditions = (u = u_boundaries,)
     advection = WENO(; order=5, minimum_buffer_upwind_order=1)
 
