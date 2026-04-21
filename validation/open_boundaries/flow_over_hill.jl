@@ -185,8 +185,8 @@ hs_simulation = flow_over_hill_simulation(; model_type, hydrostatic_physics_opti
 run!(hs_simulation)
 plot_flow_over_hill_animation(hs_simulation.output_writers[:snaps].filepath; model_type)
 
-# # Run and plot a fully nonhydrostatic flow over a steep hill using a nonhydrostatic model with an implicit free surface
-# model_type = :nonhydrostatic
-# nh_simulation2 = flow_over_hill_simulation(; model_type, cell_aspect_ratio=4, hill_width=2, Nz=32, pressure_solver_constructor=ConjugateGradientPoissonSolver, base_simulation_name = "flow_over_steep_hill")
-# run!(nh_simulation2)
-# plot_flow_over_hill_animation(nh_simulation2.output_writers[:snaps].filepath; model_type)
+# Run and plot a fully nonhydrostatic flow over a steep hill using a nonhydrostatic model with an implicit free surface
+model_type = :nonhydrostatic
+nh_simulation2 = flow_over_hill_simulation(; model_type, cell_aspect_ratio=4, hill_width=2, Nz=32, pressure_solver_constructor=ConjugateGradientPoissonSolver, base_simulation_name = "flow_over_steep_hill")
+run!(nh_simulation2)
+plot_flow_over_hill_animation(nh_simulation2.output_writers[:snaps].filepath; model_type)
