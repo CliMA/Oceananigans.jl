@@ -319,6 +319,31 @@ function test_targeted_east_with_west_pool(arch, FT, ModelType; N = 4)
     @test Array(interior(east_flux))[1, 1, 1] ≈ Q_target atol = N^2 * eps(FT)
 end
 
+function test_live_boundary_transport(arch, FT, ModelType; N = 4)
+    # LiveBoundaryTransport as target_mass_flux: exercises the callable path through
+    # get_target_mass_flux(scheme, grid) -> _eval_tmf(f, grid) -> f(grid).
+    grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
+                           topology=(Bounded, Bounded, Bounded))
+
+    lbt = LiveBoundaryTransport(FT(1), :east)
+    Q_target = lbt(grid)   # U * east_area = 1 * (Ly * Lz) = 1
+
+    u_bcs = FieldBoundaryConditions(
+        west = OpenBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1)),
+        east = OpenBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1, target_mass_flux=lbt))
+    )
+    model = make_targeted_flux_model(ModelType, grid, (; u=u_bcs))
+    set!(model, u = (x, y, z) -> 1 + 1e-2 * rand())
+
+    Δt = 0.1 * minimum_xspacing(grid) / 2
+    run!(Simulation(model; stop_time=1, Δt, verbose=false))
+
+    u = model.velocities.u
+    east_flux = Field(Integral(view(u, u.grid.Nx + 1, :, :), dims=(2, 3)))
+    compute!(east_flux)
+    @test Array(interior(east_flux))[1, 1, 1] ≈ Q_target atol = N^2 * eps(FT)
+end
+
 function test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions; N = 8)
     grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
                            topology=(Bounded, Bounded, Bounded))
@@ -543,6 +568,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
                 test_targeted_mass_flux_conservation(arch, FT, ModelType)
                 test_targeted_south_mass_flux_achieved(arch, FT, ModelType)
                 test_targeted_east_with_west_pool(arch, FT, ModelType)
+                test_live_boundary_transport(arch, FT, ModelType)
             end
             test_zero_inflow_open_boundary_conserves_mass(arch, FT)
             test_fixed_imposed_velocity_open_boundary_conserves_mass(arch, FT)
