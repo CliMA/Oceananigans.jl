@@ -119,7 +119,7 @@ the features they describe! Also, if you have developed a new feature in Oceanan
   *This paper describes the development of `CATKEVerticalDiffusivity()`, including how it was automatically calibrated to
   a suite of 35 large eddy simulations (also run with Oceananigans). It additionally features solutions from `TKEDissipationVerticalDiffusivity` (also known as "k-epsilon").*
 
-* **Ramadhan et al. (2020), ["Oceananigans.jl: Fast and friendly geophysical fluid dynamics on GPUs"](https://par.nsf.gov/servlets/purl/10200806).**
+* **Ramadhan et al. (2020), ["Oceananigans.jl: Fast and friendly geophysical fluid dynamics on GPUs"](https://doi.org/10.21105/joss.02018).**
 
   *This Journal of Open Source Software article describes an early version of Oceananigans' `NonhydrostaticModel`.*
 

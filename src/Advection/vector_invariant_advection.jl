@@ -1,3 +1,5 @@
+using Oceananigans.Operators: Vᶜᶠᶜ, Vᶠᶜᶜ, δxᶠᶜᶜ, δyᶜᶠᶜ, ζ₃ᶠᶠᶜ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
+
 # These are also used in Coriolis/hydrostatic_spherical_coriolis.jl
 struct EnergyConserving{FT}    <: AbstractAdvectionScheme{1, FT} end
 struct EnstrophyConserving{FT} <: AbstractAdvectionScheme{1, FT} end
@@ -135,7 +137,6 @@ Base.summary(a::MultiDimensionalVectorInvariant) = "VectorInvariant, multidimens
 function Base.summary(a::WENOVectorInvariant{N}) where N
     vorticity_order = weno_order(a.vorticity_scheme)
     vertical_order = weno_order(a.vertical_advection_scheme)
-    order = weno_order(a.vorticity_scheme)
     FT = eltype(a.vorticity_scheme)
     return string("WENOVectorInvariant{$N, $FT}(vorticity_order=$vorticity_order, vertical_order=$vertical_order)")
 end
@@ -251,7 +252,7 @@ end
 
 # Since vorticity itself requires one halo, if we use an upwinding scheme (N > 1) we require one additional
 # halo for vector invariant advection
-@inline function required_halo_size_x(scheme::VectorInvariant)
+@inline function Grids.required_halo_size_x(scheme::VectorInvariant)
     Hx₁ = required_halo_size_x(scheme.vorticity_scheme)
     Hx₂ = required_halo_size_x(scheme.divergence_scheme)
     Hx₃ = required_halo_size_x(scheme.kinetic_energy_gradient_scheme)
@@ -260,8 +261,8 @@ end
     return Hx == 1 ? Hx : Hx + 1
 end
 
-@inline required_halo_size_y(scheme::VectorInvariant) = required_halo_size_x(scheme)
-@inline required_halo_size_z(scheme::VectorInvariant) = required_halo_size_z(scheme.vertical_advection_scheme)
+@inline Grids.required_halo_size_y(scheme::VectorInvariant) = required_halo_size_x(scheme)
+@inline Grids.required_halo_size_z(scheme::VectorInvariant) = required_halo_size_z(scheme.vertical_advection_scheme)
 
 Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT, M}) where {N, FT, M} =
     VectorInvariant{N, FT, M}(Adapt.adapt(to, scheme.vorticity_scheme),
@@ -271,7 +272,7 @@ Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT, M}) where {N, FT, M} =
                               Adapt.adapt(to, scheme.divergence_scheme),
                               Adapt.adapt(to, scheme.upwinding))
 
-on_architecture(to, scheme::VectorInvariant{N, FT, M}) where {N, FT, M} =
+Architectures.on_architecture(to, scheme::VectorInvariant{N, FT, M}) where {N, FT, M} =
     VectorInvariant{N, FT, M}(on_architecture(to, scheme.vorticity_scheme),
                               on_architecture(to, scheme.vorticity_stencil),
                               on_architecture(to, scheme.vertical_advection_scheme),
