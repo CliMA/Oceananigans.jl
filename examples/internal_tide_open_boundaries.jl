@@ -88,7 +88,7 @@ u_bcs     = FieldBoundaryConditions(east = u_east_bc, west = u_west_bc)
 
 U_west_bc = FlatherBoundaryCondition(barotropic_tidal_forcing; discrete_form = true)
 U_east_bc = FlatherBoundaryCondition(barotropic_tidal_forcing; discrete_form = true)
-U_bcs     = FieldBoundaryConditions(grid, (Center(), Center(), nothing); east = U_east_bc, west = U_west_bc)
+U_bcs     = FieldBoundaryConditions(grid, (Face(), Center(), nothing); east = U_east_bc, west = U_west_bc)
 
 # Internal waves carry buoyancy perturbations along with velocity, so the
 # buoyancy tracer also needs open boundary conditions. Without them, the
@@ -99,7 +99,7 @@ U_bcs     = FieldBoundaryConditions(grid, (Center(), Center(), nothing); east = 
 @inline b_background(z, t, Nᵢ²) = Nᵢ² * z
 b_east_bc = RadiationBoundaryCondition(b_background; parameters = Nᵢ²)
 b_west_bc = RadiationBoundaryCondition(b_background; parameters = Nᵢ²)
-b_bcs = FieldBoundaryConditions(east = b_east_bc, west = b_west_bc)
+b_bcs     = FieldBoundaryConditions(east = b_east_bc, west = b_west_bc)
 
 # ## Sponge layers
 #
