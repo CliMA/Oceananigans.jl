@@ -12,7 +12,7 @@ export
     BulkDrag, BulkDragFunction, BulkDragBoundaryCondition,
     XDirectionBulkDragFunction, YDirectionBulkDragFunction, ZDirectionBulkDragFunction,
     LinearFormulation, QuadraticFormulation,
-    BoundaryAdjacentMean, boundary_total_area
+    BoundaryAdjacentMean, boundary_total_area, LiveBoundaryTransport
 
 using Oceananigans: AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation

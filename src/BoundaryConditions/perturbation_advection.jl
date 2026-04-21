@@ -108,7 +108,13 @@ function PerturbationAdvection(FT = defaults.FloatType;
     inflow_timescale = convert(FT, inflow_timescale)
     outflow_timescale = convert(FT, outflow_timescale)
     gravity_wave_speed = convert(FT, gravity_wave_speed)
-    tmf = isnothing(target_mass_flux) ? nothing : convert(FT, target_mass_flux)
+    tmf = if isnothing(target_mass_flux)
+              nothing
+          elseif target_mass_flux isa Number
+              convert(FT, target_mass_flux)
+          else
+              target_mass_flux  # callable (e.g. LiveBoundaryTransport); keep as-is
+          end
     return PerturbationAdvection(inflow_timescale, outflow_timescale, gravity_wave_speed, density, tmf)
 end
 
@@ -139,15 +145,31 @@ MyPkg.get_target_mass_flux(s::MyScheme) = s.target_mass_flux
 ```
 """
 has_target_mass_flux(scheme) = false
-has_target_mass_flux(scheme::PerturbationAdvection{<:Any, <:Any, <:Number}) = true
+has_target_mass_flux(scheme::PerturbationAdvection{<:Any, <:Any, <:Nothing}) = false
+has_target_mass_flux(scheme::PerturbationAdvection) = true  # any non-Nothing TF
 
 """
-    get_target_mass_flux(scheme)
+    get_target_mass_flux(scheme, grid)
 
-Return the prescribed target mass flux stored in `scheme`.
-Only called when `has_target_mass_flux(scheme)` is `true`.
+Return the prescribed target mass flux for `scheme` on `grid`.
+For a `Number`, returns the stored value unchanged.
+For a callable (e.g. `LiveBoundaryTransport`), calls it with `grid` to
+recompute the target at the current grid state (needed for ZStar grids).
+
+A 1-argument fallback is provided for external packages that have not yet
+adopted the 2-argument form:
+
+```julia
+MyPkg.has_target_mass_flux(s::MyScheme) = s.target_mass_flux !== nothing
+MyPkg.get_target_mass_flux(s::MyScheme) = s.target_mass_flux
+```
 """
+get_target_mass_flux(scheme, grid) = get_target_mass_flux(scheme)  # fallback for external schemes
+get_target_mass_flux(scheme::PerturbationAdvection, grid) = _eval_tmf(scheme.target_mass_flux, grid)
 get_target_mass_flux(scheme::PerturbationAdvection) = scheme.target_mass_flux
+
+_eval_tmf(x::Number, grid) = x
+_eval_tmf(f, grid) = f(grid)
 
 # Helper to convert between density-weighted and intensive fields.
 # When density is nothing, these are no-ops.

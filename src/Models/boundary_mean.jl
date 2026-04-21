@@ -134,3 +134,41 @@ function boundary_total_area(::Val{:top}, grid)
 end
 
 boundary_total_area(side::Symbol, grid) = boundary_total_area(Val(side), grid)
+
+"""
+    LiveBoundaryTransport(velocity, side)
+
+A callable that, when called with a `grid`, returns `velocity * boundary_total_area(side, grid)`.
+
+Use this as the `target_mass_flux` argument of `PerturbationAdvection` when the target
+transport should track the current grid geometry (e.g. with `ZStarCoordinate`, where column
+height varies with the free surface).
+
+# Example
+
+```jldoctest
+julia> using Oceananigans, Oceananigans.Models: LiveBoundaryTransport
+
+julia> lbt = LiveBoundaryTransport(1.0, :east)
+LiveBoundaryTransport: velocity=1.0, side=Val{:east}()
+
+julia> grid = RectilinearGrid(size=(4, 1, 4), extent=(4, 1, 4));
+
+julia> lbt(grid) ≈ 4.0  # 1.0 * (Ly * Lz) = 1 * 4
+true
+```
+"""
+struct LiveBoundaryTransport{FT, S}
+    velocity :: FT
+    side :: S
+end
+
+LiveBoundaryTransport(velocity::Number, side::Symbol) =
+    LiveBoundaryTransport(velocity, Val(side))
+
+(lbt::LiveBoundaryTransport)(grid) = lbt.velocity * boundary_total_area(lbt.side, grid)
+
+Adapt.adapt_structure(to, lbt::LiveBoundaryTransport) = lbt
+
+Base.show(io::IO, lbt::LiveBoundaryTransport) =
+    print(io, "LiveBoundaryTransport: velocity=$(lbt.velocity), side=$(lbt.side)")

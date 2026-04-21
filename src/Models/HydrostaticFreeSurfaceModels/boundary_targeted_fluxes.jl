@@ -112,49 +112,55 @@ end
 
 function apply_targeted_left_boundary_correction!(u, bc::OBC, ::Val{:west}, bmf)
     has_target_mass_flux(bc.classification.scheme) || return nothing
-    target   = get_target_mass_flux(bc.classification.scheme)
-    Q_actual = @allowscalar bmf.west_mass_flux[]
-    interior(u, 1, :, :) .-= (Q_actual - target) / bmf.west_area
+    west_area = boundary_total_area(Val(:west), u.grid)
+    target    = get_target_mass_flux(bc.classification.scheme, u.grid)
+    Q_actual  = @allowscalar bmf.west_mass_flux[]
+    interior(u, 1, :, :) .-= (Q_actual - target) / west_area
     return nothing
 end
 
 function apply_targeted_left_boundary_correction!(v, bc::OBC, ::Val{:south}, bmf)
     has_target_mass_flux(bc.classification.scheme) || return nothing
-    target   = get_target_mass_flux(bc.classification.scheme)
-    Q_actual = @allowscalar bmf.south_mass_flux[]
-    interior(v, :, 1, :) .-= (Q_actual - target) / bmf.south_area
+    south_area = boundary_total_area(Val(:south), v.grid)
+    target     = get_target_mass_flux(bc.classification.scheme, v.grid)
+    Q_actual   = @allowscalar bmf.south_mass_flux[]
+    interior(v, :, 1, :) .-= (Q_actual - target) / south_area
     return nothing
 end
 
 function apply_targeted_left_boundary_correction!(w, bc::OBC, ::Val{:bottom}, bmf)
     has_target_mass_flux(bc.classification.scheme) || return nothing
-    target   = get_target_mass_flux(bc.classification.scheme)
-    Q_actual = @allowscalar bmf.bottom_mass_flux[]
-    interior(w, :, :, 1) .-= (Q_actual - target) / bmf.bottom_area
+    bottom_area = boundary_total_area(Val(:bottom), w.grid)
+    target      = get_target_mass_flux(bc.classification.scheme, w.grid)
+    Q_actual    = @allowscalar bmf.bottom_mass_flux[]
+    interior(w, :, :, 1) .-= (Q_actual - target) / bottom_area
     return nothing
 end
 
 function apply_targeted_right_boundary_correction!(u, bc::OBC, ::Val{:east}, bmf)
     has_target_mass_flux(bc.classification.scheme) || return nothing
-    target   = get_target_mass_flux(bc.classification.scheme)
-    Q_actual = @allowscalar bmf.east_mass_flux[]
-    interior(u, u.grid.Nx + 1, :, :) .-= (Q_actual - target) / bmf.east_area
+    east_area = boundary_total_area(Val(:east), u.grid)
+    target    = get_target_mass_flux(bc.classification.scheme, u.grid)
+    Q_actual  = @allowscalar bmf.east_mass_flux[]
+    interior(u, u.grid.Nx + 1, :, :) .-= (Q_actual - target) / east_area
     return nothing
 end
 
 function apply_targeted_right_boundary_correction!(v, bc::OBC, ::Val{:north}, bmf)
     has_target_mass_flux(bc.classification.scheme) || return nothing
-    target   = get_target_mass_flux(bc.classification.scheme)
-    Q_actual = @allowscalar bmf.north_mass_flux[]
-    interior(v, :, v.grid.Ny + 1, :) .-= (Q_actual - target) / bmf.north_area
+    north_area = boundary_total_area(Val(:north), v.grid)
+    target     = get_target_mass_flux(bc.classification.scheme, v.grid)
+    Q_actual   = @allowscalar bmf.north_mass_flux[]
+    interior(v, :, v.grid.Ny + 1, :) .-= (Q_actual - target) / north_area
     return nothing
 end
 
 function apply_targeted_right_boundary_correction!(w, bc::OBC, ::Val{:top}, bmf)
     has_target_mass_flux(bc.classification.scheme) || return nothing
-    target   = get_target_mass_flux(bc.classification.scheme)
+    top_area = boundary_total_area(Val(:top), w.grid)
+    target   = get_target_mass_flux(bc.classification.scheme, w.grid)
     Q_actual = @allowscalar bmf.top_mass_flux[]
-    interior(w, :, :, w.grid.Nz + 1) .-= (Q_actual - target) / bmf.top_area
+    interior(w, :, :, w.grid.Nz + 1) .-= (Q_actual - target) / top_area
     return nothing
 end
 
