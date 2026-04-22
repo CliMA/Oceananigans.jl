@@ -142,8 +142,10 @@ boundary_total_area(side::Symbol, grid) = boundary_total_area(Val(side), grid)
 A callable that, when called with a `grid`, returns `velocity * boundary_total_area(side, grid)`.
 
 Use this as the `target_volume_flux` argument of `PerturbationAdvection` when the target
-transport should track the current grid geometry (e.g. with `ZStarCoordinate`, where column
-height varies with the free surface).
+transport should track the current grid geometry. This is necessary with any mutable vertical
+coordinate (e.g. `ZStarCoordinate`), where cell heights change as the free surface evolves,
+causing boundary areas to vary in time. With a fixed vertical grid the simpler scalar form
+of `target_volume_flux` suffices.
 
 # Example
 
