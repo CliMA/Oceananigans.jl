@@ -148,7 +148,9 @@ height varies with the free surface).
 # Example
 
 ```jldoctest
-julia> using Oceananigans, Oceananigans.Models: LiveBoundaryTransport
+julia> using Oceananigans
+
+julia> using Oceananigans.Models: LiveBoundaryTransport
 
 julia> lbt = LiveBoundaryTransport(1.0, :east)
 LiveBoundaryTransport: velocity=1.0, side=Val{:east}()
