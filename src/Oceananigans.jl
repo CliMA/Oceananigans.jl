@@ -86,6 +86,7 @@ export
     PressureField, fields, ZCoordinate, ZStarCoordinate,
     BulkDrag, LinearFormulation, QuadraticFormulation,
     BoundaryConditionOperation,
+    initialize_boundary_mass_fluxes, enforce_open_boundary_mass_conservation!,
 
     # Hydrostatic free surface model stuff
     VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
