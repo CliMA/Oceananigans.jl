@@ -7,13 +7,12 @@
 ##### Race invariant: between the spawn at the end of one update and the wait at the
 ##### start of the next, the worker mutates `buffer_fts.data`. No code outside
 ##### `update_field_time_series!(::PrefetchingFTS, ...)` may touch `buffer_fts` in that
-##### window — `getproperty` warns on raw access and `Adapt` strips the wrapper for GPU
-##### descent so kernels never see the Task or the buffer.
+##### window. For this reason, `getproperty` warns on raw access.
 #####
 ##### File-handle assumption: `Prefetched` assumes the underlying backend is the only
 ##### reader of its data source. Reading from the same file via a separate FTS on the
 ##### main thread while a prefetch task is in flight has unspecified behaviour
-##### (we observed JLD2 in particular not surviving it).
+##### (we observed JLD2 in particular not surviving it, maybe it works for NetCDF).
 #####
 
 mutable struct Prefetched{B<:AbstractInMemoryBackend{Int}, F} <: AbstractInMemoryBackend{Int, false}
@@ -40,7 +39,6 @@ function new_backend(p::Prefetched, start, length)
     return p
 end
 
-# GPU descent: kernels never see the Task / buffer FTS — strip to base backend.
 Adapt.adapt_structure(to, p::Prefetched) = Adapt.adapt(to, p.base_backend)
 
 # Architecture transfer: cold-restart prefetch on the new architecture.
@@ -57,7 +55,7 @@ const PrefetchingFTS = FlavorOfFTS{<:Any, <:Any, <:Any, <:Any, <:Prefetched}
 ##### Construction handoff
 #####
 
-function build_runtime_backend(backend::AbstractInMemoryBackend{Int, true}, grid, loc, indices, times, path, name, time_indexing, boundary_conditions, reader_kw)
+function build_runtime_backend(backend::AbstractInMemoryBackend{Int, true}, grid, loc, indices, times, path, name, time_idxs, bcs, reader_kw)
     if Threads.nthreads() == 1
         @warn "InMemory(N; prefetch=true) requires JULIA_NUM_THREADS ≥ 2 to overlap I/O with compute; " *
               "disabling prefetch. Re-launch Julia with `-t 2` (or higher) to enable."
@@ -65,8 +63,7 @@ function build_runtime_backend(backend::AbstractInMemoryBackend{Int, true}, grid
     end
     LX, LY, LZ = typeof.(loc)
     buffer_data = new_data(eltype(grid), grid, loc, indices, length(backend))
-    buffer_fts = FieldTimeSeries{LX, LY, LZ}(buffer_data, grid, backend, boundary_conditions, indices,
-                                             times, path, name, time_indexing, reader_kw)
+    buffer_fts = FieldTimeSeries{LX, LY, LZ}(buffer_data, grid, backend, bcs, indices, times, path, name, time_idxs, reader_kw)
     return Prefetched(backend, nothing, buffer_fts, 0)
 end
 
@@ -103,7 +100,7 @@ function update_field_time_series!(fts::PrefetchingFTS, n₁::Int, n₂=n₁)
         set!(buffer_fts)
     end
 
-    new_backend(backend, needed, Nm) # advance user-visible window via in-place mutation
+    backend.base_backend = new_backend(backend.base_backend, needed, Nm) # advance user-visible window
     copyto!(parent(fts.data), parent(buffer_fts.data))
     fill_halo_regions!(fts)
 
