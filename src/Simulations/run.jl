@@ -1,13 +1,11 @@
 using Dates: unix2datetime
 
-using Oceananigans.OutputWriters: WindowedTimeAverage
-using Oceananigans.TimeSteppers: update_state!, unit_time
-using Oceananigans.Diagnostics: nan_detected, reset_nan_detected!
-using Oceananigans.Grids: architecture
-using Oceananigans.DistributedComputations: all_reduce
-
 using Oceananigans: AbstractModel, run_diagnostic!, restore_prognostic_state!
-using Oceananigans.OutputWriters: checkpoint_path, load_checkpoint_state
+using Oceananigans.Architectures: architecture
+using Oceananigans.Diagnostics: nan_detected, reset_nan_detected!
+using Oceananigans.DistributedComputations: all_reduce
+using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_path, load_checkpoint_state
+using Oceananigans.TimeSteppers: update_state!, unit_time
 
 import Oceananigans: initialize!
 import Oceananigans.Fields: set!
