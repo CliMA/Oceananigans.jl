@@ -1756,8 +1756,9 @@ function test_checkpoint_at_end(arch)
     simulation3 = Simulation(model3, Δt=Δt, stop_iteration=5)
     model3.velocities.u[1, 1, 1] = NaN
 
-    @test_logs (:info, r"NaN found in field") (:info, r"Skipping end-of-run checkpoint")
-               match_mode=:any run!(simulation3, checkpoint_at_end=true)
+    @test_logs match_mode=:any (:info, r"NaN found in field") (:info, r"Skipping end-of-run checkpoint") begin
+        run!(simulation3, checkpoint_at_end=true)
+    end
     @test !isfile(nan_expected_filepath)
     rm.(glob("checkpoint_iteration*.jld2"), force=true)
 
