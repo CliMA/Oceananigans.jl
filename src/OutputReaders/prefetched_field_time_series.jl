@@ -35,7 +35,7 @@ end
 Base.length(p::Prefetched)  = length(p.base_backend)
 Base.summary(p::Prefetched) = string("Prefetched(", summary(p.base_backend), "; pending=", !isnothing(p.pending), ")")
 
-function new_backend(p::Prefetched, start, length) 
+function new_backend(p::Prefetched, start, length)
     p.base_backend = new_backend(p.base_backend, start, length)
     return p
 end
