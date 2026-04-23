@@ -86,19 +86,19 @@ function update_field_time_series!(fts::PrefetchingFTS, n₁::Int, n₂=n₁)
 
     backend.pending = nothing # so a failed wait can't poison later reloads
 
-    hot = !isnothing(pending) && backend.next_start == needed
-    if hot
+    hot_path = !isnothing(pending) && backend.next_start == needed
+    if hot_path
         try
             wait(pending)
         catch
             @warn "prefetch failed; falling back to synchronous load."
-            hot = false
+            hot_path = false
         end
     elseif !isnothing(pending)
         try; wait(pending); catch; end # drain stale prefetch silently
     end
 
-    if !hot
+    if !hot_path
         buffer_fts.backend = new_backend(buffer_fts.backend, needed, Nm)
         set!(buffer_fts)
     end
