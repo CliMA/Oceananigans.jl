@@ -54,7 +54,16 @@ include("zstar_conservation_test_utils.jl")
                 # Instead of initializing with random velocities, infer them from a random initial streamfunction
                 # to ensure the velocity field is divergence-free at initialization.
                 ψ = Field{Center, Center, Center}(grid)
-                set!(ψ, rand(size(ψ)...))
+                mean_xspacing = mean(xspacings(grid, Face(), Face(), Center()))
+                mean_yspacing = mean(yspacings(grid, Face(), Face(), Center()))
+
+                Δ = mean((mean_xspacing, mean_yspacing))
+                U = 1
+
+                # Set streamfunction amplitude to Δ * U to yield velocities of order U.
+                set!(ψ, U * Δ * rand(size(ψ)...))
+                fill_halo_regions!(ψ)
+
                 uᵢ = ∂y(ψ)
                 vᵢ = -∂x(ψ)
 
