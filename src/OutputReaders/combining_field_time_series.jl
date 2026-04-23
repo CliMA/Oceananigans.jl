@@ -510,7 +510,8 @@ function combined_field_time_series(path, name;
     Nt = time_indices_length(backend, times)
     @apply_regionally data = new_data(eltype(grid), grid, loc, indices, Nt)
 
-    fts = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices,
+    runtime_backend = build_runtime_backend(backend, grid, loc, indices, times, distributed_path, name, time_indexing, boundary_conditions, reader_kw)
+    fts = FieldTimeSeries{LX, LY, LZ}(data, grid, runtime_backend, boundary_conditions, indices,
                                        times, distributed_path, name, time_indexing, reader_kw)
 
     # For InMemory, load data now
