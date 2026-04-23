@@ -10,7 +10,8 @@ using Test: @testset, @test, detect_ambiguities
     # Until we resolve all ambiguities, we make sure we don't increase them.
     # Do not increase this number. If ambiguities increase, resolve them before merging.
     number_of_ambiguities = length(detect_ambiguities(Oceananigans; recursive=true))
-    @test number_of_ambiguities <= 325
+
+    @test number_of_ambiguities <= 322
     @info "Number of ambiguities: $number_of_ambiguities"
 
     modules = (
@@ -31,8 +32,8 @@ using Test: @testset, @test, detect_ambiguities
         # Oceananigans.Models,
         # Oceananigans.MultiRegion,
         # Oceananigans.Operators,
-        # Oceananigans.OrthogonalSphericalShellGrids,
-        # Oceananigans.OutputReaders,
+        Oceananigans.OrthogonalSphericalShellGrids,
+        Oceananigans.OutputReaders,
         # Oceananigans.OutputWriters,
         Oceananigans.Simulations,
         # Oceananigans.Solvers,
@@ -40,7 +41,7 @@ using Test: @testset, @test, detect_ambiguities
         Oceananigans.TimeSteppers,
         # Oceananigans.TurbulenceClosures,
         Oceananigans.Units,
-        # Oceananigans.Utils,
+        Oceananigans.Utils,
     )
 
     # In addition to capping the total number of ambiguities above, we make sure
@@ -55,7 +56,7 @@ end
 
     modules = (
         Oceananigans.AbstractOperations,
-        # Oceananigans.Advection,
+        Oceananigans.Advection,
         # Oceananigans.Architectures,
         Oceananigans.Biogeochemistry,
         # Oceananigans.BoundaryConditions,
