@@ -6,8 +6,6 @@ using Oceananigans.Units: Time
 
 @assert Threads.nthreads() >= 2 "Prefetched FieldTimeSeries tests require JULIA_NUM_THREADS ≥ 2 (got $(Threads.nthreads())). Re-run with `julia -t 2`."
 
-# Write a small JLD2 series we can re-read with different backends. Each snapshot is
-# `n * x` so reads at index `n` produce a fingerprintable, easy-to-eyeball value.
 function build_test_jld2(; Nx=8, Nt=12)
     filepath = tempname() * ".jld2"
     grid = RectilinearGrid(CPU(), size=Nx, x=(0, 1), topology=(Periodic, Flat, Flat))
@@ -35,14 +33,6 @@ end
     end
 
     @testset "byte-identity vs non-prefetching reference (Cyclical, four reloads)" begin
-        # `Time`-based access produces `update(n₁, n₂)` with `n₂ = n₁ + 1`. The reload fires
-        # the first time `n₂` falls outside the window. The sequence below drives:
-        #   needed=4 (cold; no prior prefetch) → 7 (hot) → 10 (hot, wraps) → 1 (hot, post-wrap)
-        # Predictor: after a reload at `needed`, `next_start = mod1(needed + Nm - 1, Nt)`.
-        # Distinct files for ref and pf — JLD2's MmapIO is not safe to concurrently
-        # open from the prefetch task and a separate main-thread reader on the same file.
-        # Real users have one FTS per data source, so the production path is only ever the
-        # prefetch task touching the file.
         filepath_ref, _ = build_test_jld2()
         filepath_pf,  _ = build_test_jld2()
         ref_fts = FieldTimeSeries(filepath_ref, "f"; backend=InMemory(Nm),                time_indexing=Cyclical())
