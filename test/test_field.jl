@@ -773,6 +773,21 @@ end
 
                 @test all(interior(interpolated_field) .≈ interior(reference_field))
             end
+
+            # 3D source → 1D column target: the column's specified (x, y) must drive
+            # horizontal sampling of the source.
+            source_3d_grid = RectilinearGrid(arch, FT; size=(4, 4, 4), x=(0,1), y=(0,1), z=(0,1))
+            source_3d = CenterField(source_3d_grid)
+            set!(source_3d, (x, y, z) -> x + 2y + 3z)
+
+            x_col, y_col = FT(0.3), FT(0.7)
+            column_grid = RectilinearGrid(arch, FT; size=4,
+                                          topology=(Flat, Flat, Bounded),
+                                          x=x_col, y=y_col, z=(0,1))
+            column = CenterField(column_grid)
+            interpolate!(column, source_3d)
+            expected = [x_col + 2y_col + 3z for z in znodes(column)]
+            @test @allowscalar all(interior(column)[1, 1, :] .≈ expected)
         end
     end
 

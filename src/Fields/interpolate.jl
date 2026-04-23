@@ -199,30 +199,6 @@ floats indicating a location between grid points.
 """
 @inline FractionalIndices(at_node, grid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, ℓx, ℓy, ℓz)
 
-@inline function FractionalIndices((_, y, z)::Tuple{Any, Any, Any}, grid::XFlatGrid, _, ℓy, ℓz)
-    return _fractional_indices((y, z), grid, nothing, ℓy, ℓz)
-end
-
-@inline function FractionalIndices((x, _, z)::Tuple{Any, Any, Any}, grid::YFlatGrid, ℓx, _, ℓz)
-    return _fractional_indices((x, z), grid, ℓx, nothing, ℓz)
-end
-
-@inline function FractionalIndices((x, y, _)::Tuple{Any, Any, Any}, grid::ZFlatGrid, ℓx, ℓy, _)
-    return _fractional_indices((x, y), grid, ℓx, ℓy, nothing)
-end
-
-@inline function FractionalIndices((_, _, z)::Tuple{Any, Any, Any}, grid::XYFlatGrid, _, _, ℓz)
-    return _fractional_indices((z,), grid, nothing, nothing, ℓz)
-end
-
-@inline function FractionalIndices((x, _, _)::Tuple{Any, Any, Any}, grid::YZFlatGrid, ℓx, _, _)
-    return _fractional_indices((x,), grid, ℓx, nothing, nothing)
-end
-
-@inline function FractionalIndices((_, y, _)::Tuple{Any, Any, Any}, grid::XZFlatGrid, _, ℓy, _)
-    return _fractional_indices((y,), grid, nothing, ℓy, nothing)
-end
-
 @inline FractionalIndices(at_node, grid::XFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, nothing, ℓy, ℓz)
 @inline FractionalIndices(at_node, grid::YFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, ℓx, nothing, ℓz)
 @inline FractionalIndices(at_node, grid::ZFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, ℓx, ℓy, nothing)
@@ -237,6 +213,29 @@ end
     kk = fractional_z_index(z, (ℓx, ℓy, ℓz), grid)
     return FractionalIndices(ii, jj, kk)
 end
+
+# All seven single/double/triple-`Nothing` combinations must be defined for 3-tuple
+# input so that pairwise dispatch resolves via a strictly more-specific method.
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ::Nothing, ℓy, ℓz) =
+    _fractional_indices((y, z), grid, nothing, ℓy, ℓz)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ℓx, ::Nothing, ℓz) =
+    _fractional_indices((x, z), grid, ℓx, nothing, ℓz)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ℓx, ℓy, ::Nothing) =
+    _fractional_indices((x, y), grid, ℓx, ℓy, nothing)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ::Nothing, ::Nothing, ℓz) =
+    _fractional_indices((z,), grid, nothing, nothing, ℓz)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ℓx, ::Nothing, ::Nothing) =
+    _fractional_indices((x,), grid, ℓx, nothing, nothing)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ::Nothing, ℓy, ::Nothing) =
+    _fractional_indices((y,), grid, nothing, ℓy, nothing)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ::Nothing, ::Nothing, ::Nothing) =
+    FractionalIndices(nothing, nothing, nothing)
 
 @inline function _fractional_indices((y, z), grid, ::Nothing, ℓy, ℓz)
     jj = fractional_y_index(y, (nothing, ℓy, ℓz), grid)
