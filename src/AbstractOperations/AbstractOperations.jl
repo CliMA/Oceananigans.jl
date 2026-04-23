@@ -78,6 +78,9 @@ import Base: >, <, >=, <=
 @binary <
 @binary >=
 @binary <=
+@binary Base.atan
+@binary Base.atand
+@binary Base.mod
 
 # Disambiguate Base.<(::Missing, ::Any) and Base.<(::Any, ::Missing)
 Base.:<(::AbstractField, ::Missing) = missing
