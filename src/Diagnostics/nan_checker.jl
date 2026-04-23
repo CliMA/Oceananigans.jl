@@ -30,7 +30,7 @@ a container with key-value pairs like a dictionary or `NamedTuple`.
 
 If `erroring=true`, the `NaNChecker` will throw an error on NaN detection.
 """
-NaNChecker(; fields, erroring=false) = NaNChecker(fields, erroring, false)
+NaNChecker(; fields, erroring=false, nan_detected=false) = NaNChecker(fields, erroring, nan_detected)
 
 nan_detected(::Any) = false
 nan_detected(nc::NaNChecker) = nc.nan_detected
