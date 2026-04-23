@@ -58,11 +58,8 @@ function InMemory(length::Int; prefetch::Bool=false)
 end
 
 InMemory() = InMemory{Nothing, false}(nothing, nothing)
-
-# Used by `new_backend` and internal sliding-window updates — always unflagged.
 InMemory(start::Int, length::Int) = InMemory{Int, false}(start, length)
 
-# `where P` so the aliases continue to subsume both `prefetch=true` and `prefetch=false` forms.
 const TotallyInMemory = AbstractInMemoryBackend{Nothing, P} where P
 const  PartlyInMemory = AbstractInMemoryBackend{Int,     P} where P
 
