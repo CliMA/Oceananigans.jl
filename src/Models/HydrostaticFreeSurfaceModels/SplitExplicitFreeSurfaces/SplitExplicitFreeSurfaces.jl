@@ -18,7 +18,8 @@ using Oceananigans.Grids: Center, Face, topology,
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface,
                                                         free_surface_displacement_field,
-                                                        update_vertical_velocities!
+                                                        update_vertical_velocities!,
+                                                        tracer_tendency_fields
 
 using KernelAbstractions: @index, @kernel
 

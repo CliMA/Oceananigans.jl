@@ -3,7 +3,8 @@ module HydrostaticFreeSurfaceModels
 export
     HydrostaticFreeSurfaceModel,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
-    PrescribedVelocityFields, ZStarCoordinate, ZCoordinate
+    PrescribedVelocityFields, PrescribedTracer,
+    ZStarCoordinate, ZCoordinate
 
 using KernelAbstractions: @index, @kernel
 using Adapt: Adapt
@@ -81,6 +82,14 @@ reconcile_free_surface!(free_surface, grid, velocities) = nothing
 # Transport velocity computation
 function compute_transport_velocities! end
 
+"""
+    tracer_tendency_fields(tracers, grid, boundary_conditions)
+
+Return tendency fields for `tracers`. Prescribed tracers get `nothing`
+(no tendency); prognostic tracers get a `CenterField`.
+"""
+function tracer_tendency_fields end
+
 include("compute_w_from_continuity.jl")
 include("hydrostatic_free_surface_field_tuples.jl")
 
@@ -155,7 +164,9 @@ Return a flattened `NamedTuple` of the prognostic fields associated with `Hydros
                                                                        V = free_surface.barotropic_velocities.V)
 
 @inline hydrostatic_prognostic_fields(velocities, free_surface, tracers) =
-    merge(horizontal_velocities(velocities), tracers, free_surface_fields(free_surface))
+    merge(horizontal_velocities(velocities),
+          prognostic_tracers(tracers),
+          free_surface_fields(free_surface))
 
 # Include vertical velocity
 @inline hydrostatic_fields(velocities, free_surface, tracers) =
