@@ -1,3 +1,5 @@
+using Oceananigans.Operators: δxᶜᶜᶜ, δxᶠᶠᶜ, δyᶜᶜᶜ, δyᶠᶠᶜ
+
 #####
 ##### Self Upwinding of Divergence Flux, the best option!
 #####
