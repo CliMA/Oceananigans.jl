@@ -1762,6 +1762,17 @@ function test_checkpoint_at_end(arch)
     @test !isfile(nan_expected_filepath)
     rm.(glob("checkpoint_iteration*.jld2"), force=true)
 
+    # Test with checkpoint_at_end=true and non-NaNChecker :nan_checker callback.
+    # This exercises nan_detected(::Any) and reset_nan_checker!(::Any).
+    grid4 = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+    model4 = NonhydrostaticModel(grid4)
+    simulation4 = Simulation(model4, Δt=Δt, stop_iteration=5)
+    simulation4.callbacks[:nan_checker] = Callback(_ -> nothing, IterationInterval(1))
+
+    @test_nowarn run!(simulation4, checkpoint_at_end=true)
+    @test isfile(expected_filepath)
+    rm.(glob("checkpoint_iteration*.jld2"), force=true)
+
     return nothing
 end
 

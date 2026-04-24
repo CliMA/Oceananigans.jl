@@ -22,21 +22,25 @@ end
 Base.show(io::IO, nc::NaNChecker) = print(io, summary(nc))
 
 """
-    NaNChecker(; fields, erroring=false, nan_detected=false)
+    NaNChecker(; fields, erroring=false)
 
 Return a `NaNChecker`, which sets `sim.running=false` if a `NaN` is detected
 in any member of `fields` when `NaNChecker(sim)` is called. `fields` should be
 a container with key-value pairs like a dictionary or `NamedTuple`.
 
 If `erroring=true`, the `NaNChecker` will throw an error on NaN detection.
+NaN detection state is tracked internally and can be queried with
+`nan_detected(nan_checker)`.
 """
-NaNChecker(; fields, erroring=false, nan_detected=false) = NaNChecker(fields, erroring, nan_detected)
+NaNChecker(; fields, erroring=false) = NaNChecker(fields, erroring, false)
 
+# Allow `:nan_checker` callbacks that are not `NaNChecker` to integrate with
+# simulation logic that queries and resets NaN detection state.
 nan_detected(::Any) = false
 nan_detected(nc::NaNChecker) = nc.nan_detected
 
-reset_nan_detected!(::Any) = nothing
-function reset_nan_detected!(nc::NaNChecker)
+reset_nan_checker!(::Any) = nothing
+function reset_nan_checker!(nc::NaNChecker)
     nc.nan_detected = false
     return nothing
 end
