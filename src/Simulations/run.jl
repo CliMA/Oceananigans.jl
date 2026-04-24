@@ -2,12 +2,13 @@ using Dates: unix2datetime
 
 using Oceananigans: AbstractModel, run_diagnostic!, restore_prognostic_state!
 using Oceananigans.Architectures: architecture
-using Oceananigans.Diagnostics: nan_detected, reset_nan_checker!
+using Oceananigans.Diagnostics: nan_detected
 using Oceananigans.DistributedComputations: all_reduce
 using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_path, load_checkpoint_state
 using Oceananigans.TimeSteppers: update_state!, unit_time
 
 import Oceananigans: initialize!
+import Oceananigans.Diagnostics: reset_nan_checker!
 import Oceananigans.Fields: set!
 import Oceananigans.TimeSteppers: time_step!
 import Oceananigans.Utils: schedule_aligned_time_step
