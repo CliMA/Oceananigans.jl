@@ -146,9 +146,14 @@ struct GaussianMask{D, T}
     end
 end
 
-@inline (g::GaussianMask{:x})(x, y, z) = exp(-(x - g.center)^2 / (2 * g.width^2))
-@inline (g::GaussianMask{:y})(x, y, z) = exp(-(y - g.center)^2 / (2 * g.width^2))
-@inline (g::GaussianMask{:z})(x, y, z) = exp(-(z - g.center)^2 / (2 * g.width^2))
+@inline (g::GaussianMask)(dim) = exp(-(=dim - g.center)^2 / (2 * g.width^2))
+
+@inline (g::GaussianMask{:x})(x, dim) = g(x)
+@inline (g::GaussianMask{:z})(dim, z) = g(z)
+
+@inline (g::GaussianMask{:x})(x, y, z) = g(x)
+@inline (g::GaussianMask{:y})(x, y, z) = g(y)
+@inline (g::GaussianMask{:z})(x, y, z) = g(z)
 
 show_exp_arg(D, c) = c == 0 ? "$D^2" :
                      c > 0  ? "($D - $c)^2" :
