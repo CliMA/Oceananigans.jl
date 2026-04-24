@@ -5,25 +5,22 @@ export
     Checkpointer, checkpoint, WindowedTimeAverage, FileSizeLimit,
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval, AveragedSpecifiedTimes
 
-using Oceananigans.Architectures
-using Oceananigans.Grids
-using Oceananigans.Fields
-
-import Oceananigans: boundary_conditions
 using Oceananigans: AbstractOutputWriter
+using Oceananigans.Architectures
+using Oceananigans.Fields
+using Oceananigans.Grids
 using Oceananigans.Grids: interior_indices
-using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, instantiate
-using Oceananigans.Utils: pretty_filesize
+using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, instantiate, pretty_filesize
 
 using OffsetArrays
 
-import Oceananigans: write_output!, initialize!
+import Oceananigans: boundary_conditions, write_output!, initialize!
 
 const c = Center()
 const f = Face()
 
-Base.open(ow::AbstractOutputWriter) = nothing
-Base.close(ow::AbstractOutputWriter) = nothing
+Base.open(::AbstractOutputWriter) = nothing
+Base.close(::AbstractOutputWriter) = nothing
 
 # Default fallback: most output writers don't need special initialization
 initialize!(::AbstractOutputWriter, model) = nothing
