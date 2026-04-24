@@ -18,6 +18,7 @@ Abstract supertype for time steppers.
 abstract type AbstractTimeStepper end
 
 function update_state! end
+function initialization_update_state! end
 function compute_tendencies! end
 function compute_flux_bc_tendencies! end
 function step_closure_prognostics! end

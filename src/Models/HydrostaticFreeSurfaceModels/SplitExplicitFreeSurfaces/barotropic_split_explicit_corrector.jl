@@ -132,6 +132,9 @@ function compute_transport_velocities!(model, free_surface::SplitExplicitFreeSur
     U̅ = free_surface.filtered_state.U̅
     V̅ = free_surface.filtered_state.V̅
 
+    synchronize_communication!(Ũ)
+    synchronize_communication!(Ṽ)
+  
     compute_barotropic_mode!(U̅, V̅, grid, u, v)
     launch!(architecture(grid), grid, volume_kernel_parameters(grid),
             _compute_split_explicit_transport_velocities!,
