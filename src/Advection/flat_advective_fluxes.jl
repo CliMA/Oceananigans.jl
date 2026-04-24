@@ -1,5 +1,3 @@
-using Oceananigans.ImmersedBoundaries
-
 #####
 ##### Flat Topologies
 #####

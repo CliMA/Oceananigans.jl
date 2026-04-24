@@ -27,7 +27,7 @@ using Oceananigans.Fields: set!, Reduction, reduced_dimensions, reduced_location
 using Oceananigans.Grids:
     Center, Face, Flat, Periodic, Bounded,
     AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, StaticVerticalDiscretization,
-    topology, halo_size, xspacings, yspacings, zspacings, λspacings, φspacings,
+    grid, topology, halo_size, xspacings, yspacings, zspacings, λspacings, φspacings,
     parent_index_range, nodes, ξnodes, ηnodes, rnodes, validate_index, peripheral_node,
     constructor_arguments, architecture
 using Oceananigans.ImmersedBoundaries:
@@ -73,6 +73,7 @@ import Oceananigans.OutputWriters:
     materialize_from_netcdf,
     reconstruct_grid,
     trilocation_dim_name,
+    add_grid_suffix,
     dimension_name_generator_free_surface
 
 const c = Center()
