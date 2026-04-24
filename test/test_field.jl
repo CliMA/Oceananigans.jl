@@ -787,7 +787,7 @@ end
             column = CenterField(column_grid)
             interpolate!(column, source_3d)
             expected = [x_col + 2y_col + 3z for z in znodes(column)]
-            @test @allowscalar all(interior(column)[1, 1, :] .≈ expected)
+            @test all(Array(interior(column))[1, 1, :] .≈ expected)
         end
     end
 
