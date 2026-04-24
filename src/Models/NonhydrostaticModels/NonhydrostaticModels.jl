@@ -19,6 +19,8 @@ using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver,
 using Oceananigans.Solvers: InhomogeneousFormulation, ZDirection
 using Oceananigans.Utils: sum_of_velocities
 
+using ..Models: initialize_boundary_mass_fluxes, enforce_open_boundary_mass_conservation!
+
 import Oceananigans: fields, prognostic_fields
 import Oceananigans.Advection: cell_advection_timescale
 import Oceananigans.Simulations: timestepper
@@ -76,7 +78,6 @@ nonhydrostatic_pressure_solver(grid, free_surface) = nonhydrostatic_pressure_sol
 #####
 
 include("background_fields.jl")
-include("boundary_mass_fluxes.jl")
 include("nonhydrostatic_model.jl")
 include("pressure_field.jl")
 include("show_nonhydrostatic_model.jl")
