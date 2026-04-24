@@ -193,7 +193,7 @@ for arch in archs
             u, v, w = VelocityFields(grid)
             T, S = TracerFields((:T, :S), grid)
 
-            for op in (+, *, -, /)
+            for op in (+, *, -, /, atand, atan, mod)
                 @test simple_binary_operation(op, u, v, num1, num2)
                 @test simple_binary_operation(op, u, w, num1, num2)
                 @test simple_binary_operation(op, u, T, num1, num2)
