@@ -10,6 +10,8 @@ struct UpwindBiased{N, FT, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
         new{N, FT, CA, SI}(buffer_scheme, advecting_velocity_scheme)
 end
 
+scheme_order(::UpwindBiased{N}) where N = 2N + 1
+
 function UpwindBiased(FT::DataType = Float64;
                       order = 3,
                       buffer_scheme = DecreasingOrderAdvectionScheme(),

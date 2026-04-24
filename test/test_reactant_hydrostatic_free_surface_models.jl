@@ -34,7 +34,9 @@ using Statistics: mean
                         free_surface = ExplicitFreeSurface(),
                         timestepper  = :QuasiAdamsBashforth2,
                         buoyancy     = nothing,
-                        tracers      = :T)
+                        tracers      = :T,
+                        condition_momentum_advection=false,
+                        condition_tracer_advection=false)
 
             @testset "Construction" begin
                 @test model isa HydrostaticFreeSurfaceModel

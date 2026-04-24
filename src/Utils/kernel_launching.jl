@@ -357,6 +357,25 @@ end
 @inline launch!(arch, grid, ::Val{workspec}, args...; kw...) where workspec =
     _launch!(arch, grid, workspec, args...; kw...)
 
+struct InteriorBoundarySet
+    interior
+    boundary
+    function InteriorBoundarySet(interior, boundary)
+        new(interior, boundary)
+    end
+end
+
+# Launch kernels over conditioned cell maps
+@inline function _launch!(arch, grid, workspec, kernel!,
+                          first_kernel_arg, second_kernel_arg, other_kernel_args::InteriorBoundarySet;
+                          active_cells_map::InteriorBoundarySet, kwargs...)
+  _launch!(arch, grid, workspec, kernel!, first_kernel_arg, second_kernel_arg, other_kernel_args.interior;
+          active_cells_map=active_cells_map.interior, kwargs...)
+  _launch!(arch, grid, workspec, kernel!, first_kernel_arg, second_kernel_arg, other_kernel_args.boundary;
+          active_cells_map=active_cells_map.boundary, kwargs...)
+  return nothing
+end
+
 # Inner interface
 @inline function _launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...;
                           exclude_periphery = false,
