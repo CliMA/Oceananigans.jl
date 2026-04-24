@@ -156,7 +156,195 @@ function test_perturbation_advection_open_boundary_conditions(arch, FT)
     end
 end
 
-function test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions; N = 8)
+function make_targeted_flux_model(::Type{NonhydrostaticModel}, grid, boundary_conditions)
+    return NonhydrostaticModel(grid; boundary_conditions, timestepper=:RungeKutta3)
+end
+
+function make_targeted_flux_model(::Type{HydrostaticFreeSurfaceModel}, grid, boundary_conditions)
+    return HydrostaticFreeSurfaceModel(grid; boundary_conditions,
+                                       momentum_advection=nothing,
+                                       tracer_advection=nothing,
+                                       buoyancy=nothing,
+                                       tracers=(),
+                                       coriolis=nothing,
+                                       free_surface=ImplicitFreeSurface())
+end
+
+function test_targeted_volume_flux_achieved(arch, FT, ModelType; N = 4)
+    grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
+                           topology=(Bounded, Bounded, Bounded))
+
+    # West boundary with a prescribed target flux; east boundary is in the pool.
+    Q_target = FT(0.5)
+    u_bcs = FieldBoundaryConditions(
+        west = OpenBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1, target_volume_flux=Q_target)),
+        east = OpenBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1))
+    )
+    model = make_targeted_flux_model(ModelType, grid, (; u=u_bcs))
+    set!(model, u = (x, y, z) -> 1 + 1e-2 * rand())
+
+    Δt = 0.1 * minimum_xspacing(grid) / 2
+    run!(Simulation(model; stop_time=1, Δt, verbose=false))
+
+    u = model.velocities.u
+    west_flux = Field(Integral(view(u, 1, :, :), dims=(2, 3)))
+    compute!(west_flux)
+    @test Array(interior(west_flux))[1, 1, 1] ≈ Q_target atol = N^2 * eps(FT)
+end
+
+function test_targeted_volume_flux_conservation(arch, FT, ModelType; N = 4)
+    grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
+                           topology=(Bounded, Bounded, Bounded))
+
+    # Both boundaries targeted with equal fluxes — net inflow is zero, no pool needed.
+    Q = FT(0.5)
+    u_bcs = FieldBoundaryConditions(
+        west = OpenBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1, target_volume_flux=Q)),
+        east = OpenBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1, target_volume_flux=Q))
+    )
+    model = make_targeted_flux_model(ModelType, grid, (; u=u_bcs))
+    set!(model, u = (x, y, z) -> 1 + 1e-2 * rand())
+
+    u, v, w = model.velocities
+    Δt = 0.1 * minimum_xspacing(grid) / 2
+
+    δu = Field(∂x(u) + ∂y(v) + ∂z(w))
+    ∫δu = Field(Integral(δu))
+
+    run!(Simulation(model; stop_time=1, Δt, verbose=false))
+    compute!(∫δu)
+    @test Array(interior(∫δu))[1, 1, 1] ≈ 0 atol = 5 * eps(FT)
+
+    west_flux = Field(Integral(view(u, 1, :, :), dims=(2, 3)))
+    east_flux = Field(Integral(view(u, u.grid.Nx + 1, :, :), dims=(2, 3)))
+    compute!(west_flux)
+    compute!(east_flux)
+    @test Array(interior(west_flux))[1, 1, 1] ≈ Q atol = N^2 * eps(FT)
+    @test Array(interior(east_flux))[1, 1, 1] ≈ Q atol = N^2 * eps(FT)
+end
+
+function test_zero_inflow_open_boundary_conserves_mass(arch, FT; N = 4)
+    # west = zero-inflow OBC (OpenBoundaryCondition(nothing) → ZIOBC, no scheme, nothing condition)
+    # east = pool PerturbationAdvection OBC
+    # Exercises: ZIOBC init, open_boundary_volume_flux ZIOBC,
+    #            IOBC dispatch in pool correction
+    grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
+                           topology=(Bounded, Bounded, Bounded))
+    u_bcs = FieldBoundaryConditions(
+        west = OpenBoundaryCondition(nothing),
+        east = OpenBoundaryCondition(0; scheme = PerturbationAdvection(; inflow_timescale=1e-1))
+    )
+    model = NonhydrostaticModel(grid; boundary_conditions=(; u=u_bcs), timestepper=:RungeKutta3)
+    set!(model, u = (x, y, z) -> 1 + 1e-2 * rand())
+
+    u, v, w = model.velocities
+    Δt = 0.1 * minimum_xspacing(grid) / 2
+
+    δu = Field(∂x(u) + ∂y(v) + ∂z(w))
+    ∫δu = Field(Integral(δu))
+
+    run!(Simulation(model; stop_time=1, Δt, verbose=false))
+    compute!(∫δu)
+    @test Array(interior(∫δu))[1, 1, 1] ≈ 0 atol = 5 * eps(FT)
+end
+
+function test_fixed_imposed_velocity_open_boundary_conserves_mass(arch, FT; N = 4)
+    # west = fixed-imposed-velocity OBC (OpenBoundaryCondition(FT(1)) → FIOBC, no scheme, Number condition)
+    # east = pool PerturbationAdvection OBC that adjusts to balance the fixed inflow
+    # Exercises: FIOBC init (lines 71–76), IOBC dispatch in pool correction (line 227)
+    grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
+                           topology=(Bounded, Bounded, Bounded))
+    u_bcs = FieldBoundaryConditions(
+        west = OpenBoundaryCondition(1),
+        east = OpenBoundaryCondition(0; scheme = PerturbationAdvection(; inflow_timescale=1e-1))
+    )
+    model = NonhydrostaticModel(grid; boundary_conditions=(; u=u_bcs), timestepper=:RungeKutta3)
+    set!(model, u = (x, y, z) -> 1 + 1e-2 * rand())
+
+    u, v, w = model.velocities
+    Δt = 0.1 * minimum_xspacing(grid) / 2
+
+    δu = Field(∂x(u) + ∂y(v) + ∂z(w))
+    ∫δu = Field(Integral(δu))
+
+    run!(Simulation(model; stop_time=1, Δt, verbose=false))
+    compute!(∫δu)
+    @test Array(interior(∫δu))[1, 1, 1] ≈ 0 atol = 5 * eps(FT)
+end
+
+function test_targeted_south_volume_flux_achieved(arch, FT, ModelType; N = 4)
+    # v.south = targeted OBC, v.north = pool OBC
+    # Exercises: apply_targeted_left_boundary_correction! for south,
+    #            targeted boundary skipped in pool step for south,
+    #            pool correction applied to north OBC
+    grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
+                           topology=(Bounded, Bounded, Bounded))
+    Q_target = FT(0.5)
+    v_bcs = FieldBoundaryConditions(
+        south = OpenBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1, target_volume_flux=Q_target)),
+        north = OpenBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1))
+    )
+    model = make_targeted_flux_model(ModelType, grid, (; v=v_bcs))
+    set!(model, v = (x, y, z) -> 1 + 1e-2 * rand())
+
+    Δt = 0.1 * minimum_yspacing(grid) / 2
+    run!(Simulation(model; stop_time=1, Δt, verbose=false))
+
+    v = model.velocities.v
+    south_flux = Field(Integral(view(v, :, 1, :), dims=(1, 3)))
+    compute!(south_flux)
+    @test Array(interior(south_flux))[1, 1, 1] ≈ Q_target atol = N^2 * eps(FT)
+end
+
+function test_targeted_east_with_west_pool(arch, FT, ModelType; N = 4)
+    # u.west = pool OBC, u.east = targeted OBC
+    # Exercises: targeted boundary skipped in pool correction for east,
+    #            pool correction applied to west OBC
+    grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
+                           topology=(Bounded, Bounded, Bounded))
+    Q_target = FT(0.5)
+    u_bcs = FieldBoundaryConditions(
+        west = OpenBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1)),
+        east = OpenBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1, target_volume_flux=Q_target))
+    )
+    model = make_targeted_flux_model(ModelType, grid, (; u=u_bcs))
+    set!(model, u = (x, y, z) -> 1 + 1e-2 * rand())
+
+    Δt = 0.1 * minimum_xspacing(grid) / 2
+    run!(Simulation(model; stop_time=1, Δt, verbose=false))
+
+    u = model.velocities.u
+    east_flux = Field(Integral(view(u, u.grid.Nx + 1, :, :), dims=(2, 3)))
+    compute!(east_flux)
+    @test Array(interior(east_flux))[1, 1, 1] ≈ Q_target atol = N^2 * eps(FT)
+end
+
+function test_live_boundary_transport(arch, FT, ModelType; N = 4)
+    # LiveBoundaryTransport as target_volume_flux: exercises the callable path through
+    # get_target_volume_flux(scheme, grid) -> _eval_tvf(f, grid) -> f(grid).
+    grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
+                           topology=(Bounded, Bounded, Bounded))
+
+    lbt = LiveBoundaryTransport(FT(1), :east)
+    Q_target = lbt(grid)   # U * east_area = 1 * (Ly * Lz) = 1
+
+    u_bcs = FieldBoundaryConditions(
+        west = OpenBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1)),
+        east = OpenBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1, target_volume_flux=lbt))
+    )
+    model = make_targeted_flux_model(ModelType, grid, (; u=u_bcs))
+    set!(model, u = (x, y, z) -> 1 + 1e-2 * rand())
+
+    Δt = 0.1 * minimum_xspacing(grid) / 2
+    run!(Simulation(model; stop_time=1, Δt, verbose=false))
+
+    u = model.velocities.u
+    east_flux = Field(Integral(view(u, u.grid.Nx + 1, :, :), dims=(2, 3)))
+    compute!(east_flux)
+    @test Array(interior(east_flux))[1, 1, 1] ≈ Q_target atol = N^2 * eps(FT)
+end
+
+function test_open_boundary_condition_volume_conservation(arch, FT, boundary_conditions; N = 8)
     grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
                            topology=(Bounded, Bounded, Bounded))
 
@@ -168,12 +356,12 @@ function test_open_boundary_condition_mass_conservation(arch, FT, boundary_condi
     Δt = 0.1 * minimum_zspacing(grid) / maximum(abs, u)
     simulation = Simulation(model; stop_time=1, Δt, verbose=false)
 
-    ∇u = Field(∂x(u) + ∂y(v) + ∂z(w))
-    ∫∇u = Field(Integral(∇u))
+    δu = Field(∂x(u) + ∂y(v) + ∂z(w))
+    ∫δu = Field(Integral(δu))
 
     run!(simulation)
-    compute!(∫∇u)
-    @test (@allowscalar ∫∇u[]) ≈ 0 atol=5*eps(FT)
+    compute!(∫δu)
+    @test (@allowscalar ∫δu[]) ≈ 0 atol=5*eps(FT)
 end
 
 test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
@@ -374,7 +562,16 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             u_bcs = FieldBoundaryConditions(west = OpenBoundaryCondition(U₀; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)),
                                             east = OpenBoundaryCondition(U₀; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)))
             boundary_conditions = (; u = u_bcs)
-            test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions)
+            test_open_boundary_condition_volume_conservation(arch, FT, boundary_conditions)
+            for ModelType in (NonhydrostaticModel, HydrostaticFreeSurfaceModel)
+                test_targeted_volume_flux_achieved(arch, FT, ModelType)
+                test_targeted_volume_flux_conservation(arch, FT, ModelType)
+                test_targeted_south_volume_flux_achieved(arch, FT, ModelType)
+                test_targeted_east_with_west_pool(arch, FT, ModelType)
+                test_live_boundary_transport(arch, FT, ModelType)
+            end
+            test_zero_inflow_open_boundary_conserves_mass(arch, FT)
+            test_fixed_imposed_velocity_open_boundary_conserves_mass(arch, FT)
         end
     end
 

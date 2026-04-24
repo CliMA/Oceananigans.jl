@@ -52,7 +52,7 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
           timestepper :: TS       # Object containing timestepper fields and parameters
       pressure_solver :: S        # Pressure/Poisson solver
      auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
- boundary_mass_fluxes :: BM       # Container for the average mass fluxes at boundaries
+ boundary_volume_fluxes :: BM       # Container for volume fluxes at open boundaries
 end
 
 supported_timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
@@ -290,14 +290,14 @@ function NonhydrostaticModel(grid;
     # Materialize forcing for model tracer and velocity fields.
     forcing = model_forcing(forcing, model_fields, prognostic_fields)
 
-    # Initialize boundary mass fluxes container
-    boundary_mass_fluxes = initialize_boundary_mass_fluxes(velocities)
+    # Initialize boundary volume fluxes container
+    boundary_volume_fluxes = initialize_boundary_volume_fluxes(velocities)
 
     !isnothing(particles) && arch isa Distributed && error("LagrangianParticles are not supported on Distributed architectures.")
 
     model = NonhydrostaticModel(arch, grid, clock, advection, buoyancy, coriolis, stokes_drift,
                                 forcing, closure, free_surface, background_fields, particles, biogeochemistry, velocities, tracers,
-                                pressures, closure_fields, timestepper, pressure_solver, auxiliary_fields, boundary_mass_fluxes)
+                                pressures, closure_fields, timestepper, pressure_solver, auxiliary_fields, boundary_volume_fluxes)
 
     materialize_clock!(clock, timestepper)
     update_state!(model)
@@ -353,7 +353,7 @@ function prognostic_state(model::NonhydrostaticModel)
             closure_fields = prognostic_state(model.closure_fields),
             timestepper = prognostic_state(model.timestepper),
             auxiliary_fields = prognostic_state(model.auxiliary_fields),
-            boundary_mass_fluxes = prognostic_state(model.boundary_mass_fluxes))
+            boundary_volume_fluxes = prognostic_state(model.boundary_volume_fluxes))
 end
 
 function restore_prognostic_state!(restored::NonhydrostaticModel, from)
@@ -364,7 +364,7 @@ function restore_prognostic_state!(restored::NonhydrostaticModel, from)
     restore_prognostic_state!(restored.tracers, from.tracers)
     restore_prognostic_state!(restored.closure_fields, from.closure_fields)
     restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
-    restore_prognostic_state!(restored.boundary_mass_fluxes, from.boundary_mass_fluxes)
+    restore_prognostic_state!(restored.boundary_volume_fluxes, from.boundary_volume_fluxes)
     return restored
 end
 

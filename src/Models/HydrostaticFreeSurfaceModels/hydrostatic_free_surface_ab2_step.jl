@@ -57,6 +57,9 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Î”t, callbacks)
     u, v, _ = model.velocities
     fill_halo_regions!((u, v), model.clock, fields(model); async=true)
 
+    # Enforce targeted open boundary fluxes (free surface accommodates any net imbalance)
+    @apply_regionally enforce_targeted_open_boundary_fluxes!(model, model.boundary_volume_fluxes)
+
     # Computing tracer tendencies
     @apply_regionally begin
         compute_tracer_tendencies!(model)
@@ -111,6 +114,9 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, Î
 
     u, v, _ = model.velocities
     fill_halo_regions!((u, v), model.clock, fields(model))
+
+    # Enforce targeted open boundary fluxes (free surface accommodates any net imbalance)
+    @apply_regionally enforce_targeted_open_boundary_fluxes!(model, model.boundary_volume_fluxes)
 
     @apply_regionally begin
         compute_transport_velocities!(model, free_surface)

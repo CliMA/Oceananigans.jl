@@ -103,3 +103,77 @@ end
 
 const MOOBC = BoundaryCondition{<:Open, <:BoundaryAdjacentMean}
 @inline update_boundary_condition!(bc::MOOBC, val_side, u, model) = bc.condition(val_side, u)
+
+function boundary_total_area(::Val{:west}, grid)
+    ∫dA = sum(boundary_normal_area(Val(:west), grid), dims=(2, 3))
+    return @allowscalar ∫dA[1, 1, 1]
+end
+
+function boundary_total_area(::Val{:east}, grid)
+    ∫dA = sum(boundary_normal_area(Val(:east), grid), dims=(2, 3))
+    return @allowscalar ∫dA[grid.Nx+1, 1, 1]
+end
+
+function boundary_total_area(::Val{:south}, grid)
+    ∫dA = sum(boundary_normal_area(Val(:south), grid), dims=(1, 3))
+    return @allowscalar ∫dA[1, 1, 1]
+end
+
+function boundary_total_area(::Val{:north}, grid)
+    ∫dA = sum(boundary_normal_area(Val(:north), grid), dims=(1, 3))
+    return @allowscalar ∫dA[1, grid.Ny+1, 1]
+end
+
+function boundary_total_area(::Val{:bottom}, grid)
+    ∫dA = sum(boundary_normal_area(Val(:bottom), grid), dims=(1, 2))
+    return @allowscalar ∫dA[1, 1, 1]
+end
+
+function boundary_total_area(::Val{:top}, grid)
+    ∫dA = sum(boundary_normal_area(Val(:top), grid), dims=(1, 2))
+    return @allowscalar ∫dA[1, 1, grid.Nz+1]
+end
+
+boundary_total_area(side::Symbol, grid) = boundary_total_area(Val(side), grid)
+
+"""
+    LiveBoundaryTransport(velocity, side)
+
+A callable that, when called with a `grid`, returns `velocity * boundary_total_area(side, grid)`.
+
+Use this as the `target_volume_flux` argument of `PerturbationAdvection` when the target
+transport should track the current grid geometry. This is necessary with any mutable vertical
+coordinate (e.g. `ZStarCoordinate`), where cell heights change as the free surface evolves,
+causing boundary areas to vary in time. With a fixed vertical grid the simpler scalar form
+of `target_volume_flux` suffices.
+
+# Example
+
+```jldoctest
+julia> using Oceananigans
+
+julia> using Oceananigans.Models: LiveBoundaryTransport
+
+julia> lbt = LiveBoundaryTransport(1.0, :east)
+LiveBoundaryTransport: velocity=1.0, side=Val{:east}()
+
+julia> grid = RectilinearGrid(size=(4, 1, 4), extent=(4, 1, 4));
+
+julia> lbt(grid) ≈ 4.0  # 1.0 * (Ly * Lz) = 1 * 4
+true
+```
+"""
+struct LiveBoundaryTransport{FT, S}
+    velocity :: FT
+    side :: S
+end
+
+LiveBoundaryTransport(velocity::Number, side::Symbol) =
+    LiveBoundaryTransport(velocity, Val(side))
+
+(lbt::LiveBoundaryTransport)(grid) = lbt.velocity * boundary_total_area(lbt.side, grid)
+
+Adapt.adapt_structure(to, lbt::LiveBoundaryTransport) = lbt
+
+Base.show(io::IO, lbt::LiveBoundaryTransport) =
+    print(io, "LiveBoundaryTransport: velocity=$(lbt.velocity), side=$(lbt.side)")

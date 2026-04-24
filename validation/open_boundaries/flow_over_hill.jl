@@ -1,10 +1,11 @@
 using Oceananigans
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver
+using Oceananigans.Models: LiveBoundaryTransport
 using CairoMakie
 using Printf
 
-function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
-                                     arch = CPU(),
+function flow_over_hill_simulation(; arch = CPU(),
+                                     scheme_type = PerturbationAdvection,
                                      model_type = :nonhydrostatic,
                                      Nz = 16,
                                      hill_height = 1,
@@ -37,9 +38,13 @@ function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
     hill(x) = hill_height * exp(-((x - x₀)/hill_width)^2) - Lz
     grid = ImmersedBoundaryGrid(grid_base, PartialCellBottom(hill))
 
+    # Live target transport: recomputes U * east_area at every correction step,
+    # so it tracks the current column height under ZStarCoordinate.
+    target_volume_flux = LiveBoundaryTransport(U, :east)
+
     # Model kwargs
     u_boundaries = FieldBoundaryConditions(west = OpenBoundaryCondition(U), # No scheme here for a perfectly barotropic inflow
-                                           east = OpenBoundaryCondition(U; scheme))
+                                           east = OpenBoundaryCondition(U; scheme = scheme_type(; target_volume_flux)))
     boundary_conditions = (u = u_boundaries,)
     advection = WENO(; order=5, minimum_buffer_upwind_order=1)
 
