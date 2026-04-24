@@ -19,7 +19,7 @@ function Simulation(model::ReactantModel; Δt,
    return Simulation(model,
                      Δt,
                      Float64(stop_iteration),
-                     stop_time,
+                     nothing, # disallow stop_time
                      Float64(wall_time_limit),
                      diagnostics,
                      output_writers,
