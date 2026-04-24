@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: DistributedCommunicationBoundaryCondition, ZBC
+using Oceananigans.BoundaryConditions: DistributedCommunicationBoundaryCondition, ZBC, DCBC, DefaultBoundaryCondition
 using Oceananigans.Fields: validate_indices, validate_field_data
 using Oceananigans.DistributedComputations:
     DistributedComputations,
@@ -12,17 +12,29 @@ using Oceananigans.DistributedComputations:
     communication_buffers
 
 using Oceananigans.Grids: topology, FullyConnected,
-    LeftConnectedRightFaceFolded, LeftConnectedRightFaceConnected
+    RightCenterFolded, RightFaceFolded,
+    LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
+    LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected,
+    SlabFoldedTopology, PencilFoldedTopology, DistributedFoldedTopology
 using Oceananigans.DistributedComputations: insert_connected_topology
 using Oceananigans.Utils: Utils
 
 import Oceananigans.Fields: Field, validate_indices, validate_boundary_conditions
+import Oceananigans.DistributedComputations: inject_halo_communication_boundary_conditions
 
 const DistributedTripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} =
     OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, <:Distributed{<:Union{CPU, GPU}}}
 
 const MPITripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} = OrthogonalSphericalShellGrid{FT, TX, TY, TZ, CZ, <:Tripolar, CC, FC, CF, FF, <:Distributed{<:Union{CPU, GPU}}}
-const MPITripolarGridOfSomeKind = Union{MPITripolarGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:MPITripolarGrid}}
+const MPITripolarGridOfSomeKind{TY} = Union{MPITripolarGrid{<:Any, <:Any, TY},
+    ImmersedBoundaryGrid{<:Any, <:Any, TY, <:Any, <:MPITripolarGrid}}
+
+# Short aliases for the distributed-tripolar dispatch signatures (`*FTG` =
+# "<...> Folded Tripolar Grid"). `SerialFTG` lives in `tripolar_field_extensions.jl`
+# since that file's methods reference it and is loaded earlier.
+const SlabFTG   = MPITripolarGridOfSomeKind{<:SlabFoldedTopology}
+const PencilFTG = MPITripolarGridOfSomeKind{<:PencilFoldedTopology}
+const DistFTG   = MPITripolarGridOfSomeKind{<:DistributedFoldedTopology}
 
 """
     TripolarGrid(arch::Distributed, FT::DataType = Float64; halo = (4, 4, 4), kwargs...)
@@ -237,91 +249,113 @@ function receiving_rank(arch; receive_idx_x = ranks(arch)[1] - arch.local_index[
     return receive_rank
 end
 
-function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
-                                              grid::MPITripolarGridOfSomeKind,
-                                              field_name::Symbol,
-                                              prognostic_names=nothing)
+#####
+##### North fold BC Regularization
+#####
 
+# We add `regularize_boundary_condition` methods that pass the zipper BC sign as an extra arg.
+
+# DefaultBC on a slab fold-north rank → local `Zipper` with sign
+BoundaryConditions.regularize_boundary_condition(::DefaultBoundaryCondition, grid::SlabFTG, loc, dim, bound, prognostic_names, sign) =
+    north_fold_boundary_condition(grid)(sign)
+
+# DefaultBC on a pencil fold-north rank → `DistributedZipper` comm BC with sign
+function BoundaryConditions.regularize_boundary_condition(::DefaultBoundaryCondition, grid::PencilFTG, loc, dim, bound, prognostic_names, sign)
     arch = architecture(grid)
-    loc  = assumed_field_location(field_name)
-    yrank = arch.local_index[2] - 1
+    halo_communication = ZipperHaloCommunicationRanks(sign; from=arch.local_rank, to=arch.connectivity.north)
+    return DistributedCommunicationBoundaryCondition(halo_communication)
+end
 
-    processor_size = ranks(arch)
+# User-supplied BC on either distributed fold-north rank → pass through (Field validates later).
+# `bc::BoundaryCondition` mirrors the existing BoundaryConditions.jl:244 method signature, so
+# this is strictly more specific and disambiguates.
+BoundaryConditions.regularize_boundary_condition(bc::BoundaryCondition, grid::DistFTG, loc, dim, bound, prognostic_names, sign) = bc
+
+# Non-fold distributed ranks: no specific 7-arg method — the generic `args...`-accepting
+# methods in BoundaryConditions (lines 244-254) take over and drop the extra `sign` arg.
+
+function BoundaryConditions.regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
+                                                                 grid::MPITripolarGridOfSomeKind,
+                                                                 field_name::Symbol,
+                                                                 prognostic_names=nothing)
+
+    loc  = assumed_field_location(field_name)
     sign = (field_name == :u) || (field_name == :v) ? -1 : 1
 
-    west  = regularize_boundary_condition(bcs.west,  grid, loc, 1, LeftBoundary,  prognostic_names)
-    east  = regularize_boundary_condition(bcs.east,  grid, loc, 1, RightBoundary, prognostic_names)
-    south = regularize_boundary_condition(bcs.south, grid, loc, 2, LeftBoundary,  prognostic_names)
+    west   = regularize_boundary_condition(bcs.west,   grid, loc, 1, LeftBoundary,  prognostic_names)
+    east   = regularize_boundary_condition(bcs.east,   grid, loc, 1, RightBoundary, prognostic_names)
+    south  = regularize_boundary_condition(bcs.south,  grid, loc, 2, LeftBoundary,  prognostic_names)
+    north  = regularize_boundary_condition(bcs.north,  grid, loc, 2, RightBoundary, prognostic_names, sign)
+    bottom = regularize_boundary_condition(bcs.bottom, grid, loc, 3, LeftBoundary,  prognostic_names)
+    top    = regularize_boundary_condition(bcs.top,    grid, loc, 3, RightBoundary, prognostic_names)
 
-    north = if yrank == processor_size[2] - 1 && processor_size[1] == 1
-        TY = fold_topology(grid.conformal_mapping)
-        north_fold_boundary_condition(TY)(sign)
-
-    elseif yrank == processor_size[2] - 1 && processor_size[1] != 1
-        from = arch.local_rank
-        to   = arch.connectivity.north
-        halo_communication = ZipperHaloCommunicationRanks(sign; from, to)
-        DistributedCommunicationBoundaryCondition(halo_communication)
-
-    else
-        regularize_boundary_condition(bcs.north, grid, loc, 2, RightBoundary, prognostic_names)
-
-    end
-
-    bottom   = regularize_boundary_condition(bcs.bottom, grid, loc, 3, LeftBoundary,  prognostic_names)
-    top      = regularize_boundary_condition(bcs.top,    grid, loc, 3, RightBoundary, prognostic_names)
     immersed = regularize_immersed_boundary_condition(bcs.immersed, grid, loc, field_name, prognostic_names)
 
     return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
 end
 
-# Extension of the constructor for a `Field` on a `TRG` grid. We assumes that the north boundary is a zipper
-# with a sign that depends on the location of the field (revert the value of the halos if on edges, keep it if on nodes or centers)
-function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::MPITripolarGridOfSomeKind, data, global_bcs, indices::Tuple, op, status) where {LX, LY, LZ}
+#####
+##### Dispatch on (y-topology, north_bc) to determine the north zipper BC.
+#####
+
+# Extract the sign carried by the incoming north BC. Both dispatch levels below
+# can receive either a `ZBC` (from default_auxiliary_bc or from the slab regularize
+# branch) or a `DCBC` (from the pencil regularize branch, where the sign is packed
+# inside a `ZipperHaloCommunicationRanks` alongside the MPI rank info).
+zipper_sign(bc::ZBC)  = bc.condition
+zipper_sign(bc::DCBC) = bc.condition.sign
+
+# Non-fold topologies for non-fold ranks: no override
+north_zipper_bc(topo, north_bc, loc, grid) = nothing
+
+# Reduced fields have nothing north BCs (from default_auxiliary_bc) — no override
+north_zipper_bc(::SlabFoldedTopology, ::Nothing, loc, grid) = nothing
+north_zipper_bc(::PencilFoldedTopology, ::Nothing, loc, grid) = nothing
+
+# Distributed slab fold-north rank: local Zipper BC (sign from incoming BC)
+function north_zipper_bc(::TY, north_bc, loc, grid) where TY <: SlabFoldedTopology
+    return north_fold_boundary_condition(TY)(zipper_sign(north_bc))
+end
+
+# Distributed pencil fold-north rank (y-topology is `Connected` but carries the fold via MPI):
+# wrap the sign into a `DistributedZipper` communication BC
+function north_zipper_bc(::PencilFoldedTopology, north_bc, loc, grid)
     arch = architecture(grid)
-    yrank = arch.local_index[2] - 1
+    halo_communication = ZipperHaloCommunicationRanks(zipper_sign(north_bc); from=arch.local_rank, to=arch.connectivity.north)
+    return DistributedCommunicationBoundaryCondition(halo_communication)
+end
 
-    processor_size = ranks(arch)
+#####
+##### Tripolar inject_halo_communication_boundary_conditions
+#####
 
+with_north_bc(local_bcs, ::Nothing) = local_bcs
+with_north_bc(local_bcs, north_bc) = FieldBoundaryConditions(; west=local_bcs.west,
+                                                               east=local_bcs.east,
+                                                               south=local_bcs.south,
+                                                               north=north_bc,
+                                                               top=local_bcs.top,
+                                                               bottom=local_bcs.bottom)
+
+inject_halo_communication_boundary_conditions(::Nothing, loc, grid::MPITripolarGridOfSomeKind) = nothing
+inject_halo_communication_boundary_conditions(::Missing, loc, grid::MPITripolarGridOfSomeKind) = missing
+
+function inject_halo_communication_boundary_conditions(global_bcs, loc, grid::MPITripolarGridOfSomeKind)
+    arch = architecture(grid)
+    local_bcs = inject_halo_communication_boundary_conditions(global_bcs, loc, arch.local_rank, arch.connectivity, topology(grid))
+    north_bc = north_zipper_bc(topology(grid, 2)(), global_bcs.north, loc, grid)
+    return with_north_bc(local_bcs, north_bc)
+end
+
+# Extension of the constructor for a `Field` on a distributed tripolar grid.
+# The north boundary is a zipper with a sign that depends on the location of the field
+# (revert the value of the halos if on edges, keep it if on nodes or centers).
+function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::MPITripolarGridOfSomeKind, data, global_bcs, indices::Tuple, op, status) where {LX, LY, LZ}
     indices = validate_indices(indices, loc, grid)
     validate_field_data(loc, data, grid, indices)
     validate_boundary_conditions(loc, grid, global_bcs)
-
-    if isnothing(global_bcs) || ismissing(global_bcs)
-        local_bcs = global_bcs
-    else
-        local_bcs = inject_halo_communication_boundary_conditions(global_bcs, loc, arch.local_rank, arch.connectivity, topology(grid))
-
-        if yrank == processor_size[2] - 1 && processor_size[1] == 1
-            north_bc = if !(global_bcs.north isa ZBC)
-                TY = fold_topology(grid.conformal_mapping)
-                north_fold_boundary_condition(TY)(sign(LX, LY))
-
-            else
-                global_bcs.north
-            end
-
-        elseif yrank == processor_size[2] - 1 && processor_size[1] != 1
-            sgn  = global_bcs.north isa ZBC ? global_bcs.north.condition : sign(LX, LY)
-            from = arch.local_rank
-            to   = arch.connectivity.north
-            halo_communication = ZipperHaloCommunicationRanks(sgn; from, to)
-            north_bc = DistributedCommunicationBoundaryCondition(halo_communication)
-
-        else
-            north_bc = local_bcs.north
-        end
-
-        local_bcs = FieldBoundaryConditions(; west=local_bcs.west,
-                                            east=local_bcs.east,
-                                            south=local_bcs.south,
-                                            north=north_bc,
-                                            top=local_bcs.top,
-                                            bottom=local_bcs.bottom)
-    end
-
+    local_bcs = inject_halo_communication_boundary_conditions(global_bcs, loc, grid)
     buffers = communication_buffers(grid, data, local_bcs, (LX(), LY(), LZ()))
-
     return Field{LX, LY, LZ}(grid, data, local_bcs, indices, op, status, buffers)
 end
 

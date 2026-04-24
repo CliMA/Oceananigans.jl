@@ -131,6 +131,20 @@ Keyword Arguments
     ```
     See [`FPivotZipperBoundaryCondition`](@ref) for more information on the fold.
 
+!!! info "North boundary condition"
+    The north boundary of a tripolar grid is topologically required to be a
+    [`Zipper`](@ref) fold. Supplying any other north boundary condition (other than a
+    distributed communication BC or `nothing`) raises an `ArgumentError`, as the
+    grid's halos cannot be filled consistently without a correct fold.
+
+    By default, fields named `:u` or `:v` are treated as horizontal signed vectors
+    (sign = `-1`), since they live in the horizontal plane and their sign flips when
+    rotated by 180° around the pivot. All other fields, including velocity `w`
+    (a signed vector, but vertical, so unaffected by the horizontal pivot) and all
+    scalars/tracers, use sign = `+1`. Users who need a different sign may pass an explicit
+    [`UPivotZipperBoundaryCondition`](@ref) or [`FPivotZipperBoundaryCondition`](@ref)
+    with the desired sign.
+
 
 References
 ==========
@@ -190,15 +204,18 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
                              x = (0, 1), y = (0, 1),
                              topology = (Periodic, fold_topology, Flat))
 
-    #  Place the fields on the grid
-    λFF = Field{Face, Face, Center}(grid)
-    φFF = Field{Face, Face, Center}(grid)
-    λFC = Field{Face, Center, Center}(grid)
-    φFC = Field{Face, Center, Center}(grid)
-    λCF = Field{Center, Face, Center}(grid)
-    φCF = Field{Center, Face, Center}(grid)
-    λCC = Field{Center, Center, Center}(grid)
-    φCC = Field{Center, Center, Center}(grid)
+    # Coordinate helper fields: halos are filled directly by the kernel,
+    # so no boundary conditions are needed. But we pass `nothing` BCs to
+    # skip validation, which is needed because the default north BC for a folded
+    # y-topology is not a `Zipper` and would otherwise be rejected.
+    λFF = Field{Face, Face, Center}(grid; boundary_conditions = nothing)
+    φFF = Field{Face, Face, Center}(grid; boundary_conditions = nothing)
+    λFC = Field{Face, Center, Center}(grid; boundary_conditions = nothing)
+    φFC = Field{Face, Center, Center}(grid; boundary_conditions = nothing)
+    λCF = Field{Center, Face, Center}(grid; boundary_conditions = nothing)
+    φCF = Field{Center, Face, Center}(grid; boundary_conditions = nothing)
+    λCC = Field{Center, Center, Center}(grid; boundary_conditions = nothing)
+    φCC = Field{Center, Center, Center}(grid; boundary_conditions = nothing)
 
     # Compute coordinates using the same kernel twice but with varying size,
     # as the size of λᵃᶠᵃ and φᵃᶠᵃ may vary with the fold topology.

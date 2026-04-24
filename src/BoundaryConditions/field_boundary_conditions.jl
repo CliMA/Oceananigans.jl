@@ -21,10 +21,7 @@ default_prognostic_bc(::RightConnected, ::Center, default)  = default.boundary_c
 default_prognostic_bc(::RightFaceFolded, ::Center, default) = default.boundary_condition
 default_prognostic_bc(::RightCenterFolded, ::Center, default) = default.boundary_condition
 
-const DistributedFoldTopology = Union{LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
-                                      LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected}
-
-default_prognostic_bc(::DistributedFoldTopology, ::Center, default) = default.boundary_condition
+default_prognostic_bc(::DistributedFoldedTopology, ::Center, default) = default.boundary_condition
 
 # TODO: make model constructors enforce impenetrability on velocity components to simplify this code
 default_prognostic_bc(::Bounded,        ::Face, default) = ImpenetrableBoundaryCondition()
@@ -32,7 +29,7 @@ default_prognostic_bc(::LeftConnected,  ::Face, default) = ImpenetrableBoundaryC
 default_prognostic_bc(::RightConnected, ::Face, default) = ImpenetrableBoundaryCondition()
 default_prognostic_bc(::RightFaceFolded, ::Face, default) = ImpenetrableBoundaryCondition()
 default_prognostic_bc(::RightCenterFolded, ::Face, default) = ImpenetrableBoundaryCondition()
-default_prognostic_bc(::DistributedFoldTopology, ::Face, default) = ImpenetrableBoundaryCondition()
+default_prognostic_bc(::DistributedFoldedTopology, ::Face, default) = ImpenetrableBoundaryCondition()
 
 default_prognostic_bc(::Bounded,        ::Nothing, default) = nothing
 default_prognostic_bc(::Flat,           ::Nothing, default) = nothing
@@ -42,7 +39,7 @@ default_prognostic_bc(::LeftConnected,  ::Nothing, default) = nothing
 default_prognostic_bc(::RightConnected, ::Nothing, default) = nothing
 default_prognostic_bc(::RightFaceFolded, ::Nothing, default) = nothing
 default_prognostic_bc(::RightCenterFolded, ::Nothing, default) = nothing
-default_prognostic_bc(::DistributedFoldTopology, ::Nothing, default) = nothing
+default_prognostic_bc(::DistributedFoldedTopology, ::Nothing, default) = nothing
 
 _default_auxiliary_bc(topo, loc) = default_prognostic_bc(topo, loc, DefaultBoundaryCondition())
 _default_auxiliary_bc(::Bounded, ::Face)        = nothing
@@ -50,7 +47,7 @@ _default_auxiliary_bc(::RightConnected, ::Face) = nothing
 _default_auxiliary_bc(::LeftConnected,  ::Face) = nothing
 _default_auxiliary_bc(::RightFaceFolded, ::Face) = nothing
 _default_auxiliary_bc(::RightCenterFolded, ::Face) = nothing
-_default_auxiliary_bc(::DistributedFoldTopology, ::Face) = nothing
+_default_auxiliary_bc(::DistributedFoldedTopology, ::Face) = nothing
 
 default_auxiliary_bc(grid, ::Val{:east}, loc)   = _default_auxiliary_bc(topology(grid, 1)(), loc[1])
 default_auxiliary_bc(grid, ::Val{:west}, loc)   = _default_auxiliary_bc(topology(grid, 1)(), loc[1])
