@@ -1,4 +1,4 @@
-using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, LagrangianAveraging
+using Oceananigans.TurbulenceClosures: AnisotropicMinimumDissipation, LagrangianAveraging, initialize_closure_fields!
 using Oceananigans.TimeSteppers: update_state!
 using Oceananigans.DistributedComputations: cpu_architecture, partition
 
@@ -117,11 +117,7 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
     G⁻T₀ = partition(ArrayType(G⁻₀.T)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(T))
     G⁻S₀ = partition(ArrayType(G⁻₀.S)[2:end-1, 2:end-1, 2:end-1], cpu_arch, size(S))
 
-    interior(model.velocities.u) .= u₀
-    interior(model.velocities.v) .= v₀
-    interior(model.velocities.w) .= w₀
-    interior(model.tracers.T)    .= T₀
-    interior(model.tracers.S)    .= S₀
+    set!(model, u=u₀, v=v₀, w=w₀, T=T₀, S=S₀)
 
     interior(model.timestepper.Gⁿ.u) .= Gⁿu₀
     interior(model.timestepper.Gⁿ.v) .= Gⁿv₀

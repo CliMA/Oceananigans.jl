@@ -71,16 +71,11 @@ include("regression_tests/ocean_large_eddy_simulation_regression_test.jl")
                 dyn_smag_lagrangian = (DynamicSmagorinsky(averaging=LagrangianAveraging()),)
 
                 for (closurename, closure) in [("AnisotropicMinimumDissipation", amd_closure),
-                                                ("SmagorinskyLilly", smag_closure),
-                                                ("DirectionalDynamicSmagorinsky", dyn_smag_directional),
-                                                ("LagrangianDynamicSmagorinsky", dyn_smag_lagrangian)]
-                for (closurename, closure) in [("AnisotropicMinimumDissipation", amd_closure),
                                                ("SmagorinskyLilly", smag_closure),
                                                ("DirectionalDynamicSmagorinsky", dyn_smag_directional),
                                                ("LagrangianDynamicSmagorinsky", dyn_smag_lagrangian)]
-                        @info "  Testing oceanic large eddy simulation regression [$A, $closurename, $grid_type grid]"
-                        run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closure)
-                    end
+                    @info "  Testing oceanic large eddy simulation regression [$A, $closurename, $grid_type grid]"
+                    run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closure)
                 end
             end
         end
