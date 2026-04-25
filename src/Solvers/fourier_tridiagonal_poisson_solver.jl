@@ -250,7 +250,7 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
     # of the solution), so we need to pick a constant. We choose the constant to be zero
     # so that the solution has zero-mean.
     if solver.tridiagonal_formulation isa AbstractHomogeneousNeumannFormulation
-        ϕ .= ϕ .- mean(ϕ)
+        ϕ .= ϕ .- sum(ϕ) / length(ϕ)
     end
 
     arch = architecture(solver)
