@@ -54,6 +54,8 @@ validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, ::SingleCol
 
 compute_w_from_continuity!(velocities, ::SingleColumnGrid; kwargs...) = nothing
 compute_w_from_continuity!(::PrescribedVelocityFields, ::SingleColumnGrid; kwargs...) = nothing
+# Disambiguation: DiagnosticVerticalVelocity on a 1-D column → no horizontal divergence, w stays zero
+compute_w_from_continuity!(::PrescribedVelocityFields{<:DiagnosticVerticalVelocity}, ::SingleColumnGrid; kwargs...) = nothing
 
 #####
 ##### Time-step optimizations

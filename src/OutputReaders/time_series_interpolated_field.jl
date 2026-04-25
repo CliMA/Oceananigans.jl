@@ -53,6 +53,26 @@ end
 @inline Base.getindex(f::TimeSeriesInterpolation, i, j, k) =
     @inbounds f.time_series[i, j, k, Time(f.clock.time)]
 
+# Single-dimension reduced
+@inline Base.getindex(f::TimeSeriesInterpolation{Nothing, <:Any, <:Any}, i, j, k) =
+    @inbounds f.time_series[1, j, k, Time(f.clock.time)]
+@inline Base.getindex(f::TimeSeriesInterpolation{<:Any, Nothing, <:Any}, i, j, k) =
+    @inbounds f.time_series[i, 1, k, Time(f.clock.time)]
+@inline Base.getindex(f::TimeSeriesInterpolation{<:Any, <:Any, Nothing}, i, j, k) =
+    @inbounds f.time_series[i, j, 1, Time(f.clock.time)]
+
+# Double-dimension reduced
+@inline Base.getindex(f::TimeSeriesInterpolation{<:Any, Nothing, Nothing}, i, j, k) =
+    @inbounds f.time_series[i, 1, 1, Time(f.clock.time)]
+@inline Base.getindex(f::TimeSeriesInterpolation{Nothing, <:Any, Nothing}, i, j, k) =
+    @inbounds f.time_series[1, j, 1, Time(f.clock.time)]
+@inline Base.getindex(f::TimeSeriesInterpolation{Nothing, Nothing, <:Any}, i, j, k) =
+    @inbounds f.time_series[1, 1, k, Time(f.clock.time)]
+
+# Triple-dimension reduced
+@inline Base.getindex(f::TimeSeriesInterpolation{Nothing, Nothing, Nothing}, i, j, k) =
+    @inbounds f.time_series[1, 1, 1, Time(f.clock.time)]
+
 #####
 ##### GPU adaptation
 #####
@@ -71,6 +91,26 @@ end
 
 @inline Base.getindex(f::GPUAdaptedTimeSeriesInterpolation, i, j, k) =
     @inbounds f.time_series[i, j, k, Time(f.time)]
+
+# Single-dimension reduced
+@inline Base.getindex(f::GPUAdaptedTimeSeriesInterpolation{Nothing, <:Any, <:Any}, i, j, k) =
+    @inbounds f.time_series[1, j, k, Time(f.time)]
+@inline Base.getindex(f::GPUAdaptedTimeSeriesInterpolation{<:Any, Nothing, <:Any}, i, j, k) =
+    @inbounds f.time_series[i, 1, k, Time(f.time)]
+@inline Base.getindex(f::GPUAdaptedTimeSeriesInterpolation{<:Any, <:Any, Nothing}, i, j, k) =
+    @inbounds f.time_series[i, j, 1, Time(f.time)]
+
+# Double-dimension reduced
+@inline Base.getindex(f::GPUAdaptedTimeSeriesInterpolation{<:Any, Nothing, Nothing}, i, j, k) =
+    @inbounds f.time_series[i, 1, 1, Time(f.time)]
+@inline Base.getindex(f::GPUAdaptedTimeSeriesInterpolation{Nothing, <:Any, Nothing}, i, j, k) =
+    @inbounds f.time_series[1, j, 1, Time(f.time)]
+@inline Base.getindex(f::GPUAdaptedTimeSeriesInterpolation{Nothing, Nothing, <:Any}, i, j, k) =
+    @inbounds f.time_series[1, 1, k, Time(f.time)]
+
+# Triple-dimension reduced
+@inline Base.getindex(f::GPUAdaptedTimeSeriesInterpolation{Nothing, Nothing, Nothing}, i, j, k) =
+    @inbounds f.time_series[1, 1, 1, Time(f.time)]
 
 function Adapt.adapt_structure(to, f::TimeSeriesInterpolation{LX, LY, LZ}) where {LX, LY, LZ}
     adapted_time_series = Adapt.adapt(to, f.time_series)
