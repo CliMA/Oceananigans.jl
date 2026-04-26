@@ -44,8 +44,8 @@ The state `U` after each substep `m` is equivalent to an Euler step with a modif
 
 where `Uᵐ` is the state at the ``m``-th substep, `Uⁿ` is the state at the ``n``-th timestep,
 `Gᵐ` is the tendency at the ``m``-th substep. The coefficients `β` can be specified by the user,
-and default to `(3, 2, 1)` for a three-stage scheme. The number of stages is inferred from the length of the
-`β` tuple.
+and default to `(3, 2, 1)` for a three-stage scheme. The number of stages is inferred from the
+    length of the `β` tuple.
 
 The state at the first substep is taken to be the one that corresponds to the ``n``-th timestep,
 `U¹ = Uⁿ`, and the state after the last substep is then the state at `Uⁿ⁺¹`.
@@ -66,13 +66,15 @@ function SplitRungeKuttaTimeStepper(grid, prognostic_fields, args...;
                                     Ψ⁻::PF = map(similar, prognostic_fields),
                                     kwargs...) where {TI, TG, PF}
 
-    return SplitRungeKuttaTimeStepper{typeof(coefficients), TG, PF, TI}(length(coefficients), coefficients, Gⁿ, Ψ⁻, implicit_solver)
+    Nstages = length(coefficients)
+    B = typeof(coefficients)
+    return SplitRungeKuttaTimeStepper{B, TG, PF, TI}(Nstages, coefficients, Gⁿ, Ψ⁻, implicit_solver)
 end
 
 """
     SplitRungeKuttaTimeStepper(; coefficients=nothing, stages=3)
 
-Construct a `SplitRungeKuttaTimeStepper` by specifying either `coefficients` or `stages`.
+Construct a `SplitRungeKuttaTimeStepper` by specifying either `coefficients` or number of `stages`.
 
 This simplified constructor creates a "template" time stepper without tendency or state fields,
 useful for passing to model constructors which will then build the full time stepper.
@@ -92,7 +94,7 @@ using Oceananigans.TimeSteppers
 ts = SplitRungeKuttaTimeStepper(stages=3)
 
 # Create a 4-stage time stepper with custom coefficients
-ts = SplitRungeKuttaTimeStepper(coefficients=(4, 3, 2, 1))
+ts = SplitRungeKuttaTimeStepper(coefficients=(2, 3, 4, 1))
 ```
 """
 function SplitRungeKuttaTimeStepper(; coefficients = nothing, stages = 3)
@@ -191,7 +193,7 @@ end
 #####
 
 """
-    rk_substep!(model::AbstractModel, Δt, callbacks)
+    rk_substep!(model::AbstractModel, Δτ, callbacks)
 
 Perform a single Runge-Kutta substep, advancing the model state by `Δτ`.
 
@@ -203,7 +205,7 @@ The implementation should:
 2. Advance prognostic fields: `U = U⁰ + Δτ * G` (where `U⁰` is the cached initial state)
 3. Apply any necessary corrections (e.g., pressure correction for incompressibility)
 """
-rk_substep!(model::AbstractModel, Δt, callbacks) = error("rk_substep! not implemented for $(typeof(model))")
+rk_substep!(model::AbstractModel, Δτ, callbacks) = error("rk_substep! not implemented for $(typeof(model))")
 
 """
     cache_current_fields!(model::AbstractModel)
