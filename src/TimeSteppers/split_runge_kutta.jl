@@ -27,11 +27,12 @@ end
                                Ψ⁻::PF = map(similar, prognostic_fields),
                                kwargs...) where {TI, TG, PF}
 
-Return a nth-order `SplitRungeKuttaTimeStepper` on `grid` and with `tracers`.
-The tendency fields `Gⁿ`, and the previous state `Ψ⁻` can be modified via optional `kwargs`.
+Return an ``n``th-order `SplitRungeKuttaTimeStepper` on `grid` and with `tracers`.
+The tendency fields `Gⁿ` and the previous state `Ψ⁻` can be modified via optional `kwargs`.
 
-The scheme is described by [Wicker and Skamarock (2002)](@cite WickerSkamarock2002). In a nutshell,
-the nth-order low-storage Runge-Kutta timestepper steps forward the state `Uⁿ` by `Δt` via n substeps.
+The scheme is described by [Wicker and Skamarock (2002)](@cite WickerSkamarock2002).
+In a nutshell, the ``n``th-order low-storage Runge-Kutta timestepper steps forward the state
+`Uⁿ` by `Δt` via ``n`` substeps.
 A barotropic velocity correction step is applied after at each substep.
 
 The state `U` after each substep `m` is equivalent to an Euler step with a modified time step:
