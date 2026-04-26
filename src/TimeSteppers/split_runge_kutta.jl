@@ -30,7 +30,9 @@ end
 Return an ``n``th-order `SplitRungeKuttaTimeStepper` on `grid` and with `tracers`.
 The tendency fields `Gⁿ` and the previous state `Ψ⁻` can be modified via optional `kwargs`.
 
-The scheme is described by [Wicker and Skamarock (2002)](@cite WickerSkamarock2002).
+The scheme is described by [Wicker and Skamarock (2002)](@cite WickerSkamarock2002); see also
+[Silvestri et al. (2026)](@cite Silvestri2026RK3).
+
 In a nutshell, the ``n``th-order low-storage Runge-Kutta timestepper steps forward the state
 `Uⁿ` by `Δt` via ``n`` substeps.
 A barotropic velocity correction step is applied after at each substep.
@@ -51,8 +53,11 @@ The state at the first substep is taken to be the one that corresponds to the ``
 References
 ==========
 
-Wicker, Louis J. & Skamarock, William C. (2002). Time-Splitting Methods for Elastic Models
+* Wicker, Louis J. & Skamarock, William C. (2002). Time-Splitting Methods for Elastic Models
     Using Forward Time Schemes. Monthly Weather Review, 130(8), 2088–2097.
+* Silvestri, S., Campin, J.-M., Wagner, G. L., Constantinou, N. C., Lee, X. K., and
+    Ferrari, R. (2026). A low-storage Runge-Kutta framework for nonlinear free-surface ocean models.
+    J. Adv. Model. Earth Sy. (submitted on Apr 2026; doi:<https://doi.org/10.22541/essoar.15002225/v1>)
 """
 function SplitRungeKuttaTimeStepper(grid, prognostic_fields, args...;
                                     implicit_solver::TI = nothing,
