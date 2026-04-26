@@ -101,7 +101,7 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
 * **Silvestri et al. (2026), ["A low-storage Runge-Kutta framework for nonlinear free-surface ocean models"](https://doi.org/10.22541/essoar.15002225/v1).**
 
-  *This paper describes the development of an Runge-Kutta timetepping scheme for the `HydrostaticFreeSurfaceModel`.*
+  *This paper describes the development of a Runge-Kutta timestepping scheme for the `HydrostaticFreeSurfaceModel`.*
 
 * **Moses et al. (2025), ["DJ4Earth: Differentiable, and performance-portable Earth System Modeling via program transformations"](https://doi.org/10.22541/essoar.176314951.18114616/v1).**
 
