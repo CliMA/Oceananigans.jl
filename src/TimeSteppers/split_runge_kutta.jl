@@ -79,7 +79,9 @@ Keyword Arguments
 
 Example
 =======
-```julia
+```@example
+using Oceananigans.TimeSteppers
+
 # Create a 3-stage time stepper with default coefficients (3, 2, 1)
 ts = SplitRungeKuttaTimeStepper(stages=3)
 
