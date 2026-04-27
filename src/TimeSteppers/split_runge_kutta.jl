@@ -87,7 +87,7 @@ Keyword Arguments
 
 Example
 =======
-```@example
+```@repl
 using Oceananigans.TimeSteppers
 
 # Create a 3-stage time stepper with default coefficients (3, 2, 1)
