@@ -140,14 +140,15 @@ end
 
 Step forward `model` one time step `Δt` using the split Runge-Kutta method.
 
-The split Runge-Kutta scheme advances the model state through `n` substeps (where `n = model.timestepper.Nstages`).
-At the beginning of the time step, the current prognostic fields are cached. Then, for each stage `m`:
+The split Runge-Kutta scheme advances the model state through `n` substeps, where
+`n = model.timestepper.Nstages`. At the beginning of the time step, the current prognostic
+fields are cached. Then, for each stage `m`:
 
-1. Compute the substep time increment: `Δτ = Δt / βᵐ`
+1. Compute the `m`-th substep time increment: `Δτ = Δt / βᵐ` (where `β = model.timestepper.β`)
 2. Advance the state: `Uᵐ⁺¹ = U⁰ + Δτ * Gᵐ` (where `U⁰` is the cached initial state)
-3. Update the model state (fill halos, compute diagnostics, etc.)
+3. Update the `model` state (fill halos, compute diagnostics, etc.)
 
-After all substeps, Lagrangian particles are stepped and the clock is advanced.
+After all substeps, Lagrangian particles are stepped and the `model.clock`s is advanced.
 """
 function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; callbacks=[])
 
