@@ -1,8 +1,5 @@
-using Oceananigans.Architectures: child_architecture
-using Oceananigans.Fields: instantiated_location
 using Oceananigans.BoundaryConditions: DistributedFillHalo, WestAndEast, SouthAndNorth,
-                                       West, East, South, North, BottomAndTop, Bottom, Top,
-                                       get_boundary_kernels
+                                       West, East, South, North, BottomAndTop, Bottom, Top
 
 import Oceananigans.Utils: sync_device!
 import Oceananigans.DistributedComputations: synchronize_communication!
@@ -17,8 +14,6 @@ struct NCCLCommunicator{NC, MC, CS, EV}
     comm_stream :: CS   # Dedicated CUDA stream for async NCCL ops
     sync_event  :: EV   # CUDA event for cross-stream synchronization
 end
-
-NCCLCommunicator(nccl, mpi) = NCCLCommunicator(nccl, mpi, nothing, nothing)
 
 # Forward MPI operations to the inner MPI comm
 MPI.Comm_rank(c::NCCLCommunicator) = MPI.Comm_rank(c.mpi)
@@ -65,24 +60,16 @@ function NCCLDistributed(child_arch = GPU(); partition = nothing, kwargs...)
                           mpi_arch.devices)
 end
 
-#####
-##### sync_device! no-op for NCCL (stream-native)
-#####
-
-# No-op: NCCL is stream-native, sync handled by events
-# in the DistributedFFTBasedPoissonSolver's halo fills. Need to investigate which
-# specific sync point is required.
+# NCCL is stream-native; sync is handled via CUDA events on comm_stream.
 sync_device!(::NCCLDistributedArchitecture) = nothing
 
 #####
 ##### distributed_fill_halo_event! for NCCLDistributedGrid
 #####
-##### Extends the base method (dispatches on more specific NCCLDistributedGrid).
-#####
-##### Sync mode (async=false):  pack → NCCL on default stream → unpack
-##### Async mode (async=true):  pack → NCCL on comm_stream → return (defer unpack)
+##### Sync mode (async=false):  pack → NCCL on comm_stream → wait → unpack
+##### Async mode (async=true):  pack → NCCL on comm_stream → defer unpack
 #####   Interior computation proceeds on default stream while NCCL transfers on comm_stream.
-#####   synchronize_communication!() later waits for comm_stream and unpacks.
+#####   synchronize_communication! later waits for comm_stream and unpacks.
 #####
 
 # Storage for pending async unpacks: (data, buffers, grid, side) tuples
@@ -100,44 +87,27 @@ function DC.distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, l
     nccl_comm = communicator.nccl
     buffer_side = kernel!.side
 
-    # Pack send buffers (GPU broadcast kernel)
+    # Pack send buffers, then make comm_stream wait for the pack to complete.
     DC.fill_send_buffers!(c, buffers, grid, buffer_side)
+    CUDA.record(communicator.sync_event)
+    CUDA.cuStreamWaitEvent(communicator.comm_stream, communicator.sync_event, UInt32(0))
 
-    if async && communicator.comm_stream !== nothing
-        # Async: NCCL on comm_stream, defer unpack
-        CUDA.record(communicator.sync_event)
-        CUDA.cuStreamWaitEvent(communicator.comm_stream, communicator.sync_event, UInt32(0))
+    NCCL.groupStart()
+    enqueue_nccl_send_recv!(kernel!, bcs, nccl_comm, buffers; stream=communicator.comm_stream)
+    NCCL.groupEnd()
 
-        NCCL.groupStart()
-        enqueue_nccl_send_recv!(kernel!, bcs, nccl_comm, buffers; stream=communicator.comm_stream)
-        NCCL.groupEnd()
+    CUDA.record(communicator.sync_event, communicator.comm_stream)
 
-        CUDA.record(communicator.sync_event, communicator.comm_stream)
+    if async
         lock(pending_unpacks_lock) do
             push!(pending_unpacks, (; c, buffers, grid, side=buffer_side))
         end
         return nothing
     end
 
-    # Sync with comm_stream
-    if communicator.comm_stream !== nothing
-        CUDA.record(communicator.sync_event)
-        CUDA.cuStreamWaitEvent(communicator.comm_stream, communicator.sync_event, UInt32(0))
-
-        NCCL.groupStart()
-        enqueue_nccl_send_recv!(kernel!, bcs, nccl_comm, buffers; stream=communicator.comm_stream)
-        NCCL.groupEnd()
-
-        CUDA.record(communicator.sync_event, communicator.comm_stream)
-        CUDA.cuStreamWaitEvent(CUDA.stream(), communicator.sync_event, UInt32(0))
-    else
-        NCCL.groupStart()
-        enqueue_nccl_send_recv!(kernel!, bcs, nccl_comm, buffers)
-        NCCL.groupEnd()
-    end
-
+    # Sync: have the default stream wait for comm_stream, then unpack.
+    CUDA.cuStreamWaitEvent(CUDA.stream(), communicator.sync_event, UInt32(0))
     DC.recv_from_buffers!(c, buffers, grid, buffer_side)
-
     return nothing
 end
 
@@ -151,9 +121,7 @@ function synchronize_communication!(field::NCCLDistributedField)
     lock(pending_unpacks_lock) do
         if !isempty(pending_unpacks)
             arch = DC.architecture(field.grid)
-            # Make default stream wait for comm_stream completion
             CUDA.cuStreamWaitEvent(CUDA.stream(), arch.communicator.sync_event, UInt32(0))
-
             for pending in pending_unpacks
                 DC.recv_from_buffers!(pending.c, pending.buffers, pending.grid, pending.side)
             end
@@ -168,7 +136,7 @@ end
 #####
 
 function DC.fill_corners!(c, connectivity, indices, loc, arch::NCCLDistributedArchitecture,
-                          grid, buffers, args...; async=false, only_local_halos=false, kw...)
+                          grid, buffers, args...; only_local_halos=false, kw...)
     only_local_halos && return nothing
 
     isnothing(connectivity.southwest) && isnothing(connectivity.southeast) &&
@@ -197,21 +165,6 @@ function nccl_corner_send_recv!(nccl_comm, corner_rank, buffers)
     NCCL.Recv!(buffers.recv, nccl_comm; source=corner_rank)
     return nothing
 end
-
-#####
-##### Batched multi-field halo fill (synchronous only)
-#####
-##### For single-field fill_halo_regions! calls (like pressure), batch
-##### all sides into one NCCL group. For multi-field async calls from
-##### update_state!, the base code iterates per-field through our
-##### distributed_fill_halo_event! which handles async properly.
-#####
-
-# No custom fill_halo_regions! for NCCLDistributedField.
-# The base Field method dispatches through distributed_fill_halo_event!
-# which is overridden for NCCLDistributedGrid above.
-
-
 
 #####
 ##### Enqueue NCCL Send/Recv (called inside groupStart/groupEnd)
@@ -247,25 +200,3 @@ end
 enqueue_nccl_send_recv!(::DistributedFillHalo{<:BottomAndTop}, args...; kw...) = nothing
 enqueue_nccl_send_recv!(::DistributedFillHalo{<:Bottom}, args...; kw...) = nothing
 enqueue_nccl_send_recv!(::DistributedFillHalo{<:Top}, args...; kw...) = nothing
-
-#####
-##### CPU-staged MPI transpose fallback
-#####
-# For non-NCCL distributed grids with CuArray buffers.
-# NCCL distributed grids use nccl_transpose.jl which dispatches on NCCLDistributedArchitecture.
-
-import Oceananigans.DistributedComputations: alltoall_transpose!
-
-function alltoall_transpose!(buffer::NamedTuple{(:send, :recv), <:Tuple{<:CuArray, <:CuArray}}, counts, comm::MPI.Comm)
-    send_cpu = Array(buffer.send)
-    recv_cpu = similar(send_cpu, length(buffer.recv))
-    if all(c -> c == counts[1], counts)
-        MPI.Alltoall!(MPI.UBuffer(send_cpu, counts[1]),
-                      MPI.UBuffer(recv_cpu, counts[1]), comm)
-    else
-        MPI.Alltoallv!(MPI.VBuffer(send_cpu, counts),
-                       MPI.VBuffer(recv_cpu, counts), comm)
-    end
-    copyto!(buffer.recv, recv_cpu)
-    return nothing
-end

@@ -6,7 +6,7 @@ using MPI: VBuffer, Alltoallv!, Alltoall!, UBuffer
 # Default: direct MPI Alltoall on GPU buffers (requires GPU-aware MPI).
 # Extensions (e.g., NCCL) can override for non-GPU-aware MPI.
 function alltoall_transpose!(buffer, counts, comm)
-    if all(c -> c == counts[1], counts)
+    if allequal(counts)
         Alltoall!(UBuffer(buffer.send, counts[1]),
                   UBuffer(buffer.recv, counts[1]),
                   comm)

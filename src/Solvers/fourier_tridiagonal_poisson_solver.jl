@@ -250,6 +250,8 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
     # of the solution), so we need to pick a constant. We choose the constant to be zero
     # so that the solution has zero-mean.
     if solver.tridiagonal_formulation isa AbstractHomogeneousNeumannFormulation
+        # Equivalent to `ϕ .-= mean(ϕ)`. Spelled out as `sum/length` because
+        # `mean` on a `CuArray{ComplexF32}` crashes on CUDA 13.
         ϕ .= ϕ .- sum(ϕ) / length(ϕ)
     end
 
