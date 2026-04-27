@@ -28,7 +28,6 @@ end
                                kwargs...) where {TI, TG, PF}
 
 Return an ``n``th-order `SplitRungeKuttaTimeStepper` on `grid` and with `tracers`.
-The tendency fields `Gⁿ` and the previous state `Ψ⁻` can be modified via optional `kwargs`.
 
 The scheme is described by [Wicker and Skamarock (2002)](@cite WickerSkamarock2002); see also
 [Silvestri et al. (2026)](@cite Silvestri2026RK3).
