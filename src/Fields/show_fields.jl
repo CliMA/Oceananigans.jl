@@ -1,6 +1,7 @@
 using Oceananigans.Grids: grid_name, size_summary
 using Oceananigans.BoundaryConditions: bc_str
 using Statistics: mean
+using LinearAlgebra: LinearAlgebra
 
 location_str(::Type{Face})    = "Face"
 location_str(::Type{Center})  = "Center"
@@ -111,3 +112,10 @@ function Base.show(io::IO, ft::NamedFieldTuple)
         print(io, "    └── grid: ", summary(field.grid))
     end
 end
+
+Base.similar(Φ::NamedFieldTuple) = map(similar, Φ)
+
+LinearAlgebra.norm(Φ::NamedFieldTuple) = sqrt(sum(LinearAlgebra.norm(ϕ)^2 for ϕ in Φ))
+
+LinearAlgebra.dot(Φ::NamedFieldTuple, Ψ::NamedFieldTuple) =
+    sum(LinearAlgebra.dot(ϕ, ψ) for (ϕ, ψ) in zip(values(Φ), values(Ψ)))

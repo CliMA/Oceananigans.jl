@@ -28,6 +28,20 @@ function set!(Φ::NamedTuple; kwargs...)
     return nothing
 end
 
+function set!(Φ::NamedFieldTuple, a::Number)
+    for ϕ in Φ
+        set!(ϕ, a)
+    end
+    return Φ
+end
+
+function set!(dst::NamedFieldTuple, src::NamedFieldTuple)
+    for name in keys(dst)
+        set!(dst[name], src[name])
+    end
+    return dst
+end
+
 # This interface helps us do things like set distributed fields
 set!(u::Field, f::Function) = set_to_function!(u, f)
 set!(u::Field, a::Union{Array, OffsetArray}) = set_to_array!(u, a)
