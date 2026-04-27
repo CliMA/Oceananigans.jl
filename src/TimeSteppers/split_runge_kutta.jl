@@ -39,8 +39,8 @@ A barotropic velocity correction step is applied after at each substep.
 
 The state `U` after each substep `m` is equivalent to an Euler step with a modified time step:
 
-    Δt̃   = Δt / βᵐ
-    Uᵐ⁺¹ = Uⁿ + Δt̃ * Gᵐ
+    Δτ   = Δt / βᵐ
+    Uᵐ⁺¹ = Uⁿ + Δτ * Gᵐ
 
 where `Uᵐ` is the state at the ``m``-th substep, `Uⁿ` is the state at the ``n``-th timestep,
 `Gᵐ` is the tendency at the ``m``-th substep. The coefficients `β` can be specified by the user,
