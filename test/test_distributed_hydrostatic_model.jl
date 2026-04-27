@@ -168,6 +168,7 @@ for arch in archs
                                                    radius = 10,
                                                    topology = (Bounded, Bounded, Bounded))
 
+                cpu_arch = cpu_architecture(arch)
                 catke_global_grid = reconstruct_global_grid(catke_grid)
 
                 @root @info "  Testing CATKE with $(ranks(arch)) ranks"
