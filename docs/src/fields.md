@@ -573,37 +573,26 @@ For example, suppose we want to compute and store the vertical vorticity
 u = XFaceField(grid)
 v = YFaceField(grid)
 
+set!(u, (x, y, z) -> x * y^2)
+set!(v, (x, y, z) -> x^2 * y)
+
 ωₛ = Field(∂x(v) - ∂y(u), indices=(:, :, grid.Nz))
 
 # output
-4×5×1 Field{Face, Face, Center} on RectilinearGrid on CPU
-├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+4×4×1 Field{Face, Face, Center} on RectilinearGrid on CPU
+├── grid: 4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: Nothing
 ├── indices: (:, :, 4:4)
 ├── operand: BinaryOperation at (Face, Face, Center)
 ├── status: time=0.0
-└── data: 6×7×1 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 4:4) with eltype Float64 with indices 0:5×0:6×4:4
-    └── max=0.0, min=0.0, mean=0.0
+└── data: 6×6×1 OffsetArray(::Array{Float64, 3}, 0:5, 0:5, 4:4) with eltype Float64 with indices 0:5×0:5×4:4
+    └── max=0.046875, min=-0.046875, mean=0.0
 ```
 
-Computing `ωₛ` with `compute!` evaluates the expression `∂x(v) - ∂y(u)` and
-stores the result _only_ at the surface slice:
-
-```jldoctest fields
-compute!(ωₛ)
-
-# output
-4×5×1 Field{Face, Face, Center} on RectilinearGrid on CPU
-├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
-├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: Nothing
-├── indices: (:, :, 4:4)
-├── operand: BinaryOperation at (Face, Face, Center)
-├── status: time=0.0
-└── data: 6×7×1 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 4:4) with eltype Float64 with indices 0:5×0:6×4:4
-    └── max=0.0, min=0.0, mean=0.0
-```
+Note that `ωₛ` is already computed, that is, [`compute!`](@ref) has been called upon
+construction, the expression `∂x(v) - ∂y(u)` has been evaluated and the result is
+stored _only_ at the surface slice.
 
 This is useful both to save memory (only one vertical level is allocated)
 and for output: reduced fields can be passed directly to an `OutputWriter`
