@@ -48,7 +48,7 @@ and default to `(3, 2, 1)` for a three-stage scheme. The number of stages is inf
     length of the `β` tuple.
 
 The state at the first substep is taken to be the one that corresponds to the ``n``-th timestep,
-`U¹ = Uⁿ`, and the state after the last substep is then the state at `Uⁿ⁺¹`.
+`U⁰ = Uⁿ`, and the state after the last substep is then the state at `Uⁿ⁺¹`.
 
 References
 ==========
