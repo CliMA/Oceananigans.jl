@@ -1,12 +1,14 @@
 using Dates: unix2datetime
 
-using Oceananigans.OutputWriters: WindowedTimeAverage
+using Oceananigans: AbstractModel, run_diagnostic!, restore_prognostic_state!
+using Oceananigans.Architectures: architecture
+using Oceananigans.Diagnostics: nan_detected
+using Oceananigans.DistributedComputations: all_reduce
+using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_path, load_checkpoint_state
 using Oceananigans.TimeSteppers: update_state!, unit_time
 
-using Oceananigans: AbstractModel, run_diagnostic!, restore_prognostic_state!
-using Oceananigans.OutputWriters: checkpoint_path, load_checkpoint_state
-
 import Oceananigans: initialize!
+import Oceananigans.Diagnostics: reset_nan_checker!
 import Oceananigans.Fields: set!
 import Oceananigans.TimeSteppers: time_step!
 import Oceananigans.Utils: schedule_aligned_time_step
@@ -168,17 +170,41 @@ function run!(sim; pickup=false, checkpoint_at_end=false)
     sim.initialized = false
     sim.running = true
     sim.run_wall_time = 0.0
+    reset_nan_checker!(sim)
 
     while sim.running
         time_step!(sim)
     end
 
-    checkpoint_at_end && checkpoint(sim)
+    if checkpoint_at_end
+        if nan_checker_detected_nan(sim)
+            @info "NaNs were detected during this run. Skipping end-of-run checkpoint despite checkpoint_at_end=true."
+        else
+            checkpoint(sim)
+        end
+    end
 
     for callback in values(sim.callbacks)
         finalize!(callback, sim)
     end
 
+    return nothing
+end
+
+nan_checker(sim::Simulation) = get(sim.callbacks, :nan_checker, nothing)
+
+function nan_checker_detected_nan(sim::Simulation)
+    cb = nan_checker(sim)
+    local_nan_detected = !isnothing(cb) && nan_detected(cb.func)
+    # Reduce per-rank NaN flags so this is true when any rank detected a NaN.
+    global_nan_detected = all_reduce(max, Int(local_nan_detected), architecture(sim.model)) == 1
+    return global_nan_detected
+end
+
+function reset_nan_checker!(sim::Simulation)
+    cb = nan_checker(sim)
+    isnothing(cb) && return nothing
+    reset_nan_checker!(cb.func)
     return nothing
 end
 
