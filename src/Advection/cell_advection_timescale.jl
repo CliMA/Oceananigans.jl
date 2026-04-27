@@ -1,4 +1,5 @@
 using Oceananigans.AbstractOperations: KernelFunctionOperation
+using Oceananigans.Operators: Δz⁻¹ᶜᶜᶠ
 
 """
     cell_advection_timescale(grid, velocities)

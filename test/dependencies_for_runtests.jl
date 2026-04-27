@@ -90,3 +90,9 @@ already_included[] = true
 
 float_types = (Float32, Float64)
 archs = test_architectures()
+
+# We need to Mock a grid since it provides an architecture for advection materialization
+struct MockGrid{A <: AbstractArchitecture}
+    arch::A
+end
+Oceananigans.Grids.architecture(a::MockGrid) = a.arch

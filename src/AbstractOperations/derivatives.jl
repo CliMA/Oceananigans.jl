@@ -1,5 +1,11 @@
 using Oceananigans.Operators: Operators, interpolation_code
 
+"""
+    Derivative{LX, LY, LZ}(∂, arg, ▶, grid)
+
+Return an abstract representation of the derivative `∂` on `arg`,
+and subsequent interpolation by `▶` on `grid`.
+"""
 struct Derivative{LX, LY, LZ, D, A, IN, AD, G, T} <: AbstractOperation{LX, LY, LZ, G, T}
                ∂ :: D
              arg :: A
@@ -7,12 +13,6 @@ struct Derivative{LX, LY, LZ, D, A, IN, AD, G, T} <: AbstractOperation{LX, LY, L
       abstract_∂ :: AD
             grid :: G
 
-    @doc """
-        Derivative{LX, LY, LZ}(∂, arg, ▶, grid)
-
-    Return an abstract representation of the derivative `∂` on `arg`,
-    and subsequent interpolation by `▶` on `grid`.
-    """
     function Derivative{LX, LY, LZ}(∂::D, arg::A, ▶::IN, abstract_∂::AD,
                                     grid::G) where {LX, LY, LZ, D, A, IN, AD, G}
         T = eltype(grid)
