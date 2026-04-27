@@ -595,5 +595,5 @@ construction, the expression `∂x(v) - ∂y(u)` has been evaluated and the resu
 stored _only_ at the surface slice.
 
 This is useful both to save memory (only one vertical level is allocated)
-and for output: reduced fields can be passed directly to an `OutputWriter`
+and for output: reduced fields can be passed directly to an [`OutputWriter`](@ref output_writers)
 so that only the desired slice is saved to disk.
