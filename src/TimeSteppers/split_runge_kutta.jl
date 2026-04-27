@@ -85,19 +85,24 @@ Keyword Arguments
 - `stages`: Number of stages `n`. If provided, coefficients default to `(n, n-1, ..., 1)`.
             if `coefficients` is specified, this keyword argument is ignored.
 
-Example
-=======
-```jldoctest
+Examples
+========
+
+Create a 3-stage time stepper with default coefficients (3, 2, 1)
+
+```jldoctest timesteppers
 julia> using Oceananigans.TimeSteppers
 
-# Create a 3-stage time stepper with default coefficients (3, 2, 1)
 julia> ts = SplitRungeKuttaTimeStepper(stages=3)
 SplitRungeKuttaTimeStepper
 ├── stages: 3
 ├── β: (3, 2, 1)
 └── implicit_solver: nothing
+```
 
-# Create a 4-stage time stepper with custom coefficients
+Create a 4-stage time stepper with custom coefficients
+
+```jldoctest timesteppers
 julia> ts = SplitRungeKuttaTimeStepper(coefficients=(2, 3, 4, 1))
 SplitRungeKuttaTimeStepper
 ├── stages: 4
