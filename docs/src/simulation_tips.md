@@ -102,7 +102,7 @@ always work on CPUs, but when their complexity is high (in terms of number of ab
 the compiler can't translate them into GPU code and they fail for GPU runs. (This limitation is summarized
 in [this Github issue](https://github.com/CliMA/Oceananigans.jl/issues/1886) and contributions are welcome.)
 For example, in the example below, calculating `u²` works in both CPUs and GPUs, but calculating
-`ε` will not compile on GPUs when its being computed (e.g. via [`compute!`](@ref)):
+`ε` will not compile on GPUs when being computed (e.g. via [`compute!`](@ref)):
 
 ```julia
 using Oceananigans
