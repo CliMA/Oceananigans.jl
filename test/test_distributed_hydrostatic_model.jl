@@ -181,8 +181,6 @@ for arch in archs
                 cs = interior(on_architecture(CPU(), ms.tracers.c))
                 ηs = interior(on_architecture(CPU(), ms.free_surface.displacement))
 
-                cpu_arch = cpu_architecture(synchronized_arch)
-
                 up = interior(on_architecture(cpu_arch, mp.velocities.u))
                 vp = interior(on_architecture(cpu_arch, mp.velocities.v))
                 cp = interior(on_architecture(cpu_arch, mp.tracers.c))
