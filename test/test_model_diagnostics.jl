@@ -129,7 +129,7 @@ damping(x, y, z, t, c, τ) = - c / τ
 
         set!(model, c=1)
         c_forcing_field = ForcingField(:c, model)
-        compute!(c_forcing_field)
+
         @test c_forcing_field isa Field
         @test all(interior(c_forcing_field) .== - 1/60)
     end
