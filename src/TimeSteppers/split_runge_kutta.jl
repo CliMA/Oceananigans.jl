@@ -87,14 +87,22 @@ Keyword Arguments
 
 Example
 =======
-```@repl
-using Oceananigans.TimeSteppers
+```jldoctest
+julia> using Oceananigans.TimeSteppers
 
 # Create a 3-stage time stepper with default coefficients (3, 2, 1)
-ts = SplitRungeKuttaTimeStepper(stages=3)
+julia> ts = SplitRungeKuttaTimeStepper(stages=3)
+SplitRungeKuttaTimeStepper
+├── stages: 3
+├── β: (3, 2, 1)
+└── implicit_solver: nothing
 
 # Create a 4-stage time stepper with custom coefficients
-ts = SplitRungeKuttaTimeStepper(coefficients=(2, 3, 4, 1))
+julia> ts = SplitRungeKuttaTimeStepper(coefficients=(2, 3, 4, 1))
+SplitRungeKuttaTimeStepper
+├── stages: 4
+├── β: (2, 3, 4, 1)
+└── implicit_solver: nothing
 ```
 """
 function SplitRungeKuttaTimeStepper(; coefficients = nothing, stages = 3)
