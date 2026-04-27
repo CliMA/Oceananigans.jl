@@ -573,8 +573,8 @@ For example, suppose we want to compute and store the vertical vorticity
 u = XFaceField(grid)
 v = YFaceField(grid)
 
-set!(u, (x, y, z) -> x * y^2)
-set!(v, (x, y, z) -> x^2 * y)
+set!(u, (x, y, z) -> x * y^2) # set u to something non-trivial
+set!(v, (x, y, z) -> x^2 * y) # set v to something non-trivial
 
 ωₛ = Field(∂x(v) - ∂y(u), indices=(:, :, grid.Nz))
 
