@@ -454,7 +454,7 @@ end
 ####
 
 # Use the trig identity sin(φ+Δ/2) - sin(φ-Δ/2) = 2 cos(φ) sin(Δ/2), which is exact and
-# only reads φᵃᶜᵃ[j] / φᵃᶠᵃ[j] plus the Flat-safe Δφᵃᶜᵃ / Δφᵃᶠᵃ operators (no [j±1]).
+# only reads φᵃᶜᵃ[j] / φᵃᶠᵃ[j] plus the Flat-safe Δφᵃᶜᵃ / Δφᵃᶠᵃ operators (no φ[j±1]).
 @inline Azᶠᶜᵃ(i, j, k, grid::LLGF)  = @inbounds grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ[i]) * 2 * hack_cosd(grid.φᵃᶜᵃ[j]) * hack_sind(Δφᵃᶜᵃ(i, j, k, grid) / 2)
 @inline Azᶜᶠᵃ(i, j, k, grid::LLGF)  = @inbounds grid.radius^2 * deg2rad(grid.Δλᶜᵃᵃ[i]) * 2 * hack_cosd(grid.φᵃᶠᵃ[j]) * hack_sind(Δφᵃᶠᵃ(i, j, k, grid) / 2)
 @inline Azᶠᶠᵃ(i, j, k, grid::LLGF)  = @inbounds grid.radius^2 * deg2rad(grid.Δλᶠᵃᵃ[i]) * 2 * hack_cosd(grid.φᵃᶠᵃ[j]) * hack_sind(Δφᵃᶠᵃ(i, j, k, grid) / 2)
