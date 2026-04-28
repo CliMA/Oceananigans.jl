@@ -27,31 +27,36 @@ end
                                Ψ⁻::PF = map(similar, prognostic_fields),
                                kwargs...) where {TI, TG, PF}
 
-Return a nth-order `SplitRungeKuttaTimeStepper` on `grid` and with `tracers`.
-The tendency fields `Gⁿ`, and the previous state `Ψ⁻` can be modified via optional `kwargs`.
+Return an ``n``th-order `SplitRungeKuttaTimeStepper` on `grid` and with `tracers`.
 
-The scheme is described by [Wicker and Skamarock (2002)](@cite WickerSkamarock2002). In a nutshell,
-the nth-order low-storage Runge-Kutta timestepper steps forward the state `Uⁿ` by `Δt` via n substeps.
+The scheme is described by [Wicker and Skamarock (2002)](@cite WickerSkamarock2002); see also
+[Silvestri et al. (2026)](@cite Silvestri2026RK3).
+
+In a nutshell, the ``n``th-order low-storage Runge-Kutta timestepper steps forward the state
+`Uⁿ` by `Δt` via ``n`` substeps.
 A barotropic velocity correction step is applied after at each substep.
 
 The state `U` after each substep `m` is equivalent to an Euler step with a modified time step:
 
-    Δt̃   = Δt / βᵐ
-    Uᵐ⁺¹ = Uⁿ + Δt̃ * Gᵐ
+    Δτ   = Δt / βᵐ
+    Uᵐ⁺¹ = Uⁿ + Δτ * Gᵐ
 
 where `Uᵐ` is the state at the ``m``-th substep, `Uⁿ` is the state at the ``n``-th timestep,
 `Gᵐ` is the tendency at the ``m``-th substep. The coefficients `β` can be specified by the user,
-and default to `(3, 2, 1)` for a three-stage scheme. The number of stages is inferred from the length of the
-`β` tuple.
+and default to `(3, 2, 1)` for a three-stage scheme. The number of stages is inferred from the
+    length of the `β` tuple.
 
 The state at the first substep is taken to be the one that corresponds to the ``n``-th timestep,
-`U¹ = Uⁿ`, and the state after the last substep is then the state at `Uⁿ⁺¹`.
+`U⁰ = Uⁿ`, and the state after the last substep is then the state at `Uⁿ⁺¹`.
 
 References
 ==========
 
-Wicker, Louis J. & Skamarock, William C. (2002). Time-Splitting Methods for Elastic Models
+* Wicker, Louis J. & Skamarock, William C. (2002). Time-Splitting Methods for Elastic Models
     Using Forward Time Schemes. Monthly Weather Review, 130(8), 2088–2097.
+* Silvestri, S., Campin, J.-M., Wagner, G. L., Constantinou, N. C., Lee, X. K., and
+    Ferrari, R. (2026). A low-storage Runge-Kutta framework for nonlinear free-surface ocean models.
+    J. Adv. Model. Earth Sy. (submitted on Apr 2026; doi:<https://doi.org/10.22541/essoar.15002225/v1>)
 """
 function SplitRungeKuttaTimeStepper(grid, prognostic_fields, args...;
                                     implicit_solver::TI = nothing,
@@ -60,13 +65,15 @@ function SplitRungeKuttaTimeStepper(grid, prognostic_fields, args...;
                                     Ψ⁻::PF = map(similar, prognostic_fields),
                                     kwargs...) where {TI, TG, PF}
 
-    return SplitRungeKuttaTimeStepper{typeof(coefficients), TG, PF, TI}(length(coefficients), coefficients, Gⁿ, Ψ⁻, implicit_solver)
+    Nstages = length(coefficients)
+    B = typeof(coefficients)
+    return SplitRungeKuttaTimeStepper{B, TG, PF, TI}(Nstages, coefficients, Gⁿ, Ψ⁻, implicit_solver)
 end
 
 """
     SplitRungeKuttaTimeStepper(; coefficients=nothing, stages=3)
 
-Construct a `SplitRungeKuttaTimeStepper` by specifying either `coefficients` or `stages`.
+Construct a `SplitRungeKuttaTimeStepper` by specifying either `coefficients` or number of `stages`.
 
 This simplified constructor creates a "template" time stepper without tendency or state fields,
 useful for passing to model constructors which will then build the full time stepper.
@@ -77,14 +84,29 @@ Keyword Arguments
 - `stages`: Number of stages `n`. If provided, coefficients default to `(n, n-1, ..., 1)`.
             if `coefficients` is specified, this keyword argument is ignored.
 
-Example
-=======
-```julia
-# Create a 3-stage time stepper with default coefficients (3, 2, 1)
-ts = SplitRungeKuttaTimeStepper(stages=3)
+Examples
+========
 
-# Create a 4-stage time stepper with custom coefficients
-ts = SplitRungeKuttaTimeStepper(coefficients=(4, 3, 2, 1))
+Create a 3-stage time stepper with default coefficients (3, 2, 1)
+
+```jldoctest timesteppers
+julia> using Oceananigans.TimeSteppers
+
+julia> ts = SplitRungeKuttaTimeStepper(stages=3)
+SplitRungeKuttaTimeStepper
+├── stages: 3
+├── β: (3, 2, 1)
+└── implicit_solver: nothing
+```
+
+Create a 4-stage time stepper with custom coefficients
+
+```jldoctest timesteppers
+julia> ts = SplitRungeKuttaTimeStepper(coefficients=(2, 3, 4, 1))
+SplitRungeKuttaTimeStepper
+├── stages: 4
+├── β: (2, 3, 4, 1)
+└── implicit_solver: nothing
 ```
 """
 function SplitRungeKuttaTimeStepper(; coefficients = nothing, stages = 3)
@@ -105,15 +127,15 @@ errors; see [Hu et al. (1996)](@cite Hu19996lowdissipation).
 
 # Arguments
 
-- `c`: Vector of spectral coefficients of length `N`.
+- `c`: Vector of spectral coefficients of length `n`.
 
 # Returns
 
-A tuple of low-storage coefficients `(β₁, β₂, ..., βₙ)` where `βᵢ = cₙ₋ᵢ / cₙ₋ᵢ₊₁` for `i < N` and `βₙ = 1`.
+A tuple of low-storage coefficients `(β₁, β₂, ..., βₙ)` where `βᵢ = cₙ₋ᵢ / cₙ₋ᵢ₊₁` for `i < n` and `βₙ = 1`.
 
 # References
 * Hu, F. Q., Hussaini, M. Y., & Manthey, J. L. (1996). Low-dissipation and low-dispersion Runge–Kutta
-    schemes for computational acoustics. Journal of computational physics, 124(1), 177-191.
+    schemes for computational acoustics. Journal of Computational Physics, 124(1), 177-191.
 """
 function spectral_coefficients(c::AbstractVector)
     N = length(c)
@@ -130,14 +152,15 @@ end
 
 Step forward `model` one time step `Δt` using the split Runge-Kutta method.
 
-The split Runge-Kutta scheme advances the model state through `n` substeps (where `n = model.timestepper.Nstages`).
-At the beginning of the time step, the current prognostic fields are cached. Then, for each stage `m`:
+The split Runge-Kutta scheme advances the model state through `n` substeps, where
+`n = model.timestepper.Nstages`. At the beginning of the time step, the current prognostic
+fields are cached. Then, for each stage `m`:
 
-1. Compute the substep time increment: `Δτ = Δt / βᵐ`
+1. Compute the `m`-th substep time increment: `Δτ = Δt / βᵐ` (where `β = model.timestepper.β`)
 2. Advance the state: `Uᵐ⁺¹ = U⁰ + Δτ * Gᵐ` (where `U⁰` is the cached initial state)
-3. Update the model state (fill halos, compute diagnostics, etc.)
+3. Update the `model` state (fill halos, compute diagnostics, etc.)
 
-After all substeps, Lagrangian particles are stepped and the clock is advanced.
+After all substeps, Lagrangian particles are stepped and the `model.clock`s is advanced.
 """
 function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; callbacks=[])
 
@@ -183,7 +206,7 @@ end
 #####
 
 """
-    rk_substep!(model::AbstractModel, Δt, callbacks)
+    rk_substep!(model::AbstractModel, Δτ, callbacks)
 
 Perform a single Runge-Kutta substep, advancing the model state by `Δτ`.
 
@@ -195,7 +218,7 @@ The implementation should:
 2. Advance prognostic fields: `U = U⁰ + Δτ * G` (where `U⁰` is the cached initial state)
 3. Apply any necessary corrections (e.g., pressure correction for incompressibility)
 """
-rk_substep!(model::AbstractModel, Δt, callbacks) = error("rk_substep! not implemented for $(typeof(model))")
+rk_substep!(model::AbstractModel, Δτ, callbacks) = error("rk_substep! not implemented for $(typeof(model))")
 
 """
     cache_current_fields!(model::AbstractModel)
