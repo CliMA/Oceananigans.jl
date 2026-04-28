@@ -113,9 +113,9 @@ function Base.show(io::IO, ft::NamedFieldTuple)
     end
 end
 
-Base.similar(Φ::NamedFieldTuple) = map(similar, Φ)
+Base.similar(ft::NamedFieldTuple) = map(similar, ft)
 
-LinearAlgebra.norm(Φ::NamedFieldTuple) = sqrt(sum(LinearAlgebra.norm(ϕ)^2 for ϕ in Φ))
+LinearAlgebra.norm(ft::NamedFieldTuple) = sqrt(sum(LinearAlgebra.norm(field)^2 for field in ft))
 
-LinearAlgebra.dot(Φ::NamedFieldTuple, Ψ::NamedFieldTuple) =
-    sum(LinearAlgebra.dot(ϕ, ψ) for (ϕ, ψ) in zip(values(Φ), values(Ψ)))
+LinearAlgebra.dot(ft1::NamedFieldTuple, ft2::NamedFieldTuple) =
+    sum(LinearAlgebra.dot(a, b) for (a, b) in zip(values(ft1), values(ft2)))

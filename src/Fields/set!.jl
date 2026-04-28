@@ -28,11 +28,11 @@ function set!(Φ::NamedTuple; kwargs...)
     return nothing
 end
 
-function set!(Φ::NamedFieldTuple, a::Number)
-    for ϕ in Φ
-        set!(ϕ, a)
+function set!(ft::NamedFieldTuple, a::Number)
+    for field in ft
+        set!(field, a)
     end
-    return Φ
+    return ft
 end
 
 function set!(dst::NamedFieldTuple, src::NamedFieldTuple)
