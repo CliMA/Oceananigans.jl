@@ -23,14 +23,12 @@ function plan_distributed_transforms(global_grid, storage::TransposableField, pl
         rs_size    = reshaped_size(grids[2])
         rs_storage = reshape(parent(storage.yfield), rs_size)
         forward_plan_y  =  plan_forward_transform(rs_storage, topo[2](), [1], planner_flag)
-        backward_plan_y = plan_backward_transform(rs_storage, topo[2](), [1], planner_flag)
-        y_dims = [2]  # DiscreteTransform dims — triggers transpose_dims=(2,1,3)
-    else
+backward_plan_y = plan_backward_transform(rs_storage, topo[2](), [1], planner_flag)
+else
         # CPU: FFTW handles strided transforms efficiently, no reshape needed
-        forward_plan_y  =  plan_forward_transform(parent(storage.yfield), topo[2](), [2], planner_flag)
-        backward_plan_y = plan_backward_transform(parent(storage.yfield), topo[2](), [2], planner_flag)
-        y_dims = [2]
-    end
+forward_plan_y  =  plan_forward_transform(parent(storage.yfield), topo[2](), [2], planner_flag)
+backward_plan_y = plan_backward_transform(parent(storage.yfield), topo[2](), [2], planner_flag)
+end
 
     forward_operations = (
         z! = DiscreteTransform(forward_plan_z, Forward(), grids[1], [3]),
