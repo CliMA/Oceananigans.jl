@@ -203,7 +203,7 @@ end
         @test required_halo_size_x(eddy_closure) == 1
         @test required_halo_size_y(eddy_closure) == 1
         @test required_halo_size_z(eddy_closure) == 1
-        
+
         eddy_closure = with_tracers((:T, :S), eddy_closure)
         @test required_halo_size_x(eddy_closure) == 1
         @test required_halo_size_y(eddy_closure) == 1
