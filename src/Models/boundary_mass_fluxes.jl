@@ -228,7 +228,7 @@ enforce_open_boundary_mass_conservation!(velocities, ::Nothing) = nothing
 """
     enforce_open_boundary_mass_conservation!(velocities, boundary_mass_fluxes)
 
-Correct boundary values in `velocities` so that the net mass flux through all
+Correct boundary values in `velocities` so that the combined net mass flux through all
 `OpenBoundaryCondition` boundaries with a radiation scheme vanishes — the
 solvability condition for an incompressible / anelastic pressure Poisson problem.
 
