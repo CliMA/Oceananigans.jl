@@ -118,10 +118,10 @@ damping(x, y, z, t, c, τ) = - c / τ
                                z = (-1, 1),
                                topology=(Bounded, Bounded, Bounded))
 
-
         c_forcing = Forcing(damping, field_dependencies=:c, parameters=60)
         model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=c_forcing))
         c_forcing_op = ForcingOperation(:c, model)
+
         @test c_forcing_op isa KernelFunctionOperation
         @test c_forcing_op.kernel_function isa ForcingKernelFunction
         @test c_forcing_op.kernel_function.forcing isa ContinuousForcing
@@ -129,7 +129,7 @@ damping(x, y, z, t, c, τ) = - c / τ
 
         set!(model, c=1)
         c_forcing_field = ForcingField(:c, model)
-        compute!(c_forcing_field)
+
         @test c_forcing_field isa Field
         @test all(interior(c_forcing_field) .== - 1/60)
     end
