@@ -12,7 +12,6 @@ export
     BulkDrag, BulkDragFunction, BulkDragBoundaryCondition,
     XDirectionBulkDragFunction, YDirectionBulkDragFunction, ZDirectionBulkDragFunction,
     LinearFormulation, QuadraticFormulation,
-    initialize_boundary_mass_fluxes, enforce_open_boundary_mass_conservation!
 
 using Oceananigans: AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation
