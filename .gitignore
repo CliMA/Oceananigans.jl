@@ -6,6 +6,7 @@
 deps/deps.jl
 /Manifest.toml
 /test/Manifest.toml
+/test/extensions/Manifest.toml
 /LocalPreferences.toml
 
 # Swap files.

@@ -46,10 +46,8 @@ steps:
       juliaup add $JULIA_VERSION_ENZYME
       cd "$OCEANANIGANS_DIR"
 
-      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project -e 'using Pkg; Pkg.test(julia_args=["--check-bounds=auto"])' # Remove --check-bounds=auto when https://github.com/EnzymeAD/Reactant.jl/issues/2347 is fixed
-      # After we have instantiated the Enzyme environment, move manifest to the
-      # version-specific filename, not to clash with the general manifest.
-      # mv -v Manifest.toml Manifest-v$(echo "${JULIA_VERSION_ENZYME}" | cut -d. -f1-2).toml
+      # The Enzyme/Reactant tests live in the dedicated test/extensions project; instantiate it here.
+      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project=test/extensions -e 'using Pkg; Pkg.instantiate(); Pkg.precompile()'
     retry:
       automatic:
         - exit_status: 1
@@ -72,47 +70,7 @@ steps:
     depends_on: "init"
     agents:
       queue: "Oceananigans-nautilus"
-    command: |
-      # Add matrix-specific environment variables
-      if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
-        export CUDA_VISIBLE_DEVICES="-1"
-        export TEST_ARCHITECTURE="CPU"
-      else
-        export CUDA_VISIBLE_DEVICES="0"
-        export TEST_ARCHITECTURE="GPU"
-      fi
-
-      # Strip emoji for environment variable
-      group="{{ matrix.group }}"
-      export TEST_GROUP="\${group#* }"
-      echo $TEST_GROUP
-
-      # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
-      set +e
-      julia +$JULIA_VERSION -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(coverage="user")'
-      test_status=$$?
-      set -e
-
-      # Sanity check: did we actually produce coverage?
-      echo "PWD:"; pwd
-      echo "Coverage files produced:" `find . -type f -name "*.cov" | wc -l`
-      find . -type f -name "*.cov" | head -n 20 || true
-
-      group_slug="{{ matrix.group }}"
-      group_slug="$${group_slug//[^A-Za-z0-9_.-]/_}"
-      tarball="coverage-${BUILDKITE_BUILD_NUMBER}-${BUILDKITE_JOB_ID}-{{ matrix.architecture }}-$${group_slug}.tgz"
-
-
-      find . -type f -name "*.cov" > cov_list.txt
-      echo "Coverage files found:" `wc -l < cov_list.txt`
-
-      tar -czf "$$tarball" -T cov_list.txt
-      ls -lh "$$tarball"
-
-      buildkite-agent artifact upload "$$tarball"
-
-      # Preserve the original test result for Buildkite
-      exit "$${test_status}"
+    command: .buildkite/run_tests.sh "$JULIA_VERSION" test "{{ matrix.architecture }}" "{{ matrix.group }}"
 
     matrix:
       setup:
@@ -141,6 +99,25 @@ steps:
           - "🍂 lagrangian_particles"
           - "🧅 multi_region"
           - "🦧 scripts"
+
+    retry:
+      automatic:
+        - exit_status: 1
+          limit: 1
+
+  - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
+    key: "tests_extensions"
+    depends_on: "init"
+    agents:
+      queue: "Oceananigans-nautilus"
+    command: .buildkite/run_tests.sh "$JULIA_VERSION" test/extensions "{{ matrix.architecture }}" "{{ matrix.group }}"
+
+    matrix:
+      setup:
+        architecture:
+          - "CPU"
+          - "GPU"
+        group:
           - "🍱 xesmf"
 
     retry:
@@ -153,46 +130,8 @@ steps:
     depends_on: "init_enzyme"
     agents:
       queue: "Oceananigans-nautilus"
-    command: |
-      # Add matrix-specific environment variables
-      if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
-        export CUDA_VISIBLE_DEVICES="-1"
-        export TEST_ARCHITECTURE="CPU"
-      else
-        export CUDA_VISIBLE_DEVICES="0"
-        export TEST_ARCHITECTURE="GPU"
-      fi
-
-      # Strip emoji for environment variable
-      group="{{ matrix.group }}"
-      export TEST_GROUP="\${group#* }"
-      echo $TEST_GROUP
-
-      # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
-      set +e
-      julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(coverage="user", julia_args=["--check-bounds=auto"])' # Remove --check-bounds=auto when https://github.com/EnzymeAD/Reactant.jl/issues/2347 is fixed
-      test_status=$$?
-      set -e
-
-      # Sanity check: did we actually produce coverage?
-      echo "PWD:"; pwd
-      echo "Coverage files produced:" `find . -type f -name "*.cov" | wc -l`
-      find . -type f -name "*.cov" | head -n 20 || true
-
-      group_slug="{{ matrix.group }}"
-      group_slug="$${group_slug//[^A-Za-z0-9_.-]/_}"
-      tarball="coverage-${BUILDKITE_BUILD_NUMBER}-${BUILDKITE_JOB_ID}-{{ matrix.architecture }}-$${group_slug}.tgz"
-
-      find . -type f -name "*.cov" > cov_list.txt
-      echo "Coverage files found:" `wc -l < cov_list.txt`
-
-      tar -czf "$$tarball" -T cov_list.txt
-      ls -lh "$$tarball"
-
-      buildkite-agent artifact upload "$$tarball"
-
-      # Preserve the original test result for Buildkite
-      exit "$${test_status}"
+    # --check-bounds=auto is a workaround for https://github.com/EnzymeAD/Reactant.jl/issues/2347
+    command: .buildkite/run_tests.sh "$JULIA_VERSION_ENZYME" test/extensions "{{ matrix.architecture }}" "{{ matrix.group }}" --check-bounds=auto
 
     matrix:
       setup:
