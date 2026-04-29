@@ -307,7 +307,7 @@ jobs:
           alert-threshold: "110%"
           fail-on-alert: false
           auto-push: true
-          max-items-in-chart: 50
+          max-items-in-chart: 5000
           comment-on-alert: true
 
       # For PRs: comment benchmark comparison on the PR
