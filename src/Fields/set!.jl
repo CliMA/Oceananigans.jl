@@ -35,7 +35,7 @@ function set!(ft::NamedFieldTuple, a::Number)
     return ft
 end
 
-function set!(dst::NamedFieldTuple, src::NamedFieldTuple)
+function set!(dst::NamedFieldTuple, src::NamedTuple)
     for name in keys(dst)
         set!(dst[name], src[name])
     end
