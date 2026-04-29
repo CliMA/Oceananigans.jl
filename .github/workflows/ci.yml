@@ -46,12 +46,6 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@e97f6fc1a6e21c82253c85e269be7340376aa425 # v3.0.1
-      - name: Set IFRT runtime for Reactant
-        run: |
-          echo "[Reactant]" >> LocalPreferences.toml
-          echo 'xla_runtime = "IFRT"' >> LocalPreferences.toml
-
-          cat LocalPreferences.toml
       - name: Install earlyoom
         shell: bash
         run: |
@@ -68,7 +62,8 @@ jobs:
         shell: bash
         run: |
           earlyoom -m 3 -s 100 -r 5 --prefer 'julia' &
-          julia --project --color=yes --check-bounds=auto -e 'using Pkg; Pkg.test(; coverage=true, julia_args=["--check-bounds=auto", "--compiled-modules=yes", "--depwarn=yes", "-O0"], force_latest_compatible_version=false, allow_reresolve=true)'
+          julia --project=test/extensions --color=yes --check-bounds=auto -e 'using Pkg; Pkg.instantiate()'
+          julia --project=test/extensions --color=yes --check-bounds=auto --compiled-modules=yes --depwarn=yes -O0 --code-coverage=user test/runtests.jl
         env:
           XLA_FLAGS: "--xla_force_host_platform_device_count=4 --xla_dump_to=xla_dump"
           JULIA_DEBUG: "Reactant, Reactant_jll"
@@ -194,8 +189,11 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v3
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
+      - name: Run tests
+        shell: bash
+        run: |
+          julia --project=test/extensions --color=yes -e 'using Pkg; Pkg.instantiate()'
+          julia --project=test/extensions --color=yes --code-coverage=user test/runtests.jl
         env:
           TEST_GROUP: "makie"
       - uses: julia-actions/julia-processcoverage@v1
@@ -229,16 +227,11 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v3
-      - uses: julia-actions/julia-buildpkg@v1
       - name: Run Reactant tests
         shell: bash
         run: |
-          julia --project --color=yes --check-bounds=auto -e '
-            using Pkg
-            Pkg.test(; coverage=true,
-                       julia_args=["--check-bounds=auto", "-O0"],
-                       force_latest_compatible_version=false,
-                       allow_reresolve=true)'
+          julia --project=test/extensions --color=yes --check-bounds=auto -e 'using Pkg; Pkg.instantiate()'
+          julia --project=test/extensions --color=yes --check-bounds=auto -O0 --code-coverage=user test/runtests.jl
         env:
           TEST_GROUP: "reactant_correctness"
       - uses: julia-actions/julia-processcoverage@v1
@@ -271,10 +264,11 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v3
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
-        with:
-          check_bounds: auto
+      - name: Run tests
+        shell: bash
+        run: |
+          julia --project=test/extensions --color=yes --check-bounds=auto -e 'using Pkg; Pkg.instantiate()'
+          julia --project=test/extensions --color=yes --check-bounds=auto --code-coverage=user test/runtests.jl
         env:
           TEST_GROUP: "reactant_1"
       - uses: julia-actions/julia-processcoverage@v1
@@ -307,10 +301,11 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v3
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
-        with:
-          check_bounds: auto
+      - name: Run tests
+        shell: bash
+        run: |
+          julia --project=test/extensions --color=yes --check-bounds=auto -e 'using Pkg; Pkg.instantiate()'
+          julia --project=test/extensions --color=yes --check-bounds=auto --code-coverage=user test/runtests.jl
         env:
           TEST_GROUP: "reactant_2"
       - uses: julia-actions/julia-processcoverage@v1
@@ -343,10 +338,11 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v3
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
-        with:
-          check_bounds: auto
+      - name: Run tests
+        shell: bash
+        run: |
+          julia --project=test/extensions --color=yes --check-bounds=auto -e 'using Pkg; Pkg.instantiate()'
+          julia --project=test/extensions --color=yes --check-bounds=auto --code-coverage=user test/runtests.jl
         env:
           TEST_GROUP: "reactant_3"
       - uses: julia-actions/julia-processcoverage@v1
@@ -379,8 +375,11 @@ jobs:
           version: ${{ matrix.version }}
           arch: ${{ matrix.arch }}
       - uses: julia-actions/cache@v3
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
+      - name: Run tests
+        shell: bash
+        run: |
+          julia --project=test/extensions --color=yes -e 'using Pkg; Pkg.instantiate()'
+          julia --project=test/extensions --color=yes --code-coverage=user test/runtests.jl
         env:
           TEST_GROUP: "metal"
       - uses: julia-actions/julia-processcoverage@v1

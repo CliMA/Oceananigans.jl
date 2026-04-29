@@ -16,9 +16,10 @@ steps:
       # - JuliaCI/julia-coverage#v1:
       #     codecov: true
     command: |
-      TEST_GROUP=init julia --project -O0 --color=yes -e 'using Pkg; Pkg.test()'
+      julia --project=test/extensions -O0 --color=yes -e 'using Pkg; Pkg.instantiate()'
 
-      TEST_GROUP=amdgpu julia --project -O0 --color=yes -e 'using Pkg; Pkg.test()'
+      TEST_GROUP=init    julia --project=test/extensions -O0 --color=yes test/runtests.jl
+      TEST_GROUP=amdgpu  julia --project=test/extensions -O0 --color=yes test/runtests.jl
     agents:
       queue: "juliagpu"
       rocm: "*"
@@ -38,9 +39,10 @@ steps:
       # - JuliaCI/julia-coverage#v1:
       #     codecov: true
     command: |
-      TEST_GROUP=init julia --project -O0 --color=yes -e 'using Pkg; Pkg.test()'
+      julia --project=test/extensions -O0 --color=yes -e 'using Pkg; Pkg.instantiate()'
 
-      TEST_GROUP=oneapi julia --project -O0 --color=yes -e 'using Pkg; Pkg.test()'
+      TEST_GROUP=init    julia --project=test/extensions -O0 --color=yes test/runtests.jl
+      TEST_GROUP=oneapi  julia --project=test/extensions -O0 --color=yes test/runtests.jl
     agents:
       queue: "juliagpu"
       intel: "*"
