@@ -1,9 +1,10 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.Grids: MutableVerticalDiscretization
+using Oceananigans.Grids: MutableVerticalDiscretization, required_halo_size_x, required_halo_size_y, required_halo_size_z
 using Oceananigans.Models: ZStarCoordinate, ZCoordinate, surface_kernel_parameters
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: _update_zstar_scaling!
-using Oceananigans.TurbulenceClosures: IsopycnalSkewSymmetricDiffusivity,
+using Oceananigans.TurbulenceClosures: with_tracers,
+                                       IsopycnalSkewSymmetricDiffusivity,
                                        TriadIsopycnalSkewSymmetricDiffusivity,
                                        DiffusiveFormulation, AdvectiveFormulation
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂xᵣᶠᶜᶜ, Axᶠᶜᶜ, Vᶜᶜᶜ
@@ -196,6 +197,19 @@ end
 
 @testset "Isopycnal closures with r-based derivatives" begin
     @info "Testing isopycnal closures with r-based derivatives..."
+
+    @testset "IsopycnalSkewSymmetricDiffusivity required_halo_size_x" begin
+        eddy_closure = IsopycnalSkewSymmetricDiffusivity(κ_skew=1e3, κ_symmetric=1e3, skew_flux_formulation=AdvectiveFormulation())
+        @test required_halo_size_x(eddy_closure) == 1
+        @test required_halo_size_y(eddy_closure) == 1
+        @test required_halo_size_z(eddy_closure) == 1
+        
+        eddy_closure = with_tracers((:T, :S), eddy_closure)
+        @test required_halo_size_x(eddy_closure) == 1
+        @test required_halo_size_y(eddy_closure) == 1
+        @test required_halo_size_z(eddy_closure) == 1
+    end
+
 
     for arch in archs
         issd_closures = [
