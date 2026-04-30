@@ -44,7 +44,7 @@ const SupportedGrids = Union{SupportedUnderlyingGrids,
       if key == :momentum
         if condition_momentum_advection
             condition_maps[:momentum] = compute_advection_conditioned_map(advection.momentum,
-                                                                          grid;
+                                                                          grid,
                                                                           active_cells_map)
         else
             condition_maps[:momentum] = active_cells_map
@@ -52,7 +52,7 @@ const SupportedGrids = Union{SupportedUnderlyingGrids,
       else
         if condition_tracer_advection
             condition_maps[key] = compute_advection_conditioned_map(advection[key],
-                                                                    grid;
+                                                                    grid,
                                                                     active_cells_map)
         else
             condition_maps[key] = active_cells_map
@@ -63,11 +63,11 @@ const SupportedGrids = Union{SupportedUnderlyingGrids,
     return (; condition_maps...)
 end
 
-compute_advection_conditioned_map(scheme::Nothing, grid; active_cells_map=nothing) = nothing
+compute_advection_conditioned_map(scheme::Nothing, grid, active_cells_map) = nothing
 
 function compute_advection_conditioned_map(scheme,
-                                           grid;
-                                           active_cells_map=nothing)
+                                           grid,
+                                           active_cells_map)
     # Field is true if the max scheme can be used for computing u advection
     max_scheme_field = Field{Center, Center, Center}(grid, Bool)
     fill!(max_scheme_field, false)
@@ -84,6 +84,22 @@ function compute_advection_conditioned_map(scheme,
     return InteriorBoundarySet(interior_indices, boundary_indices)
 end
 
+# Deal with Distributed grids, which have NamedTuple active cells maps
+function compute_advection_conditioned_map(scheme,
+                                           grid,
+                                           active_cells_map::NamedTuple)
+
+    condition_maps = Dict()
+
+    for map_key in keys(active_cells_map)
+        condition_maps[map_key] = compute_advection_conditioned_map(scheme,
+                                                                    grid,
+                                                                    active_cells_map[map_key])
+    end
+
+    return (; condition_maps...)
+
+end
 @kernel function condition_map!(max_scheme_field, ibg, scheme)
     i, j, k = @index(Global, NTuple)
 
