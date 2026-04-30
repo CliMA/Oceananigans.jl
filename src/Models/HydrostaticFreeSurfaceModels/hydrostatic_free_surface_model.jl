@@ -88,7 +88,9 @@ default_free_surface(grid; gravitational_acceleration=defaults.gravitational_acc
                                 pressure = nothing,
                                 closure_fields = nothing,
                                 auxiliary_fields = NamedTuple(),
-                                vertical_coordinate = default_vertical_coordinate(grid))
+                                vertical_coordinate = default_vertical_coordinate(grid),
+                                condition_momentum_advection = true,
+                                condition_tracer_advection = true)
 
 Construct a hydrostatic model with a free surface on `grid`.
 
@@ -129,6 +131,12 @@ Keyword arguments
                            Default: `default_vertical_coordinate(grid)`, which returns `ZStarCoordinate(grid)`
                            for grids with `MutableVerticalDiscretization` otherwise returns
                            `ZCoordinate()`.
+  - `condition_momentum_advection`: Create split cell map for cells in the interior and boundary,
+                                    for the momentum advection. Interior is defined as cells where
+                                    the maximum momentum advection scheme can be used. Default: `true`.
+  - `condition_tracer_advection`: Create split cell map for cells in the interior and boundary,
+                                  for the tracer advection. Interior is defined as cells where
+                                  the maximum tracer advection scheme can be used. Default: `true`.
 """
 function HydrostaticFreeSurfaceModel(grid;
                                      clock = Clock(grid),
