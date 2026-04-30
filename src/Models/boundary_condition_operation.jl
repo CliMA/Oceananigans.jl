@@ -83,7 +83,6 @@ Next, we build a `Field` for the top flux, and compute it:
 
 ```jldoctest bc_op
 c_flux_field = Field(c_flux_op)
-compute!(c_flux_field)
 
 # output
 16×16×1 Field{Center, Center, Nothing} reduced over dims = (3,) on RectilinearGrid on CPU

@@ -168,6 +168,7 @@ for arch in archs
                                                    radius = 10,
                                                    topology = (Bounded, Bounded, Bounded))
 
+                cpu_arch = cpu_architecture(arch)
                 catke_global_grid = reconstruct_global_grid(catke_grid)
 
                 @root @info "  Testing CATKE with $(ranks(arch)) ranks"
@@ -180,8 +181,6 @@ for arch in archs
                 vs = interior(on_architecture(CPU(), ms.velocities.v))
                 cs = interior(on_architecture(CPU(), ms.tracers.c))
                 ηs = interior(on_architecture(CPU(), ms.free_surface.displacement))
-
-                cpu_arch = cpu_architecture(synchronized_arch)
 
                 up = interior(on_architecture(cpu_arch, mp.velocities.u))
                 vp = interior(on_architecture(cpu_arch, mp.velocities.v))
