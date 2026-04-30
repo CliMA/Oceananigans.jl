@@ -1,5 +1,4 @@
 using Oceananigans.Grids: AbstractGrid, XFlatGrid, YFlatGrid, ZFlatGrid
-using Oceananigans.ImmersedBoundaries
 using Oceananigans.Advection: Centered, UpwindBiased, WENO, VectorInvariant
 
 struct CenteredFixedOrderAdvectionScheme{N, FT, S <: AbstractCenteredAdvectionScheme} <: AbstractCenteredAdvectionScheme{N, FT}
