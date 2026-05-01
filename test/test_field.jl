@@ -921,6 +921,25 @@ end
             @test length(xnodes(f_full)) == Nx
             @test length(ynodes(f_full)) == Ny
             @test length(znodes(f_full)) == Nz
+
+            # Regression test for xnodes/ynodes on LatitudeLongitudeGrid fields.
+            # `nodes(::LLG)` routes through λnodes/φnodes, so the LLG xnodes/ynodes
+            # dispatches were never exercised by the field/view consistency test
+            # and silently lacked an `indices` keyword.
+            llgrid = LatitudeLongitudeGrid(arch, FT, size=(Nx, Ny, Nz),
+                                           longitude=(-180, 180), latitude=(-80, 80), z=(-1, 0))
+
+            f_llg = CenterField(llgrid)
+            @test length(ynodes(f_llg)) == Ny
+            @test length(znodes(f_llg)) == Nz
+            @test ynodes(f_llg) == ynodes(llgrid, Center(), Center(), Center())
+
+            f_llg_ywindow = Field{Center, Center, Center}(llgrid, indices=(:, 1:3, :))
+            @test length(ynodes(f_llg_ywindow)) == 3
+            @test ynodes(f_llg_ywindow) == ynodes(llgrid, Center(), Center(), Center())[1:3]
+
+            f_llg_xwindow = Field{Center, Center, Center}(llgrid, indices=(2:5, :, :))
+            @test size(xnodes(f_llg_xwindow), 2) == 4
         end
 
 
