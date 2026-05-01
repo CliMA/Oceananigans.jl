@@ -362,6 +362,89 @@ Base.view(f::Field, I::Vararg{Colon}) = f
 Base.view(f::Field, i) = view(f, i, :, :)
 Base.view(f::Field, i, j) = view(f, i, j, :)
 
+#####
+##### Reduced-dimension slicing
+#####
+
+slice_loc(::Colon, loc) = loc
+slice_loc(::Int, loc) = nothing
+
+# For Colon dimensions, preserve the field's actual indices (handles windowed fields);
+# for Int dimensions, convert to a UnitRange.
+slice_index(::Colon,  field_index) = field_index
+slice_index(idx::Int, field_index) = idx:idx
+
+"""
+    slice(field::Field, i, j, k)
+
+Create a reduced-dimension field by slicing `field` at the specified integer indices.
+Dimensions indexed with integers are reduced to `Nothing` location, while dimensions
+indexed with `:` retain their original location.
+
+Unlike `view`, which preserves the location and offsets indices so that the original
+index must be used, `slice` collapses integer-indexed dimensions so that the resulting
+field is indexed starting from 1 in those dimensions (as a reduced `Field`).
+
+The resulting field shares data with the parent `field`.
+
+Example
+=======
+
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 3, 4), x=(0, 1), y=(0, 1), z=(0, 1));
+
+julia> c = CenterField(grid); set!(c, (x, y, z) -> z);
+
+julia> s = slice(c, :, :, 4);
+
+julia> s isa Field{Center, Center, Nothing}
+true
+
+julia> s[1, 1, 1] == c[1, 1, 4]
+true
+```
+"""
+function slice(field::Field, i, j, k)
+
+    grid = field.grid
+    old_loc = instantiated_location(field)
+    new_loc = (slice_loc(i, old_loc[1]),
+               slice_loc(j, old_loc[2]),
+               slice_loc(k, old_loc[3]))
+
+    halo = halo_size(grid)
+    topo = map(instantiate, topology(grid))
+
+    # Effective indices: Colon dims keep the field's own indices (may be windowed),
+    # Int dims become a UnitRange.
+    ei = slice_index(i, field.indices[1])
+    ej = slice_index(j, field.indices[2])
+    ek = slice_index(k, field.indices[3])
+    effective_indices = (ei, ej, ek)
+
+    # Compute parent (raw array) indices using the original field location
+    pi = parent_index_range(field.indices[1], ei, old_loc[1], topo[1], halo[1])
+    pj = parent_index_range(field.indices[2], ej, old_loc[2], topo[2], halo[2])
+    pk = parent_index_range(field.indices[3], ek, old_loc[3], topo[3], halo[3])
+
+    # Take a view of the raw parent data at the computed indices
+    windowed_parent = view(parent(field.data), pi, pj, pk)
+
+    # Wrap in OffsetArray with the new (reduced) location offsets
+    sz = size(grid)
+    data = offset_data(windowed_parent, new_loc, topo, sz, halo, effective_indices)
+
+    bcs = FieldBoundaryConditions(grid, new_loc, effective_indices)
+
+    return Field(new_loc, grid, data, bcs, effective_indices, nothing, nothing)
+end
+
+slice(field::Field, ::Colon, ::Colon, ::Colon) = field
+slice(field::Field, i)    = slice(field, i, :, :)
+slice(field::Field, i, j) = slice(field, i, j, :)
+
 Oceananigans.boundary_conditions(not_field) = nothing
 
 @inline Oceananigans.boundary_conditions(f::Field) = f.boundary_conditions
