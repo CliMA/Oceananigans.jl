@@ -343,10 +343,7 @@ all_combos(xs...) = vec(collect(Iterators.product(xs...)))
                     @testset "closure=$(closure_name(closure))" begin
                         @info "Testing HydrostaticFreeSurfaceModel($topo) with closure=$(closure_name(closure))..."
 
-                        model_kw = (; coriolis, buoyancy, free_surface, tracers,
-                                      tracer_advection=advection, momentum_advection, closure,
-                                      condition_momentum_advection=false,
-                                      condition_tracer_advection=false)
+                        model_kw = (; coriolis, buoyancy, free_surface, tracers, tracer_advection=advection, momentum_advection, closure)
                         vanilla_model = HydrostaticFreeSurfaceModel(vanilla_grid; model_kw...)
                         reactant_model = HydrostaticFreeSurfaceModel(reactant_grid; model_kw...)
 

@@ -12,9 +12,7 @@ include("reactant_test_utils.jl")
     stretched_lat_lon_kw = (; size=(Nx, Ny, Nz), halo, longitude=stretched_longitude, latitude, z)
 
     for momentum_advection in (nothing, VectorInvariant(), WENOVectorInvariant())
-        hydrostatic_model_kw = (; momentum_advection, free_surface=ExplicitFreeSurface(),
-                                  condition_momentum_advection=false,
-                                  condition_tracer_advection=false)
+        hydrostatic_model_kw = (; momentum_advection, free_surface=ExplicitFreeSurface())
         rungekutta3_kw = merge(hydrostatic_model_kw, (; timestepper=:SplitRungeKutta3))
         name = string(typeof(momentum_advection).name.wrapper)
 
