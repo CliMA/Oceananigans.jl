@@ -47,9 +47,8 @@ end
 
 Metal.@device_override @inline function __validindex(ctx::MappedCompilerMetadata)
     if __dynamic_checkbounds(ctx)
-        I = @inbounds linear_expand(__iterspace(ctx), threadgroup_position_in_grid_1d(),
-                                thread_position_in_threadgroup_1d())
-        return I in __linear_ndrange(ctx)
+        index = @inbounds linear_expand(__iterspace(ctx), threadgroup_position_in_grid().x, thread_position_in_threadgroup().x)
+        return index ≤ __linear_ndrange(ctx)
     else
         return true
     end

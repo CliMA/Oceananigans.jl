@@ -69,6 +69,34 @@ on disk, only loading it as requested by indexing into the
 """
 struct OnDisk <: AbstractDataBackend end
 
+"""
+    SplitFilePath(paths, cumulative_length)
+
+Stores file paths and cumulative iteration counts for split JLD2 output files,
+enabling OnDisk `FieldTimeSeries` to load data from the correct part file.
+"""
+struct SplitFilePath
+    paths :: Vector{String}
+    cumulative_length :: Vector{Int}
+end
+
+"""
+    file_and_local_index(sfp::SplitFilePath, n)
+
+Return `(filepath, local_index)` for global time index `n`.
+"""
+function file_and_local_index(sfp::SplitFilePath, n)
+    if n < 1 || n > last(sfp.cumulative_length)
+        throw(BoundsError(sfp, n))
+    end
+
+    i = searchsortedfirst(sfp.cumulative_length, n)
+    prev = i == 1 ? 0 : sfp.cumulative_length[i-1]
+    return sfp.paths[i], n - prev
+end
+
+file_and_local_index(path::AbstractString, n) = (path, n)
+
 #####
 ##### Time indexing modes for FieldTimeSeries
 #####
@@ -583,10 +611,32 @@ end
 struct UnspecifiedBoundaryConditions end
 
 """
+    load_serialized_grid(file, name)
+
+Load the grid associated with the output variable `name` from a JLD2 `file`.
+
+Grids are looked up in the following order:
+
+1. If `timeseries/\$name/serialized/grid_index` is present, use it to select
+   `serialized/grid_\$i` (multi-grid JLD2Writer output).
+2. `serialized/grid` (single-grid JLD2Writer output, or the legacy path
+   written by the `including` mechanism).
+"""
+function load_serialized_grid(file, name)
+    if haskey(file, "timeseries/$name/serialized/grid_index")
+        grid_index = file["timeseries/$name/serialized/grid_index"]
+        return file["serialized/grid_$grid_index"]
+    end
+
+    return file["serialized/grid"]
+end
+
+"""
     reconstruct_legacy_grid(grid, file, architecture)
 
 Reconstruct a grid from legacy JLD2 output files (prior to Oceananigans 0.95.0)
-that did not serialize grids properly.
+that did not serialize grids properly. Reads raw grid data from the top-level
+`grid/` path written by `saveproperties!`.
 """
 function reconstruct_legacy_grid(grid, file, architecture)
     isibg = grid isa ImmersedBoundaryGrid
@@ -642,6 +692,7 @@ end
 
 Manually reconstruct a RectilinearGrid from file data when `on_architecture` fails.
 This is a fallback for grids saved with CuArrays or generated with a different Julia version.
+Reads raw grid data from the top-level `grid/` path.
 """
 function manually_reconstruct_rectilinear_grid(grid, file, architecture)
     @info "Initial attempt to transfer grid to $architecture failed."
@@ -759,8 +810,8 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
         # Handle file splitting due to max_filesize limitations by looking for filenames
         # that end in part1, etc
         start = path[1:end-5]
-        lookfor = string(start, "_part*.jld2")
-        part_paths = glob(lookfor)
+        lookfor = string(basename(start), "_part*.jld2")
+        part_paths = glob(lookfor, dirname(start))
         part_paths = naturalsort(part_paths)
         Nparts = length(part_paths)
 
@@ -792,7 +843,7 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
     end
 
     if isnothing(grid)
-        grid = handle["serialized/grid"]
+        grid = load_serialized_grid(handle, name)
     end
 
     # If isreconstructed(grid), it probably means that the data was generated prior to
@@ -832,10 +883,12 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
     else
         all_iterations = []
         all_times = []
+        iterations_per_part = Int[]
         part_iterations = parse.(Int, keys(handle["timeseries/t"]))
         part_times = [handle["timeseries/t/$i"] for i in part_iterations]
         push!(all_iterations, part_iterations)
         push!(all_times, part_times)
+        push!(iterations_per_part, length(part_iterations))
         close(handle)
 
         for part in 2:Nparts
@@ -845,6 +898,7 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
             part_times = [handle["timeseries/t/$i"] for i in part_iterations]
             push!(all_iterations, part_iterations)
             push!(all_times, part_times)
+            push!(iterations_per_part, length(part_iterations))
             close(handle)
         end
 
@@ -855,8 +909,16 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
     Nt = time_indices_length(backend, times)
     @apply_regionally data = new_data(eltype(grid), grid, loc, indices, Nt)
 
+    # For OnDisk backend with split files, store a SplitFilePath so getindex
+    # can find the correct part file for each time index.
+    fts_path = if !isnothing(Nparts) && backend isa OnDisk
+        SplitFilePath(part_paths, cumsum(iterations_per_part))
+    else
+        path
+    end
+
     time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices,
-                                              times, path, name, time_indexing, reader_kw)
+                                              times, fts_path, name, time_indexing, reader_kw)
 
     if isnothing(Nparts)
         set!(time_series, path, name)
@@ -919,8 +981,8 @@ function FieldTimeSeries(typed_path::JLD2Path, name::String;
         # Handle file splitting due to max_filesize limitations by looking for filenames
         # that end in part1, etc
         start = path[1:end-5] # Remove filepath extension
-        lookfor = string(start, "_part*.jld2") # Look for part1, etc
-        part_paths = glob(lookfor) |> naturalsort
+        lookfor = string(basename(start), "_part*.jld2") # Look for part1, etc
+        part_paths = glob(lookfor, dirname(start)) |> naturalsort
         Nparts = length(part_paths)
 
         if Nparts == 0
@@ -969,7 +1031,7 @@ function Field(location, file::JLD2.JLDFile, name::String, iter;
         end
     end
 
-    isnothing(grid) && (grid = file["serialized/grid"])
+    isnothing(grid) && (grid = load_serialized_grid(file, name))
     raw_data = file["timeseries/$name/$iter"]
 
     # Change grid to specified architecture?
