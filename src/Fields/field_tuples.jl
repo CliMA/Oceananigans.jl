@@ -1,4 +1,15 @@
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
+using LinearAlgebra: LinearAlgebra
+
+const FieldTuple = Tuple{Field, Vararg{Field}}
+const NamedFieldTuple = NamedTuple{S, <:FieldTuple} where S
+
+Base.similar(ft::NamedFieldTuple) = map(similar, ft)
+
+LinearAlgebra.norm(ft::NamedFieldTuple) = sqrt(sum(LinearAlgebra.norm(field)^2 for field in ft))
+
+LinearAlgebra.dot(ft1::NamedFieldTuple, ft2::NamedFieldTuple) =
+    sum(LinearAlgebra.dot(a, b) for (a, b) in zip(values(ft1), values(ft2)))
 
 #####
 ##### `fill_halo_regions!` for tuples of `Field`
