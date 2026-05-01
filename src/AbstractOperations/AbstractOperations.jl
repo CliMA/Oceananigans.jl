@@ -2,7 +2,7 @@ module AbstractOperations
 
 export ∂x, ∂y, ∂z, @at, @unary, @binary, @multiary
 export Δx, Δy, Δz, Ax, Ay, Az, volume
-export Average, Integral, CumulativeIntegral, KernelFunctionOperation
+export Average, Integral, CumulativeIntegral, Histogram, KernelFunctionOperation
 export UnaryOperation, Derivative, BinaryOperation, MultiaryOperation, ConditionalOperation
 
 using Base: @propagate_inbounds
@@ -46,6 +46,7 @@ at(loc, f) = f # fallback
 include("grid_validation.jl")
 include("grid_metrics.jl")
 include("metric_field_reductions.jl")
+include("histogram_operation.jl")
 include("unary_operations.jl")
 include("binary_operations.jl")
 include("multiary_operations.jl")
