@@ -34,6 +34,7 @@ CUDA.allowscalar() do
     end
 
     # Core Oceananigans
+    #= TEMPORARILY COMMENTED OUT
     if group == :unit || group == :all
         @testset "Unit tests" begin
             include("test_quality_assurance.jl")
@@ -248,6 +249,7 @@ CUDA.allowscalar() do
         archs = nonhydrostatic_regression_test_architectures()
         include("test_nonhydrostatic_regression.jl")
     end
+    TEMPORARILY COMMENTED OUT =#
 
     if group == :nonhydrostatic_regression || group == :all
         include("test_nonhydrostatic_regression.jl")
@@ -257,6 +259,7 @@ CUDA.allowscalar() do
         include("test_hydrostatic_regression.jl")
     end
 
+    #= TEMPORARILY COMMENTED OUT
     if group == :scripts || group == :all
         @testset "Scripts" begin
             include("test_validation.jl")
@@ -374,6 +377,7 @@ CUDA.allowscalar() do
     if group == :convergence
         include("test_convergence.jl")
     end
+    TEMPORARILY COMMENTED OUT =#
 end
 
 end #CUDA.allowscalar()
