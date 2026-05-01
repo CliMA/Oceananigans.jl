@@ -451,7 +451,6 @@ for arch in archs
 
         test_jld2_size_file_splitting(arch)
         test_jld2_time_file_splitting(arch)
-
         #####
         ##### Time-averaging
         #####
