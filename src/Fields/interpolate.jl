@@ -380,6 +380,24 @@ function interpolate!(to_field::Field, from_field::AbstractField)
     from_location = Tuple(L() for L in location(from_field))
     to_location   = Tuple(L() for L in location(to_field))
 
+    # Validate Flat dimensions: if the destination grid is Flat in a dimension
+    # without a stored coordinate, the source grid must have size 1 in that dimension.
+    if any(T === Flat for T in topology(to_grid))
+        ℓ = Center()
+        to_coords = (ξnode(1, 1, 1, to_grid, ℓ, ℓ, ℓ),
+                     ηnode(1, 1, 1, to_grid, ℓ, ℓ, ℓ),
+                     rnode(1, 1, 1, to_grid, ℓ, ℓ, ℓ))
+        for (d, name) in enumerate(("x", "y", "z"))
+            if topology(to_grid, d) === Flat && isnothing(to_coords[d]) && size(from_grid, d) > 1
+                throw(ArgumentError(
+                    "Cannot interpolate! to a field on a grid that is Flat in $name " *
+                    "without a specified $name coordinate, because the source grid " *
+                    "has size $(size(from_grid, d)) > 1 in that dimension. " *
+                    "Specify $name on the destination grid."))
+            end
+        end
+    end
+
     params = KernelParameters(interior_indices(to_field))
 
     launch!(to_arch, to_grid, params,
