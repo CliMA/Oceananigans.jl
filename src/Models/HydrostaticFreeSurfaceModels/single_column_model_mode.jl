@@ -25,12 +25,13 @@ const SingleColumnGrid = AbstractGrid{<:AbstractFloat, <:Flat, <:Flat, <:Bounded
 #####
 
 PressureField(arch, ::SingleColumnGrid) = (pHY′ = nothing,)
-materialize_free_surface(::ExplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid) = nothing
-materialize_free_surface(::ImplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid) = nothing
-materialize_free_surface(::SplitExplicitFreeSurface,     velocities,                 ::SingleColumnGrid) = nothing
-materialize_free_surface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
-materialize_free_surface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
-materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, ::SingleColumnGrid) = nothing
+
+materialize_free_surface(::ExplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid, bcs) = nothing
+materialize_free_surface(::ImplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid, bcs) = nothing
+materialize_free_surface(::SplitExplicitFreeSurface,     velocities,                 ::SingleColumnGrid, bcs) = nothing
+materialize_free_surface(::ExplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid, bcs) = nothing
+materialize_free_surface(::ImplicitFreeSurface{Nothing}, ::PrescribedVelocityFields, ::SingleColumnGrid, bcs) = nothing
+materialize_free_surface(::SplitExplicitFreeSurface,     ::PrescribedVelocityFields, ::SingleColumnGrid, bcs) = nothing
 
 free_surface_names(::ExplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid) = tuple()
 free_surface_names(::ImplicitFreeSurface{Nothing}, velocities,                 ::SingleColumnGrid) = tuple()
