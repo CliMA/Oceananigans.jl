@@ -1,5 +1,5 @@
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, adapt_advection_order, materialize_advection
-using Oceananigans.Architectures: AbstractArchitecture
+using Oceananigans.Architectures: AbstractArchitecture, ReactantState
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
 using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
@@ -9,7 +9,9 @@ using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization, Face, Center
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions
+using Oceananigans.Models: generate_condition_maps
 using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles, materialize_clock!
+
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions,
                                        time_discretization, implicit_diffusion_solver, closure_required_tracers, initialize_closure_fields!
 using Oceananigans.Utils: tupleit
@@ -35,7 +37,7 @@ function default_vertical_coordinate(grid)
 end
 
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
-                                           G, T, V, B, R, F, P, BGC, U, W, C, Φ, K, AF, Z} <: AbstractModel{TS, A}
+                                           G, T, V, B, R, F, P, BGC, U, W, C, Φ, K, AF, Z, CM} <: AbstractModel{TS, A}
 
     architecture :: A          # Computer `Architecture` on which `Model` is run
     grid :: G                  # Grid of physical points on which `Model` is solved
@@ -56,6 +58,7 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
     timestepper :: TS          # Object containing timestepper fields and parameters
     auxiliary_fields :: AF     # User-specified auxiliary fields for forcing functions and boundary conditions
     vertical_coordinate :: Z   # Rulesets that define the time-evolution of the grid
+    condition_maps :: CM       # Cell maps split according to some condition
 end
 
 supported_timesteppers = (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5)
@@ -85,7 +88,9 @@ default_free_surface(grid; gravitational_acceleration=defaults.gravitational_acc
                                 pressure = nothing,
                                 closure_fields = nothing,
                                 auxiliary_fields = NamedTuple(),
-                                vertical_coordinate = default_vertical_coordinate(grid))
+                                vertical_coordinate = default_vertical_coordinate(grid),
+                                condition_momentum_advection = true,
+                                condition_tracer_advection = true)
 
 Construct a hydrostatic model with a free surface on `grid`.
 
@@ -126,6 +131,12 @@ Keyword arguments
                            Default: `default_vertical_coordinate(grid)`, which returns `ZStarCoordinate(grid)`
                            for grids with `MutableVerticalDiscretization` otherwise returns
                            `ZCoordinate()`.
+  - `condition_momentum_advection`: Create split cell map for cells in the interior and boundary,
+                                    for the momentum advection. Interior is defined as cells where
+                                    the maximum momentum advection scheme can be used. Default: `true`.
+  - `condition_tracer_advection`: Create split cell map for cells in the interior and boundary,
+                                  for the tracer advection. Interior is defined as cells where
+                                  the maximum tracer advection scheme can be used. Default: `true`.
 """
 function HydrostaticFreeSurfaceModel(grid;
                                      clock = Clock(grid),
@@ -145,7 +156,9 @@ function HydrostaticFreeSurfaceModel(grid;
                                      pressure = nothing,
                                      closure_fields = nothing,
                                      auxiliary_fields = NamedTuple(),
-                                     vertical_coordinate = default_vertical_coordinate(grid))
+                                     vertical_coordinate = default_vertical_coordinate(grid),
+                                     condition_momentum_advection=true,
+                                     condition_tracer_advection=true)
 
     # Check halos and throw an error if the grid's halo is too small
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
@@ -273,9 +286,17 @@ function HydrostaticFreeSurfaceModel(grid;
 
     !isnothing(particles) && arch isa Distributed && error("LagrangianParticles are not supported on Distributed architectures.")
 
+    condition_momentum_advection = check_advection_splitting(grid, condition_momentum_advection)
+    condition_tracer_advection = check_advection_splitting(grid, condition_tracer_advection)
+
+    condition_maps = generate_condition_maps(grid,
+                                             advection;
+                                             condition_momentum_advection,
+                                             condition_tracer_advection)
+
     model = HydrostaticFreeSurfaceModel(arch, grid, clock, advection, buoyancy, coriolis,
                                         free_surface, forcing, closure, particles, biogeochemistry, velocities, transport_velocities,
-                                        tracers, pressure, closure_fields, timestepper, auxiliary_fields, vertical_coordinate)
+                                        tracers, pressure, closure_fields, timestepper, auxiliary_fields, vertical_coordinate, condition_maps)
 
     materialize_clock!(clock, timestepper)
     update_state!(model)
@@ -378,3 +399,14 @@ function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
 end
 
 restore_prognostic_state!(::HydrostaticFreeSurfaceModel, ::Nothing) = nothing
+
+# Reactant arch does not support condition mapping or mapped kernels
+function check_advection_splitting(grid, condition)
+    if architecture(grid) isa ReactantState
+      return false
+    elseif isnothing(condition)
+      return true
+    else
+      return condition
+    end
+end

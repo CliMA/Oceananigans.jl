@@ -68,4 +68,6 @@ interior_tendency_kernel_parameters(::ShardedDistributed, grid) = :xyz
 # We need to fall back to different optimization when running with Reactant
 default_weno_weight_computation(::ReactantState) = Oceananigans.Utils.ConvertingDivision{Float32}
 
+@inline generate_condition_maps(grid::ReactantGrid, advection; kwargs...) = _generate_condition_maps(grid, advection)
+
 end # module

@@ -108,6 +108,7 @@ function VectorInvariant(FT = Oceananigans.defaults.FloatType;
                                                              upwinding)
 end
 
+
 #                                                                 buffer eltype
 #                                                 VectorInvariant{N,     FT,    M (multi-dimensionality)
 const MultiDimensionalVectorInvariant           = VectorInvariant{<:Any, <:Any, true}
@@ -130,6 +131,8 @@ const VectorInvariantCrossVerticalUpwinding     = VectorInvariant{<:Any, <:Any, 
 const VectorInvariantSelfVerticalUpwinding      = VectorInvariant{<:Any, <:Any, <:Any, <:Any, <:Any,  <:Any, <:Any, <:AbstractUpwindBiasedAdvectionScheme, <:OnlySelfUpwinding}
 
 const WENOVectorInvariant{N} = VectorInvariant{<:Any, <:Any, <:Any, <:WENO{N}} where N
+
+# Default, returns scheme un-modified
 
 Base.summary(a::VectorInvariant)                 = "VectorInvariant"
 Base.summary(a::MultiDimensionalVectorInvariant) = "VectorInvariant, multidimensional reconstruction"
