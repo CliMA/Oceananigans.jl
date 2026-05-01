@@ -14,6 +14,13 @@ end
 @testset "Test HydrostaticFreeSurfaceModel with split cells maps" begin
     @info "Testing for numerical divergence when using split cells map..."
 
+    underlying_grid = RectilinearGrid(arch, size=(80, 80, 20), x = (-5, 5), y = (-5, 5), z = (0, 2))
+
+    bump(x, y, z) = z < exp(-x^2 - y^2)
+    immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(bump))
+
+    grids = (underlying_grid, immersed_grid)
+
     for grid in grids
         reference_model = HydrostaticFreeSurfaceModel(grid;
                                                       condition_momentum_advection=false,
