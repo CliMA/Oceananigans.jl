@@ -157,11 +157,9 @@ for arch in archs
                     end
                 end
 
-                # CATKE works only with synchronized communication at the moment
-                synchronized_arch = synchronized(arch)
                 closure = CATKEVerticalDiffusivity()
 
-                catke_grid = LatitudeLongitudeGrid(synchronized_arch,
+                catke_grid = LatitudeLongitudeGrid(arch,
                                                    size = (Nx, Ny, 3),
                                                    halo = (4, 4, 3),
                                                    latitude = (-80, 80),
@@ -170,6 +168,7 @@ for arch in archs
                                                    radius = 10,
                                                    topology = (Bounded, Bounded, Bounded))
 
+                cpu_arch = cpu_architecture(arch)
                 catke_global_grid = reconstruct_global_grid(catke_grid)
 
                 @root @info "  Testing CATKE with $(ranks(arch)) ranks"
@@ -182,8 +181,6 @@ for arch in archs
                 vs = interior(on_architecture(CPU(), ms.velocities.v))
                 cs = interior(on_architecture(CPU(), ms.tracers.c))
                 ηs = interior(on_architecture(CPU(), ms.free_surface.displacement))
-
-                cpu_arch = cpu_architecture(synchronized_arch)
 
                 up = interior(on_architecture(cpu_arch, mp.velocities.u))
                 vp = interior(on_architecture(cpu_arch, mp.velocities.v))

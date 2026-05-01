@@ -201,17 +201,20 @@ end
 # This expression is the output of metaprogrammed_smoothness_operation(4)
 
 # Trick to force compilation of Val(stencil-1) and avoid loops on the GPU
-@inline function metaprogrammed_smoothness_operation(buffer)
+@inline function metaprogrammed_smoothness_operation(buffer; shift=false)
     elem = Vector{Expr}(undef, buffer)
     c_idx = 1
+
+    ψ_expr(i) = shift ? :(ψ[$i] - ψ̂) : :(ψ[$i])
+
     for stencil = 1:buffer - 1
         local c = c_idx # Avoid capturing `c_idx` in the generator expression below
-        stencil_sum   = Expr(:call, :+, (:(C[$(c + i - stencil)] * ψ[$i]) for i in stencil:buffer)...)
-        elem[stencil] = :(ψ[$stencil] * $stencil_sum)
+        stencil_sum   = Expr(:call, :+, (:(C[$(c + i - stencil)] * $(ψ_expr(i))) for i in stencil:buffer)...)
+        elem[stencil] = :($(ψ_expr(stencil)) * $stencil_sum)
         c_idx += buffer - stencil + 1
     end
 
-    elem[buffer] = :(ψ[$buffer] * ψ[$buffer] * C[$c_idx])
+    elem[buffer] = :($(ψ_expr(buffer)) * $(ψ_expr(buffer)) * C[$c_idx])
 
     return Expr(:call, :+, elem...)
 end
@@ -262,8 +265,20 @@ for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
     @eval @inline smoothness_operation(scheme::WENO{$buffer}, ψ, C) = @inbounds @muladd $(metaprogrammed_smoothness_operation(buffer))
 
     for stencil in 0:buffer-1, FT in fully_supported_float_types
-        @eval @inline smoothness_indicator(ψ, scheme::WENO{$buffer, $FT}, ::Val{$stencil}) =
-                      smoothness_operation(scheme, ψ, $(smoothness_coefficients(Val(FT), Val(buffer), Val(stencil))))
+        if FT in (Float64, BigFloat)
+            @eval @inline smoothness_indicator(ψ, scheme::WENO{$buffer, $FT}, ::Val{$stencil}) =
+                          smoothness_operation(scheme, ψ, $(smoothness_coefficients(Val(FT), Val(buffer), Val(stencil))))
+        else
+            # Subtract central stencil value before computing smoothness indicators to avoid
+            # catastrophic cancellation for Float32 when stencil values are large.
+            # β is invariant to constant shifts (it measures polynomial derivatives),
+            # so subtracting any constant preserves correctness.
+            @eval @inline function smoothness_indicator(ψ, scheme::WENO{$buffer, $FT}, ::Val{$stencil})
+                C = $(smoothness_coefficients(Val(FT), Val(buffer), Val(stencil)))
+                ψ̂ = ψ[$(buffer ÷ 2 + 1)]
+                @inbounds @muladd $(metaprogrammed_smoothness_operation(buffer; shift=true))
+            end
+        end
     end
 end
 
@@ -291,7 +306,7 @@ end
 @inline function metaprogrammed_zweno_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(C★(scheme, Val($(stencil-1))) * (1 + (newton_div(FT2, τ, β[$stencil] + ϵ))^2))
+        elem[stencil] = :(C★(scheme, Val($(stencil-1))) * (1 + (newton_div(WCT, τ, β[$stencil] + ϵ))^2))
     end
 
     return :($(elem...),)
@@ -301,7 +316,7 @@ for buffer in advection_buffers[2:end]
     @eval begin
         @inline         beta_sum(scheme::WENO{$buffer, FT}, β₁, β₂)    where FT = @inbounds $(metaprogrammed_beta_sum(buffer))
         @inline        beta_loop(scheme::WENO{$buffer, FT}, ψ)         where FT = @inbounds $(metaprogrammed_beta_loop(buffer))
-        @inline zweno_alpha_loop(scheme::WENO{$buffer, FT, FT2}, β, τ) where {FT, FT2} = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
+        @inline zweno_alpha_loop(scheme::WENO{$buffer, FT, WCT}, β, τ) where {FT, WCT} = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
     end
 end
 
@@ -430,30 +445,30 @@ for dir in (:x, :y, :z), (T, f) in zip((:Any, :Function), (false, true))
 end
 
 # WENO stencils
-@inline S₀₂(S, bias) = @inbounds ifelse(bias == LeftBias, (S[2], S[3]), (S[3], S[2]))
-@inline S₁₂(S, bias) = @inbounds ifelse(bias == LeftBias, (S[1], S[2]), (S[4], S[3]))
+@inline S₀₂(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[2], S[3]), (S[3], S[2]))
+@inline S₁₂(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[1], S[2]), (S[4], S[3]))
 
-@inline S₀₃(S, bias) = @inbounds ifelse(bias == LeftBias, (S[3], S[4], S[5]), (S[4], S[3], S[2]))
-@inline S₁₃(S, bias) = @inbounds ifelse(bias == LeftBias, (S[2], S[3], S[4]), (S[5], S[4], S[3]))
-@inline S₂₃(S, bias) = @inbounds ifelse(bias == LeftBias, (S[1], S[2], S[3]), (S[6], S[5], S[4]))
+@inline S₀₃(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[3], S[4], S[5]), (S[4], S[3], S[2]))
+@inline S₁₃(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[2], S[3], S[4]), (S[5], S[4], S[3]))
+@inline S₂₃(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[1], S[2], S[3]), (S[6], S[5], S[4]))
 
-@inline S₀₄(S, bias) = @inbounds ifelse(bias == LeftBias, (S[4], S[5], S[6], S[7]), (S[5], S[4], S[3], S[2]))
-@inline S₁₄(S, bias) = @inbounds ifelse(bias == LeftBias, (S[3], S[4], S[5], S[6]), (S[6], S[5], S[4], S[3]))
-@inline S₂₄(S, bias) = @inbounds ifelse(bias == LeftBias, (S[2], S[3], S[4], S[5]), (S[7], S[6], S[5], S[4]))
-@inline S₃₄(S, bias) = @inbounds ifelse(bias == LeftBias, (S[1], S[2], S[3], S[4]), (S[8], S[7], S[6], S[5]))
+@inline S₀₄(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[4], S[5], S[6], S[7]), (S[5], S[4], S[3], S[2]))
+@inline S₁₄(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[3], S[4], S[5], S[6]), (S[6], S[5], S[4], S[3]))
+@inline S₂₄(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[2], S[3], S[4], S[5]), (S[7], S[6], S[5], S[4]))
+@inline S₃₄(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[1], S[2], S[3], S[4]), (S[8], S[7], S[6], S[5]))
 
-@inline S₀₅(S, bias) = @inbounds ifelse(bias == LeftBias, (S[5], S[6], S[7], S[8], S[9]), (S[6],  S[5], S[4], S[3], S[2]))
-@inline S₁₅(S, bias) = @inbounds ifelse(bias == LeftBias, (S[4], S[5], S[6], S[7], S[8]), (S[7],  S[6], S[5], S[4], S[3]))
-@inline S₂₅(S, bias) = @inbounds ifelse(bias == LeftBias, (S[3], S[4], S[5], S[6], S[7]), (S[8],  S[7], S[6], S[5], S[4]))
-@inline S₃₅(S, bias) = @inbounds ifelse(bias == LeftBias, (S[2], S[3], S[4], S[5], S[6]), (S[9],  S[8], S[7], S[6], S[5]))
-@inline S₄₅(S, bias) = @inbounds ifelse(bias == LeftBias, (S[1], S[2], S[3], S[4], S[5]), (S[10], S[9], S[8], S[7], S[6]))
+@inline S₀₅(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[5], S[6], S[7], S[8], S[9]), (S[6],  S[5], S[4], S[3], S[2]))
+@inline S₁₅(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[4], S[5], S[6], S[7], S[8]), (S[7],  S[6], S[5], S[4], S[3]))
+@inline S₂₅(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[3], S[4], S[5], S[6], S[7]), (S[8],  S[7], S[6], S[5], S[4]))
+@inline S₃₅(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[2], S[3], S[4], S[5], S[6]), (S[9],  S[8], S[7], S[6], S[5]))
+@inline S₄₅(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[1], S[2], S[3], S[4], S[5]), (S[10], S[9], S[8], S[7], S[6]))
 
-@inline S₀₆(S, bias) = @inbounds ifelse(bias == LeftBias, (S[6], S[7], S[8], S[9], S[10], S[11]), (S[7],  S[6],  S[5],  S[4], S[3], S[2]))
-@inline S₁₆(S, bias) = @inbounds ifelse(bias == LeftBias, (S[5], S[6], S[7], S[8], S[9],  S[10]), (S[8],  S[7],  S[6],  S[5], S[4], S[3]))
-@inline S₂₆(S, bias) = @inbounds ifelse(bias == LeftBias, (S[4], S[5], S[6], S[7], S[8],  S[9]),  (S[9],  S[8],  S[7],  S[6], S[5], S[4]))
-@inline S₃₆(S, bias) = @inbounds ifelse(bias == LeftBias, (S[3], S[4], S[5], S[6], S[7],  S[8]),  (S[10], S[9],  S[8],  S[7], S[6], S[5]))
-@inline S₄₆(S, bias) = @inbounds ifelse(bias == LeftBias, (S[2], S[3], S[4], S[5], S[6],  S[7]),  (S[11], S[10], S[9],  S[8], S[7], S[6]))
-@inline S₅₆(S, bias) = @inbounds ifelse(bias == LeftBias, (S[1], S[2], S[3], S[4], S[5],  S[6]),  (S[12], S[11], S[10], S[9], S[8], S[7]))
+@inline S₀₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[6], S[7], S[8], S[9], S[10], S[11]), (S[7],  S[6],  S[5],  S[4], S[3], S[2]))
+@inline S₁₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[5], S[6], S[7], S[8], S[9],  S[10]), (S[8],  S[7],  S[6],  S[5], S[4], S[3]))
+@inline S₂₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[4], S[5], S[6], S[7], S[8],  S[9]),  (S[9],  S[8],  S[7],  S[6], S[5], S[4]))
+@inline S₃₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[3], S[4], S[5], S[6], S[7],  S[8]),  (S[10], S[9],  S[8],  S[7], S[6], S[5]))
+@inline S₄₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[2], S[3], S[4], S[5], S[6],  S[7]),  (S[11], S[10], S[9],  S[8], S[7], S[6]))
+@inline S₅₆(S, bias) = @inbounds ifelse(bias isa LeftBias, (S[1], S[2], S[3], S[4], S[5],  S[6]),  (S[12], S[11], S[10], S[9], S[8], S[7]))
 
 # Stencil for vector invariant calculation of smoothness indicators in the horizontal direction
 # Parallel to the interpolation direction! (same as left/right stencil)

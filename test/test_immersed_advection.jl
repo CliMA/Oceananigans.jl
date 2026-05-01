@@ -12,7 +12,8 @@ using Oceananigans.Advection:
         _biased_interpolate_yᵃᶠᵃ,
         FluxFormAdvection,
         LeftBias,
-        RightBias
+        RightBias,
+        materialize_advection
 
 linear_advection_schemes = [Centered, UpwindBiased]
 advection_schemes = [linear_advection_schemes... WENO]
@@ -21,21 +22,21 @@ advection_schemes = [linear_advection_schemes... WENO]
 @inline advective_order(buffer, AdvectionType)    = buffer * 2 - 1
 
 function run_tracer_interpolation_test(c, ibg, scheme)
-
+    scheme = materialize_advection(scheme, ibg)
     for j in 6:19, i in 6:19
         if typeof(scheme) <: Centered
             @test @allowscalar  _symmetric_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, c) ≈ 1.0
         else
-            @test @allowscalar _biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, LeftBias,  c) ≈ 1.0
-            @test @allowscalar _biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, RightBias, c) ≈ 1.0
-            @test @allowscalar _biased_interpolate_yᵃᶠᵃ(i, j+1, 1, ibg, scheme, LeftBias,  c) ≈ 1.0
-            @test @allowscalar _biased_interpolate_yᵃᶠᵃ(i, j+1, 1, ibg, scheme, RightBias, c) ≈ 1.0
+            @test @allowscalar _biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, LeftBias(),  c) ≈ 1.0
+            @test @allowscalar _biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, RightBias(), c) ≈ 1.0
+            @test @allowscalar _biased_interpolate_yᵃᶠᵃ(i, j+1, 1, ibg, scheme, LeftBias(),  c) ≈ 1.0
+            @test @allowscalar _biased_interpolate_yᵃᶠᵃ(i, j+1, 1, ibg, scheme, RightBias(), c) ≈ 1.0
         end
     end
 end
 
 function run_tracer_conservation_test(grid, scheme)
-
+    scheme = materialize_advection(scheme, grid)
     model = HydrostaticFreeSurfaceModel(grid; tracers = :c,
                                         free_surface = ExplicitFreeSurface(),
                                         tracer_advection = scheme)
@@ -65,6 +66,7 @@ function run_tracer_conservation_test(grid, scheme)
 end
 
 function run_momentum_interpolation_test(u, v, ibg, scheme)
+    scheme = materialize_advection(scheme, ibg)
 
     # ensure also immersed boundaries have a value of 1
     interior(u, 6, :, 1) .= 1.0
@@ -77,15 +79,15 @@ function run_momentum_interpolation_test(u, v, ibg, scheme)
             @test @allowscalar  _symmetric_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, u) ≈ 1.0
             @test @allowscalar  _symmetric_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, v) ≈ 1.0
         else
-            @test @allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, LeftBias,  u) ≈ 1.0
-            @test @allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, RightBias, u) ≈ 1.0
-            @test @allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, LeftBias,  u) ≈ 1.0
-            @test @allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, RightBias, u) ≈ 1.0
+            @test @allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, LeftBias(),  u) ≈ 1.0
+            @test @allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, RightBias(), u) ≈ 1.0
+            @test @allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, LeftBias(),  u) ≈ 1.0
+            @test @allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, RightBias(), u) ≈ 1.0
 
-            @test @allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, LeftBias,  v) ≈ 1.0
-            @test @allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, RightBias, v) ≈ 1.0
-            @test @allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, LeftBias,  v) ≈ 1.0
-            @test @allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, RightBias, v) ≈ 1.0
+            @test @allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, LeftBias(),  v) ≈ 1.0
+            @test @allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, RightBias(), v) ≈ 1.0
+            @test @allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, LeftBias(),  v) ≈ 1.0
+            @test @allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, RightBias(), v) ≈ 1.0
         end
     end
 

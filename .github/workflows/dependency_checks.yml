@@ -1,0 +1,68 @@
+name: Dependency Checks
+
+on:
+  pull_request:
+    paths: &paths
+      - '.github/workflows/dependency_checks.yml'
+      - 'test/Project.toml'
+      - 'benchmarks/Project.toml'
+      - 'Project.toml'
+  push:
+    branches:
+      - main
+    tags: '*'
+    paths: *paths
+jobs:
+  check_minimum_version:
+    name: Check Minimum Dependency Versions
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        downgrade_mode: ['deps', 'alldeps']
+        version:
+          - '1.11.9'
+        os:
+          - ubuntu-latest
+        arch:
+          - x64
+    steps:
+      - uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: julia-actions/julia-downgrade-compat@v2
+        with:
+          mode: ${{ matrix.downgrade_mode }}
+          projects: '., test, benchmarking'
+  resolve_dependencies:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 10
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1.11.9'
+        os:
+          - ubuntu-latest
+        arch:
+          - x64
+        dir:
+          - 'test/'
+          - 'benchmarking/'
+    steps:
+      - uses: actions/checkout@v6
+      - uses: julia-actions/setup-julia@v3
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - name: Resolve environment in ${{ matrix.dir }}
+        working-directory: ${{ matrix.dir }}
+        shell: julia --color=yes --project=. {0}
+        run: |
+          using Pkg
+          Pkg.Registry.add("General")
+          Pkg.Registry.update()
+          Pkg.resolve()

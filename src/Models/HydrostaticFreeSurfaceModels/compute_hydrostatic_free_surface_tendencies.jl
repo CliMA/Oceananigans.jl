@@ -7,7 +7,7 @@ using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
-using Oceananigans.Grids: get_active_cells_map
+using Oceananigans.Utils: get_active_cells_map
 
 using Oceananigans.Advection: horizontal_advection_U, vertical_advection_U, bernoulli_head_U
 
@@ -29,7 +29,7 @@ function compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callba
     grid = model.grid
     arch = architecture(grid)
 
-    active_cells_map = get_active_cells_map(model.grid, Val(:interior))
+    active_cells_map = get_active_cells_map(model.grid, Val(:core))
     kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
 
     compute_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters; active_cells_map)
@@ -64,7 +64,7 @@ function compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel)
     grid = model.grid
     arch = architecture(grid)
 
-    active_cells_map  = get_active_cells_map(model.grid, Val(:interior))
+    active_cells_map  = get_active_cells_map(model.grid, Val(:core))
     kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
 
     compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_map)
