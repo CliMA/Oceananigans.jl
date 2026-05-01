@@ -186,6 +186,14 @@ CUDA.allowscalar() do
         end
     end
 
+    if group == :nccl_extension || group == :all
+        MPI.Initialized() || MPI.Init()
+        reset_cuda_if_necessary()
+        @testset "NCCL extension tests" begin
+            include("test_nccl_extension.jl")
+        end
+    end
+
     if group == :distributed || group == :all
         MPI.Initialized() || MPI.Init()
         # In case CUDA is not found, we reset CUDA and restart the julia session
