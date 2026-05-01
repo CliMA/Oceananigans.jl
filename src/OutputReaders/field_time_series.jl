@@ -32,33 +32,41 @@ import Oceananigans.Fields: Field, set!, interior, indices, interpolate!
 #####
 
 abstract type AbstractDataBackend end
-abstract type AbstractInMemoryBackend{S} end
 
-struct InMemory{S} <: AbstractInMemoryBackend{S}
+# `prefetch` is a constructor-time signal: any concrete subtype tagged `true` is wrapped in
+# a `Prefetched` by the FTS constructor. Carried at the abstract level so `build_runtime_backend`
+# dispatches uniformly across `InMemory`, `DatasetBackend` (downstream), and any other subtype that opts in.
+abstract type AbstractInMemoryBackend{S, prefetch} end
+
+struct InMemory{S, prefetch} <: AbstractInMemoryBackend{S, prefetch}
     start :: S
     length :: S
 end
 
 """
-    InMemory(length=nothing)
+    InMemory(length=nothing; prefetch=false)
 
-Return a `backend` for `FieldTimeSeries` that stores `size`
-fields in memory. The default `size = nothing` stores all fields in memory.
+Return a `backend` for `FieldTimeSeries` that stores `length` fields in memory. The default `length = nothing` stores all fields in memory.
+
+If `prefetch = true` (only meaningful for partly-in-memory backends, i.e. when `length` is given), the next sliding window
+is read on a background `Threads.@spawn` task while the current window is in use, so reload I/O is hidden behind compute.
+Requires `JULIA_NUM_THREADS ≥ 2`; otherwise prefetch is silently disabled with a warning.
 """
-function InMemory(length::Int)
+function InMemory(length::Int; prefetch::Bool=false)
     length < 2 && throw(ArgumentError("InMemory `length` must be 2 or greater."))
-    return InMemory(1, length)
+    return InMemory{Int, prefetch}(1, length)
 end
 
-InMemory() = InMemory(nothing, nothing)
+InMemory() = InMemory{Nothing, false}(nothing, nothing)
+InMemory(start::Int, length::Int) = InMemory{Int, false}(start, length)
 
-const TotallyInMemory = AbstractInMemoryBackend{Nothing}
-const  PartlyInMemory = AbstractInMemoryBackend{Int}
+const TotallyInMemory = AbstractInMemoryBackend{Nothing, P} where P
+const  PartlyInMemory = AbstractInMemoryBackend{Int,     P} where P
 
 Base.summary(backend::PartlyInMemory) = string("InMemory(", backend.start, ", ", length(backend), ")")
 Base.summary(backend::TotallyInMemory) = "InMemory()"
 
-new_backend(::InMemory, start, length) = InMemory(start, length)
+new_backend(::InMemory{S, P}, start, length) where {S, P} = InMemory{S, P}(start, length)
 
 """
     OnDisk()
@@ -373,6 +381,9 @@ const    ClampFTS{K} = FlavorOfFTS{<:Any, <:Any, <:Any, <:Clamp,    K} where K
 
 const CyclicalChunkedFTS = CyclicalFTS{<:PartlyInMemory}
 
+# Fallback specialised in prefetched_field_time_series.jl
+build_runtime_backend(backend, args...) = backend
+
 architecture(fts::FieldTimeSeries) = architecture(fts.grid)
 time_indices(fts) = time_indices(fts.backend, fts.time_indexing, length(fts.times))
 
@@ -557,7 +568,8 @@ function FieldTimeSeries(loc::Tuple{<:LX, <:LY, <:LZ}, grid, times=();
         isnothing(name) && error(ArgumentError("Must provide the keyword argument `name` when `backend=OnDisk()`."))
     end
 
-    return FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices,
+    runtime_backend = build_runtime_backend(backend, grid, loc, indices, times, path, name, time_indexing, boundary_conditions, reader_kw)
+    return FieldTimeSeries{LX, LY, LZ}(data, grid, runtime_backend, boundary_conditions, indices,
                                        times, path, name, time_indexing, reader_kw)
 end
 
@@ -917,7 +929,8 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
         path
     end
 
-    time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices,
+    runtime_backend = build_runtime_backend(backend, grid, loc, indices, times, fts_path, name, time_indexing, boundary_conditions, reader_kw)
+    time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, runtime_backend, boundary_conditions, indices,
                                               times, fts_path, name, time_indexing, reader_kw)
 
     if isnothing(Nparts)

@@ -43,7 +43,8 @@ using Oceananigans.OutputReaders:
     time_indices_length,
     new_data,
     UnspecifiedBoundaryConditions,
-    NetCDFPath
+    NetCDFPath,
+    build_runtime_backend
 using Oceananigans.OutputWriters:
     auto_extension,
     output_averaging_schedule,
