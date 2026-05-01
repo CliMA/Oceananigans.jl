@@ -43,7 +43,7 @@ Oceananigans = {path = ".."}
 AMDGPU = "1.3.6, 2"
 Adapt = "4.1.1"
 Aqua = "0.8"
-CUDA = "=5.8.5, 5.9.1, 6"
+CUDA = "=5.8.5, 5.9.1, ~6.0"
 CairoMakie = "0.15"
 DataDeps = "0.7"
 Dates = "<0.0.1, 1"
