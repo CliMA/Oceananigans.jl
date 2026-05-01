@@ -407,7 +407,7 @@ true
 ```
 """
 function slice(field::Field, i, j, k)
-    
+
     grid = field.grid
     old_loc = instantiated_location(field)
     new_loc = (slice_loc(i, old_loc[1]),
