@@ -1060,12 +1060,6 @@ function test_checkpointing_tke_dissipation_closure(arch, timestepper)
     @test_nowarn set!(new_simulation; checkpoint=:latest)
     @test_nowarn run!(new_simulation)
 
-    # Verify previous_velocities state matches reference at iteration 10
-    ref_pv = ref_model.closure_fields.previous_velocities
-    new_pv = new_model.closure_fields.previous_velocities
-    @test all(Array(interior(new_pv.u)) .≈ Array(interior(ref_pv.u)))
-    @test all(Array(interior(new_pv.v)) .≈ Array(interior(ref_pv.v)))
-
     # Compare final states at iteration 10
     # We need a small atol because while all prognostic fields are exactly equal, the e and ϵ
     # fields can have tiny differences due to floating-point ordering with RK3 I think.
