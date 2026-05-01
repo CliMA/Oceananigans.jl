@@ -739,6 +739,55 @@ end
             z_field = Field{Nothing, Nothing, Center}(grid)
             set!(z_field, z -> z)
             @test @allowscalar interpolate(FT(0.4), z_field) ≈ FT(0.4)
+
+            flat_test_cases = (
+                (topology = (Flat, Periodic, Bounded),
+                 size = (2, 4),
+                 source = (; y = (0, 1), z = (-1, 0)),
+                 target = (; x = FT(3), y = (0, 1), z = (-1, 0)),
+                 values = (y, z) -> y + z),
+                (topology = (Flat, Flat, Bounded),
+                 size = 4,
+                 source = (; z = (-1, 0)),
+                 target = (; x = FT(-144.9), y = FT(50.1), z = (-1, 0)),
+                 values = z -> z)
+            )
+
+            for case in flat_test_cases
+                source_grid = RectilinearGrid(arch, FT; size=case.size, topology=case.topology, case.source...)
+                target_grid = RectilinearGrid(arch, FT; size=case.size, topology=case.topology, case.target...)
+
+                source_field = CenterField(source_grid)
+                set!(source_field, case.values)
+
+                interpolated_field = CenterField(target_grid)
+                reference_field = CenterField(target_grid)
+
+                interpolate!(interpolated_field, source_field)
+
+                @allowscalar for k in axes(reference_field, 3), j in axes(reference_field, 2), i in axes(reference_field, 1)
+                    target_node = Oceananigans.node(i, j, k, reference_field)
+                    flattened_node = Oceananigans.Fields.flatten_node(target_node...)
+                    reference_field[i, j, k] = interpolate(flattened_node, source_field)
+                end
+
+                @test all(interior(interpolated_field) .≈ interior(reference_field))
+            end
+
+            # 3D source → 1D column target: the column's specified (x, y) must drive
+            # horizontal sampling of the source.
+            source_3d_grid = RectilinearGrid(arch, FT; size=(4, 4, 4), x=(0,1), y=(0,1), z=(0,1))
+            source_3d = CenterField(source_3d_grid)
+            set!(source_3d, (x, y, z) -> x + 2y + 3z)
+
+            x_col, y_col = FT(0.3), FT(0.7)
+            column_grid = RectilinearGrid(arch, FT; size=4,
+                                          topology=(Flat, Flat, Bounded),
+                                          x=x_col, y=y_col, z=(0,1))
+            column = CenterField(column_grid)
+            interpolate!(column, source_3d)
+            expected = [x_col + 2y_col + 3z for z in znodes(column)]
+            @test all(Array(interior(column))[1, 1, :] .≈ expected)
         end
     end
 
@@ -1020,6 +1069,35 @@ end
                 @test size(s) == (1, Ny, 1)
                 @test Array(interior(s, 1, :, 1)) ≈ Array(interior(r, 2, :, 1))
             end
+        end
+    end
+
+    @testset "NamedFieldTuple operations" begin
+        @info "  Testing similar/set!/norm/dot on NamedFieldTuples..."
+
+        for arch in archs, FT in float_types
+            grid = RectilinearGrid(arch, FT, size=(4, 4, 4), extent=(1, 1, 1))
+            Φ = (u=CenterField(grid), v=CenterField(grid))
+
+            Ψ = similar(Φ)
+            @test Ψ isa NamedTuple{(:u, :v)}
+            @test Ψ.u isa Field && Ψ.v isa Field
+            @test Ψ.u.grid === grid
+            @test !(Ψ.u.data === Φ.u.data)
+
+            set!(Φ, 3)
+            @test all(@allowscalar(interior(Φ.u)) .== 3)
+            @test all(@allowscalar(interior(Φ.v)) .== 3)
+
+            set!(Ψ, 0)
+            set!(Ψ, Φ)
+            @test all(@allowscalar(interior(Ψ.u)) .== 3)
+            @test all(@allowscalar(interior(Ψ.v)) .== 3)
+
+            # block 2-norm: sqrt(2 · 3² · 4³) = sqrt(1152)
+            @test norm(Φ) ≈ sqrt(2 * 9 * 64)
+            # dot: 2 · 3 · 3 · 4³ = 1152
+            @test dot(Φ, Ψ) ≈ 2 * 3 * 3 * 64
         end
     end
 end

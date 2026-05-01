@@ -17,6 +17,8 @@ using ..Grids: ShardedGrid, ShardedDistributed
 import Oceananigans.Models:
         complete_communication_and_compute_buffer!,
         interior_tendency_kernel_parameters
+import Oceananigans.Advection: default_weno_weight_computation
+
 
 const ReactantHFSM{TS, E} = Union{
     HydrostaticFreeSurfaceModel{TS, E, <:ReactantState},
@@ -59,5 +61,11 @@ maybe_prepare_first_time_step!(model::ReactantHFSM, callbacks) = nothing
 # Undo all the pipelining for a `ShardedDistributed` architecture
 complete_communication_and_compute_buffer!(model, ::ShardedGrid, ::ShardedDistributed) = nothing
 interior_tendency_kernel_parameters(::ShardedDistributed, grid) = :xyz
+
+# Reactant uses CUDA version of the code to uplift program description to MLIR.
+# Since default `weno_weight_computation` on CUDA uses LLVM's NVPTX intrinsics
+# it causes Reactant to crash.
+# We need to fall back to different optimization when running with Reactant
+default_weno_weight_computation(::ReactantState) = Oceananigans.Utils.ConvertingDivision{Float32}
 
 end # module
