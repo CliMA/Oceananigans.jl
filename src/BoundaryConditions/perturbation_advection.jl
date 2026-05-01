@@ -1,11 +1,12 @@
 using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ
 using Oceananigans: defaults
 
-struct PerturbationAdvection{FT, D}
+struct PerturbationAdvection{FT, D, TF}
     inflow_timescale :: FT
     outflow_timescale :: FT
     gravity_wave_speed :: FT
     density :: D
+    target_volume_flux :: TF
 end
 
 """
@@ -92,29 +93,83 @@ boundary flow.
   divides by `density` before radiation and multiplies back after. This is required
   for models with density-weighted prognostic variables (e.g., anelastic models with
   prognostic ρu, ρθ). Default: `nothing` (no conversion).
+- `target_volume_flux`: target net volume flux (m³/s) through this boundary, measured
+  as the integral of the normal velocity in the positive coordinate direction.
+  When set, the boundary velocity is corrected each pressure step to achieve exactly
+  this flux before the global pool correction is applied to the remaining boundaries.
+  Default: `nothing` (boundary participates in the global pool correction instead).
 """
 function PerturbationAdvection(FT = defaults.FloatType;
                                outflow_timescale = Inf,
                                inflow_timescale = 0,
                                gravity_wave_speed = 0,
-                               density = nothing)
+                               density = nothing,
+                               target_volume_flux = nothing)
     inflow_timescale = convert(FT, inflow_timescale)
     outflow_timescale = convert(FT, outflow_timescale)
     gravity_wave_speed = convert(FT, gravity_wave_speed)
-    return PerturbationAdvection(inflow_timescale, outflow_timescale, gravity_wave_speed, density)
+    tvf = if isnothing(target_volume_flux)
+              nothing
+          elseif target_volume_flux isa Number
+              convert(FT, target_volume_flux)
+          else
+              target_volume_flux  # callable (e.g. LiveBoundaryTransport); keep as-is
+          end
+    return PerturbationAdvection(inflow_timescale, outflow_timescale, gravity_wave_speed, density, tvf)
 end
 
 # Support 2-positional-arg constructor
 PerturbationAdvection(inflow_timescale, outflow_timescale) =
-    PerturbationAdvection(inflow_timescale, outflow_timescale, zero(inflow_timescale), nothing)
+    PerturbationAdvection(inflow_timescale, outflow_timescale, zero(inflow_timescale), nothing, nothing)
 
 Adapt.adapt_structure(to, pe::PerturbationAdvection) =
     PerturbationAdvection(adapt(to, pe.inflow_timescale),
                           adapt(to, pe.outflow_timescale),
                           adapt(to, pe.gravity_wave_speed),
-                          adapt(to, pe.density))
+                          adapt(to, pe.density),
+                          adapt(to, pe.target_volume_flux))
 
 const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
+
+"""
+    has_target_volume_flux(scheme)
+
+Return `true` if `scheme` carries a prescribed `target_volume_flux`, `false` otherwise.
+
+Extend this function for custom open-boundary schemes defined outside Oceananigans so that
+the targeted-flux correction machinery picks them up automatically:
+
+```julia
+MyPkg.has_target_volume_flux(s::MyScheme) = s.target_volume_flux !== nothing
+MyPkg.get_target_volume_flux(s::MyScheme) = s.target_volume_flux
+```
+"""
+has_target_volume_flux(scheme) = false
+has_target_volume_flux(scheme::PerturbationAdvection{<:Any, <:Any, <:Nothing}) = false
+has_target_volume_flux(scheme::PerturbationAdvection) = true  # any non-Nothing TF
+
+"""
+    get_target_volume_flux(scheme, grid)
+
+Return the prescribed target volume flux for `scheme` on `grid`.
+For a `Number`, returns the stored value unchanged.
+For a callable (e.g. `LiveBoundaryTransport`), calls it with `grid` to
+recompute the target at the current grid state (needed for ZStar grids).
+
+A 1-argument fallback is provided for external packages that have not yet
+adopted the 2-argument form:
+
+```julia
+MyPkg.has_target_volume_flux(s::MyScheme) = s.target_volume_flux !== nothing
+MyPkg.get_target_volume_flux(s::MyScheme) = s.target_volume_flux
+```
+"""
+get_target_volume_flux(scheme, grid) = get_target_volume_flux(scheme)  # 1-arg fallback for external schemes
+get_target_volume_flux(scheme::PerturbationAdvection, grid) = _eval_tvf(scheme.target_volume_flux, grid)
+get_target_volume_flux(scheme::PerturbationAdvection) = scheme.target_volume_flux
+
+_eval_tvf(x::Number, grid) = x
+_eval_tvf(f, grid) = f(grid)
 
 # Helper to convert between density-weighted and intensive fields.
 # When density is nothing, these are no-ops.

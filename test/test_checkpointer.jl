@@ -1780,7 +1780,7 @@ end
 Test checkpointing for simulations with OpenBoundaryCondition using the specified scheme.
 Uses a make_simulation() function to create identical simulations for testing.
 Verifies that:
-1. Every element of model.boundary_mass_fluxes is correctly saved and restored
+1. Every element of model.boundary_volume_fluxes is correctly saved and restored
 2. The restored simulation can continue running from the checkpoint
 3. Simulation state (iteration, time) is properly restored
 
@@ -1811,16 +1811,16 @@ function test_open_boundary_condition_scheme_checkpointing(arch, timestepper, sc
     @test_nowarn run!(simulation)
 
     # Store original boundary mass fluxes
-    original_bmf = simulation.model.boundary_mass_fluxes
+    original_bmf = simulation.model.boundary_volume_fluxes
 
-    # Restore entire simulation from checkpoint and verify boundary_mass_fluxes match exactly
+    # Restore entire simulation from checkpoint and verify boundary_volume_fluxes match exactly
     restored_simulation = make_simulation(6)
     restored_simulation.output_writers[:checkpointer] = Checkpointer(restored_simulation.model,
                                                                      schedule=IterationInterval(3),
                                                                      prefix=prefix)
     @test_nowarn set!(restored_simulation; checkpoint=:latest)
 
-    restored_bmf = restored_simulation.model.boundary_mass_fluxes
+    restored_bmf = restored_simulation.model.boundary_volume_fluxes
 
     # Test that structure is identical
     @test propertynames(original_bmf) == propertynames(restored_bmf)
