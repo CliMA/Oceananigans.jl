@@ -18,7 +18,7 @@ end
 
 Construct a boundary condition of type `classification` with a function boundary `condition`.
 
-By default, the function boudnary `condition` is assumed to have the 'continuous form'
+By default, the function boundary `condition` is assumed to have the 'continuous form'
 `condition(ξ, η, t)`, where `t` is time and `ξ` and `η` vary along the boundary.
 In particular:
 
@@ -31,14 +31,14 @@ If `parameters` is not `nothing`, then function boundary conditions have the for
 the boundary as explained above.
 
 If `discrete_form = true`, the function `condition` is assumed to have the "discrete form",
-```
-condition(i, j, grid, clock, model_fields)
-```
+
+    condition(i, j, grid, clock, model_fields)
+
 where `i`, and `j` are indices that vary along the boundary. If `discrete_form = true` and
 `parameters` is not `nothing`, the function `condition` is called with
-```
-condition(i, j, grid, clock, model_fields, parameters)
-```
+
+    condition(i, j, grid, clock, model_fields, parameters)
+
 """
 function BoundaryCondition(classification::AbstractBoundaryConditionClassification, condition::Function;
                            parameters = nothing,
@@ -63,7 +63,7 @@ function materialize_condition(condition::Function, parameters, discrete_form, f
     return condition
 end
 
-# Convenience constructors for buondary condition passing classification types
+# Convenience constructors for boundary condition passing classification types
 BoundaryCondition(Classification::DataType, args...; kwargs...) = BoundaryCondition(Classification(), args...; kwargs...)
 BoundaryCondition(::Type{Open}, args...; kwargs...)             = BoundaryCondition(Open(nothing),    args...; kwargs...)
 
