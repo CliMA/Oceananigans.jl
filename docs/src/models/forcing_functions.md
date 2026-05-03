@@ -312,7 +312,8 @@ ContinuousForcing{Nothing} at (Center, Center, Center)
 a separate or "slip" velocity relative to the prognostic model velocity field.
 `AdvectiveForcing` is implemented with native Oceananigans advection operators,
 which means that tracers advected by the "flux form" advection term
-``𝛁⋅𝐮_{\rm slip} c``. Caution is advised when ``𝐮_{\rm slip}`` is not divergence free.
+``\boldsymbol{\nabla} \boldsymbol{\cdot} (\boldsymbol{u}_{\rm slip} c)``.
+Caution is advised when ``\boldsymbol{u}_{\rm slip}`` is not divergence free.
 
 As an example, consider a model for sediment settling at a constant rate:
 
