@@ -46,7 +46,7 @@ abuse notation a bit and denote the kinematic pressure simply as ``p``.
 [^1]: Named after [Boussinesq1903](@citet) although used earlier by [Oberbeck1879](@citet), the Boussinesq
       approximation neglects density differences in the momentum equation except when associated
       with the gravitational term. It is an accurate approximation for many flows, and especially
-      so for oceanic flows where density differences are very small. See book by [Vallis17](@citet),
+      so for oceanic flows where density differences are very small. See the book by [Vallis17](@citet);
       section 2.4 for an oceanographic introduction to the Boussinesq equations and section 2.A
       for an asymptotic derivation. Furthermore, see section 4.9 by [Kundu15](@citet) for an engineering
       introduction.
