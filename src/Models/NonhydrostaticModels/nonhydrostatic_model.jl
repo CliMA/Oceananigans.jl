@@ -55,7 +55,7 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
  boundary_mass_fluxes :: BM       # Container for the average mass fluxes at boundaries
 end
 
-supported_timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
+supported_timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3, :LeMoinRungeKutta3)
 
 """
     NonhydrostaticModel(grid;
