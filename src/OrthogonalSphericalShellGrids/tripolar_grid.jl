@@ -206,14 +206,14 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
 
     args = (topology, (Nx, Ny, 1), (Hx, Hy, 1))
 
-    λFF = new_data(FT, arch, (Face,   Face,   Nothing), args...)
-    φFF = new_data(FT, arch, (Face,   Face,   Nothing), args...)
-    λFC = new_data(FT, arch, (Face,   Center, Nothing), args...)
-    φFC = new_data(FT, arch, (Face,   Center, Nothing), args...)
-    λCF = new_data(FT, arch, (Center, Face,   Nothing), args...)
-    φCF = new_data(FT, arch, (Center, Face,   Nothing), args...)
-    λCC = new_data(FT, arch, (Center, Center, Nothing), args...)
-    φCC = new_data(FT, arch, (Center, Center, Nothing), args...)
+    λFF = new_data(FT, CPU(), (Face,   Face,   Nothing), args...)
+    φFF = new_data(FT, CPU(), (Face,   Face,   Nothing), args...)
+    λFC = new_data(FT, CPU(), (Face,   Center, Nothing), args...)
+    φFC = new_data(FT, CPU(), (Face,   Center, Nothing), args...)
+    λCF = new_data(FT, CPU(), (Center, Face,   Nothing), args...)
+    φCF = new_data(FT, CPU(), (Center, Face,   Nothing), args...)
+    λCC = new_data(FT, CPU(), (Center, Center, Nothing), args...)
+    φCC = new_data(FT, CPU(), (Center, Center, Nothing), args...)
 
     # Compute coordinates using the same kernel twice but with varying size,
     # as the size of λᵃᶠᵃ and φᵃᶠᵃ may vary with the fold topology.
