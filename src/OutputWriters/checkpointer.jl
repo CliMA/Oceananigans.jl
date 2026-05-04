@@ -42,6 +42,7 @@ Keyword arguments
 - `dir`: Directory to save output to. Default: `"."` (current working directory).
 
 - `prefix`: Descriptive filename prefixed to all output files. Default: `"checkpoint"`.
+            On distributed architectures, `"_rank{local_rank}"` is appended automatically.
 
 - `overwrite_existing`: Remove existing files if their filenames conflict. Default: `false`.
 
@@ -59,6 +60,8 @@ function Checkpointer(model; schedule,
                       cleanup = false)
 
     mkpath(dir)
+    filename = with_architecture_suffix(architecture(model), string(prefix, ".jld2"), ".jld2")
+    prefix = chop(filename, tail=length(".jld2"))
 
     return Checkpointer(schedule, dir, prefix, overwrite_existing, verbose, cleanup)
 end
