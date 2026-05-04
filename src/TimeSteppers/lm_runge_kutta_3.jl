@@ -23,16 +23,19 @@ References
 Le, H. and Moin, P. (1991). An improvement of fractional step methods for the incompressible
     Navier–Stokes equations. Journal of Computational Physics, 92, 369–379.
 """
-struct LeMoinRungeKutta3TimeStepper{FT, TG, TP, TI} <: AbstractTimeStepper
-                 γ¹ :: FT
-                 γ² :: FT
-                 γ³ :: FT
-                 ζ² :: FT
-                 ζ³ :: FT
-                 Gⁿ :: TG
-                 G⁻ :: TG
-                 pⁿ :: TP
-    implicit_solver :: TI
+struct LeMoinRungeKutta3TimeStepper{FT, TG, TP, TD, TI} <: AbstractTimeStepper
+                  γ¹ :: FT
+                  γ² :: FT
+                  γ³ :: FT
+                  ζ² :: FT
+                  ζ³ :: FT
+                  Gⁿ :: TG
+                  G⁻ :: TG
+                  pⁿ :: TP
+                pⁿ⁻¹ :: TP
+                 Δt⁻¹ :: Base.RefValue{FT}
+    divergence_buffer :: TD
+     implicit_solver :: TI
 end
 
 """
@@ -52,7 +55,9 @@ function LeMoinRungeKutta3TimeStepper(grid, prognostic_fields;
                                       implicit_solver::TI = nothing,
                                       Gⁿ::TG = map(similar, prognostic_fields),
                                       G⁻     = map(similar, prognostic_fields),
-                                      pⁿ::TP = CenterField(grid)) where {TI, TG, TP}
+                                      pⁿ::TP = CenterField(grid),
+                                      pⁿ⁻¹   = CenterField(grid),
+                                      divergence_buffer::TD = CenterField(grid)) where {TI, TG, TP, TD}
 
     γ¹ = 8 // 15
     γ² = 5 // 12
@@ -62,8 +67,9 @@ function LeMoinRungeKutta3TimeStepper(grid, prognostic_fields;
     ζ³ = -5 // 12
 
     FT = eltype(grid)
+    Δt⁻¹ = Ref(zero(FT))
 
-    return LeMoinRungeKutta3TimeStepper{FT, TG, TP, TI}(γ¹, γ², γ³, ζ², ζ³, Gⁿ, G⁻, pⁿ, implicit_solver)
+    return LeMoinRungeKutta3TimeStepper{FT, TG, TP, TD, TI}(γ¹, γ², γ³, ζ², ζ³, Gⁿ, G⁻, pⁿ, pⁿ⁻¹, Δt⁻¹, divergence_buffer, implicit_solver)
 end
 
 #####
@@ -89,12 +95,12 @@ function time_step!(model, timestepper::LeMoinRungeKutta3TimeStepper, Δt; callb
     # Be paranoid and prepare at iteration 0, in case run! is not used:
     maybe_prepare_first_time_step!(model, callbacks)
 
-    # On the very first call, seed `pNHS` with a Poisson solve on the initial
-    # velocities so the cached pressure used by substages 1–2 is well-defined.
-    # If the initial velocities are already divergence-free, the seed is zero,
-    # which is the correct φ⁰ in that case.
+    # FPJ-2 needs both φⁿ and φⁿ⁻¹ in the timestepper. Run iteration 0 with
+    # vanilla RK3 (three real Poisson solves) to harvest an honest φ¹, then
+    # transition to FPJ-2 from iteration 1 onward.
     if model.clock.iteration == 0
-        seed_lm_pressure!(model, Δt)
+        _first_step_vanilla_rk3!(model, timestepper, Δt, callbacks)
+        return nothing
     end
 
     γ¹ = timestepper.γ¹
@@ -169,14 +175,63 @@ lm_rk3_substep!(model::AbstractModel, Δt, γ, ζ, callbacks, ::Val) =
     error("lm_rk3_substep! not implemented for $(typeof(model))")
 
 """
-    seed_lm_pressure!(model, Δt)
+    seed_lm_pressures!(model)
 
-Perform a single Poisson solve on the initial velocity field to populate
-`model.pressures.pNHS` with a coherent starting pressure φ⁰ for the
-Le–Moin substages 1 and 2 to project against.
+Copy `model.pressures.pNHS` (which holds the freshly solved φ¹ at the end of the
+vanilla RK3 first step) into both `pⁿ` and `pⁿ⁻¹` of the LM-RK3 timestepper. The
+second step then has δφ = pⁿ − pⁿ⁻¹ = 0 and degrades to FPJ-0 for that one step;
+all subsequent steps use full FPJ-2.
 """
-seed_lm_pressure!(model::AbstractModel, Δt) =
-    error("seed_lm_pressure! not implemented for $(typeof(model))")
+seed_lm_pressures!(model::AbstractModel) =
+    error("seed_lm_pressures! not implemented for $(typeof(model))")
+
+#####
+##### Vanilla RK3 first step
+#####
+##### FPJ-2 substages need both φⁿ and φⁿ⁻¹. We obtain an honest φ¹ by running
+##### iteration 0 with the standard RK3 substep (a real Poisson solve at every
+##### stage) reusing the LM stepper's existing Gⁿ/G⁻ tendency storage — no
+##### extra allocations.
+
+function _first_step_vanilla_rk3!(model, timestepper::LeMoinRungeKutta3TimeStepper, Δt, callbacks)
+    γ¹ = timestepper.γ¹
+    γ² = timestepper.γ²
+    γ³ = timestepper.γ³
+    ζ² = timestepper.ζ²
+    ζ³ = timestepper.ζ³
+
+    first_stage_Δt  = stage_Δt(Δt, γ¹, nothing)
+    second_stage_Δt = stage_Δt(Δt, γ², ζ²)
+    third_stage_Δt  = stage_Δt(Δt, γ³, ζ³)
+    tⁿ⁺¹ = next_time(model.clock, Δt)
+
+    rk3_substep!(model, Δt, γ¹, nothing, callbacks)
+    cache_previous_tendencies!(model)
+    tick_stage!(model.clock, first_stage_Δt)
+    step_closure_prognostics!(model, first_stage_Δt)
+    update_state!(model, callbacks)
+    step_lagrangian_particles!(model, first_stage_Δt)
+
+    rk3_substep!(model, Δt, γ², ζ², callbacks)
+    cache_previous_tendencies!(model)
+    tick_stage!(model.clock, second_stage_Δt)
+    step_closure_prognostics!(model, second_stage_Δt)
+    update_state!(model, callbacks)
+    step_lagrangian_particles!(model, second_stage_Δt)
+
+    rk3_substep!(model, Δt, γ³, ζ³, callbacks)
+    cache_previous_tendencies!(model)
+    corrected_third_stage_Δt = time_difference_seconds(tⁿ⁺¹, model.clock.time)
+    tick_stage!(model.clock, corrected_third_stage_Δt, Δt)
+    step_closure_prognostics!(model, third_stage_Δt)
+    update_state!(model, callbacks)
+    step_lagrangian_particles!(model, third_stage_Δt)
+
+    seed_lm_pressures!(model)
+    timestepper.Δt⁻¹[] = convert(eltype(timestepper.Δt⁻¹), Δt)
+
+    return nothing
+end
 
 #####
 ##### Show methods
@@ -190,5 +245,6 @@ function Base.show(io::IO, ts::LeMoinRungeKutta3TimeStepper{FT}) where FT
     print(io, "LeMoinRungeKutta3TimeStepper{$FT}", '\n')
     print(io, "├── γ: (", ts.γ¹, ", ", ts.γ², ", ", ts.γ³, ")", '\n')
     print(io, "├── ζ: (", ts.ζ², ", ", ts.ζ³, ")", '\n')
+    print(io, "├── divergence_buffer: ", summary(ts.divergence_buffer), '\n')
     print(io, "└── implicit_solver: ", isnothing(ts.implicit_solver) ? "nothing" : nameof(typeof(ts.implicit_solver)))
 end
