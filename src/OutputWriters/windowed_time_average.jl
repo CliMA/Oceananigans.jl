@@ -1,11 +1,11 @@
 using Oceananigans.Diagnostics: AbstractDiagnostic
 using Oceananigans.OutputWriters: fetch_output
-using Oceananigans.Utils: AbstractSchedule, prettytime
+using Oceananigans.Utils: AbstractSchedule, prettytime, period_type, time_type
 using Oceananigans.TimeSteppers: Clock
 using Dates: Period, Second, value
 
 import Oceananigans: run_diagnostic!, prognostic_state, restore_prognostic_state!, initialize!
-import Oceananigans.Utils: TimeInterval, SpecifiedTimes
+import Oceananigans.Utils: TimeInterval, SpecifiedTimes, initialize_actuations!
 import Oceananigans.Grids: grid
 import Oceananigans.Fields: location, indices, set!
 
@@ -88,7 +88,12 @@ JLD2Writer scheduled on TimeInterval(4 days):
 """
 function AveragedTimeInterval(interval; window=interval, stride=1)
     window > interval && throw(ArgumentError("Averaging window $window is greater than the output interval $interval."))
-    return AveragedTimeInterval(Float64(interval), Float64(window), stride, 0.0, 0, false)
+    IT = period_type(interval)
+    interval = convert(IT, interval)
+    window = convert(IT, window)
+    TT = time_type(interval)
+    first_actuation_time = zero(TT)
+    return AveragedTimeInterval{IT, TT}(interval, window, stride, first_actuation_time, 0, false)
 end
 
 function next_actuation_time(sch::AveragedTimeInterval)
@@ -105,7 +110,21 @@ function (sch::AveragedTimeInterval)(model)
     return scheduled
 end
 
-initialize!(sch::AveragedTimeInterval, model) = nothing
+initialize!(sch::AveragedTimeInterval, model) = initialize_actuations!(sch, model.clock.time)
+
+function initialize_actuations!(schedule::AveragedTimeInterval, first_actuation_time)
+    if schedule.first_actuation_time isa Number && first_actuation_time isa Dates.AbstractDateTime
+        T = typeof(schedule.first_actuation_time)
+        msg = "Cannot use $T AveragedTimeInterval times with DateTime clock. Use a Dates.Period instead."
+        throw(ArgumentError(msg))
+    end
+
+    schedule.first_actuation_time = first_actuation_time
+    schedule.actuations = 0
+
+    return true
+end
+
 outside_window(sch::AveragedTimeInterval, clock) = clock.time <= next_actuation_time(sch) - sch.window
 initialize_schedule!(sch::AveragedTimeInterval, clock) = nothing
 
