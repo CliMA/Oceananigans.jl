@@ -54,9 +54,23 @@ end
 #####
 ##### For constant Δt this reduces to φⁿ + ((1+cᵢ)/2)·(φⁿ − φⁿ⁻¹).
 
-@kernel function _build_scaled_fpj2!(pNHS, pⁿ, pⁿ⁻¹, Δτ, scale)
+# FPJ-α/β family parameters (single source of truth, used by both the substage
+# predictor kernel and the stage-3 storage formula). Set:
+#   FPJ_α = 0,   FPJ_β = 0    → FPJ-0
+#   FPJ_α = 1,   FPJ_β = 0    → FPJ-1
+#   FPJ_α = 1//2, FPJ_β = 1//2 → FPJ-2
+const FPJ_α = 1//2
+const FPJ_β = 1//2
+
+@kernel function _build_scaled_fpj2!(pNHS, pⁿ, pⁿ⁻¹, Δτ, cᵢ, cᵢ₋₁)
     i, j, k = @index(Global, NTuple)
-    @inbounds pNHS[i, j, k] = Δτ * pⁿ[i, j, k] + scale * (pⁿ[i, j, k] - pⁿ⁻¹[i, j, k])
+    @inbounds μp = (pⁿ[i, j, k] + pⁿ⁻¹[i, j, k]) / 2
+    @inbounds δp = pⁿ[i, j, k] - pⁿ⁻¹[i, j, k]
+    α = FPJ_α
+    β = FPJ_β
+    # Low-storage scale for Wray RK3 (De Michele 2020 Eq. 37): cᵢ + cᵢ₋₁.
+    scale = (1 + 2β) / 2 + α * (cᵢ + cᵢ₋₁)
+    @inbounds pNHS[i, j, k] = Δτ * (μp + scale * δp)
 end
 
 # Substage time fractions cᵢ for Wray RK3 (where uᵢ corresponds to time tⁿ + cᵢ·Δt):
@@ -66,6 +80,29 @@ end
 @inline _fpj2_substage_c(ts, ::Val{1}) = ts.γ¹
 @inline _fpj2_substage_c(ts, ::Val{2}) = ts.γ¹ + ts.γ² + ts.ζ²
 @inline _fpj2_substage_c(ts, ::Val{3}) = one(ts.γ¹)
+
+# Substage cumulative time fractions cᵢ for Wray RK3 (uᵢ corresponds to tⁿ + cᵢ·Δt):
+#   c₀ = 0, c₁ = γ¹ = 8/15, c₂ = γ¹+γ²+ζ² = 2/3, c₃ = 1.
+# Low-storage adaptation (De Michele 2020 Eq. 37) requires the predictor scale
+# to be (cᵢ²−cᵢ₋₁²)/(cᵢ−cᵢ₋₁) = cᵢ + cᵢ₋₁, not cᵢ — see eq. (37) discussion in
+# Sec. 3.3 of the paper. For Wray:
+#   substage 1: c₁ + c₀ = 8/15
+#   substage 2: c₂ + c₁ = 18/15
+#   substage 3: c₃ + c₂ = 5/3
+@inline _fpj2_substage_c_pair(ts, ::Val{1}) = (ts.γ¹, zero(ts.γ¹))
+@inline _fpj2_substage_c_pair(ts, ::Val{2}) = (ts.γ¹ + ts.γ² + ts.ζ², ts.γ¹)
+@inline _fpj2_substage_c_pair(ts, ::Val{3}) = (one(ts.γ¹), ts.γ¹ + ts.γ² + ts.ζ²)
+
+# Σᵢ_{i=1,2} (Δτᵢ/Δt)·(cᵢ+cᵢ₋₁) — appears in the stage-3 storage formula as the
+# weight on δφ. For Wray this is (8/15)² + (2/15)·(2/3+8/15) = 4/9.
+@inline function _fpj2_substage_low_storage_scale_weighted_sum(ts)
+    Δτ1 = ts.γ¹
+    Δτ2 = ts.γ² + ts.ζ²
+    c0  = zero(ts.γ¹)
+    c1  = ts.γ¹
+    c2  = ts.γ¹ + ts.γ² + ts.ζ²
+    return Δτ1 * (c1 + c0) + Δτ2 * (c2 + c1)
+end
 
 function apply_fpj2_pressure_correction!(model::NonhydrostaticModel, Δτ, stage::Val, Δtⁿ)
     ts   = model.timestepper
@@ -79,14 +116,16 @@ function apply_fpj2_pressure_correction!(model::NonhydrostaticModel, Δτ, stage
     fill_halo_regions!(model.velocities, model.clock, fields(model))
 
     FT  = eltype(pNHS)
-    cᵢ  = _fpj2_substage_c(ts, stage)
+    # cᵢ  = _fpj2_substage_c(ts, stage)
+    cᵢ, cᵢ₋₁ = _fpj2_substage_c_pair(ts, stage)
+
     Δtⁿ⁻¹ = ts.Δt⁻¹[]
 
-    # scale = Δτ × (Δtⁿ / (2·Δtⁿ⁻¹)) × (1 + cᵢ)
-    scale = convert(FT, Δτ * Δtⁿ * (1 + cᵢ) / (2 * Δtⁿ⁻¹))
+    # scale = convert(FT, cᵢ)
     Δτ_FT = convert(FT, Δτ)
 
-    launch!(arch, grid, :xyz, _build_scaled_fpj2!, pNHS, pⁿ, pⁿ⁻¹, Δτ_FT, scale)
+    # launch!(arch, grid, :xyz, _build_scaled_fpj2!, pNHS, pⁿ, pⁿ⁻¹, Δτ_FT, scale)
+    launch!(arch, grid, :xyz, _build_scaled_fpj2!, pNHS, pⁿ, pⁿ⁻¹, Δτ_FT, convert(FT, cᵢ), convert(FT, cᵢ₋₁))
     fill_halo_regions!(pNHS)
     make_pressure_correction!(model, Δτ)
     return nothing
@@ -104,7 +143,7 @@ function lm_rk3_substep!(model::NonhydrostaticModel, Δt, γⁿ, ζⁿ, callback
     grid = model.grid
 
     compute_flux_bc_tendencies!(model)
-    apply_divergence_correction!(model)
+    # apply_divergence_correction!(model)
     model_fields = prognostic_fields(model)
 
     for (i, name) in enumerate(keys(model_fields))
@@ -133,7 +172,7 @@ function lm_rk3_substep!(model::NonhydrostaticModel, Δt, γⁿ, ζⁿ, callback
     grid = model.grid
 
     compute_flux_bc_tendencies!(model)
-    apply_divergence_correction!(model)
+    # apply_divergence_correction!(model)
     model_fields = prognostic_fields(model)
 
     for (i, name) in enumerate(keys(model_fields))
@@ -152,27 +191,50 @@ function lm_rk3_substep!(model::NonhydrostaticModel, Δt, γⁿ, ζⁿ, callback
                        Δτ)
     end
 
-    # Pressure-increment formulation. Apply the FPJ-2 predictor φ³_extrap, then
-    # solve a single Poisson for the increment δp. The total correction at this
-    # substage is u -= Δτ ∇(φ³_extrap + δp); we record φⁿ⁺¹ = φ³_extrap + (Δτ/Δt) δp
-    # for the next step's FPJ-2 extrapolation.
-    apply_fpj2_pressure_correction!(model, Δτ, stage, Δt)
-
-    # Rotate stored pressures BEFORE pⁿ is overwritten with the φ³_extrap snapshot.
-    parent(model.timestepper.pⁿ⁻¹) .= parent(model.timestepper.pⁿ)
-    # Stash φ³_extrap (currently in pNHS) into pⁿ as a temp; combined with δp below
-    # this becomes φⁿ⁺¹.
-    parent(model.timestepper.pⁿ) .= parent(model.pressures.pNHS)
+    # Single full Poisson at substage 3 (Capuano 2016 Eq. 7 / De Michele 2020
+    # Eqs. 19-21). Substages 1 and 2 used the FPJ predictor; substage 3 has
+    # no predictor, just a full Poisson for δp_full.
+    #
+    # Stored φⁿ⁺¹ must satisfy Δt·∇φⁿ⁺¹ = Σᵢ Δτᵢ·∇φ_used_i so that the
+    # whole step is equivalent to a single end-of-step projection with φⁿ⁺¹.
+    # With substage-i predictor φ_extrap_i = μp + Aᵢ·δφ (low-storage form),
+    # this gives
+    #     φⁿ⁺¹ = B₀·μp + B₁·δφ + γ·δp_full
+    # with γ = Δτ³/Δt = 1/3, B₀ = (Δτ¹+Δτ²)/Δt = 2/3, and
+    #     B₁ = ((1+2β)/2)·B₀ + α·(Σᵢ_{i=1,2} Δτᵢ·sᵢ)/Δt
+    # For Wray with low-storage sᵢ = cᵢ+cᵢ₋₁ the i=1,2 weighted sum
+    # Σᵢ Δτᵢ·sᵢ/Δt = (8/15)² + (2/15)·(2/3+8/15) = 4/9.
+    # Storing δp_full directly (B₀=B₁=0, γ=1) makes perturbations grow as
+    # 2× per step on wall-bounded stiff cases; the correct formula above
+    # kills perturbations exactly in one step.
+    foreach(mask_immersed_field!, model.velocities)
+    fill_halo_regions!(model.velocities, model.clock, fields(model))
 
     compute_pressure_correction!(model, Δτ)
     make_pressure_correction!(model, Δτ)
-
-    γ = convert(eltype(model.pressures.pNHS), Δτ / Δt)
-    parent(model.pressures.pNHS) .= parent(model.timestepper.pⁿ) .+ γ .* parent(model.pressures.pNHS)
     fill_halo_regions!(model.pressures.pNHS)
+    # pNHS now holds δp_full; pⁿ holds pⁿ_old; pⁿ⁻¹ holds pⁿ⁻¹_old.
 
-    # Finalize: pⁿ ← φⁿ⁺¹, store this step's Δt as Δtⁿ⁻¹ for the next step.
-    parent(model.timestepper.pⁿ) .= parent(model.pressures.pNHS)
+    FT  = eltype(model.pressures.pNHS)
+    ts  = model.timestepper
+    α   = convert(FT, FPJ_α)
+    β   = convert(FT, FPJ_β)
+    γFT = convert(FT, Δτ / Δt)
+    B₀  = one(FT) - γFT
+    sum_Δτs = convert(FT, _fpj2_substage_low_storage_scale_weighted_sum(ts))
+    B₁  = ((one(FT) + 2β) / 2) * B₀ + α * sum_Δτs
+
+    pⁿ_arr   = parent(ts.pⁿ)
+    pⁿ⁻¹_arr = parent(ts.pⁿ⁻¹)
+    pNHS_arr = parent(model.pressures.pNHS)
+    # Build pⁿ⁺¹ = B₀·μp + B₁·δφ + γ·δp_full into pNHS.
+    pNHS_arr .= B₀ .* (pⁿ_arr .+ pⁿ⁻¹_arr) ./ 2 .+
+                B₁ .* (pⁿ_arr .- pⁿ⁻¹_arr) .+
+                γFT .* pNHS_arr
+    # Rotate: pⁿ⁻¹ ← pⁿ_old, pⁿ ← pⁿ⁺¹.
+    pⁿ⁻¹_arr .= pⁿ_arr
+    pⁿ_arr   .= pNHS_arr
+
     model.timestepper.Δt⁻¹[] = convert(eltype(model.timestepper.Δt⁻¹), Δt)
 
     return nothing
