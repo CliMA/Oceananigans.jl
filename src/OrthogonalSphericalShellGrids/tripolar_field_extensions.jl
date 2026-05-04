@@ -29,9 +29,7 @@ north_fold_boundary_condition(::Type{LeftConnectedRightFaceFolded})      = FPivo
 north_fold_boundary_condition(::Type{LeftConnectedRightFaceConnected})   = FPivotZipperBoundaryCondition
 north_fold_boundary_condition(grid::TripolarGridOfSomeKind) = north_fold_boundary_condition(topology(grid, 2))
 
-# Short alias for serial-tripolar dispatch signatures. Distributed counterparts
-# (`SlabFTG`, `PencilFTG`, `DistFTG`) live in `distributed_tripolar_grid.jl`.
-const SerialFTG = TripolarGridOfSomeKind{<:Any, <:Any, <:SerialFoldedTopology}
+const SerialTRG = TripolarGridOfSomeKind{<:Any, <:Any, <:SerialFoldedTopology}
 
 #####
 ##### North fold BC Regularization

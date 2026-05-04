@@ -29,12 +29,9 @@ const MPITripolarGrid{FT, TX, TY, TZ, CZ, CC, FC, CF, FF, Arch} = OrthogonalSphe
 const MPITripolarGridOfSomeKind{TY} = Union{MPITripolarGrid{<:Any, <:Any, TY},
     ImmersedBoundaryGrid{<:Any, <:Any, TY, <:Any, <:MPITripolarGrid}}
 
-# Short aliases for the distributed-tripolar dispatch signatures (`*FTG` =
-# "<...> Folded Tripolar Grid"). `SerialFTG` lives in `tripolar_field_extensions.jl`
-# since that file's methods reference it and is loaded earlier.
-const SlabFTG   = MPITripolarGridOfSomeKind{<:SlabFoldedTopology}
-const PencilFTG = MPITripolarGridOfSomeKind{<:PencilFoldedTopology}
-const DistFTG   = MPITripolarGridOfSomeKind{<:DistributedFoldedTopology}
+const SlabTRG   = MPITripolarGridOfSomeKind{<:SlabFoldedTopology}
+const PencilTRG = MPITripolarGridOfSomeKind{<:PencilFoldedTopology}
+const DistTRG   = MPITripolarGridOfSomeKind{<:DistributedFoldedTopology}
 
 """
     TripolarGrid(arch::Distributed, FT::DataType = Float64; halo = (4, 4, 4), kwargs...)
@@ -298,17 +295,12 @@ end
 ##### Dispatch on (y-topology, north_bc) to determine the north zipper BC.
 #####
 
-# Extract the sign carried by the incoming north BC. Both dispatch levels below
-# can receive either a `ZBC` (from default_auxiliary_bc or from the slab regularize
-# branch) or a `DCBC` (from the pencil regularize branch, where the sign is packed
-# inside a `ZipperHaloCommunicationRanks` alongside the MPI rank info).
 zipper_sign(bc::ZBC)  = bc.condition
 zipper_sign(bc::DCBC) = bc.condition.sign
 
 # Non-fold topologies for non-fold ranks: no override
 north_zipper_bc(topo, north_bc, loc, grid) = nothing
 
-# Reduced fields have nothing north BCs (from default_auxiliary_bc) — no override
 north_zipper_bc(::SlabFoldedTopology, ::Nothing, loc, grid) = nothing
 north_zipper_bc(::PencilFoldedTopology, ::Nothing, loc, grid) = nothing
 

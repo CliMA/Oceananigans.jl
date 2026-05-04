@@ -206,8 +206,6 @@ validate_boundary_condition_topology(bc, topo::Grids.Periodic, side) =
     throw(ArgumentError("Cannot set $side $bc in a `Periodic` direction!"))
 
 # Validate the north boundary condition on a tripolar (folded) grid.
-# Throws if the user passes anything other than a `Zipper`, a distributed BC,
-# or `nothing`.
 # TODO: also check that the Zipper's pivot tag (UPivot / FPivot) matches the grid's
 # y-topology. The pivot is redundantly encoded in both the topology (e.g. RightCenterFolded
 # ↔ UPivot) and the BC (Zipper{UPivot}), mirroring how `Periodic` is both a topology and a

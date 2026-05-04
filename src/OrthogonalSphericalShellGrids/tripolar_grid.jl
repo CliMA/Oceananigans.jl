@@ -204,18 +204,16 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
                              x = (0, 1), y = (0, 1),
                              topology = (Periodic, fold_topology, Flat))
 
-    # Coordinate helper fields: halos are filled directly by the kernel,
-    # so no boundary conditions are needed. But we pass `nothing` BCs to
-    # skip validation, which is needed because the default north BC for a folded
-    # y-topology is not a `Zipper` and would otherwise be rejected.
-    λFF = Field{Face, Face, Center}(grid; boundary_conditions = nothing)
-    φFF = Field{Face, Face, Center}(grid; boundary_conditions = nothing)
-    λFC = Field{Face, Center, Center}(grid; boundary_conditions = nothing)
-    φFC = Field{Face, Center, Center}(grid; boundary_conditions = nothing)
-    λCF = Field{Center, Face, Center}(grid; boundary_conditions = nothing)
-    φCF = Field{Center, Face, Center}(grid; boundary_conditions = nothing)
-    λCC = Field{Center, Center, Center}(grid; boundary_conditions = nothing)
-    φCC = Field{Center, Center, Center}(grid; boundary_conditions = nothing)
+    args = (topology, (Nx, Ny, 1), (Hx, Hy, 1))
+
+    λFF = new_data(FT, arch, (Face,   Face,   Nothing), args...)
+    φFF = new_data(FT, arch, (Face,   Face,   Nothing), args...)
+    λFC = new_data(FT, arch, (Face,   Center, Nothing), args...)
+    φFC = new_data(FT, arch, (Face,   Center, Nothing), args...)
+    λCF = new_data(FT, arch, (Center, Face,   Nothing), args...)
+    φCF = new_data(FT, arch, (Center, Face,   Nothing), args...)
+    λCC = new_data(FT, arch, (Center, Center, Nothing), args...)
+    φCC = new_data(FT, arch, (Center, Center, Nothing), args...)
 
     # Compute coordinates using the same kernel twice but with varying size,
     # as the size of λᵃᶠᵃ and φᵃᶠᵃ may vary with the fold topology.
