@@ -38,12 +38,12 @@ const SerialTRG = TripolarGridOfSomeKind{<:Any, <:Any, <:SerialFoldedTopology}
 # We add `regularize_boundary_condition` methods that pass the zipper BC sign as an extra arg.
 
 # DefaultBC on a serial tripolar → local `Zipper` with sign
-BoundaryConditions.regularize_boundary_condition(::DefaultBoundaryCondition, grid::SerialFTG, loc, dim, bound, prognostic_names, sign) =
+BoundaryConditions.regularize_boundary_condition(::DefaultBoundaryCondition, grid::SerialTRG, loc, dim, bound, prognostic_names, sign) =
     north_fold_boundary_condition(grid)(sign)
 
 # User-supplied BC on a serial tripolar → pass through (Field validates later).
 # `bc::BoundaryCondition` disambiguates against the generic method at BoundaryConditions.jl:244.
-BoundaryConditions.regularize_boundary_condition(bc::BoundaryCondition, grid::SerialFTG, loc, dim, bound, prognostic_names, sign) = bc
+BoundaryConditions.regularize_boundary_condition(bc::BoundaryCondition, grid::SerialTRG, loc, dim, bound, prognostic_names, sign) = bc
 
 
 function BoundaryConditions.regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,

@@ -111,25 +111,8 @@ MultiRegionCommunicationBoundaryCondition() = BoundaryCondition(MultiRegionCommu
   OpenBoundaryCondition(val; scheme = nothing, kwargs...) = BoundaryCondition(Open(scheme), val; kwargs...)
 MultiRegionCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(MultiRegionCommunication(), val; kwargs...)
 
-"""
-    UPivotZipperBoundaryCondition(val=1; kwargs...)
-
-Construct a `Zipper{UPivot}` boundary condition with sign `val` applied when folding halos across
-the pivot. Default `val = 1` for scalars (and vertical velocity `w`); pass `val = -1` for horizontal
-signed vectors (e.g. `u`, `v`). On a [`TripolarGrid`](@ref), the sign is set automatically based on
-field name, so users rarely need to pass it explicitly.
-"""
-UPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{UPivot}(), val; kwargs...)
-
-"""
-    FPivotZipperBoundaryCondition(val=1; kwargs...)
-
-Construct a `Zipper{FPivot}` boundary condition with sign `val` applied when folding halos across
-the pivot. Default `val = 1` for scalars (and vertical velocity `w`); pass `val = -1` for horizontal
-signed vectors (e.g. `u`, `v`). On a [`TripolarGrid`](@ref), the sign is set automatically based on
-field name, so users rarely need to pass it explicitly.
-"""
-FPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{FPivot}(), val; kwargs...)
+            UPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{UPivot}(), val; kwargs...)
+            FPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{FPivot}(), val; kwargs...)
 DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(DistributedCommunication(), val; kwargs...)
 
 #####

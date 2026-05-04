@@ -253,11 +253,11 @@ end
 # We add `regularize_boundary_condition` methods that pass the zipper BC sign as an extra arg.
 
 # DefaultBC on a slab fold-north rank → local `Zipper` with sign
-BoundaryConditions.regularize_boundary_condition(::DefaultBoundaryCondition, grid::SlabFTG, loc, dim, bound, prognostic_names, sign) =
+BoundaryConditions.regularize_boundary_condition(::DefaultBoundaryCondition, grid::SlabTRG, loc, dim, bound, prognostic_names, sign) =
     north_fold_boundary_condition(grid)(sign)
 
 # DefaultBC on a pencil fold-north rank → `DistributedZipper` comm BC with sign
-function BoundaryConditions.regularize_boundary_condition(::DefaultBoundaryCondition, grid::PencilFTG, loc, dim, bound, prognostic_names, sign)
+function BoundaryConditions.regularize_boundary_condition(::DefaultBoundaryCondition, grid::PencilTRG, loc, dim, bound, prognostic_names, sign)
     arch = architecture(grid)
     halo_communication = ZipperHaloCommunicationRanks(sign; from=arch.local_rank, to=arch.connectivity.north)
     return DistributedCommunicationBoundaryCondition(halo_communication)
@@ -266,7 +266,7 @@ end
 # User-supplied BC on either distributed fold-north rank → pass through (Field validates later).
 # `bc::BoundaryCondition` mirrors the existing BoundaryConditions.jl:244 method signature, so
 # this is strictly more specific and disambiguates.
-BoundaryConditions.regularize_boundary_condition(bc::BoundaryCondition, grid::DistFTG, loc, dim, bound, prognostic_names, sign) = bc
+BoundaryConditions.regularize_boundary_condition(bc::BoundaryCondition, grid::DistTRG, loc, dim, bound, prognostic_names, sign) = bc
 
 # Non-fold distributed ranks: no specific 7-arg method — the generic `args...`-accepting
 # methods in BoundaryConditions (lines 244-254) take over and drop the extra `sign` arg.
