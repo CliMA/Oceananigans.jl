@@ -1,7 +1,7 @@
 using Oceananigans.BoundaryConditions: UPivotZipperBoundaryCondition, FPivotZipperBoundaryCondition, NoFluxBoundaryCondition
 using Oceananigans.Grids: Grids, Bounded, Flat, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid,
     architecture, cpu_face_constructor_z, validate_dimension_specification,
-    AbstractTopology, RightCenterFolded, RightFaceFolded
+    AbstractTopology, RightCenterFolded, RightFaceFolded, new_data
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 """
@@ -229,14 +229,14 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
     )
 
     # Coordinates
-    λᶠᶠᵃ = dropdims(λFF.data, dims=3)
-    φᶠᶠᵃ = dropdims(φFF.data, dims=3)
-    λᶠᶜᵃ = dropdims(λFC.data, dims=3)
-    φᶠᶜᵃ = dropdims(φFC.data, dims=3)
-    λᶜᶠᵃ = dropdims(λCF.data, dims=3)
-    φᶜᶠᵃ = dropdims(φCF.data, dims=3)
-    λᶜᶜᵃ = dropdims(λCC.data, dims=3)
-    φᶜᶜᵃ = dropdims(φCC.data, dims=3)
+    λᶠᶠᵃ = dropdims(λFF, dims=3)
+    φᶠᶠᵃ = dropdims(φFF, dims=3)
+    λᶠᶜᵃ = dropdims(λFC, dims=3)
+    φᶠᶜᵃ = dropdims(φFC, dims=3)
+    λᶜᶠᵃ = dropdims(λCF, dims=3)
+    φᶜᶠᵃ = dropdims(φCF, dims=3)
+    λᶜᶜᵃ = dropdims(λCC, dims=3)
+    φᶜᶜᵃ = dropdims(φCC, dims=3)
 
     # Boundary conditions to fill halos of the metric terms
     # We define them manually because the helper RectilinearGrid
