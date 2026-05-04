@@ -918,6 +918,7 @@ nodes does not exceed the benefit of dividing up the computation among different
 ```@example distributed_grids
 # Make a simple program that can be written to file
 make_distributed_arch = """
+ENV["JULIA_DEBUG"] = "loading"
 
 using Oceananigans
 using Oceananigans.DistributedComputations
