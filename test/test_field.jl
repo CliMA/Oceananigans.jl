@@ -984,4 +984,33 @@ end
         @test restore_prognostic_state!(of, :some_state) === of
         @test restore_prognostic_state!(cf, nothing) === cf
     end
+
+    @testset "NamedFieldTuple operations" begin
+        @info "  Testing similar/set!/norm/dot on NamedFieldTuples..."
+
+        for arch in archs, FT in float_types
+            grid = RectilinearGrid(arch, FT, size=(4, 4, 4), extent=(1, 1, 1))
+            Φ = (u=CenterField(grid), v=CenterField(grid))
+
+            Ψ = similar(Φ)
+            @test Ψ isa NamedTuple{(:u, :v)}
+            @test Ψ.u isa Field && Ψ.v isa Field
+            @test Ψ.u.grid === grid
+            @test !(Ψ.u.data === Φ.u.data)
+
+            set!(Φ, 3)
+            @test all(@allowscalar(interior(Φ.u)) .== 3)
+            @test all(@allowscalar(interior(Φ.v)) .== 3)
+
+            set!(Ψ, 0)
+            set!(Ψ, Φ)
+            @test all(@allowscalar(interior(Ψ.u)) .== 3)
+            @test all(@allowscalar(interior(Ψ.v)) .== 3)
+
+            # block 2-norm: sqrt(2 · 3² · 4³) = sqrt(1152)
+            @test norm(Φ) ≈ sqrt(2 * 9 * 64)
+            # dot: 2 · 3 · 3 · 4³ = 1152
+            @test dot(Φ, Ψ) ≈ 2 * 3 * 3 * 64
+        end
+    end
 end
