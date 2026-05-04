@@ -82,7 +82,7 @@ function averaged_time_interval_schedule_checks(start_time)
     @test schedule.first_actuation_time == start_time
     @test !schedule(model)
 
-    tick!(clock, Dates.Minute(61))
+    tick!(clock, hour + 60)
     @test schedule(model)
 
     @test_throws ArgumentError initialize!(AveragedTimeInterval(1.0), DummyModel(Clock(time=start_time)))
