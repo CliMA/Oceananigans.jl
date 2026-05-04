@@ -2,7 +2,7 @@ using Oceananigans.Diagnostics: AbstractDiagnostic
 using Oceananigans.OutputWriters: fetch_output
 using Oceananigans.Utils: AbstractSchedule, prettytime, period_type, time_type
 using Oceananigans.TimeSteppers: Clock
-using Dates: Period, Second, value
+using Dates: Period, Second, value, AbstractDateTime
 
 import Oceananigans: run_diagnostic!, prognostic_state, restore_prognostic_state!, initialize!
 import Oceananigans.Utils: TimeInterval, SpecifiedTimes, initialize_actuations!
@@ -113,7 +113,7 @@ end
 initialize!(sch::AveragedTimeInterval, model) = initialize_actuations!(sch, model.clock.time)
 
 function initialize_actuations!(schedule::AveragedTimeInterval, first_actuation_time)
-    if schedule.first_actuation_time isa Number && first_actuation_time isa Dates.AbstractDateTime
+    if schedule.first_actuation_time isa Number && first_actuation_time isa AbstractDateTime
         T = typeof(schedule.first_actuation_time)
         msg = "Cannot use $T AveragedTimeInterval times with DateTime clock. Use a Dates.Period instead."
         throw(ArgumentError(msg))
