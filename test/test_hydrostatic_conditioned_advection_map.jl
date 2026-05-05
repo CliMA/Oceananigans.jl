@@ -22,8 +22,11 @@ end
 
         grids = (underlying_grid, immersed_grid)
 
+        model_kwargs = (; tracers = (:T, :S))
+
         for grid in grids
             reference_model = HydrostaticFreeSurfaceModel(grid;
+                                                          model_kwargs...,
                                                           condition_momentum_advection=false,
                                                           condition_tracer_advection=false,
             )
@@ -33,6 +36,7 @@ end
             run!(reference_simulation)
 
             test_model = HydrostaticFreeSurfaceModel(grid;
+                                                     model_kwargs...,
                                                      condition_momentum_advection=true,
                                                      condition_tracer_advection=true,
             )
