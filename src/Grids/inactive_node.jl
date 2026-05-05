@@ -51,7 +51,7 @@ which lie _on_ the boundary are considered active.
 # RightConnected is equivalent to "LeftBounded".
 # So LeftConnected and RightConnected are "half Bounded" topologies.
 # In terms of active node behavior, Right*Folded is equivalent to RightConnected
-# and LeftConnectedRight* is equivalent to FullyConnected (and Periodic) so they flow 
+# and LeftConnectedRight* is equivalent to FullyConnected (and Periodic) so they flow
 # through the fallback (always false).
 
 Topos = (:Bounded, :LeftConnected, :RightConnected, :RightFaceFolded, :RightCenterFolded)
