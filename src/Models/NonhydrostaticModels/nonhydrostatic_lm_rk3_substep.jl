@@ -62,14 +62,25 @@ end
 const FPJ_α = 1//2
 const FPJ_β = 1//2
 
-@kernel function _build_scaled_fpj2!(pNHS, pⁿ, pⁿ⁻¹, Δτ, cᵢ, cᵢ₋₁)
+@kernel function _build_scaled_fpj2!(pNHS, pⁿ, pⁿ⁻¹, Δτ, cᵢ, cᵢ₋₁,
+                                     Δtⁿ⁺¹, Δtⁿ, Δtⁿ⁻¹)
     i, j, k = @index(Global, NTuple)
     @inbounds μp = (pⁿ[i, j, k] + pⁿ⁻¹[i, j, k]) / 2
     @inbounds δp = pⁿ[i, j, k] - pⁿ⁻¹[i, j, k]
     α = FPJ_α
     β = FPJ_β
-    # Low-storage scale for Wray RK3 (De Michele 2020 Eq. 37): cᵢ + cᵢ₋₁.
-    scale = (1 + 2β) / 2 + α * (cᵢ + cᵢ₋₁)
+    # Low-storage scale for Wray RK3 (De Michele 2020 Eq. 37): sᵢ = cᵢ + cᵢ₋₁.
+    sᵢ = cᵢ + cᵢ₋₁
+    # Variable-Δt linear-interpolant evaluation (see LM_RK3_FPJ_ALGORITHM.md):
+    #   T_φⁿ     = tⁿ − β·Δtⁿ
+    #   T_φⁿ⁻¹   = tⁿ⁻¹ − β·Δtⁿ⁻¹
+    #   T_substage_i = tⁿ + α·sᵢ·Δtⁿ⁺¹
+    #   φᵢ = μp + (½ + N/D)·δφ where N = β·Δtⁿ + α·sᵢ·Δtⁿ⁺¹,
+    #                                D = (1−β)·Δtⁿ + β·Δtⁿ⁻¹.
+    # For constant Δt this collapses to (1+2β)/2 + α·sᵢ.
+    N = β * Δtⁿ + α * sᵢ * Δtⁿ⁺¹
+    D = (1 - β) * Δtⁿ + β * Δtⁿ⁻¹
+    scale = oftype(Δτ, 1//2) + N / D
     @inbounds pNHS[i, j, k] = Δτ * (μp + scale * δp)
 end
 
@@ -104,7 +115,7 @@ end
     return Δτ1 * (c1 + c0) + Δτ2 * (c2 + c1)
 end
 
-function apply_fpj2_pressure_correction!(model::NonhydrostaticModel, Δτ, stage::Val, Δtⁿ)
+function apply_fpj2_pressure_correction!(model::NonhydrostaticModel, Δτ, stage::Val, Δt)
     ts   = model.timestepper
     pⁿ   = ts.pⁿ
     pⁿ⁻¹ = ts.pⁿ⁻¹
@@ -116,16 +127,19 @@ function apply_fpj2_pressure_correction!(model::NonhydrostaticModel, Δτ, stage
     fill_halo_regions!(model.velocities, model.clock, fields(model))
 
     FT  = eltype(pNHS)
-    # cᵢ  = _fpj2_substage_c(ts, stage)
     cᵢ, cᵢ₋₁ = _fpj2_substage_c_pair(ts, stage)
+    # Δtⁿ⁺¹ = current step's Δt (the one being computed now).
+    # Δtⁿ   = previous step's Δt; produced the stored φⁿ.
+    # Δtⁿ⁻¹ = step before that;   produced the stored φⁿ⁻¹.
+    Δtⁿ⁺¹_FT = convert(FT, Δt)
+    Δtⁿ_FT   = convert(FT, ts.Δt⁻¹[])
+    Δtⁿ⁻¹_FT = convert(FT, ts.Δt⁻²[])
+    Δτ_FT    = convert(FT, Δτ)
 
-    Δtⁿ⁻¹ = ts.Δt⁻¹[]
-
-    # scale = convert(FT, cᵢ)
-    Δτ_FT = convert(FT, Δτ)
-
-    # launch!(arch, grid, :xyz, _build_scaled_fpj2!, pNHS, pⁿ, pⁿ⁻¹, Δτ_FT, scale)
-    launch!(arch, grid, :xyz, _build_scaled_fpj2!, pNHS, pⁿ, pⁿ⁻¹, Δτ_FT, convert(FT, cᵢ), convert(FT, cᵢ₋₁))
+    launch!(arch, grid, :xyz, _build_scaled_fpj2!,
+            pNHS, pⁿ, pⁿ⁻¹, Δτ_FT,
+            convert(FT, cᵢ), convert(FT, cᵢ₋₁),
+            Δtⁿ⁺¹_FT, Δtⁿ_FT, Δtⁿ⁻¹_FT)
     fill_halo_regions!(pNHS)
     make_pressure_correction!(model, Δτ)
     return nothing
@@ -143,7 +157,9 @@ function lm_rk3_substep!(model::NonhydrostaticModel, Δt, γⁿ, ζⁿ, callback
     grid = model.grid
 
     compute_flux_bc_tendencies!(model)
-    # apply_divergence_correction!(model)
+    # apply_divergence_correction!(model)  # disabled: at ν=1e-3 stress test it
+                                            # preserved order but slightly raised
+                                            # constant (esp. on tracer error)
     model_fields = prognostic_fields(model)
 
     for (i, name) in enumerate(keys(model_fields))
@@ -172,7 +188,9 @@ function lm_rk3_substep!(model::NonhydrostaticModel, Δt, γⁿ, ζⁿ, callback
     grid = model.grid
 
     compute_flux_bc_tendencies!(model)
-    # apply_divergence_correction!(model)
+    # apply_divergence_correction!(model)  # disabled: at ν=1e-3 stress test it
+                                            # preserved order but slightly raised
+                                            # constant (esp. on tracer error)
     model_fields = prognostic_fields(model)
 
     for (i, name) in enumerate(keys(model_fields))
@@ -221,8 +239,15 @@ function lm_rk3_substep!(model::NonhydrostaticModel, Δt, γⁿ, ζⁿ, callback
     β   = convert(FT, FPJ_β)
     γFT = convert(FT, Δτ / Δt)
     B₀  = one(FT) - γFT
-    sum_Δτs = convert(FT, _fpj2_substage_low_storage_scale_weighted_sum(ts))
-    B₁  = ((one(FT) + 2β) / 2) * B₀ + α * sum_Δτs
+    S_pre = convert(FT, _fpj2_substage_low_storage_scale_weighted_sum(ts))
+    # Variable-Δt B₁: B₁_var = (1−γ)/2 + [(1−γ)·β·Δtⁿ + α·S_pre·Δtⁿ⁺¹] / D
+    # where D = (1−β)·Δtⁿ + β·Δtⁿ⁻¹. For constant Δt this reduces to
+    # ((1+2β)/2)·B₀ + α·S_pre.
+    Δtⁿ⁺¹_FT = convert(FT, Δt)
+    Δtⁿ_FT   = convert(FT, ts.Δt⁻¹[])
+    Δtⁿ⁻¹_FT = convert(FT, ts.Δt⁻²[])
+    D_var    = (one(FT) - β) * Δtⁿ_FT + β * Δtⁿ⁻¹_FT
+    B₁  = B₀ / 2 + (B₀ * β * Δtⁿ_FT + α * S_pre * Δtⁿ⁺¹_FT) / D_var
 
     pⁿ_arr   = parent(ts.pⁿ)
     pⁿ⁻¹_arr = parent(ts.pⁿ⁻¹)
@@ -235,7 +260,9 @@ function lm_rk3_substep!(model::NonhydrostaticModel, Δt, γⁿ, ζⁿ, callback
     pⁿ⁻¹_arr .= pⁿ_arr
     pⁿ_arr   .= pNHS_arr
 
-    model.timestepper.Δt⁻¹[] = convert(eltype(model.timestepper.Δt⁻¹), Δt)
+    # Roll the Δt history forward.
+    ts.Δt⁻²[] = ts.Δt⁻¹[]
+    ts.Δt⁻¹[] = convert(eltype(ts.Δt⁻¹), Δt)
 
     return nothing
 end

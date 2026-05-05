@@ -33,7 +33,8 @@ struct LeMoinRungeKutta3TimeStepper{FT, TG, TP, TD, TI} <: AbstractTimeStepper
                   G⁻ :: TG
                   pⁿ :: TP
                 pⁿ⁻¹ :: TP
-                 Δt⁻¹ :: Base.RefValue{FT}
+                 Δt⁻¹ :: Base.RefValue{FT}   # Δt of the just-completed step (the one that produced φⁿ)
+                 Δt⁻² :: Base.RefValue{FT}   # Δt of the step before that (the one that produced φⁿ⁻¹)
     divergence_buffer :: TD
      implicit_solver :: TI
 end
@@ -68,8 +69,9 @@ function LeMoinRungeKutta3TimeStepper(grid, prognostic_fields;
 
     FT = eltype(grid)
     Δt⁻¹ = Ref(zero(FT))
+    Δt⁻² = Ref(zero(FT))
 
-    return LeMoinRungeKutta3TimeStepper{FT, TG, TP, TD, TI}(γ¹, γ², γ³, ζ², ζ³, Gⁿ, G⁻, pⁿ, pⁿ⁻¹, Δt⁻¹, divergence_buffer, implicit_solver)
+    return LeMoinRungeKutta3TimeStepper{FT, TG, TP, TD, TI}(γ¹, γ², γ³, ζ², ζ³, Gⁿ, G⁻, pⁿ, pⁿ⁻¹, Δt⁻¹, Δt⁻², divergence_buffer, implicit_solver)
 end
 
 #####
@@ -229,6 +231,11 @@ function _first_step_vanilla_rk3!(model, timestepper::LeMoinRungeKutta3TimeStepp
 
     seed_lm_pressures!(model)
     timestepper.Δt⁻¹[] = convert(eltype(timestepper.Δt⁻¹), Δt)
+    # Δt⁻² unset on first step. The step-2 predictor uses pⁿ = pⁿ⁻¹ from
+    # seeding, so δφ = 0 and the variable-Δt formula's denominator never
+    # multiplies anything that survives. By step 3, Δt⁻² will hold Δt from
+    # step 1 and the formula is well-defined.
+    timestepper.Δt⁻²[] = convert(eltype(timestepper.Δt⁻²), Δt)
 
     return nothing
 end
