@@ -17,12 +17,14 @@ function build_condition(Topo, side, dim, array::Bool)
         else
             return :(($side > grid.$dim))
         end
-    else # RightConnected
+    elseif Topo in (:RightConnected, :RightFaceFolded, :RightCenterFolded)
         if array
             return :((ReactantCore.materialize_traced_array($side) .< 1))
         else
             return :(($side < 1))
         end
+    else # Fully Periodic (or Connected) fallback
+        return array ? :(falses(size($side))) : :(false)
     end
 end
 
@@ -48,8 +50,11 @@ which lie _on_ the boundary are considered active.
 # Note that LeftConnected is equivalent to "RightBounded" and
 # RightConnected is equivalent to "LeftBounded".
 # So LeftConnected and RightConnected are "half Bounded" topologies.
+# In terms of active node behavior, Right*Folded is equivalent to RightConnected
+# and LeftConnectedRight* is equivalent to FullyConnected (and Periodic) so they flow 
+# through the fallback (always false).
 
-Topos = (:Bounded, :LeftConnected, :RightConnected)
+Topos = (:Bounded, :LeftConnected, :RightConnected, :RightFaceFolded, :RightCenterFolded)
 
 for PrimaryTopo in Topos
 
