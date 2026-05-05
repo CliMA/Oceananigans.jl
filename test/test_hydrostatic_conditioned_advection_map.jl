@@ -14,52 +14,54 @@ end
 @testset "Test HydrostaticFreeSurfaceModel with split cells maps" begin
     @info "Testing for numerical divergence when using split cells map..."
 
-    underlying_grid = RectilinearGrid(arch, size=(80, 80, 20), x = (-5, 5), y = (-5, 5), z = (0, 2))
+    for arch in archs
+        underlying_grid = RectilinearGrid(arch, size=(80, 80, 20), x = (-5, 5), y = (-5, 5), z = (0, 2))
 
-    bump(x, y, z) = z < exp(-x^2 - y^2)
-    immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(bump))
+        bump(x, y, z) = z < exp(-x^2 - y^2)
+        immersed_grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(bump))
 
-    grids = (underlying_grid, immersed_grid)
+        grids = (underlying_grid, immersed_grid)
 
-    for grid in grids
-        reference_model = HydrostaticFreeSurfaceModel(grid;
-                                                      condition_momentum_advection=false,
-                                                      condition_tracer_advection=false,
-        )
+        for grid in grids
+            reference_model = HydrostaticFreeSurfaceModel(grid;
+                                                          condition_momentum_advection=false,
+                                                          condition_tracer_advection=false,
+            )
 
-        reference_simulation = initialise_simulation(reference_model)
+            reference_simulation = initialise_simulation(reference_model)
 
-        run!(reference_simulation)
+            run!(reference_simulation)
 
-        test_model = HydrostaticFreeSurfaceModel(grid;
-                                                 condition_momentum_advection=true,
-                                                 condition_tracer_advection=true,
-        )
+            test_model = HydrostaticFreeSurfaceModel(grid;
+                                                     condition_momentum_advection=true,
+                                                     condition_tracer_advection=true,
+            )
 
-        test_simulation = initialise_simulation(test_model)
+            test_simulation = initialise_simulation(test_model)
 
-        run!(test_simulation)
+            run!(test_simulation)
 
-        ur, vr = reference_model.velocities
-        ur = interior(ur)
-        vr = interior(vr)
+            ur, vr = reference_model.velocities
+            ur = interior(ur)
+            vr = interior(vr)
 
-        Tr, Sr = reference_model.tracers
-        Tr = interior(Tr)
-        Sr = interior(Sr)
+            Tr, Sr = reference_model.tracers
+            Tr = interior(Tr)
+            Sr = interior(Sr)
 
-        ut, vt = test_model.velocities
-        ut = interior(ut)
-        vt = interior(vt)
+            ut, vt = test_model.velocities
+            ut = interior(ut)
+            vt = interior(vt)
 
-        Tt, St = test_model.tracers
-        Tt = interior(Tt)
-        St = interior(St)
+            Tt, St = test_model.tracers
+            Tt = interior(Tt)
+            St = interior(St)
 
-        @test ut ≈ ur
-        @test vt ≈ vr
-        @test Tt ≈ Tr
-        @test St ≈ Sr
+            @test ut ≈ ur
+            @test vt ≈ vr
+            @test Tt ≈ Tr
+            @test St ≈ Sr
+      end
 
-    end
+  end
 end
