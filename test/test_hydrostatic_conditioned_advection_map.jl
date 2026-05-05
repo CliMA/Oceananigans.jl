@@ -4,8 +4,8 @@ include("dependencies_for_runtests.jl")
 function initialise_simulation(model)
 
     # Initial condition that excites a baroclinic wave
-  Tᵢ(λ, φ, z) = 30 * (1 - tanh((abs(φ) - 45) / 8)) / 2 + rand()
-  Sᵢ(λ, φ, z) = 28 - 5e-3 * z + rand()
+  Tᵢ(λ, φ, z) = 30 * (1 - tanh((abs(φ) - 45) / 8)) / 2
+  Sᵢ(λ, φ, z) = 28 - 5e-3 * z
   set!(model, T=Tᵢ, S=Sᵢ)
 
   return Simulation(model, Δt = 1, stop_iteration=100)
