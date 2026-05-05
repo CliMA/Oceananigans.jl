@@ -21,7 +21,7 @@ using Oceananigans.Grids: AbstractGrid,
 
 const AG = AbstractGrid
 
-# `RC` groups topologies that are bounded on the left (low index) and open on the right 
+# `RC` topologies are bounded on the left (low index) and open on the right 
 const RC = Union{RightConnected, RightFaceFolded, RightCenterFolded}
 
 # Topologies bounded on at least one side.
