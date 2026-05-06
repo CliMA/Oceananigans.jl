@@ -311,7 +311,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
     Azᶠᶜᵃ = deepcopy(dropdims(Azᶠᶜᵃ.data, dims=3))
     Azᶜᶜᵃ = deepcopy(dropdims(Azᶜᶜᵃ.data, dims=3))
 
-    # Continue the metrics to the south assuming the cell does not 
+    # Continue the metrics to the south assuming the cell does not
     # change moving southwards into the halos
     continue_south!(Δxᶠᶠᵃ)
     continue_south!(Δxᶠᶜᵃ)
