@@ -9,8 +9,6 @@ using KernelAbstractions: @kernel, @index
 
 
 # Generic fallback for any grids that aren't specifically supported
-@inline generate_condition_maps(grid, advection; kwargs...) = _generate_condition_maps(grid, advection)
-
 @inline function _generate_condition_maps(grid, advection)
     active_cells_map = get_active_cells_map(grid, Val(:core))
     condition_maps = Dict()
@@ -20,16 +18,7 @@ using KernelAbstractions: @kernel, @index
     return (; condition_maps...)
 end
 
-# Currently maintaining this union until condition mapping works on all
-# types of grids
-const SupportedUnderlyingGrids = Union{LatitudeLongitudeGrid,
-                                       RectilinearGrid,
-                                       OrthogonalSphericalShellGrid}
-
-const SupportedGrids = Union{SupportedUnderlyingGrids,
-                             ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:SupportedUnderlyingGrids}}
-
-@inline function generate_condition_maps(grid::SupportedGrids,
+@inline function generate_condition_maps(grid,
                                  advection;
                                  condition_momentum_advection=false,
                                  condition_tracer_advection=false)

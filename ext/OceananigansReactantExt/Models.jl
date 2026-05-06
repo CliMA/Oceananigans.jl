@@ -16,7 +16,8 @@ using ..Grids: ShardedGrid, ShardedDistributed
 
 import Oceananigans.Models:
         complete_communication_and_compute_buffer!,
-        interior_tendency_kernel_parameters
+        interior_tendency_kernel_parameters,
+        generate_condition_maps
 import Oceananigans.Advection: default_weno_weight_computation
 
 
