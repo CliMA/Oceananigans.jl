@@ -313,20 +313,20 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
 
     # Continue the metrics to the south assuming the cell does not
     # change moving southwards into the halos
-    continue_south!(Δxᶠᶠᵃ)
-    continue_south!(Δxᶠᶜᵃ)
-    continue_south!(Δxᶜᶠᵃ)
-    continue_south!(Δxᶜᶜᵃ)
+    continue_south!(Δxᶠᶠᵃ, Hy)
+    continue_south!(Δxᶠᶜᵃ, Hy)
+    continue_south!(Δxᶜᶠᵃ, Hy)
+    continue_south!(Δxᶜᶜᵃ, Hy)
 
-    continue_south!(Δyᶠᶠᵃ)
-    continue_south!(Δyᶠᶜᵃ)
-    continue_south!(Δyᶜᶠᵃ)
-    continue_south!(Δyᶜᶜᵃ)
+    continue_south!(Δyᶠᶠᵃ, Hy)
+    continue_south!(Δyᶠᶜᵃ, Hy)
+    continue_south!(Δyᶜᶠᵃ, Hy)
+    continue_south!(Δyᶜᶜᵃ, Hy)
 
-    continue_south!(Azᶠᶠᵃ)
-    continue_south!(Azᶠᶜᵃ)
-    continue_south!(Azᶜᶠᵃ)
-    continue_south!(Azᶜᶜᵃ)
+    continue_south!(Azᶠᶠᵃ, Hy)
+    continue_south!(Azᶠᶜᵃ, Hy)
+    continue_south!(Azᶜᶠᵃ, Hy)
+    continue_south!(Azᶜᶜᵃ, Hy)
 
     # Final grid with correct metrics
     # TODO: remove `on_architecture(arch, ...)` when we shift grid construction to GPU
@@ -362,14 +362,11 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
 end
 
 # Continue the metrics to the south assuming no changes in the halos
-function continue_south!(new_metric)
-    Hx, Hy = new_metric.offsets
-    Nx, Ny = size(new_metric)
-
-    for j in Hy+1:0, i in Hx+1:Nx+Hx
-        @inbounds new_metric[i, j] = lat_lon_metric[i, 1]
+function continue_south!(metric, Hy)
+    Fx = size(metric, 1)
+    for j in 1:Hy, i in 1:Fx
+        @inbounds parent(metric)[i, j] = parent(metric)[i, Hy+1]
     end
-
     return nothing
 end
 
