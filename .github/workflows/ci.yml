@@ -36,7 +36,7 @@ jobs:
         version:
           - '1.11.9'
         os:
-          - ubuntu-24.04-arm
+          - ubuntu-latest
         arch:
           - default
     steps:
