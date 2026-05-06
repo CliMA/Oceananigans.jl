@@ -311,30 +311,22 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
     Azᶠᶜᵃ = deepcopy(dropdims(Azᶠᶜᵃ.data, dims=3))
     Azᶜᶜᵃ = deepcopy(dropdims(Azᶜᶜᵃ.data, dims=3))
 
-    # Continue the metrics to the south with a LatitudeLongitudeGrid
-    # metrics (probably we don't even need to do this, since the tripolar grid should
-    # terminate below Antarctica, but it's better to be safe)
-    latitude_longitude_grid = LatitudeLongitudeGrid(; size,
-                                                      latitude,
-                                                      longitude,
-                                                      halo,
-                                                      z = (0, 1), # z does not really matter here
-                                                      radius)
+    # Continue the metrics to the south assuming the cell does not 
+    # change moving southwards into the halos
+    continue_south!(Δxᶠᶠᵃ)
+    continue_south!(Δxᶠᶜᵃ)
+    continue_south!(Δxᶜᶠᵃ)
+    continue_south!(Δxᶜᶜᵃ)
 
-    continue_south!(Δxᶠᶠᵃ, latitude_longitude_grid.Δxᶠᶠᵃ)
-    continue_south!(Δxᶠᶜᵃ, latitude_longitude_grid.Δxᶠᶜᵃ)
-    continue_south!(Δxᶜᶠᵃ, latitude_longitude_grid.Δxᶜᶠᵃ)
-    continue_south!(Δxᶜᶜᵃ, latitude_longitude_grid.Δxᶜᶜᵃ)
+    continue_south!(Δyᶠᶠᵃ)
+    continue_south!(Δyᶠᶜᵃ)
+    continue_south!(Δyᶜᶠᵃ)
+    continue_south!(Δyᶜᶜᵃ)
 
-    continue_south!(Δyᶠᶠᵃ, latitude_longitude_grid.Δyᶠᶜᵃ)
-    continue_south!(Δyᶠᶜᵃ, latitude_longitude_grid.Δyᶠᶜᵃ)
-    continue_south!(Δyᶜᶠᵃ, latitude_longitude_grid.Δyᶜᶠᵃ)
-    continue_south!(Δyᶜᶜᵃ, latitude_longitude_grid.Δyᶜᶠᵃ)
-
-    continue_south!(Azᶠᶠᵃ, latitude_longitude_grid.Azᶠᶠᵃ)
-    continue_south!(Azᶠᶜᵃ, latitude_longitude_grid.Azᶠᶜᵃ)
-    continue_south!(Azᶜᶠᵃ, latitude_longitude_grid.Azᶜᶠᵃ)
-    continue_south!(Azᶜᶜᵃ, latitude_longitude_grid.Azᶜᶜᵃ)
+    continue_south!(Azᶠᶠᵃ)
+    continue_south!(Azᶠᶜᵃ)
+    continue_south!(Azᶜᶠᵃ)
+    continue_south!(Azᶜᶜᵃ)
 
     # Final grid with correct metrics
     # TODO: remove `on_architecture(arch, ...)` when we shift grid construction to GPU
@@ -369,25 +361,13 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
     return grid
 end
 
-# Continue the metrics to the south with LatitudeLongitudeGrid metrics
-function continue_south!(new_metric, lat_lon_metric::Number)
+# Continue the metrics to the south assuming no changes in the halos
+function continue_south!(new_metric)
     Hx, Hy = new_metric.offsets
     Nx, Ny = size(new_metric)
 
-    for j in Hy+1:1, i in Hx+1:Nx+Hx
-        @inbounds new_metric[i, j] = lat_lon_metric
-    end
-
-    return nothing
-end
-
-# Continue the metrics to the south with LatitudeLongitudeGrid metrics
-function continue_south!(new_metric, lat_lon_metric::AbstractArray{<:Any, 1})
-    Hx, Hy = new_metric.offsets
-    Nx, Ny = size(new_metric)
-
-    for j in Hy+1:1, i in Hx+1:Nx+Hx
-        @inbounds new_metric[i, j] = lat_lon_metric[j]
+    for j in Hy+1:0, i in Hx+1:Nx+Hx
+        @inbounds new_metric[i, j] = lat_lon_metric[i, 1]
     end
 
     return nothing
