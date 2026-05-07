@@ -290,8 +290,8 @@ function HydrostaticFreeSurfaceModel(grid;
     condition_tracer_advection = check_advection_splitting(grid, condition_tracer_advection)
 
     condition_maps = generate_condition_maps(grid, advection;
-                                             condition_momentum_advection=condition_momentum_advection,
-                                             condition_momentum_advection=condition_tracer_advection)
+                                             condition_momentum_advection,
+                                             condition_tracer_advection)
 
     model = HydrostaticFreeSurfaceModel(arch, grid, clock, advection, buoyancy, coriolis,
                                         free_surface, forcing, closure, particles, biogeochemistry, velocities, transport_velocities,
