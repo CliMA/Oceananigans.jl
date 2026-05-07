@@ -114,13 +114,13 @@ for arch in archs
                 end
             end
 
-            @test compute!(Field(ZeroField() + u)) == u
-            @test compute!(Field(u + ZeroField())) == u
-            @test compute!(Field(-ZeroField() + u)) == u
-            @test compute!(Field(u - ZeroField())) == u
-            @test compute!(Field(ZeroField() * u)) == ZeroField()
-            @test compute!(Field(u * ZeroField())) == ZeroField()
-            @test compute!(Field(ZeroField() / u)) == ZeroField()
+            @test Field(ZeroField() + u) == u
+            @test Field(u + ZeroField()) == u
+            @test Field(-ZeroField() + u) == u
+            @test Field(u - ZeroField()) == u
+            @test Field(ZeroField() * u) == ZeroField()
+            @test Field(u * ZeroField()) == ZeroField()
+            @test Field(ZeroField() / u) == ZeroField()
             @test u / ZeroField() == ConstantField(Inf)
 
             @test ZeroField() + 1 == ConstantField(1)
@@ -136,10 +136,10 @@ for arch in archs
             @test ZeroField() - ZeroField() == ZeroField()
             @test ZeroField() * ZeroField() == ZeroField()
 
-            @test compute!(Field(ConstantField(1) + u)) == compute!(Field(1 + u))
-            @test compute!(Field(ConstantField(1) - u)) == compute!(Field(1 - u))
-            @test compute!(Field(ConstantField(1) * u)) == compute!(Field(1 * u))
-            @test compute!(Field(u / ConstantField(1))) == compute!(Field(u / 1))
+            @test Field(ConstantField(1) + u) == Field(1 + u)
+            @test Field(ConstantField(1) - u) == Field(1 - u)
+            @test Field(ConstantField(1) * u) == Field(1 * u)
+            @test Field(u / ConstantField(1)) == Field(u / 1)
 
             @test ConstantField(1) + 1 == ConstantField(2)
             @test ConstantField(1) - 1 == ConstantField(0)
