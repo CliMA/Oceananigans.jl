@@ -1,4 +1,4 @@
-using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, adapt_advection_order, materialize_advection
+using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, WENOVectorInvariant, adapt_advection_order, materialize_advection, weno_order
 using Oceananigans.Architectures: AbstractArchitecture, ReactantState
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
@@ -160,6 +160,8 @@ function HydrostaticFreeSurfaceModel(grid;
                                      condition_momentum_advection=true,
                                      condition_tracer_advection=true)
 
+    arch = architecture(grid)
+
     # Check halos and throw an error if the grid's halo is too small
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
 
@@ -176,6 +178,11 @@ function HydrostaticFreeSurfaceModel(grid;
         You can also construct your own TimeStepper and pass it to the constructor.
         """
         throw(ArgumentError(msg))
+    end
+
+    if arch isa Distributed{ReactantState} && momentum_advection isa WENOVectorInvariant && weno_order(momentum_advection.vertical_advection_scheme) == 3
+        # Ref: <https://github.com/CliMA/Oceananigans.jl/issues/5568>.
+        throw(ArgumentError("HydrostaticFreeSurfaceModel does not support Reactant sharding with WENO3 advection"))
     end
 
     # Validate biogeochemistry (add biogeochemical tracers automagically)
@@ -263,7 +270,6 @@ function HydrostaticFreeSurfaceModel(grid;
 
     @apply_regionally validate_velocity_boundary_conditions(grid, velocities)
 
-    arch = architecture(grid)
     free_surface = validate_free_surface(arch, free_surface)
     free_surface = materialize_free_surface(free_surface, velocities, grid)
 
