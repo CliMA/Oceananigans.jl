@@ -352,6 +352,14 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         @test !(clock1 ≈ clock7)
     end
 
+    @testset "Clock(grid) inherits grid eltype" begin
+        for arch in archs, FT in float_types
+            grid = RectilinearGrid(arch, FT; size=(1, 1, 1), extent=(1, 1, 1))
+            @test eltype(grid) == FT
+            @test Clock(grid) isa Clock{FT}
+        end
+    end
+
     for arch in archs, FT in float_types
         A = typeof(arch)
         Oceananigans.defaults.FloatType = FT
