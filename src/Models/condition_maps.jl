@@ -49,6 +49,7 @@ end
 end
 
 compute_advection_conditioned_map(scheme::Nothing, grid,  workspec) = nothing
+compute_advection_conditioned_map(scheme::Nothing, grid,  ::NamedTuple) = nothing
 compute_advection_conditioned_map(scheme,          grid, ::Nothing) = nothing
 compute_advection_conditioned_map(::Nothing,       grid, ::Nothing) = nothing
 
