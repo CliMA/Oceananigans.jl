@@ -12,7 +12,8 @@ export
     BulkDrag, BulkDragFunction, BulkDragBoundaryCondition,
     XDirectionBulkDragFunction, YDirectionBulkDragFunction, ZDirectionBulkDragFunction,
     LinearFormulation, QuadraticFormulation
-export generate_condition_maps
+export generate_condition_maps, lookup_condition_map, maybe_launch_split_tendency_kernels!, InteriorBoundarySet
+export buffer_tendency_kernel_parameters, buffer_parameters, distributed_region_kernel_parameters
 
 using Oceananigans: AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation

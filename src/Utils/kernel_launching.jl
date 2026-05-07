@@ -88,6 +88,7 @@ KernelParameters(args::Tuple) = KernelParameters(args...)
 
 contiguousrange(range::StaticSize{S}, offset) where S = contiguousrange(S, offset)
 contiguousrange(range::NTuple{N, Int}, offset::NTuple{N, Int}) where N = Tuple(1+o:r+o for (r, o) in zip(range, offset))
+@inline contiguousrange(::KernelParameters{S, O}) where {S, O} = contiguousrange(S, O)
 
 # Heuristic for 1-tuple, 2-tuple and 3-tuple of integers
 contiguousrange(range::NTuple{1, Int}, offset::NTuple{1, Int}) = @inbounds (1+offset[1]:range[1]+offset[1], )
@@ -347,6 +348,14 @@ keyword arguments `kw`.
     return nothing
 end
 
+@inline function launch!(arch, grid, workspec_nt::NamedTuple, args...; kwargs...)
+    for workspec in values(workspec_nt)
+        isnothing(workspec) && continue
+        _launch!(arch, grid, workspec, args...; kwargs...)
+    end
+    return nothing
+end
+
 # launching with an empty tuple has no effect
 @inline function launch!(arch, grid, workspec_tuple::Tuple{}, kernel, args...; kwargs...)
     @warn "trying to launch kernel $kernel with workspec == (). The kernel will not be launched."
@@ -356,25 +365,6 @@ end
 # When dims::Val
 @inline launch!(arch, grid, ::Val{workspec}, args...; kw...) where workspec =
     _launch!(arch, grid, workspec, args...; kw...)
-
-struct InteriorBoundarySet
-    interior
-    boundary
-    function InteriorBoundarySet(interior, boundary)
-        new(interior, boundary)
-    end
-end
-
-# Launch kernels over conditioned cell maps
-@inline function _launch!(arch, grid, workspec, kernel!,
-                          first_kernel_arg, second_kernel_arg, other_kernel_args::InteriorBoundarySet;
-                          active_cells_map::InteriorBoundarySet, kwargs...)
-  _launch!(arch, grid, workspec, kernel!, first_kernel_arg, second_kernel_arg, other_kernel_args.interior;
-          active_cells_map=active_cells_map.interior, kwargs...)
-  _launch!(arch, grid, workspec, kernel!, first_kernel_arg, second_kernel_arg, other_kernel_args.boundary;
-          active_cells_map=active_cells_map.boundary, kwargs...)
-  return nothing
-end
 
 # Inner interface
 @inline function _launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...;

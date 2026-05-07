@@ -24,9 +24,9 @@ complete_communication_and_compute_buffer!(model, grid, arch) = nothing
 compute_buffer_tendencies!(model) = nothing
 
 """ Kernel parameters for computing interior tendencies. """
-interior_tendency_kernel_parameters(arch, grid) = :xyz # fallback
+interior_tendency_kernel_parameters(grid, arch) = :xyz # fallback
 
-function interior_tendency_kernel_parameters(arch::AsynchronousDistributed, grid)
+function interior_tendency_kernel_parameters(grid, arch::AsynchronousDistributed)
     Rx, Ry, _ = arch.ranks
     Hx, Hy, _ = halo_size(grid)
     Tx, Ty, _ = topology(grid)
@@ -64,6 +64,64 @@ function interior_tendency_kernel_parameters(arch::AsynchronousDistributed, grid
     offsets = (Ox, Oy, 0)
 
     return KernelParameters(sizes, offsets)
+end
+
+"""
+    buffer_tendency_kernel_parameters(grid, arch)
+
+Return a NamedTuple keyed by region name (`:west_halo_dependent_cells`, `:east_halo_dependent_cells`, 
+`:south_halo_dependent_cells`, `:north_halo_dependent_cells`) of `KernelParameters` for tendency compute 
+in each halo-dependent buffer strip. Regions where the local subdomain has no neighbor are set to `nothing`.
+"""
+function buffer_tendency_kernel_parameters(grid, arch)
+    Nx, Ny, Nz = size(grid)
+    Wx, Wy, _  = worksize(grid)
+    Hx, Hy, _  = halo_size(grid)
+
+    param_west  = (1:Hx,       1:Wy,       1:Nz)
+    param_east  = (Wx-Hx+1:Wx, 1:Wy,       1:Nz)
+    param_south = (1:Wx,       1:Hy,       1:Nz)
+    param_north = (1:Wx,       Wy-Hy+1:Wy, 1:Nz)
+
+    params = (param_west, param_east, param_south, param_north)
+    return buffer_parameters(params, grid, arch)
+end
+
+"""
+    buffer_parameters(parameters, grid, arch)
+
+Wrap a 4-tuple `(west, east, south, north)` of index ranges into a per-region NamedTuple of `KernelParameters`, 
+with `nothing` for regions where the local subdomain has no neighbor on that side.
+"""
+function buffer_parameters(parameters, grid, arch)
+    Rx, Ry, _ = arch.ranks
+    Tx, Ty, _ = topology(grid)
+
+    include_west  = !isa(grid, XFlatGrid) && (Rx != 1) && !(Tx == RightConnected)
+    include_east  = !isa(grid, XFlatGrid) && (Rx != 1) && !(Tx == LeftConnected)
+    include_south = !isa(grid, YFlatGrid) && (Ry != 1) && !(Ty == RightConnected)
+    include_north = !isa(grid, YFlatGrid) && (Ry != 1) && !(Ty == LeftConnected)
+
+    p_west, p_east, p_south, p_north = parameters
+
+    return (west_halo_dependent_cells  = include_west  ? KernelParameters(p_west...)  : nothing,
+            east_halo_dependent_cells  = include_east  ? KernelParameters(p_east...)  : nothing,
+            south_halo_dependent_cells = include_south ? KernelParameters(p_south...) : nothing,
+            north_halo_dependent_cells = include_north ? KernelParameters(p_north...) : nothing)
+end
+
+"""
+    distributed_region_kernel_parameters(grid)
+
+Return a NamedTuple of `KernelParameters` keyed by region — `halo_independent_cells` plus
+the four `*_halo_dependent_cells` strips (with `nothing` for absent regions). Composes
+`interior_tendency_kernel_parameters` for the core and `buffer_tendency_kernel_parameters`
+for the halo-dependent strips.
+"""
+function distributed_region_kernel_parameters(grid)
+    arch = architecture(grid)
+    return (halo_independent_cells = interior_tendency_kernel_parameters(grid, arch),
+            buffer_tendency_kernel_parameters(grid, arch)...)
 end
 
 """

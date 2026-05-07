@@ -287,10 +287,9 @@ function HydrostaticFreeSurfaceModel(grid;
     !isnothing(particles) && arch isa Distributed && error("LagrangianParticles are not supported on Distributed architectures.")
 
     condition_momentum_advection = check_advection_splitting(grid, condition_momentum_advection)
-    condition_tracer_advection = check_advection_splitting(grid, condition_tracer_advection)
+    condition_tracer_advection   = check_advection_splitting(grid, condition_tracer_advection)
 
-    condition_maps = generate_condition_maps(grid,
-                                             advection;
+    condition_maps = generate_condition_maps(grid, advection;
                                              condition_momentum_advection,
                                              condition_tracer_advection)
 

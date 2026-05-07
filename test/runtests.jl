@@ -285,6 +285,12 @@ CUDA.allowscalar() do
         end
     end
 
+    if group == :condition_maps || group == :all
+        @testset "Condition maps tests" begin
+            include("test_condition_maps.jl")
+        end
+    end
+
     # Tests for Enzyme extension
     if group == :enzyme || group == :all
         @testset "Enzyme extension tests" begin

@@ -107,9 +107,9 @@ The tendency is called ``G_c`` and defined via
 where `c = C[tracer_index]`.
 """
 @inline function hydrostatic_free_surface_tracer_tendency(i, j, k, grid,
+                                                          advection,
                                                           val_tracer_index::Val{tracer_index},
                                                           val_tracer_name,
-                                                          advection,
                                                           closure,
                                                           c_immersed_bc,
                                                           buoyancy,

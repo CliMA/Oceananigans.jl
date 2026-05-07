@@ -1,23 +1,17 @@
-using Oceananigans.Advection: AbstractAdvectionScheme
+using Oceananigans.Advection: AbstractAdvectionScheme, fixed_order_scheme
 using Oceananigans.ImmersedBoundaries
-using Oceananigans.Grids: active_cell
+using Oceananigans.ImmersedBoundaries: SplitActiveCellsMapIBG, WholeActiveCellsMapIBG
+using Oceananigans.Grids: active_cell, halo_size, topology, XFlatGrid, YFlatGrid, RightConnected, LeftConnected
 using Oceananigans.Architectures: CPU
 import Oceananigans.Architectures as AC
+using Oceananigans.DistributedComputations: Distributed, AsynchronousDistributed
 using Oceananigans.Fields: Field, interior
-using Oceananigans.Utils: InteriorBoundarySet, convert_interior_indices, @apply_regionally, get_active_cells_map
+using Oceananigans.Utils: convert_interior_indices, @apply_regionally, get_active_cells_map, contiguousrange
 using KernelAbstractions: @kernel, @index
 
-
 # Generic fallback for any grids that aren't specifically supported
-@inline generate_condition_maps(grid, advection; kwargs...) = _generate_condition_maps(grid, advection)
-
-@inline function _generate_condition_maps(grid, advection)
-    active_cells_map = get_active_cells_map(grid, Val(:core))
-    condition_maps = Dict()
-    for key in keys(advection)
-        condition_maps[key] = active_cells_map
-    end
-    return (; condition_maps...)
+@inline function generate_condition_maps(grid, advection; kwargs...)
+    return NamedTuple{Tuple(keys(advection))}(ntuple(_ -> nothing, length(keys(advection))))
 end
 
 # Currently maintaining this union until condition mapping works on all
@@ -29,137 +23,75 @@ const SupportedUnderlyingGrids = Union{LatitudeLongitudeGrid,
 const SupportedGrids = Union{SupportedUnderlyingGrids,
                              ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:SupportedUnderlyingGrids}}
 
-@inline function generate_condition_maps(grid::SupportedGrids,
-                                 advection;
-                                 condition_momentum_advection=false,
-                                 condition_tracer_advection=false)
+@inline function core_workspec(grid)
+    architecture(grid) isa AsynchronousDistributed && return distributed_region_kernel_parameters(grid)
+    return :xyz
+end
 
-    active_cells_map = get_active_cells_map(grid, Val(:core))
+struct InteriorBoundarySet{I, B}
+    interior :: I
+    boundary :: B
+end
 
-    map_keys = keys(advection)
-    Nkeys = length(map_keys)
+@inline function generate_condition_maps(grid::SupportedGrids, advection;
+                                         condition_momentum_advection=false,
+                                         condition_tracer_advection=false)
+
+    workspec = core_workspec(grid)
     condition_maps = Dict()
 
     for key in keys(advection)
-      if key == :momentum
-        if condition_momentum_advection
-            condition_maps[:momentum] = compute_advection_conditioned_map(advection.momentum,
-                                                                          grid,
-                                                                          active_cells_map)
-        else
-            condition_maps[:momentum] = active_cells_map
-        end
-      else
-        if condition_tracer_advection
-            condition_maps[key] = compute_advection_conditioned_map(advection[key],
-                                                                    grid,
-                                                                    active_cells_map)
-        else
-            condition_maps[key] = active_cells_map
-        end
-      end
+        condition = key == :momentum ? condition_momentum_advection : condition_tracer_advection
+        condition_maps[key] = condition ? compute_advection_conditioned_map(advection[key], grid, workspec) : nothing
     end
 
     return (; condition_maps...)
 end
 
-compute_advection_conditioned_map(scheme::Nothing, grid, active_cells_map) = nothing
+compute_advection_conditioned_map(scheme::Nothing, grid, workspec) = nothing
+compute_advection_conditioned_map(scheme,          grid, ::Nothing) = nothing
+compute_advection_conditioned_map(::Nothing,       grid, ::Nothing) = nothing
 
-function compute_advection_conditioned_map(scheme,
-                                           grid,
-                                           active_cells_map)
-    # Field is true if the max scheme can be used for computing u advection
+function compute_advection_conditioned_map(scheme, grid, workspec)
+    # Field is true if the max scheme can be used for the advection
     max_scheme_field = Field{Center, Center, Center}(grid, Bool)
     fill!(max_scheme_field, false)
-    launch!(architecture(grid),
-            grid,
-            :xyz,
-            condition_map!,
-            max_scheme_field,
-            grid,
-            scheme;
-            active_cells_map)
+    launch!(architecture(grid), grid, workspec, _condition_map!, max_scheme_field, grid, scheme)
 
-    interior_indices, boundary_indices = split_indices(max_scheme_field, grid; active_cells_map)
+    interior_indices, boundary_indices = split_indices(max_scheme_field, grid, workspec)
+    isempty(boundary_indices) && return nothing
     return InteriorBoundarySet(interior_indices, boundary_indices)
 end
 
-# Deal with Distributed grids, which have NamedTuple active cells maps
-function compute_advection_conditioned_map(scheme,
-                                           grid,
-                                           active_cells_map::NamedTuple)
-
-    condition_maps = Dict()
-
-    for map_key in keys(active_cells_map)
-        condition_maps[map_key] = compute_advection_conditioned_map(scheme,
-                                                                    grid,
-                                                                    active_cells_map[map_key])
-    end
-
-    return (; condition_maps...)
-
+function compute_advection_conditioned_map(scheme, grid, regions::NamedTuple{Names}) where Names
+    vals = Tuple(compute_advection_conditioned_map(scheme, grid, regions[name]) for name in Names)
+    return NamedTuple{Names}(vals)
 end
-@kernel function condition_map!(max_scheme_field, ibg, scheme)
-    i, j, k = @index(Global, NTuple)
 
+@kernel function _condition_map!(max_scheme_field, ibg, scheme)
+    i, j, k = @index(Global, NTuple)
     @inbounds max_scheme_field[i, j, k] = convert(Bool, check_interior_xyz(i, j, k, ibg, scheme))
 end
 
-function split_indices(field, grid; active_cells_map=nothing)
-    if isnothing(active_cells_map)
-        return split_indices_full(field, grid)
-    else
-        return split_indices_mapped(field, grid, active_cells_map)
-    end
+split_indices(field, grid, ::Symbol) =
+    split_indices_in_ranges(field, grid, 1:size(grid, 1), 1:size(grid, 2), 1:size(grid, 3))
+
+function split_indices(field, grid, kp::KernelParameters)
+    irange, jrange, krange = contiguousrange(kp)
+    return split_indices_in_ranges(field, grid, irange, jrange, krange)
 end
 
-
-function check_interior_xyz(i, j, k, ibg, scheme)
-    return (check_interior_x(i, j, k, ibg, scheme)
-         && check_interior_y(i, j, k, ibg, scheme)
-         && check_interior_z(i, j, k, ibg, scheme))
-end
-
-function check_interior_x(i, j, k, ibg, ::AbstractAdvectionScheme{N}) where N
-    interior = true
-
-    buffer = N + 1
-    for di in -buffer:buffer
-        interior = interior && active_cell(i + di, j, k, ibg)
-    end
-    return interior
-end
-
-function check_interior_y(i, j, k, ibg, ::AbstractAdvectionScheme{N}) where N
-    interior = true
-
-    buffer = N + 1
-    for dj in -buffer:buffer
-        interior = interior && active_cell(i, j + dj, k, ibg)
-    end
-    return interior
-end
-
-function check_interior_z(i, j, k, ibg, ::AbstractAdvectionScheme{N}) where N
-    interior = true
-
-    buffer = N + 1
-    for dk in -buffer:buffer
-        interior = interior && active_cell(i, j, k + dk, ibg)
-    end
-    return interior
-end
-
-function split_indices_mapped(field, grid, active_cells_map)
-    IndexType = Tuple{Int64,Int64,Int64}
+function split_indices_in_ranges(field, grid, irange, jrange, krange)
+    N = maximum(size(grid))
+    IT = N > typemax(UInt8) ? (N > typemax(UInt16) ? (N > typemax(UInt32) ? UInt64 : UInt32) : UInt16) : UInt8
+    IndicesType = Tuple{IT, IT, IT}
+    map1 = IndicesType[]
+    map2 = IndicesType[]
     vals = AC.on_architecture(CPU(), interior(field))
-    active_indices = AC.on_architecture(CPU(), active_cells_map)
-    map1 = Vector{eltype(active_indices)}()
-    map2 = Vector{eltype(active_indices)}()
-    for index in active_indices
-        val = vals[convert(IndexType, index)...]
-    if val
+    for k in krange, j in jrange, i in irange
+        active_cell(i, j, k, grid) || continue
+        index = (IT(i), IT(j), IT(k))
+        if vals[i, j, k]
             push!(map1, index)
         else
             push!(map2, index)
@@ -170,17 +102,66 @@ function split_indices_mapped(field, grid, active_cells_map)
     return (map1, map2)
 end
 
-function split_indices_full(field, grid)
-    IndicesType = Tuple{Int16, Int16, Int16}
-    map1 = IndicesType[]
-    map2 = IndicesType[]
-    for k in 1:size(grid, 3)
-        vals = AC.on_architecture(CPU(), interior(field, :, :, k))
-        map1 = vcat(map1, convert_interior_indices(findall(x->x, vals), k, IndicesType))
-        map2 = vcat(map2, convert_interior_indices(findall(x->!x, vals), k, IndicesType))
-        GC.gc()
+function check_interior_xyz(i, j, k, ibg, scheme)
+    return (check_interior_x(i, j, k, ibg, scheme)
+         && check_interior_y(i, j, k, ibg, scheme)
+         && check_interior_z(i, j, k, ibg, scheme))
+end
+
+function check_interior_x(i, j, k, ibg, ::AbstractAdvectionScheme{N}) where N
+    interior = true
+    buffer   = N + 1
+    for di in -buffer:buffer
+        interior = interior && active_cell(i + di, j, k, ibg)
     end
-    map1 = AC.on_architecture(architecture(grid), map1)
-    map2 = AC.on_architecture(architecture(grid), map2)
-    return (map1, map2)
+    return interior
+end
+
+function check_interior_y(i, j, k, ibg, ::AbstractAdvectionScheme{N}) where N
+    interior = true
+    buffer   = N + 1
+    for dj in -buffer:buffer
+        interior = interior && active_cell(i, j + dj, k, ibg)
+    end
+    return interior
+end
+
+function check_interior_z(i, j, k, ibg, ::AbstractAdvectionScheme{N}) where N
+    interior = true
+    buffer   = N + 1
+    for dk in -buffer:buffer
+        interior = interior && active_cell(i, j, k + dk, ibg)
+    end
+    return interior
+end
+
+#####
+##### Tendency launching kernels with a split map
+##### For a generic model to opt-in in this feature the requirements are:
+##### - possess a model.condition_maps field constructed using the (generic) structure outlined above
+##### - have tendency kernels with signature `kernel!(G, grid, advection, args...)` where advection is the first argument
+##### - use maybe_launch_split_tendency_kernels! instead of `launch!`
+#####
+
+@inline lookup_condition_map(::Nothing, region)               = nothing
+@inline lookup_condition_map(cm::InteriorBoundarySet, region) = cm
+@inline lookup_condition_map(cm::NamedTuple, region)          = cm[region]
+
+@inline function maybe_launch_split_tendency_kernels!(arch, kernel_parameters, kernel!,
+                                                      tendency, grid, advection, args,
+                                                      active_cells_map, condition_map::InteriorBoundarySet)
+    fixed_advection = fixed_order_scheme(advection)
+    launch!(arch, grid, kernel_parameters, kernel!, tendency, grid,
+            (fixed_advection, args...); active_cells_map=condition_map.interior)
+    launch!(arch, grid, kernel_parameters, kernel!, tendency, grid,
+            (advection, args...); active_cells_map=condition_map.boundary)
+    return nothing
+end
+
+@inline function maybe_launch_split_tendency_kernels!(arch, kernel_parameters, kernel!,
+                                                      tendency, grid, advection, args,
+                                                      active_cells_map, ::Nothing)
+    launch!(arch, grid, kernel_parameters, kernel!, tendency, grid,
+            (advection, args...); active_cells_map)
+    return nothing
 end
