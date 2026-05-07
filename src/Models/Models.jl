@@ -11,7 +11,8 @@ export
     seawater_density,
     BulkDrag, BulkDragFunction, BulkDragBoundaryCondition,
     XDirectionBulkDragFunction, YDirectionBulkDragFunction, ZDirectionBulkDragFunction,
-    LinearFormulation, QuadraticFormulation
+    LinearFormulation, QuadraticFormulation,
+    initialize_boundary_transport, enforce_net_zero_transport!
 
 using Oceananigans: AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation
@@ -95,6 +96,12 @@ function materialize_free_surface end
 
 # Communication - Computation overlap in distributed models
 include("interleave_communication_and_computation.jl")
+
+# Shared open-boundary transport / solvability machinery.
+# Used by NonhydrostaticModel for volume transport conservation (u, v, w), and
+# available for external anelastic models that conserve density-weighted
+# momentum (ρu, ρv, ρw) under the same solvability condition.
+include("boundary_transport.jl")
 
 #####
 ##### All the code
