@@ -101,7 +101,7 @@ function Clock{TT}(; time,
 end
 
 # helpful default
-Clock(grid::AbstractGrid) = Clock{eltype(grid)}(time=0)
+Clock(grid::AbstractGrid{FT}) where {FT} = Clock{FT}(; time=0)
 
 function Base.summary(clock::Clock)
     TT = typeof(clock.time)
