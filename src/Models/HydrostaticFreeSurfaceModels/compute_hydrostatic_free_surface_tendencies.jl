@@ -105,7 +105,7 @@ function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters;
 
     for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
 
-        condition_map = lookup_condition_map(model.condition_maps[tracer_name], region)
+        condition_map = lookup_condition_map(model.condition_maps, tracer_name, region)
         @inbounds c_tendency    = model.timestepper.Gⁿ[tracer_name]
         @inbounds c_advection   = model.advection[tracer_name]
         @inbounds c_forcing     = model.forcing[tracer_name]

@@ -85,13 +85,14 @@ function split_indices_in_ranges(field, grid, irange, jrange, krange)
     N = maximum(size(grid))
     IT = N > typemax(UInt8) ? (N > typemax(UInt16) ? (N > typemax(UInt32) ? UInt64 : UInt32) : UInt16) : UInt8
     IndicesType = Tuple{IT, IT, IT}
+    cpu_grid    = AC.on_architecture(CPU(), grid)
+    values      = AC.on_architecture(CPU(), interior(field))
     map1 = IndicesType[]
     map2 = IndicesType[]
-    vals = AC.on_architecture(CPU(), interior(field))
     for k in krange, j in jrange, i in irange
-        active_cell(i, j, k, grid) || continue
+        active_cell(i, j, k, cpu_grid) || continue
         index = (IT(i), IT(j), IT(k))
-        if vals[i, j, k]
+        if values[i, j, k]
             push!(map1, index)
         else
             push!(map2, index)
