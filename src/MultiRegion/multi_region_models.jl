@@ -104,6 +104,9 @@ function TimeSteppers.reconcile_state!(model::MultiRegionModel)
     return nothing
 end
 
+# Overload MultiRegionGrids as not supported/broken
+@inline Models.generate_condition_maps(grid::MultiRegionGrids, args...; kwargs...) = nothing
+
 @inline Utils.isregional(mrm::MultiRegionModel) = true
 @inline Utils.regions(mrm::MultiRegionModel) = regions(mrm.grid)
 
