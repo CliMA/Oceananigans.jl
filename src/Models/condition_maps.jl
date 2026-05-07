@@ -48,7 +48,7 @@ end
     return (; condition_maps...)
 end
 
-compute_advection_conditioned_map(scheme::Nothing, grid, workspec) = nothing
+compute_advection_conditioned_map(scheme::Nothing, grid,  workspec) = nothing
 compute_advection_conditioned_map(scheme,          grid, ::Nothing) = nothing
 compute_advection_conditioned_map(::Nothing,       grid, ::Nothing) = nothing
 
@@ -63,9 +63,9 @@ function compute_advection_conditioned_map(scheme, grid, workspec)
     return InteriorBoundarySet(interior_indices, boundary_indices)
 end
 
-function compute_advection_conditioned_map(scheme, grid, regions::NamedTuple{Names}) where Names
-    vals = Tuple(compute_advection_conditioned_map(scheme, grid, regions[name]) for name in Names)
-    return NamedTuple{Names}(vals)
+function compute_advection_conditioned_map(scheme, grid, regions::NamedTuple{names}) where names
+    vals = Tuple(compute_advection_conditioned_map(scheme, grid, regions[name]) for name in names)
+    return NamedTuple{names}(vals)
 end
 
 @kernel function _condition_map!(max_scheme_field, ibg, scheme)
@@ -73,8 +73,7 @@ end
     @inbounds max_scheme_field[i, j, k] = convert(Bool, check_interior_xyz(i, j, k, ibg, scheme))
 end
 
-split_indices(field, grid, ::Symbol) =
-    split_indices_in_ranges(field, grid, 1:size(grid, 1), 1:size(grid, 2), 1:size(grid, 3))
+split_indices(field, grid, ::Symbol) = split_indices_in_ranges(field, grid, 1:size(grid, 1), 1:size(grid, 2), 1:size(grid, 3))
 
 function split_indices(field, grid, kp::KernelParameters)
     irange, jrange, krange = contiguousrange(kp)

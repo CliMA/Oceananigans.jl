@@ -98,7 +98,7 @@ and forcing contributions. Uses `model.transport_velocities` for advection.
 """
 function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters;
                                                 active_cells_map=nothing,
-                                                region::Symbol=:halo_independent_cells)
+                                                region=:halo_independent_cells)
 
     arch = model.architecture
     grid = model.grid
@@ -141,7 +141,7 @@ Compute momentum tendencies for `u` and `v` in the grid interior (or on specifie
 """
 function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters;
                                                   active_cells_map=nothing,
-                                                  region::Symbol=:halo_independent_cells)
+                                                  region=:halo_independent_cells)
 
     grid = model.grid
     arch = architecture(grid)
