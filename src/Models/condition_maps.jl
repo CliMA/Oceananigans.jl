@@ -109,12 +109,15 @@ function check_interior_xyz(i, j, k, ibg, scheme)
          && check_interior_z(i, j, k, ibg, scheme))
 end
 
-# The condition map is built at (Center, Center, Center). To account for velocities 
+# The condition map is built at (Center, Center, Center). To account for velocities
 # read at faces (i-1) and (j-1), we conservatively build the map starting from `-1`
 function check_interior_x(i, j, k, ibg, ::AbstractAdvectionScheme{N}) where N
     interior = true
     buffer   = N + 1
-    for di in -buffer-1:buffer
+    if (i - buffer - 1) < 0 || (i + buffer + 1) > ibg.Nx
+      return false
+    end
+    for di in -buffer-1:buffer+1
         interior = interior && active_cell(i + di, j, k, ibg)
     end
     return interior
@@ -123,7 +126,10 @@ end
 function check_interior_y(i, j, k, ibg, ::AbstractAdvectionScheme{N}) where N
     interior = true
     buffer   = N + 1
-    for dj in -buffer-1:buffer
+    if (j - buffer - 1) < 0 || (j + buffer + 1) > ibg.Ny
+      return false
+    end
+    for dj in -buffer-1:buffer+1
         interior = interior && active_cell(i, j + dj, k, ibg)
     end
     return interior
@@ -132,6 +138,9 @@ end
 function check_interior_z(i, j, k, ibg, ::AbstractAdvectionScheme{N}) where N
     interior = true
     buffer   = N + 1
+    if (k - buffer - 1) < 0 || (k + buffer + 1) > ibg.Nz
+      return false
+    end
     for dk in -buffer:buffer
         interior = interior && active_cell(i, j, k + dk, ibg)
     end
