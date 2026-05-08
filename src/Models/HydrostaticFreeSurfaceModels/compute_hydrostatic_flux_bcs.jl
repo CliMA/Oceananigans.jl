@@ -31,7 +31,7 @@ end
     args = (model.clock, fields(model), model.closure, model.buoyancy)
 
     for i in propertynames(model.tracers)
-        compute_flux_bcs!(Gⁿ[i], model.tracers[i], arch, args)
+        compute_flux_bcs!(get(Gⁿ, i, nothing), model.tracers[i], arch, args)
     end
 
     return nothing

@@ -41,12 +41,12 @@ end
 ##### Tendency fields
 #####
 
-function hydrostatic_tendency_fields(velocities, free_surface::ExplicitFreeSurface, grid, tracer_names, bcs)
+function hydrostatic_tendency_fields(velocities, free_surface::ExplicitFreeSurface, grid, tracers, bcs)
     u = XFaceField(grid, boundary_conditions=bcs.u)
     v = YFaceField(grid, boundary_conditions=bcs.v)
     η = free_surface_displacement_field(velocities, free_surface, grid)
-    tracers = TracerFields(tracer_names, grid, bcs)
-    return merge((u=u, v=v, η=η), tracers)
+    tracer_tendencies = tracer_tendency_fields(tracers, grid, bcs)
+    return merge((u=u, v=v, η=η), tracer_tendencies)
 end
 
 #####
