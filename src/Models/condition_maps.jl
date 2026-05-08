@@ -1,12 +1,11 @@
 using Oceananigans.Advection: AbstractAdvectionScheme, fixed_order_scheme
 using Oceananigans.ImmersedBoundaries
-using Oceananigans.ImmersedBoundaries: SplitActiveCellsMapIBG, WholeActiveCellsMapIBG
 using Oceananigans.Grids: active_cell, halo_size, topology, XFlatGrid, YFlatGrid, RightConnected, LeftConnected
-using Oceananigans.Architectures: CPU, cpu_architecture
+using Oceananigans.Architectures: cpu_architecture
 import Oceananigans.Architectures as AC
-using Oceananigans.DistributedComputations: Distributed, AsynchronousDistributed
+using Oceananigans.DistributedComputations: AsynchronousDistributed
 using Oceananigans.Fields: Field, interior
-using Oceananigans.Utils: convert_interior_indices, @apply_regionally, get_active_cells_map, contiguousrange
+using Oceananigans.Utils: @apply_regionally, contiguousrange
 using KernelAbstractions: @kernel, @index
 
 # Generic fallback for any grids that aren't specifically supported
@@ -110,10 +109,12 @@ function check_interior_xyz(i, j, k, ibg, scheme)
          && check_interior_z(i, j, k, ibg, scheme))
 end
 
+# The condition map is built at (Center, Center, Center). To account for velocities 
+# read at faces (i-1) and (j-1), we conservatively build the map starting from `-1`
 function check_interior_x(i, j, k, ibg, ::AbstractAdvectionScheme{N}) where N
     interior = true
     buffer   = N + 1
-    for di in -buffer:buffer
+    for di in -buffer-1:buffer
         interior = interior && active_cell(i + di, j, k, ibg)
     end
     return interior
@@ -122,7 +123,7 @@ end
 function check_interior_y(i, j, k, ibg, ::AbstractAdvectionScheme{N}) where N
     interior = true
     buffer   = N + 1
-    for dj in -buffer:buffer
+    for dj in -buffer-1:buffer
         interior = interior && active_cell(i, j + dj, k, ibg)
     end
     return interior

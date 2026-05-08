@@ -132,8 +132,7 @@ const VectorInvariantSelfVerticalUpwinding      = VectorInvariant{<:Any, <:Any, 
 
 const WENOVectorInvariant{N} = VectorInvariant{<:Any, <:Any, <:Any, <:WENO{N}} where N
 
-# Default, returns scheme un-modified
-
+Base.summary(a::VectorInvariant)                 = "VectorInvariant"
 Base.summary(a::MultiDimensionalVectorInvariant) = "VectorInvariant, multidimensional reconstruction"
 
 function Base.summary(a::WENOVectorInvariant{N}) where N
