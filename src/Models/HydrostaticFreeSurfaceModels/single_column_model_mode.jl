@@ -67,10 +67,11 @@ compute_free_surface_tendency!(::SingleColumnGrid, model, ::SplitExplicitFreeSur
 
 function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid, callbacks)
 
-    fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
+    mask_immersed_model_fields!(model)
+    update_model_field_time_series!(model, model.clock)
+    update_boundary_conditions!(fields(model), model)
 
-    # Compute auxiliaries
-    compute_auxiliary_fields!(model.auxiliary_fields)
+    fill_halo_regions!(prognostic_fields(model), model.clock, fields(model); async=false)
 
     # Calculate closure fields
     compute_closure_fields!(model.closure_fields, model.closure, model)
@@ -82,7 +83,6 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
     end
 
     update_biogeochemical_state!(model.biogeochemistry, model)
-
     compute_momentum_tendencies!(model, callbacks)
 
     return nothing

@@ -3,237 +3,275 @@ using Oceananigans.AbstractOperations: Integral, Ax, Ay, Az, grid_metric_operati
 using Oceananigans.Fields: Field, interior
 using GPUArraysCore: @allowscalar
 
-const OBC  = BoundaryCondition{<:Open} # OpenBoundaryCondition
-const IOBC = BoundaryCondition{<:Open{<:Nothing}} # "Imposed-velocity" OpenBoundaryCondition (with no scheme)
-const FIOBC = BoundaryCondition{<:Open{<:Nothing}, <:Number} # "Fixed-imposed-velocity" OpenBoundaryCondition
-const ZIOBC = BoundaryCondition{<:Open{<:Nothing}, <:Nothing} # "Zero-imposed-velocity" OpenBoundaryCondition (no-inflow)
+#####
+##### Boundary location types for dispatch
+#####
 
-function get_west_area(grid)
+struct WestBoundary end
+struct EastBoundary end
+struct SouthBoundary end
+struct NorthBoundary end
+struct BottomBoundary end
+struct TopBoundary end
+
+const west   = WestBoundary()
+const east   = EastBoundary()
+const south  = SouthBoundary()
+const north  = NorthBoundary()
+const bottom = BottomBoundary()
+const top    = TopBoundary()
+
+# Boundary properties for dispatch
+normal_direction(::WestBoundary)   = +1
+normal_direction(::EastBoundary)   = -1
+normal_direction(::SouthBoundary)  = +1
+normal_direction(::NorthBoundary)  = -1
+normal_direction(::BottomBoundary) = +1
+normal_direction(::TopBoundary)    = -1
+
+#####
+##### Boundary condition type aliases
+#####
+
+const OBC   = BoundaryCondition{<:Open}                          # OpenBoundaryCondition
+const IOBC  = BoundaryCondition{<:Open{<:Nothing}}               # "Imposed-velocity" OpenBoundaryCondition (with no scheme)
+const FIOBC = BoundaryCondition{<:Open{<:Nothing}, <:Number}     # "Fixed-imposed-velocity" OpenBoundaryCondition
+const ZIOBC = BoundaryCondition{<:Open{<:Nothing}, <:Nothing}    # "Zero-imposed-velocity" OpenBoundaryCondition (no-inflow)
+
+#####
+##### BoundaryMassFlux and BoundaryMassFluxes structs
+#####
+
+"""
+    BoundaryMassFlux{F, A}
+
+Holds the mass flux field (or scalar value) and area for a single boundary.
+"""
+struct BoundaryMassFlux{BC, F, A, BND}
+    boundary_condition :: BC
+    flux :: F
+    area :: A
+    boundary :: BND
+end
+
+const RadiatingBoundaryMassFlux = BoundaryMassFlux{<:OBC}
+const NonRadiatingBoundaryMassFlux = BoundaryMassFlux{<:IOBC}
+
+"""
+    BoundaryMassFluxes
+
+Container for mass flux information at all open boundaries.
+Each boundary field (`west`, `east`, etc.) is either a `BoundaryMassFlux` or `nothing`.
+The `radiating_boundary_area` is the sum of areas of radiating boundaries (with advection schemes).
+"""
+struct BoundaryMassFluxes{W, E, S, N, B, T, A}
+    west   :: W
+    east   :: E
+    south  :: S
+    north  :: N
+    bottom :: B
+    top    :: T
+    radiating_boundary_area :: A
+end
+
+#####
+##### Boundary area computation
+#####
+
+function boundary_area(::WestBoundary, grid)
     dA = grid_metric_operation((Face, Center, Center), Ax, grid)
     ∫dA = sum(dA, dims=(2, 3))
     return @allowscalar ∫dA[1, 1, 1]
 end
 
-function get_east_area(grid)
+function boundary_area(::EastBoundary, grid)
     dA = grid_metric_operation((Face, Center, Center), Ax, grid)
     ∫dA = sum(dA, dims=(2, 3))
     return @allowscalar ∫dA[grid.Nx+1, 1, 1]
 end
 
-function get_south_area(grid)
+function boundary_area(::SouthBoundary, grid)
     dA = grid_metric_operation((Center, Face, Center), Ay, grid)
     ∫dA = sum(dA, dims=(1, 3))
     return @allowscalar ∫dA[1, 1, 1]
 end
 
-function get_north_area(grid)
+function boundary_area(::NorthBoundary, grid)
     dA = grid_metric_operation((Center, Face, Center), Ay, grid)
     ∫dA = sum(dA, dims=(1, 3))
     return @allowscalar ∫dA[1, grid.Ny+1, 1]
 end
 
-function get_bottom_area(grid)
+function boundary_area(::BottomBoundary, grid)
     dA = grid_metric_operation((Center, Center, Face), Az, grid)
     ∫dA = sum(dA, dims=(1, 2))
     return @allowscalar ∫dA[1, 1, 1]
 end
 
-function get_top_area(grid)
+function boundary_area(::TopBoundary, grid)
     dA = grid_metric_operation((Center, Center, Face), Az, grid)
     ∫dA = sum(dA, dims=(1, 2))
     return @allowscalar ∫dA[1, 1, grid.Nz+1]
 end
 
-# Left boundary integrals for normal velocity components
-@inline west_mass_flux(u)   = Field(Integral(view(u, 1, :, :), dims=(2, 3)))
-@inline south_mass_flux(v)  = Field(Integral(view(v, :, 1, :), dims=(1, 3)))
-@inline bottom_mass_flux(w) = Field(Integral(view(w, :, :, 1), dims=(1, 2)))
+#####
+##### Boundary mass flux field computation
+#####
 
-# Right boundary integrals for normal velocity components
-@inline east_mass_flux(u)   = Field(Integral(view(u, u.grid.Nx + 1, :, :), dims=(2, 3)))
-@inline north_mass_flux(v)  = Field(Integral(view(v, :, v.grid.Ny + 1, :), dims=(1, 3)))
-@inline top_mass_flux(w)    = Field(Integral(view(w, :, :, w.grid.Nz + 1), dims=(1, 2)))
+boundary_mass_flux_field(::WestBoundary, u)   = Field(Integral(view(u, 1, :, :), dims=(2, 3)))
+boundary_mass_flux_field(::EastBoundary, u)   = Field(Integral(view(u, u.grid.Nx + 1, :, :), dims=(2, 3)))
+boundary_mass_flux_field(::SouthBoundary, v)  = Field(Integral(view(v, :, 1, :), dims=(1, 3)))
+boundary_mass_flux_field(::NorthBoundary, v)  = Field(Integral(view(v, :, v.grid.Ny + 1, :), dims=(1, 3)))
+boundary_mass_flux_field(::BottomBoundary, w) = Field(Integral(view(w, :, :, 1), dims=(1, 2)))
+boundary_mass_flux_field(::TopBoundary, w)    = Field(Integral(view(w, :, :, w.grid.Nz + 1), dims=(1, 2)))
 
-initialize_boundary_mass_flux(u, bc::OBC, ::Val{:west})   = (; west_mass_flux = west_mass_flux(u), west_area = get_west_area(u.grid))
-initialize_boundary_mass_flux(u, bc::OBC, ::Val{:east})   = (; east_mass_flux = east_mass_flux(u), east_area = get_east_area(u.grid))
-initialize_boundary_mass_flux(v, bc::OBC, ::Val{:south})  = (; south_mass_flux = south_mass_flux(v), south_area = get_south_area(v.grid))
-initialize_boundary_mass_flux(v, bc::OBC, ::Val{:north})  = (; north_mass_flux = north_mass_flux(v), north_area = get_north_area(v.grid))
-initialize_boundary_mass_flux(w, bc::OBC, ::Val{:bottom}) = (; bottom_mass_flux = bottom_mass_flux(w), bottom_area = get_bottom_area(w.grid))
-initialize_boundary_mass_flux(w, bc::OBC, ::Val{:top})    = (; top_mass_flux = top_mass_flux(w), top_area = get_top_area(w.grid))
+#####
+##### Initialize individual boundary mass flux
+#####
 
-initialize_boundary_mass_flux(u, bc::ZIOBC, ::Val{:west})   = NamedTuple()
-initialize_boundary_mass_flux(u, bc::ZIOBC, ::Val{:east})   = NamedTuple()
-initialize_boundary_mass_flux(v, bc::ZIOBC, ::Val{:south})  = NamedTuple()
-initialize_boundary_mass_flux(v, bc::ZIOBC, ::Val{:north})  = NamedTuple()
-initialize_boundary_mass_flux(w, bc::ZIOBC, ::Val{:bottom}) = NamedTuple()
-initialize_boundary_mass_flux(w, bc::ZIOBC, ::Val{:top})    = NamedTuple()
+radiating_boundary_condition(::IOBC)    = false
+radiating_boundary_condition(::OBC)     = true
+radiating_boundary_condition(bc)        = false
 
-initialize_boundary_mass_flux(u, bc::FIOBC, ::Val{:west})   = (; west_mass_flux = bc.condition * get_west_area(u.grid), west_area = get_west_area(u.grid))
-initialize_boundary_mass_flux(u, bc::FIOBC, ::Val{:east})   = (; east_mass_flux = bc.condition * get_east_area(u.grid), east_area = get_east_area(u.grid))
-initialize_boundary_mass_flux(v, bc::FIOBC, ::Val{:south})  = (; south_mass_flux = bc.condition * get_south_area(v.grid), south_area = get_south_area(v.grid))
-initialize_boundary_mass_flux(v, bc::FIOBC, ::Val{:north})  = (; north_mass_flux = bc.condition * get_north_area(v.grid), north_area = get_north_area(v.grid))
-initialize_boundary_mass_flux(w, bc::FIOBC, ::Val{:bottom}) = (; bottom_mass_flux = bc.condition * get_bottom_area(w.grid), bottom_area = get_bottom_area(w.grid))
-initialize_boundary_mass_flux(w, bc::FIOBC, ::Val{:top})    = (; top_mass_flux = bc.condition * get_top_area(w.grid), top_area = get_top_area(w.grid))
+# OBC with advection scheme: create Field for dynamic flux computation
+function initialize_boundary_mass_flux(velocity, bc::OBC, boundary)
+    A = boundary_area(boundary, velocity.grid)
+    flux = boundary_mass_flux_field(boundary, velocity)
+    return BoundaryMassFlux(bc, flux, A, boundary)
+end
 
-initialize_boundary_mass_flux(velocity, ::Nothing, side) = NamedTuple()
-initialize_boundary_mass_flux(velocity, bc, side) = NamedTuple()
+# FIOBC (fixed imposed velocity): flux is constant = velocity × area
+function initialize_boundary_mass_flux(velocity, bc::FIOBC, boundary)
+    A = boundary_area(boundary, velocity.grid)
+    flux = bc.condition * A
+    return BoundaryMassFlux(bc, flux, A, boundary)
+end
 
-needs_mass_flux_correction(::IOBC) = false
-needs_mass_flux_correction(::OBC) = true
-needs_mass_flux_correction(::Nothing) = false
-needs_mass_flux_correction(bc) = false
+# ZIOBC (zero imposed velocity): no flux needed
+initialize_boundary_mass_flux(velocity, bc::ZIOBC, boundary) = nothing
+initialize_boundary_mass_flux(velocity, bc, boundary) = nothing
+
+#####
+##### Initialize all boundary mass fluxes
+#####
 
 """
     initialize_boundary_mass_fluxes(velocities::NamedTuple)
 
 Initialize boundary mass fluxes for boundaries with OpenBoundaryConditions,
-returning a NamedTuple of boundary fluxes.
+returning a `BoundaryMassFluxes` object.
 """
 function initialize_boundary_mass_fluxes(velocities::NamedTuple)
-
     u, v, w = velocities
     u_bcs = u.boundary_conditions
     v_bcs = v.boundary_conditions
     w_bcs = w.boundary_conditions
 
-    boundary_fluxes = NamedTuple()
-    right_scheme_boundaries = Symbol[]
-    left_scheme_boundaries = Symbol[]
-    total_area_scheme_boundaries = zero(eltype(u))
+    # Initialize each boundary
+    west_bmf   = initialize_boundary_mass_flux(u, u_bcs.west,   west)
+    east_bmf   = initialize_boundary_mass_flux(u, u_bcs.east,   east)
+    south_bmf  = initialize_boundary_mass_flux(v, v_bcs.south,  south)
+    north_bmf  = initialize_boundary_mass_flux(v, v_bcs.north,  north)
+    bottom_bmf = initialize_boundary_mass_flux(w, w_bcs.bottom, bottom)
+    top_bmf    = initialize_boundary_mass_flux(w, w_bcs.top,    top)
 
-    # Check west boundary (u velocity)
-    west_flux_and_area = initialize_boundary_mass_flux(u, u_bcs.west, Val(:west))
-    boundary_fluxes = merge(boundary_fluxes, west_flux_and_area)
-    if needs_mass_flux_correction(u_bcs.west)
-        push!(left_scheme_boundaries, :west)
-        total_area_scheme_boundaries += boundary_fluxes.west_area
+    # Return nothing if no open boundaries
+    all_bmfs = (west_bmf, east_bmf, south_bmf, north_bmf, bottom_bmf, top_bmf)
+    all(isnothing, all_bmfs) && return nothing
+
+    # Compute total radiating boundary area
+    radiating_boundary_area = zero(eltype(u))
+    for bmf in all_bmfs
+        radiating_boundary_area += radiating_area(bmf)
     end
 
-    # Check east boundary (u velocity)
-    east_flux_and_area = initialize_boundary_mass_flux(u, u_bcs.east, Val(:east))
-    boundary_fluxes = merge(boundary_fluxes, east_flux_and_area)
-    if needs_mass_flux_correction(u_bcs.east)
-        push!(right_scheme_boundaries, :east)
-        total_area_scheme_boundaries += boundary_fluxes.east_area
-    end
-
-    # Check south boundary (v velocity)
-    south_flux_and_area = initialize_boundary_mass_flux(v, v_bcs.south, Val(:south))
-    boundary_fluxes = merge(boundary_fluxes, south_flux_and_area)
-    if needs_mass_flux_correction(v_bcs.south)
-        push!(left_scheme_boundaries, :south)
-        total_area_scheme_boundaries += boundary_fluxes.south_area
-    end
-
-    # Check north boundary (v velocity)
-    north_flux_and_area = initialize_boundary_mass_flux(v, v_bcs.north, Val(:north))
-    boundary_fluxes = merge(boundary_fluxes, north_flux_and_area)
-    if needs_mass_flux_correction(v_bcs.north)
-        push!(right_scheme_boundaries, :north)
-        total_area_scheme_boundaries += boundary_fluxes.north_area
-    end
-
-    # Check bottom boundary (w velocity)
-    bottom_flux_and_area = initialize_boundary_mass_flux(w, w_bcs.bottom, Val(:bottom))
-    boundary_fluxes = merge(boundary_fluxes, bottom_flux_and_area)
-    if needs_mass_flux_correction(w_bcs.bottom)
-        push!(left_scheme_boundaries, :bottom)
-        total_area_scheme_boundaries += boundary_fluxes.bottom_area
-    end
-
-    # Check top boundary (w velocity)
-    top_flux_and_area = initialize_boundary_mass_flux(w, w_bcs.top, Val(:top))
-    boundary_fluxes = merge(boundary_fluxes, top_flux_and_area)
-    if needs_mass_flux_correction(w_bcs.top)
-        push!(right_scheme_boundaries, :top)
-        total_area_scheme_boundaries += boundary_fluxes.top_area
-    end
-
-    boundary_fluxes = merge(boundary_fluxes, (; left_scheme_boundaries = Tuple(left_scheme_boundaries),
-                                                right_scheme_boundaries = Tuple(right_scheme_boundaries),
-                                                total_area_scheme_boundaries))
-
-    if length(boundary_fluxes.left_scheme_boundaries) == 0 && length(boundary_fluxes.right_scheme_boundaries) == 0
-        return nothing
-    else
-        return boundary_fluxes
-    end
+    return BoundaryMassFluxes(all_bmfs..., radiating_boundary_area)
 end
 
-update_open_boundary_mass_fluxes!(model) = map(compute!, model.boundary_mass_fluxes)
+radiating_area(bmf::RadiatingBoundaryMassFlux) = bmf.area
+radiating_area(::NonRadiatingBoundaryMassFlux) = 0
+radiating_area(::Nothing) = 0
 
-open_boundary_mass_flux(model, bc::OBC, ::Val{:west}, u) = @allowscalar model.boundary_mass_fluxes.west_mass_flux[]
-open_boundary_mass_flux(model, bc::OBC, ::Val{:east}, u) = @allowscalar model.boundary_mass_fluxes.east_mass_flux[]
-open_boundary_mass_flux(model, bc::OBC, ::Val{:south}, v) = @allowscalar model.boundary_mass_fluxes.south_mass_flux[]
-open_boundary_mass_flux(model, bc::OBC, ::Val{:north}, v) = @allowscalar model.boundary_mass_fluxes.north_mass_flux[]
-open_boundary_mass_flux(model, bc::OBC, ::Val{:bottom}, w) = @allowscalar model.boundary_mass_fluxes.bottom_mass_flux[]
-open_boundary_mass_flux(model, bc::OBC, ::Val{:top}, w) = @allowscalar model.boundary_mass_fluxes.top_mass_flux[]
+#####
+##### Update and access boundary mass fluxes
+#####
 
-open_boundary_mass_flux(model, bc::ZIOBC, ::Val{:west}, u) = zero(model.grid)
-open_boundary_mass_flux(model, bc::ZIOBC, ::Val{:east}, u) = zero(model.grid)
-open_boundary_mass_flux(model, bc::ZIOBC, ::Val{:south}, v) = zero(model.grid)
-open_boundary_mass_flux(model, bc::ZIOBC, ::Val{:north}, v) = zero(model.grid)
-open_boundary_mass_flux(model, bc::ZIOBC, ::Val{:bottom}, w) = zero(model.grid)
-open_boundary_mass_flux(model, bc::ZIOBC, ::Val{:top}, w) = zero(model.grid)
+compute_mass_flux!(bmf::BoundaryMassFlux{<:Any, <:Field}) = compute!(bmf.flux)
+compute_mass_flux!(bmf) = nothing
 
-open_boundary_mass_flux(model, bc, side, velocity) = zero(model.grid)
+function update_open_boundary_mass_fluxes!(model)
+    bmfs = model.boundary_mass_fluxes
+    isnothing(bmfs) && return nothing
 
-function open_boundary_mass_inflow(model)
+    for bmf in (bmfs.west, bmfs.east, bmfs.south, bmfs.north, bmfs.bottom, bmfs.top)
+        compute_mass_flux!(bmf)
+    end
+    return nothing
+end
+
+# Get the scalar mass flux value from a BoundaryMassFlux
+mass_flux(bmf::BoundaryMassFlux{<:Any, <:Field}) = @allowscalar bmf.flux[]
+mass_flux(bmf::BoundaryMassFlux{<:Any, <:Number}) = bmf.flux
+mass_flux(::Nothing) = 0
+
+signed_mass_flux(bmf::BoundaryMassFlux) = normal_direction(bmf.boundary) * mass_flux(bmf)
+signed_mass_flux(::Nothing) = 0
+
+# Compute the total mass flux through all open boundaries.
+# Positive values indicate net inflow (mass convergence),
+# negative values indicate net outflow (mass divergence).
+function total_open_boundary_mass_flux(model)
     update_open_boundary_mass_fluxes!(model)
-
-    u, v, w = model.velocities
+    bmfs = model.boundary_mass_fluxes
     total_flux = zero(model.grid)
-
-    # Add flux through left boundaries
-    total_flux += open_boundary_mass_flux(model, u.boundary_conditions.west, Val(:west), u)
-    total_flux += open_boundary_mass_flux(model, v.boundary_conditions.south, Val(:south), v)
-    total_flux += open_boundary_mass_flux(model, w.boundary_conditions.bottom, Val(:bottom), w)
-
-    # Subtract flux through right boundaries.
-    total_flux -= open_boundary_mass_flux(model, u.boundary_conditions.east, Val(:east), u)
-    total_flux -= open_boundary_mass_flux(model, v.boundary_conditions.north, Val(:north), v)
-    total_flux -= open_boundary_mass_flux(model, w.boundary_conditions.top, Val(:top), w)
-
+    for bmf in (bmfs.west, bmfs.east, bmfs.south, bmfs.north, bmfs.bottom, bmfs.top)
+        total_flux += signed_mass_flux(bmf)
+    end
     return total_flux
 end
 
-correct_left_boundary_mass_flux!(u, bc::OBC, ::Val{:west},    A⁻¹_∮udA) = interior(u, 1, :, :) .-= A⁻¹_∮udA
-correct_left_boundary_mass_flux!(v, bc::OBC, ::Val{:south},   A⁻¹_∮udA) = interior(v, :, 1, :) .-= A⁻¹_∮udA
-correct_left_boundary_mass_flux!(w, bc::OBC, ::Val{:bottom},  A⁻¹_∮udA) = interior(w, :, :, 1) .-= A⁻¹_∮udA
-correct_left_boundary_mass_flux!(u, bc::IOBC, ::Val{:west},   A⁻¹_∮udA) = nothing
-correct_left_boundary_mass_flux!(v, bc::IOBC, ::Val{:south},  A⁻¹_∮udA) = nothing
-correct_left_boundary_mass_flux!(w, bc::IOBC, ::Val{:bottom}, A⁻¹_∮udA) = nothing
-correct_left_boundary_mass_flux!(u, bc, side, A⁻¹_∮udA) = nothing
+#####
+##### Update radiating boundary fluxes for conservation
+#####
 
-correct_right_boundary_mass_flux!(u, bc::OBC, ::Val{:east},   A⁻¹_∮udA) = interior(u, u.grid.Nx + 1, :, :) .+= A⁻¹_∮udA
-correct_right_boundary_mass_flux!(v, bc::OBC, ::Val{:north},  A⁻¹_∮udA) = interior(v, :, v.grid.Ny + 1, :) .+= A⁻¹_∮udA
-correct_right_boundary_mass_flux!(w, bc::OBC, ::Val{:top},    A⁻¹_∮udA) = interior(w, :, :, w.grid.Nz + 1) .+= A⁻¹_∮udA
-correct_right_boundary_mass_flux!(u, bc::IOBC, ::Val{:east},  A⁻¹_∮udA) = nothing
-correct_right_boundary_mass_flux!(v, bc::IOBC, ::Val{:north}, A⁻¹_∮udA) = nothing
-correct_right_boundary_mass_flux!(w, bc::IOBC, ::Val{:top},   A⁻¹_∮udA) = nothing
-correct_right_boundary_mass_flux!(u, bc, side, A⁻¹_∮udA) = nothing
+# Update radiating (OBC with advection scheme) boundaries
+update_radiating_boundary_flux!(velocity, ::OBC, ::WestBoundary,   Δu) = interior(velocity, 1, :, :) .-= Δu
+update_radiating_boundary_flux!(velocity, ::OBC, ::EastBoundary,   Δu) = interior(velocity, velocity.grid.Nx + 1, :, :) .+= Δu
+update_radiating_boundary_flux!(velocity, ::OBC, ::SouthBoundary,  Δu) = interior(velocity, :, 1, :) .-= Δu
+update_radiating_boundary_flux!(velocity, ::OBC, ::NorthBoundary,  Δu) = interior(velocity, :, velocity.grid.Ny + 1, :) .+= Δu
+update_radiating_boundary_flux!(velocity, ::OBC, ::BottomBoundary, Δu) = interior(velocity, :, :, 1) .-= Δu
+update_radiating_boundary_flux!(velocity, ::OBC, ::TopBoundary,    Δu) = interior(velocity, :, :, velocity.grid.Nz + 1) .+= Δu
+
+# No update for imposed velocity boundaries (IOBC is a subtype of OBC, so we need specific methods)
+update_radiating_boundary_flux!(velocity, ::IOBC, ::WestBoundary,   Δu) = nothing
+update_radiating_boundary_flux!(velocity, ::IOBC, ::EastBoundary,   Δu) = nothing
+update_radiating_boundary_flux!(velocity, ::IOBC, ::SouthBoundary,  Δu) = nothing
+update_radiating_boundary_flux!(velocity, ::IOBC, ::NorthBoundary,  Δu) = nothing
+update_radiating_boundary_flux!(velocity, ::IOBC, ::BottomBoundary, Δu) = nothing
+update_radiating_boundary_flux!(velocity, ::IOBC, ::TopBoundary,    Δu) = nothing
+
+# Fallback for non-open boundaries
+update_radiating_boundary_flux!(velocity, bc, boundary, Δu) = nothing
 
 enforce_open_boundary_mass_conservation!(model, ::Nothing) = nothing
 
 """
     enforce_open_boundary_mass_conservation!(model, boundary_mass_fluxes)
 
-Correct boundary mass fluxes for perturbation advection boundary conditions to ensure
-zero net mass flux through each boundary.
+Update velocities at radiating open boundaries to ensure zero net mass flux through the domain.
 """
 function enforce_open_boundary_mass_conservation!(model, boundary_mass_fluxes)
     u, v, w = model.velocities
 
-    ∮udA = open_boundary_mass_inflow(model)
-    A = boundary_mass_fluxes.total_area_scheme_boundaries
+    ∮udA = total_open_boundary_mass_flux(model)
+    A = boundary_mass_fluxes.radiating_boundary_area
+    Δu = ∮udA / A
 
-    A⁻¹_∮udA = ∮udA / A
-
-    correct_left_boundary_mass_flux!(u, u.boundary_conditions.west, Val(:west), A⁻¹_∮udA)
-    correct_left_boundary_mass_flux!(v, v.boundary_conditions.south, Val(:south), A⁻¹_∮udA)
-    correct_left_boundary_mass_flux!(w, w.boundary_conditions.bottom, Val(:bottom), A⁻¹_∮udA)
-
-    correct_right_boundary_mass_flux!(u, u.boundary_conditions.east, Val(:east), A⁻¹_∮udA)
-    correct_right_boundary_mass_flux!(v, v.boundary_conditions.north, Val(:north), A⁻¹_∮udA)
-    correct_right_boundary_mass_flux!(w, w.boundary_conditions.top, Val(:top), A⁻¹_∮udA)
+    # Apply corrections to all boundaries
+    update_radiating_boundary_flux!(u, u.boundary_conditions.west,   west,   Δu)
+    update_radiating_boundary_flux!(u, u.boundary_conditions.east,   east,   Δu)
+    update_radiating_boundary_flux!(v, v.boundary_conditions.south,  south,  Δu)
+    update_radiating_boundary_flux!(v, v.boundary_conditions.north,  north,  Δu)
+    update_radiating_boundary_flux!(w, w.boundary_conditions.bottom, bottom, Δu)
+    update_radiating_boundary_flux!(w, w.boundary_conditions.top,    top,    Δu)
 end
