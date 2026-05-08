@@ -3,7 +3,7 @@ using Oceananigans.Fields: CenterField
 using Oceananigans.Utils: time_difference_seconds
 
 """
-    LeMoinRungeKutta3TimeStepper{FT, TG, TI} <: AbstractTimeStepper
+    LeMoinRungeKutta3TimeStepper{FT, TG, TP, TD, TI} <: AbstractTimeStepper
 
 Hold parameters and tendency fields for a low-storage, third-order Runge–Kutta–Wray
 time-stepping scheme that solves the pressure Poisson equation **only at the third
@@ -29,6 +29,8 @@ struct LeMoinRungeKutta3TimeStepper{FT, TG, TP, TD, TI} <: AbstractTimeStepper
                   γ³ :: FT
                   ζ² :: FT
                   ζ³ :: FT
+                   α :: FT
+                   β :: FT
                   Gⁿ :: TG
                   G⁻ :: TG
                   pⁿ :: TP
@@ -43,14 +45,17 @@ end
     LeMoinRungeKutta3TimeStepper(grid, prognostic_fields;
                                  implicit_solver = nothing,
                                  Gⁿ = map(similar, prognostic_fields),
-                                 G⁻ = map(similar, prognostic_fields))
+                                 G⁻ = map(similar, prognostic_fields),
+                                 α = 1//2,
+                                 β = 1//2)
 
 Return a [`LeMoinRungeKutta3TimeStepper`](@ref) on `grid` with the given
 `prognostic_fields`. The cached pressure required by substages 1 and 2 is
 *not* stored on the timestepper itself; it is read directly from
 `model.pressures.pNHS`, which already holds the actual pressure after substage 3
 of the previous timestep (or after the seeding solve performed on the very first
-call to `time_step!`).
+call to `time_step!`). The FPJ pressure predictor parameters default to
+`α = 1//2` and `β = 1//2`.
 """
 function LeMoinRungeKutta3TimeStepper(grid, prognostic_fields;
                                       implicit_solver::TI = nothing,
@@ -58,7 +63,9 @@ function LeMoinRungeKutta3TimeStepper(grid, prognostic_fields;
                                       G⁻     = map(similar, prognostic_fields),
                                       pⁿ::TP = CenterField(grid),
                                       pⁿ⁻¹   = CenterField(grid),
-                                      divergence_buffer::TD = CenterField(grid)) where {TI, TG, TP, TD}
+                                      divergence_buffer::TD = CenterField(grid),
+                                      α = 1//2,
+                                      β = 1//2) where {TI, TG, TP, TD}
 
     γ¹ = 8 // 15
     γ² = 5 // 12
@@ -71,7 +78,7 @@ function LeMoinRungeKutta3TimeStepper(grid, prognostic_fields;
     Δt⁻¹ = Ref(zero(FT))
     Δt⁻² = Ref(zero(FT))
 
-    return LeMoinRungeKutta3TimeStepper{FT, TG, TP, TD, TI}(γ¹, γ², γ³, ζ², ζ³, Gⁿ, G⁻, pⁿ, pⁿ⁻¹, Δt⁻¹, Δt⁻², divergence_buffer, implicit_solver)
+    return LeMoinRungeKutta3TimeStepper{FT, TG, TP, TD, TI}(γ¹, γ², γ³, ζ², ζ³, α, β, Gⁿ, G⁻, pⁿ, pⁿ⁻¹, Δt⁻¹, Δt⁻², divergence_buffer, implicit_solver)
 end
 
 #####
@@ -252,6 +259,7 @@ function Base.show(io::IO, ts::LeMoinRungeKutta3TimeStepper{FT}) where FT
     print(io, "LeMoinRungeKutta3TimeStepper{$FT}", '\n')
     print(io, "├── γ: (", ts.γ¹, ", ", ts.γ², ", ", ts.γ³, ")", '\n')
     print(io, "├── ζ: (", ts.ζ², ", ", ts.ζ³, ")", '\n')
+    print(io, "├── FPJ parameters: α=", ts.α, ", β=", ts.β, '\n')
     print(io, "├── divergence_buffer: ", summary(ts.divergence_buffer), '\n')
     print(io, "└── implicit_solver: ", isnothing(ts.implicit_solver) ? "nothing" : nameof(typeof(ts.implicit_solver)))
 end

@@ -54,21 +54,11 @@ end
 #####
 ##### For constant Δt this reduces to φⁿ + ((1+cᵢ)/2)·(φⁿ − φⁿ⁻¹).
 
-# FPJ-α/β family parameters (single source of truth, used by both the substage
-# predictor kernel and the stage-3 storage formula). Set:
-#   FPJ_α = 0,   FPJ_β = 0    → FPJ-0
-#   FPJ_α = 1,   FPJ_β = 0    → FPJ-1
-#   FPJ_α = 1//2, FPJ_β = 1//2 → FPJ-2
-const FPJ_α = 1//2
-const FPJ_β = 1//2
-
 @kernel function _build_scaled_fpj2!(pNHS, pⁿ, pⁿ⁻¹, Δτ, cᵢ, cᵢ₋₁,
-                                     Δtⁿ⁺¹, Δtⁿ, Δtⁿ⁻¹)
+                                     Δtⁿ⁺¹, Δtⁿ, Δtⁿ⁻¹, α, β)
     i, j, k = @index(Global, NTuple)
     @inbounds μp = (pⁿ[i, j, k] + pⁿ⁻¹[i, j, k]) / 2
     @inbounds δp = pⁿ[i, j, k] - pⁿ⁻¹[i, j, k]
-    α = FPJ_α
-    β = FPJ_β
     # Low-storage scale for Wray RK3 (De Michele 2020 Eq. 37): sᵢ = cᵢ + cᵢ₋₁.
     sᵢ = cᵢ + cᵢ₋₁
     # Variable-Δt linear-interpolant evaluation (see LM_RK3_FPJ_ALGORITHM.md):
@@ -79,7 +69,7 @@ const FPJ_β = 1//2
     #                                D = (1−β)·Δtⁿ + β·Δtⁿ⁻¹.
     # For constant Δt this collapses to (1+2β)/2 + α·sᵢ.
     N = β * Δtⁿ + α * sᵢ * Δtⁿ⁺¹
-    D = (1 - β) * Δtⁿ + β * Δtⁿ⁻¹
+    D = (one(β) - β) * Δtⁿ + β * Δtⁿ⁻¹
     scale = oftype(Δτ, 1//2) + N / D
     @inbounds pNHS[i, j, k] = Δτ * (μp + scale * δp)
 end
@@ -131,6 +121,8 @@ function apply_fpj2_pressure_correction!(model::NonhydrostaticModel, Δτ, stage
     # Δtⁿ⁺¹ = current step's Δt (the one being computed now).
     # Δtⁿ   = previous step's Δt; produced the stored φⁿ.
     # Δtⁿ⁻¹ = step before that;   produced the stored φⁿ⁻¹.
+    α_FT     = convert(FT, ts.α)
+    β_FT     = convert(FT, ts.β)
     Δtⁿ⁺¹_FT = convert(FT, Δt)
     Δtⁿ_FT   = convert(FT, ts.Δt⁻¹[])
     Δtⁿ⁻¹_FT = convert(FT, ts.Δt⁻²[])
@@ -139,7 +131,7 @@ function apply_fpj2_pressure_correction!(model::NonhydrostaticModel, Δτ, stage
     launch!(arch, grid, :xyz, _build_scaled_fpj2!,
             pNHS, pⁿ, pⁿ⁻¹, Δτ_FT,
             convert(FT, cᵢ), convert(FT, cᵢ₋₁),
-            Δtⁿ⁺¹_FT, Δtⁿ_FT, Δtⁿ⁻¹_FT)
+            Δtⁿ⁺¹_FT, Δtⁿ_FT, Δtⁿ⁻¹_FT, α_FT, β_FT)
     fill_halo_regions!(pNHS)
     make_pressure_correction!(model, Δτ)
     return nothing
@@ -235,8 +227,8 @@ function lm_rk3_substep!(model::NonhydrostaticModel, Δt, γⁿ, ζⁿ, callback
 
     FT  = eltype(model.pressures.pNHS)
     ts  = model.timestepper
-    α   = convert(FT, FPJ_α)
-    β   = convert(FT, FPJ_β)
+    α   = convert(FT, ts.α)
+    β   = convert(FT, ts.β)
     γFT = convert(FT, Δτ / Δt)
     B₀  = one(FT) - γFT
     S_pre = convert(FT, _fpj2_substage_low_storage_scale_weighted_sum(ts))
