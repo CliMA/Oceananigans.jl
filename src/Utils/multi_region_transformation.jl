@@ -72,6 +72,18 @@ end
 @inline regions(t::Union{Tuple, NamedTuple}) = regions(first(t))
 @inline regions(mo::MultiRegionObject) = 1:length(mo.regional_objects)
 
+@inline function regions(t::Tuple{Nothing, Vararg{Any}})
+    for x in t
+        x === nothing && continue
+        try
+            return regions(x)
+        catch err
+            err isa MethodError || rethrow()
+        end
+    end
+    throw(ArgumentError("Cannot infer regions from Tuple: no element supports `regions` (or all are `nothing`)."))
+end
+
 Base.getindex(mo::MultiRegionObject, i, args...) = Base.getindex(mo.regional_objects, i, args...)
 Base.length(mo::MultiRegionObject)               = Base.length(mo.regional_objects)
 
