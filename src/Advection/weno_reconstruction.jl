@@ -1,5 +1,3 @@
-import Oceananigans
-
 #####
 ##### Weighted Essentially Non-Oscillatory (WENO) advection scheme
 #####
@@ -35,7 +33,9 @@ Arguments
 
 Keyword arguments
 =================
-
+- `weight_computation`: The type of approximate division to used when computing WENO weights.
+                        Default: `Nothing` (deferred; a architecture-dependent default is assigned in
+                        `materialize_advection`)
 - `order`: The order of the WENO advection scheme. Default: 5
 - `bounds` (experimental): Whether to use bounds-preserving WENO, which produces a reconstruction
                            that attempts to restrict a quantity to lie between a `bounds` tuple.
@@ -78,6 +78,15 @@ julia> WENO(order=9, bounds=(0, 1))
 WENO{5, Float64, Nothing}(order=9, bounds=(0.0, 1.0))
 ├── bounds: (0.0, 1.0)
 └── advection_velocity_scheme: Centered(order=8)
+```
+
+To build a WENO scheme that uses approximate division on a GPU to execute faster:
+```jldoctest weno
+julia> WENO(;weight_computation=Oceananigans.Utils.BackendOptimizedDivision)
+WENO{3, Float64, Oceananigans.Utils.BackendOptimizedDivision}(order=5)
+├── buffer_scheme: WENO{2, Float64, Oceananigans.Utils.BackendOptimizedDivision}(order=3)
+│   └── buffer_scheme: Centered(order=2)
+└── advecting_velocity_scheme: Centered(order=4)
 ```
 """
 function WENO(FT::DataType=Oceananigans.defaults.FloatType;

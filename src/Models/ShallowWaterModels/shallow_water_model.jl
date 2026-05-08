@@ -10,6 +10,7 @@ using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: topology, Flat, architecture, RectilinearGrid, Center
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: validate_model_halo, validate_tracer_advection
+using Oceananigans.Advection: materialize_advection
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, build_closure_fields
 using Oceananigans.Utils: tupleit
@@ -179,8 +180,8 @@ function ShallowWaterModel(grid;
 
     advection = merge((momentum=momentum_advection, mass=mass_advection), tracer_advection_tuple)
 
-    # Resolve any settings in the advection scheme that were deferred until the grid /
-    # backend is known (e.g. WENO weight-computation strategy).
+    # Fill any settings in advection scheme that might have been deferred until
+    # the grid and backend is known
     advection = NamedTuple(name => materialize_advection(scheme, grid) for (name, scheme) in pairs(advection))
 
     bathymetry_field = CenterField(grid)

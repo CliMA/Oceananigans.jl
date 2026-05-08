@@ -63,7 +63,7 @@ function benchmark_time_stepping(model;
     steps_per_second = time_steps / total_time_seconds
     grid_points_per_second = total_points / time_per_step_seconds
 
-    gpu_memory_used = arch isa GPU ? CUDA.MemoryInfo().pool_used_bytes : 0
+    gpu_memory_used = arch isa GPU ? CUDACore.MemoryInfo().pool_used_bytes : 0
     metadata = BenchmarkMetadata(arch)
 
     result = BenchmarkResult(
@@ -211,7 +211,7 @@ function run_benchmark_simulation(model;
     steps_per_second = time_steps / wall_time_seconds
     grid_points_per_second = total_points / time_per_step_seconds
 
-    gpu_memory_used = arch isa GPU ? CUDA.MemoryInfo().pool_used_bytes : 0
+    gpu_memory_used = arch isa GPU ? CUDACore.MemoryInfo().pool_used_bytes : 0
     metadata = BenchmarkMetadata(arch)
 
     result = SimulationResult(
@@ -374,7 +374,7 @@ function run_io_benchmark(model;
     # Compute total output file size
     total_output_size_bytes = isfile(output_filename) ? filesize(output_filename) : 0
 
-    gpu_memory_used = arch isa GPU ? CUDA.MemoryInfo().pool_used_bytes : 0
+    gpu_memory_used = arch isa GPU ? CUDACore.MemoryInfo().pool_used_bytes : 0
     metadata = BenchmarkMetadata(arch)
 
     result = IOBenchmarkResult(

@@ -111,12 +111,7 @@ end
 # ψ[4] (C[10] * ψ[4])
 # This expression is the output of metaprogrammed_smoothness_operation(4)
 
-# Trick to force compilation of Val(stencil-1) and avoid loops on the GPU.
-# When `shift=true`, the stencil values are shifted by `ψ̂` before the quadratic
-# form is computed. The smoothness indicator is invariant to constant shifts,
-# but subtracting the central stencil value is essential in low precision (e.g.
-# Float32) to avoid catastrophic cancellation when the stencil mean is large
-# relative to its variation. See PR #5491.
+# Trick to force compilation of Val(stencil-1) and avoid loops on the GPU
 @inline function metaprogrammed_smoothness_operation(buffer; shift=false)
     elem = Vector{Expr}(undef, buffer)
     c_idx = 1

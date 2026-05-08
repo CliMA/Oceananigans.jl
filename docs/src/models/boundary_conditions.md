@@ -143,7 +143,7 @@ components in wall-normal directions.
 !!! warn "`ImpenetrableBoundaryCondition`"
     `ImpenetrableBoundaryCondition` is internally enforced for fields created inside the model constructor.
     As a result, `ImpenetrableBoundaryCondition` is only used for _additional_ velocity components
-    that are not evolved by a model, such as a velocity component used for (`AdvectiveForcing`)[@ref].
+    that are not evolved by a model, such as a velocity component used for [`AdvectiveForcing`](@ref).
 
 Finally, note that `Periodic` boundary conditions are internally enforced for `Periodic` directions,
 and `DefaultBoundaryCondition`s may exist before boundary conditions are "materialized" by a model.
@@ -174,9 +174,9 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 Oceananigans uses a hierarchical structure to express boundary conditions:
 
 1. Each boundary of each field has one [`BoundaryCondition`](@ref)
-2. Each field has seven [`BoundaryCondition`](@ref) (`west`, `east`, `south`, `north`, `bottom`, `top` and
-   `immersed`)
-3. A set of `FieldBoundaryConditions`, up to one for each field, are grouped into a `NamedTuple` and passed
+2. Each field has seven [`BoundaryCondition`](@ref)s (`west`, `east`, `south`, `north`, `bottom`, `top`,
+   and `immersed`)
+1. A set of `FieldBoundaryConditions`, up to one for each field, are grouped into a `NamedTuple` and passed
    to the model constructor.
 
 ## Specifying boundary conditions for a model
@@ -641,3 +641,102 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 # Restore original stderr
 redirect_stderr(original_stderr)
 ```
+
+## Bulk drag boundary conditions
+
+[`BulkDrag`](@ref) is a convenient constructor for velocity-flux boundary conditions
+that implement drag proportional to the near-boundary flow speed. It can be applied to
+any combination of domain boundaries and [immersed boundaries](@ref "Immersed boundary conditions").
+
+Two drag formulations are available:
+
+- [`QuadraticFormulation`](@ref) (default): ``\tau^x = -C^D \, |\boldsymbol{U}| \, u``,
+  where ``|\boldsymbol{U}|`` is the total 3D speed. Non-dimensional drag coefficient ``C^D``.
+  Standard bottom drag for ocean models.
+- [`LinearFormulation`](@ref) (Rayleigh friction): ``\tau^x = -C^D \, u``. The coefficient
+  ``C^D`` has units of velocity (m s⁻¹).
+
+### Bottom drag on domain boundaries
+
+The simplest usage applies quadratic drag to the domain bottom. First we create
+a BulkDrag:
+
+```jldoctest bulk_drag
+using Oceananigans
+drag = BulkDrag(coefficient=2e-3)
+
+# output
+
+FluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), Nothing, Cᴰ=0.002)
+```
+
+and then we use that to create boundary conditions
+
+```jldoctest bulk_drag
+u_bcs = FieldBoundaryConditions(bottom=drag)
+v_bcs = FieldBoundaryConditions(bottom=drag)
+
+grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+model = NonhydrostaticModel(grid; boundary_conditions=(; u=u_bcs, v=v_bcs))
+
+model.velocities.u.boundary_conditions.bottom
+
+# output
+FluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), XDirection(), Cᴰ=0.002)
+```
+
+The direction (`XDirection`, `YDirection`, `ZDirection`) is automatically inferred from
+the velocity component during model construction.
+
+### Drag on immersed boundaries
+
+For grids with [`ImmersedBoundaryGrid`](@ref), wrap the drag condition in
+[`ImmersedBoundaryCondition`](@ref) to target specific facets of immersed cells:
+
+```jldoctest
+using Oceananigans
+
+underlying_grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> -0.5))
+
+drag = BulkDrag(coefficient=2e-3)
+u_bcs = FieldBoundaryConditions(bottom=drag, immersed=ImmersedBoundaryCondition(bottom=drag))
+v_bcs = FieldBoundaryConditions(bottom=drag, immersed=ImmersedBoundaryCondition(bottom=drag))
+
+model = HydrostaticFreeSurfaceModel(grid; boundary_conditions=(; u=u_bcs, v=v_bcs))
+model.velocities.u.boundary_conditions.immersed
+
+# output
+ImmersedBoundaryCondition:
+├── west: Nothing
+├── east: Nothing
+├── south: Nothing
+├── north: Nothing
+├── bottom: FluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), XDirection(), Cᴰ=0.002)
+└── top: Nothing
+```
+
+Passing `immersed=drag` directly (without [`ImmersedBoundaryCondition`](@ref)) applies drag to
+all non-normal facets of immersed cells, which is appropriate for rough topography.
+
+### Background velocities
+
+When using [background fields](@ref "Background fields") to represent a mean current,
+the drag should act on the total velocity — resolved plus background. Pass the same
+background velocity values to `background_velocities` so that the drag coefficient sees
+the full flow magnitude:
+
+```jldoctest
+using Oceananigans
+
+V∞ = 0.1  # background meridional current; should match the value used in BackgroundField
+drag = BulkDrag(coefficient=2e-3, background_velocities=(0, V∞, 0))
+
+# output
+FluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), Nothing, Cᴰ=0.002)
+```
+
+The tuple `(U∞, V∞, W∞)` is added to the prognostic velocities when computing both the
+speed `|U|` and the drag flux. Without this, the drag would only see the resolved
+perturbation velocity and underestimate the stress in the presence of a strong background
+current.

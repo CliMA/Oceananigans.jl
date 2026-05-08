@@ -267,10 +267,12 @@ function compute_closure_fields!(closure_fields, closure::FlavorOfTD, model; par
     velocities = model.velocities
     tracers = buoyancy_tracers(model)
     buoyancy = buoyancy_force(model)
+    active_cells_map = get_active_cells_map(grid, Val(:xyz))
 
-    launch!(arch, grid, parameters,
+    launch!(arch, grid, :xyz,
             compute_TKEDissipation_closure_fields!,
-            closure_fields, grid, closure, velocities, tracers, buoyancy)
+            closure_fields, grid, closure, velocities, tracers, buoyancy;
+            active_cells_map)
 
     return nothing
 end

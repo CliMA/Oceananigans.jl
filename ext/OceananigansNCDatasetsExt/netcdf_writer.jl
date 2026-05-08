@@ -8,6 +8,8 @@
 # grid metrics.
 #
 
+using Oceananigans.OutputWriters: add_schedule_metadata!, default_output_attributes
+
 #####
 ##### Extend defVar to be able to write fields to NetCDF directly
 #####
@@ -21,11 +23,12 @@ function defVar(ds::AbstractDataset, field_name, fd::AbstractField;
                 with_halos=false,
                 dimension_name_generator = trilocation_dim_name,
                 dimension_type=Float64,
+                grid_index=nothing,
                 write_data=true,
                 kwargs...)
 
     # effective_dim_names are the dimensions that will be used to write the field data (excludes reduced and dimensions where location is Nothing)
-    effective_dim_names = create_field_dimensions!(ds, fd, dimension_name_generator; time_dependent, with_halos, array_type, dimension_type)
+    effective_dim_names = create_field_dimensions!(ds, fd, dimension_name_generator; time_dependent, with_halos, array_type, dimension_type, grid_index)
 
     # Add location to attributes
     if :attrib ∈ keys(kwargs)
@@ -60,93 +63,12 @@ function add_location_attribute!(attrib, fd::AbstractField)
 end
 
 #####
-##### Variable attributes
-#####
-
-default_velocity_attributes(::RectilinearGrid) = Dict(
-    "u" => Dict("long_name" => "Velocity in the +x-direction.", "units" => "m/s"),
-    "v" => Dict("long_name" => "Velocity in the +y-direction.", "units" => "m/s"),
-    "w" => Dict("long_name" => "Velocity in the +z-direction.", "units" => "m/s"))
-
-default_velocity_attributes(::LatitudeLongitudeGrid) = Dict(
-    "u"            => Dict("long_name" => "Velocity in the zonal direction (+ = east).", "units" => "m/s"),
-    "v"            => Dict("long_name" => "Velocity in the meridional direction (+ = north).", "units" => "m/s"),
-    "w"            => Dict("long_name" => "Velocity in the vertical direction (+ = up).", "units" => "m/s"),
-    "displacement" => Dict("long_name" => "Sea surface height displacement", "units" => "m"))
-
-default_velocity_attributes(ibg::ImmersedBoundaryGrid) = default_velocity_attributes(ibg.underlying_grid)
-
-default_tracer_attributes(::Nothing) = Dict()
-
-default_tracer_attributes(::BuoyancyForce{<:BuoyancyTracer}) = Dict("b" => Dict("long_name" => "Buoyancy", "units" => "m/s²"))
-
-default_tracer_attributes(::BuoyancyForce{<:SeawaterBuoyancy{FT, <:LinearEquationOfState}}) where FT = Dict(
-    "T" => Dict("long_name" => "Temperature", "units" => "°C"),
-    "S" => Dict("long_name" => "Salinity",    "units" => "practical salinity unit (psu)"))
-
-default_tracer_attributes(::BuoyancyBoussinesqEOSModel) = Dict("T" => Dict("long_name" => "Conservative temperature", "units" => "°C"),
-                                                               "S" => Dict("long_name" => "Absolute salinity",        "units" => "g/kg"))
-
-function default_output_attributes(model)
-    velocity_attrs = default_velocity_attributes(model.grid)
-    buoyancy = model isa ShallowWaterModel ? nothing : model.buoyancy
-    tracer_attrs = default_tracer_attributes(buoyancy)
-    return merge(velocity_attrs, tracer_attrs)
-end
-
-#####
-##### Saving schedule metadata as global attributes
-#####
-
-add_schedule_metadata!(attributes, schedule) = nothing
-
-function add_schedule_metadata!(global_attributes, schedule::IterationInterval)
-    global_attributes["schedule"] = "IterationInterval"
-    global_attributes["interval"] = schedule.interval
-    global_attributes["output iteration interval"] = "Output was saved every $(schedule.interval) iteration(s)."
-
-    return nothing
-end
-
-function add_schedule_metadata!(global_attributes, schedule::TimeInterval)
-    global_attributes["schedule"] = "TimeInterval"
-    global_attributes["interval"] = schedule.interval
-    global_attributes["output time interval"] = "Output was saved every $(prettytime(schedule.interval))."
-
-    return nothing
-end
-
-function add_schedule_metadata!(global_attributes, schedule::WallTimeInterval)
-    global_attributes["schedule"] = "WallTimeInterval"
-    global_attributes["interval"] = schedule.interval
-    global_attributes["output time interval"] =
-        "Output was saved every $(prettytime(schedule.interval))."
-
-    return nothing
-end
-
-function add_schedule_metadata!(global_attributes, schedule::AveragedTimeInterval)
-    global_attributes["schedule"] = "AveragedTimeInterval"
-    global_attributes["interval"] = schedule.interval
-    global_attributes["output time interval"] = "Output was time-averaged and saved every $(prettytime(schedule.interval))."
-
-    global_attributes["time_averaging_window"] = schedule.window
-    global_attributes["time averaging window"] = "Output was time averaged with a window size of $(prettytime(schedule.window))"
-
-    global_attributes["time_averaging_stride"] = schedule.stride
-    global_attributes["time averaging stride"] = "Output was time averaged with a stride of $(schedule.stride) iteration(s) within the time averaging window."
-
-    return nothing
-end
-
-#####
 ##### NetCDFWriter constructor
 #####
 
 function NetCDFWriter(model::AbstractModel, outputs;
                       filename,
                       schedule,
-                      grid = model.grid,
                       dir = ".",
                       array_type = Array{Float32},
                       indices = (:, :, :),
@@ -194,6 +116,11 @@ function NetCDFWriter(model::AbstractModel, outputs;
 
     outputs = Dict(string(name) => construct_output(outputs[name], indices, with_halos) for name in keys(outputs))
 
+    # Extract grids from outputs, falling back to model grid for non-field outputs
+    output_grids = Dict(name => (try grid(output) catch; grid(model) end) for (name, output) in outputs)
+    unique_grids = Tuple(unique(objectid, collect(values(output_grids))))
+    output_grid_map = Dict(name => findfirst(gr -> gr === output_grids[name], unique_grids) for name in keys(outputs))
+
     output_attributes = dictify(output_attributes)
     global_attributes = dictify(global_attributes)
     dimensions = dictify(dimensions)
@@ -202,7 +129,8 @@ function NetCDFWriter(model::AbstractModel, outputs;
     global_attributes = Dict{Any, Any}(global_attributes)
 
     dataset, outputs, schedule = initialize_nc_file(model,
-                                                    grid,
+                                                    unique_grids,
+                                                    output_grid_map,
                                                     filepath,
                                                     outputs,
                                                     schedule,
@@ -218,7 +146,8 @@ function NetCDFWriter(model::AbstractModel, outputs;
                                                     dimension_name_generator,
                                                     dimension_type)
 
-    return NetCDFWriter(grid,
+    return NetCDFWriter(unique_grids,
+                        output_grid_map,
                         filepath,
                         dataset,
                         outputs,
@@ -244,7 +173,8 @@ end
 #####
 
 function initialize_nc_file(model,
-                            grid,
+                            grids,
+                            output_grid_map,
                             filepath,
                             outputs,
                             schedule,
@@ -280,44 +210,60 @@ function initialize_nc_file(model,
     # schedule::AveragedTimeInterval
     schedule, outputs = time_average_outputs(schedule, outputs, model)
 
-    dims = gather_dimensions(outputs, grid, indices, with_halos, dimension_name_generator)
-
     # Open the NetCDF dataset file
     dataset = NCDataset(filepath, mode, attrib=sort(collect(pairs(global_attributes)), by=first))
 
-    # Merge the default with any user-supplied output attributes, ensuring the user-supplied ones
-    # can overwrite the defaults.
-    output_attributes = merge(default_dimension_attributes(grid, dimension_name_generator),
-                              default_output_attributes(model),
-                              output_attributes)
+    # Only suffix dimension names when there are multiple grids;
+    # for a single grid, use nothing so add_grid_suffix is a no-op.
+    dim_grid_suffix(idx) = length(grids) == 1 ? nothing : idx
+
+    # Merge default dimension attributes from all unique grids
+    all_dim_attributes = Dict()
+    for (grid_index, grid) in enumerate(grids)
+        merge!(all_dim_attributes, default_dimension_attributes(grid, dimension_name_generator; grid_index=dim_grid_suffix(grid_index)))
+    end
+    output_attributes = merge(all_dim_attributes, default_output_attributes(model), output_attributes)
 
     # Define variables for each dimension and attributes if this is a new file.
     if mode == "c"
-        # This metadata is to support `FieldTimeSeries`.
-        write_grid_reconstruction_data!(dataset, grid; array_type, deflatelevel)
-
         # DateTime and TimeDate are both <: AbstractTime
         time_attrib = model.clock.time isa AbstractTime ?
             Dict("long_name" => "Time", "units" => "seconds since 2000-01-01 00:00:00") :
             Dict("long_name" => "Time", "units" => "seconds")
 
         create_time_dimension!(dataset, attrib=time_attrib, dimension_type=dimension_type)
-        create_spatial_dimensions!(dataset, dims, output_attributes; deflatelevel=1, dimension_type=dimension_type)
 
+        # Per-grid: dimensions, reconstruction data, metrics, immersed boundary
         time_independent_vars = Dict()
+        time_independent_grid_map = Dict{String, Any}()
 
-        if include_grid_metrics
-            grid_metrics = gather_grid_metrics(grid, indices, dimension_name_generator)
-            merge!(time_independent_vars, grid_metrics)
-        end
+        for (grid_index, grid) in enumerate(grids)
+            suffix = dim_grid_suffix(grid_index)
+            dims = gather_dimensions(outputs, grid, indices, with_halos, dimension_name_generator; grid_index=suffix)
+            create_spatial_dimensions!(dataset, dims, output_attributes; deflatelevel=1, dimension_type)
 
-        if grid isa ImmersedBoundaryGrid
-            immersed_boundary_vars = gather_immersed_boundary(grid, indices, dimension_name_generator)
-            merge!(time_independent_vars, immersed_boundary_vars)
+            write_grid_reconstruction_data!(dataset, grid, suffix; array_type, deflatelevel)
+
+            if include_grid_metrics
+                metrics = gather_grid_metrics(grid, indices, dimension_name_generator; grid_index=suffix)
+                for name in keys(metrics)
+                    time_independent_grid_map[name] = suffix
+                end
+                merge!(time_independent_vars, metrics)
+            end
+
+            if grid isa ImmersedBoundaryGrid
+                ib_vars = gather_immersed_boundary(grid, indices, dimension_name_generator; grid_index=suffix)
+                for name in keys(ib_vars)
+                    time_independent_grid_map[name] = suffix
+                end
+                merge!(time_independent_vars, ib_vars)
+            end
         end
 
         if !isempty(time_independent_vars)
             for (output_name, output) in sort(collect(pairs(time_independent_vars)), by=first)
+                grid_index = time_independent_grid_map[output_name]
                 output = construct_output(output, indices, with_halos)
                 attrib = haskey(output_attributes, output_name) ? output_attributes[output_name] : Dict()
                 materialized = materialize_output(output, model)
@@ -332,6 +278,7 @@ function initialize_nc_file(model,
                                         dimensions,
                                         filepath, # for better error messages
                                         dimension_name_generator,
+                                        grid_index,
                                         time_dependent = false,
                                         with_halos,
                                         dimension_type)
@@ -341,7 +288,9 @@ function initialize_nc_file(model,
         end
 
         for (output_name, output) in sort(collect(pairs(outputs)), by=first)
+            grid_index = dim_grid_suffix(output_grid_map[output_name])
             attrib = haskey(output_attributes, output_name) ? output_attributes[output_name] : Dict()
+            attrib = merge(attrib, Dict("grid_index" => output_grid_map[output_name]))
             materialized = materialize_output(output, model)
 
             define_output_variable!(model,
@@ -354,6 +303,7 @@ function initialize_nc_file(model,
                                     dimensions,
                                     filepath, # for better error messages
                                     dimension_name_generator,
+                                    grid_index,
                                     time_dependent = true,
                                     with_halos,
                                     dimension_type)
@@ -368,7 +318,8 @@ function initialize_nc_file(model,
 end
 
 initialize_nc_file(ow::NetCDFWriter, model) = initialize_nc_file(model,
-                                                                 ow.grid,
+                                                                 ow.grids,
+                                                                 ow.output_grid_map,
                                                                  ow.filepath,
                                                                  ow.outputs,
                                                                  ow.schedule,
@@ -396,7 +347,7 @@ materialize_output(output::WindowedTimeAverage{<:AbstractField}, model) = output
 """ Defines empty variables for 'custom' user-supplied `output`. """
 function define_output_variable!(model, dataset, output, output_name; array_type,
                                  deflatelevel, attrib, dimension_name_generator,
-                                 time_dependent, with_halos,
+                                 time_dependent, with_halos, grid_index=nothing,
                                  dimensions, filepath, dimension_type=Float64)
 
     if output_name ∉ keys(dimensions)
@@ -416,7 +367,7 @@ end
 """ Defines empty field variable. """
 function define_output_variable!(model, dataset, output::AbstractField, output_name; array_type,
                                  deflatelevel, attrib, dimension_name_generator,
-                                 time_dependent, with_halos,
+                                 time_dependent, with_halos, grid_index=nothing,
                                  dimensions, filepath, dimension_type=Float64)
 
     # If the output is the free surface, we need to handle it differently since it will be writen as a 3D array with a singleton dimension for the z-coordinate
@@ -426,7 +377,7 @@ function define_output_variable!(model, dataset, output::AbstractField, output_n
             dimension_name_generator = (var_name, grid, LX, LY, LZ, dim) -> dimension_name_generator_free_surface(default_dimension_name_generator, var_name, grid, LX, LY, LZ, dim)
         end
     end
-    defVar(dataset, output_name, output; array_type, time_dependent, with_halos, dimension_name_generator, deflatelevel, attrib, dimension_type, write_data=false)
+    defVar(dataset, output_name, output; array_type, time_dependent, with_halos, dimension_name_generator, deflatelevel, attrib, dimension_type, grid_index, write_data=false)
     return nothing
 end
 

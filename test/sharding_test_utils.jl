@@ -1,4 +1,4 @@
-ENV["XLA_FLAGS"] = "--xla_force_host_platform_device_count=4"
+ENV["XLA_FLAGS"] = get(ENV, "XLA_FLAGS", "--xla_force_host_platform_device_count=4")
 ENV["JULIA_DEBUG"] = "Reactant, Reactant_jll"
 
 using Reactant
@@ -25,7 +25,7 @@ function sharding_test_model(arch)
                 free_surface = SplitExplicitFreeSurface(grid; substeps = 20),
                 tracers = :c,
                 tracer_advection = WENO(),
-                momentum_advection = WENOVectorInvariant(order=3),
+                momentum_advection = WENOVectorInvariant(; order=5),
                 coriolis = HydrostaticSphericalCoriolis())
 
     ηᵢ(λ, φ, z) = exp(- (φ - 90)^2 / 10^2) + exp(- φ^2 / 10^2)

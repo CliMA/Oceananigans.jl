@@ -512,6 +512,16 @@ end
             @test first(model.closure) === closure[2]
             closure = (HorizontalScalarDiffusivity(), explicit_catke, VerticalScalarDiffusivity())
             run_catke_tke_substepping_tests(arch, closure)
+
+            @info "    Testing CATKE with ImmersedBoundaryGrid and active_cells_map on $arch..."
+            underlying_grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 2, 3))
+            bottom(x, y) = -2
+            grid_acm = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom), active_cells_map=true)
+            catke_closure = CATKEVerticalDiffusivity()
+            model_acm = HydrostaticFreeSurfaceModel(grid_acm; closure=catke_closure, buoyancy=BuoyancyTracer(), tracers=:b)
+            time_step!(model_acm, 1)
+            time_step!(model_acm, 1)
+            @test model_acm isa HydrostaticFreeSurfaceModel
         end
     end
 

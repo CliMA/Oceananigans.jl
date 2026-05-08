@@ -217,8 +217,8 @@ function NonhydrostaticModel(grid;
     # direction
     advection = adapt_advection_order(advection, grid)
 
-    # Resolve any settings in the advection scheme that were deferred until the grid /
-    # backend is known (e.g. WENO weight-computation strategy).
+    # Fill any settings in advection scheme that might have been deferred until
+    # the grid and backend is known
     advection = materialize_advection(advection, grid)
 
     # Adjust halos when the advection scheme or turbulence closure requires it.

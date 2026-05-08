@@ -53,6 +53,9 @@
   <a href="https://codecov.io/gh/CliMA/Oceananigans.jl" >
     <img src="https://codecov.io/gh/CliMA/Oceananigans.jl/graph/badge.svg?token=1eev6VdKD0"/>
   </a>
+  <a href="https://numericalearth.github.io/OceananigansBenchmarks/">
+    <img alt="Performance dashboard" src="https://img.shields.io/badge/Performance-Dashboard-informational?style=flat-square&logo=github"/>
+  </a>
 </p>
 
 
@@ -173,6 +176,10 @@ Please cite this 👆 overview paper if you use Oceananigans in published work.
 We've also published/submitted several model development papers. Please cite these below 👇 if you use
 the features they describe! Also, if you have developed a new feature in Oceananigans and describe it in a paper, make sure to open a pull request to add it to this list:
 
+* **Silvestri et al. (2026), ["A low-storage Runge-Kutta framework for nonlinear free-surface ocean models"](https://doi.org/10.22541/essoar.15002225/v1).**
+
+  *This paper describes the development of a Runge-Kutta timestepping scheme for the `HydrostaticFreeSurfaceModel`.*
+
 * **Moses et al. (2025), ["DJ4Earth: Differentiable, and performance-portable Earth System Modeling via program transformations"](https://doi.org/10.22541/essoar.176314951.18114616/v1).**
 
   *This paper describes the development and advantages of a strategy that leverages Enzyme.jl and Reactant.jl for building differentiable Oceananigans workflows.*
@@ -229,7 +236,7 @@ For more information check out our [contributor's guide](https://clima.github.io
 
 ## Performance benchmarks
 
-We perform some performance benchmarks (see the [performance benchmarks](https://clima.github.io/OceananigansDocumentation/stable/appendix/benchmarks/) section of the documentation) by initializing models of various sizes and measuring the wall clock time taken per model iteration (or time step).
+We continuously measure the performance of Oceananigans by initializing models of various sizes with different schemes and closures and measuring the wall clock time taken per model iteration (or time step). These benchmarks are run on every commit in main and tracked on our [performance dashboard](https://numericalearth.github.io/OceananigansBenchmarks/).
 
 To make full use of or fully saturate the computing power of a GPU such as an Nvidia Tesla V100 or
 a Titan V, the model should have around ~10 million grid points or more.

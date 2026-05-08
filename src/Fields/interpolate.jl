@@ -214,6 +214,29 @@ floats indicating a location between grid points.
     return FractionalIndices(ii, jj, kk)
 end
 
+# All seven single/double/triple-`Nothing` combinations must be defined for 3-tuple
+# input so that pairwise dispatch resolves via a strictly more-specific method.
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ::Nothing, ℓy, ℓz) =
+    _fractional_indices((y, z), grid, nothing, ℓy, ℓz)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ℓx, ::Nothing, ℓz) =
+    _fractional_indices((x, z), grid, ℓx, nothing, ℓz)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ℓx, ℓy, ::Nothing) =
+    _fractional_indices((x, y), grid, ℓx, ℓy, nothing)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ::Nothing, ::Nothing, ℓz) =
+    _fractional_indices((z,), grid, nothing, nothing, ℓz)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ℓx, ::Nothing, ::Nothing) =
+    _fractional_indices((x,), grid, ℓx, nothing, nothing)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ::Nothing, ℓy, ::Nothing) =
+    _fractional_indices((y,), grid, nothing, ℓy, nothing)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ::Nothing, ::Nothing, ::Nothing) =
+    FractionalIndices(nothing, nothing, nothing)
+
 @inline function _fractional_indices((y, z), grid, ::Nothing, ℓy, ℓz)
     jj = fractional_y_index(y, (nothing, ℓy, ℓz), grid)
     kk = fractional_z_index(z, (nothing, ℓy, ℓz), grid)

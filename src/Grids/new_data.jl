@@ -4,16 +4,17 @@
 
 """
 Return a range of indices for a field located at either cell `Center`s or `Face`s along a
-grid dimension which is `Periodic`, or cell `Center`s for a grid dimension which is `Bounded`.
+grid dimension which is `Periodic`, or cell `Center`s for a grid dimension
+that has an extended topology.
 The dimension has length `N` and `H` halo points.
 """
 offset_indices(loc, topo, N, H=0) = 1 - H : N + H
 
 """
 Return a range of indices for a field located at cell `Face`s along a grid dimension which
-is `Bounded` and has length `N` and with halo points `H`.
+has an extended topology and has length `N` and with halo points `H`.
 """
-offset_indices(::Face, ::BoundedTopology, N, H=0) = 1 - H : N + H + 1
+offset_indices(::Face, ::FaceExtendedTopology, N, H=0) = 1 - H : N + H + 1
 
 """
 Return a range of indices for a field along a 'reduced' dimension.
