@@ -17,7 +17,7 @@ materialize_advection(advection::FluxFormAdvection, grid) = FluxFormAdvection(
     materialize_advection(advection.z, grid),
 )
 
-# Upwinding treatments hold a cross_scheme that may contain a deferred WENO weight computation
+# Upwinding treatments hold a cross_scheme that may contain deferred WENO weight computation
 materialize_advection(u::OnlySelfUpwinding, grid) =
     OnlySelfUpwinding(materialize_advection(u.cross_scheme, grid),
                       u.δU_stencil, u.δV_stencil, u.δu²_stencil, u.δv²_stencil)

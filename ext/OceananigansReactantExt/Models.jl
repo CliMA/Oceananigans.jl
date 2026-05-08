@@ -17,6 +17,8 @@ using ..Grids: ShardedGrid, ShardedDistributed
 import Oceananigans.Models:
         complete_communication_and_compute_buffer!,
         interior_tendency_kernel_parameters
+import Oceananigans.Advection: default_weno_weight_computation
+
 
 import Oceananigans.Advection: default_weno_weight_computation
 using Oceananigans.Utils: ConvertingDivision
@@ -64,8 +66,9 @@ complete_communication_and_compute_buffer!(model, ::ShardedGrid, ::ShardedDistri
 interior_tendency_kernel_parameters(::ShardedDistributed, grid) = :xyz
 
 # Reactant uses CUDA version of the code to uplift program description to MLIR.
-# Since the default `BackendOptimizedDivision` uses LLVM's NVPTX intrinsics,
-# Reactant cannot consume it and falls back to a Float32-converted Newton division.
-default_weno_weight_computation(::ReactantState) = ConvertingDivision{Float32}
+# Since default `weno_weight_computation` on CUDA uses LLVM's NVPTX intrinsics
+# it causes Reactant to crash.
+# We need to fall back to different optimization when running with Reactant
+default_weno_weight_computation(::ReactantState) = Oceananigans.Utils.ConvertingDivision{Float32}
 
 end # module

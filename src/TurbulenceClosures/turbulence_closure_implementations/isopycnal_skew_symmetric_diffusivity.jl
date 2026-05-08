@@ -76,13 +76,13 @@ end
 IsopycnalSkewSymmetricDiffusivity(FT::DataType; kw...) =
     IsopycnalSkewSymmetricDiffusivity(VerticallyImplicitTimeDiscretization(), FT; kw...)
 
-function Utils.with_tracers(tracers, closure::ISSD{TD, A, N}) where {TD, A<:DiffusiveFormulation, N}
+function Utils.with_tracers(tracers, closure::ISSD{TD, A, <:Any, <:Any, <:Any, <:Any, N}) where {TD, A<:DiffusiveFormulation, N}
     κ_skew = !isa(closure.κ_skew, NamedTuple) ? closure.κ_skew : tracer_diffusivities(tracers, closure.κ_skew)
     κ_symmetric = !isa(closure.κ_symmetric, NamedTuple) ? closure.κ_symmetric : tracer_diffusivities(tracers, closure.κ_symmetric)
     return IsopycnalSkewSymmetricDiffusivity{TD, A, N}(κ_skew, κ_symmetric, closure.isopycnal_tensor, closure.slope_limiter)
 end
 
-function Utils.with_tracers(tracers, closure::ISSD{TD, A, N}) where {TD, A<:AdvectiveFormulation, N}
+function Utils.with_tracers(tracers, closure::ISSD{TD, A, <:Any, <:Any, <:Any, <:Any, N}) where {TD, A<:AdvectiveFormulation, N}
     κ_skew = closure.κ_skew
     κ_symmetric = !isa(closure.κ_symmetric, NamedTuple) ? closure.κ_symmetric : tracer_diffusivities(tracers, closure.κ_symmetric)
     return IsopycnalSkewSymmetricDiffusivity{TD, A, N}(κ_skew, κ_symmetric, closure.isopycnal_tensor, closure.slope_limiter)
@@ -125,7 +125,6 @@ function compute_closure_fields!(closure_fields, closure::FlavorOfISSD, model; p
 
     launch!(arch, grid, parameters,
             compute_tapered_R₃₃!, closure_fields.ϵ_R₃₃, grid, closure, tracers, buoyancy)
-
 
     compute_eddy_velocities!(closure_fields, closure, model; parameters)
 
@@ -175,37 +174,43 @@ end
 
 @inline function tapering_factorᶠᶜᶜ(i, j, k, grid, closure, tracers, buoyancy)
 
-    by = ℑxyᶠᶜᵃ(i, j, k, grid, ∂y_b, buoyancy, tracers)
-    bz = ℑxzᶠᵃᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
-    bx = ∂x_b(i, j, k, grid, buoyancy, tracers)
+    by   = ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᵣ_b, buoyancy, tracers)
+    bz   = ℑxzᶠᵃᶜ(i, j, k, grid, ∂z_b,  buoyancy, tracers)
+    bx   =  ∂xᵣ_b(i, j, k, grid, buoyancy, tracers)
+    ∂x_z = ∂x_zᶠᶜᶜ(i, j, k, grid)
+    ∂y_z = ∂y_zᶠᶜᶜ(i, j, k, grid)
 
-    return calc_tapering(bx, by, bz, grid, closure.isopycnal_tensor, closure.slope_limiter)
+    return calc_tapering(bx, by, bz, ∂x_z, ∂y_z, grid, closure.isopycnal_tensor, closure.slope_limiter)
 end
 
 @inline function tapering_factorᶜᶠᶜ(i, j, k, grid, closure, tracers, buoyancy)
 
-    bx = ℑxyᶜᶠᵃ(i, j, k, grid, ∂x_b, buoyancy, tracers)
-    bz = ℑyzᵃᶠᶜ(i, j, k, grid, ∂z_b, buoyancy, tracers)
-    by = ∂y_b(i, j, k, grid, buoyancy, tracers)
+    bx   = ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᵣ_b, buoyancy, tracers)
+    bz   = ℑyzᵃᶠᶜ(i, j, k, grid, ∂z_b,  buoyancy, tracers)
+    by   =  ∂yᵣ_b(i, j, k, grid, buoyancy, tracers)
+    ∂x_z = ∂x_zᶜᶠᶜ(i, j, k, grid)
+    ∂y_z = ∂y_zᶜᶠᶜ(i, j, k, grid)
 
-    return calc_tapering(bx, by, bz, grid, closure.isopycnal_tensor, closure.slope_limiter)
+    return calc_tapering(bx, by, bz, ∂x_z, ∂y_z, grid, closure.isopycnal_tensor, closure.slope_limiter)
 end
 
 @inline function tapering_factorᶜᶜᶠ(i, j, k, grid, closure, tracers, buoyancy)
 
-    bx = ℑxzᶜᵃᶠ(i, j, k, grid, ∂x_b, buoyancy, tracers)
-    by = ℑyzᵃᶜᶠ(i, j, k, grid, ∂y_b, buoyancy, tracers)
-    bz = ∂z_b(i, j, k, grid, buoyancy, tracers)
+    bx   = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᵣ_b, buoyancy, tracers)
+    by   = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᵣ_b, buoyancy, tracers)
+    bz   =  ∂z_b(i, j, k, grid, buoyancy, tracers)
+    ∂x_z = ∂x_zᶜᶜᶠ(i, j, k, grid)
+    ∂y_z = ∂y_zᶜᶜᶠ(i, j, k, grid)
 
-    return calc_tapering(bx, by, bz, grid, closure.isopycnal_tensor, closure.slope_limiter)
+    return calc_tapering(bx, by, bz, ∂x_z, ∂y_z, grid, closure.isopycnal_tensor, closure.slope_limiter)
 end
 
-@inline function calc_tapering(bx, by, bz, grid, slope_model, slope_limiter)
+@inline function calc_tapering(bx, by, bz, ∂x_z, ∂y_z, grid, slope_model, slope_limiter)
 
     bz = max(bz, slope_model.minimum_bz)
 
-    Sx = - bx / bz
-    Sy = - by / bz
+    Sx = - bx / bz + ∂x_z
+    Sy = - by / bz + ∂y_z
 
     return ifelse(bz <= 0, zero(grid), min(one(grid), slope_limiter.max_slope^2 / (Sx^2 + Sy^2)))
 end
@@ -237,10 +242,10 @@ end
     κ_skewᶠᶜᶜ = skew_diffusivity(i, j, k, grid, closure, κᶠᶜᶜ, issd_coefficient_loc, κ_skew, clock, fields)
     κ_symmetricᶠᶜᶜ = κᶠᶜᶜ(i, j, k, grid, issd_coefficient_loc, κ_symmetric, clock, fields)
 
-    ∂x_c = ∂xᶠᶜᶜ(i, j, k, grid, c)
+    ∂x_c = ∂xᵣᶠᶜᶜ(i, j, k, grid, c)
 
     # Average... of... the gradient!
-    ∂y_c = ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᶜᶠᶜ, c)
+    ∂y_c = ℑxyᶠᶜᵃ(i, j, k, grid, ∂yᵣᶜᶠᶜ, c)
     ∂z_c = ℑxzᶠᵃᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
 
     R₁₁ = one(grid)
@@ -267,10 +272,10 @@ end
     κ_skewᶜᶠᶜ = skew_diffusivity(i, j, k, grid, closure, κᶜᶠᶜ, issd_coefficient_loc, κ_skew, clock, fields)
     κ_symmetricᶜᶠᶜ = κᶜᶠᶜ(i, j, k, grid, issd_coefficient_loc, κ_symmetric, clock, fields)
 
-    ∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
+    ∂y_c = ∂yᵣᶜᶠᶜ(i, j, k, grid, c)
 
     # Average... of... the gradient!
-    ∂x_c = ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᶠᶜᶜ, c)
+    ∂x_c = ℑxyᶜᶠᵃ(i, j, k, grid, ∂xᵣᶠᶜᶜ, c)
     ∂z_c = ℑyzᵃᶠᶜ(i, j, k, grid, ∂zᶜᶜᶠ, c)
 
     R₂₁ = zero(grid)
@@ -298,8 +303,8 @@ end
     κ_symmetricᶜᶜᶠ = κᶜᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ_symmetric, clock, fields)
 
     # Average... of... the gradient!
-    ∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᶠᶜᶜ, c)
-    ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᶜᶠᶜ, c)
+    ∂x_c = ℑxzᶜᵃᶠ(i, j, k, grid, ∂xᵣᶠᶜᶜ, c)
+    ∂y_c = ℑyzᵃᶜᶠ(i, j, k, grid, ∂yᵣᶜᶠᶜ, c)
 
     R₃₁ = isopycnal_rotation_tensor_xz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor)
     R₃₂ = isopycnal_rotation_tensor_yz_ccf(i, j, k, grid, buoyancy, fields, closure.isopycnal_tensor)

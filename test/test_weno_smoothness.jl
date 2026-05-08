@@ -27,13 +27,11 @@ using Oceananigans.Utils: NormalDivision
             ntuple(j -> S_f32[start + j - 1], Val(buffer))
         end
 
-        # Use NormalDivision so newton_div dispatches deterministically without going
-        # through materialize_advection (which would otherwise resolve the deferred WCT).
-        scheme_f64 = WENO(Float64; order, weight_computation=NormalDivision)
-        scheme_f32 = WENO(Float32; order, weight_computation=NormalDivision)
+        scheme_f64 = WENO(Float64; order, weight_computation=Oceananigans.Utils.NormalDivision)
+        scheme_f32 = WENO(Float32; order, weight_computation=Oceananigans.Utils.NormalDivision)
 
-        β_f64 = beta_loop(scheme_f64, order, ψ_f64)
-        β_f32 = beta_loop(scheme_f32, order, ψ_f32)
+        β_f64 = beta_loop(scheme_f64, ψ_f64)
+        β_f32 = beta_loop(scheme_f32, ψ_f32)
 
         @info "WENO order $order β (Float64): $β_f64"
         @info "WENO order $order β (Float32): $β_f32"
@@ -52,11 +50,9 @@ using Oceananigans.Utils: NormalDivision
                 end
             end
 
-            # Weights must sum to 1 and match Float64 reference. The branch's
-            # biased_weno_weights signature is (ψ, grid, scheme, red_order, args...);
-            # we pass `nothing` for grid since we are not using the VelocityStencil path.
-            ω_f64 = biased_weno_weights(ψ_f64, nothing, scheme_f64, order)
-            ω_f32 = biased_weno_weights(ψ_f32, nothing, scheme_f32, order)
+            # Weights must sum to 1 and match Float64 reference
+            ω_f64 = biased_weno_weights(ψ_f64, nothing, scheme_f64)
+            ω_f32 = biased_weno_weights(ψ_f32, nothing, scheme_f32)
 
             @test sum(ω_f64) ≈ 1
             @test sum(ω_f32) ≈ 1

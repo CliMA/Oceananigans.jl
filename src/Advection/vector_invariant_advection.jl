@@ -1,3 +1,5 @@
+using Oceananigans.Operators: Vᶜᶠᶜ, Vᶠᶜᶜ, δxᶠᶜᶜ, δyᶜᶠᶜ, ζ₃ᶠᶠᶜ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
+
 # These are also used in Coriolis/hydrostatic_spherical_coriolis.jl
 struct EnergyConserving{FT}    <: AbstractAdvectionScheme{1, FT} end
 struct EnstrophyConserving{FT} <: AbstractAdvectionScheme{1, FT} end
@@ -191,12 +193,12 @@ Example
 julia> using Oceananigans
 
 julia> WENOVectorInvariant()
-WENOVectorInvariant{5, Float64, Float32}(vorticity_order=9, vertical_order=5)
-├── vorticity_scheme: WENO{5, Float64, Float32}(order=9)
+WENOVectorInvariant{5, Float64}(vorticity_order=9, vertical_order=5)
+├── vorticity_scheme: WENO{5, Float64, Nothing}(order=9)
 ├── vorticity_stencil: Oceananigans.Advection.VelocityStencil
-├── vertical_advection_scheme: WENO{3, Float64, Float32}(order=5)
-├── kinetic_energy_gradient_scheme: WENO{3, Float64, Float32}(order=5)
-├── divergence_scheme: WENO{3, Float64, Float32}(order=5)
+├── vertical_advection_scheme: WENO{3, Float64, Nothing}(order=5)
+├── kinetic_energy_gradient_scheme: WENO{3, Float64, Nothing}(order=5)
+├── divergence_scheme: WENO{3, Float64, Nothing}(order=5)
 └── upwinding: OnlySelfUpwinding
 ```
 """

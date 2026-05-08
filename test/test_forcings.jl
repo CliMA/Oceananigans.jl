@@ -519,6 +519,7 @@ end
             @testset "Momentum flux zero at immersed peripheral nodes" begin
                 @info "      Testing momentum flux is zero at immersed peripheral nodes..."
                 for scheme in (Centered(order=2), UpwindBiased(order=3), WENO(order=5))
+                    scheme = Oceananigans.Advection.materialize_advection(scheme, MockGrid(arch))
                     @test test_momentum_flux_zero_at_peripheral_nodes(scheme)
                 end
             end

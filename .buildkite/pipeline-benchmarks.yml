@@ -2,7 +2,7 @@ env:
   JULIA_VERSION: "1.12.2"
   JULIA_MINOR_VERSION: "1.12"
   TARTARUS_HOME: "/storage5/buildkite-agent"
-  JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+  JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER:"
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
   JULIA_NUM_PRECOMPILE_TASKS: 24
   JULIA_NUM_THREADS: 8
@@ -18,7 +18,7 @@ steps:
   - label: "🏕️ Initialize tartarus environment"
     key: "init"
     env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER:"
       JULIA_BINDIR: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin"
     command: |
       # Download julia binaries
@@ -229,7 +229,6 @@ steps:
 
   - label: "📢 Notify GitHub to publish results"
     key: "notify-github"
-    if: build.branch == "main"
     agents:
       queue: "Oceananigans-benchmarks"
     command: |
@@ -239,5 +238,5 @@ steps:
         -H "Authorization: token ${GITHUB_DISPATCH_TOKEN}" \
         -H "Accept: application/vnd.github.v3+json" \
         "https://api.github.com/repos/CliMA/Oceananigans.jl/dispatches" \
-        -d "{\"event_type\":\"benchmarks_complete\",\"client_payload\":{\"build_number\":\"${BUILDKITE_BUILD_NUMBER}\",\"commit\":\"${BUILDKITE_COMMIT}\",\"branch\":\"main\"}}"
+        -d "{\"event_type\":\"benchmarks_complete\",\"client_payload\":{\"build_number\":\"${BUILDKITE_BUILD_NUMBER}\",\"commit\":\"${BUILDKITE_COMMIT}\",\"branch\":\"${BUILDKITE_BRANCH}\",\"pr_number\":\"${BUILDKITE_PULL_REQUEST}\"}}"
     soft_fail: true
