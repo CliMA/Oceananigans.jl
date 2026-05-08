@@ -56,4 +56,3 @@ function buffer_κ_kernel_parameters(grid, closure, arch)
     params = (param_west, param_east, param_south, param_north)
     return buffer_parameters(params, grid, arch)
 end
-

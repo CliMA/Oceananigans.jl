@@ -27,6 +27,7 @@ PressureField(grid) = (; pHY′ = CenterField(grid))
 const defaults = Oceananigans.defaults
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
+const ReactantArchitecture = Union{ReactantState, Distributed{<:ReactantState}}
 
 function default_vertical_coordinate(grid)
     if grid.z isa MutableVerticalDiscretization
@@ -292,8 +293,9 @@ function HydrostaticFreeSurfaceModel(grid;
 
     !isnothing(particles) && arch isa Distributed && error("LagrangianParticles are not supported on Distributed architectures.")
 
-    condition_momentum_advection = check_advection_splitting(grid, condition_momentum_advection)
-    condition_tracer_advection   = check_advection_splitting(grid, condition_tracer_advection)
+    # Reactant arch (serial or sharded) does not support condition mapping
+    condition_momentum_advection = arch isa ReactantArchitecture ? false : condition_momentum_advection
+    condition_tracer_advection   = arch isa ReactantArchitecture ? false : condition_tracer_advection
 
     condition_maps = generate_condition_maps(grid, advection;
                                              condition_momentum_advection,
@@ -404,14 +406,3 @@ function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
 end
 
 restore_prognostic_state!(::HydrostaticFreeSurfaceModel, ::Nothing) = nothing
-
-# Reactant arch does not support condition mapping or mapped kernels
-function check_advection_splitting(grid, condition)
-    if architecture(grid) isa ReactantState
-      return false
-    elseif isnothing(condition)
-      return true
-    else
-      return condition
-    end
-end

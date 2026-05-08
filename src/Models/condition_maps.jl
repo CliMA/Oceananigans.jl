@@ -2,7 +2,7 @@ using Oceananigans.Advection: AbstractAdvectionScheme, fixed_order_scheme
 using Oceananigans.ImmersedBoundaries
 using Oceananigans.ImmersedBoundaries: SplitActiveCellsMapIBG, WholeActiveCellsMapIBG
 using Oceananigans.Grids: active_cell, halo_size, topology, XFlatGrid, YFlatGrid, RightConnected, LeftConnected
-using Oceananigans.Architectures: CPU
+using Oceananigans.Architectures: CPU, cpu_architecture
 import Oceananigans.Architectures as AC
 using Oceananigans.DistributedComputations: Distributed, AsynchronousDistributed
 using Oceananigans.Fields: Field, interior
@@ -85,8 +85,9 @@ function split_indices_in_ranges(field, grid, irange, jrange, krange)
     N = maximum(size(grid))
     IT = N > typemax(UInt8) ? (N > typemax(UInt16) ? (N > typemax(UInt32) ? UInt64 : UInt32) : UInt16) : UInt8
     IndicesType = Tuple{IT, IT, IT}
-    cpu_grid    = AC.on_architecture(CPU(), grid)
-    values      = AC.on_architecture(CPU(), interior(field))
+    cpu_arch    = cpu_architecture(architecture(grid))
+    cpu_grid    = AC.on_architecture(cpu_arch, grid)
+    values      = AC.on_architecture(cpu_arch, interior(field))
     map1 = IndicesType[]
     map2 = IndicesType[]
     for k in krange, j in jrange, i in irange

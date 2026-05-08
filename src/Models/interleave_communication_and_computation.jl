@@ -69,8 +69,8 @@ end
 """
     buffer_tendency_kernel_parameters(grid, arch)
 
-Return a NamedTuple keyed by region name (`:west_halo_dependent_cells`, `:east_halo_dependent_cells`, 
-`:south_halo_dependent_cells`, `:north_halo_dependent_cells`) of `KernelParameters` for tendency compute 
+Return a NamedTuple keyed by region name (`:west_halo_dependent_cells`, `:east_halo_dependent_cells`,
+`:south_halo_dependent_cells`, `:north_halo_dependent_cells`) of `KernelParameters` for tendency compute
 in each halo-dependent buffer strip. Regions where the local subdomain has no neighbor are set to `nothing`.
 """
 function buffer_tendency_kernel_parameters(grid, arch)
@@ -90,7 +90,7 @@ end
 """
     buffer_parameters(parameters, grid, arch)
 
-Wrap a 4-tuple `(west, east, south, north)` of index ranges into a per-region NamedTuple of `KernelParameters`, 
+Wrap a 4-tuple `(west, east, south, north)` of index ranges into a per-region NamedTuple of `KernelParameters`,
 with `nothing` for regions where the local subdomain has no neighbor on that side.
 """
 function buffer_parameters(parameters, grid, arch)
