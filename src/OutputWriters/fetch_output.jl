@@ -40,4 +40,4 @@ function fetch_and_convert_output(output, model, writer)
     return convert_output(fetched, writer)
 end
 
-fetch_and_convert_output(output::ZeroField, model, writer) = zero(eltype(output))
+fetch_and_convert_output(output::Union{ZeroField, OneField, ConstantField}, model, writer) = output[1, 1, 1]
