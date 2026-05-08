@@ -311,23 +311,6 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
     Azᶠᶜᵃ = deepcopy(dropdims(Azᶠᶜᵃ.data, dims=3))
     Azᶜᶜᵃ = deepcopy(dropdims(Azᶜᶜᵃ.data, dims=3))
 
-    # Continue the metrics to the south assuming the cell does not
-    # change moving southwards into the halos
-    continue_south!(Δxᶠᶠᵃ, Hy)
-    continue_south!(Δxᶠᶜᵃ, Hy)
-    continue_south!(Δxᶜᶠᵃ, Hy)
-    continue_south!(Δxᶜᶜᵃ, Hy)
-
-    continue_south!(Δyᶠᶠᵃ, Hy)
-    continue_south!(Δyᶠᶜᵃ, Hy)
-    continue_south!(Δyᶜᶠᵃ, Hy)
-    continue_south!(Δyᶜᶜᵃ, Hy)
-
-    continue_south!(Azᶠᶠᵃ, Hy)
-    continue_south!(Azᶠᶜᵃ, Hy)
-    continue_south!(Azᶜᶠᵃ, Hy)
-    continue_south!(Azᶜᶜᵃ, Hy)
-
     # Final grid with correct metrics
     # TODO: remove `on_architecture(arch, ...)` when we shift grid construction to GPU
     grid = OrthogonalSphericalShellGrid{topology...}(arch,
@@ -359,15 +342,6 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
                                                      Tripolar(north_poles_latitude, first_pole_longitude, southernmost_latitude, fold_topology))
 
     return grid
-end
-
-# Continue the metrics to the south assuming no changes in the halos
-function continue_south!(metric, Hy)
-    Fx = size(metric, 1)
-    for j in 1:Hy, i in 1:Fx
-        @inbounds parent(metric)[i, j] = parent(metric)[i, Hy+1]
-    end
-    return nothing
 end
 
 # Copy interior data from old grid into a new Field, then fill halos
