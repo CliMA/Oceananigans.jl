@@ -154,7 +154,7 @@ const SS665 = Int32.((01152561, -12950184, 29442256, -33918804, 19834350, -04712
                 ifelse(red_order == 1, $(SS410),     # Order 1
                 ifelse(red_order == 2, $(SS420),     # Order 3
                 ifelse(red_order == 3, $(SS430),     # Order 5
-                                       $(SS440))))) # Order 7
+                                       $(SS440)))))  # Order 7
 
         @inline smoothness_coefficients(::WENO{4}, red_order, ::Val{1}) =
                 ifelse(red_order  < 2, $(SS40M),     # Centered / Order 1

@@ -11,25 +11,27 @@ export
     VectorInvariant, WENOVectorInvariant,
     FluxFormAdvection,
     EnergyConserving,
-    EnstrophyConserving
+    EnstrophyConserving,
+    materialize_advection,
+    default_weno_weight_computation,
+    U_dot_∇u_hydrostatic_metric, U_dot_∇v_hydrostatic_metric,
+    U_dot_∇u_nonhydrostatic_metric, U_dot_∇v_nonhydrostatic_metric,
+    U_dot_∇u_metric, U_dot_∇v_metric, U_dot_∇w_metric
 
-using Adapt
-using DocStringExtensions
-using OffsetArrays
+using Adapt: Adapt
+using OffsetArrays: OffsetArray
 using MuladdMacro: @muladd
 
-using Oceananigans
-using Oceananigans.Grids
-using Oceananigans.Operators
-
-using Oceananigans: fully_supported_float_types
-using Oceananigans.Architectures: CPU
-using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, ∂t_σ
-using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
-
-import Base: summary, Callable
-import Oceananigans.Architectures: on_architecture
-import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
+using Oceananigans: Oceananigans, fully_supported_float_types
+using Oceananigans.Architectures: Architectures, architecture, on_architecture, CPU
+using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, XFlatGrid, YFlatGrid, ZFlatGrid, with_halo,
+    required_halo_size_x, required_halo_size_y, required_halo_size_z
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, ∂t_σ, Ax_qᶠᶜᶜ, Axᶠᶜᶜ, Ay_qᶜᶠᶜ, Ayᶜᶠᶜ, Az_qᶜᶜᶠ,
+    Azᶜᶜᶜ, Azᶜᶜᶠ, Az⁻¹ᶜᶠᶜ, Az⁻¹ᶠᶜᶜ, V⁻¹ᶜᶜᶠ, V⁻¹ᶜᶠᶜ, V⁻¹ᶠᶜᶜ, Δx_qᶜᶠᶜ, Δx⁻¹ᶠᶜᶜ, Δy_qᶠᶜᶜ,
+    Δy⁻¹ᶜᶠᶜ, δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶜᵃ, δyᵃᶠᵃ, δzᵃᵃᶜ, ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ
+using Oceananigans.Utils: NewtonDivConfig, NormalDivision, BackendOptimizedDivision, ConvertingDivision
+using Base: Callable
 
 abstract type AbstractAdvectionScheme{B, FT} end
 abstract type AbstractCenteredAdvectionScheme{B, FT} <: AbstractAdvectionScheme{B, FT} end
@@ -47,9 +49,9 @@ const advection_buffers = [1, 2, 3, 4, 5, 6]
 
 @inline Base.eltype(::AbstractAdvectionScheme{<:Any, FT}) where FT = FT
 
-@inline required_halo_size_x(::AbstractAdvectionScheme{B}) where B = B
-@inline required_halo_size_y(::AbstractAdvectionScheme{B}) where B = B
-@inline required_halo_size_z(::AbstractAdvectionScheme{B}) where B = B
+@inline Grids.required_halo_size_x(::AbstractAdvectionScheme{B}) where B = B
+@inline Grids.required_halo_size_y(::AbstractAdvectionScheme{B}) where B = B
+@inline Grids.required_halo_size_z(::AbstractAdvectionScheme{B}) where B = B
 
 """Return the minimum buffer upwind order (encoded as a type parameter for constant-folding)."""
 minimum_buffer_upwind_order(::AbstractUpwindBiasedAdvectionScheme{N, FT, M}) where {N, FT, M} = M
@@ -69,6 +71,8 @@ include("vector_invariant_advection.jl")
 include("vector_invariant_self_upwinding.jl")
 include("vector_invariant_cross_upwinding.jl")
 include("flux_form_advection.jl")
+include("curvature_metric_terms.jl")
+include("materialize_advection.jl")
 
 include("topologically_conditional_interpolation.jl")
 include("flat_advective_fluxes.jl")

@@ -59,4 +59,8 @@ function precondition!(p, preconditioner::DistributedFourierTridiagonalPoissonSo
     return p
 end
 
+# Distributed grids defer the WENO weight-computation strategy to their child architecture.
+Oceananigans.Advection.default_weno_weight_computation(arch::Distributed) =
+    Oceananigans.Advection.default_weno_weight_computation(child_architecture(arch))
+
 end # module

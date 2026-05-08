@@ -43,17 +43,18 @@ const AGZ = AUG{<:Any, <:Any, <:Any, <:BT}
 #  cells:   --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | ---
 #  order:    1     1     2     3    ...               ...    3     2     1     1
 #
-@inline reduced_face_order(i, ::Type{RightConnected}, N, B, ::NoBias) = max(1, min(B, i-1))
-@inline reduced_face_order(i, ::Type{LeftConnected},  N, B, ::NoBias) = max(1, min(B, N+1-i))
-@inline reduced_face_order(i, ::Type{Bounded},        N, B, ::NoBias) = max(1, min(B, i-1, N+1-i))
+@inline reduced_face_order(i, ::Type{RightConnected}, N, B, bias) =
+    ifelse(bias == RightBias, max(1, min(B, i)),
+                              max(1, min(B, i-1)))   # LeftBias / NoBias
 
-@inline reduced_face_order(i, ::Type{RightConnected}, N, B, ::LeftBias) = max(1, min(B, i-1))
-@inline reduced_face_order(i, ::Type{LeftConnected},  N, B, ::LeftBias) = max(1, min(B, N+2-i))
-@inline reduced_face_order(i, ::Type{Bounded},        N, B, ::LeftBias) = max(1, min(B, i-1, N+2-i))
+@inline reduced_face_order(i, ::Type{LeftConnected}, N, B, bias) =
+    ifelse(bias == LeftBias, max(1, min(B, N+2-i)),
+                             max(1, min(B, N+1-i)))   # RightBias / NoBias
 
-@inline reduced_face_order(i, ::Type{RightConnected}, N, B, ::RightBias) = max(1, min(B, i))
-@inline reduced_face_order(i, ::Type{LeftConnected},  N, B, ::RightBias) = max(1, min(B, N+1-i))
-@inline reduced_face_order(i, ::Type{Bounded},        N, B, ::RightBias) = max(1, min(B, i, N+1-i))
+@inline reduced_face_order(i, ::Type{Bounded}, N, B, bias) =
+    ifelse(bias == LeftBias,  max(1, min(B, i-1, N+2-i)),
+    ifelse(bias == RightBias, max(1, min(B, i,   N+1-i)),
+                              max(1, min(B, i-1, N+1-i))))   # NoBias
 
 @inline reduced_center_order(i, ::Type{RightConnected}, N, B, bias) = max(1, min(B, i))
 @inline reduced_center_order(i, ::Type{LeftConnected},  N, B, bias) = max(1, min(B, N+1-i))
@@ -125,31 +126,31 @@ end
 end
 
 @inline function _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, args...)
-    red_order = compute_face_reduced_order_x(i, j, k, grid, scheme, NoBias())
+    red_order = compute_face_reduced_order_x(i, j, k, grid, scheme, NoBias)
     return symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, red_order, args...)
 end
 
 @inline function _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, args...)
-    red_order = compute_face_reduced_order_y(i, j, k, grid, scheme, NoBias())
+    red_order = compute_face_reduced_order_y(i, j, k, grid, scheme, NoBias)
     return symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, red_order, args...)
 end
 
 @inline function _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, args...)
-    red_order = compute_face_reduced_order_z(i, j, k, grid, scheme, NoBias())
+    red_order = compute_face_reduced_order_z(i, j, k, grid, scheme, NoBias)
     return symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, red_order, args...)
 end
 
 @inline function _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, args...)
-    red_order = compute_center_reduced_order_x(i, j, k, grid, scheme, NoBias())
+    red_order = compute_center_reduced_order_x(i, j, k, grid, scheme, NoBias)
     return symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, red_order, args...)
 end
 
 @inline function _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, args...)
-    red_order = compute_center_reduced_order_y(i, j, k, grid, scheme, NoBias())
+    red_order = compute_center_reduced_order_y(i, j, k, grid, scheme, NoBias)
     return symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, red_order, args...)
 end
 
 @inline function _symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, args...)
-    red_order = compute_center_reduced_order_z(i, j, k, grid, scheme, NoBias())
+    red_order = compute_center_reduced_order_z(i, j, k, grid, scheme, NoBias)
     return symmetric_interpolate_zᵃᵃᶜ(i, j, k, grid, scheme, red_order, args...)
 end

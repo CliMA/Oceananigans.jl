@@ -18,6 +18,9 @@ import Oceananigans.Models:
         complete_communication_and_compute_buffer!,
         interior_tendency_kernel_parameters
 
+import Oceananigans.Advection: default_weno_weight_computation
+using Oceananigans.Utils: ConvertingDivision
+
 const ReactantHFSM{TS, E} = Union{
     HydrostaticFreeSurfaceModel{TS, E, <:ReactantState},
     HydrostaticFreeSurfaceModel{TS, E, <:ShardedDistributed},
@@ -59,5 +62,10 @@ maybe_prepare_first_time_step!(model::ReactantHFSM, callbacks) = nothing
 # Undo all the pipelining for a `ShardedDistributed` architecture
 complete_communication_and_compute_buffer!(model, ::ShardedGrid, ::ShardedDistributed) = nothing
 interior_tendency_kernel_parameters(::ShardedDistributed, grid) = :xyz
+
+# Reactant uses CUDA version of the code to uplift program description to MLIR.
+# Since the default `BackendOptimizedDivision` uses LLVM's NVPTX intrinsics,
+# Reactant cannot consume it and falls back to a Float32-converted Newton division.
+default_weno_weight_computation(::ReactantState) = ConvertingDivision{Float32}
 
 end # module

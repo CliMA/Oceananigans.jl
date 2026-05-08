@@ -1,7 +1,7 @@
 using Oceananigans: AbstractModel
 
 using Oceananigans.AbstractOperations: KernelFunctionOperation
-using Oceananigans.Advection: VectorInvariant
+using Oceananigans.Advection: VectorInvariant, materialize_advection
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.DistributedComputations
@@ -178,6 +178,10 @@ function ShallowWaterModel(grid;
     end
 
     advection = merge((momentum=momentum_advection, mass=mass_advection), tracer_advection_tuple)
+
+    # Resolve any settings in the advection scheme that were deferred until the grid /
+    # backend is known (e.g. WENO weight-computation strategy).
+    advection = NamedTuple(name => materialize_advection(scheme, grid) for (name, scheme) in pairs(advection))
 
     bathymetry_field = CenterField(grid)
     if !isnothing(bathymetry)

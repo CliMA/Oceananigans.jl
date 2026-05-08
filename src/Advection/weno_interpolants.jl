@@ -111,18 +111,26 @@ end
 # ψ[4] (C[10] * ψ[4])
 # This expression is the output of metaprogrammed_smoothness_operation(4)
 
-# Trick to force compilation of Val(stencil-1) and avoid loops on the GPU
-@inline function metaprogrammed_smoothness_operation(buffer)
+# Trick to force compilation of Val(stencil-1) and avoid loops on the GPU.
+# When `shift=true`, the stencil values are shifted by `ψ̂` before the quadratic
+# form is computed. The smoothness indicator is invariant to constant shifts,
+# but subtracting the central stencil value is essential in low precision (e.g.
+# Float32) to avoid catastrophic cancellation when the stencil mean is large
+# relative to its variation. See PR #5491.
+@inline function metaprogrammed_smoothness_operation(buffer; shift=false)
     elem = Vector{Expr}(undef, buffer)
     c_idx = 1
+
+    ψ_expr(i) = shift ? :(ψ[$i] - ψ̂) : :(ψ[$i])
+
     for stencil = 1:buffer - 1
         local c = c_idx # Avoid capturing `c_idx` in the generator expression below
-        stencil_sum   = Expr(:call, :+, (:(C[$(c + i - stencil)] * ψ[$i]) for i in stencil:buffer)...)
-        elem[stencil] = :(ψ[$stencil] * $stencil_sum)
+        stencil_sum   = Expr(:call, :+, (:(C[$(c + i - stencil)] * $(ψ_expr(i))) for i in stencil:buffer)...)
+        elem[stencil] = :($(ψ_expr(stencil)) * $stencil_sum)
         c_idx += buffer - stencil + 1
     end
 
-    elem[buffer] = :(ψ[$buffer] * ψ[$buffer] * C[$c_idx])
+    elem[buffer] = :($(ψ_expr(buffer)) * $(ψ_expr(buffer)) * C[$c_idx])
 
     return Expr(:call, :+, elem...)
 end
@@ -168,9 +176,23 @@ while for `buffer == 4` unrolls into
 """
 @inline smoothness_indicator(ψ, args...) = zero(ψ[1]) # This is a fallback method, here only for documentation purposes
 
-# Smoothness indicators for stencil `stencil` for left and right biased reconstruction
+# Smoothness indicators for stencil `stencil` for left and right biased reconstruction.
+# For Float64/BigFloat the quadratic form is computed directly. For lower-precision
+# floats (e.g. Float32) we subtract the central stencil value `ψ̂` first; the result
+# is identical mathematically but avoids catastrophic cancellation when the stencil
+# mean is large relative to its variation (see PR #5491).
 for buffer in advection_buffers[2:end] # WENO{<:Any, 1} does not exist
-    @eval @inline smoothness_operation(scheme::WENO{$buffer}, ψ, C) = @inbounds ϵ + @muladd @fastmath $(metaprogrammed_smoothness_operation(buffer))
+    for FT in fully_supported_float_types
+        if FT in (Float64, BigFloat)
+            @eval @inline smoothness_operation(scheme::WENO{$buffer, $FT}, ψ, C) =
+                @inbounds ϵ + @muladd @fastmath $(metaprogrammed_smoothness_operation(buffer))
+        else
+            @eval @inline function smoothness_operation(scheme::WENO{$buffer, $FT}, ψ, C)
+                ψ̂ = ψ[$(buffer ÷ 2 + 1)]
+                @inbounds ϵ + @muladd @fastmath $(metaprogrammed_smoothness_operation(buffer; shift=true))
+            end
+        end
+    end
 end
 
 @inline function smoothness_indicator(ψ, scheme, red_order, val_stencil)
@@ -202,7 +224,7 @@ end
 @inline function metaprogrammed_zweno_alpha_loop(buffer)
     elem = Vector(undef, buffer)
     for stencil = 1:buffer
-        elem[stencil] = :(C★(scheme, red_order, Val($(stencil-1))) * (1 + (newton_div(FT2, τ, β[$stencil]))^2))
+        elem[stencil] = :(C★(scheme, red_order, Val($(stencil-1))) * (1 + (newton_div(WCT, τ, β[$stencil]))^2))
     end
 
     return :($(elem...),)
@@ -212,7 +234,7 @@ for buffer in advection_buffers[1:end]
     @eval begin
         @inline  beta_sum(scheme::WENO{$buffer}, β₁, β₂) = @inbounds $(metaprogrammed_beta_sum(buffer))
         @inline beta_loop(scheme::WENO{$buffer}, red_order, ψ) = @inbounds $(metaprogrammed_beta_loop(buffer))
-        @inline zweno_alpha_loop(scheme::WENO{$buffer, FT, FT2}, red_order, β, τ) where {FT, FT2} = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
+        @inline zweno_alpha_loop(scheme::WENO{$buffer, FT, WCT}, red_order, β, τ) where {FT, WCT} = @inbounds $(metaprogrammed_zweno_alpha_loop(buffer))
     end
 end
 

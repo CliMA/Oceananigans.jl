@@ -42,6 +42,7 @@ CUDA.allowscalar() do
             include("test_immersed_boundary_grid.jl")
             include("test_operators.jl")
             include("test_advection_reconstruction.jl")
+            include("test_weno_smoothness.jl")
             include("test_vector_rotation_operators.jl")
             include("test_boundary_conditions.jl")
             include("test_field.jl")

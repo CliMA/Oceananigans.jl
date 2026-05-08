@@ -250,65 +250,47 @@ for (Loc, loc) in zip((:face, :center), (:f, :c)), dir in (:x, :y, :z)
     end
 end
 
-# NoBias immersed bounds checks
-@inline first_order_bounds_check(I::NTuple{4}, ::NoBias) = @inbounds (I[1] | I[4])
+# Immersed bounds checks. For each (NTuple size, order), pattern is:
+#   LeftBias narrows on the right edge by one cell vs NoBias;
+#   RightBias narrows on the left edge by one cell vs NoBias.
+# First-order checks happen to be bias-invariant.
 
-@inline  first_order_bounds_check(I::NTuple{6}, ::NoBias) = @inbounds (I[2] | I[5])
-@inline second_order_bounds_check(I::NTuple{6}, ::NoBias) = @inbounds (I[1] | I[6])
+@inline first_order_bounds_check(I::NTuple{4},  bias) = @inbounds (I[1] | I[4])
+@inline first_order_bounds_check(I::NTuple{6},  bias) = @inbounds (I[2] | I[5])
+@inline first_order_bounds_check(I::NTuple{8},  bias) = @inbounds (I[3] | I[6])
+@inline first_order_bounds_check(I::NTuple{10}, bias) = @inbounds (I[4] | I[7])
+@inline first_order_bounds_check(I::NTuple{12}, bias) = @inbounds (I[5] | I[8])
 
-@inline  first_order_bounds_check(I::NTuple{8}, ::NoBias) = @inbounds (I[3] | I[6])
-@inline second_order_bounds_check(I::NTuple{8}, ::NoBias) = @inbounds (I[2] | I[7])
-@inline  third_order_bounds_check(I::NTuple{8}, ::NoBias) = @inbounds (I[1] | I[8])
+@inline second_order_bounds_check(I::NTuple{6},  bias) = @inbounds ifelse(bias == LeftBias,  I[1] | I[5],
+                                                                   ifelse(bias == RightBias, I[2] | I[6],
+                                                                                             I[1] | I[6]))
 
-@inline  first_order_bounds_check(I::NTuple{10}, ::NoBias) = @inbounds (I[4] | I[7])
-@inline second_order_bounds_check(I::NTuple{10}, ::NoBias) = @inbounds (I[3] | I[8])
-@inline  third_order_bounds_check(I::NTuple{10}, ::NoBias) = @inbounds (I[2] | I[9])
-@inline fourth_order_bounds_check(I::NTuple{10}, ::NoBias) = @inbounds (I[1] | I[10])
+@inline second_order_bounds_check(I::NTuple{8},  bias) = @inbounds ifelse(bias == LeftBias,  I[2] | I[6],
+                                                                   ifelse(bias == RightBias, I[3] | I[7],
+                                                                                             I[2] | I[7]))
+@inline  third_order_bounds_check(I::NTuple{8},  bias) = @inbounds ifelse(bias == LeftBias,  I[1] | I[7],
+                                                                   ifelse(bias == RightBias, I[2] | I[8],
+                                                                                             I[1] | I[8]))
 
-@inline  first_order_bounds_check(I::NTuple{12}, ::NoBias) = @inbounds (I[5] | I[8])
-@inline second_order_bounds_check(I::NTuple{12}, ::NoBias) = @inbounds (I[4] | I[9])
-@inline  third_order_bounds_check(I::NTuple{12}, ::NoBias) = @inbounds (I[3] | I[10])
-@inline fourth_order_bounds_check(I::NTuple{12}, ::NoBias) = @inbounds (I[2] | I[11])
-@inline  fifth_order_bounds_check(I::NTuple{12}, ::NoBias) = @inbounds (I[1] | I[12])
+@inline second_order_bounds_check(I::NTuple{10}, bias) = @inbounds ifelse(bias == LeftBias,  I[3] | I[7],
+                                                                   ifelse(bias == RightBias, I[4] | I[8],
+                                                                                             I[3] | I[8]))
+@inline  third_order_bounds_check(I::NTuple{10}, bias) = @inbounds ifelse(bias == LeftBias,  I[2] | I[8],
+                                                                   ifelse(bias == RightBias, I[3] | I[9],
+                                                                                             I[2] | I[9]))
+@inline fourth_order_bounds_check(I::NTuple{10}, bias) = @inbounds ifelse(bias == LeftBias,  I[1] | I[9],
+                                                                   ifelse(bias == RightBias, I[2] | I[10],
+                                                                                             I[1] | I[10]))
 
-# LeftBias immersed bounds checks
-@inline first_order_bounds_check(I::NTuple{4}, ::LeftBias) = @inbounds (I[1] | I[4])
-
-@inline  first_order_bounds_check(I::NTuple{6}, ::LeftBias) = @inbounds (I[2] | I[5])
-@inline second_order_bounds_check(I::NTuple{6}, ::LeftBias) = @inbounds (I[1] | I[5])
-
-@inline  first_order_bounds_check(I::NTuple{8}, ::LeftBias) = @inbounds (I[3] | I[6])
-@inline second_order_bounds_check(I::NTuple{8}, ::LeftBias) = @inbounds (I[2] | I[6])
-@inline  third_order_bounds_check(I::NTuple{8}, ::LeftBias) = @inbounds (I[1] | I[7])
-
-@inline  first_order_bounds_check(I::NTuple{10}, ::LeftBias) = @inbounds (I[4] | I[7])
-@inline second_order_bounds_check(I::NTuple{10}, ::LeftBias) = @inbounds (I[3] | I[7])
-@inline  third_order_bounds_check(I::NTuple{10}, ::LeftBias) = @inbounds (I[2] | I[8])
-@inline fourth_order_bounds_check(I::NTuple{10}, ::LeftBias) = @inbounds (I[1] | I[9])
-
-@inline  first_order_bounds_check(I::NTuple{12}, ::LeftBias) = @inbounds (I[5] | I[8])
-@inline second_order_bounds_check(I::NTuple{12}, ::LeftBias) = @inbounds (I[4] | I[8])
-@inline  third_order_bounds_check(I::NTuple{12}, ::LeftBias) = @inbounds (I[3] | I[9])
-@inline fourth_order_bounds_check(I::NTuple{12}, ::LeftBias) = @inbounds (I[2] | I[10])
-@inline  fifth_order_bounds_check(I::NTuple{12}, ::LeftBias) = @inbounds (I[1] | I[11])
-
-# RightBias immersed bounds checks
-@inline first_order_bounds_check(I::NTuple{4}, ::RightBias) = @inbounds (I[1] | I[4])
-
-@inline  first_order_bounds_check(I::NTuple{6}, ::RightBias) = @inbounds (I[2] | I[5])
-@inline second_order_bounds_check(I::NTuple{6}, ::RightBias) = @inbounds (I[2] | I[6])
-
-@inline  first_order_bounds_check(I::NTuple{8}, ::RightBias) = @inbounds (I[3] | I[6])
-@inline second_order_bounds_check(I::NTuple{8}, ::RightBias) = @inbounds (I[3] | I[7])
-@inline  third_order_bounds_check(I::NTuple{8}, ::RightBias) = @inbounds (I[2] | I[8])
-
-@inline  first_order_bounds_check(I::NTuple{10}, ::RightBias) = @inbounds (I[4] | I[7])
-@inline second_order_bounds_check(I::NTuple{10}, ::RightBias) = @inbounds (I[4] | I[8])
-@inline  third_order_bounds_check(I::NTuple{10}, ::RightBias) = @inbounds (I[3] | I[9])
-@inline fourth_order_bounds_check(I::NTuple{10}, ::RightBias) = @inbounds (I[2] | I[10])
-
-@inline  first_order_bounds_check(I::NTuple{12}, ::RightBias) = @inbounds (I[5] | I[8])
-@inline second_order_bounds_check(I::NTuple{12}, ::RightBias) = @inbounds (I[5] | I[9])
-@inline  third_order_bounds_check(I::NTuple{12}, ::RightBias) = @inbounds (I[4] | I[10])
-@inline fourth_order_bounds_check(I::NTuple{12}, ::RightBias) = @inbounds (I[3] | I[11])
-@inline  fifth_order_bounds_check(I::NTuple{12}, ::RightBias) = @inbounds (I[2] | I[12])
+@inline second_order_bounds_check(I::NTuple{12}, bias) = @inbounds ifelse(bias == LeftBias,  I[4] | I[8],
+                                                                   ifelse(bias == RightBias, I[5] | I[9],
+                                                                                             I[4] | I[9]))
+@inline  third_order_bounds_check(I::NTuple{12}, bias) = @inbounds ifelse(bias == LeftBias,  I[3] | I[9],
+                                                                   ifelse(bias == RightBias, I[4] | I[10],
+                                                                                             I[3] | I[10]))
+@inline fourth_order_bounds_check(I::NTuple{12}, bias) = @inbounds ifelse(bias == LeftBias,  I[2] | I[10],
+                                                                   ifelse(bias == RightBias, I[3] | I[11],
+                                                                                             I[2] | I[11]))
+@inline  fifth_order_bounds_check(I::NTuple{12}, bias) = @inbounds ifelse(bias == LeftBias,  I[1] | I[11],
+                                                                   ifelse(bias == RightBias, I[2] | I[12],
+                                                                                             I[1] | I[12]))
