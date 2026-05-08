@@ -1,6 +1,16 @@
 using Oceananigans: fields
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
+# Build halo-fill args in the OffsetArray-method shape of `fill_halo_regions!`
+# (data, bcs, indices, loc, grid, [communication_buffers,] args...)
+@inline build_halo_fill_args(field, grid, args...) = 
+    (field.data, field.boundary_conditions, field.indices,
+     instantiated_location(field), grid, args...)
+
+@inline build_halo_fill_args(field, grid::DistributedGrid, args...) =
+    (field.data, field.boundary_conditions, field.indices,
+     instantiated_location(field), grid, field.communication_buffers, args...)
+
 # Selection between topology-aware and non-aware operators depending on
 # whether we fill halos or not in between substeps.
 #
@@ -115,18 +125,21 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
     U_args = (grid, Val(true), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
     η_args = (grid, Val(true), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
 
-    # Barotropic model fields for open boundary condition halo filling (e.g. Flather).
-    # Flather requires access to η via model_fields.
     barotropic_model_fields = (; U, V, η)
-    U_halo_args = ((U, V), clock, barotropic_model_fields)
-    η_halo_args = (η,      clock, barotropic_model_fields)
 
-    GC.@preserve U_args η_args U_halo_args η_halo_args begin
+    # Build halo-fill args in the OffsetArray-method shape of `fill_halo_regions!`
+    # (data, bcs, indices, loc, grid, communication_buffers, args...)
+    @apply_regionally U_halo_args = build_halo_fill_args(U, grid, clock, barotropic_model_fields)
+    @apply_regionally V_halo_args = build_halo_fill_args(V, grid, clock, barotropic_model_fields)
+    @apply_regionally η_halo_args = build_halo_fill_args(η, grid, clock, barotropic_model_fields)
+
+    GC.@preserve U_args η_args U_halo_args V_halo_args η_halo_args begin
         # We need to perform ~50 time-steps which means launching ~100 very small kernels: we are limited by latency of
         # argument conversion to GPU-compatible values. To alleviate this penalty we convert first and then we substep!
         @apply_regionally converted_U_args = convert_to_device(arch, U_args)
         @apply_regionally converted_η_args = convert_to_device(arch, η_args)
         @apply_regionally converted_U_halo_args = convert_to_device(arch, U_halo_args)
+        @apply_regionally converted_V_halo_args = convert_to_device(arch, V_halo_args)
         @apply_regionally converted_η_halo_args = convert_to_device(arch, η_halo_args)
 
         @unroll for substep in 1:Nsubsteps
@@ -137,6 +150,7 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
             @apply_regionally apply_barotropic_kernel!(velocity_kernel!, transport_weight, converted_U_args)
 
             fill_halo_regions!(converted_U_halo_args...; only_local_halos = true)
+            fill_halo_regions!(converted_V_halo_args...; only_local_halos = true)
             @apply_regionally apply_barotropic_kernel!(free_surface_kernel!, averaging_weight, converted_η_args)
         end
     end
