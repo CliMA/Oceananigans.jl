@@ -118,20 +118,20 @@ const RadiationOBC = BoundaryCondition{<:Open{<:Radiation}}
 # The arrays hold previous-timestep values (φᵇⁿ and φ₁ⁿ) that must
 # not be stored in the field's halo (which gets modified by other kernels).
 
-function materialize_radiation_storage(radiation::Radiation, grid, dim)
+function materialize_radiation_storage(radiation::Radiation, grid, loc, dim)
     FT = eltype(grid)
-    Nx, Ny, Nz = size(grid)
+    Sx, Sy, Sz = size(grid, loc) # loc-aware: Face on Bounded gives N+1, matching the kernel range
     arch = architecture(grid)
 
     if dim == 1      # x-boundary (east/west): indexed by (j, k)
-        φᵇ = on_architecture(arch, zeros(FT, Ny, Nz))
-        φ₁ = on_architecture(arch, zeros(FT, Ny, Nz))
+        φᵇ = on_architecture(arch, zeros(FT, Sy, Sz))
+        φ₁ = on_architecture(arch, zeros(FT, Sy, Sz))
     elseif dim == 2  # y-boundary (north/south): indexed by (i, k)
-        φᵇ = on_architecture(arch, zeros(FT, Nx, Nz))
-        φ₁ = on_architecture(arch, zeros(FT, Nx, Nz))
+        φᵇ = on_architecture(arch, zeros(FT, Sx, Sz))
+        φ₁ = on_architecture(arch, zeros(FT, Sx, Sz))
     else             # z-boundary (top/bottom): indexed by (i, j)
-        φᵇ = on_architecture(arch, zeros(FT, Nx, Ny))
-        φ₁ = on_architecture(arch, zeros(FT, Nx, Ny))
+        φᵇ = on_architecture(arch, zeros(FT, Sx, Sy))
+        φ₁ = on_architecture(arch, zeros(FT, Sx, Sy))
     end
 
     return Radiation(radiation.outflow_relaxation_timescale,
@@ -143,7 +143,7 @@ end
 function regularize_boundary_condition(bc::RadiationOBC, grid, loc, dim, args...)
     regularized_condition = regularize_boundary_condition(bc.condition, grid, loc, dim, args...)
     radiation = bc.classification.scheme
-    materialized_radiation = materialize_radiation_storage(radiation, grid, dim)
+    materialized_radiation = materialize_radiation_storage(radiation, grid, loc, dim)
     classification = Open(materialized_radiation)
     return BoundaryCondition(classification, regularized_condition)
 end
