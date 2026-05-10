@@ -87,6 +87,15 @@ TimeStepper(::Val{:FastRungeKutta3}, args...; kwargs...) =
 TimeStepper(::Val{:LeMoinRungeKutta3}, args...; kwargs...) =
     LeMoinRungeKutta3TimeStepper(args...; kwargs...)
 
+TimeStepper(::Val{:LeMoinRungeKutta3FPJ0}, args...; kwargs...) =
+    LeMoinRungeKutta3TimeStepper(args...; α=0, β=0, kwargs...)
+
+TimeStepper(::Val{:LeMoinRungeKutta3FPJ1}, args...; kwargs...) =
+    LeMoinRungeKutta3TimeStepper(args...; α=1, β=0, kwargs...)
+
+TimeStepper(::Val{:LeMoinRungeKutta3FPJ2}, args...; kwargs...) =
+    LeMoinRungeKutta3TimeStepper(args...; α=1//2, β=1//2, kwargs...)
+
 # Convenience constructors for SplitRungeKuttaTimeStepper with 2 to 5 stages
 # By calling TimeStepper(:SplitRungeKuttaN, ...)
 for stages in 2:5
