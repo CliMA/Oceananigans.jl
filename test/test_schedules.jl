@@ -3,7 +3,7 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, ConsecutiveIterations
 using Oceananigans.Utils: schedule_aligned_time_step, next_actuation_time
 using Oceananigans.TimeSteppers: Clock
-using Oceananigans: initialize!
+using Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
 
 @testset "Schedules" begin
     @info "Testing schedules..."
@@ -45,6 +45,33 @@ using Oceananigans: initialize!
     @test ti_normal((; clock=Clock(time=2.5, iteration=1)))
     @test !(ti_normal((; clock=Clock(time=2.5, iteration=1))))
     @test ti_normal.actuations == 1
+
+    # Restore across pickup with the SAME interval: phase preserved.
+    ti_old = TimeInterval(2)
+    ti_old.first_actuation_time = 0.0
+    ti_old.actuations = 42
+    state = prognostic_state(ti_old)
+    @test haskey(state, :interval)
+
+    ti_same = TimeInterval(2)
+    restore_prognostic_state!(ti_same, state)
+    @test ti_same.first_actuation_time == 0.0
+    @test ti_same.actuations == 42
+    @test next_actuation_time(ti_same) == 86.0
+
+    # Restore across pickup with a different interval
+    ti_changed = TimeInterval(10)
+    restore_prognostic_state!(ti_changed, state)
+    @test ti_changed.first_actuation_time == 0.0
+    @test ti_changed.actuations == 0
+    @test ti_changed.interval == 10.0
+
+    # And that schedule, when called with a clock far in the future, fires
+    # once and aligns subsequent fires to the new interval's phase grid.
+    far_clock = (; clock=Clock(time=95.0, iteration=42))
+    @test ti_changed(far_clock)
+    @test !(ti_changed(far_clock))
+    @test next_actuation_time(ti_changed) == 100.0   
 
     # IterationInterval
     ii = IterationInterval(3)

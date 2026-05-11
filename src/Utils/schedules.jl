@@ -101,12 +101,16 @@ end
 
 function prognostic_state(schedule::TimeInterval)
     return (first_actuation_time = schedule.first_actuation_time,
-            actuations = schedule.actuations)
+            actuations = schedule.actuations,
+            interval = schedule.interval)
 end
 
 function restore_prognostic_state!(restored::TimeInterval, from)
-    restored.first_actuation_time = from.first_actuation_time
-    restored.actuations = from.actuations
+    # Phase across restart is only meaningful if the interval is the same.
+    if hasproperty(from, :interval) && from.interval == restored.interval
+        restored.first_actuation_time = from.first_actuation_time
+        restored.actuations = from.actuations
+    end
     return restored
 end
 
