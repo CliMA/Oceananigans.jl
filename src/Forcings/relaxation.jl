@@ -214,6 +214,62 @@ Base.summary(p::PiecewiseLinearMask{D}) where D =
     "piecewise_linear($D, center=$(p.center), width=$(p.width))"
 
 
+"""
+    CosineRampMask{D}(start, stop)
+
+Callable object that returns a half-cosine ramp masking function varying
+between `0` at coordinate `start` and `1` at coordinate `stop`, along
+direction `D`. Outside the interval the mask is clamped to its endpoint
+values. Inside the interval the mask is
+
+```
+(1 - cos(π * (D - start) / (stop - start))) / 2
+```
+
+The sign of `stop - start` flips the ramp direction, so the same struct
+covers upward (`start < stop`) and downward (`start > stop`) ramps —
+useful for upper/lower sponge layers and Davies-style lateral nudging
+zones.
+
+Example
+=======
+
+Create a z-ramp that smoothly transitions from 0 at `z = 1500` to 1 at
+`z = 2500`.
+
+```jldoctest
+julia> using Oceananigans
+
+julia> mask = CosineRampMask{:z}(start=1500, stop=2500)
+CosineRampMask{:z, Int64}(1500, 2500)
+```
+"""
+struct CosineRampMask{D, T}
+    start :: T
+     stop :: T
+
+    function CosineRampMask{D}(; start, stop) where D
+        start == stop && throw(ArgumentError("CosineRampMask{$D}: start ≠ stop required"))
+        T = promote_type(typeof(start), typeof(stop))
+        return new{D, T}(start, stop)
+    end
+end
+
+@inline _cosine_ramp(r) = (one(r) - cos(π * r)) / 2
+
+@inline function _ramp(m::CosineRampMask, ξ)
+    r = clamp((ξ - m.start) / (m.stop - m.start), zero(ξ), one(ξ))
+    return _cosine_ramp(r)
+end
+
+@inline (m::CosineRampMask{:x})(x, y, z) = _ramp(m, x)
+@inline (m::CosineRampMask{:y})(x, y, z) = _ramp(m, y)
+@inline (m::CosineRampMask{:z})(x, y, z) = _ramp(m, z)
+
+Base.summary(m::CosineRampMask{D}) where D =
+    "cosine_ramp($D, start=$(m.start), stop=$(m.stop))"
+
+
 #####
 ##### Linear target functions
 #####
