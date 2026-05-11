@@ -35,9 +35,9 @@ using Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
     initialize!(ti_catchup, fake_model_at_iter_0)
     far_future_model = (; clock=Clock(time=100.0, iteration=1000))
 
-    @test ti_catchup(far_future_model)            
-    @test !(ti_catchup(far_future_model))         
-    @test next_actuation_time(ti_catchup) > 100.0 
+    @test ti_catchup(far_future_model)
+    @test !(ti_catchup(far_future_model))
+    @test next_actuation_time(ti_catchup) > 100.0
 
     # Normal one-firing-per-crossing is preserved
     ti_normal = TimeInterval(2)
@@ -71,7 +71,7 @@ using Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
     far_clock = (; clock=Clock(time=95.0, iteration=42))
     @test ti_changed(far_clock)
     @test !(ti_changed(far_clock))
-    @test next_actuation_time(ti_changed) == 100.0   
+    @test next_actuation_time(ti_changed) == 100.0
 
     # IterationInterval
     ii = IterationInterval(3)
