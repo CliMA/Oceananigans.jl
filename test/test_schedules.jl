@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, ConsecutiveIterations
-using Oceananigans.Utils: schedule_aligned_time_step
+using Oceananigans.Utils: schedule_aligned_time_step, next_actuation_time
 using Oceananigans.TimeSteppers: Clock
 using Oceananigans: initialize!
 
@@ -29,6 +29,22 @@ using Oceananigans: initialize!
     @test ti(fake_model_at_time_2)
     @test !(ti(fake_model_at_time_3))
     @test initialize!(ti, fake_model_at_iter_0)
+
+    # Catchup behavior
+    ti_catchup = TimeInterval(2)
+    initialize!(ti_catchup, fake_model_at_iter_0)
+    far_future_model = (; clock=Clock(time=100.0, iteration=1000))
+
+    @test ti_catchup(far_future_model)            
+    @test !(ti_catchup(far_future_model))         
+    @test next_actuation_time(ti_catchup) > 100.0 
+
+    # Normal one-firing-per-crossing is preserved
+    ti_normal = TimeInterval(2)
+    initialize!(ti_normal, fake_model_at_iter_0)
+    @test ti_normal((; clock=Clock(time=2.5, iteration=1)))
+    @test !(ti_normal((; clock=Clock(time=2.5, iteration=1))))
+    @test ti_normal.actuations == 1
 
     # IterationInterval
     ii = IterationInterval(3)

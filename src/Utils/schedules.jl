@@ -79,6 +79,10 @@ function (schedule::TimeInterval)(model)
     if t >= t★
         if schedule.actuations < typemax(Int)
             schedule.actuations += 1
+            # Advance actuations so the next actuation is strictly in the future.
+            while schedule.actuations < typemax(Int) && next_actuation_time(schedule) <= t
+                schedule.actuations += 1
+            end
         else # re-initialize the schedule to t★
             initialize!(schedule, t★)
         end
