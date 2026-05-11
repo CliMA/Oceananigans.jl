@@ -39,13 +39,15 @@ end
             @test isnothing(cmaps.momentum)
             @test isnothing(cmaps.c)
 
-            # Serial non-immersed, fully periodic: cond=nothing always
+            # Serial non-immersed, fully periodic: boundary is nothing
             grid = RectilinearGrid(arch; size=(N, N, N), halo=(H, H, H), extent=(1, 1, 1), topology=(Periodic, Periodic, Periodic))
             cmaps = generate_condition_maps(grid, advection;
                                             condition_momentum_advection=true,
                                             condition_tracer_advection=true)
-            @test isnothing(cmaps.momentum)
-            @test isnothing(cmaps.c)
+            @test isnothing(cmaps.momentum.boundary)
+            @test length(cmaps.momentum.interior) == N^3
+            @test isnothing(cmaps.c.boundary)
+            @test length(cmaps.c.interior) == N^3
             @test isnothing(get_active_cells_map(grid, Val(:core)))
 
             # Serial non-immersed, bounded: cond = InteriorBoundarySet

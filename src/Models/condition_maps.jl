@@ -59,7 +59,7 @@ function compute_advection_conditioned_map(scheme, grid, workspec)
     launch!(architecture(grid), grid, workspec, _condition_map!, max_scheme_field, grid, scheme)
 
     interior_indices, boundary_indices = split_indices(max_scheme_field, grid, workspec)
-    isempty(boundary_indices) && return nothing
+    isempty(interior_indices) && return nothing
     return InteriorBoundarySet(interior_indices, boundary_indices)
 end
 
