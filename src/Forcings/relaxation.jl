@@ -255,16 +255,14 @@ struct CosineRampMask{D, T}
     end
 end
 
-@inline _cosine_ramp(r) = (one(r) - cos(π * r)) / 2
-
-@inline function _ramp(m::CosineRampMask, ξ)
-    r = clamp((ξ - m.start) / (m.stop - m.start), zero(ξ), one(ξ))
-    return _cosine_ramp(r)
+@inline function cosine_ramp(m::CosineRampMask, ξ)
+    r = clamp((ξ - m.start) / (m.stop - m.start), 0, 1))
+    return (1 - cos(π * r)) / 2
 end
 
-@inline (m::CosineRampMask{:x})(x, y, z) = _ramp(m, x)
-@inline (m::CosineRampMask{:y})(x, y, z) = _ramp(m, y)
-@inline (m::CosineRampMask{:z})(x, y, z) = _ramp(m, z)
+@inline (m::CosineRampMask{:x})(x, y, z) = cosine_ramp(m, x)
+@inline (m::CosineRampMask{:y})(x, y, z) = cosine_ramp(m, y)
+@inline (m::CosineRampMask{:z})(x, y, z) = cosine_ramp(m, z)
 
 Base.summary(m::CosineRampMask{D}) where D =
     "cosine_ramp($D, start=$(m.start), stop=$(m.stop))"
