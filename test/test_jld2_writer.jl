@@ -86,6 +86,87 @@ function test_jld2_size_file_splitting(arch)
     return nothing
 end
 
+function test_jld2_async_io_matches_sync(arch)
+    # Verify that async output is byte-identical to synchronous output for the same simulation.
+    function build_sim(asynchronous, filename)
+        grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+        model = NonhydrostaticModel(grid; tracers=:c)
+        set!(model,
+             u = (x, y, z) -> sin(2π * x) * cos(2π * y),
+             v = (x, y, z) -> cos(2π * x) * sin(2π * y),
+             w = (x, y, z) -> 0.0,
+             c = (x, y, z) -> z)
+
+        sim = Simulation(model, Δt=0.001, stop_iteration=5)
+        sim.output_writers[:fields] = JLD2Writer(model,
+                                                 merge(model.velocities, (; c=model.tracers.c));
+                                                 dir = ".",
+                                                 filename = filename,
+                                                 schedule = IterationInterval(1),
+                                                 overwrite_existing = true,
+                                                 asynchronous = asynchronous)
+        return sim
+    end
+
+    function read_timeseries_data(filepath)
+        return jldopen(filepath, "r") do f
+            ts = f["timeseries"]
+            result = Dict{String, Dict{String, Any}}()
+            for name in keys(ts)
+                result[name] = Dict{String, Any}()
+                for key in keys(ts[name])
+                    key == "serialized" && continue
+                    result[name][key] = f["timeseries/$name/$key"]
+                end
+            end
+            return result
+        end
+    end
+
+    sync_file = "test_async_io_sync.jld2"
+    async_file = "test_async_io_async.jld2"
+    isfile(sync_file) && rm(sync_file)
+    isfile(async_file) && rm(async_file)
+
+    sim_sync = build_sim(false, sync_file)
+    sim_async = build_sim(true, async_file)
+
+    # Type-parameter dispatch: both are JLD2Writer; only the async one matches AsyncOutputWriter.
+    @test sim_sync.output_writers[:fields] isa JLD2Writer
+    @test sim_async.output_writers[:fields] isa JLD2Writer
+    @test sim_sync.output_writers[:fields] isa SyncOutputWriter
+    @test sim_async.output_writers[:fields] isa AsyncOutputWriter
+    @test !is_asynchronous(sim_sync.output_writers[:fields])
+    @test  is_asynchronous(sim_async.output_writers[:fields])
+
+    run!(sim_sync)
+    run!(sim_async)
+
+    # `run!` should have flushed pending async writes.
+    @test isfile(sync_file)
+    @test isfile(async_file)
+
+    sync_data = read_timeseries_data(sync_file)
+    async_data = read_timeseries_data(async_file)
+
+    @test sort(collect(keys(sync_data))) == sort(collect(keys(async_data)))
+    for name in keys(sync_data)
+        @test sort(collect(keys(sync_data[name]))) == sort(collect(keys(async_data[name])))
+        for it in keys(sync_data[name])
+            @test sync_data[name][it] == async_data[name][it]
+        end
+    end
+
+    # Calling `wait_for_async_writes!` after a run is a no-op (no pending tasks).
+    wait_for_async_writes!(sim_async)
+    wait_for_async_writes!(sim_async)
+
+    rm(sync_file)
+    rm(async_file)
+
+    return nothing
+end
+
 function test_jld2_time_file_splitting(arch)
     grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1), halo=(1, 1, 1))
     model = NonhydrostaticModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
@@ -451,6 +532,12 @@ for arch in archs
 
         test_jld2_size_file_splitting(arch)
         test_jld2_time_file_splitting(arch)
+
+        #####
+        ##### Async I/O
+        #####
+
+        test_jld2_async_io_matches_sync(arch)
 
         #####
         ##### Time-averaging

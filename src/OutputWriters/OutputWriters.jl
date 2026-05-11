@@ -3,6 +3,8 @@ module OutputWriters
 export
     JLD2Writer, NetCDFWriter, written_names,
     Checkpointer, checkpoint, WindowedTimeAverage, FileSizeLimit,
+    Synchronous, Asynchronous, AsyncOutputWriter, SyncOutputWriter,
+    is_asynchronous, wait_for_async_writes!,
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval, AveragedSpecifiedTimes
 
 using Oceananigans.Architectures
@@ -10,7 +12,7 @@ using Oceananigans.Grids
 using Oceananigans.Fields
 
 using Oceananigans: boundary_conditions
-using Oceananigans: AbstractOutputWriter
+using Oceananigans: AbstractOutputWriter, AbstractModel
 using Oceananigans.Grids: interior_indices
 using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, instantiate
 using Oceananigans.Utils: pretty_filesize
@@ -33,6 +35,7 @@ include("fetch_output.jl")
 include("averaged_specified_times.jl")
 include("windowed_time_average.jl")
 include("output_construction.jl")
+include("async_output_writer.jl")
 include("jld2_writer.jl")
 include("output_attributes.jl")
 include("netcdf_writer.jl")

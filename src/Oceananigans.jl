@@ -102,6 +102,8 @@ export
 
     # Output writers
     NetCDFWriter, JLD2Writer, Checkpointer,
+    Synchronous, Asynchronous, AsyncOutputWriter, SyncOutputWriter,
+    is_asynchronous, wait_for_async_writes!,
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval, ConsecutiveIterations,
     SpecifiedTimes, FileSizeLimit, AndSchedule, OrSchedule, written_names,
 
@@ -187,11 +189,13 @@ model state.
 abstract type AbstractDiagnostic end
 
 """
-    AbstractOutputWriter
+    AbstractOutputWriter{A}
 
-Abstract supertype for output writers that write data to disk.
+Abstract supertype for output writers that write data to disk. The type parameter
+`A` is a singleton tag (`Synchronous` or `Asynchronous`) indicating whether the
+writer's disk-write phase runs on the main thread or on a background task.
 """
-abstract type AbstractOutputWriter end
+abstract type AbstractOutputWriter{A} end
 
 # Callsites for Callbacks
 struct TimeStepCallsite end

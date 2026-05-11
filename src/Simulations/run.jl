@@ -4,7 +4,7 @@ using Oceananigans: AbstractModel, run_diagnostic!, restore_prognostic_state!
 using Oceananigans.Architectures: architecture
 using Oceananigans.Diagnostics: nan_detected
 using Oceananigans.DistributedComputations: all_reduce
-using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_path, load_checkpoint_state
+using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_path, load_checkpoint_state, wait_for_async_writes!
 using Oceananigans.TimeSteppers: update_state!, unit_time
 
 import Oceananigans: initialize!
@@ -175,6 +175,10 @@ function run!(sim; pickup=false, checkpoint_at_end=false)
     while sim.running
         time_step!(sim)
     end
+
+    # Flush any in-flight async writes before checkpointing or finalizing,
+    # so the on-disk state reflects all output produced during this run.
+    wait_for_async_writes!(sim)
 
     if checkpoint_at_end
         if nan_checker_detected_nan(sim)

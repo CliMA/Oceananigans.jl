@@ -7,7 +7,7 @@ using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
 import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.Fields: set!
 
-mutable struct Checkpointer{T} <: AbstractOutputWriter
+mutable struct Checkpointer{T} <: AbstractOutputWriter{Synchronous}
     schedule :: T
     dir :: String
     prefix :: String
