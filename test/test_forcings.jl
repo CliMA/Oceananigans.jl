@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
 using Oceananigans.Fields: Field
-using Oceananigans.Forcings: MultipleForcings
+using Oceananigans.Forcings: MultipleForcings, FieldTimeSeriesTarget, FieldTimeSeriesRelaxation
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, immersed_peripheral_node, peripheral_node
 
 """ Take one time step with three forcing arrays on u, v, w. """
@@ -501,6 +501,44 @@ end
                 @info "      Testing relaxation forcing functions [$A]..."
                 @test relaxed_time_stepping(arch, GaussianMask)
                 @test relaxed_time_stepping(arch, PiecewiseLinearMask)
+            end
+
+            @testset "Relaxation with FieldTimeSeries target [$A]" begin
+                @info "      Testing Relaxation with FieldTimeSeries target [$A]..."
+
+                grid = RectilinearGrid(arch, size=(2, 2, 4), extent=(100, 100, 1000))
+                τ     = 60.0
+                c_ref = 5.0
+
+                fts = FieldTimeSeries{Center, Center, Center}(grid, [0.0, 1e6])
+                for n in eachindex(fts.times)
+                    parent(fts[n]) .= c_ref
+                end
+
+                r = Relaxation(rate=1/τ, target=fts)
+                model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r))
+
+                # Materialization wires the FTS in and rewrites target to a FieldTimeSeriesTarget.
+                rm = model.forcing.c
+                @test rm isa FieldTimeSeriesRelaxation
+                @test rm.target isa FieldTimeSeriesTarget
+                @test rm.target.field_time_series === fts
+                @test rm.target.location == (Center(), Center(), Center())
+
+                # Analytical convergence: dc/dt = (c_ref - c)/τ ⇒ after one step,
+                # c ≈ c_ref * (1 - exp(-Δt/τ)) for c(0) = 0.
+                set!(model, c=0)
+                Δt = 1.0
+                time_step!(model, Δt)
+                c_after  = Array(interior(model.tracers.c))
+                expected = c_ref * (1 - exp(-Δt/τ))
+                @test all(isapprox.(c_after, expected; atol=1e-6 * c_ref))
+
+                # Extent validation: FTS strictly smaller than the simulation grid throws.
+                small_grid = RectilinearGrid(arch, size=(2, 2, 4), extent=(50, 50, 500))
+                fts_small  = FieldTimeSeries{Center, Center, Center}(small_grid, [0.0, 1e6])
+                r_small    = Relaxation(rate=1/τ, target=fts_small)
+                @test_throws ArgumentError NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r_small))
             end
 
             @testset "Advective and multiple forcing [$A]" begin
