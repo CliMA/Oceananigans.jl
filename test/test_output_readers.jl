@@ -9,7 +9,7 @@ using NCDatasets
 
 function generate_nonzero_simulation_data(Lx, Δt, FT; architecture=CPU())
     grid = RectilinearGrid(architecture, size=10, x=(0, Lx), topology=(Periodic, Flat, Flat))
-    model = NonhydrostaticModel(grid; tracers = (:T, :S), momentum_advection = nothing, tracer_advection = nothing)
+    model = NonhydrostaticModel(grid; tracers = (:T, :S), advection = nothing)
     set!(model, T=30, S=35)
     simulation = Simulation(model; Δt, stop_iteration=100)
 

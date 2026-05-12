@@ -23,8 +23,7 @@ r_sediment = 1e-4 # m (Fine sand)
 sinking = AdvectiveForcing(w=w_sediment)
 
 model = NonhydrostaticModel(grid;
-                            momentum_advection = WENO(),
-                            tracer_advection = WENO(),
+                            advection = WENO(),
                             timestepper = :RungeKutta3,
                             tracers = (:b, :sediment),
                             buoyancy = BuoyancyTracer(),

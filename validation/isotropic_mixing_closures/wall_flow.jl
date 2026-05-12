@@ -26,8 +26,7 @@ function run_wall_flow(closure; arch=CPU(), H=1, L=2π*H, N=32, u★=1, z₀ = 1
     u_forcing = Forcing(x_pressure_gradient, parameters=(; u★, H))
 
     model = NonhydrostaticModel(grid; timestepper = :RungeKutta3,
-                                momentum_advection = WENO(grid, order=5),
-                                tracer_advection = WENO(grid, order=5),
+                                advection = WENO(grid, order=5),
                                 boundary_conditions = (; u=u_bcs, v=v_bcs),
                                 forcing = (; u = u_forcing),
                                 closure = closure)

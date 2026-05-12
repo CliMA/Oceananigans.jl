@@ -107,8 +107,7 @@ function cylinder_model(open_boundaries;
     model = NonhydrostaticModel(grid;
                                 pressure_solver,
                                 closure,
-                                momentum_advection = advection,
-                                tracer_advection = advection,
+                                advection,
                                 boundary_conditions)
 
     @show model

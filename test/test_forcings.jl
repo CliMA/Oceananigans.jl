@@ -303,7 +303,7 @@ function test_momentum_flux_zero_at_peripheral_nodes(scheme)
     # node configurations (not just a uniform flat slab).
     bottom_height = -1 .+ rand(Nx, Ny) .* 0.8  # varies between -1 and -0.2
     ibg = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
-    model = NonhydrostaticModel(ibg; momentum_advection=scheme, tracer_advection=scheme)
+    model = NonhydrostaticModel(ibg, advection=scheme)
 
     # Set non-zero velocities everywhere, then zero out immersed cells via masking.
     set!(model, u=1, v=1, w=1)
@@ -374,7 +374,7 @@ function test_settling_tracer_comparison(arch; open_bottom=true)
 
         # Create settling forcing with the velocity field
         settling_forcing = AdvectiveForcing(w = w_settle_field)
-        model = NonhydrostaticModel(grid; momentum_advection=WENO(order=5), tracer_advection=WENO(order=5), tracers = :c, forcing = (c = settling_forcing,))
+        model = NonhydrostaticModel(grid; advection=WENO(order=5), tracers = :c, forcing = (c = settling_forcing,))
 
         # Initial condition: patch of tracer c=1 in the upper part
         z_center = -Lz/4  # Upper quarter of domain

@@ -58,8 +58,7 @@ function run_nonhydrostatic_simulation!(grid_size;
     params = (; N², Δb, Ly, λ = 10days)
 
     model = NonhydrostaticModel(grid;
-                                momentum_advection = WENO(order = 9),
-                                tracer_advection = WENO(order = 9),
+                                advection = WENO(order = 9),
                                 coriolis = FPlane(f = -1e-5),
                                 tracers = :b,
                                 buoyancy = BuoyancyTracer(),

@@ -89,8 +89,7 @@ nothing #hide
 # Runge-Kutta time-stepping scheme, and a `BuoyancyTracer`.
 
 model = NonhydrostaticModel(grid;
-                            momentum_advection = WENO(),
-                            tracer_advection = WENO(),
+                            advection = WENO(),
                             timestepper = :RungeKutta3,
                             tracers = :b,
                             buoyancy = BuoyancyTracer(),

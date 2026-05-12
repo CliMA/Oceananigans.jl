@@ -30,8 +30,7 @@ function wind_driven_turbulence_simulation(grid, advection, closure; stop_time=9
     model = NonhydrostaticModel(grid;
                                 closure,
                                 coriolis,
-                                momentum_advection = advection,
-                                tracer_advection = advection,
+                                advection,
                                 boundary_conditions = (; u=u_bcs),
                                 tracers = :b,
                                 buoyancy = BuoyancyTracer())

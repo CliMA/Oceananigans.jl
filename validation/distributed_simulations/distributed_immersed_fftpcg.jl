@@ -42,8 +42,7 @@ end
 
 function setup_model(grid, pressure_solver)
     model = NonhydrostaticModel(grid; pressure_solver,
-                                momentum_advection = WENO(),
-                                tracer_advection = WENO(),
+                                advection = WENO(),
                                 coriolis = FPlane(f = 0.1),
                                 tracers = :b,
                                 buoyancy = BuoyancyTracer())

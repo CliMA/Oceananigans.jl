@@ -48,6 +48,7 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
     tendencies           = model.timestepper.Gⁿ
     arch                 = model.architecture
     grid                 = model.grid
+    advection            = model.advection
     coriolis             = model.coriolis
     buoyancy             = model.buoyancy
     biogeochemistry      = model.biogeochemistry
@@ -65,7 +66,7 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
     v_immersed_bc        = velocities.v.boundary_conditions.immersed
     w_immersed_bc        = velocities.w.boundary_conditions.immersed
 
-    start_momentum_kernel_args = (model.advection.momentum,
+    start_momentum_kernel_args = (advection,
                                   coriolis,
                                   stokes_drift,
                                   closure)
@@ -102,18 +103,18 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
             tendencies.w, grid, w_kernel_args;
             active_cells_map, exclude_periphery)
 
-    end_tracer_kernel_args = (buoyancy, biogeochemistry, background_fields, velocities,
-                              tracers, auxiliary_fields, closure_fields)
+    start_tracer_kernel_args = (advection, closure)
+    end_tracer_kernel_args   = (buoyancy, biogeochemistry, background_fields, velocities,
+                                tracers, auxiliary_fields, closure_fields)
 
     for tracer_index in 1:length(tracers)
-        @inbounds c_tendency    = tendencies[tracer_index + 3]
-        @inbounds forcing       = forcings[tracer_index + 3]
+        @inbounds c_tendency = tendencies[tracer_index + 3]
+        @inbounds forcing = forcings[tracer_index + 3]
         @inbounds c_immersed_bc = tracers[tracer_index].boundary_conditions.immersed
-        @inbounds tracer_name   = keys(tracers)[tracer_index]
-        @inbounds c_advection   = model.advection[tracer_name]
+        @inbounds tracer_name = keys(tracers)[tracer_index]
 
         args = tuple(Val(tracer_index), Val(tracer_name),
-                     c_advection, closure,
+                     start_tracer_kernel_args...,
                      c_immersed_bc,
                      end_tracer_kernel_args...,
                      clock, forcing)

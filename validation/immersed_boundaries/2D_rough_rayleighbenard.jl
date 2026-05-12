@@ -78,8 +78,7 @@ function run_simulation(solver, preconditioner; Nr, Ra, Nz, Pr=1, IPS_reltol=1e-
     if solver == "FFT"
         model = NonhydrostaticModel(grid;
                                     # advection = Centered(),
-                                    momentum_advection = WENO(order=7),
-                                    tracer_advection = WENO(order=7),
+                                    advection = WENO(order=7),
                                     tracers = (:b),
                                     buoyancy = BuoyancyTracer(),
                                     closure = ScalarDiffusivity(ν=ν, κ=κ),
@@ -89,8 +88,7 @@ function run_simulation(solver, preconditioner; Nr, Ra, Nz, Pr=1, IPS_reltol=1e-
         model = NonhydrostaticModel(grid;
                                     pressure_solver = ImmersedPoissonSolver(grid, preconditioner=preconditioner, reltol=IPS_reltol),
                                     # advection = Centered(),
-                                    momentum_advection = WENO(order=7),
-                                    tracer_advection = WENO(order=7),
+                                    advection = WENO(order=7),
                                     tracers = (:b),
                                     buoyancy = BuoyancyTracer(),
                                     closure = ScalarDiffusivity(ν=ν, κ=κ),

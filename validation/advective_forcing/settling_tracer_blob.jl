@@ -55,8 +55,7 @@ function build_simulation(grid;
     # Create settling forcing with the velocity field
     c_forcing = AdvectiveForcing(w = w_settle_field)
 
-    model = NonhydrostaticModel(grid; momentum_advection = WENO(order=5),
-                                      tracer_advection = WENO(order=5),
+    model = NonhydrostaticModel(grid; advection = WENO(order=5),
                                       pressure_solver = ConjugateGradientPoissonSolver(grid),
                                       tracers = :c, forcing = (c = c_forcing,))
 

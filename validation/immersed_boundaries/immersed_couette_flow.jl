@@ -23,8 +23,7 @@ u_top_bc = ValueBoundaryCondition(1)
 u_bcs = FieldBoundaryConditions(immersed=u_immersed_bc, top=u_top_bc)
 
 model = NonhydrostaticModel(grid;
-                            momentum_advection = nothing,
-                            tracer_advection = nothing,
+                            advection = nothing,
                             timestepper = :RungeKutta3,
                             tracers = :c,
                             closure = VerticalScalarDiffusivity(; ν, κ),

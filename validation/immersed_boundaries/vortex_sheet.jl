@@ -73,8 +73,7 @@ pressure_solver = ConjugateGradientPoissonSolver(
     grid, maxiter=1000, preconditioner=preconditioner)
 
 model = NonhydrostaticModel(grid;
-    momentum_advection = WENO(),
-    tracer_advection = WENO(),
+    advection = WENO(),
     tracers = (:c, ),
     forcing = (; c = c_forcing, u = u_forcing),
     pressure_solver = pressure_solver,

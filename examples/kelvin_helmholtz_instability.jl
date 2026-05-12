@@ -139,8 +139,7 @@ fig
 # # The model
 
 model = NonhydrostaticModel(grid;
-                            momentum_advection = UpwindBiased(order=5),
-                            tracer_advection = UpwindBiased(order=5),
+                            advection = UpwindBiased(order=5),
                             background_fields = (u=U, b=B),
                             closure = ScalarDiffusivity(ν=2e-4, κ=2e-4),
                             buoyancy = BuoyancyTracer(),

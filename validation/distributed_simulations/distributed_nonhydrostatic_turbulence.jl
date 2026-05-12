@@ -22,8 +22,7 @@ grid = RectilinearGrid(arch; topology, size = (Nx, Ny), halo = (3, 3), x = (0, 2
 @show grid
 
 model = NonhydrostaticModel(grid;
-                            momentum_advection = WENO(),
-                            tracer_advection = WENO(),
+                            advection = WENO(),
                             closure = ScalarDiffusivity(ν = 1e-4, κ = 1e-4))
 
 # Use different seeds for different ranks

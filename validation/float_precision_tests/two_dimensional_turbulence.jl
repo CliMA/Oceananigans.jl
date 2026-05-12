@@ -13,8 +13,7 @@ grid = RectilinearGrid(size = (Nx, Ny),
 clock = Clock{Float64}(time=0)
 model = NonhydrostaticModel(grid;
                             clock,
-                            momentum_advection = WENO(order=9),
-                            tracer_advection = WENO(order=9))
+                            advection = WENO(order=9))
 
 ui(x, y) = randn()
 set!(model, u=ui, v=ui)

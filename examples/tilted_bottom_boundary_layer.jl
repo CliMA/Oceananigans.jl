@@ -145,8 +145,7 @@ V∞_field = BackgroundField(V∞)
 closure = ScalarDiffusivity(ν=1e-4, κ=1e-4)
 
 model = NonhydrostaticModel(grid; buoyancy, coriolis, closure,
-                            momentum_advection = UpwindBiased(order=5),
-                            tracer_advection = UpwindBiased(order=5),
+                            advection = UpwindBiased(order=5),
                             tracers = :b,
                             boundary_conditions = (u=u_bcs, v=v_bcs, b=b_bcs),
                             background_fields = (; b=B∞_field, v=V∞_field))
