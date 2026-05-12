@@ -49,7 +49,8 @@ function FieldTimeSeries(typed_path::NetCDFPath, name::String;
     Nt = time_indices_length(backend, times)
     data = new_data(eltype(grid), grid, loc, indices, Nt)
 
-    time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices,
+    runtime_backend = build_runtime_backend(backend, grid, loc, indices, times, path, name, time_indexing, boundary_conditions, reader_kw)
+    time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, runtime_backend, boundary_conditions, indices,
                                               times, path, name, time_indexing, reader_kw)
 
     set!(time_series, path, name)

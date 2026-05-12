@@ -6,6 +6,7 @@ env:
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
   XLA_REACTANT_GPU_PREALLOCATE: false
   OCEANANIGANS_DIR: "$HOME/Oceananigans.jl-$BUILDKITE_BUILD_NUMBER"
+  JULIA_NUM_THREADS: 2
 
 agents:
   queue: "Oceananigans"
