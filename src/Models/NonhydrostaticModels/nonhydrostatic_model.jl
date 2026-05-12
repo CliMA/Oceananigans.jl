@@ -57,10 +57,10 @@ end
 
 supported_timesteppers = (:QuasiAdamsBashforth2,
                           :RungeKutta3,
-                          :LeMoinRungeKutta3,
-                          :LeMoinRungeKutta3FPJ0,
-                          :LeMoinRungeKutta3FPJ1,
-                          :LeMoinRungeKutta3FPJ2)
+                          :PressureProjectionRungeKutta3,
+                          :ConstantPressureProjectionRungeKutta3,
+                          :LinearPressureProjectionRungeKutta3,
+                          :MidpointPressureProjectionRungeKutta3)
 
 """
     NonhydrostaticModel(grid;

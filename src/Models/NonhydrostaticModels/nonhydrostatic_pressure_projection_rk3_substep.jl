@@ -1,7 +1,7 @@
 using Oceananigans.TimeSteppers: _rk3_substep_field!, stage_Δt
 using Oceananigans.Operators: divᶜᶜᶜ, ∂xᶠᶜᶜ, ∂yᶜᶠᶜ, ∂zᶜᶜᶠ
 using Oceananigans.TurbulenceClosures: ScalarDiffusivity
-import Oceananigans.TimeSteppers: lm_rk3_substep!, seed_lm_pressures!
+import Oceananigans.TimeSteppers: pressure_projection_rk3_substep!, seed_pressure_projection_pressures!
 
 #####
 ##### Le & Moin (1991) viscous-divergence-correction term
@@ -9,13 +9,11 @@ import Oceananigans.TimeSteppers: lm_rk3_substep!, seed_lm_pressures!
 ##### When intermediate uᵏ⁻¹ is not divergence-free, the explicit Laplacian carries
 ##### a spurious gradient component: ν∇²u = ν∇(∇·u) − ν∇×(∇×u). Subtracting
 ##### ν∇(∇·u) from the velocity tendency leaves only the solenoidal part, matching
-##### what vanilla RK3 sees (where projection at every stage zeros ∇·u). The sign
-##### below (Gu -=) is verified empirically against the Taylor–Green convergence
-##### test in validation/convergence_tests/run_taylor_green_temporal.jl.
+##### what vanilla RK3 sees (where projection at every stage zeros ∇·u).
 
-@inline lm_rk3_kinematic_viscosity(::Any) = nothing
-@inline lm_rk3_kinematic_viscosity(::Nothing) = nothing
-@inline lm_rk3_kinematic_viscosity(c::ScalarDiffusivity) = c.ν isa Number ? c.ν : nothing
+@inline pressure_projection_kinematic_viscosity(::Any) = nothing
+@inline pressure_projection_kinematic_viscosity(::Nothing) = nothing
+@inline pressure_projection_kinematic_viscosity(c::ScalarDiffusivity) = c.ν isa Number ? c.ν : nothing
 
 @kernel function _compute_divergence!(δ, grid, u, v, w)
     i, j, k = @index(Global, NTuple)
@@ -30,7 +28,7 @@ end
 end
 
 function apply_divergence_correction!(model::NonhydrostaticModel)
-    ν = lm_rk3_kinematic_viscosity(model.closure)
+    ν = pressure_projection_kinematic_viscosity(model.closure)
     isnothing(ν) && return nothing
     grid = model.grid
     arch = architecture(grid)
@@ -44,18 +42,19 @@ function apply_divergence_correction!(model::NonhydrostaticModel)
 end
 
 #####
-##### FPJ-2 pressure extrapolation (Capuano et al. 2016 / De Michele et al. 2020)
+##### FPJ-α/β pressure predictor (Capuano et al. 2016 / De Michele et al. 2020)
 #####
-##### Linear interpolation of φ assuming φⁿ and φⁿ⁻¹ are second-order approximations
-##### of the true pressure at tⁿ − Δtⁿ⁻¹/2 and tⁿ⁻¹ − Δtⁿ⁻¹/2 (midpoint trick),
-##### evaluated at tⁿ + cᵢ·Δtⁿ/2 to give the substage pressure predictor:
+##### Linear interpolant through (T_φⁿ⁻¹, φⁿ⁻¹) and (T_φⁿ, φⁿ), with
+##### T_φⁿ = tⁿ − β·Δtⁿ and T_φⁿ⁻¹ = tⁿ⁻¹ − β·Δtⁿ⁻¹, evaluated at substage time
+##### T_substage_i = tⁿ + α·sᵢ·Δtⁿ⁺¹ (sᵢ = cᵢ + cᵢ₋₁ is the low-storage scale,
+##### De Michele 2020 Eq. 37). Three named members of the family:
 #####
-#####   φᵢ ≈ φⁿ + (Δtⁿ/(2·Δtⁿ⁻¹))·(1 + cᵢ)·(φⁿ − φⁿ⁻¹)
-#####
-##### For constant Δt this reduces to φⁿ + ((1+cᵢ)/2)·(φⁿ − φⁿ⁻¹).
+#####   (α, β) = (0,   0)   — FPJ-0, constant (frozen-pressure) predictor (2nd order)
+#####   (α, β) = (1,   0)   — FPJ-1, linear extrapolation                (2nd order)
+#####   (α, β) = (1/2, 1/2) — FPJ-2, midpoint-aligned interpolation      (3rd order)
 
-@kernel function _build_scaled_fpj2!(pNHS, pⁿ, pⁿ⁻¹, Δτ, cᵢ, cᵢ₋₁,
-                                     Δtⁿ⁺¹, Δtⁿ, Δtⁿ⁻¹, α, β)
+@kernel function _build_scaled_fpj_predictor!(pNHS, pⁿ, pⁿ⁻¹, Δτ, cᵢ, cᵢ₋₁,
+                                              Δtⁿ⁺¹, Δtⁿ, Δtⁿ⁻¹, α, β)
     i, j, k = @index(Global, NTuple)
     @inbounds μp = (pⁿ[i, j, k] + pⁿ⁻¹[i, j, k]) / 2
     @inbounds δp = pⁿ[i, j, k] - pⁿ⁻¹[i, j, k]
@@ -78,9 +77,9 @@ end
 #   c₁ = γ¹ = 8/15
 #   c₂ = γ¹ + γ² + ζ² = 2/3
 #   c₃ = 1
-@inline _fpj2_substage_c(ts, ::Val{1}) = ts.γ¹
-@inline _fpj2_substage_c(ts, ::Val{2}) = ts.γ¹ + ts.γ² + ts.ζ²
-@inline _fpj2_substage_c(ts, ::Val{3}) = one(ts.γ¹)
+@inline _fpj_substage_c(ts, ::Val{1}) = ts.γ¹
+@inline _fpj_substage_c(ts, ::Val{2}) = ts.γ¹ + ts.γ² + ts.ζ²
+@inline _fpj_substage_c(ts, ::Val{3}) = one(ts.γ¹)
 
 # Substage cumulative time fractions cᵢ for Wray RK3 (uᵢ corresponds to tⁿ + cᵢ·Δt):
 #   c₀ = 0, c₁ = γ¹ = 8/15, c₂ = γ¹+γ²+ζ² = 2/3, c₃ = 1.
@@ -90,13 +89,13 @@ end
 #   substage 1: c₁ + c₀ = 8/15
 #   substage 2: c₂ + c₁ = 18/15
 #   substage 3: c₃ + c₂ = 5/3
-@inline _fpj2_substage_c_pair(ts, ::Val{1}) = (ts.γ¹, zero(ts.γ¹))
-@inline _fpj2_substage_c_pair(ts, ::Val{2}) = (ts.γ¹ + ts.γ² + ts.ζ², ts.γ¹)
-@inline _fpj2_substage_c_pair(ts, ::Val{3}) = (one(ts.γ¹), ts.γ¹ + ts.γ² + ts.ζ²)
+@inline _fpj_substage_c_pair(ts, ::Val{1}) = (ts.γ¹, zero(ts.γ¹))
+@inline _fpj_substage_c_pair(ts, ::Val{2}) = (ts.γ¹ + ts.γ² + ts.ζ², ts.γ¹)
+@inline _fpj_substage_c_pair(ts, ::Val{3}) = (one(ts.γ¹), ts.γ¹ + ts.γ² + ts.ζ²)
 
 # Σᵢ_{i=1,2} (Δτᵢ/Δt)·(cᵢ+cᵢ₋₁) — appears in the stage-3 storage formula as the
 # weight on δφ. For Wray this is (8/15)² + (2/15)·(2/3+8/15) = 4/9.
-@inline function _fpj2_substage_low_storage_scale_weighted_sum(ts)
+@inline function _fpj_substage_low_storage_scale_weighted_sum(ts)
     Δτ1 = ts.γ¹
     Δτ2 = ts.γ² + ts.ζ²
     c0  = zero(ts.γ¹)
@@ -105,7 +104,7 @@ end
     return Δτ1 * (c1 + c0) + Δτ2 * (c2 + c1)
 end
 
-function apply_fpj2_pressure_correction!(model::NonhydrostaticModel, Δτ, stage::Val, Δt)
+function apply_fpj_pressure_correction!(model::NonhydrostaticModel, Δτ, stage::Val, Δt)
     ts   = model.timestepper
     pⁿ   = ts.pⁿ
     pⁿ⁻¹ = ts.pⁿ⁻¹
@@ -117,10 +116,7 @@ function apply_fpj2_pressure_correction!(model::NonhydrostaticModel, Δτ, stage
     fill_halo_regions!(model.velocities, model.clock, fields(model))
 
     FT  = eltype(pNHS)
-    cᵢ, cᵢ₋₁ = _fpj2_substage_c_pair(ts, stage)
-    # Δtⁿ⁺¹ = current step's Δt (the one being computed now).
-    # Δtⁿ   = previous step's Δt; produced the stored φⁿ.
-    # Δtⁿ⁻¹ = step before that;   produced the stored φⁿ⁻¹.
+    cᵢ, cᵢ₋₁ = _fpj_substage_c_pair(ts, stage)
     α_FT     = convert(FT, ts.α)
     β_FT     = convert(FT, ts.β)
     Δtⁿ⁺¹_FT = convert(FT, Δt)
@@ -128,7 +124,7 @@ function apply_fpj2_pressure_correction!(model::NonhydrostaticModel, Δτ, stage
     Δtⁿ⁻¹_FT = convert(FT, ts.Δt⁻²[])
     Δτ_FT    = convert(FT, Δτ)
 
-    launch!(arch, grid, :xyz, _build_scaled_fpj2!,
+    launch!(arch, grid, :xyz, _build_scaled_fpj_predictor!,
             pNHS, pⁿ, pⁿ⁻¹, Δτ_FT,
             convert(FT, cᵢ), convert(FT, cᵢ₋₁),
             Δtⁿ⁺¹_FT, Δtⁿ_FT, Δtⁿ⁻¹_FT, α_FT, β_FT)
@@ -137,14 +133,14 @@ function apply_fpj2_pressure_correction!(model::NonhydrostaticModel, Δτ, stage
     return nothing
 end
 
-function seed_lm_pressures!(model::NonhydrostaticModel)
+function seed_pressure_projection_pressures!(model::NonhydrostaticModel)
     parent(model.timestepper.pⁿ)   .= parent(model.pressures.pNHS)
     parent(model.timestepper.pⁿ⁻¹) .= parent(model.pressures.pNHS)
     return nothing
 end
 
-function lm_rk3_substep!(model::NonhydrostaticModel, Δt, γⁿ, ζⁿ, callbacks,
-                         stage::Union{Val{1}, Val{2}})
+function pressure_projection_rk3_substep!(model::NonhydrostaticModel, Δt, γⁿ, ζⁿ, callbacks,
+                                          stage::Union{Val{1}, Val{2}})
     Δτ   = stage_Δt(Δt, γⁿ, ζⁿ)
     grid = model.grid
 
@@ -170,19 +166,19 @@ function lm_rk3_substep!(model::NonhydrostaticModel, Δt, γⁿ, ζⁿ, callback
                        Δτ)
     end
 
-    apply_fpj2_pressure_correction!(model, Δτ, stage, Δt)
+    apply_fpj_pressure_correction!(model, Δτ, stage, Δt)
 
     return nothing
 end
 
-function lm_rk3_substep!(model::NonhydrostaticModel, Δt, γⁿ, ζⁿ, callbacks, stage::Val{3})
+function pressure_projection_rk3_substep!(model::NonhydrostaticModel, Δt, γⁿ, ζⁿ, callbacks, stage::Val{3})
     Δτ   = stage_Δt(Δt, γⁿ, ζⁿ)
     grid = model.grid
 
     compute_flux_bc_tendencies!(model)
-    # apply_divergence_correction!(model)  # disabled: at ν=1e-3 stress test it
-                                            # preserved order but slightly raised
-                                            # constant (esp. on tracer error)
+
+    # TODO: test whether the divergence correction is needed at substage 3.
+    # apply_divergence_correction!(model)
     model_fields = prognostic_fields(model)
 
     for (i, name) in enumerate(keys(model_fields))
@@ -202,8 +198,8 @@ function lm_rk3_substep!(model::NonhydrostaticModel, Δt, γⁿ, ζⁿ, callback
     end
 
     # Single full Poisson at substage 3 (Capuano 2016 Eq. 7 / De Michele 2020
-    # Eqs. 19-21). Substages 1 and 2 used the FPJ predictor; substage 3 has
-    # no predictor, just a full Poisson for δp_full.
+    # Eqs. 19-21). Substages 1 and 2 used the FPJ-α/β predictor; substage 3
+    # has no predictor, just a full Poisson for δp_full.
     #
     # Stored φⁿ⁺¹ must satisfy Δt·∇φⁿ⁺¹ = Σᵢ Δτᵢ·∇φ_used_i so that the
     # whole step is equivalent to a single end-of-step projection with φⁿ⁺¹.
@@ -231,7 +227,7 @@ function lm_rk3_substep!(model::NonhydrostaticModel, Δt, γⁿ, ζⁿ, callback
     β   = convert(FT, ts.β)
     γFT = convert(FT, Δτ / Δt)
     B₀  = one(FT) - γFT
-    S_pre = convert(FT, _fpj2_substage_low_storage_scale_weighted_sum(ts))
+    S_pre = convert(FT, _fpj_substage_low_storage_scale_weighted_sum(ts))
     # Variable-Δt B₁: B₁_var = (1−γ)/2 + [(1−γ)·β·Δtⁿ + α·S_pre·Δtⁿ⁺¹] / D
     # where D = (1−β)·Δtⁿ + β·Δtⁿ⁻¹. For constant Δt this reduces to
     # ((1+2β)/2)·B₀ + α·S_pre.
