@@ -113,13 +113,13 @@ spatially+temporally interpolate `target` and read `ϕ` from `model_fields`.
 """
 function materialize_forcing(forcing::Relaxation{R, M, <:FlavorOfFTS}, field,
                              field_name, model_field_names) where {R, M}
-    _validate_fts_target_extent(forcing.target, field)
+    validate_fts_target_extent(forcing.target, field)
     index = findfirst(==(field_name), model_field_names)
     target = FieldTimeSeriesTarget(instantiated_location(field), forcing.target, index)
     return Relaxation(forcing.rate, forcing.mask, target)
 end
 
-function _validate_fts_target_extent(fts, field)
+function validate_fts_target_extent(fts, field)
     fts_grid = fts.grid
     sim_grid = field.grid
 
