@@ -1,3 +1,6 @@
+using Oceananigans.Grids: node, Face, xnodes, ynodes, znodes
+using Oceananigans.OutputReaders: interpolate
+using Oceananigans: instantiated_location
 
 @inline zerofunction(args...) = 0
 @inline onefunction(args...) = 1
@@ -76,6 +79,63 @@ function materialize_forcing(forcing::Relaxation, field, field_name, model_field
     continuous_relaxation = ContinuousForcing(forcing, field_dependencies=field_name)
     return materialize_forcing(continuous_relaxation, field, field_name, model_field_names)
 end
+
+"""
+    struct FieldTimeSeriesTarget{L, F}
+
+Materialized `Relaxation` target that carries a `FieldTimeSeries` source, the
+simulation-side location at which the relaxation is evaluated, and the integer
+index of the forced field in `model_fields`. Constructed by `materialize_forcing`
+when a `Relaxation`'s `target` is a `FieldTimeSeries`; not intended for direct
+user construction.
+"""
+struct FieldTimeSeriesTarget{L, F}
+                 location :: L     # simulation-side instantiated location tuple
+        field_time_series :: F
+                    index :: Int   # index of the forced field in `model_fields`
+end
+
+const FieldTimeSeriesRelaxation{R, M, T<:FieldTimeSeriesTarget} = Relaxation{R, M, T}
+
+@inline function (f::FieldTimeSeriesRelaxation)(i, j, k, grid, clock, model_fields)
+    target = f.target
+    fts = target.field_time_series
+    X = node(i, j, k, grid, target.location...)
+    @inbounds ϕ = model_fields[target.index][i, j, k]
+    ϕᵣ = interpolate(X, Time(clock.time), fts, instantiated_location(fts), fts.grid)
+    return f.rate * f.mask(X...) * (ϕᵣ - ϕ)
+end
+
+"""
+Wrap a `Relaxation` with `FieldTimeSeries` target into a materialized form
+carrying simulation-side location and an integer field index, so the kernel can
+spatially+temporally interpolate `target` and read `ϕ` from `model_fields`.
+"""
+function materialize_forcing(forcing::Relaxation{R, M, <:FlavorOfFTS}, field,
+                             field_name, model_field_names) where {R, M}
+    _validate_fts_target_extent(forcing.target, field)
+    index = findfirst(==(field_name), model_field_names)
+    target = FieldTimeSeriesTarget(instantiated_location(field), forcing.target, index)
+    return Relaxation(forcing.rate, forcing.mask, target)
+end
+
+function _validate_fts_target_extent(fts, field)
+    fts_grid = fts.grid
+    sim_grid = field.grid
+
+    for (label, nodes_fn) in (("x", xnodes), ("y", ynodes), ("z", znodes))
+        sim_lo, sim_hi = extrema(nodes_fn(sim_grid, Face(), Face(), Face()))
+        fts_lo, fts_hi = extrema(nodes_fn(fts_grid, Face(), Face(), Face()))
+        (fts_lo ≤ sim_lo && sim_hi ≤ fts_hi) ||
+            throw(ArgumentError(
+                "FieldTimeSeries target $label-extent [$fts_lo, $fts_hi] does not " *
+                "bracket simulation grid $label-extent [$sim_lo, $sim_hi]"))
+    end
+    return nothing
+end
+
+Base.summary(target::FieldTimeSeriesTarget) =
+    "FieldTimeSeriesTarget(location=$(target.location), index=$(target.index))"
 
 @inline (f::Relaxation)(x, y, z, t, field) =
     f.rate * f.mask(x, y, z) * (f.target(x, y, z, t) - field)
