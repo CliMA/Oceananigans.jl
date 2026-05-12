@@ -214,6 +214,48 @@ Base.summary(p::PiecewiseLinearMask{D}) where D =
     "piecewise_linear($D, center=$(p.center), width=$(p.width))"
 
 
+"""
+    MaximumMask(masks...)
+
+Callable object that composes `masks...` by taking their pointwise maximum,
+
+```
+mask(x, y, z) = max(mask₁(x, y, z), mask₂(x, y, z), …)
+```
+
+Useful for combining multiple sponge or Davies-style relaxation zones so the
+total mask saturates at `1` where zones overlap, instead of summing — which
+would multiply the effective relaxation rate at corners.
+
+Example
+=======
+
+Combine two Gaussian zones near the western and eastern boundaries of an
+`Lx = 100` domain into a single Davies-style lateral mask:
+
+```jldoctest
+julia> using Oceananigans
+
+julia> mask = MaximumMask(GaussianMask{:x}(center=0,   width=10),
+                          GaussianMask{:x}(center=100, width=10));
+
+julia> summary(mask)
+"max(exp(-x^2 / (2 * 10^2)), exp(-(x - 100)^2 / (2 * 10^2)))"
+```
+"""
+struct MaximumMask{M<:Tuple}
+    masks :: M
+end
+
+MaximumMask(masks...) = MaximumMask(masks)
+MaximumMask() = throw(ArgumentError("MaximumMask requires at least one mask"))
+
+@inline (m::MaximumMask)(x, y, z) =
+    max(map(mask -> mask(x, y, z), m.masks)...)
+
+Base.summary(m::MaximumMask) = "max(" * join(map(summary, m.masks), ", ") * ")"
+
+
 #####
 ##### Linear target functions
 #####
