@@ -1,7 +1,7 @@
 using Oceananigans: fields
 using Oceananigans.Operators: σⁿ, σ⁻
 using Oceananigans.Grids: bottommost_active_node
-using Oceananigans.TimeSteppers: implicit_step!
+using Oceananigans.TimeSteppers: implicit_step!, convert_time
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper
 
 get_time_step(closure::CATKEVerticalDiffusivity) = closure.tke_time_step
@@ -70,7 +70,7 @@ function time_step_catke_equation!(model, ::QuasiAdamsBashforth2TimeStepper, Δt
 
         implicit_step!(e, implicit_solver, closure,
                        closure_fields, Val(tracer_index),
-                       model.clock,
+                       convert_time(model.grid, model.clock),
                        fields(model),
                        Δτ)
     end
@@ -145,7 +145,7 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper, Δt)
 
         implicit_step!(e, implicit_solver, closure,
                        closure_fields, Val(tracer_index),
-                       model.clock,
+                       convert_time(model.grid, model.clock),
                        fields(model),
                        Δτ)
     end
