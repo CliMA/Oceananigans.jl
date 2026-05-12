@@ -60,8 +60,9 @@ supported_timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 """
     NonhydrostaticModel(grid;
                         clock = Clock{eltype(grid)}(time = 0),
-                        momentum_advection = Centered(),
-                        tracer_advection = Centered(),
+                        advection = Centered(),
+                        momentum_advection = advection,
+                        tracer_advection = advection,
                         buoyancy = nothing,
                         coriolis = nothing,
                         stokes_drift = nothing,
@@ -94,8 +95,16 @@ Arguments
 Keyword arguments
 =================
 
-  - `momentum_advection`: The scheme used to advect velocities. See `Oceananigans.Advection`.
-  - `tracer_advection`: The scheme used to advect tracers. See `Oceananigans.Advection`.
+  - `advection`: Convenience keyword that sets the default value of both `momentum_advection`
+                 and `tracer_advection` to the same scheme. Useful when velocities and tracers
+                 share the same advection scheme. Either `momentum_advection` or
+                 `tracer_advection` may still be passed to override the default per-field.
+                 Default: `Centered()`.
+  - `momentum_advection`: The scheme used to advect velocities. Defaults to `advection`.
+                          See `Oceananigans.Advection`.
+  - `tracer_advection`: The scheme used to advect tracers. Defaults to `advection`. May also
+                        be a `NamedTuple` specifying a different scheme per tracer; see
+                        `Oceananigans.Advection`.
   - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyFormulations`.
   - `coriolis`: Parameters for the background rotation rate of the model.
   - `stokes_drift`: Parameters for Stokes drift fields associated with surface waves. Default: `nothing`.
@@ -125,8 +134,9 @@ Keyword arguments
 """
 function NonhydrostaticModel(grid;
                              clock = Clock(grid),
-                             momentum_advection = Centered(),
-                             tracer_advection = Centered(),
+                             advection = Centered(),
+                             momentum_advection = advection,
+                             tracer_advection = advection,
                              buoyancy = nothing,
                              coriolis = nothing,
                              stokes_drift = nothing,
