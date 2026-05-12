@@ -7,7 +7,6 @@ env:
   XLA_REACTANT_GPU_PREALLOCATE: false
   OCEANANIGANS_DIR: "$HOME/Oceananigans.jl-$BUILDKITE_BUILD_NUMBER"
   JULIA_CUDA_USE_COMPAT: false
-  
 agents:
   queue: "Oceananigans"
 with:
