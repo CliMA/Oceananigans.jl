@@ -46,6 +46,20 @@ using Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
     @test !(ti_normal((; clock=Clock(time=2.5, iteration=1))))
     @test ti_normal.actuations == 1
 
+    # Array-interval TimeInterval (used by `TimeInterval(::AveragedSpecifiedTimes)`):
+    ti_array = TimeInterval([1.0])
+    @test ti_array((; clock=Clock(time=1.0, iteration=10)))
+    @test ti_array.actuations == 1
+    @test next_actuation_time(ti_array) === Inf
+    @test !(ti_array((; clock=Clock(time=2.0, iteration=20))))
+    @test schedule_aligned_time_step(ti_array, Clock(time=2.0, iteration=20), 0.1) == 0.1
+
+    ti_array_multi = TimeInterval([1.0, 2.0, 3.0])
+    @test ti_array_multi((; clock=Clock(time=5.0, iteration=50)))
+    @test ti_array_multi.actuations == 3
+    @test next_actuation_time(ti_array_multi) === Inf
+    @test !(ti_array_multi((; clock=Clock(time=6.0, iteration=60))))
+
     # Restore across pickup with the SAME interval: phase preserved.
     ti_old = TimeInterval(2)
     ti_old.first_actuation_time = 0.0

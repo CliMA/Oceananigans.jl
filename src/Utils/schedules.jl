@@ -72,15 +72,28 @@ function next_actuation_time(schedule::TimeInterval)
     return add_time_interval(t₀, T, N + 1)
 end
 
+#  Return `Inf` if we exhausted the actuations in a TimeInterval(::SpecifiedTimes)
+function next_actuation_time(schedule::TimeInterval{<:AbstractArray})
+    schedule.actuations ≥ length(schedule.interval) && return Inf
+    return add_time_interval(schedule.first_actuation_time, schedule.interval, schedule.actuations + 1)
+end
+
 function (schedule::TimeInterval)(model)
     t = model.clock.time
     t★ = next_actuation_time(schedule)
 
-    if t >= t★
+    # Array-interval schedules return `Inf` once exhausted; never fire again.
+    t★ === Inf && return false
+
+    if t ≥ t★
         if schedule.actuations < typemax(Int)
             schedule.actuations += 1
             # Advance actuations so the next actuation is strictly in the future.
-            while schedule.actuations < typemax(Int) && next_actuation_time(schedule) <= t
+            while schedule.actuations < typemax(Int)
+                tN = next_actuation_time(schedule)
+                if tN === Inf || tN > t
+                    break
+                end
                 schedule.actuations += 1
             end
         else # re-initialize the schedule to t★
@@ -94,6 +107,7 @@ end
 
 function schedule_aligned_time_step(schedule::TimeInterval, clock, Δt)
     t★ = next_actuation_time(schedule)
+    t★ === Inf && return Δt
     t = clock.time
     δt = time_difference_seconds(t★, t)
     return min(Δt, δt)
