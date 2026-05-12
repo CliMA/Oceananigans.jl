@@ -507,8 +507,8 @@ end
                 @info "      Testing Relaxation with FieldTimeSeries target [$A]..."
 
                 grid = RectilinearGrid(arch, size=(2, 2, 4), extent=(100, 100, 1000))
-                τ     = 60.0
-                c_ref = 5.0
+                τ     = 60
+                c_ref = 5
 
                 fts = FieldTimeSeries{Center, Center, Center}(grid, [0, 1e6])
                 for n in eachindex(fts.times)
@@ -528,7 +528,7 @@ end
                 # Analytical convergence: dc/dt = (c_ref - c)/τ ⇒ after one step,
                 # c ≈ c_ref * (1 - exp(-Δt/τ)) for c(0) = 0.
                 set!(model, c=0)
-                Δt = 1.0
+                Δt = 1
                 time_step!(model, Δt)
                 c_after  = Array(interior(model.tracers.c))
                 expected = c_ref * (1 - exp(-Δt/τ))
