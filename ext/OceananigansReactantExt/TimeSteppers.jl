@@ -18,7 +18,7 @@ using Oceananigans.TimeSteppers:
 
 import Oceananigans.TimeSteppers: Clock, first_time_step!, time_step!,
                                   ab2_step!, maybe_prepare_first_time_step!,
-                                  materialize_clock!
+                                  materialize_clock!, convert_time
 import Oceananigans: initialize!
 
 const ReactantModel{TS} = Union{
@@ -51,6 +51,22 @@ innertype(::ConcreteRNumber{T}) where T = T
 
 const ConcreteReactantClock = Clock{<:ConcreteRNumber}
 const TracedReactantClock = Oceananigans.TimeSteppers.Clock{<:Reactant.TracedRNumber}
+
+# In traced context clock.time is TracedRNumber{Float64}. We want to demote it to
+# TracedRNumber{FT} (inserting an XLA cast) but can't construct Clock{FT} with a
+# TracedRNumber value — EnsureReturnType would call Clock{FT}.new(TracedRNumber{FT})
+# which fails. Explicitly constructing Clock{TracedRNumber{FT}} avoids this: the field
+# type matches the value type so new() succeeds, and EnsureReturnType is not triggered
+# for a composite type parameter.
+function convert_time(grid, clock::TracedReactantClock)
+    FT  = eltype(grid)
+    TT  = Reactant.TracedRNumber{FT}
+    DT  = typeof(clock.last_Δt)
+    IT  = typeof(clock.iteration)
+    S   = typeof(clock.stage)
+    new_time = convert(FT, clock.time)   # promote_to(TracedRNumber{FT}, clock.time)
+    return Clock{TT, DT, IT, S}(new_time, clock.last_Δt, clock.last_stage_Δt, clock.iteration, clock.stage)
+end
 
 function Base.setproperty!(clock::ConcreteReactantClock, prop::Symbol, value)
     clock_val = getproperty(clock, prop)
