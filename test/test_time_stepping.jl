@@ -71,7 +71,7 @@ end
 function time_stepping_works_with_advection_scheme(arch, advection)
     # Use halo=(3, 3, 3) to accomodate WENO-5 advection scheme
     grid = RectilinearGrid(arch, size=(3, 3, 3), halo=(3, 3, 3), extent=(1, 2, 3))
-    model = NonhydrostaticModel(grid; advection)
+    model = NonhydrostaticModel(grid; momentum_advection=advection, tracer_advection=advection)
     time_step!(model, 1)
     return true  # Test that no errors/crashes happen when time stepping.
 end
@@ -81,7 +81,8 @@ function time_stepping_works_with_stokes_drift(arch, stokes_drift)
     grid = RectilinearGrid(arch, size=(3, 3, 3), halo=(3, 3, 3), extent=(1, 2, 3))
     model = NonhydrostaticModel(grid;
                                  stokes_drift,
-                                 advection=nothing)
+                                 momentum_advection=nothing,
+                                 tracer_advection=nothing)
     time_step!(model, 1)
     return true  # Test that no errors/crashes happen when time stepping.
 end

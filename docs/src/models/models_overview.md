@@ -74,7 +74,8 @@ u_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(τx))
 @inline Jc(x, t, Lx) = cos(2π / Lx * x)
 c_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(Jc, parameters=grid.Lx))
 
-model = NonhydrostaticModel(grid; advection, buoyancy, coriolis,
+model = NonhydrostaticModel(grid; momentum_advection=advection, tracer_advection=advection,
+                            buoyancy, coriolis,
                             tracers = (:b, :c),
                             boundary_conditions = (; u=u_bcs, c=c_bcs))
 ```

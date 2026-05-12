@@ -156,7 +156,8 @@ using Oceananigans.Coriolis: SphericalCoriolis, NonhydrostaticFormulation
 coriolis = SphericalCoriolis(rotation_rate=Ω_enceladus, formulation=NonhydrostaticFormulation())
 
 model = NonhydrostaticModel(grid; coriolis,
-                            advection = WENO(order=5),
+                            momentum_advection = WENO(order=5),
+                            tracer_advection = WENO(order=5),
                             tracers = (:T, :S),
                             buoyancy = SeawaterBuoyancy(equation_of_state=TEOS10EquationOfState()))
 

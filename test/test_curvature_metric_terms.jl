@@ -95,7 +95,8 @@ using Test
             pressure_solver = ConjugateGradientPoissonSolver(grid; reltol=1e-7)
 
             model = NonhydrostaticModel(grid; coriolis, pressure_solver,
-                                        advection = WENO(order=5))
+                                        momentum_advection = WENO(order=5),
+                                        tracer_advection = WENO(order=5))
 
             u₀ = 10
             set!(model, u = (λ, φ, z) -> u₀ * cosd(φ))
@@ -191,7 +192,7 @@ using Test
         @testset "NonhydrostaticModel + IBG{RectilinearGrid} [$(typeof(arch))]" begin
             rect = RectilinearGrid(arch; size=(8, 8, 8), extent=(1, 1, 1), halo=(6, 6, 6))
             ibg = ImmersedBoundaryGrid(rect, GridFittedBottom((x, y) -> 1//2))
-            model = NonhydrostaticModel(ibg; advection=WENO())
+            model = NonhydrostaticModel(ibg; momentum_advection=WENO(), tracer_advection=WENO())
             time_step!(model, 1//1000)
             @test !any(isnan, interior(model.velocities.u))
             @test !any(isnan, interior(model.velocities.v))

@@ -32,7 +32,9 @@ function setup_simulation(N, advection_scheme)
     topology = (Periodic, Flat, Bounded)
     grid = RectilinearGrid(; topology, size=(N, 1, N), halo=(5, 5, 5), extent=(L, L, L))
 
-    model = NonhydrostaticModel(grid; timestepper = :RungeKutta3, advection = advection_scheme,
+    model = NonhydrostaticModel(grid; timestepper = :RungeKutta3,
+                                      momentum_advection = advection_scheme,
+                                      tracer_advection = advection_scheme,
                                       closure = ScalarDiffusivity(ν=0, κ=0))
 
     x₀, z₀ = L/2, -L/2

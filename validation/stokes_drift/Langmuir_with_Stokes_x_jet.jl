@@ -177,7 +177,8 @@ coriolis = FPlane(f=0) # s⁻¹
 
 model = NonhydrostaticModel(grid;
                              coriolis,
-                             advection = WENO(),
+                             momentum_advection = WENO(),
+                             tracer_advection = WENO(),
                              timestepper = :RungeKutta3,
                              tracers = :b,
                              buoyancy = BuoyancyTracer(),

@@ -141,7 +141,8 @@ buoyancy_bcs = FieldBoundaryConditions(top = buoyancy_flux_bc, bottom = buoyancy
 biogeochemistry = SimplePlanktonGrowthDeath(; grid)
 
 model = NonhydrostaticModel(grid; biogeochemistry,
-                              advection = WENO(; grid),
+                              momentum_advection = WENO(; grid),
+                              tracer_advection = WENO(; grid),
                               timestepper = :RungeKutta3,
                               closure = ScalarDiffusivity(ν=1e-4, κ=1e-4),
                               coriolis = FPlane(f=1e-4),

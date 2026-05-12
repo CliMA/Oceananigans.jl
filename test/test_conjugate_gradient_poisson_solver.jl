@@ -187,7 +187,8 @@ function test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_gri
     model = NonhydrostaticModel(grid;
                                 boundary_conditions = (u = u_boundaries,),
                                 pressure_solver = cg_solver,
-                                advection = WENO(order=5))
+                                momentum_advection = WENO(order=5),
+                                tracer_advection = WENO(order=5))
 
     @test model.pressure_solver isa ConjugateGradientPoissonSolver
 

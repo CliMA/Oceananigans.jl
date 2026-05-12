@@ -11,7 +11,9 @@ coarse_grid = RectilinearGrid(arch, size=(N÷4, N÷4, N÷4), extent=(2π, 2π, 2
 
 
 function run_3d_turbulence(closure; grid = grid, coarse_grid = coarse_grid)
-    model = NonhydrostaticModel(grid; closure, timestepper = :RungeKutta3, advection = WENO(order=5),)
+    model = NonhydrostaticModel(grid; closure, timestepper = :RungeKutta3,
+                                momentum_advection = WENO(order=5),
+                                tracer_advection = WENO(order=5),)
 
     random_c = CenterField(coarse_grid) # Technically this shouldn't be a CenterField, but oh well
     noise(x, y, z) = rand()

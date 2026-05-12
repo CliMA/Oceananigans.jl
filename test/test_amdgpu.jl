@@ -65,7 +65,7 @@ end
         @info "Testing NonhydrostaticModel on $arch with $FT..."
 
         for grid in (regular_grid, vertically_stretched_grid)
-            model_kw = (; coriolis, buoyancy, tracers, advection)
+            model_kw = (; coriolis, buoyancy, tracers, momentum_advection=advection, tracer_advection=advection)
             cg_solver = Oceananigans.Solvers.ConjugateGradientPoissonSolver(grid;
                 maxiter=10, reltol=1e-7, abstol=1e-7, preconditioner=nothing)
 

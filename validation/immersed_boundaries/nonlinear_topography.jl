@@ -57,7 +57,8 @@ function run_simulation(solver, preconditioner)
     if solver == "FFT"
         model = NonhydrostaticModel(grid;
                                     # advection = WENO(),
-                                    advection = Centered(),
+                                    momentum_advection = Centered(),
+                                    tracer_advection = Centered(),
                                     tracers = :b,
                                     buoyancy = BuoyancyTracer(),
                                     # timestepper = :RungeKutta3,
@@ -67,7 +68,8 @@ function run_simulation(solver, preconditioner)
         model = NonhydrostaticModel(grid;
                                     pressure_solver = ImmersedPoissonSolver(grid, preconditioner=preconditioner, reltol=1e-8),
                                     # advection = WENO(),
-                                    advection = Centered(),
+                                    momentum_advection = Centered(),
+                                    tracer_advection = Centered(),
                                     tracers = :b,
                                     buoyancy = BuoyancyTracer(),
                                     # timestepper = :RungeKutta3,

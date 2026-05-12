@@ -62,7 +62,8 @@ function hilly_simulation(; Nx = 64,
     model = NonhydrostaticModel(grid;
                                 closure,
                                 boundary_conditions,
-                                advection = WENO(),
+                                momentum_advection = WENO(),
+                                tracer_advection = WENO(),
                                 timestepper = :RungeKutta3,
                                 tracers = :b,
                                 buoyancy = BuoyancyTracer())

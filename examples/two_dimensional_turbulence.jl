@@ -29,7 +29,8 @@ Random.seed!(404) # for reproducible results
 grid = RectilinearGrid(size=(128, 128), extent=(2π, 2π), topology=(Periodic, Periodic, Flat))
 
 model = NonhydrostaticModel(grid;
-                            advection = UpwindBiased(order=5),
+                            momentum_advection = UpwindBiased(order=5),
+                            tracer_advection = UpwindBiased(order=5),
                             closure = ScalarDiffusivity(ν=1e-5))
 
 # ## Random initial conditions

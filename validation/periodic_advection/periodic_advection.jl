@@ -32,7 +32,9 @@ function setup_model(N, L, U, ϕₐ, time_stepper, advection_scheme)
     topology = (Periodic, Flat, Flat)
     grid = RectilinearGrid(topology=topology, size=(N, ), halo=(9, ), x=(-L/2, L/2))
 
-    model = NonhydrostaticModel(grid; time_stepper, advection = advection_scheme,
+    model = NonhydrostaticModel(grid; time_stepper,
+                                      momentum_advection = advection_scheme,
+                                      tracer_advection = advection_scheme,
                                       tracers = :c, closure = ScalarDiffusivity(ν=0, κ=0))
 
     set!(model, u = U, v = (x, y, z) -> ϕₐ(x, 0; L=L, U=U), c = (x, y, z) -> ϕₐ(x, 0; L=L, U=U))

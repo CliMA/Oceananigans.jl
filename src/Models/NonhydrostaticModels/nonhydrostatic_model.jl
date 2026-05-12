@@ -1,4 +1,4 @@
-using Oceananigans.Advection: Centered, adapt_advection_order, materialize_advection
+using Oceananigans.Advection: AbstractAdvectionScheme, Centered, adapt_advection_order, materialize_advection
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: MixedBoundaryCondition
@@ -9,7 +9,7 @@ using Oceananigans.Fields: Field, tracernames, VelocityFields, TracerFields, Cen
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: topology, inflate_halo_size, with_halo, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface
+using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface, validate_tracer_advection
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, materialize_clock!, AbstractLagrangianParticles
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, time_discretization, implicit_diffusion_solver, initialize_closure_fields!
@@ -60,7 +60,8 @@ supported_timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 """
     NonhydrostaticModel(grid;
                         clock = Clock{eltype(grid)}(time = 0),
-                        advection = Centered(),
+                        momentum_advection = Centered(),
+                        tracer_advection = Centered(),
                         buoyancy = nothing,
                         coriolis = nothing,
                         stokes_drift = nothing,
@@ -93,7 +94,8 @@ Arguments
 Keyword arguments
 =================
 
-  - `advection`: The scheme that advects velocities and tracers. See `Oceananigans.Advection`.
+  - `momentum_advection`: The scheme used to advect velocities. See `Oceananigans.Advection`.
+  - `tracer_advection`: The scheme used to advect tracers. See `Oceananigans.Advection`.
   - `buoyancy`: The buoyancy model. See `Oceananigans.BuoyancyFormulations`.
   - `coriolis`: Parameters for the background rotation rate of the model.
   - `stokes_drift`: Parameters for Stokes drift fields associated with surface waves. Default: `nothing`.
@@ -123,7 +125,8 @@ Keyword arguments
 """
 function NonhydrostaticModel(grid;
                              clock = Clock(grid),
-                             advection = Centered(),
+                             momentum_advection = Centered(),
+                             tracer_advection = Centered(),
                              buoyancy = nothing,
                              coriolis = nothing,
                              stokes_drift = nothing,
@@ -212,19 +215,17 @@ function NonhydrostaticModel(grid;
     validate_buoyancy(buoyancy, tracernames(tracers))
     buoyancy = materialize_buoyancy(buoyancy, grid)
 
-    # Adjust advection scheme to be valid on a particular grid size. i.e. if the grid size
-    # is smaller than the advection order, reduce the order of the advection in that particular
-    # direction
-    advection = adapt_advection_order(advection, grid)
+    default_tracer_advection, tracer_advection = validate_tracer_advection(tracer_advection, grid)
+    default_generator(name, tracer_advection) = default_tracer_advection
 
-    # Fill any settings in advection scheme that might have been deferred until
-    # the grid and backend is known
-    advection = materialize_advection(advection, grid)
+    tracer_advection_tuple = with_tracers(tracernames(tracers), tracer_advection,
+                                          default_generator, with_velocities=false)
+    momentum_advection_tuple = (; momentum = momentum_advection)
+    advection = merge(momentum_advection_tuple, tracer_advection_tuple)
+    advection = NamedTuple(name => adapt_advection_order(scheme, grid) for (name, scheme) in pairs(advection))
+    advection = NamedTuple(name => materialize_advection(scheme, grid) for (name, scheme) in pairs(advection))
 
-    # Adjust halos when the advection scheme or turbulence closure requires it.
-    # Note that halos are isotropic by default; however we respect user-input here
-    # by adjusting each (x, y, z) halo individually.
-    grid = inflate_grid_halo_size(grid, advection, closure)
+    grid = inflate_grid_halo_size(grid, values(advection)..., closure)
 
     # Collect boundary conditions for all model prognostic fields and, if specified, some model
     # auxiliary fields. Boundary conditions are "regularized" based on the _name_ of the field:

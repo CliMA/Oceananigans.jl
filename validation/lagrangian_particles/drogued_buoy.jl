@@ -40,7 +40,8 @@ model = NonhydrostaticModel(grid;
                             boundary_conditions = (; u = u_bcs),
                             coriolis,
                             closure,
-                            advection,
+                            momentum_advection = advection,
+                            tracer_advection = advection,
                             tracers = (; c))
 
 # Random noise damped at top and bottom
