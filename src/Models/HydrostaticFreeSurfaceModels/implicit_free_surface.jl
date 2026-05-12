@@ -1,4 +1,5 @@
 using Oceananigans.Grids: AbstractGrid, XYRegularRG, static_column_depthᶜᶜᵃ
+using Oceananigans.TimeSteppers: convert_time
 using Oceananigans.Models: surface_kernel_parameters
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
@@ -138,7 +139,7 @@ function step_free_surface!(free_surface::ImplicitFreeSurface, model, timesteppe
         mask_immersed_field!(v)
     end
 
-    fill_halo_regions!((u, v), model.clock, fields(model))
+    fill_halo_regions!((u, v), convert_time(model.grid, model.clock), fields(model))
     compute_implicit_free_surface_right_hand_side!(rhs, solver, g, Δt, model.velocities, η)
 
     # Solve for the free surface at tⁿ⁺¹

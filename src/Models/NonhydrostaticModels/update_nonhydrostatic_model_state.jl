@@ -6,6 +6,7 @@ using Oceananigans.BoundaryConditions: update_boundary_conditions!
 using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
 using Oceananigans.TurbulenceClosures: compute_closure_fields!
 import Oceananigans.TurbulenceClosures: step_closure_prognostics!
+using Oceananigans.TimeSteppers: convert_time
 using Oceananigans.Fields: compute!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models: update_model_field_time_series!, surface_kernel_parameters
@@ -31,7 +32,7 @@ function update_state!(model::NonhydrostaticModel, callbacks=[])
     update_boundary_conditions!(fields(model), model)
 
     # Fill halos for velocities and tracers
-    fill_halo_regions!(merge(model.velocities, model.tracers), model.clock, fields(model); fill_open_bcs=false, async=true)
+    fill_halo_regions!(merge(model.velocities, model.tracers), convert_time(model.grid, model.clock), fields(model); fill_open_bcs=false, async=true)
 
     # Compute auxiliary fields
     for aux_field in model.auxiliary_fields

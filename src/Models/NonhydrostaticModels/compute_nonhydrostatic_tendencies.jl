@@ -5,6 +5,7 @@ using Oceananigans.Utils: get_active_cells_map
 
 import Oceananigans.TimeSteppers: compute_tendencies!
 import Oceananigans.TimeSteppers: compute_flux_bc_tendencies!
+using Oceananigans.TimeSteppers: convert_time
 
 """
     compute_tendencies!(model::NonhydrostaticModel, callbacks)
@@ -62,6 +63,7 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
     closure_fields       = model.closure_fields
     forcings             = model.forcing
     clock                = model.clock
+    kernel_clock         = convert_time(grid, clock)
     u_immersed_bc        = velocities.u.boundary_conditions.immersed
     v_immersed_bc        = velocities.v.boundary_conditions.immersed
     w_immersed_bc        = velocities.w.boundary_conditions.immersed
@@ -80,15 +82,15 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
 
     u_kernel_args = tuple(start_momentum_kernel_args...,
                           u_immersed_bc, end_momentum_kernel_args...,
-                          hydrostatic_pressure, clock, forcings.u)
+                          hydrostatic_pressure, kernel_clock, forcings.u)
 
     v_kernel_args = tuple(start_momentum_kernel_args...,
                           v_immersed_bc, end_momentum_kernel_args...,
-                          hydrostatic_pressure, clock, forcings.v)
+                          hydrostatic_pressure, kernel_clock, forcings.v)
 
     w_kernel_args = tuple(start_momentum_kernel_args...,
                           w_immersed_bc, end_momentum_kernel_args...,
-                          hydrostatic_pressure, clock, forcings.w)
+                          hydrostatic_pressure, kernel_clock, forcings.w)
 
     exclude_periphery = true
     launch!(arch, grid, kernel_parameters, compute_Gu!,
@@ -117,7 +119,7 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
                      start_tracer_kernel_args...,
                      c_immersed_bc,
                      end_tracer_kernel_args...,
-                     clock, forcing)
+                     kernel_clock, forcing)
 
         launch!(arch, grid, kernel_parameters, compute_Gc!,
                 c_tendency, grid, args;

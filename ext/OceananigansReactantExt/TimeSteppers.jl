@@ -36,15 +36,17 @@ function Clock(grid::ReactantGrid)
         Sharding.NoSharding()
     end
 
-    t = ConcreteRNumber(zero(FT), sharding=sharding)
+    t = ConcreteRNumber(0.0; sharding=sharding)
     iter = ConcreteRNumber(0, sharding=sharding)
     stage = 1
-    last_Δt = ConcreteRNumber(convert(FT, Inf), sharding=sharding)
-    last_stage_Δt = ConcreteRNumber(convert(FT, Inf), sharding=sharding)
+    last_Δt = ConcreteRNumber(Inf, sharding=sharding)
+    last_stage_Δt = ConcreteRNumber(Inf, sharding=sharding)
 
     return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
 end
 
+Base.convert(::Type{T}, x::Reactant.TracedRNumber) where {T<:Reactant.ReactantPrimitive} =
+      Reactant.promote_to(Reactant.TracedRNumber{T}, x)
 innertype(::ConcreteRNumber{T}) where T = T
 
 const ConcreteReactantClock = Clock{<:ConcreteRNumber}

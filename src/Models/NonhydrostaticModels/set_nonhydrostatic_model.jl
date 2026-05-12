@@ -1,5 +1,5 @@
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.TimeSteppers: update_state!
+using Oceananigans.TimeSteppers: update_state!, convert_time
 using Oceananigans.TurbulenceClosures: initialize_closure_fields!
 
 import Oceananigans.Fields: set!
@@ -53,7 +53,7 @@ function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs
         end
         set!(ϕ, value)
 
-        fill_halo_regions!(ϕ, model.clock, fields(model))
+        fill_halo_regions!(ϕ, convert_time(model.grid, model.clock), fields(model))
     end
 
     # Apply a mask

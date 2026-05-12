@@ -3,6 +3,7 @@ using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models: update_model_field_time_series!
 
 import Oceananigans.TimeSteppers: update_state!
+using Oceananigans.TimeSteppers: convert_time
 
 """
     update_state!(model::ShallowWaterModel, callbacks=[]; compute_tendencies=true)
@@ -28,7 +29,7 @@ function update_state!(model::ShallowWaterModel, callbacks=[])
 
     compute_closure_fields!(model.closure_fields, model.closure, model)
 
-    fill_halo_regions!(merge(model.solution, model.tracers), model.clock, fields(model))
+    fill_halo_regions!(merge(model.solution, model.tracers), convert_time(model.grid, model.clock), fields(model))
 
     compute_velocities!(model.velocities, formulation(model))
 

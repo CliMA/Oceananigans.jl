@@ -2,6 +2,7 @@ using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.ImmersedBoundaries: peripheral_node, MutableGridOfSomeKind
 
 import Oceananigans.TimeSteppers: rk_substep!, cache_current_fields!
+using Oceananigans.TimeSteppers: convert_time
 
 """
     rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks)
@@ -46,7 +47,7 @@ The order of operations for explicit free surfaces is:
 
     # Mask and fill velocity halos
     u, v, _ = model.velocities
-    fill_halo_regions!((u, v), model.clock, fields(model); async=true)
+    fill_halo_regions!((u, v), convert_time(model.grid, model.clock), fields(model); async=true)
 
     @apply_regionally begin
         # compute tracer tendencies
@@ -99,7 +100,7 @@ For implicit free surfaces, a predictor-corrector approach is used:
 
     # Mask and fill velocity halos
     u, v, _ = model.velocities
-    fill_halo_regions!((u, v), model.clock, fields(model))
+    fill_halo_regions!((u, v), convert_time(model.grid, model.clock), fields(model))
 
     @apply_regionally begin
         compute_transport_velocities!(model, free_surface)

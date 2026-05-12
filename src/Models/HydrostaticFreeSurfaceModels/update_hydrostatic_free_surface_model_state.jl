@@ -8,6 +8,7 @@ using Oceananigans.Models: update_model_field_time_series!, surface_kernel_param
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
 using Oceananigans.TurbulenceClosures: compute_closure_fields!
 import Oceananigans.TurbulenceClosures: step_closure_prognostics!
+using Oceananigans.TimeSteppers: convert_time
 using Oceananigans.Utils: KernelParameters, worksize
 
 compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxiliary_fields)
@@ -53,7 +54,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     # Fill the halos of the prognostic fields. Note that the halos of the
     # free-surface variables and the horizontal velocities
     # are filled within the time-stepping after the state evolution.
-    fill_halo_regions!(tracers, model.clock, fields(model); async=true)
+    fill_halo_regions!(tracers, convert_time(model.grid, model.clock), fields(model); async=true)
 
     # Compute diagnostic quantities
     @apply_regionally begin

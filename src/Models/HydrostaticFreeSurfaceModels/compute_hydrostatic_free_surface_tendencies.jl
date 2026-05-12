@@ -1,5 +1,6 @@
 import Oceananigans: tracer_tendency_kernel_function
 import Oceananigans.Models: interior_tendency_kernel_parameters
+using Oceananigans.TimeSteppers: convert_time
 
 using Oceananigans: fields, prognostic_fields, TendencyCallsite, UpdateStateCallsite
 using Oceananigans.Grids: halo_size
@@ -100,6 +101,8 @@ function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active
     arch = model.architecture
     grid = model.grid
 
+    kernel_clock = convert_time(grid, model.clock)
+
     for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
 
         @inbounds c_tendency    = model.timestepper.Gⁿ[tracer_name]
@@ -119,7 +122,7 @@ function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active
                      model.tracers,
                      model.closure_fields,
                      model.auxiliary_fields,
-                     model.clock,
+                     kernel_clock,
                      c_forcing)
 
         launch!(arch, grid, kernel_parameters,
@@ -161,7 +164,7 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
                                 model.pressure.pHY′,
                                 model.auxiliary_fields,
                                 model.vertical_coordinate,
-                                model.clock)
+                                convert_time(grid, model.clock))
 
     u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args..., u_forcing)
     v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args..., v_forcing)

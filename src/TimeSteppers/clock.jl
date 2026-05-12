@@ -101,7 +101,8 @@ function Clock{TT}(; time,
 end
 
 # helpful default
-Clock(grid::AbstractGrid{FT}) where {FT} = Clock{FT}(; time=0)
+# Clock(grid::AbstractGrid{FT}) where {FT} = Clock{FT}(; time=0)
+Clock(grid::AbstractGrid) = Clock{Float64}(; time=0)
 
 function Base.summary(clock::Clock)
     TT = typeof(clock.time)
@@ -166,6 +167,19 @@ Adapt.adapt_structure(to, clock::Clock) = (time          = clock.time,
                                            last_stage_Δt = clock.last_stage_Δt,
                                            iteration     = clock.iteration,
                                            stage         = clock.stage)
+
+"""
+    convert_time(grid, clock)
+
+Return a `Clock` with `time` demoted to `eltype(grid)`, all other fields unchanged.
+Call this at every `launch!` site that passes `clock` to a kernel so that `clock.time`
+inside the kernel matches grid precision rather than the clock's native Float64.
+"""
+function convert_time(grid, clock::Clock{TT, DT, IT, S}) where {TT, DT, IT, S}
+    FT = eltype(grid)
+    return Clock{FT, DT, IT, S}(convert(FT, clock.time), clock.last_Δt, clock.last_stage_Δt, clock.iteration, clock.stage)
+end
+
 
 """Restore the clock from a checkpointed state."""
 function restore_prognostic_state!(restored::Clock, from)
