@@ -68,8 +68,8 @@ bottom_sponge_layer = Relaxation(; rate = 1/60,
 # output
 Relaxation{Float64, GaussianMask{:z, Float64}, LinearTarget{:z, Float64}}
 ├── rate: 0.016666666666666666
-├── mask: exp(-(z + 100.0)^2 / (2 * 25.0^2))
-└── target: 20.0 + 0.001 * z
+├── mask: exp(-(z + 100)^2 / (2 * 25^2))
+└── target: 20 + 0.001 * z
 ```
 """
 Relaxation(; rate, mask=onefunction, target=zerofunction) = Relaxation(rate, mask, target)
@@ -90,9 +90,9 @@ when a `Relaxation`'s `target` is a `FieldTimeSeries`; not intended for direct
 user construction.
 """
 struct FieldTimeSeriesTarget{L, F}
-                 location :: L     # simulation-side instantiated location tuple
-        field_time_series :: F
-                    index :: Int   # index of the forced field in `model_fields`
+    location            :: L    # simulation-side instantiated location tuple
+    field_time_series   :: F
+    index               :: Int  # index of the forced field in `model_fields`
 end
 
 const FieldTimeSeriesRelaxation{R, M, T<:FieldTimeSeriesTarget} = Relaxation{R, M, T}
@@ -129,7 +129,7 @@ function validate_fts_target_extent(fts, field)
         (fts_lo ≤ sim_lo && sim_hi ≤ fts_hi) ||
             throw(ArgumentError(
                 "FieldTimeSeries target $label-extent [$fts_lo, $fts_hi] does not " *
-                "bracket simulation grid $label-extent [$sim_lo, $sim_hi]"))
+                "bracket model grid $label-extent [$sim_lo, $sim_hi]"))
     end
     return nothing
 end

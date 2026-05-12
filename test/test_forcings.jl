@@ -510,9 +510,9 @@ end
                 τ     = 60.0
                 c_ref = 5.0
 
-                fts = FieldTimeSeries{Center, Center, Center}(grid, [0.0, 1e6])
+                fts = FieldTimeSeries{Center, Center, Center}(grid, [0, 1e6])
                 for n in eachindex(fts.times)
-                    parent(fts[n]) .= c_ref
+                    set!(fts[n], c_ref)
                 end
 
                 r = Relaxation(rate=1/τ, target=fts)
@@ -536,7 +536,7 @@ end
 
                 # Extent validation: FTS strictly smaller than the simulation grid throws.
                 small_grid = RectilinearGrid(arch, size=(2, 2, 4), extent=(50, 50, 500))
-                fts_small  = FieldTimeSeries{Center, Center, Center}(small_grid, [0.0, 1e6])
+                fts_small  = FieldTimeSeries{Center, Center, Center}(small_grid, [0, 1e6])
                 r_small    = Relaxation(rate=1/τ, target=fts_small)
                 @test_throws ArgumentError NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r_small))
             end
