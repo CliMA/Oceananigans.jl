@@ -270,6 +270,11 @@ end
 #####
 
 netcdf_string(obj) = typeof(obj).name.wrapper |> string
+# OSSG variants are type aliases of OrthogonalSphericalShellGrid; record the alias name
+# so reconstruction dispatches on the right constructor (which accepts a different
+# kwarg set than the base OSSG constructor).
+netcdf_string(::TripolarGrid) = "TripolarGrid"
+netcdf_string(::RotatedLatitudeLongitudeGrid) = "RotatedLatitudeLongitudeGrid"
 
 function netcdf_grid_constructor_info(grid)
     underlying_grid_args, underlying_grid_kwargs = constructor_arguments(grid)

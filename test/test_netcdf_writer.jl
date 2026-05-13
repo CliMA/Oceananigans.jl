@@ -3151,6 +3151,180 @@ function test_netcdf_dimension_type(arch)
     return nothing
 end
 
+#####
+##### OrthogonalSphericalShellGrid output tests
+#####
+#
+# These exercise the CF §5.2 auxiliary-coordinate path for OSSG (TripolarGrid,
+# RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid). The key cross-
+# validation test uses a non-rotated RotatedLatitudeLongitudeGrid, whose data
+# must match the equivalent LatitudeLongitudeGrid to roundoff.
+#
+
+using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid, RotatedLatitudeLongitudeGrid
+using Oceananigans.OutputWriters: reconstruct_grid
+
+function test_netcdf_tripolar_grid_output(arch)
+    grid = TripolarGrid(arch, size=(20, 16, 4), z=(-100, 0))
+    fs = SplitExplicitFreeSurface(grid; substeps=10)
+    model = HydrostaticFreeSurfaceModel(grid; free_surface=fs, tracers=(:T,))
+
+    simulation = Simulation(model; Δt=1, stop_iteration=2)
+
+    Arch = typeof(arch)
+    filepath = "test_tripolar_netcdf_$Arch.nc"
+    isfile(filepath) && rm(filepath)
+
+    simulation.output_writers[:nc] = NetCDFWriter(model, (; T=model.tracers.T, u=model.velocities.u);
+                                                  filename = filepath,
+                                                  schedule = IterationInterval(1),
+                                                  overwrite_existing = true,
+                                                  include_grid_metrics = true)
+    run!(simulation)
+
+    ds = NCDataset(filepath)
+
+    # Bare horizontal dimensions: i_*, j_* should exist as dims but have no coord variable.
+    for dname in ("i_caa", "i_faa", "j_aca", "j_afa")
+        @test dname ∈ keys(ds.dim)
+        @test dname ∉ keys(ds)
+    end
+
+    # All eight 2D λ/φ auxiliary coordinate variables.
+    for v in ("λ_cca", "λ_fca", "λ_cfa", "λ_ffa", "φ_cca", "φ_fca", "φ_cfa", "φ_ffa")
+        @test v ∈ keys(ds)
+        @test ndims(ds[v]) == 2
+    end
+
+    # Center-cell λ/φ have the (Nx, Ny) shape.
+    @test size(ds["λ_cca"]) == (size(grid, 1), size(grid, 2))
+    @test size(ds["φ_cca"]) == (size(grid, 1), size(grid, 2))
+
+    # `coordinates` attribute on data fields points at the right (λ, φ, z) trio.
+    @test ds["T"].attrib["coordinates"] == "λ_cca φ_cca z_aac"
+    @test ds["u"].attrib["coordinates"] == "λ_fca φ_fca z_aac"
+
+    # Grid metrics: 4 × Δx, 4 × Δy, 4 × Az, plus Δz.
+    for v in ("Δx_cca", "Δx_fca", "Δx_cfa", "Δx_ffa",
+              "Δy_cca", "Δy_fca", "Δy_cfa", "Δy_ffa",
+              "Az_cca", "Az_fca", "Az_cfa", "Az_ffa",
+              "Δz_aac", "Δz_aaf")
+        @test v ∈ keys(ds)
+    end
+
+    # Field shape: (Nx, Ny, Nz, Nt).
+    @test size(ds["T"]) == (size(grid, 1), size(grid, 2), size(grid, 3), length(ds["time"]))
+
+    close(ds)
+    rm(filepath)
+    return nothing
+end
+
+function test_netcdf_rotated_llg_matches_llg(arch)
+    # The linchpin: with `north_pole = (0, 90)` the rotated grid is numerically
+    # equivalent to a LatitudeLongitudeGrid with the same lat/lon/z. The two
+    # NetCDF representations differ (1D coord vars vs. 2D aux coords) but the
+    # data and coordinate values should agree to roundoff.
+
+    N = (16, 12, 3)
+    common = (size=N, longitude=(0, 360), latitude=(-60, 60), z=(-100, 0))
+
+    llg  = LatitudeLongitudeGrid(arch; common...)
+    rllg = RotatedLatitudeLongitudeGrid(arch; common..., north_pole=(0, 90))
+
+    fs_llg  = SplitExplicitFreeSurface(llg;  substeps=5)
+    fs_rllg = SplitExplicitFreeSurface(rllg; substeps=5)
+
+    m_llg  = HydrostaticFreeSurfaceModel(llg;  free_surface=fs_llg,  tracers=(:T,))
+    m_rllg = HydrostaticFreeSurfaceModel(rllg; free_surface=fs_rllg, tracers=(:T,))
+
+    # Identical analytic initial condition. Must be 360°-periodic in λ so that the LLG
+    # convention (λ ∈ [0, 360]) and the rotated-grid convention (λ ∈ [-180, 180]) yield
+    # the same value at every grid point.
+    T0(λ, φ, z) = cos(deg2rad(λ)) * exp(-φ^2 / 400)
+    set!(m_llg.tracers.T,  T0)
+    set!(m_rllg.tracers.T, T0)
+
+    s_llg  = Simulation(m_llg;  Δt=1, stop_iteration=2)
+    s_rllg = Simulation(m_rllg; Δt=1, stop_iteration=2)
+
+    Arch = typeof(arch)
+    p_llg  = "test_llg_$(Arch).nc"
+    p_rllg = "test_rllg_$(Arch).nc"
+    isfile(p_llg)  && rm(p_llg)
+    isfile(p_rllg) && rm(p_rllg)
+
+    s_llg.output_writers[:nc]  = NetCDFWriter(m_llg,  (; T=m_llg.tracers.T);
+                                              filename=p_llg,  schedule=IterationInterval(1),
+                                              overwrite_existing=true, include_grid_metrics=false)
+    s_rllg.output_writers[:nc] = NetCDFWriter(m_rllg, (; T=m_rllg.tracers.T);
+                                              filename=p_rllg, schedule=IterationInterval(1),
+                                              overwrite_existing=true, include_grid_metrics=false)
+
+    run!(s_llg)
+    run!(s_rllg)
+
+    ds_llg  = NCDataset(p_llg)
+    ds_rllg = NCDataset(p_rllg)
+
+    # Coordinates: 2D RotatedLLG aux coords match 1D LLG coords (broadcasted).
+    # RotatedLLG normalizes λ to (-180, 180], so compare modulo 360.
+    λ_llg  = collect(ds_llg["λ_caa"])
+    φ_llg  = collect(ds_llg["φ_aca"])
+    λ_rllg = collect(ds_rllg["λ_cca"])  # 2D (Nx, Ny)
+    φ_rllg = collect(ds_rllg["φ_cca"])  # 2D (Nx, Ny)
+
+    mod360(x) = mod(x + 360, 360)  # normalize to [0, 360)
+    λ_llg_norm  = mod360.(λ_llg)
+    λ_rllg_norm = mod360.(λ_rllg)
+    @test all(j -> all(isapprox.(λ_rllg_norm[:, j], λ_llg_norm; atol=1e-8)), 1:N[2])
+    @test all(i -> all(isapprox.(φ_rllg[i, :], φ_llg; atol=1e-10)), 1:N[1])
+
+    # Field values agree at every (i, j, k, t).
+    T_llg  = collect(ds_llg["T"])
+    T_rllg = collect(ds_rllg["T"])
+    @test size(T_llg) == size(T_rllg)
+    @test isapprox(T_llg, T_rllg; atol=1e-6)
+
+    close(ds_llg)
+    close(ds_rllg)
+    rm(p_llg)
+    rm(p_rllg)
+    return nothing
+end
+
+function test_netcdf_tripolar_grid_reconstruction(arch)
+    Nx, Ny, Nz = 20, 16, 3
+    grid = TripolarGrid(arch, size=(Nx, Ny, Nz), z=(-100, 0))
+    fs = SplitExplicitFreeSurface(grid; substeps=10)
+    model = HydrostaticFreeSurfaceModel(grid; free_surface=fs, tracers=(:T,))
+    simulation = Simulation(model; Δt=1, stop_iteration=1)
+
+    Arch = typeof(arch)
+    filepath = "test_tripolar_reconstruct_$Arch.nc"
+    isfile(filepath) && rm(filepath)
+
+    simulation.output_writers[:nc] = NetCDFWriter(model, (; T=model.tracers.T);
+                                                  filename=filepath,
+                                                  schedule=IterationInterval(1),
+                                                  overwrite_existing=true,
+                                                  include_grid_metrics=false)
+    run!(simulation)
+
+    reconstructed = reconstruct_grid(filepath; architecture=arch)
+
+    @test size(reconstructed) == size(grid)
+    @test (reconstructed.Hx, reconstructed.Hy, reconstructed.Hz) == (grid.Hx, grid.Hy, grid.Hz)
+    @test reconstructed isa TripolarGrid
+
+    # Coordinate arrays agree (interior portion).
+    @test Array(reconstructed.λᶜᶜᵃ[1:Nx, 1:Ny]) ≈ Array(grid.λᶜᶜᵃ[1:Nx, 1:Ny]) atol=1e-10
+    @test Array(reconstructed.φᶜᶜᵃ[1:Nx, 1:Ny]) ≈ Array(grid.φᶜᶜᵃ[1:Nx, 1:Ny]) atol=1e-10
+
+    rm(filepath)
+    return nothing
+end
+
 @testset "NetCDF output writer" begin
     @info "Testing NetCDF output writer..."
 
@@ -3290,6 +3464,13 @@ end
                 test_netcdf_multiple_grids_defvar(grid1, grid2, immersed=false)
                 test_netcdf_multiple_grids_defvar(grid1, grid2, immersed=true)
             end
+        end
+
+        @testset "OrthogonalSphericalShellGrid output [$A]" begin
+            @info "  Testing OrthogonalSphericalShellGrid output [$A]..."
+            test_netcdf_tripolar_grid_output(arch)
+            test_netcdf_rotated_llg_matches_llg(arch)
+            test_netcdf_tripolar_grid_reconstruction(arch)
         end
     end
 end

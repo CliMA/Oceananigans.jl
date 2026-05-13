@@ -26,6 +26,7 @@ using Oceananigans.Fields
 using Oceananigans.Fields: set!, Reduction, reduced_dimensions, reduced_location, location, indices
 using Oceananigans.Grids:
     Center, Face, Flat, Periodic, Bounded,
+    RightCenterFolded, RightFaceFolded,
     AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid,
     StaticVerticalDiscretization, MutableVerticalDiscretization, AbstractVerticalCoordinate,
     grid, topology, halo_size, xspacings, yspacings, zspacings, λspacings, φspacings,
