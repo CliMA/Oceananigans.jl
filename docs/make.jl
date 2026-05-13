@@ -249,9 +249,10 @@ makedocs(; sitename = "Oceananigans.jl",
          plugins = [bib],
          warnonly = [:cross_references],
          doctestfilters = [
-             r"┌ Warning:.*",         # remove standard warning lines
-             r"└ @ .*",               # remove the source location of warnings
-             r"file size: [\d.]+ \w+", # ignore NetCDF/JLD2 file size drift (HDF5 version changes)
+             r"┌ Warning:.*",                       # remove standard warning lines
+             r"└ @ .*",                             # remove the source location of warnings
+             r"file size: [\d.]+ \w+",              # ignore NetCDF/JLD2 file size drift (HDF5 version changes)
+             r"Oceananigans\.TurbulenceClosures\.", # qualifier may or may not appear depending on namespace state
          ],
          clean = true,
          linkcheck = true,
