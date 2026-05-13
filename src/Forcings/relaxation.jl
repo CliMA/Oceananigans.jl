@@ -256,7 +256,7 @@ struct CosineRampMask{D, T}
 end
 
 @inline function cosine_ramp(m::CosineRampMask, ξ)
-    r = clamp((ξ - m.start) / (m.stop - m.start), 0, 1))
+    r = clamp((ξ - m.start) / (m.stop - m.start), 0, 1)
     return (1 - cos(π * r)) / 2
 end
 
