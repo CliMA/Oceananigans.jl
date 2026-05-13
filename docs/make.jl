@@ -249,17 +249,14 @@ makedocs(; sitename = "Oceananigans.jl",
          plugins = [bib],
          warnonly = [:cross_references],
          doctestfilters = [
-             r"┌ Warning:.*",                       # remove standard warning lines
-             r"└ @ .*",                             # remove the source location of warnings
-             r"file size: [\d.]+ \w+",              # ignore NetCDF/JLD2 file size drift (HDF5 version changes)
-             r"Oceananigans\.TurbulenceClosures\.", # qualifier may or may not appear depending on namespace state
+             r"┌ Warning:.*",  # remove standard warning lines
+             r"└ @ .*",        # remove the source location of warnings
          ],
          clean = true,
          linkcheck = true,
          linkcheck_ignore = [
-             r"jstor\.org",
-             r"^https://github\.com/.*?/blob/",
-             r"https://clima\.caltech\.edu/?",
+            r"jstor\.org",
+            r"^https://github\.com/.*?/blob/",
          ],
          draft = false,        # set to true to speed things up
          doctest = true,       # set to false to speed things up
