@@ -3293,6 +3293,55 @@ function test_netcdf_rotated_llg_matches_llg(arch)
     return nothing
 end
 
+function test_netcdf_tripolar_field_time_series(arch)
+    Nx, Ny, Nz = 12, 10, 3
+    grid = TripolarGrid(arch, size=(Nx, Ny, Nz), z=(-100, 0))
+    fs = SplitExplicitFreeSurface(grid; substeps=10)
+    model = HydrostaticFreeSurfaceModel(grid; free_surface=fs, tracers=(:T,))
+
+    # Non-zero initial condition so we can verify values round-trip.
+    set!(model.tracers.T, (λ, φ, z) -> cos(deg2rad(λ)) + 0.1 * φ)
+
+    sim = Simulation(model; Δt=1, stop_iteration=3)
+
+    Arch = typeof(arch)
+    fp = "test_tripolar_fts_$Arch.nc"
+    isfile(fp) && rm(fp)
+    sim.output_writers[:nc] = NetCDFWriter(model, (; T=model.tracers.T);
+                                            filename=fp, schedule=IterationInterval(1),
+                                            overwrite_existing=true, include_grid_metrics=false)
+
+    # Capture in-memory snapshots that align with the file's time series — the
+    # callback fires on the same IterationInterval(1) as the writer, so both record
+    # the state after iterations 1, 2, …, stop_iteration.
+    T_snapshots = Array{eltype(model.tracers.T), 3}[]
+    saved = (s) -> push!(T_snapshots, Array(interior(s.model.tracers.T)))
+    sim.callbacks[:save] = Callback(saved, IterationInterval(1))
+
+    run!(sim)
+
+    # Reconstruct as FieldTimeSeries.
+    fts = FieldTimeSeries(fp, "T"; architecture=arch)
+
+    # Grid structural equivalence.
+    @test size(fts.grid) == size(grid)
+    @test (fts.grid.Hx, fts.grid.Hy, fts.grid.Hz) == (grid.Hx, grid.Hy, grid.Hz)
+    @test fts.grid isa TripolarGrid
+
+    # Time values match.
+    @test length(fts.times) == length(T_snapshots)
+
+    # Field values agree at each time index (within Float32 roundoff of the writer,
+    # which defaults to `array_type = Array{Float32}`).
+    @test length(fts.times) == length(T_snapshots)
+    for k in 1:min(length(fts.times), length(T_snapshots))
+        @test Array(interior(fts[k])) ≈ T_snapshots[k] atol=1e-4
+    end
+
+    rm(fp)
+    return nothing
+end
+
 function test_netcdf_rectilinear_mvd_output(arch)
     # Smoke test: RectilinearGrid + MutableVerticalDiscretization should write
     # `r_aac`/`r_aaf` (not `z_*`) and use them as the vertical field dimension.
@@ -3510,6 +3559,7 @@ end
             test_netcdf_tripolar_grid_output(arch)
             test_netcdf_rotated_llg_matches_llg(arch)
             test_netcdf_tripolar_grid_reconstruction(arch)
+            test_netcdf_tripolar_field_time_series(arch)
         end
 
         @testset "MutableVerticalDiscretization output [$A]" begin
