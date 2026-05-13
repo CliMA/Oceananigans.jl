@@ -3293,6 +3293,45 @@ function test_netcdf_rotated_llg_matches_llg(arch)
     return nothing
 end
 
+function test_netcdf_rectilinear_mvd_output(arch)
+    # Smoke test: RectilinearGrid + MutableVerticalDiscretization should write
+    # `r_aac`/`r_aaf` (not `z_*`) and use them as the vertical field dimension.
+    zcoord = Oceananigans.Grids.MutableVerticalDiscretization(collect(range(-100.0, 0.0; length=6)))
+    grid = RectilinearGrid(arch; size=(8, 6, 5), x=(0, 1), y=(0, 1), z=zcoord,
+                           topology=(Periodic, Periodic, Bounded))
+    ZStar = Oceananigans.Models.HydrostaticFreeSurfaceModels.ZStarCoordinate
+    model = HydrostaticFreeSurfaceModel(grid;
+                                        free_surface=SplitExplicitFreeSurface(grid; substeps=10),
+                                        tracers=(:T,),
+                                        vertical_coordinate=ZStar())
+    sim = Simulation(model; Δt=0.5, stop_iteration=2)
+
+    Arch = typeof(arch)
+    fp = "test_rect_mvd_$Arch.nc"
+    isfile(fp) && rm(fp)
+    sim.output_writers[:nc] = NetCDFWriter(model, (; T=model.tracers.T);
+                                            filename=fp, schedule=IterationInterval(1),
+                                            overwrite_existing=true, include_grid_metrics=true)
+    run!(sim)
+
+    ds = NCDataset(fp)
+    # Vertical dimension is `r_*` (not `z_*`), since the discretization is mutable.
+    @test "r_aac" ∈ keys(ds.dim) && "r_aaf" ∈ keys(ds.dim)
+    @test "z_aac" ∉ keys(ds.dim) && "z_aaf" ∉ keys(ds.dim)
+    @test "r_aac" ∈ keys(ds) && "r_aaf" ∈ keys(ds)
+
+    # Vertical metric variables also use the `Δr_*` name.
+    @test "Δr_aac" ∈ keys(ds) && "Δr_aaf" ∈ keys(ds)
+    @test "Δz_aac" ∉ keys(ds) && "Δz_aaf" ∉ keys(ds)
+
+    # Field dim signature ends in `r_aac` for a Center field.
+    @test dimnames(ds["T"]) == ("x_caa", "y_aca", "r_aac", "time")
+
+    close(ds)
+    rm(fp)
+    return nothing
+end
+
 function test_netcdf_tripolar_grid_reconstruction(arch)
     Nx, Ny, Nz = 20, 16, 3
     grid = TripolarGrid(arch, size=(Nx, Ny, Nz), z=(-100, 0))
@@ -3471,6 +3510,11 @@ end
             test_netcdf_tripolar_grid_output(arch)
             test_netcdf_rotated_llg_matches_llg(arch)
             test_netcdf_tripolar_grid_reconstruction(arch)
+        end
+
+        @testset "MutableVerticalDiscretization output [$A]" begin
+            @info "  Testing MutableVerticalDiscretization output [$A]..."
+            test_netcdf_rectilinear_mvd_output(arch)
         end
     end
 end

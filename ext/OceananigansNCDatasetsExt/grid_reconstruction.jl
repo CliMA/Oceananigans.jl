@@ -89,8 +89,9 @@ function gather_grid_metrics(grid::RectilinearGrid, indices, dim_name_generator;
     end
 
     if TZ != Flat
-        Δzᵃᵃᶠ_name = dim_name_generator("Δz", grid, nothing, nothing, f, Val(:z))
-        Δzᵃᵃᶜ_name = dim_name_generator("Δz", grid, nothing, nothing, c, Val(:z))
+        Δz = "Δ" * vertical_coordinate_name(grid)
+        Δzᵃᵃᶠ_name = dim_name_generator(Δz, grid, nothing, nothing, f, Val(:z))
+        Δzᵃᵃᶜ_name = dim_name_generator(Δz, grid, nothing, nothing, c, Val(:z))
 
         Δzᵃᵃᶠ_field = Field(zspacings(grid, f); indices)
         Δzᵃᵃᶜ_field = Field(zspacings(grid, c); indices)
