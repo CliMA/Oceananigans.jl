@@ -3,7 +3,6 @@ module TimeSteppers
 export
     QuasiAdamsBashforth2TimeStepper,
     RungeKutta3TimeStepper,
-    FastRungeKutta3TimeStepper,
     PressureProjectionRungeKutta3TimeStepper,
     SplitRungeKuttaTimeStepper,
     time_step!,
@@ -54,7 +53,6 @@ include("clock.jl")
 include("quasi_adams_bashforth_2.jl")
 include("runge_kutta_3.jl")
 include("pressure_projection_runge_kutta_3.jl")
-# include("fast_runge_kutta_3.jl")
 include("split_runge_kutta.jl")
 
 """
@@ -80,9 +78,6 @@ TimeStepper(::Val{:QuasiAdamsBashforth2}, args...; kwargs...) =
 
 TimeStepper(::Val{:RungeKutta3}, args...; kwargs...) =
     RungeKutta3TimeStepper(args...; kwargs...)
-
-TimeStepper(::Val{:FastRungeKutta3}, args...; kwargs...) =
-    FastRungeKutta3TimeStepper(args...; kwargs...)
 
 TimeStepper(::Val{:PressureProjectionRungeKutta3}, args...; kwargs...) =
     PressureProjectionRungeKutta3TimeStepper(args...; kwargs...)
