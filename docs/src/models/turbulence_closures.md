@@ -312,7 +312,7 @@ IsopycnalSkewSymmetricDiffusivity:
 ├── κ_skew: 1000.0
 ├── κ_symmetric: 1000.0
 ├── isopycnal_tensor: Oceananigans.TurbulenceClosures.SmallSlopeIsopycnalTensor{Float64}
-└── slope_limiter: FluxTapering{Float64}
+└── slope_limiter: Oceananigans.TurbulenceClosures.FluxTapering{Float64}
 ```
 
 The `κ_skew` parameter controls the eddy-induced (bolus) transport, while `κ_symmetric`
