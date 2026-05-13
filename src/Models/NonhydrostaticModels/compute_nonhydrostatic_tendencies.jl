@@ -48,7 +48,7 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
     tendencies           = model.timestepper.Gⁿ
     arch                 = model.architecture
     grid                 = model.grid
-    advection            = model.advection
+    advection            = model.advection.momentum
     coriolis             = model.coriolis
     buoyancy             = model.buoyancy
     biogeochemistry      = model.biogeochemistry
@@ -103,20 +103,19 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
             tendencies.w, grid, w_kernel_args;
             active_cells_map, exclude_periphery)
 
-    start_tracer_kernel_args = (advection, closure)
-    end_tracer_kernel_args   = (buoyancy, biogeochemistry, background_fields, velocities,
-                                tracers, auxiliary_fields, closure_fields)
+    tracer_kernel_args   = (buoyancy, biogeochemistry, background_fields, velocities,
+                            tracers, auxiliary_fields, closure_fields)
 
-    for tracer_index in 1:length(tracers)
-        @inbounds c_tendency = tendencies[tracer_index + 3]
-        @inbounds forcing = forcings[tracer_index + 3]
-        @inbounds c_immersed_bc = tracers[tracer_index].boundary_conditions.immersed
-        @inbounds tracer_name = keys(tracers)[tracer_index]
+    for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
+        @inbounds c_tendency = tendencies[tracer_name]
+        @inbounds c_advection = model.advection[tracer_name]
+        @inbounds forcing = forcings[tracer_name]
+        @inbounds c_immersed_bc = tracers[tracer_name].boundary_conditions.immersed
 
         args = tuple(Val(tracer_index), Val(tracer_name),
-                     start_tracer_kernel_args...,
+                     c_advection, closure,
                      c_immersed_bc,
-                     end_tracer_kernel_args...,
+                     tracer_kernel_args...,
                      clock, forcing)
 
         launch!(arch, grid, kernel_parameters, compute_Gc!,
