@@ -26,10 +26,15 @@ using Oceananigans.Fields
 using Oceananigans.Fields: set!, Reduction, reduced_dimensions, reduced_location, location, indices
 using Oceananigans.Grids:
     Center, Face, Flat, Periodic, Bounded,
-    AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, StaticVerticalDiscretization,
+    AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid,
+    StaticVerticalDiscretization, MutableVerticalDiscretization, AbstractVerticalCoordinate,
     grid, topology, halo_size, xspacings, yspacings, zspacings, λspacings, φspacings,
+    λnodes, φnodes,
     parent_index_range, nodes, ξnodes, ηnodes, rnodes, validate_index, peripheral_node,
     constructor_arguments, architecture
+using Oceananigans.OrthogonalSphericalShellGrids:
+    OrthogonalSphericalShellGrid, TripolarGrid, RotatedLatitudeLongitudeGrid,
+    ConformalCubedSpherePanelGrid
 using Oceananigans.ImmersedBoundaries:
     ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary, PartialCellBottom, PCBIBG,
     CenterImmersedCondition, InterfaceImmersedCondition
@@ -74,7 +79,8 @@ import Oceananigans.OutputWriters:
     reconstruct_grid,
     trilocation_dim_name,
     add_grid_suffix,
-    dimension_name_generator_free_surface
+    dimension_name_generator_free_surface,
+    vertical_coordinate_name
 
 const c = Center()
 const f = Face()

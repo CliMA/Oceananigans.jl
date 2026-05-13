@@ -4,8 +4,28 @@
 ##### NetCDFWriter functionality is implemented in ext/OceananigansNCDatasetsExt
 #####
 
-using Oceananigans.Grids: topology, Flat, StaticVerticalDiscretization
+using Oceananigans.Grids: topology, Flat, StaticVerticalDiscretization, MutableVerticalDiscretization, AbstractVerticalCoordinate
+using Oceananigans.OrthogonalSphericalShellGrids: OrthogonalSphericalShellGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+
+#####
+##### Vertical coordinate naming
+#####
+#
+# The horizontal NetCDF dimension name for fields (and the underlying coordinate variable name
+# in NetCDF) for the vertical depends on the kind of vertical discretization:
+#   - `StaticVerticalDiscretization`: the reference and physical vertical coordinates coincide,
+#     so we use "z" everywhere.
+#   - `MutableVerticalDiscretization` (z-star, σ-coordinates): the saved 1D coordinate is the
+#     reference (Lagrangian) coordinate; the physical `z = z(r, η, …)` is reconstructible from
+#     `r` and the time-varying free surface `η`. We use "r" for the 1D reference coordinate
+#     and write `η` as a time-dependent variable so that `z` is recoverable at read time.
+#
+
+vertical_coordinate_name(::StaticVerticalDiscretization) = "z"
+vertical_coordinate_name(::MutableVerticalDiscretization) = "r"
+vertical_coordinate_name(grid::AbstractGrid) = vertical_coordinate_name(grid.z)
+vertical_coordinate_name(grid::ImmersedBoundaryGrid) = vertical_coordinate_name(grid.underlying_grid)
 
 #####
 ##### Dimension name generators
@@ -36,6 +56,7 @@ function suffixed_dim_name_generator(var_name, grid::AbstractGrid{FT, TX, TY, TZ
 end
 
 suffixed_dim_name_generator(var_name, ::StaticVerticalDiscretization, LX, LY, LZ, dim::Val{:z}; connector="_", location_letters) = var_name * connector * location_letters
+suffixed_dim_name_generator(var_name, ::MutableVerticalDiscretization, LX, LY, LZ, dim::Val{:z}; connector="_", location_letters) = var_name * connector * location_letters
 
 loc2letter(::Face, full=true) = "f"
 loc2letter(::Center, full=true) = "c"
@@ -54,9 +75,13 @@ trilocation_location_string(::RectilinearGrid, LX, LY, LZ, ::Val{:y}) = "a" * lo
 trilocation_location_string(::LatitudeLongitudeGrid, LX, LY, LZ, ::Val{:x}) = loc2letter(LX) * loc2letter(LY) * "a"
 trilocation_location_string(::LatitudeLongitudeGrid, LX, LY, LZ, ::Val{:y}) = loc2letter(LX) * loc2letter(LY) * "a"
 
-trilocation_location_string(grid::AbstractGrid,             LX, LY, LZ, dim::Val{:z}) = trilocation_location_string(grid.z, LX, LY, LZ, dim)
-trilocation_location_string(::StaticVerticalDiscretization, LX, LY, LZ, dim::Val{:z}) = "aa" * loc2letter(LZ)
-trilocation_location_string(grid,                           LX, LY, LZ, dim)          = loc2letter(LX) * loc2letter(LY) * loc2letter(LZ)
+trilocation_location_string(::OrthogonalSphericalShellGrid, LX, LY, LZ, ::Val{:x}) = loc2letter(LX) * loc2letter(LY) * "a"
+trilocation_location_string(::OrthogonalSphericalShellGrid, LX, LY, LZ, ::Val{:y}) = loc2letter(LX) * loc2letter(LY) * "a"
+
+trilocation_location_string(grid::AbstractGrid,              LX, LY, LZ, dim::Val{:z}) = trilocation_location_string(grid.z, LX, LY, LZ, dim)
+trilocation_location_string(::StaticVerticalDiscretization,  LX, LY, LZ, dim::Val{:z}) = "aa" * loc2letter(LZ)
+trilocation_location_string(::MutableVerticalDiscretization, LX, LY, LZ, dim::Val{:z}) = "aa" * loc2letter(LZ)
+trilocation_location_string(grid,                            LX, LY, LZ, dim)          = loc2letter(LX) * loc2letter(LY) * loc2letter(LZ)
 
 trilocation_dim_name(var_name, grid, LX, LY, LZ, dim) =
     suffixed_dim_name_generator(var_name, grid, LX, LY, LZ, dim, connector="_", location_letters=trilocation_location_string(grid, LX, LY, LZ, dim))
