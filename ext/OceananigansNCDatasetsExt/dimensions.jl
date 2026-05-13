@@ -35,34 +35,8 @@ function create_field_dimensions!(ds, fd::AbstractField, dimension_name_generato
     spatial_dim_names = field_dimensions(fd, dimension_name_generator; grid_index)
     spatial_dim_names_nonempty = tuple(filter(!isempty, spatial_dim_names)...)
 
-    if all(d ∈ keys(ds.dim) for d in spatial_dim_names_nonempty)
-        # Common path through `initialize_nc_file`: gather_dimensions has already created
-        # the dims. Still verify the existing dim sizes match what this field expects —
-        # otherwise NCDatasets' defVar throws an opaque ErrorException down the line.
-        # Expected dim sizes come from the field's interior shape (dropping reduced/Flat dims).
-        # `size(interior(fd))` returns a 3-tuple; we match it positionally against the 3 dim
-        # names (with empties already filtered out by the same mask).
-        full_sizes = size(interior(fd))
-        keep_mask = .!isempty.(spatial_dim_names)
-        expected_sizes = full_sizes[keep_mask]
-        for (dname, expected) in zip(spatial_dim_names_nonempty, expected_sizes)
-            actual = ds.dim[dname]
-            if actual != expected
-                throw(ArgumentError("Dimension '$dname' has size $actual in the dataset but the field expects size $expected."))
-            end
-        end
-    else
-        # Fallback for standalone `defVar` calls (not via `initialize_nc_file`): construct
-        # coordinate variables from the field's `nodes`. This only works for grids whose
-        # horizontal coordinates are 1D (RectilinearGrid, LatitudeLongitudeGrid). For
-        # grids with 2D auxiliary coordinates (OrthogonalSphericalShellGrid),
-        # `gather_dimensions` must be called first.
-        dimension_attributes = default_dimension_attributes(grid(fd), dimension_name_generator; grid_index)
-        spatial_dim_data = nodes(fd; with_halos)
-        spatial_dim_names_dict = OrderedDict(name => data
-                                             for (name, data) in zip(spatial_dim_names, spatial_dim_data))
-        create_spatial_dimensions!(ds, spatial_dim_names_dict, dimension_attributes; dimension_type)
-    end
+    _create_field_coord_variables!(ds, fd, grid(fd), spatial_dim_names, dimension_name_generator;
+                                   with_halos, dimension_type, grid_index)
 
     # Create time dimension if needed
     if time_dependent
@@ -72,6 +46,44 @@ function create_field_dimensions!(ds, fd::AbstractField, dimension_name_generato
         return spatial_dim_names_nonempty
     end
 end
+
+# Default (1D-coordinate) path — RectilinearGrid and LatitudeLongitudeGrid: zip the
+# field's NetCDF dim names with the field's `nodes(fd)` 1D arrays and pass them through
+# `create_spatial_dimensions!`, which creates missing coord vars or validates existing
+# ones against the field's nodes (catching mismatched dim sizes early as ArgumentError).
+function _create_field_coord_variables!(ds, fd, grid, spatial_dim_names, dim_name_generator;
+                                        with_halos, dimension_type, grid_index)
+    dimension_attributes = default_dimension_attributes(grid, dim_name_generator; grid_index)
+    spatial_dim_data = nodes(fd; with_halos)
+    spatial_dim_names_dict = OrderedDict(name => data
+                                         for (name, data) in zip(spatial_dim_names, spatial_dim_data))
+    create_spatial_dimensions!(ds, spatial_dim_names_dict, dimension_attributes; dimension_type)
+end
+
+# OrthogonalSphericalShellGrid path: dimensions are 1D bare `i_*`/`j_*` indices plus the
+# vertical, and the lat/lon are 2D auxiliary coord variables that don't correspond
+# positionally to `nodes(fd)`. So we don't (re-)create coord variables here at all — the
+# OSSG path requires `gather_dimensions` / `create_spatial_dimensions!` to have run at
+# file init. If the named dimensions exist in the dataset, we're done; otherwise we
+# raise a clear error rather than silently producing a malformed file.
+function _create_field_coord_variables!(ds, fd, grid::OrthogonalSphericalShellGrid,
+                                        spatial_dim_names, dim_name_generator;
+                                        with_halos, dimension_type, grid_index)
+    for dname in spatial_dim_names
+        isempty(dname) && continue
+        if dname ∉ keys(ds.dim)
+            throw(ArgumentError("Dimension '$dname' for an OrthogonalSphericalShellGrid field " *
+                                "does not exist in the dataset. Call `gather_dimensions` / " *
+                                "`create_spatial_dimensions!` at file init before defining " *
+                                "fields, or use the high-level `NetCDFWriter` constructor."))
+        end
+    end
+    return nothing
+end
+
+# Defer through ImmersedBoundaryGrid to the underlying grid's dispatch.
+_create_field_coord_variables!(ds, fd, grid::ImmersedBoundaryGrid, spatial_dim_names, gen; kw...) =
+    _create_field_coord_variables!(ds, fd, grid.underlying_grid, spatial_dim_names, gen; kw...)
 
 """
     create_spatial_dimensions!(dataset, dims, attributes_dict; array_type=Array{Float32}, kwargs...)
