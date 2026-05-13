@@ -35,14 +35,28 @@ function create_field_dimensions!(ds, fd::AbstractField, dimension_name_generato
     spatial_dim_names = field_dimensions(fd, dimension_name_generator; grid_index)
     spatial_dim_names_nonempty = tuple(filter(!isempty, spatial_dim_names)...)
 
-    # If every dimension this field needs already exists in the dataset, we don't need to
-    # (re-)create coordinate variables — `gather_dimensions` / `create_spatial_dimensions!`
-    # has already populated them at file init. This is the common path.
-    if !all(d ∈ keys(ds.dim) for d in spatial_dim_names_nonempty)
-        # Fallback: build coordinate variables from the field's `nodes` directly.
-        # This only works for grids whose horizontal coordinates are 1D (RectilinearGrid,
-        # LatitudeLongitudeGrid). For grids with 2D auxiliary coordinates
-        # (OrthogonalSphericalShellGrid), `gather_dimensions` must be called first.
+    if all(d ∈ keys(ds.dim) for d in spatial_dim_names_nonempty)
+        # Common path through `initialize_nc_file`: gather_dimensions has already created
+        # the dims. Still verify the existing dim sizes match what this field expects —
+        # otherwise NCDatasets' defVar throws an opaque ErrorException down the line.
+        # Expected dim sizes come from the field's interior shape (dropping reduced/Flat dims).
+        # `size(interior(fd))` returns a 3-tuple; we match it positionally against the 3 dim
+        # names (with empties already filtered out by the same mask).
+        full_sizes = size(interior(fd))
+        keep_mask = .!isempty.(spatial_dim_names)
+        expected_sizes = full_sizes[keep_mask]
+        for (dname, expected) in zip(spatial_dim_names_nonempty, expected_sizes)
+            actual = ds.dim[dname]
+            if actual != expected
+                throw(ArgumentError("Dimension '$dname' has size $actual in the dataset but the field expects size $expected."))
+            end
+        end
+    else
+        # Fallback for standalone `defVar` calls (not via `initialize_nc_file`): construct
+        # coordinate variables from the field's `nodes`. This only works for grids whose
+        # horizontal coordinates are 1D (RectilinearGrid, LatitudeLongitudeGrid). For
+        # grids with 2D auxiliary coordinates (OrthogonalSphericalShellGrid),
+        # `gather_dimensions` must be called first.
         dimension_attributes = default_dimension_attributes(grid(fd), dimension_name_generator; grid_index)
         spatial_dim_data = nodes(fd; with_halos)
         spatial_dim_names_dict = OrderedDict(name => data
