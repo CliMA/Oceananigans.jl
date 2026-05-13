@@ -29,8 +29,8 @@ struct Field{LX, LY, LZ, O, G, I, D, T, B, S, F} <: AbstractField{LX, LY, LZ, G,
     # Inner constructor that does not validate _anything_!
     function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, indices::I, op::O, status::S, buffers::F) where {LX, LY, LZ, G, D, B, O, S, I, F}
         T = eltype(data)
-        @apply_regionally new_bcs = construct_boundary_conditions_kernels(bcs, data, grid, (LX(), LY(), LZ()), indices) # Adding the kernels to the bcs
-        return new{LX, LY, LZ, O, G, I, D, T, typeof(new_bcs), S, F}(grid, data, new_bcs, indices, op, status, buffers)
+        @apply_regionally local_bcs = construct_boundary_conditions_kernels(bcs, data, grid, (LX(), LY(), LZ()), indices) # Adding the kernels to the bcs
+        return new{LX, LY, LZ, O, G, I, D, T, typeof(local_bcs), S, F}(grid, data, local_bcs, indices, op, status, buffers)
     end
 end
 
@@ -153,6 +153,8 @@ at the fluid's surface ``z = 0``, which for `Center` corresponds to `k = Nz`.
 ```jldoctest fields
 julia> u = XFaceField(grid); v = YFaceField(grid);
 
+julia> set!(u, (x, y, z) -> x * y); set!(v, (x, y, z) -> x^2 * y);
+
 julia> ωₛ = Field(∂x(v) - ∂y(u), indices=(:, :, grid.Nz))
 2×3×1 Field{Face, Face, Center} on RectilinearGrid on CPU
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
@@ -162,18 +164,7 @@ julia> ωₛ = Field(∂x(v) - ∂y(u), indices=(:, :, grid.Nz))
 ├── operand: BinaryOperation at (Face, Face, Center)
 ├── status: time=0.0
 └── data: 6×9×1 OffsetArray(::Array{Float64, 3}, -1:4, -2:6, 4:4) with eltype Float64 with indices -1:4×-2:6×4:4
-    └── max=0.0, min=0.0, mean=0.0
-
-julia> compute!(ωₛ)
-2×3×1 Field{Face, Face, Center} on RectilinearGrid on CPU
-├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
-├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: Nothing
-├── indices: (:, :, 4:4)
-├── operand: BinaryOperation at (Face, Face, Center)
-├── status: time=0.0
-└── data: 6×9×1 OffsetArray(::Array{Float64, 3}, -1:4, -2:6, 4:4) with eltype Float64 with indices -1:4×-2:6×4:4
-    └── max=0.0, min=0.0, mean=0.0
+    └── max=0.166667, min=-0.25, mean=-0.0208333
 ```
 """
 function Field{LX, LY, LZ}(grid::AbstractGrid,

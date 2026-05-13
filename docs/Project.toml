@@ -26,6 +26,7 @@ Oceananigans = {path = ".."}
 
 [compat]
 CairoMakie = "0.15"
+CUDA = "=5.8.5, 5.9.1, 6"
 Documenter = "1"
 DocumenterCitations = "1"
 DocumenterVitepress = "0.3.1"

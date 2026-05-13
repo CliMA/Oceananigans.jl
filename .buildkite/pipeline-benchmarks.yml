@@ -2,7 +2,7 @@ env:
   JULIA_VERSION: "1.12.2"
   JULIA_MINOR_VERSION: "1.12"
   TARTARUS_HOME: "/storage5/buildkite-agent"
-  JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+  JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER:"
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
   JULIA_NUM_PRECOMPILE_TASKS: 24
   JULIA_NUM_THREADS: 8
@@ -18,7 +18,7 @@ steps:
   - label: "🏕️ Initialize tartarus environment"
     key: "init"
     env:
-      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER"
+      JULIA_DEPOT_PATH: "$TARTARUS_HOME/.julia-$BUILDKITE_BUILD_NUMBER:"
       JULIA_BINDIR: "$TARTARUS_HOME/julia-$JULIA_VERSION/bin"
     command: |
       # Download julia binaries

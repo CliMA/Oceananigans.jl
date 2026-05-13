@@ -3,16 +3,16 @@
 #####
 
 # Diagonal
-@inline ∂x_u(i, j, k, grid, u) = ∂xᶜᶜᶜ(i, j, k, grid, u)
-@inline ∂y_v(i, j, k, grid, v) = ∂yᶜᶜᶜ(i, j, k, grid, v)
+@inline ∂x_u(i, j, k, grid, u) = ∂xᵣᶜᶜᶜ(i, j, k, grid, u)
+@inline ∂y_v(i, j, k, grid, v) = ∂yᵣᶜᶜᶜ(i, j, k, grid, v)
 @inline ∂z_w(i, j, k, grid, w) = ∂zᶜᶜᶜ(i, j, k, grid, w)
 
 # Off-diagonal
-@inline ∂x_v(i, j, k, grid, v) = ∂xᶠᶠᶜ(i, j, k, grid, v)
-@inline ∂x_w(i, j, k, grid, w) = ∂xᶠᶜᶠ(i, j, k, grid, w)
+@inline ∂x_v(i, j, k, grid, v) = ∂xᵣᶠᶠᶜ(i, j, k, grid, v)
+@inline ∂x_w(i, j, k, grid, w) = ∂xᵣᶠᶜᶠ(i, j, k, grid, w)
 
-@inline ∂y_u(i, j, k, grid, u) = ∂yᶠᶠᶜ(i, j, k, grid, u)
-@inline ∂y_w(i, j, k, grid, w) = ∂yᶜᶠᶠ(i, j, k, grid, w)
+@inline ∂y_u(i, j, k, grid, u) = ∂yᵣᶠᶠᶜ(i, j, k, grid, u)
+@inline ∂y_w(i, j, k, grid, w) = ∂yᵣᶜᶠᶠ(i, j, k, grid, w)
 
 @inline ∂z_u(i, j, k, grid, u) = ∂zᶠᶜᶠ(i, j, k, grid, u)
 @inline ∂z_v(i, j, k, grid, v) = ∂zᶜᶠᶠ(i, j, k, grid, v)
@@ -22,8 +22,8 @@
 #####
 
 # ccc strain components
-@inline Σ₁₁(i, j, k, grid, u) = ∂xᶜᶜᶜ(i, j, k, grid, u)
-@inline Σ₂₂(i, j, k, grid, v) = ∂yᶜᶜᶜ(i, j, k, grid, v)
+@inline Σ₁₁(i, j, k, grid, u) = ∂xᵣᶜᶜᶜ(i, j, k, grid, u)
+@inline Σ₂₂(i, j, k, grid, v) = ∂yᵣᶜᶜᶜ(i, j, k, grid, v)
 @inline Σ₃₃(i, j, k, grid, w) = ∂zᶜᶜᶜ(i, j, k, grid, w)
 
 @inline tr_Σ(i, j, k, grid, u, v, w) =
@@ -114,8 +114,8 @@ const Σ₃₂ = Σ₂₃
 ##### Tracer gradients
 #####
 
-@inline ∂x_c²(ijk...) = ∂xᶠᶜᶜ(ijk...)^2
-@inline ∂y_c²(ijk...) = ∂yᶜᶠᶜ(ijk...)^2
+@inline ∂x_c²(ijk...) = ∂xᵣᶠᶜᶜ(ijk...)^2
+@inline ∂y_c²(ijk...) = ∂yᵣᶜᶠᶜ(ijk...)^2
 @inline ∂z_c²(ijk...) = ∂zᶜᶜᶠ(ijk...)^2
 
 #####
@@ -149,8 +149,8 @@ const norm_∂z_w = ∂z_w
     Δᶠz_cff(i, j, k, grid) / Δᶠy_cff(i, j, k, grid) * ∂z_v(i, j, k, grid, v)
 
 # tracers
-@inline norm_∂x_c(i, j, k, grid, c) = Δᶠx_fcc(i, j, k, grid) * ∂xᶠᶜᶜ(i, j, k, grid, c)
-@inline norm_∂y_c(i, j, k, grid, c) = Δᶠy_cfc(i, j, k, grid) * ∂yᶜᶠᶜ(i, j, k, grid, c)
+@inline norm_∂x_c(i, j, k, grid, c) = Δᶠx_fcc(i, j, k, grid) * ∂xᵣᶠᶜᶜ(i, j, k, grid, c)
+@inline norm_∂y_c(i, j, k, grid, c) = Δᶠy_cfc(i, j, k, grid) * ∂yᵣᶜᶠᶜ(i, j, k, grid, c)
 @inline norm_∂z_c(i, j, k, grid, c) = Δᶠz_ccf(i, j, k, grid) * ∂zᶜᶜᶠ(i, j, k, grid, c)
 
 #####

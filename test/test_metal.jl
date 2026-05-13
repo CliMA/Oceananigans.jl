@@ -94,11 +94,11 @@ end
         @test parent(field) isa MtlArray
     end
 
-    simulation = Simulation(model, Δt=1, stop_iteration=10)
+    simulation = Simulation(model, Δt=1, stop_iteration=100)
     run!(simulation)
 
-    @test iteration(simulation) == 10
-    @test time(simulation) == 10seconds
+    @test iteration(simulation) == 100
+    @test time(simulation) == 100seconds
     @test maximum(simulation.model.tracers.T) > 0.01
     @test maximum(simulation.model.velocities.u) > 0.01
 end

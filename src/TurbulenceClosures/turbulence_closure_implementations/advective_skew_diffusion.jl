@@ -1,6 +1,6 @@
 using Oceananigans.Fields: VelocityFields
 using Oceananigans.Grids: inactive_node, peripheral_node
-using Oceananigans.BuoyancyFormulations: ∂x_b, ∂y_b, ∂z_b
+using Oceananigans.BuoyancyFormulations: ∂xᵣ_b, ∂yᵣ_b, ∂z_b
 
 # Fallback
 compute_eddy_velocities!(closure_fields, closure, model; parameters = :xyz) = nothing
@@ -42,10 +42,10 @@ end
 
 # Slope in x-direction at F, C, F locations, zeroed out on peripheries
 @inline function Sxᶠᶜᶠ(i, j, k, grid, b, C)
-    bx = ℑzᵃᵃᶠ(i, j, k, grid, ∂x_b, b, C)
-    bz = ℑxᶠᵃᵃ(i, j, k, grid, ∂z_b, b, C)
-
-    Sx = ifelse(bz == 0, zero(grid), - bx / bz)
+    bx   = ℑzᵃᵃᶠ(i, j, k, grid, ∂xᵣ_b, b, C)
+    bz   = ℑxᶠᵃᵃ(i, j, k, grid, ∂z_b, b, C)
+    ∂x_z = ∂x_zᶠᶜᶠ(i, j, k, grid)
+    Sx   = ifelse(bz == 0, ∂x_z, - bx / bz + ∂x_z)
 
     # Impose a boundary condition on immersed peripheries
     inactive = peripheral_node(i, j, k, grid, Face(), Center(), Face())
@@ -56,10 +56,10 @@ end
 
 # Slope in y-direction at F, C, F locations, zeroed out on peripheries
 @inline function Syᶜᶠᶠ(i, j, k, grid, b, C)
-    by = ℑzᵃᵃᶠ(i, j, k, grid, ∂y_b, b, C)
-    bz = ℑyᵃᶠᵃ(i, j, k, grid, ∂z_b, b, C)
-
-    Sy = ifelse(bz == 0, zero(grid), - by / bz)
+    by   = ℑzᵃᵃᶠ(i, j, k, grid, ∂yᵣ_b, b, C)
+    bz   = ℑyᵃᶠᵃ(i, j, k, grid, ∂z_b, b, C)
+    ∂y_z = ∂y_zᶜᶠᶠ(i, j, k, grid)
+    Sy   = ifelse(bz == 0, ∂y_z, - by / bz + ∂y_z)
 
     # Impose a boundary condition on immersed peripheries
     inactive = peripheral_node(i, j, k, grid, Center(), Face(), Face())
