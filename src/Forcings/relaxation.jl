@@ -236,6 +236,8 @@ Combine two Gaussian zones near the western and eastern boundaries of an
 ```jldoctest
 julia> using Oceananigans
 
+julia> using Oceananigans.Forcings: MaximumMask
+
 julia> mask = MaximumMask(GaussianMask{:x}(center=0,   width=10),
                           GaussianMask{:x}(center=100, width=10));
 
