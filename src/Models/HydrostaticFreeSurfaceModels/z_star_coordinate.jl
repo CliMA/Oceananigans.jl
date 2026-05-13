@@ -22,6 +22,12 @@ barotropic_velocities(free_surface::SplitExplicitFreeSurface) =
 barotropic_velocities(free_surface) = nothing, nothing
 barotropic_transport(free_surface)  = nothing, nothing
 
+# Called at the end of ab2_step_grid!/rk_substep_grid!, after _update_zstar_scaling! has set
+# σᶜᶜ⁻ = σ(tⁿ) and σᶜᶜⁿ = σ(tⁿ⁺¹). For PrescribedFreeSurface, computes
+# ∂t_σ = (σᶜᶜⁿ − σᶜᶜ⁻) / Δt before update_state! synchronizes the clocks.
+# No-op for all prognostic free surfaces; overloaded in prescribed_hydrostatic_velocity_fields.jl.
+update_prescribed_∂t_σ!(grid, model, free_surface, Δt) = nothing
+
 """
     ab2_step_grid!(grid::MutableGridOfSomeKind, model, ::ZStarCoordinate, Δt, χ)
 
@@ -34,6 +40,7 @@ The previous scaling `σᶜᶜ⁻` is also updated for use in tracer evolution.
 function ab2_step_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt, χ)
     parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
     launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.displacement, grid)
+    update_prescribed_∂t_σ!(grid, model, model.free_surface, Δt)
     return nothing
 end
 
@@ -48,6 +55,7 @@ Similar to `ab2_step_grid!`, but only updates `σᶜᶜ⁻` on the final substep
 function rk_substep_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordinate, Δt)
     parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
     launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.displacement, grid)
+    update_prescribed_∂t_σ!(grid, model, model.free_surface, Δt)
     return nothing
 end
 
@@ -84,19 +92,30 @@ end
 end
 
 """
-    update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSomeKind, ::ZStarCoordinate; parameters)
+    update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSomeKind, vc::ZStarCoordinate; parameters)
 
 Compute the time derivative of the z-star grid stretching factor `∂t_σ`.
 
-For z-star coordinates, `∂t_σ = -∇·U / H` where `U` is the barotropic transport
-and `H` is the static column depth. This represents the rate of change of the
-vertical grid spacing due to free surface motion.
+Dispatches on the free surface type (`model.free_surface`):
 
-The barotropic transport is obtained from `barotropic_velocities` for prognostic
-velocities or `barotropic_transport` for transport velocities (which may differ
-when using split-explicit free surface).
+- For all free surface types except `PrescribedFreeSurface`:
+  `∂t_σ = -∇·U / H` where `U` is the barotropic transport
+  and `H` is the static column depth. This represents the rate of change of the
+  vertical grid spacing due to free surface motion.
+
+  The barotropic transport is obtained from `barotropic_velocities` for prognostic
+  velocities or `barotropic_transport` for transport velocities (which may differ
+  when using split-explicit free surface).
+
+- For `PrescribedFreeSurface`: `∂t_σ ≈ (η(tⁿ⁺¹) - η(tⁿ)) / (Δt · H)` using a
+  forward finite difference of the prescribed displacement.
 """
-function update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSomeKind, ::ZStarCoordinate; parameters=surface_kernel_parameters(grid))
+function update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSomeKind, vc::ZStarCoordinate; parameters=surface_kernel_parameters(grid))
+    update_grid_vertical_velocity!(velocities, model, grid, vc, model.free_surface; parameters)
+end
+
+# Default: compute ∂t_σ from the barotropic transport divergence.
+function update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSomeKind, ::ZStarCoordinate, free_surface; parameters=surface_kernel_parameters(grid))
 
     # the barotropic velocities are retrieved from the free surface model for a
     # SplitExplicitFreeSurface and are calculated for other free surface models
