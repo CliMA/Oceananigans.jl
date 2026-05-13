@@ -380,16 +380,18 @@ function interpolate!(to_field::Field, from_field::AbstractField)
     from_location = Tuple(L() for L in location(from_field))
     to_location   = Tuple(L() for L in location(to_field))
 
-    # interpolate! requires matching Flat-ness in every dimension: interpolation
-    # across a Flat dimension (in either direction) is not supported.
-    for (d, name) in enumerate(("x", "y", "z"))
-        to_is_flat   = topology(to_grid,   d) === Flat
-        from_is_flat = topology(from_grid, d) === Flat
-        if to_is_flat ⊻ from_is_flat
+    # Interpolation across a Flat dimension is not supported: if the destination
+    # grid is Flat in any dimension, the source must also be Flat in that dimension.
+    # Type-level check so it constant-folds and stays GPU-safe.
+    to_T   = topology(to_grid)
+    from_T = topology(from_grid)
+    for d in 1:3
+        if to_T[d] === Flat && from_T[d] !== Flat
             throw(ArgumentError(
-                "Cannot interpolate! between grids with mismatched $name topology " *
-                "(from_grid: $(topology(from_grid, d)), to_grid: $(topology(to_grid, d))). " *
-                "Interpolation across Flat dimensions is not supported."))
+                "interpolate! is not supported across Flat dimensions: " *
+                "destination grid is Flat in dimension $d but source is $(from_T[d]). " *
+                "Match Flat-ness between source and destination, or reduce the " *
+                "source to a Flat grid first."))
         end
     end
 
