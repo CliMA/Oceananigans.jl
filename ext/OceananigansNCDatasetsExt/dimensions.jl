@@ -569,9 +569,14 @@ function default_dimension_attributes(grid::OrthogonalSphericalShellGrid, dim_na
     end
 
     # 2D auxiliary coordinate variables — λ and φ at each Arakawa-C stagger location.
+    # Also pre-register attribute defaults for the grid-metric variables that
+    # `gather_grid_metrics(::OrthogonalSphericalShellGrid)` emits at each stagger.
     for (lx, ly) in ((c, c), (f, c), (c, f), (f, f))
-        λ_name = dim_name_generator("λ", grid, lx, ly, nothing, Val(:x))
-        φ_name = dim_name_generator("φ", grid, lx, ly, nothing, Val(:y))
+        λ_name  = dim_name_generator("λ",  grid, lx, ly, nothing, Val(:x))
+        φ_name  = dim_name_generator("φ",  grid, lx, ly, nothing, Val(:y))
+        Δx_name = dim_name_generator("Δx", grid, lx, ly, nothing, Val(:x))
+        Δy_name = dim_name_generator("Δy", grid, lx, ly, nothing, Val(:y))
+        Az_name = dim_name_generator("Az", grid, lx, ly, nothing, Val(:x))
 
         loc_label = "($(lx isa Center ? "Center" : "Face"), $(ly isa Center ? "Center" : "Face"))"
         horizontal_dimension_attributes[λ_name] = Dict("long_name"     => "Longitude at $(loc_label)",
@@ -580,6 +585,9 @@ function default_dimension_attributes(grid::OrthogonalSphericalShellGrid, dim_na
         horizontal_dimension_attributes[φ_name] = Dict("long_name"     => "Latitude at $(loc_label)",
                                                        "standard_name" => "latitude",
                                                        "units"         => "degrees_north")
+        horizontal_dimension_attributes[Δx_name] = Dict("long_name" => "Curvilinear x-spacing at $(loc_label).", "units" => "m")
+        horizontal_dimension_attributes[Δy_name] = Dict("long_name" => "Curvilinear y-spacing at $(loc_label).", "units" => "m")
+        horizontal_dimension_attributes[Az_name] = Dict("long_name" => "Horizontal cell area at $(loc_label).",  "units" => "m^2")
     end
 
     horizontal_dimension_attributes = suffix_grid_keys(horizontal_dimension_attributes, grid_index)

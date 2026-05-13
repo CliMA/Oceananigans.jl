@@ -160,8 +160,9 @@ function gather_grid_metrics(grid::LatitudeLongitudeGrid, indices, dim_name_gene
     end
 
     if TZ != Flat
-        Δzᵃᵃᶠ_name = dim_name_generator("Δz", grid, nothing, nothing, f, Val(:z))
-        Δzᵃᵃᶜ_name = dim_name_generator("Δz", grid, nothing, nothing, c, Val(:z))
+        Δz = "Δ" * vertical_coordinate_name(grid)
+        Δzᵃᵃᶠ_name = dim_name_generator(Δz, grid, nothing, nothing, f, Val(:z))
+        Δzᵃᵃᶜ_name = dim_name_generator(Δz, grid, nothing, nothing, c, Val(:z))
 
         Δzᵃᵃᶠ_field = Field(zspacings(grid, f); indices)
         Δzᵃᵃᶜ_field = Field(zspacings(grid, c); indices)
@@ -172,6 +173,46 @@ function gather_grid_metrics(grid::LatitudeLongitudeGrid, indices, dim_name_gene
 
     return suffix_grid_keys(metrics, grid_index)
 end
+
+# OSSG metrics: 8 × Δx, 8 × Δy, 4 × Az at the four Arakawa-C stagger locations,
+# plus vertical Δz/Δr. The 2D horizontal metrics are wrapped in Fields so they
+# go through the standard output path and pick up the (i_*, j_*) bare dim names
+# from `field_dimensions(::AbstractField, ::OSSG, …)` and the `coordinates`
+# attribute from `add_aux_coordinates_attribute!`.
+function gather_grid_metrics(grid::OrthogonalSphericalShellGrid, indices, dim_name_generator; grid_index=nothing)
+    metrics = Dict()
+
+    for (lx, ly) in ((c, c), (f, c), (c, f), (f, f))
+        Δx_name = dim_name_generator("Δx", grid, lx, ly, nothing, Val(:x))
+        Δy_name = dim_name_generator("Δy", grid, lx, ly, nothing, Val(:y))
+        Az_name = dim_name_generator("Az", grid, lx, ly, nothing, Val(:x))
+
+        metrics[Δx_name] = Field(xspacings(grid, lx, ly); indices)
+        metrics[Δy_name] = Field(yspacings(grid, lx, ly); indices)
+        # Az is on the same horizontal stagger as Δx/Δy at (lx, ly). `Oceananigans.Operators.Az_qcca`
+        # etc. are kernel functions; we use a KernelFunctionOperation to wrap as a Field.
+        Az_op = KernelFunctionOperation{typeof(lx), typeof(ly), Nothing}(_az_at, grid, lx, ly)
+        metrics[Az_name] = Field(Az_op; indices)
+    end
+
+    TZ = topology(grid, 3)
+    if TZ != Flat
+        Δz = "Δ" * vertical_coordinate_name(grid)
+        Δzᵃᵃᶠ_name = dim_name_generator(Δz, grid, nothing, nothing, f, Val(:z))
+        Δzᵃᵃᶜ_name = dim_name_generator(Δz, grid, nothing, nothing, c, Val(:z))
+
+        metrics[Δzᵃᵃᶠ_name] = Field(zspacings(grid, f); indices)
+        metrics[Δzᵃᵃᶜ_name] = Field(zspacings(grid, c); indices)
+    end
+
+    return suffix_grid_keys(metrics, grid_index)
+end
+
+# Az is unstaggered in z; expressed via the 2D area function on the horizontal stagger.
+@inline _az_at(i, j, k, grid, ::Center, ::Center) = @inbounds grid.Azᶜᶜᵃ[i, j]
+@inline _az_at(i, j, k, grid, ::Face,   ::Center) = @inbounds grid.Azᶠᶜᵃ[i, j]
+@inline _az_at(i, j, k, grid, ::Center, ::Face)   = @inbounds grid.Azᶜᶠᵃ[i, j]
+@inline _az_at(i, j, k, grid, ::Face,   ::Face)   = @inbounds grid.Azᶠᶠᵃ[i, j]
 
 #####
 ##### Gathering of immersed boundary fields
