@@ -275,7 +275,7 @@ mask by combining two `GaussianMask`s centered on opposite `x`-boundaries — th
 saturates at 1 at each boundary without doubling up where the zones meet:
 
 ```jldoctest
-julia> using Oceananigans
+julia> using Oceananigans; using Oceananigans.Forcing: MaximumMask
 
 julia> davies_mask = MaximumMask(GaussianMask{:x}(center=0,   width=10),
                                  GaussianMask{:x}(center=100, width=10));
