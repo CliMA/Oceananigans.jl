@@ -263,7 +263,7 @@ makedocs(; sitename = "Oceananigans.jl",
          ],
          draft = false,        # set to true to speed things up
          doctest = true,       # set to false to speed things up
-         checkdocs = :none, # temporarily disable to bisect docs failure
+         checkdocs = :exports, # set to :none to speed things up
          )
 
 """
