@@ -250,8 +250,11 @@ end
 MaximumMask(masks...) = MaximumMask(masks)
 MaximumMask() = throw(ArgumentError("MaximumMask requires at least one mask"))
 
-@inline (m::MaximumMask)(x, y, z) =
-    max(map(mask -> mask(x, y, z), m.masks)...)
+@inline (m::MaximumMask)(x...) = max(map(mask -> mask(x...), m.masks)...)
+
+@inline (m::MaximumMask{Tuple{<:Any, <:Any}})(x...) =
+    max(m.masks[1](x...), m.masks[2](x...)))
+
 
 Base.summary(m::MaximumMask) = "max(" * join(map(summary, m.masks), ", ") * ")"
 
