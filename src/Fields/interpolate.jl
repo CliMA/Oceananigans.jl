@@ -357,21 +357,16 @@ function interpolate!(to_field::Field, from_field::AbstractField)
     from_location = Tuple(L() for L in location(from_field))
     to_location   = Tuple(L() for L in location(to_field))
 
-    # Validate Flat dimensions: if the destination grid is Flat in a dimension
-    # without a stored coordinate, the source grid must have size 1 in that dimension.
-    if any(T === Flat for T in topology(to_grid))
-        ℓ = Center()
-        to_coords = (ξnode(1, 1, 1, to_grid, ℓ, ℓ, ℓ),
-                     ηnode(1, 1, 1, to_grid, ℓ, ℓ, ℓ),
-                     rnode(1, 1, 1, to_grid, ℓ, ℓ, ℓ))
-        for (d, name) in enumerate(("x", "y", "z"))
-            if topology(to_grid, d) === Flat && isnothing(to_coords[d]) && size(from_grid, d) > 1
-                throw(ArgumentError(
-                    "Cannot interpolate! to a field on a grid that is Flat in $name " *
-                    "without a specified $name coordinate, because the source grid " *
-                    "has size $(size(from_grid, d)) > 1 in that dimension. " *
-                    "Specify $name on the destination grid."))
-            end
+    # interpolate! requires matching Flat-ness in every dimension: interpolation
+    # across a Flat dimension (in either direction) is not supported.
+    for (d, name) in enumerate(("x", "y", "z"))
+        to_is_flat   = topology(to_grid,   d) === Flat
+        from_is_flat = topology(from_grid, d) === Flat
+        if to_is_flat ⊻ from_is_flat
+            throw(ArgumentError(
+                "Cannot interpolate! between grids with mismatched $name topology " *
+                "(from_grid: $(topology(from_grid, d)), to_grid: $(topology(to_grid, d))). " *
+                "Interpolation across Flat dimensions is not supported."))
         end
     end
 
