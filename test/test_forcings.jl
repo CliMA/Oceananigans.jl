@@ -147,14 +147,14 @@ function time_step_with_field_time_series_forcing(arch)
     return true
 end
 
-function relaxed_time_stepping(arch, mask_type)
-    x_relax = Relaxation(rate = 1/60,   mask = mask_type{:x}(center=0.5, width=0.1),
+function relaxed_time_stepping(arch, mask_type; mask_kwargs...)
+    x_relax = Relaxation(rate = 1/60,   mask = mask_type{:x}(; mask_kwargs...),
                                       target = LinearTarget{:x}(intercept=π, gradient=ℯ))
 
-    y_relax = Relaxation(rate = 1/60,   mask = mask_type{:y}(center=0.5, width=0.1),
+    y_relax = Relaxation(rate = 1/60,   mask = mask_type{:y}(; mask_kwargs...),
                                       target = LinearTarget{:y}(intercept=π, gradient=ℯ))
 
-    z_relax = Relaxation(rate = 1/60,   mask = mask_type{:z}(center=0.5, width=0.1),
+    z_relax = Relaxation(rate = 1/60,   mask = mask_type{:z}(; mask_kwargs...),
                                       target = π)
 
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
@@ -463,6 +463,38 @@ end
 @testset "Forcings" begin
     @info "Testing forcings..."
 
+    @testset "CosineRampMask cosine ramp" begin
+        @info "  Testing CosineRampMask cosine ramp..."
+
+        for (D, eval_at) in ((:x, (m, ξ) -> m(ξ, 0, 0)),
+                             (:y, (m, ξ) -> m(0, ξ, 0)),
+                             (:z, (m, ξ) -> m(0, 0, ξ)))
+
+            m = CosineRampMask{D}(start=1500.0, stop=2500.0)
+
+            @test eval_at(m, 1400.0) == 0
+            @test eval_at(m, 1500.0) == 0
+            @test eval_at(m, 2500.0) ≈ 1
+            @test eval_at(m, 2600.0) ≈ 1
+            @test eval_at(m, 2000.0) ≈ 0.5
+
+            r₁ = eval_at(m, 1750.0)
+            r₃ = eval_at(m, 2250.0)
+            @test r₁ + r₃ ≈ 1
+            @test 0 < r₁ < 0.5 < r₃ < 1
+
+            weights = [eval_at(m, ξ) for ξ in range(1500, 2500, length=11)]
+            @test all(diff(weights) .> 0)
+
+            m_rev = CosineRampMask{D}(start=2500.0, stop=1500.0)
+            @test eval_at(m_rev, 1500.0) ≈ 1
+            @test eval_at(m_rev, 2500.0) == 0
+            @test eval_at(m_rev, 2000.0) ≈ 0.5
+        end
+
+        @test_throws ArgumentError CosineRampMask{:z}(start=1500, stop=1500)
+    end
+
     for arch in archs
         A = typeof(arch)
         @testset "Forcing function time stepping [$A]" begin
@@ -499,8 +531,9 @@ end
 
             @testset "Relaxation forcing functions [$A]" begin
                 @info "      Testing relaxation forcing functions [$A]..."
-                @test relaxed_time_stepping(arch, GaussianMask)
-                @test relaxed_time_stepping(arch, PiecewiseLinearMask)
+                @test relaxed_time_stepping(arch, GaussianMask;        center=0.5, width=0.1)
+                @test relaxed_time_stepping(arch, PiecewiseLinearMask; center=0.5, width=0.1)
+                @test relaxed_time_stepping(arch, CosineRampMask;      start=0.4, stop=0.6)
             end
 
             @testset "Relaxation with FieldTimeSeries target [$A]" begin
