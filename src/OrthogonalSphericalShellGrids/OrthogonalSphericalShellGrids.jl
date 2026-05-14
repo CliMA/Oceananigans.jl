@@ -29,22 +29,56 @@ include("distributed_tripolar_grid.jl")
 include("distributed_zipper.jl")
 include("distributed_zipper_north_tags.jl")
 
-# Fallback for OSSG variants without a tailored `constructor_arguments` method
-# (e.g. ConformalCubedSpherePanelGrid). The writer needs `constructor_arguments` to
-# succeed so it can record positional/keyword metadata; we return arch + size + halo,
-# which is enough for the writer. Reconstruction from these arguments alone will fail
-# with a `MethodError` from the OSSG constructor (which also requires `z`, the eight
-# 2D `λ`/`φ` arrays, the metrics, and a `conformal_mapping`), and that is the right
-# signal — `OrthogonalSphericalShellGrid` is not yet reconstructible from a generic
-# parameter dump. A follow-up will add a metrics-based reconstruction path.
+# `constructor_arguments` for any `OrthogonalSphericalShellGrid` (TripolarGrid,
+# RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid, …). These grids are
+# not reconstructed by replaying their high-level constructors — `NetCDFWriter`
+# rebuilds them directly from the metric/coordinate arrays it writes to disk
+# (see `reconstruct_ossg_grid` in the NetCDF extension). The metadata here is
+# just what that reconstruction routine needs that isn't already on the metric
+# arrays themselves: architecture, FT, size, halo, topology, radius.
 using OrderedCollections: OrderedDict
 using Oceananigans.Grids: Grids
 function Grids.constructor_arguments(grid::Oceananigans.Grids.OrthogonalSphericalShellGrid)
     args = OrderedDict{Symbol, Any}(:architecture => Oceananigans.Grids.architecture(grid),
                                     :number_type  => eltype(grid))
-    kwargs = Dict{Symbol, Any}(:size => size(grid),
-                               :halo => (grid.Hx, grid.Hy, grid.Hz))
+    kwargs = Dict{Symbol, Any}(:size     => size(grid),
+                               :halo     => (grid.Hx, grid.Hy, grid.Hz),
+                               :topology => Oceananigans.Grids.topology(grid),
+                               :radius   => grid.radius)
     return args, kwargs
 end
+
+# Serialized description of `OrthogonalSphericalShellGrid.conformal_mapping`. The full
+# struct can't be a NetCDF attribute (no nesting), so it's flattened to a `Dict` whose
+# entries are themselves NetCDF-attribute-friendly scalars/tuples. `reconstruct_ossg_grid`
+# uses this dict to rebuild the conformal mapping with the right type — restoring the
+# `TripolarGrid` / `RotatedLatitudeLongitudeGrid` type-alias on read.
+
+"""
+    conformal_mapping_info(cm)
+
+Return a `Dict{Symbol, Any}` describing the conformal mapping `cm` (or `nothing`) of an
+`OrthogonalSphericalShellGrid`, suitable for serialization to NetCDF attributes.
+"""
+conformal_mapping_info(::Nothing) = Dict{Symbol, Any}(:type => "Nothing")
+
+conformal_mapping_info(cm::Tripolar) = Dict{Symbol, Any}(
+    :type                  => "Tripolar",
+    :north_poles_latitude  => cm.north_poles_latitude,
+    :first_pole_longitude  => cm.first_pole_longitude,
+    :southernmost_latitude => cm.southernmost_latitude,
+)
+
+conformal_mapping_info(cm::LatitudeLongitudeRotation) = Dict{Symbol, Any}(
+    :type        => "LatitudeLongitudeRotation",
+    :north_pole_λ => cm.north_pole[1],
+    :north_pole_φ => cm.north_pole[2],
+)
+
+# Cubed-sphere panels carry 1D ξ/η coordinate arrays and a rotation, which don't fit
+# cleanly as NetCDF attributes. For now we just record the type name; reconstruction
+# will fall back to `nothing` (losing the panel rotation info — a follow-up can save
+# the arrays separately).
+conformal_mapping_info(cm) = Dict{Symbol, Any}(:type => string(typeof(cm).name.wrapper))
 
 end # module

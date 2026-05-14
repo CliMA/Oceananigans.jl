@@ -32,10 +32,18 @@ using Oceananigans.Grids:
     grid, topology, halo_size, xspacings, yspacings, zspacings, λspacings, φspacings,
     λnodes, φnodes,
     parent_index_range, nodes, ξnodes, ηnodes, rnodes, validate_index, peripheral_node,
-    constructor_arguments, architecture
+    constructor_arguments, architecture,
+    generate_coordinate, total_length, interior_indices
+
+# Aliased to avoid clashing with `Oceananigans.OutputReaders.new_data`, which is a
+# different function (5-arg, for FieldTimeSeries data allocation).
+import Oceananigans.Grids: new_data as allocate_grid_data
 using Oceananigans.OrthogonalSphericalShellGrids:
     OrthogonalSphericalShellGrid, TripolarGrid, RotatedLatitudeLongitudeGrid,
-    ConformalCubedSpherePanelGrid
+    ConformalCubedSpherePanelGrid, Tripolar, LatitudeLongitudeRotation,
+    conformal_mapping_info
+
+using OffsetArrays: OffsetArray
 using Oceananigans.ImmersedBoundaries:
     ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary, PartialCellBottom, PCBIBG,
     CenterImmersedCondition, InterfaceImmersedCondition, underlying_grid

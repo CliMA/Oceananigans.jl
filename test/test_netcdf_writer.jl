@@ -3310,9 +3310,12 @@ function test_netcdf_tripolar_field_time_series(arch)
     Arch = typeof(arch)
     fp = "test_tripolar_fts_$Arch.nc"
     isfile(fp) && rm(fp)
+    # Metrics-based OSSG reconstruction (used by `FieldTimeSeries`) requires
+    # `include_grid_metrics=true` on the writer (the default) so the file carries
+    # the Δx/Δy/Az arrays.
     sim.output_writers[:nc] = NetCDFWriter(model, (; T=model.tracers.T);
                                             filename=fp, schedule=IterationInterval(1),
-                                            overwrite_existing=true, include_grid_metrics=false)
+                                            overwrite_existing=true, include_grid_metrics=true)
 
     # Capture in-memory snapshots that align with the file's time series — the
     # callback fires on the same IterationInterval(1) as the writer, so both record
@@ -3323,13 +3326,17 @@ function test_netcdf_tripolar_field_time_series(arch)
 
     run!(sim)
 
-    # Reconstruct as FieldTimeSeries.
+    # Reconstruct as FieldTimeSeries. OSSG variants are reconstructed by reading the
+    # saved λ/φ/Δx/Δy/Az/z arrays back directly (bypassing the user-facing constructor)
+    # plus the serialized `conformal_mapping`, which preserves the TripolarGrid type
+    # alias so default boundary conditions still pick `Zipper` for the north fold.
     fts = FieldTimeSeries(fp, "T"; architecture=arch)
-
-    # Grid structural equivalence.
+    @test fts.grid isa TripolarGrid
     @test size(fts.grid) == size(grid)
     @test (fts.grid.Hx, fts.grid.Hy, fts.grid.Hz) == (grid.Hx, grid.Hy, grid.Hz)
-    @test fts.grid isa TripolarGrid
+    @test topology(fts.grid) == topology(grid)
+    @test Array(fts.grid.λᶜᶜᵃ[1:Nx, 1:Ny]) ≈ Array(grid.λᶜᶜᵃ[1:Nx, 1:Ny]) atol=1e-10
+    @test Array(fts.grid.φᶜᶜᵃ[1:Nx, 1:Ny]) ≈ Array(grid.φᶜᶜᵃ[1:Nx, 1:Ny]) atol=1e-10
 
     # Time values match.
     @test length(fts.times) == length(T_snapshots)
@@ -3400,18 +3407,24 @@ function test_netcdf_tripolar_grid_reconstruction(arch)
     filepath = "test_tripolar_reconstruct_$Arch.nc"
     isfile(filepath) && rm(filepath)
 
+    # Metrics-based OSSG reconstruction requires `include_grid_metrics=true` on the
+    # writer (the default) so that the Δx/Δy/Az arrays are present in the file.
     simulation.output_writers[:nc] = NetCDFWriter(model, (; T=model.tracers.T);
                                                   filename=filepath,
                                                   schedule=IterationInterval(1),
                                                   overwrite_existing=true,
-                                                  include_grid_metrics=false)
+                                                  include_grid_metrics=true)
     run!(simulation)
 
     reconstructed = reconstruct_grid(filepath; architecture=arch)
 
+    # OSSG reconstruction is metrics-based: the grid is rebuilt from the saved
+    # λ/φ/Δx/Δy/Az/z arrays directly (bypassing the user-facing constructor) plus the
+    # serialized conformal mapping, which preserves the `TripolarGrid` type alias.
+    @test reconstructed isa TripolarGrid
     @test size(reconstructed) == size(grid)
     @test (reconstructed.Hx, reconstructed.Hy, reconstructed.Hz) == (grid.Hx, grid.Hy, grid.Hz)
-    @test reconstructed isa TripolarGrid
+    @test topology(reconstructed) == topology(grid)
 
     # Coordinate arrays agree (interior portion).
     @test Array(reconstructed.λᶜᶜᵃ[1:Nx, 1:Ny]) ≈ Array(grid.λᶜᶜᵃ[1:Nx, 1:Ny]) atol=1e-10

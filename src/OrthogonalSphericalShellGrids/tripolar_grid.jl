@@ -3,7 +3,6 @@ using Oceananigans.Grids: Grids, Bounded, Flat, OrthogonalSphericalShellGrid, Pe
     architecture, cpu_face_constructor_z, validate_dimension_specification,
     AbstractTopology, RightCenterFolded, RightFaceFolded, new_data, topology
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using OrderedCollections: OrderedDict
 
 """
     struct Tripolar{N, F, S, TY<:AbstractTopology}
@@ -490,32 +489,4 @@ function Grids.with_halo(new_halo, old_grid::TripolarGrid)
                                                          old_grid.conformal_mapping)
 
     return new_grid
-end
-
-# Reconstruct a TripolarGrid from saved arguments (used by NetCDFWriter grid reconstruction
-# and by `Base.similar` / `with_halo` machinery if needed). All parameters used by the
-# constructor at the top of this file are recoverable from `grid` and `grid.conformal_mapping`.
-function Grids.constructor_arguments(grid::TripolarGrid)
-    arch = architecture(grid)
-    args = OrderedDict{Symbol, Any}(:architecture => arch,
-                                    :number_type  => eltype(grid))
-
-    Nx, Ny, Nz = size(grid)
-    Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
-
-    cm = grid.conformal_mapping  # ::Tripolar
-    fold_topology = topology(grid, 2)  # RightCenterFolded or RightFaceFolded
-
-    kwargs = Dict{Symbol, Any}(
-        :size                  => (Nx, Ny, Nz),
-        :halo                  => (Hx, Hy, Hz),
-        :southernmost_latitude => cm.southernmost_latitude,
-        :radius                => grid.radius,
-        :z                     => cpu_face_constructor_z(grid),
-        :north_poles_latitude  => cm.north_poles_latitude,
-        :first_pole_longitude  => cm.first_pole_longitude,
-        :fold_topology         => fold_topology,
-    )
-
-    return args, kwargs
 end

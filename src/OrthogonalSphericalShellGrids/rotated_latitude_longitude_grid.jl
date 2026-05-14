@@ -1,6 +1,5 @@
 using Oceananigans.Grids: LatitudeLongitudeGrid, validate_lat_lon_grid_args
 using Oceananigans.Utils: KernelParameters, launch!
-using OrderedCollections: OrderedDict
 using StaticArrays: @SMatrix, SVector
 
 struct LatitudeLongitudeRotation{FT}
@@ -242,44 +241,4 @@ end
         grid.Δyᶜᶜᵃ[i, j] = lat_lon_metric(source_grid.Δyᶠᶜᵃ, i, j)
         grid.Δyᶠᶠᵃ[i, j] = lat_lon_metric(source_grid.Δyᶜᶠᵃ, i, j)
     end
-end
-
-# Constructor arguments for `RotatedLatitudeLongitudeGrid` reconstruction. Only the
-# non-rotated case (`north_pole = (0, 90)`) is exactly recoverable from on-disk state,
-# because the original `longitude` and `latitude` ranges aren't retained on the grid
-# after `rotate_metrics!`. For that case we read them off the 2D λ/φ aux coords below.
-# For rotated cases we still emit enough metadata that `reconstruct_grid` produces a
-# grid with the correct rotation pole, size, halo, and z; the recovered `longitude`/
-# `latitude` will reflect the rotated grid extent (best-effort).
-function Oceananigans.Grids.constructor_arguments(grid::RotatedLatitudeLongitudeGrid)
-    arch = Oceananigans.Grids.architecture(grid)
-    args = OrderedDict{Symbol, Any}(
-        :architecture => arch,
-        :number_type  => eltype(grid))
-
-    Nx, Ny, Nz = size(grid)
-    Hx, Hy, Hz = grid.Hx, grid.Hy, grid.Hz
-
-    # Recover longitude/latitude bounds from the 2D coord arrays. For north_pole=(0,90)
-    # this is exact (λ_ccᵃ[:, j] is constant in j, etc.). For rotated cases this gives
-    # a best-effort range that maps the present grid extent onto LLG construction.
-    λcc = grid.λᶜᶜᵃ
-    φcc = grid.φᶜᶜᵃ
-    longitude = (Float64(λcc[1, 1]) - Float64((Float64(λcc[2, 1]) - Float64(λcc[1, 1])) / 2),
-                 Float64(λcc[Nx, 1]) + Float64((Float64(λcc[Nx, 1]) - Float64(λcc[Nx-1, 1])) / 2))
-    latitude  = (Float64(φcc[1, 1]) - Float64((Float64(φcc[1, 2]) - Float64(φcc[1, 1])) / 2),
-                 Float64(φcc[1, Ny]) + Float64((Float64(φcc[1, Ny]) - Float64(φcc[1, Ny-1])) / 2))
-
-    kwargs = Dict{Symbol, Any}(
-        :size       => (Nx, Ny, Nz),
-        :halo       => (Hx, Hy, Hz),
-        :north_pole => grid.conformal_mapping.north_pole,
-        :longitude  => longitude,
-        :latitude   => latitude,
-        :z          => Oceananigans.Grids.cpu_face_constructor_z(grid),
-        :radius     => grid.radius,
-        :topology   => Oceananigans.Grids.topology(grid),
-    )
-
-    return args, kwargs
 end
