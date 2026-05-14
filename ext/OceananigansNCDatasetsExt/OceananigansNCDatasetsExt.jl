@@ -19,7 +19,7 @@ using Printf: @sprintf
 using OrderedCollections: OrderedDict
 using Statistics: mean
 
-using Oceananigans: initialize!, prettytime, pretty_filesize, AbstractModel
+using Oceananigans: initialize!, prettytime, pretty_filesize, AbstractModel, instantiated_location
 using Oceananigans.AbstractOperations: KernelFunctionOperation, AbstractOperation
 using Oceananigans.Architectures: CPU, GPU, on_architecture
 using Oceananigans.Fields
@@ -55,6 +55,8 @@ using Oceananigans.OutputWriters:
     construct_output,
     time_average_outputs,
     restrict_to_interior,
+    output_write_indices,
+    slice_output_for_write,
     fetch_output,
     convert_output,
     fetch_and_convert_output,

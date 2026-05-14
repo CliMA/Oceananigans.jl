@@ -37,7 +37,8 @@ convert_output(outputs::NamedTuple, writer) =
 
 function fetch_and_convert_output(output, model, writer)
     fetched = fetch_output(output, model)
-    return convert_output(fetched, writer)
+    sliced = slice_output_for_write(fetched, output, writer)
+    return convert_output(sliced, writer)
 end
 
 fetch_and_convert_output(output::ZeroField, model, writer) = zero(eltype(output))

@@ -38,14 +38,17 @@ function defVar(ds::AbstractDataset, field_name, fd::AbstractField;
     end
 
     # Add indices to attributes
-    attrib = merge(attrib, Dict("indices" => convert_for_netcdf(indices(fd))))
+    write_indices = output_write_indices(fd, (:, :, :), with_halos)
+    attrib = merge(attrib, Dict("indices" => convert_for_netcdf(write_indices)))
     kwargs = merge(kwargs, pairs((; attrib,)))
 
     # Write the data to the NetCDF file (or don't, but still create the space for it there)
     if write_data
         # Squeeze the data to remove dimensions where location is Nothing and add a time dimension if the field is time-dependent
         constructed_fd = construct_output(fd, (:, :, :), with_halos)
-        squeezed_field_data = squeeze_nothing_dimensions(constructed_fd; array_type)
+        fetched = fetch_output(constructed_fd, nothing)
+        sliced = slice_output_for_write(fetched, constructed_fd, (:, :, :), with_halos)
+        squeezed_field_data = squeeze_nothing_dimensions(constructed_fd, sliced; array_type)
         squeezed_reshaped_field_data = time_dependent ? reshape(squeezed_field_data, size(squeezed_field_data)..., 1) : squeezed_field_data
 
         defVar(ds, field_name, squeezed_reshaped_field_data, effective_dim_names; kwargs...)
@@ -283,7 +286,7 @@ function initialize_nc_file(model,
                                         with_halos,
                                         dimension_type)
 
-                save_output!(dataset, output, model, output_name, array_type)
+                save_output!(dataset, output, model, output_name, array_type, indices, with_halos)
             end
         end
 
@@ -407,9 +410,10 @@ Base.open(nc::NetCDFWriter) = NCDataset(nc.filepath, "a")
 Base.close(nc::NetCDFWriter) = close(nc.dataset)
 
 # Saving outputs with no time dependence (e.g. grid metrics)
-function save_output!(ds, output, model, output_name, array_type)
+function save_output!(ds, output, model, output_name, array_type, indices, with_halos)
     fetched = fetch_output(output, model)
-    data = convert_output(fetched, array_type)
+    sliced = slice_output_for_write(fetched, output, indices, with_halos)
+    data = convert_output(sliced, array_type)
     data = squeeze_nothing_dimensions(output, data)
     colons = Tuple(Colon() for _ in 1:ndims(data))
     ds[output_name][colons...] = data

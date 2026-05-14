@@ -36,7 +36,8 @@ function create_field_dimensions!(ds, fd::AbstractField, dimension_name_generato
 
     dimension_attributes = default_dimension_attributes(grid(fd), dimension_name_generator; grid_index)
     spatial_dim_names = field_dimensions(fd, dimension_name_generator; grid_index)
-    spatial_dim_data = nodes(fd; with_halos)
+    write_indices = output_write_indices(fd, (:, :, :), with_halos)
+    spatial_dim_data = nodes(grid(fd), instantiated_location(fd)...; with_halos, indices=write_indices)
 
     # Create dictionary of spatial dimensions and their data. Using OrderedDict to ensure the order of the dimensions is preserved.
     spatial_dim_names_dict = OrderedDict(spatial_dim_name => spatial_dim_array for (spatial_dim_name, spatial_dim_array) in zip(spatial_dim_names, spatial_dim_data))
