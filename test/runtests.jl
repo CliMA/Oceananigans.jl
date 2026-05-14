@@ -18,10 +18,6 @@ end
 ##### Run tests
 #####
 
-if CUDA.functional()
-    CUDA.versioninfo()
-end
-
 CUDA.allowscalar() do
 
 @testset "Oceananigans" begin
