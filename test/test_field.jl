@@ -566,6 +566,61 @@ end
                 @test a == e
                 @test Array(interior(e)) == Array(interior((a)))
             end
+
+            # set!(::Field, ::Field) should auto-interpolate when sizes or locations differ.
+            @info "  Testing field-to-field set! with differing sizes/locations..."
+
+            interp_domain = (; x=(0, 1), y=(0, 1), z=(0, 1))
+            f_linear = (x, y, z) -> x + 2y + 3z
+
+            # Different sizes, same location, same arch
+            coarse_grid = RectilinearGrid(arch, FT; size=(4, 4, 4), interp_domain...)
+            fine_grid   = RectilinearGrid(arch, FT; size=(8, 8, 8), interp_domain...)
+
+            coarse = CenterField(coarse_grid)
+            set!(coarse, f_linear)
+            fill_halo_regions!(coarse)
+
+            fine = CenterField(fine_grid)
+            set!(fine, coarse) # auto-interpolate
+
+            expected_fine = CenterField(fine_grid)
+            interpolate!(expected_fine, coarse)
+            @test Array(interior(fine)) == Array(interior(expected_fine))
+
+            # Same size, different location: route through interpolation rather than copying values
+            # across staggered locations.
+            same_size_grid = RectilinearGrid(arch, FT; size=(4, 4, 4),
+                                             topology=(Periodic, Periodic, Bounded),
+                                             interp_domain...)
+            cf = CenterField(same_size_grid)
+            set!(cf, f_linear)
+            fill_halo_regions!(cf)
+
+            xf = XFaceField(same_size_grid)
+            set!(xf, cf)
+
+            expected_xf = XFaceField(same_size_grid)
+            interpolate!(expected_xf, cf)
+            @test Array(interior(xf)) == Array(interior(expected_xf))
+
+            # Cross-architecture interpolation: set! should migrate v to u's arch
+            if arch isa GPU
+                cpu_coarse_grid = RectilinearGrid(CPU(), FT; size=(4, 4, 4), interp_domain...)
+                cpu_coarse = CenterField(cpu_coarse_grid)
+                set!(cpu_coarse, f_linear)
+                fill_halo_regions!(cpu_coarse)
+
+                gpu_fine_grid = RectilinearGrid(arch, FT; size=(8, 8, 8), interp_domain...)
+                gpu_fine = CenterField(gpu_fine_grid)
+                set!(gpu_fine, cpu_coarse) # CPU source, GPU target, differing sizes
+
+                gpu_coarse = CenterField(coarse_grid)
+                set!(gpu_coarse, cpu_coarse)
+                expected_gpu_fine = CenterField(gpu_fine_grid)
+                interpolate!(expected_gpu_fine, gpu_coarse)
+                @test Array(interior(gpu_fine)) == Array(interior(expected_gpu_fine))
+            end
         end
     end
 

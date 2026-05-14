@@ -45,6 +45,20 @@ end
 # This interface helps us do things like set distributed fields
 set!(u::Field, f::Function) = set_to_function!(u, f)
 set!(u::Field, a::Union{Array, OffsetArray}) = set_to_array!(u, a)
+
+"""
+    set!(u::Field, v::Field)
+
+Set `u` from `v`. When `u` and `v` have the same `size` and `location`, the
+data of `v` is copied into `u` (cross-architecture transfers are handled
+automatically). Otherwise, `v` is migrated to `u`'s architecture if needed
+and then interpolated onto `u` with [`interpolate!`](@ref). This means
+field-to-field `set!` "just works" across grids of different resolution,
+between staggered locations, and across architectures.
+
+Note that the interpolation path samples `v` pointwise; for conservative
+remapping, call [`regrid!`](@ref) explicitly.
+"""
 set!(u::Field, v::Field) = set_to_field!(u, v)
 
 function set!(u::Field, a::Number)
@@ -132,6 +146,20 @@ function set_to_array!(u, a)
 end
 
 function set_to_field!(u, v)
+    # When sizes and locations match, we can directly copy data. Otherwise we
+    # fall back to interpolation, migrating v to u's architecture first so that
+    # interpolate! can run on a single architecture.
+    if size(u) == size(v) && location(u) == location(v)
+        copy_to_field!(u, v)
+    else
+        v_on_u = migrate_to_architecture(u, v)
+        interpolate!(u, v_on_u)
+    end
+
+    return u
+end
+
+function copy_to_field!(u, v)
     # We implement some niceities in here that attempt to copy halo data,
     # and revert to copying just interior points if that fails.
 
@@ -158,6 +186,19 @@ function set_to_field!(u, v)
     end
 
     return u
+end
+
+# If v lives on a different architecture than u, build a Field on u's architecture
+# that mirrors v's data. interpolate! requires its inputs to share an architecture,
+# so this is the migration step set! performs automatically before interpolating.
+function migrate_to_architecture(u, v)
+    child_architecture(u) === child_architecture(v) && return v
+
+    arch = architecture(u)
+    v_grid = on_architecture(arch, v.grid)
+    v_on_u = Field(instantiated_location(v), v_grid; indices=indices(v))
+    parent(v_on_u) .= parent(on_architecture(child_architecture(u), v.data))
+    return v_on_u
 end
 
 Base.copyto!(f::Field, src::Base.Broadcast.Broadcasted) = copyto!(interior(f), src)
