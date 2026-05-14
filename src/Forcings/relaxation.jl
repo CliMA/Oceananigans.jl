@@ -122,10 +122,19 @@ end
 function validate_fts_target_extent(fts, field)
     fts_grid = fts.grid
     sim_grid = field.grid
+    fts_loc = instantiated_location(fts)
+    sim_loc = instantiated_location(field)
 
+    # Check that every model sampling position (at the forced field's location)
+    # lies within the FTS coverage at the FTS's own storage location. The
+    # kernel queries `interpolate(X, ..., fts, fts_loc, fts_grid)` with
+    # `X = node(i, j, k, sim_grid, sim_loc...)`; if X falls outside the FTS
+    # node range, trilinear interpolation reads from FTS halos (which
+    # `set!(fts[n], …)` does not fill), producing silently wrong values near
+    # the boundary.
     for (label, nodes_fn) in (("x", xnodes), ("y", ynodes), ("z", znodes))
-        sim_lo, sim_hi = extrema(nodes_fn(sim_grid, Face(), Face(), Face()))
-        fts_lo, fts_hi = extrema(nodes_fn(fts_grid, Face(), Face(), Face()))
+        sim_lo, sim_hi = extrema(nodes_fn(sim_grid, sim_loc...))
+        fts_lo, fts_hi = extrema(nodes_fn(fts_grid, fts_loc...))
         (fts_lo ≤ sim_lo && sim_hi ≤ fts_hi) ||
             throw(ArgumentError(
                 "FieldTimeSeries target $label-extent [$fts_lo, $fts_hi] does not " *
