@@ -190,9 +190,11 @@ function gather_grid_metrics(grid::OrthogonalSphericalShellGrid, indices, dim_na
 
         metrics[Δx_name] = Field(xspacings(grid, lx, ly); indices)
         metrics[Δy_name] = Field(yspacings(grid, lx, ly); indices)
-        # Az is on the same horizontal stagger as Δx/Δy at (lx, ly). `Oceananigans.Operators.Az_qcca`
-        # etc. are kernel functions; we use a KernelFunctionOperation to wrap as a Field.
-        Az_op = KernelFunctionOperation{typeof(lx), typeof(ly), Nothing}(_az_at, grid, lx, ly)
+        # Az is on the same horizontal stagger as Δx/Δy at (lx, ly). The `Az_at_node`
+        # accessor returns `grid.Azᶜᶜᵃ[i, j]` (etc.) at the requested location; wrapping it
+        # in a `KernelFunctionOperation` gives a 2D `Field` we can write through the normal
+        # output path.
+        Az_op = KernelFunctionOperation{typeof(lx), typeof(ly), Nothing}(Az_at_node, grid, lx, ly)
         metrics[Az_name] = Field(Az_op; indices)
     end
 
@@ -209,11 +211,11 @@ function gather_grid_metrics(grid::OrthogonalSphericalShellGrid, indices, dim_na
     return suffix_grid_keys(metrics, grid_index)
 end
 
-# Az is unstaggered in z; expressed via the 2D area function on the horizontal stagger.
-@inline _az_at(i, j, k, grid, ::Center, ::Center) = @inbounds grid.Azᶜᶜᵃ[i, j]
-@inline _az_at(i, j, k, grid, ::Face,   ::Center) = @inbounds grid.Azᶠᶜᵃ[i, j]
-@inline _az_at(i, j, k, grid, ::Center, ::Face)   = @inbounds grid.Azᶜᶠᵃ[i, j]
-@inline _az_at(i, j, k, grid, ::Face,   ::Face)   = @inbounds grid.Azᶠᶠᵃ[i, j]
+# Az is unstaggered in z; access the appropriate 2D area array at the given horizontal stagger.
+@inline Az_at_node(i, j, k, grid, ::Center, ::Center) = @inbounds grid.Azᶜᶜᵃ[i, j]
+@inline Az_at_node(i, j, k, grid, ::Face,   ::Center) = @inbounds grid.Azᶠᶜᵃ[i, j]
+@inline Az_at_node(i, j, k, grid, ::Center, ::Face)   = @inbounds grid.Azᶜᶠᵃ[i, j]
+@inline Az_at_node(i, j, k, grid, ::Face,   ::Face)   = @inbounds grid.Azᶠᶠᵃ[i, j]
 
 #####
 ##### Gathering of immersed boundary fields

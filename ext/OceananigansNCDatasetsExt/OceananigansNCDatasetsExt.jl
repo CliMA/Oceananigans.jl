@@ -38,7 +38,7 @@ using Oceananigans.OrthogonalSphericalShellGrids:
     ConformalCubedSpherePanelGrid
 using Oceananigans.ImmersedBoundaries:
     ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary, PartialCellBottom, PCBIBG,
-    CenterImmersedCondition, InterfaceImmersedCondition
+    CenterImmersedCondition, InterfaceImmersedCondition, underlying_grid
 using Oceananigans.Models: LagrangianParticles
 using Oceananigans.OutputReaders:
     InMemoryFTS,

@@ -92,6 +92,17 @@ const IBG = ImmersedBoundaryGrid
 @inline y_domain(ibg::IBG) = y_domain(ibg.underlying_grid)
 @inline z_domain(ibg::IBG) = z_domain(ibg.underlying_grid)
 
+"""
+    underlying_grid(grid)
+    underlying_grid(field)
+
+Return the non-immersed grid: for an `ImmersedBoundaryGrid` this is the wrapped
+`grid.underlying_grid`; for any other grid this is the grid itself. Passing a
+`Field` extracts and unwraps in one call.
+"""
+@inline underlying_grid(grid::AbstractGrid) = grid
+@inline underlying_grid(ibg::IBG) = ibg.underlying_grid
+
 Adapt.adapt_structure(to, ibg::IBG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     ImmersedBoundaryGrid{TX, TY, TZ}(adapt(to, ibg.underlying_grid),
                                      adapt(to, ibg.immersed_boundary),

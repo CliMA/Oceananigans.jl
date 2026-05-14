@@ -32,18 +32,20 @@ Arguments:
 - `dimension_name_generator`: Function to generate dimension names
 """
 function create_field_dimensions!(ds, fd::AbstractField, dimension_name_generator; time_dependent=false, with_halos=false, array_type=Array{eltype(fd)}, dimension_type=Float64, grid_index=nothing)
+    # `field_dimensions` returns a 3-tuple with `""` in slots where the field has a
+    # Nothing location or the grid axis is Flat. The "effective" dim names are what
+    # actually go into the variable's NetCDF signature.
     spatial_dim_names = field_dimensions(fd, dimension_name_generator; grid_index)
-    spatial_dim_names_nonempty = tuple(filter(!isempty, spatial_dim_names)...)
+    effective_dim_names = tuple(filter(!isempty, spatial_dim_names)...)
 
-    _create_field_coord_variables!(ds, fd, grid(fd), spatial_dim_names, dimension_name_generator;
-                                   with_halos, dimension_type, grid_index)
+    create_field_coord_variables!(ds, fd, grid(fd), spatial_dim_names, dimension_name_generator;
+                                  with_halos, dimension_type, grid_index)
 
-    # Create time dimension if needed
     if time_dependent
         "time" ∉ keys(ds.dim) && create_time_dimension!(ds, dimension_type=dimension_type)
-        return (spatial_dim_names_nonempty..., "time")
+        return (effective_dim_names..., "time")
     else
-        return spatial_dim_names_nonempty
+        return effective_dim_names
     end
 end
 
@@ -51,7 +53,7 @@ end
 # field's NetCDF dim names with the field's `nodes(fd)` 1D arrays and pass them through
 # `create_spatial_dimensions!`, which creates missing coord vars or validates existing
 # ones against the field's nodes (catching mismatched dim sizes early as ArgumentError).
-function _create_field_coord_variables!(ds, fd, grid, spatial_dim_names, dim_name_generator;
+function create_field_coord_variables!(ds, fd, grid, spatial_dim_names, dim_name_generator;
                                         with_halos, dimension_type, grid_index)
     dimension_attributes = default_dimension_attributes(grid, dim_name_generator; grid_index)
     spatial_dim_data = nodes(fd; with_halos)
@@ -66,7 +68,7 @@ end
 # OSSG path requires `gather_dimensions` / `create_spatial_dimensions!` to have run at
 # file init. If the named dimensions exist in the dataset, we're done; otherwise we
 # raise a clear error rather than silently producing a malformed file.
-function _create_field_coord_variables!(ds, fd, grid::OrthogonalSphericalShellGrid,
+function create_field_coord_variables!(ds, fd, grid::OrthogonalSphericalShellGrid,
                                         spatial_dim_names, dim_name_generator;
                                         with_halos, dimension_type, grid_index)
     for dname in spatial_dim_names
@@ -82,8 +84,8 @@ function _create_field_coord_variables!(ds, fd, grid::OrthogonalSphericalShellGr
 end
 
 # Defer through ImmersedBoundaryGrid to the underlying grid's dispatch.
-_create_field_coord_variables!(ds, fd, grid::ImmersedBoundaryGrid, spatial_dim_names, gen; kw...) =
-    _create_field_coord_variables!(ds, fd, grid.underlying_grid, spatial_dim_names, gen; kw...)
+create_field_coord_variables!(ds, fd, grid::ImmersedBoundaryGrid, spatial_dim_names, gen; kw...) =
+    create_field_coord_variables!(ds, fd, grid.underlying_grid, spatial_dim_names, gen; kw...)
 
 """
     create_spatial_dimensions!(dataset, dims, attributes_dict; array_type=Array{Float32}, kwargs...)
@@ -95,31 +97,33 @@ against provided arrays if they do exist. An error is thrown if the dimension al
 but is different from the provided array.
 """
 #
-# Entries in the `dims` dict passed to `create_spatial_dimensions!` are NamedTuples
-# `(array, dims)`, where `dims` is a tuple of the NetCDF dimension names the variable
-# spans. The common 1D case has `dims = (var_name,)` — the variable defines its own
-# dimension (a NetCDF "coordinate variable"). For 2D auxiliary coordinates (e.g. λ/φ on
-# an OrthogonalSphericalShellGrid) `dims` is a pair of *other* dimension names like
-# `("i_caa", "j_aca")`. Those underlying dimensions are created with `defDim` here and
-# carry no coordinate variable themselves.
+# Entries in the `dims` dict passed to `create_spatial_dimensions!` are either:
+#   - a `NamedTuple` `(array, dims)` where `dims` is a tuple of the NetCDF dimension names
+#     the variable spans. For 2D auxiliary coordinates (e.g. λ/φ on an
+#     `OrthogonalSphericalShellGrid`) `dims` is a pair of *other* dimension names like
+#     `("i_caa", "j_aca")`; those underlying dimensions are created with `defDim` here.
+#   - a plain `AbstractArray`, which is treated as a 1D coordinate variable whose
+#     dimension is itself (the variable's name `var_name` doubles as the dim name).
 #
-# A `(array = nothing, dims = ...)` entry skips creation (used when a topology is `Flat`).
+# A `nothing` array (or a `(array = nothing, dims = …)` entry) skips creation
+# (used when a topology is `Flat`).
 #
-
-# Backwards-compatibility shim: lift legacy `Array` entries into the new shape, assuming
-# the variable's NetCDF dimension is itself.
-nc_variable(arr, var_name) = (array = arr, dims = (var_name,))
-nc_variable(nt::NamedTuple, var_name) = nt
 
 function create_spatial_dimensions!(dataset, dims, attributes_dict; dimension_type=Float64, kwargs...)
     effective_dim_names = String[]
-    for (var_name, raw_entry) in dims
-        entry = nc_variable(raw_entry, var_name)
-        entry.array isa Nothing && continue # Skip Flat / no-data entries
+    for (var_name, entry) in dims
         var_name == "" && continue # Skip empty names
 
-        var_dims = entry.dims
-        arr = entry.array
+        # Normalise to (array, var_dims). A bare `AbstractArray` is interpreted as a 1D
+        # coordinate variable; explicit `NamedTuple` entries are taken as-is.
+        if entry isa NamedTuple
+            arr = entry.array
+            var_dims = entry.dims
+        else
+            arr = entry
+            var_dims = (var_name,)
+        end
+        arr isa Nothing && continue
 
         # Convert to the requested float type and collect to a plain CPU array
         arr = collect(dimension_type.(arr))
@@ -175,30 +179,28 @@ suffix_grid_keys(dims, grid_index) = Dict(add_grid_suffix(key, grid_index) => va
 #####
 
 function gather_vertical_dimensions(coordinate::StaticVerticalDiscretization, TZ, Nz, Hz, z_indices, with_halos, dim_name_generator)
-    z = vertical_coordinate_name(coordinate)
-    zᵃᵃᶠ_name = dim_name_generator(z, coordinate, nothing, nothing, f, Val(:z))
-    zᵃᵃᶜ_name = dim_name_generator(z, coordinate, nothing, nothing, c, Val(:z))
+    zᵃᵃᶠ_name = dim_name_generator("z", coordinate, nothing, nothing, f, Val(:z))
+    zᵃᵃᶜ_name = dim_name_generator("z", coordinate, nothing, nothing, c, Val(:z))
 
     zᵃᵃᶠ_data = collect_dim(coordinate.cᵃᵃᶠ, f, TZ(), Nz, Hz, z_indices, with_halos)
     zᵃᵃᶜ_data = collect_dim(coordinate.cᵃᵃᶜ, c, TZ(), Nz, Hz, z_indices, with_halos)
 
-    return Dict(zᵃᵃᶠ_name => nc_variable(zᵃᵃᶠ_data, zᵃᵃᶠ_name),
-                zᵃᵃᶜ_name => nc_variable(zᵃᵃᶜ_data, zᵃᵃᶜ_name))
+    return Dict(zᵃᵃᶠ_name => zᵃᵃᶠ_data,
+                zᵃᵃᶜ_name => zᵃᵃᶜ_data)
 end
 
+# For MutableVerticalDiscretization, the saved 1D coordinate is the *reference* (Lagrangian)
+# coordinate `r`. The physical `z = z(r, η, …)` is reconstructible at read time from `r` and
+# the time-varying `η` (output separately).
 function gather_vertical_dimensions(coordinate::MutableVerticalDiscretization, TZ, Nz, Hz, z_indices, with_halos, dim_name_generator)
-    # For MutableVerticalDiscretization, the saved 1D coordinate is the *reference* (Lagrangian)
-    # coordinate `r`. The physical `z = z(r, η, …)` is reconstructible at read time from `r` and
-    # the time-varying `η` (saved as a separate output variable; see grid_reconstruction.jl).
-    r = vertical_coordinate_name(coordinate)
-    rᵃᵃᶠ_name = dim_name_generator(r, coordinate, nothing, nothing, f, Val(:z))
-    rᵃᵃᶜ_name = dim_name_generator(r, coordinate, nothing, nothing, c, Val(:z))
+    rᵃᵃᶠ_name = dim_name_generator("r", coordinate, nothing, nothing, f, Val(:z))
+    rᵃᵃᶜ_name = dim_name_generator("r", coordinate, nothing, nothing, c, Val(:z))
 
     rᵃᵃᶠ_data = collect_dim(coordinate.cᵃᵃᶠ, f, TZ(), Nz, Hz, z_indices, with_halos)
     rᵃᵃᶜ_data = collect_dim(coordinate.cᵃᵃᶜ, c, TZ(), Nz, Hz, z_indices, with_halos)
 
-    return Dict(rᵃᵃᶠ_name => nc_variable(rᵃᵃᶠ_data, rᵃᵃᶠ_name),
-                rᵃᵃᶜ_name => nc_variable(rᵃᵃᶜ_data, rᵃᵃᶜ_name))
+    return Dict(rᵃᵃᶠ_name => rᵃᵃᶠ_data,
+                rᵃᵃᶜ_name => rᵃᵃᶜ_data)
 end
 
 #####
@@ -219,8 +221,8 @@ function gather_dimensions(outputs, grid::RectilinearGrid, indices, with_halos, 
         xᶠᵃᵃ_data = collect_dim(grid.xᶠᵃᵃ, f, TX(), Nx, Hx, indices[1], with_halos)
         xᶜᵃᵃ_data = collect_dim(grid.xᶜᵃᵃ, c, TX(), Nx, Hx, indices[1], with_halos)
 
-        dims[xᶠᵃᵃ_name] = nc_variable(xᶠᵃᵃ_data, xᶠᵃᵃ_name)
-        dims[xᶜᵃᵃ_name] = nc_variable(xᶜᵃᵃ_data, xᶜᵃᵃ_name)
+        dims[xᶠᵃᵃ_name] = xᶠᵃᵃ_data
+        dims[xᶜᵃᵃ_name] = xᶜᵃᵃ_data
     end
 
     if TY != Flat
@@ -230,8 +232,8 @@ function gather_dimensions(outputs, grid::RectilinearGrid, indices, with_halos, 
         yᵃᶠᵃ_data = collect_dim(grid.yᵃᶠᵃ, f, TY(), Ny, Hy, indices[2], with_halos)
         yᵃᶜᵃ_data = collect_dim(grid.yᵃᶜᵃ, c, TY(), Ny, Hy, indices[2], with_halos)
 
-        dims[yᵃᶠᵃ_name] = nc_variable(yᵃᶠᵃ_data, yᵃᶠᵃ_name)
-        dims[yᵃᶜᵃ_name] = nc_variable(yᵃᶜᵃ_data, yᵃᶜᵃ_name)
+        dims[yᵃᶠᵃ_name] = yᵃᶠᵃ_data
+        dims[yᵃᶜᵃ_name] = yᵃᶜᵃ_data
     end
 
     if TZ != Flat
@@ -258,8 +260,8 @@ function gather_dimensions(outputs, grid::LatitudeLongitudeGrid, indices, with_h
         λᶠᵃᵃ_data = collect_dim(grid.λᶠᵃᵃ, f, TΛ(), Nλ, Hλ, indices[1], with_halos)
         λᶜᵃᵃ_data = collect_dim(grid.λᶜᵃᵃ, c, TΛ(), Nλ, Hλ, indices[1], with_halos)
 
-        dims[λᶠᵃᵃ_name] = nc_variable(λᶠᵃᵃ_data, λᶠᵃᵃ_name)
-        dims[λᶜᵃᵃ_name] = nc_variable(λᶜᵃᵃ_data, λᶜᵃᵃ_name)
+        dims[λᶠᵃᵃ_name] = λᶠᵃᵃ_data
+        dims[λᶜᵃᵃ_name] = λᶜᵃᵃ_data
     end
 
     if TΦ != Flat
@@ -269,8 +271,8 @@ function gather_dimensions(outputs, grid::LatitudeLongitudeGrid, indices, with_h
         φᵃᶠᵃ_data = collect_dim(grid.φᵃᶠᵃ, f, TΦ(), Nφ, Hφ, indices[2], with_halos)
         φᵃᶜᵃ_data = collect_dim(grid.φᵃᶜᵃ, c, TΦ(), Nφ, Hφ, indices[2], with_halos)
 
-        dims[φᵃᶠᵃ_name] = nc_variable(φᵃᶠᵃ_data, φᵃᶠᵃ_name)
-        dims[φᵃᶜᵃ_name] = nc_variable(φᵃᶜᵃ_data, φᵃᶜᵃ_name)
+        dims[φᵃᶠᵃ_name] = φᵃᶠᵃ_data
+        dims[φᵃᶜᵃ_name] = φᵃᶜᵃ_data
     end
 
     if TZ != Flat

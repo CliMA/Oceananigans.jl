@@ -66,16 +66,17 @@ function add_location_attribute!(attrib, fd::AbstractField)
     return merge(loc_attrib, attrib)
 end
 
-# Default: no auxiliary coordinates attribute (Rectilinear / LatitudeLongitude grids).
+# Entry point: extract the field's (unwrapped) grid and dispatch on its type.
 add_aux_coordinates_attribute!(attrib, fd::AbstractField, dim_name_generator; grid_index=nothing) =
-    _add_aux_coordinates_attribute!(attrib, fd, _underlying_grid(grid(fd)), dim_name_generator; grid_index)
+    add_aux_coordinates_attribute!(attrib, fd, underlying_grid(grid(fd)), dim_name_generator; grid_index)
 
-_underlying_grid(g) = g
-_underlying_grid(g::ImmersedBoundaryGrid) = g.underlying_grid
+# Default (Rectilinear / LatitudeLongitude grids): no CF `coordinates` attribute — the field's
+# dim names already point at 1D coordinate variables.
+add_aux_coordinates_attribute!(attrib, fd, grid, dim_name_generator; grid_index=nothing) = attrib
 
-_add_aux_coordinates_attribute!(attrib, fd, grid, dim_name_generator; grid_index=nothing) = attrib
-
-function _add_aux_coordinates_attribute!(attrib, fd, grid::OrthogonalSphericalShellGrid, dim_name_generator; grid_index=nothing)
+# OrthogonalSphericalShellGrid: write a CF `coordinates` attribute pointing at the 2D λ/φ
+# auxiliary coords + the 1D vertical coord, so xarray/ncview/Panoply pick up the lat/lon.
+function add_aux_coordinates_attribute!(attrib, fd, grid::OrthogonalSphericalShellGrid, dim_name_generator; grid_index=nothing)
     LX, LY, LZ = location(fd)
     parts = String[]
     if LX !== Nothing && LY !== Nothing
