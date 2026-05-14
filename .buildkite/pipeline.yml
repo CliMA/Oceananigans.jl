@@ -80,6 +80,8 @@ steps:
       else
         export CUDA_VISIBLE_DEVICES="0"
         export TEST_ARCHITECTURE="GPU"
+
+        julia +$JULIA_VERSION -O0 --color=yes --project=test --check-bounds=yes -e 'using CUDA; CUDA.versioninfo()'
       fi
 
       # Strip emoji for environment variable
