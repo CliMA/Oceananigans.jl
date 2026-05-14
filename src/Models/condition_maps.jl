@@ -59,7 +59,10 @@ function compute_advection_conditioned_map(scheme, grid, workspec)
     launch!(architecture(grid), grid, workspec, _condition_map!, max_scheme_field, grid, scheme)
 
     interior_indices, boundary_indices = split_indices(max_scheme_field, grid, workspec)
+    # No speedup if no interior indices so return nothing
     isempty(interior_indices) && return nothing
+    # Return nothing rather than an empty list
+    boundary_indices = isempty(boundary_indices) ? nothing : boundary_indices
     return InteriorBoundarySet(interior_indices, boundary_indices)
 end
 
@@ -113,11 +116,7 @@ end
 # read at faces (i-1) and (j-1), we conservatively build the map starting from `-1`
 function check_interior_x(i, j, k, ibg, ::AbstractAdvectionScheme{N}) where N
     interior = true
-    buffer   = N + 1
-    if (i - buffer - 1) < 0 || (i + buffer + 1) > ibg.Nx
-      return false
-    end
-    for di in -buffer-1:buffer+1
+    for di in -N-1:N+1
         interior = interior && active_cell(i + di, j, k, ibg)
     end
     return interior
@@ -125,11 +124,7 @@ end
 
 function check_interior_y(i, j, k, ibg, ::AbstractAdvectionScheme{N}) where N
     interior = true
-    buffer   = N + 1
-    if (j - buffer - 1) < 0 || (j + buffer + 1) > ibg.Ny
-      return false
-    end
-    for dj in -buffer-1:buffer+1
+    for dj in -N-1:N+1
         interior = interior && active_cell(i, j + dj, k, ibg)
     end
     return interior
@@ -137,11 +132,7 @@ end
 
 function check_interior_z(i, j, k, ibg, ::AbstractAdvectionScheme{N}) where N
     interior = true
-    buffer   = N + 1
-    if (k - buffer - 1) < 0 || (k + buffer + 1) > ibg.Nz
-      return false
-    end
-    for dk in -buffer:buffer
+    for dk in -N-1:N+1
         interior = interior && active_cell(i, j, k + dk, ibg)
     end
     return interior
