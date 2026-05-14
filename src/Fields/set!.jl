@@ -147,12 +147,12 @@ end
 
 function set_to_field!(u, v)
     # When sizes and locations match, we can directly copy data. Otherwise we
-    # fall back to interpolation, migrating v to u's architecture first so that
-    # interpolate! can run on a single architecture.
+    # fall back to interpolation, migrating v to u's child architecture first
+    # so that interpolate! can run on a single architecture.
     if size(u) == size(v) && location(u) == location(v)
         copy_to_field!(u, v)
     else
-        v_on_u = migrate_to_architecture(u, v)
+        v_on_u = on_architecture(child_architecture(u), v)
         interpolate!(u, v_on_u)
     end
 
@@ -186,19 +186,6 @@ function copy_to_field!(u, v)
     end
 
     return u
-end
-
-# If v lives on a different architecture than u, build a Field on u's architecture
-# that mirrors v's data. interpolate! requires its inputs to share an architecture,
-# so this is the migration step set! performs automatically before interpolating.
-function migrate_to_architecture(u, v)
-    child_architecture(u) === child_architecture(v) && return v
-
-    arch = architecture(u)
-    v_grid = on_architecture(arch, v.grid)
-    v_on_u = Field(instantiated_location(v), v_grid; indices=indices(v))
-    parent(v_on_u) .= parent(on_architecture(child_architecture(u), v.data))
-    return v_on_u
 end
 
 Base.copyto!(f::Field, src::Base.Broadcast.Broadcasted) = copyto!(interior(f), src)
