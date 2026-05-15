@@ -78,7 +78,15 @@ function BatchedTridiagonalSolver(grid;
                                   lower_diagonal,
                                   diagonal,
                                   upper_diagonal,
-                                  scratch = zeros(architecture(grid), eltype(grid), grid.Nx, grid.Ny, grid.Nz),
+                                  # Size scratch by `worksize(grid)` rather than `(Nx, Ny, Nz)`.
+                                  # For grids where `worksize` exceeds interior size in any
+                                  # dimension (e.g. `RightFaceFolded` tripolar grids extend the
+                                  # y-worksize to `Ny+1`), allocating only the interior leaves
+                                  # the kernel writing `t[i, j, k]` out-of-bounds at j=Ny+1,
+                                  # which (column-major layout) aliases `t[i, 1, k+1]` and
+                                  # corrupts the j=1 column's back-substitution scratch on
+                                  # parallel (GPU) launches.
+                                  scratch = zeros(architecture(grid), eltype(grid), worksize(grid)...),
                                   parameters = nothing,
                                   tridiagonal_direction = ZDirection())
 
