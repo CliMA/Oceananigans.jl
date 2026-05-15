@@ -29,13 +29,16 @@ include("distributed_tripolar_grid.jl")
 include("distributed_zipper.jl")
 include("distributed_zipper_north_tags.jl")
 
-# `constructor_arguments` for any `OrthogonalSphericalShellGrid` (TripolarGrid,
-# RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid, …). These grids are
-# not reconstructed by replaying their high-level constructors — `NetCDFWriter`
-# rebuilds them directly from the metric/coordinate arrays it writes to disk
-# (see `reconstruct_ossg_grid` in the NetCDF extension). The metadata here is
-# just what that reconstruction routine needs that isn't already on the metric
-# arrays themselves: architecture, FT, size, halo, topology, radius.
+# `constructor_arguments` for an `OrthogonalSphericalShellGrid`. OSSG itself is a
+# general orthogonal grid on the surface of a sphere; `TripolarGrid`,
+# `RotatedLatitudeLongitudeGrid`, and `ConformalCubedSpherePanelGrid` are type
+# aliases of OSSG parameterized by different `conformal_mapping`s — they're
+# different *ways to generate* an OSSG, not different grid types. NetCDFWriter
+# does not replay those generator functions on read: it rebuilds the OSSG
+# directly from the metric/coordinate arrays written to disk (see
+# `reconstruct_ossg_grid` in the NetCDF extension). The metadata here is just
+# what the reconstruction routine needs that isn't already on the metric arrays
+# themselves: architecture, FT, size, halo, topology, radius.
 using OrderedCollections: OrderedDict
 using Oceananigans.Grids: Grids
 function Grids.constructor_arguments(grid::Oceananigans.Grids.OrthogonalSphericalShellGrid)

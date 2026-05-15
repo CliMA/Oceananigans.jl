@@ -3359,6 +3359,83 @@ function test_netcdf_tripolar_field_time_series(arch)
     return nothing
 end
 
+function test_netcdf_tripolar_variable_z_output(arch)
+    # Variable vertical spacing on a TripolarGrid. `StaticVerticalDiscretization` here
+    # holds `OffsetVector{Float64, Vector{Float64}}` for the z-faces rather than
+    # `StepRangeLen{Float64, TwicePrecision{…}}` (the uniform case), so the grid type
+    # signature is meaningfully different — we want to make sure metrics + reconstruction
+    # both work on this path too.
+    Nx, Ny, Nz = 16, 12, 3
+    z_faces = collect(range(-100.0, 0.0; length=Nz + 1))
+    grid = TripolarGrid(arch, size=(Nx, Ny, Nz), z=z_faces)
+    fs = SplitExplicitFreeSurface(grid; substeps=10)
+    model = HydrostaticFreeSurfaceModel(grid; free_surface=fs, tracers=(:T,))
+    sim = Simulation(model; Δt=1, stop_iteration=1)
+
+    Arch = typeof(arch)
+    fp = "test_tripolar_variable_z_$Arch.nc"
+    isfile(fp) && rm(fp)
+    sim.output_writers[:nc] = NetCDFWriter(model, (; T=model.tracers.T);
+                                           filename=fp, schedule=IterationInterval(1),
+                                           overwrite_existing=true, include_grid_metrics=true)
+    run!(sim)
+
+    ds = NCDataset(fp)
+    @test "λ_cca" ∈ keys(ds)
+    @test "Δz_aac" ∈ keys(ds)
+    # The 1D z faces in the file should match what we put in.
+    @test collect(ds["z_aaf"]) ≈ z_faces
+    close(ds)
+
+    # Metrics-based reconstruction should round-trip the variable z faithfully.
+    recon = reconstruct_grid(fp; architecture=arch)
+    @test recon isa TripolarGrid
+    @test Array(recon.z.cᵃᵃᶠ[1:Nz+1]) ≈ z_faces atol=1e-10
+
+    rm(fp)
+    return nothing
+end
+
+function test_netcdf_tripolar_mvd_output(arch)
+    # `MutableVerticalDiscretization` (z-star) on a `TripolarGrid` — combines two
+    # mechanisms in this PR (OSSG aux-coord plumbing + `r`-named reference vertical
+    # for MVD) plus the `Zipper` BC dispatch on the tripolar fold. Smoke-test that
+    # all of the dim names land where we expect.
+    Nx, Ny, Nz = 16, 12, 3
+    zcoord = Oceananigans.Grids.MutableVerticalDiscretization(collect(range(-100.0, 0.0; length=Nz + 1)))
+    grid = TripolarGrid(arch, size=(Nx, Ny, Nz), z=zcoord)
+    fs = SplitExplicitFreeSurface(grid; substeps=10)
+    ZStar = Oceananigans.Models.HydrostaticFreeSurfaceModels.ZStarCoordinate
+    model = HydrostaticFreeSurfaceModel(grid; free_surface=fs, tracers=(:T,),
+                                        vertical_coordinate=ZStar())
+    sim = Simulation(model; Δt=1, stop_iteration=1)
+
+    Arch = typeof(arch)
+    fp = "test_tripolar_mvd_$Arch.nc"
+    isfile(fp) && rm(fp)
+    sim.output_writers[:nc] = NetCDFWriter(model, (; T=model.tracers.T);
+                                           filename=fp, schedule=IterationInterval(1),
+                                           overwrite_existing=true, include_grid_metrics=true)
+    run!(sim)
+
+    ds = NCDataset(fp)
+    # Reference vertical coord is `r_*` (not `z_*`) on MVD grids, regardless of
+    # horizontal grid type.
+    @test "r_aac" ∈ keys(ds.dim) && "r_aaf" ∈ keys(ds.dim)
+    @test "z_aac" ∉ keys(ds.dim) && "z_aaf" ∉ keys(ds.dim)
+    @test "Δr_aac" ∈ keys(ds) && "Δr_aaf" ∈ keys(ds)
+    # OSSG horizontal aux coords still present.
+    for v in ("λ_cca", "φ_cca", "Δx_cca", "Δy_cca", "Az_cca")
+        @test v ∈ keys(ds)
+    end
+    # Field dim signature picks up `r_aac` as the vertical dimension.
+    @test dimnames(ds["T"]) == ("i_caa", "j_aca", "r_aac", "time")
+    @test ds["T"].attrib["coordinates"] == "λ_cca φ_cca r_aac"
+    close(ds)
+    rm(fp)
+    return nothing
+end
+
 function test_netcdf_tripolar_immersed_output(arch)
     # ImmersedBoundaryGrid wrapping a TripolarGrid: exercises the OSSG path AND the
     # immersed-boundary reconstruction-data writer (which `defVar`s `bottom_height`
@@ -3694,6 +3771,8 @@ end
             test_netcdf_rotated_llg_matches_llg(arch)
             test_netcdf_tripolar_grid_reconstruction(arch)
             test_netcdf_tripolar_field_time_series(arch)
+            test_netcdf_tripolar_variable_z_output(arch)
+            test_netcdf_tripolar_mvd_output(arch)
             test_netcdf_tripolar_immersed_output(arch)
             test_netcdf_cubed_sphere_panel_output(arch)
             test_netcdf_cubed_sphere_panel_immersed_output(arch)
