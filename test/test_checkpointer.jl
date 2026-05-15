@@ -113,10 +113,12 @@ function test_minimal_restore(arch, FT, pickup_method, model_type)
         new_model = HydrostaticFreeSurfaceModel(new_grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     end
 
-    new_simulation = Simulation(new_model; Δt=1.0, stop_time=3.0)
+    new_stop_time = 4.0
+    new_checkpoint_interval = 0.5
+    new_simulation = Simulation(new_model; Δt=1.0, stop_time=new_stop_time)
 
     new_checkpointer = Checkpointer(new_model;
-                                    schedule = TimeInterval(1.0),
+                                    schedule = TimeInterval(new_checkpoint_interval),
                                     prefix = prefix,
                                     cleanup = false,
                                     verbose = true)
@@ -134,7 +136,10 @@ function test_minimal_restore(arch, FT, pickup_method, model_type)
     @test iteration(new_simulation) == 3
     @test time(new_simulation) == 3.0
 
-    @test new_checkpointer.schedule.actuations == 3
+    @test new_simulation.stop_time == new_stop_time
+    @test new_checkpointer.schedule.interval == new_checkpoint_interval
+    @test new_checkpointer.schedule.actuations == 0
+    @test Oceananigans.Utils.next_actuation_time(new_checkpointer.schedule) == time(new_simulation) + new_checkpoint_interval
 
     rm.(glob("$(prefix)_iteration*.jld2"))
 
@@ -261,10 +266,12 @@ function test_minimal_restore_shallow_water(arch, FT, pickup_method)
                                extent = (L, L))
 
     new_model = ShallowWaterModel(new_grid; gravitational_acceleration=1)
-    new_simulation = Simulation(new_model; Δt=1.0, stop_time=3.0)
+    new_stop_time = 4.0
+    new_checkpoint_interval = 0.5
+    new_simulation = Simulation(new_model; Δt=1.0, stop_time=new_stop_time)
 
     new_checkpointer = Checkpointer(new_model;
-                                    schedule = TimeInterval(1.0),
+                                    schedule = TimeInterval(new_checkpoint_interval),
                                     prefix = prefix,
                                     cleanup = false,
                                     verbose = true)
@@ -282,7 +289,10 @@ function test_minimal_restore_shallow_water(arch, FT, pickup_method)
     @test iteration(new_simulation) == 3
     @test time(new_simulation) == 3.0
 
-    @test new_checkpointer.schedule.actuations == 3
+    @test new_simulation.stop_time == new_stop_time
+    @test new_checkpointer.schedule.interval == new_checkpoint_interval
+    @test new_checkpointer.schedule.actuations == 0
+    @test Oceananigans.Utils.next_actuation_time(new_checkpointer.schedule) == time(new_simulation) + new_checkpoint_interval
 
     rm.(glob("$(prefix)_iteration*.jld2"))
 

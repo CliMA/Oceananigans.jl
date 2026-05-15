@@ -297,7 +297,6 @@ end
 
 function restore_prognostic_state!(restored::Simulation, from)
     restore_prognostic_state!(restored.model, from.model)
-    restored.Δt = from.Δt
     restore_prognostic_state!(restored.diagnostics, from.diagnostics)
     restore_prognostic_state!(restored.output_writers, from.output_writers)
     restore_prognostic_state!(restored.callbacks, from.callbacks)

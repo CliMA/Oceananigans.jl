@@ -110,6 +110,17 @@ function set!(sim::Simulation; checkpoint=nothing, iteration=nothing)
 
     state = load_checkpoint_state(checkpoint_filepath)
     restore_prognostic_state!(sim, state)
+
+    checkpoint_filepath !== nothing && initialize_checkpointer_schedules!(sim)
+
+    return nothing
+end
+
+function initialize_checkpointer_schedules!(sim)
+    for writer in values(sim.output_writers)
+        writer isa Checkpointer && initialize!(writer.schedule, sim.model)
+    end
+
     return nothing
 end
 
