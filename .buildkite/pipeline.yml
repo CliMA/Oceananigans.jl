@@ -6,7 +6,7 @@ env:
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
   XLA_REACTANT_GPU_PREALLOCATE: false
   OCEANANIGANS_DIR: "$HOME/Oceananigans.jl-$BUILDKITE_BUILD_NUMBER"
-
+  JULIA_CUDA_USE_COMPAT: false
 agents:
   queue: "Oceananigans"
 with:
@@ -25,6 +25,10 @@ steps:
       mkdir -p "$OCEANANIGANS_DIR"
       rsync -a . "$OCEANANIGANS_DIR/"
       cd "$OCEANANIGANS_DIR"
+
+      # On Nautilus we have old GPUs which require CUDA toolkit v12, can't
+      # use v13.
+      echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
 
       julia +$JULIA_VERSION -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
       # After we have instantiated the general environment, move manifest to the
@@ -46,6 +50,10 @@ steps:
       juliaup add $JULIA_VERSION_ENZYME
       cd "$OCEANANIGANS_DIR"
 
+      # On Nautilus we have old GPUs which require CUDA toolkit v12, can't
+      # use v13.
+      echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
+
       julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project -e 'using Pkg; Pkg.test(julia_args=["--check-bounds=auto"])' # Remove --check-bounds=auto when https://github.com/EnzymeAD/Reactant.jl/issues/2347 is fixed
       # After we have instantiated the Enzyme environment, move manifest to the
       # version-specific filename, not to clash with the general manifest.
@@ -63,6 +71,11 @@ steps:
       CUDA_VISIBLE_DEVICES: "0" # GPU for docs
     command: |
       cd "$OCEANANIGANS_DIR"
+
+      # On Nautilus we have old GPUs which require CUDA toolkit v12, can't
+      # use v13.
+      echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > docs/LocalPreferences.toml
+
       julia +$JULIA_VERSION --color=yes --project=docs/ -e \
         'using Pkg; Pkg.instantiate()'
       julia +$JULIA_VERSION --color=yes --project=docs/ docs/make.jl
@@ -86,6 +99,10 @@ steps:
       group="{{ matrix.group }}"
       export TEST_GROUP="\${group#* }"
       echo $TEST_GROUP
+
+      # On Nautilus we have old GPUs which require CUDA toolkit v12, can't
+      # use v13.
+      echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
 
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
@@ -166,6 +183,10 @@ steps:
       group="{{ matrix.group }}"
       export TEST_GROUP="\${group#* }"
       echo $TEST_GROUP
+
+      # On Nautilus we have old GPUs which require CUDA toolkit v12, can't
+      # use v13.
+      echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
 
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
