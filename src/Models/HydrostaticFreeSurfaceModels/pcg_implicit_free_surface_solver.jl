@@ -94,30 +94,23 @@ function Solvers.solve!(η, implicit_free_surface_solver::PCGImplicitFreeSurface
     return nothing
 end
 
-function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::PCGImplicitFreeSurfaceSolver,
-                                                        g, Δt, U, η)
+function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::PCGImplicitFreeSurfaceSolver, g, Δt, U, η, Fη, clock, fields)
 
     solver = implicit_solver.preconditioned_conjugate_gradient_solver
     arch = architecture(solver)
     grid = solver.grid
-
-    @apply_regionally compute_regional_rhs!(rhs, arch, grid, g, Δt, U, η)
-
+    launch!(arch, grid, :xy, implicit_free_surface_right_hand_side!, rhs, grid, g, Δt, U, η, Fη, clock, fields)
     return nothing
 end
 
-compute_regional_rhs!(rhs, arch, grid, g, Δt, U, η) =
-    launch!(arch, grid, :xy,
-            implicit_free_surface_right_hand_side!,
-            rhs, grid, g, Δt, U, η)
-
-@kernel function implicit_free_surface_right_hand_side!(rhs, grid, g, Δt, U, η)
+@kernel function implicit_free_surface_right_hand_side!(rhs, grid, g, Δt, U, η, Fη, clock, fields)
     i, j = @index(Global, NTuple)
     kᴺ   = grid.Nz
     Az   = Azᶜᶜᶠ(i, j, kᴺ, grid)
     δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, nothing, U.u)
     δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, nothing, U.v)
-    @inbounds rhs[i, j, kᴺ+1] = (δx_U + δy_V - Az * η[i, j, kᴺ+1] / Δt) / (g * Δt)
+    PE   = Fη(i, j, kᴺ+1, grid, clock, fields)
+    @inbounds rhs[i, j, kᴺ+1] = (δx_U + δy_V - Az * PE - Az * η[i, j, kᴺ+1] / Δt) / (g * Δt)
 end
 
 """
