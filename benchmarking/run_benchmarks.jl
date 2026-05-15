@@ -27,7 +27,7 @@ using ArgParse: @add_arg_table!, ArgParseSettings, parse_args
 using OceananigansBenchmarks: earth_ocean, benchmark_time_stepping, run_benchmark_simulation, run_io_benchmark
 using JSON: JSON
 using Oceananigans
-using Oceananigans.DistributedComputations: Distributed, Partition, @root, @onrank, mpi_rank, mpi_size
+using Oceananigans.DistributedComputations: Distributed, Partition, @root, @onrank, @handshake, mpi_rank, mpi_size
 
 using CUDA
 
