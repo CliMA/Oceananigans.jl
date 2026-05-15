@@ -245,7 +245,7 @@ function initialize_nc_file(model,
             write_grid_reconstruction_data!(dataset, grid, suffix; array_type, deflatelevel)
 
             if include_grid_metrics
-                metrics = gather_grid_metrics(grid, indices, dimension_name_generator; grid_index=suffix)
+                metrics = gather_grid_metrics(grid, indices, dimension_name_generator; grid_index=suffix, with_halos)
                 for name in keys(metrics)
                     time_independent_grid_map[name] = suffix
                 end
@@ -365,18 +365,36 @@ function define_output_variable!(model, dataset, output, output_name; array_type
 end
 
 """ Defines empty field variable. """
+root_parent(array) = parent(array) === array ? array : root_parent(parent(array))
+
+function output_is_free_surface_displacement(output, model)
+    output isa Field || return false
+    hasfield(typeof(model), :free_surface) || return false
+
+    free_surface = model.free_surface
+    isnothing(free_surface) && return false
+    hasfield(typeof(free_surface), :displacement) || return false
+
+    displacement = free_surface.displacement
+    displacement isa Field || return false
+    same_grid = grid(output) === grid(displacement)
+    same_location = location(output) == location(displacement)
+    same_data = root_parent(output.data) === root_parent(displacement.data)
+
+    return same_grid && same_location && same_data
+end
+
 function define_output_variable!(model, dataset, output::AbstractField, output_name; array_type,
                                  deflatelevel, attrib, dimension_name_generator,
                                  time_dependent, with_halos, grid_index=nothing,
                                  dimensions, filepath, dimension_type=Float64)
 
-    # If the output is the free surface, we need to handle it differently since it will be writen as a 3D array with a singleton dimension for the z-coordinate
-    if output_name == "displacement" && hasfield(typeof(model), :free_surface)
-        if output == view(model.free_surface.displacement, output.indices...)
-            local default_dimension_name_generator = dimension_name_generator
-            dimension_name_generator = (var_name, grid, LX, LY, LZ, dim) -> dimension_name_generator_free_surface(default_dimension_name_generator, var_name, grid, LX, LY, LZ, dim)
-        end
+    # The free surface is written as a 3D array with a singleton z-coordinate.
+    if output_is_free_surface_displacement(output, model)
+        local default_dimension_name_generator = dimension_name_generator
+        dimension_name_generator = (var_name, grid, LX, LY, LZ, dim) -> dimension_name_generator_free_surface(default_dimension_name_generator, var_name, grid, LX, LY, LZ, dim)
     end
+
     defVar(dataset, output_name, output; array_type, time_dependent, with_halos, dimension_name_generator, deflatelevel, attrib, dimension_type, grid_index, write_data=false)
     return nothing
 end

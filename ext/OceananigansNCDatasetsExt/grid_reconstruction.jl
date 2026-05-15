@@ -61,7 +61,7 @@ Gather the grid metrics for the grid. Not strictly necessary for grid reconstruc
 implemented and used as a quality of life improvement since it gives users easy access to relevant grid
 metrics when opening the NetCDF file.
 """
-function gather_grid_metrics(grid::RectilinearGrid, indices, dim_name_generator; grid_index=nothing)
+function gather_grid_metrics(grid::RectilinearGrid, indices, dim_name_generator; grid_index=nothing, with_halos=false)
     TX, TY, TZ = topology(grid)
 
     metrics = Dict()
@@ -102,7 +102,7 @@ function gather_grid_metrics(grid::RectilinearGrid, indices, dim_name_generator;
     return suffix_grid_keys(metrics, grid_index)
 end
 
-function gather_grid_metrics(grid::LatitudeLongitudeGrid, indices, dim_name_generator; grid_index=nothing)
+function gather_grid_metrics(grid::LatitudeLongitudeGrid, indices, dim_name_generator; grid_index=nothing, with_halos=false)
     TΛ, TΦ, TZ = topology(grid)
 
     metrics = Dict()
@@ -173,6 +173,177 @@ function gather_grid_metrics(grid::LatitudeLongitudeGrid, indices, dim_name_gene
     return suffix_grid_keys(metrics, grid_index)
 end
 
+function horizontal_metric_indices(grid, ℓx, ℓy, indices, with_halos)
+    with_halos || return indices
+
+    TX, TY, _ = topology(grid)
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+
+    return (all_indices(ℓx, TX(), Nx, Hx),
+            all_indices(ℓy, TY(), Ny, Hy),
+            1:1)
+end
+
+function horizontal_metric_field(grid, metric, ℓx, ℓy, indices, with_halos, operation)
+    with_halos || return Field(operation; indices)
+
+    ix, iy, iz = indices
+    metric = on_architecture(CPU(), metric)
+    metric_data = metric[ix, iy]
+    offset_data = OffsetArray(reshape(parent(metric_data), length(ix), length(iy), 1), ix, iy, iz)
+
+    return Field((ℓx, ℓy, nothing), grid; data = offset_data, indices)
+end
+
+function vertical_metric_indices(grid, ℓz, indices, with_halos)
+    with_halos || return indices
+
+    _, _, TZ = topology(grid)
+    _, _, Nz = size(grid)
+    _, _, Hz = halo_size(grid)
+
+    return (1:1, 1:1, all_indices(ℓz, TZ(), Nz, Hz))
+end
+
+function vertical_metric_field(grid, metric, ℓz, indices, with_halos, operation)
+    with_halos || return Field(operation; indices)
+
+    ix, iy, iz = indices
+    metric = on_architecture(CPU(), metric)
+    metric_data = metric isa Number ? fill(metric, length(iz)) : [metric[k] for k in iz]
+    offset_data = OffsetArray(reshape(metric_data, 1, 1, length(iz)), ix, iy, iz)
+
+    return Field((nothing, nothing, ℓz), grid; data = offset_data, indices)
+end
+
+function gather_grid_metrics(grid::LambertConformalConicGrid, indices, dim_name_generator; grid_index=nothing, with_halos=false)
+    TX, TY, TZ = topology(grid)
+    field_grid = with_halos ? on_architecture(CPU(), grid) : grid
+
+    metrics = Dict()
+
+    if TX != Flat
+        Δxᶠᶠᵃ_name = dim_name_generator("Δx", grid, f, f, nothing, Val(:x))
+        Δxᶠᶜᵃ_name = dim_name_generator("Δx", grid, f, c, nothing, Val(:x))
+        Δxᶜᶠᵃ_name = dim_name_generator("Δx", grid, c, f, nothing, Val(:x))
+        Δxᶜᶜᵃ_name = dim_name_generator("Δx", grid, c, c, nothing, Val(:x))
+
+        Δxᶠᶠᵃ_indices = horizontal_metric_indices(field_grid, f, f, indices, with_halos)
+        Δxᶠᶜᵃ_indices = horizontal_metric_indices(field_grid, f, c, indices, with_halos)
+        Δxᶜᶠᵃ_indices = horizontal_metric_indices(field_grid, c, f, indices, with_halos)
+        Δxᶜᶜᵃ_indices = horizontal_metric_indices(field_grid, c, c, indices, with_halos)
+
+        Δxᶠᶠᵃ_field = horizontal_metric_field(field_grid, field_grid.Δxᶠᶠᵃ, f, f,
+                                               Δxᶠᶠᵃ_indices, with_halos,
+                                               xspacings(field_grid, f, f))
+
+        Δxᶠᶜᵃ_field = horizontal_metric_field(field_grid, field_grid.Δxᶠᶜᵃ, f, c,
+                                               Δxᶠᶜᵃ_indices, with_halos,
+                                               xspacings(field_grid, f, c))
+
+        Δxᶜᶠᵃ_field = horizontal_metric_field(field_grid, field_grid.Δxᶜᶠᵃ, c, f,
+                                               Δxᶜᶠᵃ_indices, with_halos,
+                                               xspacings(field_grid, c, f))
+
+        Δxᶜᶜᵃ_field = horizontal_metric_field(field_grid, field_grid.Δxᶜᶜᵃ, c, c,
+                                               Δxᶜᶜᵃ_indices, with_halos,
+                                               xspacings(field_grid, c, c))
+
+        metrics[Δxᶠᶠᵃ_name] = Δxᶠᶠᵃ_field
+        metrics[Δxᶠᶜᵃ_name] = Δxᶠᶜᵃ_field
+        metrics[Δxᶜᶠᵃ_name] = Δxᶜᶠᵃ_field
+        metrics[Δxᶜᶜᵃ_name] = Δxᶜᶜᵃ_field
+    end
+
+    if TY != Flat
+        Δyᶠᶠᵃ_name = dim_name_generator("Δy", grid, f, f, nothing, Val(:y))
+        Δyᶠᶜᵃ_name = dim_name_generator("Δy", grid, f, c, nothing, Val(:y))
+        Δyᶜᶠᵃ_name = dim_name_generator("Δy", grid, c, f, nothing, Val(:y))
+        Δyᶜᶜᵃ_name = dim_name_generator("Δy", grid, c, c, nothing, Val(:y))
+
+        Δyᶠᶠᵃ_indices = horizontal_metric_indices(field_grid, f, f, indices, with_halos)
+        Δyᶠᶜᵃ_indices = horizontal_metric_indices(field_grid, f, c, indices, with_halos)
+        Δyᶜᶠᵃ_indices = horizontal_metric_indices(field_grid, c, f, indices, with_halos)
+        Δyᶜᶜᵃ_indices = horizontal_metric_indices(field_grid, c, c, indices, with_halos)
+
+        Δyᶠᶠᵃ_field = horizontal_metric_field(field_grid, field_grid.Δyᶠᶠᵃ, f, f,
+                                               Δyᶠᶠᵃ_indices, with_halos,
+                                               yspacings(field_grid, f, f))
+
+        Δyᶠᶜᵃ_field = horizontal_metric_field(field_grid, field_grid.Δyᶠᶜᵃ, f, c,
+                                               Δyᶠᶜᵃ_indices, with_halos,
+                                               yspacings(field_grid, f, c))
+
+        Δyᶜᶠᵃ_field = horizontal_metric_field(field_grid, field_grid.Δyᶜᶠᵃ, c, f,
+                                               Δyᶜᶠᵃ_indices, with_halos,
+                                               yspacings(field_grid, c, f))
+
+        Δyᶜᶜᵃ_field = horizontal_metric_field(field_grid, field_grid.Δyᶜᶜᵃ, c, c,
+                                               Δyᶜᶜᵃ_indices, with_halos,
+                                               yspacings(field_grid, c, c))
+
+        metrics[Δyᶠᶠᵃ_name] = Δyᶠᶠᵃ_field
+        metrics[Δyᶠᶜᵃ_name] = Δyᶠᶜᵃ_field
+        metrics[Δyᶜᶠᵃ_name] = Δyᶜᶠᵃ_field
+        metrics[Δyᶜᶜᵃ_name] = Δyᶜᶜᵃ_field
+    end
+
+    if TX != Flat && TY != Flat
+        Azᶠᶠᵃ_name = dim_name_generator("Az", grid, f, f, nothing, Val(:x))
+        Azᶠᶜᵃ_name = dim_name_generator("Az", grid, f, c, nothing, Val(:x))
+        Azᶜᶠᵃ_name = dim_name_generator("Az", grid, c, f, nothing, Val(:x))
+        Azᶜᶜᵃ_name = dim_name_generator("Az", grid, c, c, nothing, Val(:x))
+
+        Azᶠᶠᵃ_indices = horizontal_metric_indices(field_grid, f, f, indices, with_halos)
+        Azᶠᶜᵃ_indices = horizontal_metric_indices(field_grid, f, c, indices, with_halos)
+        Azᶜᶠᵃ_indices = horizontal_metric_indices(field_grid, c, f, indices, with_halos)
+        Azᶜᶜᵃ_indices = horizontal_metric_indices(field_grid, c, c, indices, with_halos)
+
+        Azᶠᶠᵃ_operation = KernelFunctionOperation{Face, Face, Nothing}(Az, field_grid, f, f, nothing)
+        Azᶠᶜᵃ_operation = KernelFunctionOperation{Face, Center, Nothing}(Az, field_grid, f, c, nothing)
+        Azᶜᶠᵃ_operation = KernelFunctionOperation{Center, Face, Nothing}(Az, field_grid, c, f, nothing)
+        Azᶜᶜᵃ_operation = KernelFunctionOperation{Center, Center, Nothing}(Az, field_grid, c, c, nothing)
+
+        metrics[Azᶠᶠᵃ_name] = horizontal_metric_field(field_grid, field_grid.Azᶠᶠᵃ, f, f,
+                                                       Azᶠᶠᵃ_indices, with_halos,
+                                                       Azᶠᶠᵃ_operation)
+
+        metrics[Azᶠᶜᵃ_name] = horizontal_metric_field(field_grid, field_grid.Azᶠᶜᵃ, f, c,
+                                                       Azᶠᶜᵃ_indices, with_halos,
+                                                       Azᶠᶜᵃ_operation)
+
+        metrics[Azᶜᶠᵃ_name] = horizontal_metric_field(field_grid, field_grid.Azᶜᶠᵃ, c, f,
+                                                       Azᶜᶠᵃ_indices, with_halos,
+                                                       Azᶜᶠᵃ_operation)
+
+        metrics[Azᶜᶜᵃ_name] = horizontal_metric_field(field_grid, field_grid.Azᶜᶜᵃ, c, c,
+                                                       Azᶜᶜᵃ_indices, with_halos,
+                                                       Azᶜᶜᵃ_operation)
+    end
+
+    if TZ != Flat
+        Δzᵃᵃᶠ_name = dim_name_generator("Δz", grid, nothing, nothing, f, Val(:z))
+        Δzᵃᵃᶜ_name = dim_name_generator("Δz", grid, nothing, nothing, c, Val(:z))
+
+        Δzᵃᵃᶠ_indices = vertical_metric_indices(field_grid, f, indices, with_halos)
+        Δzᵃᵃᶜ_indices = vertical_metric_indices(field_grid, c, indices, with_halos)
+
+        Δzᵃᵃᶠ_field = vertical_metric_field(field_grid, field_grid.z.Δᵃᵃᶠ, f,
+                                             Δzᵃᵃᶠ_indices, with_halos,
+                                             zspacings(field_grid, f))
+
+        Δzᵃᵃᶜ_field = vertical_metric_field(field_grid, field_grid.z.Δᵃᵃᶜ, c,
+                                             Δzᵃᵃᶜ_indices, with_halos,
+                                             zspacings(field_grid, c))
+
+        metrics[Δzᵃᵃᶠ_name] = Δzᵃᵃᶠ_field
+        metrics[Δzᵃᵃᶜ_name] = Δzᵃᵃᶜ_field
+    end
+
+    return suffix_grid_keys(metrics, grid_index)
+end
+
 #####
 ##### Gathering of immersed boundary fields
 #####
@@ -229,6 +400,7 @@ end
 #####
 
 netcdf_string(obj) = typeof(obj).name.wrapper |> string
+netcdf_string(::LambertConformalConicGrid) = "LambertConformalConicGrid"
 
 function netcdf_grid_constructor_info(grid)
     underlying_grid_args, underlying_grid_kwargs = constructor_arguments(grid)

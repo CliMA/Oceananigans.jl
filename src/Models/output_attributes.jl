@@ -1,4 +1,4 @@
-using Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid
+using Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.BuoyancyFormulations: BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState
 
@@ -21,6 +21,12 @@ default_velocity_attributes(::RectilinearGrid) = Dict(
 default_velocity_attributes(::LatitudeLongitudeGrid) = Dict(
     "u"            => Dict("long_name" => "Velocity in the zonal direction (+ = east).", "units" => "m/s"),
     "v"            => Dict("long_name" => "Velocity in the meridional direction (+ = north).", "units" => "m/s"),
+    "w"            => Dict("long_name" => "Velocity in the vertical direction (+ = up).", "units" => "m/s"),
+    "displacement" => Dict("long_name" => "Sea surface height displacement", "units" => "m"))
+
+default_velocity_attributes(::OrthogonalSphericalShellGrid) = Dict(
+    "u"            => Dict("long_name" => "Velocity in the local x-direction.", "units" => "m/s"),
+    "v"            => Dict("long_name" => "Velocity in the local y-direction.", "units" => "m/s"),
     "w"            => Dict("long_name" => "Velocity in the vertical direction (+ = up).", "units" => "m/s"),
     "displacement" => Dict("long_name" => "Sea surface height displacement", "units" => "m"))
 

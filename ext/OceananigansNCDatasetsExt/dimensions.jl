@@ -51,6 +51,67 @@ function create_field_dimensions!(ds, fd::AbstractField, dimension_name_generato
     end
 end
 
+instantiate_lcc_location(::Type{Nothing}) = nothing
+instantiate_lcc_location(L) = L()
+
+lcc_projected_node(map, i, ℓ, ::Val{:x}) = lcc_xnode(i, ℓ, map)
+lcc_projected_node(map, i, ℓ, ::Val{:y}) = lcc_ynode(i, ℓ, map)
+
+function lcc_projected_dimension(grid, ℓ, T, N, H, inds, with_halos, direction)
+    node_indices = if with_halos
+        all_indices(ℓ, T, N, H)
+    else
+        inds = validate_index(inds, ℓ, T, N, H)
+        restrict_to_interior(inds, ℓ, T, N)
+    end
+
+    map = grid.conformal_mapping
+    return [lcc_projected_node(map, i, ℓ, direction) for i in node_indices]
+end
+
+function lcc_spatial_dim_data(grid::LambertConformalConicGrid, ::Type{LX}, ::Type{LY}, ::Type{LZ}, inds, with_halos) where {LX, LY, LZ}
+    TX, TY, TZ = topology(grid)
+    Nx, Ny, Nz = size(grid)
+    Hx, Hy, Hz = halo_size(grid)
+
+    ℓx = instantiate_lcc_location(LX)
+    ℓy = instantiate_lcc_location(LY)
+    ℓz = instantiate_lcc_location(LZ)
+
+    x_data = LX == Nothing ? nothing : lcc_projected_dimension(grid, ℓx, TX(), Nx, Hx, inds[1], with_halos, Val(:x))
+    y_data = LY == Nothing ? nothing : lcc_projected_dimension(grid, ℓy, TY(), Ny, Hy, inds[2], with_halos, Val(:y))
+    z_data = LZ == Nothing ? nothing : znodes(grid, ℓx, ℓy, ℓz; with_halos, indices=inds[3])
+
+    return x_data, y_data, z_data
+end
+
+function create_field_dimensions!(ds,
+                                  fd::AbstractField{LX, LY, LZ, <:LambertConformalConicGrid},
+                                  dimension_name_generator;
+                                  time_dependent = false,
+                                  with_halos = false,
+                                  array_type = Array{eltype(fd)},
+                                  dimension_type = Float64,
+                                  grid_index = nothing) where {LX, LY, LZ}
+
+    lcc_grid = grid(fd)
+    dimension_attributes = default_dimension_attributes(lcc_grid, dimension_name_generator; grid_index)
+    spatial_dim_names = field_dimensions(fd, lcc_grid, dimension_name_generator; grid_index)
+    spatial_dim_data = lcc_spatial_dim_data(lcc_grid, LX, LY, LZ, indices(fd), with_halos)
+
+    spatial_dim_names_dict = OrderedDict(spatial_dim_name => spatial_dim_array
+                                         for (spatial_dim_name, spatial_dim_array) in zip(spatial_dim_names, spatial_dim_data))
+
+    effective_spatial_dim_names = create_spatial_dimensions!(ds, spatial_dim_names_dict, dimension_attributes; dimension_type)
+
+    if time_dependent
+        "time" ∉ keys(ds.dim) && create_time_dimension!(ds, dimension_type=dimension_type)
+        return (effective_spatial_dim_names..., "time")
+    else
+        return effective_spatial_dim_names
+    end
+end
+
 """
     create_spatial_dimensions!(dataset, dims, attributes_dict; array_type=Array{Float32}, kwargs...)
 
@@ -188,6 +249,45 @@ function gather_dimensions(outputs, grid::LatitudeLongitudeGrid, indices, with_h
     return suffix_grid_keys(dims, grid_index)
 end
 
+function gather_dimensions(outputs, grid::LambertConformalConicGrid, indices, with_halos, dim_name_generator; grid_index=nothing)
+    TX, TY, TZ = topology(grid)
+    Nx, Ny, Nz = size(grid)
+    Hx, Hy, Hz = halo_size(grid)
+
+    dims = Dict()
+
+    if TX != Flat
+        xᶠᵃᵃ_name = dim_name_generator("x", grid, f, nothing, nothing, Val(:x))
+        xᶜᵃᵃ_name = dim_name_generator("x", grid, c, nothing, nothing, Val(:x))
+
+        xᶠᵃᵃ_data = lcc_projected_dimension(grid, f, TX(), Nx, Hx, indices[1], with_halos, Val(:x))
+        xᶜᵃᵃ_data = lcc_projected_dimension(grid, c, TX(), Nx, Hx, indices[1], with_halos, Val(:x))
+
+        dims[xᶠᵃᵃ_name] = xᶠᵃᵃ_data
+        dims[xᶜᵃᵃ_name] = xᶜᵃᵃ_data
+    end
+
+    if TY != Flat
+        yᵃᶠᵃ_name = dim_name_generator("y", grid, nothing, f, nothing, Val(:y))
+        yᵃᶜᵃ_name = dim_name_generator("y", grid, nothing, c, nothing, Val(:y))
+
+        yᵃᶠᵃ_data = lcc_projected_dimension(grid, f, TY(), Ny, Hy, indices[2], with_halos, Val(:y))
+        yᵃᶜᵃ_data = lcc_projected_dimension(grid, c, TY(), Ny, Hy, indices[2], with_halos, Val(:y))
+
+        dims[yᵃᶠᵃ_name] = yᵃᶠᵃ_data
+        dims[yᵃᶜᵃ_name] = yᵃᶜᵃ_data
+    end
+
+    if TZ != Flat
+        vertical_dims = gather_vertical_dimensions(grid.z, TZ, Nz, Hz, indices[3], with_halos, dim_name_generator)
+        dims = merge(dims, vertical_dims)
+    end
+
+    maybe_add_particle_dims!(dims, outputs)
+
+    return suffix_grid_keys(dims, grid_index)
+end
+
 gather_dimensions(outputs, grid::ImmersedBoundaryGrid, args...; kw...) =
     gather_dimensions(outputs, grid.underlying_grid, args...; kw...)
 
@@ -215,6 +315,17 @@ function field_dimensions(fd::AbstractField, grid::LatitudeLongitudeGrid, dim_na
     z_dim_name = LZ == Nothing ? "" : dim_name_generator("z", grid, nothing, nothing, LZ(), Val(:z))
 
     return Tuple(add_grid_suffix(dim_name, grid_index) for dim_name in (λ_dim_name, φ_dim_name, z_dim_name))
+end
+
+function field_dimensions(fd::AbstractField, grid::LambertConformalConicGrid, dim_name_generator; grid_index=nothing)
+    LX, LY, LZ = location(fd)
+    TX, TY, TZ = topology(grid)
+
+    x_dim_name = LX == Nothing ? "" : dim_name_generator("x", grid, LX(), nothing, nothing, Val(:x))
+    y_dim_name = LY == Nothing ? "" : dim_name_generator("y", grid, nothing, LY(), nothing, Val(:y))
+    z_dim_name = LZ == Nothing ? "" : dim_name_generator("z", grid, nothing, nothing, LZ(), Val(:z))
+
+    return Tuple(add_grid_suffix(dim_name, grid_index) for dim_name in (x_dim_name, y_dim_name, z_dim_name))
 end
 
 field_dimensions(fd::AbstractField, grid::ImmersedBoundaryGrid, dim_name_generator; kw...) =
@@ -367,6 +478,104 @@ function default_dimension_attributes(grid::LatitudeLongitudeGrid, dim_name_gene
 
     horizontal_dimension_attributes = suffix_grid_keys(horizontal_dimension_attributes, grid_index)
     vertical_dimension_attributes   = default_vertical_dimension_attributes(grid.z, dim_name_generator; grid_index)
+
+    return merge(base_dimension_attributes,
+                 horizontal_dimension_attributes,
+                 vertical_dimension_attributes)
+end
+
+function default_dimension_attributes(grid::LambertConformalConicGrid, dim_name_generator; grid_index=nothing)
+    xᶠᵃᵃ_name = dim_name_generator("x", grid, f, nothing, nothing, Val(:x))
+    xᶜᵃᵃ_name = dim_name_generator("x", grid, c, nothing, nothing, Val(:x))
+    yᵃᶠᵃ_name = dim_name_generator("y", grid, nothing, f, nothing, Val(:y))
+    yᵃᶜᵃ_name = dim_name_generator("y", grid, nothing, c, nothing, Val(:y))
+
+    Δxᶠᶠᵃ_name = dim_name_generator("Δx", grid, f, f, nothing, Val(:x))
+    Δxᶠᶜᵃ_name = dim_name_generator("Δx", grid, f, c, nothing, Val(:x))
+    Δxᶜᶠᵃ_name = dim_name_generator("Δx", grid, c, f, nothing, Val(:x))
+    Δxᶜᶜᵃ_name = dim_name_generator("Δx", grid, c, c, nothing, Val(:x))
+
+    Δyᶠᶠᵃ_name = dim_name_generator("Δy", grid, f, f, nothing, Val(:y))
+    Δyᶠᶜᵃ_name = dim_name_generator("Δy", grid, f, c, nothing, Val(:y))
+    Δyᶜᶠᵃ_name = dim_name_generator("Δy", grid, c, f, nothing, Val(:y))
+    Δyᶜᶜᵃ_name = dim_name_generator("Δy", grid, c, c, nothing, Val(:y))
+
+    Azᶠᶠᵃ_name = dim_name_generator("Az", grid, f, f, nothing, Val(:x))
+    Azᶠᶜᵃ_name = dim_name_generator("Az", grid, f, c, nothing, Val(:x))
+    Azᶜᶠᵃ_name = dim_name_generator("Az", grid, c, f, nothing, Val(:x))
+    Azᶜᶜᵃ_name = dim_name_generator("Az", grid, c, c, nothing, Val(:x))
+
+    xᶠᵃᵃ_attrs = Dict("long_name" => "Projected cell face locations in the Lambert conformal conic x-direction.",
+                       "units" => "m",
+                       "location" => "Face")
+
+    xᶜᵃᵃ_attrs = Dict("long_name" => "Projected cell center locations in the Lambert conformal conic x-direction.",
+                       "units" => "m",
+                       "location" => "Center")
+
+    yᵃᶠᵃ_attrs = Dict("long_name" => "Projected cell face locations in the Lambert conformal conic y-direction.",
+                       "units" => "m",
+                       "location" => "Face")
+
+    yᵃᶜᵃ_attrs = Dict("long_name" => "Projected cell center locations in the Lambert conformal conic y-direction.",
+                       "units" => "m",
+                       "location" => "Center")
+
+    Δxᶠᶠᵃ_attrs = Dict("long_name" => "Geodesic spacings in the x-direction between cells located at (Face, Face).",
+                       "units" => "m")
+
+    Δxᶠᶜᵃ_attrs = Dict("long_name" => "Geodesic spacings in the x-direction between cells located at (Face, Center).",
+                       "units" => "m")
+
+    Δxᶜᶠᵃ_attrs = Dict("long_name" => "Geodesic spacings in the x-direction between cells located at (Center, Face).",
+                       "units" => "m")
+
+    Δxᶜᶜᵃ_attrs = Dict("long_name" => "Geodesic spacings in the x-direction between cells located at (Center, Center).",
+                       "units" => "m")
+
+    Δyᶠᶠᵃ_attrs = Dict("long_name" => "Geodesic spacings in the y-direction between cells located at (Face, Face).",
+                       "units" => "m")
+
+    Δyᶠᶜᵃ_attrs = Dict("long_name" => "Geodesic spacings in the y-direction between cells located at (Face, Center).",
+                       "units" => "m")
+
+    Δyᶜᶠᵃ_attrs = Dict("long_name" => "Geodesic spacings in the y-direction between cells located at (Center, Face).",
+                       "units" => "m")
+
+    Δyᶜᶜᵃ_attrs = Dict("long_name" => "Geodesic spacings in the y-direction between cells located at (Center, Center).",
+                       "units" => "m")
+
+    Azᶠᶠᵃ_attrs = Dict("long_name" => "Horizontal cell areas at (Face, Face).",
+                       "units" => "m^2")
+
+    Azᶠᶜᵃ_attrs = Dict("long_name" => "Horizontal cell areas at (Face, Center).",
+                       "units" => "m^2")
+
+    Azᶜᶠᵃ_attrs = Dict("long_name" => "Horizontal cell areas at (Center, Face).",
+                       "units" => "m^2")
+
+    Azᶜᶜᵃ_attrs = Dict("long_name" => "Horizontal cell areas at (Center, Center).",
+                       "units" => "m^2")
+
+    horizontal_dimension_attributes = Dict(xᶠᵃᵃ_name  => xᶠᵃᵃ_attrs,
+                                           xᶜᵃᵃ_name  => xᶜᵃᵃ_attrs,
+                                           yᵃᶠᵃ_name  => yᵃᶠᵃ_attrs,
+                                           yᵃᶜᵃ_name  => yᵃᶜᵃ_attrs,
+                                           Δxᶠᶠᵃ_name => Δxᶠᶠᵃ_attrs,
+                                           Δxᶠᶜᵃ_name => Δxᶠᶜᵃ_attrs,
+                                           Δxᶜᶠᵃ_name => Δxᶜᶠᵃ_attrs,
+                                           Δxᶜᶜᵃ_name => Δxᶜᶜᵃ_attrs,
+                                           Δyᶠᶠᵃ_name => Δyᶠᶠᵃ_attrs,
+                                           Δyᶠᶜᵃ_name => Δyᶠᶜᵃ_attrs,
+                                           Δyᶜᶠᵃ_name => Δyᶜᶠᵃ_attrs,
+                                           Δyᶜᶜᵃ_name => Δyᶜᶜᵃ_attrs,
+                                           Azᶠᶠᵃ_name => Azᶠᶠᵃ_attrs,
+                                           Azᶠᶜᵃ_name => Azᶠᶜᵃ_attrs,
+                                           Azᶜᶠᵃ_name => Azᶜᶠᵃ_attrs,
+                                           Azᶜᶜᵃ_name => Azᶜᶜᵃ_attrs)
+
+    horizontal_dimension_attributes = suffix_grid_keys(horizontal_dimension_attributes, grid_index)
+    vertical_dimension_attributes = default_vertical_dimension_attributes(grid.z, dim_name_generator; grid_index)
 
     return merge(base_dimension_attributes,
                  horizontal_dimension_attributes,
