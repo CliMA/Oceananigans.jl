@@ -92,7 +92,16 @@ boundary flow.
   fields (ψ) before computing phase speeds and radiation. When provided, the scheme
   divides by `density` before radiation and multiplies back after. This is required
   for models with density-weighted prognostic variables (e.g., anelastic models with
-  prognostic ρu, ρθ). Default: `nothing` (no conversion).
+  prognostic ρu, ρθ).
+
+  Accepts an `AbstractField` or a `FieldTimeSeries`. For an `AbstractField` ρ,
+  the value is interpolated from ρ's location to ψ's location with standard
+  staggered-grid operators (`ℑxᶠᵃᵃ` and similar). For a `FieldTimeSeries` ρ
+  the value is interpolated in both space and time, so the FTS may live on a
+  different grid than the simulation — useful for regional hindcasts where
+  boundary density is diagnosed from reanalysis thermodynamics.
+
+  Default: `nothing` (no conversion).
 """
 function PerturbationAdvection(FT = defaults.FloatType;
                                outflow_timescale = Inf,
@@ -117,27 +126,33 @@ Adapt.adapt_structure(to, pe::PerturbationAdvection) =
 
 const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
 
-# Density evaluated at ψ's grid location, using staggered-grid interpolation
-# when ρ is at Centers and ψ is at a Face. Column-only density fields
-# (`Field{Nothing, Nothing, Center}`, e.g. anelastic reference profile)
-# broadcast horizontally so the same path is correct for them.
-@inline _density_at_psi_location(ρ, i, j, k, grid, ::Tuple{Face,   Center, Center}) = ℑxᶠᵃᵃ(i, j, k, grid, ρ)
-@inline _density_at_psi_location(ρ, i, j, k, grid, ::Tuple{Center, Face,   Center}) = ℑyᵃᶠᵃ(i, j, k, grid, ρ)
-@inline _density_at_psi_location(ρ, i, j, k, grid, ::Tuple{Center, Center, Face})   = ℑzᵃᵃᶠ(i, j, k, grid, ρ)
-@inline _density_at_psi_location(ρ, i, j, k, grid, ::Tuple{Center, Center, Center}) = @inbounds ρ[i, j, k]
+# Density value at ψ's grid location for a static `AbstractField` density.
+# Staggered-grid interpolation is applied when ρ is at Centers and ψ is at a
+# Face. Column-only density fields (e.g. `Field{Nothing, Nothing, Center}`
+# for an anelastic reference profile) broadcast horizontally so the same
+# path is correct for them.
+#
+# `FlavorOfFTS` densities are handled in `OutputReaders` via a separate
+# overload of `to_intensive` / `to_extensive` defined after `interpolate`,
+# `Time`, etc. are available.
+@inline _pa_density_value(ρ, i, j, k, grid, ::Tuple{Face,   Center, Center}) = ℑxᶠᵃᵃ(i, j, k, grid, ρ)
+@inline _pa_density_value(ρ, i, j, k, grid, ::Tuple{Center, Face,   Center}) = ℑyᵃᶠᵃ(i, j, k, grid, ρ)
+@inline _pa_density_value(ρ, i, j, k, grid, ::Tuple{Center, Center, Face})   = ℑzᵃᵃᶠ(i, j, k, grid, ρ)
+@inline _pa_density_value(ρ, i, j, k, grid, ::Tuple{Center, Center, Center}) = @inbounds ρ[i, j, k]
 
 # Helpers to convert between density-weighted and intensive fields.
 # When density is `nothing`, these are no-ops. `to_intensive` reads ψ at
-# `(i, j, k)` and divides by ρ at the same location; `to_extensive` takes
-# the *value* (already in intensive space) and multiplies by ρ, with the
-# caller writing the result back into `ψ`.
-@inline to_intensive(::Nothing, ψ, i, j, k, grid, loc) = @inbounds ψ[i, j, k]
-@inline to_intensive(ρ,         ψ, i, j, k, grid, loc) =
-    @inbounds ψ[i, j, k] / _density_at_psi_location(ρ, i, j, k, grid, loc)
+# `(i, j, k)` and divides by ρ at ψ's location; `to_extensive` takes the
+# *value* (already in intensive space) and multiplies by ρ, with the caller
+# writing the result back into `ψ`. `clock` is threaded through for the
+# benefit of `FieldTimeSeries` densities (extended in `OutputReaders`).
+@inline to_intensive(::Nothing, ψ, i, j, k, grid, loc, clock) = @inbounds ψ[i, j, k]
+@inline to_intensive(ρ,         ψ, i, j, k, grid, loc, clock) =
+    @inbounds ψ[i, j, k] / _pa_density_value(ρ, i, j, k, grid, loc)
 
-@inline to_extensive(::Nothing, ψ_value, i, j, k, grid, loc) = ψ_value
-@inline to_extensive(ρ,         ψ_value, i, j, k, grid, loc) =
-    _density_at_psi_location(ρ, i, j, k, grid, loc) * ψ_value
+@inline to_extensive(::Nothing, ψ_value, i, j, k, grid, loc, clock) = ψ_value
+@inline to_extensive(ρ,         ψ_value, i, j, k, grid, loc, clock) =
+    _pa_density_value(ρ, i, j, k, grid, loc) * ψ_value
 
 @inline function step_right_open_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
                                            grid, ψ, clock, model_fields, ΔX, loc)
@@ -151,8 +166,8 @@ const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
     c★ = pa.gravity_wave_speed
 
     # Convert to intensive space (no-op when density is nothing)
-    ψᴮ = to_intensive(ρ, ψ, iᴮ, jᴮ, kᴮ, grid, loc)
-    ψᴬ = to_intensive(ρ, ψ, iᴬ, jᴬ, kᴬ, grid, loc)
+    ψᴮ = to_intensive(ρ, ψ, iᴮ, jᴮ, kᴮ, grid, loc, clock)
+    ψᴬ = to_intensive(ρ, ψ, iᴬ, jᴬ, kᴬ, grid, loc, clock)
 
     # Prescribed exterior value (in intensive units when density is provided)
     ψ̄ = getbc(bc, l, m, grid, clock, model_fields)
@@ -169,7 +184,7 @@ const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
     ψ_new = ifelse(τ == 0, ψ̄, ψ_new)
 
     # Convert back to extensive space (no-op when density is nothing)
-    @inbounds ψ[iᴮ, jᴮ, kᴮ] = to_extensive(ρ, ψ_new, iᴮ, jᴮ, kᴮ, grid, loc)
+    @inbounds ψ[iᴮ, jᴮ, kᴮ] = to_extensive(ρ, ψ_new, iᴮ, jᴮ, kᴮ, grid, loc, clock)
 
     return nothing
 end
@@ -185,8 +200,8 @@ end
     ρ = pa.density
     c★ = pa.gravity_wave_speed
 
-    ψᴮ = to_intensive(ρ, ψ, iᴮ, jᴮ, kᴮ, grid, loc)
-    ψᴬ = to_intensive(ρ, ψ, iᴬ, jᴬ, kᴬ, grid, loc)
+    ψᴮ = to_intensive(ρ, ψ, iᴮ, jᴮ, kᴮ, grid, loc, clock)
+    ψᴬ = to_intensive(ρ, ψ, iᴬ, jᴬ, kᴬ, grid, loc, clock)
 
     ψ̄ = getbc(bc, l, m, grid, clock, model_fields)
 
@@ -200,7 +215,7 @@ end
     ψ_new = (ψᴮ - Ũ * ψᴬ + ψ̄ * τ̃) / (1 + τ̃ - Ũ)
     ψ_new = ifelse(τ == 0, ψ̄, ψ_new)
 
-    @inbounds ψ[iᴮ, jᴮ, kᴮ] = to_extensive(ρ, ψ_new, iᴮ, jᴮ, kᴮ, grid, loc)
+    @inbounds ψ[iᴮ, jᴮ, kᴮ] = to_extensive(ρ, ψ_new, iᴮ, jᴮ, kᴮ, grid, loc, clock)
 
     return nothing
 end
