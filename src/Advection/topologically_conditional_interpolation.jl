@@ -64,7 +64,6 @@ for dir in (:x, :y, :z)
                                                                   (i >= $required_halo_size(adv))        # Right bias
         @inline $outside_biased_haloᶜ(i, ::Type{<:LBT}, N, adv) = (i >= $required_halo_size(adv))     &  # Left bias
                                                                   (i >= $required_halo_size(adv) - 1)    # Right bias
- 
         # Left bounded topologies (only test the right side, i.e. the bounded side)
         @inline $outside_symmetric_haloᶠ(i, ::Type{LeftConnected}, N, adv) = (i <= N + 1 - $required_halo_size(adv))
         @inline $outside_symmetric_haloᶜ(i, ::Type{LeftConnected}, N, adv) = (i <= N + 1 - $required_halo_size(adv))
