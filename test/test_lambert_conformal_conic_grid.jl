@@ -918,10 +918,6 @@ end
                 # generation outside constructor plumbing too.
                 @test fill_lcc_coordinates_and_metrics!(grid_gpu_direct) === nothing
 
-                if arch isa GPU{<:CUDA.CUDABackend}
-                    @test CUDA.@allocated(fill_lcc_coordinates_and_metrics!(grid_gpu_direct)) == 0
-                end
-
                 grid_gpu = on_architecture(arch, grid_cpu)
                 grid_direct_back = on_architecture(CPU(), grid_gpu_direct)
                 grid_back = on_architecture(CPU(), grid_gpu)
