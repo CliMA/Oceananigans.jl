@@ -158,7 +158,6 @@ steps:
           - "🍂 lagrangian_particles"
           - "🧅 multi_region"
           - "🦧 scripts"
-          - "🍱 xesmf"
 
     retry:
       automatic:
