@@ -106,8 +106,6 @@ steps:
       # use v13.
       echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
 
-      export JULIA_DEBUG=loading
-
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
       julia +$JULIA_VERSION -O0 --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(coverage="user")'
