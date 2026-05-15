@@ -72,12 +72,15 @@ SafeTestsets = "0.1"
 SeawaterPolynomials = "0.3.9"
 SparseArrays = "<0.0.1, 1"
 Statistics = "<0.0.1, 1"
+StructArrays = "0.4, 0.5, 0.6, 0.7"
 Test = "<0.0.1, 1"
 TimesDates = "0.3"
-StructArrays = "0.4, 0.5, 0.6, 0.7"
 XESMF = "0.1.5"
 julia = "1.10"
 oneAPI = "2.0.1"
 
 [preferences.Reactant]
 xla_runtime = "IFRT"
+
+[extras]
+CUDA_Runtime_jll = "76a88914-d11a-5bdc-97e0-2f5a05c973a2"
