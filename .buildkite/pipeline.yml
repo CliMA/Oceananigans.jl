@@ -3,6 +3,8 @@ env:
   JULIA_VERSION_ENZYME: "1.10.10"
   BUILDKITE_HOME: "/var/lib/buildkite-agent"
   JULIA_DEPOT_PATH: "$BUILDKITE_HOME/.julia:"
+  # Larger cache, to marginally increase cache hit rate when running several concurrent jobs
+  JULIA_MAX_NUM_PRECOMPILE_FILES: "32"
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
   XLA_REACTANT_GPU_PREALLOCATE: false
   OCEANANIGANS_DIR: "$HOME/Oceananigans.jl-$BUILDKITE_BUILD_NUMBER"
