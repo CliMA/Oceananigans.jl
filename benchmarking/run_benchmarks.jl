@@ -26,7 +26,9 @@
 using ArgParse: @add_arg_table!, ArgParseSettings, parse_args
 using OceananigansBenchmarks: earth_ocean, benchmark_time_stepping, run_benchmark_simulation, run_io_benchmark
 using JSON: JSON
+using MPI: MPI
 using Oceananigans
+using Oceananigans.DistributedComputations: Distributed, Partition
 
 using CUDA
 
@@ -35,18 +37,6 @@ using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, SmagorinskyLill
 
 using Printf: @printf
 using Dates: DateTime, now, UTC
-
-#####
-##### Lazy loading of distributed backends to avoid MPI dependency for non-distributed runs.
-#####
-
-function load_distributed_backends()
-    @eval import MPI
-    @eval import Oceananigans.DistributedComputations
-    mpi = Base.invokelatest(getfield, @__MODULE__, :MPI)
-    distributed_computations = Base.invokelatest(getfield, @__MODULE__, :DistributedComputations)
-    return mpi, distributed_computations
-end
 
 #####
 ##### Argument parsing
@@ -75,7 +65,7 @@ function parse_commandline()
             help = "Device to run on: CPU or GPU"
             arg_type = String
             default = "GPU"
-        
+
         "--distributed"
             help = "Use distributed architecture."
             action = :store_true
@@ -282,10 +272,9 @@ function run_benchmarks(args)
     is_rank_0 = true
 
     if distributed_enabled
-        mpi, distributed_computations = load_distributed_backends()
-        arch = distributed_computations.Distributed(make_architecture(args["device"]), partition = distributed_computations.Partition(partition_ranks...))
+        arch = Distributed(make_architecture(args["device"]), partition = Partition(partition_ranks...))
         rank = arch.local_rank
-        Nranks = mpi.Comm_size(arch.communicator)
+        Nranks = MPI.Comm_size(arch.communicator)
         is_rank_0 = rank == 0
         if is_rank_0
             @info "Distributed run: $Nranks ranks (x=$(partition_ranks[1]), y=$(partition_ranks[2]), z=$(partition_ranks[3]))"
@@ -293,7 +282,7 @@ function run_benchmarks(args)
     else
         arch = make_architecture(args["device"])
     end
-    
+
     case = args["case"]
 
     # Parse lists from arguments
@@ -476,9 +465,8 @@ function main()
         json_entries = JSON.parse(JSON.json(results))
 
         if distributed_enabled
-            mpi, _ = load_distributed_backends()
             comm = arch.communicator
-            Nranks = mpi.Comm_size(comm)
+            Nranks = MPI.Comm_size(comm)
 
             # Tag each entry with its MPI rank
             for entry in json_entries
@@ -490,7 +478,7 @@ function main()
                 rm(output_file)
                 println("\nCleared existing results file: $output_file")
             end
-            mpi.Barrier(comm)
+            MPI.Barrier(comm)
 
             # Rank-ordered sequential writes: each rank reads, appends, and writes back
             for r in 0:Nranks-1
@@ -500,7 +488,7 @@ function main()
                         JSON.json(io, all_entries; pretty=true)
                     end
                 end
-                mpi.Barrier(comm)
+                MPI.Barrier(comm)
             end
 
             # Rank 0 generates the markdown report once all ranks have written
