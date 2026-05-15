@@ -1,4 +1,4 @@
-using Oceananigans.Grids: node, Face, xnodes, ynodes, znodes
+using Oceananigans.Grids: node, xnodes, ynodes, znodes
 using Oceananigans.OutputReaders: interpolate
 using Oceananigans: instantiated_location
 
@@ -68,8 +68,8 @@ bottom_sponge_layer = Relaxation(; rate = 1/60,
 # output
 Relaxation{Float64, GaussianMask{:z, Float64}, LinearTarget{:z, Float64}}
 ├── rate: 0.016666666666666666
-├── mask: exp(-(z + 100)^2 / (2 * 25^2))
-└── target: 20 + 0.001 * z
+├── mask: exp(-(z + 100.0)^2 / (2 * 25.0^2))
+└── target: 20.0 + 0.001 * z
 ```
 """
 Relaxation(; rate, mask=onefunction, target=zerofunction) = Relaxation(rate, mask, target)
