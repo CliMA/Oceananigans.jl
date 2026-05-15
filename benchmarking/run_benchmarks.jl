@@ -467,50 +467,31 @@ function main()
             for entry in json_entries
                 entry["rank"] = mpi_rank(comm)
             end
+        end
 
-            # Rank 0 clears the file before anyone writes
-            @root begin
-                if clear_file && isfile(output_file)
-                    rm(output_file)
-                    println("\nCleared existing results file: $output_file")
-                end
+        # Rank 0 clears the file before anyone writes
+        @root begin
+            if clear_file && isfile(output_file)
+                rm(output_file)
+                println("\nCleared existing results file: $output_file")
             end
+        end
 
-            # Rank-ordered sequential writes: each rank reads, appends, and writes back
-            @handshake begin
-                all_entries = isfile(output_file) ? vcat(JSON.parse(read(output_file)), json_entries) : json_entries
-                open(output_file, "w") do io
-                    JSON.json(io, all_entries; pretty=true)
-                end
-            end
-
-            # Rank 0 generates the markdown report once all ranks have written
-            @root begin
-                println("Results saved to: $output_file")
-                stem, _ = splitext(output_file)
-                md_file = "$(stem).md"
-                generate_markdown_report(md_file, JSON.parse(read(output_file)))
-                println("Markdown report saved to: $md_file")
-            end
-        else
-            # Non-distributed: load existing results or start fresh
-            all_entries = if clear_file || !isfile(output_file)
-                if clear_file && isfile(output_file)
-                    println("\nCleared existing results file: $output_file")
-                end
-                json_entries
-            else
-                existing_data = JSON.parse(read(output_file))
-                println("\nAppending to existing results file: $output_file")
-                vcat(existing_data, json_entries)
-            end
-
+        # Rank-ordered sequential writes: each rank reads, appends, and writes back
+        @handshake begin
+            all_entries = if isfile(output_file)
+                              vcat(JSON.parse(read(output_file)), json_entries)
+                          else
+                              json_entries
+                          end
             open(output_file, "w") do io
                 JSON.json(io, all_entries; pretty=true)
             end
+        end
 
-            println("Results saved to: $output_file ($(length(json_entries)) new, $(length(all_entries)) total)")
-
+        # Rank 0 generates the markdown report once all ranks have written
+        @root begin
+            println("Results saved to: $output_file")
             stem, _ = splitext(output_file)
             md_file = "$(stem).md"
             generate_markdown_report(md_file, JSON.parse(read(output_file)))
