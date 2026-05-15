@@ -40,8 +40,14 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
     χ  = convert(FT, model.timestepper.χ)
     Δt = convert(FT, Δt)
 
+    # Update adaptive implicit advection time step before tendencies
+    update_advection_timestep!(model.advection, Δt)
+
     # Computing momentum flux boundary conditions
-    @apply_regionally compute_momentum_flux_bcs!(model)
+    @apply_regionally begin
+        compute_momentum_tendencies!(model, callbacks)
+        compute_momentum_flux_bcs!(model)
+    end
 
     # Advance the free surface
     compute_free_surface_tendency!(grid, model, model.free_surface)
@@ -58,12 +64,9 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
     u, v, _ = model.velocities
     fill_halo_regions!((u, v), model.clock, fields(model); async=true)
 
-    # Update adaptive implicit advection time step before tracer tendencies
-    update_advection_timestep!(model.advection, Δt)
-
     # Computing tracer tendencies
     @apply_regionally begin
-        compute_tracer_tendencies!(model, Δt)
+        compute_tracer_tendencies!(model)
 
         # Advance grid
         ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
@@ -94,11 +97,15 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
     χ  = convert(FT, model.timestepper.χ)
     Δt = convert(FT, Δt)
 
+    # Update adaptive implicit advection time step before tendencies
+    update_advection_timestep!(model.advection, Δt)
+
     @apply_regionally begin
         parent(model.transport_velocities.u) .= parent(model.velocities.u)
         parent(model.transport_velocities.v) .= parent(model.velocities.v)
 
         # Computing tendencies...
+        compute_momentum_tendencies!(model, callbacks)
         compute_momentum_flux_bcs!(model)
 
         # Finally Substep! Advance grid, tracers, (predictor) momentum
@@ -178,7 +185,7 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
                        fields(model),
                        Δt,
                        model.advection.momentum,
-                       model.transport_velocities)
+                       model.velocities)
     end
 
     return nothing

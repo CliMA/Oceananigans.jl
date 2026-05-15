@@ -83,8 +83,6 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
 
     update_biogeochemical_state!(model.biogeochemistry, model)
 
-    compute_momentum_tendencies!(model, Δt, callbacks)
-
     return nothing
 end
 

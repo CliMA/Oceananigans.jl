@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Δz, Az, volume
+using Oceananigans.Operators: Δz, Az, volume, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Grids: peripheral_node, Center, Face
 
 const AIVA = AdaptiveImplicitVerticalAdvection
@@ -9,9 +9,18 @@ const AIVA = AdaptiveImplicitVerticalAdvection
 ##### When α ≤ cfl: wⁱ = 0 (fully explicit)
 ##### When α > cfl: wⁱ = w * (1 - cfl/α)
 #####
+##### `w` is the W field at (Center, Center, Face). For tracers (CCC) the
+##### value at (i, j, k) is correct; for u (FCC) and v (CFC) it must be
+##### interpolated horizontally so the local CFL matches the actual
+##### face velocity advecting the field.
+#####
+
+@inline w_at_face_loc(i, j, k, grid, w, ::Center, ::Center) = @inbounds w[i, j, k]
+@inline w_at_face_loc(i, j, k, grid, w, ::Face,   ::Center) = ℑxᶠᵃᵃ(i, j, k, grid, w)
+@inline w_at_face_loc(i, j, k, grid, w, ::Center, ::Face)   = ℑyᵃᶠᵃ(i, j, k, grid, w)
 
 @inline function implicit_vertical_velocity(i, j, k, grid, w, Δt, cfl, ℓx, ℓy)
-    @inbounds wᵢ = w[i, j, k]
+    wᵢ = w_at_face_loc(i, j, k, grid, w, ℓx, ℓy)
     Δzᵢ = Δz(i, j, k, grid, ℓx, ℓy, Face())
     α = abs(wᵢ) * Δt / Δzᵢ
     scale = ifelse(α > cfl, one(α) - cfl / α, zero(α))

@@ -6,6 +6,7 @@ using Oceananigans.Grids: halo_size
 using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
+using Oceananigans.Advection: update_advection_timestep!
 
 using Oceananigans.Utils: get_active_cells_map
 
@@ -22,7 +23,7 @@ This function:
 
 Momentum tendencies are stored in `model.timestepper.Gⁿ.u` and `model.timestepper.Gⁿ.v`.
 """
-function compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, Δt, callbacks)
+function compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
 
     grid = model.grid
     arch = architecture(grid)
@@ -57,7 +58,7 @@ when using split-explicit free surfaces (transport velocities include barotropic
 
 Tracer tendencies are stored in `model.timestepper.Gⁿ[tracer_name]`.
 """
-function compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel, Δt)
+function compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel)
 
     grid = model.grid
     arch = architecture(grid)

@@ -1,8 +1,8 @@
-using Oceananigans.Operators: Δzᶜᶜᶠ, Δzᶠᶜᶠ, Δzᶜᶠᶠ, Az_qᶜᶜᶠ, Azᶜᶜᶠ
+using Oceananigans.Operators: Δzᶜᶜᶠ, Δzᶠᶜᶠ, Δzᶜᶠᶠ, Az_qᶜᶜᶠ, Azᶜᶜᶠ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
+using Oceananigans.Grids: Center, Face
 
 """
-    AdaptiveImplicitVerticalAdvection(; explicit_scheme = Centered(),
-                                       cfl = 0.9)
+    AdaptiveImplicitVerticalAdvection(; explicit_scheme = Centered(), cfl = 0.9)
 
 An adaptively implicit vertical advection scheme following Shchepetkin (2015) / CROCO.
 
@@ -64,9 +64,20 @@ Base.show(io::IO, a::AdaptiveImplicitVerticalAdvection) =
 # Scale factor: min(1, cfl * Δz / (|w| * Δt))
 # When |w| * Δt / Δz ≤ cfl: scale = 1 (fully explicit)
 # When |w| * Δt / Δz > cfl: scale = cfl * Δz / (|w| * Δt) < 1
-@inline function explicit_velocity_scale(w, Δz, Δt, cfl)
-    α = abs(w) * Δt / Δz
-    return ifelse(α > cfl, cfl / α, one(α))
+#
+# `ℓx, ℓy` are the horizontal locations of the field whose vertical flux is being
+# computed. W is stored at (Center, Center, Face); for tracers at CCC the value
+# at (i, j, k) is the right one, but for u (FCF) and v (CFF) the W value must be
+# interpolated horizontally so the local CFL matches the actual face velocity.
+@inline w_at_face(i, j, k, grid, W, ::Center, ::Center) = @inbounds W[i, j, k]
+@inline w_at_face(i, j, k, grid, W, ::Face,   ::Center) = ℑxᶠᵃᵃ(i, j, k, grid, W)
+@inline w_at_face(i, j, k, grid, W, ::Center, ::Face)   = ℑyᵃᶠᵃ(i, j, k, grid, W)
+
+@inline function explicit_velocity_scale(i, j, k, grid, W, Δz, a, ℓx, ℓy)
+    Δt = a.Δt[]
+    w  = w_at_face(i, j, k, grid, W, ℓx, ℓy)
+    α  = abs(w) * Δt / Δz
+    return ifelse(α > a.cfl, a.cfl / α, one(α))
 end
 
 #####
@@ -89,10 +100,8 @@ end
 # For upwind schemes: flux = Az * w * interp(c, bias(w)), bias doesn't change since sign(wᵉ) = sign(w)
 # So in both cases, scaling the flux by the explicit_velocity_scale is correct.
 @inline function _advective_tracer_flux_z(i, j, k, grid, a::AdaptiveImplicitVerticalAdvection, W, c)
-    Δt = a.Δt[]
-    @inbounds w = W[i, j, k]
     Δz = Δzᶜᶜᶠ(i, j, k, grid)
-    s = explicit_velocity_scale(w, Δz, Δt, a.cfl)
+    s  = explicit_velocity_scale(i, j, k, grid, W, Δz, a, Center(), Center())
     return s * _advective_tracer_flux_z(i, j, k, grid, a.explicit_scheme, W, c)
 end
 
@@ -107,22 +116,20 @@ end
 @inline _advective_momentum_flux_Vw(i, j, k, grid, a::AdaptiveImplicitVerticalAdvection, V, w) = _advective_momentum_flux_Vw(i, j, k, grid, a.explicit_scheme, V, w)
 @inline _advective_momentum_flux_Ww(i, j, k, grid, a::AdaptiveImplicitVerticalAdvection, W, w) = _advective_momentum_flux_Ww(i, j, k, grid, a.explicit_scheme, W, w)
 
-# Vertical advection of horizontal momentum: scale by explicit_velocity_scale
-# Wu flux is at (Face, Center, Face); use Δzᶠᶜᶠ for the local CFL
+# Vertical advection of horizontal momentum: scale by explicit_velocity_scale.
+# W must be interpolated horizontally to the field's face location so the local
+# CFL matches the actual velocity advecting that field.
+# Wu flux is at (Face, Center, Face); use Δzᶠᶜᶠ for the local CFL.
 @inline function _advective_momentum_flux_Wu(i, j, k, grid, a::AdaptiveImplicitVerticalAdvection, W, u)
-    Δt = a.Δt[]
-    @inbounds w = W[i, j, k]
     Δz = Δzᶠᶜᶠ(i, j, k, grid)
-    s = explicit_velocity_scale(w, Δz, Δt, a.cfl)
+    s  = explicit_velocity_scale(i, j, k, grid, W, Δz, a, Face(), Center())
     return s * _advective_momentum_flux_Wu(i, j, k, grid, a.explicit_scheme, W, u)
 end
 
-# Wv flux is at (Center, Face, Face); use Δzᶜᶠᶠ for the local CFL
+# Wv flux is at (Center, Face, Face); use Δzᶜᶠᶠ for the local CFL.
 @inline function _advective_momentum_flux_Wv(i, j, k, grid, a::AdaptiveImplicitVerticalAdvection, W, v)
-    Δt = a.Δt[]
-    @inbounds w = W[i, j, k]
     Δz = Δzᶜᶠᶠ(i, j, k, grid)
-    s = explicit_velocity_scale(w, Δz, Δt, a.cfl)
+    s  = explicit_velocity_scale(i, j, k, grid, W, Δz, a, Center(), Face())
     return s * _advective_momentum_flux_Wv(i, j, k, grid, a.explicit_scheme, W, v)
 end
 
@@ -144,9 +151,17 @@ update_advection_timestep!(advection, Δt) = nothing
 update_advection_timestep!(a::AdaptiveImplicitVerticalAdvection, Δt) = (a.Δt[] = Δt; nothing)
 update_advection_timestep!(a::FluxFormAdvection, Δt) = update_advection_timestep!(a.z, Δt)
 
+# No-op when Δt is unknown (e.g. update_state! called from init before any
+# step has happened). Each scheme's Δt[] keeps its previous value (typically 0).
+update_advection_timestep!(advection, ::Nothing) = nothing
+update_advection_timestep!(::AdaptiveImplicitVerticalAdvection, ::Nothing) = nothing
+update_advection_timestep!(::FluxFormAdvection, ::Nothing) = nothing
+
 function update_advection_timestep!(a::NamedTuple, Δt)
     for scheme in values(a)
         update_advection_timestep!(scheme, Δt)
     end
     return nothing
 end
+
+update_advection_timestep!(::NamedTuple, ::Nothing) = nothing
