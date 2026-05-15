@@ -788,6 +788,14 @@ end
             interpolate!(column, source_3d)
             expected = [x_col + 2y_col + 3z for z in znodes(column)]
             @test all(Array(interior(column))[1, 1, :] .≈ expected)
+
+            grid = RectilinearGrid(arch, FT; size=(), topology=(Flat, Flat, Flat))
+            for ℓ in (nothing, Center(), Face())
+                fi = FractionalIndices((), grid, ℓ, ℓ, ℓ)
+                @test fi.i === nothing
+                @test fi.j === nothing
+                @test fi.k === nothing
+            end
         end
     end
 
