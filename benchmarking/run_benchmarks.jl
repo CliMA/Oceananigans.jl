@@ -43,8 +43,8 @@ using Dates: DateTime, now, UTC
 function load_distributed_backends()
     @eval import MPI
     @eval import Oceananigans.DistributedComputations
-    mpi = getfield(@__MODULE__, :MPI)
-    distributed_computations = getfield(@__MODULE__, :DistributedComputations)
+    mpi = Base.invokelatest(getfield, @__MODULE__, :MPI)
+    distributed_computations = Base.invokelatest(getfield, @__MODULE__, :DistributedComputations)
     return mpi, distributed_computations
 end
 
