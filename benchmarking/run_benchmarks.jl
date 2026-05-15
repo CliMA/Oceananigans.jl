@@ -26,9 +26,8 @@
 using ArgParse: @add_arg_table!, ArgParseSettings, parse_args
 using OceananigansBenchmarks: earth_ocean, benchmark_time_stepping, run_benchmark_simulation, run_io_benchmark
 using JSON: JSON
-using MPI: MPI
 using Oceananigans
-using Oceananigans.DistributedComputations: Distributed, Partition
+using Oceananigans.DistributedComputations: Distributed, Partition, @root, @onrank, mpi_rank, mpi_size
 
 using CUDA
 
@@ -267,18 +266,11 @@ function run_benchmarks(args)
 
     distributed_enabled = args["distributed"]
     partition_ranks = parse_size(args["partition"])
-    rank = 0
-    Nranks = 1
-    is_rank_0 = true
 
     if distributed_enabled
         arch = Distributed(make_architecture(args["device"]), partition = Partition(partition_ranks...))
-        rank = arch.local_rank
-        Nranks = MPI.Comm_size(arch.communicator)
-        is_rank_0 = rank == 0
-        if is_rank_0
-            @info "Distributed run: $Nranks ranks (x=$(partition_ranks[1]), y=$(partition_ranks[2]), z=$(partition_ranks[3]))"
-        end
+        ranks = mpi_size(arch.communicator)
+        @root @info "Distributed run: $ranks ranks (x=$(partition_ranks[1]), y=$(partition_ranks[2]), z=$(partition_ranks[3]))"
     else
         arch = make_architecture(args["device"])
     end
@@ -323,7 +315,7 @@ function run_benchmarks(args)
 
     results = []
 
-    if is_rank_0
+    @root begin
         println("=" ^ 95)
         println("Oceananigans Benchmark Suite")
         println("=" ^ 95)
@@ -371,7 +363,7 @@ function run_benchmarks(args)
         n_tracers = length(tracers)
         name = "EarthOcean_$(grid_type)$(zst_str)_$(size_str)_$(ft_str)_$(mom_adv_name)_$(trc_adv_name)_$(cls_name)_$(n_tracers)tr"
 
-        if is_rank_0
+        @root begin
             println("\n", "-" ^ 70)
             println("Running: $name")
             println("-" ^ 70)
@@ -399,6 +391,9 @@ function run_benchmarks(args)
             error("Unknown case: $case")
         end
 
+        # Verbose only for root/rank 0
+        is_rank_0 = false
+        @root is_rank_0 = true
         # Run based on mode
         result = if mode == "benchmark"
             benchmark_time_stepping(model; time_steps, Δt, warmup_steps, name, group, verbose=is_rank_0)
@@ -415,7 +410,7 @@ function run_benchmarks(args)
         push!(results, result)
     end
 
-    return results, is_rank_0, rank, arch
+    return results, arch
 end
 
 #####
@@ -424,14 +419,14 @@ end
 
 function main()
     args = parse_commandline()
-    results, is_rank_0, rank, arch = run_benchmarks(args)
+    results, arch = run_benchmarks(args)
     distributed_enabled = args["distributed"]
 
     #####
     ##### Summary table
     #####
 
-    if is_rank_0
+    @root begin
         println("\n", "=" ^ 105)
         println("BENCHMARK SUMMARY")
         println("=" ^ 105)
@@ -466,33 +461,31 @@ function main()
 
         if distributed_enabled
             comm = arch.communicator
-            Nranks = MPI.Comm_size(comm)
+            ranks = mpi_size(comm)
 
             # Tag each entry with its MPI rank
             for entry in json_entries
-                entry["rank"] = rank
+                entry["rank"] = mpi_rank(comm)
             end
 
             # Rank 0 clears the file before anyone writes
-            if is_rank_0 && clear_file && isfile(output_file)
-                rm(output_file)
-                println("\nCleared existing results file: $output_file")
+            @root begin
+                if clear_file && isfile(output_file)
+                    rm(output_file)
+                    println("\nCleared existing results file: $output_file")
+                end
             end
-            MPI.Barrier(comm)
 
             # Rank-ordered sequential writes: each rank reads, appends, and writes back
-            for r in 0:Nranks-1
-                if rank == r
-                    all_entries = isfile(output_file) ? vcat(JSON.parse(read(output_file)), json_entries) : json_entries
-                    open(output_file, "w") do io
-                        JSON.json(io, all_entries; pretty=true)
-                    end
+            @handshake begin
+                all_entries = isfile(output_file) ? vcat(JSON.parse(read(output_file)), json_entries) : json_entries
+                open(output_file, "w") do io
+                    JSON.json(io, all_entries; pretty=true)
                 end
-                MPI.Barrier(comm)
             end
 
             # Rank 0 generates the markdown report once all ranks have written
-            if is_rank_0
+            @root begin
                 println("Results saved to: $output_file")
                 stem, _ = splitext(output_file)
                 md_file = "$(stem).md"
@@ -525,9 +518,7 @@ function main()
         end
     end
 
-    if is_rank_0
-        println("Benchmarks completed at ", now(UTC), "Z")
-    end
+    @root println("Benchmarks completed at ", now(UTC), "Z")
 end
 
 """
