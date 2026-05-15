@@ -116,15 +116,21 @@ Adapt.adapt_structure(to, pe::PerturbationAdvection) =
 
 const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
 
-# Helper to convert between density-weighted and intensive fields.
-# When density is nothing, these are no-ops.
-@inline to_intensive(::Nothing, ψ, k) = ψ
-@inline to_intensive(ρ, ψ, k) = ψ / @inbounds ρ[1, 1, k]
-@inline to_extensive(::Nothing, ψ, k) = ψ
-@inline to_extensive(ρ, ψ, k) = @inbounds ρ[1, 1, k] * ψ
+# Helpers to convert between density-weighted and intensive fields.
+# When density is `nothing`, these are no-ops.
+#
+# `to_intensive` reads ψ at `(i, j, k)` and converts to intensive form. The
+# helper owns the field-indexing so each call site is just one expression.
+# `to_extensive` takes the *value* (already computed in intensive space) and
+# multiplies by ρ; the caller writes it back to `ψ[i, j, k]`.
+@inline to_intensive(::Nothing, ψ, i, j, k) = @inbounds ψ[i, j, k]
+@inline to_intensive(ρ,         ψ, i, j, k) = @inbounds ψ[i, j, k] / ρ[1, 1, k]
+
+@inline to_extensive(::Nothing, ψ_value, i, j, k) = ψ_value
+@inline to_extensive(ρ,         ψ_value, i, j, k) = @inbounds ρ[1, 1, k] * ψ_value
 
 @inline function step_right_open_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
-                                           grid, ψ, clock, model_fields, ΔX, k)
+                                           grid, ψ, clock, model_fields, ΔX)
     iᴮ, jᴮ, kᴮ = boundary_indices
     iᴬ, jᴬ, kᴬ = boundary_adjacent_indices
     Δt = clock.last_stage_Δt
@@ -135,8 +141,8 @@ const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
     c★ = pa.gravity_wave_speed
 
     # Convert to intensive space (no-op when density is nothing)
-    ψᴮ = to_intensive(ρ, @inbounds(ψ[iᴮ, jᴮ, kᴮ]), k)
-    ψᴬ = to_intensive(ρ, @inbounds(ψ[iᴬ, jᴬ, kᴬ]), k)
+    ψᴮ = to_intensive(ρ, ψ, iᴮ, jᴮ, kᴮ)
+    ψᴬ = to_intensive(ρ, ψ, iᴬ, jᴬ, kᴬ)
 
     # Prescribed exterior value (in intensive units when density is provided)
     ψ̄ = getbc(bc, l, m, grid, clock, model_fields)
@@ -153,13 +159,13 @@ const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
     ψ_new = ifelse(τ == 0, ψ̄, ψ_new)
 
     # Convert back to extensive space (no-op when density is nothing)
-    @inbounds ψ[iᴮ, jᴮ, kᴮ] = to_extensive(ρ, ψ_new, k)
+    @inbounds ψ[iᴮ, jᴮ, kᴮ] = to_extensive(ρ, ψ_new, iᴮ, jᴮ, kᴮ)
 
     return nothing
 end
 
 @inline function step_left_open_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
-                                          grid, ψ, clock, model_fields, ΔX, k)
+                                          grid, ψ, clock, model_fields, ΔX)
     iᴮ, jᴮ, kᴮ = boundary_indices
     iᴬ, jᴬ, kᴬ = boundary_adjacent_indices
     Δt = clock.last_stage_Δt
@@ -169,8 +175,8 @@ end
     ρ = pa.density
     c★ = pa.gravity_wave_speed
 
-    ψᴮ = to_intensive(ρ, @inbounds(ψ[iᴮ, jᴮ, kᴮ]), k)
-    ψᴬ = to_intensive(ρ, @inbounds(ψ[iᴬ, jᴬ, kᴬ]), k)
+    ψᴮ = to_intensive(ρ, ψ, iᴮ, jᴮ, kᴮ)
+    ψᴬ = to_intensive(ρ, ψ, iᴬ, jᴬ, kᴬ)
 
     ψ̄ = getbc(bc, l, m, grid, clock, model_fields)
 
@@ -184,25 +190,21 @@ end
     ψ_new = (ψᴮ - Ũ * ψᴬ + ψ̄ * τ̃) / (1 + τ̃ - Ũ)
     ψ_new = ifelse(τ == 0, ψ̄, ψ_new)
 
-    @inbounds ψ[iᴮ, jᴮ, kᴮ] = to_extensive(ρ, ψ_new, k)
+    @inbounds ψ[iᴮ, jᴮ, kᴮ] = to_extensive(ρ, ψ_new, iᴮ, jᴮ, kᴮ)
 
     return nothing
 end
 
-# Backward compatibility: old step_right/left_boundary! signatures without k argument
-@inline function step_right_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
-                                      grid, ψ, clock, model_fields, ΔX)
-    k = boundary_indices[3]
+# Aliases for callers that follow the generic boundary-step naming
+@inline step_right_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
+                             grid, ψ, clock, model_fields, ΔX) =
     step_right_open_boundary!(bc, l, m, boundary_indices, boundary_adjacent_indices,
-                              grid, ψ, clock, model_fields, ΔX, k)
-end
+                              grid, ψ, clock, model_fields, ΔX)
 
-@inline function step_left_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
-                                     grid, ψ, clock, model_fields, ΔX)
-    k = boundary_indices[3]
+@inline step_left_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
+                            grid, ψ, clock, model_fields, ΔX) =
     step_left_open_boundary!(bc, l, m, boundary_indices, boundary_adjacent_indices,
-                             grid, ψ, clock, model_fields, ΔX, k)
-end
+                             grid, ψ, clock, model_fields, ΔX)
 
 #####
 ##### Halo-filling methods for Face-located fields (velocity/momentum)
@@ -214,7 +216,7 @@ end
     boundary_adjacent_indices = (i-1, j, k)
     Δx = Δxᶠᶜᶜ(i, j, k, grid)
     step_right_open_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices,
-                              grid, u, clock, model_fields, Δx, k)
+                              grid, u, clock, model_fields, Δx)
     return nothing
 end
 
@@ -223,7 +225,7 @@ end
     boundary_adjacent_indices = (2, j, k)
     Δx = Δxᶠᶜᶜ(1, j, k, grid)
     step_left_open_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices,
-                             grid, u, clock, model_fields, Δx, k)
+                             grid, u, clock, model_fields, Δx)
     return nothing
 end
 
@@ -233,7 +235,7 @@ end
     boundary_adjacent_indices = (i, j-1, k)
     Δy = Δyᶜᶠᶜ(i, j, k, grid)
     step_right_open_boundary!(bc, i, k, boundary_indices, boundary_adjacent_indices,
-                              grid, u, clock, model_fields, Δy, k)
+                              grid, u, clock, model_fields, Δy)
     return nothing
 end
 
@@ -242,7 +244,7 @@ end
     boundary_adjacent_indices = (i, 2, k)
     Δy = Δyᶜᶠᶜ(i, 1, k, grid)
     step_left_open_boundary!(bc, i, k, boundary_indices, boundary_adjacent_indices,
-                             grid, u, clock, model_fields, Δy, k)
+                             grid, u, clock, model_fields, Δy)
     return nothing
 end
 
@@ -252,7 +254,7 @@ end
     boundary_adjacent_indices = (i, j, k-1)
     Δz = Δzᶜᶜᶠ(i, j, k, grid)
     step_right_open_boundary!(bc, i, j, boundary_indices, boundary_adjacent_indices,
-                              grid, u, clock, model_fields, Δz, k)
+                              grid, u, clock, model_fields, Δz)
     return nothing
 end
 
@@ -261,7 +263,7 @@ end
     boundary_adjacent_indices = (i, j, 2)
     Δz = Δzᶜᶜᶠ(i, j, 1, grid)
     step_left_open_boundary!(bc, i, j, boundary_indices, boundary_adjacent_indices,
-                             grid, u, clock, model_fields, Δz, 1)
+                             grid, u, clock, model_fields, Δz)
     return nothing
 end
 
@@ -275,7 +277,7 @@ end
     boundary_adjacent_indices = (i-1, j, k)
     Δx = Δxᶠᶜᶜ(i, j, k, grid)
     step_right_open_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices,
-                              grid, c, clock, model_fields, Δx, k)
+                              grid, c, clock, model_fields, Δx)
     return nothing
 end
 
@@ -284,7 +286,7 @@ end
     boundary_adjacent_indices = (2, j, k)
     Δx = Δxᶠᶜᶜ(1, j, k, grid)
     step_left_open_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices,
-                             grid, c, clock, model_fields, Δx, k)
+                             grid, c, clock, model_fields, Δx)
     return nothing
 end
 
@@ -294,7 +296,7 @@ end
     boundary_adjacent_indices = (i, j-1, k)
     Δy = Δyᶜᶠᶜ(i, j, k, grid)
     step_right_open_boundary!(bc, i, k, boundary_indices, boundary_adjacent_indices,
-                              grid, c, clock, model_fields, Δy, k)
+                              grid, c, clock, model_fields, Δy)
     return nothing
 end
 
@@ -303,6 +305,6 @@ end
     boundary_adjacent_indices = (i, 2, k)
     Δy = Δyᶜᶠᶜ(i, 1, k, grid)
     step_left_open_boundary!(bc, i, k, boundary_indices, boundary_adjacent_indices,
-                             grid, c, clock, model_fields, Δy, k)
+                             grid, c, clock, model_fields, Δy)
     return nothing
 end
