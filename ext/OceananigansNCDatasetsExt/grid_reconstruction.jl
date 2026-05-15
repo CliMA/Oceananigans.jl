@@ -198,32 +198,39 @@ function gather_grid_metrics(grid::OrthogonalSphericalShellGrid, indices, dim_na
         metrics[Az_name] = Field(Az_op; indices)
     end
 
+    # Vertical Δz/Δr metric: build the Field directly from the static vertical
+    # discretization's Δ data rather than via `Field(zspacings(grid, c))`. The
+    # `KernelFunctionOperation` form trips a Julia 1.12 specialization-cache bug
+    # (`ijl_types_equal` in `subtype.c`) when the kernel is `Operators.Δz` and the
+    # grid's `conformal_mapping` is `CubedSphereConformalMapping{Nothing,
+    # StepRangeLen{Float64, TwicePrecision{Float64}, …}×4}` (PR #5581 discussion).
+    # A plain `Field((Nothing, Nothing, lz), grid)` with explicit data has a shorter
+    # type signature and compiles fine for all OSSG variants. The data is just the
+    # 1D Δᵃᵃᶜ / Δᵃᵃᶠ values broadcast into a (1, 1, Nz) interior.
     TZ = topology(grid, 3)
-    # Skip vertical Δz/Δr metrics on `ConformalCubedSpherePanelGrid`. The construction
-    # `Field(zspacings(grid, c))` wraps the `Δz` operator in a `KernelFunctionOperation`
-    # parameterized by the *full* grid type — including `grid.conformal_mapping`. For
-    # CCSPG that's `CubedSphereConformalMapping{Rotation, Fξ, Fη, Cξ, Cη}` with four
-    # nested `StepRangeLen{Float64, TwicePrecision{Float64}, …}` parameters, and the
-    # Julia 1.12 GC marker segfaults inside `gc_mark_outrefs` when specializing on this
-    # specific `(Δz, CCSPG)` combination. The same kernel `Δz` on TripolarGrid (shallow
-    # `Tripolar{Int64, Int64, Int64, RightCenterFolded}` mapping) is fine; the other
-    # OSSG metric kernels (`Δx`, `Δy`, `Az_at_node`) on CCSPG are also fine. The
-    # semantic decoupling is real — `Δz` doesn't actually read the conformal mapping —
-    # but Field's type system carries it along regardless, so this is a pure
-    # compile/GC pathological case (see PR #5581 discussion). The 1D reference `z_*`
-    # / `r_*` coordinate variables are still written, so vertical spacings remain
-    # derivable from them.
-    skip_vertical_metrics = grid isa ConformalCubedSpherePanelGrid
-    if TZ != Flat && !skip_vertical_metrics
-        Δz = "Δ" * vertical_coordinate_name(grid)
-        Δzᵃᵃᶠ_name = dim_name_generator(Δz, grid, nothing, nothing, f, Val(:z))
-        Δzᵃᵃᶜ_name = dim_name_generator(Δz, grid, nothing, nothing, c, Val(:z))
+    if TZ != Flat
+        Δprefix = "Δ" * vertical_coordinate_name(grid)
+        Δzᵃᵃᶠ_name = dim_name_generator(Δprefix, grid, nothing, nothing, f, Val(:z))
+        Δzᵃᵃᶜ_name = dim_name_generator(Δprefix, grid, nothing, nothing, c, Val(:z))
 
-        metrics[Δzᵃᵃᶠ_name] = Field(zspacings(grid, f); indices)
-        metrics[Δzᵃᵃᶜ_name] = Field(zspacings(grid, c); indices)
+        metrics[Δzᵃᵃᶠ_name] = ossg_vertical_spacing_field(grid, f)
+        metrics[Δzᵃᵃᶜ_name] = ossg_vertical_spacing_field(grid, c)
     end
 
     return suffix_grid_keys(metrics, grid_index)
+end
+
+# Build a 1D-in-z `Field` whose interior values are `grid.z.Δᵃᵃᶜ` / `grid.z.Δᵃᵃᶠ`.
+# Constructed as a plain `Field` rather than `Field(zspacings(grid, lz))` to avoid the
+# Julia 1.12 specialization bug on `(Δz, CubedSphereConformalMapping{…StepRangeLen…})`.
+function ossg_vertical_spacing_field(grid::OrthogonalSphericalShellGrid, lz)
+    field = Field{Nothing, Nothing, typeof(lz)}(grid)
+    Δ = lz isa Center ? grid.z.Δᵃᵃᶜ : grid.z.Δᵃᵃᶠ
+    Nz_int = length(interior_indices(lz, topology(grid, 3)(), size(grid, 3)))
+    interior_data = Δ isa Number ? fill(eltype(grid)(Δ), Nz_int) :
+                                   eltype(grid).(collect(Δ[1:Nz_int]))
+    interior(field) .= reshape(interior_data, (1, 1, Nz_int))
+    return field
 end
 
 # Az is unstaggered in z; access the appropriate 2D area array at the given horizontal stagger.

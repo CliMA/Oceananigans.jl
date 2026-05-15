@@ -3499,9 +3499,11 @@ function test_netcdf_cubed_sphere_panel_output(arch)
         @test v ∈ keys(ds)
     end
     @test ds["T"].attrib["coordinates"] == "λ_cca φ_cca z_aac"
-    # Horizontal metrics. Vertical Δz metrics are intentionally skipped for CCSPG due
-    # to a Julia 1.12 GC issue with the deep CCSPG type signature in `Field(zspacings(grid, …))`.
-    for v in ("Δx_cca", "Δy_cca", "Az_cca")
+    # All metrics, including vertical Δz, are written. (The vertical Δz Field is
+    # constructed as a plain Field rather than via `Field(zspacings(grid, …))` to
+    # avoid a Julia 1.12 specialization bug on the deep CCSPG conformal-mapping type;
+    # see `ossg_vertical_spacing_field`.)
+    for v in ("Δx_cca", "Δy_cca", "Az_cca", "Δz_aac", "Δz_aaf")
         @test v ∈ keys(ds)
     end
 
