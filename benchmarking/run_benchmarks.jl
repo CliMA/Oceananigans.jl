@@ -326,7 +326,7 @@ function run_benchmarks(args)
         println("Architecture: ", arch)
         println("Distributed: ", distributed_enabled ? "true" : "false")
         if distributed_enabled
-            println("Partition: ", partition_ranks, " (", Nranks, " ranks)")
+            println("Partition: ", partition_ranks, " (", ranks, " ranks)")
         end
         println("Sizes: ", sizes)
         println("Float types: ", float_types)
