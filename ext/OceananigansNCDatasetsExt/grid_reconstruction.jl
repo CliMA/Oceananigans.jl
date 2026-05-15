@@ -199,13 +199,20 @@ function gather_grid_metrics(grid::OrthogonalSphericalShellGrid, indices, dim_na
     end
 
     TZ = topology(grid, 3)
-    # Skip vertical Δz/Δr metrics on `ConformalCubedSpherePanelGrid`: the resulting
-    # `Field(zspacings(grid, c))` triggers a Julia 1.12 GC segfault during writer
-    # init for grids whose `CubedSphereConformalMapping{Rotation, Fξ, Fη, Cξ, Cη}`
-    # carries nested `StepRangeLen{Float64, TwicePrecision{Float64}, …}` type
-    # parameters. Other OSSG variants (TripolarGrid, RotatedLatitudeLongitudeGrid)
-    # have shallower conformal-mapping types and emit Δz metrics normally; the 1D
-    # reference `z_*`/`r_*` coordinate variables are always written.
+    # Skip vertical Δz/Δr metrics on `ConformalCubedSpherePanelGrid`. The construction
+    # `Field(zspacings(grid, c))` wraps the `Δz` operator in a `KernelFunctionOperation`
+    # parameterized by the *full* grid type — including `grid.conformal_mapping`. For
+    # CCSPG that's `CubedSphereConformalMapping{Rotation, Fξ, Fη, Cξ, Cη}` with four
+    # nested `StepRangeLen{Float64, TwicePrecision{Float64}, …}` parameters, and the
+    # Julia 1.12 GC marker segfaults inside `gc_mark_outrefs` when specializing on this
+    # specific `(Δz, CCSPG)` combination. The same kernel `Δz` on TripolarGrid (shallow
+    # `Tripolar{Int64, Int64, Int64, RightCenterFolded}` mapping) is fine; the other
+    # OSSG metric kernels (`Δx`, `Δy`, `Az_at_node`) on CCSPG are also fine. The
+    # semantic decoupling is real — `Δz` doesn't actually read the conformal mapping —
+    # but Field's type system carries it along regardless, so this is a pure
+    # compile/GC pathological case (see PR #5581 discussion). The 1D reference `z_*`
+    # / `r_*` coordinate variables are still written, so vertical spacings remain
+    # derivable from them.
     skip_vertical_metrics = grid isa ConformalCubedSpherePanelGrid
     if TZ != Flat && !skip_vertical_metrics
         Δz = "Δ" * vertical_coordinate_name(grid)
