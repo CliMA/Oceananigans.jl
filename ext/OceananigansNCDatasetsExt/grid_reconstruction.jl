@@ -88,19 +88,42 @@ function gather_grid_metrics(grid::RectilinearGrid, indices, dim_name_generator;
         metrics[Δyᵃᶜᵃ_name] = Δyᵃᶜᵃ_field
     end
 
-    if TZ != Flat
-        Δz = "Δ" * vertical_coordinate_name(grid)
-        Δzᵃᵃᶠ_name = dim_name_generator(Δz, grid, nothing, nothing, f, Val(:z))
-        Δzᵃᵃᶜ_name = dim_name_generator(Δz, grid, nothing, nothing, c, Val(:z))
-
-        Δzᵃᵃᶠ_field = Field(zspacings(grid, f); indices)
-        Δzᵃᵃᶜ_field = Field(zspacings(grid, c); indices)
-
-        metrics[Δzᵃᵃᶠ_name] = Δzᵃᵃᶠ_field
-        metrics[Δzᵃᵃᶜ_name] = Δzᵃᵃᶜ_field
-    end
+    add_vertical_metrics!(metrics, grid, dim_name_generator)
 
     return suffix_grid_keys(metrics, grid_index)
+end
+
+# Vertical Δz/Δr metric for any grid. The data lives entirely in `grid.z`
+# (`grid.z.Δᵃᵃᶜ` and `grid.z.Δᵃᵃᶠ`) — independent of horizontal grid type — so this
+# helper is reused by Rectilinear, LLG, and OSSG `gather_grid_metrics`. We build a
+# plain `Field((Nothing, Nothing, lz), grid)` with explicit interior data rather
+# than wrap `zspacings(grid, lz)` in a `KernelFunctionOperation`; this keeps the
+# Field's type signature shallow and avoids a Julia 1.12 specialization-cache bug
+# (`ijl_types_equal`/`subtype.c`) that trips on the pairing of `Operators.Δz` with
+# `OrthogonalSphericalShellGrid{…, CubedSphereConformalMapping{Nothing, StepRangeLen{…}×4}, …}`.
+# Numerically equivalent to the KernelFunctionOperation form for every grid.
+function add_vertical_metrics!(metrics, grid, dim_name_generator)
+    TZ = topology(grid, 3)
+    TZ == Flat && return metrics
+
+    Δprefix = "Δ" * vertical_coordinate_name(grid)
+    Δᵃᵃᶠ_name = dim_name_generator(Δprefix, grid, nothing, nothing, f, Val(:z))
+    Δᵃᵃᶜ_name = dim_name_generator(Δprefix, grid, nothing, nothing, c, Val(:z))
+
+    metrics[Δᵃᵃᶠ_name] = vertical_spacing_field(grid, f)
+    metrics[Δᵃᵃᶜ_name] = vertical_spacing_field(grid, c)
+
+    return metrics
+end
+
+function vertical_spacing_field(grid, lz)
+    field = Field{Nothing, Nothing, typeof(lz)}(grid)
+    Δ = lz isa Center ? grid.z.Δᵃᵃᶜ : grid.z.Δᵃᵃᶠ
+    Nz_int = length(interior_indices(lz, topology(grid, 3)(), size(grid, 3)))
+    interior_data = Δ isa Number ? fill(eltype(grid)(Δ), Nz_int) :
+                                   eltype(grid).(collect(Δ[1:Nz_int]))
+    interior(field) .= reshape(interior_data, (1, 1, Nz_int))
+    return field
 end
 
 function gather_grid_metrics(grid::LatitudeLongitudeGrid, indices, dim_name_generator; grid_index=nothing)
@@ -160,23 +183,13 @@ function gather_grid_metrics(grid::LatitudeLongitudeGrid, indices, dim_name_gene
         metrics[Δyᶜᶜᵃ_name] = Δyᶜᶜᵃ_field
     end
 
-    if TZ != Flat
-        Δz = "Δ" * vertical_coordinate_name(grid)
-        Δzᵃᵃᶠ_name = dim_name_generator(Δz, grid, nothing, nothing, f, Val(:z))
-        Δzᵃᵃᶜ_name = dim_name_generator(Δz, grid, nothing, nothing, c, Val(:z))
-
-        Δzᵃᵃᶠ_field = Field(zspacings(grid, f); indices)
-        Δzᵃᵃᶜ_field = Field(zspacings(grid, c); indices)
-
-        metrics[Δzᵃᵃᶠ_name] = Δzᵃᵃᶠ_field
-        metrics[Δzᵃᵃᶜ_name] = Δzᵃᵃᶜ_field
-    end
+    add_vertical_metrics!(metrics, grid, dim_name_generator)
 
     return suffix_grid_keys(metrics, grid_index)
 end
 
-# OSSG metrics: 8 × Δx, 8 × Δy, 4 × Az at the four Arakawa-C stagger locations,
-# plus vertical Δz/Δr. The 2D horizontal metrics are wrapped in Fields so they
+# OSSG horizontal metrics: 4 × Δx, 4 × Δy, 4 × Az at the four Arakawa-C stagger
+# locations. Vertical Δz/Δr is added via the shared `add_vertical_metrics!`. The 2D horizontal metrics are wrapped in Fields so they
 # go through the standard output path and pick up the (i_*, j_*) bare dim names
 # from `field_dimensions(::AbstractField, ::OSSG, …)` and the `coordinates`
 # attribute from `add_aux_coordinates_attribute!`.
@@ -198,39 +211,9 @@ function gather_grid_metrics(grid::OrthogonalSphericalShellGrid, indices, dim_na
         metrics[Az_name] = Field(Az_op; indices)
     end
 
-    # Vertical Δz/Δr metric: build the Field directly from the static vertical
-    # discretization's Δ data rather than via `Field(zspacings(grid, c))`. The
-    # `KernelFunctionOperation` form trips a Julia 1.12 specialization-cache bug
-    # (`ijl_types_equal` in `subtype.c`) when the kernel is `Operators.Δz` and the
-    # grid's `conformal_mapping` is `CubedSphereConformalMapping{Nothing,
-    # StepRangeLen{Float64, TwicePrecision{Float64}, …}×4}` (PR #5581 discussion).
-    # A plain `Field((Nothing, Nothing, lz), grid)` with explicit data has a shorter
-    # type signature and compiles fine for all OSSG variants. The data is just the
-    # 1D Δᵃᵃᶜ / Δᵃᵃᶠ values broadcast into a (1, 1, Nz) interior.
-    TZ = topology(grid, 3)
-    if TZ != Flat
-        Δprefix = "Δ" * vertical_coordinate_name(grid)
-        Δzᵃᵃᶠ_name = dim_name_generator(Δprefix, grid, nothing, nothing, f, Val(:z))
-        Δzᵃᵃᶜ_name = dim_name_generator(Δprefix, grid, nothing, nothing, c, Val(:z))
-
-        metrics[Δzᵃᵃᶠ_name] = ossg_vertical_spacing_field(grid, f)
-        metrics[Δzᵃᵃᶜ_name] = ossg_vertical_spacing_field(grid, c)
-    end
+    add_vertical_metrics!(metrics, grid, dim_name_generator)
 
     return suffix_grid_keys(metrics, grid_index)
-end
-
-# Build a 1D-in-z `Field` whose interior values are `grid.z.Δᵃᵃᶜ` / `grid.z.Δᵃᵃᶠ`.
-# Constructed as a plain `Field` rather than `Field(zspacings(grid, lz))` to avoid the
-# Julia 1.12 specialization bug on `(Δz, CubedSphereConformalMapping{…StepRangeLen…})`.
-function ossg_vertical_spacing_field(grid::OrthogonalSphericalShellGrid, lz)
-    field = Field{Nothing, Nothing, typeof(lz)}(grid)
-    Δ = lz isa Center ? grid.z.Δᵃᵃᶜ : grid.z.Δᵃᵃᶠ
-    Nz_int = length(interior_indices(lz, topology(grid, 3)(), size(grid, 3)))
-    interior_data = Δ isa Number ? fill(eltype(grid)(Δ), Nz_int) :
-                                   eltype(grid).(collect(Δ[1:Nz_int]))
-    interior(field) .= reshape(interior_data, (1, 1, Nz_int))
-    return field
 end
 
 # Az is unstaggered in z; access the appropriate 2D area array at the given horizontal stagger.
