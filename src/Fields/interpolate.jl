@@ -1,6 +1,6 @@
 using Oceananigans.Grids: topology, _node, φnode, φnodes, λnode, λnodes,
                           XFlatGrid, YFlatGrid, ZFlatGrid,
-                          XYFlatGrid, YZFlatGrid, XZFlatGrid,
+                          XYFlatGrid, YZFlatGrid, XZFlatGrid, XYZFlatGrid,
                           XRegularRG, YRegularRG, ZRegularRG,
                           XRegularLLG, YRegularLLG, ZRegularLLG,
                           ZRegOrthogonalSphericalShellGrid
@@ -199,13 +199,13 @@ floats indicating a location between grid points.
 """
 @inline FractionalIndices(at_node, grid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, ℓx, ℓy, ℓz)
 
-@inline FractionalIndices(at_node, grid::XFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, nothing, ℓy, ℓz)
-@inline FractionalIndices(at_node, grid::YFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, ℓx, nothing, ℓz)
-@inline FractionalIndices(at_node, grid::ZFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, ℓx, ℓy, nothing)
-
-@inline FractionalIndices(at_node, grid::XYFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, nothing, nothing, ℓz)
-@inline FractionalIndices(at_node, grid::YZFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, ℓx, nothing, nothing)
-@inline FractionalIndices(at_node, grid::XZFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, nothing, ℓy, nothing)
+@inline FractionalIndices(at_node, grid::XFlatGrid, ℓx, ℓy, ℓz)   = _fractional_indices(at_node, grid, nothing, ℓy, ℓz)
+@inline FractionalIndices(at_node, grid::YFlatGrid, ℓx, ℓy, ℓz)   = _fractional_indices(at_node, grid, ℓx, nothing, ℓz)
+@inline FractionalIndices(at_node, grid::ZFlatGrid, ℓx, ℓy, ℓz)   = _fractional_indices(at_node, grid, ℓx, ℓy, nothing)
+@inline FractionalIndices(at_node, grid::XYFlatGrid, ℓx, ℓy, ℓz)  = _fractional_indices(at_node, grid, nothing, nothing, ℓz)
+@inline FractionalIndices(at_node, grid::YZFlatGrid, ℓx, ℓy, ℓz)  = _fractional_indices(at_node, grid, ℓx, nothing, nothing)
+@inline FractionalIndices(at_node, grid::XZFlatGrid, ℓx, ℓy, ℓz)  = _fractional_indices(at_node, grid, nothing, ℓy, nothing)
+@inline FractionalIndices(at_node, grid::XYZFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, nothing, nothing, nothing)
 
 @inline function _fractional_indices((x, y, z), grid, ℓx, ℓy, ℓz)
     ii = fractional_x_index(x, (ℓx, ℓy, ℓz), grid)
