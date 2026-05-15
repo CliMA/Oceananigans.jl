@@ -379,6 +379,24 @@ NetCDFWriter scheduled on IterationInterval(1):
 ├── file_splitting: NoFileSplitting
 └── file size: 31.7 KiB
 ```
+
+OrthogonalSphericalShellGrid (TripolarGrid, RotatedLatitudeLongitudeGrid, …)
+============================================================================
+
+For curvilinear `OrthogonalSphericalShellGrid` (OSSG) and its type aliases —
+`TripolarGrid`, `RotatedLatitudeLongitudeGrid`, `ConformalCubedSpherePanelGrid` —
+output follows
+[CF Conventions §5.2 "Two-Dimensional Latitude, Longitude, Coordinate Variables"](https://cfconventions.org/Data/cf-conventions/cf-conventions-1.13/cf-conventions.html#_two_dimensional_latitude_longitude_coordinate_variables).
+Concretely:
+
+  * Horizontal NetCDF dimensions are *logical* indices `i_caa`/`i_faa`/`j_aca`/`j_afa`
+    (declared via `defDim` only — they carry no coordinate variable).
+  * Latitude and longitude live as eight 2D auxiliary coordinate variables
+    (`λ_cca`/`λ_fca`/`λ_cfa`/`λ_ffa` and `φ_*`), one per Arakawa-C stagger location,
+    dimensioned `(i_*, j_*)`.
+  * Every data field carries a CF `coordinates` attribute, e.g.
+    `tracer:coordinates = "λ_cca φ_cca z_aac"`, so CF-aware tools (xarray,
+    ncview, Panoply, CDO) pick up the right lat/lon pair automatically.
 """
 function NetCDFWriter(model, outputs; kw...)
     error("""

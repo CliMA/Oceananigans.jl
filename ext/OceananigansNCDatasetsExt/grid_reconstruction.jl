@@ -199,7 +199,15 @@ function gather_grid_metrics(grid::OrthogonalSphericalShellGrid, indices, dim_na
     end
 
     TZ = topology(grid, 3)
-    if TZ != Flat
+    # Skip vertical Δz/Δr metrics on `ConformalCubedSpherePanelGrid`: the resulting
+    # `Field(zspacings(grid, c))` triggers a Julia 1.12 GC segfault during writer
+    # init for grids whose `CubedSphereConformalMapping` type has 5 parameters
+    # (rotation + four 1D ξ/η ranges). The vertical reference coordinate is still
+    # written as the 1D `r_aac`/`r_aaf` (or `z_*`) coord variables — Δz can be
+    # derived from those if needed. Other OSSG variants (TripolarGrid,
+    # RotatedLatitudeLongitudeGrid) emit Δz metrics normally.
+    skip_vertical_metrics = grid isa ConformalCubedSpherePanelGrid
+    if TZ != Flat && !skip_vertical_metrics
         Δz = "Δ" * vertical_coordinate_name(grid)
         Δzᵃᵃᶠ_name = dim_name_generator(Δz, grid, nothing, nothing, f, Val(:z))
         Δzᵃᵃᶜ_name = dim_name_generator(Δz, grid, nothing, nothing, c, Val(:z))

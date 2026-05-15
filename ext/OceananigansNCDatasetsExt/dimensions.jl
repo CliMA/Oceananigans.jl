@@ -64,21 +64,19 @@ end
 
 # OrthogonalSphericalShellGrid path: dimensions are 1D bare `i_*`/`j_*` indices plus the
 # vertical, and the lat/lon are 2D auxiliary coord variables that don't correspond
-# positionally to `nodes(fd)`. So we don't (re-)create coord variables here at all — the
-# OSSG path requires `gather_dimensions` / `create_spatial_dimensions!` to have run at
-# file init. If the named dimensions exist in the dataset, we're done; otherwise we
-# raise a clear error rather than silently producing a malformed file.
+# positionally to `nodes(fd)`. The common path is that `gather_dimensions` has already
+# created these dimensions at file init, so this is a no-op. But fields can also be
+# written into subgroups (e.g. `bottom_height` for an `ImmersedBoundaryGrid`'s
+# reconstruction record) whose dimension scope is local — for those, we need to
+# `defDim` the missing bare dims here on the fly, using the field's interior shape.
 function create_field_coord_variables!(ds, fd, grid::OrthogonalSphericalShellGrid,
                                         spatial_dim_names, dim_name_generator;
                                         with_halos, dimension_type, grid_index)
-    for dname in spatial_dim_names
+    field_sizes = size(interior(fd))
+    for (dname, dsize) in zip(spatial_dim_names, field_sizes)
         isempty(dname) && continue
-        if dname ∉ keys(ds.dim)
-            throw(ArgumentError("Dimension '$dname' for an OrthogonalSphericalShellGrid field " *
-                                "does not exist in the dataset. Call `gather_dimensions` / " *
-                                "`create_spatial_dimensions!` at file init before defining " *
-                                "fields, or use the high-level `NetCDFWriter` constructor."))
-        end
+        dname ∈ keys(ds.dim) && continue
+        defDim(ds, dname, dsize)
     end
     return nothing
 end
@@ -135,21 +133,20 @@ function create_spatial_dimensions!(dataset, dims, attributes_dict; dimension_ty
             end
         end
 
-        # A "coordinate variable" is a 1D variable whose name matches its sole dimension —
-        # i.e. `var_name == var_dims[1]`. Anything else is an auxiliary coordinate (or
-        # a non-coordinate variable) and is treated identically by defVar.
-        is_coord_variable = length(var_dims) == 1 && var_name == var_dims[1]
-
         if var_name ∉ keys(dataset)
             defVar(dataset, var_name, arr, var_dims,
                    attrib=get(attributes_dict, var_name, Dict{String, Any}()); kwargs...)
-        elseif is_coord_variable
-            # Coordinate-variable case: validate values are consistent across writes.
-            dataset_dim_array = collect(dataset[var_name])
-            if dataset_dim_array != collect(arr)
-                throw(ArgumentError("Dimension '$var_name' already exists in dataset but is different from expected.\n" *
-                                    "  Actual:   $(dataset_dim_array) (length=$(length(dataset_dim_array)))\n" *
-                                    "  Expected: $(arr) (length=$(length(arr)))"))
+        else
+            # The variable already exists in the dataset. Validate that the existing values
+            # match what we'd write — applies equally to 1D coordinate variables (a NetCDF
+            # "coordinate variable", same name as its dimension) and to 2D auxiliary
+            # coordinates such as λ_cca/φ_cca on an OrthogonalSphericalShellGrid. Without
+            # this, an inconsistent reused dataset could pass silently.
+            existing_array = collect(dataset[var_name])
+            if existing_array != collect(arr)
+                throw(ArgumentError("Variable '$var_name' already exists in dataset but its values differ from expected.\n" *
+                                    "  Actual:   $(existing_array) (size=$(size(existing_array)))\n" *
+                                    "  Expected: $(arr) (size=$(size(arr)))"))
             end
         end
 

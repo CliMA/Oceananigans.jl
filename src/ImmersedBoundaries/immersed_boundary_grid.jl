@@ -98,10 +98,11 @@ const IBG = ImmersedBoundaryGrid
 
 Return the non-immersed grid: for an `ImmersedBoundaryGrid` this is the wrapped
 `grid.underlying_grid`; for any other grid this is the grid itself. Passing a
-`Field` extracts and unwraps in one call.
+`Field` extracts its grid and unwraps in one call.
 """
 @inline underlying_grid(grid::AbstractGrid) = grid
 @inline underlying_grid(ibg::IBG) = ibg.underlying_grid
+@inline underlying_grid(field::AbstractField) = underlying_grid(field.grid)
 
 Adapt.adapt_structure(to, ibg::IBG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     ImmersedBoundaryGrid{TX, TY, TZ}(adapt(to, ibg.underlying_grid),

@@ -3161,8 +3161,10 @@ end
 # must match the equivalent LatitudeLongitudeGrid to roundoff.
 #
 
-using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid, RotatedLatitudeLongitudeGrid
+using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid, RotatedLatitudeLongitudeGrid,
+                                                  ConformalCubedSpherePanelGrid
 using Oceananigans.OutputWriters: reconstruct_grid
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 
 function test_netcdf_tripolar_grid_output(arch)
     grid = TripolarGrid(arch, size=(20, 16, 4), z=(-100, 0))
@@ -3353,6 +3355,117 @@ function test_netcdf_tripolar_field_time_series(arch)
         @test all(nan_or_close.(rec, ref; atol=1e-4))
     end
 
+    rm(fp)
+    return nothing
+end
+
+function test_netcdf_tripolar_immersed_output(arch)
+    # ImmersedBoundaryGrid wrapping a TripolarGrid: exercises the OSSG path AND the
+    # immersed-boundary reconstruction-data writer (which `defVar`s `bottom_height`
+    # in a subgroup whose dimension scope is local — `create_field_coord_variables!`
+    # for OSSG fields has to defDim the bare `i_*`/`j_*` dims in the subgroup).
+    Nx, Ny, Nz = 20, 16, 3
+    ug = TripolarGrid(arch, size=(Nx, Ny, Nz), z=(-100, 0))
+    grid = ImmersedBoundaryGrid(ug, GridFittedBottom((λ, φ) -> -50))
+
+    fs = SplitExplicitFreeSurface(grid; substeps=10)
+    model = HydrostaticFreeSurfaceModel(grid; free_surface=fs, tracers=(:T,))
+    sim = Simulation(model; Δt=1, stop_iteration=1)
+
+    Arch = typeof(arch)
+    fp = "test_tripolar_ibg_$Arch.nc"
+    isfile(fp) && rm(fp)
+    sim.output_writers[:nc] = NetCDFWriter(model, (; T=model.tracers.T);
+                                           filename=fp, schedule=IterationInterval(1),
+                                           overwrite_existing=true, include_grid_metrics=true)
+    run!(sim)
+
+    ds = NCDataset(fp)
+    @test "T" ∈ keys(ds)
+    @test "λ_cca" ∈ keys(ds)
+    @test "immersed_grid_reconstruction_args" ∈ keys(ds.group)
+    @test "bottom_height" ∈ keys(ds.group["immersed_grid_reconstruction_args"])
+
+    # Reconstruct via FieldTimeSeries: underlying TripolarGrid is rebuilt + wrapped
+    # in an `ImmersedBoundaryGrid`, with the saved `bottom_height` populated.
+    fts = FieldTimeSeries(fp, "T"; architecture=arch)
+    @test fts.grid isa ImmersedBoundaryGrid
+    @test fts.grid.underlying_grid isa TripolarGrid
+    @test size(fts.grid) == size(grid)
+
+    close(ds)
+    rm(fp)
+    return nothing
+end
+
+function test_netcdf_cubed_sphere_panel_output(arch)
+    # `ConformalCubedSpherePanelGrid` is another `OrthogonalSphericalShellGrid` alias.
+    # It carries a different `conformal_mapping` (CubedSphereConformalMapping) and a
+    # very deep type signature; verify that basic write + the OSSG dim/aux-coord
+    # plumbing handles it correctly.
+    Nx, Ny, Nz = 8, 8, 3
+    grid = ConformalCubedSpherePanelGrid(arch, size=(Nx, Ny, Nz), z=(-100, 0), halo=(2, 2, 2))
+    model = HydrostaticFreeSurfaceModel(grid; tracers=(:T,))
+    sim = Simulation(model; Δt=1, stop_iteration=1)
+
+    Arch = typeof(arch)
+    fp = "test_ccspg_$Arch.nc"
+    isfile(fp) && rm(fp)
+    sim.output_writers[:nc] = NetCDFWriter(model, (; T=model.tracers.T);
+                                           filename=fp, schedule=IterationInterval(1),
+                                           overwrite_existing=true, include_grid_metrics=true)
+    run!(sim)
+
+    ds = NCDataset(fp)
+    # All eight 2D λ/φ auxiliary coords are written.
+    for v in ("λ_cca", "λ_fca", "λ_cfa", "λ_ffa", "φ_cca", "φ_fca", "φ_cfa", "φ_ffa")
+        @test v ∈ keys(ds)
+    end
+    @test ds["T"].attrib["coordinates"] == "λ_cca φ_cca z_aac"
+    # Horizontal metrics. Vertical Δz metrics are intentionally skipped for CCSPG due
+    # to a Julia 1.12 GC issue with the deep CCSPG type signature in `Field(zspacings(grid, …))`.
+    for v in ("Δx_cca", "Δy_cca", "Az_cca")
+        @test v ∈ keys(ds)
+    end
+
+    # The reconstructed grid is a generic `OrthogonalSphericalShellGrid` — the
+    # `CubedSphereConformalMapping` (with its ξ/η ranges + rotation) isn't yet
+    # round-trippable through the conformal_mapping serialization, but the metric
+    # arrays themselves are faithful.
+    recon = reconstruct_grid(fp; architecture=arch)
+    @test recon isa Oceananigans.OrthogonalSphericalShellGrids.OrthogonalSphericalShellGrid
+    @test size(recon) == size(grid)
+    @test Array(recon.λᶜᶜᵃ[1:Nx, 1:Ny]) ≈ Array(grid.λᶜᶜᵃ[1:Nx, 1:Ny]) atol=1e-10
+
+    close(ds)
+    rm(fp)
+    return nothing
+end
+
+function test_netcdf_cubed_sphere_panel_immersed_output(arch)
+    # ImmersedBoundaryGrid wrapping a ConformalCubedSpherePanelGrid. Exercises the
+    # same OSSG-fields-in-subgroup path as `test_netcdf_tripolar_immersed_output`,
+    # but with the deeper CCSPG type signature.
+    Nx, Ny, Nz = 8, 8, 3
+    ug = ConformalCubedSpherePanelGrid(arch, size=(Nx, Ny, Nz), z=(-100, 0), halo=(2, 2, 2))
+    grid = ImmersedBoundaryGrid(ug, GridFittedBottom((λ, φ) -> -50))
+    model = HydrostaticFreeSurfaceModel(grid; tracers=(:T,))
+    sim = Simulation(model; Δt=1, stop_iteration=1)
+
+    Arch = typeof(arch)
+    fp = "test_ccspg_ibg_$Arch.nc"
+    isfile(fp) && rm(fp)
+    sim.output_writers[:nc] = NetCDFWriter(model, (; T=model.tracers.T);
+                                           filename=fp, schedule=IterationInterval(1),
+                                           overwrite_existing=true, include_grid_metrics=true)
+    run!(sim)
+
+    ds = NCDataset(fp)
+    @test "T" ∈ keys(ds)
+    @test "λ_cca" ∈ keys(ds)
+    @test "immersed_grid_reconstruction_args" ∈ keys(ds.group)
+    @test "bottom_height" ∈ keys(ds.group["immersed_grid_reconstruction_args"])
+    close(ds)
     rm(fp)
     return nothing
 end
@@ -3581,6 +3694,9 @@ end
             test_netcdf_rotated_llg_matches_llg(arch)
             test_netcdf_tripolar_grid_reconstruction(arch)
             test_netcdf_tripolar_field_time_series(arch)
+            test_netcdf_tripolar_immersed_output(arch)
+            test_netcdf_cubed_sphere_panel_output(arch)
+            test_netcdf_cubed_sphere_panel_immersed_output(arch)
         end
 
         @testset "MutableVerticalDiscretization output [$A]" begin
