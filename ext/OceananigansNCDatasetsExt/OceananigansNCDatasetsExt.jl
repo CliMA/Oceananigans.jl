@@ -17,7 +17,6 @@ using NCDatasets: AbstractDataset
 using Dates: AbstractTime, UTC, now, DateTime
 using Printf: @sprintf
 using OrderedCollections: OrderedDict
-using OffsetArrays: OffsetArray
 using Statistics: mean
 
 using Oceananigans: initialize!, prettytime, pretty_filesize, AbstractModel
@@ -29,10 +28,8 @@ using Oceananigans.Grids:
     Center, Face, Flat, Periodic, Bounded,
     AbstractGrid, RectilinearGrid, LatitudeLongitudeGrid, StaticVerticalDiscretization,
     grid, topology, halo_size, xspacings, yspacings, zspacings, λspacings, φspacings,
-    parent_index_range, nodes, ξnodes, ηnodes, rnodes, znodes, validate_index, all_indices, peripheral_node,
+    parent_index_range, nodes, ξnodes, ηnodes, rnodes, validate_index, peripheral_node,
     constructor_arguments, architecture
-using Oceananigans.Operators: Az
-using Oceananigans.OrthogonalSphericalShellGrids: LambertConformalConicGrid, lcc_xnode, lcc_ynode
 using Oceananigans.ImmersedBoundaries:
     ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary, PartialCellBottom, PCBIBG,
     CenterImmersedCondition, InterfaceImmersedCondition

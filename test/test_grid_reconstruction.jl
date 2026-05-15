@@ -324,33 +324,21 @@ end
 
 function test_netcdf_grid_reconstruction(original_grid)
     # Create NetCDF dataset and write grid reconstruction data
-    filename = tempname() * ".nc"
+    filename = "test_netcdf_grid_reconstruction.nc"
+    ds = NCDataset(filename, "c")
+    write_grid_reconstruction_data!(ds, original_grid, 1)
+    close(ds)
 
-    try
-        NCDataset(filename, "c") do ds
-            write_grid_reconstruction_data!(ds, original_grid, 1)
-        end
+    # Read back the grid reconstruction metadata
+    reconstructed_grid = reconstruct_grid(filename)
 
-        # Read back the grid reconstruction metadata
-        reconstructed_grid = reconstruct_grid(filename)
+    # Test that key properties match
+    @test reconstructed_grid == original_grid # tests grid type, topology and face locations
+    @test size(reconstructed_grid) == size(original_grid)
+    @test halo_size(reconstructed_grid) == halo_size(original_grid)
+    @test eltype(reconstructed_grid) == eltype(original_grid)
 
-        # Test that key properties match
-        @test reconstructed_grid == original_grid # tests grid type, topology and face locations
-        @test size(reconstructed_grid) == size(original_grid)
-        @test halo_size(reconstructed_grid) == halo_size(original_grid)
-        @test eltype(reconstructed_grid) == eltype(original_grid)
-
-        reconstructed_grid = reconstruct_grid(filename; architecture = architecture(original_grid))
-
-        @test architecture(reconstructed_grid) == architecture(original_grid)
-        @test reconstructed_grid == original_grid
-        @test size(reconstructed_grid) == size(original_grid)
-        @test halo_size(reconstructed_grid) == halo_size(original_grid)
-        @test eltype(reconstructed_grid) == eltype(original_grid)
-    finally
-        rm(filename; force = true)
-    end
-
+    rm(filename)
     return nothing
 end
 
@@ -452,9 +440,7 @@ N = 6
         @testset "LambertConformalConicGrid reconstruction tests [$FT, $(typeof(arch))]" begin
             @info "  Testing LambertConformalConicGrid reconstruction [$FT, $(typeof(arch))]..."
             test_lambert_conformal_conic_grid_reconstruction(lcc_grid)
-            test_netcdf_grid_reconstruction(lcc_grid)
             test_flat_lambert_conformal_conic_grid_reconstruction(flat_lcc_grid)
-            test_netcdf_grid_reconstruction(flat_lcc_grid)
         end
 
         @testset "NetCDF grid reconstruction tests [$FT, $(typeof(arch))]" begin

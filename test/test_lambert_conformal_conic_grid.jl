@@ -1,7 +1,6 @@
 include("dependencies_for_runtests.jl")
 
 using CUDA
-using NCDatasets
 using Oceananigans.OrthogonalSphericalShellGrids: LambertConformalConic,
     LambertConformalConicGrid, lcc_forward, lcc_inverse, lcc_scale_factor,
     lcc_xnode, lcc_ynode, spherical_distance, spherical_unit_vector,
@@ -9,7 +8,6 @@ using Oceananigans.OrthogonalSphericalShellGrids: LambertConformalConic,
 using Oceananigans.Grids: architecture, constructor_arguments, topology, halo_size,
                           with_halo, with_number_type, znodes
 using Oceananigans.Fields: interior
-using Oceananigans.OutputWriters: write_grid_reconstruction_data!, reconstruct_grid
 using Oceananigans.Operators: intrinsic_vector, extrinsic_vector, rotation_angle
 using Oceananigans.Architectures: on_architecture
 using Adapt: adapt, adapt_structure
@@ -376,13 +374,6 @@ end
         float32_flat_grid = with_number_type(Float32, flat_grid)
         args, kwargs = constructor_arguments(flat_grid)
         reconstructed_flat_grid = LambertConformalConicGrid(args[:architecture], args[:number_type]; kwargs...)
-        filename = tempname() * ".nc"
-        dataset = NCDataset(filename, "c")
-        write_grid_reconstruction_data!(dataset, flat_grid, 1)
-        close(dataset)
-
-        reconstructed_flat_netcdf_grid = reconstruct_grid(filename)
-        rm(filename; force = true)
 
         @test flat_grid isa LambertConformalConicGrid
         @test size(flat_grid) == (8, 6, 1)
@@ -406,9 +397,6 @@ end
         @test reconstructed_flat_grid.conformal_mapping == flat_grid.conformal_mapping
         @test topology(reconstructed_flat_grid) == topology(flat_grid)
         @test halo_size(reconstructed_flat_grid) == halo_size(flat_grid)
-        @test reconstructed_flat_netcdf_grid.conformal_mapping == flat_grid.conformal_mapping
-        @test topology(reconstructed_flat_netcdf_grid) == topology(flat_grid)
-        @test halo_size(reconstructed_flat_netcdf_grid) == halo_size(flat_grid)
 
         throws_argument_error_matching("Specify exactly one domain mode") do
             LambertConformalConicGrid(; central_longitude = -105,
@@ -781,19 +769,6 @@ end
         @test float32_grid.conformal_mapping.y₁ ≈ grid.conformal_mapping.y₁
         @test float32_grid.conformal_mapping.Δx ≈ grid.conformal_mapping.Δx
         @test float32_grid.conformal_mapping.Δy ≈ grid.conformal_mapping.Δy
-
-        filename = tempname() * ".nc"
-        dataset = NCDataset(filename, "c")
-        write_grid_reconstruction_data!(dataset, grid, 1)
-        close(dataset)
-
-        reconstructed_grid = reconstruct_grid(filename)
-        rm(filename; force = true)
-
-        @test reconstructed_grid isa LambertConformalConicGrid
-        @test reconstructed_grid.conformal_mapping == grid.conformal_mapping
-        @test topology(reconstructed_grid) == topology(grid)
-        @test halo_size(reconstructed_grid) == halo_size(grid)
     end
 
     @testset "Float32 coordinate and metric arrays" begin
@@ -894,238 +869,6 @@ end
         @test all(isfinite, interior(model.free_surface.displacement))
         @test all(isfinite, interior(model.velocities.u))
         @test all(isfinite, interior(model.velocities.v))
-    end
-
-    @testset "NetCDFWriter metadata" begin
-        grid = LambertConformalConicGrid(CPU(), Float64;
-                                         size = (6, 5, 1),
-                                         center = (-105, 40),
-                                         spacing = 20e3,
-                                         standard_parallels = (30, 60),
-                                         z = (-10, 0))
-
-        model = HydrostaticFreeSurfaceModel(grid; tracers = ())
-        filename = tempname() * ".nc"
-
-        writer = NetCDFWriter(model, (; u = model.velocities.u,
-                                      v = model.velocities.v,
-                                      eta = model.free_surface.displacement);
-                              filename,
-                              schedule = IterationInterval(1),
-                              overwrite_existing = true)
-
-        close(writer)
-
-        ds = NCDataset(filename)
-        reconstructed_grid = reconstruct_grid(ds)
-
-        @test reconstructed_grid isa LambertConformalConicGrid
-        @test haskey(ds.dim, "x_faa")
-        @test haskey(ds.dim, "x_caa")
-        @test haskey(ds.dim, "y_afa")
-        @test haskey(ds.dim, "y_aca")
-        @test haskey(ds, "Δx_fca")
-        @test haskey(ds, "Δy_cfa")
-        @test haskey(ds, "Az_cca")
-        @test haskey(ds, "Az_fca")
-        @test haskey(ds, "u")
-        @test haskey(ds, "v")
-        @test haskey(ds, "eta")
-        @test haskey(ds.dim, "z_aaf_displacement")
-        @test dimnames(ds["u"]) == ("x_faa", "y_aca", "z_aac", "time")
-        @test dimnames(ds["v"]) == ("x_caa", "y_afa", "z_aac", "time")
-        @test dimnames(ds["eta"]) == ("x_caa", "y_aca", "z_aaf_displacement", "time")
-        @test collect(ds["x_faa"][:]) ≈ [lcc_xnode(i, Face(), grid.conformal_mapping) for i in 1:size(grid, 1)+1]
-        @test collect(ds["x_caa"][:]) ≈ [lcc_xnode(i, Center(), grid.conformal_mapping) for i in 1:size(grid, 1)]
-        @test collect(ds["y_afa"][:]) ≈ [lcc_ynode(j, Face(), grid.conformal_mapping) for j in 1:size(grid, 2)+1]
-        @test collect(ds["y_aca"][:]) ≈ [lcc_ynode(j, Center(), grid.conformal_mapping) for j in 1:size(grid, 2)]
-
-        Δxᶠᶜᵃ_field = Field(xspacings(grid, Face(), Center()))
-        @test collect(ds["Δx_fca"][:, :]) ≈ Array(interior(Δxᶠᶜᵃ_field, :, :, 1))
-        @test collect(ds["Az_cca"][:, :]) ≈ Array(grid.Azᶜᶜᵃ[1:size(grid, 1), 1:size(grid, 2)])
-        @test collect(ds["Az_fca"][:, :]) ≈ Array(grid.Azᶠᶜᵃ[1:size(grid, 1)+1, 1:size(grid, 2)])
-        @test ds["x_caa"].attrib["units"] == "m"
-        @test ds["y_aca"].attrib["units"] == "m"
-        @test ds["Az_cca"].attrib["units"] == "m^2"
-        @test ds["u"].attrib["long_name"] == "Velocity in the local x-direction."
-        @test ds["v"].attrib["long_name"] == "Velocity in the local y-direction."
-        @test ds["u"].attrib["units"] == "m/s"
-        @test ds["v"].attrib["units"] == "m/s"
-
-        close(ds)
-        rm(filename, force = true)
-    end
-
-    @testset "NetCDFWriter reduced and sliced metadata" begin
-        grid = LambertConformalConicGrid(CPU(), Float64;
-                                         size = (6, 5, 3),
-                                         center = (-105, 40),
-                                         spacing = 20e3,
-                                         standard_parallels = (30, 60),
-                                         z = (-30, 0))
-
-        model = HydrostaticFreeSurfaceModel(grid; tracers = :c)
-        c_xavg = Field(Average(model.tracers.c, dims = (1,)))
-        filename = tempname() * ".nc"
-
-        writer = NetCDFWriter(model, (; c = model.tracers.c, c_xavg);
-                              filename,
-                              schedule = IterationInterval(1),
-                              indices = (:, :, 1),
-                              overwrite_existing = true)
-
-        close(writer)
-
-        ds = NCDataset(filename)
-
-        @test dimnames(ds["c"]) == ("x_caa", "y_aca", "z_aac", "time")
-        @test dimnames(ds["c_xavg"]) == ("y_aca", "z_aac", "time")
-        @test size(ds["c"]) == (6, 5, 1, 0)
-        @test size(ds["c_xavg"]) == (5, 1, 0)
-        @test collect(ds["z_aac"][:]) == [-25.0]
-        @test dimnames(ds["Az_cca"]) == ("x_caa", "y_aca")
-        @test collect(ds["Az_cca"][:, :]) ≈ Array(grid.Azᶜᶜᵃ[1:6, 1:5])
-        @test collect(ds["Δz_aac"][:]) == [10.0]
-
-        close(ds)
-        rm(filename, force = true)
-    end
-
-    @testset "NetCDFWriter indexed metadata" begin
-        grid = LambertConformalConicGrid(CPU(), Float64;
-                                         size = (6, 5, 3),
-                                         center = (-105, 40),
-                                         spacing = 20e3,
-                                         standard_parallels = (30, 60),
-                                         z = (-30, 0))
-
-        model = HydrostaticFreeSurfaceModel(grid; tracers = :c)
-        filename = tempname() * ".nc"
-        x_indices = 2:5
-        y_indices = 2:4
-
-        writer = NetCDFWriter(model, (; c = model.tracers.c);
-                              filename,
-                              schedule = IterationInterval(1),
-                              indices = (x_indices, y_indices, 1),
-                              overwrite_existing = true)
-
-        close(writer)
-
-        ds = NCDataset(filename)
-
-        @test dimnames(ds["c"]) == ("x_caa", "y_aca", "z_aac", "time")
-        @test size(ds["c"]) == (length(x_indices), length(y_indices), 1, 0)
-        @test collect(ds["x_caa"][:]) ≈
-              [lcc_xnode(i, Center(), grid.conformal_mapping) for i in x_indices]
-        @test collect(ds["y_aca"][:]) ≈
-              [lcc_ynode(j, Center(), grid.conformal_mapping) for j in y_indices]
-        @test collect(ds["z_aac"][:]) == [-25.0]
-        @test dimnames(ds["Az_cca"]) == ("x_caa", "y_aca")
-        @test size(ds["Az_cca"]) == (length(x_indices), length(y_indices))
-        @test collect(ds["Az_cca"][:, :]) ≈ Array(grid.Azᶜᶜᵃ[x_indices, y_indices])
-
-        close(ds)
-        rm(filename, force = true)
-    end
-
-    @testset "NetCDFWriter metadata with halos" begin
-        grid = LambertConformalConicGrid(CPU(), Float64;
-                                         size = (4, 3, 2),
-                                         center = (-105, 40),
-                                         spacing = 20e3,
-                                         standard_parallels = (30, 60),
-                                         z = (-20, 0),
-                                         halo = (2, 2, 1))
-
-        model = HydrostaticFreeSurfaceModel(grid; tracers = :c)
-        filename = tempname() * ".nc"
-
-        writer = NetCDFWriter(model, (; c = model.tracers.c);
-                              filename,
-                              schedule = IterationInterval(1),
-                              with_halos = true,
-                              overwrite_existing = true)
-
-        close(writer)
-
-        ds = NCDataset(filename)
-
-        x_face_indices = -1:7
-        x_center_indices = -1:6
-        y_face_indices = -1:6
-        y_center_indices = -1:5
-
-        @test dimnames(ds["c"]) == ("x_caa", "y_aca", "z_aac", "time")
-        @test size(ds["c"]) == (8, 7, 4, 0)
-        @test collect(ds["x_faa"][:]) ≈ [lcc_xnode(i, Face(), grid.conformal_mapping) for i in x_face_indices]
-        @test collect(ds["x_caa"][:]) ≈ [lcc_xnode(i, Center(), grid.conformal_mapping) for i in x_center_indices]
-        @test collect(ds["y_afa"][:]) ≈ [lcc_ynode(j, Face(), grid.conformal_mapping) for j in y_face_indices]
-        @test collect(ds["y_aca"][:]) ≈ [lcc_ynode(j, Center(), grid.conformal_mapping) for j in y_center_indices]
-        @test collect(ds["z_aaf"][:]) == [-30.0, -20.0, -10.0, 0.0, 10.0]
-        @test collect(ds["z_aac"][:]) == [-25.0, -15.0, -5.0, 5.0]
-        @test collect(ds["Δz_aaf"][:]) == [10.0, 10.0, 10.0, 10.0, 10.0]
-        @test collect(ds["Δz_aac"][:]) == [10.0, 10.0, 10.0, 10.0]
-        @test haskey(ds, "Az_cca")
-        @test dimnames(ds["Az_cca"]) == ("x_caa", "y_aca")
-        @test size(ds["Az_cca"]) == (length(x_center_indices), length(y_center_indices))
-        @test collect(ds["Az_cca"][:, :]) ≈ Array(grid.Azᶜᶜᵃ[x_center_indices, y_center_indices])
-
-        close(ds)
-        rm(filename, force = true)
-    end
-
-    @testset "NetCDFWriter multi-grid metadata" begin
-        lcc_grid = LambertConformalConicGrid(CPU(), Float64;
-                                             size = (4, 3, 1),
-                                             center = (-105, 40),
-                                             spacing = 20e3,
-                                             standard_parallels = (30, 60),
-                                             z = (-10, 0))
-
-        rectilinear_grid = RectilinearGrid(CPU(), Float64;
-                                           size = (4, 3, 1),
-                                           x = (0, 1),
-                                           y = (0, 1),
-                                           z = (-10, 0))
-
-        model = HydrostaticFreeSurfaceModel(lcc_grid; tracers = :c)
-        q = CenterField(rectilinear_grid)
-        filename = tempname() * ".nc"
-
-        writer = NetCDFWriter(model, (; c = model.tracers.c, q);
-                              filename,
-                              schedule = IterationInterval(1),
-                              overwrite_existing = true)
-
-        close(writer)
-
-        ds = NCDataset(filename)
-        reconstructed_lcc_grid = reconstruct_grid(ds; grid_index = 1)
-        reconstructed_rectilinear_grid = reconstruct_grid(ds; grid_index = 2)
-
-        @test reconstructed_lcc_grid isa LambertConformalConicGrid
-        @test reconstructed_rectilinear_grid isa RectilinearGrid
-        @test dimnames(ds["c"]) == ("x_caa_grid1", "y_aca_grid1", "z_aac_grid1", "time")
-        @test dimnames(ds["q"]) == ("x_caa_grid2", "y_aca_grid2", "z_aac_grid2", "time")
-        @test ds["c"].attrib["grid_index"] == 1
-        @test ds["q"].attrib["grid_index"] == 2
-        @test haskey(ds.dim, "x_faa_grid1")
-        @test haskey(ds.dim, "x_faa_grid2")
-        @test haskey(ds.group, "grid_1_underlying_grid_reconstruction_args")
-        @test haskey(ds.group, "grid_2_underlying_grid_reconstruction_args")
-        @test haskey(ds, "Az_cca_grid1")
-        @test haskey(ds, "Δx_caa_grid2")
-        @test dimnames(ds["Az_cca_grid1"]) == ("x_caa_grid1", "y_aca_grid1")
-        @test dimnames(ds["Δx_caa_grid2"]) == ("x_caa_grid2",)
-        xᶜᵃᵃ_grid1 = [lcc_xnode(i, Center(), lcc_grid.conformal_mapping) for i in 1:size(lcc_grid, 1)]
-        yᵃᶜᵃ_grid1 = [lcc_ynode(j, Center(), lcc_grid.conformal_mapping) for j in 1:size(lcc_grid, 2)]
-
-        @test collect(ds["x_caa_grid1"][:]) ≈ xᶜᵃᵃ_grid1
-        @test collect(ds["y_aca_grid1"][:]) ≈ yᵃᶜᵃ_grid1
-
-        close(ds)
-        rm(filename, force = true)
     end
 
     @testset "architecture construction and transfer" begin
@@ -1322,35 +1065,6 @@ end
                 @test all(isfinite, interior(η))
                 @test all(isfinite, interior(u))
                 @test all(isfinite, interior(v))
-
-                filename = tempname() * ".nc"
-
-                try
-                    writer = NetCDFWriter(model, (; eta = model.free_surface.displacement);
-                                          filename,
-                                          schedule = IterationInterval(1),
-                                          overwrite_existing = true)
-
-                    close(writer)
-
-                    NCDataset(filename) do ds
-                        reconstructed_grid = reconstruct_grid(ds)
-                        reconstructed_grid_cpu = on_architecture(CPU(), reconstructed_grid)
-
-                        @test reconstructed_grid isa LambertConformalConicGrid
-                        @test architecture(reconstructed_grid) == arch
-                        @test size(reconstructed_grid_cpu) == size(grid_cpu)
-                        @test halo_size(reconstructed_grid_cpu) == halo_size(grid_cpu)
-                        @test topology(reconstructed_grid_cpu) == topology(grid_cpu)
-                        @test reconstructed_grid_cpu.conformal_mapping == grid_cpu.conformal_mapping
-                        @test dimnames(ds["eta"]) ==
-                              ("x_caa", "y_aca", "z_aaf_displacement", "time")
-                        @test haskey(ds.group, "underlying_grid_reconstruction_args")
-                        @test haskey(ds, "Az_cca")
-                    end
-                finally
-                    rm(filename; force = true)
-                end
             end
         end
     end
