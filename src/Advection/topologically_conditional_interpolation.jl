@@ -21,11 +21,11 @@ using Oceananigans.Grids: AbstractGrid,
 
 const AG = AbstractGrid
 
-# `RC` topologies are bounded on the left (low index) and open on the right
-const RC = Union{RightConnected, RightFaceFolded, RightCenterFolded}
+# `LBT` topologies are bounded on the left (low index) and open on the right
+const LBT = Union{RightConnected, RightFaceFolded, RightCenterFolded}
 
 # Topologies bounded on at least one side.
-const BT = Union{Bounded, LeftConnected, RC}
+const BT = Union{Bounded, LeftConnected, LBT}
 
 # Bounded underlying Grids
 const AGX   = AG{<:Any, <:BT}
@@ -57,14 +57,14 @@ for dir in (:x, :y, :z)
                                                                     (i >= $required_halo_size(adv) - 1) & (i <= N + 1 - $required_halo_size(adv))          # Right bias
 
         # Left-bounded topologies (RightConnected + Right{Face,Center}Folded)
-        @inline $outside_symmetric_haloᶠ(i, ::Type{<:RC}, N, adv) = i >= $required_halo_size(adv) + 1
-        @inline $outside_symmetric_haloᶜ(i, ::Type{<:RC}, N, adv) = i >= $required_halo_size(adv)
+        @inline $outside_symmetric_haloᶠ(i, ::Type{<:LBT}, N, adv) = i >= $required_halo_size(adv) + 1
+        @inline $outside_symmetric_haloᶜ(i, ::Type{<:LBT}, N, adv) = i >= $required_halo_size(adv)
 
-        @inline $outside_biased_haloᶠ(i, ::Type{<:RC}, N, adv) = (i >= $required_halo_size(adv) + 1) &  # Left bias
-                                                                 (i >= $required_halo_size(adv))        # Right bias
-        @inline $outside_biased_haloᶜ(i, ::Type{<:RC}, N, adv) = (i >= $required_halo_size(adv))     &  # Left bias
-                                                                 (i >= $required_halo_size(adv) - 1)    # Right bias
-
+        @inline $outside_biased_haloᶠ(i, ::Type{<:LBT}, N, adv) = (i >= $required_halo_size(adv) + 1) &  # Left bias
+                                                                  (i >= $required_halo_size(adv))        # Right bias
+        @inline $outside_biased_haloᶜ(i, ::Type{<:LBT}, N, adv) = (i >= $required_halo_size(adv))     &  # Left bias
+                                                                  (i >= $required_halo_size(adv) - 1)    # Right bias
+ 
         # Left bounded topologies (only test the right side, i.e. the bounded side)
         @inline $outside_symmetric_haloᶠ(i, ::Type{LeftConnected}, N, adv) = (i <= N + 1 - $required_halo_size(adv))
         @inline $outside_symmetric_haloᶜ(i, ::Type{LeftConnected}, N, adv) = (i <= N + 1 - $required_halo_size(adv))
