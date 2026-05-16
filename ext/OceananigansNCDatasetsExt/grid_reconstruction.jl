@@ -120,12 +120,9 @@ function vertical_spacing_field(grid, lz)
     field = Field{Nothing, Nothing, typeof(lz)}(grid)
     Δ = lz isa Center ? grid.z.Δᵃᵃᶜ : grid.z.Δᵃᵃᶠ
     Nz_int = length(interior_indices(lz, topology(grid, 3)(), size(grid, 3)))
-
     interior_data = Δ isa Number ? fill(eltype(grid)(Δ), Nz_int) :
-                                   eltype(grid).(collect(on_architecture(CPU(), Δ)[1:Nz_int]))
-
-    set!(field, reshape(interior_data, (1, 1, Nz_int)))
-
+                                   eltype(grid).(collect(Δ[1:Nz_int]))
+    interior(field) .= reshape(interior_data, (1, 1, Nz_int))
     return field
 end
 
@@ -402,4 +399,213 @@ function reconstruct_grid(ds; grid_index=1, architecture=nothing)
     prefixed_key = "grid_$(grid_index)_underlying_grid_reconstruction_args"
     prefix = haskey(ds.group, prefixed_key) ? "grid_$(grid_index)_" : ""
 
-Tool call has probably failed/truncated? It ended with content truncated at line about prefix, because max? Actually the tool call JSON maybe didn't include full content after prefix due to my output cut? It was cut in prompt? The mcp response not returned yet. Need see. Wait tool call is in commentary to mcp, but output? It hasn't printed result. Did it fail due invalid JSON? It may be waiting? No result in conversation maybe because tool call too long got cut? The tool call content in assistant message ended at 
+    # Read back the grid reconstruction metadata
+    underlying_grid_reconstruction_args   = ds.group["$(prefix)underlying_grid_reconstruction_args"].attrib |> Dict
+    if !isnothing(architecture) # If architecture is specified, force it into the underlying grid reconstruction arguments before materializing
+        underlying_grid_reconstruction_args["architecture"] = architecture
+    end
+    underlying_grid_reconstruction_args   = underlying_grid_reconstruction_args |> materialize_from_netcdf
+    underlying_grid_reconstruction_kwargs = ds.group["$(prefix)underlying_grid_reconstruction_kwargs"].attrib |> materialize_from_netcdf
+    grid_reconstruction_metadata          = ds.group["$(prefix)grid_reconstruction_metadata"].attrib |> materialize_from_netcdf
+
+    # Pop out information about the underlying grid
+    underlying_grid_type = grid_reconstruction_metadata[:underlying_grid_type]
+
+    # OSSG (TripolarGrid, RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid, …)
+    # is rebuilt directly from the saved λ/φ/Δx/Δy/Az/z arrays — bypassing the user-facing
+    # constructor of the original alias. The reconstructed grid is a generic
+    # `OrthogonalSphericalShellGrid` (with `conformal_mapping = nothing`), which is the
+    # most we can faithfully recover from on-disk state alone.
+    if underlying_grid_type <: OrthogonalSphericalShellGrid
+        underlying_grid = reconstruct_ossg_grid(ds, prefix,
+                                                underlying_grid_reconstruction_args,
+                                                underlying_grid_reconstruction_kwargs)
+    else
+        underlying_grid = underlying_grid_type(values(underlying_grid_reconstruction_args)...; underlying_grid_reconstruction_kwargs...)
+    end
+
+    # If this is an ImmersedBoundaryGrid, reconstruct the immersed boundary, otherwise underlying grid is the final grid
+    if isnothing(grid_reconstruction_metadata[:immersed_boundary_type])
+        grid = underlying_grid
+    else
+        immersed_boundary = reconstruct_immersed_boundary(ds, prefix)
+        immersed_boundary = on_architecture(Architectures.architecture(underlying_grid), immersed_boundary)
+        grid = ImmersedBoundaryGrid(underlying_grid, immersed_boundary)
+    end
+
+    return grid
+end
+
+#####
+##### Metrics-based OrthogonalSphericalShellGrid reconstruction
+#####
+#
+# OSSG variants (TripolarGrid, RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid)
+# are rebuilt directly from the eight λ/φ aux-coord arrays + twelve Δx/Δy/Az metric
+# arrays + the z vertical-coordinate scaffold — without going through the original
+# constructor. This means:
+#   - Reconstruction is uniform across OSSG aliases (one code path).
+#   - The reconstructed grid is a generic `OrthogonalSphericalShellGrid` with
+#     `conformal_mapping = nothing`. The type-alias identity (e.g. `TripolarGrid`)
+#     is *not* preserved — a faithful copy of the grid arrays is the contract.
+#   - Requires `include_grid_metrics = true` on the writer (the default).
+#
+# Halo regions: if the writer was run with `with_halos = true`, the saved arrays
+# already include halos and are copied in directly. Otherwise the file holds interior
+# values only, and the halo cells of the reconstructed arrays are left as zeros
+# (NaN-filling would be a kinder choice if floating-point hazards matter to consumers).
+
+"""
+    reconstruct_ossg_grid(ds, prefix, args, kwargs)
+
+Rebuild an `OrthogonalSphericalShellGrid` from the metric arrays stored in `ds`. Used
+internally by `reconstruct_grid` for any underlying grid type that is a subtype of
+`OrthogonalSphericalShellGrid` (TripolarGrid, RotatedLatitudeLongitudeGrid, etc.).
+"""
+function reconstruct_ossg_grid(ds, prefix, args, kwargs)
+    arch = args[:architecture]
+    FT   = args[:number_type]
+
+    # Size/halo come back from the file as `Int32`; normalize to `Int`.
+    Nx, Ny, Nz = map(Int, kwargs[:size])
+    Hx, Hy, Hz = map(Int, kwargs[:halo])
+    topo       = kwargs[:topology]
+    radius     = FT(kwargs[:radius])
+    TX, TY, TZ = topo
+    topo_instances = (TX(), TY(), TZ())
+
+    file_has_halos = haskey(ds.attrib, "output_includes_halos")
+
+    # Vertical: detect whether the file used "z" (Static) or "r" (Mutable) for the
+    # reference 1D coordinate. Read the Face nodes and let `generate_coordinate`
+    # rebuild the full halo-padded `StaticVerticalDiscretization`.
+    z_face_var = "$(prefix)z_aaf"
+    r_face_var = "$(prefix)r_aaf"
+    if r_face_var ∈ keys(ds)
+        face_var = r_face_var
+    elseif z_face_var ∈ keys(ds)
+        face_var = z_face_var
+    else
+        throw(ArgumentError("No vertical coordinate variable (z_aaf or r_aaf) found in dataset for OSSG reconstruction."))
+    end
+    z_face_data = collect(ds[face_var])
+    interior_z_faces = file_has_halos ? z_face_data[Hz+1:Hz+Nz+1] : z_face_data
+    Lz, z_disc = generate_coordinate(FT, TZ(), Nz, Hz, collect(interior_z_faces), :z, arch)
+
+    # Read 2D aux coords + metrics and pad with halos as needed.
+    read_2d(name, lx, ly) = read_ossg_halo_padded_array(ds, "$(prefix)$(name)",
+                                                       FT, arch, lx, ly,
+                                                       topo_instances, (Nx, Ny, Nz), (Hx, Hy, Hz),
+                                                       file_has_halos)
+
+    λcc = read_2d("λ_cca", Center(), Center())
+    λfc = read_2d("λ_fca", Face(),   Center())
+    λcf = read_2d("λ_cfa", Center(), Face())
+    λff = read_2d("λ_ffa", Face(),   Face())
+
+    φcc = read_2d("φ_cca", Center(), Center())
+    φfc = read_2d("φ_fca", Face(),   Center())
+    φcf = read_2d("φ_cfa", Center(), Face())
+    φff = read_2d("φ_ffa", Face(),   Face())
+
+    # Metrics may not be present if the writer ran with `include_grid_metrics=false`.
+    have_metrics = "$(prefix)Δx_cca" ∈ keys(ds)
+    if !have_metrics
+        throw(ArgumentError("OrthogonalSphericalShellGrid reconstruction requires grid metrics " *
+                            "(Δx_**, Δy_**, Az_**). Re-run the writer with `include_grid_metrics=true`."))
+    end
+
+    Δxcc = read_2d("Δx_cca", Center(), Center())
+    Δxfc = read_2d("Δx_fca", Face(),   Center())
+    Δxcf = read_2d("Δx_cfa", Center(), Face())
+    Δxff = read_2d("Δx_ffa", Face(),   Face())
+
+    Δycc = read_2d("Δy_cca", Center(), Center())
+    Δyfc = read_2d("Δy_fca", Face(),   Center())
+    Δycf = read_2d("Δy_cfa", Center(), Face())
+    Δyff = read_2d("Δy_ffa", Face(),   Face())
+
+    Azcc = read_2d("Az_cca", Center(), Center())
+    Azfc = read_2d("Az_fca", Face(),   Center())
+    Azcf = read_2d("Az_cfa", Center(), Face())
+    Azff = read_2d("Az_ffa", Face(),   Face())
+
+    # Reconstruct the conformal_mapping (if saved) so the resulting grid keeps its
+    # type-alias identity (TripolarGrid / RotatedLatitudeLongitudeGrid). This is what
+    # downstream code (boundary-condition defaults, kernel dispatch) keys on.
+    cm_group_key = "$(prefix)conformal_mapping"
+    conformal_mapping = haskey(ds.group, cm_group_key) ?
+        reconstruct_conformal_mapping(ds.group[cm_group_key].attrib, TY) : nothing
+
+    return OrthogonalSphericalShellGrid{FT, TX, TY, TZ}(arch,
+                                                         Nx, Ny, Nz, Hx, Hy, Hz,
+                                                         FT(Lz),
+                                                         λcc, λfc, λcf, λff,
+                                                         φcc, φfc, φcf, φff,
+                                                         z_disc,
+                                                         Δxcc, Δxfc, Δxcf, Δxff,
+                                                         Δycc, Δyfc, Δycf, Δyff,
+                                                         Azcc, Azfc, Azcf, Azff,
+                                                         radius,
+                                                         conformal_mapping)
+end
+
+# Rebuild the `conformal_mapping` from its serialized attributes (see
+# `conformal_mapping_info` in `src/OrthogonalSphericalShellGrids/`). The `TY`
+# argument is the y-topology type — for `Tripolar`, that's the fold flavor
+# (`RightCenterFolded`/`RightFaceFolded`) which lives as a type-parameter on
+# the struct rather than a runtime field.
+reconstruct_conformal_mapping(attrib, TY) = reconstruct_conformal_mapping(attrib, Val(Symbol(attrib["type"])), TY)
+
+reconstruct_conformal_mapping(attrib, ::Val{:Nothing}, TY) = nothing
+
+function reconstruct_conformal_mapping(attrib, ::Val{:Tripolar}, TY)
+    return Tripolar(
+        attrib["north_poles_latitude"],
+        attrib["first_pole_longitude"],
+        attrib["southernmost_latitude"],
+        TY,
+    )
+end
+
+function reconstruct_conformal_mapping(attrib, ::Val{:LatitudeLongitudeRotation}, TY)
+    return LatitudeLongitudeRotation((attrib["north_pole_λ"], attrib["north_pole_φ"]))
+end
+
+# Unknown conformal-mapping types (e.g., `CubedSphereConformalMapping`) — leave as
+# `nothing`; the grid will still be usable as a generic OSSG.
+reconstruct_conformal_mapping(attrib, ::Val, TY) = nothing
+
+# Read a 2D OSSG metric/coord variable from the file and pad it out to the halo-included
+# shape that the OSSG constructor expects. Returns an OffsetMatrix indexed `[1-Hx:Nx+Hx, …]`.
+function read_ossg_halo_padded_array(ds, name, FT, arch, lx, ly, topo_instances, sz, halo_sz, file_has_halos)
+    Nx, Ny, Nz = sz
+    TX, TY, _  = topo_instances
+
+    # Allocate a halo-padded 2D array via `Oceananigans.Grids.new_data` (imported as
+    # `allocate_grid_data` to avoid colliding with `OutputReaders`' separate `new_data`),
+    # then drop the singleton vertical dim so we get an `OffsetMatrix` the OSSG
+    # constructor accepts.
+    full3d = allocate_grid_data(FT, arch, (lx, ly, nothing), topo_instances, sz, halo_sz)
+    full2d = OffsetArray(dropdims(parent(full3d), dims=3), full3d.offsets[1:2]...)
+
+    raw = collect(ds[name])
+
+    if file_has_halos
+        # The saved array already includes halos. Sanity-check the size and assign through.
+        expected_full = size(parent(full2d))
+        size(raw) == expected_full || throw(ArgumentError(
+            "Saved array '$name' has size $(size(raw)) but expected halo-included size $expected_full."))
+        parent(full2d) .= FT.(raw)
+    else
+        # The saved array is the interior only. Copy it into the interior of the halo array.
+        i_range = interior_indices(lx, TX, Nx)
+        j_range = interior_indices(ly, TY, Ny)
+        expected_interior = (length(i_range), length(j_range))
+        size(raw) == expected_interior || throw(ArgumentError(
+            "Saved array '$name' has size $(size(raw)) but expected interior size $expected_interior."))
+        full2d[i_range, j_range] .= FT.(raw)
+    end
+
+    return full2d
+end
