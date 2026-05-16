@@ -81,40 +81,48 @@ function materialize_forcing(forcing::Relaxation, field, field_name, model_field
 end
 
 """
-    struct FieldTimeSeriesTarget{L, F, I}
+    struct FieldTimeSeriesTarget{L, F, G, I}
 
 Materialized `Relaxation` target that carries a `FieldTimeSeries` source, the
-simulation-side location at which the relaxation is evaluated, and the integer
-index of the forced field in `model_fields`. The index is encoded as a type
-parameter `I::Int` (not a struct field) so that `model_fields[I]` is a
-compile-time access — required for GPU kernel compilation, since
-`model_fields` is a heterogeneous `NamedTuple` and a runtime-integer index
-would force a dynamic getfield call that PTX cannot lower. Constructed by
-`materialize_forcing` when a `Relaxation`'s `target` is a `FieldTimeSeries`;
-not intended for direct user construction.
+simulation-side location at which the relaxation is evaluated, the FTS's grid
+(cached separately because `GPUAdaptedFieldTimeSeries` does not carry a grid
+field), and the integer index of the forced field in `model_fields`. The
+index is encoded as a type parameter `I::Int` (not a struct field) so that
+`model_fields[I]` is a compile-time access — required for GPU kernel
+compilation, since `model_fields` is a heterogeneous `NamedTuple` and a
+runtime-integer index would force a dynamic getfield call that PTX cannot
+lower. Constructed by `materialize_forcing` when a `Relaxation`'s `target`
+is a `FieldTimeSeries`; not intended for direct user construction.
 """
-struct FieldTimeSeriesTarget{L, F, I}
+struct FieldTimeSeriesTarget{L, F, G, I}
     location          :: L    # simulation-side instantiated location tuple
     field_time_series :: F
+    fts_grid          :: G    # explicit copy of `field_time_series.grid` at materialize time
 end
 
+FieldTimeSeriesTarget(location, field_time_series, fts_grid, index::Int) =
+    FieldTimeSeriesTarget{typeof(location), typeof(field_time_series), typeof(fts_grid), index}(location, field_time_series, fts_grid)
+
+# Convenience: pull the grid off the FTS at construction. Used by
+# `materialize_forcing` on the host side.
 FieldTimeSeriesTarget(location, field_time_series, index::Int) =
-    FieldTimeSeriesTarget{typeof(location), typeof(field_time_series), index}(location, field_time_series)
+    FieldTimeSeriesTarget(location, field_time_series, field_time_series.grid, index)
 
 # Extract the field index from the type parameter. Used by the kernel callable
 # so that `model_fields[_field_index(target)]` resolves to a compile-time index
 # and the surrounding load can be inlined on GPU.
-@inline _field_index(::FieldTimeSeriesTarget{<:Any, <:Any, I}) where I = I
+@inline _field_index(::FieldTimeSeriesTarget{<:Any, <:Any, <:Any, I}) where I = I
 
-# Adapt the inner `field_time_series` so that its `CuArray` data is converted
-# to `CuDeviceArray` (bitstype) before the kernel sees it. Without this, the
-# default Adapt fallback would return the host-side `FieldTimeSeriesTarget`
-# unchanged and the GPU launcher would reject it for carrying non-isbits
-# CUDA reference-counting state. The index is reinjected from the type
-# parameter so the resulting struct preserves the static-index property.
-Adapt.adapt_structure(to, target::FieldTimeSeriesTarget{<:Any, <:Any, I}) where I =
+# Adapt every component individually so the resulting struct is isbits.
+# In particular `field_time_series.grid` cannot be recovered from the
+# adapted FTS (because `GPUAdaptedFieldTimeSeries` has no grid field), so
+# the grid lives as its own field on `FieldTimeSeriesTarget` and is adapted
+# in place. The index is reinjected from the type parameter so the resulting
+# struct preserves the static-index property.
+Adapt.adapt_structure(to, target::FieldTimeSeriesTarget{<:Any, <:Any, <:Any, I}) where I =
     FieldTimeSeriesTarget(Adapt.adapt(to, target.location),
                           Adapt.adapt(to, target.field_time_series),
+                          Adapt.adapt(to, target.fts_grid),
                           I)
 
 # Recursive Adapt for `Relaxation` so that an inner `FieldTimeSeriesTarget`
@@ -133,7 +141,7 @@ const FieldTimeSeriesRelaxation{R, M, T<:FieldTimeSeriesTarget} = Relaxation{R, 
     fts = target.field_time_series
     X = node(i, j, k, grid, target.location...)
     @inbounds ϕ = model_fields[_field_index(target)][i, j, k]
-    ϕᵣ = interpolate(X, Time(clock.time), fts, instantiated_location(fts), fts.grid)
+    ϕᵣ = interpolate(X, Time(clock.time), fts, instantiated_location(fts), target.fts_grid)
     return f.rate * f.mask(X...) * (ϕᵣ - ϕ)
 end
 
