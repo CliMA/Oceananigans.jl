@@ -95,6 +95,25 @@ struct FieldTimeSeriesTarget{L, F}
     index               :: Int  # index of the forced field in `model_fields`
 end
 
+# Adapt the inner `field_time_series` so that its `CuArray` data is converted
+# to `CuDeviceArray` (bitstype) before the kernel sees it. Without this, the
+# default Adapt fallback would return the host-side `FieldTimeSeriesTarget`
+# unchanged and the GPU launcher would reject it for carrying non-isbits
+# CUDA reference-counting state.
+Adapt.adapt_structure(to, target::FieldTimeSeriesTarget) =
+    FieldTimeSeriesTarget(Adapt.adapt(to, target.location),
+                          Adapt.adapt(to, target.field_time_series),
+                          target.index)
+
+# Recursive Adapt for `Relaxation` so that an inner `FieldTimeSeriesTarget`
+# is adapted on the path to the kernel. Without this, Relaxation's default
+# Adapt fallback returns the host-side struct unchanged, and the FTS-target
+# adapt above is never reached.
+Adapt.adapt_structure(to, r::Relaxation) =
+    Relaxation(Adapt.adapt(to, r.rate),
+               Adapt.adapt(to, r.mask),
+               Adapt.adapt(to, r.target))
+
 const FieldTimeSeriesRelaxation{R, M, T<:FieldTimeSeriesTarget} = Relaxation{R, M, T}
 
 @inline function (f::FieldTimeSeriesRelaxation)(i, j, k, grid, clock, model_fields)
