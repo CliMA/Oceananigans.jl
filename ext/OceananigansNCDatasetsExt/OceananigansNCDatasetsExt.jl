@@ -101,6 +101,7 @@ const f = Face()
 include("utils.jl")
 include("dimensions.jl")
 include("grid_reconstruction.jl")
+include("gpu_vertical_spacing_field.jl")
 include("netcdf_writer.jl")
 include("output_readers.jl")
 
