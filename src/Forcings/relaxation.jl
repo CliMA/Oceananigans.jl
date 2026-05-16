@@ -81,29 +81,41 @@ function materialize_forcing(forcing::Relaxation, field, field_name, model_field
 end
 
 """
-    struct FieldTimeSeriesTarget{L, F}
+    struct FieldTimeSeriesTarget{L, F, I}
 
 Materialized `Relaxation` target that carries a `FieldTimeSeries` source, the
 simulation-side location at which the relaxation is evaluated, and the integer
-index of the forced field in `model_fields`. Constructed by `materialize_forcing`
-when a `Relaxation`'s `target` is a `FieldTimeSeries`; not intended for direct
-user construction.
+index of the forced field in `model_fields`. The index is encoded as a type
+parameter `I::Int` (not a struct field) so that `model_fields[I]` is a
+compile-time access — required for GPU kernel compilation, since
+`model_fields` is a heterogeneous `NamedTuple` and a runtime-integer index
+would force a dynamic getfield call that PTX cannot lower. Constructed by
+`materialize_forcing` when a `Relaxation`'s `target` is a `FieldTimeSeries`;
+not intended for direct user construction.
 """
-struct FieldTimeSeriesTarget{L, F}
-    location            :: L    # simulation-side instantiated location tuple
-    field_time_series   :: F
-    index               :: Int  # index of the forced field in `model_fields`
+struct FieldTimeSeriesTarget{L, F, I}
+    location          :: L    # simulation-side instantiated location tuple
+    field_time_series :: F
 end
+
+FieldTimeSeriesTarget(location, field_time_series, index::Int) =
+    FieldTimeSeriesTarget{typeof(location), typeof(field_time_series), index}(location, field_time_series)
+
+# Extract the field index from the type parameter. Used by the kernel callable
+# so that `model_fields[_field_index(target)]` resolves to a compile-time index
+# and the surrounding load can be inlined on GPU.
+@inline _field_index(::FieldTimeSeriesTarget{<:Any, <:Any, I}) where I = I
 
 # Adapt the inner `field_time_series` so that its `CuArray` data is converted
 # to `CuDeviceArray` (bitstype) before the kernel sees it. Without this, the
 # default Adapt fallback would return the host-side `FieldTimeSeriesTarget`
 # unchanged and the GPU launcher would reject it for carrying non-isbits
-# CUDA reference-counting state.
-Adapt.adapt_structure(to, target::FieldTimeSeriesTarget) =
+# CUDA reference-counting state. The index is reinjected from the type
+# parameter so the resulting struct preserves the static-index property.
+Adapt.adapt_structure(to, target::FieldTimeSeriesTarget{<:Any, <:Any, I}) where I =
     FieldTimeSeriesTarget(Adapt.adapt(to, target.location),
                           Adapt.adapt(to, target.field_time_series),
-                          target.index)
+                          I)
 
 # Recursive Adapt for `Relaxation` so that an inner `FieldTimeSeriesTarget`
 # is adapted on the path to the kernel. Without this, Relaxation's default
@@ -120,7 +132,7 @@ const FieldTimeSeriesRelaxation{R, M, T<:FieldTimeSeriesTarget} = Relaxation{R, 
     target = f.target
     fts = target.field_time_series
     X = node(i, j, k, grid, target.location...)
-    @inbounds ϕ = model_fields[target.index][i, j, k]
+    @inbounds ϕ = model_fields[_field_index(target)][i, j, k]
     ϕᵣ = interpolate(X, Time(clock.time), fts, instantiated_location(fts), fts.grid)
     return f.rate * f.mask(X...) * (ϕᵣ - ϕ)
 end
