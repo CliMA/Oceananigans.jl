@@ -182,6 +182,13 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     return Oceananigans.ImmersedBoundaries.ImmersedBoundaryGrid{FT2, TX2, TY2, TZ2, G2, I2, M2, S2, Arch}
 end
 
+@inline Reactant.make_tracer(
+    seen,
+    @nospecialize(prev::Oceananigans.ImmersedBoundaries.ImmersedBoundaryGrid),
+    args...;
+    kwargs...
+    ) = Reactant.make_tracer_via_immutable_constructor(seen, prev, args...; kwargs...)
+
 Base.@nospecializeinfer function Reactant.traced_type_inner(
     @nospecialize(OA::Type{LatitudeLongitudeGrid{FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC,
                                                  DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I}}),
@@ -225,12 +232,60 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     return res
 end
 
-@inline Reactant.make_tracer(
-    seen,
-    @nospecialize(prev::Oceananigans.Grids.LatitudeLongitudeGrid),
-    args...;
-    kwargs...
-    ) = Reactant.make_tracer_via_immutable_constructor(seen, prev, args...; kwargs...)
+Base.@nospecializeinfer function Reactant.traced_type_inner(
+        @nospecialize(OA::Type{RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch}}),
+        seen,
+        mode::Reactant.TraceMode,
+        @nospecialize(track_numbers::Type),
+        @nospecialize(sharding),
+        @nospecialize(runtime)
+    ) where {FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch}
+
+        @show (FT, TX, TY, TZ, CZ, FX, FY, VX, VY)
+
+        TX2 = Reactant.traced_type_inner(TX, seen, mode, track_numbers, sharding, runtime)
+        TY2 = Reactant.traced_type_inner(TY, seen, mode, track_numbers, sharding, runtime)
+        TZ2 = Reactant.traced_type_inner(TZ, seen, mode, track_numbers, sharding, runtime)
+        CZ2 = Reactant.traced_type_inner(CZ, seen, mode, track_numbers, sharding, runtime)
+        FX2 = Reactant.traced_type_inner(FX, seen, mode, track_numbers, sharding, runtime)
+        FY2 = Reactant.traced_type_inner(FY, seen, mode, track_numbers, sharding, runtime)
+        VX2 = Reactant.traced_type_inner(VX, seen, mode, track_numbers, sharding, runtime)
+        VY2 = Reactant.traced_type_inner(VY, seen, mode, track_numbers, sharding, runtime)
+        FT2 = Reactant.traced_type_inner(FT, seen, mode, track_numbers, sharding, runtime)
+
+        for NF in (FX2, FY2, VX2, VY2)
+            if NF === Nothing
+               continue
+            end
+            FT2 = Reactant.promote_traced_type(FT2, eltype(NF))
+        end
+
+        @show (FT2, TX2, TY2, TZ2, CZ2, FX2, FY2, VX2, VY2)
+    
+        res = Oceananigans.Grids.RectilinearGrid{FT2, TX2, TY2, TZ2, CZ2, FX2, FY2, VX2, VY2, Arch}
+
+        @show "We hit traced type inner!"
+        @show OA
+        @show res
+
+        return res
+    end
+    
+@inline function Reactant.make_tracer(
+        seen,
+        @nospecialize(prev::Oceananigans.Grids.RectilinearGrid),
+        args...;
+        kwargs...
+        )
+
+        res = Reactant.make_tracer_via_immutable_constructor(seen, prev, args...; kwargs...)
+
+        @show "Hit make tracer!"
+        @show Core.Typeof(prev)
+        @show Core.Typeof(res)
+
+        return res
+end
 
 struct Fix1v2{F,T}
     f::F
