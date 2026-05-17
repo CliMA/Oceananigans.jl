@@ -542,7 +542,6 @@ end
                                          z=(0, 1), radius=1)
         local_Ny = Ny ÷ 4
         rank = arch.local_rank
-        child_arch = child_architecture(arch)
         local_bh = on_architecture(child_arch, fill(0.1 + 0.25 * rank, Nx, local_Ny))
         local_mask = on_architecture(child_arch, falses(Nx, local_Ny, Nz))
 
