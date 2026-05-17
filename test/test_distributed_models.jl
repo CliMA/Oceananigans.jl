@@ -542,8 +542,9 @@ end
                                          z=(0, 1), radius=1)
         local_Ny = Ny ÷ 4
         rank = arch.local_rank
-        local_bh = fill(0.1 + 0.25 * rank, Nx, local_Ny)
-        local_mask = falses(Nx, local_Ny, Nz)
+        child_arch = child_architecture(arch)
+        local_bh = on_architecture(child_arch, fill(0.1 + 0.25 * rank, Nx, local_Ny))
+        local_mask = on_architecture(child_arch, falses(Nx, local_Ny, Nz))
 
         ibg_gfb = ImmersedBoundaryGrid(ug, GridFittedBottom(local_bh))
         ibg_pcb = ImmersedBoundaryGrid(ug,
