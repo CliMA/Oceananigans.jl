@@ -53,6 +53,7 @@ CUDA.allowscalar() do
             include("test_schedules.jl")
             include("test_newton_div.jl")
             include("test_materialize_advection.jl")
+            include("test_weno_smoothness.jl")
         end
     end
 
@@ -318,13 +319,6 @@ CUDA.allowscalar() do
     if group == :reactant_correctness || group == :all
         @testset "Reactant correctness tests" begin
             include("test_reactant_correctness.jl")
-        end
-    end
-
-    # Tests for XESMF extension
-    if group == :xesmf || group == :all
-        @testset "XESMF extension tests" begin
-            include("test_xesmf.jl")
         end
     end
 

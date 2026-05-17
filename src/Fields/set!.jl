@@ -18,7 +18,7 @@ tuple_string(tup::Tuple{}) = ""
 ##### set!
 #####
 
-set!(obj, ::Nothing) = nothing
+set!(obj::AbstractField, ::Nothing) = nothing
 
 function set!(Φ::NamedTuple; kwargs...)
     for (fldname, value) in kwargs
@@ -26,6 +26,20 @@ function set!(Φ::NamedTuple; kwargs...)
         set!(ϕ, value)
     end
     return nothing
+end
+
+function set!(ft::NamedFieldTuple, a::Number)
+    for field in ft
+        set!(field, a)
+    end
+    return ft
+end
+
+function set!(dst::NamedFieldTuple, src::NamedTuple)
+    for name in keys(dst)
+        set!(dst[name], src[name])
+    end
+    return dst
 end
 
 # This interface helps us do things like set distributed fields

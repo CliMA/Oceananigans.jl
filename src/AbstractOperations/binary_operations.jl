@@ -1,5 +1,11 @@
 const binary_operators = Set()
 
+"""
+    BinaryOperation{LX, LY, LZ}(op, a, b, ▶a, ▶b, grid)
+
+Return an abstract representation of the binary operation `op(▶a(a), ▶b(b))` on
+`grid`, where `▶a` and `▶b` interpolate `a` and `b` to locations `(LX, LY, LZ)`.
+"""
 struct BinaryOperation{LX, LY, LZ, O, A, B, IA, IB, G, T} <: AbstractOperation{LX, LY, LZ, G, T}
     op :: O
     a :: A
@@ -8,12 +14,6 @@ struct BinaryOperation{LX, LY, LZ, O, A, B, IA, IB, G, T} <: AbstractOperation{L
     ▶b :: IB
     grid :: G
 
-    @doc """
-        BinaryOperation{LX, LY, LZ}(op, a, b, ▶a, ▶b, grid)
-
-    Return an abstract representation of the binary operation `op(▶a(a), ▶b(b))` on
-    `grid`, where `▶a` and `▶b` interpolate `a` and `b` to locations `(LX, LY, LZ)`.
-    """
     function BinaryOperation{LX, LY, LZ}(op::O, a::A, b::B, ▶a::IA, ▶b::IB, grid::G,
                                          ::Type{T}=Base.promote_op(op, eltype(a), eltype(b))) where {LX, LY, LZ, O, A, B, IA, IB, G, T}
         return new{LX, LY, LZ, O, A, B, IA, IB, G, T}(op, a, b, ▶a, ▶b, grid)
@@ -57,43 +57,43 @@ choose_location(::Nothing, Lb::ConcreteLocationType, Lc) = Lb #
 """Return an expression that defines an abstract `BinaryOperator` named `op` for `AbstractField`."""
 function define_binary_operator(op)
     return quote
-        import Oceananigans.Grids: AbstractGrid
-        import Oceananigans.Fields: AbstractField
-
-        local location = Oceananigans.Fields.location
-        local FunctionField = Oceananigans.Fields.FunctionField
-        local ConstantField = Oceananigans.Fields.ConstantField
-        local AF = AbstractField
+        local BinaryOperation = $(Oceananigans.AbstractOperations).BinaryOperation
+        local GridMetric = $(Oceananigans.AbstractOperations).GridMetric
+        local AbstractField = $(Oceananigans.Fields).AbstractField
+        local location = $(Oceananigans.Fields).location
+        local FunctionField = $(Oceananigans.Fields).FunctionField
+        local ConstantField = $(Oceananigans.Fields).ConstantField
+        local AbstractGrid = $(Oceananigans.Grids).AbstractGrid
 
         @inline $op(i, j, k, grid::AbstractGrid, ▶a, ▶b, a, b) =
-            @inbounds apply_op($op, ▶a(i, j, k, grid, a), ▶b(i, j, k, grid, b))
+            @inbounds $(apply_op)($op, ▶a(i, j, k, grid, a), ▶b(i, j, k, grid, b))
 
         # These shenanigans seem to help / encourage the compiler to infer types of objects
         # buried in deep AbstractOperations trees.
         @inline function $op(i, j, k, grid::AbstractGrid, ▶a, ▶b, A::BinaryOperation, B::BinaryOperation)
-            @inline a(ii, jj, kk, grid) = apply_op(A.op, A.▶a(ii, jj, kk, grid, A.a), A.▶b(ii, jj, kk, grid, A.b))
-            @inline b(ii, jj, kk, grid) = apply_op(B.op, B.▶a(ii, jj, kk, grid, B.a), B.▶b(ii, jj, kk, grid, B.b))
-            return @inbounds apply_op($op, ▶a(i, j, k, grid, a), ▶b(i, j, k, grid, b))
+            @inline a(ii, jj, kk, grid) = $(apply_op)(A.op, A.▶a(ii, jj, kk, grid, A.a), A.▶b(ii, jj, kk, grid, A.b))
+            @inline b(ii, jj, kk, grid) = $(apply_op)(B.op, B.▶a(ii, jj, kk, grid, B.a), B.▶b(ii, jj, kk, grid, B.b))
+            return @inbounds $(apply_op)($op, ▶a(i, j, k, grid, a), ▶b(i, j, k, grid, b))
         end
 
         @inline function $op(i, j, k, grid::AbstractGrid, ▶a, ▶b, A::BinaryOperation, B::AbstractField)
-            @inline a(ii, jj, kk, grid) = apply_op(A.op, A.▶a(ii, jj, kk, grid, A.a), A.▶b(ii, jj, kk, grid, A.b))
-            return @inbounds apply_op($op, ▶a(i, j, k, grid, a), ▶b(i, j, k, grid, B))
+            @inline a(ii, jj, kk, grid) = $(apply_op)(A.op, A.▶a(ii, jj, kk, grid, A.a), A.▶b(ii, jj, kk, grid, A.b))
+            return @inbounds $(apply_op)($op, ▶a(i, j, k, grid, a), ▶b(i, j, k, grid, B))
         end
 
         @inline function $op(i, j, k, grid::AbstractGrid, ▶a, ▶b, A::AbstractField, B::BinaryOperation)
-            @inline b(ii, jj, kk, grid) = apply_op(B.op, B.▶a(ii, jj, kk, grid, B.a), B.▶b(ii, jj, kk, grid, B.b))
-            return @inbounds apply_op($op, ▶a(i, j, k, grid, A), ▶b(i, j, k, grid, b))
+            @inline b(ii, jj, kk, grid) = $(apply_op)(B.op, B.▶a(ii, jj, kk, grid, B.a), B.▶b(ii, jj, kk, grid, B.b))
+            return @inbounds $(apply_op)($op, ▶a(i, j, k, grid, A), ▶b(i, j, k, grid, b))
         end
 
         @inline function $op(i, j, k, grid::AbstractGrid, ▶a, ▶b, A::BinaryOperation, B::Number)
-            @inline a(ii, jj, kk, grid) = apply_op(A.op, A.▶a(ii, jj, kk, grid, A.a), A.▶b(ii, jj, kk, grid, A.b))
-            return @inbounds apply_op($op, ▶a(i, j, k, grid, a), B)
+            @inline a(ii, jj, kk, grid) = $(apply_op)(A.op, A.▶a(ii, jj, kk, grid, A.a), A.▶b(ii, jj, kk, grid, A.b))
+            return @inbounds $(apply_op)($op, ▶a(i, j, k, grid, a), B)
         end
 
         @inline function $op(i, j, k, grid::AbstractGrid, ▶a, ▶b, A::Number, B::BinaryOperation)
-            @inline b(ii, jj, kk, grid) = apply_op(B.op, B.▶a(ii, jj, kk, grid, B.a), B.▶b(ii, jj, kk, grid, B.b))
-            return @inbounds apply_op($op, A, ▶b(i, j, k, grid, b))
+            @inline b(ii, jj, kk, grid) = $(apply_op)(B.op, B.▶a(ii, jj, kk, grid, B.a), B.▶b(ii, jj, kk, grid, B.b))
+            return @inbounds $(apply_op)($op, A, ▶b(i, j, k, grid, b))
         end
 
         """
@@ -105,9 +105,9 @@ function define_binary_operator(op)
         if that is also Nothing, `Lc`.
         """
         function $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, a, b)
-            La = Oceananigans.Fields.instantiated_location(a)
-            Lb = Oceananigans.Fields.instantiated_location(b)
-            Lab = choose_location.(La, Lb, Lc)
+            La = $(Oceananigans.Fields).instantiated_location(a)
+            Lb = $(Oceananigans.Fields).instantiated_location(b)
+            Lab = $(choose_location).(La, Lb, Lc)
 
             grid = $(validate_grid)(a, b)
 
@@ -121,8 +121,8 @@ function define_binary_operator(op)
         $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, f::Function, b::AbstractField) = $op(Lc, FunctionField(location(b), f, b.grid), b)
         $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, a::AbstractField, f::Function) = $op(Lc, a, FunctionField(location(a), f, a.grid))
 
-        $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, m::GridMetric, b::AbstractField) = $op(Lc, grid_metric_operation(Oceananigans.Fields.instantiated_location(b), m, b.grid), b)
-        $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, a::AbstractField, m::GridMetric) = $op(Lc, a, grid_metric_operation(Oceananigans.Fields.instantiated_location(a), m, a.grid))
+        $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, m::GridMetric, b::AbstractField) = $op(Lc, $(grid_metric_operation)($(Oceananigans.Fields).instantiated_location(b), m, b.grid), b)
+        $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, a::AbstractField, m::GridMetric) = $op(Lc, a, $(grid_metric_operation)($(Oceananigans.Fields).instantiated_location(a), m, a.grid))
 
         # instantiate location if types are passed
         $op(Lc::Tuple, a, b) = $op((Lc[1](), Lc[2](), Lc[3]()), a, b)
@@ -134,15 +134,15 @@ function define_binary_operator(op)
         $op(Lc::Tuple, a::AbstractField, m::GridMetric) = $op((Lc[1](), Lc[2](), Lc[3]()), a, m)
 
         # Sugary versions with default locations
-        $op(a::AF, b::AF) = $op(Oceananigans.Fields.instantiated_location(a), a, b)
-        $op(a::AF, b) = $op(Oceananigans.Fields.instantiated_location(a), a, b)
-        $op(a, b::AF) = $op(Oceananigans.Fields.instantiated_location(b), a, b)
+        $op(a::AbstractField, b::AbstractField) = $op($(Oceananigans.Fields).instantiated_location(a), a, b)
+        $op(a::AbstractField, b) = $op($(Oceananigans.Fields).instantiated_location(a), a, b)
+        $op(a, b::AbstractField) = $op($(Oceananigans.Fields).instantiated_location(b), a, b)
 
-        $op(a::AF, b::Number) = $op(Oceananigans.Fields.instantiated_location(a), a, b)
-        $op(a::Number, b::AF) = $op(Oceananigans.Fields.instantiated_location(b), a, b)
+        $op(a::AbstractField, b::Number) = $op($(Oceananigans.Fields).instantiated_location(a), a, b)
+        $op(a::Number, b::AbstractField) = $op($(Oceananigans.Fields).instantiated_location(b), a, b)
 
-        $op(a::AF, b::ConstantField) = $op(Oceananigans.Fields.instantiated_location(a), a, b.constant)
-        $op(a::ConstantField, b::AF) = $op(Oceananigans.Fields.instantiated_location(b), a.constant, b)
+        $op(a::AbstractField, b::ConstantField) = $op($(Oceananigans.Fields).instantiated_location(a), a, b.constant)
+        $op(a::ConstantField, b::AbstractField) = $op($(Oceananigans.Fields).instantiated_location(b), a.constant, b)
 
         $op(a::Number, b::ConstantField) = ConstantField($op(a, b.constant))
         $op(a::ConstantField, b::Number) = ConstantField($op(a.constant, b))

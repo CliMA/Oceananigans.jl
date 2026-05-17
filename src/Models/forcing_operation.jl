@@ -52,7 +52,6 @@ Next, we build a `ForcingField` for the damping, and compute it:
 using Oceananigans.Models: ForcingField
 set!(model, c=1)
 c_forcing_field = ForcingField(:c, model)
-compute!(c_forcing_field)
 
 # output
 16×16×16 Field{Center, Center, Center} on RectilinearGrid on CPU

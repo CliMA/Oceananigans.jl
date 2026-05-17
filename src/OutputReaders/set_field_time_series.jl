@@ -135,7 +135,7 @@ function initialize_file!(file, name, fts)
     return nothing
 end
 
-set!(fts::OnDiskFTS, path::String, name::String) = nothing
+set!(fts::OnDiskFTS, path::String, name::String; kwargs...) = nothing
 
 function set!(fts::InMemoryFTS, f::Function)
     cpu_times = on_architecture(CPU(), fts.times)
