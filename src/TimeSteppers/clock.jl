@@ -1,5 +1,6 @@
 using Adapt: Adapt
 using Dates: AbstractTime, Nanosecond, Millisecond
+using DocStringExtensions: TYPEDEF, TYPEDSIGNATURES
 using Oceananigans.Utils: prettytime, seconds_to_nanosecond
 using Oceananigans.Grids: AbstractGrid
 

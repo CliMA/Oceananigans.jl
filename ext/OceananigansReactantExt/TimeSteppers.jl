@@ -48,8 +48,8 @@ end
 Base.convert(::Type{T}, x::Reactant.TracedRNumber) where {T<:Reactant.ReactantPrimitive} =
       Reactant.promote_to(Reactant.TracedRNumber{T}, x)
 
-Base.convert(::Type{T}, x::Reactant.ConcreteRNumber{T}) where {T<:Reactant.ReactantPrimitive} = x
-Base.convert(::Type{T}, x::Reactant.ConcreteRNumber) where {T<:Reactant.ReactantPrimitive} =
+Base.convert(::Type{T}, x::Reactant.ConcreteRNumber{T}) where {T<:AbstractFloat} = x
+Base.convert(::Type{T}, x::Reactant.ConcreteRNumber) where {T<:AbstractFloat} =
       Reactant.ConcreteRNumber(convert(T, Reactant.to_number(x)); x.sharding)
 
 innertype(::ConcreteRNumber{T}) where T = T

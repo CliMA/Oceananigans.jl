@@ -17,6 +17,7 @@ function ab2_step!(model::ShallowWaterModel, Δt, callbacks)
 
     compute_tendencies!(model, callbacks)
     grid = model.grid
+    Δt = convert(eltype(grid), Δt)
 
     fields = prognostic_fields(model)
 

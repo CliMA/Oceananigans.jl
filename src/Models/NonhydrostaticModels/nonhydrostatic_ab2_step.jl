@@ -25,6 +25,7 @@ This predictor-corrector scheme:
 """
 function pressure_correction_ab2_step!(model, Δt, callbacks)
     grid = model.grid
+    Δt = convert(eltype(grid), Δt)
 
     # Compute flux bc tendencies
     compute_flux_bc_tendencies!(model)

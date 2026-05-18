@@ -92,12 +92,11 @@ function TimeSteppers.reconcile_state!(model::MultiRegionModel)
     u = model.velocities.u
     v = model.velocities.v
 
-    clock = model.clock
-    fill_halo_regions!((u, v), clock, Oceananigans.fields(model))
+    fill_halo_regions!((u, v), model.clock, Oceananigans.fields(model))
     fields = Oceananigans.prognostic_fields(model)
 
     for key in keys(fields)
-        !(key ∈ (:u, :v, :U, :V)) && fill_halo_regions!(fields[key], clock, Oceananigans.fields(model))
+        !(key ∈ (:u, :v, :U, :V)) && fill_halo_regions!(fields[key], model.clock, Oceananigans.fields(model))
     end
 
     Models.HydrostaticFreeSurfaceModels.reconcile_free_surface!(model.free_surface, model.grid, model.velocities)

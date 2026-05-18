@@ -18,6 +18,7 @@ function rk3_substep!(model::ShallowWaterModel, Δt, γⁿ, ζⁿ, callbacks)
 
     compute_tendencies!(model, callbacks)
     grid = model.grid
+    Δt = convert(eltype(grid), Δt)
 
     launch!(architecture(grid), grid, :xyz, _rk_substep_solution!,
             model.solution,
