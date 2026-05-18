@@ -28,7 +28,7 @@ Keyword Arguments
 struct AdaptiveImplicitVerticalAdvection{S, FT, R} <: AbstractAdvectionScheme{1, FT}
     explicit_scheme :: S
     cfl :: FT
-    Δt  :: R # Ref{FT} storing the current time step, updated before each tendency computation
+    Δt  :: R
 end
 
 function AdaptiveImplicitVerticalAdvection(FT::DataType = Float64;
