@@ -97,7 +97,16 @@ function materialize_free_surface end
 # Communication - Computation overlap in distributed models
 include("interleave_communication_and_computation.jl")
 
-# Boundary area utilities used by model submodules
+# Shared open-boundary transport building blocks: per-boundary integrals,
+# initialization, and correction helpers. NonhydrostaticModel composes these
+# into `enforce_net_zero_transport!` to enforce the incompressible-pressure
+# solvability condition; external anelastic models can compose their own
+# variant for density-weighted momentum (ρu, ρv, ρw).
+include("boundary_transport.jl")
+
+# Boundary mean / area utilities used by model submodules. Must come after
+# `boundary_transport.jl` because `boundary_total_area` dispatches to the
+# `get_*_area` helpers defined there.
 include("boundary_mean.jl")
 
 #####

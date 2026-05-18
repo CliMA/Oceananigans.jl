@@ -30,7 +30,7 @@ const BFOrNamedTuple = Union{BackgroundFields, NamedTuple}
 struct DefaultHydrostaticPressureAnomaly end
 
 mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F, FS,
-                                   V, S, K, BG, P, BGC, AF, BM} <: AbstractModel{TS, A}
+                                   V, S, K, BG, P, BGC, AF, BT} <: AbstractModel{TS, A}
 
          architecture :: A        # Computer `Architecture` on which `Model` is run
                  grid :: G        # Grid of physical points on which `Model` is solved
@@ -52,7 +52,7 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
           timestepper :: TS       # Object containing timestepper fields and parameters
       pressure_solver :: S        # Pressure/Poisson solver
      auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
- boundary_transport :: BM       # Container for transports at open boundaries
+   boundary_transport :: BT       # Container for transports at open boundaries
 end
 
 supported_timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
@@ -290,7 +290,7 @@ function NonhydrostaticModel(grid;
     # Materialize forcing for model tracer and velocity fields.
     forcing = model_forcing(forcing, model_fields, prognostic_fields)
 
-    # Initialize boundary transports container
+    # Initialize boundary transport container
     boundary_transport = initialize_boundary_transport(velocities)
 
     !isnothing(particles) && arch isa Distributed && error("LagrangianParticles are not supported on Distributed architectures.")

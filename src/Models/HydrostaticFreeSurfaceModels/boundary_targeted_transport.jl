@@ -1,21 +1,14 @@
-using Oceananigans.BoundaryConditions: BoundaryCondition, Open, has_target_transport, get_target_transport, FieldBoundaryConditions
-using Oceananigans.AbstractOperations: Integral
-using Oceananigans.Fields: Field, interior, compute!
-using Oceananigans.Models: boundary_total_area
-using GPUArraysCore: @allowscalar
+using Oceananigans.BoundaryConditions: BoundaryCondition, Open, has_target_transport, FieldBoundaryConditions
+using Oceananigans.Fields: Field
+using ..Models: west_transport, east_transport, south_transport,
+                north_transport, bottom_transport, top_transport,
+                get_west_area, get_east_area, get_south_area,
+                get_north_area, get_bottom_area, get_top_area,
+                update_open_boundary_transport!,
+                apply_targeted_left_boundary_correction!,
+                apply_targeted_right_boundary_correction!
 
 const OBC = BoundaryCondition{<:Open}
-
-#####
-##### Boundary transport field constructors
-#####
-
-@inline west_transport_field(u)   = Field(Integral(view(u, 1, :, :), dims=(2, 3)))
-@inline east_transport_field(u)   = Field(Integral(view(u, u.grid.Nx + 1, :, :), dims=(2, 3)))
-@inline south_transport_field(v)  = Field(Integral(view(v, :, 1, :), dims=(1, 3)))
-@inline north_transport_field(v)  = Field(Integral(view(v, :, v.grid.Ny + 1, :), dims=(1, 3)))
-@inline bottom_transport_field(w) = Field(Integral(view(w, :, :, 1), dims=(1, 2)))
-@inline top_transport_field(w)    = Field(Integral(view(w, :, :, w.grid.Nz + 1), dims=(1, 2)))
 
 #####
 ##### Helpers for non-Field velocity components
@@ -43,132 +36,60 @@ end
 """
     initialize_targeted_boundary_transport(velocities)
 
-Initialize boundary transport `Field`s only for boundaries with a `target_transport` set on
-their `PerturbationAdvection` scheme. Returns a `NamedTuple` of flux fields and boundary areas,
-or `nothing` if no targeted boundaries are present.
+Initialize boundary transport `Field`s only for boundaries with a `target_transport` set
+on their scheme. Returns a `NamedTuple` of transport fields and boundary areas, or
+`nothing` if no targeted boundaries are present.
 
-Unlike the nonhydrostatic counterpart, no pool-correction tracking is needed because
-`HydrostaticFreeSurfaceModel` lets the free surface accommodate any net imbalance.
+Unlike the nonhydrostatic counterpart `initialize_boundary_transport`, no pool-correction
+tracking is needed because `HydrostaticFreeSurfaceModel` lets the free surface accommodate
+any net imbalance.
 """
 function initialize_targeted_boundary_transport(velocities)
     u, v, w = velocities
-    boundary_fluxes = NamedTuple()
+    boundary_transports = NamedTuple()
     has_targeted = false
 
     if _is_targeted(u, :west)
-        boundary_fluxes = merge(boundary_fluxes, (; west_transport  = west_transport_field(u),
-                                                    west_area = boundary_total_area(Val(:west), u.grid)))
+        boundary_transports = merge(boundary_transports, (; west_transport = west_transport(u),
+                                                            west_area = get_west_area(u.grid)))
         has_targeted = true
     end
 
     if _is_targeted(u, :east)
-        boundary_fluxes = merge(boundary_fluxes, (; east_transport  = east_transport_field(u),
-                                                    east_area = boundary_total_area(Val(:east), u.grid)))
+        boundary_transports = merge(boundary_transports, (; east_transport = east_transport(u),
+                                                            east_area = get_east_area(u.grid)))
         has_targeted = true
     end
 
     if _is_targeted(v, :south)
-        boundary_fluxes = merge(boundary_fluxes, (; south_transport = south_transport_field(v),
-                                                    south_area = boundary_total_area(Val(:south), v.grid)))
+        boundary_transports = merge(boundary_transports, (; south_transport = south_transport(v),
+                                                            south_area = get_south_area(v.grid)))
         has_targeted = true
     end
 
     if _is_targeted(v, :north)
-        boundary_fluxes = merge(boundary_fluxes, (; north_transport = north_transport_field(v),
-                                                    north_area = boundary_total_area(Val(:north), v.grid)))
+        boundary_transports = merge(boundary_transports, (; north_transport = north_transport(v),
+                                                            north_area = get_north_area(v.grid)))
         has_targeted = true
     end
 
     if _is_targeted(w, :bottom)
-        boundary_fluxes = merge(boundary_fluxes, (; bottom_transport = bottom_transport_field(w),
-                                                    bottom_area = boundary_total_area(Val(:bottom), w.grid)))
+        boundary_transports = merge(boundary_transports, (; bottom_transport = bottom_transport(w),
+                                                            bottom_area = get_bottom_area(w.grid)))
         has_targeted = true
     end
 
     if _is_targeted(w, :top)
-        boundary_fluxes = merge(boundary_fluxes, (; top_transport = top_transport_field(w),
-                                                    top_area = boundary_total_area(Val(:top), w.grid)))
+        boundary_transports = merge(boundary_transports, (; top_transport = top_transport(w),
+                                                            top_area = get_top_area(w.grid)))
         has_targeted = true
     end
 
-    return has_targeted ? boundary_fluxes : nothing
+    return has_targeted ? boundary_transports : nothing
 end
 
 #####
-##### Update targeted boundary transports
-#####
-
-update_targeted_boundary_transport!(::Nothing) = nothing
-function update_targeted_boundary_transport!(boundary_transport::NamedTuple)
-    for val in boundary_transport
-        val isa Field && compute!(val)
-    end
-    return nothing
-end
-
-#####
-##### Per-boundary targeted corrections
-#####
-
-function apply_targeted_left_boundary_correction!(u, bc::OBC, ::Val{:west}, bt)
-    has_target_transport(bc.classification.scheme) || return nothing
-    west_area = boundary_total_area(Val(:west), u.grid)
-    target    = get_target_transport(bc.classification.scheme, u.grid)
-    Q_actual  = @allowscalar bt.west_transport[]
-    interior(u, 1, :, :) .-= (Q_actual - target) / west_area
-    return nothing
-end
-
-function apply_targeted_left_boundary_correction!(v, bc::OBC, ::Val{:south}, bt)
-    has_target_transport(bc.classification.scheme) || return nothing
-    south_area = boundary_total_area(Val(:south), v.grid)
-    target     = get_target_transport(bc.classification.scheme, v.grid)
-    Q_actual   = @allowscalar bt.south_transport[]
-    interior(v, :, 1, :) .-= (Q_actual - target) / south_area
-    return nothing
-end
-
-function apply_targeted_left_boundary_correction!(w, bc::OBC, ::Val{:bottom}, bt)
-    has_target_transport(bc.classification.scheme) || return nothing
-    bottom_area = boundary_total_area(Val(:bottom), w.grid)
-    target      = get_target_transport(bc.classification.scheme, w.grid)
-    Q_actual    = @allowscalar bt.bottom_transport[]
-    interior(w, :, :, 1) .-= (Q_actual - target) / bottom_area
-    return nothing
-end
-
-function apply_targeted_right_boundary_correction!(u, bc::OBC, ::Val{:east}, bt)
-    has_target_transport(bc.classification.scheme) || return nothing
-    east_area = boundary_total_area(Val(:east), u.grid)
-    target    = get_target_transport(bc.classification.scheme, u.grid)
-    Q_actual  = @allowscalar bt.east_transport[]
-    interior(u, u.grid.Nx + 1, :, :) .-= (Q_actual - target) / east_area
-    return nothing
-end
-
-function apply_targeted_right_boundary_correction!(v, bc::OBC, ::Val{:north}, bt)
-    has_target_transport(bc.classification.scheme) || return nothing
-    north_area = boundary_total_area(Val(:north), v.grid)
-    target     = get_target_transport(bc.classification.scheme, v.grid)
-    Q_actual   = @allowscalar bt.north_transport[]
-    interior(v, :, v.grid.Ny + 1, :) .-= (Q_actual - target) / north_area
-    return nothing
-end
-
-function apply_targeted_right_boundary_correction!(w, bc::OBC, ::Val{:top}, bt)
-    has_target_transport(bc.classification.scheme) || return nothing
-    top_area = boundary_total_area(Val(:top), w.grid)
-    target   = get_target_transport(bc.classification.scheme, w.grid)
-    Q_actual = @allowscalar bt.top_transport[]
-    interior(w, :, :, w.grid.Nz + 1) .-= (Q_actual - target) / top_area
-    return nothing
-end
-
-apply_targeted_left_boundary_correction!(velocity, bc, side, bt)  = nothing
-apply_targeted_right_boundary_correction!(velocity, bc, side, bt) = nothing
-
-#####
-##### Enforce targeted open boundary fluxes
+##### Enforce targeted open boundary transports
 #####
 
 enforce_targeted_open_boundary_transport!(model, ::Nothing) = nothing
@@ -186,9 +107,9 @@ function enforce_targeted_open_boundary_transport!(model, bt)
     u, v, w = model.velocities
 
     # Compute current fluxes through targeted boundaries.
-    update_targeted_boundary_transport!(bt)
+    update_open_boundary_transport!(bt)
 
-    # Apply per-boundary corrections.
+    # Apply per-boundary corrections (shared helpers — non-OBC / non-targeted return nothing).
     apply_targeted_left_boundary_correction!(u, _get_bc(u, :west),   Val(:west),   bt)
     apply_targeted_left_boundary_correction!(v, _get_bc(v, :south),  Val(:south),  bt)
     apply_targeted_left_boundary_correction!(w, _get_bc(w, :bottom), Val(:bottom), bt)

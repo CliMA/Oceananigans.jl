@@ -1810,10 +1810,10 @@ function test_open_boundary_condition_scheme_checkpointing(arch, timestepper, sc
     simulation.output_writers[:checkpointer] = Checkpointer(simulation.model, schedule=IterationInterval(3), prefix=prefix)
     @test_nowarn run!(simulation)
 
-    # Store original boundary transports
+    # Store original boundary transport
     original_bt = simulation.model.boundary_transport
 
-    # Restore entire simulation from checkpoint and verify boundary_transport match exactly
+    # Restore entire simulation from checkpoint and verify boundary_transport matches exactly
     restored_simulation = make_simulation(6)
     restored_simulation.output_writers[:checkpointer] = Checkpointer(restored_simulation.model,
                                                                      schedule=IterationInterval(3),

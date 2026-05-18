@@ -131,6 +131,8 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
+1. Chor, T., Wenegrat, J., and Wagner, G. L. (2026) [Turbulent mixing and dissipation around rough seamounts](https://doi.org/10.1029/2025GL121312), _Geophysical Research Letters_. DOI: [https://doi.org/10.1029/2025GL121312](https://doi.org/10.1029/2025GL121312)
+
 1. Zhao, K. X., Chor., T., Skyllingstad, E., Nash, J., Rosevear, M. G., McConnochie, C. (2026). [Direct numerical simulations of ice-ocean boundary turbulence](https://doi.org/10.48550/arXiv.2603.19542), _arXiv preprint_, arXiv:2603.19542. DOI: [10.48550/arXiv.2603.19542](https://doi.org/10.48550/arXiv.2603.19542)
 
 1. Barge, A., Le Sommer, J., Storto, A., and Valcke, S. (2026) [Deploying Machine Learning components coupled to Earth System Models with OASIS3-MCT (v6) and Eophis (v1.1)](https://doi.org/10.5194/egusphere-2026-854). EGUsphere [preprint]. DOI: [10.5194/egusphere-2026-854](https://doi.org/10.5194/egusphere-2026-854)
@@ -162,8 +164,6 @@ If you have work using Oceananigans that you would like to have listed here, ple
 1. Zheng, Z., Wenegrat, J. O., Fox-Kemper, B., and Brett, G. J. (2025). [Wind-catalyzed energy exchanges between fronts and boundary layer turbulence](https://doi.org/10.1175/JPO-D-24-0243.1), _Journal of Physical Oceanography_, *55(9)*, 1591–1606. DOI: [10.1175/JPO-D-24-0243.1](https://doi.org/10.1175/JPO-D-24-0243.1)
 
 1. Zhang, Y., Bire, S., Wang, S., Nath, A., Ramadhan, A., Kang, W., and Marshall, J. (2025). [Long transit time from the seafloor to the ice shell on Enceladus](https://doi.org/10.1093/mnras/staf1008), _Monthly Notices of the Royal Astronomical Society_, **541(2)**, 859–871. DOI: [10.1093/mnras/staf1008](https://doi.org/10.1093/mnras/staf1008)
-
-1. Chor, T., Wenegrat, J., and Wagner, G. L. (2025) [Turbulent mixing and dissipation around rough seamounts](https://doi.org/10.22541/essoar.176659936.64523492/v1), _ESS Open Archive_. DOI: [10.22541/essoar.176659936.64523492/v1](https://doi.org/10.22541/essoar.176659936.64523492/v1)
 
 1. Lee, X. K., Ramadhan, A., Souza, A., Wagner, G. L., Silvestri, S., Marshall, J. and Ferrari, R. (2025) [NORi: An ML-augmented ocean boundary layer parameterization](https://doi.org/10.48550/arXiv.2512.04452), _arXiv preprint_, arXiv:2512.04452. DOI: [10.48550/arXiv.2512.04452](https://doi.org/10.48550/arXiv.2512.04452)
 
