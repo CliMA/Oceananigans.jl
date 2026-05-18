@@ -2,9 +2,9 @@ using Adapt: Adapt
 using Dates: AbstractTime, Nanosecond, Millisecond
 using Oceananigans.Utils: prettytime, seconds_to_nanosecond
 using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Architectures: Architectures
 
 import Oceananigans: restore_prognostic_state!
-import Oceananigans.Architectures: kernel_adapt
 import Oceananigans.Units: Time
 import Oceananigans.Fields: set!
 
@@ -181,7 +181,7 @@ function Adapt.adapt_structure(to, clock::Clock)
                    kernel_time_type = KT)
 end
 
-@inline kernel_adapt(to, clock::Clock) = Adapt.adapt(to, clock)
+@inline Architectures.kernel_adapt(to, clock::Clock) = Adapt.adapt(to, clock)
 
 """
     convert_time(grid, clock)
