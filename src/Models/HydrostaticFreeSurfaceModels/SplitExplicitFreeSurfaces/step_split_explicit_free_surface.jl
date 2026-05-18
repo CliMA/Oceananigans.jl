@@ -1,4 +1,5 @@
 using KernelAbstractions.Extras.LoopInfo: @unroll
+
 # Selection between topology-aware and non-aware operators depending on
 # whether we fill halos or not in between substeps.
 #

@@ -5,6 +5,7 @@ using Oceananigans.Utils: get_active_cells_map
 
 import Oceananigans.TimeSteppers: compute_tendencies!
 import Oceananigans.TimeSteppers: compute_flux_bc_tendencies!
+
 """
     compute_tendencies!(model::NonhydrostaticModel, callbacks)
 
