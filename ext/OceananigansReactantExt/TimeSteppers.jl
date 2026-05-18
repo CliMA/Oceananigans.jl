@@ -47,6 +47,11 @@ end
 
 Base.convert(::Type{T}, x::Reactant.TracedRNumber) where {T<:Reactant.ReactantPrimitive} =
       Reactant.promote_to(Reactant.TracedRNumber{T}, x)
+
+Base.convert(::Type{T}, x::Reactant.ConcreteRNumber{T}) where {T<:Reactant.ReactantPrimitive} = x
+Base.convert(::Type{T}, x::Reactant.ConcreteRNumber) where {T<:Reactant.ReactantPrimitive} =
+      Reactant.ConcreteRNumber(convert(T, Reactant.to_number(x)); x.sharding)
+
 innertype(::ConcreteRNumber{T}) where T = T
 
 const ConcreteReactantClock = Clock{<:ConcreteRNumber}
