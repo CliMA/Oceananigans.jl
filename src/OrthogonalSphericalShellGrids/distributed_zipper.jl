@@ -3,7 +3,8 @@ using Oceananigans.DistributedComputations: CommunicationBuffers, loc_id
 using Oceananigans.Grids: AbstractGrid, topology,
     RightCenterFolded, RightFaceFolded,
     LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
-    LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected
+    LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected,
+    PencilFoldedTopology
 using Oceananigans.DistributedComputations: Distributed, on_architecture, ranks, x_communication_buffer
 
 import Oceananigans.DistributedComputations:
@@ -27,9 +28,6 @@ const UPivotTopology = Union{RightCenterFolded,
 const FPivotTopology = Union{RightFaceFolded,
                              LeftConnectedRightFaceFolded,
                              LeftConnectedRightFaceConnected}
-
-const TwoDFoldTopology = Union{LeftConnectedRightCenterConnected,
-                               LeftConnectedRightFaceConnected}
 
 # UPivot fold line is at Center-y; FPivot fold line is at Face-y
 has_fold_line(::Type{<:UPivotTopology}, ::Center) = true
@@ -197,7 +195,7 @@ y_tripolar_buffer(arch, grid, data, Hy, bc, loc) = y_communication_buffer(arch, 
 
 # 2D fold (MxN) → TwoDZipperBuffer (interior-width, Hy′ = Hy or Hy+1 rows for fold line)
 function y_tripolar_buffer(arch, grid::AbstractGrid{<:Any, <:Any, TY},
-                           data, Hy, bc::DistributedZipper, loc::Loc) where {TY <: TwoDFoldTopology, Loc}
+                           data, Hy, bc::DistributedZipper, loc::Loc) where {TY <: PencilFoldedTopology, Loc}
     Nx = size(grid, 1)
     _, _, Tz = size(parent(data))
     FT = eltype(data)
