@@ -1,7 +1,7 @@
 using Oceananigans.Grids: node, xnodes, ynodes, znodes
 using Oceananigans.OutputReaders: interpolate
 using Oceananigans: instantiated_location
-using DocStringExtensions: TYPEDEF, TYPEDSIGNATURES 
+using DocStringExtensions: TYPEDEF, TYPEDSIGNATURES
 
 @inline zerofunction(args...) = 0
 @inline onefunction(args...) = 1
