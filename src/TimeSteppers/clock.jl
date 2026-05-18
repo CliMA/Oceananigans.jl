@@ -9,7 +9,7 @@ import Oceananigans.Units: Time
 import Oceananigans.Fields: set!
 
 """
-    mutable struct Clock{TT, DT, IT, S, KT}
+$(TYPEDEF)
 
 Keeps track of the current `time`, `last_Δt`, `iteration` number, and time-stepping `stage`.
 The `stage` is updated only for multi-stage time-stepping methods. The `time :: TT` is
@@ -169,7 +169,11 @@ function tick_stage!(clock, stage_Δt, step_Δt)
     return nothing
 end
 
-"""Adapt `Clock` to an immutable kernel argument."""
+"""
+$(TYPEDSIGNATURES)
+
+Adapt `Clock` to an immutable kernel argument.
+"""
 function Adapt.adapt_structure(to, clock::Clock)
     KT = kernel_time_type(clock)
 
@@ -181,7 +185,7 @@ function Adapt.adapt_structure(to, clock::Clock)
 end
 
 """
-    convert_time(grid, clock)
+$(TYPEDSIGNATURES)
 
 Return an immutable clock-like object with `time` demoted to `eltype(grid)`, all other fields unchanged.
 Call this at every `launch!` site that passes `clock` to a kernel so that `clock.time`
