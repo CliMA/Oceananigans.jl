@@ -1,6 +1,7 @@
 using Oceananigans.Grids: node, xnodes, ynodes, znodes
 using Oceananigans.OutputReaders: interpolate
 using Oceananigans: instantiated_location
+using DocStringExtensions: TYPEDEF, TYPEDSIGNATURES 
 
 @inline zerofunction(args...) = 0
 @inline onefunction(args...) = 1
@@ -81,7 +82,7 @@ function materialize_forcing(forcing::Relaxation, field, field_name, model_field
 end
 
 """
-    struct FieldTimeSeriesTarget{L, F, G, I}
+$(TYPEDEF)
 
 Materialized `Relaxation` target that carries a `FieldTimeSeries` source, the
 simulation-side location at which the relaxation is evaluated, the FTS's grid
@@ -146,6 +147,8 @@ const FieldTimeSeriesRelaxation{R, M, T<:FieldTimeSeriesTarget} = Relaxation{R, 
 end
 
 """
+$(TYPEDSIGNATURES)
+
 Wrap a `Relaxation` with `FieldTimeSeries` target into a materialized form
 carrying simulation-side location and an integer field index, so the kernel can
 spatially+temporally interpolate `target` and read `ϕ` from `model_fields`.
