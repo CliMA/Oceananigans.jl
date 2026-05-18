@@ -30,7 +30,7 @@ end
 """
     deduce_dimensionality(f)
 
-Deduce the dimensionality of the field (time series) `f` and return a 3-tuple `d1, d2, D`, where
+Deduce the dimensionality of the Field or FieldTimeSeries `f` and return a 3-tuple `d1, d2, D`, where
 `d1` is the first dimension along which `f` varies, `d2` is the second dimension (if any),
 and `D` is the total dimensionality of `f`.
 """
@@ -151,7 +151,7 @@ function make_plottable_array(f)
 end
 
 """
-    make_plottable_array(f)
+    make_plottable_array(fts::FieldTimeSeries)
 
 Convert a field time series `fts` to an array tha can be plotted with Makie by
 iterating fields corresponding to all time indices, converting each field to a
