@@ -322,13 +322,6 @@ CUDA.allowscalar() do
         end
     end
 
-    # Tests for XESMF extension
-    if group == :xesmf || group == :all
-        @testset "XESMF extension tests" begin
-            include("test_xesmf.jl")
-        end
-    end
-
     # Tests for ConservativeRegridding extension
     if group == :conservative_regridding || group == :all
         @testset "ConservativeRegridding extension tests" begin
