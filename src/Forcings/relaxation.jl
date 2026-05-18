@@ -183,7 +183,7 @@ function validate_fts_target_extent(fts, field)
 end
 
 Base.summary(target::FieldTimeSeriesTarget) =
-    "FieldTimeSeriesTarget(location=$(target.location), index=$(target.index))"
+    "FieldTimeSeriesTarget(location=$(target.location), index=$(_field_index(target)))"
 
 @inline (f::Relaxation)(x, y, z, t, field) =
     f.rate * f.mask(x, y, z) * (f.target(x, y, z, t) - field)
