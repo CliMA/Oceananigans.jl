@@ -9,7 +9,6 @@ using Oceananigans.TurbulenceClosures.Smagorinskys: Smagorinsky,
 using Oceananigans.Models.ShallowWaterModels: ShallowWaterScalarDiffusivity
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: ForwardBackwardScheme
 using Oceananigans.Grids: MutableVerticalDiscretization
-using Oceananigans.OutputWriters: load_checkpoint_state
 
 function test_model_equality(test_model, true_model; atol=0)
     # Test prognostic field equality

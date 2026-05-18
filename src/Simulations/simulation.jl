@@ -285,7 +285,6 @@ write_output!(writer::NetCDFWriter, sim::Simulation) = write_output!(writer, sim
 
 function prognostic_state(sim::Simulation)
     return (model = prognostic_state(sim.model),
-            Δt = sim.Δt,
             diagnostics = prognostic_state(sim.diagnostics),
             output_writers = prognostic_state(sim.output_writers),
             callbacks = prognostic_state(sim.callbacks),
