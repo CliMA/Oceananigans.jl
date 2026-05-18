@@ -117,8 +117,8 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
     GC.@preserve U_args η_args begin
         # We need to perform ~50 time-steps which means launching ~100 very small kernels: we are limited by latency of
         # argument conversion to GPU-compatible values. To alleviate this penalty we convert first and then we substep!
-        @apply_regionally converted_U_args = convert_to_device(arch, kernel_adapt(arch, U_args))
-        @apply_regionally converted_η_args = convert_to_device(arch, kernel_adapt(arch, η_args))
+        @apply_regionally converted_U_args = convert_to_device(arch, U_args)
+        @apply_regionally converted_η_args = convert_to_device(arch, η_args)
 
         @unroll for substep in 1:Nsubsteps
             @inbounds averaging_weight = weights[substep]
@@ -161,8 +161,8 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
     GC.@preserve U_args η_args begin
         # We need to perform ~50 time-steps which means launching ~100 very small kernels: we are limited by latency of
         # argument conversion to GPU-compatible values. To alleviate this penalty we convert first and then we substep!
-        converted_U_args = convert_to_device(arch, kernel_adapt(arch, U_args))
-        converted_η_args = convert_to_device(arch, kernel_adapt(arch, η_args))
+        converted_U_args = convert_to_device(arch, U_args)
+        converted_η_args = convert_to_device(arch, η_args)
 
         @unroll for substep in 1:Nsubsteps
             @inbounds averaging_weight = weights[substep]

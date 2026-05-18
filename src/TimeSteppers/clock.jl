@@ -2,7 +2,6 @@ using Adapt: Adapt
 using Dates: AbstractTime, Nanosecond, Millisecond
 using Oceananigans.Utils: prettytime, seconds_to_nanosecond
 using Oceananigans.Grids: AbstractGrid
-using Oceananigans.Architectures: Architectures
 
 import Oceananigans: restore_prognostic_state!
 import Oceananigans.Units: Time
@@ -169,24 +168,21 @@ function tick_stage!(clock, stage_Δt, step_Δt)
     return nothing
 end
 
-"""Adapt `Clock` for GPU."""
+"""Adapt `Clock` to an immutable kernel argument."""
 function Adapt.adapt_structure(to, clock::Clock)
     KT = kernel_time_type(clock)
 
-    return Clock(; time          = convert(KT, clock.time),
-                   last_Δt       = clock.last_Δt,
-                   last_stage_Δt = clock.last_stage_Δt,
-                   iteration     = clock.iteration,
-                   stage         = clock.stage,
-                   kernel_time_type = KT)
+    return (time          = convert(KT, clock.time),
+            last_Δt       = clock.last_Δt,
+            last_stage_Δt = clock.last_stage_Δt,
+            iteration     = clock.iteration,
+            stage         = clock.stage)
 end
-
-@inline Architectures.kernel_adapt(to, clock::Clock) = Adapt.adapt(to, clock)
 
 """
     convert_time(grid, clock)
 
-Return a `Clock` with `time` demoted to `eltype(grid)`, all other fields unchanged.
+Return an immutable clock-like object with `time` demoted to `eltype(grid)`, all other fields unchanged.
 Call this at every `launch!` site that passes `clock` to a kernel so that `clock.time`
 inside the kernel matches grid precision rather than the clock's native Float64.
 """

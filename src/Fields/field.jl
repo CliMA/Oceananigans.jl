@@ -4,7 +4,7 @@ using Oceananigans.BoundaryConditions:  construct_boundary_conditions_kernels, O
 using Oceananigans.Grids: parent_index_range, default_indices, validate_indices,
     index_range_contains, halo_size, offset_data, interior_parent_indices
 using Oceananigans.Utils: @apply_regionally, getregion
-using Oceananigans.Architectures: convert_to_device, kernel_adapt
+using Oceananigans.Architectures: convert_to_device
 
 using LinearAlgebra: LinearAlgebra
 using KernelAbstractions: @kernel, @index
@@ -838,8 +838,7 @@ function BoundaryConditions.fill_halo_regions!(field::Field, positional_args...;
     # Manually convert args... to be
     # passed to the fill_halo_regions! function.
     GC.@preserve args begin
-        adapted_args = kernel_adapt(arch, args)
-        converted_args = convert_to_device(arch, adapted_args)
+        converted_args = convert_to_device(arch, args)
         fill_halo_regions!(converted_args...; kwargs...)
     end
 

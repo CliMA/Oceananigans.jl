@@ -4,7 +4,6 @@ using Adapt: Adapt
 using TimesDates: TimeDate
 using Oceananigans.Grids: topological_tuple_length
 using Oceananigans.TimeSteppers: Clock
-using Oceananigans.Architectures: kernel_adapt
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using Oceananigans.TurbulenceClosures.Smagorinskys: LagrangianAveraging, DynamicSmagorinsky, Smagorinsky
@@ -365,11 +364,7 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
             kernel_clock = Adapt.adapt(nothing, clock)
             @test kernel_clock.time isa FT
-            @test Oceananigans.TimeSteppers.kernel_time_type(kernel_clock) == FT
-
-            kernel_args = kernel_adapt(arch, (clock = clock, nested = (clock,)))
-            @test kernel_args.clock.time isa FT
-            @test kernel_args.nested[1].time isa FT
+            @test propertynames(kernel_clock) == (:time, :last_Δt, :last_stage_Δt, :iteration, :stage)
         end
 
         explicit_clock = Clock(time=0.0f0)
