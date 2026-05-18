@@ -2,7 +2,6 @@ using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans: fields, TendencyCallsite
 using Oceananigans.Models: complete_communication_and_compute_buffer!, interior_tendency_kernel_parameters
 using Oceananigans.Utils: get_active_cells_map
-using Oceananigans.Advection: update_advection_timestep!
 
 import Oceananigans.TimeSteppers: compute_tendencies!
 import Oceananigans.TimeSteppers: compute_flux_bc_tendencies!
@@ -25,10 +24,6 @@ function compute_tendencies!(model::NonhydrostaticModel, Δt, callbacks)
 
     grid = model.grid
     arch = architecture(grid)
-
-    # AIVA's wᵉ/wⁱ split is parameterised by Δt; sync each scheme's Δt[] to the
-    # Δt that will multiply this tendency. No-op when Δt is `nothing` (init call).
-    update_advection_timestep!(model.advection, Δt)
 
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain

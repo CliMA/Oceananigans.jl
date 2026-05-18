@@ -29,10 +29,10 @@ step_closure_prognostics!(model, Δt) = nothing
 reconcile_state!(model) = nothing
 
 # Prepare the model for the first time step, in case run! is not used.
-function maybe_prepare_first_time_step!(model, callbacks)
+function maybe_prepare_first_time_step!(model, Δt, callbacks)
     if model.clock.iteration == 0
         reconcile_state!(model)
-        update_state!(model, callbacks)
+        update_state!(model, Δt, callbacks)
     end
     return nothing
 end

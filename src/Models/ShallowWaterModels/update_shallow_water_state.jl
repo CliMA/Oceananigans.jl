@@ -5,7 +5,7 @@ using Oceananigans.Models: update_model_field_time_series!
 import Oceananigans.TimeSteppers: update_state!
 
 """
-    update_state!(model::ShallowWaterModel, callbacks=[]; compute_tendencies=true)
+    update_state!(model::ShallowWaterModel, Δt=nothing, callbacks=[])
 
 Update the diagnostic state of `ShallowWaterModel`.
 
@@ -18,7 +18,7 @@ Next, `callbacks` are executed.
 
 Finally, tendencies are computed if `compute_tendencies=true`.
 """
-function update_state!(model::ShallowWaterModel, callbacks=[]; Δt=nothing)
+function update_state!(model::ShallowWaterModel, Δt=nothing, callbacks=[])
 
     # Mask immersed fields
     foreach(mask_immersed_field!, merge(model.solution, model.tracers))

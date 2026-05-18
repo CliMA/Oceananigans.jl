@@ -1,6 +1,5 @@
 using Oceananigans.TurbulenceClosures: implicit_step!
 using Oceananigans.ImmersedBoundaries: peripheral_node, MutableGridOfSomeKind
-using Oceananigans.Advection: update_advection_timestep!
 
 import Oceananigans.TimeSteppers: rk_substep!, cache_current_fields!
 
@@ -32,15 +31,9 @@ The order of operations for explicit free surfaces is:
 8. Advance tracers
 """
 @inline function rk_substep!(model, free_surface, grid, Δτ, callbacks)
-        # Update adaptive implicit advection time step before tracer tendencies
-    update_advection_timestep!(model.advection, Δτ)
-
     # Compute barotropic and baroclinic tendencies
-    @apply_regionally begin
-        compute_momentum_tendencies!(model, callbacks)
-        compute_momentum_flux_bcs!(model)
-    end
-
+    @apply_regionally compute_momentum_flux_bcs!(model)
+    
     # Advance the free surface first
     compute_free_surface_tendency!(grid, model, free_surface)
     step_free_surface!(free_surface, model, model.timestepper, Δτ)
@@ -54,9 +47,6 @@ The order of operations for explicit free surfaces is:
     # Mask and fill velocity halos
     u, v, _ = model.velocities
     fill_halo_regions!((u, v), model.clock, fields(model); async=true)
-
-    # Update adaptive implicit advection time step before tracer tendencies
-    update_advection_timestep!(model.advection, Δτ)
 
     @apply_regionally begin
         # compute tracer tendencies
@@ -88,15 +78,11 @@ For implicit free surfaces, a predictor-corrector approach is used:
 """
 @inline function rk_substep!(model, free_surface::ImplicitFreeSurface, grid, Δτ, callbacks)
 
-    # Update adaptive implicit advection time step before tracer tendencies
-    update_advection_timestep!(model.advection, Δτ)
-
     @apply_regionally begin
         parent(model.transport_velocities.u) .= parent(model.velocities.u)
         parent(model.transport_velocities.v) .= parent(model.velocities.v)
 
         # Computing tendencies...
-        compute_momentum_tendencies!(model, callbacks)
         compute_momentum_flux_bcs!(model)
 
         # Finally Substep! Advance grid, tracers, (predictor) momentum

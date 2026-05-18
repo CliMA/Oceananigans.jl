@@ -6,7 +6,6 @@ using Oceananigans.Grids: halo_size
 using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
-using Oceananigans.Advection: update_advection_timestep!
 
 using Oceananigans.Utils: get_active_cells_map
 

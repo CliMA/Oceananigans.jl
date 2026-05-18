@@ -100,7 +100,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     #   * The user has passed euler=true to time_step!
     euler = euler | (Δt != model.clock.last_Δt)
 
-    maybe_prepare_first_time_step!(model, callbacks)
+    maybe_prepare_first_time_step!(model, Δt, callbacks)
 
     # If euler, then set χ = -0.5
     minus_point_five = convert(eltype(model.grid), -0.5)
@@ -115,7 +115,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     tick!(model.clock, Δt)
 
     step_closure_prognostics!(model, Δt)
-    update_state!(model, callbacks; Δt)
+    update_state!(model, Δt, callbacks)
 
     step_lagrangian_particles!(model, Δt)
 

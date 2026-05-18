@@ -1,4 +1,5 @@
 using Oceananigans: UpdateStateCallsite
+using Oceananigans.Advection: update_advection_timestep!
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
@@ -11,13 +12,13 @@ using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models: update_model_field_time_series!, surface_kernel_parameters
 
 """
-    update_state!(model::NonhydrostaticModel, callbacks=[])
+    update_state!(model::NonhydrostaticModel, Δt=nothing, callbacks=[])
 
 Update peripheral aspects of the model (halo regions, closure_fields, hydrostatic
 pressure) to the current model state. If `callbacks` are provided (in an array),
 they are called in the end.
 """
-function update_state!(model::NonhydrostaticModel, callbacks=[]; Δt=nothing)
+function update_state!(model::NonhydrostaticModel, Δt=nothing, callbacks=[])
 
     # Mask immersed tracers
     foreach(model.tracers) do tracer
@@ -48,6 +49,7 @@ function update_state!(model::NonhydrostaticModel, callbacks=[]; Δt=nothing)
         callback.callsite isa UpdateStateCallsite && callback(model)
     end
 
+    update_advection_timestep!(model.advection, model.timestepper, model.clock.stage, Δt)
     compute_tendencies!(model, Δt, callbacks)
     update_biogeochemical_state!(model.biogeochemistry, model)
 

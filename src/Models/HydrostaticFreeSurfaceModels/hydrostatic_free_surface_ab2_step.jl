@@ -1,7 +1,6 @@
 using Oceananigans.TimeSteppers: _ab2_step_field!
 using Oceananigans.Operators: σ⁻, σⁿ, ∂t_σ
 using Oceananigans.TurbulenceClosures: implicit_step!
-using Oceananigans.Advection: update_advection_timestep!
 
 import Oceananigans.TimeSteppers: ab2_step!
 
@@ -40,15 +39,9 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
     χ  = convert(FT, model.timestepper.χ)
     Δt = convert(FT, Δt)
 
-    # Update adaptive implicit advection time step before tendencies
-    update_advection_timestep!(model.advection, Δt)
-
     # Computing momentum flux boundary conditions
-    @apply_regionally begin
-        compute_momentum_tendencies!(model, callbacks)
-        compute_momentum_flux_bcs!(model)
-    end
-
+    @apply_regionally compute_momentum_flux_bcs!(model)
+    
     # Advance the free surface
     compute_free_surface_tendency!(grid, model, model.free_surface)
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
@@ -97,15 +90,11 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
     χ  = convert(FT, model.timestepper.χ)
     Δt = convert(FT, Δt)
 
-    # Update adaptive implicit advection time step before tendencies
-    update_advection_timestep!(model.advection, Δt)
-
     @apply_regionally begin
         parent(model.transport_velocities.u) .= parent(model.velocities.u)
         parent(model.transport_velocities.v) .= parent(model.velocities.v)
 
         # Computing tendencies...
-        compute_momentum_tendencies!(model, callbacks)
         compute_momentum_flux_bcs!(model)
 
         # Finally Substep! Advance grid, tracers, (predictor) momentum
@@ -122,9 +111,6 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
 
     u, v, _ = model.velocities
     fill_halo_regions!((u, v), model.clock, fields(model))
-
-    # Update adaptive implicit advection time step before tracer tendencies
-    update_advection_timestep!(model.advection, Δt)
 
     @apply_regionally begin
         compute_transport_velocities!(model, free_surface)

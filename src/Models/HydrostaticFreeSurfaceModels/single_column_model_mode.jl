@@ -1,7 +1,7 @@
 using GPUArraysCore: @allowscalar
 
 using Oceananigans: UpdateStateCallsite
-using Oceananigans.Advection: AbstractAdvectionScheme
+using Oceananigans.Advection: AbstractAdvectionScheme, update_advection_timestep!
 using Oceananigans.Grids: Flat, Bounded
 using Oceananigans.Fields: XFaceField, YFaceField, ZeroField
 using Oceananigans.Coriolis: AbstractRotation
@@ -65,7 +65,7 @@ compute_free_surface_tendency!(::SingleColumnGrid, model, ::SplitExplicitFreeSur
 
 # Fast state update and halo filling
 
-function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid, callbacks; Δt=nothing)
+function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGrid, Δt, callbacks)
 
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
 
@@ -82,6 +82,8 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
     end
 
     update_biogeochemical_state!(model.biogeochemistry, model)
+
+    update_advection_timestep!(model.advection, model.timestepper, model.clock.stage, Δt)
 
     return nothing
 end
