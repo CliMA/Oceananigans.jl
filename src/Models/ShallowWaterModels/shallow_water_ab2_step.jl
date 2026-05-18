@@ -17,14 +17,14 @@ function ab2_step!(model::ShallowWaterModel, Δt, callbacks)
 
     compute_tendencies!(model, callbacks)
     grid = model.grid
-    Δt = convert(eltype(grid), Δt)
+    kernel_Δt = convert(eltype(grid), Δt)
 
     fields = prognostic_fields(model)
 
     for key in keys(fields)
         launch!(architecture(grid), grid, :xyz, _ab2_step_field!,
                 fields[key],
-                Δt,
+                kernel_Δt,
                 model.timestepper.χ,
                 model.timestepper.Gⁿ[key],
                 model.timestepper.G⁻[key])
