@@ -1,4 +1,4 @@
-using Oceananigans.TimeSteppers: _ab2_step_field!, convert_time
+using Oceananigans.TimeSteppers: _ab2_step_field!
 using Oceananigans.Operators: σ⁻, σⁿ, ∂t_σ
 using Oceananigans.TurbulenceClosures: implicit_step!
 
@@ -55,7 +55,7 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
 
     # Mask and fill velocity halos
     u, v, _ = model.velocities
-    fill_halo_regions!((u, v), convert_time(model.grid, model.clock), fields(model); async=true)
+    fill_halo_regions!((u, v), model.clock, fields(model); async=true)
 
     # Computing tracer tendencies
     @apply_regionally begin
@@ -110,7 +110,7 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
     end
 
     u, v, _ = model.velocities
-    fill_halo_regions!((u, v), convert_time(model.grid, model.clock), fields(model))
+    fill_halo_regions!((u, v), model.clock, fields(model))
 
     @apply_regionally begin
         compute_transport_velocities!(model, free_surface)

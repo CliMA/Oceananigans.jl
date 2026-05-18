@@ -12,8 +12,7 @@ using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper,
                                  RungeKutta3TimeStepper,
-                                 SplitRungeKuttaTimeStepper,
-                                 convert_time
+                                 SplitRungeKuttaTimeStepper
 
 using Oceananigans.TurbulenceClosures: _diffusive_flux_x,
                                        _diffusive_flux_y,

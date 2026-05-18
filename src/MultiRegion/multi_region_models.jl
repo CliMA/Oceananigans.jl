@@ -1,6 +1,6 @@
 using Oceananigans.Advection: Advection, WENO, VectorInvariant, adapt_advection_order, cell_advection_timescale, materialize_advection
 using Oceananigans.BuoyancyFormulations: BuoyancyFormulations, BuoyancyForce, NegativeZDirection, AbstractBuoyancyFormulation, validate_unit_vector
-using Oceananigans.TimeSteppers: TimeSteppers, QuasiAdamsBashforth2TimeStepper, convert_time
+using Oceananigans.TimeSteppers: TimeSteppers, QuasiAdamsBashforth2TimeStepper
 using Oceananigans.Models: Models, ExplicitFreeSurface, HydrostaticFreeSurfaceModel, ImplicitFreeSurface, PrescribedVelocityFields
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModels
 using Oceananigans.TurbulenceClosures: TurbulenceClosures, VerticallyImplicitTimeDiscretization, implicit_diffusion_solver
@@ -92,12 +92,12 @@ function TimeSteppers.reconcile_state!(model::MultiRegionModel)
     u = model.velocities.u
     v = model.velocities.v
 
-    kernel_clock = convert_time(model.grid, model.clock)
-    fill_halo_regions!((u, v), kernel_clock, Oceananigans.fields(model))
+    clock = model.clock
+    fill_halo_regions!((u, v), clock, Oceananigans.fields(model))
     fields = Oceananigans.prognostic_fields(model)
 
     for key in keys(fields)
-        !(key ∈ (:u, :v, :U, :V)) && fill_halo_regions!(fields[key], kernel_clock, Oceananigans.fields(model))
+        !(key ∈ (:u, :v, :U, :V)) && fill_halo_regions!(fields[key], clock, Oceananigans.fields(model))
     end
 
     Models.HydrostaticFreeSurfaceModels.reconcile_free_surface!(model.free_surface, model.grid, model.velocities)

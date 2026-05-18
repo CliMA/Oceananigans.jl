@@ -4,23 +4,28 @@ using Oceananigans.Utils: prettytime, seconds_to_nanosecond
 using Oceananigans.Grids: AbstractGrid
 
 import Oceananigans: restore_prognostic_state!
+import Oceananigans.Architectures: kernel_adapt
 import Oceananigans.Units: Time
 import Oceananigans.Fields: set!
 
 """
-    mutable struct Clock{TT, DT, IT, S}
+    mutable struct Clock{TT, DT, IT, S, KT}
 
 Keeps track of the current `time`, `last_Δt`, `iteration` number, and time-stepping `stage`.
 The `stage` is updated only for multi-stage time-stepping methods. The `time :: TT` is
-either a `Number` or a `DateTime` object.
+either a `Number` or a `DateTime` object. `KT` is the floating point type used for
+`time` when `clock` is passed to kernels.
 """
-mutable struct Clock{TT, DT, IT, S}
+mutable struct Clock{TT, DT, IT, S, KT}
     time :: TT
     last_Δt :: DT
     last_stage_Δt :: DT
     iteration :: IT
     stage :: S
 end
+
+Clock{TT, DT, IT, S}(time, last_Δt, last_stage_Δt, iteration, stage) where {TT, DT, IT, S} =
+    Clock{TT, DT, IT, S, TT}(time, last_Δt, last_stage_Δt, iteration, stage)
 
 """
     Clock(; time, last_Δt=Inf, last_stage_Δt=Inf, iteration=0, stage=1)
@@ -32,13 +37,14 @@ function Clock(; time,
                last_Δt = Inf,
                last_stage_Δt = Inf,
                iteration = 0,
-               stage = 1)
+               stage = 1,
+               kernel_time_type = typeof(time))
 
     TT = typeof(time)
     DT = typeof(last_Δt)
     IT = typeof(iteration)
     last_stage_Δt = convert(DT, last_stage_Δt)
-    return Clock{TT, DT, IT, typeof(stage)}(time, last_Δt, last_stage_Δt, iteration, stage)
+    return Clock{TT, DT, IT, typeof(stage), kernel_time_type}(time, last_Δt, last_stage_Δt, iteration, stage)
 end
 
 materialize_clock!(clock::Clock, timestepper) = nothing
@@ -90,19 +96,21 @@ function Clock{TT}(; time,
                    last_Δt = Inf,
                    last_stage_Δt = Inf,
                    iteration = 0,
-                   stage = 1) where TT
+                   stage = 1,
+                   kernel_time_type = TT) where TT
 
     DT = time_step_type(TT)
     last_Δt = convert(DT, last_Δt)
     last_stage_Δt = convert(DT, last_stage_Δt)
     IT = typeof(iteration)
 
-    return Clock{TT, DT, IT, typeof(stage)}(time, last_Δt, last_stage_Δt, iteration, stage)
+    return Clock{TT, DT, IT, typeof(stage), kernel_time_type}(time, last_Δt, last_stage_Δt, iteration, stage)
 end
 
 # helpful default
-# Clock(grid::AbstractGrid{FT}) where {FT} = Clock{FT}(; time=0)
-Clock(grid::AbstractGrid) = Clock{Float64}(; time=0)
+Clock(grid::AbstractGrid{FT}) where {FT} = Clock{Float64}(; time=0, kernel_time_type=FT)
+
+kernel_time_type(::Clock{TT, DT, IT, S, KT}) where {TT, DT, IT, S, KT} = KT
 
 function Base.summary(clock::Clock)
     TT = typeof(clock.time)
@@ -162,11 +170,18 @@ function tick_stage!(clock, stage_Δt, step_Δt)
 end
 
 """Adapt `Clock` for GPU."""
-Adapt.adapt_structure(to, clock::Clock) = (time          = clock.time,
-                                           last_Δt       = clock.last_Δt,
-                                           last_stage_Δt = clock.last_stage_Δt,
-                                           iteration     = clock.iteration,
-                                           stage         = clock.stage)
+function Adapt.adapt_structure(to, clock::Clock)
+    KT = kernel_time_type(clock)
+
+    return Clock(; time          = convert(KT, clock.time),
+                   last_Δt       = clock.last_Δt,
+                   last_stage_Δt = clock.last_stage_Δt,
+                   iteration     = clock.iteration,
+                   stage         = clock.stage,
+                   kernel_time_type = KT)
+end
+
+@inline kernel_adapt(to, clock::Clock) = Adapt.adapt(to, clock)
 
 """
     convert_time(grid, clock)
@@ -175,9 +190,15 @@ Return a `Clock` with `time` demoted to `eltype(grid)`, all other fields unchang
 Call this at every `launch!` site that passes `clock` to a kernel so that `clock.time`
 inside the kernel matches grid precision rather than the clock's native Float64.
 """
-function convert_time(grid, clock::Clock{TT, DT, IT, S}) where {TT, DT, IT, S}
+function convert_time(grid, clock::Clock)
     FT = eltype(grid)
-    return Clock{FT, DT, IT, S}(convert(FT, clock.time), clock.last_Δt, clock.last_stage_Δt, clock.iteration, clock.stage)
+    kernel_clock = Clock(; time          = clock.time,
+                           last_Δt       = clock.last_Δt,
+                           last_stage_Δt = clock.last_stage_Δt,
+                           iteration     = clock.iteration,
+                           stage         = clock.stage,
+                           kernel_time_type = FT)
+    return Adapt.adapt(nothing, kernel_clock)
 end
 
 

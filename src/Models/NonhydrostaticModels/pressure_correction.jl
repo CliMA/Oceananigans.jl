@@ -1,4 +1,3 @@
-using Oceananigans.TimeSteppers: convert_time
 
 """
     compute_pressure_correction!(model::NonhydrostaticModel, Δt)
@@ -9,7 +8,7 @@ function compute_pressure_correction!(model::NonhydrostaticModel, Δt)
 
     # Mask immersed velocities
     foreach(mask_immersed_field!, model.velocities)
-    fill_halo_regions!(model.velocities, convert_time(model.grid, model.clock), fields(model))
+    fill_halo_regions!(model.velocities, model.clock, fields(model))
     enforce_open_boundary_mass_conservation!(model, model.boundary_mass_fluxes)
 
     p_Δt = model.pressures.pNHS

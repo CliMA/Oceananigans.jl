@@ -14,7 +14,6 @@ import Oceananigans.Architectures:
 
 import Oceananigans.Fields as FD
 import Oceananigans.Grids as GD
-import Oceananigans: Clock
 
 using Oceananigans.Grids: XYZRegularRG
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver
@@ -53,9 +52,6 @@ Metal.@device_override @inline function __validindex(ctx::MappedCompilerMetadata
         return true
     end
 end
-
-const MetalGrid = GD.AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:MetalGPU}
-Clock(grid::MetalGrid) = Clock{Float32}(time=0)
 
 nonhydrostatic_pressure_solver(::MetalGPU, grid::XYZRegularRG, ::Nothing) = ConjugateGradientPoissonSolver(grid)
 

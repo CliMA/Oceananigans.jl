@@ -1,6 +1,5 @@
 using Oceananigans.Fields: Field
 using Oceananigans.Units: minute
-using Oceananigans.TimeSteppers: convert_time
 
 struct CATKEVerticalDiffusivity{TD, CL, FT, DT, TKE} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 2}
     mixing_length :: CL
@@ -256,7 +255,7 @@ function step_closure_prognostics!(closure_fields, closure::FlavorOfCATKE, model
 
     launch!(arch, grid, :xy,
             compute_average_surface_buoyancy_flux!,
-            closure_fields.Jᵇ, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, convert_time(grid, clock), Δt;
+            closure_fields.Jᵇ, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt;
             active_cells_map)
 
     return nothing

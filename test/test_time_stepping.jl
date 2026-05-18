@@ -1,8 +1,10 @@
 include("dependencies_for_runtests.jl")
 
+using Adapt: Adapt
 using TimesDates: TimeDate
 using Oceananigans.Grids: topological_tuple_length
 using Oceananigans.TimeSteppers: Clock
+using Oceananigans.Architectures: kernel_adapt
 using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using Oceananigans.TurbulenceClosures.Smagorinskys: LagrangianAveraging, DynamicSmagorinsky, Smagorinsky
@@ -352,12 +354,27 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         @test !(clock1 ≈ clock7)
     end
 
-    @testset "Clock(grid) inherits grid eltype" begin
+    @testset "Clock(grid) accumulates in Float64 and adapts to grid eltype" begin
         for arch in archs, FT in float_types
             grid = RectilinearGrid(arch, FT; size=(1, 1, 1), extent=(1, 1, 1))
+            clock = Clock(grid)
+
             @test eltype(grid) == FT
-            @test Clock(grid) isa Clock{FT}
+            @test clock isa Clock{Float64}
+            @test Oceananigans.TimeSteppers.kernel_time_type(clock) == FT
+
+            kernel_clock = Adapt.adapt(nothing, clock)
+            @test kernel_clock.time isa FT
+            @test Oceananigans.TimeSteppers.kernel_time_type(kernel_clock) == FT
+
+            kernel_args = kernel_adapt(arch, (clock = clock, nested = (clock,)))
+            @test kernel_args.clock.time isa FT
+            @test kernel_args.nested[1].time isa FT
         end
+
+        explicit_clock = Clock(time=0.0f0)
+        @test explicit_clock isa Clock{Float32}
+        @test Oceananigans.TimeSteppers.kernel_time_type(explicit_clock) == Float32
     end
 
     for arch in archs, FT in float_types

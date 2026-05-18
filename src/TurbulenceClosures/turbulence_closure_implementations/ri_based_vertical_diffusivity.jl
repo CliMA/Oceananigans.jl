@@ -1,5 +1,4 @@
 using Oceananigans.Architectures: architecture
-using Oceananigans.TimeSteppers: convert_time
 using Oceananigans.BuoyancyFormulations: ∂z_b, top_buoyancy_flux
 using Oceananigans.Operators
 using Oceananigans.Grids: inactive_node
@@ -215,8 +214,6 @@ function compute_closure_fields!(closure_fields, closure::FlavorOfRBVD, model; p
     # Recomputing would incorrectly apply the time-averaging formula again.
     Δt == 0 && return nothing
 
-    kernel_clock = convert_time(grid, clock)
-
     launch!(arch, grid, parameters,
             compute_ri_number!,
             closure_fields,
@@ -226,7 +223,7 @@ function compute_closure_fields!(closure_fields, closure::FlavorOfRBVD, model; p
             tracers,
             buoyancy,
             top_tracer_bcs,
-            kernel_clock)
+            clock)
 
     # Use `only_local_halos` to ensure that no communication occurs during
     # this call to fill_halo_regions!
@@ -241,7 +238,7 @@ function compute_closure_fields!(closure_fields, closure::FlavorOfRBVD, model; p
             tracers,
             buoyancy,
             top_tracer_bcs,
-            kernel_clock)
+            clock)
 
     return nothing
 end

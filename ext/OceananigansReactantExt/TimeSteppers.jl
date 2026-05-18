@@ -27,7 +27,7 @@ const ReactantModel{TS} = Union{
 }
 
 function Clock(grid::ReactantGrid)
-    FT = Oceananigans.defaults.FloatType
+    FT = eltype(grid)
     arch = architecture(grid)
 
     sharding = if arch isa Distributed
@@ -42,7 +42,7 @@ function Clock(grid::ReactantGrid)
     last_Δt = ConcreteRNumber(Inf, sharding=sharding)
     last_stage_Δt = ConcreteRNumber(Inf, sharding=sharding)
 
-    return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
+    return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt, kernel_time_type=FT)
 end
 
 Base.convert(::Type{T}, x::Reactant.TracedRNumber) where {T<:Reactant.ReactantPrimitive} =
@@ -60,12 +60,13 @@ const TracedReactantClock = Oceananigans.TimeSteppers.Clock{<:Reactant.TracedRNu
 # for a composite type parameter.
 function convert_time(grid, clock::TracedReactantClock)
     FT  = eltype(grid)
-    TT  = Reactant.TracedRNumber{FT}
-    DT  = typeof(clock.last_Δt)
-    IT  = typeof(clock.iteration)
-    S   = typeof(clock.stage)
     new_time = convert(FT, clock.time)   # promote_to(TracedRNumber{FT}, clock.time)
-    return Clock{TT, DT, IT, S}(new_time, clock.last_Δt, clock.last_stage_Δt, clock.iteration, clock.stage)
+    return Clock(; time          = new_time,
+                   last_Δt       = clock.last_Δt,
+                   last_stage_Δt = clock.last_stage_Δt,
+                   iteration     = clock.iteration,
+                   stage         = clock.stage,
+                   kernel_time_type = FT)
 end
 
 function Base.setproperty!(clock::ConcreteReactantClock, prop::Symbol, value)

@@ -130,4 +130,10 @@ unified_array(::GPU, a) = a
 @inline convert_to_device(arch, args)  = args
 @inline convert_to_device(::CPU, args) = args
 
+# Adapt kernel arguments before backend-specific conversion. This is a no-op by default
+# and is extended by downstream modules for scalar kernel-only representations.
+@inline kernel_adapt(arch, arg) = arg
+@inline kernel_adapt(arch, args::Tuple) = Tuple(kernel_adapt(arch, arg) for arg in args)
+@inline kernel_adapt(arch, nt::NamedTuple) = NamedTuple{keys(nt)}(kernel_adapt(arch, Tuple(nt)))
+
 end # module

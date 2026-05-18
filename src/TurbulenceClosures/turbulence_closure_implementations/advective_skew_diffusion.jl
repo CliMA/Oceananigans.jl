@@ -1,5 +1,4 @@
 using Oceananigans.Fields: VelocityFields
-using Oceananigans.TimeSteppers: convert_time
 using Oceananigans.Grids: inactive_node, peripheral_node
 using Oceananigans.BuoyancyFormulations: ∂xᵣ_b, ∂yᵣ_b, ∂z_b
 
@@ -19,7 +18,7 @@ function compute_eddy_velocities!(closure_fields, closure::SkewAdvectionISSD, mo
     model_fields = fields(model)
 
     launch!(architecture(grid), grid, parameters, _compute_eddy_velocities!,
-            uₑ, vₑ, wₑ, grid, convert_time(grid, clock), closure, buoyancy, model_fields)
+            uₑ, vₑ, wₑ, grid, clock, closure, buoyancy, model_fields)
 
     return nothing
 end

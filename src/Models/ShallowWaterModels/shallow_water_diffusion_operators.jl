@@ -1,6 +1,5 @@
 using Oceananigans.Operators
 using Oceananigans.TurbulenceClosures: ExplicitTimeDiscretization, ThreeDimensionalFormulation
-using Oceananigans.TimeSteppers: convert_time
 
 using Oceananigans.TurbulenceClosures:
                         AbstractScalarDiffusivity,
@@ -73,7 +72,7 @@ function compute_closure_fields!(closure_fields, closure::ShallowWaterScalarDiff
 
     launch!(arch, grid, :xyz,
             _calculate_shallow_water_viscosity!,
-            closure_fields.νₑ, grid, closure, convert_time(grid, clock), model_fields)
+            closure_fields.νₑ, grid, closure, clock, model_fields)
 
     return nothing
 end

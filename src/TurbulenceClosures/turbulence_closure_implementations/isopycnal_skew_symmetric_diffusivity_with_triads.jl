@@ -1,5 +1,4 @@
 using Oceananigans.Operators: active_weighted_ℑxzᶜᶜᶜ, active_weighted_ℑyzᶜᶜᶜ
-using Oceananigans.TimeSteppers: convert_time
 
 struct TriadIsopycnalSkewSymmetricDiffusivity{TD, K, S, M, L, N} <: AbstractTurbulenceClosure{TD, N}
     κ_skew :: K
@@ -104,7 +103,7 @@ function compute_closure_fields!(closure_fields, closure::FlavorOfTISSD{TD}, mod
     if TD() isa VerticallyImplicitTimeDiscretization
         launch!(arch, grid, parameters,
                 triad_compute_tapered_R₃₃!,
-                closure_fields, grid, closure, convert_time(grid, clock), buoyancy, tracers)
+                closure_fields, grid, closure, clock, buoyancy, tracers)
     end
 
     return nothing

@@ -10,6 +10,7 @@ using KernelAbstractions: Kernel,
                           CompilerMetadata
 using KernelAbstractions.NDIteration: NDIteration, NDRange, blocks, workitems, _Size
 using Oceananigans.Architectures: Architectures
+using Oceananigans.Architectures: kernel_adapt
 
 import Oceananigans
 import KernelAbstractions: get, expand, StaticSize
@@ -385,7 +386,8 @@ end
 
     # Don't launch kernels with no size
     if length(worksize) > 0
-        loop!(first_kernel_arg, other_kernel_args...)
+        kernel_args = kernel_adapt(arch, (first_kernel_arg, other_kernel_args...))
+        loop!(kernel_args...)
     end
 
     return nothing
