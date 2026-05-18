@@ -138,8 +138,6 @@ function test_minimal_restore(arch, FT, pickup_method, model_type)
 
     @test new_simulation.stop_time == new_stop_time
     @test new_checkpointer.schedule.interval == new_checkpoint_interval
-    @test new_checkpointer.schedule.actuations == 0
-    @test Oceananigans.Utils.next_actuation_time(new_checkpointer.schedule) == time(new_simulation) + new_checkpoint_interval
 
     rm.(glob("$(prefix)_iteration*.jld2"))
 
@@ -291,8 +289,6 @@ function test_minimal_restore_shallow_water(arch, FT, pickup_method)
 
     @test new_simulation.stop_time == new_stop_time
     @test new_checkpointer.schedule.interval == new_checkpoint_interval
-    @test new_checkpointer.schedule.actuations == 0
-    @test Oceananigans.Utils.next_actuation_time(new_checkpointer.schedule) == time(new_simulation) + new_checkpoint_interval
 
     rm.(glob("$(prefix)_iteration*.jld2"))
 

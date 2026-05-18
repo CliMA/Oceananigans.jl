@@ -311,9 +311,8 @@ function prognostic_state(checkpointer::Checkpointer)
     return (; schedule = prognostic_state(checkpointer.schedule))
 end
 
-# Checkpointers use the live user-specified schedule on pickup. Their saved
-# schedule state is ignored and reinitialized from the restored clock.
 function restore_prognostic_state!(restored::Checkpointer, from)
+    restore_prognostic_state!(restored.schedule, from.schedule)
     return restored
 end
 
