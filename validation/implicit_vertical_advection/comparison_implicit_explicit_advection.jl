@@ -64,7 +64,7 @@ set!(reference_model, c=initial_tracer)
 #####
 
 Δzₘᵢₙ = minimum_zspacing(grid)
-Δt    = 4 * Δzₘᵢₙ / w₀     # CFL ≈ 4
+Δt    = 7.5 * Δzₘᵢₙ / w₀   # CFL ≈ 7.5
 Δτ    = 0.5 * Δzₘᵢₙ / w₀   # CFL ≈ 0.5 (reference)
 
 # Place final centroid at z ≈ −0.15 (well below the top stretched zone)
@@ -190,37 +190,29 @@ println("\n--- Mass conservation (∫c dz) ---")
 ##### Plot
 #####
 
-try
-    @eval using CairoMakie
+using CairoMakie
 
-    fig = Figure(size=(900, 1000))
+fig = Figure(size=(900, 1000))
 
-    # AIVA Hovmöller
-    ax1 = Axis(fig[1, 1], xlabel="t", ylabel="z", title="AIVA c(z, t)")
-    heatmap!(ax1, times, zᶜ, aiva_history')
+# AIVA Hovmöller
+ax1 = Axis(fig[1, 1], xlabel="t", ylabel="z", title="AIVA c(z, t)")
+heatmap!(ax1, 1:size(aiva_history, 2), zᶜ, aiva_history')
 
-    # Final-time profiles
-    ax2 = Axis(fig[2, 1], xlabel="c", ylabel="z",
-               title=@sprintf("Final profile (t = %.3f, w₀·t = %.3f)", Tₛ, w₀ * Tₛ))
-    lines!(ax2, aiva_history[:, 1],        zᶜ, color=:black, linestyle=:dash, label="initial")
-    lines!(ax2, exact_tracer,              zᶜ, color=:gray,  linewidth=3, label="analytical")
-    lines!(ax2, reference_history[:, end], zᶜ, color=:green,
-           label=@sprintf("reference (CFL ≈ %.2f)", w₀ * Δτ / Δzₘᵢₙ))
-    lines!(ax2, aiva_history[:, end],      zᶜ, color=:blue,
-           label=@sprintf("AIVA (CFL ≈ %.1f)", w₀ * Δt / Δzₘᵢₙ))
-    axislegend(ax2)
+# Final-time profiles
+ax2 = Axis(fig[2, 1], xlabel="c", ylabel="z", title=@sprintf("Final profile (t = %.3f, w₀·t = %.3f)", Tₛ, w₀ * Tₛ))
+lines!(ax2, aiva_history[:, 1],        zᶜ, color=:black, linestyle=:dash, label="initial")
+lines!(ax2, exact_tracer,              zᶜ, color=:gray,  linewidth=3, label="analytical")
+lines!(ax2, reference_history[:, end], zᶜ, color=:green, label=@sprintf("reference (CFL ≈ %.2f)", w₀ * Δτ / Δzₘᵢₙ))
+lines!(ax2, aiva_history[:, end],      zᶜ, color=:blue,  label=@sprintf("AIVA (CFL ≈ %.1f)", w₀ * Δt / Δzₘᵢₙ))
+axislegend(ax2, position=:rb)
 
-    # max|c| vs step (log)
-    cmaxᴬ = [maximum(abs, aiva_history[:, n + 1])     for n in 0:Nₛ]
-    cmaxˣ = [maximum(abs, explicit_history[:, n + 1]) for n in 0:Nₛ]
-    ax3 = Axis(fig[3, 1], xlabel="AIVA step", ylabel="max |c|", yscale=log10)
-    lines!(ax3, 0:Nₛ, max.(cmaxᴬ, 1e-30), label="AIVA (large Δt)")
-    lines!(ax3, 0:Nₛ, max.(cmaxˣ, 1e-30), label="explicit (large Δt)")
-    axislegend(ax3, position=:rb)
-
-    outpath = joinpath(@__DIR__, "crash_vs_survives.png")
-    save(outpath, fig)
-    println("Saved figure to $(outpath)")
-catch err
-    @info "Plotting skipped (CairoMakie not in env)" err
-end
+# max|c| vs step (log)
+cmaxᴬ = [maximum(abs, aiva_history[:, n + 1])     for n in 0:Nₛ]
+cmaxˣ = [maximum(abs, explicit_history[:, n + 1]) for n in 0:Nₛ]
+cmaxᴿ = [maximum(abs, reference_history[:, n + 1]) for n in 0:Nₛ]
+ax3 = Axis(fig[3, 1], xlabel="AIVA step", ylabel="max |c|", yscale=log10)
+lines!(ax3, 0:Nₛ, cmaxᴬ, label="AIVA (large Δt)")
+lines!(ax3, 0:Nₛ, cmaxˣ, label="explicit (large Δt)")
+lines!(ax3, 0:Nₛ, cmaxᴿ, label="explicit (small Δt)")
+ylims!(ax3, 0.85, 1.01)
+axislegend(ax3, position=:rb)
