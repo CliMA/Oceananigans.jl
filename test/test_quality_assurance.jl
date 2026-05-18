@@ -34,7 +34,7 @@ end
     # Until we resolve all ambiguities, we make sure we don't increase them.
     # Do not increase this number. If ambiguities increase, resolve them before merging.
     number_of_ambiguities = length(detect_ambiguities(Oceananigans; recursive=true))
-    @test number_of_ambiguities <= 326
+    @test number_of_ambiguities <= 323
     @info "Number of ambiguities: $number_of_ambiguities"
 
     modules = (
