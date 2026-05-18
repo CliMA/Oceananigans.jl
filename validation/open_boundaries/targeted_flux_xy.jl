@@ -1,8 +1,8 @@
-# Validation script for `target_volume_flux` in `PerturbationAdvection`.
+# Validation script for `target_transport` in `PerturbationAdvection`.
 #
 # Configuration: 2D (xy) flow with inflow at east and west, outflow at north and south.
 # All four boundaries use PerturbationAdvection open boundary conditions.
-# The east and north boundaries carry a prescribed target_volume_flux that forces exactly
+# The east and north boundaries carry a prescribed target_transport that forces exactly
 # 60 % of the "full" natural flux through each, independent of the radiation scheme.
 # The west and south boundaries have no target and participate in the global pool
 # correction that restores volume conservation.
@@ -28,7 +28,7 @@ U_in = 1.0          # natural inflow / outflow speed [m/s]
 Re   = 200.0        # Reynolds number  (ν = U_in * Lx / Re)
 ν    = U_in * Lx / Re
 
-# target_volume_flux = ∫(normal velocity) dA  in the positive coordinate direction.
+# target_transport = ∫(normal velocity) dA  in the positive coordinate direction.
 #   east face:  u < 0 (westward = inflow from east)  → negative target
 #   north face: v > 0 (northward = outflow to north) → positive target
 Q_east  = -0.6 * U_in * Ly   # [m²/s]
@@ -56,14 +56,14 @@ u_bcs = FieldBoundaryConditions(
                scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)),
     east = OpenBoundaryCondition(-U_in;
                scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale,
-                                               target_volume_flux = Q_east)))
+                                               target_transport = Q_east)))
 
 v_bcs = FieldBoundaryConditions(
     south = OpenBoundaryCondition(-U_in;
                 scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)),
     north = OpenBoundaryCondition(+U_in;
                 scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale,
-                                               target_volume_flux = Q_north)))
+                                               target_transport = Q_north)))
 
 # ── Model ─────────────────────────────────────────────────────────────────────
 model = NonhydrostaticModel(grid;
@@ -111,17 +111,17 @@ simulation.output_writers[:fields] =
 run!(simulation)
 @info "Simulation finished in $(prettytime(simulation.run_wall_time))."
 
-# ── Diagnostic: print final boundary volume fluxes ────────────────────────────
-bvf = model.boundary_volume_fluxes
-map(compute!, bvf)
+# ── Diagnostic: print final boundary transports ────────────────────────────
+bt = model.boundary_transport
+map(compute!, bt)
 
-west_Q  = Array(interior(bvf.west_volume_flux))[1, 1, 1]
-east_Q  = Array(interior(bvf.east_volume_flux))[1, 1, 1]
-south_Q = Array(interior(bvf.south_volume_flux))[1, 1, 1]
-north_Q = Array(interior(bvf.north_volume_flux))[1, 1, 1]
+west_Q  = Array(interior(bt.west_transport))[1, 1, 1]
+east_Q  = Array(interior(bt.east_transport))[1, 1, 1]
+south_Q = Array(interior(bt.south_transport))[1, 1, 1]
+north_Q = Array(interior(bt.north_transport))[1, 1, 1]
 
 @info @sprintf("""
-Final boundary volume fluxes:
+Final boundary transports:
   west  (pool)     = %+.4f m²/s  (target: none)
   east  (targeted) = %+.4f m²/s  (target: %.4f)
   south (pool)     = %+.4f m²/s  (target: none)

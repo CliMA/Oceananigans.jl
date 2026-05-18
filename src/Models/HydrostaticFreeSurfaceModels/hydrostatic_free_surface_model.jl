@@ -56,7 +56,7 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
     timestepper :: TS          # Object containing timestepper fields and parameters
     auxiliary_fields :: AF     # User-specified auxiliary fields for forcing functions and boundary conditions
     vertical_coordinate :: Z   # Rulesets that define the time-evolution of the grid
-    boundary_volume_fluxes :: BM # Volume flux fields for targeted open boundary conditions (or `nothing`)
+    boundary_transport :: BM # Transport fields for targeted open boundary conditions (or `nothing`)
 end
 
 supported_timesteppers = (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5)
@@ -274,12 +274,12 @@ function HydrostaticFreeSurfaceModel(grid;
 
     !isnothing(particles) && arch isa Distributed && error("LagrangianParticles are not supported on Distributed architectures.")
 
-    boundary_volume_fluxes = initialize_targeted_boundary_volume_fluxes(velocities)
+    boundary_transport = initialize_targeted_boundary_transport(velocities)
 
     model = HydrostaticFreeSurfaceModel(arch, grid, clock, advection, buoyancy, coriolis,
                                         free_surface, forcing, closure, particles, biogeochemistry, velocities, transport_velocities,
                                         tracers, pressure, closure_fields, timestepper, auxiliary_fields, vertical_coordinate,
-                                        boundary_volume_fluxes)
+                                        boundary_transport)
 
     materialize_clock!(clock, timestepper)
     update_state!(model)
