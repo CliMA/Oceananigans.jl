@@ -39,9 +39,10 @@ using Oceananigans.Grids:
 # different function (5-arg, for FieldTimeSeries data allocation).
 import Oceananigans.Grids: new_data as allocate_grid_data
 using Oceananigans.OrthogonalSphericalShellGrids:
-    OrthogonalSphericalShellGrid, TripolarGrid, RotatedLatitudeLongitudeGrid,
+    TripolarGrid, RotatedLatitudeLongitudeGrid,
     ConformalCubedSpherePanelGrid, Tripolar, LatitudeLongitudeRotation,
     conformal_mapping_info
+using Oceananigans.Grids: OrthogonalSphericalShellGrid
 
 using OffsetArrays: OffsetArray
 using Oceananigans.ImmersedBoundaries:
