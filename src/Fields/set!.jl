@@ -49,12 +49,13 @@ set!(u::Field, a::Union{Array, OffsetArray}) = set_to_array!(u, a)
 """
     set!(u::Field, v::Field)
 
-Set `u` from `v`. When `u` and `v` have the same `size` and `location`, the
-data of `v` is copied into `u` (cross-architecture transfers are handled
-automatically). Otherwise, `v` is migrated to `u`'s architecture if needed
-and then interpolated onto `u` with [`interpolate!`](@ref). This means
-field-to-field `set!` "just works" across grids of different resolution,
-between staggered locations, and across architectures.
+Set `u` from `v`. When `u` and `v` have the same grid, `indices`, and
+`location`, the data of `v` is copied into `u` (cross-architecture transfers
+are handled automatically). Otherwise, `v` is migrated to `u`'s architecture
+if needed, its halo regions are filled, and then it is interpolated onto `u`
+with [`interpolate!`](@ref). This means field-to-field `set!` "just works"
+across grids of different resolution, between staggered locations, and across
+architectures.
 
 Note that the interpolation path samples `v` pointwise; for conservative
 remapping, call [`regrid!`](@ref) explicitly.
@@ -146,17 +147,22 @@ function set_to_array!(u, a)
 end
 
 function set_to_field!(u, v)
-    # When sizes and locations match, we can directly copy data. Otherwise we
-    # fall back to interpolation, migrating v to u's child architecture first
-    # so that interpolate! can run on a single architecture.
-    if size(u) == size(v) && location(u) == location(v)
+    if matching_field_discretization(u, v)
         copy_to_field!(u, v)
     else
         v_on_u = on_architecture(child_architecture(u), v)
+        fill_halo_regions!(v_on_u)
         interpolate!(u, v_on_u)
     end
 
     return u
+end
+
+function matching_field_discretization(u, v)
+    return size(u) == size(v) &&
+           location(u) == location(v) &&
+           indices(u) == indices(v) &&
+           (u.grid === v.grid || u.grid == v.grid)
 end
 
 function copy_to_field!(u, v)
