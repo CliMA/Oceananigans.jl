@@ -1,11 +1,11 @@
 # These are also used in Coriolis/hydrostatic_spherical_coriolis.jl
-struct EnergyConserving{FT}    <: AbstractAdvectionScheme{1, FT} end
-struct EnstrophyConserving{FT} <: AbstractAdvectionScheme{1, FT} end
+struct EnergyConserving{FT}    <: AbstractAdvectionScheme{1, FT, ExplicitTimeDiscretization} end
+struct EnstrophyConserving{FT} <: AbstractAdvectionScheme{1, FT, ExplicitTimeDiscretization} end
 
 EnergyConserving(FT::DataType = Oceananigans.defaults.FloatType)    = EnergyConserving{FT}()
 EnstrophyConserving(FT::DataType = Oceananigans.defaults.FloatType) = EnstrophyConserving{FT}()
 
-struct VectorInvariant{N, FT, M, Z, ZS, V, K, D, U} <: AbstractAdvectionScheme{N, FT}
+struct VectorInvariant{N, FT, M, Z, ZS, V, K, D, U} <: AbstractAdvectionScheme{N, FT, ExplicitTimeDiscretization}
     vorticity_scheme               :: Z  # reconstruction scheme for vorticity flux
     vorticity_stencil              :: ZS # stencil used for assessing vorticity smoothness
     vertical_advection_scheme      :: V  # reconstruction scheme for vertical advection

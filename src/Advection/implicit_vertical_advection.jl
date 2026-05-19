@@ -14,28 +14,28 @@ const AIVA = AdaptiveImplicitVerticalAdvection
 ##### face velocity advecting the field.
 #####
 
-@inline function implicit_vertical_velocityᶜᶜᶠ(i, j, k, grid, scheme, vd, W)
-    Δt = vd.Δt[]
+@inline function implicit_vertical_velocityᶜᶜᶠ(i, j, k, grid, scheme, td, W)
+    Δt = td.Δt[]
     Δz = Δzᶜᶜᶠ(i, j, k, grid)
     w  = @inbounds W[i, j, k]
     α  = abs(w) * Δt / Δz
-    return w * (1 - ifelse(α > vd.cfl, vd.cfl / α, one(α)))
+    return w * (1 - ifelse(α > td.cfl, td.cfl / α, one(α)))
 end
 
-@inline function implicit_velocity_scaleᶠᶜᶠ(i, j, k, grid, scheme, vd, W)
-    Δt = vd.Δt[]
+@inline function implicit_velocity_scaleᶠᶜᶠ(i, j, k, grid, scheme, td, W)
+    Δt = td.Δt[]
     Δz = Δzᶠᶜᶠ(i, j, k, grid)
     w  = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, W)
     α  = abs(w) * Δt / Δz
-    return w * (1 - ifelse(α > vd.cfl, vd.cfl / α, one(α)))
+    return w * (1 - ifelse(α > td.cfl, td.cfl / α, one(α)))
 end
 
 @inline function implicit_velocity_scaleᶜᶠᶠ(i, j, k, grid, scheme, W)
-    Δt = vd.Δt[]
+    Δt = td.Δt[]
     Δz = Δzᶜᶠᶠ(i, j, k, grid)
     w  = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, W)
     α  = abs(w) * Δt / Δz
-    return w * (1 - ifelse(α > vd.cfl, vd.cfl / α, one(α)))
+    return w * (1 - ifelse(α > td.cfl, td.cfl / α, one(α)))
 end
 
 #####
@@ -57,7 +57,7 @@ end
 
 # Upper diagonal: coefficient of c_{k+1} in the tridiagonal system
 @inline function implicit_advection_upper_diagonal(i, j, k, grid, advection::AIVA, w, Δt, ℓx, ℓy)
-    wⁱ  = implicit_vertical_velocity(ℓx, ℓy, i, j, k+1, grid, advection, advection.vertical_discretization, w)
+    wⁱ  = implicit_vertical_velocity(ℓx, ℓy, i, j, k+1, grid, advection, advection.time_discretization, w)
     Azᵢ = Az(i, j, k+1, grid, ℓx, ℓy, Face())
     V⁻¹ = 1 / volume(i, j, k, grid, ℓx, ℓy, Center())
     return Δt * V⁻¹ * Azᵢ * min(wⁱ, zero(wⁱ)) * !peripheral_node(i, j, k+1, grid, ℓx, ℓy, Face())
@@ -67,7 +67,7 @@ end
 # Uses k′ = k-1 indexing convention (LinearAlgebra.Tridiagonal convention, matching ivd_lower_diagonal)
 @inline function implicit_advection_lower_diagonal(i, j, k′, grid, advection::AIVA, w, Δt, ℓx, ℓy)
     k   = k′ + 1
-    wⁱ  = implicit_vertical_velocity(ℓx, ℓy, i, j, k, grid, advection, advection.vertical_discretization, w)
+    wⁱ  = implicit_vertical_velocity(ℓx, ℓy, i, j, k, grid, advection, advection.time_discretization, w)
     Azᵢ = Az(i, j, k, grid, ℓx, ℓy, Face())
     V⁻¹ = 1 / volume(i, j, k, grid, ℓx, ℓy, Center())
     return - Δt * V⁻¹ * Azᵢ * max(wⁱ, zero(wⁱ)) * !peripheral_node(i, j, k′, grid, ℓx, ℓy, Center())

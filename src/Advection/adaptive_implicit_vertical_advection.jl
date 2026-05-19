@@ -15,28 +15,28 @@ const AVID = AdaptiveVerticallyImplicitDiscretization
 # Scale factor: min(1, cfl * Δz / (|w| * Δt))
 # When |w| * Δt / Δz ≤ cfl: scale = 1 (fully explicit)
 # When |w| * Δt / Δz > cfl: scale = cfl * Δz / (|w| * Δt) < 1
-@inline function explicit_velocity_scaleᶜᶜᶠ(i, j, k, grid, scheme, vd, W)
-    Δt = vd.Δt[]
+@inline function explicit_velocity_scaleᶜᶜᶠ(i, j, k, grid, scheme, td, W)
+    Δt = td.Δt[]
     Δz = Δzᶜᶜᶠ(i, j, k, grid)
     w  = @inbounds W[i, j, k]
     α  = abs(w) * Δt / Δz
-    return ifelse(α > vd.cfl, vd.cfl / α, one(α))
+    return ifelse(α > td.cfl, td.cfl / α, one(α))
 end
 
-@inline function explicit_velocity_scaleᶠᶜᶠ(i, j, k, grid, scheme, vd, W)
-    Δt = vd.Δt[]
+@inline function explicit_velocity_scaleᶠᶜᶠ(i, j, k, grid, scheme, td, W)
+    Δt = td.Δt[]
     Δz = Δzᶠᶜᶠ(i, j, k, grid)
     w  = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, W)
     α  = abs(w) * Δt / Δz
-    return ifelse(α > vd.cfl, vd.cfl / α, one(α))
+    return ifelse(α > td.cfl, td.cfl / α, one(α))
 end
 
-@inline function explicit_velocity_scaleᶜᶠᶠ(i, j, k, grid, scheme, vd, W)
-    Δt = vd.Δt[]
+@inline function explicit_velocity_scaleᶜᶠᶠ(i, j, k, grid, scheme, td, W)
+    Δt = td.Δt[]
     Δz = Δzᶜᶠᶠ(i, j, k, grid)
     w  = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, W)
     α  = abs(w) * Δt / Δz
-    return ifelse(α > vd.cfl, vd.cfl / α, one(α))
+    return ifelse(α > td.cfl, td.cfl / α, one(α))
 end
 
 #####
@@ -48,19 +48,19 @@ end
 ##### (implicit treatment is only for tracers and horizontal velocities).
 #####
 
-@inline function advective_tracer_flux_z(i, j, k, grid, scheme::AVID, W, c)
-    s = explicit_velocity_scaleᶜᶜᶠ(i, j, k, grid, scheme, vd, W)
+@inline function advective_tracer_flux_z(i, j, k, grid, scheme, td::AVID, W, c)
+    s = explicit_velocity_scaleᶜᶜᶠ(i, j, k, grid, scheme, td, W)
     return s * advective_tracer_flux_z(i, j, k, grid, scheme, ExplicitTimeDiscretization(), W, c)
 end
 
 # Vertical advection of horizontal momentum: scale by explicit_velocity_scale.
-@inline function advective_momentum_flux_Wu(i, j, k, grid, scheme, vd::AVID, W, u)
-    s  = explicit_velocity_scaleᶠᶜᶠ(i, j, k, grid, scheme, vd, W)
+@inline function advective_momentum_flux_Wu(i, j, k, grid, scheme, td::AVID, W, u)
+    s  = explicit_velocity_scaleᶠᶜᶠ(i, j, k, grid, scheme, scheme.time_discretization, W)
     return s * advective_momentum_flux_Wu(i, j, k, grid, ExplicitTimeDiscretization(), scheme, W, u)
 end
 
-@inline function advective_momentum_flux_Wv(i, j, k, grid, scheme, vd::AVID, W, v)
-    s  = explicit_velocity_scaleᶜᶠᶠ(i, j, k, grid, scheme, vd, W)
+@inline function advective_momentum_flux_Wv(i, j, k, grid, scheme, td::AVID, W, v)
+    s  = explicit_velocity_scaleᶜᶠᶠ(i, j, k, grid, scheme, td, W)
     return s * advective_momentum_flux_Wv(i, j, k, grid, ExplicitTimeDiscretization(), scheme, W, v)
 end
 
@@ -81,14 +81,14 @@ Set `advection.Δt[]` to the next substep's Δτ so wᵉ in Gⁿ matches the nex
 update_advection_timestep!(advection, timestepper, stage, Δt) = nothing
 
 function update_advection_timestep!(a::AdaptiveImplicitVerticalAdvection, timestepper, stage, Δt)
-    a.vd.Δt[] = Δt
+    a.time_discretization.Δt[] = Δt
     return nothing
 end
 
 @inline function update_advection_timestep!(a::AdaptiveImplicitVerticalAdvection, timestepper::SplitRungeKuttaTimeStepper, stage, Δτ)
     Δt     = Δτ * timestepper.β[stage]
     nstage = ifelse(stage < timestepper.Nstages, stage + 1, 1)
-    a.vd.Δt[] = Δt / timestepper.β[nstage]
+    a.time_discretization.Δt[] = Δt / timestepper.β[nstage]
     return nothing
 end
 

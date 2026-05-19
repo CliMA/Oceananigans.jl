@@ -2,15 +2,15 @@
 ##### Centered advection scheme
 #####
 
-struct Centered{N, FT, VD, CA} <: AbstractCenteredAdvectionScheme{N, FT, VD}
+struct Centered{N, FT, TD, CA} <: AbstractCenteredAdvectionScheme{N, FT, TD}
     buffer_scheme :: CA
-    vertical_discretization :: VD
-    Centered{N, FT}(buffer_scheme::CA, vertical_discretization::VD) where {N, FT, CA} = new{N, FT, VD, CA}(buffer_scheme, vertical_discretization)
+    time_discretization :: TD
+    Centered{N, FT}(buffer_scheme::CA, vertical_discretization::VD) where {N, FT, CA, TD} = new{N, FT, TD, CA}(buffer_scheme, time_discretization)
 end
 
 function Centered(FT::DataType=Oceananigans.defaults.FloatType;
                   order = 2,
-                  vertical_discretization = ExplicitTimeDiscretization(),
+                  time_discretization = ExplicitTimeDiscretization(),
                   buffer_scheme = DecreasingOrderAdvectionScheme())
 
     mod(order, 2) != 0 && throw(ArgumentError("Centered reconstruction scheme is defined only for even orders"))
@@ -24,7 +24,7 @@ function Centered(FT::DataType=Oceananigans.defaults.FloatType;
         end
     end
 
-    return Centered{N, FT}(buffer_scheme, vertical_discretization)
+    return Centered{N, FT}(buffer_scheme, time_discretization)
 end
 
 Base.summary(a::Centered{N}) where N = string("Centered(order=", 2N, ")")
@@ -35,10 +35,10 @@ Base.show(io::IO, a::Centered{N, FT}) where {N, FT} =
 
 
 Adapt.adapt_structure(to, scheme::Centered{N, FT}) where {N, FT} = 
-    Centered{N, FT}(Adapt.adapt(to, scheme.buffer_scheme), Adapt.adapt(to, scheme.vertical_discretization))
+    Centered{N, FT}(Adapt.adapt(to, scheme.buffer_scheme), Adapt.adapt(to, scheme.time_discretization))
 
 on_architecture(to, scheme::Centered{N, FT}) where {N, FT} = 
-    Centered{N, FT}(on_architecture(to, scheme.buffer_scheme), on_architecture(to, scheme.vertical_discretization))
+    Centered{N, FT}(on_architecture(to, scheme.buffer_scheme), on_architecture(to, scheme.time_discretization))
 
 const ACAS = AbstractCenteredAdvectionScheme
 

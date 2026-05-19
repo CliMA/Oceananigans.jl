@@ -88,4 +88,4 @@ const ATD = AbstractTimeDiscretization
 @inline advective_momentum_flux_Vw(i, j, k, grid, ::ATD, args...) = advective_momentum_flux_Vw(i, j, k, grid, args...)
 @inline advective_momentum_flux_Ww(i, j, k, grid, ::ATD, args...) = advective_momentum_flux_Ww(i, j, k, grid, args...)
 
-@inline time_discretization(scheme::AbstractAdvectionScheme) = scheme.vertical_discretization
+@inline time_discretization(scheme::AbstractAdvectionScheme) = scheme.time_discretization

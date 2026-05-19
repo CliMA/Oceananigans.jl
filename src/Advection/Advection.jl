@@ -40,9 +40,9 @@ import Base: summary, Callable
 import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 import Oceananigans.Architectures: on_architecture
 
-abstract type AbstractAdvectionScheme{B, FT} end
-abstract type AbstractCenteredAdvectionScheme{B, FT} <: AbstractAdvectionScheme{B, FT} end
-abstract type AbstractUpwindBiasedAdvectionScheme{B, FT} <: AbstractAdvectionScheme{B, FT} end
+abstract type AbstractAdvectionScheme{B, FT, TD} end
+abstract type AbstractCenteredAdvectionScheme{B, FT, TD} <: AbstractAdvectionScheme{B, FT, TD} end
+abstract type AbstractUpwindBiasedAdvectionScheme{B, FT, TD} <: AbstractAdvectionScheme{B, FT, TD} end
 
 # `advection_buffers` specifies the list of buffers for which advection schemes
 # are constructed via metaprogramming. (The `advection_buffer` is the width of
