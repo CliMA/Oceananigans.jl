@@ -116,4 +116,4 @@ const VITD = VerticallyImplicitTimeDiscretization
 @inline combine_time_discretizations(d1, d2, other_discs...) =
     combine_time_discretizations(combine_time_discretizations(d1, d2), other_discs...)
 
-@inline time_discretization(closures::Tuple) = combine_time_discretizations(time_discretization.(closures)...)
+@inline Advection.time_discretization(closures::Tuple) = combine_time_discretizations(time_discretization.(closures)...)

@@ -40,12 +40,7 @@ end
 end
 
 #####
-##### Flux dispatch
-#####
-##### Horizontal fluxes pass through to the explicit_scheme unchanged.
-##### Vertical tracer flux uses the CFL-scaled velocity wᵉ.
-##### Vertical momentum fluxes also pass through to the explicit scheme
-##### (implicit treatment is only for tracers and horizontal velocities).
+##### Flux dispatch, use scaled w velocities for explicit fluxes
 #####
 
 @inline function advective_tracer_flux_z(i, j, k, grid, scheme, td::AVID, W, c)
@@ -70,7 +65,6 @@ end
 
 needs_implicit_solver(advection) = false
 needs_implicit_solver(::AdaptiveImplicitVerticalAdvection) = true
-needs_implicit_solver(a::FluxFormAdvection) = needs_implicit_solver(a.z)
 needs_implicit_solver(a::NamedTuple) = any(needs_implicit_solver, values(a))
 
 """

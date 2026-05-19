@@ -8,7 +8,7 @@ struct UpwindBiased{N, FT, TD, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N,
     time_discretization :: TD
 
     UpwindBiased{N, FT}(buffer_scheme::CA, advecting_velocity_scheme::SI, time_discretization::TD) where {N, FT, CA, SI, TD} =
-        new{N, FT, VD, CA, SI}(buffer_scheme, advecting_velocity_scheme, time_discretization)
+        new{N, FT, TD, CA, SI}(buffer_scheme, advecting_velocity_scheme, time_discretization)
 end
 
 function UpwindBiased(FT::DataType = Float64;

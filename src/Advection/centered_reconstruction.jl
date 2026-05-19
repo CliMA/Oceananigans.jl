@@ -5,7 +5,7 @@
 struct Centered{N, FT, TD, CA} <: AbstractCenteredAdvectionScheme{N, FT, TD}
     buffer_scheme :: CA
     time_discretization :: TD
-    Centered{N, FT}(buffer_scheme::CA, vertical_discretization::VD) where {N, FT, CA, TD} = new{N, FT, TD, CA}(buffer_scheme, time_discretization)
+    Centered{N, FT}(buffer_scheme::CA, time_discretization::TD) where {N, FT, CA, TD} = new{N, FT, TD, CA}(buffer_scheme, time_discretization)
 end
 
 function Centered(FT::DataType=Oceananigans.defaults.FloatType;
@@ -37,7 +37,7 @@ Base.show(io::IO, a::Centered{N, FT}) where {N, FT} =
 Adapt.adapt_structure(to, scheme::Centered{N, FT}) where {N, FT} = 
     Centered{N, FT}(Adapt.adapt(to, scheme.buffer_scheme), Adapt.adapt(to, scheme.time_discretization))
 
-on_architecture(to, scheme::Centered{N, FT}) where {N, FT} = 
+Architectures.on_architecture(to, scheme::Centered{N, FT}) where {N, FT} = 
     Centered{N, FT}(on_architecture(to, scheme.buffer_scheme), on_architecture(to, scheme.time_discretization))
 
 const ACAS = AbstractCenteredAdvectionScheme

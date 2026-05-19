@@ -5,14 +5,14 @@
 #
 # Three runs at the same final time:
 #   1. Explicit UpwindBiased(5), large Δt (CFL ≈ 4 in thin cells) — blows up.
-#   2. AIVA wrapping the same explicit scheme, same large Δt      — survives.
+#   2. AdaptiveVerticallyImplicitDiscretization with the same explicit scheme, same large Δt - survives.
 #   3. Reference: explicit UpwindBiased(5), small Δt (CFL ≈ 0.5).
 #
 # Compared against the analytical Gaussian translated by w₀·T.
 
 using Printf
 using Oceananigans
-using Oceananigans.Advection: AdaptiveImplicitVerticalAdvection
+using Oceananigans.Advection: AdaptiveVerticallyImplicitDiscretization
 using Oceananigans.Grids: minimum_zspacing, zspacings
 
 #####
@@ -42,7 +42,7 @@ prescribed_velocity(z, t) = w₀
 velocities = PrescribedVelocityFields(w=prescribed_velocity)
 
 explicit_scheme = UpwindBiased(order=5)
-aiva_scheme     = AdaptiveImplicitVerticalAdvection(explicit_scheme=explicit_scheme, cfl=0.5)
+aiva_scheme     = UpwindBiased(order=5, time_discretization=AdaptiveVerticallyImplicitDiscretization(cfl = 0.5))
 
 build_model(advection) = HydrostaticFreeSurfaceModel(grid;
                                                      velocities,

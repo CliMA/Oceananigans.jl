@@ -54,7 +54,7 @@ end
 function AdaptiveVerticallyImplicitDiscretization(FT::DataType = Oceananigans.defaults.FloatType; cfl = 0.5)
     cfl = convert(FT, cfl)
     Δt  = Ref(zero(FT))
-    return AdaptiveVerticallyImplicitDiscretization(explicit_scheme, cfl, Δt)
+    return AdaptiveVerticallyImplicitDiscretization(cfl, Δt)
 end
 
 Adapt.adapt_structure(to, a::AdaptiveVerticallyImplicitDiscretization) =
