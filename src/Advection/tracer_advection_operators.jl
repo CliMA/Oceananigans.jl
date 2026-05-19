@@ -1,7 +1,7 @@
 
-@inline _advective_tracer_flux_x(i, j, k, grid, scheme, U, c) = advective_tracer_flux_x(i, j, k, grid, scheme, U, c)
-@inline _advective_tracer_flux_y(i, j, k, grid, scheme, V, c) = advective_tracer_flux_y(i, j, k, grid, scheme, V, c)
-@inline _advective_tracer_flux_z(i, j, k, grid, scheme, W, c) = advective_tracer_flux_z(i, j, k, grid, scheme, W, c)
+@inline _advective_tracer_flux_x(i, j, k, grid, scheme, U, c) = advective_tracer_flux_x(i, j, k, grid, scheme, time_discretization(scheme), U, c)
+@inline _advective_tracer_flux_y(i, j, k, grid, scheme, V, c) = advective_tracer_flux_y(i, j, k, grid, scheme, time_discretization(scheme), V, c)
+@inline _advective_tracer_flux_z(i, j, k, grid, scheme, W, c) = advective_tracer_flux_z(i, j, k, grid, scheme, time_discretization(scheme), W, c)
 
 #####
 ##### Fallback tracer fluxes!

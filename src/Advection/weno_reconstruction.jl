@@ -4,15 +4,16 @@ import Oceananigans
 ##### Weighted Essentially Non-Oscillatory (WENO) advection scheme
 #####
 
-struct WENO{N, FT, FT2, PP, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
+struct WENO{N, FT, FT2, VD, PP, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT, VD}
     bounds :: PP
     buffer_scheme :: CA
     advecting_velocity_scheme :: SI
-
+    vertical_discretization :: VD
     function WENO{N, FT, FT2}(bounds::PP, buffer_scheme::CA,
-                              advecting_velocity_scheme :: SI) where {N, FT, FT2, PP, CA, SI}
+                              advecting_velocity_scheme :: SI,
+                              vertical_discretization :: VD) where {N, FT, FT2, PP, CA, SI, VD}
 
-        return new{N, FT, FT2, PP, CA, SI}(bounds, buffer_scheme, advecting_velocity_scheme)
+        return new{N, FT, FT2, VD, PP, CA, SI}(bounds, buffer_scheme, advecting_velocity_scheme, vertical_discretization)
     end
 end
 

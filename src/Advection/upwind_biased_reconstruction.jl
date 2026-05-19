@@ -2,16 +2,18 @@
 ##### Upwind-biased 3rd-order advection scheme
 #####
 
-struct UpwindBiased{N, FT, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
+struct UpwindBiased{N, FT, VD, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT, VD}
     buffer_scheme :: CA
     advecting_velocity_scheme :: SI
+    vertical_discretization :: VD
 
-    UpwindBiased{N, FT}(buffer_scheme::CA, advecting_velocity_scheme::SI) where {N, FT, CA, SI} =
-        new{N, FT, CA, SI}(buffer_scheme, advecting_velocity_scheme)
+    UpwindBiased{N, FT}(buffer_scheme::CA, advecting_velocity_scheme::SI, vertical_discretization::VD) where {N, FT, CA, SI, VD} =
+        new{N, FT, VD, CA, SI}(buffer_scheme, advecting_velocity_scheme, vertical_discretization)
 end
 
 function UpwindBiased(FT::DataType = Float64;
                       order = 3,
+                      vertical_discretization = ExplicitTimeDiscretization(),
                       buffer_scheme = DecreasingOrderAdvectionScheme(),
                       minimum_buffer_upwind_order = 1)
 
@@ -39,7 +41,7 @@ function UpwindBiased(FT::DataType = Float64;
         buffer_scheme  = nothing
     end
 
-    return UpwindBiased{N, FT}(buffer_scheme, advecting_velocity_scheme)
+    return UpwindBiased{N, FT}(buffer_scheme, advecting_velocity_scheme, vertical_discretization)
 end
 
 Base.summary(a::UpwindBiased{N}) where N = string("UpwindBiased(order=", 2N-1, ")")
@@ -73,11 +75,13 @@ end
 
 Adapt.adapt_structure(to, scheme::UpwindBiased{N, FT}) where {N, FT} =
     UpwindBiased{N, FT}(Adapt.adapt(to, scheme.buffer_scheme),
-                        Adapt.adapt(to, scheme.advecting_velocity_scheme))
+                        Adapt.adapt(to, scheme.advecting_velocity_scheme),
+                        Adapt.adapt(to, scheme.vertical_discretization))
 
 on_architecture(to, scheme::UpwindBiased{N, FT}) where {N, FT} =
     UpwindBiased{N, FT}(on_architecture(to, scheme.buffer_scheme),
-                        on_architecture(to, scheme.advecting_velocity_scheme))
+                        on_architecture(to, scheme.advecting_velocity_scheme),
+                        on_architecture(to, scheme.vertical_discretization))
 
 const AUAS = AbstractUpwindBiasedAdvectionScheme
 

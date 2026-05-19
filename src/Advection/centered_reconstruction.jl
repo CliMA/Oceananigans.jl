@@ -2,14 +2,15 @@
 ##### Centered advection scheme
 #####
 
-struct Centered{N, FT, CA} <: AbstractCenteredAdvectionScheme{N, FT}
+struct Centered{N, FT, VD, CA} <: AbstractCenteredAdvectionScheme{N, FT, VD}
     buffer_scheme :: CA
-
-    Centered{N, FT}(buffer_scheme::CA) where {N, FT, CA} = new{N, FT, CA}(buffer_scheme)
+    vertical_discretization :: VD
+    Centered{N, FT}(buffer_scheme::CA, vertical_discretization::VD) where {N, FT, CA} = new{N, FT, VD, CA}(buffer_scheme, vertical_discretization)
 end
 
 function Centered(FT::DataType=Oceananigans.defaults.FloatType;
                   order = 2,
+                  vertical_discretization = ExplicitTimeDiscretization(),
                   buffer_scheme = DecreasingOrderAdvectionScheme())
 
     mod(order, 2) != 0 && throw(ArgumentError("Centered reconstruction scheme is defined only for even orders"))
@@ -23,7 +24,7 @@ function Centered(FT::DataType=Oceananigans.defaults.FloatType;
         end
     end
 
-    return Centered{N, FT}(buffer_scheme)
+    return Centered{N, FT}(buffer_scheme, vertical_discretization)
 end
 
 Base.summary(a::Centered{N}) where N = string("Centered(order=", 2N, ")")
@@ -33,8 +34,11 @@ Base.show(io::IO, a::Centered{N, FT}) where {N, FT} =
               "└── buffer_scheme: ", summary(a.buffer_scheme))
 
 
-Adapt.adapt_structure(to, scheme::Centered{N, FT}) where {N, FT} = Centered{N, FT}(Adapt.adapt(to, scheme.buffer_scheme))
-on_architecture(to, scheme::Centered{N, FT}) where {N, FT} = Centered{N, FT}(on_architecture(to, scheme.buffer_scheme))
+Adapt.adapt_structure(to, scheme::Centered{N, FT}) where {N, FT} = 
+    Centered{N, FT}(Adapt.adapt(to, scheme.buffer_scheme), Adapt.adapt(to, scheme.vertical_discretization))
+
+on_architecture(to, scheme::Centered{N, FT}) where {N, FT} = 
+    Centered{N, FT}(on_architecture(to, scheme.buffer_scheme), on_architecture(to, scheme.vertical_discretization))
 
 const ACAS = AbstractCenteredAdvectionScheme
 

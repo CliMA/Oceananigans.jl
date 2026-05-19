@@ -19,7 +19,7 @@ using Oceananigans.Grids: minimum_zspacing, zspacings
 ##### Grid
 #####
 
-const Nz = 64
+const Nz = 128
 const Lz = 1.0
 const refinement = 3.0
 
@@ -33,7 +33,7 @@ grid = RectilinearGrid(CPU(); size=Nz, z=zᶠ, topology=(Flat, Flat, Bounded))
 #####
 
 const w₀ = 1.0
-const c₀ = -0.55
+const c₀ = - 0.55
 const σc = 0.08
 
 initial_tracer(z) = exp(-(z - c₀)^2 / σc^2)
@@ -48,6 +48,7 @@ build_model(advection) = HydrostaticFreeSurfaceModel(grid;
                                                      velocities,
                                                      tracers = :c,
                                                      tracer_advection = advection,
+                                                     timestepper = :SplitRungeKutta3,
                                                      buoyancy = nothing,
                                                      closure = nothing)
 
@@ -64,11 +65,11 @@ set!(reference_model, c=initial_tracer)
 #####
 
 Δzₘᵢₙ = minimum_zspacing(grid)
-Δt    = 7.5 * Δzₘᵢₙ / w₀   # CFL ≈ 7.5
-Δτ    = 0.5 * Δzₘᵢₙ / w₀   # CFL ≈ 0.5 (reference)
+Δt    = 10.0 * Δzₘᵢₙ / w₀   # CFL ≈ 7.5
+Δτ    = 0.5  * Δzₘᵢₙ / w₀   # CFL ≈ 0.5 (reference)
 
 # Place final centroid at z ≈ −0.15 (well below the top stretched zone)
-final_time = (-0.15 - c₀) / w₀
+final_time = (- 0.15 - c₀) / w₀
 Nₛ   = round(Int, final_time / Δt)
 Nᵣ   = round(Int, final_time / Δτ)
 Nsub = round(Int, Δt / Δτ)
