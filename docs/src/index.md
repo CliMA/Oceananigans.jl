@@ -99,6 +99,10 @@ Please cite this 👆 overview paper if you use Oceananigans in published work.
 We've also submitted a number of model development papers. Please cite these if you use
 the features they describe! Also, if you have developed a new feature in Oceananigans and describe it in a paper, make sure to open a pull request to add it to this list:
 
+* **Silvestri et al. (2026), ["A low-storage Runge-Kutta framework for nonlinear free-surface ocean models"](https://doi.org/10.22541/essoar.15002225/v1).**
+
+  *This paper describes the development of a Runge-Kutta timestepping scheme for the `HydrostaticFreeSurfaceModel`.*
+
 * **Moses et al. (2025), ["DJ4Earth: Differentiable, and performance-portable Earth System Modeling via program transformations"](https://doi.org/10.22541/essoar.176314951.18114616/v1).**
 
   *This paper describes the development and advantages of a strategy that leverages Enzyme.jl and Reactant.jl for building differentiable Oceananigans workflows.*
@@ -119,13 +123,15 @@ the features they describe! Also, if you have developed a new feature in Oceanan
   *This paper describes the development of `CATKEVerticalDiffusivity()`, including how it was automatically calibrated to
   a suite of 35 large eddy simulations (also run with Oceananigans). It additionally features solutions from `TKEDissipationVerticalDiffusivity` (also known as "k-epsilon").*
 
-* **Ramadhan et al. (2020), ["Oceananigans.jl: Fast and friendly geophysical fluid dynamics on GPUs"](https://par.nsf.gov/servlets/purl/10200806).**
+* **Ramadhan et al. (2020), ["Oceananigans.jl: Fast and friendly geophysical fluid dynamics on GPUs"](https://doi.org/10.21105/joss.02018).**
 
   *This Journal of Open Source Software article describes an early version of Oceananigans' `NonhydrostaticModel`.*
 
 ## Papers and preprints using Oceananigans
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
+
+1. Chor, T., Wenegrat, J., and Wagner, G. L. (2026) [Turbulent mixing and dissipation around rough seamounts](https://doi.org/10.1029/2025GL121312), _Geophysical Research Letters_. DOI: [https://doi.org/10.1029/2025GL121312](https://doi.org/10.1029/2025GL121312)
 
 1. Zhao, K. X., Chor., T., Skyllingstad, E., Nash, J., Rosevear, M. G., McConnochie, C. (2026). [Direct numerical simulations of ice-ocean boundary turbulence](https://doi.org/10.48550/arXiv.2603.19542), _arXiv preprint_, arXiv:2603.19542. DOI: [10.48550/arXiv.2603.19542](https://doi.org/10.48550/arXiv.2603.19542)
 
@@ -158,8 +164,6 @@ If you have work using Oceananigans that you would like to have listed here, ple
 1. Zheng, Z., Wenegrat, J. O., Fox-Kemper, B., and Brett, G. J. (2025). [Wind-catalyzed energy exchanges between fronts and boundary layer turbulence](https://doi.org/10.1175/JPO-D-24-0243.1), _Journal of Physical Oceanography_, *55(9)*, 1591–1606. DOI: [10.1175/JPO-D-24-0243.1](https://doi.org/10.1175/JPO-D-24-0243.1)
 
 1. Zhang, Y., Bire, S., Wang, S., Nath, A., Ramadhan, A., Kang, W., and Marshall, J. (2025). [Long transit time from the seafloor to the ice shell on Enceladus](https://doi.org/10.1093/mnras/staf1008), _Monthly Notices of the Royal Astronomical Society_, **541(2)**, 859–871. DOI: [10.1093/mnras/staf1008](https://doi.org/10.1093/mnras/staf1008)
-
-1. Chor, T., Wenegrat, J., and Wagner, G. L. (2025) [Turbulent mixing and dissipation around rough seamounts](https://doi.org/10.22541/essoar.176659936.64523492/v1), _ESS Open Archive_. DOI: [10.22541/essoar.176659936.64523492/v1](https://doi.org/10.22541/essoar.176659936.64523492/v1)
 
 1. Lee, X. K., Ramadhan, A., Souza, A., Wagner, G. L., Silvestri, S., Marshall, J. and Ferrari, R. (2025) [NORi: An ML-augmented ocean boundary layer parameterization](https://doi.org/10.48550/arXiv.2512.04452), _arXiv preprint_, arXiv:2512.04452. DOI: [10.48550/arXiv.2512.04452](https://doi.org/10.48550/arXiv.2512.04452)
 

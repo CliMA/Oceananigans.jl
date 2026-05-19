@@ -78,7 +78,7 @@ function BatchedTridiagonalSolver(grid;
                                   lower_diagonal,
                                   diagonal,
                                   upper_diagonal,
-                                  scratch = zeros(architecture(grid), eltype(grid), grid.Nx, grid.Ny, grid.Nz),
+                                  scratch = zeros(architecture(grid), eltype(grid), worksize(grid)...),
                                   parameters = nothing,
                                   tridiagonal_direction = ZDirection())
 

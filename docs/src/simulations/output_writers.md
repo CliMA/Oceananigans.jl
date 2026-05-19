@@ -127,13 +127,12 @@ simulation.output_writers[:things] =
                  global_attributes=global_attributes, output_attributes=output_attributes)
 ```
 
-`NetCDFWriter` can also be configured for `outputs` that are interpolated or regridded
-to a different grid than `model.grid`. To use this functionality, include the keyword argument
-`grid = output_grid`.
+`NetCDFWriter` supports outputs that live on different grids within a single writer.
+The grid is automatically extracted from each output field, and dimensions are
+suffixed (e.g., `_grid1`, `_grid2`) when multiple grids are present.
 
 ```@example
 using Oceananigans
-using Oceananigans.Fields: interpolate!
 using NCDatasets
 
 grid = RectilinearGrid(size=(1, 1, 8), extent=(1, 1, 1));
@@ -142,12 +141,11 @@ model = NonhydrostaticModel(grid)
 coarse_grid = RectilinearGrid(size=(grid.Nx, grid.Ny, grid.Nz÷2), extent=(grid.Lx, grid.Ly, grid.Lz))
 coarse_u = Field{Face, Center, Center}(coarse_grid)
 
-interpolate_u(model) = interpolate!(coarse_u, model.velocities.u)
-outputs = (; u = interpolate_u)
+# u lives on coarse_grid, w lives on model.grid — both in the same file
+outputs = (; u = coarse_u, w = model.velocities.w)
 
 output_writer = NetCDFWriter(model, outputs;
-                             grid = coarse_grid,
-                             filename = "coarse_u.nc",
+                             filename = "multi_grid.nc",
                              schedule = IterationInterval(1))
 ```
 

@@ -265,7 +265,7 @@ function test_netcdf_grid_reconstruction(original_grid)
     # Create NetCDF dataset and write grid reconstruction data
     filename = "test_netcdf_grid_reconstruction.nc"
     ds = NCDataset(filename, "c")
-    write_grid_reconstruction_data!(ds, original_grid)
+    write_grid_reconstruction_data!(ds, original_grid, 1)
     close(ds)
 
     # Read back the grid reconstruction metadata
