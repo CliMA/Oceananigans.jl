@@ -37,25 +37,24 @@ function materialize_advection(vi::VectorInvariant{N, FT, M}, grid) where {N, FT
                                          materialize_advection(vi.upwinding, grid))
 end
 
-materialize_advection(weno::WENO{N, FT, WCT}, grid) where {N, FT, WCT} = WENO{N, FT, WCT}(
-    weno.bounds,
-    materialize_advection(weno.buffer_scheme, grid),
-    materialize_advection(weno.advecting_velocity_scheme, grid),
-    weno.time_discretization
-)
+materialize_advection(weno::WENO{N, FT, WCT}, grid) where {N, FT, WCT} = 
+    WENO{N, FT, WCT}(weno.bounds,
+                     materialize_advection(weno.buffer_scheme, grid),
+                     materialize_advection(weno.advecting_velocity_scheme, grid),
+                     weno.time_discretization)
 
-materialize_advection(weno::WENO{N, FT, Nothing}, grid) where {N, FT} = ENO{N, FT, default_weno_weight_computation(architecture(grid))}(
-        weno.bounds,
-        materialize_advection(weno.buffer_scheme, grid),
-        materialize_advection(weno.advecting_velocity_scheme, grid),
-        weno.time_discretization
-)
+function materialize_advection(weno::WENO{N, FT, Nothing}, grid) where {N, FT} 
+    WTC = default_weno_weight_computation(architecture(grid))
+    return WENO{N, FT, WTC}(weno.bounds,
+                            materialize_advection(weno.buffer_scheme, grid),
+                            materialize_advection(weno.advecting_velocity_scheme, grid),
+                            weno.time_discretization)
+end
 
-materialize_advection(scheme::UpwindBiased{N, FT}, grid) where {N, FT} = UpwindBiased{N, FT}(
-    materialize_advection(scheme.buffer_scheme, grid),
-    materialize_advection(scheme.advecting_velocity_scheme, grid),
-    scheme.time_discretization
-)
+materialize_advection(scheme::UpwindBiased{N, FT}, grid) where {N, FT} = 
+    UpwindBiased{N, FT}(materialize_advection(scheme.buffer_scheme, grid),
+                        materialize_advection(scheme.advecting_velocity_scheme, grid),
+                        scheme.time_discretization)
 
 materialize_advection(scheme::Centered{N,FT}, grid) where {N,FT} =
     Centered{N, FT}(materialize_advection(scheme.buffer_scheme, grid), scheme.time_discretization)
