@@ -134,10 +134,10 @@ julia> using Oceananigans.Models: LiveBoundaryTransport
 julia> lbt = LiveBoundaryTransport(1.0, :east)
 LiveBoundaryTransport: velocity=1.0, side=Val{:east}()
 
-julia> grid = RectilinearGrid(size=(4, 1, 4), extent=(4, 1, 4));
+julia> grid = RectilinearGrid(size=(4, 1, 4), extent=(4, 1, 4), topology=(Bounded, Bounded, Bounded));
 
-julia> lbt(grid) ≈ 4.0  # 1.0 * (Ly * Lz) = 1 * 4
-true
+julia> lbt(grid)  # velocity * (Ly * Lz) = 1.0 * (1 * 4)
+4.0
 ```
 """
 struct LiveBoundaryTransport{FT, S}
