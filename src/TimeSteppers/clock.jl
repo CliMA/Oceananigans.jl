@@ -16,7 +16,7 @@ The `stage` is updated only for multi-stage time-stepping methods. The `time :: 
 either a `Number` or a `DateTime` object. `KT` is the floating point type used for
 `time` when `clock` is passed to kernels.
 """
-mutable struct Clock{TT, DT, IT, S, KT}
+mutable struct Clock{TT, KT, DT, IT, S}
     time :: TT
     last_Δt :: DT
     last_stage_Δt :: DT
@@ -25,7 +25,7 @@ mutable struct Clock{TT, DT, IT, S, KT}
 end
 
 Clock{TT, DT, IT, S}(time, last_Δt, last_stage_Δt, iteration, stage) where {TT, DT, IT, S} =
-    Clock{TT, DT, IT, S, TT}(time, last_Δt, last_stage_Δt, iteration, stage)
+    Clock{TT, TT, DT, IT, S}(time, last_Δt, last_stage_Δt, iteration, stage)
 
 """
     Clock(; time, last_Δt=Inf, last_stage_Δt=Inf, iteration=0, stage=1)
@@ -44,12 +44,12 @@ function Clock(; time,
     DT = typeof(last_Δt)
     IT = typeof(iteration)
     last_stage_Δt = convert(DT, last_stage_Δt)
-    return Clock{TT, DT, IT, typeof(stage), kernel_time_type}(time, last_Δt, last_stage_Δt, iteration, stage)
+    return Clock{TT, kernel_time_type, DT, IT, typeof(stage)}(time, last_Δt, last_stage_Δt, iteration, stage)
 end
 
 materialize_clock!(clock::Clock, timestepper) = nothing
 
-function reset!(clock::Clock{TT, DT, IT, S}) where {TT, DT, IT, S}
+function reset!(clock::Clock{TT, KT, DT, IT, S}) where {TT, KT, DT, IT, S}
     clock.time = zero(TT)
     clock.iteration = zero(IT)
     clock.stage = zero(S)
@@ -104,13 +104,13 @@ function Clock{TT}(; time,
     last_stage_Δt = convert(DT, last_stage_Δt)
     IT = typeof(iteration)
 
-    return Clock{TT, DT, IT, typeof(stage), kernel_time_type}(time, last_Δt, last_stage_Δt, iteration, stage)
+    return Clock{TT, kernel_time_type, DT, IT, typeof(stage)}(time, last_Δt, last_stage_Δt, iteration, stage)
 end
 
 # helpful default
 Clock(grid::AbstractGrid{FT}) where {FT} = Clock{Float64}(; time=0, kernel_time_type=FT)
 
-kernel_time_type(::Clock{TT, DT, IT, S, KT}) where {TT, DT, IT, S, KT} = KT
+kernel_time_type(::Clock{TT, KT, DT, IT, S}) where {TT, KT, DT, IT, S} = KT
 
 function Base.summary(clock::Clock)
     TT = typeof(clock.time)
