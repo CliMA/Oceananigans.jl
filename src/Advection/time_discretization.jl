@@ -72,20 +72,4 @@ const AdaptiveImplicitVerticalAdvection = AbstractAdvectionScheme{<:Any, <:Any, 
 const AIVA = AdaptiveImplicitVerticalAdvection
 const ATD = AbstractTimeDiscretization
 
-@inline advective_tracer_flux_x(i, j, k, grid, ::ATD, args...) = advective_tracer_flux_x(i, j, k, grid, args...)
-@inline advective_tracer_flux_y(i, j, k, grid, ::ATD, args...) = advective_tracer_flux_y(i, j, k, grid, args...)
-@inline advective_tracer_flux_z(i, j, k, grid, ::ATD, args...) = advective_tracer_flux_z(i, j, k, grid, args...)
-
-@inline advective_momentum_flux_Uu(i, j, k, grid, ::ATD, args...) = advective_momentum_flux_Uu(i, j, k, grid, args...)
-@inline advective_momentum_flux_Vu(i, j, k, grid, ::ATD, args...) = advective_momentum_flux_Vu(i, j, k, grid, args...)
-@inline advective_momentum_flux_Wu(i, j, k, grid, ::ATD, args...) = advective_momentum_flux_Wu(i, j, k, grid, args...)
-
-@inline advective_momentum_flux_Uv(i, j, k, grid, ::ATD, args...) = advective_momentum_flux_Uv(i, j, k, grid, args...)
-@inline advective_momentum_flux_Vv(i, j, k, grid, ::ATD, args...) = advective_momentum_flux_Vv(i, j, k, grid, args...)
-@inline advective_momentum_flux_Wv(i, j, k, grid, ::ATD, args...) = advective_momentum_flux_Wv(i, j, k, grid, args...)
-
-@inline advective_momentum_flux_Uw(i, j, k, grid, ::ATD, args...) = advective_momentum_flux_Uw(i, j, k, grid, args...)
-@inline advective_momentum_flux_Vw(i, j, k, grid, ::ATD, args...) = advective_momentum_flux_Vw(i, j, k, grid, args...)
-@inline advective_momentum_flux_Ww(i, j, k, grid, ::ATD, args...) = advective_momentum_flux_Ww(i, j, k, grid, args...)
-
 @inline time_discretization(scheme::AbstractAdvectionScheme) = scheme.time_discretization
