@@ -6,9 +6,11 @@ using Oceananigans.DistributedComputations: cpu_architecture, partition
 # auto-detecting and stripping halo layers. Works for any saved halo
 # count (e.g. data saved as `parent(field)` with halo=1 is 18³,
 # halo=2 is 20³; both reduce to the same 16³ interior). Also unwraps
-# OffsetArrays (which is what new-format Checkpointer files contain).
+# OffsetArrays via `parent` (which is what new-format Checkpointer
+# files contain). `parent` keeps the underlying storage backend
+# (Array or CuArray) intact — important for GPU correctness.
 function load_interior(data, target_size)
-    arr = data isa AbstractArray ? collect(parent(data)) : data
+    arr = data isa AbstractArray ? parent(data) : data
     sz = size(arr)
     Hx = (sz[1] - target_size[1]) ÷ 2
     Hy = (sz[2] - target_size[2]) ÷ 2
@@ -160,7 +162,9 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
                     arr = leaf isa NamedTuple && haskey(leaf, :data) ? leaf.data :
                           leaf isa AbstractArray ? leaf : nothing
                     arr === nothing && continue
-                    interior(target) .= load_interior(arr, size(target))
+                    # ArrayType(...) transfers to the field's backend (CPU/GPU)
+                    # before broadcast-assigning to the GPU/CPU interior.
+                    interior(target) .= ArrayType(load_interior(arr, size(target)))
                 elseif target isa Base.RefValue
                     # e.g. previous_compute_time — restore the scalar so
                     # Δt_lagrangian = clock.time - previous_compute_time
@@ -174,7 +178,7 @@ function run_ocean_large_eddy_simulation_regression_test(arch, grid_type, closur
     # Restore non-hydrostatic pressure so the next step's velocity
     # correction starts from the same pressure field as the reference.
     if pNHS₀ !== nothing
-        interior(model.pressures.pNHS) .= load_interior(pNHS₀, size(model.pressures.pNHS))
+        interior(model.pressures.pNHS) .= ArrayType(load_interior(pNHS₀, size(model.pressures.pNHS)))
     end
 
     model.clock.time = spinup_steps * Δt
