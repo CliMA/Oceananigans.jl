@@ -1780,7 +1780,7 @@ end
 Test checkpointing for simulations with OpenBoundaryCondition using the specified scheme.
 Uses a make_simulation() function to create identical simulations for testing.
 Verifies that:
-1. Every element of model.boundary_mass_fluxes is correctly saved and restored
+1. Every element of model.boundary_transport is correctly saved and restored
 2. The restored simulation can continue running from the checkpoint
 3. Simulation state (iteration, time) is properly restored
 
@@ -1810,25 +1810,25 @@ function test_open_boundary_condition_scheme_checkpointing(arch, timestepper, sc
     simulation.output_writers[:checkpointer] = Checkpointer(simulation.model, schedule=IterationInterval(3), prefix=prefix)
     @test_nowarn run!(simulation)
 
-    # Store original boundary mass fluxes
-    original_bmf = simulation.model.boundary_mass_fluxes
+    # Store original boundary transport
+    original_bt = simulation.model.boundary_transport
 
-    # Restore entire simulation from checkpoint and verify boundary_mass_fluxes match exactly
+    # Restore entire simulation from checkpoint and verify boundary_transport matches exactly
     restored_simulation = make_simulation(6)
     restored_simulation.output_writers[:checkpointer] = Checkpointer(restored_simulation.model,
                                                                      schedule=IterationInterval(3),
                                                                      prefix=prefix)
     @test_nowarn set!(restored_simulation; checkpoint=:latest)
 
-    restored_bmf = restored_simulation.model.boundary_mass_fluxes
+    restored_bt = restored_simulation.model.boundary_transport
 
     # Test that structure is identical
-    @test propertynames(original_bmf) == propertynames(restored_bmf)
+    @test propertynames(original_bt) == propertynames(restored_bt)
 
     # Test that every element matches exactly
-    for field_name in propertynames(original_bmf)
-        original_field = getproperty(original_bmf, field_name)
-        restored_field = getproperty(restored_bmf, field_name)
+    for field_name in propertynames(original_bt)
+        original_field = getproperty(original_bt, field_name)
+        restored_field = getproperty(restored_bt, field_name)
         @test original_field == restored_field
     end
 
