@@ -23,6 +23,9 @@ find_time_index(time::AbstractTime, file_times, Δt) = findfirst(t -> t == time,
 # Extended in OceananigansNCDatasetsExt
 set_from_netcdf!(fts, path::String, args...; kwargs...) = error("Setting FieldTimeSeries from NetCDF files requires NCDatasets")
 
+# Extended in OceananigansZarrExt
+set_from_zarr!(fts, path::String, args...; kwargs...) = error("Setting FieldTimeSeries from Zarr files requires Zarr")
+
 function set!(fts::InMemoryFTS, path::String, args::String...; kwargs...)
     if endswith(path, ".jld2")
         file = jldopen(path; fts.reader_kw...)
@@ -30,6 +33,8 @@ function set!(fts::InMemoryFTS, path::String, args::String...; kwargs...)
         close(file)
     elseif endswith(path, ".nc")
         return set_from_netcdf!(fts, path, args...; kwargs...)
+    elseif endswith(path, ".zarr") || endswith(path, ".zip")
+        return set_from_zarr!(fts, path, args...; kwargs...)
     else
         error("Unsupported file extension: $(path)")
     end
