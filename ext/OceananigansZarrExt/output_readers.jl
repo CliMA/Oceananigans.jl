@@ -138,7 +138,7 @@ end
 # by shape: if `raw` matches the halo-extended parent shape, use `offset_data`;
 # otherwise it should match the interior, in which case we allocate a fresh Field and
 # copy the interior in.
-function Field(loc::Tuple, arr, name::String, time_index::Int;
+function Field(loc::Tuple, arr::Zarr.ZArray, name::String, time_index::Int;
                grid,
                architecture = CPU(),
                indices = (:, :, :),
