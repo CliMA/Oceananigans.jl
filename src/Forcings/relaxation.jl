@@ -1,3 +1,7 @@
+using Oceananigans.Grids: node, xnodes, ynodes, znodes
+using Oceananigans.OutputReaders: interpolate
+using Oceananigans: instantiated_location
+using DocStringExtensions: TYPEDEF, TYPEDSIGNATURES
 
 @inline zerofunction(args...) = 0
 @inline onefunction(args...) = 1
@@ -76,6 +80,113 @@ function materialize_forcing(forcing::Relaxation, field, field_name, model_field
     continuous_relaxation = ContinuousForcing(forcing, field_dependencies=field_name)
     return materialize_forcing(continuous_relaxation, field, field_name, model_field_names)
 end
+
+"""
+$(TYPEDEF)
+
+Materialized `Relaxation` target that carries a `FieldTimeSeries` source, the
+simulation-side location at which the relaxation is evaluated, the FTS's grid
+(cached separately because `GPUAdaptedFieldTimeSeries` does not carry a grid
+field), and the integer index of the forced field in `model_fields`. The
+index is encoded as a type parameter `I::Int` (not a struct field) so that
+`model_fields[I]` is a compile-time access — required for GPU kernel
+compilation, since `model_fields` is a heterogeneous `NamedTuple` and a
+runtime-integer index would force a dynamic getfield call that PTX cannot
+lower. Constructed by `materialize_forcing` when a `Relaxation`'s `target`
+is a `FieldTimeSeries`; not intended for direct user construction.
+"""
+struct FieldTimeSeriesTarget{L, F, G, I}
+    location          :: L    # simulation-side instantiated location tuple
+    field_time_series :: F
+    fts_grid          :: G    # explicit copy of `field_time_series.grid` at materialize time
+end
+
+FieldTimeSeriesTarget(location, field_time_series, fts_grid, index::Int) =
+    FieldTimeSeriesTarget{typeof(location), typeof(field_time_series), typeof(fts_grid), index}(location, field_time_series, fts_grid)
+
+# Convenience: pull the grid off the FTS at construction. Used by
+# `materialize_forcing` on the host side.
+FieldTimeSeriesTarget(location, field_time_series, index::Int) =
+    FieldTimeSeriesTarget(location, field_time_series, field_time_series.grid, index)
+
+# Extract the field index from the type parameter. Used by the kernel callable
+# so that `model_fields[_field_index(target)]` resolves to a compile-time index
+# and the surrounding load can be inlined on GPU.
+@inline _field_index(::FieldTimeSeriesTarget{<:Any, <:Any, <:Any, I}) where I = I
+
+# Adapt every component individually so the resulting struct is isbits.
+# In particular `field_time_series.grid` cannot be recovered from the
+# adapted FTS (because `GPUAdaptedFieldTimeSeries` has no grid field), so
+# the grid lives as its own field on `FieldTimeSeriesTarget` and is adapted
+# in place. The index is reinjected from the type parameter so the resulting
+# struct preserves the static-index property.
+Adapt.adapt_structure(to, target::FieldTimeSeriesTarget{<:Any, <:Any, <:Any, I}) where I =
+    FieldTimeSeriesTarget(Adapt.adapt(to, target.location),
+                          Adapt.adapt(to, target.field_time_series),
+                          Adapt.adapt(to, target.fts_grid),
+                          I)
+
+# Recursive Adapt for `Relaxation` so that an inner `FieldTimeSeriesTarget`
+# is adapted on the path to the kernel. Without this, Relaxation's default
+# Adapt fallback returns the host-side struct unchanged, and the FTS-target
+# adapt above is never reached.
+Adapt.adapt_structure(to, r::Relaxation) =
+    Relaxation(Adapt.adapt(to, r.rate),
+               Adapt.adapt(to, r.mask),
+               Adapt.adapt(to, r.target))
+
+const FieldTimeSeriesRelaxation{R, M, T<:FieldTimeSeriesTarget} = Relaxation{R, M, T}
+
+@inline function (f::FieldTimeSeriesRelaxation)(i, j, k, grid, clock, model_fields)
+    target = f.target
+    fts = target.field_time_series
+    X = node(i, j, k, grid, target.location...)
+    @inbounds ϕ = model_fields[_field_index(target)][i, j, k]
+    ϕᵣ = interpolate(X, Time(clock.time), fts, instantiated_location(fts), target.fts_grid)
+    return f.rate * f.mask(X...) * (ϕᵣ - ϕ)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Wrap a `Relaxation` with `FieldTimeSeries` target into a materialized form
+carrying simulation-side location and an integer field index, so the kernel can
+spatially+temporally interpolate `target` and read `ϕ` from `model_fields`.
+"""
+function materialize_forcing(forcing::Relaxation{R, M, <:FlavorOfFTS}, field,
+                             field_name, model_field_names) where {R, M}
+    validate_fts_target_extent(forcing.target, field)
+    index = findfirst(==(field_name), model_field_names)
+    target = FieldTimeSeriesTarget(instantiated_location(field), forcing.target, index)
+    return Relaxation(forcing.rate, forcing.mask, target)
+end
+
+function validate_fts_target_extent(fts, field)
+    fts_grid = fts.grid
+    sim_grid = field.grid
+    fts_loc = instantiated_location(fts)
+    sim_loc = instantiated_location(field)
+
+    # Check that every model sampling position (at the forced field's location)
+    # lies within the FTS coverage at the FTS's own storage location. The
+    # kernel queries `interpolate(X, ..., fts, fts_loc, fts_grid)` with
+    # `X = node(i, j, k, sim_grid, sim_loc...)`; if X falls outside the FTS
+    # node range, trilinear interpolation reads from FTS halos (which
+    # `set!(fts[n], …)` does not fill), producing silently wrong values near
+    # the boundary.
+    for (label, nodes_fn) in (("x", xnodes), ("y", ynodes), ("z", znodes))
+        sim_lo, sim_hi = extrema(nodes_fn(sim_grid, sim_loc...))
+        fts_lo, fts_hi = extrema(nodes_fn(fts_grid, fts_loc...))
+        (fts_lo ≤ sim_lo && sim_hi ≤ fts_hi) ||
+            throw(ArgumentError(
+                "FieldTimeSeries target $label-extent [$fts_lo, $fts_hi] does not " *
+                "bracket model grid $label-extent [$sim_lo, $sim_hi]"))
+    end
+    return nothing
+end
+
+Base.summary(target::FieldTimeSeriesTarget) =
+    "FieldTimeSeriesTarget(location=$(target.location), index=$(_field_index(target)))"
 
 @inline (f::Relaxation)(x, y, z, t, field) =
     f.rate * f.mask(x, y, z) * (f.target(x, y, z, t) - field)
