@@ -27,8 +27,11 @@ Base.IndexStyle(::AbstractField) = IndexCartesian()
 Base.eltype(::AbstractField{<:Any, <:Any, <:Any, <:Any, T}) where T = T
 Base.eltype(::Type{<:AbstractField{<:Any, <:Any, <:Any, <:Any, T}}) where T = T
 
+"Returns the grid on which `f` is defined."
+Grids.grid(f::AbstractField) = f.grid
+
 "Returns the architecture of on which `f` is defined."
-Architectures.architecture(f::AbstractField) = architecture(f.grid)
+Architectures.architecture(f::AbstractField) = architecture(grid(f))
 Architectures.child_architecture(f::AbstractField) = child_architecture(architecture(f))
 
 "Returns the topology of a fields' `grid`."

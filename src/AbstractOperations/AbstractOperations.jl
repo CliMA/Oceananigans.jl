@@ -61,23 +61,21 @@ include("show_abstract_operations.jl")
 # Make some operators!
 
 # Some operators:
-import Base: -, +, /, ^, *
-import Base: sqrt, sin, cos, exp, tanh, abs
-import Base: log10, log, tan, sinh, cosh
-import Base: >, <, >=, <=
+@unary Base.sqrt Base.sin Base.cos Base.exp Base.tanh Base.abs Base.log10 Base.log Base.tan Base.sinh Base.cosh
+@unary Base.:-
+@unary Base.:+
 
-@unary sqrt sin cos exp tanh abs log10 log tan sinh cosh
-@unary -
-@unary +
-
-@binary +
-@binary -
-@binary /
-@binary ^
-@binary >
-@binary <
-@binary >=
-@binary <=
+@binary Base.:+
+@binary Base.:-
+@binary Base.:/
+@binary Base.:^
+@binary Base.:>
+@binary Base.:<
+@binary Base.:>=
+@binary Base.:<=
+@binary Base.atan
+@binary Base.atand
+@binary Base.mod
 
 # Disambiguate Base.<(::Missing, ::Any) and Base.<(::Any, ::Missing)
 Base.:<(::AbstractField, ::Missing) = missing

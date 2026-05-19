@@ -1,4 +1,4 @@
-using Oceananigans.Advection: Advection, WENO, VectorInvariant, adapt_advection_order, cell_advection_timescale
+using Oceananigans.Advection: Advection, WENO, VectorInvariant, adapt_advection_order, cell_advection_timescale, materialize_advection
 using Oceananigans.BuoyancyFormulations: BuoyancyFormulations, BuoyancyForce, NegativeZDirection, AbstractBuoyancyFormulation, validate_unit_vector
 using Oceananigans.TimeSteppers: TimeSteppers, QuasiAdamsBashforth2TimeStepper
 using Oceananigans.Models: Models, ExplicitFreeSurface, HydrostaticFreeSurfaceModel, ImplicitFreeSurface, PrescribedVelocityFields
@@ -14,6 +14,11 @@ const CubedSphereModel = HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArc
 
 function Advection.adapt_advection_order(advection::MultiRegionObject, grid::MultiRegionGrids)
     @apply_regionally new_advection = adapt_advection_order(advection, grid)
+    return new_advection
+end
+
+function Advection.materialize_advection(advection::MultiRegionObject, grid::MultiRegionGrids)
+    @apply_regionally new_advection = materialize_advection(advection, grid)
     return new_advection
 end
 
