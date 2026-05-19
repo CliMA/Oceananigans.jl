@@ -66,7 +66,7 @@ function Base.setproperty!(clock::ConcreteReactantClock, prop::Symbol, value)
 end
 
 # Reactant handles initialization via first_time_step!, so this is a no-op.
-maybe_prepare_first_time_step!(::ReactantModel, callbacks) = nothing
+maybe_prepare_first_time_step!(::ReactantModel, Δt, callbacks) = nothing
 
 # For QAB2, last_Δt and last_stage_Δt are always the same value after tick!.
 # Alias them so Reactant's tracer sees one buffer, avoiding XLA buffer donation errors.
@@ -103,7 +103,7 @@ function time_step!(model::ReactantModel{<:QAB2TS{FT}}, Δt; callbacks=[], euler
 
     tick!(model.clock, Δt)
 
-    update_state!(model, callbacks)
+    update_state!(model, Δt, callbacks)
     step_lagrangian_particles!(model, Δt)
 
     # Return χ to initial value

@@ -50,13 +50,13 @@ end
 
 # Vertical advection of horizontal momentum: scale by explicit_velocity_scale.
 @inline function advective_momentum_flux_Wu(i, j, k, grid, scheme, td::AVID, W, u)
-    s  = explicit_velocity_scaleᶠᶜᶠ(i, j, k, grid, scheme, scheme.time_discretization, W)
-    return s * advective_momentum_flux_Wu(i, j, k, grid, ExplicitTimeDiscretization(), scheme, W, u)
+    s  = explicit_velocity_scaleᶠᶜᶠ(i, j, k, grid, scheme, td, W)
+    return s * advective_momentum_flux_Wu(i, j, k, grid, scheme, ExplicitTimeDiscretization(), W, u)
 end
 
 @inline function advective_momentum_flux_Wv(i, j, k, grid, scheme, td::AVID, W, v)
     s  = explicit_velocity_scaleᶜᶠᶠ(i, j, k, grid, scheme, td, W)
-    return s * advective_momentum_flux_Wv(i, j, k, grid, ExplicitTimeDiscretization(), scheme, W, v)
+    return s * advective_momentum_flux_Wv(i, j, k, grid, scheme, ExplicitTimeDiscretization(), W, v)
 end
 
 #####

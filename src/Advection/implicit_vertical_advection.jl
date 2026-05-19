@@ -22,7 +22,7 @@ const AIVA = AdaptiveImplicitVerticalAdvection
     return w * (1 - ifelse(α > td.cfl, td.cfl / α, one(α)))
 end
 
-@inline function implicit_velocity_scaleᶠᶜᶠ(i, j, k, grid, scheme, td, W)
+@inline function implicit_vertical_velocityᶠᶜᶠ(i, j, k, grid, scheme, td, W)
     Δt = td.Δt[]
     Δz = Δzᶠᶜᶠ(i, j, k, grid)
     w  = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, W)
@@ -30,7 +30,7 @@ end
     return w * (1 - ifelse(α > td.cfl, td.cfl / α, one(α)))
 end
 
-@inline function implicit_velocity_scaleᶜᶠᶠ(i, j, k, grid, scheme, W)
+@inline function implicit_vertical_velocityᶜᶠᶠ(i, j, k, grid, scheme, td, W)
     Δt = td.Δt[]
     Δz = Δzᶜᶠᶠ(i, j, k, grid)
     w  = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, W)
@@ -48,7 +48,6 @@ end
 #####
 ##### Upper diagonal (coeff of c_{k+1}):   Δt / V_k * Az_{k+1} * min(wⁱ_{k+1}, 0)
 ##### Lower diagonal (coeff of c_{k-1}): - Δt / V_k * Az_k * max(wⁱ_k, 0)
-##### Diagonal: - (upper at k) - (lower at k-1)
 #####
 
 @inline implicit_vertical_velocity(::Center, ::Center, args...) = implicit_vertical_velocityᶜᶜᶠ(args...)

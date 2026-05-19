@@ -19,21 +19,22 @@ using Oceananigans.Grids: minimum_zspacing, zspacings
 ##### Grid
 #####
 
-const Nz = 128
+const Nz = 70
 const Lz = 1.0
-const refinement = 3.0
+const refinement = 2.0
 
-ξ(k) = (k - 1) / Nz
-zᶠ = [Lz * (tanh(refinement * ξ(k)) / tanh(refinement) - 1) for k in 1:Nz+1]
+ξ(k) = (k - 1) / Nz * 2
+zᶠ = [Lz * (tanh(refinement * ξ(k)) / tanh(refinement) - 1) for k in 1:Nz/2+1] / 2 .+ 0.5
+zᶠ = [zᶠ..., (0.5 .+ (0.5 .- reverse(zᶠ[1:end-1])))...] .- 1
 
-grid = RectilinearGrid(CPU(); size=Nz, z=zᶠ, topology=(Flat, Flat, Bounded))
+grid = RectilinearGrid(CPU(); size=Nz, z=zᶠ, topology=(Flat, Flat, Bounded), halo=8)
 
 #####
 ##### Setup
 #####
 
 const w₀ = 1.0
-const c₀ = - 0.55
+const c₀ = - 0.8
 const σc = 0.08
 
 initial_tracer(z) = exp(-(z - c₀)^2 / σc^2)
@@ -41,8 +42,8 @@ prescribed_velocity(z, t) = w₀
 
 velocities = PrescribedVelocityFields(w=prescribed_velocity)
 
-explicit_scheme = UpwindBiased(order=5)
-aiva_scheme     = UpwindBiased(order=5, time_discretization=AdaptiveVerticallyImplicitDiscretization(cfl = 0.5))
+explicit_scheme = WENO(order=9)
+aiva_scheme     = WENO(order=9, time_discretization=AdaptiveVerticallyImplicitDiscretization(cfl = 0.5))
 
 build_model(advection) = HydrostaticFreeSurfaceModel(grid;
                                                      velocities,
@@ -65,7 +66,7 @@ set!(reference_model, c=initial_tracer)
 #####
 
 Δzₘᵢₙ = minimum_zspacing(grid)
-Δt    = 10.0 * Δzₘᵢₙ / w₀   # CFL ≈ 7.5
+Δt    = 2.0 * Δzₘᵢₙ / w₀   # CFL ≈ 7.5
 Δτ    = 0.5  * Δzₘᵢₙ / w₀   # CFL ≈ 0.5 (reference)
 
 # Place final centroid at z ≈ −0.15 (well below the top stretched zone)
@@ -74,7 +75,7 @@ Nₛ   = round(Int, final_time / Δt)
 Nᵣ   = round(Int, final_time / Δτ)
 Nsub = round(Int, Δt / Δτ)
 
-@info "Δz_min = $(Δzₘᵢₙ), w₀ = $(w₀)"
+@info "Δz_min  = $(Δzₘᵢₙ), w₀ = $(w₀)"
 @info "AIVA Δt = $(Δt) (CFL ≈ $(w₀*Δt/Δzₘᵢₙ)), $Nₛ steps"
 @info "Ref  Δτ = $(Δτ) (CFL ≈ $(w₀*Δτ/Δzₘᵢₙ)), $Nᵣ steps"
 
@@ -211,9 +212,9 @@ axislegend(ax2, position=:rb)
 cmaxᴬ = [maximum(abs, aiva_history[:, n + 1])     for n in 0:Nₛ]
 cmaxˣ = [maximum(abs, explicit_history[:, n + 1]) for n in 0:Nₛ]
 cmaxᴿ = [maximum(abs, reference_history[:, n + 1]) for n in 0:Nₛ]
-ax3 = Axis(fig[3, 1], xlabel="AIVA step", ylabel="max |c|", yscale=log10)
+ax3 = Axis(fig[3, 1], xlabel="AIVA step", ylabel="max |c|")
 lines!(ax3, 0:Nₛ, cmaxᴬ, label="AIVA (large Δt)")
 lines!(ax3, 0:Nₛ, cmaxˣ, label="explicit (large Δt)")
 lines!(ax3, 0:Nₛ, cmaxᴿ, label="explicit (small Δt)")
-ylims!(ax3, 0.85, 1.01)
+ylims!(ax3, 0.5, 1.5)
 axislegend(ax3, position=:rb)

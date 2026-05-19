@@ -44,7 +44,7 @@ The splitting function is:
 Keyword Arguments
 =================
 
-- `cfl`: Maximum vertical CFL for the explicit part (default: `0.9`).
+- `cfl`: Maximum vertical CFL for the explicit part (default: `0.5`).
 """
 struct AdaptiveVerticallyImplicitDiscretization{FT, R} <: AbstractTimeDiscretization
     cfl :: FT
