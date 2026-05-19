@@ -73,7 +73,18 @@ end
     return - Δt * V⁻¹ * Azᵢ * max(wⁱ, zero(wⁱ)) * !peripheral_node(i, j, k′, grid, ℓx, ℓy, Center())
 end
 
-# Diagonal: ensures the row sums to the correct value
-@inline implicit_advection_diagonal(i, j, k, grid, advection::AIVA, w, Δt, ℓx, ℓy) = 
-           - implicit_advection_upper_diagonal(i, j, k,   grid, advection, w, Δt, ℓx, ℓy) -
-             implicit_advection_lower_diagonal(i, j, k-1, grid, advection, w, Δt, ℓx, ℓy)
+@inline function implicit_advection_diagonal(i, j, k, grid, advection::AIVA, w, Δt, ℓx, ℓy)
+    wⁱ⁺ = implicit_vertical_velocity(ℓx, ℓy, i, j, k+1, grid, advection, advection.time_discretization, w)
+    wⁱ⁻ = implicit_vertical_velocity(ℓx, ℓy, i, j, k,   grid, advection, advection.time_discretization, w)
+
+    Az⁺ = Az(i, j, k+1, grid, ℓx, ℓy, Face())
+    Az⁻ = Az(i, j, k,   grid, ℓx, ℓy, Face())
+
+    active⁺ = !peripheral_node(i, j, k+1, grid, ℓx, ℓy, Face())
+    active⁻ = !peripheral_node(i, j, k,   grid, ℓx, ℓy, Face())
+
+    V⁻¹ = 1 / volume(i, j, k, grid, ℓx, ℓy, Center())
+
+    return Δt * V⁻¹ * (Az⁺ * max(wⁱ⁺, zero(wⁱ⁺)) * active⁺ -
+                       Az⁻ * min(wⁱ⁻, zero(wⁱ⁻)) * active⁻)
+end
