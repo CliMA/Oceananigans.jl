@@ -560,24 +560,24 @@ end
 #####     `constructor_arguments` method → grid serialization throws at write time.
 #####   * ImmersedBoundaryGrid reconstruction explicitly throws at read time
 #####     (`Immersed-boundary reconstruction not yet implemented for Zarr.`).
-##### These cases are marked `@test_broken` so CI stays green while the gap is
-##### visible.
+##### Every grid is asserted with a plain `@test`; the failing rows are expected
+##### to stay red until the upstream OSSG / NetCDF support PR lands.
 #####
 
 function zarr_round_trip(grid; tag::String)
     return mktempdir() do tmp
         filename = "grid_sweep_$(tag)"
         path = abspath(joinpath(tmp, filename * ".zarr"))
-        model = HydrostaticFreeSurfaceModel(grid; tracers = (:T,))
-        sim = Simulation(model, Δt = 1.0, stop_iteration = 1)
-        sim.output_writers[:zarr] =
-            ZarrWriter(model, (; T = model.tracers.T);
-                       filename,
-                       dir = tmp,
-                       schedule = IterationInterval(1),
-                       overwrite_existing = true,
-                       with_halos = false)
         try
+            model = HydrostaticFreeSurfaceModel(grid; tracers = (:T,))
+            sim = Simulation(model, Δt = 1.0, stop_iteration = 1)
+            sim.output_writers[:zarr] =
+                ZarrWriter(model, (; T = model.tracers.T);
+                           filename,
+                           dir = tmp,
+                           schedule = IterationInterval(1),
+                           overwrite_existing = true,
+                           with_halos = false)
             run!(sim)
             field_time_series = FieldTimeSeries(path, "T")
             size_ok = size(field_time_series)[1:3] == size(grid)
@@ -595,9 +595,8 @@ end
     @info "  Testing ZarrWriter round-trip across grid types..."
 
     for arch in archs
-        # (tag, is_known_to_work, factory)
         grid_factories = [
-            ("latitude_longitude_regular", true,
+            ("latitude_longitude_regular",
              arch -> LatitudeLongitudeGrid(arch;
                                            size = (4, 4, 2),
                                            longitude = (0, 360),
@@ -605,7 +604,7 @@ end
                                            z = (-100, 0),
                                            topology = (Periodic, Bounded, Bounded))),
 
-            ("latitude_longitude_stretched", true,
+            ("latitude_longitude_stretched",
              arch -> LatitudeLongitudeGrid(arch;
                                            size = (4, 4, 2),
                                            longitude = (0, 360),
@@ -613,7 +612,7 @@ end
                                            z = [-100.0, -50.0, 0.0],
                                            topology = (Periodic, Bounded, Bounded))),
 
-            ("tripolar", false,
+            ("tripolar",
              arch -> TripolarGrid(arch;
                                   size = (4, 5, 1),
                                   z = (-100, 0),
@@ -621,7 +620,7 @@ end
                                   north_poles_latitude = 35,
                                   southernmost_latitude = -35)),
 
-            ("rotated_latitude_longitude", false,
+            ("rotated_latitude_longitude",
              arch -> RotatedLatitudeLongitudeGrid(arch;
                                                   size = (4, 4, 1),
                                                   latitude  = (-60, 60),
@@ -630,7 +629,7 @@ end
                                                   north_pole = (0, 0),
                                                   topology = (Bounded, Bounded, Bounded))),
 
-            ("immersed_boundary_rectilinear", false,
+            ("immersed_boundary_rectilinear",
              arch -> ImmersedBoundaryGrid(
                  RectilinearGrid(arch;
                                  size = (4, 4, 4),
@@ -638,7 +637,7 @@ end
                                  topology = (Periodic, Periodic, Bounded)),
                  GridFittedBottom(on_architecture(arch, fill(-0.5, 4, 4))))),
 
-            ("immersed_boundary_latitude_longitude", false,
+            ("immersed_boundary_latitude_longitude",
              arch -> ImmersedBoundaryGrid(
                  LatitudeLongitudeGrid(arch;
                                        size = (4, 4, 2),
@@ -648,7 +647,7 @@ end
                                        topology = (Periodic, Bounded, Bounded)),
                  GridFittedBottom(on_architecture(arch, fill(-50.0, 4, 4))))),
 
-            ("immersed_boundary_tripolar", false,
+            ("immersed_boundary_tripolar",
              arch -> ImmersedBoundaryGrid(
                  TripolarGrid(arch;
                               size = (4, 5, 1),
@@ -659,14 +658,10 @@ end
                  GridFittedBottom(on_architecture(arch, fill(-50.0, 4, 5))))),
         ]
 
-        for (tag, is_known_to_work, factory) in grid_factories
+        for (tag, factory) in grid_factories
             @testset "$tag" begin
                 grid = factory(arch)
-                if is_known_to_work
-                    @test zarr_round_trip(grid; tag)
-                else
-                    @test_broken zarr_round_trip(grid; tag)
-                end
+                @test zarr_round_trip(grid; tag)
             end
         end
     end
