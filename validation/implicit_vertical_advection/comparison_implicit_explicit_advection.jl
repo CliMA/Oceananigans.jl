@@ -42,8 +42,8 @@ prescribed_velocity(z, t) = w₀
 
 velocities = PrescribedVelocityFields(w=prescribed_velocity)
 
-explicit_scheme = WENO(order=9)
-aiva_scheme     = WENO(order=9, time_discretization=AdaptiveVerticallyImplicitDiscretization(cfl = 0.5))
+explicit_scheme = WENO(order=5)
+aiva_scheme     = WENO(order=5, time_discretization=AdaptiveVerticallyImplicitDiscretization(cfl = 1.2))
 
 build_model(advection) = HydrostaticFreeSurfaceModel(grid;
                                                      velocities,
@@ -66,7 +66,7 @@ set!(reference_model, c=initial_tracer)
 #####
 
 Δzₘᵢₙ = minimum_zspacing(grid)
-Δt    = 2.0 * Δzₘᵢₙ / w₀   # CFL ≈ 7.5
+Δt    = 3.0 * Δzₘᵢₙ / w₀   # CFL ≈ 7.5
 Δτ    = 0.5  * Δzₘᵢₙ / w₀   # CFL ≈ 0.5 (reference)
 
 # Place final centroid at z ≈ −0.15 (well below the top stretched zone)
