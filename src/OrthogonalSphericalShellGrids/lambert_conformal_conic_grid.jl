@@ -72,14 +72,26 @@ function validate_lcc_angles(FT, φ₀, φ₁, φ₂)
     abs(φ₀) <= halfπ ||
         throw(ArgumentError("latitude_of_origin must lie between -90 and 90 degrees."))
 
-    abs(φ₁) < halfπ ||
-        throw(ArgumentError("standard parallels must lie strictly between -90 and 90 degrees."))
+    abs(φ₁) <= halfπ ||
+        throw(ArgumentError("standard parallels must lie between -90 and 90 degrees."))
 
-    abs(φ₂) < halfπ ||
-        throw(ArgumentError("standard parallels must lie strictly between -90 and 90 degrees."))
+    abs(φ₂) <= halfπ ||
+        throw(ArgumentError("standard parallels must lie between -90 and 90 degrees."))
 
-    abs(φ₁ + φ₂) > tolerance ||
-        throw(ArgumentError("standard parallels cannot be symmetric about the equator."))
+    # When a standard parallel sits exactly at a pole the projection becomes
+    # polar stereographic; in that case both parallels must coincide with the
+    # same pole.
+    φ₁_at_pole = abs(abs(φ₁) - halfπ) <= tolerance
+    φ₂_at_pole = abs(abs(φ₂) - halfπ) <= tolerance
+    if φ₁_at_pole || φ₂_at_pole
+        (φ₁_at_pole && φ₂_at_pole && sign(φ₁) == sign(φ₂)) ||
+            throw(ArgumentError("when a standard parallel is set to ±90° (polar " *
+                                "stereographic limit), both standard parallels must " *
+                                "coincide with the same pole."))
+    else
+        abs(φ₁ + φ₂) > tolerance ||
+            throw(ArgumentError("standard parallels cannot be symmetric about the equator."))
+    end
 
     return nothing
 end
@@ -174,7 +186,14 @@ function LambertConformalConic(FT::DataType = Oceananigans.defaults.FloatType;
 
     n = lcc_cone_constant(FT, φ₁, φ₂)
     T₁ = lcc_tangent(φ₁)
-    F = cos(φ₁) * T₁^n / n
+    # Polar-stereographic limit: when |φ₁| = π/2 the cone degenerates to a
+    # plane tangent at the pole. cos(φ₁) → 0 and T₁^n → ∞, but the product
+    # cos(φ₁) · T₁^n / n approaches the finite limit 2·sign(n). Take that limit
+    # directly to avoid 0·∞ = NaN.
+    halfπ = lcc_halfπ(FT)
+    polar_tolerance = sqrt(eps(FT))
+    is_polar = abs(abs(φ₁) - halfπ) <= polar_tolerance
+    F = is_polar ? convert(FT, 2) * sign(n) : cos(φ₁) * T₁^n / n
     ρ₀ = radius * F / lcc_tangent(φ₀)^n
 
     isfinite(F) ||
