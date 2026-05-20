@@ -88,21 +88,12 @@ function gather_grid_metrics(grid::RectilinearGrid, indices, dim_name_generator;
         metrics[Δyᵃᶜᵃ_name] = Δyᵃᶜᵃ_field
     end
 
-    add_vertical_metrics!(metrics, grid, dim_name_generator)
+    add_vertical_metrics!(metrics, grid, indices, dim_name_generator)
 
     return suffix_grid_keys(metrics, grid_index)
 end
 
-# Vertical Δz/Δr metric for any grid. The data lives entirely in `grid.z`
-# (`grid.z.Δᵃᵃᶜ` and `grid.z.Δᵃᵃᶠ`) — independent of horizontal grid type — so this
-# helper is reused by Rectilinear, LLG, and OSSG `gather_grid_metrics`. We build a
-# plain `Field((Nothing, Nothing, lz), grid)` with explicit interior data rather
-# than wrap `zspacings(grid, lz)` in a `KernelFunctionOperation`; this keeps the
-# Field's type signature shallow and avoids a Julia 1.12 specialization-cache bug
-# (`ijl_types_equal`/`subtype.c`) that trips on the pairing of `Operators.Δz` with
-# `OrthogonalSphericalShellGrid{…, CubedSphereConformalMapping{Nothing, StepRangeLen{…}×4}, …}`.
-# Numerically equivalent to the KernelFunctionOperation form for every grid.
-function add_vertical_metrics!(metrics, grid, dim_name_generator)
+function add_vertical_metrics!(metrics, grid, indices, dim_name_generator)
     TZ = topology(grid, 3)
     TZ == Flat && return metrics
 
@@ -110,19 +101,21 @@ function add_vertical_metrics!(metrics, grid, dim_name_generator)
     Δᵃᵃᶠ_name = dim_name_generator(Δprefix, grid, nothing, nothing, f, Val(:z))
     Δᵃᵃᶜ_name = dim_name_generator(Δprefix, grid, nothing, nothing, c, Val(:z))
 
-    metrics[Δᵃᵃᶠ_name] = vertical_spacing_field(grid, f)
-    metrics[Δᵃᵃᶜ_name] = vertical_spacing_field(grid, c)
+    metrics[Δᵃᵃᶠ_name] = vertical_spacing_field(grid, f, indices)
+    metrics[Δᵃᵃᶜ_name] = vertical_spacing_field(grid, c, indices)
 
     return metrics
 end
 
-function vertical_spacing_field(grid, lz)
-    field = Field{Nothing, Nothing, typeof(lz)}(grid)
-    Δ = lz isa Center ? grid.z.Δᵃᵃᶜ : grid.z.Δᵃᵃᶠ
+function vertical_spacing_field(grid, lz, indices)
+    field = Field{Nothing, Nothing, typeof(lz)}(grid; indices)
+    Δ_raw = lz isa Center ? grid.z.Δᵃᵃᶜ : grid.z.Δᵃᵃᶠ
+    Δ = Δ_raw isa Number ? Δ_raw : on_architecture(CPU(), Δ_raw)
     Nz_int = length(interior_indices(lz, topology(grid, 3)(), size(grid, 3)))
-    interior_data = Δ isa Number ? fill(eltype(grid)(Δ), Nz_int) :
-                                   eltype(grid).(collect(Δ[1:Nz_int]))
-    interior(field) .= reshape(interior_data, (1, 1, Nz_int))
+    full = Δ isa Number ? fill(eltype(grid)(Δ), Nz_int) :
+                          eltype(grid).(collect(Δ[1:Nz_int]))
+    z_slice = indices[3] isa Colon ? (1:Nz_int) : indices[3]
+    set!(field, reshape(view(full, z_slice), (1, 1, length(z_slice))))
     return field
 end
 
@@ -183,7 +176,7 @@ function gather_grid_metrics(grid::LatitudeLongitudeGrid, indices, dim_name_gene
         metrics[Δyᶜᶜᵃ_name] = Δyᶜᶜᵃ_field
     end
 
-    add_vertical_metrics!(metrics, grid, dim_name_generator)
+    add_vertical_metrics!(metrics, grid, indices, dim_name_generator)
 
     return suffix_grid_keys(metrics, grid_index)
 end
@@ -211,7 +204,7 @@ function gather_grid_metrics(grid::OrthogonalSphericalShellGrid, indices, dim_na
         metrics[Az_name] = Field(Az_op; indices)
     end
 
-    add_vertical_metrics!(metrics, grid, dim_name_generator)
+    add_vertical_metrics!(metrics, grid, indices, dim_name_generator)
 
     return suffix_grid_keys(metrics, grid_index)
 end
@@ -537,6 +530,49 @@ function reconstruct_ossg_grid(ds, prefix, args, kwargs)
     conformal_mapping = haskey(ds.group, cm_group_key) ?
         reconstruct_conformal_mapping(ds.group[cm_group_key].attrib, TY) : nothing
 
+    # Preliminary grid with unfilled metric halos. We use it as the "helper grid" for
+    # halo filling: building a Field on it picks up the correct BCs from the topology
+    # (e.g. the north fold for TripolarGrid), so `fill_halo_regions!` does the right
+    # thing across the fold.
+    preliminary = OrthogonalSphericalShellGrid{FT, TX, TY, TZ}(arch,
+                                                                Nx, Ny, Nz, Hx, Hy, Hz,
+                                                                FT(Lz),
+                                                                λcc, λfc, λcf, λff,
+                                                                φcc, φfc, φcf, φff,
+                                                                z_disc,
+                                                                Δxcc, Δxfc, Δxcf, Δxff,
+                                                                Δycc, Δyfc, Δycf, Δyff,
+                                                                Azcc, Azfc, Azcf, Azff,
+                                                                radius,
+                                                                conformal_mapping)
+
+    fill_metric_halos(arr, lx, ly) = halo_fill_2d_metric(arr, preliminary, lx, ly)
+
+    λcc = fill_metric_halos(λcc, Center, Center)
+    λfc = fill_metric_halos(λfc, Face,   Center)
+    λcf = fill_metric_halos(λcf, Center, Face)
+    λff = fill_metric_halos(λff, Face,   Face)
+
+    φcc = fill_metric_halos(φcc, Center, Center)
+    φfc = fill_metric_halos(φfc, Face,   Center)
+    φcf = fill_metric_halos(φcf, Center, Face)
+    φff = fill_metric_halos(φff, Face,   Face)
+
+    Δxcc = fill_metric_halos(Δxcc, Center, Center)
+    Δxfc = fill_metric_halos(Δxfc, Face,   Center)
+    Δxcf = fill_metric_halos(Δxcf, Center, Face)
+    Δxff = fill_metric_halos(Δxff, Face,   Face)
+
+    Δycc = fill_metric_halos(Δycc, Center, Center)
+    Δyfc = fill_metric_halos(Δyfc, Face,   Center)
+    Δycf = fill_metric_halos(Δycf, Center, Face)
+    Δyff = fill_metric_halos(Δyff, Face,   Face)
+
+    Azcc = fill_metric_halos(Azcc, Center, Center)
+    Azfc = fill_metric_halos(Azfc, Face,   Center)
+    Azcf = fill_metric_halos(Azcf, Center, Face)
+    Azff = fill_metric_halos(Azff, Face,   Face)
+
     return OrthogonalSphericalShellGrid{FT, TX, TY, TZ}(arch,
                                                          Nx, Ny, Nz, Hx, Hy, Hz,
                                                          FT(Lz),
@@ -548,6 +584,22 @@ function reconstruct_ossg_grid(ds, prefix, args, kwargs)
                                                          Azcc, Azfc, Azcf, Azff,
                                                          radius,
                                                          conformal_mapping)
+end
+
+# Wrap a bare 2D metric/coord `OffsetMatrix` as a `Field` on `grid`, fill its halos
+# using the grid's default BCs (e.g. the north fold on TripolarGrid), and return a
+# halo-filled `OffsetMatrix` matching the input layout. Necessary because derivatives
+# across the tripolar fold otherwise NaN out if the metric halos are zero.
+function halo_fill_2d_metric(old_data, grid, LX, LY)
+    TX, TY, _ = topology(grid)
+    Nx, Ny, _ = size(grid)
+    new_field = Field{LX, LY, Center}(grid)
+    Ni = Base.length(LX(), TX(), Nx)
+    Nj = Base.length(LY(), TY(), Ny)
+    cpu_old_data = on_architecture(CPU(), old_data)
+    new_field.data[1:Ni, 1:Nj, 1] .= cpu_old_data[1:Ni, 1:Nj]
+    fill_halo_regions!(new_field)
+    return on_architecture(architecture(grid), deepcopy(dropdims(new_field.data, dims=3)))
 end
 
 # Rebuild the `conformal_mapping` from its serialized attributes (see

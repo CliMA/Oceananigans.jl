@@ -22,6 +22,7 @@ using Statistics: mean
 using Oceananigans: initialize!, prettytime, pretty_filesize, AbstractModel
 using Oceananigans.AbstractOperations: KernelFunctionOperation, AbstractOperation
 using Oceananigans.Architectures: CPU, GPU, on_architecture
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields
 using Oceananigans.Fields: set!, Reduction, reduced_dimensions, reduced_location, location, indices
 using Oceananigans.Grids:
@@ -102,7 +103,6 @@ const f = Face()
 include("utils.jl")
 include("dimensions.jl")
 include("grid_reconstruction.jl")
-include("gpu_vertical_spacing_field.jl")
 include("netcdf_writer.jl")
 include("output_readers.jl")
 
