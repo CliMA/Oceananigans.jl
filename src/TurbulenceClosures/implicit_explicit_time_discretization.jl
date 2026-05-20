@@ -1,7 +1,7 @@
-using Oceananigans.Advection: Advection, 
-                              AbstractTimeDiscretization, 
-                              ExplicitTimeDiscretization, 
-                              VerticallyImplicitTimeDiscretization, 
+using Oceananigans.Advection: Advection,
+                              AbstractTimeDiscretization,
+                              ExplicitTimeDiscretization,
+                              VerticallyImplicitTimeDiscretization,
                               AdaptiveImplicitVerticalAdvection
 
 @inline Advection.time_discretization(::AbstractTurbulenceClosure{TimeDiscretization}) where TimeDiscretization = TimeDiscretization()

@@ -281,7 +281,7 @@ function Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT, M}) where {N, 
                                          Adapt.adapt(to, scheme.upwinding))
 end
 
-function Architectures.on_architecture(to, scheme::VectorInvariant{N, FT, M}) where {N, FT, M} 
+function Architectures.on_architecture(to, scheme::VectorInvariant{N, FT, M}) where {N, FT, M}
     TD = typeof(time_discretization(scheme))
     VectorInvariant{N, FT, M, TD}(on_architecture(to, scheme.vorticity_scheme),
                                   on_architecture(to, scheme.vorticity_stencil),

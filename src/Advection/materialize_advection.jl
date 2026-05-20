@@ -27,7 +27,7 @@ materialize_advection(u::CrossAndSelfUpwinding, grid) = CrossAndSelfUpwinding(ma
 materialize_advection(u::VelocityUpwinding, grid) = VelocityUpwinding(materialize_advection(u.cross_scheme, grid))
 
 # VectorInvariant wraps multiple sub-schemes; recurse into each
-function materialize_advection(vi::VectorInvariant{N, FT, M}, grid) where {N, FT, M} 
+function materialize_advection(vi::VectorInvariant{N, FT, M}, grid) where {N, FT, M}
     TD = typeof(time_discretization(vi))
     return VectorInvariant{N, FT, M, TD}(materialize_advection(vi.vorticity_scheme, grid),
                                          vi.vorticity_stencil,
@@ -37,13 +37,13 @@ function materialize_advection(vi::VectorInvariant{N, FT, M}, grid) where {N, FT
                                          materialize_advection(vi.upwinding, grid))
 end
 
-materialize_advection(weno::WENO{N, FT, WCT}, grid) where {N, FT, WCT} = 
+materialize_advection(weno::WENO{N, FT, WCT}, grid) where {N, FT, WCT} =
     WENO{N, FT, WCT}(weno.bounds,
                      materialize_advection(weno.buffer_scheme, grid),
                      materialize_advection(weno.advecting_velocity_scheme, grid),
                      weno.time_discretization)
 
-function materialize_advection(weno::WENO{N, FT, Nothing}, grid) where {N, FT} 
+function materialize_advection(weno::WENO{N, FT, Nothing}, grid) where {N, FT}
     WTC = default_weno_weight_computation(architecture(grid))
     return WENO{N, FT, WTC}(weno.bounds,
                             materialize_advection(weno.buffer_scheme, grid),
@@ -51,7 +51,7 @@ function materialize_advection(weno::WENO{N, FT, Nothing}, grid) where {N, FT}
                             weno.time_discretization)
 end
 
-materialize_advection(scheme::UpwindBiased{N, FT}, grid) where {N, FT} = 
+materialize_advection(scheme::UpwindBiased{N, FT}, grid) where {N, FT} =
     UpwindBiased{N, FT}(materialize_advection(scheme.buffer_scheme, grid),
                         materialize_advection(scheme.advecting_velocity_scheme, grid),
                         scheme.time_discretization)

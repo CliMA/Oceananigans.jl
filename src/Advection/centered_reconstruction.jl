@@ -34,10 +34,10 @@ Base.show(io::IO, a::Centered{N, FT}) where {N, FT} =
               "└── buffer_scheme: ", summary(a.buffer_scheme))
 
 
-Adapt.adapt_structure(to, scheme::Centered{N, FT}) where {N, FT} = 
+Adapt.adapt_structure(to, scheme::Centered{N, FT}) where {N, FT} =
     Centered{N, FT}(Adapt.adapt(to, scheme.buffer_scheme), Adapt.adapt(to, scheme.time_discretization))
 
-Architectures.on_architecture(to, scheme::Centered{N, FT}) where {N, FT} = 
+Architectures.on_architecture(to, scheme::Centered{N, FT}) where {N, FT} =
     Centered{N, FT}(on_architecture(to, scheme.buffer_scheme), on_architecture(to, scheme.time_discretization))
 
 const ACAS = AbstractCenteredAdvectionScheme

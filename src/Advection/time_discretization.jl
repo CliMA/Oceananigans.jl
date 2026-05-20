@@ -32,7 +32,7 @@ An adaptively implicit vertical discretization scheme following Shchepetkin (201
 
 Splits vertical advection into explicit and implicit parts based on the local vertical Courant number
 `α = |w| Δt / Δz`. When `α ≤ cfl`, advection is fully explicit using `explicit_scheme`. When `α > cfl`,
-the vertical velocity is decomposed as `w = wᵉ + wⁱ` where `wᵉ` is CFL-limited and `wⁱ` is treated 
+the vertical velocity is decomposed as `w = wᵉ + wⁱ` where `wᵉ` is CFL-limited and `wⁱ` is treated
 with implicit first-order upwind in the existing tridiagonal solver.
 
 The splitting function is:
@@ -48,7 +48,7 @@ Keyword Arguments
 """
 struct AdaptiveVerticallyImplicitDiscretization{FT, R} <: AbstractTimeDiscretization
     cfl :: FT
-    Δt  :: R 
+    Δt  :: R
 end
 
 function AdaptiveVerticallyImplicitDiscretization(FT::DataType = Oceananigans.defaults.FloatType; cfl = 0.5)
