@@ -1,7 +1,0 @@
-[deps]
-JLD2 = "033835bb-8acc-5ee8-8aae-3f567f8a3819"
-NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
-Oceananigans = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
-Printf = "de0858da-6303-5e67-8744-51eddeeeb8d7"
-Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
-Zarr = "0a941bbe-ad1d-11e8-39d9-ab76183a1d99"
