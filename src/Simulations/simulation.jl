@@ -282,6 +282,7 @@ end
 # Fallback, to be elaborated on
 write_output!(writer::JLD2Writer,   sim::Simulation) = write_output!(writer, sim.model)
 write_output!(writer::NetCDFWriter, sim::Simulation) = write_output!(writer, sim.model)
+write_output!(writer::ZarrWriter,   sim::Simulation) = write_output!(writer, sim.model)
 
 function prognostic_state(sim::Simulation)
     return (model = prognostic_state(sim.model),
