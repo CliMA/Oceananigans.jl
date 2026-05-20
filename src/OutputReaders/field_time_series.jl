@@ -939,6 +939,8 @@ function FieldTimeSeries(path::String, args...; reader_kw = NamedTuple(), kwargs
                      JLD2Path(path)
                  elseif ext(path) == ".nc"
                      NetCDFPath(path)
+                 elseif ext(path) == ".zarr" || ext(path) == ".zip"
+                     ZarrPath(path)
                  else
                      error("Unsupported file extension: $(path)")
                  end
