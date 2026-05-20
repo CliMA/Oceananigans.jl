@@ -49,8 +49,8 @@ set!(u::Field, a::Union{Array, OffsetArray}) = set_to_array!(u, a)
 """
     set!(u::Field, v::Field)
 
-Set `u` from `v`. When `u` and `v` have the same grid, `indices`, and
-`location`, the data of `v` is copied into `u` (cross-architecture transfers
+Set `u` from `v`. When `u` and `v` have the same `size`, `location`, and
+`indices`, the data of `v` is copied into `u` (cross-architecture transfers
 are handled automatically). Otherwise, `v` is migrated to `u`'s architecture
 if needed, its halo regions are filled, and then it is interpolated onto `u`
 with [`interpolate!`](@ref). This means field-to-field `set!` "just works"
@@ -161,8 +161,7 @@ end
 function matching_field_discretization(u, v)
     return size(u) == size(v) &&
            location(u) == location(v) &&
-           indices(u) == indices(v) &&
-           (u.grid === v.grid || u.grid == v.grid)
+           indices(u) == indices(v)
 end
 
 function copy_to_field!(u, v)

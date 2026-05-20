@@ -23,26 +23,15 @@
         interpolate!(expected_fine, coarse_with_filled_halos)
         @test Array(interior(fine)) == Array(interior(expected_fine))
 
-        same_size_grid = RectilinearGrid(arch, FT; size=(4, 4, 4),
-                                         topology=(Periodic, Periodic, Bounded),
-                                         interp_domain...)
+        # When `u` and `v` differ in halo size but otherwise share the same
+        # discretization, `set!` should copy (not interpolate). This matches
+        # how with_halo-extended grids feed into materialize_immersed_boundary.
+        big_halo_grid = RectilinearGrid(arch, FT; size=(4, 4, 4),
+                                        halo=(3, 3, 3),
+                                        interp_domain...)
 
-        shifted_grid = RectilinearGrid(arch, FT; size=(4, 4, 4),
-                                       topology=(Periodic, Periodic, Bounded),
-                                       x=(FT(-0.5), FT(1.5)),
-                                       y=(0, 1), z=(0, 1))
-
-        shifted_c = CenterField(shifted_grid)
-        set!(shifted_c, f_linear)
-        fill_halo_regions!(shifted_c)
-
-        same_size_different_grid = CenterField(same_size_grid)
-        set!(same_size_different_grid, shifted_c)
-
-        expected_same_size_different_grid = CenterField(same_size_grid)
-        interpolate!(expected_same_size_different_grid, shifted_c)
-
-        @test Array(interior(same_size_different_grid)) ==
-              Array(interior(expected_same_size_different_grid))
+        big_halo_c = CenterField(big_halo_grid)
+        set!(big_halo_c, coarse)
+        @test Array(interior(big_halo_c)) == Array(interior(coarse))
     end
 end
