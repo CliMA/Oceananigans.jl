@@ -82,7 +82,11 @@ the grid's intrinsic coordinates in order to match the grid's extrinsic coordina
 
     cosθ, sinθ = Rcosθ / R, Rsinθ / R
 
-    θ = atan(sinθ / cosθ)
+    # Two-argument atan so we recover the full (-π, π] range — single-argument
+    # atan(y/x) returns in (-π/2, π/2) and silently sign-flips the rotation for
+    # cells where the angle falls in the 2nd or 3rd quadrant (e.g. cells north
+    # of the apex on a polar-centred LCC grid).
+    θ = atan(sinθ, cosθ)
     return θ
 end
 
