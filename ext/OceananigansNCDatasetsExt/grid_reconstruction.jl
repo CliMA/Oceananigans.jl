@@ -115,7 +115,10 @@ function vertical_spacing_field(grid, lz, indices)
     full = Δ isa Number ? fill(eltype(grid)(Δ), Nz_int) :
                           eltype(grid).(collect(Δ[1:Nz_int]))
     z_slice = indices[3] isa Colon ? (1:Nz_int) : indices[3]
-    set!(field, reshape(view(full, z_slice), (1, 1, length(z_slice))))
+    # Must be a plain 3D `Array` so `set!` hits `set_to_array!` (which handles arch
+    # transfer); a `ReshapedArray{Vector}` falls through to broadcast and breaks on GPU.
+    interior_arr = collect(reshape(view(full, z_slice), (1, 1, length(z_slice))))
+    set!(field, interior_arr)
     return field
 end
 
@@ -597,9 +600,16 @@ function halo_fill_2d_metric(old_data, grid, LX, LY)
     Ni = Base.length(LX(), TX(), Nx)
     Nj = Base.length(LY(), TY(), Ny)
     cpu_old_data = on_architecture(CPU(), old_data)
-    new_field.data[1:Ni, 1:Nj, 1] .= cpu_old_data[1:Ni, 1:Nj]
+    # Broadcast the 2D metric into every z-level so we can slice any of them back out
+    # below; we need `LZ = Center` (not `Nothing`) so the TripolarGrid fold halo-fill
+    # — which dispatches on `Center` z-location — adds the 360° longitude wrap.
+    for k in axes(new_field.data, 3)
+        new_field.data[1:Ni, 1:Nj, k] .= cpu_old_data[1:Ni, 1:Nj]
+    end
     fill_halo_regions!(new_field)
-    return on_architecture(architecture(grid), deepcopy(dropdims(new_field.data, dims=3)))
+    # Take z=1 instead of `dropdims`, which would require z to be singleton (it isn't —
+    # the field has Nz+2Hz cells in z). Any k works because we set every level identically.
+    return on_architecture(architecture(grid), deepcopy(view(new_field.data, :, :, 1)))
 end
 
 # Rebuild the `conformal_mapping` from its serialized attributes (see
