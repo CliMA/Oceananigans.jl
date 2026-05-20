@@ -78,10 +78,16 @@ conformal_mapping_info(cm::LatitudeLongitudeRotation) = Dict{Symbol, Any}(
     :north_pole_φ => cm.north_pole[2],
 )
 
-# Cubed-sphere panels carry 1D ξ/η coordinate arrays and a rotation, which don't fit
-# cleanly as NetCDF attributes. For now we just record the type name; reconstruction
-# will fall back to `nothing` (losing the panel rotation info — a follow-up can save
-# the arrays separately).
+# Fallback for conformal mappings without an explicit `conformal_mapping_info` method
+# (e.g. `CubedSphereConformalMapping`, whose ξ/η arrays and rotation don't fit cleanly
+# as NetCDF attributes). We record only the type name; the reconstructed OSSG will have
+# `conformal_mapping = nothing`.
+#
+# This is a metadata-only loss. The grid itself reconstructs faithfully from the saved
+# metric/coordinate arrays and is fully usable as a generic `OrthogonalSphericalShellGrid`
+# — `conformal_mapping` is bookkeeping that names *how* the grid was originally generated,
+# not data the grid uses at runtime. The only consequence is that the type-alias identity
+# (e.g. `ConformalCubedSpherePanelGrid`) is not restored on this code path.
 conformal_mapping_info(cm) = Dict{Symbol, Any}(:type => string(typeof(cm).name.wrapper))
 
 end # module
