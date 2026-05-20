@@ -9,9 +9,12 @@ export
     benchmark_time_stepping,
     run_benchmark_simulation,
     run_io_benchmark,
+    run_read_benchmark,
+    path_size,
     BenchmarkResult,
     SimulationResult,
     IOBenchmarkResult,
+    ReadBenchmarkResult,
     BenchmarkMetadata
 
 using Dates
@@ -26,6 +29,8 @@ using Oceananigans.Units
 using Oceananigans.OutputWriters: write_output!
 
 using NCDatasets
+
+using Zarr
 
 using DataDeps
 
