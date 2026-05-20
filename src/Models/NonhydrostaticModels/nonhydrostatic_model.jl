@@ -59,7 +59,7 @@ supported_timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
 """
     NonhydrostaticModel(grid;
-                        clock = Clock{eltype(grid)}(time = 0),
+                        clock = Clock(grid),
                         advection = Centered(),
                         buoyancy = nothing,
                         coriolis = nothing,
