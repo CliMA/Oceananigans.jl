@@ -2,6 +2,7 @@ using Test
 using Oceananigans
 using Oceananigans.Fields: interior
 using Oceananigans.Grids: nodes
+using Oceananigans.Units: hours, kilometers
 
 const CAIROMAKIE_AVAILABLE = let loaded = false
     try
@@ -202,5 +203,136 @@ sequential_data(sz::NTuple{N, Int}) where N = reshape(Float64.(1:prod(sz)), sz..
 
         plt = geo_surface!(ax, T; colormap=:thermal)
         @test plt isa CairoMakie.Surface
+    end
+
+    @testset "Scalar field time series as 1D line" begin
+        grid = RectilinearGrid(size = (1, 1, 1), extent = (1, 1, 1))
+        output_times = 0:0.1:1
+        field_time_series = FieldTimeSeries{Center, Center, Center}(grid, output_times)
+
+        for (i, t) in enumerate(output_times)
+            field = CenterField(grid)
+            set!(field, Returns(t))
+            set!(field_time_series, field, i)
+        end
+
+        fig = CairoMakie.Figure()
+        ax = CairoMakie.Axis(fig[1, 1])
+        line_plot = lines!(ax, field_time_series)
+
+        points = first(line_plot.converted[])
+        x_coords = [p[1] for p in points]
+        y_coords = [p[2] for p in points]
+
+        expected_x = collect(field_time_series.times)
+        expected_y = vec(Array(interior(field_time_series)))
+
+        @test x_coords == expected_x
+        @test y_coords == expected_y
+    end
+
+    @testset "Scalar field time series as 1D line with time coordinate array first" begin
+        grid = RectilinearGrid(size=(), topology=(Flat, Flat, Flat))
+        output_times = 0:0.5hours:12hours
+        field_time_series = FieldTimeSeries{Center, Center, Center}(grid, output_times)
+
+        for (i, t) in enumerate(output_times)
+            field = CenterField(grid)
+            set!(field, Returns(sinpi(t / 1hours)))
+            set!(field_time_series, field, i)
+        end
+
+        fig = CairoMakie.Figure()
+        ax = CairoMakie.Axis(fig[1, 1])
+        times_in_hours = field_time_series.times / 1hours
+        line_plot = lines!(ax, times_in_hours, field_time_series)
+
+        points = first(line_plot.converted[])
+        x_coords = [p[1] for p in points]
+        y_coords = [p[2] for p in points]
+
+        expected_x = collect(times_in_hours)
+        expected_y = vec(Array(interior(field_time_series)))
+
+        @test x_coords == expected_x
+        @test y_coords == expected_y
+    end
+
+    @testset "Scalar field time series as vertical 1D line with time coordinate array second" begin
+        grid = RectilinearGrid(size=(), topology=(Flat, Flat, Flat))
+        output_times = 2 .^ (1:10)
+        field_time_series = FieldTimeSeries{Center, Center, Center}(grid, output_times)
+
+        for (i, t) in enumerate(output_times)
+            field = CenterField(grid)
+            set!(field, Returns(log2(t)))
+            set!(field_time_series, field, i)
+        end
+
+        fig = CairoMakie.Figure()
+        ax = CairoMakie.Axis(fig[1, 1])
+        line_plot = lines!(ax, field_time_series, field_time_series.times)
+
+        points = first(line_plot.converted[])
+        x_coords = [p[1] for p in points]
+        y_coords = [p[2] for p in points]
+
+        expected_x = vec(Array(interior(field_time_series)))
+        expected_y = collect(field_time_series.times)
+
+        @test x_coords == expected_x
+        @test y_coords == expected_y
+    end
+
+    @testset "One-dimensional field time series as heat map" begin
+        grid = RectilinearGrid(size = (1, 1, 10), extent = (1, 1, 1))
+        output_times = 0:0.1:1
+        field_time_series = FieldTimeSeries{Center, Center, Center}(grid, output_times)
+
+        for (i, t) in enumerate(output_times)
+            field = CenterField(grid)
+            set!(field, (x, y, z) -> z * t^2)
+            set!(field_time_series, field, i)
+        end
+
+        fig = CairoMakie.Figure()
+        ax = CairoMakie.Axis(fig[1, 1])
+        hm = heatmap!(ax, field_time_series)
+
+        converted = hm.converted[]
+
+        @test hm isa CairoMakie.Heatmap
+        @test length(converted[1]) == length(field_time_series) + 1
+        @test length(converted[2]) == size(field_time_series, 3) + 1
+
+        expected_values = Float32.(Array(interior(field_time_series, 1, 1, :, :)'))
+        @test converted[3] == expected_values
+    end
+
+    @testset "One-dimensional field time series as contour plot with coordinate arrays" begin
+        grid = RectilinearGrid(size = (1, 10, 1), extent = (1, 1kilometers, 1))
+        output_times = 0:0.5hours:24hours
+        field_time_series = FieldTimeSeries{Center, Center, Center}(grid, output_times)
+
+        for (i, t) in enumerate(output_times)
+            field = CenterField(grid)
+            set!(field, (x, y, z) -> y * sinpi(t / 4hours))
+            set!(field_time_series, field, i)
+        end
+
+        fig = CairoMakie.Figure()
+        ax = CairoMakie.Axis(fig[1, 1])
+        times_in_hours = field_time_series.times / 1hours
+        y_in_km = ynodes(field_time_series) / 1kilometer
+        cf = contourf!(ax, times_in_hours, y_in_km, field_time_series)
+
+        converted = cf.converted[]
+
+        @test cf isa CairoMakie.Contourf
+        @test converted[1] == times_in_hours
+        @test converted[2] == y_in_km
+
+        expected_values = Float32.(Array(interior(field_time_series, 1, :, 1, :)'))
+        @test converted[3] == expected_values
     end
 end
