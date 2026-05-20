@@ -607,6 +607,15 @@ function halo_fill_2d_metric(old_data, grid, LX, LY)
         new_field.data[1:Ni, 1:Nj, k] .= cpu_old_data[1:Ni, 1:Nj]
     end
     fill_halo_regions!(new_field)
+    # The UPivot fold's "redundancy substitution" rewrites the j=Ny interior row for
+    # Center- and Face-Center y-locations (see fill_halo_regions_upivotzipper.jl) to
+    # mirror the right half of that row from the left half. That's correct for
+    # symmetric metrics (Δx/Δy/Az/φ) but wrong for λ, whose halves differ by 360°.
+    # Re-stamp the interior from the saved data so λ is preserved; for symmetric
+    # metrics this is a no-op.
+    for k in axes(new_field.data, 3)
+        new_field.data[1:Ni, 1:Nj, k] .= cpu_old_data[1:Ni, 1:Nj]
+    end
     # Take z=1 instead of `dropdims`, which would require z to be singleton (it isn't —
     # the field has Nz+2Hz cells in z). Any k works because we set every level identically.
     return on_architecture(architecture(grid), deepcopy(view(new_field.data, :, :, 1)))
