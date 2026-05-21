@@ -215,6 +215,7 @@ function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
                              divergence_order = nothing,
                              kinetic_energy_gradient_order = nothing,
                              multi_dimensional_stencil = false,
+                             time_discretization = ExplicitTimeDiscretization()
                              minimum_buffer_upwind_order = 1,
                              weno_kw...)
 
@@ -231,7 +232,7 @@ function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
     end
 
     vorticity_scheme               = WENO(FT; order=vorticity_order, minimum_buffer_upwind_order, weno_kw...)
-    vertical_advection_scheme      = WENO(FT; order=vertical_order, minimum_buffer_upwind_order, weno_kw...)
+    vertical_advection_scheme      = WENO(FT; order=vertical_order, minimum_buffer_upwind_order, time_discretization, weno_kw...)
     kinetic_energy_gradient_scheme = WENO(FT; order=kinetic_energy_gradient_order, minimum_buffer_upwind_order, weno_kw...)
     divergence_scheme              = WENO(FT; order=divergence_order, minimum_buffer_upwind_order, weno_kw...)
 
