@@ -188,7 +188,7 @@ end
 ##### Implicit step functions
 #####
 
-is_vertically_implicit(closure) = Advection.time_discretization(closure) isa VerticallyImplicitTimeDiscretization
+is_vertically_implicit(closure) = TimeSteppers.time_discretization(closure) isa VerticallyImplicitTimeDiscretization
 
 """
     implicit_step!(field, implicit_solver::BatchedTridiagonalSolver,

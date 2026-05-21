@@ -1,7 +1,8 @@
 using GPUArraysCore: @allowscalar
 
 using Oceananigans: UpdateStateCallsite
-using Oceananigans.Advection: Advection, AbstractAdvectionScheme, update_advection_timestep!
+using Oceananigans.Advection: AbstractAdvectionScheme, update_advection_timestep!
+using Oceananigans.TimeSteppers: TimeSteppers
 using Oceananigans.Grids: Flat, Bounded
 using Oceananigans.Fields: XFaceField, YFaceField, ZeroField
 using Oceananigans.Coriolis: AbstractRotation
@@ -106,9 +107,9 @@ end
     return ∇_dot_qᶜ(i, j, k, grid, closure, c, tracer_index, args...)
 end
 
-@inline function Advection.time_discretization(closure_array::AbstractArray)
+@inline function TimeSteppers.time_discretization(closure_array::AbstractArray)
     first_closure = @allowscalar first(closure_array) # assumes all closures have same time-discretization
-    return Advection.time_discretization(first_closure)
+    return TimeSteppers.time_discretization(first_closure)
 end
 
 #####

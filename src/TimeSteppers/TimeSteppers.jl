@@ -6,10 +6,16 @@ export
     SplitRungeKuttaTimeStepper,
     time_step!,
     Clock,
-    convert_time
+    convert_time,
+    AbstractTimeDiscretization,
+    ExplicitTimeDiscretization,
+    VerticallyImplicitTimeDiscretization,
+    AdaptiveVerticallyImplicitDiscretization,
+    time_discretization
 
+using Adapt: Adapt
 using KernelAbstractions: @kernel, @index
-using Oceananigans: AbstractModel, initialize!, prognostic_fields
+using Oceananigans: Oceananigans, AbstractModel, initialize!, prognostic_fields
 
 """
     abstract type AbstractTimeStepper
@@ -50,6 +56,7 @@ materialize_clock!(clock, timestepper) = nothing
 reset!(timestepper) = nothing
 implicit_step!(field, ::Nothing, args...; kwargs...) = nothing
 
+include("time_discretization.jl")
 include("clock.jl")
 include("quasi_adams_bashforth_2.jl")
 include("runge_kutta_3.jl")

@@ -28,7 +28,7 @@ materialize_advection(u::VelocityUpwinding, grid) = VelocityUpwinding(materializ
 
 # VectorInvariant wraps multiple sub-schemes; recurse into each
 function materialize_advection(vi::VectorInvariant{N, FT, M}, grid) where {N, FT, M}
-    TD = typeof(time_discretization(vi))
+    TD = typeof(TimeSteppers.time_discretization(vi))
     return VectorInvariant{N, FT, M, TD}(materialize_advection(vi.vorticity_scheme, grid),
                                          vi.vorticity_stencil,
                                          materialize_advection(vi.vertical_advection_scheme, grid),

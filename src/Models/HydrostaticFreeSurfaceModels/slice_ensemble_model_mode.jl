@@ -1,5 +1,5 @@
 using Oceananigans.Grids: Flat, Bounded, y_domain
-using Oceananigans.Advection: time_discretization
+using Oceananigans.TimeSteppers: time_discretization
 using Oceananigans.TurbulenceClosures: AbstractTurbulenceClosure
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: _top_tke_flux, CATKEVDArray
 
