@@ -103,7 +103,7 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
   *This paper describes the development of a Runge-Kutta timestepping scheme for the `HydrostaticFreeSurfaceModel`.*
 
-* **Moses et al. (2025), ["DJ4Earth: Differentiable, and performance-portable Earth System Modeling via program transformations"](https://doi.org/10.22541/essoar.176314951.18114616/v1).**
+* **Moses et al. (2026), ["DJ4Earth: Differentiable, and performance-portable Earth system modeling via program transformations"](https://doi.org/10.1029/2025MS005615).**
 
   *This paper describes the development and advantages of a strategy that leverages Enzyme.jl and Reactant.jl for building differentiable Oceananigans workflows.*
 
@@ -183,7 +183,7 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Brenner, S., Thompson, A., and Gupta, M. (2025) [Patterns of sea ice floes shape ocean turbulence in the marginal ice zone](https://doi.org/10.21203/rs.3.rs-8099873/v1), preprint (Version 1), available at Research Square. DOI: [10.21203/rs.3.rs-8099873/v1](https://doi.org/10.21203/rs.3.rs-8099873/v1)
 
-1. Moses, W. S., Cheng, G., Churavy, V., Gelbrecht, M., Klöwer, M., Kump, J., Morlighem, M., Williamson, S., Apte, D., Berg, P., Giordano, M., Hill, C., Loose, N., Montoison, A., Narayanan, S. H. K., Pal, A., Schanen, M., Silvestri, S., Wagner, G. L., Heimbach, P. (2025) [DJ4Earth: Differentiable, and performance-portable Earth System Modeling via program transformations](https://doi.org/10.22541/essoar.176314951.18114616/v1), _ESS Open Archive_. DOI: [10.22541/essoar.176314951.18114616/v1](https://doi.org/10.22541/essoar.176314951.18114616/v1)
+1. Moses, W. S., Cheng, G., Churavy, V., Gelbrecht, M., Klöwer, M., Kump, J., Morlighem, M., Williamson, S., Apte, D., Berg, P., Giordano, M., Hill, C., Loose, N., Montoison, A., Narayanan, S. H. K., Pal, A., Schanen, M., Silvestri, S., Wagner, G. L., Heimbach, P. (2026) [DJ4Earth: Differentiable, and performance-portable Earth system modeling via program transformations](https://doi.org/10.1029/2025MS005615), _Journal of Advances in Modeling Earth Systems_, **18(5)**, e2025MS005615. DOI: [10.1029/2025MS005615](https://doi.org/10.1029/2025MS005615)
 
 1. Falga, R., Shamekh, S., and Zanna, L. (2025). [Towards a Unified Data-Driven Boundary Layer Momentum Flux Parameterization for Ocean and Atmosphere](https://doi.org/10.48550/arXiv.2511.01766), _arXiv preprint_, arXiv:2511.01766. DOI: [10.48550/arXiv.2511.01766](https://doi.org/10.48550/arXiv.2511.01766)
 
