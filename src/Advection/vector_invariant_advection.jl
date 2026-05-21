@@ -256,7 +256,7 @@ function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
                                                                  upwinding)
 end
 
-time_discretization(vi::VectorInvariant) = time_discretization(vi.vertical_advection_scheme)
+Advection.time_discretization(vi::VectorInvariant) = time_discretization(vi.vertical_advection_scheme)
 
 # Since vorticity itself requires one halo, if we use an upwinding scheme (N > 1) we require one additional
 # halo for vector invariant advection
