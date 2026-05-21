@@ -156,23 +156,34 @@ function test_perturbation_advection_open_boundary_conditions(arch, FT)
     end
 end
 
-function make_targeted_flux_model(::Type{NonhydrostaticModel}, grid, boundary_conditions)
-    return NonhydrostaticModel(grid; boundary_conditions, timestepper=:RungeKutta3)
+# Unit-cube grid for the targeted-transport tests. With `mutable_z = true` the
+# vertical coordinate is a `MutableVerticalDiscretization`, so the boundary areas
+# change in time as the free surface evolves — the regime `LiveBoundaryTransport`
+# is designed for.
+function targeted_flux_grid(arch, FT; N = 4, mutable_z = false)
+    z = mutable_z ? MutableVerticalDiscretization(range(-one(FT), zero(FT), length = N + 1)) :
+                    (-one(FT), zero(FT))
+    return RectilinearGrid(arch, FT; size = (N, N, N), x = (0, 1), y = (0, 1), z,
+                           topology = (Bounded, Bounded, Bounded))
 end
 
-function make_targeted_flux_model(::Type{HydrostaticFreeSurfaceModel}, grid, boundary_conditions)
+make_targeted_flux_model(::Type{NonhydrostaticModel}, grid, boundary_conditions; mutable_z = false) =
+    NonhydrostaticModel(grid; boundary_conditions, timestepper=:RungeKutta3)
+
+function make_targeted_flux_model(::Type{HydrostaticFreeSurfaceModel}, grid, boundary_conditions; mutable_z = false)
+    vertical_coordinate = mutable_z ? ZStarCoordinate() : ZCoordinate()
     return HydrostaticFreeSurfaceModel(grid; boundary_conditions,
                                        momentum_advection=nothing,
                                        tracer_advection=nothing,
                                        buoyancy=nothing,
                                        tracers=(),
                                        coriolis=nothing,
+                                       vertical_coordinate,
                                        free_surface=ImplicitFreeSurface())
 end
 
-function test_targeted_transport_achieved(arch, FT, ModelType; N = 4)
-    grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
-                           topology=(Bounded, Bounded, Bounded))
+function test_targeted_transport_achieved(arch, FT, ModelType; N = 4, mutable_z = false)
+    grid = targeted_flux_grid(arch, FT; N, mutable_z)
 
     # West boundary with a prescribed target flux; east boundary is in the pool.
     Q_target = FT(0.5)
@@ -180,7 +191,7 @@ function test_targeted_transport_achieved(arch, FT, ModelType; N = 4)
         west = OpenBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1, target_transport=Q_target)),
         east = OpenBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1))
     )
-    model = make_targeted_flux_model(ModelType, grid, (; u=u_bcs))
+    model = make_targeted_flux_model(ModelType, grid, (; u=u_bcs); mutable_z)
     set!(model, u = (x, y, z) -> 1 + 1e-2 * rand())
 
     Δt = 0.1 * minimum_xspacing(grid) / 2
@@ -192,9 +203,8 @@ function test_targeted_transport_achieved(arch, FT, ModelType; N = 4)
     @test Array(interior(west_flux))[1, 1, 1] ≈ Q_target atol = N^2 * eps(FT)
 end
 
-function test_targeted_transport_conservation(arch, FT, ModelType; N = 4)
-    grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
-                           topology=(Bounded, Bounded, Bounded))
+function test_targeted_transport_conservation(arch, FT, ModelType; N = 4, mutable_z = false)
+    grid = targeted_flux_grid(arch, FT; N, mutable_z)
 
     # Both boundaries targeted with equal fluxes — net inflow is zero, no pool needed.
     Q = FT(0.5)
@@ -202,18 +212,21 @@ function test_targeted_transport_conservation(arch, FT, ModelType; N = 4)
         west = OpenBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1, target_transport=Q)),
         east = OpenBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1, target_transport=Q))
     )
-    model = make_targeted_flux_model(ModelType, grid, (; u=u_bcs))
+    model = make_targeted_flux_model(ModelType, grid, (; u=u_bcs); mutable_z)
     set!(model, u = (x, y, z) -> 1 + 1e-2 * rand())
 
     u, v, w = model.velocities
     Δt = 0.1 * minimum_xspacing(grid) / 2
 
-    δu = Field(∂x(u) + ∂y(v) + ∂z(w))
-    ∫δu = Field(Integral(δu))
-
     run!(Simulation(model; stop_time=1, Δt, verbose=false))
-    compute!(∫δu)
-    @test Array(interior(∫δu))[1, 1, 1] ≈ 0 atol = 5 * eps(FT)
+
+    # On a fixed grid the velocity is divergence-free; with a mutable vertical
+    # coordinate the divergence balances the grid motion, so check transports only.
+    if !mutable_z
+        ∫δu = Field(Integral(Field(∂x(u) + ∂y(v) + ∂z(w))))
+        compute!(∫δu)
+        @test Array(interior(∫δu))[1, 1, 1] ≈ 0 atol = 5 * eps(FT)
+    end
 
     west_flux = Field(Integral(view(u, 1, :, :), dims=(2, 3)))
     east_flux = Field(Integral(view(u, u.grid.Nx + 1, :, :), dims=(2, 3)))
@@ -272,19 +285,18 @@ function test_fixed_imposed_velocity_open_boundary_conserves_mass(arch, FT; N = 
     @test Array(interior(∫δu))[1, 1, 1] ≈ 0 atol = 5 * eps(FT)
 end
 
-function test_targeted_south_transport_achieved(arch, FT, ModelType; N = 4)
+function test_targeted_south_transport_achieved(arch, FT, ModelType; N = 4, mutable_z = false)
     # v.south = targeted OBC, v.north = pool OBC
     # Exercises: apply_targeted_left_boundary_correction! for south,
     #            targeted boundary skipped in pool step for south,
     #            pool correction applied to north OBC
-    grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
-                           topology=(Bounded, Bounded, Bounded))
+    grid = targeted_flux_grid(arch, FT; N, mutable_z)
     Q_target = FT(0.5)
     v_bcs = FieldBoundaryConditions(
         south = OpenBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1, target_transport=Q_target)),
         north = OpenBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1))
     )
-    model = make_targeted_flux_model(ModelType, grid, (; v=v_bcs))
+    model = make_targeted_flux_model(ModelType, grid, (; v=v_bcs); mutable_z)
     set!(model, v = (x, y, z) -> 1 + 1e-2 * rand())
 
     Δt = 0.1 * minimum_yspacing(grid) / 2
@@ -296,18 +308,17 @@ function test_targeted_south_transport_achieved(arch, FT, ModelType; N = 4)
     @test Array(interior(south_flux))[1, 1, 1] ≈ Q_target atol = N^2 * eps(FT)
 end
 
-function test_targeted_east_with_west_pool(arch, FT, ModelType; N = 4)
+function test_targeted_east_with_west_pool(arch, FT, ModelType; N = 4, mutable_z = false)
     # u.west = pool OBC, u.east = targeted OBC
     # Exercises: targeted boundary skipped in pool correction for east,
     #            pool correction applied to west OBC
-    grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
-                           topology=(Bounded, Bounded, Bounded))
+    grid = targeted_flux_grid(arch, FT; N, mutable_z)
     Q_target = FT(0.5)
     u_bcs = FieldBoundaryConditions(
         west = OpenBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1)),
         east = OpenBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1, target_transport=Q_target))
     )
-    model = make_targeted_flux_model(ModelType, grid, (; u=u_bcs))
+    model = make_targeted_flux_model(ModelType, grid, (; u=u_bcs); mutable_z)
     set!(model, u = (x, y, z) -> 1 + 1e-2 * rand())
 
     Δt = 0.1 * minimum_xspacing(grid) / 2
@@ -319,20 +330,20 @@ function test_targeted_east_with_west_pool(arch, FT, ModelType; N = 4)
     @test Array(interior(east_flux))[1, 1, 1] ≈ Q_target atol = N^2 * eps(FT)
 end
 
-function test_live_boundary_transport(arch, FT, ModelType; N = 4)
+function test_live_boundary_transport(arch, FT, ModelType; N = 4, mutable_z = false)
     # LiveBoundaryTransport as target_transport: exercises the callable path through
     # get_target_transport(scheme, grid) -> _eval_tt(f, grid) -> f(grid).
-    grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
-                           topology=(Bounded, Bounded, Bounded))
+    # With mutable_z the boundary area changes during the run, so the achieved
+    # transport must track lbt evaluated on the final grid, not its initial value.
+    grid = targeted_flux_grid(arch, FT; N, mutable_z)
 
     lbt = LiveBoundaryTransport(FT(1), :east)
-    Q_target = lbt(grid)   # U * east_area = 1 * (Ly * Lz) = 1
 
     u_bcs = FieldBoundaryConditions(
         west = OpenBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1)),
         east = OpenBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1, target_transport=lbt))
     )
-    model = make_targeted_flux_model(ModelType, grid, (; u=u_bcs))
+    model = make_targeted_flux_model(ModelType, grid, (; u=u_bcs); mutable_z)
     set!(model, u = (x, y, z) -> 1 + 1e-2 * rand())
 
     Δt = 0.1 * minimum_xspacing(grid) / 2
@@ -341,7 +352,7 @@ function test_live_boundary_transport(arch, FT, ModelType; N = 4)
     u = model.velocities.u
     east_flux = Field(Integral(view(u, u.grid.Nx + 1, :, :), dims=(2, 3)))
     compute!(east_flux)
-    @test Array(interior(east_flux))[1, 1, 1] ≈ Q_target atol = N^2 * eps(FT)
+    @test Array(interior(east_flux))[1, 1, 1] ≈ lbt(model.grid) atol = N^2 * eps(FT)
 end
 
 function test_open_boundary_condition_net_zero_transport(arch, FT, boundary_conditions; N = 8)
@@ -570,6 +581,14 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
                 test_targeted_east_with_west_pool(arch, FT, ModelType)
                 test_live_boundary_transport(arch, FT, ModelType)
             end
+
+            # Repeat the targeted-transport tests with a mutable vertical coordinate
+            # (ZStarCoordinate), where boundary areas evolve with the free surface.
+            test_targeted_transport_achieved(arch, FT, HydrostaticFreeSurfaceModel; mutable_z=true)
+            test_targeted_transport_conservation(arch, FT, HydrostaticFreeSurfaceModel; mutable_z=true)
+            test_targeted_south_transport_achieved(arch, FT, HydrostaticFreeSurfaceModel; mutable_z=true)
+            test_targeted_east_with_west_pool(arch, FT, HydrostaticFreeSurfaceModel; mutable_z=true)
+            test_live_boundary_transport(arch, FT, HydrostaticFreeSurfaceModel; mutable_z=true)
             test_zero_inflow_open_boundary_conserves_mass(arch, FT)
             test_fixed_imposed_velocity_open_boundary_conserves_mass(arch, FT)
         end
