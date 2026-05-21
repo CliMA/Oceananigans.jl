@@ -19,8 +19,9 @@ end
 
 @testset "AIVA scheme dispatch" begin
     for scheme in (WENO, Centered, UpwindBiased)
-        explicit = scheme()
-        adaptive = scheme(; time_discretization = AdaptiveVerticallyImplicitDiscretization())
+        extra_kw = scheme == WENO ? (; weight_computation = Oceananigans.Utils.NormalDivision) : (; )
+        explicit = scheme(; extra_kw...)
+        adaptive = scheme(; time_discretization = AdaptiveVerticallyImplicitDiscretization(), extra_kw...)
 
         @test !(explicit isa AdaptiveImplicitVerticalAdvection)
         @test adaptive  isa AdaptiveImplicitVerticalAdvection
@@ -42,8 +43,8 @@ end
     aiva_td = AdaptiveVerticallyImplicitDiscretization(cfl=10.0)
     aiva_td.Δt[] = Δt
 
-    explicit_scheme = WENO()
-    adaptive_scheme = WENO(; time_discretization = aiva_td)
+    explicit_scheme = WENO(; weight_computation = Oceananigans.Utils.NormalDivision)
+    adaptive_scheme = WENO(; time_discretization = aiva_td, weight_computation = Oceananigans.Utils.NormalDivision)
 
     W = ZFaceField(grid)
     set!(W, (x, y, z) -> 1.0)
@@ -71,7 +72,7 @@ end
     aiva_td = AdaptiveVerticallyImplicitDiscretization(cfl=cfl)
     aiva_td.Δt[] = Δt
 
-    scheme = WENO(; time_discretization = aiva_td)
+    scheme = WENO(; time_discretization = aiva_td, weight_computation = Oceananigans.Utils.NormalDivision)
 
     W = ZFaceField(grid)
     set!(W, (x, y, z) -> 1.0)
