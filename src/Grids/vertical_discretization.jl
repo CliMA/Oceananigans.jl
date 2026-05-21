@@ -138,13 +138,13 @@ function generate_coordinate(FT, topo, size, halo, coordinate::MutableVerticalDi
 
     args = (topo, (Nx, Ny, Nz), (Hx, Hy, Hz))
 
-    σᶜᶜ⁻ = new_data(FT, arch, (Center, Center, Nothing), args...)
-    σᶜᶜⁿ = new_data(FT, arch, (Center, Center, Nothing), args...)
-    σᶠᶜⁿ = new_data(FT, arch, (Face,   Center, Nothing), args...)
-    σᶜᶠⁿ = new_data(FT, arch, (Center, Face,   Nothing), args...)
-    σᶠᶠⁿ = new_data(FT, arch, (Face,   Face,   Nothing), args...)
-    ηⁿ   = new_data(FT, arch, (Center, Center, Nothing), args...)
-    ∂t_σ = new_data(FT, arch, (Center, Center, Nothing), args...)
+    σᶜᶜ⁻ = new_data(FT, arch, (Center, Center, Reduced), args...)
+    σᶜᶜⁿ = new_data(FT, arch, (Center, Center, Reduced), args...)
+    σᶠᶜⁿ = new_data(FT, arch, (Face,   Center, Reduced), args...)
+    σᶜᶠⁿ = new_data(FT, arch, (Center, Face,   Reduced), args...)
+    σᶠᶠⁿ = new_data(FT, arch, (Face,   Face,   Reduced), args...)
+    ηⁿ   = new_data(FT, arch, (Center, Center, Reduced), args...)
+    ∂t_σ = new_data(FT, arch, (Center, Center, Reduced), args...)
 
     # Fill all the scalings with one for now (i.e. z == r)
     for σ in (σᶜᶜ⁻, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ)
