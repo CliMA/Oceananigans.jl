@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
 using Oceananigans.Fields: Field
-using Oceananigans.Forcings: MultipleForcings, FieldRelaxation, FieldTimeSeriesRelaxation
+using Oceananigans.Forcings: MultipleForcings, FieldRelaxation, FieldTimeSeriesRelaxation, InterpolatedFieldTarget
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, immersed_peripheral_node, peripheral_node
 
 """ Take one time step with three forcing arrays on u, v, w. """
@@ -631,37 +631,64 @@ end
                 expected = c_ref * (1 - exp(-Δt/τ))
                 @test all(isapprox.(c_after, expected; atol=1e-6 * c_ref))
 
-                # Location-mismatch validation: an XFaceField target for a Center tracer throws.
+                # Location mismatch on the same grid: target is auto-wrapped for spatial
+                # interpolation so the (Face, Center, Center) staggering is sampled at the
+                # tracer's (Center, Center, Center) nodes. A uniform target still drives
+                # the tracer toward `c_ref`.
                 wrong_loc = XFaceField(grid)
-                r_wrong   = Relaxation(rate=1/τ, target=wrong_loc)
-                @test_throws ArgumentError NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r_wrong))
+                set!(wrong_loc, c_ref)
+                fill_halo_regions!(wrong_loc)
+                r_loc = Relaxation(rate=1/τ, target=wrong_loc)
+                model_loc = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r_loc))
+                @test model_loc.forcing.c.target isa InterpolatedFieldTarget
+                set!(model_loc, c=0)
+                time_step!(model_loc, Δt)
+                @test all(isapprox.(Array(interior(model_loc.tracers.c)), expected; atol=1e-6 * c_ref))
 
-                # Grid-mismatch validation: a target on a different grid throws.
-                other_grid   = RectilinearGrid(arch, size=(2, 2, 4), extent=(50, 50, 500))
+                # Grid mismatch: target lives on a different grid that fully contains the
+                # simulation grid and is auto-wrapped for interpolation. A uniform target
+                # of value `c_ref` should still drive the tracer toward `c_ref` after one
+                # step, just as the same-grid case does.
+                other_grid   = RectilinearGrid(arch, size=(4, 4, 8), x=(0, 100), y=(0, 100), z=(-1000, 0),
+                                                topology=(Periodic, Periodic, Bounded))
                 wrong_grid   = CenterField(other_grid)
-                r_wrong_grid = Relaxation(rate=1/τ, target=wrong_grid)
-                @test_throws ArgumentError NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r_wrong_grid))
+                set!(wrong_grid, c_ref)
+                fill_halo_regions!(wrong_grid)
+                r_grid = Relaxation(rate=1/τ, target=wrong_grid)
+                model_grid = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r_grid))
+                @test model_grid.forcing.c.target isa InterpolatedFieldTarget
+                set!(model_grid, c=0)
+                time_step!(model_grid, Δt)
+                c_grid_after = Array(interior(model_grid.tracers.c))
+                @test all(isapprox.(c_grid_after, expected; atol=1e-6 * c_ref))
             end
 
             @testset "Relaxation with transform=:horizontal_average [$A]" begin
                 @info "      Testing Relaxation with transform=:horizontal_average [$A]..."
 
+                Nx, Ny, Nz = 4, 4, 2
                 Lx, Ly, Lz = 100.0, 100.0, 100.0
-                grid = RectilinearGrid(arch, size=(4, 4, 2), extent=(Lx, Ly, Lz))
+                grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
                 τ = 60.0
+                c_target = 5.0
 
-                r = Relaxation(rate=1/τ, transform=:horizontal_average)
+                # transform produces the LHS (horizontal average); the user-supplied
+                # `target` is the RHS the average is pulled toward.
+                r = Relaxation(rate=1/τ, transform=:horizontal_average, target=c_target)
                 model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r))
 
                 rm = model.forcing.c
                 @test rm.transform === :horizontal_average
-                @test rm.target isa Field
-                @test rm.field === model.tracers.c
+                @test rm.target === c_target
+                @test rm.field isa Field
+                @test rm.field !== model.tracers.c
 
-                # Initial condition: zero-mean horizontal sinusoid → fluctuations decay,
-                # horizontal mean stays at zero.
+                # IC: zero-mean horizontal sinusoid. The forcing is i,j-independent
+                # at fixed k, so it drives only the horizontal mean — fluctuations
+                # in (x, y) are preserved.
                 set!(model, c=(x, y, z) -> sin(2π * x / Lx))
                 c_initial = Array(interior(model.tracers.c))
+                fluctuation_initial = c_initial .- mean(c_initial, dims=(1, 2))
 
                 Δt = 0.5
                 Nsteps = 20
@@ -671,13 +698,36 @@ end
                 t_end = model.clock.time
 
                 c_final = Array(interior(model.tracers.c))
-                expected = c_initial .* exp(-t_end / τ)
-                @test all(isapprox.(c_final, expected; atol=5e-3))
+                mean_final = mean(c_final, dims=(1, 2))
+                fluctuation_final = c_final .- mean_final
 
-                # Closure form should be equivalent.
-                r_closure = Relaxation(rate=1/τ, transform = f -> Field(Average(f, dims=(1, 2))))
+                # d<c>/dt = (c_target - <c>)/τ with <c>(0) = 0  ⇒  <c>(t) = c_target (1 - exp(-t/τ))
+                expected_mean = c_target * (1 - exp(-t_end / τ))
+                @test all(isapprox.(mean_final, expected_mean; atol=1e-3 * c_target))
+                @test all(isapprox.(fluctuation_final, fluctuation_initial; atol=1e-6))
+
+                # Closure form is equivalent to the :horizontal_average symbol.
+                r_closure = Relaxation(rate=1/τ, target=c_target,
+                                       transform = f -> Field(Average(f, dims=(1, 2))))
                 model_closure = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r_closure))
-                @test model_closure.forcing.c.target isa Field
+                @test model_closure.forcing.c.field isa Field
+
+                # z-varying target profile: <c>(z) relaxes toward LinearTarget at each k.
+                c_profile = LinearTarget{:z}(intercept=1.0, gradient=0.01)
+                r_profile = Relaxation(rate=1/τ, transform=:horizontal_average, target=c_profile)
+                model_profile = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r_profile))
+                set!(model_profile, c=0)
+                for _ in 1:Nsteps
+                    time_step!(model_profile, Δt)
+                end
+                t_p = model_profile.clock.time
+                c_p = Array(interior(model_profile.tracers.c))
+                mean_p = dropdims(mean(c_p, dims=(1, 2)), dims=(1, 2))
+                for k in 1:Nz
+                    _, _, z = node(1, 1, k, grid, Center(), Center(), Center())
+                    expected_k = c_profile(0, 0, z, 0) * (1 - exp(-t_p / τ))
+                    @test isapprox(mean_p[k], expected_k; atol=1e-3)
+                end
 
                 # Mixing transform with FieldTimeSeries target should error.
                 fts = FieldTimeSeries{Center, Center, Center}(grid, [0, 1e6])
