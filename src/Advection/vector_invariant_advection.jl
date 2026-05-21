@@ -246,7 +246,7 @@ function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
     N = max(NX, NY, NZ)
 
     FT = eltype(vorticity_scheme) # assumption
-    TD = typeof(time_discretization(vertical_advection_scheme))
+    TD = typeof(Advection.time_discretization(vertical_advection_scheme))
 
     return VectorInvariant{N, FT, multi_dimensional_stencil, TD}(vorticity_scheme,
                                                                  vorticity_stencil,
