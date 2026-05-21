@@ -371,7 +371,11 @@ with a mean velocity ``U=1`` and damp the exiting flow to this speed we can setu
 
 ```jldoctest
 julia> scheme = PerturbationAdvection(; outflow_timescale=10, inflow_timescale=1)
-PerturbationAdvection{Float64, Nothing}(1.0, 10.0, 0.0, nothing)
+PerturbationAdvection{Float64}
+├── inflow_timescale: 1.0
+├── outflow_timescale: 10.0
+├── gravity_wave_speed: 0.0
+└── density: Nothing
 
 julia> open_boundary = OpenBoundaryCondition(1; scheme)
 OpenBoundaryCondition{PerturbationAdvection{Float64, Nothing}}: 1
