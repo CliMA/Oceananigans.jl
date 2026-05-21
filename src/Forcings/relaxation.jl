@@ -98,6 +98,8 @@ const FieldTimeSeriesRelaxation{R, M, T<:FlavorOfFTS, F, L, Tr}    = Relaxation{
 apply_transform(t,          field) = t(field)
 apply_transform(s::Symbol,  field) = apply_transform(Val(s), field)
 apply_transform(::Val{:horizontal_average}, field) = Field(Average(field, dims=(1, 2)))
+apply_transform(::Val{S}, field) where S =
+  throw(ArgumentError("unknown transform :$S; supported: :horizontal_average"))
 
 @inline function (r::Relaxation{R, M, T, F, L, Tr})(i, j, k, grid, clock, model_fields) where {R, M, T, F<:AbstractField, L, Tr}
     X  = node(i, j, k, grid, r.location...)
