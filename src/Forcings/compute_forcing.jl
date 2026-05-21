@@ -12,4 +12,4 @@ compute_forcing!(nt::NamedTuple) = foreach(compute_forcing!, values(nt))
 compute_forcing!(mf::MultipleForcings) = compute_forcing!(mf.forcings)
 
 compute_forcing!(r::Relaxation) =
-    isnothing(r.transform) ? nothing : compute!(r.target)
+    isnothing(r.transform) ? nothing : compute!(r.field)
