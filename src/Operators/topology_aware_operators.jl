@@ -46,7 +46,7 @@ const AGYL = AbstractUnderlyingGrid{FT, <:Any, LeftConnected} where FT
 @inline δyTᵃᶜᵃ(i, j, k, grid::AGYP, v::AbstractArray) = @inbounds ifelse(j == grid.Ny, v[i, 1, k] - v[i, grid.Ny, k], δyᵃᶜᵃ(i, j, k, grid, v))
 
 # Enforce NoFlux conditions
-@inline δxTᶠᵃᵃ(i, j, k, grid::AGXB{FT}, f, args...) where FT = ifelse(i == 1, zero(FT), δxᶠᵃᵃ(i, j, k, grid, f, args...))
+@inline δxTᶠᵃᵃ(i, j, k, grid::AGXB{FT}, f, args...) where FT = ifelse((i == 1) | (i == grid.Nx+1), zero(FT), δxᶠᵃᵃ(i, j, k, grid, f, args...))
 @inline δyTᵃᶠᵃ(i, j, k, grid::AGYB{FT}, f, args...) where FT = ifelse(j == 1, zero(FT), δyᵃᶠᵃ(i, j, k, grid, f, args...))
 
 @inline δxTᶠᵃᵃ(i, j, k, grid::AGXR{FT}, f, args...) where FT = ifelse(i == 1, zero(FT), δxᶠᵃᵃ(i, j, k, grid, f, args...))
