@@ -50,6 +50,17 @@ Keyword Arguments
 =================
 
 - `cfl`: Maximum vertical CFL for the explicit part (default: `0.5`).
+
+Example
+=======
+
+```jldoctest
+julia> using Oceananigans
+
+julia> AdaptiveVerticallyImplicitDiscretization(cfl=0.3)
+AdaptiveVerticallyImplicitDiscretization:
+└── cfl: 0.3
+```
 """
 function AdaptiveVerticallyImplicitDiscretization(FT::DataType = Oceananigans.defaults.FloatType; cfl = 0.5)
     cfl = convert(FT, cfl)
