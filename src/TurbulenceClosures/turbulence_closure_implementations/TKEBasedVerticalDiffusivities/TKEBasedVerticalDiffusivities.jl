@@ -13,7 +13,7 @@ using Oceananigans.Fields: CenterField, XFaceField, YFaceField, ZFaceField, Zero
 using Oceananigans.Operators: Δzᶜᶜᶜ, Δzᶜᶠᶠ, Δzᶠᶜᶠ, Δz⁻¹ᶜᶠᶜ, Δz⁻¹ᶠᶜᶜ,
     ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
 using Oceananigans.Utils: Utils, launch!, prettysummary, get_active_cells_map
-using Oceananigans.Advection: time_discretization
+using Oceananigans.TimeSteppers: TimeSteppers, time_discretization
 
 using Oceananigans.BoundaryConditions:
     BoundaryConditions,

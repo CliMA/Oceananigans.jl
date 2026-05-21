@@ -22,12 +22,12 @@ function FluxFormAdvection(x_advection, y_advection, z_advection)
     FT = eltype(x_advection)
     H  = max(Hx, Hy, Hz)
 
-    TD = typeof(time_discretization(z_advection))
+    TD = typeof(TimeSteppers.time_discretization(z_advection))
 
     return FluxFormAdvection{H, FT, TD}(x_advection, y_advection, z_advection)
 end
 
-time_discretization(scheme::FluxFormAdvection) = time_discretization(scheme.z)
+TimeSteppers.time_discretization(scheme::FluxFormAdvection) = TimeSteppers.time_discretization(scheme.z)
 
 Base.summary(scheme::FluxFormAdvection) = string("FluxFormAdvection(x=",
                                                  summary(scheme.x), ", y=",

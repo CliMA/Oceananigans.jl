@@ -7,8 +7,8 @@ struct EnstrophyConserving{FT} <: AbstractAdvectionScheme{1, FT, ExplicitTimeDis
 EnergyConserving(FT::DataType = Oceananigans.defaults.FloatType)    = EnergyConserving{FT}()
 EnstrophyConserving(FT::DataType = Oceananigans.defaults.FloatType) = EnstrophyConserving{FT}()
 
-time_discretization(::EnergyConserving) = ExplicitTimeDiscretization()
-time_discretization(::EnstrophyConserving) = ExplicitTimeDiscretization()
+TimeSteppers.time_discretization(::EnergyConserving) = ExplicitTimeDiscretization()
+TimeSteppers.time_discretization(::EnstrophyConserving) = ExplicitTimeDiscretization()
 
 struct VectorInvariant{N, FT, M, Z, ZS, V, K, D, U, TD} <: AbstractAdvectionScheme{N, FT, TD}
     vorticity_scheme               :: Z  # reconstruction scheme for vorticity flux
@@ -102,7 +102,7 @@ function VectorInvariant(FT = Oceananigans.defaults.FloatType;
             required_halo_size_z(vertical_advection_scheme))
 
     FT = eltype(vorticity_scheme)
-    TD = typeof(time_discretization(vertical_advection_scheme))
+    TD = typeof(TimeSteppers.time_discretization(vertical_advection_scheme))
 
     return VectorInvariant{N, FT, multi_dimensional_stencil, TD}(vorticity_scheme,
                                                                  vorticity_stencil,
@@ -256,7 +256,7 @@ function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
                                                                  upwinding)
 end
 
-Advection.time_discretization(vi::VectorInvariant) = time_discretization(vi.vertical_advection_scheme)
+TimeSteppers.time_discretization(vi::VectorInvariant) = TimeSteppers.time_discretization(vi.vertical_advection_scheme)
 
 # Since vorticity itself requires one halo, if we use an upwinding scheme (N > 1) we require one additional
 # halo for vector invariant advection
@@ -273,7 +273,7 @@ end
 @inline Grids.required_halo_size_z(scheme::VectorInvariant) = required_halo_size_z(scheme.vertical_advection_scheme)
 
 function Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT, M}) where {N, FT, M}
-    TD = typeof(time_discretization(scheme))
+    TD = typeof(TimeSteppers.time_discretization(scheme))
     return VectorInvariant{N, FT, M, TD}(Adapt.adapt(to, scheme.vorticity_scheme),
                                          Adapt.adapt(to, scheme.vorticity_stencil),
                                          Adapt.adapt(to, scheme.vertical_advection_scheme),
@@ -283,7 +283,7 @@ function Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT, M}) where {N, 
 end
 
 function Architectures.on_architecture(to, scheme::VectorInvariant{N, FT, M}) where {N, FT, M}
-    TD = typeof(time_discretization(scheme))
+    TD = typeof(TimeSteppers.time_discretization(scheme))
     VectorInvariant{N, FT, M, TD}(on_architecture(to, scheme.vorticity_scheme),
                                   on_architecture(to, scheme.vorticity_stencil),
                                   on_architecture(to, scheme.vertical_advection_scheme),

@@ -1,11 +1,11 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Advection: AdaptiveImplicitVerticalAdvection,
-                              AdaptiveVerticallyImplicitDiscretization,
-                              ExplicitTimeDiscretization,
                               advective_tracer_flux_z,
-                              needs_implicit_solver,
-                              time_discretization
+                              needs_implicit_solver
+using Oceananigans.TimeSteppers: AdaptiveVerticallyImplicitDiscretization,
+                                 ExplicitTimeDiscretization,
+                                 time_discretization
 
 @testset "AdaptiveVerticallyImplicitDiscretization construction" begin
     td = AdaptiveVerticallyImplicitDiscretization(cfl=0.3)
@@ -92,4 +92,21 @@ end
         flux_adaptive = advective_tracer_flux_z(1, 1, k, grid, scheme, aiva_td, W, c)
         @test flux_adaptive ≈ expected_scale * flux_explicit rtol=1e-12
     end
+end
+
+@testset "AIVA wrapped in WENOVectorInvariant time-steps" begin
+    # Regression: the implicit solver path used to access advection.time_discretization
+    # as a field, which fails when advection is a VectorInvariant (no such field).
+    grid = RectilinearGrid(CPU(), size=(8, 8, 8), x=(0, 1), y=(0, 1), z=(0, 1),
+                           halo=(6, 6, 4), topology=(Periodic, Periodic, Bounded))
+
+    momentum_advection = WENOVectorInvariant(; time_discretization=AdaptiveVerticallyImplicitDiscretization(cfl=0.5))
+    model = HydrostaticFreeSurfaceModel(grid; momentum_advection, tracer_advection=Centered())
+
+    time_step!(model, 1e-3)
+    time_step!(model, 1e-3)
+
+    @test model.clock.iteration == 2
+    @test all(isfinite, parent(model.velocities.u))
+    @test all(isfinite, parent(model.velocities.v))
 end

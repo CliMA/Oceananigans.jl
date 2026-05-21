@@ -1,11 +1,11 @@
-using Oceananigans.Advection: Advection,
-                              AbstractTimeDiscretization,
-                              ExplicitTimeDiscretization,
-                              VerticallyImplicitTimeDiscretization,
-                              AdaptiveImplicitVerticalAdvection
+using Oceananigans.TimeSteppers: TimeSteppers,
+                                 AbstractTimeDiscretization,
+                                 ExplicitTimeDiscretization,
+                                 VerticallyImplicitTimeDiscretization
+using Oceananigans.Advection: AdaptiveImplicitVerticalAdvection
 
-@inline Advection.time_discretization(::AbstractTurbulenceClosure{TimeDiscretization}) where TimeDiscretization = TimeDiscretization()
-@inline Advection.time_discretization(::Nothing) = ExplicitTimeDiscretization() # placeholder for closure::Nothing
+@inline TimeSteppers.time_discretization(::AbstractTurbulenceClosure{TimeDiscretization}) where TimeDiscretization = TimeDiscretization()
+@inline TimeSteppers.time_discretization(::Nothing) = ExplicitTimeDiscretization() # placeholder for closure::Nothing
 
 #####
 ##### Explicit: move along, nothing to worry about here (use fallbacks).

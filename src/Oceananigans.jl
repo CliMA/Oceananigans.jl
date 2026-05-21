@@ -75,7 +75,9 @@ export
     CATKEVerticalDiffusivity,
     TKEDissipationVerticalDiffusivity,
     RiBasedVerticalDiffusivity,
+    ExplicitTimeDiscretization,
     VerticallyImplicitTimeDiscretization,
+    AdaptiveVerticallyImplicitDiscretization,
     viscosity, diffusivity,
 
     # Lagrangian particle tracking

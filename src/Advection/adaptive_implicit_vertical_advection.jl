@@ -76,13 +76,13 @@ Set `advection.Δt[]` to the next substep's Δτ so wᵉ in Gⁿ matches the nex
 update_advection_timestep!(advection, timestepper, clock) = nothing
 
 function update_advection_timestep!(a::AdaptiveImplicitVerticalAdvection, timestepper, clock)
-    td = time_discretization(a)
+    td = TimeSteppers.time_discretization(a)
     td.Δt[] = clock.last_Δt
     return nothing
 end
 
 @inline function update_advection_timestep!(a::AdaptiveImplicitVerticalAdvection, timestepper::SplitRungeKuttaTimeStepper, clock)
-    td      = time_discretization(a)
+    td      = TimeSteppers.time_discretization(a)
     stage   = clock.stage
     Δt      = clock.last_stage_Δt * timestepper.β[stage]
     nstage  = ifelse(stage < timestepper.Nstages, stage + 1, 1)
@@ -95,7 +95,7 @@ end
 @inline sum_rk3_coefficients(ts, ::Val{3}) = ts.γ¹ + ts.ζ³
 
 @inline function update_advection_timestep!(a::AdaptiveImplicitVerticalAdvection, timestepper::RungeKutta3TimeStepper, clock)
-    td      = time_discretization(a)
+    td      = TimeSteppers.time_discretization(a)
     stage   = clock.stage
     nstage  = stage == 3 ? 1 : stage + 1
     Δt      = clock.last_stage_Δt / sum_rk3_coefficients(timestepper, Val(stage))
