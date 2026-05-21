@@ -150,8 +150,11 @@ function set_to_field!(u, v)
     if matching_field_discretization(u, v)
         copy_to_field!(u, v)
     else
+        # Fill halos on v's native architecture so distributed dispatch (if any) is used;
+        # on_architecture would strip Distributed{CPU} to CPU while keeping distributed
+        # boundary conditions, mismatching fill_halo_regions! dispatch.
+        fill_halo_regions!(v)
         v_on_u = on_architecture(child_architecture(u), v)
-        fill_halo_regions!(v_on_u)
         interpolate!(u, v_on_u)
     end
 
@@ -161,8 +164,17 @@ end
 function matching_field_discretization(u, v)
     return size(u) == size(v) &&
            location(u) == location(v) &&
-           indices(u) == indices(v)
+           equivalent_indices(indices(u), indices(v), size(u))
 end
+
+@inline equivalent_indices(ui::Tuple, vi::Tuple, sz::Tuple) =
+    equivalent_index(ui[1], vi[1], sz[1]) &&
+    equivalent_index(ui[2], vi[2], sz[2]) &&
+    equivalent_index(ui[3], vi[3], sz[3])
+
+@inline equivalent_index(a, b, N) = a == b
+@inline equivalent_index(::Colon, r::AbstractUnitRange, N) = first(r) == 1 && last(r) == N
+@inline equivalent_index(r::AbstractUnitRange, ::Colon, N) = first(r) == 1 && last(r) == N
 
 function copy_to_field!(u, v)
     # We implement some niceities in here that attempt to copy halo data,
