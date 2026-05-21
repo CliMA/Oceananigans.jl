@@ -1,6 +1,6 @@
 using Oceananigans.Grids: topology, _node, φnode, φnodes, λnode, λnodes,
                           XFlatGrid, YFlatGrid, ZFlatGrid,
-                          XYFlatGrid, YZFlatGrid, XZFlatGrid,
+                          XYFlatGrid, YZFlatGrid, XZFlatGrid, XYZFlatGrid,
                           XRegularRG, YRegularRG, ZRegularRG,
                           XRegularLLG, YRegularLLG, ZRegularLLG,
                           ZRegOrthogonalSphericalShellGrid
@@ -199,13 +199,13 @@ floats indicating a location between grid points.
 """
 @inline FractionalIndices(at_node, grid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, ℓx, ℓy, ℓz)
 
-@inline FractionalIndices(at_node, grid::XFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, nothing, ℓy, ℓz)
-@inline FractionalIndices(at_node, grid::YFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, ℓx, nothing, ℓz)
-@inline FractionalIndices(at_node, grid::ZFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, ℓx, ℓy, nothing)
-
-@inline FractionalIndices(at_node, grid::XYFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, nothing, nothing, ℓz)
-@inline FractionalIndices(at_node, grid::YZFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, ℓx, nothing, nothing)
-@inline FractionalIndices(at_node, grid::XZFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, nothing, ℓy, nothing)
+@inline FractionalIndices(at_node, grid::XFlatGrid, ℓx, ℓy, ℓz)   = _fractional_indices(at_node, grid, nothing, ℓy, ℓz)
+@inline FractionalIndices(at_node, grid::YFlatGrid, ℓx, ℓy, ℓz)   = _fractional_indices(at_node, grid, ℓx, nothing, ℓz)
+@inline FractionalIndices(at_node, grid::ZFlatGrid, ℓx, ℓy, ℓz)   = _fractional_indices(at_node, grid, ℓx, ℓy, nothing)
+@inline FractionalIndices(at_node, grid::XYFlatGrid, ℓx, ℓy, ℓz)  = _fractional_indices(at_node, grid, nothing, nothing, ℓz)
+@inline FractionalIndices(at_node, grid::YZFlatGrid, ℓx, ℓy, ℓz)  = _fractional_indices(at_node, grid, ℓx, nothing, nothing)
+@inline FractionalIndices(at_node, grid::XZFlatGrid, ℓx, ℓy, ℓz)  = _fractional_indices(at_node, grid, nothing, ℓy, nothing)
+@inline FractionalIndices(at_node, grid::XYZFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, nothing, nothing, nothing)
 
 @inline function _fractional_indices((x, y, z), grid, ℓx, ℓy, ℓz)
     ii = fractional_x_index(x, (ℓx, ℓy, ℓz), grid)
@@ -213,6 +213,29 @@ floats indicating a location between grid points.
     kk = fractional_z_index(z, (ℓx, ℓy, ℓz), grid)
     return FractionalIndices(ii, jj, kk)
 end
+
+# All seven single/double/triple-`Nothing` combinations must be defined for 3-tuple
+# input so that pairwise dispatch resolves via a strictly more-specific method.
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ::Nothing, ℓy, ℓz) =
+    _fractional_indices((y, z), grid, nothing, ℓy, ℓz)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ℓx, ::Nothing, ℓz) =
+    _fractional_indices((x, z), grid, ℓx, nothing, ℓz)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ℓx, ℓy, ::Nothing) =
+    _fractional_indices((x, y), grid, ℓx, ℓy, nothing)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ::Nothing, ::Nothing, ℓz) =
+    _fractional_indices((z,), grid, nothing, nothing, ℓz)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ℓx, ::Nothing, ::Nothing) =
+    _fractional_indices((x,), grid, ℓx, nothing, nothing)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ::Nothing, ℓy, ::Nothing) =
+    _fractional_indices((y,), grid, nothing, ℓy, nothing)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ::Nothing, ::Nothing, ::Nothing) =
+    FractionalIndices(nothing, nothing, nothing)
 
 @inline function _fractional_indices((y, z), grid, ::Nothing, ℓy, ℓz)
     jj = fractional_y_index(y, (nothing, ℓy, ℓz), grid)

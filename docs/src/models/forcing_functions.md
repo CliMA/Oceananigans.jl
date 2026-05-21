@@ -306,13 +306,35 @@ ContinuousForcing{Nothing} at (Center, Center, Center)
 └── field dependencies: (:T,)
 ```
 
+### `FieldTimeSeries` target
+
+When `target` is a `FieldTimeSeries`, the relaxation interpolates the time series in space
+and time to obtain a reference value at each grid point. The source `FieldTimeSeries`
+must cover the simulation grid in `x`, `y`, and `z`; it can otherwise live on a different
+grid (interpolation handles the offset).
+
+```jldoctest fts_target
+grid = RectilinearGrid(size=(2, 2, 4), extent=(100, 100, 1000))
+
+fts = FieldTimeSeries{Center, Center, Center}(grid, [0.0, 3600.0])
+c_nudge = Relaxation(rate=1/3600, target=fts)
+
+model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=c_nudge))
+
+summary(model.forcing.c.target)
+
+# output
+"FieldTimeSeriesTarget(location=(Center(), Center(), Center()), index=4)"
+```
+
 ## `AdvectiveForcing`
 
 `AdvectiveForcing` defines a forcing function that represents advection by
 a separate or "slip" velocity relative to the prognostic model velocity field.
 `AdvectiveForcing` is implemented with native Oceananigans advection operators,
 which means that tracers advected by the "flux form" advection term
-``𝛁⋅𝐮_{\rm slip} c``. Caution is advised when ``𝐮_{\rm slip}`` is not divergence free.
+``\boldsymbol{\nabla} \boldsymbol{\cdot} (\boldsymbol{u}_{\rm slip} c)``.
+Caution is advised when ``\boldsymbol{u}_{\rm slip}`` is not divergence free.
 
 As an example, consider a model for sediment settling at a constant rate:
 

@@ -1,4 +1,5 @@
 using Oceananigans.Fields: ZeroField
+using Oceananigans.Operators: δzᵃᵃᶠ
 
 #####
 ##### Momentum advection operators

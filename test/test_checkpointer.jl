@@ -9,7 +9,6 @@ using Oceananigans.TurbulenceClosures.Smagorinskys: Smagorinsky,
 using Oceananigans.Models.ShallowWaterModels: ShallowWaterScalarDiffusivity
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: ForwardBackwardScheme
 using Oceananigans.Grids: MutableVerticalDiscretization
-using Oceananigans.OutputWriters: load_checkpoint_state
 
 function test_model_equality(test_model, true_model; atol=0)
     # Test prognostic field equality
@@ -113,10 +112,12 @@ function test_minimal_restore(arch, FT, pickup_method, model_type)
         new_model = HydrostaticFreeSurfaceModel(new_grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     end
 
-    new_simulation = Simulation(new_model; Δt=1.0, stop_time=3.0)
+    new_stop_time = 4.0
+    new_checkpoint_interval = 0.5
+    new_simulation = Simulation(new_model; Δt=1.0, stop_time=new_stop_time)
 
     new_checkpointer = Checkpointer(new_model;
-                                    schedule = TimeInterval(1.0),
+                                    schedule = TimeInterval(new_checkpoint_interval),
                                     prefix = prefix,
                                     cleanup = false,
                                     verbose = true)
@@ -134,7 +135,8 @@ function test_minimal_restore(arch, FT, pickup_method, model_type)
     @test iteration(new_simulation) == 3
     @test time(new_simulation) == 3.0
 
-    @test new_checkpointer.schedule.actuations == 3
+    @test new_simulation.stop_time == new_stop_time
+    @test new_checkpointer.schedule.interval == new_checkpoint_interval
 
     rm.(glob("$(prefix)_iteration*.jld2"))
 
@@ -261,10 +263,12 @@ function test_minimal_restore_shallow_water(arch, FT, pickup_method)
                                extent = (L, L))
 
     new_model = ShallowWaterModel(new_grid; gravitational_acceleration=1)
-    new_simulation = Simulation(new_model; Δt=1.0, stop_time=3.0)
+    new_stop_time = 4.0
+    new_checkpoint_interval = 0.5
+    new_simulation = Simulation(new_model; Δt=1.0, stop_time=new_stop_time)
 
     new_checkpointer = Checkpointer(new_model;
-                                    schedule = TimeInterval(1.0),
+                                    schedule = TimeInterval(new_checkpoint_interval),
                                     prefix = prefix,
                                     cleanup = false,
                                     verbose = true)
@@ -282,7 +286,8 @@ function test_minimal_restore_shallow_water(arch, FT, pickup_method)
     @test iteration(new_simulation) == 3
     @test time(new_simulation) == 3.0
 
-    @test new_checkpointer.schedule.actuations == 3
+    @test new_simulation.stop_time == new_stop_time
+    @test new_checkpointer.schedule.interval == new_checkpoint_interval
 
     rm.(glob("$(prefix)_iteration*.jld2"))
 
@@ -1726,6 +1731,9 @@ function test_checkpoint_at_end(arch)
     L = 1
     Δt = 0.1
     expected_filepath = "checkpoint_iteration5.jld2"
+    nan_expected_filepath = "checkpoint_iteration1.jld2"
+
+    rm.(glob("checkpoint_iteration*.jld2"), force=true)
 
     # Test with checkpoint_at_end=false (default) - should NOT create checkpoint
     grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
@@ -1747,6 +1755,29 @@ function test_checkpoint_at_end(arch)
     @test isfile(expected_filepath)
     rm(expected_filepath, force=true)
 
+    # Test with checkpoint_at_end=true and NaN-triggered stop - should NOT create checkpoint
+    grid3 = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+    model3 = NonhydrostaticModel(grid3)
+    simulation3 = Simulation(model3, Δt=Δt, stop_iteration=5)
+    model3.velocities.u[1, 1, 1] = NaN
+
+    @test_logs match_mode=:any (:info, r"NaN found in field") (:info, r"Skipping end-of-run checkpoint") begin
+        run!(simulation3, checkpoint_at_end=true)
+    end
+    @test !isfile(nan_expected_filepath)
+    rm.(glob("checkpoint_iteration*.jld2"), force=true)
+
+    # Test with checkpoint_at_end=true and non-NaNChecker :nan_checker callback.
+    # This exercises nan_detected(::Any) and reset_nan_checker!(::Any).
+    grid4 = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+    model4 = NonhydrostaticModel(grid4)
+    simulation4 = Simulation(model4, Δt=Δt, stop_iteration=5)
+    simulation4.callbacks[:nan_checker] = Callback(_ -> nothing, IterationInterval(1))
+
+    @test_nowarn run!(simulation4, checkpoint_at_end=true)
+    @test isfile(expected_filepath)
+    rm.(glob("checkpoint_iteration*.jld2"), force=true)
+
     return nothing
 end
 
@@ -1754,7 +1785,7 @@ end
 Test checkpointing for simulations with OpenBoundaryCondition using the specified scheme.
 Uses a make_simulation() function to create identical simulations for testing.
 Verifies that:
-1. Every element of model.boundary_mass_fluxes is correctly saved and restored
+1. Every element of model.boundary_transport is correctly saved and restored
 2. The restored simulation can continue running from the checkpoint
 3. Simulation state (iteration, time) is properly restored
 
@@ -1784,25 +1815,25 @@ function test_open_boundary_condition_scheme_checkpointing(arch, timestepper, sc
     simulation.output_writers[:checkpointer] = Checkpointer(simulation.model, schedule=IterationInterval(3), prefix=prefix)
     @test_nowarn run!(simulation)
 
-    # Store original boundary mass fluxes
-    original_bmf = simulation.model.boundary_mass_fluxes
+    # Store original boundary transport
+    original_bt = simulation.model.boundary_transport
 
-    # Restore entire simulation from checkpoint and verify boundary_mass_fluxes match exactly
+    # Restore entire simulation from checkpoint and verify boundary_transport matches exactly
     restored_simulation = make_simulation(6)
     restored_simulation.output_writers[:checkpointer] = Checkpointer(restored_simulation.model,
                                                                      schedule=IterationInterval(3),
                                                                      prefix=prefix)
     @test_nowarn set!(restored_simulation; checkpoint=:latest)
 
-    restored_bmf = restored_simulation.model.boundary_mass_fluxes
+    restored_bt = restored_simulation.model.boundary_transport
 
     # Test that structure is identical
-    @test propertynames(original_bmf) == propertynames(restored_bmf)
+    @test propertynames(original_bt) == propertynames(restored_bt)
 
     # Test that every element matches exactly
-    for field_name in propertynames(original_bmf)
-        original_field = getproperty(original_bmf, field_name)
-        restored_field = getproperty(restored_bmf, field_name)
+    for field_name in propertynames(original_bt)
+        original_field = getproperty(original_bt, field_name)
+        restored_field = getproperty(restored_bt, field_name)
         @test original_field == restored_field
     end
 

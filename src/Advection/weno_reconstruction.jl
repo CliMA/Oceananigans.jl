@@ -1,5 +1,3 @@
-import Oceananigans
-
 #####
 ##### Weighted Essentially Non-Oscillatory (WENO) advection scheme
 #####
@@ -34,14 +32,14 @@ Keyword arguments
 - `weight_computation`: The type of approximate division to used when computing WENO weights.
                         Default: `Nothing` (deferred; a architecture-dependent default is assigned in
                         `materialize_advection`)
-- `order`: The order of the WENO advection scheme. Default: 5
+- `order`: The order of the WENO advection scheme. Default: 5.
 - `bounds` (experimental): Whether to use bounds-preserving WENO, which produces a reconstruction
                            that attempts to restrict a quantity to lie between a `bounds` tuple.
                            Default: `nothing`, which does not use a boundary-preserving scheme.
 - `minimum_buffer_upwind_order`: The minimum upwind order for buffer schemes. When the buffer
                                  scheme order reaches this value, subsequent buffers use
                                  `Centered(order=2)` instead of continuing to decrease the
-                                 upwind order. Default: 1 (preserves existing behavior).
+                                 upwind order. Default: 3.
 
 Examples
 ========
@@ -160,7 +158,7 @@ Adapt.adapt_structure(to, scheme::WENO{N, FT, WCT}) where {N, FT, WCT} =
                       Adapt.adapt(to, scheme.buffer_scheme),
                       Adapt.adapt(to, scheme.advecting_velocity_scheme))
 
-on_architecture(to, scheme::WENO{N, FT, WCT}) where {N, FT, WCT} =
+Architectures.on_architecture(to, scheme::WENO{N, FT, WCT}) where {N, FT, WCT} =
     WENO{N, FT, WCT}(on_architecture(to, scheme.bounds),
                      on_architecture(to, scheme.buffer_scheme),
                      on_architecture(to, scheme.advecting_velocity_scheme))

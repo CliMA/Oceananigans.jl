@@ -433,6 +433,7 @@ struct OffsetStaticSize{S} <: _Size
     end
 end
 
+@pure OffsetStaticSize(s::Tuple{}) = OffsetStaticSize{s}()
 @pure OffsetStaticSize(s::Tuple{Vararg{Int}}) = OffsetStaticSize{s}()
 @pure OffsetStaticSize(s::Int...) = OffsetStaticSize{s}()
 @pure OffsetStaticSize(s::Type{<:Tuple}) = OffsetStaticSize{tuple(s.parameters...)}()

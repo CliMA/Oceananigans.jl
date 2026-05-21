@@ -30,6 +30,12 @@ using NCDatasets
 using DataDeps
 
 using CUDA: CUDA
+# Compatibility for CUDA v5 and v6
+if isdefined(CUDA, :CUDACore)
+    using CUDA: CUDACore
+else
+    const CUDACore = CUDA
+end
 
 const BATHYMETRY_URL = "https://github.com/simone-silvestri/OceananigansArtifacts.jl/raw/ss/bathymetry-for-benchmarks/bathymetry_for_benchmarks"
 

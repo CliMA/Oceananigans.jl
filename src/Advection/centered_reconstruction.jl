@@ -34,7 +34,7 @@ Base.show(io::IO, a::Centered{N, FT}) where {N, FT} =
 
 
 Adapt.adapt_structure(to, scheme::Centered{N, FT}) where {N, FT} = Centered{N, FT}(Adapt.adapt(to, scheme.buffer_scheme))
-on_architecture(to, scheme::Centered{N, FT}) where {N, FT} = Centered{N, FT}(on_architecture(to, scheme.buffer_scheme))
+Architectures.on_architecture(to, scheme::Centered{N, FT}) where {N, FT} = Centered{N, FT}(on_architecture(to, scheme.buffer_scheme))
 
 const ACAS = AbstractCenteredAdvectionScheme
 
