@@ -1,9 +1,6 @@
 using Oceananigans.Operators: Δz, Az, volume, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Grids: peripheral_node, Center, Face
 
-# AIVA momentum advection may arrive wrapped in a VectorInvariant whose .vertical_advection_scheme
-# is the reconstruction scheme (WENO/Centered/UpwindBiased) that owns the AIVA time-discretization
-# and provides the symmetric interpolation methods used below.
 @inline vertical_scheme(advection) = advection
 @inline vertical_scheme(advection::VectorInvariant) = advection.vertical_advection_scheme
 
