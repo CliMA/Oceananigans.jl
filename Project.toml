@@ -1,6 +1,6 @@
 name = "Oceananigans"
 uuid = "9e8cae18-63c1-5223-a75c-80ca9d6e9a09"
-version = "0.107.4"
+version = "0.108.0"
 authors = ["Climate Modeling Alliance and contributors"]
 
 [deps]
@@ -45,7 +45,7 @@ Metal = "dde4c033-4e86-420c-a63e-0dd931031962"
 NCDatasets = "85f8d34a-cbdd-5861-8df4-14fed0d494ab"
 Reactant = "3c362404-f566-11ee-1572-e11a4b42c853"
 NCCL = "3fe64909-d7a1-4096-9b7d-7a0f12cf0f6b"
-XESMF = "2e0b0046-e7a1-486f-88de-807ee8ffabe5"
+Zarr = "0a941bbe-ad1d-11e8-39d9-ab76183a1d99"
 oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 
 [extensions]
@@ -58,7 +58,7 @@ OceananigansNCDatasetsExt = "NCDatasets"
 OceananigansOneAPIExt = "oneAPI"
 OceananigansReactantExt = ["Reactant", "KernelAbstractions", "ConstructionBase", "AbstractFFTs"]
 OceananigansNCCLExt = ["NCCL", "CUDA"]
-OceananigansXESMFExt = ["XESMF"]
+OceananigansZarrExt = "Zarr"
 
 [compat]
 AbstractFFTs = "1.5"
@@ -100,6 +100,6 @@ SparseArrays = "1.9"
 StaticArrays = "1"
 Statistics = "1.9"
 StructArrays = "0.4, 0.5, 0.6, 0.7"
-XESMF = "0.1.5"
+Zarr = "0.10"
 julia = "1.10"
 oneAPI = "2.0.1"

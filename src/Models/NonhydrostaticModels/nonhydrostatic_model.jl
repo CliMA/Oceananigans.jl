@@ -30,7 +30,7 @@ const BFOrNamedTuple = Union{BackgroundFields, NamedTuple}
 struct DefaultHydrostaticPressureAnomaly end
 
 mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, SD, U, C, Φ, F, FS,
-                                   V, S, K, BG, P, BGC, AF, BM} <: AbstractModel{TS, A}
+                                   V, S, K, BG, P, BGC, AF, BT} <: AbstractModel{TS, A}
 
          architecture :: A        # Computer `Architecture` on which `Model` is run
                  grid :: G        # Grid of physical points on which `Model` is solved
@@ -52,14 +52,14 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
           timestepper :: TS       # Object containing timestepper fields and parameters
       pressure_solver :: S        # Pressure/Poisson solver
      auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
- boundary_mass_fluxes :: BM       # Container for the average mass fluxes at boundaries
+   boundary_transport :: BT       # Container for the average transports at boundaries
 end
 
 supported_timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
 """
     NonhydrostaticModel(grid;
-                        clock = Clock{eltype(grid)}(time = 0),
+                        clock = Clock(grid),
                         advection = Centered(),
                         buoyancy = nothing,
                         coriolis = nothing,
@@ -290,14 +290,14 @@ function NonhydrostaticModel(grid;
     # Materialize forcing for model tracer and velocity fields.
     forcing = model_forcing(forcing, model_fields, prognostic_fields)
 
-    # Initialize boundary mass fluxes container
-    boundary_mass_fluxes = initialize_boundary_mass_fluxes(velocities)
+    # Initialize boundary transport container
+    boundary_transport = initialize_boundary_transport(velocities)
 
     !isnothing(particles) && arch isa Distributed && error("LagrangianParticles are not supported on Distributed architectures.")
 
     model = NonhydrostaticModel(arch, grid, clock, advection, buoyancy, coriolis, stokes_drift,
                                 forcing, closure, free_surface, background_fields, particles, biogeochemistry, velocities, tracers,
-                                pressures, closure_fields, timestepper, pressure_solver, auxiliary_fields, boundary_mass_fluxes)
+                                pressures, closure_fields, timestepper, pressure_solver, auxiliary_fields, boundary_transport)
 
     materialize_clock!(clock, timestepper)
     update_state!(model)
@@ -353,7 +353,7 @@ function prognostic_state(model::NonhydrostaticModel)
             closure_fields = prognostic_state(model.closure_fields),
             timestepper = prognostic_state(model.timestepper),
             auxiliary_fields = prognostic_state(model.auxiliary_fields),
-            boundary_mass_fluxes = prognostic_state(model.boundary_mass_fluxes))
+            boundary_transport = prognostic_state(model.boundary_transport))
 end
 
 function restore_prognostic_state!(restored::NonhydrostaticModel, from)
@@ -364,7 +364,7 @@ function restore_prognostic_state!(restored::NonhydrostaticModel, from)
     restore_prognostic_state!(restored.tracers, from.tracers)
     restore_prognostic_state!(restored.closure_fields, from.closure_fields)
     restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
-    restore_prognostic_state!(restored.boundary_mass_fluxes, from.boundary_mass_fluxes)
+    restore_prognostic_state!(restored.boundary_transport, from.boundary_transport)
     return restored
 end
 

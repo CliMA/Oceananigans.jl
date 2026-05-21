@@ -566,6 +566,134 @@ end
                 @test a == e
                 @test Array(interior(e)) == Array(interior((a)))
             end
+
+            # set!(::Field, ::Field) should auto-interpolate when sizes or locations differ.
+            @info "  Testing field-to-field set! with differing sizes/locations..."
+
+            interp_domain = (; x=(0, 1), y=(0, 1), z=(0, 1))
+            f_linear = (x, y, z) -> x + 2y + 3z
+
+            # Different sizes, same location, same arch
+            coarse_grid = RectilinearGrid(arch, FT; size=(4, 4, 4), interp_domain...)
+            fine_grid   = RectilinearGrid(arch, FT; size=(8, 8, 8), interp_domain...)
+
+            coarse = CenterField(coarse_grid)
+            set!(coarse, f_linear)
+            fill_halo_regions!(coarse)
+
+            fine = CenterField(fine_grid)
+            set!(fine, coarse) # auto-interpolate
+
+            expected_fine = CenterField(fine_grid)
+            interpolate!(expected_fine, coarse)
+            @test Array(interior(fine)) == Array(interior(expected_fine))
+
+            # Same size, different location: route through interpolation rather than copying values
+            # across staggered locations.
+            same_size_grid = RectilinearGrid(arch, FT; size=(4, 4, 4),
+                                             topology=(Periodic, Periodic, Bounded),
+                                             interp_domain...)
+            cf = CenterField(same_size_grid)
+            set!(cf, f_linear)
+            fill_halo_regions!(cf)
+
+            xf = XFaceField(same_size_grid)
+            set!(xf, cf)
+
+            expected_xf = XFaceField(same_size_grid)
+            interpolate!(expected_xf, cf)
+            @test Array(interior(xf)) == Array(interior(expected_xf))
+
+            # Cross-architecture interpolation: set! should migrate v to u's arch
+            if arch isa GPU
+                cpu_coarse_grid = RectilinearGrid(CPU(), FT; size=(4, 4, 4), interp_domain...)
+                cpu_coarse = CenterField(cpu_coarse_grid)
+                set!(cpu_coarse, f_linear)
+                fill_halo_regions!(cpu_coarse)
+
+                gpu_fine_grid = RectilinearGrid(arch, FT; size=(8, 8, 8), interp_domain...)
+                gpu_fine = CenterField(gpu_fine_grid)
+                set!(gpu_fine, cpu_coarse) # CPU source, GPU target, differing sizes
+
+                gpu_coarse = CenterField(coarse_grid)
+                set!(gpu_coarse, cpu_coarse)
+                expected_gpu_fine = CenterField(gpu_fine_grid)
+                interpolate!(expected_gpu_fine, gpu_coarse)
+                @test Array(interior(gpu_fine)) == Array(interior(expected_gpu_fine))
+            end
+
+            # set!(::Field, ::ReducedField): the reduced direction should be
+            # broadcast across the destination's full extent.
+            reduced_grid = RectilinearGrid(arch, FT; size=(4, 4, 4), interp_domain...)
+            f_xy = (x, y) -> x + 2y
+
+            reduced_xy = Field{Center, Center, Nothing}(reduced_grid)
+            set!(reduced_xy, f_xy)
+            fill_halo_regions!(reduced_xy)
+
+            full = CenterField(reduced_grid)
+            set!(full, reduced_xy)
+
+            # Every z-plane in `full` should match the reduced xy data.
+            full_cpu = Array(interior(full))
+            for k in 1:size(full, 3)
+                @test full_cpu[:, :, k] == full_cpu[:, :, 1]
+            end
+            # And that plane should match `reduced_xy` itself.
+            @test full_cpu[:, :, 1] == Array(interior(reduced_xy))[:, :, 1]
+
+            # Same idea for a z-column reduced field on the other axis.
+            reduced_z = Field{Nothing, Nothing, Center}(reduced_grid)
+            set!(reduced_z, z -> 3z)
+            fill_halo_regions!(reduced_z)
+
+            full_from_z = CenterField(reduced_grid)
+            set!(full_from_z, reduced_z)
+            full_from_z_cpu = Array(interior(full_from_z))
+            for i in 1:size(full_from_z, 1), j in 1:size(full_from_z, 2)
+                @test full_from_z_cpu[i, j, :] == full_from_z_cpu[1, 1, :]
+            end
+            @test full_from_z_cpu[1, 1, :] == Array(interior(reduced_z))[1, 1, :]
+
+            # set!(::Field, ::Field) when the source grid covers a strict
+            # subset of the destination's domain. Inside the overlap the
+            # destination should match interpolate!; outside, interpolate!
+            # currently writes whatever is in the source's halo memory
+            # (see https://github.com/CliMA/Oceananigans.jl/pull/5586 discussion).
+            # Once that is fixed to leave outside-source-domain values
+            # untouched, the @test_broken below should pass and we will
+            # promote it to @test.
+            big_grid = RectilinearGrid(arch, FT; size=(8, 8, 8),
+                                       x=(0, 1), y=(0, 1), z=(0, 1))
+            sub_grid = RectilinearGrid(arch, FT; size=(4, 4, 4),
+                                       x=(FT(0.25), FT(0.75)),
+                                       y=(FT(0.25), FT(0.75)),
+                                       z=(FT(0.25), FT(0.75)))
+
+            sub_field = CenterField(sub_grid)
+            set!(sub_field, f_linear)
+            fill_halo_regions!(sub_field)
+
+            big_field = CenterField(big_grid)
+            sentinel = FT(-9999)
+            fill!(parent(big_field), sentinel)
+            set!(big_field, sub_field)
+
+            # Inside the overlap (z in (0.25, 0.75) i.e. k in 3:6 and similarly
+            # for x and y): destination values should reflect the source.
+            big_cpu = Array(interior(big_field))
+
+            # Sanity check: the value at the center of the overlap should match
+            # the linear function within interpolation tolerance.
+            xs, ys, zs = nodes(big_field)
+            mid_i, mid_j, mid_k = 5, 5, 5  # near domain center
+            expected_mid = f_linear(xs[mid_i], ys[mid_j], zs[mid_k])
+            @test isapprox(big_cpu[mid_i, mid_j, mid_k], expected_mid; atol=sqrt(eps(FT)))
+
+            # Outside the overlap, the user-visible expectation (from the PR
+            # discussion) is that values stay untouched. interpolate! does
+            # not currently honor this, so we mark it broken.
+            @test_broken big_cpu[1, 1, 1] == sentinel
         end
     end
 
@@ -788,6 +916,14 @@ end
             interpolate!(column, source_3d)
             expected = [x_col + 2y_col + 3z for z in znodes(column)]
             @test all(Array(interior(column))[1, 1, :] .≈ expected)
+
+            grid = RectilinearGrid(arch, FT; size=(), topology=(Flat, Flat, Flat))
+            for ℓ in (nothing, Center(), Face())
+                fi = FractionalIndices((), grid, ℓ, ℓ, ℓ)
+                @test fi.i === nothing
+                @test fi.j === nothing
+                @test fi.k === nothing
+            end
         end
     end
 
@@ -983,5 +1119,34 @@ end
         @test restore_prognostic_state!(zf, nothing) === zf
         @test restore_prognostic_state!(of, :some_state) === of
         @test restore_prognostic_state!(cf, nothing) === cf
+    end
+
+    @testset "NamedFieldTuple operations" begin
+        @info "  Testing similar/set!/norm/dot on NamedFieldTuples..."
+
+        for arch in archs, FT in float_types
+            grid = RectilinearGrid(arch, FT, size=(4, 4, 4), extent=(1, 1, 1))
+            Φ = (u=CenterField(grid), v=CenterField(grid))
+
+            Ψ = similar(Φ)
+            @test Ψ isa NamedTuple{(:u, :v)}
+            @test Ψ.u isa Field && Ψ.v isa Field
+            @test Ψ.u.grid === grid
+            @test !(Ψ.u.data === Φ.u.data)
+
+            set!(Φ, 3)
+            @test all(@allowscalar(interior(Φ.u)) .== 3)
+            @test all(@allowscalar(interior(Φ.v)) .== 3)
+
+            set!(Ψ, 0)
+            set!(Ψ, Φ)
+            @test all(@allowscalar(interior(Ψ.u)) .== 3)
+            @test all(@allowscalar(interior(Ψ.v)) .== 3)
+
+            # block 2-norm: sqrt(2 · 3² · 4³) = sqrt(1152)
+            @test norm(Φ) ≈ sqrt(2 * 9 * 64)
+            # dot: 2 · 3 · 3 · 4³ = 1152
+            @test dot(Φ, Ψ) ≈ 2 * 3 * 3 * 64
+        end
     end
 end
