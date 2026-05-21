@@ -1,12 +1,11 @@
 using Oceananigans.Operators: Vᶜᶜᶜ
 using Oceananigans.Fields: ZeroField
 
-struct FluxFormAdvection{N, FT, A, B, C} <: AbstractAdvectionScheme{N, FT}
+struct FluxFormAdvection{N, FT, TD, A, B, C} <: AbstractAdvectionScheme{N, FT, TD}
     x :: A
     y :: B
     z :: C
-
-    FluxFormAdvection{N, FT}(x::A, y::B, z::C) where {N, FT, A, B, C} = new{N, FT, A, B, C}(x, y, z)
+    FluxFormAdvection{N, FT, TD}(x::A, y::B, z::C) where {N, FT, TD, A, B, C} = new{N, FT, TD, A, B, C}(x, y, z)
 end
 
 """
@@ -21,10 +20,14 @@ function FluxFormAdvection(x_advection, y_advection, z_advection)
     Hz = required_halo_size_z(z_advection)
 
     FT = eltype(x_advection)
-    H = max(Hx, Hy, Hz)
+    H  = max(Hx, Hy, Hz)
 
-    return FluxFormAdvection{H, FT}(x_advection, y_advection, z_advection)
+    TD = typeof(time_discretization(z_advection))
+
+    return FluxFormAdvection{H, FT, TD}(x_advection, y_advection, z_advection)
 end
+
+time_discretization(scheme::FluxFormAdvection) = time_discretization(scheme.z)
 
 Base.summary(scheme::FluxFormAdvection) = string("FluxFormAdvection(x=",
                                                  summary(scheme.x), ", y=",
@@ -41,10 +44,15 @@ Base.show(io::IO, scheme::FluxFormAdvection) =
 @inline Grids.required_halo_size_y(scheme::FluxFormAdvection) = required_halo_size_y(scheme.y)
 @inline Grids.required_halo_size_z(scheme::FluxFormAdvection) = required_halo_size_z(scheme.z)
 
-Adapt.adapt_structure(to, scheme::FluxFormAdvection{N, FT}) where {N, FT} =
-    FluxFormAdvection{N, FT}(Adapt.adapt(to, scheme.x),
-                             Adapt.adapt(to, scheme.y),
-                             Adapt.adapt(to, scheme.z))
+Adapt.adapt_structure(to, scheme::FluxFormAdvection{N, FT, TD}) where {N, FT, TD} =
+    FluxFormAdvection{N, FT, TD}(Adapt.adapt(to, scheme.x),
+                                 Adapt.adapt(to, scheme.y),
+                                 Adapt.adapt(to, scheme.z))
+
+Architectures.on_architecture(arch, scheme::FluxFormAdvection{N, FT, TD}) where {N, FT, TD} =
+    FluxFormAdvection{N, FT, TD}(on_architecture(arch, scheme.x),
+                                 on_architecture(arch, scheme.y),
+                                 on_architecture(arch, scheme.z))
 
 @inline _advective_tracer_flux_x(i, j, k, grid, scheme::FluxFormAdvection, U, c) = _advective_tracer_flux_x(i, j, k, grid, scheme.x, U, c)
 @inline _advective_tracer_flux_y(i, j, k, grid, scheme::FluxFormAdvection, V, c) = _advective_tracer_flux_y(i, j, k, grid, scheme.y, V, c)

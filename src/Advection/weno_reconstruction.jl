@@ -2,15 +2,16 @@
 ##### Weighted Essentially Non-Oscillatory (WENO) advection scheme
 #####
 
-struct WENO{N, FT, WCT, PP, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
+struct WENO{N, FT, WCT, TD, PP, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT, TD}
     bounds :: PP
     buffer_scheme :: CA
     advecting_velocity_scheme :: SI
-
+    time_discretization :: TD
     function WENO{N, FT, WCT}(bounds::PP, buffer_scheme::CA,
-                              advecting_velocity_scheme :: SI) where {N, FT, WCT, PP, CA, SI}
+                              advecting_velocity_scheme :: SI,
+                              time_discretization :: TD) where {N, FT, WCT, PP, CA, SI, TD}
 
-        return new{N, FT, WCT, PP, CA, SI}(bounds, buffer_scheme, advecting_velocity_scheme)
+        return new{N, FT, WCT, TD, PP, CA, SI}(bounds, buffer_scheme, advecting_velocity_scheme, time_discretization)
     end
 end
 
@@ -104,6 +105,7 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
               weight_computation::DataType=Nothing,
               order = 5,
               buffer_scheme = DecreasingOrderAdvectionScheme(),
+              time_discretization = ExplicitTimeDiscretization(),
               bounds = nothing,
               minimum_buffer_upwind_order = 3)
 
@@ -130,7 +132,7 @@ function WENO(FT::DataType=Oceananigans.defaults.FloatType;
         end
 
         N = Int((order + 1) ÷ 2)
-        return WENO{N, FT, weight_computation}(bounds, buffer_scheme, advecting_velocity_scheme)
+        return WENO{N, FT, weight_computation}(bounds, buffer_scheme, advecting_velocity_scheme, time_discretization)
     end
 end
 
@@ -156,12 +158,14 @@ end
 Adapt.adapt_structure(to, scheme::WENO{N, FT, WCT}) where {N, FT, WCT} =
      WENO{N, FT, WCT}(Adapt.adapt(to, scheme.bounds),
                       Adapt.adapt(to, scheme.buffer_scheme),
-                      Adapt.adapt(to, scheme.advecting_velocity_scheme))
+                      Adapt.adapt(to, scheme.advecting_velocity_scheme),
+                      Adapt.adapt(to, scheme.time_discretization))
 
 Architectures.on_architecture(to, scheme::WENO{N, FT, WCT}) where {N, FT, WCT} =
     WENO{N, FT, WCT}(on_architecture(to, scheme.bounds),
                      on_architecture(to, scheme.buffer_scheme),
-                     on_architecture(to, scheme.advecting_velocity_scheme))
+                     on_architecture(to, scheme.advecting_velocity_scheme),
+                     on_architecture(to, scheme.time_discretization))
 
 # Select the default WENO weight computation
 # Specific backends may override

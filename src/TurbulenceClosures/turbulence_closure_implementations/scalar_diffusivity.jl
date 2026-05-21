@@ -195,7 +195,7 @@ end
 compute_closure_fields!(closure_fields, ::ScalarDiffusivity, args...) = nothing
 
 function Base.summary(closure::ScalarDiffusivity)
-    TD = summary(time_discretization(closure))
+    TD = summary(Advection.time_discretization(closure))
     prefix = replace(summary(formulation(closure)), "Formulation" => "")
     prefix === "ThreeDimensional" && (prefix = "")
 

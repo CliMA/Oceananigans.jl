@@ -5,7 +5,8 @@ export
     RungeKutta3TimeStepper,
     SplitRungeKuttaTimeStepper,
     time_step!,
-    Clock
+    Clock,
+    convert_time
 
 using KernelAbstractions: @kernel, @index
 using Oceananigans: AbstractModel, initialize!, prognostic_fields
@@ -29,8 +30,9 @@ step_closure_prognostics!(model, Δt) = nothing
 reconcile_state!(model) = nothing
 
 # Prepare the model for the first time step, in case run! is not used.
-function maybe_prepare_first_time_step!(model, callbacks)
+function maybe_prepare_first_time_step!(model, Δt, callbacks)
     if model.clock.iteration == 0
+        model.clock.last_Δt = Δt
         reconcile_state!(model)
         update_state!(model, callbacks)
     end

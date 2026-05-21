@@ -1,13 +1,16 @@
 using Oceananigans.Operators: Vᶜᶠᶜ, Vᶠᶜᶜ, δxᶠᶜᶜ, δyᶜᶠᶜ, ζ₃ᶠᶠᶜ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
 
 # These are also used in Coriolis/hydrostatic_spherical_coriolis.jl
-struct EnergyConserving{FT}    <: AbstractAdvectionScheme{1, FT} end
-struct EnstrophyConserving{FT} <: AbstractAdvectionScheme{1, FT} end
+struct EnergyConserving{FT}    <: AbstractAdvectionScheme{1, FT, ExplicitTimeDiscretization} end
+struct EnstrophyConserving{FT} <: AbstractAdvectionScheme{1, FT, ExplicitTimeDiscretization} end
 
 EnergyConserving(FT::DataType = Oceananigans.defaults.FloatType)    = EnergyConserving{FT}()
 EnstrophyConserving(FT::DataType = Oceananigans.defaults.FloatType) = EnstrophyConserving{FT}()
 
-struct VectorInvariant{N, FT, M, Z, ZS, V, K, D, U} <: AbstractAdvectionScheme{N, FT}
+time_discretization(::EnergyConserving) = ExplicitTimeDiscretization()
+time_discretization(::EnstrophyConserving) = ExplicitTimeDiscretization()
+
+struct VectorInvariant{N, FT, M, Z, ZS, V, K, D, U, TD} <: AbstractAdvectionScheme{N, FT, TD}
     vorticity_scheme               :: Z  # reconstruction scheme for vorticity flux
     vorticity_stencil              :: ZS # stencil used for assessing vorticity smoothness
     vertical_advection_scheme      :: V  # reconstruction scheme for vertical advection
@@ -15,19 +18,19 @@ struct VectorInvariant{N, FT, M, Z, ZS, V, K, D, U} <: AbstractAdvectionScheme{N
     divergence_scheme              :: D  # reconstruction scheme for divergence flux
     upwinding                      :: U  # treatment of upwinding for divergence flux and kinetic energy gradient
 
-    function VectorInvariant{N, FT, M}(vorticity_scheme::Z,
-                                       vorticity_stencil::ZS,
-                                       vertical_advection_scheme::V,
-                                       kinetic_energy_gradient_scheme::K,
-                                       divergence_scheme::D,
-                                       upwinding::U) where {N, FT, M, Z, ZS, V, K, D, U}
+    function VectorInvariant{N, FT, M, TD}(vorticity_scheme::Z,
+                                           vorticity_stencil::ZS,
+                                           vertical_advection_scheme::V,
+                                           kinetic_energy_gradient_scheme::K,
+                                           divergence_scheme::D,
+                                           upwinding::U) where {N, FT, M, Z, ZS, V, K, D, U, TD}
 
-        return new{N, FT, M, Z, ZS, V, K, D, U}(vorticity_scheme,
-                                                vorticity_stencil,
-                                                vertical_advection_scheme,
-                                                kinetic_energy_gradient_scheme,
-                                                divergence_scheme,
-                                                upwinding)
+        return new{N, FT, M, Z, ZS, V, K, D, U, TD}(vorticity_scheme,
+                                                    vorticity_stencil,
+                                                    vertical_advection_scheme,
+                                                    kinetic_energy_gradient_scheme,
+                                                    divergence_scheme,
+                                                    upwinding)
     end
 end
 
@@ -99,13 +102,14 @@ function VectorInvariant(FT = Oceananigans.defaults.FloatType;
             required_halo_size_z(vertical_advection_scheme))
 
     FT = eltype(vorticity_scheme)
+    TD = typeof(time_discretization(vertical_advection_scheme))
 
-    return VectorInvariant{N, FT, multi_dimensional_stencil}(vorticity_scheme,
-                                                             vorticity_stencil,
-                                                             vertical_advection_scheme,
-                                                             kinetic_energy_gradient_scheme,
-                                                             divergence_scheme,
-                                                             upwinding)
+    return VectorInvariant{N, FT, multi_dimensional_stencil, TD}(vorticity_scheme,
+                                                                 vorticity_stencil,
+                                                                 vertical_advection_scheme,
+                                                                 kinetic_energy_gradient_scheme,
+                                                                 divergence_scheme,
+                                                                 upwinding)
 end
 
 #                                                                 buffer eltype
@@ -241,14 +245,17 @@ function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
     N = max(NX, NY, NZ)
 
     FT = eltype(vorticity_scheme) # assumption
+    TD = typeof(time_discretization(vertical_advection_scheme))
 
-    return VectorInvariant{N, FT, multi_dimensional_stencil}(vorticity_scheme,
-                                                             vorticity_stencil,
-                                                             vertical_advection_scheme,
-                                                             kinetic_energy_gradient_scheme,
-                                                             divergence_scheme,
-                                                             upwinding)
+    return VectorInvariant{N, FT, multi_dimensional_stencil, TD}(vorticity_scheme,
+                                                                 vorticity_stencil,
+                                                                 vertical_advection_scheme,
+                                                                 kinetic_energy_gradient_scheme,
+                                                                 divergence_scheme,
+                                                                 upwinding)
 end
+
+time_discretization(vi::VectorInvariant) = time_discretization(vi.vertical_advection_scheme)
 
 # Since vorticity itself requires one halo, if we use an upwinding scheme (N > 1) we require one additional
 # halo for vector invariant advection
@@ -264,21 +271,25 @@ end
 @inline Grids.required_halo_size_y(scheme::VectorInvariant) = required_halo_size_x(scheme)
 @inline Grids.required_halo_size_z(scheme::VectorInvariant) = required_halo_size_z(scheme.vertical_advection_scheme)
 
-Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT, M}) where {N, FT, M} =
-    VectorInvariant{N, FT, M}(Adapt.adapt(to, scheme.vorticity_scheme),
-                              Adapt.adapt(to, scheme.vorticity_stencil),
-                              Adapt.adapt(to, scheme.vertical_advection_scheme),
-                              Adapt.adapt(to, scheme.kinetic_energy_gradient_scheme),
-                              Adapt.adapt(to, scheme.divergence_scheme),
-                              Adapt.adapt(to, scheme.upwinding))
+function Adapt.adapt_structure(to, scheme::VectorInvariant{N, FT, M}) where {N, FT, M}
+    TD = typeof(time_discretization(scheme))
+    return VectorInvariant{N, FT, M, TD}(Adapt.adapt(to, scheme.vorticity_scheme),
+                                         Adapt.adapt(to, scheme.vorticity_stencil),
+                                         Adapt.adapt(to, scheme.vertical_advection_scheme),
+                                         Adapt.adapt(to, scheme.kinetic_energy_gradient_scheme),
+                                         Adapt.adapt(to, scheme.divergence_scheme),
+                                         Adapt.adapt(to, scheme.upwinding))
+end
 
-Architectures.on_architecture(to, scheme::VectorInvariant{N, FT, M}) where {N, FT, M} =
-    VectorInvariant{N, FT, M}(on_architecture(to, scheme.vorticity_scheme),
-                              on_architecture(to, scheme.vorticity_stencil),
-                              on_architecture(to, scheme.vertical_advection_scheme),
-                              on_architecture(to, scheme.kinetic_energy_gradient_scheme),
-                              on_architecture(to, scheme.divergence_scheme),
-                              on_architecture(to, scheme.upwinding))
+function Architectures.on_architecture(to, scheme::VectorInvariant{N, FT, M}) where {N, FT, M}
+    TD = typeof(time_discretization(scheme))
+    VectorInvariant{N, FT, M, TD}(on_architecture(to, scheme.vorticity_scheme),
+                                  on_architecture(to, scheme.vorticity_stencil),
+                                  on_architecture(to, scheme.vertical_advection_scheme),
+                                  on_architecture(to, scheme.kinetic_energy_gradient_scheme),
+                                  on_architecture(to, scheme.divergence_scheme),
+                                  on_architecture(to, scheme.upwinding))
+end
 
 @inline U_dot_∇u(i, j, k, grid, scheme::VectorInvariant, U) = horizontal_advection_U(i, j, k, grid, scheme, U.u, U.v) +
                                                                 vertical_advection_U(i, j, k, grid, scheme, U) +
