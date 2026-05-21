@@ -4,8 +4,32 @@
 ##### NetCDFWriter functionality is implemented in ext/OceananigansNCDatasetsExt
 #####
 
-using Oceananigans.Grids: topology, Flat, StaticVerticalDiscretization
+using Oceananigans.Grids: topology, Flat, StaticVerticalDiscretization, MutableVerticalDiscretization, AbstractVerticalCoordinate
+using Oceananigans.OrthogonalSphericalShellGrids: OrthogonalSphericalShellGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+
+# Short aliases for compact dispatch in name-generator method tables.
+const OSSG = OrthogonalSphericalShellGrid
+const SVD  = StaticVerticalDiscretization
+const MVD  = MutableVerticalDiscretization
+
+#####
+##### Vertical coordinate naming
+#####
+#
+# The 1D vertical coordinate variable name written to NetCDF depends on the kind of vertical
+# discretization:
+#   - `StaticVerticalDiscretization`: the reference and physical vertical coordinates coincide,
+#     so we use "z".
+#   - `MutableVerticalDiscretization` (z-star, σ-coordinates): the saved 1D coordinate is the
+#     reference (Lagrangian) coordinate; the physical `z = z(r, η, …)` is reconstructible from
+#     `r` and the time-varying free surface `η`. We use "r" for the 1D reference coordinate.
+#
+
+vertical_coordinate_name(::SVD) = "z"
+vertical_coordinate_name(::MVD) = "r"
+vertical_coordinate_name(grid::AbstractGrid) = vertical_coordinate_name(grid.z)
+vertical_coordinate_name(grid::ImmersedBoundaryGrid) = vertical_coordinate_name(grid.underlying_grid)
 
 #####
 ##### Dimension name generators
@@ -35,7 +59,7 @@ function suffixed_dim_name_generator(var_name, grid::AbstractGrid{FT, TX, TY, TZ
     end
 end
 
-suffixed_dim_name_generator(var_name, ::StaticVerticalDiscretization, LX, LY, LZ, dim::Val{:z}; connector="_", location_letters) = var_name * connector * location_letters
+suffixed_dim_name_generator(var_name, ::AbstractVerticalCoordinate, LX, LY, LZ, dim::Val{:z}; connector="_", location_letters) = var_name * connector * location_letters
 
 loc2letter(::Face, full=true) = "f"
 loc2letter(::Center, full=true) = "c"
@@ -54,9 +78,12 @@ trilocation_location_string(::RectilinearGrid, LX, LY, LZ, ::Val{:y}) = "a" * lo
 trilocation_location_string(::LatitudeLongitudeGrid, LX, LY, LZ, ::Val{:x}) = loc2letter(LX) * loc2letter(LY) * "a"
 trilocation_location_string(::LatitudeLongitudeGrid, LX, LY, LZ, ::Val{:y}) = loc2letter(LX) * loc2letter(LY) * "a"
 
-trilocation_location_string(grid::AbstractGrid,             LX, LY, LZ, dim::Val{:z}) = trilocation_location_string(grid.z, LX, LY, LZ, dim)
-trilocation_location_string(::StaticVerticalDiscretization, LX, LY, LZ, dim::Val{:z}) = "aa" * loc2letter(LZ)
-trilocation_location_string(grid,                           LX, LY, LZ, dim)          = loc2letter(LX) * loc2letter(LY) * loc2letter(LZ)
+trilocation_location_string(::OSSG, LX, LY, LZ, ::Val{:x}) = loc2letter(LX) * loc2letter(LY) * "a"
+trilocation_location_string(::OSSG, LX, LY, LZ, ::Val{:y}) = loc2letter(LX) * loc2letter(LY) * "a"
+
+trilocation_location_string(grid::AbstractGrid,         LX, LY, LZ, dim::Val{:z}) = trilocation_location_string(grid.z, LX, LY, LZ, dim)
+trilocation_location_string(::AbstractVerticalCoordinate, LX, LY, LZ, dim::Val{:z}) = "aa" * loc2letter(LZ)
+trilocation_location_string(grid,                       LX, LY, LZ, dim)          = loc2letter(LX) * loc2letter(LY) * loc2letter(LZ)
 
 trilocation_dim_name(var_name, grid, LX, LY, LZ, dim) =
     suffixed_dim_name_generator(var_name, grid, LX, LY, LZ, dim, connector="_", location_letters=trilocation_location_string(grid, LX, LY, LZ, dim))
@@ -378,6 +405,24 @@ NetCDFWriter scheduled on IterationInterval(1):
 ├── file_splitting: NoFileSplitting
 └── file size: 31.7 KiB
 ```
+
+OrthogonalSphericalShellGrid (TripolarGrid, RotatedLatitudeLongitudeGrid, …)
+============================================================================
+
+For curvilinear `OrthogonalSphericalShellGrid` (OSSG) and its type aliases —
+`TripolarGrid`, `RotatedLatitudeLongitudeGrid`, `ConformalCubedSpherePanelGrid` —
+output follows
+[CF Conventions §5.2 "Two-Dimensional Latitude, Longitude, Coordinate Variables"](https://cfconventions.org/Data/cf-conventions/cf-conventions-1.13/cf-conventions.html#_two_dimensional_latitude_longitude_coordinate_variables).
+Concretely:
+
+  * Horizontal NetCDF dimensions are *logical* indices `i_caa`/`i_faa`/`j_aca`/`j_afa`
+    (declared via `defDim` only — they carry no coordinate variable).
+  * Latitude and longitude live as eight 2D auxiliary coordinate variables
+    (`λ_cca`/`λ_fca`/`λ_cfa`/`λ_ffa` and `φ_*`), one per Arakawa-C stagger location,
+    dimensioned `(i_*, j_*)`.
+  * Every data field carries a CF `coordinates` attribute, e.g.
+    `tracer:coordinates = "λ_cca φ_cca z_aac"`, so CF-aware tools (xarray,
+    ncview, Panoply, CDO) pick up the right lat/lon pair automatically.
 """
 function NetCDFWriter(model, outputs; kw...)
     error("""

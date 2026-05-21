@@ -48,7 +48,7 @@ export
     interior, set!, compute!, regrid!,
 
     # Forcing functions
-    Forcing, Relaxation, LinearTarget, GaussianMask, PiecewiseLinearMask, AdvectiveForcing,
+    Forcing, Relaxation, LinearTarget, GaussianMask, PiecewiseLinearMask, CosineRampMask, AdvectiveForcing,
 
     # Coriolis forces
     FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane, HydrostaticSphericalCoriolis,
@@ -101,7 +101,7 @@ export
     CFL, AdvectiveCFL, DiffusiveCFL,
 
     # Output writers
-    NetCDFWriter, JLD2Writer, Checkpointer,
+    NetCDFWriter, JLD2Writer, ZarrWriter, Checkpointer,
     Synchronous, Asynchronous, AsyncOutputWriter, SyncOutputWriter,
     is_asynchronous, wait_for_async_writes!,
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval, ConsecutiveIterations,

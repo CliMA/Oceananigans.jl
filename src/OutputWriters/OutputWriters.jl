@@ -1,7 +1,7 @@
 module OutputWriters
 
 export
-    JLD2Writer, NetCDFWriter, written_names,
+    JLD2Writer, NetCDFWriter, ZarrWriter, written_names,
     Checkpointer, checkpoint, WindowedTimeAverage, FileSizeLimit,
     Synchronous, Asynchronous, AsyncOutputWriter, SyncOutputWriter,
     is_asynchronous, wait_for_async_writes!,
@@ -39,6 +39,7 @@ include("async_output_writer.jl")
 include("jld2_writer.jl")
 include("output_attributes.jl")
 include("netcdf_writer.jl")
+include("zarr_writer.jl")
 include("checkpointer.jl")
 
 function written_names(filename)
