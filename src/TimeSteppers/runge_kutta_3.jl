@@ -138,7 +138,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     # Second stage
     #
 
-    rk3_substep!(model, γ², ζ², callbacks)
+    rk3_substep!(model, Δt, γ², ζ², callbacks)
     cache_previous_tendencies!(model)
 
     tick_stage!(model.clock, second_stage_Δt)
