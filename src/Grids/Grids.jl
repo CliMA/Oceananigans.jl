@@ -189,7 +189,7 @@ const F = Face
 const C = Center
 
 const LocationTuple = Tuple{<:AbstractLocation, <:AbstractLocation, <:AbstractLocation}
-const LocationTypeTuple = Tuple{Type{<:AbstractLocation}, Type{<:AbstractLocation}, Type{<:AbstractLocation}}
+const LocationTypeTuple = Tuple # {Type{<:AbstractLocation}, Type{<:AbstractLocation}, Type{<:AbstractLocation}}
 
 include("abstract_grid.jl")
 include("vertical_discretization.jl")
