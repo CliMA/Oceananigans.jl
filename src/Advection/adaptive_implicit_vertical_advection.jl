@@ -44,10 +44,23 @@ end
 ##### Flux dispatch, use scaled w velocities for explicit fluxes
 #####
 
+# Horizontal advection is fully explicit with AVID
+@inline advective_tracer_flux_x(i, j, k, grid, scheme, ::AVID, U, c) = advective_tracer_flux_x(i, j, k, grid, scheme, ExplicitTimeDiscretization(), U, c)
+@inline advective_tracer_flux_y(i, j, k, grid, scheme, ::AVID, V, c) = advective_tracer_flux_y(i, j, k, grid, scheme, ExplicitTimeDiscretization(), V, c)
+
 @inline function advective_tracer_flux_z(i, j, k, grid, scheme, td::AVID, W, c)
     s = explicit_velocity_scaleᶜᶜᶠ(i, j, k, grid, scheme, td, W)
     return s * advective_tracer_flux_z(i, j, k, grid, scheme, ExplicitTimeDiscretization(), W, c)
 end
+
+# Horizontal momentum fluxes (and Ww) are fully explicit with AVID
+@inline advective_momentum_flux_Uu(i, j, k, grid, scheme, ::AVID, U, u) = advective_momentum_flux_Uu(i, j, k, grid, scheme, ExplicitTimeDiscretization(), U, u)
+@inline advective_momentum_flux_Vu(i, j, k, grid, scheme, ::AVID, V, u) = advective_momentum_flux_Vu(i, j, k, grid, scheme, ExplicitTimeDiscretization(), V, u)
+@inline advective_momentum_flux_Uv(i, j, k, grid, scheme, ::AVID, U, v) = advective_momentum_flux_Uv(i, j, k, grid, scheme, ExplicitTimeDiscretization(), U, v)
+@inline advective_momentum_flux_Vv(i, j, k, grid, scheme, ::AVID, V, v) = advective_momentum_flux_Vv(i, j, k, grid, scheme, ExplicitTimeDiscretization(), V, v)
+@inline advective_momentum_flux_Uw(i, j, k, grid, scheme, ::AVID, U, w) = advective_momentum_flux_Uw(i, j, k, grid, scheme, ExplicitTimeDiscretization(), U, w)
+@inline advective_momentum_flux_Vw(i, j, k, grid, scheme, ::AVID, V, w) = advective_momentum_flux_Vw(i, j, k, grid, scheme, ExplicitTimeDiscretization(), V, w)
+@inline advective_momentum_flux_Ww(i, j, k, grid, scheme, ::AVID, W, w) = advective_momentum_flux_Ww(i, j, k, grid, scheme, ExplicitTimeDiscretization(), W, w)
 
 # Vertical advection of horizontal momentum: scale by explicit_velocity_scale.
 @inline function advective_momentum_flux_Wu(i, j, k, grid, scheme, td::AVID, W, u)
