@@ -214,6 +214,7 @@ function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
                              vertical_order = nothing,
                              divergence_order = nothing,
                              kinetic_energy_gradient_order = nothing,
+                             time_discretization = ExplicitTimeDiscretization(),
                              multi_dimensional_stencil = false,
                              time_discretization = ExplicitTimeDiscretization(),
                              minimum_buffer_upwind_order = 1,
@@ -246,7 +247,7 @@ function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
     N = max(NX, NY, NZ)
 
     FT = eltype(vorticity_scheme) # assumption
-    TD = typeof(Advection.time_discretization(vertical_advection_scheme))
+    TD = typeof(time_discretization)
 
     return VectorInvariant{N, FT, multi_dimensional_stencil, TD}(vorticity_scheme,
                                                                  vorticity_stencil,
@@ -256,7 +257,7 @@ function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
                                                                  upwinding)
 end
 
-time_discretization(vi::VectorInvariant) = time_discretization(vi.vertical_advection_scheme)
+Advection.time_discretization(vi::VectorInvariant) = time_discretization(vi.vertical_advection_scheme)
 
 # Since vorticity itself requires one halo, if we use an upwinding scheme (N > 1) we require one additional
 # halo for vector invariant advection
