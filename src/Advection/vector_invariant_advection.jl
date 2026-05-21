@@ -216,7 +216,6 @@ function WENOVectorInvariant(FT::DataType = Oceananigans.defaults.FloatType;
                              kinetic_energy_gradient_order = nothing,
                              time_discretization = ExplicitTimeDiscretization(),
                              multi_dimensional_stencil = false,
-                             time_discretization = ExplicitTimeDiscretization(),
                              minimum_buffer_upwind_order = 1,
                              weno_kw...)
 
