@@ -91,8 +91,8 @@ end
     # After the AbstractLocation refactor those signatures are constrained to
     # Oceananigans-owned location types, so the call below must error.
     @testset "No accidental dispatch on Base Tuple operators" begin
-        @test_throws MethodError *((Nothing, Nothing, Nothing), nothing, nothing)
-        @test_throws MethodError +((Nothing, Nothing, Nothing), nothing, nothing)
+        @test_throws MethodError Base.:*((Nothing, Nothing, Nothing), nothing, nothing)
+        @test_throws MethodError Base.:+((Nothing, Nothing, Nothing), nothing, nothing)
     end
 end
 
