@@ -346,7 +346,8 @@ end
 #####
 
 function prognostic_state(model::NonhydrostaticModel)
-    return (clock = prognostic_state(model.clock),
+    return (checkpoint_grid = model.grid,
+            clock = prognostic_state(model.clock),
             particles = prognostic_state(model.particles),
             velocities = prognostic_state(model.velocities),
             tracers = prognostic_state(model.tracers),
@@ -357,14 +358,48 @@ function prognostic_state(model::NonhydrostaticModel)
 end
 
 function restore_prognostic_state!(restored::NonhydrostaticModel, from)
-    restore_prognostic_state!(restored.clock, from.clock)
-    restore_prognostic_state!(restored.particles, from.particles)
-    restore_prognostic_state!(restored.velocities, from.velocities)
-    restore_prognostic_state!(restored.timestepper, from.timestepper)
-    restore_prognostic_state!(restored.tracers, from.tracers)
-    restore_prognostic_state!(restored.closure_fields, from.closure_fields)
-    restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
-    restore_prognostic_state!(restored.boundary_transport, from.boundary_transport)
+    checkpoint_grid = hasproperty(from, :checkpoint_grid) ? from.checkpoint_grid : nothing
+
+    Oceananigans.with_checkpoint_restore_grid(checkpoint_grid) do
+        restore_prognostic_state!(restored.clock, from.clock)
+        restore_prognostic_state!(restored.particles, from.particles)
+        restore_prognostic_state!(restored.velocities, from.velocities)
+        restore_prognostic_state!(restored.timestepper, from.timestepper)
+        restore_prognostic_state!(restored.tracers, from.tracers)
+        restore_prognostic_state!(restored.closure_fields, from.closure_fields)
+        restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
+        restore_prognostic_state!(restored.boundary_transport, from.boundary_transport)
+    end
+
+    Oceananigans.finalize_checkpoint_restore!(restored, checkpoint_grid)
+    return restored
+end
+
+function Oceananigans.finalize_checkpoint_restore!(restored::NonhydrostaticModel, checkpoint_grid)
+    if isnothing(checkpoint_grid) || checkpoint_grid == restored.grid
+        return restored
+    end
+
+    Oceananigans.BoundaryConditions.fill_halo_regions!(merge(restored.velocities, restored.tracers),
+                                                       restored.clock,
+                                                       Oceananigans.fields(restored);
+                                                       fill_open_bcs=false)
+
+    if hasproperty(restored.timestepper, :Gⁿ)
+        Oceananigans.BoundaryConditions.fill_halo_regions!(restored.timestepper.Gⁿ,
+                                                           restored.clock,
+                                                           Oceananigans.fields(restored);
+                                                           fill_open_bcs=false)
+    end
+
+    if hasproperty(restored.timestepper, :G⁻)
+        Oceananigans.BoundaryConditions.fill_halo_regions!(restored.timestepper.G⁻,
+                                                           restored.clock,
+                                                           Oceananigans.fields(restored);
+                                                           fill_open_bcs=false)
+    end
+
+    foreach(Oceananigans.ImmersedBoundaries.mask_immersed_field!, merge(restored.velocities, restored.tracers))
     return restored
 end
 

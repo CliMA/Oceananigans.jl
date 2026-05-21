@@ -212,6 +212,9 @@ function fields end
 function prognostic_fields end
 function prognostic_state end
 function restore_prognostic_state! end
+checkpoint_restore_grid() = nothing
+with_checkpoint_restore_grid(f, grid) = f()
+finalize_checkpoint_restore!(model, checkpoint_grid) = nothing
 function tracer_tendency_kernel_function end
 function boundary_conditions end
 

@@ -143,6 +143,102 @@ function test_minimal_restore(arch, FT, pickup_method, model_type)
     return nothing
 end
 
+function test_different_resolution_restore(arch, pickup_method)
+    source_grid = RectilinearGrid(arch, Float64,
+                                  size = (12, 12, 8),
+                                  topology = (Periodic, Periodic, Bounded),
+                                  extent = (1, 1, 1))
+
+    target_grid = RectilinearGrid(arch, Float64,
+                                  size = (18, 18, 10),
+                                  topology = (Periodic, Periodic, Bounded),
+                                  extent = (1, 1, 1))
+
+    function make_model(grid)
+        return HydrostaticFreeSurfaceModel(grid;
+                                           tracers = (:T, :S),
+                                           buoyancy = SeawaterBuoyancy(),
+                                           timestepper = :QuasiAdamsBashforth2)
+    end
+
+    model = make_model(source_grid)
+
+    u_init(x, y, z) = sin(2π * x) * cos(2π * y) * (1 + z)
+    v_init(x, y, z) = -cos(2π * x) * sin(2π * y) * (1 + z)
+    T_init(x, y, z) = 0.1 + x + y + z
+    S_init(x, y, z) = 0.2 + x - y + z^2
+    η_init(x, y, z) = 1e-3 * sin(2π * x) * sin(2π * y)
+
+    set!(model, u=u_init, v=v_init, T=T_init, S=S_init, η=η_init)
+
+    simulation = Simulation(model; Δt=0.1, stop_iteration=3)
+    prefix = "different_resolution_checkpointing_$(typeof(arch))_$(pickup_method)"
+    simulation.output_writers[:checkpointer] = Checkpointer(model;
+                                                            schedule = IterationInterval(3),
+                                                            prefix = prefix)
+    @test_nowarn run!(simulation)
+
+    checkpoint_path = "$(prefix)_iteration3.jld2"
+    @test isfile(checkpoint_path)
+
+    expected_model = make_model(target_grid)
+    set!(expected_model.velocities.u, model.velocities.u)
+    set!(expected_model.velocities.v, model.velocities.v)
+    set!(expected_model.velocities.w, model.velocities.w)
+    set!(expected_model.tracers.T, model.tracers.T)
+    set!(expected_model.tracers.S, model.tracers.S)
+    set!(expected_model.free_surface.displacement, model.free_surface.displacement)
+    Oceananigans.Models.HydrostaticFreeSurfaceModels.reconcile_free_surface!(expected_model.free_surface,
+                                                                             expected_model.grid,
+                                                                             expected_model.velocities)
+
+    restored_model = make_model(target_grid)
+    @test_nowarn set!(restored_model, checkpoint_path)
+
+    @test iteration(restored_model) == iteration(model)
+    @test time(restored_model) == time(model)
+    @test all(isfinite, Array(interior(restored_model.velocities.u)))
+    @test all(isfinite, Array(interior(restored_model.tracers.T)))
+    @test Array(interior(restored_model.velocities.u)) ≈ Array(interior(expected_model.velocities.u))
+    @test Array(interior(restored_model.velocities.v)) ≈ Array(interior(expected_model.velocities.v))
+    @test Array(interior(restored_model.tracers.T)) ≈ Array(interior(expected_model.tracers.T))
+    @test Array(interior(restored_model.tracers.S)) ≈ Array(interior(expected_model.tracers.S))
+    @test Array(interior(restored_model.free_surface.displacement)) ≈ Array(interior(expected_model.free_surface.displacement))
+    @test Array(interior(restored_model.free_surface.barotropic_velocities.U)) ≈ Array(interior(expected_model.free_surface.barotropic_velocities.U))
+    @test Array(interior(restored_model.free_surface.barotropic_velocities.V)) ≈ Array(interior(expected_model.free_surface.barotropic_velocities.V))
+
+    for (name, tendency_field) in pairs(restored_model.timestepper.Gⁿ)
+        expected_tendency_field = expected_model.timestepper.Gⁿ[name]
+        @test Array(interior(tendency_field)) ≈ Array(interior(expected_tendency_field))
+    end
+
+    restored_simulation = Simulation(make_model(target_grid); Δt=0.1, stop_iteration=3)
+    restored_simulation.output_writers[:checkpointer] = Checkpointer(restored_simulation.model;
+                                                                     schedule = IterationInterval(3),
+                                                                     prefix = prefix)
+
+    if pickup_method == :filepath
+        @test_nowarn set!(restored_simulation; checkpoint=checkpoint_path)
+        @test_nowarn run!(restored_simulation, pickup=checkpoint_path)
+    elseif pickup_method == :iteration
+        @test_nowarn set!(restored_simulation; iteration=3)
+        @test_nowarn run!(restored_simulation, pickup=3)
+    elseif pickup_method == :boolean
+        @test_nowarn set!(restored_simulation; checkpoint=:latest)
+        @test_nowarn run!(restored_simulation, pickup=true)
+    end
+
+    @test iteration(restored_simulation) == 3
+    @test time(restored_simulation) == time(model)
+    @test Array(interior(restored_simulation.model.velocities.u)) ≈ Array(interior(expected_model.velocities.u))
+    @test Array(interior(restored_simulation.model.tracers.T)) ≈ Array(interior(expected_model.tracers.T))
+    @test Array(interior(restored_simulation.model.free_surface.barotropic_velocities.U)) ≈ Array(interior(expected_model.free_surface.barotropic_velocities.U))
+
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+
+    return nothing
+end
+
 function test_checkpointer_cleanup(arch)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     model = NonhydrostaticModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
@@ -1995,6 +2091,13 @@ for arch in archs
                 @info "  Testing minimal restore [$model_type, $pickup_method] [$(typeof(arch))]..."
                 test_minimal_restore(arch, Float64, pickup_method, model_type)
             end
+        end
+    end
+
+    for pickup_method in (:boolean, :iteration, :filepath)
+        @testset "Different-resolution restore [$(typeof(arch)), $(pickup_method)]" begin
+            @info "  Testing different-resolution restore [$(typeof(arch)), $(pickup_method)]..."
+            test_different_resolution_restore(arch, pickup_method)
         end
     end
 

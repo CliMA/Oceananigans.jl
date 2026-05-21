@@ -4,7 +4,8 @@ using StructArrays: StructArray
 using Oceananigans
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
 
-import Oceananigans: prognostic_state, restore_prognostic_state!
+import Oceananigans: prognostic_state, restore_prognostic_state!, checkpoint_restore_grid,
+                     with_checkpoint_restore_grid
 import Oceananigans.Fields: set!
 
 mutable struct Checkpointer{T} <: AbstractOutputWriter
@@ -161,6 +162,22 @@ latest_checkpoint(checkpointer, filepaths) = latest_checkpoint_by_iteration(chec
 #####
 ##### Writing checkpoints
 #####
+
+const checkpoint_restore_grid_ref = Ref{Any}(nothing)
+
+checkpoint_restore_grid() = checkpoint_restore_grid_ref[]
+
+function with_checkpoint_restore_grid(f, grid)
+    previous_grid = checkpoint_restore_grid_ref[]
+    checkpoint_restore_grid_ref[] = grid
+
+    try
+        return f()
+    finally
+        checkpoint_restore_grid_ref[] = previous_grid
+    end
+end
+
 
 prognostic_state(obj) = obj
 prognostic_state(::NamedTuple{()}) = nothing

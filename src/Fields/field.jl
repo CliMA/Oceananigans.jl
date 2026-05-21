@@ -1,4 +1,4 @@
-import Oceananigans: prognostic_state, restore_prognostic_state!
+import Oceananigans: prognostic_state, restore_prognostic_state!, checkpoint_restore_grid
 using Oceananigans.BoundaryConditions:  construct_boundary_conditions_kernels, OBC, MCBC,
     Zipper, validate_boundary_condition_architecture, validate_boundary_condition_topology
 using Oceananigans.Grids: parent_index_range, default_indices, validate_indices,
@@ -864,7 +864,16 @@ function prognostic_state(field::Field)
 end
 
 function restore_prognostic_state!(restored::Field, from)
-    restore_prognostic_state!(restored.data, from.data)
+    checkpoint_grid = checkpoint_restore_grid()
+
+    if isnothing(checkpoint_grid) || checkpoint_grid == restored.grid
+        restore_prognostic_state!(restored.data, from.data)
+    else
+        checkpoint_field = Field(instantiated_location(restored), checkpoint_grid; indices=indices(restored))
+        restore_prognostic_state!(checkpoint_field.data, from.data)
+        set!(restored, checkpoint_field)
+    end
+
     return restored
 end
 
