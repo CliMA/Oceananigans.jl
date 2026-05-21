@@ -38,13 +38,14 @@ function flow_over_hill_simulation(; arch = CPU(),
     hill(x) = hill_height * exp(-((x - x₀)/hill_width)^2) - Lz
     grid = ImmersedBoundaryGrid(grid_base, PartialCellBottom(hill))
 
-    # Live target transport: recomputes U * east_area at every correction step,
-    # so it tracks the current column height under ZStarCoordinate.
-    target_transport = LiveBoundaryTransport(U, :east)
-
-    # Model kwargs
-    u_boundaries = FieldBoundaryConditions(west = OpenBoundaryCondition(U), # No scheme here for a perfectly barotropic inflow
-                                           east = OpenBoundaryCondition(U; scheme = scheme_type(; target_transport)))
+    # Both boundaries are targeted PerturbationAdvection. `LiveBoundaryTransport`
+    # recomputes U * area at every correction step, so the target tracks the
+    # current column height under a mutable vertical coordinate. Targeting both
+    # ends pins the net transport directly instead of leaving the inflow as a
+    # fixed-velocity boundary whose transport drifts with the free surface.
+    u_boundaries = FieldBoundaryConditions(
+        west = OpenBoundaryCondition(U; scheme = scheme_type(; target_transport = LiveBoundaryTransport(U, :west))),
+        east = OpenBoundaryCondition(U; scheme = scheme_type(; target_transport = LiveBoundaryTransport(U, :east))))
     boundary_conditions = (u = u_boundaries,)
     advection = WENO(; order=5, minimum_buffer_upwind_order=1)
 
