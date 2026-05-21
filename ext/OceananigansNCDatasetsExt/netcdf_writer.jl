@@ -496,6 +496,7 @@ end
 
 function commit_async_write!(ow::NetCDFWriter, snap::NetCDFWriteSnapshot)
     ow.commit_delay > 0 && sleep(ow.commit_delay)
+    ow.commit_throws === nothing || throw(ow.commit_throws)
 
     if snap.verbose
         @info "Writing to NetCDF: $(snap.filepath)..."

@@ -119,6 +119,7 @@ mutable struct NetCDFWriter{Mode, G, GM, D, O, T, A, FS, DN, DT} <: AbstractOutp
     dimension_type :: DT
     task :: Union{Task, Nothing}  # in-flight async write task; `nothing` for `Synchronous`
     commit_delay :: Float64       # test-only: artificial sleep inside commit_async_write!
+    commit_throws :: Union{Nothing, Exception}  # test-only: exception to throw in commit_async_write!
 end
 
 # Parametric outer constructor that fills in `task = nothing`. Lets us write
@@ -134,7 +135,7 @@ function NetCDFWriter{Mode}(grids::G, output_grid_map::GM, filepath, dataset::D,
         grids, output_grid_map, filepath, dataset, outputs, schedule, array_type, indices,
         global_attributes, output_attributes, dimensions, with_halos, include_grid_metrics,
         overwrite_existing, verbose, deflatelevel, part, file_splitting,
-        dimension_name_generator, dimension_type, nothing, 0.0)
+        dimension_name_generator, dimension_type, nothing, 0.0, nothing)
 end
 
 # method in OceananigansNCDatasetsExt

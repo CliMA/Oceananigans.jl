@@ -697,6 +697,7 @@ end
 
 function commit_async_write!(writer::ZarrWriter, snap::ZarrWriteSnapshot)
     writer.commit_delay > 0 && sleep(writer.commit_delay)
+    writer.commit_throws === nothing || throw(writer.commit_throws)
 
     if writer.verbose
         t0 = time_ns()

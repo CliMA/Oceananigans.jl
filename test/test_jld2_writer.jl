@@ -206,6 +206,51 @@ function test_jld2_async_overlap(arch)
     return nothing
 end
 
+function test_jld2_async_exception_propagation(arch)
+    # Prove that an exception thrown by `commit_async_write!` on the worker task
+    # surfaces on the main thread at the next synchronization point — either an
+    # explicit `wait_for_async_writes!` or the implicit wait at the start of the
+    # next `write_output!`. The writer's task field must also be cleared so the
+    # writer is usable after the error is observed.
+    grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1),
+                           topology=(Periodic, Periodic, Periodic))
+    model = NonhydrostaticModel(grid; tracers=:c)
+
+    filepath = "test_jld2_async_throws.jld2"
+    isfile(filepath) && rm(filepath)
+
+    writer = JLD2Writer(model, model.velocities;
+                        filename = filepath,
+                        schedule = IterationInterval(1),
+                        overwrite_existing = true,
+                        asynchronous = true)
+
+    # Path 1: explicit wait surfaces the error.
+    # `_async_commit!` also logs `@error "Async output writer failed"` from the
+    # worker task. That log is emitted asynchronously and isn't caught by
+    # `@test_logs`, so the test stays noisy but still asserts the right things.
+    writer.commit_throws = ErrorException("synthetic commit failure")
+    write_output!(writer, model)
+    @test writer.task isa Task
+    @test_throws TaskFailedException wait_for_async_writes!(writer)
+    @test writer.task === nothing
+
+    # Path 2: implicit wait at the start of the next write surfaces the error.
+    write_output!(writer, model)
+    @test writer.task isa Task
+    @test_throws TaskFailedException write_output!(writer, model)
+    @test writer.task === nothing
+
+    # With the knob cleared, subsequent writes succeed and the file is on disk.
+    writer.commit_throws = nothing
+    write_output!(writer, model)
+    wait_for_async_writes!(writer)
+    @test isfile(filepath)
+
+    rm(filepath)
+    return nothing
+end
+
 function test_jld2_time_file_splitting(arch)
     grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1), halo=(1, 1, 1))
     model = NonhydrostaticModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
@@ -578,6 +623,7 @@ for arch in archs
 
         test_jld2_async_io_matches_sync(arch)
         test_jld2_async_overlap(arch)
+        test_jld2_async_exception_propagation(arch)
 
         #####
         ##### Time-averaging

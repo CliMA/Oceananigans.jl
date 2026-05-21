@@ -22,6 +22,7 @@ mutable struct JLD2Writer{A, O, T, D, IF, IN, FS, KW} <: AbstractOutputWriter{A}
     initialized :: Bool
     task :: Union{Task, Nothing}  # in-flight async write task; `nothing` for `Synchronous`
     commit_delay :: Float64       # test-only: artificial sleep inside commit_async_write!
+    commit_throws :: Union{Nothing, Exception}  # test-only: exception to throw in commit_async_write!
 end
 
 # Parametric outer constructor that fills in `task = nothing`. Lets us write
@@ -32,7 +33,7 @@ function JLD2Writer{A}(filepath, outputs::O, schedule::T, array_type::D, init::I
                        verbose::Bool, jld2_kw::KW, initialized::Bool) where {A, O, T, D, IF, IN, FS, KW}
     return JLD2Writer{A, O, T, D, IF, IN, FS, KW}(filepath, outputs, schedule, array_type, init,
                                                    including, part, file_splitting, overwrite_existing,
-                                                   verbose, jld2_kw, initialized, nothing, 0.0)
+                                                   verbose, jld2_kw, initialized, nothing, 0.0, nothing)
 end
 
 noinit(args...) = nothing
@@ -486,6 +487,7 @@ end
 
 function commit_async_write!(writer::JLD2Writer, snap::JLD2WriteSnapshot)
     writer.commit_delay > 0 && sleep(writer.commit_delay)
+    writer.commit_throws === nothing || throw(writer.commit_throws)
 
     writer.verbose && @info "Writing JLD2 output $(keys(snap.data)) to $(snap.filepath)..."
 
