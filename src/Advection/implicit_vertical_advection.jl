@@ -1,6 +1,12 @@
 using Oceananigans.Operators: Δz, Az, volume, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Grids: peripheral_node, Center, Face
 
+# AIVA momentum advection may arrive wrapped in a VectorInvariant whose .vertical_advection_scheme
+# is the reconstruction scheme (WENO/Centered/UpwindBiased) that owns the AIVA time-discretization
+# and provides the symmetric interpolation methods used below.
+@inline vertical_scheme(advection) = advection
+@inline vertical_scheme(advection::VectorInvariant) = advection.vertical_advection_scheme
+
 #####
 ##### Implicit vertical velocity: wⁱ = w - wᵉ = w * (1 - 1/f(α, cfl))
 #####
@@ -54,7 +60,9 @@ end
 
 # Upper diagonal: coefficient of c_{k+1} in the tridiagonal system
 @inline function implicit_advection_upper_diagonal(i, j, k, grid, advection::AIVA, w, Δt, ℓx, ℓy)
-    wⁱ  = implicit_vertical_velocity(ℓx, ℓy, i, j, k+1, grid, advection, advection.time_discretization, w)
+    scheme = vertical_scheme(advection)
+    td     = TimeSteppers.time_discretization(scheme)
+    wⁱ  = implicit_vertical_velocity(ℓx, ℓy, i, j, k+1, grid, scheme, td, w)
     Azᵢ = Az(i, j, k+1, grid, ℓx, ℓy, Face())
     V⁻¹ = 1 / volume(i, j, k, grid, ℓx, ℓy, Center())
     return Δt * V⁻¹ * Azᵢ * min(wⁱ, zero(wⁱ)) * !peripheral_node(i, j, k+1, grid, ℓx, ℓy, Face())
@@ -63,16 +71,20 @@ end
 # Lower diagonal: coefficient of c_{k-1} in the tridiagonal system
 # Uses k′ = k-1 indexing convention (LinearAlgebra.Tridiagonal convention, matching ivd_lower_diagonal)
 @inline function implicit_advection_lower_diagonal(i, j, k′, grid, advection::AIVA, w, Δt, ℓx, ℓy)
+    scheme = vertical_scheme(advection)
+    td     = TimeSteppers.time_discretization(scheme)
     k   = k′ + 1
-    wⁱ  = implicit_vertical_velocity(ℓx, ℓy, i, j, k, grid, advection, advection.time_discretization, w)
+    wⁱ  = implicit_vertical_velocity(ℓx, ℓy, i, j, k, grid, scheme, td, w)
     Azᵢ = Az(i, j, k, grid, ℓx, ℓy, Face())
     V⁻¹ = 1 / volume(i, j, k, grid, ℓx, ℓy, Center())
     return - Δt * V⁻¹ * Azᵢ * max(wⁱ, zero(wⁱ)) * !peripheral_node(i, j, k′, grid, ℓx, ℓy, Center())
 end
 
 @inline function implicit_advection_diagonal(i, j, k, grid, advection::AIVA, w, Δt, ℓx, ℓy)
-    wⁱ⁺ = implicit_vertical_velocity(ℓx, ℓy, i, j, k+1, grid, advection, advection.time_discretization, w)
-    wⁱ⁻ = implicit_vertical_velocity(ℓx, ℓy, i, j, k,   grid, advection, advection.time_discretization, w)
+    scheme = vertical_scheme(advection)
+    td     = TimeSteppers.time_discretization(scheme)
+    wⁱ⁺ = implicit_vertical_velocity(ℓx, ℓy, i, j, k+1, grid, scheme, td, w)
+    wⁱ⁻ = implicit_vertical_velocity(ℓx, ℓy, i, j, k,   grid, scheme, td, w)
 
     Az⁺ = Az(i, j, k+1, grid, ℓx, ℓy, Face())
     Az⁻ = Az(i, j, k,   grid, ℓx, ℓy, Face())
