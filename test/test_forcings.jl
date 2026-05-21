@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
 using Oceananigans.Fields: Field
-using Oceananigans.Forcings: MultipleForcings, FieldTimeSeriesTarget, FieldTimeSeriesRelaxation
+using Oceananigans.Forcings: MultipleForcings, FieldRelaxation, FieldTimeSeriesRelaxation
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, immersed_peripheral_node, peripheral_node
 
 """ Take one time step with three forcing arrays on u, v, w. """
@@ -580,12 +580,13 @@ end
                 r = Relaxation(rate=1/τ, target=fts)
                 model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r))
 
-                # Materialization wires the FTS in and rewrites target to a FieldTimeSeriesTarget.
+                # Materialization stores the FTS directly and records the forced field's location.
                 rm = model.forcing.c
                 @test rm isa FieldTimeSeriesRelaxation
-                @test rm.target isa FieldTimeSeriesTarget
-                @test rm.target.field_time_series === fts
-                @test rm.target.location == (Center(), Center(), Center())
+                @test rm isa FieldRelaxation
+                @test rm.target === fts
+                @test rm.field === model.tracers.c
+                @test rm.location == (Center(), Center(), Center())
 
                 # Analytical convergence: dc/dt = (c_ref - c)/τ ⇒ after one step,
                 # c ≈ c_ref * (1 - exp(-Δt/τ)) for c(0) = 0.
@@ -601,6 +602,87 @@ end
                 fts_small  = FieldTimeSeries{Center, Center, Center}(small_grid, [0, 1e6])
                 r_small    = Relaxation(rate=1/τ, target=fts_small)
                 @test_throws ArgumentError NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r_small))
+            end
+
+            @testset "Relaxation with Field target [$A]" begin
+                @info "      Testing Relaxation with Field target [$A]..."
+
+                grid  = RectilinearGrid(arch, size=(2, 2, 4), extent=(100, 100, 1000))
+                τ     = 60
+                c_ref = 5
+
+                target_field = CenterField(grid)
+                set!(target_field, c_ref)
+
+                r     = Relaxation(rate=1/τ, target=target_field)
+                model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r))
+
+                rm = model.forcing.c
+                @test rm isa FieldRelaxation
+                @test !(rm isa FieldTimeSeriesRelaxation)
+                @test rm.target === target_field
+                @test rm.field === model.tracers.c
+                @test rm.location == (Center(), Center(), Center())
+
+                set!(model, c=0)
+                Δt = 1
+                time_step!(model, Δt)
+                c_after  = Array(interior(model.tracers.c))
+                expected = c_ref * (1 - exp(-Δt/τ))
+                @test all(isapprox.(c_after, expected; atol=1e-6 * c_ref))
+
+                # Location-mismatch validation: an XFaceField target for a Center tracer throws.
+                wrong_loc = XFaceField(grid)
+                r_wrong   = Relaxation(rate=1/τ, target=wrong_loc)
+                @test_throws ArgumentError NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r_wrong))
+
+                # Grid-mismatch validation: a target on a different grid throws.
+                other_grid   = RectilinearGrid(arch, size=(2, 2, 4), extent=(50, 50, 500))
+                wrong_grid   = CenterField(other_grid)
+                r_wrong_grid = Relaxation(rate=1/τ, target=wrong_grid)
+                @test_throws ArgumentError NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r_wrong_grid))
+            end
+
+            @testset "Relaxation with transform=:horizontal_average [$A]" begin
+                @info "      Testing Relaxation with transform=:horizontal_average [$A]..."
+
+                Lx, Ly, Lz = 100.0, 100.0, 100.0
+                grid = RectilinearGrid(arch, size=(4, 4, 2), extent=(Lx, Ly, Lz))
+                τ = 60.0
+
+                r = Relaxation(rate=1/τ, transform=:horizontal_average)
+                model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r))
+
+                rm = model.forcing.c
+                @test rm.transform === :horizontal_average
+                @test rm.target isa Field
+                @test rm.field === model.tracers.c
+
+                # Initial condition: zero-mean horizontal sinusoid → fluctuations decay,
+                # horizontal mean stays at zero.
+                set!(model, c=(x, y, z) -> sin(2π * x / Lx))
+                c_initial = Array(interior(model.tracers.c))
+
+                Δt = 0.5
+                Nsteps = 20
+                for _ in 1:Nsteps
+                    time_step!(model, Δt)
+                end
+                t_end = model.clock.time
+
+                c_final = Array(interior(model.tracers.c))
+                expected = c_initial .* exp(-t_end / τ)
+                @test all(isapprox.(c_final, expected; atol=5e-3))
+
+                # Closure form should be equivalent.
+                r_closure = Relaxation(rate=1/τ, transform = f -> Field(Average(f, dims=(1, 2))))
+                model_closure = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r_closure))
+                @test model_closure.forcing.c.target isa Field
+
+                # Mixing transform with FieldTimeSeries target should error.
+                fts = FieldTimeSeries{Center, Center, Center}(grid, [0, 1e6])
+                @test_throws ArgumentError NonhydrostaticModel(grid; tracers=:c,
+                    forcing=(; c=Relaxation(rate=1/τ, target=fts, transform=:horizontal_average)))
             end
 
             @testset "Relaxation FTS-target cross-grid spatial interp [$A]" begin

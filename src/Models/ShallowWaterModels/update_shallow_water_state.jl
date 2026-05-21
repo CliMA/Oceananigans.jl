@@ -1,4 +1,5 @@
 using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Forcings: compute_forcing!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models: update_model_field_time_series!
 
@@ -25,6 +26,8 @@ function update_state!(model::ShallowWaterModel, callbacks=[])
 
     # Update possible FieldTimeSeries used in the model
     update_model_field_time_series!(model, model.clock)
+
+    compute_forcing!(model.forcing)
 
     compute_closure_fields!(model.closure_fields, model.closure, model)
 

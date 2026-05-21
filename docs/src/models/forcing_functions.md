@@ -321,10 +321,10 @@ c_nudge = Relaxation(rate=1/3600, target=fts)
 
 model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=c_nudge))
 
-summary(model.forcing.c.target)
+model.forcing.c.target === fts
 
 # output
-"FieldTimeSeriesTarget(location=(Center(), Center(), Center()), index=4)"
+true
 ```
 
 ## `AdvectiveForcing`
