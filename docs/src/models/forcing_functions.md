@@ -235,7 +235,8 @@ model.forcing.w
 Relaxation{Float64, typeof(Oceananigans.Forcings.onefunction), typeof(Oceananigans.Forcings.zerofunction)}
 ├──   rate: 0.001
 ├──   mask: 1
-└── target: 0
+├── target: 0
+└── location: (Center(), Center(), Face())
 ```
 
 The constructor for `Relaxation` accepts the keyword arguments `mask`, and `target`,
@@ -293,7 +294,8 @@ model.forcing.u
 Relaxation{Float64, GaussianMask{:z, Float64}, typeof(Oceananigans.Forcings.zerofunction)}
 ├──   rate: 0.01
 ├──   mask: exp(-(z + 1.0)^2 / (2 * 0.1^2))
-└── target: 0
+├── target: 0
+└── location: (Face(), Center(), Center())
 ```
 
 ```jldoctest sponge_layer
@@ -303,7 +305,8 @@ model.forcing.T
 Relaxation{Float64, GaussianMask{:z, Float64}, LinearTarget{:z, Float64}}
 ├──   rate: 0.01
 ├──   mask: exp(-(z + 1.0)^2 / (2 * 0.1^2))
-└── target: 20.0 + 0.001 * z
+├── target: 20.0 + 0.001 * z
+└── location: (Center(), Center(), Center())
 ```
 
 ### `FieldTimeSeries` target

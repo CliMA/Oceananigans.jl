@@ -210,17 +210,27 @@ function Base.show(io::IO, relaxation::Relaxation{R, M, T}) where {R, M, T}
     print(io, "Relaxation{$R, $M, $T}", "\n",
               "├──   rate: $(relaxation.rate)", "\n",
               "├──   mask: $(summary(relaxation.mask))", "\n")
-    if isnothing(relaxation.transform)
+    extras = Pair{String, Any}[]
+    isnothing(relaxation.location)  || push!(extras, "location"  => relaxation.location)
+    isnothing(relaxation.transform) || push!(extras, "transform" => relaxation.transform)
+    if isempty(extras)
         print(io, "└── target: $(summary(relaxation.target))")
     else
-        print(io, "├── target: $(summary(relaxation.target))", "\n",
-                  "└── transform: $(relaxation.transform)")
+        print(io, "├── target: $(summary(relaxation.target))")
+        for (i, (key, value)) in enumerate(extras)
+            prefix = i == length(extras) ? "└── " : "├── "
+            print(io, "\n", prefix, key, ": ", value)
+        end
     end
 end
 
 function Base.summary(relaxation::Relaxation)
-    base = "Relaxation(rate=$(relaxation.rate), mask=$(summary(relaxation.mask)), target=$(summary(relaxation.target))"
-    return isnothing(relaxation.transform) ? base * ")" : base * ", transform=$(relaxation.transform))"
+    parts = ["rate=$(relaxation.rate)",
+             "mask=$(summary(relaxation.mask))",
+             "target=$(summary(relaxation.target))"]
+    isnothing(relaxation.location)  || push!(parts, "location=$(relaxation.location)")
+    isnothing(relaxation.transform) || push!(parts, "transform=$(relaxation.transform)")
+    return "Relaxation(" * join(parts, ", ") * ")"
 end
 
 #####
