@@ -31,7 +31,7 @@ ID_DIGITS   = 2
 
 # A Hashing function which returns a unique
 # integer between 0 and 26 for a combination of
-# 3 locations wither Center, Face, or Nothing
+# 3 locations wither Center, Face, or Reduced
 location_counter = 0
 for LX in (:Face, :Center, :Reduced)
     for LY in (:Face, :Center, :Reduced)
