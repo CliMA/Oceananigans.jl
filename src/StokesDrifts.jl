@@ -13,6 +13,7 @@ export
 using Adapt: adapt
 
 using Oceananigans.Fields
+using Oceananigans.Fields: AbstractField
 using Oceananigans.Operators
 using Oceananigans.Grids: AbstractGrid, node
 using Oceananigans.Utils: prettysummary
@@ -176,7 +177,7 @@ const f = Face()
     - ℑxzᶜᵃᶠ(i, j, k, grid, U.u) * ∂z_Uᵃᵃᶠ(i, j, k, grid, sd, sd.∂z_uˢ, time)
     - ℑyzᵃᶜᶠ(i, j, k, grid, U.v) * ∂z_Uᵃᵃᶠ(i, j, k, grid, sd, sd.∂z_vˢ, time))
 
-struct StokesDrift{P, VX, WX, UY, WY, UZ, VZ, UT, VT, WT}
+struct StokesDrift{P, VX, WX, UY, WY, UZ, VZ, UT, VT, WT, US, VS}
     ∂x_vˢ :: VX
     ∂x_wˢ :: WX
     ∂y_uˢ :: UY
@@ -186,6 +187,8 @@ struct StokesDrift{P, VX, WX, UY, WY, UZ, VZ, UT, VT, WT}
     ∂t_uˢ :: UT
     ∂t_vˢ :: VT
     ∂t_wˢ :: WT
+    uˢ    :: US
+    vˢ    :: VS
     parameters :: P
 end
 
@@ -198,6 +201,8 @@ adapt_structure(to, sd::StokesDrift) = StokesDrift(adapt(to, sd.∂x_vˢ),
                                                    adapt(to, sd.∂t_uˢ),
                                                    adapt(to, sd.∂t_vˢ),
                                                    adapt(to, sd.∂t_wˢ),
+                                                   adapt(to, sd.uˢ),
+                                                   adapt(to, sd.vˢ),
                                                    adapt(to, sd.parameters))
 
 Base.summary(::StokesDrift{Nothing}) = "StokesDrift{Nothing}"
@@ -217,7 +222,9 @@ function Base.show(io::IO, sd::StokesDrift)
     print(io, "├── ∂z_vˢ: ", prettysummary(sd.∂z_vˢ, false), '\n')
     print(io, "├── ∂t_uˢ: ", prettysummary(sd.∂t_uˢ, false), '\n')
     print(io, "├── ∂t_vˢ: ", prettysummary(sd.∂t_vˢ, false), '\n')
-    print(io, "└── ∂t_wˢ: ", prettysummary(sd.∂t_wˢ, false))
+    print(io, "├── ∂t_wˢ: ", prettysummary(sd.∂t_wˢ, false), '\n')
+    print(io, "├── uˢ:    ", prettysummary(sd.uˢ,    false), '\n')
+    print(io, "└── vˢ:    ", prettysummary(sd.vˢ,    false))
 end
 
 """
@@ -320,50 +327,136 @@ function StokesDrift(; ∂x_vˢ = zerofunction,
                        ∂t_uˢ = zerofunction,
                        ∂t_vˢ = zerofunction,
                        ∂t_wˢ = zerofunction,
+                       uˢ = nothing,
+                       vˢ = nothing,
                        parameters = nothing)
 
-    return StokesDrift(∂x_vˢ, ∂x_wˢ, ∂y_uˢ, ∂y_wˢ, ∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ, ∂t_wˢ, parameters)
+    return StokesDrift(∂x_vˢ, ∂x_wˢ, ∂y_uˢ, ∂y_wˢ, ∂z_uˢ, ∂z_vˢ,
+                       ∂t_uˢ, ∂t_vˢ, ∂t_wˢ, uˢ, vˢ, parameters)
 end
 
 const SD = StokesDrift
 const SDnoP = StokesDrift{<:Nothing}
 
-@inline ∂t_uˢ(i, j, k, grid, sw::SD, time) = sw.∂t_uˢ(node(i, j, k, grid, f, c, c)..., time, sw.parameters)
-@inline ∂t_vˢ(i, j, k, grid, sw::SD, time) = sw.∂t_vˢ(node(i, j, k, grid, c, f, c)..., time, sw.parameters)
-@inline ∂t_wˢ(i, j, k, grid, sw::SD, time) = sw.∂t_wˢ(node(i, j, k, grid, c, c, f)..., time, sw.parameters)
-
-@inline ∂t_uˢ(i, j, k, grid, sw::SDnoP, time) = sw.∂t_uˢ(node(i, j, k, grid, f, c, c)..., time)
-@inline ∂t_vˢ(i, j, k, grid, sw::SDnoP, time) = sw.∂t_vˢ(node(i, j, k, grid, c, f, c)..., time)
-@inline ∂t_wˢ(i, j, k, grid, sw::SDnoP, time) = sw.∂t_wˢ(node(i, j, k, grid, c, c, f)..., time)
-
 @inline parameters_tuple(sw::SDnoP) = tuple()
 @inline parameters_tuple(sw::SD) = tuple(sw.parameters)
+
+# Function-only path: evaluate the callable `sw.∂t_..ˢ` at the node. This
+# single method covers both the parametric (`SD`) and non-parametric (`SDnoP`)
+# function paths via `parameters_tuple`.
+@inline ∂t_uˢ(i, j, k, grid, sw::SD, time) = sw.∂t_uˢ(node(i, j, k, grid, f, c, c)..., time, parameters_tuple(sw)...)
+@inline ∂t_vˢ(i, j, k, grid, sw::SD, time) = sw.∂t_vˢ(node(i, j, k, grid, c, f, c)..., time, parameters_tuple(sw)...)
+@inline ∂t_wˢ(i, j, k, grid, sw::SD, time) = sw.∂t_wˢ(node(i, j, k, grid, c, c, f)..., time, parameters_tuple(sw)...)
+
+#####
+##### Per-derivative dispatch.
+#####
+##### Each `_∂{x,y,z}_{u,v,w}ˢ_<loc>(i, j, k, grid, sw, time)` returns the
+##### appropriate component of ∇·uˢ at node location <loc>. When
+##### `sw.uˢ === nothing` and `sw.vˢ === nothing` (the function-only path),
+##### the corresponding `sw.∂..._uˢ`/`sw.∂..._vˢ` callable is evaluated at
+##### the node. When `sw.uˢ` or `sw.vˢ` is a `Field` (or any object that
+##### satisfies the `getindex(uˢ, i, j, k)` contract), the spatial
+##### derivative is computed inline via the staggered finite-difference
+##### operators. `wˢ` is taken to be zero in the Field path.
+#####
+
+const SDFieldUˢ = StokesDrift{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any,
+                              <:Any, <:Any, <:Any, <:AbstractField}
+const SDFieldVˢ = StokesDrift{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any,
+                              <:Any, <:Any, <:Any, <:Any, <:AbstractField}
+const SDFieldUVˢ = StokesDrift{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any,
+                               <:Any, <:Any, <:Any, <:AbstractField, <:AbstractField}
+
+# `∂t_uˢ`, `∂t_vˢ` may also be supplied as `AbstractField`s (at the
+# corresponding velocity location). When a Field is supplied, the value is
+# read directly via `getindex` at the node — no time-derivative is taken of
+# the Field; the user is expected to refresh the Field with the desired
+# time-derivative (e.g., from a wave model's analytic action tendency)
+# before each ocean step.
+const SDFieldDtUˢ = StokesDrift{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any,
+                                <:AbstractField}
+const SDFieldDtVˢ = StokesDrift{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any,
+                                <:Any, <:AbstractField}
+
+@inline ∂t_uˢ(i, j, k, grid, sw::SDFieldDtUˢ, time) = @inbounds sw.∂t_uˢ[i, j, k]
+@inline ∂t_vˢ(i, j, k, grid, sw::SDFieldDtVˢ, time) = @inbounds sw.∂t_vˢ[i, j, k]
+
+# ∂z uˢ
+@inline _∂z_uˢ_fcc(i, j, k, grid, sw, time) =
+    sw.∂z_uˢ(node(i, j, k, grid, f, c, c)..., time, parameters_tuple(sw)...)
+@inline _∂z_uˢ_fcc(i, j, k, grid, sw::SDFieldUˢ, time) =
+    ℑzᵃᵃᶜ(i, j, k, grid, ∂zᶠᶜᶠ, sw.uˢ)
+@inline _∂z_uˢ_ccf(i, j, k, grid, sw, time) =
+    sw.∂z_uˢ(node(i, j, k, grid, c, c, f)..., time, parameters_tuple(sw)...)
+@inline _∂z_uˢ_ccf(i, j, k, grid, sw::SDFieldUˢ, time) =
+    ℑxᶜᵃᵃ(i, j, k, grid, ∂zᶠᶜᶠ, sw.uˢ)
+
+# ∂z vˢ
+@inline _∂z_vˢ_cfc(i, j, k, grid, sw, time) =
+    sw.∂z_vˢ(node(i, j, k, grid, c, f, c)..., time, parameters_tuple(sw)...)
+@inline _∂z_vˢ_cfc(i, j, k, grid, sw::SDFieldVˢ, time) =
+    ℑzᵃᵃᶜ(i, j, k, grid, ∂zᶜᶠᶠ, sw.vˢ)
+@inline _∂z_vˢ_ccf(i, j, k, grid, sw, time) =
+    sw.∂z_vˢ(node(i, j, k, grid, c, c, f)..., time, parameters_tuple(sw)...)
+@inline _∂z_vˢ_ccf(i, j, k, grid, sw::SDFieldVˢ, time) =
+    ℑyᵃᶜᵃ(i, j, k, grid, ∂zᶜᶠᶠ, sw.vˢ)
+
+# ∂y uˢ
+@inline _∂y_uˢ_fcc(i, j, k, grid, sw, time) =
+    sw.∂y_uˢ(node(i, j, k, grid, f, c, c)..., time, parameters_tuple(sw)...)
+@inline _∂y_uˢ_fcc(i, j, k, grid, sw::SDFieldUˢ, time) =
+    ℑyᵃᶜᵃ(i, j, k, grid, ∂yᶠᶠᶜ, sw.uˢ)
+@inline _∂y_uˢ_cfc(i, j, k, grid, sw, time) =
+    sw.∂y_uˢ(node(i, j, k, grid, c, f, c)..., time, parameters_tuple(sw)...)
+@inline _∂y_uˢ_cfc(i, j, k, grid, sw::SDFieldUˢ, time) =
+    ℑxᶜᵃᵃ(i, j, k, grid, ∂yᶠᶠᶜ, sw.uˢ)
+
+# ∂x vˢ
+@inline _∂x_vˢ_fcc(i, j, k, grid, sw, time) =
+    sw.∂x_vˢ(node(i, j, k, grid, f, c, c)..., time, parameters_tuple(sw)...)
+@inline _∂x_vˢ_fcc(i, j, k, grid, sw::SDFieldVˢ, time) =
+    ℑyᵃᶜᵃ(i, j, k, grid, ∂xᶠᶠᶜ, sw.vˢ)
+@inline _∂x_vˢ_cfc(i, j, k, grid, sw, time) =
+    sw.∂x_vˢ(node(i, j, k, grid, c, f, c)..., time, parameters_tuple(sw)...)
+@inline _∂x_vˢ_cfc(i, j, k, grid, sw::SDFieldVˢ, time) =
+    ℑxᶜᵃᵃ(i, j, k, grid, ∂xᶠᶠᶜ, sw.vˢ)
+
+# ∂x wˢ and ∂y wˢ — wˢ has no Field counterpart on `StokesDrift`; the
+# function-only path stays callable, the Field path returns zero.
+@inline _∂x_wˢ(i, j, k, grid, sw, X, time) =
+    sw.∂x_wˢ(X..., time, parameters_tuple(sw)...)
+@inline _∂x_wˢ(i, j, k, grid, sw::SDFieldUˢ, X, time) = zero(grid)
+@inline _∂x_wˢ(i, j, k, grid, sw::SDFieldVˢ, X, time) = zero(grid)
+@inline _∂x_wˢ(i, j, k, grid, sw::SDFieldUVˢ, X, time) = zero(grid)
+@inline _∂y_wˢ(i, j, k, grid, sw, X, time) =
+    sw.∂y_wˢ(X..., time, parameters_tuple(sw)...)
+@inline _∂y_wˢ(i, j, k, grid, sw::SDFieldUˢ, X, time) = zero(grid)
+@inline _∂y_wˢ(i, j, k, grid, sw::SDFieldVˢ, X, time) = zero(grid)
+@inline _∂y_wˢ(i, j, k, grid, sw::SDFieldUVˢ, X, time) = zero(grid)
 
 @inline function x_curl_Uˢ_cross_U(i, j, k, grid, sw::SD, U, time)
     wᶠᶜᶜ = ℑxzᶠᵃᶜ(i, j, k, grid, U.w)
     vᶠᶜᶜ = ℑxyᶠᶜᵃ(i, j, k, grid, U.v)
 
-    pt = parameters_tuple(sw)
     X = node(i, j, k, grid, f, c, c)
-    ∂z_uˢ = sw.∂z_uˢ(X..., time, pt...)
-    ∂x_wˢ = sw.∂x_wˢ(X..., time, pt...)
-    ∂y_uˢ = sw.∂y_uˢ(X..., time, pt...)
-    ∂x_vˢ = sw.∂x_vˢ(X..., time, pt...)
+    ∂z_uˢ = _∂z_uˢ_fcc(i, j, k, grid, sw, time)
+    ∂x_wˢ = _∂x_wˢ(i, j, k, grid, sw, X, time)
+    ∂y_uˢ = _∂y_uˢ_fcc(i, j, k, grid, sw, time)
+    ∂x_vˢ = _∂x_vˢ_fcc(i, j, k, grid, sw, time)
 
     return wᶠᶜᶜ * (∂z_uˢ - ∂x_wˢ) - vᶠᶜᶜ * (∂x_vˢ - ∂y_uˢ)
 end
-
 
 @inline function y_curl_Uˢ_cross_U(i, j, k, grid, sw::SD, U, time)
     wᶜᶠᶜ = ℑyzᵃᶠᶜ(i, j, k, grid, U.w)
     uᶜᶠᶜ = ℑxyᶜᶠᵃ(i, j, k, grid, U.u)
 
-    pt = parameters_tuple(sw)
     X = node(i, j, k, grid, c, f, c)
-    ∂z_vˢ = sw.∂z_vˢ(X..., time, pt...)
-    ∂y_wˢ = sw.∂y_wˢ(X..., time, pt...)
-    ∂x_vˢ = sw.∂x_vˢ(X..., time, pt...)
-    ∂y_uˢ = sw.∂y_uˢ(X..., time, pt...)
+    ∂z_vˢ = _∂z_vˢ_cfc(i, j, k, grid, sw, time)
+    ∂y_wˢ = _∂y_wˢ(i, j, k, grid, sw, X, time)
+    ∂x_vˢ = _∂x_vˢ_cfc(i, j, k, grid, sw, time)
+    ∂y_uˢ = _∂y_uˢ_cfc(i, j, k, grid, sw, time)
 
     return uᶜᶠᶜ * (∂x_vˢ - ∂y_uˢ) - wᶜᶠᶜ * (∂y_wˢ - ∂z_vˢ)
 end
@@ -372,14 +465,14 @@ end
     uᶜᶜᶠ = ℑxzᶜᵃᶠ(i, j, k, grid, U.u)
     vᶜᶜᶠ = ℑyzᵃᶜᶠ(i, j, k, grid, U.v)
 
-    pt = parameters_tuple(sw)
     X = node(i, j, k, grid, c, c, f)
-    ∂x_wˢ = sw.∂x_wˢ(X..., time, pt...)
-    ∂z_uˢ = sw.∂z_uˢ(X..., time, pt...)
-    ∂y_wˢ = sw.∂y_wˢ(X..., time, pt...)
-    ∂z_vˢ = sw.∂z_vˢ(X..., time, pt...)
+    ∂x_wˢ = _∂x_wˢ(i, j, k, grid, sw, X, time)
+    ∂z_uˢ = _∂z_uˢ_ccf(i, j, k, grid, sw, time)
+    ∂y_wˢ = _∂y_wˢ(i, j, k, grid, sw, X, time)
+    ∂z_vˢ = _∂z_vˢ_ccf(i, j, k, grid, sw, time)
 
     return vᶜᶜᶠ * (∂y_wˢ - ∂z_vˢ) - uᶜᶜᶠ * (∂z_uˢ - ∂x_wˢ)
 end
+
 
 end # module
