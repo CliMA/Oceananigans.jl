@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Units: Time
 using Oceananigans.Fields: indices, interpolate!
-using Oceananigans.OutputReaders: Cyclical, Clamp, Linear
+using Oceananigans.OutputReaders: Cyclical, Clamp, Linear, SplitFilePath
 
 using Random
 using NCDatasets
@@ -325,6 +325,9 @@ function test_field_time_series_split_files(arch)
     model = NonhydrostaticModel(grid, tracers=:c)
     simulation = Simulation(model, Δt=1, stop_time=10)
 
+    set_tracer_to_iteration!(sim) = fill!(parent(sim.model.tracers.c), sim.model.clock.iteration)
+    add_callback!(simulation, set_tracer_to_iteration!, IterationInterval(1))
+
     simulation.output_writers[:fields] = JLD2Writer(model, model.tracers;
                                                      filename = "split_test",
                                                      dir = dir,
@@ -341,6 +344,7 @@ function test_field_time_series_split_files(arch)
     @test length(fts_mem.times) == 11
     @test fts_mem[1] isa Field
     @test fts_mem[11] isa Field
+    @test fts_mem.path isa SplitFilePath
 
     # Test OnDisk backend with split files
     fts_disk = FieldTimeSeries(abs_path, "c"; backend=OnDisk(), architecture=arch)
@@ -349,6 +353,12 @@ function test_field_time_series_split_files(arch)
     # Access from each part file
     for n in 1:length(fts_disk.times)
         @test fts_disk[n] isa Field
+    end
+
+    fts_partly = FieldTimeSeries(abs_path, "c"; backend=InMemory(2), architecture=arch)
+    @test fts_partly.path isa SplitFilePath
+    for n in 1:length(fts_partly.times)
+        @test Array(interior(fts_partly[n])) == Array(interior(fts_mem[n]))
     end
 
     rm(dir, recursive=true, force=true)

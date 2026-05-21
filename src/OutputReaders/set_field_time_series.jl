@@ -40,6 +40,20 @@ function set!(fts::InMemoryFTS, path::String, args::String...; kwargs...)
     end
 end
 
+function set!(fts::InMemoryFTS, sfp::SplitFilePath, name::String=fts.name)
+    Ntotal = last(sfp.cumulative_length)
+    needed_paths = String[]
+    for n in time_indices(fts)
+        (n < 1 || n > Ntotal) && continue
+        part_path, _ = file_and_local_index(sfp, n)
+        part_path ∉ needed_paths && push!(needed_paths, part_path)
+    end
+    for part_path in needed_paths
+        set!(fts, part_path, name; warn_missing_data=false)
+    end
+    return nothing
+end
+
 # Convenience method with default path
 function set!(fts::InMemoryFTS; kwargs...)
     return set!(fts, fts.path; kwargs...)
@@ -141,6 +155,7 @@ function initialize_file!(file, name, fts)
 end
 
 set!(fts::OnDiskFTS, path::String, name::String; kwargs...) = nothing
+set!(fts::OnDiskFTS, ::SplitFilePath, name::String=fts.name) = nothing
 
 function set!(fts::InMemoryFTS, f::Function)
     cpu_times = on_architecture(CPU(), fts.times)
