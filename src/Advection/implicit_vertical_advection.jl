@@ -1,8 +1,6 @@
 using Oceananigans.Operators: Δz, Az, volume, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Grids: peripheral_node, Center, Face
 
-const AIVA = AdaptiveImplicitVerticalAdvection
-
 #####
 ##### Implicit vertical velocity: wⁱ = w - wᵉ = w * (1 - 1/f(α, cfl))
 #####
@@ -15,7 +13,7 @@ const AIVA = AdaptiveImplicitVerticalAdvection
 #####
 
 @inline function implicit_vertical_velocityᶜᶜᶠ(i, j, k, grid, scheme, td, W)
-    Δt = td.Δt[]
+    Δt = _unwrap_for_gpu(td.Δt)
     Δz = Δzᶜᶜᶠ(i, j, k, grid)
     w  = @inbounds W[i, j, k]
     α  = abs(w) * Δt / Δz
@@ -23,7 +21,7 @@ const AIVA = AdaptiveImplicitVerticalAdvection
 end
 
 @inline function implicit_vertical_velocityᶠᶜᶠ(i, j, k, grid, scheme, td, W)
-    Δt = td.Δt[]
+    Δt = _unwrap_for_gpu(td.Δt)
     Δz = Δzᶠᶜᶠ(i, j, k, grid)
     w  = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, W)
     α  = abs(w) * Δt / Δz
@@ -31,7 +29,7 @@ end
 end
 
 @inline function implicit_vertical_velocityᶜᶠᶠ(i, j, k, grid, scheme, td, W)
-    Δt = td.Δt[]
+    Δt = _unwrap_for_gpu(td.Δt)
     Δz = Δzᶜᶠᶠ(i, j, k, grid)
     w  = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, W)
     α  = abs(w) * Δt / Δz

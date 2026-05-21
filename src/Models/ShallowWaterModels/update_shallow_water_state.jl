@@ -5,7 +5,7 @@ using Oceananigans.Models: update_model_field_time_series!
 import Oceananigans.TimeSteppers: update_state!
 
 """
-    update_state!(model::ShallowWaterModel, Δt=nothing, callbacks=[])
+    update_state!(model::ShallowWaterModel, callbacks=[])
 
 Update the diagnostic state of `ShallowWaterModel`.
 
@@ -15,10 +15,8 @@ compute diffusivity fields, fill halo regions for
 if using `ConservativeFormulation`.
 
 Next, `callbacks` are executed.
-
-Finally, tendencies are computed if `compute_tendencies=true`.
 """
-function update_state!(model::ShallowWaterModel, Δt=nothing, callbacks=[])
+function update_state!(model::ShallowWaterModel, callbacks=[])
 
     # Mask immersed fields
     foreach(mask_immersed_field!, merge(model.solution, model.tracers))

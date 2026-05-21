@@ -17,7 +17,7 @@ compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxilia
 # single column models.
 
 """
-    update_state!(model::HydrostaticFreeSurfaceModel, Δt=nothing, callbacks=[])
+    update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[])
 
 Update the model state to be consistent with the current prognostic fields.
 
@@ -37,9 +37,9 @@ This function performs the following steps:
 Note: Halo regions for free surface fields are filled separately after the barotropic step,
 while for velocities they are filled in the time-stepping function.
 """
-update_state!(model::HydrostaticFreeSurfaceModel, Δt=nothing, callbacks=[]) = update_state!(model, model.grid, Δt, callbacks)
+update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]) = update_state!(model, model.grid, callbacks)
 
-function update_state!(model::HydrostaticFreeSurfaceModel, grid, Δt, callbacks)
+function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
     arch = architecture(grid)
 
@@ -76,7 +76,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, Δt, callbacks)
 
     update_biogeochemical_state!(model.biogeochemistry, model)
 
-    update_advection_timestep!(model.advection, model.timestepper, model.clock.stage, Δt)
+    update_advection_timestep!(model.advection, model.timestepper, model.clock)
     compute_momentum_tendencies!(model, callbacks)
 
     return nothing

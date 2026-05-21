@@ -1,6 +1,7 @@
 using Oceananigans.Operators: Δzᶜᶜᶠ, Δzᶠᶜᶠ, Δzᶜᶠᶠ, Az_qᶜᶜᶠ, Azᶜᶜᶠ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Grids: Center, Face
-using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper
+using Oceananigans.BoundaryConditions: _unwrap_for_gpu
+using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper, RungeKutta3TimeStepper
 
 const AVID = AdaptiveVerticallyImplicitDiscretization
 
@@ -16,7 +17,7 @@ const AVID = AdaptiveVerticallyImplicitDiscretization
 # When |w| * Δt / Δz ≤ cfl: scale = 1 (fully explicit)
 # When |w| * Δt / Δz > cfl: scale = cfl * Δz / (|w| * Δt) < 1
 @inline function explicit_velocity_scaleᶜᶜᶠ(i, j, k, grid, scheme, td, W)
-    Δt = td.Δt[]
+    Δt = _unwrap_for_gpu(td.Δt)
     Δz = Δzᶜᶜᶠ(i, j, k, grid)
     w  = @inbounds W[i, j, k]
     α  = abs(w) * Δt / Δz
@@ -24,7 +25,7 @@ const AVID = AdaptiveVerticallyImplicitDiscretization
 end
 
 @inline function explicit_velocity_scaleᶠᶜᶠ(i, j, k, grid, scheme, td, W)
-    Δt = td.Δt[]
+    Δt = _unwrap_for_gpu(td.Δt)
     Δz = Δzᶠᶜᶠ(i, j, k, grid)
     w  = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, W)
     α  = abs(w) * Δt / Δz
@@ -32,7 +33,7 @@ end
 end
 
 @inline function explicit_velocity_scaleᶜᶠᶠ(i, j, k, grid, scheme, td, W)
-    Δt = td.Δt[]
+    Δt = _unwrap_for_gpu(td.Δt)
     Δz = Δzᶜᶠᶠ(i, j, k, grid)
     w  = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, W)
     α  = abs(w) * Δt / Δz
@@ -72,32 +73,38 @@ needs_implicit_solver(a::NamedTuple) = any(needs_implicit_solver, values(a))
 
 Set `advection.Δt[]` to the next substep's Δτ so wᵉ in Gⁿ matches the next wⁱ.
 """
-update_advection_timestep!(advection, timestepper, stage, Δt) = nothing
+update_advection_timestep!(advection, timestepper, clock) = nothing
 
-function update_advection_timestep!(a::AdaptiveImplicitVerticalAdvection, timestepper, stage, Δt)
-    a.time_discretization.Δt[] = Δt
+function update_advection_timestep!(a::AdaptiveImplicitVerticalAdvection, timestepper, clock)
+    a.time_discretization.Δt[] = clock.last_Δt
     return nothing
 end
 
-@inline function update_advection_timestep!(a::AdaptiveImplicitVerticalAdvection, timestepper::SplitRungeKuttaTimeStepper, stage, Δτ)
-    Δt     = Δτ * timestepper.β[stage]
+@inline function update_advection_timestep!(a::AdaptiveImplicitVerticalAdvection, timestepper::SplitRungeKuttaTimeStepper, clock)
+    stage  = clock.stage
+    Δt     = clock.last_stage_Δt * timestepper.β[stage]
     nstage = ifelse(stage < timestepper.Nstages, stage + 1, 1)
     a.time_discretization.Δt[] = Δt / timestepper.β[nstage]
     return nothing
 end
 
-update_advection_timestep!(a::FluxFormAdvection, timestepper, stage, Δt) = update_advection_timestep!(a.z, timestepper, stage, Δt)
+@inline sum_rk3_coefficients(ts, ::Val{1}) = ts.γ¹
+@inline sum_rk3_coefficients(ts, ::Val{2}) = ts.γ² + ts.ζ²
+@inline sum_rk3_coefficients(ts, ::Val{3}) = ts.γ¹ + ts.ζ³
 
-function update_advection_timestep!(a::NamedTuple, timestepper, stage, Δt)
-    for scheme in values(a)
-        update_advection_timestep!(scheme, timestepper, stage, Δt)
-    end
+@inline function update_advection_timestep!(a::AdaptiveImplicitVerticalAdvection, timestepper::RungeKutta3TimeStepper, clock)
+    stage  = clock.stage
+    nstage = stage == 3 ? 1 : stage + 1
+    Δt     = clock.last_stage_Δt / sum_rk3_coefficients(timestepper, Val(stage))
+    Δτ     = Δt * sum_rk3_coefficients(timestepper, Val(nstage))
     return nothing
 end
 
-# `nothing` Δτ disambiguation
-update_advection_timestep!(advection, timestepper, stage, ::Nothing) = nothing
-update_advection_timestep!(::AdaptiveImplicitVerticalAdvection, timestepper, stage, ::Nothing) = nothing
-update_advection_timestep!(::AdaptiveImplicitVerticalAdvection, ::SplitRungeKuttaTimeStepper, stage, ::Nothing) = nothing
-update_advection_timestep!(::FluxFormAdvection, timestepper, stage, ::Nothing) = nothing
-update_advection_timestep!(::NamedTuple, timestepper, stage, ::Nothing) = nothing
+update_advection_timestep!(a::FluxFormAdvection, timestepper, clock) = update_advection_timestep!(a.z, timestepper, clock)
+
+function update_advection_timestep!(a::NamedTuple, timestepper, clock)
+    for scheme in values(a)
+        update_advection_timestep!(scheme, timestepper, clock)
+    end
+    return nothing
+end

@@ -131,20 +131,20 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     tick_stage!(model.clock, first_stage_Δt)
 
     step_closure_prognostics!(model, first_stage_Δt)
-    update_state!(model, Δt, callbacks)
+    update_state!(model, callbacks)
     step_lagrangian_particles!(model, first_stage_Δt)
 
     #
     # Second stage
     #
 
-    rk3_substep!(model, Δt, γ², ζ², callbacks)
+    rk3_substep!(model, γ², ζ², callbacks)
     cache_previous_tendencies!(model)
 
     tick_stage!(model.clock, second_stage_Δt)
 
     step_closure_prognostics!(model, second_stage_Δt)
-    update_state!(model, Δt, callbacks)
+    update_state!(model, callbacks)
     step_lagrangian_particles!(model, second_stage_Δt)
 
     #
@@ -161,7 +161,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     tick_stage!(model.clock, corrected_third_stage_Δt, Δt)
 
     step_closure_prognostics!(model, third_stage_Δt)
-    update_state!(model, Δt, callbacks)
+    update_state!(model, callbacks)
     step_lagrangian_particles!(model, third_stage_Δt)
 
     return nothing
@@ -170,6 +170,18 @@ end
 #####
 ##### Time stepping in each substep
 #####
+
+# Make sure the clock knows about the first stage Δt
+function maybe_prepare_first_time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt, callbacks)
+    if model.clock.iteration == 0
+        γ¹ = model.timestepper.γ¹
+        model.clock.last_Δt = Δt
+        model.clock.last_stage_Δt = stage_Δt(Δt, γ¹, nothing)
+        reconcile_state!(model)
+        update_state!(model, callbacks)
+    end
+    return nothing
+end
 
 stage_Δt(Δt, γⁿ, ζⁿ) = Δt * (γⁿ + ζⁿ)
 stage_Δt(Δt, γⁿ, ::Nothing) = Δt * γⁿ

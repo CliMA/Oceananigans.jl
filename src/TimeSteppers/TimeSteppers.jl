@@ -32,8 +32,9 @@ reconcile_state!(model) = nothing
 # Prepare the model for the first time step, in case run! is not used.
 function maybe_prepare_first_time_step!(model, Δt, callbacks)
     if model.clock.iteration == 0
+        model.clock.last_Δt = Δt
         reconcile_state!(model)
-        update_state!(model, Δt, callbacks)
+        update_state!(model, callbacks)
     end
     return nothing
 end

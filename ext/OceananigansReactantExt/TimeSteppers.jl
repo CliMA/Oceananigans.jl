@@ -127,7 +127,7 @@ function time_step!(model::ReactantModel{<:QAB2TS{FT}}, Δt; callbacks=[], euler
 
     tick!(model.clock, Δt)
 
-    update_state!(model, Δt, callbacks)
+    update_state!(model, callbacks)
     step_lagrangian_particles!(model, Δt)
 
     # Return χ to initial value

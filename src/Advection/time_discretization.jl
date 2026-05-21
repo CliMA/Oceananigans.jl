@@ -3,7 +3,7 @@ abstract type AbstractTimeDiscretization end
 """
     struct ExplicitTimeDiscretization <: AbstractTimeDiscretization
 
-A fully-explicit time-discretization of a `TurbulenceClosure`.
+A fully-explicit time-discretization.
 """
 struct ExplicitTimeDiscretization <: AbstractTimeDiscretization end
 
@@ -12,7 +12,7 @@ Base.summary(::ExplicitTimeDiscretization) = "ExplicitTimeDiscretization"
 """
     struct VerticallyImplicitTimeDiscretization <: AbstractTimeDiscretization
 
-A vertically-implicit time-discretization of a `TurbulenceClosure`.
+A vertically-implicit time-discretization.
 
 This implies that a flux divergence such as ``𝛁 ⋅ 𝐪`` at the ``n``-th timestep is
 time-discretized as
@@ -24,6 +24,11 @@ time-discretized as
 struct VerticallyImplicitTimeDiscretization <: AbstractTimeDiscretization end
 
 Base.summary(::VerticallyImplicitTimeDiscretization) = "VerticallyImplicitTimeDiscretization"
+
+struct AdaptiveVerticallyImplicitDiscretization{FT, R} <: AbstractTimeDiscretization
+    cfl :: FT
+    Δt  :: R
+end
 
 """
     AdaptiveVerticallyImplicitDiscretization([FT = Oceananigans.defaults.FloatType]; cfl = 0.5)
@@ -46,19 +51,14 @@ Keyword Arguments
 
 - `cfl`: Maximum vertical CFL for the explicit part (default: `0.5`).
 """
-struct AdaptiveVerticallyImplicitDiscretization{FT, R} <: AbstractTimeDiscretization
-    cfl :: FT
-    Δt  :: R
-end
-
 function AdaptiveVerticallyImplicitDiscretization(FT::DataType = Oceananigans.defaults.FloatType; cfl = 0.5)
     cfl = convert(FT, cfl)
     Δt  = Ref(zero(FT))
     return AdaptiveVerticallyImplicitDiscretization(cfl, Δt)
 end
 
-Adapt.adapt_structure(to, a::AdaptiveVerticallyImplicitDiscretization) =
-    AdaptiveVerticallyImplicitDiscretization(a.cfl, a.Δt)
+Adapt.adapt_structure(to, a::AdaptiveVerticallyImplicitDiscretization) = 
+    AdaptiveVerticallyImplicitDiscretization(a.cfl, a.Δt[])
 
 Base.summary(a::AdaptiveVerticallyImplicitDiscretization) =
     string("AdaptiveVerticallyImplicitDiscretization(cfl=$(a.cfl))")

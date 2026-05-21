@@ -115,7 +115,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     tick!(model.clock, Δt)
 
     step_closure_prognostics!(model, Δt)
-    update_state!(model, Δt, callbacks)
+    update_state!(model, callbacks)
 
     step_lagrangian_particles!(model, Δt)
 
