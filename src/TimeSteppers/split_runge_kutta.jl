@@ -174,7 +174,7 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
     ####
 
     for (stage, β) in enumerate(model.timestepper.β)
-        
+
         # Update the clock stage
         Δτ = Δt / β
         model.clock.stage = stage

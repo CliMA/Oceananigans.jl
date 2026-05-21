@@ -57,7 +57,7 @@ function AdaptiveVerticallyImplicitDiscretization(FT::DataType = Oceananigans.de
     return AdaptiveVerticallyImplicitDiscretization(cfl, Δt)
 end
 
-Adapt.adapt_structure(to, a::AdaptiveVerticallyImplicitDiscretization) = 
+Adapt.adapt_structure(to, a::AdaptiveVerticallyImplicitDiscretization) =
     AdaptiveVerticallyImplicitDiscretization(a.cfl, a.Δt[])
 
 Base.summary(a::AdaptiveVerticallyImplicitDiscretization) =
