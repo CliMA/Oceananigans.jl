@@ -169,7 +169,7 @@ for arch in archs
             for (ψ, ϕ, σ) in ((u, v, w), (u, v, c), (u, v, generic_function))
                 for op_symbol in Oceananigans.AbstractOperations.multiary_operators
                     op = eval(op_symbol)
-                    @test @allowscalar typeof(op((Center, Center, Center), ψ, ϕ, σ)[2, 2, 2]) <: Number
+                    @test @allowscalar typeof(op((Center(), Center(), Center()), ψ, ϕ, σ)[2, 2, 2]) <: Number
                 end
             end
         end
@@ -393,10 +393,10 @@ for arch in archs
                 @test w_z[2, 2, 2] == znode(2, 2, 2, grid, Center(), Center(), Face())
             end
 
-            # Test binary operations with GridMetric and location type tuples (not instances)
-            op = *((Center, Center, Center), AbstractOperations.Δx, c)
+            # Test binary operations with GridMetric and location instances
+            op = *((Center(), Center(), Center()), AbstractOperations.Δx, c)
             @test op isa BinaryOperation
-            op = *((Center, Center, Center), c, AbstractOperations.Δx)
+            op = *((Center(), Center(), Center()), c, AbstractOperations.Δx)
             @test op isa BinaryOperation
         end
 

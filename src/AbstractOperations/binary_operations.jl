@@ -124,15 +124,6 @@ function define_binary_operator(op)
         $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, m::GridMetric, b::AbstractField) = $op(Lc, $(grid_metric_operation)($(Oceananigans.Fields).instantiated_location(b), m, b.grid), b)
         $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, a::AbstractField, m::GridMetric) = $op(Lc, a, $(grid_metric_operation)($(Oceananigans.Fields).instantiated_location(a), m, a.grid))
 
-        # instantiate location if types are passed
-        $op(Lc::$LocationTypeTuple, a, b) = $op((Lc[1](), Lc[2](), Lc[3]()), a, b)
-
-        $op(Lc::$LocationTypeTuple, f::Function, b::AbstractField) = $op((Lc[1](), Lc[2](), Lc[3]()), f, b)
-        $op(Lc::$LocationTypeTuple, a::AbstractField, f::Function) = $op((Lc[1](), Lc[2](), Lc[3]()), a, f)
-
-        $op(Lc::$LocationTypeTuple, m::GridMetric, b::AbstractField) = $op((Lc[1](), Lc[2](), Lc[3]()), m, b)
-        $op(Lc::$LocationTypeTuple, a::AbstractField, m::GridMetric) = $op((Lc[1](), Lc[2](), Lc[3]()), a, m)
-
         # Sugary versions with default locations
         $op(a::AbstractField, b::AbstractField) = $op($(Oceananigans.Fields).instantiated_location(a), a, b)
         $op(a::AbstractField, b) = $op($(Oceananigans.Fields).instantiated_location(a), a, b)

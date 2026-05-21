@@ -9,37 +9,37 @@ const FIOBC = BoundaryCondition{<:Open{<:Nothing}, <:Number} # "Fixed-imposed-ve
 const ZIOBC = BoundaryCondition{<:Open{<:Nothing}, <:Nothing} # "Zero-imposed-velocity" OpenBoundaryCondition (no-inflow)
 
 function get_west_area(grid)
-    dA = grid_metric_operation((Face, Center, Center), Ax, grid)
+    dA = grid_metric_operation((Face(), Center(), Center()), Ax, grid)
     ∫dA = sum(dA, dims=(2, 3))
     return @allowscalar ∫dA[1, 1, 1]
 end
 
 function get_east_area(grid)
-    dA = grid_metric_operation((Face, Center, Center), Ax, grid)
+    dA = grid_metric_operation((Face(), Center(), Center()), Ax, grid)
     ∫dA = sum(dA, dims=(2, 3))
     return @allowscalar ∫dA[grid.Nx+1, 1, 1]
 end
 
 function get_south_area(grid)
-    dA = grid_metric_operation((Center, Face, Center), Ay, grid)
+    dA = grid_metric_operation((Center(), Face(), Center()), Ay, grid)
     ∫dA = sum(dA, dims=(1, 3))
     return @allowscalar ∫dA[1, 1, 1]
 end
 
 function get_north_area(grid)
-    dA = grid_metric_operation((Center, Face, Center), Ay, grid)
+    dA = grid_metric_operation((Center(), Face(), Center()), Ay, grid)
     ∫dA = sum(dA, dims=(1, 3))
     return @allowscalar ∫dA[1, grid.Ny+1, 1]
 end
 
 function get_bottom_area(grid)
-    dA = grid_metric_operation((Center, Center, Face), Az, grid)
+    dA = grid_metric_operation((Center(), Center(), Face()), Az, grid)
     ∫dA = sum(dA, dims=(1, 2))
     return @allowscalar ∫dA[1, 1, 1]
 end
 
 function get_top_area(grid)
-    dA = grid_metric_operation((Center, Center, Face), Az, grid)
+    dA = grid_metric_operation((Center(), Center(), Face()), Az, grid)
     ∫dA = sum(dA, dims=(1, 2))
     return @allowscalar ∫dA[1, 1, grid.Nz+1]
 end

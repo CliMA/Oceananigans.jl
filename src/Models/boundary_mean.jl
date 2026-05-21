@@ -56,9 +56,9 @@ Base.summary(bam::BoundaryAdjacentMean) = "BoundaryAdjacentMean: ($(bam.value[])
 @inline boundary_reduced_field(::Union{Val{:south}, Val{:north}}, grid) = Field{Reduced, Center, Reduced}(grid)
 @inline boundary_reduced_field(::Union{Val{:bottom}, Val{:top}}, grid)  = Field{Reduced, Reduced, Center}(grid)
 
-@inline boundary_normal_area(::Union{Val{:west}, Val{:east}}, grid)   = grid_metric_operation((Face, Center, Center), Ax, grid)
-@inline boundary_normal_area(::Union{Val{:south}, Val{:north}}, grid) = grid_metric_operation((Center, Face, Center), Ay, grid)
-@inline boundary_normal_area(::Union{Val{:bottom}, Val{:top}}, grid)  = grid_metric_operation((Center, Center, Face), Az, grid)
+@inline boundary_normal_area(::Union{Val{:west}, Val{:east}}, grid)   = grid_metric_operation((Face(), Center(), Center()), Ax, grid)
+@inline boundary_normal_area(::Union{Val{:south}, Val{:north}}, grid) = grid_metric_operation((Center(), Face(), Center()), Ay, grid)
+@inline boundary_normal_area(::Union{Val{:bottom}, Val{:top}}, grid)  = grid_metric_operation((Center(), Center(), Face()), Az, grid)
 
 @inline boundary_adjacent_indices(::Val{:east}, grid, loc) = size(grid, 1), 1, 1
 @inline boundary_adjacent_indices(val_side::Val{:west}, grid, loc) = first_interior_index(val_side, loc), 1, 1

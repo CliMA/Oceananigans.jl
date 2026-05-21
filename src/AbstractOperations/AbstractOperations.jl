@@ -9,7 +9,7 @@ using Base: @propagate_inbounds
 
 using Oceananigans: location
 using Oceananigans.Fields: AbstractField, instantiated_location
-using Oceananigans.Grids: AbstractLocation, Center, Face, Reduced, LocationTuple, LocationTypeTuple
+using Oceananigans.Grids: AbstractLocation, Center, Face, Reduced, LocationTuple
 using Oceananigans.Operators: interpolation_operator
 
 using Adapt: Adapt, adapt
