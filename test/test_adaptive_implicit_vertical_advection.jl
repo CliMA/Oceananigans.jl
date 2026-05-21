@@ -1,11 +1,11 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Advection: AdaptiveImplicitVerticalAdvection,
-                              AdaptiveVerticallyImplicitDiscretization,
-                              ExplicitTimeDiscretization,
                               advective_tracer_flux_z,
-                              needs_implicit_solver,
-                              time_discretization
+                              needs_implicit_solver
+using Oceananigans.TimeSteppers: AdaptiveVerticallyImplicitDiscretization,
+                                 ExplicitTimeDiscretization,
+                                 time_discretization
 
 @testset "AdaptiveVerticallyImplicitDiscretization construction" begin
     td = AdaptiveVerticallyImplicitDiscretization(cfl=0.3)
