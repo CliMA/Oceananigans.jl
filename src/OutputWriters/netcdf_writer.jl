@@ -4,7 +4,7 @@
 ##### NetCDFWriter functionality is implemented in ext/OceananigansNCDatasetsExt
 #####
 
-using Oceananigans.Grids: topology, Flat, StaticVerticalDiscretization, MutableVerticalDiscretization, AbstractVerticalCoordinate
+using Oceananigans.Grids: topology, Flat, StaticVerticalDiscretization, MutableVerticalDiscretization, AbstractVerticalCoordinate, Reduced
 using Oceananigans.OrthogonalSphericalShellGrids: OrthogonalSphericalShellGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
@@ -36,7 +36,7 @@ vertical_coordinate_name(grid::ImmersedBoundaryGrid) = vertical_coordinate_name(
 #####
 
 function suffixed_dim_name_generator(var_name, grid::AbstractGrid{FT, TX}, LX, LY, LZ, dim::Val{:x}; connector="_", location_letters) where {FT, TX}
-    if TX == Flat || isnothing(LX)
+    if TX == Flat || LX isa Reduced
         return ""
     else
         return "$(var_name)" * connector * location_letters
@@ -44,7 +44,7 @@ function suffixed_dim_name_generator(var_name, grid::AbstractGrid{FT, TX}, LX, L
 end
 
 function suffixed_dim_name_generator(var_name, grid::AbstractGrid{FT, TX, TY}, LX, LY, LZ, dim::Val{:y}; connector="_", location_letters) where {FT, TX, TY}
-    if TY == Flat || isnothing(LY)
+    if TY == Flat || LY isa Reduced
         return ""
     else
         return "$(var_name)" * connector * location_letters
@@ -52,7 +52,7 @@ function suffixed_dim_name_generator(var_name, grid::AbstractGrid{FT, TX, TY}, L
 end
 
 function suffixed_dim_name_generator(var_name, grid::AbstractGrid{FT, TX, TY, TZ}, LX, LY, LZ, dim::Val{:z}; connector="_", location_letters) where {FT, TX, TY, TZ}
-    if TZ == Flat || isnothing(LZ)
+    if TZ == Flat || LZ isa Reduced
         return ""
     else
         return "$(var_name)" * connector * location_letters
@@ -63,7 +63,7 @@ suffixed_dim_name_generator(var_name, ::AbstractVerticalCoordinate, LX, LY, LZ, 
 
 loc2letter(::Face, full=true) = "f"
 loc2letter(::Center, full=true) = "c"
-loc2letter(::Nothing, full=true) = full ? "a" : ""
+loc2letter(::Reduced, full=true) = full ? "a" : ""
 
 minimal_location_string(::RectilinearGrid, LX, LY, LZ, ::Val{:x}) = loc2letter(LX, false)
 minimal_location_string(::RectilinearGrid, LX, LY, LZ, ::Val{:y}) = loc2letter(LY, false)
@@ -94,7 +94,7 @@ dimension_name_generator_free_surface(dimension_name_generator, var_name, grid, 
 dimension_name_generator_free_surface(dimension_name_generator, var_name, grid, LX, LY, LZ, dim::Val{:z}) = dimension_name_generator(var_name, grid, LX, LY, LZ, dim) * "_displacement"
 
 add_grid_suffix(name, grid_index) = isempty(name) ? name : name * "_grid$(grid_index)"
-add_grid_suffix(name, ::Nothing) = name
+add_grid_suffix(name, ::Reduced) = name
 
 mutable struct NetCDFWriter{G, GM, D, O, T, A, FS, DN, DT} <: AbstractOutputWriter
     grids :: G
