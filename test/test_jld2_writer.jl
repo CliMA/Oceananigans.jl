@@ -1,5 +1,6 @@
 include("dependencies_for_runtests.jl")
 
+using Oceananigans: write_output!
 using Oceananigans.Fields: FunctionField
 
 #####
@@ -164,6 +165,44 @@ function test_jld2_async_io_matches_sync(arch)
     rm(sync_file)
     rm(async_file)
 
+    return nothing
+end
+
+function test_jld2_async_overlap(arch)
+    # Prove the main thread does not block on the disk write. With a known
+    # `commit_delay` injected into `commit_async_write!`, an async `write_output!`
+    # should return ~immediately while the spawned task is still running, and the
+    # subsequent `wait_for_async_writes!` should block for roughly `commit_delay`.
+    grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1),
+                           topology=(Periodic, Periodic, Periodic))
+    model = NonhydrostaticModel(grid; tracers=:c)
+
+    filepath = "test_jld2_async_overlap.jld2"
+    isfile(filepath) && rm(filepath)
+
+    writer = JLD2Writer(model, model.velocities;
+                        filename = filepath,
+                        schedule = IterationInterval(1),
+                        overwrite_existing = true,
+                        asynchronous = true)
+
+    # Warm up so the timed write doesn't pay first-call compilation cost.
+    write_output!(writer, model)
+    wait_for_async_writes!(writer)
+
+    commit_delay = 0.5
+    writer.commit_delay = commit_delay
+
+    t_return = @elapsed write_output!(writer, model)
+    @test t_return < commit_delay / 5
+    @test writer.task isa Task
+    @test !istaskdone(writer.task)
+
+    t_wait = @elapsed wait_for_async_writes!(writer)
+    @test t_wait > commit_delay * 3 / 5
+    @test writer.task === nothing
+
+    isfile(filepath) && rm(filepath)
     return nothing
 end
 
@@ -538,6 +577,7 @@ for arch in archs
         #####
 
         test_jld2_async_io_matches_sync(arch)
+        test_jld2_async_overlap(arch)
 
         #####
         ##### Time-averaging

@@ -696,6 +696,8 @@ function prepare_async_write(writer::ZarrWriter, model::AbstractModel)
 end
 
 function commit_async_write!(writer::ZarrWriter, snap::ZarrWriteSnapshot)
+    writer.commit_delay > 0 && sleep(writer.commit_delay)
+
     if writer.verbose
         t0 = time_ns()
     end

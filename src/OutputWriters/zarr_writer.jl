@@ -23,6 +23,7 @@ mutable struct ZarrWriter{Mode, O, T, S, A, FS, C, CH, G} <: AbstractOutputWrite
     dimensions :: Dict
     initialized :: Bool
     task :: Union{Task, Nothing}  # in-flight async write task; `nothing` for `Synchronous`
+    commit_delay :: Float64       # test-only: artificial sleep inside commit_async_write!
 end
 
 # Parametric outer constructor that fills in `task = nothing`. Lets us write
@@ -35,7 +36,7 @@ function ZarrWriter{Mode}(filepath, store::S, grids::G, output_grid_map::Dict, o
     return ZarrWriter{Mode, O, T, S, A, FS, C, CH, G}(
         filepath, store, grids, output_grid_map, outputs, schedule, array_type, indices,
         with_halos, overwrite_existing, verbose, part, file_splitting, compressor, chunks,
-        dimensions, initialized, nothing)
+        dimensions, initialized, nothing, 0.0)
 end
 
 # method in OceananigansZarrExt

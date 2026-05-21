@@ -495,6 +495,8 @@ function prepare_async_write(ow::NetCDFWriter, model::AbstractModel)
 end
 
 function commit_async_write!(ow::NetCDFWriter, snap::NetCDFWriteSnapshot)
+    ow.commit_delay > 0 && sleep(ow.commit_delay)
+
     if snap.verbose
         @info "Writing to NetCDF: $(snap.filepath)..."
         t0, sz0 = time_ns(), filesize(snap.filepath)
