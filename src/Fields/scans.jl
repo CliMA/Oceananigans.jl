@@ -5,9 +5,9 @@ import Oceananigans.Grids: grid
 ##### "Scans" of AbstractField.
 #####
 
-filter_nothing_dims(::Colon, loc) = filter_nothing_dims((1, 2, 3), loc)
-filter_nothing_dims(dims, loc) = filter(d -> !isnothing(loc[d]), dims)
-filter_nothing_dims(dim::Int, loc) = filter_nothing_dims(tuple(dim), loc)
+filter_reduced_dims(::Colon, loc) = filter_reduced_dims((1, 2, 3), loc)
+filter_reduced_dims(dims, loc) = filter(d -> !(loc[d] isa Reduced), dims)
+filter_reduced_dims(dim::Int, loc) = filter_reduced_dims(tuple(dim), loc)
 
 """
     Scan{T, R, O, D}
@@ -55,7 +55,7 @@ function Field(scan::Scan;
     operand = scan.operand
     grid = operand.grid
     loc = instantiated_location(scan)
-    dims = filter_nothing_dims(scan.dims, loc)
+    dims = filter_reduced_dims(scan.dims, loc)
     indices = scan_indices(scan.type, indices, dims)
 
     if isnothing(data)

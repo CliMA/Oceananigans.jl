@@ -222,8 +222,8 @@ end
 @inline rnodes(grid::AUG, ℓz::C; with_halos=false, indices=Colon()) = view(_property(grid.z.cᵃᵃᶜ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos), indices)
 @inline rnodes(grid::AUG, ℓx, ℓy, ℓz; with_halos=false, indices=Colon()) = rnodes(grid, ℓz; with_halos, indices)
 
-@inline rnodes(grid::AUG, ::Nothing; kwargs...) = 1:1
-@inline znodes(grid::AUG, ::Nothing; kwargs...) = 1:1
+@inline rnodes(grid::AUG, ::Reduced; kwargs...) = 1:1
+@inline znodes(grid::AUG, ::Reduced; kwargs...) = 1:1
 
 ZFlatAUG = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, Flat}
 @inline rnodes(grid::ZFlatAUG, ℓz::F; with_halos=false, indices=Colon()) = _property(grid.z.cᵃᵃᶠ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos)

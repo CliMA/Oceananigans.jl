@@ -265,12 +265,12 @@ function test_field_time_series_in_memory_1d(arch, filepath1d, Nz, Nt)
     b1 = FieldTimeSeries(filepath1d, "b", architecture=arch)
     ζ1 = FieldTimeSeries(filepath1d, "ζ", architecture=arch)
 
-    @test location(u1) == (Nothing, Nothing, Center)
-    @test location(v1) == (Nothing, Nothing, Center)
-    @test location(w1) == (Nothing, Nothing, Face)
-    @test location(T1) == (Nothing, Nothing, Center)
-    @test location(b1) == (Nothing, Nothing, Center)
-    @test location(ζ1) == (Nothing, Nothing, Center)
+    @test location(u1) == (Reduced, Reduced, Center)
+    @test location(v1) == (Reduced, Reduced, Center)
+    @test location(w1) == (Reduced, Reduced, Face)
+    @test location(T1) == (Reduced, Reduced, Center)
+    @test location(b1) == (Reduced, Reduced, Center)
+    @test location(ζ1) == (Reduced, Reduced, Center)
 
     @test size(u1) == (1, 1, Nz,   Nt)
     @test size(v1) == (1, 1, Nz,   Nt)
@@ -383,7 +383,7 @@ function test_field_time_series_array_boundary_conditions(arch)
     grid = RectilinearGrid(arch; size=(1, 1, 1), x, y, z)
 
     τx = on_architecture(arch, zeros(size(grid)...))
-    τy = Field{Center, Face, Nothing}(grid)
+    τy = Field{Center, Face, Reduced}(grid)
     u_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τx))
     v_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(τy))
     model = NonhydrostaticModel(grid; boundary_conditions = (; u=u_bcs, v=v_bcs))
@@ -403,7 +403,7 @@ function test_field_time_series_array_boundary_conditions(arch)
     @test ut.boundary_conditions.top.condition isa Array
 
     τy_ow = vt.boundary_conditions.top.condition
-    @test τy_ow isa Field{Center, Face, Nothing}
+    @test τy_ow isa Field{Center, Face, Reduced}
     @test architecture(τy_ow) isa CPU
     @test parent(τy_ow) isa Array
     rm(filename)
@@ -444,7 +444,7 @@ function test_field_time_series_on_disk(arch, filepath3d, filepath1d, Nx, Ny, Nz
     @test ζ[1].data.parent isa ArrayType
 
     b = FieldTimeSeries(filepath1d, "b", backend=OnDisk(), architecture=arch)
-    @test location(b) == (Nothing, Nothing, Center)
+    @test location(b) == (Reduced, Reduced, Center)
     @test size(b) == (1, 1, Nz, Nt)
     @test b[1] isa Field
     @test b[2] isa Field
@@ -480,21 +480,21 @@ function test_field_time_series_reductions_with_dims()
     # Test dims=1 (reduce over x)
     fts1 = sum(fts; dims=1)
     @test fts1 isa FieldTimeSeries
-    @test location(fts1) == (Nothing, Center, Center)
+    @test location(fts1) == (Reduced, Center, Center)
     @test size(fts1) == (1, 5, 6, 3)
     @test length(fts1.times) == 3
 
     # Test dims=2 (reduce over y)
     fts2 = sum(fts; dims=2)
     @test fts2 isa FieldTimeSeries
-    @test location(fts2) == (Center, Nothing, Center)
+    @test location(fts2) == (Center, Reduced, Center)
     @test size(fts2) == (4, 1, 6, 3)
     @test length(fts2.times) == 3
 
     # Test dims=3 (reduce over z)
     fts3 = sum(fts; dims=3)
     @test fts3 isa FieldTimeSeries
-    @test location(fts3) == (Center, Center, Nothing)
+    @test location(fts3) == (Center, Center, Reduced)
     @test size(fts3) == (4, 5, 1, 3)
     @test length(fts3.times) == 3
 
@@ -522,14 +522,14 @@ function test_field_time_series_reductions_with_dims()
     # Test combined dims=(1, 4) (reduce over x and time)
     fts14 = sum(fts; dims=(1, 4))
     @test fts14 isa FieldTimeSeries
-    @test location(fts14) == (Nothing, Center, Center)
+    @test location(fts14) == (Reduced, Center, Center)
     @test size(fts14) == (1, 5, 6, 1)
     @test length(fts14.times) == 1
 
     # Test combined dims=(1, 2, 4) (reduce over x, y, and time)
     fts124 = sum(fts; dims=(1, 2, 4))
     @test fts124 isa FieldTimeSeries
-    @test location(fts124) == (Nothing, Nothing, Center)
+    @test location(fts124) == (Reduced, Reduced, Center)
     @test size(fts124) == (1, 1, 6, 1)
 
     # Test dims=: (reduce over all dimensions, returns a scalar)
@@ -572,8 +572,8 @@ function test_time_interpolation()
 
     grid = RectilinearGrid(size = (1, 1, 1), extent = (1, 1, 1))
 
-    fts_cyclic = FieldTimeSeries{Nothing, Nothing, Nothing}(grid, times; time_indexing = Cyclical())
-    fts_clamp  = FieldTimeSeries{Nothing, Nothing, Nothing}(grid, times; time_indexing = Clamp())
+    fts_cyclic = FieldTimeSeries{Reduced, Reduced, Reduced}(grid, times; time_indexing = Cyclical())
+    fts_clamp  = FieldTimeSeries{Reduced, Reduced, Reduced}(grid, times; time_indexing = Clamp())
 
     for t in eachindex(times)
         fill!(fts_cyclic[t], t / 2) # value of the field between 0.5 and 50

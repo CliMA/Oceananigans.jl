@@ -85,7 +85,7 @@ function define_multiary_operator(op)
         end
 
         # Instantiate location if types are passed
-        $op(Lop::Tuple,
+        $op(Lop::$LocationTypeTuple,
             a::Union{Function, Number, Oceananigans.Fields.AbstractField},
             b::Union{Function, Number, Oceananigans.Fields.AbstractField},
             c::Union{Function, Number, Oceananigans.Fields.AbstractField},

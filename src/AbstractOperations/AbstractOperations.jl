@@ -9,7 +9,7 @@ using Base: @propagate_inbounds
 
 using Oceananigans: location
 using Oceananigans.Fields: AbstractField, instantiated_location
-using Oceananigans.Grids: Center, Face
+using Oceananigans.Grids: AbstractLocation, Center, Face, Reduced, LocationTuple, LocationTypeTuple
 using Oceananigans.Operators: interpolation_operator
 
 using Adapt: Adapt, adapt
@@ -26,7 +26,7 @@ abstract type AbstractOperation{LX, LY, LZ, G, T} <: AbstractField{LX, LY, LZ, G
 
 const AF = AbstractField # used in unary_operations.jl, binary_operations.jl, etc
 
-const Location = Union{Face, Center, Nothing}
+const Location = AbstractLocation
 
 # We have no halos to fill
 @inline fill_halo_regions!(::AbstractOperation, args...; kwargs...) = nothing

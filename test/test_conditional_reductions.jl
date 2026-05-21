@@ -62,7 +62,7 @@ include("dependencies_for_runtests.jl")
 
         @info "    Testing in-place conditional reductions"
 
-        redimm = Field{Nothing, Center, Center}(ibg)
+        redimm = Field{Reduced, Center, Center}(ibg)
         for (reduc, reduc!) in zip((mean, maximum, minimum, sum, prod), (mean!, maximum!, minimum!, sum!, prod!))
             @test @allowscalar reduc!(redimm, fimm)[1, 1 , 1] == reduc(fcon, condition = (i, j, k, x, y) -> i > 3, dims = 1)[1, 1, 1]
         end

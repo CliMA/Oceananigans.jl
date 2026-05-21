@@ -6,7 +6,7 @@ using Printf: @sprintf
 using Statistics: mean
 
 using Oceananigans.Architectures: Architectures, on_architecture
-using Oceananigans.Grids: Center, Face, Flat, size_summary, inactive_node, peripheral_node, AbstractGrid
+using Oceananigans.Grids: AbstractLocation, Center, Face, Reduced, Flat, size_summary, inactive_node, peripheral_node, AbstractGrid
 using Oceananigans.Utils: launch!, @apply_regionally
 
 using Adapt: Adapt, adapt

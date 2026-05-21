@@ -46,8 +46,8 @@ const ConcreteLocationType = Union{Face, Center}
 choose_location(La, Lb, Lc) = Lc                              # Fallback to the specification Lc, but also...
 choose_location(::Face,   ::Face,   Lc) = Face()              # keep common locations; and
 choose_location(::Center, ::Center, Lc) = Center()            #
-choose_location(La::ConcreteLocationType, ::Nothing, Lc) = La # don't interpolate unspecified locations.
-choose_location(::Nothing, Lb::ConcreteLocationType, Lc) = Lb #
+choose_location(La::ConcreteLocationType, ::Reduced, Lc) = La # don't interpolate unspecified locations.
+choose_location(::Reduced, Lb::ConcreteLocationType, Lc) = Lb #
 
 # Apply the function if the inputs are scalars, otherwise broadcast it over the inputs
 # This can occur in the binary operator code if we index into with an array, e.g. array[1:10]
@@ -125,13 +125,13 @@ function define_binary_operator(op)
         $op(Lc::Tuple{<:$Location, <:$Location, <:$Location}, a::AbstractField, m::GridMetric) = $op(Lc, a, $(grid_metric_operation)($(Oceananigans.Fields).instantiated_location(a), m, a.grid))
 
         # instantiate location if types are passed
-        $op(Lc::Tuple, a, b) = $op((Lc[1](), Lc[2](), Lc[3]()), a, b)
+        $op(Lc::$LocationTypeTuple, a, b) = $op((Lc[1](), Lc[2](), Lc[3]()), a, b)
 
-        $op(Lc::Tuple, f::Function, b::AbstractField) = $op((Lc[1](), Lc[2](), Lc[3]()), f, b)
-        $op(Lc::Tuple, a::AbstractField, f::Function) = $op((Lc[1](), Lc[2](), Lc[3]()), a, f)
+        $op(Lc::$LocationTypeTuple, f::Function, b::AbstractField) = $op((Lc[1](), Lc[2](), Lc[3]()), f, b)
+        $op(Lc::$LocationTypeTuple, a::AbstractField, f::Function) = $op((Lc[1](), Lc[2](), Lc[3]()), a, f)
 
-        $op(Lc::Tuple, m::GridMetric, b::AbstractField) = $op((Lc[1](), Lc[2](), Lc[3]()), m, b)
-        $op(Lc::Tuple, a::AbstractField, m::GridMetric) = $op((Lc[1](), Lc[2](), Lc[3]()), a, m)
+        $op(Lc::$LocationTypeTuple, m::GridMetric, b::AbstractField) = $op((Lc[1](), Lc[2](), Lc[3]()), m, b)
+        $op(Lc::$LocationTypeTuple, a::AbstractField, m::GridMetric) = $op((Lc[1](), Lc[2](), Lc[3]()), a, m)
 
         # Sugary versions with default locations
         $op(a::AbstractField, b::AbstractField) = $op($(Oceananigans.Fields).instantiated_location(a), a, b)

@@ -31,15 +31,15 @@ default_prognostic_bc(::RightFaceFolded, ::Face, default) = ImpenetrableBoundary
 default_prognostic_bc(::RightCenterFolded, ::Face, default) = ImpenetrableBoundaryCondition()
 default_prognostic_bc(::DistributedFoldedTopology, ::Face, default) = ImpenetrableBoundaryCondition()
 
-default_prognostic_bc(::Bounded,        ::Nothing, default) = nothing
-default_prognostic_bc(::Flat,           ::Nothing, default) = nothing
-default_prognostic_bc(::Grids.Periodic, ::Nothing, default) = nothing
-default_prognostic_bc(::FullyConnected, ::Nothing, default) = nothing
-default_prognostic_bc(::LeftConnected,  ::Nothing, default) = nothing
-default_prognostic_bc(::RightConnected, ::Nothing, default) = nothing
-default_prognostic_bc(::RightFaceFolded, ::Nothing, default) = nothing
-default_prognostic_bc(::RightCenterFolded, ::Nothing, default) = nothing
-default_prognostic_bc(::DistributedFoldedTopology, ::Nothing, default) = nothing
+default_prognostic_bc(::Bounded,        ::Reduced, default) = nothing
+default_prognostic_bc(::Flat,           ::Reduced, default) = nothing
+default_prognostic_bc(::Grids.Periodic, ::Reduced, default) = nothing
+default_prognostic_bc(::FullyConnected, ::Reduced, default) = nothing
+default_prognostic_bc(::LeftConnected,  ::Reduced, default) = nothing
+default_prognostic_bc(::RightConnected, ::Reduced, default) = nothing
+default_prognostic_bc(::RightFaceFolded, ::Reduced, default) = nothing
+default_prognostic_bc(::RightCenterFolded, ::Reduced, default) = nothing
+default_prognostic_bc(::DistributedFoldedTopology, ::Reduced, default) = nothing
 
 _default_auxiliary_bc(topo, loc) = default_prognostic_bc(topo, loc, DefaultBoundaryCondition())
 _default_auxiliary_bc(::Bounded, ::Face)        = nothing
@@ -187,9 +187,9 @@ and the topology in the boundary-normal direction is used:
 function FieldBoundaryConditions(grid::AbstractGrid, loc::Tuple, indices=(:, :, :); kwargs...)
 
     for ℓ in loc
-        if !(ℓ isa Union{Nothing, Face, Center})
+        if !(ℓ isa AbstractLocation)
             msg = string("Location $ℓ in $loc is not a valid location!", '\n',
-                         "Locations must be Center(), Face(), or nothing.")
+                         "Locations must be Center(), Face(), or Reduced().")
             throw(ArgumentError(msg))
         end
     end

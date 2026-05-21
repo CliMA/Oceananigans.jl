@@ -1,7 +1,7 @@
 using Oceananigans.Utils: tupleit
 using Oceananigans.Grids: regular_dimensions, topology, Periodic
 using Oceananigans.Fields: Field, Scan, condition_operand, reverse_cumsum!, AbstractAccumulating, AbstractReducing
-using Oceananigans.Fields: filter_nothing_dims, instantiated_location, interior
+using Oceananigans.Fields: filter_reduced_dims, instantiated_location, interior
 
 #####
 ##### Metric inference
@@ -62,7 +62,7 @@ for information and examples using `condition` and `mask` kwargs.
 """
 function Average(field::AbstractField; dims=:, condition=nothing, mask=0)
     dims = dims isa Colon ? (1, 2, 3) : tupleit(dims)
-    dims = filter_nothing_dims(dims, instantiated_location(field))
+    dims = filter_reduced_dims(dims, instantiated_location(field))
 
     if all(d in regular_dimensions(field.grid) for d in dims)
         # Dimensions being reduced are regular, so we don't need to involve the grid metrics
@@ -127,7 +127,7 @@ julia> set!(f, (x, y, z) -> x * y * z)
     └── max=0.823975, min=0.000244141, mean=0.125
 
 julia> ∫f = Integral(f) |> Field
-1×1×1 Field{Nothing, Nothing, Nothing} reduced over dims = (1, 2, 3) on RectilinearGrid on CPU
+1×1×1 Field{Reduced, Reduced, Reduced} reduced over dims = (1, 2, 3) on RectilinearGrid on CPU
 ├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (1, 1, 1)
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── operand: Integral of BinaryOperation at (Center, Center, Center) over dims (1, 2, 3)
@@ -141,7 +141,7 @@ julia> ∫f[1, 1, 1]
 """
 function Integral(field::AbstractField; dims=:, condition=nothing, mask=0)
     dims = dims isa Colon ? (1, 2, 3) : tupleit(dims)
-    dims = filter_nothing_dims(dims, instantiated_location(field))
+    dims = filter_reduced_dims(dims, instantiated_location(field))
     dx = reduction_grid_metric(dims)
     operand = condition_operand(field * dx, condition, mask)
     return Scan(Integrating(), sum!, operand, dims)

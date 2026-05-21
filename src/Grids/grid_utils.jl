@@ -52,10 +52,10 @@ const FoldedTopology = Union{SerialFoldedTopology, DistributedFoldedTopology}
 const AT = AbstractTopology
 
 Base.length(::Face,    ::FaceExtendedTopology, N) = N + 1
-Base.length(::Nothing, ::AT,              N) = 1
+Base.length(::Reduced, ::AT,              N) = 1
 Base.length(::Face,    ::AT,              N) = N
 Base.length(::Center,  ::AT,              N) = N
-Base.length(::Nothing, ::Flat,            N) = N
+Base.length(::Reduced, ::Flat,            N) = N
 Base.length(::Face,    ::Flat,            N) = N
 Base.length(::Center,  ::Flat,            N) = N
 
@@ -74,8 +74,8 @@ is restricted by `length(ind)`.
 total_length(::Face,    ::AT,              N, H=0) = N + 2H
 total_length(::Center,  ::AT,              N, H=0) = N + 2H
 total_length(::Face,    ::FaceExtendedTopology, N, H=0) = N + 1 + 2H
-total_length(::Nothing, ::AT,              N, H=0) = 1
-total_length(::Nothing, ::Flat,            N, H=0) = N
+total_length(::Reduced, ::AT,              N, H=0) = 1
+total_length(::Reduced, ::Flat,            N, H=0) = N
 total_length(::Face,    ::Flat,            N, H=0) = N
 total_length(::Center,  ::Flat,            N, H=0) = N
 
@@ -144,24 +144,24 @@ regular_dimensions(grid) = ()
 #####
 
 @inline left_halo_indices(loc, ::AT, N, H) = 1-H:0
-@inline left_halo_indices(::Nothing, ::AT, N, H) = 1:0 # empty
+@inline left_halo_indices(::Reduced, ::AT, N, H) = 1:0 # empty
 
 @inline right_halo_indices(loc, ::AT, N, H) = N+1:N+H
 @inline right_halo_indices(::Face, ::FaceExtendedTopology, N, H) = N+2:N+1+H
-@inline right_halo_indices(::Nothing, ::AT, N, H) = 1:0 # empty
+@inline right_halo_indices(::Reduced, ::AT, N, H) = 1:0 # empty
 
 @inline underlying_left_halo_indices(loc, ::AT, N, H) = 1:H
-@inline underlying_left_halo_indices(::Nothing, ::AT, N, H) = 1:0 # empty
+@inline underlying_left_halo_indices(::Reduced, ::AT, N, H) = 1:0 # empty
 
 @inline underlying_right_halo_indices(loc,       ::AT, N, H) = N+1+H:N+2H
 @inline underlying_right_halo_indices(::Face,    ::FaceExtendedTopology, N, H) = N+2+H:N+1+2H
-@inline underlying_right_halo_indices(::Nothing, ::AT, N, H) = 1:0 # empty
+@inline underlying_right_halo_indices(::Reduced, ::AT, N, H) = 1:0 # empty
 
 @inline interior_indices(loc,       ::AT,              N) = 1:N
 @inline interior_indices(::Face,    ::FaceExtendedTopology, N) = 1:N+1
-@inline interior_indices(::Nothing, ::AT,              N) = 1:1
+@inline interior_indices(::Reduced, ::AT,              N) = 1:1
 
-@inline interior_indices(::Nothing, ::Flat, N) = 1:N
+@inline interior_indices(::Reduced, ::Flat, N) = 1:N
 @inline interior_indices(::Face,    ::Flat, N) = 1:N
 @inline interior_indices(::Center,  ::Flat, N) = 1:N
 
@@ -170,23 +170,23 @@ regular_dimensions(grid) = ()
 @inline interior_z_indices(grid, loc) = interior_indices(loc[3], topology(grid, 3)(), size(grid, 3))
 
 @inline interior_parent_offset(loc,       ::AT, H) = H
-@inline interior_parent_offset(::Nothing, ::AT, H) = 0
+@inline interior_parent_offset(::Reduced, ::AT, H) = 0
 
-@inline interior_parent_indices(::Nothing, ::AT,              N, H) = 1:1
+@inline interior_parent_indices(::Reduced, ::AT,              N, H) = 1:1
 @inline interior_parent_indices(::Face,    ::FaceExtendedTopology, N, H) = 1+H:N+1+H
 @inline interior_parent_indices(loc,       ::AT,              N, H) = 1+H:N+H
 
 
-@inline interior_parent_indices(::Nothing, ::Flat, N, H) = 1:N
+@inline interior_parent_indices(::Reduced, ::Flat, N, H) = 1:N
 @inline interior_parent_indices(::Face,    ::Flat, N, H) = 1:N
 @inline interior_parent_indices(::Center,  ::Flat, N, H) = 1:N
 
 # All indices including halos.
-@inline all_indices(::Nothing, ::AT,              N, H) = 1:1
+@inline all_indices(::Reduced, ::AT,              N, H) = 1:1
 @inline all_indices(::Face,    ::FaceExtendedTopology, N, H) = 1-H:N+1+H
 @inline all_indices(loc,       ::AT,              N, H) = 1-H:N+H
 
-@inline all_indices(::Nothing, ::Flat, N, H) = 1:N
+@inline all_indices(::Reduced, ::Flat, N, H) = 1:N
 @inline all_indices(::Face,    ::Flat, N, H) = 1:N
 @inline all_indices(::Center,  ::Flat, N, H) = 1:N
 
@@ -196,9 +196,9 @@ regular_dimensions(grid) = ()
 
 @inline all_parent_indices(loc,       ::AT,              N, H) = 1:N+2H
 @inline all_parent_indices(::Face,    ::FaceExtendedTopology, N, H) = 1:N+1+2H
-@inline all_parent_indices(::Nothing, ::AT,              N, H) = 1:1
+@inline all_parent_indices(::Reduced, ::AT,              N, H) = 1:1
 
-@inline all_parent_indices(::Nothing, ::Flat, N, H) = 1:N
+@inline all_parent_indices(::Reduced, ::Flat, N, H) = 1:N
 @inline all_parent_indices(::Face,    ::Flat, N, H) = 1:N
 @inline all_parent_indices(::Center,  ::Flat, N, H) = 1:N
 
@@ -209,8 +209,8 @@ regular_dimensions(grid) = ()
 # Return the index range of "full" parent arrays that span an entire dimension
 parent_index_range(::Colon,                       loc, topo, halo) = Colon()
 parent_index_range(::Base.Slice{<:IdOffsetRange}, loc, topo, halo) = Colon()
-parent_index_range(view_indices::AbstractUnitRange, ::Nothing, ::Flat, halo) = view_indices
-parent_index_range(view_indices::AbstractUnitRange, ::Nothing, ::AT,   halo) = 1:1 # or Colon()
+parent_index_range(view_indices::AbstractUnitRange, ::Reduced, ::Flat, halo) = view_indices
+parent_index_range(view_indices::AbstractUnitRange, ::Reduced, ::AT,   halo) = 1:1 # or Colon()
 parent_index_range(view_indices::AbstractUnitRange, loc, topo, halo) = view_indices .+ interior_parent_offset(loc, topo, halo)
 
 # Return the index range of parent arrays that are themselves windowed

@@ -34,8 +34,8 @@ clock = Clock(time=0)
             sefs = materialize_free_surface(sefs, velocities, grid)
 
             sefs.displacement .= 0
-            GU = Field{Face, Center, Nothing}(grid)
-            GV = Field{Center, Face, Nothing}(grid)
+            GU = Field{Face, Center, Reduced}(grid)
+            GV = Field{Center, Face, Reduced}(grid)
 
             @testset " One timestep test " begin
                 state = sefs.filtered_state
@@ -271,8 +271,8 @@ end # end of testset loop
         sefs_fill = materialize_free_surface(sefs_fill, velocities, grid)
 
         # Slow barotropic forcing
-        GU = Field{Face, Center, Nothing}(grid)
-        GV = Field{Center, Face, Nothing}(grid)
+        GU = Field{Face, Center, Reduced}(grid)
+        GV = Field{Center, Face, Reduced}(grid)
         GU .= 0
         GV .= 0
 

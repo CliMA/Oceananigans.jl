@@ -11,52 +11,52 @@
 
 node_names(grid, ℓx, ℓy, ℓz) = _node_names(grid, ℓx, ℓy, ℓz)
 
-node_names(grid::XFlatGrid, ℓx, ℓy, ℓz)   = _node_names(grid, nothing, ℓy, ℓz)
-node_names(grid::YFlatGrid, ℓx, ℓy, ℓz)   = _node_names(grid, ℓx, nothing, ℓz)
-node_names(grid::ZFlatGrid, ℓx, ℓy, ℓz)   = _node_names(grid, ℓx, ℓy, nothing)
-node_names(grid::XYFlatGrid, ℓx, ℓy, ℓz)  = _node_names(grid, nothing, nothing, ℓz)
-node_names(grid::XZFlatGrid, ℓx, ℓy, ℓz)  = _node_names(grid, nothing, ℓy, nothing)
-node_names(grid::YZFlatGrid, ℓx, ℓy, ℓz)  = _node_names(grid, ℓx, nothing, nothing)
-node_names(grid::XYZFlatGrid, ℓx, ℓy, ℓz) = _node_names(grid, nothing, nothing, nothing)
+node_names(grid::XFlatGrid, ℓx, ℓy, ℓz)   = _node_names(grid, Reduced(), ℓy, ℓz)
+node_names(grid::YFlatGrid, ℓx, ℓy, ℓz)   = _node_names(grid, ℓx, Reduced(), ℓz)
+node_names(grid::ZFlatGrid, ℓx, ℓy, ℓz)   = _node_names(grid, ℓx, ℓy, Reduced())
+node_names(grid::XYFlatGrid, ℓx, ℓy, ℓz)  = _node_names(grid, Reduced(), Reduced(), ℓz)
+node_names(grid::XZFlatGrid, ℓx, ℓy, ℓz)  = _node_names(grid, Reduced(), ℓy, Reduced())
+node_names(grid::YZFlatGrid, ℓx, ℓy, ℓz)  = _node_names(grid, ℓx, Reduced(), Reduced())
+node_names(grid::XYZFlatGrid, ℓx, ℓy, ℓz) = _node_names(grid, Reduced(), Reduced(), Reduced())
 
 _node_names(grid, ℓx, ℓy, ℓz) = (ξname(grid), ηname(grid), rname(grid))
 
-_node_names(grid, ::Nothing, ℓy, ℓz) = (ηname(grid), rname(grid))
-_node_names(grid, ℓx, ::Nothing, ℓz) = (ξname(grid), rname(grid))
-_node_names(grid, ℓx, ℓy, ::Nothing) = (ξname(grid), ηname(grid))
+_node_names(grid, ::Reduced, ℓy, ℓz) = (ηname(grid), rname(grid))
+_node_names(grid, ℓx, ::Reduced, ℓz) = (ξname(grid), rname(grid))
+_node_names(grid, ℓx, ℓy, ::Reduced) = (ξname(grid), ηname(grid))
 
-_node_names(grid, ℓx, ::Nothing, ::Nothing) = tuple(ξname(grid))
-_node_names(grid, ::Nothing, ℓy, ::Nothing) = tuple(ηname(grid))
-_node_names(grid, ::Nothing, ::Nothing, ℓz) = tuple(rname(grid))
+_node_names(grid, ℓx, ::Reduced, ::Reduced) = tuple(ξname(grid))
+_node_names(grid, ::Reduced, ℓy, ::Reduced) = tuple(ηname(grid))
+_node_names(grid, ::Reduced, ::Reduced, ℓz) = tuple(rname(grid))
 
-_node_names(grid, ::Nothing, ::Nothing, ::Nothing) = tuple()
+_node_names(grid, ::Reduced, ::Reduced, ::Reduced) = tuple()
 
 # Interface for grids to opt-in to `node`: ξnode, ηnode, rnode
 @inline _node(i, j, k, grid, ℓx, ℓy, ℓz) = (ξnode(i, j, k, grid, ℓx, ℓy, ℓz),
                                             ηnode(i, j, k, grid, ℓx, ℓy, ℓz),
                                             rnode(i, j, k, grid, ℓx, ℓy, ℓz))
 
-# Omission of Nothing locations
-@inline _node(i, j, k, grid, ℓx::Nothing, ℓy, ℓz) = (ηnode(i, j, k, grid, ℓx, ℓy, ℓz), rnode(i, j, k, grid, ℓx, ℓy, ℓz))
-@inline _node(i, j, k, grid, ℓx, ℓy::Nothing, ℓz) = (ξnode(i, j, k, grid, ℓx, ℓy, ℓz), rnode(i, j, k, grid, ℓx, ℓy, ℓz))
-@inline _node(i, j, k, grid, ℓx, ℓy, ℓz::Nothing) = (ξnode(i, j, k, grid, ℓx, ℓy, ℓz), ηnode(i, j, k, grid, ℓx, ℓy, ℓz))
+# Omission of Reduced locations
+@inline _node(i, j, k, grid, ℓx::Reduced, ℓy, ℓz) = (ηnode(i, j, k, grid, ℓx, ℓy, ℓz), rnode(i, j, k, grid, ℓx, ℓy, ℓz))
+@inline _node(i, j, k, grid, ℓx, ℓy::Reduced, ℓz) = (ξnode(i, j, k, grid, ℓx, ℓy, ℓz), rnode(i, j, k, grid, ℓx, ℓy, ℓz))
+@inline _node(i, j, k, grid, ℓx, ℓy, ℓz::Reduced) = (ξnode(i, j, k, grid, ℓx, ℓy, ℓz), ηnode(i, j, k, grid, ℓx, ℓy, ℓz))
 
-@inline _node(i, j, k, grid, ℓx, ℓy::Nothing, ℓz::Nothing) = tuple(ξnode(i, j, k, grid, ℓx, ℓy, ℓz))
-@inline _node(i, j, k, grid, ℓx::Nothing, ℓy, ℓz::Nothing) = tuple(ηnode(i, j, k, grid, ℓx, ℓy, ℓz))
-@inline _node(i, j, k, grid, ℓx::Nothing, ℓy::Nothing, ℓz) = tuple(rnode(i, j, k, grid, ℓx, ℓy, ℓz))
+@inline _node(i, j, k, grid, ℓx, ℓy::Reduced, ℓz::Reduced) = tuple(ξnode(i, j, k, grid, ℓx, ℓy, ℓz))
+@inline _node(i, j, k, grid, ℓx::Reduced, ℓy, ℓz::Reduced) = tuple(ηnode(i, j, k, grid, ℓx, ℓy, ℓz))
+@inline _node(i, j, k, grid, ℓx::Reduced, ℓy::Reduced, ℓz) = tuple(rnode(i, j, k, grid, ℓx, ℓy, ℓz))
 
-@inline _node(i, j, k, grid, ::Nothing, ::Nothing, ::Nothing) = tuple()
+@inline _node(i, j, k, grid, ::Reduced, ::Reduced, ::Reduced) = tuple()
 
 # Omission of Flat directions by "nullifying" locations in Flat directions
 @inline node(i, j, k, grid, ℓx, ℓy, ℓz) = _node(i, j, k, grid, ℓx, ℓy, ℓz)
 
-@inline node(i, j, k, grid::XFlatGrid, ℓx, ℓy, ℓz) = _node(i, j, k, grid, nothing, ℓy, ℓz)
-@inline node(i, j, k, grid::YFlatGrid, ℓx, ℓy, ℓz) = _node(i, j, k, grid, ℓx, nothing, ℓz)
-@inline node(i, j, k, grid::ZFlatGrid, ℓx, ℓy, ℓz) = _node(i, j, k, grid, ℓx, ℓy, nothing)
+@inline node(i, j, k, grid::XFlatGrid, ℓx, ℓy, ℓz) = _node(i, j, k, grid, Reduced(), ℓy, ℓz)
+@inline node(i, j, k, grid::YFlatGrid, ℓx, ℓy, ℓz) = _node(i, j, k, grid, ℓx, Reduced(), ℓz)
+@inline node(i, j, k, grid::ZFlatGrid, ℓx, ℓy, ℓz) = _node(i, j, k, grid, ℓx, ℓy, Reduced())
 
-@inline node(i, j, k, grid::XYFlatGrid, ℓx, ℓy, ℓz) = _node(i, j, k, grid, nothing, nothing, ℓz)
-@inline node(i, j, k, grid::XZFlatGrid, ℓx, ℓy, ℓz) = _node(i, j, k, grid, nothing, ℓy, nothing)
-@inline node(i, j, k, grid::YZFlatGrid, ℓx, ℓy, ℓz) = _node(i, j, k, grid, ℓx, nothing, nothing)
+@inline node(i, j, k, grid::XYFlatGrid, ℓx, ℓy, ℓz) = _node(i, j, k, grid, Reduced(), Reduced(), ℓz)
+@inline node(i, j, k, grid::XZFlatGrid, ℓx, ℓy, ℓz) = _node(i, j, k, grid, Reduced(), ℓy, Reduced())
+@inline node(i, j, k, grid::YZFlatGrid, ℓx, ℓy, ℓz) = _node(i, j, k, grid, ℓx, Reduced(), Reduced())
 
 @inline node(i, j, k, grid::XYZFlatGrid, ℓx, ℓy, ℓz) = tuple()
 
@@ -64,8 +64,8 @@ _node_names(grid, ::Nothing, ::Nothing, ::Nothing) = tuple()
 ##### << Nodes >>
 #####
 
-xnodes(grid, ::Nothing; kwargs...) = 1:1
-ynodes(grid, ::Nothing; kwargs...) = 1:1
+xnodes(grid, ::Reduced; kwargs...) = 1:1
+ynodes(grid, ::Reduced; kwargs...) = 1:1
 
 """
     xnodes(grid, ℓx, ℓy, ℓz, with_halos=false)

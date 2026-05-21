@@ -24,7 +24,7 @@ c_bottom_flux(i, j, grid, clock, fields, t★) = - @inbounds fields.c[i, j, 1] /
                                z = (-1, 1),
                                topology=(Bounded, Bounded, Bounded))
 
-        τx = Field{Center, Center, Nothing}(grid)
+        τx = Field{Center, Center, Reduced}(grid)
         set!(τx, -1e-4)
 
         u_wind = FluxBoundaryCondition(τx)
@@ -75,18 +75,18 @@ c_bottom_flux(i, j, grid, clock, fields, t★) = - @inbounds fields.c[i, j, 1] /
                     @test bc isa BoundaryConditionOperation
                 end
 
-                @test location(u_bottom_bc) == (Face, Center, Nothing)
-                @test location(u_top_bc)    == (Face, Center, Nothing)
-                @test location(u_south_bc)  == (Face, Nothing, Center)
-                @test location(u_north_bc)  == (Face, Nothing, Center)
+                @test location(u_bottom_bc) == (Face, Center, Reduced)
+                @test location(u_top_bc)    == (Face, Center, Reduced)
+                @test location(u_south_bc)  == (Face, Reduced, Center)
+                @test location(u_north_bc)  == (Face, Reduced, Center)
 
-                @test location(v_bottom_bc) == (Center, Face, Nothing)
-                @test location(v_top_bc)    == (Center, Face, Nothing)
-                @test location(v_west_bc)   == (Nothing, Face, Center)
-                @test location(v_east_bc)   == (Nothing, Face, Center)
+                @test location(v_bottom_bc) == (Center, Face, Reduced)
+                @test location(v_top_bc)    == (Center, Face, Reduced)
+                @test location(v_west_bc)   == (Reduced, Face, Center)
+                @test location(v_east_bc)   == (Reduced, Face, Center)
 
-                @test location(c_bottom_bc) == (Center, Center, Nothing)
-                @test location(c_top_bc)    == (Center, Center, Nothing)
+                @test location(c_bottom_bc) == (Center, Center, Reduced)
+                @test location(c_top_bc)    == (Center, Center, Reduced)
 
                 initial_c(x, y, z) = 1 + 1 * (z > 0)
                 set!(model, c=initial_c)

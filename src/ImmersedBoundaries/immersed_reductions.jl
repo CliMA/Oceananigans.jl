@@ -5,15 +5,15 @@ import Oceananigans.AbstractOperations: ConditionalOperation, evaluate_condition
 import Oceananigans.Fields: condition_operand, conditional_length
 
 # ImmersedReducedFields
-const XIRF = AbstractField{Nothing, <:Any, <:Any, <:ImmersedBoundaryGrid}
-const YIRF = AbstractField{<:Any, Nothing, <:Any, <:ImmersedBoundaryGrid}
-const ZIRF = AbstractField{<:Any, <:Any, Nothing, <:ImmersedBoundaryGrid}
+const XIRF = AbstractField{Reduced, <:Any, <:Any, <:ImmersedBoundaryGrid}
+const YIRF = AbstractField{<:Any, Reduced, <:Any, <:ImmersedBoundaryGrid}
+const ZIRF = AbstractField{<:Any, <:Any, Reduced, <:ImmersedBoundaryGrid}
 
-const YZIRF = AbstractField{<:Any, Nothing, Nothing, <:ImmersedBoundaryGrid}
-const XZIRF = AbstractField{Nothing, <:Any, Nothing, <:ImmersedBoundaryGrid}
-const XYIRF = AbstractField{Nothing, Nothing, <:Any, <:ImmersedBoundaryGrid}
+const YZIRF = AbstractField{<:Any, Reduced, Reduced, <:ImmersedBoundaryGrid}
+const XZIRF = AbstractField{Reduced, <:Any, Reduced, <:ImmersedBoundaryGrid}
+const XYIRF = AbstractField{Reduced, Reduced, <:Any, <:ImmersedBoundaryGrid}
 
-const XYZIRF = AbstractField{Nothing, Nothing, Nothing, <:ImmersedBoundaryGrid}
+const XYZIRF = AbstractField{Reduced, Reduced, Reduced, <:ImmersedBoundaryGrid}
 
 const IRF = Union{XIRF, YIRF, ZIRF, YZIRF, XZIRF, XYIRF, XYZIRF}
 
@@ -153,14 +153,14 @@ end
 @inline function immersed_column(field::IRF)
     grid         = field.grid
     reduced_dims = reduced_dimensions(field)
-    LX, LY, LZ   = map(center_to_nothing, location(field))
+    LX, LY, LZ   = map(reduced_to_center, location(field))
     one_field    = ConditionalOperation{LX, LY, LZ}(OneField(Int), identity, grid, NotImmersed(), zero(grid))
     return sum(one_field, dims=reduced_dims)
 end
 
-@inline center_to_nothing(::Type{Face})    = Face
-@inline center_to_nothing(::Type{Center})  = Center
-@inline center_to_nothing(::Type{Nothing}) = Center
+@inline reduced_to_center(::Type{Face})    = Face
+@inline reduced_to_center(::Type{Center})  = Center
+@inline reduced_to_center(::Type{Reduced}) = Center
 
 @inline function evaluate_condition(nic::NotImmersedColumn, i, j, k,
                                     grid::ImmersedBoundaryGrid,

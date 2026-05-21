@@ -50,10 +50,10 @@ end
         for arch in archs
             grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(1, 1, 1))
             stokes_drift = UniformStokesDrift(grid)
-            @test location(stokes_drift.∂z_uˢ) === (Nothing, Nothing, Face)
-            @test location(stokes_drift.∂z_vˢ) === (Nothing, Nothing, Face)
-            @test location(stokes_drift.∂t_uˢ) === (Nothing, Nothing, Center)
-            @test location(stokes_drift.∂t_vˢ) === (Nothing, Nothing, Center)
+            @test location(stokes_drift.∂z_uˢ) === (Reduced, Reduced, Face)
+            @test location(stokes_drift.∂z_vˢ) === (Reduced, Reduced, Face)
+            @test location(stokes_drift.∂t_uˢ) === (Reduced, Reduced, Center)
+            @test location(stokes_drift.∂t_vˢ) === (Reduced, Reduced, Center)
         end
     end
 end

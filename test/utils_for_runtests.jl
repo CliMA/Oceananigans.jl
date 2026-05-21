@@ -230,7 +230,7 @@ function field_time_series_bc(C, FT=Float64, ArrayType=Array)
     arch = architecture(ArrayType)
     grid = RectilinearGrid(arch, size=(1, 1), x=(0, 1), y=(0, 1), topology=(Periodic, Periodic, Flat))
     times = [0.0, 1.0]
-    fts = FieldTimeSeries{Center, Center, Nothing}(grid, times)
+    fts = FieldTimeSeries{Center, Center, Reduced}(grid, times)
     set!(fts, (x, y, t) -> FT(π))
     return BoundaryCondition(C, fts)
 end

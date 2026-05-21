@@ -194,7 +194,7 @@ function validate_index(idx, loc, topo, N, H)
 end
 
 validate_index(::Colon, loc, topo, N, H) = Colon()
-validate_index(idx::AbstractRange, ::Nothing, topo, N, H) = UnitRange(1, 1)
+validate_index(idx::AbstractRange, ::Reduced, topo, N, H) = UnitRange(1, 1)
 
 function validate_index(idx::AbstractRange, loc, topo, N, H)
     all_idx = all_indices(loc, topo, N, H)

@@ -54,7 +54,7 @@ function run_field_reduction_tests(grid)
     v = YFaceField(grid)
     w = ZFaceField(grid)
     c = CenterField(grid)
-    η = Field{Center, Center, Nothing}(grid)
+    η = Field{Center, Center, Reduced}(grid)
 
     f(x, y, z) = 1 + exp(x) * sin(y) * tanh(z)
 
@@ -228,7 +228,7 @@ function run_field_interpolation_tests(grid)
 
     # Check interpolation on Windowed fields
     wf = ZFaceField(grid; indices=(:, :, grid.Nz+1))
-    If = Field{Center, Center, Nothing}(grid)
+    If = Field{Center, Center, Reduced}(grid)
     set!(If, (x, y)-> x * y)
     interpolate!(wf, If)
 
@@ -362,16 +362,16 @@ end
             @test correct_field_size(grid, (Center, Center, Face),   N[1] + 2 * H[1], N[2] + 2 * H[2], N[3] + 1 + 2 * H[3])
 
             # Reduced fields
-            @test correct_field_size(grid, (Nothing, Center,  Center),  1,               N[2] + 2 * H[2],     N[3] + 2 * H[3])
-            @test correct_field_size(grid, (Nothing, Center,  Center),  1,               N[2] + 2 * H[2],     N[3] + 2 * H[3])
-            @test correct_field_size(grid, (Nothing, Face,    Center),  1,               N[2] + 2 * H[2] + 1, N[3] + 2 * H[3])
-            @test correct_field_size(grid, (Nothing, Face,    Face),    1,               N[2] + 2 * H[2] + 1, N[3] + 2 * H[3] + 1)
-            @test correct_field_size(grid, (Center,  Nothing, Center),  N[1] + 2 * H[1], 1,                   N[3] + 2 * H[3])
-            @test correct_field_size(grid, (Center,  Nothing, Center),  N[1] + 2 * H[1], 1,                   N[3] + 2 * H[3])
-            @test correct_field_size(grid, (Center,  Center,  Nothing), N[1] + 2 * H[1], N[2] + 2 * H[2],     1)
-            @test correct_field_size(grid, (Nothing, Nothing, Center),  1,               1,                   N[3] + 2 * H[3])
-            @test correct_field_size(grid, (Center,  Nothing, Nothing), N[1] + 2 * H[1], 1,                   1)
-            @test correct_field_size(grid, (Nothing, Nothing, Nothing), 1,               1,                   1)
+            @test correct_field_size(grid, (Reduced, Center,  Center),  1,               N[2] + 2 * H[2],     N[3] + 2 * H[3])
+            @test correct_field_size(grid, (Reduced, Center,  Center),  1,               N[2] + 2 * H[2],     N[3] + 2 * H[3])
+            @test correct_field_size(grid, (Reduced, Face,    Center),  1,               N[2] + 2 * H[2] + 1, N[3] + 2 * H[3])
+            @test correct_field_size(grid, (Reduced, Face,    Face),    1,               N[2] + 2 * H[2] + 1, N[3] + 2 * H[3] + 1)
+            @test correct_field_size(grid, (Center,  Reduced, Center),  N[1] + 2 * H[1], 1,                   N[3] + 2 * H[3])
+            @test correct_field_size(grid, (Center,  Reduced, Center),  N[1] + 2 * H[1], 1,                   N[3] + 2 * H[3])
+            @test correct_field_size(grid, (Center,  Center,  Reduced), N[1] + 2 * H[1], N[2] + 2 * H[2],     1)
+            @test correct_field_size(grid, (Reduced, Reduced, Center),  1,               1,                   N[3] + 2 * H[3])
+            @test correct_field_size(grid, (Center,  Reduced, Reduced), N[1] + 2 * H[1], 1,                   1)
+            @test correct_field_size(grid, (Reduced, Reduced, Reduced), 1,               1,                   1)
 
             # "View" fields
             for f in [CenterField(grid), XFaceField(grid), YFaceField(grid), ZFaceField(grid)]
@@ -463,11 +463,11 @@ end
                         (Face, Center, Center),
                         (Center, Face, Center),
                         (Center, Center, Face),
-                        (Nothing, Center, Center),
-                        (Center, Nothing, Center),
-                        (Center, Center, Nothing),
-                        (Nothing, Nothing, Center),
-                        (Nothing, Nothing, Nothing))
+                        (Reduced, Center, Center),
+                        (Center, Reduced, Center),
+                        (Center, Center, Reduced),
+                        (Reduced, Reduced, Center),
+                        (Reduced, Reduced, Reduced))
 
                 field = Field(instantiate(loc), grid)
                 sz = size(field)
@@ -627,7 +627,7 @@ end
             reduced_grid = RectilinearGrid(arch, FT; size=(4, 4, 4), interp_domain...)
             f_xy = (x, y) -> x + 2y
 
-            reduced_xy = Field{Center, Center, Nothing}(reduced_grid)
+            reduced_xy = Field{Center, Center, Reduced}(reduced_grid)
             set!(reduced_xy, f_xy)
             fill_halo_regions!(reduced_xy)
 
@@ -643,7 +643,7 @@ end
             @test full_cpu[:, :, 1] == Array(interior(reduced_xy))[:, :, 1]
 
             # Same idea for a z-column reduced field on the other axis.
-            reduced_z = Field{Nothing, Nothing, Center}(reduced_grid)
+            reduced_z = Field{Reduced, Reduced, Center}(reduced_grid)
             set!(reduced_z, z -> 3z)
             fill_halo_regions!(reduced_z)
 
@@ -839,7 +839,7 @@ end
             # Test 2D interpolation on xy-field
             # Note: Cell centers are at 0.25 and 0.75, so test points must be
             # within the interpolation domain [0.25, 0.75] in each direction
-            xy_field = Field{Center, Center, Nothing}(grid)
+            xy_field = Field{Center, Center, Reduced}(grid)
             set!(xy_field, (x, y) -> x + y)
 
             node = convert.(FT, (0.4, 0.5))
@@ -848,7 +848,7 @@ end
             @test @allowscalar interpolate(node, xy_field) ≈ node[1] + node[2]
 
             # Test 2D interpolation on xz-field
-            xz_field = Field{Center, Nothing, Center}(grid)
+            xz_field = Field{Center, Reduced, Center}(grid)
             set!(xz_field, (x, z) -> x + z)
             node = convert.(FT, (0.4, 0.5))
             @test @allowscalar interpolate(node, xz_field) ≈ node[1] + node[2]
@@ -856,7 +856,7 @@ end
             @test @allowscalar interpolate(node, xz_field) ≈ node[1] + node[2]
 
             # Test 2D interpolation on yz-field
-            yz_field = Field{Nothing, Center, Center}(grid)
+            yz_field = Field{Reduced, Center, Center}(grid)
             set!(yz_field, (y, z) -> y + z)
             node = convert.(FT, (0.5, 0.4))
             @test @allowscalar interpolate(node, yz_field) ≈ node[1] + node[2]
@@ -864,7 +864,7 @@ end
             @test @allowscalar interpolate(node, yz_field) ≈ node[1] + node[2]
 
             # Test 1D interpolation on z-field
-            z_field = Field{Nothing, Nothing, Center}(grid)
+            z_field = Field{Reduced, Reduced, Center}(grid)
             set!(z_field, z -> z)
             @test @allowscalar interpolate(FT(0.4), z_field) ≈ FT(0.4)
 

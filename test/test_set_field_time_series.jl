@@ -32,13 +32,13 @@ for arch in archs
 
             for grid in (zero_d_grid, one_d_grid, two_d_grid, three_d_grid)
                 times = 0:1.0:4
-                fts = FieldTimeSeries{Nothing, Nothing, Nothing}(grid, times)
+                fts = FieldTimeSeries{Reduced, Reduced, Reduced}(grid, times)
                 set!(fts, function_of_time)
                 data = on_architecture(CPU(), view(fts, 1, 1, 1, :))
                 @test data == times
 
                 array_times = on_architecture(arch, collect(times))
-                fts = FieldTimeSeries{Nothing, Nothing, Nothing}(grid, array_times)
+                fts = FieldTimeSeries{Reduced, Reduced, Reduced}(grid, array_times)
                 set!(fts, function_of_time)
                 data = on_architecture(CPU(), view(fts, 1, 1, 1, :))
                 @test data == times
@@ -123,7 +123,7 @@ end
 
     grid = RectilinearGrid(size=(), topology=(Flat, Flat, Flat))
     times = 0:1.0:4
-    fts = FieldTimeSeries{Nothing, Nothing, Nothing}(grid, times)
+    fts = FieldTimeSeries{Reduced, Reduced, Reduced}(grid, times)
     set!(fts, function_of_time)
 
     clock = Clock(time=2.5)

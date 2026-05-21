@@ -1,6 +1,6 @@
 module Grids
 
-export Center, Face
+export AbstractLocation, Center, Face, Reduced, LocationTuple, LocationTypeTuple
 export AbstractTopology, topology
 export Periodic, Bounded, Flat, FullyConnected, LeftConnected, RightConnected
 export RightFaceFolded, RightCenterFolded
@@ -42,18 +42,35 @@ using Oceananigans.Architectures: Architectures, AbstractSerialArchitecture, arc
 #####
 
 """
+    AbstractLocation
+
+Abstract supertype for types that describe the location of a `Field` along a single
+dimension of a grid cell. Concrete subtypes are `Center`, `Face`, and `Reduced`.
+"""
+abstract type AbstractLocation end
+
+"""
     Center
 
 A type describing the location at the center of a grid cell.
 """
-struct Center end
+struct Center <: AbstractLocation end
 
 """
     Face
 
 A type describing the location at the face of a grid cell.
 """
-struct Face end
+struct Face <: AbstractLocation end
+
+"""
+    Reduced
+
+A type describing a dimension along which a `Field` has no spatial extent — either
+because the dimension has been reduced (e.g. by `Average`, `Integral`) or because the
+underlying topology is `Flat`. Replaces the historical use of `Nothing` as a location.
+"""
+struct Reduced <: AbstractLocation end
 
 """
     AbstractTopology
@@ -170,6 +187,9 @@ struct NegativeZDirection <: AbstractDirection end
 
 const F = Face
 const C = Center
+
+const LocationTuple = Tuple{<:AbstractLocation, <:AbstractLocation, <:AbstractLocation}
+const LocationTypeTuple = Tuple{Type{<:AbstractLocation}, Type{<:AbstractLocation}, Type{<:AbstractLocation}}
 
 include("abstract_grid.jl")
 include("vertical_discretization.jl")

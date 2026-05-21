@@ -64,7 +64,7 @@ function PartialCellBottom(bottom_height; minimum_fractional_cell_height=0.2)
 end
 
 function materialize_immersed_boundary(grid, ib::PartialCellBottom)
-    bottom_field = Field{Center, Center, Nothing}(grid)
+    bottom_field = Field{Center, Center, Reduced}(grid)
     set!(bottom_field, ib.bottom_height)
 
     minimum_fractional_cell_height = convert(eltype(grid), ib.minimum_fractional_cell_height)
@@ -108,7 +108,7 @@ end
 function Architectures.on_architecture(arch, ib::PartialCellBottom{<:Field})
     architecture(ib.bottom_height) == arch && return ib
     arch_grid = on_architecture(arch, ib.bottom_height.grid)
-    new_bottom_height = Field{Center, Center, Nothing}(arch_grid)
+    new_bottom_height = Field{Center, Center, Reduced}(arch_grid)
     copyto!(parent(new_bottom_height), parent(ib.bottom_height))
     return PartialCellBottom(new_bottom_height, ib.minimum_fractional_cell_height)
 end

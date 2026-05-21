@@ -60,10 +60,10 @@ reactant_total_length(loc, topo, N, H) = Oceananigans.Grids.total_length(loc, to
 reactant_total_length(::Face, ::FaceExtendedTopology, N, H=0) = N + 2H
 
 reactant_offset_indices(loc, topo, N, H=0) = 1 - H : N + H
-reactant_offset_indices(::Nothing, topo, N, H=0) = 1:1
+reactant_offset_indices(::Oceananigans.Grids.Reduced, topo, N, H=0) = 1:1
 reactant_offset_indices(ℓ,         topo, N, H, ::Colon) = reactant_offset_indices(ℓ, topo, N, H)
 reactant_offset_indices(ℓ,         topo, N, H, r::AbstractUnitRange) = r
-reactant_offset_indices(::Nothing, topo, N, H, ::AbstractUnitRange) = 1:1
+reactant_offset_indices(::Oceananigans.Grids.Reduced, topo, N, H, ::AbstractUnitRange) = 1:1
 
 function Oceananigans.Grids.new_data(FT::DataType, arch::ShardedDistributed,
         loc, topo, sz, halo_sz, indices=default_indices(length(loc)))

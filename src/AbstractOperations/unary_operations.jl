@@ -106,7 +106,7 @@ macro unary(ops...)
             end
 
             # instantiate location if types are passed
-            $op(Lc::Tuple, a::$(AbstractField)) = $op((Lc[1](), Lc[2](), Lc[3]()), a)
+            $op(Lc::$LocationTypeTuple, a::$(AbstractField)) = $op((Lc[1](), Lc[2](), Lc[3]()), a)
 
             $op(a::$(AbstractField)) = $op($(instantiated_location)(a), a)
 
