@@ -4,7 +4,7 @@
 ##### ZarrWriter functionality is implemented in ext/OceananigansZarrExt
 #####
 
-mutable struct ZarrWriter{O, T, S, A, FS, C, CH, G} <: AbstractOutputWriter
+mutable struct ZarrWriter{Mode, O, T, S, A, FS, C, CH, G} <: AbstractOutputWriter{Mode}
     filepath :: String
     store :: S
     grids :: G                  # Tuple of unique grids across all outputs
@@ -22,6 +22,20 @@ mutable struct ZarrWriter{O, T, S, A, FS, C, CH, G} <: AbstractOutputWriter
     chunks :: CH
     dimensions :: Dict
     initialized :: Bool
+    task :: Union{Task, Nothing}  # in-flight async write task; `nothing` for `Synchronous`
+end
+
+# Parametric outer constructor that fills in `task = nothing`. Lets us write
+# `ZarrWriter{Synchronous}(...)` or `ZarrWriter{Asynchronous}(...)` and have
+# Julia infer the remaining type parameters from the arguments.
+function ZarrWriter{Mode}(filepath, store::S, grids::G, output_grid_map::Dict, outputs::O,
+                          schedule::T, array_type::A, indices::Tuple, with_halos::Bool,
+                          overwrite_existing::Bool, verbose::Bool, part::Int, file_splitting::FS,
+                          compressor::C, chunks::CH, dimensions::Dict, initialized::Bool) where {Mode, O, T, S, A, FS, C, CH, G}
+    return ZarrWriter{Mode, O, T, S, A, FS, C, CH, G}(
+        filepath, store, grids, output_grid_map, outputs, schedule, array_type, indices,
+        with_halos, overwrite_existing, verbose, part, file_splitting, compressor, chunks,
+        dimensions, initialized, nothing)
 end
 
 # method in OceananigansZarrExt
@@ -37,7 +51,8 @@ end
                part = 1,
                store = nothing,
                chunks = nothing,
-               compressor = nothing)
+               compressor = nothing,
+               asynchronous = false)
 
 Construct a `ZarrWriter` for an Oceananigans `model` that writes `label, output` pairs in
 `outputs` to a Zarr store.
@@ -112,6 +127,15 @@ Keyword arguments
 - `verbose`: Log compute/write times and sizes. Default: `false`.
 
 - `part`: Starting part number for file splitting. Default: `1`.
+
+- `asynchronous`: If `true`, wrap the writer in an [`AsyncOutputWriter`](@ref) so that the
+                  disk-write phase runs on a background task. The synchronous GPU→CPU copy
+                  still happens on the main thread, so output content is identical to the
+                  synchronous case. Use [`wait_for_async_writes!`](@ref) to flush pending
+                  writes (called automatically at the end of `run!`). Async is currently
+                  supported only on non-distributed (serial) runs; passing `asynchronous=true`
+                  with a `Distributed` architecture emits a warning and falls back to
+                  synchronous. Default: `false`.
 
 Reading output back
 ===================

@@ -548,3 +548,79 @@ end
         rm(zippath; force=true)
     end
 end
+
+#####
+##### Async I/O: byte-identical output between sync and async writers
+#####
+
+@testset "ZarrWriter [async I/O]" begin
+    @info "  Testing ZarrWriter async I/O matches synchronous output..."
+
+    for arch in archs
+        function build_sim(asynchronous, filename)
+            grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1),
+                                   topology=(Periodic, Periodic, Periodic))
+            model = NonhydrostaticModel(grid; tracers=:c)
+            set!(model,
+                 u = (x, y, z) -> sin(2π * x) * cos(2π * y),
+                 v = (x, y, z) -> cos(2π * x) * sin(2π * y),
+                 c = (x, y, z) -> z)
+            sim = Simulation(model, Δt=0.001, stop_iteration=5)
+            sim.output_writers[:fields] = ZarrWriter(model,
+                                                     merge(model.velocities, (; c=model.tracers.c));
+                                                     dir = ".",
+                                                     filename = filename,
+                                                     schedule = IterationInterval(1),
+                                                     overwrite_existing = true,
+                                                     asynchronous = asynchronous)
+            return sim
+        end
+
+        function read_all_arrays(path)
+            g = Zarr.zopen(path)
+            return Dict(name => Array(g[name][:]) for name in keys(g.arrays))
+        end
+
+        sync_path  = abspath(joinpath(".", "test_zarr_async_sync.zarr"))
+        async_path = abspath(joinpath(".", "test_zarr_async_async.zarr"))
+        isdir(sync_path)  && rm(sync_path;  recursive=true, force=true)
+        isdir(async_path) && rm(async_path; recursive=true, force=true)
+
+        sim_sync  = build_sim(false, "test_zarr_async_sync")
+        sim_async = build_sim(true,  "test_zarr_async_async")
+
+        @test sim_sync.output_writers[:fields]  isa ZarrWriter
+        @test sim_async.output_writers[:fields] isa ZarrWriter
+        @test sim_sync.output_writers[:fields]  isa SyncOutputWriter
+        @test sim_async.output_writers[:fields] isa AsyncOutputWriter
+        @test !is_asynchronous(sim_sync.output_writers[:fields])
+        @test  is_asynchronous(sim_async.output_writers[:fields])
+
+        run!(sim_sync)
+        run!(sim_async)
+
+        # `run!` should have flushed pending async writes.
+        @test isdir(sync_path)
+        @test isdir(async_path)
+
+        sync_data  = read_all_arrays(sync_path)
+        async_data = read_all_arrays(async_path)
+
+        @test sort(collect(keys(sync_data))) == sort(collect(keys(async_data)))
+        for name in keys(sync_data)
+            @test sync_data[name] == async_data[name]
+        end
+
+        # Calling `wait_for_async_writes!` after a run is a no-op.
+        wait_for_async_writes!(sim_async)
+        wait_for_async_writes!(sim_async)
+
+        # `show` carries an "(async)" tag for async writers.
+        io = IOBuffer()
+        show(io, sim_async.output_writers[:fields])
+        @test occursin("(async)", String(take!(io)))
+
+        rm(sync_path;  recursive=true, force=true)
+        rm(async_path; recursive=true, force=true)
+    end
+end

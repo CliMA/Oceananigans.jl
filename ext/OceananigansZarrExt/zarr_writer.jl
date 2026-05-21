@@ -19,7 +19,8 @@ function ZarrWriter(model::AbstractModel, outputs;
                     store = nothing,
                     chunks = nothing,
                     compressor = nothing,
-                    dimensions = Dict{String, Any}())
+                    dimensions = Dict{String, Any}(),
+                    asynchronous = false)
 
     # Reject ZipStore explicitly — it's read-only in Zarr.jl by design.
     if store isa Zarr.ZipStore
@@ -70,23 +71,31 @@ function ZarrWriter(model::AbstractModel, outputs;
         for (name, g) in output_grids
     )
 
-    return ZarrWriter(filepath,
-                      store,
-                      unique_grids,
-                      output_grid_map,
-                      d_outputs,
-                      schedule,
-                      array_type,
-                      indices,
-                      with_halos,
-                      overwrite_existing,
-                      verbose,
-                      part,
-                      file_splitting,
-                      compressor,
-                      chunks,
-                      Dict{String, Any}(string(k) => v for (k, v) in pairs(dimensions)),
-                      false)
+    distributed = architecture(model) isa Distributed
+    if asynchronous && distributed
+        @warn "ZarrWriter: `asynchronous=true` is not supported under MPI/Distributed; " *
+              "falling back to synchronous I/O."
+        asynchronous = false
+    end
+    Mode = asynchronous ? Asynchronous : Synchronous
+
+    return ZarrWriter{Mode}(filepath,
+                            store,
+                            unique_grids,
+                            output_grid_map,
+                            d_outputs,
+                            schedule,
+                            array_type,
+                            indices,
+                            with_halos,
+                            overwrite_existing,
+                            verbose,
+                            part,
+                            file_splitting,
+                            compressor,
+                            chunks,
+                            Dict{String, Any}(string(k) => v for (k, v) in pairs(dimensions)),
+                            false)
 end
 
 # Extract grid for an output. Field-like outputs delegate to `grid(...)`; non-field
@@ -542,44 +551,31 @@ end
 ##### Per-step write
 #####
 
-function write_output!(writer::ZarrWriter, model::AbstractModel)
-    distributed = is_distributed_arch(model)
-    is_root = !distributed || mpi_rank(global_communicator()) == 0
-
-    # File splitting (root-only when distributed; everyone else waits)
-    if writer.file_splitting(model)
-        if is_root
-            start_next_file(model, writer)
+# Synchronous ZarrWriter: prepare+commit inline (serial) or fall through to the
+# MPI-collective distributed write. The async path shares the serial prepare/commit
+# pair via the generic `write_output!(::AsyncOutputWriter, ::AbstractModel)` in
+# `async_output_writer.jl`; the constructor forces `Synchronous` under MPI so async
+# never enters the distributed branch.
+function write_output!(writer::ZarrWriter{Synchronous}, model::AbstractModel)
+    if is_distributed_arch(model)
+        is_root = mpi_rank(global_communicator()) == 0
+        if writer.file_splitting(model)
+            if is_root
+                start_next_file(model, writer)
+            end
+            zarr_barrier()
         end
-        zarr_barrier()
-    end
-    update_file_splitting_schedule!(writer.file_splitting, writer.filepath)
-
-    if !writer.initialized
-        initialize!(writer, model)
-    end
-
-    if distributed
+        update_file_splitting_schedule!(writer.file_splitting, writer.filepath)
+        if !writer.initialized
+            initialize!(writer, model)
+        end
         write_output_distributed!(writer, model)
     else
-        write_output_serial!(writer, model)
+        snapshot = prepare_async_write(writer, model)
+        snapshot === nothing && return nothing
+        commit_async_write!(writer, snapshot)
     end
 
-    return nothing
-end
-
-function write_output_serial!(writer::ZarrWriter, model)
-    g = Zarr.zopen(writer.store, "w")
-    Zarr.append!(g["time"], Float64[Float64(model.clock.time)]; dims=1)
-    for (name, output) in pairs(writer.outputs)
-        data = fetch_and_convert_output(output, model, writer)
-        arr = g[string(name)]
-        data_arr = data isa AbstractArray ? data : fill(data)
-        if eltype(data_arr) === Bool
-            data_arr = Int8.(data_arr)
-        end
-        Zarr.append!(arr, data_arr; dims=ndims(arr))
-    end
     return nothing
 end
 
@@ -635,6 +631,86 @@ function write_output_distributed!(writer::ZarrWriter, model)
     end
 
     zarr_barrier()
+    return nothing
+end
+
+#####
+##### Async support (serial only)
+#####
+##### Distributed ZarrWriters always run synchronously; async is gated off in the
+##### constructor when the model architecture is `Distributed`. These hooks are
+##### therefore only exercised on non-distributed runs.
+#####
+
+"""
+    ZarrWriteSnapshot
+
+Captures everything needed to commit a Zarr write to disk after the GPU→CPU copy has
+completed. Created by `prepare_async_write` on the main thread; consumed by
+`commit_async_write!` inline (sync mode) or on a background task (async mode).
+
+`store` and `outputs` are captured by reference (their fields aren't mutated during a
+write); `time` and `data` are snapshots taken on the main thread.
+"""
+struct ZarrWriteSnapshot{D, O, S}
+    time :: Float64
+    data :: D
+    outputs :: O
+    store :: S
+end
+
+function prepare_async_write(writer::ZarrWriter, model::AbstractModel)
+    # File splitting decision (synchronous; mutates `writer.filepath` and `writer.store`).
+    if writer.file_splitting(model)
+        start_next_file(model, writer)
+    end
+    update_file_splitting_schedule!(writer.file_splitting, writer.filepath)
+
+    if !writer.initialized
+        initialize!(writer, model)
+    end
+
+    if writer.verbose
+        t0 = time_ns()
+    end
+
+    # Synchronous GPU→CPU fetch; must complete before the GPU advances to the next step.
+    data = Dict{String, Any}()
+    for (name, output) in pairs(writer.outputs)
+        fetched = fetch_and_convert_output(output, model, writer)
+        data_arr = fetched isa AbstractArray ? fetched : fill(fetched)
+        if eltype(data_arr) === Bool
+            data_arr = Int8.(data_arr)
+        end
+        data[string(name)] = data_arr
+    end
+
+    if writer.verbose
+        @info @sprintf("Fetching Zarr output %s: time=%s",
+                       keys(writer.outputs), prettytime((time_ns() - t0) / 1e9))
+    end
+
+    # Snapshot `store` by value so an in-flight async commit isn't disturbed by a
+    # subsequent file split that swaps `writer.store`.
+    return ZarrWriteSnapshot(Float64(model.clock.time), data, writer.outputs, writer.store)
+end
+
+function commit_async_write!(writer::ZarrWriter, snap::ZarrWriteSnapshot)
+    if writer.verbose
+        t0 = time_ns()
+    end
+
+    g = Zarr.zopen(snap.store, "w")
+    Zarr.append!(g["time"], Float64[snap.time]; dims=1)
+    for (name, _) in pairs(snap.outputs)
+        arr = g[string(name)]
+        Zarr.append!(arr, snap.data[string(name)]; dims=ndims(arr))
+    end
+
+    if writer.verbose
+        @info @sprintf("Writing Zarr output done: time=%s", prettytime((time_ns() - t0) / 1e9))
+    end
+
     return nothing
 end
 
@@ -712,8 +788,9 @@ function Base.show(io::IO, ow::ZarrWriter)
     store_str = isnothing(ow.store) ? "DirectoryStore (deferred)" : string(typeof(ow.store).name.name)
     compressor_str = isnothing(ow.compressor) ? "none" : string(typeof(ow.compressor).name.name)
     chunks_str = isnothing(ow.chunks) ? "auto" : string(ow.chunks)
+    async_tag = is_asynchronous(ow) ? " (async)" : ""
 
-    print(io, "ZarrWriter scheduled on $(summary(ow.schedule)):", "\n",
+    print(io, "ZarrWriter$(async_tag) scheduled on $(summary(ow.schedule)):", "\n",
               "├── filepath: ", ow.filepath, "\n",
               "├── store: ", store_str, "\n",
               "├── $Noutputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), "\n",
