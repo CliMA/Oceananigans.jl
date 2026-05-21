@@ -100,7 +100,7 @@ function make_pressure_correction!(model::NonhydrostaticModel, Δt)
 
     ϵ = eps(eltype(model.pressures.pNHS))
     Δt⁺ = max(ϵ, Δt)
-    model.pressures.pNHS ./= Δt⁺
+    parent(model.pressures.pNHS) ./= Δt⁺
 
     return nothing
 end
