@@ -542,6 +542,18 @@ regional domains rather than global domains, and has a singular longitude at the
 apex / pole. A warning is emitted when the projected rectangle contains the cone
 apex / pole.
 
+# Polar stereographic limit
+
+For pole-centred grids, set `standard_parallel = 90` (or `-90` for the South Pole)
+along with `latitude_of_origin = 90` (or `-90`). This is the degenerate case of LCC
+in which the cone is tangent to the sphere at the pole — the cone constant is `n = 1`
+(or `-1`) and the projection becomes polar stereographic, with no missing-wedge
+artefact at the antemeridian. For LCC with standard parallels strictly between `-90`
+and `90` (`|n| < 1`), the cone unrolls to a sector of `2nπ` rather than `2π`, so a
+small `2π(1-n)` wedge of physical longitude has no representation in projected
+space; this is only a problem for grids that contain the projected apex, and is
+removed entirely by using the polar stereographic limit above.
+
 ```jldoctest
 using Oceananigans
 

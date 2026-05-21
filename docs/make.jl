@@ -40,6 +40,7 @@ Distributed.addprocs(2)
         "ocean_wind_mixing_and_convection.jl",
         "shallow_water_Bickley_jet.jl",
         "spherical_baroclinic_instability.jl",
+        "polar_vortex_crystal.jl",
         "hydrostatic_lock_exchange.jl",
         "internal_tide.jl",
         "langmuir_turbulence.jl",
@@ -108,7 +109,8 @@ example_pages = [
     "Shallow water Bickley jet"             => "literated/shallow_water_Bickley_jet.md",
     "Horizontal convection"                 => "literated/horizontal_convection.md",
     "Tilted bottom boundary layer"          => "literated/tilted_bottom_boundary_layer.md",
-    "Spherical baroclinic instability"      => "literated/spherical_baroclinic_instability.md"
+    "Spherical baroclinic instability"      => "literated/spherical_baroclinic_instability.md",
+    "Polar vortex crystal"                  => "literated/polar_vortex_crystal.md"
 ]
 
 model_pages = [

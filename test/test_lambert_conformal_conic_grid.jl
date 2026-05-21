@@ -220,6 +220,84 @@ end
         end
     end
 
+    @testset "polar stereographic limit" begin
+        for FT in float_types
+            tol = FT === Float64 ? 1e-12 : 1e-6
+
+            north_polar = LambertConformalConic(FT;
+                                                standard_parallel = 90,
+                                                central_longitude = 0,
+                                                latitude_of_origin = 90,
+                                                x₁ = -1e6, y₁ = -1e6,
+                                                Δx = 10e3, Δy = 10e3)
+
+            @test north_polar.n ≈ +one(FT) atol = tol
+            @test north_polar.F ≈ +convert(FT, 2) atol = tol
+            @test isfinite(north_polar.ρ₀)
+            @test isfinite(lcc_scale_factor(north_polar, FT(89)))
+
+            south_polar = LambertConformalConic(FT;
+                                                standard_parallel = -90,
+                                                central_longitude = 0,
+                                                latitude_of_origin = -90,
+                                                x₁ = -1e6, y₁ = -1e6,
+                                                Δx = 10e3, Δy = 10e3)
+
+            @test south_polar.n ≈ -one(FT) atol = tol
+            @test south_polar.F ≈ -convert(FT, 2) atol = tol
+            @test isfinite(south_polar.ρ₀)
+
+            tuple_north = LambertConformalConic(FT;
+                                                standard_parallels = (90, 90),
+                                                central_longitude = 0,
+                                                latitude_of_origin = 90,
+                                                x₁ = -1e6, y₁ = -1e6,
+                                                Δx = 10e3, Δy = 10e3)
+
+            @test tuple_north.n ≈ +one(FT)
+            @test tuple_north.F ≈ +convert(FT, 2)
+
+            # Pole-centred grid round-trips cleanly
+            grid = LambertConformalConicGrid(CPU(), FT;
+                                             size = (16, 16, 1),
+                                             center = (0, 90),
+                                             spacing = 25e3,
+                                             standard_parallel = 90,
+                                             latitude_of_origin = 90,
+                                             z = (-100, 0))
+
+            @test grid isa LambertConformalConicGrid
+            @test grid.conformal_mapping.n ≈ +one(FT)
+            @test grid.conformal_mapping.F ≈ +convert(FT, 2)
+            for array in lcc_coordinate_arrays(grid)
+                @test all(isfinite, array)
+            end
+            for array in lcc_metric_arrays(grid)
+                @test all(isfinite, array)
+            end
+
+            # Mixing a polar parallel with a non-polar one is rejected
+            throws_argument_error_matching("polar stereographic limit") do
+                LambertConformalConic(FT;
+                                      standard_parallels = (90, 80),
+                                      central_longitude = 0,
+                                      latitude_of_origin = 90,
+                                      x₁ = -1e6, y₁ = -1e6,
+                                      Δx = 10e3, Δy = 10e3)
+            end
+
+            # Parallels at opposite poles is also rejected
+            throws_argument_error_matching("polar stereographic limit") do
+                LambertConformalConic(FT;
+                                      standard_parallels = (90, -90),
+                                      central_longitude = 0,
+                                      latitude_of_origin = 0,
+                                      x₁ = -1e6, y₁ = -1e6,
+                                      Δx = 10e3, Δy = 10e3)
+            end
+        end
+    end
+
     @testset "constructors and validation" begin
         @test :LambertConformalConicGrid in names(Oceananigans)
         @test :LambertConformalConic in names(Oceananigans)
