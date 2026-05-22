@@ -232,11 +232,11 @@ model = NonhydrostaticModel(grid; forcing=(u=damping, v=damping, w=damping))
 model.forcing.w
 
 # output
-Relaxation{Float64, Center, Center, Face}
-├── rate: 0.001
-├── mask: 1
-├── target: 0
-└── relaxed: 1×1×2 Field{Center, Center, Face} on RectilinearGrid on CPU
+Relaxation{Float64} at (Center, Center, Face)
+├──    rate: 0.001
+├── relaxed: 1×1×2 Field{Center, Center, Face} on RectilinearGrid on CPU
+├──    mask: 1
+└──  target: 0
 ```
 
 The constructor for `Relaxation` accepts the keyword arguments `mask`, and `target`,
@@ -291,22 +291,22 @@ model = NonhydrostaticModel(grid; forcing=(u=uvw_sponge, v=uvw_sponge, w=uvw_spo
 model.forcing.u
 
 # output
-Relaxation{Float64, Face, Center, Center}
-├── rate: 0.01
-├── mask: exp(-(z + 1.0)^2 / (2 * 0.1^2))
-├── target: 0
-└── relaxed: 1×1×1 Field{Face, Center, Center} on RectilinearGrid on CPU
+Relaxation{Float64} at (Face, Center, Center)
+├──    rate: 0.01
+├── relaxed: 1×1×1 Field{Face, Center, Center} on RectilinearGrid on CPU
+├──    mask: exp(-(z + 1.0)^2 / (2 * 0.1^2))
+└──  target: 0
 ```
 
 ```jldoctest sponge_layer
 model.forcing.T
 
 # output
-Relaxation{Float64, Center, Center, Center}
-├── rate: 0.01
-├── mask: exp(-(z + 1.0)^2 / (2 * 0.1^2))
-├── target: 20.0 + 0.001 * z
-└── relaxed: 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
+Relaxation{Float64} at (Center, Center, Center)
+├──    rate: 0.01
+├── relaxed: 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
+├──    mask: exp(-(z + 1.0)^2 / (2 * 0.1^2))
+└──  target: 20.0 + 0.001 * z
 ```
 
 ### `FieldTimeSeries` target
@@ -324,7 +324,7 @@ c_nudge = Relaxation(rate=1/3600, target=fts)
 
 model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=c_nudge))
 
-model.forcing.c.target === fts
+model.forcing.c.target.field_time_series === fts
 
 # output
 true

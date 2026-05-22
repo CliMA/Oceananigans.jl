@@ -1,5 +1,5 @@
 using Oceananigans.Grids: node, xnodes, ynodes, znodes
-using Oceananigans.Fields: AbstractField, Field, compute!
+using Oceananigans.Fields: AbstractField, Field, compute!, show_location
 using Oceananigans.AbstractOperations: Average
 using Oceananigans.OutputReaders: interpolate
 using Oceananigans.Utils: prettysummary
@@ -15,20 +15,22 @@ Base.summary(::T_zerofunction) = "0"
 Base.summary(::T_onefunction) = "1"
 
 """
-    struct Relaxation{R, M, T, F, L, Tr}
+    struct Relaxation{R, F, M, T, L, Tr}
 
 Callable object for restoring fields to a `target` at some `rate` and within a
-`mask`ed region in `x, y, z`. The trailing parameters `F`, `L`, and `Tr` carry
-the `relaxed` quantity (the forced field, or, when `transform` is set, a `Field`
-holding `transform(forced_field)`), its instantiated `location`, and the
-user-supplied `transform` once `materialize_forcing` runs. They are `nothing`
-for a freshly-constructed `Relaxation`.
+`mask`ed region in `x, y, z`. The `F` parameter (the `relaxed` quantity) sits
+second because the kernel dispatches on it. The trailing parameters `L` and
+`Tr` carry the instantiated `location` and user-supplied `transform`. After
+`materialize_forcing` runs, `relaxed` is the forced field (or, when `transform`
+is set, a `Field` holding `transform(forced_field)`); `location` and
+`transform` carry their materialized values. All three are `nothing` for a
+freshly-constructed `Relaxation`.
 """
-struct Relaxation{R, M, T, F, L, Tr}
+struct Relaxation{R, F, M, T, L, Tr}
          rate :: R
+      relaxed :: F
          mask :: M
        target :: T
-      relaxed :: F
      location :: L
     transform :: Tr
 end
@@ -70,8 +72,8 @@ damping = Relaxation(rate = 1/3600)
 
 # output
 Relaxation{Float64}
-├── rate: 0.0002777777777777778
-├── mask: 1
+├──   rate: 0.0002777777777777778
+├──   mask: 1
 └── target: 0
 ```
 
@@ -92,13 +94,13 @@ bottom_sponge_layer = Relaxation(; rate = 1/60,
 
 # output
 Relaxation{Float64}
-├── rate: 0.016666666666666666
-├── mask: exp(-(z + 100.0)^2 / (2 * 25.0^2))
+├──   rate: 0.016666666666666666
+├──   mask: exp(-(z + 100.0)^2 / (2 * 25.0^2))
 └── target: 20.0 + 0.001 * z
 ```
 """
 Relaxation(; rate, mask=onefunction, target=zerofunction, transform=nothing) =
-    Relaxation(rate, mask, target, nothing, nothing, transform)
+    Relaxation(rate, nothing, mask, target, nothing, transform)
 
 apply_transform(t,          field) = t(field)
 apply_transform(s::Symbol,  field) = apply_transform(Val(s), field)
@@ -109,7 +111,7 @@ apply_transform(::Val{S}, field) where S =
 # Note `F<:AbstractArray` (not `F<:AbstractField`): `Adapt.adapt_structure(to, ::Field) = adapt(to, f.data)`
 # unwraps Field to its underlying OffsetArray on GPU, so an `<:AbstractField` constraint here
 # would prevent kernel dispatch on the device and the compiler would emit a MethodError.
-@inline function (r::Relaxation{R, M, T, F, L, Tr})(i, j, k, grid, clock, model_fields) where {R, M, T, F<:AbstractArray, L, Tr}
+@inline function (r::Relaxation{R, F})(i, j, k, grid, clock, model_fields) where {R, F<:AbstractArray}
     X  = node(i, j, k, grid, r.location...)
     ϕ  = @inbounds r.relaxed[i, j, k]
     ϕᵣ = evaluate_target(r.target, i, j, k, X, clock.time)
@@ -145,7 +147,7 @@ separately on this wrapper at materialize time.
 """
 struct FieldTimeSeriesTarget{F, G}
     field_time_series :: F
-                 grid :: G
+    grid              :: G
 end
 
 Adapt.adapt_structure(to, t::FieldTimeSeriesTarget) =
@@ -153,8 +155,8 @@ Adapt.adapt_structure(to, t::FieldTimeSeriesTarget) =
 
 Base.summary(t::FieldTimeSeriesTarget) = summary(t.field_time_series)
 
-const FieldRelaxation{R, M, T<:AbstractField, F, L, Tr}                                       = Relaxation{R, M, T, F, L, Tr}
-const FieldTimeSeriesRelaxation{R, M, T<:Union{FlavorOfFTS, FieldTimeSeriesTarget}, F, L, Tr} = Relaxation{R, M, T, F, L, Tr}
+const FieldRelaxation           = Relaxation{<:Any, <:Any, <:Any, <:AbstractField}
+const FieldTimeSeriesRelaxation = Relaxation{<:Any, <:Any, <:Any, <:Union{FlavorOfFTS, FieldTimeSeriesTarget}}
 
 @inline evaluate_target(c::Number,                    i, j, k, X, t) = c
 @inline evaluate_target(f,                            i, j, k, X, t) = f(X..., t)
@@ -185,17 +187,17 @@ end
 function materialize_forcing(forcing::Relaxation, field, field_name, model_field_names)
     target = materialize_target(forcing.target, field)
     relaxed = isnothing(forcing.transform) ? field : apply_transform(forcing.transform, field)
-    return Relaxation(forcing.rate, forcing.mask, target, relaxed,
+    return Relaxation(forcing.rate, relaxed, forcing.mask, target,
                       instantiated_location(field), forcing.transform)
 end
 
-function materialize_forcing(forcing::Relaxation{<:Any, <:Any, <:FlavorOfFTS}, field,
+function materialize_forcing(forcing::Relaxation{<:Any, <:Any, <:Any, <:FlavorOfFTS}, field,
                              field_name, model_field_names)
     isnothing(forcing.transform) ||
         throw(ArgumentError("`transform` is not supported with a `FieldTimeSeries` target"))
     validate_fts_target_extent(forcing.target, field)
     target = FieldTimeSeriesTarget(forcing.target, forcing.target.grid)
-    return Relaxation(forcing.rate, forcing.mask, target, field, instantiated_location(field), nothing)
+    return Relaxation(forcing.rate, field, forcing.mask, target, instantiated_location(field), nothing)
 end
 
 function validate_fts_target_extent(fts, field)
@@ -222,29 +224,26 @@ end
 
 Adapt.adapt_structure(to, r::Relaxation) =
     Relaxation(Adapt.adapt(to, r.rate),
+               Adapt.adapt(to, r.relaxed),
                Adapt.adapt(to, r.mask),
                Adapt.adapt(to, r.target),
-               Adapt.adapt(to, r.relaxed),
                Adapt.adapt(to, r.location),
                Adapt.adapt(to, r.transform))
 
 """Show the innards of a `Relaxation` in the REPL."""
 function Base.show(io::IO, relaxation::Relaxation)
     FT = typeof(relaxation.rate)
-    if isnothing(relaxation.location)
-        print(io, "Relaxation{$FT}")
-    else
-        LX, LY, LZ = map(typeof, relaxation.location)
-        print(io, "Relaxation{$FT, $LX, $LY, $LZ}")
-    end
-    rows = Pair{String, String}["rate"   => string(relaxation.rate),
-                                "mask"   => summary(relaxation.mask),
-                                "target" => summary(relaxation.target)]
-    isnothing(relaxation.relaxed)   || push!(rows, "relaxed"   => prettysummary(relaxation.relaxed))
+    print(io, "Relaxation{$FT}")
+    isnothing(relaxation.location) || print(io, " at ", show_location(map(typeof, relaxation.location)...))
+    rows = Pair{String, String}["rate" => string(relaxation.rate)]
+    isnothing(relaxation.relaxed) || push!(rows, "relaxed" => prettysummary(relaxation.relaxed))
+    push!(rows, "mask"   => summary(relaxation.mask))
+    push!(rows, "target" => summary(relaxation.target))
     isnothing(relaxation.transform) || push!(rows, "transform" => string(relaxation.transform))
+    width = maximum(length(first(r)) for r in rows)
     for (i, (key, value)) in enumerate(rows)
         prefix = i == length(rows) ? "└── " : "├── "
-        print(io, "\n", prefix, key, ": ", value)
+        print(io, "\n", prefix, lpad(key, width), ": ", value)
     end
 end
 
