@@ -261,7 +261,7 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
         end
 
         @show (FT2, TX2, TY2, TZ2, CZ2, FX2, FY2, VX2, VY2)
-    
+
         res = Oceananigans.Grids.RectilinearGrid{FT2, TX2, TY2, TZ2, CZ2, FX2, FY2, VX2, VY2, Arch}
 
         @show "We hit traced type inner!"
@@ -270,7 +270,7 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
 
         return res
     end
-    
+
 @inline function Reactant.make_tracer(
         seen,
         @nospecialize(prev::Oceananigans.Grids.RectilinearGrid),
