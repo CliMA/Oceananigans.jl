@@ -114,7 +114,7 @@ function PerturbationAdvection(FT = defaults.FloatType;
          elseif target_transport isa Number
              convert(FT, target_transport)
          else
-             target_transport  # callable (e.g. LiveBoundaryTransport); keep as-is
+             target_transport  # callable of the grid; keep as-is
          end
     return PerturbationAdvection(inflow_timescale, outflow_timescale, gravity_wave_speed, density, tt)
 end
@@ -157,8 +157,7 @@ has_target_transport(scheme::PerturbationAdvection) = true  # any non-Nothing TF
 
 Return the prescribed target transport for `scheme` on `grid`.
 For a `Number`, returns the stored value unchanged.
-For a callable (e.g. `LiveBoundaryTransport`), calls it with `grid` to
-recompute the target at the current grid state (needed for ZStar grids).
+For a callable, calls it with `grid` to recompute the target at the current grid state.
 """
 get_target_transport(scheme, grid) = get_target_transport(scheme)  # 1-arg fallback for external schemes
 get_target_transport(scheme::PerturbationAdvection, grid) = _eval_tt(scheme.target_transport, grid)

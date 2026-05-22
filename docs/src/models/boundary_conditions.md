@@ -411,40 +411,12 @@ At each time step the normal velocity on a targeted boundary is shifted uniforml
 net transport equals `target_transport`. Boundaries that carry a `target_transport` are
 corrected independently of one another. In a `NonhydrostaticModel` any remaining net
 imbalance is then distributed over the open boundaries *without* a target (the "pool"
-boundaries) to satisfy the zero-net-transport solvability condition; in a
-`HydrostaticFreeSurfaceModel` the free surface absorbs any imbalance and there is no pool
-correction.
+boundaries) to satisfy the zero-net-transport solvability condition.
 
-#### Live targets for mutable vertical coordinates
-
-A numeric `target_transport` is a fixed volume transport, appropriate when the boundary area
-does not change in time. With a mutable vertical coordinate such as `ZStarCoordinate` (see
-[Generalized vertical coordinates](@ref generalized_vertical_coordinates)), cell heights —
-and therefore boundary areas — evolve with the free surface, so a target meant to represent
-"velocity × area" must be recomputed as the area changes. [`LiveBoundaryTransport`](@ref)
-does exactly this:
-
-```jldoctest
-julia> using Oceananigans
-
-julia> using Oceananigans.Models: LiveBoundaryTransport
-
-julia> target = LiveBoundaryTransport(1.0, :east)
-LiveBoundaryTransport: velocity=1.0, side=Val{:east}()
-
-julia> scheme = PerturbationAdvection(; target_transport = target)
-PerturbationAdvection{Float64}
-├── inflow_timescale: 0.0
-├── outflow_timescale: Inf
-├── gravity_wave_speed: 0.0
-├── density: Nothing
-└── target_transport: LiveBoundaryTransport{Float64, Val{:east}}
-```
-
-`LiveBoundaryTransport(velocity, side)` is a callable: evaluated on a grid it returns
-`velocity` times the *current* area of `side`, so the prescribed transport tracks the
-evolving boundary geometry. It is passed as `target_transport` exactly like a number; with a
-fixed vertical coordinate the simpler numeric form is sufficient.
+`target_transport` holds the net transport `∮u·dA` exactly for a `NonhydrostaticModel`. For a
+`HydrostaticFreeSurfaceModel` it is currently only approximate: the correction is applied
+before the implicit free-surface solve so that the free surface stays consistent, but the
+subsequent barotropic correction perturbs the boundary velocity slightly.
 
 ## Building boundary conditions on a field
 
