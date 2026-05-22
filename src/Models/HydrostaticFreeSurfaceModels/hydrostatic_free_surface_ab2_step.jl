@@ -28,11 +28,12 @@ The order of operations for explicit free surfaces is:
 1. Compute momentum flux boundary conditions (3D tendencies are computed in `update_state!`)
 2. Advance the free surface (barotropic step)
 3. Compute transport velocities for tracer advection
-4. Compute tracer tendencies
-5. Advance grid scaling (for z-star coordinates)
-6. Advance velocities using AB2
+4. Advance velocities using AB2
+5. Compute tracer tendencies
+6. Advance grid scaling (for z-star coordinates)
 7. Correct barotropic mode
-8. Advance tracers using AB2
+8. Enforce targeted open boundary transports on the updated grid
+9. Advance tracers using AB2
 """
 function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
     FT = eltype(grid)
@@ -57,9 +58,6 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
     u, v, _ = model.velocities
     fill_halo_regions!((u, v), model.clock, fields(model); async=true)
 
-    # Enforce targeted open boundary fluxes (free surface accommodates any net imbalance)
-    @apply_regionally enforce_targeted_open_boundary_transport!(model, model.boundary_transport)
-
     # Computing tracer tendencies
     @apply_regionally begin
         compute_tracer_tendencies!(model)
@@ -67,10 +65,17 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
         # Advance grid
         ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
 
-        # Correct the barotropic mode and advance tracers
+        # Correct the barotropic mode
         correct_barotropic_mode!(model, Δt)
-        ab2_step_tracers!(model.tracers, model, Δt, χ)
     end
+
+    # Enforce targeted open boundary transports after the grid step and barotropic
+    # correction, so the correction is the last word on boundary velocities and is
+    # applied on the end-of-step grid metrics (free surface accommodates any net imbalance).
+    @apply_regionally enforce_targeted_open_boundary_transport!(model, model.boundary_transport)
+
+    # Advance tracers using AB2
+    @apply_regionally ab2_step_tracers!(model.tracers, model, Δt, χ)
 
     return nothing
 end
@@ -81,12 +86,13 @@ end
 The Adams-Bashforth 2nd-order time step for `HydrostaticFreeSurfaceModel` with `ImplicitFreeSurface`.
 
 For implicit free surfaces, a predictor-corrector approach is used:
-1. Compute momentum and tracer tendencies
-2. Advance grid scaling (for z-star coordinates)
-3. Advance velocities using AB2 (predictor step)
-4. Solve implicit free surface equation
-5. Correct velocities for the updated barotropic pressure gradient
-6. Advance tracers using AB2
+1. Advance velocities using AB2 (predictor step)
+2. Solve implicit free surface equation
+3. Correct velocities for the updated barotropic pressure gradient
+4. Advance grid scaling (for z-star coordinates)
+5. Enforce targeted open boundary transports on the updated grid
+6. Compute transport velocities and tracer tendencies
+7. Advance tracers using AB2
 """
 function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, Δt, callbacks)
     FT = eltype(grid)
@@ -115,14 +121,16 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
     u, v, _ = model.velocities
     fill_halo_regions!((u, v), model.clock, fields(model))
 
-    # Enforce targeted open boundary fluxes (free surface accommodates any net imbalance)
+    # Advance the grid (z-star scaling) before the boundary-transport correction,
+    # so the correction enforces ∮u·dA on the end-of-step grid metrics.
+    @apply_regionally ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
+
+    # Enforce targeted open boundary transports (free surface accommodates any net imbalance)
     @apply_regionally enforce_targeted_open_boundary_transport!(model, model.boundary_transport)
 
     @apply_regionally begin
         compute_transport_velocities!(model, free_surface)
         compute_tracer_tendencies!(model)
-
-        ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
 
         # Finally step tracers
         ab2_step_tracers!(model.tracers, model, Δt, χ)

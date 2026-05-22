@@ -164,7 +164,7 @@ function targeted_flux_grid(arch, FT; N = 4, mutable_z = false)
     z = mutable_z ? MutableVerticalDiscretization(range(-one(FT), zero(FT), length = N + 1)) :
                     (-one(FT), zero(FT))
     return RectilinearGrid(arch, FT; size = (N, N, N), x = (0, 1), y = (0, 1), z,
-                           topology = (Bounded, Bounded, Bounded))
+                           halo = (4, 4, 4), topology = (Bounded, Bounded, Bounded))
 end
 
 make_targeted_flux_model(::Type{NonhydrostaticModel}, grid, boundary_conditions; mutable_z = false) =
@@ -172,8 +172,12 @@ make_targeted_flux_model(::Type{NonhydrostaticModel}, grid, boundary_conditions;
 
 function make_targeted_flux_model(::Type{HydrostaticFreeSurfaceModel}, grid, boundary_conditions; mutable_z = false)
     vertical_coordinate = mutable_z ? ZStarCoordinate() : ZCoordinate()
+    # With a mutable vertical coordinate, use a real momentum advection so the flow
+    # develops and the free surface (hence the grid) genuinely moves during the run —
+    # the regime in which the targeted-transport correction must hold ∮u·dA.
+    momentum_advection = mutable_z ? WENO() : nothing
     return HydrostaticFreeSurfaceModel(grid; boundary_conditions,
-                                       momentum_advection=nothing,
+                                       momentum_advection,
                                        tracer_advection=nothing,
                                        buoyancy=nothing,
                                        tracers=(),
@@ -201,6 +205,10 @@ function test_targeted_transport_achieved(arch, FT, ModelType; N = 4, mutable_z 
     west_flux = Field(Integral(view(u, 1, :, :), dims=(2, 3)))
     compute!(west_flux)
     @test Array(interior(west_flux))[1, 1, 1] ≈ Q_target atol = N^2 * eps(FT)
+
+    # Guard: with a mutable vertical coordinate the run must actually move the free
+    # surface, otherwise the targeted-transport check above is exercised on a static grid.
+    mutable_z && @test maximum(abs, Array(interior(model.free_surface.displacement))) > 0
 end
 
 function test_targeted_transport_conservation(arch, FT, ModelType; N = 4, mutable_z = false)

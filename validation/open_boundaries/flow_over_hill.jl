@@ -43,11 +43,13 @@ function flow_over_hill_simulation(; arch = CPU(),
     # current column height under a mutable vertical coordinate. Targeting both
     # ends pins the net transport directly instead of leaving the inflow as a
     # fixed-velocity boundary whose transport drifts with the free surface.
+    Q_west = U * boundary_total_area(:west, grid)
+    Q_east = U * boundary_total_area(:east, grid)
     u_boundaries = FieldBoundaryConditions(
-        west = OpenBoundaryCondition(U; scheme = scheme_type(; target_transport = LiveBoundaryTransport(U, :west))),
-        east = OpenBoundaryCondition(U; scheme = scheme_type(; target_transport = LiveBoundaryTransport(U, :east))))
+        west = OpenBoundaryCondition(U; scheme = scheme_type(; target_transport = Q_west)),
+        east = OpenBoundaryCondition(U; scheme = scheme_type(; target_transport = Q_east)))
     boundary_conditions = (u = u_boundaries,)
-    advection = WENO(; order=5, minimum_buffer_upwind_order=1)
+    advection = WENO(; order=5)
 
     model_kwargs = (; boundary_conditions)
 

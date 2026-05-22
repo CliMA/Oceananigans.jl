@@ -24,11 +24,12 @@ The order of operations for explicit free surfaces is:
 1. Compute momentum tendencies (baroclinic)
 2. Advance the free surface (barotropic step)
 3. Compute transport velocities for tracer advection
-4. Compute tracer tendencies
-5. Advance grid scaling (for z-star coordinates)
-6. Advance velocities
+4. Advance velocities
+5. Compute tracer tendencies
+6. Advance grid scaling (for z-star coordinates)
 7. Correct barotropic mode to reconcile baroclinic and barotropic velocities
-8. Advance tracers
+8. Enforce targeted open boundary transports on the updated grid
+9. Advance tracers
 """
 @inline function rk_substep!(model, free_surface, grid, Δτ, callbacks)
     # Compute barotropic and baroclinic tendencies
@@ -48,9 +49,6 @@ The order of operations for explicit free surfaces is:
     u, v, _ = model.velocities
     fill_halo_regions!((u, v), model.clock, fields(model); async=true)
 
-    # Enforce targeted open boundary fluxes (free surface accommodates any net imbalance)
-    @apply_regionally enforce_targeted_open_boundary_transport!(model, model.boundary_transport)
-
     @apply_regionally begin
         # compute tracer tendencies
         compute_tracer_tendencies!(model)
@@ -60,8 +58,15 @@ The order of operations for explicit free surfaces is:
 
         # Correct for the updated barotropic mode
         correct_barotropic_mode!(model, Δτ)
-        rk_substep_tracers!(model.tracers, model, Δτ)
     end
+
+    # Enforce targeted open boundary transports after the grid step and barotropic
+    # correction, so the correction is the last word on boundary velocities and is
+    # applied on the end-of-step grid metrics (free surface accommodates any net imbalance).
+    @apply_regionally enforce_targeted_open_boundary_transport!(model, model.boundary_transport)
+
+    # Advance tracers
+    @apply_regionally rk_substep_tracers!(model.tracers, model, Δτ)
 
     return nothing
 end
@@ -72,12 +77,13 @@ end
 Split Runge-Kutta substep for `HydrostaticFreeSurfaceModel` with `ImplicitFreeSurface`.
 
 For implicit free surfaces, a predictor-corrector approach is used:
-1. Compute momentum and tracer tendencies
-2. Advance grid scaling (for z-star coordinates)
-3. Advance velocities (predictor step, ignoring free surface)
-4. Solve implicit free surface equation
-5. Correct velocities for the updated barotropic pressure gradient
-6. Advance tracers
+1. Advance velocities (predictor step, ignoring free surface)
+2. Solve implicit free surface equation
+3. Correct velocities for the updated barotropic pressure gradient
+4. Advance grid scaling (for z-star coordinates)
+5. Enforce targeted open boundary transports on the updated grid
+6. Compute transport velocities and tracer tendencies
+7. Advance tracers
 """
 @inline function rk_substep!(model, free_surface::ImplicitFreeSurface, grid, Δτ, callbacks)
 
@@ -104,14 +110,16 @@ For implicit free surfaces, a predictor-corrector approach is used:
     u, v, _ = model.velocities
     fill_halo_regions!((u, v), model.clock, fields(model))
 
-    # Enforce targeted open boundary fluxes (free surface accommodates any net imbalance)
+    # Advance the grid (z-star scaling) before the boundary-transport correction,
+    # so the correction enforces ∮u·dA on the end-of-step grid metrics.
+    @apply_regionally rk_substep_grid!(model.grid, model, model.vertical_coordinate, Δτ)
+
+    # Enforce targeted open boundary transports (free surface accommodates any net imbalance)
     @apply_regionally enforce_targeted_open_boundary_transport!(model, model.boundary_transport)
 
     @apply_regionally begin
         compute_transport_velocities!(model, free_surface)
         compute_tracer_tendencies!(model)
-
-        rk_substep_grid!(model.grid, model, model.vertical_coordinate, Δτ)
 
         # Finally step tracers
         rk_substep_tracers!(model.tracers, model, Δτ)
