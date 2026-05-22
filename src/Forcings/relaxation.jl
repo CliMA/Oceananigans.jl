@@ -100,9 +100,6 @@ Relaxation{Float64}
 Relaxation(; rate, mask=onefunction, target=zerofunction, transform=nothing) =
     Relaxation(rate, mask, target, nothing, nothing, transform)
 
-const FieldRelaxation{R, M, T<:AbstractField, F, L, Tr}            = Relaxation{R, M, T, F, L, Tr}
-const FieldTimeSeriesRelaxation{R, M, T<:FlavorOfFTS, F, L, Tr}    = Relaxation{R, M, T, F, L, Tr}
-
 apply_transform(t,          field) = t(field)
 apply_transform(s::Symbol,  field) = apply_transform(Val(s), field)
 apply_transform(::Val{:horizontal_average}, field) = Field(Average(field, dims=(1, 2)))
@@ -138,13 +135,34 @@ Adapt.adapt_structure(to, t::InterpolatedFieldTarget) =
 
 Base.summary(t::InterpolatedFieldTarget) = "interpolated " * summary(t.field)
 
+"""
+    FieldTimeSeriesTarget(field_time_series, grid)
+
+Wraps a `FieldTimeSeries` together with its grid so that the relaxation kernel can
+`interpolate(X, Time(t), fts, ..., grid)` on the device. `Adapt`ing a
+`FieldTimeSeries` to a `GPUAdaptedFieldTimeSeries` drops the grid, so it is cached
+separately on this wrapper at materialize time.
+"""
+struct FieldTimeSeriesTarget{F, G}
+    field_time_series :: F
+                 grid :: G
+end
+
+Adapt.adapt_structure(to, t::FieldTimeSeriesTarget) =
+    FieldTimeSeriesTarget(Adapt.adapt(to, t.field_time_series), Adapt.adapt(to, t.grid))
+
+Base.summary(t::FieldTimeSeriesTarget) = summary(t.field_time_series)
+
+const FieldRelaxation{R, M, T<:AbstractField, F, L, Tr}                                       = Relaxation{R, M, T, F, L, Tr}
+const FieldTimeSeriesRelaxation{R, M, T<:Union{FlavorOfFTS, FieldTimeSeriesTarget}, F, L, Tr} = Relaxation{R, M, T, F, L, Tr}
+
 @inline evaluate_target(c::Number,                    i, j, k, X, t) = c
 @inline evaluate_target(f,                            i, j, k, X, t) = f(X..., t)
 @inline evaluate_target(f::AbstractArray,             i, j, k, X, t) = @inbounds f[i, j, k]
 @inline evaluate_target(t::InterpolatedFieldTarget,   i, j, k, X, time) =
     interpolate(X, t.field, t.loc, t.grid)
-@inline evaluate_target(fts::FlavorOfFTS,             i, j, k, X, t) =
-    interpolate(X, Time(t), fts, instantiated_location(fts), fts.grid)
+@inline evaluate_target(t::FieldTimeSeriesTarget,     i, j, k, X, time) =
+    interpolate(X, Time(time), t.field_time_series, instantiated_location(t.field_time_series), t.grid)
 
 # Default: take user-supplied target as-is (Numbers, callables, plain arrays, …).
 materialize_target(target, field) = target
@@ -176,7 +194,8 @@ function materialize_forcing(forcing::Relaxation{<:Any, <:Any, <:FlavorOfFTS}, f
     isnothing(forcing.transform) ||
         throw(ArgumentError("`transform` is not supported with a `FieldTimeSeries` target"))
     validate_fts_target_extent(forcing.target, field)
-    return Relaxation(forcing.rate, forcing.mask, forcing.target, field, instantiated_location(field), nothing)
+    target = FieldTimeSeriesTarget(forcing.target, forcing.target.grid)
+    return Relaxation(forcing.rate, forcing.mask, target, field, instantiated_location(field), nothing)
 end
 
 function validate_fts_target_extent(fts, field)

@@ -580,11 +580,12 @@ end
                 r = Relaxation(rate=1/τ, target=fts)
                 model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r))
 
-                # Materialization stores the FTS directly and records the forced field's location.
+                # Materialization wraps the FTS in a FieldTimeSeriesTarget so the FTS's grid
+                # survives Adapt to the device, and records the forced field's location.
                 rm = model.forcing.c
                 @test rm isa FieldTimeSeriesRelaxation
-                @test rm isa FieldRelaxation
-                @test rm.target === fts
+                @test rm.target.field_time_series === fts
+                @test rm.target.grid === fts.grid
                 @test rm.relaxed === model.tracers.c
                 @test rm.location == (Center(), Center(), Center())
 

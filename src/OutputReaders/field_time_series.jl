@@ -330,21 +330,19 @@ on_architecture(to, fts::FieldTimeSeries{LX, LY, LZ}) where {LX, LY, LZ} =
 ##### Supports reduced locations + time-interpolation / extrapolation
 #####
 
-struct GPUAdaptedFieldTimeSeries{LX, LY, LZ, TI, K, ET, D, χ, G} <: AbstractField{LX, LY, LZ, G, ET, 4}
+struct GPUAdaptedFieldTimeSeries{LX, LY, LZ, TI, K, ET, D, χ} <: AbstractField{LX, LY, LZ, Nothing, ET, 4}
              data :: D
             times :: χ
           backend :: K
     time_indexing :: TI
-             grid :: G
 
     function GPUAdaptedFieldTimeSeries{LX, LY, LZ}(data::D,
                                                    times::χ,
                                                    backend::K,
-                                                   time_indexing::TI,
-                                                   grid::G) where {LX, LY, LZ, TI, K, D, χ, G}
+                                                   time_indexing::TI) where {LX, LY, LZ, TI, K, D, χ}
 
         ET = eltype(data)
-        return new{LX, LY, LZ, TI, K, ET, D, χ, G}(data, times, backend, time_indexing, grid)
+        return new{LX, LY, LZ, TI, K, ET, D, χ}(data, times, backend, time_indexing)
     end
 end
 
@@ -355,8 +353,7 @@ function Adapt.adapt_structure(to, fts::FieldTimeSeries)
     return GPUAdaptedFieldTimeSeries{LX, LY, LZ}(adapt(to, fts.data),
                                                  adapt(to, fts.times),
                                                  adapt(to, fts.backend),
-                                                 adapt(to, fts.time_indexing),
-                                                 adapt(to, fts.grid))
+                                                 adapt(to, fts.time_indexing))
 end
 
 const    FTS{LX, LY, LZ, TI, K} =           FieldTimeSeries{LX, LY, LZ, TI, K} where {LX, LY, LZ, TI, K}
