@@ -232,11 +232,11 @@ model = NonhydrostaticModel(grid; forcing=(u=damping, v=damping, w=damping))
 model.forcing.w
 
 # output
-Relaxation{Float64, typeof(Oceananigans.Forcings.onefunction), typeof(Oceananigans.Forcings.zerofunction)}
-├──   rate: 0.001
-├──   mask: 1
+Relaxation{Float64, Center, Center, Face}
+├── rate: 0.001
+├── mask: 1
 ├── target: 0
-└── location: (Center(), Center(), Face())
+└── relaxed: 1×1×2 Field{Center, Center, Face} on RectilinearGrid on CPU
 ```
 
 The constructor for `Relaxation` accepts the keyword arguments `mask`, and `target`,
@@ -291,22 +291,22 @@ model = NonhydrostaticModel(grid; forcing=(u=uvw_sponge, v=uvw_sponge, w=uvw_spo
 model.forcing.u
 
 # output
-Relaxation{Float64, GaussianMask{:z, Float64}, typeof(Oceananigans.Forcings.zerofunction)}
-├──   rate: 0.01
-├──   mask: exp(-(z + 1.0)^2 / (2 * 0.1^2))
+Relaxation{Float64, Face, Center, Center}
+├── rate: 0.01
+├── mask: exp(-(z + 1.0)^2 / (2 * 0.1^2))
 ├── target: 0
-└── location: (Face(), Center(), Center())
+└── relaxed: 1×1×1 Field{Face, Center, Center} on RectilinearGrid on CPU
 ```
 
 ```jldoctest sponge_layer
 model.forcing.T
 
 # output
-Relaxation{Float64, GaussianMask{:z, Float64}, LinearTarget{:z, Float64}}
-├──   rate: 0.01
-├──   mask: exp(-(z + 1.0)^2 / (2 * 0.1^2))
+Relaxation{Float64, Center, Center, Center}
+├── rate: 0.01
+├── mask: exp(-(z + 1.0)^2 / (2 * 0.1^2))
 ├── target: 20.0 + 0.001 * z
-└── location: (Center(), Center(), Center())
+└── relaxed: 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
 ```
 
 ### `FieldTimeSeries` target
@@ -351,7 +351,7 @@ relax_horizontal_mean = Relaxation(rate=1/60, transform=:horizontal_average, tar
 
 model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=relax_horizontal_mean))
 
-summary(model.forcing.c.field)
+summary(model.forcing.c.relaxed)
 
 # output
 "1×1×8 Field{Nothing, Nothing, Center} reduced over dims = (1, 2) on RectilinearGrid on CPU"
@@ -370,7 +370,7 @@ relax_xz_mean = Relaxation(rate=1/60, transform=xz_average)
 
 model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=relax_xz_mean))
 
-summary(model.forcing.c.field)
+summary(model.forcing.c.relaxed)
 
 # output
 "1×8×1 Field{Nothing, Center, Nothing} reduced over dims = (1, 3) on RectilinearGrid on CPU"

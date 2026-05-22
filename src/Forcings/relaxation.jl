@@ -2,6 +2,7 @@ using Oceananigans.Grids: node, xnodes, ynodes, znodes
 using Oceananigans.Fields: AbstractField, Field, compute!
 using Oceananigans.AbstractOperations: Average
 using Oceananigans.OutputReaders: interpolate
+using Oceananigans.Utils: prettysummary
 using Oceananigans: instantiated_location
 
 @inline zerofunction(args...) = 0
@@ -18,8 +19,8 @@ Base.summary(::T_onefunction) = "1"
 
 Callable object for restoring fields to a `target` at some `rate` and within a
 `mask`ed region in `x, y, z`. The trailing parameters `F`, `L`, and `Tr` carry
-the forced `field` (or, when `transform` is set, the *transformed* field that the
-relaxation reads in its kernel), its instantiated `location`, and the
+the `relaxed` quantity (the forced field, or, when `transform` is set, a `Field`
+holding `transform(forced_field)`), its instantiated `location`, and the
 user-supplied `transform` once `materialize_forcing` runs. They are `nothing`
 for a freshly-constructed `Relaxation`.
 """
@@ -27,7 +28,7 @@ struct Relaxation{R, M, T, F, L, Tr}
          rate :: R
          mask :: M
        target :: T
-        field :: F
+      relaxed :: F
      location :: L
     transform :: Tr
 end
@@ -46,7 +47,7 @@ the forced field's grid and location, or a `FieldTimeSeries` (interpolated in sp
 time at each grid point).
 
 `transform`, if provided, is applied to the forced field at materialize time to build
-the quantity that is *relaxed*: the tendency becomes
+the `relaxed` quantity: the tendency becomes
 `rate * mask(X) * (target(X, t) - transform(field)[i, j, k])`. The user-supplied `target`
 is still used as the RHS of the relaxation. This is useful for nudging a reduction
 of the forced field — e.g. its horizontal average — toward a target profile.
@@ -68,9 +69,9 @@ using Oceananigans
 damping = Relaxation(rate = 1/3600)
 
 # output
-Relaxation{Float64, typeof(Oceananigans.Forcings.onefunction), typeof(Oceananigans.Forcings.zerofunction)}
-├──   rate: 0.0002777777777777778
-├──   mask: 1
+Relaxation{Float64}
+├── rate: 0.0002777777777777778
+├── mask: 1
 └── target: 0
 ```
 
@@ -90,9 +91,9 @@ bottom_sponge_layer = Relaxation(; rate = 1/60,
                                    mask = GaussianMask{:z}(center=-Lz, width=Lz/4))
 
 # output
-Relaxation{Float64, GaussianMask{:z, Float64}, LinearTarget{:z, Float64}}
-├──   rate: 0.016666666666666666
-├──   mask: exp(-(z + 100.0)^2 / (2 * 25.0^2))
+Relaxation{Float64}
+├── rate: 0.016666666666666666
+├── mask: exp(-(z + 100.0)^2 / (2 * 25.0^2))
 └── target: 20.0 + 0.001 * z
 ```
 """
@@ -108,9 +109,12 @@ apply_transform(::Val{:horizontal_average}, field) = Field(Average(field, dims=(
 apply_transform(::Val{S}, field) where S =
   throw(ArgumentError("unknown transform :$S; supported: :horizontal_average"))
 
-@inline function (r::Relaxation{R, M, T, F, L, Tr})(i, j, k, grid, clock, model_fields) where {R, M, T, F<:AbstractField, L, Tr}
+# Note `F<:AbstractArray` (not `F<:AbstractField`): `Adapt.adapt_structure(to, ::Field) = adapt(to, f.data)`
+# unwraps Field to its underlying OffsetArray on GPU, so an `<:AbstractField` constraint here
+# would prevent kernel dispatch on the device and the compiler would emit a MethodError.
+@inline function (r::Relaxation{R, M, T, F, L, Tr})(i, j, k, grid, clock, model_fields) where {R, M, T, F<:AbstractArray, L, Tr}
     X  = node(i, j, k, grid, r.location...)
-    ϕ  = @inbounds r.field[i, j, k]
+    ϕ  = @inbounds r.relaxed[i, j, k]
     ϕᵣ = evaluate_target(r.target, i, j, k, X, clock.time)
     return r.rate * r.mask(X...) * (ϕᵣ - ϕ)
 end
@@ -162,8 +166,8 @@ end
 
 function materialize_forcing(forcing::Relaxation, field, field_name, model_field_names)
     target = materialize_target(forcing.target, field)
-    relaxed_field = isnothing(forcing.transform) ? field : apply_transform(forcing.transform, field)
-    return Relaxation(forcing.rate, forcing.mask, target, relaxed_field,
+    relaxed = isnothing(forcing.transform) ? field : apply_transform(forcing.transform, field)
+    return Relaxation(forcing.rate, forcing.mask, target, relaxed,
                       instantiated_location(field), forcing.transform)
 end
 
@@ -201,26 +205,27 @@ Adapt.adapt_structure(to, r::Relaxation) =
     Relaxation(Adapt.adapt(to, r.rate),
                Adapt.adapt(to, r.mask),
                Adapt.adapt(to, r.target),
-               Adapt.adapt(to, r.field),
+               Adapt.adapt(to, r.relaxed),
                Adapt.adapt(to, r.location),
                Adapt.adapt(to, r.transform))
 
 """Show the innards of a `Relaxation` in the REPL."""
-function Base.show(io::IO, relaxation::Relaxation{R, M, T}) where {R, M, T}
-    print(io, "Relaxation{$R, $M, $T}", "\n",
-              "├──   rate: $(relaxation.rate)", "\n",
-              "├──   mask: $(summary(relaxation.mask))", "\n")
-    extras = Pair{String, Any}[]
-    isnothing(relaxation.location)  || push!(extras, "location"  => relaxation.location)
-    isnothing(relaxation.transform) || push!(extras, "transform" => relaxation.transform)
-    if isempty(extras)
-        print(io, "└── target: $(summary(relaxation.target))")
+function Base.show(io::IO, relaxation::Relaxation)
+    FT = typeof(relaxation.rate)
+    if isnothing(relaxation.location)
+        print(io, "Relaxation{$FT}")
     else
-        print(io, "├── target: $(summary(relaxation.target))")
-        for (i, (key, value)) in enumerate(extras)
-            prefix = i == length(extras) ? "└── " : "├── "
-            print(io, "\n", prefix, key, ": ", value)
-        end
+        LX, LY, LZ = map(typeof, relaxation.location)
+        print(io, "Relaxation{$FT, $LX, $LY, $LZ}")
+    end
+    rows = Pair{String, String}["rate"   => string(relaxation.rate),
+                                "mask"   => summary(relaxation.mask),
+                                "target" => summary(relaxation.target)]
+    isnothing(relaxation.relaxed)   || push!(rows, "relaxed"   => prettysummary(relaxation.relaxed))
+    isnothing(relaxation.transform) || push!(rows, "transform" => string(relaxation.transform))
+    for (i, (key, value)) in enumerate(rows)
+        prefix = i == length(rows) ? "└── " : "├── "
+        print(io, "\n", prefix, key, ": ", value)
     end
 end
 
@@ -228,7 +233,6 @@ function Base.summary(relaxation::Relaxation)
     parts = ["rate=$(relaxation.rate)",
              "mask=$(summary(relaxation.mask))",
              "target=$(summary(relaxation.target))"]
-    isnothing(relaxation.location)  || push!(parts, "location=$(relaxation.location)")
     isnothing(relaxation.transform) || push!(parts, "transform=$(relaxation.transform)")
     return "Relaxation(" * join(parts, ", ") * ")"
 end

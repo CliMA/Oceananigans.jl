@@ -585,7 +585,7 @@ end
                 @test rm isa FieldTimeSeriesRelaxation
                 @test rm isa FieldRelaxation
                 @test rm.target === fts
-                @test rm.field === model.tracers.c
+                @test rm.relaxed === model.tracers.c
                 @test rm.location == (Center(), Center(), Center())
 
                 # Analytical convergence: dc/dt = (c_ref - c)/τ ⇒ after one step,
@@ -621,7 +621,7 @@ end
                 @test rm isa FieldRelaxation
                 @test !(rm isa FieldTimeSeriesRelaxation)
                 @test rm.target === target_field
-                @test rm.field === model.tracers.c
+                @test rm.relaxed === model.tracers.c
                 @test rm.location == (Center(), Center(), Center())
 
                 set!(model, c=0)
@@ -680,8 +680,8 @@ end
                 rm = model.forcing.c
                 @test rm.transform === :horizontal_average
                 @test rm.target === c_target
-                @test rm.field isa Field
-                @test rm.field !== model.tracers.c
+                @test rm.relaxed isa Field
+                @test rm.relaxed !== model.tracers.c
 
                 # IC: zero-mean horizontal sinusoid. The forcing is i,j-independent
                 # at fixed k, so it drives only the horizontal mean — fluctuations
@@ -710,7 +710,7 @@ end
                 r_closure = Relaxation(rate=1/τ, target=c_target,
                                        transform = f -> Field(Average(f, dims=(1, 2))))
                 model_closure = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r_closure))
-                @test model_closure.forcing.c.field isa Field
+                @test model_closure.forcing.c.relaxed isa Field
 
                 # z-varying target profile: <c>(z) relaxes toward LinearTarget at each k.
                 c_profile = LinearTarget{:z}(intercept=1.0, gradient=0.01)
