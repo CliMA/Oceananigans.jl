@@ -77,6 +77,7 @@ function ZarrWriter(model::AbstractModel, outputs;
               "falling back to synchronous I/O."
         asynchronous = false
     end
+    asynchronous && Oceananigans.OutputWriters.validate_async_outputs(d_outputs, array_type, model)
     Mode = asynchronous ? Asynchronous : Synchronous
 
     return ZarrWriter{Mode}(filepath,

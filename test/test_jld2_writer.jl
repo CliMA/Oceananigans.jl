@@ -251,6 +251,44 @@ function test_jld2_async_exception_propagation(arch)
     return nothing
 end
 
+function test_jld2_async_cpu_aliasing_error(arch)
+    # On CPU, `fetch_and_convert_output` returns the live field array without copying
+    # when the field's eltype matches `eltype(array_type)`. Async writes from that
+    # array would race with the next `time_step!`. Construction must refuse.
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1),
+                           topology=(Periodic, Periodic, Periodic))
+    model = NonhydrostaticModel(grid; tracers=:c)  # default Float64
+
+    # Float64 model + Array{Float32} (default): eltypes differ → conversion copies → OK.
+    @test JLD2Writer(model, model.velocities;
+                     filename = "ok_default", schedule = IterationInterval(1),
+                     overwrite_existing = true, asynchronous = true) isa AsyncOutputWriter
+    isfile("ok_default.jld2") && rm("ok_default.jld2")
+
+    # Float64 model + Array{Float64}: eltypes match → would alias → error (on CPU).
+    if arch isa GPU
+        # GPU writes always copy in convert_output, so the check is a no-op.
+        @test JLD2Writer(model, model.velocities;
+                         filename = "ok_f64_gpu", schedule = IterationInterval(1),
+                         overwrite_existing = true, array_type = Array{Float64},
+                         asynchronous = true) isa AsyncOutputWriter
+        isfile("ok_f64_gpu.jld2") && rm("ok_f64_gpu.jld2")
+    else
+        @test_throws ArgumentError JLD2Writer(model, model.velocities;
+            filename = "bad_f64", schedule = IterationInterval(1),
+            overwrite_existing = true, array_type = Array{Float64},
+            asynchronous = true)
+        # Sync writers are unaffected by the check.
+        @test JLD2Writer(model, model.velocities;
+                         filename = "ok_f64_sync", schedule = IterationInterval(1),
+                         overwrite_existing = true, array_type = Array{Float64},
+                         asynchronous = false) isa SyncOutputWriter
+        isfile("ok_f64_sync.jld2") && rm("ok_f64_sync.jld2")
+    end
+
+    return nothing
+end
+
 function test_jld2_time_file_splitting(arch)
     grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1), halo=(1, 1, 1))
     model = NonhydrostaticModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
@@ -624,6 +662,7 @@ for arch in archs
         test_jld2_async_io_matches_sync(arch)
         test_jld2_async_overlap(arch)
         test_jld2_async_exception_propagation(arch)
+        test_jld2_async_cpu_aliasing_error(arch)
 
         #####
         ##### Time-averaging

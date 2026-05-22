@@ -178,6 +178,8 @@ function NetCDFWriter(model::AbstractModel, outputs;
                                                     dimension_name_generator,
                                                     dimension_type)
 
+    asynchronous && Oceananigans.OutputWriters.validate_async_outputs(outputs, array_type, model)
+
     Mode = asynchronous ? Asynchronous : Synchronous
     return NetCDFWriter{Mode}(unique_grids,
                               output_grid_map,

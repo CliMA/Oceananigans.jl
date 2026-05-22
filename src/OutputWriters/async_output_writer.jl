@@ -1,5 +1,8 @@
 using Base.Threads: @spawn
 
+using Oceananigans.Architectures: GPU, architecture
+using Oceananigans.Fields: AbstractField
+
 #####
 ##### Async I/O for output writers
 #####
@@ -148,6 +151,46 @@ end
 #####
 ##### Generic prepare/commit interface
 #####
+
+#####
+##### CPU aliasing validation
+#####
+##### `fetch_and_convert_output` returns the field's underlying array without
+##### copying when the field's eltype matches `eltype(array_type)` on CPU. In
+##### async mode this is a data race: the worker thread reads the array while
+##### the main thread mutates it during the next `time_step!`. We refuse to
+##### construct such a writer.
+#####
+
+_output_aliases_live_data(out, FT) = false
+_output_aliases_live_data(field::AbstractField, FT) = eltype(field) === FT
+_output_aliases_live_data(wta::WindowedTimeAverage{<:AbstractField}, FT) = eltype(wta.operand) === FT
+
+"""
+    validate_async_outputs(outputs, array_type, model)
+
+Throw an `ArgumentError` if any output would alias live model state when written
+asynchronously on a CPU model. Aliasing happens when the output is an
+`AbstractField` (or `WindowedTimeAverage` of one) whose `eltype` matches
+`eltype(array_type)` — `convert_output` then returns the input array unchanged.
+On GPU the conversion always copies, so this check is a no-op.
+"""
+function validate_async_outputs(outputs, array_type, model)
+    architecture(model) isa GPU && return nothing
+    array_eltype = eltype(array_type)
+    aliasing = String[]
+    for (name, out) in pairs(outputs)
+        _output_aliases_live_data(out, array_eltype) && push!(aliasing, string(name))
+    end
+    isempty(aliasing) && return nothing
+    throw(ArgumentError(
+        "Asynchronous output on CPU would alias live model state for outputs " *
+        "$aliasing: their eltype matches `array_type = $array_type`, so " *
+        "`fetch_and_convert_output` returns the live array without copying and the " *
+        "worker thread would race with the next `time_step!`. " *
+        "Either pick an `array_type` whose eltype differs from the field eltype " *
+        "(e.g., `Array{Float32}` for a Float64 model), or set `asynchronous=false`."))
+end
 
 """
     prepare_async_write(writer, model)
