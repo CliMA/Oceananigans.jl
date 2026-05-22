@@ -147,14 +147,6 @@ const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
     has_target_transport(scheme)
 
 Return `true` if `scheme` carries a prescribed `target_transport`, `false` otherwise.
-
-Extend this function for custom open-boundary schemes defined outside Oceananigans so that
-the targeted-flux correction machinery picks them up automatically:
-
-```julia
-MyPkg.has_target_transport(s::MyScheme) = s.target_transport !== nothing
-MyPkg.get_target_transport(s::MyScheme) = s.target_transport
-```
 """
 has_target_transport(scheme) = false
 has_target_transport(scheme::PerturbationAdvection{<:Any, <:Any, <:Nothing}) = false
@@ -167,14 +159,6 @@ Return the prescribed target transport for `scheme` on `grid`.
 For a `Number`, returns the stored value unchanged.
 For a callable (e.g. `LiveBoundaryTransport`), calls it with `grid` to
 recompute the target at the current grid state (needed for ZStar grids).
-
-A 1-argument fallback is provided for external packages that have not yet
-adopted the 2-argument form:
-
-```julia
-MyPkg.has_target_transport(s::MyScheme) = s.target_transport !== nothing
-MyPkg.get_target_transport(s::MyScheme) = s.target_transport
-```
 """
 get_target_transport(scheme, grid) = get_target_transport(scheme)  # 1-arg fallback for external schemes
 get_target_transport(scheme::PerturbationAdvection, grid) = _eval_tt(scheme.target_transport, grid)
