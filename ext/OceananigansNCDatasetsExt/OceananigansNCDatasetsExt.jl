@@ -74,7 +74,10 @@ using Oceananigans.OutputWriters:
     fetch_output,
     convert_output,
     fetch_and_convert_output,
-    show_array_type
+    show_array_type,
+    Synchronous,
+    Asynchronous,
+    is_asynchronous
 using Oceananigans.Utils:
     TimeInterval, IterationInterval, WallTimeInterval, materialize_schedule,
     versioninfo_with_gpu, oceananigans_versioninfo, prettykeys, add_time_interval
@@ -91,6 +94,8 @@ import Oceananigans.OutputWriters:
     trilocation_dim_name,
     add_grid_suffix,
     dimension_name_generator_free_surface,
+    prepare_async_write,
+    commit_async_write!,
     vertical_coordinate_name
 
 const c = Center()

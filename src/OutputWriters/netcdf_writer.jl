@@ -96,7 +96,7 @@ dimension_name_generator_free_surface(dimension_name_generator, var_name, grid, 
 add_grid_suffix(name, grid_index) = isempty(name) ? name : name * "_grid$(grid_index)"
 add_grid_suffix(name, ::Nothing) = name
 
-mutable struct NetCDFWriter{G, GM, D, O, T, A, FS, DN, DT} <: AbstractOutputWriter
+mutable struct NetCDFWriter{Mode, G, GM, D, O, T, A, FS, DN, DT} <: AbstractOutputWriter{Mode}
     grids :: G
     output_grid_map :: GM
     filepath :: String
@@ -117,6 +117,25 @@ mutable struct NetCDFWriter{G, GM, D, O, T, A, FS, DN, DT} <: AbstractOutputWrit
     file_splitting :: FS
     dimension_name_generator :: DN
     dimension_type :: DT
+    task :: Union{Task, Nothing}  # in-flight async write task; `nothing` for `Synchronous`
+    commit_delay :: Float64       # test-only: artificial sleep inside commit_async_write!
+    commit_throws :: Union{Nothing, Exception}  # test-only: exception to throw in commit_async_write!
+end
+
+# Parametric outer constructor that fills in `task = nothing`. Lets us write
+# `NetCDFWriter{Synchronous}(...)` or `NetCDFWriter{Asynchronous}(...)` and
+# have Julia infer the remaining type parameters from the arguments.
+function NetCDFWriter{Mode}(grids::G, output_grid_map::GM, filepath, dataset::D,
+                            outputs::O, schedule::T, array_type::A, indices::Tuple,
+                            global_attributes::Dict, output_attributes::Dict, dimensions::Dict,
+                            with_halos::Bool, include_grid_metrics::Bool, overwrite_existing::Bool,
+                            verbose::Bool, deflatelevel::Int, part::Int, file_splitting::FS,
+                            dimension_name_generator::DN, dimension_type::DT) where {Mode, G, GM, D, O, T, A, FS, DN, DT}
+    return NetCDFWriter{Mode, G, GM, D, O, T, A, FS, DN, DT}(
+        grids, output_grid_map, filepath, dataset, outputs, schedule, array_type, indices,
+        global_attributes, output_attributes, dimensions, with_halos, include_grid_metrics,
+        overwrite_existing, verbose, deflatelevel, part, file_splitting,
+        dimension_name_generator, dimension_type, nothing, 0.0, nothing)
 end
 
 # method in OceananigansNCDatasetsExt
@@ -138,7 +157,8 @@ end
                  part = 1,
                  file_splitting = NoFileSplitting(),
                  dimension_name_generator = trilocation_dim_name,
-                 dimension_type = Float64)
+                 dimension_type = Float64,
+                 asynchronous = false)
 
 Construct a `NetCDFWriter` that writes `(label, output)` pairs in `outputs` to a NetCDF file.
 
@@ -234,6 +254,14 @@ Optional keyword arguments
 
 - `dimension_type`: Floating point type for dimension coordinate arrays. Default: `Float64`.
                     Use `Float32` to reduce file size if needed.
+
+- `asynchronous`: If `true`, run the disk-write phase on a background task so that GPU
+                  computation can continue concurrently. The synchronous GPU→CPU copy still
+                  happens on the main thread. Use [`wait_for_async_writes!`](@ref) to flush
+                  pending writes (called automatically at the end of `run!`).
+                  A single in-flight task per writer is enforced (the next write waits for
+                  the previous one to complete), so HDF5/NetCDF concurrency hazards are
+                  avoided. Default: `false`.
 
 Examples
 ========

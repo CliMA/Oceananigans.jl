@@ -1,5 +1,6 @@
 include("dependencies_for_runtests.jl")
 
+using Oceananigans: write_output!
 using Oceananigans.Fields: FunctionField
 
 #####
@@ -81,6 +82,208 @@ function test_jld2_size_file_splitting(arch)
 
         # Leave test directory clean.
         rm(filename)
+    end
+
+    return nothing
+end
+
+function test_jld2_async_io_matches_sync(arch)
+    # Verify that async output is byte-identical to synchronous output for the same simulation.
+    function build_sim(asynchronous, filename)
+        grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+        model = NonhydrostaticModel(grid; tracers=:c)
+        set!(model,
+             u = (x, y, z) -> sin(2π * x) * cos(2π * y),
+             v = (x, y, z) -> cos(2π * x) * sin(2π * y),
+             w = (x, y, z) -> 0.0,
+             c = (x, y, z) -> z)
+
+        sim = Simulation(model, Δt=0.001, stop_iteration=5)
+        sim.output_writers[:fields] = JLD2Writer(model,
+                                                 merge(model.velocities, (; c=model.tracers.c));
+                                                 dir = ".",
+                                                 filename = filename,
+                                                 schedule = IterationInterval(1),
+                                                 overwrite_existing = true,
+                                                 asynchronous = asynchronous)
+        return sim
+    end
+
+    function read_timeseries_data(filepath)
+        return jldopen(filepath, "r") do f
+            ts = f["timeseries"]
+            result = Dict{String, Dict{String, Any}}()
+            for name in keys(ts)
+                result[name] = Dict{String, Any}()
+                for key in keys(ts[name])
+                    key == "serialized" && continue
+                    result[name][key] = f["timeseries/$name/$key"]
+                end
+            end
+            return result
+        end
+    end
+
+    sync_file = "test_async_io_sync.jld2"
+    async_file = "test_async_io_async.jld2"
+    isfile(sync_file) && rm(sync_file)
+    isfile(async_file) && rm(async_file)
+
+    sim_sync = build_sim(false, sync_file)
+    sim_async = build_sim(true, async_file)
+
+    # Type-parameter dispatch: both are JLD2Writer; only the async one matches AsyncOutputWriter.
+    @test sim_sync.output_writers[:fields] isa JLD2Writer
+    @test sim_async.output_writers[:fields] isa JLD2Writer
+    @test sim_sync.output_writers[:fields] isa SyncOutputWriter
+    @test sim_async.output_writers[:fields] isa AsyncOutputWriter
+    @test !is_asynchronous(sim_sync.output_writers[:fields])
+    @test  is_asynchronous(sim_async.output_writers[:fields])
+
+    run!(sim_sync)
+    run!(sim_async)
+
+    # `run!` should have flushed pending async writes.
+    @test isfile(sync_file)
+    @test isfile(async_file)
+
+    sync_data = read_timeseries_data(sync_file)
+    async_data = read_timeseries_data(async_file)
+
+    @test sort(collect(keys(sync_data))) == sort(collect(keys(async_data)))
+    for name in keys(sync_data)
+        @test sort(collect(keys(sync_data[name]))) == sort(collect(keys(async_data[name])))
+        for it in keys(sync_data[name])
+            @test sync_data[name][it] == async_data[name][it]
+        end
+    end
+
+    # Calling `wait_for_async_writes!` after a run is a no-op (no pending tasks).
+    wait_for_async_writes!(sim_async)
+    wait_for_async_writes!(sim_async)
+
+    rm(sync_file)
+    rm(async_file)
+
+    return nothing
+end
+
+function test_jld2_async_overlap(arch)
+    # Prove the main thread does not block on the disk write. With a known
+    # `commit_delay` injected into `commit_async_write!`, an async `write_output!`
+    # should return ~immediately while the spawned task is still running, and the
+    # subsequent `wait_for_async_writes!` should block for roughly `commit_delay`.
+    grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1),
+                           topology=(Periodic, Periodic, Periodic))
+    model = NonhydrostaticModel(grid; tracers=:c)
+
+    filepath = "test_jld2_async_overlap.jld2"
+    isfile(filepath) && rm(filepath)
+
+    writer = JLD2Writer(model, model.velocities;
+                        filename = filepath,
+                        schedule = IterationInterval(1),
+                        overwrite_existing = true,
+                        asynchronous = true)
+
+    # Warm up so the timed write doesn't pay first-call compilation cost.
+    write_output!(writer, model)
+    wait_for_async_writes!(writer)
+
+    commit_delay = 0.5
+    writer.commit_delay = commit_delay
+
+    t_return = @elapsed write_output!(writer, model)
+    @test t_return < commit_delay / 5
+    @test writer.task isa Task
+    @test !istaskdone(writer.task)
+
+    t_wait = @elapsed wait_for_async_writes!(writer)
+    @test t_wait > commit_delay * 3 / 5
+    @test writer.task === nothing
+
+    isfile(filepath) && rm(filepath)
+    return nothing
+end
+
+function test_jld2_async_exception_propagation(arch)
+    # Prove that an exception thrown by `commit_async_write!` on the worker task
+    # surfaces on the main thread at the next synchronization point — either an
+    # explicit `wait_for_async_writes!` or the implicit wait at the start of the
+    # next `write_output!`. The writer's task field must also be cleared so the
+    # writer is usable after the error is observed.
+    grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1),
+                           topology=(Periodic, Periodic, Periodic))
+    model = NonhydrostaticModel(grid; tracers=:c)
+
+    filepath = "test_jld2_async_throws.jld2"
+    isfile(filepath) && rm(filepath)
+
+    writer = JLD2Writer(model, model.velocities;
+                        filename = filepath,
+                        schedule = IterationInterval(1),
+                        overwrite_existing = true,
+                        asynchronous = true)
+
+    # Path 1: explicit wait surfaces the error.
+    # `_async_commit!` also logs `@error "Async output writer failed"` from the
+    # worker task. That log is emitted asynchronously and isn't caught by
+    # `@test_logs`, so the test stays noisy but still asserts the right things.
+    writer.commit_throws = ErrorException("synthetic commit failure")
+    write_output!(writer, model)
+    @test writer.task isa Task
+    @test_throws TaskFailedException wait_for_async_writes!(writer)
+    @test writer.task === nothing
+
+    # Path 2: implicit wait at the start of the next write surfaces the error.
+    write_output!(writer, model)
+    @test writer.task isa Task
+    @test_throws TaskFailedException write_output!(writer, model)
+    @test writer.task === nothing
+
+    # With the knob cleared, subsequent writes succeed and the file is on disk.
+    writer.commit_throws = nothing
+    write_output!(writer, model)
+    wait_for_async_writes!(writer)
+    @test isfile(filepath)
+
+    rm(filepath)
+    return nothing
+end
+
+function test_jld2_async_cpu_aliasing_error(arch)
+    # On CPU, `fetch_and_convert_output` returns the live field array without copying
+    # when the field's eltype matches `eltype(array_type)`. Async writes from that
+    # array would race with the next `time_step!`. Construction must refuse.
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1),
+                           topology=(Periodic, Periodic, Periodic))
+    model = NonhydrostaticModel(grid; tracers=:c)  # default Float64
+
+    # Float64 model + Array{Float32} (default): eltypes differ → conversion copies → OK.
+    @test JLD2Writer(model, model.velocities;
+                     filename = "ok_default", schedule = IterationInterval(1),
+                     overwrite_existing = true, asynchronous = true) isa AsyncOutputWriter
+    isfile("ok_default.jld2") && rm("ok_default.jld2")
+
+    # Float64 model + Array{Float64}: eltypes match → would alias → error (on CPU).
+    if arch isa GPU
+        # GPU writes always copy in convert_output, so the check is a no-op.
+        @test JLD2Writer(model, model.velocities;
+                         filename = "ok_f64_gpu", schedule = IterationInterval(1),
+                         overwrite_existing = true, array_type = Array{Float64},
+                         asynchronous = true) isa AsyncOutputWriter
+        isfile("ok_f64_gpu.jld2") && rm("ok_f64_gpu.jld2")
+    else
+        @test_throws ArgumentError JLD2Writer(model, model.velocities;
+            filename = "bad_f64", schedule = IterationInterval(1),
+            overwrite_existing = true, array_type = Array{Float64},
+            asynchronous = true)
+        # Sync writers are unaffected by the check.
+        @test JLD2Writer(model, model.velocities;
+                         filename = "ok_f64_sync", schedule = IterationInterval(1),
+                         overwrite_existing = true, array_type = Array{Float64},
+                         asynchronous = false) isa SyncOutputWriter
+        isfile("ok_f64_sync.jld2") && rm("ok_f64_sync.jld2")
     end
 
     return nothing
@@ -451,6 +654,15 @@ for arch in archs
 
         test_jld2_size_file_splitting(arch)
         test_jld2_time_file_splitting(arch)
+
+        #####
+        ##### Async I/O
+        #####
+
+        test_jld2_async_io_matches_sync(arch)
+        test_jld2_async_overlap(arch)
+        test_jld2_async_exception_propagation(arch)
+        test_jld2_async_cpu_aliasing_error(arch)
 
         #####
         ##### Time-averaging

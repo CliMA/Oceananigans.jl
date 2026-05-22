@@ -114,7 +114,8 @@ function NetCDFWriter(model::AbstractModel, outputs;
                       part = 1,
                       file_splitting = NoFileSplitting(),
                       dimension_name_generator = trilocation_dim_name,
-                      dimension_type = Float64)
+                      dimension_type = Float64,
+                      asynchronous = false)
 
     if with_halos && indices != (:, :, :)
         throw(ArgumentError("If with_halos=true then you cannot pass indices: $indices"))
@@ -177,26 +178,29 @@ function NetCDFWriter(model::AbstractModel, outputs;
                                                     dimension_name_generator,
                                                     dimension_type)
 
-    return NetCDFWriter(unique_grids,
-                        output_grid_map,
-                        filepath,
-                        dataset,
-                        outputs,
-                        schedule,
-                        array_type,
-                        indices,
-                        global_attributes,
-                        output_attributes,
-                        dimensions,
-                        with_halos,
-                        include_grid_metrics,
-                        overwrite_existing,
-                        verbose,
-                        deflatelevel,
-                        part,
-                        file_splitting,
-                        dimension_name_generator,
-                        dimension_type)
+    asynchronous && Oceananigans.OutputWriters.validate_async_outputs(outputs, array_type, model)
+
+    Mode = asynchronous ? Asynchronous : Synchronous
+    return NetCDFWriter{Mode}(unique_grids,
+                              output_grid_map,
+                              filepath,
+                              dataset,
+                              outputs,
+                              schedule,
+                              array_type,
+                              indices,
+                              global_attributes,
+                              output_attributes,
+                              dimensions,
+                              with_halos,
+                              include_grid_metrics,
+                              overwrite_existing,
+                              verbose,
+                              deflatelevel,
+                              part,
+                              file_splitting,
+                              dimension_name_generator,
+                              dimension_type)
 end
 
 #####
@@ -447,78 +451,99 @@ function save_output!(ds, output, model, output_name, array_type)
     return nothing
 end
 
-# Saving time-dependent outputs
-function save_output!(ds, output, model, ow, time_index, output_name)
-    data = fetch_and_convert_output(output, model, ow)
-    data = squeeze_nothing_dimensions(output, data)
-    colons = Tuple(Colon() for _ in 1:ndims(data))
-    ds[output_name][colons..., time_index:time_index] = data
-    return nothing
-end
-
-function save_output!(ds, output::LagrangianParticles, model, ow, time_index, name)
-    data = fetch_and_convert_output(output, model, ow)
-    for (particle_field, vals) in pairs(data)
-        ds[string(particle_field)][:, time_index] = vals
-    end
-
-    return nothing
-end
-
 # Convert to a base Julia type (a float or DateTime).
 float_or_date_time(t) = t
 float_or_date_time(t::AbstractTime) = DateTime(t)
 
 """
-    write_output!(ow::NetCDFWriter, model)
+    NetCDFWriteSnapshot
 
-Write output to netcdf file `output_writer.filepath` at specified intervals. Increments the `time` dimension
-every time an output is written to the file.
+Captures everything needed to commit a NetCDF write to disk after the GPU→CPU
+copy has completed. Created by `prepare_async_write` on the main thread;
+consumed by `commit_async_write!` (inline for `Synchronous` mode, on a
+background task for `Asynchronous` mode).
+
+The fetched and squeezed data is keyed by output name. Per-output dispatch
+(regular field vs. `LagrangianParticles`) at commit time is driven by the
+`outputs` reference, which is the writer's own outputs Dict — safe to share
+since it's not mutated during a write.
 """
-function write_output!(ow::NetCDFWriter, model::AbstractModel)
-    # Start a new file if the file_splitting(model) is true
+struct NetCDFWriteSnapshot{D, O}
+    time :: Any
+    data :: D
+    outputs :: O
+    filepath :: String
+    verbose :: Bool
+end
+
+function prepare_async_write(ow::NetCDFWriter, model::AbstractModel)
+    # File splitting decision (synchronous; mutates `ow.filepath`).
     ow.file_splitting(model) && start_next_file(model, ow)
     update_file_splitting_schedule!(ow.file_splitting, ow.filepath)
 
-    ow.dataset = open(ow)
-    ds, verbose, filepath = ow.dataset, ow.verbose, ow.filepath
-
-    time_index = length(ds["time"]) + 1
-    ds["time"][time_index] = float_or_date_time(model.clock.time)
-
-    if verbose
-        @info "Writing to NetCDF: $filepath..."
-        @info "Computing NetCDF outputs for time index $(time_index): $(keys(ow.outputs))..."
-
-        # Time and file size before computing any outputs.
-        t0, sz0 = time_ns(), filesize(filepath)
-    end
-
+    # Synchronous fetch — GPU→CPU transfer that must complete before the GPU
+    # advances to the next time step. Squeezing happens here so the commit
+    # phase only does I/O.
+    data = Dict{String, Any}()
     for (output_name, output) in ow.outputs
-        # Time before computing this output.
-        verbose && (t0′ = time_ns())
-
-        save_output!(ds, output, model, ow, time_index, output_name)
-
-        if verbose
-            # Time after computing this output.
-            t1′ = time_ns()
-            @info "Computing $output_name done: time=$(prettytime((t1′-t0′) / 1e9))"
+        fetched = fetch_and_convert_output(output, model, ow)
+        if !(output isa LagrangianParticles)
+            fetched = squeeze_nothing_dimensions(output, fetched)
         end
+        data[output_name] = fetched
     end
 
-    sync(ds)
-    close(ow)
+    return NetCDFWriteSnapshot(model.clock.time, data, ow.outputs, ow.filepath, ow.verbose)
+end
 
-    if verbose
-        # Time and file size after computing and writing all outputs to disk.
-        t1, sz1 = time_ns(), filesize(filepath)
-        verbose && @info begin
-            @sprintf("Writing done: time=%s, size=%s, Δsize=%s",
-                    prettytime((t1-t0)/1e9), pretty_filesize(sz1), pretty_filesize(sz1-sz0))
-        end
+function commit_async_write!(ow::NetCDFWriter, snap::NetCDFWriteSnapshot)
+    ow.commit_delay > 0 && sleep(ow.commit_delay)
+    ow.commit_throws === nothing || throw(ow.commit_throws)
+
+    if snap.verbose
+        @info "Writing to NetCDF: $(snap.filepath)..."
+        t0, sz0 = time_ns(), filesize(snap.filepath)
     end
 
+    NCDataset(snap.filepath, "a") do ds
+        time_index = length(ds["time"]) + 1
+        ds["time"][time_index] = float_or_date_time(snap.time)
+
+        for (output_name, output) in snap.outputs
+            data = snap.data[output_name]
+            if output isa LagrangianParticles
+                for (particle_field, vals) in pairs(data)
+                    ds[string(particle_field)][:, time_index] = vals
+                end
+            else
+                colons = Tuple(Colon() for _ in 1:ndims(data))
+                ds[output_name][colons..., time_index:time_index] = data
+            end
+        end
+
+        sync(ds)
+    end
+
+    if snap.verbose
+        t1, sz1 = time_ns(), filesize(snap.filepath)
+        @info @sprintf("Writing done: time=%s, size=%s, Δsize=%s",
+                       prettytime((t1 - t0) / 1e9), pretty_filesize(sz1), pretty_filesize(sz1 - sz0))
+    end
+
+    return nothing
+end
+
+"""
+    write_output!(ow::NetCDFWriter, model)
+
+Write output to netcdf file `output_writer.filepath` at specified intervals. Increments the `time` dimension
+every time an output is written to the file. For `Synchronous` writers this runs prepare and commit inline;
+the `Asynchronous` path uses the same prepare/commit pair via the generic
+`write_output!(::AsyncOutputWriter, ::AbstractModel)`, but spawns the commit on a background task.
+"""
+function write_output!(ow::NetCDFWriter{Synchronous}, model::AbstractModel)
+    snapshot = prepare_async_write(ow, model)
+    commit_async_write!(ow, snapshot)
     return nothing
 end
 
@@ -538,7 +563,9 @@ function Base.show(io::IO, ow::NetCDFWriter)
     averaging_schedule = output_averaging_schedule(ow)
     num_outputs = length(ow.outputs)
 
-    print(io, "NetCDFWriter scheduled on $(summary(ow.schedule)):", "\n",
+    async_tag = is_asynchronous(ow) ? " (async)" : ""
+
+    print(io, "NetCDFWriter$(async_tag) scheduled on $(summary(ow.schedule)):", "\n",
               "├── filepath: ", relpath(ow.filepath), "\n",
               "├── dimensions: $dims", "\n",
               "├── $num_outputs outputs: ", prettykeys(ow.outputs), show_averaging_schedule(averaging_schedule), "\n",

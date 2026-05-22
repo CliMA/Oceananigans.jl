@@ -1695,6 +1695,73 @@ function test_thermal_bubble_netcdf_output(arch, FT; with_halos=false)
     return nothing
 end
 
+function test_netcdf_async_io_matches_sync(arch)
+    # Verify async NetCDF output is byte-identical to sync output for the same simulation.
+    function build_sim(asynchronous, filename)
+        grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+        model = NonhydrostaticModel(grid; tracers=:c)
+        set!(model,
+             u = (x, y, z) -> sin(2π * x) * cos(2π * y),
+             v = (x, y, z) -> cos(2π * x) * sin(2π * y),
+             w = (x, y, z) -> 0.0,
+             c = (x, y, z) -> z)
+        sim = Simulation(model, Δt=0.001, stop_iteration=5)
+        sim.output_writers[:fields] = NetCDFWriter(model,
+                                                   merge(model.velocities, (; c=model.tracers.c));
+                                                   dir = ".",
+                                                   filename = filename,
+                                                   schedule = IterationInterval(1),
+                                                   overwrite_existing = true,
+                                                   asynchronous = asynchronous)
+        return sim
+    end
+
+    function read_all_vars(path)
+        return NCDataset(path, "r") do ds
+            Dict(name => Array(ds[name][:]) for name in keys(ds))
+        end
+    end
+
+    sync_path  = "test_netcdf_async_sync.nc"
+    async_path = "test_netcdf_async_async.nc"
+    isfile(sync_path)  && rm(sync_path)
+    isfile(async_path) && rm(async_path)
+
+    sim_sync  = build_sim(false, sync_path)
+    sim_async = build_sim(true,  async_path)
+
+    @test sim_sync.output_writers[:fields] isa NetCDFWriter
+    @test sim_async.output_writers[:fields] isa NetCDFWriter
+    @test sim_sync.output_writers[:fields] isa SyncOutputWriter
+    @test sim_async.output_writers[:fields] isa AsyncOutputWriter
+    @test !is_asynchronous(sim_sync.output_writers[:fields])
+    @test  is_asynchronous(sim_async.output_writers[:fields])
+
+    run!(sim_sync)
+    run!(sim_async)
+
+    # `run!` should have flushed pending async writes.
+    @test isfile(sync_path)
+    @test isfile(async_path)
+
+    sync_data  = read_all_vars(sync_path)
+    async_data = read_all_vars(async_path)
+
+    @test sort(collect(keys(sync_data))) == sort(collect(keys(async_data)))
+    for name in keys(sync_data)
+        @test sync_data[name] == async_data[name]
+    end
+
+    # Calling `wait_for_async_writes!` after a run is a no-op (no pending tasks).
+    wait_for_async_writes!(sim_async)
+    wait_for_async_writes!(sim_async)
+
+    rm(sync_path)
+    rm(async_path)
+
+    return nothing
+end
+
 function test_netcdf_size_file_splitting(arch)
     grid = RectilinearGrid(arch,
                            size = (16, 16, 16),
@@ -3698,6 +3765,11 @@ end
             @info "  Testing file splitting [$A]..."
             test_netcdf_size_file_splitting(arch)
             test_netcdf_time_file_splitting(arch)
+        end
+
+        @testset "Async I/O [$A]" begin
+            @info "  Testing async I/O [$A]..."
+            test_netcdf_async_io_matches_sync(arch)
         end
 
         @testset "Function and alignment output [$A]" begin

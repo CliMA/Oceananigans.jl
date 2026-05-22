@@ -9,6 +9,7 @@ Extension that adds Zarr read/write support to Oceananigans.jl via [Zarr.jl](htt
 """
 module OceananigansZarrExt
 
+using Printf: @sprintf
 using Zarr
 using OrderedCollections: OrderedDict
 
@@ -38,13 +39,16 @@ using Oceananigans.OutputWriters:
     show_array_type,
     trilocation_dim_name,
     fetch_and_convert_output,
-    WindowedTimeAverage
+    WindowedTimeAverage,
+    Synchronous,
+    Asynchronous,
+    is_asynchronous
 using Oceananigans.Utils:
     TimeInterval, IterationInterval, WallTimeInterval, materialize_schedule,
-    prettykeys, pretty_filesize
+    prettykeys, pretty_filesize, prettytime
 
 import Oceananigans: initialize!, write_output!
-import Oceananigans.OutputWriters: ZarrWriter
+import Oceananigans.OutputWriters: ZarrWriter, prepare_async_write, commit_async_write!
 
 include("zarr_writer.jl")
 include("output_readers.jl")
