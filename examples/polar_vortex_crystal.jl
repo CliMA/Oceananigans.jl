@@ -105,12 +105,13 @@ set!(model, η = η_init, u = u_init, v = v_init; intrinsic_velocities = true)
 
 # ## Simulation
 #
-# 30-day run at Δt = 20 minutes (outer timestep limited by the advective
+# 60-day run at Δt = 20 minutes (outer timestep limited by the advective
 # CFL; the split-explicit substeps handle the much faster barotropic
 # gravity waves internally). The progress callback reports the advective
 # CFL alongside the maximum velocity and free-surface displacement.
+# Snapshots are saved every 12 hours.
 
-simulation = Simulation(model; Δt, stop_time = 30days)
+simulation = Simulation(model; Δt, stop_time = 60days)
 
 advective_cfl = AdvectiveCFL(simulation.Δt)
 
@@ -130,7 +131,7 @@ s = sqrt(u^2 + v^2)
 filename = "polar_vortex_crystal.jld2"
 simulation.output_writers[:fields] = JLD2Writer(model, (; η, ζ, s);
                                                 filename,
-                                                schedule = TimeInterval(1hour),
+                                                schedule = TimeInterval(12hours),
                                                 overwrite_existing = true)
 
 run!(simulation)
@@ -149,29 +150,29 @@ sts = FieldTimeSeries(filename, "s")
 times = ηts.times
 Nt = length(times)
 
-η_lim = maximum(maximum(abs, interior(ηts[n], :, :, 1)) for n in 1:Nt)
-ζ_lim = maximum(maximum(abs, interior(ζts[n], :, :, 1)) for n in 1:Nt) * 0.5
-s_lim = maximum(maximum(abs, interior(sts[n], :, :, 1)) for n in 1:Nt)
+η_lim = maximum(maximum(abs, interior(ηts[n])) for n in 1:Nt)
+ζ_lim = maximum(maximum(abs, interior(ζts[n])) for n in 1:Nt) * 0.5
+s_lim = maximum(maximum(abs, interior(sts[n])) for n in 1:Nt)
 
 n = Observable(1)
 title = @lift @sprintf("Polar vortex crystal — t = %.2f d", times[$n] / 86400)
-η_n = @lift Array(interior(ηts[$n], :, :, 1))
-ζ_n = @lift Array(interior(ζts[$n], :, :, 1))
-s_n = @lift Array(interior(sts[$n], :, :, 1))
+ηₙ = @lift ηts[$n]
+ζₙ = @lift ζts[$n]
+sₙ = @lift sts[$n]
 
 fig = Figure(size = (1500, 540))
 Label(fig[0, 1:6], title; fontsize = 18, tellwidth = false)
 
 ax_η = Axis(fig[1, 1], aspect = 1, title = "η (m)")
-hm_η = heatmap!(ax_η, η_n; colormap = :balance, colorrange = (-η_lim, η_lim))
+hm_η = heatmap!(ax_η, ηₙ; colormap = :balance, colorrange = (-η_lim, η_lim))
 Colorbar(fig[1, 2], hm_η)
 
 ax_ζ = Axis(fig[1, 3], aspect = 1, title = "ζ (1/s)")
-hm_ζ = heatmap!(ax_ζ, ζ_n; colormap = :balance, colorrange = (-ζ_lim, ζ_lim))
+hm_ζ = heatmap!(ax_ζ, ζₙ; colormap = :balance, colorrange = (-ζ_lim, ζ_lim))
 Colorbar(fig[1, 4], hm_ζ)
 
 ax_s = Axis(fig[1, 5], aspect = 1, title = "|u| (m/s)")
-hm_s = heatmap!(ax_s, s_n; colormap = :speed, colorrange = (0, s_lim))
+hm_s = heatmap!(ax_s, sₙ; colormap = :speed, colorrange = (0, s_lim))
 Colorbar(fig[1, 6], hm_s)
 
 for ax in (ax_η, ax_ζ, ax_s)
