@@ -167,7 +167,7 @@ title = @lift @sprintf("Polar vortex crystal — t = %.2f d", times[$n] / 86400)
 s_n = @lift Array(interior(sts[$n], :, :, 1))
 
 fig = Figure(size = (1500, 540))
-Label(fig[0, :], title, fontsize = 18)
+Label(fig[0, 1:6], title, fontsize = 18)
 
 ax_η = Axis(fig[1, 1], aspect = 1, title = "η (m)")
 hm_η = heatmap!(ax_η, η_n; colormap = :balance, colorrange = (-η_lim, η_lim))
