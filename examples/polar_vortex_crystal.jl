@@ -150,15 +150,15 @@ sts = FieldTimeSeries(filename, "s")
 times = ηts.times
 Nt = length(times)
 
-η_lim = maximum(maximum(abs, interior(ηts[n])) for n in 1:Nt)
-ζ_lim = maximum(maximum(abs, interior(ζts[n])) for n in 1:Nt) * 0.5
-s_lim = maximum(maximum(abs, interior(sts[n])) for n in 1:Nt)
+η_lim = maximum(maximum(abs, interior(ηts[n], :, :, 1)) for n in 1:Nt)
+ζ_lim = maximum(maximum(abs, interior(ζts[n], :, :, 1)) for n in 1:Nt) * 0.5
+s_lim = maximum(maximum(abs, interior(sts[n], :, :, 1)) for n in 1:Nt)
 
 n = Observable(1)
 title = @lift @sprintf("Polar vortex crystal — t = %.2f d", times[$n] / 86400)
-ηₙ = @lift ηts[$n]
-ζₙ = @lift ζts[$n]
-sₙ = @lift sts[$n]
+ηₙ = @lift Array(interior(ηts[$n], :, :, 1))
+ζₙ = @lift Array(interior(ζts[$n], :, :, 1))
+sₙ = @lift Array(interior(sts[$n], :, :, 1))
 
 fig = Figure(size = (1500, 540))
 Label(fig[0, 1:6], title; fontsize = 18, tellwidth = false)
