@@ -198,12 +198,19 @@ function convert_field_argument(f::FieldOrFTS)
     end
 end
 
-# For Fields on OrthogonalSphericalShellGrid, just return the interior without coordinates
+# For Fields on OrthogonalSphericalShellGrid (or an ImmersedBoundaryGrid wrapping
+# one), just return the interior without coordinates. `nodes(f)` returns 2D
+# (λ, φ) matrices which Makie's CellGrid heatmap can't accept.
 # TODO: support plotting in geographic coordinates using mesh
 # See for example
 # https://github.com/navidcy/Imaginocean.jl/blob/f5cc5f27dd2e99e0af490e8dca5a53daf6837ead/src/Imaginocean.jl#L259
-const OSSGField = Field{<:Any, <:Any, <:Any, <:Any, <:OrthogonalSphericalShellGrid}
-convert_field_argument(f::OSSGField) = make_plottable_array(f)
+const OSSGOrIBGOSSG = Union{OrthogonalSphericalShellGrid,
+                            ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any,
+                                                 <:OrthogonalSphericalShellGrid}}
+const OSSGField = Field{<:Any, <:Any, <:Any, <:Any, <:OSSGOrIBGOSSG}
+# Wrap in a 1-tuple so the splat in `convert_arguments(pl, convert_field_argument(f)...)`
+# passes the matrix as a single argument rather than iterating its elements.
+convert_field_argument(f::OSSGField) = (make_plottable_array(f),)
 
 #####
 ##### When nodes are provided
