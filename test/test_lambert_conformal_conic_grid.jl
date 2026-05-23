@@ -296,6 +296,106 @@ end
                                       Δx = 10e3, Δy = 10e3)
             end
         end
+
+        # rotation_angle on a polar-centred LCC grid must span the full (-π, π]
+        # range. Single-argument atan in the source would have clipped to
+        # (-π/2, π/2] and sign-flipped half the grid.
+        @testset "polar rotation_angle range" begin
+            grid = LambertConformalConicGrid(CPU(), Float64;
+                                             size = (16, 16, 1),
+                                             center = (0, 90),
+                                             spacing = 50e3,
+                                             standard_parallel = 90,
+                                             latitude_of_origin = 90,
+                                             z = (-100, 0))
+
+            Nx, Ny, _ = size(grid)
+            θs = [rotation_angle(i, j, grid) for j in 1:Ny, i in 1:Nx]
+            @test maximum(θs) > π/2 + 0.1
+            @test minimum(θs) < -π/2 - 0.1
+            @test all(isfinite, θs)
+        end
+
+        # Intrinsic/extrinsic vector conversion roundtrips to machine precision
+        # everywhere on a polar-centred LCC grid, including cells whose rotation
+        # angle falls outside (-π/2, π/2].
+        @testset "polar intrinsic ↔ extrinsic roundtrip" begin
+            grid = LambertConformalConicGrid(CPU(), Float64;
+                                             size = (12, 12, 1),
+                                             center = (0, 90),
+                                             spacing = 50e3,
+                                             standard_parallel = 90,
+                                             latitude_of_origin = 90,
+                                             z = (-100, 0))
+
+            u_in, v_in = 1.234, -2.567
+            for j in (3, 6, 9), i in (3, 6, 9)
+                u_e, v_e = extrinsic_vector(i, j, 1, grid, u_in, v_in)
+                u_back, v_back = intrinsic_vector(i, j, 1, grid, u_e, v_e)
+                @test u_back ≈ u_in atol = 1e-10
+                @test v_back ≈ v_in atol = 1e-10
+            end
+        end
+
+        # Polar grid round-trips through every helper that downstream code uses
+        # to derive related grids from an existing one.
+        @testset "polar with_halo / similar / with_number_type / reconstruction" begin
+            grid = LambertConformalConicGrid(CPU(), Float64;
+                                             size = (16, 16, 1),
+                                             center = (0, 90),
+                                             spacing = 50e3,
+                                             standard_parallel = 90,
+                                             latitude_of_origin = 90,
+                                             z = (-100, 0))
+
+            @test grid.conformal_mapping.n ≈ 1.0
+            @test grid.conformal_mapping.F ≈ 2.0
+
+            grid_h = with_halo((5, 5, 5), grid)
+            @test grid_h.conformal_mapping.n ≈ 1.0
+            @test grid_h.conformal_mapping.F ≈ 2.0
+            @test halo_size(grid_h) == (5, 5, 5)
+
+            similar_grid = similar(grid)
+            @test similar_grid.conformal_mapping.n ≈ 1.0
+            @test similar_grid.conformal_mapping.F ≈ 2.0
+
+            float32_grid = with_number_type(Float32, grid)
+            @test float32_grid.conformal_mapping.n ≈ Float32(1)
+            @test float32_grid.conformal_mapping.F ≈ Float32(2)
+
+            args, kwargs = constructor_arguments(grid)
+            reconstructed = LambertConformalConicGrid(args[:architecture],
+                                                      args[:number_type]; kwargs...)
+            @test reconstructed.conformal_mapping.n ≈ 1.0
+            @test reconstructed.conformal_mapping.F ≈ 2.0
+        end
+
+        # Make sure a hydrostatic model can actually be integrated on a polar
+        # grid (analogous to the midlatitude smoke test below).
+        @testset "polar HFSM smoke test" begin
+            grid = LambertConformalConicGrid(CPU(), Float64;
+                                             size = (12, 12, 3),
+                                             center = (0, 90),
+                                             spacing = 25e3,
+                                             standard_parallel = 90,
+                                             latitude_of_origin = 90,
+                                             z = (-100, 0),
+                                             halo = (3, 3, 3))
+
+            model = HydrostaticFreeSurfaceModel(grid;
+                                                coriolis = HydrostaticSphericalCoriolis(),
+                                                free_surface = SplitExplicitFreeSurface(grid;
+                                                                                       substeps = 5))
+
+            simulation = Simulation(model; Δt = 60, stop_iteration = 3)
+            run!(simulation)
+
+            @test isfinite(time(simulation))
+            @test all(isfinite, interior(model.velocities.u))
+            @test all(isfinite, interior(model.velocities.v))
+            @test all(isfinite, interior(model.free_surface.displacement))
+        end
     end
 
     @testset "constructors and validation" begin

@@ -34,7 +34,7 @@ grid = LambertConformalConicGrid(Float64;
                                  latitude_of_origin = 90,
                                  central_longitude = 0,
                                  z = (-H, 0),
-                                 halo = (5, 5, 5))
+                                 halo = (7, 7, 7))
 
 R_earth = grid.radius
 R_bowl  = 1500kilometers
@@ -44,13 +44,17 @@ ibg = ImmersedBoundaryGrid(grid, GridFittedBoundary(bowl_mask))
 # ## Model
 #
 # Single-layer barotropic shallow-water-style dynamics via a
-# `HydrostaticFreeSurfaceModel` with one vertical level, the spherical
-# Coriolis term (so f ≈ 2Ω near the pole), and an `ImplicitFreeSurface`.
+# `HydrostaticFreeSurfaceModel` with one vertical level. We use
+# `HydrostaticSphericalCoriolis` (so f ≈ 2Ω near the pole), a
+# `SplitExplicitFreeSurface` whose number of substeps is set from the
+# barotropic-wave CFL, and `WENOVectorInvariant` momentum advection.
+
+Δt = 10minutes
 
 model = HydrostaticFreeSurfaceModel(ibg;
-                                    coriolis     = HydrostaticSphericalCoriolis(),
-                                    free_surface = ImplicitFreeSurface(),
-                                    tracers      = ())
+                                    coriolis           = HydrostaticSphericalCoriolis(),
+                                    free_surface       = SplitExplicitFreeSurface(ibg; cfl = 0.7, fixed_Δt = Δt),
+                                    momentum_advection = WENOVectorInvariant())
 
 # ## Initial condition
 #
@@ -59,75 +63,59 @@ model = HydrostaticFreeSurfaceModel(ibg;
 # amplitude `η₀ = -13 m` and width `σ = 200 km` give an initial Rossby number
 # `Ro ≈ -2gη₀/(f²σ²) ≈ 0.3` at each vortex centre.
 #
-# The free-surface bumps and the corresponding geostrophic velocities are
-# both set so the flow starts in approximate balance and does not radiate the
-# vortex energy away as gravity waves during initial adjustment.
-#
-# Distances and bearings are computed with great-circle formulas in
-# geographic coordinates — no projection composition, no seam.
+# Working in projected (`xp`, `yp`) coordinates of the polar stereographic
+# limit lets us write `η` and the geostrophic velocities `(u, v)` as plain
+# Gaussians of distance from each vortex centre. `set!` is told these are in
+# the grid's intrinsic frame.
 
 N_ring   = 6
 r_ring   = 900kilometers
 σ_vortex = 200kilometers
 η₀       = -13.0
 
-ring_λ   = [360k/N_ring for k in 0:N_ring-1]
-ring_φ   = fill(90 - rad2deg(r_ring/R_earth), N_ring)
-vortex_λ = vcat(ring_λ, [0.0])
-vortex_φ = vcat(ring_φ, [90.0])
+ring_λ      = [360k/N_ring for k in 0:N_ring-1]
+ring_φ      = fill(90 - rad2deg(r_ring/R_earth), N_ring)
+vortex_λ    = vcat(ring_λ, [0.0])
+vortex_φ    = vcat(ring_φ, [90.0])
+vortex_xpyp = [lcc_forward(grid.conformal_mapping, λv, φv)
+               for (λv, φv) in zip(vortex_λ, vortex_φ)]
 
-g_const = Oceananigans.defaults.gravitational_acceleration
-f_pole  = 2 * Oceananigans.defaults.planet_rotation_rate
+g_const  = Oceananigans.defaults.gravitational_acceleration
+f_pole   = 2 * Oceananigans.defaults.planet_rotation_rate
+geo_coef = g_const * η₀ / (f_pole * σ_vortex^2)
 
-function great_circle_distance_and_bearing(λ, φ, λv, φv)
-    λr,  φr  = deg2rad(λ),  deg2rad(φ)
-    λvr, φvr = deg2rad(λv), deg2rad(φv)
-    Δλ = λvr - λr
-    a  = sin((φvr - φr)/2)^2 + cos(φr) * cos(φvr) * sin(Δλ/2)^2
-    d  = R_earth * 2 * asin(sqrt(clamp(a, 0.0, 1.0)))
-    yb = sin(Δλ) * cos(φvr)
-    xb = cos(φr) * sin(φvr) - sin(φr) * cos(φvr) * cos(Δλ)
-    return d, atan(yb, xb)
-end
+gaussian(xp, yp, xv, yv) = exp(-((xp - xv)^2 + (yp - yv)^2) / (2σ_vortex^2))
 
 function η_init(λ, φ, z)
-    η = 0.0
-    for k in 1:length(vortex_λ)
-        d, _ = great_circle_distance_and_bearing(λ, φ, vortex_λ[k], vortex_φ[k])
-        η += η₀ * exp(-(d/σ_vortex)^2 / 2)
-    end
-    return η
+    xp, yp = lcc_forward(grid.conformal_mapping, λ, φ)
+    return sum(η₀ * gaussian(xp, yp, xv, yv) for (xv, yv) in vortex_xpyp)
 end
 
-function geostrophic_uv(λ, φ)
-    u_e, v_n = 0.0, 0.0
-    for k in 1:length(vortex_λ)
-        d, θ  = great_circle_distance_and_bearing(λ, φ, vortex_λ[k], vortex_φ[k])
-        v_tan = -(g_const * η₀ * d) / (f_pole * σ_vortex^2) * exp(-(d/σ_vortex)^2 / 2)
-        u_e  +=  v_tan * cos(θ)
-        v_n  += -v_tan * sin(θ)
-    end
-    return u_e, v_n
+function u_init(λ, φ, z)
+    xp, yp = lcc_forward(grid.conformal_mapping, λ, φ)
+    return sum( geo_coef * (yp - yv) * gaussian(xp, yp, xv, yv) for (xv, yv) in vortex_xpyp)
 end
 
-u_init(λ, φ, z) = geostrophic_uv(λ, φ)[1]
-v_init(λ, φ, z) = geostrophic_uv(λ, φ)[2]
+function v_init(λ, φ, z)
+    xp, yp = lcc_forward(grid.conformal_mapping, λ, φ)
+    return sum(-geo_coef * (xp - xv) * gaussian(xp, yp, xv, yv) for (xv, yv) in vortex_xpyp)
+end
 
-set!(model, η = η_init, u = u_init, v = v_init)
+set!(model, η = η_init, u = u_init, v = v_init; intrinsic_velocities = true)
 
 # ## Simulation
 #
 # Five-day run at Δt = 1 minute, with hourly snapshots of free-surface
 # displacement, speed, and relative vorticity.
 
-simulation = Simulation(model; Δt = 60, stop_time = 5days)
+simulation = Simulation(model; Δt, stop_time = 30days)
 
 progress(sim) = @printf("iter %4d, t = %s, max|u| = %.3f m/s, max|η| = %.2f m\n",
                         iteration(sim), prettytime(time(sim)),
                         maximum(abs, sim.model.velocities.u),
                         maximum(abs, sim.model.free_surface.displacement))
 
-simulation.callbacks[:progress] = Callback(progress, IterationInterval(200))
+simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
 
 u, v, w = model.velocities
 η = model.free_surface.displacement
