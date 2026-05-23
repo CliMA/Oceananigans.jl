@@ -49,7 +49,7 @@ ibg = ImmersedBoundaryGrid(grid, GridFittedBoundary(bowl_mask))
 # `SplitExplicitFreeSurface` whose number of substeps is set from the
 # barotropic-wave CFL, and `WENOVectorInvariant` momentum advection.
 
-Δt = 10minutes
+Δt = 20minutes
 
 model = HydrostaticFreeSurfaceModel(ibg;
                                     coriolis           = HydrostaticSphericalCoriolis(),
@@ -105,15 +105,20 @@ set!(model, η = η_init, u = u_init, v = v_init; intrinsic_velocities = true)
 
 # ## Simulation
 #
-# Five-day run at Δt = 1 minute, with hourly snapshots of free-surface
-# displacement, speed, and relative vorticity.
+# 30-day run at Δt = 20 minutes (outer timestep limited by the advective
+# CFL; the split-explicit substeps handle the much faster barotropic
+# gravity waves internally). The progress callback reports the advective
+# CFL alongside the maximum velocity and free-surface displacement.
 
 simulation = Simulation(model; Δt, stop_time = 30days)
 
-progress(sim) = @printf("iter %4d, t = %s, max|u| = %.3f m/s, max|η| = %.2f m\n",
+advective_cfl = AdvectiveCFL(simulation.Δt)
+
+progress(sim) = @printf("iter %5d, t = %s, max|u| = %.3f m/s, max|η| = %.2f m, CFL = %.3f\n",
                         iteration(sim), prettytime(time(sim)),
                         maximum(abs, sim.model.velocities.u),
-                        maximum(abs, sim.model.free_surface.displacement))
+                        maximum(abs, sim.model.free_surface.displacement),
+                        advective_cfl(sim.model))
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(1000))
 
