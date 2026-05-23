@@ -8,6 +8,7 @@
 #####   - benchmark: Quick performance benchmarks (default)
 #####   - simulate: Full runs with output for validation
 #####   - io: IO-heavy benchmarks measuring 3D output performance
+#####   - read: Benchmark reading a previously-written store (across jld2 / netcdf / zarr)
 #####
 ##### Usage (benchmark mode):
 #####   julia --project run_benchmarks.jl                                    # Default: 360x180x50, GPU, Float32
@@ -21,10 +22,18 @@
 ##### Usage (io mode):
 #####   julia --project run_benchmarks.jl --mode=io --size=360x180x50 --output_iteration_interval=1
 #####   julia --project run_benchmarks.jl --mode=io --device=CPU --size=90x45x10 --time_steps=10 --output_iteration_interval=2
+#####   julia --project run_benchmarks.jl --mode=io --output_format=zarr --zarr_chunks=auto
+#####   julia --project run_benchmarks.jl --mode=io --output_format=zarr --zarr_chunks=45x45x10
+#####
+##### Usage (read mode):
+#####   julia --project run_benchmarks.jl --mode=read --format=zarr --size=90x45x10 --time_steps=10
+#####   julia --project run_benchmarks.jl --mode=read --format=jld2
 #####
 
 using ArgParse: @add_arg_table!, ArgParseSettings, parse_args
-using OceananigansBenchmarks: earth_ocean, benchmark_time_stepping, run_benchmark_simulation, run_io_benchmark
+using OceananigansBenchmarks: earth_ocean, benchmark_time_stepping, run_benchmark_simulation,
+    run_io_benchmark, run_read_benchmark,
+    BenchmarkResult, SimulationResult, IOBenchmarkResult, ReadBenchmarkResult
 using JSON: JSON
 using Oceananigans
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, SmagorinskyLilly,
@@ -46,7 +55,7 @@ function parse_commandline()
 
     @add_arg_table! s begin
         "--mode"
-            help = "Mode: 'benchmark' for quick performance tests, 'simulate' for full runs with output, 'io' for IO-heavy benchmarks"
+            help = "Mode: 'benchmark' for quick performance tests, 'simulate' for full runs with output, 'io' for IO-heavy benchmarks, 'read' for read-performance benchmarks"
             arg_type = String
             default = "benchmark"
 
@@ -149,9 +158,25 @@ function parse_commandline()
             default = 1
 
         "--output_format"
-            help = "Output file format for IO benchmark mode: jld2 or netcdf"
+            help = "Output file format for IO benchmark mode: jld2, netcdf, or zarr"
             arg_type = String
             default = "jld2"
+
+        "--format"
+            help = "File format for read benchmark mode: jld2, netcdf, or zarr"
+            arg_type = String
+            default = "zarr"
+
+        "--zarr_chunks"
+            help = "Spatial chunk shape for ZarrWriter when output_format=zarr. " *
+                   "Either 'auto' (default; let the writer choose) or 'NxxNyxNz' (e.g. '64x64x16')."
+            arg_type = String
+            default = "auto"
+
+        "--read_variable"
+            help = "Variable name to construct as FieldTimeSeries in read mode"
+            arg_type = String
+            default = "T"
 
         "--tracers"
             help = "Tracer names as comma-separated list (e.g., T,S or T,S,C1,C2,C3)"
@@ -194,6 +219,17 @@ function parse_size(size_str)
     parts = split(size_str, "x")
     length(parts) == 3 || error("Invalid size: $size_str. Use NxxNyxNz (e.g., 360x180x50).")
     return Tuple(parse(Int, p) for p in parts)
+end
+
+"""
+    parse_zarr_chunks(chunks_str)
+
+Parse a Zarr chunk-shape string into either `nothing` (auto) or a tuple `(Nx, Ny, Nz)`.
+Accepts `"auto"` or `"NxxNyxNz"` (e.g., `"64x64x16"`).
+"""
+function parse_zarr_chunks(chunks_str::AbstractString)
+    lowercase(strip(chunks_str)) == "auto" && return nothing
+    return parse_size(chunks_str)
 end
 
 #####
@@ -282,6 +318,9 @@ function run_benchmarks(args)
     output_dir = args["output_dir"]
     output_iteration_interval = args["output_iteration_interval"]
     output_format = args["output_format"]
+    read_format = args["format"]
+    zarr_chunks = parse_zarr_chunks(args["zarr_chunks"])
+    read_variable = args["read_variable"]
 
     # Default to 1440 time steps for IO mode when the user hasn't explicitly set it
     if mode == "io" && time_steps == 100
@@ -312,6 +351,17 @@ function run_benchmarks(args)
         println("Output format: ", output_format)
         println("Output iteration interval: ", output_iteration_interval)
         println("Output fields: u, v, w, T, S (full 3D)")
+        if output_format == "zarr"
+            println("Zarr chunks: ", isnothing(zarr_chunks) ? "auto" : string(zarr_chunks))
+        end
+    elseif mode == "read"
+        println("Time steps to write: ", time_steps, " (warmup: ", warmup_steps, ")")
+        println("Read format: ", read_format)
+        println("Output iteration interval: ", output_iteration_interval)
+        println("Read variable: ", read_variable)
+        if read_format == "zarr"
+            println("Zarr chunks: ", isnothing(zarr_chunks) ? "auto" : string(zarr_chunks))
+        end
     else
         println("Stop time: ", args["stop_time"], " hours")
         println("Output interval: ", args["output_interval"], " hours")
@@ -366,9 +416,14 @@ function run_benchmarks(args)
                 stop_time, Δt, output_interval, output_dir, name, group, verbose=true)
         elseif mode == "io"
             run_io_benchmark(model;
-                time_steps, Δt, warmup_steps, output_iteration_interval, output_format, output_dir, name, group, verbose=true)
+                time_steps, Δt, warmup_steps, output_iteration_interval, output_format,
+                output_dir, name, group, zarr_chunks, verbose=true)
+        elseif mode == "read"
+            run_read_benchmark(model;
+                time_steps, Δt, warmup_steps, output_iteration_interval, format=read_format,
+                output_dir, name, group, zarr_chunks, read_variable, verbose=true)
         else
-            error("Unknown mode: $mode. Use 'benchmark', 'simulate', or 'io'.")
+            error("Unknown mode: $mode. Use 'benchmark', 'simulate', 'io', or 'read'.")
         end
         push!(results, result)
     end
@@ -388,27 +443,45 @@ function main()
     ##### Summary table
     #####
 
-    println("\n", "=" ^ 105)
+    println("\n", "=" ^ 135)
     println("BENCHMARK SUMMARY")
-    println("=" ^ 105)
+    println("=" ^ 135)
     println()
 
-    @printf("%-55s %8s %12s %12s %10s %15s\n", "Benchmark", "Float", "Grid", "Time/Step", "Steps/s", "Points/s")
-    println("-" ^ 105)
+    @printf("%-55s %8s %12s %14s %10s %15s %10s %16s\n",
+            "Benchmark", "Float", "Grid", "Time/unit (ms)", "Units/s", "Points/s", "Size", "Chunks")
+    println("-" ^ 135)
 
     for r in results
         grid_str = "$(r.grid_size[1])×$(r.grid_size[2])×$(r.grid_size[3])"
-        @printf("%-55s %8s %12s %10.4f ms %10.2f %15.2e\n",
+        time_per_unit, units_per_second, grid_points_per_second, size_bytes, chunks =
+            if r isa ReadBenchmarkResult
+                (r.time_per_snapshot_seconds, r.snapshots_per_second, r.grid_points_per_second,
+                 r.file_size_bytes, r.chunk_shape)
+            elseif r isa IOBenchmarkResult
+                (r.time_per_step_seconds, r.steps_per_second, r.grid_points_per_second,
+                 r.total_output_size_bytes, r.chunk_shape)
+            else
+                (r.time_per_step_seconds, r.steps_per_second, r.grid_points_per_second,
+                 0, nothing)
+            end
+
+        size_str   = size_bytes > 0 ? Base.format_bytes(size_bytes) : "—"
+        chunks_str = isnothing(chunks) ? "—" : string(Tuple(chunks))
+
+        @printf("%-55s %8s %12s %14.4f %10.2f %15.2e %10s %16s\n",
             r.name,
             r.float_type,
             grid_str,
-            r.time_per_step_seconds * 1000,
-            r.steps_per_second,
-            r.grid_points_per_second
+            time_per_unit * 1000,
+            units_per_second,
+            grid_points_per_second,
+            size_str,
+            chunks_str,
         )
     end
 
-    println("=" ^ 105)
+    println("=" ^ 135)
 
     #####
     ##### Save results to JSON
@@ -476,21 +549,35 @@ function generate_markdown_report(filename, entries)
 
         println(io, "## Results")
         println(io)
-        println(io, "| Benchmark | Float | Grid | Time/Step (ms) | Steps/s | Points/s | Timestamp |")
-        println(io, "|-----------|-------|------|----------------|---------|----------|-----------|")
+        println(io, "| Benchmark | Float | Grid | Time/unit (ms) | Units/s | Points/s | Size | Chunks | Timestamp |")
+        println(io, "|-----------|-------|------|----------------|---------|----------|------|--------|-----------|")
 
         for entry in entries
             grid = entry["grid_size"]
             grid_str = "$(grid[1])×$(grid[2])×$(grid[3])"
             timestamp = entry["metadata"]["timestamp"]
 
-            @printf(io, "| `%s` | %s | %s | %.2f | %.2f | %.2e | %s |\n",
+            time_per_unit_seconds, units_per_second = if haskey(entry, "time_per_snapshot_seconds")
+                (entry["time_per_snapshot_seconds"], entry["snapshots_per_second"])
+            else
+                (entry["time_per_step_seconds"], entry["steps_per_second"])
+            end
+
+            size_bytes = get(entry, "total_output_size_bytes", get(entry, "file_size_bytes", 0))
+            size_str   = size_bytes > 0 ? Base.format_bytes(size_bytes) : "—"
+
+            chunks_raw = get(entry, "chunk_shape", nothing)
+            chunks_str = isnothing(chunks_raw) ? "—" : string(Tuple(Int.(chunks_raw)))
+
+            @printf(io, "| `%s` | %s | %s | %.2f | %.2f | %.2e | %s | %s | %s |\n",
                     entry["name"],
                     entry["float_type"],
                     grid_str,
-                    entry["time_per_step_seconds"] * 1000,
-                    entry["steps_per_second"],
+                    time_per_unit_seconds * 1000,
+                    units_per_second,
                     entry["grid_points_per_second"],
+                    size_str,
+                    chunks_str,
                     timestamp)
         end
     end

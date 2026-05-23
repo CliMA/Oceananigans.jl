@@ -548,3 +548,121 @@ end
         rm(zippath; force=true)
     end
 end
+
+#####
+##### Phase 8 — Grid-type sweep: LatLon, OSSG (Tripolar, RotatedLatLon), ImmersedBoundaryGrid
+#####
+##### Single-rank round-trip per grid type. Asserts both data write and grid
+##### serialization round-trip via `FieldTimeSeries(path, name)`.
+#####
+##### Known gaps (see PR #5605 follow-ups, intentionally not fixed in this PR):
+#####   * OSSG / TripolarGrid / RotatedLatitudeLongitudeGrid have no
+#####     `constructor_arguments` method → grid serialization throws at write time.
+#####   * ImmersedBoundaryGrid reconstruction explicitly throws at read time
+#####     (`Immersed-boundary reconstruction not yet implemented for Zarr.`).
+##### Every grid is asserted with a plain `@test`; the failing rows are expected
+##### to stay red until the upstream OSSG / NetCDF support PR lands.
+#####
+
+function zarr_round_trip(grid; tag::String)
+    return mktempdir() do tmp
+        filename = "grid_sweep_$(tag)"
+        path = abspath(joinpath(tmp, filename * ".zarr"))
+        try
+            model = HydrostaticFreeSurfaceModel(grid; tracers = (:T,))
+            sim = Simulation(model, Δt = 1.0, stop_iteration = 1)
+            sim.output_writers[:zarr] =
+                ZarrWriter(model, (; T = model.tracers.T);
+                           filename,
+                           dir = tmp,
+                           schedule = IterationInterval(1),
+                           overwrite_existing = true,
+                           with_halos = false)
+            run!(sim)
+            field_time_series = FieldTimeSeries(path, "T")
+            size_ok = size(field_time_series)[1:3] == size(grid)
+            time_ok = length(field_time_series.times) == 2
+            grid_ok = field_time_series.grid == grid
+            return size_ok && time_ok && grid_ok
+        catch err
+            @info "  zarr_round_trip[$tag] caught $(typeof(err)): $(sprint(showerror, err))"
+            return false
+        end
+    end
+end
+
+@testset "ZarrWriter [grid-type sweep]" begin
+    @info "  Testing ZarrWriter round-trip across grid types..."
+
+    for arch in archs
+        grid_factories = [
+            ("latitude_longitude_regular",
+             arch -> LatitudeLongitudeGrid(arch;
+                                           size = (4, 4, 2),
+                                           longitude = (0, 360),
+                                           latitude  = (-60, 60),
+                                           z = (-100, 0),
+                                           topology = (Periodic, Bounded, Bounded))),
+
+            ("latitude_longitude_stretched",
+             arch -> LatitudeLongitudeGrid(arch;
+                                           size = (4, 4, 2),
+                                           longitude = (0, 360),
+                                           latitude  = collect(range(-60, 60, length = 5)),
+                                           z = [-100.0, -50.0, 0.0],
+                                           topology = (Periodic, Bounded, Bounded))),
+
+            ("tripolar",
+             arch -> TripolarGrid(arch;
+                                  size = (4, 5, 1),
+                                  z = (-100, 0),
+                                  first_pole_longitude = 75,
+                                  north_poles_latitude = 35,
+                                  southernmost_latitude = -35)),
+
+            ("rotated_latitude_longitude",
+             arch -> RotatedLatitudeLongitudeGrid(arch;
+                                                  size = (4, 4, 1),
+                                                  latitude  = (-60, 60),
+                                                  longitude = (-60, 60),
+                                                  z = (-100, 0),
+                                                  north_pole = (0, 0),
+                                                  topology = (Bounded, Bounded, Bounded))),
+
+            ("immersed_boundary_rectilinear",
+             arch -> ImmersedBoundaryGrid(
+                 RectilinearGrid(arch;
+                                 size = (4, 4, 4),
+                                 extent = (1, 1, 1),
+                                 topology = (Periodic, Periodic, Bounded)),
+                 GridFittedBottom(on_architecture(arch, fill(-0.5, 4, 4))))),
+
+            ("immersed_boundary_latitude_longitude",
+             arch -> ImmersedBoundaryGrid(
+                 LatitudeLongitudeGrid(arch;
+                                       size = (4, 4, 2),
+                                       longitude = (0, 360),
+                                       latitude  = (-60, 60),
+                                       z = (-100, 0),
+                                       topology = (Periodic, Bounded, Bounded)),
+                 GridFittedBottom(on_architecture(arch, fill(-50.0, 4, 4))))),
+
+            ("immersed_boundary_tripolar",
+             arch -> ImmersedBoundaryGrid(
+                 TripolarGrid(arch;
+                              size = (4, 5, 1),
+                              z = (-100, 0),
+                              first_pole_longitude = 75,
+                              north_poles_latitude = 35,
+                              southernmost_latitude = -35),
+                 GridFittedBottom(on_architecture(arch, fill(-50.0, 4, 5))))),
+        ]
+
+        for (tag, factory) in grid_factories
+            @testset "$tag" begin
+                grid = factory(arch)
+                @test zarr_round_trip(grid; tag)
+            end
+        end
+    end
+end
