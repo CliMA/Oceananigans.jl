@@ -28,12 +28,11 @@ The order of operations for explicit free surfaces is:
 1. Compute momentum flux boundary conditions (3D tendencies are computed in `update_state!`)
 2. Advance the free surface (barotropic step)
 3. Compute transport velocities for tracer advection
-4. Advance velocities using AB2
-5. Compute tracer tendencies
-6. Advance grid scaling (for z-star coordinates)
+4. Compute tracer tendencies
+5. Advance grid scaling (for z-star coordinates)
+6. Advance velocities using AB2
 7. Correct barotropic mode
-8. Enforce targeted open boundary transports on the updated grid
-9. Advance tracers using AB2
+8. Advance tracers using AB2
 """
 function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
     FT = eltype(grid)
@@ -65,17 +64,10 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
         # Advance grid
         ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
 
-        # Correct the barotropic mode
+        # Correct the barotropic mode and advance tracers
         correct_barotropic_mode!(model, Δt)
+        ab2_step_tracers!(model.tracers, model, Δt, χ)
     end
-
-    # Enforce targeted open boundary transports after the grid step and barotropic
-    # correction, so the correction is the last word on boundary velocities and is
-    # applied on the end-of-step grid metrics (free surface accommodates any net imbalance).
-    @apply_regionally enforce_targeted_open_boundary_transport!(model, model.boundary_transport)
-
-    # Advance tracers using AB2
-    @apply_regionally ab2_step_tracers!(model.tracers, model, Δt, χ)
 
     return nothing
 end

@@ -24,12 +24,11 @@ The order of operations for explicit free surfaces is:
 1. Compute momentum tendencies (baroclinic)
 2. Advance the free surface (barotropic step)
 3. Compute transport velocities for tracer advection
-4. Advance velocities
-5. Compute tracer tendencies
-6. Advance grid scaling (for z-star coordinates)
+4. Compute tracer tendencies
+5. Advance grid scaling (for z-star coordinates)
+6. Advance velocities
 7. Correct barotropic mode to reconcile baroclinic and barotropic velocities
-8. Enforce targeted open boundary transports on the updated grid
-9. Advance tracers
+8. Advance tracers
 """
 @inline function rk_substep!(model, free_surface, grid, Δτ, callbacks)
     # Compute barotropic and baroclinic tendencies
@@ -58,15 +57,8 @@ The order of operations for explicit free surfaces is:
 
         # Correct for the updated barotropic mode
         correct_barotropic_mode!(model, Δτ)
+        rk_substep_tracers!(model.tracers, model, Δτ)
     end
-
-    # Enforce targeted open boundary transports after the grid step and barotropic
-    # correction, so the correction is the last word on boundary velocities and is
-    # applied on the end-of-step grid metrics (free surface accommodates any net imbalance).
-    @apply_regionally enforce_targeted_open_boundary_transport!(model, model.boundary_transport)
-
-    # Advance tracers
-    @apply_regionally rk_substep_tracers!(model.tracers, model, Δτ)
 
     return nothing
 end
