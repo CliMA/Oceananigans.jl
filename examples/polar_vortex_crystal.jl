@@ -71,12 +71,12 @@ model = HydrostaticFreeSurfaceModel(ibg;
 N_ring   = 6
 r_ring   = 900kilometers
 σ_vortex = 200kilometers
-η₀       = -13.0
+η₀       = -13
 
 ring_λ      = [360k/N_ring for k in 0:N_ring-1]
 ring_φ      = fill(90 - rad2deg(r_ring/R_earth), N_ring)
-vortex_λ    = vcat(ring_λ, [0.0])
-vortex_φ    = vcat(ring_φ, [90.0])
+vortex_λ    = vcat(ring_λ, [0])
+vortex_φ    = vcat(ring_φ, [90])
 vortex_xpyp = [lcc_forward(grid.conformal_mapping, λv, φv)
                for (λv, φv) in zip(vortex_λ, vortex_φ)]
 
