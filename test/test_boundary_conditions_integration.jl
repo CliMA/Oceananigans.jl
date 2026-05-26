@@ -218,6 +218,46 @@ function test_perturbation_advection_tracer_open_boundary_conditions(arch, FT)
     @test low_side(c) ≈ c₀
 end
 
+function test_perturbation_advection_tracer_radiation_formula(arch, FT)
+    # Single-step check of the radiation formula at an outflow boundary:
+    #   ψ_new = (ψᴮ + Ũ ψᴬ + ψ̄ τ̃) / (1 + τ̃ + Ũ),  Ũ = U Δt / Δx,  τ̃ = Δt / τ
+    # with non-trivial ψᴮ ≠ ψᴬ, finite τ̃, and 0 < Ũ < 1 — a regime the uniform-interior
+    # checks above never reach.
+    grid = RectilinearGrid(arch, FT; topology = (Bounded, Flat, Bounded),
+                           size = (4, 4), x = (0, 4), z = (0, 4))
+
+    U = 1
+    c̄ = convert(FT, 1//2)
+    Δt = convert(FT, 1//2)
+    outflow_timescale = convert(FT, 1)
+
+    scheme = PerturbationAdvection(; inflow_timescale = 0, outflow_timescale)
+    u_bcs = FieldBoundaryConditions(west = OpenBoundaryCondition(U),
+                                    east = OpenBoundaryCondition(U))
+    c_bcs = FieldBoundaryConditions(east = OpenBoundaryCondition(c̄; scheme))
+
+    model = HydrostaticFreeSurfaceModel(grid; tracers = :c, buoyancy = nothing,
+                                        boundary_conditions = (u = u_bcs, c = c_bcs))
+
+    ψᴬ = convert(FT, 2)
+    ψᴮ = convert(FT, 3)
+    set!(model, u = U, c = ψᴬ)
+    Nx, Hx, Hz = grid.Nx, grid.Hx, grid.Hz
+    parent(model.tracers.c)[Nx + 1 + Hx, :, :] .= ψᴮ
+
+    Δx = minimum_xspacing(grid)
+    Ũ = Δt / Δx * U
+    τ̃ = Δt / outflow_timescale
+    expected = (ψᴮ + Ũ * ψᴬ + c̄ * τ̃) / (1 + τ̃ + Ũ)
+
+    # The scheme reads Δt from clock.last_stage_Δt; set it directly so we evaluate the
+    # formula once, with the ψᴮ we just wrote, instead of advancing the model state.
+    model.clock.last_stage_Δt = Δt
+    fill_halo_regions!(model.tracers, model.clock, fields(model))
+
+    @test Array(parent(model.tracers.c))[Nx + 1 + Hx, 1, Hz + 1] ≈ expected
+end
+
 function test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions; N = 8)
     grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
                            topology=(Bounded, Bounded, Bounded))
@@ -428,6 +468,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             @info "  Testing open boundary conditions [$A, $FT]..."
             test_perturbation_advection_open_boundary_conditions(arch, FT)
             test_perturbation_advection_tracer_open_boundary_conditions(arch, FT)
+            test_perturbation_advection_tracer_radiation_formula(arch, FT)
 
             # Only PerturbationAdvection OpenBoundaryCondition
             U₀ = 1
