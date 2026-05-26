@@ -107,10 +107,7 @@ end
 
 function Architectures.on_architecture(arch, ib::PartialCellBottom{<:Field})
     architecture(ib.bottom_height) == arch && return ib
-    arch_grid = on_architecture(arch, ib.bottom_height.grid)
-    new_bottom_height = Field{Center, Center, Nothing}(arch_grid)
-    copyto!(parent(new_bottom_height), parent(ib.bottom_height))
-    return PartialCellBottom(new_bottom_height, ib.minimum_fractional_cell_height)
+    return PartialCellBottom(on_architecture(arch, ib.bottom_height), ib.minimum_fractional_cell_height)
 end
 
 Adapt.adapt_structure(to, ib::PartialCellBottom) = PartialCellBottom(adapt(to, ib.bottom_height),

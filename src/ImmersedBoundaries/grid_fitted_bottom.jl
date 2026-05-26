@@ -73,11 +73,7 @@ Architectures.on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(on_
 
 function Architectures.on_architecture(arch, ib::GridFittedBottom{<:Field})
     architecture(ib.bottom_height) == arch && return ib
-    arch_grid = on_architecture(arch, ib.bottom_height.grid)
-    new_bottom_height = Field{Center, Center, Nothing}(arch_grid)
-    set!(new_bottom_height, ib.bottom_height)
-    fill_halo_regions!(new_bottom_height)
-    return GridFittedBottom(new_bottom_height, ib.immersed_condition)
+    return GridFittedBottom(on_architecture(arch, ib.bottom_height), ib.immersed_condition)
 end
 
 Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom_height), adapt(to, ib.immersed_condition))
