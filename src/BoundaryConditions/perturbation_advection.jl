@@ -1,5 +1,6 @@
 using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ
 using Oceananigans: defaults
+using Oceananigans.Utils: prettysummary
 
 struct PerturbationAdvection{FT, D}
     inflow_timescale :: FT
@@ -113,6 +114,16 @@ Adapt.adapt_structure(to, pe::PerturbationAdvection) =
                           adapt(to, pe.outflow_timescale),
                           adapt(to, pe.gravity_wave_speed),
                           adapt(to, pe.density))
+
+Base.summary(::PerturbationAdvection{FT}) where FT = "PerturbationAdvection{$FT}"
+
+function Base.show(io::IO, pe::PerturbationAdvection)
+    print(io, summary(pe), '\n')
+    print(io, "├── inflow_timescale: ", prettysummary(pe.inflow_timescale), '\n')
+    print(io, "├── outflow_timescale: ", prettysummary(pe.outflow_timescale), '\n')
+    print(io, "├── gravity_wave_speed: ", prettysummary(pe.gravity_wave_speed), '\n')
+    print(io, "└── density: ", prettysummary(pe.density))
+end
 
 const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
 
