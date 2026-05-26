@@ -1,4 +1,5 @@
-using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ
+using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶠ
+using Oceananigans.Grids: Center, Face
 using Oceananigans: defaults
 using Oceananigans.Utils: prettysummary
 
@@ -92,7 +93,16 @@ boundary flow.
   fields (ψ) before computing phase speeds and radiation. When provided, the scheme
   divides by `density` before radiation and multiplies back after. This is required
   for models with density-weighted prognostic variables (e.g., anelastic models with
-  prognostic ρu, ρθ). Default: `nothing` (no conversion).
+  prognostic ρu, ρθ).
+
+  Accepts an `AbstractField` or a `FieldTimeSeries`. For an `AbstractField` ρ,
+  the value is interpolated from ρ's location to ψ's location with standard
+  staggered-grid operators (`ℑxᶠᵃᵃ` and similar). For a `FieldTimeSeries` ρ
+  the value is interpolated in both space and time, so the FTS may live on a
+  different grid than the simulation — useful for regional hindcasts where
+  boundary density is diagnosed from reanalysis thermodynamics.
+
+  Default: `nothing` (no conversion).
 """
 function PerturbationAdvection(FT = defaults.FloatType;
                                outflow_timescale = Inf,
@@ -127,15 +137,36 @@ end
 
 const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
 
-# Helper to convert between density-weighted and intensive fields.
-# When density is nothing, these are no-ops.
-@inline to_intensive(::Nothing, ψ, k) = ψ
-@inline to_intensive(ρ, ψ, k) = ψ / @inbounds ρ[1, 1, k]
-@inline to_extensive(::Nothing, ψ, k) = ψ
-@inline to_extensive(ρ, ψ, k) = @inbounds ρ[1, 1, k] * ψ
+# Density value at ψ's grid location for a static `AbstractField` density.
+# Staggered-grid interpolation is applied when ρ is at Centers and ψ is at a
+# Face. Column-only density fields (e.g. `Field{Nothing, Nothing, Center}`
+# for an anelastic reference profile) broadcast horizontally so the same
+# path is correct for them.
+#
+# `FlavorOfFTS` densities are handled in `OutputReaders` via a separate
+# overload of `to_intensive` / `to_extensive` defined after `interpolate`,
+# `Time`, etc. are available.
+@inline _pa_density_value(ρ, i, j, k, grid, ::Tuple{Face,   Center, Center}) = ℑxᶠᵃᵃ(i, j, k, grid, ρ)
+@inline _pa_density_value(ρ, i, j, k, grid, ::Tuple{Center, Face,   Center}) = ℑyᵃᶠᵃ(i, j, k, grid, ρ)
+@inline _pa_density_value(ρ, i, j, k, grid, ::Tuple{Center, Center, Face})   = ℑzᵃᵃᶠ(i, j, k, grid, ρ)
+@inline _pa_density_value(ρ, i, j, k, grid, ::Tuple{Center, Center, Center}) = @inbounds ρ[i, j, k]
+
+# Helpers to convert between density-weighted and intensive fields.
+# When density is `nothing`, these are no-ops. `to_intensive` reads ψ at
+# `(i, j, k)` and divides by ρ at ψ's location; `to_extensive` takes the
+# *value* (already in intensive space) and multiplies by ρ, with the caller
+# writing the result back into `ψ`. `clock` is threaded through for the
+# benefit of `FieldTimeSeries` densities (extended in `OutputReaders`).
+@inline to_intensive(::Nothing, ψ, i, j, k, grid, loc, clock) = @inbounds ψ[i, j, k]
+@inline to_intensive(ρ,         ψ, i, j, k, grid, loc, clock) =
+    @inbounds ψ[i, j, k] / _pa_density_value(ρ, i, j, k, grid, loc)
+
+@inline to_extensive(::Nothing, ψ_value, i, j, k, grid, loc, clock) = ψ_value
+@inline to_extensive(ρ,         ψ_value, i, j, k, grid, loc, clock) =
+    _pa_density_value(ρ, i, j, k, grid, loc) * ψ_value
 
 @inline function step_right_open_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
-                                           grid, ψ, clock, model_fields, ΔX, k)
+                                           grid, ψ, clock, model_fields, ΔX, loc)
     iᴮ, jᴮ, kᴮ = boundary_indices
     iᴬ, jᴬ, kᴬ = boundary_adjacent_indices
     Δt = clock.last_stage_Δt
@@ -146,8 +177,8 @@ const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
     c★ = pa.gravity_wave_speed
 
     # Convert to intensive space (no-op when density is nothing)
-    ψᴮ = to_intensive(ρ, @inbounds(ψ[iᴮ, jᴮ, kᴮ]), k)
-    ψᴬ = to_intensive(ρ, @inbounds(ψ[iᴬ, jᴬ, kᴬ]), k)
+    ψᴮ = to_intensive(ρ, ψ, iᴮ, jᴮ, kᴮ, grid, loc, clock)
+    ψᴬ = to_intensive(ρ, ψ, iᴬ, jᴬ, kᴬ, grid, loc, clock)
 
     # Prescribed exterior value (in intensive units when density is provided)
     ψ̄ = getbc(bc, l, m, grid, clock, model_fields)
@@ -164,13 +195,13 @@ const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
     ψ_new = ifelse(τ == 0, ψ̄, ψ_new)
 
     # Convert back to extensive space (no-op when density is nothing)
-    @inbounds ψ[iᴮ, jᴮ, kᴮ] = to_extensive(ρ, ψ_new, k)
+    @inbounds ψ[iᴮ, jᴮ, kᴮ] = to_extensive(ρ, ψ_new, iᴮ, jᴮ, kᴮ, grid, loc, clock)
 
     return nothing
 end
 
 @inline function step_left_open_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
-                                          grid, ψ, clock, model_fields, ΔX, k)
+                                          grid, ψ, clock, model_fields, ΔX, loc)
     iᴮ, jᴮ, kᴮ = boundary_indices
     iᴬ, jᴬ, kᴬ = boundary_adjacent_indices
     Δt = clock.last_stage_Δt
@@ -180,8 +211,8 @@ end
     ρ = pa.density
     c★ = pa.gravity_wave_speed
 
-    ψᴮ = to_intensive(ρ, @inbounds(ψ[iᴮ, jᴮ, kᴮ]), k)
-    ψᴬ = to_intensive(ρ, @inbounds(ψ[iᴬ, jᴬ, kᴬ]), k)
+    ψᴮ = to_intensive(ρ, ψ, iᴮ, jᴮ, kᴮ, grid, loc, clock)
+    ψᴬ = to_intensive(ρ, ψ, iᴬ, jᴬ, kᴬ, grid, loc, clock)
 
     ψ̄ = getbc(bc, l, m, grid, clock, model_fields)
 
@@ -195,84 +226,84 @@ end
     ψ_new = (ψᴮ - Ũ * ψᴬ + ψ̄ * τ̃) / (1 + τ̃ - Ũ)
     ψ_new = ifelse(τ == 0, ψ̄, ψ_new)
 
-    @inbounds ψ[iᴮ, jᴮ, kᴮ] = to_extensive(ρ, ψ_new, k)
+    @inbounds ψ[iᴮ, jᴮ, kᴮ] = to_extensive(ρ, ψ_new, iᴮ, jᴮ, kᴮ, grid, loc, clock)
 
     return nothing
 end
 
-# Backward compatibility: old step_right/left_boundary! signatures without k argument
-@inline function step_right_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
-                                      grid, ψ, clock, model_fields, ΔX)
-    k = boundary_indices[3]
+# Aliases for callers that follow the generic boundary-step naming.
+# Default to a Center-located ψ so the existing column-density behavior
+# (direct `ρ[i, j, k]` indexing) is preserved for any external caller.
+@inline step_right_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
+                             grid, ψ, clock, model_fields, ΔX) =
     step_right_open_boundary!(bc, l, m, boundary_indices, boundary_adjacent_indices,
-                              grid, ψ, clock, model_fields, ΔX, k)
-end
+                              grid, ψ, clock, model_fields, ΔX,
+                              (Center(), Center(), Center()))
 
-@inline function step_left_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
-                                     grid, ψ, clock, model_fields, ΔX)
-    k = boundary_indices[3]
+@inline step_left_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
+                            grid, ψ, clock, model_fields, ΔX) =
     step_left_open_boundary!(bc, l, m, boundary_indices, boundary_adjacent_indices,
-                             grid, ψ, clock, model_fields, ΔX, k)
-end
+                             grid, ψ, clock, model_fields, ΔX,
+                             (Center(), Center(), Center()))
 
 #####
 ##### Halo-filling methods for Face-located fields (velocity/momentum)
 #####
 
-@inline function _fill_east_halo!(j, k, grid, u, bc::PAOBC, ::Tuple{Face, Any, Any}, clock, model_fields)
+@inline function _fill_east_halo!(j, k, grid, u, bc::PAOBC, loc::Tuple{Face, Any, Any}, clock, model_fields)
     i = grid.Nx + 1
     boundary_indices = (i, j, k)
     boundary_adjacent_indices = (i-1, j, k)
     Δx = Δxᶠᶜᶜ(i, j, k, grid)
     step_right_open_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices,
-                              grid, u, clock, model_fields, Δx, k)
+                              grid, u, clock, model_fields, Δx, loc)
     return nothing
 end
 
-@inline function _fill_west_halo!(j, k, grid, u, bc::PAOBC, ::Tuple{Face, Any, Any}, clock, model_fields)
+@inline function _fill_west_halo!(j, k, grid, u, bc::PAOBC, loc::Tuple{Face, Any, Any}, clock, model_fields)
     boundary_indices = (1, j, k)
     boundary_adjacent_indices = (2, j, k)
     Δx = Δxᶠᶜᶜ(1, j, k, grid)
     step_left_open_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices,
-                             grid, u, clock, model_fields, Δx, k)
+                             grid, u, clock, model_fields, Δx, loc)
     return nothing
 end
 
-@inline function _fill_north_halo!(i, k, grid, u, bc::PAOBC, ::Tuple{Any, Face, Any}, clock, model_fields)
+@inline function _fill_north_halo!(i, k, grid, u, bc::PAOBC, loc::Tuple{Any, Face, Any}, clock, model_fields)
     j = grid.Ny + 1
     boundary_indices = (i, j, k)
     boundary_adjacent_indices = (i, j-1, k)
     Δy = Δyᶜᶠᶜ(i, j, k, grid)
     step_right_open_boundary!(bc, i, k, boundary_indices, boundary_adjacent_indices,
-                              grid, u, clock, model_fields, Δy, k)
+                              grid, u, clock, model_fields, Δy, loc)
     return nothing
 end
 
-@inline function _fill_south_halo!(i, k, grid, u, bc::PAOBC, ::Tuple{Any, Face, Any}, clock, model_fields)
+@inline function _fill_south_halo!(i, k, grid, u, bc::PAOBC, loc::Tuple{Any, Face, Any}, clock, model_fields)
     boundary_indices = (i, 1, k)
     boundary_adjacent_indices = (i, 2, k)
     Δy = Δyᶜᶠᶜ(i, 1, k, grid)
     step_left_open_boundary!(bc, i, k, boundary_indices, boundary_adjacent_indices,
-                             grid, u, clock, model_fields, Δy, k)
+                             grid, u, clock, model_fields, Δy, loc)
     return nothing
 end
 
-@inline function _fill_top_halo!(i, j, grid, u, bc::PAOBC, ::Tuple{Any, Any, Face}, clock, model_fields)
+@inline function _fill_top_halo!(i, j, grid, u, bc::PAOBC, loc::Tuple{Any, Any, Face}, clock, model_fields)
     k = grid.Nz + 1
     boundary_indices = (i, j, k)
     boundary_adjacent_indices = (i, j, k-1)
     Δz = Δzᶜᶜᶠ(i, j, k, grid)
     step_right_open_boundary!(bc, i, j, boundary_indices, boundary_adjacent_indices,
-                              grid, u, clock, model_fields, Δz, k)
+                              grid, u, clock, model_fields, Δz, loc)
     return nothing
 end
 
-@inline function _fill_bottom_halo!(i, j, grid, u, bc::PAOBC, ::Tuple{Any, Any, Face}, clock, model_fields)
+@inline function _fill_bottom_halo!(i, j, grid, u, bc::PAOBC, loc::Tuple{Any, Any, Face}, clock, model_fields)
     boundary_indices = (i, j, 1)
     boundary_adjacent_indices = (i, j, 2)
     Δz = Δzᶜᶜᶠ(i, j, 1, grid)
     step_left_open_boundary!(bc, i, j, boundary_indices, boundary_adjacent_indices,
-                             grid, u, clock, model_fields, Δz, 1)
+                             grid, u, clock, model_fields, Δz, loc)
     return nothing
 end
 
@@ -280,40 +311,40 @@ end
 ##### Halo-filling methods for Center-located fields (scalars like ρθ, ρq, tracers)
 #####
 
-@inline function _fill_east_halo!(j, k, grid, c, bc::PAOBC, ::Tuple{Center, Any, Any}, clock, model_fields)
+@inline function _fill_east_halo!(j, k, grid, c, bc::PAOBC, loc::Tuple{Center, Any, Any}, clock, model_fields)
     i = grid.Nx + 1
     boundary_indices = (i, j, k)
     boundary_adjacent_indices = (i-1, j, k)
     Δx = Δxᶠᶜᶜ(i, j, k, grid)
     step_right_open_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices,
-                              grid, c, clock, model_fields, Δx, k)
+                              grid, c, clock, model_fields, Δx, loc)
     return nothing
 end
 
-@inline function _fill_west_halo!(j, k, grid, c, bc::PAOBC, ::Tuple{Center, Any, Any}, clock, model_fields)
+@inline function _fill_west_halo!(j, k, grid, c, bc::PAOBC, loc::Tuple{Center, Any, Any}, clock, model_fields)
     boundary_indices = (1, j, k)
     boundary_adjacent_indices = (2, j, k)
     Δx = Δxᶠᶜᶜ(1, j, k, grid)
     step_left_open_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices,
-                             grid, c, clock, model_fields, Δx, k)
+                             grid, c, clock, model_fields, Δx, loc)
     return nothing
 end
 
-@inline function _fill_north_halo!(i, k, grid, c, bc::PAOBC, ::Tuple{Any, Center, Any}, clock, model_fields)
+@inline function _fill_north_halo!(i, k, grid, c, bc::PAOBC, loc::Tuple{Any, Center, Any}, clock, model_fields)
     j = grid.Ny + 1
     boundary_indices = (i, j, k)
     boundary_adjacent_indices = (i, j-1, k)
     Δy = Δyᶜᶠᶜ(i, j, k, grid)
     step_right_open_boundary!(bc, i, k, boundary_indices, boundary_adjacent_indices,
-                              grid, c, clock, model_fields, Δy, k)
+                              grid, c, clock, model_fields, Δy, loc)
     return nothing
 end
 
-@inline function _fill_south_halo!(i, k, grid, c, bc::PAOBC, ::Tuple{Any, Center, Any}, clock, model_fields)
+@inline function _fill_south_halo!(i, k, grid, c, bc::PAOBC, loc::Tuple{Any, Center, Any}, clock, model_fields)
     boundary_indices = (i, 1, k)
     boundary_adjacent_indices = (i, 2, k)
     Δy = Δyᶜᶠᶜ(i, 1, k, grid)
     step_left_open_boundary!(bc, i, k, boundary_indices, boundary_adjacent_indices,
-                             grid, c, clock, model_fields, Δy, k)
+                             grid, c, clock, model_fields, Δy, loc)
     return nothing
 end

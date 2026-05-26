@@ -156,6 +156,95 @@ function test_perturbation_advection_open_boundary_conditions(arch, FT)
     end
 end
 
+# Build a 3D grid, bounded in `orientation`, periodic+bounded elsewhere. Used
+# by the density tests so that all three orientations (x, y, z) get exercised
+# from a single 3D setup.
+function _pa_density_test_grid(arch, FT, orientation)
+    topology = tuple(map(n -> ifelse(n == orientation, Bounded, ifelse(n == 3, Bounded, Periodic)), 1:3)...)
+    return RectilinearGrid(arch, FT; topology, size = (4, 4, 4),
+                           x = (0, 4), y = (0, 4), z = (0, 4), halo = (2, 2, 2))
+end
+
+# Run one PerturbationAdvection step on the wall-normal velocity and return
+# the interior velocity array. `density` may be `nothing`, an `AbstractField`,
+# or a `FieldTimeSeries`. Used by the identity-invariance tests below.
+function _pa_density_step(arch, FT, orientation, density;
+                          inflow_timescale = FT(10), Δt = FT(0.1), Nsteps = 5,
+                          u_init = FT(-1//2))
+    grid = _pa_density_test_grid(arch, FT, orientation)
+    obc = OpenBoundaryCondition(-1, scheme = PerturbationAdvection(; inflow_timescale, density))
+    bcs = wall_normal_boundary_condition(Val(orientation), obc)
+    model = NonhydrostaticModel(grid; boundary_conditions = bcs, timestepper = :QuasiAdamsBashforth2)
+    fill!(normal_velocity(Val(orientation), model), u_init)
+    for _ in 1:Nsteps
+        time_step!(model, Δt)
+    end
+    return Array(interior(normal_velocity(Val(orientation), model)))
+end
+
+# Uniformly-1 density should be the identity for the ρψ → ψ → ρψ conversion,
+# so the boundary evolution should match the `density = nothing` baseline.
+# This validates the dispatch path for both `AbstractField` and
+# `FieldTimeSeries` densities.
+function test_perturbation_advection_constant_density(arch, FT)
+    for orientation in 1:3
+        grid = _pa_density_test_grid(arch, FT, orientation)
+        baseline = _pa_density_step(arch, FT, orientation, nothing)
+
+        ρ_field = Field{Center, Center, Center}(grid)
+        fill!(parent(ρ_field), one(FT))
+        fill_halo_regions!(ρ_field)
+        @test all(_pa_density_step(arch, FT, orientation, ρ_field) .≈ baseline)
+
+        # Anelastic-style column reference profile: `Field{Nothing, Nothing, Center}`.
+        # Indexing broadcasts over `(i, j)`, so the staggered-grid interpolator
+        # returns the same column value as direct `ρ[1, 1, k]` indexing did
+        # before this patch. Result must match the constant case.
+        ρ_column = Field{Nothing, Nothing, Center}(grid)
+        fill!(parent(ρ_column), one(FT))
+        fill_halo_regions!(ρ_column)
+        @test all(_pa_density_step(arch, FT, orientation, ρ_column) .≈ baseline)
+
+        ρ_fts = FieldTimeSeries{Center, Center, Center}(grid, FT[0, 100])
+        for n in eachindex(ρ_fts.times)
+            set!(ρ_fts[n], one(FT))
+            fill_halo_regions!(ρ_fts[n])
+        end
+        @test all(_pa_density_step(arch, FT, orientation, ρ_fts) .≈ baseline)
+    end
+    return nothing
+end
+
+# When density varies laterally (perpendicular to the relaxation direction),
+# the staggered-grid interpolator must read ρ at each boundary face's
+# (i, j, k) — not the column at (1, 1, k) as the old implementation did.
+# A regression check: pick a density that varies along an axis transverse
+# to the relaxation, and verify the resulting boundary velocity also varies
+# along that axis. The pre-patch code would have produced a transverse-
+# uniform boundary velocity because every face read the same `ρ[1, 1, k]`.
+function test_perturbation_advection_lateral_density(arch, FT)
+    # Relax in x, vary ρ in y.
+    grid = _pa_density_test_grid(arch, FT, 1)
+    ρ = Field{Center, Center, Center}(grid)
+    set!(ρ, (x, y, z) -> one(FT) + FT(1//2) * y)
+    fill_halo_regions!(ρ)
+
+    obc = OpenBoundaryCondition(-1, scheme = PerturbationAdvection(inflow_timescale = FT(10), density = ρ))
+    bcs = (; u = FieldBoundaryConditions(east = obc, west = obc))
+    model = NonhydrostaticModel(grid; boundary_conditions = bcs, timestepper = :QuasiAdamsBashforth2)
+    fill!(model.velocities.u, FT(-1//2))
+    for _ in 1:5
+        time_step!(model, FT(1//10))
+    end
+
+    u_boundary = Array(view(interior(model.velocities.u), grid.Nx + 1, :, :))  # east face slice
+    # The post-patch behavior reads ρ at each (i_b, j, k), so the boundary
+    # velocity inherits the y-dependence of ρ. The pre-patch code returned
+    # an identical value at every (j, k).
+    @test !all(u_boundary[1, 1] ≈ u for u in u_boundary)
+    return nothing
+end
+
 function test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions; N = 8)
     grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
                            topology=(Bounded, Bounded, Bounded))
@@ -365,6 +454,8 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             A = typeof(arch)
             @info "  Testing open boundary conditions [$A, $FT]..."
             test_perturbation_advection_open_boundary_conditions(arch, FT)
+            test_perturbation_advection_constant_density(arch, FT)
+            test_perturbation_advection_lateral_density(arch, FT)
 
             # Only PerturbationAdvection OpenBoundaryCondition
             U₀ = 1

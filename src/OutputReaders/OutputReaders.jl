@@ -43,6 +43,7 @@ include("field_time_series_reductions.jl")
 include("show_field_time_series.jl")
 include("extract_field_time_series.jl")
 include("combining_field_time_series.jl")
+include("perturbation_advection_fts_density.jl")
 
 # Experimental
 include("field_dataset.jl")
