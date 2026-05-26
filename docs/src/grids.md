@@ -918,6 +918,7 @@ nodes does not exceed the benefit of dividing up the computation among different
 ```@example distributed_grids
 # Make a simple program that can be written to file
 make_distributed_arch = """
+ENV["JULIA_DEBUG"] = "loading"
 
 using Oceananigans
 using Oceananigans.DistributedComputations
@@ -936,7 +937,7 @@ write("distributed_arch_example.jl", make_distributed_arch)
 #
 # from the terminal.
 using MPI
-run(`$(mpiexec()) -n 2 $(Base.julia_cmd()) --project distributed_arch_example.jl`)
+run(`$(mpiexec()) -n 2 $(Base.julia_cmd()) -O0 --check-bounds=yes --project distributed_arch_example.jl`)
 rm("distributed_arch_example.jl")
 nothing # hide
 ```
@@ -974,7 +975,7 @@ grid = RectilinearGrid(architecture,
 write("distributed_grid_example.jl", make_distributed_grid)
 
 using MPI
-run(`$(mpiexec()) -n 2 $(Base.julia_cmd()) --project distributed_grid_example.jl`)
+run(`$(mpiexec()) -n 2 $(Base.julia_cmd()) -O0 --check-bounds=yes --project distributed_grid_example.jl`)
 nothing # hide
 ```
 
@@ -997,7 +998,7 @@ Now we're getting somewhere. Let's note a few things:
 To drive these points home, let's run the same script, but using 3 processors instead of 2:
 
 ```@example distributed_grids
-run(`$(mpiexec()) -n 3 $(Base.julia_cmd()) --project distributed_grid_example.jl`)
+run(`$(mpiexec()) -n 3 $(Base.julia_cmd()) -O0 --check-bounds=yes --project distributed_grid_example.jl`)
 nothing # hide
 ```
 
@@ -1032,7 +1033,7 @@ end
 write("partition_example.jl", make_y_partition)
 
 using MPI
-run(`$(mpiexec()) -n 2 $(Base.julia_cmd()) --project partition_example.jl`)
+run(`$(mpiexec()) -n 2 $(Base.julia_cmd()) -O0 --check-bounds=yes --project partition_example.jl`)
 nothing # hide
 ```
 
@@ -1075,7 +1076,7 @@ end
 write("programmatic_partition_example.jl", make_xy_partition)
 
 using MPI
-run(`$(mpiexec()) -n 6 $(Base.julia_cmd()) --project programmatic_partition_example.jl`)
+run(`$(mpiexec()) -n 6 $(Base.julia_cmd()) -O0 --check-bounds=yes --project programmatic_partition_example.jl`)
 nothing # hide
 ```
 
@@ -1124,6 +1125,6 @@ end
 write("equally_partitioned_grids.jl", partitioned_grid_example)
 
 using MPI
-run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) --project equally_partitioned_grids.jl`)
+run(`$(mpiexec()) -n 4 $(Base.julia_cmd()) -O0 --check-bounds=yes --project equally_partitioned_grids.jl`)
 nothing # hide
 ```
