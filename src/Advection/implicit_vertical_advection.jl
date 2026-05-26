@@ -1,4 +1,4 @@
-using Oceananigans.Operators: Δz, Az, volume, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
+using Oceananigans.Operators: Az, volume, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Grids: peripheral_node, Center, Face
 
 @inline vertical_scheme(advection) = advection

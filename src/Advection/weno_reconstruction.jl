@@ -138,8 +138,8 @@ end
 
 weno_order(::WENO{N}) where N = 2N-1
 Base.eltype(::WENO{N, FT}) where {N, FT} = FT
-Base.summary(a::WENO{N, FT, WCT, Nothing}) where {N, FT, WCT} = string("WENO{$N, $FT, $WCT}(order=", 2N-1, ")")
-Base.summary(a::WENO{N, FT, WCT, PP}) where {N, FT, WCT, PP} = string("WENO{$N, $FT, $WCT}(order=", 2N-1, ", bounds=", string(a.bounds), ")")
+Base.summary(a::WENO{N, FT, WCT, TD, Nothing}) where {N, FT, WCT, TD} = string("WENO{$N, $FT, $WCT}(order=", 2N-1, ")")
+Base.summary(a::WENO{N, FT, WCT, TD, PP}) where {N, FT, WCT, TD, PP} = string("WENO{$N, $FT, $WCT}(order=", 2N-1, ", bounds=", string(a.bounds), ")")
 
 function Base.show(io::IO, a::WENO)
     print(io, summary(a), '\n')

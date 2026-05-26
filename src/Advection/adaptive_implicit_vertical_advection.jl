@@ -117,6 +117,8 @@ end
 end
 
 update_advection_timestep!(a::FluxFormAdvection, timestepper, clock) = update_advection_timestep!(a.z, timestepper, clock)
+update_advection_timestep!(a::FluxFormAdvection, timestepper::RungeKutta3TimeStepper, clock) = update_advection_timestep!(a.z, timestepper, clock)
+update_advection_timestep!(a::FluxFormAdvection, timestepper::SplitRungeKuttaTimeStepper, clock) = update_advection_timestep!(a.z, timestepper, clock)
 
 function update_advection_timestep!(a::NamedTuple, timestepper, clock)
     for scheme in values(a)

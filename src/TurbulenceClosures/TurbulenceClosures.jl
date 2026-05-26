@@ -49,8 +49,7 @@ using Oceananigans.Architectures: Architectures, on_architecture
 using Oceananigans.TimeSteppers: TimeSteppers,
                                  AbstractTimeDiscretization,
                                  ExplicitTimeDiscretization,
-                                 VerticallyImplicitTimeDiscretization,
-                                 time_discretization
+                                 VerticallyImplicitTimeDiscretization
 using Oceananigans.Grids: AbstractGrid, Bounded, Center, Face, znode
 using Oceananigans.Operators: Operators,
     Ax_qᶜᶜᶜ, Ax_qᶠᶜᶜ, Ax_qᶠᶜᶠ, Ax_qᶠᶠᶜ, Ay_qᶜᶜᶜ, Ay_qᶜᶠᶜ, Ay_qᶜᶠᶠ, Ay_qᶠᶠᶜ, Az_qᶜᶜᶜ, Az_qᶜᶜᶠ, Az_qᶜᶠᶠ, Az_qᶠᶜᶠ, Az⁻¹ᶜᶜᶜ, Az⁻¹ᶜᶜᶠ, Az⁻¹ᶜᶠᶜ, Az⁻¹ᶠᶜᶜ, Az⁻¹ᶠᶠᶜ,

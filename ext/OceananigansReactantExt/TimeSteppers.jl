@@ -14,6 +14,8 @@ using Oceananigans.TimeSteppers:
     tick_stage!,
     step_lagrangian_particles!,
     QuasiAdamsBashforth2TimeStepper,
+    RungeKutta3TimeStepper,
+    SplitRungeKuttaTimeStepper,
     cache_previous_tendencies!
 
 import Oceananigans.TimeSteppers: Clock, first_time_step!, time_step!,
@@ -91,6 +93,8 @@ end
 
 # Reactant handles initialization via first_time_step!, so this is a no-op.
 maybe_prepare_first_time_step!(::ReactantModel, Δt, callbacks) = nothing
+maybe_prepare_first_time_step!(::ReactantModel{<:RungeKutta3TimeStepper}, Δt, callbacks) = nothing
+maybe_prepare_first_time_step!(::ReactantModel{<:SplitRungeKuttaTimeStepper}, Δt, callbacks) = nothing
 
 # For QAB2, last_Δt and last_stage_Δt are always the same value after tick!.
 # Alias them so Reactant's tracer sees one buffer, avoiding XLA buffer donation errors.
