@@ -688,6 +688,14 @@ function zarr_field_dimensions(field::AbstractField, grid::LatitudeLongitudeGrid
     return (name_λ, name_φ, name_z)
 end
 
+function zarr_field_dimensions(field::AbstractField, grid::OrthogonalSphericalShellGrid)
+    LΛ, LΦ, LZ = location(field)
+    name_λ = LΛ === Nothing ? "" : trilocation_dim_name("λ", grid, LΛ(), nothing, nothing, Val(:x))
+    name_φ = LΦ === Nothing ? "" : trilocation_dim_name("φ", grid, nothing, LΦ(), nothing, Val(:y))
+    name_z = LZ === Nothing ? "" : trilocation_dim_name("z", grid, nothing, nothing, LZ(), Val(:z))
+    return (name_λ, name_φ, name_z)
+end
+
 zarr_field_dimensions(field::AbstractField, grid::ImmersedBoundaryGrid) =
     zarr_field_dimensions(field, grid.underlying_grid)
 
