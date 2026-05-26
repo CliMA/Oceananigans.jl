@@ -45,6 +45,21 @@ end
 # This interface helps us do things like set distributed fields
 set!(u::Field, f::Function) = set_to_function!(u, f)
 set!(u::Field, a::Union{Array, OffsetArray}) = set_to_array!(u, a)
+
+"""
+    set!(u::Field, v::Field)
+
+Set `u` from `v`. When `u` and `v` have the same `size`, `location`, and
+`indices`, the data of `v` is copied into `u` (cross-architecture transfers
+are handled automatically). Otherwise, `v` is migrated to `u`'s architecture
+if needed, its halo regions are filled, and then it is interpolated onto `u`
+with [`interpolate!`](@ref). This means field-to-field `set!` "just works"
+across grids of different resolution, between staggered locations, and across
+architectures.
+
+Note that the interpolation path samples `v` pointwise; for conservative
+remapping, call [`regrid!`](@ref) explicitly.
+"""
 set!(u::Field, v::Field) = set_to_field!(u, v)
 
 function set!(u::Field, a::Number)
@@ -132,6 +147,36 @@ function set_to_array!(u, a)
 end
 
 function set_to_field!(u, v)
+    if matching_field_discretization(u, v)
+        copy_to_field!(u, v)
+    else
+        # Fill halos on v's native architecture so distributed dispatch (if any) is used;
+        # on_architecture would strip Distributed{CPU} to CPU while keeping distributed
+        # boundary conditions, mismatching fill_halo_regions! dispatch.
+        fill_halo_regions!(v)
+        v_on_u = on_architecture(child_architecture(u), v)
+        interpolate!(u, v_on_u)
+    end
+
+    return u
+end
+
+function matching_field_discretization(u, v)
+    return size(u) == size(v) &&
+           location(u) == location(v) &&
+           equivalent_indices(indices(u), indices(v), size(u))
+end
+
+@inline equivalent_indices(ui::Tuple, vi::Tuple, sz::Tuple) =
+    equivalent_index(ui[1], vi[1], sz[1]) &&
+    equivalent_index(ui[2], vi[2], sz[2]) &&
+    equivalent_index(ui[3], vi[3], sz[3])
+
+@inline equivalent_index(a, b, N) = a == b
+@inline equivalent_index(::Colon, r::AbstractUnitRange, N) = first(r) == 1 && last(r) == N
+@inline equivalent_index(r::AbstractUnitRange, ::Colon, N) = first(r) == 1 && last(r) == N
+
+function copy_to_field!(u, v)
     # We implement some niceities in here that attempt to copy halo data,
     # and revert to copying just interior points if that fails.
 
