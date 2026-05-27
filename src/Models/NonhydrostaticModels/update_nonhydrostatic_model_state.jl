@@ -1,4 +1,5 @@
 using Oceananigans: UpdateStateCallsite
+using Oceananigans.Advection: update_advection_timestep!
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
@@ -48,6 +49,7 @@ function update_state!(model::NonhydrostaticModel, callbacks=[])
         callback.callsite isa UpdateStateCallsite && callback(model)
     end
 
+    update_advection_timestep!(model.advection, model.timestepper, model.clock)
     compute_tendencies!(model, callbacks)
     update_biogeochemical_state!(model.biogeochemistry, model)
 
