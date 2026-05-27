@@ -27,9 +27,8 @@ materialize_advection(u::CrossAndSelfUpwinding, grid) = CrossAndSelfUpwinding(ma
 materialize_advection(u::VelocityUpwinding, grid) = VelocityUpwinding(materialize_advection(u.cross_scheme, grid))
 
 # VectorInvariant wraps multiple sub-schemes; recurse into each
-function materialize_advection(vi::VectorInvariant{N, FT, M}, grid) where {N, FT, M}
-    TD = typeof(TimeSteppers.time_discretization(vi))
-    return VectorInvariant{N, FT, M, TD}(materialize_advection(vi.vorticity_scheme, grid),
+function materialize_advection(vi::VectorInvariant{N, FT, TD, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, M}, grid) where {N, FT, TD, M}
+    return VectorInvariant{N, FT, TD, M}(materialize_advection(vi.vorticity_scheme, grid),
                                          vi.vorticity_stencil,
                                          materialize_advection(vi.vertical_advection_scheme, grid),
                                          materialize_advection(vi.kinetic_energy_gradient_scheme, grid),

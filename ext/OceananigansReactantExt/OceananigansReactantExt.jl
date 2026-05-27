@@ -49,7 +49,7 @@ using .Solvers
 import ConstructionBase: constructorof
 
 constructorof(::Type{<:RectilinearGrid{FT, TX, TY, TZ}}) where {FT, TX, TY, TZ} = RectilinearGrid{TX, TY, TZ}
-constructorof(::Type{<:VectorInvariant{N, FT, M, Z, ZS, V, K, D, U, TD}}) where {N, FT, M, Z, ZS, V, K, D, U, TD} = VectorInvariant{N, FT, M, TD}
+constructorof(::Type{<:VectorInvariant{N, FT, TD, Z, ZS, V, K, D, U, M}}) where {N, FT, TD, Z, ZS, V, K, D, U, M} = VectorInvariant{N, FT, TD, M}
 
 # https://github.com/CliMA/Oceananigans.jl/blob/da9959f3e5d8ee7cf2fb42b74ecc892874ec1687/src/AbstractOperations/conditional_operations.jl#L8
 Base.@nospecializeinfer function Reactant.traced_type_inner(
