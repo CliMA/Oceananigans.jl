@@ -13,7 +13,7 @@ export
     XDirectionBulkDragFunction, YDirectionBulkDragFunction, ZDirectionBulkDragFunction,
     LinearFormulation, QuadraticFormulation
 
-using Oceananigans: AbstractModel, fields, prognostic_fields
+using Oceananigans: Oceananigans, AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered
 using Oceananigans.Fields: Field, flattened_unique_values
@@ -205,7 +205,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: OnlyParticleTrackingMode
 
 # Particle tracking models with prescribed velocities (and no tracers)
 # have no prognostic fields and no chance to producing a NaN.
-Oceananigans.Diagnosticsdefault_nan_checker(::OnlyParticleTrackingModel) = nothing
+Oceananigans.Diagnostics.default_nan_checker(::OnlyParticleTrackingModel) = nothing
 
 # Extend output writer functionality to custom Oceananigans.Models
 Oceananigans.OutputWriters.default_included_properties(::NonhydrostaticModel) = [:coriolis, :buoyancy, :closure]
