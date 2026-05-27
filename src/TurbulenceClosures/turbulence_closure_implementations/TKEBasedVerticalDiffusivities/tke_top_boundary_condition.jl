@@ -1,5 +1,5 @@
 using Oceananigans.Architectures: Architectures, on_architecture
-using Oceananigans.BoundaryConditions: BoundaryConditions, DiscreteBoundaryFunction, getbc
+using Oceananigans.BoundaryConditions: BoundaryConditions, DiscreteBoundaryFunction, getbc, total_boundary_flux
 using Oceananigans.Grids: AbstractGrid, topology
 
 struct TKETopBoundaryConditionParameters{C, U}
@@ -65,8 +65,9 @@ end
 """ Computes the friction velocity u★ based on fluxes of u and v. """
 @inline function friction_velocity(i, j, grid, clock, fields, velocity_bcs)
     FT = eltype(grid)
-    τx = getbc(velocity_bcs.u, i, j, grid, clock, fields)
-    τy = getbc(velocity_bcs.v, i, j, grid, clock, fields)
+    Nz = size(grid, 3)
+    τx = total_boundary_flux(velocity_bcs.u, i, j, Nz, grid, clock, fields, fields.u)
+    τy = total_boundary_flux(velocity_bcs.v, i, j, Nz, grid, clock, fields, fields.v)
     return sqrt(sqrt(τx^2 + τy^2))
 end
 

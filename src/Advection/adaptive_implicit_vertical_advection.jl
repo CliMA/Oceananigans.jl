@@ -1,6 +1,6 @@
 using Oceananigans.Operators: Δzᶜᶜᶠ, Δzᶠᶜᶠ, Δzᶜᶠᶠ, Az_qᶜᶜᶠ, Azᶜᶜᶠ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Grids: Center, Face
-using Oceananigans.BoundaryConditions: _unwrap_for_gpu
+using Oceananigans.BoundaryConditions: BoundaryConditions, _unwrap_for_gpu
 using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper, RungeKutta3TimeStepper
 
 const AVID = AdaptiveVerticallyImplicitDiscretization
@@ -77,9 +77,8 @@ end
 ##### Utility functions
 #####
 
-needs_implicit_solver(advection) = false
-needs_implicit_solver(::AdaptiveImplicitVerticalAdvection) = true
-needs_implicit_solver(a::NamedTuple) = any(needs_implicit_solver, values(a))
+BoundaryConditions.needs_implicit_solver(::AdaptiveImplicitVerticalAdvection) = true
+BoundaryConditions.needs_implicit_solver(a::NamedTuple) = any(BoundaryConditions.needs_implicit_solver, values(a))
 
 """
     update_advection_timestep!(advection, timestepper, clock)
@@ -117,6 +116,8 @@ end
 end
 
 update_advection_timestep!(a::FluxFormAdvection, timestepper, clock) = update_advection_timestep!(a.z, timestepper, clock)
+update_advection_timestep!(a::FluxFormAdvection, timestepper::RungeKutta3TimeStepper, clock) = update_advection_timestep!(a.z, timestepper, clock)
+update_advection_timestep!(a::FluxFormAdvection, timestepper::SplitRungeKuttaTimeStepper, clock) = update_advection_timestep!(a.z, timestepper, clock)
 
 function update_advection_timestep!(a::NamedTuple, timestepper, clock)
     for scheme in values(a)

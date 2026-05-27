@@ -1,7 +1,6 @@
 using Oceananigans.TimeSteppers: TimeSteppers,
                                  AbstractTimeDiscretization,
                                  ExplicitTimeDiscretization,
-                                 VerticallyImplicitTimeDiscretization,
                                  AdaptiveVerticallyImplicitDiscretization
 
 const AdaptiveImplicitVerticalAdvection = AbstractAdvectionScheme{<:Any, <:Any, <:AdaptiveVerticallyImplicitDiscretization}

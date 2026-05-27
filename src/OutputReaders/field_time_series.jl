@@ -909,13 +909,7 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
     Nt = time_indices_length(backend, times)
     @apply_regionally data = new_data(eltype(grid), grid, loc, indices, Nt)
 
-    # For OnDisk backend with split files, store a SplitFilePath so getindex
-    # can find the correct part file for each time index.
-    fts_path = if !isnothing(Nparts) && backend isa OnDisk
-        SplitFilePath(part_paths, cumsum(iterations_per_part))
-    else
-        path
-    end
+    fts_path = isnothing(Nparts) ? path : SplitFilePath(part_paths, cumsum(iterations_per_part))
 
     time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices,
                                               times, fts_path, name, time_indexing, reader_kw)
@@ -923,9 +917,7 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
     if isnothing(Nparts)
         set!(time_series, path, name)
     else
-        for path in part_paths
-            set!(time_series, path, name; warn_missing_data=false)
-        end
+        set!(time_series, fts_path, name)
     end
 
     return time_series
@@ -939,6 +931,8 @@ function FieldTimeSeries(path::String, args...; reader_kw = NamedTuple(), kwargs
                      JLD2Path(path)
                  elseif ext(path) == ".nc"
                      NetCDFPath(path)
+                 elseif ext(path) == ".zarr" || ext(path) == ".zip"
+                     ZarrPath(path)
                  else
                      error("Unsupported file extension: $(path)")
                  end

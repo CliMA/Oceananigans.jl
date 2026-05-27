@@ -40,6 +40,7 @@ export
     # Boundary conditions
     BoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, OpenBoundaryCondition,
+    ImplicitExplicitFluxBoundaryCondition,
     PerturbationAdvection,
     FieldBoundaryConditions,
 
@@ -104,7 +105,7 @@ export
     CFL, AdvectiveCFL, DiffusiveCFL,
 
     # Output writers
-    NetCDFWriter, JLD2Writer, Checkpointer,
+    NetCDFWriter, JLD2Writer, ZarrWriter, Checkpointer,
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval, ConsecutiveIterations,
     SpecifiedTimes, FileSizeLimit, AndSchedule, OrSchedule, written_names,
 
