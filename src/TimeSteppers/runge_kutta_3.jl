@@ -104,7 +104,7 @@ function time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt; callbac
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 
     # Be paranoid and prepare at iteration 0, in case run! is not used:
-    maybe_prepare_first_time_step!(model, callbacks)
+    maybe_prepare_first_time_step!(model, Δt, callbacks)
 
     γ¹ = model.timestepper.γ¹
     γ² = model.timestepper.γ²
@@ -170,6 +170,18 @@ end
 #####
 ##### Time stepping in each substep
 #####
+
+# Make sure the clock knows about the first stage Δt
+function maybe_prepare_first_time_step!(model::AbstractModel{<:RungeKutta3TimeStepper}, Δt, callbacks)
+    if model.clock.iteration == 0
+        γ¹ = model.timestepper.γ¹
+        model.clock.last_Δt = Δt
+        model.clock.last_stage_Δt = stage_Δt(Δt, γ¹, nothing)
+        reconcile_state!(model)
+        update_state!(model, callbacks)
+    end
+    return nothing
+end
 
 stage_Δt(Δt, γⁿ, ζⁿ) = Δt * (γⁿ + ζⁿ)
 stage_Δt(Δt, γⁿ, ::Nothing) = Δt * γⁿ
