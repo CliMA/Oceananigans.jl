@@ -5,6 +5,8 @@ export
     BoundaryCondition, getbc,
     PeriodicBoundaryCondition, OpenBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, DistributedCommunicationBoundaryCondition,
+    ImplicitExplicitFluxBoundaryCondition, implicit_flux_coefficient,
+    needs_implicit_solver, validate_implicit_explicit_flux_locations, total_boundary_flux,
     PerturbationAdvection,
     validate_boundary_condition_topology, validate_boundary_condition_architecture,
     FieldBoundaryConditions,
@@ -38,6 +40,7 @@ include("boundary_condition_classifications.jl")
 include("boundary_condition.jl")
 include("discrete_boundary_function.jl")
 include("continuous_boundary_function.jl")
+include("implicit_explicit_flux_boundary_condition.jl")
 include("boundary_condition_ordering.jl")
 include("field_boundary_conditions.jl")
 include("show_boundary_conditions.jl")
