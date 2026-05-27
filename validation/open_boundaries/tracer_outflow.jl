@@ -104,6 +104,47 @@ function plot_tracer_outflow_animation(filepath; framerate = 12, compression = 2
     return fig
 end
 
+# Combined Hovmöller (x–t) of all three tracers in one figure. Boundary noise / pileup
+# / wrong-branch behavior shows up as vertical striations or sharp colour jumps near
+# the domain edges — easier to see here than in single-snapshot animation frames.
+function plot_tracer_outflow_hovmollers(filepath)
+    @info "Plotting Hovmöllers from $filepath"
+
+    panels = (("c̄ = +1", FieldTimeSeries(filepath, "cpos"),   1),
+              ("c̄ =  0", FieldTimeSeries(filepath, "czero"),  0),
+              ("c̄ = -1", FieldTimeSeries(filepath, "cneg"),  -1))
+
+    times       = panels[1][2].times
+    xs          = collect(xnodes(panels[1][2][1], with_halos = true))
+    xs_interior = xnodes(panels[1][2][1])
+    Δx          = minimum(diff(xs))
+    domain_edges = [first(xs_interior) - 0.5Δx, last(xs_interior) + 0.5Δx]
+    # The field is uniform in z by construction, so a single representative z slice
+    # carries all the dynamical information.
+    z_index = size(parent(panels[1][2][1]), 3) ÷ 2 + 1
+
+    fig = Figure(size = (800, 800))
+    Label(fig[0, 1:2], "Hovmöller — $(basename(filepath))", fontsize = 16, tellwidth = false)
+
+    for (i, (label, ts, c̄)) in enumerate(panels)
+        field_xt = stack([Array(parent(ts[n]))[:, 1, z_index] for n in 1:length(times)]; dims = 2)
+        ax = Axis(fig[i, 1], xlabel = "x", ylabel = "t", title = label,
+                  width = 650, height = 200)
+        hm = heatmap!(ax, xs, times, field_xt;
+                      colormap = :balance, colorrange = (-1.8, 1.8))
+        vlines!(ax, domain_edges, color = (:black, 0.6), linestyle = :dash)
+        Colorbar(fig[i, 2], hm, tellwidth = false, height = Relative(0.8))
+    end
+
+    resize_to_layout!(fig)
+    out = "$filepath" * "_hovmoller.png"
+    save(out, fig)
+    @info "Saved $out"
+    return fig
+end
+
 simulation = tracer_outflow_simulation()
 run!(simulation)
-plot_tracer_outflow_animation(simulation.output_writers[:snaps].filepath)
+filepath = simulation.output_writers[:snaps].filepath
+plot_tracer_outflow_animation(filepath)
+plot_tracer_outflow_hovmollers(filepath)
