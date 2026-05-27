@@ -167,9 +167,9 @@ function test_perturbation_advection_tracer_open_boundary_conditions(arch, FT)
     c̄ = 1   # prescribed exterior tracer value
     c₀ = 5  # uniform initial tracer value (interior and halos)
 
-    east_halo(c) = Array(parent(c))[Nx + 1 + Hx, 1, Hz + 1]
-    top_halo(c)  = Array(parent(c))[Hx + 1, 1, Nz + 1 + Hz]
-    low_side(c)  = Array(parent(c))[Hx + 1, 1, Hz + 1]  # west and bottom write the first interior cell
+    east_halo(c) = Array(view(parent(c), Nx + 1 + Hx, 1, Hz + 1))[]
+    top_halo(c)  = Array(view(parent(c), Hx + 1, 1, Nz + 1 + Hz))[]
+    low_side(c)  = Array(interior(c, 1, 1, 1))[]  # west and bottom write the first interior cell
 
     # Lateral boundaries: radiation must key off the sign of the boundary-normal flow,
     # not the tracer. A uniform flow makes one x-boundary inflow and the other outflow;
