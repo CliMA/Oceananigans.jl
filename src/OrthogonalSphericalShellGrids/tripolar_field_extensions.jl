@@ -52,7 +52,7 @@ function BoundaryConditions.regularize_field_boundary_conditions(bcs::FieldBound
                                                                  prognostic_names=nothing)
 
     loc  = assumed_field_location(field_name)
-    sign = field_name == :u || 
+    sign = field_name == :u ||
            field_name == :v ||
            field_name == :U ||
            field_name == :V ? -1 : 1
