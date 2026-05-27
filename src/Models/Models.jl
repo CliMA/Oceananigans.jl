@@ -27,7 +27,6 @@ import Oceananigans.Architectures: architecture
 import Oceananigans.Grids: grid
 import Oceananigans.Fields: set!
 import Oceananigans.Solvers: iteration
-import Oceananigans.OutputWriters: default_included_properties
 import Oceananigans.TimeSteppers: reset!
 
 # A prototype interface for AbstractModel.
