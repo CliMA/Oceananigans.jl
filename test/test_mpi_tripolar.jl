@@ -270,7 +270,6 @@ run_large_pencil_distributed_grid(fold_topology) = """
     @test all(ηs .≈ ηp)
 end
 
-
 tripolar_compute_output_writer_script(fold_topology) = """
     using MPI
     MPI.Init()
