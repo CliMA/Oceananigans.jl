@@ -1,8 +1,8 @@
 using Oceananigans.Architectures: architecture
 using Oceananigans.Utils: launch!
 using Oceananigans.Fields: XFaceField, YFaceField, ZFaceField
-using Oceananigans.Grids: NegativeZDirection, validate_unit_vector
-using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Grids: NegativeZDirection, validate_unit_vector, Face, Center
+using Oceananigans.BoundaryConditions: fill_halo_regions!, FieldBoundaryConditions, BoundaryCondition, Zipper
 
 using KernelAbstractions: @kernel, @index
 using Adapt: Adapt
@@ -11,6 +11,16 @@ struct BuoyancyForce{M, G, B}
     formulation :: M
     gravity_unit_vector :: G
     gradients :: B
+end
+
+# Boundary conditions for a horizontal vector component at `loc`. 
+function signed_vector_boundary_conditions(grid, loc)
+    bcs = FieldBoundaryConditions(grid, loc)
+    north = bcs.north
+    if north isa BoundaryCondition && north.classification isa Zipper
+        north = BoundaryCondition(north.classification, -north.condition)
+    end
+    return FieldBoundaryConditions(bcs.west, bcs.east, bcs.south, north, bcs.bottom, bcs.top, bcs.immersed)
 end
 
 """
@@ -52,9 +62,9 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 function BuoyancyForce(grid, formulation::AbstractBuoyancyFormulation; gravity_unit_vector=NegativeZDirection(), materialize_gradients=false)
     gravity_unit_vector = validate_unit_vector(gravity_unit_vector)
 
-    if materialize_gradients
-        ∂xᵣ_b = XFaceField(grid)
-        ∂yᵣ_b = YFaceField(grid)
+    if materialize_gradients]
+        ∂xᵣ_b = XFaceField(grid, boundary_conditions = signed_vector_boundary_conditions(grid, (Face(), Center(), Center())))
+        ∂yᵣ_b = YFaceField(grid, boundary_conditions = signed_vector_boundary_conditions(grid, (Center(), Face(), Center())))
         ∂z_b = ZFaceField(grid)
 
         gradients = (; ∂xᵣ_b, ∂yᵣ_b, ∂z_b)
