@@ -63,9 +63,11 @@ function materialize_condition(condition::Function, parameters, discrete_form, f
     return condition
 end
 
-# Convenience constructors for boundary condition passing classification types
-BoundaryCondition(Classification::DataType, args...; kwargs...) = BoundaryCondition(Classification(), args...; kwargs...)
-BoundaryCondition(::Type{Open}, args...; kwargs...)             = BoundaryCondition(Open(nothing),    args...; kwargs...)
+# Convenience constructors for boundary condition passing classification types.
+# `Type` (rather than `DataType`) so that parametric classifications passed as bare
+# `UnionAll`s — e.g. `Flux` (now `Flux{TD}`) or `Open` — also dispatch here.
+BoundaryCondition(Classification::Type, args...; kwargs...) = BoundaryCondition(Classification(), args...; kwargs...)
+BoundaryCondition(::Type{Open}, args...; kwargs...)         = BoundaryCondition(Open(nothing),    args...; kwargs...)
 
 # Adapt boundary condition struct to be GPU friendly and passable to GPU kernels.
 Adapt.adapt_structure(to, b::BoundaryCondition) =
@@ -87,7 +89,7 @@ const OBC  = BoundaryCondition{<:Open}
 const VBC  = BoundaryCondition{<:Value}
 const GBC  = BoundaryCondition{<:Gradient}
 const MBC  = BoundaryCondition{<:Mixed}
-const ZFBC = BoundaryCondition{Flux, Nothing} # "zero" flux
+const ZFBC = BoundaryCondition{<:Flux, Nothing} # "zero" flux
 const MCBC = BoundaryCondition{<:MultiRegionCommunication}
 const DCBC = BoundaryCondition{<:DistributedCommunication}
 const ZBC  = BoundaryCondition{<:Zipper}
@@ -105,7 +107,6 @@ MultiRegionCommunicationBoundaryCondition() = BoundaryCondition(MultiRegionCommu
             UPivotZipperBoundaryCondition() = BoundaryCondition(Zipper{UPivot}(), 1)
             FPivotZipperBoundaryCondition() = BoundaryCondition(Zipper{FPivot}(), 1)
 
-                    FluxBoundaryCondition(val; kwargs...) = BoundaryCondition(Flux(), val; kwargs...)
                    ValueBoundaryCondition(val; kwargs...) = BoundaryCondition(Value(), val; kwargs...)
                 GradientBoundaryCondition(val; kwargs...) = BoundaryCondition(Gradient(), val; kwargs...)
   OpenBoundaryCondition(val; scheme = nothing, kwargs...) = BoundaryCondition(Open(scheme), val; kwargs...)
@@ -114,6 +115,41 @@ MultiRegionCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(Mu
             UPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{UPivot}(), val; kwargs...)
             FPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{FPivot}(), val; kwargs...)
 DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(DistributedCommunication(), val; kwargs...)
+
+"""
+    FluxBoundaryCondition(flux; implicit_coefficient = nothing, kwargs...)
+
+Return a `Flux` `BoundaryCondition` with `flux`.
+
+Without an `implicit_coefficient`, `flux` is an ordinary flux boundary condition integrated through
+the tendency.
+
+With an `implicit_coefficient` `λ`, the boundary condition represents the affine flux
+`J(φ_b) = flux + λ φ_b`, where `φ_b` is the boundary-cell field value. The explicit part `flux` is
+integrated through the tendency, while the linear part `λ φ_b` is integrated implicitly by the
+vertical tridiagonal solver. This removes the `Δz`-dependent CFL limit that an explicit flux imposes
+and is unconditionally stable for dissipative fluxes (drag, linear restoring), where `λ φ_b` is a sink.
+
+`flux` and `implicit_coefficient` follow the same conventions as any other function boundary condition;
+`kwargs` (`parameters`, `discrete_form`, `field_dependencies`) are applied to both.
+
+!!! warning "Vertical boundaries only"
+    The implicit part is embedded in the vertical tridiagonal solver, so a boundary condition with an
+    `implicit_coefficient` is only meaningful on `top`/`bottom` boundaries. Setting it on a horizontal
+    (`west`/`east`/`south`/`north`) or immersed boundary errors.
+"""
+function FluxBoundaryCondition(flux; implicit_coefficient = nothing,
+                               parameters = nothing, discrete_form = false, field_dependencies = ())
+
+    return materialize_flux_boundary_condition(flux, implicit_coefficient;
+                                               parameters, discrete_form, field_dependencies)
+end
+
+# Ordinary explicit flux (no implicit coefficient).
+function materialize_flux_boundary_condition(flux, ::Nothing; parameters, discrete_form, field_dependencies)
+    condition = materialize_condition(flux, parameters, discrete_form, field_dependencies)
+    return BoundaryCondition(Flux(), condition)
+end
 
 #####
 ##### Support for MixedBoundaryCondition (aka "Robin" boundary condition)

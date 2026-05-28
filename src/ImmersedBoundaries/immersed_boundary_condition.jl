@@ -61,7 +61,7 @@ end
 ##### Boundary condition "regularization"
 #####
 
-const ZFBC = BoundaryCondition{Flux, Nothing}
+const ZFBC = BoundaryCondition{<:Flux, Nothing}
 regularize_immersed_boundary_condition(ibc::ZFBC, ibg::IBG, args...) = ibc # keep it
 
 regularize_immersed_boundary_condition(default::DefaultBoundaryCondition, ibg::IBG, loc, field_name, args...) =

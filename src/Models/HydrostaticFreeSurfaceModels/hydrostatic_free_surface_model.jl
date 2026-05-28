@@ -264,7 +264,7 @@ function HydrostaticFreeSurfaceModel(grid;
     # Instantiate timestepper if not already instantiated
     prognostic_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers)
 
-    # `ImplicitExplicitFluxBoundaryCondition`s are valid only on vertical boundaries.
+    # Flux BCs with `ImplicitExplicitTimeDiscretization` are valid only on vertical boundaries.
     foreach(field -> validate_implicit_explicit_flux_locations(field.boundary_conditions), prognostic_fields)
 
     # Build the vertical implicit solver if the closure, the advection scheme (adaptive implicit

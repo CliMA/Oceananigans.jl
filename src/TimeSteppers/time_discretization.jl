@@ -1,35 +1,3 @@
-"""
-    abstract type AbstractTimeDiscretization
-
-Abstract supertype for time-discretizations of advection schemes and turbulence closures.
-"""
-abstract type AbstractTimeDiscretization end
-
-"""
-    struct ExplicitTimeDiscretization <: AbstractTimeDiscretization
-
-A fully-explicit time-discretization.
-"""
-struct ExplicitTimeDiscretization <: AbstractTimeDiscretization end
-
-Base.summary(::ExplicitTimeDiscretization) = "ExplicitTimeDiscretization"
-
-"""
-    struct VerticallyImplicitTimeDiscretization <: AbstractTimeDiscretization
-
-A vertically-implicit time-discretization.
-
-This implies that a flux divergence such as ``𝛁 ⋅ 𝐪`` at the ``n``-th timestep is
-time-discretized as
-
-```julia
-[∇ ⋅ q]ⁿ = [explicit_flux_divergence]ⁿ + [∂z (κ ∂z c)]ⁿ⁺¹
-```
-"""
-struct VerticallyImplicitTimeDiscretization <: AbstractTimeDiscretization end
-
-Base.summary(::VerticallyImplicitTimeDiscretization) = "VerticallyImplicitTimeDiscretization"
-
 struct AdaptiveVerticallyImplicitDiscretization{FT, R} <: AbstractTimeDiscretization
     cfl :: FT
     Δt  :: R
