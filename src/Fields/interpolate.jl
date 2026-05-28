@@ -258,6 +258,9 @@ end
 @inline _fractional_indices(at::NTuple{2, Any}, grid, ℓx, ::Nothing, ::Nothing) =
     _fractional_indices((at[1],), grid, ℓx, nothing, nothing)
 
+@inline _fractional_indices(at::NTuple{2, Any}, grid, ::Nothing, ::Nothing, ::Nothing) =
+    FractionalIndices(nothing, nothing, nothing)
+
 @inline function _fractional_indices((y, z)::NTuple{2, Any}, grid, ::Nothing, ℓy, ℓz)
     jj = fractional_y_index(y, (nothing, ℓy, ℓz), grid)
     kk = fractional_z_index(z, (nothing, ℓy, ℓz), grid)
