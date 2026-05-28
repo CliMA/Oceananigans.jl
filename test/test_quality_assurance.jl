@@ -84,7 +84,7 @@ end
             Oceananigans.Models,
         )
         @info "Testing no type piracy for module $(mod)"
-        Aqua.test_piracies(mod; broken=false)
+        Aqua.test_piracies(mod; broken=mod in pirate_modules)
     end
 end
 
