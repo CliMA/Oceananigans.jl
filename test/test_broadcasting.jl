@@ -75,13 +75,13 @@ include("dependencies_for_runtests.jl")
         #####
 
         for Loc in [
-                    (Nothing, Center, Center),
-                    (Center, Nothing, Center),
-                    (Center, Center, Nothing),
-                    (Center, Nothing, Nothing),
-                    (Nothing, Center, Nothing),
-                    (Nothing, Nothing, Center),
-                    (Nothing, Nothing, Nothing),
+                    (Reduced, Center, Center),
+                    (Center, Reduced, Center),
+                    (Center, Center, Reduced),
+                    (Center, Reduced, Reduced),
+                    (Reduced, Center, Reduced),
+                    (Reduced, Reduced, Center),
+                    (Reduced, Reduced, Reduced),
                    ]
 
             @info "    Testing broadcasting to location $Loc..."

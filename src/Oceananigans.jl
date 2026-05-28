@@ -9,7 +9,7 @@ export
     CPU, GPU,
 
     # Grids
-    Center, Face,
+    AbstractLocation, Center, Face, Reduced, LocationTuple,
     Periodic, Bounded, Flat,
     RightConnected, LeftConnected, FullyConnected,
     RightFaceFolded, RightCenterFolded,

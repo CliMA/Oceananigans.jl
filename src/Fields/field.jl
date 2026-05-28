@@ -52,7 +52,7 @@ function validate_field_data(loc, data, grid, indices)
 end
 
 validate_boundary_condition_location(bc, ::Center, side) = nothing          # anything goes for centers
-validate_boundary_condition_location(::Nothing, ::Nothing, side) = nothing  # its nothing or nothing
+validate_boundary_condition_location(::Nothing, ::Reduced, side) = nothing  # bc is nothing on a reduced dim
 
 const ValidFaceBCS = Union{OBC, Nothing, Missing, MCBC}
 validate_boundary_condition_location(::ValidFaceBCS, ::Face, side) = nothing  # only open, connected or nothing on faces
@@ -544,15 +544,15 @@ compute_at!(field::Field, ::Nothing) = compute!(field, nothing)
 ##### Fields that are reduced along one or more dimensions
 #####
 
-const XReducedField = Field{Nothing}
-const YReducedField = Field{<:Any, Nothing}
-const ZReducedField = Field{<:Any, <:Any, Nothing}
+const XReducedField = Field{Reduced}
+const YReducedField = Field{<:Any, Reduced}
+const ZReducedField = Field{<:Any, <:Any, Reduced}
 
-const YZReducedField = Field{<:Any, Nothing, Nothing}
-const XZReducedField = Field{Nothing, <:Any, Nothing}
-const XYReducedField = Field{Nothing, Nothing, <:Any}
+const YZReducedField = Field{<:Any, Reduced, Reduced}
+const XZReducedField = Field{Reduced, <:Any, Reduced}
+const XYReducedField = Field{Reduced, Reduced, <:Any}
 
-const XYZReducedField = Field{Nothing, Nothing, Nothing}
+const XYZReducedField = Field{Reduced, Reduced, Reduced}
 
 const ReducedField = Union{XReducedField,
                            YReducedField,
@@ -607,15 +607,15 @@ end
 ##### Field reductions
 #####
 
-const XReducedAbstractField = AbstractField{Nothing}
-const YReducedAbstractField = AbstractField{<:Any, Nothing}
-const ZReducedAbstractField = AbstractField{<:Any, <:Any, Nothing}
+const XReducedAbstractField = AbstractField{Reduced}
+const YReducedAbstractField = AbstractField{<:Any, Reduced}
+const ZReducedAbstractField = AbstractField{<:Any, <:Any, Reduced}
 
-const YZReducedAbstractField = AbstractField{<:Any, Nothing, Nothing}
-const XZReducedAbstractField = AbstractField{Nothing, <:Any, Nothing}
-const XYReducedAbstractField = AbstractField{Nothing, Nothing, <:Any}
+const YZReducedAbstractField = AbstractField{<:Any, Reduced, Reduced}
+const XZReducedAbstractField = AbstractField{Reduced, <:Any, Reduced}
+const XYReducedAbstractField = AbstractField{Reduced, Reduced, <:Any}
 
-const XYZReducedAbstractField = AbstractField{Nothing, Nothing, Nothing}
+const XYZReducedAbstractField = AbstractField{Reduced, Reduced, Reduced}
 
 const ReducedAbstractField = Union{XReducedAbstractField,
                                    YReducedAbstractField,
@@ -662,21 +662,21 @@ initialize_reduced_field!(::MinimumReduction, f, r::ReducedAbstractField, c) = B
 filltype(f, c) = eltype(c)
 filltype(::Union{AllReduction, AnyReduction}, grid) = Bool
 
-const PossibleLocs = Union{<:Nothing, <:Face, <:Center}
+const PossibleLocs = AbstractLocation
 
 function reduced_location(loc::Tuple; dims)
     if dims isa Colon
-        return (Nothing, Nothing, Nothing)
+        return (Reduced, Reduced, Reduced)
     else
-        return Tuple(i ∈ dims ? Nothing : loc[i] for i in 1:3)
+        return Tuple(i ∈ dims ? Reduced : loc[i] for i in 1:3)
     end
 end
 
 function reduced_location(loc::Tuple{<:PossibleLocs, <:PossibleLocs, <:PossibleLocs}; dims)
     if dims isa Colon
-        return (nothing, nothing, nothing)
+        return (Reduced(), Reduced(), Reduced())
     else
-        return Tuple(i ∈ dims ? nothing : loc[i] for i in 1:3)
+        return Tuple(i ∈ dims ? Reduced() : loc[i] for i in 1:3)
     end
 end
 

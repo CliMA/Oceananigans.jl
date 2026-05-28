@@ -85,7 +85,7 @@ Next, we build a `Field` for the top flux, and compute it:
 c_flux_field = Field(c_flux_op)
 
 # output
-16×16×1 Field{Center, Center, Nothing} reduced over dims = (3,) on RectilinearGrid on CPU
+16×16×1 Field{Center, Center, Reduced} reduced over dims = (3,) on RectilinearGrid on CPU
 ├── grid: 16×16×16 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: Nothing

@@ -1,5 +1,5 @@
 using Oceananigans.BoundaryConditions: UPivotZipperBoundaryCondition, FPivotZipperBoundaryCondition, NoFluxBoundaryCondition
-using Oceananigans.Grids: Grids, Bounded, Flat, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid,
+using Oceananigans.Grids: Grids, Bounded, Flat, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid, Reduced,
     architecture, cpu_face_constructor_z, validate_dimension_specification,
     AbstractTopology, RightCenterFolded, RightFaceFolded, new_data, topology
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
@@ -206,14 +206,14 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
 
     args = (topology, (Nx, Ny, 1), (Hx, Hy, 1))
 
-    λFF = new_data(FT, CPU(), (Face,   Face,   Nothing), args...)
-    φFF = new_data(FT, CPU(), (Face,   Face,   Nothing), args...)
-    λFC = new_data(FT, CPU(), (Face,   Center, Nothing), args...)
-    φFC = new_data(FT, CPU(), (Face,   Center, Nothing), args...)
-    λCF = new_data(FT, CPU(), (Center, Face,   Nothing), args...)
-    φCF = new_data(FT, CPU(), (Center, Face,   Nothing), args...)
-    λCC = new_data(FT, CPU(), (Center, Center, Nothing), args...)
-    φCC = new_data(FT, CPU(), (Center, Center, Nothing), args...)
+    λFF = new_data(FT, CPU(), (Face,   Face,   Reduced), args...)
+    φFF = new_data(FT, CPU(), (Face,   Face,   Reduced), args...)
+    λFC = new_data(FT, CPU(), (Face,   Center, Reduced), args...)
+    φFC = new_data(FT, CPU(), (Face,   Center, Reduced), args...)
+    λCF = new_data(FT, CPU(), (Center, Face,   Reduced), args...)
+    φCF = new_data(FT, CPU(), (Center, Face,   Reduced), args...)
+    λCC = new_data(FT, CPU(), (Center, Center, Reduced), args...)
+    φCC = new_data(FT, CPU(), (Center, Center, Reduced), args...)
 
     # Compute coordinates using the same kernel twice but with varying size,
     # as the size of λᵃᶠᵃ and φᵃᶠᵃ may vary with the fold topology.

@@ -31,11 +31,11 @@ ID_DIGITS   = 2
 
 # A Hashing function which returns a unique
 # integer between 0 and 26 for a combination of
-# 3 locations wither Center, Face, or Nothing
+# 3 locations wither Center, Face, or Reduced
 location_counter = 0
-for LX in (:Face, :Center, :Nothing)
-    for LY in (:Face, :Center, :Nothing)
-        for LZ in (:Face, :Center, :Nothing)
+for LX in (:Face, :Center, :Reduced)
+    for LY in (:Face, :Center, :Reduced)
+        for LZ in (:Face, :Center, :Reduced)
             @eval loc_id(::$LX, ::$LY, ::$LZ) = $location_counter
             global location_counter += 1
         end

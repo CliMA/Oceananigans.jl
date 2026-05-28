@@ -118,7 +118,7 @@ end
 end
 
 function compute_active_z_columns(grid, ib)
-    active_z_columns = Field{Center, Center, Nothing}(grid, Bool)
+    active_z_columns = Field{Center, Center, Reduced}(grid, Bool)
     fill!(active_z_columns, false)
 
     # Compute the active cells in the column

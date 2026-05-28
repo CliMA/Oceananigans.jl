@@ -247,7 +247,7 @@ function time_stepping_with_background_fields(arch)
            location(model.background_fields.velocities.w) === (Center, Center, Face) &&
            location(model.background_fields.tracers.T) === (Center, Center, Center) &&
            location(model.background_fields.tracers.S) === (Center, Center, Center) &&
-           location(model.background_fields.tracers.R) === (Nothing, Nothing, Nothing)
+           location(model.background_fields.tracers.R) === (Reduced, Reduced, Reduced)
 end
 
 Planes = (FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane)

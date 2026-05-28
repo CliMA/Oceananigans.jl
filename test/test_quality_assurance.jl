@@ -77,7 +77,6 @@ end
     # `test_piracies` doesn't recurse in inner modules, so we have to test that manually.
     @testset "No type piracy in $(mod)" for mod in get_submodules(Oceananigans)
         pirate_modules = (
-            Oceananigans.AbstractOperations,
             Oceananigans.BoundaryConditions,
             Oceananigans.BuoyancyFormulations,
             Oceananigans.Grids,
@@ -85,6 +84,15 @@ end
         )
         @info "Testing no type piracy for module $(mod)"
         Aqua.test_piracies(mod; broken=mod in pirate_modules)
+    end
+
+    # Regression for issue #5601: AbstractOperations used to extend `*`, `+`, etc.
+    # on Base `Tuple` types, which dispatched here as soon as Oceananigans loaded.
+    # After the AbstractLocation refactor those signatures are constrained to
+    # Oceananigans-owned location types, so the call below must error.
+    @testset "No accidental dispatch on Base Tuple operators" begin
+        @test_throws MethodError Base.:*((Nothing, Nothing, Nothing), nothing, nothing)
+        @test_throws MethodError Base.:+((Nothing, Nothing, Nothing), nothing, nothing)
     end
 end
 

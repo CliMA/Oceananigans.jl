@@ -164,7 +164,7 @@ function NonhydrostaticModel(grid;
         # elseif free_surface isa ImplicitFreeSurface
             # Use a MixedBoundaryCondition for the top bc for pressure
             coefficient = Ref(zero(grid))
-            combination = Field{Center, Center, Nothing}(grid)
+            combination = Field{Center, Center, Reduced}(grid)
             top_bc = MixedBoundaryCondition(coefficient, combination)
             pressure_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()), top=top_bc)
             nonhydrostatic_pressure = CenterField(grid; boundary_conditions=pressure_bcs)

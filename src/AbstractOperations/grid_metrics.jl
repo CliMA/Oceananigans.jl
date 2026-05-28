@@ -55,7 +55,7 @@ julia> using Oceananigans
 
 julia> using Oceananigans.AbstractOperations: Ax, grid_metric_operation
 
-julia> Axᶠᶜᶜ = grid_metric_operation((Face, Center, Center), Ax, RectilinearGrid(size=(2, 2, 3), extent=(1, 2, 3)))
+julia> Axᶠᶜᶜ = grid_metric_operation((Face(), Center(), Center()), Ax, RectilinearGrid(size=(2, 2, 3), extent=(1, 2, 3)))
 KernelFunctionOperation at (Face, Center, Center)
 ├── grid: 2×2×3 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×2×3 halo
 ├── kernel_function: Axᶠᶜᶜ (generic function with 2 methods)
@@ -79,9 +79,6 @@ julia> c_dz[1, 1, 1]
 """
 grid_metric_operation(loc::Tuple{LX, LY, LZ}, metric, grid) where {LX<:Location, LY<:Location, LZ<:Location} =
     KernelFunctionOperation{LX, LY, LZ}(metric_function(loc, metric), grid)
-
-# Instantiated location if location types are passed as values
-grid_metric_operation(Loc::Tuple, metric, grid) = grid_metric_operation((Loc[1](), Loc[2](), Loc[3]()), metric, grid)
 
 const NodeMetric = Union{XNode, YNode, ZNode, ΛNode, ΦNode, RNode}
 

@@ -2,7 +2,7 @@ using Oceananigans.Operators: Azᶜᶜᶜ, Azᶜᶜᶠ, Δx_qᶜᶠᶜ, Δxᶜ�
     δxᶜᵃᵃ, δxᶜᶜᶜ, δyᵃᶜᵃ, δyᶜᶜᶜ, δxᶠᶜᶠ, δyᶜᶠᶠ
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.DistributedComputations: DistributedGrid
-using Oceananigans.Grids: isrectilinear, halo_size
+using Oceananigans.Grids: isrectilinear, halo_size, Reduced
 
 using Oceananigans.Solvers: Solvers, solve!, ConjugateGradientSolver
 import Oceananigans.Architectures: architecture
@@ -44,8 +44,8 @@ step `Δt`, gravitational acceleration `g`, and free surface at time-step `n` `�
 function PCGImplicitFreeSurfaceSolver(grid::AbstractGrid, settings, gravitational_acceleration=nothing)
 
     # Initialize vertically integrated lateral face areas
-    ∫ᶻ_Axᶠᶜᶜ = KernelFunctionOperation{Face, Center, Nothing}(integrated_x_area, grid)
-    ∫ᶻ_Ayᶜᶠᶜ = KernelFunctionOperation{Center, Face, Nothing}(integrated_y_area, grid)
+    ∫ᶻ_Axᶠᶜᶜ = KernelFunctionOperation{Face, Center, Reduced}(integrated_x_area, grid)
+    ∫ᶻ_Ayᶜᶠᶜ = KernelFunctionOperation{Center, Face, Reduced}(integrated_y_area, grid)
 
     vertically_integrated_lateral_areas = (xᶠᶜᶜ = ∫ᶻ_Axᶠᶜᶜ, yᶜᶠᶜ = ∫ᶻ_Ayᶜᶠᶜ)
 

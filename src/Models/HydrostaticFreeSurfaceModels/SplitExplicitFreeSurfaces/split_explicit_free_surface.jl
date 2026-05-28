@@ -1,6 +1,6 @@
 using Oceananigans: Oceananigans
 using Oceananigans.Grids: Grids, Flat, LeftConnected, RightConnected, FullyConnected,
-    RightCenterFolded, RightFaceFolded,
+    Reduced, RightCenterFolded, RightFaceFolded,
     halo_size, on_architecture, minimum_xspacing, minimum_yspacing, with_halo
 using Oceananigans.Fields: TracerFields, XFaceField, YFaceField
 using Oceananigans.Utils: prettytime
@@ -58,8 +58,8 @@ When materialized (see [`materialize_free_surface`](@ref)), a `SplitExplicitFree
 - `η`: Free surface displacement field (`ZFaceField` at the top of the grid).
 
 - `barotropic_velocities`: A `NamedTuple` with `U` (zonal) and `V` (meridional) barotropic velocity fields,
-  representing the vertically-integrated horizontal velocities. These are `Field{Face, Center, Nothing}` and
-  `Field{Center, Face, Nothing}`, respectively.
+  representing the vertically-integrated horizontal velocities. These are `Field{Face, Center, Reduced}` and
+  `Field{Center, Face, Reduced}`, respectively.
 
 - `filtered_state`: A `NamedTuple` containing filtered/averaged quantities computed during barotropic substepping:
   * `η̅`: Filtered free surface displacement field.
@@ -217,8 +217,8 @@ function hydrostatic_tendency_fields(velocities, free_surface::SplitExplicitFree
     @apply_regionally V_bcs = barotropic_velocity_boundary_conditions(velocities.v)
 
     free_surface_grid = free_surface.displacement.grid
-    U = Field{Face, Center, Nothing}(free_surface_grid, boundary_conditions=U_bcs)
-    V = Field{Center, Face, Nothing}(free_surface_grid, boundary_conditions=V_bcs)
+    U = Field{Face, Center, Reduced}(free_surface_grid, boundary_conditions=U_bcs)
+    V = Field{Center, Face, Reduced}(free_surface_grid, boundary_conditions=V_bcs)
 
     tracers = TracerFields(tracer_names, grid, bcs)
 
@@ -256,12 +256,12 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     @apply_regionally u_bcs = barotropic_velocity_boundary_conditions(u_baroclinic)
     @apply_regionally v_bcs = barotropic_velocity_boundary_conditions(v_baroclinic)
 
-    U = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bcs)
-    V = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = v_bcs)
-    U̅ = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bcs)
-    V̅ = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = v_bcs)
-    Ũ = Field{Face, Center, Nothing}(maybe_extended_grid, boundary_conditions = u_bcs)
-    Ṽ = Field{Center, Face, Nothing}(maybe_extended_grid, boundary_conditions = v_bcs)
+    U = Field{Face, Center, Reduced}(maybe_extended_grid, boundary_conditions = u_bcs)
+    V = Field{Center, Face, Reduced}(maybe_extended_grid, boundary_conditions = v_bcs)
+    U̅ = Field{Face, Center, Reduced}(maybe_extended_grid, boundary_conditions = u_bcs)
+    V̅ = Field{Center, Face, Reduced}(maybe_extended_grid, boundary_conditions = v_bcs)
+    Ũ = Field{Face, Center, Reduced}(maybe_extended_grid, boundary_conditions = u_bcs)
+    Ṽ = Field{Center, Face, Reduced}(maybe_extended_grid, boundary_conditions = v_bcs)
 
     filtered_state = (η̅ = η̅, U̅ = U̅, V̅ = V̅, Ũ = Ũ, Ṽ = Ṽ)
     barotropic_velocities = (U = U, V = V)

@@ -41,7 +41,7 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 w = ZFaceField(grid)
                 T = CenterField(grid)
                 ζ = Field{Face, Face, Face}(grid)
-                η = Field{Center, Center, Nothing}(grid)
+                η = Field{Center, Center, Reduced}(grid)
 
                 set!(T, trilinear)
                 set!(w, trilinear)
@@ -337,13 +337,13 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
             underlying_grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(1, 1, 1))
 
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> y < 0.5 ? - 0.6 : 0))
-            c = Field{Center, Center, Nothing}(grid)
+            c = Field{Center, Center, Reduced}(grid)
 
             set!(c, (x, y) -> y)
             @test maximum(c) == grid.yᵃᶜᵃ[1]
 
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> y < 0.5 ? - 0.6 : -0.4))
-            c = Field{Center, Center, Nothing}(grid)
+            c = Field{Center, Center, Reduced}(grid)
 
             set!(c, (x, y) -> y)
             @test maximum(c) == grid.yᵃᶜᵃ[3]

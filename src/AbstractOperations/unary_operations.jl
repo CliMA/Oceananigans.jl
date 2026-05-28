@@ -105,9 +105,6 @@ macro unary(ops...)
                 return $(_unary_operation)(Lop, $op, a, L, a.grid)
             end
 
-            # instantiate location if types are passed
-            $op(Lc::Tuple, a::$(AbstractField)) = $op((Lc[1](), Lc[2](), Lc[3]()), a)
-
             $op(a::$(AbstractField)) = $op($(instantiated_location)(a), a)
 
             push!($(operators), Symbol($op))

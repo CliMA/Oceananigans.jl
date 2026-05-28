@@ -111,7 +111,7 @@ function rectilinear_mpi_script(config, filename)
     set!(model, c=cᵢ, u=uᵢ)
 
     # Add a `Nothing field in the z-direction`
-    zflat = Field{Center, Center, Nothing}(grid)
+    zflat = Field{Center, Center, Reduced}(grid)
     set!(zflat, (x, y) -> x)
 
     simulation = Simulation(model; Δt=$Δt, stop_iteration=$stop_iteration)
@@ -145,7 +145,7 @@ function run_serial_rectilinear(config, filename)
     set!(model, c=cᵢ, u=uᵢ)
 
     # Add a `Nothing field in the z-direction`
-    zflat = Field{Center, Center, Nothing}(grid)
+    zflat = Field{Center, Center, Reduced}(grid)
     set!(zflat, (x, y) -> x)
 
     simulation = Simulation(model; Δt=config.Δt, stop_iteration=config.stop_iteration)

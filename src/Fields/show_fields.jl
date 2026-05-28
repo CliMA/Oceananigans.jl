@@ -4,7 +4,7 @@ using Statistics: mean
 
 location_str(::Type{Face})    = "Face"
 location_str(::Type{Center})  = "Center"
-location_str(::Type{Nothing}) = "⋅"
+location_str(::Type{Reduced}) = "⋅"
 show_location(LX, LY, LZ) = "($(location_str(LX)), $(location_str(LY)), $(location_str(LZ)))"
 show_location(field::AbstractField) = show_location(location(field)...)
 

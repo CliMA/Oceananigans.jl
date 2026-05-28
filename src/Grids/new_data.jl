@@ -19,11 +19,11 @@ offset_indices(::Face, ::FaceExtendedTopology, N, H=0) = 1 - H : N + H + 1
 """
 Return a range of indices for a field along a 'reduced' dimension.
 """
-offset_indices(::Nothing, topo, N, H=0) = 1:1
+offset_indices(::Reduced, topo, N, H=0) = 1:1
 
 offset_indices(ℓ,         topo, N, H, ::Colon) = offset_indices(ℓ, topo, N, H)
 offset_indices(ℓ,         topo, N, H, r::AbstractUnitRange) = r
-offset_indices(::Nothing, topo, N, H, ::AbstractUnitRange) = 1:1
+offset_indices(::Reduced, topo, N, H, ::AbstractUnitRange) = 1:1
 
 instantiate(T::Type) = T()
 instantiate(t) = t

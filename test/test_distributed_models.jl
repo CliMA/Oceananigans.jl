@@ -583,7 +583,7 @@ end
             c = CenterField(grid)
             set!(c, arch.local_rank+1)
 
-            c_reduced = Field{Nothing, Nothing, Nothing}(grid)
+            c_reduced = Field{Reduced, Reduced, Reduced}(grid)
 
             N = grid.Nx * grid.Ny # local rank grid size
             @test sum(c) == 1*N + 2*N + 3*N + 4*N
@@ -592,7 +592,7 @@ end
             @test @allowscalar c_reduced[1, 1, 1] == 1*N + 2*N + 3*N + 4*N
 
             cbool = CenterField(grid, Bool)
-            cbool_reduced = Field{Nothing, Nothing, Nothing}(grid, Bool)
+            cbool_reduced = Field{Reduced, Reduced, Reduced}(grid, Bool)
             bool_val = arch.local_rank == 0 ? true : false
             set!(cbool, bool_val)
 

@@ -138,13 +138,13 @@ function generate_coordinate(FT, topo, size, halo, coordinate::MutableVerticalDi
 
     args = (topo, (Nx, Ny, Nz), (Hx, Hy, Hz))
 
-    σᶜᶜ⁻ = new_data(FT, arch, (Center, Center, Nothing), args...)
-    σᶜᶜⁿ = new_data(FT, arch, (Center, Center, Nothing), args...)
-    σᶠᶜⁿ = new_data(FT, arch, (Face,   Center, Nothing), args...)
-    σᶜᶠⁿ = new_data(FT, arch, (Center, Face,   Nothing), args...)
-    σᶠᶠⁿ = new_data(FT, arch, (Face,   Face,   Nothing), args...)
-    ηⁿ   = new_data(FT, arch, (Center, Center, Nothing), args...)
-    ∂t_σ = new_data(FT, arch, (Center, Center, Nothing), args...)
+    σᶜᶜ⁻ = new_data(FT, arch, (Center, Center, Reduced), args...)
+    σᶜᶜⁿ = new_data(FT, arch, (Center, Center, Reduced), args...)
+    σᶠᶜⁿ = new_data(FT, arch, (Face,   Center, Reduced), args...)
+    σᶜᶠⁿ = new_data(FT, arch, (Center, Face,   Reduced), args...)
+    σᶠᶠⁿ = new_data(FT, arch, (Face,   Face,   Reduced), args...)
+    ηⁿ   = new_data(FT, arch, (Center, Center, Reduced), args...)
+    ∂t_σ = new_data(FT, arch, (Center, Center, Reduced), args...)
 
     # Fill all the scalings with one for now (i.e. z == r)
     for σ in (σᶜᶜ⁻, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ)
@@ -222,8 +222,8 @@ end
 @inline rnodes(grid::AUG, ℓz::C; with_halos=false, indices=Colon()) = view(_property(grid.z.cᵃᵃᶜ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos), indices)
 @inline rnodes(grid::AUG, ℓx, ℓy, ℓz; with_halos=false, indices=Colon()) = rnodes(grid, ℓz; with_halos, indices)
 
-@inline rnodes(grid::AUG, ::Nothing; kwargs...) = 1:1
-@inline znodes(grid::AUG, ::Nothing; kwargs...) = 1:1
+@inline rnodes(grid::AUG, ::Reduced; kwargs...) = 1:1
+@inline znodes(grid::AUG, ::Reduced; kwargs...) = 1:1
 
 ZFlatAUG = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, Flat}
 @inline rnodes(grid::ZFlatAUG, ℓz::F; with_halos=false, indices=Colon()) = _property(grid.z.cᵃᵃᶠ, ℓz, topology(grid, 3), grid.Nz, grid.Hz, with_halos)

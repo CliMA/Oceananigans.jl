@@ -6,7 +6,7 @@ using GPUArraysCore: @allowscalar
 using OffsetArrays: OffsetArray
 
 using Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
-                          cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
+                          Reduced, cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
                           topology, size, halo_size, generate_coordinate,
                           with_precomputed_metrics, metrics_precomputed
 
@@ -421,8 +421,8 @@ end
 ##### Loading and combining field data
 #####
 
-flatten_nothing_dimension(ℓ, range) = range
-flatten_nothing_dimension(::Nothing, range) = 1:1
+flatten_reduced_dimension(ℓ, range) = range
+flatten_reduced_dimension(::Reduced, range) = 1:1
 
 """Load and combine field data from rank files into a field."""
 function load_combined_field_data!(field, all_ranks, name, iter; reader_kw=NamedTuple())
@@ -440,13 +440,13 @@ function load_combined_field_data!(field, all_ranks, name, iter; reader_kw=Named
 
         # Limit data for `Nothing` locations
         ℓx, ℓy, ℓz = instantiated_location(field)
-        xrange = flatten_nothing_dimension(ℓx, Hx+1:Hx+nx)
-        yrange = flatten_nothing_dimension(ℓy, Hy+1:Hy+ny)
-        zrange = flatten_nothing_dimension(ℓz, Hz+1:Hz+nz)
+        xrange = flatten_reduced_dimension(ℓx, Hx+1:Hx+nx)
+        yrange = flatten_reduced_dimension(ℓy, Hy+1:Hy+ny)
+        zrange = flatten_reduced_dimension(ℓz, Hz+1:Hz+nz)
 
-        xsize = flatten_nothing_dimension(ℓx, x_offsets[ri]+1:x_offsets[ri]+nx)
-        ysize = flatten_nothing_dimension(ℓy, y_offsets[rj]+1:y_offsets[rj]+ny)
-        zsize = flatten_nothing_dimension(ℓz, 1:nz)
+        xsize = flatten_reduced_dimension(ℓx, x_offsets[ri]+1:x_offsets[ri]+nx)
+        ysize = flatten_reduced_dimension(ℓy, y_offsets[rj]+1:y_offsets[rj]+ny)
+        zsize = flatten_reduced_dimension(ℓz, 1:nz)
 
         # Extract interior (remove halos) and copy to global array
         interior_data = @view raw_data[xrange, yrange, zrange]

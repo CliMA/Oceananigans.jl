@@ -125,10 +125,10 @@ UniformStokesDrift(; ∂z_uˢ=zerofunction, ∂z_vˢ=zerofunction, ∂t_uˢ=zero
     UniformStokesDrift(∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ, parameters)
 
 function UniformStokesDrift(grid::AbstractGrid;
-                            ∂z_uˢ = Field{Nothing, Nothing, Face}(grid),
-                            ∂z_vˢ = Field{Nothing, Nothing, Face}(grid),
-                            ∂t_uˢ = Field{Nothing, Nothing, Center}(grid),
-                            ∂t_vˢ = Field{Nothing, Nothing, Center}(grid),
+                            ∂z_uˢ = Field{Reduced, Reduced, Face}(grid),
+                            ∂z_vˢ = Field{Reduced, Reduced, Face}(grid),
+                            ∂t_uˢ = Field{Reduced, Reduced, Center}(grid),
+                            ∂t_vˢ = Field{Reduced, Reduced, Center}(grid),
                             parameters = nothing)
 
     return UniformStokesDrift(∂z_uˢ, ∂z_vˢ, ∂t_uˢ, ∂t_vˢ, parameters)

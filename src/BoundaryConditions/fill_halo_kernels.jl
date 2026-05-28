@@ -35,7 +35,7 @@ construct_boundary_conditions_kernels(::Missing, data, grid, loc, indices) = mis
 
 @inline function fill_halo_kernels(bcs::FieldBoundaryConditions, data::OffsetArray, grid::AbstractGrid, loc, indices)
     sides, ordered_bcs = permute_boundary_conditions(bcs)
-    reduced_dimensions = findall(x -> x isa Nothing, loc)
+    reduced_dimensions = findall(x -> x isa Reduced, loc)
     reduced_dimensions = tuple(reduced_dimensions...)
     names = Tuple(side_name(side) for side in sides)
     kernels! = []

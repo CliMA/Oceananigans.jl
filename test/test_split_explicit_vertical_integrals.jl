@@ -31,8 +31,8 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
         u = Field{Face, Center, Center}(grid)
         v = Field{Center, Face, Center}(grid)
 
-        GU = Field{Face, Center, Nothing}(grid)
-        GV = Field{Center, Face, Nothing}(grid)
+        GU = Field{Face, Center, Reduced}(grid)
+        GV = Field{Center, Face, Reduced}(grid)
 
         @testset "Average to zero" begin
             # set equal to something else

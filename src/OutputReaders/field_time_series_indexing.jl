@@ -167,13 +167,13 @@ end
 @propagate_inbounds setindex!(f::FlavorOfFTS, v, i, j, k, n::Int) = setindex!(f.data, v, i, j, k, memory_index(f, n))
 
 # Reduced FTS
-const XYFTS = FlavorOfFTS{<:Any, <:Any, Nothing}
-const XZFTS = FlavorOfFTS{<:Any, Nothing, <:Any}
-const YZFTS = FlavorOfFTS{Nothing, <:Any, <:Any}
-const XFTS  = FlavorOfFTS{<:Any, Nothing, Nothing}
-const YFTS  = FlavorOfFTS{Nothing, <:Any, Nothing}
-const ZFTS  = FlavorOfFTS{Nothing, Nothing, <:Any}
-const FTS0  = FlavorOfFTS{Nothing, Nothing, Nothing}
+const XYFTS = FlavorOfFTS{<:Any, <:Any, Reduced}
+const XZFTS = FlavorOfFTS{<:Any, Reduced, <:Any}
+const YZFTS = FlavorOfFTS{Reduced, <:Any, <:Any}
+const XFTS  = FlavorOfFTS{<:Any, Reduced, Reduced}
+const YFTS  = FlavorOfFTS{Reduced, <:Any, Reduced}
+const ZFTS  = FlavorOfFTS{Reduced, Reduced, <:Any}
+const FTS0  = FlavorOfFTS{Reduced, Reduced, Reduced}
 
 # `getbc` for 2D FTS boundary conditions (only possible for 2D, 1D and 0D FTS)
 

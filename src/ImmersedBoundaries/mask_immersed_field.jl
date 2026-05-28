@@ -143,7 +143,7 @@ end
 const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
 
 const CenterOrFace = Union{Center, Face}
-const OnlyZReducedField = Field{<:CenterOrFace, <:CenterOrFace, Nothing}
+const OnlyZReducedField = Field{<:CenterOrFace, <:CenterOrFace, Reduced}
 
 # Does not require a sweep
 mask_immersed_field!(field::OnlyZReducedField, grid::AGFBIBG, loc, value) =

@@ -18,8 +18,8 @@ infil> grid = RectilinearGrid(size=(2,3,4), extent=(1,1,1))
 ├── Periodic y ∈ [0.0, 1.0)  regularly spaced with Δy=0.333333
 └── Bounded  z ∈ [-1.0, 0.0] regularly spaced with Δz=0.25
 
-infil> c = Field{Center, Center, Nothing}(grid)
-2×3×1 Field{Center, Center, Nothing} reduced over dims = (3,) on RectilinearGrid on CPU
+infil> c = Field{Center, Center, Reduced}(grid)
+2×3×1 Field{Center, Center, Reduced} reduced over dims = (3,) on RectilinearGrid on CPU
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
 │   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: Nothing

@@ -14,7 +14,10 @@ and defined on a grid `G` with eltype `T` and `N` dimensions.
 
 Note: we need the parameter `T` to subtype AbstractArray.
 """
-abstract type AbstractField{LX, LY, LZ, G <: GridOrNothing, T, N} <: AbstractArray{T, N} end
+abstract type AbstractField{LX <: AbstractLocation,
+                             LY <: AbstractLocation,
+                             LZ <: AbstractLocation,
+                             G <: GridOrNothing, T, N} <: AbstractArray{T, N} end
 
 Base.IndexStyle(::AbstractField) = IndexCartesian()
 
@@ -116,15 +119,15 @@ for f in (:+, :-)
     @eval Base.$f(ϕ::AbstractField, ψ::AbstractArray) = $f(interior(ϕ), ψ)
 end
 
-const XReducedAF = AbstractField{Nothing}
-const YReducedAF = AbstractField{<:Any, Nothing}
-const ZReducedAF = AbstractField{<:Any, <:Any, Nothing}
+const XReducedAF = AbstractField{Reduced}
+const YReducedAF = AbstractField{<:Any, Reduced}
+const ZReducedAF = AbstractField{<:Any, <:Any, Reduced}
 
-const YZReducedAF = AbstractField{<:Any, Nothing, Nothing}
-const XZReducedAF = AbstractField{Nothing, <:Any, Nothing}
-const XYReducedAF = AbstractField{Nothing, Nothing, <:Any}
+const YZReducedAF = AbstractField{<:Any, Reduced, Reduced}
+const XZReducedAF = AbstractField{Reduced, <:Any, Reduced}
+const XYReducedAF = AbstractField{Reduced, Reduced, <:Any}
 
-const XYZReducedAF = AbstractField{Nothing, Nothing, Nothing}
+const XYZReducedAF = AbstractField{Reduced, Reduced, Reduced}
 
 reduced_dimensions(field::AbstractField) = ()
 reduced_dimensions(field::XReducedAF)    = tuple(1)
