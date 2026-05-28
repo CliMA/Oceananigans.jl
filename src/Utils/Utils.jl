@@ -6,7 +6,7 @@ export tupleit, parenttuple, datatuple, datatuples
 export ordered_dict_show
 export instantiate
 export with_tracers
-export AbstractTimeDiscretization, ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization, ImplicitExplicitTimeDiscretization
+export AbstractTimeDiscretization, ExplicitTimeDiscretization, VerticallyImplicitTimeDiscretization, ImplicitExplicitTimeDiscretization, AdaptiveVerticallyImplicitDiscretization
 export versioninfo_with_gpu, oceananigans_versioninfo
 export seconds_to_nanosecond, period_to_seconds, time_difference_seconds, add_time_interval
 export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSchedule, OrSchedule, ConsecutiveIterations
