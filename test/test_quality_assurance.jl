@@ -33,8 +33,8 @@ end
 
     # Until we resolve all ambiguities, we make sure we don't increase them.
     # Do not increase this number. If ambiguities increase, resolve them before merging.
-    number_of_ambiguities = length(detect_ambiguities(Oceananigans; recursive=true))
-    @test number_of_ambiguities <= 323
+    @show number_of_ambiguities = length(detect_ambiguities(Oceananigans; recursive=true))
+    @test number_of_ambiguities <= 317
     @info "Number of ambiguities: $number_of_ambiguities"
 
     modules = (
@@ -84,7 +84,7 @@ end
             Oceananigans.Models,
         )
         @info "Testing no type piracy for module $(mod)"
-        Aqua.test_piracies(mod; broken=mod in pirate_modules)
+        Aqua.test_piracies(mod; broken=false)
     end
 end
 
