@@ -303,6 +303,9 @@ end
     return FractionalIndices(ii, jj, kk)
 end
 
+@inline _fractional_indices((at,)::NTuple{1, Any}, grid, ::Nothing, ::Nothing, ::Nothing) =
+    FractionalIndices(nothing, nothing, nothing)
+
 @inline _fractional_indices(at_node, grid, ::Nothing, ::Nothing, ::Nothing) = FractionalIndices(nothing, nothing, nothing)
 
 """
