@@ -62,7 +62,7 @@ NonhydrostaticModel{CPU, RectilinearGrid}(time = 0 seconds, iteration = 0)
 function BuoyancyForce(grid, formulation::AbstractBuoyancyFormulation; gravity_unit_vector=NegativeZDirection(), materialize_gradients=false)
     gravity_unit_vector = validate_unit_vector(gravity_unit_vector)
 
-    if materialize_gradients]
+    if materialize_gradients
         ∂xᵣ_b = XFaceField(grid, boundary_conditions = signed_vector_boundary_conditions(grid, (Face(), Center(), Center())))
         ∂yᵣ_b = YFaceField(grid, boundary_conditions = signed_vector_boundary_conditions(grid, (Center(), Face(), Center())))
         ∂z_b = ZFaceField(grid)
