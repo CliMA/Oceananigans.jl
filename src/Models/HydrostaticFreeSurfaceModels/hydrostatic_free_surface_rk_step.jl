@@ -168,7 +168,9 @@ function rk_substep_velocities!(velocities, model, Δt)
                        nothing,
                        model.clock,
                        fields(model),
-                       Δt)
+                       Δt,
+                       model.advection.momentum,
+                       model.velocities)
     end
 
     return nothing
@@ -213,6 +215,7 @@ function rk_substep_tracers!(tracers, model, Δt)
             launch!(architecture(grid), grid, :xyz,
                     _rk_substep_tracer_field!, c, grid, convert(FT, Δt), Gⁿ, Ψ⁻)
 
+            @inbounds c_advection = model.advection[tracer_name]
             implicit_step!(c,
                            model.timestepper.implicit_solver,
                            closure,
@@ -220,7 +223,9 @@ function rk_substep_tracers!(tracers, model, Δt)
                            Val(tracer_index),
                            model.clock,
                            fields(model),
-                           Δt)
+                           Δt,
+                           c_advection,
+                           model.transport_velocities)
         end
     end
 

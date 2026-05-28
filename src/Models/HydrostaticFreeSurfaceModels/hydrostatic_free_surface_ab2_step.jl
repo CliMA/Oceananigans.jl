@@ -175,7 +175,9 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
                        nothing,
                        model.clock,
                        fields(model),
-                       Δt)
+                       Δt,
+                       model.advection.momentum,
+                       model.velocities)
     end
 
     return nothing
@@ -227,6 +229,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
             FT = eltype(grid)
             launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_field!, tracer_field, grid, convert(FT, Δt), χ, Gⁿ, G⁻)
 
+            @inbounds c_advection = model.advection[tracer_name]
             implicit_step!(tracer_field,
                            model.timestepper.implicit_solver,
                            closure,
@@ -234,7 +237,9 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
                            Val(tracer_index),
                            model.clock,
                            fields(model),
-                           Δt)
+                           Δt,
+                           c_advection,
+                           model.transport_velocities)
         end
     end
 
