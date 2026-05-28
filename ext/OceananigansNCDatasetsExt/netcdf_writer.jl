@@ -37,6 +37,10 @@ function defVar(ds::AbstractDataset, field_name, fd::AbstractField;
         attrib = add_location_attribute!(Dict(), fd)
     end
 
+    # CF: for OSSG fields, add `coordinates = "λ_** φ_** z_aac"` so xarray/ncview/Panoply
+    # find the 2D auxiliary lat/lon. No-op for grids whose horizontal coordinates are 1D.
+    attrib = add_aux_coordinates_attribute!(attrib, fd, dimension_name_generator; grid_index)
+
     # Add indices to attributes
     attrib = merge(attrib, Dict("indices" => convert_for_netcdf(indices(fd))))
     kwargs = merge(kwargs, pairs((; attrib,)))
@@ -60,6 +64,33 @@ function add_location_attribute!(attrib, fd::AbstractField)
     loc = location(fd) |> convert_for_netcdf
     loc_attrib = Dict("location" => loc)
     return merge(loc_attrib, attrib)
+end
+
+# Entry point: extract the field's (unwrapped) grid and dispatch on its type.
+add_aux_coordinates_attribute!(attrib, fd::AbstractField, dim_name_generator; grid_index=nothing) =
+    add_aux_coordinates_attribute!(attrib, fd, underlying_grid(grid(fd)), dim_name_generator; grid_index)
+
+# Default (Rectilinear / LatitudeLongitude grids): no CF `coordinates` attribute — the field's
+# dim names already point at 1D coordinate variables.
+add_aux_coordinates_attribute!(attrib, fd, grid, dim_name_generator; grid_index=nothing) = attrib
+
+# OrthogonalSphericalShellGrid: write a CF `coordinates` attribute pointing at the 2D λ/φ
+# auxiliary coords + the 1D vertical coord, so xarray/ncview/Panoply pick up the lat/lon.
+function add_aux_coordinates_attribute!(attrib, fd, grid::OrthogonalSphericalShellGrid, dim_name_generator; grid_index=nothing)
+    LX, LY, LZ = location(fd)
+    parts = String[]
+    if LX !== Nothing && LY !== Nothing
+        λ_name = add_grid_suffix(dim_name_generator("λ", grid, LX(), LY(), nothing, Val(:x)), grid_index)
+        φ_name = add_grid_suffix(dim_name_generator("φ", grid, LX(), LY(), nothing, Val(:y)), grid_index)
+        push!(parts, λ_name, φ_name)
+    end
+    if LZ !== Nothing
+        z = vertical_coordinate_name(grid)
+        z_name = add_grid_suffix(dim_name_generator(z, grid, nothing, nothing, LZ(), Val(:z)), grid_index)
+        push!(parts, z_name)
+    end
+    isempty(parts) || (attrib["coordinates"] = join(parts, " "))
+    return attrib
 end
 
 #####
