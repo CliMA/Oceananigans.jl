@@ -476,6 +476,17 @@ end
         end
     end
 
+    @testset "CATKE diffusive CFL diagnostics" begin
+        @info "  Testing CATKE diffusive CFL diagnostics..."
+        grid = RectilinearGrid(CPU(); size=(20, 30, 4), x=(-10, 10), y=(-10, 10), z=(-10, 0), halo=(6, 6, 5))
+        model = HydrostaticFreeSurfaceModel(grid;
+                                            free_surface = SplitExplicitFreeSurface(grid; substeps=5),
+                                            closure = CATKEVerticalDiffusivity())
+
+        @test cell_diffusion_timescale(model) == Inf
+        @test DiffusiveCFL(0.1)(model) == 0
+    end
+
     @testset "Time-stepping with CATKE closure" begin
         @info "  Testing time-stepping with CATKE closure and closure tuples with CATKE..."
         for arch in archs
