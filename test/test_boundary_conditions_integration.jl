@@ -258,6 +258,36 @@ function test_perturbation_advection_tracer_radiation_formula(arch, FT)
     @test Array(parent(model.tracers.c))[Nx + 1 + Hx, 1, Hz + 1] ≈ expected
 end
 
+function test_nonhydrostatic_tracer_open_boundary_is_applied(arch, FT)
+    # A tracer open BC must be re-applied every update_state!, exactly like a velocity
+    # open BC. Poke a sentinel into the east boundary cell of both a tracer and a velocity
+    # (each with a prescribed-value open BC), step without any manual halo fill, and check
+    # both recover. That cell is a halo the tendency never writes, so it can only return to
+    # its prescribed value if the open-boundary fill actually runs during stepping.
+    grid = RectilinearGrid(arch, FT; size = 16, x = (0, 1), topology = (Bounded, Flat, Flat), halo = 4)
+
+    u_bcs = FieldBoundaryConditions(west = OpenBoundaryCondition( 1), east = OpenBoundaryCondition( 1))
+    c_bcs = FieldBoundaryConditions(west = OpenBoundaryCondition(-1), east = OpenBoundaryCondition(-1))
+
+    model = NonhydrostaticModel(grid; tracers = :c, advection = Centered(order = 2),
+                                boundary_conditions = (u = u_bcs, c = c_bcs))
+    set!(model, u = 1, c = 0.5)
+
+    east = grid.Hx + grid.Nx + 1  # parent index of the east boundary cell (Nx + 1)
+    view(parent(model.tracers.c),    east, 1, 1) .= 999
+    view(parent(model.velocities.u), east, 1, 1) .= 999
+
+    for _ in 1:5
+        time_step!(model, 1e-4)
+    end
+
+    east_tracer   = Array(view(parent(model.tracers.c),    east, 1, 1))[]
+    east_velocity = Array(view(parent(model.velocities.u), east, 1, 1))[]
+
+    @test east_tracer   ≈ -1   # tracer open BC applied during stepping (regression target)
+    @test east_velocity ≈  1   # velocity open BC was already applied — sanity control
+end
+
 function test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions; N = 8)
     grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
                            topology=(Bounded, Bounded, Bounded))
@@ -469,6 +499,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             test_perturbation_advection_open_boundary_conditions(arch, FT)
             test_perturbation_advection_tracer_open_boundary_conditions(arch, FT)
             test_perturbation_advection_tracer_radiation_formula(arch, FT)
+            test_nonhydrostatic_tracer_open_boundary_is_applied(arch, FT)
 
             # Only PerturbationAdvection OpenBoundaryCondition
             U₀ = 1
