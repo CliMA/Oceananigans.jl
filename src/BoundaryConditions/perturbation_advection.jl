@@ -1,5 +1,6 @@
 using Oceananigans.Operators: Δxᶠᶜᶜ, Δyᶜᶠᶜ, Δzᶜᶜᶠ
 using Oceananigans: defaults
+using Oceananigans.Utils: prettysummary
 
 struct PerturbationAdvection{FT, D}
     inflow_timescale :: FT
@@ -40,13 +41,14 @@ and considering the `x`-component of velocity, we can rewrite the equation as
 
 Simplify by assuming that `U⃗ = U x̂`, and then take a numerical step to find `u₁`.
 While derived for velocity, the resulting scheme generalizes to any prognostic field
-`ψ` with prescribed exterior value `ψ̄`. Denoting the boundary value
+`ψ` with prescribed exterior value `ψ̄`, advected by the boundary-normal velocity `U`
+(for a boundary-normal velocity component, `U = ψ̄`). Denoting the boundary value
 as `ψᴮ` and the adjacent interior value as `ψᴬ`, and noting that the
 perturbation is `ψ' = ψ - ψ̄`, we take a backwards Euler step
 on a right boundary:
 
 ```math
-(ψ̄ⁿ⁺¹ - ψ̄ⁿ) / Δt + (ψ'ᴮⁿ⁺¹ - ψ'ᴮⁿ) / Δt = -ψ̄ⁿ⁺¹ (ψ'ᴮⁿ⁺¹ - ψ'ᴬⁿ⁺¹) / Δx + Fψ
+(ψ̄ⁿ⁺¹ - ψ̄ⁿ) / Δt + (ψ'ᴮⁿ⁺¹ - ψ'ᴮⁿ) / Δt = -Uⁿ⁺¹ (ψ'ᴮⁿ⁺¹ - ψ'ᴬⁿ⁺¹) / Δx + Fψ
 ```
 
 This cannot be solved for general forcing, but if we assume the dominant forcing is
@@ -57,7 +59,7 @@ and we can find `ψ'ᴮⁿ⁺¹`:
 ψ'ᴮⁿ⁺¹ = (ψᴮⁿ + Ũ ψ'ᴬⁿ⁺¹ - ψ̄ⁿ⁺¹) / (1 + Ũ + Δt / τ)
 ```
 
-where `Ũ = ψ̄ Δt / Δx`. Then `ψᴮⁿ⁺¹` is:
+where `Ũ = U Δt / Δx`. Then `ψᴮⁿ⁺¹` is:
 
 ```math
 ψᴮⁿ⁺¹ = (ψᴮⁿ + Ũ ψᴬⁿ⁺¹ + ψ̄ⁿ⁺¹ τ̃) / (1 + τ̃ + Ũ)
@@ -114,6 +116,16 @@ Adapt.adapt_structure(to, pe::PerturbationAdvection) =
                           adapt(to, pe.gravity_wave_speed),
                           adapt(to, pe.density))
 
+Base.summary(::PerturbationAdvection{FT}) where FT = "PerturbationAdvection{$FT}"
+
+function Base.show(io::IO, pe::PerturbationAdvection)
+    print(io, summary(pe), '\n')
+    print(io, "├── inflow_timescale: ", prettysummary(pe.inflow_timescale), '\n')
+    print(io, "├── outflow_timescale: ", prettysummary(pe.outflow_timescale), '\n')
+    print(io, "├── gravity_wave_speed: ", prettysummary(pe.gravity_wave_speed), '\n')
+    print(io, "└── density: ", prettysummary(pe.density))
+end
+
 const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
 
 # Helper to convert between density-weighted and intensive fields.
@@ -123,8 +135,13 @@ const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
 @inline to_extensive(::Nothing, ψ, k) = ψ
 @inline to_extensive(ρ, ψ, k) = @inbounds ρ[1, 1, k] * ψ
 
+# Advecting velocity for the radiation phase speed: a boundary-normal velocity
+# component advects itself (falls back to ψ̄), a tracer is advected by the flow.
+@inline advecting_velocity(::Nothing, ψ̄) = ψ̄
+@inline advecting_velocity(U, ψ̄) = U
+
 @inline function step_right_open_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
-                                           grid, ψ, clock, model_fields, ΔX, k)
+                                           grid, ψ, U, clock, model_fields, ΔX, k)
     iᴮ, jᴮ, kᴮ = boundary_indices
     iᴬ, jᴬ, kᴬ = boundary_adjacent_indices
     Δt = clock.last_stage_Δt
@@ -141,12 +158,15 @@ const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
     # Prescribed exterior value (in intensive units when density is provided)
     ψ̄ = getbc(bc, l, m, grid, clock, model_fields)
 
-    # Phase speed: exterior value + gravity wave speed
-    c = ψ̄ + c★
+    # Advecting velocity: the field itself for momentum, the normal flow for tracers
+    Uᵃ = advecting_velocity(U, ψ̄)
+
+    # Phase speed: advecting velocity + gravity wave speed
+    c = Uᵃ + c★
     Ũ = max(0, min(1, Δt / ΔX * c))
 
     # Inflow vs outflow relaxation
-    τ = ifelse(ψ̄ >= 0, pa.outflow_timescale, pa.inflow_timescale)
+    τ = ifelse(Uᵃ >= 0, pa.outflow_timescale, pa.inflow_timescale)
     τ̃ = Δt / τ
 
     ψ_new = (ψᴮ + Ũ * ψᴬ + ψ̄ * τ̃) / (1 + τ̃ + Ũ)
@@ -159,7 +179,7 @@ const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
 end
 
 @inline function step_left_open_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
-                                          grid, ψ, clock, model_fields, ΔX, k)
+                                          grid, ψ, U, clock, model_fields, ΔX, k)
     iᴮ, jᴮ, kᴮ = boundary_indices
     iᴬ, jᴬ, kᴬ = boundary_adjacent_indices
     Δt = clock.last_stage_Δt
@@ -174,11 +194,14 @@ end
 
     ψ̄ = getbc(bc, l, m, grid, clock, model_fields)
 
-    # Phase speed: exterior value - gravity wave speed (outflow is -x at west / -y at south)
-    c = ψ̄ - c★
+    # Advecting velocity: the field itself for momentum, the normal flow for tracers
+    Uᵃ = advecting_velocity(U, ψ̄)
+
+    # Phase speed: advecting velocity - gravity wave speed (outflow is -x at west / -y at south)
+    c = Uᵃ - c★
     Ũ = min(0, max(-1, Δt / ΔX * c))
 
-    τ = ifelse(ψ̄ <= 0, pa.outflow_timescale, pa.inflow_timescale)
+    τ = ifelse(Uᵃ <= 0, pa.outflow_timescale, pa.inflow_timescale)
     τ̃ = Δt / τ
 
     ψ_new = (ψᴮ - Ũ * ψᴬ + ψ̄ * τ̃) / (1 + τ̃ - Ũ)
@@ -194,14 +217,14 @@ end
                                       grid, ψ, clock, model_fields, ΔX)
     k = boundary_indices[3]
     step_right_open_boundary!(bc, l, m, boundary_indices, boundary_adjacent_indices,
-                              grid, ψ, clock, model_fields, ΔX, k)
+                              grid, ψ, nothing, clock, model_fields, ΔX, k)
 end
 
 @inline function step_left_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
                                      grid, ψ, clock, model_fields, ΔX)
     k = boundary_indices[3]
     step_left_open_boundary!(bc, l, m, boundary_indices, boundary_adjacent_indices,
-                             grid, ψ, clock, model_fields, ΔX, k)
+                             grid, ψ, nothing, clock, model_fields, ΔX, k)
 end
 
 #####
@@ -214,7 +237,7 @@ end
     boundary_adjacent_indices = (i-1, j, k)
     Δx = Δxᶠᶜᶜ(i, j, k, grid)
     step_right_open_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices,
-                              grid, u, clock, model_fields, Δx, k)
+                              grid, u, nothing, clock, model_fields, Δx, k)
     return nothing
 end
 
@@ -223,7 +246,7 @@ end
     boundary_adjacent_indices = (2, j, k)
     Δx = Δxᶠᶜᶜ(1, j, k, grid)
     step_left_open_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices,
-                             grid, u, clock, model_fields, Δx, k)
+                             grid, u, nothing, clock, model_fields, Δx, k)
     return nothing
 end
 
@@ -233,7 +256,7 @@ end
     boundary_adjacent_indices = (i, j-1, k)
     Δy = Δyᶜᶠᶜ(i, j, k, grid)
     step_right_open_boundary!(bc, i, k, boundary_indices, boundary_adjacent_indices,
-                              grid, u, clock, model_fields, Δy, k)
+                              grid, u, nothing, clock, model_fields, Δy, k)
     return nothing
 end
 
@@ -242,7 +265,7 @@ end
     boundary_adjacent_indices = (i, 2, k)
     Δy = Δyᶜᶠᶜ(i, 1, k, grid)
     step_left_open_boundary!(bc, i, k, boundary_indices, boundary_adjacent_indices,
-                             grid, u, clock, model_fields, Δy, k)
+                             grid, u, nothing, clock, model_fields, Δy, k)
     return nothing
 end
 
@@ -252,7 +275,7 @@ end
     boundary_adjacent_indices = (i, j, k-1)
     Δz = Δzᶜᶜᶠ(i, j, k, grid)
     step_right_open_boundary!(bc, i, j, boundary_indices, boundary_adjacent_indices,
-                              grid, u, clock, model_fields, Δz, k)
+                              grid, u, nothing, clock, model_fields, Δz, k)
     return nothing
 end
 
@@ -261,7 +284,7 @@ end
     boundary_adjacent_indices = (i, j, 2)
     Δz = Δzᶜᶜᶠ(i, j, 1, grid)
     step_left_open_boundary!(bc, i, j, boundary_indices, boundary_adjacent_indices,
-                             grid, u, clock, model_fields, Δz, 1)
+                             grid, u, nothing, clock, model_fields, Δz, 1)
     return nothing
 end
 
@@ -274,8 +297,9 @@ end
     boundary_indices = (i, j, k)
     boundary_adjacent_indices = (i-1, j, k)
     Δx = Δxᶠᶜᶜ(i, j, k, grid)
+    U = @inbounds model_fields.u[i, j, k]
     step_right_open_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices,
-                              grid, c, clock, model_fields, Δx, k)
+                              grid, c, U, clock, model_fields, Δx, k)
     return nothing
 end
 
@@ -283,8 +307,9 @@ end
     boundary_indices = (1, j, k)
     boundary_adjacent_indices = (2, j, k)
     Δx = Δxᶠᶜᶜ(1, j, k, grid)
+    U = @inbounds model_fields.u[1, j, k]
     step_left_open_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices,
-                             grid, c, clock, model_fields, Δx, k)
+                             grid, c, U, clock, model_fields, Δx, k)
     return nothing
 end
 
@@ -293,8 +318,9 @@ end
     boundary_indices = (i, j, k)
     boundary_adjacent_indices = (i, j-1, k)
     Δy = Δyᶜᶠᶜ(i, j, k, grid)
+    U = @inbounds model_fields.v[i, j, k]
     step_right_open_boundary!(bc, i, k, boundary_indices, boundary_adjacent_indices,
-                              grid, c, clock, model_fields, Δy, k)
+                              grid, c, U, clock, model_fields, Δy, k)
     return nothing
 end
 
@@ -302,7 +328,29 @@ end
     boundary_indices = (i, 1, k)
     boundary_adjacent_indices = (i, 2, k)
     Δy = Δyᶜᶠᶜ(i, 1, k, grid)
+    U = @inbounds model_fields.v[i, 1, k]
     step_left_open_boundary!(bc, i, k, boundary_indices, boundary_adjacent_indices,
-                             grid, c, clock, model_fields, Δy, k)
+                             grid, c, U, clock, model_fields, Δy, k)
+    return nothing
+end
+
+@inline function _fill_top_halo!(i, j, grid, c, bc::PAOBC, ::Tuple{Any, Any, Center}, clock, model_fields)
+    k = grid.Nz + 1
+    boundary_indices = (i, j, k)
+    boundary_adjacent_indices = (i, j, k-1)
+    Δz = Δzᶜᶜᶠ(i, j, k, grid)
+    U = @inbounds model_fields.w[i, j, k]
+    step_right_open_boundary!(bc, i, j, boundary_indices, boundary_adjacent_indices,
+                              grid, c, U, clock, model_fields, Δz, k)
+    return nothing
+end
+
+@inline function _fill_bottom_halo!(i, j, grid, c, bc::PAOBC, ::Tuple{Any, Any, Center}, clock, model_fields)
+    boundary_indices = (i, j, 1)
+    boundary_adjacent_indices = (i, j, 2)
+    Δz = Δzᶜᶜᶠ(i, j, 1, grid)
+    U = @inbounds model_fields.w[i, j, 1]
+    step_left_open_boundary!(bc, i, j, boundary_indices, boundary_adjacent_indices,
+                             grid, c, U, clock, model_fields, Δz, 1)
     return nothing
 end
