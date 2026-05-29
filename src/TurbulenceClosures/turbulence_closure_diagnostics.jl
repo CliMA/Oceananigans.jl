@@ -74,8 +74,9 @@ function Diagnostics.cell_diffusion_timescale(closure::TwoDimensionalLeith, clos
     return Δ^2 / max_ν
 end
 
-# Vertically-implicit treatment of vertical diffusivity has no time-step restriction
-Diagnostics.cell_diffusion_timescale(::ConvectiveAdjustmentVerticalDiffusivity{<:VerticallyImplicitTimeDiscretization},
+# Vertically-implicit treatment of purely vertical diffusivity has no explicit
+# diffusive time-step restriction.
+Diagnostics.cell_diffusion_timescale(::AbstractScalarDiffusivity{<:VerticallyImplicitTimeDiscretization, <:VerticalFormulation},
                                      closure_fields, grid, clock, fields) = Inf
 
 Diagnostics.cell_diffusion_timescale(closure::Tuple, closure_fields, grid, clock, fields) =
