@@ -1,5 +1,4 @@
 using Oceananigans
-using Oceananigans.BoundaryConditions: fill_halo_regions!
 using CairoMakie
 using Printf
 
@@ -41,17 +40,8 @@ function tracer_outflow_simulation(; arch = CPU(),
                 czero = x -> blob(x),
                 cneg  = x -> blob(x) - 1)
 
-    # NonhydrostaticModel fills tracer halos with fill_open_bcs=false, so the open BC
-    # never fires automatically — fire it here for the initial state and once per
-    # iteration via the callback below.
-    fill_halo_regions!(model.tracers, model.clock, fields(model))
-
     Δt = 0.5 * minimum_xspacing(grid) / abs(U)
     simulation = Simulation(model; Δt, stop_time, verbose = false)
-
-    fill_tracer_open_halos!(sim) =
-        fill_halo_regions!(sim.model.tracers, sim.model.clock, fields(sim.model))
-    add_callback!(simulation, fill_tracer_open_halos!, IterationInterval(1))
 
     function progress(sim)
         @printf("Iteration: %05d, time: %s, Δt: %s\n",
