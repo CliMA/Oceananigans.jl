@@ -89,8 +89,11 @@ function Base.isapprox(a::Clock, b::Clock; kw...)
            a.stage == b.stage
 end
 
-# TODO: when supporting DateTime, this function will have to be extended
+# Type used to represent the time step Δt for a clock with `time::TT`.
+# For numeric clocks, Δt has the same type as `time`. For `DateTime`/`AbstractTime`
+# clocks, Δt is a `Float64` (interpreted as seconds).
 time_step_type(TT) = TT
+time_step_type(::Type{<:AbstractTime}) = Float64
 
 function Clock{TT}(; time,
                    last_Δt = Inf,
@@ -176,10 +179,11 @@ Adapt `Clock` to an immutable kernel argument.
 """
 function Adapt.adapt_structure(to, clock::Clock)
     KT = kernel_time_type(clock)
+    DT = time_step_type(KT)
 
     return (time          = convert(KT, clock.time),
-            last_Δt       = clock.last_Δt,
-            last_stage_Δt = clock.last_stage_Δt,
+            last_Δt       = convert(DT, clock.last_Δt),
+            last_stage_Δt = convert(DT, clock.last_stage_Δt),
             iteration     = clock.iteration,
             stage         = clock.stage)
 end
