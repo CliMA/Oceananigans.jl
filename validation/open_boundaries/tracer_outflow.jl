@@ -77,13 +77,7 @@ function plot_tracer_outflow_animation(filepath; framerate = 12, compression = 2
               ("c̄ =  0", FieldTimeSeries(filepath, "czero"),  0),
               ("c̄ = -1", FieldTimeSeries(filepath, "cneg"),  -1))
 
-    times       = panels[1][2].times
-    # x coordinates with halos so the OBC's boundary halo cells are visible alongside the
-    # interior (JLD2Writer used with_halos = true, so parent(ts[n]) carries them).
-    xs          = collect(xnodes(panels[1][2][1], with_halos = true))
-    xs_interior = xnodes(panels[1][2][1])
-    Δx          = minimum(diff(xs))
-    domain_edges = [first(xs_interior) - 0.5Δx, last(xs_interior) + 0.5Δx]
+    times = panels[1][2].times
 
     n = Observable(1)
     fig = Figure(size = (800, 700))
@@ -92,11 +86,9 @@ function plot_tracer_outflow_animation(filepath; framerate = 12, compression = 2
     Label(fig[0, 1], title, fontsize = 16, tellwidth = false)
 
     for (i, (label, ts, c̄)) in enumerate(panels)
-        ax = Axis(fig[i, 1], xlabel = "x", ylabel = "c", title = label,
-                  width = 700, height = 180)
-        c_plt = @lift Array(parent(ts[$n]))[:, 1, 1]
-        lines!(ax, xs, c_plt, color = :dodgerblue, linewidth = 1.5)
-        vlines!(ax, domain_edges, color = (:black, 0.4), linestyle = :dot)
+        ax = Axis(fig[i, 1], xlabel = "x", ylabel = "c", title = label, width = 700, height = 180)
+        c_plt = @lift ts[$n]
+        lines!(ax, c_plt, color = :dodgerblue, linewidth = 1.5)
         hlines!(ax, [c̄], color = (:black, 0.3), linestyle = :dash)
         ylims!(ax, c̄ - 1.5, c̄ + 1.5)
     end
@@ -125,21 +117,17 @@ function plot_tracer_outflow_hovmollers(filepath)
               ("c̄ =  0", FieldTimeSeries(filepath, "czero"),  0),
               ("c̄ = -1", FieldTimeSeries(filepath, "cneg"),  -1))
 
-    times       = panels[1][2].times
-    xs          = collect(xnodes(panels[1][2][1], with_halos = true))
-    xs_interior = xnodes(panels[1][2][1])
-    Δx          = minimum(diff(xs))
-    domain_edges = [first(xs_interior) - 0.5Δx, last(xs_interior) + 0.5Δx]
+    times = panels[1][2].times
+    xs    = collect(xnodes(panels[1][2][1]))
 
     fig = Figure(size = (800, 900))
     Label(fig[0, 1:2], "Hovmöller — $(basename(filepath))", fontsize = 16, tellwidth = false)
 
     hm = nothing
     for (i, (label, ts, c̄)) in enumerate(panels)
-        field_xt = stack([Array(parent(ts[n]))[:, 1, 1] for n in 1:length(times)]; dims = 2)
+        field_xt = stack([Array(interior(ts[n]))[:, 1, 1] for n in 1:length(times)]; dims = 2)
         ax = Axis(fig[i, 1], xlabel = "x", ylabel = "t", title = label)
         hm = heatmap!(ax, xs, times, field_xt; colormap = :balance, colorrange = (-1.8, 1.8))
-        vlines!(ax, domain_edges, color = (:black, 0.6), linestyle = :dash)
     end
     Colorbar(fig[1:length(panels), 2], hm)
 
