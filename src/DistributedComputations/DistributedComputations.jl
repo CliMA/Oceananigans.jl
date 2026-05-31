@@ -5,7 +5,7 @@ export
     child_architecture, reconstruct_global_grid, partition,
     inject_halo_communication_boundary_conditions,
     DistributedFFTBasedPoissonSolver, mpi_initialized, mpi_rank,
-    mpi_size, global_barrier, global_communicator,
+    mpi_size, global_barrier, global_communicator, sanitize_environ!,
     @root, @onrank, @distribute, @handshake
 
 using MPI
@@ -20,6 +20,7 @@ using Oceananigans.Solvers: GridWithFourierTridiagonalSolver
 import Oceananigans.Solvers: fft_poisson_solver
 
 include("distributed_macros.jl")
+include("sanitize_environ.jl")
 include("distributed_architectures.jl")
 include("partition_assemble.jl")
 include("distributed_grids.jl")
