@@ -3,10 +3,10 @@ using Oceananigans.Utils: prettysummary
 const DFBC = DefaultBoundaryCondition
 const IBC = BoundaryCondition{NormalFlow, Nothing} # ImpenetrableBoundaryCondition
 
-bc_str(::FBC)                          = "Flux"
-bc_str(::PBC)                          = "Periodic"
-bc_str(::OBC{NormalFlow{MS}}) where MS = "NormalFlow{$MS}"
-bc_str(::VBC)                    = "Value"
+bc_str(::FBC)                           = "Flux"
+bc_str(::PBC)                           = "Periodic"
+bc_str(::NFBC{NormalFlow{MS}}) where MS = "NormalFlow{$MS}"
+bc_str(::VBC)                           = "Value"
 bc_str(::GBC)                    = "Gradient"
 bc_str(::MBC)                    = "Mixed"
 bc_str(::ZFBC)                   = "ZeroFlux"
@@ -23,7 +23,7 @@ bc_str(bc::FZBC)                 = "F-Pivot Zipper($(bc.condition))"
 #####
 
 Base.summary(bc::DFBC)                    = string("DefaultBoundaryCondition (", summary(bc.boundary_condition), ")")
-Base.summary(bc::OBC{NormalFlow{MS}}) where MS = string("OpenBoundaryCondition{$MS}: ", prettysummary(bc.condition))
+Base.summary(bc::NFBC{NormalFlow{MS}}) where MS = string("OpenBoundaryCondition{$MS}: ", prettysummary(bc.condition))
 Base.summary(bc::IBC)                     = string("ImpenetrableBoundaryCondition")
 Base.summary(bc::FBC)                     = string("FluxBoundaryCondition: ", prettysummary(bc.condition))
 Base.summary(bc::VBC)                     = string("ValueBoundaryCondition: ", prettysummary(bc.condition))

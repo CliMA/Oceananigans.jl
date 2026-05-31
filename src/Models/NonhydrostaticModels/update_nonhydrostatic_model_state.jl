@@ -31,12 +31,11 @@ function update_state!(model::NonhydrostaticModel, callbacks=[])
     # Update the boundary conditions
     update_boundary_conditions!(fields(model), model)
 
-    # Fill halos for velocities and tracers. Velocity open boundaries are deferred to
-    # compute_pressure_correction! (they need the pressure-corrected state), so skip them
-    # here. Tracers have no such deferral, so fill their halos now — as
-    # HydrostaticFreeSurfaceModel does — otherwise tracer open BCs never fire.
-    fill_halo_regions!(model.velocities, model.clock, fields(model); fill_open_bcs=false, async=true)
-    fill_halo_regions!(model.tracers, model.clock, fields(model); async=true)
+    # Fill halos for velocities and tracers in a single pass. Boundary-normal velocities are
+    # deferred to compute_pressure_correction! (they need the pressure-corrected state), so we
+    # skip NormalFlow fills here with `fill_normal_flow_bcs=false`. Tracer open boundaries are
+    # `Value` conditions, which are not gated by this flag, so they still fire.
+    fill_halo_regions!(merge(model.velocities, model.tracers), model.clock, fields(model); fill_normal_flow_bcs=false, async=true)
 
     # Compute auxiliary fields
     for aux_field in model.auxiliary_fields
