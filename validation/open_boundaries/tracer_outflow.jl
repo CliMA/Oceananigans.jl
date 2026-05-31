@@ -1,55 +1,47 @@
 using Oceananigans
-using Oceananigans.BoundaryConditions: fill_halo_regions!
 using CairoMakie
 using Printf
 
+# Minimal 1D outflow test: a Gaussian blob in three tracers (background values
+# c̄ ∈ {+1, 0, −1}) is advected eastward by a constant U > 0 through the east open
+# boundary. The west boundary is an inflow at u = U, so the upstream tracer relaxes to c̄.
+# Centered(order = 4) advection is used because it leaves the boundary halo cell exposed
+# in the interior stencil (upwind/WENO mask it), so any spurious mode injected at the
+# boundary stays visible.
 function tracer_outflow_simulation(; arch = CPU(),
                                      Nx = 200,
-                                     Nz = 4,
                                      Lx = 10,
-                                     Lz = 1,
                                      U = 1,
                                      blob_centre = 2,
                                      blob_width = 0.5,
                                      stop_time = 12,
-                                     base_simulation_name = "tracer_outflow")
+                                     base_simulation_name = "tracer_outflow",
+                                     scheme = PerturbationAdvection(inflow_timescale = 0,
+                                                                    outflow_timescale = Inf))
 
-    grid = RectilinearGrid(arch; topology = (Bounded, Flat, Bounded),
-                           size = (Nx, Nz), x = (0, Lx), z = (-Lz, 0), halo = (4, 4))
+    grid = RectilinearGrid(arch; topology = (Bounded, Flat, Flat), size = Nx, x = (0, Lx))
 
-    scheme = PerturbationAdvection(inflow_timescale = 0, outflow_timescale = Inf)
+    tracer_bcs(c̄) = FieldBoundaryConditions(west = ValueBoundaryCondition(c̄; scheme),
+                                            east = ValueBoundaryCondition(c̄; scheme))
 
-    tracer_bcs(c̄) = FieldBoundaryConditions(west = OpenBoundaryCondition(c̄; scheme), east = OpenBoundaryCondition(c̄; scheme))
-
-    boundary_conditions = (u     = FieldBoundaryConditions(west = OpenBoundaryCondition(U), east = OpenBoundaryCondition(U)),
+    boundary_conditions = (u     = FieldBoundaryConditions(west = OpenBoundaryCondition(U),
+                                                           east = OpenBoundaryCondition(U)),
                            cpos  = tracer_bcs( 1),
                            czero = tracer_bcs( 0),
                            cneg  = tracer_bcs(-1))
 
-    # Centered advection is essential here: an upwind/WENO scheme effectively
-    # ignores the halo at the outflow face (smoothness indicators downweight the
-    # discontinuous halo cell), hiding the BC's behavior from the interior.
     model = NonhydrostaticModel(grid; tracers = (:cpos, :czero, :cneg),
                                 advection = Centered(order = 4),
                                 boundary_conditions)
 
-    blob(x, z) = exp(-((x - blob_centre) / blob_width)^2)
+    blob(x) = exp(-((x - blob_centre) / blob_width)^2)
     set!(model, u = U,
-                cpos  = (x, z) -> blob(x, z) + 1,
-                czero = (x, z) -> blob(x, z),
-                cneg  = (x, z) -> blob(x, z) - 1)
-
-    # NonhydrostaticModel fills tracer halos with fill_open_bcs=false, so the
-    # PerturbationAdvection BC never fires without manually refilling — once here
-    # for the initial state, and via the per-step callback below.
-    fill_halo_regions!(model.tracers, model.clock, fields(model))
+                cpos  = x -> blob(x) + 1,
+                czero = x -> blob(x),
+                cneg  = x -> blob(x) - 1)
 
     Δt = 0.5 * minimum_xspacing(grid) / abs(U)
     simulation = Simulation(model; Δt, stop_time, verbose = false)
-
-    fill_tracer_open_halos!(sim) =
-        fill_halo_regions!(sim.model.tracers, sim.model.clock, fields(sim.model))
-    add_callback!(simulation, fill_tracer_open_halos!, IterationInterval(1))
 
     function progress(sim)
         @printf("Iteration: %05d, time: %s, Δt: %s\n",
@@ -76,21 +68,21 @@ function plot_tracer_outflow_animation(filepath; framerate = 12, compression = 2
               ("c̄ = -1", FieldTimeSeries(filepath, "cneg"),  -1))
 
     times = panels[1][2].times
+
     n = Observable(1)
-    fig = Figure(size = (700, 600))
+    fig = Figure(size = (800, 700))
 
     title = @lift @sprintf("t = %.2f", times[$n])
-    Label(fig[0, 1:2], title, fontsize = 16, tellwidth = false)
+    Label(fig[0, 1], title, fontsize = 16, tellwidth = false)
 
     for (i, (label, ts, c̄)) in enumerate(panels)
-        ax = Axis(fig[i, 1], xlabel = "x", ylabel = "z", title = label,
-                  width = 550, height = 130)
+        ax = Axis(fig[i, 1], xlabel = "x", ylabel = "c", title = label, width = 700, height = 180)
         c_plt = @lift ts[$n]
-        hm = heatmap!(ax, c_plt, colorrange = (-2, 2), colormap = :balance)
-        Colorbar(fig[i, 2], hm, tellwidth = false, height = Relative(0.8))
+        lines!(ax, c_plt, color = :dodgerblue, linewidth = 1.5)
+        hlines!(ax, [c̄], color = (:black, 0.3), linestyle = :dash)
+        ylims!(ax, c̄ - 1.5, c̄ + 1.5)
     end
 
-    colsize!(fig.layout, 2, Fixed(30))
     resize_to_layout!(fig)
 
     frames = 1:length(times)
@@ -104,9 +96,10 @@ function plot_tracer_outflow_animation(filepath; framerate = 12, compression = 2
     return fig
 end
 
-# Combined Hovmöller (x–t) of all three tracers in one figure. Boundary noise / pileup
-# / wrong-branch behavior shows up as vertical striations or sharp colour jumps near
-# the domain edges — easier to see here than in single-snapshot animation frames.
+# Combined Hovmöller (x–t) of all three tracers in one figure with a shared colorbar, so
+# the panels are directly comparable across c̄. Boundary noise / pileup / wrong-branch
+# behavior shows up as vertical striations or sharp colour jumps near the domain edges —
+# easier to spot here than in single animation frames.
 function plot_tracer_outflow_hovmollers(filepath)
     @info "Plotting Hovmöllers from $filepath"
 
@@ -114,29 +107,20 @@ function plot_tracer_outflow_hovmollers(filepath)
               ("c̄ =  0", FieldTimeSeries(filepath, "czero"),  0),
               ("c̄ = -1", FieldTimeSeries(filepath, "cneg"),  -1))
 
-    times       = panels[1][2].times
-    xs          = collect(xnodes(panels[1][2][1], with_halos = true))
-    xs_interior = xnodes(panels[1][2][1])
-    Δx          = minimum(diff(xs))
-    domain_edges = [first(xs_interior) - 0.5Δx, last(xs_interior) + 0.5Δx]
-    # The field is uniform in z by construction, so a single representative z slice
-    # carries all the dynamical information.
-    z_index = size(parent(panels[1][2][1]), 3) ÷ 2 + 1
+    times = panels[1][2].times
+    xs    = collect(xnodes(panels[1][2][1]))
 
-    fig = Figure(size = (800, 800))
+    fig = Figure(size = (800, 900))
     Label(fig[0, 1:2], "Hovmöller — $(basename(filepath))", fontsize = 16, tellwidth = false)
 
+    hm = nothing
     for (i, (label, ts, c̄)) in enumerate(panels)
-        field_xt = stack([Array(parent(ts[n]))[:, 1, z_index] for n in 1:length(times)]; dims = 2)
-        ax = Axis(fig[i, 1], xlabel = "x", ylabel = "t", title = label,
-                  width = 650, height = 200)
-        hm = heatmap!(ax, xs, times, field_xt;
-                      colormap = :balance, colorrange = (-1.8, 1.8))
-        vlines!(ax, domain_edges, color = (:black, 0.6), linestyle = :dash)
-        Colorbar(fig[i, 2], hm, tellwidth = false, height = Relative(0.8))
+        field_xt = stack([Array(interior(ts[n]))[:, 1, 1] for n in 1:length(times)]; dims = 2)
+        ax = Axis(fig[i, 1], xlabel = "x", ylabel = "t", title = label)
+        hm = heatmap!(ax, xs, times, field_xt; colormap = :balance, colorrange = (-1.8, 1.8))
     end
+    Colorbar(fig[1:length(panels), 2], hm)
 
-    resize_to_layout!(fig)
     out = "$filepath" * "_hovmoller.png"
     save(out, fig)
     @info "Saved $out"

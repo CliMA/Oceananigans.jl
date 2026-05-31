@@ -1,12 +1,12 @@
-using Oceananigans.BoundaryConditions: BoundaryCondition, Open
+using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow
 using Oceananigans.AbstractOperations: Integral, Ax, Ay, Az, grid_metric_operation
 using Oceananigans.Fields: Field, interior, compute!
 using GPUArraysCore: @allowscalar
 
-const OBC  = BoundaryCondition{<:Open} # OpenBoundaryCondition
-const IOBC = BoundaryCondition{<:Open{<:Nothing}} # "Imposed-velocity" OpenBoundaryCondition (with no scheme)
-const FIOBC = BoundaryCondition{<:Open{<:Nothing}, <:Number} # "Fixed-imposed-velocity" OpenBoundaryCondition
-const ZIOBC = BoundaryCondition{<:Open{<:Nothing}, <:Nothing} # "Zero-imposed-velocity" OpenBoundaryCondition (no-inflow)
+const OBC  = BoundaryCondition{<:NormalFlow} # OpenBoundaryCondition
+const IOBC = BoundaryCondition{<:NormalFlow{<:Nothing}} # "Imposed-velocity" OpenBoundaryCondition (with no scheme)
+const FIOBC = BoundaryCondition{<:NormalFlow{<:Nothing}, <:Number} # "Fixed-imposed-velocity" OpenBoundaryCondition
+const ZIOBC = BoundaryCondition{<:NormalFlow{<:Nothing}, <:Nothing} # "Zero-imposed-velocity" OpenBoundaryCondition (no-inflow)
 
 function get_west_area(grid)
     dA = grid_metric_operation((Face, Center, Center), Ax, grid)

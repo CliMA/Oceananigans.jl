@@ -8,7 +8,7 @@ end
 Adapt.adapt_structure(to, pv::PolarValue) = PolarValue(Adapt.adapt(to, pv.data), nothing)
 
 const PolarValueBoundaryCondition{V} = BoundaryCondition{<:Value, <:PolarValue}
-const PolarOpenBoundaryCondition{V}  = BoundaryCondition{<:Open,  <:PolarValue}
+const PolarOpenBoundaryCondition{V}  = BoundaryCondition{<:NormalFlow, <:PolarValue}
 
 function PolarValueBoundaryCondition(grid, side, LZ)
     FT   = eltype(grid)

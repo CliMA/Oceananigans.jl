@@ -203,7 +203,9 @@ ValueBoundaryCondition: 20
 
 A constant [`Value`](@ref) boundary condition can be used to specify constant tracer (such as temperature),
 or a constant _tangential_ velocity component at a boundary. Note that boundary conditions on the
-_normal_ velocity component must use the [`Open`](@ref) boundary condition type.
+_normal_ velocity component must use the [`NormalFlow`](@ref) boundary condition type (constructed
+via `OpenBoundaryCondition`). A [`Value`](@ref) condition may also carry a matching `scheme` (e.g.
+`ValueBoundaryCondition(c; scheme=PerturbationAdvection())`) to radiate a tracer across an open boundary.
 
 Finally, note that `ValueBoundaryCondition(condition)` is an alias for `BoundaryCondition(Value, condition)`.
 

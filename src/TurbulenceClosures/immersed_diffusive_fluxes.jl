@@ -72,8 +72,8 @@ end
 #####
 
 # Harder in some ways... ValueBoundaryCondition...
-const VBC = BoundaryCondition{Value}
-const GBC = BoundaryCondition{Gradient}
+const VBC = BoundaryCondition{<:Value}
+const GBC = BoundaryCondition{<:Gradient}
 const VBCorGBC = Union{VBC, GBC}
 const ASD = AbstractScalarDiffusivity
 

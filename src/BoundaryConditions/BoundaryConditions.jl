@@ -1,7 +1,7 @@
 module BoundaryConditions
 
 export
-    Flux, Gradient, Value, Open,
+    Flux, Gradient, Value, NormalFlow,
     BoundaryCondition, getbc,
     PeriodicBoundaryCondition, OpenBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, DistributedCommunicationBoundaryCondition,
@@ -44,7 +44,7 @@ include("show_boundary_conditions.jl")
 
 include("fill_halo_regions.jl")
 include("fill_halo_regions_value_gradient.jl")
-include("fill_halo_regions_open.jl")
+include("fill_halo_regions_normal_flow.jl")
 include("fill_halo_regions_periodic.jl")
 include("fill_halo_regions_flux.jl")
 include("fill_halo_regions_upivotzipper.jl")
