@@ -17,7 +17,7 @@ end
                           density = nothing)
 
 Create a `PerturbationAdvection` scheme, passed as the `scheme` keyword to an
-`OpenBoundaryCondition` (for boundary-normal velocities, `Face`-located) or to a
+`NormalFlowBoundaryCondition` (for boundary-normal velocities, `Face`-located) or to a
 `ValueBoundaryCondition` (for scalars such as tracers, `Center`-located).
 This scheme nudges the boundary value to the prescribed exterior value `val`,
 using a time-scale `inflow_timescale` for inflow and `outflow_timescale` for outflow.
