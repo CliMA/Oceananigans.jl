@@ -228,12 +228,12 @@ Base.summary(::DiagonallyDominantPreconditioner) = "DiagonallyDominantPreconditi
 end
 
 # Kernels that calculate coefficients for the preconditioner
-@inline Ax⁻(i, j, k, grid) = Axᶠᶜᶜ(i,   j, k, grid) * Δx⁻¹ᶠᶜᶜ(i,   j, k, grid) * V⁻¹ᶜᶜᶜ(i, j, k, grid)
-@inline Ax⁺(i, j, k, grid) = Axᶠᶜᶜ(i+1, j, k, grid) * Δx⁻¹ᶠᶜᶜ(i+1, j, k, grid) * V⁻¹ᶜᶜᶜ(i, j, k, grid)
-@inline Ay⁻(i, j, k, grid) = Ayᶜᶠᶜ(i, j,   k, grid) * Δy⁻¹ᶜᶠᶜ(i, j,   k, grid) * V⁻¹ᶜᶜᶜ(i, j, k, grid)
-@inline Ay⁺(i, j, k, grid) = Ayᶜᶠᶜ(i, j+1, k, grid) * Δy⁻¹ᶜᶠᶜ(i, j+1, k, grid) * V⁻¹ᶜᶜᶜ(i, j, k, grid)
-@inline Az⁻(i, j, k, grid) = Azᶜᶜᶠ(i, j, k,   grid) * Δz⁻¹ᶜᶜᶠ(i, j, k,   grid) * V⁻¹ᶜᶜᶜ(i, j, k, grid)
-@inline Az⁺(i, j, k, grid) = Azᶜᶜᶠ(i, j, k+1, grid) * Δz⁻¹ᶜᶜᶠ(i, j, k+1, grid) * V⁻¹ᶜᶜᶜ(i, j, k, grid)
+@inline Ax⁻(i, j, k, grid) = Axᶠᶜᶜ(i,   j, k, grid) * Δx⁻¹ᶠᶜᶜ(i,   j, k, grid)
+@inline Ax⁺(i, j, k, grid) = Axᶠᶜᶜ(i+1, j, k, grid) * Δx⁻¹ᶠᶜᶜ(i+1, j, k, grid)
+@inline Ay⁻(i, j, k, grid) = Ayᶜᶠᶜ(i, j,   k, grid) * Δy⁻¹ᶜᶠᶜ(i, j,   k, grid)
+@inline Ay⁺(i, j, k, grid) = Ayᶜᶠᶜ(i, j+1, k, grid) * Δy⁻¹ᶜᶠᶜ(i, j+1, k, grid)
+@inline Az⁻(i, j, k, grid) = Azᶜᶜᶠ(i, j, k,   grid) * Δz⁻¹ᶜᶜᶠ(i, j, k,   grid)
+@inline Az⁺(i, j, k, grid) = Azᶜᶜᶠ(i, j, k+1, grid) * Δz⁻¹ᶜᶜᶠ(i, j, k+1, grid)
 
 @inline Ac(i, j, k, grid) = - Ax⁻(i, j, k, grid) - Ax⁺(i, j, k, grid) -
                               Ay⁻(i, j, k, grid) - Ay⁺(i, j, k, grid) -
@@ -251,4 +251,89 @@ end
     i, j, k = @index(Global, NTuple)
     active = !inactive_cell(i, j, k, grid)
     @inbounds p[i, j, k] = heuristic_residual(i, j, k, grid, r) * active
+end
+
+#####
+##### The "ColumnwiseTridiagonalPreconditioner" (Marshall et al. 1997, §4)
+#####
+##### Block-diagonal preconditioner M = Lz⁻¹: for each horizontal column (i, j) the
+##### vertical (k-direction) sub-system of V∇² is solved exactly while horizontal
+##### couplings are discarded. Reuses the batched Thomas solver over ZDirection.
+#####
+
+struct ColumnwiseTridiagonalPreconditioner{S}
+    batched_tridiagonal_solver :: S
+    ColumnwiseTridiagonalPreconditioner{S}(solver) where S = new{S}(solver)
+end
+
+Base.summary(::ColumnwiseTridiagonalPreconditioner) = "ColumnwiseTridiagonalPreconditioner"
+
+@kernel function _compute_columnwise_tridiagonal_coefficients!(a, b, c, grid)
+    i, j, k = @index(Global, NTuple)
+    inactive_self  = inactive_cell(i, j, k,   grid)
+    inactive_below = inactive_cell(i, j, k-1, grid)
+    inactive_above = inactive_cell(i, j, k+1, grid)
+
+    # Mask geometric couplings through immersed faces AND Bounded-domain halos.
+    # inactive_cell flags both (see src/Grids/inactive_node.jl docstring), so this
+    # encodes the BCs that the V∇² operator gets through fill_halo_regions!.
+    az⁻ = ifelse(inactive_below, zero(grid), Azᶜᶜᶠ(i, j, k,   grid) * Δz⁻¹ᶜᶜᶠ(i, j, k,   grid))
+    az⁺ = ifelse(inactive_above, zero(grid), Azᶜᶜᶠ(i, j, k+1, grid) * Δz⁻¹ᶜᶜᶠ(i, j, k+1, grid))
+
+    # Multiplicative regularisation: shifts every diagonal by a tiny fraction,
+    # breaking the Neumann–Neumann null space (rows of Lz still sum to zero
+    # after BC masking because the discrete Neumann Laplacian is fundamentally
+    # singular). ε large enough to lift β above the Thomas-guard threshold,
+    # small enough that the preconditioner approximation is unchanged.
+    ε = convert(eltype(grid), 1//100)
+
+    # A vertically-isolated active cell (both neighbors inactive) has az⁻ = az⁺ = 0,
+    # so the regularised diagonal -(az⁻+az⁺)(1+ε) collapses to zero and the Thomas
+    # pivot vanishes. PartialCellBottom produces these as thin surface cells perched
+    # over a column that is otherwise immersed. There is no vertical sub-system to
+    # invert, so act as the identity there (b = 1), like an inactive cell.
+    isolated = inactive_below & inactive_above
+
+    @inbounds begin
+        a[i, j, k] = ifelse(inactive_self, zero(grid), az⁺)
+        c[i, j, k] = ifelse(inactive_self, zero(grid), az⁺)
+        b[i, j, k] = ifelse(inactive_self | isolated, one(grid), -(az⁻ + az⁺) * (1 + ε))
+    end
+end
+
+"""
+    ColumnwiseTridiagonalPreconditioner(grid)
+
+Construct a block-diagonal preconditioner for the `ConjugateGradientPoissonSolver` that, for
+each horizontal column `(i, j)`, exactly solves the vertical tridiagonal sub-system of the
+symmetric volume-weighted Laplacian `V∇²` while discarding horizontal couplings (Marshall et
+al. 1997, §4). For ocean-like problems (large `Nz`, stretched vertical grid) this is a much
+stronger preconditioner than `DiagonallyDominantPreconditioner` and typically reduces the
+number of CG iterations.
+
+The same `grid` must be passed to both `ColumnwiseTridiagonalPreconditioner` and the
+`ConjugateGradientPoissonSolver` that uses it.
+"""
+function ColumnwiseTridiagonalPreconditioner(grid)
+    arch = architecture(grid)
+    FT = eltype(grid)
+
+    a = zeros(arch, FT, grid.Nx, grid.Ny, grid.Nz)
+    b = zeros(arch, FT, grid.Nx, grid.Ny, grid.Nz)
+    c = zeros(arch, FT, grid.Nx, grid.Ny, grid.Nz)
+
+    launch!(arch, grid, :xyz, _compute_columnwise_tridiagonal_coefficients!, a, b, c, grid)
+
+    solver = BatchedTridiagonalSolver(grid; lower_diagonal = a,
+                                            diagonal = b,
+                                            upper_diagonal = c,
+                                            tridiagonal_direction = ZDirection())
+
+    return ColumnwiseTridiagonalPreconditioner{typeof(solver)}(solver)
+end
+
+@inline function precondition!(p, preconditioner::ColumnwiseTridiagonalPreconditioner, r, args...)
+    fill_halo_regions!(r)
+    solve!(p, preconditioner.batched_tridiagonal_solver, r)
+    return p
 end
