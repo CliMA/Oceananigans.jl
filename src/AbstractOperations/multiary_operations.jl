@@ -138,7 +138,7 @@ BinaryOperation at (Center, Center, Center)
             └── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
 
 julia> @multiary harmonic_plus
-Set{Any} with 3 elements:
+Set{Any} with 5 elements:
   :+
   :max
   :harmonic_plus
