@@ -127,7 +127,7 @@ function test_perturbation_advection_open_boundary_conditions(arch, FT)
 
         grid = RectilinearGrid(arch, FT; topology, size = (4, ), x = (0, 4), y = (0, 4), z = (0, 4), halo = (1, ))
 
-        obc = OpenBoundaryCondition(-1, scheme = PerturbationAdvection(inflow_timescale = 10.0))
+        obc = NormalFlowBoundaryCondition(-1, scheme = PerturbationAdvection(inflow_timescale = 10.0))
         boundary_conditions = wall_normal_boundary_condition(Val(orientation), obc)
 
         model = NonhydrostaticModel(grid; boundary_conditions, timestepper = :QuasiAdamsBashforth2)
@@ -140,7 +140,7 @@ function test_perturbation_advection_open_boundary_conditions(arch, FT)
         @test all(view(parent(u), :, :, :) .== -1)
         @test all(interior(u) .== -1)
 
-        obc = OpenBoundaryCondition(t -> 0.1*t, scheme = PerturbationAdvection(inflow_timescale = 0.01, outflow_timescale = 0.5))
+        obc = NormalFlowBoundaryCondition(t -> 0.1*t, scheme = PerturbationAdvection(inflow_timescale = 0.01, outflow_timescale = 0.5))
         forcing = velocity_forcing(Val(orientation), Forcing((x, t) -> 0.1))
         boundary_conditions = wall_normal_boundary_condition(Val(orientation), obc)
 
@@ -176,8 +176,8 @@ function test_perturbation_advection_tracer_open_boundary_conditions(arch, FT)
     # inflow relaxes instantly to c̄, outflow radiates and preserves the uniform c₀.
     for U₀ in (-2, 2)
         scheme = PerturbationAdvection(inflow_timescale = 0, outflow_timescale = Inf)
-        u_bcs = FieldBoundaryConditions(west = OpenBoundaryCondition(U₀),
-                                        east = OpenBoundaryCondition(U₀))
+        u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(U₀),
+                                        east = NormalFlowBoundaryCondition(U₀))
         c_bcs = FieldBoundaryConditions(west = ValueBoundaryCondition(c̄; scheme),
                                         east = ValueBoundaryCondition(c̄; scheme))
 
@@ -236,8 +236,8 @@ function test_perturbation_advection_tracer_open_boundary_conditions_nonhydrosta
 
     for U₀ in (-2, 2)
         scheme = PerturbationAdvection(inflow_timescale = 0, outflow_timescale = Inf)
-        u_bcs = FieldBoundaryConditions(west = OpenBoundaryCondition(U₀),
-                                        east = OpenBoundaryCondition(U₀))
+        u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(U₀),
+                                        east = NormalFlowBoundaryCondition(U₀))
         c_bcs = FieldBoundaryConditions(west = ValueBoundaryCondition(c̄; scheme),
                                         east = ValueBoundaryCondition(c̄; scheme))
 
@@ -273,8 +273,8 @@ function test_perturbation_advection_tracer_radiation_formula(arch, FT)
     outflow_timescale = convert(FT, 1)
 
     scheme = PerturbationAdvection(; inflow_timescale = 0, outflow_timescale)
-    u_bcs = FieldBoundaryConditions(west = OpenBoundaryCondition(U),
-                                    east = OpenBoundaryCondition(U))
+    u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(U),
+                                    east = NormalFlowBoundaryCondition(U))
     c_bcs = FieldBoundaryConditions(east = ValueBoundaryCondition(c̄; scheme))
 
     model = HydrostaticFreeSurfaceModel(grid; tracers = :c, buoyancy = nothing,
@@ -540,13 +540,13 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             test_perturbation_advection_tracer_radiation_formula(arch, FT)
             test_nonhydrostatic_tracer_value_boundary_is_applied(arch, FT)
 
-            # Only PerturbationAdvection OpenBoundaryCondition
+            # Only PerturbationAdvection NormalFlowBoundaryCondition
             U₀ = 1
             inflow_timescale = 1e-1
             outflow_timescale = Inf
 
-            u_bcs = FieldBoundaryConditions(west = OpenBoundaryCondition(U₀; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)),
-                                            east = OpenBoundaryCondition(U₀; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)))
+            u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(U₀; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)),
+                                            east = NormalFlowBoundaryCondition(U₀; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)))
             boundary_conditions = (; u = u_bcs)
             test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions)
         end
