@@ -156,6 +156,7 @@ next_actuation_time(schedule::IterationInterval) = Inf
 
 # IterationInterval has no state
 prognostic_state(schedule::IterationInterval) = nothing
+restore_prognostic_state!(restored::IterationInterval, from) = restored
 restore_prognostic_state!(restored::IterationInterval, from::Nothing) = nothing
 
 #####

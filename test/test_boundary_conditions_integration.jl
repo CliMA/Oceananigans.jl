@@ -156,6 +156,138 @@ function test_perturbation_advection_open_boundary_conditions(arch, FT)
     end
 end
 
+function test_perturbation_advection_tracer_open_boundary_conditions(arch, FT)
+    # Tracer (Center-located) open boundaries are filled within the
+    # HydrostaticFreeSurfaceModel update, so the scheme is exercised there.
+    grid = RectilinearGrid(arch, FT; topology = (Bounded, Flat, Bounded),
+                           size = (4, 4), x = (0, 4), z = (0, 4))
+
+    Nx, Nz, Hx, Hz = grid.Nx, grid.Nz, grid.Hx, grid.Hz
+
+    c̄ = 1   # prescribed exterior tracer value
+    c₀ = 5  # uniform initial tracer value (interior and halos)
+
+    east_halo(c) = Array(view(parent(c), Nx + 1 + Hx, 1, Hz + 1))[]
+    top_halo(c)  = Array(view(parent(c), Hx + 1, 1, Nz + 1 + Hz))[]
+    low_side(c)  = Array(interior(c, 1, 1, 1))[]  # west and bottom write the first interior cell
+
+    # Lateral boundaries: radiation must key off the sign of the boundary-normal flow,
+    # not the tracer. A uniform flow makes one x-boundary inflow and the other outflow;
+    # inflow relaxes instantly to c̄, outflow radiates and preserves the uniform c₀.
+    for U₀ in (-2, 2)
+        scheme = PerturbationAdvection(inflow_timescale = 0, outflow_timescale = Inf)
+        u_bcs = FieldBoundaryConditions(west = OpenBoundaryCondition(U₀),
+                                        east = OpenBoundaryCondition(U₀))
+        c_bcs = FieldBoundaryConditions(west = OpenBoundaryCondition(c̄; scheme),
+                                        east = OpenBoundaryCondition(c̄; scheme))
+
+        model = HydrostaticFreeSurfaceModel(grid; tracers = :c, buoyancy = nothing,
+                                            boundary_conditions = (u = u_bcs, c = c_bcs))
+
+        set!(model, u = U₀, c = c₀)
+        parent(model.tracers.c) .= c₀
+        time_step!(model, 1e-2)
+
+        c = model.tracers.c
+        if U₀ < 0  # inflow at east, outflow at west
+            @test east_halo(c) ≈ c̄
+            @test low_side(c)  ≈ c₀
+        else       # outflow at east, inflow at west
+            @test east_halo(c) ≈ c₀
+            @test low_side(c)  ≈ c̄
+        end
+    end
+
+    # Vertical boundaries: in a quiescent column (w ≈ 0) with infinite timescales the
+    # scheme freezes the boundary, so a uniform tracer stays uniform. This confirms the
+    # top/bottom Center methods run the radiation scheme rather than falling back to a
+    # plain prescribed-value condition (which would set the boundary to c̄).
+    scheme = PerturbationAdvection(inflow_timescale = Inf, outflow_timescale = Inf)
+    c_bcs = FieldBoundaryConditions(bottom = OpenBoundaryCondition(c̄; scheme),
+                                    top    = OpenBoundaryCondition(c̄; scheme))
+
+    model = HydrostaticFreeSurfaceModel(grid; tracers = :c, buoyancy = nothing,
+                                        boundary_conditions = (; c = c_bcs))
+
+    set!(model, c = c₀)
+    parent(model.tracers.c) .= c₀
+    time_step!(model, 1e-2)
+
+    c = model.tracers.c
+    @test top_halo(c) ≈ c₀
+    @test low_side(c) ≈ c₀
+end
+
+function test_perturbation_advection_tracer_radiation_formula(arch, FT)
+    # Single-step check of the radiation formula at an outflow boundary:
+    #   ψ_new = (ψᴮ + Ũ ψᴬ + ψ̄ τ̃) / (1 + τ̃ + Ũ),  Ũ = U Δt / Δx,  τ̃ = Δt / τ
+    # with non-trivial ψᴮ ≠ ψᴬ, finite τ̃, and 0 < Ũ < 1 — a regime the uniform-interior
+    # checks above never reach.
+    grid = RectilinearGrid(arch, FT; topology = (Bounded, Flat, Bounded),
+                           size = (4, 4), x = (0, 4), z = (0, 4))
+
+    U = 1
+    c̄ = convert(FT, 1//2)
+    Δt = convert(FT, 1//2)
+    outflow_timescale = convert(FT, 1)
+
+    scheme = PerturbationAdvection(; inflow_timescale = 0, outflow_timescale)
+    u_bcs = FieldBoundaryConditions(west = OpenBoundaryCondition(U),
+                                    east = OpenBoundaryCondition(U))
+    c_bcs = FieldBoundaryConditions(east = OpenBoundaryCondition(c̄; scheme))
+
+    model = HydrostaticFreeSurfaceModel(grid; tracers = :c, buoyancy = nothing,
+                                        boundary_conditions = (u = u_bcs, c = c_bcs))
+
+    ψᴬ = convert(FT, 2)
+    ψᴮ = convert(FT, 3)
+    set!(model, u = U, c = ψᴬ)
+    Nx, Hx, Hz = grid.Nx, grid.Hx, grid.Hz
+    parent(model.tracers.c)[Nx + 1 + Hx, :, :] .= ψᴮ
+
+    Δx = minimum_xspacing(grid)
+    Ũ = Δt / Δx * U
+    τ̃ = Δt / outflow_timescale
+    expected = (ψᴮ + Ũ * ψᴬ + c̄ * τ̃) / (1 + τ̃ + Ũ)
+
+    # The scheme reads Δt from clock.last_stage_Δt; set it directly so we evaluate the
+    # formula once, with the ψᴮ we just wrote, instead of advancing the model state.
+    model.clock.last_stage_Δt = Δt
+    fill_halo_regions!(model.tracers, model.clock, fields(model))
+
+    @test Array(parent(model.tracers.c))[Nx + 1 + Hx, 1, Hz + 1] ≈ expected
+end
+
+function test_nonhydrostatic_tracer_open_boundary_is_applied(arch, FT)
+    # A tracer open BC must be re-applied every update_state!, exactly like a velocity
+    # open BC. Poke a sentinel into the east boundary cell of both a tracer and a velocity
+    # (each with a prescribed-value open BC), step without any manual halo fill, and check
+    # both recover. That cell is a halo the tendency never writes, so it can only return to
+    # its prescribed value if the open-boundary fill actually runs during stepping.
+    grid = RectilinearGrid(arch, FT; size = 16, x = (0, 1), topology = (Bounded, Flat, Flat), halo = 4)
+
+    u_bcs = FieldBoundaryConditions(west = OpenBoundaryCondition( 1), east = OpenBoundaryCondition( 1))
+    c_bcs = FieldBoundaryConditions(west = OpenBoundaryCondition(-1), east = OpenBoundaryCondition(-1))
+
+    model = NonhydrostaticModel(grid; tracers = :c, advection = Centered(order = 2),
+                                boundary_conditions = (u = u_bcs, c = c_bcs))
+    set!(model, u = 1, c = 0.5)
+
+    east = grid.Hx + grid.Nx + 1  # parent index of the east boundary cell (Nx + 1)
+    view(parent(model.tracers.c),    east, 1, 1) .= 999
+    view(parent(model.velocities.u), east, 1, 1) .= 999
+
+    for _ in 1:5
+        time_step!(model, 1e-4)
+    end
+
+    east_tracer   = Array(view(parent(model.tracers.c),    east, 1, 1))[]
+    east_velocity = Array(view(parent(model.velocities.u), east, 1, 1))[]
+
+    @test east_tracer   ≈ -1   # tracer open BC applied during stepping (regression target)
+    @test east_velocity ≈  1   # velocity open BC was already applied — sanity control
+end
+
 function test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions; N = 8)
     grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
                            topology=(Bounded, Bounded, Bounded))
@@ -365,6 +497,9 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             A = typeof(arch)
             @info "  Testing open boundary conditions [$A, $FT]..."
             test_perturbation_advection_open_boundary_conditions(arch, FT)
+            test_perturbation_advection_tracer_open_boundary_conditions(arch, FT)
+            test_perturbation_advection_tracer_radiation_formula(arch, FT)
+            test_nonhydrostatic_tracer_open_boundary_is_applied(arch, FT)
 
             # Only PerturbationAdvection OpenBoundaryCondition
             U₀ = 1
