@@ -86,7 +86,7 @@ needs_transport_correction(bc) = false
 """
     initialize_boundary_transport(velocities::NamedTuple)
 
-Initialize boundary transports for boundaries with `OpenBoundaryCondition`s,
+Initialize boundary transports for boundaries with `NormalFlowBoundaryCondition`s,
 returning a `NamedTuple` of boundary transports and areas, or `nothing` when no
 open boundary requires correction.
 
@@ -175,7 +175,7 @@ open_boundary_transport(bt, ::NFBC, ::Val{:north})  = @allowscalar bt.north_tran
 open_boundary_transport(bt, ::NFBC, ::Val{:bottom}) = @allowscalar bt.bottom_transport[]
 open_boundary_transport(bt, ::NFBC, ::Val{:top})    = @allowscalar bt.top_transport[]
 
-# Imposed-velocity Open BCs (no scheme) and non-open BCs contribute zero to the
+# Imposed-velocity NormalFlow BCs (no scheme) and non-open BCs contribute zero to the
 # net boundary transport: imposed-velocity outflow is already fixed, and closed
 # boundaries carry no transport by definition. Method-per-side avoids ambiguity
 # with the `::NFBC, ::Val{:<side>}` methods above (ZIOBC <: IOBC <: NFBC).
