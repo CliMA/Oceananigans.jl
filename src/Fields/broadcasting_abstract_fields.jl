@@ -68,13 +68,10 @@ end
 end
 
 @inline function Base.copyto!(dest::Field, bc::Broadcasted{Nothing})
-
     grid = dest.grid
     arch = architecture(dest)
     bc′ = broadcasted_to_abstract_operation(location(dest), grid, bc)
-
     param = KernelParameters(size(dest), map(offset_index, dest.indices))
-    launch!(arch, grid, param, _broadcast_kernel!, dest, bc′)
-
+    launch!(arch, grid, param, _broadcast_kernel!, dest, bc)
     return dest
 end
