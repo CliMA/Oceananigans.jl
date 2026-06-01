@@ -140,8 +140,10 @@ BinaryOperation at (Center, Center, Center)
 julia> @multiary harmonic_plus
 Set{Any} with 3 elements:
   :+
+  :max
   :harmonic_plus
   :*
+  :min
 
 julia> harmonic_plus(c, d, e)
 MultiaryOperation at (Center, Center, Center)
