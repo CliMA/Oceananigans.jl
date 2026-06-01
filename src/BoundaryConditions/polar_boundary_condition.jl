@@ -8,7 +8,7 @@ end
 Adapt.adapt_structure(to, pv::PolarValue) = PolarValue(Adapt.adapt(to, pv.data), nothing)
 
 const PolarValueBoundaryCondition{V} = BoundaryCondition{<:Value, <:PolarValue}
-const PolarOpenBoundaryCondition{V}  = BoundaryCondition{<:NormalFlow, <:PolarValue}
+const PolarNormalFlowBoundaryCondition{V}  = BoundaryCondition{<:NormalFlow, <:PolarValue}
 
 function PolarValueBoundaryCondition(grid, side, LZ)
     FT   = eltype(grid)
@@ -17,18 +17,18 @@ function PolarValueBoundaryCondition(grid, side, LZ)
     return ValueBoundaryCondition(PolarValue(data, side))
 end
 
-function PolarOpenBoundaryCondition(grid, side, LZ)
+function PolarNormalFlowBoundaryCondition(grid, side, LZ)
     FT   = eltype(grid)
     loc  = (Nothing, Nothing, LZ)
     data = new_data(FT, grid, loc)
-    return OpenBoundaryCondition(PolarValue(data, side))
+    return NormalFlowBoundaryCondition(PolarValue(data, side))
 end
 
-const PolarBoundaryCondition = Union{PolarValueBoundaryCondition, PolarOpenBoundaryCondition}
+const PolarBoundaryCondition = Union{PolarValueBoundaryCondition, PolarNormalFlowBoundaryCondition}
 
 maybe_polar_boundary_condition(grid, side, ::Nothing, ℓz::LZ) where LZ = nothing
 maybe_polar_boundary_condition(grid, side, ::Center,  ℓz::LZ) where LZ = PolarValueBoundaryCondition(grid, side, LZ)
-maybe_polar_boundary_condition(grid, side, ::Face,    ℓz::LZ) where LZ = PolarOpenBoundaryCondition(grid, side, LZ)
+maybe_polar_boundary_condition(grid, side, ::Face,    ℓz::LZ) where LZ = PolarNormalFlowBoundaryCondition(grid, side, LZ)
 
 # Just a column
 @inline getbc(pv::PolarValue, i, k, args...) = @inbounds pv.data[1, 1, k]
