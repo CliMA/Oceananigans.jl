@@ -41,9 +41,22 @@ function enforce_net_zero_transport!(velocities, boundary_transport)
 
     # Step 3: distribute the remaining imbalance over pool boundaries.
     A = boundary_transport.total_area_pool_boundaries
-    iszero(A) && return nothing
-
     ∮udA = open_boundary_inflow_transport(boundary_transport, velocities)
+
+    if iszero(A)
+        FT = eltype(u)
+        net_zero_tolerance = sqrt(eps(FT)) * boundary_transport.total_area_scheme_boundaries
+        if abs(∮udA) > net_zero_tolerance
+            error("Every open boundary in this `NonhydrostaticModel` carries a `target_transport`, " *
+                  "but the targets do not sum to a net-zero transport across the domain " *
+                  "(net inflow = $∮udA). The pressure Poisson problem has no solution in this " *
+                  "configuration. Make sure inflow targets balance outflow targets, or leave " *
+                  "at least one open boundary without a `target_transport` so the global pool " *
+                  "correction can absorb the residual.")
+        end
+        return nothing
+    end
+
     A⁻¹_∮udA = ∮udA / A
 
     correct_left_boundary_transport!(u, u.boundary_conditions.west,   Val(:west),   A⁻¹_∮udA)
