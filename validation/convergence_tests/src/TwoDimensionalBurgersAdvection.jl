@@ -29,15 +29,15 @@ function run_test(; Nx, Δt, stop_iteration, order, U = 0,
     domain = (x=(0, 1), y=(0, 1))
     grid = RectilinearGrid(architecture, topology=topo, size=(Nx, Nx), halo=(6, 6); domain...)
 
-    bcs_u_w =  OpenBoundaryCondition((y, z, t, μ) -> du(0, y, t, μ), parameters = μ)
-    bcs_u_e =  OpenBoundaryCondition((y, z, t, μ) -> du(1, y, t, μ), parameters = μ)
+    bcs_u_w =  NormalFlowBoundaryCondition((y, z, t, μ) -> du(0, y, t, μ), parameters = μ)
+    bcs_u_e =  NormalFlowBoundaryCondition((y, z, t, μ) -> du(1, y, t, μ), parameters = μ)
     bcs_u_s = ValueBoundaryCondition((x, z, t, μ) -> du(x, 0, t, μ), parameters = μ)
     bcs_u_n = ValueBoundaryCondition((x, z, t, μ) -> du(x, 1, t, μ), parameters = μ)
 
     bcs_v_w = ValueBoundaryCondition((y, z, t, μ) -> dv(0, y, t, μ), parameters = μ)
     bcs_v_e = ValueBoundaryCondition((y, z, t, μ) -> dv(1, y, t, μ), parameters = μ)
-    bcs_v_s =  OpenBoundaryCondition((x, z, t, μ) -> dv(x, 0, t, μ), parameters = μ)
-    bcs_v_n =  OpenBoundaryCondition((x, z, t, μ) -> dv(x, 1, t, μ), parameters = μ)
+    bcs_v_s =  NormalFlowBoundaryCondition((x, z, t, μ) -> dv(x, 0, t, μ), parameters = μ)
+    bcs_v_n =  NormalFlowBoundaryCondition((x, z, t, μ) -> dv(x, 1, t, μ), parameters = μ)
 
     u_bcs = FieldBoundaryConditions(west=bcs_u_w, east=bcs_u_e, south=bcs_u_s, north=bcs_u_n)
     v_bcs = FieldBoundaryConditions(west=bcs_v_w, east=bcs_v_e, south=bcs_v_s, north=bcs_v_n)

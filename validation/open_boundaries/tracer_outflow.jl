@@ -24,8 +24,8 @@ function tracer_outflow_simulation(; arch = CPU(),
     tracer_bcs(c̄) = FieldBoundaryConditions(west = ValueBoundaryCondition(c̄; scheme),
                                             east = ValueBoundaryCondition(c̄; scheme))
 
-    boundary_conditions = (u     = FieldBoundaryConditions(west = OpenBoundaryCondition(U),
-                                                           east = OpenBoundaryCondition(U)),
+    boundary_conditions = (u     = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(U),
+                                                           east = NormalFlowBoundaryCondition(U)),
                            cpos  = tracer_bcs( 1),
                            czero = tracer_bcs( 0),
                            cneg  = tracer_bcs(-1))
