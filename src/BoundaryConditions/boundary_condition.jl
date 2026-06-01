@@ -106,11 +106,11 @@ MultiRegionCommunicationBoundaryCondition() = BoundaryCondition(MultiRegionCommu
             UPivotZipperBoundaryCondition() = BoundaryCondition(Zipper{UPivot}(), 1)
             FPivotZipperBoundaryCondition() = BoundaryCondition(Zipper{FPivot}(), 1)
 
-                    FluxBoundaryCondition(val; kwargs...) = BoundaryCondition(Flux(), val; kwargs...)
- ValueBoundaryCondition(val; scheme = nothing, kwargs...) = BoundaryCondition(Value(scheme), val; kwargs...)
-                GradientBoundaryCondition(val; kwargs...) = BoundaryCondition(Gradient(), val; kwargs...)
-  OpenBoundaryCondition(val; scheme = nothing, kwargs...) = BoundaryCondition(NormalFlow(scheme), val; kwargs...)
-MultiRegionCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(MultiRegionCommunication(), val; kwargs...)
+FluxBoundaryCondition(val; kwargs...)                         = BoundaryCondition(Flux(), val; kwargs...)
+ValueBoundaryCondition(val; scheme = nothing, kwargs...)      = BoundaryCondition(Value(scheme), val; kwargs...)
+GradientBoundaryCondition(val; kwargs...)                     = BoundaryCondition(Gradient(), val; kwargs...)
+NormalFlowBoundaryCondition(val; scheme = nothing, kwargs...) = BoundaryCondition(NormalFlow(scheme), val; kwargs...)
+MultiRegionCommunicationBoundaryCondition(val; kwargs...)     = BoundaryCondition(MultiRegionCommunication(), val; kwargs...)
 
             UPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{UPivot}(), val; kwargs...)
             FPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{FPivot}(), val; kwargs...)

@@ -23,7 +23,7 @@ bc_str(bc::FZBC)                        = "F-Pivot Zipper($(bc.condition))"
 #####
 
 Base.summary(bc::DFBC)                          = string("DefaultBoundaryCondition (", summary(bc.boundary_condition), ")")
-Base.summary(bc::NFBC{NormalFlow{MS}}) where MS = string("OpenBoundaryCondition{$MS}: ", prettysummary(bc.condition))
+Base.summary(bc::NFBC{NormalFlow{MS}}) where MS = string("NormalFlowBoundaryCondition{$MS}: ", prettysummary(bc.condition))
 Base.summary(bc::IBC)                           = string("ImpenetrableBoundaryCondition")
 Base.summary(bc::FBC)                           = string("FluxBoundaryCondition: ", prettysummary(bc.condition))
 Base.summary(bc::VBC)                           = string("ValueBoundaryCondition: ", prettysummary(bc.condition))
