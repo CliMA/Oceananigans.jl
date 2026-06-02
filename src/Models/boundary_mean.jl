@@ -103,3 +103,12 @@ end
 
 const MOOBC = BoundaryCondition{<:NormalFlow, <:BoundaryAdjacentMean}
 @inline update_boundary_condition!(bc::MOOBC, val_side, u, model) = bc.condition(val_side, u)
+
+# Public dispatcher over the per-side area helpers defined in `boundary_transport.jl`.
+boundary_total_area(::Val{:west},   grid) = get_west_area(grid)
+boundary_total_area(::Val{:east},   grid) = get_east_area(grid)
+boundary_total_area(::Val{:south},  grid) = get_south_area(grid)
+boundary_total_area(::Val{:north},  grid) = get_north_area(grid)
+boundary_total_area(::Val{:bottom}, grid) = get_bottom_area(grid)
+boundary_total_area(::Val{:top},    grid) = get_top_area(grid)
+boundary_total_area(side::Symbol,   grid) = boundary_total_area(Val(side), grid)
