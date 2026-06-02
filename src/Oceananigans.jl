@@ -39,7 +39,7 @@ export
 
     # Boundary conditions
     BoundaryCondition,
-    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, OpenBoundaryCondition,
+    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, NormalFlowBoundaryCondition,
     IMEXFluxTimeDiscretization, IMEXFluxBoundaryCondition,
     PerturbationAdvection,
     FieldBoundaryConditions,
