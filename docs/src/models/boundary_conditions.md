@@ -94,8 +94,8 @@ julia> model.velocities.v.boundary_conditions
 Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── west: PeriodicBoundaryCondition
 ├── east: PeriodicBoundaryCondition
-├── south: OpenBoundaryCondition{Nothing}: Nothing
-├── north: OpenBoundaryCondition{Nothing}: Nothing
+├── south: NormalFlowBoundaryCondition{Nothing}: Nothing
+├── north: NormalFlowBoundaryCondition{Nothing}: Nothing
 ├── bottom: ValueBoundaryCondition: 0.0
 ├── top: FluxBoundaryCondition: Nothing
 └── immersed: Nothing
@@ -203,7 +203,9 @@ ValueBoundaryCondition: 20
 
 A constant [`Value`](@ref) boundary condition can be used to specify constant tracer (such as temperature),
 or a constant _tangential_ velocity component at a boundary. Note that boundary conditions on the
-_normal_ velocity component must use the [`Open`](@ref) boundary condition type.
+_normal_ velocity component must use the [`NormalFlow`](@ref) boundary condition type (constructed
+via `NormalFlowBoundaryCondition`). A [`Value`](@ref) condition may also carry a matching `scheme` (e.g.
+`ValueBoundaryCondition(c; scheme=PerturbationAdvection())`) to radiate a tracer across an open boundary.
 
 Finally, note that `ValueBoundaryCondition(condition)` is an alias for `BoundaryCondition(Value, condition)`.
 
@@ -378,8 +380,8 @@ PerturbationAdvection{Float64}
 ├── density: Nothing
 └── target_transport: Nothing
 
-julia> open_boundary = OpenBoundaryCondition(1; scheme)
-OpenBoundaryCondition{PerturbationAdvection{Float64, Nothing, Nothing}}: 1
+julia> open_boundary = NormalFlowBoundaryCondition(1; scheme)
+NormalFlowBoundaryCondition{PerturbationAdvection{Float64, Nothing, Nothing}}: 1
 ```
 
 The boundary value and timescales need to be carefully chosen to allow information to enter/
@@ -403,8 +405,8 @@ PerturbationAdvection{Float64}
 ├── density: Nothing
 └── target_transport: 2.0
 
-julia> open_boundary = OpenBoundaryCondition(1; scheme)
-OpenBoundaryCondition{PerturbationAdvection{Float64, Nothing, Float64}}: 1
+julia> open_boundary = NormalFlowBoundaryCondition(1; scheme)
+NormalFlowBoundaryCondition{PerturbationAdvection{Float64, Nothing, Float64}}: 1
 ```
 
 At each time step the normal velocity on a targeted boundary is shifted uniformly so that its

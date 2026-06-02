@@ -1,4 +1,4 @@
-using Oceananigans.BoundaryConditions: BoundaryCondition, Open, has_target_transport, FieldBoundaryConditions
+using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow, has_target_transport, FieldBoundaryConditions
 using Oceananigans.Fields: Field
 using ..Models: west_transport, east_transport, south_transport,
                 north_transport, bottom_transport, top_transport,
@@ -8,7 +8,7 @@ using ..Models: west_transport, east_transport, south_transport,
                 apply_targeted_left_boundary_correction!,
                 apply_targeted_right_boundary_correction!
 
-const OBC = BoundaryCondition{<:Open}
+const OBC = BoundaryCondition{<:NormalFlow}
 
 #####
 ##### Helpers for non-Field velocity components

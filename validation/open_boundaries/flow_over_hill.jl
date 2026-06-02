@@ -44,8 +44,8 @@ function flow_over_hill_simulation(; arch = CPU(),
     Q_west = U * boundary_total_area(:west, grid)
     Q_east = U * boundary_total_area(:east, grid)
     u_boundaries = FieldBoundaryConditions(
-        west = OpenBoundaryCondition(U; scheme = scheme_type(; target_transport = Q_west)),
-        east = OpenBoundaryCondition(U; scheme = scheme_type(; target_transport = Q_east)))
+        west = NormalFlowBoundaryCondition(U; scheme = scheme_type(; target_transport = Q_west)),
+        east = NormalFlowBoundaryCondition(U; scheme = scheme_type(; target_transport = Q_east)))
     boundary_conditions = (u = u_boundaries,)
     advection = WENO(; order=5)
 

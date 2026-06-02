@@ -11,7 +11,7 @@ enforce_net_zero_transport!(velocities, ::Nothing) = nothing
     enforce_net_zero_transport!(velocities, boundary_transport)
 
 Correct boundary values in `velocities` so that the combined net transport through all
-`OpenBoundaryCondition` boundaries with a radiation scheme vanishes — the
+`NormalFlowBoundaryCondition` boundaries with a radiation scheme vanishes — the
 solvability condition for the incompressible-pressure Poisson problem solved
 by `NonhydrostaticModel` without a free surface.
 

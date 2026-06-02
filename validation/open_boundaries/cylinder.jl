@@ -216,8 +216,8 @@ end
 
 u∞ = 1
 
-paobcs = (west = OpenBoundaryCondition(u∞; scheme = PerturbationAdvection(inflow_timescale = 0.1, outflow_timescale = 0.1)),
-          east = OpenBoundaryCondition(u∞; scheme = PerturbationAdvection(inflow_timescale = 1/4, outflow_timescale = Inf)))
+paobcs = (west = NormalFlowBoundaryCondition(u∞; scheme = PerturbationAdvection(inflow_timescale = 0.1, outflow_timescale = 0.1)),
+          east = NormalFlowBoundaryCondition(u∞; scheme = PerturbationAdvection(inflow_timescale = 1/4, outflow_timescale = Inf)))
 
 obcs = (; perturbation_advection=paobcs)
 

@@ -1,12 +1,12 @@
-using Oceananigans.BoundaryConditions: BoundaryCondition, Open, has_target_transport, get_target_transport
+using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow, has_target_transport, get_target_transport
 using Oceananigans.AbstractOperations: Integral, Ax, Ay, Az, grid_metric_operation
 using Oceananigans.Fields: Field, interior, compute!
 using GPUArraysCore: @allowscalar
 
-const OBC  = BoundaryCondition{<:Open} # OpenBoundaryCondition
-const IOBC = BoundaryCondition{<:Open{<:Nothing}} # "Imposed-velocity" OpenBoundaryCondition (with no scheme)
-const FIOBC = BoundaryCondition{<:Open{<:Nothing}, <:Number} # "Fixed-imposed-velocity" OpenBoundaryCondition
-const ZIOBC = BoundaryCondition{<:Open{<:Nothing}, <:Nothing} # "Zero-imposed-velocity" OpenBoundaryCondition (no-inflow)
+const NFBC = BoundaryCondition{<:NormalFlow} # "Radiantion" NormalFlowBoundaryCondition (with a matching scheme)
+const INFBC = BoundaryCondition{<:NormalFlow{<:Nothing}} # "Imposed-velocity" NormalFlowBoundaryCondition (with no scheme)
+const FINFBC = BoundaryCondition{<:NormalFlow{<:Nothing}, <:Number} # "Fixed-imposed-velocity" NormalFlowBoundaryCondition
+const ZINFBC = BoundaryCondition{<:NormalFlow{<:Nothing}, <:Nothing} # "Zero-imposed-velocity" NormalFlowBoundaryCondition (no-inflow)
 
 function get_west_area(grid)
     dA = grid_metric_operation((Face, Center, Center), Ax, grid)
@@ -54,46 +54,46 @@ end
 @inline north_transport(v)  = Field(Integral(view(v, :, v.grid.Ny + 1, :), dims=(1, 3)))
 @inline top_transport(w)    = Field(Integral(view(w, :, :, w.grid.Nz + 1), dims=(1, 2)))
 
-initialize_side_transport(u, bc::OBC, ::Val{:west})   = (; west_transport = west_transport(u), west_area = get_west_area(u.grid))
-initialize_side_transport(u, bc::OBC, ::Val{:east})   = (; east_transport = east_transport(u), east_area = get_east_area(u.grid))
-initialize_side_transport(v, bc::OBC, ::Val{:south})  = (; south_transport = south_transport(v), south_area = get_south_area(v.grid))
-initialize_side_transport(v, bc::OBC, ::Val{:north})  = (; north_transport = north_transport(v), north_area = get_north_area(v.grid))
-initialize_side_transport(w, bc::OBC, ::Val{:bottom}) = (; bottom_transport = bottom_transport(w), bottom_area = get_bottom_area(w.grid))
-initialize_side_transport(w, bc::OBC, ::Val{:top})    = (; top_transport = top_transport(w), top_area = get_top_area(w.grid))
+initialize_side_transport(u, bc::NFBC, ::Val{:west})   = (; west_transport = west_transport(u), west_area = get_west_area(u.grid))
+initialize_side_transport(u, bc::NFBC, ::Val{:east})   = (; east_transport = east_transport(u), east_area = get_east_area(u.grid))
+initialize_side_transport(v, bc::NFBC, ::Val{:south})  = (; south_transport = south_transport(v), south_area = get_south_area(v.grid))
+initialize_side_transport(v, bc::NFBC, ::Val{:north})  = (; north_transport = north_transport(v), north_area = get_north_area(v.grid))
+initialize_side_transport(w, bc::NFBC, ::Val{:bottom}) = (; bottom_transport = bottom_transport(w), bottom_area = get_bottom_area(w.grid))
+initialize_side_transport(w, bc::NFBC, ::Val{:top})    = (; top_transport = top_transport(w), top_area = get_top_area(w.grid))
 
-initialize_side_transport(u, bc::ZIOBC, ::Val{:west})   = NamedTuple()
-initialize_side_transport(u, bc::ZIOBC, ::Val{:east})   = NamedTuple()
-initialize_side_transport(v, bc::ZIOBC, ::Val{:south})  = NamedTuple()
-initialize_side_transport(v, bc::ZIOBC, ::Val{:north})  = NamedTuple()
-initialize_side_transport(w, bc::ZIOBC, ::Val{:bottom}) = NamedTuple()
-initialize_side_transport(w, bc::ZIOBC, ::Val{:top})    = NamedTuple()
+initialize_side_transport(u, bc::ZINFBC, ::Val{:west})   = NamedTuple()
+initialize_side_transport(u, bc::ZINFBC, ::Val{:east})   = NamedTuple()
+initialize_side_transport(v, bc::ZINFBC, ::Val{:south})  = NamedTuple()
+initialize_side_transport(v, bc::ZINFBC, ::Val{:north})  = NamedTuple()
+initialize_side_transport(w, bc::ZINFBC, ::Val{:bottom}) = NamedTuple()
+initialize_side_transport(w, bc::ZINFBC, ::Val{:top})    = NamedTuple()
 
-initialize_side_transport(u, bc::FIOBC, ::Val{:west})   = (; west_transport = bc.condition * get_west_area(u.grid), west_area = get_west_area(u.grid))
-initialize_side_transport(u, bc::FIOBC, ::Val{:east})   = (; east_transport = bc.condition * get_east_area(u.grid), east_area = get_east_area(u.grid))
-initialize_side_transport(v, bc::FIOBC, ::Val{:south})  = (; south_transport = bc.condition * get_south_area(v.grid), south_area = get_south_area(v.grid))
-initialize_side_transport(v, bc::FIOBC, ::Val{:north})  = (; north_transport = bc.condition * get_north_area(v.grid), north_area = get_north_area(v.grid))
-initialize_side_transport(w, bc::FIOBC, ::Val{:bottom}) = (; bottom_transport = bc.condition * get_bottom_area(w.grid), bottom_area = get_bottom_area(w.grid))
-initialize_side_transport(w, bc::FIOBC, ::Val{:top})    = (; top_transport = bc.condition * get_top_area(w.grid), top_area = get_top_area(w.grid))
+initialize_side_transport(u, bc::FINFBC, ::Val{:west})   = (; west_transport = bc.condition * get_west_area(u.grid), west_area = get_west_area(u.grid))
+initialize_side_transport(u, bc::FINFBC, ::Val{:east})   = (; east_transport = bc.condition * get_east_area(u.grid), east_area = get_east_area(u.grid))
+initialize_side_transport(v, bc::FINFBC, ::Val{:south})  = (; south_transport = bc.condition * get_south_area(v.grid), south_area = get_south_area(v.grid))
+initialize_side_transport(v, bc::FINFBC, ::Val{:north})  = (; north_transport = bc.condition * get_north_area(v.grid), north_area = get_north_area(v.grid))
+initialize_side_transport(w, bc::FINFBC, ::Val{:bottom}) = (; bottom_transport = bc.condition * get_bottom_area(w.grid), bottom_area = get_bottom_area(w.grid))
+initialize_side_transport(w, bc::FINFBC, ::Val{:top})    = (; top_transport = bc.condition * get_top_area(w.grid), top_area = get_top_area(w.grid))
 
 initialize_side_transport(velocity, ::Nothing, side) = NamedTuple()
 initialize_side_transport(velocity, bc, side) = NamedTuple()
 
-needs_transport_correction(::IOBC) = false
-needs_transport_correction(::OBC) = true
+needs_transport_correction(::INFBC) = false
+needs_transport_correction(::NFBC) = true
 needs_transport_correction(::Nothing) = false
 needs_transport_correction(bc) = false
 
 # True for scheme boundaries that participate in the global pool (net-zero) correction.
 # Boundaries with a `target_transport` are corrected independently and excluded from the pool.
-needs_pool_correction(::IOBC) = false
-needs_pool_correction(bc::OBC) = !has_target_transport(bc.classification.scheme)
+needs_pool_correction(::INFBC) = false
+needs_pool_correction(bc::NFBC) = !has_target_transport(bc.classification.scheme)
 needs_pool_correction(::Nothing) = false
 needs_pool_correction(bc) = false
 
 """
     initialize_boundary_transport(velocities::NamedTuple)
 
-Initialize boundary transports for boundaries with `OpenBoundaryCondition`s,
+Initialize boundary transports for boundaries with `NormalFlowBoundaryCondition`s,
 returning a `NamedTuple` of boundary transports and areas, or `nothing` when no
 open boundary requires correction.
 
@@ -183,23 +183,23 @@ end
 
 update_open_boundary_transport!(boundary_transport) = map(compute!, boundary_transport)
 
-open_boundary_transport(bt, ::OBC, ::Val{:west})   = @allowscalar bt.west_transport[]
-open_boundary_transport(bt, ::OBC, ::Val{:east})   = @allowscalar bt.east_transport[]
-open_boundary_transport(bt, ::OBC, ::Val{:south})  = @allowscalar bt.south_transport[]
-open_boundary_transport(bt, ::OBC, ::Val{:north})  = @allowscalar bt.north_transport[]
-open_boundary_transport(bt, ::OBC, ::Val{:bottom}) = @allowscalar bt.bottom_transport[]
-open_boundary_transport(bt, ::OBC, ::Val{:top})    = @allowscalar bt.top_transport[]
+open_boundary_transport(bt, ::NFBC, ::Val{:west})   = @allowscalar bt.west_transport[]
+open_boundary_transport(bt, ::NFBC, ::Val{:east})   = @allowscalar bt.east_transport[]
+open_boundary_transport(bt, ::NFBC, ::Val{:south})  = @allowscalar bt.south_transport[]
+open_boundary_transport(bt, ::NFBC, ::Val{:north})  = @allowscalar bt.north_transport[]
+open_boundary_transport(bt, ::NFBC, ::Val{:bottom}) = @allowscalar bt.bottom_transport[]
+open_boundary_transport(bt, ::NFBC, ::Val{:top})    = @allowscalar bt.top_transport[]
 
-# Imposed-velocity Open BCs (no scheme) and non-open BCs contribute zero to the
+# Imposed-velocity NormalFlow BCs (no scheme) and non-open BCs contribute zero to the
 # net boundary transport: imposed-velocity outflow is already fixed, and closed
 # boundaries carry no transport by definition. Method-per-side avoids ambiguity
-# with the `::OBC, ::Val{:<side>}` methods above (ZIOBC <: IOBC <: OBC).
-open_boundary_transport(bt, ::ZIOBC, ::Val{:west})   = zero(bt.total_area_scheme_boundaries)
-open_boundary_transport(bt, ::ZIOBC, ::Val{:east})   = zero(bt.total_area_scheme_boundaries)
-open_boundary_transport(bt, ::ZIOBC, ::Val{:south})  = zero(bt.total_area_scheme_boundaries)
-open_boundary_transport(bt, ::ZIOBC, ::Val{:north})  = zero(bt.total_area_scheme_boundaries)
-open_boundary_transport(bt, ::ZIOBC, ::Val{:bottom}) = zero(bt.total_area_scheme_boundaries)
-open_boundary_transport(bt, ::ZIOBC, ::Val{:top})    = zero(bt.total_area_scheme_boundaries)
+# with the `::NFBC, ::Val{:<side>}` methods above (ZINFBC <: INFBC <: NFBC).
+open_boundary_transport(bt, ::ZINFBC, ::Val{:west})   = zero(bt.total_area_scheme_boundaries)
+open_boundary_transport(bt, ::ZINFBC, ::Val{:east})   = zero(bt.total_area_scheme_boundaries)
+open_boundary_transport(bt, ::ZINFBC, ::Val{:south})  = zero(bt.total_area_scheme_boundaries)
+open_boundary_transport(bt, ::ZINFBC, ::Val{:north})  = zero(bt.total_area_scheme_boundaries)
+open_boundary_transport(bt, ::ZINFBC, ::Val{:bottom}) = zero(bt.total_area_scheme_boundaries)
+open_boundary_transport(bt, ::ZINFBC, ::Val{:top})    = zero(bt.total_area_scheme_boundaries)
 
 open_boundary_transport(bt, bc, side) = zero(bt.total_area_scheme_boundaries)
 
@@ -225,45 +225,45 @@ end
 # Pool-correction methods. Boundaries with a `target_transport` are corrected
 # independently (see `apply_targeted_*_boundary_correction!` below); skip them
 # here so the pool correction only touches non-targeted boundaries.
-function correct_left_boundary_transport!(u, bc::OBC, ::Val{:west}, A⁻¹_∮udA)
+function correct_left_boundary_transport!(u, bc::NFBC, ::Val{:west}, A⁻¹_∮udA)
     has_target_transport(bc.classification.scheme) && return nothing
     interior(u, 1, :, :) .-= A⁻¹_∮udA
 end
-function correct_left_boundary_transport!(v, bc::OBC, ::Val{:south}, A⁻¹_∮udA)
+function correct_left_boundary_transport!(v, bc::NFBC, ::Val{:south}, A⁻¹_∮udA)
     has_target_transport(bc.classification.scheme) && return nothing
     interior(v, :, 1, :) .-= A⁻¹_∮udA
 end
-function correct_left_boundary_transport!(w, bc::OBC, ::Val{:bottom}, A⁻¹_∮udA)
+function correct_left_boundary_transport!(w, bc::NFBC, ::Val{:bottom}, A⁻¹_∮udA)
     has_target_transport(bc.classification.scheme) && return nothing
     interior(w, :, :, 1) .-= A⁻¹_∮udA
 end
-correct_left_boundary_transport!(u, bc::IOBC, ::Val{:west},   A⁻¹_∮udA) = nothing
-correct_left_boundary_transport!(v, bc::IOBC, ::Val{:south},  A⁻¹_∮udA) = nothing
-correct_left_boundary_transport!(w, bc::IOBC, ::Val{:bottom}, A⁻¹_∮udA) = nothing
+correct_left_boundary_transport!(u, bc::INFBC, ::Val{:west},   A⁻¹_∮udA) = nothing
+correct_left_boundary_transport!(v, bc::INFBC, ::Val{:south},  A⁻¹_∮udA) = nothing
+correct_left_boundary_transport!(w, bc::INFBC, ::Val{:bottom}, A⁻¹_∮udA) = nothing
 correct_left_boundary_transport!(u, bc, side, A⁻¹_∮udA) = nothing
 
-function correct_right_boundary_transport!(u, bc::OBC, ::Val{:east}, A⁻¹_∮udA)
+function correct_right_boundary_transport!(u, bc::NFBC, ::Val{:east}, A⁻¹_∮udA)
     has_target_transport(bc.classification.scheme) && return nothing
     interior(u, u.grid.Nx + 1, :, :) .+= A⁻¹_∮udA
 end
-function correct_right_boundary_transport!(v, bc::OBC, ::Val{:north}, A⁻¹_∮udA)
+function correct_right_boundary_transport!(v, bc::NFBC, ::Val{:north}, A⁻¹_∮udA)
     has_target_transport(bc.classification.scheme) && return nothing
     interior(v, :, v.grid.Ny + 1, :) .+= A⁻¹_∮udA
 end
-function correct_right_boundary_transport!(w, bc::OBC, ::Val{:top}, A⁻¹_∮udA)
+function correct_right_boundary_transport!(w, bc::NFBC, ::Val{:top}, A⁻¹_∮udA)
     has_target_transport(bc.classification.scheme) && return nothing
     interior(w, :, :, w.grid.Nz + 1) .+= A⁻¹_∮udA
 end
-correct_right_boundary_transport!(u, bc::IOBC, ::Val{:east},  A⁻¹_∮udA) = nothing
-correct_right_boundary_transport!(v, bc::IOBC, ::Val{:north}, A⁻¹_∮udA) = nothing
-correct_right_boundary_transport!(w, bc::IOBC, ::Val{:top},   A⁻¹_∮udA) = nothing
+correct_right_boundary_transport!(u, bc::INFBC, ::Val{:east},  A⁻¹_∮udA) = nothing
+correct_right_boundary_transport!(v, bc::INFBC, ::Val{:north}, A⁻¹_∮udA) = nothing
+correct_right_boundary_transport!(w, bc::INFBC, ::Val{:top},   A⁻¹_∮udA) = nothing
 correct_right_boundary_transport!(u, bc, side, A⁻¹_∮udA) = nothing
 
 # Apply a per-boundary correction to reach the prescribed `target_transport`.
 # The boundary velocity is adjusted by a uniform shift so that the integral of the
 # normal velocity over the boundary matches `target_transport` (positive in the
 # positive coordinate direction — e.g., eastward through west/east boundaries).
-function apply_targeted_left_boundary_correction!(u, bc::OBC, ::Val{:west}, boundary_transport)
+function apply_targeted_left_boundary_correction!(u, bc::NFBC, ::Val{:west}, boundary_transport)
     has_target_transport(bc.classification.scheme) || return nothing
     west_area = get_west_area(u.grid)
     target    = get_target_transport(bc.classification.scheme, u.grid)
@@ -272,7 +272,7 @@ function apply_targeted_left_boundary_correction!(u, bc::OBC, ::Val{:west}, boun
     return nothing
 end
 
-function apply_targeted_left_boundary_correction!(v, bc::OBC, ::Val{:south}, boundary_transport)
+function apply_targeted_left_boundary_correction!(v, bc::NFBC, ::Val{:south}, boundary_transport)
     has_target_transport(bc.classification.scheme) || return nothing
     south_area = get_south_area(v.grid)
     target     = get_target_transport(bc.classification.scheme, v.grid)
@@ -281,7 +281,7 @@ function apply_targeted_left_boundary_correction!(v, bc::OBC, ::Val{:south}, bou
     return nothing
 end
 
-function apply_targeted_left_boundary_correction!(w, bc::OBC, ::Val{:bottom}, boundary_transport)
+function apply_targeted_left_boundary_correction!(w, bc::NFBC, ::Val{:bottom}, boundary_transport)
     has_target_transport(bc.classification.scheme) || return nothing
     bottom_area = get_bottom_area(w.grid)
     target      = get_target_transport(bc.classification.scheme, w.grid)
@@ -290,7 +290,7 @@ function apply_targeted_left_boundary_correction!(w, bc::OBC, ::Val{:bottom}, bo
     return nothing
 end
 
-function apply_targeted_right_boundary_correction!(u, bc::OBC, ::Val{:east}, boundary_transport)
+function apply_targeted_right_boundary_correction!(u, bc::NFBC, ::Val{:east}, boundary_transport)
     has_target_transport(bc.classification.scheme) || return nothing
     east_area = get_east_area(u.grid)
     target    = get_target_transport(bc.classification.scheme, u.grid)
@@ -299,7 +299,7 @@ function apply_targeted_right_boundary_correction!(u, bc::OBC, ::Val{:east}, bou
     return nothing
 end
 
-function apply_targeted_right_boundary_correction!(v, bc::OBC, ::Val{:north}, boundary_transport)
+function apply_targeted_right_boundary_correction!(v, bc::NFBC, ::Val{:north}, boundary_transport)
     has_target_transport(bc.classification.scheme) || return nothing
     north_area = get_north_area(v.grid)
     target     = get_target_transport(bc.classification.scheme, v.grid)
@@ -308,7 +308,7 @@ function apply_targeted_right_boundary_correction!(v, bc::OBC, ::Val{:north}, bo
     return nothing
 end
 
-function apply_targeted_right_boundary_correction!(w, bc::OBC, ::Val{:top}, boundary_transport)
+function apply_targeted_right_boundary_correction!(w, bc::NFBC, ::Val{:top}, boundary_transport)
     has_target_transport(bc.classification.scheme) || return nothing
     top_area = get_top_area(w.grid)
     target   = get_target_transport(bc.classification.scheme, w.grid)

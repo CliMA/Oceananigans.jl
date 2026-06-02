@@ -52,16 +52,16 @@ grid = RectilinearGrid(arch;
 # Pool boundaries (west, south): participate in the global volume-flux correction.
 # Targeted boundaries (east, north): independently corrected to Q_east / Q_north.
 u_bcs = FieldBoundaryConditions(
-    west = OpenBoundaryCondition(+U_in;
+    west = NormalFlowBoundaryCondition(+U_in;
                scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)),
-    east = OpenBoundaryCondition(-U_in;
+    east = NormalFlowBoundaryCondition(-U_in;
                scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale,
                                                target_transport = Q_east)))
 
 v_bcs = FieldBoundaryConditions(
-    south = OpenBoundaryCondition(-U_in;
+    south = NormalFlowBoundaryCondition(-U_in;
                 scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)),
-    north = OpenBoundaryCondition(+U_in;
+    north = NormalFlowBoundaryCondition(+U_in;
                 scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale,
                                                target_transport = Q_north)))
 

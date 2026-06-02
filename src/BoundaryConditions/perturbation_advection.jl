@@ -17,8 +17,10 @@ end
                           gravity_wave_speed = 0,
                           density = nothing)
 
-Create a `PerturbationAdvection` scheme to be used with an `OpenBoundaryCondition`.
-This scheme nudges the boundary value to the `OpenBoundaryCondition`'s exterior value `val`,
+Create a `PerturbationAdvection` scheme, passed as the `scheme` keyword to an
+`NormalFlowBoundaryCondition` (for boundary-normal velocities, `Face`-located) or to a
+`ValueBoundaryCondition` (for scalars such as tracers, `Center`-located).
+This scheme nudges the boundary value to the prescribed exterior value `val`,
 using a time-scale `inflow_timescale` for inflow and `outflow_timescale` for outflow.
 
 For cases where we assume that the internal flow is a small perturbation from
@@ -142,7 +144,11 @@ function Base.show(io::IO, pe::PerturbationAdvection)
     print(io, "└── target_transport: ", prettysummary(pe.target_transport))
 end
 
-const PAOBC = BoundaryCondition{<:Open{<:PerturbationAdvection}}
+# PerturbationAdvection lives on `NormalFlow` for boundary-normal velocities (Face-located)
+# and on `Value` for scalars such as tracers (Center-located).
+const PANFBC = BoundaryCondition{<:NormalFlow{<:PerturbationAdvection}}
+const PAVBC  = BoundaryCondition{<:Value{<:PerturbationAdvection}}
+const PABC   = Union{PANFBC, PAVBC}
 
 """
     has_target_transport(scheme)
@@ -179,7 +185,7 @@ _eval_tt(f, grid) = f(grid)
 @inline advecting_velocity(::Nothing, ψ̄) = ψ̄
 @inline advecting_velocity(U, ψ̄) = U
 
-@inline function step_right_open_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
+@inline function step_right_open_boundary!(bc::PABC, l, m, boundary_indices, boundary_adjacent_indices,
                                            grid, ψ, U, clock, model_fields, ΔX, k)
     iᴮ, jᴮ, kᴮ = boundary_indices
     iᴬ, jᴬ, kᴬ = boundary_adjacent_indices
@@ -217,7 +223,7 @@ _eval_tt(f, grid) = f(grid)
     return nothing
 end
 
-@inline function step_left_open_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
+@inline function step_left_open_boundary!(bc::PABC, l, m, boundary_indices, boundary_adjacent_indices,
                                           grid, ψ, U, clock, model_fields, ΔX, k)
     iᴮ, jᴮ, kᴮ = boundary_indices
     iᴬ, jᴬ, kᴬ = boundary_adjacent_indices
@@ -252,14 +258,14 @@ end
 end
 
 # Backward compatibility: old step_right/left_boundary! signatures without k argument
-@inline function step_right_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
+@inline function step_right_boundary!(bc::PABC, l, m, boundary_indices, boundary_adjacent_indices,
                                       grid, ψ, clock, model_fields, ΔX)
     k = boundary_indices[3]
     step_right_open_boundary!(bc, l, m, boundary_indices, boundary_adjacent_indices,
                               grid, ψ, nothing, clock, model_fields, ΔX, k)
 end
 
-@inline function step_left_boundary!(bc::PAOBC, l, m, boundary_indices, boundary_adjacent_indices,
+@inline function step_left_boundary!(bc::PABC, l, m, boundary_indices, boundary_adjacent_indices,
                                      grid, ψ, clock, model_fields, ΔX)
     k = boundary_indices[3]
     step_left_open_boundary!(bc, l, m, boundary_indices, boundary_adjacent_indices,
@@ -267,10 +273,10 @@ end
 end
 
 #####
-##### Halo-filling methods for Face-located fields (velocity/momentum)
+##### Halo-filling methods for Face-located fields (velocity/momentum): NormalFlow + PerturbationAdvection
 #####
 
-@inline function _fill_east_halo!(j, k, grid, u, bc::PAOBC, ::Tuple{Face, Any, Any}, clock, model_fields)
+@inline function _fill_east_halo!(j, k, grid, u, bc::PANFBC, ::Tuple{Face, Any, Any}, clock, model_fields)
     i = grid.Nx + 1
     boundary_indices = (i, j, k)
     boundary_adjacent_indices = (i-1, j, k)
@@ -280,7 +286,7 @@ end
     return nothing
 end
 
-@inline function _fill_west_halo!(j, k, grid, u, bc::PAOBC, ::Tuple{Face, Any, Any}, clock, model_fields)
+@inline function _fill_west_halo!(j, k, grid, u, bc::PANFBC, ::Tuple{Face, Any, Any}, clock, model_fields)
     boundary_indices = (1, j, k)
     boundary_adjacent_indices = (2, j, k)
     Δx = Δxᶠᶜᶜ(1, j, k, grid)
@@ -289,7 +295,7 @@ end
     return nothing
 end
 
-@inline function _fill_north_halo!(i, k, grid, u, bc::PAOBC, ::Tuple{Any, Face, Any}, clock, model_fields)
+@inline function _fill_north_halo!(i, k, grid, u, bc::PANFBC, ::Tuple{Any, Face, Any}, clock, model_fields)
     j = grid.Ny + 1
     boundary_indices = (i, j, k)
     boundary_adjacent_indices = (i, j-1, k)
@@ -299,7 +305,7 @@ end
     return nothing
 end
 
-@inline function _fill_south_halo!(i, k, grid, u, bc::PAOBC, ::Tuple{Any, Face, Any}, clock, model_fields)
+@inline function _fill_south_halo!(i, k, grid, u, bc::PANFBC, ::Tuple{Any, Face, Any}, clock, model_fields)
     boundary_indices = (i, 1, k)
     boundary_adjacent_indices = (i, 2, k)
     Δy = Δyᶜᶠᶜ(i, 1, k, grid)
@@ -308,7 +314,7 @@ end
     return nothing
 end
 
-@inline function _fill_top_halo!(i, j, grid, u, bc::PAOBC, ::Tuple{Any, Any, Face}, clock, model_fields)
+@inline function _fill_top_halo!(i, j, grid, u, bc::PANFBC, ::Tuple{Any, Any, Face}, clock, model_fields)
     k = grid.Nz + 1
     boundary_indices = (i, j, k)
     boundary_adjacent_indices = (i, j, k-1)
@@ -318,7 +324,7 @@ end
     return nothing
 end
 
-@inline function _fill_bottom_halo!(i, j, grid, u, bc::PAOBC, ::Tuple{Any, Any, Face}, clock, model_fields)
+@inline function _fill_bottom_halo!(i, j, grid, u, bc::PANFBC, ::Tuple{Any, Any, Face}, clock, model_fields)
     boundary_indices = (i, j, 1)
     boundary_adjacent_indices = (i, j, 2)
     Δz = Δzᶜᶜᶠ(i, j, 1, grid)
@@ -328,10 +334,10 @@ end
 end
 
 #####
-##### Halo-filling methods for Center-located fields (scalars like ρθ, ρq, tracers)
+##### Halo-filling methods for Center-located fields (scalars like ρθ, ρq, tracers): Value + PerturbationAdvection
 #####
 
-@inline function _fill_east_halo!(j, k, grid, c, bc::PAOBC, ::Tuple{Center, Any, Any}, clock, model_fields)
+@inline function _fill_east_halo!(j, k, grid, c, bc::PAVBC, ::Tuple{Center, Any, Any}, clock, model_fields)
     i = grid.Nx + 1
     boundary_indices = (i, j, k)
     boundary_adjacent_indices = (i-1, j, k)
@@ -342,7 +348,7 @@ end
     return nothing
 end
 
-@inline function _fill_west_halo!(j, k, grid, c, bc::PAOBC, ::Tuple{Center, Any, Any}, clock, model_fields)
+@inline function _fill_west_halo!(j, k, grid, c, bc::PAVBC, ::Tuple{Center, Any, Any}, clock, model_fields)
     boundary_indices = (1, j, k)
     boundary_adjacent_indices = (2, j, k)
     Δx = Δxᶠᶜᶜ(1, j, k, grid)
@@ -352,7 +358,7 @@ end
     return nothing
 end
 
-@inline function _fill_north_halo!(i, k, grid, c, bc::PAOBC, ::Tuple{Any, Center, Any}, clock, model_fields)
+@inline function _fill_north_halo!(i, k, grid, c, bc::PAVBC, ::Tuple{Any, Center, Any}, clock, model_fields)
     j = grid.Ny + 1
     boundary_indices = (i, j, k)
     boundary_adjacent_indices = (i, j-1, k)
@@ -363,7 +369,7 @@ end
     return nothing
 end
 
-@inline function _fill_south_halo!(i, k, grid, c, bc::PAOBC, ::Tuple{Any, Center, Any}, clock, model_fields)
+@inline function _fill_south_halo!(i, k, grid, c, bc::PAVBC, ::Tuple{Any, Center, Any}, clock, model_fields)
     boundary_indices = (i, 1, k)
     boundary_adjacent_indices = (i, 2, k)
     Δy = Δyᶜᶠᶜ(i, 1, k, grid)
@@ -373,7 +379,7 @@ end
     return nothing
 end
 
-@inline function _fill_top_halo!(i, j, grid, c, bc::PAOBC, ::Tuple{Any, Any, Center}, clock, model_fields)
+@inline function _fill_top_halo!(i, j, grid, c, bc::PAVBC, ::Tuple{Any, Any, Center}, clock, model_fields)
     k = grid.Nz + 1
     boundary_indices = (i, j, k)
     boundary_adjacent_indices = (i, j, k-1)
@@ -384,7 +390,7 @@ end
     return nothing
 end
 
-@inline function _fill_bottom_halo!(i, j, grid, c, bc::PAOBC, ::Tuple{Any, Any, Center}, clock, model_fields)
+@inline function _fill_bottom_halo!(i, j, grid, c, bc::PAVBC, ::Tuple{Any, Any, Center}, clock, model_fields)
     boundary_indices = (i, j, 1)
     boundary_adjacent_indices = (i, j, 2)
     Δz = Δzᶜᶜᶠ(i, j, 1, grid)
