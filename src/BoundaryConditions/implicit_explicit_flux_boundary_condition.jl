@@ -23,7 +23,7 @@ IMEXFluxTimeDiscretization() = IMEXFluxTimeDiscretization(nothing)
 
 Base.summary(::IMEXFluxTimeDiscretization) = "IMEXFluxTimeDiscretization"
 
-Adapt.adapt_structure(to, td::IMEXFluxTimeDiscretization) = 
+Adapt.adapt_structure(to, td::IMEXFluxTimeDiscretization) =
     IMEXFluxTimeDiscretization(Adapt.adapt(to, td.implicit_coefficient))
 
 """
