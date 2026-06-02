@@ -40,6 +40,7 @@ export
     # Boundary conditions
     BoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, OpenBoundaryCondition,
+    IMEXFluxTimeDiscretization, IMEXFluxBoundaryCondition,
     PerturbationAdvection,
     FieldBoundaryConditions,
 
@@ -77,7 +78,6 @@ export
     RiBasedVerticalDiffusivity,
     ExplicitTimeDiscretization,
     VerticallyImplicitTimeDiscretization,
-    ImplicitExplicitTimeDiscretization,
     AdaptiveVerticallyImplicitDiscretization,
     viscosity, diffusivity,
 

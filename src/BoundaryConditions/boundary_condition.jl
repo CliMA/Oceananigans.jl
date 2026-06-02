@@ -117,36 +117,42 @@ MultiRegionCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(Mu
 DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(DistributedCommunication(), val; kwargs...)
 
 """
-    FluxBoundaryCondition(flux; implicit_coefficient = nothing, kwargs...)
+    FluxBoundaryCondition(flux; time_discretization = ExplicitTimeDiscretization(), kwargs...)
 
 Return a `Flux` `BoundaryCondition` with `flux`.
 
-Without an `implicit_coefficient`, `flux` is an ordinary flux boundary condition integrated through
-the tendency.
+With the default `ExplicitTimeDiscretization`, `flux` is an ordinary flux boundary condition integrated
+through the tendency.
 
-With an `implicit_coefficient` `λ`, the boundary condition represents the affine flux
-`J(φ_b) = flux + λ φ_b`, where `φ_b` is the boundary-cell field value. The explicit part `flux` is
-integrated through the tendency, while the linear part `λ φ_b` is integrated implicitly by the
-vertical tridiagonal solver. This removes the `Δz`-dependent CFL limit that an explicit flux imposes
-and is unconditionally stable for dissipative fluxes (drag, linear restoring), where `λ φ_b` is a sink.
+With an [`IMEXFluxTimeDiscretization`](@ref) carrying a linear coefficient `λ`, the boundary condition
+represents the affine flux `J(φ_b) = flux + λ φ_b`, where `φ_b` is the boundary-cell field value. The
+explicit part `flux` is integrated through the tendency, while the linear part `λ φ_b` is integrated
+implicitly by the vertical tridiagonal solver. This removes the `Δz`-dependent CFL limit that an explicit
+flux imposes and is unconditionally stable for dissipative fluxes (drag, linear restoring), where `λ φ_b`
+is a sink:
 
-`flux` and `implicit_coefficient` follow the same conventions as any other function boundary condition;
-`kwargs` (`parameters`, `discrete_form`, `field_dependencies`) are applied to both.
+```julia
+FluxBoundaryCondition(flux; time_discretization = IMEXFluxTimeDiscretization(λ))
+```
+
+`flux` and the `implicit_coefficient` follow the same conventions as any other function boundary condition;
+`kwargs` (`parameters`, `discrete_form`, `field_dependencies`) are applied to both. See also
+[`IMEXFluxBoundaryCondition`](@ref) for a shorthand.
 
 !!! warning "Vertical boundaries only"
     The implicit part is embedded in the vertical tridiagonal solver, so a boundary condition with an
-    `implicit_coefficient` is only meaningful on `top`/`bottom` boundaries. Setting it on a horizontal
+    `IMEXFluxTimeDiscretization` is only meaningful on `top`/`bottom` boundaries. Setting it on a horizontal
     (`west`/`east`/`south`/`north`) or immersed boundary errors.
 """
-function FluxBoundaryCondition(flux; implicit_coefficient = nothing,
+function FluxBoundaryCondition(flux; time_discretization = ExplicitTimeDiscretization(),
                                parameters = nothing, discrete_form = false, field_dependencies = ())
 
-    return materialize_flux_boundary_condition(flux, implicit_coefficient;
+    return materialize_flux_boundary_condition(flux, time_discretization;
                                                parameters, discrete_form, field_dependencies)
 end
 
-# Ordinary explicit flux (no implicit coefficient).
-function materialize_flux_boundary_condition(flux, ::Nothing; parameters, discrete_form, field_dependencies)
+# Ordinary explicit flux.
+function materialize_flux_boundary_condition(flux, ::ExplicitTimeDiscretization; parameters, discrete_form, field_dependencies)
     condition = materialize_condition(flux, parameters, discrete_form, field_dependencies)
     return BoundaryCondition(Flux(), condition)
 end

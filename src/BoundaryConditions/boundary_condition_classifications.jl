@@ -32,7 +32,7 @@ to an increase of the quantity in the interior of the domain. The same logic hol
 west, north, and south boundaries.
 
 The type parameter `TD` records the `time_discretization` of the flux: `ExplicitTimeDiscretization`
-for an ordinary flux, or `ImplicitExplicitTimeDiscretization` for an affine flux whose linear part
+for an ordinary flux, or `IMEXFluxTimeDiscretization` for an affine flux whose linear part
 is integrated implicitly by the vertical solver.
 """
 struct Flux{TD} <: AbstractBoundaryConditionClassification

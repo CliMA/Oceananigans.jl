@@ -284,7 +284,7 @@ function NonhydrostaticModel(grid;
     model_fields = merge(velocities, tracers, auxiliary_fields)
     prognostic_fields = merge(velocities, tracers)
 
-    # Flux BCs with `ImplicitExplicitTimeDiscretization` are valid only on vertical boundaries.
+    # Flux BCs with `IMEXFluxTimeDiscretization` are valid only on vertical boundaries.
     foreach(field -> validate_implicit_explicit_flux_locations(field.boundary_conditions), prognostic_fields)
 
     # Instantiate timestepper if not already instantiated. Build the vertical implicit solver if the

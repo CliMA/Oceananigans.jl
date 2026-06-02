@@ -10,7 +10,6 @@ export
     AbstractTimeDiscretization,
     ExplicitTimeDiscretization,
     VerticallyImplicitTimeDiscretization,
-    ImplicitExplicitTimeDiscretization,
     AdaptiveVerticallyImplicitDiscretization,
     time_discretization
 
@@ -18,7 +17,7 @@ using Adapt: Adapt
 using KernelAbstractions: @kernel, @index
 using Oceananigans: Oceananigans, AbstractModel, initialize!, prognostic_fields
 using Oceananigans.Utils: AbstractTimeDiscretization, ExplicitTimeDiscretization,
-                          VerticallyImplicitTimeDiscretization, ImplicitExplicitTimeDiscretization,
+                          VerticallyImplicitTimeDiscretization,
                           AdaptiveVerticallyImplicitDiscretization
 
 """

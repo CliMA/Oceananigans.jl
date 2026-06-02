@@ -20,6 +20,7 @@ docs/src/developer_docs/AGENTS.md
 docs/Manifest.toml
 docs/src/developer_docs/AGENTS.md
 docs/.CondaPkg/
+docs/plans/
 
 # Vitepress and node
 node_modules
@@ -74,3 +75,6 @@ statprof
 
 # MCPRepl security configuration (contains API keys)
 .mcprepl/
+
+# Local git worktrees
+.worktrees/

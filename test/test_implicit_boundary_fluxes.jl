@@ -19,7 +19,7 @@ using Oceananigans.TurbulenceClosures: VerticallyImplicitTimeDiscretization, CAT
 @inline drag_coefficient(i, j, grid, clock, fields, p)   =  p.λ
 
 drag_bc(implicit, λ, c★) = implicit ?
-    FluxBoundaryCondition(drag_explicit_part; implicit_coefficient=drag_coefficient, discrete_form=true, parameters=(; λ, c★)) :
+    FluxBoundaryCondition(drag_explicit_part; time_discretization=IMEXFluxTimeDiscretization(drag_coefficient), discrete_form=true, parameters=(; λ, c★)) :
     FluxBoundaryCondition(drag_flux; discrete_form=true, parameters=(; λ, c★))
 
 # `closure = :auto` builds a zero-diffusivity vertically-implicit closure for the implicit BC
@@ -51,8 +51,8 @@ end
 function catke_drag_column(arch, Δt, nsteps; implicit, λ=0.05, u₀=1.0)
     grid = RectilinearGrid(arch; size=4, z=(-4, 0), topology=(Flat, Flat, Bounded))
     if implicit   # drag toward 0: explicit part 0, coefficient λ (β = λ Δt / Δz = 5 at Δt = 100)
-        u_top = FluxBoundaryCondition(0.0; implicit_coefficient=λ)
-        v_top = FluxBoundaryCondition(0.0; implicit_coefficient=λ)
+        u_top = IMEXFluxBoundaryCondition(0.0, λ)
+        v_top = IMEXFluxBoundaryCondition(0.0, λ)
     else
         u_top = FluxBoundaryCondition(mom_drag_u; discrete_form=true, parameters=(; λ))
         v_top = FluxBoundaryCondition(mom_drag_v; discrete_form=true, parameters=(; λ))

@@ -33,18 +33,6 @@ struct VerticallyImplicitTimeDiscretization <: AbstractTimeDiscretization end
 
 Base.summary(::VerticallyImplicitTimeDiscretization) = "VerticallyImplicitTimeDiscretization"
 
-"""
-    struct ImplicitExplicitTimeDiscretization <: AbstractTimeDiscretization
-
-An implicit-explicit (IMEX) time-discretization for an affine `Flux` boundary condition
-`J(φ_b) = Fₑ + λ φ_b`. The explicit part `Fₑ` is integrated through the tendency like an
-ordinary flux boundary condition, while the linear part `λ φ_b` is integrated implicitly by
-the vertical tridiagonal solver.
-"""
-struct ImplicitExplicitTimeDiscretization <: AbstractTimeDiscretization end
-
-Base.summary(::ImplicitExplicitTimeDiscretization) = "ImplicitExplicitTimeDiscretization"
-
 struct AdaptiveVerticallyImplicitDiscretization{FT, R} <: AbstractTimeDiscretization
     cfl :: FT
     Δt  :: R

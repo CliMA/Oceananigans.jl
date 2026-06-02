@@ -5,6 +5,7 @@ export
     BoundaryCondition, getbc,
     PeriodicBoundaryCondition, OpenBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, DistributedCommunicationBoundaryCondition,
+    IMEXFluxTimeDiscretization, IMEXFluxBoundaryCondition,
     implicit_flux_coefficient,
     needs_implicit_solver, validate_implicit_explicit_flux_locations, total_boundary_flux,
     PerturbationAdvection,
@@ -22,7 +23,7 @@ using KernelAbstractions: @index, @kernel
 
 using Oceananigans.Architectures: CPU, GPU
 using Oceananigans.Utils: launch!
-using Oceananigans.Utils: ExplicitTimeDiscretization, ImplicitExplicitTimeDiscretization
+using Oceananigans.Utils: AbstractTimeDiscretization, ExplicitTimeDiscretization
 using Oceananigans.Operators: Ax, Ay, Az, volume
 using Oceananigans.Grids
 
