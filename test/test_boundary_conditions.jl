@@ -1,6 +1,6 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.BoundaryConditions: PBC, ZFBC, VBC, OBC, Zipper
+using Oceananigans.BoundaryConditions: PBC, ZFBC, VBC, NFBC, Zipper
 using Oceananigans.BoundaryConditions: Mixed, MixedBoundaryCondition
 using Oceananigans.BoundaryConditions: Zipper, ContinuousBoundaryFunction, DiscreteBoundaryFunction, regularize_field_boundary_conditions
 using Oceananigans.BoundaryConditions: compute_x_bcs!, compute_y_bcs!, compute_z_bcs!
@@ -49,8 +49,8 @@ end
         @test default_bcs_C.north.condition isa Oceananigans.BoundaryConditions.PolarValue
         @test default_bcs_C.south.condition isa Oceananigans.BoundaryConditions.PolarValue
 
-        @test default_bcs_F.north isa OBC
-        @test default_bcs_F.south isa OBC
+        @test default_bcs_F.north isa NFBC
+        @test default_bcs_F.south isa NFBC
 
         @test default_bcs_F.north.condition isa Oceananigans.BoundaryConditions.PolarValue
         @test default_bcs_F.south.condition isa Oceananigans.BoundaryConditions.PolarValue
@@ -164,8 +164,8 @@ end
         @test w_bcs.east isa PBC
         @test w_bcs.south  isa PBC
         @test w_bcs.north isa PBC
-        @test w_bcs.bottom  isa OBC
-        @test w_bcs.top isa OBC
+        @test w_bcs.bottom  isa NFBC
+        @test w_bcs.top isa NFBC
 
         @test T_bcs isa FieldBoundaryConditions
         @test T_bcs.west  isa PBC
@@ -195,8 +195,8 @@ end
         @test v_bcs isa FieldBoundaryConditions
         @test v_bcs.west  isa PBC
         @test v_bcs.east isa PBC
-        @test v_bcs.south  isa OBC
-        @test v_bcs.north isa OBC
+        @test v_bcs.south  isa NFBC
+        @test v_bcs.north isa NFBC
         @test v_bcs.bottom  isa ZFBC
         @test v_bcs.top isa ZFBC
 
@@ -205,8 +205,8 @@ end
         @test w_bcs.east isa PBC
         @test w_bcs.south  isa ZFBC
         @test w_bcs.north isa ZFBC
-        @test w_bcs.bottom  isa OBC
-        @test w_bcs.top isa OBC
+        @test w_bcs.bottom  isa NFBC
+        @test w_bcs.top isa NFBC
 
         @test T_bcs isa FieldBoundaryConditions
         @test T_bcs.west  isa PBC
@@ -226,8 +226,8 @@ end
         T_bcs = regularize_field_boundary_conditions(default_bcs, bbb_grid, :T)
 
         @test u_bcs isa FieldBoundaryConditions
-        @test u_bcs.west  isa OBC
-        @test u_bcs.east isa OBC
+        @test u_bcs.west  isa NFBC
+        @test u_bcs.east isa NFBC
         @test u_bcs.south  isa ZFBC
         @test u_bcs.north isa ZFBC
         @test u_bcs.bottom  isa ZFBC
@@ -236,8 +236,8 @@ end
         @test v_bcs isa FieldBoundaryConditions
         @test v_bcs.west  isa ZFBC
         @test v_bcs.east isa ZFBC
-        @test v_bcs.south  isa OBC
-        @test v_bcs.north isa OBC
+        @test v_bcs.south  isa NFBC
+        @test v_bcs.north isa NFBC
         @test v_bcs.bottom  isa ZFBC
         @test v_bcs.top isa ZFBC
 
@@ -246,8 +246,8 @@ end
         @test w_bcs.east isa ZFBC
         @test w_bcs.south  isa ZFBC
         @test w_bcs.north isa ZFBC
-        @test w_bcs.bottom  isa OBC
-        @test w_bcs.top isa OBC
+        @test w_bcs.bottom  isa NFBC
+        @test w_bcs.top isa NFBC
 
         @test T_bcs isa FieldBoundaryConditions
         @test T_bcs.west  isa ZFBC
