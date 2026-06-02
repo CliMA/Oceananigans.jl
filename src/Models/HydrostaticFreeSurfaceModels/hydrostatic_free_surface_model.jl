@@ -265,7 +265,9 @@ function HydrostaticFreeSurfaceModel(grid;
     prognostic_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers)
 
     # Flux BCs with `IMEXFluxTimeDiscretization` are valid only on vertical boundaries.
-    foreach(field -> validate_implicit_explicit_flux_locations(field.boundary_conditions), prognostic_fields)
+    for field in prognostic_fields
+        @apply_regionally validate_implicit_explicit_flux_locations(field.boundary_conditions)
+    end
 
     # Build the vertical implicit solver if the closure, the advection scheme (adaptive implicit
     # vertical advection), or any boundary condition (implicit-explicit flux) requires it.

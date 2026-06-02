@@ -7,7 +7,7 @@ export
 
 using Oceananigans: Oceananigans
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶠ, ∂xᵣᶠᶜᶜ, ∂yᵣᶜᶠᶜ, ∂xᶠᶜᶜ, ∂yᶜᶠᶜ, ∂zᶜᶜᶠ
-using Oceananigans.BoundaryConditions: getbc, total_boundary_flux
+using Oceananigans.BoundaryConditions: total_boundary_flux
 
 using SeawaterPolynomials: SeawaterPolynomials, ρ′, thermal_expansion, haline_contraction, with_float_type
 
