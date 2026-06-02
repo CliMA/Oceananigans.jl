@@ -21,7 +21,7 @@ compute_y_bcs!(::Nothing, args...) = nothing
 compute_z_bcs!(::Nothing, args...) = nothing
 
 # Not-flux boundary conditions
-const NotFluxBC = Union{PBC, MCBC, DCBC, VBC, GBC, OBC, ZFBC, Nothing}
+const NotFluxBC = Union{PBC, MCBC, DCBC, VBC, GBC, NFBC, ZFBC, Nothing}
 
 compute_x_bcs!(Gc, ::AbstractGrid, c, ::NotFluxBC, ::NotFluxBC, ::AbstractArchitecture, args...) = nothing
 compute_y_bcs!(Gc, ::AbstractGrid, c, ::NotFluxBC, ::NotFluxBC, ::AbstractArchitecture, args...) = nothing

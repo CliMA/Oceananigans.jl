@@ -426,7 +426,7 @@ function test_field_time_series_function_boundary_conditions(arch)
 
     u_west(x, y, t) = 0
     u_east(x, y, t) = 0
-    u_bcs = FieldBoundaryConditions(west = OpenBoundaryCondition(u_west), east = OpenBoundaryCondition(u_east, scheme=PerturbationAdvection()))
+    u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(u_west), east = NormalFlowBoundaryCondition(u_east, scheme=PerturbationAdvection()))
     model = NonhydrostaticModel(grid; boundary_conditions = (; u=u_bcs))
     simulation = Simulation(model; Δt=1, stop_iteration=1)
 
