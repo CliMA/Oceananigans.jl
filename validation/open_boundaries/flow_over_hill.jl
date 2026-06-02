@@ -38,8 +38,8 @@ function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
     grid = ImmersedBoundaryGrid(grid_base, PartialCellBottom(hill))
 
     # Model kwargs
-    u_boundaries = FieldBoundaryConditions(west = OpenBoundaryCondition(U), # No scheme here for a perfectly barotropic inflow
-                                           east = OpenBoundaryCondition(U; scheme))
+    u_boundaries = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(U), # No scheme here for a perfectly barotropic inflow
+                                           east = NormalFlowBoundaryCondition(U; scheme))
     boundary_conditions = (u = u_boundaries,)
     advection = WENO(; order=5, minimum_buffer_upwind_order=1)
 

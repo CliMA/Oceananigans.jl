@@ -21,11 +21,11 @@ function tracer_outflow_simulation(; arch = CPU(),
 
     grid = RectilinearGrid(arch; topology = (Bounded, Flat, Flat), size = Nx, x = (0, Lx))
 
-    tracer_bcs(c̄) = FieldBoundaryConditions(west = OpenBoundaryCondition(c̄; scheme),
-                                            east = OpenBoundaryCondition(c̄; scheme))
+    tracer_bcs(c̄) = FieldBoundaryConditions(west = ValueBoundaryCondition(c̄; scheme),
+                                            east = ValueBoundaryCondition(c̄; scheme))
 
-    boundary_conditions = (u     = FieldBoundaryConditions(west = OpenBoundaryCondition(U),
-                                                           east = OpenBoundaryCondition(U)),
+    boundary_conditions = (u     = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(U),
+                                                           east = NormalFlowBoundaryCondition(U)),
                            cpos  = tracer_bcs( 1),
                            czero = tracer_bcs( 0),
                            cneg  = tracer_bcs(-1))
