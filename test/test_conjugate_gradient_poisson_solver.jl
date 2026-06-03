@@ -1,7 +1,7 @@
 include("dependencies_for_runtests.jl")
 include("dependencies_for_poisson_solvers.jl")
 
-using Oceananigans.Solvers: fft_poisson_solver, ConjugateGradientPoissonSolver, DiagonallyDominantPreconditioner, iteration, VolumeInverseNorm
+using Oceananigans.Solvers: fft_poisson_solver, ConjugateGradientPoissonSolver, DiagonallyDominantPreconditioner, ColumnwiseTridiagonalPreconditioner, iteration, VolumeInverseNorm
 using Oceananigans.Models.NonhydrostaticModels: compute_pressure_correction!, solve_for_pressure!
 using Oceananigans.Operators: V⁻¹ᶜᶜᶜ
 using Oceananigans.Grids: XYZRegularRG
@@ -56,6 +56,18 @@ function test_conjugate_gradient_basic_functionality(grid, preconditioner)
     @test_nowarn solve!(pressure, solver.conjugate_gradient_solver, solver.right_hand_side)
 
     # Should converge
+    @test iteration(solver.conjugate_gradient_solver) <= solver.conjugate_gradient_solver.maxiter
+end
+
+function test_conjugate_gradient_partial_cell_bottom(underlying_grid, make_preconditioner)
+    grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(-underlying_grid.Lz / 2))
+    preconditioner = make_preconditioner(underlying_grid, grid)
+    preconditioner_name = typeof(preconditioner).name.wrapper
+    @info "  Testing CG solver with PartialCellBottom using $preconditioner_name..."
+
+    solver = ConjugateGradientPoissonSolver(grid; preconditioner)
+    pressure = CenterField(grid)
+    @test_nowarn solve!(pressure, solver.conjugate_gradient_solver, solver.right_hand_side)
     @test iteration(solver.conjugate_gradient_solver) <= solver.conjugate_gradient_solver.maxiter
 end
 
@@ -315,6 +327,36 @@ end
             for (underlying_grid_name, underlying_grid) in underlying_grids
                 @test test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_grid, DiagonallyDominantPreconditioner(), bottom)
                 @test test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_grid, fft_poisson_solver(underlying_grid), bottom)
+            end
+        end
+
+        # Anisotropic grids where the vertical resolution is ~8x finer than the
+        # horizontal, the regime where ColumnwiseTridiagonalPreconditioner shines.
+        Nh, Nz = 8, 8
+        Lh, Lz = 1, 1/8
+        stretched_aniso_z = [-Lz * (1 - tanh(2k / Nz) / tanh(2)) for k in 0:Nz]
+        anisotropic_grids = Dict(
+            "regular grid"   => RectilinearGrid(arch, topology=(Periodic, Periodic, Bounded),
+                                                size=(Nh, Nh, Nz), x=(0, Lh), y=(0, Lh), z=(-Lz, 0)),
+            "stretched grid" => RectilinearGrid(arch, topology=(Bounded, Bounded, Bounded),
+                                                size=(Nh, Nh, Nz), x=(0, Lh), y=(0, Lh), z=stretched_aniso_z))
+
+        # (ug, g) -> preconditioner, given the underlying grid ug and the (possibly immersed) grid g
+        preconditioner_builders = [(ug, g) -> DiagonallyDominantPreconditioner(),
+                                   (ug, g) -> fft_poisson_solver(ug),
+                                   (ug, g) -> ColumnwiseTridiagonalPreconditioner(g)]
+
+        @testset "Conjugate gradient solver on anisotropic grids [$(typeof(arch))]" begin
+            for (underlying_grid_name, grid) in anisotropic_grids, make_preconditioner in preconditioner_builders
+                @info "  Testing CG solver on anisotropic $underlying_grid_name [$(typeof(arch))]..."
+                test_conjugate_gradient_basic_functionality(grid, make_preconditioner(grid, grid))
+                test_conjugate_gradient_with_nonhydrostatic_model(grid, make_preconditioner(grid, grid))
+            end
+        end
+
+        @testset "Conjugate gradient solver with a PartialCellBottom [$(typeof(arch))]" begin
+            for (underlying_grid_name, underlying_grid) in anisotropic_grids, make_preconditioner in preconditioner_builders
+                test_conjugate_gradient_partial_cell_bottom(underlying_grid, make_preconditioner)
             end
         end
 
