@@ -17322,3 +17322,152 @@ Results:
 - N8 and N16 also show unstable or large multipliers; for example N8 seed42 uniform scaling needs `gamma=27.0` and `corr_rel=16.6`.
 
 Conclusion: the small work-canceling direction identified by the free lower-bound diagnostic is not aligned with the existing `op_sqrt` x-edge fluxes. Simple multiplicative rescaling of x-edge fluxes is rejected.
+
+## 2026-06-03: naive local x-edge residual correction rejected
+
+Diagnostic: `/tmp/xedge_local_residual_correction_probe.jl`.
+
+Localized `op_sqrt + current Bernoulli` Hodge work into rotational corner work plus a face-distributed Bernoulli corner density. The decomposition closes algebraically: `sum_r = Wrot`, `sum_b = Wb`, and `sum_t = W` to roundoff. Tested local x-edge corrections of the successful Hodge-covector form `δF = β(H_u, -H_v)`, with `β` computed from either local rotational density or local total density rather than the previous global scalar residual.
+
+Results:
+- The x-edge total density is not a stable proxy for the global residual: `xsum_t/W` was `+0.8399` (N8 seed42), `-0.1267` (N8 seed99), `+1.0443` (N16 seed42), `+0.2825` (N16 seed99), `+1.6532` (N32 seed42), and `+0.7442` (N32 seed99).
+- Local corrections require huge local coefficients and reproduce the large drift of skew-projected x-edge rotational variants.
+- Examples:
+  - N32 seed42: local total correction `corr_rel=0.1271`, corrected work `-7.75e-07`, corrected drift `0.1327`; `max_beta=1.05e5`.
+  - N32 seed99: local total correction `corr_rel=0.1643`, corrected work `+1.15e-06`, corrected drift `0.1679`; `max_beta=6.00e5`.
+  - N16 seed42: local total correction `corr_rel=0.2963`, corrected drift `0.3036`; `max_beta=4.68e4`.
+
+Conclusion: the free least-norm Hodge-covector correction is small because it uses a global scalar residual. Replacing that scalar with naive local corner residual densities is not source-ready: it is not exactly work-canceling, is seed-dependent, and is dynamically too disruptive.
+
+## 2026-06-03: closest-projection rotational + exact Hodge-adjoint Bernoulli rejected
+
+Diagnostic: `/tmp/projected_rot_exact_bernoulli_probe.jl`.
+
+Closed out the earlier reviewer suggestion to pair closest-projection x-edge rotational variants with `hodge_compatible_pressure_correction(K)` as the exact Hodge-adjoint Bernoulli term.
+
+Results:
+- The exact Bernoulli term has Hodge work at roundoff by itself in these diagnostics, and when paired with the exactly skew-projected x-edge rotational variants (`euclidean`, `vweighted`, `ind`) the total work is also roundoff.
+- The dynamic scale is unusable. The exact Bernoulli replacement is tens to thousands of current-VI norms away from the current Bernoulli/VI tendency.
+- Examples:
+  - N8 seed42: `exactB_rel=1.031325e+02`; `euclidean + exactB` total relative drift `1.031424e+02`.
+  - N16 seed42: `exactB_rel=7.389153e+02`; `vweighted + exactB` drift `7.389125e+02`.
+  - N16 seed99: `exactB_rel=1.380524e+03`.
+  - N32 seed42: `exactB_rel=6.250275e+02`; `vweighted + exactB` drift `6.250244e+02`.
+  - N32 seed99: `exactB_rel=6.000852e+02`.
+- With current `op_sqrt` rotational, replacing only Bernoulli by exactB inherits the rotational work defect and still has enormous drift.
+
+Conclusion: closest-projection rotational + exact Hodge-adjoint Bernoulli is algebraically clean but dynamically unusable. This closes the older reviewer recommendation; exact energy adjoint Bernoulli remains rejected as a source strategy unless a dynamically scaled/localized derivation is found.
+
+## 2026-06-03: vorticity-weighted x-edge Hodge-covector corrections
+
+Diagnostics:
+- `/tmp/xedge_zeta_weighted_correction_probe.jl`
+- `/tmp/xedge_den_weighted_correction_probe.jl`
+
+Tested global work-canceling x-edge Hodge-covector corrections constrained toward rotational-source shape. The free lower-bound correction is `δF = β(H_u, -H_v)`. A rotational transport-shaped correction has `δF = β ζ²(H_u, -H_v)`, equivalent to `δU = -β ζ H_v`, `δV = β ζ H_u`. Also tested denominator-normalized variants such as `ζ² / den`, where `den` is the existing `op_sqrt` corner denominator.
+
+Results:
+- All global-scalar variants cancel Hodge work to roundoff by construction.
+- Free correction remains the smallest in tendency norm, but has pathological implied transport increments at small-vorticity corners. Examples:
+  - N32 seed1 free `corr_rel=0.01139`, but `max_dU=22.0`, `max_dV=19.5`.
+  - N32 seed99 free `corr_rel=0.02321`, but `max_dU=208`, `max_dV=315`.
+- `absζ` weighting strongly reduces these transport pathologies with moderate drift penalty, but is not a clean smooth rotational transport form because it implies `sign(ζ)` in `δtransport`.
+  - N32 seed42: `absζ corr_rel=0.00653`, corrected drift `0.03902`, `max_dU=0.164`, `max_dV=0.118`.
+  - N32 seed99: `absζ corr_rel=0.02558`, corrected drift `0.04353`, `max_dU=0.664`, `max_dV=0.891`.
+- `ζ²` weighting is a clean rotational-source shape, but costs more drift:
+  - N32 seed42: `ζ² corr_rel=0.00803`, corrected drift `0.03930`, `max_dU=0.245`, `max_dV=0.090`.
+  - N32 seed99: `ζ² corr_rel=0.03491`, corrected drift `0.04961`, `max_dU=0.733`, `max_dV=0.550`.
+- Adding the existing corner denominator does not materially improve `ζ²` weighting:
+  - N32 seed42 `ζ²/den`: corrected drift `0.03930`.
+  - N32 seed99 `ζ²/den`: corrected drift `0.04966`.
+- `absζ/den` is dynamically closest among weighted variants but still carries the nonsmooth/sign issue and large relative transport changes:
+  - N32 seed42: corrected drift `0.03902`, `max_relU=4.96`, `max_relV=2.62`.
+  - N32 seed99: corrected drift `0.04360`, `max_relU=7.29`, `max_relV=9.83`.
+
+Conclusion: vorticity weighting is useful diagnostically because it removes the free correction's small-vorticity transport singularity. However, all successful variants still require a global scalar residual normalization. `ζ²` / `ζ²/den` are source-shaped but less dynamically faithful than the free correction; `absζ` / `absζ/den` are closer but not clean smooth rotational forms. No source edit yet.
+
+---
+
+## 2026-06-03 15:00 reviewer (Claude) — my Hodge-adjoint Bernoulli suggestion REJECTED + state-of-search summary
+
+Continuation 25 cleanly rejects my 13:55 recommendation. The exact
+Hodge-adjoint Bernoulli `-B̃^T (½|u|²) / hodge_weight` paired with
+closest-projection rotational:
+
+- DOES achieve total Hodge work at roundoff (algebraically EC ✓)
+- Has `exactB_rel = 10² to 10³ × current-VI norm` (dynamically unusable ✗)
+
+Acknowledging the suggestion was wrong: the continuum "gradient of
+KE" and the discrete "B̃^T applied to ½|u|² / weight" are off by
+order-of-magnitude factors because the inner products differ
+between G_bern and the Hodge map. Codex's earlier
+`hodge_adjoint_bernoulli_probe.jl` rejection was correct, and the
+pairing with closest-projection didn't fix that — the scale is in
+the Bernoulli itself, not the rotational.
+
+### State of empirical search (full picture)
+
+| Strategy | Skew? | Dynamics | Verdict |
+|----------|-------|----------|---------|
+| op_sqrt baseline (current) | No (1e-7 defect) | Best (rel ~0.04) | Working ref |
+| Independent-adjoint x-edge | Yes (roundoff) | Wrong (rel ~0.5-1.8) | Drops signal |
+| Closest-projection x-edge | Yes (roundoff) | Better (rel ~0.14) | + needs matched B |
+| + exact Hodge-adjoint B (mine) | Yes (roundoff) | 100-1000× too big | REJECTED |
+| Free Hodge-covector δF correction | Yes (small residual) | Pathological at ζ→0 | REJECTED |
+| ζ² weighted correction | Yes | Source-shape, drift +0.04 | Partial — needs global ζ |
+| absζ weighted correction | Yes | Closer (drift +0.01) | Sign discontinuity |
+| Local cell-KE gradient fit | Cancels Hodge work | Doesn't recover dynamics | REJECTED |
+| Fixed-coeff blend (op + θ·ind) | State-dependent θ | — | REJECTED |
+| Scalar-continuous ghost KE | Partial | Resolution-unstable | REJECTED |
+| Component-aware ghost KE | Fixes original pair | Breaks guard pair | REJECTED |
+
+The empirical search has thoroughly mapped the "drop-in fix"
+neighborhood. **No simple combination of closest-projection
+rotational + algebraic Bernoulli closes both skew AND dynamics.**
+
+### Pause recommendation
+
+I think the empirical search has plateaued. Greg has spun up a
+fresh agent for the theoretical derivation (per his decision a
+short while ago). I'd recommend:
+
+1. **Codex**: pause further x-edge correction probes. Stay on
+   baseline source. Document the search map (above table) so the
+   theory agent can use it.
+2. **Theory agent**: derive the explicit corner weights using
+   TRiSK / Sadourny / Arakawa-Lamb formalism. Output: closed-form
+   `w_α(i, j)` for x-edge u-faces. Expected delivery: a few
+   hours.
+3. **Reviewer (me)**: monitor + relay.
+
+The structural insight from all the probes: the matched
+Bernoulli for closest-projection rotational MUST be in a non-trivial
+inner product or with state-dependent weights. A simple discretized
+"-∇(½|u|²)" doesn't have the right scale.
+
+### What the theory agent should know
+
+The empirical findings localize the problem precisely:
+
+1. **x-edge u-faces** are where Bernoulli + rotational fail to cancel
+   on div-free states.
+2. The cancellation defect has bilinear top entries at
+   `v(Nx, 1) ↔ u(1, 1)` (and similar SW-corner pairs) — see
+   bilinear probe results 02:30 onward.
+3. The Hodge-weighted inner product `⟨u, v⟩_W` with
+   `W = diag(hodge_weight × covariant_to_contravariant)` is the
+   energy inner product on this grid.
+4. An exact Hodge-skew rotational exists (independent-adjoint
+   construction at x-edges).
+5. Matching Bernoulli to this rotational requires a structure that
+   the continuum `½|u|²` gradient doesn't encode — likely the
+   correct Bernoulli form is `∇_h B(u)` for some discrete-only
+   functional `B(u)` that reduces to `½|u|²` in the orthogonal
+   limit.
+
+### Standing by for theory delivery
+
+I'll keep watching. If the theory agent posts a new .md/.tex
+file at repo root with corner weights, I'll relay to Codex
+immediately.
+

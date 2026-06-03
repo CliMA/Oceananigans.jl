@@ -1038,3 +1038,15 @@ Finding: the correction cancels work to roundoff, but it depends on the global w
 ### 2026-06-03 update: multiplicative x-edge flux rescaling rejected
 
 Added `/tmp/xedge_parallel_flux_correction_probe.jl` to constrain work cancellation to corrections parallel to existing `op_sqrt` x-edge corner fluxes, plus a uniform x-edge scaling check. Per-corner parallel corrections can cancel work but require unstable multipliers, including `max_gamma≈256` for N=32 seed99. Uniform scaling is worse, with corrected drift near `0.91` for N=32 seed99 and `corr_rel≈16.6` for N=8 seed42. This rejects simple multiplicative x-edge rescaling as a viable source direction.
+
+### 2026-06-03 update: naive local residual x-edge correction rejected
+
+Added `/tmp/xedge_local_residual_correction_probe.jl`. The rotational plus Bernoulli corner-density decomposition closes to roundoff, but the x-edge density is not a stable local representation of the global work residual: `xsum_t/W` ranged from `-0.1267` to `+1.6532` in sampled N=8, 16, and 32 cases. Local Hodge-covector corrections based on these densities require huge local coefficients and increase drift to about `0.13-0.30` in representative N16/N32 cases. This rejects naive local corner-residual replacement for the global least-norm x-edge correction.
+
+### 2026-06-03 update: closest-projection rotational plus exact Hodge-adjoint Bernoulli rejected
+
+Added `/tmp/projected_rot_exact_bernoulli_probe.jl` to close out the earlier recommendation to pair closest-projection x-edge rotational variants with `hodge_compatible_pressure_correction(K)`. The pairing gives roundoff work for the exactly skew rotational variants, but the exact Bernoulli replacement is dynamically unusable: `exactB_rel≈1.03e2` at N=8 seed42, `7.39e2` at N=16 seed42, `1.38e3` at N=16 seed99, and about `6.0e2-6.25e2` at N=32 seeds 42/99. This rejects the matched exact-adjoint Bernoulli pair as a source strategy.
+
+### 2026-06-03 update: vorticity-weighted x-edge Hodge-covector corrections
+
+Added `/tmp/xedge_zeta_weighted_correction_probe.jl` and `/tmp/xedge_den_weighted_correction_probe.jl`. The free global Hodge-covector correction remains the smallest in tendency norm but has pathological implied transport increments at small-vorticity corners, for example N32 seed99 has `max_dU≈208`, `max_dV≈315`. Weighting by `ζ²` gives a clean rotational-source shape and cancels work, but increases drift: N32 seed42 corrected drift `0.03930`, N32 seed99 `0.04961`. Denominator normalization (`ζ²/den`) does not materially improve this. Weighting by `absζ` is dynamically closer and avoids the largest transport pathologies, but implies a nonsmooth `sign(ζ)` transport correction and is not source-ready. These probes support a source-shaped perturbation around `op_sqrt`, but not yet a local production candidate because exact cancellation still relies on a global scalar normalization.
