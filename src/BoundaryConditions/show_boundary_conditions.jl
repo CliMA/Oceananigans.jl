@@ -17,6 +17,9 @@ bc_str(::DCBC)                   = "DistributedCommunication"
 bc_str(::Nothing)                = "Nothing"
 bc_str(bc::UZBC)                 = "U-point Zipper($(bc.condition))"
 bc_str(bc::FZBC)                 = "F-Pivot Zipper($(bc.condition))"
+bc_str(bc::QZBC)                 = "QuadFolded Zipper($(bc.condition))"
+bc_str(bc::QCovZBC)              = "QuadFolded Covariant Zipper($(bc.condition))"
+bc_str(bc::QConZBC)              = "QuadFolded Contravariant Zipper($(bc.condition))"
 
 #####
 ##### BoundaryCondition
@@ -32,6 +35,9 @@ Base.summary(::PBC)                       = string("PeriodicBoundaryCondition")
 Base.summary(bc::DCBC)                    = string("DistributedBoundaryCondition: ", prettysummary(bc.condition))
 Base.summary(bc::UZBC)                    = string("UPivotZipperBoundaryCondition: ", prettysummary(bc.condition))
 Base.summary(bc::FZBC)                    = string("FPivotZipperBoundaryCondition: ", prettysummary(bc.condition))
+Base.summary(bc::QZBC)                    = string("QuadFoldedZipperBoundaryCondition: ", prettysummary(bc.condition))
+Base.summary(bc::QCovZBC)                 = string("QuadFoldedCovariantZipperBoundaryCondition: ", prettysummary(bc.condition))
+Base.summary(bc::QConZBC)                 = string("QuadFoldedContravariantZipperBoundaryCondition: ", prettysummary(bc.condition))
 
 function Base.summary(bc::MBC)
     string("MixedBoundaryCondition: ",

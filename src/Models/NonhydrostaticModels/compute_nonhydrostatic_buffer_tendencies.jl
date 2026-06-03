@@ -15,6 +15,8 @@ function compute_buffer_tendencies!(model::NonhydrostaticModel)
     p_parameters = buffer_p_kernel_parameters(grid, arch)
     κ_parameters = buffer_κ_kernel_parameters(grid, model.closure, arch)
 
+    Oceananigans.Fields.compute!(model.auxiliary_fields)
+
     # We need new values for `p` and `κ`
     compute_auxiliaries!(model; p_parameters, κ_parameters)
 

@@ -51,6 +51,10 @@ end
 # Exact division if requested
 @inline newton_div(::Type{NormalDivision}, a, b) = a / b
 
+# Deferred WENO schemes are usually materialized before execution. When an
+# unmaterialized scheme is evaluated directly, use the same package default.
+@inline newton_div(::Type{Nothing}, a, b) = newton_div(BackendOptimizedDivision, a, b)
+
 # Backend-optimized on CPU uses fast division
 # Since both f32 and f64 divisions are generally implemented in hardware,
 # the latencies are comparable.

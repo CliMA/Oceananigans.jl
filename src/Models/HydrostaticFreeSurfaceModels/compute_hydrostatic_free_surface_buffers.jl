@@ -1,5 +1,5 @@
 using Oceananigans.Utils: get_active_cells_map
-using Oceananigans.Grids: halo_size, XFlatGrid, YFlatGrid
+using Oceananigans.Grids: halo_size, XFlatGrid, YFlatGrid, SphericalShellGrid
 using Oceananigans.DistributedComputations: Distributed, DistributedGrid, AsynchronousDistributed, synchronize_communication!
 using Oceananigans.ImmersedBoundaries: CellMaps
 using Oceananigans.Models.NonhydrostaticModels: buffer_tendency_kernel_parameters, buffer_κ_kernel_parameters, buffer_parameters
@@ -11,6 +11,15 @@ const DistributedActiveInteriorIBG = ImmersedBoundaryGrid{FT, TX, TY, TZ,
 # Fallback for non-distributed grids
 complete_communication_and_compute_tracer_buffer!(model, grid, arch) = nothing
 complete_communication_and_compute_momentum_buffer!(model, grid, arch) = nothing
+
+fill_hydrostatic_closure_field_halos!(closure_fields, ::SphericalShellGrid) = fill_halo_regions!(closure_fields)
+fill_hydrostatic_closure_field_halos!(closure_fields, grid) = fill_halo_regions!(closure_fields; only_local_halos=true)
+
+fill_hydrostatic_pressure_halos!(pressure, ::SphericalShellGrid) = fill_halo_regions!(pressure)
+fill_hydrostatic_pressure_halos!(pressure, grid) = fill_halo_regions!(pressure; only_local_halos=true)
+
+fill_buffer_horizontal_transport_velocity_halos!(transport_velocities, grid) =
+    fill_horizontal_transport_velocity_halos!(transport_velocities, grid)
 
 """
     complete_communication_and_compute_momentum_buffer!(model::HydrostaticFreeSurfaceModel, ::DistributedGrid, ::AsynchronousDistributed)
@@ -36,11 +45,14 @@ function complete_communication_and_compute_momentum_buffer!(model::HydrostaticF
 
     κ_params = buffer_κ_kernel_parameters(grid, model.closure, arch)
 
+    compute_auxiliary_fields!(model.auxiliary_fields)
     compute_buoyancy_gradients!(model.buoyancy, grid, model.tracers, parameters = volume_params)
+    update_vertical_velocities!(model.velocities, grid, model; parameters = surface_params)
     update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers; parameters = surface_params)
     compute_closure_fields!(model.closure_fields, model.closure, model; parameters = κ_params)
 
-    fill_halo_regions!(model.closure_fields; only_local_halos=true)
+    fill_hydrostatic_closure_field_halos!(model.closure_fields, grid)
+    fill_hydrostatic_pressure_halos!(model.pressure.pHY′, grid)
 
     # parameters for communicating North / South / East / West side
     @apply_regionally compute_momentum_buffer_contributions!(grid, arch, model)
@@ -97,11 +109,17 @@ This function is called after interior tracer tendencies are computed to:
 function complete_communication_and_compute_tracer_buffer!(model::HydrostaticFreeSurfaceModel, ::DistributedGrid, ::AsynchronousDistributed)
     grid = model.grid
     arch = architecture(grid)
+    surface_params = buffer_surface_kernel_parameters(grid, arch)
 
-    # Synchronize velocities and free surface
+    # Synchronize transport velocities and free surface
     synchronize_communication!(model.free_surface)
-    synchronize_communication!(model.velocities.u)
-    synchronize_communication!(model.velocities.v)
+    synchronize_communication!(model.transport_velocities.u)
+    synchronize_communication!(model.transport_velocities.v)
+    fill_buffer_horizontal_transport_velocity_halos!(model.transport_velocities, grid)
+
+    compute_auxiliary_fields!(model.auxiliary_fields)
+    update_vertical_transport_velocities!(model.transport_velocities, grid, model; parameters = surface_params)
+    fill_vertical_transport_velocity_halos!(model.transport_velocities, grid)
 
     compute_tracer_buffer_contributions!(grid, arch, model)
 

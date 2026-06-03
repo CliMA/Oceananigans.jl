@@ -50,6 +50,7 @@ function set!(model::OceananigansModels, filepath::AbstractString)
 
         # Update model clock
         set!(model, checkpointed_clock)
+        refresh_restored_model_state!(model)
     end
 
     return nothing

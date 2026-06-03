@@ -3,7 +3,8 @@ using Oceananigans.Grids: topology, _node, φnode, φnodes, λnode, λnodes,
                           XYFlatGrid, YZFlatGrid, XZFlatGrid, XYZFlatGrid,
                           XRegularRG, YRegularRG, ZRegularRG,
                           XRegularLLG, YRegularLLG, ZRegularLLG,
-                          ZRegOrthogonalSphericalShellGrid
+                          ZRegOrthogonalSphericalShellGrid,
+                          SphericalShellGrid, OctaHEALPixMapping
 
 using Oceananigans.Operators: Δx, Δy, Δz
 using Oceananigans.Utils: interpolator, _interpolate
@@ -165,6 +166,31 @@ end
     return convert(FT, fractional_index(y, yn, Ny))
 end
 
+const OctaHEALPixSphericalShellGrid =
+    SphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:OctaHEALPixMapping}
+
+@inline _fractional_horizontal_index(ξ, N, ::Center) =
+    ξ * N + convert(typeof(ξ), 1//2)
+
+@inline _fractional_horizontal_index(ξ, N, ::Face) =
+    ξ * N + one(ξ)
+
+@inline function fractional_x_index(λ, locs, grid::OctaHEALPixSphericalShellGrid)
+    ℓx = @inbounds locs[1]
+    FT = eltype(grid)
+    λ′ = convert(FT, λ)
+    ξ = convert_to_0_360(λ′ + convert(FT, 180)) / convert(FT, 360)
+    return _fractional_horizontal_index(ξ, grid.Nx, ℓx)
+end
+
+@inline function fractional_y_index(φ, locs, grid::OctaHEALPixSphericalShellGrid)
+    ℓy = @inbounds locs[2]
+    FT = eltype(grid)
+    φ′ = convert(FT, φ)
+    η = (sind(φ′) + one(FT)) / convert(FT, 2)
+    return _fractional_horizontal_index(η, grid.Ny, ℓy)
+end
+
 @inline fractional_z_index(z, locs, grid::ZFlatGrid) = zero(grid)
 
 ZRegGrid = Union{ZRegularRG, ZRegularLLG, ZRegOrthogonalSphericalShellGrid}
@@ -210,6 +236,13 @@ floats indicating a location between grid points.
 @inline function _fractional_indices((x, y, z), grid, ℓx, ℓy, ℓz)
     ii = fractional_x_index(x, (ℓx, ℓy, ℓz), grid)
     jj = fractional_y_index(y, (ℓx, ℓy, ℓz), grid)
+    kk = fractional_z_index(z, (ℓx, ℓy, ℓz), grid)
+    return FractionalIndices(ii, jj, kk)
+end
+
+@inline function _fractional_indices((λ, φ, z), grid::OctaHEALPixSphericalShellGrid, ℓx, ℓy, ℓz)
+    ii = fractional_x_index(λ, (ℓx, ℓy, ℓz), grid)
+    jj = fractional_y_index(φ, (ℓx, ℓy, ℓz), grid)
     kk = fractional_z_index(z, (ℓx, ℓy, ℓz), grid)
     return FractionalIndices(ii, jj, kk)
 end
@@ -359,7 +392,7 @@ end
 
 Interpolate `from_field` `to_field` and then fill the halo regions of `to_field`.
 """
-function interpolate!(to_field::Field, from_field::AbstractField)
+function interpolate_interior!(to_field::Field, from_field::AbstractField)
     to_grid   = to_field.grid
     from_grid = from_field.grid
 
@@ -386,7 +419,26 @@ function interpolate!(to_field::Field, from_field::AbstractField)
             _interpolate!, to_field, to_grid, to_location,
             from_field, from_grid, from_location)
 
+    return to_field
+end
+
+function interpolate!(to_field::Field, from_field::AbstractField)
+    interpolate_interior!(to_field, from_field)
+
     fill_halo_regions!(to_field)
 
     return to_field
+end
+
+function interpolate!(to_fields::Tuple{<:Field{Face, Center, LZ}, <:Field{Center, Face, LZ}},
+                      from_fields::Tuple{<:Field{Face, Center, LZ}, <:Field{Center, Face, LZ}}) where LZ
+    to_u, to_v = to_fields
+    from_u, from_v = from_fields
+
+    interpolate_interior!(to_u, from_u)
+    interpolate_interior!(to_v, from_v)
+
+    fill_halo_regions!((to_u, to_v))
+
+    return to_fields
 end

@@ -102,6 +102,12 @@ fill_halo_kernel(::SouthAndNorth, bc::BoundaryCondition, grid, size, offset, dat
 fill_halo_kernel(::BottomAndTop, bc::BoundaryCondition, grid, size, offset, data, reduced_dimensions) =
     configure_kernel(architecture(grid), grid, kernel_parameters(size, offset), _fill_bottom_and_top_halo!; reduced_dimensions)[1]
 
+fill_halo_kernel(::WestAndEast, bc::QZBC, grid, size, offset, data, reduced_dimensions) =
+    configure_kernel(architecture(grid), grid, KernelParameters(axes(data, 2), axes(data, 3)), _fill_west_and_east_halo!; reduced_dimensions)[1]
+
+fill_halo_kernel(::SouthAndNorth, bc::QZBC, grid, size, offset, data, reduced_dimensions) =
+    configure_kernel(architecture(grid), grid, KernelParameters(axes(data, 1), axes(data, 3)), _fill_south_and_north_halo!; reduced_dimensions)[1]
+
 #####
 ##### One-sided fill halo kernels
 #####
@@ -123,6 +129,18 @@ fill_halo_kernel(::Bottom, bc::BoundaryCondition, grid, size, offset, data, redu
 
 fill_halo_kernel(::Top, bc::BoundaryCondition, grid, size, offset, data, reduced_dimensions) =
     configure_kernel(architecture(grid), grid, kernel_parameters(size, offset), _fill_only_top_halo!; reduced_dimensions)[1]
+
+fill_halo_kernel(::West, bc::QZBC, grid, size, offset, data, reduced_dimensions) =
+    configure_kernel(architecture(grid), grid, KernelParameters(axes(data, 2), axes(data, 3)), _fill_only_west_halo!; reduced_dimensions)[1]
+
+fill_halo_kernel(::East, bc::QZBC, grid, size, offset, data, reduced_dimensions) =
+    configure_kernel(architecture(grid), grid, KernelParameters(axes(data, 2), axes(data, 3)), _fill_only_east_halo!; reduced_dimensions)[1]
+
+fill_halo_kernel(::South, bc::QZBC, grid, size, offset, data, reduced_dimensions) =
+    configure_kernel(architecture(grid), grid, KernelParameters(axes(data, 1), axes(data, 3)), _fill_only_south_halo!; reduced_dimensions)[1]
+
+fill_halo_kernel(::North, bc::QZBC, grid, size, offset, data, reduced_dimensions) =
+    configure_kernel(architecture(grid), grid, KernelParameters(axes(data, 1), axes(data, 3)), _fill_only_north_halo!; reduced_dimensions)[1]
 
 #####
 ##### Periodic fill halo kernels (Always two-sided)

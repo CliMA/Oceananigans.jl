@@ -3,6 +3,7 @@ module Grids
 export Center, Face
 export AbstractTopology, topology
 export Periodic, Bounded, Flat, FullyConnected, LeftConnected, RightConnected
+export QuadFolded, Connected
 export RightFaceFolded, RightCenterFolded
 export LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded
 export LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected
@@ -14,6 +15,8 @@ export XFlatGrid, YFlatGrid, ZFlatGrid
 export XRegularRG, YRegularRG, ZRegularRG, XYRegularRG, XYZRegularRG
 export LatitudeLongitudeGrid, XRegularLLG, YRegularLLG, ZRegularLLG
 export OrthogonalSphericalShellGrid, ZRegOrthogonalSphericalShellGrid
+export AbstractSphericalShellMapping, OctaHEALPixMapping, OctaHEALPixConnectivity, EquiangularGnomonicCubedSpherePanel, SphericalShellMetrics
+export SphericalShellGrid, ZRegSphericalShellGrid
 export MutableVerticalDiscretization
 export ExponentialDiscretization, ReferenceToStretchedDiscretization, PowerLawStretching, LinearStretching
 export node, nodes
@@ -35,7 +38,7 @@ using DocStringExtensions: FIELDS
 
 using Oceananigans: Oceananigans
 using Oceananigans.Utils: Utils
-using Oceananigans.Architectures: Architectures, AbstractSerialArchitecture, architecture, on_architecture
+using Oceananigans.Architectures: Architectures, AbstractArchitecture, AbstractSerialArchitecture, CPU, architecture, on_architecture
 
 #####
 ##### Abstract types
@@ -122,6 +125,17 @@ Grid topology for tripolar U-point pivot connection.
 struct RightCenterFolded <: AbstractTopology end
 
 """
+    QuadFolded
+
+Grid topology for a two-dimensional folded quadrilateral shell, used by
+OctaHEALPix spherical-shell grids. Halo regions in both horizontal directions
+are filled through the grid connectivity rather than by periodic wrapping.
+"""
+struct QuadFolded <: AbstractTopology end
+
+const Connected = QuadFolded
+
+"""
     LeftConnectedRightCenterFolded
 
 Local grid topology for the northernmost y-rank of a 1×N distributed tripolar grid
@@ -183,7 +197,9 @@ include("automatic_halo_sizing.jl")
 include("input_validation.jl")
 include("grid_generation.jl")
 include("rectilinear_grid.jl")
+include("seam_transforms.jl")
 include("orthogonal_spherical_shell_grid.jl")
+include("spherical_shell_grid.jl")
 include("latitude_longitude_grid.jl")
 include("coordinate_transformations.jl")
 

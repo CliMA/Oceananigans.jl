@@ -20,6 +20,7 @@ default_prognostic_bc(::LeftConnected,  ::Center, default)  = default.boundary_c
 default_prognostic_bc(::RightConnected, ::Center, default)  = default.boundary_condition
 default_prognostic_bc(::RightFaceFolded, ::Center, default) = default.boundary_condition
 default_prognostic_bc(::RightCenterFolded, ::Center, default) = default.boundary_condition
+default_prognostic_bc(::QuadFolded,     ::Center, default) = QuadFoldedZipperBoundaryCondition()
 
 default_prognostic_bc(::DistributedFoldedTopology, ::Center, default) = default.boundary_condition
 
@@ -29,6 +30,7 @@ default_prognostic_bc(::LeftConnected,  ::Face, default) = ImpenetrableBoundaryC
 default_prognostic_bc(::RightConnected, ::Face, default) = ImpenetrableBoundaryCondition()
 default_prognostic_bc(::RightFaceFolded, ::Face, default) = ImpenetrableBoundaryCondition()
 default_prognostic_bc(::RightCenterFolded, ::Face, default) = ImpenetrableBoundaryCondition()
+default_prognostic_bc(::QuadFolded,     ::Face, default) = ImpenetrableBoundaryCondition()
 default_prognostic_bc(::DistributedFoldedTopology, ::Face, default) = ImpenetrableBoundaryCondition()
 
 default_prognostic_bc(::Bounded,        ::Nothing, default) = nothing
@@ -39,6 +41,7 @@ default_prognostic_bc(::LeftConnected,  ::Nothing, default) = nothing
 default_prognostic_bc(::RightConnected, ::Nothing, default) = nothing
 default_prognostic_bc(::RightFaceFolded, ::Nothing, default) = nothing
 default_prognostic_bc(::RightCenterFolded, ::Nothing, default) = nothing
+default_prognostic_bc(::QuadFolded,     ::Nothing, default) = nothing
 default_prognostic_bc(::DistributedFoldedTopology, ::Nothing, default) = nothing
 
 _default_auxiliary_bc(topo, loc) = default_prognostic_bc(topo, loc, DefaultBoundaryCondition())
@@ -47,6 +50,7 @@ _default_auxiliary_bc(::RightConnected, ::Face) = nothing
 _default_auxiliary_bc(::LeftConnected,  ::Face) = nothing
 _default_auxiliary_bc(::RightFaceFolded, ::Face) = nothing
 _default_auxiliary_bc(::RightCenterFolded, ::Face) = nothing
+_default_auxiliary_bc(::QuadFolded, ::Face) = nothing
 _default_auxiliary_bc(::DistributedFoldedTopology, ::Face) = nothing
 
 default_auxiliary_bc(grid, ::Val{:east}, loc)   = _default_auxiliary_bc(topology(grid, 1)(), loc[1])
@@ -55,6 +59,37 @@ default_auxiliary_bc(grid, ::Val{:south}, loc)  = _default_auxiliary_bc(topology
 default_auxiliary_bc(grid, ::Val{:north}, loc)  = _default_auxiliary_bc(topology(grid, 2)(), loc[2])
 default_auxiliary_bc(grid, ::Val{:bottom}, loc) = _default_auxiliary_bc(topology(grid, 3)(), loc[3])
 default_auxiliary_bc(grid, ::Val{:top}, loc)    = _default_auxiliary_bc(topology(grid, 3)(), loc[3])
+
+@inline octahealpix_auxiliary_bc(::Tuple{<:Face, <:Face, <:Any}) = QuadFoldedZipperBoundaryCondition()
+@inline octahealpix_auxiliary_bc(::Tuple{<:Face, <:Center, <:Any}) = QuadFoldedCovariantZipperBoundaryCondition()
+@inline octahealpix_auxiliary_bc(::Tuple{<:Center, <:Face, <:Any}) = QuadFoldedCovariantZipperBoundaryCondition()
+
+@inline horizontal_boundary_dimension(::Val{:west}) = 1
+@inline horizontal_boundary_dimension(::Val{:east}) = 1
+@inline horizontal_boundary_dimension(::Val{:south}) = 2
+@inline horizontal_boundary_dimension(::Val{:north}) = 2
+
+@inline function _spherical_shell_default_auxiliary_bc(grid::SphericalShellGrid, side, loc)
+    if grid.connectivity isa OctaHEALPixConnectivity
+        return octahealpix_auxiliary_bc(loc)
+    end
+
+    dim = horizontal_boundary_dimension(side)
+    return _default_auxiliary_bc(topology(grid, dim)(), loc[dim])
+end
+
+const QuadFoldedHorizontalLoc = Union{Tuple{<:Face, <:Face, <:Any},
+                                      Tuple{<:Face, <:Center, <:Any},
+                                      Tuple{<:Center, <:Face, <:Any}}
+
+default_auxiliary_bc(grid::SphericalShellGrid, side::Val{:west},  loc::QuadFoldedHorizontalLoc) =
+    _spherical_shell_default_auxiliary_bc(grid, side, loc)
+default_auxiliary_bc(grid::SphericalShellGrid, side::Val{:east},  loc::QuadFoldedHorizontalLoc) =
+    _spherical_shell_default_auxiliary_bc(grid, side, loc)
+default_auxiliary_bc(grid::SphericalShellGrid, side::Val{:south}, loc::QuadFoldedHorizontalLoc) =
+    _spherical_shell_default_auxiliary_bc(grid, side, loc)
+default_auxiliary_bc(grid::SphericalShellGrid, side::Val{:north}, loc::QuadFoldedHorizontalLoc) =
+    _spherical_shell_default_auxiliary_bc(grid, side, loc)
 
 #####
 ##### Field boundary conditions
@@ -291,6 +326,52 @@ function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
     bottom = regularize_bottom_boundary_condition(bcs.bottom, grid, loc, 3, LeftBoundary,  prognostic_names)
     top    = regularize_top_boundary_condition(bcs.top,       grid, loc, 3, RightBoundary, prognostic_names)
 
+    immersed = regularize_immersed_boundary_condition(bcs.immersed, grid, loc, field_name, prognostic_names)
+
+    return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
+end
+
+function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
+                                              grid::SphericalShellGrid,
+                                              loc::Tuple{<:Face, <:Center, <:Any},
+                                              prognostic_names=nothing,
+                                              field_name=nothing)
+    octahealpix_quadfolded = grid.connectivity isa OctaHEALPixConnectivity
+
+    west_bc = octahealpix_quadfolded && bcs.west isa DefaultBoundaryCondition ? ImpenetrableBoundaryCondition() : bcs.west
+    east_bc = octahealpix_quadfolded && bcs.east isa DefaultBoundaryCondition ? ImpenetrableBoundaryCondition() : bcs.east
+    south_bc = octahealpix_quadfolded && bcs.south isa DefaultBoundaryCondition ? QuadFoldedCovariantZipperBoundaryCondition() : bcs.south
+    north_bc = octahealpix_quadfolded && bcs.north isa DefaultBoundaryCondition ? QuadFoldedCovariantZipperBoundaryCondition() : bcs.north
+
+    west   = regularize_west_boundary_condition(west_bc,     grid, loc, 1, LeftBoundary,  prognostic_names)
+    east   = regularize_east_boundary_condition(east_bc,     grid, loc, 1, RightBoundary, prognostic_names)
+    south  = regularize_south_boundary_condition(south_bc,   grid, loc, 2, LeftBoundary,  prognostic_names)
+    north  = regularize_north_boundary_condition(north_bc,   grid, loc, 2, RightBoundary, prognostic_names)
+    bottom = regularize_bottom_boundary_condition(bcs.bottom, grid, loc, 3, LeftBoundary,  prognostic_names)
+    top    = regularize_top_boundary_condition(bcs.top,       grid, loc, 3, RightBoundary, prognostic_names)
+    immersed = regularize_immersed_boundary_condition(bcs.immersed, grid, loc, field_name, prognostic_names)
+
+    return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)
+end
+
+function regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
+                                              grid::SphericalShellGrid,
+                                              loc::Tuple{<:Center, <:Face, <:Any},
+                                              prognostic_names=nothing,
+                                              field_name=nothing)
+    octahealpix_quadfolded = grid.connectivity isa OctaHEALPixConnectivity
+
+    west_bc = octahealpix_quadfolded && bcs.west isa DefaultBoundaryCondition ? QuadFoldedCovariantZipperBoundaryCondition() : bcs.west
+    east_bc = octahealpix_quadfolded && bcs.east isa DefaultBoundaryCondition ? QuadFoldedCovariantZipperBoundaryCondition() : bcs.east
+    south_bc = octahealpix_quadfolded && bcs.south isa DefaultBoundaryCondition ? ImpenetrableBoundaryCondition() : bcs.south
+    north_bc = octahealpix_quadfolded && bcs.north isa DefaultBoundaryCondition ? ImpenetrableBoundaryCondition() : bcs.north
+
+    west   = regularize_west_boundary_condition(west_bc,     grid, loc, 1, LeftBoundary,  prognostic_names)
+    east   = regularize_east_boundary_condition(east_bc,     grid, loc, 1, RightBoundary, prognostic_names)
+    south  = regularize_south_boundary_condition(south_bc,   grid, loc, 2, LeftBoundary,  prognostic_names)
+    north  = regularize_north_boundary_condition(north_bc,   grid, loc, 2, RightBoundary, prognostic_names)
+    bottom = regularize_bottom_boundary_condition(bcs.bottom, grid, loc, 3, LeftBoundary,  prognostic_names)
+    top    = regularize_top_boundary_condition(bcs.top,       grid, loc, 3, RightBoundary, prognostic_names)
     immersed = regularize_immersed_boundary_condition(bcs.immersed, grid, loc, field_name, prognostic_names)
 
     return FieldBoundaryConditions(west, east, south, north, bottom, top, immersed)

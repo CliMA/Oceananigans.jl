@@ -1,7 +1,7 @@
 using Oceananigans.Architectures: architecture
 using Oceananigans.BuoyancyFormulations: ∂z_b, top_buoyancy_flux
 using Oceananigans.Operators
-using Oceananigans.Grids: inactive_node
+using Oceananigans.Grids: SphericalShellGrid, inactive_node
 using Oceananigans.Operators: ℑzᵃᵃᶜ
 using Oceananigans.Utils: time_difference_seconds
 
@@ -200,6 +200,9 @@ function update_previous_compute_time!(closure_fields, model)
     return Δt
 end
 
+fill_ri_based_filter_halos!(Ri, grid) = fill_halo_regions!(Ri; only_local_halos=true)
+fill_ri_based_filter_halos!(Ri, ::SphericalShellGrid) = fill_halo_regions!(Ri)
+
 function compute_closure_fields!(closure_fields, closure::FlavorOfRBVD, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
@@ -225,9 +228,10 @@ function compute_closure_fields!(closure_fields, closure::FlavorOfRBVD, model; p
             top_tracer_bcs,
             clock)
 
-    # Use `only_local_halos` to ensure that no communication occurs during
-    # this call to fill_halo_regions!
-    fill_halo_regions!(closure_fields.Ri; only_local_halos=true)
+    # The Richardson-number filter reads horizontal neighbors. On folded curvilinear
+    # grids we need seam-aware horizontal halos; on other grids we keep the local-only
+    # behavior to avoid unnecessary communication.
+    fill_ri_based_filter_halos!(closure_fields.Ri, grid)
 
     launch!(arch, grid, parameters,
             compute_ri_based_diffusivities!,

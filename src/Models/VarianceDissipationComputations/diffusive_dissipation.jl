@@ -88,6 +88,8 @@ end
 
 compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, ::Nothing, K, b, c, c_id, clk, fields) = nothing
 
+compute_diffusive_fluxes!(Vⁿ, i, j, k, grid::SphericalShellGrid, ::Nothing, K, b, c, c_id, clk, fields) = nothing
+
 const etd = ExplicitTimeDiscretization()
 
 @inline function compute_diffusive_fluxes!(Vⁿ, i, j, k, grid, clo, K, b, tracer, c_id, clk, fields)
@@ -96,5 +98,27 @@ const etd = ExplicitTimeDiscretization()
         Vⁿ.y[i, j, k] += _diffusive_flux_y(i, j, k, grid, etd, clo, K, c_id, tracer, clk, fields, b) * Ayᶜᶠᶜ(i, j, k, grid) * σⁿ(i, j, k, grid, c, f, c)
         Vⁿ.z[i, j, k] += _diffusive_flux_z(i, j, k, grid, etd, clo, K, c_id, tracer, clk, fields, b) * Azᶜᶜᶠ(i, j, k, grid) * σⁿ(i, j, k, grid, c, c, f)
     end
+    return nothing
+end
+
+@inline function compute_diffusive_fluxes!(Vⁿ, i, j, k, grid::SphericalShellGrid, clo, K, b, tracer, c_id, clk, fields)
+    transport_flux_x =
+        transverse_computational_width_uᶠᶜᶜ(i, j, k, grid) *
+        covariant_to_contravariant_flux_uᶠᶜᶜ(i, j, k, grid,
+                                             _diffusive_flux_x(i, j, k, grid, etd, clo, K, c_id, tracer, clk, fields, b),
+                                             _diffusive_flux_y(i, j, k, grid, etd, clo, K, c_id, tracer, clk, fields, b))
+
+    transport_flux_y =
+        transverse_computational_width_vᶜᶠᶜ(i, j, k, grid) *
+        covariant_to_contravariant_flux_vᶜᶠᶜ(i, j, k, grid,
+                                             _diffusive_flux_x(i, j, k, grid, etd, clo, K, c_id, tracer, clk, fields, b),
+                                             _diffusive_flux_y(i, j, k, grid, etd, clo, K, c_id, tracer, clk, fields, b))
+
+    @inbounds begin
+        Vⁿ.x[i, j, k] += transport_flux_x * σⁿ(i, j, k, grid, f, c, c)
+        Vⁿ.y[i, j, k] += transport_flux_y * σⁿ(i, j, k, grid, c, f, c)
+        Vⁿ.z[i, j, k] += _diffusive_flux_z(i, j, k, grid, etd, clo, K, c_id, tracer, clk, fields, b) * Azᶜᶜᶠ(i, j, k, grid) * σⁿ(i, j, k, grid, c, c, f)
+    end
+
     return nothing
 end

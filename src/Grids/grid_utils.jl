@@ -40,7 +40,7 @@ end
     end
 end
 
-const FaceExtendedTopology = Union{Bounded, LeftConnected, RightFaceFolded,
+const FaceExtendedTopology = Union{Bounded, LeftConnected, QuadFolded, RightFaceFolded,
                               LeftConnectedRightFaceFolded,
                               LeftConnectedRightFaceConnected}
 const SerialFoldedTopology = Union{RightCenterFolded, RightFaceFolded}

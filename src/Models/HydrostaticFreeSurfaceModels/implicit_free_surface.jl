@@ -1,4 +1,4 @@
-using Oceananigans.Grids: AbstractGrid, XYRegularRG, static_column_depthᶜᶜᵃ
+using Oceananigans.Grids: AbstractGrid, SphericalShellGrid, XYRegularRG, static_column_depthᶜᶜᵃ
 using Oceananigans.Models: surface_kernel_parameters
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
@@ -131,6 +131,9 @@ function step_free_surface!(free_surface::ImplicitFreeSurface, model, timesteppe
     g       = free_surface.gravitational_acceleration
     rhs     = free_surface.implicit_step_solver.right_hand_side
     solver  = free_surface.implicit_step_solver
+
+    refresh_prescribed_velocity_state!(model, model.velocities)
+
     u, v, _ = model.velocities
 
     @apply_regionally begin
@@ -138,6 +141,7 @@ function step_free_surface!(free_surface::ImplicitFreeSurface, model, timesteppe
         mask_immersed_field!(v)
     end
 
+    Oceananigans.Fields.compute!(model.auxiliary_fields)
     fill_halo_regions!((u, v), model.clock, fields(model))
     compute_implicit_free_surface_right_hand_side!(rhs, solver, g, Δt, model.velocities, η)
 
@@ -163,14 +167,36 @@ end
 ##### Compute transport velocities for RK discretization
 #####
 
-# Compute transport velocities for tracer advection
+# Compute transport velocities for tracer advection. Dispatches internally on grid type.
 function compute_transport_velocities!(model, free_surface::ImplicitFreeSurface)
-    grid = model.grid
+    return _implicit_compute_transport_velocities!(model, free_surface, model.grid)
+end
+
+function _implicit_compute_transport_velocities!(model, free_surface::ImplicitFreeSurface, grid)
+    refresh_prescribed_velocity_state!(model, model.velocities)
     u, v, w = model.velocities
     ũ, ṽ, w̃ = model.transport_velocities
 
     launch!(architecture(grid), grid, surface_kernel_parameters(grid), _compute_implicit_transport_velocities!, ũ, ṽ, grid, u, v)
-    update_vertical_velocities!(model.transport_velocities, model.grid, model)
+    convert_to_volume_flux_velocities!(ũ, ṽ, grid, ũ, ṽ)
+    fill_horizontal_transport_velocity_halos!(model.transport_velocities, grid)
+    update_vertical_transport_velocities!(model.transport_velocities, model.grid, model)
+    fill_vertical_transport_velocity_halos!(model.transport_velocities, grid)
+
+    return nothing
+end
+
+# On non-orthogonal spherical shells the stored transport state is already in transport-flux form,
+# so it cannot be reused as if it were a physical velocity during the implicit barotropic update.
+function _implicit_compute_transport_velocities!(model, free_surface::ImplicitFreeSurface, grid::SphericalShellGrid)
+    refresh_prescribed_velocity_state!(model, model.velocities)
+
+    Oceananigans.BoundaryConditions.fill_halo_regions!((model.velocities.u, model.velocities.v))
+    convert_to_volume_flux_velocities!(model.transport_velocities.u, model.transport_velocities.v,
+                                       grid, model.velocities.u, model.velocities.v)
+    fill_horizontal_transport_velocity_halos!(model.transport_velocities, grid)
+    update_vertical_transport_velocities!(model.transport_velocities, model.grid, model)
+    fill_vertical_transport_velocity_halos!(model.transport_velocities, grid)
 
     return nothing
 end

@@ -7,3 +7,4 @@
 The vertical vorticity associated with horizontal velocities ``u`` and ``v``.
 """
 @inline ζ₃ᶠᶠᶜ(i, j, k, grid, u, v) = Γᶠᶠᶜ(i, j, k, grid, u, v) * Az⁻¹ᶠᶠᶜ(i, j, k, grid)
+@inline ζ₃ᶠᶠᶜ(i, j, k, grid::SSG, u, v) = covariant_vertical_vorticityᶠᶠᶜ(i, j, k, grid, u, v)

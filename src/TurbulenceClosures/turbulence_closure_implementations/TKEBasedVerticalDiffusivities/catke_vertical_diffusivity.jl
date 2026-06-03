@@ -230,6 +230,28 @@ function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfC
                                   _tupled_implicit_linear_coefficients)
 end
 
+function update_previous_catke_velocities!(previous_velocities, velocities)
+    u, v, w = velocities
+    u⁻, v⁻ = previous_velocities
+
+    parent(u⁻) .= parent(u)
+    parent(v⁻) .= parent(v)
+
+    BoundaryConditions.fill_halo_regions!((u⁻, v⁻))
+
+    return nothing
+end
+
+function initialize_closure_fields!(closure_fields::CATKEClosureFields, closure::FlavorOfCATKE, model)
+    update_previous_catke_velocities!(closure_fields.previous_velocities, model.velocities)
+    return nothing
+end
+
+function refresh_velocity_dependent_closure_fields!(closure_fields::CATKEClosureFields, closure::FlavorOfCATKE, model)
+    update_previous_catke_velocities!(closure_fields.previous_velocities, model.velocities)
+    return nothing
+end
+
 @inline viscosity_location(::FlavorOfCATKE) = (c, c, f)
 @inline diffusivity_location(::FlavorOfCATKE) = (c, c, f)
 
@@ -242,14 +264,15 @@ function step_closure_prognostics!(closure_fields, closure::FlavorOfCATKE, model
     clock = model.clock
     top_tracer_bcs = get_top_tracer_bcs(buoyancy, tracers)
 
+    if iszero(model.clock.iteration)
+        update_previous_catke_velocities!(closure_fields.previous_velocities, model.velocities)
+    end
+
     # Step TKE equation with the provided timestep
     time_step_catke_equation!(model, model.timestepper, Δt)
 
     # Update previous velocities and surface buoyancy flux
-    u, v, w = model.velocities
-    u⁻, v⁻ = closure_fields.previous_velocities
-    parent(u⁻) .= parent(u)
-    parent(v⁻) .= parent(v)
+    update_previous_catke_velocities!(closure_fields.previous_velocities, model.velocities)
 
     active_cells_map = get_active_cells_map(grid, Val(:xy))
 

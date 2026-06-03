@@ -3,16 +3,20 @@ module HydrostaticFreeSurfaceModels
 export
     HydrostaticFreeSurfaceModel,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
-    PrescribedVelocityFields, ZStarCoordinate, ZCoordinate
+    PrescribedVelocityFields, ZStarCoordinate, ZCoordinate,
+    contravariant_velocities, kinetic_energy, relative_vorticity, vertical_vorticity
 
 using KernelAbstractions: @index, @kernel
 using Adapt: Adapt
 
+using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Architectures: architecture
+using Oceananigans.Biogeochemistry: biogeochemical_drift_velocity
 using Oceananigans.Fields: ZFaceField
-using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid
-using Oceananigans.Operators: Δzᶜᶠᶜ, Δzᶠᶜᶜ
+using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization, OrthogonalSphericalShellGrid, SphericalShellGrid, Periodic, RectilinearGrid, Center
+using Oceananigans.Operators: Δzᶜᶠᶜ, Δzᶠᶜᶜ, Δz⁻¹ᶜᶜᶠ, V⁻¹ᶜᶜᶜ
 using Oceananigans.TimeSteppers: TimeSteppers, SplitRungeKuttaTimeStepper, QuasiAdamsBashforth2TimeStepper
+using Oceananigans.TurbulenceClosures: closure_auxiliary_velocity
 using Oceananigans.Utils: Utils, launch!, @apply_regionally
 
 using DocStringExtensions: TYPEDFIELDS
@@ -20,8 +24,12 @@ using DocStringExtensions: TYPEDFIELDS
 import Oceananigans: fields, prognostic_fields, initialize!
 import Oceananigans.Advection: cell_advection_timescale
 import Oceananigans.Architectures: Architectures, on_architecture
-import Oceananigans.BoundaryConditions: fill_halo_regions!
-import Oceananigans.Models: materialize_free_surface
+import Oceananigans.BoundaryConditions: fill_halo_regions!, update_boundary_conditions!
+import Oceananigans.Models: materialize_free_surface,
+                            refresh_all_tracer_auxiliary_halos!,
+                            refresh_tracer_auxiliary_velocity_halos!,
+                            refresh_tracer_advective_forcing_halos!,
+                            update_model_field_time_series!
 import Oceananigans.Simulations: timestepper
 import Oceananigans.TimeSteppers: step_lagrangian_particles!
 
@@ -83,6 +91,7 @@ function compute_transport_velocities! end
 
 include("compute_w_from_continuity.jl")
 include("hydrostatic_free_surface_field_tuples.jl")
+include("rigid_lid_projection.jl")
 
 # No free surface
 include("nothing_free_surface.jl")
@@ -104,6 +113,7 @@ include("z_star_coordinate.jl")
 
 # Hydrostatic model implementation
 include("hydrostatic_free_surface_model.jl")
+include("prescribed_hydrostatic_velocity_fields.jl")
 include("show_hydrostatic_free_surface_model.jl")
 include("set_hydrostatic_free_surface_model.jl")
 
@@ -112,6 +122,99 @@ include("set_hydrostatic_free_surface_model.jl")
 #####
 
 cell_advection_timescale(model::HydrostaticFreeSurfaceModel) = cell_advection_timescale(model.grid, model.velocities)
+
+function refresh_closure_prognostic_velocity_state!(model, velocities)
+    update_model_field_time_series!(model, model.clock)
+    compute_auxiliary_fields!(model.auxiliary_fields)
+    update_boundary_conditions!(fields(model), model)
+    fill_halo_regions!(velocities, model.clock, fields(model))
+    return nothing
+end
+@inline refresh_prescribed_velocity_state!(model, velocities) = nothing
+@inline refresh_transport_advection_state!(model, velocities) = nothing
+@inline refresh_momentum_advection_state!(model, velocities) = nothing
+
+function refresh_prescribed_velocity_state!(model::HydrostaticFreeSurfaceModel,
+                                            velocities::PrescribedVelocityFields)
+    update_model_field_time_series!(model, model.clock)
+    compute_auxiliary_fields!(model.auxiliary_fields)
+    update_boundary_conditions!(fields(model), model)
+    update_prescribed_velocity_field_operations!(velocities)
+    fill_halo_regions!(velocities, model.clock, fields(model))
+    return nothing
+end
+
+function refresh_transport_advection_state!(model::HydrostaticFreeSurfaceModel,
+                                           velocities)
+    @apply_regionally compute_transport_velocities!(model, model.free_surface)
+    return nothing
+end
+
+function refresh_momentum_advection_state!(model::HydrostaticFreeSurfaceModel,
+                                          velocities::PrescribedVelocityFields)
+    @apply_regionally refresh_prescribed_velocity_state!(model, velocities)
+    return nothing
+end
+
+function refresh_closure_prognostic_velocity_state!(model::HydrostaticFreeSurfaceModel,
+                                                    velocities::PrescribedVelocityFields)
+    @apply_regionally refresh_prescribed_velocity_state!(model, velocities)
+    return nothing
+end
+
+@inline function transport_cell_advection_timescaleᶜᶜᶜ(i, j, k, grid::SphericalShellGrid, u, v, w)
+    inverse_timescale_x = abs(@inbounds u[i, j, k]) * V⁻¹ᶜᶜᶜ(i, j, k, grid)
+    inverse_timescale_y = abs(@inbounds v[i, j, k]) * V⁻¹ᶜᶜᶜ(i, j, k, grid)
+    inverse_timescale_z = abs(@inbounds w[i, j, k]) * Δz⁻¹ᶜᶜᶠ(i, j, k, grid)
+
+    return one(grid) / (inverse_timescale_x + inverse_timescale_y + inverse_timescale_z)
+end
+
+function cell_advection_timescale(model::HydrostaticFreeSurfaceModel{<:Any, <:Any, <:AbstractArchitecture, <:Any, <:Any, <:SphericalShellGrid})
+    update_model_field_time_series!(model, model.clock)
+    refresh_transport_advection_state!(model, model.velocities)
+
+    grid = model.grid
+    u, v, w = model.transport_velocities
+    τ = KernelFunctionOperation{Center, Center, Center}(transport_cell_advection_timescaleᶜᶜᶜ, grid, u, v, w)
+    minimum_timescale = minimum(τ)
+
+    for forcing in (model.forcing.u, model.forcing.v)
+        refresh_tracer_advective_forcing_halos!(forcing)
+        auxiliary_velocities = tracer_auxiliary_velocities(nothing, nothing, forcing)
+        total_transport_velocities = total_tracer_advection_velocities(grid,
+                                                                       model.transport_velocities,
+                                                                       auxiliary_velocities)
+
+        u, v, w = total_transport_velocities
+        τ = KernelFunctionOperation{Center, Center, Center}(transport_cell_advection_timescaleᶜᶜᶜ, grid, u, v, w)
+        minimum_timescale = min(minimum_timescale, minimum(τ))
+    end
+
+    refresh_all_tracer_auxiliary_halos!(model)
+
+    for tracer_name in keys(model.tracers)
+        tracer_name_val = Val(tracer_name)
+        @inbounds forcing = model.forcing[tracer_name]
+
+        biogeochemical_velocities = biogeochemical_drift_velocity(model.biogeochemistry, tracer_name_val)
+        closure_velocities = closure_auxiliary_velocity(model.closure, model.closure_fields, tracer_name_val)
+
+        auxiliary_velocities = tracer_auxiliary_velocities(biogeochemical_velocities,
+                                                           closure_velocities,
+                                                           forcing)
+
+        total_transport_velocities = total_tracer_advection_velocities(grid,
+                                                                       model.transport_velocities,
+                                                                       auxiliary_velocities)
+
+        u, v, w = total_transport_velocities
+        τ = KernelFunctionOperation{Center, Center, Center}(transport_cell_advection_timescaleᶜᶜᶜ, grid, u, v, w)
+        minimum_timescale = min(minimum_timescale, minimum(τ))
+    end
+
+    return minimum_timescale
+end
 
 """
     fields(model::HydrostaticFreeSurfaceModel)
@@ -178,7 +281,6 @@ include("update_hydrostatic_free_surface_model_state.jl")
 include("hydrostatic_free_surface_ab2_step.jl")
 include("hydrostatic_free_surface_rk_step.jl")
 include("cache_hydrostatic_free_surface_tendencies.jl")
-include("prescribed_hydrostatic_velocity_fields.jl")
 include("single_column_model_mode.jl")
 include("slice_ensemble_model_mode.jl")
 

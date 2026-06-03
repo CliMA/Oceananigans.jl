@@ -137,3 +137,30 @@ struct Zipper{P <: AbstractPivot} <: AbstractBoundaryConditionClassification end
 Returns the pivot type of the Zipper boundary condition `zbc`.
 """
 pivot_type(::Zipper{T}) where T = T
+
+"""
+    struct QuadFoldedZipper <: AbstractBoundaryConditionClassification
+
+A classification specifying a zipper-like boundary condition on `QuadFolded`
+topologies such as `OctaHEALPixMapping`.
+
+Unlike `Zipper{P}`, which models a single folded edge on tripolar grids,
+`QuadFoldedZipper` fills all horizontal halo regions through grid connectivity.
+"""
+struct QuadFoldedZipper <: AbstractBoundaryConditionClassification end
+
+"""
+    struct QuadFoldedCovariantZipper <: AbstractBoundaryConditionClassification
+
+A classification used to mark paired OctaHEALPix face fields whose seam transform
+is covariant, such as prognostic momentum velocities.
+"""
+struct QuadFoldedCovariantZipper <: AbstractBoundaryConditionClassification end
+
+"""
+    struct QuadFoldedContravariantZipper <: AbstractBoundaryConditionClassification
+
+A classification used to mark paired OctaHEALPix face fields whose seam transform
+is contravariant, such as tracer transport velocities.
+"""
+struct QuadFoldedContravariantZipper <: AbstractBoundaryConditionClassification end

@@ -27,10 +27,28 @@ const UpwindScheme = AbstractUpwindBiasedAdvectionScheme
     return ũ * uᴿ
 end
 
+@inline function advective_momentum_flux_Uu(i, j, k, grid::SphericalShellGrid, scheme::UpwindScheme, U, u)
+    u_component = u_velocity(U)
+    v_component = v_velocity(U)
+    ũ = _symmetric_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, covariant_to_volume_flux_uᶠᶜᶜ, u_component, v_component)
+    uᴿ = _biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, bias(ũ), u)
+
+    return ũ * uᴿ
+end
+
 @inline function advective_momentum_flux_Vu(i, j, k, grid, scheme::UpwindScheme, V, u)
 
     ṽ  = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, Ay_qᶜᶠᶜ, V)
     uᴿ =    _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, bias(ṽ), u)
+
+    return ṽ * uᴿ
+end
+
+@inline function advective_momentum_flux_Vu(i, j, k, grid::SphericalShellGrid, scheme::UpwindScheme, U, u)
+    u_component = u_velocity(U)
+    v_component = v_velocity(U)
+    ṽ = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, covariant_to_volume_flux_vᶜᶠᶜ, u_component, v_component)
+    uᴿ = _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, bias(ṽ), u)
 
     return ṽ * uᴿ
 end
@@ -51,10 +69,28 @@ end
     return ũ * vᴿ
 end
 
+@inline function advective_momentum_flux_Uv(i, j, k, grid::SphericalShellGrid, scheme::UpwindScheme, U, v)
+    u_component = u_velocity(U)
+    v_component = v_velocity(U)
+    ũ = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, covariant_to_volume_flux_uᶠᶜᶜ, u_component, v_component)
+    vᴿ = _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, bias(ũ), v)
+
+    return ũ * vᴿ
+end
+
 @inline function advective_momentum_flux_Vv(i, j, k, grid, scheme::UpwindScheme, V, v)
 
     ṽ  = _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, Ay_qᶜᶠᶜ, V)
     vᴿ =    _biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, bias(ṽ), v)
+
+    return ṽ * vᴿ
+end
+
+@inline function advective_momentum_flux_Vv(i, j, k, grid::SphericalShellGrid, scheme::UpwindScheme, U, v)
+    u_component = u_velocity(U)
+    v_component = v_velocity(U)
+    ṽ = _symmetric_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, covariant_to_volume_flux_vᶜᶠᶜ, u_component, v_component)
+    vᴿ = _biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, bias(ṽ), v)
 
     return ṽ * vᴿ
 end
@@ -75,10 +111,28 @@ end
     return ũ * wᴿ
 end
 
+@inline function advective_momentum_flux_Uw(i, j, k, grid::SphericalShellGrid, scheme::UpwindScheme, U, w)
+    u_component = u_velocity(U)
+    v_component = v_velocity(U)
+    ũ = _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, covariant_to_volume_flux_uᶠᶜᶜ, u_component, v_component)
+    wᴿ = _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, bias(ũ), w)
+
+    return ũ * wᴿ
+end
+
 @inline function advective_momentum_flux_Vw(i, j, k, grid, scheme::UpwindScheme, V, w)
 
     ṽ  = _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, Ay_qᶜᶠᶜ, V)
     wᴿ =    _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, bias(ṽ), w)
+
+    return ṽ * wᴿ
+end
+
+@inline function advective_momentum_flux_Vw(i, j, k, grid::SphericalShellGrid, scheme::UpwindScheme, U, w)
+    u_component = u_velocity(U)
+    v_component = v_velocity(U)
+    ṽ = _symmetric_interpolate_zᵃᵃᶠ(i, j, k, grid, scheme, covariant_to_volume_flux_vᶜᶠᶜ, u_component, v_component)
+    wᴿ = _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, bias(ṽ), w)
 
     return ṽ * wᴿ
 end
@@ -118,3 +172,45 @@ end
 
     return Azᶜᶜᶠ(i, j, k, grid) * w̃ * cᴿ
 end
+
+@inline function advective_tracer_flux_x(i, j, k, grid::SphericalShellGrid, scheme::UpwindScheme, U, c)
+    ũ = spherical_shell_horizontal_tracer_flux_u(U, i, j, k)
+    cᴿ = _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, bias(ũ), c)
+    return ũ * cᴿ
+end
+
+@inline function octahealpix_polar_xface_biased_tracer_state(i, j, k, grid, c, u_bias)
+    FT = eltype(grid)
+    half = convert(FT, 1//2)
+    upwind_i = ifelse(u_bias == LeftBias, i - 1, i)
+    adjacent_j = ifelse(j == 1, 2, grid.Ny - 1)
+    folded_upwind_i = octahealpix_folded_polar_i(upwind_i, grid)
+
+    @inbounds pole_state = half * (c[upwind_i, j, k] +
+                                   c[folded_upwind_i, j, k])
+
+    @inbounds outer_edge_state = half * (c[upwind_i, j, k] +
+                                         c[upwind_i, adjacent_j, k])
+
+    return half * (pole_state + outer_edge_state)
+end
+
+@inline function advective_tracer_flux_x(i, j, k, grid::OHPSG, scheme::UpwindScheme, U, c)
+    ũ = spherical_shell_horizontal_tracer_flux_u(U, i, j, k)
+    u_bias = bias(ũ)
+    regular_cᴿ = _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, u_bias, c)
+    polar_row = (j == 1) | (j == grid.Ny)
+    polar_cᴿ = octahealpix_polar_xface_biased_tracer_state(i, j, k, grid, c, u_bias)
+    weight = convert(eltype(grid), 3//4)
+    blended_cᴿ = regular_cᴿ + weight * (polar_cᴿ - regular_cᴿ)
+    cᴿ = ifelse(polar_row, blended_cᴿ, regular_cᴿ)
+    return ũ * cᴿ
+end
+
+@inline function advective_tracer_flux_y(i, j, k, grid::SphericalShellGrid, scheme::UpwindScheme, U, c)
+    ṽ = spherical_shell_horizontal_tracer_flux_v(U, i, j, k)
+    cᴿ = _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, bias(ṽ), c)
+    return ṽ * cᴿ
+end
+using Oceananigans.Grids: SphericalShellGrid
+using Oceananigans.Operators: covariant_to_volume_flux_uᶠᶜᶜ, covariant_to_volume_flux_vᶜᶠᶜ

@@ -24,11 +24,12 @@ using MuladdMacro: @muladd
 using Oceananigans: Oceananigans, fully_supported_float_types
 using Oceananigans.Architectures: Architectures, architecture, on_architecture, CPU
 using Oceananigans.Grids: Grids, AbstractGrid, Center, Face, Flat, XFlatGrid, YFlatGrid, ZFlatGrid, with_halo,
-    required_halo_size_x, required_halo_size_y, required_halo_size_z
+    SphericalShellGrid, required_halo_size_x, required_halo_size_y, required_halo_size_z
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, ∂t_σ, Ax_qᶠᶜᶜ, Axᶠᶜᶜ, Ay_qᶜᶠᶜ, Ayᶜᶠᶜ, Az_qᶜᶜᶠ,
     Azᶜᶜᶜ, Azᶜᶜᶠ, Az⁻¹ᶜᶠᶜ, Az⁻¹ᶠᶜᶜ, V⁻¹ᶜᶜᶠ, V⁻¹ᶜᶠᶜ, V⁻¹ᶠᶜᶜ, Δx_qᶜᶠᶜ, Δx⁻¹ᶠᶜᶜ, Δy_qᶠᶜᶜ,
-    Δy⁻¹ᶜᶠᶜ, δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶜᵃ, δyᵃᶠᵃ, δzᵃᵃᶜ, ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ
+    Δy⁻¹ᶜᶠᶜ, covariant_to_volume_flux_uᶠᶜᶜ, covariant_to_volume_flux_vᶜᶠᶜ,
+    δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶜᵃ, δyᵃᶠᵃ, δzᵃᵃᶜ, ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ
 using Base: Callable
 
 abstract type AbstractAdvectionScheme{B, FT} end
@@ -50,6 +51,45 @@ const advection_buffers = [1, 2, 3, 4, 5, 6]
 @inline Grids.required_halo_size_x(::AbstractAdvectionScheme{B}) where B = B
 @inline Grids.required_halo_size_y(::AbstractAdvectionScheme{B}) where B = B
 @inline Grids.required_halo_size_z(::AbstractAdvectionScheme{B}) where B = B
+
+@inline spherical_shell_horizontal_tracer_flux_u(U, i, j, k) = @inbounds u_velocity(U)[i, j, k]
+@inline spherical_shell_horizontal_tracer_flux_v(U, i, j, k) = @inbounds v_velocity(U)[i, j, k]
+
+struct VolumeFluxField{Loc, G, T}
+    grid :: G
+    velocities :: T
+end
+
+VolumeFluxField(::Val{Loc}, grid, velocities) where Loc =
+    VolumeFluxField{Val{Loc}, typeof(grid), typeof(velocities)}(grid, velocities)
+
+@inline u_velocity(velocities) = velocities.u
+@inline v_velocity(velocities) = velocities.v
+@inline w_velocity(velocities) = velocities.w
+@inline u_velocity(velocities::Tuple) = @inbounds velocities[1]
+@inline v_velocity(velocities::Tuple) = @inbounds velocities[2]
+@inline w_velocity(velocities::Tuple) = @inbounds velocities[3]
+
+@inline spherical_shell_horizontal_volume_flux_velocities(grid::SphericalShellGrid, velocities) =
+    (u = VolumeFluxField(Val(:u), grid, velocities),
+     v = VolumeFluxField(Val(:v), grid, velocities))
+
+@inline spherical_shell_volume_flux_velocities(grid::SphericalShellGrid, velocities) =
+    (u = VolumeFluxField(Val(:u), grid, velocities),
+     v = VolumeFluxField(Val(:v), grid, velocities),
+     w = w_velocity(velocities))
+
+@inline function Base.getindex(F::VolumeFluxField{Val{:u}}, i, j, k)
+    u = u_velocity(F.velocities)
+    v = v_velocity(F.velocities)
+    return covariant_to_volume_flux_uᶠᶜᶜ(i, j, k, F.grid, u, v)
+end
+
+@inline function Base.getindex(F::VolumeFluxField{Val{:v}}, i, j, k)
+    u = u_velocity(F.velocities)
+    v = v_velocity(F.velocities)
+    return covariant_to_volume_flux_vᶜᶠᶜ(i, j, k, F.grid, u, v)
+end
 
 struct DecreasingOrderAdvectionScheme end
 

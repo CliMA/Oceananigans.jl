@@ -102,6 +102,18 @@ function initialize_closure_fields!(closure_fields_tuple::Tuple, closures::Tuple
     return nothing
 end
 
+# Refresh closure state that depends directly on the current model velocities.
+refresh_velocity_dependent_closure_fields!(K, closure::AbstractTurbulenceClosure, args...) = nothing
+refresh_velocity_dependent_closure_fields!(K, closure::AbstractArray{<:AbstractTurbulenceClosure}, args...) = nothing
+refresh_velocity_dependent_closure_fields!(K, ::Nothing, args...) = nothing
+
+function refresh_velocity_dependent_closure_fields!(closure_fields_tuple::Tuple, closures::Tuple, args...)
+    for (fields, closure) in zip(closure_fields_tuple, closures)
+        refresh_velocity_dependent_closure_fields!(fields, closure, args...)
+    end
+    return nothing
+end
+
 # Tracer names that a closure requires (eg TKE-based closures)
 # Fallbacks: by default closures do not require extra tracers.
 closure_required_tracers(::Nothing) = ()

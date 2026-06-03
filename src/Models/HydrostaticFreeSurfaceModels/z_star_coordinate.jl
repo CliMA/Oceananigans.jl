@@ -1,7 +1,10 @@
 using Oceananigans.Grids: halo_size, topology, AbstractGrid, Flat,
+    SphericalShellGrid,
     column_depthᶜᶜᵃ, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ, column_depthᶠᶠᵃ,
     static_column_depthᶜᶜᵃ, static_column_depthᶜᶠᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶠᶠᵃ
 using Oceananigans.ImmersedBoundaries: MutableGridOfSomeKind
+using Oceananigans.Operators: Az⁻¹ᶜᶜᶜ, Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, δxᶜᶜᶜ, δyᶜᶜᶜ,
+                              δxᶜᵃᵃ, δyᵃᶜᵃ
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
 
@@ -118,6 +121,57 @@ function update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSo
     return nothing
 end
 
+function update_grid_vertical_velocity!(velocities, model, grid::SphericalShellGrid, ::ZStarCoordinate; parameters=surface_kernel_parameters(grid))
+    U, V = barotropic_velocities(model.free_surface)
+
+    u, v, _ = velocities
+    ∂t_σ    = grid.z.∂t_σ
+
+    launch!(architecture(grid), grid, parameters, _update_grid_vertical_velocity_nonorthogonal!, ∂t_σ, grid, U, V, u, v)
+
+    return nothing
+end
+
+function update_grid_vertical_transport_velocity!(velocities, model, grid::SphericalShellGrid, ::ZStarCoordinate; parameters=surface_kernel_parameters(grid))
+    U, V = barotropic_transport(model.free_surface)
+
+    ∂t_σ    = grid.z.∂t_σ
+
+    if isnothing(U) | isnothing(V)
+        u, v, _ = velocities
+        launch!(architecture(grid), grid, parameters, _update_grid_vertical_transport_velocity!, ∂t_σ, grid, U, V, u, v)
+    else
+        launch!(architecture(grid), grid, parameters, _update_grid_vertical_transport_velocity_nonorthogonal!, ∂t_σ, grid, U, V)
+    end
+
+    return nothing
+end
+
+@inline barotropic_transport_U(i, j, k, grid, U, u) = @inbounds U[i, j, 1]
+@inline barotropic_transport_V(i, j, k, grid, V, v) = @inbounds V[i, j, 1]
+
+@inline function barotropic_transport_U(i, j, k, grid, ::Nothing, u)
+    total = zero(grid)
+    Nz = size(grid, 3)
+
+    @inbounds for kk in 1:Nz
+        total += u[i, j, kk]
+    end
+
+    return total
+end
+
+@inline function barotropic_transport_V(i, j, k, grid, ::Nothing, v)
+    total = zero(grid)
+    Nz = size(grid, 3)
+
+    @inbounds for kk in 1:Nz
+        total += v[i, j, kk]
+    end
+
+    return total
+end
+
 @kernel function _update_grid_vertical_velocity!(∂t_σ, grid, U, V, u, v)
     i, j = @index(Global, NTuple)
     kᴺ = size(grid, 3)
@@ -127,6 +181,68 @@ end
     # ∂(η / H)/∂t = - ∇ ⋅ ∫udz / H
     δx_U = δxᶜᶜᶜ(i, j, kᴺ, grid, Δy_qᶠᶜᶜ, barotropic_U, U, u)
     δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
+
+    δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, kᴺ, grid)
+
+    @inbounds ∂t_σ[i, j, 1] = ifelse(hᶜᶜ == 0, zero(grid), - δh_U / hᶜᶜ)
+end
+
+@inline function barotropic_covariant_contravariant_flux_u(i, j, k, grid, U, V, u, v)
+    Ū = barotropic_U(i, j, k, grid, U, u)
+    V̄ = barotropic_V(i, j, k, grid, V, v)
+    return barotropic_transport_flux_uᶠᶜᶜ(i, j, k, grid, Ū, V̄)
+end
+
+@inline function barotropic_covariant_contravariant_flux_v(i, j, k, grid, U, V, u, v)
+    Ū = barotropic_U(i, j, k, grid, U, u)
+    V̄ = barotropic_V(i, j, k, grid, V, v)
+    return barotropic_transport_flux_vᶜᶠᶜ(i, j, k, grid, Ū, V̄)
+end
+
+@kernel function _update_grid_vertical_velocity_nonorthogonal!(∂t_σ, grid, U, V, u, v)
+    i, j = @index(Global, NTuple)
+    kᴺ = size(grid, 3)
+
+    hᶜᶜ = static_column_depthᶜᶜᵃ(i, j, grid)
+
+    δx_U = δxᶜᵃᵃ(i, j, kᴺ, grid, barotropic_covariant_contravariant_flux_u, U, V, u, v)
+    δy_V = δyᵃᶜᵃ(i, j, kᴺ, grid, barotropic_covariant_contravariant_flux_v, U, V, u, v)
+
+    δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, kᴺ, grid)
+
+    @inbounds ∂t_σ[i, j, 1] = ifelse(hᶜᶜ == 0, zero(grid), - δh_U / hᶜᶜ)
+end
+
+@kernel function _update_grid_vertical_transport_velocity!(∂t_σ, grid, U, V, u, v)
+    i, j = @index(Global, NTuple)
+    kᴺ = size(grid, 3)
+
+    hᶜᶜ = static_column_depthᶜᶜᵃ(i, j, grid)
+
+    Uᴱ = barotropic_transport_U(i + 1, j, kᴺ, grid, U, u)
+    Uᵂ = barotropic_transport_U(i,     j, kᴺ, grid, U, u)
+    Vᴺ = barotropic_transport_V(i, j + 1, kᴺ, grid, V, v)
+    Vˢ = barotropic_transport_V(i, j,     kᴺ, grid, V, v)
+
+    δh_U = (Uᴱ - Uᵂ + Vᴺ - Vˢ) * Az⁻¹ᶜᶜᶜ(i, j, kᴺ, grid)
+
+    @inbounds ∂t_σ[i, j, 1] = ifelse(hᶜᶜ == 0, zero(grid), - δh_U / hᶜᶜ)
+end
+
+@inline filtered_barotropic_transport_flux_u(i, j, k, grid, U, V) =
+    barotropic_transport_flux_uᶠᶜᶜ(i, j, k, grid, U, V)
+
+@inline filtered_barotropic_transport_flux_v(i, j, k, grid, U, V) =
+    barotropic_transport_flux_vᶜᶠᶜ(i, j, k, grid, U, V)
+
+@kernel function _update_grid_vertical_transport_velocity_nonorthogonal!(∂t_σ, grid, U, V)
+    i, j = @index(Global, NTuple)
+    kᴺ = size(grid, 3)
+
+    hᶜᶜ = static_column_depthᶜᶜᵃ(i, j, grid)
+
+    δx_U = δxᶜᵃᵃ(i, j, kᴺ, grid, filtered_barotropic_transport_flux_u, U, V)
+    δy_V = δyᵃᶜᵃ(i, j, kᴺ, grid, filtered_barotropic_transport_flux_v, U, V)
 
     δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, kᴺ, grid)
 

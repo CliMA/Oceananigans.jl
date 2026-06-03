@@ -77,6 +77,39 @@ function rotation_with_shear_test(grid, closure=nothing; timestepper=:QuasiAdams
     return model
 end
 
+function split_explicit_transport_state_test(grid)
+
+    g = one(grid)
+    R = grid.radius
+    Ω = Oceananigans.defaults.planet_rotation_rate
+
+    uᵢ(λ, φ, z) = 0.1 * cosd(φ) * sind(λ) + 0.05 * z
+    vᵢ(λ, φ, z) = 0.1 * sind(φ) * cosd(λ)
+    ηᵢ(λ, φ, z) = (R * Ω * 0.1 + 0.1^2 / 2) * sind(φ)^2 / g * sind(λ)
+
+    free_surface = SplitExplicitFreeSurface(grid; substeps = 8, gravitational_acceleration = g)
+    coriolis     = HydrostaticSphericalCoriolis(rotation_rate = 1)
+
+    model = HydrostaticFreeSurfaceModel(grid;
+                                        momentum_advection = WENOVectorInvariant(order=3),
+                                        free_surface = free_surface,
+                                        coriolis = coriolis,
+                                        timestepper = :QuasiAdamsBashforth2)
+
+    set!(model, u=uᵢ, v=vᵢ, η=ηᵢ)
+
+    Δt_local = 0.1 * Δ_min(grid) / sqrt(g * grid.Lz)
+    Δt = all_reduce(min, Δt_local, architecture(grid))
+
+    time_step!(model, Δt)
+
+    for field in model.transport_velocities
+        synchronize_communication!(field)
+    end
+
+    return model
+end
+
 Nx = 32
 Ny = 32
 
@@ -200,6 +233,44 @@ for arch in archs
                 @test all(isapprox(cp, cs; atol, rtol))
                 @test all(isapprox(ηp, ηs; atol, rtol))
             end
+        end
+
+        @testset "Testing distributed split-explicit transport state" begin
+            @root @info "Testing split-explicit transport state with $(ranks(arch)) ranks"
+
+            grid = LatitudeLongitudeGrid(arch,
+                                         size = (Nx, Ny, 3),
+                                         halo = (4, 4, 3),
+                                         latitude = (-80, 80),
+                                         longitude = (-160, 160),
+                                         z = (-1, 0),
+                                         radius = 10,
+                                         topology = (Bounded, Bounded, Bounded))
+
+            global_grid = reconstruct_global_grid(grid)
+            cpu_arch = cpu_architecture(arch)
+
+            ms = split_explicit_transport_state_test(deepcopy(global_grid))
+            mp = split_explicit_transport_state_test(deepcopy(grid))
+
+            ũs = interior(on_architecture(CPU(), ms.transport_velocities.u))
+            ṽs = interior(on_architecture(CPU(), ms.transport_velocities.v))
+            w̃s = interior(on_architecture(CPU(), ms.transport_velocities.w))
+
+            ũp = interior(on_architecture(cpu_arch, mp.transport_velocities.u))
+            ṽp = interior(on_architecture(cpu_arch, mp.transport_velocities.v))
+            w̃p = interior(on_architecture(cpu_arch, mp.transport_velocities.w))
+
+            ũs = partition(ũs, cpu_arch, size(ũp))
+            ṽs = partition(ṽs, cpu_arch, size(ṽp))
+            w̃s = partition(w̃s, cpu_arch, size(w̃p))
+
+            atol = eps(eltype(global_grid))
+            rtol = sqrt(eps(eltype(global_grid)))
+
+            @test all(isapprox(ũp, ũs; atol, rtol))
+            @test all(isapprox(ṽp, ṽs; atol, rtol))
+            @test all(isapprox(w̃p, w̃s; atol, rtol))
         end
     end
 end

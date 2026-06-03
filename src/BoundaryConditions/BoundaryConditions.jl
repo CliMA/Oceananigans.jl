@@ -5,6 +5,9 @@ export
     BoundaryCondition, getbc,
     PeriodicBoundaryCondition, OpenBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, DistributedCommunicationBoundaryCondition,
+    QuadFoldedZipperBoundaryCondition,
+    QuadFoldedCovariantZipperBoundaryCondition,
+    QuadFoldedContravariantZipperBoundaryCondition,
     PerturbationAdvection,
     validate_boundary_condition_topology, validate_boundary_condition_architecture,
     FieldBoundaryConditions,
@@ -49,6 +52,7 @@ include("fill_halo_regions_periodic.jl")
 include("fill_halo_regions_flux.jl")
 include("fill_halo_regions_upivotzipper.jl")
 include("fill_halo_regions_fpivotzipper.jl")
+include("fill_halo_regions_quadfoldedzipper.jl")
 include("fill_halo_kernels.jl")
 
 include("compute_flux_bcs.jl")

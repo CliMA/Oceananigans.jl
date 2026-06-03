@@ -1,5 +1,5 @@
 using Oceananigans.Fields: VelocityFields
-using Oceananigans.Grids: inactive_node, peripheral_node
+using Oceananigans.Grids: inactive_node, peripheral_node, SphericalShellGrid
 using Oceananigans.BuoyancyFormulations: ∂xᵣ_b, ∂yᵣ_b, ∂z_b
 
 # Fallback
@@ -85,6 +85,30 @@ end
 @inline κ_ϵSxᶠᶜᶠ(i, j, k, grid, clk, sl, κ, b, fields) = κᶠᶜᶠ(i, j, k, grid, issd_coefficient_loc, κ, clk.time, fields) * ϵSxᶠᶜᶠ(i, j, k, grid, sl, b, fields)
 @inline κ_ϵSyᶜᶠᶠ(i, j, k, grid, clk, sl, κ, b, fields) = κᶜᶠᶠ(i, j, k, grid, issd_coefficient_loc, κ, clk.time, fields) * ϵSyᶜᶠᶠ(i, j, k, grid, sl, b, fields)
 
+@inline skew_diffusion_wˣ(i, j, k, grid, clock, slope_limiter, κ, buoyancy, fields) =
+    δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶠ, κ_ϵSxᶠᶜᶠ, clock, slope_limiter, κ, buoyancy, fields)
+
+@inline skew_diffusion_wʸ(i, j, k, grid, clock, slope_limiter, κ, buoyancy, fields) =
+    δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶠ, κ_ϵSyᶜᶠᶠ, clock, slope_limiter, κ, buoyancy, fields)
+
+@inline skew_diffusion_transport_flux_xᶠᶜᶠ(i, j, k, grid::SphericalShellGrid, clock, slope_limiter, κ, buoyancy, fields) =
+    Oceananigans.Operators.transverse_computational_width_uᶠᶜᶜ(i, j, k, grid) *
+    Oceananigans.Operators.covariant_to_contravariant_flux_uᶠᶜᶜ(i, j, k, grid,
+                                                                κ_ϵSxᶠᶜᶠ(i, j, k, grid, clock, slope_limiter, κ, buoyancy, fields),
+                                                                κ_ϵSyᶜᶠᶠ(i, j, k, grid, clock, slope_limiter, κ, buoyancy, fields))
+
+@inline skew_diffusion_transport_flux_yᶜᶠᶠ(i, j, k, grid::SphericalShellGrid, clock, slope_limiter, κ, buoyancy, fields) =
+    Oceananigans.Operators.transverse_computational_width_vᶜᶠᶜ(i, j, k, grid) *
+    Oceananigans.Operators.covariant_to_contravariant_flux_vᶜᶠᶜ(i, j, k, grid,
+                                                                κ_ϵSxᶠᶜᶠ(i, j, k, grid, clock, slope_limiter, κ, buoyancy, fields),
+                                                                κ_ϵSyᶜᶠᶠ(i, j, k, grid, clock, slope_limiter, κ, buoyancy, fields))
+
+@inline skew_diffusion_wˣ(i, j, k, grid::SphericalShellGrid, clock, slope_limiter, κ, buoyancy, fields) =
+    δxᶜᵃᵃ(i, j, k, grid, skew_diffusion_transport_flux_xᶠᶜᶠ, clock, slope_limiter, κ, buoyancy, fields)
+
+@inline skew_diffusion_wʸ(i, j, k, grid::SphericalShellGrid, clock, slope_limiter, κ, buoyancy, fields) =
+    δyᵃᶜᵃ(i, j, k, grid, skew_diffusion_transport_flux_yᶜᶠᶠ, clock, slope_limiter, κ, buoyancy, fields)
+
 @kernel function _compute_eddy_velocities!(uₑ, vₑ, wₑ, grid, clock, closure, buoyancy, fields)
     i, j, k = @index(Global, NTuple)
 
@@ -96,8 +120,8 @@ end
         uₑ[i, j, k] = - δzᵃᵃᶜ(i, j, k, grid, κ_ϵSxᶠᶜᶠ, clock, slope_limiter, κ, buoyancy, fields) * Δz⁻¹ᶠᶜᶜ(i, j, k, grid)
         vₑ[i, j, k] = - δzᵃᵃᶜ(i, j, k, grid, κ_ϵSyᶜᶠᶠ, clock, slope_limiter, κ, buoyancy, fields) * Δz⁻¹ᶜᶠᶜ(i, j, k, grid)
 
-        wˣ = δxᶜᵃᵃ(i, j, k, grid, Δy_qᶠᶜᶠ, κ_ϵSxᶠᶜᶠ, clock, slope_limiter, κ, buoyancy, fields)
-        wʸ = δyᵃᶜᵃ(i, j, k, grid, Δx_qᶜᶠᶠ, κ_ϵSyᶜᶠᶠ, clock, slope_limiter, κ, buoyancy, fields)
+        wˣ = skew_diffusion_wˣ(i, j, k, grid, clock, slope_limiter, κ, buoyancy, fields)
+        wʸ = skew_diffusion_wʸ(i, j, k, grid, clock, slope_limiter, κ, buoyancy, fields)
 
         wₑ[i, j, k] =  (wˣ + wʸ) * Az⁻¹ᶜᶜᶠ(i, j, k, grid)
     end

@@ -1,6 +1,7 @@
 using Oceananigans.Architectures: architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: CenterField, Field, compute!, interpolate, xnode, ynode, znode
+using Oceananigans.Grids: SphericalShellGrid
 using Statistics: mean
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
@@ -309,6 +310,18 @@ end
 ##### Directionally-averaged functionality
 #####
 
+fill_dynamic_smagorinsky_filter_halos!(Σ, Σ̄, grid) = begin
+    fill_halo_regions!(Σ; only_local_halos=true)
+    fill_halo_regions!(Σ̄; only_local_halos=true)
+    return nothing
+end
+
+fill_dynamic_smagorinsky_filter_halos!(Σ, Σ̄, ::SphericalShellGrid) = begin
+    fill_halo_regions!(Σ)
+    fill_halo_regions!(Σ̄)
+    return nothing
+end
+
 function compute_coefficient_fields!(closure_fields, closure::DirectionallyAveragedDynamicSmagorinsky, model; parameters)
     grid = model.grid
     arch = architecture(grid)
@@ -323,8 +336,7 @@ function compute_coefficient_fields!(closure_fields, closure::DirectionallyAvera
 
         # Fill Σ, Σ̄ halos because the M tensor computation uses `filter`
         # which reads from neighboring cells (including halo cells).
-        fill_halo_regions!(Σ; only_local_halos=true)
-        fill_halo_regions!(Σ̄; only_local_halos=true)
+        fill_dynamic_smagorinsky_filter_halos!(Σ, Σ̄, grid)
 
         LM = closure_fields.LM
         MM = closure_fields.MM
@@ -426,8 +438,7 @@ function initialize_closure_fields!(closure_fields, closure::LagrangianAveragedD
 
     # Fill Σ, Σ̄ halos because the M tensor computation uses `filter`
     # which reads from neighboring cells (including halo cells).
-    fill_halo_regions!(Σ; only_local_halos=true)
-    fill_halo_regions!(Σ̄; only_local_halos=true)
+    fill_dynamic_smagorinsky_filter_halos!(Σ, Σ̄, grid)
 
     𝒥ᴸᴹ  = closure_fields.𝒥ᴸᴹ
     𝒥ᴹᴹ  = closure_fields.𝒥ᴹᴹ
@@ -461,11 +472,11 @@ function step_closure_prognostics!(closure_fields, closure::LagrangianAveragedDy
 
         # Fill Σ, Σ̄ halos because the M tensor computation uses `filter`
         # which reads from neighboring cells (including halo cells).
-        fill_halo_regions!(Σ; only_local_halos=true)
-        fill_halo_regions!(Σ̄; only_local_halos=true)
+        fill_dynamic_smagorinsky_filter_halos!(Σ, Σ̄, grid)
 
         parent(closure_fields.𝒥ᴸᴹ⁻) .= parent(closure_fields.𝒥ᴸᴹ)
         parent(closure_fields.𝒥ᴹᴹ⁻) .= parent(closure_fields.𝒥ᴹᴹ)
+        fill_halo_regions!((closure_fields.𝒥ᴸᴹ⁻, closure_fields.𝒥ᴹᴹ⁻))
 
         𝒥ᴸᴹ⁻ = closure_fields.𝒥ᴸᴹ⁻
         𝒥ᴹᴹ⁻ = closure_fields.𝒥ᴹᴹ⁻

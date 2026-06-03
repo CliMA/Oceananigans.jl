@@ -27,10 +27,10 @@ The Adams-Bashforth 2nd-order time step for `HydrostaticFreeSurfaceModel` with e
 The order of operations for explicit free surfaces is:
 1. Compute momentum flux boundary conditions (3D tendencies are computed in `update_state!`)
 2. Advance the free surface (barotropic step)
-3. Compute transport velocities for tracer advection
-4. Compute tracer tendencies
-5. Advance grid scaling (for z-star coordinates)
-6. Advance velocities using AB2
+3. Advance velocities using AB2
+4. Refresh transport velocities for tracer advection
+5. Compute tracer tendencies
+6. Advance grid scaling (for z-star coordinates)
 7. Correct barotropic mode
 8. Advance tracers using AB2
 """
@@ -48,17 +48,19 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
 
     # Update velocities
     @apply_regionally begin
-        compute_transport_velocities!(model, model.free_surface)
         ab2_step_velocities!(model.velocities, model, Δt, χ)
         mask_immersed_horizontal_velocities!(model.velocities)
     end
 
     # Mask and fill velocity halos
     u, v, _ = model.velocities
+    Oceananigans.Fields.compute!(model.auxiliary_fields)
     fill_halo_regions!((u, v), model.clock, fields(model); async=true)
+    @apply_regionally project_rigid_lid_velocities!(model, Δt)
 
     # Computing tracer tendencies
     @apply_regionally begin
+        compute_transport_velocities!(model, model.free_surface)
         compute_tracer_tendencies!(model)
 
         # Advance grid
@@ -91,11 +93,9 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
     Δt = convert(FT, Δt)
 
     @apply_regionally begin
-        parent(model.transport_velocities.u) .= parent(model.velocities.u)
-        parent(model.transport_velocities.v) .= parent(model.velocities.v)
-
         # Computing tendencies...
         compute_momentum_flux_bcs!(model)
+        compute_transport_velocities!(model, free_surface)
 
         # Finally Substep! Advance grid, tracers, (predictor) momentum
         ab2_step_velocities!(model.velocities, model, Δt, χ)
@@ -110,7 +110,9 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
     end
 
     u, v, _ = model.velocities
+    Oceananigans.Fields.compute!(model.auxiliary_fields)
     fill_halo_regions!((u, v), model.clock, fields(model))
+    @apply_regionally project_rigid_lid_velocities!(model, Δt)
 
     @apply_regionally begin
         compute_transport_velocities!(model, free_surface)
@@ -162,6 +164,7 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
         launch!(model.architecture, model.grid, :xyz,
                 _ab2_step_field!, velocity_field, Δt, χ, Gⁿ, G⁻; exclude_periphery=true)
 
+        compute_auxiliary_fields!(model.auxiliary_fields)
         implicit_step!(velocity_field,
                        model.timestepper.implicit_solver,
                        model.closure,
@@ -221,6 +224,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
             FT = eltype(grid)
             launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_field!, tracer_field, grid, convert(FT, Δt), χ, Gⁿ, G⁻)
 
+            compute_auxiliary_fields!(model.auxiliary_fields)
             implicit_step!(tracer_field,
                            model.timestepper.implicit_solver,
                            closure,

@@ -44,7 +44,8 @@ end
 @kernel function _cg_source_term!(rhs, grid, Ũ)
     i, j, k = @index(Global, NTuple)
     active = !inactive_cell(i, j, k, grid)
-    δ = divᶜᶜᶜ(i, j, k, grid, Ũ.u, Ũ.v, Ũ.w)
+    u, v, w = Ũ
+    δ = divᶜᶜᶜ(i, j, k, grid, u, v, w)
     V = Vᶜᶜᶜ(i, j, k, grid)
     @inbounds rhs[i, j, k] = active * δ * V
 end
@@ -87,7 +88,8 @@ function add_inhomogeneous_boundary_terms!(rhs, free_surface, grid, Ũ, Δt)
     g = free_surface.gravitational_acceleration
     η = free_surface.displacement
     arch = grid.architecture
-    launch!(arch, grid, :xy, _add_inhomogeneous_boundary_terms!, rhs, grid, Ũ.w, Δt, g, η)
+    _, _, w = Ũ
+    launch!(arch, grid, :xy, _add_inhomogeneous_boundary_terms!, rhs, grid, w, Δt, g, η)
     return nothing
 end
 

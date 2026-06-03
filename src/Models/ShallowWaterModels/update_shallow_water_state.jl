@@ -1,6 +1,4 @@
-using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
-using Oceananigans.Models: update_model_field_time_series!
 
 import Oceananigans.TimeSteppers: update_state!
 
@@ -23,14 +21,7 @@ function update_state!(model::ShallowWaterModel, callbacks=[])
     # Mask immersed fields
     foreach(mask_immersed_field!, merge(model.solution, model.tracers))
 
-    # Update possible FieldTimeSeries used in the model
-    update_model_field_time_series!(model, model.clock)
-
-    compute_closure_fields!(model.closure_fields, model.closure, model)
-
-    fill_halo_regions!(merge(model.solution, model.tracers), model.clock, fields(model))
-
-    compute_velocities!(model.velocities, formulation(model))
+    refresh_shallow_water_auxiliary_state!(model)
 
     foreach(callbacks) do callback
         if isa(callback.callsite, UpdateStateCallsite)
@@ -44,7 +35,6 @@ end
 compute_velocities!(U, ::VectorInvariantFormulation) = nothing
 
 function compute_velocities!(U, ::ConservativeFormulation)
-    compute!(U.u)
-    compute!(U.v)
+    compute!((U.u, U.v))
     return nothing
 end

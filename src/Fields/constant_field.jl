@@ -25,6 +25,7 @@ const CF = Union{ConstantField, ZeroField, OneField}
 grid(::CF) = nothing
 
 BoundaryConditions.fill_halo_regions!(::ZeroField, args...; kw...) = nothing
+BoundaryConditions.fill_halo_regions!(::OneField, args...; kw...) = nothing
 BoundaryConditions.fill_halo_regions!(::ConstantField, args...; kw...) = nothing
 
 prognostic_state(f::Union{ZeroField, OneField, ConstantField}) = nothing

@@ -7,7 +7,7 @@
 
 Calculate the divergence ``𝛁·𝐕`` of a vector field ``𝐕 = (u, v, w)``,
 
-```julia
+```text
 1/V * [δxᶜᵃᵃ(Ax * u) + δxᵃᶜᵃ(Ay * v) + δzᵃᵃᶜ(Az * w)]
 ```
 
@@ -18,12 +18,16 @@ which ends up at the cell centers `ccc`.
                              δyᶜᶜᶜ(i, j, k, grid, Ay_qᶜᶠᶜ, v) +
                              δzᶜᶜᶜ(i, j, k, grid, Az_qᶜᶜᶠ, w))
 
+@inline divᶜᶜᶜ(i, j, k, grid::SSG, u, v, w) =
+    V⁻¹ᶜᶜᶜ(i, j, k, grid) * (horizontal_volume_flux_div_xyᶜᶜᶜ(i, j, k, grid, u, v) +
+                             δzᶜᶜᶜ(i, j, k, grid, Az_qᶜᶜᶠ, w))
+
 """
     div_xyᶜᶜᵃ(i, j, k, grid, u, v)
 
 Return the discrete `div_xy = ∂x u + ∂y v` of velocity field `u, v` defined as
 
-```julia
+```text
 1 / Azᶜᶜᵃ * [δxᶜᵃᵃ(Δyᵃᶜᵃ * u) + δyᵃᶜᵃ(Δxᶜᵃᵃ * v)]
 ```
 
@@ -35,8 +39,25 @@ and `Δx` is the length of the cell centered on (Center, Face, Any) in `x` (a `v
 @inline flux_div_xyᶜᶜᶜ(i, j, k, grid, u, v) = (δxᶜᶜᶜ(i, j, k, grid, Ax_qᶠᶜᶜ, u) +
                                                δyᶜᶜᶜ(i, j, k, grid, Ay_qᶜᶠᶜ, v))
 
+@inline horizontal_volume_flux_div_xyᶜᶜᶜ(i, j, k, grid, u, v) =
+    flux_div_xyᶜᶜᶜ(i, j, k, grid, u, v)
+
+@inline horizontal_volume_flux_div_xyᶜᶜᶜ(i, j, k, grid::SSG, u, v) =
+    δxᶜᵃᵃ(i, j, k, grid, covariant_to_volume_flux_uᶠᶜᶜ, u, v) +
+    δyᵃᶜᵃ(i, j, k, grid, covariant_to_volume_flux_vᶜᶠᶜ, u, v)
+
+@inline _stored_volume_flux_value(i, j, k, grid, q::Number) = q
+@inline _stored_volume_flux_value(i, j, k, grid, q) = @inbounds q[i, j, k]
+
+@inline horizontal_transport_flux_div_xyᶜᶜᶜ(i, j, k, grid::SSG, u, v) =
+    δxᶜᵃᵃ(i, j, k, grid, _stored_volume_flux_value, u) +
+    δyᵃᶜᵃ(i, j, k, grid, _stored_volume_flux_value, v)
+
 @inline div_xyᶜᶜᶜ(i, j, k, grid, u, v) =
     V⁻¹ᶜᶜᶜ(i, j, k, grid) * flux_div_xyᶜᶜᶜ(i, j, k, grid, u, v)
+
+@inline div_xyᶜᶜᶜ(i, j, k, grid::SSG, u, v) =
+    V⁻¹ᶜᶜᶜ(i, j, k, grid) * horizontal_volume_flux_div_xyᶜᶜᶜ(i, j, k, grid, u, v)
 
 @inline div_xyᶜᶜᶠ(i, j, k, grid, Qu, Qv) =
     V⁻¹ᶜᶜᶠ(i, j, k, grid) * (δxᶜᶜᶠ(i, j, k, grid, Ay_qᶠᶜᶠ, Qu) +

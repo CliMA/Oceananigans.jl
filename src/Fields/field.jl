@@ -3,7 +3,7 @@ using Oceananigans.BoundaryConditions:  construct_boundary_conditions_kernels, O
     Zipper, validate_boundary_condition_architecture, validate_boundary_condition_topology
 using Oceananigans.Grids: parent_index_range, default_indices, validate_indices,
     index_range_contains, halo_size, offset_data, interior_parent_indices
-using Oceananigans.Utils: @apply_regionally, getregion
+using Oceananigans.Utils: @apply_regionally, getregion, KernelParameters, launch!
 using Oceananigans.Architectures: convert_to_device
 
 using LinearAlgebra: LinearAlgebra
@@ -187,6 +187,8 @@ function Field(loc::Tuple, # These are instantiated locations, e.g. (Center(), F
 end
 
 Field(z::ZeroField; kw...) = z
+Field(z::OneField; kw...) = z
+Field(f::ConstantField; kw...) = f
 Field(f::Field; indices=f.indices) = view(f, indices...) # hmm...
 
 """
@@ -843,6 +845,74 @@ function BoundaryConditions.fill_halo_regions!(field::Field, positional_args...;
     end
 
     return nothing
+end
+
+function fill_vertical_halos_only!(field::Field, positional_args...; kwargs...)
+    kernels!, bcs = Oceananigans.BoundaryConditions.get_boundary_kernels(field.boundary_conditions,
+                                                                         field.data,
+                                                                         field.grid,
+                                                                         instantiated_location(field),
+                                                                         field.indices)
+
+    for name in keys(kernels!)
+        if name === :bottom_top || name === :bottom || name === :top
+            kernel! = getproperty(kernels!, name)
+            bc = getproperty(bcs, name)
+            Oceananigans.BoundaryConditions.fill_halo_event!(field.data,
+                                                             kernel!,
+                                                             bc,
+                                                             instantiated_location(field),
+                                                             field.grid,
+                                                             positional_args...;
+                                                             kwargs...)
+        end
+    end
+
+    return nothing
+end
+
+@inline function uses_quadfolded_vector_boundary_conditions(field::Field)
+    bcs = field.boundary_conditions
+    return bcs.west isa Union{Oceananigans.BoundaryConditions.QCovZBC, Oceananigans.BoundaryConditions.QConZBC} ||
+           bcs.east isa Union{Oceananigans.BoundaryConditions.QCovZBC, Oceananigans.BoundaryConditions.QConZBC} ||
+           bcs.south isa Union{Oceananigans.BoundaryConditions.QCovZBC, Oceananigans.BoundaryConditions.QConZBC} ||
+           bcs.north isa Union{Oceananigans.BoundaryConditions.QCovZBC, Oceananigans.BoundaryConditions.QConZBC}
+end
+
+function BoundaryConditions.fill_halo_regions!(field::Field{Face, Center, LZ, O, G, I, D, T, B, S, F},
+                                               positional_args...; kwargs...) where {LZ, O, G<:Oceananigans.Grids.SphericalShellGrid, I, D, T, B, S, F}
+    grid = field.grid
+
+    if grid.connectivity isa Oceananigans.Grids.OctaHEALPixConnectivity &&
+       uses_quadfolded_vector_boundary_conditions(field)
+        throw(ArgumentError("Direct OctaHEALPix halo filling for a single `(Face, Center, _)` field with QuadFolded vector boundary conditions is unsupported. Fill paired `(u, v)` fields together instead."))
+    end
+
+    return fill_halo_regions!(field.data,
+                              field.boundary_conditions,
+                              field.indices,
+                              instantiated_location(field),
+                              field.grid,
+                              positional_args...;
+                              kwargs...)
+end
+
+function BoundaryConditions.fill_halo_regions!(field::Field{Center, Face, LZ, O, G, I, D, T, B, S, F},
+                                               positional_args...; kwargs...) where {LZ, O, G<:Oceananigans.Grids.SphericalShellGrid, I, D, T, B, S, F}
+    grid = field.grid
+
+    if grid.connectivity isa Oceananigans.Grids.OctaHEALPixConnectivity &&
+       uses_quadfolded_vector_boundary_conditions(field)
+        throw(ArgumentError("Direct OctaHEALPix halo filling for a single `(Center, Face, _)` field with QuadFolded vector boundary conditions is unsupported. Fill paired `(u, v)` fields together instead."))
+    end
+
+    return fill_halo_regions!(field.data,
+                              field.boundary_conditions,
+                              field.indices,
+                              instantiated_location(field),
+                              field.grid,
+                              positional_args...;
+                              kwargs...)
 end
 
 #####

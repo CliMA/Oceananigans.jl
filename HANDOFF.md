@@ -16901,3 +16901,424 @@ Corrected seed42 results:
   - `xrot+exactB_all`: raw_rel `6.250398e+02`.
 
 Conclusion: localized exact Hodge-compatible Bernoulli is rejected. It inherits the same huge dynamic scale problem as the global exact-Bernoulli direction; even state-dependent work-canceling blends are far too disruptive. A matched rotational/Bernoulli construction cannot be obtained by simply grafting the exact Hodge pressure-correction operator onto x-edge faces.
+
+---
+
+## 2026-06-03 13:25 reviewer (Claude) — back from idle; great progress on x-edge Q-form localization
+
+Reading the work since 04:55, Codex has made significant theoretical
+progress. Key findings I want to highlight:
+
+### What's now known
+
+**Defect locus**: x-edge corners (west AND east) of the OHPSG
+fundamental polygon. Y-edge / polar-row corrections do NOT close
+the rotational skew condition. (continuation 17)
+
+**Exact EC identity (independent-face adjoint)**: there IS a
+construction that makes rotational Hodge work vanish to roundoff:
+
+```
+U_corner = H_u_corner / sqrt(D_u_corner · D_v_corner)
+V_corner = H_v_corner / sqrt(D_u_corner · D_v_corner)
+```
+
+with independent-corner denominators. Verified at N ∈ {4, 8, 16,
+32}, all seeds. (continuation 16)
+
+**Numerator > denominator**: the skew condition is determined by
+the corner Hodge **covector grouping**, not metric scaling.
+Denominator choice modifies dynamic drift but doesn't change
+skew. (continuation 18)
+
+### Why direct replacement fails
+
+The independent-adjoint construction zeros certain corner
+contributions to enforce skew, but those contributions carry
+physical signal. Result: `raw_total_rel` jumps from ~5% (op_sqrt
+baseline) to ~50-200% (independent-adjoint). Dynamically wrong
+even though formally EC.
+
+This is the **classic Sadourny tension**: a "least-effort" EC
+construction (drop terms until skew holds) typically loses
+dynamic fidelity. Sadourny 1975 / Arakawa-Lamb 1981 fix this by
+constructing corner WEIGHTS rather than dropping corners.
+
+### Reframing: this is a Q-form weight derivation problem
+
+Standard centered:
+```
+G_u = -ℑy[ζ_FF · V_contra]   (weights are 1/2, 1/2 in j)
+```
+
+Sadourny Q-form on orthogonal grid:
+```
+G_u(i, j) = -Σ_α w_α(i, j) · ζ_FF(α) · V_FF(α)
+```
+where α ranges over the 4 FF corners surrounding the u-face, and
+weights `w_α` are chosen so that
+`Σ_faces ⟨u, G⟩ = 0` is exact on div-free `u`.
+
+The Codex independent-adjoint identity shows what `w_α` should be
+**at x-edge corners** (it's the corner Hodge covector ratio). The
+problem is that this prescription disturbs the **dynamic
+content** at those corners — meaning the construction must be
+**a SET of corner weights**, not a "drop term" rule.
+
+### Concrete derivation target
+
+For each x-edge u-face (i ∈ {1, Nx}), with 4 neighboring FF
+corners α ∈ {NW, NE, SW, SE}, find weights `w_α(i)` such that:
+
+1. **Skew constraint**: matches the independent-adjoint identity
+   when summed over div-free perturbations (necessary for EC).
+2. **Consistency constraint**: in the orthogonal-grid limit
+   (g₁₂ → 0), reduces to centered `w_α = 1/2`.
+3. **Dynamic preservation**: the operator value `Σ w_α ζ V` at
+   each x-edge u-face agrees with op_sqrt to a small relative
+   error, NOT with the independent-adjoint dropper.
+
+Constraints (1)-(2) make this a finite linear system for the
+weights at each x-edge u-face. Constraint (3) is a feasibility
+check (the weight set must exist).
+
+### Reference points
+
+- **TRiSK (Ringler-Thuburn-Klemp-Skamarock 2010)**: corner-weight
+  EC construction for arbitrary C-grids. Their `R_e`-coefficients
+  formula is the right template.
+- **Adcroft-Campin-Hill-Marshall 2004 §4**: corner treatment for
+  cubed-sphere C-grid VI. Same structural problem (3-panel
+  junctions vs our 4-panel quad fold).
+- **Oceananigans cubed_sphere_*.jl**: existing OHPSG-adjacent
+  panel-corner handling; worth checking for derivative.
+
+### What I'd suggest as the next probe
+
+Build the explicit 4×4 weight matrix at one x-edge u-face (e.g.
+u(1, 4) at N=4) by solving the local SBP constraint:
+
+```
+Σ_α w_α ζ_α V_α  +  d_u Bernoulli_u  =  0  on div-free
+```
+
+where `d_u` is the local discrete divergence. This is small
+(4-8 unknowns, dense). The result tells us whether a consistent
+weight set exists and what it is.
+
+If yes → implement and validate against op_sqrt for dynamics +
+independent-adjoint for skew.
+
+If no → the EC identity on OHPSG requires more structural change
+(maybe non-local weights, or a different prognostic variable).
+
+### Reviewer reading
+
+The work since 04:55 is excellent — Codex has narrowed the
+problem from "fix the seam somehow" to "derive 4-8 weights at x-
+edge corners". This is the kind of localization that lets us
+read the answer off a small linear system.
+
+I'd recommend stopping the global Hodge-work scan probes and
+investing the next session in the local weight derivation —
+either by hand on paper or via SymPy. The current style of
+"replace globally and see what happens" has plateaued: every
+candidate fixes one channel and breaks another.
+
+### Tests state
+
+Source baseline. All Codex probes have been read-only diagnostic.
+
+Standing by.
+
+
+## Local x-edge cell-KE gradient fit rejected (2026-06-03 continuation 21)
+
+Scripts:
+
+- `/tmp/xedge_cell_ke_gradient_fit_probe.jl`
+- `/tmp/xedge_cell_ke_gradient_fit_probe_reduced.jl`
+
+Purpose: test whether the x-edge independent-adjoint rotational numerator can be paired with a local cell-centered kinetic-energy correction, using the existing scalar Bernoulli-gradient operator rather than the exact Hodge pressure-correction adjoint. The fit used unit cell-`K` perturbation bases in selected x-edge cell columns and found the least-norm scalar-gradient correction that cancels global Hodge work.
+
+Results for seed42:
+
+- N=4:
+  - base `xedge_rot + currentB`: work `+1.1591915698302393e-06`, raw_rel `1.85462631960297`.
+  - `x_edges` cell-KE fit: work roundoff, correction rel `2.088028e-01`, total_rel `1.848712e+00`.
+  - `x_near` fit: work roundoff, correction rel `1.804782e-01`, total_rel `1.847432e+00`.
+- N=8:
+  - base: work `+1.848069130510424e-06`, raw_rel `6.665887038481539e-01`.
+  - `x_edges`: work roundoff, correction rel `1.817483e-01`, total_rel `7.078464e-01`.
+  - `x_near`: work roundoff, correction rel `1.611818e-01`, total_rel `7.012801e-01`.
+- N=16:
+  - base: work `+2.119503941606738e-06`, raw_rel `3.917525449047831e-01`.
+  - `x_edges`: work `-3.176373552204e-21`, correction rel `9.034871e-02`, total_rel `3.992035e-01`.
+  - `x_near`: work `-4.446922973085e-21`, correction rel `7.763213e-02`, total_rel `3.968775e-01`.
+- N=32:
+  - base: work `-1.955970082896287e-06`, raw_rel `2.0790818162021246e-01`.
+  - `x_edges`: work roundoff, correction rel `2.524888e-02`, total_rel `2.091238e-01`.
+  - `x_near`: work roundoff, correction rel `2.237810e-02`, total_rel `2.087199e-01`.
+
+West-only bases were pathological in the earlier full run: N=8 west correction rel was `1.197110e+02`. East-only bases were less pathological but did not address the dynamic jump.
+
+Conclusion: local cell-centered KE-gradient corrections can cancel the scalar Hodge work, but they do not recover dynamic fidelity after the exact x-edge rotational numerator replacement. The total drift remains essentially the same as, or slightly worse than, `xedge_rot + currentB`. This rejects the local cell-KE perturbation path as a production strategy.
+
+## X-edge numerator blend/class parameterization rejected (2026-06-03 continuation 22)
+
+Script: `/tmp/xedge_numerator_blend_class_probe.jl`.
+
+Purpose: test whether the dynamically close `op_sqrt` x-edge numerator can be partially corrected toward the exact independent-adjoint numerator with a stable low-dimensional parameterization. The diagnostic linearizes around `op_sqrt + currentB` and computes, for each selector, the work contribution `Wd` of the exact-minus-op numerator delta and the scalar blend `θ = -W0 / Wd` that would zero Hodge work if that selector alone were adjusted.
+
+Selectors tested:
+
+- `all`: both x edges.
+- `west`, `east`.
+- Per-edge halo-source classes `west_k{1,2}_s{±1}` and `east_k{1,2}_s{±1}`, where `k` is the covariant y-face halo source component and `s` is its sign.
+
+Results show severe instability across seeds and resolutions:
+
+- N=8:
+  - `all θ`: seed1 `+1.552839e+00`, seed2 `+8.476457e-01`, seed42 `-2.702971e+01`, seed99 `+3.484451e-01`.
+  - `west θ`: seed1 `-1.425350e+00`, seed2 `+8.667563e-01`, seed42 `-1.342781e+01`, seed99 `+4.964216e-01`.
+  - `east θ`: seed1 `+7.431829e-01`, seed2 `+3.844476e+01`, seed42 `+2.668377e+01`, seed99 `+1.168940e+00`.
+  - Some class coefficients exceed `10^3` in magnitude, e.g. seed42 `west_k2_s1 θ=-1.935055e+03`.
+- N=16:
+  - `all θ`: seed1 `-2.205134e+00`, seed2 `+3.652117e+00`, seed42 `-3.247706e-01`, seed99 `+1.695082e+00`.
+  - `west θ`: `-1.359186e+00`, `+4.771110e+00`, `-3.544979e-01`, `+2.915902e+00`.
+  - `east θ`: `+3.542990e+00`, `+1.557172e+01`, `-3.872887e+00`, `+4.048664e+00`.
+  - Class coefficients again range from modest values to `O(10^3)`.
+- N=32:
+  - `all θ`: seed1 `+2.200098e+00`, seed2 `-3.969562e+00`, seed42 `+3.776991e-01`, seed99 `+1.806441e+00`.
+  - `west θ`: `+2.158765e+00`, `-3.874282e+00`, `+6.366817e-01`, `+1.691086e+00`.
+  - `east θ`: `-1.149085e+02`, `+1.614100e+02`, `+9.285340e-01`, `-2.648211e+01`.
+  - Seed42 has some attractive-looking class-specific raw drifts around `0.06` to `0.08`, but the same classes are unstable or unusable for other seeds.
+
+Conclusion: fixed or simply state-independent x-edge blend coefficients are rejected, both by edge and by halo-source class. The work-canceling coefficient changes sign and magnitude across random states and resolutions. This means the desired x-edge numerator cannot be obtained by a tunable partial correction toward the independent-adjoint numerator; it must be derived as a nonlinear/local mimetic expression rather than a fixed blend.
+
+## Closest local Hodge-skew x-edge projection: partial positive, not complete (2026-06-03 continuation 23)
+
+Script: `/tmp/xedge_closest_skew_projection_probe.jl`.
+
+Purpose: test a genuinely nonlinear local x-edge rotational numerator. At each x-edge corner, project the current `op_sqrt` corner transport vector `(U_op, V_op)` onto the one-dimensional locally Hodge-skew subspace
+
+```text
+(U, V) = α (H_u_corner, H_v_corner)
+```
+
+where `(H_u_corner, H_v_corner)` are the independent-face corner Hodge covectors. This enforces local rotational Hodge-skew while choosing a corner transport closer to the current dynamics than the direct independent numerator `(H_u, H_v) / denominator`.
+
+Important caveat: in the script output, labels `op` and `ind` both correspond to the direct independent x-edge numerator due to a naming bug. The useful comparisons are the projected variants (`euclidean`, `min_change_*_weighted`, etc.) against `ind`; true `op_sqrt` baselines are from continuations 17/18.
+
+Findings:
+
+- All projected variants make rotational work roundoff, so they enforce the intended local skew condition.
+- Total work remains exactly the current Bernoulli work because Bernoulli is unchanged. Thus this is not a complete VI fix by itself.
+- The closest projection greatly reduces the dynamic drift of the exact independent x-edge numerator, especially at larger N:
+  - N=8 seed42: direct independent raw_rel `6.665887e-01`; Euclidean projection `3.546929e-01`; V-weighted projection `3.503183e-01`.
+  - N=16 seed42: direct independent `3.917525e-01`; Euclidean `2.043353e-01`; V-weighted `2.092565e-01`.
+  - N=32 seed42: direct independent `2.079082e-01`; Euclidean `1.448957e-01`; V-weighted `1.398600e-01`.
+  - N=32 seed99: direct independent `5.042291e-01`; Euclidean `1.658119e-01`; V-weighted `1.631275e-01`.
+- Some variants are unstable or bad (`preserve_v` can be very large, e.g. N=32 seed42 raw_rel `2.605083e+00`). Euclidean and V-weighted closest projections are the only consistently useful variants in this run.
+
+Conclusion: closest local skew projection is a partial positive identity. It is the first nonlinear x-edge rotational construction that enforces rotational skew while substantially reducing the dynamic jump of the direct independent numerator. However it still remains significantly farther from current dynamics than `op_sqrt`, and it leaves full VI Hodge work equal to the unbalanced current Bernoulli work. It is not a production candidate alone, but it is a better rotational building block for a future matched Bernoulli/KE derivation than the direct independent numerator.
+
+---
+
+## 2026-06-03 13:55 reviewer (Claude) — closest-projection is the right rotational; match it with Hodge-adjoint Bernoulli
+
+Continuation 23 is a real positive identity. The closest-projection
+construction:
+
+```
+(U_corner, V_corner) = α · (H_u_corner, H_v_corner)
+```
+
+with state-dependent α is **exact-skew** AND much closer to op_sqrt
+dynamically than the direct independent numerator. **This is the
+right rotational building block.**
+
+### Why fixed corner blends failed (continuation 22)
+
+θ in `op_sqrt + θ · delta` is **state-dependent** because the
+parameterization has only ONE degree of freedom. The true SBP
+constraint imposes EXACT skew on **every** div-free perturbation,
+which is many independent equations — can't be satisfied by a
+single scalar.
+
+The closest-projection works because it adjusts the corner
+transport DIRECTION dynamically to the state, not via a fixed
+coefficient. This is the right kind of nonlinearity.
+
+### Matched Bernoulli: now derivable
+
+Total VI work to vanish on div-free u requires:
+```
+⟨u, G_rot⟩_W + ⟨u, G_bern⟩_W = 0
+```
+
+Closest-projection rotational already gives `⟨u, G_rot⟩_W = 0`
+exactly. So the matched Bernoulli must also satisfy
+`⟨u, G_bern⟩_W = 0` on div-free u.
+
+In the continuum: Bernoulli is `∇(½|u|²)`, and `⟨u, ∇φ⟩ = -⟨∇·u, φ⟩
+= 0` on div-free u. The discrete analog requires the gradient and
+divergence to be **adjoint in the energy inner product W**.
+
+For the OHPSG Hodge-weighted inner product:
+```
+⟨u, v⟩_W = Σ (hodge_weight_face) · (cov→contra flux) · v
+```
+
+The discrete adjoint of `div_h` (which projects to C-C) is the
+operator `W⁻¹ D^T` (which gathers from C-C). So the matched
+Bernoulli is:
+
+```
+G_bern_u(i, j) = -hodge_weight⁻¹ · (D^T · ½|u|²)_face
+              = -(D · H⁻¹)^T · ½|u|² / hodge_weight
+              = -B̃^T · ½|u|² / hodge_weight
+```
+
+where `B̃ = D · H⁻¹` is the Hodge-compatible divergence Codex
+already has via the rigid-lid projection machinery.
+
+### This is the Hodge-adjoint Bernoulli candidate from earlier
+
+Codex tested this around 22:00 (`hodge_adjoint_bernoulli_probe.jl`)
+and rejected it because it was "badly scaled/topologically
+mismatched" against the BASELINE rotational. But that test paired
+it with the WRONG rotational. With closest-projection rotational,
+the pairing should be exact.
+
+### Concrete next experiment
+
+```
+G_rot = closest_projection_rotational(u, op_sqrt)
+G_bern = -B̃^T · ½ |u|²_C / hodge_weight
+G_full = G_rot + G_bern
+```
+
+Test: `⟨u, G_full⟩_W = 0` to roundoff at random div-free states,
+all resolutions.
+
+If yes → this is the EC scheme. Run the bilinear probe and the
+N=32 gate.
+
+If no → there's a sign/metric subtlety in the closest-projection
+adjoint definition; iterate on that.
+
+### What to NOT do
+
+- More variants of fixed-coefficient blends (continuation 22 already
+  ruled out)
+- More cell-KE gradient corrections paired with non-skew rotational
+  (continuation 21 already ruled out)
+- More single-row substitutions in scalar KE (the earlier line of
+  probes already ruled out)
+
+The empirical scan has plateaued. Time to commit to closest-projection
+rotational + Hodge-adjoint Bernoulli and see if the matched pair
+closes globally.
+
+### Dynamic fidelity question
+
+If the closest-projection rotational has `raw_total_rel ~0.14` at
+N=32 (continuation 23 V-weighted), that's 3× worse than op_sqrt
+but vastly better than the direct independent numerator. The
+PHYSICS will be smoother than current, but smoother is OK if
+it stays bounded. The N=32 gate amplitude bound test is the right
+arbiter.
+
+### Reviewer reading
+
+The closest-projection + Hodge-adjoint Bernoulli pair is the most
+principled candidate yet. It uses construction Codex has already
+derived for rigid-lid projection (`B̃ = D · H⁻¹`). The
+implementation should be relatively short. Worth trying before
+the next probe sweep.
+
+### Tests state
+
+Source baseline. All probes still diagnostic.
+
+Standing by — happy to write the test of the matched pair if
+useful.
+
+
+## Projected x-edge rotational variants plus local KE-gradient fit rejected (2026-06-03 continuation 24)
+
+Script: `/tmp/projected_xedge_rot_ke_fit_probe.jl`.
+
+Purpose: fix the labeling issue in `/tmp/xedge_closest_skew_projection_probe.jl` and test whether the improved nonlinear x-edge rotational projections (`euclidean`, `vweighted`) can be paired with local cell-centered KE-gradient corrections better than the direct independent x-edge numerator. The scalar-gradient fit uses `x_near` cell supports `(1, 2, Nx-1, Nx)` and the existing covariant scalar gradient operator.
+
+Corrected variants:
+
+- `op`: true dynamically close `op_sqrt` rotational + current Bernoulli.
+- `euclidean`: x-edge corner transport projected onto the local Hodge-skew line by Euclidean closest projection.
+- `vweighted`: same but weighted to preserve `V` more strongly.
+- `ind`: direct independent x-edge numerator.
+
+Results for seed42 / seed99:
+
+- N=8 seed42:
+  - `op`: work `+1.782136628057e-06`, raw_rel `4.302650e-02`; after fit corrected_rel `1.587948e-01`.
+  - `euclidean`: raw_rel `3.546929e-01`; after fit `3.961503e-01`.
+  - `vweighted`: raw_rel `3.503183e-01`; after fit `3.900961e-01`.
+  - `ind`: raw_rel `6.665887e-01`; after fit `7.012801e-01`.
+- N=8 seed99:
+  - `op`: raw_rel `8.294621e-02`; after fit `1.040057e-01`.
+  - `euclidean`: raw_rel `2.333674e-01`; after fit `2.586790e-01`.
+  - `vweighted`: raw_rel `2.316786e-01`; after fit `2.599518e-01`.
+- N=16 seed42:
+  - `op`: raw_rel `6.581647e-02`; after fit `6.843196e-02`.
+  - `euclidean`: raw_rel `2.043353e-01`; after fit `2.187320e-01`.
+  - `vweighted`: raw_rel `2.092565e-01`; after fit `2.245778e-01`.
+- N=16 seed99:
+  - `op`: raw_rel `3.912814e-02`; after fit `6.074277e-02`.
+  - `euclidean`: raw_rel `1.221805e-01`; after fit `1.263074e-01`.
+  - `vweighted`: raw_rel `1.209631e-01`; after fit `1.244774e-01`.
+- N=32 seed42:
+  - `op`: raw_rel `3.847309e-02`; after fit `4.073670e-02`.
+  - `euclidean`: raw_rel `1.448957e-01`; after fit `1.462966e-01`.
+  - `vweighted`: raw_rel `1.398600e-01`; after fit `1.413618e-01`.
+- N=32 seed99:
+  - `op`: raw_rel `3.519712e-02`; after fit `5.866758e-02`.
+  - `euclidean`: raw_rel `1.658119e-01`; after fit `1.663450e-01`.
+  - `vweighted`: raw_rel `1.631275e-01`; after fit `1.635086e-01`.
+
+Conclusion: projected x-edge rotational variants remain worse dynamic anchors than true `op_sqrt`, even after local scalar KE-gradient fitting. The local fit can zero scalar Hodge work, but it does not recover dynamic fidelity and generally increases drift. This rejects projected-rotational-plus-local-KE fitting as a source strategy. The only useful take-away is that true `op_sqrt` remains the best dynamic anchor among tested rotational forms; future derivations should perturb `op_sqrt` minimally rather than replacing it with exact local skew projections.
+
+## 2026-06-03: x-edge least-norm scalar-work correction lower bound
+
+Diagnostic: `/tmp/xedge_minimal_work_correction_probe.jl`.
+
+Tested the least-norm correction to x-edge corner fluxes around the `op_sqrt + current Bernoulli` anchor under the exact independent-work sensitivity
+`δW = H_u δF_u - H_v δF_v`. This correction is intentionally nonlocal because it uses the global scalar work residual; it is a lower bound / shape diagnostic, not a production source candidate.
+
+Results:
+- The correction cancels Hodge work to roundoff for all sampled cases.
+- For both x-edges, `corr_rel = norm(correction) / norm(current_total)` was:
+  - N=8 seeds 1,2,42,99: `0.01898`, `0.04687`, `0.06731`, `0.01906`.
+  - N=16 seeds 1,2,42,99: `0.03804`, `0.10480`, `0.00871`, `0.02231`.
+  - N=32 seeds 1,2,42,99: `0.01139`, `0.02769`, `0.00542`, `0.02321`.
+- Corrected drift relative to `current_total` stayed close to or modestly above the `op_sqrt` drift at N=32, for example:
+  - N=32 seed42: `op_raw_rel=0.03847`, corrected `0.03885`.
+  - N=32 seed99: `op_raw_rel=0.03520`, corrected `0.04215`.
+- West-only and east-only supports also cancel scalar work but usually require larger corrections than using both x-edges.
+
+Conclusion: a small x-edge correction around `op_sqrt` is algebraically possible in a scalar least-norm sense, especially at N=32, but it is seed-dependent and globally normalized. This supports continuing with perturbative x-edge corrections around `op_sqrt`, but rejects this exact correction as source-ready.
+
+## 2026-06-03: parallel-to-`op_sqrt` x-edge flux correction rejected
+
+Diagnostic: `/tmp/xedge_parallel_flux_correction_probe.jl`.
+
+Constrained the scalar-work cancellation around `op_sqrt + current Bernoulli` to corrections parallel to the existing x-edge corner flux vector, and also tested a single uniform x-edge rescaling.
+
+Results:
+- Per-corner parallel corrections cancel scalar work, but are much larger than the free least-norm correction and require unstable multipliers.
+- N32 seed42: free `corr_rel=0.00542`, parallel `0.01256` with `max_gamma=1.12`; uniform scaling `corr_rel=0.0774` and corrected drift `0.0864`.
+- N32 seed99: free `corr_rel=0.02321`, parallel `0.04629` with `max_gamma=256`; uniform scaling `corr_rel=0.910` and corrected drift `0.911`.
+- N8 and N16 also show unstable or large multipliers; for example N8 seed42 uniform scaling needs `gamma=27.0` and `corr_rel=16.6`.
+
+Conclusion: the small work-canceling direction identified by the free lower-bound diagnostic is not aligned with the existing `op_sqrt` x-edge fluxes. Simple multiplicative rescaling of x-edge fluxes is rejected.

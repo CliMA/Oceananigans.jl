@@ -49,6 +49,8 @@ import Oceananigans.TurbulenceClosures:
     buoyancy_tracers,
     add_closure_specific_boundary_conditions,
     closure_required_tracers,
+    initialize_closure_fields!,
+    refresh_velocity_dependent_closure_fields!,
     compute_closure_fields!,
     step_closure_prognostics!,
     build_closure_fields,

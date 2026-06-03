@@ -1,4 +1,5 @@
 using Oceananigans.TimeSteppers: _rk3_substep_field!, stage_Δt
+using Oceananigans.Fields: compute!
 import Oceananigans.TimeSteppers: rk3_substep!
 
 """
@@ -44,6 +45,7 @@ function pressure_correction_rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
         kernel_args = (field, kernel_Δt, γⁿ, ζⁿ, model.timestepper.Gⁿ[name], model.timestepper.G⁻[name])
         launch!(architecture(grid), grid, :xyz, _rk3_substep_field!, kernel_args...; exclude_periphery)
 
+        compute!(model.auxiliary_fields)
         implicit_step!(field,
                        model.timestepper.implicit_solver,
                        model.closure,

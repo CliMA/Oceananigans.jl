@@ -17,6 +17,24 @@ export Ax_qᶠᶠᶠ, Ax_qᶠᶠᶜ, Ax_qᶠᶜᶠ, Ax_qᶠᶜᶜ, Ax_qᶜᶠᶠ
 export Ay_qᶠᶠᶠ, Ay_qᶠᶠᶜ, Ay_qᶠᶜᶠ, Ay_qᶠᶜᶜ, Ay_qᶜᶠᶠ, Ay_qᶜᶠᶜ, Ay_qᶜᶜᶠ, Ay_qᶜᶜᶜ
 export Az_qᶠᶠᶠ, Az_qᶠᶠᶜ, Az_qᶠᶜᶠ, Az_qᶠᶜᶜ, Az_qᶜᶠᶠ, Az_qᶜᶠᶜ, Az_qᶜᶜᶠ, Az_qᶜᶜᶜ
 
+# Non-orthogonal metric and Hodge operators
+export Jᶜᶜᵃ, Jᶠᶜᵃ, Jᶜᶠᵃ, Jᶜᶜᶜ, Jᶠᶜᶜ, Jᶜᶠᶜ, Jᶜᶜᶠ, Jᶠᶜᶠ, Jᶜᶠᶠ
+export g¹¹ᶜᶜᵃ, g¹²ᶜᶜᵃ, g²¹ᶜᶜᵃ, g²²ᶜᶜᵃ, g¹¹ᶠᶜᵃ, g¹²ᶠᶜᵃ, g²¹ᶜᶠᵃ, g²²ᶜᶠᵃ
+export g¹¹ᶜᶜᶜ, g¹²ᶜᶜᶜ, g²¹ᶜᶜᶜ, g²²ᶜᶜᶜ, g¹¹ᶠᶜᶜ, g¹²ᶠᶜᶜ, g²¹ᶜᶠᶜ, g²²ᶜᶠᶜ
+export G¹¹ᶜᶜᵃ, G¹²ᶜᶜᵃ, G²¹ᶜᶜᵃ, G²²ᶜᶜᵃ, G¹¹ᶠᶜᵃ, G¹²ᶠᶜᵃ, G²¹ᶜᶠᵃ, G²²ᶜᶠᵃ
+export G¹¹ᶜᶜᶜ, G¹²ᶜᶜᶜ, G²¹ᶜᶜᶜ, G²²ᶜᶜᶜ, G¹¹ᶠᶜᶜ, G¹²ᶠᶜᶜ, G²¹ᶜᶠᶜ, G²²ᶜᶠᶜ
+export covariant_to_contravariant_flux_uᶠᶜᶜ, covariant_to_contravariant_flux_vᶜᶠᶜ
+export covariant_to_contravariant_velocity_uᶠᶜᶜ, covariant_to_contravariant_velocity_vᶜᶠᶜ
+export covariant_to_volume_flux_uᶠᶜᶜ, covariant_to_volume_flux_vᶜᶠᶜ
+export hodge_compatible_boundary_flux_uᶠᶜᶜ, hodge_compatible_boundary_flux_vᶜᶠᶜ
+export hodge_compatible_volume_flux_div_xyᶜᶜᶜ
+export hodge_compatible_pressure_correction_uᶠᶜᶜ, hodge_compatible_pressure_correction_vᶜᶠᶜ
+export covariant_gradient_xᶠᶜᶜ, covariant_gradient_yᶜᶠᶜ
+export covariant_kinetic_energyᶜᶜᶜ, covariant_vertical_circulationᶠᶠᶜ, covariant_vertical_vorticityᶠᶠᶜ
+export covariant_vertical_vorticity_componentᶠᶠᶜ
+export covariant_rotational_advection_uᶠᶜᶜ, covariant_rotational_advection_vᶜᶠᶜ
+export covariant_bernoulli_head_uᶠᶜᶜ, covariant_bernoulli_head_vᶜᶠᶜ
+
 export ∂²xᶠᶠᶠ, ∂²xᶠᶠᶜ, ∂²xᶠᶜᶠ, ∂²xᶠᶜᶜ, ∂²xᶜᶠᶠ, ∂²xᶜᶠᶜ, ∂²xᶜᶜᶠ, ∂²xᶜᶜᶜ
 export ∂²yᶠᶠᶠ, ∂²yᶠᶠᶜ, ∂²yᶠᶜᶠ, ∂²yᶠᶜᶜ, ∂²yᶜᶠᶠ, ∂²yᶜᶠᶜ, ∂²yᶜᶜᶠ, ∂²yᶜᶜᶜ
 export ∂²zᶠᶠᶠ, ∂²zᶠᶠᶜ, ∂²zᶠᶜᶠ, ∂²zᶠᶜᶜ, ∂²zᶜᶠᶠ, ∂²zᶜᶠᶜ, ∂²zᶜᶜᶠ, ∂²zᶜᶜᶜ
@@ -35,7 +53,7 @@ export Ay_∂yᶠᶠᶠ, Ay_∂yᶠᶠᶜ, Ay_∂yᶠᶜᶠ, Ay_∂yᶠᶜᶜ, A
 export Az_∂zᶠᶠᶠ, Az_∂zᶠᶠᶜ, Az_∂zᶠᶜᶠ, Az_∂zᶠᶜᶜ, Az_∂zᶜᶠᶠ, Az_∂zᶜᶠᶜ, Az_∂zᶜᶜᶠ, Az_∂zᶜᶜᶜ
 
 # Divergences
-export divᶜᶜᶜ, div_xyᶜᶜᶜ, div_xyᶜᶜᶠ, ζ₃ᶠᶠᶜ
+export divᶜᶜᶜ, div_xyᶜᶜᶜ, div_xyᶜᶜᶠ, horizontal_volume_flux_div_xyᶜᶜᶜ, ζ₃ᶠᶠᶜ
 export ∇²ᶜᶜᶜ, ∇²ᶠᶜᶜ, ∇²ᶜᶠᶜ, ∇²ᶜᶜᶠ, ∇²hᶜᶜᶜ, ∇²hᶠᶜᶜ, ∇²hᶜᶠᶜ
 
 # Interpolations
@@ -57,9 +75,12 @@ export intrinsic_vector, extrinsic_vector
 export σⁿ, σ⁻, ∂t_σ
 
 using Oceananigans.Grids: LatitudeLongitudeGrid, LLGOTF, XRegLLGOTF, YRegLLGOTF,
-    OrthogonalSphericalShellGrid, RectilinearGrid, XRegularLLG, XRegularRG, YRegularLLG,
-    YRegularRG, ZRegOrthogonalSphericalShellGrid, ZRegularLLG, ZRegularRG, AbstractGrid,
-    Center, Face
+    EquiangularGnomonicCubedSpherePanel, OrthogonalSphericalShellGrid, SphericalShellGrid,
+    OctaHEALPixMapping,
+    RectilinearGrid, XRegularLLG, XRegularRG, YRegularLLG,
+    YRegularRG, ZRegOrthogonalSphericalShellGrid, ZRegSphericalShellGrid, ZRegularLLG, ZRegularRG, AbstractGrid,
+    Center, Face,
+    octahealpix_covariant_xface_halo_source, octahealpix_covariant_yface_halo_source
 
 #####
 ##### Convenient aliases
@@ -74,6 +95,9 @@ const RGZ = ZRegularRG
 
 const OSSG  = OrthogonalSphericalShellGrid
 const OSSGZ = ZRegOrthogonalSphericalShellGrid
+const SSG   = SphericalShellGrid
+const SSGZ  = ZRegSphericalShellGrid
+const SphericalShellLikeGrid = Union{OSSG, SSG}
 
 const LLG  = LatitudeLongitudeGrid
 const LLGX = XRegularLLG
@@ -81,7 +105,7 @@ const LLGY = YRegularLLG
 const LLGZ = ZRegularLLG
 
 # Vertically regular grids
-const ZRG = Union{RGZ, OSSGZ, LLGZ}
+const ZRG = Union{RGZ, OSSGZ, SSGZ, LLGZ}
 
 const LLGF  = LLGOTF
 const LLGFX = XRegLLGOTF
@@ -99,6 +123,7 @@ include("interpolation_utils.jl")
 include("reciprocal_metric_operators.jl")
 include("spacings_and_areas_and_volumes.jl")
 include("products_between_fields_and_grid_metrics.jl")
+include("nonorthogonal_metric_operators.jl")
 
 include("derivative_operators.jl")
 include("constant_r_derivative_operators.jl")

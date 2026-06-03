@@ -1,13 +1,57 @@
 import Oceananigans: tracer_tendency_kernel_function
-import Oceananigans.Models: interior_tendency_kernel_parameters
+import Oceananigans.Models: interior_tendency_kernel_parameters, update_model_field_time_series!,
+                           surface_kernel_parameters, volume_kernel_parameters
+import Oceananigans.TimeSteppers: compute_tendencies!
 
 using Oceananigans: fields, prognostic_fields, TendencyCallsite, UpdateStateCallsite
+using Oceananigans.BoundaryConditions: fill_halo_regions!, update_boundary_conditions!
+using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
 using Oceananigans.Grids: halo_size
 using Oceananigans.Fields: immersed_boundary_condition
-using Oceananigans.Biogeochemistry: update_tendencies!
+using Oceananigans.Biogeochemistry: update_tendencies!, biogeochemical_drift_velocity
+using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
+using Oceananigans.TurbulenceClosures: closure_auxiliary_velocity, compute_closure_fields!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
 using Oceananigans.Utils: get_active_cells_map
+
+function compute_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
+    compute_momentum_tendencies!(model, callbacks)
+    compute_tracer_tendencies!(model)
+    return nothing
+end
+
+function refresh_hydrostatic_tendency_diagnostic_state!(model::HydrostaticFreeSurfaceModel)
+    grid = model.grid
+    arch = architecture(grid)
+
+    @apply_regionally begin
+        compute_auxiliary_fields!(model.auxiliary_fields)
+        update_boundary_conditions!(fields(model), model)
+        update_prescribed_velocity_field_operations!(model.velocities)
+    end
+
+    fill_halo_regions!((model.velocities.u, model.velocities.v), model.clock, fields(model); async=false)
+    fill_halo_regions!(model.tracers, model.clock, fields(model); async=false)
+    compute_auxiliary_fields!(model.auxiliary_fields)
+
+    @apply_regionally begin
+        surface_params = surface_kernel_parameters(grid)
+        volume_params = volume_kernel_parameters(grid)
+        κ_params = diffusivity_kernel_parameters(grid)
+        compute_buoyancy_gradients!(model.buoyancy, grid, model.tracers, parameters=volume_params)
+        update_vertical_velocities!(model.velocities, grid, model, parameters=surface_params)
+        update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers, parameters=surface_params)
+        compute_closure_fields!(model.closure_fields, model.closure, model, parameters=κ_params)
+    end
+
+    fill_hydrostatic_closure_field_halos!(model.closure_fields, grid)
+    fill_hydrostatic_pressure_halos!(model.pressure.pHY′, grid)
+    compute_auxiliary_fields!(model.auxiliary_fields)
+    fill_halo_regions!(model.velocities, model.clock, fields(model); async=false)
+
+    return nothing
+end
 
 """
     compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
@@ -23,6 +67,9 @@ This function:
 Momentum tendencies are stored in `model.timestepper.Gⁿ.u` and `model.timestepper.Gⁿ.v`.
 """
 function compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
+    update_model_field_time_series!(model, model.clock)
+    refresh_momentum_advection_state!(model, model.velocities)
+    refresh_hydrostatic_tendency_diagnostic_state!(model)
 
     grid = model.grid
     arch = architecture(grid)
@@ -58,6 +105,10 @@ when using split-explicit free surfaces (transport velocities include barotropic
 Tracer tendencies are stored in `model.timestepper.Gⁿ[tracer_name]`.
 """
 function compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel)
+    update_model_field_time_series!(model, model.clock)
+    refresh_transport_advection_state!(model, model.velocities)
+    refresh_hydrostatic_tendency_diagnostic_state!(model)
+    refresh_update_state_tracer_advection_halos!(model)
 
     grid = model.grid
     arch = architecture(grid)
@@ -106,15 +157,29 @@ function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active
         @inbounds c_advection   = model.advection[tracer_name]
         @inbounds c_forcing     = model.forcing[tracer_name]
         @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
+        tracer_name_val = Val(tracer_name)
+
+        biogeochemical_velocities = biogeochemical_drift_velocity(model.biogeochemistry, tracer_name_val)
+        closure_velocities = closure_auxiliary_velocity(model.closure, model.closure_fields, tracer_name_val)
+
+        refresh_tracer_auxiliary_velocity_halos!(biogeochemical_velocities)
+        refresh_tracer_auxiliary_velocity_halos!(closure_velocities)
+        refresh_tracer_advective_forcing_halos!(c_forcing)
+
+        auxiliary_velocities = tracer_auxiliary_velocities(biogeochemical_velocities,
+                                                           closure_velocities,
+                                                           c_forcing)
 
         args = tuple(Val(tracer_index),
-                     Val(tracer_name),
+                     tracer_name_val,
                      c_advection,
                      model.closure,
                      c_immersed_bc,
                      model.buoyancy,
                      model.biogeochemistry,
                      model.transport_velocities,
+                     auxiliary_velocities,
+                     model.velocities,
                      model.free_surface,
                      model.tracers,
                      model.closure_fields,
@@ -149,11 +214,15 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
     u_forcing = model.forcing.u
     v_forcing = model.forcing.v
 
+    refresh_tracer_advective_forcing_halos!(u_forcing)
+    refresh_tracer_advective_forcing_halos!(v_forcing)
+
     start_momentum_kernel_args = (model.advection.momentum,
                                   model.coriolis,
                                   model.closure)
 
     end_momentum_kernel_args = (velocities,
+                                model.transport_velocities,
                                 model.free_surface,
                                 model.tracers,
                                 model.buoyancy,

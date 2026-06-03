@@ -23,6 +23,179 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 @inline y_column_depth(i, j, k, grid, ::Val{false}, η) = column_depthTᶜᶠᵃ(i, j, k, grid, η)
 @inline y_column_depth(i, j, k, grid, ::Val{true},  η) =  column_depthᶜᶠᵃ(i, j, k, grid, η)
 
+@inline split_explicit_covariant_xface_source_value(i, j, k, grid, filled_halos, timestepper, U, V) =
+    U★(i, j, k, grid, timestepper, U)
+
+@inline split_explicit_covariant_yface_source_value(i, j, k, grid, filled_halos, timestepper, U, V) =
+    U★(i, j, k, grid, timestepper, V)
+
+@inline inside_octahealpix_horizontal_domain(i, j, grid) =
+    (i >= 1) & (i <= grid.Nx) & (j >= 1) & (j <= grid.Ny)
+
+@inline split_explicit_covariant_xface_source_value(i, j, k,
+                                                    grid::SphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:OctaHEALPixConnectivity},
+                                                    ::Val{true}, timestepper, U, V) =
+    U★(i, j, k, grid, timestepper, U)
+
+@inline split_explicit_covariant_yface_source_value(i, j, k,
+                                                    grid::SphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:OctaHEALPixConnectivity},
+                                                    ::Val{true}, timestepper, U, V) =
+    U★(i, j, k, grid, timestepper, V)
+
+@inline function split_explicit_covariant_xface_source_value(i, j, k,
+                                                             grid::SphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:OctaHEALPixConnectivity},
+                                                             filled_halos, timestepper, U, V)
+    inside = inside_octahealpix_horizontal_domain(i, j, grid)
+    source_kind, source_i, source_j, sign,
+    _, _, _, _ =
+        octahealpix_vector_halo_source_pair(i, j, grid.Nx, grid.Ny, grid.connectivity, Val(:covariant))
+
+    safe_i = ifelse(inside, i, source_i)
+    safe_j = ifelse(inside, j, source_j)
+    source_u = U★(safe_i, safe_j, k, grid, timestepper, U)
+    source_v = U★(safe_i, safe_j, k, grid, timestepper, V)
+    halo_value = ifelse(source_kind == 1, sign * source_u, sign * source_v)
+
+    return ifelse(inside, source_u, halo_value)
+end
+
+@inline function split_explicit_covariant_yface_source_value(i, j, k,
+                                                             grid::SphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:OctaHEALPixConnectivity},
+                                                             filled_halos, timestepper, U, V)
+    inside = inside_octahealpix_horizontal_domain(i, j, grid)
+    _, _, _, _,
+    source_kind, source_i, source_j, sign =
+        octahealpix_vector_halo_source_pair(i, j, grid.Nx, grid.Ny, grid.connectivity, Val(:covariant))
+
+    safe_i = ifelse(inside, i, source_i)
+    safe_j = ifelse(inside, j, source_j)
+    source_u = U★(safe_i, safe_j, k, grid, timestepper, U)
+    source_v = U★(safe_i, safe_j, k, grid, timestepper, V)
+    halo_value = ifelse(source_kind == 1, sign * source_u, sign * source_v)
+
+    return ifelse(inside, source_v, halo_value)
+end
+
+@inline split_explicit_surface_source_value(i, j, k, grid, filled_halos, timestepper, η) =
+    η★(i, j, k, grid, timestepper, η)
+
+@inline function split_explicit_surface_source_value(i, j, k,
+                                                     grid::SphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:OctaHEALPixConnectivity},
+                                                     ::Val{false}, timestepper, η)
+    inside = inside_octahealpix_horizontal_domain(i, j, grid)
+    source_ring = Oceananigans.Grids.octahealpix_halo_source_ring_index(i, j, grid.Nx, grid.Ny, grid.connectivity)
+    source_i = grid.connectivity.ring_to_i[source_ring]
+    source_j = grid.connectivity.ring_to_j[source_ring]
+
+    safe_i = ifelse(inside, i, source_i)
+    safe_j = ifelse(inside, j, source_j)
+    return η★(safe_i, safe_j, k, grid, timestepper, η)
+end
+
+@inline function split_explicit_barotropic_pressure_gradient_u(i, j, k_top, grid, filled_halos, timestepper, η)
+    ∂xᵣ = x_derivative_operator(filled_halos)
+    return ∂xᵣ(i, j, k_top, grid, η★, timestepper, η)
+end
+
+@inline function split_explicit_barotropic_pressure_gradient_v(i, j, k_top, grid, filled_halos, timestepper, η)
+    ∂yᵣ = y_derivative_operator(filled_halos)
+    return ∂yᵣ(i, j, k_top, grid, η★, timestepper, η)
+end
+
+@inline function split_explicit_barotropic_pressure_gradient_u(i, j, k_top,
+                                                               grid::SphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:OctaHEALPixConnectivity},
+                                                               ::Val{false}, timestepper, η)
+    return ∂xᵣᶠᶜᶠ(i, j, k_top, grid,
+                  split_explicit_surface_source_value,
+                  Val(false), timestepper, η)
+end
+
+@inline function split_explicit_barotropic_pressure_gradient_v(i, j, k_top,
+                                                               grid::SphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:OctaHEALPixConnectivity},
+                                                               ::Val{false}, timestepper, η)
+    return ∂yᵣᶜᶠᶠ(i, j, k_top, grid,
+                  split_explicit_surface_source_value,
+                  Val(false), timestepper, η)
+end
+
+@inline function split_explicit_barotropic_contravariant_flux_u(i, j, k,
+                                                                grid::SphericalShellGrid,
+                                                                filled_halos,
+                                                                timestepper,
+                                                                U, V)
+    Ū = split_explicit_covariant_xface_source_value(i, j, k, grid, filled_halos, timestepper, U, V)
+    V₁ = split_explicit_covariant_yface_source_value(i - 1, j,     k, grid, filled_halos, timestepper, U, V)
+    V₂ = split_explicit_covariant_yface_source_value(i,     j,     k, grid, filled_halos, timestepper, U, V)
+    V₃ = split_explicit_covariant_yface_source_value(i - 1, j + 1, k, grid, filled_halos, timestepper, U, V)
+    V₄ = split_explicit_covariant_yface_source_value(i,     j + 1, k, grid, filled_halos, timestepper, U, V)
+
+    quarter = convert(typeof(Ū), 1//4)
+    V̄ = quarter * (V₁ + V₂ + V₃ + V₄)
+
+    return G¹¹ᶠᶜᶜ(i, j, k, grid) * Ū +
+           G¹²ᶠᶜᶜ(i, j, k, grid) * V̄
+end
+
+@inline function split_explicit_barotropic_contravariant_flux_v(i, j, k,
+                                                                grid::SphericalShellGrid,
+                                                                filled_halos,
+                                                                timestepper,
+                                                                U, V)
+    U₁ = split_explicit_covariant_xface_source_value(i,     j - 1, k, grid, filled_halos, timestepper, U, V)
+    U₂ = split_explicit_covariant_xface_source_value(i + 1, j - 1, k, grid, filled_halos, timestepper, U, V)
+    U₃ = split_explicit_covariant_xface_source_value(i,     j,     k, grid, filled_halos, timestepper, U, V)
+    U₄ = split_explicit_covariant_xface_source_value(i + 1, j,     k, grid, filled_halos, timestepper, U, V)
+    V̄ = split_explicit_covariant_yface_source_value(i, j, k, grid, filled_halos, timestepper, U, V)
+
+    quarter = convert(typeof(V̄), 1//4)
+    Ū = quarter * (U₁ + U₂ + U₃ + U₄)
+
+    return G²¹ᶜᶠᶜ(i, j, k, grid) * Ū +
+           G²²ᶜᶠᶜ(i, j, k, grid) * V̄
+end
+
+@inline split_explicit_barotropic_transport_flux_u(i, j, k,
+                                                   grid::SphericalShellGrid,
+                                                   filled_halos,
+                                                   timestepper,
+                                                   U, V) =
+    Oceananigans.Operators.transverse_computational_width_uᶠᶜᶜ(i, j, k, grid) *
+    split_explicit_barotropic_contravariant_flux_u(i, j, k, grid, filled_halos, timestepper, U, V)
+
+@inline split_explicit_barotropic_transport_flux_v(i, j, k,
+                                                   grid::SphericalShellGrid,
+                                                   filled_halos,
+                                                   timestepper,
+                                                   U, V) =
+    Oceananigans.Operators.transverse_computational_width_vᶜᶠᶜ(i, j, k, grid) *
+    split_explicit_barotropic_contravariant_flux_v(i, j, k, grid, filled_halos, timestepper, U, V)
+
+@inline function split_explicit_free_surface_barotropic_divergence(i, j, k_top, grid, filled_halos, timestepper, U, V)
+    δx = x_difference_operator(filled_halos)
+    δy = y_difference_operator(filled_halos)
+
+    return (δx(i, j, grid.Nz, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
+            δy(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) *
+           Az⁻¹ᶜᶜᶠ(i, j, k_top, grid)
+end
+
+@inline function split_explicit_free_surface_barotropic_divergence(i, j, k_top,
+                                                                   grid::SphericalShellGrid,
+                                                                   filled_halos,
+                                                                   timestepper,
+                                                                   U, V)
+    δx = x_difference_operator(filled_halos)
+    δy = y_difference_operator(filled_halos)
+
+    return (δx(i, j, grid.Nz, grid,
+               split_explicit_barotropic_transport_flux_u,
+               filled_halos, timestepper, U, V) +
+            δy(i, j, grid.Nz, grid,
+               split_explicit_barotropic_transport_flux_v,
+               filled_halos, timestepper, U, V)) *
+           Az⁻¹ᶜᶜᶠ(i, j, k_top, grid)
+end
+
 # Evolution Kernels
 #
 # ∂t(η) = - ∇⋅U
@@ -38,15 +211,14 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 
     Hᶠᶜ = x_column_depth(i, j, k_top, grid, filled_halos, η) # topology-aware column
     Hᶜᶠ = y_column_depth(i, j, k_top, grid, filled_halos, η) # topology-aware column
-    ∂xᵣ = x_derivative_operator(filled_halos)
-    ∂yᵣ = y_derivative_operator(filled_halos)
+    ∂x_η = split_explicit_barotropic_pressure_gradient_u(i, j, k_top, grid, filled_halos, timestepper, η)
+    ∂y_η = split_explicit_barotropic_pressure_gradient_v(i, j, k_top, grid, filled_halos, timestepper, η)
 
     # ∂τ(U) = - ∇η + G
-    # Note: use ∂xᵣT and ∂yᵣT (derivatives at constant r) for the free surface,
-    # since η lives on the surface and doesn't have vertical structure
+    # On OctaHEALPix, η-gradients must use the non-orthogonal covariant surface-gradient path.
     @inbounds begin
-        U[i, j, 1] += Δτ * (- g * Hᶠᶜ * ∂xᵣ(i, j, k_top, grid, η★, timestepper, η) + Gᵁ[i, j, 1])
-        V[i, j, 1] += Δτ * (- g * Hᶜᶠ * ∂yᵣ(i, j, k_top, grid, η★, timestepper, η) + Gⱽ[i, j, 1])
+        U[i, j, 1] += Δτ * (- g * Hᶠᶜ * ∂x_η + Gᵁ[i, j, 1])
+        V[i, j, 1] += Δτ * (- g * Hᶜᶠ * ∂y_η + Gⱽ[i, j, 1])
 
         # Averaging the transport
         Ũ[i, j, 1] += transport_weight * U[i, j, 1]
@@ -60,11 +232,7 @@ end
 
     cache_previous_free_surface!(timestepper, i, j, k_top, η)
 
-    δx = x_difference_operator(filled_halos)
-    δy = y_difference_operator(filled_halos)
-
-    δh_U = (δx(i, j, grid.Nz, grid, Δy_qᶠᶜᶠ, U★, timestepper, U) +
-            δy(i, j, grid.Nz, grid, Δx_qᶜᶠᶠ, U★, timestepper, V)) * Az⁻¹ᶜᶜᶠ(i, j, k_top, grid)
+    δh_U = split_explicit_free_surface_barotropic_divergence(i, j, k_top, grid, filled_halos, timestepper, U, V)
 
     @inbounds begin
         η[i, j, k_top] += Δτ * (F(i, j, k_top, grid, clock, (; η, U, V)) - δh_U)
@@ -192,6 +360,8 @@ end
 #####
 
 function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroclinic_timestepper, Δt)
+    Oceananigans.Models.update_model_field_time_series!(model, model.clock)
+
     # Note: free_surface.displacement.grid != model.grid for DistributedSplitExplicitFreeSurface since
     # halo_size(free_surface.displacement.grid) != halo_size(model.grid)
     free_surface_grid = free_surface.displacement.grid

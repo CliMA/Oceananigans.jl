@@ -10,6 +10,8 @@ using Oceananigans.Fields: compute!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models: update_model_field_time_series!, surface_kernel_parameters
 
+compute_auxiliary_fields!(auxiliary_fields) = compute!(auxiliary_fields)
+
 """
     update_state!(model::NonhydrostaticModel, callbacks=[])
 
@@ -27,22 +29,24 @@ function update_state!(model::NonhydrostaticModel, callbacks=[])
     # Update all FieldTimeSeries used in the model
     update_model_field_time_series!(model, model.clock)
 
+    compute_auxiliary_fields!(model.auxiliary_fields)
+
     # Update the boundary conditions
     update_boundary_conditions!(fields(model), model)
 
     # Fill halos for velocities and tracers
     fill_halo_regions!(merge(model.velocities, model.tracers), model.clock, fields(model); fill_open_bcs=false, async=true)
+    refresh_background_field_halos!(model.background_fields)
 
     # Compute auxiliary fields
-    for aux_field in model.auxiliary_fields
-        compute!(aux_field)
-    end
+    compute_auxiliary_fields!(model.auxiliary_fields)
 
     # Calculate closure_fields and hydrostatic pressure
     compute_auxiliaries!(model)
 
     fill_halo_regions!(model.closure_fields; only_local_halos=true)
     fill_halo_regions!(model.pressures.pHY′; only_local_halos=true)
+    refresh_update_state_tracer_advection_halos!(model)
 
     for callback in callbacks
         callback.callsite isa UpdateStateCallsite && callback(model)
@@ -51,6 +55,36 @@ function update_state!(model::NonhydrostaticModel, callbacks=[])
     compute_tendencies!(model, callbacks)
     update_biogeochemical_state!(model.biogeochemistry, model)
 
+    return nothing
+end
+
+function refresh_restored_nonhydrostatic_model_state!(model)
+
+    foreach(model.tracers) do tracer
+        mask_immersed_field!(tracer)
+    end
+
+    update_model_field_time_series!(model, model.clock)
+
+    compute_auxiliary_fields!(model.auxiliary_fields)
+
+    update_boundary_conditions!(fields(model), model)
+    fill_halo_regions!(merge(model.velocities, model.tracers), model.clock, fields(model); fill_open_bcs=false, async=false)
+    refresh_background_field_halos!(model.background_fields)
+
+    compute_auxiliary_fields!(model.auxiliary_fields)
+
+    compute_auxiliaries!(model)
+
+    fill_halo_regions!(model.closure_fields; only_local_halos=true)
+    fill_halo_regions!(model.pressures.pHY′; only_local_halos=true)
+    refresh_update_state_tracer_advection_halos!(model)
+
+    return nothing
+end
+
+function refresh_update_state_tracer_advection_halos!(model)
+    refresh_all_tracer_auxiliary_halos!(model)
     return nothing
 end
 
@@ -75,5 +109,16 @@ function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = surface
     return nothing
 end
 
-step_closure_prognostics!(model::NonhydrostaticModel, Δt) =
-    step_closure_prognostics!(model.closure_fields, model.closure, model, Δt)
+function refresh_closure_prognostic_state!(model::NonhydrostaticModel)
+    update_model_field_time_series!(model, model.clock)
+    compute_auxiliary_fields!(model.auxiliary_fields)
+    update_boundary_conditions!(fields(model), model)
+    fill_halo_regions!(merge(model.velocities, model.tracers), model.clock, fields(model); fill_open_bcs=false, async=false)
+    refresh_background_field_halos!(model.background_fields)
+    return nothing
+end
+
+function step_closure_prognostics!(model::NonhydrostaticModel, Δt)
+    refresh_closure_prognostic_state!(model)
+    return step_closure_prognostics!(model.closure_fields, model.closure, model, Δt)
+end

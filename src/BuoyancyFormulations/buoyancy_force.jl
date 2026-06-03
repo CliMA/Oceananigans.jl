@@ -1,7 +1,7 @@
 using Oceananigans.Architectures: architecture
 using Oceananigans.Utils: launch!
 using Oceananigans.Fields: XFaceField, YFaceField, ZFaceField
-using Oceananigans.Grids: NegativeZDirection, validate_unit_vector
+using Oceananigans.Grids: NegativeZDirection, SphericalShellGrid, validate_unit_vector
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 
 using KernelAbstractions: @kernel, @index
@@ -130,11 +130,21 @@ end
 @inline ∂yᵣ_b(i, j, k, grid, b::BuoyancyForce, C) = @inbounds b.gradients.∂yᵣ_b[i, j, k]
 @inline  ∂z_b(i, j, k, grid, b::BuoyancyForce, C) = @inbounds b.gradients.∂z_b[i, j, k]
 
+function fill_buoyancy_gradient_halos!(gradients::NamedTuple{(:∂xᵣ_b, :∂yᵣ_b, :∂z_b)},
+                                       ::SphericalShellGrid)
+    fill_halo_regions!((gradients.∂xᵣ_b, gradients.∂yᵣ_b))
+    fill_halo_regions!(gradients.∂z_b)
+    return nothing
+end
+
+fill_buoyancy_gradient_halos!(gradients, ::SphericalShellGrid) = fill_halo_regions!(gradients)
+fill_buoyancy_gradient_halos!(gradients, grid) = fill_halo_regions!(gradients, only_local_halos=true)
+
 function compute_buoyancy_gradients!(buoyancy, grid, tracers; parameters=:xyz)
     gradients = buoyancy.gradients
     formulation = buoyancy.formulation
     launch!(architecture(grid), grid, parameters, _compute_buoyancy_gradients!, gradients, grid, formulation, tracers)
-    fill_halo_regions!(gradients, only_local_halos=true)
+    fill_buoyancy_gradient_halos!(gradients, grid)
 
     return nothing
 end

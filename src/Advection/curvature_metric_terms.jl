@@ -1,5 +1,11 @@
-using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid
-using Oceananigans.Operators: Δxᶜᶜᶜ, Δxᶠᶠᶜ, Δyᶜᶜᶜ, Δyᶠᶠᶜ
+using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, SphericalShellGrid
+using Oceananigans.Operators: Δxᶜᶜᶜ, Δxᶠᶠᶜ, Δyᶜᶜᶜ, Δyᶠᶠᶜ,
+                              V⁻¹ᶠᶜᶜ, V⁻¹ᶜᶠᶜ,
+                              δxᶠᵃᵃ, δxᶜᵃᵃ, δyᵃᶜᵃ, δyᵃᶠᵃ,
+                              covariant_rotational_advection_uᶠᶜᶜ,
+                              covariant_rotational_advection_vᶜᶠᶜ,
+                              covariant_bernoulli_head_uᶠᶜᶜ,
+                              covariant_bernoulli_head_vᶜᶠᶜ
 
 #####
 ##### Curvature metric terms for flux-form momentum advection
@@ -37,15 +43,46 @@ const HCGOrIBG = Union{HCG, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:H
 @inline U_dot_∇v_metric(i, j, k, grid, advection, U, V) = zero(grid)
 @inline U_dot_∇w_metric(i, j, k, grid, advection, U, V) = zero(grid)
 
+@inline function horizontal_div_𝐯u(i, j, k, grid, advection, U, u)
+    u_component = u_velocity(U)
+    v_component = v_velocity(U)
+    return V⁻¹ᶠᶜᶜ(i, j, k, grid) *
+           (δxᶠᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uu, advection, u_component, u) +
+            δyᵃᶜᵃ(i, j, k, grid, _advective_momentum_flux_Vu, advection, v_component, u))
+end
+
+@inline function horizontal_div_𝐯u(i, j, k, grid::SphericalShellGrid, advection, U, u)
+    return V⁻¹ᶠᶜᶜ(i, j, k, grid) *
+           (δxᶠᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uu, advection, U, u) +
+            δyᵃᶜᵃ(i, j, k, grid, _advective_momentum_flux_Vu, advection, U, u))
+end
+
+@inline function horizontal_div_𝐯v(i, j, k, grid, advection, U, v)
+    u_component = u_velocity(U)
+    v_component = v_velocity(U)
+    return V⁻¹ᶜᶠᶜ(i, j, k, grid) *
+           (δxᶜᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uv, advection, u_component, v) +
+            δyᵃᶠᵃ(i, j, k, grid, _advective_momentum_flux_Vv, advection, v_component, v))
+end
+
+@inline function horizontal_div_𝐯v(i, j, k, grid::SphericalShellGrid, advection, U, v)
+    return V⁻¹ᶜᶠᶜ(i, j, k, grid) *
+           (δxᶜᵃᵃ(i, j, k, grid, _advective_momentum_flux_Uv, advection, U, v) +
+            δyᵃᶠᵃ(i, j, k, grid, _advective_momentum_flux_Vv, advection, U, v))
+end
+
 #####
 ##### Hydrostatic curvature metric terms — active on horizontally-curvilinear grids.
 #####
 
 # u-metric at (f, c, c)
 @inline function U_dot_∇u_hydrostatic_metric(i, j, k, grid::HCGOrIBG, advection, U, V)
-    Û₂ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, U[2]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
-    V̂₂ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, V[2]) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
-    v̂₁ = @inbounds V[1][i, j, k]
+    u_component = u_velocity(V)
+    Uv = v_velocity(U)
+    Vv = v_velocity(V)
+    Û₂ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, Uv) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
+    V̂₂ = ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, Vv) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
+    v̂₁ = @inbounds u_component[i, j, k]
 
     return + Û₂ * v̂₁ * δyᵃᶜᵃ(i, j, k, grid, Δxᶠᶠᶜ) * Az⁻¹ᶠᶜᶜ(i, j, k, grid) -
              Û₂ * V̂₂ * δxᶠᵃᵃ(i, j, k, grid, Δyᶜᶜᶜ) * Az⁻¹ᶠᶜᶜ(i, j, k, grid)
@@ -53,12 +90,53 @@ end
 
 # v-metric at (c, f, c)
 @inline function U_dot_∇v_hydrostatic_metric(i, j, k, grid::HCGOrIBG, advection, U, V)
-    Û₁ = ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, U[1]) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
-    V̂₁ = ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, V[1]) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
-    v̂₂ = @inbounds V[2][i, j, k]
+    v_component = v_velocity(V)
+    Uu = u_velocity(U)
+    Vu = u_velocity(V)
+    Û₁ = ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, Uu) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
+    V̂₁ = ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, Vu) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
+    v̂₂ = @inbounds v_component[i, j, k]
 
     return + Û₁ * v̂₂ * δxᶜᵃᵃ(i, j, k, grid, Δyᶠᶠᶜ) * Az⁻¹ᶜᶠᶜ(i, j, k, grid) -
              Û₁ * V̂₁ * δyᵃᶠᵃ(i, j, k, grid, Δxᶜᶜᶜ) * Az⁻¹ᶜᶠᶜ(i, j, k, grid)
+end
+
+@inline function U_dot_∇u_hydrostatic_metric(i, j, k, grid::SphericalShellGrid, advection::Centered, U, V)
+    u_component = u_velocity(V)
+    v_component = v_velocity(V)
+    return covariant_rotational_advection_uᶠᶜᶜ(i, j, k, grid, u_component, v_component) +
+           covariant_bernoulli_head_uᶠᶜᶜ(i, j, k, grid, u_component, v_component) -
+           horizontal_div_𝐯u(i, j, k, grid, advection, U, u_component)
+end
+
+@inline function U_dot_∇v_hydrostatic_metric(i, j, k, grid::SphericalShellGrid, advection::Centered, U, V)
+    u_component = u_velocity(V)
+    v_component = v_velocity(V)
+    return covariant_rotational_advection_vᶜᶠᶜ(i, j, k, grid, u_component, v_component) +
+           covariant_bernoulli_head_vᶜᶠᶜ(i, j, k, grid, u_component, v_component) -
+           horizontal_div_𝐯v(i, j, k, grid, advection, U, v_component)
+end
+
+@inline function U_dot_∇u_hydrostatic_metric(i, j, k,
+                                             grid::SphericalShellGrid,
+                                             advection::FluxFormAdvection,
+                                             U, V)
+    u_component = u_velocity(V)
+    v_component = v_velocity(V)
+    return covariant_rotational_advection_uᶠᶜᶜ(i, j, k, grid, u_component, v_component) +
+           covariant_bernoulli_head_uᶠᶜᶜ(i, j, k, grid, u_component, v_component) -
+           horizontal_div_𝐯u(i, j, k, grid, advection, U, u_component)
+end
+
+@inline function U_dot_∇v_hydrostatic_metric(i, j, k,
+                                             grid::SphericalShellGrid,
+                                             advection::FluxFormAdvection,
+                                             U, V)
+    u_component = u_velocity(V)
+    v_component = v_velocity(V)
+    return covariant_rotational_advection_vᶜᶠᶜ(i, j, k, grid, u_component, v_component) +
+           covariant_bernoulli_head_vᶜᶠᶜ(i, j, k, grid, u_component, v_component) -
+           horizontal_div_𝐯v(i, j, k, grid, advection, U, v_component)
 end
 
 #####
@@ -74,22 +152,30 @@ end
 # Volume-weighted products at (c, c, c) for interpolation back to velocity points
 
 @inline function _uw_Vᶜᶜᶜ(i, j, k, grid, U, V)
-    ū = ℑxᶜᵃᵃ(i, j, k, grid, V[1])
-    w̄ = ℑzᵃᵃᶜ(i, j, k, grid, U[3])
+    u_component = u_velocity(V)
+    w_component = w_velocity(U)
+    ū = ℑxᶜᵃᵃ(i, j, k, grid, u_component)
+    w̄ = ℑzᵃᵃᶜ(i, j, k, grid, w_component)
     return ū * w̄ * Vᶜᶜᶜ(i, j, k, grid)
 end
 
 @inline function _vw_Vᶜᶜᶜ(i, j, k, grid, U, V)
-    v̄ = ℑyᵃᶜᵃ(i, j, k, grid, V[2])
-    w̄ = ℑzᵃᵃᶜ(i, j, k, grid, U[3])
+    v_component = v_velocity(V)
+    w_component = w_velocity(U)
+    v̄ = ℑyᵃᶜᵃ(i, j, k, grid, v_component)
+    w̄ = ℑzᵃᵃᶜ(i, j, k, grid, w_component)
     return v̄ * w̄ * Vᶜᶜᶜ(i, j, k, grid)
 end
 
 @inline function _u²v²_Vᶜᶜᶜ(i, j, k, grid, U, V)
-    ū = ℑxᶜᵃᵃ(i, j, k, grid, V[1])
-    v̄ = ℑyᵃᶜᵃ(i, j, k, grid, V[2])
-    Ū = ℑxᶜᵃᵃ(i, j, k, grid, U[1])
-    V̄ = ℑyᵃᶜᵃ(i, j, k, grid, U[2])
+    u_component = u_velocity(V)
+    v_component = v_velocity(V)
+    Uu = u_velocity(U)
+    Uv = v_velocity(U)
+    ū = ℑxᶜᵃᵃ(i, j, k, grid, u_component)
+    v̄ = ℑyᵃᶜᵃ(i, j, k, grid, v_component)
+    Ū = ℑxᶜᵃᵃ(i, j, k, grid, Uu)
+    V̄ = ℑyᵃᶜᵃ(i, j, k, grid, Uv)
     return (ū * Ū + v̄ * V̄) * Vᶜᶜᶜ(i, j, k, grid)
 end
 

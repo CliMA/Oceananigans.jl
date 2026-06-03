@@ -1,3 +1,5 @@
+using Oceananigans.Advection: u_velocity, v_velocity, w_velocity
+
 @kernel function _assemble_ab2_advective_dissipation!(P, grid, χ, Fⁿ, Fⁿ⁻¹, Uⁿ, Uⁿ⁻¹, cⁿ⁺¹, cⁿ)
     i, j, k = @index(Global, NTuple)
 
@@ -67,15 +69,35 @@ end
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
+        u = u_velocity(U)
+        v = v_velocity(U)
+        w = w_velocity(U)
+
         # Save previous advective fluxes
         Fⁿ⁻¹.x[i, j, k] = Fⁿ.x[i, j, k]
         Fⁿ⁻¹.y[i, j, k] = Fⁿ.y[i, j, k]
         Fⁿ⁻¹.z[i, j, k] = Fⁿ.z[i, j, k]
 
         # Calculate new advective fluxes
-        Fⁿ.x[i, j, k] = _advective_tracer_flux_x(i, j, k, grid, advection, U.u, tracer) * σⁿ(i, j, k, grid, f, c, c)
-        Fⁿ.y[i, j, k] = _advective_tracer_flux_y(i, j, k, grid, advection, U.v, tracer) * σⁿ(i, j, k, grid, c, f, c)
-        Fⁿ.z[i, j, k] = _advective_tracer_flux_z(i, j, k, grid, advection, U.w, tracer) * σⁿ(i, j, k, grid, c, c, f)
+        Fⁿ.x[i, j, k] = _advective_tracer_flux_x(i, j, k, grid, advection, u, tracer) * σⁿ(i, j, k, grid, f, c, c)
+        Fⁿ.y[i, j, k] = _advective_tracer_flux_y(i, j, k, grid, advection, v, tracer) * σⁿ(i, j, k, grid, c, f, c)
+        Fⁿ.z[i, j, k] = _advective_tracer_flux_z(i, j, k, grid, advection, w, tracer) * σⁿ(i, j, k, grid, c, c, f)
+    end
+end
+
+@kernel function _cache_advective_fluxes!(Fⁿ, Fⁿ⁻¹, grid::SphericalShellGrid, advection, U, tracer)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds begin
+        w = w_velocity(U)
+
+        Fⁿ⁻¹.x[i, j, k] = Fⁿ.x[i, j, k]
+        Fⁿ⁻¹.y[i, j, k] = Fⁿ.y[i, j, k]
+        Fⁿ⁻¹.z[i, j, k] = Fⁿ.z[i, j, k]
+
+        Fⁿ.x[i, j, k] = _advective_tracer_flux_x(i, j, k, grid, advection, U, tracer) * σⁿ(i, j, k, grid, f, c, c)
+        Fⁿ.y[i, j, k] = _advective_tracer_flux_y(i, j, k, grid, advection, U, tracer) * σⁿ(i, j, k, grid, c, f, c)
+        Fⁿ.z[i, j, k] = _advective_tracer_flux_z(i, j, k, grid, advection, w, tracer) * σⁿ(i, j, k, grid, c, c, f)
     end
 end
 
@@ -83,9 +105,25 @@ end
     i, j, k = @index(Global, NTuple)
 
     @inbounds begin
+        u = u_velocity(U)
+        v = v_velocity(U)
+        w = w_velocity(U)
+
         # Calculate new advective fluxes
-        Fⁿ.x[i, j, k] = _advective_tracer_flux_x(i, j, k, grid, advection, U.u, tracer) * σⁿ(i, j, k, grid, f, c, c)
-        Fⁿ.y[i, j, k] = _advective_tracer_flux_y(i, j, k, grid, advection, U.v, tracer) * σⁿ(i, j, k, grid, c, f, c)
-        Fⁿ.z[i, j, k] = _advective_tracer_flux_z(i, j, k, grid, advection, U.w, tracer) * σⁿ(i, j, k, grid, c, c, f)
+        Fⁿ.x[i, j, k] = _advective_tracer_flux_x(i, j, k, grid, advection, u, tracer) * σⁿ(i, j, k, grid, f, c, c)
+        Fⁿ.y[i, j, k] = _advective_tracer_flux_y(i, j, k, grid, advection, v, tracer) * σⁿ(i, j, k, grid, c, f, c)
+        Fⁿ.z[i, j, k] = _advective_tracer_flux_z(i, j, k, grid, advection, w, tracer) * σⁿ(i, j, k, grid, c, c, f)
+    end
+end
+
+@kernel function _cache_advective_fluxes!(Fⁿ, grid::SphericalShellGrid, advection, U, tracer)
+    i, j, k = @index(Global, NTuple)
+
+    @inbounds begin
+        w = w_velocity(U)
+
+        Fⁿ.x[i, j, k] = _advective_tracer_flux_x(i, j, k, grid, advection, U, tracer) * σⁿ(i, j, k, grid, f, c, c)
+        Fⁿ.y[i, j, k] = _advective_tracer_flux_y(i, j, k, grid, advection, U, tracer) * σⁿ(i, j, k, grid, c, f, c)
+        Fⁿ.z[i, j, k] = _advective_tracer_flux_z(i, j, k, grid, advection, w, tracer) * σⁿ(i, j, k, grid, c, c, f)
     end
 end

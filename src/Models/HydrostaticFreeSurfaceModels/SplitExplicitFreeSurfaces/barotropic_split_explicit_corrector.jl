@@ -116,7 +116,7 @@ Transport velocities differ from prognostic velocities by including the barotrop
 
     u = u + (Ũ - ∫udz) / H
 
-where `Ũ` is the time-filtered barotropic transport from split-explicit substepping.
+where `Ũ` is the time-filtered barotropic covariant state from split-explicit substepping.
 This ensures that tracers are advected with a velocity field consistent with the filtered
 free surface evolution.
 
@@ -125,6 +125,7 @@ from continuity and halo regions are filled.
 """
 function compute_transport_velocities!(model, free_surface::SplitExplicitFreeSurface)
     grid = model.grid
+    Oceananigans.Models.HydrostaticFreeSurfaceModels.refresh_prescribed_velocity_state!(model, model.velocities)
     u, v, w = model.velocities
     ũ, ṽ, w̃ = model.transport_velocities
     Ũ = free_surface.filtered_state.Ũ
@@ -132,12 +133,21 @@ function compute_transport_velocities!(model, free_surface::SplitExplicitFreeSur
     U̅ = free_surface.filtered_state.U̅
     V̅ = free_surface.filtered_state.V̅
 
+    # `step_free_surface!` launches halo fills for the filtered split-explicit state asynchronously.
+    Oceananigans.DistributedComputations.synchronize_communication!(free_surface)
+
     compute_barotropic_mode!(U̅, V̅, grid, u, v)
+    ũ_covariant = similar(u)
+    ṽ_covariant = similar(v)
     launch!(architecture(grid), grid, volume_kernel_parameters(grid),
             _compute_split_explicit_transport_velocities!,
-            ũ, ṽ, grid, Ũ, Ṽ, u, v, U̅, V̅)
+            ũ_covariant, ṽ_covariant, grid, Ũ, Ṽ, u, v, U̅, V̅)
+    fill_halo_regions!((ũ_covariant, ṽ_covariant))
+    Oceananigans.Models.HydrostaticFreeSurfaceModels.convert_to_volume_flux_velocities!(ũ, ṽ, grid, ũ_covariant, ṽ_covariant)
+    Oceananigans.Models.HydrostaticFreeSurfaceModels.fill_horizontal_transport_velocity_halos!(model.transport_velocities, grid)
 
-    update_vertical_velocities!(model.transport_velocities, model.grid, model)
+    Oceananigans.Models.HydrostaticFreeSurfaceModels.update_vertical_transport_velocities!(model.transport_velocities, model.grid, model)
+    Oceananigans.Models.HydrostaticFreeSurfaceModels.fill_vertical_transport_velocity_halos!(model.transport_velocities, grid)
 
     return nothing
 end

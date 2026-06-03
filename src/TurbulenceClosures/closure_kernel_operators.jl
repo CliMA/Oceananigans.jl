@@ -13,6 +13,20 @@
 @inline _diffusive_flux_y(args...) = diffusive_flux_y(args...)
 @inline _diffusive_flux_z(args...) = diffusive_flux_z(args...)
 
+@inline transport_diffusive_flux_xᶠᶜᶜ(i, j, k, grid::Oceananigans.Grids.SphericalShellGrid,
+                                      disc, closure, K, id, c, clock, fields, buoyancy) =
+    Oceananigans.Operators.transverse_computational_width_uᶠᶜᶜ(i, j, k, grid) *
+    Oceananigans.Operators.covariant_to_contravariant_flux_uᶠᶜᶜ(i, j, k, grid,
+                                                                _diffusive_flux_x(i, j, k, grid, disc, closure, K, id, c, clock, fields, buoyancy),
+                                                                _diffusive_flux_y(i, j, k, grid, disc, closure, K, id, c, clock, fields, buoyancy))
+
+@inline transport_diffusive_flux_yᶜᶠᶜ(i, j, k, grid::Oceananigans.Grids.SphericalShellGrid,
+                                      disc, closure, K, id, c, clock, fields, buoyancy) =
+    Oceananigans.Operators.transverse_computational_width_vᶜᶠᶜ(i, j, k, grid) *
+    Oceananigans.Operators.covariant_to_contravariant_flux_vᶜᶠᶜ(i, j, k, grid,
+                                                                _diffusive_flux_x(i, j, k, grid, disc, closure, K, id, c, clock, fields, buoyancy),
+                                                                _diffusive_flux_y(i, j, k, grid, disc, closure, K, id, c, clock, fields, buoyancy))
+
 #####
 ##### Viscous flux divergences
 #####
@@ -42,5 +56,13 @@ end
     disc = time_discretization(closure)
     return V⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, _diffusive_flux_x, disc, closure, K, id, c, clock, fields, buoyancy) +
                                     δyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, _diffusive_flux_y, disc, closure, K, id, c, clock, fields, buoyancy) +
+                                    δzᵃᵃᶜ(i, j, k, grid, Az_qᶜᶜᶠ, _diffusive_flux_z, disc, closure, K, id, c, clock, fields, buoyancy))
+end
+
+@inline function ∇_dot_qᶜ(i, j, k, grid::Oceananigans.Grids.SphericalShellGrid,
+                          closure::AbstractTurbulenceClosure, K, id, c, clock, fields, buoyancy)
+    disc = time_discretization(closure)
+    return V⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, transport_diffusive_flux_xᶠᶜᶜ, disc, closure, K, id, c, clock, fields, buoyancy) +
+                                    δyᵃᶜᵃ(i, j, k, grid, transport_diffusive_flux_yᶜᶠᶜ, disc, closure, K, id, c, clock, fields, buoyancy) +
                                     δzᵃᵃᶜ(i, j, k, grid, Az_qᶜᶜᶠ, _diffusive_flux_z, disc, closure, K, id, c, clock, fields, buoyancy))
 end

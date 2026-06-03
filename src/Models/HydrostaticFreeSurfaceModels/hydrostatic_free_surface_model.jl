@@ -1,4 +1,8 @@
-using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, WENOVectorInvariant, adapt_advection_order, materialize_advection, weno_order
+using Oceananigans.Advection: AbstractAdvectionScheme, AbstractUpwindBiasedAdvectionScheme,
+                              Centered, FluxFormAdvection, VectorInvariant, WENO, WENOVectorInvariant,
+                              EnergyConserving, EnstrophyConserving,
+                              OnlySelfUpwinding, CrossAndSelfUpwinding,
+                              adapt_advection_order, materialize_advection, weno_order
 using Oceananigans.Architectures: AbstractArchitecture, ReactantState
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
@@ -6,13 +10,18 @@ using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Fields: Field, CenterField, ZeroField, tracernames, TracerFields
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization, Face, Center
+using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization,
+                          Face, Center, SphericalShellGrid, OctaHEALPixMapping
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions
+using Oceananigans.Models: surface_kernel_parameters, volume_kernel_parameters
+using Oceananigans.Operators: covariant_to_volume_flux_uᶠᶜᶜ, covariant_to_volume_flux_vᶜᶠᶜ,
+                              Azᶜᶜᶜ, g²²ᶜᶠᶜ, Δzᶜᶠᶜ, transverse_computational_width_vᶜᶠᶜ,
+                              octahealpix_polar_fold_flux_factor
 using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles, materialize_clock!
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions,
                                        time_discretization, implicit_diffusion_solver, closure_required_tracers, initialize_closure_fields!
-using Oceananigans.Utils: tupleit
+using Oceananigans.Utils: tupleit, KernelParameters
 
 import Oceananigans
 import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
@@ -34,7 +43,7 @@ function default_vertical_coordinate(grid)
     end
 end
 
-mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
+mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S, RL,
                                            G, T, V, B, R, F, P, BGC, U, W, C, Φ, K, AF, Z} <: AbstractModel{TS, A}
 
     architecture :: A          # Computer `Architecture` on which `Model` is run
@@ -44,6 +53,7 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
     buoyancy :: B              # Set of parameters for buoyancy model
     coriolis :: R              # Set of parameters for the background rotation rate of `Model`
     free_surface :: S          # Free surface parameters and fields
+    rigid_lid_projection :: RL # Rigid-lid projection solver or nothing
     forcing :: F               # Container for forcing functions defined by the user
     closure :: E               # Diffusive 'turbulence closure' for all model fields
     particles :: P             # Particle set for Lagrangian tracking
@@ -259,6 +269,7 @@ function HydrostaticFreeSurfaceModel(grid;
 
     free_surface = validate_free_surface(arch, free_surface)
     free_surface = materialize_free_surface(free_surface, velocities, grid)
+    rigid_lid_projection = materialize_rigid_lid_projection(grid, free_surface)
 
     # Instantiate timestepper if not already instantiated
     implicit_solver   = implicit_diffusion_solver(time_discretization(closure), grid)
@@ -275,16 +286,17 @@ function HydrostaticFreeSurfaceModel(grid;
     # are consistent between materialization and tendency computation.
     model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
     forcing = model_forcing(forcing, model_fields, prognostic_fields)
-    transport_velocities = transport_velocity_fields(velocities)
+    transport_velocities = transport_velocity_fields(velocities, grid)
 
     !isnothing(particles) && arch isa Distributed && error("LagrangianParticles are not supported on Distributed architectures.")
 
     model = HydrostaticFreeSurfaceModel(arch, grid, clock, advection, buoyancy, coriolis,
-                                        free_surface, forcing, closure, particles, biogeochemistry, velocities, transport_velocities,
+                                        free_surface, rigid_lid_projection, forcing, closure, particles, biogeochemistry, velocities, transport_velocities,
                                         tracers, pressure, closure_fields, timestepper, auxiliary_fields, vertical_coordinate)
 
     materialize_clock!(clock, timestepper)
     update_state!(model)
+    initialize_closure_fields!(model.closure_fields, model.closure, model)
 
     return model
 end
@@ -292,14 +304,262 @@ end
 transport_velocity_fields(velocities) = (u = copy_velocity(velocities.u),
                                          v = copy_velocity(velocities.v),
                                          w = copy_velocity(velocities.w))
+transport_velocity_fields(velocities, grid) = transport_velocity_fields(velocities)
 
-copy_velocity(u::Field{<:Face, <:Center, <:Center}) = XFaceField(u.grid; boundary_conditions=u.boundary_conditions)
-copy_velocity(v::Field{<:Center, <:Face, <:Center}) = YFaceField(v.grid; boundary_conditions=v.boundary_conditions)
+transport_velocity_boundary_condition(bc::Oceananigans.BoundaryConditions.QCovZBC) =
+    Oceananigans.BoundaryConditions.QuadFoldedContravariantZipperBoundaryCondition(bc.condition)
+transport_velocity_boundary_condition(bc) = bc
+
+transport_velocity_boundary_conditions(bcs::FieldBoundaryConditions) =
+    FieldBoundaryConditions(transport_velocity_boundary_condition(bcs.west),
+                            transport_velocity_boundary_condition(bcs.east),
+                            transport_velocity_boundary_condition(bcs.south),
+                            transport_velocity_boundary_condition(bcs.north),
+                            transport_velocity_boundary_condition(bcs.bottom),
+                            transport_velocity_boundary_condition(bcs.top),
+                            transport_velocity_boundary_condition(bcs.immersed))
+
+copy_velocity(u::Field{<:Face, <:Center, <:Center}) =
+    XFaceField(u.grid; boundary_conditions=transport_velocity_boundary_conditions(u.boundary_conditions))
+copy_velocity(v::Field{<:Center, <:Face, <:Center}) =
+    YFaceField(v.grid; boundary_conditions=transport_velocity_boundary_conditions(v.boundary_conditions))
 copy_velocity(w::Field{<:Center, <:Center, <:Face}) = ZFaceField(w.grid; boundary_conditions=w.boundary_conditions)
 copy_velocity(c) = c
 
-# Fallback transport velocities for a generic free surface (just copy velocities over)
-compute_transport_velocities!(model, free_surface) = update_transport_velocities!(model.transport_velocities, model.velocities)
+# Transport velocities
+function compute_transport_velocities!(model::HydrostaticFreeSurfaceModel, free_surface)
+    refresh_prescribed_velocity_state!(model, model.velocities)
+
+    grid = model.grid
+    if grid isa SphericalShellGrid
+        Oceananigans.BoundaryConditions.fill_halo_regions!((model.velocities.u, model.velocities.v))
+        convert_to_volume_flux_velocities!(model.transport_velocities.u, model.transport_velocities.v,
+                                          grid, model.velocities.u, model.velocities.v)
+        correct_octahealpix_rigid_lid_polar_transport!(model.transport_velocities.v,
+                                                       grid,
+                                                       model.velocities.v,
+                                                       free_surface)
+        enforce_octahealpix_rigid_lid_barotropic_transport_balance!(model.transport_velocities.u,
+                                                                    model.transport_velocities.v,
+                                                                    grid,
+                                                                    free_surface)
+    else
+        update_transport_velocities!(model.transport_velocities, model.velocities)
+    end
+
+    fill_horizontal_transport_velocity_halos!(model.transport_velocities, grid)
+
+    # Keep w consistent for tracer advection, especially for moving-grid models.
+    update_vertical_transport_velocities!(model.transport_velocities, grid, model)
+    fill_vertical_transport_velocity_halos!(model.transport_velocities, grid)
+    return nothing
+end
+
+compute_transport_velocities!(model::HydrostaticFreeSurfaceModel, free_surface::ImplicitFreeSurface) =
+    invoke(compute_transport_velocities!, Tuple{Any, ImplicitFreeSurface}, model, free_surface)
+
+compute_transport_velocities!(model::HydrostaticFreeSurfaceModel, free_surface::SplitExplicitFreeSurface) =
+    invoke(compute_transport_velocities!, Tuple{Any, SplitExplicitFreeSurface}, model, free_surface)
+
+@inline correct_octahealpix_rigid_lid_polar_transport!(v, grid, covariant_v, free_surface) = nothing
+
+function correct_octahealpix_rigid_lid_polar_transport!(v, grid::SphericalShellGrid, covariant_v, free_surface::Nothing)
+    grid.mapping isa OctaHEALPixMapping || return nothing
+
+    parameters = KernelParameters(axes(v.data, 1),
+                                  axes(v.data, 2),
+                                  axes(v.data, 3))
+
+    launch!(architecture(grid), grid, parameters,
+            _correct_octahealpix_rigid_lid_polar_v_transport!, v.data, grid, covariant_v)
+
+    return nothing
+end
+
+@kernel function _correct_octahealpix_rigid_lid_polar_v_transport!(v, grid, covariant_v)
+    i, j, k = @index(Global, NTuple)
+    inside_i = (i >= 1) & (i <= grid.Nx)
+    south_polar_fold = j == 1
+    north_polar_fold = j == grid.Ny + 1
+    polar_fold = south_polar_fold | north_polar_fold
+    correct = inside_i & polar_fold
+    adjacent_cell_j = ifelse(north_polar_fold, grid.Ny, 1)
+    polar_fold_factor = octahealpix_polar_fold_flux_factor(grid)
+    @inbounds covariant_vᵢⱼₖ = covariant_v[i, j, k]
+    polar_transport = Δzᶜᶠᶜ(i, j, k, grid) *
+                      transverse_computational_width_vᶜᶠᶜ(i, j, k, grid) *
+                      polar_fold_factor *
+                      Azᶜᶜᶜ(i, adjacent_cell_j, k, grid) *
+                      g²²ᶜᶠᶜ(i, j, k, grid) *
+                      covariant_vᵢⱼₖ
+
+    @inbounds v[i, j, k] = ifelse(correct, polar_transport, v[i, j, k])
+end
+
+@inline enforce_octahealpix_rigid_lid_barotropic_transport_balance!(u, v, grid, free_surface) = nothing
+
+function enforce_octahealpix_rigid_lid_barotropic_transport_balance!(u, v, grid::SphericalShellGrid, free_surface::Nothing)
+    grid.mapping isa OctaHEALPixMapping || return nothing
+
+    parameters = KernelParameters(1:grid.Nx)
+
+    launch!(architecture(grid), grid, parameters,
+            _enforce_octahealpix_rigid_lid_barotropic_transport_balance!, u.data, v.data, grid)
+
+    return nothing
+end
+
+@inline function octahealpix_depth_integrated_v_transport(i, j, grid, v)
+    integrated_v = zero(grid)
+
+    for k = 1:grid.Nz
+        @inbounds integrated_v += v[i, j, k]
+    end
+
+    return integrated_v
+end
+
+@inline function octahealpix_depth_integrated_u_transport_divergence(i, j, grid, u)
+    integrated_divergence = zero(grid)
+
+    for k = 1:grid.Nz
+        @inbounds integrated_divergence += u[i+1, j, k] - u[i, j, k]
+    end
+
+    return integrated_divergence
+end
+
+@inline function octahealpix_v_transport_face_depth(i, j, grid)
+    depth = zero(grid)
+
+    for k = 1:grid.Nz
+        depth += Δzᶜᶠᶜ(i, j, k, grid)
+    end
+
+    return depth
+end
+
+@inline function set_octahealpix_depth_integrated_v_transport!(v, i, j, grid, target_integrated_v)
+    original_integrated_v = octahealpix_depth_integrated_v_transport(i, j, grid, v)
+    face_depth = octahealpix_v_transport_face_depth(i, j, grid)
+    integrated_correction = target_integrated_v - original_integrated_v
+
+    for k = 1:grid.Nz
+        layer_fraction = Δzᶜᶠᶜ(i, j, k, grid) / face_depth
+        @inbounds v[i, j, k] += integrated_correction * layer_fraction
+    end
+
+    return nothing
+end
+
+@kernel function _enforce_octahealpix_rigid_lid_barotropic_transport_balance!(u, v, grid)
+    i = @index(Global)
+
+    face_count = convert(eltype(grid), grid.Ny + 1)
+    target_integrated_v = zero(grid)
+    target_offset_sum = zero(grid)
+
+    # First pass: reconstruct the depth-integrated v transport implied by
+    # δx(U) + δy(V) = 0, up to one constant offset per i column. Choose that
+    # offset as the least-squares projection onto the original v transports.
+    for j = 1:grid.Ny
+        target_offset_sum += octahealpix_depth_integrated_v_transport(i, j, grid, v) - target_integrated_v
+        target_integrated_v -= octahealpix_depth_integrated_u_transport_divergence(i, j, grid, u)
+    end
+
+    target_offset_sum += octahealpix_depth_integrated_v_transport(i, grid.Ny + 1, grid, v) - target_integrated_v
+    target_integrated_v = target_offset_sum / face_count
+
+    # Second pass: apply the depth-integrated correction in proportion to layer
+    # thickness so baroclinic vertical structure, and therefore interior w, is preserved.
+    for j = 1:grid.Ny
+        set_octahealpix_depth_integrated_v_transport!(v, i, j, grid, target_integrated_v)
+        target_integrated_v -= octahealpix_depth_integrated_u_transport_divergence(i, j, grid, u)
+    end
+
+    set_octahealpix_depth_integrated_v_transport!(v, i, grid.Ny + 1, grid, target_integrated_v)
+end
+
+@inline function fill_horizontal_transport_velocity_halos!(transport_velocities, grid)
+    Oceananigans.BoundaryConditions.fill_halo_regions!((transport_velocities.u, transport_velocities.v))
+    return nothing
+end
+
+@inline function fill_vertical_transport_velocity_halos!(transport_velocities, grid)
+    Oceananigans.BoundaryConditions.fill_halo_regions!(transport_velocities.w)
+    return nothing
+end
+
+@inline function fill_transport_velocity_halos!(transport_velocities, grid)
+    fill_horizontal_transport_velocity_halos!(transport_velocities, grid)
+    fill_vertical_transport_velocity_halos!(transport_velocities, grid)
+    return nothing
+end
+
+@inline fill_transport_velocity_uv_halos!(transport_velocities, grid) =
+    fill_horizontal_transport_velocity_halos!(transport_velocities, grid)
+
+@inline fill_transport_velocity_w_halos!(transport_velocities, grid) =
+    fill_vertical_transport_velocity_halos!(transport_velocities, grid)
+
+@inline convert_to_volume_flux_velocities!(ũ, ṽ, grid, u, v) = nothing
+
+function convert_to_volume_flux_velocities!(ũ, ṽ, grid::SphericalShellGrid, u, v)
+    # The kernels read u, v via offset-indexed operators (ℑxyᶠᶜᵃ, etc.), so we
+    # must pass the OffsetArray .data (not parent()). The aliasing check uses
+    # the offset arrays directly.
+    u_aliases_input = ũ === u
+    v_aliases_input = ṽ === v
+
+    if u_aliases_input | v_aliases_input
+        u_in = similar(u)
+        copyto!(parent(u_in), parent(u))
+        v_in = similar(v)
+        copyto!(parent(v_in), parent(v))
+
+        launch_compute_nonorthogonal_transport_velocities!(ũ, ṽ, grid, u_in, v_in)
+    else
+        launch_compute_nonorthogonal_transport_velocities!(ũ, ṽ, grid, u, v)
+    end
+
+    return nothing
+end
+
+function launch_compute_nonorthogonal_transport_velocities!(ũ, ṽ, grid, u, v)
+    u_parameters = KernelParameters(axes(ũ.data, 1),
+                                    axes(ũ.data, 2),
+                                    axes(ũ.data, 3))
+
+    v_parameters = KernelParameters(axes(ṽ.data, 1),
+                                    axes(ṽ.data, 2),
+                                    axes(ṽ.data, 3))
+
+    launch!(architecture(grid), grid, u_parameters,
+            _compute_nonorthogonal_transport_velocity_u!, ũ, grid, u, v)
+
+    launch!(architecture(grid), grid, v_parameters,
+            _compute_nonorthogonal_transport_velocity_v!, ṽ, grid, u, v)
+
+    return nothing
+end
+
+@kernel function _compute_nonorthogonal_transport_velocities!(ũ, ṽ, grid, u, v)
+    i, j, k = @index(Global, NTuple)
+    @inbounds begin
+        ũ[i, j, k] = covariant_to_volume_flux_uᶠᶜᶜ(i, j, k, grid, u, v)
+        ṽ[i, j, k] = covariant_to_volume_flux_vᶜᶠᶜ(i, j, k, grid, u, v)
+    end
+end
+
+@kernel function _compute_nonorthogonal_transport_velocity_u!(ũ, grid, u, v)
+    i, j, k = @index(Global, NTuple)
+    @inbounds ũ[i, j, k] = covariant_to_volume_flux_uᶠᶜᶜ(i, j, k, grid, u, v)
+end
+
+@kernel function _compute_nonorthogonal_transport_velocity_v!(ṽ, grid, u, v)
+    i, j, k = @index(Global, NTuple)
+    @inbounds ṽ[i, j, k] = covariant_to_volume_flux_vᶜᶠᶜ(i, j, k, grid, u, v)
+end
 
 # Not if `transport === velocities`
 function update_transport_velocities!(transport_velocities, velocities)
@@ -312,6 +572,7 @@ end
 
 # Only concrete Field types are duplicated (see `copy_velocity` above)
 update_transport_velocity_data!(dst::Field, src::Field) = parent(dst) .= parent(src)
+update_transport_velocity_data!(dst::Field, src) = set!(dst, src)
 update_transport_velocity_data!(dst, src) = nothing
 
 validate_velocity_boundary_conditions(grid, velocities) = validate_vertical_velocity_boundary_conditions(velocities.w)
@@ -327,18 +588,87 @@ const FFTIFS = ImplicitFreeSurface{<:Any, <:Any, <:FFTImplicitFreeSurfaceSolver}
 validate_free_surface(arch::Distributed, ::FFTIFS) = error("$(FFTIFS) is not supported with $(typeof(arch))")
 validate_free_surface(arch, free_surface) = free_surface
 
+const BoundsPreservingWENO = WENO{<:Any, <:Any, <:Any, <:Tuple}
+
+@inline contains_bounds_preserving_weno(::AbstractAdvectionScheme) = false
+@inline contains_bounds_preserving_weno(::BoundsPreservingWENO) = true
+@inline contains_bounds_preserving_weno(advection::FluxFormAdvection) =
+    contains_bounds_preserving_weno(advection.x) ||
+    contains_bounds_preserving_weno(advection.y) ||
+    contains_bounds_preserving_weno(advection.z)
+
+function Oceananigans.Models.validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid::SphericalShellGrid)
+    return tracer_advection, NamedTuple()
+end
+
+function Oceananigans.Models.validate_tracer_advection(tracer_advection_tuple::NamedTuple, grid::SphericalShellGrid)
+    return Centered(), tracer_advection_tuple
+end
+
 validate_momentum_advection(momentum_advection, ibg::ImmersedBoundaryGrid) = validate_momentum_advection(momentum_advection, ibg.underlying_grid)
 validate_momentum_advection(momentum_advection, grid::RectilinearGrid)                     = momentum_advection
 validate_momentum_advection(momentum_advection, grid::AbstractHorizontallyCurvilinearGrid) = momentum_advection
 validate_momentum_advection(momentum_advection::Nothing,         grid::OrthogonalSphericalShellGrid) = momentum_advection
 validate_momentum_advection(momentum_advection::VectorInvariant, grid::OrthogonalSphericalShellGrid) = momentum_advection
-validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGrid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
+validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGrid) =
+    throw(ArgumentError("$(typeof(momentum_advection)) is not supported with $(typeof(grid))"))
+validate_momentum_advection(momentum_advection::Nothing,         grid::SphericalShellGrid) = momentum_advection
+validate_momentum_advection(momentum_advection::Centered,        grid::SphericalShellGrid) = momentum_advection
+validate_momentum_advection(momentum_advection::FluxFormAdvection,
+                            grid::SphericalShellGrid) = momentum_advection
+
+@inline function supports_spherical_shell_vector_invariant(momentum_advection::VectorInvariant)
+    supported_horizontal_vorticity =
+        momentum_advection.vorticity_scheme isa Union{EnergyConserving,
+                                                      EnstrophyConserving,
+                                                      AbstractUpwindBiasedAdvectionScheme}
+    supported_vertical_advection =
+        momentum_advection.vertical_advection_scheme isa Union{EnergyConserving,
+                                                               AbstractUpwindBiasedAdvectionScheme}
+    supported_kinetic_energy_gradient =
+        momentum_advection.kinetic_energy_gradient_scheme isa Union{EnergyConserving,
+                                                                    AbstractUpwindBiasedAdvectionScheme}
+    supported_divergence_flux =
+        momentum_advection.vertical_advection_scheme isa EnergyConserving ||
+        momentum_advection.divergence_scheme isa AbstractUpwindBiasedAdvectionScheme
+    supported_upwinding_treatment =
+        momentum_advection.upwinding isa Union{OnlySelfUpwinding,
+                                               CrossAndSelfUpwinding}
+
+    return supported_horizontal_vorticity &&
+           supported_vertical_advection &&
+           supported_kinetic_energy_gradient &&
+           supported_divergence_flux &&
+           supported_upwinding_treatment
+end
+
+function validate_momentum_advection(momentum_advection::VectorInvariant, grid::SphericalShellGrid)
+    supports_spherical_shell_vector_invariant(momentum_advection) && return momentum_advection
+
+    msg = string("Only VectorInvariant configurations with supported horizontal vorticity schemes are currently supported with $(typeof(grid)).", '\n',
+                 "Required components:", '\n',
+                 "  - vorticity_scheme isa Union{EnergyConserving, EnstrophyConserving, AbstractUpwindBiasedAdvectionScheme}", '\n',
+                 "  - vertical_advection_scheme isa Union{EnergyConserving, AbstractUpwindBiasedAdvectionScheme}", '\n',
+                 "  - kinetic_energy_gradient_scheme isa Union{EnergyConserving, AbstractUpwindBiasedAdvectionScheme}", '\n',
+                 "  - divergence_scheme isa AbstractUpwindBiasedAdvectionScheme when vertical_advection_scheme isa AbstractUpwindBiasedAdvectionScheme", '\n',
+                 "  - upwinding isa Union{OnlySelfUpwinding, CrossAndSelfUpwinding}")
+    throw(ArgumentError(msg))
+end
+
+validate_momentum_advection(momentum_advection::WENOVectorInvariant, grid::SphericalShellGrid) =
+    invoke(validate_momentum_advection, Tuple{VectorInvariant, SphericalShellGrid}, momentum_advection, grid)
+validate_momentum_advection(momentum_advection,         grid::SphericalShellGrid) =
+    throw(ArgumentError("Momentum advection scheme $(typeof(momentum_advection)) is not implemented yet for $(typeof(grid)). " *
+                        "Use `VectorInvariant()`, `WENOVectorInvariant()`, `Centered()`, `FluxFormAdvection(...)`, or `momentum_advection = nothing` " *
+                        "for tracer-only transport validation."))
 
 function reconcile_state!(model::HydrostaticFreeSurfaceModel)
     mask_immersed_horizontal_velocities!(model.velocities)
+    compute_auxiliary_fields!(model.auxiliary_fields)
     fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
     reconcile_free_surface!(model.free_surface, model.grid, model.velocities)
     reconcile_vertical_coordinate!(model.vertical_coordinate, model, model.grid)
+    refresh_restored_hydrostatic_model_state!(model)
     return nothing
 end
 
@@ -380,6 +710,8 @@ function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
     restore_prognostic_state!(restored.closure_fields, from.closure_fields)
     restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
     restore_prognostic_state!(restored.vertical_coordinate, restored.grid, from.vertical_coordinate)
+    reconcile_state!(restored)
+    initialize_closure_fields!(restored.closure_fields, restored.closure, restored)
     return restored
 end
 

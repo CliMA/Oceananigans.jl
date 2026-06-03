@@ -975,3 +975,66 @@ Tested `/tmp/xedge_matched_bernoulli_probe.jl`, pairing the x-edge independent-a
 - N=32 seed42: local exactB `raw_rel=1.856553e+02`; scaled local exactB `3.425463e-01`.
 
 Status: rejected. Localizing exact Hodge-compatible Bernoulli to x-edge-affected faces does not fix the dynamic scale problem. The matched construction must be derived from a compatible local KE/rotational calculus, not by grafting the exact pressure-correction adjoint onto the current Bernoulli term.
+
+### 2026-06-03 continuation 21: local x-edge cell-KE gradient fit rejected
+
+Tested `/tmp/xedge_cell_ke_gradient_fit_probe.jl` and reduced continuation `/tmp/xedge_cell_ke_gradient_fit_probe_reduced.jl`. The diagnostic fits local cell-centered `K` perturbations in x-edge columns and applies the existing scalar Bernoulli-gradient operator to cancel the Hodge work of `xedge_rot + currentB`.
+
+- N=4 seed42: base `raw_rel=1.85462631960297`; fitted `x_edges` total_rel `1.848712e+00`; fitted `x_near` total_rel `1.847432e+00`.
+- N=8 seed42: base `raw_rel=6.665887038481539e-01`; fitted `x_edges` total_rel `7.078464e-01`; fitted `x_near` total_rel `7.012801e-01`.
+- N=16 seed42: base `raw_rel=3.917525449047831e-01`; fitted `x_edges` total_rel `3.992035e-01`; fitted `x_near` total_rel `3.968775e-01`.
+- N=32 seed42: base `raw_rel=2.0790818162021246e-01`; fitted `x_edges` total_rel `2.091238e-01`; fitted `x_near` total_rel `2.087199e-01`.
+
+Status: rejected. Local scalar KE-gradient corrections can zero the scalar work, but they do not repair the dynamic drift introduced by the exact x-edge rotational numerator. This means a matched local KE-gradient patch is not sufficient unless the rotational x-edge numerator itself is made dynamically compatible.
+
+### 2026-06-03 continuation 22: x-edge numerator blend/class parameterization rejected
+
+Tested `/tmp/xedge_numerator_blend_class_probe.jl`, which blends the dynamically close `op_sqrt` x-edge numerator toward the exact independent-adjoint numerator by all x edges, west/east separately, and halo-source classes `k{1,2}_s{±1}`.
+
+Representative zero-work blend coefficients:
+
+- N=8 `all θ`: `+1.552839e+00`, `+8.476457e-01`, `-2.702971e+01`, `+3.484451e-01` for seeds 1, 2, 42, 99.
+- N=16 `all θ`: `-2.205134e+00`, `+3.652117e+00`, `-3.247706e-01`, `+1.695082e+00`.
+- N=32 `all θ`: `+2.200098e+00`, `-3.969562e+00`, `+3.776991e-01`, `+1.806441e+00`.
+- N=32 `east θ`: `-1.149085e+02`, `+1.614100e+02`, `+9.285340e-01`, `-2.648211e+01`.
+
+Status: rejected. No fixed edge-level or halo-class blend is stable across states/resolutions. The x-edge numerator must be re-derived as a local nonlinear mimetic expression rather than a parameterized blend toward the independent-adjoint numerator.
+
+### 2026-06-03 continuation 23: closest local Hodge-skew x-edge projection is partial positive
+
+Tested `/tmp/xedge_closest_skew_projection_probe.jl`. At x-edge corners, this projects the current `op_sqrt` transport `(U_op, V_op)` onto the locally skew line `(U, V) = α (H_u, H_v)`, where `(H_u, H_v)` are independent-face corner Hodge covectors.
+
+Caveat: script labels `op` and `ind` both represent the direct independent x-edge numerator due to a naming bug. Use projected variant comparisons against `ind`; true `op_sqrt` baselines are from continuations 17/18.
+
+Results:
+
+- Rotational work is roundoff for all projected variants.
+- N=8 seed42: direct independent raw_rel `6.665887e-01`; Euclidean projection `3.546929e-01`; V-weighted projection `3.503183e-01`.
+- N=16 seed42: direct independent `3.917525e-01`; Euclidean `2.043353e-01`; V-weighted `2.092565e-01`.
+- N=32 seed42: direct independent `2.079082e-01`; Euclidean `1.448957e-01`; V-weighted `1.398600e-01`.
+- N=32 seed99: direct independent `5.042291e-01`; Euclidean `1.658119e-01`; V-weighted `1.631275e-01`.
+
+Status: partial positive, not complete. The closest local skew projection is a better rotational building block than the direct independent numerator, but full VI work remains unbalanced because current Bernoulli is unchanged. It is not source-ready by itself.
+
+### 2026-06-03 continuation 24: projected x-edge rotational plus local KE fit rejected
+
+Tested `/tmp/projected_xedge_rot_ke_fit_probe.jl`, which fixes the prior projection-script labeling issue and pairs true `op_sqrt`, Euclidean projected x-edge rotational, V-weighted projected x-edge rotational, and direct independent x-edge rotational with local `x_near` cell-centered KE-gradient fits.
+
+Representative corrected results:
+
+- N=8 seed42: `op` raw_rel `4.302650e-02`, fitted `1.587948e-01`; Euclidean projected raw_rel `3.546929e-01`, fitted `3.961503e-01`; V-weighted `3.503183e-01`, fitted `3.900961e-01`.
+- N=16 seed42: `op` raw_rel `6.581647e-02`, fitted `6.843196e-02`; Euclidean `2.043353e-01`, fitted `2.187320e-01`; V-weighted `2.092565e-01`, fitted `2.245778e-01`.
+- N=32 seed42: `op` raw_rel `3.847309e-02`, fitted `4.073670e-02`; Euclidean `1.448957e-01`, fitted `1.462966e-01`; V-weighted `1.398600e-01`, fitted `1.413618e-01`.
+- N=32 seed99: `op` raw_rel `3.519712e-02`, fitted `5.866758e-02`; Euclidean `1.658119e-01`, fitted `1.663450e-01`; V-weighted `1.631275e-01`, fitted `1.635086e-01`.
+
+Status: rejected. Projected x-edge rotational variants are cleaner rotationally but remain too dynamically far from current, and local KE-gradient fitting does not recover dynamic fidelity. True `op_sqrt` remains the best rotational anchor despite not being exactly skew.
+
+### 2026-06-03 update: x-edge least-norm work-correction lower bound
+
+Added `/tmp/xedge_minimal_work_correction_probe.jl` to quantify the smallest x-edge corner-flux correction that cancels the scalar Hodge work residual around `op_sqrt + current Bernoulli` using `δW = H_u δF_u - H_v δF_v`.
+
+Finding: the correction cancels work to roundoff, but it depends on the global work residual and has seed-dependent size. Both x-edges require `corr_rel` ranges of about `0.019-0.067` at N=8, `0.0087-0.105` at N=16, and `0.0054-0.0277` at N=32 for seeds 1, 2, 42, 99. This is useful as a lower-bound diagnostic and suggests perturbative x-edge fixes around `op_sqrt` may be viable, but the exact construction is nonlocal and not source-ready.
+
+### 2026-06-03 update: multiplicative x-edge flux rescaling rejected
+
+Added `/tmp/xedge_parallel_flux_correction_probe.jl` to constrain work cancellation to corrections parallel to existing `op_sqrt` x-edge corner fluxes, plus a uniform x-edge scaling check. Per-corner parallel corrections can cancel work but require unstable multipliers, including `max_gamma≈256` for N=32 seed99. Uniform scaling is worse, with corrected drift near `0.91` for N=32 seed99 and `corr_rel≈16.6` for N=8 seed42. This rejects simple multiplicative x-edge rescaling as a viable source direction.

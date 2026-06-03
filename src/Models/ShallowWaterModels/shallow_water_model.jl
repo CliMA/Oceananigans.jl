@@ -7,12 +7,12 @@ using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.DistributedComputations
 using Oceananigans.Fields: Field, tracernames, TracerFields, XFaceField, YFaceField, CenterField, compute!
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: topology, Flat, architecture, RectilinearGrid, Center
+using Oceananigans.Grids: topology, Flat, architecture, RectilinearGrid, SphericalShellGrid, Center
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: validate_model_halo, validate_tracer_advection
 using Oceananigans.Advection: materialize_advection
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
-using Oceananigans.TurbulenceClosures: with_tracers, build_closure_fields
+using Oceananigans.TurbulenceClosures: with_tracers, build_closure_fields, initialize_closure_fields!
 using Oceananigans.Utils: tupleit
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
@@ -114,7 +114,7 @@ Keyword arguments
                    non-linear terms (`VectorInvariantFormulation()`).
 
 !!! warning "Formulation-grid compatibility requirements"
-    The `ConservativeFormulation()` requires `RectilinearGrid`.
+    The `ConservativeFormulation()` is supported on `RectilinearGrid` and `SphericalShellGrid`.
     Use `VectorInvariantFormulation()` with `LatitudeLongitudeGrid`.
 """
 function ShallowWaterModel(grid;
@@ -144,9 +144,9 @@ function ShallowWaterModel(grid;
                             "Use `topology = ($(topology(grid, 1)), $(topology(grid, 2)), Flat)` " *
                             "when constructing `grid`."))
 
-    (typeof(grid) <: RectilinearGrids || formulation == VectorInvariantFormulation()) ||
-        throw(ArgumentError("`ConservativeFormulation()` requires a rectilinear `grid`. \n" *
-                            "Use `VectorInvariantFormulation()` or change your grid to a rectilinear one."))
+    (typeof(grid) <: RectilinearGrids || grid isa SphericalShellGrid || formulation == VectorInvariantFormulation()) ||
+        throw(ArgumentError("`ConservativeFormulation()` requires a rectilinear `grid` or `SphericalShellGrid`. \n" *
+                            "Use `VectorInvariantFormulation()` or change your grid to a supported one."))
 
     if timestepper isa Symbol && timestepper ∉ supported_timesteppers
         msg = """
@@ -204,9 +204,12 @@ function ShallowWaterModel(grid;
                               Gⁿ = shallow_water_tendency_fields(grid, tracernames(tracers), prognostic_field_names),
                               G⁻ = shallow_water_tendency_fields(grid, tracernames(tracers), prognostic_field_names))
 
+    velocities = shallow_water_velocities(formulation, solution)
+
     # Regularize forcing and closure for model tracer and velocity fields.
-    model_fields = merge(solution, tracers)
-    forcing = model_forcing(forcing, model_fields)
+    model_fields = shallow_water_fields(velocities, solution, tracers, formulation)
+    prognostic_model_fields = merge(solution, tracers)
+    forcing = model_forcing(forcing, model_fields, prognostic_model_fields)
     closure = with_tracers(tracernames(tracers), closure)
 
     model = ShallowWaterModel(grid,
@@ -214,7 +217,7 @@ function ShallowWaterModel(grid;
                               clock,
                               eltype(grid)(gravitational_acceleration),
                               advection,
-                              shallow_water_velocities(formulation, solution),
+                              velocities,
                               coriolis,
                               forcing,
                               closure,
@@ -226,6 +229,7 @@ function ShallowWaterModel(grid;
                               formulation)
 
     update_state!(model)
+    initialize_closure_fields!(model.closure_fields, model.closure, model)
 
     return model
 end
@@ -243,10 +247,10 @@ timestepper(model::ShallowWaterModel)  = model.timestepper
 # The w velocity is needed to use generic TurbulenceClosures methods, therefore it is set to nothing
 shallow_water_velocities(::VectorInvariantFormulation, solution) = (u = solution.u, v = solution.v, w = nothing)
 
-# TODO: convert u and v into binary operations
 function shallow_water_velocities(::ConservativeFormulation, solution)
-    u = compute!(Field(solution.uh / solution.h))
-    v = compute!(Field(solution.vh / solution.h))
+    u = Field(solution.uh / solution.h; compute = false)
+    v = Field(solution.vh / solution.h; compute = false)
+    compute!((u, v))
     return (; u, v, w=nothing)
 end
 
@@ -275,6 +279,8 @@ function restore_prognostic_state!(restored::ShallowWaterModel, from)
     restore_prognostic_state!(restored.timestepper, from.timestepper)
     restore_prognostic_state!(restored.tracers, from.tracers)
     restore_prognostic_state!(restored.closure_fields, from.closure_fields)
+    Oceananigans.TimeSteppers.update_state!(restored)
+    initialize_closure_fields!(restored.closure_fields, restored.closure, restored)
     return restored
 end
 

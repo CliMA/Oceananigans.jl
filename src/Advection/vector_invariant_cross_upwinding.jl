@@ -1,4 +1,5 @@
-using Oceananigans.Operators: Δrᶜᶜᶜ
+using Oceananigans.Grids: SphericalShellGrid
+using Oceananigans.Operators: Δrᶜᶜᶜ, horizontal_volume_flux_div_xyᶜᶜᶜ
 
 #####
 ##### Cross upwinding results in the largest kinetic energy content,
@@ -55,4 +56,26 @@ end
     ∂t_σ = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, cross_scheme, Az_Δr_∂t_σ)
 
     return v̂ * (δᴿ + ∂t_σ) # For static grids, ∂t_σ == 0
+end
+
+@inline function upwinded_divergence_flux_Uᶠᶜᶜ(i, j, k, grid::SphericalShellGrid, scheme::VectorInvariantCrossVerticalUpwinding, u, v)
+    @inbounds û = u[i, j, k]
+    δ_stencil = scheme.upwinding.divergence_stencil
+    cross_scheme = scheme.upwinding.cross_scheme
+
+    δᴿ   =    _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, bias(û), horizontal_volume_flux_div_xyᶜᶜᶜ, δ_stencil, u, v)
+    ∂t_σ = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, cross_scheme, Az_Δr_∂t_σ)
+
+    return û * (δᴿ + ∂t_σ)
+end
+
+@inline function upwinded_divergence_flux_Vᶜᶠᶜ(i, j, k, grid::SphericalShellGrid, scheme::VectorInvariantCrossVerticalUpwinding, u, v)
+    @inbounds v̂ = v[i, j, k]
+    δ_stencil = scheme.upwinding.divergence_stencil
+    cross_scheme = scheme.upwinding.cross_scheme
+
+    δᴿ   =    _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.divergence_scheme, bias(v̂), horizontal_volume_flux_div_xyᶜᶜᶜ, δ_stencil, u, v)
+    ∂t_σ = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, cross_scheme, Az_Δr_∂t_σ)
+
+    return v̂ * (δᴿ + ∂t_σ)
 end

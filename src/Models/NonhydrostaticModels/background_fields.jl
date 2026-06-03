@@ -1,4 +1,4 @@
-using Oceananigans.Fields: ZeroField, ConstantField, AbstractField, FunctionField, location
+using Oceananigans.Fields: ZeroField, OneField, ConstantField, AbstractField, FunctionField, location
 using Oceananigans.Utils: prettysummary
 
 using Adapt
@@ -105,7 +105,9 @@ regularize_background_field(LX, LY, LZ, f::BackgroundField{<:Function}, grid, cl
 regularize_background_field(LX, LY, LZ, func::Function, grid, clock) =
     FunctionField{LX, LY, LZ}(func, grid; clock=clock)
 
-regularize_background_field(LX, LY, LZ, ::ZeroField, grid, clock) = ZeroField()
+regularize_background_field(LX, LY, LZ, field::ZeroField, grid, clock) = field
+regularize_background_field(LX, LY, LZ, field::OneField, grid, clock) = field
+regularize_background_field(LX, LY, LZ, field::ConstantField, grid, clock) = field
 
 function regularize_background_field(LX, LY, LZ, field::AbstractField, grid, clock)
     if location(field) != (LX, LY, LZ)

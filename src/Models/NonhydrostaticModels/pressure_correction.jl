@@ -7,6 +7,7 @@ function compute_pressure_correction!(model::NonhydrostaticModel, Δt)
 
     # Mask immersed velocities
     foreach(mask_immersed_field!, model.velocities)
+    Oceananigans.Fields.compute!(model.auxiliary_fields)
     fill_halo_regions!(model.velocities, model.clock, fields(model))
     enforce_net_zero_transport!(model.velocities, model.boundary_transport)
 
@@ -67,9 +68,13 @@ Update the predictor velocities u, v, and w with the non-hydrostatic pressure mu
 @kernel function _make_pressure_correction!(U, grid, pNHSΔt)
     i, j, k = @index(Global, NTuple)
 
-    @inbounds U.u[i, j, k] -= ∂xᶠᶜᶜ(i, j, k, grid, pNHSΔt)
-    @inbounds U.v[i, j, k] -= ∂yᶜᶠᶜ(i, j, k, grid, pNHSΔt)
-    @inbounds U.w[i, j, k] -= ∂zᶜᶜᶠ(i, j, k, grid, pNHSΔt)
+    u = Oceananigans.Advection.u_velocity(U)
+    v = Oceananigans.Advection.v_velocity(U)
+    w = Oceananigans.Advection.w_velocity(U)
+
+    @inbounds u[i, j, k] -= ∂xᶠᶜᶜ(i, j, k, grid, pNHSΔt)
+    @inbounds v[i, j, k] -= ∂yᶜᶠᶜ(i, j, k, grid, pNHSΔt)
+    @inbounds w[i, j, k] -= ∂zᶜᶜᶠ(i, j, k, grid, pNHSΔt)
 end
 
 @kernel function _compute_surface_vertical_velocity!(w, grid, pNHSΔt)

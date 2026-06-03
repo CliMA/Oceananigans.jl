@@ -1,6 +1,10 @@
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans: fields, TendencyCallsite
-using Oceananigans.Models: complete_communication_and_compute_buffer!, interior_tendency_kernel_parameters
+using Oceananigans.BoundaryConditions: fill_halo_regions!, update_boundary_conditions!
+using Oceananigans.Fields: compute!, ConstantField, OneField, ZeroField
+using Oceananigans.Models: complete_communication_and_compute_buffer!, interior_tendency_kernel_parameters,
+                           update_model_field_time_series!
+using Oceananigans.TurbulenceClosures: closure_auxiliary_velocity
 using Oceananigans.Utils: get_active_cells_map
 
 import Oceananigans.TimeSteppers: compute_tendencies!
@@ -13,6 +17,7 @@ Calculate the interior and boundary contributions to tendency terms without the
 contribution from non-hydrostatic pressure.
 """
 function compute_tendencies!(model::NonhydrostaticModel, callbacks)
+    refresh_restored_nonhydrostatic_model_state!(model)
 
     # Note:
     #
@@ -66,6 +71,8 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
     v_immersed_bc        = velocities.v.boundary_conditions.immersed
     w_immersed_bc        = velocities.w.boundary_conditions.immersed
 
+    refresh_background_field_halos!(background_fields)
+
     start_momentum_kernel_args = (advection,
                                   coriolis,
                                   stokes_drift,
@@ -90,6 +97,10 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
                           w_immersed_bc, end_momentum_kernel_args...,
                           hydrostatic_pressure, clock, forcings.w)
 
+    refresh_tracer_advective_forcing_halos!(forcings.u)
+    refresh_tracer_advective_forcing_halos!(forcings.v)
+    refresh_tracer_advective_forcing_halos!(forcings.w)
+
     exclude_periphery = true
     launch!(arch, grid, kernel_parameters, compute_Gu!,
             tendencies.u, grid, u_kernel_args;
@@ -113,6 +124,12 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
         @inbounds c_immersed_bc = tracers[tracer_index].boundary_conditions.immersed
         @inbounds tracer_name = keys(tracers)[tracer_index]
 
+        biogeochemical_velocities = biogeochemical_drift_velocity(model.biogeochemistry, Val(tracer_name))
+        closure_velocities = closure_auxiliary_velocity(model.closure, model.closure_fields, Val(tracer_name))
+        refresh_tracer_auxiliary_velocity_halos!(biogeochemical_velocities)
+        refresh_tracer_auxiliary_velocity_halos!(closure_velocities)
+        refresh_tracer_advective_forcing_halos!(forcing)
+
         args = tuple(Val(tracer_index), Val(tracer_name),
                      start_tracer_kernel_args...,
                      c_immersed_bc,
@@ -124,6 +141,22 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
                 active_cells_map)
     end
 
+    return nothing
+end
+
+refresh_background_field_halos!(background_fields) = begin
+    refresh_tracer_auxiliary_velocity_halos!(background_fields.velocities)
+    refresh_background_tracer_halos!(background_fields.tracers)
+    return nothing
+end
+
+refresh_background_tracer_halos!(tracers::NamedTuple) =
+    foreach(refresh_background_tracer_halos!, tracers)
+
+refresh_background_tracer_halos!(::Union{ZeroField, OneField, ConstantField}) = nothing
+
+refresh_background_tracer_halos!(field) = begin
+    fill_halo_regions!(field)
     return nothing
 end
 
@@ -164,7 +197,18 @@ end
 #####
 
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
+function refresh_nonhydrostatic_flux_boundary_condition_state!(model::NonhydrostaticModel)
+    update_model_field_time_series!(model, model.clock)
+    compute!(model.auxiliary_fields)
+    update_boundary_conditions!(fields(model), model)
+    fill_halo_regions!(merge(model.velocities, model.tracers), model.clock, fields(model); fill_open_bcs=false, async=false)
+    refresh_background_field_halos!(model.background_fields)
+    compute!(model.auxiliary_fields)
+    return nothing
+end
+
 function compute_flux_bc_tendencies!(model::NonhydrostaticModel)
+    refresh_nonhydrostatic_flux_boundary_condition_state!(model)
 
     Gⁿ    = model.timestepper.Gⁿ
     arch  = model.architecture

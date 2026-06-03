@@ -3,10 +3,21 @@ import Oceananigans.TimeSteppers: compute_flux_bc_tendencies!
 
 using Oceananigans.Utils: launch!
 using Oceananigans: fields, TendencyCallsite, UpdateStateCallsite
+using Oceananigans.Models: update_model_field_time_series!
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans.BoundaryConditions
 
+function refresh_shallow_water_auxiliary_state!(model::ShallowWaterModel)
+    update_model_field_time_series!(model, model.clock)
+    compute_velocities!(model.velocities, model.formulation)
+    model_fields = shallow_water_fields(model.velocities, model.solution, model.tracers, model.formulation)
+    fill_halo_regions!(merge(model.solution, model.tracers), model.clock, model_fields)
+    compute_velocities!(model.velocities, model.formulation)
+    compute_closure_fields!(model.closure_fields, model.closure, model)
+    fill_halo_regions!(model.closure_fields, model.clock, model_fields)
+    return nothing
+end
 
 """
     compute_tendencies!(model::ShallowWaterModel)
@@ -23,6 +34,8 @@ function compute_tendencies!(model::ShallowWaterModel, callbacks)
     #
     # "model.timestepper.Gⁿ" is a NamedTuple of Fields, whose data also corresponds to
     # tendency data.
+
+    refresh_shallow_water_auxiliary_state!(model)
 
     # Calculate contributions to momentum and tracer tendencies from fluxes and volume terms in the
     # interior of the domain
@@ -70,7 +83,7 @@ function compute_interior_tendency_contributions!(tendencies,
                       bathymetry, solution, tracers, closure_fields, clock, formulation)
 
     h_args = (grid, gravitational_acceleration, advection.mass, coriolis, closure,
-              solution, tracers, closure_fields, clock, formulation)
+              velocities, solution, tracers, closure_fields, clock, formulation)
 
     launch!(arch, grid, :xyz, compute_Guh!, tendencies[1], transport_args..., forcings[1]; exclude_periphery=true)
     launch!(arch, grid, :xyz, compute_Gvh!, tendencies[2], transport_args..., forcings[2]; exclude_periphery=true)
@@ -82,7 +95,7 @@ function compute_interior_tendency_contributions!(tendencies,
         @inbounds c_advection = advection[tracer_name]
 
         launch!(arch, grid, :xyz, compute_Gc!, Gc, grid, Val(tracer_index),
-                c_advection, closure, solution, tracers, closure_fields, clock, formulation, forcing)
+                c_advection, closure, velocities, solution, tracers, closure_fields, clock, formulation, forcing)
     end
 
     return nothing
@@ -143,6 +156,7 @@ end
                              advection,
                              coriolis,
                              closure,
+                             velocities,
                              solution,
                              tracers,
                              closure_fields,
@@ -152,7 +166,7 @@ end
 
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Gh[i, j, k] = h_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, coriolis, closure,
+    @inbounds Gh[i, j, k] = h_solution_tendency(i, j, k, grid, gravitational_acceleration, advection, coriolis, closure, velocities,
                                                 solution, tracers, closure_fields, forcings, clock, formulation)
 end
 
@@ -166,6 +180,7 @@ end
                              tracer_index,
                              advection,
                              closure,
+                             velocities,
                              solution,
                              tracers,
                              closure_fields,
@@ -175,7 +190,7 @@ end
 
     i, j, k = @index(Global, NTuple)
 
-    @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, tracer_index, advection, closure, solution, tracers,
+    @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, tracer_index, advection, closure, velocities, solution, tracers,
                                             closure_fields, forcing, clock, formulation)
 end
 
@@ -190,7 +205,7 @@ function compute_flux_bc_tendencies!(model::ShallowWaterModel)
     arch  = model.architecture
     clock = model.clock
 
-    model_fields = fields(model)
+    model_fields = shallow_water_fields(model.velocities, model.solution, model.tracers, model.formulation)
     prognostic_fields = merge(model.solution, model.tracers)
 
     # Solution fields and tracer fields

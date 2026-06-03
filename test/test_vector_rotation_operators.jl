@@ -123,6 +123,14 @@ end
                         θ = rotation_angle(i, j, grid)
                         @test θ ≈ θᵢ
                     end
+
+                    uᵢ, vᵢ, wᵢ = 1, 2, 3
+                    uₑ, vₑ, wₑ = extrinsic_vector(1, 1, 1, grid, uᵢ, vᵢ, wᵢ)
+                    uᵢ′, vᵢ′, wᵢ′ = intrinsic_vector(1, 1, 1, grid, uₑ, vₑ, wₑ)
+
+                    @test uᵢ′ ≈ uᵢ
+                    @test vᵢ′ ≈ vᵢ
+                    @test wᵢ′ == wᵢ
                 end
             end
         end

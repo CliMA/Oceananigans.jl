@@ -1,4 +1,13 @@
-using Oceananigans.Operators: δxᶜᶜᶜ, δxᶠᶠᶜ, δyᶜᶜᶜ, δyᶠᶠᶜ
+using Oceananigans.Grids: SphericalShellGrid
+using Oceananigans.Operators: δxᶜᶜᶜ, δxᶜᵃᵃ, δxᶠᶠᶜ,
+                              δyᵃᶜᵃ, δyᶜᶜᶜ, δyᶠᶠᶜ,
+                              covariant_bernoulli_head_uᶠᶜᶜ,
+                              covariant_bernoulli_head_vᶜᶠᶜ,
+                              covariant_kinetic_energyᶜᶜᶜ,
+                              covariant_to_volume_flux_uᶠᶜᶜ,
+                              covariant_to_volume_flux_vᶜᶠᶜ,
+                              computational_width_uᶠᶜᶜ,
+                              computational_width_vᶜᶠᶜ
 
 #####
 ##### Self Upwinding of Divergence Flux, the best option!
@@ -7,14 +16,32 @@ using Oceananigans.Operators: δxᶜᶜᶜ, δxᶠᶠᶜ, δyᶜᶜᶜ, δyᶠ�
 @inline δx_U(i, j, k, grid, u, v) = δxᶜᶜᶜ(i, j, k, grid, Ax_qᶠᶜᶜ, u)
 @inline δy_V(i, j, k, grid, u, v) = δyᶜᶜᶜ(i, j, k, grid, Ay_qᶜᶠᶜ, v)
 
+@inline δx_U(i, j, k, grid::SphericalShellGrid, u, v) =
+    δxᶜᶜᶜ(i, j, k, grid, covariant_to_volume_flux_uᶠᶜᶜ, u, v)
+
+@inline δy_V(i, j, k, grid::SphericalShellGrid, u, v) =
+    δyᶜᶜᶜ(i, j, k, grid, covariant_to_volume_flux_vᶜᶠᶜ, u, v)
+
 # For moving grids, we include the time-derivative of the grid scaling in the divergence flux.
 # If the grid is stationary, `Az_Δr_∂t_σ` evaluates to zero.
 @inline δx_U_plus_∂t_σ(i, j, k, grid, u, v) = δxᶜᶜᶜ(i, j, k, grid, Ax_qᶠᶜᶜ, u) + Az_Δr_∂t_σ(i, j, k, grid)
 @inline δy_V_plus_∂t_σ(i, j, k, grid, u, v) = δyᶜᶜᶜ(i, j, k, grid, Ay_qᶜᶠᶜ, v) + Az_Δr_∂t_σ(i, j, k, grid)
 
+@inline δx_U_plus_∂t_σ(i, j, k, grid::SphericalShellGrid, u, v) =
+    δx_U(i, j, k, grid, u, v) + Az_Δr_∂t_σ(i, j, k, grid)
+
+@inline δy_V_plus_∂t_σ(i, j, k, grid::SphericalShellGrid, u, v) =
+    δy_V(i, j, k, grid, u, v) + Az_Δr_∂t_σ(i, j, k, grid)
+
 # Velocity smoothness for divergence upwinding
 @inline U_smoothness(i, j, k, grid, u, v) = ℑxᶜᵃᵃ(i, j, k, grid, Ax_qᶠᶜᶜ, u)
 @inline V_smoothness(i, j, k, grid, u, v) = ℑyᵃᶜᵃ(i, j, k, grid, Ay_qᶜᶠᶜ, v)
+
+@inline U_smoothness(i, j, k, grid::SphericalShellGrid, u, v) =
+    ℑxᶜᵃᵃ(i, j, k, grid, covariant_to_volume_flux_uᶠᶜᶜ, u, v)
+
+@inline V_smoothness(i, j, k, grid::SphericalShellGrid, u, v) =
+    ℑyᵃᶜᵃ(i, j, k, grid, covariant_to_volume_flux_vᶜᶠᶜ, u, v)
 
 # Divergence smoothness for divergence upwinding
 @inline divergence_smoothness(i, j, k, grid, u, v) = δx_U(i, j, k, grid, u, v) + δy_V(i, j, k, grid, u, v)
@@ -82,4 +109,40 @@ end
     δKvᴿ =    _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.kinetic_energy_gradient_scheme, bias(v̂), δy_v², δv²_stencil, u, v)
 
     return (δKvᴿ + δKuˢ) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
+end
+
+@inline δx_covariant_kinetic_energy(i, j, k, grid, u, v) =
+    δxᶜᵃᵃ(i, j, k, grid, covariant_kinetic_energyᶜᶜᶜ, u, v)
+
+@inline δy_covariant_kinetic_energy(i, j, k, grid, u, v) =
+    δyᵃᶜᵃ(i, j, k, grid, covariant_kinetic_energyᶜᶜᶜ, u, v)
+
+@inline function bernoulli_head_U(i, j, k, grid::SphericalShellGrid, scheme::VectorInvariantKineticEnergyUpwinding, u, v)
+
+    @inbounds û = u[i, j, k]
+
+    δK_stencil = scheme.upwinding.δu²_stencil
+    δKᴿ = _biased_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, scheme.kinetic_energy_gradient_scheme, bias(û),
+                                  δx_covariant_kinetic_energy, δK_stencil, u, v)
+
+    return δKᴿ / computational_width_uᶠᶜᶜ(i, j, k, grid)
+end
+
+@inline function bernoulli_head_U(i, j, k, grid::OHPSG, scheme::VectorInvariantKineticEnergyUpwinding, u, v)
+    return covariant_bernoulli_head_uᶠᶜᶜ(i, j, k, grid, u, v)
+end
+
+@inline function bernoulli_head_V(i, j, k, grid::SphericalShellGrid, scheme::VectorInvariantKineticEnergyUpwinding, u, v)
+
+    @inbounds v̂ = v[i, j, k]
+
+    δK_stencil = scheme.upwinding.δv²_stencil
+    δKᴿ = _biased_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, scheme.kinetic_energy_gradient_scheme, bias(v̂),
+                                  δy_covariant_kinetic_energy, δK_stencil, u, v)
+
+    return δKᴿ / computational_width_vᶜᶠᶜ(i, j, k, grid)
+end
+
+@inline function bernoulli_head_V(i, j, k, grid::OHPSG, scheme::VectorInvariantKineticEnergyUpwinding, u, v)
+    return covariant_bernoulli_head_vᶜᶠᶜ(i, j, k, grid, u, v)
 end

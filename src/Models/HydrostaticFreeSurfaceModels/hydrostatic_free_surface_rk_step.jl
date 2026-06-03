@@ -23,10 +23,10 @@ Split Runge-Kutta substep for `HydrostaticFreeSurfaceModel` with explicit free s
 The order of operations for explicit free surfaces is:
 1. Compute momentum tendencies (baroclinic)
 2. Advance the free surface (barotropic step)
-3. Compute transport velocities for tracer advection
-4. Compute tracer tendencies
-5. Advance grid scaling (for z-star coordinates)
-6. Advance velocities
+3. Advance velocities
+4. Refresh transport velocities for tracer advection
+5. Compute tracer tendencies
+6. Advance grid scaling (for z-star coordinates)
 7. Correct barotropic mode to reconcile baroclinic and barotropic velocities
 8. Advance tracers
 """
@@ -39,16 +39,18 @@ The order of operations for explicit free surfaces is:
     step_free_surface!(free_surface, model, model.timestepper, Δτ)
 
     @apply_regionally begin
-        compute_transport_velocities!(model, free_surface)
         rk_substep_velocities!(model.velocities, model, Δτ)
         mask_immersed_horizontal_velocities!(model.velocities)
     end
 
     # Mask and fill velocity halos
     u, v, _ = model.velocities
+    Oceananigans.Fields.compute!(model.auxiliary_fields)
     fill_halo_regions!((u, v), model.clock, fields(model); async=true)
+    @apply_regionally project_rigid_lid_velocities!(model, Δτ)
 
     @apply_regionally begin
+        compute_transport_velocities!(model, free_surface)
         # compute tracer tendencies
         compute_tracer_tendencies!(model)
 
@@ -79,11 +81,9 @@ For implicit free surfaces, a predictor-corrector approach is used:
 @inline function rk_substep!(model, free_surface::ImplicitFreeSurface, grid, Δτ, callbacks)
 
     @apply_regionally begin
-        parent(model.transport_velocities.u) .= parent(model.velocities.u)
-        parent(model.transport_velocities.v) .= parent(model.velocities.v)
-
         # Computing tendencies...
         compute_momentum_flux_bcs!(model)
+        compute_transport_velocities!(model, free_surface)
 
         # Finally Substep! Advance grid, tracers, (predictor) momentum
         rk_substep_velocities!(model.velocities, model, Δτ)
@@ -99,7 +99,9 @@ For implicit free surfaces, a predictor-corrector approach is used:
 
     # Mask and fill velocity halos
     u, v, _ = model.velocities
+    Oceananigans.Fields.compute!(model.auxiliary_fields)
     fill_halo_regions!((u, v), model.clock, fields(model))
+    @apply_regionally project_rigid_lid_velocities!(model, Δτ)
 
     @apply_regionally begin
         compute_transport_velocities!(model, free_surface)
@@ -155,6 +157,7 @@ function rk_substep_velocities!(velocities, model, Δt)
         launch!(architecture(grid), grid, :xyz,
                 _rk_substep_field!, velocity_field, convert(FT, Δt), Gⁿ, Ψ⁻; exclude_periphery=true)
 
+        compute_auxiliary_fields!(model.auxiliary_fields)
         implicit_step!(velocity_field,
                        model.timestepper.implicit_solver,
                        model.closure,
@@ -193,11 +196,16 @@ function rk_substep_tracers!(tracers, model, Δt)
     FT = eltype(grid)
 
     catke_in_closures = hasclosure(closure, FlavorOfCATKE)
+    td_in_closures    = hasclosure(closure, FlavorOfTD)
 
     # Tracer update kernels
     for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
 
         if catke_in_closures && tracer_name == :e
+            @debug "Skipping RK substep for e"
+        elseif td_in_closures && tracer_name == :ϵ
+            @debug "Skipping RK substep for ϵ"
+        elseif td_in_closures && tracer_name == :e
             @debug "Skipping RK substep for e"
         else
             Gⁿ = model.timestepper.Gⁿ[tracer_name]
@@ -207,6 +215,7 @@ function rk_substep_tracers!(tracers, model, Δt)
             launch!(architecture(grid), grid, :xyz,
                     _rk_substep_tracer_field!, c, grid, convert(FT, Δt), Gⁿ, Ψ⁻)
 
+            compute_auxiliary_fields!(model.auxiliary_fields)
             implicit_step!(c,
                            model.timestepper.implicit_solver,
                            closure,

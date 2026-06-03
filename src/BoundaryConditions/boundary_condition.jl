@@ -93,6 +93,9 @@ const DCBC = BoundaryCondition{<:DistributedCommunication}
 const ZBC  = BoundaryCondition{<:Zipper}
 const UZBC = BoundaryCondition{<:Zipper{UPivot}}
 const FZBC = BoundaryCondition{<:Zipper{FPivot}}
+const QZBC = BoundaryCondition{QuadFoldedZipper}
+const QCovZBC = BoundaryCondition{QuadFoldedCovariantZipper}
+const QConZBC = BoundaryCondition{QuadFoldedContravariantZipper}
 
 const NoFluxBoundaryCondition = ZFBC
 const DistributedCommunicationBoundaryCondition = BoundaryCondition{<:DistributedCommunication}
@@ -104,6 +107,9 @@ const DistributedCommunicationBoundaryCondition = BoundaryCondition{<:Distribute
 MultiRegionCommunicationBoundaryCondition() = BoundaryCondition(MultiRegionCommunication(), nothing)
             UPivotZipperBoundaryCondition() = BoundaryCondition(Zipper{UPivot}(), 1)
             FPivotZipperBoundaryCondition() = BoundaryCondition(Zipper{FPivot}(), 1)
+        QuadFoldedZipperBoundaryCondition() = BoundaryCondition(QuadFoldedZipper(), 1)
+QuadFoldedCovariantZipperBoundaryCondition() = BoundaryCondition(QuadFoldedCovariantZipper(), 1)
+QuadFoldedContravariantZipperBoundaryCondition() = BoundaryCondition(QuadFoldedContravariantZipper(), 1)
 
                     FluxBoundaryCondition(val; kwargs...) = BoundaryCondition(Flux(), val; kwargs...)
                    ValueBoundaryCondition(val; kwargs...) = BoundaryCondition(Value(), val; kwargs...)
@@ -113,6 +119,9 @@ MultiRegionCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(Mu
 
             UPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{UPivot}(), val; kwargs...)
             FPivotZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(Zipper{FPivot}(), val; kwargs...)
+        QuadFoldedZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(QuadFoldedZipper(), val; kwargs...)
+QuadFoldedCovariantZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(QuadFoldedCovariantZipper(), val; kwargs...)
+QuadFoldedContravariantZipperBoundaryCondition(val; kwargs...) = BoundaryCondition(QuadFoldedContravariantZipper(), val; kwargs...)
 DistributedCommunicationBoundaryCondition(val; kwargs...) = BoundaryCondition(DistributedCommunication(), val; kwargs...)
 
 #####
@@ -197,6 +206,16 @@ validate_boundary_condition_topology(::Union{ZBC, DCBC, Nothing}, topo::Grids.Fo
 validate_boundary_condition_topology(bc, topo::Grids.FoldedTopology, side) =
     side == :north ? throw(ArgumentError(
         "Cannot set north $bc in a `FoldedTopology` direction; only a `Zipper`, distributed communication BC, or `nothing` is allowed.")) : nothing
+
+validate_boundary_condition_topology(::Union{QZBC, Nothing}, ::Grids.QuadFolded, side) = nothing
+validate_boundary_condition_topology(::QZBC, ::Grids.QuadFolded, side) = nothing  # disambiguation
+validate_boundary_condition_topology(bc::QZBC, topo, side) =
+    throw(ArgumentError("Cannot set $side $bc outside a `QuadFolded` direction!"))
+validate_boundary_condition_topology(::Union{QCovZBC, QConZBC}, ::Grids.QuadFolded, side) = nothing
+validate_boundary_condition_topology(::QCovZBC, ::Grids.QuadFolded, side) = nothing  # disambiguation
+validate_boundary_condition_topology(::QConZBC, ::Grids.QuadFolded, side) = nothing  # disambiguation
+validate_boundary_condition_topology(bc::Union{QCovZBC, QConZBC}, topo, side) =
+    throw(ArgumentError("Cannot set $side $bc outside a `QuadFolded` direction!"))
 
 validate_boundary_condition_topology(::Nothing, topo::Flat, side) = nothing
 validate_boundary_condition_topology(bc, topo::Flat, side) =

@@ -1,4 +1,5 @@
 using Oceananigans.TimeSteppers: _ab2_step_field!, implicit_step!
+using Oceananigans.Fields: compute!
 import Oceananigans.TimeSteppers: ab2_step!
 
 """
@@ -38,6 +39,7 @@ function pressure_correction_ab2_step!(model, Δt, callbacks)
         kernel_args = (field, kernel_Δt, model.timestepper.χ, model.timestepper.Gⁿ[name], model.timestepper.G⁻[name])
         launch!(architecture(grid), grid, :xyz, _ab2_step_field!, kernel_args...; exclude_periphery)
 
+        compute!(model.auxiliary_fields)
         implicit_step!(field,
                        model.timestepper.implicit_solver,
                        model.closure,

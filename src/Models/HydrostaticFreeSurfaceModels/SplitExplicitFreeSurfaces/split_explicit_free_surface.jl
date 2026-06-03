@@ -48,7 +48,8 @@ tendency of ``u`` and ``v``, and ``g`` is the gravitational acceleration.
 The discretized equations are solved within a baroclinic timestep (``Δt``) by substepping with a ``Δτ < Δt``.
 The barotropic velocities are filtered throughout the substepping and, finally, the barotropic mode of the velocities
 at the new time step is corrected with the filtered velocities. The complementary filtered transport barotropic velocities,
-`Ũ` and `Ṽ`, are used as transport barotropic velocities for tracer advection.
+`Ũ` and `Ṽ` store the filtered barotropic covariant state used to construct
+transport velocities for tracer advection.
 
 Fields
 ======
@@ -64,7 +65,7 @@ When materialized (see [`materialize_free_surface`](@ref)), a `SplitExplicitFree
 - `filtered_state`: A `NamedTuple` containing filtered/averaged quantities computed during barotropic substepping:
   * `η̅`: Filtered free surface displacement field.
   * `U̅`, `V̅`: Filtered barotropic velocities.
-  * `Ũ`, `Ṽ`: complementary filtered transport barotropic velocities, used as transport barotropic velocities for tracer advection.
+  * `Ũ`, `Ṽ`: complementary filtered barotropic covariant state used to construct tracer transport velocities.
 
 - `gravitational_acceleration`: Gravitational acceleration constant (of type `FloatType`).
 
@@ -235,10 +236,17 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     TX, TY, _   = topology(grid)
     substepping = free_surface.substepping
 
-    if (TX() isa ConnectedTopology || TY() isa ConnectedTopology) && substepping isa FixedTimeStepSize
-        throw(ArgumentError("A variable substepping through a CFL condition is not supported for the `SplitExplicitFreeSurface` on $(summary(grid)). \n
-                             Provide a fixed number of substeps through the `substeps` keyword argument as: \n
-                             `free_surface = SplitExplicitFreeSurface(grid; substeps = N)` where `N::Int`"))
+    if extend_halos && (TX() isa ConnectedTopology || TY() isa ConnectedTopology) && substepping isa FixedTimeStepSize
+        @warn "Falling back to `extend_halos = false` for `SplitExplicitFreeSurface` on connected topologies with fixed-time-step substepping."
+        fill_halo_free_surface = SplitExplicitFreeSurface{false}(free_surface.displacement,
+                                                                 free_surface.barotropic_velocities,
+                                                                 free_surface.filtered_state,
+                                                                 free_surface.gravitational_acceleration,
+                                                                 free_surface.kernel_parameters,
+                                                                 substepping,
+                                                                 free_surface.timestepper)
+
+        return materialize_free_surface(fill_halo_free_surface, velocities, grid)
     end
 
     maybe_extended_grid = if extend_halos
@@ -441,12 +449,14 @@ end
 function prognostic_state(fs::SplitExplicitFreeSurface)
     return (displacement = prognostic_state(fs.displacement),
             barotropic_velocities = prognostic_state(fs.barotropic_velocities),
+            filtered_state = prognostic_state(fs.filtered_state),
             timestepper = prognostic_state(fs.timestepper))
 end
 
 function restore_prognostic_state!(restored::SplitExplicitFreeSurface, from)
     restore_prognostic_state!(restored.displacement, from.displacement)
     restore_prognostic_state!(restored.barotropic_velocities, from.barotropic_velocities)
+    restore_prognostic_state!(restored.filtered_state, from.filtered_state)
     restore_prognostic_state!(restored.timestepper, from.timestepper)
     return restored
 end

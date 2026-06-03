@@ -1,6 +1,7 @@
 using Oceananigans.Advection
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Coriolis
+using Oceananigans.Grids: SphericalShellGrid
 using Oceananigans.Operators
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ
 
@@ -38,14 +39,14 @@ Compute the tendency for the x-directional transport, uh
 
     g = gravitational_acceleration
 
-    model_fields = shallow_water_fields(velocities, tracers, solution, formulation)
+    model_fields = shallow_water_fields(velocities, solution, tracers, formulation)
 
     return ( - div_mom_u(i, j, k, grid, advection, solution, formulation)
              - x_pressure_gradient(i, j, k, grid, g, solution.h, bathymetry, formulation)
              - x_f_cross_U(i, j, k, grid, coriolis, solution)
              - bathymetry_contribution_x(i, j, k, grid, g, solution.h, bathymetry, formulation)
              - sw_∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, closure_fields, clock, model_fields, formulation)
-             + forcing(i, j, k, grid, clock, merge(solution, tracers)))
+             + forcing(i, j, k, grid, clock, model_fields))
 end
 
 """
@@ -67,14 +68,14 @@ Compute the tendency for the y-directional transport, vh.
 
      g = gravitational_acceleration
 
-     model_fields = shallow_water_fields(velocities, tracers, solution, formulation)
+     model_fields = shallow_water_fields(velocities, solution, tracers, formulation)
 
     return ( - div_mom_v(i, j, k, grid, advection, solution, formulation)
              - y_pressure_gradient(i, j, k, grid, g, solution.h, bathymetry, formulation)
              - y_f_cross_U(i, j, k, grid, coriolis, solution)
              - bathymetry_contribution_y(i, j, k, grid, g, solution.h, bathymetry, formulation)
              - sw_∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, closure_fields, clock, model_fields, formulation)
-             + forcing(i, j, k, grid, clock, merge(solution, tracers)))
+             + forcing(i, j, k, grid, clock, model_fields))
 end
 
 """
@@ -85,6 +86,7 @@ Compute the tendency for the height, h.
                                      advection,
                                      coriolis,
                                      closure,
+                                     velocities,
                                      solution,
                                      tracers,
                                      closure_fields,
@@ -92,14 +94,17 @@ Compute the tendency for the height, h.
                                      formulation,
                                      forcing)
 
+    model_fields = shallow_water_fields(velocities, solution, tracers, formulation)
+
     return ( - div_Uh(i, j, k, grid, advection, solution, formulation)
-             + forcing(i, j, k, grid, clock, merge(solution, tracers)))
+             + forcing(i, j, k, grid, clock, model_fields))
 end
 
 @inline function tracer_tendency(i, j, k, grid,
                                  val_tracer_index::Val{tracer_index},
                                  advection,
                                  closure,
+                                 velocities,
                                  solution,
                                  tracers,
                                  closure_fields,
@@ -108,9 +113,10 @@ end
                                  forcing) where tracer_index
 
     @inbounds c = tracers[tracer_index]
+    model_fields = shallow_water_fields(velocities, solution, tracers, formulation)
 
     return ( - div_Uc(i, j, k, grid, advection, solution, c, formulation)
              + c_div_U(i, j, k, grid, solution, c, formulation)
-             + forcing(i, j, k, grid, clock, merge(solution, tracers))
+             + forcing(i, j, k, grid, clock, model_fields)
             )
 end

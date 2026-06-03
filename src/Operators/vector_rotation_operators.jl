@@ -1,4 +1,9 @@
-using Oceananigans.Grids: φnode
+using Oceananigans.Grids: Center,
+                         SphericalShellGrid,
+                         λnode,
+                         spherical_shell_unit_vector,
+                         spherical_shell_tangent_basis,
+                         φnode
 
 # TODO: have a general Oceananigans-wide function that retrieves a pointwise
 # value for a function, an array, a number, a field etc?
@@ -47,8 +52,44 @@ _intrinsic_ coordinate systems are equivalent. However, for other grids (e.g., f
 @inline intrinsic_vector(i, j, k, grid::AbstractGrid, uₑ, vₑ) =
     getvalue(uₑ, i, j, k, grid), getvalue(vₑ, i, j, k, grid)
 
+@inline intrinsic_vector(i, j, k, grid::AbstractGrid, LX, LY, LZ, uₑ, vₑ) =
+    intrinsic_vector(i, j, k, grid, uₑ, vₑ)
+
 @inline extrinsic_vector(i, j, k, grid::AbstractGrid, uᵢ, vᵢ) =
     getvalue(uᵢ, i, j, k, grid), getvalue(vᵢ, i, j, k, grid)
+
+@inline extrinsic_vector(i, j, k, grid::AbstractGrid, LX, LY, LZ, uᵢ, vᵢ) =
+    extrinsic_vector(i, j, k, grid, uᵢ, vᵢ)
+
+@inline function spherical_shell_reference_cartesian_node(i, j, k, grid::SphericalShellGrid, LX, LY, LZ)
+    λ = λnode(i, j, k, grid, LX, LY, LZ)
+    φ = φnode(i, j, k, grid, LX, LY, LZ)
+    x̂, ŷ, ẑ = spherical_shell_unit_vector(λ, φ)
+    return grid.radius * x̂, grid.radius * ŷ, grid.radius * ẑ
+end
+
+@inline function spherical_shell_covariant_basis(i, j, k, grid::SphericalShellGrid, LX, LY, LZ)
+    FT = eltype(grid)
+    half = convert(FT, 1//2)
+
+    x⁺ᶦ, y⁺ᶦ, z⁺ᶦ = spherical_shell_reference_cartesian_node(i + 1, j,     k, grid, LX, LY, LZ)
+    x⁻ᶦ, y⁻ᶦ, z⁻ᶦ = spherical_shell_reference_cartesian_node(i - 1, j,     k, grid, LX, LY, LZ)
+    x⁺ʲ, y⁺ʲ, z⁺ʲ = spherical_shell_reference_cartesian_node(i,     j + 1, k, grid, LX, LY, LZ)
+    x⁻ʲ, y⁻ʲ, z⁻ʲ = spherical_shell_reference_cartesian_node(i,     j - 1, k, grid, LX, LY, LZ)
+
+    a₁x = half * (x⁺ᶦ - x⁻ᶦ)
+    a₁y = half * (y⁺ᶦ - y⁻ᶦ)
+    a₁z = half * (z⁺ᶦ - z⁻ᶦ)
+
+    a₂x = half * (x⁺ʲ - x⁻ʲ)
+    a₂y = half * (y⁺ʲ - y⁻ʲ)
+    a₂z = half * (z⁺ʲ - z⁻ʲ)
+
+    return (a₁x, a₁y, a₁z), (a₂x, a₂y, a₂z)
+end
+
+@inline spherical_shell_covariant_basis(i, j, k, grid::SphericalShellGrid) =
+    spherical_shell_covariant_basis(i, j, k, grid, Center(), Center(), Center())
 
 
 """
@@ -108,9 +149,38 @@ end
     return uᵢ, vᵢ
 end
 
+# 2D vectors
+@inline function intrinsic_vector(i, j, k, grid::SphericalShellGrid, LX, LY, LZ, uₑ, vₑ)
+    u = getvalue(uₑ, i, j, k, grid)
+    v = getvalue(vₑ, i, j, k, grid)
+
+    eλ, eφ, _ = spherical_shell_tangent_basis(i, j, k, grid, LX, LY, LZ)
+    (a₁x, a₁y, a₁z), (a₂x, a₂y, a₂z) = spherical_shell_covariant_basis(i, j, k, grid, LX, LY, LZ)
+
+    Vx = u * eλ[1] + v * eφ[1]
+    Vy = u * eλ[2] + v * eφ[2]
+    Vz = u * eλ[3] + v * eφ[3]
+
+    uᵢ = a₁x * Vx + a₁y * Vy + a₁z * Vz
+    vᵢ = a₂x * Vx + a₂y * Vy + a₂z * Vz
+
+    return uᵢ, vᵢ
+end
+
+@inline intrinsic_vector(i, j, k, grid::SphericalShellGrid, uₑ, vₑ) =
+    intrinsic_vector(i, j, k, grid, Center(), Center(), Center(), uₑ, vₑ)
+
 # 3D vectors
 @inline function intrinsic_vector(i, j, k, grid::OrthogonalSphericalShellGrid, uₑ, vₑ, wₑ)
 
+    uᵢ, vᵢ = intrinsic_vector(i, j, k, grid, uₑ, vₑ)
+    wᵢ = getvalue(wₑ, i, j, k, grid)
+
+    return uᵢ, vᵢ, wᵢ
+end
+
+# 3D vectors
+@inline function intrinsic_vector(i, j, k, grid::SphericalShellGrid, uₑ, vₑ, wₑ)
     uᵢ, vᵢ = intrinsic_vector(i, j, k, grid, uₑ, vₑ)
     wᵢ = getvalue(wₑ, i, j, k, grid)
 
@@ -133,10 +203,47 @@ end
     return uₑ, vₑ
 end
 
+# 2D vectors
+@inline function extrinsic_vector(i, j, k, grid::SphericalShellGrid, LX, LY, LZ, uᵢ, vᵢ)
+    u₁ = getvalue(uᵢ, i, j, k, grid)
+    u₂ = getvalue(vᵢ, i, j, k, grid)
+
+    (a₁x, a₁y, a₁z), (a₂x, a₂y, a₂z) = spherical_shell_covariant_basis(i, j, k, grid, LX, LY, LZ)
+    eλ, eφ, _ = spherical_shell_tangent_basis(i, j, k, grid, LX, LY, LZ)
+
+    g₁₁ = a₁x^2 + a₁y^2 + a₁z^2
+    g₁₂ = a₁x * a₂x + a₁y * a₂y + a₁z * a₂z
+    g₂₂ = a₂x^2 + a₂y^2 + a₂z^2
+    detg = g₁₁ * g₂₂ - g₁₂^2
+
+    u¹ = ifelse(detg == zero(grid), zero(grid), (g₂₂ * u₁ - g₁₂ * u₂) / detg)
+    u² = ifelse(detg == zero(grid), zero(grid), (g₁₁ * u₂ - g₁₂ * u₁) / detg)
+
+    Vx = u¹ * a₁x + u² * a₂x
+    Vy = u¹ * a₁y + u² * a₂y
+    Vz = u¹ * a₁z + u² * a₂z
+
+    uₑ = Vx * eλ[1] + Vy * eλ[2] + Vz * eλ[3]
+    vₑ = Vx * eφ[1] + Vy * eφ[2] + Vz * eφ[3]
+
+    return uₑ, vₑ
+end
+
+@inline extrinsic_vector(i, j, k, grid::SphericalShellGrid, uᵢ, vᵢ) =
+    extrinsic_vector(i, j, k, grid, Center(), Center(), Center(), uᵢ, vᵢ)
+
 # 3D vectors
 @inline function extrinsic_vector(i, j, k, grid::OrthogonalSphericalShellGrid, uᵢ, vᵢ, wᵢ)
 
-    uₑ, vₑ = intrinsic_vector(i, j, k, grid, uᵢ, vᵢ)
+    uₑ, vₑ = extrinsic_vector(i, j, k, grid, uᵢ, vᵢ)
+    wₑ = getvalue(wᵢ, i, j, k, grid)
+
+    return uₑ, vₑ, wₑ
+end
+
+# 3D vectors
+@inline function extrinsic_vector(i, j, k, grid::SphericalShellGrid, uᵢ, vᵢ, wᵢ)
+    uₑ, vₑ = extrinsic_vector(i, j, k, grid, uᵢ, vᵢ)
     wₑ = getvalue(wᵢ, i, j, k, grid)
 
     return uₑ, vₑ, wₑ

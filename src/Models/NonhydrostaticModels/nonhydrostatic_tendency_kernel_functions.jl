@@ -1,12 +1,14 @@
 using Oceananigans.Advection
 using Oceananigans.BuoyancyFormulations
 using Oceananigans.Coriolis
+using Oceananigans.Grids: SphericalShellGrid
 using Oceananigans.Operators
 using Oceananigans.StokesDrifts
 
 using Oceananigans.Biogeochemistry: biogeochemical_transition, biogeochemical_drift_velocity
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∂ⱼ_τ₃ⱼ, ∇_dot_qᶜ
 using Oceananigans.TurbulenceClosures: immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∂ⱼ_τ₃ⱼ, immersed_∇_dot_qᶜ
+using Oceananigans.TurbulenceClosures: closure_auxiliary_velocity
 using Oceananigans.Forcings: with_advective_forcing
 using Oceananigans.Fields: ZeroField
 using Oceananigans.Utils: SumOfArrays
@@ -29,6 +31,12 @@ hydrostatic_pressure_gradient_y(i, j, k, grid, ::Nothing) = zero(grid)
 @inline sum_fields(a, b, c)                       = SumOfArrays{3}(a, b, c)
 
 @inline assemble_closure_velocities(velocities, background_fields) = velocities
+
+@inline tracer_advection_velocities(grid, velocities) = velocities
+
+@inline function tracer_advection_velocities(grid::SphericalShellGrid, velocities)
+    return Oceananigans.Advection.spherical_shell_volume_flux_velocities(grid, velocities)
+end
 
 @inline function assemble_closure_velocities(velocities,
                                              background_fields::BackgroundFieldsWithClosureFluxes)
@@ -86,14 +94,16 @@ pressure anomaly.
 
     total_velocities = sum_of_velocities(velocities, background_fields.velocities)
     total_velocities = with_advective_forcing(forcing, total_velocities)
+    background_total_velocities = with_advective_forcing(forcing, background_fields.velocities)
 
     closure_velocities = assemble_closure_velocities(velocities, background_fields)
     closure_model_fields = merge(closure_velocities, tracers, auxiliary_fields)
     model_fields = merge(velocities, tracers, auxiliary_fields)
 
     return ( - div_𝐯u(i, j, k, grid, advection, total_velocities, velocities.u)
-             - div_𝐯u(i, j, k, grid, advection, velocities, background_fields.velocities.u)
-             - U_dot_∇u_metric(i, j, k, grid, advection, velocities, velocities)
+             - div_𝐯u(i, j, k, grid, advection, background_total_velocities, background_fields.velocities.u)
+             - U_dot_∇u_metric(i, j, k, grid, advection, total_velocities, velocities)
+             - U_dot_∇u_metric(i, j, k, grid, advection, background_total_velocities, background_fields.velocities)
              + x_dot_g_bᶠᶜᶜ(i, j, k, grid, buoyancy, tracers)
              - x_f_cross_U(i, j, k, grid, coriolis, velocities)
              - hydrostatic_pressure_gradient_x(i, j, k, grid, hydrostatic_pressure)
@@ -149,14 +159,16 @@ pressure anomaly.
 
     total_velocities = sum_of_velocities(velocities, background_fields.velocities)
     total_velocities = with_advective_forcing(forcing, total_velocities)
+    background_total_velocities = with_advective_forcing(forcing, background_fields.velocities)
 
     closure_velocities = assemble_closure_velocities(velocities, background_fields)
     closure_model_fields = merge(closure_velocities, tracers, auxiliary_fields)
     model_fields = merge(velocities, tracers, auxiliary_fields)
 
     return ( - div_𝐯v(i, j, k, grid, advection, total_velocities, velocities.v)
-             - div_𝐯v(i, j, k, grid, advection, velocities, background_fields.velocities.v)
-             - U_dot_∇v_metric(i, j, k, grid, advection, velocities, velocities)
+             - div_𝐯v(i, j, k, grid, advection, background_total_velocities, background_fields.velocities.v)
+             - U_dot_∇v_metric(i, j, k, grid, advection, total_velocities, velocities)
+             - U_dot_∇v_metric(i, j, k, grid, advection, background_total_velocities, background_fields.velocities)
              + y_dot_g_bᶜᶠᶜ(i, j, k, grid, buoyancy, tracers)
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
              - hydrostatic_pressure_gradient_y(i, j, k, grid, hydrostatic_pressure)
@@ -215,14 +227,16 @@ velocity components, tracer fields, and precalculated closure_fields where appli
 
     total_velocities = sum_of_velocities(velocities, background_fields.velocities)
     total_velocities = with_advective_forcing(forcing, total_velocities)
+    background_total_velocities = with_advective_forcing(forcing, background_fields.velocities)
 
     closure_velocities = assemble_closure_velocities(velocities, background_fields)
     closure_model_fields = merge(closure_velocities, tracers, auxiliary_fields)
     model_fields = merge(velocities, tracers, auxiliary_fields)
 
     return ( - div_𝐯w(i, j, k, grid, advection, total_velocities, velocities.w)
-             - div_𝐯w(i, j, k, grid, advection, velocities, background_fields.velocities.w)
-             - U_dot_∇w_metric(i, j, k, grid, advection, velocities, velocities)
+             - div_𝐯w(i, j, k, grid, advection, background_total_velocities, background_fields.velocities.w)
+             - U_dot_∇w_metric(i, j, k, grid, advection, total_velocities, velocities)
+             - U_dot_∇w_metric(i, j, k, grid, advection, background_total_velocities, background_fields.velocities)
              + maybe_z_dot_g_bᶜᶜᶠ(i, j, k, grid, hydrostatic_pressure, buoyancy, tracers)
              - z_f_cross_U(i, j, k, grid, coriolis, velocities)
              - ∂ⱼ_τ₃ⱼ(i, j, k, grid, closure, closure_fields, clock, closure_model_fields, buoyancy)
@@ -276,9 +290,15 @@ velocity components, tracer fields, and precalculated closure_fields where appli
 
 
     biogeochemical_velocities = biogeochemical_drift_velocity(biogeochemistry, val_tracer_name)
+    closure_velocities = closure_auxiliary_velocity(closure, closure_fields, val_tracer_name)
+    auxiliary_velocities = sum_of_velocities(biogeochemical_velocities, closure_velocities)
 
-    total_velocities = sum_of_velocities(velocities, background_fields.velocities, biogeochemical_velocities)
+    total_velocities = sum_of_velocities(velocities, background_fields.velocities, auxiliary_velocities)
     total_velocities = with_advective_forcing(forcing, total_velocities)
+    background_total_velocities = sum_of_velocities(velocities, auxiliary_velocities)
+    background_total_velocities = with_advective_forcing(forcing, background_total_velocities)
+    advective_velocities = tracer_advection_velocities(grid, total_velocities)
+    background_advective_velocities = tracer_advection_velocities(grid, background_total_velocities)
 
     @inbounds c = tracers[tracer_index]
     @inbounds background_fields_c = background_fields.tracers[tracer_index]
@@ -293,8 +313,8 @@ velocity components, tracer fields, and precalculated closure_fields where appli
     closure_model_fields = merge(closure_velocities, tracers, auxiliary_fields)
     model_fields = merge(velocities, tracers, auxiliary_fields)
 
-    return ( - div_Uc(i, j, k, grid, advection, total_velocities, c)
-             - div_Uc(i, j, k, grid, advection, velocities, background_fields_c)
+    return ( - div_Uc(i, j, k, grid, advection, advective_velocities, c)
+             - div_Uc(i, j, k, grid, advection, background_advective_velocities, background_fields_c)
              - ∇_dot_qᶜ(i, j, k, grid, closure, closure_fields, val_index, closure_c, clock, closure_model_fields, buoyancy)
              - immersed_∇_dot_qᶜ(i, j, k, grid, closure_c, c_immersed_bc, closure, closure_fields, val_index, clock, model_fields)
              + biogeochemical_transition(i, j, k, grid, biogeochemistry, val_tracer_name, clock, model_fields)

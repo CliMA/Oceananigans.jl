@@ -68,7 +68,7 @@ function compute_closure_fields!(closure_fields, closure::ShallowWaterScalarDiff
     grid  = model.grid
     clock = model.clock
 
-    model_fields = shallow_water_fields(model.velocities, model.tracers, model.solution, formulation(model))
+    model_fields = shallow_water_fields(model.velocities, model.solution, model.tracers, formulation(model))
 
     launch!(arch, grid, :xyz,
             _calculate_shallow_water_viscosity!,

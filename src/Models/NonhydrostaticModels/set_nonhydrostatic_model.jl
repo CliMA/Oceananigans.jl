@@ -1,4 +1,5 @@
 using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Fields: compute!
 using Oceananigans.TimeSteppers: update_state!
 using Oceananigans.TurbulenceClosures: initialize_closure_fields!
 
@@ -39,8 +40,32 @@ model.tracers.T
 function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs...)
     velocity_names = propertynames(model.velocities)
     velocities_are_set = false
+    set_u = :u in keys(kwargs)
+    set_v = :v in keys(kwargs)
+
+    if set_u || set_v
+        u = set_u ? kwargs[:u] : Oceananigans.Fields.ZeroField()
+        v = set_v ? kwargs[:v] : Oceananigans.Fields.ZeroField()
+
+        if model.grid isa Oceananigans.Models.HydrostaticFreeSurfaceModels.IntrinsicCoordinateGrid
+            Oceananigans.Models.HydrostaticFreeSurfaceModels.set_from_extrinsic_velocities!(model.velocities,
+                                                                                            model.grid,
+                                                                                            u,
+                                                                                            v;
+                                                                                            set_u,
+                                                                                            set_v)
+        else
+            set!(model.velocities; u, v)
+        end
+
+        compute!(model.auxiliary_fields)
+        fill_halo_regions!(model.velocities, model.clock, fields(model))
+        velocities_are_set = true
+    end
 
     for (fldname, value) in kwargs
+        fldname in (:u, :v) && continue
+
         if fldname ∈ velocity_names
             ϕ = getproperty(model.velocities, fldname)
             velocities_are_set = true
@@ -53,21 +78,22 @@ function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs
         end
         set!(ϕ, value)
 
+        compute!(model.auxiliary_fields)
         fill_halo_regions!(ϕ, model.clock, fields(model))
     end
 
     # Apply a mask
     foreach(mask_immersed_field!, model.tracers)
     foreach(mask_immersed_field!, model.velocities)
-    velocities_are_set && initialize_closure_fields!(model.closure_fields, model.closure, model)
     update_state!(model)
+    velocities_are_set && initialize_closure_fields!(model.closure_fields, model.closure, model)
 
     if enforce_incompressibility
         FT = eltype(model.grid)
         compute_pressure_correction!(model, one(FT))
         make_pressure_correction!(model, one(FT))
-        velocities_are_set && initialize_closure_fields!(model.closure_fields, model.closure, model)
         update_state!(model)
+        velocities_are_set && initialize_closure_fields!(model.closure_fields, model.closure, model)
     end
 
     return nothing

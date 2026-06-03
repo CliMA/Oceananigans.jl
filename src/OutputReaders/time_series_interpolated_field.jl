@@ -4,6 +4,7 @@ using Oceananigans.Architectures: on_architecture
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Fields: indices, show_location
 using Oceananigans.Grids: size as grid_size
+using Oceananigans.TimeSteppers: Clock
 using Oceananigans.Units: Time
 
 import Oceananigans.Fields: indices
@@ -34,10 +35,24 @@ time-interpolated values from the underlying `FieldTimeSeries`.
 Since `TimeSeriesInterpolation <: AbstractOperation`, it can be used with the `Field`
 constructor to compute and store values for output.
 """
-function TimeSeriesInterpolation(time_series::FTS, grid::G; clock::C) where {FTS, G, C}
+_time_series_interpolation_clock(time_series, clock) = clock
+
+function _time_series_interpolation_clock(time_series, clock::Clock)
+    time = convert(typeof(first(time_series.times)), clock.time)
+
+    return Clock(; time,
+                   last_Δt = clock.last_Δt,
+                   last_stage_Δt = clock.last_stage_Δt,
+                   iteration = clock.iteration,
+                   stage = clock.stage)
+end
+
+function TimeSeriesInterpolation(time_series::FTS, grid::G; clock) where {FTS, G}
     LX, LY, LZ = location(time_series)
+    interpolation_clock = _time_series_interpolation_clock(time_series, clock)
+    C = typeof(interpolation_clock)
     T = eltype(grid)
-    return TimeSeriesInterpolation{LX, LY, LZ, FTS, C, G, T}(time_series, grid, clock)
+    return TimeSeriesInterpolation{LX, LY, LZ, FTS, C, G, T}(time_series, grid, interpolation_clock)
 end
 
 # Use indices from the underlying FieldTimeSeries
@@ -52,6 +67,12 @@ end
 
 @inline Base.getindex(f::TimeSeriesInterpolation, i, j, k) =
     @inbounds f.time_series[i, j, k, Time(f.clock.time)]
+
+function update_field_time_series!(f::TimeSeriesInterpolation, time::Time)
+    update_field_time_series!(f.time_series, time)
+    f.clock.time = time.time
+    return nothing
+end
 
 #####
 ##### GPU adaptation

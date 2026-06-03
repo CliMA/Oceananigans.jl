@@ -337,6 +337,7 @@ buoyancy_tracers(model::NonhydrostaticModel) = model.tracers
 import Oceananigans: initialize!
 
 function initialize!(model::NonhydrostaticModel)
+    update_state!(model)
     initialize_closure_fields!(model.closure_fields, model.closure, model)
     return nothing
 end
@@ -365,6 +366,8 @@ function restore_prognostic_state!(restored::NonhydrostaticModel, from)
     restore_prognostic_state!(restored.closure_fields, from.closure_fields)
     restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
     restore_prognostic_state!(restored.boundary_transport, from.boundary_transport)
+    refresh_restored_nonhydrostatic_model_state!(restored)
+    initialize_closure_fields!(restored.closure_fields, restored.closure, restored)
     return restored
 end
 

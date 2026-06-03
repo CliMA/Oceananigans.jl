@@ -245,18 +245,41 @@ function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfT
                                            _ntupled_implicit_linear_coefficients)
 end
 
+function update_previous_tke_dissipation_velocities!(previous_velocities, velocities)
+    u, v, w = velocities
+    u⁻, v⁻ = previous_velocities
+
+    parent(u⁻) .= parent(u)
+    parent(v⁻) .= parent(v)
+
+    BoundaryConditions.fill_halo_regions!((u⁻, v⁻))
+
+    return nothing
+end
+
+function initialize_closure_fields!(closure_fields::TKEDissipationClosureFields, closure::FlavorOfTD, model)
+    update_previous_tke_dissipation_velocities!(closure_fields.previous_velocities, model.velocities)
+    return nothing
+end
+
+function refresh_velocity_dependent_closure_fields!(closure_fields::TKEDissipationClosureFields, closure::FlavorOfTD, model)
+    update_previous_tke_dissipation_velocities!(closure_fields.previous_velocities, model.velocities)
+    return nothing
+end
+
 @inline viscosity_location(::FlavorOfTD) = (c, c, f)
 @inline diffusivity_location(::FlavorOfTD) = (c, c, f)
 
 function step_closure_prognostics!(closure_fields, closure::FlavorOfTD, model, Δt)
+    if iszero(model.clock.iteration)
+        update_previous_tke_dissipation_velocities!(closure_fields.previous_velocities, model.velocities)
+    end
+
     # Step TKE/dissipation equations with the provided timestep
     time_step_tke_dissipation_equations!(model, Δt)
 
     # Update previous velocities
-    u, v, w = model.velocities
-    u⁻, v⁻ = closure_fields.previous_velocities
-    parent(u⁻) .= parent(u)
-    parent(v⁻) .= parent(v)
+    update_previous_tke_dissipation_velocities!(closure_fields.previous_velocities, model.velocities)
 
     return nothing
 end

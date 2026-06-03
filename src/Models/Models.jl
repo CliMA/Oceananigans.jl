@@ -16,8 +16,12 @@ export
 using Oceananigans: AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered
-using Oceananigans.Fields: Field, flattened_unique_values
-using Oceananigans.Grids: halo_size, inflate_halo_size
+using Oceananigans.BoundaryConditions: fill_halo_regions!
+using Oceananigans.Fields: ConstantField, Field, OneField, ZeroField, flattened_unique_values, quadfolded_companion_field
+using Oceananigans.Forcings: AdvectiveForcing, MultipleForcings
+using Oceananigans.Biogeochemistry: biogeochemical_drift_velocity
+using Oceananigans.TurbulenceClosures: closure_auxiliary_velocity
+using Oceananigans.Grids: Face, Center, halo_size, inflate_halo_size
 using Oceananigans.OutputReaders: update_field_time_series!, extract_field_time_series
 using Oceananigans.TimeSteppers: Clock
 using Oceananigans.Units: Time
@@ -90,8 +94,87 @@ validate_tracer_advection(tracer_advection_tuple::NamedTuple, grid) = Centered()
 validate_tracer_advection(tracer_advection::AbstractAdvectionScheme, grid) = tracer_advection, NamedTuple()
 validate_tracer_advection(tracer_advection::Nothing, grid) = nothing, NamedTuple()
 
+refresh_vertical_advective_velocity_halos!(::Union{ZeroField, OneField, ConstantField}) = nothing
+
+function refresh_vertical_advective_velocity_halos!(w)
+    fill_halo_regions!(w)
+    return nothing
+end
+
+function refresh_horizontal_advective_velocity_halos!(u, v)
+    fill_halo_regions!(u)
+    fill_halo_regions!(v)
+    return nothing
+end
+
+refresh_horizontal_advective_velocity_halos!(::Union{ZeroField, OneField, ConstantField},
+                                             ::Union{ZeroField, OneField, ConstantField}) = nothing
+
+refresh_horizontal_advective_velocity_halos!(u::Field{Face, Center, LZ},
+                                             v::Field{Center, Face, LZ}) where LZ =
+    fill_halo_regions!((u, v))
+
+function refresh_horizontal_advective_velocity_halos!(u::Field{Face, Center, LZ},
+                                                      v::Union{ZeroField, OneField, ConstantField}) where LZ
+    companion_v = quadfolded_companion_field(u)
+    set!(companion_v, v)
+    fill_halo_regions!((u, companion_v))
+    return nothing
+end
+
+function refresh_horizontal_advective_velocity_halos!(u::Union{ZeroField, OneField, ConstantField},
+                                                      v::Field{Center, Face, LZ}) where LZ
+    companion_u = quadfolded_companion_field(v)
+    set!(companion_u, u)
+    fill_halo_regions!((companion_u, v))
+    return nothing
+end
+
+refresh_tracer_auxiliary_velocity_halos!(::Nothing) = nothing
+
+function refresh_tracer_auxiliary_velocity_halos!(velocities)
+    refresh_horizontal_advective_velocity_halos!(velocities.u, velocities.v)
+    refresh_vertical_advective_velocity_halos!(velocities.w)
+    return nothing
+end
+
+refresh_tracer_advective_forcing_halos!(forcing) = nothing
+
+refresh_tracer_advective_forcing_halos!(forcing::Tuple) =
+    foreach(refresh_tracer_advective_forcing_halos!, forcing)
+
+refresh_tracer_advective_forcing_halos!(forcing::MultipleForcings) =
+    refresh_tracer_advective_forcing_halos!(forcing.forcings)
+
+function refresh_tracer_advective_forcing_halos!(forcing::AdvectiveForcing)
+    refresh_horizontal_advective_velocity_halos!(forcing.u, forcing.v)
+    refresh_vertical_advective_velocity_halos!(forcing.w)
+    return nothing
+end
+
+function refresh_all_tracer_auxiliary_halos!(model)
+    for tracer_name in keys(model.tracers)
+        tracer_name_val = Val(tracer_name)
+        @inbounds forcing = model.forcing[tracer_name]
+
+        biogeochemical_velocities = biogeochemical_drift_velocity(model.biogeochemistry, tracer_name_val)
+        closure_velocities = closure_auxiliary_velocity(model.closure, model.closure_fields, tracer_name_val)
+
+        refresh_tracer_auxiliary_velocity_halos!(biogeochemical_velocities)
+        refresh_tracer_auxiliary_velocity_halos!(closure_velocities)
+        refresh_tracer_advective_forcing_halos!(forcing)
+    end
+
+    return nothing
+end
+
 # Used in both NonhydrostaticModels and HydrostaticFreeSurfaceModels
 function materialize_free_surface end
+
+# Forward-declared so submodules (ShallowWaterModels, etc.) can `import` and add methods
+# before the defining files are include()d further down.
+function ForcingOperation end
+function boundary_condition_args end
 
 # Communication - Computation overlap in distributed models
 include("interleave_communication_and_computation.jl")
@@ -117,7 +200,8 @@ using .NonhydrostaticModels: NonhydrostaticModel, PressureField, BackgroundField
 using .HydrostaticFreeSurfaceModels:
     HydrostaticFreeSurfaceModel,
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
-    PrescribedVelocityFields, ZStarCoordinate, ZCoordinate
+    PrescribedVelocityFields, ZStarCoordinate, ZCoordinate,
+    contravariant_velocities, kinetic_energy, relative_vorticity, vertical_vorticity
 
 using .ShallowWaterModels: ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation
 using .LagrangianParticleTracking: LagrangianParticles, DroguedParticleDynamics
@@ -149,6 +233,14 @@ function possible_field_time_series(model::OceananigansModels)
     # Note: we may need to include other objects in the tuple below,
     # such as model.closure_fields
     return tuple(model_fields, forcing)
+end
+
+function possible_field_time_series(model::NonhydrostaticModel)
+    forcing = model.forcing
+    model_fields = fields(model)
+    background_velocities = model.background_fields.velocities
+    background_tracers = model.background_fields.tracers
+    return tuple(model_fields, forcing, background_velocities, background_tracers)
 end
 
 # Update _all_ `FieldTimeSeries`es in an `OceananigansModel`.
@@ -183,6 +275,7 @@ function reset!(model::OceananigansModels)
         fill!(field, 0)
     end
 
+    refresh_restored_model_state!(model)
     return nothing
 end
 
@@ -222,6 +315,26 @@ checkpointer_address(::NonhydrostaticModel) = "NonhydrostaticModel"
 checkpointer_address(::HydrostaticFreeSurfaceModel) = "HydrostaticFreeSurfaceModel"
 
 default_included_properties(::OceananigansModels) = Symbol[]
+
+refresh_restored_model_state!(model) = nothing
+
+function refresh_restored_model_state!(model::HydrostaticFreeSurfaceModel)
+    Oceananigans.TimeSteppers.reconcile_state!(model)
+    Oceananigans.TurbulenceClosures.initialize_closure_fields!(model.closure_fields, model.closure, model)
+    return nothing
+end
+
+function refresh_restored_model_state!(model::NonhydrostaticModel)
+    NonhydrostaticModels.refresh_restored_nonhydrostatic_model_state!(model)
+    Oceananigans.TurbulenceClosures.initialize_closure_fields!(model.closure_fields, model.closure, model)
+    return nothing
+end
+
+function refresh_restored_model_state!(model::ShallowWaterModel)
+    Oceananigans.TimeSteppers.update_state!(model)
+    Oceananigans.TurbulenceClosures.initialize_closure_fields!(model.closure_fields, model.closure, model)
+    return nothing
+end
 
 # Specialized output attributes for velocity and tracer fields
 include("output_attributes.jl")

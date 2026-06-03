@@ -13,6 +13,7 @@ using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKutt
 # `reconcile_free_surface!` computes the barotropic mode from velocity fields to ensure consistency.
 function reconcile_free_surface!(sefs::SplitExplicitFreeSurface, grid, velocities)
     barotropic_velocities = sefs.barotropic_velocities
+    filtered_state = sefs.filtered_state
     u, v, w = velocities
     @apply_regionally compute_barotropic_mode!(barotropic_velocities.U,
                                                barotropic_velocities.V,
@@ -20,6 +21,12 @@ function reconcile_free_surface!(sefs::SplitExplicitFreeSurface, grid, velocitie
 
     fill_halo_regions!((barotropic_velocities.U, barotropic_velocities.V))
     fill_halo_regions!(sefs.displacement)
+
+    parent(filtered_state.η̅) .= parent(sefs.displacement)
+    parent(filtered_state.U̅) .= parent(barotropic_velocities.U)
+    parent(filtered_state.V̅) .= parent(barotropic_velocities.V)
+    parent(filtered_state.Ũ) .= parent(barotropic_velocities.U)
+    parent(filtered_state.Ṽ) .= parent(barotropic_velocities.V)
 
     return nothing
 end

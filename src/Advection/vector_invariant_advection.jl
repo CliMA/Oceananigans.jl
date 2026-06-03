@@ -1,4 +1,25 @@
-using Oceananigans.Operators: Vᶜᶠᶜ, Vᶠᶜᶜ, δxᶠᶜᶜ, δyᶜᶠᶜ, ζ₃ᶠᶠᶜ, ∂zᶜᶠᶠ, ∂zᶠᶜᶠ
+using Oceananigans.Grids: SphericalShellGrid
+using Oceananigans.Operators: Vᶜᶠᶜ,
+                              Vᶠᶜᶜ,
+                              Jᶜᶠᶜ,
+                              Jᶠᶜᶜ,
+                              Δzᶜᶠᶜ,
+                              Δzᶠᶜᶜ,
+                              δxᶠᶜᶜ,
+                              δyᶜᶠᶜ,
+                              ζ₃ᶠᶠᶜ,
+                              ∂zᶜᶠᶠ,
+                              ∂zᶠᶜᶠ,
+                              covariant_bernoulli_head_uᶠᶜᶜ,
+                              covariant_bernoulli_head_vᶜᶠᶜ,
+                              contravariant_velocity_uᶠᶠᶜ,
+                              contravariant_velocity_vᶠᶠᶜ,
+                              covariant_vertical_vorticity_componentᶠᶠᶜ,
+                              covariant_rotational_advection_uᶠᶜᶜ,
+                              covariant_rotational_advection_vᶜᶠᶜ,
+                              transverse_computational_width_uᶠᶜᶜ,
+                              transverse_computational_width_vᶜᶠᶜ,
+                              octahealpix_polar_fold_j
 
 # These are also used in Coriolis/hydrostatic_spherical_coriolis.jl
 struct EnergyConserving{FT}    <: AbstractAdvectionScheme{1, FT} end
@@ -280,13 +301,21 @@ Architectures.on_architecture(to, scheme::VectorInvariant{N, FT, M}) where {N, F
                               on_architecture(to, scheme.divergence_scheme),
                               on_architecture(to, scheme.upwinding))
 
-@inline U_dot_∇u(i, j, k, grid, scheme::VectorInvariant, U) = horizontal_advection_U(i, j, k, grid, scheme, U.u, U.v) +
-                                                                vertical_advection_U(i, j, k, grid, scheme, U) +
-                                                                    bernoulli_head_U(i, j, k, grid, scheme, U.u, U.v)
+@inline function U_dot_∇u(i, j, k, grid, scheme::VectorInvariant, U)
+    u = u_velocity(U)
+    v = v_velocity(U)
+    return horizontal_advection_U(i, j, k, grid, scheme, u, v) +
+           vertical_advection_U(i, j, k, grid, scheme, U) +
+           bernoulli_head_U(i, j, k, grid, scheme, u, v)
+end
 
-@inline U_dot_∇v(i, j, k, grid, scheme::VectorInvariant, U) = horizontal_advection_V(i, j, k, grid, scheme, U.u, U.v) +
-                                                                vertical_advection_V(i, j, k, grid, scheme, U) +
-                                                                    bernoulli_head_V(i, j, k, grid, scheme, U.u, U.v)
+@inline function U_dot_∇v(i, j, k, grid, scheme::VectorInvariant, U)
+    u = u_velocity(U)
+    v = v_velocity(U)
+    return horizontal_advection_V(i, j, k, grid, scheme, u, v) +
+           vertical_advection_V(i, j, k, grid, scheme, U) +
+           bernoulli_head_V(i, j, k, grid, scheme, u, v)
+end
 
 # Extend interpolate functions for VectorInvariant to allow MultiDimensional reconstruction
 for bias in (:_biased, :_symmetric)
@@ -321,6 +350,14 @@ end
 @inline bernoulli_head_U(i, j, k, grid, ::VectorInvariantKEGradientEnergyConserving, u, v) = δxᶠᶜᶜ(i, j, k, grid, Khᶜᶜᶜ, u, v) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
 @inline bernoulli_head_V(i, j, k, grid, ::VectorInvariantKEGradientEnergyConserving, u, v) = δyᶜᶠᶜ(i, j, k, grid, Khᶜᶜᶜ, u, v) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
 
+@inline bernoulli_head_U(i, j, k, grid::SphericalShellGrid,
+                        ::VectorInvariantKEGradientEnergyConserving, u, v) =
+    covariant_bernoulli_head_uᶠᶜᶜ(i, j, k, grid, u, v)
+
+@inline bernoulli_head_V(i, j, k, grid::SphericalShellGrid,
+                        ::VectorInvariantKEGradientEnergyConserving, u, v) =
+    covariant_bernoulli_head_vᶜᶠᶜ(i, j, k, grid, u, v)
+
 #####
 ##### Conservative vertical advection
 ##### Follows https://mitgcm.readthedocs.io/en/latest/algorithm/algorithm.html#vector-invariant-momentum-equations
@@ -329,25 +366,31 @@ end
 @inbounds ζ₂wᶠᶜᶠ(i, j, k, grid, u, w) = ℑxᶠᵃᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w) * ∂zᶠᶜᶠ(i, j, k, grid, u)
 @inbounds ζ₁wᶜᶠᶠ(i, j, k, grid, v, w) = ℑyᵃᶠᵃ(i, j, k, grid, Az_qᶜᶜᶠ, w) * ∂zᶜᶠᶠ(i, j, k, grid, v)
 
-@inline vertical_advection_U(i, j, k, grid, ::VectorInvariantVerticalEnergyConserving, U) = ℑzᵃᵃᶜ(i, j, k, grid, ζ₂wᶠᶜᶠ, U.u, U.w) * Az⁻¹ᶠᶜᶜ(i, j, k, grid)
-@inline vertical_advection_V(i, j, k, grid, ::VectorInvariantVerticalEnergyConserving, U) = ℑzᵃᵃᶜ(i, j, k, grid, ζ₁wᶜᶠᶠ, U.v, U.w) * Az⁻¹ᶜᶠᶜ(i, j, k, grid)
+@inline vertical_advection_U(i, j, k, grid, ::VectorInvariantVerticalEnergyConserving, U) =
+    ℑzᵃᵃᶜ(i, j, k, grid, ζ₂wᶠᶜᶠ, u_velocity(U), w_velocity(U)) * Az⁻¹ᶠᶜᶜ(i, j, k, grid)
+@inline vertical_advection_V(i, j, k, grid, ::VectorInvariantVerticalEnergyConserving, U) =
+    ℑzᵃᵃᶜ(i, j, k, grid, ζ₁wᶜᶠᶠ, v_velocity(U), w_velocity(U)) * Az⁻¹ᶜᶠᶜ(i, j, k, grid)
 
 #####
 ##### Upwinding vertical advection (2. and 3.)
 #####
 
 @inline function vertical_advection_U(i, j, k, grid, scheme::VectorInvariant, U)
-
-    Φᵟ = upwinded_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme, U.u, U.v)
-    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wu, scheme.vertical_advection_scheme, U.w, U.u)
+    u = u_velocity(U)
+    v = v_velocity(U)
+    w = w_velocity(U)
+    Φᵟ = upwinded_divergence_flux_Uᶠᶜᶜ(i, j, k, grid, scheme, u, v)
+    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wu, scheme.vertical_advection_scheme, w, u)
 
     return 1/Vᶠᶜᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
 end
 
 @inline function vertical_advection_V(i, j, k, grid, scheme::VectorInvariant, U)
-
-    Φᵟ = upwinded_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme, U.u, U.v)
-    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wv, scheme.vertical_advection_scheme, U.w, U.v)
+    u = u_velocity(U)
+    v = v_velocity(U)
+    w = w_velocity(U)
+    Φᵟ = upwinded_divergence_flux_Vᶜᶠᶜ(i, j, k, grid, scheme, u, v)
+    𝒜ᶻ = δzᵃᵃᶜ(i, j, k, grid, _advective_momentum_flux_Wv, scheme.vertical_advection_scheme, w, v)
 
     return 1/Vᶜᶠᶜ(i, j, k, grid) * (Φᵟ + 𝒜ᶻ)
 end
@@ -374,6 +417,28 @@ end
 @inline horizontal_advection_U(i, j, k, grid, ::VectorInvariantEnstrophyConserving, u, v) = - ℑyᵃᶜᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v) * ℑxᶠᵃᵃ(i, j, k, grid, ℑyᵃᶜᵃ, Δx_qᶜᶠᶜ, v) * Δx⁻¹ᶠᶜᶜ(i, j, k, grid)
 @inline horizontal_advection_V(i, j, k, grid, ::VectorInvariantEnstrophyConserving, u, v) = + ℑxᶜᵃᵃ(i, j, k, grid, ζ₃ᶠᶠᶜ, u, v) * ℑyᵃᶠᵃ(i, j, k, grid, ℑxᶜᵃᵃ, Δy_qᶠᶜᶜ, u) * Δy⁻¹ᶜᶠᶜ(i, j, k, grid)
 
+@inline horizontal_advection_U(i, j, k, grid::SphericalShellGrid, ::VectorInvariantEnergyConserving, u, v) =
+    covariant_rotational_advection_uᶠᶜᶜ(i, j, k, grid, u, v)
+
+@inline horizontal_advection_V(i, j, k, grid::SphericalShellGrid, ::VectorInvariantEnergyConserving, u, v) =
+    covariant_rotational_advection_vᶜᶠᶜ(i, j, k, grid, u, v)
+
+@inline horizontal_advection_U(i, j, k, grid::SphericalShellGrid, ::VectorInvariantEnstrophyConserving, u, v) =
+    covariant_rotational_advection_uᶠᶜᶜ(i, j, k, grid, u, v)
+
+@inline horizontal_advection_V(i, j, k, grid::SphericalShellGrid, ::VectorInvariantEnstrophyConserving, u, v) =
+    covariant_rotational_advection_vᶜᶠᶜ(i, j, k, grid, u, v)
+
+@inline horizontal_advection_U(i, j, k, grid::SphericalShellGrid,
+                               ::Union{VectorInvariantEnergyConserving,
+                                      VectorInvariantEnstrophyConserving}, u, v) =
+    covariant_rotational_advection_uᶠᶜᶜ(i, j, k, grid, u, v)
+
+@inline horizontal_advection_V(i, j, k, grid::SphericalShellGrid,
+                               ::Union{VectorInvariantEnergyConserving,
+                                      VectorInvariantEnstrophyConserving}, u, v) =
+    covariant_rotational_advection_vᶜᶠᶜ(i, j, k, grid, u, v)
+
 #####
 ##### Upwinding schemes (3. and 4.)
 #####
@@ -398,6 +463,46 @@ end
     return + û * ζᴿ
 end
 
+@inline function spherical_shell_upwind_vorticity_advection_U(i, j, k, grid, scheme, u, v)
+
+    Sζ = scheme.vorticity_stencil
+
+    v̂ = contravariant_velocity_vᶠᶠᶜ(i, j, k, grid, u, v)
+    ζᴿ = _biased_interpolate_yᵃᶜᵃ(i, j, k, grid, scheme, scheme.vorticity_scheme, bias(v̂),
+                                  covariant_vertical_vorticity_componentᶠᶠᶜ, Sζ, u, v)
+
+    return - v̂ * ζᴿ
+end
+
+@inline function spherical_shell_upwind_vorticity_advection_V(i, j, k, grid, scheme, u, v)
+
+    Sζ = scheme.vorticity_stencil
+
+    û = contravariant_velocity_uᶠᶠᶜ(i, j, k, grid, u, v)
+    ζᴿ = _biased_interpolate_xᶜᵃᵃ(i, j, k, grid, scheme, scheme.vorticity_scheme, bias(û),
+                                  covariant_vertical_vorticity_componentᶠᶠᶜ, Sζ, u, v)
+
+    return + û * ζᴿ
+end
+
+@inline horizontal_advection_U(i, j, k, grid::SphericalShellGrid,
+                               scheme::VectorInvariantUpwindVorticity, u, v) =
+    spherical_shell_upwind_vorticity_advection_U(i, j, k, grid, scheme, u, v)
+
+@inline horizontal_advection_V(i, j, k, grid::SphericalShellGrid,
+                               scheme::VectorInvariantUpwindVorticity, u, v) =
+    spherical_shell_upwind_vorticity_advection_V(i, j, k, grid, scheme, u, v)
+
+@inline function horizontal_advection_U(i, j, k, grid::OHPSG,
+                                        scheme::VectorInvariantUpwindVorticity, u, v)
+    return covariant_rotational_advection_uᶠᶜᶜ(i, j, k, grid, u, v)
+end
+
+@inline function horizontal_advection_V(i, j, k, grid::OHPSG,
+                                        scheme::VectorInvariantUpwindVorticity, u, v)
+    return covariant_rotational_advection_vᶜᶠᶜ(i, j, k, grid, u, v)
+end
+
 #####
 ##### Fallback to flux form advection
 #####
@@ -405,8 +510,66 @@ end
 ##### curvature_metric_terms.jl (U_dot_∇u_hydrostatic_metric, U_dot_∇u_metric, etc.).
 #####
 
-@inline U_dot_∇u(i, j, k, grid, advection::AbstractAdvectionScheme, U) = div_𝐯u(i, j, k, grid, advection, U, U.u)
-@inline U_dot_∇v(i, j, k, grid, advection::AbstractAdvectionScheme, U) = div_𝐯v(i, j, k, grid, advection, U, U.v)
+@inline U_dot_∇u(i, j, k, grid, advection::AbstractAdvectionScheme, U) =
+    div_𝐯u(i, j, k, grid, advection, U, u_velocity(U))
+@inline U_dot_∇v(i, j, k, grid, advection::AbstractAdvectionScheme, U) =
+    div_𝐯v(i, j, k, grid, advection, U, v_velocity(U))
+
+#####
+##### Projected rigid-lid SphericalShellGrid vector-invariant advection
+#####
+
+@inline transport_contravariant_velocity_uᶠᶜᶜ(i, j, k, grid::SphericalShellGrid, U) =
+    @inbounds u_velocity(U)[i, j, k] /
+              (Δzᶠᶜᶜ(i, j, k, grid) *
+               transverse_computational_width_uᶠᶜᶜ(i, j, k, grid) *
+               Jᶠᶜᶜ(i, j, k, grid))
+
+@inline transport_contravariant_velocity_vᶜᶠᶜ(i, j, k, grid::SphericalShellGrid, U) =
+    @inbounds v_velocity(U)[i, j, k] /
+              (Δzᶜᶠᶜ(i, j, k, grid) *
+               transverse_computational_width_vᶜᶠᶜ(i, j, k, grid) *
+               Jᶜᶠᶜ(i, j, k, grid))
+
+@inline transport_contravariant_velocity_uᶠᶠᶜ(i, j, k, grid::SphericalShellGrid, U) =
+    ℑyᵃᶠᵃ(i, j, k, grid, transport_contravariant_velocity_uᶠᶜᶜ, U)
+
+@inline transport_contravariant_velocity_vᶠᶠᶜ(i, j, k, grid::SphericalShellGrid, U) =
+    ℑxᶠᵃᵃ(i, j, k, grid, transport_contravariant_velocity_vᶜᶠᶜ, U)
+
+@inline function transport_contravariant_velocity_uᶠᶠᶜ(i, j, k, grid::OHPSG, U)
+    regular_velocity = ℑyᵃᶠᵃ(i, j, k, grid, transport_contravariant_velocity_uᶠᶜᶜ, U)
+    polar_fold = octahealpix_polar_fold_j(j, grid)
+    return ifelse(polar_fold, zero(grid), regular_velocity)
+end
+
+@inline function transport_contravariant_velocity_vᶠᶠᶜ(i, j, k, grid::OHPSG, U)
+    regular_velocity = ℑxᶠᵃᵃ(i, j, k, grid, transport_contravariant_velocity_vᶜᶠᶜ, U)
+    polar_fold = octahealpix_polar_fold_j(j, grid)
+    return ifelse(polar_fold, zero(grid), regular_velocity)
+end
+
+@inline projected_transport_vorticity_flux_uᶠᶠᶜ(i, j, k, grid::SphericalShellGrid, U, u, v) =
+    covariant_vertical_vorticity_componentᶠᶠᶜ(i, j, k, grid, u, v) *
+    transport_contravariant_velocity_vᶠᶠᶜ(i, j, k, grid, U)
+
+@inline projected_transport_vorticity_flux_vᶠᶠᶜ(i, j, k, grid::SphericalShellGrid, U, u, v) =
+    covariant_vertical_vorticity_componentᶠᶠᶜ(i, j, k, grid, u, v) *
+    transport_contravariant_velocity_uᶠᶠᶜ(i, j, k, grid, U)
+
+@inline projected_transport_rotational_advection_uᶠᶜᶜ(i, j, k, grid::SphericalShellGrid, U, u, v) =
+    - ℑyᵃᶜᵃ(i, j, k, grid, projected_transport_vorticity_flux_uᶠᶠᶜ, U, u, v)
+
+@inline projected_transport_rotational_advection_vᶜᶠᶜ(i, j, k, grid::SphericalShellGrid, U, u, v) =
+    + ℑxᶜᵃᵃ(i, j, k, grid, projected_transport_vorticity_flux_vᶠᶠᶜ, U, u, v)
+
+@inline projected_transport_U_dot_∇u(i, j, k, grid::SphericalShellGrid, advection::VectorInvariant, U, V) =
+    projected_transport_rotational_advection_uᶠᶜᶜ(i, j, k, grid, U, u_velocity(V), v_velocity(V)) +
+    bernoulli_head_U(i, j, k, grid, advection, u_velocity(V), v_velocity(V))
+
+@inline projected_transport_U_dot_∇v(i, j, k, grid::SphericalShellGrid, advection::VectorInvariant, U, V) =
+    projected_transport_rotational_advection_vᶜᶠᶜ(i, j, k, grid, U, u_velocity(V), v_velocity(V)) +
+    bernoulli_head_V(i, j, k, grid, advection, u_velocity(V), v_velocity(V))
 
 #####
 ##### No advection

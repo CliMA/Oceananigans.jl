@@ -3,20 +3,27 @@ module VarianceDissipationComputations
 export VarianceDissipation, flatten_dissipation_fields
 
 using Oceananigans.Advection
+import Oceananigans.Biogeochemistry: biogeochemical_drift_velocity
 using Oceananigans.BoundaryConditions
-using Oceananigans.Grids: architecture, AbstractGrid
+using Oceananigans.Forcings: with_advective_forcing
+using Oceananigans.Grids: architecture, AbstractGrid, SphericalShellGrid
 using Oceananigans.Utils
 using Oceananigans.Fields
 using Oceananigans.Fields: VelocityFields
 using Oceananigans.Operators
 using Oceananigans.BoundaryConditions
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: refresh_tracer_advective_forcing_halos!,
+                                                       refresh_tracer_auxiliary_velocity_halos!,
+                                                       total_tracer_advection_velocities,
+                                                       tracer_auxiliary_velocities
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper,
                                  RungeKutta3TimeStepper,
                                  SplitRungeKuttaTimeStepper
 
 using Oceananigans.TurbulenceClosures: _diffusive_flux_x,
                                        _diffusive_flux_y,
-                                       _diffusive_flux_z
+                                       _diffusive_flux_z,
+                                       closure_auxiliary_velocity
 
 using Oceananigans.Advection: _advective_tracer_flux_x,
                               _advective_tracer_flux_y,

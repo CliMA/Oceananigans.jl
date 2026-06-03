@@ -1,16 +1,16 @@
 using Oceananigans: UpdateStateCallsite
-using Oceananigans.Biogeochemistry: update_biogeochemical_state!
+using Oceananigans.Biogeochemistry: update_biogeochemical_state!, biogeochemical_drift_velocity
 using Oceananigans.BoundaryConditions: fill_halo_regions!, update_boundary_conditions!
 using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
 using Oceananigans.Fields: compute!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models: update_model_field_time_series!, surface_kernel_parameters, volume_kernel_parameters
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
-using Oceananigans.TurbulenceClosures: compute_closure_fields!
+using Oceananigans.TurbulenceClosures: compute_closure_fields!, closure_auxiliary_velocity
 import Oceananigans.TurbulenceClosures: step_closure_prognostics!
 using Oceananigans.Utils: KernelParameters, worksize
 
-compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxiliary_fields)
+compute_auxiliary_fields!(auxiliary_fields) = compute!(auxiliary_fields)
 
 # Note: see single_column_model_mode.jl for a "reduced" version of update_state! for
 # single column models.
@@ -45,7 +45,10 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     @apply_regionally begin
         foreach(mask_immersed_field!, model.tracers)
         update_model_field_time_series!(model, model.clock)
+        compute_auxiliary_fields!(model.auxiliary_fields)
         update_boundary_conditions!(fields(model), model)
+        update_prescribed_velocity_field_operations!(model.velocities)
+        project_initial_rigid_lid_velocities!(model)
     end
 
     tracers = model.tracers
@@ -54,6 +57,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     # free-surface variables and the horizontal velocities
     # are filled within the time-stepping after the state evolution.
     fill_halo_regions!(tracers, model.clock, fields(model); async=true)
+    compute_auxiliary_fields!(model.auxiliary_fields)
 
     # Compute diagnostic quantities
     @apply_regionally begin
@@ -66,10 +70,14 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
         compute_closure_fields!(model.closure_fields, model.closure, model, parameters=κ_params)
     end
 
-    # Fill only local halos for diagnostic quantities since the parameters used
-    # above include regions inside the (horizontal) halos.
-    fill_halo_regions!(model.closure_fields; only_local_halos=true)
-    fill_halo_regions!(model.pressure.pHY′; only_local_halos=true)
+    # For ordinary grids, local halos are sufficient because the diagnostic kernels
+    # above already compute through the nearby halo strips. For OctaHEALPix
+    # `SphericalShellGrid`s, seam-adjacent momentum and tracer stencils require
+    # proper global/paired halo fills across the folded horizontal connectivity.
+    fill_hydrostatic_closure_field_halos!(model.closure_fields, grid)
+    fill_hydrostatic_pressure_halos!(model.pressure.pHY′, grid)
+    @apply_regionally compute_transport_velocities!(model, model.free_surface)
+    refresh_update_state_tracer_advection_halos!(model)
 
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
 
@@ -77,6 +85,47 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
     @apply_regionally compute_momentum_tendencies!(model, callbacks)
 
+    return nothing
+end
+
+function refresh_restored_hydrostatic_model_state!(model::HydrostaticFreeSurfaceModel, grid=model.grid)
+
+    arch = architecture(grid)
+
+    @apply_regionally begin
+        foreach(mask_immersed_field!, model.tracers)
+        update_model_field_time_series!(model, model.clock)
+        compute_auxiliary_fields!(model.auxiliary_fields)
+        update_boundary_conditions!(fields(model), model)
+        update_prescribed_velocity_field_operations!(model.velocities)
+    end
+
+    tracers = model.tracers
+    fill_halo_regions!(tracers, model.clock, fields(model); async=false)
+    compute_auxiliary_fields!(model.auxiliary_fields)
+
+    @apply_regionally begin
+        surface_params = surface_kernel_parameters(grid)
+        volume_params = volume_kernel_parameters(grid)
+        κ_params = diffusivity_kernel_parameters(grid)
+        compute_buoyancy_gradients!(model.buoyancy, grid, tracers, parameters=volume_params)
+        update_vertical_velocities!(model.velocities, grid, model, parameters=surface_params)
+        update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers, parameters=surface_params)
+        compute_closure_fields!(model.closure_fields, model.closure, model, parameters=κ_params)
+    end
+
+    fill_hydrostatic_closure_field_halos!(model.closure_fields, grid)
+    fill_hydrostatic_pressure_halos!(model.pressure.pHY′, grid)
+    @apply_regionally compute_transport_velocities!(model, model.free_surface)
+    refresh_update_state_tracer_advection_halos!(model)
+
+    update_biogeochemical_state!(model.biogeochemistry, model)
+
+    return nothing
+end
+
+function refresh_update_state_tracer_advection_halos!(model)
+    refresh_all_tracer_auxiliary_halos!(model)
     return nothing
 end
 
@@ -112,5 +161,8 @@ can be computed correctly at domain boundaries without requiring (possibly costl
     return KernelParameters(ii, jj, kk)
 end
 
-step_closure_prognostics!(model::HydrostaticFreeSurfaceModel, Δt) =
-    step_closure_prognostics!(model.closure_fields, model.closure, model, Δt)
+function step_closure_prognostics!(model::HydrostaticFreeSurfaceModel, Δt)
+    refresh_closure_prognostic_velocity_state!(model, model.velocities)
+    fill_halo_regions!(model.tracers, model.clock, fields(model))
+    return step_closure_prognostics!(model.closure_fields, model.closure, model, Δt)
+end

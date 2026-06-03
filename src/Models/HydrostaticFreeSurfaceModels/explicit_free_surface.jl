@@ -1,7 +1,10 @@
 using Adapt: Adapt
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
-using Oceananigans.Grids: AbstractGrid
-using Oceananigans.Operators: Az⁻¹ᶜᶜᶜ, Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, δxᶜᶜᶜ, δyᶜᶜᶜ, ∂xᵣᶠᶜᶜ, ∂yᵣᶜᶠᶜ
+using Oceananigans.Grids: AbstractGrid, SphericalShellGrid
+using Oceananigans.Operators: Az⁻¹ᶜᶜᶜ, Δx_qᶜᶠᶜ, Δy_qᶠᶜᶜ, δxᶜᶜᶜ, δyᶜᶜᶜ, ∂xᵣᶠᶜᶜ, ∂yᵣᶜᶠᶜ,
+                              covariant_to_contravariant_flux_uᶠᶜᶜ, covariant_to_contravariant_flux_vᶜᶠᶜ,
+                              δxᶜᵃᵃ, δyᵃᶜᵃ,
+                              transverse_computational_width_uᶠᶜᶜ, transverse_computational_width_vᶜᶠᶜ
 
 import Oceananigans.DistributedComputations: synchronize_communication!
 import Oceananigans: prognostic_state, restore_prognostic_state!
@@ -163,11 +166,39 @@ end
     return - δh_U
 end
 
+@inline barotropic_transport_flux_uᶠᶜᶜ(i, j, k, grid, Ū, V̄) =
+    transverse_computational_width_uᶠᶜᶜ(i, j, k, grid) *
+    covariant_to_contravariant_flux_uᶠᶜᶜ(i, j, k, grid, Ū, V̄)
+
+@inline barotropic_transport_flux_vᶜᶠᶜ(i, j, k, grid, Ū, V̄) =
+    transverse_computational_width_vᶜᶠᶜ(i, j, k, grid) *
+    covariant_to_contravariant_flux_vᶜᶠᶜ(i, j, k, grid, Ū, V̄)
+
+@inline explicit_free_surface_barotropic_transport_flux_u(i, j, k, grid, u, v) =
+    barotropic_transport_flux_uᶠᶜᶜ(i, j, k, grid,
+                                   barotropic_U(i, j, k, grid, u),
+                                   barotropic_V(i, j, k, grid, v))
+
+@inline explicit_free_surface_barotropic_transport_flux_v(i, j, k, grid, u, v) =
+    barotropic_transport_flux_vᶜᶠᶜ(i, j, k, grid,
+                                   barotropic_U(i, j, k, grid, u),
+                                   barotropic_V(i, j, k, grid, v))
+
+@inline function free_surface_vertical_velocity(i, j, k_top, grid::SphericalShellGrid, ::ZStarCoordinate, velocities)
+    u, v, _ = velocities
+    δx_U = δxᶜᵃᵃ(i, j, k_top-1, grid, explicit_free_surface_barotropic_transport_flux_u, u, v)
+    δy_V = δyᵃᶜᵃ(i, j, k_top-1, grid, explicit_free_surface_barotropic_transport_flux_v, u, v)
+    δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, k_top-1, grid)
+    return - δh_U
+end
+
 compute_free_surface_tendency!(grid, model, ::ExplicitFreeSurface) =
     @apply_regionally compute_explicit_free_surface_tendency!(grid, model)
 
 # Compute free surface tendency
 function compute_explicit_free_surface_tendency!(grid, model)
+    refresh_prescribed_velocity_state!(model, model.velocities)
+    compute_auxiliary_fields!(model.auxiliary_fields)
 
     arch = architecture(grid)
 

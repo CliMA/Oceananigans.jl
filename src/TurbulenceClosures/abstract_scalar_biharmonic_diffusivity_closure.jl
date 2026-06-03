@@ -1,5 +1,9 @@
-using Oceananigans.Grids: peripheral_node
-using Oceananigans.Operators: div_xyᶜᶜᶜ
+using Oceananigans.Grids: peripheral_node, SphericalShellGrid
+using Oceananigans.Operators: div_xyᶜᶜᶜ,
+                              G¹¹ᶠᶜᶜ, G¹²ᶠᶜᶜ, G²¹ᶜᶠᶜ, G²²ᶜᶠᶜ,
+                              computational_width_uᶠᶜᶜ,
+                              computational_width_vᶜᶠᶜ,
+                              ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ
 
 """
     abstract type AbstractScalarBiharmonicDiffusivity <: AbstractTurbulenceClosure end
@@ -96,9 +100,43 @@ const AZBD = AbstractScalarBiharmonicDiffusivity{<:HorizontalVectorInvariantForm
 @inline Δy_∇²v(i, j, k, grid, u, v) = Δy_qᶜᶠᶜ(i, j, k, grid, biharmonic_mask_y, ∇²hᶜᶠᶜ, v)
 @inline Δx_∇²u(i, j, k, grid, u, v) = Δx_qᶠᶜᶜ(i, j, k, grid, biharmonic_mask_x, ∇²hᶠᶜᶜ, u)
 
+@inline covariant_contravariant_flux_∇²h_uᶠᶜᶜ(i, j, k, grid::SphericalShellGrid, u, v) =
+    G¹¹ᶠᶜᶜ(i, j, k, grid) * ∇²hᶠᶜᶜ(i, j, k, grid, u) +
+    G¹²ᶠᶜᶜ(i, j, k, grid) * ℑxyᶠᶜᵃ(i, j, k, grid, ∇²hᶜᶠᶜ, v)
+
+@inline covariant_contravariant_flux_∇²h_vᶜᶠᶜ(i, j, k, grid::SphericalShellGrid, u, v) =
+    G²¹ᶜᶠᶜ(i, j, k, grid) * ℑxyᶜᶠᵃ(i, j, k, grid, ∇²hᶠᶜᶜ, u) +
+    G²²ᶜᶠᶜ(i, j, k, grid) * ∇²hᶜᶠᶜ(i, j, k, grid, v)
+
+@inline covariant_contravariant_flux_∇²u_vector_invariantᶠᶜᶜ(i, j, k, grid::SphericalShellGrid, u, v) =
+    G¹¹ᶠᶜᶜ(i, j, k, grid) * ∇²u_vector_invariantᶠᶜᶜ(i, j, k, grid, u, v) +
+    G¹²ᶠᶜᶜ(i, j, k, grid) * ℑxyᶠᶜᵃ(i, j, k, grid, ∇²v_vector_invariantᶜᶠᶜ, u, v)
+
+@inline covariant_contravariant_flux_∇²v_vector_invariantᶜᶠᶜ(i, j, k, grid::SphericalShellGrid, u, v) =
+    G²¹ᶜᶠᶜ(i, j, k, grid) * ℑxyᶜᶠᵃ(i, j, k, grid, ∇²u_vector_invariantᶠᶜᶜ, u, v) +
+    G²²ᶜᶠᶜ(i, j, k, grid) * ∇²v_vector_invariantᶜᶠᶜ(i, j, k, grid, u, v)
+
+@inline covariant_line_integral_∇²h_uᶠᶜᶜ(i, j, k, grid::SphericalShellGrid, u, v) =
+    computational_width_uᶠᶜᶜ(i, j, k, grid) * ∇²hᶠᶜᶜ(i, j, k, grid, u)
+
+@inline covariant_line_integral_∇²h_vᶜᶠᶜ(i, j, k, grid::SphericalShellGrid, u, v) =
+    computational_width_vᶜᶠᶜ(i, j, k, grid) * ∇²hᶜᶠᶜ(i, j, k, grid, v)
+
+@inline covariant_line_integral_∇²u_vector_invariantᶠᶜᶜ(i, j, k, grid::SphericalShellGrid, u, v) =
+    computational_width_uᶠᶜᶜ(i, j, k, grid) * ∇²u_vector_invariantᶠᶜᶜ(i, j, k, grid, u, v)
+
+@inline covariant_line_integral_∇²v_vector_invariantᶜᶠᶜ(i, j, k, grid::SphericalShellGrid, u, v) =
+    computational_width_vᶜᶠᶜ(i, j, k, grid) * ∇²v_vector_invariantᶜᶠᶜ(i, j, k, grid, u, v)
+
 # See https://mitgcm.readthedocs.io/en/latest/algorithm/algorithm.html#horizontal-dissipation
 @inline function δ★ᶜᶜᶜ(i, j, k, grid, u, v)
     return Az⁻¹ᶜᶜᶜ(i, j, k, grid) * (δxᶜᵃᵃ(i, j, k, grid, Δy_∇²u, u, v) + δyᵃᶜᵃ(i, j, k, grid, Δx_∇²v, u, v))
+end
+
+@inline function δ★ᶜᶜᶜ(i, j, k, grid::SphericalShellGrid, u, v)
+    return Az⁻¹ᶜᶜᶜ(i, j, k, grid) *
+           (δxᶜᶜᶜ(i, j, k, grid, covariant_contravariant_flux_∇²h_uᶠᶜᶜ, u, v) +
+            δyᶜᶜᶜ(i, j, k, grid, covariant_contravariant_flux_∇²h_vᶜᶠᶜ, u, v))
 end
 
 @inline function δ★ⱽᴵᶜᶜᶜ(i, j, k, grid, u, v)
@@ -106,13 +144,31 @@ end
                                      δyᶜᶜᶜ(i, j, k, grid, Δx_qᶜᶠᶜ, ∇²v_vector_invariantᶜᶠᶜ, u, v))
 end
 
+@inline function δ★ⱽᴵᶜᶜᶜ(i, j, k, grid::SphericalShellGrid, u, v)
+    return Az⁻¹ᶜᶜᶜ(i, j, k, grid) *
+           (δxᶜᶜᶜ(i, j, k, grid, covariant_contravariant_flux_∇²u_vector_invariantᶠᶜᶜ, u, v) +
+            δyᶜᶜᶜ(i, j, k, grid, covariant_contravariant_flux_∇²v_vector_invariantᶜᶠᶜ, u, v))
+end
+
 @inline function ζ★ᶠᶠᶜ(i, j, k, grid, u, v)
     return Az⁻¹ᶠᶠᶜ(i, j, k, grid) * (δxᶠᵃᵃ(i, j, k, grid, Δy_∇²v, u, v) - δyᵃᶠᵃ(i, j, k, grid, Δx_∇²u, u, v))
+end
+
+@inline function ζ★ᶠᶠᶜ(i, j, k, grid::SphericalShellGrid, u, v)
+    Γ = (+ δxᶠᶠᶜ(i, j, k, grid, covariant_line_integral_∇²h_vᶜᶠᶜ, u, v)
+         - δyᶠᶠᶜ(i, j, k, grid, covariant_line_integral_∇²h_uᶠᶜᶜ, u, v))
+    return Az⁻¹ᶠᶠᶜ(i, j, k, grid) * Γ
 end
 
 @inline function ζ★ⱽᴵᶠᶠᶜ(i, j, k, grid, u, v)
     Γ = (+ δxᶠᶜᶜ(i, j, k, grid, Δy_qᶜᶠᶜ, ∇²v_vector_invariantᶜᶠᶜ, u, v)
          - δyᶜᶠᶜ(i, j, k, grid, Δx_qᶠᶜᶜ, ∇²u_vector_invariantᶠᶜᶜ, u, v))
+    return Az⁻¹ᶠᶠᶜ(i, j, k, grid) * Γ
+end
+
+@inline function ζ★ⱽᴵᶠᶠᶜ(i, j, k, grid::SphericalShellGrid, u, v)
+    Γ = (+ δxᶠᶠᶜ(i, j, k, grid, covariant_line_integral_∇²v_vector_invariantᶜᶠᶜ, u, v)
+         - δyᶠᶠᶜ(i, j, k, grid, covariant_line_integral_∇²u_vector_invariantᶠᶜᶜ, u, v))
     return Az⁻¹ᶠᶠᶜ(i, j, k, grid) * Γ
 end
 

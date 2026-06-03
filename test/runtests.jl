@@ -38,9 +38,16 @@ CUDA.allowscalar() do
         @testset "Unit tests" begin
             include("test_quality_assurance.jl")
             include("test_grids.jl")
+            include("test_spherical_shell_grid.jl")
+            include("Grids/test_octahealpix_cross_metrics.jl")
+            include("Grids/test_octahealpix_vector_halo_fill.jl")
+            include("Grids/test_octahealpix_metric_invariants.jl")
+            include("Grids/test_octahealpix_area_closure.jl")
             include("test_grid_reconstruction.jl")
             include("test_immersed_boundary_grid.jl")
             include("test_operators.jl")
+            include("Operators/test_hodge_positivity.jl")
+            include("Operators/test_hodge_projection.jl")
             include("test_vector_rotation_operators.jl")
             include("test_boundary_conditions.jl")
             include("test_field.jl")
@@ -168,6 +175,9 @@ CUDA.allowscalar() do
     if group == :hydrostatic_free_surface || group == :all
         @testset "HydrostaticFreeSurfaceModel tests" begin
             include("test_hydrostatic_free_surface_models.jl")
+            include("Advection/test_vector_invariant_centered_ohpsg.jl")
+            include("Advection/test_vector_invariant_centered_ohpsg_incompressibility.jl")
+            include("Advection/test_vector_invariant_centered_ohpsg_energy.jl")
             include("test_ensemble_hydrostatic_free_surface_models.jl")
             include("test_hydrostatic_free_surface_immersed_boundaries.jl")
             include("test_vertical_vorticity_field.jl")

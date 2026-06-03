@@ -12,8 +12,28 @@ is the minimum over all `i, j, k` in the `grid` of
 ```
 """
 function cell_advection_timescale(grid, velocities)
-    u, v, w = velocities
+    u = u_velocity(velocities)
+    v = v_velocity(velocities)
+    w = w_velocity(velocities)
     τ = KernelFunctionOperation{Center, Center, Center}(cell_advection_timescaleᶜᶜᶜ, grid, u, v, w)
+    return minimum(τ)
+end
+
+@inline function transport_cell_advection_timescaleᶜᶜᶜ(i, j, k, grid::SphericalShellGrid, u, v, w)
+    inverse_timescale_x = abs(@inbounds u[i, j, k]) * Oceananigans.Operators.V⁻¹ᶜᶜᶜ(i, j, k, grid)
+    inverse_timescale_y = abs(@inbounds v[i, j, k]) * Oceananigans.Operators.V⁻¹ᶜᶜᶜ(i, j, k, grid)
+    inverse_timescale_z = abs(@inbounds w[i, j, k]) * Δz⁻¹ᶜᶜᶠ(i, j, k, grid)
+
+    return one(grid) / (inverse_timescale_x + inverse_timescale_y + inverse_timescale_z)
+end
+
+function cell_advection_timescale(grid::SphericalShellGrid, velocities)
+    transport_velocities = spherical_shell_volume_flux_velocities(grid, velocities)
+    τ = KernelFunctionOperation{Center, Center, Center}(transport_cell_advection_timescaleᶜᶜᶜ,
+                                                        grid,
+                                                        u_velocity(transport_velocities),
+                                                        v_velocity(transport_velocities),
+                                                        w_velocity(transport_velocities))
     return minimum(τ)
 end
 

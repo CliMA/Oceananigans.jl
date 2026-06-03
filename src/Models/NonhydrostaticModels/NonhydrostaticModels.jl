@@ -10,16 +10,23 @@ using Oceananigans.Utils
 using Oceananigans.Grids
 using Oceananigans.Solvers
 
+using Oceananigans.Biogeochemistry: biogeochemical_drift_velocity
 using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: reconstruct_global_grid, Distributed
 using Oceananigans.DistributedComputations: DistributedFFTBasedPoissonSolver, DistributedFourierTridiagonalPoissonSolver
+using Oceananigans.Forcings: with_advective_forcing
 using Oceananigans.Grids: XYZRegularRG
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver, ConjugateGradientPoissonSolver
 using Oceananigans.Solvers: InhomogeneousFormulation, ZDirection
+using Oceananigans.TurbulenceClosures: closure_auxiliary_velocity
 using Oceananigans.Utils: sum_of_velocities
 
-using ..Models: initialize_boundary_transport
+using ..Models: initialize_boundary_transport,
+                refresh_all_tracer_auxiliary_halos!,
+                refresh_tracer_auxiliary_velocity_halos!,
+                refresh_tracer_advective_forcing_halos!,
+                update_model_field_time_series!
 
 import Oceananigans: fields, prognostic_fields
 import Oceananigans.Advection: cell_advection_timescale
@@ -92,6 +99,38 @@ function cell_advection_timescale(model::NonhydrostaticModel)
     grid = model.grid
     velocities = total_velocities(model)
     return cell_advection_timescale(grid, velocities)
+end
+
+function cell_advection_timescale(model::NonhydrostaticModel{<:Any, <:Any, <:Any, <:SphericalShellGrid})
+    grid = model.grid
+    update_model_field_time_series!(model, model.clock)
+    refresh_background_field_halos!(model.background_fields)
+    base_velocities = total_velocities(model)
+    minimum_timescale = cell_advection_timescale(grid, base_velocities)
+
+    for forcing in (model.forcing.u, model.forcing.v, model.forcing.w)
+        refresh_tracer_advective_forcing_halos!(forcing)
+        forced_velocities = with_advective_forcing(forcing, base_velocities)
+        minimum_timescale = min(minimum_timescale, cell_advection_timescale(grid, forced_velocities))
+    end
+
+    refresh_all_tracer_auxiliary_halos!(model)
+
+    for tracer_name in keys(model.tracers)
+        tracer_name_val = Val(tracer_name)
+        @inbounds forcing = model.forcing[tracer_name]
+
+        biogeochemical_velocities = biogeochemical_drift_velocity(model.biogeochemistry, tracer_name_val)
+        closure_velocities = closure_auxiliary_velocity(model.closure, model.closure_fields, tracer_name_val)
+        auxiliary_velocities = sum_of_velocities(biogeochemical_velocities, closure_velocities)
+
+        tracer_velocities = sum_of_velocities(base_velocities, auxiliary_velocities)
+
+        tracer_velocities = with_advective_forcing(forcing, tracer_velocities)
+        minimum_timescale = min(minimum_timescale, cell_advection_timescale(grid, tracer_velocities))
+    end
+
+    return minimum_timescale
 end
 
 """
