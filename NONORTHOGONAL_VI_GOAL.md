@@ -1092,3 +1092,15 @@ Added `/tmp/xedge_hodge_mapped_velocity_probe.jl` to test source-level x-edge ro
 ### 2026-06-03 update: x-edge mapped-vorticity topology is already source-equivalent
 
 Added `/tmp/xedge_mapped_vorticity_probe.jl`, recomputing x-edge `ζ` with covariant halo-source mapping for the line-integral values while leaving source rotational transport unchanged. The mapped-vorticity variant is identical to source rotational advection to roundoff across N8, N16, and N32 sampled seeds. This rejects vorticity halo mapping as the missing topology correction; the defect remains in corner transport / work-adjoint grouping.
+
+### 2026-06-03 update: norm-preserving exact-skew transport rotation rejected
+
+Added `/tmp/xedge_norm_preserving_skew_probe.jl`, which rotates each x-edge `op_sqrt` transport vector onto the independent-adjoint skew direction `(H_u,H_v)` while preserving its magnitude. This exact-skew variant tests whether prior projected-skew failures were due to lost amplitude. It is still too dynamically far: N32 seed42 `op_rel=0.03847`, norm-preserving skew `0.16008`; N32 seed99 `0.03520` versus `0.17079`; N32 seed2 `0.05152` versus `0.29988`. Alignment statistics show distributed bad corners despite good median alignment, e.g. N32 seed99 has `|cosθ|` min `0.00794`, q25 `0.569`, median `0.932`. This rejects norm-preserving exact-skew rotation and reinforces that the exact skew direction itself is dynamically too far.
+
+### 2026-06-03 update: projected all-xedge correction is mostly tangent
+
+Added `/tmp/projected_minimal_correction_probe.jl`. Dense N4/N8 projection matrices were used to project the all-xedge least-norm Hodge-covector correction around the actual `current_total` VI tendency. Projection removes correction divergence and leaves its energy work unchanged, but retains most of the correction norm: N8 seed1 raw `corr_rel=0.02092`, projected `0.01715`; N8 seed42 raw `0.06377`, projected `0.05623`; N8 seed99 raw `0.02082`, projected `0.01800`. The correction has a nontrivial pressure/gauge component but is mostly a real tangent-space correction. It cannot be ignored by relying on projection.
+
+### 2026-06-03 update: global all-xedge correction is not a quadratic VI operator
+
+Added `/tmp/global_correction_quadratic_probe.jl`. The all-xedge least-norm correction around current VI has correct sign symmetry and homogeneity (`C(-u)=C(u)`, `C(2u)=4C(u)`, `C(u/2)=C(u)/4`), but it fails the quadratic polarization identity `C(u+v)+C(u-v)=2C(u)+2C(v)`: relative errors are `0.247` at N8, `0.882` at N16, and `0.590` at N32 for seeds 42/99. The source VI tendency passes the same identity to roundoff. Therefore the global correction is a homogeneous rational energy fixer, not a bilinear/quadratic VI operator; it remains a lower bound diagnostic, not a source-ready advection term.

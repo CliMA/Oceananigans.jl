@@ -17688,3 +17688,61 @@ Results:
 - N8 seeds 42/99, N16 seeds 42/99, and N32 seeds 1/2/42/99 all report `rot_rel=0` and identical work between `source` and `mapped`.
 
 Conclusion: the vorticity line-integral halo/topology is already equivalent to the covariant halo-source mapping. The missing energy-compatible topology is not on the `ζ` side of the rotational term; it remains in the corner transport / work-adjoint grouping.
+
+## 2026-06-03: norm-preserving exact-skew transport rotation rejected
+
+Diagnostic: `/tmp/xedge_norm_preserving_skew_probe.jl`.
+
+Compared `op_sqrt` x-edge corner transport with the independent-adjoint Hodge-skew direction `(H_u,H_v)`. Tested a new exact-skew variant that preserves the original transport magnitude but rotates the transport vector onto the skew direction, choosing the sign closest to `op_sqrt`. This checks whether prior projected-skew failures were caused by dropping transport magnitude rather than by direction mismatch.
+
+Findings:
+- X-edge transport is often well aligned with the skew direction in median, but enough corners are poorly aligned to produce large tendency changes.
+- Examples of `|cosθ|` alignment statistics:
+  - N32 seed42: min `0.0135`, q25 `0.655`, median `0.941`, q75 `0.993`.
+  - N32 seed99: min `0.00794`, q25 `0.569`, median `0.932`, q75 `0.988`.
+  - N32 seed2: min `1.36e-05`, q25 `0.702`, median `0.923`, q75 `0.989`.
+- Norm-preserving exact-skew rotation has rotational work at roundoff but remains dynamically far:
+  - N32 seed42: `op_rel=0.03847`; Euclidean projection `0.14490`; norm-preserving `0.16008`.
+  - N32 seed99: `op_rel=0.03520`; Euclidean projection `0.16581`; norm-preserving `0.17079`.
+  - N32 seed2: `op_rel=0.05152`; Euclidean projection `0.28057`; norm-preserving `0.29988`.
+  - N16 seed99: `op_rel=0.03913`; Euclidean projection `0.12218`; norm-preserving `0.12090`.
+
+Conclusion: exact local skew x-edge forms fail because the required skew direction differs too much from dynamically close transport at a distributed set of x-edge corners. Preserving transport magnitude does not rescue the family. This closes another variant of local exact-skew transport topology fixes.
+
+## 2026-06-03: projected all-xedge lower-bound correction is mostly tangent
+
+Diagnostic: `/tmp/projected_minimal_correction_probe.jl`.
+
+Built dense Hodge-compatible projection matrices at N=4 and N=8, projected random velocities first, then computed the all-xedge least-norm Hodge-covector correction around the actual `current_total` VI tendency. Projected the correction itself with `P = I - G(DG)^+D`.
+
+Results:
+- Projection removes correction divergence to roundoff and leaves the correction energy work unchanged to roundoff.
+- Projection reduces the correction norm, but retains most of it: roughly `69-88%` of the raw correction norm remains.
+- Examples:
+  - N4 seed1: raw `corr_rel=0.08223`, projected `0.05654`, retained `0.688`; work cancellation unchanged.
+  - N4 seed42: raw `0.03215`, projected `0.02744`, retained `0.853`.
+  - N8 seed1: raw `0.02092`, projected `0.01715`, retained `0.820`.
+  - N8 seed42: raw `0.06377`, projected `0.05623`, retained `0.882`.
+  - N8 seed99: raw `0.02082`, projected `0.01800`, retained `0.864`.
+- The pressure/gauge component is non-negligible (`pressure_rel≈0.47-0.73` relative to correction norm), but it is not dominant enough to make the correction disappear after projection.
+
+Conclusion: the all-xedge global lower-bound correction is mostly a true divergence-free tangent correction. It cannot be dismissed as a pressure/gauge artifact. If used as an exact energy fixer, it would remain dynamically active after rigid-lid/Hodge projection; this reinforces that a source-ready local VI fix still needs a genuine tangent-space x-edge operator.
+
+## 2026-06-03: global all-xedge correction is homogeneous but not quadratic/bilinear
+
+Diagnostic: `/tmp/global_correction_quadratic_probe.jl`.
+
+Tested the all-xedge least-norm correction around current VI under velocity sign reversal, amplitude scaling, and the quadratic polarization identity. The correction is defined by the global scalar `β = -W / S`, where `W` is the Hodge work residual and `S` is the x-edge Hodge-covector sensitivity norm.
+
+Results:
+- The correction has the expected sign symmetry and degree-two homogeneity:
+  - `C(-u) = C(u)` to roundoff.
+  - `C(2u) = 4 C(u)` and `C(u/2) = C(u)/4` to roundoff.
+  - Work scales cubically and sensitivity scales quadratically, as expected.
+- The source VI tendency satisfies the quadratic polarization identity to roundoff.
+- The global correction fails the quadratic polarization identity badly:
+  - N8 seeds 42/99: correction polarization relative error `0.247`.
+  - N16 seeds 42/99: `0.882`.
+  - N32 seeds 42/99: `0.590`.
+
+Conclusion: the global all-xedge correction is a degree-two homogeneous rational energy fixer, not a bilinear/quadratic momentum-advection operator. It remains useful as a lower bound and exact diagnostic, but it is not source-ready as a VectorInvariant advection term.
