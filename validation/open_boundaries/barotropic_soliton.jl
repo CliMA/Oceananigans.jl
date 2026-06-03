@@ -174,10 +174,10 @@ function setup_simulation(params::SolitonParameters;
     # Model:
     β = params.U / params.L^2
 
-    west_obc  = OpenBoundaryCondition((y, z, t) -> analytic_u(params.x_min, y, t, params); scheme)
-    east_obc  = OpenBoundaryCondition((y, z, t) -> analytic_u(params.x_max, y, t, params); scheme)
-    south_obc = OpenBoundaryCondition((x, z, t) -> analytic_v(x, params.y_min, t, params); scheme)
-    north_obc = OpenBoundaryCondition((x, z, t) -> analytic_v(x, params.y_max, t, params); scheme)
+    west_obc  = NormalFlowBoundaryCondition((y, z, t) -> analytic_u(params.x_min, y, t, params); scheme)
+    east_obc  = NormalFlowBoundaryCondition((y, z, t) -> analytic_u(params.x_max, y, t, params); scheme)
+    south_obc = NormalFlowBoundaryCondition((x, z, t) -> analytic_v(x, params.y_min, t, params); scheme)
+    north_obc = NormalFlowBoundaryCondition((x, z, t) -> analytic_v(x, params.y_max, t, params); scheme)
     u_bcs = FieldBoundaryConditions(west = west_obc, east = east_obc)
     v_bcs = FieldBoundaryConditions(south = south_obc, north = north_obc)
     boundary_conditions = (; u = u_bcs, v = v_bcs)
