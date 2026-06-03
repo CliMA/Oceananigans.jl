@@ -181,8 +181,8 @@ function test_cgsolver_with_immersed_boundary_and_open_boundaries(underlying_gri
     U = 1
     inflow_timescale = 1e-4
     outflow_timescale = Inf
-    u_boundaries = FieldBoundaryConditions(west = OpenBoundaryCondition(U; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)),
-                                           east = OpenBoundaryCondition(U; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)))
+    u_boundaries = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(U; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)),
+                                           east = NormalFlowBoundaryCondition(U; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)))
 
     model = NonhydrostaticModel(grid;
                                 boundary_conditions = (u = u_boundaries,),

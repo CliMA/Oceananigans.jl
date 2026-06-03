@@ -9,9 +9,11 @@ using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization, Face, Center
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions
-using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles, materialize_clock!
+using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles, materialize_clock!, time_discretization
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions,
-                                       time_discretization, implicit_diffusion_solver, closure_required_tracers, initialize_closure_fields!
+                                       implicit_diffusion_solver, VerticallyImplicitTimeDiscretization,
+                                       closure_required_tracers, initialize_closure_fields!
+using Oceananigans.Advection: needs_implicit_solver
 using Oceananigans.Utils: tupleit
 
 import Oceananigans
@@ -35,7 +37,7 @@ function default_vertical_coordinate(grid)
 end
 
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
-                                           G, T, V, B, R, F, P, BGC, U, W, C, Φ, K, AF, Z} <: AbstractModel{TS, A}
+                                           G, T, V, B, R, F, P, BGC, U, W, C, Φ, K, AF, Z, BM} <: AbstractModel{TS, A}
 
     architecture :: A          # Computer `Architecture` on which `Model` is run
     grid :: G                  # Grid of physical points on which `Model` is solved
@@ -56,6 +58,7 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
     timestepper :: TS          # Object containing timestepper fields and parameters
     auxiliary_fields :: AF     # User-specified auxiliary fields for forcing functions and boundary conditions
     vertical_coordinate :: Z   # Rulesets that define the time-evolution of the grid
+    boundary_transport :: BM # Transport fields for targeted open boundary conditions (or `nothing`)
 end
 
 supported_timesteppers = (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5)
@@ -261,7 +264,13 @@ function HydrostaticFreeSurfaceModel(grid;
     free_surface = materialize_free_surface(free_surface, velocities, grid)
 
     # Instantiate timestepper if not already instantiated
-    implicit_solver   = implicit_diffusion_solver(time_discretization(closure), grid)
+    implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
+
+    # Also create the implicit solver if adaptive implicit advection requires it
+    if isnothing(implicit_solver) && needs_implicit_solver(advection)
+        implicit_solver = implicit_diffusion_solver(VerticallyImplicitTimeDiscretization(), grid)
+    end
+
     prognostic_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers)
 
     Gⁿ = hydrostatic_tendency_fields(velocities, free_surface, grid, tracernames(tracers), boundary_conditions)
@@ -279,9 +288,12 @@ function HydrostaticFreeSurfaceModel(grid;
 
     !isnothing(particles) && arch isa Distributed && error("LagrangianParticles are not supported on Distributed architectures.")
 
+    boundary_transport = initialize_targeted_boundary_transport(velocities)
+
     model = HydrostaticFreeSurfaceModel(arch, grid, clock, advection, buoyancy, coriolis,
                                         free_surface, forcing, closure, particles, biogeochemistry, velocities, transport_velocities,
-                                        tracers, pressure, closure_fields, timestepper, auxiliary_fields, vertical_coordinate)
+                                        tracers, pressure, closure_fields, timestepper, auxiliary_fields, vertical_coordinate,
+                                        boundary_transport)
 
     materialize_clock!(clock, timestepper)
     update_state!(model)

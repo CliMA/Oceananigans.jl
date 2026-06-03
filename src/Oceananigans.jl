@@ -35,10 +35,11 @@ export
     # Advection schemes
     Centered, UpwindBiased, WENO,
     VectorInvariant, WENOVectorInvariant, FluxFormAdvection,
+    AdaptiveImplicitVerticalAdvection,
 
     # Boundary conditions
     BoundaryCondition,
-    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, OpenBoundaryCondition,
+    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, NormalFlowBoundaryCondition,
     PerturbationAdvection,
     FieldBoundaryConditions,
 
@@ -74,7 +75,9 @@ export
     CATKEVerticalDiffusivity,
     TKEDissipationVerticalDiffusivity,
     RiBasedVerticalDiffusivity,
+    ExplicitTimeDiscretization,
     VerticallyImplicitTimeDiscretization,
+    AdaptiveVerticallyImplicitDiscretization,
     viscosity, diffusivity,
 
     # Lagrangian particle tracking
