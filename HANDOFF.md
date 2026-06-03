@@ -17746,3 +17746,38 @@ Results:
   - N32 seeds 42/99: `0.590`.
 
 Conclusion: the global all-xedge correction is a degree-two homogeneous rational energy fixer, not a bilinear/quadratic momentum-advection operator. It remains useful as a lower bound and exact diagnostic, but it is not source-ready as a VectorInvariant advection term.
+
+## 2026-06-03: class-split exact-minus-op x-edge correction rejected
+
+Diagnostic: `/tmp/xedge_class_split_exact_minus_op_fit_probe.jl`.
+
+Tested a richer local quadratic x-edge correction basis: the difference between `op_sqrt` x-edge transport and the exact independent-adjoint transport, split by side, component (`U`/`V`), covariant halo-source kind, and sign. Coefficients were fitted on N16 seeds 1-8 and evaluated on held-out N16 seeds 9-16 plus N32 seeds 1,2,42,99.
+
+Results:
+- The 24-feature basis overfits N16 training work to roundoff but only by using huge coefficients and creating enormous tendencies.
+- Nonzero coefficients are concentrated in west `V` classes and east `U` classes, with magnitudes up to `154`.
+- Training drift is unusable: mean drift `19.57`, max `24.15` relative to current VI.
+- Held-out N16 fails badly: mean relative residual work `44.14`, mean drift `19.39`, max drift `26.38`.
+- N32 also fails: mean relative residual work `16.44`, mean drift `18.40`.
+
+Conclusion: splitting the exact-minus-op x-edge correction by topology class does not produce a viable local quadratic fix. It exposes another overfit direction: exact-adjoint transport differences are dynamically too large even when split by side/component/source class.
+
+## 2026-06-03: linear beta predictor for quadraticized all-xedge correction rejected
+
+Diagnostic: `/tmp/xedge_beta_linear_predictor_probe.jl`.
+
+Tried to turn the successful global all-xedge Hodge-covector correction into a quadratic operator by approximating the scalar `β(u) = -W/S` with a linear functional of x-edge state features. The correction shape remains the all-xedge Hodge-covector direction, but `β_pred = θ⋅features(u)` makes the correction quadratic if it generalizes. Features used west/east sums of `H_u`, `H_v`, `opU`, `opV`, and `ζ`, each with three simple edge moments, plus a constant. Fitted on N16 seeds 1-8; evaluated on N16 seeds 9-16 and N32 seeds 1,2,42,99.
+
+Results:
+- Training is exactly overfit: N16 train beta relative errors are `~1e-15`, so work is canceled to roundoff.
+- Held-out N16 fails badly:
+  - mean beta relative error / relative residual work `3.66`.
+  - max relative residual work `7.86`.
+  - max drift `0.453` versus true lower-bound drift `0.051` for the same case.
+- N32 evaluation is mixed and not viable:
+  - seed1: beta error `0.243`, residual work `0.243`, drift `0.0136`.
+  - seed2: beta error `0.997`, leaves almost all work, drift only `9.5e-05` because predicted correction is near zero.
+  - seed42: beta error `3.54`, residual work `3.54`, drift `0.0287` versus true lower-bound drift `0.00631`.
+  - seed99: beta error `0.846`, leaves most work.
+
+Conclusion: a simple linear predictor for the global `β` scalar does not generalize. This rejects the simplest bilinear/quadratic approximation to the nonquadratic all-xedge energy fixer.

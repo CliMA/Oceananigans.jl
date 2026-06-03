@@ -1104,3 +1104,11 @@ Added `/tmp/projected_minimal_correction_probe.jl`. Dense N4/N8 projection matri
 ### 2026-06-03 update: global all-xedge correction is not a quadratic VI operator
 
 Added `/tmp/global_correction_quadratic_probe.jl`. The all-xedge least-norm correction around current VI has correct sign symmetry and homogeneity (`C(-u)=C(u)`, `C(2u)=4C(u)`, `C(u/2)=C(u)/4`), but it fails the quadratic polarization identity `C(u+v)+C(u-v)=2C(u)+2C(v)`: relative errors are `0.247` at N8, `0.882` at N16, and `0.590` at N32 for seeds 42/99. The source VI tendency passes the same identity to roundoff. Therefore the global correction is a homogeneous rational energy fixer, not a bilinear/quadratic VI operator; it remains a lower bound diagnostic, not a source-ready advection term.
+
+### 2026-06-03 update: class-split exact-minus-op x-edge correction rejected
+
+Added `/tmp/xedge_class_split_exact_minus_op_fit_probe.jl`, fitting the difference between `op_sqrt` x-edge transport and exact independent-adjoint transport with coefficients split by side, component, covariant halo-source kind, and sign. The 24-feature model overfits N16 training work to roundoff but has mean training drift `19.57`, held-out N16 mean drift `19.39`, and N32 mean drift `18.40`. Nonzero coefficients are huge, up to `154`. This rejects richer topology-class blending toward the exact independent-adjoint transport as a local quadratic source strategy.
+
+### 2026-06-03 update: linear beta predictor rejected
+
+Added `/tmp/xedge_beta_linear_predictor_probe.jl` to approximate the global all-xedge scalar `β=-W/S` by a linear functional of x-edge state features, making the correction quadratic if successful. The model overfits N16 training seeds exactly, but fails held-out N16 with mean beta/relative-work error `3.66` and max `7.86`. N32 evaluation is not viable: seed2 leaves almost all work (`relwork=0.997`), seed42 overshoots (`relwork=3.54`), and seed99 leaves most work (`0.846`). This rejects the simplest quadratic/bilinearization of the global all-xedge correction.
