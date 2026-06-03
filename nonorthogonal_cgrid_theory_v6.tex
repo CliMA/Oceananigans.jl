@@ -1,0 +1,1284 @@
+\documentclass[11pt]{article}
+
+\usepackage[margin=0.95in]{geometry}
+\usepackage{amsmath,amssymb,mathtools,bm}
+\usepackage{booktabs,longtable,array}
+\usepackage{enumitem}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage[numbers,square]{natbib}
+\usepackage{xurl}
+\usepackage{microtype}
+\emergencystretch=3em
+
+\lstdefinestyle{juliapseudo}{
+  basicstyle=\ttfamily\small,
+  columns=fullflexible,
+  keepspaces=true,
+  showstringspaces=false,
+  breaklines=true,
+  frame=single,
+  framerule=0.2pt,
+  xleftmargin=0.5em,
+  xrightmargin=0.5em
+}
+\lstset{style=juliapseudo}
+
+\newcommand{\dd}{\mathrm{d}}
+\newcommand{\pd}{\partial}
+\newcommand{\half}{\tfrac{1}{2}}
+\newcommand{\bvec}[1]{\bm{#1}}
+\newcommand{\mc}[1]{\mathcal{#1}}
+\newcommand{\msf}[1]{\mathsf{#1}}
+\newcommand{\code}[1]{\texttt{\detokenize{#1}}}
+\newcommand{\doi}[1]{doi:\allowbreak #1}
+\newcommand{\Div}{\mc{D}}
+\newcommand{\Grad}{\mc{G}}
+\newcommand{\Interp}{\mc{I}}
+\newcommand{\Recon}{\mc{R}}
+\newcommand{\Hodge}{\mc{H}}
+\newcommand{\Vflux}{\mc{V}}
+\newcommand{\Uflux}{\mc{U}}
+\newcommand{\Dvol}{\Div_{\Vflux}}
+\newcommand{\Dmass}{\Div_{\Uflux}}
+\newcommand{\Dhvol}{\Div_{h,\Vflux}}
+\newcommand{\Dhmass}{\Div_{h,\Uflux}}
+\newcommand{\eps}{\varepsilon}
+\newcommand{\loc}[1]{^{\mathrm{#1}}}
+
+\title{Theory and Grid Design for a Non-Orthogonal C-Grid Vector-Invariant Scheme\\
+for Oceananigans.jl and Breeze.jl}
+\author{Derivation, implementation design note, and staggered-Hodge test plan}
+\date{May 16, 2026}
+
+\begin{document}
+\maketitle
+
+\begin{abstract}
+This note develops the mathematical and code-design foundations for a non-orthogonal C-grid momentum advection scheme for Oceananigans.jl and Breeze.jl.  The target is a thin-atmosphere spherical-shell grid, beginning with one panel of the equiangular gnomonic cubed sphere.  Two dynamical regimes are in scope: a fully compressible implementation in which the conservative mass-flux divergence is generally nonzero, and a hydrostatic-incompressible implementation in which the compatible volume-flux divergence vanishes in fixed physical coordinates.  The central distinction is between model velocities, transport velocities, and transport fluxes.  Momentum dynamics and vorticity use covariant velocity components, while scalar advection and continuity use metric-compatible contravariant or area-normal transport velocities and fluxes.  This distinction is already present in Oceananigans' HydrostaticFreeSurfaceModel, where tracer tendencies use \code{model.transport_velocities}, while momentum tendencies use \code{model.velocities}.  Breeze should adopt the same abstraction through \code{transport_velocities(model)} and \code{transport_fluxes(model)}.  The algorithmic abstraction is a generic \code{NonOrthogonalVectorInvariant}, with \code{NonOrthogonalWENOVectorInvariant} as a WENO-specialized constructor.  The materialized non-orthogonal scheme owns the geometric state fields required by the operator: covariant velocity, contravariant velocity, transport velocities, volume transports, mass transports, transport divergences, kinetic energy, and vorticity two-forms.  This is a deliberate extension of the current stateless Oceananigans \code{WENOVectorInvariant} design.
+\end{abstract}
+
+\tableofcontents
+
+\section{Scope and guiding principles}
+\label{sec:scope}
+
+The goal is to extend the structured C-grid finite-volume machinery in Oceananigans and Breeze to non-orthogonal logically rectangular grids with minimal disruption, while avoiding false equivalences that are harmless on orthogonal grids but wrong on non-orthogonal grids.  The key design rule is
+\begin{equation}
+  \boxed{\hbox{model velocity variables are not necessarily scalar transport velocities.}}
+\end{equation}
+On an orthogonal grid, these objects often coincide.  On a non-orthogonal grid they do not.
+
+The model interface should distinguish:
+\begin{description}[leftmargin=2.7em]
+\item[\code{model.velocities}] model velocity variables used by momentum, closures, forcing, diagnostics, and output.
+\item[\code{transport_velocities(model)}] velocity tuple used for scalar, tracer, moisture, and thermodynamic advection.
+\item[\code{transport_fluxes(model)}] volume or mass fluxes used by continuity and vector-invariant coupling.
+\end{description}
+For simple orthogonal cases, \code{transport_velocities(model) = model.velocities} may be an alias.  For non-orthogonal grids, \code{transport_velocities(model)} is diagnosed from the model velocities through a metric or Hodge map.
+
+This convention follows an existing Oceananigans pattern.  In HydrostaticFreeSurfaceModel (HFSM), tracer tendencies are explicitly routed through \code{model.transport_velocities}, while momentum tendencies are computed using \code{model.velocities} \citep{OceananigansHFSMTendencies}.  Breeze already has the function-interface version in embryo: \code{transport_velocities(model) = model.velocities} and \code{advecting_momentum(model) = model.momentum}, with terrain-following compressible dynamics overriding the vertical transport velocity and momentum \citep{BreezeDynamicsInterface,BreezeTerrainCompressible}.  The non-orthogonal effort should promote this split into a first-class design rule.
+
+\section{Continuous non-orthogonal geometry}
+\label{sec:continuous-geometry}
+
+Let \(\xi^1,\xi^2,\xi^3\) be logical coordinates and let
+\begin{equation}
+  \bvec{x}=\bvec{x}(\xi^1,\xi^2,\xi^3)
+\end{equation}
+be a time-independent coordinate map.  Define covariant and contravariant basis vectors
+\begin{equation}
+  \bvec{a}_i = \pd_i \bvec{x},
+  \qquad
+  \bvec{a}^{\,i} = \nabla \xi^i,
+  \qquad
+  \bvec{a}^{\,i}\cdot\bvec{a}_j=\delta^i_j.
+\end{equation}
+The metric tensors and Jacobian are
+\begin{equation}
+  g_{ij}=\bvec{a}_i\cdot\bvec{a}_j,
+  \qquad
+  g^{ij}=\bvec{a}^{\,i}\cdot\bvec{a}^{\,j},
+  \qquad
+  J=\bvec{a}_1\cdot(\bvec{a}_2\times\bvec{a}_3).
+\end{equation}
+Velocity components are
+\begin{equation}
+  u_i = \bvec{u}\cdot\bvec{a}_i,
+  \qquad
+  u^i = \bvec{u}\cdot\bvec{a}^{\,i},
+  \qquad
+  u^i = g^{ij} u_j.
+\end{equation}
+The covariant components \(u_i\) are the coefficients of the velocity one-form.  They are the natural variables for circulation and vorticity.  The contravariant components \(u^i\) are the natural variables for finite-volume transport because
+\begin{equation}
+  \nabla\cdot\bvec{u} = \frac{1}{J}\pd_i(Ju^i).
+\end{equation}
+
+Two integrated transport objects will be used throughout this note:
+\begin{align}
+  \Vflux^i &= J u^i,
+  &&\hbox{volume transport},
+  \label{eq:volume-transport} \\
+  \Uflux^i &= J\rho u^i = \rho\Vflux^i,
+  &&\hbox{mass transport}.
+  \label{eq:mass-transport}
+\end{align}
+The notation \(\Uflux^i\) is chosen because the geophysical fluid dynamics literature often uses \(U,V,W\) for transported fluxes; the calligraphic font distinguishes the transport from the pointwise velocity \(u^i\).  The earlier symbol \(M^i\) is avoided below because it can obscure whether the flux is a mass flux, volume flux, or an area-weighted velocity.
+
+In a finite-volume code that multiplies velocities by face areas, it is also useful to define the area-normal transport velocity \(u_\perp^i\) by
+\begin{equation}
+  A_i u_\perp^i = \Vflux^i = J u^i,
+  \qquad
+  \Uflux^i = \rho A_i u_\perp^i.
+  \label{eq:area-normal-velocity}
+\end{equation}
+The choice between storing raw contravariant velocity \(u^i\), area-normal velocity \(u_\perp^i\), volume transport \(\Vflux^i\), or mass transport \(\Uflux^i\) is an implementation choice.  The invariant requirement is that scalar advection and continuity use a single conservative transport object.
+
+\section{Thin-atmosphere equiangular gnomonic cubed-sphere panel}
+\label{sec:equiangular-panel}
+
+\subsection{Panel mapping}
+\label{subsec:panel-mapping}
+
+The first non-orthogonal grid target should be one panel of an equiangular gnomonic cubed sphere.  This is the geometry used by ClimaCore's \code{Meshes.EquiangularCubedSphere}, whose mapping uses \code{tanpi(phi_x / 4)} and \code{tanpi(phi_y / 4)} before rotating to one of six panels \citep{ClimaCoreCubedSphere}.  ClimaAtmos builds its spherical grid by creating such a mesh, constructing a two-dimensional topology, and then using \code{CommonGrids.ExtrudedCubedSphereGrid} \citep{ClimaAtmosSphereGrid,ClimaCoreCommonGrids}.
+
+For one north-pole panel, use equiangular coordinates
+\begin{equation}
+  \alpha,\beta \in \left[-\frac{\pi}{4},\frac{\pi}{4}\right],
+  \qquad
+  p=\tan\alpha,
+  \qquad
+  q=\tan\beta,
+  \qquad
+  D=1+p^2+q^2.
+\end{equation}
+The unit-sphere map is
+\begin{equation}
+  \widehat{\bvec{x}}(\alpha,\beta)
+  = \frac{1}{\sqrt{D}}
+    \begin{pmatrix}p\\q\\1\end{pmatrix}.
+  \label{eq:gnomonic-map-unit}
+\end{equation}
+A spherical shell coordinate is
+\begin{equation}
+  \bvec{x}(\alpha,\beta,r) = r\widehat{\bvec{x}}(\alpha,\beta).
+  \label{eq:shell-map}
+\end{equation}
+For a thin-atmosphere approximation, the horizontal metric can be evaluated at a fixed radius \(R\) rather than \(R+z\).  The deep-shell form keeps \(r=R+z\) in horizontal metric factors.
+
+\subsection{Analytic horizontal metric}
+\label{subsec:analytic-metric}
+
+For the shell map \eqref{eq:shell-map}, the horizontal covariant metric components are
+\begin{align}
+  g_{\alpha\alpha}
+  &= r^2\frac{(1+p^2)^2(1+q^2)}{D^2}, \\
+  g_{\beta\beta}
+  &= r^2\frac{(1+q^2)^2(1+p^2)}{D^2}, \\
+  g_{\alpha\beta}
+  &= -r^2\frac{pq(1+p^2)(1+q^2)}{D^2}.
+  \label{eq:equiangular-covmetric}
+\end{align}
+The off-diagonal term \(g_{\alpha\beta}\) is generically nonzero.  This is the simplest structured spherical grid on which a non-orthogonal C-grid algorithm must confront the difference between covariant velocity and transport velocity.
+
+The horizontal metric determinant is
+\begin{equation}
+  g_h = g_{\alpha\alpha}g_{\beta\beta} - g_{\alpha\beta}^2
+      = r^4\frac{(1+p^2)^2(1+q^2)^2}{D^3},
+\end{equation}
+so
+\begin{equation}
+  \sqrt{g_h} = r^2\frac{(1+p^2)(1+q^2)}{D^{3/2}}.
+  \label{eq:sqrt-gh}
+\end{equation}
+The inverse horizontal metric is
+\begin{align}
+  g^{\alpha\alpha}
+  &= \frac{D}{r^2(1+p^2)}, \\
+  g^{\beta\beta}
+  &= \frac{D}{r^2(1+q^2)}, \\
+  g^{\alpha\beta}
+  &= \frac{pqD}{r^2(1+p^2)(1+q^2)}.
+  \label{eq:equiangular-invmetric}
+\end{align}
+For the simplest spherical-shell panel,
+\begin{equation}
+  g_{\alpha r}=g_{\beta r}=0,
+  \qquad
+  g_{rr}=1.
+\end{equation}
+Terrain-following or more general vertical coordinates can be treated later by adding \(g_{\alpha r}\) and \(g_{\beta r}\) terms.
+
+\subsection{Panel rotations and six-panel geometry}
+\label{subsec:panel-rotations}
+
+A single-panel prototype can work entirely with \eqref{eq:gnomonic-map-unit}.  A six-panel grid requires a rotation map
+\begin{equation}
+  \bvec{x}_P = \mc{R}_P \bvec{x}_1,
+\end{equation}
+where \(P=1,\ldots,6\) is the panel number.  ClimaCore implements this through \code{to_panel(panel, coord)} and \code{from_panel(panel, coord)} for cubed-sphere meshes \citep{ClimaCoreCubedSphere}.  Oceananigans' current conformal cubed-sphere panel code similarly supports panel rotations and constructs staggered longitude and latitude arrays from a CubedSphere mapping \citep{OceananigansConformalPanel}.  The non-orthogonal finite-volume implementation should reuse the idea of panel rotations but not assume orthogonal metric factors.
+
+
+\section{C-grid locations and discrete geometry}
+\label{sec:cgrid-geometry}
+
+Following Oceananigans operator notation, staggered locations are denoted by lower-case superscripts rather than tuple notation.  The symbol \(c\) denotes a cell center and \(f\) denotes a face.  Thus a cell-centered scalar lives at \(\loc{ccc}\), the first velocity component lives at \(\loc{fcc}\), the second component at \(\loc{cfc}\), and the third component at \(\loc{ccf}\).  This mirrors Oceananigans source notation, where operator names carry Unicode location superscripts; in LaTeX we write these as, for example, \(\mathrm{div}\loc{ccc}\), \(\Delta x\loc{fcc}\), \((V^{-1})\loc{fcc}\), and \(\zeta_3\loc{ffc}\).  In this note,
+\begin{equation}
+  u_1\loc{fcc},\qquad u_2\loc{cfc},\qquad u_3\loc{ccf}
+\end{equation}
+denote component-staggered covariant velocities.  For tensor components, a comma separates tensor indices from the location.  For example, \(g^{12,\mathrm{fcc}}\) means the \((1,2)\) component of the contravariant metric evaluated at \(\loc{fcc}\).
+
+The basic C-grid placement is:
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Quantity & Mathematical role & Oceananigans location \\
+\midrule
+\(\rho,\chi,K,\Dvol,\Dmass\) & cell-centered scalars & \(\loc{ccc}\) \\
+\(u_1,\Vflux^1,\Uflux^1\) & first component / first-face transport & \(\loc{fcc}\) \\
+\(u_2,\Vflux^2,\Uflux^2\) & second component / second-face transport & \(\loc{cfc}\) \\
+\(u_3,\Vflux^3,\Uflux^3\) & third component / third-face transport & \(\loc{ccf}\) \\
+\(\zeta_{12},Z_{12}\) & horizontal vorticity two-form & \(\loc{ffc}\) \\
+\(\zeta_{13},Z_{13}\) & vertical shear two-form & \(\loc{fcf}\) \\
+\(\zeta_{23},Z_{23}\) & vertical shear two-form & \(\loc{cff}\) \\
+\bottomrule
+\end{tabular}
+\end{center}
+
+A non-orthogonal grid requires at least the following metric information:
+\begin{align}
+  &J \quad \hbox{at cell centers and transport faces}, \\
+  &g_{ij},g^{ij} \quad \hbox{at locations required by Hodge maps}, \\
+  &A_i \quad \hbox{face areas, if velocity-based flux operators are reused}, \\
+  &\hbox{edge lengths and dual lengths, if a TRiSK-like Hodge is pursued}.
+\end{align}
+
+The first implementation should use a tensor-metric Hodge map.  A TRiSK-like discrete exterior calculus formulation can be developed later if it becomes advantageous for panel connectivity or conservation properties.  The tensor-metric path is simpler for Oceananigans' structured finite-volume operators and easier to test against analytic equiangular metrics.
+
+\section{Velocity, transport velocity, and transport diagnostics}
+\label{sec:diagnostics}
+
+The model momentum variables should represent covariant momentum or velocity-like quantities compatible with covariant dynamics.  From these, the non-orthogonal advection object diagnoses the transport quantities.  In continuous notation,
+\begin{equation}
+  u^i = g^{ij}u_j,
+  \qquad
+  \Vflux^i = J u^i,
+  \qquad
+  \Uflux^i = \rho \Vflux^i = J\rho u^i.
+  \label{eq:diagnostic-transport-chain}
+\end{equation}
+Here \(\Vflux^i\) is a volume transport in computational coordinates and \(\Uflux^i\) is a mass transport.  If velocity-based scalar kernels are reused, then
+\begin{equation}
+  u_\perp^i = \frac{\Vflux^i}{A_i} = \frac{J}{A_i}u^i.
+\end{equation}
+
+For a horizontally non-orthogonal, vertically orthogonal spherical shell, the continuous metric conversion reduces to
+\begin{align}
+  u^1 &= g^{11}u_1 + g^{12}u_2, \\
+  u^2 &= g^{21}u_1 + g^{22}u_2, \\
+  u^3 &= g^{33}u_3.
+\end{align}
+Discretely, this should not be hard-coded as a single multiply/interpolate convention.  It should be represented as Hodge blocks between Oceananigans locations, for example
+\begin{equation}
+  \Vflux^{1,\mathrm{fcc}}
+  =
+  \Hodge^{11}_{\mathrm{fcc}\leftarrow\mathrm{fcc}}u_1\loc{fcc}
+  +
+  \Hodge^{12}_{\mathrm{fcc}\leftarrow\mathrm{cfc}}u_2\loc{cfc}.
+  \label{eq:discrete-hodge-u1}
+\end{equation}
+A target-metric discretization would take \(\Hodge^{12}u_2\) to be \(G^{12,\mathrm{fcc}}\Interp_{\mathrm{cfc}\to\mathrm{fcc}}u_2\), while a product-interpolated discretization would take it to be \(\Interp_{\mathrm{cfc}\to\mathrm{fcc}}(G^{12,\mathrm{cfc}}u_2\loc{cfc})\).  Section~\ref{sec:staggered-hodge} lays out the Hodge-map candidates and the tests used to select among them.
+
+Transport divergences are written explicitly as
+\begin{align}
+  \Dvol
+  &\equiv \Div_i \Vflux^i
+   = \Div_1\Vflux^1 + \Div_2\Vflux^2 + \Div_3\Vflux^3,
+  \label{eq:volume-divergence} \\
+  \Dmass
+  &\equiv \Div_i \Uflux^i
+   = \Div_1\Uflux^1 + \Div_2\Uflux^2 + \Div_3\Uflux^3.
+  \label{eq:mass-divergence}
+\end{align}
+Horizontal divergences are denoted
+\begin{align}
+  \Dhvol &= \Div_1\Vflux^1 + \Div_2\Vflux^2, \\
+  \Dhmass &= \Div_1\Uflux^1 + \Div_2\Uflux^2.
+\end{align}
+This notation deliberately avoids a bare symbol like \(C\).  The relevant divergence is always either a volume-transport divergence \(\Dvol\) or a mass-transport divergence \(\Dmass\), and the horizontal split is \(\Dhvol\) or \(\Dhmass\).
+
+
+
+\section{Staggered metric placement, Hodge maps, and empirical verification}
+\label{sec:staggered-hodge}
+
+The most delicate part of the non-orthogonal C-grid implementation is not the continuous identity
+\begin{equation}
+  u^i = g^{ij}u_j.
+\end{equation}
+The delicate part is the staggered discrete Hodge map that converts component-staggered covariant velocity fields into transport velocities and transports at the correct Oceananigans locations.  This map must be treated as a primary numerical operator.  We should not decide between candidate stencils by taste.
+
+The robust design principle is
+\begin{center}
+\fbox{\parbox{0.92\linewidth}{Define a discrete Hodge map, then verify it by consistency, adjointness, positivity, and free-stream tests.}}
+\end{center}
+
+\subsection{Oceananigans C-grid locations}
+\label{subsec:cgrid-locations}
+
+We use Oceananigans-style location superscripts.  A superscript such as \(\loc{fcc}\) means face in the first coordinate, center in the second, and center in the third.  Thus
+\begin{equation}
+  u_1\loc{fcc}, \qquad u_2\loc{cfc}, \qquad u_3\loc{ccf}
+\end{equation}
+are the staggered covariant velocity components.  The transport components should live at the same face locations:
+\begin{equation}
+  \Vflux^{1,\mathrm{fcc}},\qquad
+  \Vflux^{2,\mathrm{cfc}},\qquad
+  \Vflux^{3,\mathrm{ccf}}.
+\end{equation}
+The vorticity two-forms live at edge locations:
+\begin{equation}
+  \zeta_{12}\loc{ffc}, \qquad
+  \zeta_{13}\loc{fcf}, \qquad
+  \zeta_{23}\loc{cff}.
+\end{equation}
+The same locations are used for the planetary vorticity two-forms \(f_{ij}\) and absolute-vorticity/PV-numerator two-forms
+\begin{equation}
+  Z_{ij} = \zeta_{ij} + f_{ij}.
+\end{equation}
+
+For a horizontally non-orthogonal but vertically orthogonal thin shell, the minimal metric layout is
+\begin{center}
+\begin{tabular}{lll}
+\toprule
+Location & Metric/geometry fields & Main use \\
+\midrule
+\(\loc{ccc}\) & \(J, g_{ij}, g^{ij}, \Delta V\) & scalar volumes, kinetic energy, diagnostics \\
+\(\loc{fcc}\) & \(J, A_1, G^{11},G^{12},G^{13}\) & \(\Vflux^1,\Uflux^1,u^1,u_\perp^1\) \\
+\(\loc{cfc}\) & \(J, A_2, G^{21},G^{22},G^{23}\) & \(\Vflux^2,\Uflux^2,u^2,u_\perp^2\) \\
+\(\loc{ccf}\) & \(J, A_3, G^{31},G^{32},G^{33}\) & \(\Vflux^3,\Uflux^3,u^3,u_\perp^3\) \\
+\(\loc{ffc}\) & coordinate spacings, \(f_{12}\) & \(\zeta_{12},Z_{12}\) \\
+\(\loc{fcf}\) & coordinate spacings, \(f_{13}\) & \(\zeta_{13},Z_{13}\) \\
+\(\loc{cff}\) & coordinate spacings, \(f_{23}\) & \(\zeta_{23},Z_{23}\) \\
+\bottomrule
+\end{tabular}
+\end{center}
+Here
+\begin{equation}
+  G^{ij} \equiv J g^{ij}
+\end{equation}
+is the contravariant metric density.  It is often the more natural coefficient for volume transport because
+\begin{equation}
+  \Vflux^i = J u^i = Jg^{ij}u_j = G^{ij}u_j.
+\end{equation}
+For the first thin-shell target, \(G^{13}=G^{23}=0\) and \(G^{33}\) is purely vertical.  The table is written in full three-dimensional form so that the notation remains valid if deep-atmosphere or terrain-following effects are added later.
+
+\subsection{The Hodge map, not a pointwise interpolation convention}
+\label{subsec:hodge-as-map}
+
+The discrete metric conversion should be written as a Hodge map:
+\begin{equation}
+  \begin{pmatrix}
+  \Vflux^1 \\
+  \Vflux^2 \\
+  \Vflux^3
+  \end{pmatrix}
+  =
+  \Hodge
+  \begin{pmatrix}
+  u_1 \\
+  u_2 \\
+  u_3
+  \end{pmatrix}.
+  \label{eq:transport-hodge-map}
+\end{equation}
+In block form,
+\begin{equation}
+  \Vflux^{i,\ell_i}
+  =
+  \sum_{j=1}^3 \Hodge^{ij}_{\ell_i\leftarrow\ell_j} u_j^{\ell_j},
+  \qquad
+  \ell_1=\mathrm{fcc},\quad
+  \ell_2=\mathrm{cfc},\quad
+  \ell_3=\mathrm{ccf}.
+  \label{eq:block-hodge}
+\end{equation}
+The diagonal blocks are local metric-density multiplications to leading order.  The off-diagonal blocks contain both metric information and staggered interpolation.  For example, \(\Hodge^{12}_{\mathrm{fcc}\leftarrow\mathrm{cfc}}\) maps \(u_2\loc{cfc}\) into the first-direction volume transport \(\Vflux^{1,\mathrm{fcc}}\).
+
+There are at least three plausible ways to build this block.  The first is a target-metric form:
+\begin{equation}
+  \left(\Hodge^{12}_{\rm target} u_2\right)\loc{fcc}
+  =
+  G^{12,\mathrm{fcc}}\,
+  \Interp_{\mathrm{cfc}\to\mathrm{fcc}} u_2 .
+  \label{eq:target-metric-hodge}
+\end{equation}
+The second is a product-interpolated form:
+\begin{equation}
+  \left(\Hodge^{12}_{\rm product} u_2\right)\loc{fcc}
+  =
+  \Interp_{\mathrm{cfc}\to\mathrm{fcc}}
+  \left(G^{12,\mathrm{cfc}}u_2\loc{cfc}\right).
+  \label{eq:product-interpolated-hodge}
+\end{equation}
+The third is an energy-symmetric Hodge map, constructed from a discrete kinetic-energy quadrature rather than chosen as a pointwise formula.  Choose quadrature points \(q\), positive weights \(w_q\), metric-density components \(G^{ij}_q\), and interpolation operators \(\Interp_i^q\) from each velocity component location to the quadrature point.  Define
+\begin{equation}
+  E_h(\bvec{u})
+  =
+  \frac12
+  \sum_q w_q
+  G^{ij}_q
+  \left(\Interp_i^q u_i\right)
+  \left(\Interp_j^q u_j\right).
+  \label{eq:energy-quadrature-hodge}
+\end{equation}
+Then define the Hodge map by differentiating this energy with respect to the staggered unknowns:
+\begin{equation}
+  W_i\Vflux^i = \frac{\partial E_h}{\partial u_i},
+  \label{eq:hodge-from-energy}
+\end{equation}
+where \(W_i\) is the inner-product weight associated with the \(u_i\) location.  This construction makes the off-diagonal blocks weighted adjoints by design.
+
+The continuous identity \(\Vflux^1=G^{11}u_1+G^{12}u_2+G^{13}u_3\) does not decide between \eqref{eq:target-metric-hodge} and \eqref{eq:product-interpolated-hodge}.  Both are consistent for smooth fields, but they differ by terms involving metric gradients and velocity gradients.  The accepted implementation should be the simplest Hodge map that passes the empirical tests in section~\ref{subsec:hodge-test-campaign}.
+
+\subsection{Metric placement: target-location metrics are a candidate, not a theorem}
+\label{subsec:metric-placement-caveat}
+
+A useful first candidate is to evaluate metric densities at the target transport location.  Thus \(G^{12,\mathrm{fcc}}\) is used in \eqref{eq:target-metric-hodge}.  This is attractive because the resulting transport \(\Vflux^{1,\mathrm{fcc}}\) is a face-located object, so all coefficients in that transport live at the same face location.  ClimaCore's spectral-element construction follows a related principle: local geometry, Jacobians, weighted Jacobians, and surface geometry are evaluated at the quadrature or surface locations where they are needed \citep{ClimaCoreSpectralElement}.
+
+However, target-location metric multiplication is not automatically superior.  Product interpolation \eqref{eq:product-interpolated-hodge} can be attractive for free-stream preservation, because the metric factor is attached to the source component before interpolation.  The correct design question is not
+\begin{quote}
+Should we multiply first or interpolate first?
+\end{quote}
+The correct design question is
+\begin{quote}
+Which discrete Hodge map preserves the metric identities, energy inner product, and divergence compatibility required by the dynamics?
+\end{quote}
+
+This should be made explicit in code by providing candidate Hodge types:
+\begin{lstlisting}
+abstract type AbstractSphericalShellHodgeMap end
+
+struct TargetMetricHodge <: AbstractSphericalShellHodgeMap end
+struct ProductInterpolatedHodge <: AbstractSphericalShellHodgeMap end
+struct EnergySymmetricHodge <: AbstractSphericalShellHodgeMap end
+\end{lstlisting}
+The implementation should select a default only after the test campaign has ruled out dangerous candidates.
+
+\subsection{What TRiSK teaches about staggered metric maps}
+\label{subsec:trisk-lessons}
+
+TRiSK does not answer the multiply-versus-interpolate question by a local pointwise convention.  It turns the problem into a constrained operator-design problem.  In the shallow-water C-grid setting, mass or layer thickness is stored in primal cells, normal velocity is stored on primal edges, and vorticity/PV is stored on dual cells.  The vector-invariant/PV flux term needs a flux component perpendicular to the prognostic normal flux.  TRiSK therefore constructs a map from the primal normal edge flux \(F_e\) to a perpendicular or dual flux \(F_e^\perp\):
+\begin{equation}
+  F_e^\perp
+  =
+  \frac{1}{d_e}
+  \sum_{e'\in ECP(e)} w_{e,e'}\,l_{e'}F_{e'}.
+  \label{eq:trisk-perp-flux}
+\end{equation}
+Here \(l_{e'}\) and \(d_e\) are metric lengths and \(w_{e,e'}\) are geometric weights \citep{Ringler2010}.  This is best understood as a Hodge/rotation map between staggered flux spaces, not as a casual interpolation of a pointwise velocity.
+
+The key TRiSK compatibility property is that the dual divergence of the mapped perpendicular flux is an interpolation of the primal divergence of the original flux:
+\begin{equation}
+  D_{\rm dual} M(F)
+  =
+  I\left(D_{\rm primal}F\right).
+  \label{eq:trisk-commuting-diagram}
+\end{equation}
+This commuting property is what allows a compatible auxiliary thickness equation on the dual mesh, and therefore a PV variable collocated with vorticity.  It is also a direct anti-noise property: a divergence-free flux remains divergence-free after the staggered rotation/interpolation, up to the chosen interpolation.
+
+TRiSK also imposes energy neutrality of the nonlinear Coriolis/PV flux.  Pairwise antisymmetric edge weights and symmetric PV averages make the vorticity/PV flux do no net work in the centered nondissipative case \citep{Ringler2010}.  In our notation, the corresponding target is a skew-adjoint vorticity operator in the kinetic-energy inner product:
+\begin{equation}
+  \langle u,\msf{C}_Z u\rangle_h = 0.
+  \label{eq:energy-neutral-coriolis}
+\end{equation}
+
+There is an important difference.  Classical TRiSK assumes a locally orthogonal primal-dual geometry, whereas our equiangular gnomonic \code{SphericalShellGrid} is a logically rectangular non-orthogonal tensor grid.  In our case, the transport Hodge map contains true off-diagonal tensor-metric terms such as \(G^{12}u_2\).  So we should not copy the TRiSK perpendicular-flux formula directly.  The lesson is structural:
+\begin{center}
+\fbox{\parbox{0.92\linewidth}{Construct the staggered Hodge/rotation map so that divergence, PV, and energy identities commute discretely.}}
+\end{center}
+
+For the structured C-grid, this suggests the following analogues:
+\begin{align}
+  \Vflux^i &= \Hodge^i{}_j u_j, &&\hbox{covariant velocity to volume transport}, \\
+  \Vflux^\perp &= \msf{R}\Vflux, &&\hbox{transport rotation or dual transport for vorticity fluxes}, \\
+  D_{\rm dual}\msf{R}\Vflux &= I(D_{\rm primal}\Vflux), &&\hbox{commuting divergence target}, \\
+  \langle u,\msf{C}_Z u\rangle_h &= 0, &&\hbox{energy-neutral centered vorticity flux target}.
+\end{align}
+
+\subsection{Mimetic requirements for the SphericalShellGrid Hodge map}
+\label{subsec:mimetic-requirements}
+
+The Hodge-map candidates should be judged against four structural requirements.
+First, the Hodge map should be consistent with analytic metric tensors:
+\begin{equation}
+  \Hodge u_\flat \approx \Vflux_{\rm exact}
+\end{equation}
+for smooth analytic vector fields.  Second, it should preserve constant physical flows.  If \(\bvec{u}_0\) is a constant Cartesian velocity and \(u_i=\bvec{u}_0\cdot\bvec{a}_i\), then
+\begin{equation}
+  \Div_i \left(\Hodge^i{}_j u_j\right) \approx 0.
+  \label{eq:freestream-hodge-test}
+\end{equation}
+Third, the Hodge map should define a positive kinetic-energy quadratic form:
+\begin{equation}
+  E_h = \frac12 u^T W\Hodge u >0
+  \quad \hbox{for nonzero velocity.}
+  \label{eq:hodge-positive-energy}
+\end{equation}
+Fourth, the off-diagonal blocks should be weighted adjoints:
+\begin{equation}
+  W_1\Hodge^{12}
+  \approx
+  (W_2\Hodge^{21})^T.
+  \label{eq:offdiag-adjointness}
+\end{equation}
+This condition is the finite-volume C-grid analogue of an assembled symmetric mass matrix in mimetic finite elements.  It is the strongest reason not to accept either \eqref{eq:target-metric-hodge} or \eqref{eq:product-interpolated-hodge} solely because it looks more natural.
+
+The relative vorticity two-forms should remain topological exterior derivatives of covariant velocity:
+\begin{align}
+  \zeta_{12}\loc{ffc} &= D_1 u_2 - D_2 u_1, \\
+  \zeta_{13}\loc{fcf} &= D_1 u_3 - D_3 u_1, \\
+  \zeta_{23}\loc{cff} &= D_2 u_3 - D_3 u_2.
+\end{align}
+The metric does not appear in these formulas because covariant velocity is a one-form.  Metric dependence should enter through Hodge maps, inner products, face areas, pressure/force projections, and transport diagnostics.  This mirrors TRiSK and FEEC practice: incidence operators encode topology, while Hodge stars encode geometry \citep{Ringler2010,ThuburnCotter2012,ThuburnCotter2014,McRaeCotter2013}.
+
+\subsection{Numerical test campaign for staggered Hodge maps}
+\label{subsec:hodge-test-campaign}
+
+The Hodge map should be selected empirically through a staged test campaign.  This is not a substitute for theory; it is the way to ensure that the selected theory survives the actual Oceananigans staggered locations, halo fills, metric storage, and finite-volume operators.
+
+\paragraph{Candidate scorecard.}
+Each candidate Hodge map should be evaluated against the same scorecard:
+\begin{center}
+\begin{tabular}{lccc}
+\toprule
+Test & Target metric & Product interpolated & Energy symmetric \\
+\midrule
+Hodge convergence & & & \\
+Weighted adjointness & & & \\
+Positive kinetic energy & & & \\
+Free-stream preservation & & & \\
+Orthogonal limit & & & \\
+Linear-mode stability & & & \\
+Centered energy conservation & & & \\
+Tracer conservation & & & \\
+WENO vorticity behavior & & & \\
+Cost and memory & & & \\
+\bottomrule
+\end{tabular}
+\end{center}
+The default should be the simplest Hodge map that passes free-stream preservation, positivity, adjointness, and orthogonal-limit tests.  If neither simple candidate passes, use the energy-symmetric Hodge.  If the energy-symmetric Hodge is too expensive, derive and test a mass-lumped approximation.
+
+\paragraph{Metric and local consistency tests.}
+For the equiangular gnomonic panel, test the analytic metric relations at every required location:
+\begin{equation}
+  g_{ij}g^{jk}\approx\delta_i^k,
+  \qquad
+  g_{11}g_{22}-g_{12}^2>0,
+  \qquad
+  \sum_{\rm cells} A_{\rm cell}\approx \frac{4\pi R^2}{6}.
+\end{equation}
+Then choose analytic physical vector fields, compute covariant components exactly, apply each Hodge map, and compare the resulting \(\Vflux^i\), \(u^i\), and \(u_\perp^i\) with exact values at \(\loc{fcc}\), \(\loc{cfc}\), and \(\loc{ccf}\).  Test constant Cartesian flow, solid-body rotation, and a smooth manufactured vector field.
+
+\paragraph{Weighted adjointness.}
+For each off-diagonal pair, compute
+\begin{equation}
+  \epsilon_{\rm adj}
+  =
+  \frac{
+  \left\|W_1\Hodge^{12}-(W_2\Hodge^{21})^T\right\|
+  }{
+  \left\|W_1\Hodge^{12}\right\|+
+  \left\|(W_2\Hodge^{21})^T\right\|
+  }.
+  \label{eq:adjointness-defect}
+\end{equation}
+For a deliberately energy-symmetric Hodge, this should be near roundoff in Float64.  For a mass-lumped Hodge, the defect should be small and should converge under refinement.  If it does not, the Hodge has no clean kinetic-energy inner product.
+
+\paragraph{Positive energy and null-space tests.}
+Assemble the symmetric part of the kinetic-energy matrix:
+\begin{equation}
+  \msf{E}
+  =
+  \frac12\left(W\Hodge+\Hodge^T W\right).
+\end{equation}
+The minimum eigenvalue should be positive on non-degenerate grids.  Negative eigenvalues or grid-scale near-null modes indicate a likely computational-mode pathway.
+
+\paragraph{Free-stream preservation.}
+Choose a constant Cartesian velocity \(\bvec{u}_0\), compute \(u_i=\bvec{u}_0\cdot\bvec{a}_i\), form \(\Vflux^i=\Hodge^i{}_j u_j\), and evaluate
+\begin{equation}
+  \Div_i\Vflux^i.
+\end{equation}
+This should vanish to roundoff on affine skew grids and converge rapidly on curved panels.  Repeat with a constant scalar and verify
+\begin{equation}
+  \Div_i(\Vflux^i c_0)\approx0.
+\end{equation}
+This is a red-line test: if a constant physical flow creates divergence, scalar advection will generate noise before nonlinear dynamics even starts.
+
+\paragraph{Orthogonal limit.}
+Construct a family of grids with \(g^{12}=O(\eps)\).  As \(\eps\to0\), the non-orthogonal Hodge map must reduce to the existing orthogonal formula:
+\begin{align}
+  \Vflux^{1,\mathrm{fcc}} &\to G^{11,\mathrm{fcc}}u_1\loc{fcc}, \\
+  \Vflux^{2,\mathrm{cfc}} &\to G^{22,\mathrm{cfc}}u_2\loc{cfc}.
+\end{align}
+At \(\eps=0\), the new centered tendency should agree with the existing orthogonal Oceananigans operator to roundoff, modulo intentionally changed code paths.
+
+\paragraph{Linear mode analysis.}
+On a periodic affine skew grid, assemble the linearized shallow-water, acoustic, or incompressible projection operator and inspect eigenvalues and eigenvectors.  With centered nondissipative operators, eigenvalues should be purely imaginary up to time-discretization effects, and there should be no growing checkerboard branches.  Repeat on a smoothly varying skew grid to expose metric-placement errors.  If a Hodge map passes affine tests but fails variable-metric tests, the issue is metric staggering rather than C-grid topology.
+
+\paragraph{Centered conservation tests.}
+Before WENO is enabled, test the centered non-orthogonal vector-invariant operator.  With periodic boundaries and no forcing, the following should be conserved or have a controlled time-discretization residual:
+\begin{align}
+  &\hbox{global tracer mass}, \\
+  &\hbox{tracer variance for divergence-free transport, when using centered scalar advection}, \\
+  &\hbox{kinetic energy } E_h=\half u^T W\Hodge u \hbox{ for inviscid incompressible centered momentum}, \\
+  &\hbox{potential-enstrophy analogues for shallow-water reductions, when the required PV mass measure is available.}
+\end{align}
+Failures here should be attributed to metric/Hodge pairing before WENO is considered.
+
+\paragraph{WENO-specific tests.}
+Only after the centered operator passes the previous tests should WENO be activated.  The WENO reconstruction should act on relative vorticity:
+\begin{equation}
+  \widehat Z_{ij}
+  =
+  \Recon_{\rm WENO}[\zeta_{ij}]
+  +
+  \Recon_{\rm smooth}[f_{ij}],
+  \label{eq:weno-relative-vorticity-reconstruction}
+\end{equation}
+not directly on \(Z_{ij}=\zeta_{ij}+f_{ij}\).  In small-Rossby-number flows, the smooth planetary vorticity can dominate the smoothness indicators if WENO sees \(Z\) directly.  Reconstructing \(\zeta\) ensures that nonlinear dissipation acts on the dynamically relevant relative-vorticity variance.
+
+\paragraph{Hydrostatic split identity.}
+For horizontal momentum, verify discretely that the hydrostatic WENO-style split is algebraically consistent with the full compressible transport identity:
+\begin{equation}
+  D_3(\Uflux^3u_i)+u_i\Dhmass
+  =
+  \Uflux^3D_3u_i+u_i\Dmass.
+  \label{eq:hydrostatic-split-verification}
+\end{equation}
+This prevents double-counting divergence terms when comparing the full 3D vector-invariant form with the hydrostatic vertical-flux plus horizontal-divergence-flux form.
+
+\paragraph{Suggested test files.}
+A practical Oceananigans/Breeze test layout is
+\begin{lstlisting}
+test/Grids/test_spherical_shell_grid_metrics.jl
+test/Grids/test_equiangular_gnomonic_panel.jl
+
+test/Operators/test_hodge_consistency.jl
+test/Operators/test_hodge_adjointness.jl
+test/Operators/test_hodge_positivity.jl
+test/Operators/test_free_stream_preservation.jl
+test/Operators/test_orthogonal_limit.jl
+test/Operators/test_metric_identity.jl
+
+test/Advection/test_nonorthogonal_scalar_transport.jl
+test/Advection/test_nonorthogonal_vector_invariant_centered.jl
+test/Advection/test_nonorthogonal_weno_vorticity_reconstruction.jl
+test/Advection/test_hydrostatic_split_identity.jl
+
+test/Models/test_breeze_nonorthogonal_compressible.jl
+test/Models/test_hfsm_nonorthogonal_rigid_lid.jl
+\end{lstlisting}
+Model tests should not be used to choose the Hodge map until the operator tests are passing.
+
+\subsection{Decision tree for the Hodge stencil}
+\label{subsec:hodge-decision-tree}
+
+The Hodge implementation should evolve by decision gates rather than by committing prematurely to a single interpolation stencil:
+\begin{description}[leftmargin=2.7em]
+\item[If analytic Hodge consistency fails:] check metric placement, analytic mapping derivatives, and staggered indexing before tuning interpolation.
+\item[If consistency passes but free-stream preservation fails:] test conservative metric identities and face-area closure.  Product-interpolated or energy-symmetric Hodge maps may be preferable to target-metric multiplication.
+\item[If free-stream preservation passes but positivity fails:] replace the pointwise Hodge with an energy-symmetric local mass-matrix Hodge, or symmetrize the off-diagonal blocks by weighted transpose.
+\item[If positivity passes but linear modes show checkerboards:] inspect pressure-gradient/divergence adjointness and scalar-cell to face interpolation.  The issue is likely an operator null space rather than WENO.
+\item[If centered conservation passes but WENO is noisy:] keep the Hodge map fixed and change only reconstruction targets or smoothness indicators.  In particular, reconstruct \(\zeta\), not \(Z=\zeta+f\).
+\item[If single-panel tests pass but panel-boundary tests fail:] treat panel connectivity as a vector/two-form remapping problem.  Rotate or transform covariant components, transports, and vorticity forms consistently across halos; do not patch with scalar halo fills.
+\end{description}
+
+\subsection{Code notation for this machinery}
+\label{subsec:code-notation-hodge}
+
+Struct names and persistent field names should be verbose.  Mathematical notation should be reserved for local pointwise operator functions and derivation-facing helpers.  For example, a materialized \code{NonOrthogonalVectorInvariant} should use fields such as
+\begin{lstlisting}
+covariant_velocities
+contravariant_velocities
+transport_velocities
+volume_transport
+mass_transport
+mass_transport_divergence
+kinetic_energy
+relative_vorticity
+planetary_vorticity
+absolute_vorticity
+\end{lstlisting}
+rather than persistent fields named \code{u_cov}, \code{U}, \code{C}, or \code{Z}.  Internal formula functions may still use compact names such as \(\zeta_{12}\loc{ffc}\), \(Z_{12}\loc{ffc}\), or \((\Div_i\Uflux^i)\loc{ccc}\), because such names make the pointwise kernels read like the derivation.
+
+\section{Scalar, tracer, and mass transport}
+\label{sec:scalar-transport}
+
+The scalar equation should be written in flux form:
+\begin{equation}
+  \pd_t(J\rho\chi) + \Div_i(\Uflux^i \chi_i^\uparrow) = J S_\chi.
+  \label{eq:scalar-transport}
+\end{equation}
+The velocity tuple passed to scalar advection should therefore be \code{transport_velocities(model)}, not necessarily \code{model.velocities}.  This is already how HFSM is organized \citep{OceananigansHFSMTendencies}.  Breeze should use the same concept, either by adding a field \code{model.transport_velocities} or by formalizing the existing functional hook
+\begin{lstlisting}
+transport_velocities(model) = model.velocities
+\end{lstlisting}
+with non-orthogonal and terrain-following specializations.
+
+Two implementation paths are possible.
+\begin{description}[leftmargin=2.5em]
+\item[Velocity-based path.] Diagnose \(u_\perp^i\) and pass it as \code{transport_velocities}.  Existing scalar kernels that multiply velocity by face area can be reused.
+\item[Flux-based path.] Diagnose \(\Uflux^i\) or \(\Vflux^i\) and introduce scalar kernels that use transports directly.  This is mathematically cleaner and avoids ambiguity about whether the transported object is raw contravariant velocity, area-normal velocity, volume transport, or mass transport.
+\end{description}
+The initial integration may use the velocity-based path in HFSM for minimal churn, while the long-term target should be a flux-based scalar advection API.
+
+\section{Three-dimensional vector-invariant momentum equation}
+\label{sec:vi-equation}
+
+The covariant momentum equation can be written in a compressible conservative vector-invariant form.  Define the kinetic energy
+\begin{equation}
+  K = \half u_i u^i.
+\end{equation}
+Define the relative vorticity two-form and the absolute-vorticity two-form
+\begin{align}
+  \zeta_{ij} &= \pd_i u_j - \pd_j u_i,
+  \qquad \zeta_{ij}=-\zeta_{ji}, \\
+  Z_{ij} &= \zeta_{ij} + f_{ij},
+  \qquad Z_{ij}=-Z_{ji}.
+  \label{eq:vorticity-two-form}
+\end{align}
+Here \(f_{ij}\) is the planetary-vorticity two-form.  The vector-invariant momentum equation uses the absolute-vorticity factor \(Z_{ij}\).  WENO reconstruction, however, should act on the relative vorticity \(\zeta_{ij}\), with \(f_{ij}\) added by a centered or otherwise smooth reconstruction.  This prevents a smooth, large planetary-vorticity contribution from hiding dynamically important roughness in the relative vorticity at small Rossby number.
+
+Using the identity
+\begin{equation}
+  J\nabla_j(\rho u^j u_i)
+  = J\rho\,\pd_i K - \Uflux^j Z_{ij} + u_i\pd_j \Uflux^j,
+  \label{eq:compressible-vi-identity}
+\end{equation}
+we obtain the advective tendency
+\begin{equation}
+  \pd_t(J\rho u_i)
+  = \sum_{j\ne i} \Uflux^j Z_{ij}
+  - J\rho\,\pd_i K
+  - u_i \Dmass
+  + \hbox{pressure, buoyancy, diffusion, forcing}.
+  \label{eq:vi-tendency}
+\end{equation}
+The full three-dimensional divergence \(\Dmass=\pd_j\Uflux^j\) must include vertical flux divergence.  This is the key difference from quasi-two-dimensional primitive-equation vector-invariant forms.
+
+\paragraph{Compressible versus hydrostatic-incompressible regimes.}
+In the fully compressible formulation, the conservative transport is the mass transport
+\begin{equation}
+  \Uflux^i = J\rho u^i,
+\end{equation}
+and continuity is
+\begin{equation}
+  \pd_t(J\rho) + \Dmass = 0,
+  \qquad
+  \Dmass = -\pd_t(J\rho).
+\end{equation}
+Thus \(\Dmass\) is generally nonzero.  This is the fully compressible case targeted by Breeze.
+
+For a hydrostatic-incompressible or Boussinesq implementation, the primary conservative transport is instead the compatible volume transport
+\begin{equation}
+  \Vflux^i = J u^i,
+\end{equation}
+and the fixed-coordinate incompressibility constraint is
+\begin{equation}
+  \Dvol = \pd_i \Vflux^i = 0.
+  \label{eq:incompressible-volume-divergence}
+\end{equation}
+If density is a constant \(\rho_0\), then \(\Uflux^i=\rho_0\Vflux^i\) and \(\Dmass=\rho_0\Dvol=0\).  But the primitive object in HFSM-style incompressible dynamics is \(\Vflux^i\), not \(\Uflux^i\).
+
+For moving coordinates such as a free-surface or z-star grid, the compatible statement is instead
+\begin{equation}
+  \pd_t J + \pd_i \Vflux^i = 0,
+\end{equation}
+so a divergence-like correction may still appear in transformed coordinates even though the physical velocity field is incompressible.  This is why the implementation should carry an explicit \code{transport_fluxes} object rather than relying on the name \code{velocities}.
+
+\paragraph{Why the existing WENO vector-invariant vertical split is not an extra compressible divergence term.}
+The current Oceananigans \code{WENOVectorInvariant} does not use the fully three-dimensional form \eqref{eq:vi-tendency} for hydrostatic horizontal momentum.  Instead, for horizontal components \(i=1,2\), it rewrites the vertical vorticity and vertical kinetic-energy-gradient contribution as a vertical momentum-flux divergence plus a horizontal divergence flux.  This identity is exact for the conservative advective operator.
+
+Let \(h\in\{1,2\}\), define
+\begin{equation}
+  K_h = \half u_h u^h,
+  \qquad
+  \Dhmass = \pd_1 \Uflux^1 + \pd_2 \Uflux^2,
+\end{equation}
+and write the positive conservative advective operator as
+\begin{equation}
+  \mathcal A_i = J\nabla_j(\rho u^j u_i)
+  = J\rho\,\pd_i K - \Uflux^j Z_{ij} + u_i \Dmass.
+\end{equation}
+For a vertically orthogonal thin shell, the vertical part of this identity satisfies
+\begin{align}
+  J\rho\,\pd_i K_3 - \Uflux^3 Z_{i3} + u_i \Dmass
+  &= \Uflux^3 \pd_3 u_i + u_i \Dmass \\
+  &= \pd_3(\Uflux^3 u_i) + u_i \Dhmass,
+  \label{eq:vertical-flux-horizontal-divergence-split}
+\end{align}
+where \(K_3=\half u_3u^3\).  The equivalent compact identity is
+\begin{equation}
+  \pd_3(\Uflux^3u_i) + u_i\Dhmass
+  = \Uflux^3\pd_3u_i + u_i\Dmass.
+  \label{eq:compact-vertical-split}
+\end{equation}
+This is the key cancellation: the \(\Uflux^3\pd_i u_3\) part of the vertical vorticity flux cancels the horizontal gradient of vertical kinetic energy, while the remaining total mass divergence combines with vertical advection into a vertical momentum-flux divergence plus horizontal mass-divergence flux.
+
+Therefore, for horizontal momentum,
+\begin{equation}
+  \mathcal A_i
+  = J\rho\,\pd_i K_h
+    - \sum_{h=1}^2 \Uflux^h Z_{ih}
+    + \pd_3(\Uflux^3 u_i)
+    + u_i \Dhmass,
+  \qquad i=1,2.
+  \label{eq:hydrostatic-horizontal-split}
+\end{equation}
+Equation \eqref{eq:hydrostatic-horizontal-split} is the algebraic structure used by the existing WENO vector-invariant hydrostatic scheme: the vertical term is represented as a vertical momentum-flux divergence, while the horizontal divergence flux \(u_i\Dhmass\) is reconstructed or upwinded separately.  In the incompressible limit, replace \(\Uflux^i\) by \(\Vflux^i\) and use \(\Dvol=0\).  Then \(\Dhvol=-\pd_3\Vflux^3\), and
+\begin{equation}
+  \pd_3(\Vflux^3u_i)+u_i\Dhvol = \Vflux^3\pd_3u_i,
+\end{equation}
+the ordinary vertical advection of horizontal momentum.
+
+For compressible dynamics, \(\Dmass\ne0\), but \eqref{eq:hydrostatic-horizontal-split} remains an exact conservative split if \(\Uflux^i=J\rho u^i\).  The important rule is not to add both formulations.  One must choose either the full three-dimensional form \eqref{eq:vi-tendency}, which contains \(-u_i\Dmass\) in the tendency, or the hydrostatic horizontal split \eqref{eq:hydrostatic-horizontal-split}, which contains \(-\pd_3(\Uflux^3u_i)-u_i\Dhmass\) in the tendency.  Adding a separate full \(-u_i\Dmass\) term on top of the vertical-flux/horizontal-divergence split would double count part of the conservative product rule.
+
+The three-dimensional two-form set is
+\begin{equation}
+  Z_{12},\qquad Z_{13},\qquad Z_{23}.
+\end{equation}
+Thus vertical momentum advection is not a separate flux-form special case in the full three-dimensional form.  It enters through \(Z_{13}\), \(Z_{23}\), and the transports \(\Uflux^1,\Uflux^2,\Uflux^3\).  For example, the first covariant momentum tendency includes
+\begin{equation}
+  \Uflux^2 Z_{12} + \Uflux^3 Z_{13},
+\end{equation}
+and the third covariant momentum tendency includes
+\begin{equation}
+  \Uflux^1 Z_{31} + \Uflux^2 Z_{32}.
+\end{equation}
+
+\section{Zuasi-two-dimensional and hydrostatic reductions}
+\label{sec:quasi-2d}
+
+A quasi-two-dimensional or hydrostatic form should be a reduction of the three-dimensional formula, not a separate derivation.  If the model prognoses only horizontal momentum, then \(i=1,2\).  There are two algebraically equivalent ways to write the horizontal advective tendency.
+
+The first is the direct full-vector-invariant reduction:
+\begin{align}
+  \pd_t(J\rho u_1)
+  &= \Uflux^2 Z_{12} + \Uflux^3 Z_{13}
+     - J\rho\,\pd_1 K - u_1 \Dmass + \cdots, \\
+  \pd_t(J\rho u_2)
+  &= \Uflux^1 Z_{21} + \Uflux^3 Z_{23}
+     - J\rho\,\pd_2 K - u_2 \Dmass + \cdots.
+  \label{eq:horizontal-full-vi}
+\end{align}
+This form is natural for a fully compressible three-dimensional vector-invariant implementation, especially when vertical momentum is also prognosed and \(K_3\), \(Z_{13}\), and \(Z_{23}\) are available as explicit fields.
+
+The second is the hydrostatic horizontal split obtained from \eqref{eq:hydrostatic-horizontal-split}:
+\begin{align}
+  \pd_t(J\rho u_i)
+  = \sum_{h=1}^2 \Uflux^h Z_{ih}
+    - J\rho\,\pd_i K_h
+    - \pd_3(\Uflux^3u_i)
+    - u_i\Dhmass
+    + \cdots,
+  \qquad i=1,2.
+  \label{eq:horizontal-hydrostatic-split}
+\end{align}
+This form is closer to the current Oceananigans \code{WENOVectorInvariant}: the vertical transport of horizontal momentum is treated as a vertical momentum-flux divergence, while the horizontal divergence flux is reconstructed and upwinded.  For fixed-coordinate hydrostatic-incompressible flow, use volume transports \(\Vflux^i\).  The total volume-transport divergence \(\Dvol\) vanishes, but the horizontal divergence \(\Dhvol\) is not zero in general; it is the negative vertical volume-flux divergence.  Therefore the horizontal divergence flux in \eqref{eq:horizontal-hydrostatic-split} is still needed even in an incompressible model.
+
+For HFSM, the immediate target should be \eqref{eq:horizontal-hydrostatic-split} with volume transports \(\Vflux^i\), tracer advection through \code{model.transport_velocities}, and no separate full-divergence correction because \(\Dvol=0\) in the fixed-coordinate physical incompressible constraint.  For compressible Breeze dynamics, either \eqref{eq:horizontal-full-vi} or \eqref{eq:horizontal-hydrostatic-split} can be used, but they must not be mixed.  A fully three-dimensional compressible momentum system should prefer \eqref{eq:horizontal-full-vi}; a hydrostatic compressible horizontal-momentum system can use \eqref{eq:horizontal-hydrostatic-split} with mass transports \(\Uflux^i\).
+
+\section{Algorithmic abstraction}
+\label{sec:algorithmic-abstraction}
+
+The existing Oceananigans pattern is
+\begin{lstlisting}
+VectorInvariant(...)
+WENOVectorInvariant(...)
+\end{lstlisting}
+where \code{WENOVectorInvariant} is a convenience constructor that fills the generic vector-invariant object with WENO sub-schemes.  The current object stores reconstruction configuration, not runtime diagnostic fields \citep{OceananigansVectorInvariant,OceananigansWENO,OceananigansMaterializeAdvection}.
+
+The non-orthogonal extension should follow the same naming pattern:
+\begin{lstlisting}
+NonOrthogonalVectorInvariant(...)
+NonOrthogonalWENOVectorInvariant(...)
+\end{lstlisting}
+The first is the reconstruction-agnostic geometric operator; the second constructs the first with WENO reconstruction schemes.  A centered, energy-conserving, or lower-order scheme can then be tested with the same geometric operator:
+\begin{lstlisting}
+NonOrthogonalVectorInvariant(
+    vorticity_scheme = Centered(order=2),
+    shear_vorticity_scheme = Centered(order=2),
+    divergence_scheme = Centered(order=2),
+    kinetic_energy_gradient_scheme = Centered(order=2),
+)
+
+NonOrthogonalWENOVectorInvariant(
+    vorticity_order = 9,
+    shear_vorticity_order = 5,
+    divergence_order = 5,
+    kinetic_energy_gradient_order = 5,
+)
+\end{lstlisting}
+
+Unlike the existing \code{WENOVectorInvariant}, the materialized non-orthogonal object should own geometric diagnostic fields at top level:
+\begin{lstlisting}
+struct NonOrthogonalVectorInvariant{...} <: AbstractAdvectionScheme{N, FT}
+    # reconstruction choices
+    vorticity_scheme
+    shear_vorticity_scheme
+    divergence_scheme
+    kinetic_energy_gradient_scheme
+    transport_scheme
+    upwinding
+
+    # materialized geometric state
+    u_cov                # u_i
+    u_con                # u^i
+    transport_velocities # u_perp^i if velocity-based scalar kernels are used
+    volume_transports    # calV^i = J u^i
+    mass_transports      # calU^i = J rho u^i
+    div_volume_transport # D_i calV^i
+    div_mass_transport   # D_i calU^i
+    kinetic_energy       # K = 1/2 u_i u^i
+    vorticity_two_forms  # Z12, Z13, Z23
+end
+\end{lstlisting}
+These are not incidental scratch arrays.  They are the metric-compatible state variables shared by scalar advection, continuity, and vector-invariant momentum advection.
+
+\section{Materialization and update lifecycle}
+\label{sec:lifecycle}
+
+Because the top-level diagnostic fields depend on the grid, architecture, precision, halo sizes, and field locations, allocation should happen during advection materialization:
+\begin{lstlisting}
+function materialize_advection(scheme::NonOrthogonalVectorInvariant, grid)
+    return NonOrthogonalVectorInvariant(
+        materialize_advection(scheme.vorticity_scheme, grid),
+        materialize_advection(scheme.shear_vorticity_scheme, grid),
+        materialize_advection(scheme.divergence_scheme, grid),
+        materialize_advection(scheme.kinetic_energy_gradient_scheme, grid),
+        materialize_advection(scheme.transport_scheme, grid),
+        materialize_advection(scheme.upwinding, grid),
+        allocate_nonorthogonal_fields(grid)...,
+    )
+end
+\end{lstlisting}
+This extends Oceananigans' current \code{materialize_advection} mechanism, which already recurses into sub-schemes and specializes WENO backend choices \citep{OceananigansMaterializeAdvection}.
+
+A typical tendency-evaluation lifecycle is
+\begin{lstlisting}
+fill_halo_regions!(model.momentum)
+fill_halo_regions!(density)
+
+update_nonorthogonal_vector_invariant_fields!(
+    model.advection.momentum,
+    model.grid,
+    density,
+    model.momentum,
+    model.velocities,
+)
+
+# Momentum uses model.velocities and the non-orthogonal VI fields.
+compute_momentum_tendencies!(model)
+
+# Scalars use transport_velocities(model) or transport_fluxes(model).
+compute_scalar_tendencies!(model)
+\end{lstlisting}
+Inside the update:
+\begin{lstlisting}
+compute_covariant_velocities!(advection.u_cov, model.momentum, density, grid)
+compute_contravariant_velocities!(advection.u_con, advection.u_cov, grid)
+compute_transport_velocities!(advection.transport_velocities, advection.u_con, grid)
+compute_transport_fluxes!(advection.volume_transports, advection.mass_transports, density, advection.u_con, grid)
+compute_divergences!(advection.div_volume_transport, advection.div_mass_transport, advection.volume_transports, advection.mass_transports, grid)
+compute_kinetic_energy!(advection.kinetic_energy, advection.u_cov, advection.u_con, grid)
+compute_vorticity_two_forms!(advection.vorticity_two_forms, advection.u_cov, grid)
+\end{lstlisting}
+
+For orthogonal grids, \code{transport_velocities(model)} can alias \code{model.velocities}. For non-orthogonal grids, it should return the transport-velocity tuple owned by the materialized momentum advection object. Likewise, \code{transport_fluxes(model)} should return the same object's mass transports in compressible models and volume transports in Boussinesq or incompressible models.
+
+\section{HydrostaticFreeSurfaceModel integration}
+\label{sec:hfsm-integration}
+
+HFSM already has the important separation:
+\begin{description}[leftmargin=2.7em]
+\item[Momentum tendencies] use \code{model.velocities}.
+\item[Tracer tendencies] use \code{model.transport_velocities}.
+\end{description}
+The non-orthogonal HFSM integration should therefore focus on constructing and updating the correct \code{model.transport_velocities}, or making \code{model.transport_velocities} a reference to the materialized non-orthogonal advection object's transport velocity fields.  A separate \code{transport_fluxes(model)} or \code{volume_transports(model)} accessor may be useful for continuity, free-surface, and momentum coupling.
+
+A possible HFSM convention is
+\begin{lstlisting}
+model.velocities           # velocity fields for momentum dynamics and diagnostics
+model.transport_velocities # scalar-advection transport velocities
+model.advection.momentum   # NonOrthogonalVectorInvariant owning geometry fields
+\end{lstlisting}
+For orthogonal grids, \code{model.transport_velocities === model.velocities} is allowed. For non-orthogonal grids, \code{model.transport_velocities} should be updated from the materialized momentum-advection transport fields before tracer tendencies are computed.
+
+HFSM should start with a Boussinesq or hydrostatic volume-transport version of the hydrostatic split \eqref{eq:horizontal-hydrostatic-split}.  The compressible mass-transport version is needed for Breeze.  The distinction is whether the conservative transport is \(\Vflux^i=Ju^i\) or \(\Uflux^i=J\rho u^i\), and whether the relevant divergence is \(\Dvol\) or \(\Dmass\).
+
+\section{Breeze.AtmosphereModel integration}
+\label{sec:breeze-integration}
+
+Breeze should adopt the HFSM split through functions:
+\begin{lstlisting}
+transport_velocities(model) = model.velocities
+transport_fluxes(model) = advecting_momentum(model)
+\end{lstlisting}
+with non-orthogonal methods
+\begin{lstlisting}
+transport_velocities(model::NonOrthogonalAtmosphereModel) =
+    model.advection.momentum.transport_velocities
+
+transport_fluxes(model::NonOrthogonalAtmosphereModel) =
+    model.advection.momentum.mass_transports
+\end{lstlisting}
+The existing terrain-following compressible implementation already diagnoses contravariant vertical velocity and momentum and routes scalar transport and density divergence through those diagnostics \citep{BreezeTerrainCompressible}.  The non-orthogonal extension generalizes that from one vertical component to all three components.
+
+For compressible Breeze dynamics, the density equation should use the same transport fluxes as scalar advection:
+\begin{equation}
+  \pd_t(J\rho) = -\Div_i \Uflux^i = -\Dmass.
+\end{equation}
+The current compressible density tendency uses the negative divergence of momentum on standard grids \citep{BreezeCompressibleDensity}.  On a non-orthogonal grid, it must dispatch to \code{transport_fluxes(model)} or \code{mass_transports(model)} rather than to covariant momentum.
+
+\section{Grid data structure}
+\label{sec:grid-data}
+
+Use the single public grid name \code{SphericalShellGrid}.  Orthogonal and non-orthogonal behavior should be a property of the mapping and metric provider, not two unrelated public grid families.  Oceananigans already has abstract curvilinear and horizontally curvilinear grid types \citep{OceananigansGrids,OceananigansAbstractGrid}.  The concrete non-orthogonal spherical-shell grid can fit into that hierarchy.
+
+A minimal structure is
+\begin{lstlisting}
+struct SphericalShellGrid{FT, TX, TY, TZ, Z, Map, Metrics, Arch} <:
+       AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Z, Arch}
+    architecture :: Arch
+    Nx :: Int; Ny :: Int; Nz :: Int
+    Hx :: Int; Hy :: Int; Hz :: Int
+    Lz :: FT
+    z :: Z
+    radius :: FT
+    mapping :: Map
+    metrics :: Metrics
+end
+\end{lstlisting}
+The metric object should expose at least
+\begin{lstlisting}
+struct NonOrthogonalSphericalShellMetrics{Coords, Areas, Volumes, GCov, GCon}
+    coordinates :: Coords
+    face_areas  :: Areas
+    volumes     :: Volumes
+    gcov        :: GCov
+    gcon        :: GCon
+end
+\end{lstlisting}
+For the first equiangular panel, store center metrics and the face metrics required by Hodge maps.  Avoid prematurely storing every staggered metric combination until tests demonstrate they are needed.
+
+The geometry tests should precede dynamics.  They include:
+\begin{align}
+  &g_{\alpha\beta}\ne 0 \quad \hbox{away from panel symmetry axes}, \\
+  &g_{\alpha\beta}=0 \quad \hbox{on panel symmetry axes}, \\
+  &g_{\alpha\alpha}g_{\beta\beta}-g_{\alpha\beta}^2 > 0, \\
+  &\sum_{\hbox{one panel cells}} A \approx \frac{4\pi R^2}{6}, \\
+  &\sum_{\hbox{six panel cells}} A \approx 4\pi R^2.
+\end{align}
+A finite-volume metric-identity test should verify that oriented face-area vectors close around each cell, so that constant transport does not generate spurious divergence.
+
+\section{Relationship to existing WENO vector-invariant advection}
+\label{sec:weno-relationship}
+
+The existing \code{WENOVectorInvariant} is best viewed as a stateless reconstruction configuration.  It stores WENO sub-schemes, smoothness stencils, and upwinding choices; it does not store vorticity fields, divergence fields, kinetic energy fields, or WENO-weight scratch arrays \citep{OceananigansVectorInvariant,OceananigansWENO,OceananigansVIUpwinding}.  Zuantities such as \(\zeta_3\), divergence smoothness, and kinetic-energy-gradient terms are evaluated pointwise inside tendency kernels.
+
+For hydrostatic horizontal momentum, the present WENO vector-invariant scheme uses the split in \eqref{eq:horizontal-hydrostatic-split}.  In code, the upwinded vertical contribution is assembled as a vertical momentum-flux divergence plus an upwinded horizontal divergence flux: \code{vertical_advection_U} and \code{vertical_advection_V} add \code{dz(... _advective_momentum_flux_Wu/Wv ...)} to \code{upwinded_divergence_flux_U/V}.  The latter uses horizontal flux differences such as \code{delta_x_U} and \code{delta_y_V}; the smoothness indicators can be based on horizontal divergence, while the momentum inside the vertical flux is reconstructed by the vertical advection scheme \citep{OceananigansVectorInvariant,OceananigansVISelfUpwinding}.  Thus the phrase ``divergence upwinding'' in the existing scheme refers to upwinding the horizontal divergence flux \(u_i\Dhvol\) or \(u_i\Dhmass\), depending on the transport used.  It does not mean adding a nonzero total divergence to an incompressible model.
+
+This distinction matters for the compressible extension.  If the new non-orthogonal scheme is written in full three-dimensional vector-invariant form, the tendency contains \(-u_i\Dmass\).  If instead the scheme follows the hydrostatic WENO split, the tendency contains \(-\pd_3(\Uflux^3u_i)-u_i\Dhmass\).  These are equivalent only when the vertical vorticity and vertical kinetic-energy pieces are handled consistently, as in \eqref{eq:vertical-flux-horizontal-divergence-split}.  The implementation should therefore expose this as a design choice:
+\begin{description}[leftmargin=2.7em]
+\item[Full 3D compressible VI] use \(Z_{12},Z_{13},Z_{23}\), full \(K\), and full mass-transport divergence \(\Dmass\).
+\item[Hydrostatic horizontal split] use horizontal \(Z_{12}\), horizontal kinetic energy \(K_h\), vertical momentum-flux divergence, and horizontal divergence flux \(\Dhmass\) or \(\Dhvol\), with no additional full divergence term.
+\end{description}
+
+The non-orthogonal scheme should reuse the existing reconstruction logic where possible, but the geometric state is more important and more expensive.  The Hodge map \(u_i\mapsto u^i\), the volume or mass transport \(\Vflux^i\) or \(\Uflux^i\), and the kinetic energy \(K=\half u_i u^i\) must be shared by mass, tracer, energy, and momentum tendencies.  This justifies the materialized top-level diagnostic fields in \code{NonOrthogonalVectorInvariant}.
+
+\section{Test hierarchy}
+\label{sec:tests}
+
+The recommended test order is:
+\begin{enumerate}[leftmargin=2.4em]
+\item \textbf{Analytic geometry tests.}  Compare numerical metric fields on the equiangular panel to \eqref{eq:equiangular-covmetric}--\eqref{eq:equiangular-invmetric}.
+\item \textbf{Metric identity tests.}  Verify face-area closure and zero divergence for constant compatible fluxes.
+\item \textbf{Orthogonal limit tests.}  On rectilinear or orthogonal spherical-shell grids, the non-orthogonal operator should agree with the existing orthogonal operator to truncation error.
+\item \textbf{Passive scalar tests.}  Advect smooth and nonsmooth tracers using \code{transport_velocities} and verify conservation and convergence.
+\item \textbf{Centered vector-invariant tests.}  Test \code{NonOrthogonalVectorInvariant} with centered reconstruction before WENO.
+\item \textbf{WENO vector-invariant tests.}  Enable \code{NonOrthogonalWENOVectorInvariant} and compare stability, convergence, and dissipation.
+\item \textbf{Model tests.}  Run decaying two-dimensional turbulence, forced three-dimensional turbulence, and baroclinic adjustment on orthogonal and non-orthogonal grids.
+\item \textbf{Six-panel tests.}  Add panel connectivity only after single-panel geometry and transport are correct.
+\end{enumerate}
+
+\section{Principal risks and theory-facing mitigations}
+\label{sec:risks}
+
+\paragraph{Ambiguity among velocity, area-normal velocity, volume flux, and mass flux.}
+The mitigation is to require every scalar advection path to state whether it consumes \(u_\perp^i\), \(\Vflux^i\), or \(\Uflux^i\).  The decision tree is: if existing velocity-based kernels are reused, compute \(u_\perp^i\); if new non-orthogonal kernels are introduced, consume \(\Uflux^i\) or \(\Vflux^i\) directly.
+
+\paragraph{Incorrect Hodge maps at staggered locations.}
+Cross-component interpolation in equations such as \eqref{eq:discrete-hodge-u1} is part of the metric operator.  It should be tested independently by mapping analytic vector fields from physical space to covariant components and back to transport fluxes.
+
+\paragraph{Edge locations for \(Z_{12},Z_{13},Z_{23}\).}
+Oceananigans does not currently expose all edge-field types as prominently as face and center fields.  The first implementation should use explicit \code{Field\{Face,Face,Center\}}, \code{Field\{Face,Center,Face\}}, and \code{Field\{Center,Face,Face\}} objects if available, or add a small helper layer for two-form storage.
+
+\paragraph{WENO smoothness indicators on non-orthogonal grids.}
+The existing Silvestri-style WENO vector-invariant scheme separates reconstruction targets from smoothness stencils \citep{Silvestri2024}.  The non-orthogonal scheme should initially use conservative centered reconstruction to validate geometry, then introduce WENO with smoothness indicators based on covariant velocity, transport flux divergence, or physically scaled two-forms.
+
+\paragraph{Single-panel boundary effects.}
+One-panel turbulence tests with bounded sides can be contaminated by boundaries.  Use periodic planar skewed grids for early turbulence tests, then single-panel scalar tests, then six-panel spherical tests.
+
+\paragraph{HFSM/Breeze divergence.}
+HFSM has a field-level \code{model.transport_velocities}; Breeze currently has a function-level \code{transport_velocities(model)}.  The theory does not require one representation.  The implementation should preserve the split and choose whichever representation minimizes churn in each model.
+
+\section{Summary}
+\label{sec:summary}
+
+The non-orthogonal C-grid program should be built around a clean separation of objects:
+\begin{align}
+  u_i &\quad \hbox{covariant velocity for momentum and vorticity}, \\
+  u^i &\quad \hbox{contravariant velocity from the Hodge map}, \\
+  u_\perp^i &\quad \hbox{area-normal transport velocity for velocity-based scalar kernels}, \\
+  \Uflux^i=J\rho u^i &\quad \hbox{conservative mass transport for continuity and compressible coupling}.
+\end{align}
+The theory supports a generic \code{NonOrthogonalVectorInvariant} operator and a WENO convenience constructor \code{NonOrthogonalWENOVectorInvariant}.  The grid program should start with one equiangular gnomonic cubed-sphere panel, using analytic metrics and metric-identity tests before model dynamics.  The code program should reuse the existing HFSM distinction between \code{velocities} and \code{transport_velocities}, and should formalize the same distinction in Breeze.  Once the geometry and transport objects are correct, the full three-dimensional vector-invariant form \eqref{eq:vi-tendency} provides a unified path for horizontal and vertical momentum advection on non-orthogonal C-grids.
+
+\begin{thebibliography}{99}
+
+\bibitem[Breeze dynamics interface(2026)]{BreezeDynamicsInterface}
+NumericalEarth (2026a).
+\emph{Breeze.jl dynamics interface}.
+\url{https://github.com/NumericalEarth/Breeze.jl/blob/main/src/AtmosphereModels/dynamics_interface.jl}.
+
+\bibitem[Breeze terrain physics(2026)]{BreezeTerrainCompressible}
+NumericalEarth (2026b).
+\emph{Breeze.jl terrain-following compressible physics}.
+\url{https://github.com/NumericalEarth/Breeze.jl/blob/main/src/CompressibleEquations/terrain_compressible_physics.jl}.
+
+\bibitem[Breeze density tendency(2026)]{BreezeCompressibleDensity}
+NumericalEarth (2026c).
+\emph{Breeze.jl compressible density tendency}.
+\url{https://github.com/NumericalEarth/Breeze.jl/blob/main/src/CompressibleEquations/compressible_density_tendency.jl}.
+
+\bibitem[ClimaAtmos SphereGrid(2026)]{ClimaAtmosSphereGrid}
+Climate Modeling Alliance (2026a).
+\emph{ClimaAtmos.jl simulation grid constructors}.
+\url{https://github.com/CliMA/ClimaAtmos.jl/blob/main/src/simulation/grids.jl}.
+
+\bibitem[ClimaCore cubed sphere(2026)]{ClimaCoreCubedSphere}
+Climate Modeling Alliance (2026b).
+\emph{ClimaCore.jl cubed-sphere meshes}.
+\url{https://github.com/CliMA/ClimaCore.jl/blob/main/src/Meshes/cubedsphere.jl}.
+
+\bibitem[ClimaCore CommonGrids(2026)]{ClimaCoreCommonGrids}
+Climate Modeling Alliance (2026c).
+\emph{ClimaCore.jl common grid constructors}.
+\url{https://github.com/CliMA/ClimaCore.jl/blob/main/src/CommonGrids/CommonGrids.jl}.
+
+\bibitem[Lin and Rood(1996)]{LinRood1996}
+Lin, S.-J. and Rood, R. B. (1996).
+Multidimensional flux-form semi-Lagrangian transport schemes.
+\emph{Monthly Weather Review}, 124(9), 2046--2070.
+
+\bibitem[Oceananigans HFSM tendencies(2026)]{OceananigansHFSMTendencies}
+Climate Modeling Alliance (2026d).
+\emph{Oceananigans.jl HydrostaticFreeSurfaceModel tendency code}.
+\url{https://github.com/CliMA/Oceananigans.jl/blob/main/src/Models/HydrostaticFreeSurfaceModels/compute_hydrostatic_free_surface_tendencies.jl}.
+
+\bibitem[Oceananigans vector invariant(2026)]{OceananigansVectorInvariant}
+Climate Modeling Alliance (2026e).
+\emph{Oceananigans.jl vector-invariant advection implementation}.
+\url{https://github.com/CliMA/Oceananigans.jl/blob/main/src/Advection/vector_invariant_advection.jl}.
+
+\bibitem[Oceananigans VI upwinding(2026)]{OceananigansVIUpwinding}
+Climate Modeling Alliance (2026f).
+\emph{Oceananigans.jl vector-invariant upwinding implementation}.
+\url{https://github.com/CliMA/Oceananigans.jl/blob/main/src/Advection/vector_invariant_upwinding.jl}.
+
+\bibitem[Oceananigans VI self-upwinding(2026)]{OceananigansVISelfUpwinding}
+Oceananigans.jl developers.
+\emph{Oceananigans.jl vector-invariant self-upwinding implementation}.
+\url{https://github.com/CliMA/Oceananigans.jl/blob/main/src/Advection/vector_invariant_self_upwinding.jl}.
+
+\bibitem[Oceananigans WENO(2026)]{OceananigansWENO}
+Climate Modeling Alliance (2026g).
+\emph{Oceananigans.jl WENO reconstruction implementation}.
+\url{https://github.com/CliMA/Oceananigans.jl/blob/main/src/Advection/weno_reconstruction.jl}.
+
+\bibitem[Oceananigans materialize advection(2026)]{OceananigansMaterializeAdvection}
+Climate Modeling Alliance (2026h).
+\emph{Oceananigans.jl advection materialization}.
+\url{https://github.com/CliMA/Oceananigans.jl/blob/main/src/Advection/materialize_advection.jl}.
+
+\bibitem[Oceananigans conformal panel(2026)]{OceananigansConformalPanel}
+Climate Modeling Alliance (2026i).
+\emph{Oceananigans.jl conformal cubed-sphere panel grid}.
+\url{https://github.com/CliMA/Oceananigans.jl/blob/main/src/OrthogonalSphericalShellGrids/conformal_cubed_sphere_panel.jl}.
+
+\bibitem[Oceananigans grids(2026)]{OceananigansGrids}
+Climate Modeling Alliance (2026j).
+\emph{Oceananigans.jl grid module}.
+\url{https://github.com/CliMA/Oceananigans.jl/blob/main/src/Grids/Grids.jl}.
+
+\bibitem[Oceananigans abstract grid(2026)]{OceananigansAbstractGrid}
+Climate Modeling Alliance (2026k).
+\emph{Oceananigans.jl abstract grid definitions}.
+\url{https://github.com/CliMA/Oceananigans.jl/blob/main/src/Grids/abstract_grid.jl}.
+
+\bibitem[Ran\v{c}i\'{c} et~al.(1996)]{Rancic1996}
+Ran\v{c}i\'{c}, M., Purser, R. J., and Mesinger, F. (1996).
+A global shallow-water model using an expanded spherical cube: gnomonic versus conformal coordinates.
+\emph{Quarterly Journal of the Royal Meteorological Society}, 122(532), 959--982.
+
+\bibitem[Ringler et~al.(2010)]{Ringler2010}
+Ringler, T. D., Thuburn, J., Klemp, J. B., and Skamarock, W. C. (2010).
+A unified approach to energy conservation and potential vorticity dynamics for arbitrarily-structured C-grids.
+\emph{Journal of Computational Physics}, 229(9), 3065--3090.
+
+\bibitem[Ronchi et~al.(1996)]{Ronchi1996}
+Ronchi, C., Iacono, R., and Paolucci, P. S. (1996).
+The ``Cubed Sphere'': a new method for the solution of partial differential equations in spherical geometry.
+\emph{Journal of Computational Physics}, 124(1), 93--114.
+
+\bibitem[Silvestri et~al.(2024)]{Silvestri2024}
+Silvestri, S., Wagner, G. L., Campin, J.-M., Constantinou, N. C., Hill, C. N., Souza, A. N., and Ferrari, R. (2024).
+A new WENO-based momentum advection scheme for simulations of ocean mesoscale turbulence.
+\emph{Journal of Advances in Modeling Earth Systems}, 16(7), e2023MS004130.
+
+\bibitem[Thuburn and Cotter(2012)]{ThuburnCotter2012}
+Thuburn, J. and Cotter, C. J. (2012).
+A framework for mimetic discretization of the rotating shallow-water equations on arbitrary polygonal grids.
+\emph{SIAM Journal on Scientific Computing}, 34(3), B203--B225.
+
+
+\bibitem[Arakawa and Lamb(1981)]{ArakawaLamb1981}
+Arakawa, A. and Lamb, V. R. (1981).
+A potential enstrophy and energy conserving scheme for the shallow water equations.
+\emph{Monthly Weather Review}, 109(1), 18--36.
+
+\bibitem[Eldred and Randall(2016)]{EldredRandall2016}
+Eldred, C. and Randall, D. (2016).
+Total energy and potential enstrophy conserving schemes for the shallow water equations using Hamiltonian methods: Derivation and properties.
+\emph{arXiv:1609.03797}.
+
+\bibitem[McRae and Cotter(2013)]{McRaeCotter2013}
+McRae, A. T. T. and Cotter, C. J. (2013).
+Energy- and enstrophy-conserving schemes for the shallow-water equations, based on mimetic finite elements.
+\emph{arXiv:1305.4477}.
+
+\bibitem[Thuburn and Cotter(2014)]{ThuburnCotter2014}
+Thuburn, J. and Cotter, C. J. (2014).
+A primal-dual mimetic finite element scheme for the rotating shallow water equations on polygonal spherical meshes.
+\emph{arXiv:1409.8130}.
+
+\bibitem[ClimaCore spectral element geometry(2026)]{ClimaCoreSpectralElement}
+Climate Modeling Alliance (2026l).
+\emph{ClimaCore.jl spectral-element grid and local geometry construction}.
+\url{https://github.com/CliMA/ClimaCore.jl/blob/main/src/Grids/spectralelement.jl}.
+
+\end{thebibliography}
+
+\end{document}
