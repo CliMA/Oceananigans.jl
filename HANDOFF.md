@@ -17639,3 +17639,52 @@ Results:
 - West-only/east-only supports are consistently larger than both-xedge support.
 
 Conclusion: a production fix should focus on a systematic x-edge rotational/topology operator. The Hodge-compatible pressure/divergence topology is validated and source-available, but direct pressure/Bernoulli use is dynamically rejected; the missing piece is a rotational corner topology that respects independent-face Hodge adjointness without replacing the dynamically close VI tendency by the exact independent numerator.
+
+## 2026-06-03: anisotropic exact-skew x-edge projection scan rejected
+
+Diagnostic: `/tmp/xedge_projection_weight_scan_probe.jl`.
+
+Scanned anisotropic closest-projection weights for exact local Hodge-skew x-edge rotational transport. The projection constrains x-edge corner transport to `(U,V)=α(H_u,H_v)` and minimizes `|δU|² + r |δV|²` relative to the `op_sqrt` transport, with `r = wV/wU` scanned from `1e-8` to `1e8`.
+
+Results:
+- The best ratio is consistently `r≈1.78` or `r≈3.16`, but best dynamic drift remains far worse than `op_sqrt`.
+- Representative results:
+  - N8 seed42: `op_raw_rel=0.04303`, best exact-skew projection `0.34174`.
+  - N16 seed42: `op_raw_rel=0.06582`, best `0.20130`.
+  - N16 seed99: `op_raw_rel=0.03913`, best `0.11865`.
+  - N32 seed42: `op_raw_rel=0.03847`, best `0.13879`.
+  - N32 seed99: `op_raw_rel=0.03520`, best `0.16153`.
+- Rotational work is roundoff for best projections, but total work is just the unchanged Bernoulli work.
+
+Conclusion: projected-skew x-edge rotational forms are not failing because of a poor arbitrary projection metric. Even the best fixed anisotropic projection remains too dynamically far from `op_sqrt`. Exact local skew projection remains rejected as a production strategy.
+
+## 2026-06-03: Hodge-compatible halo-source mapped rotational velocity rejected
+
+Diagnostic: `/tmp/xedge_hodge_mapped_velocity_probe.jl`.
+
+Tested whether reusing the existing `octahealpix_covariant_*face_halo_source` topology maps inside x-edge rotational corner transport can improve the source VI work defect. Variants:
+- `source`: actual source rotational advection.
+- `sign`: x-edge ghost/boundary face values are replaced by signed covariant halo-source fluxes, then divided by boundary-face `J` to form velocity-like transport.
+- `diag`: same but with the Hodge-compatible diagonal ratio used by `hodge_compatible_boundary_flux_*`.
+
+Results:
+- The `diag` variant reproduces the source rotational operator to roundoff. This means the existing Hodge-compatible diagonal ratio does not alter the rotational corner velocity in this construction and is not the missing VI topology fix.
+- The `sign` variant changes work but is dynamically too disruptive and inconsistent:
+  - N8 seed42 `total_rel=0.4357`, total work grows from `+1.688e-06` to `+2.916e-06`.
+  - N16 seed42 `total_rel=0.2759`, total work grows to `+2.238e-06`.
+  - N32 seed42 `total_rel=0.1316`, total work changes sign to `-3.071e-06`.
+  - N32 seed99 `total_rel=0.4268`, total work drops to `+1.335e-06` but with unacceptable drift.
+
+Conclusion: directly inserting the existing Hodge-compatible halo-source maps into rotational corner velocity does not solve the VI defect. The diagonal-ratio map is already equivalent to the current source velocity for this purpose; the sign-only map is not dynamically acceptable.
+
+## 2026-06-03: x-edge mapped-vorticity topology is already equivalent to source
+
+Diagnostic: `/tmp/xedge_mapped_vorticity_probe.jl`.
+
+Tested whether the x-edge work defect comes from the vorticity side of the rotational term. Recomputed `ζ` at x-edge corners using covariant halo-source mapping for the line-integral values in `covariant_vertical_circulationᶠᶠᶜ`, while keeping the source rotational corner transport unchanged.
+
+Results:
+- The mapped-vorticity variant is identical to the source rotational operator to roundoff for all tested cases.
+- N8 seeds 42/99, N16 seeds 42/99, and N32 seeds 1/2/42/99 all report `rot_rel=0` and identical work between `source` and `mapped`.
+
+Conclusion: the vorticity line-integral halo/topology is already equivalent to the covariant halo-source mapping. The missing energy-compatible topology is not on the `ζ` side of the rotational term; it remains in the corner transport / work-adjoint grouping.

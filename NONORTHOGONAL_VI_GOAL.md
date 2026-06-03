@@ -1080,3 +1080,15 @@ Added `/tmp/xedge_edgewise_normalization_probe.jl`. Separate west/east edge norm
 Inspected `src/Operators/nonorthogonal_metric_operators.jl`, `src/Grids/spherical_shell_grid.jl`, and `src/BoundaryConditions/fill_halo_regions_quadfoldedzipper.jl`. The production VI rotational operator uses ordinary interpolated contravariant corner velocities, while the validated Hodge-compatible topology machinery lives separately in `hodge_compatible_boundary_flux_*`, `hodge_compatible_volume_flux_div_xyᶜᶜᶜ`, and `hodge_compatible_pressure_correction_*`, using explicit `octahealpix_covariant_*face_halo_source` maps and diagonal ratios. This reinforces the current diagnosis: the remaining defect is an x-edge rotational/topology issue, not projection, pressure, or hidden-energy pairing.
 
 Added `/tmp/current_anchor_minimal_correction_probe.jl` to measure the all-xedge least-norm Hodge-covector correction around the actual source `current_total` anchor. The required correction is the same order as around `op_sqrt`: N32 seeds 1,2,42,99 need `corr_rel=0.01093`, `0.02837`, `0.00631`, `0.02208`; N16 seeds 42,99 need `0.01519`, `0.02171`. West-only/east-only corrections are larger. This means the lower-bound correction scale is not an artifact of changing from current source VI to the `op_sqrt` anchor.
+
+### 2026-06-03 update: anisotropic exact-skew x-edge projection rejected
+
+Added `/tmp/xedge_projection_weight_scan_probe.jl`, scanning exact local Hodge-skew x-edge projections `(U,V)=α(H_u,H_v)` with anisotropic closeness weight `|δU|² + r|δV|²` for `r=1e-8...1e8`. The best ratios are around `1.78-3.16`, but best dynamic drift remains much larger than `op_sqrt`: N32 seed42 improves only to `0.13879` versus `op_raw_rel=0.03847`, and N32 seed99 to `0.16153` versus `0.03520`. This rejects exact local skew projection independently of the arbitrary weight choice used in earlier probes.
+
+### 2026-06-03 update: Hodge-compatible halo-source mapped rotational velocity rejected
+
+Added `/tmp/xedge_hodge_mapped_velocity_probe.jl` to test source-level x-edge rotational transport using `octahealpix_covariant_*face_halo_source` maps. The diagonal-ratio variant based on `hodge_compatible_boundary_flux_*` reproduces current source rotational advection to roundoff, so it is not the missing topology correction. A sign-only halo-source map changes work but has unacceptable drift: `total_rel=0.4357` at N8 seed42, `0.2759` at N16 seed42, `0.1316` at N32 seed42, and `0.4268` at N32 seed99. This rejects direct reuse of existing Hodge-compatible halo-source maps inside rotational corner velocity as a source fix.
+
+### 2026-06-03 update: x-edge mapped-vorticity topology is already source-equivalent
+
+Added `/tmp/xedge_mapped_vorticity_probe.jl`, recomputing x-edge `ζ` with covariant halo-source mapping for the line-integral values while leaving source rotational transport unchanged. The mapped-vorticity variant is identical to source rotational advection to roundoff across N8, N16, and N32 sampled seeds. This rejects vorticity halo mapping as the missing topology correction; the defect remains in corner transport / work-adjoint grouping.
