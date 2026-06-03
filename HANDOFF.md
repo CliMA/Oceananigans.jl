@@ -17471,3 +17471,24 @@ I'll keep watching. If the theory agent posts a new .md/.tex
 file at repo root with corner weights, I'll relay to Codex
 immediately.
 
+
+## 2026-06-03: fixed local feature models for x-edge correction rejected
+
+Diagnostic: `/tmp/xedge_fixed_feature_fit_probe.jl`.
+
+Tested whether the global scalar in the successful x-edge Hodge-covector correction can be replaced by fixed local feature coefficients. Basis corrections use x-edge `δF = feature * (H_u, -H_v)` with features split by west/east and weighted by `1`, `absζ`, `ζ²`, `absζ/den`, and `ζ²/den`. Coefficients were fitted on N16 seeds 1-8 and evaluated on N16 seeds 9-16 plus N32 seeds 1,2,42,99.
+
+Results:
+- The 10-feature model overfits N16 training work to roundoff, but creates huge drift and fails held-out/generalization:
+  - N16 train drift mean `1.995`, max `2.548`.
+  - N16 held-out max relative residual work `221`, mean drift `2.255`.
+  - N32 max relative residual work `3644`, mean drift `19.24`.
+- Two-feature west/east models leave large residual work and create large N16 drift:
+  - `side_free`: N16 held-out mean relative residual work `12.48`, mean drift `0.337`; N32 mean relative residual work `0.761`, mean drift `0.0425`.
+  - `side_abszeta`: N16 held-out mean relative residual work `9.83`, mean drift `0.380`; N32 mean relative residual work `0.771`, mean drift `0.0435`.
+  - `side_zeta2`: N16 held-out mean relative residual work `7.35`, mean drift `0.371`; N32 mean relative residual work `0.800`, mean drift `0.0442`.
+- A single `both_free` coefficient is dynamically harmless but almost useless for work cancellation:
+  - N16 held-out mean relative residual work `1.762`, mean drift `0.0498`.
+  - N32 mean relative residual work `0.980`, mean drift `0.0394`; correction norm only about `4e-4` at N32.
+
+Conclusion: fixed local feature coefficients do not replace the global residual normalization. Rich models overfit and destroy dynamics; simple models preserve dynamics but leave most of the work residual. The successful correction still requires state-dependent normalization or a deeper local identity, not a fitted fixed-coefficient x-edge feature map.
