@@ -17562,3 +17562,80 @@ Also fitted fixed linear combinations of these covectors on N16 seeds 1-8 and ev
   - N32 mean relative residual work `13.60` for the broad covariant/J fit, or `3.025` for hodge-covariant-only; `qrel` remains `3.26-13.0`.
 
 Conclusion: the residual is not explained by a nearby hidden energy pairing. Simple covector changes either fail state/resolution generalization or collapse the energy covector toward zero. The target Hodge energy remains the correct diagnostic; the defect is in the nonlinear tangent VI operator.
+
+## 2026-06-03: x-edge work concentration and top-K support diagnostics
+
+Diagnostics:
+- `/tmp/xedge_work_concentration_probe.jl`
+- `/tmp/xedge_topk_correction_probe.jl`
+
+Ranked x-edge corner work contributions for `op_sqrt + current Bernoulli`, separating the cleaner rotational corner work from an ad-hoc total density obtained by distributing Bernoulli face work to adjacent corners.
+
+Findings from concentration:
+- The residual is x-edge/topology related but not a single-corner or tiny-stencil defect.
+- West x-edge usually dominates absolute work, but east contributions are not negligible and can be top-ranked for some states.
+- Rotational x-edge work has strong signed cancellation: absolute x-edge work is much larger than the signed residual.
+  - N32 seed42 rotational x-edge: signed `+3.143e-06`, absolute `1.295e-05`.
+  - N32 seed99 rotational x-edge: signed `+2.480e-06`, absolute `1.285e-05`.
+  - N32 seed1 rotational x-edge: signed `-1.099e-06`, absolute `1.465e-05`.
+- Top-ranked locations are state-dependent. Examples include west `j=49,53,9,16` for N32 seed42, but east `j=44` and west `j=45,48,40` for N32 seed99.
+
+Top-K lower-bound corrections:
+- Applied the same global least-norm Hodge-covector work cancellation, but restricted support to top-K x-edge corners ranked by rotational or total density.
+- K=4/K=8 supports are generally too small; they increase correction norm and drift relative to the all-xedge lower bound.
+- K=32/K=64 starts approaching the all-xedge result, which means the defect is distributed across many x-edge corners.
+- Examples:
+  - N32 seed42 all-xedge: `corr_rel=0.00542`, drift `0.03885`. Top-rot K=4: `corr_rel=0.02553`, drift `0.04618`; K=32: `0.00914`, drift `0.03954`; K=64: `0.00645`, drift `0.03901`.
+  - N32 seed99 all-xedge: `corr_rel=0.02321`, drift `0.04215`. Top-rot K=4: `corr_rel=0.06933`, drift `0.07775`; K=32: `0.03360`, drift `0.04878`; K=64: `0.02558`, drift `0.04350`.
+  - N16 seed99 all-xedge: `corr_rel=0.02231`, drift `0.04512`. Top-rot K=4: `0.06098`, drift `0.07252`; K=32: `0.02604`, drift `0.04707`.
+
+Conclusion: the x-edge residual is broadly distributed and state-dependent. A fixed small-corner/top-K patch is not a viable source strategy. Any production fix needs a systematic x-edge topology operator over the full edge, not a localized exceptional-corner correction.
+
+## 2026-06-03: west/east edge-wise residual normalization mostly rejected
+
+Diagnostic: `/tmp/xedge_edgewise_normalization_probe.jl`.
+
+Tested whether the successful all-xedge global Hodge-covector correction can be made more source-like by using separate west/east edge normalizations. Two variants:
+- `*_local`: each edge cancels its own rotational or total distributed edge density.
+- `*_scaled`: the west/east density split is rescaled to cancel the global work exactly.
+
+Results:
+- The local edge-density variants are more local but generally do not cancel global work because x-edge density does not equal total work.
+- The globally scaled variants cancel work, but are not robustly better than the uniform all-xedge lower bound.
+- N32 seed42 is the only mild positive: `rot_density_scaled` gives `corr_rel=0.00528`, drift `0.03883`, slightly better than all-xedge `corr_rel=0.00542`, drift `0.03885`.
+- Other cases are worse:
+  - N32 seed99 all-xedge `corr_rel=0.02321`, drift `0.04215`; `rot_density_scaled` `0.03201`, drift `0.04747`; `total_density_scaled` `0.03091`, drift `0.04675`.
+  - N32 seed2 all-xedge `0.02769`, drift `0.05865`; `rot_density_scaled` `0.03935`, drift `0.06483`; `total_density_scaled` `0.03975`, drift `0.06507`.
+  - N16 seed42 all-xedge `0.00871`, drift `0.06639`; `total_density_scaled` `0.01883`, drift `0.06846`.
+- Edge-local unscaled variants can reduce drift while leaving substantial residual work, but that does not satisfy the energy-conservation goal.
+
+Conclusion: west/east edge-wise residual normalization does not provide a robust source strategy. The full x-edge defect is systematic but not captured by simple independent west/east residual scalars.
+
+## 2026-06-03: source topology inspection and current-anchor lower bound
+
+Inspected source definitions in:
+- `src/Operators/nonorthogonal_metric_operators.jl`
+- `src/Grids/spherical_shell_grid.jl`
+- `src/BoundaryConditions/fill_halo_regions_quadfoldedzipper.jl`
+
+Source observations:
+- The production VI rotational operator uses `covariant_vertical_vorticity_componentᶠᶠᶜ` times `contravariant_velocity_u/vᶠᶠᶜ`, where the corner contravariant velocities are ordinary interpolations of `covariant_to_contravariant_velocity_u/v`.
+- The Hodge-compatible topology machinery already exists separately through `hodge_compatible_boundary_flux_uᶠᶜᶜ/vᶜᶠᶜ`, `hodge_compatible_volume_flux_div_xyᶜᶜᶜ`, and `hodge_compatible_pressure_correction_uᶠᶜᶜ/vᶜᶠᶜ`.
+- These Hodge-compatible operators use explicit `octahealpix_covariant_xface_halo_source` and `octahealpix_covariant_yface_halo_source` maps, with diagonal ratios that reproduce the independent-face `K⁻¹Dᵀ`/`D K⁻¹Dᵀ` algebra.
+- The VI rotational corner interpolation does not use this Hodge-compatible topology map. This matches diagnostics that localize the defect to x-edge duplicate/source topology rather than to pressure projection or a hidden energy pairing.
+
+Diagnostic: `/tmp/current_anchor_minimal_correction_probe.jl`.
+
+Measured the same all-xedge least-norm Hodge-covector correction around the actual source `current_total` anchor, not the `op_sqrt + currentB` anchor.
+
+Results:
+- Corrections around the actual source operator are the same order as around `op_sqrt`, so the lower-bound issue is not an artifact of switching anchors.
+- N16 seed42: current work `+9.063e-07`, all-xedge `corr_rel=0.01519`.
+- N16 seed99: current work `+1.341e-06`, all-xedge `corr_rel=0.02171`.
+- N32 seed1: current work `-2.320e-06`, all-xedge `corr_rel=0.01093`.
+- N32 seed2: current work `+4.722e-06`, all-xedge `corr_rel=0.02837`.
+- N32 seed42: current work `+1.382e-06`, all-xedge `corr_rel=0.00631`.
+- N32 seed99: current work `+4.263e-06`, all-xedge `corr_rel=0.02208`.
+- West-only/east-only supports are consistently larger than both-xedge support.
+
+Conclusion: a production fix should focus on a systematic x-edge rotational/topology operator. The Hodge-compatible pressure/divergence topology is validated and source-available, but direct pressure/Bernoulli use is dynamically rejected; the missing piece is a rotational corner topology that respects independent-face Hodge adjointness without replacing the dynamically close VI tendency by the exact independent numerator.
