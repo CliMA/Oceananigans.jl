@@ -6,9 +6,8 @@ using Statistics: mean
 #####
 ##### Volume-inverse-weighted residual norm
 #####
-##### The V∇² system has residuals that scale with cell volume.
-##### Using ||V⁻¹r|| instead of ||r|| for convergence makes the
-##### criterion independent of cell volume, allowing universal tolerances.
+##### The V∇² residuals scale with cell volume, so convergence is measured with ||V⁻¹r||
+##### instead of ||r|| to make the criterion independent of cell volume.
 #####
 
 struct VolumeInverseNorm{G}
@@ -256,9 +255,8 @@ end
 #####
 ##### The "ColumnwiseTridiagonalPreconditioner" (Marshall et al. 1997, §4)
 #####
-##### Block-diagonal preconditioner M = Lz⁻¹: for each horizontal column (i, j) the
-##### vertical (k-direction) sub-system of V∇² is solved exactly while horizontal
-##### couplings are discarded. Reuses the batched Thomas solver over ZDirection.
+##### Block-diagonal preconditioner M = Lz⁻¹: for each horizontal column (i, j) the vertical
+##### sub-system of V∇² is solved exactly while horizontal couplings are discarded.
 #####
 
 struct ColumnwiseTridiagonalPreconditioner{S}
@@ -274,24 +272,19 @@ Base.summary(::ColumnwiseTridiagonalPreconditioner) = "ColumnwiseTridiagonalPrec
     inactive_below = inactive_cell(i, j, k-1, grid)
     inactive_above = inactive_cell(i, j, k+1, grid)
 
-    # Mask geometric couplings through immersed faces AND Bounded-domain halos.
-    # inactive_cell flags both (see src/Grids/inactive_node.jl docstring), so this
-    # encodes the BCs that the V∇² operator gets through fill_halo_regions!.
+    # inactive_cell flags both immersed faces and Bounded-domain halos, so masking the
+    # geometric couplings here encodes the BCs that V∇² sees through fill_halo_regions!.
     az⁻ = ifelse(inactive_below, zero(grid), Azᶜᶜᶠ(i, j, k,   grid) * Δz⁻¹ᶜᶜᶠ(i, j, k,   grid))
     az⁺ = ifelse(inactive_above, zero(grid), Azᶜᶜᶠ(i, j, k+1, grid) * Δz⁻¹ᶜᶜᶠ(i, j, k+1, grid))
 
-    # Multiplicative regularisation: shifts every diagonal by a tiny fraction,
-    # breaking the Neumann–Neumann null space (rows of Lz still sum to zero
-    # after BC masking because the discrete Neumann Laplacian is fundamentally
-    # singular). ε large enough to lift β above the Thomas-guard threshold,
-    # small enough that the preconditioner approximation is unchanged.
+    # Multiplicative regularization breaks the singular Neumann–Neumann null space by
+    # shifting every diagonal by ε, large enough to lift the Thomas pivot above its
+    # guard threshold yet small enough to leave the preconditioner approximation intact.
     ε = convert(eltype(grid), 1//100)
 
-    # A vertically-isolated active cell (both neighbors inactive) has az⁻ = az⁺ = 0,
-    # so the regularised diagonal -(az⁻+az⁺)(1+ε) collapses to zero and the Thomas
-    # pivot vanishes. PartialCellBottom produces these as thin surface cells perched
-    # over a column that is otherwise immersed. There is no vertical sub-system to
-    # invert, so act as the identity there (b = 1), like an inactive cell.
+    # A vertically-isolated active cell (both neighbors inactive) has az⁻ = az⁺ = 0, so its
+    # regularized diagonal collapses to zero and the Thomas pivot vanishes; act as the
+    # identity there (b = 1) since there is no vertical sub-system to invert.
     isolated = inactive_below & inactive_above
 
     @inbounds begin
