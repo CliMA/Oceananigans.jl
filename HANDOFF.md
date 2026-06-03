@@ -17492,3 +17492,73 @@ Results:
   - N32 mean relative residual work `0.980`, mean drift `0.0394`; correction norm only about `4e-4` at N32.
 
 Conclusion: fixed local feature coefficients do not replace the global residual normalization. Rich models overfit and destroy dynamics; simple models preserve dynamics but leave most of the work residual. The successful correction still requires state-dependent normalization or a deeper local identity, not a fitted fixed-coefficient x-edge feature map.
+
+## 2026-06-03: projected-tendency work probe shows residual is not pressure/gauge
+
+Diagnostic: `/tmp/projected_tendency_work_probe.jl`.
+
+Built dense small-N Hodge-compatible projection matrices from source operators:
+- `D`: `hodge_compatible_volume_flux_div_xyᶜᶜᶜ` on independent covariant face DOFs.
+- `G = K⁻¹Dᵀ`: `hodge_compatible_pressure_correction_uᶠᶜᶜ/vᶜᶠᶜ`.
+- `P = I - G(DG)^+D`.
+
+Projected random velocities first, then recomputed current/source VI and `op_sqrt + currentB` tendencies. Projection diagnostics show `D u ≈ 1e-14` and `Gᵀh ≈ 1e-12`, so pressure-correction directions are energy-orthogonal to the projected velocity.
+
+Results:
+- Projecting tendencies changes their norm substantially (`proj_rel ≈ 0.66-0.80`) and removes divergence, but it does not change energy work except roundoff.
+- Examples:
+  - N4 seed42 current: `W=+3.215749380581e-07`, projected `+3.215749380486e-07`.
+  - N8 seed42 current: `W=+1.688487306772e-06`, projected `+1.688487306753e-06`.
+  - N8 seed42 `op_sqrt`: `W=+1.782136628145e-06`, projected `+1.782136628124e-06`.
+  - N8 seed99 current: `W=+6.723745283182e-07`, projected `+6.723745282818e-07`.
+
+Conclusion: the Hodge-work residual is not a pressure/gauge artifact that disappears after the rigid-lid/Hodge projection. It lies in the divergence-free tangent work. Pressure-like Bernoulli or projection-only fixes cannot remove it; a genuine tangent-space VI correction is required.
+
+## 2026-06-03: fixed linear x-edge transport corrections rejected
+
+Diagnostic: `/tmp/xedge_linear_transport_fit_probe.jl`.
+
+Tested source-shaped x-edge corrections to corner transport rather than non-quadratic flux weights. Each basis is `δF = ζ δtransport`, where `δtransport` is linear in local `op_sqrt` transport or Hodge-adjoint transport components (`H_u/den`, `H_v/den`). Coefficients were fitted on N16 seeds 1-8 and evaluated on N16 seeds 9-16 plus N32 seeds 1,2,42,99.
+
+Results:
+- `op_components` and `op_plus_hodge` are dynamically unusable. They produce order-one correction norms and order-one drift:
+  - `op_components` N32 mean drift `1.017`, max drift `1.436`; N16 held-out mean drift `1.114`.
+  - `op_plus_hodge` N32 mean drift `0.997`, max drift `1.420`; N16 held-out mean drift `1.033`.
+- `exact_minus_op` is also unusable, with N32 mean drift `1.027` and held-out N16 mean drift `1.011`.
+- `hodge_cross` is less extreme but still rejected: N32 mean drift `0.440`, N16 held-out mean drift `0.583`, poor work generalization.
+- `hodge_components` preserves dynamics better but does not cancel work:
+  - N16 held-out mean relative residual work `1.052`, mean drift `0.0588`.
+  - N32 mean relative residual work `0.929`, mean drift `0.0457`.
+
+Conclusion: fixed local linear x-edge transport corrections do not provide a source-ready fix. Basis sets that affect the work enough cause unacceptable drift; dynamically small basis sets leave almost all of the residual. This rejects another local quadratic correction family around `op_sqrt`.
+
+## 2026-06-03: alternate energy pairings and fitted hidden-energy covectors rejected
+
+Diagnostics:
+- `/tmp/energy_pairing_work_probe.jl`
+- `/tmp/energy_pairing_fit_probe.jl`
+
+Tested whether the current VI operator is skew for a nearby/simple energy covector rather than for the target Hodge covector. Compared work pairings with:
+- raw covariant velocity,
+- contravariant flux,
+- target Hodge-weighted contravariant flux,
+- `J * covariant velocity`,
+- `hodge_weight * covariant velocity`,
+- `J * contravariant flux`,
+- `hodge_weight * J * covariant velocity`.
+
+Results from the direct pairing table:
+- No simple pairing makes the total work consistently vanish.
+- Some pairings improve cancellation for particular states, but the best pairing changes by state/resolution.
+- Example N32 seed42 normalized total work: target Hodge `+9.322e-04`, raw covariant `+2.602e-03`, `J_cov` `+3.110e-03`, `J_contra_flux` `+1.002e-03`.
+- Example N32 seed99 normalized total work: target Hodge `+2.752e-03`, raw covariant `+1.926e-03`, `J_cov` `+1.247e-03`, `hodge_J_cov` `+1.247e-03`.
+- Thus there is no stable simple hidden pairing.
+
+Also fitted fixed linear combinations of these covectors on N16 seeds 1-8 and evaluated on held-out N16 plus N32.
+- The broad fit and the `contra_flux/J_contra_flux` subset cancel N16 work to roundoff, including held-out N16, by subtracting approximately `0.006135923 * contra_flux`, which nearly annihilates the N16 Hodge covector itself (`qrel=1`). This is the zero-energy-covector degeneracy, not a conserved energy.
+- The same degenerate coefficient fails at N32 with relative residual work exactly about `3.0` and `qrel=4.0`.
+- Covariant-style restricted fits have large covector changes and poor generalization:
+  - N16 held-out mean relative residual work `2.249`, mean `qrel=1.481`.
+  - N32 mean relative residual work `13.60` for the broad covariant/J fit, or `3.025` for hodge-covariant-only; `qrel` remains `3.26-13.0`.
+
+Conclusion: the residual is not explained by a nearby hidden energy pairing. Simple covector changes either fail state/resolution generalization or collapse the energy covector toward zero. The target Hodge energy remains the correct diagnostic; the defect is in the nonlinear tangent VI operator.
