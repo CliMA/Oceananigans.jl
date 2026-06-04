@@ -17813,3 +17813,21 @@ Additional output from the same diagnostic completed after the first note: the `
 - `lambda=1e4`: corrections shrink, but the work defect remains / worsens (`N32 mean/max relative work 1.31 / 1.78`) with nontrivial N32 correction norms (`1.28e-1 / 2.14e-1`).
 
 Conclusion: both compact 24-term local x-edge stencil families tested by `/tmp/xedge_compact_stencil_fit_probe.jl` are rejected. They either do not remove the work residual robustly or require dynamically unacceptable corrections, especially across N16 -> N32.
+
+## 2026-06-04 update: west/east seam-pair skew topology rejected
+
+Diagnostic: `/tmp/xedge_pairwise_skew_probe.jl` tested a derived topological regrouping hypothesis rather than another fitted stencil. It reconstructed the current rotational advection exactly from corner fluxes
+`Fu = ζ * contravariant_velocity_vᶠᶠᶜ`, `Fv = ζ * contravariant_velocity_uᶠᶠᶜ`, then projected each same-`j` west/east seam-corner pair onto the local Hodge-skew constraint
+`Hu_w Fu_w - Hv_w Fv_w + Hu_e Fu_e - Hv_e Fv_e = 0`.
+
+Positive result: the current source rotational advection reconstruction from these corner fluxes matches to roundoff (`recon_rel = 0`) for all sampled N8/N16/N32 states. Corner-flux diagnostics are therefore faithful to the current operator.
+
+Negative result: enforcing zero Hodge work on each west/east x-edge pair is not the missing topology. It zeroes x-edge rotational work by construction, but total Hodge work is not fixed and often worsens; corrections are dynamically too large:
+- N8 seed 42: total work `+1.688e-6 -> +1.771e-6`, correction norm `2.05e-1`.
+- N8 seed 99: `+6.724e-7 -> -1.085e-6`, correction norm `1.56e-1`.
+- N16 seed 42: `+9.063e-7 -> +2.505e-6`, correction norm `1.35e-1`.
+- N16 seed 99: `+1.341e-6 -> +5.264e-7`, correction norm `6.35e-2`.
+- N32 seed 42: `+1.382e-6 -> -1.760e-6`, correction norm `9.32e-2`.
+- N32 seed 99: `+4.263e-6 -> +1.781e-6`, correction norm `1.11e-1`.
+
+Interpretation: the desired x-edge rotational work is not zero pair-by-pair. The x-edge rotational contribution must cancel a state-dependent Bernoulli/interior residual, so a naive paired-corner skew constraint over-corrects. This rejects the simplest west/east seam-pair topological regrouping. The remaining route likely requires deriving the Bernoulli/rotational coupling as a joint corner/face complex rather than imposing rotational skew alone.

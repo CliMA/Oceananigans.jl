@@ -1130,3 +1130,11 @@ This closes another local quadratic corner-stencil route. The second `hodge_num`
 The delayed `hodge_num` branch of `/tmp/xedge_compact_stencil_fit_probe.jl` also completed and is rejected. It used x-edge local Hodge/numerator modes (`hU`, `hV`, `numU`, `numV`, `opU`, `opV`). Weakly regularized fits did not even cancel training work cleanly and failed badly across resolution: at `lambda=0`, train relative work was `2.40e-1 / 7.18e-1`, N16 holdout was `1.19e1 / 5.02e1`, and N32 was `2.14e2 / 4.85e2`, with N32 correction norms up to `6.97e1`. Strong regularization reduced correction size but left the defect (`lambda=1e4`: N32 relative work `1.31 / 1.78`, correction norms `1.28e-1 / 2.14e-1`).
 
 Thus both compact 24-term local x-edge stencil families in this probe are rejected. The remaining local path likely requires a derived topological regrouping of the seam/fold degrees of freedom rather than a fixed-coefficient local basis built from the obvious corner transports, Hodge covectors, or metric numerators.
+
+### 2026-06-04: simple west/east seam-pair skew regrouping rejected
+
+`/tmp/xedge_pairwise_skew_probe.jl` tested a direct topology hypothesis: reconstruct the current rotational term from corner fluxes and project each same-`j` west/east x-edge corner pair so its local Hodge work is zero. The reconstruction was exact (`recon_rel = 0`) for all sampled N8/N16/N32 states, confirming that corner-flux diagnostics faithfully represent the current source rotational advection.
+
+The pairwise skew constraint is rejected. It zeroes x-edge rotational work by construction, but total Hodge work is not corrected and often worsens. Examples: N16 seed 42 changes total work from `+9.063e-7` to `+2.505e-6` with correction norm `1.35e-1`; N32 seed 42 changes `+1.382e-6` to `-1.760e-6` with correction norm `9.32e-2`; N32 seed 99 changes `+4.263e-6` to `+1.781e-6` with correction norm `1.11e-1`.
+
+This shows the target x-edge rotational contribution is not zero pair-by-pair. It must cancel a state-dependent Bernoulli/interior residual. The next viable local derivation needs to couple Bernoulli gradients and rotational corner fluxes in one seam/fold complex, rather than imposing a standalone rotational skew condition on paired x-edge corners.
