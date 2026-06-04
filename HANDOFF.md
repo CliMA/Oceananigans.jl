@@ -17793,3 +17793,23 @@ Results:
 - Amplitude scan at N32 seed 42 confirmed exact homogeneity: `beta/amp = -1.444780e2` and `corr_rel = 6.311821e-3` for amplitudes `0.25, 0.5, 1, 2`, with corrected work at roundoff.
 
 Interpretation: the nonlocal correction is dynamically small at N32 and exactly removes the Hodge work defect, but it violates the local bilinear/quadratic VI-advection structure and introduces a global reduction plus pressure-projection dependence. Keep it as a quantified fallback/pivot, not as the main local-operator solution.
+
+## 2026-06-04 update: compact local x-edge source/raw/op stencil fit rejected
+
+Diagnostic: `/tmp/xedge_compact_stencil_fit_probe.jl` tested additive local quadratic corrections to the existing source tendency on x-edge corners. The first completed family, `source_raw_op`, used 24 basis terms: west/east × target corner flux (`Fu`, `Fv`) × local modes (`sourceU`, `sourceV`, `rawU`, `rawV`, `opU`, `opV`). Coefficients were fit on N16 seeds 1:16 using normalized work residuals plus optional tendency-norm regularization, then evaluated on N16 seeds 17:24 and N32 seeds 1:8.
+
+Result: rejected. Unregularized / weakly regularized fits cancel training work but do not generalize and are dynamically enormous. Representative values:
+- `lambda=0`: train mean/max relative work `1.78e-12 / 8.12e-12`, but N16 holdout `1.01e2 / 3.17e2`, N32 `8.55 / 1.67e1`; correction relative norms up to `2.16e1` on train and `1.05e1` on N32.
+- `lambda=1`: train mean/max relative work `1.19e-1 / 7.50e-1`, but N16 holdout `2.55e1 / 8.01e1`, N32 `2.77 / 6.50`; correction norms still order-one.
+- `lambda=1e2`: correction norms drop to `~0.1`, but N32 leaves nearly all work (`mean/max relative work 9.27e-1 / 1.49`).
+- `lambda=1e4`: correction is small (`N32 mean/max norm 9.11e-3 / 1.66e-2`) but leaves essentially all work (`N32 mean/max relative work 9.49e-1 / 1.04`).
+
+Interpretation: this compact local source/raw/op corner-transport basis has the same failure pattern as earlier local fits: either overfit with huge, dynamically unacceptable corrections, or regularize to small corrections that do not remove the Hodge-work defect. The still-running `hodge_num` branch of the same script is too expensive as written because it repeatedly materializes projected models/basis tendencies; replace it with a smaller or reused-model diagnostic before drawing conclusions from that family.
+
+Additional output from the same diagnostic completed after the first note: the `hodge_num` family is also rejected. This family used west/east × (`Fu`, `Fv`) × (`hU`, `hV`, `numU`, `numV`, `opU`, `opV`). It performed worse than `source_raw_op` across resolution:
+- `lambda=0`: train mean/max relative work `2.40e-1 / 7.18e-1`, N16 holdout `1.19e1 / 5.02e1`, N32 `2.14e2 / 4.85e2`; N32 correction norms `4.79e1 / 6.97e1`.
+- `lambda=1`: N16 holdout `1.56e1 / 8.80e1`, N32 `8.48e1 / 2.02e2`; N32 correction norms `1.51e1 / 1.92e1`.
+- `lambda=1e2`: N32 relative work remains `2.64 / 5.48` with order-one N32 correction norms (`7.90e-1 / 1.01`).
+- `lambda=1e4`: corrections shrink, but the work defect remains / worsens (`N32 mean/max relative work 1.31 / 1.78`) with nontrivial N32 correction norms (`1.28e-1 / 2.14e-1`).
+
+Conclusion: both compact 24-term local x-edge stencil families tested by `/tmp/xedge_compact_stencil_fit_probe.jl` are rejected. They either do not remove the work residual robustly or require dynamically unacceptable corrections, especially across N16 -> N32.
