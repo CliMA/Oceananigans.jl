@@ -17781,3 +17781,15 @@ Results:
   - seed99: beta error `0.846`, leaves most work.
 
 Conclusion: a simple linear predictor for the global `β` scalar does not generalize. This rejects the simplest bilinear/quadratic approximation to the nonquadratic all-xedge energy fixer.
+
+## 2026-06-03 update: nonlocal x-edge energy-fixer diagnostic
+
+Diagnostic: `/tmp/nonlocal_energy_fixer_probe.jl` tested the all-xedge minimal Hodge-covector work correction as a separate post-advection energy fixer around the current source tendency. This is not a source-ready VI operator: it uses a global scalar `β = -W / sum(Hu^2 + Hv^2)` and earlier `/tmp/global_correction_quadratic_probe.jl` showed it fails quadratic polarization despite exact homogeneous scaling.
+
+Results:
+- N16 seeds 1:8: corrected work was roundoff; correction relative tendency norm mean/max `5.13e-2 / 1.01e-1`; max component-relative mean/max `7.15e-2 / 2.36e-1`.
+- N32 seeds 1:8: corrected work was roundoff; correction relative tendency norm mean/max `1.84e-2 / 2.84e-2`; max component-relative mean/max `4.29e-2 / 7.37e-2`.
+- Pre-projection correction divergence is not negligible: normalized correction divergence was about `0.65-0.90` on N32 and about `0.73-0.93` on N16. A pressure/projection stage would be part of the mechanism, not an irrelevant cleanup.
+- Amplitude scan at N32 seed 42 confirmed exact homogeneity: `beta/amp = -1.444780e2` and `corr_rel = 6.311821e-3` for amplitudes `0.25, 0.5, 1, 2`, with corrected work at roundoff.
+
+Interpretation: the nonlocal correction is dynamically small at N32 and exactly removes the Hodge work defect, but it violates the local bilinear/quadratic VI-advection structure and introduces a global reduction plus pressure-projection dependence. Keep it as a quantified fallback/pivot, not as the main local-operator solution.

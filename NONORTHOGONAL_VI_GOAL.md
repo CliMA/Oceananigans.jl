@@ -1112,3 +1112,9 @@ Added `/tmp/xedge_class_split_exact_minus_op_fit_probe.jl`, fitting the differen
 ### 2026-06-03 update: linear beta predictor rejected
 
 Added `/tmp/xedge_beta_linear_predictor_probe.jl` to approximate the global all-xedge scalar `β=-W/S` by a linear functional of x-edge state features, making the correction quadratic if successful. The model overfits N16 training seeds exactly, but fails held-out N16 with mean beta/relative-work error `3.66` and max `7.86`. N32 evaluation is not viable: seed2 leaves almost all work (`relwork=0.997`), seed42 overshoots (`relwork=3.54`), and seed99 leaves most work (`0.846`). This rejects the simplest quadratic/bilinearization of the global all-xedge correction.
+
+### 2026-06-03: nonlocal post-advection energy-fixer branch quantified
+
+`/tmp/nonlocal_energy_fixer_probe.jl` evaluated the global all-xedge minimal Hodge-covector correction applied around the current source tendency. It cancels Hodge work to roundoff for all sampled states. Relative correction sizes were modest, especially at N32: N16 seeds 1:8 had mean/max correction norm `5.13e-2 / 1.01e-1`; N32 seeds 1:8 had `1.84e-2 / 2.84e-2`. The N32 max component-relative correction was at most `7.37e-2` over seeds 1:8.
+
+However this remains a fallback mechanism, not a VI operator candidate. The correction depends on a global scalar `β = -W / sum(Hu^2 + Hv^2)`, has substantial pre-projection divergence (`~0.65-0.90` normalized on N32), and prior polarization diagnostics showed it is homogeneous but not bilinear/quadratic. An amplitude scan confirmed the homogeneity (`beta/amp` constant and `corr_rel` constant for amplitudes `0.25, 0.5, 1, 2`). This path is viable only if the goal pivots from a local quadratic vector-invariant discretization to a global energy-fixer/projection mechanism.
