@@ -1138,3 +1138,11 @@ Thus both compact 24-term local x-edge stencil families in this probe are reject
 The pairwise skew constraint is rejected. It zeroes x-edge rotational work by construction, but total Hodge work is not corrected and often worsens. Examples: N16 seed 42 changes total work from `+9.063e-7` to `+2.505e-6` with correction norm `1.35e-1`; N32 seed 42 changes `+1.382e-6` to `-1.760e-6` with correction norm `9.32e-2`; N32 seed 99 changes `+4.263e-6` to `+1.781e-6` with correction norm `1.11e-1`.
 
 This shows the target x-edge rotational contribution is not zero pair-by-pair. It must cancel a state-dependent Bernoulli/interior residual. The next viable local derivation needs to couple Bernoulli gradients and rotational corner fluxes in one seam/fold complex, rather than imposing a standalone rotational skew condition on paired x-edge corners.
+
+### 2026-06-04: local joint Bernoulli-plus-xedge group targets rejected
+
+`/tmp/xedge_joint_group_target_probe.jl` tested local seam-complex corrections that assign nearby Bernoulli work to each same-`j` west/east x-edge pair and then enforce `xedge_rot_work_j + local_residual_j = 0`. Four local assignments were tried: adjacent half-face Bernoulli work, full edge half-face Bernoulli work including high-side `u` faces, and each with adjacent interior rotational corner work included.
+
+These variants are rejected. They sometimes reduce total work, confirming that the remaining defect is a joint Bernoulli/rotational coupling problem, but the obvious local incidence assignments are not robust and require large corrections. Examples: N8 seed 42 improves from `+1.688e-6` to `~2e-7` to `4e-7` but needs correction norms near `0.20`; N8 seed 99 worsens from `+6.72e-7` to `+7.60e-7` / `+1.12e-6`; N32 seed 42 over-corrects to `-5.80e-7` / `-1.13e-6`; N32 seed 99 improves to `9.27e-7` / `1.67e-6` with correction norms near `0.09`.
+
+The result rules out the simple local half-face Bernoulli assignment as the missing seam/fold mimetic complex. A viable local derivation must use a different topology/incidence for the Bernoulli-gradient and rotational-corner coupling, rather than assigning adjacent face work to each x-edge pair by the same half-stencil used by current corner fluxes.

@@ -17831,3 +17831,23 @@ Negative result: enforcing zero Hodge work on each west/east x-edge pair is not 
 - N32 seed 99: `+4.263e-6 -> +1.781e-6`, correction norm `1.11e-1`.
 
 Interpretation: the desired x-edge rotational work is not zero pair-by-pair. The x-edge rotational contribution must cancel a state-dependent Bernoulli/interior residual, so a naive paired-corner skew constraint over-corrects. This rejects the simplest west/east seam-pair topological regrouping. The remaining route likely requires deriving the Bernoulli/rotational coupling as a joint corner/face complex rather than imposing rotational skew alone.
+
+## 2026-06-04 update: local joint Bernoulli-plus-xedge group targets rejected
+
+Diagnostic: `/tmp/xedge_joint_group_target_probe.jl` tested the next natural local seam-complex hypothesis. Instead of forcing each west/east x-edge rotational pair to zero work, it assigned nearby Bernoulli work to each same-`j` seam pair using the half-face incidence pattern implied by the corner-flux work covectors, then projected that x-edge pair to make `xedge_rot_work_j + local_B_or_residual_j = 0`. Variants tested:
+- `B_adjacent`: adjacent half-face Bernoulli work (`u(1,j)`, `u(1,j-1)`, `v(1,j)`, `v(Nx,j)`).
+- `B_full_edge_faces`: also includes `u(Nx,j)` and `u(Nx,j-1)` half-face Bernoulli work.
+- `B_adjacent_inner_rot`: `B_adjacent` plus adjacent interior rotational corner work (`i=2`, `i=Nx`).
+- `B_full_edge_inner_rot`: `B_full_edge_faces` plus the same adjacent interior rotational work.
+
+Positive: this confirms that coupling Bernoulli and rotational work is the right class of question; some states improve substantially.
+
+Negative: all four local target assignments are rejected as source candidates. They are not robust across states and require large corrections compared with the current tendency and with the global minimal lower bound. Representative outcomes:
+- N8 seed 42 improves from `+1.688e-6` to `+2.08e-7` to `+4.15e-7`, but correction norms are `~0.20`.
+- N8 seed 99 worsens or barely changes (`+6.72e-7` to `+7.60e-7` / `+1.12e-6`) with correction norms `0.12-0.13`.
+- N16 seed 42 improves to `~3.6e-7`, but correction norms are `0.149-0.160` and max component changes exceed `0.5`.
+- N16 seed 99 improves only to `~9.5e-7` / `1.09e-6`, correction norms `0.085-0.100`.
+- N32 seed 42 over-corrects negative (`-5.80e-7` to `-1.13e-6`), correction norms `0.077-0.083`.
+- N32 seed 99 improves to `9.27e-7` / `1.67e-6`, correction norms `~0.087-0.089`.
+
+Interpretation: the obvious local half-face Bernoulli assignment does not provide the missing mimetic seam complex. It is closer in spirit than standalone rotational skew, but still over-corrects and is much more intrusive than the nonlocal minimal correction. A viable local derivation must use a different incidence/topology for the Bernoulli/rotational coupling, not just the adjacent face/corner work assignment.
