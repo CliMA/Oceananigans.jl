@@ -1,5 +1,5 @@
 using Oceananigans.Architectures: Architectures, on_architecture
-using Oceananigans.BoundaryConditions: BoundaryConditions, DiscreteBoundaryFunction, getbc, total_boundary_flux
+using Oceananigans.BoundaryConditions: BoundaryConditions, DiscreteBoundaryFunction, total_boundary_flux
 using Oceananigans.Grids: AbstractGrid, topology
 
 struct TKETopBoundaryConditionParameters{C, U}

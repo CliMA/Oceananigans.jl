@@ -9,10 +9,13 @@ using Oceananigans.BoundaryConditions:
     ContinuousBoundaryFunction,
     DiscreteBoundaryFunction,
     fill_halo_event!,
+    needs_implicit_solver,
     MultiRegionFillHalo,
     MultiRegionCommunicationBoundaryCondition
 
 @inline bc_str(::MultiRegionObject) = "MultiRegion Boundary Conditions"
+
+BoundaryConditions.needs_implicit_solver(bcs::MultiRegionObject) = any(needs_implicit_solver, bcs.regional_objects)
 
 BoundaryConditions.fill_halo_regions!(field::MultiRegionField, args...; kwargs...) =
     fill_halo_regions!(field.data,

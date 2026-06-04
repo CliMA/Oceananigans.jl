@@ -272,8 +272,7 @@ function HydrostaticFreeSurfaceModel(grid;
     # Build the vertical implicit solver if the closure, the advection scheme (adaptive implicit
     # vertical advection), or any boundary condition (implicit-explicit flux) requires it.
     implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
-    bc_needs_solver = any(field -> needs_implicit_solver(field.boundary_conditions.top) |
-                                   needs_implicit_solver(field.boundary_conditions.bottom), prognostic_fields)
+    bc_needs_solver = any(field -> needs_implicit_solver(field.boundary_conditions), prognostic_fields)
 
     if isnothing(implicit_solver) && (needs_implicit_solver(advection) || bc_needs_solver)
         implicit_solver = implicit_diffusion_solver(VerticallyImplicitTimeDiscretization(), grid)
