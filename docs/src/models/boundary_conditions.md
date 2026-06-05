@@ -377,14 +377,48 @@ PerturbationAdvection{Float64}
 ├── inflow_timescale: 1.0
 ├── outflow_timescale: 10.0
 ├── gravity_wave_speed: 0.0
-└── density: Nothing
+├── density: Nothing
+└── target_transport: Nothing
 
 julia> open_boundary = NormalFlowBoundaryCondition(1; scheme)
-NormalFlowBoundaryCondition{PerturbationAdvection{Float64, Nothing}}: 1
+NormalFlowBoundaryCondition{PerturbationAdvection{Float64, Nothing, Nothing}}: 1
 ```
 
 The boundary value and timescales need to be carefully chosen to allow information to enter/
 exit the domain in each specific problem.
+
+### 11. Open boundary condition with a target transport
+
+A [`PerturbationAdvection`](@ref) scheme can additionally pin the *net volume transport*
+through the boundary — the integral of the normal velocity over the boundary area,
+``\oint \mathbf{u} \cdot \mathrm{d} \mathbf{A}`` (units m³ s⁻¹) — to a prescribed value
+through the `target_transport` keyword:
+
+```jldoctest
+julia> using Oceananigans
+
+julia> scheme = PerturbationAdvection(; inflow_timescale=1, outflow_timescale=10, target_transport=2)
+PerturbationAdvection{Float64}
+├── inflow_timescale: 1.0
+├── outflow_timescale: 10.0
+├── gravity_wave_speed: 0.0
+├── density: Nothing
+└── target_transport: 2.0
+
+julia> open_boundary = NormalFlowBoundaryCondition(1; scheme)
+NormalFlowBoundaryCondition{PerturbationAdvection{Float64, Nothing, Float64}}: 1
+```
+
+At each time step the normal velocity on a targeted boundary is shifted uniformly so that its
+net transport equals `target_transport`. Boundaries that carry a `target_transport` are
+corrected independently of one another. In a `NonhydrostaticModel` any remaining net
+imbalance is then distributed over the open boundaries *without* a target (the "pool"
+boundaries) to satisfy the zero-net-transport solvability condition.
+
+`target_transport` holds the net transport `∮u·dA` exactly for a `NonhydrostaticModel`. For a
+`HydrostaticFreeSurfaceModel` it is currently only approximate: the correction is applied
+before the implicit free-surface solve so that the free surface stays consistent, but the
+subsequent barotropic correction perturbs the boundary velocity slightly.
 
 ## Building boundary conditions on a field
 

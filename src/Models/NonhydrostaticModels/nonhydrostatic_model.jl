@@ -53,7 +53,7 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
           timestepper :: TS       # Object containing timestepper fields and parameters
       pressure_solver :: S        # Pressure/Poisson solver
      auxiliary_fields :: AF       # User-specified auxiliary fields for forcing functions and boundary conditions
-   boundary_transport :: BT       # Container for the average transports at boundaries
+   boundary_transport :: BT       # Container for transports at open boundaries
 end
 
 supported_timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)

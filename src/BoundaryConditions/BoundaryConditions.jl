@@ -8,7 +8,7 @@ export
     IMEXFluxTimeDiscretization, IMEXFluxBoundaryCondition,
     implicit_flux_coefficient,
     needs_implicit_solver, validate_implicit_explicit_flux_locations, total_boundary_flux,
-    PerturbationAdvection,
+    PerturbationAdvection, has_target_transport, get_target_transport,
     validate_boundary_condition_topology, validate_boundary_condition_architecture,
     FieldBoundaryConditions,
     compute_x_bcs!, compute_y_bcs!, compute_z_bcs!,
