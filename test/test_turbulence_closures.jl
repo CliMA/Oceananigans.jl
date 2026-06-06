@@ -525,14 +525,13 @@ end
         end
     end
 
-    @testset "CATKE diffusive CFL diagnostics" begin
-        @info "  Testing CATKE diffusive CFL diagnostics..."
+    @testset "Vertical diffusive CFL diagnostics" begin
+        @info "  Testing vertical diffusive CFL diagnostics..."
         grid = RectilinearGrid(CPU(); size=(20, 30, 4), x=(-10, 10), y=(-10, 10), z=(-10, 0), halo=(6, 6, 5))
 
         implicit_catke = CATKEVerticalDiffusivity()
         explicit_catke = CATKEVerticalDiffusivity(ExplicitTimeDiscretization())
 
-        # test implicit CATKE first; it should be stable for any time step and thus have an infinite diffusion timescale and zero diffusive CFL
         model = HydrostaticFreeSurfaceModel(grid;
                                             free_surface = SplitExplicitFreeSurface(grid; substeps=5),
                                             closure = implicit_catke)
@@ -540,13 +539,58 @@ end
         @test Oceananigans.Diagnostics.cell_diffusion_timescale(model) == Inf
         @test Oceananigans.Diagnostics.DiffusiveCFL(0.1)(model) == 0
 
-        # test explicit CATKE
         model = HydrostaticFreeSurfaceModel(grid;
                                             free_surface = SplitExplicitFreeSurface(grid; substeps=5),
                                             closure = explicit_catke)
 
         @test Oceananigans.Diagnostics.cell_diffusion_timescale(model) ≈ 19764.23537605237
         @test Oceananigans.Diagnostics.DiffusiveCFL(0.1)(model) ≈ 5.0596442562694076e-6
+
+        model = NonhydrostaticModel(grid;
+                                    closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(); ν=1, κ=1),
+                                    tracers = :b,
+                                    buoyancy = BuoyancyTracer())
+
+        @test Oceananigans.Diagnostics.cell_diffusion_timescale(model) == Inf
+        @test Oceananigans.Diagnostics.DiffusiveCFL(0.1)(model) == 0
+
+        model = NonhydrostaticModel(grid;
+                                    closure = RiBasedVerticalDiffusivity(warning=false),
+                                    tracers = :b,
+                                    buoyancy = BuoyancyTracer())
+
+        @test Oceananigans.Diagnostics.cell_diffusion_timescale(model) == Inf
+        @test Oceananigans.Diagnostics.DiffusiveCFL(0.1)(model) == 0
+
+        model = HydrostaticFreeSurfaceModel(grid;
+                                            free_surface = SplitExplicitFreeSurface(grid; substeps=5),
+                                            closure = TKEDissipationVerticalDiffusivity())
+
+        @test Oceananigans.Diagnostics.cell_diffusion_timescale(model) == Inf
+        @test Oceananigans.Diagnostics.DiffusiveCFL(0.1)(model) == 0
+
+        model = NonhydrostaticModel(grid;
+                                    closure = ConvectiveAdjustmentVerticalDiffusivity(ExplicitTimeDiscretization()),
+                                    tracers = :b,
+                                    buoyancy = BuoyancyTracer())
+
+        @test Oceananigans.Diagnostics.cell_diffusion_timescale(model) isa Number
+        @test Oceananigans.Diagnostics.DiffusiveCFL(0.1)(model) isa Number
+
+        model = NonhydrostaticModel(grid;
+                                    closure = RiBasedVerticalDiffusivity(ExplicitTimeDiscretization(); warning=false),
+                                    tracers = :b,
+                                    buoyancy = BuoyancyTracer())
+
+        @test Oceananigans.Diagnostics.cell_diffusion_timescale(model) isa Number
+        @test Oceananigans.Diagnostics.DiffusiveCFL(0.1)(model) isa Number
+
+        model = HydrostaticFreeSurfaceModel(grid;
+                                            free_surface = SplitExplicitFreeSurface(grid; substeps=5),
+                                            closure = TKEDissipationVerticalDiffusivity(ExplicitTimeDiscretization()))
+
+        @test Oceananigans.Diagnostics.cell_diffusion_timescale(model) isa Number
+        @test Oceananigans.Diagnostics.DiffusiveCFL(0.1)(model) isa Number
     end
 
     @testset "Closure tuples" begin

@@ -82,11 +82,21 @@ Diagnostics.cell_diffusion_timescale(::VerticallyImplicitDiffusivity, closure_fi
 Diagnostics.cell_diffusion_timescale(closure::Tuple, closure_fields, grid, clock, fields) =
     minimum(cell_diffusion_timescale(c, cf, grid, clock, fields) for (c, cf) in zip(closure, closure_fields))
 
-function Diagnostics.cell_diffusion_timescale(closure::CATKEVerticalDiffusivity{<:ExplicitTimeDiscretization},
+function Diagnostics.cell_diffusion_timescale(closure::Union{CATKEVerticalDiffusivity{<:ExplicitTimeDiscretization},
+                                                             TKEDissipationVerticalDiffusivity{<:ExplicitTimeDiscretization}},
                                               closure_fields, grid, clock, fields)
     Δ = min_Δxyz(grid, VerticalFormulation())
     max_ν = maximum(viscosity(closure, closure_fields).data.parent)
     max_κ = maximum(maximum(diffusivity(closure, closure_fields, Val(tracer_name)).data.parent)
                     for tracer_name in keys(closure_fields._tupled_tracer_diffusivities))
+    return min(Δ^2 / max_ν, Δ^2 / max_κ)
+end
+
+function Diagnostics.cell_diffusion_timescale(closure::Union{ConvectiveAdjustmentVerticalDiffusivity{<:ExplicitTimeDiscretization},
+                                                             RiBasedVerticalDiffusivity{<:ExplicitTimeDiscretization}},
+                                              closure_fields, grid, clock, fields)
+    Δ = min_Δxyz(grid, VerticalFormulation())
+    max_ν = maximum(viscosity(closure, closure_fields).data.parent)
+    max_κ = maximum(diffusivity(closure, closure_fields, nothing).data.parent)
     return min(Δ^2 / max_ν, Δ^2 / max_κ)
 end
