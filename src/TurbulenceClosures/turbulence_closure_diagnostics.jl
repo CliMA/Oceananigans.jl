@@ -76,8 +76,8 @@ end
 
 # Vertically-implicit treatment of purely vertical diffusivity has no explicit
 # diffusive time-step restriction.
-Diagnostics.cell_diffusion_timescale(::AbstractScalarDiffusivity{<:VerticallyImplicitTimeDiscretization, <:VerticalFormulation},
-                                     closure_fields, grid, clock, fields) = Inf
+const VerticallyImplicitDiffusivity = AbstractScalarDiffusivity{<:VerticallyImplicitTimeDiscretization, <:VerticalFormulation}
+Diagnostics.cell_diffusion_timescale(::VerticallyImplicitDiffusivity, closure_fields, grid, clock, fields) = Inf
 
 Diagnostics.cell_diffusion_timescale(closure::Tuple, closure_fields, grid, clock, fields) =
     minimum(cell_diffusion_timescale(c, cf, grid, clock, fields) for (c, cf) in zip(closure, closure_fields))
