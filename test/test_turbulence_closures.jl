@@ -1,26 +1,19 @@
 include("dependencies_for_runtests.jl")
 
 using Random
-using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, RiBasedVerticalDiffusivity, DiscreteDiffusionFunction
-
-using Oceananigans.TurbulenceClosures: viscosity_location, diffusivity_location,
-                                       required_halo_size_x, required_halo_size_y, required_halo_size_z,
-                                       cell_diffusion_timescale, formulation, min_Δxyz
-
-using Oceananigans.TurbulenceClosures: diffusive_flux_x, diffusive_flux_y, diffusive_flux_z,
-                                       viscous_flux_ux, viscous_flux_uy, viscous_flux_uz
-
-using Oceananigans.TurbulenceClosures: ScalarDiffusivity,
-                                       ScalarBiharmonicDiffusivity,
-                                       TwoDimensionalLeith,
-                                       ConvectiveAdjustmentVerticalDiffusivity,
-                                       Smagorinsky,
-                                       DynamicSmagorinsky,
-                                       SmagorinskyLilly,
-                                       LagrangianAveraging,
-                                       AnisotropicMinimumDissipation
 
 using Oceananigans.Grids: znode
+using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity, RiBasedVerticalDiffusivity, DiscreteDiffusionFunction,
+                                       viscosity_location, diffusivity_location,
+                                       required_halo_size_x, required_halo_size_y, required_halo_size_z,
+                                       cell_diffusion_timescale, formulation, min_Δxyz,
+                                       diffusive_flux_x, diffusive_flux_y, diffusive_flux_z,
+                                       viscous_flux_ux, viscous_flux_uy, viscous_flux_uz,
+                                       ScalarDiffusivity, ScalarBiharmonicDiffusivity,
+                                       TwoDimensionalLeith, ConvectiveAdjustmentVerticalDiffusivity,
+                                       Smagorinsky, DynamicSmagorinsky, SmagorinskyLilly,
+                                       LagrangianAveraging,
+                                       AnisotropicMinimumDissipation
 
 ConstantSmagorinsky(FT=Float64) = Smagorinsky(FT, coefficient=0.16)
 DirectionallyAveragedDynamicSmagorinsky(FT=Float64) = DynamicSmagorinsky(FT, averaging=(1, 2))
@@ -366,12 +359,12 @@ end
 
     @testset "ScalarDiffusivity" begin
         @info "  Testing ScalarDiffusivity..."
-        for T in float_types
+        for FT in float_types
             ν, κ = 0.3, 0.7
-            closure = ScalarDiffusivity(T; κ=(T=κ, S=κ), ν=ν)
-            @test closure.ν == T(ν)
-            @test closure.κ.T == T(κ)
-            run_constant_isotropic_diffusivity_fluxdiv_tests(T)
+            closure = ScalarDiffusivity(FT; κ=(T=κ, S=κ), ν=ν)
+            @test closure.ν == FT(ν)
+            @test closure.κ.T == FT(κ)
+            run_constant_isotropic_diffusivity_fluxdiv_tests(FT)
         end
 
         @info "  Testing ScalarDiffusivity with different halo requirements..."
@@ -400,10 +393,10 @@ end
 
     @testset "HorizontalScalarDiffusivity" begin
         @info "  Testing HorizontalScalarDiffusivity..."
-        for T in float_types
-            @test tracer_specific_horizontal_diffusivity(T)
-            @test horizontal_diffusivity_fluxdiv(T, νz=zero(T), νh=zero(T))
-            @test horizontal_diffusivity_fluxdiv(T)
+        for FT in float_types
+            @test tracer_specific_horizontal_diffusivity(FT)
+            @test horizontal_diffusivity_fluxdiv(FT, νz=zero(FT), νh=zero(FT))
+            @test horizontal_diffusivity_fluxdiv(FT)
         end
     end
 
@@ -595,10 +588,8 @@ end
 
     @testset "Closure tuples" begin
         @info "  Testing time-stepping with a tuple of closures..."
-        for arch in archs
-            for FT in float_types
-                @test time_step_with_tupled_closure(FT, arch)
-            end
+        for arch in archs, FT in float_types
+            @test time_step_with_tupled_closure(FT, arch)
         end
     end
 
