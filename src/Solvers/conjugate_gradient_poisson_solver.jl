@@ -214,6 +214,43 @@ end
 ##### The "DiagonallyDominantPreconditioner" (Marshall et al 1997)
 #####
 
+"""
+    DiagonallyDominantPreconditioner()
+
+Construct a pointwise (Jacobi-like) approximate-inverse preconditioner for the
+`ConjugateGradientPoissonSolver`, following the "diagonally dominant" approximation of
+Marshall et al. (1997, §4.2). It approximates `M ≈ (V∇²)⁻¹` with a single sparse sweep that
+keeps all seven points of the stencil but never solves a coupled system, so it is cheap and
+applies uniformly to any topology and grid aspect ratio.
+
+The symmetric volume-weighted Laplacian `V∇²` has, at cell `(i, j, k)`, the seven-point stencil
+with off-diagonal coefficients (geometric face-area × inverse spacing, no `V⁻¹` factor)
+
+```math
+A_x^\\pm = A_x^{fcc}\\,\\Delta x^{-1}, \\quad
+A_y^\\pm = A_y^{cfc}\\,\\Delta y^{-1}, \\quad
+A_z^\\pm = A_z^{ccf}\\,\\Delta z^{-1},
+```
+
+and diagonal `Ac = -(Ax⁻ + Ax⁺ + Ay⁻ + Ay⁺ + Az⁻ + Az⁺)`. Rather than inverting this stencil,
+the preconditioner returns
+
+```math
+p_{ijk} = \\frac{1}{|A^c_{ijk}|}
+          \\left( r_{ijk} - \\sum_{\\text{nb}} \\frac{2\\,A^{\\text{nb}}_{ijk}}{A^c_{ijk} + A^c_{\\text{nb}}}\\, r_{\\text{nb}} \\right),
+```
+
+where the sum runs over the six face neighbors `nb` and each off-diagonal coupling is scaled by
+the harmonic-style combination `2 Aⁿᵇ / (Ac + Ac_nb)` of the two diagonals it connects. This is
+the diagonally-dominant correction that makes the sweep a good approximate inverse on a wide
+range of grids while remaining diagonally dominant (hence stable) by construction.
+
+For strongly anisotropic, ocean-like grids (`(Δz/Δx)²Nz² ≫ 1`) the [`ColumnwiseTridiagonalPreconditioner`](@ref), 
+which inverts the vertical sub-system exactly, is also another viable option.
+
+However the FFT-based preconditioner is the recommented option over the `DiagonallyDominantPreconditioner` 
+or the [`ColumnwiseTridiagonalPreconditioner`](@ref) as it converges in much fewer iterations for most scenarios.
+"""
 struct DiagonallyDominantPreconditioner end
 Base.summary(::DiagonallyDominantPreconditioner) = "DiagonallyDominantPreconditioner"
 
@@ -300,9 +337,30 @@ end
 Construct a block-diagonal preconditioner for the `ConjugateGradientPoissonSolver` that, for
 each horizontal column `(i, j)`, exactly solves the vertical tridiagonal sub-system of the
 symmetric volume-weighted Laplacian `V∇²` while discarding horizontal couplings (Marshall et
-al. 1997, §4). For ocean-like problems (large `Nz`, stretched vertical grid) this is a much
-stronger preconditioner than `DiagonallyDominantPreconditioner` and typically reduces the
-number of CG iterations.
+al. 1997, §4).
+
+For each horizontal column `(i, j)` the preconditioning system solved is
+
+```math
+L_z \\, p = r ,
+```
+
+where `Lz` is the vertical (`k`-direction) part of `V∇²`, i.e. the tridiagonal operator
+
+```math
+(L_z p)_k = A_z^- \\, p_{k-1} - (A_z^- + A_z^+) \\, p_k + A_z^+ \\, p_{k+1} ,
+```
+
+with `Az⁻ = Azᶜᶜᶠ(i, j, k) / Δzᶜᶜᶠ(i, j, k)` and `Az⁺ = Azᶜᶜᶠ(i, j, k+1) / Δzᶜᶜᶠ(i, j, k+1)`.
+The preconditioner is therefore `M = Lz⁻¹`, applied as one batched Thomas sweep per column.
+
+This preconditioner is more well-suited for hydrostatic problems (`(Δz/Δx)²Nz² ≪ 1`) as it allows
+convergence in ~4--5x fewer iterations. For isotropic grids (`Δz/Δx ≈ 1`) the conditioning is worse
+than no preconditioner.
+
+In general, using the FFT preconditioner is recommended as it requires much fewer iterations than the 
+`ColumnwiseTridiagonalPreconditioner` or the [`DiagonallyDominantPreconditioner`](@ref DiagonallyDominantPreconditioner) 
+in most scenarios.
 
 The same `grid` must be passed to both `ColumnwiseTridiagonalPreconditioner` and the
 `ConjugateGradientPoissonSolver` that uses it.
