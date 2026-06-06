@@ -182,6 +182,26 @@ for arch in archs
             less_trivial_kernel_function(i, j, k, grid, u, v) = @inbounds u[i, j, k] * ℑxyᶠᶜᵃ(i, j, k, grid, v)
             op = KernelFunctionOperation{Face, Center, Center}(less_trivial_kernel_function, grid, u, v)
             @test op isa KernelFunctionOperation
+
+            two_index_kernel_function(i, j, grid) = i + j
+            op = KernelFunctionOperation{Center, Center, Nothing}(two_index_kernel_function, grid)
+            @test op isa KernelFunctionOperation
+            @test Array(interior(compute!(Field(op))))[:, :, 1] == [i + j for i in 1:size(grid, 1), j in 1:size(grid, 2)]
+
+            one_index_kernel_function(k, grid) = 2k
+            op = KernelFunctionOperation{Nothing, Nothing, Center}(one_index_kernel_function, grid)
+            @test Array(interior(compute!(Field(op))))[1, 1, :] == [2k for k in 1:size(grid, 3)]
+
+            q = CenterField(grid)
+            set!(q, 2)
+            interior_pattern_kernel_function(i, k, grid, q) = @inbounds q[i, 1, k] * i * k
+            op = KernelFunctionOperation{Center, Nothing, Center}(interior_pattern_kernel_function, grid, q)
+            @test Array(interior(compute!(Field(op))))[:, 1, :] == [2 * i * k for i in 1:size(grid, 1), k in 1:size(grid, 3)]
+
+            # Three-index kernel functions at reduced locations still work
+            three_index_kernel_function(i, j, k, grid) = i + j
+            op = KernelFunctionOperation{Center, Center, Nothing}(three_index_kernel_function, grid)
+            @test Array(interior(compute!(Field(op))))[:, :, 1] == [i + j for i in 1:size(grid, 1), j in 1:size(grid, 2)]
         end
 
         @testset "Fidelity of simple binary operations" begin
