@@ -61,14 +61,25 @@ end
 
 function test_conjugate_gradient_partial_cell_bottom(underlying_grid, make_preconditioner)
     grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(-underlying_grid.Lz / 2))
+    arch = architecture(grid)
     preconditioner = make_preconditioner(underlying_grid, grid)
     preconditioner_name = typeof(preconditioner).name.wrapper
     @info "  Testing CG solver with PartialCellBottom using $preconditioner_name..."
 
-    solver = ConjugateGradientPoissonSolver(grid; preconditioner)
-    pressure = CenterField(grid)
-    @test_nowarn solve!(pressure, solver.conjugate_gradient_solver, solver.right_hand_side)
+    reltol = abstol = eps(eltype(grid))
+    solver = ConjugateGradientPoissonSolver(grid; preconditioner, reltol, abstol, maxiter=Int(1e10))
+    R, U = random_divergent_source_term(grid)
+
+    p_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()))
+    ϕ   = CenterField(grid, boundary_conditions=p_bcs)
+    ∇²ϕ = CenterField(grid, boundary_conditions=p_bcs)
+
+    @test_nowarn solve_for_pressure!(ϕ, solver, nothing, U, 1)
     @test iteration(solver.conjugate_gradient_solver) <= solver.conjugate_gradient_solver.maxiter
+
+    # The solution should be divergence-free: ∇²ϕ should recover the source term R
+    compute_∇²!(∇²ϕ, ϕ, arch, grid)
+    @test interior(∇²ϕ) ≈ interior(R)
 end
 
 function test_conjugate_gradient_default_constructor(arch)
