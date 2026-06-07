@@ -416,7 +416,7 @@ run!(simulation2)
 @info "Simulation complete."
 plot_soliton(simulation2, params, animation_file = "output/soliton_split_explicit_PA.mp4")
 
-rd = Radiation(; outflow_relaxation_timescale = outflow_timescale, inflow_relaxation_timescale = inflow_timescale)
+rd = Radiation(; outflow_timescale = outflow_timescale, inflow_timescale = inflow_timescale)
 simulation3 = setup_simulation(params; stop_time, free_surface_type = :implicit, scheme = rd, outfile = "output/soliton_implicit_RD.jld2")
 run!(simulation3)
 @info "Simulation complete."

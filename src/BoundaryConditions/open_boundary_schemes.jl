@@ -54,7 +54,7 @@ Adapt.adapt_structure(to, f::Flather) =
 const FlatherOBC = BoundaryCondition{<:Open{<:Flather}}
 
 """
-    Radiation(; outflow_relaxation_timescale = Inf, inflow_relaxation_timescale = 300)
+    Radiation(; outflow_timescale = Inf, inflow_timescale = 300)
 
 Orlanski (1976) radiation condition with locally-diagnosed phase speed
 and adaptive nudging (Marchesiello et al. 2001):
@@ -79,32 +79,32 @@ References
 using Oceananigans
 using Oceananigans.BoundaryConditions: Radiation
 
-rad = Radiation(outflow_relaxation_timescale = 360 * 86400, inflow_relaxation_timescale = 86400)
-rad.outflow_relaxation_timescale
+rad = Radiation(outflow_timescale = 360 * 86400, inflow_timescale = 86400)
+rad.outflow_timescale
 
 # output
 3.1104e7
 ```
 """
 struct Radiation{FT, S}
-    outflow_relaxation_timescale :: FT
-    inflow_relaxation_timescale  :: FT
+    outflow_timescale :: FT
+    inflow_timescale  :: FT
     φᵇ :: S  # previous boundary value storage (2D array or nothing)
     φ₁ :: S  # previous interior value storage (2D array or nothing)
 end
 
 function Radiation(FT = defaults.FloatType;
-                   outflow_relaxation_timescale = Inf,
-                   inflow_relaxation_timescale = 300)
+                   outflow_timescale = Inf,
+                   inflow_timescale = 300)
 
-    outflow_relaxation_timescale = convert(FT, outflow_relaxation_timescale)
-    inflow_relaxation_timescale = convert(FT, inflow_relaxation_timescale)
-    return Radiation(outflow_relaxation_timescale, inflow_relaxation_timescale, nothing, nothing)
+    outflow_timescale = convert(FT, outflow_timescale)
+    inflow_timescale = convert(FT, inflow_timescale)
+    return Radiation(outflow_timescale, inflow_timescale, nothing, nothing)
 end
 
 Adapt.adapt_structure(to, r::Radiation) =
-    Radiation(adapt(to, r.outflow_relaxation_timescale),
-              adapt(to, r.inflow_relaxation_timescale),
+    Radiation(adapt(to, r.outflow_timescale),
+              adapt(to, r.inflow_timescale),
               adapt(to, r.φᵇ),
               adapt(to, r.φ₁))
 
@@ -115,9 +115,7 @@ const RadiationOBC = BoundaryCondition{<:Open{<:Radiation}}
 #####
 
 # Allocate 2D storage arrays for the Orlanski radiation scheme.
-# The arrays hold previous-timestep values (φᵇⁿ and φ₁ⁿ) that must
-# not be stored in the field's halo (which gets modified by other kernels).
-
+# The arrays hold previous-timestep values (φᵇⁿ and φ₁ⁿ).
 function materialize_radiation_storage(radiation::Radiation, grid, loc, dim)
     FT = eltype(grid)
     Sx, Sy, Sz = size(grid, loc) # loc-aware: Face on Bounded gives N+1, matching the kernel range
@@ -134,8 +132,8 @@ function materialize_radiation_storage(radiation::Radiation, grid, loc, dim)
         φ₁ = on_architecture(arch, zeros(FT, Sx, Sy))
     end
 
-    return Radiation(radiation.outflow_relaxation_timescale,
-                     radiation.inflow_relaxation_timescale,
+    return Radiation(radiation.outflow_timescale,
+                     radiation.inflow_timescale,
                      φᵇ, φ₁)
 end
 
@@ -195,7 +193,7 @@ function validate_flather_condition(val)
 end
 
 """
-    RadiationBoundaryCondition(val; outflow_relaxation_timescale = Inf, inflow_relaxation_timescale = 300, kwargs...)
+    RadiationBoundaryCondition(val; outflow_timescale = Inf, inflow_timescale = 300, kwargs...)
 
 Construct a Radiation (Orlanski) open boundary condition. `val` is the external field
 value, which can be a number, array, or function (following the standard `getbc` conventions).
@@ -214,11 +212,11 @@ bc isa Oceananigans.BoundaryConditions.BoundaryCondition
 true
 ```
 """
-RadiationBoundaryCondition(val; outflow_relaxation_timescale = Inf,
-                                inflow_relaxation_timescale = 300,
+RadiationBoundaryCondition(val; outflow_timescale = Inf,
+                                inflow_timescale = 300,
                                 kwargs...) =
-    OpenBoundaryCondition(val; scheme = Radiation(outflow_relaxation_timescale = outflow_relaxation_timescale,
-                                                  inflow_relaxation_timescale = inflow_relaxation_timescale),
+    OpenBoundaryCondition(val; scheme = Radiation(outflow_timescale = outflow_timescale,
+                                                  inflow_timescale = inflow_timescale),
                           kwargs...)
 
 #####
@@ -337,7 +335,7 @@ end
 #
 # Adaptive nudging (Marchesiello et al. 2001):
 #   - Outflow (Cₙ > 0): τ = relaxation_timescale (typically weak or Inf)
-#   - Inflow  (Cₙ ≤ 0): τ = inflow_relaxation_timescale (typically strong)
+#   - Inflow  (Cₙ ≤ 0): τ = inflow_timescale (typically strong)
 
 @inline function orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation)
     # Diagnose phase speed Courant number (Orlanski 1976)
@@ -349,7 +347,7 @@ end
     Cₙ_raw = ifelse(∂φ∂ξ == 0, zero(∂φ∂t), -∂φ∂t / ∂φ∂ξ)
 
     # Adaptive nudging: strong on inflow, weak on outflow
-    τ = ifelse(Cₙ_raw > 0, radiation.outflow_relaxation_timescale, radiation.inflow_relaxation_timescale)
+    τ = ifelse(Cₙ_raw > 0, radiation.outflow_timescale, radiation.inflow_timescale)
     τ̃ = Δt / τ
 
     # Clamp Courant number to [0, 1]

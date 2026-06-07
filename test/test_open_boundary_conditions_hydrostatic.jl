@@ -19,8 +19,8 @@ function test_barotropic_gravity_wave_radiation()
                            topology = (Bounded, Periodic, Bounded))
 
     # Radiation OBC on 3D velocity, Flather on barotropic transport
-    u_bcs = FieldBoundaryConditions(east  = RadiationBoundaryCondition(0; outflow_relaxation_timescale = 100.0),
-                                    west  = RadiationBoundaryCondition(0; outflow_relaxation_timescale = 100.0))
+    u_bcs = FieldBoundaryConditions(east  = RadiationBoundaryCondition(0; outflow_timescale = 100.0),
+                                    west  = RadiationBoundaryCondition(0; outflow_timescale = 100.0))
 
     U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing);
                                     east  = FlatherBoundaryCondition((0.0, 0.0)),
@@ -202,8 +202,8 @@ function test_orlanski_analytical_verification()
                                  topology = (Bounded, Periodic, Bounded))
 
     # Radiation OBC on 3D velocity, Flather on barotropic transport
-    u_bcs = FieldBoundaryConditions(east  = RadiationBoundaryCondition(0; inflow_relaxation_timescale = Δt),
-                                    west  = RadiationBoundaryCondition(0; inflow_relaxation_timescale = Δt))
+    u_bcs = FieldBoundaryConditions(east  = RadiationBoundaryCondition(0; inflow_timescale = Δt),
+                                    west  = RadiationBoundaryCondition(0; inflow_timescale = Δt))
     U_bcs = FieldBoundaryConditions(grid_small, (Face(), Center(), nothing);
                                     east  = FlatherBoundaryCondition((0.0, 0.0)),
                                     west  = FlatherBoundaryCondition((0.0, 0.0)))
