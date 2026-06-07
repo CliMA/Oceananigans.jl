@@ -1,5 +1,5 @@
 using Oceananigans
-using Oceananigans.BoundaryConditions: Flather, Radiation, FlatherBoundaryCondition, fill_halo_regions!
+using Oceananigans.BoundaryConditions: Flather, Radiation, FlatherBoundaryCondition, ChapmanBoundaryCondition, fill_halo_regions!
 using Test
 
 #####
@@ -406,6 +406,51 @@ function test_radiation_instant_relaxation()
     return no_nan && residual < 0.15
 end
 
+#####
+##### Test 8: Chapman + Flather pairing
+#####
+# The barotropic gravity wave radiation test with the free surface boundary also
+# radiating via Chapman: η halos must carry radiated values (not zero-gradient mirrors)
+# and the pulse must still exit (energy decay).
+
+function test_chapman_flather_radiation()
+    Nx, Ny, Nz = 60, 1, 1
+    Lx, Ly, H = 1000.0, 100.0, 100.0
+
+    grid = RectilinearGrid(size = (Nx, Ny, Nz),
+                           x = (0, Lx), y = (0, Ly), z = (-H, 0),
+                           topology = (Bounded, Periodic, Bounded))
+
+    u_bcs = FieldBoundaryConditions(east = NormalFlowBoundaryCondition(0; scheme = Radiation(outflow_timescale = 100.0)),
+                                    west = NormalFlowBoundaryCondition(0; scheme = Radiation(outflow_timescale = 100.0)))
+    U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing);
+                                    east = FlatherBoundaryCondition((0.0, 0.0)),
+                                    west = FlatherBoundaryCondition((0.0, 0.0)))
+    η_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Face());
+                                    east = ChapmanBoundaryCondition(),
+                                    west = ChapmanBoundaryCondition())
+
+    model = HydrostaticFreeSurfaceModel(grid;
+        free_surface = SplitExplicitFreeSurface(grid; substeps = 10),
+        boundary_conditions = (u = u_bcs, U = U_bcs, η = η_bcs),
+        buoyancy = nothing, tracers = ())
+
+    σ = Lx / 10
+    set!(model, η = (x, y, z) -> 0.01 * exp(-(x - Lx/2)^2 / (2σ^2)))
+
+    η = model.free_surface.displacement
+    E₀ = sum(interior(η) .^ 2)
+
+    for _ in 1:100
+        time_step!(model, 0.5)
+    end
+
+    E₁ = sum(interior(η) .^ 2)
+    no_nan = !any(isnan, parent(η))
+
+    return no_nan && E₁ < E₀
+end
+
 @testset "Open Boundary Conditions for HydrostaticFreeSurfaceModel" begin
     @testset "Barotropic gravity wave radiation" begin
         @test test_barotropic_gravity_wave_radiation()
@@ -433,5 +478,9 @@ end
 
     @testset "Radiation with instant relaxation" begin
         @test test_radiation_instant_relaxation()
+    end
+
+    @testset "Chapman + Flather barotropic radiation" begin
+        @test test_chapman_flather_radiation()
     end
 end

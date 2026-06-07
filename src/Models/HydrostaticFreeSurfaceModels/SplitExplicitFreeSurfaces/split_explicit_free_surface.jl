@@ -254,7 +254,8 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
         maybe_extend_halos(TX, TY, grid, substepping)
     end
 
-    η = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid)
+    η = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid;
+                                        boundary_conditions = get(bcs, :η, nothing))
     η̅ = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid)
 
     gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)

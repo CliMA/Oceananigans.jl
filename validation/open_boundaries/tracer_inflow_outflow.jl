@@ -99,7 +99,7 @@ function plot_tracer_outflow_animation(filepaths; framerate = 12, compression = 
     resize_to_layout!(fig)
 
     frames = 1:length(times)
-    animation_filename = "$filepath.mp4"
+    animation_filename = "tracer_inflow_outflow.mp4"
     CairoMakie.record(fig, animation_filename, frames; framerate, compression) do i
         n[] = i
         i % 10 == 0 && @info "  Frame $(i) of $(length(frames))"
@@ -127,7 +127,7 @@ function plot_tracer_outflow_hovmollers(filepaths)
     xs    = collect(xnodes(panels[1][2][1]))
 
     fig = Figure(size = (800, 900))
-    Label(fig[0, 1:2], "Hovmöller — $(basename(filepath))", fontsize = 16, tellwidth = false)
+    Label(fig[0, 1:2], "Hovmöller — tracer_inflow_outflow", fontsize = 16, tellwidth = false)
 
     hm = nothing
     for (i, (label, ts, c̄)) in enumerate(panels)
@@ -137,7 +137,7 @@ function plot_tracer_outflow_hovmollers(filepaths)
     end
     Colorbar(fig[1:length(panels), 2], hm)
 
-    out = "$filepath" * "_hovmoller.png"
+    out = "tracer_inflow_outflow_hovmoller.png"
     save(out, fig)
     @info "Saved $out"
     return fig

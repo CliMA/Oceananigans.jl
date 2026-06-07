@@ -128,10 +128,14 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
     barotropic_model_fields = (; U, V, η)
 
     # Build halo-fill args in the OffsetArray-method shape of `fill_halo_regions!`
-    # (data, bcs, indices, loc, grid, communication_buffers, args...)
-    @apply_regionally U_halo_args = build_halo_fill_args(U, grid, clock, barotropic_model_fields)
-    @apply_regionally V_halo_args = build_halo_fill_args(V, grid, clock, barotropic_model_fields)
-    @apply_regionally η_halo_args = build_halo_fill_args(η, grid, clock, barotropic_model_fields)
+    # (data, bcs, indices, loc, grid, communication_buffers, args...).
+    # The substep fills carry a pseudo-clock with the barotropic substep Δτᴮ, so that
+    # recursive boundary schemes (e.g. Chapman) advance at the substep cadence; stage = 0
+    # marks the fills as sequential (anchored) for split Runge-Kutta-aware schemes.
+    substep_clock = (; time = clock.time, iteration = clock.iteration, stage = 0, last_stage_Δt = Δτᴮ)
+    @apply_regionally U_halo_args = build_halo_fill_args(U, grid, substep_clock, barotropic_model_fields)
+    @apply_regionally V_halo_args = build_halo_fill_args(V, grid, substep_clock, barotropic_model_fields)
+    @apply_regionally η_halo_args = build_halo_fill_args(η, grid, substep_clock, barotropic_model_fields)
 
     only_local_halos = fill_only_local_halos(free_surface)
 

@@ -72,7 +72,22 @@ end
 ##### HydrostaticFreeSurfaceModel definition
 #####
 
-free_surface_displacement_field(velocities, free_surface, grid) = ZFaceField(grid, indices = (:, :, size(grid, 3)+1))
+function free_surface_displacement_field(velocities, free_surface, grid; boundary_conditions = nothing)
+    Nz = size(grid, 3)
+    indices = (:, :, Nz + 1)
+    if isnothing(boundary_conditions)
+        return ZFaceField(grid; indices)
+    else
+        # Re-window the incoming boundary conditions for the surface level: the z-side
+        # conditions and the fill kernels were regularized for the unwindowed location
+        # and do not fit the windowed field; the windowing constructor nulls the former
+        # and the Field constructor recomputes the latter.
+        bcs = boundary_conditions
+        windowed = FieldBoundaryConditions((:, :, Nz+1:Nz+1), bcs.west, bcs.east, bcs.south,
+                                           bcs.north, bcs.bottom, bcs.top, bcs.immersed)
+        return ZFaceField(grid; indices, boundary_conditions = windowed)
+    end
+end
 free_surface_displacement_field(velocities, ::Nothing, grid) = nothing
 
 # Fallback

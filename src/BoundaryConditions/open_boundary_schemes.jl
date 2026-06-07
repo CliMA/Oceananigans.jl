@@ -1,5 +1,5 @@
 using Oceananigans: defaults
-using Oceananigans.Grids: column_depthᶠᶜᵃ, column_depthᶜᶠᵃ
+using Oceananigans.Grids: column_depthᶠᶜᵃ, column_depthᶜᶠᵃ, column_depthᶜᶜᵃ
 
 """
     Flather(; gravitational_acceleration = defaults.gravitational_acceleration)
@@ -54,6 +54,44 @@ Adapt.adapt_structure(to, f::Flather) =
 const FNBCBC = BoundaryCondition{<:NormalFlow{<:Flather}}
 
 """
+    Chapman(; gravitational_acceleration = defaults.gravitational_acceleration)
+
+Chapman (1985) radiation condition for the free surface displacement at an open boundary,
+the standard companion of [`Flather`](@ref): the boundary η radiates at the known
+barotropic gravity-wave speed,
+
+    ∂η/∂t ± √(g H) ∂η/∂n = 0
+
+discretized implicitly (the form used by ROMS):
+
+    ηᵇⁿ⁺¹ = (ηᵇⁿ + C η₁ⁿ⁺¹) / (1 + C),    C = √(g H) Δt / Δx
+
+where `η₁` is the boundary-adjacent interior value. Letting the boundary η evolve frees
+the surface pressure gradient at the boundary, which balanced flows require to cross it.
+
+`Chapman` is used as the `scheme` of a [`ValueBoundaryCondition`](@ref) on the free
+surface displacement `η`; see [`ChapmanBoundaryCondition`](@ref). It is applied at every
+barotropic substep, like `Flather`.
+
+References
+==========
+* Chapman, D. C. (1985). "Numerical treatment of cross-shelf open boundaries in a
+  barotropic coastal ocean model." Journal of Physical Oceanography, 15(8), 1060-1075.
+"""
+struct Chapman{FT}
+    gravitational_acceleration :: FT
+end
+
+function Chapman(; gravitational_acceleration = defaults.gravitational_acceleration)
+    return Chapman(gravitational_acceleration)
+end
+
+Adapt.adapt_structure(to, c::Chapman) =
+    Chapman(adapt(to, c.gravitational_acceleration))
+
+const CHVBC = BoundaryCondition{<:Value{<:Chapman}}
+
+"""
     Radiation(; inflow_timescale = 0, outflow_timescale = Inf)
 
 Orlanski (1976) radiation condition with locally-diagnosed phase speed
@@ -95,7 +133,9 @@ rad.outflow_timescale
 struct Radiation{FT, S}
     outflow_timescale :: FT
     inflow_timescale  :: FT
-    φ₁ :: S  # previous interior value storage (2D array or nothing)
+    φᵇ  :: S  # anchor boundary value (2D array or nothing)
+    φ₁  :: S  # anchor interior value (2D array or nothing)
+    φ₁ˡ :: S  # latest interior value (2D array or nothing)
 end
 
 function Radiation(FT = defaults.FloatType;
@@ -104,13 +144,15 @@ function Radiation(FT = defaults.FloatType;
 
     outflow_timescale = convert(FT, outflow_timescale)
     inflow_timescale = convert(FT, inflow_timescale)
-    return Radiation(outflow_timescale, inflow_timescale, nothing)
+    return Radiation(outflow_timescale, inflow_timescale, nothing, nothing, nothing)
 end
 
 Adapt.adapt_structure(to, r::Radiation) =
     Radiation(adapt(to, r.outflow_timescale),
               adapt(to, r.inflow_timescale),
-              adapt(to, r.φ₁))
+              adapt(to, r.φᵇ),
+              adapt(to, r.φ₁),
+              adapt(to, r.φ₁ˡ))
 
 const RVBC  = BoundaryCondition{<:Value{<:Radiation}}
 const RNFBC = BoundaryCondition{<:NormalFlow{<:Radiation}}
@@ -127,17 +169,17 @@ function materialize_radiation_storage(radiation::Radiation, grid, loc, dim)
     Sx, Sy, Sz = size(grid, loc) # loc-aware: Face on Bounded gives N+1, matching the kernel range
     arch = architecture(grid)
 
-    if dim == 1      # x-boundary (east/west): indexed by (j, k)
-        φ₁ = on_architecture(arch, zeros(FT, Sy, Sz))
-    elseif dim == 2  # y-boundary (north/south): indexed by (i, k)
-        φ₁ = on_architecture(arch, zeros(FT, Sx, Sz))
-    else             # z-boundary (top/bottom): indexed by (i, j)
-        φ₁ = on_architecture(arch, zeros(FT, Sx, Sy))
-    end
+    tangential_size = dim == 1 ? (Sy, Sz) :
+                      dim == 2 ? (Sx, Sz) :
+                                 (Sx, Sy)
+
+    φᵇ  = on_architecture(arch, zeros(FT, tangential_size...))
+    φ₁  = on_architecture(arch, zeros(FT, tangential_size...))
+    φ₁ˡ = on_architecture(arch, zeros(FT, tangential_size...))
 
     return Radiation(radiation.outflow_timescale,
                      radiation.inflow_timescale,
-                     φ₁)
+                     φᵇ, φ₁, φ₁ˡ)
 end
 
 rebuild_classification(::Value, scheme) = Value(scheme)
@@ -186,6 +228,17 @@ end
 
 FlatherBoundaryCondition(U, η; kwargs...) = FlatherBoundaryCondition((U, η); kwargs...)
 
+"""
+    ChapmanBoundaryCondition(; gravitational_acceleration = defaults.gravitational_acceleration)
+
+Construct a `ValueBoundaryCondition` with the [`Chapman`](@ref) scheme for the free
+surface displacement `η` at an open boundary. Pair with [`FlatherBoundaryCondition`](@ref)
+on the barotropic transport.
+"""
+ChapmanBoundaryCondition(; gravitational_acceleration = defaults.gravitational_acceleration) =
+    ValueBoundaryCondition(0; scheme = Chapman(; gravitational_acceleration))
+
+
 function validate_flather_condition(val)
     if val isa Union{Tuple, NamedTuple}
         length(val) == 2 || throw(ArgumentError(
@@ -230,6 +283,10 @@ const AAC = Tuple{Any, Any, Center}
 # The boundary condition value (accessed via getbc) must return a 2-tuple (U, η)
 # of external transport and free surface values.
 #
+# ηᵇ is the face average of the two adjacent cells (ROMS form): under η's default
+# mirror fill this equals the interior sample, while a Chapman condition on the
+# boundary row couples into the transport through the average.
+#
 # Requires `model_fields` to contain:
 #   - η :: free surface displacement field
 
@@ -243,7 +300,7 @@ const AAC = Tuple{Any, Any, Center}
     H = column_depthᶠᶜᵃ(i, j, k_top, grid, η)
 
     Uᵉˣᵗ, ηᵉˣᵗ = getbc(bc, j, k, grid, clock, model_fields)
-    ηᵇ = @inbounds η[grid.Nx, j, k_top]
+    ηᵇ = ℑxᶠᵃᵃ(i, j, k_top, grid, η)
 
     @inbounds c[i, j, k] = Uᵉˣᵗ + sqrt(g * H) * (ηᵇ - ηᵉˣᵗ)
 
@@ -259,7 +316,7 @@ end
     H = column_depthᶠᶜᵃ(1, j, k_top, grid, η)
 
     Uᵉˣᵗ, ηᵉˣᵗ = getbc(bc, j, k, grid, clock, model_fields)
-    ηᵇ = @inbounds η[1, j, k_top]
+    ηᵇ = ℑxᶠᵃᵃ(1, j, k_top, grid, η)
 
     @inbounds c[1, j, k] = Uᵉˣᵗ - sqrt(g * H) * (ηᵇ - ηᵉˣᵗ)
 
@@ -276,7 +333,7 @@ end
     H = column_depthᶜᶠᵃ(i, j, k_top, grid, η)
 
     Vᵉˣᵗ, ηᵉˣᵗ = getbc(bc, i, k, grid, clock, model_fields)
-    ηᵇ = @inbounds η[i, grid.Ny, k_top]
+    ηᵇ = ℑyᵃᶠᵃ(i, j, k_top, grid, η)
 
     @inbounds c[i, j, k] = Vᵉˣᵗ + sqrt(g * H) * (ηᵇ - ηᵉˣᵗ)
 
@@ -292,9 +349,99 @@ end
     H = column_depthᶜᶠᵃ(i, 1, k_top, grid, η)
 
     Vᵉˣᵗ, ηᵉˣᵗ = getbc(bc, i, k, grid, clock, model_fields)
-    ηᵇ = @inbounds η[i, 1, k_top]
+    ηᵇ = ℑyᵃᶠᵃ(i, 1, k_top, grid, η)
 
     @inbounds c[i, 1, k] = Vᵉˣᵗ - sqrt(g * H) * (ηᵇ - ηᵉˣᵗ)
+
+    return nothing
+end
+
+# A fill without a clock (e.g. during initialization or state reconciliation) behaves
+# as a first call: Δt = 0 and zero-gradient initialization of the boundary value.
+@inline stage_Δt(clock) = clock.last_stage_Δt
+@inline stage_Δt(::Nothing) = Inf
+
+@inline anchored_fill(clock) = clock.stage ≤ 1
+@inline anchored_fill(::Nothing) = true
+
+#####
+##### Chapman halo filling — implicit gravity-wave radiation of the free surface
+#####
+
+@inline function _fill_west_halo!(j, k, grid, c, bc::CHVBC, ::CAA, clock, model_fields)
+    anchored_fill(clock) || return nothing
+    Δτ = stage_Δt(clock)
+    first_call = isinf(Δτ)
+    Δt = ifelse(first_call, zero(Δτ), Δτ)
+    g = bc.classification.scheme.gravitational_acceleration
+    k_top = grid.Nz + 1
+
+    @inbounds begin
+        η₁ = c[1, j, k]
+        H  = column_depthᶜᶜᵃ(1, j, k_top, grid, c)
+        C  = sqrt(g * H) * Δt / Δxᶠᶜᶜ(1, j, k, grid)
+        ηᵇ = ifelse(first_call, η₁, c[0, j, k]) # zero-gradient initialization
+        c[0, j, k] = (ηᵇ + C * η₁) / (1 + C)
+    end
+
+    return nothing
+end
+
+@inline function _fill_east_halo!(j, k, grid, c, bc::CHVBC, ::CAA, clock, model_fields)
+    anchored_fill(clock) || return nothing
+    Δτ = stage_Δt(clock)
+    first_call = isinf(Δτ)
+    Δt = ifelse(first_call, zero(Δτ), Δτ)
+    g = bc.classification.scheme.gravitational_acceleration
+    i = grid.Nx + 1
+    k_top = grid.Nz + 1
+
+    @inbounds begin
+        η₁ = c[i-1, j, k]
+        H  = column_depthᶜᶜᵃ(i-1, j, k_top, grid, c)
+        C  = sqrt(g * H) * Δt / Δxᶠᶜᶜ(i, j, k, grid)
+        ηᵇ = ifelse(first_call, η₁, c[i, j, k]) # zero-gradient initialization
+        c[i, j, k] = (ηᵇ + C * η₁) / (1 + C)
+    end
+
+    return nothing
+end
+
+@inline function _fill_south_halo!(i, k, grid, c, bc::CHVBC, ::ACA, clock, model_fields)
+    anchored_fill(clock) || return nothing
+    Δτ = stage_Δt(clock)
+    first_call = isinf(Δτ)
+    Δt = ifelse(first_call, zero(Δτ), Δτ)
+    g = bc.classification.scheme.gravitational_acceleration
+    k_top = grid.Nz + 1
+
+    @inbounds begin
+        η₁ = c[i, 1, k]
+        H  = column_depthᶜᶜᵃ(i, 1, k_top, grid, c)
+        C  = sqrt(g * H) * Δt / Δyᶜᶠᶜ(i, 1, k, grid)
+        ηᵇ = ifelse(first_call, η₁, c[i, 0, k]) # zero-gradient initialization
+        c[i, 0, k] = (ηᵇ + C * η₁) / (1 + C)
+    end
+
+    return nothing
+end
+
+@inline function _fill_north_halo!(i, k, grid, c, bc::CHVBC, ::ACA, clock, model_fields)
+    anchored_fill(clock) || return nothing
+    Δτ = stage_Δt(clock)
+    first_call = isinf(Δτ)
+    Δt = ifelse(first_call, zero(Δτ), Δτ)
+    g = bc.classification.scheme.gravitational_acceleration
+    j = grid.Ny + 1
+    k_top = grid.Nz + 1
+
+    @inbounds begin
+        η₁ = c[i, j-1, k]
+        H  = column_depthᶜᶜᵃ(i, j-1, k_top, grid, c)
+        C  = sqrt(g * H) * Δt / Δyᶜᶠᶜ(i, j, k, grid)
+        ηᵇ = ifelse(first_call, η₁, c[i, j, k]) # zero-gradient initialization
+        c[i, j, k] = (ηᵇ + C * η₁) / (1 + C)
+    end
 
     return nothing
 end
@@ -354,151 +501,191 @@ end
     return ifelse(τ == 0, φᵉˣᵗ, φᵇⁿ⁺¹)
 end
 
-# The radiated point is the boundary face for NormalFlow (Face-located fields)
-# and the first halo cell for Value (Center-located fields): right boundaries
-# coincide at N+1; left boundaries are 1 (Face) and 0 (Center). The update is a
-# convex combination of previous boundary, interior, and exterior values, so it
-# is bounded; interior cells 1..N are never written.
+# The radiated point is the boundary face for NormalFlow (Face-located fields) and the first halo cell for Value 
+# (Center-located fields): right boundaries coincide at N+1; left boundaries are 1 (Face) and 0 (Center).
+# The update is a convex combination of previous boundary, interior, and exterior values, so it is bounded.
 
 @inline function radiate_east_halo!(iᵇ, j, k, grid, c, bc, Uₙ, clock, model_fields)
-    first_call = isinf(clock.last_stage_Δt)
-    Δt = ifelse(first_call, zero(clock.last_stage_Δt), clock.last_stage_Δt)
+    Δτ = stage_Δt(clock)
+    first_call = isinf(Δτ)
+    Δt = ifelse(first_call, zero(Δτ), Δτ)
+    anchored = anchored_fill(clock)
     radiation = bc.classification.scheme
 
     @inbounds begin
         φᵉˣᵗ  = getbc(bc, j, k, grid, clock, model_fields)
         φ₁ⁿ⁺¹ = c[iᵇ-1, j, k]      # first interior (new time)
         φ₂ⁿ⁺¹ = c[iᵇ-2, j, k]      # second interior (new time)
-        φᵇⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, c[iᵇ, j, k]) # zero-gradient initialization
-        φ₁ⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, radiation.φ₁[j, k])
-        Uᵃ    = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
-        Cᵃ    = abs(Uᵃ) * Δt / Δxᶠᶜᶜ(iᵇ, j, k, grid)
+
+        φᵇᵃ = ifelse(anchored, c[iᵇ, j, k], radiation.φᵇ[j, k])
+        φ₁ᵃ = ifelse(anchored, radiation.φ₁ˡ[j, k], radiation.φ₁[j, k])
+        φᵇⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φᵇᵃ)
+        φ₁ⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φ₁ᵃ)
+        Uᵃ  = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
+        Cᵃ  = abs(Uᵃ) * Δt / Δxᶠᶜᶜ(iᵇ, j, k, grid)
         outflow = Uᵃ >= 0
 
         φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
 
-        c[iᵇ, j, k]        = φᵇⁿ⁺¹ # set boundary value
-        radiation.φ₁[j, k] = φ₁ⁿ⁺¹ # store interior for next time step
+        c[iᵇ, j, k]         = φᵇⁿ⁺¹ # set boundary value
+        radiation.φᵇ[j, k]  = φᵇⁿ   # anchor for later stages
+        radiation.φ₁[j, k]  = φ₁ⁿ   # anchor for later stages
+        radiation.φ₁ˡ[j, k] = φ₁ⁿ⁺¹ # latest interior, promoted at the next anchored fill
     end
 
     return nothing
 end
 
 @inline function radiate_west_halo!(iᵇ, j, k, grid, c, bc, Uₙ, clock, model_fields)
-    first_call = isinf(clock.last_stage_Δt)
-    Δt = ifelse(first_call, zero(clock.last_stage_Δt), clock.last_stage_Δt)
+    Δτ = stage_Δt(clock)
+    first_call = isinf(Δτ)
+    Δt = ifelse(first_call, zero(Δτ), Δτ)
+    anchored = anchored_fill(clock)
     radiation = bc.classification.scheme
 
     @inbounds begin
         φᵉˣᵗ  = getbc(bc, j, k, grid, clock, model_fields)
         φ₁ⁿ⁺¹ = c[iᵇ+1, j, k]      # first interior (new time)
         φ₂ⁿ⁺¹ = c[iᵇ+2, j, k]      # second interior (new time)
-        φᵇⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, c[iᵇ, j, k]) # zero-gradient initialization
-        φ₁ⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, radiation.φ₁[j, k])
-        Uᵃ    = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
-        Cᵃ    = abs(Uᵃ) * Δt / Δxᶠᶜᶜ(iᵇ + 1, j, k, grid)
+
+        φᵇᵃ = ifelse(anchored, c[iᵇ, j, k], radiation.φᵇ[j, k])
+        φ₁ᵃ = ifelse(anchored, radiation.φ₁ˡ[j, k], radiation.φ₁[j, k])
+        φᵇⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φᵇᵃ)
+        φ₁ⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φ₁ᵃ)
+        Uᵃ  = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
+        Cᵃ  = abs(Uᵃ) * Δt / Δxᶠᶜᶜ(iᵇ + 1, j, k, grid)
         outflow = Uᵃ <= 0
 
         φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
 
-        c[iᵇ, j, k]        = φᵇⁿ⁺¹ # set boundary value
-        radiation.φ₁[j, k] = φ₁ⁿ⁺¹ # store interior for next time step
+        c[iᵇ, j, k]         = φᵇⁿ⁺¹ # set boundary value
+        radiation.φᵇ[j, k]  = φᵇⁿ   # anchor for later stages
+        radiation.φ₁[j, k]  = φ₁ⁿ   # anchor for later stages
+        radiation.φ₁ˡ[j, k] = φ₁ⁿ⁺¹ # latest interior, promoted at the next anchored fill
     end
 
     return nothing
 end
 
 @inline function radiate_north_halo!(jᵇ, i, k, grid, c, bc, Uₙ, clock, model_fields)
-    first_call = isinf(clock.last_stage_Δt)
-    Δt = ifelse(first_call, zero(clock.last_stage_Δt), clock.last_stage_Δt)
+    Δτ = stage_Δt(clock)
+    first_call = isinf(Δτ)
+    Δt = ifelse(first_call, zero(Δτ), Δτ)
+    anchored = anchored_fill(clock)
     radiation = bc.classification.scheme
 
     @inbounds begin
         φᵉˣᵗ  = getbc(bc, i, k, grid, clock, model_fields)
         φ₁ⁿ⁺¹ = c[i, jᵇ-1, k]      # first interior (new time)
         φ₂ⁿ⁺¹ = c[i, jᵇ-2, k]      # second interior (new time)
-        φᵇⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, c[i, jᵇ, k]) # zero-gradient initialization; see east halo note
-        φ₁ⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, radiation.φ₁[i, k])
-        Uᵃ    = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
-        Cᵃ    = abs(Uᵃ) * Δt / Δyᶜᶠᶜ(i, jᵇ, k, grid)
+
+        φᵇᵃ = ifelse(anchored, c[i, jᵇ, k], radiation.φᵇ[i, k])
+        φ₁ᵃ = ifelse(anchored, radiation.φ₁ˡ[i, k], radiation.φ₁[i, k])
+        φᵇⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φᵇᵃ)
+        φ₁ⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φ₁ᵃ)
+        Uᵃ  = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
+        Cᵃ  = abs(Uᵃ) * Δt / Δyᶜᶠᶜ(i, jᵇ, k, grid)
         outflow = Uᵃ >= 0
-        
+
         φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
 
-        c[i, jᵇ, k]        = φᵇⁿ⁺¹ # set boundary value
-        radiation.φ₁[i, k] = φ₁ⁿ⁺¹ # store interior for next time step
+        c[i, jᵇ, k]         = φᵇⁿ⁺¹ # set boundary value
+        radiation.φᵇ[i, k]  = φᵇⁿ   # anchor for later stages
+        radiation.φ₁[i, k]  = φ₁ⁿ   # anchor for later stages
+        radiation.φ₁ˡ[i, k] = φ₁ⁿ⁺¹ # latest interior, promoted at the next anchored fill
     end
 
     return nothing
 end
 
 @inline function radiate_south_halo!(jᵇ, i, k, grid, c, bc, Uₙ, clock, model_fields)
-    first_call = isinf(clock.last_stage_Δt)
-    Δt = ifelse(first_call, zero(clock.last_stage_Δt), clock.last_stage_Δt)
+    Δτ = stage_Δt(clock)
+    first_call = isinf(Δτ)
+    Δt = ifelse(first_call, zero(Δτ), Δτ)
+    anchored = anchored_fill(clock)
     radiation = bc.classification.scheme
 
     @inbounds begin
         φᵉˣᵗ  = getbc(bc, i, k, grid, clock, model_fields)
         φ₁ⁿ⁺¹ = c[i, jᵇ+1, k]      # first interior (new time)
         φ₂ⁿ⁺¹ = c[i, jᵇ+2, k]      # second interior (new time)
-        φᵇⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, c[i, jᵇ, k]) # zero-gradient initialization; see east halo note
-        φ₁ⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, radiation.φ₁[i, k])
-        Uᵃ    = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
-        Cᵃ    = abs(Uᵃ) * Δt / Δyᶜᶠᶜ(i, jᵇ + 1, k, grid)
+
+        φᵇᵃ = ifelse(anchored, c[i, jᵇ, k], radiation.φᵇ[i, k])
+        φ₁ᵃ = ifelse(anchored, radiation.φ₁ˡ[i, k], radiation.φ₁[i, k])
+        φᵇⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φᵇᵃ)
+        φ₁ⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φ₁ᵃ)
+        Uᵃ  = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
+        Cᵃ  = abs(Uᵃ) * Δt / Δyᶜᶠᶜ(i, jᵇ + 1, k, grid)
         outflow = Uᵃ <= 0
 
         φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
 
-        c[i, jᵇ, k]        = φᵇⁿ⁺¹ # set boundary value
-        radiation.φ₁[i, k] = φ₁ⁿ⁺¹ # store interior for next time step
+        c[i, jᵇ, k]         = φᵇⁿ⁺¹ # set boundary value
+        radiation.φᵇ[i, k]  = φᵇⁿ   # anchor for later stages
+        radiation.φ₁[i, k]  = φ₁ⁿ   # anchor for later stages
+        radiation.φ₁ˡ[i, k] = φ₁ⁿ⁺¹ # latest interior, promoted at the next anchored fill
     end
 
     return nothing
 end
 
 @inline function radiate_top_halo!(kᵇ, i, j, grid, c, bc, Uₙ, clock, model_fields)
-    first_call = isinf(clock.last_stage_Δt)
-    Δt = ifelse(first_call, zero(clock.last_stage_Δt), clock.last_stage_Δt)
+    Δτ = stage_Δt(clock)
+    first_call = isinf(Δτ)
+    Δt = ifelse(first_call, zero(Δτ), Δτ)
+    anchored = anchored_fill(clock)
     radiation = bc.classification.scheme
 
     @inbounds begin
         φᵉˣᵗ  = getbc(bc, i, j, grid, clock, model_fields)
         φ₁ⁿ⁺¹ = c[i, j, kᵇ-1]      # first interior (new time)
         φ₂ⁿ⁺¹ = c[i, j, kᵇ-2]      # second interior (new time)
-        φᵇⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, c[i, j, kᵇ]) # zero-gradient initialization; see east halo note
-        φ₁ⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, radiation.φ₁[i, j])
-        Uᵃ    = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
-        Cᵃ    = abs(Uᵃ) * Δt / Δzᶜᶜᶠ(i, j, kᵇ, grid)
+
+        φᵇᵃ = ifelse(anchored, c[i, j, kᵇ], radiation.φᵇ[i, j])
+        φ₁ᵃ = ifelse(anchored, radiation.φ₁ˡ[i, j], radiation.φ₁[i, j])
+        φᵇⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φᵇᵃ)
+        φ₁ⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φ₁ᵃ)
+        Uᵃ  = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
+        Cᵃ  = abs(Uᵃ) * Δt / Δzᶜᶜᶠ(i, j, kᵇ, grid)
         outflow = Uᵃ >= 0
-        
+
         φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
 
-        c[i, j, kᵇ]        = φᵇⁿ⁺¹ # set boundary value
-        radiation.φ₁[i, j] = φ₁ⁿ⁺¹ # store interior for next time step
+        c[i, j, kᵇ]         = φᵇⁿ⁺¹ # set boundary value
+        radiation.φᵇ[i, j]  = φᵇⁿ   # anchor for later stages
+        radiation.φ₁[i, j]  = φ₁ⁿ   # anchor for later stages
+        radiation.φ₁ˡ[i, j] = φ₁ⁿ⁺¹ # latest interior, promoted at the next anchored fill
     end
 
     return nothing
 end
 
 @inline function radiate_bottom_halo!(kᵇ, i, j, grid, c, bc, Uₙ, clock, model_fields)
-    first_call = isinf(clock.last_stage_Δt)
-    Δt = ifelse(first_call, zero(clock.last_stage_Δt), clock.last_stage_Δt)
+    Δτ = stage_Δt(clock)
+    first_call = isinf(Δτ)
+    Δt = ifelse(first_call, zero(Δτ), Δτ)
+    anchored = anchored_fill(clock)
     radiation = bc.classification.scheme
 
     @inbounds begin
         φᵉˣᵗ  = getbc(bc, i, j, grid, clock, model_fields)
         φ₁ⁿ⁺¹ = c[i, j, kᵇ+1]      # first interior (new time)
         φ₂ⁿ⁺¹ = c[i, j, kᵇ+2]      # second interior (new time)
-        φᵇⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, c[i, j, kᵇ]) # zero-gradient initialization; see east halo note
-        φ₁ⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, radiation.φ₁[i, j])
-        Uᵃ    = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
-        Cᵃ    = abs(Uᵃ) * Δt / Δzᶜᶜᶠ(i, j, kᵇ + 1, grid)
+
+        φᵇᵃ = ifelse(anchored, c[i, j, kᵇ], radiation.φᵇ[i, j])
+        φ₁ᵃ = ifelse(anchored, radiation.φ₁ˡ[i, j], radiation.φ₁[i, j])
+        φᵇⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φᵇᵃ)
+        φ₁ⁿ = ifelse(first_call, φ₁ⁿ⁺¹, φ₁ᵃ)
+        Uᵃ  = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
+        Cᵃ  = abs(Uᵃ) * Δt / Δzᶜᶜᶠ(i, j, kᵇ + 1, grid)
         outflow = Uᵃ <= 0
 
         φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
 
-        c[i, j, kᵇ]        = φᵇⁿ⁺¹ # set boundary value
-        radiation.φ₁[i, j] = φ₁ⁿ⁺¹ # store interior for next time step
+        c[i, j, kᵇ]         = φᵇⁿ⁺¹ # set boundary value
+        radiation.φᵇ[i, j]  = φᵇⁿ   # anchor for later stages
+        radiation.φ₁[i, j]  = φ₁ⁿ   # anchor for later stages
+        radiation.φ₁ˡ[i, j] = φ₁ⁿ⁺¹ # latest interior, promoted at the next anchored fill
     end
 
     return nothing

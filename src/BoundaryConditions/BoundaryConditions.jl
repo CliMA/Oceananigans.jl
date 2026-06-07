@@ -6,7 +6,7 @@ export
     PeriodicBoundaryCondition, NormalFlowBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, DistributedCommunicationBoundaryCondition,
     PerturbationAdvection, has_target_transport, get_target_transport,
-    Flather, Radiation, FlatherBoundaryCondition,
+    Flather, Radiation, Chapman, FlatherBoundaryCondition, ChapmanBoundaryCondition,
     validate_boundary_condition_topology, validate_boundary_condition_architecture,
     FieldBoundaryConditions,
     compute_x_bcs!, compute_y_bcs!, compute_z_bcs!,
@@ -21,7 +21,7 @@ using KernelAbstractions: @index, @kernel
 
 using Oceananigans.Architectures: CPU, GPU
 using Oceananigans.Utils: launch!
-using Oceananigans.Operators: Ax, Ay, Az, volume
+using Oceananigans.Operators: Ax, Ay, Az, volume, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Grids
 
 # All possible fill_halo! kernels
