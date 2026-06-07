@@ -365,6 +365,47 @@ function test_tracer_radiation_value_scheme()
     return storage_materialized && interior_untouched && no_nan && bounded && C₁ < 0.1 * C₀
 end
 
+#####
+##### Test 7: Radiation with instant relaxation timescales
+#####
+# τ = 0 means instant relaxation to the exterior value. The Orlanski update must
+# branch explicitly (like PerturbationAdvection) instead of evaluating Δt/τ = Inf,
+# which contaminates the boundary with Inf/Inf = NaN.
+
+function test_radiation_instant_relaxation()
+    grid = RectilinearGrid(size = 64, x = (0, 10.0), topology = (Bounded, Flat, Flat))
+
+    # Offset background c̄ = 1 catches stale-halo initialization: the first fill happens
+    # before set!, so a boundary value initialized from the halo (0) rather than the
+    # interior would freeze a unit-amplitude error at the outflow boundary.
+    c̄ = 1
+    scheme = Radiation(inflow_timescale = 0, outflow_timescale = Inf)
+    c_bcs = FieldBoundaryConditions(west = ValueBoundaryCondition(c̄; scheme),
+                                    east = ValueBoundaryCondition(c̄; scheme))
+
+    model = NonhydrostaticModel(grid;
+        tracers = :c,
+        advection = Centered(order = 4),
+        boundary_conditions = (; u = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(1),
+                                                             east = NormalFlowBoundaryCondition(1)),
+                               c = c_bcs))
+
+    set!(model, u = 1, c = (x) -> exp(-((x - 7) / 0.5)^2) + c̄)
+
+    # Blob (3σ trailing edge at x = 8.5) fully exits by t ≈ Lx - 8.5 + 3σ ≈ 3; run to t = 5
+    for _ in 1:100
+        time_step!(model, 0.05)
+    end
+
+    c = model.tracers.c
+    no_nan = !any(isnan, parent(c)) && !any(isnan, parent(model.velocities.u))
+    residual = maximum(abs, Array(interior(c)) .- c̄)
+
+    # The Centered(order = 4) dispersive tail leaves ~0.06 wiggles at this resolution;
+    # a frozen or reflecting boundary leaves an O(1) residual
+    return no_nan && residual < 0.15
+end
+
 @testset "Open Boundary Conditions for HydrostaticFreeSurfaceModel" begin
     @testset "Barotropic gravity wave radiation" begin
         @test test_barotropic_gravity_wave_radiation()
@@ -388,5 +429,9 @@ end
 
     @testset "Tracer radiation with Value classification" begin
         @test test_tracer_radiation_value_scheme()
+    end
+
+    @testset "Radiation with instant relaxation" begin
+        @test test_radiation_instant_relaxation()
     end
 end
