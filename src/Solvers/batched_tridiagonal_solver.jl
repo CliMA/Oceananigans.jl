@@ -135,6 +135,41 @@ end
 @inline get_coefficient(i, j, k, grid, a::AbstractArray{<:Any, 1}, p, ::ZDirection,          args...) = @inbounds a[k]
 @inline get_coefficient(i, j, k, grid, a::AbstractArray{<:Any, 3}, p, tridiagonal_direction, args...) = @inbounds a[i, j, k]
 
+"""
+    get_row(i, j, k, grid, a, b, c, f, p, tridiagonal_direction, args...)
+
+Return the `(lower, diagonal, upper, rhs)` entries of row `k` (resp. `i`, `j`) of the
+tridiagonal system, where `lower` multiplies `ϕ` at the previous index and `upper` at
+the next. The fallback assembles the row from `get_coefficient`, preserving the
+coefficient-array convention in which the lower diagonal of row `k` is stored at index
+`k-1`. Coefficient types that compute entire rows at once (because the entries share
+expensive intermediates) can override `get_row` directly and evaluate each row a single
+time per solve.
+"""
+@inline function get_row(i, j, k, grid, a, b, c, f, p, dir::XDirection, args...)
+    d = get_coefficient(i, j, k, grid, b, p, dir, args...)
+    u = get_coefficient(i, j, k, grid, c, p, dir, args...)
+    r = get_coefficient(i, j, k, grid, f, p, dir, args...)
+    l = i == 1 ? zero(d) : get_coefficient(i-1, j, k, grid, a, p, dir, args...)
+    return l, d, u, r
+end
+
+@inline function get_row(i, j, k, grid, a, b, c, f, p, dir::YDirection, args...)
+    d = get_coefficient(i, j, k, grid, b, p, dir, args...)
+    u = get_coefficient(i, j, k, grid, c, p, dir, args...)
+    r = get_coefficient(i, j, k, grid, f, p, dir, args...)
+    l = j == 1 ? zero(d) : get_coefficient(i, j-1, k, grid, a, p, dir, args...)
+    return l, d, u, r
+end
+
+@inline function get_row(i, j, k, grid, a, b, c, f, p, dir::ZDirection, args...)
+    d = get_coefficient(i, j, k, grid, b, p, dir, args...)
+    u = get_coefficient(i, j, k, grid, c, p, dir, args...)
+    r = get_coefficient(i, j, k, grid, f, p, dir, args...)
+    l = k == 1 ? zero(d) : get_coefficient(i, j, k-1, grid, a, p, dir, args...)
+    return l, d, u, r
+end
+
 @inline float_eltype(ϕ::AbstractArray{T}) where T <: AbstractFloat = T
 @inline float_eltype(ϕ::AbstractArray{<:Complex{T}}) where T <: AbstractFloat = T
 
@@ -146,25 +181,21 @@ end
 
 @inline function solve_batched_tridiagonal_system_x!(j, k, Nx, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
     @inbounds begin
-        β  = get_coefficient(1, j, k, grid, b, p, tridiagonal_direction, args...)
-        f₁ = get_coefficient(1, j, k, grid, f, p, tridiagonal_direction, args...)
-        ϕ[1, j, k] = f₁ / β
+        lⁱ, β, uⁱ⁻¹, fⁱ = get_row(1, j, k, grid, a, b, c, f, p, tridiagonal_direction, args...)
+        ϕ[1, j, k] = fⁱ / β
 
         for i = 2:Nx
-            cᵏ⁻¹ = get_coefficient(i-1, j, k, grid, c, p, tridiagonal_direction, args...)
-            bᵏ   = get_coefficient(i,   j, k, grid, b, p, tridiagonal_direction, args...)
-            aᵏ⁻¹ = get_coefficient(i-1, j, k, grid, a, p, tridiagonal_direction, args...)
+            lⁱ, bⁱ, uⁱ, fⁱ = get_row(i, j, k, grid, a, b, c, f, p, tridiagonal_direction, args...)
 
-            t[i, j, k] = cᵏ⁻¹ / β
-            β = bᵏ - aᵏ⁻¹ * t[i, j, k]
-
-            fᵏ = get_coefficient(i, j, k, grid, f, p, tridiagonal_direction, args...)
+            t[i, j, k] = uⁱ⁻¹ / β
+            β = bⁱ - lⁱ * t[i, j, k]
 
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of ϕ.
             definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
-            ϕ★ = (fᵏ - aᵏ⁻¹ * ϕ[i-1, j, k]) / β
+            ϕ★ = (fⁱ - lⁱ * ϕ[i-1, j, k]) / β
             ϕ[i, j, k] = ifelse(definitely_diagonally_dominant, ϕ★, ϕ[i, j, k])
+            uⁱ⁻¹ = uⁱ
         end
 
         for i = Nx-1:-1:1
@@ -181,25 +212,21 @@ end
 
 @inline function solve_batched_tridiagonal_system_y!(i, k, Ny, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
     @inbounds begin
-        β  = get_coefficient(i, 1, k, grid, b, p, tridiagonal_direction, args...)
-        f₁ = get_coefficient(i, 1, k, grid, f, p, tridiagonal_direction, args...)
-        ϕ[i, 1, k] = f₁ / β
+        lʲ, β, uʲ⁻¹, fʲ = get_row(i, 1, k, grid, a, b, c, f, p, tridiagonal_direction, args...)
+        ϕ[i, 1, k] = fʲ / β
 
         for j = 2:Ny
-            cᵏ⁻¹ = get_coefficient(i, j-1, k, grid, c, p, tridiagonal_direction, args...)
-            bᵏ   = get_coefficient(i, j,   k, grid, b, p, tridiagonal_direction, args...)
-            aᵏ⁻¹ = get_coefficient(i, j-1, k, grid, a, p, tridiagonal_direction, args...)
+            lʲ, bʲ, uʲ, fʲ = get_row(i, j, k, grid, a, b, c, f, p, tridiagonal_direction, args...)
 
-            t[i, j, k] = cᵏ⁻¹ / β
-            β = bᵏ - aᵏ⁻¹ * t[i, j, k]
-
-            fᵏ = get_coefficient(i, j, k, grid, f, p, tridiagonal_direction, args...)
+            t[i, j, k] = uʲ⁻¹ / β
+            β = bʲ - lʲ * t[i, j, k]
 
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of ϕ.
             definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
-            ϕ★ = (fᵏ - aᵏ⁻¹ * ϕ[i, j-1, k]) / β
+            ϕ★ = (fʲ - lʲ * ϕ[i, j-1, k]) / β
             ϕ[i, j, k] = ifelse(definitely_diagonally_dominant, ϕ★, ϕ[i, j, k])
+            uʲ⁻¹ = uʲ
         end
 
         for j = Ny-1:-1:1
@@ -216,24 +243,21 @@ end
 
 @inline function solve_batched_tridiagonal_system_z!(i, j, Nz, ϕ, a, b, c, f, t, grid, p, args, tridiagonal_direction)
     @inbounds begin
-        β  = get_coefficient(i, j, 1, grid, b, p, tridiagonal_direction, args...)
-        f₁ = get_coefficient(i, j, 1, grid, f, p, tridiagonal_direction, args...)
-        ϕ[i, j, 1] = f₁ / β
+        lᵏ, β, uᵏ⁻¹, fᵏ = get_row(i, j, 1, grid, a, b, c, f, p, tridiagonal_direction, args...)
+        ϕ[i, j, 1] = fᵏ / β
 
         for k = 2:Nz
-            cᵏ⁻¹ = get_coefficient(i, j, k-1, grid, c, p, tridiagonal_direction, args...)
-            bᵏ   = get_coefficient(i, j, k,   grid, b, p, tridiagonal_direction, args...)
-            aᵏ⁻¹ = get_coefficient(i, j, k-1, grid, a, p, tridiagonal_direction, args...)
+            lᵏ, bᵏ, uᵏ, fᵏ = get_row(i, j, k, grid, a, b, c, f, p, tridiagonal_direction, args...)
 
-            t[i, j, k] = cᵏ⁻¹ / β
-            β = bᵏ - aᵏ⁻¹ * t[i, j, k]
-            fᵏ = get_coefficient(i, j, k, grid, f, p, tridiagonal_direction, args...)
+            t[i, j, k] = uᵏ⁻¹ / β
+            β = bᵏ - lᵏ * t[i, j, k]
 
             # If the problem is not diagonally-dominant such that `β ≈ 0`,
             # the algorithm is unstable and we elide the forward pass update of `ϕ`.
             definitely_diagonally_dominant = abs(β) > 10 * eps(float_eltype(ϕ))
-            ϕ★ = (fᵏ - aᵏ⁻¹ * ϕ[i, j, k-1]) / β
+            ϕ★ = (fᵏ - lᵏ * ϕ[i, j, k-1]) / β
             ϕ[i, j, k] = ifelse(definitely_diagonally_dominant, ϕ★, ϕ[i, j, k])
+            uᵏ⁻¹ = uᵏ
         end
 
         for k = Nz-1:-1:1

@@ -11,11 +11,12 @@ export
     advective_tracer_flux_y,
     advective_tracer_flux_z,
 
-    Centered, UpwindBiased, WENO,
+    Centered, UpwindBiased, WENO, CompactWENO,
     VectorInvariant, WENOVectorInvariant,
     FluxFormAdvection,
     AdaptiveImplicitVerticalAdvection,
     update_advection_timestep!,
+    precompute_advection!,
     EnergyConserving,
     EnstrophyConserving
 
@@ -71,6 +72,7 @@ include("vector_invariant_advection.jl")
 include("vector_invariant_self_upwinding.jl")
 include("vector_invariant_cross_upwinding.jl")
 include("flux_form_advection.jl")
+include("compact_weno_reconstruction.jl")
 include("adaptive_implicit_vertical_advection.jl")
 include("implicit_vertical_advection.jl")
 

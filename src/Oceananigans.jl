@@ -33,7 +33,7 @@ export
     Distributed, Partition,
 
     # Advection schemes
-    Centered, UpwindBiased, WENO,
+    Centered, UpwindBiased, WENO, CompactWENO,
     VectorInvariant, WENOVectorInvariant, FluxFormAdvection,
     AdaptiveImplicitVerticalAdvection,
 
@@ -235,8 +235,8 @@ include("Fields/Fields.jl")
 include("AbstractOperations/AbstractOperations.jl")
 include("ImmersedBoundaries/ImmersedBoundaries.jl")
 include("TimeSteppers/TimeSteppers.jl")
-include("Advection/Advection.jl")
 include("Solvers/Solvers.jl")
+include("Advection/Advection.jl")
 include("DistributedComputations/DistributedComputations.jl")
 include("OrthogonalSphericalShellGrids/OrthogonalSphericalShellGrids.jl")
 

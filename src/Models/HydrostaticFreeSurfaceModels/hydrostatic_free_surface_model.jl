@@ -1,4 +1,4 @@
-using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, WENOVectorInvariant, adapt_advection_order, materialize_advection, weno_order
+using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, WENOVectorInvariant, adapt_advection_order, materialize_advection, weno_order, contains_compact_weno
 using Oceananigans.Architectures: AbstractArchitecture, ReactantState
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, needs_implicit_solver, regularize_field_boundary_conditions, validate_implicit_explicit_flux_locations
@@ -199,6 +199,11 @@ function HydrostaticFreeSurfaceModel(grid;
 
     # Reduce the advection order in directions that do not have enough grid points
     @apply_regionally momentum_advection = validate_momentum_advection(momentum_advection, grid)
+
+    contains_compact_weno(momentum_advection) &&
+        @warn "CompactWENO as momentum advection delegates all momentum reconstructions to its " *
+              "explicit sub-schemes: momentum is not advected with the compact reconstruction."
+
     default_tracer_advection, tracer_advection = validate_tracer_advection(tracer_advection, grid)
     default_generator(name, tracer_advection) = default_tracer_advection
 

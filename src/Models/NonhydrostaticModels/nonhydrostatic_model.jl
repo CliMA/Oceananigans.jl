@@ -1,4 +1,4 @@
-using Oceananigans.Advection: Centered, adapt_advection_order, materialize_advection
+using Oceananigans.Advection: Centered, adapt_advection_order, materialize_advection, contains_compact_weno
 using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: MixedBoundaryCondition
@@ -217,6 +217,11 @@ function NonhydrostaticModel(grid;
     # is smaller than the advection order, reduce the order of the advection in that particular
     # direction
     advection = adapt_advection_order(advection, grid)
+
+    contains_compact_weno(advection) &&
+        throw(ArgumentError("CompactWENO is not supported by NonhydrostaticModel: the model does not " *
+                            "precompute the compact reconstruction, and the advection scheme is shared " *
+                            "across tracers. Use CompactWENO as tracer advection in HydrostaticFreeSurfaceModel."))
 
     # Fill any settings in advection scheme that might have been deferred until
     # the grid and backend is known

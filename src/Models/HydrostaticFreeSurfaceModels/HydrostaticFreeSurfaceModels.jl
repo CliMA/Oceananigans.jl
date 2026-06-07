@@ -18,7 +18,7 @@ using Oceananigans.Utils: Utils, launch!, @apply_regionally
 using DocStringExtensions: TYPEDFIELDS
 
 import Oceananigans: fields, prognostic_fields, initialize!
-import Oceananigans.Advection: cell_advection_timescale
+import Oceananigans.Advection: cell_advection_timescale, precompute_advection!
 import Oceananigans.Architectures: Architectures, on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Models: materialize_free_surface

@@ -47,7 +47,7 @@ model = HydrostaticFreeSurfaceModel(grid;
                                     buoyancy = BuoyancyTracer(),
                                     tracers = (:b, :c),
                                     momentum_advection = WENO(order=5),
-                                    tracer_advection = WENO(order=5),
+                                    tracer_advection = FluxFormAdvection(WENO(order=5), WENO(order=5), CompactWENO()),
                                     free_surface = SplitExplicitFreeSurface(grid; substeps=60))
 
 @info "Built $model."

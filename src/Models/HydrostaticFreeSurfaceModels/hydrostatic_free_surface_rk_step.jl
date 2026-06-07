@@ -50,6 +50,7 @@ The order of operations for explicit free surfaces is:
 
     @apply_regionally begin
         # compute tracer tendencies
+        precompute_advection!(model.advection, model.velocities, model.tracers)
         compute_tracer_tendencies!(model)
 
         # Advance grid
@@ -103,6 +104,7 @@ For implicit free surfaces, a predictor-corrector approach is used:
 
     @apply_regionally begin
         compute_transport_velocities!(model, free_surface)
+        precompute_advection!(model.advection, model.velocities, model.tracers)
         compute_tracer_tendencies!(model)
 
         rk_substep_grid!(model.grid, model, model.vertical_coordinate, Δτ)

@@ -59,6 +59,7 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
 
     # Computing tracer tendencies
     @apply_regionally begin
+        precompute_advection!(model.advection, model.velocities, model.tracers)
         compute_tracer_tendencies!(model)
 
         # Advance grid
@@ -114,6 +115,7 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
 
     @apply_regionally begin
         compute_transport_velocities!(model, free_surface)
+        precompute_advection!(model.advection, model.velocities, model.tracers)
         compute_tracer_tendencies!(model)
 
         ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
