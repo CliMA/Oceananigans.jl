@@ -20,7 +20,7 @@
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Grids: znode, xnode
-using Oceananigans.BoundaryConditions: FlatherBoundaryCondition, RadiationBoundaryCondition
+using Oceananigans.BoundaryConditions: FlatherBoundaryCondition
 
 # ## Grid
 #
@@ -65,23 +65,22 @@ A₂ = U₂ * (ω₂^2 - coriolis.f^2) / ω₂
 
 # ## Boundary conditions
 #
-# We use `Open` boundary conditions with the `Radiation` scheme (Orlanski 1976,
+# We use `NormalFlow` boundary conditions with the `Radiation` scheme (Orlanski 1976,
 # Marchesiello et al. 2001) on ``u`` at the east and west boundaries. The
 # `Radiation` scheme diagnoses the phase speed of outgoing waves from interior
 # gradients and advects boundary values accordingly. Adaptive nudging
 # provides weak relaxation on outflow and stronger relaxation on inflow.
 #
-# For the split-explicit barotropic solver, any `Open` BC on the 3D velocity
-# is automatically converted to a `Flather` characteristic condition on the
-# barotropic transport, ensuring proper barotropic wave radiation at the
-# free surface level.
+# For the split-explicit barotropic solver, we impose a `Flather` characteristic
+# condition on the barotropic transport, ensuring proper barotropic wave radiation
+# at the free surface level.
 
 Nᵢ² = 1e-4  # [s⁻²] initial buoyancy frequency / stratification
 
 @inline tidal_forcing(z, t, p) = p.U₂ * sin(p.ω₂ * t)
 
-u_east_bc = RadiationBoundaryCondition(tidal_forcing; parameters=(; U₂, ω₂))
-u_west_bc = RadiationBoundaryCondition(tidal_forcing; parameters=(; U₂, ω₂))
+u_east_bc = NormalFlowBoundaryCondition(tidal_forcing; scheme = Radiation(), parameters = (; U₂, ω₂))
+u_west_bc = NormalFlowBoundaryCondition(tidal_forcing; scheme = Radiation(), parameters = (; U₂, ω₂))
 u_bcs     = FieldBoundaryConditions(east = u_east_bc, west = u_west_bc)
 
 @inline barotropic_tidal_forcing(i, j, grid, clock, model_fields) = (U₂ * sin(ω₂ * clock.time) * 2kilometers, 0)
@@ -97,8 +96,8 @@ U_bcs     = FieldBoundaryConditions(grid, (Face(), Center(), nothing); east = U_
 # background stratification `N²z` on inflow.
 
 @inline b_background(z, t, Nᵢ²) = Nᵢ² * z
-b_east_bc = RadiationBoundaryCondition(b_background; parameters = Nᵢ²)
-b_west_bc = RadiationBoundaryCondition(b_background; parameters = Nᵢ²)
+b_east_bc = ValueBoundaryCondition(b_background; scheme = Radiation(), parameters = Nᵢ²)
+b_west_bc = ValueBoundaryCondition(b_background; scheme = Radiation(), parameters = Nᵢ²)
 b_bcs     = FieldBoundaryConditions(east = b_east_bc, west = b_west_bc)
 
 # ## Sponge layers
@@ -144,10 +143,11 @@ b_sponge = Forcing(b_sponge_forcing, discrete_form = true, parameters = sponge_p
 # ## Model
 #
 # We build a `HydrostaticFreeSurfaceModel` with `SplitExplicitFreeSurface`.
-# Using `extend_halos = false` is required for open boundary conditions to be
-# applied during the barotropic substep loop.
+# Since the barotropic transport has prescribed normal-flow boundaries (Flather),
+# the solver automatically re-applies the boundary conditions during the
+# barotropic substep loop.
 
-free_surface = SplitExplicitFreeSurface(grid; substeps = 30, extend_halos = false)
+free_surface = SplitExplicitFreeSurface(grid; substeps = 30)
 
 model = HydrostaticFreeSurfaceModel(grid; 
                                     coriolis,

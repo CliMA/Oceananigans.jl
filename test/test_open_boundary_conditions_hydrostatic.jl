@@ -1,5 +1,5 @@
 using Oceananigans
-using Oceananigans.BoundaryConditions: Flather, Radiation, FlatherBoundaryCondition, RadiationBoundaryCondition
+using Oceananigans.BoundaryConditions: Flather, Radiation, FlatherBoundaryCondition, fill_halo_regions!
 using Test
 
 #####
@@ -19,14 +19,14 @@ function test_barotropic_gravity_wave_radiation()
                            topology = (Bounded, Periodic, Bounded))
 
     # Radiation OBC on 3D velocity, Flather on barotropic transport
-    u_bcs = FieldBoundaryConditions(east  = RadiationBoundaryCondition(0; outflow_timescale = 100.0),
-                                    west  = RadiationBoundaryCondition(0; outflow_timescale = 100.0))
+    u_bcs = FieldBoundaryConditions(east  = NormalFlowBoundaryCondition(0; scheme = Radiation(outflow_timescale = 100.0)),
+                                    west  = NormalFlowBoundaryCondition(0; scheme = Radiation(outflow_timescale = 100.0)))
 
     U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing);
                                     east  = FlatherBoundaryCondition((0.0, 0.0)),
                                     west  = FlatherBoundaryCondition((0.0, 0.0)))
 
-    free_surface = SplitExplicitFreeSurface(grid; substeps = 10, extend_halos = false)
+    free_surface = SplitExplicitFreeSurface(grid; substeps = 10)
 
     model = HydrostaticFreeSurfaceModel(grid;
         free_surface = free_surface,
@@ -81,7 +81,7 @@ function test_tidal_bay_flather()
     U_east_bc = FlatherBoundaryCondition((0.0, 0.0))
     U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing); east = U_east_bc)
 
-    free_surface = SplitExplicitFreeSurface(grid; substeps = 10, extend_halos = false)
+    free_surface = SplitExplicitFreeSurface(grid; substeps = 10)
 
     model = HydrostaticFreeSurfaceModel(grid;
         free_surface = free_surface,
@@ -138,7 +138,7 @@ function test_coastal_kelvin_wave()
                                     west = FlatherBoundaryCondition((0.0, 0.0)),
                                     east = FlatherBoundaryCondition((0.0, 0.0)))
 
-    free_surface = SplitExplicitFreeSurface(grid; substeps = 10, extend_halos = false)
+    free_surface = SplitExplicitFreeSurface(grid; substeps = 10)
 
     model = HydrostaticFreeSurfaceModel(grid;
         free_surface = free_surface,
@@ -202,13 +202,13 @@ function test_orlanski_analytical_verification()
                                  topology = (Bounded, Periodic, Bounded))
 
     # Radiation OBC on 3D velocity, Flather on barotropic transport
-    u_bcs = FieldBoundaryConditions(east  = RadiationBoundaryCondition(0; inflow_timescale = Δt),
-                                    west  = RadiationBoundaryCondition(0; inflow_timescale = Δt))
+    u_bcs = FieldBoundaryConditions(east  = NormalFlowBoundaryCondition(0; scheme = Radiation(inflow_timescale = Δt)),
+                                    west  = NormalFlowBoundaryCondition(0; scheme = Radiation(inflow_timescale = Δt)))
     U_bcs = FieldBoundaryConditions(grid_small, (Face(), Center(), nothing);
                                     east  = FlatherBoundaryCondition((0.0, 0.0)),
                                     west  = FlatherBoundaryCondition((0.0, 0.0)))
 
-    fs_small = SplitExplicitFreeSurface(grid_small; substeps = 10, extend_halos = false)
+    fs_small = SplitExplicitFreeSurface(grid_small; substeps = 10)
     model_small = HydrostaticFreeSurfaceModel(grid_small;
         free_surface = fs_small,
         boundary_conditions = (u = u_bcs, U = U_bcs),
@@ -273,6 +273,98 @@ function test_orlanski_analytical_verification()
     return no_nan && energy_decreased
 end
 
+#####
+##### Test 5: Substepping halo strategy selection
+#####
+# The split-explicit solver must pick the per-substep fill path automatically when the
+# barotropic velocities have prescribed normal-flow boundaries, and the complete-fill
+# path when extend_halos = false.
+
+using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces:
+    SplitExplicitFreeSurfaces, ExtendedHalos, LocalHaloFilling, CompleteHaloFilling
+
+function test_substep_halo_filling_strategy()
+    grid = RectilinearGrid(size = (8, 1, 1),
+                           x = (0, 1000.0), y = (0, 100.0), z = (-100.0, 0),
+                           topology = (Bounded, Periodic, Bounded))
+
+    U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing);
+                                    east = FlatherBoundaryCondition((0.0, 0.0)))
+
+    walls(; extend_halos = true) = HydrostaticFreeSurfaceModel(grid;
+        free_surface = SplitExplicitFreeSurface(grid; substeps = 4, extend_halos),
+        buoyancy = nothing, tracers = ())
+
+    open = HydrostaticFreeSurfaceModel(grid;
+        free_surface = SplitExplicitFreeSurface(grid; substeps = 4),
+        boundary_conditions = (; U = U_bcs),
+        buoyancy = nothing, tracers = ())
+
+    return walls().free_surface                      isa SplitExplicitFreeSurface{ExtendedHalos} &&
+           walls(extend_halos = false).free_surface  isa SplitExplicitFreeSurface{CompleteHaloFilling} &&
+           open.free_surface                         isa SplitExplicitFreeSurface{LocalHaloFilling}
+end
+
+#####
+##### Test 6: Tracer radiation with the Value classification
+#####
+# A tracer blob advected out of the domain by a prescribed uniform flow, with a
+# Radiation scheme on a ValueBoundaryCondition at the outflow boundary. The fill
+# must only touch the halo cells (never interior cells 1..N), the tracer must stay
+# bounded, and total tracer content must decrease as the blob exits.
+
+function test_tracer_radiation_value_scheme()
+    Nx, Ny, Nz = 32, 1, 1
+    Lx = 1000.0
+    U = 1.0
+
+    grid = RectilinearGrid(size = (Nx, Ny, Nz),
+                           x = (0, Lx),
+                           y = (0, 100.0),
+                           z = (-100.0, 0),
+                           topology = (Bounded, Periodic, Bounded))
+
+    radiation = Radiation(outflow_timescale = Inf, inflow_timescale = 1.0)
+    c_bcs = FieldBoundaryConditions(east = ValueBoundaryCondition(0; scheme = radiation),
+                                    west = ValueBoundaryCondition(0; scheme = radiation))
+
+    model = HydrostaticFreeSurfaceModel(grid;
+        velocities = PrescribedVelocityFields(u = U),
+        tracer_advection = UpwindBiased(order = 1),
+        buoyancy = nothing,
+        tracers = :c,
+        boundary_conditions = (; c = c_bcs))
+
+    # Regularization must have materialized the storage arrays with tangential sizes
+    east_bc = model.tracers.c.boundary_conditions.east
+    storage_materialized = east_bc.classification.scheme.φᵇ isa AbstractArray &&
+                           size(east_bc.classification.scheme.φᵇ) == (Ny, Nz)
+
+    σ = Lx / 16
+    set!(model, c = (x, y, z) -> exp(-(x - Lx/2)^2 / (2σ^2)))
+
+    c = model.tracers.c
+    C₀ = sum(interior(c))
+
+    # The fill must write only halo cells, never the interior
+    interior_before = copy(Array(interior(c)))
+    fill_halo_regions!(c, model.clock, Oceananigans.fields(model))
+    interior_untouched = Array(interior(c)) == interior_before
+
+    Δx = Lx / Nx
+    Δt = 0.5 * Δx / U
+    for _ in 1:round(Int, Lx / (U * Δt))
+        time_step!(model, Δt)
+    end
+
+    c_final = Array(interior(c))
+    no_nan = !any(isnan, c_final)
+    bounded = all(c_final .>= -1e-12) && all(c_final .<= 1 + 1e-12)
+    C₁ = sum(c_final)
+
+    return storage_materialized && interior_untouched && no_nan && bounded && C₁ < 0.1 * C₀
+end
+
 @testset "Open Boundary Conditions for HydrostaticFreeSurfaceModel" begin
     @testset "Barotropic gravity wave radiation" begin
         @test test_barotropic_gravity_wave_radiation()
@@ -288,5 +380,13 @@ end
 
     @testset "Orlanski analytical verification" begin
         @test test_orlanski_analytical_verification()
+    end
+
+    @testset "Substepping halo strategy selection" begin
+        @test test_substep_halo_filling_strategy()
+    end
+
+    @testset "Tracer radiation with Value classification" begin
+        @test test_tracer_radiation_value_scheme()
     end
 end

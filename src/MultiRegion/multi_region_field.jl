@@ -1,6 +1,6 @@
 using Oceananigans.AbstractOperations: AbstractOperation, compute_computed_field!
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, NoFluxBoundaryCondition,
-    default_auxiliary_bc, regularize_field_boundary_conditions
+    default_auxiliary_bc, regularize_field_boundary_conditions, has_prescribed_normal_flow
 using Oceananigans.Diagnostics: Diagnostics, hasnan
 using Oceananigans.DistributedComputations: DistributedComputations, reconstruct_global_field, CommunicationBuffers
 using Oceananigans.Fields: FunctionField, AbstractField, compute!, compute_at!, data_summary,
@@ -154,6 +154,9 @@ Fields.communication_buffers(grid::MultiRegionGrid, data, ::Missing) = nothing
 
 DistributedComputations.CommunicationBuffers(grid::MultiRegionGrids, args...; kwargs...) =
     construct_regionally(CommunicationBuffers, grid, args...; kwargs...)
+
+BoundaryConditions.has_prescribed_normal_flow(bcs::MultiRegionObject) =
+    any(has_prescribed_normal_flow, bcs.regional_objects)
 
 function BoundaryConditions.regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                                                  mrg::MultiRegionGrids,

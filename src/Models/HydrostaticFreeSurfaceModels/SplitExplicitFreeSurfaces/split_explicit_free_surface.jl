@@ -9,6 +9,24 @@ using Adapt: Adapt
 import Oceananigans: prognostic_state, restore_prognostic_state!
 import ..HydrostaticFreeSurfaceModels: hydrostatic_tendency_fields
 
+#####
+##### Substepping halo strategies
+#####
+##### The strategy occupies the first type parameter of `SplitExplicitFreeSurface`.
+##### Before materialization the parameter holds the user-provided `extend_halos::Bool`;
+##### `materialize_free_surface` resolves it to one of the singleton strategies below
+##### based on `extend_halos` and the barotropic boundary conditions.
+
+struct ExtendedHalos end
+struct LocalHaloFilling end
+struct CompleteHaloFilling end
+
+function substep_halo_filling(extend_halos::Bool, bcs)
+    extend_halos || return CompleteHaloFilling()
+    open_boundaries = has_prescribed_normal_flow(bcs.U) || has_prescribed_normal_flow(bcs.V)
+    return open_boundaries ? LocalHaloFilling() : ExtendedHalos()
+end
+
 struct SplitExplicitFreeSurface{E, H, U, M, FT, K, S, T} <: AbstractFreeSurface{H, FT}
     displacement :: H
     barotropic_velocities :: U # A namedtuple with U, V
@@ -104,9 +122,13 @@ Keyword Arguments
               then the number of substeps will be computed on the fly from the baroclinic time step to
               maintain a constant cfl.
 
-- `extend_halos`: Extend the halos and avoid calling `fill_halo_regions!` at each substep if `true`.
-                  If `false`, after each individual update of `U` and `η`, `fill_halo_regions!` will be called.
-                  This keyword argument affects the computations only for grids with `Connected` topologies.
+- `extend_halos`: If `true` (default), extend the halos in `Connected` directions and substep into them,
+                  avoiding communication at each substep. If `false`, halos are not extended and
+                  `fill_halo_regions!` is called after each individual update of `U` and `η`, including
+                  communication (`CompleteHaloFilling`). Note that when the barotropic velocities
+                  have prescribed normal-flow boundary conditions (e.g. `Flather`), the per-substep
+                  `fill_halo_regions!` path is selected automatically with `only_local_halos = true`
+                  (`LocalHaloFilling`) — `extend_halos = false` is not required for open boundaries.
 
 - `averaging_kernel`: A function of `τ` used to average the barotropic transport `U` and the free surface
                       `η` within the barotropic advancement. `τ` is the fractional substep going from 0 to 2
@@ -161,7 +183,10 @@ function SplitExplicitFreeSurface(grid = nothing;
 end
 
 # A free surface where halos are explicitly filled at each substep
-const FillHaloSplitExplicit = SplitExplicitFreeSurface{false}
+const FillHaloSplitExplicit = SplitExplicitFreeSurface{<:Union{LocalHaloFilling, CompleteHaloFilling}}
+
+@inline fill_only_local_halos(::SplitExplicitFreeSurface{LocalHaloFilling})    = true
+@inline fill_only_local_halos(::SplitExplicitFreeSurface{CompleteHaloFilling}) = false
 
 # Simplest case: we have the substeps and the averaging kernel
 function split_explicit_substepping(::Nothing, substeps, fixed_Δt, grid, averaging_kernel, gravitational_acceleration)
@@ -221,10 +246,12 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
                              `free_surface = SplitExplicitFreeSurface(grid; substeps = N)` where `N::Int`"))
     end
 
-    maybe_extended_grid = if extend_halos
-         maybe_extend_halos(TX, TY, grid, substepping)
-    else
+    strategy = substep_halo_filling(extend_halos, bcs)
+
+    maybe_extended_grid = if strategy isa CompleteHaloFilling
         grid
+    else
+        maybe_extend_halos(TX, TY, grid, substepping)
     end
 
     η = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid)
@@ -245,16 +272,16 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     filtered_state = (η̅ = η̅, U̅ = U̅, V̅ = V̅, Ũ = Ũ, Ṽ = Ṽ)
     barotropic_velocities = (U = U, V = V)
 
-    kernel_parameters = if extend_halos
-        maybe_augmented_kernel_parameters(TX, TY, maybe_extended_grid, substepping)
-    else
+    kernel_parameters = if strategy isa CompleteHaloFilling
         :xy
+    else
+        maybe_augmented_kernel_parameters(TX, TY, maybe_extended_grid, substepping)
     end
 
     timestepper = materialize_timestepper(free_surface.timestepper, maybe_extended_grid, free_surface, velocities,
                                           bcs.U, bcs.V)
 
-    return SplitExplicitFreeSurface{extend_halos}(η,
+    return SplitExplicitFreeSurface{typeof(strategy)}(η,
                                                   barotropic_velocities,
                                                   filtered_state,
                                                   gravitational_acceleration,

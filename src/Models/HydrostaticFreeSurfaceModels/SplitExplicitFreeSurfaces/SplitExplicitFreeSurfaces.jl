@@ -8,7 +8,7 @@ using Oceananigans.Utils: Utils, KernelParameters, configure_kernel, launch!, @a
 using Oceananigans.Operators: Az⁻¹ᶜᶜᶠ, Δx_qᶜᶠᶠ, Δy_qᶠᶜᶠ, Δzᶜᶠᶜ, Δzᶠᶜᶜ
 using Oceananigans.ImmersedBoundaries: column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ, column_depthᶠᶜᵃ, column_depthᶜᶠᵃ
 using Oceananigans.Operators: ∂xᵣTᶠᶜᶠ, ∂xᵣᶠᶜᶠ, ∂yᵣTᶜᶠᶠ, ∂yᵣᶜᶠᶠ, δxTᶜᵃᵃ, δxᶜᵃᵃ, δyTᵃᶜᵃ, δyᵃᶜᵃ
-using Oceananigans.BoundaryConditions: FieldBoundaryConditions, fill_halo_regions!
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions, fill_halo_regions!, has_prescribed_normal_flow
 using Oceananigans.Fields: Field, instantiated_location
 using Oceananigans.Grids: Center, Face, topology,
                           LeftConnected, RightConnected, FullyConnected,

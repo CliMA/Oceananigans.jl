@@ -16,7 +16,7 @@ solution via Flather conditions.
 
 using Oceananigans
 using Oceananigans.Grids: xnode
-using Oceananigans.BoundaryConditions: FlatherBoundaryCondition, RadiationBoundaryCondition
+using Oceananigans.BoundaryConditions: FlatherBoundaryCondition, Radiation
 using CairoMakie
 using Printf
 
@@ -63,12 +63,12 @@ U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing);
                                 west = FlatherBoundaryCondition(west_flather_bc; discrete_form = true),
                                 east = FlatherBoundaryCondition(east_flather_bc; discrete_form = true))
 
-u_bcs = FieldBoundaryConditions(west = RadiationBoundaryCondition(0),
-                                east = RadiationBoundaryCondition(0))
+u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(0; scheme = Radiation()),
+                                east = NormalFlowBoundaryCondition(0; scheme = Radiation()))
 
 ## Model
 
-free_surface = SplitExplicitFreeSurface(grid; substeps = 30, extend_halos = false)
+free_surface = SplitExplicitFreeSurface(grid; substeps = 30)
 
 model = HydrostaticFreeSurfaceModel(grid;
                                     free_surface        = free_surface,

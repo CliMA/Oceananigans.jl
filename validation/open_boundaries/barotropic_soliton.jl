@@ -215,10 +215,10 @@ function setup_simulation(params::SolitonParameters;
     if free_surface_type == :implicit
 
         # Boundary conditions: PerturbationAdvection OBCs for u and v
-        west_obc  = OpenBoundaryCondition((y, z, t) -> analytic_u(params.x_min, y, t, params); scheme)
-        east_obc  = OpenBoundaryCondition((y, z, t) -> analytic_u(params.x_max, y, t, params); scheme)
-        south_obc = OpenBoundaryCondition((x, z, t) -> analytic_v(x, params.y_min, t, params); scheme)
-        north_obc = OpenBoundaryCondition((x, z, t) -> analytic_v(x, params.y_max, t, params); scheme)
+        west_obc  = NormalFlowBoundaryCondition((y, z, t) -> analytic_u(params.x_min, y, t, params); scheme)
+        east_obc  = NormalFlowBoundaryCondition((y, z, t) -> analytic_u(params.x_max, y, t, params); scheme)
+        south_obc = NormalFlowBoundaryCondition((x, z, t) -> analytic_v(x, params.y_min, t, params); scheme)
+        north_obc = NormalFlowBoundaryCondition((x, z, t) -> analytic_v(x, params.y_max, t, params); scheme)
         u_bcs = FieldBoundaryConditions(west = west_obc, east = east_obc)
         v_bcs = FieldBoundaryConditions(south = south_obc, north = north_obc)
         boundary_conditions = (; u = u_bcs, v = v_bcs)
@@ -228,10 +228,10 @@ function setup_simulation(params::SolitonParameters;
 
     elseif free_surface_type == :split_explicit
 
-        u_west_bc  = OpenBoundaryCondition((y, z, t) -> analytic_u(params.x_min, y, t, params); scheme)
-        u_east_bc  = OpenBoundaryCondition((y, z, t) -> analytic_u(params.x_max, y, t, params); scheme)
-        v_south_bc = OpenBoundaryCondition((x, z, t) -> analytic_v(x, params.y_min, t, params); scheme)
-        v_north_bc = OpenBoundaryCondition((x, z, t) -> analytic_v(x, params.y_max, t, params); scheme)
+        u_west_bc  = NormalFlowBoundaryCondition((y, z, t) -> analytic_u(params.x_min, y, t, params); scheme)
+        u_east_bc  = NormalFlowBoundaryCondition((y, z, t) -> analytic_u(params.x_max, y, t, params); scheme)
+        v_south_bc = NormalFlowBoundaryCondition((x, z, t) -> analytic_v(x, params.y_min, t, params); scheme)
+        v_north_bc = NormalFlowBoundaryCondition((x, z, t) -> analytic_v(x, params.y_max, t, params); scheme)
         u_bcs = FieldBoundaryConditions(west = u_west_bc, east = u_east_bc)
         v_bcs = FieldBoundaryConditions(south = v_south_bc, north = v_north_bc)
 
@@ -267,7 +267,7 @@ function setup_simulation(params::SolitonParameters;
 
         boundary_conditions = (; u = u_bcs, v = v_bcs, U = U_bcs, V = V_bcs)
 
-        free_surface = SplitExplicitFreeSurface(grid; substeps = 30, extend_halos = false)
+        free_surface = SplitExplicitFreeSurface(grid; substeps = 30)
 
     else
         error("Unknown free_surface_type: $(free_surface_type). Use :implicit or :split_explicit.")

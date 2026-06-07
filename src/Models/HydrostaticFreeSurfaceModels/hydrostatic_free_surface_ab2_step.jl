@@ -99,7 +99,6 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
 
         # Finally Substep! Advance grid, tracers, (predictor) momentum
         ab2_step_velocities!(model.velocities, model, Δt, χ)
-        mask_immersed_horizontal_velocities!(model.velocities)
     end
 
     # Enforce targeted open boundary transports on the predictor velocity, before the

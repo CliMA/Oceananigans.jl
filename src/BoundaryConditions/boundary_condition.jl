@@ -106,6 +106,10 @@ MultiRegionCommunicationBoundaryCondition() = BoundaryCondition(MultiRegionCommu
             UPivotZipperBoundaryCondition() = BoundaryCondition(Zipper{UPivot}(), 1)
             FPivotZipperBoundaryCondition() = BoundaryCondition(Zipper{FPivot}(), 1)
 
+prescribes_normal_flow(bc) = false
+prescribes_normal_flow(::NFBC) = true
+prescribes_normal_flow(::BoundaryCondition{NormalFlow{Nothing}, Nothing}) = false # impenetrable wall
+
 FluxBoundaryCondition(val; kwargs...)                         = BoundaryCondition(Flux(), val; kwargs...)
 ValueBoundaryCondition(val; scheme = nothing, kwargs...)      = BoundaryCondition(Value(scheme), val; kwargs...)
 GradientBoundaryCondition(val; kwargs...)                     = BoundaryCondition(Gradient(), val; kwargs...)
