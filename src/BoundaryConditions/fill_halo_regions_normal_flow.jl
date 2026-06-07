@@ -1,0 +1,28 @@
+# Normal-flow (open) boundary fill: set the boundary/halo value directly.
+@inline   _fill_west_halo!(j, k, grid, c, bc::NFBC, loc, args...) = @inbounds c[1, j, k]           = getbc(bc, j, k, grid, args...)
+@inline   _fill_east_halo!(j, k, grid, c, bc::NFBC, loc, args...) = @inbounds c[grid.Nx + 1, j, k] = getbc(bc, j, k, grid, args...)
+@inline  _fill_south_halo!(i, k, grid, c, bc::NFBC, loc, args...) = @inbounds c[i, 1, k]           = getbc(bc, i, k, grid, args...)
+@inline  _fill_north_halo!(i, k, grid, c, bc::NFBC, loc, args...) = @inbounds c[i, grid.Ny + 1, k] = getbc(bc, i, k, grid, args...)
+@inline _fill_bottom_halo!(i, j, grid, c, bc::NFBC, loc, args...) = @inbounds c[i, j, 1]           = getbc(bc, i, j, grid, args...)
+@inline    _fill_top_halo!(i, j, grid, c, bc::NFBC, loc, args...) = @inbounds c[i, j, grid.Nz + 1] = getbc(bc, i, j, grid, args...)
+
+@inline function fill_halo_event!(c, kernel!, bcs::Tuple{<:NFBC, <:NFBC}, loc, grid, args...; fill_normal_flow_bcs=true, kwargs...)
+    if fill_normal_flow_bcs
+        return kernel!(c, bcs[1], bcs[2], loc, grid, Tuple(args))
+    end
+    return nothing
+end
+
+@inline function fill_halo_event!(c, kernel!, bcs::Tuple{<:NFBC}, loc, grid, args...; fill_normal_flow_bcs=true, kwargs...)
+    if fill_normal_flow_bcs
+        return kernel!(c, bcs[1], loc, grid, Tuple(args))
+    end
+    return nothing
+end
+
+@inline function fill_halo_event!(c, kernel!, bc::NFBC, loc, grid, args...; fill_normal_flow_bcs=true, kwargs...)
+    if fill_normal_flow_bcs
+        return kernel!(c, bc, loc, grid, Tuple(args))
+    end
+    return nothing
+end

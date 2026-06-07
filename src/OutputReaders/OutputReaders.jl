@@ -27,8 +27,7 @@ end
 If `filename` ends in `ext`, return `filename`. Otherwise return `filename * ext`.
 """
 function auto_extension(filename, ext)
-    if endswith(filename, ext) || endswith(filename, ".nc") || endswith(filename, ".jld2") ||
-       endswith(filename, ".zarr") || endswith(filename, ".zip")
+    if endswith(filename, ext)
         return filename
     else
         return filename * ext

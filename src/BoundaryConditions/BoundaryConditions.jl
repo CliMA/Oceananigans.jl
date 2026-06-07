@@ -1,11 +1,11 @@
 module BoundaryConditions
 
 export
-    Flux, Gradient, Value, Open,
+    Flux, Gradient, Value, NormalFlow,
     BoundaryCondition, getbc,
-    PeriodicBoundaryCondition, OpenBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition,
+    PeriodicBoundaryCondition, NormalFlowBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, DistributedCommunicationBoundaryCondition,
-    PerturbationAdvection,
+    PerturbationAdvection, has_target_transport, get_target_transport,
     Flather, Radiation, CosineSquaredBoundarySponge,
     FlatherBoundaryCondition, RadiationBoundaryCondition,
     validate_boundary_condition_topology, validate_boundary_condition_architecture,
@@ -46,7 +46,7 @@ include("show_boundary_conditions.jl")
 
 include("fill_halo_regions.jl")
 include("fill_halo_regions_value_gradient.jl")
-include("fill_halo_regions_open.jl")
+include("fill_halo_regions_normal_flow.jl")
 include("fill_halo_regions_periodic.jl")
 include("fill_halo_regions_flux.jl")
 include("fill_halo_regions_upivotzipper.jl")
