@@ -69,11 +69,11 @@ end
 Split Runge-Kutta substep for `HydrostaticFreeSurfaceModel` with `ImplicitFreeSurface`.
 
 For implicit free surfaces, a predictor-corrector approach is used:
-1. Compute momentum and tracer tendencies
-2. Advance grid scaling (for z-star coordinates)
-3. Advance velocities (predictor step, ignoring free surface)
-4. Solve implicit free surface equation
-5. Correct velocities for the updated barotropic pressure gradient
+1. Advance velocities (predictor step, ignoring free surface)
+2. Enforce targeted open boundary transports on the predictor velocity
+3. Solve implicit free surface equation
+4. Correct velocities for the updated barotropic pressure gradient
+5. Advance grid scaling (for z-star coordinates)
 6. Advance tracers
 """
 @inline function rk_substep!(model, free_surface::ImplicitFreeSurface, grid, Δτ, callbacks)
@@ -88,6 +88,11 @@ For implicit free surfaces, a predictor-corrector approach is used:
         # Finally Substep! Advance grid, tracers, (predictor) momentum
         rk_substep_velocities!(model.velocities, model, Δτ)
     end
+
+    # Enforce targeted open boundary transports on the predictor velocity, before the
+    # free-surface solve, so the implicit free surface is solved consistently with the
+    # prescribed boundary transport.
+    @apply_regionally enforce_targeted_open_boundary_transport!(model, model.boundary_transport)
 
     # Advancing free surface in preparation for the correction step
     step_free_surface!(free_surface, model, model.timestepper, Δτ)
@@ -105,6 +110,7 @@ For implicit free surfaces, a predictor-corrector approach is used:
         compute_transport_velocities!(model, free_surface)
         compute_tracer_tendencies!(model)
 
+        # Advance grid (z-star scaling)
         rk_substep_grid!(model.grid, model, model.vertical_coordinate, Δτ)
 
         # Finally step tracers
