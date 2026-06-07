@@ -59,7 +59,7 @@ const FNBCBC = BoundaryCondition{<:NormalFlow{<:Flather}}
 Orlanski (1976) radiation condition with locally-diagnosed phase speed
 and adaptive nudging (Marchesiello et al. 2001):
 
-    ∂φ/∂t + cₙ ⋅ ∂φ/∂n = -(φ - φᵉˣᵗ) / τ
+    ∂φ/∂t + cₙ ⋅ ∂φ/∂n = - (φ - φᵉˣᵗ) / τ
 
 where `cₙ = −(∂φ/∂t) / (∂φ/∂n)` is diagnosed from interior values, clamped to `[0, Δx/Δt]`.
 Inflow vs outflow is decided from the boundary-normal velocity (the boundary value itself
@@ -71,9 +71,8 @@ fields such as tracers — where it updates the halo cell adjacent to the bounda
 [`NormalFlowBoundaryCondition`](@ref) for boundary-normal velocities — where it updates the
 boundary face value. Interior cells are never written.
 
-The previous-timestep boundary and interior values needed by the Orlanski formula are
-stored in separate arrays (`φᵇ` and `φ₁`) rather than in the field's halo region.
-These arrays are allocated automatically during boundary condition regularization.
+The previous-timestep interior value needed by the Orlanski phase-speed diagnosis is
+stored in an array (`φ₁`) allocated automatically during boundary condition regularization.
 
 References
 ==========
@@ -96,7 +95,6 @@ rad.outflow_timescale
 struct Radiation{FT, S}
     outflow_timescale :: FT
     inflow_timescale  :: FT
-    φᵇ :: S  # previous boundary value storage (2D array or nothing)
     φ₁ :: S  # previous interior value storage (2D array or nothing)
 end
 
@@ -106,13 +104,12 @@ function Radiation(FT = defaults.FloatType;
 
     outflow_timescale = convert(FT, outflow_timescale)
     inflow_timescale = convert(FT, inflow_timescale)
-    return Radiation(outflow_timescale, inflow_timescale, nothing, nothing)
+    return Radiation(outflow_timescale, inflow_timescale, nothing)
 end
 
 Adapt.adapt_structure(to, r::Radiation) =
     Radiation(adapt(to, r.outflow_timescale),
               adapt(to, r.inflow_timescale),
-              adapt(to, r.φᵇ),
               adapt(to, r.φ₁))
 
 const RVBC  = BoundaryCondition{<:Value{<:Radiation}}
@@ -123,27 +120,24 @@ const RBC   = Union{RVBC, RNFBC}
 ##### Radiation storage allocation during BC regularization
 #####
 
-# Allocate 2D storage arrays for the Orlanski radiation scheme.
-# The arrays hold previous-timestep values (φᵇⁿ and φ₁ⁿ).
+# Allocate the 2D storage array holding the previous-timestep interior value φ₁ⁿ
+# needed by the Orlanski phase-speed diagnosis.
 function materialize_radiation_storage(radiation::Radiation, grid, loc, dim)
     FT = eltype(grid)
     Sx, Sy, Sz = size(grid, loc) # loc-aware: Face on Bounded gives N+1, matching the kernel range
     arch = architecture(grid)
 
     if dim == 1      # x-boundary (east/west): indexed by (j, k)
-        φᵇ = on_architecture(arch, zeros(FT, Sy, Sz))
         φ₁ = on_architecture(arch, zeros(FT, Sy, Sz))
     elseif dim == 2  # y-boundary (north/south): indexed by (i, k)
-        φᵇ = on_architecture(arch, zeros(FT, Sx, Sz))
         φ₁ = on_architecture(arch, zeros(FT, Sx, Sz))
     else             # z-boundary (top/bottom): indexed by (i, j)
-        φᵇ = on_architecture(arch, zeros(FT, Sx, Sy))
         φ₁ = on_architecture(arch, zeros(FT, Sx, Sy))
     end
 
     return Radiation(radiation.outflow_timescale,
                      radiation.inflow_timescale,
-                     φᵇ, φ₁)
+                     φ₁)
 end
 
 rebuild_classification(::Value, scheme) = Value(scheme)
@@ -322,9 +316,10 @@ end
 # where φ₁ is the boundary-adjacent interior value and φ₂ is one point
 # deeper into the interior.
 #
-# Previous-timestep values φᵇⁿ and φ₁ⁿ are stored in separate arrays
-# inside the Radiation struct, not in the field's halo, to avoid corruption
-# by other kernels (e.g. the barotropic corrector).
+# The previous interior value φ₁ⁿ is stored in an array inside the Radiation struct;
+# the previous boundary value is read from the field itself, so that increments applied
+# between fills (e.g. the Flather-consistent barotropic correction at NormalFlow faces)
+# are retained.
 #
 # Adaptive nudging (Marchesiello et al. 2001):
 #   - Outflow: τ = outflow_timescale (typically weak or Inf)
@@ -345,10 +340,10 @@ end
 
     # Cₙ = -(∂φ/∂t) / (∂φ/∂ξ) in the outward-normal direction
     # Guard against zero spatial gradient
-    Cn = ifelse(∂ξ_φ == 0, zero(∂t_φ), - ∂t_φ / ∂ξ_φ)
+    Cᶜ = ifelse(∂ξ_φ == 0, zero(∂t_φ), - ∂t_φ / ∂ξ_φ)
 
     # Radiate (with Cₙ clamped to [0, 1]) only on outflow, relax on inflow
-    Cₙ = ifelse(outflow, max(zero(Cn), min(one(Cn), Cn)), zero(Cn))
+    Cₙ = ifelse(outflow, max(zero(Cᶜ), min(one(Cᶜ), Cᶜ)), zero(Cᶜ))
 
     τ = ifelse(outflow, radiation.outflow_timescale, radiation.inflow_timescale)
     τ̃ = Δt / τ
@@ -374,17 +369,14 @@ end
         φᵉˣᵗ  = getbc(bc, j, k, grid, clock, model_fields)
         φ₁ⁿ⁺¹ = c[iᵇ-1, j, k]      # first interior (new time)
         φ₂ⁿ⁺¹ = c[iᵇ-2, j, k]      # second interior (new time)
-        φᵇⁿ   = ifelse(first_call, φ₁ⁿ⁺¹,       radiation.φᵇ[j, k]) # zero-gradient initialization
-        φ₁ⁿ   = ifelse(first_call, φ₁ⁿ⁺¹,       radiation.φ₁[j, k])
-
-        # NormalFlow fields (Uₙ = nothing) advect themselves
-        Uᵃ = advecting_velocity(Uₙ, c[iᵇ, j, k])
+        φᵇⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, c[iᵇ, j, k]) # zero-gradient initialization
+        φ₁ⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, radiation.φ₁[j, k])
+        Uᵃ    = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
         outflow = Uᵃ >= 0
 
         φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow)
 
         c[iᵇ, j, k]        = φᵇⁿ⁺¹ # set boundary value
-        radiation.φᵇ[j, k] = φᵇⁿ⁺¹ # store for next time step
         radiation.φ₁[j, k] = φ₁ⁿ⁺¹ # store interior for next time step
     end
 
@@ -400,17 +392,14 @@ end
         φᵉˣᵗ  = getbc(bc, j, k, grid, clock, model_fields)
         φ₁ⁿ⁺¹ = c[iᵇ+1, j, k]      # first interior (new time)
         φ₂ⁿ⁺¹ = c[iᵇ+2, j, k]      # second interior (new time)
-        φᵇⁿ   = ifelse(first_call, φ₁ⁿ⁺¹,       radiation.φᵇ[j, k]) # zero-gradient initialization
-        φ₁ⁿ   = ifelse(first_call, φ₁ⁿ⁺¹,       radiation.φ₁[j, k])
-
-        # NormalFlow fields (Uₙ = nothing) advect themselves
-        Uᵃ = advecting_velocity(Uₙ, c[iᵇ, j, k])
+        φᵇⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, c[iᵇ, j, k]) # zero-gradient initialization
+        φ₁ⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, radiation.φ₁[j, k])
+        Uᵃ    = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
         outflow = Uᵃ <= 0
 
         φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow)
 
         c[iᵇ, j, k]        = φᵇⁿ⁺¹ # set boundary value
-        radiation.φᵇ[j, k] = φᵇⁿ⁺¹ # store for next time step
         radiation.φ₁[j, k] = φ₁ⁿ⁺¹ # store interior for next time step
     end
 
@@ -426,17 +415,15 @@ end
         φᵉˣᵗ  = getbc(bc, i, k, grid, clock, model_fields)
         φ₁ⁿ⁺¹ = c[i, jᵇ-1, k]      # first interior (new time)
         φ₂ⁿ⁺¹ = c[i, jᵇ-2, k]      # second interior (new time)
-        φᵇⁿ   = ifelse(first_call, φ₁ⁿ⁺¹,       radiation.φᵇ[i, k]) # zero-gradient initialization
-        φ₁ⁿ   = ifelse(first_call, φ₁ⁿ⁺¹,       radiation.φ₁[i, k])
-
-        # NormalFlow fields (Uₙ = nothing) advect themselves
-        Uᵃ = advecting_velocity(Uₙ, c[i, jᵇ, k])
+        φᵇⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, c[i, jᵇ, k]) # zero-gradient initialization; see east halo note
+        φ₁ⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, radiation.φ₁[i, k])
+        Uᵃ    = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
+        
         outflow = Uᵃ >= 0
-
+        
         φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow)
 
         c[i, jᵇ, k]        = φᵇⁿ⁺¹ # set boundary value
-        radiation.φᵇ[i, k] = φᵇⁿ⁺¹ # store for next time step
         radiation.φ₁[i, k] = φ₁ⁿ⁺¹ # store interior for next time step
     end
 
@@ -452,17 +439,15 @@ end
         φᵉˣᵗ  = getbc(bc, i, k, grid, clock, model_fields)
         φ₁ⁿ⁺¹ = c[i, jᵇ+1, k]      # first interior (new time)
         φ₂ⁿ⁺¹ = c[i, jᵇ+2, k]      # second interior (new time)
-        φᵇⁿ   = ifelse(first_call, φ₁ⁿ⁺¹,       radiation.φᵇ[i, k]) # zero-gradient initialization
-        φ₁ⁿ   = ifelse(first_call, φ₁ⁿ⁺¹,       radiation.φ₁[i, k])
-
-        # NormalFlow fields (Uₙ = nothing) advect themselves
-        Uᵃ = advecting_velocity(Uₙ, c[i, jᵇ, k])
+        φᵇⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, c[i, jᵇ, k]) # zero-gradient initialization; see east halo note
+        φ₁ⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, radiation.φ₁[i, k])
+        Uᵃ    = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
+        
         outflow = Uᵃ <= 0
 
         φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow)
 
         c[i, jᵇ, k]        = φᵇⁿ⁺¹ # set boundary value
-        radiation.φᵇ[i, k] = φᵇⁿ⁺¹ # store for next time step
         radiation.φ₁[i, k] = φ₁ⁿ⁺¹ # store interior for next time step
     end
 
@@ -478,17 +463,15 @@ end
         φᵉˣᵗ  = getbc(bc, i, j, grid, clock, model_fields)
         φ₁ⁿ⁺¹ = c[i, j, kᵇ-1]      # first interior (new time)
         φ₂ⁿ⁺¹ = c[i, j, kᵇ-2]      # second interior (new time)
-        φᵇⁿ   = ifelse(first_call, φ₁ⁿ⁺¹,       radiation.φᵇ[i, j]) # zero-gradient initialization
-        φ₁ⁿ   = ifelse(first_call, φ₁ⁿ⁺¹,       radiation.φ₁[i, j])
+        φᵇⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, c[i, j, kᵇ]) # zero-gradient initialization; see east halo note
+        φ₁ⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, radiation.φ₁[i, j])
+        Uᵃ    = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
 
-        # NormalFlow fields (Uₙ = nothing) advect themselves
-        Uᵃ = advecting_velocity(Uₙ, c[i, j, kᵇ])
         outflow = Uᵃ >= 0
-
+        
         φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow)
 
         c[i, j, kᵇ]        = φᵇⁿ⁺¹ # set boundary value
-        radiation.φᵇ[i, j] = φᵇⁿ⁺¹ # store for next time step
         radiation.φ₁[i, j] = φ₁ⁿ⁺¹ # store interior for next time step
     end
 
@@ -504,17 +487,15 @@ end
         φᵉˣᵗ  = getbc(bc, i, j, grid, clock, model_fields)
         φ₁ⁿ⁺¹ = c[i, j, kᵇ+1]      # first interior (new time)
         φ₂ⁿ⁺¹ = c[i, j, kᵇ+2]      # second interior (new time)
-        φᵇⁿ   = ifelse(first_call, φ₁ⁿ⁺¹,       radiation.φᵇ[i, j]) # zero-gradient initialization
-        φ₁ⁿ   = ifelse(first_call, φ₁ⁿ⁺¹,       radiation.φ₁[i, j])
-
-        # NormalFlow fields (Uₙ = nothing) advect themselves
-        Uᵃ = advecting_velocity(Uₙ, c[i, j, kᵇ])
+        φᵇⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, c[i, j, kᵇ]) # zero-gradient initialization; see east halo note
+        φ₁ⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, radiation.φ₁[i, j])
+        Uᵃ    = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
+        
         outflow = Uᵃ <= 0
 
         φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow)
 
         c[i, j, kᵇ]        = φᵇⁿ⁺¹ # set boundary value
-        radiation.φᵇ[i, j] = φᵇⁿ⁺¹ # store for next time step
         radiation.φ₁[i, j] = φ₁ⁿ⁺¹ # store interior for next time step
     end
 
@@ -530,9 +511,9 @@ end
 @inline    _fill_top_halo!(i, j, grid, c, bc::RNFBC, ::AAF, clock, model_fields) =    radiate_top_halo!(grid.Nz+1, i, j, grid, c, bc, nothing, clock, model_fields)
 @inline _fill_bottom_halo!(i, j, grid, c, bc::RNFBC, ::AAF, clock, model_fields) = radiate_bottom_halo!(1,         i, j, grid, c, bc, nothing, clock, model_fields)
 
-@inline   _fill_east_halo!(j, k, grid, c, bc::RVBC,  ::CAA, clock, model_fields) =   radiate_east_halo!(grid.Nx+1, j, k, grid, c, bc, @inbounds(model_fields.u[grid.Nx+1, j, k]), clock, model_fields)
-@inline   _fill_west_halo!(j, k, grid, c, bc::RVBC,  ::CAA, clock, model_fields) =   radiate_west_halo!(0,         j, k, grid, c, bc, @inbounds(model_fields.u[1, j, k]),         clock, model_fields)
-@inline  _fill_north_halo!(i, k, grid, c, bc::RVBC,  ::ACA, clock, model_fields) =  radiate_north_halo!(grid.Ny+1, i, k, grid, c, bc, @inbounds(model_fields.v[i, grid.Ny+1, k]), clock, model_fields)
-@inline  _fill_south_halo!(i, k, grid, c, bc::RVBC,  ::ACA, clock, model_fields) =  radiate_south_halo!(0,         i, k, grid, c, bc, @inbounds(model_fields.v[i, 1, k]),         clock, model_fields)
-@inline    _fill_top_halo!(i, j, grid, c, bc::RVBC,  ::AAC, clock, model_fields) =    radiate_top_halo!(grid.Nz+1, i, j, grid, c, bc, @inbounds(model_fields.w[i, j, grid.Nz+1]), clock, model_fields)
-@inline _fill_bottom_halo!(i, j, grid, c, bc::RVBC,  ::AAC, clock, model_fields) = radiate_bottom_halo!(0,         i, j, grid, c, bc, @inbounds(model_fields.w[i, j, 1]),         clock, model_fields)
+@inline   _fill_east_halo!(j, k, grid, c, bc::RVBC,  ::CAA, clock, model_fields) =   radiate_east_halo!(grid.Nx+1, j, k, grid, c, bc, @inbounds(model_fields.u[grid.Nx, j, k]), clock, model_fields)
+@inline   _fill_west_halo!(j, k, grid, c, bc::RVBC,  ::CAA, clock, model_fields) =   radiate_west_halo!(0,         j, k, grid, c, bc, @inbounds(model_fields.u[2, j, k]),       clock, model_fields)
+@inline  _fill_north_halo!(i, k, grid, c, bc::RVBC,  ::ACA, clock, model_fields) =  radiate_north_halo!(grid.Ny+1, i, k, grid, c, bc, @inbounds(model_fields.v[i, grid.Ny, k]), clock, model_fields)
+@inline  _fill_south_halo!(i, k, grid, c, bc::RVBC,  ::ACA, clock, model_fields) =  radiate_south_halo!(0,         i, k, grid, c, bc, @inbounds(model_fields.v[i, 2, k]),       clock, model_fields)
+@inline    _fill_top_halo!(i, j, grid, c, bc::RVBC,  ::AAC, clock, model_fields) =    radiate_top_halo!(grid.Nz+1, i, j, grid, c, bc, @inbounds(model_fields.w[i, j, grid.Nz]), clock, model_fields)
+@inline _fill_bottom_halo!(i, j, grid, c, bc::RVBC,  ::AAC, clock, model_fields) = radiate_bottom_halo!(0,         i, j, grid, c, bc, @inbounds(model_fields.w[i, j, 2]),       clock, model_fields)

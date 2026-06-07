@@ -337,8 +337,8 @@ function test_tracer_radiation_value_scheme()
 
     # Regularization must have materialized the storage arrays with tangential sizes
     east_bc = model.tracers.c.boundary_conditions.east
-    storage_materialized = east_bc.classification.scheme.φᵇ isa AbstractArray &&
-                           size(east_bc.classification.scheme.φᵇ) == (Ny, Nz)
+    storage_materialized = east_bc.classification.scheme.φ₁ isa AbstractArray &&
+                           size(east_bc.classification.scheme.φ₁) == (Ny, Nz)
 
     σ = Lx / 16
     set!(model, c = (x, y, z) -> exp(-(x - Lx/2)^2 / (2σ^2)))
