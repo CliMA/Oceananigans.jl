@@ -100,45 +100,6 @@ b_east_bc = ValueBoundaryCondition(b_background; scheme = Radiation(), parameter
 b_west_bc = ValueBoundaryCondition(b_background; scheme = Radiation(), parameters = Nᵢ²)
 b_bcs     = FieldBoundaryConditions(east = b_east_bc, west = b_west_bc)
 
-# ## Sponge layers
-#
-# Radiation OBCs are imperfect — Orlanski diagnoses a single phase speed but
-# internal waves have multiple baroclinic modes. A sponge layer near each
-# boundary damps waves before they reach the boundary, reducing reflections.
-# The sponge uses a cos²(πd/2W) profile that ramps smoothly from 0 in the
-# interior to 1 at the boundary.
-#
-# We use `discrete_form = true` to avoid coordinate-mapping issues with Flat
-# topologies. The forcing function directly indexes fields and grid coordinates.
-
-@inline function sponge_mask(x, p)
-    d_west = x + p.Lx
-    d_east = p.Lx - x
-    d = min(d_west, d_east)
-    return ifelse(d < p.W, cospi(d / (2 * p.W))^2, zero(d))
-end
-
-@inline function u_sponge_forcing(i, j, k, grid, clock, fields, p)
-    x = xnode(i, grid, Face())
-    mask = sponge_mask(x, p)
-    ut = tidal_forcing(1, clock.time, p)
-    return -p.rate * mask * (@inbounds fields.u[i, j, k] - ut)
-end
-
-@inline b_bg(z, p) = p.N² * z
-
-@inline function b_sponge_forcing(i, j, k, grid, clock, fields, p)
-    x = xnode(i, grid, Center())
-    z = znode(k, grid, Center())
-    mask = sponge_mask(x, p)
-    bt = b_bg(z, p)
-    return -p.rate * mask * (@inbounds fields.b[i, j, k] - bt)
-end
-
-sponge_params = (; Lx = L, W = 200kilometers, rate = 1 / 30minutes, U₂, ω₂, N² = Nᵢ²)
-
-u_sponge = Forcing(u_sponge_forcing, discrete_form = true, parameters = sponge_params)
-b_sponge = Forcing(b_sponge_forcing, discrete_form = true, parameters = sponge_params)
 
 # ## Model
 #
@@ -157,7 +118,6 @@ model = HydrostaticFreeSurfaceModel(grid;
                                     tracer_advection = WENO(),
                                     free_surface,
                                     timestepper = :SplitRungeKutta3,
-                                    forcing = (; u = u_sponge, b = b_sponge),
                                     boundary_conditions = (; u = u_bcs, U = U_bcs, b = b_bcs))
 
 # Initialize with the tidal flow and a linear stratification.
