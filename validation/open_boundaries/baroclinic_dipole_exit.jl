@@ -278,7 +278,7 @@ function plot_dipole_exit_trajectory(name; extent = (150kilometers, 150kilometer
     return fig
 end
 
-heading = :east
+heading = :north
 model_type = :hydrostatic
 
 simulation = dipole_exit_simulation(; heading, model_type)

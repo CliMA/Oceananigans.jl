@@ -333,7 +333,7 @@ end
 # convention; the diagnosed Cₙ, clamped to [0, 1], is kept as the radiation weight so
 # that wave signals can still exit faster than the advecting flow.
 
-@inline function orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow)
+@inline function orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
     # Diagnose phase speed Courant number (Orlanski 1976)
     ∂t_φ = φ₁ⁿ⁺¹ - φ₁ⁿ
     ∂ξ_φ = φ₁ⁿ⁺¹ - φ₂ⁿ⁺¹
@@ -342,8 +342,8 @@ end
     # Guard against zero spatial gradient
     Cᶜ = ifelse(∂ξ_φ == 0, zero(∂t_φ), - ∂t_φ / ∂ξ_φ)
 
-    # Radiate (with Cₙ clamped to [0, 1]) only on outflow, relax on inflow
-    Cₙ = ifelse(outflow, max(zero(Cᶜ), min(one(Cᶜ), Cᶜ)), zero(Cᶜ))
+    # Radiation-plus-advection
+    Cₙ = ifelse(outflow, max(zero(Cᶜ), min(one(Cᶜ), max(Cᶜ, Cᵃ))), zero(Cᶜ))
 
     τ = ifelse(outflow, radiation.outflow_timescale, radiation.inflow_timescale)
     τ̃ = Δt / τ
@@ -372,9 +372,10 @@ end
         φᵇⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, c[iᵇ, j, k]) # zero-gradient initialization
         φ₁ⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, radiation.φ₁[j, k])
         Uᵃ    = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
+        Cᵃ    = abs(Uᵃ) * Δt / Δxᶠᶜᶜ(iᵇ, j, k, grid)
         outflow = Uᵃ >= 0
 
-        φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow)
+        φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
 
         c[iᵇ, j, k]        = φᵇⁿ⁺¹ # set boundary value
         radiation.φ₁[j, k] = φ₁ⁿ⁺¹ # store interior for next time step
@@ -395,9 +396,10 @@ end
         φᵇⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, c[iᵇ, j, k]) # zero-gradient initialization
         φ₁ⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, radiation.φ₁[j, k])
         Uᵃ    = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
+        Cᵃ    = abs(Uᵃ) * Δt / Δxᶠᶜᶜ(iᵇ + 1, j, k, grid)
         outflow = Uᵃ <= 0
 
-        φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow)
+        φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
 
         c[iᵇ, j, k]        = φᵇⁿ⁺¹ # set boundary value
         radiation.φ₁[j, k] = φ₁ⁿ⁺¹ # store interior for next time step
@@ -418,10 +420,10 @@ end
         φᵇⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, c[i, jᵇ, k]) # zero-gradient initialization; see east halo note
         φ₁ⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, radiation.φ₁[i, k])
         Uᵃ    = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
-        
+        Cᵃ    = abs(Uᵃ) * Δt / Δyᶜᶠᶜ(i, jᵇ, k, grid)
         outflow = Uᵃ >= 0
         
-        φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow)
+        φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
 
         c[i, jᵇ, k]        = φᵇⁿ⁺¹ # set boundary value
         radiation.φ₁[i, k] = φ₁ⁿ⁺¹ # store interior for next time step
@@ -442,10 +444,10 @@ end
         φᵇⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, c[i, jᵇ, k]) # zero-gradient initialization; see east halo note
         φ₁ⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, radiation.φ₁[i, k])
         Uᵃ    = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
-        
+        Cᵃ    = abs(Uᵃ) * Δt / Δyᶜᶠᶜ(i, jᵇ + 1, k, grid)
         outflow = Uᵃ <= 0
 
-        φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow)
+        φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
 
         c[i, jᵇ, k]        = φᵇⁿ⁺¹ # set boundary value
         radiation.φ₁[i, k] = φ₁ⁿ⁺¹ # store interior for next time step
@@ -466,10 +468,10 @@ end
         φᵇⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, c[i, j, kᵇ]) # zero-gradient initialization; see east halo note
         φ₁ⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, radiation.φ₁[i, j])
         Uᵃ    = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
-
+        Cᵃ    = abs(Uᵃ) * Δt / Δzᶜᶜᶠ(i, j, kᵇ, grid)
         outflow = Uᵃ >= 0
         
-        φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow)
+        φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
 
         c[i, j, kᵇ]        = φᵇⁿ⁺¹ # set boundary value
         radiation.φ₁[i, j] = φ₁ⁿ⁺¹ # store interior for next time step
@@ -490,10 +492,10 @@ end
         φᵇⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, c[i, j, kᵇ]) # zero-gradient initialization; see east halo note
         φ₁ⁿ   = ifelse(first_call, φ₁ⁿ⁺¹, radiation.φ₁[i, j])
         Uᵃ    = advecting_velocity(Uₙ, φ₁ⁿ⁺¹)
-        
+        Cᵃ    = abs(Uᵃ) * Δt / Δzᶜᶜᶠ(i, j, kᵇ + 1, grid)
         outflow = Uᵃ <= 0
 
-        φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow)
+        φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
 
         c[i, j, kᵇ]        = φᵇⁿ⁺¹ # set boundary value
         radiation.φ₁[i, j] = φ₁ⁿ⁺¹ # store interior for next time step
