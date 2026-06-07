@@ -453,12 +453,6 @@ end
 #### Special 2D z Areas for LatitudeLongitudeGrid and OrthogonalSphericalShellGrid
 ####
 
-# Latitudinal sine differences entering the exact spherical z-areas. On single-column
-# grids (both horizontal directions Flat) the neighboring latitude faces do not exist —
-# Flat dimensions carry a single coordinate — so the difference degenerates to a unit
-# factor, mirroring the Δ = 1 convention for Flat spacings. This is consistent: with
-# both horizontal directions Flat every horizontal flux divergence vanishes, and a
-# constant Az cancels between the vertical flux areas and the volume.
 const XYFlatLLG = LatitudeLongitudeGrid{<:Any, <:Flat, <:Flat}
 
 @inline Δsindφᵃᶠᵃ(j, grid) = @inbounds hack_sind(grid.φᵃᶠᵃ[j+1]) - hack_sind(grid.φᵃᶠᵃ[j])
