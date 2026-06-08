@@ -280,7 +280,8 @@ function BoundaryConditions.regularize_field_boundary_conditions(bcs::FieldBound
                                                                  prognostic_names=nothing)
 
     loc  = assumed_field_location(field_name)
-    sign = (field_name == :u) || (field_name == :v) ? -1 : 1
+    sign = field_name == :u || field_name == :v ||
+           field_name == :U || field_name == :V ? -1 : 1
 
     west   = regularize_boundary_condition(bcs.west,   grid, loc, 1, LeftBoundary,  prognostic_names)
     east   = regularize_boundary_condition(bcs.east,   grid, loc, 1, RightBoundary, prognostic_names)
