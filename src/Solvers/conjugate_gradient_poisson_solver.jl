@@ -245,10 +245,10 @@ the harmonic-style combination `2 Aⁿᵇ / (Ac + Ac_nb)` of the two diagonals i
 the diagonally-dominant correction that makes the sweep a good approximate inverse on a wide
 range of grids while remaining diagonally dominant (hence stable) by construction.
 
-For strongly anisotropic, ocean-like grids (`(Δz/Δx)²Nz² ≫ 1`) the [`ColumnwiseTridiagonalPreconditioner`](@ref), 
+For strongly anisotropic, ocean-like grids (`(Δz/Δx)²Nz² ≫ 1`) the [`ColumnwiseTridiagonalPreconditioner`](@ref),
 which inverts the vertical sub-system exactly, is also another viable option.
 
-However the FFT-based preconditioner is the recommended option over the `DiagonallyDominantPreconditioner` 
+However the FFT-based preconditioner is the recommended option over the `DiagonallyDominantPreconditioner`
 or the [`ColumnwiseTridiagonalPreconditioner`](@ref) as it converges in much fewer iterations for most scenarios.
 """
 struct DiagonallyDominantPreconditioner end
@@ -303,14 +303,26 @@ end
 
 Base.summary(::ColumnwiseTridiagonalPreconditioner) = "ColumnwiseTridiagonalPreconditioner"
 
-@kernel function _compute_columnwise_tridiagonal_coefficients!(a, b, c, grid)
-    i, j, k = @index(Global, NTuple)
+# Marker types whose `get_coefficient` methods compute the tridiagonal coefficients of the
+# vertical sub-system of V∇² on the fly, sparing the solver three full 3D coefficient arrays.
+struct ColumnwiseTridiagonalLowerDiagonal end
+struct ColumnwiseTridiagonalDiagonal end
+struct ColumnwiseTridiagonalUpperDiagonal end
+
+# inactive_cell flags both immersed faces and Bounded-domain halos, so masking the geometric
+# couplings here encodes the BCs that V∇² sees through fill_halo_regions!. The lower and upper
+# diagonals share the same value az⁺(k) = az⁻(k+1): with the BatchedTridiagonalSolver indexing
+# convention the row-k lower coupling is read from index k-1, so a[k] and c[k] both equal az⁺(k).
+@inline function columnwise_tridiagonal_offdiagonal(i, j, k, grid)
+    az⁺ = ifelse(inactive_cell(i, j, k+1, grid), zero(grid), Azᶜᶜᶠ(i, j, k+1, grid) * Δz⁻¹ᶜᶜᶠ(i, j, k+1, grid))
+    return ifelse(inactive_cell(i, j, k, grid), zero(grid), az⁺)
+end
+
+@inline function columnwise_tridiagonal_diagonal(i, j, k, grid)
     inactive_self  = inactive_cell(i, j, k,   grid)
     inactive_below = inactive_cell(i, j, k-1, grid)
     inactive_above = inactive_cell(i, j, k+1, grid)
 
-    # inactive_cell flags both immersed faces and Bounded-domain halos, so masking the
-    # geometric couplings here encodes the BCs that V∇² sees through fill_halo_regions!.
     az⁻ = ifelse(inactive_below, zero(grid), Azᶜᶜᶠ(i, j, k,   grid) * Δz⁻¹ᶜᶜᶠ(i, j, k,   grid))
     az⁺ = ifelse(inactive_above, zero(grid), Azᶜᶜᶠ(i, j, k+1, grid) * Δz⁻¹ᶜᶜᶠ(i, j, k+1, grid))
 
@@ -324,12 +336,17 @@ Base.summary(::ColumnwiseTridiagonalPreconditioner) = "ColumnwiseTridiagonalPrec
     # identity there (b = 1) since there is no vertical sub-system to invert.
     isolated = inactive_below & inactive_above
 
-    @inbounds begin
-        a[i, j, k] = ifelse(inactive_self, zero(grid), az⁺)
-        c[i, j, k] = ifelse(inactive_self, zero(grid), az⁺)
-        b[i, j, k] = ifelse(inactive_self | isolated, one(grid), -(az⁻ + az⁺) * (1 + ε))
-    end
+    return ifelse(inactive_self | isolated, one(grid), -(az⁻ + az⁺) * (1 + ε))
 end
+
+@inline get_coefficient(i, j, k, grid, ::ColumnwiseTridiagonalLowerDiagonal, p, ::ZDirection, args...) =
+    columnwise_tridiagonal_offdiagonal(i, j, k, grid)
+
+@inline get_coefficient(i, j, k, grid, ::ColumnwiseTridiagonalUpperDiagonal, p, ::ZDirection, args...) =
+    columnwise_tridiagonal_offdiagonal(i, j, k, grid)
+
+@inline get_coefficient(i, j, k, grid, ::ColumnwiseTridiagonalDiagonal, p, ::ZDirection, args...) =
+    columnwise_tridiagonal_diagonal(i, j, k, grid)
 
 """
     ColumnwiseTridiagonalPreconditioner(grid)
@@ -358,26 +375,17 @@ This preconditioner is more well-suited for hydrostatic problems (`(Δz/Δx)²Nz
 convergence in ~4--5x fewer iterations. For isotropic grids (`Δz/Δx ≈ 1`) the conditioning is worse
 than no preconditioner.
 
-In general, using the FFT preconditioner is recommended as it requires much fewer iterations than the 
-`ColumnwiseTridiagonalPreconditioner` or the [`DiagonallyDominantPreconditioner`](@ref DiagonallyDominantPreconditioner) 
+In general, using the FFT preconditioner is recommended as it requires much fewer iterations than the
+`ColumnwiseTridiagonalPreconditioner` or the [`DiagonallyDominantPreconditioner`](@ref DiagonallyDominantPreconditioner)
 in most scenarios.
 
 The same `grid` must be passed to both `ColumnwiseTridiagonalPreconditioner` and the
 `ConjugateGradientPoissonSolver` that uses it.
 """
 function ColumnwiseTridiagonalPreconditioner(grid)
-    arch = architecture(grid)
-    FT = eltype(grid)
-
-    a = zeros(arch, FT, grid.Nx, grid.Ny, grid.Nz)
-    b = zeros(arch, FT, grid.Nx, grid.Ny, grid.Nz)
-    c = zeros(arch, FT, grid.Nx, grid.Ny, grid.Nz)
-
-    launch!(arch, grid, :xyz, _compute_columnwise_tridiagonal_coefficients!, a, b, c, grid)
-
-    solver = BatchedTridiagonalSolver(grid; lower_diagonal = a,
-                                            diagonal = b,
-                                            upper_diagonal = c,
+    solver = BatchedTridiagonalSolver(grid; lower_diagonal = ColumnwiseTridiagonalLowerDiagonal(),
+                                            diagonal = ColumnwiseTridiagonalDiagonal(),
+                                            upper_diagonal = ColumnwiseTridiagonalUpperDiagonal(),
                                             tridiagonal_direction = ZDirection())
 
     return ColumnwiseTridiagonalPreconditioner{typeof(solver)}(solver)
