@@ -399,7 +399,7 @@ end
     @inbounds begin
         η₁ = c[i-1, j, k]
         H  = column_depthᶜᶜᵃ(i-1, j, k_top, grid, c)
-        C  = sqrt(g * H) * Δt / Δxᶠᶜᶜ(i, j, k, grid)
+        C  = sqrt(g * max(H, zero(H))) * Δt / Δxᶠᶜᶜ(i, j, k, grid)
         ηᵇ = ifelse(first_call, η₁, c[i, j, k]) # zero-gradient initialization
         c[i, j, k] = (ηᵇ + C * η₁) / (1 + C)
     end
@@ -418,7 +418,7 @@ end
     @inbounds begin
         η₁ = c[i, 1, k]
         H  = column_depthᶜᶜᵃ(i, 1, k_top, grid, c)
-        C  = sqrt(g * H) * Δt / Δyᶜᶠᶜ(i, 1, k, grid)
+        C  = sqrt(g * max(H, zero(H))) * Δt / Δyᶜᶠᶜ(i, 1, k, grid)
         ηᵇ = ifelse(first_call, η₁, c[i, 0, k]) # zero-gradient initialization
         c[i, 0, k] = (ηᵇ + C * η₁) / (1 + C)
     end
@@ -438,7 +438,7 @@ end
     @inbounds begin
         η₁ = c[i, j-1, k]
         H  = column_depthᶜᶜᵃ(i, j-1, k_top, grid, c)
-        C  = sqrt(g * H) * Δt / Δyᶜᶠᶜ(i, j, k, grid)
+        C  = sqrt(g * max(H, zero(H))) * Δt / Δyᶜᶠᶜ(i, j, k, grid)
         ηᵇ = ifelse(first_call, η₁, c[i, j, k]) # zero-gradient initialization
         c[i, j, k] = (ηᵇ + C * η₁) / (1 + C)
     end
