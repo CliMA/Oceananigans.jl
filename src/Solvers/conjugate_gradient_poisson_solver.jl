@@ -248,7 +248,7 @@ range of grids while remaining diagonally dominant (hence stable) by constructio
 For strongly anisotropic, ocean-like grids (`(Δz/Δx)²Nz² ≫ 1`) the [`ColumnwiseTridiagonalPreconditioner`](@ref), 
 which inverts the vertical sub-system exactly, is also another viable option.
 
-However the FFT-based preconditioner is the recommented option over the `DiagonallyDominantPreconditioner` 
+However the FFT-based preconditioner is the recommended option over the `DiagonallyDominantPreconditioner` 
 or the [`ColumnwiseTridiagonalPreconditioner`](@ref) as it converges in much fewer iterations for most scenarios.
 """
 struct DiagonallyDominantPreconditioner end
