@@ -530,6 +530,8 @@ end
 @inline λnodes(grid::OSSG, ℓx::C, ℓy::C; with_halos=false, indices=(Colon(), Colon())) =
     view(_property(grid.λᶜᶜᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos), indices...)
 
+@inline λnodes(grid::OSSG, ℓx::Nothing, ℓy::Nothing; with_halos=false, indices=(Colon(), Colon())) = nothing
+
 @inline φnodes(grid::OSSG, ℓx::F, ℓy::F; with_halos=false, indices=(Colon(), Colon())) =
     view(_property(grid.φᶠᶠᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos), indices...)
 
@@ -541,6 +543,8 @@ end
 
 @inline φnodes(grid::OSSG, ℓx::C, ℓy::C; with_halos=false, indices=(Colon(), Colon())) =
     view(_property(grid.φᶜᶜᵃ, ℓx, ℓy, topology(grid, 1), topology(grid, 2), grid.Nx, grid.Ny, grid.Hx, grid.Hy, with_halos), indices...)
+
+@inline φnodes(grid::OSSG, ℓx::Nothing, ℓy::Nothing; with_halos=false, indices=(Colon(), Colon())) = nothing
 
 @inline xnodes(grid::OSSG, ℓx, ℓy; with_halos=false, indices=(Colon(), Colon())) =
     grid.radius * deg2rad.(λnodes(grid, ℓx, ℓy; with_halos, indices)) .* hack_cosd.(φnodes(grid, ℓx, ℓy; with_halos, indices))
