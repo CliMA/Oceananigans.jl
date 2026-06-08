@@ -22,9 +22,21 @@ const MutableImmersedGrid{FT, TX, TY}   = ImmersedBoundaryGrid{FT, TX, TY, <:Bou
 const MutableGridOfSomeKind{FT, TX, TY} = Union{MutableImmersedGrid{FT, TX, TY}, UnderlyingMutableGrid{FT, TX, TY}}
 
 @inline column_depthᶜᶜᵃ(i, j, k, grid::MutableGridOfSomeKind, η) = static_column_depthᶜᶜᵃ(i, j, grid) +  @inbounds η[i, j, k]
-@inline column_depthᶠᶜᵃ(i, j, k, grid::MutableGridOfSomeKind, η) = static_column_depthᶠᶜᵃ(i, j, grid) +  ℑxᶠᵃᵃ(i, j, k, grid, η)
-@inline column_depthᶜᶠᵃ(i, j, k, grid::MutableGridOfSomeKind, η) = static_column_depthᶜᶠᵃ(i, j, grid) +  ℑyᵃᶠᵃ(i, j, k, grid, η)
-@inline column_depthᶠᶠᵃ(i, j, k, grid::MutableGridOfSomeKind, η) = static_column_depthᶠᶠᵃ(i, j, grid) + ℑxyᶠᶠᵃ(i, j, k, grid, η)
+
+@inline function column_depthᶠᶜᵃ(i, j, k, grid::MutableGridOfSomeKind, η)
+    H = static_column_depthᶠᶜᵃ(i, j, grid)
+    return ifelse(H == zero(H), H, H + ℑxᶠᵃᵃ(i, j, k, grid, η))
+end
+
+@inline function column_depthᶜᶠᵃ(i, j, k, grid::MutableGridOfSomeKind, η)
+    H = static_column_depthᶜᶠᵃ(i, j, grid)
+    return ifelse(H == zero(H), H, H + ℑyᵃᶠᵃ(i, j, k, grid, η))
+end
+
+@inline function column_depthᶠᶠᵃ(i, j, k, grid::MutableGridOfSomeKind, η)
+    H = static_column_depthᶠᶠᵃ(i, j, grid)
+    return ifelse(H == zero(H), H, H + ℑxyᶠᶠᵃ(i, j, k, grid, η))
+end
 
 # Convenience methods
 @inline column_depthᶜᶜᵃ(i, j, grid) = static_column_depthᶜᶜᵃ(i, j, grid)

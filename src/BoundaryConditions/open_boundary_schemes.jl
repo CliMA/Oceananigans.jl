@@ -379,7 +379,7 @@ end
     @inbounds begin
         η₁ = c[1, j, k]
         H  = column_depthᶜᶜᵃ(1, j, k_top, grid, c)
-        C  = sqrt(g * H) * Δt / Δxᶠᶜᶜ(1, j, k, grid)
+        C  = sqrt(g * max(H, zero(H))) * Δt / Δxᶠᶜᶜ(1, j, k, grid)
         ηᵇ = ifelse(first_call, η₁, c[0, j, k]) # zero-gradient initialization
         c[0, j, k] = (ηᵇ + C * η₁) / (1 + C)
     end
