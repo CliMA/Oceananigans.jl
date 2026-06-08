@@ -45,6 +45,9 @@ BoundaryConditions.regularize_boundary_condition(::DefaultBoundaryCondition, gri
 # `bc::BoundaryCondition` disambiguates against the generic method at BoundaryConditions.jl:244.
 BoundaryConditions.regularize_boundary_condition(bc::BoundaryCondition, grid::SerialTRG, loc, dim, bound, prognostic_names, sign) = bc
 
+# Only to solve the ambiguities (this method should never be used)
+BoundaryConditions.regularize_boundary_condition(bc::BoundaryConditions.RBC, grid::SerialTRG, loc, dim, bound, prognostic_names, sign) = bc
+
 
 function BoundaryConditions.regularize_field_boundary_conditions(bcs::FieldBoundaryConditions,
                                                                  grid::TripolarGridOfSomeKind,
