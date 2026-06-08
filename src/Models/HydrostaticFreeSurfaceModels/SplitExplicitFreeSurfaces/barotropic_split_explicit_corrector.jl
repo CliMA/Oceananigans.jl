@@ -72,8 +72,8 @@ end
     Hᶠᶜ = column_depthᶠᶜᵃ(i, j, grid)
     Hᶜᶠ = column_depthᶜᶠᵃ(i, j, grid)
 
-    immersedᶠᶜᶜ = inactive_node(i, j, k, grid, Face(), Center(), Center())
-    immersedᶜᶠᶜ = inactive_node(i, j, k, grid, Center(), Face(), Center())
+    immersedᶠᶜᶜ = immersed_peripheral_node(i, j, k, grid, Face(), Center(), Center()) | inactive_node(i, j, k, grid, Face(), Center(), Center())
+    immersedᶜᶠᶜ = immersed_peripheral_node(i, j, k, grid, Center(), Face(), Center()) | inactive_node(i, j, k, grid, Center(), Face(), Center())
 
     δuᵢ = @inbounds U[i, j, 1] - U̅[i, j, 1]
     δvⱼ = @inbounds V[i, j, 1] - V̅[i, j, 1]
@@ -90,8 +90,8 @@ end
     Hᶠᶜ = column_depthᶠᶜᵃ(i, j, grid)
     Hᶜᶠ = column_depthᶜᶠᵃ(i, j, grid)
 
-    immersedᶜᶠᶜ = inactive_node(i, j, k, grid, Center(), Face(), Center())
-    immersedᶠᶜᶜ = inactive_node(i, j, k, grid, Face(), Center(), Center())
+    immersedᶜᶠᶜ = immersed_peripheral_node(i, j, k, grid, Center(), Face(), Center()) | inactive_node(i, j, k, grid, Center(), Face(), Center())
+    immersedᶠᶜᶜ = immersed_peripheral_node(i, j, k, grid, Face(), Center(), Center()) | inactive_node(i, j, k, grid, Face(), Center(), Center())
 
     δuᵢ = @inbounds Ũ[i, j, 1] - U̅[i, j, 1]
     δvⱼ = @inbounds Ṽ[i, j, 1] - V̅[i, j, 1]
