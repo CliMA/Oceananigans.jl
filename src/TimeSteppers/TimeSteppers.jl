@@ -3,6 +3,7 @@ module TimeSteppers
 export
     QuasiAdamsBashforth2TimeStepper,
     RungeKutta3TimeStepper,
+    PressureProjectionRungeKutta3TimeStepper,
     SplitRungeKuttaTimeStepper,
     time_step!,
     Clock,
@@ -60,6 +61,7 @@ include("time_discretization.jl")
 include("clock.jl")
 include("quasi_adams_bashforth_2.jl")
 include("runge_kutta_3.jl")
+include("pressure_projection_runge_kutta_3.jl")
 include("split_runge_kutta.jl")
 
 """
@@ -85,6 +87,18 @@ TimeStepper(::Val{:QuasiAdamsBashforth2}, args...; kwargs...) =
 
 TimeStepper(::Val{:RungeKutta3}, args...; kwargs...) =
     RungeKutta3TimeStepper(args...; kwargs...)
+
+TimeStepper(::Val{:PressureProjectionRungeKutta3}, args...; kwargs...) =
+    PressureProjectionRungeKutta3TimeStepper(args...; kwargs...)
+
+TimeStepper(::Val{:ConstantPressureProjectionRungeKutta3}, args...; kwargs...) =
+    PressureProjectionRungeKutta3TimeStepper(args...; α=0, β=0, kwargs...)
+
+TimeStepper(::Val{:LinearPressureProjectionRungeKutta3}, args...; kwargs...) =
+    PressureProjectionRungeKutta3TimeStepper(args...; α=1, β=0, kwargs...)
+
+TimeStepper(::Val{:MidpointPressureProjectionRungeKutta3}, args...; kwargs...) =
+    PressureProjectionRungeKutta3TimeStepper(args...; α=1//2, β=1//2, kwargs...)
 
 # Convenience constructors for SplitRungeKuttaTimeStepper with 2 to 5 stages
 # By calling TimeStepper(:SplitRungeKuttaN, ...)

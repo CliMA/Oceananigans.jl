@@ -56,7 +56,12 @@ mutable struct NonhydrostaticModel{TS, E, A<:AbstractArchitecture, G, T, B, R, S
    boundary_transport :: BT       # Container for transports at open boundaries
 end
 
-supported_timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
+supported_timesteppers = (:QuasiAdamsBashforth2,
+                          :RungeKutta3,
+                          :PressureProjectionRungeKutta3,
+                          :ConstantPressureProjectionRungeKutta3,
+                          :LinearPressureProjectionRungeKutta3,
+                          :MidpointPressureProjectionRungeKutta3)
 
 """
     NonhydrostaticModel(grid;
