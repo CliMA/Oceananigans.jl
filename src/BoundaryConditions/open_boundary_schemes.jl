@@ -302,7 +302,7 @@ const AAC = Tuple{Any, Any, Center}
     Uᵉˣᵗ, ηᵉˣᵗ = getbc(bc, j, k, grid, clock, model_fields)
     ηᵇ = ℑxᶠᵃᵃ(i, j, k_top, grid, η)
 
-    @inbounds c[i, j, k] = Uᵉˣᵗ + sqrt(g * H) * (ηᵇ - ηᵉˣᵗ)
+    @inbounds c[i, j, k] = Uᵉˣᵗ + sqrt(g * max(H, zero(H))) * (ηᵇ - ηᵉˣᵗ)
 
     return nothing
 end
@@ -318,7 +318,7 @@ end
     Uᵉˣᵗ, ηᵉˣᵗ = getbc(bc, j, k, grid, clock, model_fields)
     ηᵇ = ℑxᶠᵃᵃ(1, j, k_top, grid, η)
 
-    @inbounds c[1, j, k] = Uᵉˣᵗ - sqrt(g * H) * (ηᵇ - ηᵉˣᵗ)
+    @inbounds c[1, j, k] = Uᵉˣᵗ - sqrt(g * max(H, zero(H))) * (ηᵇ - ηᵉˣᵗ)
 
     return nothing
 end
@@ -335,7 +335,7 @@ end
     Vᵉˣᵗ, ηᵉˣᵗ = getbc(bc, i, k, grid, clock, model_fields)
     ηᵇ = ℑyᵃᶠᵃ(i, j, k_top, grid, η)
 
-    @inbounds c[i, j, k] = Vᵉˣᵗ + sqrt(g * H) * (ηᵇ - ηᵉˣᵗ)
+    @inbounds c[i, j, k] = Vᵉˣᵗ + sqrt(g * max(H, zero(H))) * (ηᵇ - ηᵉˣᵗ)
 
     return nothing
 end
@@ -351,7 +351,7 @@ end
     Vᵉˣᵗ, ηᵉˣᵗ = getbc(bc, i, k, grid, clock, model_fields)
     ηᵇ = ℑyᵃᶠᵃ(i, 1, k_top, grid, η)
 
-    @inbounds c[i, 1, k] = Vᵉˣᵗ - sqrt(g * H) * (ηᵇ - ηᵉˣᵗ)
+    @inbounds c[i, 1, k] = Vᵉˣᵗ - sqrt(g * max(H, zero(H))) * (ηᵇ - ηᵉˣᵗ)
 
     return nothing
 end
