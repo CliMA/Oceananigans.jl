@@ -60,7 +60,7 @@ include("TwoDimensionalGaussianAdvectionDiffusion.jl")
 
 # Advection of an Isoentropic 2D Vortex:
 #
-# 
+#
 #
 # Tests xy-advection for conservative and vector invariant formulation
 #
@@ -68,7 +68,7 @@ include("TwoDimensionalVortexAdvection.jl")
 
 # Advection of an Isoentropic 2D Vortex:
 #
-# 
+#
 #
 # Tests xy-advection for conservative and vector invariant formulation
 #

@@ -12,10 +12,12 @@ the `buoyancy_perturbationᶜᶜᶜ` downwards:
 @kernel function _update_hydrostatic_pressure!(pHY′, grid, buoyancy, C)
     i, j = @index(Global, NTuple)
 
-    @inbounds pHY′[i, j, grid.Nz] = - z_dot_g_bᶜᶜᶠ(i, j, grid.Nz+1, grid, buoyancy, C) * Δzᶜᶜᶠ(i, j, grid.Nz+1, grid)
+    pᵏ = - z_dot_g_bᶜᶜᶠ(i, j, grid.Nz+1, grid, buoyancy, C) * Δzᶜᶜᶠ(i, j, grid.Nz+1, grid)
+    @inbounds pHY′[i, j, grid.Nz] = pᵏ
 
     for k in grid.Nz-1 : -1 : 1
-        @inbounds pHY′[i, j, k] = pHY′[i, j, k+1] - z_dot_g_bᶜᶜᶠ(i, j, k+1, grid, buoyancy, C) * Δzᶜᶜᶠ(i, j, k+1, grid)
+        pᵏ -= z_dot_g_bᶜᶜᶠ(i, j, k+1, grid, buoyancy, C) * Δzᶜᶜᶠ(i, j, k+1, grid)
+        @inbounds pHY′[i, j, k] = pᵏ
     end
 end
 
@@ -28,23 +30,11 @@ update_hydrostatic_pressure!(grid, model; kwargs...) =
 const PCB = PartialCellBottom
 const PCBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:PCB}
 
-update_hydrostatic_pressure!(pHY′, arch, ibg::PCBIBG, buoyancy, tracers; parameters = p_kernel_parameters(ibg.underlying_grid)) =
+update_hydrostatic_pressure!(pHY′, arch, ibg::PCBIBG, buoyancy, tracers; parameters = surface_kernel_parameters(ibg.underlying_grid)) =
     update_hydrostatic_pressure!(pHY′, arch, ibg.underlying_grid, buoyancy, tracers; parameters)
 
-update_hydrostatic_pressure!(pHY′, arch, grid, buoyancy, tracers; parameters = p_kernel_parameters(grid)) =
+update_hydrostatic_pressure!(pHY′, arch, grid, buoyancy, tracers; parameters = surface_kernel_parameters(grid)) =
     launch!(arch, grid, parameters, _update_hydrostatic_pressure!, pHY′, grid, buoyancy, tracers)
 
 update_hydrostatic_pressure!(::Nothing, arch, grid, args...; kw...) = nothing
 update_hydrostatic_pressure!(::Nothing, arch, ::PCBIBG, args...; kw...) = nothing
-
-# extend p kernel to compute also the boundaries
-@inline function p_kernel_parameters(grid) 
-    Nx, Ny, _ = size(grid)
-    TX, TY, _ = topology(grid)
-
-    ii = ifelse(TX == Flat, 1:Nx, 0:Nx+1)
-    jj = ifelse(TY == Flat, 1:Ny, 0:Ny+1)
-        
-    return KernelParameters(ii, jj)
-end
-

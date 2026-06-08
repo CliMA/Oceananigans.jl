@@ -1,9 +1,6 @@
-using Printf
-using Oceananigans.Grids: size_summary
-using Oceananigans.Utils: prettysummary
+using Oceananigans.Grids: grid_name, size_summary
 using Oceananigans.BoundaryConditions: bc_str
-
-import Oceananigans.Grids: grid_name
+using Statistics: mean
 
 location_str(::Type{Face})    = "Face"
 location_str(::Type{Center})  = "Center"
@@ -11,7 +8,7 @@ location_str(::Type{Nothing}) = "⋅"
 show_location(LX, LY, LZ) = "($(location_str(LX)), $(location_str(LY)), $(location_str(LZ)))"
 show_location(field::AbstractField) = show_location(location(field)...)
 
-grid_name(field::Field) = grid_name(field.grid)
+Grids.grid_name(field::Field) = grid_name(field.grid)
 
 function Base.summary(field::Field)
     LX, LY, LZ = location(field)
@@ -40,7 +37,7 @@ function Base.show(io::IO, field::Field)
     prefix = string("$(summary(field))\n",
                     "├── grid: ", summary(field.grid), "\n")
 
-    bcs_str = isnothing(bcs) ? "├── boundary conditions: Nothing \n" :
+    bcs_str = (isnothing(bcs) | ismissing(bcs)) ? "├── boundary conditions: Nothing \n" :
         string("├── boundary conditions: ", summary(bcs), "\n",
         "│   └── west: ", bc_str(bcs.west), ", east: ", bc_str(bcs.east),
                ", south: ", bc_str(bcs.south), ", north: ", bc_str(bcs.north),
@@ -72,9 +69,6 @@ Base.show(io::IO, z::Union{ZeroField, OneField}) = print(io, summary(z))
 Base.show(io::IO, f::CF) = print(io, summary(f))
 
 Base.show(io::IO, ::MIME"text/plain", f::AbstractField) = show(io, f)
-
-const FieldTuple = Tuple{Field, Vararg{Field}}
-const NamedFieldTuple = NamedTuple{S, <:FieldTuple} where S
 
 function Base.show(io::IO, ft::NamedFieldTuple)
     names = keys(ft)

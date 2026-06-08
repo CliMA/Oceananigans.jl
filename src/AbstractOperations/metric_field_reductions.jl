@@ -1,12 +1,11 @@
-using Statistics: mean!, sum!
-
 using Oceananigans.Utils: tupleit
-using Oceananigans.Grids: regular_dimensions
-using Oceananigans.Fields: Scan, condition_operand, reverse_cumsum!, AbstractReducing, AbstractAccumulating
+using Oceananigans.Grids: regular_dimensions, topology, Periodic
+using Oceananigans.Fields: Field, Scan, condition_operand, reverse_cumsum!, AbstractAccumulating, AbstractReducing
+using Oceananigans.Fields: filter_nothing_dims, instantiated_location, interior
 
-##### 
+#####
 ##### Metric inference
-##### 
+#####
 
 reduction_grid_metric(dims::Number) = reduction_grid_metric(tuple(dims))
 
@@ -19,12 +18,32 @@ reduction_grid_metric(dims) = dims === tuple(1)  ? Δx :
                               dims === (1, 2, 3) ? volume :
                               throw(ArgumentError("Cannot determine grid metric for reducing over dims = $dims"))
 
-##### 
+#####
 ##### Metric reductions
-##### 
+#####
 
-struct Averaging <: AbstractReducing end
+struct Averaging{V} <: AbstractReducing
+    volume :: V
+end
+
 const Average = Scan{<:Averaging}
+const AveragedField = Field{<:Any, <:Any, <:Any, <:Average}
+
+function average!(avg::AveragedField, operand)
+    sum!(avg, operand)
+    averaging = avg.operand.type
+
+    V = if averaging.volume isa Field
+        interior(averaging.volume)
+    else
+        averaging.volume
+    end
+
+    interior(avg) ./= V
+
+    return avg
+end
+
 Base.summary(r::Average) = string("Average of ", summary(r.operand), " over dims ", r.dims)
 
 """
@@ -35,28 +54,40 @@ Return `Reduction` representing a spatial average of `field` over `dims`.
 Over regularly-spaced dimensions this is equivalent to a numerical `mean!`.
 
 Over dimensions of variable spacing, `field` is multiplied by the
-appropriate grid length, area or volume, and divided by the total
-spatial extent of the interval.
+appropriate "averaging metric" (length, area or volume for 1D, 2D, or 3D averages),
+and divided by the sum of the metric over the averaging region.
+
+See [`ConditionalOperation`](@ref Oceananigans.AbstractOperations.ConditionalOperation)
+for information and examples using `condition` and `mask` kwargs.
 """
 function Average(field::AbstractField; dims=:, condition=nothing, mask=0)
     dims = dims isa Colon ? (1, 2, 3) : tupleit(dims)
-    dx = reduction_grid_metric(dims)
+    dims = filter_nothing_dims(dims, instantiated_location(field))
 
     if all(d in regular_dimensions(field.grid) for d in dims)
-        # Dimensions being reduced are regular; just use mean!
+        # Dimensions being reduced are regular, so we don't need to involve the grid metrics
         operand = condition_operand(field, condition, mask)
-        return Scan(Averaging(), mean!, operand, dims)
+        N = conditional_length(operand, dims)
+        averaging = Averaging(N)
+        return Scan(averaging, average!, operand, dims)
     else
         # Compute "size" (length, area, or volume) of averaging region
-        metric = GridMetricOperation(location(field), dx, field.grid)
-        L = sum(metric; condition, mask, dims)
+        dx = reduction_grid_metric(dims)
+        metric = grid_metric_operation(location(field), dx, field.grid)
+        volume = sum(metric; condition, mask, dims)
 
         # Construct summand of the Average
-        L⁻¹_field_dx = field * dx / L
+        # V⁻¹_field_dx = field * dx / volume
+        # operand = condition_operand(V⁻¹_field_dx, condition, mask)
+        # return Scan(Averaging(), sum!, operand, dims)
 
-        operand = condition_operand(L⁻¹_field_dx, condition, mask)
+        field_dx = field * dx
+        operand = condition_operand(field_dx, condition, mask)
 
-        return Scan(Averaging(), sum!, operand, dims)
+        metric = grid_metric_operation(location(field), dx, field.grid)
+        volume = sum(metric; condition, mask, dims)
+        averaging = Averaging(volume)
+        return Scan(averaging, average!, operand, dims)
     end
 end
 
@@ -69,6 +100,9 @@ Base.summary(r::Integral) = string("Integral of ", summary(r.operand), " over di
 
 
 Return a `Reduction` representing a spatial integral of `field` over `dims`.
+
+See [`ConditionalOperation`](@ref Oceananigans.AbstractOperations.ConditionalOperation)
+for information and examples using `condition` and `mask` kwargs.
 
 Example
 =======
@@ -88,18 +122,18 @@ julia> set!(f, (x, y, z) -> x * y * z)
 8×8×8 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 14×14×14 OffsetArray(::Array{Float64, 3}, -2:11, -2:11, -2:11) with eltype Float64 with indices -2:11×-2:11×-2:11
     └── max=0.823975, min=0.000244141, mean=0.125
 
-julia> ∫f = Integral(f)
-Integral of BinaryOperation at (Center, Center, Center) over dims (1, 2, 3)
-└── operand: BinaryOperation at (Center, Center, Center)
-    └── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-
-julia> ∫f = Field(Integral(f));
-
-julia> compute!(∫f);
+julia> ∫f = Integral(f) |> Field
+1×1×1 Field{Nothing, Nothing, Nothing} reduced over dims = (1, 2, 3) on RectilinearGrid on CPU
+├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (1, 1, 1)
+├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── operand: Integral of BinaryOperation at (Center, Center, Center) over dims (1, 2, 3)
+├── status: time=0.0
+└── data: 1×1×1 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, 1:1) with eltype Float64 with indices 1:1×1:1×1:1
+    └── max=0.125, min=0.125, mean=0.125
 
 julia> ∫f[1, 1, 1]
 0.125
@@ -107,6 +141,7 @@ julia> ∫f[1, 1, 1]
 """
 function Integral(field::AbstractField; dims=:, condition=nothing, mask=0)
     dims = dims isa Colon ? (1, 2, 3) : tupleit(dims)
+    dims = filter_nothing_dims(dims, instantiated_location(field))
     dx = reduction_grid_metric(dims)
     operand = condition_operand(field * dx, condition, mask)
     return Scan(Integrating(), sum!, operand, dims)
@@ -125,49 +160,46 @@ Base.summary(c::CumulativeIntegral) = string("CumulativeIntegral of ", summary(c
 
 Return an `Accumulation` representing the cumulative spatial integral of `field` over `dims`.
 
+See [`ConditionalOperation`](@ref Oceananigans.AbstractOperations.ConditionalOperation)
+for information and examples using `condition` and `mask` kwargs.
+
 Example
 =======
 
 Compute the cumulative integral of ``f(z) = z`` over z ∈ [0, 1].
 
 ```jldoctest
-julia> using Oceananigans
+using Oceananigans
 
-julia> grid = RectilinearGrid(size=8, z=(0, 1), topology=(Flat, Flat, Bounded));
+grid = RectilinearGrid(size=8, z=(0, 1), topology=(Flat, Flat, Bounded))
 
-julia> c = CenterField(grid);
+c = CenterField(grid)
+set!(c, z -> z)
 
-julia> set!(c, z -> z)
-1×1×8 Field{Center, Center, Center} on RectilinearGrid on CPU
-├── grid: 1×1×8 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
-├── boundary conditions: FieldBoundaryConditions
-│   └── west: Nothing, east: Nothing, south: Nothing, north: Nothing, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
-└── data: 1×1×14 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:11) with eltype Float64 with indices 1:1×1:1×-2:11
-    └── max=0.9375, min=0.0625, mean=0.5
+∫ᶻc_ci = CumulativeIntegral(c, dims=3) |> Field
 
-julia> C_op = CumulativeIntegral(c, dims=3)
-CumulativeIntegral of BinaryOperation at (Center, Center, Center) over dims 3
-└── operand: BinaryOperation at (Center, Center, Center)
-    └── grid: 1×1×8 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
-
-julia> C = compute!(Field(C_op))
-1×1×8 Field{Center, Center, Center} on RectilinearGrid on CPU
-├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (1, 1, 8)
+# output
+1×1×9 Field{Center, Center, Face} on RectilinearGrid on CPU
+├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (1, 1, 9)
 ├── grid: 1×1×8 RectilinearGrid{Float64, Flat, Flat, Bounded} on CPU with 0×0×3 halo
 ├── operand: CumulativeIntegral of BinaryOperation at (Center, Center, Center) over dims 3
 ├── status: time=0.0
-└── data: 1×1×14 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:11) with eltype Float64 with indices 1:1×1:1×-2:11
-    └── max=0.5, min=0.0078125, mean=0.199219
-
-julia> C[1, 1, 8]
-0.5
+└── data: 1×1×15 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, -2:12) with eltype Float64 with indices 1:1×1:1×-2:12
+    └── max=0.5, min=0.0, mean=0.177083
 ```
 """
 function CumulativeIntegral(field::AbstractField; dims, reverse=false, condition=nothing, mask=0)
     dims ∈ (1, 2, 3) || throw(ArgumentError("CumulativeIntegral only supports dims=1, 2, or 3."))
+
+    # Check that we're not accumulating over a Periodic dimension
+    topo = topology(field.grid, dims)
+    if topo === Periodic
+        throw(ArgumentError("CumulativeIntegral does not support Periodic dimensions. " *
+                            "The cumulative integral of a periodic function is not periodic."))
+    end
+
     maybe_reverse_cumsum = reverse ? reverse_cumsum! : cumsum!
     dx = reduction_grid_metric(dims)
     operand = condition_operand(field * dx, condition, mask)
     return Scan(CumulativelyIntegrating(), maybe_reverse_cumsum, operand, dims)
 end
-

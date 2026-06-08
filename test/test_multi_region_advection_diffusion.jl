@@ -11,12 +11,6 @@ end
 
 function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
 
-    if architecture(grid) isa GPU
-        devices = (0, 0)
-    else
-        devices = nothing
-    end
-
     if grid isa RectilinearGrid
         L = 0.1
     else
@@ -27,17 +21,14 @@ function solid_body_tracer_advection_test(grid; P = XPartition, regions = 1)
     cᵢ(x, y, z) = Gaussian(x, 0, L)
     eᵢ(x, y, z) = Gaussian(x, y, L)
 
-    mrg = MultiRegionGrid(grid, partition = P(regions), devices = devices)
+    mrg = MultiRegionGrid(grid, partition = P(regions))
 
-    model = HydrostaticFreeSurfaceModel(grid = mrg,
+    model = HydrostaticFreeSurfaceModel(mrg;
                                         tracers = (:c, :e),
                                         velocities = prescribed_velocities(),
                                         free_surface = ExplicitFreeSurface(),
                                         momentum_advection = nothing,
-                                        tracer_advection = WENO(),
-                                        coriolis = nothing,
-                                        buoyancy = nothing,
-                                        closure  = nothing)
+                                        tracer_advection = WENO())
 
     set!(model, c=cᵢ, e=eᵢ)
 
@@ -55,25 +46,14 @@ end
 
 function solid_body_rotation_test(grid; P = XPartition, regions = 1)
 
-    if architecture(grid) isa GPU
-        devices = (0, 0)
-    else
-        devices = nothing
-    end
-
     mrg = MultiRegionGrid(grid, partition = P(regions))
 
     free_surface = ExplicitFreeSurface(gravitational_acceleration = 1)
     coriolis     = HydrostaticSphericalCoriolis(rotation_rate = 1)
 
-    model = HydrostaticFreeSurfaceModel(grid = mrg,
-                                        momentum_advection = VectorInvariant(),
-                                        free_surface = free_surface,
-                                        coriolis = coriolis,
-                                        tracers = :c,
-                                        tracer_advection = WENO(),
-                                        buoyancy = nothing,
-                                        closure = nothing)
+    model = HydrostaticFreeSurfaceModel(mrg; momentum_advection = VectorInvariant(),
+                                        free_surface, coriolis, tracers = :c,
+                                        tracer_advection = WENO())
 
     g = model.free_surface.gravitational_acceleration
     R = grid.radius
@@ -91,17 +71,12 @@ function solid_body_rotation_test(grid; P = XPartition, regions = 1)
         time_step!(model, Δt)
     end
 
-    return merge(model.velocities, model.tracers, (; η = model.free_surface.η))
+    return merge(model.velocities, model.tracers, (; η = model.free_surface.displacement))
 end
 
 function diffusion_cosine_test(grid; P = XPartition, regions = 1, closure, field_name = :c)
-    if architecture(grid) isa GPU
-        devices = (0, 0)
-    else
-        devices = nothing
-    end
 
-    mrg = MultiRegionGrid(grid, partition = P(regions), devices = devices)
+    mrg = MultiRegionGrid(grid, partition = P(regions))
 
     # For MultiRegionGrids with regions > 1, the SplitExplicitFreeSurface extends the
     # halo region in the horizontal. Because the extented halo region size cannot exceed
@@ -109,7 +84,7 @@ function diffusion_cosine_test(grid; P = XPartition, regions = 1, closure, field
     # size into consideration.
     free_surface = SplitExplicitFreeSurface(substeps = 8)
 
-    model = HydrostaticFreeSurfaceModel(; grid = mrg,
+    model = HydrostaticFreeSurfaceModel(mrg;
                                         free_surface,
                                         closure,
                                         tracers = :c,

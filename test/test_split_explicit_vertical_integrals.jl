@@ -1,5 +1,6 @@
 include("dependencies_for_runtests.jl")
 
+using Oceananigans.Diagnostics: NaNChecker
 using Oceananigans.Fields: VelocityFields
 using Oceananigans.Models.HydrostaticFreeSurfaceModels
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: materialize_free_surface
@@ -17,14 +18,14 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
         Lx = Ly = Lz = 2π
 
         grid = RectilinearGrid(arch, topology = topology, size = (Nx, Ny, Nz), x = (0, Lx), y = (0, Ly), z = (-Lz, 0))
-        
+
         velocities = VelocityFields(grid)
         sefs = SplitExplicitFreeSurface(substeps = 200)
         sefs = materialize_free_surface(sefs, velocities, grid)
 
         state = sefs.filtered_state
         barotropic_velocities = sefs.barotropic_velocities
-        η̅, U̅, V̅ = state.η, state.U, state.V
+        η̅, U̅, V̅ = state.η̅, state.U̅, state.V̅
         U, V = barotropic_velocities
 
         u = Field{Face, Center, Center}(grid)
@@ -35,10 +36,12 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 
         @testset "Average to zero" begin
             # set equal to something else
-            η̅ .= U̅ .= V̅ .= 1.0
+            η̅ .= 1
+            U̅ .= 1
+            V̅ .= 1
 
             # now set equal to zero
-            initialize_free_surface_state!(sefs, sefs.timestepper, sefs.timestepper, Val(1))
+            initialize_free_surface_state!(sefs, sefs.timestepper, sefs.timestepper)
 
             # don't forget the halo points
             fill_halo_regions!(η̅)
@@ -47,14 +50,14 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 
             # check
             @test all(Array(η̅.data.parent) .== 0.0)
-            @test all(Array(U̅.data.parent .== 0.0))
-            @test all(Array(V̅.data.parent .== 0.0))
+            @test all(Array(U̅.data.parent) .== 0.0)
+            @test all(Array(V̅.data.parent) .== 0.0)
         end
 
         @testset "Inexact integration" begin
             # Test 2: Check that vertical integrals work on the CPU(). The following should be "inexact"
             Δz = zeros(Nz)
-            Δz .= grid.Δzᵃᵃᶠ
+            Δz .= grid.z.Δᵃᵃᶠ
 
             set_u_check(x, y, z) = cos((π / 2) * z / Lz)
             set_U_check(x, y)    = (sin(0) - (-2 * Lz / (π)))
@@ -76,15 +79,15 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 
         @testset "Vertical Integral " begin
             Δz = zeros(Nz)
-            Δz .= grid.Δzᵃᵃᶜ
+            Δz .= grid.z.Δᵃᵃᶜ
 
-            u .= 0.0
-            U .= 1.0
+            set!(u, 0)
+            set!(U, 1)
             compute_barotropic_mode!(U, V, grid, u, v)
-            @test all(Array(U.data.parent) .== 0.0)
+            @test all(Array(interior(U)) .== 0.0)
 
-            u .= 1.0
-            U .= 1.0
+            set!(u, 1)
+            set!(U, 1)
             compute_barotropic_mode!(U, V, grid, u, v)
             @test all(Array(interior(U)) .≈ Lz)
 
@@ -118,7 +121,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             sefs = SplitExplicitFreeSurface(grid, cfl=0.7)
             sefs = materialize_free_surface(sefs, velocities, grid)
 
-            U, V = sefs.barotropic_velocities            
+            U, V = sefs.barotropic_velocities
             u = velocities.u
             v = velocities.v
             u_corrected = similar(u)
@@ -141,6 +144,35 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
             barotropic_split_explicit_corrector!(u, v, sefs, grid)
             @test all(Array((interior(u) .- interior(u_corrected))) .< 1e-14)
             @test all(Array((interior(v) .- interior(v_corrected))) .< 1e-14)
+        end
+
+        # See: https://github.com/CliMA/Oceananigans.jl/issues/5024
+        @testset "Time stepping with land columns [$arch]" begin
+            Nx, Ny, Nz = 10, 10, 5
+            H = 100meters
+
+            underlying_grid = RectilinearGrid(arch;
+                size = (Nx, Ny, Nz),
+                x = (0, 100kilometers),
+                y = (0, 100kilometers), z = (-Lz, 0),
+                topology = (Bounded, Bounded, Bounded))
+
+            bottom_height = fill(-H, Nx, Ny)
+            bottom_height[1:2, 1:2] .= 0
+            bottom_height = on_architecture(arch, bottom_height)
+
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
+
+            model = HydrostaticFreeSurfaceModel(grid)
+
+            simulation = Simulation(model; Δt=1.0, stop_iteration=5)
+
+            delete!(simulation.callbacks, :nan_checker)
+
+            nan_checker = NaNChecker(fields=merge(model.velocities, model.tracers), erroring=true)
+            simulation.callbacks[:nan_checker] = Callback(nan_checker, IterationInterval(1))
+
+            @test_nowarn run!(simulation)
         end
     end # end of architecture loop
 end # end of testset

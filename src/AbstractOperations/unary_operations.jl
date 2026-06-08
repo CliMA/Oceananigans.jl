@@ -1,19 +1,22 @@
+using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Fields: AbstractField, instantiated_location
+
 const unary_operators = Set()
 
+"""
+    UnaryOperation{LX, LY, LZ}(op, arg, ▶, grid)
+
+Returns an abstract `UnaryOperation` representing the action of `op` on `arg`,
+and subsequent interpolation by `▶` on `grid`.
+"""
 struct UnaryOperation{LX, LY, LZ, O, A, IN, G, T} <: AbstractOperation{LX, LY, LZ, G, T}
     op :: O
     arg :: A
     ▶ :: IN
     grid :: G
 
-    @doc """
-        UnaryOperation{LX, LY, LZ}(op, arg, ▶, grid)
-
-    Returns an abstract `UnaryOperation` representing the action of `op` on `arg`,
-    and subsequent interpolation by `▶` on `grid`.
-    """
-    function UnaryOperation{LX, LY, LZ}(op::O, arg::A, ▶::IN, grid::G) where {LX, LY, LZ, O, A, IN, G}
-        T = eltype(grid)
+    function UnaryOperation{LX, LY, LZ}(op::O, arg::A, ▶::IN, grid::G,
+                                        ::Type{T}=Base.promote_op(op, eltype(arg))) where {LX, LY, LZ, O, A, IN, G, T}
         return new{LX, LY, LZ, O, A, IN, G, T}(op, arg, ▶, grid)
     end
 end
@@ -28,9 +31,9 @@ indices(υ::UnaryOperation) = indices(υ.arg)
 
 """Create a unary operation for `operator` acting on `arg` which interpolates the
 result from `Larg` to `L`."""
-function _unary_operation(L, operator, arg, Larg, grid)
+function _unary_operation(L::Tuple{LX, LY, LZ}, operator, arg, Larg, grid) where {LX, LY, LZ}
     ▶ = interpolation_operator(Larg, L)
-    return UnaryOperation{L[1], L[2], L[3]}(operator, arg, ▶, grid)
+    return UnaryOperation{LX, LY, LZ}(operator, arg, ▶, grid)
 end
 
 # Recompute location of unary operation
@@ -56,17 +59,22 @@ julia> square_it(x) = x^2
 square_it (generic function with 1 method)
 
 julia> @unary square_it
-Set{Any} with 10 elements:
+Set{Any} with 15 elements:
   :+
-  :sqrt
-  :square_it
+  :log10
+  :interpolate_identity
   :cos
   :exp
-  :interpolate_identity
-  :-
   :tanh
-  :sin
   :abs
+  :log
+  :cosh
+  :square_it
+  :-
+  :sqrt
+  :tan
+  :sinh
+  :sin
 
 julia> c = CenterField(RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)));
 
@@ -75,7 +83,7 @@ UnaryOperation at (Center, Center, Center)
 ├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 └── tree:
     square_it at (Center, Center, Center) via identity
-    └── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
+    └── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
 ```
 """
 macro unary(ops...)
@@ -83,13 +91,8 @@ macro unary(ops...)
 
     for op in ops
         define_unary_operator = quote
-            import Oceananigans.Grids: AbstractGrid
-            import Oceananigans.Fields: AbstractField
-
-            local location = Oceananigans.Fields.location
-
-            @inline $op(i, j, k, grid::AbstractGrid, a) = @inbounds $op(a[i, j, k])
-            @inline $op(i, j, k, grid::AbstractGrid, a::Number) = $op(a)
+            @inline $op(i, j, k, grid::$(AbstractGrid), a) = @inbounds $op(a[i, j, k])
+            @inline $op(i, j, k, grid::$(AbstractGrid), a::Number) = $op(a)
 
             """
                 $($op)(Lop::Tuple, a::AbstractField)
@@ -97,15 +100,18 @@ macro unary(ops...)
             Returns an abstract representation of the operator `$($op)` acting on the Oceananigans `Field`
             `a`, and subsequently interpolated to the location indicated by `Lop`.
             """
-            function $op(Lop::Tuple, a::AbstractField)
-                L = location(a)
-                return Oceananigans.AbstractOperations._unary_operation(Lop, $op, a, L, a.grid)
+            function $op(Lop::Tuple{<:$Location, <:$Location, <:$Location}, a::$(AbstractField))
+                L = $(instantiated_location)(a)
+                return $(_unary_operation)(Lop, $op, a, L, a.grid)
             end
 
-            $op(a::AbstractField) = $op(location(a), a)
+            # instantiate location if types are passed
+            $op(Lc::Tuple, a::$(AbstractField)) = $op((Lc[1](), Lc[2](), Lc[3]()), a)
 
-            push!(Oceananigans.AbstractOperations.operators, Symbol($op))
-            push!(Oceananigans.AbstractOperations.unary_operators, Symbol($op))
+            $op(a::$(AbstractField)) = $op($(instantiated_location)(a), a)
+
+            push!($(operators), Symbol($op))
+            push!($(unary_operators), Symbol($op))
         end
 
         push!(expr.args, :($(esc(define_unary_operator))))
@@ -124,15 +130,17 @@ compute_at!(υ::UnaryOperation, time) = compute_at!(υ.arg, time)
 ##### GPU capabilities
 #####
 
-"Adapt `UnaryOperation` to work on the GPU via CUDAnative and CUDAdrv."
+"Adapt `UnaryOperation` to work on the GPU via KernelAbstractions."
 Adapt.adapt_structure(to, unary::UnaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     UnaryOperation{LX, LY, LZ}(Adapt.adapt(to, unary.op),
                                Adapt.adapt(to, unary.arg),
                                Adapt.adapt(to, unary.▶),
-                               Adapt.adapt(to, unary.grid))
+                               Adapt.adapt(to, unary.grid),
+                               eltype(unary))
 
-on_architecture(to, unary::UnaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
+Architectures.on_architecture(to, unary::UnaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     UnaryOperation{LX, LY, LZ}(on_architecture(to, unary.op),
                                on_architecture(to, unary.arg),
                                on_architecture(to, unary.▶),
-                               on_architecture(to, unary.grid))
+                               on_architecture(to, unary.grid),
+                               eltype(unary))

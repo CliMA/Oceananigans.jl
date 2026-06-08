@@ -3,7 +3,7 @@
 #####
 
 for metric in (:Δ, :A), dir in (:x, :y, :z), LX in (:ᶜ, :ᶠ), LY in (:ᶜ, :ᶠ), LZ in (:ᶜ, :ᶠ)
-    
+
     operator    = Symbol(metric, dir, :_q, LX, LY, LZ)
     grid_metric = Symbol(metric, dir, LX, LY, LZ)
 

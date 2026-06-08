@@ -1,7 +1,7 @@
 # Fields basics
 
 `Field`s and its relatives are core Oceananigans data structures.
-`Field`s are more or less arrays of `data` located on a `grid`, whose entries
+`Field`s are arrays of `data` located on a `grid`, whose entries
 correspond to the average value of some quantity over some finite-sized volume.
 `Field`s also may contain `boundary_conditions`, may be computed from an `operand`
 or expression involving other fields, and may cover only a portion of the total
@@ -76,7 +76,7 @@ of the primary mesh. The nodes of the primary mesh are
 znodes(grid, Center(), with_halos=true)
 
 # output
-6-element OffsetArray(::Vector{Float64}, 0:5) with eltype Float64 with indices 0:5:
+6-element view(OffsetArray(::Vector{Float64}, 0:5), :) with eltype Float64 with indices 0:5:
  -0.05
   0.05
   0.2
@@ -94,7 +94,7 @@ Finally, note that the nodes of the staggered mesh coincide with the cell interf
 znodes(grid, Center())
 
 # output
-4-element view(OffsetArray(::Vector{Float64}, 0:5), 1:4) with eltype Float64:
+4-element view(::Vector{Float64}, 2:5) with eltype Float64:
  0.05
  0.2
  0.44999999999999996
@@ -119,7 +119,7 @@ c = Field{Center, Center, Center}(grid)
 4×5×4 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 6×7×6 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 0:5) with eltype Float64 with indices 0:5×0:6×0:5
     └── max=0.0, min=0.0, mean=0.0
 ```
@@ -143,7 +143,7 @@ u = Field{Face, Center, Center}(grid)
 4×5×4 Field{Face, Center, Center} on RectilinearGrid on CPU
 ├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 6×7×6 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 0:5) with eltype Float64 with indices 0:5×0:6×0:5
     └── max=0.0, min=0.0, mean=0.0
 ```
@@ -155,13 +155,13 @@ the `x`-component of the velocity field is stored at `Face, Center, Center` loca
 The centers of the `u` cells are shifted to the left relative to the `c` cells:
 
 ```jldoctest fields
-@show xnodes(c)
-@show xnodes(u)
+@show collect(xnodes(c))
+@show collect(xnodes(u))
 nothing
 
 # output
-xnodes(c) = [0.125, 0.375, 0.625, 0.875]
-xnodes(u) = [0.0, 0.25, 0.5, 0.75]
+collect(xnodes(c)) = [0.125, 0.375, 0.625, 0.875]
+collect(xnodes(u)) = [0.0, 0.25, 0.5, 0.75]
 ```
 
 Notice that the first `u`-node is at `x=0`, the left end of the grid, but the last `u`-node is at `x=0.75`.
@@ -174,13 +174,13 @@ vertical cells than `CenterField`s:
 ```jldoctest fields
 w = Field{Center, Center, Face}(grid)
 
-@show znodes(c)
-@show znodes(w)
+@show collect(znodes(c))
+@show collect(znodes(w))
 nothing
 
 # output
-znodes(c) = [0.05, 0.2, 0.44999999999999996, 0.8]
-znodes(w) = [0.0, 0.1, 0.3, 0.6, 1.0]
+collect(znodes(c)) = [0.05, 0.2, 0.44999999999999996, 0.8]
+collect(znodes(w)) = [0.0, 0.1, 0.3, 0.6, 1.0]
 ```
 
 `Field`s at `Center, Center, Face` are also called `ZFaceField`,
@@ -190,11 +190,11 @@ Let's visualize the situation:
 ```@setup fields
 using Oceananigans
 using CairoMakie
-set_theme!(Theme(fontsize=24))
-CairoMakie.activate!(type="svg")
+set_theme!(Theme(fontsize=20))
+CairoMakie.activate!(type="png")
 
 grid = RectilinearGrid(topology = (Periodic, Periodic, Bounded),
-                       size = (4, 4, 4),
+                       size = (4, 5, 4),
                        halo = (1, 1, 1),
                        x = (0, 1),
                        y = (0, 1),
@@ -245,7 +245,7 @@ set!(c, 42)
 4×5×4 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 6×7×6 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 0:5) with eltype Float64 with indices 0:5×0:6×0:5
     └── max=42.0, min=42.0, mean=42.0
 ```
@@ -303,11 +303,10 @@ fun_stuff(x, y, z) = 2x
 set!(c, fun_stuff)
 
 # output
-
 4×5×4 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
 └── data: 6×7×6 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 0:5) with eltype Float64 with indices 0:5×0:6×0:5
     └── max=1.75, min=0.25, mean=1.0
 ```
@@ -326,7 +325,8 @@ heatmap(view(c, :, :, 1))
 For `Field`s on three-dimensional grids, `set!` functions must have arguments `x, y, z` for
 `RectilinearGrid`, or `λ, φ, z` for `LatitudeLongitudeGrid` and `OrthogonalSphericalShellGrid`.
 But for `Field`s on one- and two-dimensional grids, only the arguments that correspond to the
-non-`Flat` directions must be included. For example, to `set!` on a one-dimensional grid we write
+non-`Flat` directions must be included.
+For example, to `set!` on a one-dimensional grid we write
 
 ```jldoctest fields
 # Make a field on a one-dimensional grid
@@ -341,10 +341,15 @@ set!(one_d_c, still_pretty_fun)
 7×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
 ├── grid: 7×1×1 RectilinearGrid{Float64, Periodic, Flat, Flat} on CPU with 3×0×0 halo
 ├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Nothing, north: Nothing, bottom: Nothing, top: Nothing, immersed: ZeroFlux
+│   └── west: Periodic, east: Periodic, south: Nothing, north: Nothing, bottom: Nothing, top: Nothing, immersed: Nothing
 └── data: 13×1×1 OffsetArray(::Array{Float64, 3}, -2:10, 1:1, 1:1) with eltype Float64 with indices -2:10×1:1×1:1
     └── max=19.5, min=1.5, mean=10.5
 ```
+
+!!! note
+    `Field` data is always stored in three-dimensional arrays --- even when they have `Nothing` locations,
+    or on grids with `Flat` directions. As a result, `Field`s are indexed with three indices `i, j, k`, with `Flat`
+    directions indexed with `1`.
 
 ### A bit more about setting with functions
 
@@ -353,11 +358,11 @@ The `xnodes` of `c` -- the coordinates of the center of `c`'s finite volumes -- 
 
 ```jldoctest fields
 xc = xnodes(c)
-@show xc
+@show collect(xc)
 nothing # hide
 
 # output
-xc = [0.125, 0.375, 0.625, 0.875]
+collect(xc) = [0.125, 0.375, 0.625, 0.875]
 ```
 
 To `set!` the values of `c` we evaluate `fun_stuff` at `c`'s nodes, producing
@@ -447,7 +452,7 @@ c[:, :, 1]
 
 The way the halo regions are filled depends on `c.boundary_conditions`:
 
-```julia
+```jldoctest fields
 c.boundary_conditions
 
 # output
@@ -458,7 +463,7 @@ Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── north: PeriodicBoundaryCondition
 ├── bottom: FluxBoundaryCondition: Nothing
 ├── top: FluxBoundaryCondition: Nothing
-└── immersed: FluxBoundaryCondition: Nothing
+└── immersed: Nothing
 ```
 
 Specifically for `c` above, `x` and `y` are `Periodic` while `z` has been assigned
@@ -513,3 +518,82 @@ nothing
 (parent(c))[1:2, 2, 2] = [1.75, 0.25]
 c.data[1:2, 1, 1] = [0.25, 0.75]
 ```
+
+## Reduced-dimension fields with `indices`
+
+By default, `Field`s span the full extent of the grid: their `indices` are `(:, :, :)`.
+But sometimes we want a field that lives on only a _slice_ of the grid -- for example,
+a two-dimensional horizontal field representing the surface vorticity, or a one-dimensional
+field along a single column.
+This is achieved by passing the `indices` keyword argument to the `Field` constructor.
+
+For example, to create a two-dimensional ``x``-``y`` field at the top of the domain
+(corresponding to the last `Center` index, `k = grid.Nz`):
+
+```jldoctest fields
+surface_c = Field{Center, Center, Center}(grid, indices=(:, :, grid.Nz))
+
+# output
+4×5×1 Field{Center, Center, Center} on RectilinearGrid on CPU
+├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: Nothing
+├── indices: (:, :, 4:4)
+└── data: 6×7×1 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 4:4) with eltype Float64 with indices 0:5×0:6×4:4
+    └── max=0.0, min=0.0, mean=0.0
+```
+
+Notice that the resulting field is `4×5×1` instead of `4×5×4` -- it occupies
+only a single index in the vertical.
+Also notice the `indices: (:, :, 4:4)` line in the output: the integer index
+`grid.Nz = 4` has been converted to the range `4:4`.
+
+We can `set!` reduced fields the same way as full fields:
+
+```jldoctest fields
+set!(surface_c, (x, y, z) -> x + y)
+
+surface_c[1:4, 1:5, grid.Nz]
+
+# output
+4×5 Matrix{Float64}:
+ 0.225  0.425  0.625  0.825  1.025
+ 0.475  0.675  0.875  1.075  1.275
+ 0.725  0.925  1.125  1.325  1.525
+ 0.975  1.175  1.375  1.575  1.775
+```
+
+### Reduced fields from operations
+
+The `indices` keyword is particularly useful in combination with field operations.
+For example, suppose we want to compute and store the vertical vorticity
+``∂v / ∂x - ∂u / ∂y`` only at the surface:
+
+```jldoctest fields
+u = XFaceField(grid)
+v = YFaceField(grid)
+
+set!(u, (x, y, z) -> x * y^2) # set u to something non-trivial
+set!(v, (x, y, z) -> x^2 * y) # set v to something non-trivial
+
+ωₛ = Field(∂x(v) - ∂y(u), indices=(:, :, grid.Nz))
+
+# output
+4×5×1 Field{Face, Face, Center} on RectilinearGrid on CPU
+├── grid: 4×5×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: Nothing
+├── indices: (:, :, 4:4)
+├── operand: BinaryOperation at (Face, Face, Center)
+├── status: time=0.0
+└── data: 6×7×1 OffsetArray(::Array{Float64, 3}, 0:5, 0:6, 4:4) with eltype Float64 with indices 0:5×0:6×4:4
+    └── max=0.05, min=-0.0375, mean=0.0025
+```
+
+Note that `ωₛ` is already computed, that is, [`compute!`](@ref) has been called upon
+construction, the expression `∂x(v) - ∂y(u)` has been evaluated and the result is
+stored _only_ at the surface slice.
+
+This is useful both to save memory (only one vertical level is allocated)
+and for output: reduced fields can be passed directly to an [`OutputWriter`](@ref output_writers)
+so that only the desired slice is saved to disk.

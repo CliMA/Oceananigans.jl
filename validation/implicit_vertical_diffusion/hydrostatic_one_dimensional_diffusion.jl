@@ -8,12 +8,12 @@ grid = RectilinearGrid(size=128, z=(-0.5, 0.5), topology=(Flat, Flat, Bounded))
 evd_closure = VerticalScalarDiffusivity(κ = 1.0)
 ivd_closure = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization, κ = 1.0)
 
-model_kwargs = (grid=grid, tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields())
+model_kwargs = (tracers=:c, buoyancy=nothing, velocities=PrescribedVelocityFields())
 
-implicit_model = HydrostaticFreeSurfaceModel(; closure=ivd_closure, model_kwargs...)
-explicit_model = HydrostaticFreeSurfaceModel(; closure=evd_closure, model_kwargs...)
+implicit_model = HydrostaticFreeSurfaceModel(grid; closure=ivd_closure, model_kwargs...)
+explicit_model = HydrostaticFreeSurfaceModel(grid; closure=evd_closure, model_kwargs...)
 models = (implicit_model, explicit_model)
-                                    
+
 initial_temperature(x, y, z) = exp(-z^2 / 0.02)
 
 [set!(model, c=initial_temperature) for model in models]
@@ -24,7 +24,7 @@ c_implicit = view(interior(implicit_model.tracers.c), 1, 1, :)
 c_explicit = view(interior(explicit_model.tracers.c), 1, 1, :)
 
 c_plot = plot(c_implicit, z, linewidth = 2, label = "t = 0", xlabel = "Tracer concentration", ylabel = "z")
-              
+
 diffusion_time_scale = implicit_model.grid.Δzᵃᵃᶜ^2 / implicit_model.closure.κ.c
 stop_time = 100diffusion_time_scale
 

@@ -9,7 +9,7 @@ arch = CPU()
 tracer_advection = Centered()
 
 underlying_grid = RectilinearGrid(arch,
-                                  size=(128, 64), halo=(3, 3), 
+                                  size=(128, 64), halo=(3, 3),
                                   y = (-1, 1),
                                   z = (-1, 0),
                                   topology=(Flat, Periodic, Bounded))
@@ -49,14 +49,12 @@ D = compute!(Field(∂y(v) + ∂z(w)))
 
 ## Set up Model
 velocities = PrescribedVelocityFields(; v, w)
-model = HydrostaticFreeSurfaceModel(; grid, velocities, tracer_advection,
-                                    tracers = :θ,
-                                    buoyancy = nothing)
+model = HydrostaticFreeSurfaceModel(grid; velocities, tracer_advection, tracers = :θ,)
 
 θᵢ(x, y, z) = 1 + z
 set!(model, θ = θᵢ)
 
-# Simulation                             
+# Simulation
 stop_time = 1.0
 Δy = grid.Δyᵃᶜᵃ
 @show Δt = 1e-2 * Δy
@@ -101,10 +99,9 @@ end
 
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, model.tracers,
-                                                      schedule = TimeInterval(0.02),
-                                                      prefix = "tracer_advection_over_bump",
-                                                      force = true)
+simulation.output_writers[:fields] = JLD2Writer(model, model.tracers,
+                                                schedule = TimeInterval(0.02),
+                                                prefix = "tracer_advection_over_bump",
+                                                force = true)
 
 run!(simulation)
-

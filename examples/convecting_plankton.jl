@@ -2,12 +2,10 @@
 #
 # In this example, we simulate the mixing of phytoplankton by convection
 # that decreases in time and eventually shuts off, thereby precipitating a
-# phytoplankton bloom. A similar scenario was simulated by
-# [Taylor and Ferrari (2011)](https://aslopubs.onlinelibrary.wiley.com/doi/abs/10.4319/lo.2011.56.6.2293),
+# phytoplankton bloom. A similar scenario was simulated by [Taylor2011shutdown](@citet),
 # providing evidence that the
 # ["critical turbulence hypothesis"](https://en.wikipedia.org/wiki/Critical_depth#Critical_Turbulence_Hypothesis)
-# explains the explosive bloom of oceanic phytoplankton
-# observed in spring.
+# explains the explosive bloom of oceanic phytoplankton observed in spring.
 #
 # The phytoplankton in our model are advected, diffuse, grow, and die according to
 #
@@ -47,6 +45,9 @@
 
 using Oceananigans
 using Oceananigans.Units: minutes, hour, hours, day
+using Random
+
+Random.seed!(1234) # for reproducible results
 
 grid = RectilinearGrid(size=(64, 64), extent=(64, 64), halo=(3, 3), topology=(Periodic, Flat, Bounded))
 
@@ -66,7 +67,7 @@ buoyancy_flux_bc = FluxBoundaryCondition(buoyancy_flux, parameters = buoyancy_fl
 # buoyancy flux for the visually-oriented,
 
 using CairoMakie
-set_theme!(Theme(fontsize = 24, linewidth=2))
+set_theme!(Theme(fontsize = 20, linewidth=3))
 
 times = range(0, 12hours, length=100)
 
@@ -127,7 +128,7 @@ plankton_dynamics = Forcing(growing_and_grazing, field_dependencies = :P,
 # advection scheme, third-order Runge-Kutta time-stepping, isotropic viscosity and diffusivities,
 # and Coriolis forces appropriate for planktonic convection at mid-latitudes on Earth.
 
-model = NonhydrostaticModel(; grid,
+model = NonhydrostaticModel(grid;
                             advection = UpwindBiased(order=5),
                             closure = ScalarDiffusivity(ν=1e-4, κ=1e-4),
                             coriolis = FPlane(f=1e-4),
@@ -171,7 +172,7 @@ progress(sim) = @printf("Iteration: %d, time: %s, Δt: %s\n",
 
 add_callback!(simulation, progress, IterationInterval(100))
 
-# and a basic `JLD2OutputWriter` that writes velocities and both
+# and a basic `JLD2Writer` that writes velocities and both
 # the two-dimensional and horizontally-averaged plankton concentration,
 
 outputs = (w = model.velocities.w,
@@ -179,10 +180,10 @@ outputs = (w = model.velocities.w,
            avg_P = Average(model.tracers.P, dims=(1, 2)))
 
 simulation.output_writers[:simple_output] =
-    JLD2OutputWriter(model, outputs,
-                     schedule = TimeInterval(20minutes),
-                     filename = "convecting_plankton.jld2",
-                     overwrite_existing = true)
+    JLD2Writer(model, outputs,
+               schedule = TimeInterval(20minutes),
+               filename = "convecting_plankton.jld2",
+               overwrite_existing = true)
 
 # !!! info "Using multiple output writers"
 #     Because each output writer is associated with a single output `schedule`,

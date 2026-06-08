@@ -3,9 +3,8 @@ include("dependencies_for_runtests.jl")
 using Statistics
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.AbstractOperations: BinaryOperation
-using Oceananigans.Fields: ReducedField, CenterField, ZFaceField, compute_at!, @compute, reverse_cumsum!
+using Oceananigans.Fields: CenterField, ZFaceField, compute_at!, @compute, reverse_cumsum!
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Grids: halo_size
 
 trilinear(x, y, z) = x + y + z
 interior_array(a, i, j, k) = Array(interior(a, i, j, k))
@@ -24,20 +23,32 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                                           x=(0, 2), y=(0, 2), z=[0, 1, 2],
                                           topology = (Periodic, Periodic, Bounded))
 
+        xz_regular_grid = RectilinearGrid(arch, size=(2, 2, 2),
+                                          x=(0, 2), y=[0, 1, 2], z=(0, 2),
+                                          topology = (Periodic, Periodic, Bounded))
+
         @testset "Averaged and integrated fields [$arch_str]" begin
             @info "  Testing averaged and integrated Fields [$arch_str]"
 
-            for grid in (regular_grid, xy_regular_grid)
+            for (name, grid) in [(:regular_grid => regular_grid),
+                                 (:xy_regular_grid => xy_regular_grid),
+                                 (:xz_regular_grid => xz_regular_grid)]
+
+                @info "    Testing averaged and integrated Fields on $name..."
 
                 Nx, Ny, Nz = size(grid)
 
                 w = ZFaceField(grid)
                 T = CenterField(grid)
                 ζ = Field{Face, Face, Face}(grid)
+                η = Field{Center, Center, Nothing}(grid)
 
                 set!(T, trilinear)
                 set!(w, trilinear)
                 set!(ζ, trilinear)
+
+                z_top = @allowscalar Oceananigans.Grids.znode(grid.Nz+1, grid, Face())
+                set!(η, (x, y) -> trilinear(x, y, z_top))
 
                 @compute Txyz = Field(Average(T, dims=(1, 2, 3)))
 
@@ -69,77 +80,79 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 @compute Zxy = Field(Integral(ζ, dims=(1, 2)))
                 @compute Zx = Field(Integral(ζ, dims=1))
 
-                @compute Tcx = Field(CumulativeIntegral(T, dims=1))
-                @compute Tcy = Field(CumulativeIntegral(T, dims=2))
+                @compute ηxyz = Field(Average(η))
+                @compute Ηxyz = Field(Integral(η))
+
+                @test Field(Average(η)) == Field(Average(η, dims=(1, 2, 3)))
+                @test Field(Integral(η)) == Field(Integral(η, dims=(1, 2, 3)))
+
+                # CumulativeIntegral is only supported for Bounded dimensions
+                # x and y are Periodic, so only test z direction
+                @test_throws ArgumentError CumulativeIntegral(T, dims=1)
+                @test_throws ArgumentError CumulativeIntegral(T, dims=2)
+                @test_throws ArgumentError CumulativeIntegral(w, dims=1)
+                @test_throws ArgumentError CumulativeIntegral(w, dims=2)
+                @test_throws ArgumentError CumulativeIntegral(ζ, dims=1)
+                @test_throws ArgumentError CumulativeIntegral(ζ, dims=2)
+
+                # z is Bounded, so cumulative integrals work
                 @compute Tcz = Field(CumulativeIntegral(T, dims=3))
-                @compute wcx = Field(CumulativeIntegral(w, dims=1))
-                @compute wcy = Field(CumulativeIntegral(w, dims=2))
                 @compute wcz = Field(CumulativeIntegral(w, dims=3))
-                @compute ζcx = Field(CumulativeIntegral(ζ, dims=1))
-                @compute ζcy = Field(CumulativeIntegral(ζ, dims=2))
                 @compute ζcz = Field(CumulativeIntegral(ζ, dims=3))
 
-                @compute Trx = Field(CumulativeIntegral(T, dims=1, reverse=true))
-                @compute Try = Field(CumulativeIntegral(T, dims=2, reverse=true))
                 @compute Trz = Field(CumulativeIntegral(T, dims=3, reverse=true))
-                @compute wrx = Field(CumulativeIntegral(w, dims=1, reverse=true))
-                @compute wry = Field(CumulativeIntegral(w, dims=2, reverse=true))
                 @compute wrz = Field(CumulativeIntegral(w, dims=3, reverse=true))
-                @compute ζrx = Field(CumulativeIntegral(ζ, dims=1, reverse=true))
-                @compute ζry = Field(CumulativeIntegral(ζ, dims=2, reverse=true))
                 @compute ζrz = Field(CumulativeIntegral(ζ, dims=3, reverse=true))
 
-                for T′ in (Tx, Txy)
-                    @test T′.operand.operand === T
+                if name ∈ (:regular_grid, :xy_regular_grid)
+                    for T′ in (Tx, Txy)
+                        @test T′.operand.operand === T
+                    end
+
+                    for w′ in (wx, wxy)
+                        @test w′.operand.operand === w
+                    end
+
+                    for ζ′ in (ζx, ζxy)
+                        @test ζ′.operand.operand === ζ
+                    end
                 end
 
-                for w′ in (wx, wxy)
-                    @test w′.operand.operand === w
-                end
-
-                for ζ′ in (ζx, ζxy)
-                    @test ζ′.operand.operand === ζ
-                end
-
-                for f in (wx, wxy, Tx, Txy, ζx, ζxy, Wx, Wxy, Θx, Θxy, Zx, Zxy)
+                for f in (Txyz, wxyz, ζxyz, ηxyz, wx, wxy, Tx, Txy, ζx, ζxy, Wx, Wxy, Θx, Θxy, Zx, Zxy)
                     @test f.operand isa Reduction
                 end
 
-                for f in (Tcx, Tcy, Tcz, Trx, Try, Trz,
-                          wcx, wcy, wcz, wrx, wry, wrz,
-                          ζcx, ζcy, ζcz, ζrx, ζry, ζrz)
+                for f in (Tcz, Trz, wcz, wrz, ζcz, ζrz)
                     @test f.operand isa Accumulation
                 end
 
-                for f in (wx, wxy, Tx, Txy, ζx, ζxy)
-                    @test f.operand.scan! === mean!
+                for f in (Txyz, wxyz, ζxyz, ηxyz, wx, wxy, Tx, Txy, ζx, ζxy)
+                    @test f.operand.scan! === Oceananigans.AbstractOperations.average!
                 end
 
-                for f in (wx, wxy, Tx, Txy, ζx, ζxy)
-                    @test f.operand.scan! === mean!
+                @test Ηxyz.operand.scan! === Oceananigans.AbstractOperations.sum!
+
+                for f in (Txyz, wxyz, ζxyz, ηxyz, wx, wxy, Tx, Txy, ζx, ζxy)
+                    @test f.operand.scan! === Oceananigans.AbstractOperations.average!
                 end
 
-                for f in (Tcx, Tcy, Tcz, wcx, wcy, wcz, ζcx, ζcy, ζcz)
+                for f in (Tcz, wcz, ζcz)
                     @test f.operand.scan! === cumsum!
                 end
 
-                for f in (Trx, Try, Trz, wrx, wry, wrz, ζrx, ζry, ζrz)
+                for f in (Trz, wrz, ζrz)
                     @test f.operand.scan! === reverse_cumsum!
                 end
 
-                @test Txyz.operand isa Reduction
-                @test wxyz.operand isa Reduction
-                @test ζxyz.operand isa Reduction
-
                 # Different behavior for regular grid z vs not.
                 if grid === regular_grid
-                    @test Txyz.operand.scan! === mean!
-                    @test wxyz.operand.scan! === mean!
+                    @test Txyz.operand.scan! === Oceananigans.AbstractOperations.average!
+                    @test wxyz.operand.scan! === Oceananigans.AbstractOperations.average!
                     @test Txyz.operand.operand === T
                     @test wxyz.operand.operand === w
                 else
-                    @test Txyz.operand.scan! === sum!
-                    @test wxyz.operand.scan! === sum!
+                    @test Txyz.operand.scan! === Oceananigans.AbstractOperations.average!
+                    @test wxyz.operand.scan! === Oceananigans.AbstractOperations.average!
                     @test Txyz.operand.operand isa BinaryOperation
                     @test wxyz.operand.operand isa BinaryOperation
                 end
@@ -151,13 +164,16 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 @test Txyz.operand.dims === (1, 2, 3)
                 @test wxyz.operand.dims === (1, 2, 3)
 
-                @test CUDA.@allowscalar Txyz[1, 1, 1] ≈ 3
+                @test @allowscalar Txyz[1, 1, 1] ≈ 3
                 @test interior_array(Txy, 1, 1, :) ≈ [2.5, 3.5]
                 @test interior_array(Tx, 1, :, :) ≈ [[2, 3] [3, 4]]
 
-                @test CUDA.@allowscalar wxyz[1, 1, 1] ≈ 3
+                @test @allowscalar wxyz[1, 1, 1] ≈ 3
                 @test interior_array(wxy, 1, 1, :) ≈ [2, 3, 4]
                 @test interior_array(wx, 1, :, :) ≈ [[1.5, 2.5] [2.5, 3.5] [3.5, 4.5]]
+
+                @test @allowscalar ηxyz[1, 1, 1] ≈ 4
+                @test @allowscalar Ηxyz[1, 1, 1] ≈ 16
 
                 averages_1d  = (Tx, wx, ζx)
                 integrals_1d = (Θx, Wx, Zx)
@@ -174,60 +190,48 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 end
 
                 # T(x, y, z) = x + y + z
-                # T(0.5, 0.5, z) = [1.5, 2.5]
-                @test interior_array(Tcx, :, 1, 1) ≈ [1.5, 4]
-                @test interior_array(Tcy, 1, :, 1) ≈ [1.5, 4]
-                @test interior_array(Tcz, 1, 1, :) ≈ [1.5, 4]
-
-                @test interior_array(Trx, :, 1, 1) ≈ [4, 2.5]
-                @test interior_array(Try, 1, :, 1) ≈ [4, 2.5]
-                @test interior_array(Trz, 1, 1, :) ≈ [4, 2.5]
+                # T at Center locations in z: T(0.5, 0.5, z_center) with z_center = [0.5, 1.5]
+                # T = [1.5, 2.5], Δz = 1
+                # Tcz is at Face locations in z (3 points for Nz=2 Bounded)
+                # Tcz = [0, T[1]*Δz, T[1]*Δz + T[2]*Δz] = [0, 1.5, 4]
+                @test interior_array(Tcz, 1, 1, :) ≈ [0, 1.5, 4]
+                @test interior_array(Trz, 1, 1, :) ≈ [4, 2.5, 0]
 
                 # w(x, y, z) = x + y + z
-                # w(0.5, 0.5, z) = [1, 2, 3]
-                # w(x, 0.5, 0) = w(0.5, y, 0) = [1, 2]
-                @test interior_array(wcx, :, 1, 1) ≈ [1, 3]
-                @test interior_array(wcy, 1, :, 1) ≈ [1, 3]
-                @test interior_array(wcz, 1, 1, :) ≈ [1, 3, 6]
+                # w at Face locations in z: w(0.5, 0.5, z_face) with z_face = [0, 1, 2]
+                # w = [1, 2, 3], Δz = 1
+                # wcz is at Center locations in z (2 points for Nz=2 Bounded)
+                # wcz = [0, w[1]*Δz] = [0, 1]
+                @test interior_array(wcz, 1, 1, :) ≈ [0, 1]
+                # wrz (reverse): starts from end, accumulates backwards
+                # wrz = [w[2]*Δz, 0] = [2, 0]
+                @test interior_array(wrz, 1, 1, :) ≈ [2, 0]
 
-                @test interior_array(wrx, :, 1, 1) ≈ [3, 2]
-                @test interior_array(wry, 1, :, 1) ≈ [3, 2]
-                @test interior_array(wrz, 1, 1, :) ≈ [6, 5, 3]
+                @compute Txyz = @allowscalar Field(Average(T, condition=T.>3))
+                @compute Txy = @allowscalar Field(Average(T, dims=(1, 2), condition=T.>3))
+                @compute Tx = @allowscalar Field(Average(T, dims=1, condition=T.>2))
 
-                @compute Txyz = CUDA.@allowscalar Field(Average(T, condition=T.>3))
-                @compute Txy = CUDA.@allowscalar Field(Average(T, dims=(1, 2), condition=T.>3))
-                @compute Tx = CUDA.@allowscalar Field(Average(T, dims=1, condition=T.>2))
-
-                @test CUDA.@allowscalar Txyz[1, 1, 1] ≈ 3.75
+                @test @allowscalar Txyz[1, 1, 1] ≈ 3.75
                 @test interior_array(Txy, 1, 1, :) ≈ [3.5, 11.5/3]
                 @test interior_array(Tx, 1, :, :) ≈ [[2.5, 3] [3, 4]]
 
-                @compute wxyz = CUDA.@allowscalar Field(Average(w, condition=w.>3))
-                @compute wxy = CUDA.@allowscalar Field(Average(w, dims=(1, 2), condition=w.>2))
-                @compute wx = CUDA.@allowscalar Field(Average(w, dims=1, condition=w.>1))
+                @compute wxyz = @allowscalar Field(Average(w, condition=w.>3))
+                @compute wxy = @allowscalar Field(Average(w, dims=(1, 2), condition=w.>2))
+                @compute wx = @allowscalar Field(Average(w, dims=1, condition=w.>1))
 
-                @test CUDA.@allowscalar wxyz[1, 1, 1] ≈ 4.25
+                @test @allowscalar wxyz[1, 1, 1] ≈ 4.25
                 @test interior_array(wxy, 1, 1, :) ≈ [3, 10/3, 4]
                 @test interior_array(wx, 1, :, :) ≈ [[2, 2.5] [2.5, 3.5] [3.5, 4.5]]
 
-                # A bit more for cumulative integral
-                @compute T2cx = Field(CumulativeIntegral(2 * T, dims=1))
-                @compute T2cy = Field(CumulativeIntegral(2 * T, dims=2))
+                # A bit more for cumulative integral (only z direction since x, y are Periodic)
                 @compute T2cz = Field(CumulativeIntegral(2 * T, dims=3))
-
-                @compute T2rx = Field(CumulativeIntegral(2 * T, dims=1, reverse=true))
-                @compute T2ry = Field(CumulativeIntegral(2 * T, dims=2, reverse=true))
                 @compute T2rz = Field(CumulativeIntegral(2 * T, dims=3, reverse=true))
 
                 # T(x, y, z) = x + y + z
-                # 2 * T(0.5, 0.5, z) = [3, 5]
-                @test interior_array(T2cx, :, 1, 1) ≈ [3, 8]
-                @test interior_array(T2cy, 1, :, 1) ≈ [3, 8]
-                @test interior_array(T2cz, 1, 1, :) ≈ [3, 8]
-
-                @test interior_array(T2rx, :, 1, 1) ≈ [8, 5]
-                @test interior_array(T2ry, 1, :, 1) ≈ [8, 5]
-                @test interior_array(T2rz, 1, 1, :) ≈ [8, 5]
+                # 2 * T(0.5, 0.5, z) at z_center = [0.5, 1.5] gives [3, 5], Δz = 1
+                # T2cz = [0, 3*1, 3*1 + 5*1] = [0, 3, 8]
+                @test interior_array(T2cz, 1, 1, :) ≈ [0, 3, 8]
+                @test interior_array(T2rz, 1, 1, :) ≈ [8, 5, 0]
             end
 
             # Test whether a race condition gets hit for averages over large fields
@@ -259,7 +263,7 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
         end
 
         @testset "Allocating reductions [$arch_str]" begin
-            @info "  Testing allocating reductions"
+            @info "  Testing allocating reductions [$arch_str]"
 
             grid = RectilinearGrid(arch, size = (2, 2, 2),
                                    x = (0, 2), y = (0, 2), z = (0, 2),
@@ -281,11 +285,11 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
             @compute wx = Field(Average(w, dims=1))
 
             # Mean
-            @test CUDA.@allowscalar Txyz[1, 1, 1] == mean(T)
+            @test @allowscalar Txyz[1, 1, 1] == mean(T)
             @test interior(Txy) == interior(mean(T, dims=(1, 2)))
             @test interior(Tx) == interior(mean(T, dims=1))
 
-            @test CUDA.@allowscalar wxyz[1, 1, 1] == mean(w)
+            @test @allowscalar wxyz[1, 1, 1] == mean(w)
             @test interior(wxy) == interior(mean(w, dims=(1, 2)))
             @test interior(wx) == interior(mean(w, dims=1))
 
@@ -306,7 +310,7 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
                 c = CenterField(grid)
 
                 for dims in (1, 2, 3, (1, 2), (2, 3), (1, 3), (1, 2, 3))
-                    C = Field(Average(c, dims=dims))
+                    C = Field(Average(c; dims))
 
                     @test !isnothing(C.status)
 
@@ -333,13 +337,13 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
             underlying_grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(1, 1, 1))
 
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> y < 0.5 ? - 0.6 : 0))
-            c = Field((Center, Center, Nothing), grid)
+            c = Field{Center, Center, Nothing}(grid)
 
             set!(c, (x, y) -> y)
             @test maximum(c) == grid.yᵃᶜᵃ[1]
 
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> y < 0.5 ? - 0.6 : -0.4))
-            c = Field((Center, Center, Nothing), grid)
+            c = Field{Center, Center, Nothing}(grid)
 
             set!(c, (x, y) -> y)
             @test maximum(c) == grid.yᵃᶜᵃ[3]
@@ -347,7 +351,7 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
             underlying_grid = RectilinearGrid(arch, size = (1, 1, 8), extent=(1, 1, 1))
 
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom((x, y) -> -3/4))
-            c = Field((Center, Center, Center), grid)
+            c = Field{Center, Center, Center}(grid)
 
             set!(c, (x, y, z) -> -z)
             @test maximum(c) == Array(interior(c))[1, 1, 3]
@@ -376,10 +380,54 @@ interior_array(a, i, j, k) = Array(interior(a, i, j, k))
             c = CenterField(grid)
             set!(c, (x, y, z) -> x + y + z)
 
-            max_c² = Field(Reduction(maximum, c^2, dims=3))
+            max_c² = Field(Reduction(maximum!, c^2, dims=3))
             ∫max_c² = Integral(max_c², dims=(1, 2))
-            compute!(∫max_c²)
             @test ∫max_c² isa Reduction
+            ∫max_c²_field = Field(∫max_c²)
+            @test ∫max_c²_field isa Field
+            @test ∫max_c²_field.operand === ∫max_c²
+
+            @info "  Testing conditional reductions of immersed Fields [$(typeof(arch))]"
+
+            underlying_grid = LatitudeLongitudeGrid(arch,
+                                                    topology = (Periodic, Bounded, Bounded),
+                                                    size = (24, 16, 8),
+                                                    longitude = (-10, 10),
+                                                    latitude = (-55, -35),
+                                                    z = (-1000, 0),
+                                                    halo = (5, 5, 5))
+
+            Lz_u = underlying_grid.Lz
+            width = 0.5 # degrees
+            bump(λ, φ) = - Lz_u * (1 - 2 * exp(-(λ^2 + φ^2) / 2width^2))
+
+            grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bump))
+
+            u_ibg = XFaceField(grid)
+            u_noibg = XFaceField(grid.underlying_grid)
+            v_ibg = YFaceField(grid)
+            v_noibg = YFaceField(grid.underlying_grid)
+            w_ibg = ZFaceField(grid)
+            w_noibg = ZFaceField(grid.underlying_grid)
+
+            condition = trues(size(grid)) # should work for Periodic but not for Bounded directions
+
+            ∫u_ibg = Integral(u_ibg; dims=1, condition)
+            @test ∫u_ibg isa Reduction{<:Any, <:Any, <:ConditionalOperation}
+            ∫u_noibg = Integral(u_noibg; dims=1, condition)
+            @test ∫u_noibg isa Reduction{<:Any, <:Any, <:ConditionalOperation}
+            @test_throws ArgumentError ∫v_ibg = Integral(v_ibg; dims=1, condition)
+            @test_throws ArgumentError ∫v_noibg = Integral(v_noibg; dims=1, condition)
+            @test_throws ArgumentError ∫w_ibg = Integral(w_ibg; dims=1, condition)
+            @test_throws ArgumentError ∫w_noibg = Integral(w_noibg; dims=1, condition)
+            ∫v_ibg = Integral(v_ibg; dims=1, condition=trues(size(v_ibg)))
+            @test ∫v_ibg isa Reduction{<:Any, <:Any, <:ConditionalOperation}
+            ∫v_noibg = Integral(v_noibg; dims=1, condition=trues(size(v_noibg)))
+            @test ∫v_noibg isa Reduction{<:Any, <:Any, <:ConditionalOperation}
+            ∫w_ibg = Integral(w_ibg; dims=1, condition=trues(size(w_ibg)))
+            @test ∫w_ibg isa Reduction{<:Any, <:Any, <:ConditionalOperation}
+            ∫w_noibg = Integral(w_noibg; dims=1, condition=trues(size(w_noibg)))
+            @test ∫w_noibg isa Reduction{<:Any, <:Any, <:ConditionalOperation}
         end
     end
 end

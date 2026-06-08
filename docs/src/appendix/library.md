@@ -16,7 +16,7 @@ Modules = [Oceananigans.AbstractOperations]
 Private = false
 ```
 
-## Advection
+## [Advection](@id lib_advection)
 
 ```@autodocs
 Modules = [Oceananigans.Advection]
@@ -40,7 +40,7 @@ Private = false
 ## Buoyancy models
 
 ```@autodocs
-Modules = [Oceananigans.BuoyancyModels]
+Modules = [Oceananigans.BuoyancyFormulations]
 Private = false
 ```
 
@@ -83,6 +83,13 @@ Private = false
 
 ```@autodocs
 Modules = [Oceananigans.Grids]
+Private = false
+```
+
+## OrthogonalSphericalShellGrids
+
+```@autodocs
+Modules = [Oceananigans.OrthogonalSphericalShellGrids]
 Private = false
 ```
 
@@ -143,6 +150,20 @@ Modules = [Oceananigans.Models.LagrangianParticleTracking]
 Private = false
 ```
 
+### VarianceDissipationComputations
+
+```@autodocs
+Modules = [Oceananigans.Models.VarianceDissipationComputations]
+Private = false
+```
+
+### Bulk drag boundary conditions
+
+```@autodocs
+Modules = [Oceananigans.Models.BulkDragBoundaryConditions]
+Private = false
+```
+
 ## MultiRegion
 
 ```@autodocs
@@ -168,6 +189,15 @@ Private = false
 
 ```@autodocs
 Modules = [Oceananigans.OutputWriters]
+Private = false
+```
+
+## Extensions
+
+### OceananigansNCDatasetsExt
+
+```@autodocs
+Modules = [OceananigansNCDatasetsExt.OceananigansNCDatasetsExt]
 Private = false
 ```
 
@@ -203,6 +233,13 @@ Private = false
 
 ```@autodocs
 Modules = [Oceananigans.TurbulenceClosures]
+Private = false
+```
+
+### TKEBasedVerticalDiffusivities
+
+```@autodocs
+Modules = [Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities]
 Private = false
 ```
 

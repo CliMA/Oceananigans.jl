@@ -28,7 +28,7 @@ zfaces = range(-Lz, 0.0, length=Nz + 1)
 
 grid = RectilinearGrid(architecture;
                        topology = (Bounded, Bounded, Bounded),
-                       size = (Nx, Ny, Nz), 
+                       size = (Nx, Ny, Nz),
                        x = (-Lx/2, Lx/2),
                        y = (-Ly/2, Ly/2),
                        z = zfaces,
@@ -52,7 +52,7 @@ closures = (vertical_closure, horizontal_closure, gent_mcwilliams_diffusivity)
 
 @info "Building a model..."
 
-model = HydrostaticFreeSurfaceModel(grid = grid,
+model = HydrostaticFreeSurfaceModel(grid;
                                     coriolis = coriolis,
                                     buoyancy = BuoyancyTracer(),
                                     closure = closures,
@@ -113,7 +113,7 @@ function print_progress(sim)
             prettytime(sim.Δt))
 
     wall_clock[1] = time_ns()
-    
+
     return nothing
 end
 

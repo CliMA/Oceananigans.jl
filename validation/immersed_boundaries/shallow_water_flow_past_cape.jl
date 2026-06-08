@@ -2,12 +2,12 @@ using Printf
 using Plots
 
 using Oceananigans
-using Oceananigans.OutputReaders: FieldTimeSeries 
+using Oceananigans.OutputReaders: FieldTimeSeries
 using Oceananigans.Models
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary
 
 underlying_grid = RectilinearGrid(size=(256, 64), x=(-5, 15), y=(0, 5), topology=(Periodic, Bounded, Flat), halo = (3, 3))
-                              
+
 cape(x, y, z)  = y < exp(-x^2)
 
 grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBoundary(cape))
@@ -23,8 +23,8 @@ smoothed_step_mask(x, y, z) = 1/2 * (1 + tanh((x - x0) / dx))
 uh_sponge = Relaxation(rate = damping_rate, mask = smoothed_step_mask, target = (x, y, z, t) -> U(x, y, z))
  h_sponge = Relaxation(rate = damping_rate, mask = smoothed_step_mask, target = 1)
 
-#model = ShallowWaterModel(grid = grid, gravitational_acceleration = 1, forcing = (uh=uh_sponge, h=h_sponge))
-model = ShallowWaterModel(grid = grid, gravitational_acceleration = 1) #, forcing = (uh=uh_sponge, h=h_sponge))
+#model = ShallowWaterModel(grid; gravitational_acceleration = 1, forcing = (uh=uh_sponge, h=h_sponge))
+model = ShallowWaterModel(grid; gravitational_acceleration = 1) #, forcing = (uh=uh_sponge, h=h_sponge))
 
 set!(model, h = 1, uh = U)
 
@@ -53,12 +53,11 @@ uh, vh, h = model.solution
 
 outputs = merge(model.solution, (ζ=ζ,))
 
-simulation.output_writers[:fields] =
-    JLD2OutputWriter(model, outputs,
-                     schedule = TimeInterval(0.1),
-                     filename = "flow_past_cape",
-                     field_slicer = nothing,
-                     overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, outputs,
+                                                schedule = TimeInterval(0.1),
+                                                filename = "flow_past_cape",
+                                                field_slicer = nothing,
+                                                overwrite_existing = true)
 
 run!(simulation)
 

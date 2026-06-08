@@ -9,6 +9,7 @@ using Adapt
 using Oceananigans.Utils: launch!
 
 import Oceananigans: fields, prognostic_fields
+import Oceananigans.Simulations: timestepper
 
 #####
 ##### ShallowWaterModel definition
@@ -39,7 +40,10 @@ prognostic_fields(model::ShallowWaterModel) = fields(model)
 
 include("solution_and_tracer_tendencies.jl")
 include("compute_shallow_water_tendencies.jl")
+include("shallow_water_rk3_substep.jl")
+include("shallow_water_ab2_step.jl")
 include("update_shallow_water_state.jl")
+include("cache_shallow_water_tendencies.jl")
 include("shallow_water_advection_operators.jl")
 include("shallow_water_diffusion_operators.jl")
 include("shallow_water_cell_advection_timescale.jl")

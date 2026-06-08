@@ -1,8 +1,11 @@
 using Oceananigans.Architectures: architecture
-using Oceananigans.BuoyancyModels: ∂z_b
+using Oceananigans.BuoyancyFormulations: ∂z_b, top_buoyancy_flux
 using Oceananigans.Operators
 using Oceananigans.Grids: inactive_node
 using Oceananigans.Operators: ℑzᵃᵃᶜ
+using Oceananigans.Utils: time_difference_seconds
+
+import Oceananigans: prognostic_state, restore_prognostic_state!
 
 struct RiBasedVerticalDiffusivity{TD, FT, R, HR} <: AbstractScalarDiffusivity{TD, VerticalFormulation, 1}
     ν₀  :: FT
@@ -31,7 +34,7 @@ function RiBasedVerticalDiffusivity{TD}(ν₀::FT,
                                         minimum_entrainment_buoyancy_gradient::FT,
                                         maximum_diffusivity::FT,
                                         maximum_viscosity::FT) where {TD, FT, R, HR}
-                                       
+
 
     return RiBasedVerticalDiffusivity{TD, FT, R, HR}(ν₀, κ₀, κᶜᵃ, Cᵉⁿ, Cᵃᵛ, Ri₀, Riᵟ,
                                                      Ri_dependent_tapering,
@@ -46,9 +49,9 @@ struct PiecewiseLinearRiDependentTapering end
 struct ExponentialRiDependentTapering end
 struct HyperbolicTangentRiDependentTapering end
 
-Base.summary(::HyperbolicTangentRiDependentTapering) = "HyperbolicTangentRiDependentTapering" 
-Base.summary(::ExponentialRiDependentTapering) = "ExponentialRiDependentTapering" 
-Base.summary(::PiecewiseLinearRiDependentTapering) = "PiecewiseLinearRiDependentTapering" 
+Base.summary(::HyperbolicTangentRiDependentTapering) = "HyperbolicTangentRiDependentTapering"
+Base.summary(::ExponentialRiDependentTapering) = "ExponentialRiDependentTapering"
+Base.summary(::PiecewiseLinearRiDependentTapering) = "PiecewiseLinearRiDependentTapering"
 
 # Horizontal filtering for the Richardson number
 struct FivePointHorizontalFilter end
@@ -74,12 +77,12 @@ struct FivePointHorizontalFilter end
 
 Return a closure that estimates the vertical viscosity and diffusivity
 from "convective adjustment" coefficients `ν₀` and `κ₀` multiplied by
-a decreasing function of the Richardson number, ``Ri``. 
+a decreasing function of the Richardson number, ``Ri``.
 
 Arguments
 =========
 
-* `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`, 
+* `time_discretization`: Either `ExplicitTimeDiscretization()` or `VerticallyImplicitTimeDiscretization()`,
                          which integrates the terms involving only ``z``-derivatives in the
                          viscous and diffusive fluxes with an implicit time discretization.
                          Default `VerticallyImplicitTimeDiscretization()`.
@@ -111,7 +114,7 @@ Keyword arguments
 
 * `minimum_entrainment_buoyancy_gradient`: Minimum buoyancy gradient for application of the entrainment
                                            diffusvity. If the entrainment buoyancy gradient is less than the
-                                           minimum value, the entrainment diffusivity is 0. Units of 
+                                           minimum value, the entrainment diffusivity is 0. Units of
                                            buoyancy gradient (typically s⁻²).
 
 * `maximum_diffusivity`: A limiting maximum tracer diffusivity (units of diffusivity, typically m² s⁻¹).
@@ -123,7 +126,7 @@ Keyword arguments
                           option is `horizontal_Ri_filter = FivePointHorizontalFilter()`.
 """
 function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTimeDiscretization(),
-                                    FT = Float64;
+                                    FT = Oceananigans.defaults.FloatType;
                                     Ri_dependent_tapering = HyperbolicTangentRiDependentTapering(),
                                     horizontal_Ri_filter = nothing,
                                     minimum_entrainment_buoyancy_gradient = 1e-10,
@@ -139,7 +142,7 @@ function RiBasedVerticalDiffusivity(time_discretization = VerticallyImplicitTime
                                     warning = true)
     if warning
         @warn "RiBasedVerticalDiffusivity is an experimental turbulence closure that \n" *
-              "is unvalidated and whose default parameters are not calibrated for \n" * 
+              "is unvalidated and whose default parameters are not calibrated for \n" *
               "realistic ocean conditions or for use in a three-dimensional \n" *
               "simulation. Use with caution and report bugs and problems with physics \n" *
               "to https://github.com/CliMA/Oceananigans.jl/issues."
@@ -177,31 +180,43 @@ const f = Face()
 @inline viscosity_location(::FlavorOfRBVD)   = (c, c, f)
 @inline diffusivity_location(::FlavorOfRBVD) = (c, c, f)
 
-@inline viscosity(::FlavorOfRBVD, diffusivities) = diffusivities.κu
-@inline diffusivity(::FlavorOfRBVD, diffusivities, id) = diffusivities.κc
+@inline viscosity(::FlavorOfRBVD, closure_fields) = closure_fields.κu
+@inline diffusivity(::FlavorOfRBVD, closure_fields, id) = closure_fields.κc
 
-with_tracers(tracers, closure::FlavorOfRBVD) = closure
+Utils.with_tracers(tracers, closure::FlavorOfRBVD) = closure
 
 # Note: computing diffusivities at cell centers for now.
-function DiffusivityFields(grid, tracer_names, bcs, closure::FlavorOfRBVD)
-    κc = Field((Center, Center, Face), grid)
-    κu = Field((Center, Center, Face), grid)
-    Ri = Field((Center, Center, Face), grid)
-    return (; κc, κu, Ri)
+function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfRBVD)
+    κc = Field{Center, Center, Face}(grid)
+    κu = Field{Center, Center, Face}(grid)
+    Ri = Field{Center, Center, Face}(grid)
+    previous_compute_time = Ref(clock.time)
+    return (; κc, κu, Ri, previous_compute_time)
 end
 
-function compute_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; parameters = :xyz)
+function update_previous_compute_time!(closure_fields, model)
+    Δt = time_difference_seconds(model.clock.time, closure_fields.previous_compute_time[])
+    closure_fields.previous_compute_time[] = model.clock.time
+    return Δt
+end
+
+function compute_closure_fields!(closure_fields, closure::FlavorOfRBVD, model; parameters = :xyz)
     arch = model.architecture
     grid = model.grid
     clock = model.clock
-    tracers = model.tracers
-    buoyancy = model.buoyancy
+    tracers = buoyancy_tracers(model)
+    buoyancy = buoyancy_force(model)
     velocities = model.velocities
     top_tracer_bcs = NamedTuple(c => tracers[c].boundary_conditions.top for c in propertynames(tracers))
+    Δt = update_previous_compute_time!(closure_fields, model)
+
+    # Skip recomputation if Δt == 0 (e.g., after restoring from a checkpoint).
+    # Recomputing would incorrectly apply the time-averaging formula again.
+    Δt == 0 && return nothing
 
     launch!(arch, grid, parameters,
             compute_ri_number!,
-            diffusivities,
+            closure_fields,
             grid,
             closure,
             velocities,
@@ -212,11 +227,11 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfRBVD, model; par
 
     # Use `only_local_halos` to ensure that no communication occurs during
     # this call to fill_halo_regions!
-    fill_halo_regions!(diffusivities.Ri; only_local_halos=true)
+    fill_halo_regions!(closure_fields.Ri; only_local_halos=true)
 
     launch!(arch, grid, parameters,
             compute_ri_based_diffusivities!,
-            diffusivities,
+            closure_fields,
             grid,
             closure,
             velocities,
@@ -257,24 +272,21 @@ end
     return ifelse(N² <= 0, zero(grid), Ri)
 end
 
-const c = Center()
-const f = Face()
-
-@kernel function compute_ri_number!(diffusivities, grid, closure::FlavorOfRBVD,
+@kernel function compute_ri_number!(closure_fields, grid, closure::FlavorOfRBVD,
                                     velocities, tracers, buoyancy, tracer_bcs, clock)
     i, j, k = @index(Global, NTuple)
-    @inbounds diffusivities.Ri[i, j, k] = Riᶜᶜᶠ(i, j, k, grid, velocities, buoyancy, tracers)
+    @inbounds closure_fields.Ri[i, j, k] = Riᶜᶜᶠ(i, j, k, grid, velocities, buoyancy, tracers)
 end
 
-@kernel function compute_ri_based_diffusivities!(diffusivities, grid, closure::FlavorOfRBVD,
+@kernel function compute_ri_based_diffusivities!(closure_fields, grid, closure::FlavorOfRBVD,
                                                 velocities, tracers, buoyancy, tracer_bcs, clock)
     i, j, k = @index(Global, NTuple)
-    _compute_ri_based_diffusivities!(i, j, k, diffusivities, grid, closure,
+    _compute_ri_based_diffusivities!(i, j, k, closure_fields, grid, closure,
                                      velocities, tracers, buoyancy, tracer_bcs, clock)
 end
 
 
-@inline function _compute_ri_based_diffusivities!(i, j, k, diffusivities, grid, closure,
+@inline function _compute_ri_based_diffusivities!(i, j, k, closure_fields, grid, closure,
                                                   velocities, tracers, buoyancy, tracer_bcs, clock)
 
     # Ensure this works with "ensembles" of closures, in addition to ordinary single closures
@@ -308,7 +320,7 @@ end
     κᵉⁿ = ifelse(entraining, Cᵉⁿ * Jᵇ / N², zero(grid))
 
     # (Potentially) apply a horizontal filter to the Richardson number
-    Ri = filter_horizontally(i, j, k, grid, Ri_filter, diffusivities.Ri)
+    Ri = filter_horizontally(i, j, k, grid, Ri_filter, closure_fields.Ri)
 
     # Shear mixing diffusivity and viscosity
     τ = taper(tapering, Ri, Ri₀, Riᵟ)
@@ -316,16 +328,16 @@ end
     κu★ = ν₀ * τ
 
     # Previous diffusivities
-    κc = diffusivities.κc
-    κu = diffusivities.κu
+    κc = closure_fields.κc
+    κu = closure_fields.κu
 
     # New diffusivities
     κc⁺ = κᶜᵃ + κᵉⁿ + κc★
     κu⁺ = κu★
 
     # Limit by specified maximum
-    κc⁺ = min(κc⁺, closure_ij.maximum_diffusivity) 
-    κu⁺ = min(κu⁺, closure_ij.maximum_viscosity) 
+    κc⁺ = min(κc⁺, closure_ij.maximum_diffusivity)
+    κu⁺ = min(κu⁺, closure_ij.maximum_viscosity)
 
     # Set to zero on periphery and NaN within inactive region
     on_periphery = peripheral_node(i, j, k, grid, c, c, f)
@@ -359,3 +371,26 @@ function Base.show(io::IO, closure::RiBasedVerticalDiffusivity)
     print(io, "├── maximum_diffusivity: ", prettysummary(closure.maximum_diffusivity), '\n')
     print(io, "└── maximum_viscosity: ", prettysummary(closure.maximum_viscosity))
 end
+
+#####
+##### Checkpointing
+#####
+
+const RiBasedVerticalDiffusivityFields = NamedTuple{(:κc, :κu, :Ri, :previous_compute_time)}
+
+function prognostic_state(closure_fields::RiBasedVerticalDiffusivityFields)
+    return (κc = prognostic_state(closure_fields.κc),
+            κu = prognostic_state(closure_fields.κu),
+            Ri = prognostic_state(closure_fields.Ri),
+            previous_compute_time = closure_fields.previous_compute_time[])
+end
+
+function restore_prognostic_state!(restored::RiBasedVerticalDiffusivityFields, from)
+    restore_prognostic_state!(restored.κc, from.κc)
+    restore_prognostic_state!(restored.κu, from.κu)
+    restore_prognostic_state!(restored.Ri, from.Ri)
+    restored.previous_compute_time[] = from.previous_compute_time
+    return restored
+end
+
+restore_prognostic_state!(::RiBasedVerticalDiffusivityFields, ::Nothing) = nothing

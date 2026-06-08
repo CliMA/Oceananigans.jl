@@ -1,50 +1,69 @@
 include("dependencies_for_runtests.jl")
 
+using Adapt: Adapt
 using TimesDates: TimeDate
-using Oceananigans.Grids: topological_tuple_length, total_size
-using Oceananigans.Fields: BackgroundField
+using Oceananigans.Grids: topological_tuple_length
 using Oceananigans.TimeSteppers: Clock
+using Oceananigans.Advection: EnergyConserving, EnstrophyConserving
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
-using Oceananigans.TurbulenceClosures.Smagorinskys: LagrangianAveraging, DynamicSmagorinsky
+using Oceananigans.TurbulenceClosures.Smagorinskys: LagrangianAveraging, DynamicSmagorinsky, Smagorinsky
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: ImplicitFreeSurface
 
 function time_stepping_works_with_flat_dimensions(arch, topology)
     size = Tuple(1 for i = 1:topological_tuple_length(topology...))
     extent = Tuple(1 for i = 1:topological_tuple_length(topology...))
     grid = RectilinearGrid(arch; size, extent, topology)
-    model = NonhydrostaticModel(; grid)
+    model = NonhydrostaticModel(grid)
     time_step!(model, 1)
     return true # Test that no errors/crashes happen when time stepping.
 end
 
 function euler_time_stepping_doesnt_propagate_NaNs(arch)
-    model = HydrostaticFreeSurfaceModel(grid=RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3)),
-                                        buoyancy = BuoyancyTracer(),
-                                        tracers = :b)
+    grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 2, 3))
+    model = HydrostaticFreeSurfaceModel(grid, buoyancy = BuoyancyTracer(), tracers = :b)
 
-    CUDA.@allowscalar model.timestepper.G⁻.u[1, 1, 1] = NaN
+    @allowscalar model.timestepper.G⁻.u[1, 1, 1] = NaN
     time_step!(model, 1, euler=true)
-    u111 = CUDA.@allowscalar model.velocities.u[1, 1, 1]
-    
+    u111 = @allowscalar model.velocities.u[1, 1, 1]
+
     return !isnan(u111)
 end
 
 function time_stepping_works_with_coriolis(arch, FT, Coriolis)
     grid = RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, 2, 3))
     coriolis = Coriolis(FT, latitude=45)
-    model = NonhydrostaticModel(; grid, coriolis)
+    model = NonhydrostaticModel(grid; coriolis)
     time_step!(model, 1)
     return true # Test that no errors/crashes happen when time stepping.
 end
 
-function time_stepping_works_with_closure(arch, FT, Closure; buoyancy=Buoyancy(model=SeawaterBuoyancy(FT)))
-    # Add TKE tracer "e" to tracers when using CATKEVerticalDiffusivity
-    tracers = [:T, :S]
-    Closure === CATKEVerticalDiffusivity && push!(tracers, :e)
+function time_step_nonhydrostatic_model_works(grid; coriolis = nothing)
+    model = NonhydrostaticModel(grid; coriolis)
+    simulation = Simulation(model, Δt=1.0, stop_iteration=1)
+    run!(simulation)
+    return model.clock.iteration == 1
+end
 
+function time_step_nonhydrostatic_model_with_implicit_free_surface_works(arch, FT)
+    grid = RectilinearGrid(arch, FT; topology=(Bounded, Bounded, Bounded),
+                           size=(8, 8, 4), x=(-1, 1), y=(-1, 1), z=(-1, 0))
+
+    model = NonhydrostaticModel(grid;
+                                free_surface=ImplicitFreeSurface(),
+                                closure=ScalarDiffusivity(ν=4e-2, κ=4e-2),
+                                buoyancy=SeawaterBuoyancy(),
+                                tracers=(:T, :S))
+
+    time_step!(model, 0.1)
+    return true
+end
+
+function time_stepping_works_with_closure(arch, FT, Closure; Model=NonhydrostaticModel, buoyancy=BuoyancyForce(SeawaterBuoyancy(FT)))
     # Use halos of size 3 to be conservative
     grid = RectilinearGrid(arch, FT; size=(3, 3, 3), halo=(3, 3, 3), extent=(1, 2, 3))
-    closure = Closure(FT)
-    model = NonhydrostaticModel(; grid, closure, tracers, buoyancy)
+    closure = Closure === IsopycnalSkewSymmetricDiffusivity ? Closure(FT, κ_skew=1, κ_symmetric=1) : Closure(FT)
+    model = Model(grid; closure, tracers=(:T, :S), buoyancy)
+
     time_step!(model, 1)
 
     return true  # Test that no errors/crashes happen when time stepping.
@@ -53,7 +72,7 @@ end
 function time_stepping_works_with_advection_scheme(arch, advection)
     # Use halo=(3, 3, 3) to accomodate WENO-5 advection scheme
     grid = RectilinearGrid(arch, size=(3, 3, 3), halo=(3, 3, 3), extent=(1, 2, 3))
-    model = NonhydrostaticModel(; grid, advection)
+    model = NonhydrostaticModel(grid; advection)
     time_step!(model, 1)
     return true  # Test that no errors/crashes happen when time stepping.
 end
@@ -61,14 +80,16 @@ end
 function time_stepping_works_with_stokes_drift(arch, stokes_drift)
     # Use halo=(3, 3, 3) to accomodate WENO-5 advection scheme
     grid = RectilinearGrid(arch, size=(3, 3, 3), halo=(3, 3, 3), extent=(1, 2, 3))
-    model = NonhydrostaticModel(; grid, stokes_drift, advection=nothing)
+    model = NonhydrostaticModel(grid;
+                                 stokes_drift,
+                                 advection=nothing)
     time_step!(model, 1)
     return true  # Test that no errors/crashes happen when time stepping.
 end
 
 function time_stepping_works_with_nothing_closure(arch, FT)
     grid = RectilinearGrid(arch, FT; size=(1, 1, 1), extent=(1, 2, 3))
-    model = NonhydrostaticModel(; grid, closure=nothing)
+    model = NonhydrostaticModel(grid; closure=nothing)
     time_step!(model, 1)
     return true  # Test that no errors/crashes happen when time stepping.
 end
@@ -78,7 +99,7 @@ function time_stepping_works_with_nonlinear_eos(arch, FT, EOS)
 
     eos = EOS()
     b = SeawaterBuoyancy(equation_of_state=eos)
-    model = NonhydrostaticModel(; grid, buoyancy=b, tracers=(:T, :S))
+    model = NonhydrostaticModel(grid; buoyancy=b, tracers=(:T, :S))
     time_step!(model, 1)
 
     return true  # Test that no errors/crashes happen when time stepping.
@@ -91,19 +112,11 @@ function run_first_AB2_time_step_tests(arch, FT)
     # Weird grid size to catch https://github.com/CliMA/Oceananigans.jl/issues/780
     grid = RectilinearGrid(arch, FT, size=(13, 17, 19), extent=(1, 2, 3))
 
-    model = NonhydrostaticModel(; grid,
+    model = NonhydrostaticModel(grid;
                                 timestepper = :QuasiAdamsBashforth2,
                                 forcing = (; T=add_ones),
                                 buoyancy = SeawaterBuoyancy(),
                                 tracers = (:T, :S))
-
-    # Test that GT = 0 after model construction
-    # (note: model construction does not computes tendencies)
-    @test all(interior(model.timestepper.Gⁿ.u) .≈ 0)
-    @test all(interior(model.timestepper.Gⁿ.v) .≈ 0)
-    @test all(interior(model.timestepper.Gⁿ.w) .≈ 0)
-    @test all(interior(model.timestepper.Gⁿ.T) .≈ 0)
-    @test all(interior(model.timestepper.Gⁿ.S) .≈ 0)
 
     # Test that T = 1 after 1 time step and that AB2 actually reduced to forward Euler.
     Δt = 1
@@ -123,7 +136,7 @@ end
     velocity field.
 """
 function incompressible_in_time(grid, Nt, timestepper)
-    model = NonhydrostaticModel(grid=grid, timestepper=timestepper,
+    model = NonhydrostaticModel(grid; timestepper=timestepper,
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     grid = model.grid
     u, v, w = model.velocities
@@ -131,7 +144,7 @@ function incompressible_in_time(grid, Nt, timestepper)
     div_U = CenterField(grid)
 
     # Just add a temperature perturbation so we get some velocity field.
-    CUDA.@allowscalar interior(model.tracers.T)[8:24, 8:24, 8:24] .+= 0.01
+    @allowscalar interior(model.tracers.T)[8:24, 8:24, 8:24] .+= 0.01
 
     update_state!(model)
     for n in 1:Nt
@@ -140,12 +153,12 @@ function incompressible_in_time(grid, Nt, timestepper)
 
     arch = architecture(grid)
     launch!(arch, grid, :xyz, divergence!, grid, u.data, v.data, w.data, div_U.data)
-    
-    min_div = CUDA.@allowscalar minimum(interior(div_U))
-    max_div = CUDA.@allowscalar maximum(interior(div_U))
-    max_abs_div = CUDA.@allowscalar maximum(abs, interior(div_U))
-    sum_div = CUDA.@allowscalar sum(interior(div_U))
-    sum_abs_div = CUDA.@allowscalar sum(abs, interior(div_U))
+
+    min_div = @allowscalar minimum(interior(div_U))
+    max_div = @allowscalar maximum(interior(div_U))
+    max_abs_div = @allowscalar maximum(abs, interior(div_U))
+    sum_div = @allowscalar sum(interior(div_U))
+    sum_abs_div = @allowscalar sum(abs, interior(div_U))
 
     @info "Velocity divergence after $Nt time steps [$(typeof(arch)), $(typeof(grid)), $timestepper]: " *
           "min=$min_div, max=$max_div, max_abs_div=$max_abs_div, sum=$sum_div, abs_sum=$sum_abs_div"
@@ -173,8 +186,8 @@ function tracer_conserved_in_channel(arch, FT, Nt)
 
     topology = (Periodic, Bounded, Bounded)
     grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
-    model = NonhydrostaticModel(grid = grid,
-                                closure = (HorizontalScalarDiffusivity(ν=νh, κ=κh), 
+    model = NonhydrostaticModel(grid;
+                                closure = (HorizontalScalarDiffusivity(ν=νh, κ=κh),
                                            VerticalScalarDiffusivity(ν=νz, κ=κz)),
                                 buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
@@ -185,14 +198,14 @@ function tracer_conserved_in_channel(arch, FT, Nt)
     T₀(x, y, z) = 10 + Ty*y + Tz*z + 0.0001*rand()
     set!(model, T=T₀)
 
-    Tavg0 = CUDA.@allowscalar mean(interior(model.tracers.T))
+    Tavg0 = @allowscalar mean(interior(model.tracers.T))
 
     update_state!(model)
     for n in 1:Nt
         time_step!(model, 600)
     end
 
-    Tavg = CUDA.@allowscalar mean(interior(model.tracers.T))
+    Tavg = @allowscalar mean(interior(model.tracers.T))
     @info "Tracer conservation after $Nt time steps [$(typeof(arch)), $FT]: " *
           "⟨T⟩-T₀=$(Tavg-Tavg0) °C"
 
@@ -223,7 +236,7 @@ function time_stepping_with_background_fields(arch)
                          S = background_S,
                          R = background_R)
 
-    model = NonhydrostaticModel(; grid, background_fields,
+    model = NonhydrostaticModel(grid; background_fields,
                                 buoyancy = SeawaterBuoyancy(),
                                 tracers=(:T, :S, :R))
 
@@ -309,23 +322,94 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 @testset "Time stepping" begin
     @info "Testing time stepping..."
 
+    @testset "Clock equality and isapprox" begin
+        clock1 = Clock(time=1.0, last_Δt=1.0, last_stage_Δt=1.0, iteration=1, stage=1)
+        clock2 = Clock(time=1.0, last_Δt=1.0, last_stage_Δt=1.0, iteration=1, stage=1)
+        @test clock1 == clock2
+        @test clock1 ≈ clock2
+
+        # Different iteration => not equal and not approx
+        clock3 = Clock(time=1.0, last_Δt=1.0, last_stage_Δt=1.0, iteration=2, stage=1)
+        @test clock1 != clock3
+        @test !(clock1 ≈ clock3)
+
+        # Different stage => not equal and not approx
+        clock4 = Clock(time=1.0, last_Δt=1.0, last_stage_Δt=1.0, iteration=1, stage=2)
+        @test clock1 != clock4
+        @test !(clock1 ≈ clock4)
+
+        # Slightly perturbed time => not equal but approx
+        clock5 = Clock(time=1.0 + 1e-15, last_Δt=1.0, last_stage_Δt=1.0, iteration=1, stage=1)
+        @test clock1 != clock5
+        @test clock1 ≈ clock5
+
+        # Slightly perturbed last_Δt => not equal but approx
+        clock6 = Clock(time=1.0, last_Δt=1.0 + 1e-15, last_stage_Δt=1.0, iteration=1, stage=1)
+        @test clock1 != clock6
+        @test clock1 ≈ clock6
+
+        # Significantly different time => not approx
+        clock7 = Clock(time=2.0, last_Δt=1.0, last_stage_Δt=1.0, iteration=1, stage=1)
+        @test !(clock1 ≈ clock7)
+    end
+
+    @testset "Clock(grid) accumulates in Float64 and adapts to grid eltype" begin
+        for arch in archs, FT in float_types
+            grid = RectilinearGrid(arch, FT; size=(1, 1, 1), extent=(1, 1, 1))
+            clock = Clock(grid)
+
+            @test eltype(grid) == FT
+            @test clock isa Clock{Float64}
+            @test Oceananigans.TimeSteppers.kernel_time_type(clock) == FT
+
+            kernel_clock = Adapt.adapt(nothing, clock)
+            @test kernel_clock.time isa FT
+            @test propertynames(kernel_clock) == (:time, :last_Δt, :last_stage_Δt, :iteration, :stage)
+        end
+
+        explicit_clock = Clock(time=0.0f0)
+        @test explicit_clock isa Clock{Float32}
+        @test Oceananigans.TimeSteppers.kernel_time_type(explicit_clock) == Float32
+    end
+
     for arch in archs, FT in float_types
-        @testset "Time stepping with DateTimes [$(typeof(arch)), $FT]" begin
-            @info "  Testing time stepping with datetime clocks [$(typeof(arch)), $FT]"
+        A = typeof(arch)
+        Oceananigans.defaults.FloatType = FT
+        @testset "Time stepping with DateTimes [$A, $FT]" begin
+            @info "  Testing NonhydrostaticModel time stepping with datetime clocks [$A, $FT]"
 
             grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+            @test eltype(grid) == FT
+
             clock = Clock(time=DateTime(2020))
-            model = NonhydrostaticModel(; grid, clock, timestepper=:QuasiAdamsBashforth2)
+            model = NonhydrostaticModel(grid; clock)
 
             time_step!(model, 7.883)
             @test model.clock.time == DateTime("2020-01-01T00:00:07.883")
 
-            model = NonhydrostaticModel(grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1)),
-                                        timestepper = :QuasiAdamsBashforth2,
-                                        clock = Clock(time=TimeDate(2020)))
-
+            clock = Clock(; time=TimeDate(2020))
+            model = NonhydrostaticModel(grid; clock)
             time_step!(model, 123e-9)  # 123 nanoseconds
             @test model.clock.time == TimeDate("2020-01-01T00:00:00.000000123")
+
+            # Test HydrostaticFreeSurfaceModel
+            for closure in (nothing, CATKEVerticalDiffusivity(FT), TKEDissipationVerticalDiffusivity(FT))
+                if closure isa TKEDissipationVerticalDiffusivity && FT == Float32
+                    # skip --- TKEDissipationVerticalDiffusivity may not work with Float32 yet
+                else
+                    C = nameof(typeof(closure))
+                    @info "  Testing HydrostaticFreeSurfaceModel time stepping with datetime clocks [$A, $FT, $C]"
+
+                    tracers = (:b, :c)
+                    clock = Clock(; time=DateTime(2020, 1, 1))
+                    grid = RectilinearGrid(arch; size=(2, 2, 2), extent=(1, 1, 1))
+                    @test eltype(grid) == FT
+
+                    model = HydrostaticFreeSurfaceModel(grid; clock, closure, tracers, buoyancy = BuoyancyTracer())
+                    time_step!(model, 1)
+                    @test model.clock.time == DateTime("2020-01-01T00:00:01")
+                end
+            end
         end
     end
 
@@ -347,6 +431,34 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         for arch in archs, FT in [Float64], Coriolis in Planes
             @info "  Testing that time stepping works with Coriolis [$(typeof(arch)), $FT, $Coriolis]..."
             @test time_stepping_works_with_coriolis(arch, FT, Coriolis)
+        end
+    end
+
+    @testset "SphericalCoriolis with NonhydrostaticFormulation" begin
+        for arch in archs, FT in [Float64]
+            H = 7
+            halo = (7, 7, 7)
+            precompute_metrics = true
+            lat_lon_sector_grid = LatitudeLongitudeGrid(arch, FT; size=(H, H, H), longitude=(0, 60), latitude=(15, 75), z=(-1, 0), precompute_metrics, halo)
+            lat_lon_strip_grid  = LatitudeLongitudeGrid(arch, FT; size=(H, H, H), longitude=(-180, 180), latitude=(15, 75), z=(-1, 0), precompute_metrics, halo)
+
+            for coriolis in (nothing,
+                             SphericalCoriolis(FT, scheme=EnergyConserving()),
+                             SphericalCoriolis(FT, scheme=EnstrophyConserving()))
+
+                @testset "Time-stepping NonhydrostaticModels [$arch, $(typeof(coriolis))]" begin
+                    @info "  Testing time-stepping NonhydrostaticModels [$arch, $(typeof(coriolis))]..."
+                    @test time_step_nonhydrostatic_model_works(lat_lon_sector_grid; coriolis)
+                    @test time_step_nonhydrostatic_model_works(lat_lon_strip_grid; coriolis)
+                end
+            end
+        end
+    end
+
+    @testset "NonhydrostaticModel with ImplicitFreeSurface" begin
+        for arch in archs, FT in float_types
+            @info "  Testing NonhydrostaticModel with ImplicitFreeSurface time stepping [$FT, $arch]..."
+            @test time_step_nonhydrostatic_model_with_implicit_free_surface_works(arch, FT)
         end
     end
 
@@ -387,11 +499,9 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
             for Closure in Closures
                 @info "  Testing that time stepping works [$(typeof(arch)), $FT, $Closure]..."
-                if Closure === TwoDimensionalLeith
-                    @test time_stepping_works_with_closure(arch, FT, Closure)
-                elseif Closure === CATKEVerticalDiffusivity
+                if Closure === CATKEVerticalDiffusivity || Closure === IsopycnalSkewSymmetricDiffusivity
                     # CATKE isn't supported with NonhydrostaticModel yet
-                    @test_skip time_stepping_works_with_closure(arch, FT, Closure)
+                    @test time_stepping_works_with_closure(arch, FT, Closure; Model=HydrostaticFreeSurfaceModel)
                 elseif Closure() isa DynamicSmagorinsky
                     @test_skip time_stepping_works_with_closure(arch, FT, Closure)
                 else
@@ -401,6 +511,17 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
             # AnisotropicMinimumDissipation can depend on buoyancy...
             @test time_stepping_works_with_closure(arch, FT, AnisotropicMinimumDissipation; buoyancy=nothing)
+        end
+    end
+
+    @testset "UniformStokesDrift" begin
+        for arch in archs
+            grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+            # Cover three cases:
+            stokes_drift = UniformStokesDrift(grid, ∂z_vˢ=nothing, ∂t_uˢ= (z, t) -> exp(z/20))
+            model = NonhydrostaticModel(grid; stokes_drift)
+            time_step!(model, 1)
+            @test true
         end
     end
 

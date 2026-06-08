@@ -1,6 +1,7 @@
 using Test
 using Oceananigans
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: ColumnEnsembleSize, SliceEnsembleSize
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: SliceEnsembleSize
+using Oceananigans.Grids: ColumnEnsembleSize
 using Oceananigans.TurbulenceClosures: ConvectiveAdjustmentVerticalDiffusivity
 const CAVD = ConvectiveAdjustmentVerticalDiffusivity
 
@@ -12,7 +13,7 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
     periodic_topology = (Periodic, Periodic, Bounded)
 
     single_column_grid = RectilinearGrid(; size=Nz, z=(-1, 0), topology = single_column_topology, halo=Hz)
-    periodic_grid = RectilinearGrid(; size=(1, 1, Nz), x = (0, 1), y = (0, 1), z=(-1, 0), topology = periodic_topology, halo=(1, 1, Hz))
+    periodic_grid = RectilinearGrid(; size=(2, 2, Nz), x = (0, 1), y = (0, 1), z=(-1, 0), topology = periodic_topology, halo=(2, 2, Hz))
     coriolis = FPlane(f=0.2)
     closure  = CAVD(background_κz=1.0)
 
@@ -21,8 +22,8 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
     model_kwargs = (; tracers=:c, buoyancy=nothing, closure, coriolis)
     simulation_kwargs = (; Δt, stop_iteration=100)
 
-    sic_model = HydrostaticFreeSurfaceModel(; grid = single_column_grid, model_kwargs...)
-    per_model = HydrostaticFreeSurfaceModel(; grid = periodic_grid,      model_kwargs...)
+    sic_model = HydrostaticFreeSurfaceModel(single_column_grid; model_kwargs...)
+    per_model = HydrostaticFreeSurfaceModel(periodic_grid; model_kwargs...)
 
     set!(sic_model, c = z         -> exp(-z^2), u = 1, v = 1)
     set!(per_model, c = (x, y, z) -> exp(-z^2), u = 1, v = 1)
@@ -31,9 +32,9 @@ const CAVD = ConvectiveAdjustmentVerticalDiffusivity
     per_simulation = Simulation(per_model; simulation_kwargs...)
     run!(sic_simulation)
     run!(per_simulation)
-    
+
     @info "Testing Single column grid results..."
-    
+
     @test all(sic_model.velocities.u.data[1, 1, :] .≈ per_model.velocities.u.data[1, 1, :])
     @test all(sic_model.velocities.v.data[1, 1, :] .≈ per_model.velocities.v.data[1, 1, :])
     @test all(sic_model.tracers.c.data[1, 1, :]    .≈ per_model.tracers.c.data[1, 1, :])
@@ -53,30 +54,30 @@ end
     ensemble_size = size(closures)
 
     @test size(closures) == (3, 2)
-    @test closures[2, 1].background_κz == 1.2 
+    @test closures[2, 1].background_κz == 1.2
 
-    Δt = 0.01 * grid.Δzᵃᵃᶜ^2
+    Δt = 0.01 * grid.z.Δᵃᵃᶜ^2
 
     model_kwargs = (; tracers=:c, buoyancy=nothing, coriolis=nothing)
     simulation_kwargs = (; Δt, stop_iteration=100)
 
-    models = [HydrostaticFreeSurfaceModel(; grid, closure=closures[i, j], model_kwargs...)
+    models = [HydrostaticFreeSurfaceModel(grid; closure=closures[i, j], model_kwargs...)
               for i=1:ensemble_size[1], j=1:ensemble_size[2]]
 
-    set_ic!(model) = set!(model, c = z -> exp(-z^2)) 
+    set_ic!(model) = set!(model, c = z -> exp(-z^2))
 
     for model in models
         set_ic!(model)
         simulation = Simulation(model; simulation_kwargs...)
         run!(simulation)
-    end 
+    end
 
     ensemble_grid = RectilinearGrid(; size=ColumnEnsembleSize(; Nz, ensemble=ensemble_size, Hz),
                                       z=(-10, 10), topology, halo=Hz)
 
     @test size(ensemble_grid) == (ensemble_size[1], ensemble_size[2], Nz)
 
-    ensemble_model = HydrostaticFreeSurfaceModel(; grid=ensemble_grid, closure=closures, model_kwargs...)
+    ensemble_model = HydrostaticFreeSurfaceModel(ensemble_grid; closure=closures, model_kwargs...)
     set_ic!(ensemble_model)
 
     @test size(parent(ensemble_model.tracers.c)) == (ensemble_size[1], ensemble_size[2], Nz+2)
@@ -112,7 +113,7 @@ end
     model_kwargs = (; tracers=nothing, buoyancy=nothing, closure=nothing)
     simulation_kwargs = (; Δt, stop_iteration=100)
 
-    models = [HydrostaticFreeSurfaceModel(; grid, coriolis=coriolises[i, j], model_kwargs...)
+    models = [HydrostaticFreeSurfaceModel(grid; coriolis=coriolises[i, j], model_kwargs...)
               for i=1:ensemble_size[1], j=1:ensemble_size[2]]
 
     set_ic!(model) = set!(model, u=1, v=1)
@@ -121,11 +122,11 @@ end
         set_ic!(model)
         simulation = Simulation(model; simulation_kwargs...)
         run!(simulation)
-    end 
+    end
 
     ensemble_grid = RectilinearGrid(size=ColumnEnsembleSize(Nz=Nz, ensemble=ensemble_size, Hz=Hz);
                                     z=(-1, 0), topology, halo=Hz)
-    ensemble_model = HydrostaticFreeSurfaceModel(; grid=ensemble_grid, coriolis=coriolises, model_kwargs...)
+    ensemble_model = HydrostaticFreeSurfaceModel(ensemble_grid; coriolis=coriolises, model_kwargs...)
     set_ic!(ensemble_model)
     ensemble_simulation = Simulation(ensemble_model; simulation_kwargs...)
     run!(ensemble_simulation)
@@ -165,7 +166,7 @@ end
     model_kwargs = (; tracers=nothing, buoyancy=nothing, closure=nothing)
     simulation_kwargs = (; Δt, stop_iteration=100)
 
-    models = [HydrostaticFreeSurfaceModel(; grid, coriolis=coriolises[i], model_kwargs...) for i=1:ensemble_size[1]]
+    models = [HydrostaticFreeSurfaceModel(grid; coriolis=coriolises[i], model_kwargs...) for i=1:ensemble_size[1]]
 
     set_ic!(model) = set!(model, u=sqrt(2), v=sqrt(2))
 
@@ -173,11 +174,11 @@ end
         set_ic!(model)
         simulation = Simulation(model; simulation_kwargs...)
         run!(simulation)
-    end 
+    end
 
     ensemble_grid = RectilinearGrid(; size=SliceEnsembleSize(size=(Ny, Nz), ensemble=ensemble_size[1]),
                                       y = (-10, 10), z=(-1, 0), topology, halo=(Hy, Hz))
-    ensemble_model = HydrostaticFreeSurfaceModel(; grid=ensemble_grid, coriolis=coriolises, model_kwargs...)
+    ensemble_model = HydrostaticFreeSurfaceModel(ensemble_grid; coriolis=coriolises, model_kwargs...)
     set_ic!(ensemble_model)
     ensemble_simulation = Simulation(ensemble_model; simulation_kwargs...)
     run!(ensemble_simulation)

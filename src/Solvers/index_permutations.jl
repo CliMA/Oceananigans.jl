@@ -83,8 +83,8 @@ unpermute_kernel! = Dict(
     3 => unpermute_z_indices!
 )
 
-permute_indices!(dst, src, arch, grid, dim) = 
+permute_indices!(dst, src, arch, grid, dim) =
     launch!(arch, grid, :xyz, permute_kernel![dim], dst, src, grid)
-    
-unpermute_indices!(dst, src, arch, grid, dim) = 
+
+unpermute_indices!(dst, src, arch, grid, dim) =
     launch!(arch, grid, :xyz, unpermute_kernel![dim], dst, src, grid)

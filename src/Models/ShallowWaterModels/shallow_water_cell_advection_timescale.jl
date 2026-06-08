@@ -1,4 +1,4 @@
-"Returns the time-scale for advection on a regular grid across a single grid cell 
+"Returns the time-scale for advection on a regular grid across a single grid cell
  for ShallowWaterModel."
 
 import Oceananigans.Advection: cell_advection_timescale

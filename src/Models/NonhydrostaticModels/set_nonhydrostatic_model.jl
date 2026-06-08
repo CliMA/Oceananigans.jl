@@ -1,5 +1,6 @@
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.TimeSteppers: update_state!, calculate_pressure_correction!, pressure_correct_velocities!
+using Oceananigans.TimeSteppers: update_state!
+using Oceananigans.TurbulenceClosures: initialize_closure_fields!
 
 import Oceananigans.Fields: set!
 
@@ -14,8 +15,11 @@ a function with arguments `(x, y, z)`, or any data type for which a
 
 Example
 =======
-```julia
-model = NonhydrostaticModel(grid=RectilinearGrid(size=(32, 32, 32), length=(1, 1, 1))
+
+```@example
+using Oceananigans
+grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
+model = NonhydrostaticModel(grid, tracers=:T)
 
 # Set u to a parabolic function of z, v to random numbers damped
 # at top and bottom, and T to some silly array of half zeros,
@@ -28,14 +32,22 @@ T₀ = rand(size(model.grid)...)
 T₀[T₀ .< 0.5] .= 0
 
 set!(model, u=u₀, v=v₀, T=T₀)
+
+model.tracers.T
 ```
 """
 function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs...)
+    velocity_names = propertynames(model.velocities)
+    velocities_are_set = false
+
     for (fldname, value) in kwargs
-        if fldname ∈ propertynames(model.velocities)
+        if fldname ∈ velocity_names
             ϕ = getproperty(model.velocities, fldname)
+            velocities_are_set = true
         elseif fldname ∈ propertynames(model.tracers)
             ϕ = getproperty(model.tracers, fldname)
+        elseif !isnothing(model.free_surface) && fldname ∈ propertynames(model.free_surface)
+            ϕ = getproperty(model.free_surface, fldname)
         else
             throw(ArgumentError("name $fldname not found in model.velocities or model.tracers."))
         end
@@ -47,13 +59,15 @@ function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs
     # Apply a mask
     foreach(mask_immersed_field!, model.tracers)
     foreach(mask_immersed_field!, model.velocities)
-    update_state!(model; compute_tendencies = false)
+    velocities_are_set && initialize_closure_fields!(model.closure_fields, model.closure, model)
+    update_state!(model)
 
     if enforce_incompressibility
         FT = eltype(model.grid)
-        calculate_pressure_correction!(model, one(FT))
-        pressure_correct_velocities!(model, one(FT))
-        update_state!(model; compute_tendencies = false)
+        compute_pressure_correction!(model, one(FT))
+        make_pressure_correction!(model, one(FT))
+        velocities_are_set && initialize_closure_fields!(model.closure_fields, model.closure, model)
+        update_state!(model)
     end
 
     return nothing

@@ -20,11 +20,7 @@ function setup_simulation(; Nx, Δt, stop_iteration, U=1, architecture=CPU(), di
     grid = RectilinearGrid(architecture, size=(Nx, Nx, 1), x=(0, 2π), y=(0, 2π), z=(0, 1),
                                 topology=(Periodic, Periodic, Bounded))
 
-    model = NonhydrostaticModel(grid = grid,
-                            coriolis = nothing,
-                            buoyancy = nothing,
-                             tracers = nothing,
-                             closure = ScalarDiffusivity(ν=1))
+    model = NonhydrostaticModel(grid; closure = ScalarDiffusivity(ν=1))
 
     set!(model, u = (x, y, z) -> u(x, y, 0, U),
                 v = (x, y, z) -> v(x, y, 0, U))
@@ -39,10 +35,10 @@ function setup_simulation(; Nx, Δt, stop_iteration, U=1, architecture=CPU(), di
 
     simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, progress=print_progress, iteration_interval=125)
 
-    simulation.output_writers[:fields] = JLD2OutputWriter(model, model.velocities;
-                                                          dir = dir, overwrite_existing = true, field_slicer = nothing,
-                                                          filename = @sprintf("taylor_green_Nx%d_Δt%.1e", Nx, Δt),
-                                                          schedule = TimeInterval(stop_iteration * Δt / 10))
+    simulation.output_writers[:fields] = JLD2Writer(model, model.velocities;
+                                                    dir = dir, overwrite_existing = true, field_slicer = nothing,
+                                                    filename = @sprintf("taylor_green_Nx%d_Δt%.1e", Nx, Δt),
+                                                    schedule = TimeInterval(stop_iteration * Δt / 10))
 
     return simulation
 end

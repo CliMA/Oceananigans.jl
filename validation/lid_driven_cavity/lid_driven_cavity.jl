@@ -1,6 +1,7 @@
 using Printf
 using Logging
 using Oceananigans
+using NCDatasets
 
 Logging.global_logger(OceananigansLogger())
 
@@ -15,14 +16,7 @@ function simulate_lid_driven_cavity(; Re, N, end_time)
     w_bcs = FieldBoundaryConditions(north = ValueBoundaryCondition(0),
                                     south = ValueBoundaryCondition(0))
 
-    model = NonhydrostaticModel(
-                       grid = grid,
-                   buoyancy = nothing,
-                    tracers = nothing,
-                   coriolis = nothing,
-        boundary_conditions = (v=v_bcs, w=w_bcs),
-                    closure = ScalarDiffusivity(ν=1/Re)
-    )
+    model = NonhydrostaticModel(grid; boundary_conditions = (v=v_bcs, w=w_bcs), closure = ScalarDiffusivity(ν=1/Re))
 
     u, v, w = model.velocities
     ζ = Field(∂y(w) - ∂z(v))
@@ -31,8 +25,8 @@ function simulate_lid_driven_cavity(; Re, N, end_time)
     global_attributes = Dict("Re" => Re)
     output_attributes = Dict("ζ" => Dict("longname" => "vorticity", "units" => "1/s"))
     field_output_writer =
-        NetCDFOutputWriter(model, fields, filepath="lid_driven_cavity_Re$Re.nc", schedule=TimeInterval(0.1),
-                           global_attributes=global_attributes, output_attributes=output_attributes)
+        NetCDFWriter(model, fields, filepath="lid_driven_cavity_Re$Re.nc", schedule=TimeInterval(0.1),
+                     global_attributes=global_attributes, output_attributes=output_attributes)
 
     max_Δt = 0.25 * model.grid.Δyᵃᶜᵃ^2 * Re / 2  # Make sure not to violate diffusive CFL.
     wizard = TimeStepWizard(cfl=0.1, Δt=1e-6, max_change=1.1, max_Δt=max_Δt)
@@ -75,4 +69,3 @@ simulate_lid_driven_cavity(Re=3200,  N=128, end_time=50)
 simulate_lid_driven_cavity(Re=5000,  N=256, end_time=50)
 simulate_lid_driven_cavity(Re=7500,  N=256, end_time=75)
 simulate_lid_driven_cavity(Re=10000, N=256, end_time=100)
-

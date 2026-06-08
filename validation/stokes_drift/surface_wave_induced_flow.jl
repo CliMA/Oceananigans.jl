@@ -54,10 +54,11 @@ grid = RectilinearGrid(size = (256, 64),
                        z = (-512, 0),
                        topology = (Periodic, Flat, Bounded))
 
-model = NonhydrostaticModel(; grid, stokes_drift,
-                            tracers = :b,
-                            buoyancy = BuoyancyTracer(),
-                            timestepper = :RungeKutta3)
+model = NonhydrostaticModel(grid;
+                             stokes_drift,
+                             tracers = :b,
+                             buoyancy = BuoyancyTracer(),
+                             timestepper = :RungeKutta3)
 
 # Set Lagrangian-mean flow equal to uˢ,
 uᵢ(x, z) = uˢ(x, z, 0)
@@ -76,9 +77,9 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 
 filename = "surface_wave_induced_flow.jld2"
 outputs = model.velocities
-simulation.output_writers[:jld2] = JLD2OutputWriter(model, outputs; filename,
-                                                    schedule = IterationInterval(10),
-                                                    overwrite_existing = true)
+simulation.output_writers[:jld2] = JLD2Writer(model, outputs; filename,
+                                              schedule = IterationInterval(10),
+                                              overwrite_existing = true)
 
 run!(simulation)
 

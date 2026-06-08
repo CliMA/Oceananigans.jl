@@ -5,24 +5,16 @@ export Δx, Δy, Δz, Ax, Ay, Az, volume
 export Average, Integral, CumulativeIntegral, KernelFunctionOperation
 export UnaryOperation, Derivative, BinaryOperation, MultiaryOperation, ConditionalOperation
 
-
-using CUDA
 using Base: @propagate_inbounds
 
-using Oceananigans.Architectures
-using Oceananigans.Grids
-using Oceananigans.Operators
-using Oceananigans.BoundaryConditions
-using Oceananigans.Fields
-using Oceananigans.Utils
-
-using Oceananigans: location, AbstractModel
+using Oceananigans: location
+using Oceananigans.Fields: AbstractField, instantiated_location
+using Oceananigans.Grids: Center, Face
 using Oceananigans.Operators: interpolation_operator
-using Oceananigans.Architectures: device
 
-import Adapt
+using Adapt: Adapt, adapt
 
-import Oceananigans.Architectures: architecture, on_architecture
+using Oceananigans.Architectures: Architectures, architecture, on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Fields: compute_at!, indices
 
@@ -34,10 +26,12 @@ abstract type AbstractOperation{LX, LY, LZ, G, T} <: AbstractField{LX, LY, LZ, G
 
 const AF = AbstractField # used in unary_operations.jl, binary_operations.jl, etc
 
+const Location = Union{Face, Center, Nothing}
+
 # We have no halos to fill
 @inline fill_halo_regions!(::AbstractOperation, args...; kwargs...) = nothing
 
-architecture(a::AbstractOperation) = architecture(a.grid)
+Architectures.architecture(a::AbstractOperation) = architecture(a.grid)
 
 # AbstractOperation macros add their associated functions to this list
 const operators = Set()
@@ -67,17 +61,25 @@ include("show_abstract_operations.jl")
 # Make some operators!
 
 # Some operators:
-import Base: sqrt, sin, cos, exp, tanh, abs, -, +, /, ^, *
-import Base: abs
+@unary Base.sqrt Base.sin Base.cos Base.exp Base.tanh Base.abs Base.log10 Base.log Base.tan Base.sinh Base.cosh
+@unary Base.:-
+@unary Base.:+
 
-@unary sqrt sin cos exp tanh abs
-@unary -
-@unary +
+@binary Base.:+
+@binary Base.:-
+@binary Base.:/
+@binary Base.:^
+@binary Base.:>
+@binary Base.:<
+@binary Base.:>=
+@binary Base.:<=
+@binary Base.atan
+@binary Base.atand
+@binary Base.mod
 
-@binary +
-@binary -
-@binary /
-@binary ^
+# Disambiguate Base.<(::Missing, ::Any) and Base.<(::Any, ::Missing)
+Base.:<(::AbstractField, ::Missing) = missing
+Base.:<(::Missing, ::AbstractField) = missing
 
 @multiary +
 

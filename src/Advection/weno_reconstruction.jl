@@ -2,164 +2,171 @@
 ##### Weighted Essentially Non-Oscillatory (WENO) advection scheme
 #####
 
-struct WENO{N, FT, XT, YT, ZT, PP, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT}
-    
-    "Coefficient for ENO reconstruction on x-faces" 
-    coeff_xᶠᵃᵃ::XT
-    "Coefficient for ENO reconstruction on x-centers"
-    coeff_xᶜᵃᵃ::XT
-    "Coefficient for ENO reconstruction on y-faces"
-    coeff_yᵃᶠᵃ::YT
-    "Coefficient for ENO reconstruction on y-centers"
-    coeff_yᵃᶜᵃ::YT
-    "Coefficient for ENO reconstruction on z-faces"
-    coeff_zᵃᵃᶠ::ZT
-    "Coefficient for ENO reconstruction on z-centers"
-    coeff_zᵃᵃᶜ::ZT
-
-    "Bounds for maximum-principle-satisfying WENO scheme"
+struct WENO{N, FT, WCT, TD, PP, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N, FT, TD}
     bounds :: PP
-
-    "Advection scheme used near boundaries"
     buffer_scheme :: CA
-    "Reconstruction scheme used for symmetric interpolation"
     advecting_velocity_scheme :: SI
+    time_discretization :: TD
+    function WENO{N, FT, WCT}(bounds::PP, buffer_scheme::CA,
+                              advecting_velocity_scheme :: SI,
+                              time_discretization :: TD) where {N, FT, WCT, PP, CA, SI, TD}
 
-    function WENO{N, FT}(coeff_xᶠᵃᵃ::XT, coeff_xᶜᵃᵃ::XT,
-                         coeff_yᵃᶠᵃ::YT, coeff_yᵃᶜᵃ::YT, 
-                         coeff_zᵃᵃᶠ::ZT, coeff_zᵃᵃᶜ::ZT,
-                         bounds::PP, buffer_scheme::CA,
-                         advecting_velocity_scheme :: SI) where {N, FT, XT, YT, ZT, PP, CA, SI}
-
-            return new{N, FT, XT, YT, ZT, PP, CA, SI}(coeff_xᶠᵃᵃ, coeff_xᶜᵃᵃ, 
-                                                      coeff_yᵃᶠᵃ, coeff_yᵃᶜᵃ, 
-                                                      coeff_zᵃᵃᶠ, coeff_zᵃᵃᶜ,
-                                                      bounds, buffer_scheme, advecting_velocity_scheme)
+        return new{N, FT, WCT, TD, PP, CA, SI}(bounds, buffer_scheme, advecting_velocity_scheme, time_discretization)
     end
 end
 
 """
-    WENO([FT=Float64;] 
+    WENO([FT=Float64;]
          order = 5,
-         grid = nothing, 
-         bounds = nothing)
-               
-Construct a weighted essentially non-oscillatory advection scheme of order `order`.
+         bounds = nothing,
+         minimum_buffer_upwind_order = 3)
+
+Construct a weighted essentially non-oscillatory advection scheme of order `order` with precision `FT`.
+
+Arguments
+=========
+
+- `FT`: The floating point type used in the scheme. Default: `Oceananigans.defaults.FloatType`
 
 Keyword arguments
 =================
-
-- `order`: The order of the WENO advection scheme. Default: 5
-- `grid`: (defaults to `nothing`)
+- `weight_computation`: The type of approximate division to used when computing WENO weights.
+                        Default: `Nothing` (deferred; a architecture-dependent default is assigned in
+                        `materialize_advection`)
+- `order`: The order of the WENO advection scheme. Default: 5.
+- `bounds` (experimental): Whether to use bounds-preserving WENO, which produces a reconstruction
+                           that attempts to restrict a quantity to lie between a `bounds` tuple.
+                           Default: `nothing`, which does not use a boundary-preserving scheme.
+- `minimum_buffer_upwind_order`: The minimum upwind order for buffer schemes. When the buffer
+                                 scheme order reaches this value, subsequent buffers use
+                                 `Centered(order=2)` instead of continuing to decrease the
+                                 upwind order. Default: 3.
 
 Examples
 ========
-```jldoctest
+
+To build the default 5th-order scheme:
+
+```jldoctest weno
 julia> using Oceananigans
 
 julia> WENO()
-WENO(order=5)
- Boundary scheme:
-    └── WENO(order=3)
- Symmetric scheme:
-    └── Centered(order=4)
- Directions:
-    ├── X regular
-    ├── Y regular
-    └── Z regular
+WENO{3, Float64, Nothing}(order=5)
+├── buffer_scheme: WENO{2, Float64, Nothing}(order=3)
+│   └── buffer_scheme: Centered(order=2)
+└── advecting_velocity_scheme: Centered(order=4)
 ```
 
-```jldoctest
-julia> using Oceananigans
+To build a 9th-order scheme (often a good choice for a stable
+yet minimally-dissipative advection scheme):
 
-julia> Nx, Nz = 16, 10;
+```jldoctest weno
+julia> WENO(order=9)
+WENO{5, Float64, Nothing}(order=9)
+├── buffer_scheme: WENO{4, Float64, Nothing}(order=7)
+│   └── buffer_scheme: WENO{3, Float64, Nothing}(order=5)
+│       └── buffer_scheme: WENO{2, Float64, Nothing}(order=3)
+│           └── buffer_scheme: Centered(order=2)
+└── advecting_velocity_scheme: Centered(order=8)
+```
 
-julia> Lx, Lz = 1e4, 1e3;
+To build a 9th-order scheme with `minimum_buffer_upwind_order=5`,
+which uses `Centered(order=2)` as the innermost buffer scheme:
 
-julia> chebychev_spaced_z_faces(k) = - Lz/2 - Lz/2 * cos(π * (k - 1) / Nz);
+```jldoctest weno
+julia> WENO(order=9, minimum_buffer_upwind_order=5)
+WENO{5, Float64, Nothing}(order=9)
+├── buffer_scheme: WENO{4, Float64, Nothing}(order=7)
+│   └── buffer_scheme: WENO{3, Float64, Nothing}(order=5)
+│       └── buffer_scheme: Centered(order=2)
+└── advecting_velocity_scheme: Centered(order=8)
+```
 
-julia> grid = RectilinearGrid(size = (Nx, Nz), halo = (4, 4), topology=(Periodic, Flat, Bounded),
-                              x = (0, Lx), z = chebychev_spaced_z_faces);
+```jldoctest weno
+julia> WENO(order=9, bounds=(0, 1))
+WENO{5, Float64, Nothing}(order=9, bounds=(0.0, 1.0))
+├── buffer_scheme: WENO{4, Float64, Nothing}(order=7, bounds=(0.0, 1.0))
+│   └── buffer_scheme: WENO{3, Float64, Nothing}(order=5, bounds=(0.0, 1.0))
+│       └── buffer_scheme: WENO{2, Float64, Nothing}(order=3, bounds=(0.0, 1.0))
+│           └── buffer_scheme: Centered(order=2)
+└── advecting_velocity_scheme: Centered(order=8)
+```
 
-julia> WENO(grid; order=7)
-WENO(order=7)
- Boundary scheme:
-    └── WENO(order=5)
- Symmetric scheme:
-    └── Centered(order=6)
- Directions:
-    ├── X regular
-    ├── Y regular
-    └── Z stretched
+To build a WENO scheme that uses approximate division on a GPU to execute faster:
+```jldoctest weno
+julia> WENO(;weight_computation=Oceananigans.Utils.BackendOptimizedDivision)
+WENO{3, Float64, Oceananigans.Utils.BackendOptimizedDivision}(order=5)
+├── buffer_scheme: WENO{2, Float64, Oceananigans.Utils.BackendOptimizedDivision}(order=3)
+│   └── buffer_scheme: Centered(order=2)
+└── advecting_velocity_scheme: Centered(order=4)
 ```
 """
-function WENO(FT::DataType=Float64; 
+function WENO(FT::DataType=Oceananigans.defaults.FloatType;
+              weight_computation::DataType=Nothing,
               order = 5,
-              grid = nothing, 
-              bounds = nothing)
-    
-    if !(grid isa Nothing) 
-        FT = eltype(grid)
-    end
+              buffer_scheme = DecreasingOrderAdvectionScheme(),
+              time_discretization = ExplicitTimeDiscretization(),
+              bounds = nothing,
+              minimum_buffer_upwind_order = 3)
 
     mod(order, 2) == 0 && throw(ArgumentError("WENO reconstruction scheme is defined only for odd orders"))
 
     if !isnothing(bounds)
-        @warn "Bounds preserving WENO is experimental."
+        bounds isa NTuple{2} || throw(ArgumentError("bounds must be nothing or a tuple of two values"))
+        bounds = (convert(FT, bounds[1]), convert(FT, bounds[2]))
     end
 
     if order < 3
         # WENO(order=1) is equivalent to UpwindBiased(order=1)
         return UpwindBiased(FT; order=1)
     else
-        N = Int((order + 1) ÷ 2)
-        weno_coefficients = compute_reconstruction_coefficients(grid, FT, :WENO; order = N)
-        advecting_velocity_scheme = Centered(FT; grid, order = order - 1)
-        buffer_scheme = WENO(FT; grid, order=order-2, bounds) 
-    end
+        advecting_velocity_scheme = Centered(FT; order=order-1)
 
-    return WENO{N, FT}(weno_coefficients..., bounds, buffer_scheme, advecting_velocity_scheme)
+        if buffer_scheme isa DecreasingOrderAdvectionScheme
+            if order ≤ minimum_buffer_upwind_order
+                # At minimum order, switch to Centered scheme
+                buffer_scheme = Centered(FT; order=2)
+            else
+                buffer_scheme = WENO(FT; order=order-2, bounds, minimum_buffer_upwind_order, weight_computation)
+            end
+        end
+
+        N = Int((order + 1) ÷ 2)
+        return WENO{N, FT, weight_computation}(bounds, buffer_scheme, advecting_velocity_scheme, time_discretization)
+    end
 end
 
-WENO(grid, FT::DataType=Float64; kwargs...) = WENO(FT; grid, kwargs...)
+weno_order(::WENO{N}) where N = 2N-1
+Base.eltype(::WENO{N, FT}) where {N, FT} = FT
+Base.summary(a::WENO{N, FT, WCT, TD, Nothing}) where {N, FT, WCT, TD} = string("WENO{$N, $FT, $WCT}(order=", 2N-1, ")")
+Base.summary(a::WENO{N, FT, WCT, TD, PP}) where {N, FT, WCT, TD, PP} = string("WENO{$N, $FT, $WCT}(order=", 2N-1, ", bounds=", string(a.bounds), ")")
 
-# Flavours of WENO
-const PositiveWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple}
+function Base.show(io::IO, a::WENO)
+    print(io, summary(a), '\n')
 
-Base.summary(a::WENO{N}) where N = string("WENO(order=", N*2-1, ")")
+    # Print buffer scheme tree recursively
+    if !isnothing(a.buffer_scheme)
+        print_buffer_scheme_tree(io, a.buffer_scheme, "", false)
+        println(io)
+    else
+        print(io, "├── buffer_scheme: ", summary(a.buffer_scheme), '\n')
+    end
 
-Base.show(io::IO, a::WENO{N, FT, RX, RY, RZ, PP}) where {N, FT, RX, RY, RZ, PP} =
-    print(io, summary(a), " \n",
-              a.bounds isa Nothing ? "" : " Bounds : \n    └── $(a.bounds) \n",
-              " Boundary scheme: ", "\n",
-              "    └── ", summary(a.buffer_scheme) , "\n",
-              " Symmetric scheme: ", "\n",
-              "    └── ", summary(a.advecting_velocity_scheme) , "\n",
-              " Directions:", "\n",
-              "    ├── X $(RX == Nothing ? "regular" : "stretched") \n",
-              "    ├── Y $(RY == Nothing ? "regular" : "stretched") \n",
-              "    └── Z $(RZ == Nothing ? "regular" : "stretched")" )
+    print(io, "└── advecting_velocity_scheme: ", summary(a.advecting_velocity_scheme))
+end
 
-Adapt.adapt_structure(to, scheme::WENO{N, FT, XT, YT, ZT, PP}) where {N, FT, XT, YT, ZT, PP} =
-     WENO{N, FT}(Adapt.adapt(to, scheme.coeff_xᶠᵃᵃ), Adapt.adapt(to, scheme.coeff_xᶜᵃᵃ),
-                 Adapt.adapt(to, scheme.coeff_yᵃᶠᵃ), Adapt.adapt(to, scheme.coeff_yᵃᶜᵃ),
-                 Adapt.adapt(to, scheme.coeff_zᵃᵃᶠ), Adapt.adapt(to, scheme.coeff_zᵃᵃᶜ),
-                 Adapt.adapt(to, scheme.bounds),
-                 Adapt.adapt(to, scheme.buffer_scheme),
-                 Adapt.adapt(to, scheme.advecting_velocity_scheme))
+Adapt.adapt_structure(to, scheme::WENO{N, FT, WCT}) where {N, FT, WCT} =
+     WENO{N, FT, WCT}(Adapt.adapt(to, scheme.bounds),
+                      Adapt.adapt(to, scheme.buffer_scheme),
+                      Adapt.adapt(to, scheme.advecting_velocity_scheme),
+                      Adapt.adapt(to, scheme.time_discretization))
 
-on_architecture(to, scheme::WENO{N, FT, XT, YT, ZT, PP}) where {N, FT, XT, YT, ZT, PP} =
-    WENO{N, FT}(on_architecture(to, scheme.coeff_xᶠᵃᵃ), on_architecture(to, scheme.coeff_xᶜᵃᵃ),
-                on_architecture(to, scheme.coeff_yᵃᶠᵃ), on_architecture(to, scheme.coeff_yᵃᶜᵃ),
-                on_architecture(to, scheme.coeff_zᵃᵃᶠ), on_architecture(to, scheme.coeff_zᵃᵃᶜ),
-                on_architecture(to, scheme.bounds),
-                on_architecture(to, scheme.buffer_scheme),
-                on_architecture(to, scheme.advecting_velocity_scheme))
+Architectures.on_architecture(to, scheme::WENO{N, FT, WCT}) where {N, FT, WCT} =
+    WENO{N, FT, WCT}(on_architecture(to, scheme.bounds),
+                     on_architecture(to, scheme.buffer_scheme),
+                     on_architecture(to, scheme.advecting_velocity_scheme),
+                     on_architecture(to, scheme.time_discretization))
 
-# Retrieve precomputed coefficients (+2 for julia's 1 based indices)
-@inline retrieve_coeff(scheme::WENO, r, ::Val{1}, i, ::Type{Face})   = @inbounds scheme.coeff_xᶠᵃᵃ[r+2][i] 
-@inline retrieve_coeff(scheme::WENO, r, ::Val{1}, i, ::Type{Center}) = @inbounds scheme.coeff_xᶜᵃᵃ[r+2][i] 
-@inline retrieve_coeff(scheme::WENO, r, ::Val{2}, i, ::Type{Face})   = @inbounds scheme.coeff_yᵃᶠᵃ[r+2][i] 
-@inline retrieve_coeff(scheme::WENO, r, ::Val{2}, i, ::Type{Center}) = @inbounds scheme.coeff_yᵃᶜᵃ[r+2][i] 
-@inline retrieve_coeff(scheme::WENO, r, ::Val{3}, i, ::Type{Face})   = @inbounds scheme.coeff_zᵃᵃᶠ[r+2][i] 
-@inline retrieve_coeff(scheme::WENO, r, ::Val{3}, i, ::Type{Center}) = @inbounds scheme.coeff_zᵃᵃᶜ[r+2][i] 
+# Select the default WENO weight computation
+# Specific backends may override
+default_weno_weight_computation(arch) = Oceananigans.Utils.BackendOptimizedDivision

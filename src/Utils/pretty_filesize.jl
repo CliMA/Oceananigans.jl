@@ -1,4 +1,4 @@
-using Printf
+using Printf: @sprintf
 
 """
     pretty_filesize(s, suffix="B")

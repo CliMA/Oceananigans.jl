@@ -20,7 +20,7 @@ slip_bcs = FieldBoundaryConditions(grid, (Center, Center, Face),
 w_slip = ZFaceField(grid, boundary_conditions=slip_bcs)
 sinking = AdvectiveForcing(WENO(), w=w_slip)
 
-model = NonhydrostaticModel(; grid,
+model = NonhydrostaticModel(grid;
                             tracers = (:b, :P),
                             buoyancy = BuoyancyTracer(),
                             closure = ScalarDiffusivity(κ=(b=0.0, P=κ_particle)),
@@ -71,4 +71,3 @@ record(fig, "settling_diffusion.mp4", 1:100, framerate=24) do nn
     run!(simulation)
     update_plot!(simulation)
 end
-

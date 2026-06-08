@@ -24,7 +24,7 @@ fine_xyz_grid = RectilinearGrid(arch, size=(360, 120, 8); x, y, z, topology)
 c_x = CenterField(fine_x_grid)
 c_xy = CenterField(fine_xy_grid)
 c_xyz = CenterField(fine_xyz_grid)
-                        
+
 regrid!(c_x, c)
 regrid!(c_xy, c_x)
 regrid!(c_xyz, c_xy)
@@ -55,4 +55,3 @@ scatter!(ax5, Array(interior(c_xy, 180, 60, :)), z)
 scatter!(ax6, Array(interior(c_xyz, 180, 60, :)), z′)
 
 display(fig)
-

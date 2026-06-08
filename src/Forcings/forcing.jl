@@ -53,7 +53,7 @@ func(i, j, k, grid, clock, model_fields)
 where `i, j, k` is the grid point at which the forcing is applied, `grid` is `model.grid`,
 `clock.time` is the current simulation time and `clock.iteration` is the current model iteration,
 and `model_fields` is a `NamedTuple` with `u, v, w`, the fields in `model.tracers`,
-and the fields in `model.diffusivity_fields`, each of which is an `OffsetArray`s (or `NamedTuple`s
+and the fields in `model.closure_fields`, each of which is an `OffsetArray`s (or `NamedTuple`s
 of `OffsetArray`s depending on the turbulence closure) of field data.
 
 When `discrete_form=true` and `parameters` _is_ specified, `func` must be callable with the signature
@@ -85,7 +85,7 @@ Note that because forcing locations are regularized within the
 
 ```jldoctest forcing
 grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
-model = NonhydrostaticModel(grid=grid, forcing=(v=v_forcing,))
+model = NonhydrostaticModel(grid; forcing=(v=v_forcing,))
 
 model.forcing.v
 
@@ -114,7 +114,7 @@ ContinuousForcing{Nothing}
 
 ```jldoctest forcing
 # Parameterized, field-dependent forcing
-tracer_relaxation(x, y, z, t, c, p) = p.μ * exp((z + p.H) / p.λ) * (p.dCdz * z - c) 
+tracer_relaxation(x, y, z, t, c, p) = p.μ * exp((z + p.H) / p.λ) * (p.dCdz * z - c)
 
 c_forcing = Forcing(tracer_relaxation,
                     field_dependencies = :c,
@@ -142,8 +142,8 @@ DiscreteForcing{Nothing}
 
 ```jldoctest forcing
 # Discrete-form forcing function with parameters
-masked_damping(i, j, k, grid, clock, model_fields, parameters) = 
-    @inbounds - parameters.μ * exp(grid.zᵃᵃᶜ[k] / parameters.λ) * model_fields.u[i, j, k]
+masked_damping(i, j, k, grid, clock, model_fields, parameters) =
+    @inbounds - parameters.μ * exp(grid.z.cᵃᵃᶜ[k] / parameters.λ) * model_fields.u[i, j, k]
 
 masked_damping_forcing = Forcing(masked_damping, parameters=(μ=42, λ=π), discrete_form=true)
 
@@ -184,4 +184,3 @@ Return a `Forcing` by a `FieldTimeSeries`, which can be added to the tendency of
 Forcing is computed by calling `fts[i, j, k, Time(clock.time)]`, so the `FieldTimeSeries` must have the spatial dimensions of the `grid`.
 """
 Forcing(fts::FlavorOfFTS) = Forcing(field_time_series_forcing_func; discrete_form=true, parameters=fts)
-

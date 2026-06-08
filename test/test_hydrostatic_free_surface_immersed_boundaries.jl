@@ -25,10 +25,7 @@ using Oceananigans.TurbulenceClosures
             for closure in (ScalarDiffusivity(ν=1, κ=0.5),
                             ScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=1, κ=0.5))
 
-                model = HydrostaticFreeSurfaceModel(; grid, 
-                                                    tracers = :b,
-                                                    buoyancy = BuoyancyTracer(),
-                                                    closure = closure)
+                model = HydrostaticFreeSurfaceModel(grid; closure, tracers = :b, buoyancy = BuoyancyTracer())
 
                 u = model.velocities.u
                 b = model.tracers.b
@@ -37,7 +34,7 @@ using Oceananigans.TurbulenceClosures
                 set!(model, u = 1, b = (x, y, z) -> 4z)
 
                 # Inside the bump
-                @test b[4, 4, 2] == 0 
+                @test b[4, 4, 2] == 0
                 @test u[4, 4, 2] == 0
 
                 simulation = Simulation(model, Δt = 1e-3, stop_iteration=2)
@@ -52,7 +49,7 @@ using Oceananigans.TurbulenceClosures
 
         @testset "Surface boundary conditions with immersed boundaries [$arch_str]" begin
             @info "  Testing surface boundary conditions with ImmersedBoundaries in HydrostaticFreeSurfaceModel [$arch_str]..."
-        
+
             Nx = 60
             Ny = 60
 
@@ -95,14 +92,10 @@ using Oceananigans.TurbulenceClosures
             νh₀ = 5e3 * (60 / grid.Nx)^2
             constant_horizontal_diffusivity = HorizontalScalarDiffusivity(ν=νh₀)
 
-            model = HydrostaticFreeSurfaceModel(; grid,
+            model = HydrostaticFreeSurfaceModel(grid; free_surface, coriolis,
                                                 momentum_advection = VectorInvariant(),
-                                                free_surface = free_surface,
-                                                coriolis = coriolis,
                                                 boundary_conditions = (u=u_bcs, v=v_bcs),
-                                                closure = constant_horizontal_diffusivity,
-                                                tracers = nothing,
-                                                buoyancy = nothing)
+                                                closure = constant_horizontal_diffusivity)
 
             simulation = Simulation(model, Δt=3600, stop_iteration=1)
 
@@ -129,12 +122,8 @@ using Oceananigans.TurbulenceClosures
             bathymetry = on_architecture(arch, bathymetry)
 
             grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bathymetry))
-
-            model = HydrostaticFreeSurfaceModel(; grid,
-                                                free_surface = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient),
-                                                buoyancy = nothing,
-                                                tracers = nothing,
-                                                closure = nothing)
+            free_surface = ImplicitFreeSurface(solver_method = :PreconditionedConjugateGradient)
+            model = HydrostaticFreeSurfaceModel(grid; free_surface)
 
             x_ref = [3.0  3.0  3.0  3.0  3.0
                      3.0  2.0  2.0  2.0  2.0

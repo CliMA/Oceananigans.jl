@@ -16,7 +16,7 @@ using Oceananigans.Operators
 using Oceananigans.Operators: Δzᵃᵃᶜ
 using Oceananigans: prognostic_fields
 
-@inline function visualize(field, lev, dims) 
+@inline function visualize(field, lev, dims)
     (dims == 1) && (idx = (lev, :, :))
     (dims == 2) && (idx = (:, lev, :))
     (dims == 3) && (idx = (:, :, lev))
@@ -41,11 +41,11 @@ Ny = 600
 Nz = 48
 
 const Nyears  = 1
-const Nmonths = 12 
+const Nmonths = 12
 const thirty_days = 30days
 
 output_prefix = "near_global_lat_lon_$(Nx)_$(Ny)_$(Nz)_fine"
-pickup_file   = false 
+pickup_file   = false
 
 #####
 ##### Load forcing files and inital conditions from ECCO version 4
@@ -90,8 +90,8 @@ S★ = zeros(Nx, Ny, Nmonths)
 # Files contain 1 year (1992) of 12 monthly averages
 τˣ = file_tau_x["field"] ./ reference_density
 τʸ = file_tau_y["field"] ./ reference_density
-T★ = file_temp["field"] 
-S★ = file_salt["field"] 
+T★ = file_temp["field"]
+S★ = file_salt["field"]
 
 # Remember the convention!! On the surface a negative flux increases a positive decreases
 bathymetry = on_architecture(arch, bathymetry)
@@ -137,9 +137,9 @@ horizontal_diffusivity = HorizontalScalarDiffusivity(ν=νh, κ=κh)
 vertical_diffusivity   = VerticalScalarDiffusivity(VerticallyImplicitTimeDiscretization(), ν=νz, κ=κz)
 convective_adjustment  = ConvectiveAdjustmentVerticalDiffusivity(VerticallyImplicitTimeDiscretization(), convective_κz = 1.0)
 biharmonic_viscosity   = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true)
-                                                    
+
 #####
-##### Boundary conditions / time-dependent fluxes 
+##### Boundary conditions / time-dependent fluxes
 #####
 
 @inline current_time_index(time, tot_months)     = mod(unsafe_trunc(Int32, time / thirty_days), tot_months) + 1
@@ -172,7 +172,7 @@ v_wind_stress_bc = FluxBoundaryCondition(surface_wind_stress, discrete_form = tr
 μ = 0.001 # ms⁻¹
 
 @inline is_immersed_drag_u(i, j, k, grid) = Int(peripheral_node(i, j, k-1, grid, Face(), Center(), Center()) & !inactive_node(i, j, k, grid, Face(), Center(), Center()))
-@inline is_immersed_drag_v(i, j, k, grid) = Int(peripheral_node(i, j, k-1, grid, Center(), Face(), Center()) & !inactive_node(i, j, k, grid, Center(), Face(), Center()))                                
+@inline is_immersed_drag_v(i, j, k, grid) = Int(peripheral_node(i, j, k-1, grid, Center(), Face(), Center()) & !inactive_node(i, j, k, grid, Center(), Face(), Center()))
 
 # Keep a constant linear drag parameter independent on vertical level
 @inline u_immersed_bottom_drag(i, j, k, grid, clock, fields, μ) = @inbounds - μ * is_immersed_drag_u(i, j, k, grid) * fields.u[i, j, k] / Δzᵃᵃᶜ(i, j, k, grid)
@@ -197,7 +197,7 @@ v_bottom_drag_bc = FluxBoundaryCondition(v_bottom_drag, discrete_form = true, pa
     end
 
     T★ = cyclic_interpolate(T★₁, T★₂, time)
-                                
+
     return p.λ * (T_surface - T★)
 end
 
@@ -214,7 +214,7 @@ end
     end
 
     S★ = cyclic_interpolate(S★₁, S★₂, time)
-                                
+
     return p.λ * (S_surface - S★)
 end
 
@@ -236,7 +236,7 @@ free_surface = ImplicitFreeSurface(solver_method=:HeptadiagonalIterativeSolver)
 
 buoyancy = SeawaterBuoyancy(equation_of_state=LinearEquationOfState())
 
-model = HydrostaticFreeSurfaceModel(grid = mrg,
+model = HydrostaticFreeSurfaceModel(mrg;
                                     free_surface = free_surface,
                                     momentum_advection = VectorInvariant(),
                                     coriolis = HydrostaticSphericalCoriolis(),
@@ -252,7 +252,7 @@ model = HydrostaticFreeSurfaceModel(grid = mrg,
 #####
 
 u, v, w = model.velocities
-η = model.free_surface.η
+η = model.free_surface.displacement
 T = model.tracers.T
 S = model.tracers.S
 
@@ -276,16 +276,16 @@ simulation = Simulation(model, Δt = Δt, stop_time = Nyears*years)
 
 start_time = [time_ns()]
 
-using Oceananigans.Utils 
+using Oceananigans.Utils
 using Oceananigans.MultiRegion: reconstruct_global_field
 
 function progress(sim)
     wall_time = (time_ns() - start_time[1]) * 1e-9
 
     u = sim.model.velocities.u
-    η = sim.model.free_surface.η
+    η = sim.model.free_surface.displacement
 
-    @info @sprintf("Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, wall time: %s", 
+    @info @sprintf("Time: % 12s, iteration: %d, max(|u|): %.2e ms⁻¹, wall time: %s",
                     prettytime(sim.model.clock.time),
                     sim.model.clock.iteration, maximum(abs, u), #maximum(abs, η),
                     prettytime(wall_time))
@@ -300,7 +300,7 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
 u, v, w = model.velocities
 T = model.tracers.T
 S = model.tracers.S
-η = model.free_surface.η
+η = model.free_surface.displacement
 
 output_fields = (; u, v, T, S, η)
 save_interval = 5days
@@ -320,5 +320,3 @@ run!(simulation, pickup = pickup_file)
     Free surface: $(typeof(model.free_surface).name.wrapper)
     Time step: $(prettytime(Δt))
 """
-
-

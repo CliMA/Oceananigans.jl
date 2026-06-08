@@ -6,15 +6,50 @@ struct MultiaryOperation{LX, LY, LZ, N, O, A, IN, G, T} <: AbstractOperation{LX,
     ▶ :: IN
     grid :: G
 
-    function MultiaryOperation{LX, LY, LZ}(op::O, args::A, ▶::IN, grid::G) where {LX, LY, LZ, O, A, IN, G}
-        T = eltype(grid)
+    function MultiaryOperation{LX, LY, LZ}(op::O, args::A, ▶::IN, grid::G,
+                                            ::Type{T}=Base.promote_op(op, map(eltype, args)...)) where {LX, LY, LZ, O, A, IN, G, T}
         N = length(args)
         return new{LX, LY, LZ, N, O, A, IN, G, T}(op, args, ▶, grid)
     end
 end
 
+# NOTE!!! The GPU compiler has trouble inferring this operation which might lead to dynamic evaluations.
 @inline Base.getindex(Π::MultiaryOperation{LX, LY, LZ, N}, i, j, k)  where {LX, LY, LZ, N} =
     Π.op(ntuple(γ -> Π.▶[γ](i, j, k, Π.grid, Π.args[γ]), Val(N))...)
+
+# Try to improve inferrability by hardcoding methods for small N
+@inline Base.getindex(Π::MultiaryOperation{LX, LY, LZ, 1}, i, j, k)  where {LX, LY, LZ} =
+    Π.op(Π.▶[1](i, j, k, Π.grid, Π.args[1]))
+
+@inline Base.getindex(Π::MultiaryOperation{LX, LY, LZ, 2}, i, j, k)  where {LX, LY, LZ} =
+    Π.op(Π.▶[1](i, j, k, Π.grid, Π.args[1]),
+         Π.▶[2](i, j, k, Π.grid, Π.args[2]))
+
+@inline Base.getindex(Π::MultiaryOperation{LX, LY, LZ, 3}, i, j, k)  where {LX, LY, LZ} =
+    Π.op(Π.▶[1](i, j, k, Π.grid, Π.args[1]),
+         Π.▶[2](i, j, k, Π.grid, Π.args[2]),
+         Π.▶[3](i, j, k, Π.grid, Π.args[3]))
+
+@inline Base.getindex(Π::MultiaryOperation{LX, LY, LZ, 4}, i, j, k)  where {LX, LY, LZ} =
+    Π.op(Π.▶[1](i, j, k, Π.grid, Π.args[1]),
+         Π.▶[2](i, j, k, Π.grid, Π.args[2]),
+         Π.▶[3](i, j, k, Π.grid, Π.args[3]),
+         Π.▶[4](i, j, k, Π.grid, Π.args[4]))
+
+@inline Base.getindex(Π::MultiaryOperation{LX, LY, LZ, 5}, i, j, k)  where {LX, LY, LZ} =
+    Π.op(Π.▶[1](i, j, k, Π.grid, Π.args[1]),
+         Π.▶[2](i, j, k, Π.grid, Π.args[2]),
+         Π.▶[3](i, j, k, Π.grid, Π.args[3]),
+         Π.▶[4](i, j, k, Π.grid, Π.args[4]),
+         Π.▶[5](i, j, k, Π.grid, Π.args[5]))
+
+@inline Base.getindex(Π::MultiaryOperation{LX, LY, LZ, 6}, i, j, k)  where {LX, LY, LZ} =
+    Π.op(Π.▶[1](i, j, k, Π.grid, Π.args[1]),
+         Π.▶[2](i, j, k, Π.grid, Π.args[2]),
+         Π.▶[3](i, j, k, Π.grid, Π.args[3]),
+         Π.▶[4](i, j, k, Π.grid, Π.args[4]),
+         Π.▶[5](i, j, k, Π.grid, Π.args[5]),
+         Π.▶[6](i, j, k, Π.grid, Π.args[6]))
 
 #####
 ##### MultiaryOperation construction
@@ -22,9 +57,9 @@ end
 
 indices(Π::MultiaryOperation) = construct_regionally(intersect_indices, location(Π), Π.args...)
 
-function _multiary_operation(L, op, args, Largs, grid)
+function _multiary_operation(L::Tuple{LX, LY, LZ}, op, args, Largs, grid) where {LX, LY, LZ}
     ▶ = Tuple(interpolation_operator(La, L) for La in Largs)
-    return MultiaryOperation{L[1], L[2], L[3]}(op, Tuple(a for a in args), ▶, grid)
+    return MultiaryOperation{LX, LY, LZ}(op, Tuple(a for a in args), ▶, grid)
 end
 
 # Recompute location of multiary operation
@@ -33,26 +68,33 @@ end
 """Return an expression that defines an abstract `MultiaryOperator` named `op` for `AbstractField`."""
 function define_multiary_operator(op)
     return quote
-        function $op(Lop::Tuple,
+        function $op(Lop::Tuple{<:$Location, <:$Location, <:$Location},
                      a::Union{Function, Number, Oceananigans.Fields.AbstractField},
                      b::Union{Function, Number, Oceananigans.Fields.AbstractField},
                      c::Union{Function, Number, Oceananigans.Fields.AbstractField},
                      d::Union{Function, Number, Oceananigans.Fields.AbstractField}...)
 
             args = tuple(a, b, c, d...)
-            grid = Oceananigans.AbstractOperations.validate_grid(args...)
+            grid = $(validate_grid)(args...)
 
             # Convert any functions to FunctionFields
             args = Tuple(Oceananigans.Fields.fieldify_function(Lop, a, grid) for a in args)
             Largs = Tuple(Oceananigans.Fields.location(a) for a in args)
 
-            return Oceananigans.AbstractOperations._multiary_operation(Lop, $op, args, Largs, grid)
+            return $(_multiary_operation)(Lop, $op, args, Largs, grid)
         end
 
+        # Instantiate location if types are passed
+        $op(Lop::Tuple,
+            a::Union{Function, Number, Oceananigans.Fields.AbstractField},
+            b::Union{Function, Number, Oceananigans.Fields.AbstractField},
+            c::Union{Function, Number, Oceananigans.Fields.AbstractField},
+            d::Union{Function, Number, Oceananigans.Fields.AbstractField}...) = $op((Lop[1](), Lop[2](), Lop[3]()), a, b, c, d...)
+
         $op(a::Oceananigans.Fields.AbstractField,
-            b::Union{Function, Oceananigans.Fields.AbstractField},
-            c::Union{Function, Oceananigans.Fields.AbstractField},
-            d::Union{Function, Oceananigans.Fields.AbstractField}...) = $op(Oceananigans.Fields.location(a), a, b, c, d...)
+            b::Union{Function, Number, Oceananigans.Fields.AbstractField},
+            c::Union{Function, Number, Oceananigans.Fields.AbstractField},
+            d::Union{Function, Number, Oceananigans.Fields.AbstractField}...) = $op(Oceananigans.Fields.instantiated_location(a), a, b, c, d...)
     end
 end
 
@@ -83,17 +125,17 @@ BinaryOperation at (Center, Center, Center)
 ├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 └── tree:
     * at (Center, Center, Center)
-    ├── 0.3333333333333333
-    └── + at (Center, Center, Center)
-        ├── / at (Center, Center, Center)
-        │   ├── 1
-        │   └── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
-        ├── / at (Center, Center, Center)
-        │   ├── 1
-        │   └── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
-        └── / at (Center, Center, Center)
-            ├── 1
-            └── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
+    ├── 0.3333333333333333
+    └── + at (Center, Center, Center)
+        ├── / at (Center, Center, Center)
+        │   ├── 1
+        │   └── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
+        ├── / at (Center, Center, Center)
+        │   ├── 1
+        │   └── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
+        └── / at (Center, Center, Center)
+            ├── 1
+            └── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
 
 julia> @multiary harmonic_plus
 Set{Any} with 3 elements:
@@ -106,9 +148,9 @@ MultiaryOperation at (Center, Center, Center)
 ├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
 └── tree:
     harmonic_plus at (Center, Center, Center)
-    ├── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
-    ├── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
-    └── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
+    ├── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
+    ├── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
+    └── 1×1×1 Field{Center, Center, Center} on RectilinearGrid on CPU
 ```
 """
 macro multiary(ops...)
@@ -119,8 +161,8 @@ macro multiary(ops...)
         push!(expr.args, :($(esc(defexpr))))
 
         add_to_operator_lists = quote
-            push!(Oceananigans.AbstractOperations.operators, Symbol($op))
-            push!(Oceananigans.AbstractOperations.multiary_operators, Symbol($op))
+            push!($(operators), Symbol($op))
+            push!($(multiary_operators), Symbol($op))
         end
 
         push!(expr.args, :($(esc(add_to_operator_lists))))
@@ -135,7 +177,7 @@ end
 
 function compute_at!(Π::MultiaryOperation, time)
     for a in Π.args
-        compute_at!(a, time) 
+        compute_at!(a, time)
     end
     return Π
 end
@@ -144,16 +186,17 @@ end
 ##### GPU capabilities
 #####
 
-"Adapt `MultiaryOperation` to work on the GPU via CUDAnative and CUDAdrv."
+"Adapt `MultiaryOperation` to work on the GPU via KernelAbstractions."
 Adapt.adapt_structure(to, multiary::MultiaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     MultiaryOperation{LX, LY, LZ}(Adapt.adapt(to, multiary.op),
                                   Adapt.adapt(to, multiary.args),
                                   Adapt.adapt(to, multiary.▶),
-                                  Adapt.adapt(to, multiary.grid))
+                                  Adapt.adapt(to, multiary.grid),
+                                  eltype(multiary))
 
-on_architecture(to, multiary::MultiaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
+Architectures.on_architecture(to, multiary::MultiaryOperation{LX, LY, LZ}) where {LX, LY, LZ} =
     MultiaryOperation{LX, LY, LZ}(on_architecture(to, multiary.op),
                                   on_architecture(to, multiary.args),
                                   on_architecture(to, multiary.▶),
-                                  on_architecture(to, multiary.grid))
-                                  
+                                  on_architecture(to, multiary.grid),
+                                  eltype(multiary))

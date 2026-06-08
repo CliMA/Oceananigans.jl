@@ -1,16 +1,18 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction
+using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction, BoundaryAdjacent,
+                                       fill_halo_regions!
+
 using Oceananigans: prognostic_fields
 
-function test_boundary_condition(arch, FT, topo, side, field_name, boundary_condition)
+function test_boundary_condition(arch, FT, Model, topo, side, field_name, boundary_condition)
     grid = RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, π, 42), topology=topo)
 
     boundary_condition_kwarg = (; side => boundary_condition)
     field_boundary_conditions = FieldBoundaryConditions(; boundary_condition_kwarg...)
     bcs = (; field_name => field_boundary_conditions)
-    model = NonhydrostaticModel(; grid, boundary_conditions=bcs,
-                                buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
+    model = Model(grid; boundary_conditions=bcs,
+                    buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
 
     success = try
         time_step!(model, 1e-16)
@@ -31,8 +33,8 @@ function test_nonhydrostatic_flux_budget(grid, name, side, L)
     field_bcs = FieldBoundaryConditions(; bc_kwarg...)
     boundary_conditions = (; name => field_bcs)
 
-    model = NonhydrostaticModel(; grid, boundary_conditions, tracers=:c)
-                                
+    model = NonhydrostaticModel(grid; boundary_conditions, tracers=:c)
+
     is_velocity_field = name ∈ (:u, :v, :w)
     field = is_velocity_field ? getproperty(model.velocities, name) : getproperty(model.tracers, name)
     set!(field, 0)
@@ -58,10 +60,10 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     grid = RectilinearGrid(arch, FT, size=(16, 16, 16), extent=(1, 1, Lz))
 
     buoyancy_bcs = FieldBoundaryConditions(bottom=GradientBoundaryCondition(bz))
-    κₑ_bcs = FieldBoundaryConditions(grid, (Center, Center, Center), bottom=ValueBoundaryCondition(κ₀))
+    κₑ_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()), bottom=ValueBoundaryCondition(κ₀))
     model_bcs = (b=buoyancy_bcs, κₑ=(b=κₑ_bcs,))
 
-    model = NonhydrostaticModel(; grid,
+    model = NonhydrostaticModel(grid;
                                 timestepper = :QuasiAdamsBashforth2,
                                 tracers = :b,
                                 buoyancy = BuoyancyTracer(),
@@ -99,8 +101,405 @@ function fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
     # mean(interior(b)) = -1.57082774272148
     # mean(interior(b)) - mean_b₀ = -3.141592656086267e-5
     # (flux * model.clock.time) / Lz = -3.141592653589793e-5
-    
+
     return isapprox(mean(b) - mean_b₀, flux * model.clock.time / Lz, atol=1e-6)
+end
+
+end_position(::Val{1}, grid) = (grid.Nx+1, 1, 1)
+end_position(::Val{2}, grid) = (1, grid.Ny+1, 1)
+end_position(::Val{3}, grid) = (1, 1, grid.Nz+1)
+
+wall_normal_boundary_condition(::Val{1}, obc) = (; u = FieldBoundaryConditions(east = obc, west = obc))
+wall_normal_boundary_condition(::Val{2}, obc) = (; v = FieldBoundaryConditions(south = obc, north = obc))
+wall_normal_boundary_condition(::Val{3}, obc) = (; w = FieldBoundaryConditions(bottom = obc, top = obc))
+
+normal_velocity(::Val{1}, model) = model.velocities.u
+normal_velocity(::Val{2}, model) = model.velocities.v
+normal_velocity(::Val{3}, model) = model.velocities.w
+
+velocity_forcing(::Val{1}, forcing) = (; u = forcing)
+velocity_forcing(::Val{2}, forcing) = (; v = forcing)
+velocity_forcing(::Val{3}, forcing) = (; w = forcing)
+
+function test_perturbation_advection_open_boundary_conditions(arch, FT)
+    for orientation in 1:3
+        topology = tuple(map(n -> ifelse(n == orientation, Bounded, Flat), 1:3)...)
+
+        grid = RectilinearGrid(arch, FT; topology, size = (4, ), x = (0, 4), y = (0, 4), z = (0, 4), halo = (1, ))
+
+        obc = NormalFlowBoundaryCondition(-1, scheme = PerturbationAdvection(inflow_timescale = 10.0))
+        boundary_conditions = wall_normal_boundary_condition(Val(orientation), obc)
+
+        model = NonhydrostaticModel(grid; boundary_conditions, timestepper = :QuasiAdamsBashforth2)
+        u = normal_velocity(Val(orientation), model)
+        fill!(u, -1)
+
+        time_step!(model, 1)
+
+        # nothing going on
+        @test all(view(parent(u), :, :, :) .== -1)
+        @test all(interior(u) .== -1)
+
+        obc = NormalFlowBoundaryCondition(t -> 0.1*t, scheme = PerturbationAdvection(inflow_timescale = 0.01, outflow_timescale = 0.5))
+        forcing = velocity_forcing(Val(orientation), Forcing((x, t) -> 0.1))
+        boundary_conditions = wall_normal_boundary_condition(Val(orientation), obc)
+
+        model = NonhydrostaticModel(grid; boundary_conditions, timestepper = :QuasiAdamsBashforth2, forcing)
+
+        u = normal_velocity(Val(orientation), model)
+
+        for _ in 1:100
+            time_step!(model, 0.1)
+        end
+
+        @test all(map(u->isapprox(u, 1, atol=0.1), interior(u)))
+    end
+end
+
+# Unit-cube grid for the targeted-transport tests.
+targeted_flux_grid(arch, FT; N = 4) =
+    RectilinearGrid(arch, FT; size = (N, N, N), x = (0, 1), y = (0, 1), z = (-one(FT), zero(FT)),
+                    topology = (Bounded, Bounded, Bounded))
+
+# Targeted-transport tests run for NonhydrostaticModel only: there the correction is
+# applied before the pressure solve, which holds ∮u·dA exactly. For
+# HydrostaticFreeSurfaceModel the correction is only approximate — see the note in
+# `hydrostatic_free_surface_ab2_step.jl`.
+make_targeted_flux_model(::Type{NonhydrostaticModel}, grid, boundary_conditions) =
+    NonhydrostaticModel(grid; boundary_conditions, timestepper=:RungeKutta3)
+
+function test_targeted_transport_achieved(arch, FT, ModelType; N = 4)
+    grid = targeted_flux_grid(arch, FT; N)
+
+    # West boundary with a prescribed target flux; east boundary is in the pool.
+    Q_target = FT(0.5)
+    u_bcs = FieldBoundaryConditions(
+        west = NormalFlowBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1, target_transport=Q_target)),
+        east = NormalFlowBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1))
+    )
+    model = make_targeted_flux_model(ModelType, grid, (; u=u_bcs))
+    set!(model, u = (x, y, z) -> 1 + 1e-2 * rand())
+
+    Δt = 0.1 * minimum_xspacing(grid) / 2
+    run!(Simulation(model; stop_time=1, Δt, verbose=false))
+
+    u = model.velocities.u
+    west_flux = Field(Integral(view(u, 1, :, :), dims=(2, 3)))
+    compute!(west_flux)
+    @test Array(interior(west_flux))[1, 1, 1] ≈ Q_target atol = N^2 * eps(FT)
+end
+
+function test_targeted_transport_conservation(arch, FT, ModelType; N = 4)
+    grid = targeted_flux_grid(arch, FT; N)
+
+    # Both boundaries targeted with equal fluxes — net inflow is zero, no pool needed.
+    Q = FT(0.5)
+    u_bcs = FieldBoundaryConditions(
+        west = NormalFlowBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1, target_transport=Q)),
+        east = NormalFlowBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1, target_transport=Q))
+    )
+    model = make_targeted_flux_model(ModelType, grid, (; u=u_bcs))
+    set!(model, u = (x, y, z) -> 1 + 1e-2 * rand())
+
+    u, v, w = model.velocities
+    Δt = 0.1 * minimum_xspacing(grid) / 2
+
+    run!(Simulation(model; stop_time=1, Δt, verbose=false))
+
+    ∫δu = Field(Integral(Field(∂x(u) + ∂y(v) + ∂z(w))))
+    compute!(∫δu)
+    @test Array(interior(∫δu))[1, 1, 1] ≈ 0 atol = 5 * eps(FT)
+
+    west_flux = Field(Integral(view(u, 1, :, :), dims=(2, 3)))
+    east_flux = Field(Integral(view(u, u.grid.Nx + 1, :, :), dims=(2, 3)))
+    compute!(west_flux)
+    compute!(east_flux)
+    @test Array(interior(west_flux))[1, 1, 1] ≈ Q atol = N^2 * eps(FT)
+    @test Array(interior(east_flux))[1, 1, 1] ≈ Q atol = N^2 * eps(FT)
+end
+
+function test_zero_inflow_open_boundary_conserves_mass(arch, FT; N = 4)
+    # west = zero-inflow OBC (NormalFlowBoundaryCondition(nothing) → ZIOBC, no scheme, nothing condition)
+    # east = pool PerturbationAdvection OBC
+    # Exercises: ZIOBC init, open_boundary_transport ZIOBC,
+    #            IOBC dispatch in pool correction
+    grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
+                           topology=(Bounded, Bounded, Bounded))
+    u_bcs = FieldBoundaryConditions(
+        west = NormalFlowBoundaryCondition(nothing),
+        east = NormalFlowBoundaryCondition(0; scheme = PerturbationAdvection(; inflow_timescale=1e-1))
+    )
+    model = NonhydrostaticModel(grid; boundary_conditions=(; u=u_bcs), timestepper=:RungeKutta3)
+    set!(model, u = (x, y, z) -> 1 + 1e-2 * rand())
+
+    u, v, w = model.velocities
+    Δt = 0.1 * minimum_xspacing(grid) / 2
+
+    δu = Field(∂x(u) + ∂y(v) + ∂z(w))
+    ∫δu = Field(Integral(δu))
+
+    run!(Simulation(model; stop_time=1, Δt, verbose=false))
+    compute!(∫δu)
+    @test Array(interior(∫δu))[1, 1, 1] ≈ 0 atol = 5 * eps(FT)
+end
+
+function test_fixed_imposed_velocity_open_boundary_conserves_mass(arch, FT; N = 4)
+    # west = fixed-imposed-velocity OBC (NormalFlowBoundaryCondition(FT(1)) → FIOBC, no scheme, Number condition)
+    # east = pool PerturbationAdvection OBC that adjusts to balance the fixed inflow
+    # Exercises: FIOBC init (lines 71–76), IOBC dispatch in pool correction (line 227)
+    grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
+                           topology=(Bounded, Bounded, Bounded))
+    u_bcs = FieldBoundaryConditions(
+        west = NormalFlowBoundaryCondition(1),
+        east = NormalFlowBoundaryCondition(0; scheme = PerturbationAdvection(; inflow_timescale=1e-1))
+    )
+    model = NonhydrostaticModel(grid; boundary_conditions=(; u=u_bcs), timestepper=:RungeKutta3)
+    set!(model, u = (x, y, z) -> 1 + 1e-2 * rand())
+
+    u, v, w = model.velocities
+    Δt = 0.1 * minimum_xspacing(grid) / 2
+
+    δu = Field(∂x(u) + ∂y(v) + ∂z(w))
+    ∫δu = Field(Integral(δu))
+
+    run!(Simulation(model; stop_time=1, Δt, verbose=false))
+    compute!(∫δu)
+    @test Array(interior(∫δu))[1, 1, 1] ≈ 0 atol = 5 * eps(FT)
+end
+
+function test_targeted_south_transport_achieved(arch, FT, ModelType; N = 4)
+    # v.south = targeted OBC, v.north = pool OBC
+    # Exercises: apply_targeted_left_boundary_correction! for south,
+    #            targeted boundary skipped in pool step for south,
+    #            pool correction applied to north OBC
+    grid = targeted_flux_grid(arch, FT; N)
+    Q_target = FT(0.5)
+    v_bcs = FieldBoundaryConditions(
+        south = NormalFlowBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1, target_transport=Q_target)),
+        north = NormalFlowBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1))
+    )
+    model = make_targeted_flux_model(ModelType, grid, (; v=v_bcs))
+    set!(model, v = (x, y, z) -> 1 + 1e-2 * rand())
+
+    Δt = 0.1 * minimum_yspacing(grid) / 2
+    run!(Simulation(model; stop_time=1, Δt, verbose=false))
+
+    v = model.velocities.v
+    south_flux = Field(Integral(view(v, :, 1, :), dims=(1, 3)))
+    compute!(south_flux)
+    @test Array(interior(south_flux))[1, 1, 1] ≈ Q_target atol = N^2 * eps(FT)
+end
+
+function test_targeted_east_with_west_pool(arch, FT, ModelType; N = 4)
+    # u.west = pool OBC, u.east = targeted OBC
+    # Exercises: targeted boundary skipped in pool correction for east,
+    #            pool correction applied to west OBC
+    grid = targeted_flux_grid(arch, FT; N)
+    Q_target = FT(0.5)
+    u_bcs = FieldBoundaryConditions(
+        west = NormalFlowBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1)),
+        east = NormalFlowBoundaryCondition(FT(1); scheme = PerturbationAdvection(; inflow_timescale=1e-1, target_transport=Q_target))
+    )
+    model = make_targeted_flux_model(ModelType, grid, (; u=u_bcs))
+    set!(model, u = (x, y, z) -> 1 + 1e-2 * rand())
+
+    Δt = 0.1 * minimum_xspacing(grid) / 2
+    run!(Simulation(model; stop_time=1, Δt, verbose=false))
+
+    u = model.velocities.u
+    east_flux = Field(Integral(view(u, u.grid.Nx + 1, :, :), dims=(2, 3)))
+    compute!(east_flux)
+    @test Array(interior(east_flux))[1, 1, 1] ≈ Q_target atol = N^2 * eps(FT)
+end
+
+function test_perturbation_advection_tracer_open_boundary_conditions(arch, FT)
+    # Tracer (Center-located) radiation now lives on `Value` (with a `scheme`), so it is
+    # filled through the standard value/gradient halo path rather than the open-velocity path.
+    grid = RectilinearGrid(arch, FT; topology = (Bounded, Flat, Bounded),
+                           size = (4, 4), x = (0, 4), z = (0, 4))
+
+    Nx, Nz, Hx, Hz = grid.Nx, grid.Nz, grid.Hx, grid.Hz
+
+    c̄ = 1   # prescribed exterior tracer value
+    c₀ = 5  # uniform initial tracer value (interior and halos)
+
+    east_halo(c) = Array(view(parent(c), Nx + 1 + Hx, 1, Hz + 1))[]
+    top_halo(c)  = Array(view(parent(c), Hx + 1, 1, Nz + 1 + Hz))[]
+    low_side(c)  = Array(interior(c, 1, 1, 1))[]  # west and bottom write the first interior cell
+
+    # Lateral boundaries: radiation must key off the sign of the boundary-normal flow,
+    # not the tracer. A uniform flow makes one x-boundary inflow and the other outflow;
+    # inflow relaxes instantly to c̄, outflow radiates and preserves the uniform c₀.
+    for U₀ in (-2, 2)
+        scheme = PerturbationAdvection(inflow_timescale = 0, outflow_timescale = Inf)
+        u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(U₀),
+                                        east = NormalFlowBoundaryCondition(U₀))
+        c_bcs = FieldBoundaryConditions(west = ValueBoundaryCondition(c̄; scheme),
+                                        east = ValueBoundaryCondition(c̄; scheme))
+
+        model = HydrostaticFreeSurfaceModel(grid; tracers = :c, buoyancy = nothing,
+                                            boundary_conditions = (u = u_bcs, c = c_bcs))
+
+        set!(model, u = U₀, c = c₀)
+        parent(model.tracers.c) .= c₀
+        time_step!(model, 1e-2)
+
+        c = model.tracers.c
+        if U₀ < 0  # inflow at east, outflow at west
+            @test east_halo(c) ≈ c̄
+            @test low_side(c)  ≈ c₀
+        else       # outflow at east, inflow at west
+            @test east_halo(c) ≈ c₀
+            @test low_side(c)  ≈ c̄
+        end
+    end
+
+    # Vertical boundaries: in a quiescent column (w ≈ 0) with infinite timescales the
+    # scheme freezes the boundary, so a uniform tracer stays uniform. This confirms the
+    # top/bottom Center methods run the radiation scheme rather than falling back to a
+    # plain prescribed-value condition (which would set the boundary to c̄).
+    scheme = PerturbationAdvection(inflow_timescale = Inf, outflow_timescale = Inf)
+    c_bcs = FieldBoundaryConditions(bottom = ValueBoundaryCondition(c̄; scheme),
+                                    top    = ValueBoundaryCondition(c̄; scheme))
+
+    model = HydrostaticFreeSurfaceModel(grid; tracers = :c, buoyancy = nothing,
+                                        boundary_conditions = (; c = c_bcs))
+
+    set!(model, c = c₀)
+    parent(model.tracers.c) .= c₀
+    time_step!(model, 1e-2)
+
+    c = model.tracers.c
+    @test top_halo(c) ≈ c₀
+    @test low_side(c) ≈ c₀
+end
+
+function test_perturbation_advection_tracer_open_boundary_conditions_nonhydrostatic(arch, FT)
+    # `NonhydrostaticModel` fills velocity + tracer halos together with `fill_normal_flow_bcs = false`,
+    # which historically suppressed tracer open boundaries entirely (see #5646). Because tracer
+    # radiation now lives on `Value` — ungated by `fill_normal_flow_bcs` — it fires during the regular
+    # halo fill. This exercises that previously-broken path.
+    grid = RectilinearGrid(arch, FT; topology = (Bounded, Flat, Bounded),
+                           size = (4, 4), x = (0, 4), z = (0, 4))
+
+    Nx, Hx, Hz = grid.Nx, grid.Hx, grid.Hz
+
+    c̄ = 1   # prescribed exterior tracer value
+    c₀ = 5  # uniform initial tracer value (interior and halos)
+
+    east_halo(c) = Array(view(parent(c), Nx + 1 + Hx, 1, Hz + 1))[]
+    low_side(c)  = Array(interior(c, 1, 1, 1))[]
+
+    for U₀ in (-2, 2)
+        scheme = PerturbationAdvection(inflow_timescale = 0, outflow_timescale = Inf)
+        u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(U₀),
+                                        east = NormalFlowBoundaryCondition(U₀))
+        c_bcs = FieldBoundaryConditions(west = ValueBoundaryCondition(c̄; scheme),
+                                        east = ValueBoundaryCondition(c̄; scheme))
+
+        model = NonhydrostaticModel(grid; tracers = :c,
+                                    boundary_conditions = (u = u_bcs, c = c_bcs))
+
+        set!(model, u = U₀, c = c₀)
+        parent(model.tracers.c) .= c₀
+        time_step!(model, 1e-2)
+
+        c = model.tracers.c
+        if U₀ < 0  # inflow at east, outflow at west
+            @test east_halo(c) ≈ c̄
+            @test low_side(c)  ≈ c₀
+        else       # outflow at east, inflow at west
+            @test east_halo(c) ≈ c₀
+            @test low_side(c)  ≈ c̄
+        end
+    end
+end
+
+function test_perturbation_advection_tracer_radiation_formula(arch, FT)
+    # Single-step check of the radiation formula at an outflow boundary:
+    #   ψ_new = (ψᴮ + Ũ ψᴬ + ψ̄ τ̃) / (1 + τ̃ + Ũ),  Ũ = U Δt / Δx,  τ̃ = Δt / τ
+    # with non-trivial ψᴮ ≠ ψᴬ, finite τ̃, and 0 < Ũ < 1 — a regime the uniform-interior
+    # checks above never reach.
+    grid = RectilinearGrid(arch, FT; topology = (Bounded, Flat, Bounded),
+                           size = (4, 4), x = (0, 4), z = (0, 4))
+
+    U = 1
+    c̄ = convert(FT, 1//2)
+    Δt = convert(FT, 1//2)
+    outflow_timescale = convert(FT, 1)
+
+    scheme = PerturbationAdvection(; inflow_timescale = 0, outflow_timescale)
+    u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(U),
+                                    east = NormalFlowBoundaryCondition(U))
+    c_bcs = FieldBoundaryConditions(east = ValueBoundaryCondition(c̄; scheme))
+
+    model = HydrostaticFreeSurfaceModel(grid; tracers = :c, buoyancy = nothing,
+                                        boundary_conditions = (u = u_bcs, c = c_bcs))
+
+    ψᴬ = convert(FT, 2)
+    ψᴮ = convert(FT, 3)
+    set!(model, u = U, c = ψᴬ)
+    Nx, Hx, Hz = grid.Nx, grid.Hx, grid.Hz
+    parent(model.tracers.c)[Nx + 1 + Hx, :, :] .= ψᴮ
+
+    Δx = minimum_xspacing(grid)
+    Ũ = Δt / Δx * U
+    τ̃ = Δt / outflow_timescale
+    expected = (ψᴮ + Ũ * ψᴬ + c̄ * τ̃) / (1 + τ̃ + Ũ)
+
+    # The scheme reads Δt from clock.last_stage_Δt; set it directly so we evaluate the
+    # formula once, with the ψᴮ we just wrote, instead of advancing the model state.
+    model.clock.last_stage_Δt = Δt
+    fill_halo_regions!(model.tracers, model.clock, fields(model))
+
+    @test Array(parent(model.tracers.c))[Nx + 1 + Hx, 1, Hz + 1] ≈ expected
+end
+
+function test_nonhydrostatic_tracer_value_boundary_is_applied(arch, FT)
+    # Tracer open boundaries are `Value` conditions, which are NOT gated by
+    # `fill_normal_flow_bcs`, so they must still be applied during the single merged
+    # velocity+tracer halo fill in the NonhydrostaticModel update_state! (#5646, now without
+    # splitting the fill). Poke a sentinel into the east boundary halo and confirm the fill
+    # overwrites it with the value-BC extrapolation during stepping.
+    grid = RectilinearGrid(arch, FT; size = 16, x = (0, 1), topology = (Bounded, Flat, Flat), halo = 4)
+
+    c̄ = -1
+    c_bcs = FieldBoundaryConditions(west = ValueBoundaryCondition(c̄), east = ValueBoundaryCondition(c̄))
+
+    model = NonhydrostaticModel(grid; tracers = :c, advection = Centered(order = 2),
+                                boundary_conditions = (; c = c_bcs))
+    set!(model, c = 0.5)
+
+    east = grid.Hx + grid.Nx + 1  # parent index of the east boundary halo cell (Nx + 1)
+    view(parent(model.tracers.c), east, 1, 1) .= 999
+    time_step!(model, 1e-4)
+
+    east_halo     = Array(view(parent(model.tracers.c), east, 1, 1))[]
+    east_interior = Array(interior(model.tracers.c, grid.Nx, 1, 1))[]
+
+    # A `Value` BC sets the east halo by linear extrapolation: c_halo = 2 c̄ - c_interior.
+    @test east_halo ≈ 2c̄ - east_interior   # tracer Value BC applied during the merged fill
+    @test east_halo != 999                  # sentinel was overwritten (the fill ran)
+end
+
+function test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions; N = 8)
+    grid = RectilinearGrid(arch, FT, size=(N, N, N), extent=(1, 1, 1),
+                           topology=(Bounded, Bounded, Bounded))
+
+    model = NonhydrostaticModel(grid; boundary_conditions, timestepper = :RungeKutta3)
+    uᵢ(x, y, z) = 1 + 1e-2 * rand()
+    set!(model, u = uᵢ)
+
+    u, v, w = model.velocities
+    Δt = 0.1 * minimum_zspacing(grid) / maximum(abs, u)
+    simulation = Simulation(model; stop_time=1, Δt, verbose=false)
+
+    δu = Field(∂x(u) + ∂y(v) + ∂z(w))
+    ∫δu = Field(Integral(δu))
+
+    run!(simulation)
+    compute!(∫δu)
+    @test (@allowscalar ∫δu[]) ≈ 0 atol=5*eps(FT)
 end
 
 test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
@@ -129,19 +528,19 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
                                                         top    = simple_function_bc(Value),
                                                         north  = simple_function_bc(Value),
                                                         south  = simple_function_bc(Value),
-                                                         east  = simple_function_bc(Open),
-                                                         west  = simple_function_bc(Open))
+                                                         east  = simple_function_bc(NormalFlow),
+                                                         west  = simple_function_bc(NormalFlow))
 
         v_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Value),
                                                         top    = simple_function_bc(Value),
-                                                        north  = simple_function_bc(Open),
-                                                        south  = simple_function_bc(Open),
+                                                        north  = simple_function_bc(NormalFlow),
+                                                        south  = simple_function_bc(NormalFlow),
                                                          east  = simple_function_bc(Value),
                                                          west  = simple_function_bc(Value))
 
 
-        w_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(Open),
-                                                        top    = simple_function_bc(Open),
+        w_boundary_conditions = FieldBoundaryConditions(bottom = simple_function_bc(NormalFlow),
+                                                        top    = simple_function_bc(NormalFlow),
                                                         north  = simple_function_bc(Value),
                                                         south  = simple_function_bc(Value),
                                                          east  = simple_function_bc(Value),
@@ -159,56 +558,69 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
                                w=w_boundary_conditions,
                                T=T_boundary_conditions)
 
-        model = NonhydrostaticModel(grid = grid,
-                                    boundary_conditions = boundary_conditions,
-                                    buoyancy = SeawaterBuoyancy(),
-                                    tracers = (:T, :S))
+        model = NonhydrostaticModel(grid; boundary_conditions, buoyancy = SeawaterBuoyancy(), tracers = (:T, :S))
 
-        @test location(model.velocities.u.boundary_conditions.bottom.condition) == (Face, Center, Nothing)
-        @test location(model.velocities.u.boundary_conditions.top.condition)    == (Face, Center, Nothing)
-        @test location(model.velocities.u.boundary_conditions.north.condition)  == (Face, Nothing, Center)
-        @test location(model.velocities.u.boundary_conditions.south.condition)  == (Face, Nothing, Center)
-        @test location(model.velocities.u.boundary_conditions.east.condition)   == (Nothing, Center, Center)
-        @test location(model.velocities.u.boundary_conditions.west.condition)   == (Nothing, Center, Center)
+        BN = BoundaryAdjacent
+        @test location(model.velocities.u.boundary_conditions.bottom.condition) == (Face, Center, BN)
+        @test location(model.velocities.u.boundary_conditions.top.condition)    == (Face, Center, BN)
+        @test location(model.velocities.u.boundary_conditions.north.condition)  == (Face, BN, Center)
+        @test location(model.velocities.u.boundary_conditions.south.condition)  == (Face, BN, Center)
+        @test location(model.velocities.u.boundary_conditions.east.condition)   == (BN, Center, Center)
+        @test location(model.velocities.u.boundary_conditions.west.condition)   == (BN, Center, Center)
 
-        @test location(model.velocities.v.boundary_conditions.bottom.condition) == (Center, Face, Nothing)
-        @test location(model.velocities.v.boundary_conditions.top.condition)    == (Center, Face, Nothing)
-        @test location(model.velocities.v.boundary_conditions.north.condition)  == (Center, Nothing, Center)
-        @test location(model.velocities.v.boundary_conditions.south.condition)  == (Center, Nothing, Center)
-        @test location(model.velocities.v.boundary_conditions.east.condition)   == (Nothing, Face, Center)
-        @test location(model.velocities.v.boundary_conditions.west.condition)   == (Nothing, Face, Center)
+        @test location(model.velocities.v.boundary_conditions.bottom.condition) == (Center, Face, BN)
+        @test location(model.velocities.v.boundary_conditions.top.condition)    == (Center, Face, BN)
+        @test location(model.velocities.v.boundary_conditions.north.condition)  == (Center, BN, Center)
+        @test location(model.velocities.v.boundary_conditions.south.condition)  == (Center, BN, Center)
+        @test location(model.velocities.v.boundary_conditions.east.condition)   == (BN, Face, Center)
+        @test location(model.velocities.v.boundary_conditions.west.condition)   == (BN, Face, Center)
 
-        @test location(model.velocities.w.boundary_conditions.bottom.condition) == (Center, Center, Nothing)
-        @test location(model.velocities.w.boundary_conditions.top.condition)    == (Center, Center, Nothing)
-        @test location(model.velocities.w.boundary_conditions.north.condition)  == (Center, Nothing, Face)
-        @test location(model.velocities.w.boundary_conditions.south.condition)  == (Center, Nothing, Face)
-        @test location(model.velocities.w.boundary_conditions.east.condition)   == (Nothing, Center, Face)
-        @test location(model.velocities.w.boundary_conditions.west.condition)   == (Nothing, Center, Face)
+        @test location(model.velocities.w.boundary_conditions.bottom.condition) == (Center, Center, BN)
+        @test location(model.velocities.w.boundary_conditions.top.condition)    == (Center, Center, BN)
+        @test location(model.velocities.w.boundary_conditions.north.condition)  == (Center, BN, Face)
+        @test location(model.velocities.w.boundary_conditions.south.condition)  == (Center, BN, Face)
+        @test location(model.velocities.w.boundary_conditions.east.condition)   == (BN, Center, Face)
+        @test location(model.velocities.w.boundary_conditions.west.condition)   == (BN, Center, Face)
 
-        @test location(model.tracers.T.boundary_conditions.bottom.condition) == (Center, Center, Nothing)
-        @test location(model.tracers.T.boundary_conditions.top.condition)    == (Center, Center, Nothing)
-        @test location(model.tracers.T.boundary_conditions.north.condition)  == (Center, Nothing, Center)
-        @test location(model.tracers.T.boundary_conditions.south.condition)  == (Center, Nothing, Center)
-        @test location(model.tracers.T.boundary_conditions.east.condition)   == (Nothing, Center, Center)
-        @test location(model.tracers.T.boundary_conditions.west.condition)   == (Nothing, Center, Center)
+        @test location(model.tracers.T.boundary_conditions.bottom.condition) == (Center, Center, BN)
+        @test location(model.tracers.T.boundary_conditions.top.condition)    == (Center, Center, BN)
+        @test location(model.tracers.T.boundary_conditions.north.condition)  == (Center, BN, Center)
+        @test location(model.tracers.T.boundary_conditions.south.condition)  == (Center, BN, Center)
+        @test location(model.tracers.T.boundary_conditions.east.condition)   == (BN, Center, Center)
+        @test location(model.tracers.T.boundary_conditions.west.condition)   == (BN, Center, Center)
     end
 
     @testset "Boundary condition time-stepping works" begin
         for arch in archs, FT in (Float64,) #float_types
-            @info "  Testing that time-stepping with boundary conditions works [$(typeof(arch)), $FT]..."
 
             topo = (Bounded, Bounded, Bounded)
 
             for C in (Gradient, Flux, Value), boundary_condition in test_boundary_conditions(C, FT, array_type(arch))
-                @test test_boundary_condition(arch, FT, topo, :east, :T, boundary_condition)
-                @test test_boundary_condition(arch, FT, topo, :south, :T, boundary_condition)
-                @test test_boundary_condition(arch, FT, topo, :top, :T, boundary_condition)
+                @info "  Testing that time-stepping with $boundary_condition works [$(typeof(arch)), $FT]..."
+                @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :east, :T, boundary_condition)
+                @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :south, :T, boundary_condition)
+                @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :top, :T, boundary_condition)
+
+                if (boundary_condition.condition isa ContinuousBoundaryFunction) && (arch isa GPU)
+                    @info "Test skipped because of issue #4165"
+                else
+                    @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :east, :T, boundary_condition)
+                    @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :south, :T, boundary_condition)
+                    @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :top, :T, boundary_condition)
+                end
             end
 
-            for boundary_condition in test_boundary_conditions(Open, FT, array_type(arch))
-                @test test_boundary_condition(arch, FT, topo, :east, :u, boundary_condition)
-                @test test_boundary_condition(arch, FT, topo, :south, :v, boundary_condition)
-                @test test_boundary_condition(arch, FT, topo, :top, :w, boundary_condition)
+            for boundary_condition in test_boundary_conditions(NormalFlow, FT, array_type(arch))
+                @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :east, :u, boundary_condition)
+                @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :south, :v, boundary_condition)
+                @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :top, :w, boundary_condition)
+
+                if (boundary_condition.condition isa ContinuousBoundaryFunction) && (arch isa GPU)
+                    @info "Test skipped because of issue #4165"
+                else
+                    @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :east, :u, boundary_condition)
+                    @test test_boundary_condition(arch, FT, HydrostaticFreeSurfaceModel, topo, :south, :v, boundary_condition)
+                end
             end
         end
     end
@@ -256,7 +668,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             end
 
             # Omit ImmersedBoundaryGrid from vertically-periodic test
-            grid = rectilinear_grid((Bounded, Bounded, Periodic)) 
+            grid = rectilinear_grid((Bounded, Bounded, Periodic))
             for name in (:w, :c)
                 for (side, L) in zip((:east, :west, :north, :south), (Lx, Lx, Ly, Ly))
                     @info "    Testing budgets with Flux boundary conditions [$(summary(grid)), $name, $side]..."
@@ -271,6 +683,46 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             A = typeof(arch)
             @info "  Testing flux budgets with diffusivity boundary conditions [$A, $FT]..."
             @test fluxes_with_diffusivity_boundary_conditions_are_correct(arch, FT)
+        end
+    end
+
+    @testset "Open boundary conditions" begin
+        for arch in archs, FT in (Float64,) #float_types
+            A = typeof(arch)
+            @info "  Testing open boundary conditions [$A, $FT]..."
+            test_perturbation_advection_open_boundary_conditions(arch, FT)
+            test_perturbation_advection_tracer_open_boundary_conditions(arch, FT)
+            test_perturbation_advection_tracer_open_boundary_conditions_nonhydrostatic(arch, FT)
+            test_perturbation_advection_tracer_radiation_formula(arch, FT)
+            test_nonhydrostatic_tracer_value_boundary_is_applied(arch, FT)
+
+            # Only PerturbationAdvection NormalFlowBoundaryCondition
+            U₀ = 1
+            inflow_timescale = 1e-1
+            outflow_timescale = Inf
+
+            u_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(U₀; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)),
+                                            east = NormalFlowBoundaryCondition(U₀; scheme = PerturbationAdvection(; inflow_timescale, outflow_timescale)))
+            boundary_conditions = (; u = u_bcs)
+            test_open_boundary_condition_mass_conservation(arch, FT, boundary_conditions)
+            test_targeted_transport_achieved(arch, FT, NonhydrostaticModel)
+            test_targeted_transport_conservation(arch, FT, NonhydrostaticModel)
+            test_targeted_south_transport_achieved(arch, FT, NonhydrostaticModel)
+            test_targeted_east_with_west_pool(arch, FT, NonhydrostaticModel)
+            test_zero_inflow_open_boundary_conserves_mass(arch, FT)
+            test_fixed_imposed_velocity_open_boundary_conserves_mass(arch, FT)
+        end
+    end
+
+    @testset "FieldTimeSeries boundary conditions" begin
+        for arch in archs, FT in (Float64,)
+            A = typeof(arch)
+            @info "  Testing FieldTimeSeries boundary conditions [$A, $FT]..."
+            topo = (Bounded, Bounded, Bounded)
+            for C in (Flux, Value)
+                bc = field_time_series_bc(C, FT, array_type(arch))
+                @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :top, :T, bc)
+            end
         end
     end
 end

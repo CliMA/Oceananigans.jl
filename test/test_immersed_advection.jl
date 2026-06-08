@@ -1,16 +1,19 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBoundary, mask_immersed_field!
-using Oceananigans.Advection: 
+using Oceananigans.Advection:
         _symmetric_interpolate_xᶠᵃᵃ,
         _symmetric_interpolate_xᶜᵃᵃ,
         _symmetric_interpolate_yᵃᶠᵃ,
         _symmetric_interpolate_yᵃᶜᵃ,
-        _biased_interpolate_xᶜᵃᵃ, 
-        _biased_interpolate_xᶠᵃᵃ, 
-        _biased_interpolate_yᵃᶜᵃ, 
+        _biased_interpolate_xᶜᵃᵃ,
+        _biased_interpolate_xᶠᵃᵃ,
+        _biased_interpolate_yᵃᶜᵃ,
         _biased_interpolate_yᵃᶠᵃ,
-        FluxFormAdvection
+        FluxFormAdvection,
+        LeftBias,
+        RightBias,
+        materialize_advection
 
 linear_advection_schemes = [Centered, UpwindBiased]
 advection_schemes = [linear_advection_schemes... WENO]
@@ -19,32 +22,30 @@ advection_schemes = [linear_advection_schemes... WENO]
 @inline advective_order(buffer, AdvectionType)    = buffer * 2 - 1
 
 function run_tracer_interpolation_test(c, ibg, scheme)
-
-    for i in 6:19, j in 6:19
+    scheme = materialize_advection(scheme, ibg)
+    for j in 6:19, i in 6:19
         if typeof(scheme) <: Centered
-            @test CUDA.@allowscalar  _symmetric_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, c) ≈ 1.0
+            @test @allowscalar  _symmetric_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, c) ≈ 1.0
         else
-            @test CUDA.@allowscalar _biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, true,  c) ≈ 1.0
-            @test CUDA.@allowscalar _biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, false, c) ≈ 1.0
-            @test CUDA.@allowscalar _biased_interpolate_yᵃᶠᵃ(i, j+1, 1, ibg, scheme, true,  c) ≈ 1.0
-            @test CUDA.@allowscalar _biased_interpolate_yᵃᶠᵃ(i, j+1, 1, ibg, scheme, false, c) ≈ 1.0
+            @test @allowscalar _biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, LeftBias,  c) ≈ 1.0
+            @test @allowscalar _biased_interpolate_xᶠᵃᵃ(i+1, j, 1, ibg, scheme, RightBias, c) ≈ 1.0
+            @test @allowscalar _biased_interpolate_yᵃᶠᵃ(i, j+1, 1, ibg, scheme, LeftBias,  c) ≈ 1.0
+            @test @allowscalar _biased_interpolate_yᵃᶠᵃ(i, j+1, 1, ibg, scheme, RightBias, c) ≈ 1.0
         end
     end
 end
 
 function run_tracer_conservation_test(grid, scheme)
-
-    model = HydrostaticFreeSurfaceModel(grid = grid, tracers = :c,
+    scheme = materialize_advection(scheme, grid)
+    model = HydrostaticFreeSurfaceModel(grid; tracers = :c,
                                         free_surface = ExplicitFreeSurface(),
-                                        tracer_advection = scheme,
-                                        buoyancy = nothing,
-                                        coriolis = nothing)
+                                        tracer_advection = scheme)
 
     c = model.tracers.c
     set!(model, c = 1)
     fill_halo_regions!(c)
 
-    η = model.free_surface.η
+    η = model.free_surface.displacement
 
     indices = model.grid isa ImmersedBoundaryGrid ? (5:7, 3:6, 1) : (2:5, 3:6, 1)
 
@@ -57,14 +58,15 @@ function run_tracer_conservation_test(grid, scheme)
         time_step!(model, dt)
     end
 
-    @test maximum(c) ≈ 1.0 
-    @test minimum(c) ≈ 1.0 
+    @test maximum(c) ≈ 1.0
+    @test minimum(c) ≈ 1.0
     @test mean(c)    ≈ 1.0
 
     return nothing
 end
 
 function run_momentum_interpolation_test(u, v, ibg, scheme)
+    scheme = materialize_advection(scheme, ibg)
 
     # ensure also immersed boundaries have a value of 1
     interior(u, 6, :, 1) .= 1.0
@@ -72,20 +74,20 @@ function run_momentum_interpolation_test(u, v, ibg, scheme)
 
     for i in 7:19, j in 7:19
         if typeof(scheme) <: Centered
-            @test CUDA.@allowscalar  _symmetric_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, u) ≈ 1.0
-            @test CUDA.@allowscalar  _symmetric_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, v) ≈ 1.0
-            @test CUDA.@allowscalar  _symmetric_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, u) ≈ 1.0
-            @test CUDA.@allowscalar  _symmetric_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, v) ≈ 1.0
+            @test @allowscalar  _symmetric_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, u) ≈ 1.0
+            @test @allowscalar  _symmetric_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, v) ≈ 1.0
+            @test @allowscalar  _symmetric_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, u) ≈ 1.0
+            @test @allowscalar  _symmetric_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, v) ≈ 1.0
         else
-            @test CUDA.@allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, true,  u) ≈ 1.0
-            @test CUDA.@allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, false, u) ≈ 1.0
-            @test CUDA.@allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, true,  u) ≈ 1.0
-            @test CUDA.@allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, false, u) ≈ 1.0
+            @test @allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, LeftBias,  u) ≈ 1.0
+            @test @allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, RightBias, u) ≈ 1.0
+            @test @allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, LeftBias,  u) ≈ 1.0
+            @test @allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, RightBias, u) ≈ 1.0
 
-            @test CUDA.@allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, true,  v) ≈ 1.0
-            @test CUDA.@allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, false, v) ≈ 1.0
-            @test CUDA.@allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, true,  v) ≈ 1.0
-            @test CUDA.@allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, false, v) ≈ 1.0
+            @test @allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, LeftBias,  v) ≈ 1.0
+            @test @allowscalar _biased_interpolate_xᶜᵃᵃ(i+1, j, 1, ibg, scheme, RightBias, v) ≈ 1.0
+            @test @allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, LeftBias,  v) ≈ 1.0
+            @test @allowscalar _biased_interpolate_yᵃᶜᵃ(i, j+1, 1, ibg, scheme, RightBias, v) ≈ 1.0
         end
     end
 
@@ -124,10 +126,10 @@ for arch in archs
 
         grid = RectilinearGrid(arch, size=(10, 8, 1), extent=(10, 8, 1), halo = (6, 6, 6), topology=(Bounded, Periodic, Bounded))
         ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y, z) -> (x < 2)))
-    
+
         for adv in advection_schemes, buffer in [1, 2, 3, 4, 5]
             scheme = adv(order = advective_order(buffer, adv))
-        
+
             for g in [grid, ibg]
                 @info "  Testing immersed tracer conservation [$(typeof(arch)), $(summary(scheme)), $(typeof(g).name.wrapper)]"
                 run_tracer_conservation_test(g, scheme)
@@ -145,7 +147,7 @@ for arch in archs
     end
 
     @testset "Immersed momentum reconstruction" begin
-        @info "Running immersed momentum recontruction tests..."
+        @info "Running immersed momentum reconstruction tests..."
 
         grid = RectilinearGrid(arch, size=(20, 20), extent=(20, 20), halo = (6, 6), topology=(Bounded, Bounded, Flat))
         ibg  = ImmersedBoundaryGrid(grid, GridFittedBoundary((x, y) -> (x < 5 || y < 5)))

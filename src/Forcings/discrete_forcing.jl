@@ -1,5 +1,3 @@
-import Adapt
-
 using Oceananigans.Utils: prettysummary
 
 """
@@ -37,7 +35,7 @@ When `parameters` _is_ specified, `func` must be callable with the signature.
 ```
 func(i, j, k, grid, clock, model_fields, parameters)
 ```
-    
+
 Above, `parameters` is, in principle, arbitrary. Note, however, that GPU compilation
 can place constraints on `typeof(parameters)`.
 """
@@ -61,6 +59,6 @@ Adapt.adapt_structure(to, forcing::DiscreteForcing) =
     DiscreteForcing(Adapt.adapt(to, forcing.func),
                     Adapt.adapt(to, forcing.parameters))
 
-on_architecture(to, forcing::DiscreteForcing) =
+Architectures.on_architecture(to, forcing::DiscreteForcing) =
     DiscreteForcing(on_architecture(to, forcing.func),
                     on_architecture(to, forcing.parameters))

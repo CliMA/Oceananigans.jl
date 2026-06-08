@@ -2,15 +2,15 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
 
 #####
 ##### Stretched smoothness indicators gathered from precomputed values.
-##### The stretched values for β coefficients are calculated from 
+##### The stretched values for β coefficients are calculated from
 ##### Shu, NASA/CR-97-206253, ICASE Report No. 97-65
 ##### by hardcoding that p(x) is a 2nd order polynomial
 #####
 
-@inline function biased_left_β(ψ, scheme, r, dir, i, location) 
+@inline function biased_left_β(ψ, scheme, r, dir, i, location)
     @inbounds begin
         stencil = retrieve_left_smooth(scheme, r, dir, i, location)
-        wᵢᵢ = stencil[1]   
+        wᵢᵢ = stencil[1]
         wᵢⱼ = stencil[2]
         result = 0
         @unroll for j = 1:3
@@ -20,10 +20,10 @@ using KernelAbstractions.Extras.LoopInfo: @unroll
     return result
 end
 
-@inline function biased_right_β(ψ, scheme, r, dir, i, location) 
+@inline function biased_right_β(ψ, scheme, r, dir, i, location)
     @inbounds begin
         stencil = retrieve_right_smooth(scheme, r, dir, i, location)
-        wᵢᵢ = stencil[1]   
+        wᵢᵢ = stencil[1]
         wᵢⱼ = stencil[2]
         result = 0
         @unroll for j = 1:3
@@ -33,13 +33,13 @@ end
     return result
 end
 
-@inline left_biased_β₀(FT, ψ, T, scheme, args...) = biased_left_β(ψ, scheme, 0, args...) 
-@inline left_biased_β₁(FT, ψ, T, scheme, args...) = biased_left_β(ψ, scheme, 1, args...) 
-@inline left_biased_β₂(FT, ψ, T, scheme, args...) = biased_left_β(ψ, scheme, 2, args...) 
+@inline left_biased_β₀(FT, ψ, T, scheme, args...) = biased_left_β(ψ, scheme, 0, args...)
+@inline left_biased_β₁(FT, ψ, T, scheme, args...) = biased_left_β(ψ, scheme, 1, args...)
+@inline left_biased_β₂(FT, ψ, T, scheme, args...) = biased_left_β(ψ, scheme, 2, args...)
 
-@inline right_biased_β₀(FT, ψ, T, scheme, args...) = biased_right_β(ψ, scheme, 2, args...) 
-@inline right_biased_β₁(FT, ψ, T, scheme, args...) = biased_right_β(ψ, scheme, 1, args...) 
-@inline right_biased_β₂(FT, ψ, T, scheme, args...) = biased_right_β(ψ, scheme, 0, args...) 
+@inline right_biased_β₀(FT, ψ, T, scheme, args...) = biased_right_β(ψ, scheme, 2, args...)
+@inline right_biased_β₁(FT, ψ, T, scheme, args...) = biased_right_β(ψ, scheme, 1, args...)
+@inline right_biased_β₂(FT, ψ, T, scheme, args...) = biased_right_β(ψ, scheme, 0, args...)
 
 @inline retrieve_left_smooth(scheme, r, ::Val{1}, i, ::Type{Face})   = @inbounds scheme.smooth_xᶠᵃᵃ[r+1][i]
 @inline retrieve_left_smooth(scheme, r, ::Val{1}, i, ::Type{Center}) = @inbounds scheme.smooth_xᶜᵃᵃ[r+1][i]
@@ -59,7 +59,7 @@ end
 @inline calc_smoothness_coefficients(FT, ::Val{true}, coord::OffsetArray{<:Any, <:Any, <:AbstractRange}, arch, N; order) = nothing
 @inline calc_smoothness_coefficients(FT, ::Val{true}, coord::AbstractRange, arch, N; order) = nothing
 
-function calc_smoothness_coefficients(FT, beta, coord, arch, N; order) 
+function calc_smoothness_coefficients(FT, beta, coord, arch, N; order)
 
     cpu_coord = on_architecture(CPU(), coord)
 
@@ -78,7 +78,7 @@ end
 function create_smoothness_coefficients(FT, r, op, cpu_coord, arch, N; order)
 
     # derivation written on overleaf
-    stencil = NTuple{2, NTuple{order, FT}}[]   
+    stencil = NTuple{2, NTuple{order, FT}}[]
     @inbounds begin
         for i = 0:N+1
 

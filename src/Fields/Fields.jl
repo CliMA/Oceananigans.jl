@@ -1,36 +1,40 @@
 module Fields
 
 export Face, Center, location
-export AbstractField, Field, Average, Integral, Reduction, Accumulation, field
+export AbstractField, Field, Reduction, Accumulation, field
 export CenterField, XFaceField, YFaceField, ZFaceField
-export BackgroundField
 export interior, data, xnode, ynode, znode
 export set!, compute!, @compute, regrid!
-export VelocityFields, TracerFields, TendencyFields, tracernames
+export VelocityFields, TracerFields, tracernames
 export interpolate
 
-using Oceananigans.Architectures
-using Oceananigans.Grids
-using Oceananigans.BoundaryConditions
-using Oceananigans.Utils
+using OffsetArrays: OffsetArray
+using Adapt: Adapt, adapt
 
-import Oceananigans.Architectures: on_architecture
-import Oceananigans: location, instantiated_location
+using Oceananigans: Oceananigans, instantiated_location, location
+using Oceananigans.Architectures: Architectures, child_architecture, on_architecture
+using Oceananigans.BoundaryConditions: BoundaryConditions, fill_halo_regions!
+using Oceananigans.Grids: Grids, AbstractGrid, Bounded, Center, Face, LatitudeLongitudeGrid,
+    RectilinearGrid, new_data, interior_indices, total_size, topology, nodes, xnodes,
+    ynodes, znodes, node, xnode, ynode, znode
+using Oceananigans.Utils: KernelParameters, launch!, prettysummary, interpolator
 
 "Return the location `(LX, LY, LZ)` of an `AbstractField{LX, LY, LZ}`."
-@inline location(a) = (Nothing, Nothing, Nothing) # used in AbstractOperations for location inference
-@inline location(a, i) = location(a)[i]
-@inline instantiated_location(a) = (nothing, nothing, nothing)
+@inline Oceananigans.location(a) = (Nothing, Nothing, Nothing) # used in AbstractOperations for location inference
+@inline Oceananigans.location(a, i) = location(a)[i]
+@inline function Oceananigans.instantiated_location(a)
+    LX, LY, LZ = location(a)
+    return (LX(), LY(), LZ())
+end
 
 include("abstract_field.jl")
 include("constant_field.jl")
 include("function_field.jl")
-include("field_boundary_buffers.jl")
 include("field.jl")
+include("field_indices.jl")
 include("scans.jl")
 include("regridding_fields.jl")
 include("field_tuples.jl")
-include("background_fields.jl")
 include("interpolate.jl")
 include("show_fields.jl")
 include("broadcasting_abstract_fields.jl")
@@ -41,14 +45,22 @@ include("broadcasting_abstract_fields.jl")
 Build a field from array `a` at `loc` and on `grid`.
 """
 @inline function field(loc, a::AbstractArray, grid)
+    loc = instantiate(loc)
     f = Field(loc, grid)
     a = on_architecture(architecture(grid), a)
     try
-        copyto!(parent(f), a)
+        set!(f, a)
     catch
-        f .= a
+        copyto!(parent(f), parent(a))
     end
     return f
+end
+
+# Build a field off of the current data
+@inline function field(loc, a::OffsetArray, grid)
+    loc = instantiate(loc)
+    a = on_architecture(architecture(grid), a)
+    return Field(loc, grid; data=a)
 end
 
 @inline field(loc, a::Function, grid) = FunctionField(loc, a, grid)
@@ -57,8 +69,20 @@ end
 @inline field(loc, a::ConstantField, grid) = a
 
 @inline function field(loc, f::Field, grid)
-    loc === location(f) && grid === f.grid && return f
-    error("Cannot construct field at $loc and on $grid from $f")
+    loc = instantiate(loc)
+    loc === instantiated_location(f) && grid === f.grid && return f
+
+    msg = """
+    Cannot reconstruct field, originally located at ($(instantiated_location(f))), at $loc.
+
+    Destination grid:
+    $grid
+
+    Source grid:
+    $(f.grid)
+    """
+
+    return throw(ArgumentError(msg))
 end
 
 include("set!.jl")

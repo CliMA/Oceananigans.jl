@@ -17,9 +17,9 @@ for Nh in [100, 200, 400, 800, 1600], stencil in [VorticityStencil, VelocitySten
     H  = 1.0
     R = (g*H)^0.5 / f
 
-    model = ShallowWaterModel(grid = grid,
-                            gravitational_acceleration = g,
-                            coriolis = FPlane(f = f),
+    model = ShallowWaterModel(grid;
+                              gravitational_acceleration = g,
+                              coriolis = FPlane(f = f),
                             mass_advection = WENO(),
                             momentum_advection = WENO(vector_invariant = stencil()),
                             formulation = VectorInvariantFormulation())
@@ -87,10 +87,10 @@ for Nh in [100, 200, 400, 800, 1600], stencil in [VorticityStencil, VelocitySten
 
     save_interval = 0.1
 
-    simulation.output_writers[:surface_fields] = JLD2OutputWriter(model, (; u, v, h, ζ, KE, PE, PV),
-                                                                schedule = TimeInterval(save_interval),
-                                                                filename = "vortex_merger_$(Nh)_WENO",
-                                                                overwrite_existing = true)
+    simulation.output_writers[:surface_fields] = JLD2Writer(model, (; u, v, h, ζ, KE, PE, PV),
+                                                            schedule = TimeInterval(save_interval),
+                                                            filename = "vortex_merger_$(Nh)_WENO",
+                                                            overwrite_existing = true)
 
     run!(simulation)
 

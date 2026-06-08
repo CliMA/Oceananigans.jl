@@ -1,4 +1,4 @@
-import Oceananigans.Architectures: architecture, child_architecture
+using Oceananigans.Architectures: child_architecture
 
 abstract type AbstractTransformDirection end
 
@@ -17,7 +17,7 @@ struct DiscreteTransform{P, D, G, Δ, Ω, N, T, Σ}
 end
 
 # Includes support for distributed architectures
-architecture(transform::DiscreteTransform) = child_architecture(architecture(transform.grid))
+Architectures.architecture(transform::DiscreteTransform) = child_architecture(architecture(transform.grid))
 
 #####
 ##### Normalization factors
@@ -91,12 +91,12 @@ function DiscreteTransform(plan, direction, grid, dims)
     twiddle = twiddle_factors(arch, grid, dims)
     transpose = arch isa GPU && dims == [2] ? (2, 1, 3) : nothing
 
-    topo = [topology(grid)[d]() for d in dims]
-    topo = length(topo) == 1 ? topo[1] : topo
+    topos = [topology(grid)[d]() for d in dims]
+    topos = length(topos) == 1 ? topos[1] : topos
 
     dims = length(dims) == 1 ? dims[1] : dims
 
-    return DiscreteTransform(plan, grid, direction, dims, topo, normalization, twiddle, transpose)
+    return DiscreteTransform(plan, grid, direction, dims, topos, normalization, twiddle, transpose)
 end
 
 #####

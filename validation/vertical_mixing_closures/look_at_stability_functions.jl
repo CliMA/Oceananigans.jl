@@ -64,4 +64,3 @@ cf = contourf!(ax6, αᴺ, αᴹ, Pr, levels=0.3:0.1:3.0, colorrrange=(0.35, 2.8
 Colorbar(fig[3, 4], cf, vertical=false, tellwidth=false, label="Prandtl number", flipaxis=false)
 
 display(fig)
-

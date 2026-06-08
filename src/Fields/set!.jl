@@ -1,10 +1,7 @@
-using CUDA
 using KernelAbstractions: @kernel, @index
-using Adapt: adapt_structure
 
-using Oceananigans.Grids: on_architecture, node_names
-using Oceananigans.Architectures: child_architecture, cpu_architecture, device, GPU, CPU
-using Oceananigans.Utils: work_layout
+using Oceananigans.Grids: node_names
+using Oceananigans.Architectures: cpu_architecture, GPU, CPU, ReactantState
 
 #####
 ##### Utilities
@@ -21,6 +18,8 @@ tuple_string(tup::Tuple{}) = ""
 ##### set!
 #####
 
+set!(obj::AbstractField, ::Nothing) = nothing
+
 function set!(Φ::NamedTuple; kwargs...)
     for (fldname, value) in kwargs
         ϕ = getproperty(Φ, fldname)
@@ -29,38 +28,73 @@ function set!(Φ::NamedTuple; kwargs...)
     return nothing
 end
 
+function set!(ft::NamedFieldTuple, a::Number)
+    for field in ft
+        set!(field, a)
+    end
+    return ft
+end
+
+function set!(dst::NamedFieldTuple, src::NamedTuple)
+    for name in keys(dst)
+        set!(dst[name], src[name])
+    end
+    return dst
+end
+
 # This interface helps us do things like set distributed fields
 set!(u::Field, f::Function) = set_to_function!(u, f)
-set!(u::Field, a::Union{Array, CuArray, OffsetArray}) = set_to_array!(u, a)
+set!(u::Field, a::Union{Array, OffsetArray}) = set_to_array!(u, a)
+
+"""
+    set!(u::Field, v::Field)
+
+Set `u` from `v`. When `u` and `v` have the same `size`, `location`, and
+`indices`, the data of `v` is copied into `u` (cross-architecture transfers
+are handled automatically). Otherwise, `v` is migrated to `u`'s architecture
+if needed, its halo regions are filled, and then it is interpolated onto `u`
+with [`interpolate!`](@ref). This means field-to-field `set!` "just works"
+across grids of different resolution, between staggered locations, and across
+architectures.
+
+Note that the interpolation path samples `v` pointwise; for conservative
+remapping, call [`regrid!`](@ref) explicitly.
+"""
 set!(u::Field, v::Field) = set_to_field!(u, v)
+
+function set!(u::Field, a::Number)
+    fill!(interior(u), a) # note all other set! only change interior
+    return u # return u, not parent(u), for type-stability
+end
 
 function set!(u::Field, v)
     u .= v # fallback
     return u
 end
 
+set!(u::Field, z::ZeroField) = set!(u, zero(eltype(u)))
+
 #####
 ##### Setting to specific things
 #####
 
-function set_to_function!(u, f)
+function set_to_function!(u, f, clock=nothing)
     # Supports serial and distributed
     arch = architecture(u)
     child_arch = child_architecture(u)
 
     # Determine cpu_grid and cpu_u
-    if child_arch isa GPU
+    cpu_grid, cpu_u = if child_arch isa GPU || child_arch isa ReactantState
         cpu_arch = cpu_architecture(arch)
         cpu_grid = on_architecture(cpu_arch, u.grid)
-        cpu_u    = Field(location(u), cpu_grid; indices = indices(u))
-    
+        cpu_grid, Field(instantiated_location(u), cpu_grid; indices = indices(u))
     elseif child_arch isa CPU
-        cpu_grid = u.grid
-        cpu_u = u
+        u.grid, u
     end
 
     # Form a FunctionField from `f`
-    f_field = field(location(u), f, cpu_grid)
+    LX, LY, LZ = location(u)
+    f_field = FunctionField{LX, LY, LZ}(f, cpu_grid; clock)
 
     # Try to set the FunctionField to cpu_u
     try
@@ -84,22 +118,23 @@ function set_to_function!(u, f)
     end
 
     # Transfer data to GPU if u is on the GPU
-    child_arch isa GPU && set!(u, cpu_u)
-    
+    if child_arch isa GPU || child_arch isa ReactantState
+        set!(u, cpu_u)
+    end
     return u
 end
 
-function set_to_array!(u, f)
-    f = on_architecture(architecture(u), f)
+function set_to_array!(u, a)
+    a = on_architecture(architecture(u), a)
 
     try
-        u .= f
+        copyto!(interior(u), a)
     catch err
         if err isa DimensionMismatch
             Nx, Ny, Nz = size(u)
-            u .= reshape(f, Nx, Ny, Nz)
+            u .= reshape(a, Nx, Ny, Nz)
 
-            msg = string("Reshaped ", summary(f),
+            msg = string("Reshaped ", summary(a),
                          " to set! its data to ", '\n',
                          summary(u))
             @warn msg
@@ -112,14 +147,56 @@ function set_to_array!(u, f)
 end
 
 function set_to_field!(u, v)
+    if matching_field_discretization(u, v)
+        copy_to_field!(u, v)
+    else
+        # Fill halos on v's native architecture so distributed dispatch (if any) is used;
+        # on_architecture would strip Distributed{CPU} to CPU while keeping distributed
+        # boundary conditions, mismatching fill_halo_regions! dispatch.
+        fill_halo_regions!(v)
+        v_on_u = on_architecture(child_architecture(u), v)
+        interpolate!(u, v_on_u)
+    end
+
+    return u
+end
+
+function matching_field_discretization(u, v)
+    sz = size(u)
+    sz == size(v) || return false
+    ℓu = location(u)
+    ℓv = location(v)
+    iu = indices(u)
+    iv = indices(v)
+    return matching_field_dimension(ℓu[1], ℓv[1], iu[1], iv[1], sz[1]) &&
+           matching_field_dimension(ℓu[2], ℓv[2], iu[2], iv[2], sz[2]) &&
+           matching_field_dimension(ℓu[3], ℓv[3], iu[3], iv[3], sz[3])
+end
+
+# Two fields share their discretization along a dimension when they have the same
+# location and equivalent indices there. The exception is a reduced (`Nothing`) location
+# in a singleton dimension: a `Nothing` dimension carries no node, so there is nothing
+# to interpolate to and the single slab may be copied directly regardless of the other
+# field's location or absolute index (e.g. a reduced field set from a windowed
+# single-layer field, whose locations are `Nothing` vs `Center` and indices `:` vs `k:k`).
+@inline matching_field_dimension(ℓu, ℓv, iu, iv, N) =
+    (ℓu == ℓv && equivalent_index(iu, iv, N)) || reduced_singleton_dimension(ℓu, ℓv, N)
+
+@inline reduced_singleton_dimension(ℓu, ℓv, N) = N == 1 && (ℓu === Nothing || ℓv === Nothing)
+
+@inline equivalent_index(a, b, N) = a == b
+@inline equivalent_index(::Colon, r::AbstractUnitRange, N) = first(r) == 1 && last(r) == N
+@inline equivalent_index(r::AbstractUnitRange, ::Colon, N) = first(r) == 1 && last(r) == N
+
+function copy_to_field!(u, v)
     # We implement some niceities in here that attempt to copy halo data,
     # and revert to copying just interior points if that fails.
-    
+
     if child_architecture(u) === child_architecture(v)
         # Note: we could try to copy first halo point even when halo
         # regions are a different size. That's a bit more complicated than
         # the below so we leave it for the future.
-        
+
         try # to copy halo regions along with interior data
             parent(u) .= parent(v)
         catch # this could fail if the halo regions are different sizes?
@@ -128,7 +205,7 @@ function set_to_field!(u, v)
         end
     else
         v_data = on_architecture(child_architecture(u), v.data)
-        
+
         # As above, we permit ourselves a little ambition and try to copy halo data:
         try
             parent(u) .= parent(v_data)
@@ -139,3 +216,7 @@ function set_to_field!(u, v)
 
     return u
 end
+
+Base.copyto!(f::Field, src::Base.Broadcast.Broadcasted) = copyto!(interior(f), src)
+Base.copyto!(f::Field, src::AbstractArray) = copyto!(interior(f), src)
+Base.copyto!(f::Field, src::Field) = copyto!(parent(f), parent(src))

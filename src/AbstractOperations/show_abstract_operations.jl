@@ -8,8 +8,6 @@ for op_string in ("UnaryOperation", "BinaryOperation", "MultiaryOperation", "Der
     end
 end
 
-operation_name(op::GridMetricOperation)  = string(op.metric)
-
 function show_interp(op)
     op_str = string(op)
     if length(op_str) >= 8 && op_str[1:8] == "identity"
@@ -34,7 +32,7 @@ tree_show(a::Union{Number, Function}, depth, nesting) = string(a)
 tree_show(a, depth, nesting) = summary(a) # fallback
 
 "Returns a string corresponding to padding characters for a tree visualization of an `AbstractOperation`."
-get_tree_padding(depth, nesting) = "    "^(depth-nesting) * "│   "^nesting
+get_tree_padding(depth, nesting) = "    "^(depth-nesting) * "│   "^nesting
 
 "Return a string representaion of a `UnaryOperation` leaf within a tree visualization of an `AbstractOperation`."
 function tree_show(unary::UnaryOperation, depth, nesting)

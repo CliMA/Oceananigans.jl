@@ -1,15 +1,53 @@
+import Dates
+
+using Dates: AbstractTime
+
 using Oceananigans.Grids: _node
-using Oceananigans.Fields: interpolator, _interpolate, fractional_indices, flatten_node
+using Oceananigans.Fields: interpolator, _interpolate, FractionalIndices, instantiated_location, flatten_node, FixedTime
 using Oceananigans.Architectures: architecture
+using Oceananigans.DistributedComputations: child_architecture, Distributed
+using GPUArraysCore: @allowscalar
+using Adapt
 
 import Oceananigans.Fields: interpolate
+
+using Oceananigans.Utils: period_to_seconds, seconds_to_nanosecond, time_difference_seconds
+
+@inline interp_time(t₁, t₂, θ) = t₂ * θ + t₁ * (1 - θ)
+
+@inline function interp_time(t₁::AbstractTime, t₂::AbstractTime, θ)
+    Δ = period_to_seconds(t₂ - t₁)
+    offset = seconds_to_nanosecond(θ * Δ)
+    return t₁ + offset
+end
+
+struct TimeInterpolator{T, N1, N2, N3}
+    fractional_index :: T
+    first_index  :: N1
+    second_index :: N2
+    length       :: N3
+end
+
+@inline TimeInterpolator(fts::FieldTimeSeries, t) =
+    TimeInterpolator(fts.time_indexing, fts.times, t)
+
+@inline function TimeInterpolator(time_indexing, times, t)
+    ñ, n₁, n₂ = interpolating_time_indices(time_indexing, times, t)
+    return TimeInterpolator(ñ, n₁, n₂, length(times))
+end
+
+Adapt.adapt_structure(to, ti::TimeInterpolator) =
+    TimeInterpolator(Adapt.adapt(to, ti.fractional_index),
+                     Adapt.adapt(to, ti.first_index),
+                     Adapt.adapt(to, ti.second_index),
+                     Adapt.adapt(to, ti.length))
 
 #####
 ##### Computation of time indices for interpolation
 #####
 
 # Simplest implementation, linear extrapolation if out-of-bounds
-@inline interpolating_time_indices(::Linear, times, t) = time_index_binary_search(times, t)
+@inline interpolating_time_indices(::Linear, times, t) = find_time_index(times, t)
 
 # Cyclical implementation if out-of-bounds (wrap around the time-series)
 @inline function interpolating_time_indices(ti::Cyclical, times, t)
@@ -18,14 +56,13 @@ import Oceananigans.Fields: interpolate
     tᴺ = last(times)
 
     T = ti.period
-    Δt = T - (tᴺ - t¹)
 
     # Compute modulus of shifted time, then add shift back
     τ = t - t¹
     mod_τ = mod(τ, T)
     mod_t = mod_τ + t¹
 
-    ñ, n₁, n₂ = time_index_binary_search(times, mod_t)
+    ñ, n₁, n₂ = find_time_index(times, mod_t)
 
     cycling = ñ > 1 # we are _between_ tᴺ and t¹ + T
     cycled_indices   = (ñ - 1, Nt, 1)
@@ -36,35 +73,56 @@ end
 
 # Clamp mode if out-of-bounds, i.e get the neareast neighbor
 @inline function interpolating_time_indices(::Clamp, times, t)
-    n, n₁, n₂ = time_index_binary_search(times, t)
+    ñ, n₁, n₂ = find_time_index(times, t)
 
     beyond_indices    = (0, n₂, n₂) # Beyond the last time:  return n₂
     before_indices    = (0, n₁, n₁) # Before the first time: return n₁
-    unclamped_indices = (n, n₁, n₂) # Business as usual
+    unclamped_indices = (ñ, n₁, n₂) # Business as usual
 
     Nt = length(times)
 
-    indices = ifelse(n + n₁ > Nt, beyond_indices,
-              ifelse(n + n₁ < 1,  before_indices, unclamped_indices))
-
-    return indices
+    return ifelse(ñ + n₁ > Nt, beyond_indices,
+           ifelse(ñ + n₁ < 1,  before_indices, unclamped_indices))
 end
 
-@inline function time_index_binary_search(times, t)
-    Nt = length(times)
+#####
+##### fine_time_index
+#####
 
-    # n₁ and n₂ are the index to interpolate inbetween and
-    # n is a fractional index where 0 ≤ n ≤ 1
-    n₁, n₂ = index_binary_search(times, t, Nt)
+@inline function find_time_index(times::StepRangeLen, t)
+    n₂ = searchsortedfirst(times, t)
+
+    Nt = length(times)
+    n₂ = min(Nt, n₂) # cap
+    n₁ = max(1, n₂ - 1)
 
     @inbounds begin
         t₁ = times[n₁]
         t₂ = times[n₂]
     end
 
-    # "Fractional index" ñ ∈ (0, 1)
-    ñ = (n₂ - n₁) / (t₂ - t₁) * (t - t₁)
+    δt_t1 = time_difference_seconds(t, t₁)
+    δt_12 = time_difference_seconds(t₂, t₁)
+    ñ = δt_t1 / δt_12
+    ñ = ifelse(n₂ == n₁, zero(ñ), ñ)
 
+    return ñ, n₁, n₂
+end
+
+@inline function find_time_index(times, t)
+    Nt = length(times)
+    n₂ = searchsortedfirst(times, t)
+    n₂ = clamp(n₂, 1, Nt)
+    n₁ = max(1, n₂ - 1)
+
+    @inbounds begin
+        t₁ = times[n₁]
+        t₂ = times[n₂]
+    end
+
+    δt_t1 = time_difference_seconds(t, t₁)
+    δt_12 = time_difference_seconds(t₂, t₁)
+    ñ = δt_t1 / δt_12
     ñ = ifelse(n₂ == n₁, zero(ñ), ñ)
 
     return ñ, n₁, n₂
@@ -77,34 +135,75 @@ end
 import Base: getindex
 
 function getindex(fts::OnDiskFTS, n::Int)
-    # Load data
+    # Bounds check before resolving the file/local index
+    1 <= n <= length(fts.times) || throw(BoundsError(fts, n))
+
+    # Load data from the correct file (handles split files via SplitFilePath)
     arch = architecture(fts)
-    file = jldopen(fts.path; fts.reader_kw...)
-    iter = keys(file["timeseries/t"])[n]
+    filepath, local_n = file_and_local_index(fts.path, n)
+    file = jldopen(filepath; fts.reader_kw...)
+    iter = keys(file["timeseries/t"])[local_n]
     raw_data = on_architecture(arch, file["timeseries/$(fts.name)/$iter"])
     close(file)
 
     # Wrap Field
-    loc = location(fts)
-    field_data = offset_data(raw_data, fts.grid, loc, fts.indices)
+    loc = instantiated_location(fts)
+    @apply_regionally field_data = offset_data(raw_data, fts.grid, loc, fts.indices)
 
-    return Field(loc, fts.grid;
-                 indices = fts.indices,
-                 boundary_conditions = fts.boundary_conditions,
-                 data = field_data)
+    status = @allowscalar FixedTime(fts.times[n])
+
+    field = Field(loc, fts.grid;
+                  indices = fts.indices,
+                  boundary_conditions = fts.boundary_conditions,
+                  status,
+                  data = field_data)
+
+    fill_halo_regions!(field)
+
+    return field
 end
 
 @propagate_inbounds getindex(f::FlavorOfFTS, i, j, k, n::Int) = getindex(f.data, i, j, k, memory_index(f, n))
 @propagate_inbounds setindex!(f::FlavorOfFTS, v, i, j, k, n::Int) = setindex!(f.data, v, i, j, k, memory_index(f, n))
 
 # Reduced FTS
-const XYFTS = FlavorOfFTS{<:Any, <:Any, Nothing, <:Any, <:Any}
-const XZFTS = FlavorOfFTS{<:Any, Nothing, <:Any, <:Any, <:Any}
-const YZFTS = FlavorOfFTS{Nothing, <:Any, <:Any, <:Any, <:Any}
+const XYFTS = FlavorOfFTS{<:Any, <:Any, Nothing}
+const XZFTS = FlavorOfFTS{<:Any, Nothing, <:Any}
+const YZFTS = FlavorOfFTS{Nothing, <:Any, <:Any}
+const XFTS  = FlavorOfFTS{<:Any, Nothing, Nothing}
+const YFTS  = FlavorOfFTS{Nothing, <:Any, Nothing}
+const ZFTS  = FlavorOfFTS{Nothing, Nothing, <:Any}
+const FTS0  = FlavorOfFTS{Nothing, Nothing, Nothing}
 
-@propagate_inbounds getindex(f::XYFTS, i::Int, j::Int, n::Int) = getindex(f.data, i, j, 1, memory_index(f, n))
-@propagate_inbounds getindex(f::XZFTS, i::Int, k::Int, n::Int) = getindex(f.data, i, 1, k, memory_index(f, n))
-@propagate_inbounds getindex(f::YZFTS, j::Int, k::Int, n::Int) = getindex(f.data, 1, j, k, memory_index(f, n))
+# `getbc` for 2D FTS boundary conditions (only possible for 2D, 1D and 0D FTS)
+
+# Bottom and top boundary conditions
+@inline getbc(f::XYFTS, i::Int, j::Int, grid::AbstractGrid, clock, args...) = @inbounds f[i, j, 1, Time(clock.time)]
+
+# South and north boundary conditions
+@inline getbc(f::XZFTS, i::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[i, 1, k, Time(clock.time)]
+
+# West and east boundary conditions
+@inline getbc(f::YZFTS, j::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, j, k, Time(clock.time)]
+
+# Disambiguation for 1D and 0D FTS
+
+# South - north and top - bottom, only the first index is valid (the second one is either j or k)
+@inline getbc(f::XFTS, i::Int, ::Int, grid::AbstractGrid, clock, args...) = @inbounds f[i, 1, 1, Time(clock.time)]
+
+# West - east and top - bottom, this case is not really well defined since the indexes could be i and j or j and k
+# so we check which dimension of the grid is 1 and pick the corresponding index
+@inline function getbc(f::YFTS, i1::Int, i2::Int, grid::AbstractGrid, clock, args...)
+    Nx, _, Nz = size(grid)
+    j = ifelse(Nz == 1, i1, i2)
+    return @inbounds f[1, j, 1, Time(clock.time)]
+end
+
+# West - east and south - north boundary conditions, only the last index is valid (the first one is either i or j)
+@inline getbc(f::ZFTS, ::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, 1, k, Time(clock.time)]
+
+# 0D -> index do not matter!
+@inline getbc(f::FTS0, ::Int, ::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, 1, 1, Time(clock.time)]
 
 #####
 ##### Time interpolation / extrapolation
@@ -136,16 +235,27 @@ end
 # Linear time interpolation
 function Base.getindex(fts::FieldTimeSeries, time_index::Time)
     # Calculate fractional index (0 ≤ ñ ≤ 1)
-    ñ, n₁, n₂ = cpu_interpolating_time_indices(architecture(fts), fts.times, fts.time_indexing, time_index.time)
+    indices = cpu_interpolating_time_indices(architecture(fts), fts.times, fts.time_indexing, time_index.time)
+    ñ = indices.fractional_index
+    n₁ = indices.first_index
+    n₂ = indices.second_index
 
     if n₁ == n₂ # no interpolation needed
         return fts[n₁]
     end
 
     # Otherwise, make a Field representing a linear interpolation in time
-    ψ₁ = fts[n₁]
+    # Make sure both n₁ and n₂ are in memory by first retrieving n₂ and then n₁
+    update_field_time_series!(fts, n₁, n₂)
+
+    t₂ = @allowscalar fts.times[n₂]
+    t₁ = @allowscalar fts.times[n₁]
+    t = interp_time(t₁, t₂, ñ)
+    status = FixedTime(t)
+
     ψ₂ = fts[n₂]
-    ψ̃ = Field(ψ₂ * ñ + ψ₁ * (1 - ñ))
+    ψ₁ = fts[n₁]
+    ψ̃  = Field(ψ₂ * ñ + ψ₁ * (1 - ñ); status)
 
     # Compute the field and return it
     return compute!(ψ̃)
@@ -167,22 +277,37 @@ end
                              from_loc, from_grid, times, backend, time_indexing)
 
     to_time = to_time_index.time
+    interp = TimeInterpolator(time_indexing, times, to_time)
+    return interpolate(to_node, interp, data, from_loc, from_grid, backend, time_indexing)
+end
+
+@inline function interpolate(to_node, time_indices::TimeInterpolator, data::OffsetArray,
+                             from_loc, from_grid, backend, time_indexing)
+
+    # Build space interpolators
+    to_node = flatten_node(to_node...)
 
     if topology(from_grid) === (Flat, Flat, Flat)
-        ix = iy = iz = (1, 1, 0)
+        fi = FractionalIndices(nothing, nothing, nothing)
     else
-        # Build space interpolators
-        to_node = flatten_node(to_node...)
-        ii, jj, kk = fractional_indices(to_node, from_grid, from_loc...)
-
-        ix = interpolator(ii)
-        iy = interpolator(jj)
-        iz = interpolator(kk)
+        fi = FractionalIndices(to_node, from_grid, from_loc...)
     end
 
-    ñ, n₁, n₂ = interpolating_time_indices(time_indexing, times, to_time)
+    return interpolate(fi, time_indices, data, backend, time_indexing)
+end
 
-    Nt = length(times)
+@inline function interpolate(fi::FractionalIndices, time_indices::TimeInterpolator,
+                             data::OffsetArray, backend, time_indexing)
+
+    ñ  = time_indices.fractional_index
+    n₁ = convert(Int, time_indices.first_index)
+    n₂ = convert(Int, time_indices.second_index)
+    Nt = convert(Int, time_indices.length)
+
+    ix = interpolator(fi.i)
+    iy = interpolator(fi.j)
+    iz = interpolator(fi.k)
+
     m₁ = memory_index(backend, time_indexing, Nt, n₁)
     m₂ = memory_index(backend, time_indexing, Nt, n₂)
 
@@ -203,8 +328,8 @@ function interpolate!(target_fts::FieldTimeSeries, source_fts::FieldTimeSeries)
     arch = architecture(target_grid)
 
     # Make locations
-    source_location = map(instantiate, location(source_fts))
-    target_location = map(instantiate, location(target_fts))
+    source_location = instantiated_location(source_fts)
+    target_location = instantiated_location(target_fts)
 
     launch!(arch, target_grid, size(target_fts),
             _interpolate_field_time_series!,
@@ -237,29 +362,32 @@ end
 # for ranges. if `times` is a vector that resides on the GPU, it has to be moved to the CPU for safe indexing.
 # TODO: Copying the whole array is a bit unclean, maybe find a way that avoids the penalty of allocating and copying memory.
 # This would require refactoring `FieldTimeSeries` to include a cpu-allocated times array
-cpu_interpolating_time_indices(::CPU, times, time_indexing, t, arch) = interpolating_time_indices(time_indexing, times, t)
-cpu_interpolating_time_indices(::CPU, times::AbstractVector, time_indexing, t) = interpolating_time_indices(time_indexing, times, t)
+cpu_interpolating_time_indices(::CPU, times, time_indexing, t) = TimeInterpolator(time_indexing, times, t)
+cpu_interpolating_time_indices(::CPU, times::AbstractVector, time_indexing, t) = TimeInterpolator(time_indexing, times, t)
 
 function cpu_interpolating_time_indices(::GPU, times::AbstractVector, time_indexing, t)
     cpu_times = on_architecture(CPU(), times)
-    return interpolating_time_indices(time_indexing, cpu_times, t)
+    return TimeInterpolator(time_indexing, cpu_times, t)
 end
+
+cpu_interpolating_time_indices(arch::Distributed, args...) = cpu_interpolating_time_indices(child_architecture(arch), args...)
 
 # Fallbacks that do nothing
 update_field_time_series!(fts, time::Time) = nothing
-update_field_time_series!(fts, n::Int) = nothing
+update_field_time_series!(fts, n₁::Int, n₂=n₁) = nothing
 
 # Update the `fts` to contain the time `time_index.time`.
 # Linear extrapolation, simple version
 function update_field_time_series!(fts::PartlyInMemoryFTS, time_index::Time)
     t = time_index.time
-    ñ, n₁, n₂ = cpu_interpolating_time_indices(architecture(fts), fts.times, fts.time_indexing, t)
+    indices = cpu_interpolating_time_indices(architecture(fts), fts.times, fts.time_indexing, t)
+    n₁ = indices.first_index
+    n₂ = indices.second_index
     return update_field_time_series!(fts, n₁, n₂)
 end
 
 function update_field_time_series!(fts::PartlyInMemoryFTS, n₁::Int, n₂=n₁)
-    idxs = time_indices(fts)
-    in_range = n₁ ∈ idxs && n₂ ∈ idxs
+    in_range = in_time_range(fts, fts.time_indexing, n₁, n₂)
 
     if !in_range
         # Update backend
@@ -267,9 +395,23 @@ function update_field_time_series!(fts::PartlyInMemoryFTS, n₁::Int, n₂=n₁)
         start = n₁
         fts.backend = new_backend(fts.backend, start, Nm)
         set!(fts)
+        fill_halo_regions!(fts)
     end
 
     return nothing
+end
+
+function in_time_range(fts, time_indexing, n₁, n₂)
+    idxs = time_indices(fts)
+    return n₁ ∈ idxs && n₂ ∈ idxs
+end
+
+function in_time_range(fts, ::Union{Clamp, Linear}, n₁, n₂)
+    Nt = length(fts.times)
+    idxs = time_indices(fts)
+    in_range_1 = n₁ ∈ idxs || n₁ > Nt
+    in_range_2 = n₂ ∈ idxs || n₂ > Nt
+    return in_range_1 && in_range_2
 end
 
 # If `n` is not in memory, getindex automatically updates the data in memory
@@ -278,8 +420,10 @@ function getindex(fts::InMemoryFTS, n::Int)
     update_field_time_series!(fts, n)
 
     m = memory_index(fts, n)
-    underlying_data = view(parent(fts), :, :, :, m)
-    data = offset_data(underlying_data, fts.grid, location(fts), fts.indices)
+    @apply_regionally underlying_data = view(parent(fts), :, :, :, m)
+    @apply_regionally data = offset_data(underlying_data, fts.grid, instantiated_location(fts), fts.indices)
 
-    return Field(location(fts), fts.grid; data, fts.boundary_conditions, fts.indices)
+    status = @allowscalar FixedTime(fts.times[n])
+
+    return Field(instantiated_location(fts), fts.grid; data, fts.boundary_conditions, fts.indices, status)
 end

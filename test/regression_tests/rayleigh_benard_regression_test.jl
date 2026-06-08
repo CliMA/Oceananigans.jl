@@ -1,5 +1,6 @@
 using Oceananigans.Grids: xnode, znode
 using Oceananigans.TimeSteppers: update_state!
+using Oceananigans.BuoyancyFormulations: BuoyancyForce
 using Oceananigans.DistributedComputations: cpu_architecture, partition, reconstruct_global_grid
 
 function run_rayleigh_benard_regression_test(arch, grid_type)
@@ -47,11 +48,11 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     bbcs = FieldBoundaryConditions(top = BoundaryCondition(Value(), 0.0),
                                    bottom = BoundaryCondition(Value(), Δb))
 
-    model = NonhydrostaticModel(; grid,
+    model = NonhydrostaticModel(grid;
                                 timestepper = :QuasiAdamsBashforth2,
                                 closure = ScalarDiffusivity(ν=ν, κ=κ),
                                 tracers = (:b, :c),
-                                buoyancy = Buoyancy(model=BuoyancyTracer()),
+                                buoyancy = BuoyancyForce(BuoyancyTracer()),
                                 boundary_conditions = (; b=bbcs),
                                 hydrostatic_pressure_anomaly = CenterField(grid),
                                 forcing = (; c=cforcing))
@@ -60,7 +61,7 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     Δt = 0.01 * min(model.grid.Δxᶜᵃᵃ, model.grid.Δyᵃᶜᵃ, Lz/Nz)^2 / ν
 
     # We will manually change the stop_iteration as needed.
-    simulation = Simulation(model, Δt=Δt, stop_iteration=0)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=0, verbose=false)
 
     # The type of the underlying data, not the offset array.
     ArrayType = typeof(model.velocities.u.data.parent)
@@ -90,7 +91,7 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     simulation.stop_iteration = spinup_steps-test_steps
     run!(simulation)
 
-    push!(simulation.output_writers, checkpointer)
+    simulation.output_writers[:checkpointer] = checkpointer
     simulation.stop_iteration += 2test_steps
     run!(simulation)
     =#
@@ -100,10 +101,10 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     #####
 
     # Load initial state
-    datadep_path = "regression_test_data/" * prefix * "_iteration$spinup_steps.jld2"
+    datadep_path = "regression_truth_data/" * prefix * "_iteration$spinup_steps.jld2"
     initial_filename = @datadep_str datadep_path
 
-    solution₀, Gⁿ₀, G⁻₀ = get_fields_from_checkpoint(initial_filename)
+    solution₀, Gⁿ₀, G⁻₀, _, _ = get_fields_from_checkpoint(initial_filename)
 
     cpu_arch = cpu_architecture(architecture(grid))
 
@@ -152,16 +153,16 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
         time_step!(model, Δt, euler=false)
     end
 
-    datadep_path = "regression_test_data/" * prefix * "_iteration$(spinup_steps+test_steps).jld2"
+    datadep_path = "regression_truth_data/" * prefix * "_iteration$(spinup_steps+test_steps).jld2"
     final_filename = @datadep_str datadep_path
 
-    solution₁, Gⁿ₁, G⁻₁ = get_fields_from_checkpoint(final_filename)
+    solution₁, Gⁿ₁, G⁻₁, _, _ = get_fields_from_checkpoint(final_filename)
 
-    test_fields =  CUDA.@allowscalar (u = Array(interior(model.velocities.u)),
-                                      v = Array(interior(model.velocities.v)),
-                                      w = Array(interior(model.velocities.w)[:, :, 1:Nz]),
-                                      b = Array(interior(model.tracers.b)),
-                                      c = Array(interior(model.tracers.c)))
+    test_fields =  @allowscalar (u = Array(interior(model.velocities.u)),
+                                 v = Array(interior(model.velocities.v)),
+                                 w = Array(interior(model.velocities.w)[:, :, 1:Nz]),
+                                 b = Array(interior(model.tracers.b)),
+                                 c = Array(interior(model.tracers.c)))
 
     global_grid = reconstruct_global_grid(model.grid)
 

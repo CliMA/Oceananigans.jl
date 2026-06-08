@@ -1,7 +1,4 @@
-using CUDA
-
 using Oceananigans.Fields: AbstractField, compute_at!, ZeroField
-using Oceananigans.Models.LagrangianParticleTracking: LagrangianParticles
 
 # TODO: figure out how to support this
 # using Oceananigans.OutputReaders: FieldTimeSeries
@@ -19,24 +16,20 @@ function fetch_output(field::AbstractField, model)
     return parent(field)
 end
 
-function fetch_output(lagrangian_particles::LagrangianParticles, model)
-    particle_properties = lagrangian_particles.properties
-    names = propertynames(particle_properties)
-    return NamedTuple{names}([getproperty(particle_properties, name) for name in names])
-end
-
 convert_output(output, writer) = output
 
-function convert_output(output::AbstractArray, writer)
+function convert_output(output::AbstractArray, array_type)
     if architecture(output) isa GPU
-        output_array = writer.array_type(undef, size(output)...)
+        output_array = array_type(undef, size(output)...)
         copyto!(output_array, output)
     else
-        output_array = convert(writer.array_type, output)
+        output_array = convert(array_type, output)
     end
 
     return output_array
 end
+
+convert_output(output::AbstractArray, writer::AbstractOutputWriter) = convert_output(output, writer.array_type)
 
 # Need to broadcast manually because of https://github.com/JuliaLang/julia/issues/30836
 convert_output(outputs::NamedTuple, writer) =
@@ -48,4 +41,3 @@ function fetch_and_convert_output(output, model, writer)
 end
 
 fetch_and_convert_output(output::ZeroField, model, writer) = zero(eltype(output))
-

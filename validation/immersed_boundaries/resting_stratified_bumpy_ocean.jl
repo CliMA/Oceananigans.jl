@@ -9,7 +9,7 @@ tracer_advection = Centered()
 momentum_advection = Centered()
 
 underlying_grid = RectilinearGrid(arch,
-                                  size=(128, 64), halo=(3, 3), 
+                                  size=(128, 64), halo=(3, 3),
                                   y = (-1, 1),
                                   z = (-1, 0),
                                   topology=(Flat, Periodic, Bounded))
@@ -43,7 +43,7 @@ for ib in immersed_boundaries
 
     @show grid
 
-    model = HydrostaticFreeSurfaceModel(; grid,
+    model = HydrostaticFreeSurfaceModel(grid;
                                         tracer_advection,
                                         momentum_advection,
                                         coriolis = FPlane(f=0.1),
@@ -112,4 +112,3 @@ hmvd = heatmap!(ax_vd, Δv)
 =#
 
 display(fig)
-

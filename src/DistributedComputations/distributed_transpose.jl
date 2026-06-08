@@ -17,9 +17,9 @@ transpose_y_to_x!(::SlabXFields) = nothing
 # Since z -> y -> x -> y -> z we only nedd to define the `pack` and `unpack` kernels
 # for the x and z configurations once, y requires two definitions depending on which
 # configuration it's interacting with. Therefore, `_pack_buffer_x!` and `_pack_buffer_z!`
-# are packing the buffer from a x-local configuration and from a z-local configuration. 
-# There is no ambiguity here because the x- and z- configurations communicate only with the y-configuration. 
-# On the other hand, for the y-configuration there are two ways to pack a buffer and two ways to unpack it 
+# are packing the buffer from a x-local configuration and from a z-local configuration.
+# There is no ambiguity here because the x- and z- configurations communicate only with the y-configuration.
+# On the other hand, for the y-configuration there are two ways to pack a buffer and two ways to unpack it
 # depending on whether the y-configuration is going (or coming from) a x- or a z-configuration
 
 @kernel function _pack_buffer_z_to_y!(yzbuff, zfield, N)
@@ -35,14 +35,14 @@ end
 end
 
 # packing a y buffer for communication with a x-local direction (y -> x communication)
-@kernel function _pack_buffer_y_to_x!(xybuff, yfield, N) 
+@kernel function _pack_buffer_y_to_x!(xybuff, yfield, N)
     i, j, k = @index(Global, NTuple)
     Nx, _, Nz = N
     @inbounds xybuff.send[i + Nx * (k-1 + Nz * (j-1))] = yfield[i, j, k]
 end
 
 # packing a y buffer for communication with a z-local direction (y -> z communication)
-@kernel function _pack_buffer_y_to_z!(xybuff, yfield, N) 
+@kernel function _pack_buffer_y_to_z!(xybuff, yfield, N)
     i, j, k = @index(Global, NTuple)
     Nx, _, Nz = N
     @inbounds xybuff.send[k + Nz * (i-1 + Nx * (j-1))] = yfield[i, j, k]
@@ -71,7 +71,7 @@ end
 end
 
 # unpacking a y buffer from a communication with z-local direction (z -> y)
-@kernel function _unpack_buffer_y_from_z!(yzbuff, yfield, N, n) 
+@kernel function _unpack_buffer_y_from_z!(yzbuff, yfield, N, n)
     i, j, k = @index(Global, NTuple)
     size = N[1], n[2], N[3]
     @inbounds begin
@@ -83,12 +83,12 @@ end
 end
 
 # unpacking a y buffer from a communication with x-local direction (x -> y)
-@kernel function _unpack_buffer_y_from_x!(yzbuff, yfield, N, n) 
+@kernel function _unpack_buffer_y_from_x!(yzbuff, yfield, N, n)
     i, j, k = @index(Global, NTuple)
     size = N[1], n[2], N[3]
     @inbounds begin
         j′  = mod(j - 1, size[2]) + 1
-        m   = (j - 1) ÷ size[2] 
+        m   = (j - 1) ÷ size[2]
         idx = j′ + size[2] * (k-1 + size[3] * (i-1)) + m * prod(size)
         yfield[i, j, k] = yzbuff.recv[idx]
     end
@@ -106,9 +106,9 @@ unpack_buffer_y_from_z!(f, fo, buff) = launch!(architecture(f), f.grid, :xyz, _u
 
 for (from, to, buff) in zip([:y, :z, :y, :x], [:z, :y, :x, :y], [:yz, :yz, :xy, :xy])
     transpose!      = Symbol(:transpose_, from, :_to_, to, :(!))
-    pack_buffer!    = Symbol(:pack_buffer_, from, :_to_, to, :(!)) 
-    unpack_buffer!  = Symbol(:unpack_buffer_, to, :_from_, from, :(!)) 
-    
+    pack_buffer!    = Symbol(:pack_buffer_, from, :_to_, to, :(!))
+    unpack_buffer!  = Symbol(:unpack_buffer_, to, :_from_, from, :(!))
+
     buffer = Symbol(buff, :buff)
     fromfield = Symbol(from, :field)
     tofield = Symbol(to, :field)
@@ -164,7 +164,7 @@ for (from, to, buff) in zip([:y, :z, :y, :x], [:z, :y, :x, :y], [:yz, :yz, :xy, 
         ============
 
         - The tranpose is configured to work only in the following four directions:
-         
+
           1. z-local to y-local
           2. y-local to x-local
           3. x-local to y-local

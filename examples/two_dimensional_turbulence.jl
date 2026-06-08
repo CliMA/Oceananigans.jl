@@ -1,4 +1,4 @@
-# # Two dimensional turbulence example
+# # [Two dimensional turbulence example](@id two_dimensional_turbulence)
 #
 # In this example, we initialize a random velocity field and observe its turbulent decay
 # in a two-dimensional domain. This example demonstrates:
@@ -22,10 +22,13 @@
 # and a small isotropic viscosity.  Note that we assign `Flat` to the `z` direction.
 
 using Oceananigans
+using Random
+
+Random.seed!(404) # for reproducible results
 
 grid = RectilinearGrid(size=(128, 128), extent=(2π, 2π), topology=(Periodic, Periodic, Flat))
 
-model = NonhydrostaticModel(; grid,
+model = NonhydrostaticModel(grid;
                             advection = UpwindBiased(order=5),
                             closure = ScalarDiffusivity(ν=1e-5))
 
@@ -106,10 +109,10 @@ s = sqrt(u^2 + v^2)
 # We pass these operations to an output writer below to calculate and output them during the simulation.
 filename = "two_dimensional_turbulence"
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, (; ω, s),
-                                                      schedule = TimeInterval(0.6),
-                                                      filename = filename * ".jld2",
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, (; ω, s),
+                                                schedule = TimeInterval(0.6),
+                                                filename = filename * ".jld2",
+                                                overwrite_existing = true)
 
 # ## Running the simulation
 #
@@ -130,7 +133,7 @@ nothing #hide
 # and animate the vorticity and fluid speed.
 
 using CairoMakie
-set_theme!(Theme(fontsize = 24))
+set_theme!(Theme(fontsize = 20))
 
 fig = Figure(size = (800, 500))
 
@@ -144,7 +147,7 @@ ax_s = Axis(fig[2, 2]; title = "Speed", axis_kwargs...)
 nothing #hide
 
 # We use Makie's `Observable` to animate the data. To dive into how `Observable`s work we
-# refer to [Makie.jl's Documentation](https://makie.juliaplots.org/stable/documentation/nodes/index.html).
+# refer to [Makie.jl's Documentation](https://docs.makie.org/stable/explanations/observables).
 
 n = Observable(1)
 

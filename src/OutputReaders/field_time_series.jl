@@ -4,7 +4,8 @@ using OffsetArrays
 using Statistics
 using JLD2
 using Adapt
-using CUDA: @allowscalar
+using Glob
+using GPUArraysCore
 
 using Dates: AbstractTime
 using KernelAbstractions: @kernel, @index
@@ -13,16 +14,17 @@ using Oceananigans.Architectures
 using Oceananigans.Grids
 using Oceananigans.Fields
 
-using Oceananigans.Grids: topology, total_size, interior_parent_indices, parent_index_range
+using Oceananigans.Grids: topology, total_size, interior_parent_indices, AbstractGrid, validate_indices
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 
-using Oceananigans.Fields: interior_view_indices, index_binary_search,
-                           indices_summary, boundary_conditions
+using Oceananigans.Fields: interior_view_indices,
+                           indices_summary, instantiate
 
 using Oceananigans.Units: Time
 using Oceananigans.Utils: launch!
 
 import Oceananigans.Architectures: architecture, on_architecture
-import Oceananigans.BoundaryConditions: fill_halo_regions!, BoundaryCondition, getbc
+import Oceananigans.BoundaryConditions: fill_halo_regions!, BoundaryCondition, getbc, FieldBoundaryConditions
 import Oceananigans.Fields: Field, set!, interior, indices, interpolate!
 
 #####
@@ -67,6 +69,34 @@ on disk, only loading it as requested by indexing into the
 """
 struct OnDisk <: AbstractDataBackend end
 
+"""
+    SplitFilePath(paths, cumulative_length)
+
+Stores file paths and cumulative iteration counts for split JLD2 output files,
+enabling OnDisk `FieldTimeSeries` to load data from the correct part file.
+"""
+struct SplitFilePath
+    paths :: Vector{String}
+    cumulative_length :: Vector{Int}
+end
+
+"""
+    file_and_local_index(sfp::SplitFilePath, n)
+
+Return `(filepath, local_index)` for global time index `n`.
+"""
+function file_and_local_index(sfp::SplitFilePath, n)
+    if n < 1 || n > last(sfp.cumulative_length)
+        throw(BoundsError(sfp, n))
+    end
+
+    i = searchsortedfirst(sfp.cumulative_length, n)
+    prev = i == 1 ? 0 : sfp.cumulative_length[i-1]
+    return sfp.paths[i], n - prev
+end
+
+file_and_local_index(path::AbstractString, n) = (path, n)
+
 #####
 ##### Time indexing modes for FieldTimeSeries
 #####
@@ -74,7 +104,7 @@ struct OnDisk <: AbstractDataBackend end
 """
     Cyclical(period=nothing)
 
-Specifies cyclical FieldTimeSeries linear Time extrapolation. If
+Specifies cyclical `FieldTimeSeries` linear `Time` extrapolation. If
 `period` is not specified, it is inferred from the `fts::FieldTimeSeries` via
 
 ```julia
@@ -92,14 +122,14 @@ Cyclical() = Cyclical(nothing)
 """
     Linear()
 
-Specifies FieldTimeSeries linear Time extrapolation.
+Specifies `FieldTimeSeries` linear `Time` extrapolation.
 """
 struct Linear end
 
 """
     Clamp()
 
-Specifies FieldTimeSeries Time extrapolation that returns data from the nearest value.
+Specifies `FieldTimeSeries` `Time` extrapolation that returns data from the nearest value.
 """
 struct Clamp end # clamp to nearest value
 
@@ -121,22 +151,23 @@ struct Clamp end # clamp to nearest value
 @inline shift_index(n, n₀) = n - (n₀ - 1)
 @inline reverse_index(m, n₀) = m + n₀ - 1
 
-@inline memory_index(backend::PartlyInMemory, ::Linear, Nt, n) = shift_index(n, backend.start)
-
-@inline function memory_index(backend::PartlyInMemory, ::Clamp, Nt, n)
-    n̂ = clamp(n, 1, Nt)
-    m = shift_index(n̂, backend.start)
-    return m
-end
-
 """
     time_index(backend::PartlyInMemory, time_indexing, Nt, m)
 
 Compute the time index of a snapshot currently stored at the memory index `m`,
 given `backend`, `time_indexing`, and number of times `Nt`.
 """
-@inline time_index(backend::PartlyInMemory, ::Union{Clamp, Linear}, Nt, m) =
-    reverse_index(m, backend.start)
+@inline function time_index(backend::PartlyInMemory, ::Cyclical, Nt, m)
+    n = reverse_index(m, backend.start)
+    ñ = mod1(n, Nt) # wrap index
+    return ñ
+end
+
+@inline function time_index(backend::PartlyInMemory, ::Union{Clamp, Linear}, Nt, m)
+    n = reverse_index(m, backend.start)
+    ñ = ifelse(n > Nt, Nt, n)
+    return ñ
+end
 
 """
     memory_index(backend::PartlyInMemory, time_indexing, Nt, n)
@@ -182,10 +213,10 @@ m̃ = mod1(7, 5)  # = 2 ✓
     return m̃
 end
 
-@inline function time_index(backend::PartlyInMemory, ::Cyclical, Nt, m)
-    n = reverse_index(m, backend.start)
-    ñ = mod1(n, Nt) # wrap index
-    return ñ
+@inline function memory_index(backend::PartlyInMemory, ::Union{Clamp, Linear}, Nt, n)
+    n̂ = clamp(n, 1, Nt)
+    m = shift_index(n̂, backend.start)
+    return m
 end
 
 """
@@ -196,7 +227,6 @@ If `backend::TotallyInMemory` then return `1:length(times)`.
 """
 function time_indices(backend::PartlyInMemory, time_indexing, Nt)
     St = length(backend)
-    n₀ = backend.start
 
     time_indices = ntuple(St) do m
         time_index(backend, time_indexing, Nt, m)
@@ -206,8 +236,23 @@ function time_indices(backend::PartlyInMemory, time_indexing, Nt)
 end
 
 time_indices(::TotallyInMemory, time_indexing, Nt) = 1:Nt
-
 Base.length(backend::PartlyInMemory) = backend.length
+
+function try_convert_to_range(times::AbstractArray)
+    if length(times) > 1
+        first_time = first(times)
+        last_time = last(times)
+        len = length(times)
+        try
+            candidate = range(first_time, last_time; length=len)
+            if all(candidate .== times)
+                return candidate
+            end
+        catch
+        end
+    end
+    return times
+end
 
 #####
 ##### FieldTimeSeries
@@ -244,12 +289,8 @@ mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW} 
         end
 
         if times isa AbstractArray
-            # Try to convert to a range, cuz
-            time_range = range(first(times), last(times), length=length(times))
-            if all(time_range .≈ times) # good enough for most
-                times = time_range
-            end
-
+            times = on_architecture(CPU(), times)
+            times = try_convert_to_range(times)
             times = on_architecture(architecture(grid), times)
         end
 
@@ -275,7 +316,7 @@ on_architecture(to, fts::FieldTimeSeries{LX, LY, LZ}) where {LX, LY, LZ} =
     FieldTimeSeries{LX, LY, LZ}(on_architecture(to, fts.data),
                                 on_architecture(to, fts.grid),
                                 on_architecture(to, fts.backend),
-                                on_architecture(to, fts.bcs),
+                                on_architecture(to, fts.boundary_conditions),
                                 on_architecture(to, fts.indices),
                                 on_architecture(to, fts.times),
                                 on_architecture(to, fts.path),
@@ -304,6 +345,8 @@ struct GPUAdaptedFieldTimeSeries{LX, LY, LZ, TI, K, ET, D, χ} <: AbstractField{
         return new{LX, LY, LZ, TI, K, ET, D, χ}(data, times, backend, time_indexing)
     end
 end
+
+Adapt.parent_type(::Type{<:FieldTimeSeries{LX, LY, LZ, TI, K, I, D}}) where {LX, LY, LZ, TI, K, I, D} = D
 
 function Adapt.adapt_structure(to, fts::FieldTimeSeries)
     LX, LY, LZ = location(fts)
@@ -344,16 +387,15 @@ end
 ##### Constructors
 #####
 
-instantiate(T::Type) = T()
-
 new_data(FT, grid, loc, indices, ::Nothing) = nothing
 
 # Apparently, not explicitly specifying Int64 in here makes this function
 # fail on x86 processors where `Int` is implied to be `Int32`
-# see ClimaOcean commit 3c47d887659d81e0caed6c9df41b7438e1f1cd52 at https://github.com/CliMA/ClimaOcean.jl/actions/runs/8804916198/job/24166354095)
+# see ClimaOcean commit 3c47d887659d81e0caed6c9df41b7438e1f1cd52 at
+# https://github.com/CliMA/ClimaOcean.jl/actions/runs/8804916198/job/24166354095)
 function new_data(FT, grid, loc, indices, Nt::Union{Int, Int64})
     space_size = total_size(grid, loc, indices)
-    underlying_data = zeros(FT, architecture(grid), space_size..., Nt)
+    underlying_data = zeros(architecture(grid), FT, space_size..., Nt)
     data = offset_data(underlying_data, grid, loc, indices)
     return data
 end
@@ -363,19 +405,152 @@ time_indices_length(::TotallyInMemory, times) = length(times)
 time_indices_length(backend::PartlyInMemory, times) = length(backend)
 time_indices_length(::OnDisk, times) = nothing
 
-function FieldTimeSeries(loc, grid, times=();
+"""
+    FieldTimeSeries(loc, grid [, times=()];
+                    indices = (:, :, :),
+                    backend = InMemory(),
+                    path = nothing,
+                    name = nothing,
+                    time_indexing = Clamp(),
+                    boundary_conditions = FieldBoundaryConditions(grid, loc),
+                    reader_kw = NamedTuple())
+
+Construct a `FieldTimeSeries` on `loc`ation of `grid` and at `times`.
+
+The data in a `FieldTimeSeries` can be loaded in your RAM (`backend = InMemory()`),
+or be written directly to disk (`backend = OnDisk()`).
+
+Keyword arguments
+=================
+
+- `indices`: spatial indices. Default: `(:, :, :)`.
+- `backend`: `InMemory()` (default), `OnDisk()`, or a custom backend. This is how the data is stored outside `FieldTimeSeries.data`.
+- `path`: path to data for `backend = OnDisk()`. Default: `nothing`.
+- `name`: name of field for `backend = OnDisk()`. Default: `nothing`.
+- `time_indexing`: time indexing mode for extrapolation in time. Can be `Clamped()` (default), `Cyclical()`, or `Linear()`.
+- `boundary_conditions`: boundary conditions for the fields. Default: `FieldBoundaryConditions(grid, loc)`.
+- `reader_kw`: a named tuple or dictionary of keyword arguments to pass to the reader.
+
+Examples
+========
+
+A `FieldTimeSeries` can be indexed into by time indices or by time values.
+To access the field of `fts` at the 3rd time index, use
+
+```jldoctest field_time_series
+using Oceananigans
+grid = RectilinearGrid(size = (4, 4, 4), extent = (1, 1, 1))
+fts = FieldTimeSeries{Center, Center, Center}(grid, 0:0.1:1)
+fts[4]
+
+# output
+4×4×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+├── grid: 4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
+└── data: 10×10×10 OffsetArray(view(::Array{Float64, 4}, :, :, :, 4), -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
+    └── max=0.0, min=0.0, mean=0.0
+```
+
+To access the field of `fts` at a given time `t` (in seconds), use the [`Time`](@ref) type:
+
+```jldoctest field_time_series
+using Oceananigans.Units: Time
+fts[Time(0.3)]
+
+# output
+4×4×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+├── grid: 4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
+├── operand: BinaryOperation at (Center, Center, Center)
+├── status: Oceananigans.Fields.FixedTime{Float64}
+└── data: 10×10×10 OffsetArray(::Array{Float64, 3}, -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
+    └── max=0.0, min=0.0, mean=0.0
+```
+
+You can also index spatially at the same time, e.g., with
+
+```jldoctest field_time_series
+fts[1:3, 2:4, 1:2, 3]
+
+# output
+3×3×2 Array{Float64, 3}:
+[:, :, 1] =
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+
+[:, :, 2] =
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+ 0.0  0.0  0.0
+```
+
+When using [`Time`](@ref) indexing, Oceananigans interpolates between saved time slices
+and extrapolates outside the time domain.
+To control the extrapolation method, use the `time_indexing` keyword argument.
+For example, construct a sine-like `FieldTimeSeries` with `Cyclical` time indexing,
+and get values outside of the domain:
+
+```jldoctest field_time_series
+using Oceananigans.OutputReaders: Cyclical
+output_times = 0:0.1:1
+fts = FieldTimeSeries{Center, Center, Center}(
+    grid,
+    output_times;
+    time_indexing = Cyclical(1),
+)
+for (idx, t) in enumerate(output_times)
+    c = CenterField(grid)
+    set!(c, (x, y, z) -> sin(2π * t / 1))
+    set!(fts, c, idx)
+end
+fts[1, 2, 3, Time(-1.25)]
+
+# output
+-0.9510565162951536
+```
+
+To access a `FieldTimeSeries` constructed on disk, you must first `set!` all its fields:
+
+```jldoctest field_time_series; teardown = :(rm("test.jld2"))
+output_times = 0:0.1:1
+fts = FieldTimeSeries{Center, Center, Center}(
+    grid,
+    output_times;
+    backend = OnDisk(),
+    path = "test.jld2",
+    name = "c",
+)
+for idx in eachindex(output_times)
+    c = CenterField(grid)
+    set!(c, Returns(idx))
+    set!(fts, c, idx) # writes fts[idx] to disk
+end
+fts[5]
+
+# output
+4×4×4 Field{Center, Center, Center} on RectilinearGrid on CPU
+├── grid: 4×4×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── boundary conditions: FieldBoundaryConditions
+│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: ZeroFlux, top: ZeroFlux, immersed: Nothing
+└── data: 10×10×10 OffsetArray(::Array{Float64, 3}, -2:7, -2:7, -2:7) with eltype Float64 with indices -2:7×-2:7×-2:7
+    └── max=5.0, min=5.0, mean=5.0
+```
+"""
+function FieldTimeSeries(loc::Tuple{<:LX, <:LY, <:LZ}, grid, times=();
                          indices = (:, :, :),
                          backend = InMemory(),
                          path = nothing,
                          name = nothing,
-                         time_indexing = Linear(),
-                         boundary_conditions = nothing,
-                         reader_kw = NamedTuple())
+                         time_indexing = Clamp(),
+                         boundary_conditions = FieldBoundaryConditions(grid, loc),
+                         reader_kw = NamedTuple()) where {LX, LY, LZ}
 
-    LX, LY, LZ = loc
-
+    indices = validate_indices(indices, loc, grid)
     Nt = time_indices_length(backend, times)
-    data = new_data(eltype(grid), grid, loc, indices, Nt)
+    @apply_regionally data = new_data(eltype(grid), grid, loc, indices, Nt)
 
     if backend isa OnDisk
         isnothing(path) && error(ArgumentError("Must provide the keyword argument `path` when `backend=OnDisk()`."))
@@ -386,28 +561,178 @@ function FieldTimeSeries(loc, grid, times=();
                                        times, path, name, time_indexing, reader_kw)
 end
 
+isreconstructed(grid::JLD2.ReconstructedStatic) = true
+isreconstructed(grid::AbstractGrid) = false
+isreconstructed(grid::ImmersedBoundaryGrid) = isreconstructed(grid.underlying_grid)
+reconstructed_name(::JLD2.ReconstructedStatic{N}) where N = string(N)
+
+function reconstructed_topology(grid::JLD2.ReconstructedStatic)
+    name = reconstructed_name(grid)
+    firstcurly = findfirst('{', name)
+
+    type_parameters = name[firstcurly+1:end-1]
+    parameter_list = split(type_parameters, ',')
+
+    TXstr = parameter_list[2]
+    TYstr = parameter_list[3]
+    TZstr = parameter_list[4]
+
+    TXsym = Symbol(TXstr)
+    TYsym = Symbol(TYstr)
+    TZsym = Symbol(TZstr)
+
+    TX = eval(:($(TXsym)))
+    TY = eval(:($(TYsym)))
+    TZ = eval(:($(TZsym)))
+
+    return (TX, TY, TZ)
+end
+
 """
     FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid [, times=()]; kwargs...)
 
 Construct a `FieldTimeSeries` on `grid` and at `times`.
 
-Keyword arguments
-=================
-
-- `indices`: spatial indices
-
-- `backend`: backend, `InMemory(indices=Colon())` or `OnDisk()`
-
-- `path`: path to data for `backend = OnDisk()`
-
-- `name`: name of field for `backend = OnDisk()`
+Same as `FieldTimeSeries((LX(), LY(), LZ()), grid, [, times]; kwargs...)`.
 """
 function FieldTimeSeries{LX, LY, LZ}(grid::AbstractGrid, times=(); kwargs...) where {LX, LY, LZ}
-    loc = (LX, LY, LZ)
+    loc = (LX(), LY(), LZ())
     return FieldTimeSeries(loc, grid, times; kwargs...)
 end
 
+# Function to naturally sort strings containing numbers, code credit:
+# https://discourse.julialang.org/t/sorting-strings-containing-numbers-so-that-a2-a10/5372/28
+function naturalsort(x::Vector{String})
+    f = text -> all(isnumeric, text) ? Char(parse(Int, text)) : text
+    sorter = key -> join(f(m.match) for m in eachmatch(r"[0-9]+|[^0-9]+", key))
+    return sort(x, by=sorter)
+end
+
 struct UnspecifiedBoundaryConditions end
+
+"""
+    load_serialized_grid(file, name)
+
+Load the grid associated with the output variable `name` from a JLD2 `file`.
+
+Grids are looked up in the following order:
+
+1. If `timeseries/\$name/serialized/grid_index` is present, use it to select
+   `serialized/grid_\$i` (multi-grid JLD2Writer output).
+2. `serialized/grid` (single-grid JLD2Writer output, or the legacy path
+   written by the `including` mechanism).
+"""
+function load_serialized_grid(file, name)
+    if haskey(file, "timeseries/$name/serialized/grid_index")
+        grid_index = file["timeseries/$name/serialized/grid_index"]
+        return file["serialized/grid_$grid_index"]
+    end
+
+    return file["serialized/grid"]
+end
+
+"""
+    reconstruct_legacy_grid(grid, file, architecture)
+
+Reconstruct a grid from legacy JLD2 output files (prior to Oceananigans 0.95.0)
+that did not serialize grids properly. Reads raw grid data from the top-level
+`grid/` path written by `saveproperties!`.
+"""
+function reconstruct_legacy_grid(grid, file, architecture)
+    isibg = grid isa ImmersedBoundaryGrid
+    test_grid = isibg ? grid.underlying_grid : grid
+    address = isibg ? "grid/underlying_grid" : "grid"
+    Nx = file["$address/Nx"]
+    Ny = file["$address/Ny"]
+    Nz = file["$address/Nz"]
+    Hx = file["$address/Hx"]
+    Hy = file["$address/Hy"]
+    Hz = file["$address/Hz"]
+    zᵃᵃᶠ = file["$address/zᵃᵃᶠ"]
+    z = file["$address/Δzᵃᵃᶠ"] isa Number ? (zᵃᵃᶠ[1], zᵃᵃᶠ[Nz+1]) : zᵃᵃᶠ[1:Nz+1]
+
+    if isibg
+        topo = topology(grid)
+    else
+        topo = reconstructed_topology(grid)
+    end
+
+    size = (Nx, Ny, Nz)
+    halo = (Hx, Hy, Hz)
+
+    if :λᶜᵃᵃ ∈ propertynames(test_grid) # I guess its a LatitudeLongitudeGrid.
+        λᶠᵃᵃ = file["$address/λᶠᵃᵃ"]
+        φᵃᶠᵃ = file["$address/φᵃᶠᵃ"]
+        λ = file["$address/Δλᶠᵃᵃ"] isa Number ? (λᶠᵃᵃ[1], λᶠᵃᵃ[Nx+1]) : λᶠᵃᵃ[1:Nx+1]
+        φ = file["$address/Δφᵃᶠᵃ"] isa Number ? (φᵃᶠᵃ[1], φᵃᶠᵃ[Ny+1]) : φᵃᶠᵃ[1:Ny+1]
+        domain = (latitude=φ, longitude=λ, z=z)
+        underlying_grid = LatitudeLongitudeGrid(architecture; size, halo, topology=topo, domain...)
+    else
+        xᶠᵃᵃ = file["$address/xᶠᵃᵃ"]
+        yᵃᶠᵃ = file["$address/yᵃᶠᵃ"]
+        x = file["$address/Δxᶠᵃᵃ"] isa Number ? (xᶠᵃᵃ[1], xᶠᵃᵃ[Nx+1]) : xᶠᵃᵃ[1:Nx+1]
+        y = file["$address/Δyᵃᶠᵃ"] isa Number ? (yᵃᶠᵃ[1], yᵃᶠᵃ[Ny+1]) : yᵃᶠᵃ[1:Ny+1]
+        domain = (; x, y, z)
+        underlying_grid = RectilinearGrid(architecture; size, halo, topology=topo, domain...)
+    end
+
+    if isibg
+        bottom_height = file["grid/immersed_boundary/bottom_height"]
+        bottom_height = view(bottom_height, 1+Hx:Nx+Hx, 1+Hy:Ny+Hy, 1)
+        grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(bottom_height))
+    else
+        grid = underlying_grid
+    end
+
+    return grid
+end
+
+"""
+    manually_reconstruct_rectilinear_grid(grid, file, architecture)
+
+Manually reconstruct a RectilinearGrid from file data when `on_architecture` fails.
+This is a fallback for grids saved with CuArrays or generated with a different Julia version.
+Reads raw grid data from the top-level `grid/` path.
+"""
+function manually_reconstruct_rectilinear_grid(grid, file, architecture)
+    @info "Initial attempt to transfer grid to $architecture failed."
+    @info "Attempting to reconstruct RectilinearGrid on $architecture manually..."
+
+    Nx = file["grid/Nx"]
+    Ny = file["grid/Ny"]
+    Nz = file["grid/Nz"]
+    Hx = file["grid/Hx"]
+    Hy = file["grid/Hy"]
+    Hz = file["grid/Hz"]
+    xᶠᵃᵃ = file["grid/xᶠᵃᵃ"]
+    yᵃᶠᵃ = file["grid/yᵃᶠᵃ"]
+    zᵃᵃᶠ = file["grid/zᵃᵃᶠ"]
+    x = file["grid/Δxᶠᵃᵃ"] isa Number ? (xᶠᵃᵃ[1], xᶠᵃᵃ[Nx+1]) : xᶠᵃᵃ
+    y = file["grid/Δyᵃᶠᵃ"] isa Number ? (yᵃᶠᵃ[1], yᵃᶠᵃ[Ny+1]) : yᵃᶠᵃ
+    z = file["grid/Δzᵃᵃᶠ"] isa Number ? (zᵃᵃᶠ[1], zᵃᵃᶠ[Nz+1]) : zᵃᵃᶠ
+    topo = topology(grid)
+
+    N = (Nx, Ny, Nz)
+
+    # Reduce for Flat dimensions
+    domain = Dict()
+    for (i, ξ) in enumerate((x, y, z))
+        if topo[i] !== Flat
+            if !(ξ isa Tuple)
+                chopped_ξ = ξ[1:N[i]+1]
+            else
+                chopped_ξ = ξ
+            end
+            sξ = (:x, :y, :z)[i]
+            domain[sξ] = chopped_ξ
+        end
+    end
+
+    size = Tuple(N[i] for i=1:3 if topo[i] !== Flat)
+    halo = Tuple((Hx, Hy, Hz)[i] for i=1:3 if topo[i] !== Flat)
+
+    return RectilinearGrid(architecture; size, halo, topology=topo, domain...)
+end
 
 """
     FieldTimeSeries(path, name;
@@ -419,6 +744,7 @@ struct UnspecifiedBoundaryConditions end
                     time_indexing = Linear(),
                     iterations = nothing,
                     times = nothing,
+                    combine = true,
                     reader_kw = Dict{Symbol, Any}())
 
 Return a `FieldTimeSeries` containing a time-series of the field `name`
@@ -439,10 +765,14 @@ Keyword arguments
            comparison to recorded save times. Defaults to times associated with `iterations`.
            Takes precedence over `iterations` if `times` is specified.
 
+- `combine`: If `true` (default), automatically detect and combine distributed output files
+             (e.g., `output_rank0.jld2`, `output_rank1.jld2`, ...) into a single global
+             `FieldTimeSeries`. Set to `false` to disable this behavior.
+
 - `reader_kw`: A named tuple or dictionary of keyword arguments to pass to the reader
                (currently only JLD2) to be used when opening files.
 """
-function FieldTimeSeries(path::String, name::String;
+function FieldTimeSeries(file::JLD2.JLDFile, name::String;
                          backend = InMemory(),
                          architecture = nothing,
                          grid = nothing,
@@ -451,22 +781,58 @@ function FieldTimeSeries(path::String, name::String;
                          time_indexing = Linear(),
                          iterations = nothing,
                          times = nothing,
+                         Nparts = nothing,
+                         part_paths = nothing,
+                         path = nothing,
+                         combine = true,
                          reader_kw = NamedTuple())
 
-    file = jldopen(path; reader_kw...)
+    path = auto_extension(path, ".jld2")
 
-    # Defaults
-    isnothing(iterations)   && (iterations = parse.(Int, keys(file["timeseries/t"])))
-    isnothing(times)        && (times      = [file["timeseries/t/$i"] for i in iterations])
-    isnothing(location)     && (Location   = file["timeseries/$name/serialized/location"])
+    if !isfile(path)
+        # First, check for distributed rank files (e.g., output_rank0.jld2, output_rank1.jld2, ...)
+        if combine
+            rank_paths = find_rank_files(path)
+            if !isnothing(rank_paths)
+                return combined_field_time_series(path, name;
+                                                   backend,
+                                                   architecture,
+                                                   grid,
+                                                   location,
+                                                   boundary_conditions,
+                                                   time_indexing,
+                                                   iterations,
+                                                   times,
+                                                   reader_kw)
+            end
+        end
+
+        # Handle file splitting due to max_filesize limitations by looking for filenames
+        # that end in part1, etc
+        start = path[1:end-5]
+        lookfor = string(basename(start), "_part*.jld2")
+        part_paths = glob(lookfor, dirname(start))
+        part_paths = naturalsort(part_paths)
+        Nparts = length(part_paths)
+
+        if Nparts == 0
+            if combine
+                error("File not found: $path. Also tried looking for rank files (*_rank*.jld2) and part files (*_part*.jld2).")
+            else
+                error("File not found: $path. Also tried looking for part files (*_part*.jld2). Set combine=true to also look for distributed rank files.")
+            end
+        end
+
+        path = first(part_paths) # part1 is first?
+    end
+
+    handle = jldopen(path; reader_kw...)
 
     indices = try
-        file["timeseries/$name/serialized/indices"]
+        handle["timeseries/$name/serialized/indices"]
     catch
         (:, :, :)
     end
-
-    isnothing(grid) && (grid = file["serialized/grid"])
 
     if isnothing(architecture) # determine architecture
         if isnothing(grid) # go to default
@@ -476,87 +842,176 @@ function FieldTimeSeries(path::String, name::String;
         end
     end
 
-    if boundary_conditions isa UnspecifiedBoundaryConditions
-        boundary_conditions = file["timeseries/$name/serialized/boundary_conditions"]
-        boundary_conditions = on_architecture(architecture, boundary_conditions)
+    if isnothing(grid)
+        grid = load_serialized_grid(handle, name)
     end
 
+    # If isreconstructed(grid), it probably means that the data was generated prior to
+    # Oceananigans version 0.95.0 (12/13/2024). In this case, the best we can do is to try to rebuild
+    # the grids manually using the non-serialized grid data. Here, we support RectilinearGrid
+    # and LatitudeLongitudeGrid (but not OrthogonalSphericalShellGrid) and we also assume
+    # GridFittedBottom if the grid is an ImmersedBoundaryGrid. If these assumptions can be relaxed
+    # in the future, they should.
+    isreconstructed(grid) && (grid = reconstruct_legacy_grid(grid, handle, architecture))
 
     # This should be removed eventually... (4/5/2022)
     grid = try
         on_architecture(architecture, grid)
     catch err # Likely, the grid was saved with CuArrays or generated with a different Julia version.
         if grid isa RectilinearGrid # we can try...
-            @info "Initial attempt to transfer grid to $architecture failed."
-            @info "Attempting to reconstruct RectilinearGrid on $architecture manually..."
-
-            Nx = file["grid/Nx"]
-            Ny = file["grid/Ny"]
-            Nz = file["grid/Nz"]
-            Hx = file["grid/Hx"]
-            Hy = file["grid/Hy"]
-            Hz = file["grid/Hz"]
-            xᶠᵃᵃ = file["grid/xᶠᵃᵃ"]
-            yᵃᶠᵃ = file["grid/yᵃᶠᵃ"]
-            zᵃᵃᶠ = file["grid/zᵃᵃᶠ"]
-            x = file["grid/Δxᶠᵃᵃ"] isa Number ? (xᶠᵃᵃ[1], xᶠᵃᵃ[Nx+1]) : xᶠᵃᵃ
-            y = file["grid/Δyᵃᶠᵃ"] isa Number ? (yᵃᶠᵃ[1], yᵃᶠᵃ[Ny+1]) : yᵃᶠᵃ
-            z = file["grid/Δzᵃᵃᶠ"] isa Number ? (zᵃᵃᶠ[1], zᵃᵃᶠ[Nz+1]) : zᵃᵃᶠ
-            topo = topology(grid)
-
-            N = (Nx, Ny, Nz)
-
-            # Reduce for Flat dimensions
-            domain = Dict()
-            for (i, ξ) in enumerate((x, y, z))
-                if topo[i] !== Flat
-                    if !(ξ isa Tuple)
-                        chopped_ξ = ξ[1:N[i]+1]
-                    else
-                        chopped_ξ = ξ
-                    end
-                    sξ = (:x, :y, :z)[i]
-                    domain[sξ] = chopped_ξ
-                end
-            end
-
-            size = Tuple(N[i] for i=1:3 if topo[i] !== Flat)
-            halo = Tuple((Hx, Hy, Hz)[i] for i=1:3 if topo[i] !== Flat)
-
-            RectilinearGrid(architecture; size, halo, topology=topo, domain...)
+            manually_reconstruct_rectilinear_grid(grid, handle, architecture)
         else
             throw(err)
         end
     end
 
-    close(file)
+    if boundary_conditions isa UnspecifiedBoundaryConditions
+        boundary_conditions = handle["timeseries/$name/serialized/boundary_conditions"]
+        boundary_conditions = on_architecture(architecture, boundary_conditions)
+    end
 
-    LX, LY, LZ = Location
+    isnothing(location) && (location = handle["timeseries/$name/serialized/location"])
+    LX, LY, LZ = location
+    loc = (LX(), LY(), LZ())
 
-    loc = map(instantiate, Location)
+    indices = validate_indices(indices, loc, grid)
+
+    if isnothing(Nparts)
+        isnothing(iterations) && (iterations = parse.(Int, keys(handle["timeseries/t"])))
+        isnothing(times) && (times = [handle["timeseries/t/$i"] for i in iterations])
+        close(handle)
+    else
+        all_iterations = []
+        all_times = []
+        iterations_per_part = Int[]
+        part_iterations = parse.(Int, keys(handle["timeseries/t"]))
+        part_times = [handle["timeseries/t/$i"] for i in part_iterations]
+        push!(all_iterations, part_iterations)
+        push!(all_times, part_times)
+        push!(iterations_per_part, length(part_iterations))
+        close(handle)
+
+        for part in 2:Nparts
+            path = part_paths[part]
+            local handle = jldopen(path; reader_kw...)
+            part_iterations = parse.(Int, keys(handle["timeseries/t"]))
+            part_times = [handle["timeseries/t/$i"] for i in part_iterations]
+            push!(all_iterations, part_iterations)
+            push!(all_times, part_times)
+            push!(iterations_per_part, length(part_iterations))
+            close(handle)
+        end
+
+        iterations = vcat(all_iterations...)
+        times = vcat(all_times...)
+    end
+
     Nt = time_indices_length(backend, times)
-    data = new_data(eltype(grid), grid, loc, indices, Nt)
+    @apply_regionally data = new_data(eltype(grid), grid, loc, indices, Nt)
+
+    fts_path = isnothing(Nparts) ? path : SplitFilePath(part_paths, cumsum(iterations_per_part))
 
     time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices,
-                                              times, path, name, time_indexing, reader_kw)
+                                              times, fts_path, name, time_indexing, reader_kw)
 
-    set!(time_series, path, name)
+    if isnothing(Nparts)
+        set!(time_series, path, name)
+    else
+        set!(time_series, fts_path, name)
+    end
 
     return time_series
 end
 
+ext(path) = splitext(path) |> last
+
+function FieldTimeSeries(path::String, args...; reader_kw = NamedTuple(), kwargs...)
+    # JLD2 is the default; don't append .jld2 to paths that already carry a recognised extension
+    path = (endswith(path, ".nc") || endswith(path, ".zarr") || endswith(path, ".zip")) ?
+           path : auto_extension(path, ".jld2")
+    typed_path = if ext(path) == ".jld2"
+                     JLD2Path(path)
+                 elseif ext(path) == ".nc"
+                     NetCDFPath(path)
+                 elseif ext(path) == ".zarr" || ext(path) == ".zip"
+                     ZarrPath(path)
+                 else
+                     error("Unsupported file extension: $(path)")
+                 end
+
+    return FieldTimeSeries(typed_path, args...; reader_kw, kwargs...)
+end
+
+function FieldTimeSeries(typed_path::JLD2Path, name::String;
+                         backend = InMemory(),
+                         architecture = nothing,
+                         grid = nothing,
+                         location = nothing,
+                         boundary_conditions = UnspecifiedBoundaryConditions(),
+                         time_indexing = Linear(),
+                         iterations = nothing,
+                         times = nothing,
+                         combine = true,
+                         reader_kw = NamedTuple())
+
+    path = typed_path.path
+
+    if !isfile(path)
+        # First, check for distributed rank files (e.g., output_rank0.jld2, output_rank1.jld2, ...)
+        if combine
+            rank_paths = find_rank_files(path)
+            if !isnothing(rank_paths)
+                return combined_field_time_series(path, name;
+                                                   backend,
+                                                   architecture,
+                                                   grid,
+                                                   location,
+                                                   boundary_conditions,
+                                                   time_indexing,
+                                                   iterations,
+                                                   times,
+                                                   reader_kw)
+            end
+        end
+
+        # Handle file splitting due to max_filesize limitations by looking for filenames
+        # that end in part1, etc
+        start = path[1:end-5] # Remove filepath extension
+        lookfor = string(basename(start), "_part*.jld2") # Look for part1, etc
+        part_paths = glob(lookfor, dirname(start)) |> naturalsort
+        Nparts = length(part_paths)
+
+        if Nparts == 0
+            if combine
+                error("File not found: $path. Also tried looking for rank files (*_rank*.jld2) and part files (*_part*.jld2).")
+            else
+                error("File not found: $path. Also tried looking for part files (*_part*.jld2). Set combine=true to also look for distributed rank files.")
+            end
+        end
+
+        path = first(part_paths) # part1 is first?
+    else
+        Nparts = nothing
+        part_paths = nothing
+    end
+
+    file = jldopen(path; reader_kw...)
+    return FieldTimeSeries(file, name; backend, architecture, grid, location, boundary_conditions,
+                           time_indexing, iterations, times, Nparts, part_paths, path, reader_kw)
+end
+
 """
-    Field(location, path, name, iter;
+    Field(location, file::JLD2.JLDFile, name::String, iter;
           grid = nothing,
           architecture = nothing,
           indices = (:, :, :),
           boundary_conditions = nothing,
           reader_kw = NamedTuple())
 
-Load a field called `name` saved in a JLD2 file at `path` at `iter`ation.
+Load a field called `name` saved in a JLD2 file at `file` at `iter`ation.
 Unless specified, the `grid` is loaded from `path`.
 """
-function Field(location, path::String, name::String, iter;
+function Field(location, file::JLD2.JLDFile, name::String, iter;
                grid = nothing,
                architecture = nothing,
                indices = (:, :, :),
@@ -572,18 +1027,13 @@ function Field(location, path::String, name::String, iter;
         end
     end
 
-    # Load the grid and data from file
-    file = jldopen(path; reader_kw...)
-
-    isnothing(grid) && (grid = file["serialized/grid"])
+    isnothing(grid) && (grid = load_serialized_grid(file, name))
     raw_data = file["timeseries/$name/$iter"]
 
-    close(file)
-
     # Change grid to specified architecture?
-    grid     = on_architecture(architecture, grid)
+    grid = on_architecture(architecture, grid)
     raw_data = on_architecture(architecture, raw_data)
-    data     = offset_data(raw_data, grid, location, indices)
+    @apply_regionally data = offset_data(raw_data, grid, location, indices)
 
     return Field(location, grid; boundary_conditions, indices, data)
 end
@@ -604,24 +1054,24 @@ Base.lastindex(fts::FlavorOfFTS)  = length(fts.times)
 Base.firstindex(fts::FlavorOfFTS) = 1
 
 function interior(fts::FieldTimeSeries)
-    loc = map(instantiate, location(fts))
-    topo = map(instantiate, topology(fts.grid))
-    sz = size(fts.grid)
-    halo_sz = halo_size(fts.grid)
+    Topo = topology(fts.grid)
+    ℓx, ℓy, ℓz = instantiated_location(fts)
+    𝓉x, 𝓉y, 𝓉z = instantiate(Topo)
 
-    i_interior = map(interior_parent_indices, loc, topo, sz, halo_sz)
-    indices = fts.indices
-    i_view = map(interior_view_indices, indices, i_interior)
+    Nx, Ny, Nz = size(fts.grid)
+    Hx, Hy, Hz = halo_size(fts.grid)
+    ix, iy, iz = fts.indices
 
-    return view(parent(fts), i_view..., :)
+    i = interior_parent_indices(ℓx, 𝓉x, Nx, Hx)
+    j = interior_parent_indices(ℓy, 𝓉y, Ny, Hy)
+    k = interior_parent_indices(ℓz, 𝓉z, Nz, Hz)
+
+    iv = @inbounds interior_view_indices(ix, i)
+    jv = @inbounds interior_view_indices(iy, j)
+    kv = @inbounds interior_view_indices(iz, k)
+
+    return view(parent(fts), iv, jv, kv, :)
 end
-
-# FieldTimeSeries boundary conditions
-const CPUFTSBC = BoundaryCondition{<:Any, <:FieldTimeSeries}
-const GPUFTSBC = BoundaryCondition{<:Any, <:GPUAdaptedFieldTimeSeries}
-const FTSBC = Union{CPUFTSBC, GPUFTSBC}
-
-@inline getbc(bc::FTSBC, i::Int, j::Int, grid::AbstractGrid, clock, args...) = bc.condition[i, j, Time(clock.time)]
 
 #####
 ##### Fill halo regions
@@ -632,8 +1082,7 @@ const MAX_FTS_TUPLE_SIZE = 10
 fill_halo_regions!(fts::OnDiskFTS) = nothing
 
 function fill_halo_regions!(fts::InMemoryFTS)
-    partitioned_indices = Iterators.partition(time_indices(fts), MAX_FTS_TUPLE_SIZE)
-    partitioned_indices = collect(partitioned_indices)
+    partitioned_indices = collect(Iterators.partition(time_indices(fts), MAX_FTS_TUPLE_SIZE))
     Ni = length(partitioned_indices)
 
     asyncmap(1:Ni) do i

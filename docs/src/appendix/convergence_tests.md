@@ -123,10 +123,10 @@ This validates the correctness of the advection and diffusion of a velocity fiel
 
 ## Forced two-dimensional flows
 
-We introduce two convergence tests associated with forced flows in domains that are 
+We introduce two convergence tests associated with forced flows in domains that are
 bounded in ``y``, and periodic in ``x`` with no tracers.
 
-*Note: in this section, subscripts are used to denote derivatives to make reading 
+*Note: in this section, subscripts are used to denote derivatives to make reading
 and typing equations easier.*
 
 In a two-dimensional flow in ``(x, y)``, the velocity field ``(u, v)`` can be expressed in terms
@@ -152,9 +152,9 @@ Finally, taking the divergence of the momentum equation, we find a Poisson equat
     \nabla^2 p = - u_x^2 - v_y^2 - 2 u_y v_x + \partial_x F_v + \partial_y F_v \, .
 ```
 
-To pose the problem, we first pick a streamfunction ``\psi``. This choice then yields the vorticity 
-forcing ``F_{\omega}`` that satisfies the vorticity equation. We then determine ``F_u`` by solving 
-``\partial_y F_v = - F_{\omega}``, and pick ``F_v`` so that we can solve the Poisson equation 
+To pose the problem, we first pick a streamfunction ``\psi``. This choice then yields the vorticity
+forcing ``F_{\omega}`` that satisfies the vorticity equation. We then determine ``F_u`` by solving
+``\partial_y F_v = - F_{\omega}``, and pick ``F_v`` so that we can solve the Poisson equation
 for pressure.
 
 We restrict ourselves to a class of problems in which
@@ -166,7 +166,7 @@ Grinding through the algebra, this particular form implies that ``F_{\omega}`` i
 ```math
     F_{\omega} = -\xi^\prime f_x (g - g^{\prime\prime}) + f f_x (g g^{\prime\prime\prime} - g^\prime g^{\prime\prime}) + f (g - 2 g^{\prime\prime} + g^{\prime\prime\prime\prime}) \, ,
 ```
-where primes denote derivatives of functions of a single argument. 
+where primes denote derivatives of functions of a single argument.
 Setting ``\partial_y F_v = F_{\omega}``, we find that if ``F_v`` satisfies
 ```math
     \partial_y F_v = (g^\prime)^2 + g g^{\prime\prime} \, ,
@@ -231,7 +231,7 @@ The vorticity forcing is
 which implies that
 ```math
     F_v = \xi^\prime f_x (\tfrac{1}{4} y^4 - \tfrac{1}{3} y^3 - 3 y^2 + 2y)
-        + f f_x (3 y^4 - 4 y^3 + 2y^2 ) 
+        + f f_x (3 y^4 - 4 y^3 + 2y^2 )
         - f (\tfrac{1}{4} y^4 - \tfrac{1}{3} y^3 - 6 y^2 + 4 y) \, ,
 ```
 and
@@ -239,9 +239,9 @@ and
     F_v = 3 y^5 - 5 y^4 + 2y^3 \, .
 ```
 
-We set up the problem in the same manner as the forced, free-slip problem above. Note that we 
-also must the no-slip boundary condition ``u |_{y=0} = 0`` and the time-dependent fixed-slip 
-condition ``u |_{y=1} = f``. As for the free-slip problem, we find that the error between the 
+We set up the problem in the same manner as the forced, free-slip problem above. Note that we
+also must the no-slip boundary condition ``u |_{y=0} = 0`` and the time-dependent fixed-slip
+condition ``u |_{y=1} = f``. As for the free-slip problem, we find that the error between the
 numerical and analytical solutions decreases with ``1 / N_x^2 \sim \Delta x^2``, where ``N_x``
 is the number of grid points and ``\Delta x`` is the spatial resolution:
 

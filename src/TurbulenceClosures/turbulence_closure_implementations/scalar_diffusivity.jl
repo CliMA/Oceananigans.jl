@@ -1,8 +1,5 @@
 using Oceananigans.Utils: prettysummary
 
-import Adapt
-import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
-
 struct ScalarDiffusivity{TD, F, N, V, K} <: AbstractScalarDiffusivity{TD, F, N}
     ν :: V
     κ :: K
@@ -82,7 +79,7 @@ ScalarDiffusivity{ExplicitTimeDiscretization}(ν=1000.0, κ=2000.0)
 ```jldoctest ScalarDiffusivity
 julia> const depth_scale = 100;
 
-julia> @inline ν(x, y, z) = 1000 * exp(z / depth_scale)
+julia> @inline ν(x, y, z, t) = 1000 * exp(z / depth_scale)
 ν (generic function with 1 method)
 
 julia> ScalarDiffusivity(ν=ν)
@@ -114,13 +111,13 @@ ScalarDiffusivity{ExplicitTimeDiscretization}(ν=0.0, κ=Oceananigans.Turbulence
 ```
 """
 function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
-                           formulation=ThreeDimensionalFormulation(), 
-                           FT=Float64;
+                           formulation=ThreeDimensionalFormulation(),
+                           FT=Oceananigans.defaults.FloatType;
                            ν=0, κ=0,
                            discrete_form = false,
                            loc = (nothing, nothing, nothing),
                            parameters = nothing,
-                           required_halo_size::Int = 1) 
+                           required_halo_size::Int = 1)
 
     if formulation == HorizontalFormulation() && time_discretization == VerticallyImplicitTimeDiscretization()
       throw(ArgumentError("VerticallyImplicitTimeDiscretization is only supported for \
@@ -141,7 +138,7 @@ function ScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
 end
 
 # Explicit default
-@inline ScalarDiffusivity(formulation::AbstractDiffusivityFormulation, FT=Float64; kw...) =
+@inline ScalarDiffusivity(formulation::AbstractDiffusivityFormulation, FT=Oceananigans.defaults.FloatType; kw...) =
     ScalarDiffusivity(ExplicitTimeDiscretization(), formulation, FT; kw...)
 
 const VerticalScalarDiffusivity{TD} = ScalarDiffusivity{TD, VerticalFormulation} where TD
@@ -155,7 +152,8 @@ const HorizontalDivergenceScalarDiffusivity{TD} = ScalarDiffusivity{TD, Horizont
 
 Shorthand for a `ScalarDiffusivity` with `VerticalFormulation()`. See [`ScalarDiffusivity`](@ref).
 """
-@inline VerticalScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(), FT::DataType=Float64; kwargs...) =
+@inline VerticalScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
+                                  FT::DataType=Oceananigans.defaults.FloatType; kwargs...) =
     ScalarDiffusivity(time_discretization, VerticalFormulation(), FT; kwargs...)
 
 """
@@ -165,9 +163,10 @@ Shorthand for a `ScalarDiffusivity` with `VerticalFormulation()`. See [`ScalarDi
 
 Shorthand for a `ScalarDiffusivity` with `HorizontalFormulation()`. See [`ScalarDiffusivity`](@ref).
 """
-@inline HorizontalScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(), FT::DataType=Float64; kwargs...) =
+@inline HorizontalScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
+                                    FT::DataType=Oceananigans.defaults.FloatType; kwargs...) =
     ScalarDiffusivity(time_discretization, HorizontalFormulation(), FT; kwargs...)
-    
+
 """
     HorizontalDivergenceScalarDiffusivity([time_discretization=ExplicitTimeDiscretization(),
                                           FT::DataType=Float64;]
@@ -175,7 +174,8 @@ Shorthand for a `ScalarDiffusivity` with `HorizontalFormulation()`. See [`Scalar
 
 Shorthand for a `ScalarDiffusivity` with `HorizontalDivergenceFormulation()`. See [`ScalarDiffusivity`](@ref).
 """
-@inline HorizontalDivergenceScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(), FT::DataType=Float64; kwargs...) =
+@inline HorizontalDivergenceScalarDiffusivity(time_discretization=ExplicitTimeDiscretization(),
+                                              FT::DataType=Oceananigans.defaults.FloatType; kwargs...) =
     ScalarDiffusivity(time_discretization, HorizontalDivergenceFormulation(), FT; kwargs...)
 
 # Aliases that allow specify the floating type, assuming that the discretization is Explicit in time
@@ -184,7 +184,7 @@ Shorthand for a `ScalarDiffusivity` with `HorizontalDivergenceFormulation()`. Se
           HorizontalScalarDiffusivity(FT::DataType; kwargs...) = ScalarDiffusivity(ExplicitTimeDiscretization(), HorizontalFormulation(), FT; kwargs...)
 HorizontalDivergenceScalarDiffusivity(FT::DataType; kwargs...) = ScalarDiffusivity(ExplicitTimeDiscretization(), HorizontalDivergenceFormulation(), FT; kwargs...)
 
-@inline function with_tracers(tracers, closure::ScalarDiffusivity{TD, F, N}) where {TD, F, N}
+@inline function Utils.with_tracers(tracers, closure::ScalarDiffusivity{TD, F, N}) where {TD, F, N}
     κ = tracer_diffusivities(tracers, closure.κ)
     return ScalarDiffusivity{TD, F, N}(closure.ν, κ)
 end
@@ -192,17 +192,10 @@ end
 @inline viscosity(closure::ScalarDiffusivity, K) = closure.ν
 @inline diffusivity(closure::ScalarDiffusivity, K, ::Val{id}) where id = closure.κ[id]
 
-compute_diffusivities!(diffusivities, ::ScalarDiffusivity, args...) = nothing
-
-# Note: we could compute ν and κ (if they are Field):
-# function compute_diffusivities!(diffusivities, closure::ScalarDiffusivity, args...)
-#     compute!(viscosity(closure, diffusivities))
-#     !isnothing(closure.κ) && Tuple(compute!(diffusivity(closure, Val(c), diffusivities) for c=1:length(closure.κ)))
-#     return nothing
-# end
+compute_closure_fields!(closure_fields, ::ScalarDiffusivity, args...) = nothing
 
 function Base.summary(closure::ScalarDiffusivity)
-    TD = summary(time_discretization(closure))
+    TD = summary(TimeSteppers.time_discretization(closure))
     prefix = replace(summary(formulation(closure)), "Formulation" => "")
     prefix === "ThreeDimensional" && (prefix = "")
 
@@ -223,7 +216,7 @@ function Adapt.adapt_structure(to, closure::ScalarDiffusivity{TD, F, <:Any, <:An
     return ScalarDiffusivity{TD, F, N}(ν, κ)
 end
 
-function on_architecture(to, closure::ScalarDiffusivity{TD, F, <:Any, <:Any, N}) where {TD, F, N}
+function Architectures.on_architecture(to, closure::ScalarDiffusivity{TD, F, <:Any, <:Any, N}) where {TD, F, N}
     ν = on_architecture(to, closure.ν)
     κ = on_architecture(to, closure.κ)
     return ScalarDiffusivity{TD, F, N}(ν, κ)

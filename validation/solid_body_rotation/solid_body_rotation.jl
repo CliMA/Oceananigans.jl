@@ -31,7 +31,7 @@ using Oceananigans.Utils: prettytime, hours
 using Statistics
 using JLD2
 using Printf
-using GLMakie 
+using GLMakie
 
 # # The geostrophic flow
 #
@@ -75,13 +75,8 @@ function run_solid_body_rotation(; architecture = CPU(),
     coriolis = HydrostaticSphericalCoriolis(rotation_rate = 1,
                                             scheme = coriolis_scheme)
 
-    model = HydrostaticFreeSurfaceModel(grid = grid,
-                                        momentum_advection = advection_scheme,
-                                        free_surface = free_surface,
-                                        coriolis = coriolis,
-                                        tracers = :c,
-                                        buoyancy = nothing,
-                                        closure = nothing)
+    model = HydrostaticFreeSurfaceModel(grid; free_surface, coriolis, tracers = :c,
+                                              momentum_advection = advection_scheme)
 
     g = model.free_surface.gravitational_acceleration
     R = model.grid.radius
@@ -114,19 +109,19 @@ function run_solid_body_rotation(; architecture = CPU(),
                             stop_time = super_rotations * super_rotation_period)
 
     progress(sim) = @printf("Iter: %d, time: %s, Δt: %s, max|u|: %.3f, max|η|: %.3f \n",
-                            iteration(sim), prettytime(sim), prettytime(sim.Δt), maximum(abs, model.velocities.u), maximum(abs, model.free_surface.η))
+                            iteration(sim), prettytime(sim), prettytime(sim.Δt), maximum(abs, model.velocities.u), maximum(abs, model.free_surface.displacement))
 
     simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))
 
-    output_fields = merge(model.velocities, model.tracers, (η=model.free_surface.η,))
+    output_fields = merge(model.velocities, model.tracers, (η=model.free_surface.displacement,))
 
     output_prefix = "solid_body_rotation_Nx$(grid.Nx)_" * prefix
 
-    simulation.output_writers[:fields] = JLD2OutputWriter(model, output_fields,
-                                                          schedule = TimeInterval(super_rotation_period / 1000),
-                                                          filename = output_prefix,
-                                                          field_slicer = nothing,
-                                                          overwrite_existing = true)
+    simulation.output_writers[:fields] = JLD2Writer(model, output_fields,
+                                                    schedule = TimeInterval(super_rotation_period / 1000),
+                                                    filename = output_prefix,
+                                                    field_slicer = nothing,
+                                                    overwrite_existing = true)
 
     run!(simulation)
 

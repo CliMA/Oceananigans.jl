@@ -22,7 +22,7 @@ u_immersed_bc = ValueBoundaryCondition(-1)
 u_top_bc = ValueBoundaryCondition(1)
 u_bcs = FieldBoundaryConditions(immersed=u_immersed_bc, top=u_top_bc)
 
-model = NonhydrostaticModel(; grid,
+model = NonhydrostaticModel(grid;
                             advection = nothing,
                             timestepper = :RungeKutta3,
                             tracers = :c,
@@ -34,10 +34,10 @@ model = NonhydrostaticModel(; grid,
 simulation = Simulation(model, Δt=1e-4, stop_iteration=1000)
 
 outputs = merge(model.velocities, model.tracers)
-simulation.output_writers[:jld2] = JLD2OutputWriter(model, outputs,
-                                                    filename = "immersed_couette_flow.jld2",
-                                                    schedule = IterationInterval(10),
-                                                    overwrite_existing = true)
+simulation.output_writers[:jld2] = JLD2Writer(model, outputs,
+                                              filename = "immersed_couette_flow.jld2",
+                                              schedule = IterationInterval(10),
+                                              overwrite_existing = true)
 
 progress(sim) = @info string("Iteration: ", iteration(sim), ", time: ", time(sim))
 simulation.callbacks[:progress] = Callback(progress, IterationInterval(100))

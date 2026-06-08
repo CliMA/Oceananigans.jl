@@ -32,11 +32,7 @@ function setup_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=DAT
 
     grid = RectilinearGrid(architecture, size=(Nx, Nx, 1), x=(0, Lx(topo)), y=(0, Ly(topo)), z=(0, 1), topology=topo)
 
-    model = NonhydrostaticModel(        grid = grid,
-                                    coriolis = nothing,
-                                    buoyancy = nothing,
-                                     tracers = :c,
-                                     closure = ScalarDiffusivity(κ=1))
+    model = NonhydrostaticModel(grid; tracers = :c, closure = ScalarDiffusivity(κ=1))
 
     set!(model, c = (x, y, z) -> c(x, y, 0))
 
@@ -44,9 +40,9 @@ function setup_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=DAT
 
     if output
         simulation.output_writers[:fields] =
-            JLD2OutputWriter(model, model.tracers; dir = dir, overwrite_existing = true, field_slicer = nothing,
-                             filename = @sprintf("%s_%s_diffusion_Nx%d_Δt%.1e", "$(topo[1])", "$(topo[2])", Nx, Δt),
-                             schedule = TimeInterval(stop_iteration * Δt / 10))
+            JLD2Writer(model, model.tracers; dir = dir, overwrite_existing = true, field_slicer = nothing,
+                       filename = @sprintf("%s_%s_diffusion_Nx%d_Δt%.1e", "$(topo[1])", "$(topo[2])", Nx, Δt),
+                       schedule = TimeInterval(stop_iteration * Δt / 10))
     end
 
     return simulation

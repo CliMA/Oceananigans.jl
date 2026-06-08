@@ -1,10 +1,12 @@
 include("dependencies_for_runtests.jl")
 
+using Oceananigans.AbstractOperations: ConditionalOperation
+
 function simple_binary_operation(op, a, b, num1, num2)
     a_b = op(a, b)
     interior(a) .= num1
     interior(b) .= num2
-    return CUDA.@allowscalar a_b[2, 2, 2] == op(num1, num2)
+    return @allowscalar a_b[2, 2, 2] == op(num1, num2)
 end
 
 function three_field_addition(a, b, c, num1, num2)
@@ -12,7 +14,7 @@ function three_field_addition(a, b, c, num1, num2)
     interior(a) .= num1
     interior(b) .= num2
     interior(c) .= num2
-    return CUDA.@allowscalar a_b_c[2, 2, 2] == num1 + num2 + num2
+    return @allowscalar a_b_c[2, 2, 2] == num1 + num2 + num2
 end
 
 function x_derivative(a)
@@ -27,7 +29,7 @@ function x_derivative(a)
         interior(a)[:, 3, k] .= one_two_three
     end
 
-    return CUDA.@allowscalar dx_a[2, 2, 2] == 1
+    return @allowscalar dx_a[2, 2, 2] == 1
 end
 
 function y_derivative(a)
@@ -42,7 +44,7 @@ function y_derivative(a)
         interior(a)[3, :, k] .= one_three_five
     end
 
-    return CUDA.@allowscalar dy_a[2, 2, 2] == 2
+    return @allowscalar dy_a[2, 2, 2] == 2
 end
 
 function z_derivative(a)
@@ -57,7 +59,7 @@ function z_derivative(a)
         interior(a)[3, k, :] .= one_four_seven
     end
 
-    return CUDA.@allowscalar dz_a[2, 2, 2] == 3
+    return @allowscalar dz_a[2, 2, 2] == 3
 end
 
 function x_derivative_cell(arch)
@@ -68,57 +70,57 @@ function x_derivative_cell(arch)
     one_four_four = on_architecture(arch, [1, 4, 4])
 
     for k in 1:3
-        interior(a)[:, 1, k] .= one_four_four 
-        interior(a)[:, 2, k] .= one_four_four 
-        interior(a)[:, 3, k] .= one_four_four 
+        interior(a)[:, 1, k] .= one_four_four
+        interior(a)[:, 2, k] .= one_four_four
+        interior(a)[:, 3, k] .= one_four_four
     end
 
-    return CUDA.@allowscalar dx_a[2, 2, 2] == 3
+    return @allowscalar dx_a[2, 2, 2] == 3
 end
 
 function times_x_derivative(a, b, location, i, j, k, answer)
-    a∇b = @at location b * ∂x(a)
-    
-    return CUDA.@allowscalar a∇b[i, j, k] == answer
+    b∇a = @at location b * ∂x(a)
+    return @allowscalar b∇a[i, j, k] == answer
 end
 
 for arch in archs
-    @testset "Abstract operations [$(typeof(arch))]" begin
-        @info "Testing abstract operations [$(typeof(arch))]..."
+    A = typeof(arch)
+    @testset "Abstract operations [$A]" begin
+        @info "Testing abstract operations [$A]..."
 
         grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(3, 3, 3))
         u, v, w = VelocityFields(grid)
         c = Field{Center, Center, Center}(grid)
 
-        @testset "Unary operations and derivatives [$(typeof(arch))]" begin
+        @testset "Unary operations and derivatives [$A]" begin
             for ψ in (u, v, w, c)
                 for op in (sqrt, sin, cos, exp, tanh)
-                    @test CUDA.@allowscalar typeof(op(ψ)[2, 2, 2]) <: Number
+                    @test @allowscalar typeof(op(ψ)[2, 2, 2]) <: Number
                 end
 
                 for d_symbol in Oceananigans.AbstractOperations.derivative_operators
                     d = eval(d_symbol)
-                    @test CUDA.@allowscalar typeof(d(ψ)[2, 2, 2]) <: Number
+                    @test @allowscalar typeof(d(ψ)[2, 2, 2]) <: Number
                 end
             end
         end
 
-        @testset "Binary operations [$(typeof(arch))]" begin
+        @testset "Binary operations [$A]" begin
             generic_function(x, y, z) = x + y + z
             for (ψ, ϕ) in ((u, v), (u, w), (v, w), (u, c), (generic_function, c), (u, generic_function))
                 for op_symbol in Oceananigans.AbstractOperations.binary_operators
                     op = eval(op_symbol)
-                    @test CUDA.@allowscalar typeof(op(ψ, ϕ)[2, 2, 2]) <: Number
+                    @test @allowscalar typeof(op(ψ, ϕ)[2, 2, 2]) <: Number
                 end
             end
 
-            @test compute!(Field(ZeroField() + u)) == u
-            @test compute!(Field(u + ZeroField())) == u
-            @test compute!(Field(-ZeroField() + u)) == u
-            @test compute!(Field(u - ZeroField())) == u
-            @test compute!(Field(ZeroField() * u)) == ZeroField()
-            @test compute!(Field(u * ZeroField())) == ZeroField()
-            @test compute!(Field(ZeroField() / u)) == ZeroField()
+            @test Field(ZeroField() + u) == u
+            @test Field(u + ZeroField()) == u
+            @test Field(-ZeroField() + u) == u
+            @test Field(u - ZeroField()) == u
+            @test Field(ZeroField() * u) == ZeroField()
+            @test Field(u * ZeroField()) == ZeroField()
+            @test Field(ZeroField() / u) == ZeroField()
             @test u / ZeroField() == ConstantField(Inf)
 
             @test ZeroField() + 1 == ConstantField(1)
@@ -134,10 +136,10 @@ for arch in archs
             @test ZeroField() - ZeroField() == ZeroField()
             @test ZeroField() * ZeroField() == ZeroField()
 
-            @test compute!(Field(ConstantField(1) + u)) == compute!(Field(1 + u))
-            @test compute!(Field(ConstantField(1) - u)) == compute!(Field(1 - u))
-            @test compute!(Field(ConstantField(1) * u)) == compute!(Field(1 * u))
-            @test compute!(Field(u / ConstantField(1))) == compute!(Field(u / 1))
+            @test Field(ConstantField(1) + u) == Field(1 + u)
+            @test Field(ConstantField(1) - u) == Field(1 - u)
+            @test Field(ConstantField(1) * u) == Field(1 * u)
+            @test Field(u / ConstantField(1)) == Field(u / 1)
 
             @test ConstantField(1) + 1 == ConstantField(2)
             @test ConstantField(1) - 1 == ConstantField(0)
@@ -145,17 +147,34 @@ for arch in archs
             @test ConstantField(1) / 2 == ConstantField(1/2)
         end
 
-        @testset "Multiary operations [$(typeof(arch))]" begin
+        @testset "Comparison operations [$A]" begin
+            for (ψ, ϕ) in ((u, v), (u, c))
+                for op in (>, <, >=, <=)
+                    @test op(ψ, ϕ) isa BinaryOperation
+                    @test eltype(op(ψ, ϕ)) == Bool
+                    @test @allowscalar typeof(op(ψ, ϕ)[2, 2, 2]) <: Bool
+                end
+            end
+
+            # Test comparisons with numbers
+            for op in (>, <, >=, <=)
+                @test op(u, 0) isa BinaryOperation
+                @test op(0, u) isa BinaryOperation
+                @test eltype(op(u, 0)) == Bool
+            end
+        end
+
+        @testset "Multiary operations [$A]" begin
             generic_function(x, y, z) = x + y + z
             for (ψ, ϕ, σ) in ((u, v, w), (u, v, c), (u, v, generic_function))
                 for op_symbol in Oceananigans.AbstractOperations.multiary_operators
                     op = eval(op_symbol)
-                    @test CUDA.@allowscalar typeof(op((Center, Center, Center), ψ, ϕ, σ)[2, 2, 2]) <: Number
+                    @test @allowscalar typeof(op((Center, Center, Center), ψ, ϕ, σ)[2, 2, 2]) <: Number
                 end
             end
         end
 
-        @testset "KernelFunctionOperations [$(typeof(arch))]" begin
+        @testset "KernelFunctionOperations [$A]" begin
             trivial_kernel_function(i, j, k, grid) = 1
             op = KernelFunctionOperation{Center, Center, Center}(trivial_kernel_function, grid)
             @test op isa KernelFunctionOperation
@@ -174,13 +193,20 @@ for arch in archs
             u, v, w = VelocityFields(grid)
             T, S = TracerFields((:T, :S), grid)
 
-            for op in (+, *, -, /)
+            for op in (+, *, -, /, atand, atan, mod)
                 @test simple_binary_operation(op, u, v, num1, num2)
                 @test simple_binary_operation(op, u, w, num1, num2)
                 @test simple_binary_operation(op, u, T, num1, num2)
                 @test simple_binary_operation(op, T, S, num1, num2)
             end
             @test three_field_addition(u, v, w, num1, num2)
+
+            # Comparison operations
+            for op in (>, <, >=, <=)
+                @test simple_binary_operation(op, u, v, num1, num2)
+                @test simple_binary_operation(op, u, v, num2, num1)
+                @test simple_binary_operation(op, T, S, num1, num1) # equal values
+            end
         end
 
         @testset "Derivatives" begin
@@ -243,10 +269,10 @@ for arch in archs
         buoyancy = SeawaterBuoyancy(gravitational_acceleration = 1,
                                     equation_of_state = LinearEquationOfState(thermal_expansion=1, haline_contraction=1))
 
-        model = NonhydrostaticModel(; grid, buoyancy, tracers = (:T, :S))
+        model = NonhydrostaticModel(grid; buoyancy, tracers = (:T, :S))
 
-        @testset "Construction of abstract operations [$(typeof(arch))]" begin
-            @info "    Testing construction of abstract operations [$(typeof(arch))]..."
+        @testset "Construction of abstract operations [$A]" begin
+            @info "    Testing construction of abstract operations [$A]..."
 
             u, v, w, T, S = fields(model)
 
@@ -289,20 +315,38 @@ for arch in archs
             @test u + 2 isa BinaryOperation
             @test u - 2 isa BinaryOperation
             @test u / 2 isa BinaryOperation
+
+            # Comparison operators produce BinaryOperations
+            @test (u > v) isa BinaryOperation
+            @test (u < v) isa BinaryOperation
+            @test (u >= v) isa BinaryOperation
+            @test (u <= v) isa BinaryOperation
+            @test (u > 0) isa BinaryOperation
+            @test (0 < u) isa BinaryOperation
+
+            # Eltype inference: arithmetic ops return Float64, comparisons return Bool
+            @test eltype(u + v) == Float64
+            @test eltype(u * v) == Float64
+            @test eltype(sin(u)) == Float64
+            @test eltype(u + v + w) == Float64
+            @test eltype(u > v) == Bool
+            @test eltype(u >= 0) == Bool
+            @test eltype(0 < u) == Bool
         end
 
-        @testset "BinaryOperations with GridMetricOperation [$(typeof(arch))]" begin
+        @testset "BinaryOperations with grid metric operations [$A]" begin
+            @info "  Testing BinaryOperations with grid metric operations [$A]"
             lat_lon_grid = LatitudeLongitudeGrid(arch, size=(1, 1, 1), longitude=(0, 1), latitude=(0, 1), z=(0, 1))
             rectilinear_grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(2, 3, 4))
 
             for LX in (Center, Face)
                 for LY in (Center, Face)
                     for LZ in (Center, Face)
-                        loc = (LX, LY, LZ)
+                        loc = (LX(), LY(), LZ())
                         f = Field(loc, rectilinear_grid)
                         f .= 1
-                        
-                        CUDA.@allowscalar begin
+
+                        @allowscalar begin
                             # Δx, Δy, Δz = 2, 3, 4
                             # Ax, Ay, Az = 12, 8, 6
                             # volume = 24
@@ -327,10 +371,50 @@ for arch in archs
                     end
                 end
             end
+
+            grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(4, 4, 4))
+            c = CenterField(grid)
+            w = ZFaceField(grid)
+            set!(c, 1)
+            set!(w, 1)
+
+            c_z = Field(c * Operators.z)
+            @test c_z.operand isa BinaryOperation
+            @test c_z.operand.a isa Field
+            @test c_z.operand.b isa KernelFunctionOperation
+
+            w_z = Field(w * Operators.z)
+            @test w_z.operand isa BinaryOperation
+            @test w_z.operand.a isa Field
+            @test w_z.operand.b isa KernelFunctionOperation
+
+            @allowscalar begin
+                @test c_z[2, 2, 2] == znode(2, 2, 2, grid, Center(), Center(), Center())
+                @test w_z[2, 2, 2] == znode(2, 2, 2, grid, Center(), Center(), Face())
+            end
+
+            # Test binary operations with GridMetric and location type tuples (not instances)
+            op = *((Center, Center, Center), AbstractOperations.Δx, c)
+            @test op isa BinaryOperation
+            op = *((Center, Center, Center), c, AbstractOperations.Δx)
+            @test op isa BinaryOperation
         end
 
-        @testset "Indexing of AbstractOperations [$(typeof(arch))]" begin
-            
+        @testset "ConditionalOperation from ConditionalOperation [$A]" begin
+            @info "  Testing ConditionalOperation constructed from ConditionalOperation [$A]"
+            grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
+            c = CenterField(grid)
+            set!(c, 1)
+            cond(i, j, k, grid, c) = @inbounds c[i, j, k] > 0
+            co = ConditionalOperation(c; condition=cond, mask=0)
+            # Test constructing a new ConditionalOperation from an existing one
+            co2 = ConditionalOperation(co; func=abs)
+            @test co2 isa ConditionalOperation
+            @test co2.operand === c
+        end
+
+        @testset "Indexing of AbstractOperations [$A]" begin
+
             grid = RectilinearGrid(arch, size=(3, 3, 3), extent=(1, 1, 1))
 
             test_indices   = [(2:3, :, :), (:, 2:3, :), (:, :, 2:3)]
@@ -338,13 +422,13 @@ for arch in archs
             center_indices = [(3:3, :, :), (:, 3:3, :), (:, :, 3:3)]
 
             FaceFields = (XFaceField, YFaceField, ZFaceField)
-            
+
             for (ti, fi, ci, FaceField) in zip(test_indices, face_indices, center_indices, FaceFields)
                 a = CenterField(grid)
                 b = CenterField(grid, indices = ti)
                 @test indices(a * b)  == ti
                 @test indices(sin(b)) == ti
-                            
+
                 c = CenterField(grid, indices=ti)
                 d = FaceField(grid, indices=ti)
                 @test indices(c * d) == fi
@@ -355,7 +439,7 @@ for arch in archs
             b = XFaceField(grid,  indices = test_indices[2])
             c = YFaceField(grid,  indices = test_indices[3])
 
-            d = Field((Face, Face, Center), grid, indices = (:, 2:3, 1:2))
+            d = Field{Face, Face, Center}(grid, indices = (:, 2:3, 1:2))
 
             @test indices(a * b * c) == (2:3, 2:3, 2:3)
             @test indices(b * a * c) == (3:3, 2:3, 2:3)
@@ -367,4 +451,3 @@ for arch in archs
         end
     end
 end
-

@@ -16,19 +16,17 @@ using MPI
 # tmpi 4 julia --project
 #
 # then later:
-# 
-# julia> include("test_distributed_models.jl")
 #
-# When running the tests this way, uncomment the following line
+# julia> include("test_distributed_models.jl")
 
 MPI.Init()
 
-# to initialize MPI.
-
 using Oceananigans.BoundaryConditions: fill_halo_regions!, DCBC
-using Oceananigans.DistributedComputations: Distributed, index2rank
-using Oceananigans.Fields: AbstractField
+using Oceananigans.DistributedComputations: Distributed, index2rank, cpu_architecture, child_architecture, reconstruct_global_grid
+using Oceananigans.Fields: AbstractField, interior
+using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary
 using Oceananigans.Grids:
+    architecture,
     halo_size,
     interior_indices,
     left_halo_indices, right_halo_indices,
@@ -64,7 +62,7 @@ north_halo(f::AbstractField{LX, LY, LZ}; include_corners=true) where {LX, LY, LZ
                       view(f.data, interior_indices(instantiate(LX), instantiate(topology(f, 1)), f.grid.Nx),
                                    right_halo_indices(instantiate(LY), instantiate(topology(f, 2)), f.grid.Ny, f.grid.Hy),
                                    interior_indices(instantiate(LZ), instantiate(topology(f, 3)), f.grid.Nz))
-                        
+
 bottom_halo(f::AbstractField{LX, LY, LZ}; include_corners=true) where {LX, LY, LZ} =
 include_corners ? view(f.data, :, :, left_halo_indices(instantiate(LZ), instantiate(topology(f, 3)), f.grid.Nz, f.grid.Hz)) :
                   view(f.data, interior_indices(instantiate(LX), instantiate(topology(f, 1)), f.grid.Nx),
@@ -77,26 +75,25 @@ include_corners ? view(f.data, :, :, right_halo_indices(instantiate(LZ), instant
                                interior_indices(instantiate(LY), instantiate(topology(f, 2)), f.grid.Ny),
                                right_halo_indices(instantiate(LZ), instantiate(topology(f, 3)), f.grid.Nz, f.grid.Hz))
 
-
-function southwest_halo(f::AbstractField) 
+function southwest_halo(f::AbstractField)
     Nx, Ny, _ = size(f.grid)
     Hx, Hy, _ = halo_size(f.grid)
     return view(parent(f), 1:Hx, 1:Hy, :)
 end
 
-function southeast_halo(f::AbstractField) 
+function southeast_halo(f::AbstractField)
     Nx, Ny, _ = size(f.grid)
     Hx, Hy, _ = halo_size(f.grid)
     return view(parent(f), Nx+Hx+1:Nx+2Hx, 1:Hy, :)
 end
 
-function northeast_halo(f::AbstractField) 
+function northeast_halo(f::AbstractField)
     Nx, Ny, _ = size(f.grid)
     Hx, Hy, _ = halo_size(f.grid)
     return view(parent(f), Nx+Hx+1:Nx+2Hx, Ny+Hy+1:Ny+2Hy, :)
 end
 
-function northwest_halo(f::AbstractField) 
+function northwest_halo(f::AbstractField)
     Nx, Ny, _ = size(f.grid)
     Hx, Hy, _ = halo_size(f.grid)
     return view(parent(f), 1:Hx, Ny+Hy+1:Ny+2Hy, :)
@@ -190,7 +187,7 @@ function test_triply_periodic_rank_connectivity_with_221_ranks()
     @test local_rank == index2rank(arch.local_index..., arch.ranks...)
 
     connectivity = arch.connectivity
-    
+
     # +---+---+
     # | 0 | 2 |
     # +---+---+
@@ -237,8 +234,8 @@ function test_triply_periodic_local_grid_with_411_ranks()
     @test local_grid.xᶠᵃᵃ[nx+1] == 0.25*(local_rank+1)
     @test local_grid.yᵃᶠᵃ[1] == 0
     @test local_grid.yᵃᶠᵃ[ny+1] == 2
-    @test local_grid.zᵃᵃᶠ[1] == -3
-    @test local_grid.zᵃᵃᶠ[nz+1] == 0
+    @test local_grid.z.cᵃᵃᶠ[1] == -3
+    @test local_grid.z.cᵃᵃᶠ[nz+1] == 0
 
     return nothing
 end
@@ -254,8 +251,8 @@ function test_triply_periodic_local_grid_with_141_ranks()
     @test local_grid.xᶠᵃᵃ[nx+1] == 1
     @test local_grid.yᵃᶠᵃ[1] == 0.5*local_rank
     @test local_grid.yᵃᶠᵃ[ny+1] == 0.5*(local_rank+1)
-    @test local_grid.zᵃᵃᶠ[1] == -3
-    @test local_grid.zᵃᵃᶠ[nz+1] == 0
+    @test local_grid.z.cᵃᵃᶠ[1] == -3
+    @test local_grid.z.cᵃᵃᶠ[nz+1] == 0
 
     return nothing
 end
@@ -263,7 +260,7 @@ end
 function test_triply_periodic_local_grid_with_221_ranks()
     arch = Distributed(CPU(), partition=Partition(2, 2))
     local_grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
-    
+
     i, j, k = arch.local_index
     nx, ny, nz = size(local_grid)
 
@@ -271,10 +268,52 @@ function test_triply_periodic_local_grid_with_221_ranks()
     @test local_grid.xᶠᵃᵃ[nx+1] == 0.5*i
     @test local_grid.yᵃᶠᵃ[1] == j-1
     @test local_grid.yᵃᶠᵃ[ny+1] == j
-    @test local_grid.zᵃᵃᶠ[1] == -3
-    @test local_grid.zᵃᵃᶠ[nz+1] == 0
+    @test local_grid.z.cᵃᵃᶠ[1] == -3
+    @test local_grid.z.cᵃᵃᶠ[nz+1] == 0
 
     return nothing
+end
+
+#####
+##### Complex boundary conditions in distributed models
+#####
+
+
+function test_complex_boundary_conditions(Rx, Ry, child_arch)
+    arch  = Distributed(child_arch, partition=Partition(Rx, Ry))
+
+    @inline function clock_field_dependent_boundary_condition(i, j, grid, clock, fields)
+        c = fields.c[i, j, size(grid, 3)]
+        t = clock.time
+        return - (t + c)
+    end
+
+    # A grid with unity spacings in all directions
+    grid  = RectilinearGrid(arch, topology=(Bounded, Bounded, Bounded), size=(2*Rx, 2*Ry, 1), extent=(2*Rx, 2*Ry, 1))
+    c_bc  = FluxBoundaryCondition(clock_field_dependent_boundary_condition, discrete_form=true)
+    c_bcs = FieldBoundaryConditions(top=c_bc)
+
+    # A model with an Euler step
+    model = HydrostaticFreeSurfaceModel(grid;
+                                        timestepper=:QuasiAdamsBashforth2,
+                                        velocities=PrescribedVelocityFields(),
+                                        tracers=:c,
+                                        free_surface=nothing,
+                                        boundary_conditions=(; c=c_bcs),
+                                        tracer_advection=nothing)
+
+    model.timestepper.χ = -0.5
+    @test model.tracers.c.boundary_conditions.top isa typeof(c_bc)
+
+    # c += Δt (t + c) / Δz, where Δt = Δz = 1
+    time_step!(model, 1) # t = 0, c⁻ = 0 => c = 0
+    @test @allowscalar all(iszero, model.tracers.c)
+
+    time_step!(model, 1) # t = 1, c⁻ = 0 => c = 1
+    @test @allowscalar all(isequal(1), model.tracers.c)
+
+    time_step!(model, 1) # t = 2, c⁻ = 1 => c = 4
+    @test @allowscalar all(isequal(4), model.tracers.c)
 end
 
 #####
@@ -286,7 +325,7 @@ end
 function test_triply_periodic_bc_injection_with_411_ranks()
     arch = Distributed(partition=Partition(4))
     grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
-    model = NonhydrostaticModel(grid=grid)
+    model = NonhydrostaticModel(grid)
 
     for field in merge(fields(model))
         fbcs = field.boundary_conditions
@@ -302,7 +341,7 @@ end
 function test_triply_periodic_bc_injection_with_141_ranks()
     arch = Distributed(partition=Partition(1, 4))
     grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
-    model = NonhydrostaticModel(grid=grid)
+    model = NonhydrostaticModel(grid)
 
     for field in merge(fields(model))
         fbcs = field.boundary_conditions
@@ -318,7 +357,7 @@ end
 function test_triply_periodic_bc_injection_with_221_ranks()
     arch = Distributed(partition=Partition(2, 2))
     grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
-    model = NonhydrostaticModel(grid=grid)
+    model = NonhydrostaticModel(grid)
 
     for field in merge(fields(model))
         fbcs = field.boundary_conditions
@@ -337,8 +376,8 @@ end
 
 function test_triply_periodic_halo_communication_with_411_ranks(halo, child_arch)
     arch = Distributed(child_arch; partition=Partition(4))
-    grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3), halo=halo)
-    model = NonhydrostaticModel(grid=grid)
+    grid = RectilinearGrid(arch; topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3), halo)
+    model = NonhydrostaticModel(grid)
 
     for field in merge(fields(model))
         fill!(field, arch.local_rank)
@@ -359,8 +398,8 @@ end
 
 function test_triply_periodic_halo_communication_with_141_ranks(halo, child_arch)
     arch = Distributed(child_arch; partition=Partition(1, 4))
-    grid  = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3), halo=halo)
-    model = NonhydrostaticModel(grid=grid)
+    grid  = RectilinearGrid(arch; topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3), halo)
+    model = NonhydrostaticModel(grid)
 
     for field in (fields(model)..., model.pressures.pNHS)
         fill!(field, arch.local_rank)
@@ -381,8 +420,8 @@ end
 
 function test_triply_periodic_halo_communication_with_221_ranks(halo, child_arch)
     arch = Distributed(child_arch; partition=Partition(2, 2))
-    grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 4), extent=(1, 2, 3), halo=halo)
-    model = NonhydrostaticModel(grid=grid)
+    grid = RectilinearGrid(arch; topology=(Periodic, Periodic, Periodic), size=(8, 8, 4), extent=(1, 2, 3), halo)
+    model = NonhydrostaticModel(grid)
 
     for field in merge(fields(model))
         fill!(field, arch.local_rank)
@@ -397,10 +436,10 @@ function test_triply_periodic_halo_communication_with_221_ranks(halo, child_arch
 
         @test all(top_halo(field, include_corners=false)    .== arch.local_rank)
         @test all(bottom_halo(field, include_corners=false) .== arch.local_rank)
-        @test all(southwest_halo(field) .== arch.connectivity.southwest) 
-        @test all(southeast_halo(field) .== arch.connectivity.southeast) 
-        @test all(northwest_halo(field) .== arch.connectivity.northwest) 
-        @test all(northeast_halo(field) .== arch.connectivity.northeast) 
+        @test all(southwest_halo(field) .== arch.connectivity.southwest)
+        @test all(southeast_halo(field) .== arch.connectivity.southeast)
+        @test all(northwest_halo(field) .== arch.connectivity.northwest)
+        @test all(northeast_halo(field) .== arch.connectivity.northeast)
     end
 
     return nothing
@@ -411,9 +450,7 @@ end
 #####
 
 @testset "Distributed MPI Oceananigans" begin
-
     @info "Testing distributed MPI Oceananigans..."
-
     @testset "Multi architectures rank connectivity" begin
         @info "  Testing multi architecture rank connectivity..."
         test_triply_periodic_rank_connectivity_with_411_ranks()
@@ -437,51 +474,174 @@ end
 
     @testset "Halo communication" begin
         @info "  Testing halo communication..."
-        for child_arch in archs
-            for H in 1:3
-                test_triply_periodic_halo_communication_with_411_ranks((H, H, H), child_arch)
-                test_triply_periodic_halo_communication_with_141_ranks((H, H, H), child_arch)
-                test_triply_periodic_halo_communication_with_221_ranks((H, H, H), child_arch)
-            end
+        child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
+        for H in 1:3
+            test_triply_periodic_halo_communication_with_411_ranks((H, H, H), child_arch)
+            test_triply_periodic_halo_communication_with_141_ranks((H, H, H), child_arch)
+            test_triply_periodic_halo_communication_with_221_ranks((H, H, H), child_arch)
+        end
+    end
+
+    @testset "Complex boundary conditions" begin
+        @info "  Testing complex boundary conditions..."
+        child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
+        for (Rx, Ry) in ((4, 1), (1, 4), (2, 2))
+            test_complex_boundary_conditions(Rx, Ry, child_arch)
+        end
+    end
+
+    @testset "Test Distributed MPI Grids" begin
+        child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
+
+        if child_arch isa GPU
+            @info "Testing `on_architecture` for distributed grids..."
+
+            arch = Distributed(child_arch; partition=Partition(1, 4))
+            rg   = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
+            llg  = LatitudeLongitudeGrid(arch, size=(8, 16, 8), latitude=(0, 60), longitude=(0, 60), z=(0, 1), radius=1)
+            osg  = TripolarGrid(arch, size=(8, 16, 8))
+
+            cpu_arch = cpu_architecture(arch)
+
+            cpurg  = on_architecture(cpu_arch, rg)
+            cpullg = on_architecture(cpu_arch, llg)
+            cpuosg = on_architecture(cpu_arch, osg)
+
+            @test child_architecture(architecture(cpurg))  == CPU()
+            @test child_architecture(architecture(cpullg)) == CPU()
+            @test child_architecture(architecture(cpuosg)) == CPU()
+
+            @info "Testing `minimum_*spacing` for distributed grids..."
+
+            grg  = reconstruct_global_grid(rg)
+            gllg = reconstruct_global_grid(llg)
+            gosg = reconstruct_global_grid(osg)
+
+            @test minimum_xspacing(rg) == minimum_xspacing(grg)
+            @test minimum_yspacing(rg) == minimum_yspacing(grg)
+            @test minimum_zspacing(rg) == minimum_zspacing(grg)
+
+            @test minimum_xspacing(llg) == minimum_xspacing(llg)
+            @test minimum_yspacing(llg) == minimum_yspacing(llg)
+            @test minimum_zspacing(llg) == minimum_zspacing(llg)
+
+            @test minimum_xspacing(osg) == minimum_xspacing(osg)
+            @test minimum_yspacing(osg) == minimum_yspacing(osg)
+            @test minimum_zspacing(osg) == minimum_zspacing(osg)
+        end
+    end
+
+    @testset "reconstruct_global_grid(::ImmersedBoundaryGrid)" begin
+        @info "Testing reconstruct_global_grid for ImmersedBoundaryGrid…"
+        child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
+
+        arch = Distributed(child_arch; partition=Partition(1, 4))
+        Nx, Ny, Nz = 8, 16, 4
+        ug = LatitudeLongitudeGrid(arch, size=(Nx, Ny, Nz),
+                                         latitude=(0, 60), longitude=(0, 60),
+                                         z=(0, 1), radius=1)
+        local_Ny = Ny ÷ 4
+        rank = arch.local_rank
+        local_bh = on_architecture(child_arch, fill(0.1 + 0.25 * rank, Nx, local_Ny))
+        local_mask = on_architecture(child_arch, falses(Nx, local_Ny, Nz))
+
+        ibg_gfb = ImmersedBoundaryGrid(ug, GridFittedBottom(local_bh))
+        ibg_pcb = ImmersedBoundaryGrid(ug,
+                                       PartialCellBottom(local_bh; minimum_fractional_cell_height=0.3))
+        ibg_gfm = ImmersedBoundaryGrid(ug, GridFittedBoundary(local_mask))
+
+        # GridFittedBottom: shape, type and rank-wise stitching.
+        gfb = reconstruct_global_grid(ibg_gfb)
+        bh = Array(interior(gfb.immersed_boundary.bottom_height))
+        @test gfb.immersed_boundary isa GridFittedBottom
+        @test size(bh) == (Nx, Ny, 1)
+        for r in 0:3
+            j_lo = r * local_Ny + 1
+            j_hi = (r + 1) * local_Ny
+            expected_zface = (0.0, 0.25, 0.5, 0.75)[r + 1]
+            @test all(bh[:, j_lo:j_hi, 1] .== expected_zface)
+        end
+
+        pcb = reconstruct_global_grid(ibg_pcb)
+        @test pcb.immersed_boundary isa PartialCellBottom
+        @test size(interior(pcb.immersed_boundary.bottom_height)) == (Nx, Ny, 1)
+        @test pcb.immersed_boundary.minimum_fractional_cell_height == 0.3
+
+        # GridFittedBoundary: 3-D mask path
+        gfm = reconstruct_global_grid(ibg_gfm)
+        @test gfm.immersed_boundary isa GridFittedBoundary
+        @test size(gfm.immersed_boundary.mask) == (Nx, Ny, Nz)
+    end
+
+    @testset "Distributed reductions" begin
+        child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
+
+        for partition in [Partition(1, 4), Partition(2, 2), Partition(4, 1)]
+            @info "Time-stepping a distributed NonhydrostaticModel with partition $partition..."
+            arch = Distributed(child_arch; partition)
+            grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 1), extent=(1, 2, 3))
+            c = CenterField(grid)
+            set!(c, arch.local_rank+1)
+
+            c_reduced = Field{Nothing, Nothing, Nothing}(grid)
+
+            N = grid.Nx * grid.Ny # local rank grid size
+            @test sum(c) == 1*N + 2*N + 3*N + 4*N
+
+            sum!(c_reduced, c)
+            @test @allowscalar c_reduced[1, 1, 1] == 1*N + 2*N + 3*N + 4*N
+
+            cbool = CenterField(grid, Bool)
+            cbool_reduced = Field{Nothing, Nothing, Nothing}(grid, Bool)
+            bool_val = arch.local_rank == 0 ? true : false
+            set!(cbool, bool_val)
+
+            @test any(cbool) == true
+            @test all(cbool) == false
+
+            any!(cbool_reduced, cbool)
+            @test @allowscalar cbool_reduced[1, 1, 1] == true
+
+            all!(cbool_reduced, cbool)
+            @test @allowscalar cbool_reduced[1, 1, 1] == false
         end
     end
 
     # Only test on CPU because we do not have a GPU pressure solver yet
     @testset "Time stepping NonhydrostaticModel" begin
-        if CPU() ∈ archs 
-            for partition in [Partition(1, 4), Partition(2, 2), Partition(4, 1)]
-                @info "Time-stepping a distributed NonhydrostaticModel with partition $partition..."
-                arch = Distributed(; partition)
-                grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
-                model = NonhydrostaticModel(; grid)
+        child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
+        for partition in [Partition(1, 4), Partition(2, 2), Partition(4, 1)]
+            @info "Time-stepping a distributed NonhydrostaticModel with partition $partition..."
+            arch = Distributed(child_arch; partition)
+            grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Periodic), size=(8, 8, 8), extent=(1, 2, 3))
+            model = NonhydrostaticModel(grid)
 
-                time_step!(model, 1)
-                @test model isa NonhydrostaticModel
-                @test model.clock.time ≈ 1
-
-                simulation = Simulation(model, Δt=1, stop_iteration=2)
-                run!(simulation)
-                @test model isa NonhydrostaticModel
-                @test model.clock.time ≈ 2
-            end
-        end
-    end
-
-    @testset "Time stepping ShallowWaterModel" begin
-        for child_arch in archs
-            arch = Distributed(child_arch; partition=Partition(1, 4))
-            grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Flat), size=(8, 8), extent=(1, 2), halo=(3, 3))
-            model = ShallowWaterModel(; momentum_advection=nothing, mass_advection=nothing, tracer_advection=nothing, grid, gravitational_acceleration=1)
-
-            set!(model, h=1)
             time_step!(model, 1)
-            @test model isa ShallowWaterModel
+            @test model isa NonhydrostaticModel
             @test model.clock.time ≈ 1
 
             simulation = Simulation(model, Δt=1, stop_iteration=2)
             run!(simulation)
-            @test model isa ShallowWaterModel
+            @test model isa NonhydrostaticModel
             @test model.clock.time ≈ 2
         end
+    end
+
+    @testset "Time stepping ShallowWaterModel" begin
+        child_arch = get(ENV, "TEST_ARCHITECTURE", "CPU") == "GPU" ? GPU() : CPU()
+        arch = Distributed(child_arch; partition=Partition(1, 4))
+        grid = RectilinearGrid(arch, topology=(Periodic, Periodic, Flat), size=(8, 8), extent=(1, 2), halo=(3, 3))
+        model = ShallowWaterModel(grid; momentum_advection=nothing, mass_advection=nothing,
+                                  tracer_advection=nothing, gravitational_acceleration=1)
+
+        set!(model, h=1)
+        time_step!(model, 1)
+        @test model isa ShallowWaterModel
+        @test model.clock.time ≈ 1
+
+        simulation = Simulation(model, Δt=1, stop_iteration=2)
+        run!(simulation)
+        @test model isa ShallowWaterModel
+        @test model.clock.time ≈ 2
     end
 end

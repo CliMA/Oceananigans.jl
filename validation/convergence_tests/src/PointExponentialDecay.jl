@@ -27,12 +27,7 @@ function run_test(; Δt, stop_iteration, timestepper, architecture = CPU())
 
     grid = RectilinearGrid(architecture, size=(1, 1, 1), x=(0, 1), y=(0, 1), z=(0, 1))
 
-    model = NonhydrostaticModel( timestepper = timestepper,
-                                        grid = grid,
-                                    coriolis = nothing,
-                                    buoyancy = nothing,
-                                     tracers = :c,
-                                     forcing = (c=Fᶜ,))
+    model = NonhydrostaticModel(grid; timestepper, tracers = :c, forcing = (c=Fᶜ,))
 
     set!(model, c=1)
     simulation = Simulation(model, Δt=Δt, stop_iteration=stop_iteration, iteration_interval=stop_iteration)

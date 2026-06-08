@@ -1,14 +1,34 @@
-# Oceananigans.jl
+```@raw html
+---
+# https://vitepress.dev/reference/default-theme-home-page
+layout: home
 
-*🌊 Fast and friendly fluid dynamics on CPUs and GPUs.*
+hero:
+  name: "Oceananigans.jl"
+  tagline: "🌊 Fast and friendly ocean-flavored Julia software for simulating incompressible fluid dynamics in Cartesian and spherical shell domains on CPUs and GPUs."
+  image:
+    src: /logo.png
+    alt: Oceananigans
+  actions:
+    - theme: brand
+      text: Get Started
+      link: /quick_start
+    - theme: alt
+      text: View on Github
+      link: https://github.com/CliMA/Oceananigans.jl
+    - theme: brand
+      text: Gallery
+      link: /gallery
+---
+```
 
 Oceananigans is a fast, friendly, flexible software package for finite volume simulations of the nonhydrostatic
 and hydrostatic Boussinesq equations on CPUs and GPUs.
-It runs on GPUs (wow, fast!), though we believe Oceananigans makes the biggest waves
+It runs on GPUs (wow, [fast!](https://doi.org/10.1029/2024MS004465)), though we believe Oceananigans makes the biggest waves
 with its ultra-flexible user interface that makes simple simulations easy, and complex, creative simulations possible.
-
-Oceananigans is written in Julia by the [Climate Modeling Alliance](https://clima.caltech.edu)
-and heroic external collaborators.
+Oceananigans development is community-driven with contributors from academia and industry -
+see [jobs discussions](https://github.com/CliMA/Oceananigans.jl/discussions/categories/jobs) for developer and user opportunities!
+Testing infrastructure is provided by [atdepth](https://www.atdepth.org) and the [Climate Modeling Alliance](https://clima.caltech.edu).
 
 ## Quick install
 
@@ -24,8 +44,11 @@ julia> using Pkg
 julia> Pkg.add("Oceananigans")
 ```
 
-!!! compat "Julia 1.9 is required"
-    Oceananigans requires Julia 1.9 or later.
+!!! compat "Julia 1.10 or later is required"
+    Oceananigans requires Julia 1.10 or later.
+
+!!! info "Tested Julia versions"
+    Oceananigans is currently tested on Julia 1.12.
 
 If you're [new to Julia](https://docs.julialang.org/en/v1/manual/getting-started/) and its [wonderful `Pkg` manager](https://docs.julialang.org/en/v1/stdlib/Pkg/), the [Oceananigans wiki](https://github.com/CliMA/Oceananigans.jl/wiki) provides [more detailed installation instructions](https://github.com/CliMA/Oceananigans.jl/wiki/Installation-and-getting-started-with-Oceananigans).
 
@@ -42,7 +65,7 @@ It's _deep_ and includes:
 * [Discussions on the Oceananigans github](https://github.com/CliMA/Oceananigans.jl/discussions), covering topics like
     * ["Computational science"](https://github.com/CliMA/Oceananigans.jl/discussions/categories/computational-science), or how to science and set up numerical simulations in Oceananigans, and
     * ["Experimental features"](https://github.com/CliMA/Oceananigans.jl/discussions?discussions_q=experimental+features), which covers new and sparsely-documented features for those who like to live dangerously.
-  
+
     If you've got a question or something to talk about, don't hesitate to [start a new discussion](https://github.com/CliMA/Oceananigans.jl/discussions/new?)!
 * The [Oceananigans wiki](https://github.com/CliMA/Oceananigans.jl/wiki), which contains practical tips for [getting started with Julia](https://github.com/CliMA/Oceananigans.jl/wiki/Installation-and-getting-started-with-Oceananigans), [accessing and using GPUs](https://github.com/CliMA/Oceananigans.jl/wiki/Oceananigans-on-GPUs), and [productive workflows when using Oceananigans](https://github.com/CliMA/Oceananigans.jl/wiki/Productive-Oceananigans-workflows-and-Julia-environments).
 * [Issues](https://github.com/CliMA/Oceananigans.jl/issues) and [pull requests](https://github.com/CliMA/Oceananigans.jl/pulls) also contain lots of information about problems we've found, solutions we're trying to implement, and dreams we're dreaming to make tomorrow better 🌈.
@@ -53,57 +76,188 @@ Whether you need help getting started with Oceananigans, found a bug, want Ocean
 
 * [Start a discussion](https://github.com/CliMA/Oceananigans.jl/discussions). This is great for general questions about numerics, science, experimental or under-documented features, and for getting help setting up a neat new numerical experiment.
 * [Open an issue](https://github.com/CliMA/Oceananigans.jl/issues). Issues are best if you think the Oceananigans source code needs attention: a bug, a sign error (😱), an important missing feature, or a typo in this documentation 👀.
-* Sign up for the [Julia Slack](https://julialang.org/slack/) and join the `#oceananigans` channel because we love to chat.
+* [Join the NumericalEarth slack](https://join.slack.com/t/numericalearth/shared_invite/zt-3pwpvky4k-XX7RkgQgHLIUt~wtwGXN~Q) because we love to chat.
 
-## Citing
+## Citing and otherwise spreading the word
 
-If you use Oceananigans as part of your research, teaching, or other activities, we would be grateful if you could
-cite our work and mention Oceananigans by name.
+If you use Oceananigans for your research, teaching, or fun 🤩, everyone in our community will be grateful
+if you credit Oceananigans by name.
 
-```bibtex
-@article{OceananigansJOSS,
-  doi = {10.21105/joss.02018},
-  url = {https://doi.org/10.21105/joss.02018},
-  year = {2020},
-  publisher = {The Open Journal},
-  volume = {5},
-  number = {53},
-  pages = {2018},
-  author = {Ali Ramadhan and Gregory LeClaire Wagner and Chris Hill and Jean-Michel Campin and Valentin Churavy and Tim Besard and Andre Souza and Alan Edelman and Raffaele Ferrari and John Marshall},
-  title = {Oceananigans.jl: Fast and friendly geophysical fluid dynamics on GPUs},
-  journal = {Journal of Open Source Software}
-}
-```
+The community has published a number of articles describing the development of Oceananigans,
+including a recent [preprint submitted to the Journal of Advances in Modeling Earth Systems](https://doi.org/10.48550/arXiv.2502.14148) that presents an overview of all the things that make Oceananigans unique:
+
+> "High-level, high-resolution ocean modeling at all scales with Oceananigans"
+>
+> by Gregory L. Wagner, Simone Silvestri, Navid C. Constantinou, Ali Ramadhan, Jean-Michel Campin,
+> Chris Hill, Tomas Chor, Jago Strong-Wright, Xin Kai Lee, Francis Poulin, Andre Souza, Keaton J. Burns,
+> Siddhartha Bishnu, John Marshall, and Raffaele Ferrari
+>
+> submitted to the Journal of Advances in Modeling Earth Systems, arXiv:[2502.14148](https://doi.org/10.48550/arXiv.2502.14148)
+
+Please cite this 👆 overview paper if you use Oceananigans in published work.
+
+We've also submitted a number of model development papers. Please cite these if you use
+the features they describe! Also, if you have developed a new feature in Oceananigans and describe it in a paper, make sure to open a pull request to add it to this list:
+
+* **Silvestri et al. (2026), ["A low-storage Runge-Kutta framework for nonlinear free-surface ocean models"](https://doi.org/10.22541/essoar.15002225/v1).**
+
+  *This paper describes the development of a Runge-Kutta timestepping scheme for the `HydrostaticFreeSurfaceModel`.*
+
+* **Moses et al. (2026), ["DJ4Earth: Differentiable, and performance-portable Earth system modeling via program transformations"](https://doi.org/10.1029/2025MS005615).**
+
+  *This paper describes the development and advantages of a strategy that leverages Enzyme.jl and Reactant.jl for building differentiable Oceananigans workflows.*
+
+* **Silvestri et al. (2025), ["A new WENO-Based momentum advection scheme for simulations of ocean mesoscale turbulence"](https://doi.org/10.1029/2023MS004130).**
+
+  *This paper describes the development of `WENOVectorInvariant()` advection scheme, which can be used as the
+  `momentum_advection` scheme for `HydrostaticFreeSurfaceModel`.*
+
+* **Silvestri et al. (2025), ["A GPU-based ocean dynamic core for routine mesoscale-resolving climate simulations"](https://doi.org/10.1029/2024MS004465).**
+
+  *This paper describes the optimization of the `HydrostaticFreeSurfaceModel` algorithm, including the implementation
+  of a new `SplitExplicitFreeSurface` algorithm for `Distributed` architectures for multiple GPUs. As a result of this work,
+  global simulations with O(10 km) grid spacing can be run on 16-20 nodes, achieving 10 simulated years per day (SYPD).*
+
+* **Wagner et al. (2025), ["Formulation and calibration of CATKE, a one-equation parameterization for microscale ocean mixing"](https://doi.org/10.1029/2024MS004522).**
+
+  *This paper describes the development of `CATKEVerticalDiffusivity()`, including how it was automatically calibrated to
+  a suite of 35 large eddy simulations (also run with Oceananigans). It additionally features solutions from `TKEDissipationVerticalDiffusivity` (also known as "k-epsilon").*
+
+* **Ramadhan et al. (2020), ["Oceananigans.jl: Fast and friendly geophysical fluid dynamics on GPUs"](https://doi.org/10.21105/joss.02018).**
+
+  *This Journal of Open Source Software article describes an early version of Oceananigans' `NonhydrostaticModel`.*
 
 ## Papers and preprints using Oceananigans
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
-1. Bisits, J. I., Zika, J. D., and Evans, D. G. (2024) [Does cabbeling shape the thermohaline structure of high-latitude oceans?](https://doi.org/10.1175/JPO-D-24-0061.1) _Journal of Physical Oceanography_, in press. DOI: [10.1175/JPO-D-24-0061.1](https://doi.org/10.1175/JPO-D-24-0061.1)
+1. Wenegrat, J. O., Chor, T., and Barkan, R. (2026). [Coarse-grained local available potential energy](https://doi.org/10.48550/arXiv.2605.15879), _arXiv preprint_, arXiv:2605.15879. DOI: [10.48550/arXiv.2605.15879](https://doi.org/10.48550/arXiv.2605.15879)
 
-1. Strong-Wright J. and Taylor, J. R. (2024) [A model of tidal flow and tracer release in a giant kelp forest](https://doi.org/10.1017/flo.2024.13), _Flow_, **4**, E21. DOI: [10.1017/flo.2024.13](https://doi.org/10.1017/flo.2024.13)
+1. Chor, T., Wenegrat, J., and Wagner, G. L. (2026) [Turbulent mixing and dissipation around rough seamounts](https://doi.org/10.1029/2025GL121312), _Geophysical Research Letters_. DOI: [https://doi.org/10.1029/2025GL121312](https://doi.org/10.1029/2025GL121312)
 
-1. Chor, T. and Wenegrat, J. (2024). [The turbulent dynamics of anticyclonic submesoscale headland wakes](https://doi.org/10.31223/X5570C), _Earth arXiv_, DOI: [10.31223/X5570C](https://doi.org/10.31223/X5570C)
+1. Bouckley, E. R., Lewin, S. F., and Lefauve, A. (2026). [Early onset of secondary shear instability in Kelvin-Helmholtz braids at high Reynolds number](https://doi.org/10.48550/arXiv.2604.16173), _arXiv preprint_, arXiv:2604.16173. DOI: [10.48550/arXiv.2604.16173](https://doi.org/10.48550/arXiv.2604.16173)
 
-1. Wagner, G. L., Hillier, A., Constantinou, N. C., Silvestri, S., Souza, A., Burns, K., Hill, C., Campin, J.-M., Marshall, J., and Ferrari, R. (2024). [Formulation and calibration of CATKE, a one-equation parameterization for microscale ocean mixing](https://doi.org/10.48550/arXiv.2306.13204), _arXiv_, arXiv:2306.13204. DOI: [10.48550/arXiv.2306.13204](https://doi.org/10.48550/arXiv.2306.13204)
+1. Gui, W., Bhadouriya, A., Vreugdenhil, C. A., and Gayen, B. (2026). [The impact of fronts and submesoscale eddies under various melt conditions on Antarctic ice shelves](https://doi.org/10.22541/essoar.15002095/v1), _ESS Open Archive_. DOI: [10.22541/essoar.15002095/v1](https://doi.org/10.22541/essoar.15002095/v1)
 
-1. Allred, T., Li, X., Wiersdorf, A., Greenman, B., and Gopalakrishnan, G. (2024). [FlowFPX: Nimble tools for debugging floating-point exceptions](https://doi.org/10.48550/arXiv.2403.15632), _arXiv_, arXiv:2403.15632. DOI: [10.48550/arXiv.2403.15632](https://doi.org/10.48550/arXiv.2403.15632)
+1. Plotzki, T. and Peitz, S. (2026). [Koopman-based surrogate modeling for reinforcement-learning-control of Rayleigh-Bénard convection](https://doi.org/10.48550/arXiv.2603.28074), _arXiv preprint_, arXiv:2603.28074. DOI: [10.48550/arXiv.2603.28074](https://doi.org/10.48550/arXiv.2603.28074)
 
-1. Silvestri, S., Wagner, G. L., Constantinou, N. C., Hill, C., Campin, J.-M., Souza, A., Bishnu, S., Churavy, V., Marshall, J., and Ferrari, R. (2024) [A GPU-based ocean dynamical core for routine mesoscale-resolving climate simulations](https://doi.org/10.22541/essoar.171708158.82342448/v1), _ESS Open Archive_. DOI: [10.22541/essoar.171708158.82342448/v1](https://doi.org/10.22541/essoar.171708158.82342448/v1)
+1. Zhao, K. X., Chor., T., Skyllingstad, E., Nash, J., Rosevear, M. G., McConnochie, C. (2026). [Direct numerical simulations of ice-ocean boundary turbulence](https://doi.org/10.48550/arXiv.2603.19542), _arXiv preprint_, arXiv:2603.19542. DOI: [10.48550/arXiv.2603.19542](https://doi.org/10.48550/arXiv.2603.19542)
 
-1. Silvestri, S., Wagner, G. L., Campin, J.-M., Constantinou, N. C., Hill, C., Souza, A., and Ferrari, R. (2024). [A new WENO-based momentum advection scheme for simulations of ocean mesoscale turbulence](https://doi.org/10.22541/essoar.170110657.76489860/v2), _ESS Open Archive_. DOI: [10.22541/essoar.170110657.76489860/v2](https://doi.org/10.22541/essoar.170110657.76489860/v2)
+1. Wang, S., Kang, W., and Li, C. (2026). [A tug-of-war between baroclinic eddies and convection: implications for icy moon oceans](https://doi.org/10.48550/arXiv.2603.17185), _arXiv preprint_, arXiv:2603.17185. DOI: [10.48550/arXiv.2603.17185](https://doi.org/10.48550/arXiv.2603.17185)
 
-1. Whitley V. and Wenegrat, J. O. (2024) [Breaking internal waves on sloping topography: connecting parcel displacements to overturn size, interior-boundary exchanges, and mixing](https://doi.org/10.31223/X5PM5Q), _Earth Arxiv_. DOI: [10.31223/X5PM5Q](https://doi.org/10.31223/X5PM5Q)
+1. De Abreu, S. and Timmermans, M.-L. (2026). [Mixed-layer deepening and internal wave generation under sea ice in free drift](https://doi.org/10.1175/JPO-D-25-0165.1), _Journal of Physical Oceanography_, **56(4)**, 823-837. DOI: [10.1175/JPO-D-25-0165.1](https://doi.org/10.1175/JPO-D-25-0165.1)
+
+1. Markmann, Τ., Straat, Μ., Peitz, S., Hammer, B. (2026). [Fourier neural operators as data-driven surrogates for two- and three-dimensional Rayleigh–bénard convection](https://doi.org/10.1016/j.neucom.2026.133201), _Neurocomputing_, 133201. DOI: [10.1016/j.neucom.2026.133201](https://doi.org/10.1016/j.neucom.2026.133201)
+
+1. Yakushev, E., Berezina, A., Yakubov, S., Novikov, M., Ghaffari, P., Dzhurova, B., Hristova, O., Vogt, R., and Ranneklev, S. (2026). [Model-based analysis of seasonal hypoxia: The Varna Lake–Bay case study](https://doi.org/10.1016/j.ecolmodel.2026.111535), _Ecological Modelling_, **515**, 111535. DOI: [10.1016/j.ecolmodel.2026.111535](https://doi.org/10.1016/j.ecolmodel.2026.111535)
+
+1. Gupta, M., Thompon, A. F., and Klein P. (2026). [Energetics of the upper‐ocean under sea ice: Frictional dissipation versus baroclinic production](https://doi.org/10.1029/2025JC023026), _Journal of Geophysical Research: Oceans_, **131(2)**, e2025JC023026. DOI: [10.1029/2025JC023026](https://doi.org/10.1029/2025JC023026)
+
+1. Atkinson, E. and Grisouard, N. (2026). [Formation and arrest of a surface density front via strain-driven frontogenesis](https://doi.org/10.22541/essoar.175941869.94553891/v2), _ESS Open Archive_. DOI: [10.22541/essoar.175941869.94553891/v2](https://doi.org/10.22541/essoar.175941869.94553891/v2)
+
+1. Sjur, A. L. P., Isachsen, P. E., Nilsson, J., and Allen, S. (2026). [Nonlinear dynamics of time-variable slope circulation](https://doi.org/10.5194/egusphere-2026-778), _EGUsphere preprint_. DOI: [10.5194/egusphere-2026-778](https://doi.org/10.5194/egusphere-2026-778)
+
+1. Yuan, Q., Wang, S., Wang, B., Jing, R., and Chen, B. (2026). [The influence of wave steepness and age on wake dynamics and power performance of offshore wind farms](https://doi.org/10.1016/j.apenergy.2025.127147), _Applied Energy_, **404**, 127147. DOI: [10.1016/j.apenergy.2025.127147](https://doi.org/10.1016/j.apenergy.2025.127147)
+
+1. Pan, W. and Li, Q. (2026). [Transient response of Langmuir turbulence to abrupt onset of surface heating](https://doi.org/10.1103/jjdt-zp9n), _Physical Review Fluids_, **11**, 024606. DOI: [10.1175/JPO-D-25-0077.1](https://doi.org/10.1103/jjdt-zp9n)
+
+1. Li, Q. (2026). [Large eddy simulations of stabilizing effects induced by opposing Eulerian shear and Stokes drift shear in an idealized ocean surface boundary layer](https://doi.org/10.1175/JPO-D-25-0077.1), _Journal of Physical Oceanography_, e250077, in press. DOI: [10.1175/JPO-D-25-0077.1](https://doi.org/10.1175/JPO-D-25-0077.1)
+
+1. Peng. S., Silvestri, S., and Bodner, A. (2026). [Submesoscale and boundary layer turbulence under mesoscale forcing in the upper ocean](https://doi.org/10.48550/arXiv.2601.10441), _arXiv preprint_, arXiv:2601.10441. DOI: [10.48550/arXiv.2601.10441](https://doi.org/10.48550/arXiv.2601.10441)
+
+1. Wang, S., Kang, W., Zhang, Y., & Marshall, J. (2026). [Evolution of a point plume in a rotating unstratified fluid overlain by a stratified layer: scaling and implications for icy satellites](https://doi.org/10.22541/essoar.176824050.01249257/v1), _ESS Open Archive_. DOI: [10.22541/essoar.176824050.01249257/v1](https://doi.org/10.22541/essoar.176659936.64523492/v1)
+
+1. Wei, Z., Li, Q., & Chen, B. (2026). [A direct assessment of Langmuir turbulence parameterizations in idealized coastal merging boundary layers](https://doi.org/10.1029/2025MS004993), _Journal of Advances in Modeling Earth Systems_, **18**, e2025MS004993. DOI:[10.1029/2025MS004993](https://doi.org/10.1029/2025MS004993)
+
+1. Johnston, D. R., Shakespeare, C. J., and Constantinou, N. C. (2026) [Evaluating and improving wave and non-wave stress parametrisations for oceanic flows](https://doi.org/10.1175/JPO-D-25-0064.1), _Journal of Physical Oceanography_, **56(3)**, 643–664. DOI: [10.1175/JPO-D-25-0064.1](https://doi.org/10.1175/JPO-D-25-0064.1)
+
+1. Allende, S., Couston, L.-A., Thalabard, S., and Favier, B. (2026) [Melting dynamics and mixing layer growth near the ice-ocean interface](https://doi.org/10.48550/arXiv.2601.18674), _arXiv preprint_, arXiv:2601.18674. DOI: [10.48550/arXiv.2601.18674](https://doi.org/10.48550/arXiv.2601.18674)
+
+1. Zheng, Z., Wenegrat, J. O., Fox-Kemper, B., and Brett, G. J. (2025). [Wind-catalyzed energy exchanges between fronts and boundary layer turbulence](https://doi.org/10.1175/JPO-D-24-0243.1), _Journal of Physical Oceanography_, *55(9)*, 1591–1606. DOI: [10.1175/JPO-D-24-0243.1](https://doi.org/10.1175/JPO-D-24-0243.1)
+
+1. Zhang, Y., Bire, S., Wang, S., Nath, A., Ramadhan, A., Kang, W., and Marshall, J. (2025). [Long transit time from the seafloor to the ice shell on Enceladus](https://doi.org/10.1093/mnras/staf1008), _Monthly Notices of the Royal Astronomical Society_, **541(2)**, 859–871. DOI: [10.1093/mnras/staf1008](https://doi.org/10.1093/mnras/staf1008)
+
+1. Lee, X. K., Ramadhan, A., Souza, A., Wagner, G. L., Silvestri, S., Marshall, J. and Ferrari, R. (2025) [NORi: An ML-augmented ocean boundary layer parameterization](https://doi.org/10.48550/arXiv.2512.04452), _arXiv preprint_, arXiv:2512.04452. DOI: [10.48550/arXiv.2512.04452](https://doi.org/10.48550/arXiv.2512.04452)
+
+1. Liu, C.-L. and Drake, H. F. (2025). [Tidally-driven diapycnal upwelling in a rough sloping canyon](https://doi.org/10.31223/X5MJ28), _EarthArXiv preprint_. DOI: [10.31223/X5MJ28](https://doi.org/10.31223/X5MJ28)
+
+1. Brenner, S., Thompson, A., and Gupta, M. (2025) [Patterns of sea ice floes shape ocean turbulence in the marginal ice zone](https://doi.org/10.21203/rs.3.rs-8099873/v1), preprint (Version 1), available at Research Square. DOI: [10.21203/rs.3.rs-8099873/v1](https://doi.org/10.21203/rs.3.rs-8099873/v1)
+
+1. Moses, W. S., Cheng, G., Churavy, V., Gelbrecht, M., Klöwer, M., Kump, J., Morlighem, M., Williamson, S., Apte, D., Berg, P., Giordano, M., Hill, C., Loose, N., Montoison, A., Narayanan, S. H. K., Pal, A., Schanen, M., Silvestri, S., Wagner, G. L., Heimbach, P. (2026) [DJ4Earth: Differentiable, and performance-portable Earth system modeling via program transformations](https://doi.org/10.1029/2025MS005615), _Journal of Advances in Modeling Earth Systems_, **18(5)**, e2025MS005615. DOI: [10.1029/2025MS005615](https://doi.org/10.1029/2025MS005615)
+
+1. Falga, R., Shamekh, S., and Zanna, L. (2025). [Towards a Unified Data-Driven Boundary Layer Momentum Flux Parameterization for Ocean and Atmosphere](https://doi.org/10.48550/arXiv.2511.01766), _arXiv preprint_, arXiv:2511.01766. DOI: [10.48550/arXiv.2511.01766](https://doi.org/10.48550/arXiv.2511.01766)
+
+1. Peng, S., Silvestri, S., and Bodner, A. (2025) [Capturing multiscale dynamics in the oceanic mixed layer. Part I: Hydrostatic simulations](https://doi.org/10.22541/au.174585712.26266872/v1), _Authorea_. DOI: [10.22541/au.174585712.26266872/v1](https://doi.org/10.22541/au.174585712.26266872/v1)
+
+1. Liu, F. and Zemskova, V. E. (2025) [Nondimensional parameter regimes of Arctic ice keel-ocean flow interactions](https://doi.org/10.31223/X51N08), _Earth arXiv preprint_. DOI: [10.31223/X51N08](https://doi.org/10.31223/X51N08).
+
+1. Zhang, Y., Kang, W., and Marshall, J. (2025) [How does ice shell geometry shape ocean dynamics on icy moons?](https://doi.org/10.48550/arXiv.2510.25988), _arXiv preprint_, arXiv:2510.25988. DOI: [10.48550/arXiv.2510.25988](https://doi.org/10.48550/arXiv.2510.25988)
+
+1. Zhou, X., Taylor, J. R., and Caulfield, C. P. (2025). [A Lagrangian view of mixing in stratified shear flows](https://doi.org/10.1017/jfm.2025.10626), _Journal of Fluid Mechanics_, **1021**, A31. DOI: [10.1017/jfm.2025.10626](https://doi.org/10.1017/jfm.2025.10626)
+
+1. Shikanian, A. and Parfenyev, V. (2025) [The effects of no-slip boundaries and external force torque on two-dimensional turbulence in a square domain](https://doi.org/10.48550/arXiv.2508.13590), _arXiv preprint_, arXiv:2508.13590. DOI: [10.48550/arXiv.2508.13590](https://doi.org/10.48550/arXiv.2508.13590)
+
+1. Souza, A. N., Silvestri, S., Deck, K., Bischoff, T., Ferrari, R., and Flierl, G. R. (2025) [Surface to seafloor: A generative AI framework for decoding the ocean interior state](https://doi.org/10.48550/arXiv.2504.15308), _arXiv preprint_, arXiv:2504.15308. DOI: [10.48550/arXiv.2503.12845](https://doi.org/10.48550/arXiv.2504.15308)
+
+1. Vankevich, R. Y., Rodionov, А. А., Shpilev, N. N., and Chebotkova, V. V. (2025) [Modeling the origin and evolution of convective vortex structures on a slope. Numerical experiment](https://doi.org/10.59887/2073-6673.2025.18(4)-2), _Fundamental and Applied Hydrophysics_, **18(4)**, 20-27. (in Russian) DOI: [10.59887/2073-6673.2025.18(4)-2](https://doi.org/10.59887/2073-6673.2025.18(4)-2)
+
+1. Vankevich, R. E., Isaev, A. V., and Ryabchenko, V. A. (2025) [On approaches to improving the description of North Sea water inflows in the general circulation models of the Baltic Sea](https://doi.org/10.59887/2073-6673.2025.18(3)-3), _Fundamental and Applied Hydrophysics_, **18(3)**, 37-52. (in Russian) DOI: [10.59887/2073-6673.2025.18(3)-3](https://doi.org/10.59887/2073-6673.2025.18(3)-3)
+
+1. Bhadouriya, A., Gayen, B., Naveira Garabato, A., and Silvano, A. (2025) [Overshooting convection drives winter mixed layer under Antarctic sea ice](https://doi.org/10.21203/rs.3.rs-5932119/v1), preprint (Version 1), available at Research Square. DOI: [10.21203/rs.3.rs-5932119/v1](https://doi.org/10.21203/rs.3.rs-5932119/v1)
+
+1. Wagner, G. L. and Constantinou, N. C. (2025) [Phenomenology of decaying turbulence beneath surface waves](https://doi.org/10.1017/jfm.2025.10649), _Journal of Fluid Mechanics_, **1020**, A51. DOI: [10.1017/jfm.2025.10649](https://doi.org/10.1017/jfm.2025.10649)
+
+1. de la Calle, E. and García, C. (2025) [Evaluation of Juliana Tool: A translator for Julia’s CUDA.jl code into KernelAbstraction.jl](https://doi.org/10.1016/j.future.2025.107813), _Future Generation Computer Systems_, **171**, 107813. DOI: [10.1016/j.future.2025.107813](https://doi.org/10.1016/j.future.2025.107813)
+
+1. Wang S., Kang W., Zhang Y., and Marshall J. (2025) [The fate of rotating point plumes in an unstratified environment: from free growth to boundary interactions](https://doi.org/10.1017/jfm.2025.10533), _Journal of Fluid Mechanics_, **1018**, A19. DOI:[10.1017/jfm.2025.10533](https://doi.org/10.1017/jfm.2025.10533)
+
+1. Bisits, J. I., Zika, J. D., and Sohail, T. (2025) [Cabbeling as a catalyst and driver of turbulent mixing](https://doi.org/10.1017/jfm.2025.349), _Journal of Fluid Mechanics_, **1011**, A17. DOI:[10.1017/jfm.2025.349](https://doi.org/10.1017/jfm.2025.349)
+
+1. Whitley, V. and Wenegrat, J. O. (2025) [Breaking internal waves on sloping topography: connecting parcel displacements to overturn size, interior-boundary exchanges, and mixing](https://doi.org/10.1175/JPO-D-24-0052.1), _Journal of Physical Oceanography_, **55(6)**, 645-661. DOI: [10.1175/JPO-D-24-0052.1](https://doi.org/10.1175/JPO-D-24-0052.1)
+
+1. Chor, T. and Wenegrat, J. (2025). [The turbulent dynamics of anticyclonic submesoscale headland wakes](https://doi.org/10.1175/JPO-D-24-0139.1), _Journal of Physical Oceanography_, **55(6)**, 737–759. DOI: [10.1175/JPO-D-24-0139.1](https://doi.org/10.1175/JPO-D-24-0139.1)
+
+1. Silvestri, S., Wagner, G. L., Constantinou, N. C., Hill, C., Campin, J.-M., Souza, A., Bishnu, S., Churavy, V., Marshall, J., and Ferrari, R. (2025) [A GPU-based ocean dynamical core for routine mesoscale-resolving climate simulations](https://doi.org/10.1029/2024MS004465), _Journal of Advances in Modeling Earth Systems_, **16(7)**, e2024MS004465. DOI: [10.1029/2024MS004465](https://doi.org/10.1029/2024MS004465)
+
+1. Wagner, G. L., Hillier, A., Constantinou, N. C., Silvestri, S., Souza, A., Burns, K., Hill, C., Campin, J.-M., Marshall, J., and Ferrari, R. (2025). [Formulation and calibration of CATKE, a one-equation parameterization for microscale ocean mixing](https://doi.org/10.1029/2024MS004522), _Journal of Advances in Modeling Earth Systems_, **16(7)**, e2024MS004522. DOI: [10.1029/2024MS004522](https://doi.org/10.1029/2024MS004522)
+
+1. Allred, T., Li, X., Wiersdorf, A., Greenman, B., and Gopalakrishnan, G. (2025). [FlowFPX: Nimble tools for debugging floating-point exceptions](https://doi.org/10.21105/jcon.00148), _The Proceedings of the JuliaCon Conferences_, **7(67)**, 148. DOI: [10.21105/jcon.00148](https://doi.org/10.21105/jcon.00148)
+
+1. Atkinson, E., McWilliams, J., and Grisouard, N. (2025) [Near-inertial echoes of ageostrophic instability in submesoscale filaments](https://doi.org/10.1017/jfm.2025.10348), _Journal of Fluid Mechanics_, **1015**, A17. DOI: [10.1017/jfm.2025.10348](https://doi.org/10.1017/jfm.2025.10348)
+
+1. Middleton, L., Wu, W., Johnston, T. M. S., Tarry, D. R., Farrar, J. T., Poulain, P., Özgökmen, T., Shcherbina, A. Y., Pascual, A., McNeill, C. L., Belgacem, M., Berta, M., Abbott, K., Worden, A., Wittmers, F., Kinsella, A., Centurioni, L. R., Hormann, V., Cutolo, E., Tintoré, J., Ruiz, S., Casas, B., Cheslack, H. R., D'Asaro, E., and Mahadevan, A. (2025) [Observations of a splitting ocean cyclone resulting in subduction of surface waters](https://doi.org/10.1126/sciadv.adu3221), _Science Advances_, **11**, eadu3221. DOI: [10.1126/sciadv.adu3221](https://doi.org/10.1126/sciadv.adu3221)
+
+1. Pružina, P., Zhou, Q., Middleton, L., and Taylor, J. R. (2025) [Layer formation in double-diffusive convection diagnosed in sorted buoyancy coordinates](https://doi.org/10.1017/jfm.2025.258), _Journal of Fluid Mechanics_. DOI: [10.1017/jfm.2025.258](https://doi.org/10.1017/jfm.2025.258)
+
+1. Pružina, P. (2025) [A one-dimensional model of staircase formation in diffusive convection](https://doi.org/10.1017/jfm.2025.141), _Journal of Fluid Mechanics_. DOI: [10.1017/jfm.2025.141](https://doi.org/10.1017/jfm.2025.141)
+
+1. Lee, A., Hutchings, J., Horvat, C., Tavri, A., and Pearson, B. (2025) [Impact of Surface Waves on Mixing and Circulation in a Summertime Lead](https://doi.org/10.5194/egusphere-2025-4239), _EGUsphere preprint_. DOI: [10.5194/egusphere-2025-4239](https://doi.org/10.5194/egusphere-2025-4239)
+
+1. Fromme, F., Harder, H., Allen-Blanchette, C., and Peitz, S. (2025) [Surrogate Modeling of 3D Rayleigh-Bénard Convection with Equivariant Autoencoders](https://doi.org/10.48550/arXiv.2505.13569), _arXiv preprint_, arXiv:2505.13569. DOI: [10.48550/arXiv.2505.13569](https://doi.org/10.48550/arXiv.2505.13569)
+
+1. Fan, X., Fox-Kemper, B., Suzuki, N., Li, Q., Marchesiello, P., Sullivan, P. P., and Hall, P. S. (2024) [Comparison of the Coastal and Regional Ocean COmmunity model (CROCO) and NCAR-LES in non-hydrostatic simulations](https://doi.org/10.5194/gmd-17-4095-2024), _Geoscientific Model Development_, **17**, 4095-4113. DOI: [10.5194/gmd-17-4095-2024](https://doi.org/10.5194/gmd-17-4095-2024)
+
+1. Abbott, K. and Mahadevan, A. (2024). [Why is the monsoon coastal upwelling signal subdued in the Bay of Bengal?](https://doi.org/10.1029/2024JC022023), _Journal of Geophysical Research: Oceans_, **129**, e2024JC022023. DOI: [10.1029/2024JC022023](https://doi.org/10.1029/2024JC022023)
+
+1. Bisits, J. I., Zika, J. D., and Evans, D. G. (2024) [Does cabbeling shape the thermohaline structure of high-latitude oceans?](https://doi.org/10.1175/JPO-D-24-0061.1), _Journal of Physical Oceanography_, **54(12)**, 2419–2430. DOI: [10.1175/JPO-D-24-0061.1](https://doi.org/10.1175/JPO-D-24-0061.1)
+
+1. Strong-Wright, J. and Taylor, J. R. (2024) [A model of tidal flow and tracer release in a giant kelp forest](https://doi.org/10.1017/flo.2024.13), _Flow_, **4**, E21. DOI: [10.1017/flo.2024.13](https://doi.org/10.1017/flo.2024.13)
+
+1. Silvestri, S., Wagner, G. L., Campin, J.-M., Constantinou, N. C., Hill, C., Souza, A., and Ferrari, R. (2024). [A new WENO-based momentum advection scheme for simulations of ocean mesoscale turbulence](https://doi.org/10.1029/2023MS004130), _Journal of Advances in Modeling Earth Systems_, **16(7)**, e2023MS004130. DOI: [10.1029/2023MS004130](https://doi.org/10.1029/2023MS004130)
 
 1. Chen S., Strong-Wright J., and Taylor, J. R. (2024) [Modeling carbon dioxide removal via sinking of particulate organic carbon from macroalgae cultivation](https://doi.org/10.3389/fmars.2024.1359614), _Frontiers in Marine Science_, **11**, 1359614. DOI: [10.3389/fmars.2024.1359614](https://doi.org/10.3389/fmars.2024.1359614)
 
 1. Gupta, M., Gürcan, E., and Thompson, A. F. (2024). [Eddy-induced dispersion of sea ice floes at the marginal ice zone](https://doi.org/10.1029/2023GL105656), _Geophysical Research Letters_, **51**, e2023GL105656. DOI: [10.1029/2023GL105656](https://doi.org/10.1029/2023GL105656)
 
+1. Zhang, Y., Kang, W., and Marshall, J. (2024) [Ocean weather systems on icy moons, with application to Enceladus](https://doi.org/10.1126/sciadv.adn6857), _Science Advances_, **10**, eadn6857. DOI: [10.1126/sciadv.adn6857](https://doi.org/10.1126/sciadv.adn6857)
+
 1. Wagner, G. L., Pizzo, N. E., Lenain, L., and Veron, F. (2023) [Transition to turbulence in wind-drift layers](https://doi.org/10.1017/jfm.2023.920), _Journal of Fluid Mechanics_, **976**, A8. DOI: [10.1017/jfm.2023.920](https://doi.org/10.1017/jfm.2023.920)
 
-1. Jiménez-Urias, M. A. and Haine T. W. N. (2023) [On the non-self-adjoint and multiscale character of passive scalar mixing under laminar advection](https://doi.org/10.1017/jfm.2023.748), _Journal of Fluid Mechanics_, **973**, A44. DOI: [10.1017/jfm.2023.748](https://doi.org/10.1017/jfm.2023.748)
+1. Jiménez-Urias, M. A. and Haine, T. W. N. (2023) [On the non-self-adjoint and multiscale character of passive scalar mixing under laminar advection](https://doi.org/10.1017/jfm.2023.748), _Journal of Fluid Mechanics_, **973**, A44. DOI: [10.1017/jfm.2023.748](https://doi.org/10.1017/jfm.2023.748)
 
-1. Strong-Wright, J, Chen, S., Constantinou, N. C., Silvestri, S., Wagner, G. L., and Taylor, J. R. (2023). [OceanBioME.jl: A flexible environment for modelling the coupled interactions between ocean biogeochemistry and physics](https://doi.org/10.21105/joss.05669), _Journal of Open Source Software_, **90(8)**, 5669. DOI: [10.21105/joss.05669](https://doi.org/10.21105/joss.05669)
+1. Strong-Wright, J., Chen, S., Constantinou, N. C., Silvestri, S., Wagner, G. L., and Taylor, J. R. (2023). [OceanBioME.jl: A flexible environment for modelling the coupled interactions between ocean biogeochemistry and physics](https://doi.org/10.21105/joss.05669), _Journal of Open Source Software_, **90(8)**, 5669. DOI: [10.21105/joss.05669](https://doi.org/10.21105/joss.05669)
+
+1. Bire, S., Mittal, T., Kang, W., Ramadhan, A., Tuckman, P., German, C. R., Thurnherr, A., and Marshall, J. (2023) [Divergent behavior of hydrothermal plumes in fresh versus salty icy ocean worlds](https://doi.org/10.1029/2023JE007740), _Journal of Geophysical Research: Planets_, **128**, e2023JE007740. DOI: [10.1029/2023JE007740](https://doi.org/10.1029/2023JE007740)
 
 1. Ramadhan, A., Marshall, J. C., Souza, A. N., Lee, X. K., Piterbarg, U., Hillier, A., Wagner, G. L., Rackauckas, C., Hill, C., Campin, J.-M., and Ferrari, R. (2022). [Capturing missing physics in climate model parameterizations using neural differential equations](https://doi.org/10.1002/essoar.10512533.1), _ESS Open Archive_. DOI: [10.1002/essoar.10512533.1](https://doi.org/10.1002/essoar.10512533.1)
 
@@ -125,6 +279,6 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Buffett, B. A. (2021). [Conditions for turbulent Ekman layers in precessionally driven flow](https://doi.org/10.1093/gji/ggab088), _Geophysical Journal International_, **226(1)**, 56–65. DOI: [10.1093/gji/ggab088](https://doi.org/10.1093/gji/ggab088)
 
-1. Bhamidipati, N., Souza, A.N., and Flierl, G.R. (2020). [Turbulent mixing of a passive scalar in the ocean mixed layer](https://doi.org/10.1016/j.ocemod.2020.101615), _Ocean Modelling_, **149**, 101615. DOI: [10.1016/j.ocemod.2020.101615](https://doi.org/10.1016/j.ocemod.2020.101615)
+1. Bhamidipati, N., Souza, A. N., and Flierl, G. R. (2020). [Turbulent mixing of a passive scalar in the ocean mixed layer](https://doi.org/10.1016/j.ocemod.2020.101615), _Ocean Modelling_, **149**, 101615. DOI: [10.1016/j.ocemod.2020.101615](https://doi.org/10.1016/j.ocemod.2020.101615)
 
 1. Souza, A. N., Wagner, G. L., Ramadhan, A., Allen, B., Churavy, V., Schloss, J., Campin, J. M., Hill, C., Edelman, A., Marshall, J., Flierl, G., and Ferrari, R. (2020). [Uncertainty quantification of ocean parameterizations: Application to the K‐Profile‐Parameterization for penetrative convection](https://doi.org/10.1029/2020MS002108), _Journal of Advances in Modeling Earth Systems_, **12**, e2020MS002108. DOI: [10.1029/2020MS002108](https://doi.org/10.1029/2020MS002108)

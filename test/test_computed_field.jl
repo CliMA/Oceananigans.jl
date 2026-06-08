@@ -24,6 +24,14 @@ function compute_plus(model)
     return all(result .≈ eltype(model.grid)(π + 42))
 end
 
+function compute_comparison(model)
+    set!(model; S=π, T=42)
+    T, S = model.tracers
+    @compute cmp = Field(S > T)  # S=π ≈ 3.14 < T=42, so should be all false
+    result = Array(interior(cmp))
+    return eltype(cmp) == Bool && all(result .== false)
+end
+
 function compute_many_plus(model)
     set!(model; u=2, S=π, T=42)
     T, S = model.tracers
@@ -107,7 +115,7 @@ function volume_average_of_times(model)
     T, S = model.tracers
 
     @compute ST = Field(Average(S * T, dims=(1, 2, 3)))
-    result = CUDA.@allowscalar ST[1, 1, 1]
+    result = @allowscalar ST[1, 1, 1]
 
     return result ≈ 0.5
 end
@@ -196,7 +204,7 @@ end
 function computation_including_boundaries(arch)
     topo = (Periodic, Bounded, Bounded)
     grid = RectilinearGrid(arch, topology=topo, size=(13, 17, 19), extent=(1, 1, 1))
-    model = NonhydrostaticModel(; grid)
+    model = NonhydrostaticModel(grid)
 
     u, v, w = model.velocities
     parent(u) .= 1 + rand()
@@ -227,10 +235,10 @@ end
 function computations_with_buoyancy_field(arch, buoyancy)
     grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
     tracers = buoyancy isa BuoyancyTracer ? :b : (:T, :S)
-    model = NonhydrostaticModel(grid=grid,
+    model = NonhydrostaticModel(grid;
                                 tracers=tracers, buoyancy=buoyancy)
 
-    b = BuoyancyField(model)
+    b = buoyancy_field(model)
     u, v, w = model.velocities
 
     compute!(b)
@@ -338,7 +346,7 @@ for arch in archs
 
         for grid in (underlying_grid, immersed_grid, immersed_active_grid)
             G = typeof(grid).name.wrapper
-            model = NonhydrostaticModel(; grid, buoyancy, tracers = (:T, :S))
+            model = NonhydrostaticModel(grid; buoyancy, tracers = (:T, :S))
 
             @testset "Instantiating and computing computed fields [$A, $G]" begin
                 @info "  Testing computed Field instantiation and computation [$A, $G]..."
@@ -364,7 +372,10 @@ for arch in archs
 
             @testset "Unary computations [$A, $G]" begin
                 @info "      Testing correctness of compute! unary operations..."
-                for unary in (sqrt, sin, cos, exp, tanh)
+                dont_test = tuple(:interpolate_identity)
+                operators_to_test = filter(op -> !(op ∈ dont_test), Oceananigans.AbstractOperations.unary_operators)
+                for unary_symbol in operators_to_test
+                    unary = eval(unary_symbol)
                     @test compute_unary(unary, model)
                 end
             end
@@ -378,6 +389,9 @@ for arch in archs
                 # Basic compilation test for nested BinaryOperations...
                 u, v, w = model.velocities
                 @test try compute!(Field(u + v - w)); true; catch; false; end
+
+                # Bool-valued computed fields from comparison operations
+                @test compute_comparison(model)
             end
 
             @testset "Multiary computations [$A, $G]" begin
@@ -478,7 +492,7 @@ for arch in archs
                 kk = 1+Hz:Nz+Hz
                 @test all(view(parent(ST), Hx, jj, kk) .== view(parent(ST), Nx+1+Hx, jj, kk))
                 @test all(view(parent(ST), ii, Hy, kk) .== view(parent(ST), ii, Ny+1+Hy, kk))
-                
+
                 # Bounded z
                 @test all(view(parent(ST), ii, jj, Hz)    .== view(parent(ST), ii, jj, 1+Hz))
                 @test all(view(parent(ST), ii, jj, Nz+Hz) .== view(parent(ST), ii, jj, Nz+1+Hz))
@@ -510,8 +524,8 @@ for arch in archs
                           (SeawaterBuoyancy(equation_of_state=eos()) for eos in EquationsOfState)...)
 
             for buoyancy in buoyancies
-                @testset "Computations with BuoyancyFields [$A, $G, $(typeof(buoyancy).name.wrapper)]" begin
-                    @info "      Testing computations with BuoyancyField " *
+                @testset "Computations with buoyancy_fields [$A, $G, $(typeof(buoyancy).name.wrapper)]" begin
+                    @info "      Testing computations with buoyancy_field " *
                           "[$A, $G, $(typeof(buoyancy).name.wrapper)]..."
 
                     @test computations_with_buoyancy_field(arch, buoyancy)
@@ -555,19 +569,12 @@ for arch in archs
                 computed_tke = Field(tke_ccc)
 
                 tke_window = Field(tke_ccc, indices=(2:3, 2:3, 2:3))
-                if (grid isa ImmersedBoundaryGrid) & (arch==GPU())
-                    @test_broken try compute!(computed_tke); true; catch; false end
-                    @test_broken try compute!(Field(tke)); true; catch; false; end
-                    @test_broken try compute!(tke_window); true; catch; false; end
-                    @test_broken all(interior(computed_tke, 2:3, 2:3, 2:3) .== 9/2)
-                    @test_broken all(interior(tke_window) .== 9/2)
-                else                    
-                    @test try compute!(computed_tke); true; catch; false end
-                    @test try compute!(Field(tke)); true; catch; false; end
-                    @test try compute!(tke_window); true; catch; false; end
-                    @test all(interior(computed_tke, 2:3, 2:3, 2:3) .== 9/2)
-                    @test all(interior(tke_window) .== 9/2)
-                end
+
+                @test try compute!(computed_tke); true; catch; false end
+                @test try compute!(Field(tke)); true; catch; false; end
+                @test try compute!(tke_window); true; catch; false; end
+                @test all(interior(computed_tke, 2:3, 2:3, 2:3) .== 9/2)
+                @test all(interior(tke_window) .== 9/2)
 
                 # Computations along slices
                 tke_xy = Field(tke_ccc, indices=(:, :, 2))
@@ -575,31 +582,17 @@ for arch in archs
                 tke_yz = Field(tke_ccc, indices=(2, 2:3, 2:3))
                 tke_x = Field(tke_ccc, indices=(2:3, 2, 2))
 
-                if (grid isa ImmersedBoundaryGrid) & (arch==GPU())
-                    @test_broken try compute!(tke_xy); true; catch; false; end
-                    @test_broken all(interior(tke_xy, 2:3, 2:3, 1) .== 9/2)
-    
-                    @test_broken try compute!(tke_xz); true; catch; false; end
-                    @test_broken all(interior(tke_xz) .== 9/2)
+                @test try compute!(tke_xy); true; catch; false; end
+                @test all(interior(tke_xy, 2:3, 2:3, 1) .== 9/2)
 
-                    @test_broken try compute!(tke_yz); true; catch; false; end
-                    @test_broken all(interior(tke_yz) .== 9/2)
+                @test try compute!(tke_xz); true; catch; false; end
+                @test all(interior(tke_xz) .== 9/2)
 
-                    @test_broken try compute!(tke_x); true; catch; false; end
-                    @test_broken all(interior(tke_x) .== 9/2)
-                else
-                    @test try compute!(tke_xy); true; catch; false; end
-                    @test all(interior(tke_xy, 2:3, 2:3, 1) .== 9/2)
-    
-                    @test try compute!(tke_xz); true; catch; false; end
-                    @test all(interior(tke_xz) .== 9/2)
+                @test try compute!(tke_yz); true; catch; false; end
+                @test all(interior(tke_yz) .== 9/2)
 
-                    @test try compute!(tke_yz); true; catch; false; end
-                    @test all(interior(tke_yz) .== 9/2)
-
-                    @test try compute!(tke_x); true; catch; false; end
-                    @test all(interior(tke_x) .== 9/2)
-                end
+                @test try compute!(tke_x); true; catch; false; end
+                @test all(interior(tke_x) .== 9/2)
             end
 
             @testset "Computations with Fields [$A, $G]" begin
@@ -610,8 +603,8 @@ for arch in archs
                 @test compute_tuples_and_namedtuples(model)
             end
 
-            @testset "Conditional computation of Field and BuoyancyField [$A, $G]" begin
-                @info "      Testing conditional computation of Field and BuoyancyField " *
+            @testset "Conditional computation of Field and buoyancy_field [$A, $G]" begin
+                @info "      Testing conditional computation of Field and buoyancy_field " *
                       "[$A, $G]..."
 
                 set!(model, u=2, v=0, w=0, T=3, S=0)
@@ -619,9 +612,9 @@ for arch in archs
 
                 uT = Field(u * T)
 
-                α = model.buoyancy.model.equation_of_state.thermal_expansion
-                g = model.buoyancy.model.gravitational_acceleration
-                b = BuoyancyField(model)
+                α = model.buoyancy.formulation.equation_of_state.thermal_expansion
+                g = model.buoyancy.formulation.gravitational_acceleration
+                b = buoyancy_field(model)
 
                 compute_at!(uT, 1.0)
                 compute_at!(b, 1.0)
@@ -642,4 +635,3 @@ for arch in archs
         end
     end
 end
-

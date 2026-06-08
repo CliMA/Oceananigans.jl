@@ -75,7 +75,7 @@
 # the flux is negative (downwards) when the velocity at the bottom boundary is positive, and
 # positive (upwards) with the velocity at the bottom boundary is negative.
 # This drag term is "quadratic" because the rate at which momentum is removed is proportional
-# to ``\boldsymbol{u} |\boldsymbol{u}|``, where ``\boldsymbol{u} = u \boldsymbol{\hat{x}} + 
+# to ``\boldsymbol{u} |\boldsymbol{u}|``, where ``\boldsymbol{u} = u \boldsymbol{\hat{x}} +
 # v \boldsymbol{\hat{y}}`` is the horizontal velocity.
 #
 # The ``x``-component of the quadratic bottom drag is thus
@@ -188,17 +188,14 @@ biharmonic_horizontal_diffusivity = HorizontalScalarBiharmonicDiffusivity(ν=κ�
 # We instantiate the model with the fifth-order WENO advection scheme, a 3rd order
 # Runge-Kutta time-stepping scheme, and a `BuoyancyTracer`.
 
-model = NonhydrostaticModel(
-                   grid = grid,
-              advection = WENO(),
-            timestepper = :RungeKutta3,
-               coriolis = coriolis,
-                tracers = :b,
-               buoyancy = BuoyancyTracer(),
-      background_fields = (b=B_field, u=U_field),
-                closure = (Laplacian_vertical_diffusivity, biharmonic_horizontal_diffusivity),
-    boundary_conditions = (u=u_bcs, v=v_bcs)
-)
+model = NonhydrostaticModel(grid; advection = WENO(),
+                                  timestepper = :RungeKutta3,
+                                  coriolis,
+                                  tracers = :b,
+                                  buoyancy = BuoyancyTracer(),
+                                  background_fields = (b=B_field, u=U_field),
+                                  closure = (Laplacian_vertical_diffusivity, biharmonic_horizontal_diffusivity),
+                                  boundary_conditions = (u=u_bcs, v=v_bcs))
 
 # ## Initial conditions
 #
@@ -231,7 +228,7 @@ nothing #hide
 
 # ## Simulation set-up
 #
-# We set up a simulation that runs for 10 days with a `JLD2OutputWriter` that saves the
+# We set up a simulation that runs for 10 days with a `JLD2Writer` that saves the
 # vertical vorticity and divergence every 2 hours. We limit the time-step to
 # the maximum allowable due either to diffusion, internal waves, or advection by the background flow.
 
@@ -285,13 +282,13 @@ u, v, w = model.velocities # unpack velocity `Field`s
 δ = -∂z(w)
 
 # With the vertical vorticity, `ζ`, and the horizontal divergence, `δ` in hand,
-# we create a `JLD2OutputWriter` that saves `ζ` and `δ` and add them to
+# we create a `JLD2Writer` that saves `ζ` and `δ` and add them to
 # `simulation`.
 
-simulation.output_writers[:fields] = JLD2OutputWriter(model, (; ζ, δ),
-                                                      schedule = TimeInterval(4hours),
-                                                      filename = "eady_turbulence.jld2",
-                                                      overwrite_existing = true)
+simulation.output_writers[:fields] = JLD2Writer(model, (; ζ, δ),
+                                                schedule = TimeInterval(4hours),
+                                                filename = "eady_turbulence.jld2",
+                                                overwrite_existing = true)
 nothing #hide
 
 # All that's left is to press the big red button:

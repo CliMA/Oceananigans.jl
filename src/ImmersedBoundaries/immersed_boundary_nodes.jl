@@ -1,4 +1,6 @@
-import Oceananigans.Grids: xspacings, yspacings, zspacings
+using Oceananigans.Grids: Grids, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid, RectilinearGrid,
+    cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
+    xspacings, yspacings, zspacings
 
 const c = Center()
 const f = Face()
@@ -8,7 +10,7 @@ const f = Face()
 @inline znode(k, ibg::IBG, ℓz) = znode(k, ibg.underlying_grid, ℓz)
 
 @inline λnode(i, ibg::IBG, ℓx) = λnode(i, ibg.underlying_grid, ℓx)
-@inline φnode(j, ibg::IBG, ℓy) = φnode(i, ibg.underlying_grid, ℓy)
+@inline φnode(j, ibg::IBG, ℓy) = φnode(j, ibg.underlying_grid, ℓy)
 
 @inline xnode(i, j, ibg::IBG, ℓx, ℓy) = xnode(i, j, ibg.underlying_grid, ℓx, ℓy)
 
@@ -50,9 +52,9 @@ znodes(ibg::IBG, ℓx, ℓy, ℓz; kwargs...) = znodes(ibg.underlying_grid, ℓx
 ηnodes(ibg::IBG, ℓx, ℓy, ℓz; kwargs...) = ηnodes(ibg.underlying_grid, ℓx, ℓy, ℓz; kwargs...)
 rnodes(ibg::IBG, ℓx, ℓy, ℓz; kwargs...) = rnodes(ibg.underlying_grid, ℓx, ℓy, ℓz; kwargs...)
 
-@inline cpu_face_constructor_x(ibg::IBG) = cpu_face_constructor_x(ibg.underlying_grid)
-@inline cpu_face_constructor_y(ibg::IBG) = cpu_face_constructor_y(ibg.underlying_grid)
-@inline cpu_face_constructor_z(ibg::IBG) = cpu_face_constructor_z(ibg.underlying_grid)
+@inline Grids.cpu_face_constructor_x(ibg::IBG) = cpu_face_constructor_x(ibg.underlying_grid)
+@inline Grids.cpu_face_constructor_y(ibg::IBG) = cpu_face_constructor_y(ibg.underlying_grid)
+@inline Grids.cpu_face_constructor_z(ibg::IBG) = cpu_face_constructor_z(ibg.underlying_grid)
 
 node_names(ibg::IBG, ℓx, ℓy, ℓz) = node_names(ibg.underlying_grid, ℓx, ℓy, ℓz)
 
@@ -64,6 +66,28 @@ rname(ibg::IBG) = rname(ibg.underlying_grid)
 @inline fractional_y_index(x, locs, grid::ImmersedBoundaryGrid) = fractional_y_index(x, locs, grid.underlying_grid)
 @inline fractional_z_index(x, locs, grid::ImmersedBoundaryGrid) = fractional_z_index(x, locs, grid.underlying_grid)
 
-xspacings(ibg::ImmersedBoundaryGrid, ℓ...) = xspacings(ibg.underlying_grid, ℓ...)
-yspacings(ibg::ImmersedBoundaryGrid, ℓ...) = yspacings(ibg.underlying_grid, ℓ...)
-zspacings(ibg::ImmersedBoundaryGrid, ℓ...) = zspacings(ibg.underlying_grid, ℓ...)
+#####
+##### Grid-specific grid spacings
+#####
+
+const RGIBG{F, X, Y, Z} = ImmersedBoundaryGrid{F, X, Y, Z, <:RectilinearGrid}
+const LLIBG{F, X, Y, Z} = ImmersedBoundaryGrid{F, X, Y, Z, <:LatitudeLongitudeGrid}
+const OSIBG{F, X, Y, Z} = ImmersedBoundaryGrid{F, X, Y, Z, <:OrthogonalSphericalShellGrid}
+
+@inline Grids.xspacings(grid::RGIBG, ℓx) = xspacings(grid, ℓx, nothing, nothing)
+@inline Grids.yspacings(grid::RGIBG, ℓy) = yspacings(grid, nothing, ℓy, nothing)
+@inline Grids.zspacings(grid::RGIBG, ℓz) = zspacings(grid, nothing, nothing, ℓz)
+
+@inline Grids.xspacings(grid::LLIBG, ℓx, ℓy) = xspacings(grid, ℓx, ℓy, nothing)
+@inline Grids.yspacings(grid::LLIBG, ℓx, ℓy) = yspacings(grid, ℓx, ℓy, nothing)
+@inline Grids.zspacings(grid::LLIBG, ℓz)     = zspacings(grid, nothing, nothing, ℓz)
+
+@inline Grids.xspacings(grid::OSIBG, ℓx, ℓy) = xspacings(grid, ℓx, ℓy, nothing)
+@inline Grids.yspacings(grid::OSIBG, ℓx, ℓy) = yspacings(grid, ℓx, ℓy, nothing)
+@inline Grids.zspacings(grid::OSIBG, ℓz)     = zspacings(grid, nothing, nothing, ℓz)
+
+@inline λspacings(grid::LLIBG, ℓx) = λspacings(grid, ℓx, nothing, nothing)
+@inline φspacings(grid::LLIBG, ℓy) = φspacings(grid, nothing, ℓy, nothing)
+
+@inline λspacings(grid::OSIBG, ℓx, ℓy) = λspacings(grid, ℓx, ℓy, nothing)
+@inline φspacings(grid::OSIBG, ℓx, ℓy) = φspacings(grid, ℓx, ℓy, nothing)

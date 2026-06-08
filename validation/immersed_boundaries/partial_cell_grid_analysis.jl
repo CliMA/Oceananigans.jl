@@ -8,7 +8,7 @@ using GLMakie
 arch = CPU()
 
 underlying_grid = RectilinearGrid(arch,
-                                  size=(128, 64), halo=(3, 3), 
+                                  size=(128, 64), halo=(3, 3),
                                   y = (-1, 1),
                                   z = (-1, 0),
                                   topology=(Flat, Periodic, Bounded))
@@ -46,4 +46,3 @@ Colorbar(fig[1, 2], hmc)
 hmf = heatmap!(ax_f, fractional_Δzᶠ)
 Colorbar(fig[2, 2], hmf)
 display(fig)
-

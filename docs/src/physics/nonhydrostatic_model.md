@@ -20,7 +20,7 @@ at the top of the domain via the Craik-Leibovich approximation are
                         - \left ( \boldsymbol{V} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{v}
                         - \left ( \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{V} \nonumber \\
                         & \qquad
-                        - \left ( \boldsymbol{f} - \boldsymbol{\nabla} \times \boldsymbol{u}^S \right ) \times \boldsymbol{v} 
+                        - \left ( \boldsymbol{f} - \boldsymbol{\nabla} \times \boldsymbol{u}^S \right ) \times \boldsymbol{v}
                         - \boldsymbol{\nabla} p
                         + b \boldsymbol{\hat g}
                         - \boldsymbol{\nabla} \boldsymbol{\cdot} \boldsymbol{\tau}
@@ -29,23 +29,23 @@ at the top of the domain via the Craik-Leibovich approximation are
     \label{eq:momentum}
     \end{align}
 ```
-where ``b \boldsymbol{\hat g}`` the is the buoyancy (a vector whose default direction is upward), 
+where ``b \boldsymbol{\hat g}`` the is the buoyancy (a vector whose default direction is upward),
 ``\boldsymbol{\tau}`` is the kinematic stress tensor, ``\boldsymbol{F_v}``
-denotes an internal forcing of the velocity field ``\boldsymbol{v}``, ``p`` is the kinematic 
-pressure, ``\boldsymbol{u}^S`` is the horizontal, two-dimensional 'Stokes drift' velocity field associated with surface gravity 
-waves, and ``\boldsymbol{f}`` is the Coriolis parameter, or the background vorticity associated 
+denotes an internal forcing of the velocity field ``\boldsymbol{v}``, ``p`` is the kinematic
+pressure, ``\boldsymbol{u}^S`` is the horizontal, two-dimensional 'Stokes drift' velocity field associated with surface gravity
+waves, and ``\boldsymbol{f}`` is the Coriolis parameter, or the background vorticity associated
 with the specified rate of rotation of the frame of reference.
 
 The terms that appear on the right-hand side of the momentum conservation equation are (in order):
 
-* momentum advection: ``\left ( \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) 
+* momentum advection: ``\left ( \boldsymbol{v} \boldsymbol{\cdot} \boldsymbol{\nabla} \right )
   \boldsymbol{v}``,
-* advection of resolved momentum by the background velocity field ``\boldsymbol{V}``: 
+* advection of resolved momentum by the background velocity field ``\boldsymbol{V}``:
   ``\left ( \boldsymbol{V} \boldsymbol{\cdot} \boldsymbol{\nabla} \right ) \boldsymbol{v}``,
-* advection of background momentum by resolved velocity: ``\left ( \boldsymbol{v} \boldsymbol{\cdot} 
+* advection of background momentum by resolved velocity: ``\left ( \boldsymbol{v} \boldsymbol{\cdot}
   \boldsymbol{\nabla} \right ) \boldsymbol{V}``,
 * Coriolis: ``\boldsymbol{f} \times \boldsymbol{v}``,
-* the effective background rotation rate due to surface waves: ``- \left ( \boldsymbol{\nabla} \times 
+* the effective background rotation rate due to surface waves: ``- \left ( \boldsymbol{\nabla} \times
   \boldsymbol{u}^S \right ) \times \boldsymbol{v}``,
 * kinematic pressure gradient: ``\boldsymbol{\nabla} p``,
 * buoyant acceleration: ``b``,

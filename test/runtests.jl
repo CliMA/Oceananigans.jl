@@ -2,7 +2,10 @@ using Pkg
 
 include("dependencies_for_runtests.jl")
 
-group     = get(ENV, "TEST_GROUP", :all) |> Symbol
+# TEST_GROUP=unit julia --project -e 'using Pkg; Pkg.test()'
+group = get(ENV, "TEST_GROUP", "all") |> Symbol
+
+# TEST_FILE=test_coriolis.jl julia --project -e 'using Pkg; Pkg.test()'
 test_file = get(ENV, "TEST_FILE", :none) |> Symbol
 
 # if we are testing just a single file then group = :none
@@ -11,9 +14,8 @@ if test_file != :none
     group = :none
 end
 
-
 #####
-##### Run tests!
+##### Run tests
 #####
 
 CUDA.allowscalar() do
@@ -28,37 +30,39 @@ CUDA.allowscalar() do
 
     # Initialization steps
     if group == :init || group == :all
-        Pkg.instantiate(; verbose=true)
-        Pkg.precompile(; strict=true)
-        Pkg.status()
-
-        try
-            MPI.versioninfo()
-        catch; end
-
-        try
-            CUDA.precompile_runtime()
-            CUDA.versioninfo()
-        catch; end
+        include("test_init.jl")
     end
 
     # Core Oceananigans
     if group == :unit || group == :all
         @testset "Unit tests" begin
+            include("test_quality_assurance.jl")
             include("test_grids.jl")
+            include("test_grid_reconstruction.jl")
             include("test_immersed_boundary_grid.jl")
             include("test_operators.jl")
             include("test_vector_rotation_operators.jl")
             include("test_boundary_conditions.jl")
             include("test_field.jl")
+            include("test_set_field_interpolation.jl")
             include("test_regrid.jl")
             include("test_field_scans.jl")
             include("test_halo_regions.jl")
-            include("test_coriolis.jl")
             include("test_buoyancy.jl")
             include("test_stokes_drift.jl")
             include("test_utils.jl")
             include("test_schedules.jl")
+            include("test_newton_div.jl")
+            include("test_materialize_advection.jl")
+            include("test_adaptive_implicit_vertical_advection.jl")
+            include("test_weno_smoothness.jl")
+        end
+    end
+
+    if group == :coriolis || group == :all
+        @testset "Coriolis" begin
+            include("test_coriolis.jl")
+            include("test_coriolis_schemes.jl")
         end
     end
 
@@ -68,6 +72,12 @@ CUDA.allowscalar() do
             include("test_conditional_reductions.jl")
             include("test_computed_field.jl")
             include("test_broadcasting.jl")
+        end
+    end
+
+    if group == :tripolar_grid || group == :all
+        @testset "TripolarGrid tests" begin
+            include("test_tripolar_grid.jl")
         end
     end
 
@@ -84,16 +94,11 @@ CUDA.allowscalar() do
         end
     end
 
-    if group == :matrix_poisson_solvers || group == :all
-        @testset "Matrix Poisson Solvers" begin
-            include("test_matrix_poisson_solver.jl")
-        end
-    end
-
     if group == :general_solvers || group == :all
         @testset "General Solvers" begin
             include("test_batched_tridiagonal_solver.jl")
             include("test_preconditioned_conjugate_gradient_solver.jl")
+            include("test_krylov_solver.jl")
         end
     end
 
@@ -102,14 +107,16 @@ CUDA.allowscalar() do
         @testset "Simulation tests" begin
             include("test_simulations.jl")
             include("test_diagnostics.jl")
+            include("test_implicit_diffusion_diagnostic.jl")
             include("test_output_writers.jl")
-            include("test_netcdf_output_writer.jl")
             include("test_output_readers.jl")
+            include("test_averaged_specified_times.jl")
+            include("test_set_field_time_series.jl")
         end
     end
 
     # Lagrangian particle tracking
-    if group == :lagrangian || group == :all
+    if group == :lagrangian_particles || group == :all
         @testset "Lagrangian particle tracking tests" begin
             include("test_lagrangian_particle_tracking.jl")
         end
@@ -120,14 +127,17 @@ CUDA.allowscalar() do
         @testset "Model and time stepping tests (part 1)" begin
             include("test_nonhydrostatic_models.jl")
             include("test_time_stepping.jl")
+            include("test_active_cells_map.jl")
         end
     end
 
     if group == :time_stepping_2 || group == :all
         @testset "Model and time stepping tests (part 2)" begin
             include("test_boundary_conditions_integration.jl")
+            include("test_datetime_clock.jl")
             include("test_forcings.jl")
             include("test_immersed_advection.jl")
+            include("test_background_flux_divergence.jl")
         end
     end
 
@@ -136,12 +146,19 @@ CUDA.allowscalar() do
             include("test_dynamics.jl")
             include("test_biogeochemistry.jl")
             include("test_seawater_density.jl")
+            include("test_model_diagnostics.jl")
+            include("test_orthogonal_spherical_shell_time_stepping.jl")
+            include("test_curvature_metric_terms.jl")
+            include("test_bulk_drag.jl")
         end
     end
 
     if group == :turbulence_closures || group == :all
         @testset "Turbulence closures tests" begin
             include("test_turbulence_closures.jl")
+            include("test_triad_isopycnal_diffusivity.jl")
+            include("test_gm_infinite_slope.jl")
+            include("test_diffusion_stencils.jl")
         end
     end
 
@@ -158,7 +175,7 @@ CUDA.allowscalar() do
             include("test_implicit_free_surface_solver.jl")
             include("test_split_explicit_free_surface_solver.jl")
             include("test_split_explicit_vertical_integrals.jl")
-            include("test_hydrostatic_free_surface_immersed_boundaries_implicit_solve.jl")
+            include("test_immersed_implicit_free_surface.jl")
         end
     end
 
@@ -167,7 +184,6 @@ CUDA.allowscalar() do
         @testset "Multi Region tests" begin
             include("test_multi_region_unit.jl")
             include("test_multi_region_advection_diffusion.jl")
-            include("test_multi_region_implicit_solver.jl")
             include("test_multi_region_cubed_sphere.jl")
         end
     end
@@ -176,7 +192,7 @@ CUDA.allowscalar() do
         MPI.Initialized() || MPI.Init()
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
-        archs = test_architectures()
+        include("test_distributed_architectures.jl")
         include("test_distributed_models.jl")
     end
 
@@ -188,13 +204,43 @@ CUDA.allowscalar() do
         include("test_distributed_poisson_solvers.jl")
     end
 
-    if group == :distributed_hydrostatic_model || group == :all
+    if group == :distributed_hydrostatic_regression || group == :all
         MPI.Initialized() || MPI.Init()
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
         archs = test_architectures()
         include("test_hydrostatic_regression.jl")
+    end
+
+    if group == :distributed_hydrostatic_model || group == :all
+        MPI.Initialized() || MPI.Init()
+        # In case CUDA is not found, we reset CUDA and restart the julia session
+        reset_cuda_if_necessary()
+        archs = test_architectures()
         include("test_distributed_hydrostatic_model.jl")
+    end
+
+    if group == :distributed_vertical_coordinate_1 || group == :all
+        MPI.Initialized() || MPI.Init()
+        # In case CUDA is not found, we reset CUDA and restart the julia session
+        reset_cuda_if_necessary()
+        include("test_zstar_conservation_explicit.jl")
+    end
+
+    if group == :distributed_vertical_coordinate_2 || group == :all
+        MPI.Initialized() || MPI.Init()
+        # In case CUDA is not found, we reset CUDA and restart the julia session
+        reset_cuda_if_necessary()
+        include("test_zstar_conservation_implicit.jl")
+        include("test_zstar_conservation_tripolar.jl")
+    end
+
+    if group == :distributed_output || group == :all
+        MPI.Initialized() || MPI.Init()
+        reset_cuda_if_necessary()
+        @testset "Distributed output combining tests" begin
+            include("test_distributed_output_combining.jl")
+        end
     end
 
     if group == :distributed_nonhydrostatic_regression || group == :all
@@ -219,10 +265,104 @@ CUDA.allowscalar() do
         end
     end
 
+    if group == :vertical_coordinate_1 || group == :all
+        @testset "Vertical coordinate tests (1)" begin
+            include("test_zstar_coordinate.jl")
+            include("test_zstar_conservation_explicit.jl")
+        end
+    end
+
+    if group == :vertical_coordinate_2 || group == :all
+        @testset "Vertical coordinate tests (2)" begin
+            include("test_zstar_conservation_implicit.jl")
+            include("test_zstar_conservation_tripolar.jl")
+        end
+    end
+
+    # Tests for MPI extension
+    if group == :mpi_tripolar || group == :all
+        @testset "Distributed tripolar tests" begin
+            include("test_mpi_tripolar.jl")
+        end
+    end
+
     # Tests for Enzyme extension
     if group == :enzyme || group == :all
         @testset "Enzyme extension tests" begin
             include("test_enzyme.jl")
+        end
+    end
+
+    # Reactant unit tests (grids, fields, reductions, FieldTimeSeries)
+    if group == :reactant_1 || group == :all
+        @testset "Reactant unit tests" begin
+            include("test_reactant_unit.jl")
+        end
+    end
+
+    # Reactant simulation tests (RectilinearGrid simulations, FFT models, HFSM)
+    if group == :reactant_2 || group == :all
+        @testset "Reactant simulation tests" begin
+            include("test_reactant.jl")
+            include("test_reactant_fft_models.jl")
+            include("test_reactant_hydrostatic_free_surface_models.jl")
+            include("test_reactant_single_column_models.jl")
+        end
+    end
+
+    # Reactant LatitudeLongitudeGrid simulation tests
+    if group == :reactant_3 || group == :all
+        @testset "Reactant LatitudeLongitudeGrid simulation tests" begin
+            include("test_reactant_latitude_longitude_grid.jl")
+        end
+    end
+
+    # Tests for Reactant correctness (comparing vanilla vs ReactantState)
+    if group == :reactant_correctness || group == :all
+        @testset "Reactant correctness tests" begin
+            include("test_reactant_correctness.jl")
+        end
+    end
+
+    # Tests for ConservativeRegridding extension
+    if group == :conservative_regridding || group == :all
+        @testset "ConservativeRegridding extension tests" begin
+            include("test_conservative_regridding.jl")
+        end
+    end
+
+    if group == :sharding || group == :all
+        @testset "Sharding Reactant extension tests" begin
+            include("test_sharded_lat_lon.jl")
+            # include("test_sharded_tripolar.jl") # disabled: TripolarGrid + ImmersedBoundaryGrid cause Reactant MLIR errors
+        end
+    end
+
+    # Tests for Metal extension
+    if group == :metal || group == :all
+        @testset "Metal extension tests" begin
+            include("test_metal.jl")
+        end
+    end
+
+    # Tests for AMDGPU extension
+    if group == :amdgpu || group == :all
+        @testset "AMDGPU extension tests" begin
+            include("test_amdgpu.jl")
+        end
+    end
+
+    # Tests for oneAPI extension
+    if group == :oneapi || group == :all
+        @testset "oneAPI extension tests" begin
+            include("test_oneapi.jl")
+        end
+    end
+
+    # Tests for Makie extension
+    if group == :makie || group == :all
+        @testset "Makie extension tests" begin
+            include("test_makie_ext.jl")
         end
     end
 
