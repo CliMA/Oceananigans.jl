@@ -298,7 +298,6 @@ end
 
 struct ColumnwiseTridiagonalPreconditioner{S}
     batched_tridiagonal_solver :: S
-    ColumnwiseTridiagonalPreconditioner{S}(solver) where S = new{S}(solver)
 end
 
 Base.summary(::ColumnwiseTridiagonalPreconditioner) = "ColumnwiseTridiagonalPreconditioner"
@@ -382,13 +381,13 @@ in most scenarios.
 The same `grid` must be passed to both `ColumnwiseTridiagonalPreconditioner` and the
 `ConjugateGradientPoissonSolver` that uses it.
 """
-function ColumnwiseTridiagonalPreconditioner(grid)
+function ColumnwiseTridiagonalPreconditioner(grid::AbstractGrid)
     solver = BatchedTridiagonalSolver(grid; lower_diagonal = ColumnwiseTridiagonalLowerDiagonal(),
                                             diagonal = ColumnwiseTridiagonalDiagonal(),
                                             upper_diagonal = ColumnwiseTridiagonalUpperDiagonal(),
                                             tridiagonal_direction = ZDirection())
 
-    return ColumnwiseTridiagonalPreconditioner{typeof(solver)}(solver)
+    return ColumnwiseTridiagonalPreconditioner(solver)
 end
 
 @inline function precondition!(p, preconditioner::ColumnwiseTridiagonalPreconditioner, r, args...)
