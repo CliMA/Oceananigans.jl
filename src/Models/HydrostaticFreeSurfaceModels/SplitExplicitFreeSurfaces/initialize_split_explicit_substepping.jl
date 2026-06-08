@@ -21,7 +21,7 @@ function reconcile_free_surface!(sefs::SplitExplicitFreeSurface, grid, velocitie
     η = sefs.displacement
     U, V = barotropic_velocities.U, barotropic_velocities.V
     barotropic_model_fields = (; U, V, η)
-    # fill_halo_regions!((U, V), nothing, barotropic_model_fields)
+    fill_halo_regions!((U, V), nothing, barotropic_model_fields)
     fill_halo_regions!(η, nothing, barotropic_model_fields)
 
     return nothing
