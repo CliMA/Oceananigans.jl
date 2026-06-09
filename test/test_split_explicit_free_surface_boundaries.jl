@@ -175,4 +175,26 @@ bump(x, y) = -0.5 - 0.4 * exp(-((x - 0.5)^2 + (y - 0.5)^2) / 0.05)
         @test !any(immersed_peripheral_node(1, j, 1, grid, f, c, c) |
                    immersed_inactive_node(1, j, 1, grid, f, c, c) for j in 1:grid.Ny)
     end
+
+    @testset "Free surface does not evolve on land at an open boundary" begin
+        underlying = RectilinearGrid(arch, size=(8, 8, 4), x=(0, 1), y=(0, 1), z=(-1, 0),
+                                     topology=(Bounded, Bounded, Bounded))
+
+        ibg = ImmersedBoundaryGrid(underlying, GridFittedBottom((x, y) -> (x < 1/8 && y < 0.5) ? 0.0 : -1.0))
+        U_bcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(0.5))
+        model = build_model(ibg; boundary_conditions=(; U=U_bcs))
+
+        for _ in 1:10
+            time_step!(model, 1e-3)
+        end
+
+        grid = on_architecture(CPU(), ibg)
+        η = Array(interior(model.free_surface.displacement))
+        Nx, Ny, Nz = size(grid)
+        c = Center()
+
+        solid(i, j) = immersed_peripheral_node(i, j, Nz, grid, c, c, c)
+        @test all(η[i, j, 1] == 0 for i in 1:Nx, j in 1:Ny if solid(i, j))
+        @test maximum(abs(η[i, j, 1]) for i in 1:Nx, j in 1:Ny if !solid(i, j); init=0.0) > 0
+    end
 end
