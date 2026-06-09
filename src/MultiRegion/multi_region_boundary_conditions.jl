@@ -34,13 +34,13 @@ BoundaryConditions.fill_halo_regions!(c::MultiRegionObject, ::Nothing, args...; 
 # TODO: Optimize this some way (needs infra-regional-function synchronization between regions).
 # The complication here is the possibility of different regions having different number of tasks,
 # Which might happen, for example, for a grid that partitioned in a Bounded direction.
-function BoundaryConditions.fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; fill_open_bcs=true, kwargs...)
+function BoundaryConditions.fill_halo_regions!(c::MultiRegionObject, bcs, indices, loc, mrg::MultiRegionGrid, buffers, args...; fill_normal_flow_bcs=true, kwargs...)
     buff_ref = Reference(buffers.regional_objects)
 
     apply_regionally!(fill_send_buffers!, c, buffers, mrg)
-    apply_regionally!(fill_halo_regions!, c, bcs, indices, loc, mrg, buff_ref, args...; fill_open_bcs, kwargs...)
+    apply_regionally!(fill_halo_regions!, c, bcs, indices, loc, mrg, buff_ref, args...; fill_normal_flow_bcs, kwargs...)
     apply_regionally!(fill_send_buffers!, c, buffers, mrg)
-    apply_regionally!(fill_halo_regions!, c, bcs, indices, loc, mrg, buff_ref, args...; fill_open_bcs, kwargs...)
+    apply_regionally!(fill_halo_regions!, c, bcs, indices, loc, mrg, buff_ref, args...; fill_normal_flow_bcs, kwargs...)
 
     return nothing
 end

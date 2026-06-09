@@ -164,7 +164,7 @@ After all substeps, Lagrangian particles are stepped and the `model.clock`s is a
 """
 function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; callbacks=[])
 
-    maybe_prepare_first_time_step!(model, callbacks)
+    maybe_prepare_first_time_step!(model, Δt, callbacks)
 
     cache_current_fields!(model)
     grid = model.grid
@@ -174,11 +174,13 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
     ####
 
     for (stage, β) in enumerate(model.timestepper.β)
+
         # Update the clock stage
+        Δτ = Δt / β
         model.clock.stage = stage
+        model.clock.last_stage_Δt = Δτ
 
         # Perform the substep
-        Δτ = Δt / β
         rk_substep!(model, Δτ, callbacks)
 
         # Step closure prognostics
@@ -230,6 +232,17 @@ The cached fields are stored in `model.timestepper.Ψ⁻` and used as the base s
 for all substeps within a single time step.
 """
 cache_current_fields!(model::AbstractModel) = error("cache_current_fields! not implemented for $(typeof(model))")
+
+# Make sure the clock knows about the first stage Δt
+function maybe_prepare_first_time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt, callbacks)
+    if model.clock.iteration == 0
+        model.clock.last_Δt = Δt
+        model.clock.last_stage_Δt = Δt / model.timestepper.β[1]
+        reconcile_state!(model)
+        update_state!(model, callbacks)
+    end
+    return nothing
+end
 
 #####
 ##### Checkpointing

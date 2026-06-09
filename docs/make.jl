@@ -20,7 +20,7 @@ Distributed.addprocs(2)
     using Oceananigans.OutputWriters
     using Oceananigans.TimeSteppers
     using Oceananigans.TurbulenceClosures
-    using Oceananigans.BoundaryConditions: Flux, Value, Gradient, Open
+    using Oceananigans.BoundaryConditions: Flux, Value, Gradient, NormalFlow
 
     using NCDatasets
 

@@ -383,7 +383,7 @@ end
 #####
 
 function Base.summary(closure::TDVD)
-    TD = nameof(typeof(time_discretization(closure)))
+    TD = nameof(typeof(TimeSteppers.time_discretization(closure)))
     return string("TKEDissipationVerticalDiffusivity{$TD}")
 end
 
