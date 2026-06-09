@@ -52,15 +52,41 @@ grid = ImmersedBoundaryGrid(underlying_grid, PartialCellBottom(bottom))
 
 # ## Tidal forcing
 #
-# We add barotropic tidal forcing (lunar semi-diurnal M₂ tide). The excursion
-# parameter controls the strength of the tidal flow relative to the seamount width.
+# We force a barotropic tide by imposing an oscillating cross-shelf flow at the open
+# boundaries. We use the lunar semi-diurnal ``M_2`` tide, which oscillates as
+# ``\sin(\omega_2 t)`` with frequency ``\omega_2 = 2 \pi / T_2`` and period
+# ``T_2 = 12.421 \, \mathrm{hours}``.
+#
+# The Coriolis frequency enters the tidal response, so we first construct a Coriolis on an
+# ``f``-plane at mid-latitudes.
 
 coriolis = FPlane(latitude = -45)
 
 T₂ = 12.421hours
 ω₂ = 2π / T₂ # radians/sec
+
+# The strength of the tide is set by the excursion parameter ``\epsilon``, the nondimensional
+# ratio of the horizontal distance a fluid parcel travels over a tidal period to the width
+# ``\sigma`` of the hill,
+#
+# ```math
+# \epsilon = \frac{U_2 / \omega_2}{\sigma} ,
+# ```
+#
+# so prescribing ``\epsilon`` fixes the tidal velocity amplitude ``U_2 = \epsilon \, \omega_2 \, \sigma``.
+
 ϵ = 0.1 # excursion parameter
 U₂ = ϵ * ω₂ * width
+
+# A Fourier decomposition of the inviscid, linearized momentum equations relates the tidal
+# velocity to the amplitude ``A_2`` of the barotropic forcing that sustains it,
+#
+# ```math
+# U_2 = \frac{\omega_2}{\omega_2^2 - f^2} A_2 ,
+# ```
+#
+# which we invert for ``A_2``.
+
 A₂ = U₂ * (ω₂^2 - coriolis.f^2) / ω₂
 
 # ## Boundary conditions
@@ -100,6 +126,52 @@ b_east_bc = ValueBoundaryCondition(b_background; scheme = Radiation(), parameter
 b_west_bc = ValueBoundaryCondition(b_background; scheme = Radiation(), parameters = Nᵢ²)
 b_bcs     = FieldBoundaryConditions(east = b_east_bc, west = b_west_bc)
 
+# ## Sponge layers
+#
+# Radiation open boundary conditions are imperfect: Orlanski's scheme diagnoses a single phase
+# speed, while internal waves carry energy in several baroclinic modes that travel at different
+# speeds. A sponge layer near each boundary damps the waves before they reach it, reducing
+# reflections. The mask uses a ``\cos^2(\pi d / 2 W)`` profile that ramps smoothly from ``0`` a
+# distance ``W`` into the interior to ``1`` at the boundary, where ``d`` is the distance to the
+# nearest boundary.
+#
+# We use `discrete_form = true` so the forcing functions index the fields and grid coordinates
+# directly, which sidesteps coordinate-mapping issues with the `Flat` ``y``-topology.
+
+@inline function sponge_mask(x, p)
+    d_west = x + p.Lx
+    d_east = p.Lx - x
+    d = min(d_west, d_east)
+    return ifelse(d < p.W, cospi(d / (2 * p.W))^2, zero(d))
+end
+
+# The momentum sponge relaxes ``u`` toward the imposed barotropic tide `ut`, leaving the tide
+# intact while damping the baroclinic perturbation riding on top of it.
+
+@inline function u_sponge_forcing(i, j, k, grid, clock, fields, p)
+    x = xnode(i, grid, Face())
+    mask = sponge_mask(x, p)
+    ut = tidal_forcing(1, clock.time, p)
+    return -p.rate * mask * (@inbounds fields.u[i, j, k] - ut)
+end
+
+# The buoyancy sponge relaxes ``b`` toward the background stratification ``N^2 z``.
+
+@inline b_bg(z, p) = p.N² * z
+
+@inline function b_sponge_forcing(i, j, k, grid, clock, fields, p)
+    x = xnode(i, grid, Center())
+    z = znode(k, grid, Center())
+    mask = sponge_mask(x, p)
+    bt = b_bg(z, p)
+    return -p.rate * mask * (@inbounds fields.b[i, j, k] - bt)
+end
+
+sponge_params = (; Lx = L, W = 200kilometers, rate = 1 / 30minutes, U₂, ω₂, N² = Nᵢ²)
+
+u_sponge = Forcing(u_sponge_forcing, discrete_form = true, parameters = sponge_params)
+b_sponge = Forcing(b_sponge_forcing, discrete_form = true, parameters = sponge_params)
+
 
 # ## Model
 #
@@ -118,6 +190,7 @@ model = HydrostaticFreeSurfaceModel(grid;
                                     tracer_advection = WENO(),
                                     free_surface,
                                     timestepper = :SplitRungeKutta3,
+                                    forcing = (; u = u_sponge, b = b_sponge),
                                     boundary_conditions = (; u = u_bcs, U = U_bcs, b = b_bcs))
 
 # Initialize with the tidal flow and a linear stratification.
@@ -157,8 +230,10 @@ nothing #hide
 
 # ## Diagnostics/Output
 #
-# We save the deviation of ``u`` from its domain average, ``w``, buoyancy ``b``,
-# the stratification ``N^2``, and the free surface ``\eta``.
+# Rather than ``u`` itself we save its deviation from the instantaneous domain average,
+# ``u' = u - (L_x H)^{-1} \int u \, \mathrm{d}x \, \mathrm{d}z``, which subtracts the barotropic
+# tide and exposes the baroclinic internal-tide response. We also save the vertical velocity
+# ``w``, the buoyancy ``b``, the stratification ``N^2 = \partial_z b``, and the free surface ``\eta``.
 
 b = model.tracers.b
 u, v, w = model.velocities
