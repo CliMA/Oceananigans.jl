@@ -47,6 +47,16 @@ Positional Arguments
 - `xi`: the locations of the reconstructing value, i.e. either the center coordinate,
   for centered quantities or face coordinate for staggered
 
+Keyword Arguments
+=================
+
+- `shift`: offset added to the index `i` when locating the reconstruction point `xr[i+shift]`. Default: `0`.
+- `op`: operation combining `i` with the stencil offset to index `xi`/`xr` (e.g. `Base.:(-)` for a
+  left-biased stencil). Default: `Base.:(-)`.
+- `order`: order of the polynomial reconstruction, equal to the number of returned coefficients. Default: `3`.
+- `der`: quantity the coefficients reconstruct — `nothing` for the function value, or `FirstDerivative()`,
+  `SecondDerivative()`, or `Primitive()` (the integral). Default: `nothing`.
+
 On a uniform `grid`, the coefficients are independent of the `xr` and `xi` values.
 """
 @inline function stencil_coefficients(FT, i, r, xr, xi; shift = 0, op = Base.:(-), order = 3, der = nothing)
