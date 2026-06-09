@@ -32,7 +32,7 @@ num_prod(i, m, l, r, xr, xi, shift, op, order, ::SecondDerivative) = 2
 end
 
 """
-    stencil_coefficients(i, r, xr, xi; shift = 0, op = Base.:(-), order = 3, der = nothing)
+    stencil_coefficients(FT, i, r, xr, xi; shift = 0, op = Base.:(-), order = 3, der = nothing)
 
 Return coefficients for finite-volume polynomial reconstruction of order `order` at stencil `r`.
 

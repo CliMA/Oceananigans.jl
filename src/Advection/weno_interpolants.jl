@@ -328,7 +328,7 @@ end
 @inline global_smoothness_indicator(::Val{6}, β) = @inbounds abs(β[1] + 36β[2] + 135β[3] - 135β[4] - 36β[5] - β[6])
 
 """
-    function biased_weno_weights(ψ, scheme::WENO{N, FT}, args...)
+    function biased_weno_weights(ψ, grid, scheme::WENO{N, FT}, args...)
 
 Biased weno weights ω used to weight the WENO reconstruction of the different stencils.
 We use here a Z-WENO formulation where
@@ -369,7 +369,7 @@ end
 end
 
 """
-    load_weno_stencil(buffer, shift, dir, func::Bool = false)
+    load_weno_stencil(buffer, dir, func::Bool = false)
 
 Stencils for WENO reconstruction calculations
 
@@ -488,14 +488,14 @@ end
 end
 
 """
-    weno_reconstruction(scheme::WENO{buffer}, bias, ψ, ω, cT, val, idx, loc)
+    weno_reconstruction(scheme::WENO{buffer}, bias, ψ, ω)
 
 `bias`ed reconstruction of stencils `ψ` for a WENO scheme of order `buffer * 2 - 1` weighted by WENO
 weights `ω`. `ψ` is a `Tuple` of `buffer` stencils of size `buffer` and `ω` is a `Tuple` of size `buffer`
 containing the computed weights for each of the reconstruction stencils.
 
-The additional inputs are only used for stretched WENO directions that require the knowledge of the location `loc`
-and the index `idx`.
+The location `loc` and index `idx` that appear in the unrolled example below are used internally by
+[`biased_p`](@ref) for stretched WENO directions.
 
 The calculation of the reconstruction is metaprogrammed in the `metaprogrammed_weno_reconstruction` function which, for
 `buffer == 4` (seventh order WENO), unrolls to:
