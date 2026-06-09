@@ -78,20 +78,18 @@ function free_surface_displacement_field(velocities, free_surface, grid; boundar
     if isnothing(boundary_conditions)
         return ZFaceField(grid; indices)
     else
-        # Re-window the incoming boundary conditions for the surface level: the z-side
-        # conditions and the fill kernels were regularized for the unwindowed location
-        # and do not fit the windowed field; the windowing constructor nulls the former
-        # and the Field constructor recomputes the latter.
         bcs = boundary_conditions
-        windowed = FieldBoundaryConditions((:, :, Nz+1:Nz+1), bcs.west, bcs.east, bcs.south,
-                                           bcs.north, bcs.bottom, bcs.top, bcs.immersed)
+        @apply_regionally windowed = windowed_bc(bcs, Nz)
         return ZFaceField(grid; indices, boundary_conditions = windowed)
     end
 end
+
+windowed_bc(bcs, Nz) = FieldBoundaryConditions((:, :, Nz+1:Nz+1), bcs.west, bcs.east, bcs.south, bcs.north, bcs.bottom, bcs.top, bcs.immersed)
+
 free_surface_displacement_field(velocities, ::Nothing, grid) = nothing
 
 # Fallback
-reconcile_free_surface!(free_surface, grid, velocities) = nothing
+reconcile_free_surface!(free_surface, grid, clock, velocities) = nothing
 
 # Transport velocity computation
 function compute_transport_velocities! end

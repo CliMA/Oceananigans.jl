@@ -175,6 +175,7 @@ CUDA.allowscalar() do
             include("test_implicit_free_surface_solver.jl")
             include("test_split_explicit_free_surface_solver.jl")
             include("test_split_explicit_vertical_integrals.jl")
+            include("test_split_explicit_free_surface_boundaries.jl")
             include("test_immersed_implicit_free_surface.jl")
         end
     end
@@ -218,6 +219,7 @@ CUDA.allowscalar() do
         reset_cuda_if_necessary()
         archs = test_architectures()
         include("test_distributed_hydrostatic_model.jl")
+        include("test_distributed_split_explicit_boundaries.jl")
     end
 
     if group == :distributed_vertical_coordinate_1 || group == :all

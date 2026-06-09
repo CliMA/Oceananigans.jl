@@ -1,15 +1,9 @@
 using Oceananigans: fields
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
-# Build halo-fill args in the OffsetArray-method shape of `fill_halo_regions!`
-# (data, bcs, indices, loc, grid, [communication_buffers,] args...)
-@inline build_halo_fill_args(field, grid, args...) = 
-    (field.data, field.boundary_conditions, field.indices,
-     instantiated_location(field), grid, args...)
-
-@inline build_halo_fill_args(field, grid::DistributedGrid, args...) =
-    (field.data, field.boundary_conditions, field.indices,
-     instantiated_location(field), grid, field.communication_buffers, args...)
+# Include buffers for distributed grids
+@inline build_halo_fill_args(f, grid, args...) = (f.data, f.boundary_conditions, f.indices, instantiated_location(f), grid, args...)
+@inline build_halo_fill_args(f, grid::DistributedGrid, args...) = (f.data, f.boundary_conditions, f.indices, instantiated_location(f), grid, f.communication_buffers, args...)
 
 # Selection between topology-aware and non-aware operators depending on
 # whether we fill halos or not in between substeps.
@@ -127,11 +121,7 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
 
     barotropic_model_fields = (; U, V, η)
 
-    # Build halo-fill args in the OffsetArray-method shape of `fill_halo_regions!`
-    # (data, bcs, indices, loc, grid, communication_buffers, args...).
-    # The substep fills carry a pseudo-clock with the barotropic substep Δτᴮ, so that
-    # recursive boundary schemes (e.g. Chapman) advance at the substep cadence; stage = 0
-    # marks the fills as sequential (anchored) for split Runge-Kutta-aware schemes.
+    # a substep clock with a smaller Δτ is needed for inter-step boundary conditions to be valid
     substep_clock = (; time = clock.time, iteration = clock.iteration, stage = 0, last_stage_Δt = Δτᴮ)
     @apply_regionally U_halo_args = build_halo_fill_args(U, grid, substep_clock, barotropic_model_fields)
     @apply_regionally V_halo_args = build_halo_fill_args(V, grid, substep_clock, barotropic_model_fields)
