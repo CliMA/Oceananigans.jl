@@ -47,7 +47,7 @@ Keyword arguments
 * `convective_νz`: Vertical viscosity in regions with negative (unstable) buoyancy gradients. Either
                   a number, function, array, or field.
 
-* `background_κz`: Vertical viscosity in regions with zero or positive (stable) buoyancy gradients.
+* `background_νz`: Vertical viscosity in regions with zero or positive (stable) buoyancy gradients.
 
 Example
 =======
