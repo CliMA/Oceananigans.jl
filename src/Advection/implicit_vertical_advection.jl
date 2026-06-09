@@ -20,7 +20,8 @@ using Oceananigans.Grids: peripheral_node, Center, Face
     Δz = Δzᶜᶜᶠ(i, j, k, grid)
     w  = @inbounds W[i, j, k]
     α  = abs(w) * Δt / Δz
-    return w * (1 - ifelse(α > td.cfl, td.cfl / α, one(α)))
+    cfl = resolved_cfl(td)
+    return w * (1 - ifelse(α > cfl, cfl / α, one(α)))
 end
 
 @inline function implicit_vertical_velocityᶠᶜᶠ(i, j, k, grid, scheme, td, W)
@@ -28,7 +29,8 @@ end
     Δz = Δzᶠᶜᶠ(i, j, k, grid)
     w  = _symmetric_interpolate_xᶠᵃᵃ(i, j, k, grid, scheme, W)
     α  = abs(w) * Δt / Δz
-    return w * (1 - ifelse(α > td.cfl, td.cfl / α, one(α)))
+    cfl = resolved_cfl(td)
+    return w * (1 - ifelse(α > cfl, cfl / α, one(α)))
 end
 
 @inline function implicit_vertical_velocityᶜᶠᶠ(i, j, k, grid, scheme, td, W)
@@ -36,7 +38,8 @@ end
     Δz = Δzᶜᶠᶠ(i, j, k, grid)
     w  = _symmetric_interpolate_yᵃᶠᵃ(i, j, k, grid, scheme, W)
     α  = abs(w) * Δt / Δz
-    return w * (1 - ifelse(α > td.cfl, td.cfl / α, one(α)))
+    cfl = resolved_cfl(td)
+    return w * (1 - ifelse(α > cfl, cfl / α, one(α)))
 end
 
 #####

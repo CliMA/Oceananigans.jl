@@ -3,16 +3,18 @@
 # Stretched 1D column with steady, uniform vertical velocity w = w₀. The tracer
 # equation reduces to pure translation c(z, t) = c₀(z − w₀ t).
 #
-# Three runs at the same final time:
+# Four runs at the same final time:
 #   1. Explicit UpwindBiased(5), large Δt (CFL ≈ 4 in thin cells) — blows up.
-#   2. AdaptiveVerticallyImplicitDiscretization with the same explicit scheme, same large Δt - survives.
-#   3. Reference: explicit UpwindBiased(5), small Δt (CFL ≈ 0.5).
+#   2. AdaptiveVerticallyImplicitDiscretization with fixed `maximum_explicit_cfl`, same large Δt.
+#   3. AdaptiveVerticallyImplicitDiscretization with `implicit_fraction`, same large Δt.
+#   4. Reference: explicit UpwindBiased(5), small Δt (CFL ≈ 0.5).
 #
 # Compared against the analytical Gaussian translated by w₀·T.
 
 using Printf
 using Oceananigans
 using Oceananigans.Advection: AdaptiveVerticallyImplicitDiscretization
+using Oceananigans.TimeSteppers: adaptive_implicit_vertical_advection_diagnostics
 using Oceananigans.Grids: minimum_zspacing, zspacings
 
 #####
@@ -34,7 +36,7 @@ grid = RectilinearGrid(CPU(); size=Nz, z=zᶠ, topology=(Flat, Flat, Bounded), h
 #####
 
 const w₀ = 1.0
-const c₀ = - 0.8
+const c₀ = -0.8
 const σc = 0.08
 
 initial_tracer(z) = exp(-(z - c₀)^2 / σc^2)
@@ -43,22 +45,25 @@ prescribed_velocity(z, t) = w₀
 velocities = PrescribedVelocityFields(w=prescribed_velocity)
 
 explicit_scheme = WENO(order=5)
-aiva_scheme     = WENO(order=5, time_discretization=AdaptiveVerticallyImplicitDiscretization(cfl = 1.2))
+aiva_cfl_scheme = WENO(order=5, time_discretization=AdaptiveVerticallyImplicitDiscretization(maximum_explicit_cfl=1.2))
+aiva_fraction_scheme = WENO(order=5, time_discretization=AdaptiveVerticallyImplicitDiscretization(implicit_fraction=0.5))
 
 build_model(advection) = HydrostaticFreeSurfaceModel(grid;
                                                      velocities,
-                                                     tracers = :c,
-                                                     tracer_advection = advection,
-                                                     timestepper = :SplitRungeKutta3,
-                                                     buoyancy = nothing,
-                                                     closure = nothing)
+                                                     tracers=:c,
+                                                     tracer_advection=advection,
+                                                     timestepper=:SplitRungeKutta3,
+                                                     buoyancy=nothing,
+                                                     closure=nothing)
 
-explicit_model  = build_model(explicit_scheme)
-aiva_model      = build_model(aiva_scheme)
+explicit_model = build_model(explicit_scheme)
+aiva_cfl_model = build_model(aiva_cfl_scheme)
+aiva_fraction_model = build_model(aiva_fraction_scheme)
 reference_model = build_model(explicit_scheme)
 
-set!(explicit_model,  c=initial_tracer)
-set!(aiva_model,      c=initial_tracer)
+set!(explicit_model, c=initial_tracer)
+set!(aiva_cfl_model, c=initial_tracer)
+set!(aiva_fraction_model, c=initial_tracer)
 set!(reference_model, c=initial_tracer)
 
 #####
@@ -66,45 +71,48 @@ set!(reference_model, c=initial_tracer)
 #####
 
 Δzₘᵢₙ = minimum_zspacing(grid)
-Δt    = 3.0 * Δzₘᵢₙ / w₀   # CFL ≈ 7.5
-Δτ    = 0.5  * Δzₘᵢₙ / w₀   # CFL ≈ 0.5 (reference)
+Δt = 3.0 * Δzₘᵢₙ / w₀
+Δτ = 0.5 * Δzₘᵢₙ / w₀
 
-# Place final centroid at z ≈ −0.15 (well below the top stretched zone)
-final_time = (- 0.15 - c₀) / w₀
-Nₛ   = round(Int, final_time / Δt)
-Nᵣ   = round(Int, final_time / Δτ)
+final_time = (-0.15 - c₀) / w₀
+Nₛ = round(Int, final_time / Δt)
+Nᵣ = round(Int, final_time / Δτ)
 Nsub = round(Int, Δt / Δτ)
 
 @info "Δz_min  = $(Δzₘᵢₙ), w₀ = $(w₀)"
-@info "AIVA Δt = $(Δt) (CFL ≈ $(w₀*Δt/Δzₘᵢₙ)), $Nₛ steps"
-@info "Ref  Δτ = $(Δτ) (CFL ≈ $(w₀*Δτ/Δzₘᵢₙ)), $Nᵣ steps"
+@info "AIVA Δt = $(Δt) (CFL ≈ $(w₀ * Δt / Δzₘᵢₙ)), $Nₛ steps"
+@info "Ref  Δτ = $(Δτ) (CFL ≈ $(w₀ * Δτ / Δzₘᵢₙ)), $Nᵣ steps"
 
 #####
 ##### Containers and initial sampling
 #####
 
-zᶜ  = collect(znodes(aiva_model.tracers.c))
+zᶜ = collect(znodes(aiva_cfl_model.tracers.c))
 Δzᶜ = vec(collect(zspacings(grid, Center(), Center(), Center())))
 
-explicit_history  = zeros(Nz, Nₛ + 1)
-aiva_history      = zeros(Nz, Nₛ + 1)
+explicit_history = zeros(Nz, Nₛ + 1)
+aiva_cfl_history = zeros(Nz, Nₛ + 1)
+aiva_fraction_history = zeros(Nz, Nₛ + 1)
 reference_history = zeros(Nz, Nₛ + 1)
-aiva_mass         = zeros(Nₛ + 1)
-reference_mass    = zeros(Nₛ + 1)
+aiva_cfl_mass = zeros(Nₛ + 1)
+aiva_fraction_mass = zeros(Nₛ + 1)
+reference_mass = zeros(Nₛ + 1)
 
 sample!(history, model) = (history .= Array(interior(model.tracers.c))[1, 1, :])
 
-sample!(view(explicit_history,  :, 1), explicit_model)
-sample!(view(aiva_history,      :, 1), aiva_model)
+sample!(view(explicit_history, :, 1), explicit_model)
+sample!(view(aiva_cfl_history, :, 1), aiva_cfl_model)
+sample!(view(aiva_fraction_history, :, 1), aiva_fraction_model)
 sample!(view(reference_history, :, 1), reference_model)
-aiva_mass[1]      = sum(aiva_history[:, 1]      .* Δzᶜ)
+aiva_cfl_mass[1] = sum(aiva_cfl_history[:, 1] .* Δzᶜ)
+aiva_fraction_mass[1] = sum(aiva_fraction_history[:, 1] .* Δzᶜ)
 reference_mass[1] = sum(reference_history[:, 1] .* Δzᶜ)
 
 #####
 ##### Time-step loop (large Δt for AIVA / explicit, substep for reference)
 #####
 
-blowup_step      = Ref(-1)
+blowup_step = Ref(-1)
 blowup_threshold = 1e3 * maximum(abs, explicit_history[:, 1])
 
 for n in 1:Nₛ
@@ -122,9 +130,13 @@ for n in 1:Nₛ
         end
     end
 
-    time_step!(aiva_model, Δt)
-    sample!(view(aiva_history, :, n + 1), aiva_model)
-    aiva_mass[n + 1] = sum(aiva_history[:, n + 1] .* Δzᶜ)
+    time_step!(aiva_cfl_model, Δt)
+    sample!(view(aiva_cfl_history, :, n + 1), aiva_cfl_model)
+    aiva_cfl_mass[n + 1] = sum(aiva_cfl_history[:, n + 1] .* Δzᶜ)
+
+    time_step!(aiva_fraction_model, Δt)
+    sample!(view(aiva_fraction_history, :, n + 1), aiva_fraction_model)
+    aiva_fraction_mass[n + 1] = sum(aiva_fraction_history[:, n + 1] .* Δzᶜ)
 
     for _ in 1:Nsub
         time_step!(reference_model, Δτ)
@@ -137,7 +149,7 @@ end
 ##### Analytical reference and diagnostics
 #####
 
-Tₛ           = Nₛ * Δt
+Tₛ = Nₛ * Δt
 exact_tracer = [exp(-(zᶜ[k] - c₀ - w₀ * Tₛ)^2 / σc^2) for k in 1:Nz]
 
 function centroid(c, z, dz)
@@ -145,19 +157,26 @@ function centroid(c, z, dz)
     return sum(c .* z .* dz) / m, m
 end
 
-zᴬ, mᴬ = centroid(aiva_history[:, end],      zᶜ, Δzᶜ)
+zᴬᶜ, mᴬᶜ = centroid(aiva_cfl_history[:, end], zᶜ, Δzᶜ)
+zᴬᶠ, mᴬᶠ = centroid(aiva_fraction_history[:, end], zᶜ, Δzᶜ)
 zᴿ, mᴿ = centroid(reference_history[:, end], zᶜ, Δzᶜ)
-zᴱ, mᴱ = centroid(exact_tracer,              zᶜ, Δzᶜ)
+zᴱ, mᴱ = centroid(exact_tracer, zᶜ, Δzᶜ)
 
 l²(c1, c2) = sqrt(sum((c1 .- c2).^2 .* Δzᶜ) / sum(Δzᶜ))
 l∞(c1, c2) = maximum(abs, c1 .- c2)
 
-l²ᴱ  = l²(exact_tracer, zeros(Nz))
-l²ᴬᴱ = l²(aiva_history[:, end],      exact_tracer)
+l²ᴱ = l²(exact_tracer, zeros(Nz))
+l²ᴬᶜᴱ = l²(aiva_cfl_history[:, end], exact_tracer)
+l²ᴬᶠᴱ = l²(aiva_fraction_history[:, end], exact_tracer)
 l²ᴿᴱ = l²(reference_history[:, end], exact_tracer)
-l²ᴬᴿ = l²(aiva_history[:, end],      reference_history[:, end])
-l∞ᴬᴱ = l∞(aiva_history[:, end],      exact_tracer)
+l²ᴬᶜᴿ = l²(aiva_cfl_history[:, end], reference_history[:, end])
+l²ᴬᶠᴿ = l²(aiva_fraction_history[:, end], reference_history[:, end])
+l∞ᴬᶜᴱ = l∞(aiva_cfl_history[:, end], exact_tracer)
+l∞ᴬᶠᴱ = l∞(aiva_fraction_history[:, end], exact_tracer)
 l∞ᴿᴱ = l∞(reference_history[:, end], exact_tracer)
+
+cfl_diagnostics = adaptive_implicit_vertical_advection_diagnostics(aiva_cfl_scheme)
+fraction_diagnostics = adaptive_implicit_vertical_advection_diagnostics(aiva_fraction_scheme)
 
 #####
 ##### Summary
@@ -174,19 +193,30 @@ if blowup_step[] > 0
 else
     println("Explicit ", summary(explicit_scheme), " at AIVA Δt: survived (NOT the intended outcome — increase Δt or w₀).")
 end
-@printf("AIVA at large Δt: completed %d steps, max|c| = %.3e (initial %.3e)\n", Nₛ, maximum(abs, aiva_history[:, end]), maximum(abs, aiva_history[:, 1]))
+@printf("AIVA fixed-CFL mode: completed %d steps, max|c| = %.3e (initial %.3e)\n", Nₛ, maximum(abs, aiva_cfl_history[:, end]), maximum(abs, aiva_cfl_history[:, 1]))
+@printf("AIVA percentile mode: completed %d steps, max|c| = %.3e (initial %.3e)\n", Nₛ, maximum(abs, aiva_fraction_history[:, end]), maximum(abs, aiva_fraction_history[:, 1]))
 
 println("\n--- Correctness (vs analytical translation) ---")
-@printf("Analytical: max|c| = %.3e, mass = %.4e, centroid = %.4f (target %.4f)\n", maximum(abs, exact_tracer), mᴱ, zᴱ, c₀ + w₀ * Tₛ)
-@printf("Reference:  max|c| = %.3e, mass = %.4e, centroid = %.4f, L²-rel = %.3e, L∞ = %.3e\n", maximum(abs, reference_history[:, end]), mᴿ, zᴿ, l²ᴿᴱ / l²ᴱ, l∞ᴿᴱ)
-@printf("AIVA:       max|c| = %.3e, mass = %.4e, centroid = %.4f, L²-rel = %.3e, L∞ = %.3e\n", maximum(abs, aiva_history[:, end]), mᴬ, zᴬ, l²ᴬᴱ / l²ᴱ, l∞ᴬᴱ)
-@printf("AIVA vs reference: L² = %.3e\n", l²ᴬᴿ)
+@printf("Analytical:      max|c| = %.3e, mass = %.4e, centroid = %.4f (target %.4f)\n", maximum(abs, exact_tracer), mᴱ, zᴱ, c₀ + w₀ * Tₛ)
+@printf("Reference:       max|c| = %.3e, mass = %.4e, centroid = %.4f, L²-rel = %.3e, L∞ = %.3e\n", maximum(abs, reference_history[:, end]), mᴿ, zᴿ, l²ᴿᴱ / l²ᴱ, l∞ᴿᴱ)
+@printf("AIVA fixed-CFL:  max|c| = %.3e, mass = %.4e, centroid = %.4f, L²-rel = %.3e, L∞ = %.3e\n", maximum(abs, aiva_cfl_history[:, end]), mᴬᶜ, zᴬᶜ, l²ᴬᶜᴱ / l²ᴱ, l∞ᴬᶜᴱ)
+@printf("AIVA percentile: max|c| = %.3e, mass = %.4e, centroid = %.4f, L²-rel = %.3e, L∞ = %.3e\n", maximum(abs, aiva_fraction_history[:, end]), mᴬᶠ, zᴬᶠ, l²ᴬᶠᴱ / l²ᴱ, l∞ᴬᶠᴱ)
+@printf("AIVA fixed-CFL vs reference:  L² = %.3e\n", l²ᴬᶜᴿ)
+@printf("AIVA percentile vs reference: L² = %.3e\n", l²ᴬᶠᴿ)
+
+println("\n--- Percentile diagnostics ---")
+@printf("Fixed-CFL mode:  resolved threshold = %.3e, realized implicit fraction = %.3f, median CFL_w = %.3e, max CFL_w = %.3e\n",
+        cfl_diagnostics.resolved_cfl, cfl_diagnostics.realized_implicit_fraction, cfl_diagnostics.median_cfl, cfl_diagnostics.max_cfl)
+@printf("Percentile mode: resolved threshold = %.3e, realized implicit fraction = %.3f, median CFL_w = %.3e, max CFL_w = %.3e\n",
+        fraction_diagnostics.resolved_cfl, fraction_diagnostics.realized_implicit_fraction, fraction_diagnostics.median_cfl, fraction_diagnostics.max_cfl)
 
 println("\n--- Mass conservation (∫c dz) ---")
-@printf("Initial:        AIVA = %.6e, reference = %.6e\n", aiva_mass[1],   reference_mass[1])
-@printf("Final:          AIVA = %.6e, reference = %.6e\n", aiva_mass[end], reference_mass[end])
-@printf("Drift (final/initial − 1): AIVA = %+.3e, reference = %+.3e\n", aiva_mass[end] / aiva_mass[1] - 1, reference_mass[end] / reference_mass[1] - 1)
-@printf("Min/max during AIVA run: %.6e / %.6e\n", minimum(aiva_mass), maximum(aiva_mass))
+@printf("Initial:        fixed-CFL = %.6e, percentile = %.6e, reference = %.6e\n", aiva_cfl_mass[1], aiva_fraction_mass[1], reference_mass[1])
+@printf("Final:          fixed-CFL = %.6e, percentile = %.6e, reference = %.6e\n", aiva_cfl_mass[end], aiva_fraction_mass[end], reference_mass[end])
+@printf("Drift (final/initial − 1): fixed-CFL = %+.3e, percentile = %+.3e, reference = %+.3e\n",
+        aiva_cfl_mass[end] / aiva_cfl_mass[1] - 1,
+        aiva_fraction_mass[end] / aiva_fraction_mass[1] - 1,
+        reference_mass[end] / reference_mass[1] - 1)
 
 #####
 ##### Plot
@@ -194,26 +224,26 @@ println("\n--- Mass conservation (∫c dz) ---")
 
 using CairoMakie
 
-fig = Figure(size=(900, 1000))
+fig = Figure(size=(900, 1100))
 
-# AIVA Hovmöller
-ax1 = Axis(fig[1, 1], xlabel="t", ylabel="z", title="AIVA c(z, t)")
-heatmap!(ax1, 1:size(aiva_history, 2), zᶜ, aiva_history')
+ax1 = Axis(fig[1, 1], xlabel="t", ylabel="z", title="AIVA percentile mode c(z, t)")
+heatmap!(ax1, 1:size(aiva_fraction_history, 2), zᶜ, aiva_fraction_history')
 
-# Final-time profiles
 ax2 = Axis(fig[2, 1], xlabel="c", ylabel="z", title=@sprintf("Final profile (t = %.3f, w₀·t = %.3f)", Tₛ, w₀ * Tₛ))
-lines!(ax2, aiva_history[:, 1],        zᶜ, color=:black, linestyle=:dash, label="initial")
-lines!(ax2, exact_tracer,              zᶜ, color=:gray,  linewidth=3, label="analytical")
+lines!(ax2, aiva_fraction_history[:, 1], zᶜ, color=:black, linestyle=:dash, label="initial")
+lines!(ax2, exact_tracer, zᶜ, color=:gray, linewidth=3, label="analytical")
 lines!(ax2, reference_history[:, end], zᶜ, color=:green, label=@sprintf("reference (CFL ≈ %.2f)", w₀ * Δτ / Δzₘᵢₙ))
-lines!(ax2, aiva_history[:, end],      zᶜ, color=:blue,  label=@sprintf("AIVA (CFL ≈ %.1f)", w₀ * Δt / Δzₘᵢₙ))
+lines!(ax2, aiva_cfl_history[:, end], zᶜ, color=:blue, label="AIVA fixed-CFL")
+lines!(ax2, aiva_fraction_history[:, end], zᶜ, color=:orange, label="AIVA percentile")
 axislegend(ax2, position=:rb)
 
-# max|c| vs step (log)
-cmaxᴬ = [maximum(abs, aiva_history[:, n + 1])     for n in 0:Nₛ]
+cmaxᴬᶜ = [maximum(abs, aiva_cfl_history[:, n + 1]) for n in 0:Nₛ]
+cmaxᴬᶠ = [maximum(abs, aiva_fraction_history[:, n + 1]) for n in 0:Nₛ]
 cmaxˣ = [maximum(abs, explicit_history[:, n + 1]) for n in 0:Nₛ]
 cmaxᴿ = [maximum(abs, reference_history[:, n + 1]) for n in 0:Nₛ]
 ax3 = Axis(fig[3, 1], xlabel="AIVA step", ylabel="max |c|")
-lines!(ax3, 0:Nₛ, cmaxᴬ, label="AIVA (large Δt)")
+lines!(ax3, 0:Nₛ, cmaxᴬᶜ, label="AIVA fixed-CFL")
+lines!(ax3, 0:Nₛ, cmaxᴬᶠ, label="AIVA percentile")
 lines!(ax3, 0:Nₛ, cmaxˣ, label="explicit (large Δt)")
 lines!(ax3, 0:Nₛ, cmaxᴿ, label="explicit (small Δt)")
 ylims!(ax3, 0.5, 1.5)
