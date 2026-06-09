@@ -52,6 +52,9 @@ As well as
 # Fallback for non-immersed grids: no immersed periphery
 @inline immersed_peripheral_node(i, j, k, grid, LX, LY, LZ) = false
 
+# Fallback for non-immersed grids: no immersed-inactive nodes
+@inline immersed_inactive_node(i, j, k, grid, LX, LY, LZ) = false
+
 # Isolate periphery of the immersed boundary
 @inline immersed_peripheral_node(i, j, k, ibg::IBG, LX, LY, LZ) =  peripheral_node(i, j, k, ibg, LX, LY, LZ) &
                                                                   !peripheral_node(i, j, k, ibg.underlying_grid, LX, LY, LZ)
