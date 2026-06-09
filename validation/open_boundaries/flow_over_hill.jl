@@ -1,10 +1,11 @@
 using Oceananigans
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver
+using Oceananigans.Models: boundary_total_area
 using CairoMakie
 using Printf
 
-function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
-                                     arch = CPU(),
+function flow_over_hill_simulation(; arch = CPU(),
+                                     scheme_type = PerturbationAdvection,
                                      model_type = :nonhydrostatic,
                                      Nz = 16,
                                      hill_height = 1,
@@ -37,11 +38,16 @@ function flow_over_hill_simulation(; scheme = PerturbationAdvection(),
     hill(x) = hill_height * exp(-((x - x₀)/hill_width)^2) - Lz
     grid = ImmersedBoundaryGrid(grid_base, PartialCellBottom(hill))
 
-    # Model kwargs
-    u_boundaries = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(U), # No scheme here for a perfectly barotropic inflow
-                                           east = NormalFlowBoundaryCondition(U; scheme))
+    # Both boundaries are targeted PerturbationAdvection with a fixed transport
+    # Q = U * area, so the net transport is pinned directly rather than leaving the
+    # inflow as a fixed-velocity boundary whose transport drifts with the free surface.
+    Q_west = U * boundary_total_area(:west, grid)
+    Q_east = U * boundary_total_area(:east, grid)
+    u_boundaries = FieldBoundaryConditions(
+        west = NormalFlowBoundaryCondition(U; scheme = scheme_type(; target_transport = Q_west)),
+        east = NormalFlowBoundaryCondition(U; scheme = scheme_type(; target_transport = Q_east)))
     boundary_conditions = (u = u_boundaries,)
-    advection = WENO(; order=5, minimum_buffer_upwind_order=1)
+    advection = WENO(; order=5)
 
     model_kwargs = (; boundary_conditions)
 

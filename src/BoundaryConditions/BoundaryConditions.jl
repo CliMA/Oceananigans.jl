@@ -5,7 +5,7 @@ export
     BoundaryCondition, getbc,
     PeriodicBoundaryCondition, NormalFlowBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, DistributedCommunicationBoundaryCondition,
-    PerturbationAdvection,
+    PerturbationAdvection, has_target_transport, get_target_transport,
     validate_boundary_condition_topology, validate_boundary_condition_architecture,
     FieldBoundaryConditions,
     compute_x_bcs!, compute_y_bcs!, compute_z_bcs!,
