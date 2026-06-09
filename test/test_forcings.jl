@@ -357,7 +357,7 @@ function test_settling_tracer_comparison(arch; open_bottom=true)
 
     function build_settling_model(grid, w_settle)
         # Create settling velocity as a field with appropriate boundary conditions
-        bottom_boundary_conditions = open_bottom ? OpenBoundaryCondition(w_settle) : OpenBoundaryCondition(nothing)
+        bottom_boundary_conditions = open_bottom ? NormalFlowBoundaryCondition(w_settle) : NormalFlowBoundaryCondition(nothing)
         boundary_conditions = FieldBoundaryConditions(grid, (Center(), Center(), Face()), bottom = bottom_boundary_conditions)
         w_settle_field = ZFaceField(grid; boundary_conditions)
 

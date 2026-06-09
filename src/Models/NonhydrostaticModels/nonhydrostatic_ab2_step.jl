@@ -45,7 +45,9 @@ function pressure_correction_ab2_step!(model, Δt, callbacks)
                        Val(i-3), # We assume that the first 3 fields are velocity / momentum variables
                        model.clock,
                        fields(model),
-                       kernel_Δt)
+                       kernel_Δt,
+                       model.advection,
+                       model.velocities)
     end
 
     compute_pressure_correction!(model, kernel_Δt)

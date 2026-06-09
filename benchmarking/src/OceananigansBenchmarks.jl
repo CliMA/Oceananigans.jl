@@ -26,6 +26,7 @@ using Oceananigans.Units
 using Oceananigans.OutputWriters: write_output!
 
 using NCDatasets
+using Zarr
 
 using DataDeps
 
