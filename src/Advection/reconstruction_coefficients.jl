@@ -39,10 +39,13 @@ Return coefficients for finite-volume polynomial reconstruction of order `order`
 Positional Arguments
 ====================
 
+- `FT`: the floating-point type of the returned coefficients (e.g. `Float32` or `Float64`).
+- `i`: the index around which the reconstruction stencil is centered.
+- `r`: the stencil number.
+- `xr`: the opposite of the reconstruction location desired, i.e., if a reconstruction at
+  `Center`s is required xr is the face coordinate
 - `xi`: the locations of the reconstructing value, i.e. either the center coordinate,
   for centered quantities or face coordinate for staggered
-- `xr`: the opposite of the reconstruction location desired, i.e., if a recostruction at
-  `Center`s is required xr is the face coordinate
 
 On a uniform `grid`, the coefficients are independent of the `xr` and `xi` values.
 """
