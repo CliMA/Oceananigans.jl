@@ -1,12 +1,14 @@
 module OrthogonalSphericalShellGrids
 
 # The only thing we need!
-export TripolarGrid, RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid
+export TripolarGrid, RotatedLatitudeLongitudeGrid, LambertConformalConicGrid,
+       LambertConformalConic, lcc_forward, lcc_inverse, lcc_scale_factor,
+       ConformalCubedSpherePanelGrid
 
 import Oceananigans
 import Oceananigans.Architectures: on_architecture
 
-using Oceananigans.Architectures: on_architecture, AbstractArchitecture, CPU, GPU
+using Oceananigans.Architectures: AbstractArchitecture, CPU, GPU
 using Oceananigans.BoundaryConditions: BoundaryCondition
 using Oceananigans.Grids: AbstractTopology
 using Oceananigans.Grids: halo_size, generate_coordinate, topology
@@ -22,6 +24,7 @@ include("tripolar_grid.jl")
 include("tripolar_field_extensions.jl")
 include("right_face_folded_kernel_parameters.jl")
 include("rotated_latitude_longitude_grid.jl")
+include("lambert_conformal_conic_grid.jl")
 include("conformal_cubed_sphere_panel.jl")
 
 # Distributed computations on a tripolar grid
