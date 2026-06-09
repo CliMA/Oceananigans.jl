@@ -32,7 +32,7 @@ using Oceananigans.Grids:
     StaticVerticalDiscretization, MutableVerticalDiscretization, AbstractVerticalCoordinate,
     grid, topology, halo_size, xspacings, yspacings, zspacings, λspacings, φspacings,
     λnodes, φnodes,
-    parent_index_range, nodes, ξnodes, ηnodes, rnodes, validate_index, peripheral_node,
+    parent_index_range, nodes, ξnodes, ηnodes, rnodes, validate_index, peripheral_node, inactive_node,
     constructor_arguments, architecture,
     generate_coordinate, total_length, interior_indices
 

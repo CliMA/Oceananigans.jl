@@ -39,7 +39,7 @@ export
 
     # Boundary conditions
     BoundaryCondition,
-    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, OpenBoundaryCondition,
+    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, NormalFlowBoundaryCondition,
     PerturbationAdvection,
     FieldBoundaryConditions,
 
@@ -212,8 +212,8 @@ function initialize! end # for initializing models, simulations, etc
 function location end
 function instantiated_location end
 function tupleit end
-function fields end
-function prognostic_fields end
+fields(::Nothing) = NamedTuple()
+prognostic_fields(::Nothing) = NamedTuple()
 function prognostic_state end
 function restore_prognostic_state! end
 function tracer_tendency_kernel_function end
