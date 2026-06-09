@@ -1,6 +1,6 @@
 using Oceananigans.BoundaryConditions: UPivotZipperBoundaryCondition, FPivotZipperBoundaryCondition, NoFluxBoundaryCondition
 using Oceananigans.Grids: Grids, Bounded, Flat, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid,
-    architecture, all_x_indices, all_y_indices, cpu_face_constructor_z, validate_dimension_specification,
+    architecture, interior_x_indices, interior_y_indices, cpu_face_constructor_z, validate_dimension_specification,
     AbstractTopology, RightCenterFolded, RightFaceFolded, new_data, topology
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
@@ -215,8 +215,16 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
     λCC = new_data(FT, CPU(), (Center, Center, Nothing), args...)
     φCC = new_data(FT, CPU(), (Center, Center, Nothing), args...)
 
-    # Compute coordinates using location-aware launch extents so that
-    # face-located coordinate arrays are populated on the full folded seam.
+    # Boundary conditions used to fill both coordinate and metric halos.
+    boundary_conditions = FieldBoundaryConditions(north  = north_fold_boundary_condition(fold_topology)(),
+                                                  south  = NoFluxBoundaryCondition(), # The south should be `continued`
+                                                  west   = Oceananigans.PeriodicBoundaryCondition(),
+                                                  east   = Oceananigans.PeriodicBoundaryCondition(),
+                                                  top    = nothing,
+                                                  bottom = nothing)
+
+    # Compute only the coordinate interiors and then fill halos through the
+    # same zipper boundary-condition path used elsewhere on tripolar grids.
     loc_fc = (Face,   Center, Nothing)
     loc_cc = (Center, Center, Nothing)
     loc_ff = (Face,   Face,   Nothing)
@@ -226,7 +234,7 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
                                                 (λCC, φCC, λᶜᵃᵃ, φᵃᶜᵃ, loc_cc, false),
                                                 (λFF, φFF, λᶠᵃᵃ, φᵃᶠᵃ, loc_ff, true),
                                                 (λCF, φCF, λᶜᵃᵃ, φᵃᶠᵃ, loc_cf, false))
-        kp = KernelParameters(all_x_indices(grid, loc), all_y_indices(grid, loc))
+        kp = KernelParameters(interior_x_indices(grid, loc), interior_y_indices(grid, loc))
         launch!(CPU(), grid, kp, _compute_tripolar_coordinates!,
             λ2D, φ2D,
             λ1D, φ1D,
@@ -235,26 +243,14 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
         )
     end
 
-    # Coordinates
-    λᶠᶠᵃ = dropdims(λFF, dims=3)
-    φᶠᶠᵃ = dropdims(φFF, dims=3)
-    λᶠᶜᵃ = dropdims(λFC, dims=3)
-    φᶠᶜᵃ = dropdims(φFC, dims=3)
-    λᶜᶠᵃ = dropdims(λCF, dims=3)
-    φᶜᶠᵃ = dropdims(φCF, dims=3)
-    λᶜᶜᵃ = dropdims(λCC, dims=3)
-    φᶜᶜᵃ = dropdims(φCC, dims=3)
-
-    # Boundary conditions to fill halos of the metric terms
-    # We define them manually because the helper RectilinearGrid
-    # does not know how to fold the north boundary...
-    boundary_conditions = FieldBoundaryConditions(north  = north_fold_boundary_condition(fold_topology)(),
-                                                  south  = NoFluxBoundaryCondition(), # The south should be `continued`
-                                                  west   = Oceananigans.PeriodicBoundaryCondition(),
-                                                  east   = Oceananigans.PeriodicBoundaryCondition(),
-                                                  top    = nothing,
-                                                  bottom = nothing)
-
+    λᶠᶠᵃ = transfer_horizontal_field(λFF, grid, boundary_conditions, Face,   Face)
+    φᶠᶠᵃ = transfer_horizontal_field(φFF, grid, boundary_conditions, Face,   Face)
+    λᶠᶜᵃ = transfer_horizontal_field(λFC, grid, boundary_conditions, Face,   Center)
+    φᶠᶜᵃ = transfer_horizontal_field(φFC, grid, boundary_conditions, Face,   Center)
+    λᶜᶠᵃ = transfer_horizontal_field(λCF, grid, boundary_conditions, Center, Face)
+    φᶜᶠᵃ = transfer_horizontal_field(φCF, grid, boundary_conditions, Center, Face)
+    λᶜᶜᵃ = transfer_horizontal_field(λCC, grid, boundary_conditions, Center, Center)
+    φᶜᶜᵃ = transfer_horizontal_field(φCC, grid, boundary_conditions, Center, Center)
 
     # return metrics grid
     grid = RectilinearGrid(; size = (Nx, Ny),
@@ -354,13 +350,14 @@ end
 # Copy interior data from old grid into a new Field, then fill halos
 # using the proper boundary conditions (periodic in x, fold at north, no-flux at south).
 function transfer_horizontal_field(old_data, helper_grid, bcs, LX, LY)
-    TX, TY, _ = topology(helper_grid)
-    Nx, Ny, _ = size(helper_grid)
+    loc = (LX, LY, Center)
     new_field = Field{LX, LY, Center}(helper_grid; boundary_conditions = bcs)
-    Ni = Base.length(LX(), TX(), Nx)
-    Nj = Base.length(LY(), TY(), Ny)
     cpu_old_data = on_architecture(CPU(), old_data)
-    new_field.data[1:Ni, 1:Nj, 1] .= cpu_old_data[1:Ni, 1:Nj]
+
+    ii = interior_x_indices(helper_grid, loc)
+    jj = interior_y_indices(helper_grid, loc)
+
+    new_field.data[ii, jj, 1] .= cpu_old_data[ii, jj]
     fill_halo_regions!(new_field)
     return deepcopy(dropdims(new_field.data, dims=3))
 end
