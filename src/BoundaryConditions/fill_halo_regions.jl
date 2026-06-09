@@ -10,10 +10,11 @@ fill_halo_regions!(::Ref, args...; kwargs...) = nothing # a lot of Refs are pass
 fill_halo_regions!(::Nothing, args...; kwargs...) = nothing
 
 """
-    fill_halo_regions!(fields::Union{Tuple, NamedTuple}, arch, args...)
+    fill_halo_regions!(field)
 
-Fill halo regions for each field in the tuple `fields` according to their boundary
-conditions, possibly recursing into `fields` if it is a nested tuple-of-tuples.
+Fill the halo regions of `field` (or its underlying `data`) according to its boundary
+conditions. Fields with `nothing` boundary conditions (such as `FunctionField` and
+`ZeroField`) are left unchanged.
 """
 fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = nothing # Some fields have `nothing` boundary conditions, such as `FunctionField` and `ZeroField`.
 
