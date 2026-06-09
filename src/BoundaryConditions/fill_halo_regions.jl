@@ -10,13 +10,12 @@ fill_halo_regions!(::Ref, args...; kwargs...) = nothing # a lot of Refs are pass
 fill_halo_regions!(::Nothing, args...; kwargs...) = nothing
 
 """
-    fill_halo_regions!(field)
+    fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...)
 
-Fill the halo regions of `field` (or its underlying `data`) according to its boundary
-conditions. Fields with `nothing` boundary conditions (such as `FunctionField` and
-`ZeroField`) are left unchanged.
+Do nothing: data `c` whose boundary conditions are `nothing` has no halos to fill. Some fields
+carry `nothing` boundary conditions, such as `FunctionField` and `ZeroField`.
 """
-fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = nothing # Some fields have `nothing` boundary conditions, such as `FunctionField` and `ZeroField`.
+fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = nothing
 
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
 function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid, args...; kwargs...)
