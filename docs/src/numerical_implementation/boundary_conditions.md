@@ -221,7 +221,9 @@ This is preferred to a divergent interior solution as open boundary conditions (
 are typically already unphysical and only used in an attempt to allow information to enter or exit
 the domain.
 
-Open boundary conditions are represented by the [`Open`](@ref) type.
+Open boundary conditions are represented by the [`NormalFlow`](@ref) classification (for the
+boundary-normal velocity), and tracer open boundaries by a [`Value`](@ref) condition with a
+matching `scheme`.
 
 ## Open boundary condition "schemes"
 
