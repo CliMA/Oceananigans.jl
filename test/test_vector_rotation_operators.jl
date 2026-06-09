@@ -3,6 +3,7 @@ include("dependencies_for_runtests.jl")
 using Statistics: mean
 using Oceananigans.Operators
 using Oceananigans.Operators: rotation_angle
+using Oceananigans.Grids: RightCenterFolded, RightFaceFolded, halo_size
 using Distances: haversine
 
 # To be used in the test below as `KernelFunctionOperation`s
@@ -122,6 +123,25 @@ end
                     for i in 1:Nx, j in 1:Ny
                         θ = rotation_angle(i, j, grid)
                         @test θ ≈ θᵢ
+                    end
+                end
+            end
+        end
+
+        @testset "Tripolar seam rotation remains finite [$(typeof(arch))]" begin
+            if arch isa CPU
+                for fold_topology in (RightCenterFolded, RightFaceFolded)
+                    grid = TripolarGrid(arch; size = (120, 60, 1), z = (-1, 0), halo = (7, 7, 7), fold_topology)
+                    Hx, Hy, _ = halo_size(grid)
+                    j_rows = (Hy + size(grid, 2) - 1, Hy + size(grid, 2))
+                    i_rows = (Hx + size(grid, 1) - 1, Hx + size(grid, 1))
+
+                    for j in j_rows, i in i_rows
+                        θ = rotation_angle(i, j, grid)
+                        uᵢ, vᵢ = intrinsic_vector(i, j, 1, grid, 1.0, 0.0)
+                        @test isfinite(θ)
+                        @test isfinite(uᵢ)
+                        @test isfinite(vᵢ)
                     end
                 end
             end

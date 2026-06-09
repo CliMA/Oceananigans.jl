@@ -1,6 +1,6 @@
 using Oceananigans.BoundaryConditions: UPivotZipperBoundaryCondition, FPivotZipperBoundaryCondition, NoFluxBoundaryCondition
 using Oceananigans.Grids: Grids, Bounded, Flat, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid,
-    architecture, cpu_face_constructor_z, validate_dimension_specification,
+    architecture, all_x_indices, all_y_indices, cpu_face_constructor_z, validate_dimension_specification,
     AbstractTopology, RightCenterFolded, RightFaceFolded, new_data, topology
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
@@ -215,18 +215,25 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
     λCC = new_data(FT, CPU(), (Center, Center, Nothing), args...)
     φCC = new_data(FT, CPU(), (Center, Center, Nothing), args...)
 
-    # Compute coordinates using the same kernel twice but with varying size,
-    # as the size of λᵃᶠᵃ and φᵃᶠᵃ may vary with the fold topology.
-    # Note: we don't fill_halo_regions! and, instead,
-    # compute the full fields including in the halos (less code!).
-    kp = KernelParameters(1-Hx:Nx+Hx, 1-Hy:Ny+Hy)
-    launch!(CPU(), grid, kp, _compute_tripolar_coordinates!,
-        λFC, φFC, λCC, φCC,
-        λFF, φFF, λCF, φCF,
-        λᶠᵃᵃ, λᶜᵃᵃ, φᵃᶜᵃ, φᵃᶠᵃ,
-        first_pole_longitude,
-        focal_distance, Nx, Ny
-    )
+    # Compute coordinates using location-aware launch extents so that
+    # face-located coordinate arrays are populated on the full folded seam.
+    loc_fc = (Face,   Center, Nothing)
+    loc_cc = (Center, Center, Nothing)
+    loc_ff = (Face,   Face,   Nothing)
+    loc_cf = (Center, Face,   Nothing)
+
+    for (λ2D, φ2D, λ1D, φ1D, loc, isxface) in ((λFC, φFC, λᶠᵃᵃ, φᵃᶜᵃ, loc_fc, true),
+                                                (λCC, φCC, λᶜᵃᵃ, φᵃᶜᵃ, loc_cc, false),
+                                                (λFF, φFF, λᶠᵃᵃ, φᵃᶠᵃ, loc_ff, true),
+                                                (λCF, φCF, λᶜᵃᵃ, φᵃᶠᵃ, loc_cf, false))
+        kp = KernelParameters(all_x_indices(grid, loc), all_y_indices(grid, loc))
+        launch!(CPU(), grid, kp, _compute_tripolar_coordinates!,
+            λ2D, φ2D,
+            λ1D, φ1D,
+            first_pole_longitude,
+            focal_distance, Nx, Ny, isxface
+        )
+    end
 
     # Coordinates
     λᶠᶠᵃ = dropdims(λFF, dims=3)

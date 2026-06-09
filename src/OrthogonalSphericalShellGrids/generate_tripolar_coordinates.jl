@@ -1,10 +1,9 @@
 using CubedSphere.SphericalGeometry: lat_lon_to_cartesian, spherical_area_quadrilateral
 
 """
-    _compute_tripolar_coordinates!(λFF, φFF, λFC, φFC, λCF, φCF, λCC, φCC,
-                                   λᶠᵃᵃ, λᶜᵃᵃ, φᵃᶠᵃ, φᵃᶜᵃ,
+    _compute_tripolar_coordinates!(λ2D, φ2D, λ1D, φ1D,
                                    first_pole_longitude,
-                                   focal_distance, Nλ)
+                                   focal_distance, Nx, Ny, isxface)
 
 Compute the tripolar coordinates for a given set of input parameters following
 the formulation by [Murray (1996)](@cite Murray1996).
@@ -15,39 +14,39 @@ The `focal_distance` argument is the distance from the center of the ellipses to
 The family of ellipses obeys:
 
 ```math
-\\frac{x²}{a² \\cosh²(ψ)} + \\frac{y²}{a² \\sinh²(ψ)} = 1
+\frac{x²}{a² \cosh²(ψ)} + \frac{y²}{a² \sinh²(ψ)} = 1
 ```
 
 While the family of perpendicular hyperbolae obey:
 
 ```math
-\\frac{x²}{a² \\cosh²(λ)} + \\frac{y²}{a² \\sinh²(λ)} = 1
+\frac{x²}{a² \cosh²(λ)} + \frac{y²}{a² \sinh²(λ)} = 1
 ```
 
 Where ``a`` is the `focal_distance` to the center, ``λ`` is the longitudinal angle,
 and ``ψ`` is the "isometric latitude", defined by Murray (1996) and satisfying:
 
 ```math
-    a \\sinh(ψ) = \\mathrm{tand}[(90 - φ) / 2]
+    a \sinh(ψ) = \mathrm{tand}[(90 - φ) / 2]
 ```
 
 The final ``(x, y)`` points that define the stereographic projection of the tripolar
 coordinates are given by:
 
 ```math
-    \\begin{align}
-    x & = a \\sinh ψ \\cos λ \\\\
-    y & = a \\sinh ψ \\sin λ
-    \\end{align}
+    \begin{align}
+    x & = a \sinh ψ \cos λ \\
+    y & = a \sinh ψ \sin λ
+    \end{align}
 ```
 
 for which it is possible to retrieve the longitude and latitude by:
 
 ```math
-    \\begin{align}
-    λ &=    - \\frac{180}{π} \\mathrm{atan}(y / x)  \\\\
-    φ &= 90 - \\frac{360}{π} \\mathrm{atan} \\sqrt{x² + y²}
-    \\end{align}
+    \begin{align}
+    λ &=    - \frac{180}{π} \mathrm{atan}(y / x)  \\
+    φ &= 90 - \frac{360}{π} \mathrm{atan} \sqrt{x² + y²}
+    \end{align}
 
 References
 ==========
@@ -57,55 +56,46 @@ Murray, R. J. (1996). Explicit generation of orthogonal grids for ocean models.
 ```
 """
 @kernel function _compute_tripolar_coordinates!(
-        λFC, φFC, λCC, φCC,
-        λFF, φFF, λCF, φCF,
-        λF, λC, φC, φF,
+        λ2D, φ2D,
+        λ1D, φ1D,
         first_pole_longitude,
-        focal_distance, Nx, Ny
+        focal_distance, Nx, Ny, isxface
     )
 
     i, j = @index(Global, NTuple)
 
-    λ2Ds = (λFC, λCC, λFF, λCF)
-    φ2Ds = (φFC, φCC, φFF, φCF)
-    λ1Ds = (λF , λC , λF , λC )
-    φ1Ds = (φC , φC , φF , φF )
-    isxfaces = (true, false, true, false)
+    # We chose the formulae below for λ ∈ (-180, 180) and φ ∈ (-90, 90)
+    # so that the grid of (x,y) never crosses the negative x-axis,
+    # overwhich atan is discontinuous, which we want to avoid.
+    ψ = asinh(tand((90 - max(φ1D[j], -90)) / 2) / focal_distance)
+    x = focal_distance * cosd(λ1D[i]) * cosh(ψ)
+    y = focal_distance * sind(λ1D[i]) * sinh(ψ)
+    R = sqrt(x^2 + y^2)
 
-    for (λ2D, φ2D, λ1D, φ1D, isxface) in zip(λ2Ds, φ2Ds, λ1Ds, φ1Ds, isxfaces)
-        # We chose the formulae below for λ ∈ (-180, 180) and φ ∈ (-90, 90)
-        # so that the grid of (x,y) never crosses the negative x-axis,
-        # overwhich atan is discontinuous, which we want to avoid.
-        ψ = asinh(tand((90 - max(φ1D[j], -90)) / 2) / focal_distance)
-        x = focal_distance * cosd(λ1D[i]) * cosh(ψ)
-        y = focal_distance * sind(λ1D[i]) * sinh(ψ)
-        R = sqrt(x^2 + y^2)
+    # λ is simply atan(y,x)
+    λ2D[i, j] = atand(y, x)
+    # But we fill the halos east and west ourselves here instead of periodicity.
+    # That is, we continue the longitudes in the East and West halos.
+    λ2D[i, j] -= ifelse(i < 1 && j ≤ Ny, 360, 0)
+    λ2D[i, j] += ifelse(i < 1 && j > Ny, 360, 0)
+    # For the East halo, we need to "specialise" on center/face x-location
+    # as we only continue for cells beyond the (face-located) antimeridian at +180.
+    λ2D[i, j] += ifelse(i > Nx + isxface && j ≤ Ny, 360, 0)
+    λ2D[i, j] -= ifelse(i > Nx + isxface && j > Ny, 360, 0)
+    # In case we are on the true North Pole (x == y == 0)
+    # we impose λ from λ1D as this is along a symmetry meridian (constant λ along j)
+    λ2D[i, j] = ifelse(x == y == 0, λ1D[i], λ2D[i, j])
+    # Same in case we are on the true South Pole (ψ == Inf)
+    λ2D[i, j] = ifelse(isinf(ψ), λ1D[i], λ2D[i, j])
 
-        # λ is simply atan(y,x)
-        λ2D[i, j] = atand(y, x)
-        # But we fill the halos east and west ourselves here instead of periodicity.
-        # That is, we continue the longitudes in the East and West halos.
-        λ2D[i, j] -= ifelse(i < 1 && j ≤ Ny, 360, 0)
-        λ2D[i, j] += ifelse(i < 1 && j > Ny, 360, 0)
-        # For the East halo, we need to "specialise" on center/face x-location
-        # as we only continue for cells beyond the (face-located) antimeridian at +180.
-        λ2D[i, j] += ifelse(i > Nx + isxface && j ≤ Ny, 360, 0)
-        λ2D[i, j] -= ifelse(i > Nx + isxface && j > Ny, 360, 0)
-        # In case we are on the true North Pole (x == y == 0)
-        # we impose λ from λ1D as this is along a symmetry meridian (constant λ along j)
-        λ2D[i, j] = ifelse(x == y == 0, λ1D[i], λ2D[i, j])
-        # Same in case we are on the true South Pole (ψ == Inf)
-        λ2D[i, j] = ifelse(isinf(ψ), λ1D[i], λ2D[i, j])
+    # And φ is simply
+    φ2D[i, j] = 2 * atand(1, R) - 90
+    # In case we are on the true South Pole (ψ == Inf), then we set φ = -90
+    φ2D[i, j] = ifelse(isinf(ψ), -90, φ2D[i, j])
 
-        # And φ is simply
-        φ2D[i, j] = 2 * atand(1, R) - 90
-        # In case we are on the true South Pole (ψ == Inf), then we set φ = -90
-        φ2D[i, j] = ifelse(isinf(ψ), -90, φ2D[i, j])
-
-        # Make sure the singularities are at longitude we want them to be at.
-        # (`first_pole_longitude` and `first_pole_longitude` + 180)
-        λ2D[i, j] += first_pole_longitude + 180
-    end
+    # Make sure the singularities are at longitude we want them to be at.
+    # (`first_pole_longitude` and `first_pole_longitude` + 180)
+    λ2D[i, j] += first_pole_longitude + 180
 end
 
 # Calculate the metric terms from the coordinates of the grid
