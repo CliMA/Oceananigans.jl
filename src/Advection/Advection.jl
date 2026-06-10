@@ -21,9 +21,9 @@ export
     EnstrophyConserving
 
 using Adapt: Adapt
-using OffsetArrays: OffsetArray
-using MuladdMacro: @muladd
 using DocStringExtensions: SIGNATURES
+using MuladdMacro: @muladd
+using OffsetArrays: OffsetArray
 
 using Oceananigans: Oceananigans, fully_supported_float_types
 using Oceananigans.Architectures: Architectures, architecture, on_architecture, CPU
