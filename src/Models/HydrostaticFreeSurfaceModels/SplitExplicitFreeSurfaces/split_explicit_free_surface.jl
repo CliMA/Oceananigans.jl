@@ -254,8 +254,7 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
         maybe_extend_halos(TX, TY, grid, substepping)
     end
 
-    η = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid;
-                                        boundary_conditions = get(bcs, :η, nothing))
+    η = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid; boundary_conditions = get(bcs, :η, nothing))
     η̅ = free_surface_displacement_field(velocities, free_surface, maybe_extended_grid)
 
     gravitational_acceleration = convert(eltype(grid), free_surface.gravitational_acceleration)
@@ -290,6 +289,31 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
                                                   substepping,
                                                   timestepper)
 end
+
+#####
+##### Flather–Chapman pairing
+#####
+
+function default_free_surface_boundary_conditions(free_surface::SplitExplicitFreeSurface, user_boundary_conditions)
+    g = free_surface.gravitational_acceleration
+    U = get(user_boundary_conditions, :U, nothing)
+    V = get(user_boundary_conditions, :V, nothing)
+    η = chapman_companion_boundary_conditions(U, V, g)
+    return isnothing(η) ? NamedTuple() : (; η)
+end
+
+function chapman_companion_boundary_conditions(U_bcs, V_bcs, g)
+    chapman = ChapmanBoundaryCondition(; gravitational_acceleration = g)
+    west  = chapman_if_flather(U_bcs, :west,  chapman)
+    east  = chapman_if_flather(U_bcs, :east,  chapman)
+    south = chapman_if_flather(V_bcs, :south, chapman)
+    north = chapman_if_flather(V_bcs, :north, chapman)
+    all(isnothing, (west, east, south, north)) && return nothing
+    return FieldBoundaryConditions(; west, east, south, north)
+end
+
+@inline chapman_if_flather(::Nothing, side, chapman) = nothing
+@inline chapman_if_flather(bcs, side, chapman) = flather_boundary_condition(getproperty(bcs, side)) ? chapman : nothing
 
 # (p = 2, q = 4, r = 0.18927) minimize dispersion error from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002
 @inline function averaging_shape_function(τ::FT; p = 2, q = 4, r = FT(0.18927)) where FT

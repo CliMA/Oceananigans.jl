@@ -451,6 +451,51 @@ function test_chapman_flather_radiation()
     return no_nan && E₁ < E₀
 end
 
+#####
+##### Flather–Chapman default pairing (constructor)
+#####
+
+is_chapman_bc(bc) = bc isa Oceananigans.BoundaryConditions.CHVBC
+
+function test_flather_chapman_default_pairing()
+    grid = RectilinearGrid(size = (8, 8, 1),
+                           x = (0, 1000.0), y = (0, 1000.0), z = (-100.0, 0),
+                           topology = (Bounded, Bounded, Bounded))
+
+    U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing);
+                                    west = FlatherBoundaryCondition((0.0, 0.0)),
+                                    east = FlatherBoundaryCondition((0.0, 0.0)))
+    V_bcs = FieldBoundaryConditions(grid, (Center(), Face(), nothing);
+                                    north = FlatherBoundaryCondition((0.0, 0.0)))
+
+    # (a) Flather on U (west/east) and V (north), default η → Chapman on those sides only.
+    paired = HydrostaticFreeSurfaceModel(grid;
+        free_surface = SplitExplicitFreeSurface(grid; substeps = 4),
+        boundary_conditions = (U = U_bcs, V = V_bcs),
+        buoyancy = nothing, tracers = ())
+
+    η = paired.free_surface.displacement.boundary_conditions
+    auto_paired = is_chapman_bc(η.west) && is_chapman_bc(η.east) &&
+                  is_chapman_bc(η.north) && !is_chapman_bc(η.south)
+
+    # (b) User-specified η is respected, not overwritten by the Chapman default.
+    η_user = FieldBoundaryConditions(grid, (Center(), Center(), Face());
+                                     west = GradientBoundaryCondition(0))
+    explicit = HydrostaticFreeSurfaceModel(grid;
+        free_surface = SplitExplicitFreeSurface(grid; substeps = 4),
+        boundary_conditions = (U = U_bcs, V = V_bcs, η = η_user),
+        buoyancy = nothing, tracers = ())
+    user_respected = !is_chapman_bc(explicit.free_surface.displacement.boundary_conditions.west)
+
+    # (c) No Flather barotropic boundaries → η keeps its default (no Chapman).
+    walls = HydrostaticFreeSurfaceModel(grid;
+        free_surface = SplitExplicitFreeSurface(grid; substeps = 4),
+        buoyancy = nothing, tracers = ())
+    no_pairing = !is_chapman_bc(walls.free_surface.displacement.boundary_conditions.west)
+
+    return auto_paired && user_respected && no_pairing
+end
+
 @testset "Open Boundary Conditions for HydrostaticFreeSurfaceModel" begin
     @testset "Barotropic gravity wave radiation" begin
         @test test_barotropic_gravity_wave_radiation()
@@ -482,5 +527,9 @@ end
 
     @testset "Chapman + Flather barotropic radiation" begin
         @test test_chapman_flather_radiation()
+    end
+
+    @testset "Flather–Chapman default pairing" begin
+        @test test_flather_chapman_default_pairing()
     end
 end

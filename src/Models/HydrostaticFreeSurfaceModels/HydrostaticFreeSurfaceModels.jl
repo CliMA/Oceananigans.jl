@@ -21,7 +21,7 @@ import Oceananigans: fields, prognostic_fields, initialize!
 import Oceananigans.Advection: cell_advection_timescale
 import Oceananigans.Architectures: Architectures, on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
-import Oceananigans.Models: materialize_free_surface
+import Oceananigans.Models: materialize_free_surface, default_free_surface_boundary_conditions
 import Oceananigans.Simulations: timestepper
 import Oceananigans.TimeSteppers: step_lagrangian_particles!
 

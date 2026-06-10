@@ -91,6 +91,9 @@ Adapt.adapt_structure(to, c::Chapman) =
 
 const CHVBC = BoundaryCondition{<:Value{<:Chapman}}
 
+@inline flather_boundary_condition(bc::FNBCBC) = true
+@inline flather_boundary_condition(bc)         = false
+
 """
     Radiation(; inflow_timescale = 0, outflow_timescale = Inf)
 
@@ -201,10 +204,9 @@ end
 """
     FlatherBoundaryCondition(val; gravitational_acceleration = defaults.gravitational_acceleration, kwargs...)
 
-Construct a `NormalFlowBoundaryCondition` with the [`Flather`](@ref) scheme. `val` must be a
-2-tuple `(U, η)` or a function returning a 2-tuple, where `U` is the external barotropic
-transport and `η` is the external free surface displacement. Each element of the tuple can be
-a number, array, or function (evaluated via `getbc`).
+Construct a `NormalFlowBoundaryCondition` with the [`Flather`](@ref) scheme. `val` must be a 2-tuple `(U, η)` or a function
+returning a 2-tuple, where `U` is the external barotropic transport and `η` is the external free surface displacement. Each
+element of the tuple can be a number, array, or function (evaluated via `getbc`).
 
 Example
 =======
@@ -231,9 +233,8 @@ FlatherBoundaryCondition(U, η; kwargs...) = FlatherBoundaryCondition((U, η); k
 """
     ChapmanBoundaryCondition(; gravitational_acceleration = defaults.gravitational_acceleration)
 
-Construct a `ValueBoundaryCondition` with the [`Chapman`](@ref) scheme for the free
-surface displacement `η` at an open boundary. Pair with [`FlatherBoundaryCondition`](@ref)
-on the barotropic transport.
+Construct a `ValueBoundaryCondition` with the [`Chapman`](@ref) scheme for the free surface displacement `η`
+at an open boundary. Pair with [`FlatherBoundaryCondition`](@ref) on the barotropic transport.
 """
 ChapmanBoundaryCondition(; gravitational_acceleration = defaults.gravitational_acceleration) =
     ValueBoundaryCondition(0; scheme = Chapman(; gravitational_acceleration))
@@ -276,31 +277,29 @@ const AAC = Tuple{Any, Any, Center}
 #   East/North (right boundary):  Uᵇ = Uᵉˣᵗ + √(g H) ⋅ (ηᵇ − ηᵉˣᵗ)
 #   West/South (left  boundary):  Uᵇ = Uᵉˣᵗ − √(g H) ⋅ (ηᵇ − ηᵉˣᵗ)
 #
-# The sign convention follows from the characteristic decomposition of the
-# shallow water equations: the incoming Riemann invariant is prescribed from
-# external data while the outgoing one radiates freely.
+# The sign convention follows from the characteristic decomposition of the shallow water equations:
+# the incoming Riemann invariant is prescribed from external data while the outgoing one radiates freely.
 #
-# The boundary condition value (accessed via getbc) must return a 2-tuple (U, η)
-# of external transport and free surface values.
+# The boundary condition value (accessed via getbc) must return a 2-tuple (U, η) of external transport
+# and free surface values.
 #
-# ηᵇ is the face average of the two adjacent cells (ROMS form): under η's default
-# mirror fill this equals the interior sample, while a Chapman condition on the
-# boundary row couples into the transport through the average.
+# ηᵇ is the face average of the two adjacent cells (ROMS form): under η's default mirror fill this equals the
+# interior sample, while a Chapman condition on the boundary row couples into the transport through the average.
 #
 # Requires `model_fields` to contain:
 #   - η :: free surface displacement field
 
 @inline function _fill_east_halo!(j, k, grid, c, bc::FNBCBC, ::FAA, clock, model_fields)
     i = grid.Nx + 1
-    k_top = grid.Nz + 1
+    kᴺ⁺¹ = grid.Nz + 1
     flather = bc.classification.scheme
 
     g = flather.gravitational_acceleration
     η = model_fields.η
-    H = column_depthᶠᶜᵃ(i, j, k_top, grid, η)
+    H = column_depthᶠᶜᵃ(i, j, kᴺ⁺¹, grid, η)
 
     Uᵉˣᵗ, ηᵉˣᵗ = getbc(bc, j, k, grid, clock, model_fields)
-    ηᵇ = ℑxᶠᵃᵃ(i, j, k_top, grid, η)
+    ηᵇ = ℑxᶠᵃᵃ(i, j, kᴺ⁺¹, grid, η)
 
     @inbounds c[i, j, k] = Uᵉˣᵗ + sqrt(g * max(H, zero(H))) * (ηᵇ - ηᵉˣᵗ)
 
@@ -308,15 +307,15 @@ const AAC = Tuple{Any, Any, Center}
 end
 
 @inline function _fill_west_halo!(j, k, grid, c, bc::FNBCBC, ::FAA, clock, model_fields)
-    k_top = grid.Nz + 1
+    kᴺ⁺¹ = grid.Nz + 1
     flather = bc.classification.scheme
 
     g = flather.gravitational_acceleration
     η = model_fields.η
-    H = column_depthᶠᶜᵃ(1, j, k_top, grid, η)
+    H = column_depthᶠᶜᵃ(1, j, kᴺ⁺¹, grid, η)
 
     Uᵉˣᵗ, ηᵉˣᵗ = getbc(bc, j, k, grid, clock, model_fields)
-    ηᵇ = ℑxᶠᵃᵃ(1, j, k_top, grid, η)
+    ηᵇ = ℑxᶠᵃᵃ(1, j, kᴺ⁺¹, grid, η)
 
     @inbounds c[1, j, k] = Uᵉˣᵗ - sqrt(g * max(H, zero(H))) * (ηᵇ - ηᵉˣᵗ)
 
@@ -325,15 +324,15 @@ end
 
 @inline function _fill_north_halo!(i, k, grid, c, bc::FNBCBC, ::AFA, clock, model_fields)
     j = grid.Ny + 1
-    k_top = grid.Nz + 1
+    kᴺ⁺¹ = grid.Nz + 1
     flather = bc.classification.scheme
 
     g = flather.gravitational_acceleration
     η = model_fields.η
-    H = column_depthᶜᶠᵃ(i, j, k_top, grid, η)
+    H = column_depthᶜᶠᵃ(i, j, kᴺ⁺¹, grid, η)
 
     Vᵉˣᵗ, ηᵉˣᵗ = getbc(bc, i, k, grid, clock, model_fields)
-    ηᵇ = ℑyᵃᶠᵃ(i, j, k_top, grid, η)
+    ηᵇ = ℑyᵃᶠᵃ(i, j, kᴺ⁺¹, grid, η)
 
     @inbounds c[i, j, k] = Vᵉˣᵗ + sqrt(g * max(H, zero(H))) * (ηᵇ - ηᵉˣᵗ)
 
@@ -341,15 +340,15 @@ end
 end
 
 @inline function _fill_south_halo!(i, k, grid, c, bc::FNBCBC, ::AFA, clock, model_fields)
-    k_top = grid.Nz + 1
+    kᴺ⁺¹ = grid.Nz + 1
     flather = bc.classification.scheme
 
     g = flather.gravitational_acceleration
     η = model_fields.η
-    H = column_depthᶜᶠᵃ(i, 1, k_top, grid, η)
+    H = column_depthᶜᶠᵃ(i, 1, kᴺ⁺¹, grid, η)
 
     Vᵉˣᵗ, ηᵉˣᵗ = getbc(bc, i, k, grid, clock, model_fields)
-    ηᵇ = ℑyᵃᶠᵃ(i, 1, k_top, grid, η)
+    ηᵇ = ℑyᵃᶠᵃ(i, 1, kᴺ⁺¹, grid, η)
 
     @inbounds c[i, 1, k] = Vᵉˣᵗ - sqrt(g * max(H, zero(H))) * (ηᵇ - ηᵉˣᵗ)
 
@@ -368,79 +367,79 @@ end
 ##### Chapman halo filling — implicit gravity-wave radiation of the free surface
 #####
 
-@inline function _fill_west_halo!(j, k, grid, c, bc::CHVBC, ::CAA, clock, model_fields)
+@inline function _fill_west_halo!(j, k, grid, η, bc::CHVBC, ::CAA, clock, model_fields)
     anchored_fill(clock) || return nothing
     Δτ = stage_Δt(clock)
     first_call = isinf(Δτ)
     Δt = ifelse(first_call, zero(Δτ), Δτ)
     g = bc.classification.scheme.gravitational_acceleration
-    k_top = grid.Nz + 1
+    kᴺ⁺¹ = grid.Nz + 1
 
     @inbounds begin
-        η₁ = c[1, j, k]
-        H  = column_depthᶜᶜᵃ(1, j, k_top, grid, c)
+        η₁ = η[1, j, k]
+        H  = column_depthᶜᶜᵃ(1, j, kᴺ⁺¹, grid, η)
         C  = sqrt(g * max(H, zero(H))) * Δt / Δxᶠᶜᶜ(1, j, k, grid)
-        ηᵇ = ifelse(first_call, η₁, c[0, j, k]) # zero-gradient initialization
-        c[0, j, k] = (ηᵇ + C * η₁) / (1 + C)
+        ηᵇ = ifelse(first_call, η₁, η[0, j, k]) # zero-gradient initialization
+        η[0, j, k] = (ηᵇ + C * η₁) / (1 + C)
     end
 
     return nothing
 end
 
-@inline function _fill_east_halo!(j, k, grid, c, bc::CHVBC, ::CAA, clock, model_fields)
+@inline function _fill_east_halo!(j, k, grid, η, bc::CHVBC, ::CAA, clock, model_fields)
     anchored_fill(clock) || return nothing
     Δτ = stage_Δt(clock)
     first_call = isinf(Δτ)
     Δt = ifelse(first_call, zero(Δτ), Δτ)
     g = bc.classification.scheme.gravitational_acceleration
     i = grid.Nx + 1
-    k_top = grid.Nz + 1
+    kᴺ⁺¹ = grid.Nz + 1
 
     @inbounds begin
-        η₁ = c[i-1, j, k]
-        H  = column_depthᶜᶜᵃ(i-1, j, k_top, grid, c)
+        η₁ = η[i-1, j, k]
+        H  = column_depthᶜᶜᵃ(i-1, j, kᴺ⁺¹, grid, η)
         C  = sqrt(g * max(H, zero(H))) * Δt / Δxᶠᶜᶜ(i, j, k, grid)
-        ηᵇ = ifelse(first_call, η₁, c[i, j, k]) # zero-gradient initialization
-        c[i, j, k] = (ηᵇ + C * η₁) / (1 + C)
+        ηᵇ = ifelse(first_call, η₁, η[i, j, k]) # zero-gradient initialization
+        η[i, j, k] = (ηᵇ + C * η₁) / (1 + C)
     end
 
     return nothing
 end
 
-@inline function _fill_south_halo!(i, k, grid, c, bc::CHVBC, ::ACA, clock, model_fields)
+@inline function _fill_south_halo!(i, k, grid, η, bc::CHVBC, ::ACA, clock, model_fields)
     anchored_fill(clock) || return nothing
     Δτ = stage_Δt(clock)
     first_call = isinf(Δτ)
     Δt = ifelse(first_call, zero(Δτ), Δτ)
     g = bc.classification.scheme.gravitational_acceleration
-    k_top = grid.Nz + 1
+    kᴺ⁺¹ = grid.Nz + 1
 
     @inbounds begin
-        η₁ = c[i, 1, k]
-        H  = column_depthᶜᶜᵃ(i, 1, k_top, grid, c)
+        η₁ = η[i, 1, k]
+        H  = column_depthᶜᶜᵃ(i, 1, kᴺ⁺¹, grid, η)
         C  = sqrt(g * max(H, zero(H))) * Δt / Δyᶜᶠᶜ(i, 1, k, grid)
-        ηᵇ = ifelse(first_call, η₁, c[i, 0, k]) # zero-gradient initialization
-        c[i, 0, k] = (ηᵇ + C * η₁) / (1 + C)
+        ηᵇ = ifelse(first_call, η₁, η[i, 0, k]) # zero-gradient initialization
+        η[i, 0, k] = (ηᵇ + C * η₁) / (1 + C)
     end
 
     return nothing
 end
 
-@inline function _fill_north_halo!(i, k, grid, c, bc::CHVBC, ::ACA, clock, model_fields)
+@inline function _fill_north_halo!(i, k, grid, η, bc::CHVBC, ::ACA, clock, model_fields)
     anchored_fill(clock) || return nothing
     Δτ = stage_Δt(clock)
     first_call = isinf(Δτ)
     Δt = ifelse(first_call, zero(Δτ), Δτ)
     g = bc.classification.scheme.gravitational_acceleration
     j = grid.Ny + 1
-    k_top = grid.Nz + 1
+    kᴺ⁺¹ = grid.Nz + 1
 
     @inbounds begin
-        η₁ = c[i, j-1, k]
-        H  = column_depthᶜᶜᵃ(i, j-1, k_top, grid, c)
+        η₁ = η[i, j-1, k]
+        H  = column_depthᶜᶜᵃ(i, j-1, kᴺ⁺¹, grid, η)
         C  = sqrt(g * max(H, zero(H))) * Δt / Δyᶜᶠᶜ(i, j, k, grid)
-        ηᵇ = ifelse(first_call, η₁, c[i, j, k]) # zero-gradient initialization
-        c[i, j, k] = (ηᵇ + C * η₁) / (1 + C)
+        ηᵇ = ifelse(first_call, η₁, η[i, j, k]) # zero-gradient initialization
+        η[i, j, k] = (ηᵇ + C * η₁) / (1 + C)
     end
 
     return nothing
