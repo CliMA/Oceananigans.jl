@@ -319,9 +319,7 @@ function fill_metric_halo_regions!(grid)
     return nothing
 end
 
-@kernel function _compute_rotation!(cosθᶜᶜᵃ, sinθᶜᶜᵃ,
-                                    φᶠᶠᵃ,
-                                    Δxᶜᶠᵃ, Δyᶠᶜᵃ)
+@kernel function _compute_rotation!(cosθᶜᶜᵃ, sinθᶜᶜᵃ, φᶠᶠᵃ, Δxᶜᶠᵃ, Δyᶠᶜᵃ)
     i, j = @index(Global, NTuple)
 
     @inbounds begin
@@ -354,10 +352,8 @@ function precompute_rotation_angles!(grid::OSSG)
     Nx, Ny, _ = size(grid)
     Hx, Hy, _ = halo_size(grid)
 
-    launch!(arch, grid, KernelParameters(1:Nx, 1:Ny), _compute_rotation!,
-            grid.cosθᶜᶜᵃ, grid.sinθᶜᶜᵃ,
-            grid.φᶠᶠᵃ,
-            grid.Δxᶜᶠᵃ, grid.Δyᶠᶜᵃ)
+    launch!(arch, grid, KernelParameters(1:Nx, 1:Ny),
+            _compute_rotation!, grid.cosθᶜᶜᵃ, grid.sinθᶜᶜᵃ, grid.φᶠᶠᵃ, grid.Δxᶜᶠᵃ, grid.Δyᶠᶜᵃ)
 
     fill_metric_halo_regions_x!(grid.cosθᶜᶜᵃ, Center(), Center(), topology(grid, 1)(), topology(grid, 2)(), Nx, Ny, Hx, Hy)
     fill_metric_halo_regions_y!(grid.cosθᶜᶜᵃ, Center(), Center(), topology(grid, 1)(), topology(grid, 2)(), Nx, Ny, Hx, Hy)
