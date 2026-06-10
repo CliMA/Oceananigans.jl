@@ -17,15 +17,16 @@ Represent a static one-dimensional vertical coordinate.
 Fields
 ======
 
-- `cᵃᵃᶠ::C`: Face-centered coordinate.
-- `cᵃᵃᶜ::D`: Cell-centered coordinate.
-- `Δᵃᵃᶠ::E`: Face-centered grid spacing.
-- `Δᵃᵃᶜ::F`: Cell-centered grid spacing.
+$(FIELDS)
 """
 struct StaticVerticalDiscretization{C, D, E, F} <: AbstractVerticalCoordinate
+    "Face-centered coordinate"
     cᵃᵃᶠ :: C
+    "Cell-centered coordinate"
     cᵃᵃᶜ :: D
+    "Face-centered grid spacing"
     Δᵃᵃᶠ :: E
+    "Cell-centered grid spacing"
     Δᵃᵃᶜ :: F
 end
 
