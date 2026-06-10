@@ -146,7 +146,6 @@ Keyword Arguments
     [`UPivotZipperBoundaryCondition`](@ref) or [`FPivotZipperBoundaryCondition`](@ref)
     with the desired sign.
 
-
 References
 ==========
 
