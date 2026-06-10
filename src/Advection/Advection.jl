@@ -23,6 +23,7 @@ export
 using Adapt: Adapt
 using OffsetArrays: OffsetArray
 using MuladdMacro: @muladd
+using DocStringExtensions: SIGNATURES
 
 using Oceananigans: Oceananigans, fully_supported_float_types
 using Oceananigans.Architectures: Architectures, architecture, on_architecture, CPU
