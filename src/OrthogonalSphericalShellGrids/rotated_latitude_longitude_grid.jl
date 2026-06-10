@@ -224,7 +224,7 @@ end
         grid.λᶠᶠᵃ[i, j] = λ
         grid.φᶠᶠᵃ[i, j] = φ
 
-        # Directly copiable metrics:
+        # Directly copyable metrics:
         grid.Δxᶜᶜᵃ[i, j] = lat_lon_metric(source_grid.Δxᶜᶜᵃ, i, j)
         grid.Δxᶠᶜᵃ[i, j] = lat_lon_metric(source_grid.Δxᶠᶜᵃ, i, j)
         grid.Δxᶜᶠᵃ[i, j] = lat_lon_metric(source_grid.Δxᶜᶠᵃ, i, j)
