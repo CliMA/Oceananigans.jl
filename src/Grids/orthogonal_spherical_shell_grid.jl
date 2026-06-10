@@ -48,8 +48,8 @@ function OrthogonalSphericalShellGrid{FT, TX, TY, TZ}(architecture::Arch,
                                                       Azᶜᶜᵃ :: CC, Azᶠᶜᵃ :: FC, Azᶜᶠᵃ :: CF, Azᶠᶠᵃ :: FF,
                                                       cosθᶜᶜᵃ :: CC, sinθᶜᶜᵃ :: CC,
                                                       radius :: FT2,
-                                                  conformal_mapping :: Map) where {TX, TY, TZ, FT, Z, Map,
-                                                                                   CC, FC, CF, FF, Arch, FT2}
+                                                      conformal_mapping :: Map) where {TX, TY, TZ, FT, Z, Map,
+                                                                                       CC, FC, CF, FF, Arch, FT2}
     return OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, FT2}(architecture,
                                         Nx, Ny, Nz,
                                         Hx, Hy, Hz,
