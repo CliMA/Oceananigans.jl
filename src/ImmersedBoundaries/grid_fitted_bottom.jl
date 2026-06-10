@@ -28,8 +28,8 @@ const GFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFit
 
 Return a bottom immersed boundary.
 
-Keyword Arguments
-=================
+Arguments
+=========
 
 * `bottom_height`: an array or function that gives the height of the
                    bottom in absolute ``z`` coordinates.
