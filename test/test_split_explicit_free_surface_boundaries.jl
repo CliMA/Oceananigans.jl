@@ -54,8 +54,8 @@ function check_common_invariants(model)
     Nx, Ny, Nz = size(grid)
     f, c = Face(), Center()
 
-    @test all(u[i, j, k] == 0 for i in 1:Nx+1, j in 1:Ny, k in 1:Nz if immersed_peripheral_node(i, j, k, grid, f, c, c))
-    @test all(v[i, j, k] == 0 for i in 1:Nx, j in 1:Ny+1, k in 1:Nz if immersed_peripheral_node(i, j, k, grid, c, f, c))
+    @test all(u[i, j, k] == 0 for i in 1:size(u, 1), j in 1:size(u, 2), k in 1:size(u, 3) if immersed_peripheral_node(i, j, k, grid, f, c, c))
+    @test all(v[i, j, k] == 0 for i in 1:size(v, 1), j in 1:size(v, 2), k in 1:size(v, 3) if immersed_peripheral_node(i, j, k, grid, c, f, c))
 
     @test maximum(abs, u) > 0
     @test maximum(abs, v) > 0
