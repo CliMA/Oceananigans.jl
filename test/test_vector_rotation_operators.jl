@@ -3,6 +3,7 @@ include("dependencies_for_runtests.jl")
 using Statistics: mean
 using Oceananigans.Operators
 using Oceananigans.Operators: rotation_angle
+using Oceananigans.Grids: precompute_rotation_angles!
 using Distances: haversine
 
 # To be used in the test below as `KernelFunctionOperation`s
@@ -113,13 +114,15 @@ end
                     end
 
                     # fill in metrics
-                    for i in 1:Nx+1, j in 1:Ny+1
+                    for j in 1:Ny+1, i in 1:Nx+1
                         grid.Δxᶜᶠᵃ[i, j] = haversine((λᶠᶠᵃ[i+1, j], φᶠᶠᵃ[i+1, j]), (λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), radius)
                         grid.Δyᶠᶜᵃ[i, j] = haversine((λᶠᶠᵃ[i, j+1], φᶠᶠᵃ[i, j+1]), (λᶠᶠᵃ[i, j], φᶠᶠᵃ[i, j]), radius)
                     end
 
+                    precompute_rotation_angles!(grid)
+
                     # ensure that rotation_angle returns θᵢ
-                    for i in 1:Nx, j in 1:Ny
+                    for j in 1:Ny, i in 1:Nx
                         θ = rotation_angle(i, j, grid)
                         @test θ ≈ θᵢ
                     end

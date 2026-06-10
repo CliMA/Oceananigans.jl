@@ -109,6 +109,7 @@ function RotatedLatitudeLongitudeGrid(arch::AbstractArchitecture = CPU(),
     conformal_mapping = LatitudeLongitudeRotation(north_pole)
     grid = OrthogonalSphericalShellGrid(arch, FT; size, z, radius, halo, topology, conformal_mapping)
     rotate_metrics!(grid, source_grid)
+    Grids.precompute_rotation_angles!(grid)
 
     return grid
 end
@@ -223,7 +224,7 @@ end
         grid.λᶠᶠᵃ[i, j] = λ
         grid.φᶠᶠᵃ[i, j] = φ
 
-        # Directly copiable metrics:
+        # Directly copyable metrics:
         grid.Δxᶜᶜᵃ[i, j] = lat_lon_metric(source_grid.Δxᶜᶜᵃ, i, j)
         grid.Δxᶠᶜᵃ[i, j] = lat_lon_metric(source_grid.Δxᶠᶜᵃ, i, j)
         grid.Δxᶜᶠᵃ[i, j] = lat_lon_metric(source_grid.Δxᶜᶠᵃ, i, j)

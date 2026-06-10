@@ -1,5 +1,3 @@
-using Oceananigans.Grids: φnode
-
 # TODO: have a general Oceananigans-wide function that retrieves a pointwise
 # value for a function, an array, a number, a field etc?
 # This would be a generalization of `getbc` that could be used everywhere we need it
@@ -59,30 +57,7 @@ The rotation angle is the angle (positive counter-clockwise) that we need to rot
 the grid's intrinsic coordinates in order to match the grid's extrinsic coordinates.
 """
 @inline function rotation_angle(i, j, grid::OrthogonalSphericalShellGrid)
-
-    φᶠᶠᵃ⁺⁺ = φnode(i+1, j+1, 1, grid, Face(), Face(), Center())
-    φᶠᶠᵃ⁺⁻ = φnode(i+1, j,   1, grid, Face(), Face(), Center())
-    φᶠᶠᵃ⁻⁺ = φnode(i,   j+1, 1, grid, Face(), Face(), Center())
-    φᶠᶠᵃ⁻⁻ = φnode(i,   j,   1, grid, Face(), Face(), Center())
-
-    Δyᶠᶜᵃ⁺ = Δyᶠᶜᶜ(i+1, j,   1, grid)
-    Δyᶠᶜᵃ⁻ = Δyᶠᶜᶜ(i,   j,   1, grid)
-    Δxᶜᶠᵃ⁺ = Δxᶜᶠᶜ(i,   j+1, 1, grid)
-    Δxᶜᶠᵃ⁻ = Δxᶜᶠᶜ(i,   j,   1, grid)
-
-    Rcosθ₁ = ifelse(Δyᶠᶜᵃ⁺ == 0, zero(grid), deg2rad(φᶠᶠᵃ⁺⁺ - φᶠᶠᵃ⁺⁻) / Δyᶠᶜᵃ⁺)
-    Rcosθ₂ = ifelse(Δyᶠᶜᵃ⁻ == 0, zero(grid), deg2rad(φᶠᶠᵃ⁻⁺ - φᶠᶠᵃ⁻⁻) / Δyᶠᶜᵃ⁻)
-
-    # θ is the rotation angle between intrinsic and extrinsic reference frame
-    Rcosθ =   (Rcosθ₁ + Rcosθ₂) / 2
-    Rsinθ = - (deg2rad(φᶠᶠᵃ⁺⁺ - φᶠᶠᵃ⁻⁺) / Δxᶜᶠᵃ⁺ + deg2rad(φᶠᶠᵃ⁺⁻ - φᶠᶠᵃ⁻⁻) / Δxᶜᶠᵃ⁻) / 2
-
-    # Normalization for the rotation angles
-    R = sqrt(Rcosθ^2 + Rsinθ^2)
-
-    cosθ, sinθ = Rcosθ / R, Rsinθ / R
-
-    θ = atan(sinθ / cosθ)
+    @inbounds θ = atan(grid.sinθᶜᶜᵃ[i, j], grid.cosθᶜᶜᵃ[i, j])
     return θ
 end
 
@@ -98,9 +73,8 @@ end
     u = getvalue(uₑ, i, j, k, grid)
     v = getvalue(vₑ, i, j, k, grid)
 
-    θ = rotation_angle(i, j, grid::OrthogonalSphericalShellGrid)
-    sinθ = sin(θ)
-    cosθ = cos(θ)
+    @inbounds sinθ = grid.sinθᶜᶜᵃ[i, j]
+    @inbounds cosθ = grid.cosθᶜᶜᵃ[i, j]
 
     uᵢ = u * cosθ - v * sinθ
     vᵢ = u * sinθ + v * cosθ
@@ -123,9 +97,8 @@ end
     u = getvalue(uᵢ, i, j, k, grid)
     v = getvalue(vᵢ, i, j, k, grid)
 
-    θ = rotation_angle(i, j, grid::OrthogonalSphericalShellGrid)
-    sinθ = sin(θ)
-    cosθ = cos(θ)
+    @inbounds sinθ = grid.sinθᶜᶜᵃ[i, j]
+    @inbounds cosθ = grid.cosθᶜᶜᵃ[i, j]
 
     uₑ = + u * cosθ + v * sinθ
     vₑ = - u * sinθ + v * cosθ
