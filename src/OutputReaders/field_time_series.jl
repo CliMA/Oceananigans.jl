@@ -43,7 +43,7 @@ end
     InMemory(length=nothing)
 
 Return a `backend` for `FieldTimeSeries` that stores `length`
-fields in memory. The default `length = nothing` stores all fields in memory.
+fields in memory. If `nothing` is provided (default), then all fields are stored in memory.
 """
 function InMemory(length::Int)
     length < 2 && throw(ArgumentError("InMemory `length` must be 2 or greater."))
