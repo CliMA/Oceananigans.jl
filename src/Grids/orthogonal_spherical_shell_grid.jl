@@ -30,10 +30,66 @@ struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch
     Azᶠᶜᵃ :: FC
     Azᶜᶠᵃ :: CF
     Azᶠᶠᵃ :: FF
+    cosθᶜᶜᵃ :: CC
+    sinθᶜᶜᵃ :: CC
     radius :: FT2
     conformal_mapping :: Map
 end
 
+
+function OrthogonalSphericalShellGrid{FT, TX, TY, TZ}(architecture::Arch,
+                                                      Nx, Ny, Nz,
+                                                      Hx, Hy, Hz,
+                                                      Lz :: FT2,
+                                                       λᶜᶜᵃ :: CC,  λᶠᶜᵃ :: FC,  λᶜᶠᵃ :: CF,  λᶠᶠᵃ :: FF,
+                                                       φᶜᶜᵃ :: CC,  φᶠᶜᵃ :: FC,  φᶜᶠᵃ :: CF,  φᶠᶠᵃ :: FF, z :: Z,
+                                                      Δxᶜᶜᵃ :: CC, Δxᶠᶜᵃ :: FC, Δxᶜᶠᵃ :: CF, Δxᶠᶠᵃ :: FF,
+                                                      Δyᶜᶜᵃ :: CC, Δyᶠᶜᵃ :: FC, Δyᶜᶠᵃ :: CF, Δyᶠᶠᵃ :: FF,
+                                                      Azᶜᶜᵃ :: CC, Azᶠᶜᵃ :: FC, Azᶜᶠᵃ :: CF, Azᶠᶠᵃ :: FF,
+                                                      cosθᶜᶜᵃ :: CC, sinθᶜᶜᵃ :: CC,
+                                                      radius :: FT2,
+                                                  conformal_mapping :: Map) where {TX, TY, TZ, FT, Z, Map,
+                                                                                   CC, FC, CF, FF, Arch, FT2}
+    return OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, FT2}(architecture,
+                                        Nx, Ny, Nz,
+                                        Hx, Hy, Hz,
+                                        Lz,
+                                         λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
+                                         φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, z,
+                                        Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
+                                        Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
+                                        Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
+                                        cosθᶜᶜᵃ, sinθᶜᶜᵃ,
+                                        radius,
+                                        conformal_mapping)
+end
+
+function OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture::Arch,
+                                                  Nx, Ny, Nz,
+                                                  Hx, Hy, Hz,
+                                                  Lz :: FT,
+                                                   λᶜᶜᵃ :: CC,  λᶠᶜᵃ :: FC,  λᶜᶠᵃ :: CF,  λᶠᶠᵃ :: FF,
+                                                   φᶜᶜᵃ :: CC,  φᶠᶜᵃ :: FC,  φᶜᶠᵃ :: CF,  φᶠᶠᵃ :: FF, z :: Z,
+                                                  Δxᶜᶜᵃ :: CC, Δxᶠᶜᵃ :: FC, Δxᶜᶠᵃ :: CF, Δxᶠᶠᵃ :: FF,
+                                                  Δyᶜᶜᵃ :: CC, Δyᶠᶜᵃ :: FC, Δyᶜᶠᵃ :: CF, Δyᶠᶠᵃ :: FF,
+                                                  Azᶜᶜᵃ :: CC, Azᶠᶜᵃ :: FC, Azᶜᶠᵃ :: CF, Azᶠᶠᵃ :: FF,
+                                                  cosθᶜᶜᵃ :: CC, sinθᶜᶜᵃ :: CC,
+                                                  radius :: FT,
+                                                  conformal_mapping :: Map) where {TX, TY, TZ, FT, Z, Map,
+                                                                                   CC, FC, CF, FF, Arch}
+
+    return OrthogonalSphericalShellGrid{FT, TX, TY, TZ}(architecture,
+                                                        Nx, Ny, Nz,
+                                                        Hx, Hy, Hz,
+                                                        Lz,
+                                                         λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
+                                                         φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, z,
+                                                        Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
+                                                        Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
+                                                        Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
+                                                        cosθᶜᶜᵃ, sinθᶜᶜᵃ,
+                                                        radius, conformal_mapping)
+end
 
 function OrthogonalSphericalShellGrid{FT, TX, TY, TZ}(architecture::Arch,
                                                   Nx, Ny, Nz,
@@ -47,17 +103,25 @@ function OrthogonalSphericalShellGrid{FT, TX, TY, TZ}(architecture::Arch,
                                                   radius :: FT2,
                                                   conformal_mapping :: Map) where {TX, TY, TZ, FT, Z, Map,
                                                                                    CC, FC, CF, FF, Arch, FT2}
-    return OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, FT2}(architecture,
-                                                  Nx, Ny, Nz,
-                                                  Hx, Hy, Hz,
-                                                  Lz,
-                                                   λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
-                                                   φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, z,
-                                                  Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
-                                                  Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
-                                                  Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
-                                                  radius,
-                                                  conformal_mapping)
+    cosθᶜᶜᵃ = similar(Δxᶜᶜᵃ)
+    sinθᶜᶜᵃ = similar(Δxᶜᶜᵃ)
+
+    grid = OrthogonalSphericalShellGrid{FT, TX, TY, TZ}(architecture,
+                                                        Nx, Ny, Nz,
+                                                        Hx, Hy, Hz,
+                                                        Lz,
+                                                        λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
+                                                        φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, z,
+                                                        Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
+                                                        Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
+                                                        Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
+                                                        cosθᶜᶜᵃ, sinθᶜᶜᵃ,
+                                                        radius,
+                                                        conformal_mapping)
+
+    precompute_rotation_angles!(grid)
+
+    return grid
 end
 
 function OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture::Arch,
@@ -72,17 +136,18 @@ function OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture::Arch,
                                                   radius :: FT,
                                                   conformal_mapping :: Map) where {TX, TY, TZ, FT, Z, Map,
                                                                                    CC, FC, CF, FF, Arch}
-
-    return OrthogonalSphericalShellGrid{FT, TX, TY, TZ}(architecture,
+    grid = OrthogonalSphericalShellGrid{FT, TX, TY, TZ}(architecture,
                                                         Nx, Ny, Nz,
                                                         Hx, Hy, Hz,
                                                         Lz,
-                                                         λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
-                                                         φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, z,
+                                                        λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
+                                                        φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, z,
                                                         Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
                                                         Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
                                                         Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
                                                         radius, conformal_mapping)
+
+    return grid
 end
 
 const OSSG = OrthogonalSphericalShellGrid
@@ -95,13 +160,16 @@ OrthogonalSphericalShellGrid(architecture, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
                               φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, z,
                              Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
                              Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
-                             Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius) =
+                             Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
+                             cosθᶜᶜᵃ, sinθᶜᶜᵃ,
+                             radius) =
     OrthogonalSphericalShellGrid(architecture, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
                                   λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
                                   φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, z,
                                  Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
                                  Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
-                                 Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius, nothing)
+                                 Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
+                                 cosθᶜᶜᵃ, sinθᶜᶜᵃ, radius, nothing)
 
 """
     fill_metric_halo_regions_x!(metric, ℓx, ℓy, tx, ty, Nx, Ny, Hx, Hy)
@@ -251,6 +319,57 @@ function fill_metric_halo_regions!(grid)
     return nothing
 end
 
+@kernel function _compute_rotation!(cosθᶜᶜᵃ, sinθᶜᶜᵃ,
+                                    φᶠᶠᵃ,
+                                    Δxᶜᶠᵃ, Δyᶠᶜᵃ)
+    i, j = @index(Global, NTuple)
+
+    @inbounds begin
+        φᶠᶠᵃ⁺⁺ = φᶠᶠᵃ[i+1, j+1]
+        φᶠᶠᵃ⁺⁻ = φᶠᶠᵃ[i+1, j]
+        φᶠᶠᵃ⁻⁺ = φᶠᶠᵃ[i,   j+1]
+        φᶠᶠᵃ⁻⁻ = φᶠᶠᵃ[i,   j]
+
+        Δyᶠᶜᵃ⁺ = Δyᶠᶜᵃ[i+1, j]
+        Δyᶠᶜᵃ⁻ = Δyᶠᶜᵃ[i,   j]
+        Δxᶜᶠᵃ⁺ = Δxᶜᶠᵃ[i,   j+1]
+        Δxᶜᶠᵃ⁻ = Δxᶜᶠᵃ[i,   j]
+
+        Rcosθ₁ = ifelse(Δyᶠᶜᵃ⁺ == 0, zero(eltype(cosθᶜᶜᵃ)), deg2rad(φᶠᶠᵃ⁺⁺ - φᶠᶠᵃ⁺⁻) / Δyᶠᶜᵃ⁺)
+        Rcosθ₂ = ifelse(Δyᶠᶜᵃ⁻ == 0, zero(eltype(cosθᶜᶜᵃ)), deg2rad(φᶠᶠᵃ⁻⁺ - φᶠᶠᵃ⁻⁻) / Δyᶠᶜᵃ⁻)
+
+        Rcosθ = (Rcosθ₁ + Rcosθ₂) / 2
+        Rsinθ = -(deg2rad(φᶠᶠᵃ⁺⁺ - φᶠᶠᵃ⁻⁺) / Δxᶜᶠᵃ⁺ + deg2rad(φᶠᶠᵃ⁺⁻ - φᶠᶠᵃ⁻⁻) / Δxᶜᶠᵃ⁻) / 2
+
+        R = sqrt(Rcosθ^2 + Rsinθ^2)
+        R⁻¹ = ifelse(R == 0, zero(eltype(cosθᶜᶜᵃ)), 1 / R)
+
+        cosθᶜᶜᵃ[i, j] = R⁻¹ * Rcosθ
+        sinθᶜᶜᵃ[i, j] = R⁻¹ * Rsinθ
+    end
+end
+
+function precompute_rotation_angles!(grid::OSSG)
+    arch = architecture(grid)
+    Nx, Ny, _ = size(grid)
+    Hx, Hy, _ = halo_size(grid)
+
+    launch!(arch, grid, KernelParameters(1:Nx, 1:Ny), _compute_rotation!,
+            grid.cosθᶜᶜᵃ, grid.sinθᶜᶜᵃ,
+            grid.φᶠᶠᵃ,
+            grid.Δxᶜᶠᵃ, grid.Δyᶠᶜᵃ)
+
+    fill_metric_halo_regions_x!(grid.cosθᶜᶜᵃ, Center(), Center(), topology(grid, 1)(), topology(grid, 2)(), Nx, Ny, Hx, Hy)
+    fill_metric_halo_regions_y!(grid.cosθᶜᶜᵃ, Center(), Center(), topology(grid, 1)(), topology(grid, 2)(), Nx, Ny, Hx, Hy)
+    fill_metric_halo_corner_regions!(grid.cosθᶜᶜᵃ, Center(), Center(), topology(grid, 1)(), topology(grid, 2)(), Nx, Ny, Hx, Hy)
+
+    fill_metric_halo_regions_x!(grid.sinθᶜᶜᵃ, Center(), Center(), topology(grid, 1)(), topology(grid, 2)(), Nx, Ny, Hx, Hy)
+    fill_metric_halo_regions_y!(grid.sinθᶜᶜᵃ, Center(), Center(), topology(grid, 1)(), topology(grid, 2)(), Nx, Ny, Hx, Hy)
+    fill_metric_halo_corner_regions!(grid.sinθᶜᶜᵃ, Center(), Center(), topology(grid, 1)(), topology(grid, 2)(), Nx, Ny, Hx, Hy)
+
+    return nothing
+end
+
 function Architectures.on_architecture(arch::AbstractSerialArchitecture, grid::OrthogonalSphericalShellGrid)
     coordinates = (:λᶜᶜᵃ,
                    :λᶠᶜᵃ,
@@ -275,10 +394,13 @@ function Architectures.on_architecture(arch::AbstractSerialArchitecture, grid::O
                         :Azᶠᶜᵃ,
                         :Azᶜᶠᵃ,
                         :Azᶠᶠᵃ)
+    vector_rotation = (:cosθᶜᶜᵃ,
+                       :sinθᶜᶜᵃ)
 
     coordinate_data = Tuple(on_architecture(arch, getproperty(grid, name)) for name in coordinates)
     grid_spacing_data = Tuple(on_architecture(arch, getproperty(grid, name)) for name in grid_spacings)
     horizontal_area_data = Tuple(on_architecture(arch, getproperty(grid, name)) for name in horizontal_areas)
+    vector_rotation_data = Tuple(on_architecture(arch, getproperty(grid, name)) for name in vector_rotation)
     conformal_mapping = on_architecture(arch, grid.conformal_mapping)
 
     TX, TY, TZ = topology(grid)
@@ -290,6 +412,7 @@ function Architectures.on_architecture(arch::AbstractSerialArchitecture, grid::O
                                                         coordinate_data...,
                                                         grid_spacing_data...,
                                                         horizontal_area_data...,
+                                                        vector_rotation_data...,
                                                         grid.radius,
                                                         conformal_mapping)
 
@@ -309,6 +432,7 @@ function Adapt.adapt_structure(to, grid::OrthogonalSphericalShellGrid)
         adapt(to, grid.Δxᶜᶜᵃ), adapt(to, grid.Δxᶠᶜᵃ), adapt(to, grid.Δxᶜᶠᵃ), adapt(to, grid.Δxᶠᶠᵃ),
         adapt(to, grid.Δyᶜᶜᵃ), adapt(to, grid.Δyᶠᶜᵃ), adapt(to, grid.Δyᶜᶠᵃ), adapt(to, grid.Δyᶠᶠᵃ),
         adapt(to, grid.Azᶜᶜᵃ), adapt(to, grid.Azᶠᶜᵃ), adapt(to, grid.Azᶜᶠᵃ), adapt(to, grid.Azᶠᶠᵃ),
+        adapt(to, grid.cosθᶜᶜᵃ), adapt(to, grid.sinθᶜᶜᵃ),
         adapt(to, grid.radius), adapt(to, grid.conformal_mapping))
 end
 
@@ -379,6 +503,9 @@ function OrthogonalSphericalShellGrid(arch::AbstractArchitecture = CPU(),
     Azᶜᶠᵃ = new_metric(FT, arch, (Center, Face),   h_topo, h_size, h_halo)
     Azᶠᶠᵃ = new_metric(FT, arch, (Face,   Face),   h_topo, h_size, h_halo)
 
+    cosθᶜᶜᵃ = new_metric(FT, arch, (Center, Center), h_topo, h_size, h_halo)
+    sinθᶜᶜᵃ = new_metric(FT, arch, (Center, Center), h_topo, h_size, h_halo)
+
     Lz, z = generate_coordinate(FT, topology, size, halo, z, :z, 3, arch)
 
     coordinate_arrays = (λᶜᶜᵃ, λᶠᶜᵃ, λᶜᶠᵃ, λᶠᶠᵃ,
@@ -397,6 +524,7 @@ function OrthogonalSphericalShellGrid(arch::AbstractArchitecture = CPU(),
                                                     convert(FT, Lz),
                                                     coordinate_arrays...,
                                                     metric_arrays...,
+                                                    cosθᶜᶜᵃ, sinθᶜᶜᵃ,
                                                     convert(FT, radius),
                                                     conformal_mapping)
 

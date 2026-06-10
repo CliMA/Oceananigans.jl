@@ -109,6 +109,7 @@ function RotatedLatitudeLongitudeGrid(arch::AbstractArchitecture = CPU(),
     conformal_mapping = LatitudeLongitudeRotation(north_pole)
     grid = OrthogonalSphericalShellGrid(arch, FT; size, z, radius, halo, topology, conformal_mapping)
     rotate_metrics!(grid, source_grid)
+    Grids.precompute_rotation_angles!(grid)
 
     return grid
 end

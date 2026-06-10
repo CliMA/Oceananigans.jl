@@ -1,7 +1,8 @@
-using Oceananigans.BoundaryConditions: UPivotZipperBoundaryCondition, FPivotZipperBoundaryCondition, NoFluxBoundaryCondition
-using Oceananigans.Grids: Grids, Bounded, Flat, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid,
-    architecture, cpu_face_constructor_z, validate_dimension_specification,
-    AbstractTopology, RightCenterFolded, RightFaceFolded, new_data, topology
+using Oceananigans.BoundaryConditions: UPivotZipperBoundaryCondition, FPivotZipperBoundaryCondition,
+                                       NoFluxBoundaryCondition
+using Oceananigans.Grids: Grids, Bounded, Flat, OrthogonalSphericalShellGrid, Periodic,
+                          RectilinearGrid, architecture, cpu_face_constructor_z, validate_dimension_specification,
+                          AbstractTopology, RightCenterFolded, RightFaceFolded, new_data, topology
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 """
@@ -311,6 +312,9 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
     Azᶠᶜᵃ = deepcopy(dropdims(Azᶠᶜᵃ.data, dims=3))
     Azᶜᶜᵃ = deepcopy(dropdims(Azᶜᶜᵃ.data, dims=3))
 
+    cosθᶜᶜᵃ = similar(Δxᶜᶜᵃ)
+    sinθᶜᶜᵃ = similar(Δxᶜᶜᵃ)
+
     # Final grid with correct metrics
     # TODO: remove `on_architecture(arch, ...)` when we shift grid construction to GPU
     grid = OrthogonalSphericalShellGrid{topology...}(arch,
@@ -338,8 +342,12 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
                                                      on_architecture(arch, map(FT, Azᶠᶜᵃ)),
                                                      on_architecture(arch, map(FT, Azᶜᶠᵃ)),
                                                      on_architecture(arch, map(FT, Azᶠᶠᵃ)),
+                                                     on_architecture(arch, map(FT, cosθᶜᶜᵃ)),
+                                                     on_architecture(arch, map(FT, sinθᶜᶜᵃ)),
                                                      convert(FT, radius),
                                                      Tripolar(north_poles_latitude, first_pole_longitude, southernmost_latitude, fold_topology))
+
+    Grids.precompute_rotation_angles!(grid)
 
     return grid
 end
@@ -386,15 +394,15 @@ function Grids.with_halo(new_halo, old_grid::TripolarGrid)
                                   top    = nothing,
                                   bottom = nothing)
 
-    λᶜᶜᵃ  = transfer_horizontal_field(old_grid.λᶜᶜᵃ,  helper_grid, bcs, Center, Center)
-    λᶠᶜᵃ  = transfer_horizontal_field(old_grid.λᶠᶜᵃ,  helper_grid, bcs, Face,   Center)
-    λᶜᶠᵃ  = transfer_horizontal_field(old_grid.λᶜᶠᵃ,  helper_grid, bcs, Center, Face)
-    λᶠᶠᵃ  = transfer_horizontal_field(old_grid.λᶠᶠᵃ,  helper_grid, bcs, Face,   Face)
+    λᶜᶜᵃ = transfer_horizontal_field(old_grid.λᶜᶜᵃ, helper_grid, bcs, Center, Center)
+    λᶠᶜᵃ = transfer_horizontal_field(old_grid.λᶠᶜᵃ, helper_grid, bcs, Face,   Center)
+    λᶜᶠᵃ = transfer_horizontal_field(old_grid.λᶜᶠᵃ, helper_grid, bcs, Center, Face)
+    λᶠᶠᵃ = transfer_horizontal_field(old_grid.λᶠᶠᵃ, helper_grid, bcs, Face,   Face)
 
-    φᶜᶜᵃ  = transfer_horizontal_field(old_grid.φᶜᶜᵃ,  helper_grid, bcs, Center, Center)
-    φᶠᶜᵃ  = transfer_horizontal_field(old_grid.φᶠᶜᵃ,  helper_grid, bcs, Face,   Center)
-    φᶜᶠᵃ  = transfer_horizontal_field(old_grid.φᶜᶠᵃ,  helper_grid, bcs, Center, Face)
-    φᶠᶠᵃ  = transfer_horizontal_field(old_grid.φᶠᶠᵃ,  helper_grid, bcs, Face,   Face)
+    φᶜᶜᵃ = transfer_horizontal_field(old_grid.φᶜᶜᵃ, helper_grid, bcs, Center, Center)
+    φᶠᶜᵃ = transfer_horizontal_field(old_grid.φᶠᶜᵃ, helper_grid, bcs, Face,   Center)
+    φᶜᶠᵃ = transfer_horizontal_field(old_grid.φᶜᶠᵃ, helper_grid, bcs, Center, Face)
+    φᶠᶠᵃ = transfer_horizontal_field(old_grid.φᶠᶠᵃ, helper_grid, bcs, Face,   Face)
 
     Δxᶜᶜᵃ = transfer_horizontal_field(old_grid.Δxᶜᶜᵃ, helper_grid, bcs, Center, Center)
     Δxᶠᶜᵃ = transfer_horizontal_field(old_grid.Δxᶠᶜᵃ, helper_grid, bcs, Face,   Center)
@@ -410,6 +418,9 @@ function Grids.with_halo(new_halo, old_grid::TripolarGrid)
     Azᶠᶜᵃ = transfer_horizontal_field(old_grid.Azᶠᶜᵃ, helper_grid, bcs, Face,   Center)
     Azᶜᶠᵃ = transfer_horizontal_field(old_grid.Azᶜᶠᵃ, helper_grid, bcs, Center, Face)
     Azᶠᶠᵃ = transfer_horizontal_field(old_grid.Azᶠᶠᵃ, helper_grid, bcs, Face,   Face)
+
+    cosθᶜᶜᵃ = transfer_horizontal_field(old_grid.cosθᶜᶜᵃ, helper_grid, bcs, Center, Center)
+    sinθᶜᶜᵃ = transfer_horizontal_field(old_grid.sinθᶜᶜᵃ, helper_grid, bcs, Center, Center)
 
     new_grid = OrthogonalSphericalShellGrid{TX, TY, TZ}(arch,
                                                          Nx, Ny, Nz,
@@ -436,8 +447,12 @@ function Grids.with_halo(new_halo, old_grid::TripolarGrid)
                                                          on_architecture(arch, Azᶠᶜᵃ),
                                                          on_architecture(arch, Azᶜᶠᵃ),
                                                          on_architecture(arch, Azᶠᶠᵃ),
+                                                         on_architecture(arch, cosθᶜᶜᵃ),
+                                                         on_architecture(arch, sinθᶜᶜᵃ),
                                                          convert(FT, old_grid.radius),
                                                          old_grid.conformal_mapping)
+
+    Grids.precompute_rotation_angles!(new_grid)
 
     return new_grid
 end
