@@ -293,6 +293,49 @@ conditional_∫c[1, 1, 1] ≈ π * grid.radius^2 # area of spherical zone with 0
 true
 ```
 
+## Histogram operation
+
+`Histogram` constructs an `AbstractOperation` that accumulates a weighted histogram from field operand(s).
+Like other operations, it is typically materialized with `Field(Histogram(...))` and can be saved with
+standard output writers.
+For example, `JLD2Writer(model, (; histogram = Field(Histogram(...))), ...)` writes time series of histogram fields.
+
+Supported capabilities:
+- `method` can be `:sum`, `:integral`, or `:average`.
+- `dims` can be any subset of `(1, 2, 3)` (or `:` for all dimensions).
+- 2D histograms use two field operands and two edge vectors in a `NamedTuple`.
+- 1D histograms use one field operand and one edge vector (or one-entry `NamedTuple`).
+
+```jldoctest operations_histogram
+using Oceananigans
+
+grid = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+a = CenterField(grid)
+b = CenterField(grid)
+
+set!(a, (x, y, z) -> x + z)
+set!(b, (x, y, z) -> y - z)
+
+edges_a = collect(range(0.0, stop=2.0, length=5))
+edges_b = collect(range(-1.0, stop=2.0, length=7))
+
+h = Field(Histogram(a, b; bins=(a=edges_a, b=edges_b), weights=:count))
+size(h)
+
+# output
+(4, 6, 1)
+```
+
+`Histogram` also supports partial-dimension reductions and 1D binning:
+
+```jldoctest operations_histogram
+h1d = Field(Histogram(a; bins=edges_a, weights=:count, dims=(1, 2), method=:integral))
+size(h1d)
+
+# output
+(4, 4, 1)
+```
+
 Another way to do the above is to provide the `condition` keyword argument with an array of booleans.
 
 ```jldoctest operations_avg_int
