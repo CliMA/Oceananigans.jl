@@ -207,11 +207,11 @@ function fill_metric_halo_regions_x!(metric, ℓx, ℓy, tx::AbstractTopology, t
         for j in 1:Ny⁺
             # fill west halos
             for i in 0:-1:-Hx+1
-                metric[i, j] = metric[Nx+i, j]
+                @allowscalar metric[i, j] = metric[Nx+i, j]
             end
             # fill east halos
             for i in Nx⁺+1:Nx⁺+Hx
-                metric[i, j] = metric[i-Nx, j]
+                @allowscalar metric[i, j] = metric[i-Nx, j]
             end
         end
     end
@@ -255,11 +255,11 @@ function fill_metric_halo_regions_y!(metric, ℓx, ℓy, tx, ty::AbstractTopolog
         for i in 1:Nx⁺
             # fill south halos
             for j in 0:-1:-Hy+1
-                metric[i, j] = metric[i, Ny+j]
+                @allowscalar metric[i, j] = metric[i, Ny+j]
             end
             # fill north halos
             for j in Ny⁺+1:Ny⁺+Hy
-                metric[i, j] = metric[i, j-Ny]
+                @allowscalar metric[i, j] = metric[i, j-Ny]
             end
         end
     end
@@ -281,16 +281,16 @@ function fill_metric_halo_corner_regions!(metric, ℓx, ℓy, tx, ty, Nx, Ny, Hx
 
     @inbounds begin
         for j in 0:-1:-Hy+1, i in 0:-1:-Hx+1
-            metric[i, j] = (metric[i+1, j] + metric[i, j+1]) / 2
+            @allowscalar metric[i, j] = (metric[i+1, j] + metric[i, j+1]) / 2
         end
         for j in Ny⁺+1:Ny⁺+Hy, i in 0:-1:-Hx+1
-            metric[i, j] = (metric[i+1, j] + metric[i, j-1]) / 2
+            @allowscalar metric[i, j] = (metric[i+1, j] + metric[i, j-1]) / 2
         end
         for j in 0:-1:-Hy+1, i in Nx⁺+1:Nx⁺+Hx
-            metric[i, j] = (metric[i-1, j] + metric[i, j+1]) / 2
+            @allowscalar metric[i, j] = (metric[i-1, j] + metric[i, j+1]) / 2
         end
         for j in Ny⁺+1:Ny⁺+Hy, i in Nx⁺+1:Nx⁺+Hx
-            metric[i, j] = (metric[i-1, j] + metric[i, j-1]) / 2
+            @allowscalar metric[i, j] = (metric[i-1, j] + metric[i, j-1]) / 2
         end
     end
 
