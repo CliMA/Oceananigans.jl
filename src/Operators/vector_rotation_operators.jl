@@ -77,12 +77,8 @@ the grid's intrinsic coordinates in order to match the grid's extrinsic coordina
     Rcosθ =   (Rcosθ₁ + Rcosθ₂) / 2
     Rsinθ = - (deg2rad(φᶠᶠᵃ⁺⁺ - φᶠᶠᵃ⁻⁺) / Δxᶜᶠᵃ⁺ + deg2rad(φᶠᶠᵃ⁺⁻ - φᶠᶠᵃ⁻⁻) / Δxᶜᶠᵃ⁻) / 2
 
-    # Normalization for the rotation angles
-    R = sqrt(Rcosθ^2 + Rsinθ^2)
-
-    cosθ, sinθ = Rcosθ / R, Rsinθ / R
-
-    θ = atan(sinθ / cosθ)
+    θ = atan(Rsinθ, Rcosθ)
+    
     return θ
 end
 
