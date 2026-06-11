@@ -1,4 +1,4 @@
-using Oceananigans.Utils: Utils, shortsummary, construct_regionally, prettysummary
+using Oceananigans.Utils: shortsummary, construct_regionally, prettysummary
 
 """
     KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid, arguments...)
@@ -17,6 +17,10 @@ If the location contains `Nothing`, `kernel_function` may also omit the indices 
 ```julia
 kernel_function(i, j, grid, arguments...)
 ```
+
+The full three-index call is always preferred when it is applicable, so a function that
+already accepts `(i, j, k, grid, arguments...)` keeps that behavior at every location; the
+reduced call is used only when the full one is not applicable.
 
 Note that `compute!(kfo::KernelFunctionOperation)` calls `compute!` on all `kfo.arguments`.
 
@@ -86,38 +90,24 @@ end
 # Convenience outer constructor: splat arguments into a tuple.
 # T defaults to eltype(grid) via the inner constructor.
 function KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid, arguments...) where {LX, LY, LZ}
-    kernel_function = possibly_reduced_kernel_function(kernel_function, (LX, LY, LZ), arguments)
     return KernelFunctionOperation{LX, LY, LZ}(kernel_function, grid, tuple(arguments...))
 end
 
-"""
-    ReducedKernelFunction{D, F}
-
-Wrap a kernel function defined at a reduced location, forwarding only the indices of the non-`Nothing` dimensions `D`, 
-so that `kernel_function(i, j, k, grid, args...)` calls, e.g. for `D = (1, 2)`, `kernel_function(i, j, grid, args...)`.
-"""
-struct ReducedKernelFunction{Dims, F}
-    kernel_function :: F
-    ReducedKernelFunction{Dims}(kernel_function::F) where {Dims, F} = new{Dims, F}(kernel_function)
-end
-
-@inline (rkf::ReducedKernelFunction{Dims})(i, j, k, grid, arguments...) where Dims = rkf.kernel_function(map(d -> (i, j, k)[d], Dims)..., grid, arguments...)
-
-function possibly_reduced_kernel_function(kernel_function, location, arguments)
-    kept_dimensions = Tuple(d for d in 1:3 if location[d] !== Nothing)
-    if length(kept_dimensions) == 3
-        return kernel_function
+# `getindex` calls the kernel function with the full `(i, j, k, grid, args...)` signature
+# whenever that call is applicable. At a reduced location it otherwise drops the indices of
+# the `Nothing` dimensions, calling e.g. `kernel_function(i, j, grid, args...)` 
+@inline function Base.getindex(κ::KernelFunctionOperation{LX, LY, LZ}, i, j, k) where {LX, LY, LZ}
+    if applicable(κ.kernel_function, i, j, k, κ.grid, κ.arguments...)
+        return κ.kernel_function(i, j, k, κ.grid, κ.arguments...)
+    else
+        reduced_indices = (kept_index(LX, i)..., kept_index(LY, j)..., kept_index(LZ, k)...)
+        return κ.kernel_function(reduced_indices..., κ.grid, κ.arguments...)
     end
-    reduced_parameter_count = length(kept_dimensions) + 1 + length(arguments)
-    has_reduced_method = any(m -> !m.isva && m.nargs - 1 == reduced_parameter_count, methods(kernel_function))
-    return has_reduced_method ? ReducedKernelFunction{kept_dimensions}(kernel_function) : kernel_function
 end
 
-Adapt.adapt_structure(to, rkf::ReducedKernelFunction{Dims}) where Dims = ReducedKernelFunction{Dims}(Adapt.adapt(to, rkf.kernel_function))
+@inline kept_index(::Type{Nothing}, index) = ()
+@inline kept_index(::Type, index) = (index,)
 
-Utils.prettysummary(rkf::ReducedKernelFunction) = prettysummary(rkf.kernel_function)
-
-@inline Base.getindex(κ::KernelFunctionOperation, i, j, k) = κ.kernel_function(i, j, k, κ.grid, κ.arguments...)
 indices(κ::KernelFunctionOperation) = construct_regionally(intersect_indices, location(κ), κ.arguments...)
 compute_at!(κ::KernelFunctionOperation, time) = Tuple(compute_at!(d, time) for d in κ.arguments)
 
