@@ -182,7 +182,7 @@ other than the moment `WallTimeInterval` is constructed.
 """
 function WallTimeInterval(interval; start_time = time_ns() * 1e-9)
     FT = Oceananigans.defaults.FloatType
-    return WallTimeInterval(convert(FT, interval), convert(FT, interval))
+    return WallTimeInterval(convert(FT, interval), convert(FT, start_time))
 end
 
 function (schedule::WallTimeInterval)(model)

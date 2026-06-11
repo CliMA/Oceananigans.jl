@@ -389,11 +389,11 @@ end
 
 Manually checkpoint `simulation` state to a JLD2 file.
 
-If `simulation.output_writers` contains a `Checkpointer`, it will be used
-(respecting its `dir`, `prefix`, `cleanup`, and `verbose` settings).
-
-Otherwise, the checkpoint is written to `filepath`, or to
-`"checkpoint_iteration{N}.jld2"` in the current directory if `filepath` is not specified.
+If `filepath` is provided, the checkpoint is written there. Otherwise, if
+`simulation.output_writers` contains a single `Checkpointer`, it is used
+(respecting its `dir`, `prefix`, `cleanup`, and `verbose` settings); if no
+`filepath` is given and there is no single `Checkpointer`, the checkpoint is
+written to `"checkpoint_iteration{N}.jld2"` in the current directory.
 """
 function checkpoint(simulation; filepath=nothing)
     checkpointers = filter(w -> w isa Checkpointer, collect(values(simulation.output_writers)))
