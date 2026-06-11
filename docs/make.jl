@@ -20,10 +20,9 @@ Distributed.addprocs(2)
     using Oceananigans.OutputWriters
     using Oceananigans.TimeSteppers
     using Oceananigans.TurbulenceClosures
-    using Oceananigans.BoundaryConditions: Flux, Value, Gradient, Open
+    using Oceananigans.BoundaryConditions: Flux, Value, Gradient, NormalFlow
 
     using NCDatasets
-    using XESMF
 
     bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
     bib = CitationBibliography(bib_filepath, style=:authoryear)
@@ -235,9 +234,8 @@ DocMeta.setdocmeta!(Oceananigans, :DocTestSetup, :(using Oceananigans); recursiv
 
 modules = Module[]
 OceananigansNCDatasetsExt = isdefined(Base, :get_extension) ? Base.get_extension(Oceananigans, :OceananigansNCDatasetsExt) : Oceananigans.OceananigansNCDatasetsExt
-OceananigansXESMFExt = isdefined(Base, :get_extension) ? Base.get_extension(Oceananigans, :OceananigansXESMFExt) : Oceananigans.OceananigansXESMFExt
 
-for m in [Oceananigans, XESMF, OceananigansNCDatasetsExt, OceananigansXESMFExt]
+for m in [Oceananigans, OceananigansNCDatasetsExt]
     if !isnothing(m)
         push!(modules, m)
     end

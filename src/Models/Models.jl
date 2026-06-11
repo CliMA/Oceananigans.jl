@@ -11,7 +11,9 @@ export
     seawater_density,
     BulkDrag, BulkDragFunction, BulkDragBoundaryCondition,
     XDirectionBulkDragFunction, YDirectionBulkDragFunction, ZDirectionBulkDragFunction,
-    LinearFormulation, QuadraticFormulation
+    LinearFormulation, QuadraticFormulation,
+    BoundaryAdjacentMean, boundary_total_area
+
 export generate_condition_maps, lookup_condition_map, maybe_launch_split_tendency_kernels!, InteriorBoundarySet
 export buffer_tendency_kernel_parameters, buffer_parameters, distributed_region_kernel_parameters
 
@@ -100,6 +102,17 @@ include("interleave_communication_and_computation.jl")
 
 # Implementation of condition map generation
 include("condition_maps.jl")
+# Shared open-boundary transport building blocks: per-boundary integrals,
+# initialization, and correction helpers. NonhydrostaticModel composes these
+# into `enforce_net_zero_transport!` to enforce the incompressible-pressure
+# solvability condition; external anelastic models can compose their own
+# variant for density-weighted momentum (ρu, ρv, ρw).
+include("boundary_transport.jl")
+
+# Boundary mean / area utilities used by model submodules. Must come after
+# `boundary_transport.jl` because `boundary_total_area` dispatches to the
+# `get_*_area` helpers defined there.
+include("boundary_mean.jl")
 
 #####
 ##### All the code
@@ -227,7 +240,6 @@ include("output_attributes.jl")
 # Implementation of diagnostics applicable to both `NonhydrostaticModel` and `HydrostaticFreeSurfaceModel`
 include("seawater_density.jl")
 include("buoyancy_operation.jl")
-include("boundary_mean.jl")
 include("boundary_condition_operation.jl")
 include("forcing_operation.jl")
 include("set_model.jl")

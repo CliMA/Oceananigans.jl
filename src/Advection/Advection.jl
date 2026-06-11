@@ -14,6 +14,9 @@ export
     Centered, UpwindBiased, WENO,
     VectorInvariant, WENOVectorInvariant,
     FluxFormAdvection,
+    AdaptiveImplicitVerticalAdvection,
+    needs_implicit_solver,
+    update_advection_timestep!,
     EnergyConserving,
     EnstrophyConserving,
     fixed_order_scheme
@@ -32,9 +35,9 @@ using Oceananigans.Operators: flux_div_xyᶜᶜᶜ, ∂t_σ, Ax_qᶠᶜᶜ, Ax�
     Δy⁻¹ᶜᶠᶜ, δxᶜᵃᵃ, δxᶠᵃᵃ, δyᵃᶜᵃ, δyᵃᶠᵃ, δzᵃᵃᶜ, ℑxᶜᵃᵃ, ℑyᵃᶜᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ
 using Base: Callable
 
-abstract type AbstractAdvectionScheme{B, FT} end
-abstract type AbstractCenteredAdvectionScheme{B, FT} <: AbstractAdvectionScheme{B, FT} end
-abstract type AbstractUpwindBiasedAdvectionScheme{B, FT} <: AbstractAdvectionScheme{B, FT} end
+abstract type AbstractAdvectionScheme{B, FT, TD} end
+abstract type AbstractCenteredAdvectionScheme{B, FT, TD} <: AbstractAdvectionScheme{B, FT, TD} end
+abstract type AbstractUpwindBiasedAdvectionScheme{B, FT, TD} <: AbstractAdvectionScheme{B, FT, TD} end
 
 # `advection_buffers` specifies the list of buffers for which advection schemes
 # are constructed via metaprogramming. (The `advection_buffer` is the width of
@@ -54,6 +57,7 @@ const advection_buffers = [1, 2, 3, 4, 5, 6]
 
 struct DecreasingOrderAdvectionScheme end
 
+include("time_discretization.jl")
 include("centered_advective_fluxes.jl")
 include("upwind_biased_advective_fluxes.jl")
 
@@ -70,6 +74,8 @@ include("vector_invariant_self_upwinding.jl")
 include("vector_invariant_cross_upwinding.jl")
 include("flux_form_advection.jl")
 include("fixed_order_schemes.jl")
+include("adaptive_implicit_vertical_advection.jl")
+include("implicit_vertical_advection.jl")
 
 include("topologically_conditional_interpolation.jl")
 include("flat_advective_fluxes.jl")
