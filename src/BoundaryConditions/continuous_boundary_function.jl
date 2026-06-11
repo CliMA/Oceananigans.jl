@@ -30,14 +30,14 @@ interpolation_code(::BoundaryAdjacent, ::Nothing) = :ᵃ
 interpolation_code(::Nothing, ::BoundaryAdjacent) = :ᵃ
 
 """
-    struct ContinuousBoundaryFunction{X, Y, Z, I, F, P, D, N, ℑ} <: Function
+    struct ContinuousBoundaryFunction{X, Y, Z, S, F, P, D, N, ℑ} <: Function
 
 A wrapper for the user-defined boundary condition function `func` at location
-`X, Y, Z`. `I` denotes the boundary-normal index (`I=1` at western boundaries,
-`I=grid.Nx` at eastern boundaries, etc). `F, P, D, N, ℑ` are, respectively, the
-user-defined function, parameters, field dependencies, indices of the field dependencies
-in `model_fields`, and interpolation operators for interpolating `model_fields` to the
-location at which the boundary condition is applied.
+`X, Y, Z`. `S` denotes the boundary side (`LeftBoundary` or `RightBoundary`).
+`F, P, D, N, ℑ` are, respectively, the user-defined function, parameters, field
+dependencies, indices of the field dependencies in `model_fields`, and interpolation
+operators for interpolating `model_fields` to the location at which the boundary
+condition is applied.
 """
 struct ContinuousBoundaryFunction{X, Y, Z, S, F, P, D, N, ℑ}
                           func :: F
