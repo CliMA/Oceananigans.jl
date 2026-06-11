@@ -78,7 +78,7 @@ the grid's intrinsic coordinates in order to match the grid's extrinsic coordina
     Rsinθ = - (deg2rad(φᶠᶠᵃ⁺⁺ - φᶠᶠᵃ⁻⁺) / Δxᶜᶠᵃ⁺ + deg2rad(φᶠᶠᵃ⁺⁻ - φᶠᶠᵃ⁻⁻) / Δxᶜᶠᵃ⁻) / 2
 
     θ = atan(Rsinθ, Rcosθ)
-    
+
     return θ
 end
 
