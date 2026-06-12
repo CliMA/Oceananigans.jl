@@ -55,8 +55,10 @@ function nccl_alltoall!(buffer, counts, nccl_comm)
     nranks == 1 && return nothing
 
     T = eltype(buffer.send)
+    # NCCL has no complex datatype: send Complex{R} as 2× the real type R (count already doubled
+    # above). ncclDataType_t(::Type{Complex}) is undefined, so map to the underlying real type.
     nccl_count = T <: Complex ? 2 * count : count
-    datatype = NCCL.ncclDataType_t(T)
+    datatype = NCCL.ncclDataType_t(T <: Complex ? real(T) : T)
     stream = CUDA.stream()
 
     NCCL.groupStart()
