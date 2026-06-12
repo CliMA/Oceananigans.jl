@@ -38,21 +38,25 @@ The order of operations for explicit free surfaces is:
     compute_free_surface_tendency!(grid, model, free_surface)
     step_free_surface!(free_surface, model, model.timestepper, Δτ)
 
-    # Compute z-dependent transport velocities
-    compute_transport_velocities!(model, free_surface)
+    @apply_regionally begin
+        compute_transport_velocities!(model, free_surface)
+        rk_substep_velocities!(model.velocities, model, Δτ)
+        mask_immersed_horizontal_velocities!(model.velocities)
+    end
+
+    # Mask and fill velocity halos
+    u, v, _ = model.velocities
+    fill_halo_regions!((u, v), model.clock, fields(model); async=true)
 
     @apply_regionally begin
         # compute tracer tendencies
         compute_tracer_tendencies!(model)
 
-        # Advance grid and velocities
+        # Advance grid
         rk_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
-        rk_substep_velocities!(model.velocities, model, Δτ)
 
         # Correct for the updated barotropic mode
         correct_barotropic_mode!(model, Δτ)
-
-        # TODO: fill halo regions for horizontal velocities should be here before the tracer update.
         rk_substep_tracers!(model.tracers, model, Δτ)
     end
 
@@ -65,11 +69,11 @@ end
 Split Runge-Kutta substep for `HydrostaticFreeSurfaceModel` with `ImplicitFreeSurface`.
 
 For implicit free surfaces, a predictor-corrector approach is used:
-1. Compute momentum and tracer tendencies
-2. Advance grid scaling (for z-star coordinates)
-3. Advance velocities (predictor step, ignoring free surface)
-4. Solve implicit free surface equation
-5. Correct velocities for the updated barotropic pressure gradient
+1. Advance velocities (predictor step, ignoring free surface)
+2. Enforce targeted open boundary transports on the predictor velocity
+3. Solve implicit free surface equation
+4. Correct velocities for the updated barotropic pressure gradient
+5. Advance grid scaling (for z-star coordinates)
 6. Advance tracers
 """
 @inline function rk_substep!(model, free_surface::ImplicitFreeSurface, grid, Δτ, callbacks)
@@ -85,18 +89,31 @@ For implicit free surfaces, a predictor-corrector approach is used:
         rk_substep_velocities!(model.velocities, model, Δτ)
     end
 
+    # Enforce targeted open boundary transports on the predictor velocity, before the
+    # free-surface solve, so the implicit free surface is solved consistently with the
+    # prescribed boundary transport.
+    @apply_regionally enforce_targeted_open_boundary_transport!(model, model.boundary_transport)
+
     # Advancing free surface in preparation for the correction step
     step_free_surface!(free_surface, model, model.timestepper, Δτ)
 
-    # Correct for the updated barotropic mode
-    @apply_regionally correct_barotropic_mode!(model, Δτ)
+    @apply_regionally begin
+        correct_barotropic_mode!(model, Δτ)
+        mask_immersed_horizontal_velocities!(model.velocities)
+    end
 
-    compute_transport_velocities!(model, free_surface)
+    # Mask and fill velocity halos
+    u, v, _ = model.velocities
+    fill_halo_regions!((u, v), model.clock, fields(model))
 
     @apply_regionally begin
+        compute_transport_velocities!(model, free_surface)
         compute_tracer_tendencies!(model)
 
+        # Advance grid (z-star scaling)
         rk_substep_grid!(model.grid, model, model.vertical_coordinate, Δτ)
+
+        # Finally step tracers
         rk_substep_tracers!(model.tracers, model, Δτ)
     end
 
@@ -142,7 +159,7 @@ function rk_substep_velocities!(velocities, model, Δt)
         velocity_field = velocities[name]
 
         launch!(architecture(grid), grid, :xyz,
-                _rk_substep_field!, velocity_field, convert(FT, Δt), Gⁿ, Ψ⁻)
+                _rk_substep_field!, velocity_field, convert(FT, Δt), Gⁿ, Ψ⁻; exclude_periphery=true)
 
         implicit_step!(velocity_field,
                        model.timestepper.implicit_solver,
@@ -151,7 +168,9 @@ function rk_substep_velocities!(velocities, model, Δt)
                        nothing,
                        model.clock,
                        fields(model),
-                       Δt)
+                       Δt,
+                       model.advection.momentum,
+                       model.velocities)
     end
 
     return nothing
@@ -196,6 +215,7 @@ function rk_substep_tracers!(tracers, model, Δt)
             launch!(architecture(grid), grid, :xyz,
                     _rk_substep_tracer_field!, c, grid, convert(FT, Δt), Gⁿ, Ψ⁻)
 
+            @inbounds c_advection = model.advection[tracer_name]
             implicit_step!(c,
                            model.timestepper.implicit_solver,
                            closure,
@@ -203,7 +223,9 @@ function rk_substep_tracers!(tracers, model, Δt)
                            Val(tracer_index),
                            model.clock,
                            fields(model),
-                           Δt)
+                           Δt,
+                           c_advection,
+                           model.transport_velocities)
         end
     end
 

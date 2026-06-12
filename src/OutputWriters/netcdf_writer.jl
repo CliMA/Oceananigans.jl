@@ -4,8 +4,32 @@
 ##### NetCDFWriter functionality is implemented in ext/OceananigansNCDatasetsExt
 #####
 
-using Oceananigans.Grids: topology, Flat, StaticVerticalDiscretization
+using Oceananigans.Grids: topology, Flat, StaticVerticalDiscretization, MutableVerticalDiscretization, AbstractVerticalCoordinate
+using Oceananigans.OrthogonalSphericalShellGrids: OrthogonalSphericalShellGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+
+# Short aliases for compact dispatch in name-generator method tables.
+const OSSG = OrthogonalSphericalShellGrid
+const SVD  = StaticVerticalDiscretization
+const MVD  = MutableVerticalDiscretization
+
+#####
+##### Vertical coordinate naming
+#####
+#
+# The 1D vertical coordinate variable name written to NetCDF depends on the kind of vertical
+# discretization:
+#   - `StaticVerticalDiscretization`: the reference and physical vertical coordinates coincide,
+#     so we use "z".
+#   - `MutableVerticalDiscretization` (z-star, σ-coordinates): the saved 1D coordinate is the
+#     reference (Lagrangian) coordinate; the physical `z = z(r, η, …)` is reconstructible from
+#     `r` and the time-varying free surface `η`. We use "r" for the 1D reference coordinate.
+#
+
+vertical_coordinate_name(::SVD) = "z"
+vertical_coordinate_name(::MVD) = "r"
+vertical_coordinate_name(grid::AbstractGrid) = vertical_coordinate_name(grid.z)
+vertical_coordinate_name(grid::ImmersedBoundaryGrid) = vertical_coordinate_name(grid.underlying_grid)
 
 #####
 ##### Dimension name generators
@@ -35,7 +59,7 @@ function suffixed_dim_name_generator(var_name, grid::AbstractGrid{FT, TX, TY, TZ
     end
 end
 
-suffixed_dim_name_generator(var_name, ::StaticVerticalDiscretization, LX, LY, LZ, dim::Val{:z}; connector="_", location_letters) = var_name * connector * location_letters
+suffixed_dim_name_generator(var_name, ::AbstractVerticalCoordinate, LX, LY, LZ, dim::Val{:z}; connector="_", location_letters) = var_name * connector * location_letters
 
 loc2letter(::Face, full=true) = "f"
 loc2letter(::Center, full=true) = "c"
@@ -54,9 +78,12 @@ trilocation_location_string(::RectilinearGrid, LX, LY, LZ, ::Val{:y}) = "a" * lo
 trilocation_location_string(::LatitudeLongitudeGrid, LX, LY, LZ, ::Val{:x}) = loc2letter(LX) * loc2letter(LY) * "a"
 trilocation_location_string(::LatitudeLongitudeGrid, LX, LY, LZ, ::Val{:y}) = loc2letter(LX) * loc2letter(LY) * "a"
 
-trilocation_location_string(grid::AbstractGrid,             LX, LY, LZ, dim::Val{:z}) = trilocation_location_string(grid.z, LX, LY, LZ, dim)
-trilocation_location_string(::StaticVerticalDiscretization, LX, LY, LZ, dim::Val{:z}) = "aa" * loc2letter(LZ)
-trilocation_location_string(grid,                           LX, LY, LZ, dim)          = loc2letter(LX) * loc2letter(LY) * loc2letter(LZ)
+trilocation_location_string(::OSSG, LX, LY, LZ, ::Val{:x}) = loc2letter(LX) * loc2letter(LY) * "a"
+trilocation_location_string(::OSSG, LX, LY, LZ, ::Val{:y}) = loc2letter(LX) * loc2letter(LY) * "a"
+
+trilocation_location_string(grid::AbstractGrid,         LX, LY, LZ, dim::Val{:z}) = trilocation_location_string(grid.z, LX, LY, LZ, dim)
+trilocation_location_string(::AbstractVerticalCoordinate, LX, LY, LZ, dim::Val{:z}) = "aa" * loc2letter(LZ)
+trilocation_location_string(grid,                       LX, LY, LZ, dim)          = loc2letter(LX) * loc2letter(LY) * loc2letter(LZ)
 
 trilocation_dim_name(var_name, grid, LX, LY, LZ, dim) =
     suffixed_dim_name_generator(var_name, grid, LX, LY, LZ, dim, connector="_", location_letters=trilocation_location_string(grid, LX, LY, LZ, dim))
@@ -66,8 +93,12 @@ trilocation_dim_name(var_name, grid::ImmersedBoundaryGrid, args...) = trilocatio
 dimension_name_generator_free_surface(dimension_name_generator, var_name, grid, LX, LY, LZ, dim) = dimension_name_generator(var_name, grid, LX, LY, LZ, dim)
 dimension_name_generator_free_surface(dimension_name_generator, var_name, grid, LX, LY, LZ, dim::Val{:z}) = dimension_name_generator(var_name, grid, LX, LY, LZ, dim) * "_displacement"
 
-mutable struct NetCDFWriter{G, D, O, T, A, FS, DN, DT} <: AbstractOutputWriter
-    grid :: G
+add_grid_suffix(name, grid_index) = isempty(name) ? name : name * "_grid$(grid_index)"
+add_grid_suffix(name, ::Nothing) = name
+
+mutable struct NetCDFWriter{G, GM, D, O, T, A, FS, DN, DT} <: AbstractOutputWriter
+    grids :: G
+    output_grid_map :: GM
     filepath :: String
     dataset :: D
     outputs :: O
@@ -93,7 +124,6 @@ end
     NetCDFWriter(model::AbstractModel, outputs;
                  filename,
                  schedule,
-                 grid = model.grid,
                  dir = ".",
                  array_type = Array{Float32},
                  indices = (:, :, :),
@@ -148,9 +178,6 @@ Required keyword arguments
 
 Optional keyword arguments
 ==========================
-
-- `grid`: The grid associated with `outputs`. Default: `model.grid`.
-          Use this to specify a different grid when outputs are interpolated or regridded.
 
 - `dir`: Directory to save output to. Default: `"."`.
 
@@ -236,7 +263,7 @@ NetCDFWriter scheduled on TimeInterval(1 minute):
 ├── 2 outputs: (c, u)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
-└── file size: 32.7 KiB
+└── file size: 32.8 KiB
 ```
 
 ```jldoctest netcdf1
@@ -252,7 +279,7 @@ NetCDFWriter scheduled on TimeInterval(1 minute):
 ├── 2 outputs: (c, u)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
-└── file size: 32.6 KiB
+└── file size: 32.8 KiB
 ```
 
 ```jldoctest netcdf1
@@ -269,7 +296,7 @@ NetCDFWriter scheduled on TimeInterval(1 minute):
 ├── 2 outputs: (c, u) averaged on AveragedTimeInterval(window=20 seconds, stride=1, interval=1 minute)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
-└── file size: 33.9 KiB
+└── file size: 34.4 KiB
 ```
 
 `NetCDFWriter` also accepts output functions that write scalars and arrays to disk,
@@ -320,16 +347,15 @@ NetCDFWriter scheduled on IterationInterval(1):
 ├── 3 outputs: (profile, slice, scalar)
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
-└── file size: 34.1 KiB
+└── file size: 34.7 KiB
 ```
 
-`NetCDFWriter` can also be configured for `outputs` that are interpolated or regridded
-to a different grid than `model.grid`. To use this functionality, include the keyword argument
-`grid = output_grid`.
+`NetCDFWriter` supports outputs that live on different grids within a single writer.
+The grid is automatically extracted from each output field. When multiple grids are
+present, dimensions are suffixed (e.g., `_grid1`, `_grid2`) to avoid conflicts.
 
 ```jldoctest netcdf3
 using Oceananigans, NCDatasets
-using Oceananigans.Fields: interpolate!
 
 grid = RectilinearGrid(size=(1, 1, 8), extent=(1, 1, 1));
 model = NonhydrostaticModel(grid)
@@ -337,11 +363,9 @@ model = NonhydrostaticModel(grid)
 coarse_grid = RectilinearGrid(size=(grid.Nx, grid.Ny, grid.Nz÷2), extent=(grid.Lx, grid.Ly, grid.Lz))
 coarse_u = Field{Face, Center, Center}(coarse_grid)
 
-interpolate_u(model) = interpolate!(coarse_u, model.velocities.u)
-outputs = (; u = interpolate_u)
+outputs = (; u = coarse_u)
 
 output_writer = NetCDFWriter(model, outputs;
-                             grid = coarse_grid,
                              filename = "coarse_u.nc",
                              schedule = IterationInterval(1))
 
@@ -353,8 +377,26 @@ NetCDFWriter scheduled on IterationInterval(1):
 ├── 1 outputs: u
 ├── array_type: Array{Float32}
 ├── file_splitting: NoFileSplitting
-└── file size: 31.4 KiB
+└── file size: 31.7 KiB
 ```
+
+OrthogonalSphericalShellGrid (TripolarGrid, RotatedLatitudeLongitudeGrid, …)
+============================================================================
+
+For curvilinear `OrthogonalSphericalShellGrid` (OSSG) and its type aliases —
+`TripolarGrid`, `RotatedLatitudeLongitudeGrid`, `ConformalCubedSpherePanelGrid` —
+output follows
+[CF Conventions §5.2 "Two-Dimensional Latitude, Longitude, Coordinate Variables"](https://cfconventions.org/Data/cf-conventions/cf-conventions-1.13/cf-conventions.html#_two_dimensional_latitude_longitude_coordinate_variables).
+Concretely:
+
+  * Horizontal NetCDF dimensions are *logical* indices `i_caa`/`i_faa`/`j_aca`/`j_afa`
+    (declared via `defDim` only — they carry no coordinate variable).
+  * Latitude and longitude live as eight 2D auxiliary coordinate variables
+    (`λ_cca`/`λ_fca`/`λ_cfa`/`λ_ffa` and `φ_*`), one per Arakawa-C stagger location,
+    dimensioned `(i_*, j_*)`.
+  * Every data field carries a CF `coordinates` attribute, e.g.
+    `tracer:coordinates = "λ_cca φ_cca z_aac"`, so CF-aware tools (xarray,
+    ncview, Panoply, CDO) pick up the right lat/lon pair automatically.
 """
 function NetCDFWriter(model, outputs; kw...)
     error("""

@@ -6,6 +6,8 @@ and `Arch`itecture.
 """
 abstract type AbstractGrid{FT, TX, TY, TZ, Arch} end
 
+grid(g::AbstractGrid) = g
+
 """
     AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch}
 
@@ -43,8 +45,7 @@ const XYZFlatGrid = AbstractGrid{<:Any, Flat, Flat, Flat}
 isrectilinear(grid) = false
 
 # Fallback
-@inline get_active_column_map(::AbstractGrid) = nothing
-@inline get_active_cells_map(::AbstractGrid, any_map_type) = nothing
+@inline Utils.get_active_cells_map(::AbstractGrid, any_map_type) = nothing
 
 """
     topology(grid)

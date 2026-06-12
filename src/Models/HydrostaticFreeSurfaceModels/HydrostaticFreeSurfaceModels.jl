@@ -78,8 +78,8 @@ free_surface_displacement_field(velocities, ::Nothing, grid) = nothing
 # Fallback
 reconcile_free_surface!(free_surface, grid, velocities) = nothing
 
-# Transport velocity computation (only for a SplitExplicitFreeSurface)
-compute_transport_velocities!(model, free_surface) = nothing
+# Transport velocity computation
+function compute_transport_velocities! end
 
 include("compute_w_from_continuity.jl")
 include("hydrostatic_free_surface_field_tuples.jl")
@@ -169,6 +169,7 @@ displacement(::Nothing) = nothing
 # Unpack model.particles to update particle properties. See Models/LagrangianParticleTracking/LagrangianParticleTracking.jl
 TimeSteppers.step_lagrangian_particles!(model::HydrostaticFreeSurfaceModel, Δt) = step_lagrangian_particles!(model.particles, model, Δt)
 
+include("boundary_targeted_transport.jl")
 include("barotropic_pressure_correction.jl")
 include("hydrostatic_free_surface_tendency_kernel_functions.jl")
 include("compute_hydrostatic_free_surface_tendencies.jl")

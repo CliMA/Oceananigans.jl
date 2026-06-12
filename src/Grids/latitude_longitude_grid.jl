@@ -142,7 +142,7 @@ Keyword arguments
 - `topology`: Tuple of topologies (`Flat`, `Bounded`, `Periodic`) for each direction. The vertical
               `topology[3]` must be `Bounded`, while the latitude-longitude topologies can be
               `Bounded`, `Periodic`, or `Flat`. If no topology is provided then, by default, the
-              topology is (`Periodic`, `Bounded`, `Bounded`) if the latitudinal extent is 360 degrees
+              topology is (`Periodic`, `Bounded`, `Bounded`) if the longitudinal extent is 360 degrees
               or (`Bounded`, `Bounded`, `Bounded`) otherwise.
 
 - `precompute_metrics`: Boolean specifying whether to precompute horizontal spacings and areas.
@@ -292,7 +292,7 @@ function validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitud
 
     # Validate longitude and latitude
     λ₁, λ₂ = get_domain_extent(longitude, Nλ)
-    λ₂ - λ₁ ≤ 360 || throw(ArgumentError("Longitudinal extent cannot be greater than 360 degrees."))
+    λ₂ - λ₁ ≤ 360 + 10 * eps(FT(360)) || throw(ArgumentError("Longitudinal extent cannot be greater than 360 degrees."))
     λ₁ <= λ₂      || throw(ArgumentError("Longitudes must increase west to east."))
 
     φ₁, φ₂ = get_domain_extent(latitude, Nφ)

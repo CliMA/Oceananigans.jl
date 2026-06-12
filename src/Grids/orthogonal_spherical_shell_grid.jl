@@ -89,6 +89,9 @@ const OSSG = OrthogonalSphericalShellGrid
 const ZRegOSSG = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:RegularVerticalCoordinate}
 const ZRegOrthogonalSphericalShellGrid = ZRegOSSG
 
+@inline x_domain(grid::OSSG) = extrema(parent(grid.λᶠᶠᵃ))
+@inline y_domain(grid::OSSG) = extrema(parent(grid.φᶠᶠᵃ))
+
 # convenience constructor for OSSG without any conformal_mapping properties
 OrthogonalSphericalShellGrid(architecture, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
                               λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
@@ -109,8 +112,8 @@ OrthogonalSphericalShellGrid(architecture, Nx, Ny, Nz, Hx, Hy, Hz, Lz,
 Fill the `x`-halo regions of the `metric` that lives on locations `ℓx`, `ℓy`, with halo size `Hx`, `Hy`, and topology
 `tx`, `ty`.
 """
-function fill_metric_halo_regions_x!(metric, ℓx, ℓy, tx::BoundedTopology, ty, Nx, Ny, Hx, Hy)
-    # = N+1 for ::BoundedTopology or N otherwise
+function fill_metric_halo_regions_x!(metric, ℓx, ℓy, tx::FaceExtendedTopology, ty, Nx, Ny, Hx, Hy)
+    # = N+1 for ::FaceExtendedTopology or N otherwise
     Nx⁺ = length(ℓx, tx, Nx)
     Ny⁺ = length(ℓy, ty, Ny)
 
@@ -131,7 +134,7 @@ function fill_metric_halo_regions_x!(metric, ℓx, ℓy, tx::BoundedTopology, ty
 end
 
 function fill_metric_halo_regions_x!(metric, ℓx, ℓy, tx::AbstractTopology, ty, Nx, Ny, Hx, Hy)
-    # = N+1 for ::BoundedTopology or N otherwise
+    # = N+1 for ::FaceExtendedTopology or N otherwise
     Nx⁺ = length(ℓx, tx, Nx)
     Ny⁺ = length(ℓy, ty, Ny)
 
@@ -157,8 +160,8 @@ end
 Fill the `y`-halo regions of the `metric` that lives on locations `ℓx`, `ℓy`, with halo size `Hx`, `Hy`, and topology
 `tx`, `ty`.
 """
-function fill_metric_halo_regions_y!(metric, ℓx, ℓy, tx, ty::BoundedTopology, Nx, Ny, Hx, Hy)
-    # = N+1 for ::BoundedTopology or N otherwise
+function fill_metric_halo_regions_y!(metric, ℓx, ℓy, tx, ty::FaceExtendedTopology, Nx, Ny, Hx, Hy)
+    # = N+1 for ::FaceExtendedTopology or N otherwise
     Nx⁺ = length(ℓx, tx, Nx)
     Ny⁺ = length(ℓy, ty, Ny)
 
@@ -179,7 +182,7 @@ function fill_metric_halo_regions_y!(metric, ℓx, ℓy, tx, ty::BoundedTopology
 end
 
 function fill_metric_halo_regions_y!(metric, ℓx, ℓy, tx, ty::AbstractTopology, Nx, Ny, Hx, Hy)
-    # = N+1 for ::BoundedTopology or N otherwise
+    # = N+1 for ::FaceExtendedTopology or N otherwise
     Nx⁺ = length(ℓx, tx, Nx)
     Ny⁺ = length(ℓy, ty, Ny)
 
@@ -207,7 +210,7 @@ choose to fill with the average of the neighboring metric in the halo regions. T
 `x`- and `y`-halo regions have already been filled.
 """
 function fill_metric_halo_corner_regions!(metric, ℓx, ℓy, tx, ty, Nx, Ny, Hx, Hy)
-    # = N+1 for ::BoundedTopology or N otherwise
+    # = N+1 for ::FaceExtendedTopology or N otherwise
     Nx⁺ = length(ℓx, tx, Nx)
     Ny⁺ = length(ℓy, ty, Ny)
 

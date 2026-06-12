@@ -49,7 +49,7 @@ using .Solvers
 import ConstructionBase: constructorof
 
 constructorof(::Type{<:RectilinearGrid{FT, TX, TY, TZ}}) where {FT, TX, TY, TZ} = RectilinearGrid{TX, TY, TZ}
-constructorof(::Type{<:VectorInvariant{N, FT, M}}) where {N, FT, M} = VectorInvariant{N, FT, M}
+constructorof(::Type{<:VectorInvariant{N, FT, TD, Z, ZS, V, K, D, U, M}}) where {N, FT, TD, Z, ZS, V, K, D, U, M} = VectorInvariant{N, FT, TD, M}
 
 # https://github.com/CliMA/Oceananigans.jl/blob/da9959f3e5d8ee7cf2fb42b74ecc892874ec1687/src/AbstractOperations/conditional_operations.jl#L8
 Base.@nospecializeinfer function Reactant.traced_type_inner(
@@ -334,6 +334,7 @@ end
 end
 
 Base.getindex(array::OffsetVector{T, <:Reactant.AbstractConcreteArray{T, 1}}, ::Colon) where T = array
+
 
 # These are additional modules that may need to be Reactantified in the future:
 #

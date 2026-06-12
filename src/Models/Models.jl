@@ -11,7 +11,8 @@ export
     seawater_density,
     BulkDrag, BulkDragFunction, BulkDragBoundaryCondition,
     XDirectionBulkDragFunction, YDirectionBulkDragFunction, ZDirectionBulkDragFunction,
-    LinearFormulation, QuadraticFormulation
+    LinearFormulation, QuadraticFormulation,
+    BoundaryAdjacentMean, boundary_total_area
 
 using Oceananigans: AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation
@@ -24,6 +25,7 @@ using Oceananigans.Units: Time
 
 import Oceananigans: initialize!
 import Oceananigans.Architectures: architecture
+import Oceananigans.Grids: grid
 import Oceananigans.Fields: set!
 import Oceananigans.Solvers: iteration
 import Oceananigans.OutputWriters: default_included_properties
@@ -39,6 +41,7 @@ import Oceananigans.TimeSteppers: reset!
 iteration(model::AbstractModel) = model.clock.iteration
 Base.time(model::AbstractModel) = model.clock.time
 Base.eltype(model::AbstractModel) = Float64
+grid(model::AbstractModel) = model.grid
 architecture(model::AbstractModel) = nothing
 initialize!(model::AbstractModel) = nothing
 total_velocities(model::AbstractModel) = nothing
@@ -93,6 +96,18 @@ function materialize_free_surface end
 
 # Communication - Computation overlap in distributed models
 include("interleave_communication_and_computation.jl")
+
+# Shared open-boundary transport building blocks: per-boundary integrals,
+# initialization, and correction helpers. NonhydrostaticModel composes these
+# into `enforce_net_zero_transport!` to enforce the incompressible-pressure
+# solvability condition; external anelastic models can compose their own
+# variant for density-weighted momentum (ρu, ρv, ρw).
+include("boundary_transport.jl")
+
+# Boundary mean / area utilities used by model submodules. Must come after
+# `boundary_transport.jl` because `boundary_total_area` dispatches to the
+# `get_*_area` helpers defined there.
+include("boundary_mean.jl")
 
 #####
 ##### All the code
@@ -204,20 +219,22 @@ default_nan_checker(::OnlyParticleTrackingModel) = nothing
 import Oceananigans.OutputWriters: default_included_properties,
                                    checkpointer_address
 
-default_included_properties(::NonhydrostaticModel) = [:grid, :coriolis, :buoyancy, :closure]
-default_included_properties(::HydrostaticFreeSurfaceModel) = [:grid, :coriolis, :buoyancy, :closure]
-default_included_properties(::ShallowWaterModel) = [:grid, :coriolis, :closure]
+default_included_properties(::NonhydrostaticModel) = [:coriolis, :buoyancy, :closure]
+default_included_properties(::HydrostaticFreeSurfaceModel) = [:coriolis, :buoyancy, :closure]
+default_included_properties(::ShallowWaterModel) = [:coriolis, :closure]
 
 checkpointer_address(::ShallowWaterModel) = "ShallowWaterModel"
 checkpointer_address(::NonhydrostaticModel) = "NonhydrostaticModel"
 checkpointer_address(::HydrostaticFreeSurfaceModel) = "HydrostaticFreeSurfaceModel"
 
-default_included_properties(::OceananigansModels) = [:grid]
+default_included_properties(::OceananigansModels) = Symbol[]
+
+# Specialized output attributes for velocity and tracer fields
+include("output_attributes.jl")
 
 # Implementation of diagnostics applicable to both `NonhydrostaticModel` and `HydrostaticFreeSurfaceModel`
 include("seawater_density.jl")
 include("buoyancy_operation.jl")
-include("boundary_mean.jl")
 include("boundary_condition_operation.jl")
 include("forcing_operation.jl")
 include("set_model.jl")
