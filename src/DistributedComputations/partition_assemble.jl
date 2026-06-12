@@ -13,7 +13,7 @@ barrier(arch) = nothing
 barrier(arch::Distributed) = barrier(arch.communicator)
 
 """
-    concatenate_local_sizes(local_size, arch::Distributed)
+$(TYPEDSIGNATURES)
 
 Return a 3-Tuple containing a vector of `size(grid, dim)` for each rank in
 all 3 directions.
@@ -40,7 +40,7 @@ function concatenate_local_sizes(n::Number, arch::Distributed, dim)
 end
 
 """
-    partition_coordinate(coordinate, n, arch, dim)
+$(TYPEDSIGNATURES)
 
 Return the local component of the global `coordinate`, which has
 local length `n` and is distributed on `arch`itecture
@@ -76,7 +76,7 @@ function partition_coordinate(c::Tuple, n, arch, dim)
 end
 
 """
-    assemble_coordinate(c_local::AbstractVector, n, arch, dim)
+$(TYPEDSIGNATURES)
 
 Builds a linear global coordinate vector along dimension `dim` given a local coordinate
 vector `c_local`, the local sizes `n`, and the architecture `arch`. Since we use a global
@@ -123,7 +123,7 @@ end
 # TODO: make partition and construct_global_array work for 3D distribution.
 
 """
-    partition(A, b)
+$(TYPEDSIGNATURES)
 
 Partition the globally-sized `A` into local arrays with the same size as `b`.
 """
@@ -133,7 +133,7 @@ partition(f::Function, arch, n) = f
 partition(A::AbstractArray, arch::AbstractSerialArchitecture, local_size) = A
 
 """
-    partition(A, arch, local_size)
+$(TYPEDSIGNATURES)
 
 Partition the globally-sized `A` into local arrays with `local_size` on `arch`itecture.
 """
@@ -179,7 +179,7 @@ function partition(A::AbstractArray, arch::Distributed, local_size)
 end
 
 """
-    construct_global_array(c_local, arch, (nx, ny, nz))
+$(TYPEDSIGNATURES)
 
 Construct global array from local arrays (2D of size `(nx, ny)` or 3D of size (`nx, ny, nz`)).
 Usefull for boundary arrays, forcings and initial conditions.

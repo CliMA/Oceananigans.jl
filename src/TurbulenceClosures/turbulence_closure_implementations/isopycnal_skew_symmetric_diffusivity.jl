@@ -151,7 +151,7 @@ struct FluxTapering{FT}
 end
 
 """
-    tapering_factor(i, j, k, grid, closure, tracers, buoyancy)
+$(TYPEDSIGNATURES)
 
 Return the tapering factor `min(1, Sₘₐₓ² / slope²)`, where `slope² = slope_x² + slope_y²`
 that multiplies all components of the isopycnal slope tensor. The tapering factor is calculated on all the

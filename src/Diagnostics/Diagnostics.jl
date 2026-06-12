@@ -7,6 +7,7 @@ using Oceananigans: fields
 using Oceananigans: AbstractDiagnostic
 
 import Oceananigans: run_diagnostic!
+using DocStringExtensions: TYPEDSIGNATURES
 
 function cell_diffusion_timescale end
 

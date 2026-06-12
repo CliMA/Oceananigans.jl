@@ -113,7 +113,7 @@ struct Sizes{S}
 end
 
 """
-    Fractional(ϵ₁, ϵ₂, ..., ϵₙ)
+$(TYPEDSIGNATURES)
 
 Return a type that partitions a direction unequally. The total work is `W = sum(ϵᵢ)`,
 and each process is then allocated `ϵᵢ / W` of the domain.
@@ -121,7 +121,7 @@ and each process is then allocated `ϵᵢ / W` of the domain.
 Fractional(args...) = Fractional(tuple(args ./ sum(args)...))  # We need to make sure that `sum(R) == 1`
 
 """
-    Sizes(n₁, n₂, ..., nₙ)
+$(TYPEDSIGNATURES)
 
 Return a type that partitions a direction unequally. The total work is `W = sum(nᵢ)`,
 and each process is then allocated `nᵢ`.
@@ -377,7 +377,7 @@ end
 const NoConnectivity = NeighboringRanks{Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing}
 
 """
-    NeighboringRanks(; east, west, north, south, southwest, southeast, northwest, northeast)
+$(TYPEDSIGNATURES)
 
 Generate a `NeighboringRanks` object that holds the MPI ranks of the neighboring processors.
 """

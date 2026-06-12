@@ -220,7 +220,7 @@ end
 end
 
 """
-    smoothness_indicator(ψ, scheme::WENO{buffer, FT}, ::Val{stencil})
+$(TYPEDSIGNATURES)
 
 Return the smoothness indicator β for the stencil number `stencil` of a WENO reconstruction of order `buffer * 2 - 1`.
 The smoothness indicator (β) is calculated as follows
@@ -488,7 +488,7 @@ end
 end
 
 """
-    weno_reconstruction(scheme::WENO{buffer}, bias, ψ, ω)
+$(TYPEDSIGNATURES)
 
 `bias`ed reconstruction of stencils `ψ` for a WENO scheme of order `buffer * 2 - 1` weighted by WENO
 weights `ω`. `ψ` is a `Tuple` of `buffer` stencils of size `buffer` and `ω` is a `Tuple` of size `buffer`

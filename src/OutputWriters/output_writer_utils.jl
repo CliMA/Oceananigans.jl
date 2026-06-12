@@ -53,7 +53,7 @@ function update_file_splitting_schedule!(schedule::FileSizeLimit, filepath)
 end
 
 """
-    ext(ow)
+$(TYPEDSIGNATURES)
 
 Return the file extension for the output writer or output
 writer type `ow`.
@@ -62,7 +62,7 @@ ext(ow::Type{AbstractOutputWriter}) = throw("Extension for $ow is not implemente
 ext(ow::AbstractOutputWriter) = ext(typeof(ow))
 
 """
-    filepath_for_part(filepath, part)
+$(TYPEDSIGNATURES)
 
 Return the filepath for the given `part` number. Handles both base paths
 (without `_partN` suffix) and paths that already contain a `_partN` suffix.
@@ -82,7 +82,7 @@ end
 # TODO: add example to docstring below
 
 """
-    saveproperty!(file, address, obj)
+$(TYPEDSIGNATURES)
 
 Save data in `obj` to `file[address]` in a "languate-agnostic" way,
 thus primarily consisting of arrays and numbers, absent Julia-specific types
@@ -127,7 +127,7 @@ function saveproperty!(file, address, bcs::FieldBoundaryConditions)
 end
 
 """
-    serializeproperty!(file, address, obj)
+$(TYPEDSIGNATURES)
 
 Serialize `obj` to `file[address]` in a "friendly" way; i.e. converting
 `CuArray` to `Array` so data can be loaded on any architecture,
@@ -218,7 +218,7 @@ has_reference(T::Type{Function}, bcs::FieldBoundaryConditions) =
     has_reference(T, bcs.immersed)
 
 """
-    has_reference(has_type, obj)
+$(TYPEDSIGNATURES)
 
 Check (or attempt to check) if `obj` contains, somewhere among its
 subfields and subfields of fields, a reference to an object of type

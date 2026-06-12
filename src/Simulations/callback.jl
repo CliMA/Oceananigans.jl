@@ -16,7 +16,7 @@ end
 @inline (callback::Callback{<:Nothing})(sim) = callback.func(sim)
 
 """
-    initialize!(callback::Callback, sim)
+$(TYPEDSIGNATURES)
 
 Initialize `callback` at the beginning of `run!(sim)`.
 By default, this calls `initialize!` on `callback.func`,
@@ -29,7 +29,7 @@ or specialized for `callback.func`.
 initialize!(callback::Callback, sim) = initialize!(callback.func, sim)
 
 """
-    finalize!(callback::Callback, sim)
+$(TYPEDSIGNATURES)
 
 Finalize `callback` at the end of `run!(sim)`.
 By default, this calls `finalize!` on `callback.func`,

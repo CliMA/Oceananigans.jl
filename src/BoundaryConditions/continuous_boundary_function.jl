@@ -72,8 +72,7 @@ destantiate(t::T) where T = T
 #####
 
 """
-    regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoundaryFunction},
-                                  topo, loc, dim, I, prognostic_field_names) where C
+$(TYPEDSIGNATURES)
 
 Regularizes `bc.condition` for location `loc`, boundary index `I`, and `prognostic_field_names`,
 returning `BoundaryCondition(C, regularized_condition)`.

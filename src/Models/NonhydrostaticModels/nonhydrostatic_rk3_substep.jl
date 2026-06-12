@@ -2,7 +2,7 @@ using Oceananigans.TimeSteppers: _rk3_substep_field!, stage_Δt
 import Oceananigans.TimeSteppers: rk3_substep!
 
 """
-    rk3_substep!(model::NonhydrostaticModel, Δt, γ, ζ, callbacks)
+$(TYPEDSIGNATURES)
 
 Perform a single RK3 substep for `NonhydrostaticModel` with pressure correction.
 Dispatches to `pressure_correction_rk3_substep!` which advances velocities and tracers
@@ -12,7 +12,7 @@ rk3_substep!(model::NonhydrostaticModel, Δt, γ, ζ, callbacks) =
     pressure_correction_rk3_substep!(model, Δt, γ, ζ, callbacks)
 
 """
-    pressure_correction_rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
+$(TYPEDSIGNATURES)
 
 Implement a single RK3 substep with pressure correction for `NonhydrostaticModel`.
 

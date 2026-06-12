@@ -30,6 +30,7 @@ import Oceananigans.Fields: set!
 import Oceananigans.Solvers: iteration
 import Oceananigans.OutputWriters: default_included_properties
 import Oceananigans.TimeSteppers: reset!
+using DocStringExtensions: TYPEDSIGNATURES
 
 # A prototype interface for AbstractModel.
 #
@@ -145,7 +146,7 @@ architecture(model::OceananigansModels) = model.grid.architecture
 set!(model::OceananigansModels, new_clock::Clock) = set!(model.clock, new_clock)
 
 """
-    possible_field_time_series(model::OceananigansModels)
+$(TYPEDSIGNATURES)
 
 Return a `Tuple` containing properties of and `OceananigansModel` that could contain `FieldTimeSeries`.
 """

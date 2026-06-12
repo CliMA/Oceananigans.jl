@@ -7,7 +7,7 @@ import Oceananigans.TimeSteppers: compute_tendencies!
 import Oceananigans.TimeSteppers: compute_flux_bc_tendencies!
 
 """
-    compute_tendencies!(model::NonhydrostaticModel, callbacks)
+$(TYPEDSIGNATURES)
 
 Calculate the interior and boundary contributions to tendency terms without the
 contribution from non-hydrostatic pressure.

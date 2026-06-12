@@ -81,7 +81,7 @@ struct SplitFilePath
 end
 
 """
-    file_and_local_index(sfp::SplitFilePath, n)
+$(TYPEDSIGNATURES)
 
 Return `(filepath, local_index)` for global time index `n`.
 """
@@ -152,7 +152,7 @@ struct Clamp end # clamp to nearest value
 @inline reverse_index(m, n₀) = m + n₀ - 1
 
 """
-    time_index(backend::PartlyInMemory, time_indexing, Nt, m)
+$(TYPEDSIGNATURES)
 
 Compute the time index of a snapshot currently stored at the memory index `m`,
 given `backend`, `time_indexing`, and number of times `Nt`.
@@ -170,7 +170,7 @@ end
 end
 
 """
-    memory_index(backend::PartlyInMemory, time_indexing, Nt, n)
+$(TYPEDSIGNATURES)
 
 Compute the current index of a snapshot in memory that has
 the time index `n`, given `backend`, `time_indexing`, and number of times `Nt`.
@@ -220,7 +220,7 @@ end
 end
 
 """
-    time_indices(backend, time_indexing, Nt)
+$(TYPEDSIGNATURES)
 
 Return a collection of the time indices that are currently in memory.
 If `backend::TotallyInMemory` then return `1:length(times)`.
@@ -611,7 +611,7 @@ end
 struct UnspecifiedBoundaryConditions end
 
 """
-    load_serialized_grid(file, name)
+$(TYPEDSIGNATURES)
 
 Load the grid associated with the output variable `name` from a JLD2 `file`.
 
@@ -632,7 +632,7 @@ function load_serialized_grid(file, name)
 end
 
 """
-    reconstruct_legacy_grid(grid, file, architecture)
+$(TYPEDSIGNATURES)
 
 Reconstruct a grid from legacy JLD2 output files (prior to Oceananigans 0.95.0)
 that did not serialize grids properly. Reads raw grid data from the top-level
@@ -688,7 +688,7 @@ function reconstruct_legacy_grid(grid, file, architecture)
 end
 
 """
-    manually_reconstruct_rectilinear_grid(grid, file, architecture)
+$(TYPEDSIGNATURES)
 
 Manually reconstruct a RectilinearGrid from file data when `on_architecture` fails.
 This is a fallback for grids saved with CuArrays or generated with a different Julia version.

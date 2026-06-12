@@ -16,9 +16,10 @@ using Oceananigans.Utils: launch!, worksize
 using Oceananigans.Fields: AbstractField, CenterField, field
 using Oceananigans.Grids: AbstractGrid, Bounded, Flat, Periodic, XYRegularRG, XZRegularRG, YZRegularRG,
     XYZRegularRG, RectilinearGrid, RegularVerticalCoordinate, inactive_cell, topology
+using DocStringExtensions: TYPEDSIGNATURES
 
 """
-    ω(M, k)
+$(TYPEDSIGNATURES)
 
 Return the `M`th root of unity raised to the `k`th power.
 """

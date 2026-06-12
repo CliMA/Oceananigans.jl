@@ -74,7 +74,7 @@ function regularize_immersed_boundary_condition(ibc::Union{VBC, GBC, FBC}, ibg::
 end
 
 """
-    regularize_immersed_boundary_condition(bc::IBC, grid, loc, field_name, prognostic_field_names)
+$(TYPEDSIGNATURES)
 """
 function regularize_immersed_boundary_condition(bc::IBC, grid, loc, field_name, prognostic_field_names)
 

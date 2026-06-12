@@ -95,7 +95,7 @@ function cell_advection_timescale(model::NonhydrostaticModel)
 end
 
 """
-    fields(model::NonhydrostaticModel)
+$(TYPEDSIGNATURES)
 
 Return a flattened `NamedTuple` of the fields in `model.velocities`, `model.tracers`, and any
 auxiliary fields for a `NonhydrostaticModel` model.
@@ -106,7 +106,7 @@ fields(model::NonhydrostaticModel) = merge(model.velocities,
                                            biogeochemical_auxiliary_fields(model.biogeochemistry))
 
 """
-    prognostic_fields(model::NonhydrostaticModel)
+$(TYPEDSIGNATURES)
 
 Return a flattened `NamedTuple` of the prognostic fields associated with `NonhydrostaticModel`.
 """

@@ -362,7 +362,7 @@ time_average_outputs(schedule, outputs, model) = schedule, outputs # fallback
 const AveragedTimeSchedule = Union{AveragedTimeInterval, AveragedSpecifiedTimes}
 
 """
-    time_average_outputs(schedule::AveragedTimeInterval, outputs, model, field_slicer)
+$(TYPEDSIGNATURES)
 
 Wrap each `output` in a `WindowedTimeAverage` on the time-averaged `schedule` and with `field_slicer`.
 

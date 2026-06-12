@@ -33,6 +33,8 @@ using Oceananigans.Operators: ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ, ℑxzᶠᵃᶜ, �
 
 using Adapt: Adapt
 
+using DocStringExtensions: TYPEDSIGNATURES
+
 #####
 ##### Drag formulations
 #####
@@ -287,7 +289,7 @@ const BulkDragBoundaryCondition = BoundaryCondition{<:Flux, <:BulkDragFunction}
 #####
 
 """
-    regularize_boundary_condition(df::BulkDragFunction, grid, loc, dim, Side, field_names)
+$(TYPEDSIGNATURES)
 
 Regularize a `BulkDragFunction` by:
 1. Inferring the direction from the field location if not specified

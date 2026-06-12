@@ -17,6 +17,7 @@ using Adapt: Adapt, adapt
 using Oceananigans.Architectures: Architectures, architecture, on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Fields: compute_at!, indices
+using DocStringExtensions: TYPEDSIGNATURES
 
 #####
 ##### Basic functionality
@@ -37,7 +38,7 @@ Architectures.architecture(a::AbstractOperation) = architecture(a.grid)
 const operators = Set()
 
 """
-    at(loc, abstract_operation)
+$(TYPEDSIGNATURES)
 
 Return `abstract_operation` relocated to `loc`ation.
 """

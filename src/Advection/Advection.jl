@@ -21,7 +21,7 @@ export
     EnstrophyConserving
 
 using Adapt: Adapt
-using DocStringExtensions: SIGNATURES
+using DocStringExtensions: SIGNATURES, TYPEDSIGNATURES
 using MuladdMacro: @muladd
 using OffsetArrays: OffsetArray
 

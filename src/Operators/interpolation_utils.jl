@@ -46,7 +46,7 @@ identify_an_identity(number) = Symbol(:identity, torus(number, 1, number_of_iden
 identity_counter = 0
 
 """
-    interpolation_operator(from, to)
+$(TYPEDSIGNATURES)
 
 Returns the function to interpolate a field `from = (XA, YZ, ZA)`, `to = (XB, YB, ZB)`,
 where the `XA`s and `XB`s are `Face()` or `Center()` instances.
@@ -68,7 +68,7 @@ function interpolation_operator(from, to)
 end
 
 """
-    interpolation_operator(::Nothing, to)
+$(TYPEDSIGNATURES)
 
 Return the `identity` interpolator function. This is needed to obtain the interpolation
 operator for fields that have no intrinsic location, like numbers or functions.
@@ -92,7 +92,7 @@ function assumed_field_location(name)
 end
 
 """
-    index_and_interp_dependencies(X, Y, Z, dependencies, model_field_names)
+$(TYPEDSIGNATURES)
 
 Returns a tuple of indices and interpolation functions to the location `X, Y, Z`
 for each name in `dependencies`.

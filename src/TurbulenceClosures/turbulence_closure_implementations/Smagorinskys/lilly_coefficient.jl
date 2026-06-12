@@ -116,7 +116,7 @@ end
 SmagorinskyLilly(FT::DataType; kwargs...) = SmagorinskyLilly(ExplicitTimeDiscretization(), FT; kwargs...)
 
 """
-    stability(N², Σ², Cb)
+$(TYPEDSIGNATURES)
 
 Return the stability function
 

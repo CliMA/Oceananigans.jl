@@ -3,6 +3,7 @@ module Biogeochemistry
 using Oceananigans.Grids: Center, xnode, ynode, znode
 
 import Oceananigans.Fields: CenterField
+using DocStringExtensions: TYPEDSIGNATURES
 
 #####
 ##### Generic fallbacks for biogeochemistry
@@ -11,14 +12,14 @@ import Oceananigans.Fields: CenterField
 @inline biogeochemistry_rhs(i, j, k, grid, ::Nothing, val_tracer_name, clock, fields) = zero(grid)
 
 """
-    update_tendencies!(bgc, model)
+$(TYPEDSIGNATURES)
 
 Update prognostic tendencies after they have been computed.
 """
 update_tendencies!(bgc, model) = nothing
 
 """
-    update_biogeochemical_state!(bgc, model)
+$(TYPEDSIGNATURES)
 
 Update biogeochemical state variables. Called at the end of update_state!.
 """
@@ -148,7 +149,7 @@ add_biogeochemical_tracer(tracers::NamedTuple, name, grid) = merge(tracers, (; n
 end
 
 """
-    validate_biogeochemistry(tracers, auxiliary_fields, bgc, grid, clock)
+$(TYPEDSIGNATURES)
 
 Ensure that `tracers` contains biogeochemical tracers and `auxiliary_fields`
 contains biogeochemical auxiliary fields.

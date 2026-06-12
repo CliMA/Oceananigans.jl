@@ -153,7 +153,7 @@ end
 #####
 
 """
-    ab2_step!(model::AbstractModel, Δt, callbacks)
+$(TYPEDSIGNATURES)
 
 Advance the model state by one Adams-Bashforth 2nd-order (AB2) time step of size `Δt`.
 
@@ -171,7 +171,7 @@ reduces to forward Euler (used for the first time step).
 ab2_step!(model::AbstractModel, Δt, callbacks) = error("ab2_step! not implemented for $(typeof(model))")
 
 """
-    cache_previous_tendencies!(model::AbstractModel)
+$(TYPEDSIGNATURES)
 
 Store the current tendencies `Gⁿ` into `G⁻` for use in the next AB2 time step.
 

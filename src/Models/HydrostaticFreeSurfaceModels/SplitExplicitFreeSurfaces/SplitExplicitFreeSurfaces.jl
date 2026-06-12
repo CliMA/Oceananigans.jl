@@ -32,6 +32,7 @@ import Oceananigans.Models.HydrostaticFreeSurfaceModels: reconcile_free_surface!
                                                          compute_transport_velocities!,
                                                          explicit_barotropic_pressure_x_gradient,
                                                          explicit_barotropic_pressure_y_gradient
+using DocStringExtensions: TYPEDSIGNATURES
 
 include("split_explicit_timesteppers.jl")
 include("split_explicit_free_surface.jl")

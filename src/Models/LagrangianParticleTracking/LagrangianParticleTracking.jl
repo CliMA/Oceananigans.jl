@@ -22,6 +22,7 @@ using Oceananigans.Utils: datatuple, launch!, prettysummary
 import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.TimeSteppers: step_lagrangian_particles!
 import Oceananigans.OutputWriters: serializeproperty!, fetch_output
+using DocStringExtensions: TYPEDSIGNATURES
 
 abstract type AbstractParticle end
 
