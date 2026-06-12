@@ -110,15 +110,16 @@ function update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSo
 
     u, v, _ = velocities
     ∂t_σ    = grid.z.∂t_σ
+    Fη      = model.forcing.η
 
     # Update the time derivative of the vertical spacing,
     # No need to fill the halo as the scaling is updated _IN_ the halos through the parameters
-    launch!(architecture(grid), grid, parameters, _update_grid_vertical_velocity!, ∂t_σ, grid, U, V, u, v)
+    launch!(architecture(grid), grid, parameters, _update_grid_vertical_velocity!, ∂t_σ, grid, U, V, u, v, Fη, model.clock, fields(model))
 
     return nothing
 end
 
-@kernel function _update_grid_vertical_velocity!(∂t_σ, grid, U, V, u, v)
+@kernel function _update_grid_vertical_velocity!(∂t_σ, grid, U, V, u, v, Fη, clock, fields)
     i, j = @index(Global, NTuple)
     kᴺ = size(grid, 3)
 
@@ -129,8 +130,9 @@ end
     δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
 
     δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, kᴺ, grid)
+    PE   = Fη(i, j, kᴺ+1, grid, clock, fields)
 
-    @inbounds ∂t_σ[i, j, 1] = ifelse(hᶜᶜ == 0, zero(grid), - δh_U / hᶜᶜ)
+    @inbounds ∂t_σ[i, j, 1] = ifelse(hᶜᶜ == 0, zero(grid), (- δh_U + PE) / hᶜᶜ)
 end
 
 #####
