@@ -12,7 +12,7 @@ using Oceananigans.Utils: interpolator, _interpolate
 @inline middle_point(l, h) = Base.unsafe_trunc(Int, (l + h) / 2)
 
 """
-    index_binary_search(val, vec, N)
+    index_binary_search(vec, val, N)
 
 Return indices `low, high` of `vec`tor for which
 
@@ -191,10 +191,10 @@ struct FractionalIndices{I, J, K}
 end
 
 """
-    FractionalIndices(x, y, z, grid, loc...)
+    FractionalIndices(at_node, grid, ℓx, ℓy, ℓz)
 
-Convert the coordinates `(x, y, z)` to _fractional_ indices on a regular rectilinear grid
-located at `loc`, where `loc` is a 3-tuple of `Center` and `Face`. Fractional indices are
+Convert the coordinate tuple `at_node` to _fractional_ indices on a regular rectilinear grid
+located at `(ℓx, ℓy, ℓz)`, a triplet of `Center` and `Face`. Fractional indices are
 floats indicating a location between grid points.
 """
 @inline FractionalIndices(at_node, grid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, ℓx, ℓy, ℓz)

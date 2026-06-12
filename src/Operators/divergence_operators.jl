@@ -19,18 +19,13 @@ which ends up at the cell centers `ccc`.
                              δzᶜᶜᶜ(i, j, k, grid, Az_qᶜᶜᶠ, w))
 
 """
-    div_xyᶜᶜᵃ(i, j, k, grid, u, v)
+    flux_div_xyᶜᶜᶜ(i, j, k, grid, u, v)
 
-Return the discrete `div_xy = ∂x u + ∂y v` of velocity field `u, v` defined as
+Return the discrete horizontal flux divergence `δxᶜᶜᶜ(Ax * u) + δyᶜᶜᶜ(Ay * v)` of the
+velocity field `u, v`, where `Ax` and `Ay` are the areas of the cell faces in `x` and `y`.
+Unlike `div_xyᶜᶜᶜ`, this is _not_ divided by the cell volume.
 
-```julia
-1 / Azᶜᶜᵃ * [δxᶜᵃᵃ(Δyᵃᶜᵃ * u) + δyᵃᶜᵃ(Δxᶜᵃᵃ * v)]
-```
-
-at `i, j, k`, where `Azᶜᶜᵃ` is the area of the cell centered on (Center, Center, Any) --- a tracer cell,
-`Δy` is the length of the cell centered on (Face, Center, Any) in `y` (a `u` cell),
-and `Δx` is the length of the cell centered on (Center, Face, Any) in `x` (a `v` cell).
-`div_xyᶜᶜᵃ` ends up at the location `cca`.
+`flux_div_xyᶜᶜᶜ` ends up at the location `ccc`.
 """
 @inline flux_div_xyᶜᶜᶜ(i, j, k, grid, u, v) = (δxᶜᶜᶜ(i, j, k, grid, Ax_qᶠᶜᶜ, u) +
                                                δyᶜᶜᶜ(i, j, k, grid, Ay_qᶜᶠᶜ, v))
