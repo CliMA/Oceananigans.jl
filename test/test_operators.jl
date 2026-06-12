@@ -2,6 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Operators: Δxᶠᵃᵃ, Δxᶜᵃᵃ, Δxᶠᶠᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶜᶜᵃ
 using Oceananigans.Operators: Δyᵃᶠᵃ, Δyᵃᶜᵃ, Δyᶠᶠᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶜᶜᵃ
+using Oceananigans.Operators: Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ
 
 
 function test_three_dimensional_differences(T=Float64)
@@ -302,5 +303,36 @@ end
             @test δzᵃᵃᶜ(idx..., grid_xz, A2xz) ≈ δzᵃᵃᶜ(idx..., grid_xz, A3)
             @test δzᵃᵃᶠ(idx..., grid_xz, A2xz) ≈ δzᵃᵃᶠ(idx..., grid_xz, A3)
         end
+    end
+end
+
+@testset "Horizontal areas of single-column latitude-longitude grids" begin
+    @info "Testing z-areas on single-column latitude-longitude grids..."
+
+    for FT in (Float32, Float64)
+        column_grid = LatitudeLongitudeGrid(FT;
+                                            size = 1,
+                                            longitude = 10,
+                                            latitude = 10,
+                                            z = (-1, 0),
+                                            topology = (Flat, Flat, Bounded))
+
+        # Flat horizontal directions contribute unit factors (the Δ = 1 convention),
+        # so the z-areas are finite and constant rather than reading latitude
+        # neighbors that single-column grids do not carry.
+        for Az in (Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
+            @test Az(1, 1, 1, column_grid) ≈ column_grid.radius^2 * deg2rad(1)
+        end
+
+        # The areas enter closure tendencies: a single-column model with an explicit
+        # closure must construct and step (regression test for the BoundsError on
+        # `φᵃᶠᵃ[j+1]`).
+        closure = VerticalScalarDiffusivity(κ = FT(1e-3))
+        model = HydrostaticFreeSurfaceModel(column_grid; closure,
+                                            buoyancy = BuoyancyTracer(),
+                                            tracers = :b)
+        set!(model, b = FT(1))
+        time_step!(model, FT(60))
+        @test all(isfinite, interior(model.tracers.b))
     end
 end
