@@ -182,7 +182,7 @@ b_sponge = Forcing(b_sponge_forcing, discrete_form = true, parameters = sponge_p
 
 free_surface = SplitExplicitFreeSurface(grid; substeps = 30)
 
-model = HydrostaticFreeSurfaceModel(grid; 
+model = HydrostaticFreeSurfaceModel(grid;
                                     coriolis,
                                     buoyancy = BuoyancyTracer(),
                                     tracers = :b,
@@ -193,11 +193,10 @@ model = HydrostaticFreeSurfaceModel(grid;
                                     forcing = (; u = u_sponge, b = b_sponge),
                                     boundary_conditions = (; u = u_bcs, U = U_bcs, b = b_bcs))
 
-# Initialize with the tidal flow and a linear stratification.
+# Initialize with a linear stratification.
+
 bᵢ(x, z) = Nᵢ² * z
-gaussian(x, σ) = exp(-x^2 / 2σ^2)
-ηᵢ(x, z) = gaussian(x, 100kilometers) # sin(π * x / L) # 
-set!(model, b=bᵢ) #, η=ηᵢ)
+set!(model, b=bᵢ)
 
 # ## Simulation
 

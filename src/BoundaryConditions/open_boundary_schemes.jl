@@ -500,7 +500,7 @@ end
     return ifelse(τ == 0, φᵉˣᵗ, φᵇⁿ⁺¹)
 end
 
-# The radiated point is the boundary face for NormalFlow (Face-located fields) and the first halo cell for Value 
+# The radiated point is the boundary face for NormalFlow (Face-located fields) and the first halo cell for Value
 # (Center-located fields): right boundaries coincide at N+1; left boundaries are 1 (Face) and 0 (Center).
 # The update is a convex combination of previous boundary, interior, and exterior values, so it is bounded.
 

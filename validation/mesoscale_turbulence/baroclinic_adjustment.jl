@@ -7,7 +7,6 @@ using JLD2
 
 using Oceananigans
 using Oceananigans.Units
-using Oceananigans.BoundaryConditions
 using Oceananigans.TurbulenceClosures
 
 Oceananigans.defaults.FloatType = Float32
@@ -18,13 +17,13 @@ filename = "baroclinic_adjustment"
 arch = CPU()
 
 # Domain
-const Lx = 2000kilometers  # east-west extent [m]
-const Ly = 1000kilometers  # north-south extent [m]
-const Lz = 1kilometers     # depth [m]
+Lx = 2000kilometers  # east-west extent [m]
+Ly = 1000kilometers  # north-south extent [m]
+Lz = 1kilometers     # depth [m]
 
-const Nx = 256
-const Ny = 128
-const Nz = 32
+Nx = 256
+Ny = 128
+Nz = 32
 
 save_fields_interval = 1day
 stop_time = 80days
@@ -32,7 +31,7 @@ stop_time = 80days
 
 # We choose a regular grid though because of numerical issues that yet need to be resolved
 grid = RectilinearGrid(arch,
-                       topology = (Bounded, Bounded, Bounded),
+                       topology = (Periodic, Bounded, Bounded),
                        size = (Nx, Ny, Nz),
                        x = (0, Lx),
                        y = (-Ly/2, Ly/2),
@@ -40,6 +39,18 @@ grid = RectilinearGrid(arch,
                        halo = (3, 3, 3))
 
 coriolis = BetaPlane(latitude = -45)
+
+@info "Building a model..."
+
+model = HydrostaticFreeSurfaceModel(grid;
+                                    coriolis,
+                                    buoyancy = BuoyancyTracer(),
+                                    tracers = (:b, :c),
+                                    momentum_advection = WENO(order=5),
+                                    tracer_advection = WENO(order=5),
+                                    free_surface = SplitExplicitFreeSurface(grid; substeps=60))
+
+@info "Built $model."
 
 #####
 ##### Initial conditions
@@ -57,53 +68,18 @@ y > y₀ + Δy      => ramp = 1
 ramp(y, Δy) = min(max(0, y/Δy + 1/2), 1)
 
 # Parameters
-const N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
-const M² = 8e-8 # [s⁻²] horizontal buoyancy gradient
+N² = 4e-6 # [s⁻²] buoyancy frequency / stratification
+M² = 8e-8 # [s⁻²] horizontal buoyancy gradient
 
-const Δy = 50kilometers
-const Δz = 100
+Δy = 50kilometers
+Δz = 100
 
-const Δc = 2Δy
-const Δb = Δy * M²
-const ϵb = 1e-2 * Δb # noise amplitude
+Δc = 2Δy
+Δb = Δy * M²
+ϵb = 1e-2 * Δb # noise amplitude
 
-@inline bᵢ(x, y, z) = N² * z + Δb * ramp(y, Δy) + ϵb * randn()
-@inline cᵢ(x, y, z) = exp(-y^2 / 2Δc^2) * exp(-(z + Lz/4)^2 / 2Δz^2)
-
-@info "Building a model..."
-
-@inline bᵂ(y, z, t) = bᵢ(0,  y, z)
-@inline bᴱ(y, z, t) = bᵢ(Lx, y, z)
-
-@inline cᵂ(y, z, t) = cᵢ(0,  y, z)
-@inline cᴱ(y, z, t) = cᵢ(Lx, y, z)
-
-Ubcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing), 
-                               west = FlatherBoundaryCondition(0, 0),
-                               east = FlatherBoundaryCondition(0, 0))
-
-ubcs = FieldBoundaryConditions(west = NormalFlowBoundaryCondition(0; scheme=Radiation()),
-                               east = NormalFlowBoundaryCondition(0; scheme=Radiation()))
-
-vbcs = FieldBoundaryConditions(west = ValueBoundaryCondition(0; scheme=Radiation()),
-                               east = ValueBoundaryCondition(0; scheme=Radiation()))
-
-bbcs = FieldBoundaryConditions(west = ValueBoundaryCondition(bᵂ; scheme=Radiation()),
-                               east = ValueBoundaryCondition(bᴱ; scheme=Radiation()))
-
-cbcs = FieldBoundaryConditions(west = ValueBoundaryCondition(cᵂ; scheme=Radiation()),
-                               east = ValueBoundaryCondition(cᴱ; scheme=Radiation()))
-
-model = HydrostaticFreeSurfaceModel(grid;
-                                    coriolis,
-                                    buoyancy = BuoyancyTracer(),
-                                    tracers = (:b, :c),
-                                    momentum_advection = WENO(order=5),
-                                    tracer_advection = WENO(order=5),
-                                    boundary_conditions = (U = Ubcs, u=ubcs, v=vbcs, b=bbcs, c=cbcs),
-                                    free_surface = SplitExplicitFreeSurface(grid; substeps=60))
-
-@info "Built $model."
+bᵢ(x, y, z) = N² * z + Δb * ramp(y, Δy) + ϵb * randn()
+cᵢ(x, y, z) = exp(-y^2 / 2Δc^2) * exp(-(z + Lz/4)^2 / 2Δz^2)
 
 set!(model, b=bᵢ, c=cᵢ)
 
@@ -138,7 +114,7 @@ end
 
 add_callback!(simulation, print_progress, IterationInterval(100))
 
-
+#=
 slicers = (west = (1, :, :),
            east = (grid.Nx, :, :),
            south = (:, 1, :),
@@ -148,7 +124,8 @@ slicers = (west = (1, :, :),
 
 for side in keys(slicers)
     indices = slicers[side]
-    simulation.output_writers[side] = JLD2Writer(model, merge(model.velocities, model.tracers);
+
+    simulation.output_writers[side] = JLD2Writer(model, fields(model),
                                                  schedule = TimeInterval(save_fields_interval),
                                                  indices,
                                                  filename = filename * "_$(side)_slice",
@@ -170,7 +147,7 @@ simulation.output_writers[:zonal] = JLD2Writer(model, (b=B, c=C, u=U, v=V, w=W),
                                                schedule = TimeInterval(save_fields_interval),
                                                filename = filename * "_zonal_average",
                                                overwrite_existing = true)
-
+=#
 
 @info "Running the simulation..."
 
@@ -178,95 +155,121 @@ run!(simulation)
 
 @info "Simulation completed in " * prettytime(simulation.run_wall_time)
 
-#####
-##### Visualize
-#####
+# #####
+# ##### Visualize
+# #####
 
-using CairoMakie
+# using CairoMakie
 
-fig = Figure(size=(1400, 900))
-ax_b = Axis(fig[1, 1])
-ax_c = Axis(fig[2, 1])
-ax_u = Axis(fig[3, 1])
+# fig = Figure(size=(1400, 700))
+# ax_b = fig[1:5, 1] = LScene(fig)
+# ax_c = fig[1:5, 2] = LScene(fig)
 
-# Extract surfaces on all 6 boundaries
-iter = Observable(0)
-sides = keys(slicers)
+# # Extract surfaces on all 6 boundaries
+# iter = Node(0)
+# sides = keys(slicers)
 
-zonal_file = jldopen(filename * "_zonal_average.jld2")
-slice_files = NamedTuple(side => jldopen(filename * "_$(side)_slice.jld2") for side in sides)
+# zonal_file = jldopen(filename * "_zonal_average.jld2")
+# slice_files = NamedTuple(side => jldopen(filename * "_$(side)_slice.jld2") for side in sides)
 
-grid = slice_files[1]["serialized/grid"]
+# grid = slice_files[1]["serialized/grid"]
 
-# Build coordinates, rescaling the vertical coordinate
-x, y, z = nodes(grid, Center(), Center(), Center())
+# # Build coordinates, rescaling the vertical coordinate
+# x, y, z = nodes((Center, Center, Center), grid)
 
-yscale = 3
-zscale = 800
-z = z .* zscale
-y = y .* yscale
+# yscale = 3
+# zscale = 800
+# z = z .* zscale
+# y = y .* yscale
 
-zonal_slice_displacement = 1.35
+# zonal_slice_displacement = 1.35
 
-#####
-##### Plot buoyancy...
-#####
+# #####
+# ##### Plot buoyancy...
+# #####
 
-b_slices = (
-      west = @lift(Array(slice_files.west["timeseries/b/"   * string($iter)][1, :, :])),
-      east = @lift(Array(slice_files.east["timeseries/b/"   * string($iter)][1, :, :])),
-     south = @lift(Array(slice_files.south["timeseries/b/"  * string($iter)][:, 1, :])),
-     north = @lift(Array(slice_files.north["timeseries/b/"  * string($iter)][:, 1, :])),
-    bottom = @lift(Array(slice_files.bottom["timeseries/b/" * string($iter)][:, :, 1])),
-       top = @lift(Array(slice_files.top["timeseries/b/"    * string($iter)][:, :, 1]))
-)
+# b_slices = (
+#       west = @lift(Array(slice_files.west["timeseries/b/"   * string($iter)][1, :, :])),
+#       east = @lift(Array(slice_files.east["timeseries/b/"   * string($iter)][1, :, :])),
+#      south = @lift(Array(slice_files.south["timeseries/b/"  * string($iter)][:, 1, :])),
+#      north = @lift(Array(slice_files.north["timeseries/b/"  * string($iter)][:, 1, :])),
+#     bottom = @lift(Array(slice_files.bottom["timeseries/b/" * string($iter)][:, :, 1])),
+#        top = @lift(Array(slice_files.top["timeseries/b/"    * string($iter)][:, :, 1]))
+# )
 
-c_slices = (
-      west = @lift(Array(slice_files.west["timeseries/c/"   * string($iter)][1, :, :])),
-      east = @lift(Array(slice_files.east["timeseries/c/"   * string($iter)][1, :, :])),
-     south = @lift(Array(slice_files.south["timeseries/c/"  * string($iter)][:, 1, :])),
-     north = @lift(Array(slice_files.north["timeseries/c/"  * string($iter)][:, 1, :])),
-    bottom = @lift(Array(slice_files.bottom["timeseries/c/" * string($iter)][:, :, 1])),
-       top = @lift(Array(slice_files.top["timeseries/c/"    * string($iter)][:, :, 1]))
-)
+# clims_b = @lift extrema(slice_files.top["timeseries/b/" * string($iter)][:])
+# kwargs_b = (colorrange=clims_b, colormap=:balance, show_axis=false)
 
-u_slices = (
-      west = @lift(Array(slice_files.west["timeseries/u/"   * string($iter)][1, :, :])),
-      east = @lift(Array(slice_files.east["timeseries/u/"   * string($iter)][1, :, :])),
-     south = @lift(Array(slice_files.south["timeseries/u/"  * string($iter)][:, 1, :])),
-     north = @lift(Array(slice_files.north["timeseries/u/"  * string($iter)][:, 1, :])),
-    bottom = @lift(Array(slice_files.bottom["timeseries/u/" * string($iter)][:, :, 1])),
-       top = @lift(Array(slice_files.top["timeseries/u/"    * string($iter)][:, :, 1]))
-)
+# surface!(ax_b, y, z, b_slices.west;   transformation = (:yz, x[1]),   kwargs_b...)
+# surface!(ax_b, y, z, b_slices.east;   transformation = (:yz, x[end]), kwargs_b...)
+# surface!(ax_b, x, z, b_slices.south;  transformation = (:xz, y[1]),   kwargs_b...)
+# surface!(ax_b, x, z, b_slices.north;  transformation = (:xz, y[end]), kwargs_b...)
+# surface!(ax_b, x, y, b_slices.bottom; transformation = (:xy, z[1]),   kwargs_b...)
+# surface!(ax_b, x, y, b_slices.top;    transformation = (:xy, z[end]), kwargs_b...)
 
-clims_b = @lift extrema(slice_files.top["timeseries/b/" * string($iter)][:])
-kwargs_b = (colorrange=clims_b, colormap=:balance, show_axis=false)
+# b_avg = @lift zonal_file["timeseries/b/" * string($iter)][1, :, :]
+# u_avg = @lift zonal_file["timeseries/u/" * string($iter)][1, :, :]
 
-heatmap!(ax_b, x, y, b_slices.top)
-heatmap!(ax_c, x, y, c_slices.top)
-heatmap!(ax_u, x, y, u_slices.top)
+# clims_u = @lift extrema(zonal_file["timeseries/u/" * string($iter)][1, :, :])
 
-#####
-##### Make title and animate
-#####
+# contour!(ax_b, y, z, b_avg; levels = 25, linewidth=2, color=:black, transformation = (:yz, zonal_slice_displacement * x[end]), show_axis=false)
+# surface!(ax_b, y, z, u_avg; transformation = (:yz, zonal_slice_displacement * x[end]), colorrange=clims_u, colormap=:balance)
 
-title = @lift(string("Buoyancy and tracer concentration at t = ",
-                     prettytime(slice_files[1]["timeseries/t/" * string($iter)])))
+# rotate_cam!(ax_b.scene, (π/24, -π/6, 0))
 
-fig[0, :] = Label(fig, title, fontsize=30)
+# #####
+# ##### Plot tracer...
+# #####
+
+# c_slices = (
+#       west = @lift(Array(slice_files.west["timeseries/c/"   * string($iter)][1, :, :])),
+#       east = @lift(Array(slice_files.east["timeseries/c/"   * string($iter)][1, :, :])),
+#      south = @lift(Array(slice_files.south["timeseries/c/"  * string($iter)][:, 1, :])),
+#      north = @lift(Array(slice_files.north["timeseries/c/"  * string($iter)][:, 1, :])),
+#     bottom = @lift(Array(slice_files.bottom["timeseries/c/" * string($iter)][:, :, 1])),
+#        top = @lift(Array(slice_files.top["timeseries/c/"    * string($iter)][:, :, 1]))
+# )
+
+# clims_c = @lift extrema(slice_files.top["timeseries/c/" * string($iter)][:])
+# clims_c = (0, 0.5)
+# kwargs_c = (colorrange=clims_c, colormap=:deep, show_axis=false)
+
+# surface!(ax_c, y, z, c_slices.west;   transformation = (:yz, x[1]),   kwargs_c...)
+# surface!(ax_c, y, z, c_slices.east;   transformation = (:yz, x[end]), kwargs_c...)
+# surface!(ax_c, x, z, c_slices.south;  transformation = (:xz, y[1]),   kwargs_c...)
+# surface!(ax_c, x, z, c_slices.north;  transformation = (:xz, y[end]), kwargs_c...)
+# surface!(ax_c, x, y, c_slices.bottom; transformation = (:xy, z[1]),   kwargs_c...)
+# surface!(ax_c, x, y, c_slices.top;    transformation = (:xy, z[end]), kwargs_c...)
+
+# b_avg = @lift zonal_file["timeseries/b/" * string($iter)][1, :, :]
+# c_avg = @lift zonal_file["timeseries/c/" * string($iter)][1, :, :]
+
+# contour!(ax_c, y, z, b_avg; levels = 25, linewidth=2, color=:black, transformation = (:yz, zonal_slice_displacement * x[end]), show_axis=false)
+# surface!(ax_c, y, z, c_avg; transformation = (:yz, zonal_slice_displacement * x[end]), colorrange=clims_c, colormap=:deep)
+
+# rotate_cam!(ax_c.scene, (π/24, -π/6, 0))
+
+# #####
+# ##### Make title and animate
+# #####
+
+# title = @lift(string("Buoyancy and tracer concentration at t = ",
+#                      prettytime(slice_files[1]["timeseries/t/" * string($iter)])))
+
+# fig[0, :] = Label(fig, title, fontsize=30)
 
 
-iterations = parse.(Int, keys(slice_files[1]["timeseries/t"]))
+# iterations = parse.(Int, keys(slice_files[1]["timeseries/t"]))
 
-record(fig, filename * ".mp4", iterations, framerate=8) do i
-    @info "Plotting iteration $i of $(iterations[end])..."
-    iter[] = i
-end
+# record(fig, filename * ".mp4", iterations, framerate=8) do i
+#     @info "Plotting iteration $i of $(iterations[end])..."
+#     iter[] = i
+# end
 
-display(fig)
+# display(fig)
 
-for file in slice_files
-    close(file)
-end
+# for file in slice_files
+#     close(file)
+# end
 
-close(zonal_file)
+# close(zonal_file)

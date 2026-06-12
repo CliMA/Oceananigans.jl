@@ -402,7 +402,7 @@ end
 params = default_parameters(B = 0.5)
 stop_time = 150days
 
-outflow_timescale = 50days
+outflow_timescale = Inf
 inflow_timescale = 1day
 pa = PerturbationAdvection(; outflow_timescale, inflow_timescale)
 
