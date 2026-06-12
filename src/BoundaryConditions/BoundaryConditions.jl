@@ -5,6 +5,9 @@ export
     BoundaryCondition, getbc,
     PeriodicBoundaryCondition, NormalFlowBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, DistributedCommunicationBoundaryCondition,
+    IMEXFluxTimeDiscretization, IMEXFluxBoundaryCondition,
+    implicit_flux_coefficient,
+    needs_implicit_solver, validate_implicit_explicit_flux_locations, total_boundary_flux,
     PerturbationAdvection, has_target_transport, get_target_transport,
     validate_boundary_condition_topology, validate_boundary_condition_architecture,
     FieldBoundaryConditions,
@@ -20,6 +23,7 @@ using KernelAbstractions: @index, @kernel
 
 using Oceananigans.Architectures: CPU, GPU
 using Oceananigans.Utils: launch!
+using Oceananigans.Utils: AbstractTimeDiscretization, ExplicitTimeDiscretization
 using Oceananigans.Operators: Ax, Ay, Az, volume
 using Oceananigans.Grids
 
@@ -38,6 +42,7 @@ include("boundary_condition_classifications.jl")
 include("boundary_condition.jl")
 include("discrete_boundary_function.jl")
 include("continuous_boundary_function.jl")
+include("implicit_explicit_flux_boundary_condition.jl")
 include("boundary_condition_ordering.jl")
 include("field_boundary_conditions.jl")
 include("show_boundary_conditions.jl")

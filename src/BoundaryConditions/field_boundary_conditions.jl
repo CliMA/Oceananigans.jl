@@ -311,6 +311,8 @@ regularize_field_boundary_conditions(::Missing,
                                      field_name::Symbol,
                                      prognostic_names=nothing) = missing
 
+needs_implicit_solver(bcs::FieldBoundaryConditions) = needs_implicit_solver(bcs.top) | needs_implicit_solver(bcs.bottom)
+
 #####
 ##### Outer interface for model constructors
 #####

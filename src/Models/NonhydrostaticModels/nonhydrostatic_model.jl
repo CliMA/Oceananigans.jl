@@ -3,7 +3,8 @@ using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: MixedBoundaryCondition
 using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
-using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
+using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions, validate_implicit_explicit_flux_locations
+using Oceananigans.BoundaryConditions: needs_implicit_solver
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Fields: Field, tracernames, VelocityFields, TracerFields, CenterField
 using Oceananigans.Forcings: model_forcing
@@ -13,7 +14,6 @@ using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materiali
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, materialize_clock!, AbstractLagrangianParticles, time_discretization
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, implicit_diffusion_solver, VerticallyImplicitTimeDiscretization, initialize_closure_fields!
-using Oceananigans.Advection: needs_implicit_solver
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.Utils: tupleit
 
@@ -284,11 +284,15 @@ function NonhydrostaticModel(grid;
     model_fields = merge(velocities, tracers, auxiliary_fields)
     prognostic_fields = merge(velocities, tracers)
 
-    # Instantiate timestepper if not already instantiated
-    implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
+    # Flux BCs with `IMEXFluxTimeDiscretization` are valid only on vertical boundaries.
+    foreach(field -> validate_implicit_explicit_flux_locations(field.boundary_conditions), prognostic_fields)
 
-    # Also create the implicit solver if adaptive implicit advection requires it
-    if isnothing(implicit_solver) && needs_implicit_solver(advection)
+    # Instantiate timestepper if not already instantiated. Build the vertical implicit solver if the
+    # closure, the advection scheme (AIVA), or any boundary condition (implicit-explicit flux) needs it.
+    implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
+    bc_needs_solver = any(field -> needs_implicit_solver(field.boundary_conditions), prognostic_fields)
+
+    if isnothing(implicit_solver) && (needs_implicit_solver(advection) || bc_needs_solver)
         implicit_solver = implicit_diffusion_solver(VerticallyImplicitTimeDiscretization(), grid)
     end
 
