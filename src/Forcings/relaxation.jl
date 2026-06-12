@@ -1,7 +1,9 @@
 using Oceananigans.Grids: node, xnodes, ynodes, znodes
+using Oceananigans.Fields: AbstractField, Field, compute!, show_location
+using Oceananigans.AbstractOperations: Average
 using Oceananigans.OutputReaders: interpolate
+using Oceananigans.Utils: prettysummary
 using Oceananigans: instantiated_location
-using DocStringExtensions: TYPEDEF, TYPEDSIGNATURES
 
 @inline zerofunction(args...) = 0
 @inline onefunction(args...) = 1
@@ -13,25 +15,49 @@ Base.summary(::T_zerofunction) = "0"
 Base.summary(::T_onefunction) = "1"
 
 """
-    struct Relaxation{R, M, T}
+    struct Relaxation{R, F, M, T, L, Tr}
 
-Callable object for restoring fields to a `target` at
-some `rate` and within a `mask`ed region in `x, y, z`.
+Callable object for restoring fields to a `target` at some `rate` and within a
+`mask`ed region in `x, y, z`. The `F` parameter (the `relaxed` quantity) sits
+second because the kernel dispatches on it. The trailing parameters `L` and
+`Tr` carry the instantiated `location` and user-supplied `transform`. After
+`materialize_forcing` runs, `relaxed` is the forced field (or, when `transform`
+is set, a `Field` holding `transform(forced_field)`); `location` and
+`transform` carry their materialized values. All three are `nothing` for a
+freshly-constructed `Relaxation`.
 """
-struct Relaxation{R, M, T}
-      rate :: R
-      mask :: M
-    target :: T
+struct Relaxation{R, F, M, T, L, Tr}
+         rate :: R
+      relaxed :: F
+         mask :: M
+       target :: T
+     location :: L
+    transform :: Tr
 end
 
 """
-    Relaxation(; rate, mask=onefunction, target=zerofunction)
+    Relaxation(; rate, mask=onefunction, target=zerofunction, transform=nothing)
 
 Returns a `Forcing` that restores a field to `target(X..., t)`
 at the specified `rate`, in the region `mask(X...)`.
 
 The functions `onefunction` and `zerofunction` always return 1 and 0, respectively.
 Thus the default `mask` leaves the whole domain uncovered, and the default `target` is zero.
+
+`target` may be a `Number`, a function `target(x, y, z, t)`, an `AbstractField` sharing
+the forced field's grid and location, or a `FieldTimeSeries` (interpolated in space and
+time at each grid point).
+
+`transform`, if provided, is applied to the forced field at materialize time to build
+the `relaxed` quantity: the tendency becomes
+`rate * mask(X) * (target(X, t) - transform(field)[i, j, k])`. The user-supplied `target`
+is still used as the RHS of the relaxation. This is useful for nudging a reduction
+of the forced field — e.g. its horizontal average — toward a target profile.
+`transform` may be a callable returning a `Field`
+(`transform = f -> Field(Average(f, dims=(1, 2)))`) or a `Symbol` shortcut. The only
+supported `Symbol` is `:horizontal_average`, equivalent to
+`f -> Field(Average(f, dims=(1, 2)))`. Transformed quantities are recomputed each
+step via `compute_forcing!`. `transform` is not supported with a `FieldTimeSeries` target.
 
 Example
 =======
@@ -45,9 +71,9 @@ using Oceananigans
 damping = Relaxation(rate = 1/3600)
 
 # output
-Relaxation{Float64, typeof(Oceananigans.Forcings.onefunction), typeof(Oceananigans.Forcings.zerofunction)}
-├── rate: 0.0002777777777777778
-├── mask: 1
+Relaxation{Float64}
+├──   rate: 0.0002777777777777778
+├──   mask: 1
 └── target: 0
 ```
 
@@ -67,98 +93,111 @@ bottom_sponge_layer = Relaxation(; rate = 1/60,
                                    mask = GaussianMask{:z}(center=-Lz, width=Lz/4))
 
 # output
-Relaxation{Float64, GaussianMask{:z, Float64}, LinearTarget{:z, Float64}}
-├── rate: 0.016666666666666666
-├── mask: exp(-(z + 100.0)^2 / (2 * 25.0^2))
+Relaxation{Float64}
+├──   rate: 0.016666666666666666
+├──   mask: exp(-(z + 100.0)^2 / (2 * 25.0^2))
 └── target: 20.0 + 0.001 * z
 ```
 """
-Relaxation(; rate, mask=onefunction, target=zerofunction) = Relaxation(rate, mask, target)
+Relaxation(; rate, mask=onefunction, target=zerofunction, transform=nothing) =
+    Relaxation(rate, nothing, mask, target, nothing, transform)
 
-""" Wrap `forcing::Relaxation` in `ContinuousForcing` and add the appropriate field dependency. """
-function materialize_forcing(forcing::Relaxation, field, field_name, model_field_names)
-    continuous_relaxation = ContinuousForcing(forcing, field_dependencies=field_name)
-    return materialize_forcing(continuous_relaxation, field, field_name, model_field_names)
+apply_transform(t,          field) = t(field)
+apply_transform(s::Symbol,  field) = apply_transform(Val(s), field)
+apply_transform(::Val{:horizontal_average}, field) = Field(Average(field, dims=(1, 2)))
+apply_transform(::Val{S}, field) where S =
+  throw(ArgumentError("unknown transform :$S; supported: :horizontal_average"))
+
+# Note `F<:AbstractArray` (not `F<:AbstractField`): `Adapt.adapt_structure(to, ::Field) = adapt(to, f.data)`
+# unwraps Field to its underlying OffsetArray on GPU, so an `<:AbstractField` constraint here
+# would prevent kernel dispatch on the device and the compiler would emit a MethodError.
+@inline function (r::Relaxation{R, F})(i, j, k, grid, clock, model_fields) where {R, F<:AbstractArray}
+    X  = node(i, j, k, grid, r.location...)
+    ϕ  = @inbounds r.relaxed[i, j, k]
+    ϕᵣ = evaluate_target(r.target, i, j, k, X, clock.time)
+    return r.rate * r.mask(X...) * (ϕᵣ - ϕ)
 end
 
 """
-$(TYPEDEF)
+    InterpolatedFieldTarget(field, loc, grid)
 
-Materialized `Relaxation` target that carries a `FieldTimeSeries` source, the
-simulation-side location at which the relaxation is evaluated, the FTS's grid
-(cached separately because `GPUAdaptedFieldTimeSeries` does not carry a grid
-field), and the integer index of the forced field in `model_fields`. The
-index is encoded as a type parameter `I::Int` (not a struct field) so that
-`model_fields[I]` is a compile-time access — required for GPU kernel
-compilation, since `model_fields` is a heterogeneous `NamedTuple` and a
-runtime-integer index would force a dynamic getfield call that PTX cannot
-lower. Constructed by `materialize_forcing` when a `Relaxation`'s `target`
-is a `FieldTimeSeries`; not intended for direct user construction.
+Wraps an `AbstractField` target whose grid differs from the forced field's so that
+`evaluate_target` interpolates from the wrapped field at each kernel call.
+`loc` and `grid` are carried separately because `Adapt`ing a `Field` reduces it to
+its underlying data array and discards the metadata `interpolate` needs.
 """
-struct FieldTimeSeriesTarget{L, F, G, I}
-    location          :: L    # simulation-side instantiated location tuple
+struct InterpolatedFieldTarget{F, L, G}
+    field :: F
+      loc :: L
+     grid :: G
+end
+
+Adapt.adapt_structure(to, t::InterpolatedFieldTarget) =
+    InterpolatedFieldTarget(Adapt.adapt(to, t.field), t.loc, Adapt.adapt(to, t.grid))
+
+Base.summary(t::InterpolatedFieldTarget) = "interpolated " * summary(t.field)
+
+"""
+    FieldTimeSeriesTarget(field_time_series, grid)
+
+Wraps a `FieldTimeSeries` together with its grid so that the relaxation kernel can
+`interpolate(X, Time(t), fts, ..., grid)` on the device. `Adapt`ing a
+`FieldTimeSeries` to a `GPUAdaptedFieldTimeSeries` drops the grid, so it is cached
+separately on this wrapper at materialize time.
+"""
+struct FieldTimeSeriesTarget{F, G}
     field_time_series :: F
-    fts_grid          :: G    # explicit copy of `field_time_series.grid` at materialize time
+    grid              :: G
 end
 
-FieldTimeSeriesTarget(location, field_time_series, fts_grid, index::Int) =
-    FieldTimeSeriesTarget{typeof(location), typeof(field_time_series), typeof(fts_grid), index}(location, field_time_series, fts_grid)
+Adapt.adapt_structure(to, t::FieldTimeSeriesTarget) =
+    FieldTimeSeriesTarget(Adapt.adapt(to, t.field_time_series), Adapt.adapt(to, t.grid))
 
-# Convenience: pull the grid off the FTS at construction. Used by
-# `materialize_forcing` on the host side.
-FieldTimeSeriesTarget(location, field_time_series, index::Int) =
-    FieldTimeSeriesTarget(location, field_time_series, field_time_series.grid, index)
+Base.summary(t::FieldTimeSeriesTarget) = summary(t.field_time_series)
 
-# Extract the field index from the type parameter. Used by the kernel callable
-# so that `model_fields[_field_index(target)]` resolves to a compile-time index
-# and the surrounding load can be inlined on GPU.
-@inline _field_index(::FieldTimeSeriesTarget{<:Any, <:Any, <:Any, I}) where I = I
+const FieldRelaxation           = Relaxation{<:Any, <:Any, <:Any, <:AbstractField}
+const FieldTimeSeriesRelaxation = Relaxation{<:Any, <:Any, <:Any, <:Union{FlavorOfFTS, FieldTimeSeriesTarget}}
 
-# Adapt every component individually so the resulting struct is isbits.
-# In particular `field_time_series.grid` cannot be recovered from the
-# adapted FTS (because `GPUAdaptedFieldTimeSeries` has no grid field), so
-# the grid lives as its own field on `FieldTimeSeriesTarget` and is adapted
-# in place. The index is reinjected from the type parameter so the resulting
-# struct preserves the static-index property.
-Adapt.adapt_structure(to, target::FieldTimeSeriesTarget{<:Any, <:Any, <:Any, I}) where I =
-    FieldTimeSeriesTarget(Adapt.adapt(to, target.location),
-                          Adapt.adapt(to, target.field_time_series),
-                          Adapt.adapt(to, target.fts_grid),
-                          I)
+@inline evaluate_target(c::Number,                    i, j, k, X, t) = c
+@inline evaluate_target(f,                            i, j, k, X, t) = f(X..., t)
+@inline evaluate_target(f::AbstractArray,             i, j, k, X, t) = @inbounds f[i, j, k]
+@inline evaluate_target(t::InterpolatedFieldTarget,   i, j, k, X, time) =
+    interpolate(X, t.field, t.loc, t.grid)
+@inline evaluate_target(t::FieldTimeSeriesTarget,     i, j, k, X, time) =
+    interpolate(X, Time(time), t.field_time_series, instantiated_location(t.field_time_series), t.grid)
 
-# Recursive Adapt for `Relaxation` so that an inner `FieldTimeSeriesTarget`
-# is adapted on the path to the kernel. Without this, Relaxation's default
-# Adapt fallback returns the host-side struct unchanged, and the FTS-target
-# adapt above is never reached.
-Adapt.adapt_structure(to, r::Relaxation) =
-    Relaxation(Adapt.adapt(to, r.rate),
-               Adapt.adapt(to, r.mask),
-               Adapt.adapt(to, r.target))
+# Default: take user-supplied target as-is (Numbers, callables, plain arrays, …).
+materialize_target(target, field) = target
 
-const FieldTimeSeriesRelaxation{R, M, T<:FieldTimeSeriesTarget} = Relaxation{R, M, T}
-
-@inline function (f::FieldTimeSeriesRelaxation)(i, j, k, grid, clock, model_fields)
-    target = f.target
-    fts = target.field_time_series
-    X = node(i, j, k, grid, target.location...)
-    @inbounds ϕ = model_fields[_field_index(target)][i, j, k]
-    ϕᵣ = interpolate(X, Time(clock.time), fts, instantiated_location(fts), target.fts_grid)
-    return f.rate * f.mask(X...) * (ϕᵣ - ϕ)
+# AbstractField target: keep direct indexing when the grid matches the forced field
+# and either the locations match or the target is reduced (so `f[i, j, k]` broadcasts
+# the reduced dimensions, e.g. a horizontally-averaged field). Otherwise wrap so we
+# interpolate from the target's grid and location at each kernel call.
+function materialize_target(target::AbstractField, field)
+    target_loc = instantiated_location(target)
+    field_loc  = instantiated_location(field)
+    is_reduced = any(isnothing, target_loc)
+    if target.grid === field.grid && (target_loc == field_loc || is_reduced)
+        return target
+    else
+        return InterpolatedFieldTarget(target, target_loc, target.grid)
+    end
 end
 
-"""
-$(TYPEDSIGNATURES)
+function materialize_forcing(forcing::Relaxation, field, field_name, model_field_names)
+    target = materialize_target(forcing.target, field)
+    relaxed = isnothing(forcing.transform) ? field : apply_transform(forcing.transform, field)
+    return Relaxation(forcing.rate, relaxed, forcing.mask, target,
+                      instantiated_location(field), forcing.transform)
+end
 
-Wrap a `Relaxation` with `FieldTimeSeries` target into a materialized form
-carrying simulation-side location and an integer field index, so the kernel can
-spatially+temporally interpolate `target` and read `ϕ` from `model_fields`.
-"""
-function materialize_forcing(forcing::Relaxation{R, M, <:FlavorOfFTS}, field,
-                             field_name, model_field_names) where {R, M}
+function materialize_forcing(forcing::Relaxation{<:Any, <:Any, <:Any, <:FlavorOfFTS}, field,
+                             field_name, model_field_names)
+    isnothing(forcing.transform) ||
+        throw(ArgumentError("`transform` is not supported with a `FieldTimeSeries` target"))
     validate_fts_target_extent(forcing.target, field)
-    index = findfirst(==(field_name), model_field_names)
-    target = FieldTimeSeriesTarget(instantiated_location(field), forcing.target, index)
-    return Relaxation(forcing.rate, forcing.mask, target)
+    target = FieldTimeSeriesTarget(forcing.target, forcing.target.grid)
+    return Relaxation(forcing.rate, field, forcing.mask, target, instantiated_location(field), nothing)
 end
 
 function validate_fts_target_extent(fts, field)
@@ -167,9 +206,7 @@ function validate_fts_target_extent(fts, field)
     fts_loc = instantiated_location(fts)
     sim_loc = instantiated_location(field)
 
-    # Check that every model sampling position (at the forced field's location)
-    # lies within the FTS coverage at the FTS's own storage location. The
-    # kernel queries `interpolate(X, ..., fts, fts_loc, fts_grid)` with
+    # The kernel queries `interpolate(X, …, fts, fts_loc, fts.grid)` with
     # `X = node(i, j, k, sim_grid, sim_loc...)`; if X falls outside the FTS
     # node range, trilinear interpolation reads from FTS halos (which
     # `set!(fts[n], …)` does not fill), producing silently wrong values near
@@ -185,41 +222,38 @@ function validate_fts_target_extent(fts, field)
     return nothing
 end
 
-Base.summary(target::FieldTimeSeriesTarget) =
-    "FieldTimeSeriesTarget(location=$(target.location), index=$(_field_index(target)))"
-
-@inline (f::Relaxation)(x, y, z, t, field) =
-    f.rate * f.mask(x, y, z) * (f.target(x, y, z, t) - field)
-
-@inline (f::Relaxation{R, M, <:Number})(x, y, z, t, field) where {R, M} =
-    f.rate * f.mask(x, y, z) * (f.target - field)
-
-# Methods for grids with Flat dimensions:
-# Here, the meaning of the coordinate xₙ depends on which dimension is Flat:
-# for example, in the below method (x₁, x₂) may be (ξ, η), (ξ, r), or (η, r), where
-# ξ, η, and r are the first, second, and third coordinates respectively.
-@inline (f::Relaxation)(x₁, x₂, t, field) =
-    f.rate * f.mask(x₁, x₂) * (f.target(x₁, x₂, t) - field)
-
-@inline (f::Relaxation{R, M, <:Number})(x₁, x₂, t, field) where {R, M} =
-    f.rate * f.mask(x₁, x₂) * (f.target - field)
-
-# Below, the coordinate x₁ can be ξ, η, or r (see above)
-@inline (f::Relaxation)(x₁, t, field) =
-    f.rate * f.mask(x₁) * (f.target(x₁, t) - field)
-
-@inline (f::Relaxation{R, M, <:Number})(x₁, t, field) where {R, M} =
-    f.rate * f.mask(x₁) * (f.target - field)
+Adapt.adapt_structure(to, r::Relaxation) =
+    Relaxation(Adapt.adapt(to, r.rate),
+               Adapt.adapt(to, r.relaxed),
+               Adapt.adapt(to, r.mask),
+               Adapt.adapt(to, r.target),
+               Adapt.adapt(to, r.location),
+               Adapt.adapt(to, r.transform))
 
 """Show the innards of a `Relaxation` in the REPL."""
-Base.show(io::IO, relaxation::Relaxation{R, M, T}) where {R, M, T} =
-    print(io, "Relaxation{$R, $M, $T}", "\n",
-        "├── rate: $(relaxation.rate)", "\n",
-        "├── mask: $(summary(relaxation.mask))", "\n",
-        "└── target: $(summary(relaxation.target))")
+function Base.show(io::IO, relaxation::Relaxation)
+    FT = typeof(relaxation.rate)
+    print(io, "Relaxation{$FT}")
+    isnothing(relaxation.location) || print(io, " at ", show_location(map(typeof, relaxation.location)...))
+    rows = Pair{String, String}["rate" => string(relaxation.rate)]
+    isnothing(relaxation.relaxed) || push!(rows, "relaxed" => prettysummary(relaxation.relaxed))
+    push!(rows, "mask"   => summary(relaxation.mask))
+    push!(rows, "target" => summary(relaxation.target))
+    isnothing(relaxation.transform) || push!(rows, "transform" => string(relaxation.transform))
+    width = maximum(length(first(r)) for r in rows)
+    for (i, (key, value)) in enumerate(rows)
+        prefix = i == length(rows) ? "└── " : "├── "
+        print(io, "\n", prefix, lpad(key, width), ": ", value)
+    end
+end
 
-Base.summary(relaxation::Relaxation) =
-    "Relaxation(rate=$(relaxation.rate), mask=$(summary(relaxation.mask)), target=$(summary(relaxation.target)))"
+function Base.summary(relaxation::Relaxation)
+    parts = ["rate=$(relaxation.rate)",
+             "mask=$(summary(relaxation.mask))",
+             "target=$(summary(relaxation.target))"]
+    isnothing(relaxation.transform) || push!(parts, "transform=$(relaxation.transform)")
+    return "Relaxation(" * join(parts, ", ") * ")"
+end
 
 #####
 ##### Sponge layer functions
