@@ -33,8 +33,8 @@ const issd_coefficient_loc = (Center(), Center(), Face())
 
 """
     IsopycnalSkewSymmetricDiffusivity([time_disc=VerticallyImplicitTimeDiscretization(), FT=Float64;]
-                                      κ_skew = 0,
-                                      κ_symmetric = 0,
+                                      κ_skew = nothing,
+                                      κ_symmetric = nothing,
                                       skew_flux_formulation = DiffusiveFormulation(),
                                       isopycnal_tensor = SmallSlopeIsopycnalTensor(),
                                       slope_limiter = FluxTapering(1e-2))

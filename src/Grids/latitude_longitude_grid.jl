@@ -142,7 +142,7 @@ Keyword arguments
 - `topology`: Tuple of topologies (`Flat`, `Bounded`, `Periodic`) for each direction. The vertical
               `topology[3]` must be `Bounded`, while the latitude-longitude topologies can be
               `Bounded`, `Periodic`, or `Flat`. If no topology is provided then, by default, the
-              topology is (`Periodic`, `Bounded`, `Bounded`) if the latitudinal extent is 360 degrees
+              topology is (`Periodic`, `Bounded`, `Bounded`) if the longitudinal extent is 360 degrees
               or (`Bounded`, `Bounded`, `Bounded`) otherwise.
 
 - `precompute_metrics`: Boolean specifying whether to precompute horizontal spacings and areas.
