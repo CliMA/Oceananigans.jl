@@ -35,6 +35,10 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
     @test parent(cpu_c) isa Array
     @test architecture(cpu_c.grid) isa CPU
 
+    @info "  Testing eltype..."
+    RFT = eltype(grid)
+    @test RFT == Reactant.TracedRNumber{Float64}
+
     @info "  Testing field set! with a number..."
     set!(c, 1)
     @test all(c .≈ 1)
