@@ -146,13 +146,9 @@ worksize(grid) = size(grid)
     interior_work_layout(grid, dims, location)
 
 Returns the `workgroup` and `worksize` for launching a kernel over `dims`
-on `grid` that excludes peripheral nodes.
+on `grid` that excludes peripheral nodes (determined from `location`).
 The `workgroup` is a tuple specifying the threads per block in each
 dimension. The `worksize` specifies the range of the loop in each dimension.
-
-Specifying `include_right_boundaries=true` will ensure the work layout includes the
-right face end points along bounded dimensions. This requires the field `location`
-to be specified.
 
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
@@ -190,15 +186,11 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 end
 
 """
-    work_layout(grid, dims, location)
+    work_layout(grid, dims, reduced_dimensions)
 
 Returns the `workgroup` and `worksize` for launching a kernel over `dims`
 on `grid`. The `workgroup` is a tuple specifying the threads per block in each
 dimension. The `worksize` specifies the range of the loop in each dimension.
-
-Specifying `include_right_boundaries=true` will ensure the work layout includes the
-right face end points along bounded dimensions. This requires the field `location`
-to be specified.
 
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
@@ -235,7 +227,7 @@ end
 """
     configure_kernel(arch, grid, workspec, kernel!;
                      active_cells_map = nothing,
-                     exclude_periphery = false;
+                     exclude_periphery = false,
                      reduced_dimensions = (),
                      location = nothing)
 
@@ -254,7 +246,7 @@ Keyword Arguments
 =================
 
 - `reduced_dimensions`: A tuple specifying the dimensions to be reduced in the work distribution. Default is an empty tuple.
-- `location`: The location of the kernel execution, needed for `include_right_boundaries`. Default is `nothing`.
+- `location`: The location of the kernel execution, used when `exclude_periphery = true`. Default is `nothing`.
 - `active_cells_map`: A map indicating the active cells in the grid. If the map is not a nothing, the workspec will be disregarded and
                       the kernel is configured as a linear kernel with a worksize equal to the length of the active cell map. Default is `nothing`.
 - `exclude_periphery`: A boolean indicating whether to exclude the periphery, used only for interior kernels.

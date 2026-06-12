@@ -110,7 +110,7 @@ rightmost_interface_index(::Periodic, N) = N + 1
 rightmost_interface_index(::Flat, N) = N
 
 """
-    advect_particle((x, y, z), p, restitution, grid, Δt, velocities)
+    advect_particle((x, y, z), particles, p, restitution, grid, Δt, velocities)
 
 Return new position `(x⁺, y⁺, z⁺)` for a particle at current position (x, y, z),
 given `velocities`, time-step `Δt, and coefficient of `restitution`.
