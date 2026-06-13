@@ -6,7 +6,7 @@ struct LillyCoefficient{FT}
 end
 
 """
-    LillyCoefficient([FT=Float64;] smagorinsky=0.16, reduction_factor=1)
+    LillyCoefficient([FT=Oceananigans.defaults.FloatType;] smagorinsky=0.16, reduction_factor=1)
 
 When used with `Smagorinsky`, it calculates the Smagorinsky coefficient according to closure
 proposed by [Lilly (1962)](@cite Lilly62), and [Lilly (1966)](@cite Lilly66), which has an
@@ -50,7 +50,7 @@ LillyCoefficient(FT=Oceananigans.defaults.FloatType; smagorinsky=0.16, reduction
 const SmagorinskyLilly = Smagorinsky{<:Any, <:LillyCoefficient}
 
 """
-    SmagorinskyLilly([time_discretization::TD = ExplicitTimeDiscretization(), FT=Float64;] C=0.16, Cb=1.0, Pr=1.0)
+    SmagorinskyLilly([time_discretization::TD = ExplicitTimeDiscretization(), FT=Oceananigans.defaults.FloatType;] C=0.16, Cb=1.0, Pr=1.0)
 
 Return a `SmagorinskyLilly` type associated with the turbulence closure proposed by
 [Lilly62](@citet), [Smagorinsky1958](@citet), [Smagorinsky1963](@citet), and [Lilly66](@citet),

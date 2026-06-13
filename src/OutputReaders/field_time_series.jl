@@ -40,7 +40,8 @@ struct InMemory{S} <: AbstractInMemoryBackend{S}
 end
 
 """
-    InMemory(length=nothing)
+    InMemory()
+    InMemory(length)
 
 Return a `backend` for `FieldTimeSeries` that stores `length`
 fields in memory. If `nothing` is provided (default), then all fields are stored in memory.

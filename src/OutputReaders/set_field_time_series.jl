@@ -128,7 +128,7 @@ function maybe_write_property!(file, property, data)
 end
 
 """
-    set!(fts::OnDiskFieldTimeSeries, field::Field, n::Int, time=fts.times[time_index])
+    set!(fts::OnDiskFieldTimeSeries, field::Field, n::Int, time=fts.times[n])
 
 Write the data in `parent(field)` to the file at `fts.path`,
 under `fts.name` and at `time_index`. The save field is assigned `time`,

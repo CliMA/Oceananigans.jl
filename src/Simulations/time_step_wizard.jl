@@ -116,7 +116,7 @@ end
     simulation.Δt = new_time_step(simulation.Δt, wizard, simulation.model)
 
 """
-    conjure_time_step_wizard!(simulation, schedule=IterationInterval(10), wizard_kw...)
+    conjure_time_step_wizard!(simulation, schedule=IterationInterval(10); wizard_kw...)
 
 Add a `TimeStepWizard` built with `wizard_kw` as a `Callback` to `simulation`,
 called on `schedule` which is `IterationInterval(10)` by default.

@@ -84,7 +84,8 @@ end
 end
 
 """
-    update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSomeKind, ::ZStarCoordinate; parameters)
+    update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSomeKind, ::ZStarCoordinate;
+                                   parameters=surface_kernel_parameters(grid))
 
 Compute the time derivative of the z-star grid stretching factor `∂t_σ`.
 

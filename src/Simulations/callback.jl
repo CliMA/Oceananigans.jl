@@ -109,7 +109,7 @@ function generic_callback_name(::GenericName, existing_names)
 end
 
 """
-    add_callback!(simulation, callback::Callback; name = GenericName(), callback_kw...)
+    add_callback!(simulation, callback::Callback; name = GenericName())
     add_callback!(simulation, func, schedule=IterationInterval(1); name = GenericName(), callback_kw...)
 
 Add `Callback(func, schedule)` to `simulation.callbacks` under `name`. The default

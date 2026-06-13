@@ -78,7 +78,7 @@ function AveragedSpecifiedTimes(times, window::Vector; kw...)
 end
 
 """
-    AveragedSpecifiedTimes(times; window, stride=1)
+    AveragedSpecifiedTimes(times, window; stride=1)
     AveragedSpecifiedTimes(specified_times::SpecifiedTimes; window, stride=1)
 
 Returns a `schedule` that specifies time-averaging of output at specified times.
