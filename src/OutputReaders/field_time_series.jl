@@ -42,8 +42,8 @@ end
 """
     InMemory(length=nothing)
 
-Return a `backend` for `FieldTimeSeries` that stores `size`
-fields in memory. The default `size = nothing` stores all fields in memory.
+Return a `backend` for `FieldTimeSeries` that stores `length`
+fields in memory. If `nothing` is provided (default), then all fields are stored in memory.
 """
 function InMemory(length::Int)
     length < 2 && throw(ArgumentError("InMemory `length` must be 2 or greater."))
@@ -427,7 +427,7 @@ Keyword arguments
 - `backend`: `InMemory()` (default), `OnDisk()`, or a custom backend. This is how the data is stored outside `FieldTimeSeries.data`.
 - `path`: path to data for `backend = OnDisk()`. Default: `nothing`.
 - `name`: name of field for `backend = OnDisk()`. Default: `nothing`.
-- `time_indexing`: time indexing mode for extrapolation in time. Can be `Clamped()` (default), `Cyclical()`, or `Linear()`.
+- `time_indexing`: time indexing mode for extrapolation in time. Can be `Clamp()` (default), `Cyclical()`, or `Linear()`.
 - `boundary_conditions`: boundary conditions for the fields. Default: `FieldBoundaryConditions(grid, loc)`.
 - `reader_kw`: a named tuple or dictionary of keyword arguments to pass to the reader.
 
@@ -745,7 +745,7 @@ end
                     iterations = nothing,
                     times = nothing,
                     combine = true,
-                    reader_kw = Dict{Symbol, Any}())
+                    reader_kw = NamedTuple())
 
 Return a `FieldTimeSeries` containing a time-series of the field `name`
 load from JLD2 output located at `path`.
