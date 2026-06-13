@@ -192,7 +192,7 @@ is_vertically_implicit(closure) = TimeSteppers.time_discretization(closure) isa 
 
 """
     implicit_step!(field, implicit_solver::BatchedTridiagonalSolver,
-                   closure, closure_fields, tracer_index, clock, Δt)
+                   closure, closure_fields, tracer_index, clock, fields, Δt)
 
 Initialize the right hand side array `solver.batched_tridiagonal_solver.f`, and then solve the
 tridiagonal system for vertically-implicit diffusion, passing the arguments into the coefficient
