@@ -25,7 +25,7 @@ const ConformalCubedSphereGridOfSomeKind{FT, TX, TY, TZ, CZ} =
     ConformalCubedSphereGrid(arch=CPU(), FT=Float64;
                              panel_size,
                              z,
-                             horizontal_direction_halo = 1,
+                             horizontal_direction_halo = 3,
                              z_halo = horizontal_direction_halo,
                              horizontal_topology = FullyConnected,
                              z_topology = Bounded,
@@ -42,8 +42,8 @@ The keyword arguments prescribe the properties of each of the panels. Only the t
 prescribed and that's done via the `z_topology` keyword argument (default: `Bounded`). Topologies in both horizontal
 directions for a `ConformalCubedSphereGrid` are _always_ [`FullyConnected`](@ref).
 
-Halo size in both horizontal dimensions _must_ be equal; this is prescribed via the `horizontal_halo :: Integer` keyword
-argument. The number of halo points in the ``z``-direction is prescribed by the `z_halo :: Integer` keyword argument.
+Halo size in both horizontal dimensions _must_ be equal; this is prescribed via the `horizontal_direction_halo :: Integer`
+keyword argument. The number of halo points in the ``z``-direction is prescribed by the `z_halo :: Integer` keyword argument.
 
 The connectivity between the `ConformalCubedSphereGrid` panels is depicted below.
 

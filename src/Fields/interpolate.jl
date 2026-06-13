@@ -1,6 +1,6 @@
 using Oceananigans.Grids: topology, _node, φnode, φnodes, λnode, λnodes,
                           XFlatGrid, YFlatGrid, ZFlatGrid,
-                          XYFlatGrid, YZFlatGrid, XZFlatGrid,
+                          XYFlatGrid, YZFlatGrid, XZFlatGrid, XYZFlatGrid,
                           XRegularRG, YRegularRG, ZRegularRG,
                           XRegularLLG, YRegularLLG, ZRegularLLG,
                           ZRegOrthogonalSphericalShellGrid
@@ -12,7 +12,7 @@ using Oceananigans.Utils: interpolator, _interpolate
 @inline middle_point(l, h) = Base.unsafe_trunc(Int, (l + h) / 2)
 
 """
-    index_binary_search(val, vec, N)
+    index_binary_search(vec, val, N)
 
 Return indices `low, high` of `vec`tor for which
 
@@ -191,48 +191,95 @@ struct FractionalIndices{I, J, K}
 end
 
 """
-    FractionalIndices(x, y, z, grid, loc...)
+    FractionalIndices(at_node, grid, ℓx, ℓy, ℓz)
 
-Convert the coordinates `(x, y, z)` to _fractional_ indices on a regular rectilinear grid
-located at `loc`, where `loc` is a 3-tuple of `Center` and `Face`. Fractional indices are
+Convert the coordinate tuple `at_node` to _fractional_ indices on a regular rectilinear grid
+located at `(ℓx, ℓy, ℓz)`, a triplet of `Center` and `Face`. Fractional indices are
 floats indicating a location between grid points.
 """
 @inline FractionalIndices(at_node, grid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, ℓx, ℓy, ℓz)
 
-@inline FractionalIndices(at_node, grid::XFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, nothing, ℓy, ℓz)
-@inline FractionalIndices(at_node, grid::YFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, ℓx, nothing, ℓz)
-@inline FractionalIndices(at_node, grid::ZFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, ℓx, ℓy, nothing)
+@inline FractionalIndices(at_node, grid::XFlatGrid, ℓx, ℓy, ℓz)   = _fractional_indices(at_node, grid, nothing, ℓy, ℓz)
+@inline FractionalIndices(at_node, grid::YFlatGrid, ℓx, ℓy, ℓz)   = _fractional_indices(at_node, grid, ℓx, nothing, ℓz)
+@inline FractionalIndices(at_node, grid::ZFlatGrid, ℓx, ℓy, ℓz)   = _fractional_indices(at_node, grid, ℓx, ℓy, nothing)
+@inline FractionalIndices(at_node, grid::XYFlatGrid, ℓx, ℓy, ℓz)  = _fractional_indices(at_node, grid, nothing, nothing, ℓz)
+@inline FractionalIndices(at_node, grid::YZFlatGrid, ℓx, ℓy, ℓz)  = _fractional_indices(at_node, grid, ℓx, nothing, nothing)
+@inline FractionalIndices(at_node, grid::XZFlatGrid, ℓx, ℓy, ℓz)  = _fractional_indices(at_node, grid, nothing, ℓy, nothing)
+@inline FractionalIndices(at_node, grid::XYZFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, nothing, nothing, nothing)
 
-@inline FractionalIndices(at_node, grid::XYFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, nothing, nothing, ℓz)
-@inline FractionalIndices(at_node, grid::YZFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, ℓx, nothing, nothing)
-@inline FractionalIndices(at_node, grid::XZFlatGrid, ℓx, ℓy, ℓz) = _fractional_indices(at_node, grid, nothing, ℓy, nothing)
-
-@inline function _fractional_indices((x, y, z), grid, ℓx, ℓy, ℓz)
+@inline function _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ℓx, ℓy, ℓz)
     ii = fractional_x_index(x, (ℓx, ℓy, ℓz), grid)
     jj = fractional_y_index(y, (ℓx, ℓy, ℓz), grid)
     kk = fractional_z_index(z, (ℓx, ℓy, ℓz), grid)
     return FractionalIndices(ii, jj, kk)
 end
 
-@inline function _fractional_indices((y, z), grid, ::Nothing, ℓy, ℓz)
+# All seven single/double/triple-`Nothing` combinations must be defined for 3-tuple
+# input so that pairwise dispatch resolves via a strictly more-specific method.
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ::Nothing, ℓy, ℓz) =
+    _fractional_indices((y, z), grid, nothing, ℓy, ℓz)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ℓx, ::Nothing, ℓz) =
+    _fractional_indices((x, z), grid, ℓx, nothing, ℓz)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ℓx, ℓy, ::Nothing) =
+    _fractional_indices((x, y), grid, ℓx, ℓy, nothing)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ::Nothing, ::Nothing, ℓz) =
+    _fractional_indices((z,), grid, nothing, nothing, ℓz)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ℓx, ::Nothing, ::Nothing) =
+    _fractional_indices((x,), grid, ℓx, nothing, nothing)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ::Nothing, ℓy, ::Nothing) =
+    _fractional_indices((y,), grid, nothing, ℓy, nothing)
+
+@inline _fractional_indices((x, y, z)::NTuple{3, Any}, grid, ::Nothing, ::Nothing, ::Nothing) =
+    FractionalIndices(nothing, nothing, nothing)
+
+# The `::NTuple{N, Any}` constraints below are load-bearing: Julia's function
+# arg destructuring is permissive, so a pattern like `(z,)` will silently
+# match a 2- or 3-tuple by taking only the first element — picking the wrong
+# coordinate. The explicit arity gives the dispatcher something to bind to.
+
+# Recursive prunes for "extra" coordinates: the kernel computes `at_node` from
+# `to_grid` (so its Flat dims are already dropped), but the source field can
+# also be reduced (with `Nothing` locations). When the source has more
+# `Nothing` locations than the destination has `Flat` dims, the caller's
+# `at_node` ends up longer than the number of axes we actually need to
+# interpolate over. Recurse, dropping the leading axis until the arity matches.
+
+@inline _fractional_indices(at::NTuple{2, Any}, grid, ::Nothing, ::Nothing, ℓz) =
+    _fractional_indices((at[2],), grid, nothing, nothing, ℓz)
+
+@inline _fractional_indices(at::NTuple{2, Any}, grid, ::Nothing, ℓy, ::Nothing) =
+    _fractional_indices((at[2],), grid, nothing, ℓy, nothing)
+
+@inline _fractional_indices(at::NTuple{2, Any}, grid, ℓx, ::Nothing, ::Nothing) =
+    _fractional_indices((at[1],), grid, ℓx, nothing, nothing)
+
+@inline _fractional_indices(at::NTuple{2, Any}, grid, ::Nothing, ::Nothing, ::Nothing) =
+    FractionalIndices(nothing, nothing, nothing)
+
+@inline function _fractional_indices((y, z)::NTuple{2, Any}, grid, ::Nothing, ℓy, ℓz)
     jj = fractional_y_index(y, (nothing, ℓy, ℓz), grid)
     kk = fractional_z_index(z, (nothing, ℓy, ℓz), grid)
     return FractionalIndices(nothing, jj, kk)
 end
 
-@inline function _fractional_indices((x, z), grid, ℓx, ::Nothing, ℓz)
+@inline function _fractional_indices((x, z)::NTuple{2, Any}, grid, ℓx, ::Nothing, ℓz)
     ii = fractional_x_index(x, (ℓx, nothing, ℓz), grid)
     kk = fractional_z_index(z, (ℓx, nothing, ℓz), grid)
     return FractionalIndices(ii, nothing, kk)
 end
 
-@inline function _fractional_indices((x, y), grid, ℓx, ℓy, ::Nothing)
+@inline function _fractional_indices((x, y)::NTuple{2, Any}, grid, ℓx, ℓy, ::Nothing)
     ii = fractional_x_index(x, (ℓx, ℓy, nothing), grid)
     jj = fractional_y_index(y, (ℓx, ℓy, nothing), grid)
     return FractionalIndices(ii, jj, nothing)
 end
 
-@inline function _fractional_indices((x,), grid, ℓx, ::Nothing, ::Nothing)
+@inline function _fractional_indices((x,)::NTuple{1, Any}, grid, ℓx, ::Nothing, ::Nothing)
     loc = (ℓx, nothing, nothing)
     ii = fractional_x_index(x, loc, grid)
     jj = nothing
@@ -240,7 +287,7 @@ end
     return FractionalIndices(ii, jj, kk)
 end
 
-@inline function _fractional_indices((y,), grid, ::Nothing, ℓy, ::Nothing)
+@inline function _fractional_indices((y,)::NTuple{1, Any}, grid, ::Nothing, ℓy, ::Nothing)
     loc = (nothing, ℓy, nothing)
     ii = nothing
     jj = fractional_y_index(y, loc, grid)
@@ -248,13 +295,15 @@ end
     return FractionalIndices(ii, jj, kk)
 end
 
-@inline function _fractional_indices((z,), grid, ::Nothing, ::Nothing, ℓz)
+@inline function _fractional_indices((z,)::NTuple{1, Any}, grid, ::Nothing, ::Nothing, ℓz)
     loc = (nothing, nothing, ℓz)
     ii = nothing
     jj = nothing
     kk = fractional_z_index(z, loc, grid)
     return FractionalIndices(ii, jj, kk)
 end
+
+@inline _fractional_indices((at,)::NTuple{1, Any}, grid, ::Nothing, ::Nothing, ::Nothing) = FractionalIndices(nothing, nothing, nothing)
 
 @inline _fractional_indices(at_node, grid, ::Nothing, ::Nothing, ::Nothing) = FractionalIndices(nothing, nothing, nothing)
 

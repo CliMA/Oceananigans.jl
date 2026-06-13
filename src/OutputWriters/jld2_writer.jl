@@ -3,6 +3,7 @@ using JLD2
 using Oceananigans.Utils
 using Oceananigans.Utils: TimeInterval, prettykeys, materialize_schedule
 using Oceananigans.Fields: indices
+using Oceananigans.Grids: grid
 
 default_included_properties(model) = []
 
@@ -137,7 +138,7 @@ JLD2Writer scheduled on TimeInterval(20 minutes):
 ├── filepath: some_data.jld2
 ├── 3 outputs: (u, v, w)
 ├── array_type: Array{Float32}
-├── including: [:grid, :coriolis, :buoyancy, :closure]
+├── including: [:coriolis, :buoyancy, :closure]
 ├── file_splitting: NoFileSplitting
 └── file size: 0 bytes (file not yet created)
 ```
@@ -156,7 +157,7 @@ JLD2Writer scheduled on TimeInterval(20 minutes):
 ├── filepath: some_averaged_data.jld2
 ├── 1 outputs: c averaged on AveragedTimeInterval(window=5 minutes, stride=1, interval=20 minutes)
 ├── array_type: Array{Float32}
-├── including: [:grid, :coriolis, :buoyancy, :closure]
+├── including: [:coriolis, :buoyancy, :closure]
 ├── file_splitting: NoFileSplitting
 └── file size: 0 bytes (file not yet created)
 ```
@@ -216,15 +217,44 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
         @warn """Failed to save and serialize $including in $filepath because $(typeof(err)): $(sprint(showerror, err))"""
     end
 
-    # Serialize the location and boundary conditions of each output.
+    # Extract grids from outputs, falling back to `nothing` for non-field outputs
+    output_grids = Dict(string(name) => (try grid(output) catch; nothing end) for (name, output) in pairs(outputs))
+    unique_grids = Tuple(unique(objectid, filter(!isnothing, collect(values(output_grids)))))
+    single_grid  = length(unique_grids) == 1
+
+    # Serialize the unique grids. With a single grid it is stored at `serialized/grid`
+    # (no suffix); with multiple grids they are stored at `serialized/grid_1`, `grid_2`, ...
+    # and each output gets a `grid_index` entry under its own `timeseries/$name/serialized/`.
+    jldopen(filepath, "a+"; jld2_kw...) do file
+        for (i, grid) in enumerate(unique_grids)
+            address = single_grid ? "serialized/grid" : "serialized/grid_$i"
+            try
+                serializeproperty!(file, address, grid)
+            catch err
+                @warn "error $err thrown when trying to serialize the grid at $address"
+            end
+        end
+    end
+
+    # Serialize the grid index, location, indices, and boundary conditions of each output.
     for (name, field) in pairs(outputs)
-        try
-            jldopen(filepath, "a+"; jld2_kw...) do file
+        jldopen(filepath, "a+"; jld2_kw...) do file
+            # Only write a grid index when we actually have multiple grids to choose from;
+            # otherwise all outputs use the single grid at `serialized/grid`.
+            if !single_grid && !isnothing(output_grids[string(name)])
+                grid_index = findfirst(gr -> gr === output_grids[string(name)], unique_grids)
+                try
+                    file["timeseries/$name/serialized/grid_index"] = grid_index
+                catch err
+                    @warn "error $err thrown when trying to write grid_index for $name"
+                end
+            end
+            try
                 file["timeseries/$name/serialized/location"] = location(field)
                 file["timeseries/$name/serialized/indices"] = indices(field)
                 serializeproperty!(file, "timeseries/$name/serialized/boundary_conditions", boundary_conditions(field))
+            catch
             end
-        catch
         end
     end
 
@@ -314,8 +344,18 @@ function write_output!(writer::JLD2Writer, model)
         verbose && @info "Fetching time: $(prettytime(tc))"
 
         # Start a new file if the file_splitting(model) is true
-        writer.file_splitting(model) && start_next_file(model, writer)
+        split_happened = writer.file_splitting(model)
+        split_happened && start_next_file(model, writer)
         update_file_splitting_schedule!(writer.file_splitting, writer.filepath)
+
+        # After a file split, the new file may already contain this iteration
+        # (e.g., when picking up from a checkpoint that predates the latest output).
+        # In that case, skip writing to avoid duplicate key errors.
+        if split_happened && iteration_exists(writer.filepath, current_iteration)
+            @warn "Iteration $current_iteration already exists in $(writer.filepath) after file split. Skipping."
+            return nothing
+        end
+
         # Write output from `data`
         verbose && @info "Writing JLD2 output $(keys(writer.outputs)) to $(writer.filepath)..."
 

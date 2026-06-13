@@ -41,9 +41,9 @@ function random_divergent_source_term(grid::DistributedGrid)
     v_bcs = regularize_field_boundary_conditions(default_bcs, grid, :v)
     w_bcs = regularize_field_boundary_conditions(default_bcs, grid, :w)
 
-    u_bcs = inject_halo_communication_boundary_conditions(u_bcs, arch.local_rank, arch.connectivity, topology(grid))
-    v_bcs = inject_halo_communication_boundary_conditions(v_bcs, arch.local_rank, arch.connectivity, topology(grid))
-    w_bcs = inject_halo_communication_boundary_conditions(w_bcs, arch.local_rank, arch.connectivity, topology(grid))
+    u_bcs = inject_halo_communication_boundary_conditions(u_bcs, (Face(), Center(), Center()), arch.local_rank, arch.connectivity, topology(grid))
+    v_bcs = inject_halo_communication_boundary_conditions(v_bcs, (Center(), Face(), Center()), arch.local_rank, arch.connectivity, topology(grid))
+    w_bcs = inject_halo_communication_boundary_conditions(w_bcs, (Center(), Center(), Face()), arch.local_rank, arch.connectivity, topology(grid))
 
     Ru = XFaceField(grid, boundary_conditions=u_bcs)
     Rv = YFaceField(grid, boundary_conditions=v_bcs)

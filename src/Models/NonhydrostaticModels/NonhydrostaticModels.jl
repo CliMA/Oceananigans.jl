@@ -19,6 +19,8 @@ using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver,
 using Oceananigans.Solvers: InhomogeneousFormulation, ZDirection
 using Oceananigans.Utils: sum_of_velocities
 
+using ..Models: initialize_boundary_transport
+
 import Oceananigans: fields, prognostic_fields
 import Oceananigans.Advection: cell_advection_timescale
 import Oceananigans.Simulations: timestepper
@@ -76,7 +78,7 @@ nonhydrostatic_pressure_solver(grid, free_surface) = nonhydrostatic_pressure_sol
 #####
 
 include("background_fields.jl")
-include("boundary_mass_fluxes.jl")
+include("enforce_net_zero_transport.jl")
 include("nonhydrostatic_model.jl")
 include("pressure_field.jl")
 include("show_nonhydrostatic_model.jl")
@@ -104,7 +106,7 @@ fields(model::NonhydrostaticModel) = merge(model.velocities,
                                            biogeochemical_auxiliary_fields(model.biogeochemistry))
 
 """
-    prognostic_fields(model::HydrostaticFreeSurfaceModel)
+    prognostic_fields(model::NonhydrostaticModel)
 
 Return a flattened `NamedTuple` of the prognostic fields associated with `NonhydrostaticModel`.
 """

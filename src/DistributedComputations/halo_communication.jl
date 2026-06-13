@@ -139,6 +139,10 @@ function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers, args.
     # No corner filling needed!
     only_local_halos && return nothing
 
+    # Skip corners entirely if no corner neighbors exist (avoids unnecessary sync_device!)
+    isnothing(connectivity.southwest) && isnothing(connectivity.southeast) &&
+    isnothing(connectivity.northwest) && isnothing(connectivity.northeast) && return nothing
+
     # This has to be synchronized!
     fill_send_buffers!(c, buffers, grid, Val(:corners))
     sync_device!(arch)

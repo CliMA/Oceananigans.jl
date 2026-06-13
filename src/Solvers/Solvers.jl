@@ -12,9 +12,9 @@ using KernelAbstractions: @kernel, @index
 
 using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Utils: launch!
+using Oceananigans.Utils: launch!, worksize
 using Oceananigans.Fields: AbstractField, CenterField, field
-using Oceananigans.Grids: Bounded, Flat, Periodic, XYRegularRG, XZRegularRG, YZRegularRG,
+using Oceananigans.Grids: AbstractGrid, Bounded, Flat, Periodic, XYRegularRG, XZRegularRG, YZRegularRG,
     XYZRegularRG, RectilinearGrid, RegularVerticalCoordinate, inactive_cell, topology
 
 """

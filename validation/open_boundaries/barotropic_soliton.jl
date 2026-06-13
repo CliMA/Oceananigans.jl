@@ -102,9 +102,9 @@ h⁰(y, e_val)  = e_val .* ((3.0 .+ 6.0 * y.^2) / 4.0) .* exp.(-y.^2 / 2.0)
 
 # First-order Hermite series  f(y) = exp(-y²/2) · Σ fₙ · Hₙ(y)
 function hermite_series(y, coeffs, n_max)
-    result = zero(y)
+    result = zero.(y)
     for n in 0:min(n_max, length(coeffs) - 1)
-        result .+= coeffs[n+1] .* hermite_polynomial(n, y)
+        result += coeffs[n+1] .* hermite_polynomial(n, y)
     end
     return exp.(-y.^2 / 2.0) .* result
 end
@@ -116,9 +116,9 @@ function u¹(y, e_val, p::SolitonParameters, u_coeffs = Float64[])
     return term1 .+ e_val.^2 .* hermite_series(y, u_coeffs, 10)
 end
 
-function v¹(y, de_val, e_val, v_coeffs = Float64[])
+function v¹(y, de_val, v_coeffs = Float64[])
     isempty(v_coeffs) && return zero(y)
-    return de_val .* e_val .* hermite_series(y, v_coeffs, 10)
+    return de_val .* hermite_series(y, v_coeffs, 10)
 end
 
 function h¹(y, e_val, p::SolitonParameters, h_coeffs = Float64[])
@@ -153,34 +153,63 @@ end
 # Simulation setup
 function setup_simulation(params::SolitonParameters;
                           Nx = 200, Ny = 100, Nz = 4,
-                          stop_time_nd = 10.0,
+                          stop_time = 70 * params.T,
                           scheme = PerturbationAdvection(),
+                          ν_sponge = 1e4meters^2 / second, # peak viscosity
+                          nudging_rate = 1 / (2days),
+                          sponge_width = 1000kilometers,
                           outfile = joinpath("output", "hydrostatic_soliton.jld2"))
 
     # Grid
     z = MutableVerticalDiscretization(range(-params.H, 0, length = Nz + 1))
 
     grid = RectilinearGrid(CPU();
-        topology = (Bounded, Bounded, Bounded),
-        size = (Nx, Ny, Nz),
-        x = (params.x_min, params.x_max),
-        y = (params.y_min, params.y_max),
-        z,
-        halo = (8, 8, 8))
+                           topology = (Bounded, Bounded, Bounded),
+                           size = (Nx, Ny, Nz),
+                           x = (params.x_min, params.x_max),
+                           y = (params.y_min, params.y_max),
+                           z,
+                           halo = (8, 8, 8))
 
     # Model:
     β = params.U / params.L^2
 
-    obc = OpenBoundaryCondition(0; scheme)
-    u_bcs = FieldBoundaryConditions(west = obc, east = obc)
-    boundary_conditions = (; u = u_bcs)
+    west_obc  = NormalFlowBoundaryCondition((y, z, t) -> analytic_u(params.x_min, y, t, params); scheme)
+    east_obc  = NormalFlowBoundaryCondition((y, z, t) -> analytic_u(params.x_max, y, t, params); scheme)
+    south_obc = NormalFlowBoundaryCondition((x, z, t) -> analytic_v(x, params.y_min, t, params); scheme)
+    north_obc = NormalFlowBoundaryCondition((x, z, t) -> analytic_v(x, params.y_max, t, params); scheme)
+    u_bcs = FieldBoundaryConditions(west = west_obc, east = east_obc)
+    v_bcs = FieldBoundaryConditions(south = south_obc, north = north_obc)
+    boundary_conditions = (; u = u_bcs, v = v_bcs)
+
+    # Sponge layers: spatially varying horizontal viscosity that ramps from
+    # ν_sponge at each boundary to zero at sponge_width inside the domain.
+    west_mask  = PiecewiseLinearMask{:x}(center = params.x_min, width = sponge_width)
+    east_mask  = PiecewiseLinearMask{:x}(center = params.x_max, width = sponge_width)
+    south_mask = PiecewiseLinearMask{:y}(center = params.y_min, width = sponge_width)
+    north_mask = PiecewiseLinearMask{:y}(center = params.y_max, width = sponge_width)
+
+    @inline sponge_mask(x, y, z) = min(west_mask(x, y, z) +
+                                       east_mask(x, y, z) +
+                                       south_mask(x, y, z) +
+                                       north_mask(x, y, z), 1.0)
+    @inline sponge_ν(x, y, z, t) = ν_sponge * sponge_mask(x, y, z)
+
+    closure = HorizontalScalarDiffusivity(ν = sponge_ν)
+
+    # Nudging: relax u and v toward the analytical solution in the sponge regions
+    u_nudging = Relaxation(; rate = nudging_rate, mask = sponge_mask, target = (x, y, z, t) -> analytic_u(x, y, t, params))
+    v_nudging = Relaxation(; rate = nudging_rate, mask = sponge_mask, target = (x, y, z, t) -> analytic_v(x, y, t, params))
 
     model = HydrostaticFreeSurfaceModel(grid;
         free_surface        = ImplicitFreeSurface(reltol = 1e-10, abstol = 1e-10, maxiter = 100,
                                                   gravitational_acceleration = g),
         momentum_advection  = WENO(order=5, minimum_buffer_upwind_order=1),
+        timestepper = :SplitRungeKutta3,
         vertical_coordinate = ZStarCoordinate(),
         coriolis            = BetaPlane(f₀ = 0, β = β),
+        closure,
+        forcing             = (; u = u_nudging, v = v_nudging),
         boundary_conditions)
 
     # Initial conditions (soliton at t = 0)
@@ -190,12 +219,11 @@ function setup_simulation(params::SolitonParameters;
         η = (x, y, z) -> analytic_η(x, y, 0.0, params))
 
     # Simulation
-    stop_time = stop_time_nd * params.T
     c_grav    = √(g * params.H) # surface gravity wave speed [m/s]
     max_Δt    = 0.5 * minimum_xspacing(grid) / c_grav # CFL limit from gravity waves
     Δt₀       = 0.1 * max_Δt
     simulation = Simulation(model; Δt = Δt₀, stop_time)
-    conjure_time_step_wizard!(simulation, IterationInterval(10); cfl = 0.1, max_Δt)
+    conjure_time_step_wizard!(simulation, IterationInterval(10); cfl = 0.8, max_Δt)
 
     function progress_message(sim)
         u, v, w = sim.model.velocities
@@ -302,7 +330,7 @@ end
 #---
 
 params = default_parameters(B = 0.5)
-simulation = setup_simulation(params; stop_time_nd = 70)
+simulation = setup_simulation(params; stop_time = 150days)
 run!(simulation)
 @info "Simulation complete."
 plot_soliton(simulation, params)

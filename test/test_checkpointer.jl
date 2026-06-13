@@ -9,7 +9,6 @@ using Oceananigans.TurbulenceClosures.Smagorinskys: Smagorinsky,
 using Oceananigans.Models.ShallowWaterModels: ShallowWaterScalarDiffusivity
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: ForwardBackwardScheme
 using Oceananigans.Grids: MutableVerticalDiscretization
-using Oceananigans.OutputWriters: load_checkpoint_state
 
 function test_model_equality(test_model, true_model; atol=0)
     # Test prognostic field equality
@@ -113,10 +112,12 @@ function test_minimal_restore(arch, FT, pickup_method, model_type)
         new_model = HydrostaticFreeSurfaceModel(new_grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
     end
 
-    new_simulation = Simulation(new_model; Δt=1.0, stop_time=3.0)
+    new_stop_time = 4.0
+    new_checkpoint_interval = 0.5
+    new_simulation = Simulation(new_model; Δt=1.0, stop_time=new_stop_time)
 
     new_checkpointer = Checkpointer(new_model;
-                                    schedule = TimeInterval(1.0),
+                                    schedule = TimeInterval(new_checkpoint_interval),
                                     prefix = prefix,
                                     cleanup = false,
                                     verbose = true)
@@ -134,7 +135,8 @@ function test_minimal_restore(arch, FT, pickup_method, model_type)
     @test iteration(new_simulation) == 3
     @test time(new_simulation) == 3.0
 
-    @test new_checkpointer.schedule.actuations == 3
+    @test new_simulation.stop_time == new_stop_time
+    @test new_checkpointer.schedule.interval == new_checkpoint_interval
 
     rm.(glob("$(prefix)_iteration*.jld2"))
 
@@ -261,10 +263,12 @@ function test_minimal_restore_shallow_water(arch, FT, pickup_method)
                                extent = (L, L))
 
     new_model = ShallowWaterModel(new_grid; gravitational_acceleration=1)
-    new_simulation = Simulation(new_model; Δt=1.0, stop_time=3.0)
+    new_stop_time = 4.0
+    new_checkpoint_interval = 0.5
+    new_simulation = Simulation(new_model; Δt=1.0, stop_time=new_stop_time)
 
     new_checkpointer = Checkpointer(new_model;
-                                    schedule = TimeInterval(1.0),
+                                    schedule = TimeInterval(new_checkpoint_interval),
                                     prefix = prefix,
                                     cleanup = false,
                                     verbose = true)
@@ -282,7 +286,8 @@ function test_minimal_restore_shallow_water(arch, FT, pickup_method)
     @test iteration(new_simulation) == 3
     @test time(new_simulation) == 3.0
 
-    @test new_checkpointer.schedule.actuations == 3
+    @test new_simulation.stop_time == new_stop_time
+    @test new_checkpointer.schedule.interval == new_checkpoint_interval
 
     rm.(glob("$(prefix)_iteration*.jld2"))
 
@@ -1498,6 +1503,76 @@ function test_checkpoint_missing_file_warning(arch)
     return nothing
 end
 
+function test_pickup_mode_selection_and_default(arch)
+    N = 4
+    L = 1
+    Δt = 1.0
+
+    function make_simulation(; stop_iteration=3)
+        grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+        model = NonhydrostaticModel(grid)
+        return Simulation(model, Δt=Δt, stop_iteration=stop_iteration)
+    end
+
+    prefix = "pickup_mode_selection_$(typeof(arch))_$(rand(UInt))"
+
+    try
+        simulation = make_simulation(stop_iteration=3)
+        simulation.output_writers[:checkpointer] = Checkpointer(simulation.model,
+                                                                schedule = IterationInterval(1),
+                                                                prefix = prefix,
+                                                                cleanup = false)
+        @test_nowarn run!(simulation)
+
+        first_filepath = "$(prefix)_iteration1.jld2"
+        @test isfile(first_filepath)
+
+        # Make iteration 1 the most recently modified checkpoint.
+        sleep(1.1)
+        touch(first_filepath)
+
+        # Explicit iteration-based pickup.
+        iter_sim = make_simulation(stop_iteration=3)
+        iter_sim.output_writers[:checkpointer] = Checkpointer(iter_sim.model,
+                                                              schedule = IterationInterval(1),
+                                                              prefix = prefix,
+                                                              cleanup = false)
+        @test_logs (:info, r"iteration2\.jld2") set!(iter_sim; iteration=2)
+        @test iteration(iter_sim) == 2
+
+        # Explicit recent-timestamp pickup.
+        recent_sim = make_simulation(stop_iteration=3)
+        recent_sim.output_writers[:checkpointer] = Checkpointer(recent_sim.model,
+                                                                schedule = IterationInterval(1),
+                                                                prefix = prefix,
+                                                                cleanup = false)
+        @test_logs (:info, r"iteration1\.jld2") set!(recent_sim; checkpoint=:recent_time_stamp)
+        @test iteration(recent_sim) == 1
+
+        # Explicit highest-iteration pickup.
+        highest_sim = make_simulation(stop_iteration=3)
+        highest_sim.output_writers[:checkpointer] = Checkpointer(highest_sim.model,
+                                                                 schedule = IterationInterval(1),
+                                                                 prefix = prefix,
+                                                                 cleanup = false)
+        @test_logs (:info, r"iteration3\.jld2") set!(highest_sim; checkpoint=:highest_iteration)
+        @test iteration(highest_sim) == 3
+
+        # pickup=true should default to :recent_time_stamp.
+        default_sim = make_simulation(stop_iteration=1)
+        default_sim.output_writers[:checkpointer] = Checkpointer(default_sim.model,
+                                                                 schedule = IterationInterval(1),
+                                                                 prefix = prefix,
+                                                                 cleanup = false)
+        @test_nowarn run!(default_sim; pickup=true)
+        @test iteration(default_sim) == 2
+    finally
+        rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+    end
+
+    return nothing
+end
+
 function test_manual_checkpoint_with_checkpointer(arch)
     N = 8
     L = 1
@@ -1656,6 +1731,9 @@ function test_checkpoint_at_end(arch)
     L = 1
     Δt = 0.1
     expected_filepath = "checkpoint_iteration5.jld2"
+    nan_expected_filepath = "checkpoint_iteration1.jld2"
+
+    rm.(glob("checkpoint_iteration*.jld2"), force=true)
 
     # Test with checkpoint_at_end=false (default) - should NOT create checkpoint
     grid = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
@@ -1677,21 +1755,44 @@ function test_checkpoint_at_end(arch)
     @test isfile(expected_filepath)
     rm(expected_filepath, force=true)
 
+    # Test with checkpoint_at_end=true and NaN-triggered stop - should NOT create checkpoint
+    grid3 = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+    model3 = NonhydrostaticModel(grid3)
+    simulation3 = Simulation(model3, Δt=Δt, stop_iteration=5)
+    model3.velocities.u[1, 1, 1] = NaN
+
+    @test_logs match_mode=:any (:info, r"NaN found in field") (:info, r"Skipping end-of-run checkpoint") begin
+        run!(simulation3, checkpoint_at_end=true)
+    end
+    @test !isfile(nan_expected_filepath)
+    rm.(glob("checkpoint_iteration*.jld2"), force=true)
+
+    # Test with checkpoint_at_end=true and non-NaNChecker :nan_checker callback.
+    # This exercises nan_detected(::Any) and reset_nan_checker!(::Any).
+    grid4 = RectilinearGrid(arch, size=(N, N, N), extent=(L, L, L))
+    model4 = NonhydrostaticModel(grid4)
+    simulation4 = Simulation(model4, Δt=Δt, stop_iteration=5)
+    simulation4.callbacks[:nan_checker] = Callback(_ -> nothing, IterationInterval(1))
+
+    @test_nowarn run!(simulation4, checkpoint_at_end=true)
+    @test isfile(expected_filepath)
+    rm.(glob("checkpoint_iteration*.jld2"), force=true)
+
     return nothing
 end
 
 """
-Test checkpointing for simulations with OpenBoundaryCondition using the specified scheme.
+Test checkpointing for simulations with NormalFlowBoundaryCondition using the specified scheme.
 Uses a make_simulation() function to create identical simulations for testing.
 Verifies that:
-1. Every element of model.boundary_mass_fluxes is correctly saved and restored
+1. Every element of model.boundary_transport is correctly saved and restored
 2. The restored simulation can continue running from the checkpoint
 3. Simulation state (iteration, time) is properly restored
 
 # Arguments
 - `arch`: Architecture (CPU, GPU, etc.)
 - `timestepper`: Time stepping scheme (:QuasiAdamsBashforth2, :RungeKutta3, etc.)
-- `scheme`: OpenBoundaryCondition scheme (e.g., PerturbationAdvection(...))
+- `scheme`: NormalFlowBoundaryCondition scheme (e.g., PerturbationAdvection(...))
 """
 function test_open_boundary_condition_scheme_checkpointing(arch, timestepper, scheme)
     Nx, Ny, Nz = 4, 4, 4
@@ -1699,7 +1800,7 @@ function test_open_boundary_condition_scheme_checkpointing(arch, timestepper, sc
 
     function make_simulation(stop_iteration)
         grid = RectilinearGrid(arch, topology=(Bounded, Bounded, Bounded), size=(Nx, Ny, Nz), extent=(10, 10, 10))
-        obc = OpenBoundaryCondition(0.1, scheme=scheme)
+        obc = NormalFlowBoundaryCondition(0.1, scheme=scheme)
         u_bcs = FieldBoundaryConditions(west=obc, east=obc)
         model = NonhydrostaticModel(grid; timestepper, boundary_conditions=(u=u_bcs,), tracers=:c)
         set!(model, c=1)
@@ -1714,25 +1815,25 @@ function test_open_boundary_condition_scheme_checkpointing(arch, timestepper, sc
     simulation.output_writers[:checkpointer] = Checkpointer(simulation.model, schedule=IterationInterval(3), prefix=prefix)
     @test_nowarn run!(simulation)
 
-    # Store original boundary mass fluxes
-    original_bmf = simulation.model.boundary_mass_fluxes
+    # Store original boundary transport
+    original_bt = simulation.model.boundary_transport
 
-    # Restore entire simulation from checkpoint and verify boundary_mass_fluxes match exactly
+    # Restore entire simulation from checkpoint and verify boundary_transport matches exactly
     restored_simulation = make_simulation(6)
     restored_simulation.output_writers[:checkpointer] = Checkpointer(restored_simulation.model,
                                                                      schedule=IterationInterval(3),
                                                                      prefix=prefix)
     @test_nowarn set!(restored_simulation; checkpoint=:latest)
 
-    restored_bmf = restored_simulation.model.boundary_mass_fluxes
+    restored_bt = restored_simulation.model.boundary_transport
 
     # Test that structure is identical
-    @test propertynames(original_bmf) == propertynames(restored_bmf)
+    @test propertynames(original_bt) == propertynames(restored_bt)
 
     # Test that every element matches exactly
-    for field_name in propertynames(original_bmf)
-        original_field = getproperty(original_bmf, field_name)
-        restored_field = getproperty(restored_bmf, field_name)
+    for field_name in propertynames(original_bt)
+        original_field = getproperty(original_bt, field_name)
+        restored_field = getproperty(restored_bt, field_name)
         @test original_field == restored_field
     end
 
@@ -1745,6 +1846,145 @@ function test_open_boundary_condition_scheme_checkpointing(arch, timestepper, sc
 
     # Clean up
     rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+    return nothing
+end
+
+function test_checkpointing_with_file_splitting(arch)
+    dir = mktempdir()
+
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid, tracers=:c)
+    simulation = Simulation(model, Δt=1, stop_time=10)
+
+    simulation.output_writers[:fields] = JLD2Writer(model, model.tracers;
+                                                     filename = "split_ckpt",
+                                                     dir = dir,
+                                                     schedule = IterationInterval(1),
+                                                     file_splitting = TimeInterval(3),
+                                                     overwrite_existing = true)
+
+    simulation.output_writers[:checkpointer] = Checkpointer(model;
+                                                              schedule = IterationInterval(5),
+                                                              dir = dir,
+                                                              prefix = "checkpoint",
+                                                              overwrite_existing = true,
+                                                              cleanup = true)
+    run!(simulation)
+
+    w = simulation.output_writers[:fields]
+    @test w.part == 4
+    @test occursin("_part4.jld2", w.filepath)
+
+    # Pickup from checkpoint and continue
+    grid2 = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    model2 = NonhydrostaticModel(grid2, tracers=:c)
+    sim2 = Simulation(model2, Δt=1, stop_time=20)
+
+    sim2.output_writers[:fields] = JLD2Writer(model2, model2.tracers;
+                                               filename = "split_ckpt",
+                                               dir = dir,
+                                               schedule = IterationInterval(1),
+                                               file_splitting = TimeInterval(3),
+                                               overwrite_existing = false)
+
+    sim2.output_writers[:checkpointer] = Checkpointer(model2;
+                                                        schedule = IterationInterval(5),
+                                                        dir = dir,
+                                                        prefix = "checkpoint",
+                                                        overwrite_existing = true,
+                                                        cleanup = true)
+
+    run!(sim2, pickup=true)
+
+    w2 = sim2.output_writers[:fields]
+
+    # Writer should have continued from part 4 and split correctly
+    @test occursin("_part", w2.filepath)
+    @test w2.part > 4
+
+    # Verify all output files have contiguous data
+    output_files = sort(filter(f -> startswith(f, "split_ckpt_part"), readdir(dir)))
+    @test length(output_files) > 4
+
+    all_iterations = Int[]
+    for f in output_files
+        jldopen(joinpath(dir, f), "r") do file
+            append!(all_iterations, parse.(Int, keys(file["timeseries/t"])))
+        end
+    end
+
+    # Should have iterations 0 through 20 without gaps (some overlap at 10 is ok)
+    unique_iters = sort(unique(all_iterations))
+    @test 0 ∈ unique_iters
+    @test 20 ∈ unique_iters
+
+    # Test reading back with FieldTimeSeries (InMemory)
+    fts = FieldTimeSeries(joinpath(dir, "split_ckpt.jld2"), "c", architecture=arch)
+    @test length(fts.times) >= 21
+
+    rm(dir, recursive=true, force=true)
+    return nothing
+end
+
+function test_checkpointing_with_moved_parts(arch)
+    dir = mktempdir()
+    archive_dir = mktempdir()
+
+    grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid, tracers=:c)
+    simulation = Simulation(model, Δt=1, stop_time=10)
+
+    simulation.output_writers[:fields] = JLD2Writer(model, model.tracers;
+                                                     filename = "moved_test",
+                                                     dir = dir,
+                                                     schedule = IterationInterval(1),
+                                                     file_splitting = TimeInterval(3),
+                                                     overwrite_existing = true)
+
+    simulation.output_writers[:checkpointer] = Checkpointer(model;
+                                                              schedule = IterationInterval(10),
+                                                              dir = dir,
+                                                              prefix = "checkpoint",
+                                                              overwrite_existing = true,
+                                                              cleanup = true)
+    run!(simulation)
+
+    # Move old parts away, keep only the latest
+    for f in filter(f -> occursin(r"_part[123]\.", f), readdir(dir))
+        mv(joinpath(dir, f), joinpath(archive_dir, f))
+    end
+
+    # Only part4 + checkpoint should remain
+    @test isfile(joinpath(dir, "moved_test_part4.jld2"))
+    @test !isfile(joinpath(dir, "moved_test_part1.jld2"))
+
+    # Pickup and continue
+    grid2 = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+    model2 = NonhydrostaticModel(grid2, tracers=:c)
+    sim2 = Simulation(model2, Δt=1, stop_time=15)
+
+    sim2.output_writers[:fields] = JLD2Writer(model2, model2.tracers;
+                                               filename = "moved_test",
+                                               dir = dir,
+                                               schedule = IterationInterval(1),
+                                               file_splitting = TimeInterval(3),
+                                               overwrite_existing = false)
+
+    sim2.output_writers[:checkpointer] = Checkpointer(model2;
+                                                        schedule = IterationInterval(10),
+                                                        dir = dir,
+                                                        prefix = "checkpoint",
+                                                        overwrite_existing = true,
+                                                        cleanup = true)
+
+    # Should not error — writer appends to existing part4
+    run!(sim2, pickup=true)
+
+    w2 = sim2.output_writers[:fields]
+    @test w2.part > 4
+
+    rm(dir, recursive=true, force=true)
+    rm(archive_dir, recursive=true, force=true)
     return nothing
 end
 
@@ -1919,8 +2159,8 @@ for arch in archs
 
     for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3), scheme in schemes
         scheme_name = replace(string(typeof(scheme)), "." => "_")
-        @testset "OpenBoundaryCondition with $scheme_name checkpointing [$(typeof(arch)), $timestepper]" begin
-            @info "  Testing OpenBoundaryCondition with $scheme_name checkpointing [$(typeof(arch)), $timestepper]..."
+        @testset "NormalFlowBoundaryCondition with $scheme_name checkpointing [$(typeof(arch)), $timestepper]" begin
+            @info "  Testing NormalFlowBoundaryCondition with $scheme_name checkpointing [$(typeof(arch)), $timestepper]..."
             test_open_boundary_condition_scheme_checkpointing(arch, timestepper, scheme)
         end
     end
@@ -1929,6 +2169,7 @@ for arch in archs
         @info "  Testing edge cases [$(typeof(arch))]..."
         test_checkpoint_empty_tracers(arch)
         test_checkpoint_missing_file_warning(arch)
+        test_pickup_mode_selection_and_default(arch)
     end
 
     @testset "Manual checkpointing [$(typeof(arch))]" begin
@@ -1937,5 +2178,15 @@ for arch in archs
         test_manual_checkpoint_without_checkpointer(arch)
         test_manual_checkpoint_with_filepath(arch)
         test_checkpoint_at_end(arch)
+    end
+
+    @testset "Checkpointing with file splitting [$(typeof(arch))]" begin
+        @info "  Testing checkpointing with file splitting [$(typeof(arch))]..."
+        test_checkpointing_with_file_splitting(arch)
+    end
+
+    @testset "Checkpointing with moved-away part files [$(typeof(arch))]" begin
+        @info "  Testing checkpointing with moved-away part files [$(typeof(arch))]..."
+        test_checkpointing_with_moved_parts(arch)
     end
 end

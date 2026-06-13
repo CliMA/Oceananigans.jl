@@ -28,7 +28,7 @@ assemble_coordinate(c::Tuple,          n, ::ShardedDistributed, dim) = c
 assemble_coordinate(c::AbstractVector, n, ::ShardedDistributed, dim) = c
 
 # Boundary conditions should not need to change
-inject_halo_communication_boundary_conditions(field_bcs, rank, ::Reactant.Sharding.Mesh, topology) = field_bcs
+inject_halo_communication_boundary_conditions(field_bcs, loc, rank, ::Reactant.Sharding.Mesh, topology) = field_bcs
 
 # Local sizes are equal to global sizes for a sharded architecture
 concatenate_local_sizes(local_size, ::ShardedDistributed) = local_size
