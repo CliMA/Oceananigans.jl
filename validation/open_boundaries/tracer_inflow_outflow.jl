@@ -114,7 +114,7 @@ end
 # behavior shows up as vertical striations or sharp colour jumps near the domain edges —
 # easier to spot here than in single animation frames.
 function plot_tracer_outflow_hovmollers(filepaths)
-    @info "Plotting Hovmöllers from $filepath"
+    @info "Plotting Hovmöllers from $filepaths"
 
     panels = (("c̄ = +1, PA", FieldTimeSeries(filepaths[1], "cpos"),   1),
               ("c̄ =  0, PA", FieldTimeSeries(filepaths[1], "czero"),  0),
@@ -127,15 +127,15 @@ function plot_tracer_outflow_hovmollers(filepaths)
     xs    = collect(xnodes(panels[1][2][1]))
 
     fig = Figure(size = (800, 900))
-    Label(fig[0, 1:2], "Hovmöller — tracer_inflow_outflow", fontsize = 16, tellwidth = false)
+    Label(fig[0, 1:3], "Hovmöller — tracer_inflow_outflow", fontsize = 16, tellwidth = false)
 
     hm = nothing
     for (i, (label, ts, c̄)) in enumerate(panels)
         field_xt = stack([Array(interior(ts[n]))[:, 1, 1] for n in 1:length(times)]; dims = 2)
-        ax = Axis(fig[mod(i-1, 3), ((i-1)÷3)+1], xlabel = "x", ylabel = "t", title = label)
+        ax = Axis(fig[mod(i-1, 3)+1, ((i-1)÷3)+1], xlabel = "x", ylabel = "t", title = label)
         hm = heatmap!(ax, xs, times, field_xt; colormap = :balance, colorrange = (-1.8, 1.8))
     end
-    Colorbar(fig[1:length(panels), 2], hm)
+    Colorbar(fig[1:3, 3], hm)
 
     out = "tracer_inflow_outflow_hovmoller.png"
     save(out, fig)
