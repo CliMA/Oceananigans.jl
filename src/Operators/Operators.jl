@@ -53,8 +53,8 @@ export ∂xᵣTᶠᶜᶠ, ∂yᵣTᶜᶠᶠ
 # Reference frame conversion
 export intrinsic_vector, extrinsic_vector
 
-# Variable grid operators
-export σⁿ, σ⁻, ∂t_σ
+using Oceananigans.Grids
+using Oceananigans.Grids: inactive_node
 
 using Oceananigans.Grids: LatitudeLongitudeGrid, LLGOTF, XRegLLGOTF, YRegLLGOTF,
     OrthogonalSphericalShellGrid, RectilinearGrid, XRegularLLG, XRegularRG, YRegularLLG,
@@ -95,6 +95,8 @@ const c = Center()
 include("difference_operators.jl")
 include("interpolation_operators.jl")
 include("interpolation_utils.jl")
+include("boundary_aware_difference_operators.jl")
+include("boundary_aware_interpolation_operators.jl")
 
 include("reciprocal_metric_operators.jl")
 include("spacings_and_areas_and_volumes.jl")
