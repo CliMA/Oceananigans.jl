@@ -191,7 +191,7 @@ prettytime(sim::Simulation, longform=true) = prettytime(time(sim), longform)
 """
 $(TYPEDSIGNATURES)
 
-Return `sim.run_wall_time` as a prettily formatted string."
+Return `sim.run_wall_time` as a prettily formatted string.
 """
 run_wall_time(sim::Simulation) = prettytime(sim.run_wall_time)
 

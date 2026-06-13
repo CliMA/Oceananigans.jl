@@ -93,7 +93,7 @@ using Oceananigans.DistributedComputations: all_reduce
 """
 $(TYPEDSIGNATURES)
 
-Return a new time_step given `model.velocities` and model diffusivites,
+Return a new time step given `model.velocities` and model diffusivities,
 and the parameters of the `TimeStepWizard` `wizard`.
 """
 function new_time_step(old_Δt, wizard, model)
