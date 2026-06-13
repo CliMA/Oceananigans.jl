@@ -84,7 +84,7 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Save data in `obj` to `file[address]` in a "languate-agnostic" way,
+Save data in `obj` to `file[address]` in a "language-agnostic" way,
 thus primarily consisting of arrays and numbers, absent Julia-specific types
 or other data that can _only_ be interpreted by Julia.
 """
