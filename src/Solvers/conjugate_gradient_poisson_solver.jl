@@ -6,9 +6,8 @@ using Statistics: mean
 #####
 ##### Volume-inverse-weighted residual norm
 #####
-##### The V∇² system has residuals that scale with cell volume.
-##### Using ||V⁻¹r|| instead of ||r|| for convergence makes the
-##### criterion independent of cell volume, allowing universal tolerances.
+##### The V∇² residuals scale with cell volume, so convergence is measured with ||V⁻¹r||
+##### instead of ||r|| to make the criterion independent of cell volume.
 #####
 
 struct VolumeInverseNorm{G}
@@ -215,6 +214,43 @@ end
 ##### The "DiagonallyDominantPreconditioner" (Marshall et al 1997)
 #####
 
+"""
+    DiagonallyDominantPreconditioner()
+
+Construct a pointwise (Jacobi-like) approximate-inverse preconditioner for the
+`ConjugateGradientPoissonSolver`, following the "diagonally dominant" approximation of
+Marshall et al. (1997, §4.2). It approximates `M ≈ (V∇²)⁻¹` with a single sparse sweep that
+keeps all seven points of the stencil but never solves a coupled system, so it is cheap and
+applies uniformly to any topology and grid aspect ratio.
+
+The symmetric volume-weighted Laplacian `V∇²` has, at cell `(i, j, k)`, the seven-point stencil
+with off-diagonal coefficients (geometric face-area × inverse spacing, no `V⁻¹` factor)
+
+```math
+A_x^\\pm = A_x^{fcc}\\,\\Delta x^{-1}, \\quad
+A_y^\\pm = A_y^{cfc}\\,\\Delta y^{-1}, \\quad
+A_z^\\pm = A_z^{ccf}\\,\\Delta z^{-1},
+```
+
+and diagonal `Ac = -(Ax⁻ + Ax⁺ + Ay⁻ + Ay⁺ + Az⁻ + Az⁺)`. Rather than inverting this stencil,
+the preconditioner returns
+
+```math
+p_{ijk} = \\frac{1}{|A^c_{ijk}|}
+          \\left( r_{ijk} - \\sum_{\\text{nb}} \\frac{2\\,A^{\\text{nb}}_{ijk}}{A^c_{ijk} + A^c_{\\text{nb}}}\\, r_{\\text{nb}} \\right),
+```
+
+where the sum runs over the six face neighbors `nb` and each off-diagonal coupling is scaled by
+the harmonic-style combination `2 Aⁿᵇ / (Ac + Ac_nb)` of the two diagonals it connects. This is
+the diagonally-dominant correction that makes the sweep a good approximate inverse on a wide
+range of grids while remaining diagonally dominant (hence stable) by construction.
+
+For strongly anisotropic, ocean-like grids (`(Δz/Δx)²Nz² ≫ 1`) the [`ColumnwiseTridiagonalPreconditioner`](@ref),
+which inverts the vertical sub-system exactly, is also another viable option.
+
+However the FFT-based preconditioner is the recommended option over the `DiagonallyDominantPreconditioner`
+or the [`ColumnwiseTridiagonalPreconditioner`](@ref) as it converges in much fewer iterations for most scenarios.
+"""
 struct DiagonallyDominantPreconditioner end
 Base.summary(::DiagonallyDominantPreconditioner) = "DiagonallyDominantPreconditioner"
 
@@ -228,12 +264,12 @@ Base.summary(::DiagonallyDominantPreconditioner) = "DiagonallyDominantPreconditi
 end
 
 # Kernels that calculate coefficients for the preconditioner
-@inline Ax⁻(i, j, k, grid) = Axᶠᶜᶜ(i,   j, k, grid) * Δx⁻¹ᶠᶜᶜ(i,   j, k, grid) * V⁻¹ᶜᶜᶜ(i, j, k, grid)
-@inline Ax⁺(i, j, k, grid) = Axᶠᶜᶜ(i+1, j, k, grid) * Δx⁻¹ᶠᶜᶜ(i+1, j, k, grid) * V⁻¹ᶜᶜᶜ(i, j, k, grid)
-@inline Ay⁻(i, j, k, grid) = Ayᶜᶠᶜ(i, j,   k, grid) * Δy⁻¹ᶜᶠᶜ(i, j,   k, grid) * V⁻¹ᶜᶜᶜ(i, j, k, grid)
-@inline Ay⁺(i, j, k, grid) = Ayᶜᶠᶜ(i, j+1, k, grid) * Δy⁻¹ᶜᶠᶜ(i, j+1, k, grid) * V⁻¹ᶜᶜᶜ(i, j, k, grid)
-@inline Az⁻(i, j, k, grid) = Azᶜᶜᶠ(i, j, k,   grid) * Δz⁻¹ᶜᶜᶠ(i, j, k,   grid) * V⁻¹ᶜᶜᶜ(i, j, k, grid)
-@inline Az⁺(i, j, k, grid) = Azᶜᶜᶠ(i, j, k+1, grid) * Δz⁻¹ᶜᶜᶠ(i, j, k+1, grid) * V⁻¹ᶜᶜᶜ(i, j, k, grid)
+@inline Ax⁻(i, j, k, grid) = Axᶠᶜᶜ(i,   j, k, grid) * Δx⁻¹ᶠᶜᶜ(i,   j, k, grid)
+@inline Ax⁺(i, j, k, grid) = Axᶠᶜᶜ(i+1, j, k, grid) * Δx⁻¹ᶠᶜᶜ(i+1, j, k, grid)
+@inline Ay⁻(i, j, k, grid) = Ayᶜᶠᶜ(i, j,   k, grid) * Δy⁻¹ᶜᶠᶜ(i, j,   k, grid)
+@inline Ay⁺(i, j, k, grid) = Ayᶜᶠᶜ(i, j+1, k, grid) * Δy⁻¹ᶜᶠᶜ(i, j+1, k, grid)
+@inline Az⁻(i, j, k, grid) = Azᶜᶜᶠ(i, j, k,   grid) * Δz⁻¹ᶜᶜᶠ(i, j, k,   grid)
+@inline Az⁺(i, j, k, grid) = Azᶜᶜᶠ(i, j, k+1, grid) * Δz⁻¹ᶜᶜᶠ(i, j, k+1, grid)
 
 @inline Ac(i, j, k, grid) = - Ax⁻(i, j, k, grid) - Ax⁺(i, j, k, grid) -
                               Ay⁻(i, j, k, grid) - Ay⁺(i, j, k, grid) -
@@ -251,4 +287,111 @@ end
     i, j, k = @index(Global, NTuple)
     active = !inactive_cell(i, j, k, grid)
     @inbounds p[i, j, k] = heuristic_residual(i, j, k, grid, r) * active
+end
+
+#####
+##### The "ColumnwiseTridiagonalPreconditioner" (Marshall et al. 1997, §4)
+#####
+##### Block-diagonal preconditioner M = Lz⁻¹: for each horizontal column (i, j) the vertical
+##### sub-system of V∇² is solved exactly while horizontal couplings are discarded.
+#####
+
+struct ColumnwiseTridiagonalPreconditioner{S}
+    batched_tridiagonal_solver :: S
+end
+
+Base.summary(::ColumnwiseTridiagonalPreconditioner) = "ColumnwiseTridiagonalPreconditioner"
+
+# Marker types whose `get_coefficient` methods compute the tridiagonal coefficients of the
+# vertical sub-system of V∇² on the fly, sparing the solver three full 3D coefficient arrays.
+struct ColumnwiseTridiagonalLowerDiagonal end
+struct ColumnwiseTridiagonalDiagonal end
+struct ColumnwiseTridiagonalUpperDiagonal end
+
+# inactive_cell flags both immersed faces and Bounded-domain halos, so masking the geometric
+# couplings here encodes the BCs that V∇² sees through fill_halo_regions!. The lower and upper
+# diagonals share the same value az⁺(k) = az⁻(k+1): with the BatchedTridiagonalSolver indexing
+# convention the row-k lower coupling is read from index k-1, so a[k] and c[k] both equal az⁺(k).
+@inline function columnwise_tridiagonal_offdiagonal(i, j, k, grid)
+    az⁺ = ifelse(inactive_cell(i, j, k+1, grid), zero(grid), Azᶜᶜᶠ(i, j, k+1, grid) * Δz⁻¹ᶜᶜᶠ(i, j, k+1, grid))
+    return ifelse(inactive_cell(i, j, k, grid), zero(grid), az⁺)
+end
+
+@inline function columnwise_tridiagonal_diagonal(i, j, k, grid)
+    inactive_self  = inactive_cell(i, j, k,   grid)
+    inactive_below = inactive_cell(i, j, k-1, grid)
+    inactive_above = inactive_cell(i, j, k+1, grid)
+
+    az⁻ = ifelse(inactive_below, zero(grid), Azᶜᶜᶠ(i, j, k,   grid) * Δz⁻¹ᶜᶜᶠ(i, j, k,   grid))
+    az⁺ = ifelse(inactive_above, zero(grid), Azᶜᶜᶠ(i, j, k+1, grid) * Δz⁻¹ᶜᶜᶠ(i, j, k+1, grid))
+
+    # Multiplicative regularization breaks the singular Neumann–Neumann null space by
+    # shifting every diagonal by ε, large enough to lift the Thomas pivot above its
+    # guard threshold yet small enough to leave the preconditioner approximation intact.
+    ε = convert(eltype(grid), 1//100)
+
+    # A vertically-isolated active cell (both neighbors inactive) has az⁻ = az⁺ = 0, so its
+    # regularized diagonal collapses to zero and the Thomas pivot vanishes; act as the
+    # identity there (b = 1) since there is no vertical sub-system to invert.
+    isolated = inactive_below & inactive_above
+
+    return ifelse(inactive_self | isolated, one(grid), -(az⁻ + az⁺) * (1 + ε))
+end
+
+@inline get_coefficient(i, j, k, grid, ::ColumnwiseTridiagonalLowerDiagonal, p, ::ZDirection, args...) =
+    columnwise_tridiagonal_offdiagonal(i, j, k, grid)
+
+@inline get_coefficient(i, j, k, grid, ::ColumnwiseTridiagonalUpperDiagonal, p, ::ZDirection, args...) =
+    columnwise_tridiagonal_offdiagonal(i, j, k, grid)
+
+@inline get_coefficient(i, j, k, grid, ::ColumnwiseTridiagonalDiagonal, p, ::ZDirection, args...) =
+    columnwise_tridiagonal_diagonal(i, j, k, grid)
+
+"""
+    ColumnwiseTridiagonalPreconditioner(grid)
+
+Construct a block-diagonal preconditioner for the `ConjugateGradientPoissonSolver` that, for
+each horizontal column `(i, j)`, exactly solves the vertical tridiagonal sub-system of the
+symmetric volume-weighted Laplacian `V∇²` while discarding horizontal couplings (Marshall et
+al. 1997, §4).
+
+For each horizontal column `(i, j)` the preconditioning system solved is
+
+```math
+L_z \\, p = r ,
+```
+
+where `Lz` is the vertical (`k`-direction) part of `V∇²`, i.e. the tridiagonal operator
+
+```math
+(L_z p)_k = A_z^- \\, p_{k-1} - (A_z^- + A_z^+) \\, p_k + A_z^+ \\, p_{k+1} ,
+```
+
+with `Az⁻ = Azᶜᶜᶠ(i, j, k) / Δzᶜᶜᶠ(i, j, k)` and `Az⁺ = Azᶜᶜᶠ(i, j, k+1) / Δzᶜᶜᶠ(i, j, k+1)`.
+The preconditioner is therefore `M = Lz⁻¹`, applied as one batched Thomas sweep per column.
+
+This preconditioner is more well-suited for hydrostatic problems (`(Δz/Δx)²Nz² ≪ 1`) as it allows
+convergence in ~4--5x fewer iterations. For isotropic grids (`Δz/Δx ≈ 1`) the conditioning is worse
+than no preconditioner.
+
+In general, using the FFT preconditioner is recommended as it requires much fewer iterations than the
+`ColumnwiseTridiagonalPreconditioner` or the [`DiagonallyDominantPreconditioner`](@ref DiagonallyDominantPreconditioner)
+in most scenarios.
+
+The same `grid` must be passed to both `ColumnwiseTridiagonalPreconditioner` and the
+`ConjugateGradientPoissonSolver` that uses it.
+"""
+function ColumnwiseTridiagonalPreconditioner(grid::AbstractGrid)
+    solver = BatchedTridiagonalSolver(grid; lower_diagonal = ColumnwiseTridiagonalLowerDiagonal(),
+                                            diagonal = ColumnwiseTridiagonalDiagonal(),
+                                            upper_diagonal = ColumnwiseTridiagonalUpperDiagonal(),
+                                            tridiagonal_direction = ZDirection())
+
+    return ColumnwiseTridiagonalPreconditioner(solver)
+end
+
+@inline function precondition!(p, preconditioner::ColumnwiseTridiagonalPreconditioner, r, args...)
+    fill_halo_regions!(r)
+    solve!(p, preconditioner.batched_tridiagonal_solver, r)
+    return p
 end
