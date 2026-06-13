@@ -631,15 +631,15 @@ const F = Face
 const C = Center
 const N = Nothing
 
-@inline function xnodes(grid::LLG, ℓx, ℓy; with_halos=false)
-    λ = λnodes(grid, ℓx; with_halos=with_halos)'
-    φ = φnodes(grid, ℓy; with_halos=with_halos)
+@inline function xnodes(grid::LLG, ℓx, ℓy; with_halos=false, indices=Colon())
+    λ = λnodes(grid, ℓx; with_halos, indices)'
+    φ = φnodes(grid, ℓy; with_halos)
     R = grid.radius
     return @. R * deg2rad(λ) * hack_cosd(φ)
 end
 
-@inline function ynodes(grid::LLG, ℓy; with_halos=false)
-    φ = φnodes(grid, ℓy; with_halos=with_halos)
+@inline function ynodes(grid::LLG, ℓy; with_halos=false, indices=Colon())
+    φ = φnodes(grid, ℓy; with_halos, indices)
     R = grid.radius
     return @. R * deg2rad(φ)
 end
@@ -647,8 +647,8 @@ end
 # Convenience
 @inline λnodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false, indices=Colon()) = λnodes(grid, ℓx; with_halos, indices)
 @inline φnodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false, indices=Colon()) = φnodes(grid, ℓy; with_halos, indices)
-@inline xnodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = xnodes(grid, ℓx, ℓy; with_halos)
-@inline ynodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false) = ynodes(grid, ℓy; with_halos)
+@inline xnodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false, indices=Colon()) = xnodes(grid, ℓx, ℓy; with_halos, indices)
+@inline ynodes(grid::LLG, ℓx, ℓy, ℓz; with_halos=false, indices=Colon()) = ynodes(grid, ℓy; with_halos, indices)
 
 @inline λnodes(grid::LLG, ℓx::F; with_halos=false, indices=Colon()) = view(_property(grid.λᶠᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos), indices)
 @inline λnodes(grid::LLG, ℓx::C; with_halos=false, indices=Colon()) = view(_property(grid.λᶜᵃᵃ, ℓx, topology(grid, 1), grid.Nx, grid.Hx, with_halos), indices)
