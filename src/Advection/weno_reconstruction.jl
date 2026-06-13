@@ -16,8 +16,11 @@ struct WENO{N, FT, WCT, TD, PP, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N
 end
 
 """
-    WENO([FT=Float64;]
+    WENO([FT=Oceananigans.defaults.FloatType;]
+         weight_computation=Nothing,
          order = 5,
+         buffer_scheme = DecreasingOrderAdvectionScheme(),
+         time_discretization = ExplicitTimeDiscretization(),
          bounds = nothing,
          minimum_buffer_upwind_order = 3)
 

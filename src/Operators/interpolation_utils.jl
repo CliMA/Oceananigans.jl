@@ -94,7 +94,7 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Returns a tuple of indices and interpolation functions to the location `X, Y, Z`
+Return a tuple of indices and interpolation functions to the location `X, Y, Z`
 for each name in `dependencies`.
 
 The indices correspond to the position of each dependency within `model_field_names`.
