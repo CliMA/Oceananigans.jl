@@ -18,6 +18,7 @@ export
 using Adapt
 using KernelAbstractions: @index, @kernel
 
+using Oceananigans: Oceananigans
 using Oceananigans.Architectures: CPU, GPU
 using Oceananigans.Utils: launch!
 using Oceananigans.Operators: Ax, Ay, Az, volume
