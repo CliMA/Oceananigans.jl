@@ -39,8 +39,8 @@ export
 
     # Boundary conditions
     BoundaryCondition,
-    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, NormalFlowBoundaryCondition,
-    PerturbationAdvection,
+    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, NormalFlowBoundaryCondition, FlatherBoundaryCondition,
+    PerturbationAdvection, Flather, Radiation, Chapman,
     FieldBoundaryConditions,
 
     # Fields and field manipulation
