@@ -10,6 +10,7 @@ import Oceananigans: initialize!
 using Oceananigans.Architectures: ReactantState
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel
+using Oceananigans.Utils: get_active_cells_map
 
 using ..TimeSteppers: ReactantModel
 using ..Grids: ReactantGrid, ReactantImmersedBoundaryGrid
@@ -17,7 +18,8 @@ using ..Grids: ShardedGrid, ShardedDistributed
 
 import Oceananigans.Models:
         complete_communication_and_compute_buffer!,
-        interior_tendency_kernel_parameters
+        interior_tendency_kernel_parameters,
+        generate_condition_maps
 import Oceananigans.Advection: default_weno_weight_computation
 
 
@@ -70,5 +72,14 @@ interior_tendency_kernel_parameters(::ShardedDistributed, grid) = :xyz
 # it causes Reactant to crash.
 # We need to fall back to different optimization when running with Reactant
 default_weno_weight_computation(::ReactantState) = Oceananigans.Utils.ConvertingDivision{Float32}
+
+@inline function generate_condition_maps(grid::ReactantGrid, advection; kwargs...)
+    active_cells_map = get_active_cells_map(grid, Val(:core))
+    condition_maps = Dict()
+    for key in keys(advection)
+        condition_maps[key] = active_cells_map
+    end
+    return (; condition_maps...)
+end
 
 end # module

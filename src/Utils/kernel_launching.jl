@@ -88,6 +88,7 @@ KernelParameters(args::Tuple) = KernelParameters(args...)
 
 contiguousrange(range::StaticSize{S}, offset) where S = contiguousrange(S, offset)
 contiguousrange(range::NTuple{N, Int}, offset::NTuple{N, Int}) where N = Tuple(1+o:r+o for (r, o) in zip(range, offset))
+@inline contiguousrange(::KernelParameters{S, O}) where {S, O} = contiguousrange(S, O)
 
 # Heuristic for 1-tuple, 2-tuple and 3-tuple of integers
 contiguousrange(range::NTuple{1, Int}, offset::NTuple{1, Int}) = @inbounds (1+offset[1]:range[1]+offset[1], )
@@ -334,6 +335,14 @@ keyword arguments `kw`.
 
 @inline function launch!(arch, grid, workspec_tuple::Tuple, args...; kwargs...)
     for workspec in workspec_tuple
+        _launch!(arch, grid, workspec, args...; kwargs...)
+    end
+    return nothing
+end
+
+@inline function launch!(arch, grid, workspec_nt::NamedTuple, args...; kwargs...)
+    for workspec in values(workspec_nt)
+        isnothing(workspec) && continue
         _launch!(arch, grid, workspec, args...; kwargs...)
     end
     return nothing

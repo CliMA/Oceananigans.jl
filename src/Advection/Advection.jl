@@ -18,7 +18,8 @@ export
     needs_implicit_solver,
     update_advection_timestep!,
     EnergyConserving,
-    EnstrophyConserving
+    EnstrophyConserving,
+    fixed_order_scheme
 
 using Adapt: Adapt
 using DocStringExtensions: SIGNATURES
@@ -73,6 +74,7 @@ include("vector_invariant_advection.jl")
 include("vector_invariant_self_upwinding.jl")
 include("vector_invariant_cross_upwinding.jl")
 include("flux_form_advection.jl")
+include("fixed_order_schemes.jl")
 include("adaptive_implicit_vertical_advection.jl")
 include("implicit_vertical_advection.jl")
 

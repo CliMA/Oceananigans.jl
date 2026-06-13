@@ -1,12 +1,9 @@
 using Oceananigans.Utils: get_active_cells_map
 using Oceananigans.Grids: halo_size, XFlatGrid, YFlatGrid
+using Oceananigans.ImmersedBoundaries: SplitActiveCellsMapIBG
 using Oceananigans.DistributedComputations: Distributed, DistributedGrid, AsynchronousDistributed, synchronize_communication!
-using Oceananigans.ImmersedBoundaries: CellMaps
-using Oceananigans.Models.NonhydrostaticModels: buffer_tendency_kernel_parameters, buffer_κ_kernel_parameters, buffer_parameters
-
-const DistributedActiveInteriorIBG = ImmersedBoundaryGrid{FT, TX, TY, TZ,
-                                                          <:DistributedGrid, I, <:CellMaps, S,
-                                                          <:Distributed} where {FT, TX, TY, TZ, I, S}
+using Oceananigans.Models: buffer_tendency_kernel_parameters, buffer_parameters
+using Oceananigans.Models.NonhydrostaticModels: buffer_κ_kernel_parameters
 
 # Fallback for non-distributed grids
 complete_communication_and_compute_tracer_buffer!(model, grid, arch) = nothing
@@ -49,38 +46,29 @@ function complete_communication_and_compute_momentum_buffer!(model::HydrostaticF
 end
 
 """
-    compute_momentum_buffer_contributions!(grid, arch, model)
+    compute_momentum_buffer_contributions!(grid::DistributedGrid, arch, model)
 
-Compute momentum tendencies in buffer regions adjacent to processor boundaries.
-
-For regular distributed grids, uses `buffer_tendency_kernel_parameters` to determine
-the buffer region indices. For immersed boundary grids with active cell maps,
-iterates over halo-dependent cell maps for each direction.
+Compute momentum tendencies in the four halo-dependent buffer regions.
 """
-function compute_momentum_buffer_contributions!(grid, arch, model)
-    kernel_parameters = buffer_tendency_kernel_parameters(grid, arch)
-    compute_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters)
-    return nothing
-end
-
-function compute_momentum_buffer_contributions!(grid::DistributedActiveInteriorIBG, arch, model)
-    maps = grid.interior_active_cells
-
+function compute_momentum_buffer_contributions!(grid::DistributedGrid, arch, model)
+    params = buffer_tendency_kernel_parameters(grid, arch)
     for name in (:west_halo_dependent_cells,
                  :east_halo_dependent_cells,
                  :south_halo_dependent_cells,
                  :north_halo_dependent_cells)
-
-        active_cells_map = @inbounds maps[name]
-
-        # If the map == nothing, we don't need to compute the buffer because
-        # the buffer is not adjacent to a processor boundary.
-        if !isnothing(active_cells_map)
-            # We pass `nothing` as parameters since we will use the value in the `active_cells_map` as parameters
-            compute_hydrostatic_momentum_tendencies!(model, model.velocities, nothing; active_cells_map)
-        end
+        compute_buffer_region_momentum_tendencies!(grid, arch, model, name, params)
     end
+    return nothing
+end
 
+@inline buffer_region_active_cells_map(grid::SplitActiveCellsMapIBG, name) = @inbounds grid.interior_active_cells[name]
+@inline buffer_region_active_cells_map(grid, name) = nothing
+
+@inline function compute_buffer_region_momentum_tendencies!(grid, arch, model, name, params)
+    kernel_parameters = params[name]
+    isnothing(kernel_parameters) && return nothing
+    active_cells_map = buffer_region_active_cells_map(grid, name)
+    compute_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters; active_cells_map, region=name)
     return nothing
 end
 
@@ -109,34 +97,26 @@ function complete_communication_and_compute_tracer_buffer!(model::HydrostaticFre
 end
 
 """
-    compute_tracer_buffer_contributions!(grid, arch, model)
+    compute_tracer_buffer_contributions!(grid::DistributedGrid, arch, model)
 
-Compute tracer tendencies in buffer regions adjacent to processor boundaries.
+Compute tracer tendencies in the halo-dependent buffer regions (from 1 to 4).
 """
-function compute_tracer_buffer_contributions!(grid, arch, model)
-    kernel_parameters = buffer_tendency_kernel_parameters(grid, arch)
-    compute_hydrostatic_tracer_tendencies!(model, kernel_parameters)
-    return nothing
-end
-
-function compute_tracer_buffer_contributions!(grid::DistributedActiveInteriorIBG, arch, model)
-    maps = grid.interior_active_cells
-
+function compute_tracer_buffer_contributions!(grid::DistributedGrid, arch, model)
+    params = buffer_tendency_kernel_parameters(grid, arch)
     for name in (:west_halo_dependent_cells,
                  :east_halo_dependent_cells,
                  :south_halo_dependent_cells,
                  :north_halo_dependent_cells)
-
-        active_cells_map = @inbounds maps[name]
-
-        # If the map == nothing, we don't need to compute the buffer because
-        # the buffer is not adjacent to a processor boundary
-        if !isnothing(active_cells_map)
-            # We pass `nothing` as parameters since we will use the value in the `active_cells_map` as parameters
-            compute_hydrostatic_tracer_tendencies!(model, nothing; active_cells_map)
-        end
+        compute_buffer_region_tracer_tendencies!(grid, arch, model, name, params)
     end
+    return nothing
+end
 
+@inline function compute_buffer_region_tracer_tendencies!(grid, arch, model, name, params)
+    kernel_parameters = params[name]
+    isnothing(kernel_parameters) && return nothing # This side is not at a processor boundary
+    active_cells_map = buffer_region_active_cells_map(grid, name)
+    compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_map, region=name)
     return nothing
 end
 

@@ -145,8 +145,11 @@ end
     z = (-0.5, 0.5)
     topology = (Periodic, Periodic, Bounded)
 
+    model_kwargs = (; condition_momentum_advection=false,
+                      condition_tracer_advection=false)
+
     grid = RectilinearGrid(size=(Nx, Ny, Nz); x, y, z, topology)
-    model = HydrostaticFreeSurfaceModel(grid; tracers=:c)
+    model = HydrostaticFreeSurfaceModel(grid; tracers=:c, model_kwargs...)
     model_tracer = model.tracers.c
 
     amplitude = 1.0
@@ -232,18 +235,23 @@ end
     # 2. Add surface fluxes
     # 3. Do a problem where we invert for the tracer fluxes (maybe with CATKE)
 
+    model_kwargs = (; condition_momentum_advection=false,
+                      condition_tracer_advection=false)
+
     model_no_bc = HydrostaticFreeSurfaceModel(grid;
                                               tracer_advection = WENO(),
                                               tracers = :c,
                                               velocities = PrescribedVelocityFields(; u, v),
-                                              closure = diffusion)
+                                              closure = diffusion,
+                                              model_kwargs...)
 
     model_bc = HydrostaticFreeSurfaceModel(grid;
                                            tracer_advection = WENO(),
                                            tracers = :c,
                                            velocities = PrescribedVelocityFields(; u, v),
                                            boundary_conditions = (; c=c_bcs),
-                                           closure = diffusion)
+                                           closure = diffusion,
+                                           model_kwargs...)
 
     models = [model_no_bc, model_bc]
 
@@ -328,7 +336,10 @@ end
     g = 4^2
     c = sqrt(g)
     free_surface = ExplicitFreeSurface(gravitational_acceleration=g)
-    model = HydrostaticFreeSurfaceModel(grid; momentum_advection, free_surface, closure)
+    model_kwargs = (; condition_momentum_advection=false,
+                      condition_tracer_advection=false)
+    model = HydrostaticFreeSurfaceModel(grid; momentum_advection, free_surface, closure,
+                                        model_kwargs...)
 
     ϵ(x, y, z) = 2randn() - 1
     set!(model, u=ϵ, v=ϵ)

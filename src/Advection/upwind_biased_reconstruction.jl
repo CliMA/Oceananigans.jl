@@ -11,6 +11,8 @@ struct UpwindBiased{N, FT, TD, CA, SI} <: AbstractUpwindBiasedAdvectionScheme{N,
         new{N, FT, TD, CA, SI}(buffer_scheme, advecting_velocity_scheme, time_discretization)
 end
 
+scheme_order(::UpwindBiased{N}) where N = 2N + 1
+
 function UpwindBiased(FT::DataType = Float64;
                       order = 3,
                       time_discretization = ExplicitTimeDiscretization(),

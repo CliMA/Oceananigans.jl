@@ -176,6 +176,7 @@ CUDA.allowscalar() do
             include("test_split_explicit_free_surface_solver.jl")
             include("test_split_explicit_vertical_integrals.jl")
             include("test_immersed_implicit_free_surface.jl")
+            include("test_hydrostatic_conditioned_advection_map.jl")
         end
     end
 
@@ -283,6 +284,12 @@ CUDA.allowscalar() do
     if group == :mpi_tripolar || group == :all
         @testset "Distributed tripolar tests" begin
             include("test_mpi_tripolar.jl")
+        end
+    end
+
+    if group == :condition_maps || group == :all
+        @testset "Condition maps tests" begin
+            include("test_condition_maps.jl")
         end
     end
 

@@ -14,6 +14,9 @@ export
     LinearFormulation, QuadraticFormulation,
     BoundaryAdjacentMean, boundary_total_area
 
+export generate_condition_maps, lookup_condition_map, maybe_launch_split_tendency_kernels!, InteriorBoundarySet
+export buffer_tendency_kernel_parameters, buffer_parameters, distributed_region_kernel_parameters
+
 using Oceananigans: AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered
@@ -97,6 +100,8 @@ function materialize_free_surface end
 # Communication - Computation overlap in distributed models
 include("interleave_communication_and_computation.jl")
 
+# Implementation of condition map generation
+include("condition_maps.jl")
 # Shared open-boundary transport building blocks: per-boundary integrals,
 # initialization, and correction helpers. NonhydrostaticModel composes these
 # into `enforce_net_zero_transport!` to enforce the incompressible-pressure

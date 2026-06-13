@@ -8,6 +8,8 @@ struct Centered{N, FT, TD, CA} <: AbstractCenteredAdvectionScheme{N, FT, TD}
     Centered{N, FT}(buffer_scheme::CA, time_discretization::TD) where {N, FT, CA, TD} = new{N, FT, TD, CA}(buffer_scheme, time_discretization)
 end
 
+scheme_order(::Centered{N}) where N = 2N
+
 function Centered(FT::DataType=Oceananigans.defaults.FloatType;
                   order = 2,
                   time_discretization = ExplicitTimeDiscretization(),

@@ -8,6 +8,7 @@ using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
 using Oceananigans.Utils: get_active_cells_map
+using Oceananigans.Models: lookup_condition_map, maybe_launch_split_tendency_kernels!
 
 """
     compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
@@ -27,7 +28,7 @@ function compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callba
     arch = architecture(grid)
 
     active_cells_map = get_active_cells_map(model.grid, Val(:core))
-    kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
+    kernel_parameters = interior_tendency_kernel_parameters(grid, arch)
 
     compute_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters; active_cells_map)
     complete_communication_and_compute_momentum_buffer!(model, grid, arch)
@@ -62,7 +63,7 @@ function compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel)
     arch = architecture(grid)
 
     active_cells_map  = get_active_cells_map(model.grid, Val(:core))
-    kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
+    kernel_parameters = interior_tendency_kernel_parameters(grid, arch)
 
     compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_map)
     complete_communication_and_compute_tracer_buffer!(model, grid, arch)
@@ -94,39 +95,39 @@ Compute tracer tendencies in the grid interior (or on specified active cells).
 Launches the tracer tendency kernel for each tracer, computing advection, diffusion,
 and forcing contributions. Uses `model.transport_velocities` for advection.
 """
-function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_map=nothing)
+function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters;
+                                                active_cells_map=nothing,
+                                                region=:halo_independent_cells)
 
     arch = model.architecture
     grid = model.grid
 
     for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
 
+        condition_map = lookup_condition_map(model.condition_maps[tracer_name], region)
         @inbounds c_tendency    = model.timestepper.Gⁿ[tracer_name]
         @inbounds c_advection   = model.advection[tracer_name]
         @inbounds c_forcing     = model.forcing[tracer_name]
         @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
 
-        args = tuple(Val(tracer_index),
-                     Val(tracer_name),
-                     c_advection,
-                     model.closure,
-                     c_immersed_bc,
-                     model.buoyancy,
-                     model.biogeochemistry,
-                     model.transport_velocities,
-                     model.free_surface,
-                     model.tracers,
-                     model.closure_fields,
-                     model.auxiliary_fields,
-                     model.clock,
-                     c_forcing)
+        args = (Val(tracer_index),
+                Val(tracer_name),
+                model.closure,
+                c_immersed_bc,
+                model.buoyancy,
+                model.biogeochemistry,
+                model.transport_velocities,
+                model.free_surface,
+                model.tracers,
+                model.closure_fields,
+                model.auxiliary_fields,
+                model.clock,
+                c_forcing)
 
-        launch!(arch, grid, kernel_parameters,
-                compute_hydrostatic_free_surface_Gc!,
-                c_tendency,
-                grid,
-                args;
-                active_cells_map)
+        maybe_launch_split_tendency_kernels!(arch, kernel_parameters,
+                                             compute_hydrostatic_free_surface_Gc!,
+                                             c_tendency, grid, c_advection, args,
+                                             active_cells_map, condition_map)
     end
 
     return nothing
@@ -137,20 +138,20 @@ end
 
 Compute momentum tendencies for `u` and `v` in the grid interior (or on specified active cells).
 """
-function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters; active_cells_map=nothing)
+function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_parameters;
+                                                  active_cells_map=nothing,
+                                                  region=:halo_independent_cells)
 
     grid = model.grid
     arch = architecture(grid)
+
+    condition_map = lookup_condition_map(model.condition_maps.momentum, region)
 
     u_immersed_bc = immersed_boundary_condition(velocities.u)
     v_immersed_bc = immersed_boundary_condition(velocities.v)
 
     u_forcing = model.forcing.u
     v_forcing = model.forcing.v
-
-    start_momentum_kernel_args = (model.advection.momentum,
-                                  model.coriolis,
-                                  model.closure)
 
     end_momentum_kernel_args = (velocities,
                                 model.free_surface,
@@ -162,16 +163,19 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
                                 model.vertical_coordinate,
                                 model.clock)
 
-    u_kernel_args = tuple(start_momentum_kernel_args..., u_immersed_bc, end_momentum_kernel_args..., u_forcing)
-    v_kernel_args = tuple(start_momentum_kernel_args..., v_immersed_bc, end_momentum_kernel_args..., v_forcing)
+    advection = model.advection.momentum
+    u_args = (model.coriolis, model.closure, u_immersed_bc, end_momentum_kernel_args..., u_forcing)
+    v_args = (model.coriolis, model.closure, v_immersed_bc, end_momentum_kernel_args..., v_forcing)
 
-    launch!(arch, grid, kernel_parameters,
-            compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid,
-            u_kernel_args; active_cells_map)
+    maybe_launch_split_tendency_kernels!(arch, kernel_parameters,
+                                         compute_hydrostatic_free_surface_Gu!,
+                                         model.timestepper.Gⁿ.u, grid, advection, u_args,
+                                         active_cells_map, condition_map)
 
-    launch!(arch, grid, kernel_parameters,
-            compute_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid,
-            v_kernel_args; active_cells_map)
+    maybe_launch_split_tendency_kernels!(arch, kernel_parameters,
+                                         compute_hydrostatic_free_surface_Gv!,
+                                         model.timestepper.Gⁿ.v, grid, advection, v_args,
+                                         active_cells_map, condition_map)
 
     return nothing
 end
