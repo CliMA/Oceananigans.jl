@@ -113,7 +113,7 @@ struct Sizes{S}
 end
 
 """
-$(TYPEDSIGNATURES)
+    Fractional(ϵ₁, ϵ₂, ..., ϵₙ)
 
 Return a type that partitions a direction unequally. The total work is `W = sum(ϵᵢ)`,
 and each process is then allocated `ϵᵢ / W` of the domain.
