@@ -4,7 +4,6 @@ using Oceananigans.Grids: topology, _node, φnode, φnodes, λnode, λnodes,
                           XRegularRG, YRegularRG, ZRegularRG,
                           XRegularLLG, YRegularLLG, ZRegularLLG,
                           ZRegOrthogonalSphericalShellGrid
-
 using Oceananigans.Operators: Δx, Δy, Δz
 using Oceananigans.Utils: interpolator, _interpolate
 
