@@ -1,6 +1,6 @@
-using Oceananigans.Operators: assumed_field_location
-using Oceananigans.Grids: YFlatGrid
 using GPUArraysCore
+using Oceananigans.Grids: YFlatGrid
+using Oceananigans.Operators: assumed_field_location
 
 #####
 ##### Default boundary conditions
