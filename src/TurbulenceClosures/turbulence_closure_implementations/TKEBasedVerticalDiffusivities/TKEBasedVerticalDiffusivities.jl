@@ -57,6 +57,7 @@ import Oceananigans.TurbulenceClosures:
     diffusivity,
     viscosity_location,
     diffusivity_location
+using DocStringExtensions: TYPEDSIGNATURES
 
 const c = Center()
 const f = Face()

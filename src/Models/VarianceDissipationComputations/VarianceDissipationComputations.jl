@@ -25,6 +25,7 @@ using Oceananigans.Advection: _advective_tracer_flux_x,
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Utils: IterationInterval, ConsecutiveIterations
 using KernelAbstractions: @kernel, @index
+using DocStringExtensions: TYPEDSIGNATURES
 
 struct VarianceDissipation{P, K, A, D, S}
     advective_production :: P

@@ -10,7 +10,7 @@ using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCAT
 using Oceananigans.Utils: get_active_cells_map
 
 """
-    compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
+$(TYPEDSIGNATURES)
 
 Compute tendencies for horizontal velocity fields `u` and `v`.
 
@@ -40,7 +40,7 @@ function compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callba
 end
 
 """
-    compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel)
+$(TYPEDSIGNATURES)
 
 Compute tendencies for all tracer fields.
 

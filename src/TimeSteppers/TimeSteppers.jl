@@ -16,6 +16,7 @@ export
 using Adapt: Adapt
 using KernelAbstractions: @kernel, @index
 using Oceananigans: Oceananigans, AbstractModel, initialize!, prognostic_fields
+using DocStringExtensions: TYPEDSIGNATURES
 
 """
     abstract type AbstractTimeStepper
@@ -63,7 +64,7 @@ include("runge_kutta_3.jl")
 include("split_runge_kutta.jl")
 
 """
-    TimeStepper(name::Symbol, args...; kwargs...)
+$(TYPEDSIGNATURES)
 
 Return a timestepper with name `name`, instantiated with `args...` and `kwargs...`.
 

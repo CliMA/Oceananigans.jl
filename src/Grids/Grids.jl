@@ -31,7 +31,7 @@ using Adapt: Adapt, adapt
 using GPUArraysCore: @allowscalar
 using OffsetArrays: OffsetArray
 using Printf: @sprintf
-using DocStringExtensions: FIELDS
+using DocStringExtensions: FIELDS, TYPEDSIGNATURES
 
 using Oceananigans: Oceananigans
 using Oceananigans.Utils: Utils

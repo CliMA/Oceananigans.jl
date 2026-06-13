@@ -18,6 +18,7 @@ using Oceananigans.Utils: pretty_filesize
 using OffsetArrays
 
 import Oceananigans: write_output!, initialize!
+using DocStringExtensions: TYPEDSIGNATURES
 
 const c = Center()
 const f = Face()

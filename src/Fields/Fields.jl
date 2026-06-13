@@ -18,6 +18,7 @@ using Oceananigans.Grids: Grids, AbstractGrid, Bounded, Center, Face, LatitudeLo
     RectilinearGrid, new_data, interior_indices, total_size, topology, nodes, xnodes,
     ynodes, znodes, node, xnode, ynode, znode
 using Oceananigans.Utils: KernelParameters, launch!, prettysummary, interpolator
+using DocStringExtensions: TYPEDSIGNATURES
 
 "Return the location `(LX, LY, LZ)` of an `AbstractField{LX, LY, LZ}`."
 @inline Oceananigans.location(a) = (Nothing, Nothing, Nothing) # used in AbstractOperations for location inference
@@ -40,7 +41,7 @@ include("show_fields.jl")
 include("broadcasting_abstract_fields.jl")
 
 """
-    field(loc, a, grid)
+$(TYPEDSIGNATURES)
 
 Build a field from array `a` at `loc` and on `grid`.
 """

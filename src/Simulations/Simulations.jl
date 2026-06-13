@@ -15,6 +15,7 @@ using Oceananigans.Advection: Advection
 using Oceananigans: AbstractDiagnostic, AbstractOutputWriter
 
 using OrderedCollections: OrderedDict
+using DocStringExtensions: TYPEDSIGNATURES
 
 # To be extended in the `Models` module
 timestepper(model) = nothing

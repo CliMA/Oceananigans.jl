@@ -10,7 +10,7 @@ const f = Face()
 const c = Center()
 
 """
-    regrid!(dst_field, src_field)
+$(TYPEDSIGNATURES)
 
 Regrid `src_field` onto the grid of `dst_field`.
 

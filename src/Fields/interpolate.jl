@@ -4,7 +4,6 @@ using Oceananigans.Grids: topology, _node, φnode, φnodes, λnode, λnodes,
                           XRegularRG, YRegularRG, ZRegularRG,
                           XRegularLLG, YRegularLLG, ZRegularLLG,
                           ZRegOrthogonalSphericalShellGrid
-
 using Oceananigans.Operators: Δx, Δy, Δz
 using Oceananigans.Utils: interpolator, _interpolate
 
@@ -12,7 +11,7 @@ using Oceananigans.Utils: interpolator, _interpolate
 @inline middle_point(l, h) = Base.unsafe_trunc(Int, (l + h) / 2)
 
 """
-    index_binary_search(vec, val, N)
+$(TYPEDSIGNATURES)
 
 Return indices `low, high` of `vec`tor for which
 
@@ -191,7 +190,7 @@ struct FractionalIndices{I, J, K}
 end
 
 """
-    FractionalIndices(at_node, grid, ℓx, ℓy, ℓz)
+$(TYPEDSIGNATURES)
 
 Convert the coordinate tuple `at_node` to _fractional_ indices on a regular rectilinear grid
 located at `(ℓx, ℓy, ℓz)`, a triplet of `Center` and `Face`. Fractional indices are
@@ -308,7 +307,7 @@ end
 @inline _fractional_indices(at_node, grid, ::Nothing, ::Nothing, ::Nothing) = FractionalIndices(nothing, nothing, nothing)
 
 """
-    interpolate(at_node, from_field, from_loc, from_grid)
+$(TYPEDSIGNATURES)
 
 Interpolate `from_field`, `at_node`, on `from_grid` and at `from_loc`ation,
 where `at_node` is a tuple of coordinates and and `from_loc = (ℓx, ℓy, ℓz)`.
@@ -330,7 +329,7 @@ end
 # interpolator, _interpolate, and ϕ₁-ϕ₈ are imported from Oceananigans.Utils
 
 """
-    interpolate(to_node, from_field)
+$(TYPEDSIGNATURES)
 
 Interpolate the `from_field` `to_node`.
 
@@ -381,7 +380,7 @@ end
 end
 
 """
-    interpolate!(to_field::Field, from_field::AbstractField)
+$(TYPEDSIGNATURES)
 
 Interpolate `from_field` `to_field` and then fill the halo regions of `to_field`.
 """

@@ -24,7 +24,7 @@ function compute_eddy_velocities!(closure_fields, closure::SkewAdvectionISSD, mo
 end
 
 """
-    tapering_factor(Sx, Sy, slope_limiter)
+$(TYPEDSIGNATURES)
 
 Return the tapering factor `min(1, Sₘₐₓ² / S²)`, where `S² = Sx² + Sy²`
 that multiplies all components of the isopycnal slope tensor.

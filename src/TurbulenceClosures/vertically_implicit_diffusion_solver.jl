@@ -142,7 +142,7 @@ struct VerticallyImplicitDiffusionDiagonal end
 struct VerticallyImplicitDiffusionUpperDiagonal end
 
 """
-    implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
+$(TYPEDSIGNATURES)
 
 Build tridiagonal solvers for the elliptic equations
 

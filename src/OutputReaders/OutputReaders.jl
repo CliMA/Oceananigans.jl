@@ -8,6 +8,7 @@ export Cyclical, Linear, Clamp
 
 using Oceananigans: boundary_conditions
 using Oceananigans.Utils: @apply_regionally
+using DocStringExtensions: TYPEDSIGNATURES
 
 struct JLD2Path
     path :: String
@@ -22,7 +23,7 @@ struct ZarrPath
 end
 
 """
-    auto_extension(filename, ext)
+$(TYPEDSIGNATURES)
 
 If `filename` ends in `ext`, return `filename`. Otherwise return `filename * ext`.
 """

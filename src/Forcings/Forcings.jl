@@ -8,6 +8,7 @@ using Oceananigans.Units: Time
 using Oceananigans.Architectures: Architectures, on_architecture
 
 using Adapt: Adapt, adapt
+using DocStringExtensions: TYPEDSIGNATURES
 
 include("multiple_forcings.jl")
 include("continuous_forcing.jl")

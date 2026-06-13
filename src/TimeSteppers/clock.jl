@@ -59,7 +59,7 @@ function reset!(clock::Clock{TT, KT, DT, IT, S}) where {TT, KT, DT, IT, S}
 end
 
 """
-    set!(clock::Clock, new_clock::Clock)
+$(TYPEDSIGNATURES)
 
 Set `clock` to the `new_clock`.
 """
