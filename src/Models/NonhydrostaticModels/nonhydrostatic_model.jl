@@ -106,7 +106,7 @@ Keyword arguments
   - `timestepper`: A symbol or a `TimeStepper` object that specifies the time-stepping method.
                    Supported symbols include $(join("`" .* repr.(supported_timesteppers) .* "`", ", ")).
                    Default: `:RungeKutta3`.
-  - `background_fields`: `NamedTuple` with background fields (e.g., background flow). Default: `nothing`.
+  - `background_fields`: `NamedTuple` with background fields (e.g., background flow). Default: `NamedTuple()`.
   - `particles`: Lagrangian particles to be advected with the flow. Default: `nothing`.
   - `biogeochemistry`: Biogeochemical model for `tracers`.
   - `velocities`: The model velocities. Default: `nothing`.
@@ -120,7 +120,7 @@ Keyword arguments
   - `closure_fields`: Diffusivity fields. Default: `nothing`.
   - `pressure_solver`: Pressure solver to be used in the model. If `nothing` (default), the model constructor
     chooses the default based on the `grid` provide.
-  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`
+  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `NamedTuple()`
 """
 function NonhydrostaticModel(grid;
                              clock = Clock(grid),

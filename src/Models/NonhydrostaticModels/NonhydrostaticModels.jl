@@ -106,7 +106,7 @@ fields(model::NonhydrostaticModel) = merge(model.velocities,
                                            biogeochemical_auxiliary_fields(model.biogeochemistry))
 
 """
-    prognostic_fields(model::HydrostaticFreeSurfaceModel)
+    prognostic_fields(model::NonhydrostaticModel)
 
 Return a flattened `NamedTuple` of the prognostic fields associated with `NonhydrostaticModel`.
 """

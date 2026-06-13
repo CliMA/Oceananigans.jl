@@ -32,7 +32,7 @@ end
                                  z,
                                  halo = (3, 3, 3),
                                  radius = Oceananigans.defaults.planet_radius,
-                                 topology = (Bounded, Bounded, Bounded))
+                                 topology = nothing)
 
 Return a `RotatedLatitudeLongitudeGrid` with arbitrary `north_pole`, a 2-tuple
 giving the longitude and latitude of the "grid north pole", which may differ from the
