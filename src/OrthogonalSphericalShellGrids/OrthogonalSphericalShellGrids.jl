@@ -29,6 +29,9 @@ include("distributed_tripolar_grid.jl")
 include("distributed_zipper.jl")
 include("distributed_zipper_north_tags.jl")
 
+# Reductions on a tripolar grid
+include("tripolar_grid_reductions.jl")
+
 # `constructor_arguments` for an `OrthogonalSphericalShellGrid`. OSSG itself is a
 # general orthogonal grid on the surface of a sphere; `TripolarGrid`,
 # `RotatedLatitudeLongitudeGrid`, and `ConformalCubedSpherePanelGrid` are type
