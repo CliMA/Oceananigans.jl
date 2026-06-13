@@ -15,8 +15,8 @@ barrier(arch::Distributed) = barrier(arch.communicator)
 """
 $(TYPEDSIGNATURES)
 
-Return a 3-Tuple containing a vector of `size(grid, dim)` for each rank in
-all 3 directions.
+Return a 3-Tuple of vectors, where each vector contains the value of
+`local_size[d]` for every rank in dimension `d` of `arch`.
 """
 concatenate_local_sizes(local_size, arch::Distributed) =
     Tuple(concatenate_local_sizes(local_size, arch, d) for d in 1:length(local_size))
