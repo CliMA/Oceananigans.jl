@@ -2,21 +2,21 @@ module NonhydrostaticModels
 
 export NonhydrostaticModel, BackgroundField, BackgroundFields
 
-using DocStringExtensions
-
+using DocStringExtensions: SIGNATURES, TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
-using Oceananigans.Utils
-using Oceananigans.Grids
-using Oceananigans.Solvers
-
 using Oceananigans.DistributedComputations
-using Oceananigans.DistributedComputations: reconstruct_global_grid, Distributed
-using Oceananigans.DistributedComputations: DistributedFFTBasedPoissonSolver, DistributedFourierTridiagonalPoissonSolver
+using Oceananigans.DistributedComputations: reconstruct_global_grid, Distributed,
+                                            DistributedFFTBasedPoissonSolver,
+                                            DistributedFourierTridiagonalPoissonSolver
+using Oceananigans.Grids
 using Oceananigans.Grids: XYZRegularRG
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver, ConjugateGradientPoissonSolver
-using Oceananigans.Solvers: InhomogeneousFormulation, ZDirection
+using Oceananigans.Solvers
+using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver,
+                            ConjugateGradientPoissonSolver, InhomogeneousFormulation,
+                            ZDirection
+using Oceananigans.Utils
 using Oceananigans.Utils: sum_of_velocities
 
 using ..Models: initialize_boundary_transport

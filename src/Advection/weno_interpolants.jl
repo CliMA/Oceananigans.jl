@@ -328,7 +328,7 @@ end
 @inline global_smoothness_indicator(::Val{6}, β) = @inbounds abs(β[1] + 36β[2] + 135β[3] - 135β[4] - 36β[5] - β[6])
 
 """
-$(SIGNATURES)
+$(TYPEDSIGNATURES)
 
 Biased weno weights ω used to weight the WENO reconstruction of the different stencils.
 We use here a Z-WENO formulation where
