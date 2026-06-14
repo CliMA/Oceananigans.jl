@@ -76,12 +76,11 @@ function partition_coordinate(c::Tuple, n, arch, dim)
 end
 
 """
-    assemble_coordinate(c::AbstractVector, n, R, r, r1, r2, comm)
+    assemble_coordinate(c_local::AbstractVector, n, arch, dim)
 
-Builds a linear global coordinate vector given a local coordinate vector `c_local`
-a local number of elements `Nc`, number of ranks `Nr`, rank `r`,
-and `arch`itecture. Since we use a global reduction, only ranks at positions
-1 in the other two directions `r1 == 1` and `r2 == 1` fill the 1D array.
+Builds a linear global coordinate vector along dimension `dim` given a local coordinate
+vector `c_local`, the local sizes `n`, and the architecture `arch`. Since we use a global
+reduction, only ranks at position 1 in the other two directions fill the 1D array.
 """
 function assemble_coordinate(c_local::AbstractVector, n, arch, dim)
     nl = concatenate_local_sizes(n, arch, dim)
