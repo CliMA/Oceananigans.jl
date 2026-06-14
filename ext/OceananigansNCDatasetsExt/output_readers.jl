@@ -95,7 +95,9 @@ function inflate_nothing_dimensions(data, location, grid)
     # 2. Grid topology is Flat (e.g., 2D simulation with no variation in that direction)
     inflated_dims = []
     for (i, loc) in enumerate(location)
-        if loc == Nothing || topology(grid, i) == Flat
+        # `loc` may be a type (`Nothing`) or an instance (`nothing`) depending on the caller,
+        # so test for both — `nothing == Nothing` is `false`.
+        if loc === Nothing || loc === nothing || topology(grid, i) == Flat
             push!(inflated_dims, i)
         end
     end
