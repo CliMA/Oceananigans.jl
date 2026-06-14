@@ -1,12 +1,12 @@
-using Oceananigans.Operators: Δz
-using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Fields: location
-using Oceananigans.Grids: Periodic, ZDirection, topology
 using Oceananigans.Advection: AdaptiveImplicitVerticalAdvection,
                               implicit_advection_upper_diagonal,
                               implicit_advection_lower_diagonal,
                               implicit_advection_diagonal
+using Oceananigans.Fields: location
+using Oceananigans.Grids: Periodic, ZDirection, topology
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Operators: Δz
+using Oceananigans.Solvers: BatchedTridiagonalSolver, solve!
 
 import Oceananigans.Solvers: get_coefficient
 import Oceananigans.TimeSteppers: implicit_step!
@@ -147,17 +147,17 @@ $(TYPEDSIGNATURES)
 Build tridiagonal solvers for the elliptic equations
 
 ```math
-(1 - Δt ∂z κz ∂z - Δt L) cⁿ⁺¹ = c★
+(1 - Δt ∂_z κ_z ∂_z - Δt L) cⁿ⁺¹ = c_★
 ```
 
 and
 
 ```math
-(1 - Δt ∂z νz ∂z - Δt L) wⁿ⁺¹ = w★
+(1 - Δt ∂_z ν_z ∂_z - Δt L) wⁿ⁺¹ = w_★
 ```
 
-where `cⁿ⁺¹` and `c★` live at cell `Center`s in the vertical,
-and `wⁿ⁺¹` and `w★` lives at cell `Face`s in the vertical.
+where ``cⁿ⁺¹`` and ``c_★`` live at cell `Center`s in the vertical,
+and ``wⁿ⁺¹`` and ``w_★`` live at cell `Face`s in the vertical.
 """
 function implicit_diffusion_solver(::VerticallyImplicitTimeDiscretization, grid)
     topo = topology(grid)
@@ -190,17 +190,16 @@ end
 
 is_vertically_implicit(closure) = TimeSteppers.time_discretization(closure) isa VerticallyImplicitTimeDiscretization
 
+# When closure is nothing but solver exists (e.g., created for AIVA),
+# the pure-diffusion implicit step is a no-op (no diffusion to solve).
 """
-    implicit_step!(field, implicit_solver::BatchedTridiagonalSolver,
-                   closure, closure_fields, tracer_index, clock, fields, Δt)
+$(TYPEDSIGNATURES)
 
 Initialize the right hand side array `solver.batched_tridiagonal_solver.f`, and then solve the
 tridiagonal system for vertically-implicit diffusion, passing the arguments into the coefficient
 functions that return coefficients of the lower diagonal, diagonal, and upper diagonal of the
 resulting tridiagonal system.
 """
-# When closure is nothing but solver exists (e.g., created for AIVA),
-# the pure-diffusion implicit step is a no-op (no diffusion to solve).
 implicit_step!(::Field, ::BatchedTridiagonalSolver, ::Nothing, closure_fields, tracer_index, clock, fields, Δt) = nothing
 
 function implicit_step!(field::Field,
