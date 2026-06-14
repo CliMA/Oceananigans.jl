@@ -5,7 +5,7 @@ import KernelAbstractions
 
 using Oceananigans.Architectures: CPU, device
 
-\import Oceananigans.Architectures: on_architecture
+import Oceananigans.Architectures: on_architecture
 
 """
     $(TYPEDFIELDS)
