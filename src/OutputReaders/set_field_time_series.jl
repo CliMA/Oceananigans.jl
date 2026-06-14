@@ -10,7 +10,7 @@ using Oceananigans.Fields: set_to_function!
 iterations_from_file(file::JLD2.JLDFile) = parse.(Int, keys(file["timeseries/t"]))
 
 function find_time_index(time::Number, file_times, Δt)
-    # We introduce an additional absolute tolerance to accomodate
+    # We introduce an additional absolute tolerance to accommodate
     # time values very close to zero, for which a relative tolerance will not work
     # (see https://github.com/CliMA/Oceananigans.jl/pull/4505)
     ϵa = 100 * eps(Δt)

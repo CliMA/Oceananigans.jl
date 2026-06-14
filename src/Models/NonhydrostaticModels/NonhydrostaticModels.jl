@@ -5,17 +5,18 @@ export NonhydrostaticModel, BackgroundField, BackgroundFields
 using DocStringExtensions: SIGNATURES, TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
+using Oceananigans: Oceananigans
 using Oceananigans.DistributedComputations
-using Oceananigans.DistributedComputations: reconstruct_global_grid, Distributed,
+using Oceananigans.DistributedComputations: DistributedComputations,
+                                            reconstruct_global_grid, Distributed,
                                             DistributedFFTBasedPoissonSolver,
                                             DistributedFourierTridiagonalPoissonSolver
 using Oceananigans.Grids
 using Oceananigans.Grids: XYZRegularRG
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Solvers
-using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver,
-                            ConjugateGradientPoissonSolver, InhomogeneousFormulation,
-                            ZDirection
+using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver, ConjugateGradientPoissonSolver,
+                            InhomogeneousFormulation, ZDirection
 using Oceananigans.Utils
 using Oceananigans.Utils: sum_of_velocities
 

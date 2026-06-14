@@ -161,7 +161,7 @@ end
 #####
 
 """ Apply boundary conditions by adding flux divergences to the right-hand-side. """
-function Oceananigans.TimeStepperscompute_flux_bc_tendencies!(model::NonhydrostaticModel)
+function Oceananigans.TimeSteppers.compute_flux_bc_tendencies!(model::NonhydrostaticModel)
 
     Gⁿ    = model.timestepper.Gⁿ
     arch  = model.architecture
