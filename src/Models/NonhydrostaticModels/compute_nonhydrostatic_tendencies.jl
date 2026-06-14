@@ -160,7 +160,11 @@ end
 ##### Boundary contributions to tendencies due to user-prescribed fluxes
 #####
 
-""" Apply boundary conditions by adding flux divergences to the right-hand-side. """
+"""
+$(TYPEDSIGNATURES)
+
+Apply boundary conditions by adding flux divergences to the right-hand-side.
+"""
 function Oceananigans.TimeSteppers.compute_flux_bc_tendencies!(model::NonhydrostaticModel)
 
     Gⁿ    = model.timestepper.Gⁿ
