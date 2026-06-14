@@ -6,16 +6,15 @@ export run!
 export Callback, add_callback!
 export iteration
 
+using OrderedCollections: OrderedDict
+using DocStringExtensions: TYPEDSIGNATURES
+
 using Oceananigans
+using Oceananigans: AbstractDiagnostic, AbstractOutputWriter
+using Oceananigans.Advection: Advection
 using Oceananigans.OutputWriters
 using Oceananigans.TimeSteppers
 using Oceananigans.Utils
-
-using Oceananigans.Advection: Advection
-using Oceananigans: AbstractDiagnostic, AbstractOutputWriter
-
-using OrderedCollections: OrderedDict
-using DocStringExtensions: TYPEDSIGNATURES
 
 # To be extended in the `Models` module
 timestepper(model) = nothing

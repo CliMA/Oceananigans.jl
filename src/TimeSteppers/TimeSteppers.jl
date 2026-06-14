@@ -14,9 +14,10 @@ export
     time_discretization
 
 using Adapt: Adapt
-using KernelAbstractions: @kernel, @index
-using Oceananigans: Oceananigans, AbstractModel, initialize!, prognostic_fields
 using DocStringExtensions: TYPEDSIGNATURES
+using KernelAbstractions: @kernel, @index
+
+using Oceananigans: Oceananigans, AbstractModel, initialize!, prognostic_fields
 
 """
     abstract type AbstractTimeStepper

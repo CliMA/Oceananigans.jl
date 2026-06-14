@@ -12,7 +12,8 @@ using Oceananigans.Operators: Operators, Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜ�
                               ℑyzᵃᶜᶜ, ℑyzᵃᶜᶠ, ℑyzᵃᶠᶜ, ℑyzᵃᶠᶠ
 
 
-import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers, step_closure_prognostics!, initialize_closure_fields!
+import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers, step_closure_prognostics!,
+                                        initialize_closure_fields!
 
 include("smagorinsky.jl")
 include("dynamic_coefficient.jl")

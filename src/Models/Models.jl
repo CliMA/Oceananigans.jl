@@ -14,6 +14,8 @@ export
     LinearFormulation, QuadraticFormulation,
     BoundaryAdjacentMean, boundary_total_area
 
+using DocStringExtensions: TYPEDSIGNATURES
+
 using Oceananigans: AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered
@@ -30,7 +32,6 @@ import Oceananigans.Fields: set!
 import Oceananigans.Solvers: iteration
 import Oceananigans.OutputWriters: default_included_properties
 import Oceananigans.TimeSteppers: reset!
-using DocStringExtensions: TYPEDSIGNATURES
 
 # A prototype interface for AbstractModel.
 #

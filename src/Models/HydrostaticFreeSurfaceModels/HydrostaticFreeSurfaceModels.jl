@@ -5,8 +5,9 @@ export
     ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
     PrescribedVelocityFields, ZStarCoordinate, ZCoordinate
 
-using KernelAbstractions: @index, @kernel
 using Adapt: Adapt
+using DocStringExtensions: TYPEDFIELDS, TYPEDSIGNATURES
+using KernelAbstractions: @index, @kernel
 
 using Oceananigans.Architectures: architecture
 using Oceananigans.Fields: ZFaceField
@@ -14,8 +15,6 @@ using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization, Orthogonal
 using Oceananigans.Operators: Δzᶜᶠᶜ, Δzᶠᶜᶜ
 using Oceananigans.TimeSteppers: TimeSteppers, SplitRungeKuttaTimeStepper, QuasiAdamsBashforth2TimeStepper
 using Oceananigans.Utils: Utils, launch!, @apply_regionally
-
-using DocStringExtensions: TYPEDFIELDS, TYPEDSIGNATURES
 
 import Oceananigans: fields, prognostic_fields, initialize!
 import Oceananigans.Advection: cell_advection_timescale

@@ -28,14 +28,15 @@ export offset_data, new_data
 export on_architecture
 
 using Adapt: Adapt, adapt
+using DocStringExtensions: FIELDS, TYPEDSIGNATURES
 using GPUArraysCore: @allowscalar
 using OffsetArrays: OffsetArray
 using Printf: @sprintf
-using DocStringExtensions: FIELDS, TYPEDSIGNATURES
 
 using Oceananigans: Oceananigans
+using Oceananigans.Architectures: Architectures, AbstractSerialArchitecture,
+                                  architecture, on_architecture
 using Oceananigans.Utils: Utils
-using Oceananigans.Architectures: Architectures, AbstractSerialArchitecture, architecture, on_architecture
 
 #####
 ##### Abstract types

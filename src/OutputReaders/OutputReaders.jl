@@ -6,9 +6,10 @@ export TimeSeriesInterpolation
 export InMemory, OnDisk
 export Cyclical, Linear, Clamp
 
+using DocStringExtensions: TYPEDSIGNATURES
+
 using Oceananigans: boundary_conditions
 using Oceananigans.Utils: @apply_regionally
-using DocStringExtensions: TYPEDSIGNATURES
 
 struct JLD2Path
     path :: String

@@ -1,8 +1,8 @@
 using Adapt: Adapt
 using Dates: AbstractTime, Nanosecond, Millisecond
 using DocStringExtensions: TYPEDEF, TYPEDSIGNATURES
-using Oceananigans.Utils: prettytime, seconds_to_nanosecond
 using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Utils: prettytime, seconds_to_nanosecond
 
 import Oceananigans: restore_prognostic_state!
 import Oceananigans.Units: Time

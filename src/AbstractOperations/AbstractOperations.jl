@@ -5,19 +5,18 @@ export Δx, Δy, Δz, Ax, Ay, Az, volume
 export Average, Integral, CumulativeIntegral, KernelFunctionOperation
 export UnaryOperation, Derivative, BinaryOperation, MultiaryOperation, ConditionalOperation
 
+using Adapt: Adapt, adapt
 using Base: @propagate_inbounds
+using DocStringExtensions: TYPEDSIGNATURES
 
 using Oceananigans: location
+using Oceananigans.Architectures: Architectures, architecture, on_architecture
 using Oceananigans.Fields: AbstractField, instantiated_location
 using Oceananigans.Grids: Center, Face
 using Oceananigans.Operators: interpolation_operator
 
-using Adapt: Adapt, adapt
-
-using Oceananigans.Architectures: Architectures, architecture, on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Fields: compute_at!, indices
-using DocStringExtensions: TYPEDSIGNATURES
 
 #####
 ##### Basic functionality

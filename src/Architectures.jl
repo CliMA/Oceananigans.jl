@@ -7,11 +7,11 @@ export array_type, on_architecture
 export child_architecture
 
 using Adapt
+using DocStringExtensions: TYPEDSIGNATURES
 using OffsetArrays
 using SparseArrays
 
 import KernelAbstractions as KA
-using DocStringExtensions: TYPEDSIGNATURES
 
 """
     AbstractArchitecture

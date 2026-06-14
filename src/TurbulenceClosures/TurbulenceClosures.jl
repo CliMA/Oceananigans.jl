@@ -41,8 +41,9 @@ export
     cell_diffusion_timescale,
     closure_required_tracers
 
-using KernelAbstractions: @index, @kernel
 using Adapt: Adapt, adapt
+using DocStringExtensions: TYPEDSIGNATURES
+using KernelAbstractions: @index, @kernel
 
 using Oceananigans: Oceananigans, fields
 using Oceananigans.Architectures: Architectures, on_architecture
@@ -64,12 +65,10 @@ using Oceananigans.Operators: Operators,
     ∇²hᶜᶜᶜ, ∇²hᶜᶠᶜ, ∇²hᶠᶜᶜ, ∇²ᶜᶜᶜ, ∇²ᶜᶜᶠ, ∇²ᶜᶠᶜ, ∇²ᶠᶜᶜ
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, fill_halo_regions!
 using Oceananigans.Utils: Utils, launch!, prettysummary, with_tracers
-
 using Oceananigans.Fields: Field, CenterField, FunctionField, ZFaceField
 using Oceananigans.ImmersedBoundaries: AbstractGridFittedBottom, ImmersedBoundaryGrid
 
 import Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
-using DocStringExtensions: TYPEDSIGNATURES
 
 const VerticallyBoundedGrid{FT} = AbstractGrid{FT, <:Any, <:Any, <:Bounded}
 

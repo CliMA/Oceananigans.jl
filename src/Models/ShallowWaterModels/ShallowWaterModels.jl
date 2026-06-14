@@ -3,14 +3,14 @@ module ShallowWaterModels
 export ShallowWaterModel, ShallowWaterScalarDiffusivity,
        ConservativeFormulation, VectorInvariantFormulation
 
+using Adapt
+using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
-using Adapt
 using Oceananigans.Utils: launch!
 
 import Oceananigans: fields, prognostic_fields
 import Oceananigans.Simulations: timestepper
-using DocStringExtensions: TYPEDSIGNATURES
 
 #####
 ##### ShallowWaterModel definition

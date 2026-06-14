@@ -25,15 +25,14 @@ export BulkDragFunction,
        LinearFormulation,
        QuadraticFormulation
 
+using Adapt: Adapt
+using DocStringExtensions: TYPEDSIGNATURES
+
 using Oceananigans.Architectures: Architectures, on_architecture
-using Oceananigans.Grids: AbstractGrid, XDirection, YDirection, ZDirection, Face
 using Oceananigans.BoundaryConditions: BoundaryConditions, BoundaryCondition, Flux,
                                        LeftBoundary, RightBoundary
+using Oceananigans.Grids: AbstractGrid, XDirection, YDirection, ZDirection, Face
 using Oceananigans.Operators: ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ, ℑxzᶠᵃᶜ, ℑyzᵃᶠᶜ, ℑxzᶜᵃᶠ, ℑyzᵃᶜᶠ
-
-using Adapt: Adapt
-
-using DocStringExtensions: TYPEDSIGNATURES
 
 #####
 ##### Drag formulations

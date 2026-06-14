@@ -1,9 +1,9 @@
 module Biogeochemistry
 
+using DocStringExtensions: TYPEDSIGNATURES
 using Oceananigans.Grids: Center, xnode, ynode, znode
 
 import Oceananigans.Fields: CenterField
-using DocStringExtensions: TYPEDSIGNATURES
 
 #####
 ##### Generic fallbacks for biogeochemistry
