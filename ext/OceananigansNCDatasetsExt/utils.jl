@@ -118,7 +118,10 @@ convert_for_netcdf(::InterfaceImmersedCondition) = "InterfaceImmersedCondition()
 materialize_from_netcdf(dict::AbstractDict) = OrderedDict(Symbol(key) => materialize_from_netcdf(value) for (key, value) in dict)
 materialize_from_netcdf(x::Number) = x
 materialize_from_netcdf(x::Array) = Tuple(x)
-materialize_from_netcdf(x::String) = @eval $(Meta.parse(x))
+# Evaluate inside the Oceananigans module: stored strings are fully qualified relative
+# to Main (e.g. "Oceananigans.Grids.Periodic"), so they resolve there but not in this
+# extension's scope, where the `Oceananigans` name would otherwise be unbound.
+materialize_from_netcdf(x::String) = Core.eval(Oceananigans, Meta.parse(x))
 materialize_from_netcdf(x) = x
 
 #####
