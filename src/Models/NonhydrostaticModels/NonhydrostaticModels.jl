@@ -2,7 +2,7 @@ module NonhydrostaticModels
 
 export NonhydrostaticModel, BackgroundField, BackgroundFields
 
-using DocStringExtensions: SIGNATURES, TYPEDSIGNATURES
+using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
 using Oceananigans: Oceananigans
