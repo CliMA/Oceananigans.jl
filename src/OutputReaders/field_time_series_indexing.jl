@@ -135,18 +135,14 @@ end
 import Base: getindex
 
 function getindex(fts::OnDiskFTS, n::Int)
-    # Load data
+    # Bounds check before resolving the file/local index
+    1 <= n <= length(fts.times) || throw(BoundsError(fts, n))
+
+    # Load data from the correct file (handles split files via SplitFilePath)
     arch = architecture(fts)
-    file = jldopen(fts.path; fts.reader_kw...)
-    time = fts.times[n]
-    file_times = file["timeseries/t"]
-    iter = keys(file_times)[n]
-    if file_times[iter] != time
-        # times in fts not aligned with those in file so search for match
-        file_n = findfirst(k -> file_times[k] == time, keys(file_times))
-        isnothing(file_n) && error("No data for time $time (local time index $n) found for $(fts.name) at $(fts.path).")
-        iter = keys(file_times)[file_n]
-    end
+    filepath, local_n = file_and_local_index(fts.path, n, fts.times[n], fts.reader_kw)
+    file = jldopen(filepath; fts.reader_kw...)
+    iter = keys(file["timeseries/t"])[local_n]
     raw_data = on_architecture(arch, file["timeseries/$(fts.name)/$iter"])
     close(file)
 

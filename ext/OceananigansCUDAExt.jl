@@ -2,8 +2,19 @@ module OceananigansCUDAExt
 
 using InteractiveUtils: versioninfo
 using CUDA: CUDA, CuArray, CuContext, CuDevice, CuDeviceArray, CuPtr, context,
-    context!, cu, CUDA.CUDAKernels.CUDABackend
-using CUDA.CUSPARSE: CuSparseMatrixCSC
+    context!, cu, CUDA.CUDABackend
+# TODO: when we'll support CUDA.jl v6 only, add `cuSPARSE`/`CUDACore`/`cuFFT` to
+# list of triggers of this extensions, and simplify the conditions below.
+if isdefined(CUDA, :cuSPARSE)
+    using CUDA.cuSPARSE: CuSparseMatrixCSC
+else
+    using CUDA.CUSPARSE: CuSparseMatrixCSC
+end
+if isdefined(CUDA, :cuFFT)
+    using CUDA.cuFFT: cuFFT
+else
+    const cuFFT = CUDA.CUFFT
+end
 using GPUArraysCore: allowscalar
 using GPUArrays: unsafe_free!
 using Oceananigans.Utils: linear_expand, __linear_ndrange, MappedCompilerMetadata
@@ -106,7 +117,7 @@ BC.validate_boundary_condition_architecture(::CuArray, ::AC.CPU, bc, side) =
 
 function SO.plan_forward_transform(A::CuArray, ::Union{GD.Bounded, GD.Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
-    return CUDA.CUFFT.plan_fft!(A, dims)
+    return cuFFT.plan_fft!(A, dims)
 end
 
 FD.set!(v::FD.Field, a::CuArray) = FD.set_to_array!(v, a)
@@ -114,7 +125,7 @@ FD.set!(v::DC.DistributedField, a::CuArray) = FD.set_to_array!(v, a)
 
 function SO.plan_backward_transform(A::CuArray, ::Union{GD.Bounded, GD.Periodic}, dims, planner_flag)
     length(dims) == 0 && return nothing
-    return CUDA.CUFFT.plan_ifft!(A, dims)
+    return cuFFT.plan_ifft!(A, dims)
 end
 
 # CUDA version, the indices are passed implicitly

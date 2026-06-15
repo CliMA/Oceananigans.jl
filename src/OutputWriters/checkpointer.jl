@@ -42,6 +42,7 @@ Keyword arguments
 - `dir`: Directory to save output to. Default: `"."` (current working directory).
 
 - `prefix`: Descriptive filename prefixed to all output files. Default: `"checkpoint"`.
+            On distributed architectures, `"_rank{local_rank}"` is appended automatically.
 
 - `overwrite_existing`: Remove existing files if their filenames conflict. Default: `false`.
 
@@ -59,6 +60,8 @@ function Checkpointer(model; schedule,
                       cleanup = false)
 
     mkpath(dir)
+    filename = with_architecture_suffix(architecture(model), string(prefix, ".jld2"), ".jld2")
+    prefix = String(chop(filename, tail=length(".jld2")))
 
     return Checkpointer(schedule, dir, prefix, overwrite_existing, verbose, cleanup)
 end
@@ -161,6 +164,10 @@ latest_checkpoint(checkpointer, filepaths) = latest_checkpoint_by_iteration(chec
 
 prognostic_state(obj) = obj
 prognostic_state(::NamedTuple{()}) = nothing
+prognostic_state(::NoFileSplitting) = nothing
+prognostic_state(::FileSizeLimit) = nothing
+restore_prognostic_state!(::NoFileSplitting, from) = nothing
+restore_prognostic_state!(::FileSizeLimit, from) = nothing
 
 prognostic_state(tuple::Tuple) = Tuple(prognostic_state(t) for t in tuple)
 
@@ -326,12 +333,24 @@ function prognostic_state(writer::Union{JLD2Writer, NetCDFWriter})
 
     return (schedule = prognostic_state(writer.schedule),
             part = writer.part,
+            file_splitting = prognostic_state(writer.file_splitting),
             windowed_time_averages = isempty(wta_outputs) ? nothing : wta_outputs)
 end
 
 function restore_prognostic_state!(restored::Union{JLD2Writer, NetCDFWriter}, from)
     restore_prognostic_state!(restored.schedule, from.schedule)
     restored.part = from.part
+
+    # Update the filepath to match the restored part number so that
+    # the writer appends to the correct part file after pickup.
+    restored.filepath = filepath_for_part(restored.filepath, restored.part)
+
+    # Restore file_splitting schedule state (e.g., TimeInterval actuations)
+    # so splitting doesn't re-trigger immediately after pickup.
+    # Backward compatible: old checkpoints may not have file_splitting.
+    if hasproperty(from, :file_splitting) && !isnothing(from.file_splitting)
+        restore_prognostic_state!(restored.file_splitting, from.file_splitting)
+    end
 
     if hasproperty(from, :windowed_time_averages) && !isnothing(from.windowed_time_averages)
         for (name, wta_state) in pairs(from.windowed_time_averages)

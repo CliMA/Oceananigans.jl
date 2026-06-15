@@ -69,6 +69,52 @@ on disk, only loading it as requested by indexing into the
 """
 struct OnDisk <: AbstractDataBackend end
 
+"""
+    SplitFilePath(paths, cumulative_length)
+
+Stores file paths and cumulative iteration counts for split JLD2 output files,
+enabling OnDisk `FieldTimeSeries` to load data from the correct part file.
+"""
+struct SplitFilePath
+    paths :: Vector{String}
+    cumulative_length :: Vector{Int}
+end
+
+"""
+    file_and_local_index(sfp::SplitFilePath, n, time, reader_kw)
+
+Return `(filepath, local_index)` for global time index `n`.
+Time `time` and reader keyword arguments `reader_kw` are passed
+to allow for case where field time series times and times in file(s)
+are non-aligned.
+"""
+function file_and_local_index(sfp::SplitFilePath, n, time, reader_kw)
+    if n < 1 || n > last(sfp.cumulative_length)
+        throw(BoundsError(sfp, n))
+    end
+
+    i = searchsortedfirst(sfp.cumulative_length, n)
+    prev = i == 1 ? 0 : sfp.cumulative_length[i-1]
+    return sfp.paths[i], n - prev
+end
+
+function file_and_local_index(path::AbstractString, n, time, reader_kw)
+    if !isnothing(time)
+        n = jldopen(path; reader_kw...) do file
+            file_times = file["timeseries/t"]
+            iter = keys(file_times)[n]
+            if file_times[iter] != time
+                # times in fts not aligned with those in file so search for match
+                file_n = findfirst(k -> file_times[k] == time, keys(file_times))
+                isnothing(file_n) && error("No data for time $time (local time index $n) found at $(path).")
+                n = file_n
+            end
+            n
+        end
+    end
+    return path, n
+end
+
 #####
 ##### Time indexing modes for FieldTimeSeries
 #####
@@ -782,8 +828,8 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
         # Handle file splitting due to max_filesize limitations by looking for filenames
         # that end in part1, etc
         start = path[1:end-5]
-        lookfor = string(start, "_part*.jld2")
-        part_paths = glob(lookfor)
+        lookfor = string(basename(start), "_part*.jld2")
+        part_paths = glob(lookfor, dirname(start))
         part_paths = naturalsort(part_paths)
         Nparts = length(part_paths)
 
@@ -855,10 +901,12 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
     else
         all_iterations = []
         all_times = []
+        iterations_per_part = Int[]
         part_iterations = parse.(Int, keys(handle["timeseries/t"]))
         part_times = [handle["timeseries/t/$i"] for i in part_iterations]
         push!(all_iterations, part_iterations)
         push!(all_times, part_times)
+        push!(iterations_per_part, length(part_iterations))
         close(handle)
 
         for part in 2:Nparts
@@ -868,6 +916,7 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
             part_times = [handle["timeseries/t/$i"] for i in part_iterations]
             push!(all_iterations, part_iterations)
             push!(all_times, part_times)
+            push!(iterations_per_part, length(part_iterations))
             close(handle)
         end
 
@@ -878,15 +927,15 @@ function FieldTimeSeries(file::JLD2.JLDFile, name::String;
     Nt = time_indices_length(backend, times)
     @apply_regionally data = new_data(eltype(grid), grid, loc, indices, Nt)
 
+    fts_path = isnothing(Nparts) ? path : SplitFilePath(part_paths, cumsum(iterations_per_part))
+
     time_series = FieldTimeSeries{LX, LY, LZ}(data, grid, backend, boundary_conditions, indices,
-                                              times, path, name, time_indexing, reader_kw)
+                                              times, fts_path, name, time_indexing, reader_kw)
 
     if isnothing(Nparts)
         set!(time_series, path, name)
     else
-        for path in part_paths
-            set!(time_series, path, name; warn_missing_data=false)
-        end
+        set!(time_series, fts_path, name)
     end
 
     return time_series
@@ -895,11 +944,15 @@ end
 ext(path) = splitext(path) |> last
 
 function FieldTimeSeries(path::String, args...; reader_kw = NamedTuple(), kwargs...)
-    path = auto_extension(path, ".jld2") # JLD2 is the default extension
+    # JLD2 is the default; don't append .jld2 to paths that already carry a recognised extension
+    path = (endswith(path, ".nc") || endswith(path, ".zarr") || endswith(path, ".zip")) ?
+           path : auto_extension(path, ".jld2")
     typed_path = if ext(path) == ".jld2"
                      JLD2Path(path)
                  elseif ext(path) == ".nc"
                      NetCDFPath(path)
+                 elseif ext(path) == ".zarr" || ext(path) == ".zip"
+                     ZarrPath(path)
                  else
                      error("Unsupported file extension: $(path)")
                  end
@@ -942,8 +995,8 @@ function FieldTimeSeries(typed_path::JLD2Path, name::String;
         # Handle file splitting due to max_filesize limitations by looking for filenames
         # that end in part1, etc
         start = path[1:end-5] # Remove filepath extension
-        lookfor = string(start, "_part*.jld2") # Look for part1, etc
-        part_paths = glob(lookfor) |> naturalsort
+        lookfor = string(basename(start), "_part*.jld2") # Look for part1, etc
+        part_paths = glob(lookfor, dirname(start)) |> naturalsort
         Nparts = length(part_paths)
 
         if Nparts == 0
