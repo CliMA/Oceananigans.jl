@@ -3,8 +3,8 @@ module OceananigansMakieExt
 export geo_surface!, geo_surface, spherical_coordinates
 
 using Oceananigans
-using Oceananigans.Grids: OrthogonalSphericalShellGrid, LatitudeLongitudeGrid, topology,
-                          xnode, ynode, znode
+using Oceananigans.Grids: AbstractGrid, OrthogonalSphericalShellGrid, LatitudeLongitudeGrid,
+                          topology, xnode, ynode, znode, λnodes, φnodes
 using Oceananigans.Fields: AbstractField, location, interior
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: on_architecture, architecture
@@ -15,7 +15,7 @@ import Oceananigans: quadmesh, quadmesh!   # extend the main-package stubs
 const SphericalGrid = Union{LatitudeLongitudeGrid, OrthogonalSphericalShellGrid}
 
 using Makie: Observable, AbstractPlot, Axis, Axis3, Figure, NoShading, @lift,
-             Point2f, Point3f, GLTriangleFace, mesh!
+             Point, GLTriangleFace, mesh!, lines!
 
 import Makie: convert_arguments, _create_plot, args_preferred_axis, surface!, surface
 
@@ -529,163 +529,125 @@ end
 #####
 ##### quadmesh!: flat-shaded curvilinear quadrilateral mesh
 #####
-##### A `pcolormesh`-style plot: each grid cell is drawn as a quadrilateral from
-##### its four explicit corners and filled with a single flat color. Unlike
-##### `heatmap!` (rectangular cells from 1D axes) this renders fields on
-##### curvilinear meshes — terrain-following vertical slices, LatitudeLongitude /
-##### OrthogonalSphericalShell panels — in their true geometry; unlike `surface!`
-##### the color is flat per cell rather than Gouraud-interpolated.
-#####
-##### Implementation: 4 duplicated vertices per quad + 2 triangles, with the cell
-##### value repeated across its 4 vertices and passed as the `color` keyword. The
-##### equal corner colors degenerate the mesh's Gouraud shading to a flat fill —
-##### the one path that renders identically across Makie backends (CairoMakie has
-##### no per-face color path).
+##### Each cell is drawn as a quadrilateral from its four corner coordinates and
+##### filled with one flat color (cf. matplotlib `pcolormesh`). Unlike `heatmap!`
+##### (rectangular cells, 1D axes) this renders curvilinear grids — terrain-
+##### following slices, spherical panels — in their true geometry; unlike
+##### `surface!` the color is flat per cell, not Gouraud-interpolated. Built as 4
+##### duplicated vertices + 2 triangles per quad with the cell value repeated
+##### across the 4 vertices and passed as `color`: equal corner colors degenerate
+##### Gouraud to a flat fill, the one path identical across backends.
 
-function _quad_faces(ncell)
+function quad_faces(ncell)
     faces = Vector{GLTriangleFace}(undef, 2ncell)
-    @inbounds for q in 1:ncell
+    for q in 1:ncell
         v = 4(q - 1)
-        faces[2q - 1] = GLTriangleFace(v + 1, v + 2, v + 3)
-        faces[2q]     = GLTriangleFace(v + 1, v + 3, v + 4)
+        faces[2q-1] = GLTriangleFace(v+1, v+2, v+3)
+        faces[2q]   = GLTriangleFace(v+1, v+3, v+4)
     end
     return faces
 end
 
-# Linear indices of the cells to draw (all, or only the non-NaN cells).
-_cell_keep(vals, drop_nan_cells) = drop_nan_cells ? findall(!isnan, vec(vals)) : collect(1:length(vals))
+kept_cells(vals, drop_nan_cells) = drop_nan_cells ? findall(!isnan, vec(vals)) : eachindex(vals)
 
 # Cell values repeated 4× (once per duplicated quad vertex), as Float32.
-function _quad_colors(vals::AbstractMatrix, keep)
-    v = vec(vals)
-    c = Vector{Float32}(undef, 4length(keep))
-    @inbounds for (q, lin) in enumerate(keep)
-        c[4q-3] = c[4q-2] = c[4q-1] = c[4q] = Float32(v[lin])
-    end
-    return c
-end
+quad_colors(vals, keep) = Float32[vals[lin] for lin in keep for _ in 1:4]
 
-function _quad_vertices(xc::AbstractMatrix, yc::AbstractMatrix, Np, Nq, keep)
-    verts = Vector{Point2f}(undef, 4length(keep))
+function quad_vertices(keep, Np, Nq, coords::Vararg{AbstractMatrix, D}) where D
+    verts = Vector{Point{D, Float32}}(undef, 4length(keep))
     CI = CartesianIndices((Np, Nq))
     @inbounds for (q, lin) in enumerate(keep)
         i, j = Tuple(CI[lin]); v = 4(q - 1)
-        verts[v+1] = Point2f(xc[i,   j  ], yc[i,   j  ])
-        verts[v+2] = Point2f(xc[i+1, j  ], yc[i+1, j  ])
-        verts[v+3] = Point2f(xc[i+1, j+1], yc[i+1, j+1])
-        verts[v+4] = Point2f(xc[i,   j+1], yc[i,   j+1])
+        verts[v+1] = Point(ntuple(d -> coords[d][i,   j  ], D))
+        verts[v+2] = Point(ntuple(d -> coords[d][i+1, j  ], D))
+        verts[v+3] = Point(ntuple(d -> coords[d][i+1, j+1], D))
+        verts[v+4] = Point(ntuple(d -> coords[d][i,   j+1], D))
     end
     return verts
 end
 
-function _quad_vertices(xc::AbstractMatrix, yc::AbstractMatrix, zc::AbstractMatrix, Np, Nq, keep)
-    verts = Vector{Point3f}(undef, 4length(keep))
-    CI = CartesianIndices((Np, Nq))
-    @inbounds for (q, lin) in enumerate(keep)
-        i, j = Tuple(CI[lin]); v = 4(q - 1)
-        verts[v+1] = Point3f(xc[i,   j  ], yc[i,   j  ], zc[i,   j  ])
-        verts[v+2] = Point3f(xc[i+1, j  ], yc[i+1, j  ], zc[i+1, j  ])
-        verts[v+3] = Point3f(xc[i+1, j+1], yc[i+1, j+1], zc[i+1, j+1])
-        verts[v+4] = Point3f(xc[i,   j+1], yc[i,   j+1], zc[i,   j+1])
-    end
-    return verts
+function build_quadmesh!(ax, coords, vals; drop_nan_cells=false, kwargs...)
+    vm = vals isa Observable ? vals[] : vals
+    Np, Nq = size(vm)
+    all(c -> size(c) == (Np + 1, Nq + 1), coords) ||
+        throw(ArgumentError("corner matrices must be size (P+1, Q+1) = $((Np+1, Nq+1))"))
+    keep = kept_cells(vm, drop_nan_cells)
+    verts = quad_vertices(keep, Np, Nq, coords...)
+    color = vals isa Observable ? map(v -> quad_colors(v, keep), vals) : quad_colors(vm, keep)
+    return mesh!(ax, verts, quad_faces(length(keep)); color, shading=NoShading, kwargs...)
 end
-
-_valsmat(vals::Observable) = vals[]
-_valsmat(vals) = vals
-_color_arg(vals::Observable, keep) = map(v -> _quad_colors(v, keep), vals)
-_color_arg(vals, keep) = _quad_colors(vals, keep)
 
 """
     quadmesh!(ax, xc, yc, vals; drop_nan_cells=false, kwargs...)
     quadmesh!(ax, xc, yc, zc, vals; drop_nan_cells=false, kwargs...)
 
 Plot cell values `vals` (size `(P, Q)`) as flat-colored quadrilaterals whose
-corners are the coordinate matrices `xc, yc` (and `zc` for a panel embedded in 3D,
-e.g. on an `Axis3`), each of size `(P+1, Q+1)`. This renders fields on curvilinear
-meshes — terrain-following vertical slices, spherical-grid panels — in their true
-geometry, where `heatmap!` would draw a rectangle. Each cell gets one flat color
-(cf. matplotlib `pcolormesh`), unlike the Gouraud interpolation of `surface!`.
-
-`vals` may be an `Observable{<:AbstractMatrix}` for animations — the geometry is
-built once and only the color updates. With `drop_nan_cells=true`, cells whose
-value is `NaN` are omitted from the mesh (the mask is taken from `vals` once).
-Other keywords (`colormap`, `colorrange`, `nan_color`, `alpha`, …) pass through to
-`mesh!`. Returns the `Makie.Mesh` plot, so `Colorbar(fig[…], plt)` works.
+corners are the coordinate matrices `xc, yc` (plus `zc` for a panel in 3D, e.g.
+on an `Axis3`), each of size `(P+1, Q+1)`. Renders curvilinear grids in their true
+geometry where `heatmap!` would draw a rectangle. `vals` may be an `Observable`
+for animations — geometry is built once and only the color updates;
+`drop_nan_cells=true` omits NaN cells. `colormap`/`colorrange`/`nan_color`/`alpha`
+pass through; returns the `Mesh` plot so `Colorbar(fig[…], plt)` works.
 """
-function quadmesh!(ax, xc::AbstractMatrix, yc::AbstractMatrix, vals; drop_nan_cells=false, kwargs...)
-    vm = _valsmat(vals); Np, Nq = size(vm)
-    size(xc) == size(yc) == (Np + 1, Nq + 1) ||
-        throw(ArgumentError("corner matrices must be size (P+1, Q+1) = $((Np+1, Nq+1)); got $(size(xc)), $(size(yc))"))
-    keep = _cell_keep(vm, drop_nan_cells)
-    verts = _quad_vertices(xc, yc, Np, Nq, keep)
-    return mesh!(ax, verts, _quad_faces(length(keep)); color=_color_arg(vals, keep), shading=NoShading, kwargs...)
-end
-
-function quadmesh!(ax, xc::AbstractMatrix, yc::AbstractMatrix, zc::AbstractMatrix, vals; drop_nan_cells=false, kwargs...)
-    vm = _valsmat(vals); Np, Nq = size(vm)
-    size(xc) == size(yc) == size(zc) == (Np + 1, Nq + 1) ||
-        throw(ArgumentError("corner matrices must be size (P+1, Q+1) = $((Np+1, Nq+1))"))
-    keep = _cell_keep(vm, drop_nan_cells)
-    verts = _quad_vertices(xc, yc, zc, Np, Nq, keep)
-    return mesh!(ax, verts, _quad_faces(length(keep)); color=_color_arg(vals, keep), shading=NoShading, kwargs...)
-end
+quadmesh!(ax, xc::AbstractMatrix, yc::AbstractMatrix, vals; kw...) = build_quadmesh!(ax, (xc, yc), vals; kw...)
+quadmesh!(ax, xc::AbstractMatrix, yc::AbstractMatrix, zc::AbstractMatrix, vals; kw...) = build_quadmesh!(ax, (xc, yc, zc), vals; kw...)
 
 """
     quadmesh(xc, yc, vals; figure_kwargs=(;), axis_kwargs=(;), kwargs...)
 
-Non-mutating [`quadmesh!`](@ref): build a `Figure` and `Axis`, draw, and return
+Non-mutating [`quadmesh!`](@ref): build a `Figure` and `Axis`, draw, return
 `(figure, axis, plot)`.
 """
 function quadmesh(xc::AbstractMatrix, yc::AbstractMatrix, vals; figure_kwargs=(;), axis_kwargs=(;), kwargs...)
     fig = Figure(; figure_kwargs...)
     ax = Axis(fig[1, 1]; axis_kwargs...)
-    plt = quadmesh!(ax, xc, yc, vals; kwargs...)
-    return fig, ax, plt
+    return fig, ax, quadmesh!(ax, xc, yc, vals; kwargs...)
 end
 
 #####
-##### Field method: derive the corner coordinates from the grid automatically
+##### Field / grid methods: derive the corner coordinates automatically
 #####
 
-# Pad a Face-node corner array (P,Q)-ish up to (P+1, Q+1): wrap the first row
-# back (Periodic) and copy the last column (Bounded) as needed.
-function _pad_corners(A, P, Q)
-    size(A) == (P + 1, Q + 1) && return A
-    a = A
-    size(a, 1) == P && (a = vcat(a, reshape(a[1, :], 1, :)))
-    size(a, 2) == Q && (a = hcat(a, a[:, end:end]))
-    size(a) == (P + 1, Q + 1) ||
-        throw(ArgumentError("could not build (P+1,Q+1)=$((P+1,Q+1)) corner grid from node array of size $(size(A))"))
-    return a
+# (P+1, Q+1) longitude/latitude corners for a spherical grid. The interior
+# `λnodes(grid, Face(), Face())` is only (Nx, Ny) — the closing boundary corner
+# lives in the halo — so we index the halo'd Face-Face nodes over 1:P+1, 1:Q+1
+# (the (P+1)-th wraps to the first, closing the periodic seam with no gap).
+function spherical_corners(grid::OrthogonalSphericalShellGrid, P, Q)
+    λ = λnodes(grid, Face(), Face(); with_halos=true)[1:P+1, 1:Q+1]
+    φ = φnodes(grid, Face(), Face(); with_halos=true)[1:P+1, 1:Q+1]
+    return (@. cosd(φ) * cosd(λ)), (@. cosd(φ) * sind(λ)), (@. sind(φ))
 end
 
-_nodefun(d) = d == 1 ? xnode : d == 2 ? ynode : znode
+function spherical_corners(grid::LatitudeLongitudeGrid, P, Q)
+    λ1 = λnodes(grid, Face(); with_halos=true)[1:P+1]
+    φ1 = φnodes(grid, Face(); with_halos=true)[1:Q+1]
+    λ = [λ1[i] for i in 1:P+1, _ in 1:Q+1]; φ = [φ1[j] for _ in 1:P+1, j in 1:Q+1]
+    return (@. cosd(φ) * cosd(λ)), (@. cosd(φ) * sind(λ)), (@. sind(φ))
+end
 
-# Promote a field interior to a 3D array indexed by coordinate dims (x, y, z),
-# inserting a singleton for a Flat dimension (whose interior arrives 2D).
-function _interior3d(fcpu)
+node_function(d) = d == 1 ? xnode : d == 2 ? ynode : znode
+
+# Promote a field interior to 3D indexed by (x, y, z), inserting a singleton for
+# a Flat dimension (whose interior arrives 2D).
+function interior_3d(fcpu)
     v = Array(interior(fcpu))
     ndims(v) == 3 && return v
     flat = findfirst(T -> T === Flat, topology(fcpu.grid))
-    flat === nothing && throw(ArgumentError("expected a 2D field on a 3D grid, or a field on a grid with a Flat dimension"))
+    flat === nothing && throw(ArgumentError("expected a 2D field, or a field on a grid with a Flat dimension"))
     return reshape(v, ntuple(d -> d == flat ? 1 : size(v, d < flat ? d : d - 1), 3))
 end
 
-# Build (P+1, Q+1) physical corner matrices for the two active dims of a 2D field
-# by evaluating the scalar node functions over the corner indices (Face in the
-# active dims, the slice's Center in the reduced dim). Using the scalar `znode`
-# means terrain-following vertical coordinates render with their true curvature.
-function _rectilinear_corners(grid, active, reduced, P, Q)
+# (P+1, Q+1) physical corners for the two `active` dims, evaluating the scalar
+# node functions over the corner indices (Face in the active dims, Center in the
+# `reduced` dim). The scalar `znode` carries terrain-following curvature.
+function physical_corners(grid, active, reduced, P, Q)
     a, b = active
     ℓ = ntuple(d -> d == reduced ? Center() : Face(), 3)
-    fa, fb = _nodefun(a), _nodefun(b)
-    Ca = Matrix{Float64}(undef, P + 1, Q + 1)
-    Cb = Matrix{Float64}(undef, P + 1, Q + 1)
-    for q in 1:Q + 1, p in 1:P + 1
+    fa, fb = node_function(a), node_function(b)
+    Ca = Matrix{Float64}(undef, P + 1, Q + 1); Cb = similar(Ca)
+    for q in 1:Q+1, p in 1:P+1
         ijk = ntuple(d -> d == a ? p : d == b ? q : 1, 3)
-        Ca[p, q] = fa(ijk..., grid, ℓ...)
-        Cb[p, q] = fb(ijk..., grid, ℓ...)
+        Ca[p, q] = fa(ijk..., grid, ℓ...); Cb[p, q] = fb(ijk..., grid, ℓ...)
     end
     return Ca, Cb
 end
@@ -694,35 +656,27 @@ end
     quadmesh!(ax, f::AbstractField; kwargs...)
 
 Draw a two-dimensional `Field` as a flat-shaded curvilinear mesh, deriving the
-cell-corner coordinates from `f`'s grid — so terrain-following vertical slices and
-spherical-grid panels render in their true geometry with no manual coordinate
-bookkeeping. `f` must be two-dimensional (one dimension reduced or `Flat`). On a
-`LatitudeLongitudeGrid` / `OrthogonalSphericalShellGrid` (horizontal field) it is
-drawn as a 3-D Cartesian shell — use an `Axis3`; otherwise it is a 2-D slice in
-the two active coordinates (vertical slices follow the terrain via `znode`).
+cell corners from `f`'s grid — no coordinate bookkeeping. `f` must be 2D (one
+reduced or `Flat` dimension). A horizontal field on a `LatitudeLongitudeGrid` /
+`OrthogonalSphericalShellGrid` is drawn as a 3-D Cartesian shell (use an `Axis3`);
+otherwise it is a 2-D slice in the two active coordinates (vertical slices follow
+the terrain via `znode`).
 """
 function quadmesh!(ax, f::AbstractField; kwargs...)
     fcpu = on_architecture(CPU(), f)
-    vals3 = _interior3d(fcpu)
-    sz = size(vals3)
-    reduced_dims = findall(==(1), sz)
+    vals3 = interior_3d(fcpu)
+    reduced_dims = findall(==(1), size(vals3))
     length(reduced_dims) == 1 ||
-        throw(ArgumentError("quadmesh!(ax, f) needs a 2D field (exactly one reduced dimension); got interior size $sz"))
+        throw(ArgumentError("quadmesh!(ax, f) needs a 2D field (exactly one reduced dimension); got interior size $(size(vals3))"))
     reduced = reduced_dims[1]
     active = Tuple(d for d in 1:3 if d != reduced)
-    vals = dropdims(vals3; dims = reduced)
+    vals = dropdims(vals3; dims=reduced)
     P, Q = size(vals)
-    grid = fcpu.grid
 
-    if grid isa SphericalGrid && active == (1, 2)
-        x, y, z = spherical_coordinates(grid, Face(), Face())
-        xc = _pad_corners(Array(x), P, Q)
-        yc = _pad_corners(Array(y), P, Q)
-        zc = _pad_corners(Array(z), P, Q)
-        return quadmesh!(ax, xc, yc, zc, vals; kwargs...)
+    if fcpu.grid isa SphericalGrid && active == (1, 2)
+        return quadmesh!(ax, spherical_corners(fcpu.grid, P, Q)..., vals; kwargs...)
     else
-        Ca, Cb = _rectilinear_corners(grid, active, reduced, P, Q)
-        return quadmesh!(ax, Ca, Cb, vals; kwargs...)
+        return quadmesh!(ax, physical_corners(fcpu.grid, active, reduced, P, Q)..., vals; kwargs...)
     end
 end
 
@@ -730,13 +684,43 @@ end
     quadmesh(f::AbstractField; figure_kwargs=(;), axis_kwargs=(;), kwargs...)
 
 Non-mutating [`quadmesh!`](@ref) for a `Field`: build a `Figure` and an `Axis`
-(or `Axis3` for a spherical grid), draw, and return `(figure, axis, plot)`.
+(or `Axis3` for a spherical grid), draw, return `(figure, axis, plot)`.
 """
 function quadmesh(f::AbstractField; figure_kwargs=(;), axis_kwargs=(;), kwargs...)
     fig = Figure(; figure_kwargs...)
     ax = (f.grid isa SphericalGrid) ? Axis3(fig[1, 1]; axis_kwargs...) : Axis(fig[1, 1]; axis_kwargs...)
-    plt = quadmesh!(ax, f; kwargs...)
-    return fig, ax, plt
+    return fig, ax, quadmesh!(ax, f; kwargs...)
+end
+
+# Draw the cell-edge polylines (rows + columns) of a corner mesh — clean quad
+# edges, unlike `wireframe!` of the triangulated mesh which shows the diagonals.
+function wireframe_lines!(ax, coords...; kwargs...)
+    plt = nothing
+    for i in axes(coords[1], 1); plt = lines!(ax, (c[i, :] for c in coords)...; kwargs...); end
+    for j in axes(coords[1], 2); plt = lines!(ax, (c[:, j] for c in coords)...; kwargs...); end
+    return plt
+end
+
+"""
+    quadmesh!(ax, grid; color=(:black, 0.6), linewidth=0.75, kwargs...)
+
+Draw `grid` itself as a wireframe — cell edges, no fill — from the same corners
+`quadmesh!` would fill. A spherical grid is drawn as a 3-D shell graticule (use an
+`Axis3`); a grid with one `Flat` dimension as a 2-D wireframe. (For other 3-D
+grids, slice first or pass corner arrays.)
+"""
+function quadmesh!(ax, grid::SphericalGrid; color=(:black, 0.6), linewidth=0.75, kwargs...)
+    Nx, Ny, _ = size(grid)
+    return wireframe_lines!(ax, spherical_corners(grid, Nx, Ny)...; color, linewidth, kwargs...)
+end
+
+function quadmesh!(ax, grid::AbstractGrid; color=(:black, 0.6), linewidth=0.75, kwargs...)
+    flat = findfirst(T -> T === Flat, topology(grid))
+    flat === nothing &&
+        throw(ArgumentError("quadmesh!(ax, grid) needs a spherical grid or a grid with one Flat dimension; otherwise pass corner arrays"))
+    active = Tuple(d for d in 1:3 if d != flat)
+    N = size(grid)
+    return wireframe_lines!(ax, physical_corners(grid, active, flat, N[active[1]], N[active[2]])...; color, linewidth, kwargs...)
 end
 
 end # module

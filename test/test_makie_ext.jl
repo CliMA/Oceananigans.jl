@@ -415,4 +415,24 @@ sequential_data(sz::NTuple{N, Int}) where N = reshape(Float64.(1:prod(sz)), sz..
         @test gfig isa CairoMakie.Figure
         @test gplt isa CairoMakie.Mesh
     end
+
+    @testset "quadmesh! grid wireframe" begin
+        # Spherical grid → 3D shell graticule on an Axis3.
+        sgrid = LatitudeLongitudeGrid(size = (12, 8, 1), longitude = (-180, 180),
+                                      latitude = (-80, 80), z = (0, 1),
+                                      topology = (Periodic, Bounded, Bounded))
+        fig = CairoMakie.Figure(); ax = CairoMakie.Axis3(fig[1, 1])
+        plt = quadmesh!(ax, sgrid; color = :black)
+        @test plt isa CairoMakie.Lines
+
+        # 2D (Flat) grid → 2D wireframe.
+        rgrid = RectilinearGrid(size = (6, 4), x = (0, 1), z = (0, 1),
+                                topology = (Periodic, Flat, Bounded))
+        fig2 = CairoMakie.Figure(); ax2 = CairoMakie.Axis(fig2[1, 1])
+        @test quadmesh!(ax2, rgrid) isa CairoMakie.Lines
+
+        # A 3D non-spherical grid is ambiguous → clear error.
+        g3 = RectilinearGrid(size = (4, 4, 4), extent = (1, 1, 1))
+        @test_throws ArgumentError quadmesh!(CairoMakie.Axis(CairoMakie.Figure()[1, 1]), g3)
+    end
 end
