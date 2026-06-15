@@ -155,13 +155,17 @@ function setup_simulation(params::SolitonParameters;
                           Nx = 200, Ny = 100, Nz = 4,
                           stop_time = 70 * params.T,
                           scheme = PerturbationAdvection(),
+                          eta_boundary = :gradient,
+                          vertical_coordinate = ZStarCoordinate(),
                           ν_sponge = 1e4meters^2 / second, # peak viscosity
                           nudging_rate = 1 / (2days),
                           sponge_width = 1000kilometers,
                           outfile = joinpath("output", "hydrostatic_soliton.jld2"))
 
     # Grid
-    z = MutableVerticalDiscretization(range(-params.H, 0, length = Nz + 1))
+    z = vertical_coordinate isa ZStarCoordinate ?
+        MutableVerticalDiscretization(range(-params.H, 0, length = Nz + 1)) :
+        range(-params.H, 0, length = Nz + 1)
 
     grid = RectilinearGrid(CPU();
                            topology = (Bounded, Bounded, Bounded),
@@ -174,13 +178,39 @@ function setup_simulation(params::SolitonParameters;
     # Model:
     β = params.U / params.L^2
 
+    c_grav    = √(g * params.H) # surface gravity wave speed [m/s]
+    η_scheme  = PerturbationAdvection(gravity_wave_speed = c_grav, inflow_timescale=1day, outflow_timescale=10days)
+
     west_obc  = NormalFlowBoundaryCondition((y, z, t) -> analytic_u(params.x_min, y, t, params); scheme)
     east_obc  = NormalFlowBoundaryCondition((y, z, t) -> analytic_u(params.x_max, y, t, params); scheme)
     south_obc = NormalFlowBoundaryCondition((x, z, t) -> analytic_v(x, params.y_min, t, params); scheme)
     north_obc = NormalFlowBoundaryCondition((x, z, t) -> analytic_v(x, params.y_max, t, params); scheme)
     u_bcs = FieldBoundaryConditions(west = west_obc, east = east_obc)
     v_bcs = FieldBoundaryConditions(south = south_obc, north = north_obc)
-    boundary_conditions = (; u = u_bcs, v = v_bcs)
+
+    # Free-surface open boundary.
+    #
+    # With an ImplicitFreeSurface the barotropic problem is over-determined if both the
+    # boundary-normal velocity (NormalFlow) and η are prescribed: the elliptic solve already
+    # fixes η at the boundary from the prescribed transport, so an independent η radiation
+    # (`:radiation`) fights the solve. With ZStarCoordinate it also corrupts the moving-grid
+    # scaling σ (built from η in the halos), and blows up where there is no in/outflow to mask
+    # it. The stable, consistent choice is `:gradient` (zero-gradient η) — the velocity open
+    # boundary carries the barotropic radiation and η follows the solve.
+    if eta_boundary == :radiation
+        η_west  = ValueBoundaryCondition((y, z, t) -> analytic_η(params.x_min, y, t, params); scheme = η_scheme)
+        η_east  = ValueBoundaryCondition((y, z, t) -> analytic_η(params.x_max, y, t, params); scheme = η_scheme)
+        η_south = ValueBoundaryCondition((x, z, t) -> analytic_η(x, params.y_min, t, params); scheme = η_scheme)
+        η_north = ValueBoundaryCondition((x, z, t) -> analytic_η(x, params.y_max, t, params); scheme = η_scheme)
+        η_bcs   = FieldBoundaryConditions(west = η_west, east = η_east, south = η_south, north = η_north)
+        boundary_conditions = (; u = u_bcs, v = v_bcs, η = η_bcs)
+    elseif eta_boundary == :gradient
+        η_obc = GradientBoundaryCondition(0)
+        η_bcs = FieldBoundaryConditions(west = η_obc, east = η_obc, south = η_obc, north = η_obc)
+        boundary_conditions = (; u = u_bcs, v = v_bcs, η = η_bcs)
+    else
+        boundary_conditions = (; u = u_bcs, v = v_bcs)
+    end
 
     # Sponge layers: spatially varying horizontal viscosity that ramps from
     # ν_sponge at each boundary to zero at sponge_width inside the domain.
@@ -197,7 +227,9 @@ function setup_simulation(params::SolitonParameters;
 
     closure = HorizontalScalarDiffusivity(ν = sponge_ν)
 
-    # Nudging: relax u and v toward the analytical solution in the sponge regions
+    # Nudging: relax u and v toward the analytical solution in the sponge regions (η is
+    # nudged separately below, via a callback, since the ImplicitFreeSurface does not apply
+    # `forcing` to the free-surface field).
     u_nudging = Relaxation(; rate = nudging_rate, mask = sponge_mask, target = (x, y, z, t) -> analytic_u(x, y, t, params))
     v_nudging = Relaxation(; rate = nudging_rate, mask = sponge_mask, target = (x, y, z, t) -> analytic_v(x, y, t, params))
 
@@ -206,7 +238,7 @@ function setup_simulation(params::SolitonParameters;
                                                   gravitational_acceleration = g),
         momentum_advection  = WENO(order=5, minimum_buffer_upwind_order=1),
         timestepper = :SplitRungeKutta3,
-        vertical_coordinate = ZStarCoordinate(),
+        vertical_coordinate,
         coriolis            = BetaPlane(f₀ = 0, β = β),
         closure,
         forcing             = (; u = u_nudging, v = v_nudging),
@@ -219,11 +251,26 @@ function setup_simulation(params::SolitonParameters;
         η = (x, y, z) -> analytic_η(x, y, 0.0, params))
 
     # Simulation
-    c_grav    = √(g * params.H) # surface gravity wave speed [m/s]
     max_Δt    = 0.5 * minimum_xspacing(grid) / c_grav # CFL limit from gravity waves
     Δt₀       = 0.1 * max_Δt
     simulation = Simulation(model; Δt = Δt₀, stop_time)
     conjure_time_step_wizard!(simulation, IterationInterval(10); cfl = 0.8, max_Δt)
+
+    # Nudge η toward the analytical free surface in the sponge regions, mirroring the u, v
+    # nudging. Applied directly to the free-surface field (reading it only at its k = Nz+1
+    # window) because `forcing` is not applied to η under the ImplicitFreeSurface.
+    xη = xnodes(grid, Center(), Center(), Center())
+    yη = ynodes(grid, Center(), Center(), Center())
+    η_sponge = [sponge_mask(x, y, zero(x)) for x in xη, y in yη]
+    function nudge_free_surface!(sim)
+        Δt = sim.Δt
+        t  = time(sim)
+        η  = interior(sim.model.free_surface.displacement, :, :, 1)
+        η_target = [analytic_η(x, y, t, params) for x in xη, y in yη]
+        @. η += Δt * nudging_rate * η_sponge * (η_target - η)
+        return nothing
+    end
+    simulation.callbacks[:η_nudging] = Callback(nudge_free_surface!)
 
     function progress_message(sim)
         u, v, w = sim.model.velocities
@@ -329,8 +376,10 @@ function plot_soliton(simulation::Simulation, params::SolitonParameters;
 end
 #---
 
-params = default_parameters(B = 0.5)
-simulation = setup_simulation(params; stop_time = 150days)
-run!(simulation)
-@info "Simulation complete."
-plot_soliton(simulation, params)
+if abspath(PROGRAM_FILE) == @__FILE__
+    params = default_parameters(B = 0.5)
+    simulation = setup_simulation(params; stop_time = 150days, eta_boundary = :gradient)
+    run!(simulation)
+    @info "Simulation complete."
+    plot_soliton(simulation, params)
+end

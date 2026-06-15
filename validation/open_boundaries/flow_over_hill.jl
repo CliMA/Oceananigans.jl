@@ -61,7 +61,17 @@ function flow_over_hill_simulation(; arch = CPU(),
     elseif model_type == :hydrostatic_with_implicit_surface
         free_surface = ImplicitFreeSurface()
 
-        model_kwargs = merge(model_kwargs, (; free_surface, momentum_advection = advection, tracer_advection = advection, vertical_coordinate = ZStarCoordinate()))
+        # Consistent (zero-gradient) open boundary on the free surface. With an
+        # ImplicitFreeSurface the velocity open boundary carries the barotropic radiation and
+        # η follows the elliptic solve; an independent η radiation over-determines the boundary
+        # and is unstable (especially with ZStarCoordinate, where η sets the moving-grid scaling).
+        η_obc = GradientBoundaryCondition(0)
+        η_boundaries = FieldBoundaryConditions(west = η_obc, east = η_obc)
+        hydrostatic_boundary_conditions = (; boundary_conditions..., η = η_boundaries)
+
+        model_kwargs = merge(model_kwargs, (; free_surface, momentum_advection = advection, tracer_advection = advection,
+                                              vertical_coordinate = ZStarCoordinate(),
+                                              boundary_conditions = hydrostatic_boundary_conditions))
         model_constructor = HydrostaticFreeSurfaceModel
     end
 

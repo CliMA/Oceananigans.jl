@@ -502,6 +502,31 @@ function test_open_boundary_condition_mass_conservation(arch, FT, boundary_condi
     @test (@allowscalar ∫δu[]) ≈ 0 atol=5*eps(FT)
 end
 
+function test_free_surface_perturbation_advection_value_boundary(arch, FT)
+    grid = RectilinearGrid(arch, FT; size = (4, 4, 4), x = (0, 1), y = (0, 1), z = (-1, 0),
+                           topology = (Bounded, Bounded, Bounded))
+
+    η_ext = FT(1//10)  # prescribed exterior free-surface displacement
+    η₀    = FT(1//2)   # uniform initial interior displacement
+
+    # Both timescales zero ⇒ the radiation step relaxes the boundary instantly to η_ext
+    # regardless of flow direction, a deterministic check that the scheme fires on η.
+    scheme = PerturbationAdvection(FT; inflow_timescale = 0, outflow_timescale = 0, gravity_wave_speed = 1)
+    η_bcs = FieldBoundaryConditions(west = ValueBoundaryCondition(η_ext; scheme),
+                                    east = ValueBoundaryCondition(η_ext; scheme))
+
+    for free_surface in (ImplicitFreeSurface(), ExplicitFreeSurface())
+        model = HydrostaticFreeSurfaceModel(grid; free_surface,
+                                            boundary_conditions = (; η = η_bcs))
+        set!(model, η = η₀)
+        time_step!(model, FT(1e-3))
+
+        # the west open boundary writes the first interior cell (i = 1)
+        η = model.free_surface.displacement
+        @test Array(interior(η, 1, 1, 1))[] ≈ η_ext
+    end
+end
+
 test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
                                               float_bc(C, FT, ArrayType),
                                               irrational_bc(C, FT, ArrayType),
@@ -695,6 +720,7 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
             test_perturbation_advection_tracer_open_boundary_conditions_nonhydrostatic(arch, FT)
             test_perturbation_advection_tracer_radiation_formula(arch, FT)
             test_nonhydrostatic_tracer_value_boundary_is_applied(arch, FT)
+            test_free_surface_perturbation_advection_value_boundary(arch, FT)
 
             # Only PerturbationAdvection NormalFlowBoundaryCondition
             U₀ = 1
