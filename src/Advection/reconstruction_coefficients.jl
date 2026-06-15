@@ -77,7 +77,7 @@ On a uniform `grid`, the coefficients are independent of the `xr` and `xi` value
 end
 
 """
-    uniform_reconstruction_coefficients(FT, Val(bias), buffer)
+$(TYPEDSIGNATURES)
 
 Returns coefficients for finite volume reconstruction used in linear advection schemes (`Centered` and `UpwindBiased`).
 `FT` is the floating type (e.g. `Float32`, `Float64`), `bias` is either `:symmetric`, `:left`, or `:right`,

@@ -17,7 +17,7 @@ import KernelAbstractions: get, expand, StaticSize
 struct KernelParameters{S, O} end
 
 """
-    KernelParameters(size, offsets)
+$(TYPEDSIGNATURES)
 
 Return parameters for kernel launching and execution that define (i) a tuple that
 defines the `size` of the kernel being launched and (ii) a tuple of `offsets` that
@@ -47,7 +47,7 @@ KernelParameters(size, offsets) = KernelParameters{size, offsets}()
 KernelParameters(s::Number, o::Number) = KernelParameters(tuple(s), tuple(o))
 
 """
-    KernelParameters(range1, [range2, range3])
+$(TYPEDSIGNATURES)
 
 Return parameters for launching a kernel of up to three dimensions, where the
 indices spanned by the kernel in each dimension are given by (range1, range2, range3).
@@ -143,7 +143,7 @@ periphery_offset(loc, grid, side) = 0
 worksize(grid) = size(grid)
 
 """
-    interior_work_layout(grid, dims, location)
+$(TYPEDSIGNATURES)
 
 Returns the `workgroup` and `worksize` for launching a kernel over `dims`
 on `grid` that excludes peripheral nodes (determined from `location`).
@@ -186,7 +186,7 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 end
 
 """
-    work_layout(grid, dims, reduced_dimensions)
+$(TYPEDSIGNATURES)
 
 Returns the `workgroup` and `worksize` for launching a kernel over `dims`
 on `grid`. The `workgroup` is a tuple specifying the threads per block in each
@@ -318,7 +318,7 @@ end
 end
 
 """
-    launch!(arch, grid, workspec, kernel!, kernel_args...; kw...)
+$(TYPEDSIGNATURES)
 
 Launches `kernel!` with arguments `kernel_args`
 over the `dims` of `grid` on the architecture `arch`.

@@ -73,7 +73,7 @@ function FFTBasedPoissonSolver(grid, planner_flag=FFTW.PATIENT)
 end
 
 """
-    solve!(ϕ, solver::FFTBasedPoissonSolver, b, m=0)
+    solve!(ϕ, solver::FFTBasedPoissonSolver, b=solver.storage, m=0)
 
 Solve the "generalized" Poisson equation,
 

@@ -1,5 +1,5 @@
-using Oceananigans.Architectures: architecture
 using Oceananigans.AbstractOperations: KernelFunctionOperation
+using Oceananigans.Architectures: architecture
 using Oceananigans.BuoyancyFormulations: ∂z_b
 using Oceananigans.Operators: ℑzᵃᵃᶜ
 

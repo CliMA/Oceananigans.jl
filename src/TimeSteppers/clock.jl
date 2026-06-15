@@ -1,8 +1,8 @@
 using Adapt: Adapt
 using Dates: AbstractTime, Nanosecond, Millisecond
 using DocStringExtensions: TYPEDEF, TYPEDSIGNATURES
-using Oceananigans.Utils: prettytime, seconds_to_nanosecond
 using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Utils: prettytime, seconds_to_nanosecond
 
 import Oceananigans: restore_prognostic_state!
 import Oceananigans.Units: Time
@@ -59,7 +59,7 @@ function reset!(clock::Clock{TT, KT, DT, IT, S}) where {TT, KT, DT, IT, S}
 end
 
 """
-    set!(clock::Clock, new_clock::Clock)
+$(TYPEDSIGNATURES)
 
 Set `clock` to the `new_clock`.
 """

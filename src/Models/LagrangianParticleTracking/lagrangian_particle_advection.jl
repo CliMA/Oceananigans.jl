@@ -20,7 +20,7 @@ end
 end
 
 """
-    enforce_boundary_conditions(::Bounded, x, xᴸ, xᴿ, Cʳ)
+$(TYPEDSIGNATURES)
 
 Return a new particle position if the particle position `x`
 is outside the Bounded interval `(xᴸ, xᴿ)` by bouncing the particle off
@@ -30,7 +30,7 @@ the interval edge with coefficient of restitution `Cʳ).
                                                                 ifelse(x < xᴸ, bounce_right(x, xᴸ, xᴿ, Cʳ), x))
 
 """
-    enforce_boundary_conditions(::Periodic, x, xᴸ, xᴿ, Cʳ)
+$(TYPEDSIGNATURES)
 
 Return a new particle position if the particle position `x`
 is outside the Periodic interval `(xᴸ, xᴿ)`.
@@ -39,7 +39,7 @@ is outside the Periodic interval `(xᴸ, xᴿ)`.
                                                                  ifelse(x < xᴸ, xᴿ - mod(xᴸ - x, xᴿ - xᴸ), x))
 
 """
-    enforce_boundary_conditions(::Flat, x, xᴸ, xᴿ, Cʳ)
+$(TYPEDSIGNATURES)
 
 Do nothing on Flat dimensions.
 """
@@ -49,14 +49,14 @@ const f = Face()
 const c = Center()
 
 """
-    immersed_boundary_topology(grid_topology)
+$(TYPEDSIGNATURES)
 
 Unless `Flat`, immersed boundaries are treated as `Bounded` regardless of underlying grid topology.
 """
 immersed_boundary_topology(grid_topology) = ifelse(grid_topology == Flat, Flat(), Bounded())
 
 """
-    bounce_immersed_particle((x, y, z), grid, restitution, previous_particle_indices)
+$(TYPEDSIGNATURES)
 
 Return a new particle position if the position `(x, y, z)` lies in an immersed cell by
 bouncing the particle off the immersed boundary with a coefficient or `restitution`.
@@ -101,7 +101,7 @@ bouncing the particle off the immersed boundary with a coefficient or `restituti
 end
 
 """
-    rightmost_interface_index(topology, N)
+$(TYPEDSIGNATURES)
 
 Return the index of the rightmost cell interface for a grid with `topology` and `N` cells.
 """
@@ -110,7 +110,7 @@ rightmost_interface_index(::Periodic, N) = N + 1
 rightmost_interface_index(::Flat, N) = N
 
 """
-    advect_particle((x, y, z), particles, p, restitution, grid, Δt, velocities)
+$(TYPEDSIGNATURES)
 
 Return new position `(x⁺, y⁺, z⁺)` for a particle at current position (x, y, z),
 given `velocities`, time-step `Δt, and coefficient of `restitution`.
