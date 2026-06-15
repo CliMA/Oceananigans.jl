@@ -23,7 +23,7 @@ barotropic_velocities(free_surface) = nothing, nothing
 barotropic_transport(free_surface)  = nothing, nothing
 
 """
-    ab2_step_grid!(grid::MutableGridOfSomeKind, model, ::ZStarCoordinate, Δt, χ)
+$(TYPEDSIGNATURES)
 
 Update z-star grid scaling factors during an AB2 time step.
 
@@ -38,7 +38,7 @@ function ab2_step_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordina
 end
 
 """
-    rk_substep_grid!(grid::MutableGridOfSomeKind, model, ::ZStarCoordinate, Δt)
+$(TYPEDSIGNATURES)
 
 Update z-star grid scaling factors during a split Runge-Kutta substep.
 
@@ -84,7 +84,8 @@ end
 end
 
 """
-    update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSomeKind, ::ZStarCoordinate; parameters)
+    update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSomeKind, ::ZStarCoordinate;
+                                   parameters=surface_kernel_parameters(grid))
 
 Compute the time derivative of the z-star grid stretching factor `∂t_σ`.
 
@@ -141,7 +142,7 @@ end
 scale_by_stretching_factor!(Gⁿ, tracers, grid) = nothing
 
 """
-    scale_by_stretching_factor!(Gⁿ, tracers, grid::MutableGridOfSomeKind)
+$(TYPEDSIGNATURES)
 
 Multiply tracer tendencies by the grid stretching factor `σ` for z-star coordinates.
 
@@ -170,7 +171,7 @@ end
 #####
 
 """
-    reconcile_vertical_coordinate!(vertical_coordinate, model, grid)
+$(TYPEDSIGNATURES)
 
 Reconcile the vertical coordinate with the current free surface displacement.
 

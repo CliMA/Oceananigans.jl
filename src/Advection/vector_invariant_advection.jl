@@ -40,7 +40,7 @@ end
                       vertical_advection_scheme = EnergyConserving(),
                       divergence_scheme = vertical_advection_scheme,
                       kinetic_energy_gradient_scheme = divergence_scheme,
-                      upwinding  = OnlySelfUpwinding(; cross_scheme = divergence_scheme),
+                      upwinding = OnlySelfUpwinding(; cross_scheme = divergence_scheme),
                       multi_dimensional_stencil = false)
 
 Return a vector-invariant momentum advection scheme.
