@@ -18,7 +18,7 @@ end
 cache_free_surface_tendency!(free_surface, model) = nothing
 
 """
-    cache_free_surface_tendency!(::ExplicitFreeSurface, model)
+$(TYPEDSIGNATURES)
 
 Store the current free surface tendency `Gⁿ.η` into `G⁻.η` for AB2 time stepping.
 Only applicable to `ExplicitFreeSurface` where `η` is a prognostic variable
@@ -38,7 +38,7 @@ end
 end
 
 """
-    cache_previous_tendencies!(model::HydrostaticFreeSurfaceModel)
+$(TYPEDSIGNATURES)
 
 Store the current tendencies `Gⁿ` into `G⁻` for all prognostic fields.
 
@@ -88,7 +88,7 @@ end
 end
 
 """
-    cache_current_fields!(model::HydrostaticFreeSurfaceModel)
+$(TYPEDSIGNATURES)
 
 Cache the current prognostic fields at the beginning of a split Runge-Kutta time step.
 

@@ -7,6 +7,7 @@ export array_type, on_architecture
 export child_architecture
 
 using Adapt
+using DocStringExtensions: TYPEDSIGNATURES
 using OffsetArrays
 using SparseArrays
 
@@ -81,7 +82,7 @@ architecture(::Type{Array}) = CPU()
 @inline sparse_matrix(::CPU, constr::Tuple) = SparseMatrixCSC(constr...)
 
 """
-    child_architecture(arch)
+$(TYPEDSIGNATURES)
 
 Return `arch`itecture of child processes.
 On single-process, non-distributed systems, return `arch`.
