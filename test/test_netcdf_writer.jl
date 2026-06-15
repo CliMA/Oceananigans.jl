@@ -3163,10 +3163,12 @@ function test_netcdf_reduced_field_time_series(arch)
                                            filename=fp, schedule=IterationInterval(1),
                                            array_type=Array{Float64}, overwrite_existing=true)
 
-    # Snapshot the reduced fields in memory on the same schedule as the writer so the
-    # round-trip can be compared value-for-value.
+    # Snapshot the reduced fields (and the save times) in memory on the same schedule as
+    # the writer so the round-trip can be compared value-for-value.
+    save_times = Float64[]
     snaps = (cx=Array{Float64,3}[], cxy=Array{Float64,3}[], cyz=Array{Float64,3}[])
     save = s -> begin
+        push!(save_times, s.model.clock.time)
         push!(snaps.cx,  Array(interior(compute!(cx))))
         push!(snaps.cxy, Array(interior(compute!(cxy))))
         push!(snaps.cyz, Array(interior(compute!(cyz))))
@@ -3181,7 +3183,8 @@ function test_netcdf_reduced_field_time_series(arch)
         fts = FieldTimeSeries(fp, name; architecture=arch)
         @test fts isa FieldTimeSeries
         @test location(fts) == ref_loc
-        @test length(fts.times) == length(ref)
+        @test fts.times ≈ save_times
+        @test size(fts) == (size(ref[1])..., length(ref))
         for k in 1:length(ref)
             rec = Array(interior(fts[k]))
             @test size(rec) == size(ref[k])
