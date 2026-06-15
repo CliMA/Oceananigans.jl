@@ -381,4 +381,38 @@ sequential_data(sz::NTuple{N, Int}) where N = reshape(Float64.(1:prod(sz)), sz..
         @test f isa CairoMakie.Figure
         @test p isa CairoMakie.Mesh
     end
+
+    @testset "quadmesh! from a Field (corners derived from the grid)" begin
+        # Rectilinear x–z field (y-Flat): corners come from xnode/znode, no
+        # coordinates passed by the user.
+        rgrid = RectilinearGrid(size = (6, 4), x = (0, 1), z = (0, 1),
+                                topology = (Periodic, Flat, Bounded))
+        w = CenterField(rgrid)
+        set!(w, (x, z) -> sinpi(x) * cospi(z))
+        fig = CairoMakie.Figure(); ax = CairoMakie.Axis(fig[1, 1])
+        plt = quadmesh!(ax, w; colormap = :balance, colorrange = (-1, 1))
+        @test plt isa CairoMakie.Mesh
+        @test length(plt.color[]) == 4 * 6 * 4
+        @test CairoMakie.Colorbar(fig[1, 2], plt) isa CairoMakie.Colorbar
+
+        # Spherical field: drawn as a 3D Cartesian shell on an Axis3.
+        sgrid = LatitudeLongitudeGrid(size = (8, 6, 1), longitude = (-180, 180),
+                                      latitude = (-80, 80), z = (0, 1),
+                                      topology = (Periodic, Bounded, Bounded))
+        T = CenterField(sgrid)
+        set!(T, (λ, φ, z) -> cosd(φ))
+        fig3 = CairoMakie.Figure(); ax3 = CairoMakie.Axis3(fig3[1, 1])
+        plt3 = quadmesh!(ax3, T)
+        @test plt3 isa CairoMakie.Mesh
+        @test length(plt3.color[]) == 4 * 8 * 6
+
+        # 3D field (no reduced dimension) is rejected with a clear error.
+        f3d = CenterField(RectilinearGrid(size = (4, 4, 4), extent = (1, 1, 1)))
+        @test_throws ArgumentError quadmesh!(CairoMakie.Axis(CairoMakie.Figure()[1, 1]), f3d)
+
+        # Non-mutating Field method.
+        gfig, gax, gplt = quadmesh(w)
+        @test gfig isa CairoMakie.Figure
+        @test gplt isa CairoMakie.Mesh
+    end
 end

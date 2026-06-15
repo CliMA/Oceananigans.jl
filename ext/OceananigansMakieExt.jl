@@ -3,13 +3,16 @@ module OceananigansMakieExt
 export geo_surface!, geo_surface, spherical_coordinates
 
 using Oceananigans
-using Oceananigans.Grids: OrthogonalSphericalShellGrid, topology
-using Oceananigans.Fields: AbstractField, location
+using Oceananigans.Grids: OrthogonalSphericalShellGrid, LatitudeLongitudeGrid, topology,
+                          xnode, ynode, znode
+using Oceananigans.Fields: AbstractField, location, interior
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: on_architecture, architecture
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
 import Oceananigans: quadmesh, quadmesh!   # extend the main-package stubs
+
+const SphericalGrid = Union{LatitudeLongitudeGrid, OrthogonalSphericalShellGrid}
 
 using Makie: Observable, AbstractPlot, Axis, Axis3, Figure, NoShading, @lift,
              Point2f, Point3f, GLTriangleFace, mesh!
@@ -638,6 +641,101 @@ function quadmesh(xc::AbstractMatrix, yc::AbstractMatrix, vals; figure_kwargs=(;
     fig = Figure(; figure_kwargs...)
     ax = Axis(fig[1, 1]; axis_kwargs...)
     plt = quadmesh!(ax, xc, yc, vals; kwargs...)
+    return fig, ax, plt
+end
+
+#####
+##### Field method: derive the corner coordinates from the grid automatically
+#####
+
+# Pad a Face-node corner array (P,Q)-ish up to (P+1, Q+1): wrap the first row
+# back (Periodic) and copy the last column (Bounded) as needed.
+function _pad_corners(A, P, Q)
+    size(A) == (P + 1, Q + 1) && return A
+    a = A
+    size(a, 1) == P && (a = vcat(a, reshape(a[1, :], 1, :)))
+    size(a, 2) == Q && (a = hcat(a, a[:, end:end]))
+    size(a) == (P + 1, Q + 1) ||
+        throw(ArgumentError("could not build (P+1,Q+1)=$((P+1,Q+1)) corner grid from node array of size $(size(A))"))
+    return a
+end
+
+_nodefun(d) = d == 1 ? xnode : d == 2 ? ynode : znode
+
+# Promote a field interior to a 3D array indexed by coordinate dims (x, y, z),
+# inserting a singleton for a Flat dimension (whose interior arrives 2D).
+function _interior3d(fcpu)
+    v = Array(interior(fcpu))
+    ndims(v) == 3 && return v
+    flat = findfirst(T -> T === Flat, topology(fcpu.grid))
+    flat === nothing && throw(ArgumentError("expected a 2D field on a 3D grid, or a field on a grid with a Flat dimension"))
+    return reshape(v, ntuple(d -> d == flat ? 1 : size(v, d < flat ? d : d - 1), 3))
+end
+
+# Build (P+1, Q+1) physical corner matrices for the two active dims of a 2D field
+# by evaluating the scalar node functions over the corner indices (Face in the
+# active dims, the slice's Center in the reduced dim). Using the scalar `znode`
+# means terrain-following vertical coordinates render with their true curvature.
+function _rectilinear_corners(grid, active, reduced, P, Q)
+    a, b = active
+    ℓ = ntuple(d -> d == reduced ? Center() : Face(), 3)
+    fa, fb = _nodefun(a), _nodefun(b)
+    Ca = Matrix{Float64}(undef, P + 1, Q + 1)
+    Cb = Matrix{Float64}(undef, P + 1, Q + 1)
+    for q in 1:Q + 1, p in 1:P + 1
+        ijk = ntuple(d -> d == a ? p : d == b ? q : 1, 3)
+        Ca[p, q] = fa(ijk..., grid, ℓ...)
+        Cb[p, q] = fb(ijk..., grid, ℓ...)
+    end
+    return Ca, Cb
+end
+
+"""
+    quadmesh!(ax, f::AbstractField; kwargs...)
+
+Draw a two-dimensional `Field` as a flat-shaded curvilinear mesh, deriving the
+cell-corner coordinates from `f`'s grid — so terrain-following vertical slices and
+spherical-grid panels render in their true geometry with no manual coordinate
+bookkeeping. `f` must be two-dimensional (one dimension reduced or `Flat`). On a
+`LatitudeLongitudeGrid` / `OrthogonalSphericalShellGrid` (horizontal field) it is
+drawn as a 3-D Cartesian shell — use an `Axis3`; otherwise it is a 2-D slice in
+the two active coordinates (vertical slices follow the terrain via `znode`).
+"""
+function quadmesh!(ax, f::AbstractField; kwargs...)
+    fcpu = on_architecture(CPU(), f)
+    vals3 = _interior3d(fcpu)
+    sz = size(vals3)
+    reduced_dims = findall(==(1), sz)
+    length(reduced_dims) == 1 ||
+        throw(ArgumentError("quadmesh!(ax, f) needs a 2D field (exactly one reduced dimension); got interior size $sz"))
+    reduced = reduced_dims[1]
+    active = Tuple(d for d in 1:3 if d != reduced)
+    vals = dropdims(vals3; dims = reduced)
+    P, Q = size(vals)
+    grid = fcpu.grid
+
+    if grid isa SphericalGrid && active == (1, 2)
+        x, y, z = spherical_coordinates(grid, Face(), Face())
+        xc = _pad_corners(Array(x), P, Q)
+        yc = _pad_corners(Array(y), P, Q)
+        zc = _pad_corners(Array(z), P, Q)
+        return quadmesh!(ax, xc, yc, zc, vals; kwargs...)
+    else
+        Ca, Cb = _rectilinear_corners(grid, active, reduced, P, Q)
+        return quadmesh!(ax, Ca, Cb, vals; kwargs...)
+    end
+end
+
+"""
+    quadmesh(f::AbstractField; figure_kwargs=(;), axis_kwargs=(;), kwargs...)
+
+Non-mutating [`quadmesh!`](@ref) for a `Field`: build a `Figure` and an `Axis`
+(or `Axis3` for a spherical grid), draw, and return `(figure, axis, plot)`.
+"""
+function quadmesh(f::AbstractField; figure_kwargs=(;), axis_kwargs=(;), kwargs...)
+    fig = Figure(; figure_kwargs...)
+    ax = (f.grid isa SphericalGrid) ? Axis3(fig[1, 1]; axis_kwargs...) : Axis(fig[1, 1]; axis_kwargs...)
+    plt = quadmesh!(ax, f; kwargs...)
     return fig, ax, plt
 end
 
