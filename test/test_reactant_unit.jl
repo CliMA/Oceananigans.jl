@@ -35,10 +35,6 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
     @test parent(cpu_c) isa Array
     @test architecture(cpu_c.grid) isa CPU
 
-    @info "  Testing eltype..."
-    RFT = eltype(grid)
-    @test RFT == Reactant.TracedRNumber{Float64}
-
     @info "  Testing field set! with a number..."
     set!(c, 1)
     @test all(c .≈ 1)
@@ -104,6 +100,14 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
                                     longitude = [0, 1, 2, 3, 4],
                                     latitude = [0, 1, 2, 3, 4],
                                     z = (0, 1))
+
+        @info "  Testing RectilinearGrid eltype..."
+        RFT = @jit eltype(sgrid)
+        @test RFT == Reactant.TracedRNumber{FT}
+
+        @info "  Testing LatitudeLongitudeGrid eltype..."
+        RFT = @jit eltype(llg)
+        @test RFT == Reactant.TracedRNumber{FT}
 
         @test architecture(llg) isa ReactantState
 
