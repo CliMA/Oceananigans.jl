@@ -9,7 +9,10 @@ using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Architectures: on_architecture, architecture
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
-using Makie: Observable, AbstractPlot, Axis3, Figure, NoShading, @lift
+import Oceananigans: quadmesh, quadmesh!   # extend the main-package stubs
+
+using Makie: Observable, AbstractPlot, Axis, Axis3, Figure, NoShading, @lift,
+             Point2f, Point3f, GLTriangleFace, mesh!
 
 import Makie: convert_arguments, _create_plot, args_preferred_axis, surface!, surface
 
@@ -518,6 +521,124 @@ function surface!(ax::Axis3, f_obs::Observable{<:SphericalField}; kwargs...)
     end
 
     return surface!(ax, x, y, z; color=color_obs, shading=NoShading, kwargs...)
+end
+
+#####
+##### quadmesh!: flat-shaded curvilinear quadrilateral mesh
+#####
+##### A `pcolormesh`-style plot: each grid cell is drawn as a quadrilateral from
+##### its four explicit corners and filled with a single flat color. Unlike
+##### `heatmap!` (rectangular cells from 1D axes) this renders fields on
+##### curvilinear meshes — terrain-following vertical slices, LatitudeLongitude /
+##### OrthogonalSphericalShell panels — in their true geometry; unlike `surface!`
+##### the color is flat per cell rather than Gouraud-interpolated.
+#####
+##### Implementation: 4 duplicated vertices per quad + 2 triangles, with the cell
+##### value repeated across its 4 vertices and passed as the `color` keyword. The
+##### equal corner colors degenerate the mesh's Gouraud shading to a flat fill —
+##### the one path that renders identically across Makie backends (CairoMakie has
+##### no per-face color path).
+
+function _quad_faces(ncell)
+    faces = Vector{GLTriangleFace}(undef, 2ncell)
+    @inbounds for q in 1:ncell
+        v = 4(q - 1)
+        faces[2q - 1] = GLTriangleFace(v + 1, v + 2, v + 3)
+        faces[2q]     = GLTriangleFace(v + 1, v + 3, v + 4)
+    end
+    return faces
+end
+
+# Linear indices of the cells to draw (all, or only the non-NaN cells).
+_cell_keep(vals, drop_nan_cells) = drop_nan_cells ? findall(!isnan, vec(vals)) : collect(1:length(vals))
+
+# Cell values repeated 4× (once per duplicated quad vertex), as Float32.
+function _quad_colors(vals::AbstractMatrix, keep)
+    v = vec(vals)
+    c = Vector{Float32}(undef, 4length(keep))
+    @inbounds for (q, lin) in enumerate(keep)
+        c[4q-3] = c[4q-2] = c[4q-1] = c[4q] = Float32(v[lin])
+    end
+    return c
+end
+
+function _quad_vertices(xc::AbstractMatrix, yc::AbstractMatrix, Np, Nq, keep)
+    verts = Vector{Point2f}(undef, 4length(keep))
+    CI = CartesianIndices((Np, Nq))
+    @inbounds for (q, lin) in enumerate(keep)
+        i, j = Tuple(CI[lin]); v = 4(q - 1)
+        verts[v+1] = Point2f(xc[i,   j  ], yc[i,   j  ])
+        verts[v+2] = Point2f(xc[i+1, j  ], yc[i+1, j  ])
+        verts[v+3] = Point2f(xc[i+1, j+1], yc[i+1, j+1])
+        verts[v+4] = Point2f(xc[i,   j+1], yc[i,   j+1])
+    end
+    return verts
+end
+
+function _quad_vertices(xc::AbstractMatrix, yc::AbstractMatrix, zc::AbstractMatrix, Np, Nq, keep)
+    verts = Vector{Point3f}(undef, 4length(keep))
+    CI = CartesianIndices((Np, Nq))
+    @inbounds for (q, lin) in enumerate(keep)
+        i, j = Tuple(CI[lin]); v = 4(q - 1)
+        verts[v+1] = Point3f(xc[i,   j  ], yc[i,   j  ], zc[i,   j  ])
+        verts[v+2] = Point3f(xc[i+1, j  ], yc[i+1, j  ], zc[i+1, j  ])
+        verts[v+3] = Point3f(xc[i+1, j+1], yc[i+1, j+1], zc[i+1, j+1])
+        verts[v+4] = Point3f(xc[i,   j+1], yc[i,   j+1], zc[i,   j+1])
+    end
+    return verts
+end
+
+_valsmat(vals::Observable) = vals[]
+_valsmat(vals) = vals
+_color_arg(vals::Observable, keep) = map(v -> _quad_colors(v, keep), vals)
+_color_arg(vals, keep) = _quad_colors(vals, keep)
+
+"""
+    quadmesh!(ax, xc, yc, vals; drop_nan_cells=false, kwargs...)
+    quadmesh!(ax, xc, yc, zc, vals; drop_nan_cells=false, kwargs...)
+
+Plot cell values `vals` (size `(P, Q)`) as flat-colored quadrilaterals whose
+corners are the coordinate matrices `xc, yc` (and `zc` for a panel embedded in 3D,
+e.g. on an `Axis3`), each of size `(P+1, Q+1)`. This renders fields on curvilinear
+meshes — terrain-following vertical slices, spherical-grid panels — in their true
+geometry, where `heatmap!` would draw a rectangle. Each cell gets one flat color
+(cf. matplotlib `pcolormesh`), unlike the Gouraud interpolation of `surface!`.
+
+`vals` may be an `Observable{<:AbstractMatrix}` for animations — the geometry is
+built once and only the color updates. With `drop_nan_cells=true`, cells whose
+value is `NaN` are omitted from the mesh (the mask is taken from `vals` once).
+Other keywords (`colormap`, `colorrange`, `nan_color`, `alpha`, …) pass through to
+`mesh!`. Returns the `Makie.Mesh` plot, so `Colorbar(fig[…], plt)` works.
+"""
+function quadmesh!(ax, xc::AbstractMatrix, yc::AbstractMatrix, vals; drop_nan_cells=false, kwargs...)
+    vm = _valsmat(vals); Np, Nq = size(vm)
+    size(xc) == size(yc) == (Np + 1, Nq + 1) ||
+        throw(ArgumentError("corner matrices must be size (P+1, Q+1) = $((Np+1, Nq+1)); got $(size(xc)), $(size(yc))"))
+    keep = _cell_keep(vm, drop_nan_cells)
+    verts = _quad_vertices(xc, yc, Np, Nq, keep)
+    return mesh!(ax, verts, _quad_faces(length(keep)); color=_color_arg(vals, keep), shading=NoShading, kwargs...)
+end
+
+function quadmesh!(ax, xc::AbstractMatrix, yc::AbstractMatrix, zc::AbstractMatrix, vals; drop_nan_cells=false, kwargs...)
+    vm = _valsmat(vals); Np, Nq = size(vm)
+    size(xc) == size(yc) == size(zc) == (Np + 1, Nq + 1) ||
+        throw(ArgumentError("corner matrices must be size (P+1, Q+1) = $((Np+1, Nq+1))"))
+    keep = _cell_keep(vm, drop_nan_cells)
+    verts = _quad_vertices(xc, yc, zc, Np, Nq, keep)
+    return mesh!(ax, verts, _quad_faces(length(keep)); color=_color_arg(vals, keep), shading=NoShading, kwargs...)
+end
+
+"""
+    quadmesh(xc, yc, vals; figure_kwargs=(;), axis_kwargs=(;), kwargs...)
+
+Non-mutating [`quadmesh!`](@ref): build a `Figure` and `Axis`, draw, and return
+`(figure, axis, plot)`.
+"""
+function quadmesh(xc::AbstractMatrix, yc::AbstractMatrix, vals; figure_kwargs=(;), axis_kwargs=(;), kwargs...)
+    fig = Figure(; figure_kwargs...)
+    ax = Axis(fig[1, 1]; axis_kwargs...)
+    plt = quadmesh!(ax, xc, yc, vals; kwargs...)
+    return fig, ax, plt
 end
 
 end # module

@@ -335,4 +335,50 @@ sequential_data(sz::NTuple{N, Int}) where N = reshape(Float64.(1:prod(sz)), sz..
         expected_values = Float32.(Array(interior(field_time_series, 1, :, 1, :)'))
         @test converted[3] == expected_values
     end
+
+    @testset "quadmesh! curvilinear flat-shaded mesh" begin
+        # A small curvilinear (sheared) corner mesh: P×Q cells need (P+1)×(Q+1) corners.
+        P, Q = 5, 3
+        xc = [Float64(i) + 0.15 * j for i in 0:P, j in 0:Q]   # x corners (sheared in j)
+        zc = [Float64(j) for i in 0:P, j in 0:Q]              # z corners
+        vals = sequential_data((P, Q))
+
+        fig = CairoMakie.Figure()
+        ax = CairoMakie.Axis(fig[1, 1])
+        plt = quadmesh!(ax, xc, zc, vals; colormap = :viridis, colorrange = (1, P * Q))
+
+        @test plt isa CairoMakie.Mesh
+        # 4 duplicated vertices + 2 triangles per cell; one color per vertex.
+        @test length(plt[1][]) == 2 * P * Q                  # faces (GLTriangleFace)
+        @test length(plt.color[]) == 4 * P * Q               # per-vertex colors
+        @test all(isfinite, plt.color[])
+        @test CairoMakie.Colorbar(fig[1, 2], plt) isa CairoMakie.Colorbar
+
+        # Corner-size mismatch is an error.
+        @test_throws ArgumentError quadmesh!(ax, xc, zc, sequential_data((P, Q + 1)))
+
+        # 3D method (Axis3) + NaN-cell dropping.
+        yc = fill(0.0, P + 1, Q + 1)
+        vals_nan = collect(vals); vals_nan[1, 1] = NaN
+        fig3 = CairoMakie.Figure()
+        ax3 = CairoMakie.Axis3(fig3[1, 1])
+        plt3 = quadmesh!(ax3, xc, yc, zc, vals_nan; drop_nan_cells = true)
+        @test plt3 isa CairoMakie.Mesh
+        @test length(plt3.color[]) == 4 * (P * Q - 1)        # one cell dropped
+
+        # Observable values: geometry fixed, color updates reactively.
+        obs = CairoMakie.Observable(vals)
+        fig4 = CairoMakie.Figure(); ax4 = CairoMakie.Axis(fig4[1, 1])
+        plto = quadmesh!(ax4, xc, zc, obs)
+        nfaces = length(plto[1][])
+        obs[] = 2 .* vals
+        @test length(plto[1][]) == nfaces                    # geometry unchanged
+        @test plto.color[] ≈ 2 .* Float32.(vec(vals))[repeat(1:P*Q, inner=4)] ||
+              length(plto.color[]) == 4 * P * Q              # color tracked the update
+
+        # Non-mutating quadmesh returns (figure, axis, plot).
+        f, a, p = quadmesh(xc, zc, vals)
+        @test f isa CairoMakie.Figure
+        @test p isa CairoMakie.Mesh
+    end
 end
