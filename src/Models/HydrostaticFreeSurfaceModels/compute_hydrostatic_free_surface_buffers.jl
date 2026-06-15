@@ -13,7 +13,7 @@ complete_communication_and_compute_tracer_buffer!(model, grid, arch) = nothing
 complete_communication_and_compute_momentum_buffer!(model, grid, arch) = nothing
 
 """
-    complete_communication_and_compute_momentum_buffer!(model::HydrostaticFreeSurfaceModel, ::DistributedGrid, ::AsynchronousDistributed)
+$(TYPEDSIGNATURES)
 
 Complete halo communication and compute momentum tendencies in the buffer regions for distributed grids.
 
@@ -49,7 +49,7 @@ function complete_communication_and_compute_momentum_buffer!(model::HydrostaticF
 end
 
 """
-    compute_momentum_buffer_contributions!(grid, arch, model)
+$(TYPEDSIGNATURES)
 
 Compute momentum tendencies in buffer regions adjacent to processor boundaries.
 
@@ -85,7 +85,7 @@ function compute_momentum_buffer_contributions!(grid::DistributedActiveInteriorI
 end
 
 """
-    complete_communication_and_compute_tracer_buffer!(model::HydrostaticFreeSurfaceModel, ::DistributedGrid, ::AsynchronousDistributed)
+$(TYPEDSIGNATURES)
 
 Complete halo communication and compute tracer tendencies in buffer regions for distributed grids.
 
@@ -109,7 +109,7 @@ function complete_communication_and_compute_tracer_buffer!(model::HydrostaticFre
 end
 
 """
-    compute_tracer_buffer_contributions!(grid, arch, model)
+$(TYPEDSIGNATURES)
 
 Compute tracer tendencies in buffer regions adjacent to processor boundaries.
 """
@@ -141,7 +141,7 @@ function compute_tracer_buffer_contributions!(grid::DistributedActiveInteriorIBG
 end
 
 """
-    buffer_surface_kernel_parameters(grid, arch)
+$(TYPEDSIGNATURES)
 
 Return kernel parameters for computing 2D (surface) variables in buffer regions.
 
@@ -168,7 +168,7 @@ function buffer_surface_kernel_parameters(grid, arch)
 end
 
 """
-    buffer_volume_kernel_parameters(grid, arch)
+$(TYPEDSIGNATURES)
 
 Return kernel parameters for computing 3D (volume) variables in buffer regions.
 

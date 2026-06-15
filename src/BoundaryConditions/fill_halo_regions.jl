@@ -10,7 +10,7 @@ fill_halo_regions!(::Ref, args...; kwargs...) = nothing # a lot of Refs are pass
 fill_halo_regions!(::Nothing, args...; kwargs...) = nothing
 
 """
-    fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...)
+$(TYPEDSIGNATURES)
 
 Do nothing: data `c` whose boundary conditions are `nothing` has no halos to fill. Some fields
 carry `nothing` boundary conditions, such as `FunctionField` and `ZeroField`.
