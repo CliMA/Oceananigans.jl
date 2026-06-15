@@ -3205,7 +3205,7 @@ end
 
 using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid, RotatedLatitudeLongitudeGrid,
                                                   ConformalCubedSpherePanelGrid
-using Oceananigans.OutputWriters: reconstruct_grid
+using Oceananigans.OutputWriters: reconstruct_grid, materialize_from_netcdf
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 
 function test_netcdf_tripolar_grid_output(arch)
@@ -3668,6 +3668,16 @@ function test_netcdf_tripolar_grid_reconstruction(arch)
     return nothing
 end
 
+function test_materialize_from_netcdf_qualified_strings()
+    # When Oceananigans is imported (not `using`d), grid-reconstruction args serialize
+    # with fully-qualified type names; materializing them must resolve `Oceananigans`
+    # inside the extension module, where the bare name would otherwise be unbound.
+    @test materialize_from_netcdf("(Oceananigans.Grids.Periodic, Oceananigans.Grids.Bounded)") === (Periodic, Bounded)
+    @test materialize_from_netcdf("Oceananigans.Architectures.CPU()") isa CPU
+    @test materialize_from_netcdf("Float64") === Float64
+    return nothing
+end
+
 @testset "NetCDF output writer" begin
     @info "Testing NetCDF output writer..."
 
@@ -3826,5 +3836,10 @@ end
             @info "  Testing MutableVerticalDiscretization output [$A]..."
             test_netcdf_rectilinear_mvd_output(arch)
         end
+    end
+
+    @testset "Reconstruct grid from fully-qualified NetCDF strings" begin
+        @info "  Testing materialize_from_netcdf with fully-qualified type names..."
+        test_materialize_from_netcdf_qualified_strings()
     end
 end
