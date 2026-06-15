@@ -66,8 +66,12 @@ function test_conjugate_gradient_partial_cell_bottom(underlying_grid, make_preco
     preconditioner_name = typeof(preconditioner).name.wrapper
     @info "  Testing CG solver with PartialCellBottom using $preconditioner_name..."
 
+    # maxiter is bounded so that a stagnating preconditioner fails the divergence-free
+    # assertion below instead of hanging CI (in exact arithmetic CG needs at most
+    # prod(size(grid)) iterations)
     reltol = abstol = eps(eltype(grid))
-    solver = ConjugateGradientPoissonSolver(grid; preconditioner, reltol, abstol, maxiter=Int(1e10))
+    maxiter = 10 * prod(size(grid))
+    solver = ConjugateGradientPoissonSolver(grid; preconditioner, reltol, abstol, maxiter)
     R, U = random_divergent_source_term(grid)
 
     p_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Center()))

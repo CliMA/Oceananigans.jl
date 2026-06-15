@@ -233,17 +233,19 @@ A_z^\\pm = A_z^{ccf}\\,\\Delta z^{-1},
 ```
 
 and diagonal `Ac = -(Ax⁻ + Ax⁺ + Ay⁻ + Ay⁺ + Az⁻ + Az⁺)`. Rather than inverting this stencil,
-the preconditioner returns
+the preconditioner applies the truncated Neumann series `M = D⁻¹ - D⁻¹ O D⁻¹` of the splitting
+`V∇² = D + O` into its diagonal and off-diagonal parts,
 
 ```math
 p_{ijk} = \\frac{1}{|A^c_{ijk}|}
-          \\left( r_{ijk} - \\sum_{\\text{nb}} \\frac{2\\,A^{\\text{nb}}_{ijk}}{A^c_{ijk} + A^c_{\\text{nb}}}\\, r_{\\text{nb}} \\right),
+          \\left( r_{ijk} + \\sum_{\\text{nb}} \\frac{A^{\\text{nb}}_{ijk}}{|A^c_{\\text{nb}}|}\\, r_{\\text{nb}} \\right),
 ```
 
-where the sum runs over the six face neighbors `nb` and each off-diagonal coupling is scaled by
-the harmonic-style combination `2 Aⁿᵇ / (Ac + Ac_nb)` of the two diagonals it connects. This is
-the diagonally-dominant correction that makes the sweep a good approximate inverse on a wide
-range of grids while remaining diagonally dominant (hence stable) by construction.
+where the sum runs over the six face neighbors `nb`. Because the face coupling `Aⁿᵇ` is shared by
+the two cells it connects, the resulting `M` is symmetric (`M_nb,c = Aⁿᵇ / (|Ac| |Ac_nb|) = M_c,nb`)
+and positive definite, as the conjugate gradient iteration requires; an asymmetric approximate
+inverse causes the residual to stagnate on stretched or partial-cell grids where `Ac` varies
+between neighboring cells.
 
 For strongly anisotropic, ocean-like grids (`(Δz/Δx)²Nz² ≫ 1`) the [`ColumnwiseTridiagonalPreconditioner`](@ref),
 which inverts the vertical sub-system exactly, is also another viable option.
@@ -275,13 +277,17 @@ end
                               Ay⁻(i, j, k, grid) - Ay⁺(i, j, k, grid) -
                               Az⁻(i, j, k, grid) - Az⁺(i, j, k, grid)
 
+# Truncated Neumann series M = D⁻¹ - D⁻¹ O D⁻¹: the off-diagonal weight Aⁿᵇ / (|Ac| |Ac_nb|) is
+# symmetric in the two cells sharing the face, which CG requires; the previous harmonic-mean
+# form 2Aⁿᵇ / (Ac + Ac_nb) is asymmetric wherever Ac varies (stretched or partial-cell grids)
+# and makes the iteration stagnate there.
 @inline heuristic_residual(i, j, k, grid, r) =
-    @inbounds 1 / abs(Ac(i, j, k, grid)) * (r[i, j, k] - 2 * Ax⁻(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i-1, j, k, grid)) * r[i-1, j, k] -
-                                                         2 * Ax⁺(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i+1, j, k, grid)) * r[i+1, j, k] -
-                                                         2 * Ay⁻(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j-1, k, grid)) * r[i, j-1, k] -
-                                                         2 * Ay⁺(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j+1, k, grid)) * r[i, j+1, k] -
-                                                         2 * Az⁻(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j, k-1, grid)) * r[i, j, k-1] -
-                                                         2 * Az⁺(i, j, k, grid) / (Ac(i, j, k, grid) + Ac(i, j, k+1, grid)) * r[i, j, k+1])
+    @inbounds 1 / abs(Ac(i, j, k, grid)) * (r[i, j, k] - Ax⁻(i, j, k, grid) / Ac(i-1, j, k, grid) * r[i-1, j, k] -
+                                                         Ax⁺(i, j, k, grid) / Ac(i+1, j, k, grid) * r[i+1, j, k] -
+                                                         Ay⁻(i, j, k, grid) / Ac(i, j-1, k, grid) * r[i, j-1, k] -
+                                                         Ay⁺(i, j, k, grid) / Ac(i, j+1, k, grid) * r[i, j+1, k] -
+                                                         Az⁻(i, j, k, grid) / Ac(i, j, k-1, grid) * r[i, j, k-1] -
+                                                         Az⁺(i, j, k, grid) / Ac(i, j, k+1, grid) * r[i, j, k+1])
 
 @kernel function _diagonally_dominant_precondition!(p, grid, r)
     i, j, k = @index(Global, NTuple)
