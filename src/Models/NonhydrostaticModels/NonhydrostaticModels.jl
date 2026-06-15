@@ -52,25 +52,8 @@ end
 nonhydrostatic_pressure_solver(arch, grid, ::Nothing) = ConjugateGradientPoissonSolver(grid)
 
 const IBGWithFFT = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:GridWithFFTSolver}
-nonhydrostatic_pressure_solver(arch, ibg::IBGWithFFT, ::Nothing) = naive_solver_with_warning(arch, ibg, nothing)
-nonhydrostatic_pressure_solver(arch, ibg::IBGWithFFT, fs) = naive_solver_with_warning(arch, ibg, fs)
-
-function naive_solver_with_warning(arch, ibg, free_surface)
-    msg = """The FFT-based pressure_solver for NonhydrostaticModels on ImmersedBoundaryGrid
-          is approximate and will probably produce velocity fields that are divergent
-          adjacent to the immersed boundary. An experimental but improved pressure_solver
-          is available which may be used by writing
-
-              using Oceananigans.Solvers: ConjugateGradientPoissonSolver
-              pressure_solver = ConjugateGradientPoissonSolver(grid)
-
-          Please report issues to https://github.com/CliMA/Oceananigans.jl/issues.
-          """
-    @warn msg
-
-    return nonhydrostatic_pressure_solver(arch, ibg.underlying_grid, free_surface)
-end
-
+nonhydrostatic_pressure_solver(arch, ibg::IBGWithFFT, ::Nothing) = ConjugateGradientPoissonSolver(ibg)
+nonhydrostatic_pressure_solver(arch, ibg::IBGWithFFT, fs) = ConjugateGradientPoissonSolver(ibg)
 
 nonhydrostatic_pressure_solver(grid, free_surface) = nonhydrostatic_pressure_solver(architecture(grid), grid, free_surface)
 
