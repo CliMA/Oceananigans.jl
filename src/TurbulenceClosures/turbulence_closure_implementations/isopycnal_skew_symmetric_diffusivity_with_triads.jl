@@ -20,7 +20,7 @@ const TISSDVector{TD} = AbstractVector{<:TISSD{TD}} where TD
 const FlavorOfTISSD{TD} = Union{TISSD{TD}, TISSDVector{TD}} where TD
 
 """
-    TriadIsopycnalSkewSymmetricDiffusivity([time_disc=VerticallyImplicitTimeDiscretization(), FT=Float64;]
+    TriadIsopycnalSkewSymmetricDiffusivity([time_disc=ExplicitTimeDiscretization(), FT=Float64;]
                                            κ_skew = 0,
                                            κ_symmetric = 0,
                                            isopycnal_tensor = SmallSlopeIsopycnalTensor(),

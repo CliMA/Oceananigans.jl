@@ -265,7 +265,7 @@ initialize_jld2_file!(writer::JLD2Writer, model) =
     initialize_jld2_file!(writer.filepath, writer.init, writer.jld2_kw, writer.including, writer.outputs, model)
 
 """
-    initialize!(writer::JLD2Writer, model)
+$(TYPEDSIGNATURES)
 
 Initialize a `JLD2Writer` by creating its output file and writing initial metadata.
 
@@ -360,7 +360,7 @@ function write_output!(writer::JLD2Writer, model)
 end
 
 """
-    jld2output!(path, iter, time, data, kwargs)
+$(TYPEDSIGNATURES)
 
 Write the `(name, value)` pairs in `data`, including the simulation
 `time`, to the JLD2 file at `path` in the `timeseries` group,
