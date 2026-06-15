@@ -1,5 +1,5 @@
 using Oceananigans: defaults
-using Oceananigans.Grids: column_depthᶠᶜᵃ, column_depthᶜᶠᵃ, column_depthᶜᶜᵃ
+using Oceananigans.Grids: column_depthᶠᶜᵃ, column_depthᶜᶠᵃ, column_depthᶜᶜᵃ, immersed_peripheral_node
 
 """
     Flather(; gravitational_acceleration = defaults.gravitational_acceleration)
@@ -301,7 +301,7 @@ const AAC = Tuple{Any, Any, Center}
     Uᵉˣᵗ, ηᵉˣᵗ = getbc(bc, j, k, grid, clock, model_fields)
     ηᵇ = ℑxᶠᵃᵃ(i, j, kᴺ⁺¹, grid, η)
 
-    @inbounds c[i, j, k] = Uᵉˣᵗ + sqrt(g * max(H, zero(H))) * (ηᵇ - ηᵉˣᵗ)
+    @inbounds c[i, j, k] = ifelse(H <= zero(H), zero(grid), Uᵉˣᵗ + sqrt(g * max(H, zero(H))) * (ηᵇ - ηᵉˣᵗ))
 
     return nothing
 end
@@ -317,7 +317,7 @@ end
     Uᵉˣᵗ, ηᵉˣᵗ = getbc(bc, j, k, grid, clock, model_fields)
     ηᵇ = ℑxᶠᵃᵃ(1, j, kᴺ⁺¹, grid, η)
 
-    @inbounds c[1, j, k] = Uᵉˣᵗ - sqrt(g * max(H, zero(H))) * (ηᵇ - ηᵉˣᵗ)
+    @inbounds c[1, j, k] = ifelse(H <= zero(H), zero(grid), Uᵉˣᵗ - sqrt(g * max(H, zero(H))) * (ηᵇ - ηᵉˣᵗ))
 
     return nothing
 end
@@ -334,7 +334,7 @@ end
     Vᵉˣᵗ, ηᵉˣᵗ = getbc(bc, i, k, grid, clock, model_fields)
     ηᵇ = ℑyᵃᶠᵃ(i, j, kᴺ⁺¹, grid, η)
 
-    @inbounds c[i, j, k] = Vᵉˣᵗ + sqrt(g * max(H, zero(H))) * (ηᵇ - ηᵉˣᵗ)
+    @inbounds c[i, j, k] = ifelse(H <= zero(H), zero(grid), Vᵉˣᵗ + sqrt(g * max(H, zero(H))) * (ηᵇ - ηᵉˣᵗ))
 
     return nothing
 end
@@ -350,7 +350,7 @@ end
     Vᵉˣᵗ, ηᵉˣᵗ = getbc(bc, i, k, grid, clock, model_fields)
     ηᵇ = ℑyᵃᶠᵃ(i, 1, kᴺ⁺¹, grid, η)
 
-    @inbounds c[i, 1, k] = Vᵉˣᵗ - sqrt(g * max(H, zero(H))) * (ηᵇ - ηᵉˣᵗ)
+    @inbounds c[i, 1, k] = ifelse(H <= zero(H), zero(grid), Vᵉˣᵗ - sqrt(g * max(H, zero(H))) * (ηᵇ - ηᵉˣᵗ))
 
     return nothing
 end
@@ -504,12 +504,13 @@ end
 # (Center-located fields): right boundaries coincide at N+1; left boundaries are 1 (Face) and 0 (Center).
 # The update is a convex combination of previous boundary, interior, and exterior values, so it is bounded.
 
-@inline function radiate_east_halo!(iᵇ, j, k, grid, c, bc, Uₙ, clock, model_fields)
+@inline function radiate_east_halo!(iᵇ, j, k, grid, c, bc, Uₙ, loc, clock, model_fields)
     Δτ = stage_Δt(clock)
     first_call = isinf(Δτ)
     Δt = ifelse(first_call, zero(Δτ), Δτ)
     anchored = anchored_fill(clock)
     radiation = bc.classification.scheme
+    ℓx, ℓy, ℓz = loc
 
     @inbounds begin
         φᵉˣᵗ  = getbc(bc, j, k, grid, clock, model_fields)
@@ -524,9 +525,9 @@ end
         Cᵃ  = abs(Uᵃ) * Δt / Δxᶠᶜᶜ(iᵇ, j, k, grid)
         outflow = Uᵃ >= 0
 
-        φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
-
-        c[iᵇ, j, k]         = φᵇⁿ⁺¹ # set boundary value
+        φᵇⁿ⁺¹  = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
+        closed = immersed_peripheral_node(grid.Nx, j, k, grid, Center(), ℓy, ℓz)
+        c[iᵇ, j, k]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹) # set boundary value
         radiation.φᵇ[j, k]  = φᵇⁿ   # anchor for later stages
         radiation.φ₁[j, k]  = φ₁ⁿ   # anchor for later stages
         radiation.φ₁ˡ[j, k] = φ₁ⁿ⁺¹ # latest interior, promoted at the next anchored fill
@@ -535,12 +536,13 @@ end
     return nothing
 end
 
-@inline function radiate_west_halo!(iᵇ, j, k, grid, c, bc, Uₙ, clock, model_fields)
+@inline function radiate_west_halo!(iᵇ, j, k, grid, c, bc, Uₙ, loc, clock, model_fields)
     Δτ = stage_Δt(clock)
     first_call = isinf(Δτ)
     Δt = ifelse(first_call, zero(Δτ), Δτ)
     anchored = anchored_fill(clock)
     radiation = bc.classification.scheme
+    ℓx, ℓy, ℓz = loc
 
     @inbounds begin
         φᵉˣᵗ  = getbc(bc, j, k, grid, clock, model_fields)
@@ -555,9 +557,9 @@ end
         Cᵃ  = abs(Uᵃ) * Δt / Δxᶠᶜᶜ(iᵇ + 1, j, k, grid)
         outflow = Uᵃ <= 0
 
-        φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
-
-        c[iᵇ, j, k]         = φᵇⁿ⁺¹ # set boundary value
+        φᵇⁿ⁺¹  = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
+        closed = immersed_peripheral_node(1, j, k, grid, Center(), ℓy, ℓz)
+        c[iᵇ, j, k]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹) # set boundary value
         radiation.φᵇ[j, k]  = φᵇⁿ   # anchor for later stages
         radiation.φ₁[j, k]  = φ₁ⁿ   # anchor for later stages
         radiation.φ₁ˡ[j, k] = φ₁ⁿ⁺¹ # latest interior, promoted at the next anchored fill
@@ -566,12 +568,13 @@ end
     return nothing
 end
 
-@inline function radiate_north_halo!(jᵇ, i, k, grid, c, bc, Uₙ, clock, model_fields)
+@inline function radiate_north_halo!(jᵇ, i, k, grid, c, bc, Uₙ, loc, clock, model_fields)
     Δτ = stage_Δt(clock)
     first_call = isinf(Δτ)
     Δt = ifelse(first_call, zero(Δτ), Δτ)
     anchored = anchored_fill(clock)
     radiation = bc.classification.scheme
+    ℓx, ℓy, ℓz = loc
 
     @inbounds begin
         φᵉˣᵗ  = getbc(bc, i, k, grid, clock, model_fields)
@@ -586,9 +589,9 @@ end
         Cᵃ  = abs(Uᵃ) * Δt / Δyᶜᶠᶜ(i, jᵇ, k, grid)
         outflow = Uᵃ >= 0
 
-        φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
-
-        c[i, jᵇ, k]         = φᵇⁿ⁺¹ # set boundary value
+        φᵇⁿ⁺¹  = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
+        closed = immersed_peripheral_node(i, grid.Ny, k, grid, ℓx, Center(), ℓz)
+        c[i, jᵇ, k]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹) # set boundary value
         radiation.φᵇ[i, k]  = φᵇⁿ   # anchor for later stages
         radiation.φ₁[i, k]  = φ₁ⁿ   # anchor for later stages
         radiation.φ₁ˡ[i, k] = φ₁ⁿ⁺¹ # latest interior, promoted at the next anchored fill
@@ -597,12 +600,13 @@ end
     return nothing
 end
 
-@inline function radiate_south_halo!(jᵇ, i, k, grid, c, bc, Uₙ, clock, model_fields)
+@inline function radiate_south_halo!(jᵇ, i, k, grid, c, bc, Uₙ, loc, clock, model_fields)
     Δτ = stage_Δt(clock)
     first_call = isinf(Δτ)
     Δt = ifelse(first_call, zero(Δτ), Δτ)
     anchored = anchored_fill(clock)
     radiation = bc.classification.scheme
+    ℓx, ℓy, ℓz = loc
 
     @inbounds begin
         φᵉˣᵗ  = getbc(bc, i, k, grid, clock, model_fields)
@@ -617,9 +621,9 @@ end
         Cᵃ  = abs(Uᵃ) * Δt / Δyᶜᶠᶜ(i, jᵇ + 1, k, grid)
         outflow = Uᵃ <= 0
 
-        φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
-
-        c[i, jᵇ, k]         = φᵇⁿ⁺¹ # set boundary value
+        φᵇⁿ⁺¹  = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
+        closed = immersed_peripheral_node(i, 1, k, grid, ℓx, Center(), ℓz)
+        c[i, jᵇ, k]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹) # set boundary value
         radiation.φᵇ[i, k]  = φᵇⁿ   # anchor for later stages
         radiation.φ₁[i, k]  = φ₁ⁿ   # anchor for later stages
         radiation.φ₁ˡ[i, k] = φ₁ⁿ⁺¹ # latest interior, promoted at the next anchored fill
@@ -628,12 +632,13 @@ end
     return nothing
 end
 
-@inline function radiate_top_halo!(kᵇ, i, j, grid, c, bc, Uₙ, clock, model_fields)
+@inline function radiate_top_halo!(kᵇ, i, j, grid, c, bc, Uₙ, loc, clock, model_fields)
     Δτ = stage_Δt(clock)
     first_call = isinf(Δτ)
     Δt = ifelse(first_call, zero(Δτ), Δτ)
     anchored = anchored_fill(clock)
     radiation = bc.classification.scheme
+    ℓx, ℓy, ℓz = loc
 
     @inbounds begin
         φᵉˣᵗ  = getbc(bc, i, j, grid, clock, model_fields)
@@ -648,9 +653,9 @@ end
         Cᵃ  = abs(Uᵃ) * Δt / Δzᶜᶜᶠ(i, j, kᵇ, grid)
         outflow = Uᵃ >= 0
 
-        φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
-
-        c[i, j, kᵇ]         = φᵇⁿ⁺¹ # set boundary value
+        φᵇⁿ⁺¹  = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
+        closed = immersed_peripheral_node(i, j, grid.Nz, grid, ℓx, ℓy, Center())
+        c[i, j, kᵇ]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹) # set boundary value
         radiation.φᵇ[i, j]  = φᵇⁿ   # anchor for later stages
         radiation.φ₁[i, j]  = φ₁ⁿ   # anchor for later stages
         radiation.φ₁ˡ[i, j] = φ₁ⁿ⁺¹ # latest interior, promoted at the next anchored fill
@@ -659,12 +664,13 @@ end
     return nothing
 end
 
-@inline function radiate_bottom_halo!(kᵇ, i, j, grid, c, bc, Uₙ, clock, model_fields)
+@inline function radiate_bottom_halo!(kᵇ, i, j, grid, c, bc, Uₙ, loc, clock, model_fields)
     Δτ = stage_Δt(clock)
     first_call = isinf(Δτ)
     Δt = ifelse(first_call, zero(Δτ), Δτ)
     anchored = anchored_fill(clock)
     radiation = bc.classification.scheme
+    ℓx, ℓy, ℓz = loc
 
     @inbounds begin
         φᵉˣᵗ  = getbc(bc, i, j, grid, clock, model_fields)
@@ -679,9 +685,9 @@ end
         Cᵃ  = abs(Uᵃ) * Δt / Δzᶜᶜᶠ(i, j, kᵇ + 1, grid)
         outflow = Uᵃ <= 0
 
-        φᵇⁿ⁺¹ = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
-
-        c[i, j, kᵇ]         = φᵇⁿ⁺¹ # set boundary value
+        φᵇⁿ⁺¹  = orlanski_radiation(φᵇⁿ, φ₁ⁿ⁺¹, φ₂ⁿ⁺¹, φ₁ⁿ, φᵉˣᵗ, Δt, radiation, outflow, Cᵃ)
+        closed = immersed_peripheral_node(i, j, 1, grid, ℓx, ℓy, Center())
+        c[i, j, kᵇ]         = ifelse(closed, zero(grid), φᵇⁿ⁺¹) # set boundary value
         radiation.φᵇ[i, j]  = φᵇⁿ   # anchor for later stages
         radiation.φ₁[i, j]  = φ₁ⁿ   # anchor for later stages
         radiation.φ₁ˡ[i, j] = φ₁ⁿ⁺¹ # latest interior, promoted at the next anchored fill
@@ -692,16 +698,16 @@ end
 
 # NormalFlow fields radiate with their own boundary value as advecting velocity (Uₙ = nothing);
 # Value fields (tracers, tangential velocities) are advected by the boundary-normal velocity
-@inline   _fill_east_halo!(j, k, grid, c, bc::RNFBC, ::FAA, clock, model_fields) =   radiate_east_halo!(grid.Nx+1, j, k, grid, c, bc, nothing, clock, model_fields)
-@inline   _fill_west_halo!(j, k, grid, c, bc::RNFBC, ::FAA, clock, model_fields) =   radiate_west_halo!(1,         j, k, grid, c, bc, nothing, clock, model_fields)
-@inline  _fill_north_halo!(i, k, grid, c, bc::RNFBC, ::AFA, clock, model_fields) =  radiate_north_halo!(grid.Ny+1, i, k, grid, c, bc, nothing, clock, model_fields)
-@inline  _fill_south_halo!(i, k, grid, c, bc::RNFBC, ::AFA, clock, model_fields) =  radiate_south_halo!(1,         i, k, grid, c, bc, nothing, clock, model_fields)
-@inline    _fill_top_halo!(i, j, grid, c, bc::RNFBC, ::AAF, clock, model_fields) =    radiate_top_halo!(grid.Nz+1, i, j, grid, c, bc, nothing, clock, model_fields)
-@inline _fill_bottom_halo!(i, j, grid, c, bc::RNFBC, ::AAF, clock, model_fields) = radiate_bottom_halo!(1,         i, j, grid, c, bc, nothing, clock, model_fields)
+@inline   _fill_east_halo!(j, k, grid, c, bc::RNFBC, loc::FAA, clock, model_fields) =   radiate_east_halo!(grid.Nx+1, j, k, grid, c, bc, nothing, loc, clock, model_fields)
+@inline   _fill_west_halo!(j, k, grid, c, bc::RNFBC, loc::FAA, clock, model_fields) =   radiate_west_halo!(1,         j, k, grid, c, bc, nothing, loc, clock, model_fields)
+@inline  _fill_north_halo!(i, k, grid, c, bc::RNFBC, loc::AFA, clock, model_fields) =  radiate_north_halo!(grid.Ny+1, i, k, grid, c, bc, nothing, loc, clock, model_fields)
+@inline  _fill_south_halo!(i, k, grid, c, bc::RNFBC, loc::AFA, clock, model_fields) =  radiate_south_halo!(1,         i, k, grid, c, bc, nothing, loc, clock, model_fields)
+@inline    _fill_top_halo!(i, j, grid, c, bc::RNFBC, loc::AAF, clock, model_fields) =    radiate_top_halo!(grid.Nz+1, i, j, grid, c, bc, nothing, loc, clock, model_fields)
+@inline _fill_bottom_halo!(i, j, grid, c, bc::RNFBC, loc::AAF, clock, model_fields) = radiate_bottom_halo!(1,         i, j, grid, c, bc, nothing, loc, clock, model_fields)
 
-@inline   _fill_east_halo!(j, k, grid, c, bc::RVBC,  ::CAA, clock, model_fields) =   radiate_east_halo!(grid.Nx+1, j, k, grid, c, bc, @inbounds(model_fields.u[grid.Nx, j, k]), clock, model_fields)
-@inline   _fill_west_halo!(j, k, grid, c, bc::RVBC,  ::CAA, clock, model_fields) =   radiate_west_halo!(0,         j, k, grid, c, bc, @inbounds(model_fields.u[2, j, k]),       clock, model_fields)
-@inline  _fill_north_halo!(i, k, grid, c, bc::RVBC,  ::ACA, clock, model_fields) =  radiate_north_halo!(grid.Ny+1, i, k, grid, c, bc, @inbounds(model_fields.v[i, grid.Ny, k]), clock, model_fields)
-@inline  _fill_south_halo!(i, k, grid, c, bc::RVBC,  ::ACA, clock, model_fields) =  radiate_south_halo!(0,         i, k, grid, c, bc, @inbounds(model_fields.v[i, 2, k]),       clock, model_fields)
-@inline    _fill_top_halo!(i, j, grid, c, bc::RVBC,  ::AAC, clock, model_fields) =    radiate_top_halo!(grid.Nz+1, i, j, grid, c, bc, @inbounds(model_fields.w[i, j, grid.Nz]), clock, model_fields)
-@inline _fill_bottom_halo!(i, j, grid, c, bc::RVBC,  ::AAC, clock, model_fields) = radiate_bottom_halo!(0,         i, j, grid, c, bc, @inbounds(model_fields.w[i, j, 2]),       clock, model_fields)
+@inline   _fill_east_halo!(j, k, grid, c, bc::RVBC,  loc::CAA, clock, model_fields) =   radiate_east_halo!(grid.Nx+1, j, k, grid, c, bc, @inbounds(model_fields.u[grid.Nx, j, k]), loc, clock, model_fields)
+@inline   _fill_west_halo!(j, k, grid, c, bc::RVBC,  loc::CAA, clock, model_fields) =   radiate_west_halo!(0,         j, k, grid, c, bc, @inbounds(model_fields.u[2, j, k]),       loc, clock, model_fields)
+@inline  _fill_north_halo!(i, k, grid, c, bc::RVBC,  loc::ACA, clock, model_fields) =  radiate_north_halo!(grid.Ny+1, i, k, grid, c, bc, @inbounds(model_fields.v[i, grid.Ny, k]), loc, clock, model_fields)
+@inline  _fill_south_halo!(i, k, grid, c, bc::RVBC,  loc::ACA, clock, model_fields) =  radiate_south_halo!(0,         i, k, grid, c, bc, @inbounds(model_fields.v[i, 2, k]),       loc, clock, model_fields)
+@inline    _fill_top_halo!(i, j, grid, c, bc::RVBC,  loc::AAC, clock, model_fields) =    radiate_top_halo!(grid.Nz+1, i, j, grid, c, bc, @inbounds(model_fields.w[i, j, grid.Nz]), loc, clock, model_fields)
+@inline _fill_bottom_halo!(i, j, grid, c, bc::RVBC,  loc::AAC, clock, model_fields) = radiate_bottom_halo!(0,         i, j, grid, c, bc, @inbounds(model_fields.w[i, j, 2]),       loc, clock, model_fields)
