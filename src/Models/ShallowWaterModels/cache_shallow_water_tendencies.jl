@@ -17,7 +17,7 @@ end
 end
 
 """
-    cache_previous_tendencies!(model::ShallowWaterModel)
+$(TYPEDSIGNATURES)
 
 Store the current tendencies `Gⁿ` into `G⁻` for solution fields (`uh`, `vh`, `h`) and tracers.
 

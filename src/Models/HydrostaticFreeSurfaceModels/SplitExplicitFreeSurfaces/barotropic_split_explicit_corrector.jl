@@ -15,7 +15,7 @@ using Oceananigans.Models: surface_kernel_parameters, volume_kernel_parameters
 end
 
 """
-    compute_barotropic_mode!(U̅, V̅, grid, u, v)
+$(TYPEDSIGNATURES)
 
 Compute the depth-integrated (barotropic) velocities from baroclinic velocity fields.
 
@@ -31,7 +31,7 @@ function compute_barotropic_mode!(U̅, V̅, grid, u, v)
 end
 
 """
-    barotropic_split_explicit_corrector!(u, v, free_surface, grid)
+$(TYPEDSIGNATURES)
 
 Correct baroclinic velocities so that they are consistent with the barotropic flow from
 split-explicit substepping.
@@ -108,7 +108,7 @@ end
 end
 
 """
-    compute_transport_velocities!(model, free_surface::SplitExplicitFreeSurface)
+$(TYPEDSIGNATURES)
 
 Compute transport velocities used for tracer advection with split-explicit free surface.
 

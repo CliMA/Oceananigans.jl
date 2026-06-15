@@ -422,7 +422,7 @@ function Base.similar(grid::RectilinearGrid)
 end
 
 """
-    with_number_type(number_type, grid)
+$(TYPEDSIGNATURES)
 
 Return a `new_grid` that's identical to `grid` but with `number_type`.
 """
@@ -433,7 +433,7 @@ function with_number_type(FT, grid::RectilinearGrid)
 end
 
 """
-    with_halo(halo, grid)
+$(TYPEDSIGNATURES)
 
 Return a `new_grid` that's identical to `grid` but with `halo`.
 """
@@ -447,7 +447,7 @@ function with_halo(halo, grid::RectilinearGrid)
 end
 
 """
-    on_architecture(architecture, grid)
+$(TYPEDSIGNATURES)
 
 Return a `new_grid` that's identical to `grid` but on `architecture`.
 """

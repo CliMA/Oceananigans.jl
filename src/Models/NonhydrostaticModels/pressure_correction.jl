@@ -1,5 +1,5 @@
 """
-    compute_pressure_correction!(model::NonhydrostaticModel, Δt)
+$(TYPEDSIGNATURES)
 
 Calculate the (nonhydrostatic) pressure correction associated `tendencies`, `velocities`, and step size `Δt`.
 """
