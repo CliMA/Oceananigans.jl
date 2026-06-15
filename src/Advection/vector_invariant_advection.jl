@@ -40,7 +40,7 @@ end
                       vertical_advection_scheme = EnergyConserving(),
                       divergence_scheme = vertical_advection_scheme,
                       kinetic_energy_gradient_scheme = divergence_scheme,
-                      upwinding  = OnlySelfUpwinding(; cross_scheme = divergence_scheme),
+                      upwinding = OnlySelfUpwinding(; cross_scheme = divergence_scheme),
                       multi_dimensional_stencil = false)
 
 Return a vector-invariant momentum advection scheme.
@@ -60,9 +60,9 @@ Keyword arguments
 
 - `vertical_advection_scheme`: Scheme used for vertical advection of horizontal momentum. Default: `EnergyConserving()`.
 
-- `kinetic_energy_gradient_scheme`: Scheme used for kinetic energy gradient reconstruction. Default: `vertical_advection_scheme`.
+- `kinetic_energy_gradient_scheme`: Scheme used for kinetic energy gradient reconstruction. Default: `divergence_scheme`.
 
-- `divergence_scheme`: Scheme used for divergence flux. Only upwinding schemes are supported. Default: `vorticity_scheme`.
+- `divergence_scheme`: Scheme used for divergence flux. Only upwinding schemes are supported. Default: `vertical_advection_scheme`.
 
 - `upwinding`: Treatment of upwinded reconstruction of divergence and kinetic energy gradient. Default: `OnlySelfUpwinding()`. Options:
   * `CrossAndSelfUpwinding()`

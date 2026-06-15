@@ -39,7 +39,8 @@ on RectilinearGrid, LatitudeLongitudeGrid, CubedSphereGrid, and ImmersedBoundary
 
 ### Docstrings
 
-- Use DocStringExtensions.jl with `$(SIGNATURES)`
+- Use DocStringExtensions.jl with `$(TYPEDSIGNATURES)` when the signature does not include
+  default values for args and/or kwargs.
 - **ALWAYS `jldoctest` blocks, NEVER plain `julia` blocks** — doctests are tested; plain blocks rot
 - Include `# output` with verifiable output; prefer `show` methods over boolean comparisons
 - Use unicode for math (`Δt`, `η`, `ρ`), not LaTeX — LaTeX doesn't render in the REPL
