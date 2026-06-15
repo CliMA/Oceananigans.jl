@@ -229,14 +229,6 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
 
     res = Oceananigans.Grids.LatitudeLongitudeGrid{FT2, TX2, TY2, TZ2, Z2, DXF2, DXC2, XF2, XC2, DYF2, DYC2, YF2, YC2,
                                                    DXCC2, DXFC2, DXCF2, DXFF2, DYFC2, DYCF2, Arch, I2}
-    
-    #=
-    @show " "
-    @show "We hit traced type inner!"
-    @show OA
-    @show res
-    @show " "
-    =#
 
     return res
 end
@@ -249,8 +241,6 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
         @nospecialize(sharding),
         @nospecialize(runtime)
     ) where {FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch}
-
-    #@show (FT, TX, TY, TZ, CZ, FX, FY, VX, VY)
 
     TX2 = Reactant.traced_type_inner(TX, seen, mode, track_numbers, sharding, runtime)
     TY2 = Reactant.traced_type_inner(TY, seen, mode, track_numbers, sharding, runtime)
@@ -277,16 +267,7 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
         end
     end
 
-    #@show (FT2, TX2, TY2, TZ2, CZ2, FX2, FY2, VX2, VY2)
-
     res = Oceananigans.Grids.RectilinearGrid{FT2, TX2, TY2, TZ2, CZ2, FX2, FY2, VX2, VY2, Arch}
-    #=
-    @show " "
-    @show "We hit traced type inner!"
-    @show OA
-    @show res
-    @show " "
-    =#
 
     return res
 end
@@ -299,10 +280,6 @@ end
         )
 
         res = Reactant.make_tracer_via_immutable_constructor(seen, prev, args...; kwargs...)
-
-        #@show "Hit make tracer!"
-        #@show Core.Typeof(prev)
-        #@show Core.Typeof(res)
 
         return res
 end
