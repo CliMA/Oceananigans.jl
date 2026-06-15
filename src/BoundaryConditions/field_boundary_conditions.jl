@@ -1,6 +1,6 @@
-using Oceananigans.Operators: assumed_field_location
-using Oceananigans.Grids: YFlatGrid
 using GPUArraysCore
+using Oceananigans.Grids: YFlatGrid
+using Oceananigans.Operators: assumed_field_location
 
 #####
 ##### Default boundary conditions
@@ -115,7 +115,14 @@ on_architecture(arch, fbcs::FieldBoundaryConditions) =
                             on_architecture(arch, fbcs.ordered_bcs))
 
 """
-    FieldBoundaryConditions(; kwargs...)
+    FieldBoundaryConditions(default_bounded_bc=NoFluxBoundaryCondition();
+                            west     = DefaultBoundaryCondition(default_bounded_bc),
+                            east     = DefaultBoundaryCondition(default_bounded_bc),
+                            south    = DefaultBoundaryCondition(default_bounded_bc),
+                            north    = DefaultBoundaryCondition(default_bounded_bc),
+                            bottom   = DefaultBoundaryCondition(default_bounded_bc),
+                            top      = DefaultBoundaryCondition(default_bounded_bc),
+                            immersed = DefaultBoundaryCondition(default_bounded_bc))
 
 Return a template for boundary conditions on prognostic fields.
 
@@ -152,13 +159,13 @@ FieldBoundaryConditions(default_bounded_bc::BoundaryCondition = NoFluxBoundaryCo
 
 """
     FieldBoundaryConditions(grid, location, indices=(:, :, :);
-                            west     = default_auxiliary_bc(grid, boundary, loc),
-                            east     = default_auxiliary_bc(grid, boundary, loc),
-                            south    = default_auxiliary_bc(grid, boundary, loc),
-                            north    = default_auxiliary_bc(grid, boundary, loc),
-                            bottom   = default_auxiliary_bc(grid, boundary, loc),
-                            top      = default_auxiliary_bc(grid, boundary, loc),
-                            immersed = NoFluxBoundaryCondition())
+                            west     = default_auxiliary_bc(grid, Val(:west), location),
+                            east     = default_auxiliary_bc(grid, Val(:east), location),
+                            south    = default_auxiliary_bc(grid, Val(:south), location),
+                            north    = default_auxiliary_bc(grid, Val(:north), location),
+                            bottom   = default_auxiliary_bc(grid, Val(:bottom), location),
+                            top      = default_auxiliary_bc(grid, Val(:top), location),
+                            immersed = DefaultBoundaryCondition())
 
 Return boundary conditions for auxiliary fields (fields whose values are
 derived from a model's prognostic fields) on `grid` and at `location`.
@@ -166,7 +173,7 @@ derived from a model's prognostic fields) on `grid` and at `location`.
 Keyword arguments
 =================
 
-Keyword arguments specify boundary conditions on the 6 possible boundaries:
+Keyword arguments specify boundary conditions on the 7 possible boundaries:
 
 - `west`, left end point in the `x`-direction where `i = 1`
 - `east`, right end point in the `x`-direction where `i = grid.Nx`

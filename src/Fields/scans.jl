@@ -119,7 +119,7 @@ Base.show(io::IO, s::Scan) =
 #####
 
 """
-    Reduction(reduce!, operand; dims)
+$(TYPEDSIGNATURES)
 
 Return a `Reduction` of `operand` with `reduce!`, where `reduce!` can be called with
 
@@ -159,7 +159,7 @@ Oceananigans.location(r::Reduction) = reduced_location(location(r.operand); dims
 #####
 
 """
-    Accumulation(accumulate!, operand; dims)
+$(TYPEDSIGNATURES)
 
 Return a `Accumulation` of `operand` with `accumulate!`, where `accumulate!` can be called with
 

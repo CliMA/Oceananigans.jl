@@ -41,7 +41,12 @@ Base.show(io::IO, ibc::IBC) =
               "└── top: ", summary(ibc.top))
 
 """
-    ImmersedBoundaryCondition(; interfaces...)
+    ImmersedBoundaryCondition(; west=nothing,
+                               east=nothing,
+                               south=nothing,
+                               north=nothing,
+                               bottom=nothing,
+                               top=nothing)
 
 Return an `ImmersedBoundaryCondition` with conditions on individual cell
 `interfaces ∈ (west, east, south, north, bottom, top)` between the fluid
@@ -74,7 +79,7 @@ function regularize_immersed_boundary_condition(ibc::Union{VBC, GBC, FBC}, ibg::
 end
 
 """
-    regularize_immersed_boundary_condition(bc::IBC, grid, loc, field_name, prognostic_field_names)
+$(TYPEDSIGNATURES)
 """
 function regularize_immersed_boundary_condition(bc::IBC, grid, loc, field_name, prognostic_field_names)
 

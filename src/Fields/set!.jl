@@ -47,7 +47,7 @@ set!(u::Field, f::Function) = set_to_function!(u, f)
 set!(u::Field, a::Union{Array, OffsetArray}) = set_to_array!(u, a)
 
 """
-    set!(u::Field, v::Field)
+$(TYPEDSIGNATURES)
 
 Set `u` from `v`. When `u` and `v` have the same `size`, `location`, and
 `indices`, the data of `v` is copied into `u` (cross-architecture transfers

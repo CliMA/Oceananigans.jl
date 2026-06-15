@@ -57,7 +57,7 @@ Returns the scalar viscosity associated with `closure`.
 function viscosity end
 
 """
-    diffusivity(closure, tracer_index, closure_fields)
+    diffusivity(closure, closure_fields, tracer_index)
 
 Returns the scalar diffusivity associated with `closure` and `tracer_index`.
 """
