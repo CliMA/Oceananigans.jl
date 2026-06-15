@@ -159,7 +159,7 @@ z_rotation_matrix(dλ) = @SMatrix [cos(dλ) -sin(dλ) 0
                                   0        0       1]
 
 """
-    rotate_coordinates(λ′, φ′, λ₀, φ₀)
+$(TYPEDSIGNATURES)
 
 Return the geographic longitude and latitude `(λ, φ)` corresponding to the rotated
 coordinates `(λ′, φ′)` on a grid whose north pole is located at `(λ₀, φ₀)`. All

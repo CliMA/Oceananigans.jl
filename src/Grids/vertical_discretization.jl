@@ -83,7 +83,7 @@ const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,  
 
 
 """
-    MutableVerticalDiscretization(r_faces)
+$(TYPEDSIGNATURES)
 
 Construct a `MutableVerticalDiscretization` from `r_faces` that can be a `Tuple`,
 a function of an index `k`, or an `AbstractArray`. A `MutableVerticalDiscretization`

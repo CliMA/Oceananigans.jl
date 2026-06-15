@@ -80,7 +80,7 @@ synchronize_communication!(::Nothing)       = nothing
 synchronize_communication!(t::Union{NamedTuple, Tuple}) = foreach(synchronize_communication!, t)
 
 """
-    synchronize_communication!(field)
+$(TYPEDSIGNATURES)
 
 complete the halo passing of `field` among processors.
 """
@@ -107,7 +107,7 @@ end
 reconstruct_global_field(field) = field
 
 """
-    reconstruct_global_field(field::DistributedField)
+$(TYPEDSIGNATURES)
 
 Reconstruct a global field from a local field by combining the data from all processes.
 """
