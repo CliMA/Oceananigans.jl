@@ -40,10 +40,11 @@ struct InMemory{S} <: AbstractInMemoryBackend{S}
 end
 
 """
-    InMemory(length=nothing)
+    InMemory()
+    InMemory(length)
 
-Return a `backend` for `FieldTimeSeries` that stores `size`
-fields in memory. The default `size = nothing` stores all fields in memory.
+Return a `backend` for `FieldTimeSeries` that stores `length`
+fields in memory. If `nothing` is provided (default), then all fields are stored in memory.
 """
 function InMemory(length::Int)
     length < 2 && throw(ArgumentError("InMemory `length` must be 2 or greater."))
@@ -81,7 +82,7 @@ struct SplitFilePath
 end
 
 """
-    file_and_local_index(sfp::SplitFilePath, n, time, reader_kw)
+$(TYPEDSIGNATURES)
 
 Return `(filepath, local_index)` for global time index `n`.
 Time `time` and reader keyword arguments `reader_kw` are passed
@@ -170,7 +171,7 @@ struct Clamp end # clamp to nearest value
 @inline reverse_index(m, n₀) = m + n₀ - 1
 
 """
-    time_index(backend::PartlyInMemory, time_indexing, Nt, m)
+$(TYPEDSIGNATURES)
 
 Compute the time index of a snapshot currently stored at the memory index `m`,
 given `backend`, `time_indexing`, and number of times `Nt`.
@@ -188,7 +189,7 @@ end
 end
 
 """
-    memory_index(backend::PartlyInMemory, time_indexing, Nt, n)
+$(TYPEDSIGNATURES)
 
 Compute the current index of a snapshot in memory that has
 the time index `n`, given `backend`, `time_indexing`, and number of times `Nt`.
@@ -238,7 +239,7 @@ end
 end
 
 """
-    time_indices(backend, time_indexing, Nt)
+$(TYPEDSIGNATURES)
 
 Return a collection of the time indices that are currently in memory.
 If `backend::TotallyInMemory` then return `1:length(times)`.
@@ -445,7 +446,7 @@ Keyword arguments
 - `backend`: `InMemory()` (default), `OnDisk()`, or a custom backend. This is how the data is stored outside `FieldTimeSeries.data`.
 - `path`: path to data for `backend = OnDisk()`. Default: `nothing`.
 - `name`: name of field for `backend = OnDisk()`. Default: `nothing`.
-- `time_indexing`: time indexing mode for extrapolation in time. Can be `Clamped()` (default), `Cyclical()`, or `Linear()`.
+- `time_indexing`: time indexing mode for extrapolation in time. Can be `Clamp()` (default), `Cyclical()`, or `Linear()`.
 - `boundary_conditions`: boundary conditions for the fields. Default: `FieldBoundaryConditions(grid, loc)`.
 - `reader_kw`: a named tuple or dictionary of keyword arguments to pass to the reader.
 
@@ -629,7 +630,7 @@ end
 struct UnspecifiedBoundaryConditions end
 
 """
-    load_serialized_grid(file, name)
+$(TYPEDSIGNATURES)
 
 Load the grid associated with the output variable `name` from a JLD2 `file`.
 
@@ -650,7 +651,7 @@ function load_serialized_grid(file, name)
 end
 
 """
-    reconstruct_legacy_grid(grid, file, architecture)
+$(TYPEDSIGNATURES)
 
 Reconstruct a grid from legacy JLD2 output files (prior to Oceananigans 0.95.0)
 that did not serialize grids properly. Reads raw grid data from the top-level
@@ -706,7 +707,7 @@ function reconstruct_legacy_grid(grid, file, architecture)
 end
 
 """
-    manually_reconstruct_rectilinear_grid(grid, file, architecture)
+$(TYPEDSIGNATURES)
 
 Manually reconstruct a RectilinearGrid from file data when `on_architecture` fails.
 This is a fallback for grids saved with CuArrays or generated with a different Julia version.
@@ -763,7 +764,7 @@ end
                     iterations = nothing,
                     times = nothing,
                     combine = true,
-                    reader_kw = Dict{Symbol, Any}())
+                    reader_kw = NamedTuple())
 
 Return a `FieldTimeSeries` containing a time-series of the field `name`
 load from JLD2 output located at `path`.

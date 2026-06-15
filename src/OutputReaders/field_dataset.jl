@@ -10,8 +10,7 @@ struct FieldDataset{F, B, M, P, KW}
 end
 
 """
-    FieldDataset(filepath;
-                 architecture=CPU(), grid=nothing, backend=InMemory(), metadata_paths=["metadata"])
+$(TYPEDSIGNATURES)
 
 Returns a `Dict` containing a `FieldTimeSeries` for each field in the JLD2 file located
 at `filepath`. Note that model output **must** have been saved with halos.

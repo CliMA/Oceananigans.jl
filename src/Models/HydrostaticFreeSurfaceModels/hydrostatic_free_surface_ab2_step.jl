@@ -9,7 +9,7 @@ import Oceananigans.TimeSteppers: ab2_step!
 #####
 
 """
-    ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, callbacks)
+$(TYPEDSIGNATURES)
 
 Advance `HydrostaticFreeSurfaceModel` by one Adams-Bashforth 2nd-order time step.
 
@@ -19,7 +19,7 @@ ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, callbacks) =
     hydrostatic_ab2_step!(model, model.free_surface, model.grid, Δt, callbacks)
 
 """
-    hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
+$(TYPEDSIGNATURES)
 
 The Adams-Bashforth 2nd-order time step for `HydrostaticFreeSurfaceModel` with explicit free surfaces
 (`ExplicitFreeSurface` or `SplitExplicitFreeSurface`).
@@ -73,7 +73,7 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
 end
 
 """
-    hydrostatic_ab2_step!(model::HydrostaticFreeSurfaceModel, ::ImplicitFreeSurface, grid, Δt, callbacks)
+$(TYPEDSIGNATURES)
 
 The Adams-Bashforth 2nd-order time step for `HydrostaticFreeSurfaceModel` with `ImplicitFreeSurface`.
 
@@ -136,7 +136,7 @@ end
 #####
 
 """
-    ab2_step_grid!(grid, model, ::ZCoordinate, Δt, χ)
+$(TYPEDSIGNATURES)
 
 Update grid scaling factors during an AB2 time step.
 
@@ -150,7 +150,7 @@ ab2_step_grid!(grid, model, ::ZCoordinate, Δt, χ) = nothing
 #####
 
 """
-    ab2_step_velocities!(velocities, model, Δt, χ)
+$(TYPEDSIGNATURES)
 
 Advance horizontal velocities `u` and `v` using the AB2 scheme.
 
@@ -195,7 +195,7 @@ hasclosure(closure_tuple::Tuple, ClosureType) = any(hasclosure(c, ClosureType) f
 ab2_step_tracers!(::EmptyNamedTuple, model, Δt, χ) = nothing
 
 """
-    ab2_step_tracers!(tracers, model, Δt, χ)
+$(TYPEDSIGNATURES)
 
 Advance tracer fields using the AB2 scheme.
 

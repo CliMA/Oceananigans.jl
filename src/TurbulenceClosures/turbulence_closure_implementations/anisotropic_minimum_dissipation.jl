@@ -1,6 +1,6 @@
+using Adapt: Adapt, adapt
 using Oceananigans.BuoyancyFormulations: buoyancy_perturbationᶜᶜᶜ
 using Oceananigans.Operators
-using Adapt: Adapt, adapt
 
 """
     AnisotropicMinimumDissipation{FT} <: AbstractTurbulenceClosure

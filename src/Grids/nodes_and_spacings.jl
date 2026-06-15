@@ -141,7 +141,7 @@ destantiate(::Face)   = Face
 destantiate(::Center) = Center
 
 """
-    minimum_xspacing(grid, ℓx, ℓy, ℓz)
+$(TYPEDSIGNATURES)
 
 Return the minimum spacing for `grid` in ``x`` direction at location `ℓx, ℓy, ℓz`.
 
@@ -160,7 +160,7 @@ minimum_xspacing(grid, loc...) = minimum(xspacings(grid, loc...))
 minimum_xspacing(grid) = minimum(xspacings(grid))
 
 """
-    minimum_yspacing(grid, ℓx, ℓy, ℓz)
+$(TYPEDSIGNATURES)
 
 Return the minimum spacing for `grid` in ``y`` direction at location `ℓx, ℓy, ℓz`.
 
