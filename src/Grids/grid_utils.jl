@@ -3,7 +3,7 @@ using OffsetArrays: IdOffsetRange
 using Oceananigans.Utils: Utils, prettysummary
 
 """
-    _property(ξ, ℓ, T, N, H, with_halos)
+$(TYPEDSIGNATURES)
 
 Return the grid property `ξ`, either `with_halos` or without,
 for (instantiated) location `ℓ`, topology `T`, dimension length `N` and halo size `H`.
@@ -119,7 +119,7 @@ total_size(grid::AbstractGrid, loc, indices=default_indices(Val(length(loc)))) =
     total_size(loc, topology(grid), size(grid), halo_size(grid), indices)
 
 """
-    total_extent(topology, H, Δ, L)
+$(TYPEDSIGNATURES)
 
 Return the total extent, including halo regions, of constant-spaced
 `Periodic` and `Flat` dimensions with number of halo points `H`,
@@ -255,7 +255,7 @@ flatten_halo(TX, TY, TZ, halo) = Tuple(T === Flat ? 0 : halo[i] for (i, T) in en
 flatten_size(TX, TY, TZ, halo) = Tuple(T === Flat ? 0 : halo[i] for (i, T) in enumerate((TX, TY, TZ)))
 
 """
-    pop_flat_elements(tup, topo)
+$(TYPEDSIGNATURES)
 
 Return a new tuple that contains the elements of `tup`,
 except for those elements corresponding to the `Flat` directions
