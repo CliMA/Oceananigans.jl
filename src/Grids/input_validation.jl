@@ -154,6 +154,13 @@ function validate_dimension_specification(T, ξ::Union{Function, CallableDiscret
     return ξ
 end
 
+function validate_dimension_specification(T, ξ::ExponentialDiscretization, dir, N, FT)
+    if !(length(ξ.faces)) == N+1
+        throw(ArgumentError("Coordinate $(summary(ξ) has length $(length(ξ.faces)) while direction $(dir) requires a coordinate of length $(N+1)"))
+    end
+    return ξ
+end
+
 function validate_dimension_specification(::Type{Flat}, ξ::AbstractVector, dir, N, FT)
     # Convert to CPU array if needed to avoid scalar indexing errors on GPU arrays
     ξ_cpu = ξ isa Array ? ξ : Array(ξ)
