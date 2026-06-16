@@ -7,6 +7,9 @@ using Oceananigans.TimeSteppers: AdaptiveVerticallyImplicitDiscretization,
                                  ExplicitTimeDiscretization,
                                  time_discretization,
                                  reset!
+using Oceananigans.OutputWriters: Checkpointer
+using Glob: glob
+import Oceananigans.Simulations: initialize!
 
 @testset "AdaptiveVerticallyImplicitDiscretization construction" begin
     td = AdaptiveVerticallyImplicitDiscretization(cfl=0.3)
@@ -112,23 +115,59 @@ end
     @test all(isfinite, parent(model.velocities.v))
 end
 
-@testset "AIVA can be re-run after reset!" begin
-    grid = RectilinearGrid(CPU(), size=(8, 8, 8), x=(0, 1), y=(0, 1), z=(0, 1),
-                           halo=(6, 6, 4), topology=(Periodic, Periodic, Bounded))
+const aiva_test_grid = RectilinearGrid(CPU(), size=(8, 8, 8), x=(0, 1), y=(0, 1), z=(0, 1),
+                                          halo=(6, 6, 4), topology=(Periodic, Periodic, Bounded))
 
+aiva_test_model(; timestepper=:SplitRungeKutta3) = begin
     momentum_advection = WENOVectorInvariant(; time_discretization=AdaptiveVerticallyImplicitDiscretization(cfl=0.5))
-    model = HydrostaticFreeSurfaceModel(grid; momentum_advection, tracer_advection=Centered(),
-                                        timestepper=:SplitRungeKutta3)
+    HydrostaticFreeSurfaceModel(aiva_test_grid; momentum_advection, tracer_advection=Centered(), timestepper)
+end
 
-    time_step!(model, 1e-3)
-    time_step!(model, 1e-3)
+@testset "AIVA handles stage-zero pre-step state" begin
+    for timestepper in (:SplitRungeKutta3, :RungeKutta3)
+        model = aiva_test_model(; timestepper)
 
-    reset!(model.clock)
-    @test model.clock.stage == 1
+        time_step!(model, 1e-3)
+        time_step!(model, 1e-3)
 
-    time_step!(model, 1e-3)
+        reset!(model.clock)
+        @test model.clock.stage == 0
 
-    @test model.clock.iteration == 1
-    @test all(isfinite, parent(model.velocities.u))
-    @test all(isfinite, parent(model.velocities.v))
+        @test_nowarn update_state!(model)
+        @test_nowarn time_step!(model, 1e-3)
+
+        @test model.clock.iteration == 1
+        @test all(isfinite, parent(model.velocities.u))
+        @test all(isfinite, parent(model.velocities.v))
+    end
+end
+
+@testset "AIVA initializes safely from checkpoint with stage zero" begin
+    for timestepper in (:SplitRungeKutta3, :RungeKutta3)
+        prefix = "aiva_stage_zero_$(timestepper)"
+
+        simulation = Simulation(aiva_test_model(; timestepper), Δt=1e-3, stop_iteration=2, verbose=false)
+        simulation.output_writers[:checkpointer] = Checkpointer(simulation.model;
+                                                                schedule=IterationInterval(2),
+                                                                prefix=prefix)
+        @test_nowarn run!(simulation)
+
+        pickup = Simulation(aiva_test_model(; timestepper), Δt=1e-3, stop_iteration=3, verbose=false)
+        pickup.output_writers[:checkpointer] = Checkpointer(pickup.model;
+                                                            schedule=IterationInterval(2),
+                                                            prefix=prefix)
+
+        @test_nowarn set!(pickup; checkpoint=:latest)
+        pickup.model.clock.stage = 0
+
+        @test pickup.model.clock.iteration == 2
+        @test pickup.model.clock.stage == 0
+        @test_nowarn initialize!(pickup)
+        @test_nowarn run!(pickup)
+        @test pickup.model.clock.iteration == 3
+        @test all(isfinite, parent(pickup.model.velocities.u))
+        @test all(isfinite, parent(pickup.model.velocities.v))
+
+        rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+    end
 end

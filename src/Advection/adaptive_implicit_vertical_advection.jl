@@ -97,6 +97,11 @@ end
 @inline function update_advection_timestep!(a::AdaptiveImplicitVerticalAdvection, timestepper::SplitRungeKuttaTimeStepper, clock)
     td      = TimeSteppers.time_discretization(a)
     stage   = clock.stage
+    if stage <= 0
+        td.Δt[] = clock.last_Δt / timestepper.β[1]
+        return nothing
+    end
+
     Δt      = clock.last_stage_Δt * timestepper.β[stage]
     nstage  = ifelse(stage < timestepper.Nstages, stage + 1, 1)
     td.Δt[] = Δt / timestepper.β[nstage]
@@ -110,6 +115,11 @@ end
 @inline function update_advection_timestep!(a::AdaptiveImplicitVerticalAdvection, timestepper::RungeKutta3TimeStepper, clock)
     td      = TimeSteppers.time_discretization(a)
     stage   = clock.stage
+    if stage <= 0
+        td.Δt[] = clock.last_Δt * timestepper.γ¹
+        return nothing
+    end
+
     nstage  = stage == 3 ? 1 : stage + 1
     Δt      = clock.last_stage_Δt / sum_rk3_coefficients(timestepper, Val(stage))
     td.Δt[] = Δt * sum_rk3_coefficients(timestepper, Val(nstage))
