@@ -12,8 +12,6 @@ using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 
 import Oceananigans: quadmesh, quadmesh!   # extend the main-package stubs
 
-const SphericalGrid = Union{LatitudeLongitudeGrid, OrthogonalSphericalShellGrid}
-
 using Makie: Observable, AbstractPlot, Axis, Axis3, Figure, NoShading, @lift,
              Point, GLTriangleFace, mesh!, lines!
 
@@ -624,6 +622,8 @@ function spherical_corners(grid::LatitudeLongitudeGrid, P, Q)
     λ = [λ1[i] for i in 1:P+1, _ in 1:Q+1]; φ = [φ1[j] for _ in 1:P+1, j in 1:Q+1]
     return (@. cosd(φ) * cosd(λ)), (@. cosd(φ) * sind(λ)), (@. sind(φ))
 end
+
+spherical_corners(grid::ImmersedBoundaryGrid, P, Q) = spherical_corners(grid.underlying_grid, P, Q)
 
 node_function(d) = d == 1 ? xnode : d == 2 ? ynode : znode
 
