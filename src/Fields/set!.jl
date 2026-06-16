@@ -150,8 +150,11 @@ function set_to_field!(u, v)
     if matching_field_discretization(u, v)
         copy_to_field!(u, v)
     else
+        # Fill halos on v's native architecture so distributed dispatch (if any) is used;
+        # on_architecture would strip Distributed{CPU} to CPU while keeping distributed
+        # boundary conditions, mismatching fill_halo_regions! dispatch.
+        fill_halo_regions!(v)
         v_on_u = on_architecture(child_architecture(u), v)
-        fill_halo_regions!(v_on_u)
         interpolate!(u, v_on_u)
     end
 
@@ -159,10 +162,31 @@ function set_to_field!(u, v)
 end
 
 function matching_field_discretization(u, v)
-    return size(u) == size(v) &&
-           location(u) == location(v) &&
-           indices(u) == indices(v)
+    sz = size(u)
+    sz == size(v) || return false
+    ℓu = location(u)
+    ℓv = location(v)
+    iu = indices(u)
+    iv = indices(v)
+    return matching_field_dimension(ℓu[1], ℓv[1], iu[1], iv[1], sz[1]) &&
+           matching_field_dimension(ℓu[2], ℓv[2], iu[2], iv[2], sz[2]) &&
+           matching_field_dimension(ℓu[3], ℓv[3], iu[3], iv[3], sz[3])
 end
+
+# Two fields share their discretization along a dimension when they have the same
+# location and equivalent indices there. The exception is a reduced (`Nothing`) location
+# in a singleton dimension: a `Nothing` dimension carries no node, so there is nothing
+# to interpolate to and the single slab may be copied directly regardless of the other
+# field's location or absolute index (e.g. a reduced field set from a windowed
+# single-layer field, whose locations are `Nothing` vs `Center` and indices `:` vs `k:k`).
+@inline matching_field_dimension(ℓu, ℓv, iu, iv, N) =
+    (ℓu == ℓv && equivalent_index(iu, iv, N)) || reduced_singleton_dimension(ℓu, ℓv, N)
+
+@inline reduced_singleton_dimension(ℓu, ℓv, N) = N == 1 && (ℓu === Nothing || ℓv === Nothing)
+
+@inline equivalent_index(a, b, N) = a == b
+@inline equivalent_index(::Colon, r::AbstractUnitRange, N) = first(r) == 1 && last(r) == N
+@inline equivalent_index(r::AbstractUnitRange, ::Colon, N) = first(r) == 1 && last(r) == N
 
 function copy_to_field!(u, v)
     # We implement some niceities in here that attempt to copy halo data,

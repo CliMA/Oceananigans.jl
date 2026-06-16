@@ -51,7 +51,9 @@ function pressure_correction_rk3_substep!(model, Δt, γⁿ, ζⁿ, callbacks)
                        Val(i-3), # We assume that the first 3 fields are velocity / momentum variables
                        model.clock,
                        fields(model),
-                       Δτ)
+                       Δτ,
+                       model.advection,
+                       model.velocities)
     end
 
     compute_pressure_correction!(model, Δτ)

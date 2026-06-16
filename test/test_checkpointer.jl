@@ -1878,7 +1878,7 @@ function test_checkpoint_at_end(arch)
 end
 
 """
-Test checkpointing for simulations with OpenBoundaryCondition using the specified scheme.
+Test checkpointing for simulations with NormalFlowBoundaryCondition using the specified scheme.
 Uses a make_simulation() function to create identical simulations for testing.
 Verifies that:
 1. Every element of model.boundary_transport is correctly saved and restored
@@ -1888,7 +1888,7 @@ Verifies that:
 # Arguments
 - `arch`: Architecture (CPU, GPU, etc.)
 - `timestepper`: Time stepping scheme (:QuasiAdamsBashforth2, :RungeKutta3, etc.)
-- `scheme`: OpenBoundaryCondition scheme (e.g., PerturbationAdvection(...))
+- `scheme`: NormalFlowBoundaryCondition scheme (e.g., PerturbationAdvection(...))
 """
 function test_open_boundary_condition_scheme_checkpointing(arch, timestepper, scheme)
     Nx, Ny, Nz = 4, 4, 4
@@ -1896,7 +1896,7 @@ function test_open_boundary_condition_scheme_checkpointing(arch, timestepper, sc
 
     function make_simulation(stop_iteration)
         grid = RectilinearGrid(arch, topology=(Bounded, Bounded, Bounded), size=(Nx, Ny, Nz), extent=(10, 10, 10))
-        obc = OpenBoundaryCondition(0.1, scheme=scheme)
+        obc = NormalFlowBoundaryCondition(0.1, scheme=scheme)
         u_bcs = FieldBoundaryConditions(west=obc, east=obc)
         model = NonhydrostaticModel(grid; timestepper, boundary_conditions=(u=u_bcs,), tracers=:c)
         set!(model, c=1)
@@ -2262,8 +2262,8 @@ for arch in archs
 
     for timestepper in (:QuasiAdamsBashforth2, :RungeKutta3), scheme in schemes
         scheme_name = replace(string(typeof(scheme)), "." => "_")
-        @testset "OpenBoundaryCondition with $scheme_name checkpointing [$(typeof(arch)), $timestepper]" begin
-            @info "  Testing OpenBoundaryCondition with $scheme_name checkpointing [$(typeof(arch)), $timestepper]..."
+        @testset "NormalFlowBoundaryCondition with $scheme_name checkpointing [$(typeof(arch)), $timestepper]" begin
+            @info "  Testing NormalFlowBoundaryCondition with $scheme_name checkpointing [$(typeof(arch)), $timestepper]..."
             test_open_boundary_condition_scheme_checkpointing(arch, timestepper, scheme)
         end
     end
