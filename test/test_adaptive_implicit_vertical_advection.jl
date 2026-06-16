@@ -6,8 +6,13 @@ using Oceananigans.Advection: AdaptiveImplicitVerticalAdvection,
                               update_advection_timestep!
 using Oceananigans.TimeSteppers: AdaptiveVerticallyImplicitDiscretization,
                                  ExplicitTimeDiscretization,
+<<<<<<< HEAD
                                  adaptive_implicit_vertical_advection_diagnostics,
                                  time_discretization
+=======
+                                 time_discretization,
+                                 reset!
+>>>>>>> main
 
 @testset "AdaptiveVerticallyImplicitDiscretization construction" begin
     td = AdaptiveVerticallyImplicitDiscretization(maximum_explicit_cfl=0.3)
@@ -203,6 +208,27 @@ end
     time_step!(model, 1e-3)
 
     @test model.clock.iteration == 2
+    @test all(isfinite, parent(model.velocities.u))
+    @test all(isfinite, parent(model.velocities.v))
+end
+
+@testset "AIVA can be re-run after reset!" begin
+    grid = RectilinearGrid(CPU(), size=(8, 8, 8), x=(0, 1), y=(0, 1), z=(0, 1),
+                           halo=(6, 6, 4), topology=(Periodic, Periodic, Bounded))
+
+    momentum_advection = WENOVectorInvariant(; time_discretization=AdaptiveVerticallyImplicitDiscretization(cfl=0.5))
+    model = HydrostaticFreeSurfaceModel(grid; momentum_advection, tracer_advection=Centered(),
+                                        timestepper=:SplitRungeKutta3)
+
+    time_step!(model, 1e-3)
+    time_step!(model, 1e-3)
+
+    reset!(model.clock)
+    @test model.clock.stage == 1
+
+    time_step!(model, 1e-3)
+
+    @test model.clock.iteration == 1
     @test all(isfinite, parent(model.velocities.u))
     @test all(isfinite, parent(model.velocities.v))
 end

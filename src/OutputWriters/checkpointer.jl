@@ -77,7 +77,7 @@ checkpointer_address(model) = ""
 checkpoint_superprefix(prefix) = prefix * "_iteration"
 
 """
-    checkpoint_path(iteration::Int, checkpointer::Checkpointer)
+$(TYPEDSIGNATURES)
 
 Return the path to the `checkpointer` file associated with model `iteration`.
 """
@@ -95,7 +95,7 @@ function checkpoint_path(pickup, output_writers)
 end
 
 """
-    checkpoint_path(pickup::Bool, checkpointer::Checkpointer)
+$(TYPEDSIGNATURES)
 
 For `pickup=true`, parse the filenames in `checkpointer.dir` associated with
 `checkpointer.prefix` and return the path to the most recently modified
@@ -107,7 +107,7 @@ function checkpoint_path(pickup::Bool, checkpointer::Checkpointer)
 end
 
 """
-    checkpoint_path(pickup::Symbol, checkpointer::Checkpointer)
+$(TYPEDSIGNATURES)
 
 For symbol-based pickup modes:
 
@@ -233,7 +233,7 @@ end
 #####
 
 """
-    load_nested_data(obj)
+$(TYPEDSIGNATURES)
 
 Recursively load data from a JLD2 group or dataset, reconstructing nested NamedTuples for
 groups and returning raw data for leaf nodes.
@@ -406,11 +406,11 @@ end
 
 Manually checkpoint `simulation` state to a JLD2 file.
 
-If `simulation.output_writers` contains a `Checkpointer`, it will be used
-(respecting its `dir`, `prefix`, `cleanup`, and `verbose` settings).
-
-Otherwise, the checkpoint is written to `filepath`, or to
-`"checkpoint_iteration{N}.jld2"` in the current directory if `filepath` is not specified.
+If `filepath` is provided, the checkpoint is written there. Otherwise, if
+`simulation.output_writers` contains a single `Checkpointer`, it is used
+(respecting its `dir`, `prefix`, `cleanup`, and `verbose` settings); if no
+`filepath` is given and there is no single `Checkpointer`, the checkpoint is
+written to `"checkpoint_iteration{N}.jld2"` in the current directory.
 """
 function checkpoint(simulation; filepath=nothing)
     checkpointers = filter(w -> w isa Checkpointer, collect(values(simulation.output_writers)))

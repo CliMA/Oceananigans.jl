@@ -85,7 +85,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 end
 
 """
-    mask_immersed_horizontal_velocities!(velocities)
+$(TYPEDSIGNATURES)
 
 Set velocity field values to zero in immersed (solid) regions of the grid.
 """
@@ -96,7 +96,7 @@ function mask_immersed_horizontal_velocities!(velocities)
 end
 
 """
-    diffusivity_kernel_parameters(grid)
+$(TYPEDSIGNATURES)
 
 Return kernel parameters for computing turbulent closure_fields including one extra cell
 in horizontal directions.

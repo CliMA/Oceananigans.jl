@@ -8,7 +8,7 @@ import Oceananigans.Fields: set!
 #####
 
 """
-    set!(model::OceananigansModels, filepath::AbstractString)
+$(TYPEDSIGNATURES)
 
 Restore `model` from checkpoint data stored at `filepath`.
 """

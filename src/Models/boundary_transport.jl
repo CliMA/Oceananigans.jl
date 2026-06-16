@@ -91,7 +91,7 @@ needs_pool_correction(::Nothing) = false
 needs_pool_correction(bc) = false
 
 """
-    initialize_boundary_transport(velocities::NamedTuple)
+$(TYPEDSIGNATURES)
 
 Initialize boundary transports for boundaries with `NormalFlowBoundaryCondition`s,
 returning a `NamedTuple` of boundary transports and areas, or `nothing` when no

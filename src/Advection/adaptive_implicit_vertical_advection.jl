@@ -88,8 +88,13 @@ needs_implicit_solver(advection) = false
 needs_implicit_solver(::AdaptiveImplicitVerticalAdvection) = true
 needs_implicit_solver(a::NamedTuple) = any(needs_implicit_solver, values(a))
 
+<<<<<<< HEAD
 @inline function local_vertical_cflᶜᶜᶜ(i, j, k, grid, W, Δt)
     inactive_cell(i, j, k, grid) && return NaN
+=======
+"""
+$(TYPEDSIGNATURES)
+>>>>>>> main
 
     Δz = Δzᶜᶜᶠ(i, j, k, grid)
     w = @allowscalar W[i, j, k]
