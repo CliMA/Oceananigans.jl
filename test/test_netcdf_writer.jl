@@ -3264,7 +3264,8 @@ end
 using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid, RotatedLatitudeLongitudeGrid,
                                                   ConformalCubedSpherePanelGrid
 using Oceananigans.OutputWriters: reconstruct_grid, materialize_from_netcdf
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom,
+                                       CenterImmersedCondition, InterfaceImmersedCondition
 
 function test_netcdf_tripolar_grid_output(arch)
     grid = TripolarGrid(arch, size=(20, 16, 4), z=(-100, 0))
@@ -3726,13 +3727,17 @@ function test_netcdf_tripolar_grid_reconstruction(arch)
     return nothing
 end
 
-function test_materialize_from_netcdf_qualified_strings()
-    # When Oceananigans is imported (not `using`d), grid-reconstruction args serialize
-    # with fully-qualified type names; materializing them must resolve `Oceananigans`
-    # inside the extension module, where the bare name would otherwise be unbound.
+function test_materialize_from_netcdf_strings()
+    # Fully-qualified names: produced when Oceananigans is imported (not `using`d), so
+    # materializing them must resolve `Oceananigans` in the extension's scope.
     @test materialize_from_netcdf("(Oceananigans.Grids.Periodic, Oceananigans.Grids.Bounded)") === (Periodic, Bounded)
     @test materialize_from_netcdf("Oceananigans.Architectures.CPU()") isa CPU
     @test materialize_from_netcdf("Float64") === Float64
+
+    # Bare internal names: some values serialize unqualified (hardcoded in the writer) to
+    # names that live in submodules and aren't re-exported at the Oceananigans top level.
+    @test materialize_from_netcdf("CenterImmersedCondition()") isa CenterImmersedCondition
+    @test materialize_from_netcdf("InterfaceImmersedCondition()") isa InterfaceImmersedCondition
     return nothing
 end
 
@@ -3901,8 +3906,8 @@ end
         end
     end
 
-    @testset "Reconstruct grid from fully-qualified NetCDF strings" begin
-        @info "  Testing materialize_from_netcdf with fully-qualified type names..."
-        test_materialize_from_netcdf_qualified_strings()
+    @testset "Materialize grid-reconstruction strings from NetCDF" begin
+        @info "  Testing materialize_from_netcdf with qualified and bare type names..."
+        test_materialize_from_netcdf_strings()
     end
 end

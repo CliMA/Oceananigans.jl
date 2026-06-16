@@ -118,10 +118,11 @@ convert_for_netcdf(::InterfaceImmersedCondition) = "InterfaceImmersedCondition()
 materialize_from_netcdf(dict::AbstractDict) = OrderedDict(Symbol(key) => materialize_from_netcdf(value) for (key, value) in dict)
 materialize_from_netcdf(x::Number) = x
 materialize_from_netcdf(x::Array) = Tuple(x)
-# Evaluate inside the Oceananigans module: stored strings are fully qualified relative
-# to Main (e.g. "Oceananigans.Grids.Periodic"), so they resolve there but not in this
-# extension's scope, where the `Oceananigans` name would otherwise be unbound.
-materialize_from_netcdf(x::String) = Core.eval(Oceananigans, Meta.parse(x))
+# Evaluate in this extension module: it imports the bare type names some values serialize
+# to (e.g. "CenterImmersedCondition()", "GPU()"), while the `import Oceananigans` above
+# binds `Oceananigans` so fully-qualified names also resolve (e.g. "Oceananigans.Grids.Periodic",
+# which is how they serialize when Oceananigans is imported rather than `using`d).
+materialize_from_netcdf(x::String) = Core.eval(@__MODULE__, Meta.parse(x))
 materialize_from_netcdf(x) = x
 
 #####
