@@ -156,7 +156,7 @@ end
 
 function validate_dimension_specification(T, ξ::ExponentialDiscretization, dir, N, FT)
     if !(length(ξ.faces)) == N+1
-        throw(ArgumentError("Coordinate $(summary(ξ) has length $(length(ξ.faces)) while direction $(dir) requires a coordinate of length $(N+1)"))
+        throw(ArgumentError("Coordinate $(summary(ξ)) has length $(length(ξ.faces)) while direction $(dir) requires a coordinate of length $(N+1)"))
     end
     return ξ
 end
