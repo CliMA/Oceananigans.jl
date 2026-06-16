@@ -87,19 +87,14 @@ end
 needs_implicit_solver(advection) = false
 needs_implicit_solver(::AdaptiveImplicitVerticalAdvection) = true
 needs_implicit_solver(a::NamedTuple) = any(needs_implicit_solver, values(a))
-
-<<<<<<< HEAD
 @inline function local_vertical_cflᶜᶜᶜ(i, j, k, grid, W, Δt)
-    inactive_cell(i, j, k, grid) && return NaN
-=======
-"""
-$(TYPEDSIGNATURES)
->>>>>>> main
-
-    Δz = Δzᶜᶜᶠ(i, j, k, grid)
-    w = @allowscalar W[i, j, k]
-    α = abs(w) * Δt / Δz
-    return ifelse(isfinite(α), α, NaN)
+    return @allowscalar begin
+        inactive_cell(i, j, k, grid) && return NaN
+        Δz = Δzᶜᶜᶠ(i, j, k, grid)
+        w = W[i, j, k]
+        α = abs(w) * Δt / Δz
+        ifelse(isfinite(α), α, NaN)
+    end
 end
 
 @inline function push_local_vertical_cfl!(cfl_values, i, j, k, grid, W, Δt)
@@ -118,7 +113,7 @@ function sampled_vertical_cfl_values(model, Δt, top_levels, bottom_levels)
         wet_levels = Int[]
 
         for k in 1:Nz
-            inactive_cell(i, j, k, grid) || push!(wet_levels, k)
+            @allowscalar(inactive_cell(i, j, k, grid)) || push!(wet_levels, k)
         end
 
         isempty(wet_levels) && continue

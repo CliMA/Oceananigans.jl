@@ -6,13 +6,9 @@ using Oceananigans.Advection: AdaptiveImplicitVerticalAdvection,
                               update_advection_timestep!
 using Oceananigans.TimeSteppers: AdaptiveVerticallyImplicitDiscretization,
                                  ExplicitTimeDiscretization,
-<<<<<<< HEAD
                                  adaptive_implicit_vertical_advection_diagnostics,
-                                 time_discretization
-=======
                                  time_discretization,
                                  reset!
->>>>>>> main
 
 @testset "AdaptiveVerticallyImplicitDiscretization construction" begin
     td = AdaptiveVerticallyImplicitDiscretization(maximum_explicit_cfl=0.3)
