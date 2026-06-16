@@ -34,8 +34,9 @@ end
 
 const FullField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple{<:Colon, <:Colon, <:Colon}}
 
-# Utility for extracting values from nested NamedTuples
+# Utility for extracting values from nested NamedTuples and Tuples.
 @inline tuplify(a::NamedTuple) = Tuple(tuplify(ai) for ai in a)
+@inline tuplify(a::Tuple)      = Tuple(tuplify(ai) for ai in a)
 @inline tuplify(a) = a
 
 # Outer-inner form
