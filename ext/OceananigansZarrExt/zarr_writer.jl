@@ -11,6 +11,7 @@ function ZarrWriter(model::AbstractModel, outputs;
                     dir = ".",
                     indices = (:, :, :),
                     with_halos = true,
+                    # include_grid_metrics = true,
                     array_type = Array{Float32},
                     file_splitting = NoFileSplitting(),
                     overwrite_existing = false,
@@ -19,7 +20,8 @@ function ZarrWriter(model::AbstractModel, outputs;
                     store = nothing,
                     chunks = nothing,
                     compressor = nothing,
-                    dimensions = Dict{String, Any}())
+                    dimensions = Dict{String, Any}(),
+                    dimension_name_generator = trilocation_dim_name)
 
     # Reject ZipStore explicitly — it's read-only in Zarr.jl by design.
     if store isa Zarr.ZipStore
@@ -50,11 +52,12 @@ function ZarrWriter(model::AbstractModel, outputs;
     end
 
     initialize!(file_splitting, model)
+
+    schedule = materialize_schedule(schedule)
     update_file_splitting_schedule!(file_splitting, filepath)
 
     nt_outputs = NamedTuple(Symbol(name) => construct_output(outputs[name], indices, with_halos)
                             for name in keys(outputs))
-    schedule = materialize_schedule(schedule)
     schedule, d_outputs = time_average_outputs(schedule, nt_outputs, model)
 
     # Detect unique grids across all outputs. Outputs without a grid (functions,
@@ -65,10 +68,11 @@ function ZarrWriter(model::AbstractModel, outputs;
         output_grids[string(n)] = g
     end
     unique_grids = Tuple(unique(objectid, filter(!isnothing, collect(values(output_grids)))))
-    output_grid_map = Dict{String, Any}(
-        name => (isnothing(g) ? nothing : findfirst(ug -> ug === g, unique_grids))
-        for (name, g) in output_grids
-    )
+    output_grid_map = Dict(
+    name => (isnothing(g) ? nothing :
+             findfirst(ug -> ug === g, unique_grids))
+    for (name, g) in output_grids
+)
 
     return ZarrWriter(filepath,
                       store,
@@ -79,6 +83,7 @@ function ZarrWriter(model::AbstractModel, outputs;
                       array_type,
                       indices,
                       with_halos,
+                    #   include_grid_metrics,
                       overwrite_existing,
                       verbose,
                       part,
@@ -86,6 +91,7 @@ function ZarrWriter(model::AbstractModel, outputs;
                       compressor,
                       chunks,
                       Dict{String, Any}(string(k) => v for (k, v) in pairs(dimensions)),
+                      dimension_name_generator,
                       false)
 end
 
@@ -103,7 +109,7 @@ output_grid(other)                                           = nothing
     initialize!(writer::ZarrWriter, model)
 
 Create the Zarr store on disk (or in the user-supplied store) and create one Zarr
-array per output plus a 1D growing `time` array.
+array per output, corresponding coordinate arrays under `grid` group, plus a 1D growing `time` array.
 """
 function initialize!(writer::ZarrWriter, model)
     writer.initialized && return nothing
@@ -263,8 +269,22 @@ function initialize_zarr_store!(writer::ZarrWriter, model)
         )
         _ztrace("zcreate time")
         Zarr.zcreate(Float64, g, "time", 0; chunks=(1,), attrs=time_attrs)
+
         _ztrace("grid reconstruction")
-        write_zarr_grid_reconstruction!(g, serialize_grids)
+        grid_groups = write_zarr_grid_reconstruction!(g, serialize_grids)
+
+        _ztrace("grid coordinates")
+
+        dim_grid_suffix(idx) = length(serialize_grids) == 1 ? nothing : idx
+
+        for (grid_index, (grid_group, grid)) in enumerate(zip(grid_groups, serialize_grids))
+            grid_outputs = Dict(
+                name => output
+                for (name, output) in pairs(writer.outputs)
+                if writer.output_grid_map[string(name)] == grid_index
+            )
+            write_zarr_grid_coords!(grid_group, grid, grid_outputs, dim_grid_suffix(grid_index), writer.indices, writer.with_halos, writer.dimension_name_generator)
+        end
     else
         g = nothing
     end
@@ -274,6 +294,7 @@ function initialize_zarr_store!(writer::ZarrWriter, model)
         define_zarr_output_variable!(g, writer, output, string(name), model)
         _ztrace("define_zarr_output_variable! `$name` done")
     end
+
     _ztrace("initialize_zarr_store! return")
 
     return nothing
@@ -282,74 +303,6 @@ end
 #####
 ##### Grid reconstruction
 #####
-
-# JSON-friendly conversion for grid constructor args. Uses OrderedDict so positional
-# arguments survive the round-trip in their declared order.
-convert_for_zarr(dict::AbstractDict) = OrderedDict{String, Any}(string(k) => convert_for_zarr(v) for (k, v) in dict)
-convert_for_zarr(x::Number)         = x
-convert_for_zarr(x::Bool)           = string(x)
-convert_for_zarr(x::NTuple{N, Number}) where N = collect(x)
-convert_for_zarr(::CPU)             = "CPU()"
-convert_for_zarr(::GPU)             = "GPU()"
-# A Distributed arch is not serializable in a portable way; record a placeholder.
-# The reader takes `architecture` as a kwarg and substitutes it in via the
-# `args_ordered` override in `reconstruct_zarr_grid`.
-convert_for_zarr(::Distributed)     = "CPU()"
-convert_for_zarr(x)                 = string(x)
-
-# Inverse: parse JSON-encoded values back to Julia. Strings get Meta.parse'd + eval'd.
-# Returns OrderedDict to preserve positional argument order on reconstruct.
-materialize_from_zarr(dict::AbstractDict) = OrderedDict{Symbol, Any}(Symbol(k) => materialize_from_zarr(v) for (k, v) in dict)
-materialize_from_zarr(x::Number)          = x
-materialize_from_zarr(x::AbstractArray)   = Tuple(x)
-materialize_from_zarr(x::AbstractString)  = @eval $(Meta.parse(x))
-materialize_from_zarr(x)                  = x
-
-zarr_grid_type_string(g) = string(typeof(g).name.wrapper)
-
-function zarr_grid_constructor_info(grid)
-    args, kwargs = constructor_arguments(grid)
-    metadata = Dict(:underlying_grid_type   => zarr_grid_type_string(grid),
-                    :immersed_boundary_type => nothing)
-    return args, kwargs, metadata
-end
-
-function zarr_grid_constructor_info(grid::ImmersedBoundaryGrid)
-    underlying_args, underlying_kwargs, _ = constructor_arguments(grid)
-    metadata = Dict(:underlying_grid_type   => zarr_grid_type_string(grid.underlying_grid),
-                    :immersed_boundary_type => zarr_grid_type_string(grid.immersed_boundary))
-    # Immersed boundary fields (mask, bottom_height) need data write; deferred to a
-    # follow-on phase. For now the grid still serializes the underlying portion.
-    return underlying_args, underlying_kwargs, metadata
-end
-
-function write_zarr_grid_reconstruction!(root_group, grids)
-    single_grid = length(grids) <= 1
-    for (i, grid) in enumerate(grids)
-        subgroup_name = single_grid ? "grid" : "grid_$i"
-        write_one_grid_reconstruction!(root_group, grid, subgroup_name)
-    end
-    return nothing
-end
-
-function write_one_grid_reconstruction!(root_group, grid, subgroup_name)
-    args, kwargs, metadata = zarr_grid_constructor_info(grid)
-
-    # Positional args: stored as a JSON array of [key, value] pairs so order survives
-    # the round-trip through JSON (Zarr.jl parses attrs with `dicttype=Dict{String,Any}`
-    # which does not preserve insertion order).
-    args_json     = [[string(k), convert_for_zarr(v)] for (k, v) in pairs(args)]
-    kwargs_json   = convert_for_zarr(kwargs)
-    metadata_json = convert_for_zarr(metadata)
-
-    attrs = Dict{String, Any}(
-        "underlying_grid_reconstruction_args"   => args_json,
-        "underlying_grid_reconstruction_kwargs" => kwargs_json,
-        "grid_reconstruction_metadata"          => metadata_json,
-    )
-    Zarr.zgroup(root_group, subgroup_name; attrs=attrs)
-    return nothing
-end
 
 """
     reconstruct_zarr_grid(group; grid_index=1, architecture=nothing)
@@ -379,7 +332,16 @@ function reconstruct_zarr_grid(group; grid_index=1, architecture=nothing)
     kwargs_dict = materialize_from_zarr(attrs["underlying_grid_reconstruction_kwargs"])
     metadata    = materialize_from_zarr(attrs["grid_reconstruction_metadata"])
 
+    @show args_values
+    @show kwargs_dict
+    @show metadata
+
+    nt = (; pairs(kwargs_dict)...)
+
+    @show nt
+
     grid_type = metadata[:underlying_grid_type]
+
     underlying = grid_type(args_values...; kwargs_dict...)
 
     if isnothing(metadata[:immersed_boundary_type])
