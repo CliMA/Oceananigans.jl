@@ -188,7 +188,7 @@ end
 
 # Generic fallback for non-static vertical coordinates (`MutableVerticalDiscretization`
 # and any others defined downstream): the saved 1D coordinate is the *reference*
-# (Lagrangian) coordinate `r`, stored in the shared `cᵃᵃᶠ`/`cᵃᵃᶜ` fields. The physical
+# coordinate `r`, stored in the shared `cᵃᵃᶠ`/`cᵃᵃᶜ` fields. The physical
 # `z = z(r, …)` is reconstructible at read time from `r` and the coordinate transform
 # (e.g. the time-varying free-surface `η`), output separately.
 function gather_vertical_dimensions(coordinate::AbstractVerticalCoordinate, TZ, Nz, Hz, z_indices, with_halos, dim_name_generator)
@@ -435,7 +435,7 @@ end
 
 # Generic fallback for non-static vertical coordinates: `MutableVerticalDiscretization`
 # (z-star / σ) and any other `AbstractVerticalCoordinate` defined downstream. We save the
-# reference (Lagrangian) coordinate `r`; physical height `z = z(r, …)` is reconstructible at
+# reference coordinate `r`; physical height `z = z(r, …)` is reconstructible at
 # read time from `r` and the coordinate transform (e.g. the time-varying free-surface `η`) —
 # see grid_reconstruction.jl. The `StaticVerticalDiscretization` method above handles the
 # plain-`z` case.
@@ -447,8 +447,8 @@ function default_vertical_dimension_attributes(coordinate::AbstractVerticalCoord
     Δrᵃᵃᶠ_name = dim_name_generator("Δr", coordinate, nothing, nothing, f, Val(:z))
     Δrᵃᵃᶜ_name = dim_name_generator("Δr", coordinate, nothing, nothing, c, Val(:z))
 
-    long_face   = "Reference cell-face locations in the vertical (Lagrangian r). Physical height is reconstructible from r and the vertical coordinate transform."
-    long_center = "Reference cell-center locations in the vertical (Lagrangian r). Physical height is reconstructible from r and the vertical coordinate transform."
+    long_face   = "Reference cell-face locations in the vertical (reference coordinate r). Physical height is reconstructible from r and the vertical coordinate transform."
+    long_center = "Reference cell-center locations in the vertical (reference coordinate r). Physical height is reconstructible from r and the vertical coordinate transform."
 
     rᵃᵃᶠ_attrs = Dict("long_name" => long_face,   "units" => "m", "axis" => "Z", "positive" => "up")
     rᵃᵃᶜ_attrs = Dict("long_name" => long_center, "units" => "m", "axis" => "Z", "positive" => "up")
