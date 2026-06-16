@@ -137,27 +137,37 @@ function AdaptiveVerticallyImplicitDiscretization(FT::DataType = Oceananigans.de
     median_cfl = Ref(zero(FT))
     max_cfl = Ref(zero(FT))
 
-    return AdaptiveVerticallyImplicitDiscretization(maximum_explicit_cfl,
-                                                    implicit_fraction,
-                                                    sample_top_levels,
-                                                    sample_bottom_levels,
-                                                    resolved_cfl,
-                                                    Δt,
-                                                    realized_implicit_fraction,
-                                                    median_cfl,
-                                                    max_cfl)
+    return AdaptiveVerticallyImplicitDiscretization{FT,
+                                                    typeof(maximum_explicit_cfl),
+                                                    typeof(implicit_fraction),
+                                                    typeof(sample_top_levels),
+                                                    typeof(sample_bottom_levels),
+                                                    typeof(resolved_cfl)}(maximum_explicit_cfl,
+                                                                         implicit_fraction,
+                                                                         sample_top_levels,
+                                                                         sample_bottom_levels,
+                                                                         resolved_cfl,
+                                                                         Δt,
+                                                                         realized_implicit_fraction,
+                                                                         median_cfl,
+                                                                         max_cfl)
 end
 
 Adapt.adapt_structure(to, a::AdaptiveVerticallyImplicitDiscretization) =
-    AdaptiveVerticallyImplicitDiscretization(a.maximum_explicit_cfl,
-                                             a.implicit_fraction,
-                                             a.sample_top_levels,
-                                             a.sample_bottom_levels,
-                                             a.cfl[],
-                                             a.Δt[],
-                                             a.realized_implicit_fraction[],
-                                             a.median_cfl[],
-                                             a.max_cfl[])
+    AdaptiveVerticallyImplicitDiscretization{typeof(a.Δt[]),
+                                             typeof(a.maximum_explicit_cfl),
+                                             typeof(a.implicit_fraction),
+                                             typeof(a.sample_top_levels),
+                                             typeof(a.sample_bottom_levels),
+                                             typeof(Adapt.adapt(to, a.cfl))}(a.maximum_explicit_cfl,
+                                                                             a.implicit_fraction,
+                                                                             a.sample_top_levels,
+                                                                             a.sample_bottom_levels,
+                                                                             Adapt.adapt(to, a.cfl),
+                                                                             Adapt.adapt(to, a.Δt),
+                                                                             Adapt.adapt(to, a.realized_implicit_fraction),
+                                                                             Adapt.adapt(to, a.median_cfl),
+                                                                             Adapt.adapt(to, a.max_cfl))
 
 @inline unwrap_time_discretization_property(x) = x
 @inline unwrap_time_discretization_property(x::Base.RefValue) = x[]

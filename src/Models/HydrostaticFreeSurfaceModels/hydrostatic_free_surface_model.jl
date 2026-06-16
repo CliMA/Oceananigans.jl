@@ -386,7 +386,7 @@ end
 function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
     checkpoint_grid = hasproperty(from, :checkpoint_grid) ? from.checkpoint_grid : nothing
 
-    Oceananigans.with_checkpoint_restore_grid(checkpoint_grid) do
+    with_checkpoint_restore_grid(checkpoint_grid) do
         restore_prognostic_state!(restored.clock, from.clock)
         restore_prognostic_state!(restored.particles, from.particles)
         restore_prognostic_state!(restored.velocities, from.velocities)
@@ -398,11 +398,11 @@ function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
         restore_prognostic_state!(restored.vertical_coordinate, restored.grid, from.vertical_coordinate)
     end
 
-    Oceananigans.finalize_checkpoint_restore!(restored, checkpoint_grid)
+    finalize_checkpoint_restore!(restored, checkpoint_grid)
     return restored
 end
 
-function Oceananigans.finalize_checkpoint_restore!(restored::HydrostaticFreeSurfaceModel, checkpoint_grid)
+function finalize_checkpoint_restore!(restored::HydrostaticFreeSurfaceModel, checkpoint_grid)
     if isnothing(checkpoint_grid) || checkpoint_grid == restored.grid
         return restored
     end

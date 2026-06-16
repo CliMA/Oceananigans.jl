@@ -17,7 +17,7 @@ using Oceananigans.Advection: needs_implicit_solver
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.Utils: tupleit
 
-import Oceananigans: prognostic_state, restore_prognostic_state!
+import Oceananigans: prognostic_state, restore_prognostic_state!, checkpoint_restore_grid, with_checkpoint_restore_grid, finalize_checkpoint_restore!
 import Oceananigans.Architectures: architecture
 import Oceananigans.Models: total_velocities
 import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
@@ -367,7 +367,7 @@ end
 function restore_prognostic_state!(restored::NonhydrostaticModel, from)
     checkpoint_grid = hasproperty(from, :checkpoint_grid) ? from.checkpoint_grid : nothing
 
-    Oceananigans.with_checkpoint_restore_grid(checkpoint_grid) do
+    with_checkpoint_restore_grid(checkpoint_grid) do
         restore_prognostic_state!(restored.clock, from.clock)
         restore_prognostic_state!(restored.particles, from.particles)
         restore_prognostic_state!(restored.velocities, from.velocities)
@@ -378,11 +378,11 @@ function restore_prognostic_state!(restored::NonhydrostaticModel, from)
         restore_prognostic_state!(restored.boundary_transport, from.boundary_transport)
     end
 
-    Oceananigans.finalize_checkpoint_restore!(restored, checkpoint_grid)
+    finalize_checkpoint_restore!(restored, checkpoint_grid)
     return restored
 end
 
-function Oceananigans.finalize_checkpoint_restore!(restored::NonhydrostaticModel, checkpoint_grid)
+function finalize_checkpoint_restore!(restored::NonhydrostaticModel, checkpoint_grid)
     if isnothing(checkpoint_grid) || checkpoint_grid == restored.grid
         return restored
     end

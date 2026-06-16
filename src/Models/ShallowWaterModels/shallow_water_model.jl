@@ -15,7 +15,7 @@ using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, build_closure_fields
 using Oceananigans.Utils: tupleit
 
-import Oceananigans: prognostic_state, restore_prognostic_state!
+import Oceananigans: prognostic_state, restore_prognostic_state!, checkpoint_restore_grid, with_checkpoint_restore_grid, finalize_checkpoint_restore!
 import Oceananigans.Architectures: architecture
 
 const RectilinearGrids = Union{RectilinearGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:RectilinearGrid}}
@@ -272,7 +272,7 @@ end
 function restore_prognostic_state!(restored::ShallowWaterModel, from)
     checkpoint_grid = hasproperty(from, :checkpoint_grid) ? from.checkpoint_grid : nothing
 
-    Oceananigans.with_checkpoint_restore_grid(checkpoint_grid) do
+    with_checkpoint_restore_grid(checkpoint_grid) do
         restore_prognostic_state!(restored.clock, from.clock)
         restore_prognostic_state!(restored.solution, from.solution)
         restore_prognostic_state!(restored.velocities, from.velocities)
@@ -281,11 +281,11 @@ function restore_prognostic_state!(restored::ShallowWaterModel, from)
         restore_prognostic_state!(restored.closure_fields, from.closure_fields)
     end
 
-    Oceananigans.finalize_checkpoint_restore!(restored, checkpoint_grid)
+    finalize_checkpoint_restore!(restored, checkpoint_grid)
     return restored
 end
 
-function Oceananigans.finalize_checkpoint_restore!(restored::ShallowWaterModel, checkpoint_grid)
+function finalize_checkpoint_restore!(restored::ShallowWaterModel, checkpoint_grid)
     if isnothing(checkpoint_grid) || checkpoint_grid == restored.grid
         return restored
     end
