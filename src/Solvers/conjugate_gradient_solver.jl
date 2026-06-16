@@ -126,7 +126,7 @@ function ConjugateGradientSolver(linear_operation;
 end
 
 """
-    solve!(x, solver::ConjugateGradientSolver, b, args...)
+$(TYPEDSIGNATURES)
 
 Solve `A * x = b` using an iterative conjugate-gradient method, where `A * x` is
 determined by `solver.linear_operation`

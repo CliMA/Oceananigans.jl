@@ -121,13 +121,7 @@ end
 end
 
 """
-    free_surface_tendency(i, j, grid,
-                          velocities,
-                          free_surface,
-                          tracers,
-                          auxiliary_fields,
-                          forcings,
-                          clock)
+$(TYPEDSIGNATURES)
 
 Return the tendency for an explicit free surface at horizontal grid point `i, j`.
 

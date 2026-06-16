@@ -27,7 +27,7 @@ metric_function(loc, ::ΦNode) = φnode
 metric_function(loc, ::RNode) = rnode
 
 """
-    metric_function(loc, metric::GridMetric)
+$(TYPEDSIGNATURES)
 
 Return the function associated with `metric::GridMetric` at `loc`ation.
 """
@@ -42,7 +42,7 @@ function metric_function(loc, metric)
 end
 
 """
-    grid_metric_operation(loc, metric, grid)
+$(TYPEDSIGNATURES)
 
 Return a `KernelFunctionOperation` of `metric` that participates
 in a `BinaryOperation` at `loc`ation of the `grid`.
@@ -96,7 +96,7 @@ end
 #####
 
 """
-    xspacings(grid, ℓx, ℓy, ℓz)
+$(TYPEDSIGNATURES)
 
 Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
 in the ``x`` direction at location `ℓx, ℓy, ℓz`.
@@ -122,7 +122,7 @@ function xspacings(grid, ℓx, ℓy, ℓz)
 end
 
 """
-    yspacings(grid, ℓx, ℓy, ℓz)
+$(TYPEDSIGNATURES)
 
 Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
 in the ``y`` direction at location `ℓx, ℓy, ℓz`.
@@ -148,7 +148,7 @@ function yspacings(grid, ℓx, ℓy, ℓz)
 end
 
 """
-    zspacings(grid, ℓx, ℓy, ℓz)
+$(TYPEDSIGNATURES)
 
 Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
 in the ``z`` direction at location `ℓx, ℓy, ℓz`.
@@ -174,7 +174,7 @@ function zspacings(grid, ℓx, ℓy, ℓz)
 end
 
 """
-    rspacings(grid, ℓx, ℓy, ℓz)
+$(TYPEDSIGNATURES)
 
 Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
 in the ``r`` direction at location `ℓx, ℓy, ℓz`.
@@ -200,7 +200,7 @@ function rspacings(grid, ℓx, ℓy, ℓz)
 end
 
 """
-    λspacings(grid, ℓx, ℓy, ℓz)
+$(TYPEDSIGNATURES)
 
 Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
 in the ``λ`` direction at location `ℓx, ℓy, ℓz`.
@@ -229,7 +229,7 @@ function λspacings(grid, ℓx, ℓy, ℓz)
 end
 
 """
-    φspacings(grid, ℓx, ℓy, ℓz)
+$(TYPEDSIGNATURES)
 
 Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
 in the ``φ`` direction at location `ℓx, ℓy, ℓz`.

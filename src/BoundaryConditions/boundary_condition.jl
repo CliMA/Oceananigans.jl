@@ -142,7 +142,7 @@ on_architecture(to, mc::MixedCondition) =
                    on_architecture(to, mc.inhomogeneity))
 
 """
-    MixedBoundaryCondition(coefficient, inhomogeneity=0; kwargs...)
+$(TYPEDSIGNATURES)
 
 Construct a `MixedBoundaryCondition` representing the condition
 

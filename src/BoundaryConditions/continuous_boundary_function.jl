@@ -1,11 +1,9 @@
+using Oceananigans: location
 using Oceananigans.Architectures: Architectures, on_architecture
 using Oceananigans.Operators: index_and_interp_dependencies
-import Oceananigans.Operators: interpolation_code
 using Oceananigans.Utils: Utils, tupleit, user_function_arguments, prettysummary
 using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid, YZFlatGrid, XZFlatGrid, XYFlatGrid
 using Oceananigans.Grids: ξnode, ηnode, rnode
-
-import Oceananigans: location
 
 struct LeftBoundary end
 struct RightBoundary end
@@ -21,13 +19,13 @@ preventing dispatch ambiguities on grids with `Flat` topologies.
 struct BoundaryAdjacent end
 
 # BoundaryAdjacent acts like Nothing for interpolation purposes
-interpolation_code(::Type{BoundaryAdjacent}) = :ᵃ
-interpolation_code(::BoundaryAdjacent) = :ᵃ
-interpolation_code(::BoundaryAdjacent, to) = :ᵃ
-interpolation_code(from, ::BoundaryAdjacent) = :ᵃ
-interpolation_code(::BoundaryAdjacent, ::BoundaryAdjacent) = :ᵃ
-interpolation_code(::BoundaryAdjacent, ::Nothing) = :ᵃ
-interpolation_code(::Nothing, ::BoundaryAdjacent) = :ᵃ
+Oceananigans.Operators.interpolation_code(::Type{BoundaryAdjacent}) = :ᵃ
+Oceananigans.Operators.interpolation_code(::BoundaryAdjacent) = :ᵃ
+Oceananigans.Operators.interpolation_code(::BoundaryAdjacent, to) = :ᵃ
+Oceananigans.Operators.interpolation_code(from, ::BoundaryAdjacent) = :ᵃ
+Oceananigans.Operators.interpolation_code(::BoundaryAdjacent, ::BoundaryAdjacent) = :ᵃ
+Oceananigans.Operators.interpolation_code(::BoundaryAdjacent, ::Nothing) = :ᵃ
+Oceananigans.Operators.interpolation_code(::Nothing, ::BoundaryAdjacent) = :ᵃ
 
 """
     struct ContinuousBoundaryFunction{X, Y, Z, S, F, P, D, N, ℑ} <: Function
@@ -63,7 +61,7 @@ struct ContinuousBoundaryFunction{X, Y, Z, S, F, P, D, N, ℑ}
     end
 end
 
-location(::ContinuousBoundaryFunction{X, Y, Z}) where {X, Y, Z} = X, Y, Z
+Oceananigans.location(::ContinuousBoundaryFunction{X, Y, Z}) where {X, Y, Z} = X, Y, Z
 
 destantiate(t::T) where T = T
 
@@ -72,8 +70,7 @@ destantiate(t::T) where T = T
 #####
 
 """
-    regularize_boundary_condition(bc::BoundaryCondition{C, <:ContinuousBoundaryFunction},
-                                  topo, loc, dim, I, prognostic_field_names) where C
+$(TYPEDSIGNATURES)
 
 Regularizes `bc.condition` for location `loc`, boundary index `I`, and `prognostic_field_names`,
 returning `BoundaryCondition(C, regularized_condition)`.

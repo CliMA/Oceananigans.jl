@@ -31,7 +31,7 @@ end
 #####
 
 """
-    inactive_cell(i, j, k, grid)
+$(TYPEDSIGNATURES)
 
 Return `true` when the tracer cell at `i, j, k` is "external" to the domain boundary.
 
@@ -112,7 +112,7 @@ for PrimaryTopo in Topos
 end
 
 """
-    inactive_node(i, j, k, grid, LX, LY, LZ)
+$(TYPEDSIGNATURES)
 
 Return `true` when the location `(LX, LY, LZ)` is "inactive" and thus not directly
 associated with an "active" cell.
@@ -140,14 +140,14 @@ region of the grid.
 @inline immersed_inactive_node(i, j, k, grid, LX, LY, LZ) = false
 
 """
-    active_node(args...)
+$(TYPEDSIGNATURES)
 
 The opposite of inactive_node(args...).
 """
 @inline active_node(args...) = !inactive_node(args...)
 
 """
-    peripheral_node(i, j, k, grid, LX, LY, LZ)
+$(TYPEDSIGNATURES)
 
 Return `true` when the location `(LX, LY, LZ)`, is _either_ inactive or
 lies on the boundary between inactive and active cells in a `Bounded` direction.
@@ -168,14 +168,14 @@ lies on the boundary between inactive and active cells in a `Bounded` direction.
 @inline immersed_peripheral_node(i, j, k, grid, LX, LY, LZ) = false
 
 """
-    boundary_node(i, j, k, grid, LX, LY, LZ)
+$(TYPEDSIGNATURES)
 
 Return `true` when the location `(LX, LY, LZ)` lies on a boundary.
 """
 @inline boundary_node(i, j, k, grid, LX, LY, LZ) = peripheral_node(i, j, k, grid, LX, LY, LZ) & !inactive_node(i, j, k, grid, LX, LY, LZ)
 
 """
-    bottommost_active_node(i, j, k, grid, LX, LY, LZ)
+$(TYPEDSIGNATURES)
 
 Return `true` when the location `(LX, LY, LZ)` is the active cell just above the bottom.
 """

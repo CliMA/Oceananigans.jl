@@ -151,7 +151,7 @@ See [`TripolarGrid`](@ref) for examples.
 struct Zipper{P <: AbstractPivot} <: AbstractBoundaryConditionClassification end
 
 """
-    pivot_type(zbc::Zipper)
+$(TYPEDSIGNATURES)
 
 Returns the pivot type of the Zipper boundary condition `zbc`.
 """

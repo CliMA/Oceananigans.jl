@@ -56,7 +56,7 @@ Base.size(f::GriddedMultiRegionField) = size(getregion(f, 1))
                       getregion(f.communication_buffers, r))
 
 """
-    reconstruct_global_field(mrf)
+$(TYPEDSIGNATURES)
 
 Reconstruct a global field from `mrf::MultiRegionField` on the `CPU`.
 """

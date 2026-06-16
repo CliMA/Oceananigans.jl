@@ -3,7 +3,7 @@
 #####
 
 """
-    divᶜᶜᶜ(i, j, k, grid, u, v, w)
+$(TYPEDSIGNATURES)
 
 Calculate the divergence ``𝛁·𝐕`` of a vector field ``𝐕 = (u, v, w)``,
 
@@ -19,7 +19,7 @@ which ends up at the cell centers `ccc`.
                              δzᶜᶜᶜ(i, j, k, grid, Az_qᶜᶜᶠ, w))
 
 """
-    flux_div_xyᶜᶜᶜ(i, j, k, grid, u, v)
+$(TYPEDSIGNATURES)
 
 Return the discrete horizontal flux divergence `δxᶜᶜᶜ(Ax * u) + δyᶜᶜᶜ(Ay * v)` of the
 velocity field `u, v`, where `Ax` and `Ay` are the areas of the cell faces in `x` and `y`.

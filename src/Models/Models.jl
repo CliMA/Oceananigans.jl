@@ -14,6 +14,8 @@ export
     LinearFormulation, QuadraticFormulation,
     BoundaryAdjacentMean, boundary_total_area
 
+using DocStringExtensions: TYPEDSIGNATURES
+
 using Oceananigans: AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered
@@ -147,7 +149,7 @@ architecture(model::OceananigansModels) = model.grid.architecture
 set!(model::OceananigansModels, new_clock::Clock) = set!(model.clock, new_clock)
 
 """
-    possible_field_time_series(model::OceananigansModels)
+$(TYPEDSIGNATURES)
 
 Return a `Tuple` containing properties of and `OceananigansModel` that could contain `FieldTimeSeries`.
 """
