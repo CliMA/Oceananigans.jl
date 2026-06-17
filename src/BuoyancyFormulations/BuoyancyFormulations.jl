@@ -10,7 +10,7 @@ using SeawaterPolynomials: SeawaterPolynomials, ρ′, thermal_expansion, haline
 
 using Oceananigans: Oceananigans
 using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶠ, ∂xᵣᶠᶜᶜ, ∂yᵣᶜᶠᶜ, ∂xᶠᶜᶜ, ∂yᶜᶠᶜ, ∂zᶜᶜᶠ
-using Oceananigans.BoundaryConditions: getbc, total_boundary_flux
+using Oceananigans.BoundaryConditions: getbc
 
 """
     AbstractBuoyancyFormulation{EOS}

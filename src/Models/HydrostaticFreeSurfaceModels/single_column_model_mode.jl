@@ -72,7 +72,6 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
 
     # Compute auxiliaries
     compute_auxiliary_fields!(model.auxiliary_fields)
-    compute_buoyancy_gradients!(model.buoyancy, grid, model.tracers)
 
     # Calculate closure fields
     compute_closure_fields!(model.closure_fields, model.closure, model)

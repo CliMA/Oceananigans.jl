@@ -3,8 +3,7 @@ using Oceananigans.Architectures: AbstractArchitecture
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
 using Oceananigans.BoundaryConditions: MixedBoundaryCondition
 using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
-using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions, validate_implicit_explicit_flux_locations
-using Oceananigans.BoundaryConditions: needs_implicit_solver
+using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.DistributedComputations: Distributed
 using Oceananigans.Fields: Field, tracernames, VelocityFields, TracerFields, CenterField
 using Oceananigans.Forcings: model_forcing
@@ -284,16 +283,11 @@ function NonhydrostaticModel(grid;
     model_fields = merge(velocities, tracers, auxiliary_fields)
     prognostic_fields = merge(velocities, tracers)
 
-    # `ImplicitExplicitFluxBoundaryCondition`s are valid only on vertical boundaries.
-    foreach(field -> validate_implicit_explicit_flux_locations(field.boundary_conditions), prognostic_fields)
-
-    # Instantiate timestepper if not already instantiated. Build the vertical implicit solver if the
-    # closure, the advection scheme (AIVA), or any boundary condition (implicit-explicit flux) needs it.
+    # Instantiate timestepper if not already instantiated
     implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
-    bc_needs_solver = any(field -> needs_implicit_solver(field.boundary_conditions.top) |
-                                   needs_implicit_solver(field.boundary_conditions.bottom), prognostic_fields)
 
-    if isnothing(implicit_solver) && (needs_implicit_solver(advection) || bc_needs_solver)
+    # Also create the implicit solver if adaptive implicit advection requires it
+    if isnothing(implicit_solver) && needs_implicit_solver(advection)
         implicit_solver = implicit_diffusion_solver(VerticallyImplicitTimeDiscretization(), grid)
     end
 

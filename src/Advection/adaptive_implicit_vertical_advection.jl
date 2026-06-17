@@ -1,6 +1,6 @@
 using Oceananigans.Operators: Δzᶜᶜᶠ, Δzᶠᶜᶠ, Δzᶜᶠᶠ, Az_qᶜᶜᶠ, Azᶜᶜᶠ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Grids: Center, Face
-using Oceananigans.BoundaryConditions: BoundaryConditions, _unwrap_for_gpu
+using Oceananigans.BoundaryConditions: _unwrap_for_gpu
 using Oceananigans.TimeSteppers: SplitRungeKuttaTimeStepper, RungeKutta3TimeStepper
 
 const AVID = AdaptiveVerticallyImplicitDiscretization
@@ -77,8 +77,9 @@ end
 ##### Utility functions
 #####
 
-BoundaryConditions.needs_implicit_solver(::AdaptiveImplicitVerticalAdvection) = true
-BoundaryConditions.needs_implicit_solver(a::NamedTuple) = any(BoundaryConditions.needs_implicit_solver, values(a))
+needs_implicit_solver(advection) = false
+needs_implicit_solver(::AdaptiveImplicitVerticalAdvection) = true
+needs_implicit_solver(a::NamedTuple) = any(needs_implicit_solver, values(a))
 
 """
 $(TYPEDSIGNATURES)

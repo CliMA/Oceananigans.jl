@@ -15,6 +15,7 @@ export
     VectorInvariant, WENOVectorInvariant,
     FluxFormAdvection,
     AdaptiveImplicitVerticalAdvection,
+    needs_implicit_solver,
     update_advection_timestep!,
     EnergyConserving,
     EnstrophyConserving
