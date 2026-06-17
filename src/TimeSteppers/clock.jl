@@ -1,8 +1,8 @@
 using Adapt: Adapt
 using Dates: AbstractTime, Nanosecond, Millisecond
 using DocStringExtensions: TYPEDEF, TYPEDSIGNATURES
-using Oceananigans.Utils: prettytime, seconds_to_nanosecond
 using Oceananigans.Grids: AbstractGrid
+using Oceananigans.Utils: prettytime, seconds_to_nanosecond
 
 import Oceananigans: restore_prognostic_state!
 import Oceananigans.Units: Time
@@ -52,14 +52,14 @@ materialize_clock!(clock::Clock, timestepper) = nothing
 function reset!(clock::Clock{TT, KT, DT, IT, S}) where {TT, KT, DT, IT, S}
     clock.time = zero(TT)
     clock.iteration = zero(IT)
-    clock.stage = zero(S)
+    clock.stage = 1
     clock.last_Δt = Inf
     clock.last_stage_Δt = Inf
     return nothing
 end
 
 """
-    set!(clock::Clock, new_clock::Clock)
+$(TYPEDSIGNATURES)
 
 Set `clock` to the `new_clock`.
 """
@@ -89,8 +89,11 @@ function Base.isapprox(a::Clock, b::Clock; kw...)
            a.stage == b.stage
 end
 
-# TODO: when supporting DateTime, this function will have to be extended
+# Type used to represent the time step Δt for a clock with `time::TT`.
+# For numeric clocks, Δt has the same type as `time`. For `DateTime`/`AbstractTime`
+# clocks, Δt is a `Float64` (interpreted as seconds).
 time_step_type(TT) = TT
+time_step_type(::Type{<:AbstractTime}) = Float64
 
 function Clock{TT}(; time,
                    last_Δt = Inf,
@@ -176,10 +179,11 @@ Adapt `Clock` to an immutable kernel argument.
 """
 function Adapt.adapt_structure(to, clock::Clock)
     KT = kernel_time_type(clock)
+    DT = time_step_type(KT)
 
     return (time          = convert(KT, clock.time),
-            last_Δt       = clock.last_Δt,
-            last_stage_Δt = clock.last_stage_Δt,
+            last_Δt       = convert(DT, clock.last_Δt),
+            last_stage_Δt = convert(DT, clock.last_stage_Δt),
             iteration     = clock.iteration,
             stage         = clock.stage)
 end

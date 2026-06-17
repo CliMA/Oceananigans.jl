@@ -17,15 +17,16 @@ Represent a static one-dimensional vertical coordinate.
 Fields
 ======
 
-- `cᶜ::C`: Cell-centered coordinate.
-- `cᶠ::D`: Face-centered coordinate.
-- `Δᶜ::E`: Cell-centered grid spacing.
-- `Δᶠ::F`: Face-centered grid spacing.
+$(FIELDS)
 """
 struct StaticVerticalDiscretization{C, D, E, F} <: AbstractVerticalCoordinate
+    "Face-centered coordinate"
     cᵃᵃᶠ :: C
+    "Cell-centered coordinate"
     cᵃᵃᶜ :: D
+    "Face-centered grid spacing"
     Δᵃᵃᶠ :: E
+    "Cell-centered grid spacing"
     Δᵃᵃᶜ :: F
 end
 
@@ -82,7 +83,7 @@ const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,  
 
 
 """
-    MutableVerticalDiscretization(r_faces)
+$(TYPEDSIGNATURES)
 
 Construct a `MutableVerticalDiscretization` from `r_faces` that can be a `Tuple`,
 a function of an index `k`, or an `AbstractArray`. A `MutableVerticalDiscretization`

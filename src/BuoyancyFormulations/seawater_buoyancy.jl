@@ -146,7 +146,7 @@ end
 #####
 
 """
-    ∂x_b(i, j, k, grid, b::SeawaterBuoyancy, C)
+$(TYPEDSIGNATURES)
 
 Returns the ``x``-derivative of buoyancy for temperature and salt-stratified water,
 
@@ -179,7 +179,7 @@ end
 end
 
 """
-    ∂y_b(i, j, k, grid, b::SeawaterBuoyancy, C)
+$(TYPEDSIGNATURES)
 
 Returns the ``y``-derivative of buoyancy for temperature and salt-stratified water,
 
@@ -212,7 +212,7 @@ end
 end
 
 """
-    ∂z_b(i, j, k, grid, b::SeawaterBuoyancy, C)
+$(TYPEDSIGNATURES)
 
 Returns the vertical derivative of buoyancy for temperature and salt-stratified water,
 

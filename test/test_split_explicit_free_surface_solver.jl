@@ -11,7 +11,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces
 
 @inline noforcing(args...) = 0
 
-clock = Clock(time=0)
+clock = Clock{Float64}(time=0)
 
 @testset "Split-Explicit Dynamics" begin
 

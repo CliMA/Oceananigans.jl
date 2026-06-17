@@ -18,7 +18,7 @@ LinearAlgebra.dot(ft1::NamedFieldTuple, ft2::NamedFieldTuple) =
 @inline flattened_unique_values(::Tuple{}) = tuple()
 
 """
-    flattened_unique_values(a::NamedTuple)
+$(TYPEDSIGNATURES)
 
 Return values of the (possibly nested) `NamedTuple` `a`,
 flattened into a single tuple, with duplicate entries removed.
@@ -47,7 +47,7 @@ const FullField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple{<:Colon, <:Co
 @inline inner_flatten_tuple(a::Tuple{}) = ()
 
 """
-    fill_halo_regions!(fields::NamedTuple, args...; kwargs...)
+$(TYPEDSIGNATURES)
 
 Fill halo regions for all `fields`. The algorithm:
 
@@ -102,7 +102,7 @@ validate_field_grid(grid, field_tuple::NamedTuple) =
     all(validate_field_grid(grid, field) for field in field_tuple)
 
 """
-    validate_field_tuple_grid(tuple_name, field_tuple, grid)
+$(TYPEDSIGNATURES)
 
 Validates the grids associated with grids in the (possibly nested) `field_tuple`,
 and returns `field_tuple` if validation succeeds.
@@ -151,7 +151,7 @@ end
 #####
 
 """
-    TracerFields(tracer_names, grid, user_bcs)
+$(TYPEDSIGNATURES)
 
 Return a `NamedTuple` with tracer fields specified by `tracer_names` initialized as
 `CenterField`s on `grid`. Boundary conditions `user_bcs`
@@ -164,7 +164,7 @@ function TracerFields(tracer_names, grid, user_bcs)
 end
 
 """
-    TracerFields(tracer_names, grid; kwargs...)
+$(TYPEDSIGNATURES)
 
 Return a `NamedTuple` with tracer fields specified by `tracer_names` initialized as
 `CenterField`s on `grid`. Fields may be passed via optional keyword arguments `kwargs`
@@ -186,7 +186,7 @@ TracerFields(::NamedTuple{(), Tuple{}}, grid, bcs) = NamedTuple()
 VelocityFields(::Nothing, grid, bcs) = VelocityFields(grid, bcs)
 
 """
-    VelocityFields(proposed_velocities::NamedTuple{(:u, :v, :w)}, grid, bcs)
+$(TYPEDSIGNATURES)
 
 Return a `NamedTuple` of velocity fields, overwriting boundary conditions
 in `proposed_velocities` with corresponding fields in the `NamedTuple` `bcs`.
@@ -203,7 +203,7 @@ function VelocityFields(proposed_velocities::NamedTuple{(:u, :v, :w)}, grid, bcs
 end
 
 """
-    TracerFields(proposed_tracers::NamedTuple, grid, bcs)
+$(TYPEDSIGNATURES)
 
 Return a `NamedTuple` of tracers, overwriting boundary conditions
 in `proposed_tracers` with corresponding fields in the `NamedTuple` `bcs`.

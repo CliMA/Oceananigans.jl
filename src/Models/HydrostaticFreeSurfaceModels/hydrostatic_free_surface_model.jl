@@ -36,7 +36,7 @@ function default_vertical_coordinate(grid)
 end
 
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
-                                           G, T, V, B, R, F, P, BGC, U, W, C, Φ, K, AF, Z} <: AbstractModel{TS, A}
+                                           G, T, V, B, R, F, P, BGC, U, W, C, Φ, K, AF, Z, BM} <: AbstractModel{TS, A}
 
     architecture :: A          # Computer `Architecture` on which `Model` is run
     grid :: G                  # Grid of physical points on which `Model` is solved
@@ -57,6 +57,7 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
     timestepper :: TS          # Object containing timestepper fields and parameters
     auxiliary_fields :: AF     # User-specified auxiliary fields for forcing functions and boundary conditions
     vertical_coordinate :: Z   # Rulesets that define the time-evolution of the grid
+    boundary_transport :: BM # Transport fields for targeted open boundary conditions (or `nothing`)
 end
 
 supported_timesteppers = (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5)
@@ -69,17 +70,17 @@ default_free_surface(grid; gravitational_acceleration=defaults.gravitational_acc
 
 """
     HydrostaticFreeSurfaceModel(grid;
-                                clock = Clock{Float64}(time = 0),
+                                clock = Clock(grid),
                                 momentum_advection = VectorInvariant(),
                                 tracer_advection = Centered(),
-                                buoyancy = SeawaterBuoyancy(eltype(grid)),
+                                buoyancy = nothing,
                                 coriolis = nothing,
                                 free_surface = [default_free_surface],
                                 forcing::NamedTuple = NamedTuple(),
                                 closure = nothing,
                                 timestepper = :QuasiAdamsBashforth2,
                                 boundary_conditions::NamedTuple = NamedTuple(),
-                                tracers = (:T, :S),
+                                tracers = nothing,
                                 particles::ParticlesOrNothing = nothing,
                                 biogeochemistry::AbstractBGCOrNothing = nothing,
                                 velocities = nothing,
@@ -122,7 +123,7 @@ Keyword arguments
   - `velocities`: The model velocities. Default: `nothing`.
   - `pressure`: Hydrostatic pressure field. Default: `nothing`.
   - `closure_fields`: Closure fields. Default: `nothing`.
-  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.
+  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `NamedTuple()`.
   - `vertical_coordinate`: Algorithm for grid evolution: `ZStarCoordinate()` or `ZCoordinate(grid)`.
                            Default: `default_vertical_coordinate(grid)`, which returns `ZStarCoordinate(grid)`
                            for grids with `MutableVerticalDiscretization` otherwise returns
@@ -292,9 +293,12 @@ function HydrostaticFreeSurfaceModel(grid;
 
     !isnothing(particles) && arch isa Distributed && error("LagrangianParticles are not supported on Distributed architectures.")
 
+    boundary_transport = initialize_targeted_boundary_transport(velocities)
+
     model = HydrostaticFreeSurfaceModel(arch, grid, clock, advection, buoyancy, coriolis,
                                         free_surface, forcing, closure, particles, biogeochemistry, velocities, transport_velocities,
-                                        tracers, pressure, closure_fields, timestepper, auxiliary_fields, vertical_coordinate)
+                                        tracers, pressure, closure_fields, timestepper, auxiliary_fields, vertical_coordinate,
+                                        boundary_transport)
 
     materialize_clock!(clock, timestepper)
     update_state!(model)

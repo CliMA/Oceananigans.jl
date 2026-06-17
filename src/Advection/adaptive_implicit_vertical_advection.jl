@@ -81,7 +81,7 @@ BoundaryConditions.needs_implicit_solver(::AdaptiveImplicitVerticalAdvection) = 
 BoundaryConditions.needs_implicit_solver(a::NamedTuple) = any(BoundaryConditions.needs_implicit_solver, values(a))
 
 """
-    update_advection_timestep!(advection, timestepper, clock)
+$(TYPEDSIGNATURES)
 
 Set `advection.Δt[]` to the next substep's Δτ so wᵉ in Gⁿ matches the next wⁱ.
 """

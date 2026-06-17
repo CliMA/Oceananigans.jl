@@ -9,7 +9,7 @@ struct FluxFormAdvection{N, FT, TD, A, B, C} <: AbstractAdvectionScheme{N, FT, T
 end
 
 """
-    FluxFormAdvection(x_advection, y_advection, z_advection)
+$(TYPEDSIGNATURES)
 
 Return a `FluxFormAdvection` type with reconstructions schemes `x_advection`, `y_advection`,
 and `z_advection` to be applied in the ``x``, ``y``, and ``z`` directions, respectively.
