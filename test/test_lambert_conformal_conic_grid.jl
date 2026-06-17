@@ -166,7 +166,7 @@ end
             @test lcc_scale_factor(map, 30) ≈ 1 atol=scale_tolerance
             @test lcc_scale_factor(map, 60) ≈ 1 atol=scale_tolerance
 
-            λ_apex, φ_apex = lcc_inverse(map, map.false_easting, map.false_northing + map.ρ₀)
+            λ_apex, φ_apex = lcc_inverse(map, map.false_easting, map.false_northing + map.origin_radius)
             @test λ_apex ≈ -105 atol=coordinate_tolerance
             @test φ_apex ≈ 90 atol=coordinate_tolerance
 
@@ -181,7 +181,7 @@ end
 
             λ_apex, φ_apex = lcc_inverse(southern_map,
                                          southern_map.false_easting,
-                                         southern_map.false_northing + southern_map.ρ₀)
+                                         southern_map.false_northing + southern_map.origin_radius)
 
             @test λ_apex ≈ 30 atol=coordinate_tolerance
             @test φ_apex ≈ -90 atol=coordinate_tolerance
@@ -203,7 +203,7 @@ end
                                                 Δx = 10e3,
                                                 Δy = 10e3)
 
-            @test tangent_map.n ≈ sind(45) rtol=scale_tolerance
+            @test tangent_map.cone_constant ≈ sind(45) rtol=scale_tolerance
 
             numeric_parallels_map = LambertConformalConic(FT;
                                                           standard_parallels = 45,
@@ -216,7 +216,7 @@ end
 
             @test numeric_parallels_map.standard_parallel_1 ≈ tangent_map.standard_parallel_1
             @test numeric_parallels_map.standard_parallel_2 ≈ tangent_map.standard_parallel_2
-            @test numeric_parallels_map.n ≈ tangent_map.n
+            @test numeric_parallels_map.cone_constant ≈ tangent_map.cone_constant
         end
     end
 
@@ -231,9 +231,9 @@ end
                                                 x₁ = -1e6, y₁ = -1e6,
                                                 Δx = 10e3, Δy = 10e3)
 
-            @test north_polar.n ≈ +one(FT) atol = tol
-            @test north_polar.F ≈ +convert(FT, 2) atol = tol
-            @test isfinite(north_polar.ρ₀)
+            @test north_polar.cone_constant ≈ +one(FT) atol = tol
+            @test north_polar.scale_constant ≈ +convert(FT, 2) atol = tol
+            @test isfinite(north_polar.origin_radius)
             @test isfinite(lcc_scale_factor(north_polar, FT(89)))
 
             south_polar = LambertConformalConic(FT;
@@ -243,9 +243,9 @@ end
                                                 x₁ = -1e6, y₁ = -1e6,
                                                 Δx = 10e3, Δy = 10e3)
 
-            @test south_polar.n ≈ -one(FT) atol = tol
-            @test south_polar.F ≈ -convert(FT, 2) atol = tol
-            @test isfinite(south_polar.ρ₀)
+            @test south_polar.cone_constant ≈ -one(FT) atol = tol
+            @test south_polar.scale_constant ≈ -convert(FT, 2) atol = tol
+            @test isfinite(south_polar.origin_radius)
 
             tuple_north = LambertConformalConic(FT;
                                                 standard_parallels = (90, 90),
@@ -254,8 +254,8 @@ end
                                                 x₁ = -1e6, y₁ = -1e6,
                                                 Δx = 10e3, Δy = 10e3)
 
-            @test tuple_north.n ≈ +one(FT)
-            @test tuple_north.F ≈ +convert(FT, 2)
+            @test tuple_north.cone_constant ≈ +one(FT)
+            @test tuple_north.scale_constant ≈ +convert(FT, 2)
 
             # Pole-centred grid round-trips cleanly
             grid = LambertConformalConicGrid(CPU(), FT;
@@ -267,8 +267,8 @@ end
                                              z = (-100, 0))
 
             @test grid isa LambertConformalConicGrid
-            @test grid.conformal_mapping.n ≈ +one(FT)
-            @test grid.conformal_mapping.F ≈ +convert(FT, 2)
+            @test grid.conformal_mapping.cone_constant ≈ +one(FT)
+            @test grid.conformal_mapping.scale_constant ≈ +convert(FT, 2)
             for array in lcc_coordinate_arrays(grid)
                 @test all(isfinite, array)
             end
@@ -348,27 +348,27 @@ end
                                              latitude_of_origin = 90,
                                              z = (-100, 0))
 
-            @test grid.conformal_mapping.n ≈ 1.0
-            @test grid.conformal_mapping.F ≈ 2.0
+            @test grid.conformal_mapping.cone_constant ≈ 1.0
+            @test grid.conformal_mapping.scale_constant ≈ 2.0
 
             grid_h = with_halo((5, 5, 5), grid)
-            @test grid_h.conformal_mapping.n ≈ 1.0
-            @test grid_h.conformal_mapping.F ≈ 2.0
+            @test grid_h.conformal_mapping.cone_constant ≈ 1.0
+            @test grid_h.conformal_mapping.scale_constant ≈ 2.0
             @test halo_size(grid_h) == (5, 5, 5)
 
             similar_grid = similar(grid)
-            @test similar_grid.conformal_mapping.n ≈ 1.0
-            @test similar_grid.conformal_mapping.F ≈ 2.0
+            @test similar_grid.conformal_mapping.cone_constant ≈ 1.0
+            @test similar_grid.conformal_mapping.scale_constant ≈ 2.0
 
             float32_grid = with_number_type(Float32, grid)
-            @test float32_grid.conformal_mapping.n ≈ Float32(1)
-            @test float32_grid.conformal_mapping.F ≈ Float32(2)
+            @test float32_grid.conformal_mapping.cone_constant ≈ Float32(1)
+            @test float32_grid.conformal_mapping.scale_constant ≈ Float32(2)
 
             args, kwargs = constructor_arguments(grid)
             reconstructed = LambertConformalConicGrid(args[:architecture],
                                                       args[:number_type]; kwargs...)
-            @test reconstructed.conformal_mapping.n ≈ 1.0
-            @test reconstructed.conformal_mapping.F ≈ 2.0
+            @test reconstructed.conformal_mapping.cone_constant ≈ 1.0
+            @test reconstructed.conformal_mapping.scale_constant ≈ 2.0
         end
 
         # Make sure a hydrostatic model can actually be integrated on a polar
@@ -536,7 +536,7 @@ end
                                                       size = (8, 8, 1),
                                                       z = (-100, 0))
 
-        @test isfinite(polar_origin_grid.conformal_mapping.ρ₀)
+        @test isfinite(polar_origin_grid.conformal_mapping.origin_radius)
 
         flat_grid = LambertConformalConicGrid(CPU(), Float64;
                                               size = (8, 6),
@@ -786,7 +786,7 @@ end
                                          x₁ = 0, y₁ = 0,
                                          Δx = 1, Δy = 1)
 
-        apex_y = apex_map.false_northing + apex_map.ρ₀
+        apex_y = apex_map.false_northing + apex_map.origin_radius
 
         @test_logs (:warn, r"cone apex / pole on a grid node") LambertConformalConicGrid(CPU(), Float64;
                                                                                          size = (2, 2, 1),

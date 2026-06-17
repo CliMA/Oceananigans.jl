@@ -17,9 +17,9 @@ struct LambertConformalConic{FT}
     false_easting :: FT
     false_northing :: FT
     radius :: FT
-    n :: FT
-    F :: FT
-    ρ₀ :: FT
+    cone_constant :: FT
+    scale_constant :: FT
+    origin_radius :: FT
     x₁ :: FT
     y₁ :: FT
     Δx :: FT
@@ -200,9 +200,9 @@ function Adapt.adapt_structure(to, map::LambertConformalConic)
                                  adapt(to, map.false_easting),
                                  adapt(to, map.false_northing),
                                  adapt(to, map.radius),
-                                 adapt(to, map.n),
-                                 adapt(to, map.F),
-                                 adapt(to, map.ρ₀),
+                                 adapt(to, map.cone_constant),
+                                 adapt(to, map.scale_constant),
+                                 adapt(to, map.origin_radius),
                                  adapt(to, map.x₁),
                                  adapt(to, map.y₁),
                                  adapt(to, map.Δx),
@@ -224,7 +224,9 @@ function Base.show(io::IO, map::LambertConformalConic{FT}) where FT
 end
 
 @inline function lcc_radius(map::LambertConformalConic{FT}, φ) where FT
-    return map.radius * map.F / lcc_tangent(φ)^map.n
+    F = map.scale_constant
+    n = map.cone_constant
+    return map.radius * F / lcc_tangent(φ)^n
 end
 
 """
@@ -253,10 +255,12 @@ show((round(x; digits=12), round(y; digits=12)))
     λ = degrees_to_radians(FT, λ)
     φ = degrees_to_radians(FT, φ)
     ρ = lcc_radius(map, φ)
-    θ = map.n * lcc_wrap_to_π(λ - map.central_longitude)
+    n = map.cone_constant
+    ρ₀ = map.origin_radius
+    θ = n * lcc_wrap_to_π(λ - map.central_longitude)
 
     x = map.false_easting + ρ * sin(θ)
-    y = map.false_northing + map.ρ₀ - ρ * cos(θ)
+    y = map.false_northing + ρ₀ - ρ * cos(θ)
 
     return x, y
 end
@@ -285,20 +289,23 @@ show((round(λ; digits=10), round(φ; digits=10)))
 ```
 """
 @inline function lcc_inverse(map::LambertConformalConic{FT}, x, y) where FT
+    n = map.cone_constant
+    F = map.scale_constant
+    ρ₀ = map.origin_radius
     x′ = convert(FT, x) - map.false_easting
     y′ = convert(FT, y) - map.false_northing
-    ρ_abs = sqrt(x′^2 + (map.ρ₀ - y′)^2)
-    sign_n = ifelse(map.n < zero(FT), -one(FT), one(FT))
+    ρ_abs = sqrt(x′^2 + (ρ₀ - y′)^2)
+    sign_n = ifelse(n < zero(FT), -one(FT), one(FT))
     ρ = sign_n * ρ_abs
     ρ_for_inverse = ifelse(ρ_abs == zero(FT),
                             sign_n,
                             ρ)
-    θ = atan(sign_n * x′, sign_n * (map.ρ₀ - y′))
-    T = (map.radius * map.F / ρ_for_inverse)^(one(FT) / map.n)
+    θ = atan(sign_n * x′, sign_n * (ρ₀ - y′))
+    T = (map.radius * F / ρ_for_inverse)^(one(FT) / n)
     φ = convert(FT, 2) * atan(T) - lcc_halfπ(FT)
-    λ = map.central_longitude + θ / map.n
+    λ = map.central_longitude + θ / n
 
-    φ_apex = ifelse(map.n < zero(FT), -lcc_halfπ(FT), lcc_halfπ(FT))
+    φ_apex = ifelse(n < zero(FT), -lcc_halfπ(FT), lcc_halfπ(FT))
     φ = ifelse(ρ_abs == zero(FT), φ_apex, φ)
     λ = ifelse(ρ_abs == zero(FT), map.central_longitude, λ)
     λ = lcc_wrap_to_π(λ)
@@ -330,7 +337,8 @@ show(round(lcc_scale_factor(map, 60); digits=12))
 @inline function lcc_scale_factor(map::LambertConformalConic{FT}, φ) where FT
     φ = degrees_to_radians(FT, φ)
     ρ = lcc_radius(map, φ)
-    return abs(map.n * ρ / (map.radius * cos(φ)))
+    n = map.cone_constant
+    return abs(n * ρ / (map.radius * cos(φ)))
 end
 
 @inline function lcc_xnode(i, ::Center, map::LambertConformalConic{FT}) where FT
@@ -480,7 +488,7 @@ function validate_lcc_projected_domain(map::LambertConformalConic{FT}, size) whe
     end
 
     x_apex = map.false_easting
-    y_apex = map.false_northing + map.ρ₀
+    y_apex = map.false_northing + map.origin_radius
     apex_in_x_domain = map.x₁ <= x_apex <= x₂
     apex_in_y_domain = map.y₁ <= y_apex <= y₂
 
