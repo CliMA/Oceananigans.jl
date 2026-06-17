@@ -60,23 +60,12 @@ function validate_lcc_angles(FT, φ₀, φ₁, φ₂)
     halfπ = lcc_halfπ(FT)
     tolerance = sqrt(eps(FT))
 
-    isfinite(φ₀) ||
-        throw(ArgumentError("latitude_of_origin must be finite."))
-
-    isfinite(φ₁) ||
-        throw(ArgumentError("standard parallels must be finite."))
-
-    isfinite(φ₂) ||
-        throw(ArgumentError("standard parallels must be finite."))
-
-    abs(φ₀) <= halfπ ||
-        throw(ArgumentError("latitude_of_origin must lie between -90 and 90 degrees."))
-
-    abs(φ₁) <= halfπ ||
-        throw(ArgumentError("standard parallels must lie between -90 and 90 degrees."))
-
-    abs(φ₂) <= halfπ ||
-        throw(ArgumentError("standard parallels must lie between -90 and 90 degrees."))
+    isfinite(φ₀) || throw(ArgumentError("latitude_of_origin must be finite."))
+    isfinite(φ₁) || throw(ArgumentError("standard parallels must be finite."))
+    isfinite(φ₂) || throw(ArgumentError("standard parallels must be finite."))
+    abs(φ₀) <= halfπ || throw(ArgumentError("latitude_of_origin must lie between -90 and 90 degrees."))
+    abs(φ₁) <= halfπ || throw(ArgumentError("standard parallels must lie between -90 and 90 degrees."))
+    abs(φ₂) <= halfπ || throw(ArgumentError("standard parallels must lie between -90 and 90 degrees."))
 
     # When a standard parallel sits exactly at a pole the projection becomes
     # polar stereographic; in that case both parallels must coincide with the
@@ -103,13 +92,8 @@ function validate_lcc_scalar(value, name, FT; positive = false)
         throw(ArgumentError("$name must be convertible to $FT."))
     end
 
-    isfinite(value) ||
-        throw(ArgumentError("$name must be finite."))
-
-    if positive
-        value > zero(FT) ||
-            throw(ArgumentError("$name must be positive."))
-    end
+    isfinite(value) || throw(ArgumentError("$name must be finite."))
+    positive && value > zero(FT) || throw(ArgumentError("$name must be positive."))
 
     return value
 end
@@ -362,18 +346,13 @@ end
 end
 
 @inline function lcc_ynode(j, ::Face, map::LambertConformalConic{FT}) where FT
-    return map.y₁ + (convert(FT, j) - one(FT)) * map.Δy
+    return map.y₁ + (convert(FT, j) - 1) * map.Δy
 end
 
 function validate_lcc_topology(topology)
     TX, TY, TZ = validate_topology(topology)
-
-    TX === Bounded ||
-        throw(ArgumentError("LambertConformalConicGrid requires Bounded topology in x."))
-
-    TY === Bounded ||
-        throw(ArgumentError("LambertConformalConicGrid requires Bounded topology in y."))
-
+    TX === Bounded || throw(ArgumentError("LambertConformalConicGrid requires Bounded topology in x."))
+    TY === Bounded || throw(ArgumentError("LambertConformalConicGrid requires Bounded topology in y."))
     return TX, TY, TZ
 end
 
@@ -791,28 +770,28 @@ end
 
     @inbounds begin
         grid.Δxᶜᶜᵃ[i, j] = spherical_distance(grid.λᶠᶜᵃ[i+1, j], grid.φᶠᶜᵃ[i+1, j],
-                                               grid.λᶠᶜᵃ[i,   j], grid.φᶠᶜᵃ[i,   j], R)
+                                              grid.λᶠᶜᵃ[i,   j], grid.φᶠᶜᵃ[i,   j], R)
 
         grid.Δxᶠᶜᵃ[i, j] = spherical_distance(grid.λᶜᶜᵃ[i,   j], grid.φᶜᶜᵃ[i,   j],
-                                               grid.λᶜᶜᵃ[i-1, j], grid.φᶜᶜᵃ[i-1, j], R)
+                                              grid.λᶜᶜᵃ[i-1, j], grid.φᶜᶜᵃ[i-1, j], R)
 
         grid.Δxᶜᶠᵃ[i, j] = spherical_distance(grid.λᶠᶠᵃ[i+1, j], grid.φᶠᶠᵃ[i+1, j],
-                                               grid.λᶠᶠᵃ[i,   j], grid.φᶠᶠᵃ[i,   j], R)
+                                              grid.λᶠᶠᵃ[i,   j], grid.φᶠᶠᵃ[i,   j], R)
 
         grid.Δxᶠᶠᵃ[i, j] = spherical_distance(grid.λᶜᶠᵃ[i,   j], grid.φᶜᶠᵃ[i,   j],
-                                               grid.λᶜᶠᵃ[i-1, j], grid.φᶜᶠᵃ[i-1, j], R)
+                                              grid.λᶜᶠᵃ[i-1, j], grid.φᶜᶠᵃ[i-1, j], R)
 
         grid.Δyᶜᶜᵃ[i, j] = spherical_distance(grid.λᶜᶠᵃ[i, j+1], grid.φᶜᶠᵃ[i, j+1],
-                                               grid.λᶜᶠᵃ[i, j  ], grid.φᶜᶠᵃ[i, j  ], R)
+                                              grid.λᶜᶠᵃ[i, j  ], grid.φᶜᶠᵃ[i, j  ], R)
 
         grid.Δyᶠᶜᵃ[i, j] = spherical_distance(grid.λᶠᶠᵃ[i, j+1], grid.φᶠᶠᵃ[i, j+1],
-                                               grid.λᶠᶠᵃ[i, j  ], grid.φᶠᶠᵃ[i, j  ], R)
+                                              grid.λᶠᶠᵃ[i, j  ], grid.φᶠᶠᵃ[i, j  ], R)
 
         grid.Δyᶜᶠᵃ[i, j] = spherical_distance(grid.λᶜᶜᵃ[i, j  ], grid.φᶜᶜᵃ[i, j  ],
-                                               grid.λᶜᶜᵃ[i, j-1], grid.φᶜᶜᵃ[i, j-1], R)
+                                              grid.λᶜᶜᵃ[i, j-1], grid.φᶜᶜᵃ[i, j-1], R)
 
         grid.Δyᶠᶠᵃ[i, j] = spherical_distance(grid.λᶠᶜᵃ[i, j  ], grid.φᶠᶜᵃ[i, j  ],
-                                               grid.λᶠᶜᵃ[i, j-1], grid.φᶠᶜᵃ[i, j-1], R)
+                                              grid.λᶠᶜᵃ[i, j-1], grid.φᶠᶜᵃ[i, j-1], R)
 
         grid.Azᶜᶜᵃ[i, j] = spherical_quadrilateral_area(grid.λᶠᶠᵃ[i,   j  ], grid.φᶠᶠᵃ[i,   j  ],
                                                         grid.λᶠᶠᵃ[i+1, j  ], grid.φᶠᶠᵃ[i+1, j  ],
