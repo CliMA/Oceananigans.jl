@@ -93,7 +93,7 @@ function validate_lcc_scalar(value, name, FT; positive = false)
     end
 
     isfinite(value) || throw(ArgumentError("$name must be finite."))
-    positive && value > zero(FT) || throw(ArgumentError("$name must be positive."))
+    positive && value ≤ zero(FT) && throw(ArgumentError("$name must be positive."))
 
     return value
 end
