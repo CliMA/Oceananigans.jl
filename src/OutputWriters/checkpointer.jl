@@ -8,7 +8,7 @@ import Oceananigans: prognostic_state, restore_prognostic_state!, checkpoint_res
                      restore_checkpoint_grid, checkpoint_restore_mode, warn_if_cross_grid_pickup, checkpoint_restore_halo_kwargs,
                      fill_timestepper_tendency_halos_after_restore!,
                      fill_timestepper_previous_tendency_halos_after_restore!,
-                     RestoreOnCurrentGrid, RestoreOnCheckpointGrid, with_checkpoint_restore_grid
+                     RestoreOnCurrentGrid, RestoreOnCompatibleGrid, with_checkpoint_restore_grid
 import Oceananigans.Fields: set!
 
 mutable struct Checkpointer{T} <: AbstractOutputWriter
@@ -175,13 +175,38 @@ restore_checkpoint_grid(from::NamedTuple{names}) where names = restore_checkpoin
 restore_checkpoint_grid(::Val{true}, from) = from.checkpoint_grid
 restore_checkpoint_grid(::Val{false}, from) = nothing
 
+same_interior_grid(a, b) = false
+
+compare_grid_field(excluded_fields, a, b, field::Symbol) = field in excluded_fields || getfield(a, field) == getfield(b, field)
+
+function same_interior_grid(excluded_fields, a::T, b::T) where T
+    all(field -> compare_grid_field(excluded_fields, a, b, field), fieldnames(T))
+end
+
+same_interior_grid(a::RectilinearGrid, b::RectilinearGrid) =
+    same_interior_grid((:architecture, :Hx, :Hy, :Hz), a, b)
+
+same_interior_grid(a::LatitudeLongitudeGrid, b::LatitudeLongitudeGrid) =
+    same_interior_grid((:architecture, :Hx, :Hy, :Hz), a, b)
+
+same_interior_grid(a::OrthogonalSphericalShellGrid, b::OrthogonalSphericalShellGrid) =
+    same_interior_grid((:architecture, :Hx, :Hy, :Hz), a, b)
+
+same_interior_grid(a::ImmersedBoundaryGrid, b::ImmersedBoundaryGrid) =
+    same_interior_grid(a.underlying_grid, b.underlying_grid) && a.immersed_boundary == b.immersed_boundary
+
 checkpoint_restore_mode(::Nothing, grid) = RestoreOnCurrentGrid()
-checkpoint_restore_mode(checkpoint_grid, grid) = checkpoint_grid == grid ? RestoreOnCurrentGrid() : RestoreOnCheckpointGrid(checkpoint_grid)
+function checkpoint_restore_mode(checkpoint_grid, grid)
+    checkpoint_grid == grid && return RestoreOnCurrentGrid()
+    same_interior_grid(checkpoint_grid, grid) && return RestoreOnCompatibleGrid(checkpoint_grid)
+
+    throw(ArgumentError("Checkpoint pickup only supports the same interior grid with a different halo size. Restoring across different grids or resolutions is not supported by this path."))
+end
 
 warn_if_cross_grid_pickup(checkpoint_grid, grid) = warn_if_cross_grid_pickup(checkpoint_restore_mode(checkpoint_grid, grid), grid)
 warn_if_cross_grid_pickup(::RestoreOnCurrentGrid, grid) = nothing
-function warn_if_cross_grid_pickup(mode::RestoreOnCheckpointGrid, grid)
-    @warn "Picking up a checkpoint onto a different grid; restored fields will be interpolated onto model.grid and halos will be rebuilt afterward." checkpoint_grid=mode.grid model_grid=grid
+function warn_if_cross_grid_pickup(mode::RestoreOnCompatibleGrid, grid)
+    @warn "Picking up a checkpoint onto the same interior grid with a different halo size; interiors will be restored directly and halos will be rebuilt afterward." checkpoint_grid=mode.grid model_grid=grid
     return nothing
 end
 

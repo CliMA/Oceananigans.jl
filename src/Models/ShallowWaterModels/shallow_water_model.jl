@@ -15,7 +15,7 @@ using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, build_closure_fields
 using Oceananigans.Utils: tupleit
 
-import Oceananigans: prognostic_state, restore_prognostic_state!, restore_checkpoint_grid, checkpoint_restore_mode, warn_if_cross_grid_pickup, checkpoint_restore_halo_kwargs, with_checkpoint_restore_grid, finalize_checkpoint_restore!, fill_timestepper_tendency_halos_after_restore!, fill_timestepper_previous_tendency_halos_after_restore!, RestoreOnCurrentGrid, RestoreOnCheckpointGrid
+import Oceananigans: prognostic_state, restore_prognostic_state!, restore_checkpoint_grid, checkpoint_restore_mode, warn_if_cross_grid_pickup, checkpoint_restore_halo_kwargs, with_checkpoint_restore_grid, finalize_checkpoint_restore!, fill_timestepper_tendency_halos_after_restore!, fill_timestepper_previous_tendency_halos_after_restore!, RestoreOnCurrentGrid, RestoreOnCompatibleGrid
 import Oceananigans.Architectures: architecture
 
 const RectilinearGrids = Union{RectilinearGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:RectilinearGrid}}
@@ -291,7 +291,7 @@ finalize_checkpoint_restore!(restored::ShallowWaterModel, checkpoint_grid) =
 
 finalize_checkpoint_restore!(restored::ShallowWaterModel, ::RestoreOnCurrentGrid) = restored
 
-function finalize_checkpoint_restore!(restored::ShallowWaterModel, ::RestoreOnCheckpointGrid)
+function finalize_checkpoint_restore!(restored::ShallowWaterModel, ::RestoreOnCompatibleGrid)
     model_fields = Oceananigans.fields(restored)
     halo_kwargs = checkpoint_restore_halo_kwargs(restored)
 

@@ -17,7 +17,7 @@ using Oceananigans.Advection: needs_implicit_solver
 using Oceananigans.Utils: tupleit
 
 import Oceananigans
-import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!, restore_checkpoint_grid, checkpoint_restore_mode, warn_if_cross_grid_pickup, checkpoint_restore_halo_kwargs, with_checkpoint_restore_grid, finalize_checkpoint_restore!, fill_timestepper_tendency_halos_after_restore!, fill_timestepper_previous_tendency_halos_after_restore!, RestoreOnCurrentGrid, RestoreOnCheckpointGrid
+import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!, restore_checkpoint_grid, checkpoint_restore_mode, warn_if_cross_grid_pickup, checkpoint_restore_halo_kwargs, with_checkpoint_restore_grid, finalize_checkpoint_restore!, fill_timestepper_tendency_halos_after_restore!, fill_timestepper_previous_tendency_halos_after_restore!, RestoreOnCurrentGrid, RestoreOnCompatibleGrid
 import Oceananigans.Models: total_velocities
 import Oceananigans.TimeSteppers: update_state!, reconcile_state!, materialize_clock!
 import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
@@ -408,7 +408,7 @@ finalize_checkpoint_restore!(restored::HydrostaticFreeSurfaceModel, checkpoint_g
 
 finalize_checkpoint_restore!(restored::HydrostaticFreeSurfaceModel, ::RestoreOnCurrentGrid) = restored
 
-function finalize_checkpoint_restore!(restored::HydrostaticFreeSurfaceModel, ::RestoreOnCheckpointGrid)
+function finalize_checkpoint_restore!(restored::HydrostaticFreeSurfaceModel, ::RestoreOnCompatibleGrid)
     model_fields = Oceananigans.fields(restored)
     halo_kwargs = checkpoint_restore_halo_kwargs(restored)
 

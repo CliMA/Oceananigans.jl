@@ -218,7 +218,7 @@ function restore_prognostic_state! end
 
 abstract type AbstractCheckpointRestoreMode end
 struct RestoreOnCurrentGrid <: AbstractCheckpointRestoreMode end
-struct RestoreOnCheckpointGrid{G} <: AbstractCheckpointRestoreMode
+struct RestoreOnCompatibleGrid{G} <: AbstractCheckpointRestoreMode
     grid :: G
 end
 
