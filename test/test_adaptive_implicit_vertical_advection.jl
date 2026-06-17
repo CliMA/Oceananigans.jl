@@ -1,10 +1,8 @@
 include("dependencies_for_runtests.jl")
 
-using Oceananigans.BoundaryConditions: needs_implicit_solver
-
 using Oceananigans.Advection: AdaptiveImplicitVerticalAdvection,
                               advective_tracer_flux_z,
-                              
+                              needs_implicit_solver
 using Oceananigans.TimeSteppers: AdaptiveVerticallyImplicitDiscretization,
                                  ExplicitTimeDiscretization,
                                  time_discretization,

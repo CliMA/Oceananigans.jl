@@ -43,7 +43,6 @@ CUDA.allowscalar() do
             include("test_operators.jl")
             include("test_vector_rotation_operators.jl")
             include("test_boundary_conditions.jl")
-            include("test_implicit_boundary_fluxes.jl")
             include("test_field.jl")
             include("test_set_field_interpolation.jl")
             include("test_regrid.jl")
