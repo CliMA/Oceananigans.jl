@@ -150,7 +150,7 @@ end
 #####
 
 """
-    validate_Δt(Δt, arch)
+$(TYPEDSIGNATURES)
 
 Make sure different workers are using the same time step
 """
@@ -166,14 +166,14 @@ end
 validate_Δt(Δt, arch) = Δt
 
 """
-    time(sim::Simulation)
+$(TYPEDSIGNATURES)
 
 Return the current simulation time.
 """
 Base.time(sim::Simulation) = time(sim.model)
 
 """
-    iteration(sim::Simulation)
+$(TYPEDSIGNATURES)
 
 Return the current simulation iteration.
 """
@@ -189,14 +189,14 @@ For more details, see [`prettytime`](@ref Oceananigans.Utils.prettytime).
 prettytime(sim::Simulation, longform=true) = prettytime(time(sim), longform)
 
 """
-    run_wall_time(sim::Simulation)
+$(TYPEDSIGNATURES)
 
-Return `sim.run_wall_time` as a prettily formatted string."
+Return `sim.run_wall_time` as a prettily formatted string.
 """
 run_wall_time(sim::Simulation) = prettytime(sim.run_wall_time)
 
 """
-    reset!(sim)
+$(TYPEDSIGNATURES)
 
 Reset `sim`ulation, `model.clock`, and `model.timestepper` to their initial state.
 """
@@ -221,7 +221,7 @@ end
 
 # Fallback. Models without clocks should extend this function.
 """
-    reset_clock!(model::AbstractModel)
+$(TYPEDSIGNATURES)
 
 Reset `model.clock` to its initial state.
 """
@@ -282,10 +282,10 @@ end
 # Fallback, to be elaborated on
 write_output!(writer::JLD2Writer,   sim::Simulation) = write_output!(writer, sim.model)
 write_output!(writer::NetCDFWriter, sim::Simulation) = write_output!(writer, sim.model)
+write_output!(writer::ZarrWriter,   sim::Simulation) = write_output!(writer, sim.model)
 
 function prognostic_state(sim::Simulation)
     return (model = prognostic_state(sim.model),
-            Δt = sim.Δt,
             diagnostics = prognostic_state(sim.diagnostics),
             output_writers = prognostic_state(sim.output_writers),
             callbacks = prognostic_state(sim.callbacks),
@@ -297,7 +297,6 @@ end
 
 function restore_prognostic_state!(restored::Simulation, from)
     restore_prognostic_state!(restored.model, from.model)
-    restored.Δt = from.Δt
     restore_prognostic_state!(restored.diagnostics, from.diagnostics)
     restore_prognostic_state!(restored.output_writers, from.output_writers)
     restore_prognostic_state!(restored.callbacks, from.callbacks)

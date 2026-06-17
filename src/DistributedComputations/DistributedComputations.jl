@@ -18,6 +18,7 @@ using Oceananigans.Grids: XYZRegularRG
 using Oceananigans.Solvers: GridWithFourierTridiagonalSolver
 
 import Oceananigans.Solvers: fft_poisson_solver
+using DocStringExtensions: TYPEDSIGNATURES
 
 include("distributed_macros.jl")
 include("distributed_architectures.jl")
@@ -58,5 +59,10 @@ function precondition!(p, preconditioner::DistributedFourierTridiagonalPoissonSo
     solve!(p, preconditioner)
     return p
 end
+
+# Correctly pass architecture to determine the default weno_weight_computation
+Oceananigans.Advection.default_weno_weight_computation(arch::Distributed) =
+    Oceananigans.Advection.default_weno_weight_computation(child_architecture(arch))
+
 
 end # module

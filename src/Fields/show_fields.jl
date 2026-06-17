@@ -70,9 +70,6 @@ Base.show(io::IO, f::CF) = print(io, summary(f))
 
 Base.show(io::IO, ::MIME"text/plain", f::AbstractField) = show(io, f)
 
-const FieldTuple = Tuple{Field, Vararg{Field}}
-const NamedFieldTuple = NamedTuple{S, <:FieldTuple} where S
-
 function Base.show(io::IO, ft::NamedFieldTuple)
     names = keys(ft)
     N = length(ft)

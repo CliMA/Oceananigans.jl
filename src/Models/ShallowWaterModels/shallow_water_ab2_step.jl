@@ -4,7 +4,7 @@ using Oceananigans.TimeSteppers: _ab2_step_field!
 import Oceananigans.TimeSteppers: ab2_step!
 
 """
-    ab2_step!(model::ShallowWaterModel, Δt, callbacks)
+$(TYPEDSIGNATURES)
 
 Perform a single AB2 step for `ShallowWaterModel`.
 
@@ -17,13 +17,14 @@ function ab2_step!(model::ShallowWaterModel, Δt, callbacks)
 
     compute_tendencies!(model, callbacks)
     grid = model.grid
+    kernel_Δt = convert(eltype(grid), Δt)
 
     fields = prognostic_fields(model)
 
     for key in keys(fields)
         launch!(architecture(grid), grid, :xyz, _ab2_step_field!,
                 fields[key],
-                Δt,
+                kernel_Δt,
                 model.timestepper.χ,
                 model.timestepper.Gⁿ[key],
                 model.timestepper.G⁻[key])

@@ -42,6 +42,7 @@ Keyword arguments
 - `dir`: Directory to save output to. Default: `"."` (current working directory).
 
 - `prefix`: Descriptive filename prefixed to all output files. Default: `"checkpoint"`.
+            On distributed architectures, `"_rank{local_rank}"` is appended automatically.
 
 - `overwrite_existing`: Remove existing files if their filenames conflict. Default: `false`.
 
@@ -59,6 +60,8 @@ function Checkpointer(model; schedule,
                       cleanup = false)
 
     mkpath(dir)
+    filename = with_architecture_suffix(architecture(model), string(prefix, ".jld2"), ".jld2")
+    prefix = String(chop(filename, tail=length(".jld2")))
 
     return Checkpointer(schedule, dir, prefix, overwrite_existing, verbose, cleanup)
 end
@@ -73,7 +76,7 @@ checkpointer_address(model) = ""
 checkpoint_superprefix(prefix) = prefix * "_iteration"
 
 """
-    checkpoint_path(iteration::Int, checkpointer::Checkpointer)
+$(TYPEDSIGNATURES)
 
 Return the path to the `checkpointer` file associated with model `iteration`.
 """
@@ -91,32 +94,69 @@ function checkpoint_path(pickup, output_writers)
 end
 
 """
-    checkpoint_path(pickup::Bool, checkpointer::Checkpointer)
+$(TYPEDSIGNATURES)
 
 For `pickup=true`, parse the filenames in `checkpointer.dir` associated with
-`checkpointer.prefix` and return the path to the file whose name contains
-the largest iteration.
+`checkpointer.prefix` and return the path to the most recently modified
+checkpoint file.
 """
 function checkpoint_path(pickup::Bool, checkpointer::Checkpointer)
+    pickup || return nothing
+    return checkpoint_path(:recent_time_stamp, checkpointer)
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+For symbol-based pickup modes:
+
+- `pickup=:recent_time_stamp` returns the most recently modified checkpoint file.
+- `pickup=:highest_iteration` returns the checkpoint file with the largest iteration in its name.
+- `pickup=:latest` is an alias for `:recent_time_stamp`.
+"""
+function checkpoint_path(pickup::Symbol, checkpointer::Checkpointer)
+    mode = pickup === :latest ? :recent_time_stamp : pickup
+    mode in (:recent_time_stamp, :highest_iteration) || throw(ArgumentError("Unsupported pickup mode $pickup. Supported modes are :recent_time_stamp and :highest_iteration."))
+
     filepaths = glob(checkpoint_superprefix(checkpointer.prefix) * "*.jld2", checkpointer.dir)
 
     if length(filepaths) == 0 # no checkpoint files found
         # https://github.com/CliMA/Oceananigans.jl/issues/1159
-        @warn "pickup=true but no checkpoints were found. Simulation will run without picking up."
+        @warn "pickup=$pickup but no checkpoints were found. Simulation will run without picking up."
         return nothing
+    elseif mode === :highest_iteration
+        return latest_checkpoint_by_iteration(checkpointer, filepaths)
     else
-        return latest_checkpoint(checkpointer, filepaths)
+        return latest_checkpoint_by_time_stamp(checkpointer, filepaths)
     end
 end
 
-function latest_checkpoint(checkpointer, filepaths)
+function latest_checkpoint_by_iteration(checkpointer, filepaths)
     filenames = basename.(filepaths)
     leading = length(checkpoint_superprefix(checkpointer.prefix))
     trailing = length(".jld2") # 5
     iterations = map(name -> parse(Int, chop(name, head=leading, tail=trailing)), filenames)
-    latest_iteration, idx = findmax(iterations)
+    _, idx = findmax(iterations)
     return filepaths[idx]
 end
+
+function latest_checkpoint_by_time_stamp(checkpointer, filepaths)
+    modification_times = map(filepath -> stat(filepath).mtime, filepaths)
+    latest_time = maximum(modification_times)
+    indices_with_latest_time = findall(==(latest_time), modification_times)
+    candidate_paths = filepaths[indices_with_latest_time]
+
+    length(candidate_paths) == 1 && return first(candidate_paths)
+
+    # Deterministic tie-breaker for coarse filesystem mtimes:
+    # if multiple files have the same latest timestamp, pick the highest iteration.
+    return latest_checkpoint_by_iteration(checkpointer, candidate_paths)
+end
+
+# Backward-compatibility shim: historical "latest_checkpoint" means "latest by iteration".
+# Keep this behavior for existing internal/external callsites (for example cleanup logic),
+# while the new :recent_time_stamp mode is selected explicitly via checkpoint_path(::Symbol, ...).
+latest_checkpoint(checkpointer, filepaths) = latest_checkpoint_by_iteration(checkpointer, filepaths)
 
 #####
 ##### Writing checkpoints
@@ -124,6 +164,10 @@ end
 
 prognostic_state(obj) = obj
 prognostic_state(::NamedTuple{()}) = nothing
+prognostic_state(::NoFileSplitting) = nothing
+prognostic_state(::FileSizeLimit) = nothing
+restore_prognostic_state!(::NoFileSplitting, from) = nothing
+restore_prognostic_state!(::FileSizeLimit, from) = nothing
 
 prognostic_state(tuple::Tuple) = Tuple(prognostic_state(t) for t in tuple)
 
@@ -172,7 +216,7 @@ end
 #####
 
 """
-    load_nested_data(obj)
+$(TYPEDSIGNATURES)
 
 Recursively load data from a JLD2 group or dataset, reconstructing nested NamedTuples for
 groups and returning raw data for leaf nodes.
@@ -289,12 +333,24 @@ function prognostic_state(writer::Union{JLD2Writer, NetCDFWriter})
 
     return (schedule = prognostic_state(writer.schedule),
             part = writer.part,
+            file_splitting = prognostic_state(writer.file_splitting),
             windowed_time_averages = isempty(wta_outputs) ? nothing : wta_outputs)
 end
 
 function restore_prognostic_state!(restored::Union{JLD2Writer, NetCDFWriter}, from)
     restore_prognostic_state!(restored.schedule, from.schedule)
     restored.part = from.part
+
+    # Update the filepath to match the restored part number so that
+    # the writer appends to the correct part file after pickup.
+    restored.filepath = filepath_for_part(restored.filepath, restored.part)
+
+    # Restore file_splitting schedule state (e.g., TimeInterval actuations)
+    # so splitting doesn't re-trigger immediately after pickup.
+    # Backward compatible: old checkpoints may not have file_splitting.
+    if hasproperty(from, :file_splitting) && !isnothing(from.file_splitting)
+        restore_prognostic_state!(restored.file_splitting, from.file_splitting)
+    end
 
     if hasproperty(from, :windowed_time_averages) && !isnothing(from.windowed_time_averages)
         for (name, wta_state) in pairs(from.windowed_time_averages)
@@ -333,11 +389,11 @@ end
 
 Manually checkpoint `simulation` state to a JLD2 file.
 
-If `simulation.output_writers` contains a `Checkpointer`, it will be used
-(respecting its `dir`, `prefix`, `cleanup`, and `verbose` settings).
-
-Otherwise, the checkpoint is written to `filepath`, or to
-`"checkpoint_iteration{N}.jld2"` in the current directory if `filepath` is not specified.
+If `filepath` is provided, the checkpoint is written there. Otherwise, if
+`simulation.output_writers` contains a single `Checkpointer`, it is used
+(respecting its `dir`, `prefix`, `cleanup`, and `verbose` settings); if no
+`filepath` is given and there is no single `Checkpointer`, the checkpoint is
+written to `"checkpoint_iteration{N}.jld2"` in the current directory.
 """
 function checkpoint(simulation; filepath=nothing)
     checkpointers = filter(w -> w isa Checkpointer, collect(values(simulation.output_writers)))

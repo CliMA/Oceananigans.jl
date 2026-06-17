@@ -39,7 +39,8 @@ on RectilinearGrid, LatitudeLongitudeGrid, CubedSphereGrid, and ImmersedBoundary
 
 ### Docstrings
 
-- Use DocStringExtensions.jl with `$(SIGNATURES)`
+- Use DocStringExtensions.jl with `$(TYPEDSIGNATURES)` when the signature does not include
+  default values for args and/or kwargs.
 - **ALWAYS `jldoctest` blocks, NEVER plain `julia` blocks** — doctests are tested; plain blocks rot
 - Include `# output` with verifiable output; prefer `show` methods over boolean comparisons
 - Use unicode for math (`Δt`, `η`, `ρ`), not LaTeX — LaTeX doesn't render in the REPL
@@ -102,6 +103,10 @@ src/
 12. **Hardcoded Float64**: never use `0.0`, `1.0` in kernels or constructors; use `zero(grid)` etc.
 13. **Scope creep in PRs**: keep changes focused on a single concern. Unrelated cleanup goes
     in a separate PR
+14. **Modifying Project.toml dependencies**: never add, remove, or change `[deps]` or `[weakdeps]`
+    in the root `Project.toml` unless the task absolutely requires it. Dependency changes have
+    wide-reaching consequences — they affect CI, load time, and downstream compatibility.
+    Only touch `[compat]` bounds when explicitly asked.
 
 ## Git Workflow
 

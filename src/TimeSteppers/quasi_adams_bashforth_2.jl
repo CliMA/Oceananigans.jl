@@ -50,6 +50,11 @@ end
 
 reset!(timestepper::QuasiAdamsBashforth2TimeStepper) = nothing
 
+function materialize_clock!(clock::Clock, timestepper::QuasiAdamsBashforth2TimeStepper)
+    clock.last_Δt = clock.last_stage_Δt
+    return nothing
+end
+
 """
     QuasiAdamsBashforth2TimeStepper(; χ = 0.1)
 
@@ -62,7 +67,7 @@ QuasiAdamsBashforth2TimeStepper(; χ = 0.1) = QuasiAdamsBashforth2TimeStepper{ty
 #####
 
 """
-    time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; euler=false, callbacks=[])
+    time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; callbacks=[], euler=false)
 
 Step forward `model` one time step `Δt` with a 2nd-order Adams-Bashforth method.
 Setting `euler=true` will take a forward Euler time step.
@@ -95,7 +100,7 @@ function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt
     #   * The user has passed euler=true to time_step!
     euler = euler | (Δt != model.clock.last_Δt)
 
-    maybe_initialize_state!(model, callbacks)
+    maybe_prepare_first_time_step!(model, Δt, callbacks)
 
     # If euler, then set χ = -0.5
     minus_point_five = convert(eltype(model.grid), -0.5)
@@ -148,7 +153,7 @@ end
 #####
 
 """
-    ab2_step!(model::AbstractModel, Δt, callbacks)
+$(TYPEDSIGNATURES)
 
 Advance the model state by one Adams-Bashforth 2nd-order (AB2) time step of size `Δt`.
 
@@ -166,7 +171,7 @@ reduces to forward Euler (used for the first time step).
 ab2_step!(model::AbstractModel, Δt, callbacks) = error("ab2_step! not implemented for $(typeof(model))")
 
 """
-    cache_previous_tendencies!(model::AbstractModel)
+$(TYPEDSIGNATURES)
 
 Store the current tendencies `Gⁿ` into `G⁻` for use in the next AB2 time step.
 

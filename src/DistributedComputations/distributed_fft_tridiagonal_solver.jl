@@ -39,7 +39,8 @@ architecture(solver::DistributedFourierTridiagonalPoissonSolver) =
 @inline Δξᶠ(k, grid, ::Val{3}) = Δzᵃᵃᶠ(1, 1, k, grid)
 
 """
-    DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
+    DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, planner_flag=FFTW.PATIENT;
+                                               tridiagonal_formulation=nothing)
 
 Return an FFT-based solver for the Poisson equation evaluated on a `local_grid` that has a non-uniform
 spacing in exactly one direction (i.e. either in x, y or z)
@@ -177,9 +178,9 @@ function DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, pla
 
     TX, TY, TZ = topology(global_grid)
     tx, ty, tz = TX(), TY(), TZ()
-    λx = dropdims(poisson_eigenvalues(global_grid.Nx, global_grid.Lx, 1, tx), dims=(2, 3))
-    λy = dropdims(poisson_eigenvalues(global_grid.Ny, global_grid.Ly, 2, ty), dims=(1, 3))
-    λz = dropdims(poisson_eigenvalues(global_grid.Nz, global_grid.Lz, 3, tz), dims=(1, 2))
+    λx = dropdims(poisson_eigenvalues(global_grid, global_grid.Nx, global_grid.Lx, 1, tx), dims=(2, 3))
+    λy = dropdims(poisson_eigenvalues(global_grid, global_grid.Ny, global_grid.Ly, 2, ty), dims=(1, 3))
+    λz = dropdims(poisson_eigenvalues(global_grid, global_grid.Nz, global_grid.Lz, 3, tz), dims=(1, 2))
 
     if tridiagonal_dim == 1
         arch = architecture(storage.xfield.grid)

@@ -240,8 +240,33 @@ ContinuousForcing{Nothing} at (Center, Center, Face)
 
 The constructor for `Relaxation` accepts the keyword arguments `mask`, and `target`,
 which specify a `mask(x, y, z)` function that multiplies the forcing, and a `target(x, y, z, t)`
-distribution for the quantity in question. By default, `mask` uncovered the whole domain
-and `target` restores the field in question to 0
+distribution for the quantity in question. By default, `mask` equals 1 everywhere so the forcing applies over the full domain,
+and `target` restores the field in question to 0.
+
+### Mask types
+
+Two built-in mask types are available for the `mask` keyword:
+
+- `GaussianMask{D}(center, width)`: smooth Gaussian profile, equal to 1 at `center` and falling off as
+  `exp(-(D - center)^2 / (2 * width^2))`.
+- `PiecewiseLinearMask{D}(center, width)`: tent function, equal to 1 at `center`, decreasing linearly
+  to 0 at `|D - center| = width`, and 0 outside.
+
+Both accept `D ∈ {:x, :y, :z}`. For example:
+
+```jldoctest
+julia> using Oceananigans
+
+julia> GaussianMask{:z}(center=-500, width=100)
+GaussianMask{:z, Int64}(-500, 100)
+
+julia> PiecewiseLinearMask{:z}(center=-500, width=100)
+PiecewiseLinearMask{:z, Int64}(-500, 100)
+```
+
+While `GaussianMask` offers a smooth transition from 0 to 1, `PiecewiseLinearMask` has a sharper
+boundary, and is faster to evaluate — which can matter when the mask is applied every time step over
+a large grid.
 
 We illustrate usage of `mask` and `target` by implementing a sponge layer that relaxes
 velocity fields to zero and restores temperature to a linear gradient in the bottom
@@ -281,13 +306,35 @@ ContinuousForcing{Nothing} at (Center, Center, Center)
 └── field dependencies: (:T,)
 ```
 
+### `FieldTimeSeries` target
+
+When `target` is a `FieldTimeSeries`, the relaxation interpolates the time series in space
+and time to obtain a reference value at each grid point. The source `FieldTimeSeries`
+must cover the simulation grid in `x`, `y`, and `z`; it can otherwise live on a different
+grid (interpolation handles the offset).
+
+```jldoctest fts_target
+grid = RectilinearGrid(size=(2, 2, 4), extent=(100, 100, 1000))
+
+fts = FieldTimeSeries{Center, Center, Center}(grid, [0.0, 3600.0])
+c_nudge = Relaxation(rate=1/3600, target=fts)
+
+model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=c_nudge))
+
+summary(model.forcing.c.target)
+
+# output
+"FieldTimeSeriesTarget(location=(Center(), Center(), Center()), index=4)"
+```
+
 ## `AdvectiveForcing`
 
 `AdvectiveForcing` defines a forcing function that represents advection by
 a separate or "slip" velocity relative to the prognostic model velocity field.
 `AdvectiveForcing` is implemented with native Oceananigans advection operators,
 which means that tracers advected by the "flux form" advection term
-``𝛁⋅𝐮_{\rm slip} c``. Caution is advised when ``𝐮_{\rm slip}`` is not divergence free.
+``\boldsymbol{\nabla} \boldsymbol{\cdot} (\boldsymbol{u}_{\rm slip} c)``.
+Caution is advised when ``\boldsymbol{u}_{\rm slip}`` is not divergence free.
 
 As an example, consider a model for sediment settling at a constant rate:
 

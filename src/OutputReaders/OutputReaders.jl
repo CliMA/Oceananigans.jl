@@ -6,6 +6,8 @@ export TimeSeriesInterpolation
 export InMemory, OnDisk
 export Cyclical, Linear, Clamp
 
+using DocStringExtensions: TYPEDSIGNATURES
+
 using Oceananigans: boundary_conditions
 using Oceananigans.Utils: @apply_regionally
 
@@ -17,13 +19,17 @@ struct NetCDFPath
     path :: String
 end
 
+struct ZarrPath
+    path :: String
+end
+
 """
-    auto_extension(filename, ext)
+$(TYPEDSIGNATURES)
 
 If `filename` ends in `ext`, return `filename`. Otherwise return `filename * ext`.
 """
 function auto_extension(filename, ext)
-    if endswith(filename, ext) || endswith(filename, ".nc") || endswith(filename, ".jld2")
+    if endswith(filename, ext)
         return filename
     else
         return filename * ext

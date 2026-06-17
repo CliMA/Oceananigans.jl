@@ -70,7 +70,7 @@ end
 global_size(arch, local_size) = map(sum, concatenate_local_sizes(local_size, arch))
 
 """
-    RectilinearGrid(arch::Distributed, FT=Float64; kw...)
+    RectilinearGrid(arch::Distributed, FT=Oceananigans.defaults.FloatType; kw...)
 
 Return the rank-local portion of `RectilinearGrid` on `arch`itecture.
 """
@@ -119,7 +119,7 @@ function RectilinearGrid(arch::Distributed,
 end
 
 """
-    LatitudeLongitudeGrid(arch::Distributed, FT=Float64; kw...)
+    LatitudeLongitudeGrid(arch::Distributed, FT=Oceananigans.defaults.FloatType; kw...)
 
 Return the rank-local portion of `LatitudeLongitudeGrid` on `arch`itecture.
 """
@@ -187,7 +187,7 @@ end
 reconstruct_global_grid(grid::AbstractGrid) = grid
 
 """
-    reconstruct_global_grid(grid::DistributedGrid)
+$(TYPEDSIGNATURES)
 
 Return the global grid on `child_architecture(grid)`
 """
@@ -303,7 +303,7 @@ child_architecture(grid::AbstractGrid) = architecture(grid)
 child_architecture(grid::DistributedGrid) = child_architecture(architecture(grid))
 
 """
-    scatter_grid_properties(global_grid)
+$(TYPEDSIGNATURES)
 
 Return the individual `extent`, `topology`, `size`, and `halo` of a `global_grid`.
 """
@@ -335,7 +335,7 @@ function scatter_local_grids(global_grid::LatitudeLongitudeGrid, arch::Distribut
 end
 
 """
-    insert_connected_topology(T, R, r)
+$(TYPEDSIGNATURES)
 
 Return the local topology associated with the global topology `T`, the amount of ranks
 in `T` direction (`R`) and the local rank index `r`.
@@ -349,8 +349,28 @@ insert_connected_topology(::Type{Bounded}, R, r) = ifelse(R == 1, Bounded,
 
 insert_connected_topology(::Type{Periodic}, R, r) = ifelse(R == 1, Periodic, FullyConnected)
 
+# Fold-aware topology insertion for distributed tripolar grids.
+# These take 5 arguments: (global_y_topology, Ry, ry, Rx, rx) where
+# Ry/ry are y-rank count/index and Rx/rx are x-rank count/index (all 1-based).
+
+local_fold_topology(::Type{RightCenterFolded}, Rx, rx) =
+    Rx == 1 ? LeftConnectedRightCenterFolded : LeftConnectedRightCenterConnected
+
+local_fold_topology(::Type{RightFaceFolded}, Rx, rx) =
+    Rx == 1 ? LeftConnectedRightFaceFolded : LeftConnectedRightFaceConnected
+
+function insert_connected_topology(T::Type{<:Union{RightCenterFolded, RightFaceFolded}}, Ry, ry, Rx, rx)
+    if ry == 1
+        return RightConnected
+    elseif ry == Ry
+        return local_fold_topology(T, Rx, rx)
+    else
+        return FullyConnected
+    end
+end
+
 """
-    reconstruct_global_topology(T, R, r, r1, r2, arch)
+$(TYPEDSIGNATURES)
 
 Reconstruct the global topology associated with the local topologies `T`, the amount of ranks
 in `T` direction (`R`) and the local rank index `r`.
@@ -380,7 +400,7 @@ function reconstruct_global_topology(T, R, r, r1, r2, arch)
 end
 
 """
-    reconstruct_global_topology(local_topologies, R)
+$(TYPEDSIGNATURES)
 
 Reconstruct global topology from a collection of local topologies without MPI.
 

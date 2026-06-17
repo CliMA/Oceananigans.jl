@@ -17,15 +17,16 @@ Represent a static one-dimensional vertical coordinate.
 Fields
 ======
 
-- `cᶜ::C`: Cell-centered coordinate.
-- `cᶠ::D`: Face-centered coordinate.
-- `Δᶜ::E`: Cell-centered grid spacing.
-- `Δᶠ::F`: Face-centered grid spacing.
+$(FIELDS)
 """
 struct StaticVerticalDiscretization{C, D, E, F} <: AbstractVerticalCoordinate
+    "Face-centered coordinate"
     cᵃᵃᶠ :: C
+    "Cell-centered coordinate"
     cᵃᵃᶜ :: D
+    "Face-centered grid spacing"
     Δᵃᵃᶠ :: E
+    "Cell-centered grid spacing"
     Δᵃᵃᶜ :: F
 end
 
@@ -82,7 +83,7 @@ const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,  
 
 
 """
-    MutableVerticalDiscretization(r_faces)
+$(TYPEDSIGNATURES)
 
 Construct a `MutableVerticalDiscretization` from `r_faces` that can be a `Tuple`,
 a function of an index `k`, or an `AbstractArray`. A `MutableVerticalDiscretization`
@@ -165,7 +166,7 @@ Adapt.adapt_structure(to, coord::StaticVerticalDiscretization) =
                                  Adapt.adapt(to, coord.Δᵃᵃᶠ),
                                  Adapt.adapt(to, coord.Δᵃᵃᶜ))
 
-on_architecture(arch, coord::StaticVerticalDiscretization) =
+Architectures.on_architecture(arch, coord::StaticVerticalDiscretization) =
     StaticVerticalDiscretization(on_architecture(arch, coord.cᵃᵃᶠ),
                                  on_architecture(arch, coord.cᵃᵃᶜ),
                                  on_architecture(arch, coord.Δᵃᵃᶠ),
@@ -184,7 +185,7 @@ Adapt.adapt_structure(to, coord::MutableVerticalDiscretization) =
                                   Adapt.adapt(to, coord.σᶜᶜ⁻),
                                   Adapt.adapt(to, coord.∂t_σ))
 
-on_architecture(arch, coord::MutableVerticalDiscretization) =
+Architectures.on_architecture(arch, coord::MutableVerticalDiscretization) =
     MutableVerticalDiscretization(on_architecture(arch, coord.cᵃᵃᶠ),
                                   on_architecture(arch, coord.cᵃᵃᶜ),
                                   on_architecture(arch, coord.Δᵃᵃᶠ),

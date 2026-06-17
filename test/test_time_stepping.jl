@@ -1,5 +1,6 @@
 include("dependencies_for_runtests.jl")
 
+using Adapt: Adapt
 using TimesDates: TimeDate
 using Oceananigans.Grids: topological_tuple_length
 using Oceananigans.TimeSteppers: Clock
@@ -320,6 +321,56 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
 
 @testset "Time stepping" begin
     @info "Testing time stepping..."
+
+    @testset "Clock equality and isapprox" begin
+        clock1 = Clock(time=1.0, last_Δt=1.0, last_stage_Δt=1.0, iteration=1, stage=1)
+        clock2 = Clock(time=1.0, last_Δt=1.0, last_stage_Δt=1.0, iteration=1, stage=1)
+        @test clock1 == clock2
+        @test clock1 ≈ clock2
+
+        # Different iteration => not equal and not approx
+        clock3 = Clock(time=1.0, last_Δt=1.0, last_stage_Δt=1.0, iteration=2, stage=1)
+        @test clock1 != clock3
+        @test !(clock1 ≈ clock3)
+
+        # Different stage => not equal and not approx
+        clock4 = Clock(time=1.0, last_Δt=1.0, last_stage_Δt=1.0, iteration=1, stage=2)
+        @test clock1 != clock4
+        @test !(clock1 ≈ clock4)
+
+        # Slightly perturbed time => not equal but approx
+        clock5 = Clock(time=1.0 + 1e-15, last_Δt=1.0, last_stage_Δt=1.0, iteration=1, stage=1)
+        @test clock1 != clock5
+        @test clock1 ≈ clock5
+
+        # Slightly perturbed last_Δt => not equal but approx
+        clock6 = Clock(time=1.0, last_Δt=1.0 + 1e-15, last_stage_Δt=1.0, iteration=1, stage=1)
+        @test clock1 != clock6
+        @test clock1 ≈ clock6
+
+        # Significantly different time => not approx
+        clock7 = Clock(time=2.0, last_Δt=1.0, last_stage_Δt=1.0, iteration=1, stage=1)
+        @test !(clock1 ≈ clock7)
+    end
+
+    @testset "Clock(grid) accumulates in Float64 and adapts to grid eltype" begin
+        for arch in archs, FT in float_types
+            grid = RectilinearGrid(arch, FT; size=(1, 1, 1), extent=(1, 1, 1))
+            clock = Clock(grid)
+
+            @test eltype(grid) == FT
+            @test clock isa Clock{Float64}
+            @test Oceananigans.TimeSteppers.kernel_time_type(clock) == FT
+
+            kernel_clock = Adapt.adapt(nothing, clock)
+            @test kernel_clock.time isa FT
+            @test propertynames(kernel_clock) == (:time, :last_Δt, :last_stage_Δt, :iteration, :stage)
+        end
+
+        explicit_clock = Clock(time=0.0f0)
+        @test explicit_clock isa Clock{Float32}
+        @test Oceananigans.TimeSteppers.kernel_time_type(explicit_clock) == Float32
+    end
 
     for arch in archs, FT in float_types
         A = typeof(arch)

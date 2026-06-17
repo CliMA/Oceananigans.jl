@@ -1,4 +1,5 @@
 include("dependencies_for_runtests.jl")
+include("dependencies_for_poisson_solvers.jl")
 
 using Metal
 
@@ -9,6 +10,7 @@ Oceananigans.defaults.FloatType = Float32
 # More about that:
 # * https://github.com/CliMA/Oceananigans.jl/pull/4124#discussion_r1976449272
 # * https://github.com/CliMA/Oceananigans.jl/pull/4152
+
 
 @testset "MetalGPU extension" begin
     metal = Metal.MetalBackend()
@@ -72,7 +74,7 @@ end
 
     @test eltype(grid) == Float32
 
-    Qᵀ = 1e-4
+    Qᵀ = -1e-4 # downward heat flux
     T_bcs = FieldBoundaryConditions(top=FluxBoundaryCondition(Qᵀ))
 
     Qᵘ = -1e-4
@@ -92,11 +94,13 @@ end
         @test parent(field) isa MtlArray
     end
 
-    simulation = Simulation(model, Δt=1, stop_iteration=10)
+    simulation = Simulation(model, Δt=1, stop_iteration=100)
     run!(simulation)
 
-    @test iteration(simulation) == 10
-    @test time(simulation) == 10seconds
+    @test iteration(simulation) == 100
+    @test time(simulation) == 100seconds
+    @test maximum(simulation.model.tracers.T) > 0.01
+    @test maximum(simulation.model.velocities.u) > 0.01
 end
 
 @testset "MetalGPU: test for reductions" begin
@@ -141,4 +145,8 @@ end
     sim = Simulation(model, Δt=5, stop_iteration=2)
     run!(sim)
     @test time(sim) == 10seconds
+
+    topo = (TX, TY, TZ) =  topology(grid)
+    λx = poisson_eigenvalues(grid, grid.Nx, grid.Lx, 1, TX())
+    @test eltype(λx) == eltype(grid)
 end

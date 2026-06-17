@@ -14,7 +14,6 @@ import Oceananigans.Architectures:
 
 import Oceananigans.Fields as FD
 import Oceananigans.Grids as GD
-import Oceananigans: Clock
 
 using Oceananigans.Grids: XYZRegularRG
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver
@@ -30,11 +29,8 @@ architecture(::Type{MtlArray}) = MetalGPU()
 on_architecture(::MetalGPU, a::Number) = a
 on_architecture(::MetalGPU, a::Array) = MtlArray(a)
 on_architecture(::MetalGPU, a::BitArray) = MtlArray(a)
-on_architecture(::MetalGPU, a::SubArray{<:Any, <:Any, <:Array}) = MtlArray(a)
 on_architecture(::CPU, a::MtlArray) = Array(a)
-on_architecture(::CPU, a::SubArray{<:Any, <:Any, <:MtlArray}) = Array(a)
 on_architecture(::MetalGPU, a::MtlArray) = a
-on_architecture(::MetalGPU, a::SubArray{<:Any, <:Any, <:MtlArray}) = a
 
 # Metal only supports Float32
 function on_architecture(::MetalGPU, s::StepRangeLen)
@@ -50,26 +46,12 @@ end
 
 Metal.@device_override @inline function __validindex(ctx::MappedCompilerMetadata)
     if __dynamic_checkbounds(ctx)
-        I = @inbounds linear_expand(__iterspace(ctx), threadgroup_position_in_grid_1d(),
-                                thread_position_in_threadgroup_1d())
-        return I in __linear_ndrange(ctx)
+        index = @inbounds linear_expand(__iterspace(ctx), threadgroup_position_in_grid().x, thread_position_in_threadgroup().x)
+        return index ≤ __linear_ndrange(ctx)
     else
         return true
     end
 end
-
-
-function FD.maybe_copy_interior(::MetalGPU, r::FD.AbstractField)
-    interior_r = interior(r)
-
-    if parent(interior_r) !== interior_r
-        interior_r = copy(interior_r)
-    end
-    return interior_r
-end
-
-const MetalGrid = GD.AbstractGrid{<:Any, <:Any, <:Any, <:Any, <:MetalGPU}
-Clock(grid::MetalGrid) = Clock{Float32}(time=0)
 
 nonhydrostatic_pressure_solver(::MetalGPU, grid::XYZRegularRG, ::Nothing) = ConjugateGradientPoissonSolver(grid)
 

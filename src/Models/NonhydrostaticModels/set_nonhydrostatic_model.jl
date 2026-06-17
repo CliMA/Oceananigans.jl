@@ -1,5 +1,6 @@
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.TimeSteppers: update_state!
+using Oceananigans.TurbulenceClosures: initialize_closure_fields!
 
 import Oceananigans.Fields: set!
 
@@ -36,9 +37,13 @@ model.tracers.T
 ```
 """
 function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs...)
+    velocity_names = propertynames(model.velocities)
+    velocities_are_set = false
+
     for (fldname, value) in kwargs
-        if fldname ∈ propertynames(model.velocities)
+        if fldname ∈ velocity_names
             ϕ = getproperty(model.velocities, fldname)
+            velocities_are_set = true
         elseif fldname ∈ propertynames(model.tracers)
             ϕ = getproperty(model.tracers, fldname)
         elseif !isnothing(model.free_surface) && fldname ∈ propertynames(model.free_surface)
@@ -54,12 +59,14 @@ function set!(model::NonhydrostaticModel; enforce_incompressibility=true, kwargs
     # Apply a mask
     foreach(mask_immersed_field!, model.tracers)
     foreach(mask_immersed_field!, model.velocities)
+    velocities_are_set && initialize_closure_fields!(model.closure_fields, model.closure, model)
     update_state!(model)
 
     if enforce_incompressibility
         FT = eltype(model.grid)
         compute_pressure_correction!(model, one(FT))
         make_pressure_correction!(model, one(FT))
+        velocities_are_set && initialize_closure_fields!(model.closure_fields, model.closure, model)
         update_state!(model)
     end
 
