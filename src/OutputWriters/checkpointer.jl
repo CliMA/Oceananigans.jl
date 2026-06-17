@@ -222,26 +222,6 @@ function with_checkpoint_restore_grid(f, grid)
     end
 end
 
-"""
-    finalize_compatible_grid_restore!(model, velocities_and_tracers, mode; halo_kwargs=())
-
-Helper function to fill halos and mask fields after restoring to a compatible grid.
-This is called by model-specific `finalize_checkpoint_restore!` implementations.
-"""
-function finalize_compatible_grid_restore!(model, velocities_and_tracers, mode::RestoreOnCompatibleGrid; halo_kwargs=())
-    model_fields = fields(model)
-    
-    fill_halo_regions!(velocities_and_tracers,
-                       model.clock,
-                       model_fields; halo_kwargs...)
-
-    fill_timestepper_tendency_halos_after_restore!(model.timestepper, model.clock, model_fields; halo_kwargs...)
-    fill_timestepper_previous_tendency_halos_after_restore!(model.timestepper, model.clock, model_fields; halo_kwargs...)
-
-    foreach(ImmersedBoundaries.mask_immersed_field!, velocities_and_tracers)
-    return model
-end
-
 
 prognostic_state(obj) = obj
 prognostic_state(::NamedTuple{()}) = nothing
