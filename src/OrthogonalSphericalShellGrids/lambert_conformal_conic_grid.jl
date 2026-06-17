@@ -474,7 +474,7 @@ function lcc_coordinate_matches_node(coordinate, first_face, spacing, N, ::Cente
            abs(fractional_index - round(fractional_index)) <= tolerance
 end
 
-function validate_lcc_projected_domain(map::LambertConformalConic{FT}, size) where FT
+function validate_lcc_projected_domain(map::LambertConformalConic{FT}, size; warn = true) where FT
     Nx, Ny, _ = size
     x₂ = map.x₁ + convert(FT, Nx) * map.Δx
     y₂ = map.y₁ + convert(FT, Ny) * map.Δy
@@ -498,7 +498,7 @@ function validate_lcc_projected_domain(map::LambertConformalConic{FT}, size) whe
     apex_on_y_node = lcc_coordinate_matches_node(y_apex, map.y₁, map.Δy, Ny, Center()) ||
                      lcc_coordinate_matches_node(y_apex, map.y₁, map.Δy, Ny, Face())
 
-    if apex_in_x_domain && apex_in_y_domain
+    if warn && apex_in_x_domain && apex_in_y_domain
         node_message = ifelse(apex_on_x_node && apex_on_y_node, " on a grid node", "")
         @warn "LambertConformalConicGrid contains the cone apex / pole$(node_message); longitude is singular there."
     end
@@ -620,7 +620,8 @@ function LambertConformalConicGrid(arch::AbstractArchitecture = CPU(),
                                    false_northing = 0,
                                    radius = Oceananigans.defaults.planet_radius,
                                    halo = nothing,
-                                   topology = (Bounded, Bounded, Bounded))
+                                   topology = (Bounded, Bounded, Bounded),
+                                   warn = true)
 
     if !isnothing(center)
         center = validate_lcc_center(center, FT)
@@ -666,7 +667,7 @@ function LambertConformalConicGrid(arch::AbstractArchitecture = CPU(),
                                               radius,
                                               x₁, y₁, Δx, Δy)
 
-    validate_lcc_projected_domain(conformal_mapping, size)
+    validate_lcc_projected_domain(conformal_mapping, size; warn)
 
     grid = OrthogonalSphericalShellGrid(arch, FT; size, z, radius,
                                         halo, topology,
@@ -840,7 +841,8 @@ function Grids.with_halo(new_halo, old_grid::LambertConformalConicGrid)
                                      false_northing = map.false_northing,
                                      radius = map.radius,
                                      halo,
-                                     topology = topo)
+                                     topology = topo,
+                                     warn = false)
 end
 
 function Grids.constructor_arguments(grid::LambertConformalConicGrid)
@@ -879,11 +881,11 @@ function Base.similar(grid::LambertConformalConicGrid)
     args, kwargs = Grids.constructor_arguments(grid)
     arch = args[:architecture]
     FT = args[:number_type]
-    return LambertConformalConicGrid(arch, FT; kwargs...)
+    return LambertConformalConicGrid(arch, FT; kwargs..., warn = false)
 end
 
 function Grids.with_number_type(FT, grid::LambertConformalConicGrid)
     args, kwargs = Grids.constructor_arguments(grid)
     arch = args[:architecture]
-    return LambertConformalConicGrid(arch, FT; kwargs...)
+    return LambertConformalConicGrid(arch, FT; kwargs..., warn = false)
 end
