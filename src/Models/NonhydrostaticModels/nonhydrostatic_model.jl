@@ -16,7 +16,7 @@ using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_clo
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.Utils: tupleit
 
-import Oceananigans: prognostic_state, restore_prognostic_state!, restore_checkpoint_grid, checkpoint_restore_mode, checkpoint_restore_halo_kwargs, with_checkpoint_restore_grid, finalize_checkpoint_restore!, fill_timestepper_tendency_halos_after_restore!, fill_timestepper_previous_tendency_halos_after_restore!, RestoreOnCurrentGrid, RestoreOnCheckpointGrid
+import Oceananigans: prognostic_state, restore_prognostic_state!, restore_checkpoint_grid, checkpoint_restore_mode, warn_if_cross_grid_pickup, checkpoint_restore_halo_kwargs, with_checkpoint_restore_grid, finalize_checkpoint_restore!, fill_timestepper_tendency_halos_after_restore!, fill_timestepper_previous_tendency_halos_after_restore!, RestoreOnCurrentGrid, RestoreOnCheckpointGrid
 import Oceananigans.Architectures: architecture
 import Oceananigans.Models: total_velocities
 import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
@@ -377,6 +377,7 @@ function restore_prognostic_state!(restored::NonhydrostaticModel, from)
         restore_prognostic_state!(restored.boundary_transport, from.boundary_transport)
     end
 
+    warn_if_cross_grid_pickup(checkpoint_grid, restored.grid)
     finalize_checkpoint_restore!(restored, checkpoint_grid)
     return restored
 end

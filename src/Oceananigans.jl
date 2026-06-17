@@ -225,6 +225,7 @@ end
 function checkpoint_restore_grid end
 function restore_checkpoint_grid end
 function checkpoint_restore_mode end
+function warn_if_cross_grid_pickup end
 function with_checkpoint_restore_grid end
 function finalize_checkpoint_restore! end
 function checkpoint_restore_halo_kwargs end

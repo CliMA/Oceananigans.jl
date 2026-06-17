@@ -17,7 +17,7 @@ using Oceananigans.Advection: needs_implicit_solver
 using Oceananigans.Utils: tupleit
 
 import Oceananigans
-import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!, restore_checkpoint_grid, checkpoint_restore_mode, checkpoint_restore_halo_kwargs, with_checkpoint_restore_grid, finalize_checkpoint_restore!, fill_timestepper_tendency_halos_after_restore!, fill_timestepper_previous_tendency_halos_after_restore!, RestoreOnCurrentGrid, RestoreOnCheckpointGrid
+import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!, restore_checkpoint_grid, checkpoint_restore_mode, warn_if_cross_grid_pickup, checkpoint_restore_halo_kwargs, with_checkpoint_restore_grid, finalize_checkpoint_restore!, fill_timestepper_tendency_halos_after_restore!, fill_timestepper_previous_tendency_halos_after_restore!, RestoreOnCurrentGrid, RestoreOnCheckpointGrid
 import Oceananigans.Models: total_velocities
 import Oceananigans.TimeSteppers: update_state!, reconcile_state!, materialize_clock!
 import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
@@ -398,6 +398,7 @@ function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
         restore_prognostic_state!(restored.vertical_coordinate, restored.grid, from.vertical_coordinate)
     end
 
+    warn_if_cross_grid_pickup(checkpoint_grid, restored.grid)
     finalize_checkpoint_restore!(restored, checkpoint_grid)
     return restored
 end

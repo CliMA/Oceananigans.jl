@@ -5,7 +5,7 @@ using Oceananigans
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
 
 import Oceananigans: prognostic_state, restore_prognostic_state!, checkpoint_restore_grid,
-                     restore_checkpoint_grid, checkpoint_restore_mode, checkpoint_restore_halo_kwargs,
+                     restore_checkpoint_grid, checkpoint_restore_mode, warn_if_cross_grid_pickup, checkpoint_restore_halo_kwargs,
                      fill_timestepper_tendency_halos_after_restore!,
                      fill_timestepper_previous_tendency_halos_after_restore!,
                      RestoreOnCurrentGrid, RestoreOnCheckpointGrid, with_checkpoint_restore_grid
@@ -177,6 +177,13 @@ restore_checkpoint_grid(::Val{false}, from) = nothing
 
 checkpoint_restore_mode(::Nothing, grid) = RestoreOnCurrentGrid()
 checkpoint_restore_mode(checkpoint_grid, grid) = checkpoint_grid == grid ? RestoreOnCurrentGrid() : RestoreOnCheckpointGrid(checkpoint_grid)
+
+warn_if_cross_grid_pickup(checkpoint_grid, grid) = warn_if_cross_grid_pickup(checkpoint_restore_mode(checkpoint_grid, grid), grid)
+warn_if_cross_grid_pickup(::RestoreOnCurrentGrid, grid) = nothing
+function warn_if_cross_grid_pickup(mode::RestoreOnCheckpointGrid, grid)
+    @warn "Picking up a checkpoint onto a different grid; restored fields will be interpolated onto model.grid and halos will be rebuilt afterward." checkpoint_grid=mode.grid model_grid=grid
+    return nothing
+end
 
 checkpoint_restore_halo_kwargs(model) = NamedTuple()
 fill_timestepper_tendency_halos_after_restore!(args...; kwargs...) = nothing
