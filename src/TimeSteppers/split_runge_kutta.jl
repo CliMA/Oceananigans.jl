@@ -1,3 +1,5 @@
+import Oceananigans: fill_timestepper_previous_tendency_halos_after_restore!
+
 """
     SplitRungeKuttaTimeStepper{B, TG, PF, TI} <: AbstractTimeStepper
 
@@ -251,6 +253,8 @@ end
 # SplitRungeKuttaTimeStepper is self-starting!
 prognostic_state(ts::SplitRungeKuttaTimeStepper) = nothing
 restore_prognostic_state!(restored::SplitRungeKuttaTimeStepper, ::Nothing) = restored
+
+fill_timestepper_previous_tendency_halos_after_restore!(::SplitRungeKuttaTimeStepper, clock, model_fields; kwargs...) = nothing
 
 #####
 ##### Show methods

@@ -15,7 +15,7 @@ using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, build_closure_fields
 using Oceananigans.Utils: tupleit
 
-import Oceananigans: prognostic_state, restore_prognostic_state!, checkpoint_restore_grid, with_checkpoint_restore_grid, finalize_checkpoint_restore!
+import Oceananigans: prognostic_state, restore_prognostic_state!, restore_checkpoint_grid, checkpoint_restore_mode, checkpoint_restore_halo_kwargs, with_checkpoint_restore_grid, finalize_checkpoint_restore!, fill_timestepper_tendency_halos_after_restore!, fill_timestepper_previous_tendency_halos_after_restore!, RestoreOnCurrentGrid, RestoreOnCheckpointGrid
 import Oceananigans.Architectures: architecture
 
 const RectilinearGrids = Union{RectilinearGrid, ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:RectilinearGrid}}
@@ -270,7 +270,7 @@ function prognostic_state(model::ShallowWaterModel)
 end
 
 function restore_prognostic_state!(restored::ShallowWaterModel, from)
-    checkpoint_grid = hasproperty(from, :checkpoint_grid) ? from.checkpoint_grid : nothing
+    checkpoint_grid = restore_checkpoint_grid(from)
 
     with_checkpoint_restore_grid(checkpoint_grid) do
         restore_prognostic_state!(restored.clock, from.clock)
@@ -285,26 +285,21 @@ function restore_prognostic_state!(restored::ShallowWaterModel, from)
     return restored
 end
 
-function finalize_checkpoint_restore!(restored::ShallowWaterModel, checkpoint_grid)
-    if isnothing(checkpoint_grid) || checkpoint_grid == restored.grid
-        return restored
-    end
+finalize_checkpoint_restore!(restored::ShallowWaterModel, checkpoint_grid) =
+    finalize_checkpoint_restore!(restored, checkpoint_restore_mode(checkpoint_grid, restored.grid))
+
+finalize_checkpoint_restore!(restored::ShallowWaterModel, ::RestoreOnCurrentGrid) = restored
+
+function finalize_checkpoint_restore!(restored::ShallowWaterModel, ::RestoreOnCheckpointGrid)
+    model_fields = Oceananigans.fields(restored)
+    halo_kwargs = checkpoint_restore_halo_kwargs(restored)
 
     Oceananigans.BoundaryConditions.fill_halo_regions!(merge(restored.solution, restored.tracers),
                                                        restored.clock,
-                                                       Oceananigans.fields(restored))
+                                                       model_fields; halo_kwargs...)
 
-    if hasproperty(restored.timestepper, :Gⁿ)
-        Oceananigans.BoundaryConditions.fill_halo_regions!(restored.timestepper.Gⁿ,
-                                                           restored.clock,
-                                                           Oceananigans.fields(restored))
-    end
-
-    if hasproperty(restored.timestepper, :G⁻)
-        Oceananigans.BoundaryConditions.fill_halo_regions!(restored.timestepper.G⁻,
-                                                           restored.clock,
-                                                           Oceananigans.fields(restored))
-    end
+    fill_timestepper_tendency_halos_after_restore!(restored.timestepper, restored.clock, model_fields; halo_kwargs...)
+    fill_timestepper_previous_tendency_halos_after_restore!(restored.timestepper, restored.clock, model_fields; halo_kwargs...)
 
     foreach(Oceananigans.ImmersedBoundaries.mask_immersed_field!, merge(restored.solution, restored.tracers))
     compute_velocities!(restored.velocities, formulation(restored))

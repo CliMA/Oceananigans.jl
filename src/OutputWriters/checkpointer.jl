@@ -5,7 +5,10 @@ using Oceananigans
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
 
 import Oceananigans: prognostic_state, restore_prognostic_state!, checkpoint_restore_grid,
-                     with_checkpoint_restore_grid
+                     restore_checkpoint_grid, checkpoint_restore_mode, checkpoint_restore_halo_kwargs,
+                     fill_timestepper_tendency_halos_after_restore!,
+                     fill_timestepper_previous_tendency_halos_after_restore!,
+                     RestoreOnCurrentGrid, RestoreOnCheckpointGrid, with_checkpoint_restore_grid
 import Oceananigans.Fields: set!
 
 mutable struct Checkpointer{T} <: AbstractOutputWriter
@@ -166,6 +169,18 @@ latest_checkpoint(checkpointer, filepaths) = latest_checkpoint_by_iteration(chec
 const checkpoint_restore_grid_ref = Ref{Any}(nothing)
 
 checkpoint_restore_grid() = checkpoint_restore_grid_ref[]
+restore_checkpoint_grid(::Nothing) = nothing
+restore_checkpoint_grid(from) = nothing
+restore_checkpoint_grid(from::NamedTuple{names}) where names = restore_checkpoint_grid(Val(:checkpoint_grid in names), from)
+restore_checkpoint_grid(::Val{true}, from) = from.checkpoint_grid
+restore_checkpoint_grid(::Val{false}, from) = nothing
+
+checkpoint_restore_mode(::Nothing, grid) = RestoreOnCurrentGrid()
+checkpoint_restore_mode(checkpoint_grid, grid) = checkpoint_grid == grid ? RestoreOnCurrentGrid() : RestoreOnCheckpointGrid(checkpoint_grid)
+
+checkpoint_restore_halo_kwargs(model) = NamedTuple()
+fill_timestepper_tendency_halos_after_restore!(args...; kwargs...) = nothing
+fill_timestepper_previous_tendency_halos_after_restore!(args...; kwargs...) = nothing
 
 function with_checkpoint_restore_grid(f, grid)
     previous_grid = checkpoint_restore_grid_ref[]

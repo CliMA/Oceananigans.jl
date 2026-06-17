@@ -18,6 +18,8 @@ using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @kernel, @index
 
 using Oceananigans: Oceananigans, AbstractModel, initialize!, prognostic_fields
+import Oceananigans: fill_timestepper_tendency_halos_after_restore!,
+                     fill_timestepper_previous_tendency_halos_after_restore!
 
 """
     abstract type AbstractTimeStepper
@@ -133,5 +135,15 @@ function restore_prognostic_state!(restored::AbstractTimeStepper, from)
 end
 
 restore_prognostic_state!(::AbstractTimeStepper, ::Nothing) = nothing
+
+function fill_timestepper_tendency_halos_after_restore!(timestepper::AbstractTimeStepper, clock, model_fields; kwargs...)
+    Oceananigans.BoundaryConditions.fill_halo_regions!(timestepper.Gⁿ, clock, model_fields; kwargs...)
+    return nothing
+end
+
+function fill_timestepper_previous_tendency_halos_after_restore!(timestepper::AbstractTimeStepper, clock, model_fields; kwargs...)
+    Oceananigans.BoundaryConditions.fill_halo_regions!(timestepper.G⁻, clock, model_fields; kwargs...)
+    return nothing
+end
 
 end # module
