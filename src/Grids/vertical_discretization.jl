@@ -9,6 +9,11 @@
 
 abstract type AbstractVerticalCoordinate end
 
+# Supertype of every free-surface-following (mutable) vertical coordinate. The z-star time-stepping
+# machinery dispatches on grids whose `z` is one of these, so both `MutableVerticalDiscretization` and
+# `MultiEnvelopeVerticalDiscretization` participate in it.
+abstract type AbstractMutableVerticalDiscretization <: AbstractVerticalCoordinate end
+
 """
     struct StaticVerticalDiscretization{C, D, E, F} <: AbstractVerticalCoordinate
 
@@ -46,7 +51,7 @@ Fields
 
 $(FIELDS)
 """
-struct MutableVerticalDiscretization{C, D, E, F, H, CC, FC, CF, FF} <: AbstractVerticalCoordinate
+struct MutableVerticalDiscretization{C, D, E, F, H, CC, FC, CF, FF} <: AbstractMutableVerticalDiscretization
     "Face-centered reference coordinate"
     cᵃᵃᶠ :: C
     "Cell-centered reference coordinate"
@@ -78,7 +83,7 @@ end
 const RegularMutableVerticalDiscretization = MutableVerticalDiscretization{<:Any, <:Any, <:Number}
 const RegularVerticalCoordinate = Union{RegularStaticVerticalDiscretization, RegularMutableVerticalDiscretization}
 
-const AbstractMutableGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Bounded, <:MutableVerticalDiscretization}
+const AbstractMutableGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Bounded, <:AbstractMutableVerticalDiscretization}
 const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,     <:RegularVerticalCoordinate}
 
 

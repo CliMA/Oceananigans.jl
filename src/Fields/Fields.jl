@@ -5,6 +5,7 @@ export AbstractField, Field, Reduction, Accumulation, field
 export CenterField, XFaceField, YFaceField, ZFaceField
 export interior, data, xnode, ynode, znode
 export set!, compute!, @compute, regrid!
+export shelf_safe_envelopes, smooth_envelope_field!
 export VelocityFields, TracerFields, tracernames
 export interpolate
 
@@ -87,5 +88,6 @@ end
 end
 
 include("set!.jl")
+include("multi_envelope_materialization.jl")
 
 end # module

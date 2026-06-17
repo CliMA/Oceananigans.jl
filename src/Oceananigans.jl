@@ -15,7 +15,7 @@ export
     RightFaceFolded, RightCenterFolded,
     RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
     TripolarGrid, RotatedLatitudeLongitudeGrid,
-    MutableVerticalDiscretization,
+    MutableVerticalDiscretization, MultiEnvelopeVerticalDiscretization, LinearEnvelope, MultiEnvelope, materialize_envelopes!, global_multi_envelope_z,
     ExponentialDiscretization, ReferenceToStretchedDiscretization, PowerLawStretching, LinearStretching,
     nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
     xspacings, yspacings, rspacings, zspacings, λspacings, φspacings,
@@ -46,7 +46,7 @@ export
     # Fields and field manipulation
     Field, CenterField, XFaceField, YFaceField, ZFaceField,
     Average, Integral, CumulativeIntegral, Reduction, Accumulation, BackgroundField,
-    interior, set!, compute!, regrid!,
+    interior, set!, compute!, regrid!, shelf_safe_envelopes, smooth_envelope_field!,
 
     # Forcing functions
     Forcing, Relaxation, LinearTarget, GaussianMask, PiecewiseLinearMask, CosineRampMask, AdvectiveForcing,

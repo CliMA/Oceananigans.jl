@@ -4,14 +4,14 @@
 ##### NetCDFWriter functionality is implemented in ext/OceananigansNCDatasetsExt
 #####
 
-using Oceananigans.Grids: topology, Flat, StaticVerticalDiscretization, MutableVerticalDiscretization, AbstractVerticalCoordinate
+using Oceananigans.Grids: topology, Flat, StaticVerticalDiscretization, AbstractMutableVerticalDiscretization, AbstractVerticalCoordinate
 using Oceananigans.OrthogonalSphericalShellGrids: OrthogonalSphericalShellGrid
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 # Short aliases for compact dispatch in name-generator method tables.
 const OSSG = OrthogonalSphericalShellGrid
 const SVD  = StaticVerticalDiscretization
-const MVD  = MutableVerticalDiscretization
+const MVD  = AbstractMutableVerticalDiscretization
 
 #####
 ##### Vertical coordinate naming

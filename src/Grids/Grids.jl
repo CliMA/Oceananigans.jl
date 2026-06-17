@@ -14,7 +14,7 @@ export XFlatGrid, YFlatGrid, ZFlatGrid
 export XRegularRG, YRegularRG, ZRegularRG, XYRegularRG, XYZRegularRG
 export LatitudeLongitudeGrid, XRegularLLG, YRegularLLG, ZRegularLLG
 export OrthogonalSphericalShellGrid, ZRegOrthogonalSphericalShellGrid
-export MutableVerticalDiscretization
+export MutableVerticalDiscretization, MultiEnvelopeVerticalDiscretization, LinearEnvelope, MultiEnvelope, materialize_envelopes!, global_multi_envelope_z
 export ExponentialDiscretization, ReferenceToStretchedDiscretization, PowerLawStretching, LinearStretching
 export node, nodes
 export ξnode, ηnode, rnode
@@ -174,6 +174,9 @@ const C = Center
 
 include("abstract_grid.jl")
 include("vertical_discretization.jl")
+include("multi_envelope_formulations.jl")
+include("multi_envelope_vertical_discretization.jl")
+include("global_multi_envelope_config.jl")
 include("grid_utils.jl")
 include("coordinate_utils.jl")
 include("nodes_and_spacings.jl")

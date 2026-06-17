@@ -109,6 +109,7 @@ include("vorticity_operators.jl")
 include("laplacian_operators.jl")
 
 include("time_variable_grid_operators.jl")
+include("multi_envelope_grid_operators.jl")
 include("vector_rotation_operators.jl")
 
 @inline xspacing(args...) = Δx(args...)

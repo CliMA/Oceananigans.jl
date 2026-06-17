@@ -144,6 +144,25 @@ const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Abstra
 @inline static_column_depthᶠᶜᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶜᶜᵃ(i-1, j, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
 @inline static_column_depthᶠᶠᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶠᶜᵃ(i, j-1, ibg), static_column_depthᶠᶜᵃ(i, j, ibg))
 
+# Multi-envelope immersed grids. The immersed mask is evaluated in the *reference* coordinate (rnode, see
+# `_immersed_cell`), while σᵉ maps reference → physical. So the physical resting depth of the column is the
+# sum of the physical cell thicknesses (Δr·σᵉ) over the *wet* (non-immersed) cells — NOT a reference-frame
+# depth. Using a reference depth (or mixing it with the physical envelope depth) makes the z-star closure
+# H inconsistent with the Δz the model evolves and breaks the GCL. The staggered methods above reuse this
+# centre value via their min-of-neighbours pattern.
+const MultiEnvelopeAGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:MultiEnvelopeGrid, <:AbstractGridFittedBottom}
+
+@inline function static_column_depthᶜᶜᵃ(i, j, ibg::MultiEnvelopeAGFBIBG)
+    z = ibg.underlying_grid.z
+    depth = zero(eltype(ibg))
+    @inbounds for k in 1:ibg.Nz
+        wet = !_immersed_cell(i, j, k, ibg.underlying_grid, ibg.immersed_boundary)
+        Δr = z.Δᵃᵃᶜ isa Number ? z.Δᵃᵃᶜ : z.Δᵃᵃᶜ[k]
+        depth += ifelse(wet, Δr * z.σᶜᶜᵉ[i, j, k], zero(depth))
+    end
+    return depth
+end
+
 # Make sure column_height works for horizontally-Flat topologies.
 XFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
 YFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:AbstractGridFittedBottom}

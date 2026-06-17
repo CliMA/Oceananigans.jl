@@ -21,6 +21,7 @@ import Oceananigans.Grids: architecture, with_halo, inflate_halo_size_one_dimens
                            xnodes, ynodes, znodes, λnodes, φnodes, nodes,
                            ξnodes, ηnodes, rnodes,
                            static_column_depthᶜᶜᵃ, static_column_depthᶠᶜᵃ, static_column_depthᶜᶠᵃ, static_column_depthᶠᶠᵃ,
+                           MultiEnvelopeGrid,
                            inactive_cell
 
 import Oceananigans.Fields: fractional_x_index, fractional_y_index, fractional_z_index

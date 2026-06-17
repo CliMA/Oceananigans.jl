@@ -1,5 +1,5 @@
-using Oceananigans.Grids: Grids, AbstractMutableGrid, MutableVerticalDiscretization,
-    rnode
+using Oceananigans.Grids: Grids, AbstractMutableGrid,
+    AbstractMutableVerticalDiscretization, rnode
 
 #####
 ##### MutableVerticalDiscretization-specific vertical spacing functions
@@ -26,9 +26,9 @@ const AMG = AbstractMutableGrid
 #### Vertical spacing functions
 ####
 
-const MRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:MutableVerticalDiscretization}
-const MLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:MutableVerticalDiscretization}
-const MOSG = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:MutableVerticalDiscretization}
+const MRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractMutableVerticalDiscretization}
+const MLLG = LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractMutableVerticalDiscretization}
+const MOSG = OrthogonalSphericalShellGrid{<:Any, <:Any, <:Any, <:Any, <:AbstractMutableVerticalDiscretization}
 
 superscript_location(s::Symbol) = s == :ᶜ ? :Center : :Face
 

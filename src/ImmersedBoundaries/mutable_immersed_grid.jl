@@ -8,7 +8,7 @@ using Oceananigans.Grids: AbstractUnderlyingGrid,
                           RightConnected,
                           RightCenterFolded,
                           RightFaceFolded,
-                          MutableVerticalDiscretization
+                          AbstractMutableVerticalDiscretization
 
 import Oceananigans.Grids: column_depthᶜᶜᵃ,
                            column_depthᶜᶠᵃ,
@@ -17,7 +17,7 @@ import Oceananigans.Grids: column_depthᶜᶜᵃ,
 
 import Oceananigans.Operators: σⁿ, σ⁻, ∂t_σ
 
-const UnderlyingMutableGrid{FT, TX, TY} = AbstractUnderlyingGrid{FT, TX, TY, <:Bounded, <:MutableVerticalDiscretization}
+const UnderlyingMutableGrid{FT, TX, TY} = AbstractUnderlyingGrid{FT, TX, TY, <:Bounded, <:AbstractMutableVerticalDiscretization}
 const MutableImmersedGrid{FT, TX, TY}   = ImmersedBoundaryGrid{FT, TX, TY, <:Bounded, <:UnderlyingMutableGrid}
 const MutableGridOfSomeKind{FT, TX, TY} = Union{MutableImmersedGrid{FT, TX, TY}, UnderlyingMutableGrid{FT, TX, TY}}
 

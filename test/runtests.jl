@@ -269,6 +269,16 @@ CUDA.allowscalar() do
         @testset "Vertical coordinate tests (1)" begin
             include("test_zstar_coordinate.jl")
             include("test_zstar_conservation_explicit.jl")
+            include("test_multi_envelope_grid.jl")
+            include("test_multi_envelope_conservation.jl")
+            include("test_multi_envelope_formulations.jl")
+            include("test_multi_envelope_splines.jl")
+            include("test_multi_envelope_bathymetry.jl")
+            include("test_multi_envelope_immersed.jl")
+            include("test_multi_envelope_hpge.jl")
+            include("test_multi_envelope_cascading.jl")
+            include("test_multi_envelope_cil.jl")
+            include("test_multi_envelope_global.jl")
         end
     end
 
