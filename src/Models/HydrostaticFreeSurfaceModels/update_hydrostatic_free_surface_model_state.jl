@@ -77,7 +77,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     update_biogeochemical_state!(model.biogeochemistry, model)
 
     @apply_regionally begin
-        update_advection_timestep!(model.advection, model.timestepper, model.clock, model)
+        update_advection_timestep!(model.advection, model.timestepper, model.clock)
         compute_momentum_tendencies!(model, callbacks)
     end
 

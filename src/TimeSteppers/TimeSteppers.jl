@@ -11,7 +11,6 @@ export
     ExplicitTimeDiscretization,
     VerticallyImplicitTimeDiscretization,
     AdaptiveVerticallyImplicitDiscretization,
-    adaptive_implicit_vertical_advection_diagnostics,
     time_discretization
 
 using Adapt: Adapt

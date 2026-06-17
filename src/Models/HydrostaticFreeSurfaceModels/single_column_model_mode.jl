@@ -84,7 +84,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid::SingleColumnGri
 
     update_biogeochemical_state!(model.biogeochemistry, model)
 
-    update_advection_timestep!(model.advection, model.timestepper, model.clock, model)
+    update_advection_timestep!(model.advection, model.timestepper, model.clock)
     compute_momentum_tendencies!(model, callbacks)
 
     return nothing

@@ -78,7 +78,6 @@ export
     ExplicitTimeDiscretization,
     VerticallyImplicitTimeDiscretization,
     AdaptiveVerticallyImplicitDiscretization,
-    adaptive_implicit_vertical_advection_diagnostics,
     viscosity, diffusivity,
 
     # Lagrangian particle tracking
@@ -216,9 +215,6 @@ fields(::Nothing) = NamedTuple()
 prognostic_fields(::Nothing) = NamedTuple()
 function prognostic_state end
 function restore_prognostic_state! end
-function checkpoint_restore_grid end
-function with_checkpoint_restore_grid end
-finalize_checkpoint_restore!(model, checkpoint_grid) = nothing
 function tracer_tendency_kernel_function end
 function boundary_conditions end
 
