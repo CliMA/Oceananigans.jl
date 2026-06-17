@@ -859,12 +859,17 @@ Grids.nodes(f::Field; kwargs...) = nodes(f.grid, instantiated_location(f)...; in
 ##### Checkpointing
 #####
 
+# Save a host copy of the underlying data (halos included) so that on restore we can
+# `copyto!` straight into the existing device array. Serializing the device array directly
+# makes JLD2 reconstruct a *new* device array on read, doubling GPU memory at pickup and
+# OOMing for large fields. `parent` keeps the same indexing as `restored`'s parent below.
 function prognostic_state(field::Field)
-    return (; data = prognostic_state(field.data))
+    return (; data = Array(parent(field)))
 end
 
 function restore_prognostic_state!(restored::Field, from)
-    restore_prognostic_state!(restored.data, from.data)
+    # `from.data` is a host array; copyto! into the existing device parent allocates nothing.
+    copyto!(parent(restored), from.data)
     return restored
 end
 
