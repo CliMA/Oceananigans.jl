@@ -8,7 +8,7 @@ using Oceananigans.Grids: φnode
 @inline getvalue(a::AbstractArray, i, j, k, grid, args...) = @inbounds a[i, j, k]
 
 """
-    intrinsic_vector(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ)
+$(TYPEDSIGNATURES)
 
 Convert the three-dimensional vector with components `uₑ, vₑ, wₑ` defined in an _extrinsic_
 coordinate system associated with the domain, to the coordinate system _intrinsic_ to the grid.
@@ -26,7 +26,7 @@ _intrinsic_ coordinate system are equivalent. However, for other grids (e.g., fo
     getvalue(uₑ, i, j, k, grid), getvalue(vₑ, i, j, k, grid), getvalue(wₑ, i, j, k, grid)
 
 """
-    extrinsic_vector(i, j, k, grid::AbstractGrid, uᵢ, vᵢ, wᵢ)
+$(TYPEDSIGNATURES)
 
 Convert the three-dimensional vector with components `uᵢ, vᵢ, wᵢ ` defined on the _intrinsic_ coordinate
 system of the grid, to the _extrinsic_ coordinate system associated with the domain.
@@ -52,7 +52,7 @@ _intrinsic_ coordinate systems are equivalent. However, for other grids (e.g., f
 
 
 """
-    rotation_angle(i, j, grid::OrthogonalSphericalShellGrid)
+$(TYPEDSIGNATURES)
 
 Return the rotation angle (in radians) of the `i, j`-th point of the `grid`.
 The rotation angle is the angle (positive counter-clockwise) that we need to rotate
@@ -77,16 +77,12 @@ the grid's intrinsic coordinates in order to match the grid's extrinsic coordina
     Rcosθ =   (Rcosθ₁ + Rcosθ₂) / 2
     Rsinθ = - (deg2rad(φᶠᶠᵃ⁺⁺ - φᶠᶠᵃ⁻⁺) / Δxᶜᶠᵃ⁺ + deg2rad(φᶠᶠᵃ⁺⁻ - φᶠᶠᵃ⁻⁻) / Δxᶜᶠᵃ⁻) / 2
 
-    # Normalization for the rotation angles
-    R = sqrt(Rcosθ^2 + Rsinθ^2)
-
-    cosθ, sinθ = Rcosθ / R, Rsinθ / R
-
     # Two-argument atan so we recover the full (-π, π] range — single-argument
     # atan(y/x) returns in (-π/2, π/2) and silently sign-flips the rotation for
     # cells where the angle falls in the 2nd or 3rd quadrant (e.g. cells north
     # of the apex on a polar-centred LCC grid).
-    θ = atan(sinθ, cosθ)
+    θ = atan(Rsinθ, Rcosθ)
+
     return θ
 end
 

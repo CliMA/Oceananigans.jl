@@ -121,7 +121,7 @@ compute_regional_rhs!(rhs, arch, grid, g, Δt, U, η) =
 end
 
 """
-    implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+$(TYPEDSIGNATURES)
 
 Return `L(ηⁿ)`, where `ηⁿ` is the free surface displacement at time step `n`
 and `L` is the linear operator that arises
@@ -151,7 +151,7 @@ end
 @inline ∫ᶻ_Ay_∂y_ηᶜᶠᶜ(i, j, k, grid, ∫ᶻ_Ayᶜᶠᶜ, η) = @inbounds ∫ᶻ_Ayᶜᶠᶜ[i, j, k] * δyᶜᶠᶠ(i, j, k, grid, η) * Δy⁻¹ᶜᶠᶠ(i, j, k, grid)
 
 """
-    _implicit_free_surface_linear_operation!(L_ηⁿ⁺¹, grid, ηⁿ⁺¹, ∫ᶻ_Axᶠᶜᶜ, ∫ᶻ_Ayᶜᶠᶜ, g, Δt)
+$(TYPEDSIGNATURES)
 
 Return the left side of the "implicit ``η`` equation"
 

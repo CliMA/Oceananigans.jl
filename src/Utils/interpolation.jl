@@ -17,7 +17,7 @@
 #####
 
 """
-    interpolator(fractional_idx)
+$(TYPEDSIGNATURES)
 
 Return an "interpolator tuple" from the fractional index `fractional_idx`,
 defined as the 3-tuple `(i⁻, i⁺, ξ)` where:
@@ -48,7 +48,7 @@ end
 #####
 
 """
-    _interpolate(data, ix, iy, iz, in...)
+$(TYPEDSIGNATURES)
 
 Perform trilinear interpolation on 3D (or higher-dimensional) `data` using
 interpolator tuples `ix`, `iy`, `iz` of the form `(i⁻, i⁺, ξ)`.
@@ -71,7 +71,7 @@ Additional indices `in...` are passed through for higher-dimensional arrays.
 end
 
 """
-    _interpolate(data, ix, iy, iz, iw::Tuple{Any, Any, Any})
+$(TYPEDSIGNATURES)
 
 Perform quadrilinear interpolation on 4D `data` using
 interpolator tuples `ix`, `iy`, `iz`, `iw` of the form `(i⁻, i⁺, ξ)`.
@@ -94,7 +94,7 @@ interpolator tuples `ix`, `iy`, `iz`, `iw` of the form `(i⁻, i⁺, ξ)`.
 end
 
 """
-    _interpolate(data, ix, iy, iz, iw::Tuple{Any, Any, Any}, iv::Tuple{Any, Any, Any})
+$(TYPEDSIGNATURES)
 
 Perform quintilinear interpolation on 5D `data` using
 interpolator tuples `ix`, `iy`, `iz`, `iw`, `iv` of the form `(i⁻, i⁺, ξ)`.
@@ -142,7 +142,7 @@ interpolator tuples `ix`, `iy`, `iz`, `iw`, `iv` of the form `(i⁻, i⁺, ξ)`.
 end
 
 """
-    _interpolate(data, ix, iy)
+$(TYPEDSIGNATURES)
 
 Perform bilinear interpolation on 2D `data` using interpolator tuples `ix`, `iy`.
 """
@@ -157,7 +157,7 @@ Perform bilinear interpolation on 2D `data` using interpolator tuples `ix`, `iy`
 end
 
 """
-    _interpolate(data, ix)
+$(TYPEDSIGNATURES)
 
 Perform linear interpolation on 1D `data` using interpolator tuple `ix`.
 """

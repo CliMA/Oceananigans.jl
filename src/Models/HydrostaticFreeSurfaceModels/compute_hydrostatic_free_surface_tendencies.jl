@@ -10,15 +10,14 @@ using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCAT
 using Oceananigans.Utils: get_active_cells_map
 
 """
-    compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
+$(TYPEDSIGNATURES)
 
 Compute tendencies for horizontal velocity fields `u` and `v`.
 
 This function:
 1. Computes interior momentum tendencies (advection, Coriolis, pressure gradient, diffusion, forcing)
 2. Completes halo communication and computes buffer tendencies for distributed grids
-3. Computes flux boundary condition contributions
-4. Executes any callbacks with `TendencyCallsite`
+3. Executes any callbacks with `TendencyCallsite`
 
 Momentum tendencies are stored in `model.timestepper.Gⁿ.u` and `model.timestepper.Gⁿ.v`.
 """
@@ -41,7 +40,7 @@ function compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callba
 end
 
 """
-    compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel)
+$(TYPEDSIGNATURES)
 
 Compute tendencies for all tracer fields.
 

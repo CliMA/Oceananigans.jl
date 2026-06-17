@@ -1,5 +1,3 @@
-import Oceananigans.Models: compute_buffer_tendencies!
-
 using Oceananigans.TurbulenceClosures: required_halo_size_x, required_halo_size_y
 using Oceananigans.Grids: XFlatGrid, YFlatGrid
 using Oceananigans.Utils: worksize
@@ -8,7 +6,7 @@ using Oceananigans.Utils: worksize
 # Rewriting it may be helpful.
 
 # We assume here that top/bottom BC are always synched (no partitioning in z)
-function compute_buffer_tendencies!(model::NonhydrostaticModel)
+function Oceananigans.Models.compute_buffer_tendencies!(model::NonhydrostaticModel)
     grid = model.grid
     arch = architecture(grid)
 

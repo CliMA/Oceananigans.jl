@@ -16,6 +16,8 @@ export TabulatedFunction
 export interpolator, _interpolate
 export ϕ₁, ϕ₂, ϕ₃, ϕ₄, ϕ₅, ϕ₆, ϕ₇, ϕ₈
 
+using DocStringExtensions: TYPEDSIGNATURES
+
 #####
 ##### Misc. small utils
 #####
