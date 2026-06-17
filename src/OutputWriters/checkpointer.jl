@@ -177,21 +177,18 @@ restore_checkpoint_grid(::Val{false}, from) = nothing
 
 same_interior_grid(a, b) = false
 
-compare_grid_field(excluded_fields, a, b, field::Symbol) = field in excluded_fields || getfield(a, field) == getfield(b, field)
+# Helper to compare grid fields while excluding halo-related attributes
+_halo_excluded_fields() = (:architecture, :Hx, :Hy, :Hz)
 
-function same_interior_grid(excluded_fields, a::T, b::T) where T
-    all(field -> compare_grid_field(excluded_fields, a, b, field), fieldnames(T))
+function same_interior_grid(a::T, b::T) where T
+    for field in fieldnames(T)
+        field in _halo_excluded_fields() && continue
+        getfield(a, field) != getfield(b, field) && return false
+    end
+    return true
 end
 
-same_interior_grid(a::RectilinearGrid, b::RectilinearGrid) =
-    same_interior_grid((:architecture, :Hx, :Hy, :Hz), a, b)
-
-same_interior_grid(a::LatitudeLongitudeGrid, b::LatitudeLongitudeGrid) =
-    same_interior_grid((:architecture, :Hx, :Hy, :Hz), a, b)
-
-same_interior_grid(a::OrthogonalSphericalShellGrid, b::OrthogonalSphericalShellGrid) =
-    same_interior_grid((:architecture, :Hx, :Hy, :Hz), a, b)
-
+# Handle ImmersedBoundaryGrid specifically due to nested grid
 same_interior_grid(a::ImmersedBoundaryGrid, b::ImmersedBoundaryGrid) =
     same_interior_grid(a.underlying_grid, b.underlying_grid) && a.immersed_boundary == b.immersed_boundary
 
@@ -223,6 +220,26 @@ function with_checkpoint_restore_grid(f, grid)
     finally
         checkpoint_restore_grid_ref[] = previous_grid
     end
+end
+
+"""
+    finalize_compatible_grid_restore!(model, velocities_and_tracers, mode; halo_kwargs=())
+
+Helper function to fill halos and mask fields after restoring to a compatible grid.
+This is called by model-specific `finalize_checkpoint_restore!` implementations.
+"""
+function finalize_compatible_grid_restore!(model, velocities_and_tracers, mode::RestoreOnCompatibleGrid; halo_kwargs=())
+    model_fields = fields(model)
+    
+    fill_halo_regions!(velocities_and_tracers,
+                       model.clock,
+                       model_fields; halo_kwargs...)
+
+    fill_timestepper_tendency_halos_after_restore!(model.timestepper, model.clock, model_fields; halo_kwargs...)
+    fill_timestepper_previous_tendency_halos_after_restore!(model.timestepper, model.clock, model_fields; halo_kwargs...)
+
+    foreach(ImmersedBoundaries.mask_immersed_field!, velocities_and_tracers)
+    return model
 end
 
 
