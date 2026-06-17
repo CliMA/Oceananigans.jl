@@ -36,8 +36,10 @@ function cascade_grid(coordinate)
         materialize_envelopes!(grid, (x, y) -> slope(x))
         return grid
     elseif coordinate === :multienvelope
-        grid = RectilinearGrid(; common..., z=MultiEnvelopeVerticalDiscretization(collect(range(-Lz, 0, Nz+1)); formulation=MultiEnvelope(level_counts=(14, 10))))
-        materialize_envelopes!(grid, ((x, y) -> 500.0, (x, y) -> slope(x)))
+        grid = RectilinearGrid(; common..., z=MultiEnvelopeVerticalDiscretization(collect(range(-Lz, 0, Nz+1)); formulation=MultiEnvelope(level_counts=(5, 19))))
+        # shelf_safe_envelopes keeps the interior/bottom envelopes strictly separated on the shelf: the raw
+        # (200, slope) pair coincides where the bottom is 200 m, collapsing the bottom zone to Δz=0 → NaN.
+        materialize_envelopes!(grid, shelf_safe_envelopes(slope, (200.0,); minimum_thickness=20))
         return grid
     end
 end

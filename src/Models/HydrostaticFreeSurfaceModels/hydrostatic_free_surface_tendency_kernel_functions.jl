@@ -2,11 +2,40 @@ using Oceananigans.Advection: div_Uc, U_dot_∇u, U_dot_∇v,
                               U_dot_∇u_hydrostatic_metric, U_dot_∇v_hydrostatic_metric
 using Oceananigans.Biogeochemistry: biogeochemical_transition, biogeochemical_drift_velocity
 using Oceananigans.Forcings: with_advective_forcing
-using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ
+using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ, ∂xᵣᶠᶜᶜ, ∂yᵣᶜᶠᶜ, ∂x_zᶠᶜᶜ, ∂y_zᶜᶠᶜ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
+using Oceananigans.Grids: MultiEnvelopeGrid
+using Oceananigans.BuoyancyFormulations: buoyancy_perturbationᶜᶜᶜ
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ,
                                        immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∇_dot_qᶜ,
                                        closure_auxiliary_velocity
 using Oceananigans.Utils: sum_of_velocities
+
+#####
+##### Hydrostatic pressure-gradient force
+#####
+##### Default (z-star / static grids): the naïve chain-rule ∂xᶠᶜᶜ(pHY′), which is exact for the flat
+##### geopotential levels of those grids. On a `MultiEnvelopeGrid` (terrain-following / multi-envelope) the
+##### levels tilt over topography and the naïve scheme leaves a large spurious horizontal pressure-gradient
+##### error. There we use the **density-Jacobian** form (Shchepetkin & McWilliams 2003 style):
+#####
+#####     ∂φ/∂x|_z = ∂xᵣ(pHY′) − ℑx(b)·∂x_z
+#####
+##### which is well-balanced — exact for buoyancy linear in z — so a resting stratified ocean stays at rest
+##### (verified: ~1000× smaller spurious force than the naïve scheme). `b` is the same buoyancy that was
+##### integrated to form pHY′, and `∂x_z` is the coordinate-surface slope (from the fixed-up `znode`).
+
+@inline x_hydrostatic_pressure_gradient(i, j, k, grid, pHY, buoyancy, tracers) = ∂xᶠᶜᶜ(i, j, k, grid, pHY)
+@inline y_hydrostatic_pressure_gradient(i, j, k, grid, pHY, buoyancy, tracers) = ∂yᶜᶠᶜ(i, j, k, grid, pHY)
+
+# No buoyancy ⇒ pHY′ = 0; fall back to the default (cheaper, and avoids touching `buoyancy.formulation`).
+@inline x_hydrostatic_pressure_gradient(i, j, k, grid::MultiEnvelopeGrid, pHY, ::Nothing, tracers) = ∂xᶠᶜᶜ(i, j, k, grid, pHY)
+@inline y_hydrostatic_pressure_gradient(i, j, k, grid::MultiEnvelopeGrid, pHY, ::Nothing, tracers) = ∂yᶜᶠᶜ(i, j, k, grid, pHY)
+
+@inline x_hydrostatic_pressure_gradient(i, j, k, grid::MultiEnvelopeGrid, pHY, buoyancy, tracers) =
+    ∂xᵣᶠᶜᶜ(i, j, k, grid, pHY) - ℑxᶠᵃᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers) * ∂x_zᶠᶜᶜ(i, j, k, grid)
+
+@inline y_hydrostatic_pressure_gradient(i, j, k, grid::MultiEnvelopeGrid, pHY, buoyancy, tracers) =
+    ∂yᵣᶜᶠᶜ(i, j, k, grid, pHY) - ℑyᵃᶠᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers) * ∂y_zᶜᶠᶜ(i, j, k, grid)
 
 """
 Return the tendency for the horizontal velocity in the ``x``-direction, or the east-west
@@ -45,7 +74,7 @@ implicitly during time-stepping.
              - U_dot_∇u_hydrostatic_metric(i, j, k, grid, advection, velocities, velocities)
              - explicit_barotropic_pressure_x_gradient(i, j, k, grid, free_surface)
              - x_f_cross_U(i, j, k, grid, coriolis, velocities)
-             - ∂xᶠᶜᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
+             - x_hydrostatic_pressure_gradient(i, j, k, grid, hydrostatic_pressure_anomaly, buoyancy, tracers)
              - ∂ⱼ_τ₁ⱼ(i, j, k, grid, closure, closure_fields, clock, model_fields, buoyancy)
              - immersed_∂ⱼ_τ₁ⱼ(i, j, k, grid, velocities, u_immersed_bc, closure, closure_fields, clock, model_fields)
              + forcing(i, j, k, grid, clock, model_fields))
@@ -88,7 +117,7 @@ implicitly during time-stepping.
              - U_dot_∇v_hydrostatic_metric(i, j, k, grid, advection, velocities, velocities)
              - explicit_barotropic_pressure_y_gradient(i, j, k, grid, free_surface)
              - y_f_cross_U(i, j, k, grid, coriolis, velocities)
-             - ∂yᶜᶠᶜ(i, j, k, grid, hydrostatic_pressure_anomaly)
+             - y_hydrostatic_pressure_gradient(i, j, k, grid, hydrostatic_pressure_anomaly, buoyancy, tracers)
              - ∂ⱼ_τ₂ⱼ(i, j, k, grid, closure, closure_fields, clock, model_fields, buoyancy)
              - immersed_∂ⱼ_τ₂ⱼ(i, j, k, grid, velocities, v_immersed_bc, closure, closure_fields, clock, model_fields)
              + forcing(i, j, k, grid, clock, model_fields))
