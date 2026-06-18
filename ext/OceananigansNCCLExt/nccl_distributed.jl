@@ -40,7 +40,7 @@ const NCCLDistributedField = Oceananigans.Fields.Field{<:Any, <:Any, <:Any, <:An
 ##### NCCLDistributed constructor
 #####
 
-function NCCLDistributed(child_arch = GPU(); partition = nothing, kwargs...)
+function DC.NCCLDistributed(child_arch = GPU(); partition = nothing, kwargs...)
     mpi_arch = Distributed(child_arch; partition, kwargs...)
     nccl_comm = create_nccl_comm_from_mpi(mpi_arch.communicator)
     comm_stream = CUDA.CuStream(; flags=CUDA.STREAM_NON_BLOCKING)

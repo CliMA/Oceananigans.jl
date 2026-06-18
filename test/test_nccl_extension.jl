@@ -26,7 +26,7 @@ using Oceananigans.DistributedComputations: TransposableField,
 using Oceananigans.BoundaryConditions: regularize_field_boundary_conditions
 using Oceananigans.Models.NonhydrostaticModels: solve_for_pressure!
 
-using OceananigansNCCLExt: NCCLDistributed
+using Oceananigans.DistributedComputations: NCCLDistributed
 
 function random_divergent_source_term(grid::DistributedGrid)
     arch = architecture(grid)
