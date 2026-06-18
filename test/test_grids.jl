@@ -1317,7 +1317,7 @@ end
                                topology=(Periodic, Periodic, Bounded))
 
         sst = slice(grid, :, :, 1)
-        @test topology(sst) == (Periodic, Periodic, Flat)
+        @test topology(sst) == (topology(grid, 1), topology(grid, 2), Flat)
         @test size(sst) == (8, 6, 1)
         @test halo_size(sst) == (2, 3, 0)
         @test architecture(sst) == arch
