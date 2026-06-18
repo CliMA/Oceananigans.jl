@@ -166,6 +166,9 @@ The main difference between the syntax for `LatitudeLongitudeGrid` versus that f
 
     To type `λ` or `φ` at the REPL, write either `\lambda` (for `λ`) or `\varphi` (for `φ`) and then press `<TAB>`.
 
+!!! note "Inspecting grids with geographical coordinates"
+    We can inspect grids with geographical coordinates `(λ, φ, z)` using  [`λnodes`](@ref), [`φnodes`](@ref) and also [`λspacings`](@ref) and [`φspacings`](@ref).
+
 If `topology` is not provided for `LatitudeLongitudeGrid`, then Oceananigans tries infer it: if the `longitude` spans 360 degrees,
 the default `x`-topology is `Periodic`; if `longitude` spans less than 360 degrees `x`-topology is `Bounded`.
 
