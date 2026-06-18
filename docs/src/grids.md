@@ -99,8 +99,8 @@ grid = RectilinearGrid(architecture,
 The ``y``-dimension is "missing" because it's marked `Flat` in `topology = (Periodic, Flat, Bounded)`.
 So nothing varies in ``y``: `y`-derivatives are 0.
 Also, the keyword argument (or "kwarg" for short) that specifies the ``y``-domains may be omitted, and `size` has only two elements rather than 3 as in the first example.
-In the stretched cell interfaces specified by `z_interfaces`, the number of
-vertical cell interfaces is `Nz + 1 = length(z_interfaces) = 5`, where `Nz = 4` is the number
+The stretched cell interfaces specified by `z_faces`. Because ``z`` is Bounded, the number of
+vertical cell interfaces required is `Nz + 1 = length(z_faces) = 5`, where `Nz = 4` is the number
 of cells in the vertical.
 
 The companion functions [`xspacings`](@ref), [`yspacings`](@ref), and [`zspacings`](@ref) return the cell widths in each direction and are most informative when the grid spacing varies.
