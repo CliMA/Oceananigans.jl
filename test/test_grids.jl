@@ -1306,3 +1306,41 @@ end
         end
     end
 end
+
+@testset "Grid slicing [slice]" begin
+    @info "  Testing slice(grid, ...)"
+    for arch in archs, FT in float_types
+        # Surface slice of a 3D grid: the sliced (z) dimension collapses to Flat,
+        # horizontal dimensions are retained with their size, halo and spacing.
+        grid = RectilinearGrid(arch, FT, size=(8, 6, 4), halo=(2, 3, 1),
+                               x=(0, 1), y=(0, 2), z=(0, 4),
+                               topology=(Periodic, Periodic, Bounded))
+
+        sst = slice(grid, :, :, 1)
+        @test topology(sst) == (Periodic, Periodic, Flat)
+        @test size(sst) == (8, 6, 1)
+        @test halo_size(sst) == (2, 3, 0)
+        @test architecture(sst) == arch
+        @test eltype(sst) == FT
+        @test xnodes(sst, Center()) == xnodes(grid, Center())
+        @test ynodes(sst, Center()) == ynodes(grid, Center())
+
+        # Slicing an already-Flat dimension is a no-op for that dimension; collapsing the
+        # vertical of an (x, z) grid leaves a 1D horizontal grid (the coupling/SST case).
+        xz = RectilinearGrid(arch, FT, size=(8, 4), halo=(2, 1),
+                             x=(0, 1), z=(0, 4), topology=(Periodic, Flat, Bounded))
+        line = slice(xz, :, :, 1)
+        @test topology(line) == (Periodic, Flat, Flat)
+        @test size(line) == (8, 1, 1)
+        @test line.Hx == xz.Hx
+        @test xnodes(line, Center()) == xnodes(xz, Center())
+
+        # Stretched coordinates are preserved on retained dimensions.
+        zfaces = FT[0, 1, 3, 7]
+        gz = RectilinearGrid(arch, FT, size=(4, 3), x=(0, 1), z=zfaces,
+                             topology=(Periodic, Flat, Bounded))
+        xsection = slice(gz, :, 1, :)
+        @test topology(xsection) == (Periodic, Flat, Bounded)
+        @test znodes(xsection, Face()) == znodes(gz, Face())
+    end
+end

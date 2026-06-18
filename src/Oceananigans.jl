@@ -13,6 +13,7 @@ export
     Periodic, Bounded, Flat,
     RightConnected, LeftConnected, FullyConnected,
     RightFaceFolded, RightCenterFolded,
+    slice,
     RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
     TripolarGrid, RotatedLatitudeLongitudeGrid,
     MutableVerticalDiscretization,

@@ -447,6 +447,63 @@ function with_halo(halo, grid::RectilinearGrid)
 end
 
 """
+    slice(grid::RectilinearGrid, i, j, k)
+
+Return a lower-dimensional grid extracted from `grid` by collapsing each dimension whose
+index is an `Integer` to `Flat`, while retaining each dimension indexed by a colon (`:`)
+with its size, halo, spacing, and topology unchanged.
+
+A single integer index collapses that dimension. The index nominally refers to a cell
+center; for a `RectilinearGrid` the horizontal coordinates are independent of the vertical
+(and vice versa), so the index *value* does not affect the resulting grid — only which
+dimension is collapsed. (The value matters for curved grids, where this method does not yet
+apply.)
+
+This is the grid-level primitive behind exchange/surface grids in coupled models: e.g. a
+2D horizontal grid for a slab-ocean SST or an atmosphere–ocean exchange grid is
+`slice(grid, :, :, k)`.
+
+Example
+=======
+
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(8, 6, 4), x=(0, 1), y=(0, 1), z=(0, 1),
+                              topology=(Periodic, Periodic, Bounded));
+
+julia> slice(grid, :, :, 1)
+8×6×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 3×3×0 halo
+├── Periodic x ∈ [0.0, 1.0) regularly spaced with Δx=0.125
+├── Periodic y ∈ [0.0, 1.0) regularly spaced with Δy=0.166667
+└── Flat z
+```
+"""
+function slice(grid::RectilinearGrid, i, j, k)
+    arch = architecture(grid)
+    FT = eltype(grid)
+    TX, TY, TZ = topology(grid)
+
+    # An integer index collapses a dimension to `Flat`; a colon keeps it.
+    TX′ = i isa Colon ? TX : Flat
+    TY′ = j isa Colon ? TY : Flat
+    TZ′ = k isa Colon ? TZ : Flat
+    topo = (TX′, TY′, TZ′)
+
+    sz   = pop_flat_elements((grid.Nx, grid.Ny, grid.Nz), topo)
+    halo = pop_flat_elements((grid.Hx, grid.Hy, grid.Hz), topo)
+
+    # Pass the coordinate constructor (extent for regular dims, faces for stretched) only for
+    # retained dimensions; collapsed dimensions fall back to the `Flat` default.
+    kwargs = Dict{Symbol, Any}(:size => sz, :halo => halo, :topology => topo)
+    i isa Colon && (kwargs[:x] = cpu_face_constructor_x(grid))
+    j isa Colon && (kwargs[:y] = cpu_face_constructor_y(grid))
+    k isa Colon && (kwargs[:z] = cpu_face_constructor_z(grid))
+
+    return RectilinearGrid(arch, FT; kwargs...)
+end
+
+"""
 $(TYPEDSIGNATURES)
 
 Return a `new_grid` that's identical to `grid` but on `architecture`.
