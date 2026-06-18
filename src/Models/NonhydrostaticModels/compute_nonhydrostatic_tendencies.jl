@@ -1,18 +1,15 @@
-using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans: fields, TendencyCallsite
+using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.Models: complete_communication_and_compute_buffer!, interior_tendency_kernel_parameters
 using Oceananigans.Utils: get_active_cells_map
 
-import Oceananigans.TimeSteppers: compute_tendencies!
-import Oceananigans.TimeSteppers: compute_flux_bc_tendencies!
-
 """
-    compute_tendencies!(model::NonhydrostaticModel, callbacks)
+$(TYPEDSIGNATURES)
 
 Calculate the interior and boundary contributions to tendency terms without the
 contribution from non-hydrostatic pressure.
 """
-function compute_tendencies!(model::NonhydrostaticModel, callbacks)
+function Oceananigans.TimeSteppers.compute_tendencies!(model::NonhydrostaticModel, callbacks)
 
     # Note:
     #
@@ -163,8 +160,12 @@ end
 ##### Boundary contributions to tendencies due to user-prescribed fluxes
 #####
 
-""" Apply boundary conditions by adding flux divergences to the right-hand-side. """
-function compute_flux_bc_tendencies!(model::NonhydrostaticModel)
+"""
+$(TYPEDSIGNATURES)
+
+Apply boundary conditions by adding flux divergences to the right-hand-side.
+"""
+function Oceananigans.TimeSteppers.compute_flux_bc_tendencies!(model::NonhydrostaticModel)
 
     Gⁿ    = model.timestepper.Gⁿ
     arch  = model.architecture

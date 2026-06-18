@@ -151,7 +151,7 @@ const PAVBC  = BoundaryCondition{<:Value{<:PerturbationAdvection}}
 const PABC   = Union{PANFBC, PAVBC}
 
 """
-    has_target_transport(scheme)
+$(TYPEDSIGNATURES)
 
 Return `true` if `scheme` carries a prescribed `target_transport`, `false` otherwise.
 """
@@ -160,7 +160,7 @@ has_target_transport(scheme::PerturbationAdvection{<:Any, <:Any, <:Nothing}) = f
 has_target_transport(scheme::PerturbationAdvection) = true  # any non-Nothing TF
 
 """
-    get_target_transport(scheme, grid)
+$(TYPEDSIGNATURES)
 
 Return the prescribed target transport for `scheme` on `grid`.
 For a `Number`, returns the stored value unchanged.

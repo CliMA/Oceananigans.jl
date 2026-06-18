@@ -1,10 +1,7 @@
 using Oceananigans.Utils: configure_kernel
 
 """
-    construct_boundary_conditions_kernels(bcs::FieldBoundaryConditions,
-                                          data::OffsetArray,
-                                          grid::AbstractGrid,
-                                          loc, indices)
+$(TYPEDSIGNATURES)
 
 Construct preconfigured boundary condition kernels for a given `data` array, `grid`,
 and the provided `bcs` (a FieldBoundaryConditions` object).

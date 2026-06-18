@@ -32,12 +32,7 @@ const NoSkewAdvectionISSD = ISSD{<:Any, <:AdvectiveFormulation, Nothing}
 const issd_coefficient_loc = (Center(), Center(), Face())
 
 """
-    IsopycnalSkewSymmetricDiffusivity([time_disc=VerticallyImplicitTimeDiscretization(), FT=Float64;]
-                                      κ_skew = nothing,
-                                      κ_symmetric = nothing,
-                                      skew_flux_formulation = DiffusiveFormulation(),
-                                      isopycnal_tensor = SmallSlopeIsopycnalTensor(),
-                                      slope_limiter = FluxTapering(1e-2))
+$(TYPEDSIGNATURES)
 
 Return parameters for an isopycnal skew-symmetric tracer diffusivity with skew diffusivity
 `κ_skew` and symmetric diffusivity `κ_symmetric` that uses an `isopycnal_tensor` model for
@@ -151,7 +146,7 @@ struct FluxTapering{FT}
 end
 
 """
-    taper_factor(i, j, k, grid, closure, tracers, buoyancy)
+$(TYPEDSIGNATURES)
 
 Return the tapering factor `min(1, Sₘₐₓ² / slope²)`, where `slope² = slope_x² + slope_y²`
 that multiplies all components of the isopycnal slope tensor. The tapering factor is calculated on all the

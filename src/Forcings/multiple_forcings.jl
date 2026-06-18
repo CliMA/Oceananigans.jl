@@ -8,7 +8,7 @@ Architectures.on_architecture(to, mf::MultipleForcings) = MultipleForcings(on_ar
 Base.getindex(mf::MultipleForcings, i) = mf.forcings[i]
 
 """
-    MultipleForcings(forcings)
+$(TYPEDSIGNATURES)
 
 Return a lightweight tuple-wrapper representing multiple user-defined `forcings`.
 Each forcing in `forcings` is added to the specified field's tendency.

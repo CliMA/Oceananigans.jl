@@ -26,7 +26,7 @@ struct DistributedFourierTridiagonalPoissonSolver{G, L, B, P, R, S, β}
     buffer :: β
 end
 
-# Usefull aliases for dispatch...
+# Useful aliases for dispatch...
 const XStretchedDistributedSolver = DistributedFourierTridiagonalPoissonSolver{<:Any, <:Any, <:XTridiagonalSolver}
 const YStretchedDistributedSolver = DistributedFourierTridiagonalPoissonSolver{<:Any, <:Any, <:YTridiagonalSolver}
 const ZStretchedDistributedSolver = DistributedFourierTridiagonalPoissonSolver{<:Any, <:Any, <:ZTridiagonalSolver}
@@ -39,7 +39,8 @@ architecture(solver::DistributedFourierTridiagonalPoissonSolver) =
 @inline Δξᶠ(k, grid, ::Val{3}) = Δzᵃᵃᶠ(1, 1, k, grid)
 
 """
-    DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid)
+    DistributedFourierTridiagonalPoissonSolver(global_grid, local_grid, planner_flag=FFTW.PATIENT;
+                                               tridiagonal_formulation=nothing)
 
 Return an FFT-based solver for the Poisson equation evaluated on a `local_grid` that has a non-uniform
 spacing in exactly one direction (i.e. either in x, y or z)

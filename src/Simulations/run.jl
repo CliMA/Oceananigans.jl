@@ -37,7 +37,7 @@ function schedule_aligned_time_step(sim, aligned_Δt)
 end
 
 """
-    aligned_time_step(sim, Δt)
+$(TYPEDSIGNATURES)
 
 Return a time step 'aligned' with `sim.stop_time`, output writer schedules,
 and callback schedules. Alignment with `sim.stop_time` takes precedence.
@@ -296,7 +296,7 @@ we_want_to_pickup(pickup::String) = true
 we_want_to_pickup(pickup) = throw(ArgumentError("Cannot run! with pickup=$pickup"))
 
 """
-    initialize!(sim::Simulation)
+$(TYPEDSIGNATURES)
 
 Initialize a simulation:
 

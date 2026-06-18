@@ -4,7 +4,7 @@ using Oceananigans.ImmersedBoundaries: peripheral_node, MutableGridOfSomeKind
 import Oceananigans.TimeSteppers: rk_substep!, cache_current_fields!
 
 """
-    rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks)
+$(TYPEDSIGNATURES)
 
 Perform a single split Runge-Kutta substep for `HydrostaticFreeSurfaceModel`.
 
@@ -15,7 +15,7 @@ rk_substep!(model::HydrostaticFreeSurfaceModel, Δτ, callbacks) =
     rk_substep!(model, model.free_surface, model.grid, Δτ, callbacks)
 
 """
-    rk_substep!(model, free_surface, grid, Δτ, callbacks)
+$(TYPEDSIGNATURES)
 
 Split Runge-Kutta substep for `HydrostaticFreeSurfaceModel` with explicit free surfaces
 (`ExplicitFreeSurface` or `SplitExplicitFreeSurface`).
@@ -64,7 +64,7 @@ The order of operations for explicit free surfaces is:
 end
 
 """
-    rk_substep!(model, ::ImplicitFreeSurface, grid, Δτ, callbacks)
+$(TYPEDSIGNATURES)
 
 Split Runge-Kutta substep for `HydrostaticFreeSurfaceModel` with `ImplicitFreeSurface`.
 
@@ -125,7 +125,7 @@ end
 #####
 
 """
-    rk_substep_grid!(grid, model, ::ZCoordinate, Δτ)
+$(TYPEDSIGNATURES)
 
 Update grid scaling factors during a split Runge-Kutta substep.
 
@@ -139,7 +139,7 @@ rk_substep_grid!(grid, model, ::ZCoordinate, Δt) = nothing
 #####
 
 """
-    rk_substep_velocities!(velocities, model, Δτ)
+$(TYPEDSIGNATURES)
 
 Advance horizontal velocities `u` and `v` during a split Runge-Kutta substep.
 
@@ -183,7 +183,7 @@ end
 rk_substep_tracers!(::EmptyNamedTuple, model, Δt) = nothing
 
 """
-    rk_substep_tracers!(tracers, model, Δτ)
+$(TYPEDSIGNATURES)
 
 Advance tracer fields during a split Runge-Kutta substep.
 
