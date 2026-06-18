@@ -104,16 +104,11 @@ vertical cell interfaces is `Nz + 1 = length(z_interfaces) = 5`, where `Nz = 4` 
 of cells in the vertical.
 
 The companion functions [`xspacings`](@ref), [`yspacings`](@ref), and [`zspacings`](@ref) return the cell widths in each direction and are most informative when the grid spacing varies.
-To inspect the variable ``z`` spacings for a CPU version of the grid above, we write:
+To inspect the variable ``z`` spacings the grid above, we write:
 
-```jldoctest grids
-z_faces = [0, 1, 3, 6, 10]
-irregular_grid = RectilinearGrid(topology = (Periodic, Flat, Bounded),
-                                 size = (10, 4),
-                                 x = (0, 20),
-                                 z = z_faces)
-Δz = zspacings(irregular_grid, Center(), Center(), Center())
-[Δz[1, 1, k] for k in 1:irregular_grid.Nz]
+```jldoctest grids_gpu
+Δz = zspacings(grid, Center(), Center(), Center())
+[Δz[1, 1, k] for k in 1:grid.Nz]
 
 # output
 4-element Vector{Float64}:
@@ -123,7 +118,7 @@ irregular_grid = RectilinearGrid(topology = (Periodic, Flat, Bounded),
  4.0
 ```
 
-The spacings increase from `1.0` to `4.0`, matching the growing gaps between successive entries in `z_faces`.
+The ``z``-spacings increase from 1.0 to 4.0, matching the growing gaps between successive entries in `z_faces`.
 
 A bit later in this tutorial, we'll give examples that illustrate how to build a grid that's [`Distributed`](@ref) across _multiple_ CPUs and GPUs.
 
