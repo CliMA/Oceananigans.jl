@@ -1344,3 +1344,25 @@ end
         @test znodes(xsection, Face()) == znodes(gz, Face())
     end
 end
+
+@testset "Grid slicing [slice] — LatitudeLongitudeGrid" begin
+    @info "  Testing slice(::LatitudeLongitudeGrid, ...)"
+    for arch in archs, FT in float_types
+        llg = LatitudeLongitudeGrid(arch, FT, size=(36, 18, 5), halo=(3, 3, 2),
+                                    longitude=(-180, 180), latitude=(-80, 80), z=(-1000, 0),
+                                    topology=(Periodic, Bounded, Bounded))
+
+        sst = slice(llg, :, :, 1)
+        @test sst isa LatitudeLongitudeGrid
+        @test topology(sst) == (Periodic, Bounded, Flat)
+        @test size(sst) == (36, 18, 1)
+        @test halo_size(sst) == (3, 3, 0)
+        @test architecture(sst) == arch
+        @test eltype(sst) == FT
+        @test sst.radius == llg.radius
+        @test λnodes(sst, Center()) == λnodes(llg, Center())
+        @test φnodes(sst, Center()) == φnodes(llg, Center())
+        # Latitude-dependent horizontal metrics are retained and finite.
+        @test all(isfinite, xspacings(sst, Center(), Center()))
+    end
+end
