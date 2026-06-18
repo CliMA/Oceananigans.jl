@@ -26,7 +26,7 @@ struct DistributedFourierTridiagonalPoissonSolver{G, L, B, P, R, S, β}
     buffer :: β
 end
 
-# Usefull aliases for dispatch...
+# Useful aliases for dispatch...
 const XStretchedDistributedSolver = DistributedFourierTridiagonalPoissonSolver{<:Any, <:Any, <:XTridiagonalSolver}
 const YStretchedDistributedSolver = DistributedFourierTridiagonalPoissonSolver{<:Any, <:Any, <:YTridiagonalSolver}
 const ZStretchedDistributedSolver = DistributedFourierTridiagonalPoissonSolver{<:Any, <:Any, <:ZTridiagonalSolver}
