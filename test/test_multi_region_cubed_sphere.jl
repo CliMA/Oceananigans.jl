@@ -1003,8 +1003,8 @@ end
         @test minimum(ηᶜᶠᵃ)  == -1 && maximum(abs, ηᶜᶠᵃ)  == 1
         @test minimum(fηᶠᶜᵃ) == -1 && maximum(abs, fηᶠᶜᵃ) == 1
         @test minimum(fηᶜᶠᵃ) == -1 && maximum(abs, fηᶜᶠᵃ) == 1
-        @test maximum(abs, δηᶠᶜᵃ) ==  0
-        @test maximum(abs, δηᶜᶠᵃ) ==  0
+        @test maximum(abs, δηᶠᶜᵃ) == 0
+        @test maximum(abs, δηᶜᶠᵃ) == 0
     end
 end
 
