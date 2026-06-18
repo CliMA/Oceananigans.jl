@@ -124,7 +124,7 @@ function FieldDataset(grid, times, fields::NTuple{N, Symbol};
 
     field_names = map(String, fields)
 
-    # Default behaviour
+    # Default behavior
     indices = merge(
         NamedTuple(field=>(:, :, :) for field in fields),
         indices
