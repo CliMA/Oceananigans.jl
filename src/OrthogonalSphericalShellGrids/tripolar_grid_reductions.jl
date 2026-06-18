@@ -91,6 +91,11 @@ end
     return tripolar_condition_operand(func, op, condition, mask)
 end
 
+const TripolarConditionalOperation = ConditionalOperation{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:TripolarGridOfSomeKind}
+
+@inline condition_operand(::Nothing, op::TripolarConditionalOperation, ::Nothing, mask) = op
+@inline condition_operand(::typeof(identity), op::TripolarConditionalOperation, ::Nothing, mask) = op
+
 # Disambiguation for Immersed Tripolar Fields (ITF) and Immersed Tripolar Reduced Fields (ITRF)
 # These types match both IF/IRF (from ImmersedBoundaries) and TF (from tripolar reductions)
 
@@ -137,3 +142,4 @@ end
     condition = on_architecture(architecture(op.grid), condition)
     return immersed_reduced_tripolar_condition_operand(func, op, condition, mask)
 end
+
