@@ -108,7 +108,7 @@ To inspect the variable ``z`` spacings the grid above, we write:
 
 ```jldoctest grids_gpu
 Δz = zspacings(grid, Center(), Center(), Center())
-[Δz[1, 1, k] for k in 1:grid.Nz]
+[CUDA.@allowscalar Δz[1, 1, k] for k in 1:grid.Nz]
 
 # output
 4-element Vector{Float64}:
@@ -118,7 +118,9 @@ To inspect the variable ``z`` spacings the grid above, we write:
  4.0
 ```
 
-The ``z``-spacings increase from 1.0 to 4.0, matching the growing gaps between successive entries in `z_faces`.
+The `CUDA.@allowscalar` above is needed because scalar indexing is by default not allowed for arrays that live on the GPU.
+(For more discussion on scalar indexing on GPUs see the [Simulation tips](@ref simulation_tips) section.)
+The ``z``-spacings increase from `1.0` to `4.0`, matching the growing gaps between successive entries in `z_faces`.
 
 A bit later in this tutorial, we'll give examples that illustrate how to build a grid that's [`Distributed`](@ref) across _multiple_ CPUs and GPUs.
 
