@@ -999,12 +999,12 @@ end
         @apply_regionally launch!(arch, grid, kernel_parameters, _interpolate_to_center_face!, grid, fηᶜᶠᵃ, η★, η)
         @apply_regionally launch!(arch, grid, kernel_parameters, _difference_center_face!, grid, δηᶜᶠᵃ, η★, η)
 
-        @test minimum(ηᶠᶜᵃ)  == -1 && maximum(abs, ηᶠᶜᵃ)  == 1
-        @test minimum(ηᶜᶠᵃ)  == -1 && maximum(abs, ηᶜᶠᵃ)  == 1
-        @test minimum(fηᶠᶜᵃ) == -1 && maximum(abs, fηᶠᶜᵃ) == 1
-        @test minimum(fηᶜᶠᵃ) == -1 && maximum(abs, fηᶜᶠᵃ) == 1
-        @test maximum(abs, δηᶠᶜᵃ) == 0
-        @test maximum(abs, δηᶜᶠᵃ) == 0
+        for field in (ηᶠᶜᵃ, ηᶜᶠᵃ, fηᶠᶜᵃ, fηᶜᶠᵃ)
+            @test minimum(field) == -1 && maximum(abs, field) == 1
+        end
+        for field in (δηᶠᶜᵃ, δηᶜᶠᵃ)
+            @test maximum(abs, field)== 0
+        end
     end
 end
 
@@ -1037,8 +1037,7 @@ end
 
                 momentum_advection = WENOVectorInvariant(FT; order=5)
                 tracer_advection   = WENO(FT; order=5)
-                free_surface       = SplitExplicitFreeSurface(grid;
-                                                              substeps=12)
+                free_surface       = SplitExplicitFreeSurface(grid; substeps=12)
                 coriolis           = HydrostaticSphericalCoriolis(FT)
                 tracers            = (:T, :S)
                 buoyancy           = SeawaterBuoyancy(equation_of_state = TEOS10EquationOfState())
@@ -1093,9 +1092,7 @@ end
                 S = simulation.model.tracers.S
                 b = buoyancy_field(simulation.model)
 
-                free_surface_no_halos = SplitExplicitFreeSurface(grid;
-                                                                 substeps=12,
-                                                                 extend_halos=false)
+                free_surface_no_halos = SplitExplicitFreeSurface(grid; substeps=12, extend_halos=false)
                 model_no_halos = HydrostaticFreeSurfaceModel(grid;
                                                              momentum_advection,
                                                              tracer_advection,
