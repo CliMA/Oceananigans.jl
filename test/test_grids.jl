@@ -1342,6 +1342,29 @@ end
         xsection = slice(gz, :, 1, :)
         @test topology(xsection) == (Periodic, Flat, Bounded)
         @test znodes(xsection, Face()) == znodes(gz, Face())
+
+        # A collapsed dimension is a `Flat` dimension *located* at the sliced cell center, so
+        # different integer indices produce grids at different positions.
+        @test slice(grid, :, :, 1) != slice(grid, :, :, 2)
+        @test only(znodes(slice(grid, :, :, 2), Center())) == only(znodes(grid, Center())[2:2])
+
+        # A range retains the dimension as a `Bounded` sub-interval spanning the selected cells.
+        sub = slice(grid, :, :, 2:4)
+        @test topology(sub) == (Periodic, Periodic, Bounded)
+        @test size(sub) == (8, 6, 3)
+        @test znodes(sub, Face()) == znodes(grid, Face())[2:5]
+        @test xnodes(sub, Center()) == xnodes(grid, Center())
+
+        # A range collapses a `Periodic` dimension to `Bounded` (a window is not periodic).
+        xsub = slice(grid, 2:5, :, :)
+        @test topology(xsub) == (Bounded, Periodic, Bounded)
+        @test size(xsub) == (4, 6, 4)
+        @test xnodes(xsub, Face()) == xnodes(grid, Face())[2:6]
+
+        # Stretched coordinates are preserved across a ranged slice.
+        zsub = slice(gz, :, :, 2:3)
+        @test topology(zsub) == (Periodic, Flat, Bounded)
+        @test znodes(zsub, Face()) == znodes(gz, Face())[2:4]
     end
 end
 

@@ -449,15 +449,20 @@ end
 """
     slice(grid::RectilinearGrid, i, j, k)
 
-Return a lower-dimensional grid extracted from `grid` by collapsing each dimension whose
-index is an `Integer` to `Flat`, while retaining each dimension indexed by a colon (`:`)
-with its size, halo, spacing, and topology unchanged.
+Return a grid extracted from `grid` along each dimension according to its index:
 
-A single integer index collapses that dimension. The index nominally refers to a cell
-center; for a `RectilinearGrid` the horizontal coordinates are independent of the vertical
-(and vice versa), so the index *value* does not affect the resulting grid — only which
-dimension is collapsed. (The value matters for curved grids, where this method does not yet
-apply.)
+- a colon (`:`) retains the dimension with its size, halo, spacing, and topology unchanged;
+- an `Integer` collapses the dimension to a `Flat` dimension *located* at that cell center;
+- a range (e.g. `2:4`) extracts the `Bounded` sub-interval spanning the selected cells.
+
+A range collapses a `Periodic` dimension to `Bounded`, since a window of a periodic domain
+is no longer periodic.
+
+For a `RectilinearGrid` the horizontal coordinates are independent of the vertical (and vice
+versa), so for an integer index only *which* dimension is collapsed matters, not the value —
+but the resulting `Flat` dimension is still located at the sliced cell center, so e.g.
+`slice(grid, :, :, 1)` and `slice(grid, :, :, 2)` differ in their `z` position. (The
+horizontal value-dependence matters for curved grids, where this method does not yet apply.)
 
 This is the grid-level primitive behind exchange/surface grids in coupled models: e.g. a
 2D horizontal grid for a slab-ocean SST or an atmosphere–ocean exchange grid is
@@ -466,7 +471,7 @@ This is the grid-level primitive behind exchange/surface grids in coupled models
 Example
 =======
 
-```jldoctest
+```jldoctest slice
 julia> using Oceananigans
 
 julia> grid = RectilinearGrid(size=(8, 6, 4), x=(0, 1), y=(0, 1), z=(0, 1),
@@ -476,7 +481,17 @@ julia> slice(grid, :, :, 1)
 8×6×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 3×3×0 halo
 ├── Periodic x ∈ [0.0, 1.0) regularly spaced with Δx=0.125
 ├── Periodic y ∈ [0.0, 1.0) regularly spaced with Δy=0.166667
-└── Flat z
+└── Flat z = 0.125
+```
+
+A range retains the dimension as a `Bounded` sub-interval:
+
+```jldoctest slice
+julia> slice(grid, :, :, 2:4)
+8×6×3 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── Periodic x ∈ [0.0, 1.0)  regularly spaced with Δx=0.125
+├── Periodic y ∈ [0.0, 1.0)  regularly spaced with Δy=0.166667
+└── Bounded  z ∈ [0.25, 1.0] regularly spaced with Δz=0.25
 ```
 """
 function slice(grid::RectilinearGrid, i, j, k)
@@ -484,21 +499,16 @@ function slice(grid::RectilinearGrid, i, j, k)
     FT = eltype(grid)
     TX, TY, TZ = topology(grid)
 
-    # An integer index collapses a dimension to `Flat`; a colon keeps it.
-    TX′ = i isa Colon ? TX : Flat
-    TY′ = j isa Colon ? TY : Flat
-    TZ′ = k isa Colon ? TZ : Flat
+    TX′, x, Nx, Hx = slice_dimension(i, cpu_face_constructor_x(grid), grid.Nx, grid.Hx, TX)
+    TY′, y, Ny, Hy = slice_dimension(j, cpu_face_constructor_y(grid), grid.Ny, grid.Hy, TY)
+    TZ′, z, Nz, Hz = slice_dimension(k, cpu_face_constructor_z(grid), grid.Nz, grid.Hz, TZ)
     topo = (TX′, TY′, TZ′)
 
-    sz   = pop_flat_elements((grid.Nx, grid.Ny, grid.Nz), topo)
-    halo = pop_flat_elements((grid.Hx, grid.Hy, grid.Hz), topo)
+    sz   = pop_flat_elements((Nx, Ny, Nz), topo)
+    halo = pop_flat_elements((Hx, Hy, Hz), topo)
 
-    # Pass the coordinate constructor (extent for regular dims, faces for stretched) only for
-    # retained dimensions; collapsed dimensions fall back to the `Flat` default.
-    kwargs = Dict{Symbol, Any}(:size => sz, :halo => halo, :topology => topo)
-    i isa Colon && (kwargs[:x] = cpu_face_constructor_x(grid))
-    j isa Colon && (kwargs[:y] = cpu_face_constructor_y(grid))
-    k isa Colon && (kwargs[:z] = cpu_face_constructor_z(grid))
+    kwargs = Dict{Symbol, Any}(:size => sz, :halo => halo, :topology => topo,
+                               :x => x, :y => y, :z => z)
 
     return RectilinearGrid(arch, FT; kwargs...)
 end

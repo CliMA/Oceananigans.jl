@@ -270,6 +270,38 @@ function pop_flat_elements(tup, topo)
 end
 
 #####
+##### Support for `slice`
+#####
+
+# `cpu_face_constructor_*` returns either a 2-tuple `(left, right)` for a regularly spaced
+# dimension or a vector of `N+1` face positions for a stretched dimension. Recover the full
+# vector of `N+1` faces from either representation.
+reconstruction_faces(c::Tuple{<:Number, <:Number}, N) = collect(range(c[1], c[2], length=N+1))
+reconstruction_faces(c::AbstractVector, N) = Array(c)[1:N+1]
+reconstruction_faces(c::MutableVerticalDiscretization, N) = reconstruction_faces(c.cᵃᵃᶠ, N)
+
+# Per-dimension `(topology, coordinate, size, halo)` for `slice(grid, i, j, k)`. A colon
+# retains the dimension unchanged; an `Integer` collapses it to a `Flat` dimension *located*
+# at the sliced cell center; a range extracts a `Bounded` sub-interval spanning the selected
+# cells (a window of a `Periodic` dimension is no longer periodic, hence `Bounded`).
+slice_dimension(::Colon, c, N, H, T) = (T, c, N, H)
+
+function slice_dimension(index::Integer, c, N, H, T)
+    faces = reconstruction_faces(c, N)
+    center = (faces[index] + faces[index+1]) / 2
+    return Flat, center, 1, 0
+end
+
+function slice_dimension(index::AbstractUnitRange, c, N, H, T)
+    faces = reconstruction_faces(c, N)
+    sub_faces = faces[first(index):last(index)+1]
+    coordinate = c isa Tuple ? (first(sub_faces), last(sub_faces)) : sub_faces
+    N′ = length(index)
+    H′ = min(H, N′)
+    return Bounded, coordinate, N′, H′
+end
+
+#####
 ##### Directions (for tilted domains)
 #####
 

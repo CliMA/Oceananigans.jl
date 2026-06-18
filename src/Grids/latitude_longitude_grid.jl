@@ -400,29 +400,28 @@ function with_halo(halo, grid::LatitudeLongitudeGrid)
     return LatitudeLongitudeGrid(arch, FT; kwargs...)
 end
 
-# See `slice(grid::RectilinearGrid, i, j, k)` for documentation. Collapses integer-indexed
-# dimensions to `Flat`, retaining `radius` and precomputed-metrics settings. The most common
-# use is a surface/exchange grid, `slice(grid, :, :, k)`, which keeps both horizontal
-# directions (and thus the latitude-dependent metrics) intact.
+# See `slice(grid::RectilinearGrid, i, j, k)` for documentation. A colon retains a dimension,
+# an integer collapses it to a `Flat` dimension located at the sliced cell center, and a range
+# extracts a `Bounded` sub-interval. `radius` and precomputed-metrics settings are retained.
+# The most common use is a surface/exchange grid, `slice(grid, :, :, k)`, which keeps both
+# horizontal directions (and thus the latitude-dependent metrics) intact.
 function slice(grid::LatitudeLongitudeGrid, i, j, k)
     arch = architecture(grid)
     FT = eltype(grid)
     TX, TY, TZ = topology(grid)
 
-    TX′ = i isa Colon ? TX : Flat
-    TY′ = j isa Colon ? TY : Flat
-    TZ′ = k isa Colon ? TZ : Flat
+    TX′, longitude, Nx, Hx = slice_dimension(i, cpu_face_constructor_x(grid), grid.Nx, grid.Hx, TX)
+    TY′, latitude,  Ny, Hy = slice_dimension(j, cpu_face_constructor_y(grid), grid.Ny, grid.Hy, TY)
+    TZ′, z,         Nz, Hz = slice_dimension(k, cpu_face_constructor_z(grid), grid.Nz, grid.Hz, TZ)
     topo = (TX′, TY′, TZ′)
 
-    sz   = pop_flat_elements((grid.Nx, grid.Ny, grid.Nz), topo)
-    halo = pop_flat_elements((grid.Hx, grid.Hy, grid.Hz), topo)
+    sz   = pop_flat_elements((Nx, Ny, Nz), topo)
+    halo = pop_flat_elements((Hx, Hy, Hz), topo)
 
     kwargs = Dict{Symbol, Any}(:size => sz, :halo => halo, :topology => topo,
                                :radius => grid.radius,
-                               :precompute_metrics => metrics_precomputed(grid))
-    i isa Colon && (kwargs[:longitude] = cpu_face_constructor_x(grid))
-    j isa Colon && (kwargs[:latitude]  = cpu_face_constructor_y(grid))
-    k isa Colon && (kwargs[:z]         = cpu_face_constructor_z(grid))
+                               :precompute_metrics => metrics_precomputed(grid),
+                               :longitude => longitude, :latitude => latitude, :z => z)
 
     return LatitudeLongitudeGrid(arch, FT; kwargs...)
 end
