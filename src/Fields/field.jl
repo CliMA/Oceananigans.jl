@@ -4,7 +4,7 @@ using Oceananigans.BoundaryConditions:  construct_boundary_conditions_kernels, N
 using Oceananigans.Grids: parent_index_range, default_indices, validate_indices,
     index_range_contains, halo_size, offset_data, interior_parent_indices
 using Oceananigans.Utils: @apply_regionally, getregion
-using Oceananigans.Architectures: convert_to_device
+using Oceananigans.Architectures: CPU, convert_to_device, on_architecture
 
 using LinearAlgebra: LinearAlgebra
 using KernelAbstractions: @kernel, @index
@@ -864,12 +864,12 @@ Grids.nodes(f::Field; kwargs...) = nodes(f.grid, instantiated_location(f)...; in
 # makes JLD2 reconstruct a *new* device array on read, doubling GPU memory at pickup and
 # OOMing for large fields. `parent` keeps the same indexing as `restored`'s parent below.
 function prognostic_state(field::Field)
-    return (; data = Array(parent(field)))
+    return (; data = on_architecture(CPU(), parent(field)))
 end
 
 function restore_prognostic_state!(restored::Field, from)
-    # `from.data` is a host array; copyto! into the existing device parent allocates nothing.
-    copyto!(parent(restored), from.data)
+    # `from.data` is a host-side copy of the parent data; restore region-by-region when needed.
+    @apply_regionally copyto!(parent(restored), from.data)
     return restored
 end
 
