@@ -172,8 +172,8 @@ cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
 distributed_fill_halo_event!(c, kernel!, bcs, loc, grid::DistributedGrid, buffers, args...; kwargs...) = fill_halo_event!(c, kernel!, bcs, loc, grid, args...; kwargs...)
 
 # fill_halo_event! does nothing for DistributedFillHalo (only `distributed_fill_halo_event!` handle DistributedFillHalo)
-@inline fill_halo_event!(c, kernel!::DistributedFillHalo, bcs::Tuple{Any},      loc, grid, args...; kwargs...) 
-@inline fill_halo_event!(c, kernel!::DistributedFillHalo, bcs::Tuple{Any, Any}, loc, grid, args...; kwargs...) 
+@inline fill_halo_event!(c, kernel!::DistributedFillHalo, bcs::Tuple{Any},      loc, grid, args...; kwargs...) = nothing
+@inline fill_halo_event!(c, kernel!::DistributedFillHalo, bcs::Tuple{Any, Any}, loc, grid, args...; kwargs...) = nothing
 
 # There are two additional keyword arguments (with respect to serial `fill_halo_event!`s) that take an effect on `DistributedGrids`:
 # - only_local_halos: if true, only the local halos are filled, i.e. corresponding to non-communicating boundary conditions
