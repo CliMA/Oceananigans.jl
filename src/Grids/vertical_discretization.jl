@@ -305,6 +305,8 @@ KernelFunctionOperation at (Center, Center, Face)
 """
 function rspacings end
 
+# The 3-argument implementations of zspacings and rspacings are defined in
+# src/AbstractOperations/grid_metrics.jl, where KernelFunctionOperation is available.
 @inline rspacings(grid, ℓz) = rspacings(grid, nothing, nothing, ℓz)
 @inline zspacings(grid, ℓz) = zspacings(grid, nothing, nothing, ℓz)
 
