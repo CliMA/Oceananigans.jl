@@ -261,8 +261,49 @@ julia> z = znodes(horz_periodic_grid, Center(), Center(), Center(), with_halos=t
 @inline znodes(grid::AUG, ℓz; kwargs...) = rnodes(grid, ℓz; kwargs...)
 @inline znodes(grid::AUG, ℓx, ℓy, ℓz; kwargs...) = rnodes(grid, ℓx, ℓy, ℓz; kwargs...)
 
-function rspacings end
+"""
+    zspacings(grid, ℓx, ℓy, ℓz)
+
+Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
+in the ``z`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
+
+julia> zspacings(grid, Center(), Center(), Face())
+KernelFunctionOperation at (Center, Center, Face)
+├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
+├── kernel_function: Δz (generic function with 19 methods)
+└── arguments: ("Center", "Center", "Face")
+```
+"""
 function zspacings end
+
+"""
+    rspacings(grid, ℓx, ℓy, ℓz)
+
+Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
+in the ``r`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
+
+julia> rspacings(grid, Center(), Center(), Face())
+KernelFunctionOperation at (Center, Center, Face)
+├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
+├── kernel_function: Δr (generic function with 19 methods)
+└── arguments: ("Center", "Center", "Face")
+```
+"""
+function rspacings end
 
 @inline rspacings(grid, ℓz) = rspacings(grid, nothing, nothing, ℓz)
 @inline zspacings(grid, ℓz) = zspacings(grid, nothing, nothing, ℓz)
