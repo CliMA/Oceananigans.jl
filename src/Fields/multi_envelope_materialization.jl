@@ -20,7 +20,7 @@ than collapsing to zero thickness. The deepest returned envelope is the bathymet
 function shelf_safe_envelopes(bathymetry, target_depths; minimum_thickness=10)
     n = length(target_depths) + 1
     envelopes = ntuple(n) do i
-        function envelope(x, y)
+        function envelope(x, y=0)   # y default ⇒ also callable under Flat y (materialize passes 1 argument)
             bottom = bathymetry(x, y)
             if i == n
                 return bottom
@@ -60,6 +60,37 @@ end
                               4 * in_field[i, j, 1]) / 8
 end
 
+# Precompute the resting (σ_fs=1) physical znode at centres so the immersed-boundary masking — `resting_znodeᶜᶜᶜ`,
+# hit every step for every cell — is an O(1) lookup instead of an O(Nz) column sum. Anchored at the surface
+# (zᶠ=0): walk down summing −Δr σᵉ for the interior and the bottom halos, walk up adding +Δr σᵉ for the top
+# halos. Launched over the haloed horizontal range so every column queried by the masking (interior + halos)
+# is filled; σᶜᶜᵉ is already halo-complete by the time this runs.
+@kernel function _compute_resting_znodeᶜᶜᶜ!(z, σᵉ, Δr, Nz, Hz)
+    i, j = @index(Global, NTuple)
+    @inbounds begin
+        zface = zero(eltype(z))
+        for k in Nz:-1:(1 - Hz)
+            Δrσ = (Δr isa Number ? Δr : Δr[k]) * σᵉ[i, j, k]
+            z[i, j, k] = zface - Δrσ / 2
+            zface = zface - Δrσ
+        end
+        zface = zero(eltype(z))
+        for k in (Nz + 1):(Nz + Hz)
+            Δrσ = (Δr isa Number ? Δr : Δr[k]) * σᵉ[i, j, k]
+            z[i, j, k] = zface + Δrσ / 2
+            zface = zface + Δrσ
+        end
+    end
+end
+
+function compute_resting_znodeᶜᶜᶜ!(grid)
+    Nx, Ny, Nz = size(grid, 1), size(grid, 2), size(grid, 3)
+    params = KernelParameters((1 - grid.Hx):(Nx + grid.Hx), (1 - grid.Hy):(Ny + grid.Hy))
+    launch!(architecture(grid), grid, params, _compute_resting_znodeᶜᶜᶜ!,
+            grid.z.zᶜᶜᶜᵉ, grid.z.σᶜᶜᵉ, grid.z.Δᵃᵃᶜ, Nz, grid.Hz)
+    return nothing
+end
+
 # Fill the static envelope metric from the bottom-envelope depth. For a `LinearEnvelope` the stretch is
 # linear (pure σ), so σᵉ = H/Lz is depth-independent: its k-halos come for free by broadcasting the
 # halo-filled 2-D bottom field over k, and h = H. Evaluating the envelope at each stagger via `set!`
@@ -85,6 +116,8 @@ function materialize_envelopes!(grid::MultiEnvelopeGrid, bottom_height)
     if grid.z.formulation isa LinearEnvelope
         parent(grid.z.formulation.bottom) .= parent(bottomᶜᶜ)
     end
+
+    compute_resting_znodeᶜᶜᶜ!(grid)
 
     return grid
 end
@@ -226,6 +259,8 @@ function materialize_envelopes!(grid::MultiEnvelopeGrid, envelope_heights::Tuple
         fill_halo_regions!(envelope)
         parent(f.envelopes[i]) .= parent(envelope)
     end
+
+    compute_resting_znodeᶜᶜᶜ!(grid)
 
     return grid
 end

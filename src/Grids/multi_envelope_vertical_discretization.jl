@@ -52,6 +52,8 @@ struct MultiEnvelopeVerticalDiscretization{C, D, E, F, H, CC, FC, CF, FF, SE, HR
     σᶜᶠᵉ :: SE
     "(Face, Face) static envelope Jacobian"
     σᶠᶠᵉ :: SE
+    "(Center, Center, Center) precomputed resting (σ_fs=1) physical znode −Σ_{k′>k}Δr σᵉ − ½Δr σᵉ (for O(1) masking)"
+    zᶜᶜᶜᵉ :: SE
     "(Center, Center) physical resting column depth Σ Δr σᵉ"
     hᶜᶜ :: HR
     "(Face, Center) physical resting column depth"
@@ -73,7 +75,7 @@ Construct a `MultiEnvelopeVerticalDiscretization` from reference (computational)
 the `formulation` (or left at `σ_env = 1`, a plain stretched z-star grid, when `formulation === nothing`).
 """
 MultiEnvelopeVerticalDiscretization(r_faces; formulation=nothing) =
-    MultiEnvelopeVerticalDiscretization(r_faces, r_faces, (nothing for i in 1:17)..., formulation)
+    MultiEnvelopeVerticalDiscretization(r_faces, r_faces, (nothing for i in 1:18)..., formulation)
 
 const RegularMultiEnvelopeVerticalDiscretization = MultiEnvelopeVerticalDiscretization{<:Any, <:Any, <:Number}
 
@@ -128,6 +130,7 @@ function generate_coordinate(FT, topo, size, halo, coordinate::MultiEnvelopeVert
     σᶠᶜᵉ = new_data(FT, arch, (Face,   Center, Center), args...)
     σᶜᶠᵉ = new_data(FT, arch, (Center, Face,   Center), args...)
     σᶠᶠᵉ = new_data(FT, arch, (Face,   Face,   Center), args...)
+    zᶜᶜᶜᵉ = new_data(FT, arch, (Center, Center, Center), args...)   # precomputed resting znode (filled by materialize_envelopes!)
 
     hᶜᶜ = new_data(FT, arch, (Center, Center, Nothing), args...)
     hᶠᶜ = new_data(FT, arch, (Face,   Center, Nothing), args...)
@@ -137,6 +140,7 @@ function generate_coordinate(FT, topo, size, halo, coordinate::MultiEnvelopeVert
     for σ in (σᶜᶜ⁻, σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜᵉ, σᶠᶜᵉ, σᶜᶠᵉ, σᶠᶠᵉ)
         fill!(σ, 1)
     end
+    fill!(zᶜᶜᶜᵉ, 0)
 
     # With σᵉ = 1 the physical resting depth equals the reference column extent; a `formulation`
     # overwrites both σᵉ and h via `compute_envelope_metric!` once the grid exists.
@@ -148,7 +152,7 @@ function generate_coordinate(FT, topo, size, halo, coordinate::MultiEnvelopeVert
 
     coordinate = MultiEnvelopeVerticalDiscretization(rᵃᵃᶠ, rᵃᵃᶜ, Δrᵃᵃᶠ, Δrᵃᵃᶜ, ηⁿ,
                                                      σᶜᶜⁿ, σᶠᶜⁿ, σᶜᶠⁿ, σᶠᶠⁿ, σᶜᶜ⁻, ∂t_σ,
-                                                     σᶜᶜᵉ, σᶠᶜᵉ, σᶜᶠᵉ, σᶠᶠᵉ,
+                                                     σᶜᶜᵉ, σᶠᶜᵉ, σᶜᶠᵉ, σᶠᶠᵉ, zᶜᶜᶜᵉ,
                                                      hᶜᶜ, hᶠᶜ, hᶜᶠ, hᶠᶠ,
                                                      formulation)
 
@@ -175,6 +179,7 @@ Adapt.adapt_structure(to, coord::MultiEnvelopeVerticalDiscretization) =
                                         Adapt.adapt(to, coord.σᶠᶜᵉ),
                                         Adapt.adapt(to, coord.σᶜᶠᵉ),
                                         Adapt.adapt(to, coord.σᶠᶠᵉ),
+                                        Adapt.adapt(to, coord.zᶜᶜᶜᵉ),
                                         Adapt.adapt(to, coord.hᶜᶜ),
                                         Adapt.adapt(to, coord.hᶠᶜ),
                                         Adapt.adapt(to, coord.hᶜᶠ),
@@ -197,6 +202,7 @@ Architectures.on_architecture(arch, coord::MultiEnvelopeVerticalDiscretization) 
                                         on_architecture(arch, coord.σᶠᶜᵉ),
                                         on_architecture(arch, coord.σᶜᶠᵉ),
                                         on_architecture(arch, coord.σᶠᶠᵉ),
+                                        on_architecture(arch, coord.zᶜᶜᶜᵉ),
                                         on_architecture(arch, coord.hᶜᶜ),
                                         on_architecture(arch, coord.hᶠᶜ),
                                         on_architecture(arch, coord.hᶜᶠ),

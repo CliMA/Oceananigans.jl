@@ -4,7 +4,12 @@ using Oceananigans.Biogeochemistry: biogeochemical_transition, biogeochemical_dr
 using Oceananigans.Forcings: with_advective_forcing
 using Oceananigans.Operators: ∂xᶠᶜᶜ, ∂yᶜᶠᶜ, ∂xᵣᶠᶜᶜ, ∂yᵣᶜᶠᶜ, ∂x_zᶠᶜᶜ, ∂y_zᶜᶠᶜ, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Grids: MultiEnvelopeGrid
+using Oceananigans.ImmersedBoundaries: MultiEnvelopeAGFBIBG
 using Oceananigans.BuoyancyFormulations: buoyancy_perturbationᶜᶜᶜ
+
+# both the bare multi-envelope grid and a multi-envelope grid wrapped in an immersed boundary (so tall features
+# can punch above the envelope and be masked) use the density-Jacobian pressure gradient.
+const AnyMultiEnvelopeGrid = Union{MultiEnvelopeGrid, MultiEnvelopeAGFBIBG}
 using Oceananigans.TurbulenceClosures: ∂ⱼ_τ₁ⱼ, ∂ⱼ_τ₂ⱼ, ∇_dot_qᶜ,
                                        immersed_∂ⱼ_τ₁ⱼ, immersed_∂ⱼ_τ₂ⱼ, immersed_∇_dot_qᶜ,
                                        closure_auxiliary_velocity
@@ -28,13 +33,13 @@ using Oceananigans.Utils: sum_of_velocities
 @inline y_hydrostatic_pressure_gradient(i, j, k, grid, pHY, buoyancy, tracers) = ∂yᶜᶠᶜ(i, j, k, grid, pHY)
 
 # No buoyancy ⇒ pHY′ = 0; fall back to the default (cheaper, and avoids touching `buoyancy.formulation`).
-@inline x_hydrostatic_pressure_gradient(i, j, k, grid::MultiEnvelopeGrid, pHY, ::Nothing, tracers) = ∂xᶠᶜᶜ(i, j, k, grid, pHY)
-@inline y_hydrostatic_pressure_gradient(i, j, k, grid::MultiEnvelopeGrid, pHY, ::Nothing, tracers) = ∂yᶜᶠᶜ(i, j, k, grid, pHY)
+@inline x_hydrostatic_pressure_gradient(i, j, k, grid::AnyMultiEnvelopeGrid, pHY, ::Nothing, tracers) = ∂xᶠᶜᶜ(i, j, k, grid, pHY)
+@inline y_hydrostatic_pressure_gradient(i, j, k, grid::AnyMultiEnvelopeGrid, pHY, ::Nothing, tracers) = ∂yᶜᶠᶜ(i, j, k, grid, pHY)
 
-@inline x_hydrostatic_pressure_gradient(i, j, k, grid::MultiEnvelopeGrid, pHY, buoyancy, tracers) =
+@inline x_hydrostatic_pressure_gradient(i, j, k, grid::AnyMultiEnvelopeGrid, pHY, buoyancy, tracers) =
     ∂xᵣᶠᶜᶜ(i, j, k, grid, pHY) - ℑxᶠᵃᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers) * ∂x_zᶠᶜᶜ(i, j, k, grid)
 
-@inline y_hydrostatic_pressure_gradient(i, j, k, grid::MultiEnvelopeGrid, pHY, buoyancy, tracers) =
+@inline y_hydrostatic_pressure_gradient(i, j, k, grid::AnyMultiEnvelopeGrid, pHY, buoyancy, tracers) =
     ∂yᵣᶜᶠᶜ(i, j, k, grid, pHY) - ℑyᵃᶠᵃ(i, j, k, grid, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers) * ∂y_zᶜᶠᶜ(i, j, k, grid)
 
 """

@@ -132,6 +132,49 @@ end
     return z .≤ _zb
 end
 
+# Multi-envelope grids: `rnode` is the *uniform reference* coordinate, which on a terrain-following grid is not
+# the physical depth, so masking `rnode ≤ bottom_height` (a physical depth) carves topography at the wrong
+# place. Instead mask against the *resting* (σ_fs = 1) physical depth of the cell centre — the envelope ẑ(r),
+# measured from the surface as the summed physical thickness Δr·σᵉ of the cells above. This is static (so it
+# neither wets nor dries as the grid breathes, like `rnode`) yet lives in physical space (so it matches
+# `bottom_height`, unlike `rnode`). Precomputed once into `zᶜᶜᶜᵉ` (by `compute_resting_znodeᶜᶜᶜ!`) so this
+# masking-hot lookup is O(1) — the column sum would be O(Nz) every step for every cell.
+@inline resting_znodeᶜᶜᶜ(i, j, k, grid) = @inbounds grid.z.zᶜᶜᶜᵉ[i, j, k]
+
+@inline function _immersed_cell(i, j, k, underlying_grid::MultiEnvelopeGrid, ib::GridFittedBottom)
+    z  = resting_znodeᶜᶜᶜ(i, j, k, underlying_grid)
+    zb = @inbounds ib.bottom_height[i, j, 1]
+    return z ≤ zb
+end
+
+# resting (σ_fs = 1) physical depth of the *face* below cell k: −Σ_{k′≥k} Δr·σᵉ (the envelope ẑ at that face)
+@inline function resting_znodeᶜᶜᶠ(i, j, k, grid)
+    z = grid.z
+    depth = zero(eltype(grid))
+    @inbounds for k′ in k:grid.Nz
+        depth += (z.Δᵃᵃᶜ isa Number ? z.Δᵃᵃᶜ : z.Δᵃᵃᶜ[k′]) * z.σᶜᶜᵉ[i, j, k′]
+    end
+    return -depth
+end
+
+# Bottom-height snapping must also use the resting physical znode (not rnode), or it snaps the bottom to a
+# reference level — e.g. −300 m → −280 m on a terrain-following column — which then masks the whole bottom zone.
+compute_numerical_bottom_height!(bottom_field, grid::MultiEnvelopeGrid, ib) =
+    launch!(architecture(grid), grid, :xy, _compute_me_numerical_bottom_height!, bottom_field, grid, ib)
+
+@kernel function _compute_me_numerical_bottom_height!(bottom_field, grid, ib::GridFittedBottom)
+    i, j = @index(Global, NTuple)
+    zb = @inbounds bottom_field[i, j, 1]
+    condition = ib.immersed_condition
+    @inbounds bottom_field[i, j, 1] = resting_znodeᶜᶜᶠ(i, j, 1, grid)
+    for k in 1:grid.Nz
+        z⁺ = resting_znodeᶜᶜᶠ(i, j, k+1, grid)
+        z  = resting_znodeᶜᶜᶜ(i, j, k,   grid)
+        immersed_cell = ifelse(condition isa CenterImmersedCondition, z ≤ zb, z⁺ ≤ zb)
+        @inbounds bottom_field[i, j, 1] = ifelse(immersed_cell, z⁺, bottom_field[i, j, 1])
+    end
+end
+
 #####
 ##### Static column depth
 #####
@@ -144,24 +187,13 @@ const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Abstra
 @inline static_column_depthᶠᶜᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶜᶜᵃ(i-1, j, ibg), static_column_depthᶜᶜᵃ(i, j, ibg))
 @inline static_column_depthᶠᶠᵃ(i, j, ibg::AGFBIBG) = min(static_column_depthᶠᶜᵃ(i, j-1, ibg), static_column_depthᶠᶜᵃ(i, j, ibg))
 
-# Multi-envelope immersed grids. The immersed mask is evaluated in the *reference* coordinate (rnode, see
-# `_immersed_cell`), while σᵉ maps reference → physical. So the physical resting depth of the column is the
-# sum of the physical cell thicknesses (Δr·σᵉ) over the *wet* (non-immersed) cells — NOT a reference-frame
-# depth. Using a reference depth (or mixing it with the physical envelope depth) makes the z-star closure
-# H inconsistent with the Δz the model evolves and breaks the GCL. The staggered methods above reuse this
-# centre value via their min-of-neighbours pattern.
+# Multi-envelope immersed grids. The bottom is masked/snapped against the resting PHYSICAL znode (see
+# `_compute_me_numerical_bottom_height!`), so the snapped `bottom_height` already IS the physical resting depth
+# of the wet column — i.e. −bottom_height = Σ_wet Δr·σᵉ exactly. We therefore look it up in O(1) instead of
+# re-summing the wet cells (which, with the O(Nz) resting-znode masking, was O(Nz²) per call → O(Nz³)/column).
 const MultiEnvelopeAGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:MultiEnvelopeGrid, <:AbstractGridFittedBottom}
 
-@inline function static_column_depthᶜᶜᵃ(i, j, ibg::MultiEnvelopeAGFBIBG)
-    z = ibg.underlying_grid.z
-    depth = zero(eltype(ibg))
-    @inbounds for k in 1:ibg.Nz
-        wet = !_immersed_cell(i, j, k, ibg.underlying_grid, ibg.immersed_boundary)
-        Δr = z.Δᵃᵃᶜ isa Number ? z.Δᵃᵃᶜ : z.Δᵃᵃᶜ[k]
-        depth += ifelse(wet, Δr * z.σᶜᶜᵉ[i, j, k], zero(depth))
-    end
-    return depth
-end
+@inline static_column_depthᶜᶜᵃ(i, j, ibg::MultiEnvelopeAGFBIBG) = @inbounds -ibg.immersed_boundary.bottom_height[i, j, 1]
 
 # Make sure column_height works for horizontally-Flat topologies.
 XFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Flat, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}

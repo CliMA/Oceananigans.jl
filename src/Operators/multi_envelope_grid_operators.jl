@@ -13,6 +13,15 @@ import Oceananigans.Grids: znode, _node
 @inline σⁿ(i, j, k, grid::MultiEnvelopeGrid, ::C, ::F, ℓz) = @inbounds grid.z.σᶜᶠᵉ[i, j, k] * grid.z.σᶜᶠⁿ[i, j, 1]
 @inline σⁿ(i, j, k, grid::MultiEnvelopeGrid, ::F, ::F, ℓz) = @inbounds grid.z.σᶠᶠᵉ[i, j, k] * grid.z.σᶠᶠⁿ[i, j, 1]
 
+# At a z-FACE the envelope Jacobian must be the centre-to-centre value ½(σᵉ[k-1]+σᵉ[k]), so that Δzᶜᶜᶠ equals
+# the distance between the adjacent cell centres and stays consistent with the cumulative znode (Δzᶜᶜᶜ). Using
+# the centre-k σᵉ (the generic ℓz method) mis-sizes Δzᶜᶜᶠ at a σᵉ jump (zone interface), making ∂xᵣ(pHY)
+# inconsistent with ∂x_z there → a resting spurious pressure gradient. For uniform σᵉ (sigma) this is a no-op.
+@inline σⁿ(i, j, k, grid::MultiEnvelopeGrid, ::C, ::C, ::F) = @inbounds (grid.z.σᶜᶜᵉ[i, j, k-1] + grid.z.σᶜᶜᵉ[i, j, k]) / 2 * grid.z.σᶜᶜⁿ[i, j, 1]
+@inline σⁿ(i, j, k, grid::MultiEnvelopeGrid, ::F, ::C, ::F) = @inbounds (grid.z.σᶠᶜᵉ[i, j, k-1] + grid.z.σᶠᶜᵉ[i, j, k]) / 2 * grid.z.σᶠᶜⁿ[i, j, 1]
+@inline σⁿ(i, j, k, grid::MultiEnvelopeGrid, ::C, ::F, ::F) = @inbounds (grid.z.σᶜᶠᵉ[i, j, k-1] + grid.z.σᶜᶠᵉ[i, j, k]) / 2 * grid.z.σᶜᶠⁿ[i, j, 1]
+@inline σⁿ(i, j, k, grid::MultiEnvelopeGrid, ::F, ::F, ::F) = @inbounds (grid.z.σᶠᶠᵉ[i, j, k-1] + grid.z.σᶠᶠᵉ[i, j, k]) / 2 * grid.z.σᶠᶠⁿ[i, j, 1]
+
 @inline σ⁻(i, j, k, grid::MultiEnvelopeGrid, ::C, ::C, ℓz) = @inbounds grid.z.σᶜᶜᵉ[i, j, k] * grid.z.σᶜᶜ⁻[i, j, 1]
 
 # σᵉ here is conservation-critical: the grid-motion velocity Δr_k·∂t_σ(i,j,k) in compute_w_from_continuity!
@@ -35,15 +44,29 @@ import Oceananigans.Grids: znode, _node
     return z
 end
 
-@inline znode(i, j, k, grid::MultiEnvelopeGrid, ::C, ::C, ::F) = bottom_up_znode(i, j, k, grid, Δzᶜᶜᶜ, static_column_depthᶜᶜᵃ(i, j, grid))
+# The centre column is O(1): z-star maps the static resting depth as z = η + σ_fs·ẑ_rest, and the precomputed
+# `zᶜᶜᶜᵉ` IS ẑ_rest at the centre. This is the znode the pressure-gradient `∂x_z`/`∂y_z` differences, so it is
+# the hot path; the off-centre staggers (used in diagnostics, not the PGF) keep the O(Nz) cumulative.
+@inline znode(i, j, k, grid::MultiEnvelopeGrid, ::C, ::C, ::C) =
+    @inbounds grid.z.ηⁿ[i, j, 1] + grid.z.σᶜᶜⁿ[i, j, 1] * grid.z.zᶜᶜᶜᵉ[i, j, k]
+@inline znode(i, j, k, grid::MultiEnvelopeGrid, ::C, ::C, ::F) = znode(i, j, k, grid, C(), C(), C()) - Δzᶜᶜᶜ(i, j, k, grid) / 2
+
 @inline znode(i, j, k, grid::MultiEnvelopeGrid, ::F, ::C, ::F) = bottom_up_znode(i, j, k, grid, Δzᶠᶜᶜ, static_column_depthᶠᶜᵃ(i, j, grid))
 @inline znode(i, j, k, grid::MultiEnvelopeGrid, ::C, ::F, ::F) = bottom_up_znode(i, j, k, grid, Δzᶜᶠᶜ, static_column_depthᶜᶠᵃ(i, j, grid))
 @inline znode(i, j, k, grid::MultiEnvelopeGrid, ::F, ::F, ::F) = bottom_up_znode(i, j, k, grid, Δzᶠᶠᶜ, static_column_depthᶠᶠᵃ(i, j, grid))
 
-@inline znode(i, j, k, grid::MultiEnvelopeGrid, ::C, ::C, ::C) = znode(i, j, k, grid, C(), C(), F()) + Δzᶜᶜᶜ(i, j, k, grid) / 2
+@inline znode(i, j, k, grid::MultiEnvelopeGrid, ::F, ::C, ::C) = znode(i, j, k, grid, F(), C(), F()) + Δzᶠᶜᶜ(i, j, k, grid) / 2
 @inline znode(i, j, k, grid::MultiEnvelopeGrid, ::F, ::C, ::C) = znode(i, j, k, grid, F(), C(), F()) + Δzᶠᶜᶜ(i, j, k, grid) / 2
 @inline znode(i, j, k, grid::MultiEnvelopeGrid, ::C, ::F, ::C) = znode(i, j, k, grid, C(), F(), F()) + Δzᶜᶠᶜ(i, j, k, grid) / 2
 @inline znode(i, j, k, grid::MultiEnvelopeGrid, ::F, ::F, ::C) = znode(i, j, k, grid, F(), F(), F()) + Δzᶠᶠᶜ(i, j, k, grid) / 2
+
+# Flat dimensions carry a reduced (Nothing) location with no stagger; reuse the Center column there. Without
+# these, `set!`/`_node` on a Flat-y (or Flat-x) grid fall back to the GENERIC reference-coordinate znode and
+# place tracers at the reference depth r instead of the physical ẑ on terrain-following columns — seeding a
+# spurious resting buoyancy gradient (and hence a spurious baroclinic flow).
+@inline znode(i, j, k, grid::MultiEnvelopeGrid, ℓx, ℓy::Nothing, ℓz) = znode(i, j, k, grid, ℓx, C(), ℓz)
+@inline znode(i, j, k, grid::MultiEnvelopeGrid, ℓx::Nothing, ℓy, ℓz) = znode(i, j, k, grid, C(), ℓy, ℓz)
+@inline znode(i, j, k, grid::MultiEnvelopeGrid, ℓx::Nothing, ℓy::Nothing, ℓz) = znode(i, j, k, grid, C(), C(), ℓz)
 
 #####
 ##### `_node` override so `set!(field, f)` evaluates `f` at the physical depth (znode), not the reference r.
