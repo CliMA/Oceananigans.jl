@@ -127,9 +127,9 @@ function LatitudeLongitudeGrid(arch::Distributed,
                                FT::DataType = Oceananigans.defaults.FloatType;
                                precompute_metrics = true,
                                size,
-                               latitude,
-                               longitude,
-                               z,
+                               latitude = nothing,
+                               longitude = nothing,
+                               z = nothing,
                                topology = nothing,
                                radius = Oceananigans.defaults.planet_radius,
                                halo = nothing)
