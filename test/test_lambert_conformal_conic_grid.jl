@@ -235,6 +235,7 @@ end
             @test north_polar.scale_constant ≈ +convert(FT, 2) atol = tol
             @test isfinite(north_polar.origin_radius)
             @test isfinite(lcc_scale_factor(north_polar, FT(89)))
+            @test lcc_scale_factor(north_polar, FT(90)) ≈ one(FT) atol = tol
 
             south_polar = LambertConformalConic(FT;
                                                 standard_parallel = -90,
@@ -246,6 +247,7 @@ end
             @test south_polar.cone_constant ≈ -one(FT) atol = tol
             @test south_polar.scale_constant ≈ -convert(FT, 2) atol = tol
             @test isfinite(south_polar.origin_radius)
+            @test lcc_scale_factor(south_polar, FT(-90)) ≈ one(FT) atol = tol
 
             tuple_north = LambertConformalConic(FT;
                                                 standard_parallels = (90, 90),

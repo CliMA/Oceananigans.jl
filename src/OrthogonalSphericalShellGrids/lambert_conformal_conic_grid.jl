@@ -336,9 +336,14 @@ show(round(lcc_scale_factor(map, 60); digits=12))
 """
 @inline function lcc_scale_factor(map::LambertConformalConic{FT}, φ) where FT
     φ = degrees_to_radians(FT, φ)
-    ρ = lcc_radius(map, φ)
     n = map.cone_constant
-    return abs(n * ρ / (map.radius * cos(φ)))
+    F = map.scale_constant
+    T = lcc_tangent(φ)
+    # cos(φ) = 2T / (1 + T²) for T = tan(π/4 + φ/2), so the cos(φ) in the scale
+    # factor k = n ρ / (radius cos φ) cancels analytically. The closed form below
+    # stays well-conditioned at the pole, where the direct n ρ / (radius cos φ)
+    # evaluates 0/0 and returns garbage.
+    return abs(n * F * (one(FT) + T^2) / (convert(FT, 2) * T^(n + one(FT))))
 end
 
 @inline function lcc_xnode(i, ::Center, map::LambertConformalConic{FT}) where FT
