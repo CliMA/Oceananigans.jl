@@ -44,6 +44,33 @@ This simple grid
 * Has cells that are all the same size, dividing the box in 512 that each has dimension ``4 \times 4 \times 2``.
   Note that length units are whatever is used to construct the grid, so it's up to the user to make sure that all inputs use consistent units.
 
+We can inspect the grid using [`xnodes`](@ref), [`ynodes`](@ref), and [`znodes`](@ref) to retrieve node positions.
+The `Center()` or `Face()` argument specifies whether to return positions at cell centers or faces.
+For the `Bounded` ``z`` direction, `znodes` returns ``N_z = 4`` center nodes and ``N_z + 1 = 5`` face nodes, since both boundary faces are included:
+
+```jldoctest grids
+znodes(grid, Center())
+
+# output
+1.0:2.0:7.0
+```
+
+```jldoctest grids
+znodes(grid, Face())
+
+# output
+0.0:2.0:8.0
+```
+
+For the `Periodic` ``x`` direction, the face at ``x = 64`` is identified with the face at ``x = 0`` and therefore not repeated, so there are only ``N_x = 16`` face nodes (not ``N_x + 1 = 17``):
+
+```jldoctest grids
+xnodes(grid, Face())
+
+# output
+0.0:4.0:60.0
+```
+
 In building our first grid, we did not specify whether it should be constructed on the [`CPU`](@ref) or [`GPU`](@ref).
 As a result, the grid was constructed by default on the CPU.
 Next we build a grid on the _GPU_ that's two-dimensional in ``x, z`` and has variably-spaced cell interfaces in the `z`-direction,
@@ -72,9 +99,28 @@ grid = RectilinearGrid(architecture,
 The ``y``-dimension is "missing" because it's marked `Flat` in `topology = (Periodic, Flat, Bounded)`.
 So nothing varies in ``y``: `y`-derivatives are 0.
 Also, the keyword argument (or "kwarg" for short) that specifies the ``y``-domains may be omitted, and `size` has only two elements rather than 3 as in the first example.
-In the stretched cell interfaces specified by `z_interfaces`, the number of
-vertical cell interfaces is `Nz + 1 = length(z_interfaces) = 5`, where `Nz = 4` is the number
+The stretched cell interfaces specified by `z_faces`. Because ``z`` is `Bounded`, the number of
+vertical cell interfaces required is `Nz + 1 = length(z_faces) = 5`, where `Nz = 4` is the number
 of cells in the vertical.
+
+The companion functions [`xspacings`](@ref), [`yspacings`](@ref), and [`zspacings`](@ref) return the cell widths in each direction and are most informative when the grid spacing varies.
+To inspect the variable ``z`` spacings the grid above, we write:
+
+```jldoctest grids_gpu
+Δz = zspacings(grid, Center(), Center(), Center())
+[CUDA.@allowscalar Δz[1, 1, k] for k in 1:grid.Nz]
+
+# output
+4-element Vector{Float64}:
+ 1.0
+ 2.0
+ 3.0
+ 4.0
+```
+
+The `CUDA.@allowscalar` above is needed because scalar indexing is by default not allowed for arrays that live on the GPU.
+(For more discussion on scalar indexing on GPUs see the [Simulation tips](@ref simulation_tips) section.)
+The ``z``-spacings increase from `1.0` to `4.0`, matching the growing gaps between successive entries in `z_faces`.
 
 A bit later in this tutorial, we'll give examples that illustrate how to build a grid that's [`Distributed`](@ref) across _multiple_ CPUs and GPUs.
 
@@ -119,6 +165,9 @@ The main difference between the syntax for `LatitudeLongitudeGrid` versus that f
     of its finite volumes (which, in general, are not aligned with geographic coordinates).
 
     To type `λ` or `φ` at the REPL, write either `\lambda` (for `λ`) or `\varphi` (for `φ`) and then press `<TAB>`.
+
+!!! note "Inspecting grids with geographical coordinates"
+    We can inspect grids with geographical coordinates `(λ, φ, z)` using  [`λnodes`](@ref), [`φnodes`](@ref) and also [`λspacings`](@ref) and [`φspacings`](@ref).
 
 If `topology` is not provided for `LatitudeLongitudeGrid`, then Oceananigans tries infer it: if the `longitude` spans 360 degrees,
 the default `x`-topology is `Periodic`; if `longitude` spans less than 360 degrees `x`-topology is `Bounded`.
