@@ -389,22 +389,43 @@ end
 
 function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
     checkpoint_grid = restore_checkpoint_grid(from)
+    return restore_prognostic_state!(restored, from, checkpoint_grid, Val(checkpoint_grid == restored.grid))
+end
 
-    with_checkpoint_restore_grid(checkpoint_grid) do
-        restore_prognostic_state!(restored.clock, from.clock)
-        restore_prognostic_state!(restored.particles, from.particles)
-        restore_prognostic_state!(restored.velocities, from.velocities)
-        restore_prognostic_state!(restored.timestepper, from.timestepper)
-        restore_prognostic_state!(restored.free_surface, from.free_surface)
-        restore_prognostic_state!(restored.tracers, from.tracers)
-        restore_prognostic_state!(restored.closure_fields, from.closure_fields)
-        restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
-        restore_prognostic_state!(restored.vertical_coordinate, restored.grid, from.vertical_coordinate)
-    end
+function restore_prognostic_state!(::HydrostaticFreeSurfaceModel, from, checkpoint_grid, ::Val{false})
+    throw(ArgumentError("Checkpoint pickup only supports the same interior grid with a different halo size. Restoring across different grids or resolutions is not supported by this path."))
+end
 
-    warn_if_cross_grid_pickup(checkpoint_grid, restored.grid)
-    finalize_checkpoint_restore!(restored, checkpoint_grid)
-    return restored
+function Oceananigans.OutputWriters.restore_timestepper_from_checkpoint!(restored::HydrostaticFreeSurfaceModel{<:Any, <:Any, <:Any, <:SplitExplicitFreeSurface},
+                                                                             from,
+                                                                             checkpoint_grid,
+                                                                             free_surface_mode)
+    Oceananigans.OutputWriters.restore_hydrostatic_split_explicit_timestepper_from_checkpoint!(restored.timestepper,
+                                                                                                from.timestepper,
+                                                                                                checkpoint_grid,
+                                                                                                free_surface_mode)
+    return nothing
+end
+
+function Oceananigans.OutputWriters.restore_free_surface_from_checkpoint!(restored::HydrostaticFreeSurfaceModel{<:Any, <:Any, <:Any, <:SplitExplicitFreeSurface},
+                                                                               from,
+                                                                               mode)
+    restore_prognostic_state!(restored.free_surface.displacement, from.displacement, mode)
+    Oceananigans.OutputWriters.restore_namedtuple_fields_on_mode!(restored.free_surface.barotropic_velocities,
+                                                                  from.barotropic_velocities,
+                                                                  mode)
+    restore_prognostic_state!(restored.free_surface.timestepper, from.timestepper)
+    return nothing
+end
+
+function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from, checkpoint_grid, ::Val{true})
+    free_surface_mode = Oceananigans.OutputWriters.checkpoint_free_surface_restore_mode(restored, from.free_surface, checkpoint_grid)
+
+    Oceananigans.OutputWriters.restore_model_state_from_checkpoint!(restored, from, checkpoint_grid, free_surface_mode)
+    Oceananigans.OutputWriters.restore_free_surface_from_checkpoint!(restored, from.free_surface, free_surface_mode)
+
+    warn_if_cross_grid_pickup(free_surface_mode, restored.grid)
+    return finalize_checkpoint_restore!(restored, free_surface_mode)
 end
 
 finalize_checkpoint_restore!(restored::HydrostaticFreeSurfaceModel, checkpoint_grid) =

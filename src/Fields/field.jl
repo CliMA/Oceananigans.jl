@@ -874,7 +874,8 @@ restore_prognostic_state!(restored::Field, from, ::RestoreOnCurrentGrid) =
 
 function restore_prognostic_state!(restored::Field, from, mode::RestoreOnCompatibleGrid)
     restored_interior = interior(restored)
-    checkpoint_interior = interior(from.data, instantiated_location(restored), mode.grid, indices(restored))
+    checkpoint_data = offset_data(from.data, mode.grid, instantiated_location(restored), indices(restored))
+    checkpoint_interior = interior(checkpoint_data, instantiated_location(restored), mode.grid, indices(restored))
     restore_prognostic_state!(restored_interior, checkpoint_interior)
     return restored
 end

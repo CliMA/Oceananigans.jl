@@ -3,6 +3,8 @@ using StructArrays: StructArray
 
 using Oceananigans
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
+using Oceananigans.Grids: topology, halo_size, with_halo
+using Oceananigans.Architectures: on_architecture, architecture, CPU
 
 import Oceananigans: prognostic_state, restore_prognostic_state!, checkpoint_restore_grid,
                      restore_checkpoint_grid, checkpoint_restore_mode, warn_if_cross_grid_pickup, checkpoint_restore_halo_kwargs,
@@ -175,30 +177,28 @@ restore_checkpoint_grid(from::NamedTuple{names}) where names = restore_checkpoin
 restore_checkpoint_grid(::Val{true}, from) = from.checkpoint_grid
 restore_checkpoint_grid(::Val{false}, from) = nothing
 
-same_interior_grid(a, b) = false
-
-# Helper to compare grid fields while excluding halo-related attributes
-_halo_excluded_fields() = (:architecture, :Hx, :Hy, :Hz)
-
-function same_interior_grid(a::T, b::T) where T
-    for field in fieldnames(T)
-        field in _halo_excluded_fields() && continue
-        getfield(a, field) != getfield(b, field) && return false
-    end
-    return true
-end
-
-# Handle ImmersedBoundaryGrid specifically due to nested grid
-same_interior_grid(a::ImmersedBoundaryGrid, b::ImmersedBoundaryGrid) =
-    same_interior_grid(a.underlying_grid, b.underlying_grid) && a.immersed_boundary == b.immersed_boundary
-
 checkpoint_restore_mode(::Nothing, grid) = RestoreOnCurrentGrid()
-function checkpoint_restore_mode(checkpoint_grid, grid)
-    checkpoint_grid == grid && return RestoreOnCurrentGrid()
-    same_interior_grid(checkpoint_grid, grid) && return RestoreOnCompatibleGrid(checkpoint_grid)
+checkpoint_restore_mode(checkpoint_grid, grid) = checkpoint_restore_mode(checkpoint_grid, grid, Val(same_checkpoint_interior_grid(checkpoint_grid, grid)))
 
+function checkpoint_restore_mode(checkpoint_grid, grid, ::Val{false})
     throw(ArgumentError("Checkpoint pickup only supports the same interior grid with a different halo size. Restoring across different grids or resolutions is not supported by this path."))
 end
+
+checkpoint_restore_mode(checkpoint_grid, grid, ::Val{true}) =
+    checkpoint_restore_mode_on_same_grid(checkpoint_grid, grid, Val(halo_size(checkpoint_grid) == halo_size(grid)))
+
+checkpoint_restore_mode_on_same_grid(checkpoint_grid, grid, ::Val{true}) = RestoreOnCurrentGrid()
+checkpoint_restore_mode_on_same_grid(checkpoint_grid, grid, ::Val{false}) = RestoreOnCompatibleGrid(checkpoint_grid)
+
+same_checkpoint_interior_grid(checkpoint_grid, grid) = checkpoint_grid == grid
+same_checkpoint_interior_grid(checkpoint_grid::AbstractGrid, grid::AbstractGrid) =
+    same_checkpoint_interior_grid(checkpoint_grid, grid, Val(halo_size(checkpoint_grid) == halo_size(grid)))
+
+same_checkpoint_interior_grid(checkpoint_grid::AbstractGrid, grid::AbstractGrid, ::Val{true}) =
+    checkpoint_grid == grid
+
+same_checkpoint_interior_grid(checkpoint_grid::AbstractGrid, grid::AbstractGrid, ::Val{false}) =
+    checkpoint_grid == with_halo(halo_size(checkpoint_grid), on_architecture(CPU(), grid))
 
 warn_if_cross_grid_pickup(checkpoint_grid, grid) = warn_if_cross_grid_pickup(checkpoint_restore_mode(checkpoint_grid, grid), grid)
 warn_if_cross_grid_pickup(::RestoreOnCurrentGrid, grid) = nothing
@@ -220,6 +220,145 @@ function with_checkpoint_restore_grid(f, grid)
     finally
         checkpoint_restore_grid_ref[] = previous_grid
     end
+end
+
+function infer_checkpoint_halo_from_data(data, grid, loc)
+    topo = topology(grid)
+    sz = size(grid)
+    data_sz = size(data)
+
+    return ntuple(3) do d
+        if data_sz[d] == 1 || loc[d] == Nothing || loc[d] === nothing
+            0
+        else
+            parent = Oceananigans.Grids.total_length(loc[d], topo[d](), sz[d], halo_size(grid, d))
+            (data_sz[d] - parent) ÷ 2
+        end
+    end
+end
+
+function restore_model_state_from_checkpoint!(restored, from, checkpoint_grid)
+    with_checkpoint_restore_grid(checkpoint_grid) do
+        restore_prognostic_state!(restored.clock, from.clock)
+        restore_prognostic_state!(restored.particles, from.particles)
+        restore_prognostic_state!(restored.velocities, from.velocities)
+        restore_prognostic_state!(restored.timestepper, from.timestepper)
+        restore_prognostic_state!(restored.tracers, from.tracers)
+        restore_prognostic_state!(restored.closure_fields, from.closure_fields)
+        restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
+        restore_prognostic_state!(restored.vertical_coordinate, restored.grid, from.vertical_coordinate)
+    end
+
+    return nothing
+end
+
+function restore_model_state_from_checkpoint!(restored, from, checkpoint_grid, free_surface_mode)
+    with_checkpoint_restore_grid(checkpoint_grid) do
+        restore_prognostic_state!(restored.clock, from.clock)
+        restore_prognostic_state!(restored.particles, from.particles)
+        restore_prognostic_state!(restored.velocities, from.velocities)
+        restore_prognostic_state!(restored.tracers, from.tracers)
+        restore_prognostic_state!(restored.closure_fields, from.closure_fields)
+        restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
+        restore_prognostic_state!(restored.vertical_coordinate, restored.grid, from.vertical_coordinate)
+    end
+
+    restore_timestepper_from_checkpoint!(restored, from, checkpoint_grid, free_surface_mode)
+    return nothing
+end
+
+function restore_timestepper_from_checkpoint!(restored, from, checkpoint_grid, free_surface_mode)
+    with_checkpoint_restore_grid(checkpoint_grid) do
+        restore_prognostic_state!(restored.timestepper, from.timestepper)
+    end
+
+    return nothing
+end
+
+restore_hydrostatic_split_explicit_timestepper_from_checkpoint!(::Nothing, ::Nothing, checkpoint_grid, free_surface_mode) = nothing
+restore_hydrostatic_split_explicit_timestepper_from_checkpoint!(restored, ::Nothing, checkpoint_grid, free_surface_mode) = restored
+
+function restore_hydrostatic_split_explicit_timestepper_from_checkpoint!(restored, from, checkpoint_grid, free_surface_mode)
+    with_checkpoint_restore_grid(checkpoint_grid) do
+        restore_hydrostatic_baroclinic_tendencies_from_checkpoint!(restored.Gⁿ, from.Gⁿ)
+        restore_hydrostatic_baroclinic_tendencies_from_checkpoint!(restored.G⁻, from.G⁻)
+    end
+
+    restore_hydrostatic_barotropic_tendencies_from_checkpoint!(restored.Gⁿ, from.Gⁿ, free_surface_mode)
+    restore_hydrostatic_barotropic_tendencies_from_checkpoint!(restored.G⁻, from.G⁻, free_surface_mode)
+
+    return restored
+end
+
+restore_hydrostatic_baroclinic_tendencies_from_checkpoint!(::Nothing, ::Nothing) = nothing
+restore_hydrostatic_baroclinic_tendencies_from_checkpoint!(restored::NamedTuple, ::Nothing) = nothing
+restore_hydrostatic_barotropic_tendencies_from_checkpoint!(::Nothing, ::Nothing) = nothing
+restore_hydrostatic_barotropic_tendencies_from_checkpoint!(restored::NamedTuple, ::Nothing) = nothing
+restore_hydrostatic_barotropic_tendencies_from_checkpoint!(::Nothing, ::Nothing, free_surface_mode) = nothing
+restore_hydrostatic_barotropic_tendencies_from_checkpoint!(restored::NamedTuple, ::Nothing, free_surface_mode) = nothing
+
+function restore_hydrostatic_baroclinic_tendencies_from_checkpoint!(restored::NamedTuple, from::NamedTuple)
+    for name in keys(restored)
+        name in (:U, :V) && continue
+        restore_prognostic_state!(getproperty(restored, name), getproperty(from, name))
+    end
+
+    return nothing
+end
+
+function restore_hydrostatic_barotropic_tendencies_from_checkpoint!(restored::NamedTuple, from::NamedTuple)
+    :U in keys(restored) && restore_prognostic_state!(restored.U, from.U)
+    :V in keys(restored) && restore_prognostic_state!(restored.V, from.V)
+    return nothing
+end
+
+function restore_hydrostatic_barotropic_tendencies_from_checkpoint!(restored::NamedTuple, from::NamedTuple, free_surface_mode)
+    :U in keys(restored) && restore_prognostic_state!(restored.U, from.U, free_surface_mode)
+    :V in keys(restored) && restore_prognostic_state!(restored.V, from.V, free_surface_mode)
+    return nothing
+end
+
+function checkpoint_free_surface_restore_mode(restored, from, checkpoint_grid)
+    checkpoint_fs_extra_halo = infer_checkpoint_halo_from_data(from.displacement.data,
+                                                               checkpoint_grid,
+                                                               Oceananigans.instantiated_location(restored.free_surface.displacement))
+    live_fs_extra_halo = checkpoint_free_surface_extra_halo(restored.free_surface.displacement.grid, restored.grid)
+    return checkpoint_free_surface_restore_mode(Val(checkpoint_fs_extra_halo == live_fs_extra_halo),
+                                                checkpoint_fs_extra_halo,
+                                                checkpoint_grid,
+                                                restored.grid)
+end
+
+checkpoint_free_surface_restore_mode(::Val{true}, checkpoint_fs_extra_halo, checkpoint_grid, model_grid) = RestoreOnCurrentGrid()
+checkpoint_free_surface_restore_mode(::Val{false}, checkpoint_fs_extra_halo, checkpoint_grid, model_grid) =
+    RestoreOnCompatibleGrid(with_halo(checkpoint_free_surface_restore_halo(checkpoint_fs_extra_halo, on_architecture(CPU(), model_grid)),
+                                      on_architecture(CPU(), model_grid)))
+
+checkpoint_free_surface_extra_halo(free_surface_grid, model_grid) =
+    ntuple(d -> halo_size(free_surface_grid, d) - halo_size(model_grid, d), 3)
+
+checkpoint_free_surface_restore_halo(checkpoint_fs_extra_halo, model_grid) =
+    ntuple(d -> checkpoint_fs_extra_halo[d] + halo_size(model_grid, d), 3)
+
+checkpoint_free_surface_grid(restored, ::RestoreOnCurrentGrid) = restored.free_surface.displacement.grid
+checkpoint_free_surface_grid(restored, mode::RestoreOnCompatibleGrid) = mode.grid
+
+function restore_free_surface_from_checkpoint!(restored, from, mode)
+    with_checkpoint_restore_grid(checkpoint_free_surface_grid(restored, mode)) do
+        restore_prognostic_state!(restored.free_surface, from)
+    end
+
+    return nothing
+end
+
+restore_namedtuple_fields_on_mode!(::Nothing, ::Nothing, mode) = nothing
+
+function restore_namedtuple_fields_on_mode!(restored::NamedTuple, from::NamedTuple, mode)
+    for name in keys(restored)
+        restore_prognostic_state!(getproperty(restored, name), getproperty(from, name), mode)
+    end
+
+    return nothing
 end
 
 
@@ -323,7 +462,7 @@ restore_prognostic_state!(::Checkpointer, ::Nothing) = nothing
 restore_prognostic_state!(::Union{JLD2Writer, NetCDFWriter}, ::Nothing) = nothing
 
 function restore_prognostic_state!(restored::AbstractArray, from)
-    copyto!(restored, from)
+    copyto!(restored, on_architecture(architecture(restored), from))
     return restored
 end
 
