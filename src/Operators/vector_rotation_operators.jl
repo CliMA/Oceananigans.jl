@@ -73,9 +73,12 @@ the grid's intrinsic coordinates in order to match the grid's extrinsic coordina
     Rcosθ₁ = ifelse(Δyᶠᶜᵃ⁺ == 0, zero(grid), deg2rad(φᶠᶠᵃ⁺⁺ - φᶠᶠᵃ⁺⁻) / Δyᶠᶜᵃ⁺)
     Rcosθ₂ = ifelse(Δyᶠᶜᵃ⁻ == 0, zero(grid), deg2rad(φᶠᶠᵃ⁻⁺ - φᶠᶠᵃ⁻⁻) / Δyᶠᶜᵃ⁻)
 
+    Rsinθ₁ = ifelse(Δxᶜᶠᵃ⁺ == 0, zero(grid), deg2rad(φᶠᶠᵃ⁺⁺ - φᶠᶠᵃ⁻⁺) / Δxᶜᶠᵃ⁺)
+    Rsinθ₂ = ifelse(Δxᶜᶠᵃ⁻ == 0, zero(grid), deg2rad(φᶠᶠᵃ⁺⁻ - φᶠᶠᵃ⁻⁻) / Δxᶜᶠᵃ⁻)
+
     # θ is the rotation angle between intrinsic and extrinsic reference frame
     Rcosθ =   (Rcosθ₁ + Rcosθ₂) / 2
-    Rsinθ = - (deg2rad(φᶠᶠᵃ⁺⁺ - φᶠᶠᵃ⁻⁺) / Δxᶜᶠᵃ⁺ + deg2rad(φᶠᶠᵃ⁺⁻ - φᶠᶠᵃ⁻⁻) / Δxᶜᶠᵃ⁻) / 2
+    Rsinθ = - (Rsinθ₁ + Rsinθ₂) / 2
 
     θ = atan(Rsinθ, Rcosθ)
 

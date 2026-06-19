@@ -38,6 +38,7 @@ CUDA.allowscalar() do
         @testset "Unit tests" begin
             include("test_quality_assurance.jl")
             include("test_grids.jl")
+            include("test_lambert_conformal_conic_grid.jl")
             include("test_grid_reconstruction.jl")
             include("test_immersed_boundary_grid.jl")
             include("test_operators.jl")
