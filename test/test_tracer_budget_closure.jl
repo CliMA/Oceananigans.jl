@@ -1,6 +1,15 @@
 include("dependencies_for_runtests.jl")
 
-@testset "Tracer conservation" begin
+@testset "Tracer budget closure" begin
+    # Test that a tracer c forced with a surface flux Jᶜ satisfies the integral conservation law
+    #
+    #   d/dt ∫ c dV = ∫ Jᶜ dA
+    #
+    # where ∫ c dV is the total tracer content and ∫ Jᶜ dA is the surface flux integral.
+    # In discrete form we verify that at each time step:
+    #
+    #   (∫ c dV)ⁿ⁺¹ = (∫ c dV)ⁿ + Δt (∫ Jᶜ dA)ⁿ
+
     for arch in archs
         size = (22, 20, 10)
         H = 5000                   # domain depth [m]
@@ -25,7 +34,7 @@ include("dependencies_for_runtests.jl")
         tripolar_grid = ImmersedBoundaryGrid(underlying_tripolar_grid, GridFittedBottom(gaussian_mountains))
 
         for grid in (rectilinear_grid, latitude_longitude_grid, tripolar_grid)
-            @info "Testing tracer conservation on $(summary(grid))"
+            @info "Testing budget closure on $(summary(grid))"
 
             # We initialize a tracer field and check that the total tracer content changes only due
             # to the flux through the surface boundary.
