@@ -67,10 +67,6 @@ include("dependencies_for_runtests.jl")
                 set!(model, c = (λ, φ, z) -> -z / H * cosd(λ)^2 * cosd(φ))
                 c = model.tracers.c
 
-                if model isa HydrostaticFreeSurfaceModel
-
-                end
-
                 total_c = Integral(c, dims=(1, 2, 3))
                 surface_c_flux = Integral(Oceananigans.Models.BoundaryConditionField(c, :top, model), dims=(1, 2))
 
