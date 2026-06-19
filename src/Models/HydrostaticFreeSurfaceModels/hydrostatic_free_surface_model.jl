@@ -396,9 +396,6 @@ function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
         throw(ArgumentError("Checkpoint pickup only supports the same interior grid with a different halo size. Restoring across different grids or resolutions is not supported by this path."))
     end
 
-    hasproperty(from, :checkpoint_free_surface_grid) ||
-        throw(ArgumentError("Hydrostatic free-surface checkpoint pickup requires `checkpoint_free_surface_grid` metadata. Re-create the checkpoint with the current checkpointer implementation."))
-
     checkpoint_free_surface_grid = from.checkpoint_free_surface_grid
     mode = Oceananigans.OutputWriters.checkpoint_restore_mode(restored, checkpoint_grid, checkpoint_free_surface_grid)
     return restore_prognostic_state!(restored, from, checkpoint_grid, mode)

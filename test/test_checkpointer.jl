@@ -492,6 +492,61 @@ function test_checkpointing_split_explicit_free_surface(arch, timestepper, free_
     return nothing
 end
 
+
+function test_checkpointing_split_explicit_free_surface_with_changed_substeps(arch, timestepper, free_surface_timestepper)
+    Nx, Ny, Nz = 16, 16, 16
+    Lx, Ly, Lz = 1000, 1000, 100
+    Δt = 0.1
+
+    bubble(x, y, z) = 0.01 * exp(-100 * ((x - Lx/2)^2 + (y - Ly/2)^2 + (z - Lz/2)^2) / (Lx^2 + Ly^2 + Lz^2))
+
+    build_model(substeps) = begin
+        grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(Lx, Ly, Lz))
+        free_surface = SplitExplicitFreeSurface(grid; substeps, timestepper=free_surface_timestepper)
+        HydrostaticFreeSurfaceModel(grid; timestepper, free_surface,
+                                    buoyancy = SeawaterBuoyancy(),
+                                    tracers = (:T, :S))
+    end
+
+    checkpoint_substeps = 12
+    restored_substeps = 20
+    fs_ts_name = nameof(typeof(free_surface_timestepper))
+    prefix = "split_explicit_changed_substeps_$(typeof(arch))_$(timestepper)_$(fs_ts_name)"
+
+    model = build_model(checkpoint_substeps)
+    set!(model, T=bubble, S=bubble)
+    simulation = Simulation(model, Δt=Δt, stop_iteration=1)
+    simulation.output_writers[:checkpointer] = Checkpointer(model,
+                                                            schedule = IterationInterval(1),
+                                                            prefix = prefix,
+                                                            cleanup = false)
+
+    @test_nowarn run!(simulation)
+
+    checkpoint_state = Oceananigans.OutputWriters.load_checkpoint_state("$(prefix)_iteration1.jld2";
+                                                                        base_path = "simulation/model")
+    @test checkpoint_state.checkpoint_free_surface_grid == on_architecture(CPU(), model.free_surface.displacement.grid)
+
+    restored_model = build_model(restored_substeps)
+    restored_simulation = Simulation(restored_model, Δt=Δt, stop_iteration=2)
+    restored_simulation.output_writers[:checkpointer] = Checkpointer(restored_model,
+                                                                     schedule = IterationInterval(1),
+                                                                     prefix = prefix,
+                                                                     cleanup = false)
+
+    @test_logs (:warn, r"different halo size") set!(restored_simulation; checkpoint=:latest)
+    @test_nowarn run!(restored_simulation)
+
+    @test restored_simulation.model.clock.iteration == 2
+    @test all(isfinite, interior(restored_model.velocities.u))
+    @test all(isfinite, interior(restored_model.velocities.v))
+    @test all(isfinite, interior(restored_model.free_surface.displacement))
+
+    rm.(glob("$(prefix)_iteration*.jld2"), force=true)
+
+    return nothing
+end
+
 function test_checkpointing_zstar_coordinate(arch, timestepper)
     Nx, Ny, Nz = 8, 8, 8
     Lx, Ly, Lz = 1000, 1000, 100
@@ -2139,6 +2194,11 @@ for arch in archs
         @testset "SplitExplicitFreeSurface checkpointing [$(typeof(arch)), $timestepper, $fs_ts_name]" begin
             @info "  Testing SplitExplicitFreeSurface checkpointing [$(typeof(arch)), $timestepper, $ForwardBackwardScheme]..."
             test_checkpointing_split_explicit_free_surface(arch, timestepper, free_surface_timestepper)
+        end
+
+        @testset "SplitExplicitFreeSurface changed-substeps checkpointing [$(typeof(arch)), $timestepper, $fs_ts_name]" begin
+            @info "  Testing SplitExplicitFreeSurface changed-substeps checkpointing [$(typeof(arch)), $timestepper, $ForwardBackwardScheme]..."
+            test_checkpointing_split_explicit_free_surface_with_changed_substeps(arch, timestepper, free_surface_timestepper)
         end
     end
 
