@@ -1,6 +1,9 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
+using Oceananigans.Solvers: ConjugateGradientPoissonSolver, FreeSurfaceLaplacian
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
+using Oceananigans.Models.NonhydrostaticModels: nonhydrostatic_pressure_solver
 
 @testset "Models" begin
     @info "Testing models..."
@@ -230,6 +233,83 @@ using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_h
                 U_field = CenterField(grid)
                 @test_throws ArgumentError NonhydrostaticModel(grid; background_fields = (u=U_field,))
             end
+        end
+    end
+
+    @testset "Pressure solver dispatch" begin
+        @info "  Testing pressure solver dispatch..."
+
+        for arch in archs
+            grid_xyz = RectilinearGrid(arch, size=(2,2,2), extent=(1,1,1))
+            grid_xy  = RectilinearGrid(arch, size=(2,2,2), x=(0,1), y=(0,1),
+                                       z=[0.0, 0.5, 1.0], topology=(Periodic, Periodic, Bounded))
+            grid_xz  = RectilinearGrid(arch, size=(2,2,2), x=(0,1), z=(0,1),
+                                       y=[-0.5, 0.0, 0.5], topology=(Periodic, Bounded, Bounded))
+            grid_yz  = RectilinearGrid(arch, size=(2,2,2), y=(0,1), z=(0,1),
+                                       x=[-0.5, 0.0, 0.5], topology=(Bounded, Periodic, Bounded))
+            ibg_xyz  = ImmersedBoundaryGrid(grid_xyz, GridFittedBottom((x,y) -> 0.2))
+            ibg_xz   = ImmersedBoundaryGrid(grid_xz,  GridFittedBottom((y,z) -> 0.2))
+
+            # Rigid-lid (::Nothing) regressions
+            @test nonhydrostatic_pressure_solver(arch, grid_xyz, nothing) isa FFTBasedPoissonSolver
+            @test nonhydrostatic_pressure_solver(arch, grid_xy,  nothing) isa FourierTridiagonalPoissonSolver
+            @test nonhydrostatic_pressure_solver(arch, grid_xz,  nothing) isa FourierTridiagonalPoissonSolver
+            @test nonhydrostatic_pressure_solver(arch, grid_yz,  nothing) isa FourierTridiagonalPoissonSolver
+
+            # Free-surface dispatch uses a mock object (only .gravitational_acceleration is needed for construction)
+            mock_fs = (; gravitational_acceleration=9.81, displacement=nothing)
+
+            # XYZReg + fs → FT with InhomogeneousFormulation (direct solve)
+            @test nonhydrostatic_pressure_solver(arch, grid_xyz, mock_fs) isa FourierTridiagonalPoissonSolver
+
+            # XYReg (stretched z) + fs → FT with InhomogeneousFormulation (z-tridiagonal still valid)
+            @test nonhydrostatic_pressure_solver(arch, grid_xy, mock_fs) isa FourierTridiagonalPoissonSolver
+
+            # XZReg (stretched y) + fs → CG with FreeSurfaceLaplacian
+            let solver = nonhydrostatic_pressure_solver(arch, grid_xz, mock_fs)
+                @test solver isa ConjugateGradientPoissonSolver
+                @test solver.conjugate_gradient_solver.linear_operation! isa FreeSurfaceLaplacian
+            end
+
+            # YZReg (stretched x) + fs → CG with FreeSurfaceLaplacian
+            let solver = nonhydrostatic_pressure_solver(arch, grid_yz, mock_fs)
+                @test solver isa ConjugateGradientPoissonSolver
+                @test solver.conjugate_gradient_solver.linear_operation! isa FreeSurfaceLaplacian
+            end
+
+            # IBG on XYZReg + fs → CG with FreeSurfaceLaplacian (FT InhomogZDir preconditioner)
+            let solver = nonhydrostatic_pressure_solver(arch, ibg_xyz, mock_fs)
+                @test solver isa ConjugateGradientPoissonSolver
+                @test solver.conjugate_gradient_solver.linear_operation! isa FreeSurfaceLaplacian
+                @test solver.conjugate_gradient_solver.preconditioner isa FourierTridiagonalPoissonSolver
+            end
+
+            # IBG on XZReg + fs → CG with FreeSurfaceLaplacian (FT HomogNeumann preconditioner)
+            let solver = nonhydrostatic_pressure_solver(arch, ibg_xz, mock_fs)
+                @test solver isa ConjugateGradientPoissonSolver
+                @test solver.conjugate_gradient_solver.linear_operation! isa FreeSurfaceLaplacian
+                @test solver.conjugate_gradient_solver.preconditioner isa FourierTridiagonalPoissonSolver
+            end
+        end
+    end
+
+    @testset "NonhydrostaticModel with implicit free surface" begin
+        @info "  Testing NonhydrostaticModel with implicit free surface..."
+
+        for arch in archs
+            # XYZReg + ImplicitFreeSurface: FT direct solve (existing behavior, regression test)
+            grid = RectilinearGrid(arch, size=(2,2,2), extent=(1,1,1),
+                                   topology=(Periodic, Periodic, Bounded))
+            model = NonhydrostaticModel(grid; free_surface=ImplicitFreeSurface())
+            @test model.pressure_solver isa FourierTridiagonalPoissonSolver
+            @test !isnothing(model.free_surface)
+
+            # IBG on XYZReg + ImplicitFreeSurface: CG with FreeSurfaceLaplacian (new)
+            ibg = ImmersedBoundaryGrid(grid, GridFittedBottom((x,y) -> 0.2))
+            ibg_model = NonhydrostaticModel(ibg; free_surface=ImplicitFreeSurface())
+            @test ibg_model.pressure_solver isa ConjugateGradientPoissonSolver
+            @test ibg_model.pressure_solver.conjugate_gradient_solver.linear_operation! isa FreeSurfaceLaplacian
+            @test !isnothing(ibg_model.free_surface)
         end
     end
 end

@@ -5,7 +5,11 @@ export
     FFTBasedPoissonSolver,
     FourierTridiagonalPoissonSolver,
     ConjugateGradientSolver,
-    KrylovSolver
+    KrylovSolver,
+    FreeSurfaceLaplacian,
+    fft_free_surface_preconditioner,
+    no_gauge_enforcement!,
+    AbstractHomogeneousNeumannFormulation
 
 using DocStringExtensions: TYPEDSIGNATURES
 using FFTW: FFTW
