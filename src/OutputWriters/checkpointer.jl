@@ -7,8 +7,7 @@ using Oceananigans.Grids: halo_size, with_halo
 using Oceananigans.Architectures: on_architecture, architecture, CPU
 
 import Oceananigans: prognostic_state, restore_prognostic_state!, fs_halo_size,
-                     checkpoint_restore_mode, warn_if_cross_grid_pickup,
-                     RestoreOnCurrentGrid, RestoreOnCompatibleGrid
+                     checkpoint_restore_mode, RestoreOnCurrentGrid, RestoreOnCompatibleGrid
 import Oceananigans.Fields: set!
 
 mutable struct Checkpointer{T} <: AbstractOutputWriter
@@ -172,16 +171,12 @@ function checkpoint_restore_mode(checkpoint_grid, grid)
     same_interior = checkpoint_grid == with_halo(halo_size(checkpoint_grid), on_architecture(CPU(), grid))
     same_interior || throw(ArgumentError("Checkpoint pickup only supports the same interior grid with a different halo size. Restoring across different grids or resolutions is not supported by this path."))
 
-    return halo_size(checkpoint_grid) == halo_size(grid) ?
-           RestoreOnCurrentGrid() :
-           RestoreOnCompatibleGrid(checkpoint_grid)
-end
+    if halo_size(checkpoint_grid) == halo_size(grid)
+        return RestoreOnCurrentGrid()
+    end
 
-warn_if_cross_grid_pickup(checkpoint_grid, grid) = warn_if_cross_grid_pickup(checkpoint_restore_mode(checkpoint_grid, grid), grid)
-warn_if_cross_grid_pickup(::RestoreOnCurrentGrid, grid) = nothing
-function warn_if_cross_grid_pickup(mode::RestoreOnCompatibleGrid, grid)
-    @warn "Picking up a checkpoint onto the same interior grid with a different halo size; interiors will be restored directly and halos will be rebuilt afterward." checkpoint_grid=mode.grid model_grid=grid
-    return nothing
+    @warn "Picking up a checkpoint onto the same interior grid with a different halo size; interiors will be restored directly and halos will be rebuilt afterward." checkpoint_grid model_grid=grid
+    return RestoreOnCompatibleGrid(checkpoint_grid)
 end
 
 function checkpoint_restore_mode(restored, checkpoint_grid, checkpoint_free_surface_grid)
@@ -200,6 +195,7 @@ function checkpoint_restore_mode(restored, checkpoint_grid, checkpoint_free_surf
 
     restore_halo = ntuple(d -> checkpoint_free_surface_halo[d] - halo_size(checkpoint_grid, d) + halo_size(restored.grid, d), 3)
     restore_grid = with_halo(restore_halo, on_architecture(CPU(), restored.grid))
+    @warn "Picking up a checkpoint onto the same interior grid with a different halo size; interiors will be restored directly and halos will be rebuilt afterward." checkpoint_grid=restore_grid model_grid=restored.grid
     return RestoreOnCompatibleGrid(restore_grid)
 end
 

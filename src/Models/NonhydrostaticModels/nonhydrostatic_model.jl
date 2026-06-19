@@ -17,7 +17,7 @@ using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCAT
 using Oceananigans.Utils: tupleit
 
 import Oceananigans: prognostic_state, restore_prognostic_state!,
-                     checkpoint_restore_mode, warn_if_cross_grid_pickup,
+                     checkpoint_restore_mode,
                      RestoreOnCurrentGrid, RestoreOnCompatibleGrid
 import Oceananigans.Architectures: architecture
 import Oceananigans.Models: total_velocities
@@ -393,7 +393,6 @@ function restore_prognostic_state!(restored::NonhydrostaticModel, from, checkpoi
     restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields, mode)
     restore_prognostic_state!(restored.boundary_transport, from.boundary_transport, mode)
 
-    warn_if_cross_grid_pickup(mode, restored.grid)
 
     model_fields = Oceananigans.fields(restored)
 

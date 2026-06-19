@@ -32,6 +32,7 @@ import Oceananigans.Fields: set!
 import Oceananigans.Solvers: iteration
 import Oceananigans.OutputWriters: default_included_properties
 import Oceananigans.TimeSteppers: reset!
+import Oceananigans: restore_prognostic_state!
 
 # A prototype interface for AbstractModel.
 #
@@ -239,7 +240,17 @@ include("seawater_density.jl")
 include("buoyancy_operation.jl")
 include("boundary_condition_operation.jl")
 include("forcing_operation.jl")
-include("set_model.jl")
+
+"""
+$(TYPEDSIGNATURES)
+
+Restore `model` from checkpoint data stored at `filepath`.
+"""
+function set!(model::OceananigansModels, filepath::AbstractString)
+    state = Oceananigans.OutputWriters.load_checkpoint_state(filepath; base_path="simulation/model")
+    restore_prognostic_state!(model, state)
+    return nothing
+end
 
 # Implementation of the diagnostic for computing the dissipation rate
 include("VarianceDissipationComputations/VarianceDissipationComputations.jl")

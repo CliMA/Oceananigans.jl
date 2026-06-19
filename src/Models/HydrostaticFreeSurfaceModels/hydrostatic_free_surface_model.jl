@@ -18,7 +18,7 @@ using Oceananigans.Utils: tupleit
 
 import Oceananigans
 import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!,
-                     checkpoint_restore_mode, warn_if_cross_grid_pickup,
+                     checkpoint_restore_mode,
                      RestoreOnCurrentGrid, RestoreOnCompatibleGrid
 import Oceananigans.Models: total_velocities
 import Oceananigans.TimeSteppers: update_state!, reconcile_state!, materialize_clock!
@@ -440,7 +440,6 @@ function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel{<:Any, 
 
     restore_prognostic_state!(restored.free_surface.timestepper, from.free_surface.timestepper)
 
-    warn_if_cross_grid_pickup(mode, restored.grid)
 
     model_fields = Oceananigans.fields(restored)
 

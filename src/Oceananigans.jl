@@ -227,7 +227,6 @@ struct RestoreOnCompatibleGrid{G} <: AbstractCheckpointRestoreMode
 end
 
 function checkpoint_restore_mode end
-function warn_if_cross_grid_pickup end
 function fs_halo_size end
 function tracer_tendency_kernel_function end
 function boundary_conditions end
