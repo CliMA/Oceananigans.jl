@@ -33,17 +33,25 @@ include("dependencies_for_runtests.jl")
             Jᶜ(λ, φ, t) = -2.2e-4 + 6.1e-5 * exp(-λ^2 - φ^2)
             c_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(Jᶜ))
 
+            models = Oceananigans.AbstractModel[]
+
             hydrostatic_model = HydrostaticFreeSurfaceModel(grid,
                                                             timestepper=:SplitRungeKutta3,
                                                             tracers=:c,
                                                             boundary_conditions=(c=c_bcs,),
                                                             free_surface=SplitExplicitFreeSurface(substeps=15))
 
-            nonhydrostatic_model = NonhydrostaticModel(grid,
-                                                       tracers=:c,
-                                                       boundary_conditions=(c=c_bcs,))
+            push!(models, hydrostatic_model)
 
-            for model in (hydrostatic_model, nonhydrostatic_model)
+            if grid !== tripolar_grid
+                nonhydrostatic_model = NonhydrostaticModel(grid,
+                                                           tracers=:c,
+                                                           boundary_conditions=(c=c_bcs,))
+
+                push!(models, nonhydrostatic_model)
+            end
+
+            for model in models
                 @info "... on $(summary(model))"
                 set!(model, c = (λ, φ, z) -> -z / H * cosd(λ)^2 * cosd(φ))
                 c = model.tracers.c
