@@ -252,7 +252,6 @@ end
 prognostic_state(ts::SplitRungeKuttaTimeStepper) = nothing
 restore_prognostic_state!(restored::SplitRungeKuttaTimeStepper, ::Nothing) = restored
 
-
 #####
 ##### Show methods
 #####
