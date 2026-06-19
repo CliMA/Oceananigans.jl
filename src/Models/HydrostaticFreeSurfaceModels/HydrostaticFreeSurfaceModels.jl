@@ -11,7 +11,8 @@ using KernelAbstractions: @index, @kernel
 
 using Oceananigans.Architectures: architecture
 using Oceananigans.Fields: ZFaceField
-using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid
+using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid, halo_size
+import Oceananigans.Grids: fs_halo_size
 using Oceananigans.Operators: Δzᶜᶠᶜ, Δzᶠᶜᶜ
 using Oceananigans.TimeSteppers: TimeSteppers, SplitRungeKuttaTimeStepper, QuasiAdamsBashforth2TimeStepper
 using Oceananigans.Utils: Utils, launch!, @apply_regionally
@@ -28,6 +29,10 @@ import Oceananigans.TimeSteppers: step_lagrangian_particles!
 const XYRegularStaticRG = RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:StaticVerticalDiscretization, <:Number, <:Number}
 
 abstract type AbstractFreeSurface{E, G} end
+
+fs_halo_size(::Nothing) = nothing
+fs_halo_size(free_surface::AbstractFreeSurface) = halo_size(free_surface.displacement.grid)
+fs_halo_size(free_surface::AbstractFreeSurface, d) = fs_halo_size(free_surface)[d]
 
 struct ZCoordinate end
 struct ZStarCoordinate end

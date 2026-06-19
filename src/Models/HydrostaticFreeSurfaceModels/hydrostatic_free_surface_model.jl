@@ -65,6 +65,9 @@ mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
     boundary_transport :: BM # Transport fields for targeted open boundary conditions (or `nothing`)
 end
 
+fs_halo_size(model::HydrostaticFreeSurfaceModel) = fs_halo_size(model.free_surface)
+fs_halo_size(model::HydrostaticFreeSurfaceModel, d) = fs_halo_size(model)[d]
+
 supported_timesteppers = (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5)
 
 default_free_surface(grid::XYRegularStaticRG; gravitational_acceleration=defaults.gravitational_acceleration) =
@@ -376,6 +379,7 @@ buoyancy_tracers(model::HydrostaticFreeSurfaceModel) = model.tracers
 
 function prognostic_state(model::HydrostaticFreeSurfaceModel)
     return (checkpoint_grid = model.grid,
+            checkpoint_free_surface_grid = fs_halo_size(model) === nothing ? nothing : model.free_surface.displacement.grid,
             clock = prognostic_state(model.clock),
             particles = prognostic_state(model.particles),
             velocities = prognostic_state(model.velocities),
@@ -389,7 +393,7 @@ end
 
 function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
     checkpoint_grid = restore_checkpoint_grid(from)
-    return restore_prognostic_state!(restored, from, checkpoint_grid, Val(checkpoint_grid == restored.grid))
+    return restore_prognostic_state!(restored, from, checkpoint_grid, Val(Oceananigans.OutputWriters.same_checkpoint_interior_grid(checkpoint_grid, restored.grid)))
 end
 
 function restore_prognostic_state!(::HydrostaticFreeSurfaceModel, from, checkpoint_grid, ::Val{false})
@@ -419,7 +423,7 @@ function Oceananigans.OutputWriters.restore_free_surface_from_checkpoint!(restor
 end
 
 function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from, checkpoint_grid, ::Val{true})
-    free_surface_mode = Oceananigans.OutputWriters.checkpoint_free_surface_restore_mode(restored, from.free_surface, checkpoint_grid)
+    free_surface_mode = Oceananigans.OutputWriters.checkpoint_free_surface_restore_mode(restored, from, checkpoint_grid)
 
     Oceananigans.OutputWriters.restore_model_state_from_checkpoint!(restored, from, checkpoint_grid, free_surface_mode)
     Oceananigans.OutputWriters.restore_free_surface_from_checkpoint!(restored, from.free_surface, free_surface_mode)

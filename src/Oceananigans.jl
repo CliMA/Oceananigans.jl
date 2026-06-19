@@ -20,6 +20,7 @@ export
     nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
     xspacings, yspacings, rspacings, zspacings, λspacings, φspacings,
     minimum_xspacing, minimum_yspacing, minimum_zspacing,
+    halo_size, fs_halo_size,
 
     # Pointwise spacing, area, and volume operators
     xspacing, yspacing, zspacing, λspacing, φspacing, xarea, yarea, zarea, volume,
