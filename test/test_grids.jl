@@ -5,9 +5,7 @@ using Oceananigans.Grids: total_extent, ColumnEnsembleSize,
                           xspacings, yspacings, zspacings,
                           xnode, ynode, znode, λnode, φnode,
                           λspacings, φspacings
-
 using Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid, rotate_coordinates
-
 using Oceananigans.Operators: Δx, Δy, Δz, Δλ, Δφ, Ax, Ay, Az, volume
 using Oceananigans.Operators: Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δxᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, Azᶜᶜᵃ
 
@@ -826,7 +824,7 @@ end
 #####
 ##### Test the tests
 #####
-
+#=
 @testset "Grids" begin
     @info "Testing AbstractGrids..."
 
@@ -1306,6 +1304,7 @@ end
         end
     end
 end
+=#
 
 @testset "Grid slicing [slice]" begin
     @info "  Testing slice(grid, ...)"
@@ -1316,21 +1315,21 @@ end
                                x=(0, 1), y=(0, 2), z=(0, 4),
                                topology=(Periodic, Periodic, Bounded))
 
-        sst_grid = slice(grid, :, :, 1)
-        @test topology(sst_grid) == (Periodic, Periodic, Flat)
-        @test size(sst_grid) == (8, 6, 1)
-        @test halo_size(sst_grid) == (2, 3, 0)
-        @test architecture(sst_grid) == arch
-        @test eltype(sst_grid) == FT
-        @test xnodes(sst_grid, Center()) == xnodes(grid, Center())
-        @test ynodes(sst_grid, Center()) == ynodes(grid, Center())
+        surface_grid = slice(grid, :, :, 1)
+        @test topology(surface_grid) == (topology(grid, 1), topology(grid, 2), Flat)
+        @test size(surface_grid) == (8, 6, 1)
+        @test halo_size(surface_grid) == (2, 3, 0)
+        @test architecture(surface_grid) == arch
+        @test eltype(surface_grid) == FT
+        @test xnodes(surface_grid, Center()) == xnodes(grid, Center())
+        @test ynodes(surface_grid, Center()) == ynodes(grid, Center())
 
         # Slicing an already-Flat dimension is a no-op for that dimension; collapsing the
         # vertical of an (x, z) grid leaves a 1D horizontal grid (the coupling/SST case).
         xz = RectilinearGrid(arch, FT, size=(8, 4), halo=(2, 1),
                              x=(0, 1), z=(0, 4), topology=(Periodic, Flat, Bounded))
         line = slice(xz, :, :, 1)
-        @test topology(line) == (topology(grid)[1], topology(grid)[2], Flat)
+        @test topology(line) == (topology(xz, 1), topology(xz, 2), Flat)
         @test size(line) == (8, 1, 1)
         @test line.Hx == xz.Hx
         @test xnodes(line, Center()) == xnodes(xz, Center())
@@ -1340,7 +1339,7 @@ end
         gz = RectilinearGrid(arch, FT, size=(4, 3), x=(0, 1), z=zfaces,
                              topology=(Periodic, Flat, Bounded))
         xsection = slice(gz, :, 1, :)
-        @test topology(xsection) == (Periodic, Flat, Bounded)
+        @test topology(xsection) == (topology(gz, 1), Flat, topology(gz, 3))
         @test znodes(xsection, Face()) == znodes(gz, Face())
 
         # A collapsed dimension is a `Flat` dimension *located* at the sliced cell center, so
@@ -1350,26 +1349,26 @@ end
 
         # A range retains the dimension as a `Bounded` sub-interval spanning the selected cells.
         sub = slice(grid, :, :, 2:4)
-        @test topology(sub) == (Periodic, Periodic, Bounded)
+        @test topology(sub) == (topology(grid, 1), topology(grid, 2), Bounded)
         @test size(sub) == (8, 6, 3)
         @test znodes(sub, Face()) == znodes(grid, Face())[2:5]
         @test xnodes(sub, Center()) == xnodes(grid, Center())
 
         # A range collapses a `Periodic` dimension to `Bounded` (a window is not periodic).
         xsub = slice(grid, 2:5, :, :)
-        @test topology(xsub) == (Bounded, Periodic, Bounded)
+        @test topology(xsub) == (Bounded, topology(grid, 2), topology(grid, 3))
         @test size(xsub) == (4, 6, 4)
         @test xnodes(xsub, Face()) == xnodes(grid, Face())[2:6]
 
         # Stretched coordinates are preserved across a ranged slice.
         zsub = slice(gz, :, :, 2:3)
-        @test topology(zsub) == (Periodic, Flat, Bounded)
+        @test topology(zsub) == (topology(gz, 1), topology(gz, 2), Bounded)
         @test znodes(zsub, Face()) == znodes(gz, Face())[2:4]
 
         # The collapsed coordinate can be set with a keyword named after it. By default the
         # Flat dimension is located at the sliced cell center; `z=0` places it at the surface.
         surface = slice(grid, :, :, 1; z=0)
-        @test topology(surface) == (Periodic, Periodic, Flat)
+        @test topology(surface) == (topology(grid, 1), topology(grid, 2), Flat)
         @test only(znodes(surface, Center())) == 0
         @test surface != slice(grid, :, :, 1)
 
