@@ -3,12 +3,12 @@ using StructArrays: StructArray
 
 using Oceananigans
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
-using Oceananigans.Grids: halo_size, fs_halo_size, with_halo
+using Oceananigans.Grids: halo_size, with_halo
 using Oceananigans.Architectures: on_architecture, architecture, CPU
 
-import Oceananigans: prognostic_state, restore_prognostic_state!, checkpoint_restore_grid,
-                     restore_checkpoint_grid, checkpoint_restore_mode, warn_if_cross_grid_pickup, checkpoint_restore_halo_kwargs,
-                     RestoreOnCurrentGrid, RestoreOnCompatibleGrid, with_checkpoint_restore_grid
+import Oceananigans: prognostic_state, restore_prognostic_state!, fs_halo_size,
+                     restore_checkpoint_grid, checkpoint_restore_mode, warn_if_cross_grid_pickup,
+                     RestoreOnCurrentGrid, RestoreOnCompatibleGrid
 import Oceananigans.Fields: set!
 
 mutable struct Checkpointer{T} <: AbstractOutputWriter
@@ -166,9 +166,6 @@ latest_checkpoint(checkpointer, filepaths) = latest_checkpoint_by_iteration(chec
 ##### Writing checkpoints
 #####
 
-const checkpoint_restore_grid_ref = Ref{Any}(nothing)
-
-checkpoint_restore_grid() = checkpoint_restore_grid_ref[]
 restore_checkpoint_grid(::Nothing) = nothing
 restore_checkpoint_grid(from) = nothing
 restore_checkpoint_grid(from::NamedTuple{names}) where names = restore_checkpoint_grid(Val(:checkpoint_grid in names), from)
@@ -211,35 +208,6 @@ function warn_if_cross_grid_pickup(mode::RestoreOnCompatibleGrid, grid)
     return nothing
 end
 
-checkpoint_restore_halo_kwargs(model) = NamedTuple()
-
-function with_checkpoint_restore_grid(f, grid)
-    previous_grid = checkpoint_restore_grid_ref[]
-    checkpoint_restore_grid_ref[] = grid
-
-    try
-        return f()
-    finally
-        checkpoint_restore_grid_ref[] = previous_grid
-    end
-end
-
-function restore_model_state_from_checkpoint!(restored, from, checkpoint_grid)
-    with_checkpoint_restore_grid(checkpoint_grid) do
-        restore_prognostic_state!(restored.clock, from.clock)
-        restore_prognostic_state!(restored.particles, from.particles)
-        restore_prognostic_state!(restored.velocities, from.velocities)
-        restore_prognostic_state!(restored.timestepper, from.timestepper)
-        restore_prognostic_state!(restored.tracers, from.tracers)
-        restore_prognostic_state!(restored.closure_fields, from.closure_fields)
-        restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
-        restore_prognostic_state!(restored.vertical_coordinate, restored.grid, from.vertical_coordinate)
-    end
-
-    return nothing
-end
-
-
 function checkpoint_free_surface_restore_mode(restored, from, checkpoint_grid)
     checkpoint_free_surface_grid = restore_checkpoint_free_surface_grid(from)
     checkpoint_restore_mode(restored,
@@ -263,7 +231,7 @@ checkpoint_restore_mode(restored, checkpoint_grid, checkpoint_fs_extra_halo, ::V
     RestoreOnCompatibleGrid(checkpoint_free_surface_restore_grid(checkpoint_fs_extra_halo, restored.grid))
 
 checkpoint_free_surface_extra_halo(free_surface_grid, model_grid) =
-    ntuple(d -> fs_halo_size(free_surface_grid, d) - halo_size(model_grid, d), 3)
+    ntuple(d -> halo_size(free_surface_grid, d) - halo_size(model_grid, d), 3)
 
 checkpoint_halos_match(restored, checkpoint_grid, checkpoint_fs_extra_halo) =
     halo_size(checkpoint_grid) == halo_size(restored.grid) &&
@@ -391,6 +359,13 @@ function restore_prognostic_state!(restored::AbstractDict, from)
     return restored
 end
 
+function restore_prognostic_state!(restored::AbstractDict, from, mode)
+    for (name, value) in pairs(from)
+        haskey(restored, name) && restore_prognostic_state!(restored[name], value, mode)
+    end
+    return restored
+end
+
 function restore_prognostic_state!(restored::NamedTuple, from)
     for (name, value) in pairs(from)
         restore_prognostic_state!(restored[name], value)
@@ -398,8 +373,20 @@ function restore_prognostic_state!(restored::NamedTuple, from)
     return restored
 end
 
+function restore_prognostic_state!(restored::NamedTuple, from, mode)
+    for (name, value) in pairs(from)
+        restore_prognostic_state!(restored[name], value, mode)
+    end
+    return restored
+end
+
 function restore_prognostic_state!(t::Tuple, from::Tuple)
     new_t = tuple(restore_prognostic_state!(t[j], from[j]) for j in 1:length(t))
+    return new_t
+end
+
+function restore_prognostic_state!(t::Tuple, from::Tuple, mode)
+    new_t = tuple(restore_prognostic_state!(t[j], from[j], mode) for j in 1:length(t))
     return new_t
 end
 
@@ -417,9 +404,13 @@ function restore_prognostic_state!(restored::StructArray, from)
     return restored
 end
 
+restore_prognostic_state!(restored::StructArray, from, mode) = restore_prognostic_state!(restored, from)
+
 # Ref handling: dereference on save, set on restore
 prognostic_state(r::Ref) = r[]
 restore_prognostic_state!(restored::Ref, from) = (restored[] = from; restored)
+restore_prognostic_state!(restored::Ref, from, mode) = restore_prognostic_state!(restored, from)
+restore_prognostic_state!(::Nothing, ::Nothing, mode) = nothing
 
 #####
 ##### Checkpointing the checkpointer

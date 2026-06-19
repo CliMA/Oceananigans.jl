@@ -19,7 +19,6 @@ using Oceananigans.Utils: tupleit
 import Oceananigans
 import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!,
                      restore_checkpoint_grid, checkpoint_restore_mode, warn_if_cross_grid_pickup,
-                     checkpoint_restore_halo_kwargs, with_checkpoint_restore_grid,
                      RestoreOnCurrentGrid, RestoreOnCompatibleGrid
 import Oceananigans.Models: total_velocities
 import Oceananigans.TimeSteppers: update_state!, reconcile_state!, materialize_clock!
@@ -392,14 +391,11 @@ end
 
 function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
     checkpoint_grid = restore_checkpoint_grid(from)
-    return restore_prognostic_state!(restored, from, checkpoint_grid, Val(Oceananigans.OutputWriters.same_checkpoint_interior_grid(checkpoint_grid, restored.grid)))
-end
 
-function restore_prognostic_state!(::HydrostaticFreeSurfaceModel, from, checkpoint_grid, ::Val{false})
-    throw(ArgumentError("Checkpoint pickup only supports the same interior grid with a different halo size. Restoring across different grids or resolutions is not supported by this path."))
-end
+    if !Oceananigans.OutputWriters.same_checkpoint_interior_grid(checkpoint_grid, restored.grid)
+        throw(ArgumentError("Checkpoint pickup only supports the same interior grid with a different halo size. Restoring across different grids or resolutions is not supported by this path."))
+    end
 
-function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from, checkpoint_grid, ::Val{true})
     mode = Oceananigans.OutputWriters.checkpoint_free_surface_restore_mode(restored, from, checkpoint_grid)
     return restore_prognostic_state!(restored, from, checkpoint_grid, mode)
 end
@@ -408,17 +404,15 @@ function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel{<:Any, 
                                    from,
                                    checkpoint_grid,
                                    ::RestoreOnCurrentGrid)
-    with_checkpoint_restore_grid(checkpoint_grid) do
-        restore_prognostic_state!(restored.clock, from.clock)
-        restore_prognostic_state!(restored.particles, from.particles)
-        restore_prognostic_state!(restored.velocities, from.velocities)
-        restore_prognostic_state!(restored.tracers, from.tracers)
-        restore_prognostic_state!(restored.closure_fields, from.closure_fields)
-        restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
-        restore_prognostic_state!(restored.vertical_coordinate, restored.grid, from.vertical_coordinate)
-        restore_prognostic_state!(restored.timestepper, from.timestepper)
-        restore_prognostic_state!(restored.free_surface, from.free_surface)
-    end
+    restore_prognostic_state!(restored.clock, from.clock)
+    restore_prognostic_state!(restored.particles, from.particles)
+    restore_prognostic_state!(restored.velocities, from.velocities)
+    restore_prognostic_state!(restored.tracers, from.tracers)
+    restore_prognostic_state!(restored.closure_fields, from.closure_fields)
+    restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
+    restore_prognostic_state!(restored.vertical_coordinate, restored.grid, from.vertical_coordinate)
+    restore_prognostic_state!(restored.timestepper, from.timestepper)
+    restore_prognostic_state!(restored.free_surface, from.free_surface)
 
     return restored
 end
@@ -427,24 +421,17 @@ function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel{<:Any, 
                                    from,
                                    checkpoint_grid,
                                    mode::RestoreOnCompatibleGrid)
-    with_checkpoint_restore_grid(checkpoint_grid) do
-        restore_prognostic_state!(restored.clock, from.clock)
-        restore_prognostic_state!(restored.particles, from.particles)
-        restore_prognostic_state!(restored.velocities, from.velocities)
-        restore_prognostic_state!(restored.tracers, from.tracers)
-        restore_prognostic_state!(restored.closure_fields, from.closure_fields)
-        restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
-        restore_prognostic_state!(restored.vertical_coordinate, restored.grid, from.vertical_coordinate)
-    end
-
+    restore_prognostic_state!(restored.clock, from.clock)
+    restore_prognostic_state!(restored.particles, from.particles)
+    restore_prognostic_state!(restored.velocities, from.velocities, mode)
+    restore_prognostic_state!(restored.tracers, from.tracers, mode)
+    restore_prognostic_state!(restored.closure_fields, from.closure_fields, mode)
+    restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields, mode)
+    restore_prognostic_state!(restored.vertical_coordinate, restored.grid, from.vertical_coordinate)
     restore_prognostic_state!(restored.free_surface.displacement, from.free_surface.displacement, mode)
 
     if !isnothing(restored.free_surface.barotropic_velocities) && !isnothing(from.free_surface.barotropic_velocities)
-        for name in keys(restored.free_surface.barotropic_velocities)
-            restore_prognostic_state!(getproperty(restored.free_surface.barotropic_velocities, name),
-                                      getproperty(from.free_surface.barotropic_velocities, name),
-                                      mode)
-        end
+        restore_prognostic_state!(restored.free_surface.barotropic_velocities, from.free_surface.barotropic_velocities, mode)
     end
 
     restore_prognostic_state!(restored.free_surface.timestepper, from.free_surface.timestepper)
@@ -452,15 +439,12 @@ function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel{<:Any, 
     warn_if_cross_grid_pickup(mode, restored.grid)
 
     model_fields = Oceananigans.fields(restored)
-    halo_kwargs = checkpoint_restore_halo_kwargs(restored)
 
     Oceananigans.BoundaryConditions.fill_halo_regions!(merge(restored.velocities, restored.tracers),
                                                        restored.clock,
-                                                       model_fields; halo_kwargs...)
+                                                       model_fields)
 
-    with_checkpoint_restore_grid(checkpoint_grid) do
-        restore_prognostic_state!(restored.timestepper, from.timestepper, mode, restored.clock, model_fields; halo_kwargs...)
-    end
+    restore_prognostic_state!(restored.timestepper, from.timestepper, mode, restored.clock, model_fields)
 
     foreach(Oceananigans.ImmersedBoundaries.mask_immersed_field!, merge(restored.velocities, restored.tracers))
     reconcile_free_surface!(restored.free_surface, restored.grid, restored.velocities)

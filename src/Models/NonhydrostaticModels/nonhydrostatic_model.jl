@@ -18,7 +18,6 @@ using Oceananigans.Utils: tupleit
 
 import Oceananigans: prognostic_state, restore_prognostic_state!,
                      restore_checkpoint_grid, checkpoint_restore_mode, warn_if_cross_grid_pickup,
-                     checkpoint_restore_halo_kwargs, with_checkpoint_restore_grid,
                      RestoreOnCurrentGrid, RestoreOnCompatibleGrid
 import Oceananigans.Architectures: architecture
 import Oceananigans.Models: total_velocities
@@ -373,45 +372,36 @@ function restore_prognostic_state!(restored::NonhydrostaticModel, from)
 end
 
 function restore_prognostic_state!(restored::NonhydrostaticModel, from, checkpoint_grid, ::RestoreOnCurrentGrid)
-    with_checkpoint_restore_grid(checkpoint_grid) do
-        restore_prognostic_state!(restored.clock, from.clock)
-        restore_prognostic_state!(restored.particles, from.particles)
-        restore_prognostic_state!(restored.velocities, from.velocities)
-        restore_prognostic_state!(restored.timestepper, from.timestepper)
-        restore_prognostic_state!(restored.tracers, from.tracers)
-        restore_prognostic_state!(restored.closure_fields, from.closure_fields)
-        restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
-        restore_prognostic_state!(restored.boundary_transport, from.boundary_transport)
-    end
+    restore_prognostic_state!(restored.clock, from.clock)
+    restore_prognostic_state!(restored.particles, from.particles)
+    restore_prognostic_state!(restored.velocities, from.velocities)
+    restore_prognostic_state!(restored.timestepper, from.timestepper)
+    restore_prognostic_state!(restored.tracers, from.tracers)
+    restore_prognostic_state!(restored.closure_fields, from.closure_fields)
+    restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
+    restore_prognostic_state!(restored.boundary_transport, from.boundary_transport)
 
     return restored
 end
 
-checkpoint_restore_halo_kwargs(::NonhydrostaticModel) = (; fill_open_bcs=false)
-
 function restore_prognostic_state!(restored::NonhydrostaticModel, from, checkpoint_grid, mode::RestoreOnCompatibleGrid)
-    with_checkpoint_restore_grid(checkpoint_grid) do
-        restore_prognostic_state!(restored.clock, from.clock)
-        restore_prognostic_state!(restored.particles, from.particles)
-        restore_prognostic_state!(restored.velocities, from.velocities)
-        restore_prognostic_state!(restored.tracers, from.tracers)
-        restore_prognostic_state!(restored.closure_fields, from.closure_fields)
-        restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
-        restore_prognostic_state!(restored.boundary_transport, from.boundary_transport)
-    end
+    restore_prognostic_state!(restored.clock, from.clock)
+    restore_prognostic_state!(restored.particles, from.particles)
+    restore_prognostic_state!(restored.velocities, from.velocities, mode)
+    restore_prognostic_state!(restored.tracers, from.tracers, mode)
+    restore_prognostic_state!(restored.closure_fields, from.closure_fields, mode)
+    restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields, mode)
+    restore_prognostic_state!(restored.boundary_transport, from.boundary_transport, mode)
 
     warn_if_cross_grid_pickup(mode, restored.grid)
 
     model_fields = Oceananigans.fields(restored)
-    halo_kwargs = checkpoint_restore_halo_kwargs(restored)
 
     Oceananigans.BoundaryConditions.fill_halo_regions!(merge(restored.velocities, restored.tracers),
                                                        restored.clock,
-                                                       model_fields; halo_kwargs...)
+                                                       model_fields; fill_open_bcs=false)
 
-    with_checkpoint_restore_grid(checkpoint_grid) do
-        restore_prognostic_state!(restored.timestepper, from.timestepper, mode, restored.clock, model_fields; halo_kwargs...)
-    end
+    restore_prognostic_state!(restored.timestepper, from.timestepper, mode, restored.clock, model_fields; fill_open_bcs=false)
 
     foreach(Oceananigans.ImmersedBoundaries.mask_immersed_field!, merge(restored.velocities, restored.tracers))
     return restored

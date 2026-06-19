@@ -212,4 +212,9 @@ function restore_prognostic_state!(restored::ImplicitFreeSurface, from)
     return restored
 end
 
+function restore_prognostic_state!(restored::ImplicitFreeSurface, from, mode)
+    restore_prognostic_state!(restored.displacement, from.displacement, mode)
+    return restored
+end
+
 restore_prognostic_state!(::ImplicitFreeSurface, ::Nothing) = nothing

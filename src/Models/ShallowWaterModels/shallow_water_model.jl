@@ -17,7 +17,6 @@ using Oceananigans.Utils: tupleit
 
 import Oceananigans: prognostic_state, restore_prognostic_state!,
                      restore_checkpoint_grid, checkpoint_restore_mode, warn_if_cross_grid_pickup,
-                     checkpoint_restore_halo_kwargs, with_checkpoint_restore_grid,
                      RestoreOnCurrentGrid, RestoreOnCompatibleGrid
 import Oceananigans.Architectures: architecture
 
@@ -279,39 +278,32 @@ function restore_prognostic_state!(restored::ShallowWaterModel, from)
 end
 
 function restore_prognostic_state!(restored::ShallowWaterModel, from, checkpoint_grid, ::RestoreOnCurrentGrid)
-    with_checkpoint_restore_grid(checkpoint_grid) do
-        restore_prognostic_state!(restored.clock, from.clock)
-        restore_prognostic_state!(restored.solution, from.solution)
-        restore_prognostic_state!(restored.velocities, from.velocities)
-        restore_prognostic_state!(restored.timestepper, from.timestepper)
-        restore_prognostic_state!(restored.tracers, from.tracers)
-        restore_prognostic_state!(restored.closure_fields, from.closure_fields)
-    end
+    restore_prognostic_state!(restored.clock, from.clock)
+    restore_prognostic_state!(restored.solution, from.solution)
+    restore_prognostic_state!(restored.velocities, from.velocities)
+    restore_prognostic_state!(restored.timestepper, from.timestepper)
+    restore_prognostic_state!(restored.tracers, from.tracers)
+    restore_prognostic_state!(restored.closure_fields, from.closure_fields)
 
     return restored
 end
 
 function restore_prognostic_state!(restored::ShallowWaterModel, from, checkpoint_grid, mode::RestoreOnCompatibleGrid)
-    with_checkpoint_restore_grid(checkpoint_grid) do
-        restore_prognostic_state!(restored.clock, from.clock)
-        restore_prognostic_state!(restored.solution, from.solution)
-        restore_prognostic_state!(restored.velocities, from.velocities)
-        restore_prognostic_state!(restored.tracers, from.tracers)
-        restore_prognostic_state!(restored.closure_fields, from.closure_fields)
-    end
+    restore_prognostic_state!(restored.clock, from.clock)
+    restore_prognostic_state!(restored.solution, from.solution, mode)
+    restore_prognostic_state!(restored.velocities, from.velocities, mode)
+    restore_prognostic_state!(restored.tracers, from.tracers, mode)
+    restore_prognostic_state!(restored.closure_fields, from.closure_fields, mode)
 
     warn_if_cross_grid_pickup(mode, restored.grid)
 
     model_fields = Oceananigans.fields(restored)
-    halo_kwargs = checkpoint_restore_halo_kwargs(restored)
 
     Oceananigans.BoundaryConditions.fill_halo_regions!(merge(restored.solution, restored.tracers),
                                                        restored.clock,
-                                                       model_fields; halo_kwargs...)
+                                                       model_fields)
 
-    with_checkpoint_restore_grid(checkpoint_grid) do
-        restore_prognostic_state!(restored.timestepper, from.timestepper, mode, restored.clock, model_fields; halo_kwargs...)
-    end
+    restore_prognostic_state!(restored.timestepper, from.timestepper, mode, restored.clock, model_fields)
 
     foreach(Oceananigans.ImmersedBoundaries.mask_immersed_field!, merge(restored.solution, restored.tracers))
     compute_velocities!(restored.velocities, formulation(restored))

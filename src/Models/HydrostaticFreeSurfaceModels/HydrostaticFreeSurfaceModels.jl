@@ -12,12 +12,11 @@ using KernelAbstractions: @index, @kernel
 using Oceananigans.Architectures: architecture
 using Oceananigans.Fields: ZFaceField
 using Oceananigans.Grids: AbstractGrid, StaticVerticalDiscretization, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid, halo_size
-import Oceananigans.Grids: fs_halo_size
 using Oceananigans.Operators: Δzᶜᶠᶜ, Δzᶠᶜᶜ
 using Oceananigans.TimeSteppers: TimeSteppers, SplitRungeKuttaTimeStepper, QuasiAdamsBashforth2TimeStepper
 using Oceananigans.Utils: Utils, launch!, @apply_regionally
 
-import Oceananigans: fields, prognostic_fields, initialize!
+import Oceananigans: fields, prognostic_fields, initialize!, fs_halo_size
 import Oceananigans.Advection: cell_advection_timescale
 import Oceananigans.Architectures: Architectures, on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!

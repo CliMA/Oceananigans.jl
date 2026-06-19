@@ -1,4 +1,4 @@
-import Oceananigans: prognostic_state, restore_prognostic_state!, checkpoint_restore_grid, checkpoint_restore_mode, RestoreOnCurrentGrid, RestoreOnCompatibleGrid
+import Oceananigans: prognostic_state, restore_prognostic_state!, RestoreOnCurrentGrid, RestoreOnCompatibleGrid
 using Oceananigans.BoundaryConditions:  construct_boundary_conditions_kernels, NFBC, MCBC,
     Zipper, validate_boundary_condition_architecture, validate_boundary_condition_topology
 using Oceananigans.Grids: parent_index_range, default_indices, validate_indices,
@@ -867,14 +867,11 @@ function prognostic_state(field::Field)
     return (; data = on_architecture(CPU(), parent(field)))
 end
 
-function restore_prognostic_state!(restored::Field, from)
-    mode = checkpoint_restore_mode(checkpoint_restore_grid(), restored.grid)
-    restore_prognostic_state!(restored, from, mode)
-    return restored
-end
+restore_prognostic_state!(restored::Field, from) =
+    restore_prognostic_state!(restored.data, from.data)
 
 restore_prognostic_state!(restored::Field, from, ::RestoreOnCurrentGrid) =
-    restore_prognostic_state!(restored.data, from.data)
+    restore_prognostic_state!(restored, from)
 
 function restore_prognostic_state!(restored::Field, from, mode::RestoreOnCompatibleGrid)
     restored_interior = interior(restored)
