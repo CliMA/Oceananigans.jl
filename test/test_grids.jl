@@ -1330,7 +1330,7 @@ end
         xz = RectilinearGrid(arch, FT, size=(8, 4), halo=(2, 1),
                              x=(0, 1), z=(0, 4), topology=(Periodic, Flat, Bounded))
         line = slice(xz, :, :, 1)
-        @test topology(line) == (Periodic, Flat, Flat)
+        @test topology(line) == (topology(grid)[1], topology(grid)[2], Flat)
         @test size(line) == (8, 1, 1)
         @test line.Hx == xz.Hx
         @test xnodes(line, Center()) == xnodes(xz, Center())
