@@ -5,6 +5,7 @@ using Oceananigans
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
 using Oceananigans.Grids: halo_size, with_halo
 using Oceananigans.Architectures: on_architecture, architecture, CPU
+using Oceananigans.Utils: worksize
 
 import Oceananigans: prognostic_state, restore_prognostic_state!, fs_halo_size,
                      checkpoint_restore_mode, RestoreOnCurrentGrid, RestoreOnCompatibleGrid
@@ -179,6 +180,17 @@ function checkpoint_restore_mode(checkpoint_grid, grid)
     return RestoreOnCompatibleGrid(checkpoint_grid)
 end
 
+checkpoint_free_surface_grid(from, checkpoint_grid) = from.checkpoint_free_surface_grid
+
+function checkpoint_free_surface_grid(from::NamedTuple, checkpoint_grid)
+    hasproperty(from, :checkpoint_free_surface_grid) && return from.checkpoint_free_surface_grid
+
+    Wx, Wy, Wz = worksize(checkpoint_grid)
+    sx, sy, sz = size(from.free_surface.displacement.data)
+    halo = ((sx - Wx) ÷ 2, (sy - Wy) ÷ 2, max(0, (sz - Wz) ÷ 2))
+    return with_halo(halo, checkpoint_grid)
+end
+
 function checkpoint_restore_mode(restored, checkpoint_grid, checkpoint_free_surface_grid)
     same_interior = checkpoint_grid == restored.grid
     same_interior || throw(ArgumentError("Checkpoint pickup only supports the same interior grid with a different halo size. Restoring across different grids or resolutions is not supported by this path."))
@@ -331,6 +343,8 @@ function restore_prognostic_state!(restored::NamedTuple, from, mode)
     end
     return restored
 end
+
+restore_prognostic_state!(::NamedTuple, ::Nothing, mode) = nothing
 
 function restore_prognostic_state!(t::Tuple, from::Tuple)
     new_t = tuple(restore_prognostic_state!(t[j], from[j]) for j in 1:length(t))

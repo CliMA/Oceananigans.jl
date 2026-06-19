@@ -392,7 +392,7 @@ end
 function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
     checkpoint_grid = from.checkpoint_grid
 
-    checkpoint_free_surface_grid = from.checkpoint_free_surface_grid
+    checkpoint_free_surface_grid = Oceananigans.OutputWriters.checkpoint_free_surface_grid(from, checkpoint_grid)
     mode = Oceananigans.OutputWriters.checkpoint_restore_mode(restored, checkpoint_grid, checkpoint_free_surface_grid)
     return restore_prognostic_state!(restored, from, checkpoint_grid, mode)
 end
@@ -418,21 +418,16 @@ function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel{<:Any, 
                                    from,
                                    checkpoint_grid,
                                    mode::RestoreOnCompatibleGrid)
+    model_mode = Oceananigans.OutputWriters.checkpoint_restore_mode(checkpoint_grid, restored.grid)
+
     restore_prognostic_state!(restored.clock, from.clock)
     restore_prognostic_state!(restored.particles, from.particles)
-    restore_prognostic_state!(restored.velocities, from.velocities, mode)
-    restore_prognostic_state!(restored.tracers, from.tracers, mode)
-    restore_prognostic_state!(restored.closure_fields, from.closure_fields, mode)
-    restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields, mode)
+    restore_prognostic_state!(restored.velocities, from.velocities, model_mode)
+    restore_prognostic_state!(restored.tracers, from.tracers, model_mode)
+    restore_prognostic_state!(restored.closure_fields, from.closure_fields, model_mode)
+    restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields, model_mode)
     restore_prognostic_state!(restored.vertical_coordinate, restored.grid, from.vertical_coordinate)
-    restore_prognostic_state!(restored.free_surface.displacement, from.free_surface.displacement, mode)
-
-    if !isnothing(restored.free_surface.barotropic_velocities) && !isnothing(from.free_surface.barotropic_velocities)
-        restore_prognostic_state!(restored.free_surface.barotropic_velocities, from.free_surface.barotropic_velocities, mode)
-    end
-
-    restore_prognostic_state!(restored.free_surface.timestepper, from.free_surface.timestepper)
-
+    restore_prognostic_state!(restored.free_surface, from.free_surface, mode)
 
     model_fields = Oceananigans.fields(restored)
 
@@ -440,7 +435,7 @@ function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel{<:Any, 
                                                        restored.clock,
                                                        model_fields)
 
-    restore_prognostic_state!(restored.timestepper, from.timestepper, mode, restored.clock, model_fields)
+    restore_prognostic_state!(restored.timestepper, from.timestepper, model_mode, restored.clock, model_fields)
 
     foreach(Oceananigans.ImmersedBoundaries.mask_immersed_field!, merge(restored.velocities, restored.tracers))
     reconcile_free_surface!(restored.free_surface, restored.grid, restored.velocities)
