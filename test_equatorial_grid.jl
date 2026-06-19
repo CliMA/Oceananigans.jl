@@ -1,17 +1,9 @@
 using Oceananigans
 using Oceananigans.Units
 using Oceananigans.Grids
-using Oceananigans.Fields
 using Oceananigans.Operators
-using Oceananigans.OutputWriters
 using CairoMakie
-using Revise
 using Statistics
-using NCDatasets
-
-# ------------------------
-# 1. Construct your grid
-# ------------------------
 
 Nx, Ny = 64, 64
 
@@ -22,10 +14,13 @@ grid = EquatorialLatitudeLongitudeGrid(
     z = (-1000, 0)
 )
 
-model = NonhydrostaticModel(grid, 
-                            tracers = :c,
-                            advection = WENO(order=3))
+model = NonhydrostaticModel(
+    grid,
+    tracers = :c,
+    advection = WENO(order=3)
+)
 
+# Constant flow
 model.velocities.u .= 1.0
 model.velocities.v .= 0.0
 
@@ -33,139 +28,78 @@ u, v = model.velocities
 
 δ = ∂x(u) + ∂y(v)
 ω = ∂x(v) - ∂y(u)
-compute!(δ)
-compute!(ω)
 
-println("divergence extrema: = ", extrema(interior(δ)))
-println("vorticity extrema:  = ", extrema(interior(ω)))
+compute!(δ); compute!(ω)
 
-set!(model, u = 2, c = (x,y,z) -> exp(-(x^2 + y^2) / (2e2)))
+println("div extremum  : ", extrema(interior(δ)))
+println("vorticity ext : ", extrema(interior(ω)))
 
-simulation = Simulation(model, Δt = 1hours , stop_time=50*days)
+set!(model, u = 2, c = (x,y,z) -> begin
+    φ = y / grid.radius
+    λ = x / (grid.radius * cos(φ))
+    exp(-(φ^2 + λ^2) / 0.1^2)
+end)
 
-function print_tracer_stats(sim)
-    c = interior(sim.model.tracers.c)[:, :, 1]
-    println("t = ", sim.model.clock.time,
-            " | min(c) = ", minimum(c),
-            " | max(c) = ", maximum(c),
-            " | mean(c) = ", mean(c))
-end
+simulation = Simulation(model, Δt = 1hours, stop_time = 50days)
 
-simulation.callbacks[:progress] =
-    Callback(print_tracer_stats, IterationInterval(50))
-
-
-saved_c = Vector{Array{Float64,2}}()
+saved_c = Matrix{Float64}[]
 saved_t = Float64[]
 
-simulation.callbacks[:save_c] = Callback(sim -> begin
-    c = Array(interior(sim.model.tracers.c)[:, :, 1])
-    push!(saved_c, c)
+simulation.callbacks[:save] = Callback(sim -> begin
+    push!(saved_c, Array(interior(sim.model.tracers.c)[:, :, 1]))
     push!(saved_t, sim.model.clock.time)
 end, TimeInterval(1days))
 
 run!(simulation)
 
-print(maximum(interior(model.tracers.c)), " ")
-print(minimum(interior(model.tracers.c)))
+println("Final min/max: ",
+    minimum(interior(model.tracers.c)), " ",
+    maximum(interior(model.tracers.c)))
 
-λ = collect(grid.λᶜᵃᵃ)
-φ = collect(grid.φᵃᶜᵃ)
+λ = collect(grid.λᶜᵃᵃ)[1:Nx]
+φ = collect(grid.φᵃᶜᵃ)[1:Ny]
 
-c = collect(interior(model.tracers.c))[:, :, 1]
+function plot_tracer(c, λ, φ; title="")
+
+    cmin, cmax = extrema(c)
+
+    if cmax - cmin < 1e-12
+        cmax = cmin + 1e-6   # avoid Makie crash
+    end
+
+    fig = Figure()
+    ax = Axis(fig[1,1],
+              xlabel="φ (deg)",
+              ylabel="λ (deg)",
+              title=title)
+
+    hm = heatmap!(ax, φ, λ, c'; colorrange=(cmin, cmax))
+    Colorbar(fig[1,2], hm)
+
+    display(fig)
+end
+
+c_final = saved_c[end]
+plot_tracer(c_final, λ, φ; title="Final tracer")
+
+Nt = length(saved_c)
+
+# Global color scale (important!)
+global_min = minimum(map(minimum, saved_c))
+global_max = maximum(map(maximum, saved_c))
 
 fig = Figure()
 ax = Axis(fig[1,1], xlabel="φ", ylabel="λ")
 
-hm = heatmap!(ax, φ, λ, c')   # transpose for correct orientation
-Colorbar(fig[1,2], hm)
+hm = heatmap!(ax, φ, λ, saved_c[1]';
+              colorrange=(global_min, global_max))
 
-display(fig)
-
-
-λ = collect(grid.λᶜᵃᵃ)
-φ = collect(grid.φᵃᶜᵃ)
-
-using NCDatasets
-using CairoMakie
-
-# ------------------------
-# 1. Load NetCDF file
-# ------------------------
-
-ds = NCDataset("tracer.nc")
-
-c_data = ds["c"]          # (φ, λ, time)
-time   = ds["time"]
-
-Ny, Nx, Nt = size(c_data)
-
-println("Loaded data size:", size(c_data))
-
-# ------------------------
-# 2. Build coordinate axes
-# ------------------------
-# (Use grid values if still in memory — otherwise reconstruct)
-
-# If grid exists:
-λ = collect(grid.λᶜᵃᵃ)
-φ = collect(grid.φᵃᶜᵃ)
-
-# If grid is NOT available, use simple indices:
-# λ = 1:Nx
-# φ = 1:Ny
-
-# ------------------------
-# 3. Plot a single frame
-# ------------------------
-
-n = 1   # first time step
-
-c = c_data[:, :, n]
-
-fig = Figure()
-ax = Axis(fig[1,1],
-    xlabel = "φ (degrees)",
-    ylabel = "λ (degrees)",
-    title = "Tracer field (t = $(round(time[n]/86400, digits=2)) days)"
-)
-
-hm = heatmap!(ax, φ, λ, c'; colorrange=(minimum(c), maximum(c)))
-Colorbar(fig[1,2], hm)
-
-display(fig)
-
-
-# ------------------------
-# 4. Animate all frames
-# ------------------------
-
-fig = Figure()
-ax = Axis(fig[1,1],
-    xlabel="φ (degrees)",
-    ylabel="λ (degrees)"
-)
-
-c0 = c_data[:, :, 1]
-
-# FIXED color range so animation is meaningful
-crange = (minimum(c_data), maximum(c_data))
-
-hm = heatmap!(ax, φ, λ, c0'; colorrange=crange)
 Colorbar(fig[1,2], hm)
 
 record(fig, "tracer_animation.mp4", 1:Nt) do n
-    c = c_data[:, :, n]
-
-    hm[3] = c'   # update heatmap
-
-    ax.title = "t = $(round(time[n]/86400, digits=2)) days"
+    hm[3] = saved_c[n]'
+    ax.title = "t = $(round(saved_t[n]/86400, digits=1)) days"
 end
-
-close(ds)
-
-println("Animation saved as tracer_animation.mp4")
-
 
 
 #=
