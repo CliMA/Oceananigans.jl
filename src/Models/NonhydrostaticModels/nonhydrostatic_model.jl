@@ -18,8 +18,7 @@ using Oceananigans.Utils: tupleit
 
 import Oceananigans: prognostic_state, restore_prognostic_state!,
                      restore_checkpoint_grid, checkpoint_restore_mode, warn_if_cross_grid_pickup,
-                     checkpoint_restore_halo_kwargs, with_checkpoint_restore_grid, finalize_checkpoint_restore!,
-                     fill_timestepper_tendency_halos_after_restore!, fill_timestepper_previous_tendency_halos_after_restore!,
+                     checkpoint_restore_halo_kwargs, with_checkpoint_restore_grid,
                      RestoreOnCurrentGrid, RestoreOnCompatibleGrid
 import Oceananigans.Architectures: architecture
 import Oceananigans.Models: total_velocities
@@ -369,7 +368,11 @@ end
 
 function restore_prognostic_state!(restored::NonhydrostaticModel, from)
     checkpoint_grid = restore_checkpoint_grid(from)
+    mode = checkpoint_restore_mode(checkpoint_grid, restored.grid)
+    return restore_prognostic_state!(restored, from, checkpoint_grid, mode)
+end
 
+function restore_prognostic_state!(restored::NonhydrostaticModel, from, checkpoint_grid, ::RestoreOnCurrentGrid)
     with_checkpoint_restore_grid(checkpoint_grid) do
         restore_prognostic_state!(restored.clock, from.clock)
         restore_prognostic_state!(restored.particles, from.particles)
@@ -381,19 +384,24 @@ function restore_prognostic_state!(restored::NonhydrostaticModel, from)
         restore_prognostic_state!(restored.boundary_transport, from.boundary_transport)
     end
 
-    warn_if_cross_grid_pickup(checkpoint_grid, restored.grid)
-    finalize_checkpoint_restore!(restored, checkpoint_grid)
     return restored
 end
 
 checkpoint_restore_halo_kwargs(::NonhydrostaticModel) = (; fill_open_bcs=false)
 
-finalize_checkpoint_restore!(restored::NonhydrostaticModel, checkpoint_grid) =
-    finalize_checkpoint_restore!(restored, checkpoint_restore_mode(checkpoint_grid, restored.grid))
+function restore_prognostic_state!(restored::NonhydrostaticModel, from, checkpoint_grid, mode::RestoreOnCompatibleGrid)
+    with_checkpoint_restore_grid(checkpoint_grid) do
+        restore_prognostic_state!(restored.clock, from.clock)
+        restore_prognostic_state!(restored.particles, from.particles)
+        restore_prognostic_state!(restored.velocities, from.velocities)
+        restore_prognostic_state!(restored.tracers, from.tracers)
+        restore_prognostic_state!(restored.closure_fields, from.closure_fields)
+        restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
+        restore_prognostic_state!(restored.boundary_transport, from.boundary_transport)
+    end
 
-finalize_checkpoint_restore!(restored::NonhydrostaticModel, ::RestoreOnCurrentGrid) = restored
+    warn_if_cross_grid_pickup(mode, restored.grid)
 
-function finalize_checkpoint_restore!(restored::NonhydrostaticModel, ::RestoreOnCompatibleGrid)
     model_fields = Oceananigans.fields(restored)
     halo_kwargs = checkpoint_restore_halo_kwargs(restored)
 
@@ -401,8 +409,9 @@ function finalize_checkpoint_restore!(restored::NonhydrostaticModel, ::RestoreOn
                                                        restored.clock,
                                                        model_fields; halo_kwargs...)
 
-    fill_timestepper_tendency_halos_after_restore!(restored.timestepper, restored.clock, model_fields; halo_kwargs...)
-    fill_timestepper_previous_tendency_halos_after_restore!(restored.timestepper, restored.clock, model_fields; halo_kwargs...)
+    with_checkpoint_restore_grid(checkpoint_grid) do
+        restore_prognostic_state!(restored.timestepper, from.timestepper, mode, restored.clock, model_fields; halo_kwargs...)
+    end
 
     foreach(Oceananigans.ImmersedBoundaries.mask_immersed_field!, merge(restored.velocities, restored.tracers))
     return restored

@@ -20,7 +20,6 @@ import Oceananigans
 import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!,
                      restore_checkpoint_grid, checkpoint_restore_mode, warn_if_cross_grid_pickup,
                      checkpoint_restore_halo_kwargs, with_checkpoint_restore_grid,
-                     fill_timestepper_tendency_halos_after_restore!, fill_timestepper_previous_tendency_halos_after_restore!,
                      RestoreOnCurrentGrid, RestoreOnCompatibleGrid
 import Oceananigans.Models: total_velocities
 import Oceananigans.TimeSteppers: update_state!, reconcile_state!, materialize_clock!
@@ -436,34 +435,6 @@ function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel{<:Any, 
         restore_prognostic_state!(restored.closure_fields, from.closure_fields)
         restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
         restore_prognostic_state!(restored.vertical_coordinate, restored.grid, from.vertical_coordinate)
-
-        if !isnothing(restored.timestepper) && !isnothing(from.timestepper)
-            if !isnothing(restored.timestepper.Gⁿ) && !isnothing(from.timestepper.Gⁿ)
-                for name in keys(restored.timestepper.Gⁿ)
-                    name in (:U, :V) && continue
-                    restore_prognostic_state!(getproperty(restored.timestepper.Gⁿ, name), getproperty(from.timestepper.Gⁿ, name))
-                end
-            end
-
-            if !isnothing(restored.timestepper.G⁻) && !isnothing(from.timestepper.G⁻)
-                for name in keys(restored.timestepper.G⁻)
-                    name in (:U, :V) && continue
-                    restore_prognostic_state!(getproperty(restored.timestepper.G⁻, name), getproperty(from.timestepper.G⁻, name))
-                end
-            end
-        end
-    end
-
-    if !isnothing(restored.timestepper) && !isnothing(from.timestepper)
-        if !isnothing(restored.timestepper.Gⁿ) && !isnothing(from.timestepper.Gⁿ)
-            :U in keys(restored.timestepper.Gⁿ) && restore_prognostic_state!(restored.timestepper.Gⁿ.U, from.timestepper.Gⁿ.U, mode)
-            :V in keys(restored.timestepper.Gⁿ) && restore_prognostic_state!(restored.timestepper.Gⁿ.V, from.timestepper.Gⁿ.V, mode)
-        end
-
-        if !isnothing(restored.timestepper.G⁻) && !isnothing(from.timestepper.G⁻)
-            :U in keys(restored.timestepper.G⁻) && restore_prognostic_state!(restored.timestepper.G⁻.U, from.timestepper.G⁻.U, mode)
-            :V in keys(restored.timestepper.G⁻) && restore_prognostic_state!(restored.timestepper.G⁻.V, from.timestepper.G⁻.V, mode)
-        end
     end
 
     restore_prognostic_state!(restored.free_surface.displacement, from.free_surface.displacement, mode)
@@ -487,8 +458,9 @@ function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel{<:Any, 
                                                        restored.clock,
                                                        model_fields; halo_kwargs...)
 
-    fill_timestepper_tendency_halos_after_restore!(restored.timestepper, restored.clock, model_fields; halo_kwargs...)
-    fill_timestepper_previous_tendency_halos_after_restore!(restored.timestepper, restored.clock, model_fields; halo_kwargs...)
+    with_checkpoint_restore_grid(checkpoint_grid) do
+        restore_prognostic_state!(restored.timestepper, from.timestepper, mode, restored.clock, model_fields; halo_kwargs...)
+    end
 
     foreach(Oceananigans.ImmersedBoundaries.mask_immersed_field!, merge(restored.velocities, restored.tracers))
     reconcile_free_surface!(restored.free_surface, restored.grid, restored.velocities)

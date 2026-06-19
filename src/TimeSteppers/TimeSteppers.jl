@@ -18,8 +18,7 @@ using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @kernel, @index
 
 using Oceananigans: Oceananigans, AbstractModel, initialize!, prognostic_fields
-import Oceananigans: fill_timestepper_tendency_halos_after_restore!,
-                     fill_timestepper_previous_tendency_halos_after_restore!
+import Oceananigans: RestoreOnCurrentGrid, RestoreOnCompatibleGrid
 
 """
     abstract type AbstractTimeStepper
@@ -136,14 +135,40 @@ end
 
 restore_prognostic_state!(::AbstractTimeStepper, ::Nothing) = nothing
 
-function fill_timestepper_tendency_halos_after_restore!(timestepper::AbstractTimeStepper, clock, model_fields; kwargs...)
-    Oceananigans.BoundaryConditions.fill_halo_regions!(timestepper.Gⁿ, clock, model_fields; kwargs...)
-    return nothing
+restore_prognostic_state!(restored::AbstractTimeStepper, from, ::RestoreOnCurrentGrid) =
+    restore_prognostic_state!(restored, from)
+
+restore_prognostic_state!(restored::AbstractTimeStepper, from, ::RestoreOnCurrentGrid, clock, model_fields; kwargs...) =
+    restore_prognostic_state!(restored, from)
+
+function restore_prognostic_state!(restored::AbstractTimeStepper, from, mode::RestoreOnCompatibleGrid, clock, model_fields; kwargs...)
+    if !isnothing(restored.Gⁿ) && !isnothing(from.Gⁿ)
+        for name in keys(restored.Gⁿ)
+            restored_field = getproperty(restored.Gⁿ, name)
+            from_field = getproperty(from.Gⁿ, name)
+            name in (:U, :V) ?
+                restore_prognostic_state!(restored_field, from_field, mode) :
+                restore_prognostic_state!(restored_field, from_field)
+        end
+
+        Oceananigans.BoundaryConditions.fill_halo_regions!(restored.Gⁿ, clock, model_fields; kwargs...)
+    end
+
+    if !isnothing(restored.G⁻) && !isnothing(from.G⁻)
+        for name in keys(restored.G⁻)
+            restored_field = getproperty(restored.G⁻, name)
+            from_field = getproperty(from.G⁻, name)
+            name in (:U, :V) ?
+                restore_prognostic_state!(restored_field, from_field, mode) :
+                restore_prognostic_state!(restored_field, from_field)
+        end
+
+        Oceananigans.BoundaryConditions.fill_halo_regions!(restored.G⁻, clock, model_fields; kwargs...)
+    end
+
+    return restored
 end
 
-function fill_timestepper_previous_tendency_halos_after_restore!(timestepper::AbstractTimeStepper, clock, model_fields; kwargs...)
-    Oceananigans.BoundaryConditions.fill_halo_regions!(timestepper.G⁻, clock, model_fields; kwargs...)
-    return nothing
-end
+restore_prognostic_state!(restored::AbstractTimeStepper, ::Nothing, ::RestoreOnCompatibleGrid, clock, model_fields; kwargs...) = restored
 
 end # module

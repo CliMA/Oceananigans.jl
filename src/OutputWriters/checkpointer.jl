@@ -8,8 +8,6 @@ using Oceananigans.Architectures: on_architecture, architecture, CPU
 
 import Oceananigans: prognostic_state, restore_prognostic_state!, checkpoint_restore_grid,
                      restore_checkpoint_grid, checkpoint_restore_mode, warn_if_cross_grid_pickup, checkpoint_restore_halo_kwargs,
-                     fill_timestepper_tendency_halos_after_restore!,
-                     fill_timestepper_previous_tendency_halos_after_restore!,
                      RestoreOnCurrentGrid, RestoreOnCompatibleGrid, with_checkpoint_restore_grid
 import Oceananigans.Fields: set!
 
@@ -214,8 +212,6 @@ function warn_if_cross_grid_pickup(mode::RestoreOnCompatibleGrid, grid)
 end
 
 checkpoint_restore_halo_kwargs(model) = NamedTuple()
-fill_timestepper_tendency_halos_after_restore!(args...; kwargs...) = nothing
-fill_timestepper_previous_tendency_halos_after_restore!(args...; kwargs...) = nothing
 
 function with_checkpoint_restore_grid(f, grid)
     previous_grid = checkpoint_restore_grid_ref[]
