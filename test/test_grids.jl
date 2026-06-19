@@ -1365,6 +1365,23 @@ end
         zsub = slice(gz, :, :, 2:3)
         @test topology(zsub) == (Periodic, Flat, Bounded)
         @test znodes(zsub, Face()) == znodes(gz, Face())[2:4]
+
+        # The collapsed coordinate can be set with a keyword named after it. By default the
+        # Flat dimension is located at the sliced cell center; `z=0` places it at the surface.
+        surface = slice(grid, :, :, 1; z=0)
+        @test topology(surface) == (Periodic, Periodic, Flat)
+        @test only(znodes(surface, Center())) == 0
+        @test surface != slice(grid, :, :, 1)
+
+        # `nothing` leaves the Flat dimension without a location.
+        @test slice(grid, :, :, 1; z=nothing) != slice(grid, :, :, 1; z=0)
+
+        # A horizontal coordinate keyword collapses and locates that dimension.
+        @test only(xnodes(slice(grid, 2, :, :; x=1//4), Center())) == 1//4
+
+        # A coordinate keyword is only valid for a collapsed (Integer-indexed) dimension.
+        @test_throws ArgumentError slice(grid, :, :, :; z=0)
+        @test_throws ArgumentError slice(grid, :, :, 2:4; z=0)
     end
 end
 
@@ -1376,16 +1393,23 @@ end
                                     topology=(Periodic, Bounded, Bounded))
 
         sst_grid = slice(llg, :, :, 1)
-        @test sst isa LatitudeLongitudeGrid
+        @test sst_grid isa LatitudeLongitudeGrid
         @test topology(sst_grid) == (Periodic, Bounded, Flat)
         @test size(sst_grid) == (36, 18, 1)
         @test halo_size(sst_grid) == (3, 3, 0)
         @test architecture(sst_grid) == arch
         @test eltype(sst_grid) == FT
-        @test sst.radius == llg.radius
+        @test sst_grid.radius == llg.radius
         @test λnodes(sst_grid, Center()) == λnodes(llg, Center())
         @test φnodes(sst_grid, Center()) == φnodes(llg, Center())
         # Latitude-dependent horizontal metrics are retained and finite.
         @test all(isfinite, xspacings(sst_grid, Center(), Center()))
+
+        # The vertical coordinate of the collapsed dimension can be set with `z`.
+        surface = slice(llg, :, :, 5; z=0)
+        @test only(znodes(surface, Center())) == 0
+        @test surface != slice(llg, :, :, 5)
+        # A coordinate keyword is only valid for a collapsed (Integer-indexed) dimension.
+        @test_throws ArgumentError slice(llg, :, :, :; z=0)
     end
 end

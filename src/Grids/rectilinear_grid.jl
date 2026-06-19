@@ -446,69 +446,23 @@ function with_halo(halo, grid::RectilinearGrid)
     return RectilinearGrid(arch, FT; kwargs...)
 end
 
-"""
-    slice(grid::RectilinearGrid, i, j, k)
-
-Return a grid extracted from `grid` along each dimension according to its index:
-
-- a colon (`:`) retains the dimension with its size, halo, spacing, and topology unchanged;
-- an `Integer` collapses the dimension to a `Flat` dimension *located* at that cell center;
-- a range (e.g. `2:4`) extracts the `Bounded` sub-interval spanning the selected cells.
-
-A range collapses a `Periodic` dimension to `Bounded`, since a window of a periodic domain
-is no longer periodic.
-
-For a `RectilinearGrid` the horizontal coordinates are independent of the vertical (and vice
-versa), so for an integer index only *which* dimension is collapsed matters, not the value —
-but the resulting `Flat` dimension is still located at the sliced cell center, so e.g.
-`slice(grid, :, :, 1)` and `slice(grid, :, :, 2)` differ in their `z` position. (The
-horizontal value-dependence matters for curved grids, where this method does not yet apply.)
-
-This is the grid-level primitive behind exchange/surface grids in coupled models: e.g. a
-2D horizontal grid for a slab-ocean SST or an atmosphere–ocean exchange grid is
-`slice(grid, :, :, k)`.
-
-Example
-=======
-
-```jldoctest slice
-julia> using Oceananigans
-
-julia> grid = RectilinearGrid(size=(8, 6, 4), x=(0, 1), y=(0, 1), z=(0, 1),
-                              topology=(Periodic, Periodic, Bounded));
-
-julia> slice(grid, :, :, 1)
-8×6×1 RectilinearGrid{Float64, Periodic, Periodic, Flat} on CPU with 3×3×0 halo
-├── Periodic x ∈ [0.0, 1.0) regularly spaced with Δx=0.125
-├── Periodic y ∈ [0.0, 1.0) regularly spaced with Δy=0.166667
-└── Flat z = 0.125
-```
-
-A range retains the dimension as a `Bounded` sub-interval:
-
-```jldoctest slice
-julia> slice(grid, :, :, 2:4)
-8×6×3 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-├── Periodic x ∈ [0.0, 1.0)  regularly spaced with Δx=0.125
-├── Periodic y ∈ [0.0, 1.0)  regularly spaced with Δy=0.166667
-└── Bounded  z ∈ [0.25, 1.0] regularly spaced with Δz=0.25
-```
-"""
-function slice(grid::RectilinearGrid, i, j, k)
+# See the `slice` docstring (defined in grid_utils.jl) for documentation. The `x`, `y`, `z`
+# keywords set the constant coordinate of a collapsed dimension (default `:auto` → cell center).
+function slice(grid::RectilinearGrid, i, j, k; x=:auto, y=:auto, z=:auto)
     arch = architecture(grid)
     FT = eltype(grid)
     TX, TY, TZ = topology(grid)
 
-    TX′, x, Nx, Hx = slice_dimension(i, cpu_face_constructor_x(grid), grid.Nx, grid.Hx, TX)
-    TY′, y, Ny, Hy = slice_dimension(j, cpu_face_constructor_y(grid), grid.Ny, grid.Hy, TY)
-    TZ′, z, Nz, Hz = slice_dimension(k, cpu_face_constructor_z(grid), grid.Nz, grid.Hz, TZ)
+    TX′, x′, Nx, Hx = slice_dimension(i, cpu_face_constructor_x(grid), grid.Nx, grid.Hx, TX; location=x)
+    TY′, y′, Ny, Hy = slice_dimension(j, cpu_face_constructor_y(grid), grid.Ny, grid.Hy, TY; location=y)
+    TZ′, z′, Nz, Hz = slice_dimension(k, cpu_face_constructor_z(grid), grid.Nz, grid.Hz, TZ; location=z)
     topo = (TX′, TY′, TZ′)
 
     sz   = pop_flat_elements((Nx, Ny, Nz), topo)
     halo = pop_flat_elements((Hx, Hy, Hz), topo)
 
     kwargs = Dict{Symbol, Any}(:size => sz, :halo => halo, :topology => topo,
-                               :x => x, :y => y, :z => z)
+                               :x => x′, :y => y′, :z => z′)
 
     return RectilinearGrid(arch, FT; kwargs...)
 end
