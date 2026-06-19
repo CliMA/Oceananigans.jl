@@ -1316,14 +1316,14 @@ end
                                x=(0, 1), y=(0, 2), z=(0, 4),
                                topology=(Periodic, Periodic, Bounded))
 
-        sst = slice(grid, :, :, 1)
-        @test topology(sst) == (topology(grid, 1), topology(grid, 2), Flat)
-        @test size(sst) == (8, 6, 1)
-        @test halo_size(sst) == (2, 3, 0)
-        @test architecture(sst) == arch
-        @test eltype(sst) == FT
-        @test xnodes(sst, Center()) == xnodes(grid, Center())
-        @test ynodes(sst, Center()) == ynodes(grid, Center())
+        sst_grid = slice(grid, :, :, 1)
+        @test topology(sst_grid) == (Periodic, Periodic, Flat)
+        @test size(sst_grid) == (8, 6, 1)
+        @test halo_size(sst_grid) == (2, 3, 0)
+        @test architecture(sst_grid) == arch
+        @test eltype(sst_grid) == FT
+        @test xnodes(sst_grid, Center()) == xnodes(grid, Center())
+        @test ynodes(sst_grid, Center()) == ynodes(grid, Center())
 
         # Slicing an already-Flat dimension is a no-op for that dimension; collapsing the
         # vertical of an (x, z) grid leaves a 1D horizontal grid (the coupling/SST case).
