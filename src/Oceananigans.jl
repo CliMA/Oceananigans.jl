@@ -120,7 +120,10 @@ export
     CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField,
 
     # Utils
-    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
+    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject,
+
+    # Plotting (methods provided by OceananigansMakieExt)
+    quadmesh, quadmesh!
 
 using DocStringExtensions
 
@@ -233,6 +236,10 @@ function fill_timestepper_tendency_halos_after_restore! end
 function fill_timestepper_previous_tendency_halos_after_restore! end
 function tracer_tendency_kernel_function end
 function boundary_conditions end
+
+# Plotting placeholders; methods added by OceananigansMakieExt when Makie is loaded.
+function quadmesh end
+function quadmesh! end
 
 #####
 ##### Include all the submodules
