@@ -19,7 +19,7 @@ using Oceananigans.Utils: tupleit
 import Oceananigans
 import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!,
                      restore_checkpoint_grid, checkpoint_restore_mode, warn_if_cross_grid_pickup,
-                     checkpoint_restore_halo_kwargs, with_checkpoint_restore_grid, finalize_checkpoint_restore!,
+                     checkpoint_restore_halo_kwargs, with_checkpoint_restore_grid,
                      fill_timestepper_tendency_halos_after_restore!, fill_timestepper_previous_tendency_halos_after_restore!,
                      RestoreOnCurrentGrid, RestoreOnCompatibleGrid
 import Oceananigans.Models: total_velocities
@@ -400,44 +400,86 @@ function restore_prognostic_state!(::HydrostaticFreeSurfaceModel, from, checkpoi
     throw(ArgumentError("Checkpoint pickup only supports the same interior grid with a different halo size. Restoring across different grids or resolutions is not supported by this path."))
 end
 
-function Oceananigans.OutputWriters.restore_timestepper_from_checkpoint!(restored::HydrostaticFreeSurfaceModel{<:Any, <:Any, <:Any, <:SplitExplicitFreeSurface},
-                                                                             from,
-                                                                             checkpoint_grid,
-                                                                             free_surface_mode)
-    Oceananigans.OutputWriters.restore_hydrostatic_split_explicit_timestepper_from_checkpoint!(restored.timestepper,
-                                                                                                from.timestepper,
-                                                                                                checkpoint_grid,
-                                                                                                free_surface_mode)
-    return nothing
-end
-
-function Oceananigans.OutputWriters.restore_free_surface_from_checkpoint!(restored::HydrostaticFreeSurfaceModel{<:Any, <:Any, <:Any, <:SplitExplicitFreeSurface},
-                                                                               from,
-                                                                               mode)
-    restore_prognostic_state!(restored.free_surface.displacement, from.displacement, mode)
-    Oceananigans.OutputWriters.restore_namedtuple_fields_on_mode!(restored.free_surface.barotropic_velocities,
-                                                                  from.barotropic_velocities,
-                                                                  mode)
-    restore_prognostic_state!(restored.free_surface.timestepper, from.timestepper)
-    return nothing
-end
-
 function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from, checkpoint_grid, ::Val{true})
-    free_surface_mode = Oceananigans.OutputWriters.checkpoint_free_surface_restore_mode(restored, from, checkpoint_grid)
-
-    Oceananigans.OutputWriters.restore_model_state_from_checkpoint!(restored, from, checkpoint_grid, free_surface_mode)
-    Oceananigans.OutputWriters.restore_free_surface_from_checkpoint!(restored, from.free_surface, free_surface_mode)
-
-    warn_if_cross_grid_pickup(free_surface_mode, restored.grid)
-    return finalize_checkpoint_restore!(restored, free_surface_mode)
+    mode = Oceananigans.OutputWriters.checkpoint_free_surface_restore_mode(restored, from, checkpoint_grid)
+    return restore_prognostic_state!(restored, from, checkpoint_grid, mode)
 end
 
-finalize_checkpoint_restore!(restored::HydrostaticFreeSurfaceModel, checkpoint_grid) =
-    finalize_checkpoint_restore!(restored, checkpoint_restore_mode(checkpoint_grid, restored.grid))
+function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel{<:Any, <:Any, <:Any, <:SplitExplicitFreeSurface},
+                                   from,
+                                   checkpoint_grid,
+                                   ::RestoreOnCurrentGrid)
+    with_checkpoint_restore_grid(checkpoint_grid) do
+        restore_prognostic_state!(restored.clock, from.clock)
+        restore_prognostic_state!(restored.particles, from.particles)
+        restore_prognostic_state!(restored.velocities, from.velocities)
+        restore_prognostic_state!(restored.tracers, from.tracers)
+        restore_prognostic_state!(restored.closure_fields, from.closure_fields)
+        restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
+        restore_prognostic_state!(restored.vertical_coordinate, restored.grid, from.vertical_coordinate)
+        restore_prognostic_state!(restored.timestepper, from.timestepper)
+        restore_prognostic_state!(restored.free_surface, from.free_surface)
+    end
 
-finalize_checkpoint_restore!(restored::HydrostaticFreeSurfaceModel, ::RestoreOnCurrentGrid) = restored
+    return restored
+end
 
-function finalize_checkpoint_restore!(restored::HydrostaticFreeSurfaceModel, ::RestoreOnCompatibleGrid)
+function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel{<:Any, <:Any, <:Any, <:SplitExplicitFreeSurface},
+                                   from,
+                                   checkpoint_grid,
+                                   mode::RestoreOnCompatibleGrid)
+    with_checkpoint_restore_grid(checkpoint_grid) do
+        restore_prognostic_state!(restored.clock, from.clock)
+        restore_prognostic_state!(restored.particles, from.particles)
+        restore_prognostic_state!(restored.velocities, from.velocities)
+        restore_prognostic_state!(restored.tracers, from.tracers)
+        restore_prognostic_state!(restored.closure_fields, from.closure_fields)
+        restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
+        restore_prognostic_state!(restored.vertical_coordinate, restored.grid, from.vertical_coordinate)
+
+        if !isnothing(restored.timestepper) && !isnothing(from.timestepper)
+            if !isnothing(restored.timestepper.Gⁿ) && !isnothing(from.timestepper.Gⁿ)
+                for name in keys(restored.timestepper.Gⁿ)
+                    name in (:U, :V) && continue
+                    restore_prognostic_state!(getproperty(restored.timestepper.Gⁿ, name), getproperty(from.timestepper.Gⁿ, name))
+                end
+            end
+
+            if !isnothing(restored.timestepper.G⁻) && !isnothing(from.timestepper.G⁻)
+                for name in keys(restored.timestepper.G⁻)
+                    name in (:U, :V) && continue
+                    restore_prognostic_state!(getproperty(restored.timestepper.G⁻, name), getproperty(from.timestepper.G⁻, name))
+                end
+            end
+        end
+    end
+
+    if !isnothing(restored.timestepper) && !isnothing(from.timestepper)
+        if !isnothing(restored.timestepper.Gⁿ) && !isnothing(from.timestepper.Gⁿ)
+            :U in keys(restored.timestepper.Gⁿ) && restore_prognostic_state!(restored.timestepper.Gⁿ.U, from.timestepper.Gⁿ.U, mode)
+            :V in keys(restored.timestepper.Gⁿ) && restore_prognostic_state!(restored.timestepper.Gⁿ.V, from.timestepper.Gⁿ.V, mode)
+        end
+
+        if !isnothing(restored.timestepper.G⁻) && !isnothing(from.timestepper.G⁻)
+            :U in keys(restored.timestepper.G⁻) && restore_prognostic_state!(restored.timestepper.G⁻.U, from.timestepper.G⁻.U, mode)
+            :V in keys(restored.timestepper.G⁻) && restore_prognostic_state!(restored.timestepper.G⁻.V, from.timestepper.G⁻.V, mode)
+        end
+    end
+
+    restore_prognostic_state!(restored.free_surface.displacement, from.free_surface.displacement, mode)
+
+    if !isnothing(restored.free_surface.barotropic_velocities) && !isnothing(from.free_surface.barotropic_velocities)
+        for name in keys(restored.free_surface.barotropic_velocities)
+            restore_prognostic_state!(getproperty(restored.free_surface.barotropic_velocities, name),
+                                      getproperty(from.free_surface.barotropic_velocities, name),
+                                      mode)
+        end
+    end
+
+    restore_prognostic_state!(restored.free_surface.timestepper, from.free_surface.timestepper)
+
+    warn_if_cross_grid_pickup(mode, restored.grid)
+
     model_fields = Oceananigans.fields(restored)
     halo_kwargs = checkpoint_restore_halo_kwargs(restored)
 
