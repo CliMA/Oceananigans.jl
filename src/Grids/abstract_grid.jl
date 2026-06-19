@@ -100,8 +100,6 @@ domain in (x, y, z).
 halo_size(grid) = map(Int, (grid.Hx, grid.Hy, grid.Hz))
 halo_size(grid, d) = halo_size(grid)[d]
 
-
-
 @inline Base.size(grid::AbstractGrid, d::Int) = size(grid)[d]
 
 grid_name(grid::AbstractGrid) = typeof(grid).name.wrapper
