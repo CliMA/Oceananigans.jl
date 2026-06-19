@@ -63,15 +63,17 @@ include("dependencies_for_runtests.jl")
                 simulation = Simulation(model; Δt, stop_iteration=4, verbose=false)
 
                 for _ = 1:simulation.stop_iteration
+                    previous_c = deepcopy(c)
                     previous_total_c = first(Field(total_c))
                     previous_surface_c_flux = first(Field(surface_c_flux))
 
                     time_step!(simulation, Δt)
+                    last_Δt = simulation.model.clock.last_Δt
 
                     current_total_c = first(Field(total_c))
                     last_Δt = simulation.model.clock.last_Δt
 
-                    actual_Δc = current_total_c - previous_total_c
+                    actual_Δc = first(Field(Integral(c - previous_c)))
                     expected_Δc = - previous_surface_c_flux * last_Δt
                     predicted_total_c = previous_total_c + expected_Δc
 
