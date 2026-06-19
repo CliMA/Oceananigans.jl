@@ -1375,17 +1375,17 @@ end
                                     longitude=(-180, 180), latitude=(-80, 80), z=(-1000, 0),
                                     topology=(Periodic, Bounded, Bounded))
 
-        sst = slice(llg, :, :, 1)
+        sst_grid = slice(llg, :, :, 1)
         @test sst isa LatitudeLongitudeGrid
-        @test topology(sst) == (Periodic, Bounded, Flat)
-        @test size(sst) == (36, 18, 1)
-        @test halo_size(sst) == (3, 3, 0)
-        @test architecture(sst) == arch
-        @test eltype(sst) == FT
+        @test topology(sst_grid) == (Periodic, Bounded, Flat)
+        @test size(sst_grid) == (36, 18, 1)
+        @test halo_size(sst_grid) == (3, 3, 0)
+        @test architecture(sst_grid) == arch
+        @test eltype(sst_grid) == FT
         @test sst.radius == llg.radius
-        @test λnodes(sst, Center()) == λnodes(llg, Center())
-        @test φnodes(sst, Center()) == φnodes(llg, Center())
+        @test λnodes(sst_grid, Center()) == λnodes(llg, Center())
+        @test φnodes(sst_grid, Center()) == φnodes(llg, Center())
         # Latitude-dependent horizontal metrics are retained and finite.
-        @test all(isfinite, xspacings(sst, Center(), Center()))
+        @test all(isfinite, xspacings(sst_grid, Center(), Center()))
     end
 end
