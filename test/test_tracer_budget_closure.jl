@@ -50,6 +50,8 @@ include("dependencies_for_runtests.jl")
                                                             boundary_conditions=(c=c_bcs,),
                                                             free_surface=SplitExplicitFreeSurface(substeps=15))
 
+            hydrostatic_model.free_surface.displacement[1:grid.Nx, 1:grid.Ny, grid.Nz+1:grid.Nz+1] .= 2e-1 * rand.()
+
             push!(models, hydrostatic_model)
 
             if grid !== tripolar_grid
@@ -64,6 +66,10 @@ include("dependencies_for_runtests.jl")
                 @info "... on $(summary(model))"
                 set!(model, c = (λ, φ, z) -> -z / H * cosd(λ)^2 * cosd(φ))
                 c = model.tracers.c
+
+                if model isa HydrostaticFreeSurfaceModel
+
+                end
 
                 total_c = Integral(c, dims=(1, 2, 3))
                 surface_c_flux = Integral(Oceananigans.Models.BoundaryConditionField(c, :top, model), dims=(1, 2))
