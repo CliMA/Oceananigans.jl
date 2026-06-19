@@ -7,7 +7,7 @@ using Oceananigans.Grids: halo_size, with_halo
 using Oceananigans.Architectures: on_architecture, architecture, CPU
 
 import Oceananigans: prognostic_state, restore_prognostic_state!, fs_halo_size,
-                     restore_checkpoint_grid, checkpoint_restore_mode, warn_if_cross_grid_pickup,
+                     checkpoint_restore_mode, warn_if_cross_grid_pickup,
                      RestoreOnCurrentGrid, RestoreOnCompatibleGrid
 import Oceananigans.Fields: set!
 
@@ -166,40 +166,16 @@ latest_checkpoint(checkpointer, filepaths) = latest_checkpoint_by_iteration(chec
 ##### Writing checkpoints
 #####
 
-restore_checkpoint_grid(::Nothing) = nothing
-restore_checkpoint_grid(from) = nothing
-restore_checkpoint_grid(from::NamedTuple{names}) where names = restore_checkpoint_grid(Val(:checkpoint_grid in names), from)
-restore_checkpoint_grid(::Val{true}, from) = from.checkpoint_grid
-restore_checkpoint_grid(::Val{false}, from) = nothing
-
-restore_checkpoint_free_surface_grid(from::NamedTuple{names}) where names = restore_checkpoint_free_surface_grid(Val(:checkpoint_free_surface_grid in names), from)
-restore_checkpoint_free_surface_grid(::Val{true}, from) = from.checkpoint_free_surface_grid
-restore_checkpoint_free_surface_grid(::Val{false}, from) =
-    throw(ArgumentError("Hydrostatic free-surface checkpoint pickup requires `checkpoint_free_surface_grid` metadata. Re-create the checkpoint with the current checkpointer implementation."))
-
 checkpoint_restore_mode(::Nothing, grid) = RestoreOnCurrentGrid()
-checkpoint_restore_mode(checkpoint_grid, grid) =
-    checkpoint_restore_mode(checkpoint_grid,
-                            grid,
-                            Val(same_checkpoint_interior_grid(checkpoint_grid, grid)),
-                            Val(halo_size(checkpoint_grid) == halo_size(grid)))
 
-function checkpoint_restore_mode(checkpoint_grid, grid, ::Val{false}, same_halos)
-    throw(ArgumentError("Checkpoint pickup only supports the same interior grid with a different halo size. Restoring across different grids or resolutions is not supported by this path."))
+function checkpoint_restore_mode(checkpoint_grid, grid)
+    same_interior = checkpoint_grid == with_halo(halo_size(checkpoint_grid), on_architecture(CPU(), grid))
+    same_interior || throw(ArgumentError("Checkpoint pickup only supports the same interior grid with a different halo size. Restoring across different grids or resolutions is not supported by this path."))
+
+    return halo_size(checkpoint_grid) == halo_size(grid) ?
+           RestoreOnCurrentGrid() :
+           RestoreOnCompatibleGrid(checkpoint_grid)
 end
-
-checkpoint_restore_mode(checkpoint_grid, grid, ::Val{true}, ::Val{true}) = RestoreOnCurrentGrid()
-checkpoint_restore_mode(checkpoint_grid, grid, ::Val{true}, ::Val{false}) = RestoreOnCompatibleGrid(checkpoint_grid)
-
-same_checkpoint_interior_grid(checkpoint_grid, grid) = checkpoint_grid == grid
-same_checkpoint_interior_grid(checkpoint_grid::AbstractGrid, grid::AbstractGrid) =
-    same_checkpoint_interior_grid(checkpoint_grid, grid, Val(halo_size(checkpoint_grid) == halo_size(grid)))
-
-same_checkpoint_interior_grid(checkpoint_grid::AbstractGrid, grid::AbstractGrid, ::Val{true}) =
-    checkpoint_grid == grid
-
-same_checkpoint_interior_grid(checkpoint_grid::AbstractGrid, grid::AbstractGrid, ::Val{false}) =
-    checkpoint_grid == with_halo(halo_size(checkpoint_grid), on_architecture(CPU(), grid))
 
 warn_if_cross_grid_pickup(checkpoint_grid, grid) = warn_if_cross_grid_pickup(checkpoint_restore_mode(checkpoint_grid, grid), grid)
 warn_if_cross_grid_pickup(::RestoreOnCurrentGrid, grid) = nothing
@@ -208,44 +184,24 @@ function warn_if_cross_grid_pickup(mode::RestoreOnCompatibleGrid, grid)
     return nothing
 end
 
-function checkpoint_free_surface_restore_mode(restored, from, checkpoint_grid)
-    checkpoint_free_surface_grid = restore_checkpoint_free_surface_grid(from)
-    checkpoint_restore_mode(restored,
-                            checkpoint_grid,
-                            checkpoint_free_surface_extra_halo(checkpoint_free_surface_grid, checkpoint_grid))
+function checkpoint_restore_mode(restored, checkpoint_grid, checkpoint_free_surface_grid)
+    same_interior = checkpoint_grid == with_halo(halo_size(checkpoint_grid), on_architecture(CPU(), restored.grid))
+    same_interior || throw(ArgumentError("Checkpoint pickup only supports the same interior grid with a different halo size. Restoring across different grids or resolutions is not supported by this path."))
+
+    checkpoint_free_surface_halo = halo_size(checkpoint_free_surface_grid)
+    restored_free_surface_halo = fs_halo_size(restored)
+
+    same_grid_halos = halo_size(checkpoint_grid) == halo_size(restored.grid)
+    same_free_surface_halos = checkpoint_free_surface_halo == restored_free_surface_halo
+
+    if same_grid_halos && same_free_surface_halos
+        return RestoreOnCurrentGrid()
+    end
+
+    restore_halo = ntuple(d -> checkpoint_free_surface_halo[d] - halo_size(checkpoint_grid, d) + halo_size(restored.grid, d), 3)
+    restore_grid = with_halo(restore_halo, on_architecture(CPU(), restored.grid))
+    return RestoreOnCompatibleGrid(restore_grid)
 end
-
-checkpoint_restore_mode(restored, checkpoint_grid, checkpoint_fs_extra_halo) =
-    checkpoint_restore_mode(restored,
-                            checkpoint_grid,
-                            checkpoint_fs_extra_halo,
-                            Val(same_checkpoint_interior_grid(checkpoint_grid, restored.grid)),
-                            Val(checkpoint_halos_match(restored, checkpoint_grid, checkpoint_fs_extra_halo)))
-
-function checkpoint_restore_mode(restored, checkpoint_grid, checkpoint_fs_extra_halo, ::Val{false}, same_halos)
-    throw(ArgumentError("Checkpoint pickup only supports the same interior grid with a different halo size. Restoring across different grids or resolutions is not supported by this path."))
-end
-
-checkpoint_restore_mode(restored, checkpoint_grid, checkpoint_fs_extra_halo, ::Val{true}, ::Val{true}) = RestoreOnCurrentGrid()
-checkpoint_restore_mode(restored, checkpoint_grid, checkpoint_fs_extra_halo, ::Val{true}, ::Val{false}) =
-    RestoreOnCompatibleGrid(checkpoint_free_surface_restore_grid(checkpoint_fs_extra_halo, restored.grid))
-
-checkpoint_free_surface_extra_halo(free_surface_grid, model_grid) =
-    ntuple(d -> halo_size(free_surface_grid, d) - halo_size(model_grid, d), 3)
-
-checkpoint_halos_match(restored, checkpoint_grid, checkpoint_fs_extra_halo) =
-    halo_size(checkpoint_grid) == halo_size(restored.grid) &&
-    checkpoint_fs_halo_size(checkpoint_fs_extra_halo, restored.grid) == fs_halo_size(restored)
-
-checkpoint_fs_halo_size(checkpoint_fs_extra_halo::Tuple, model_grid) =
-    ntuple(d -> checkpoint_fs_extra_halo[d] + halo_size(model_grid, d), 3)
-
-checkpoint_free_surface_restore_halo(checkpoint_fs_extra_halo, model_grid) =
-    checkpoint_fs_halo_size(checkpoint_fs_extra_halo, model_grid)
-
-checkpoint_free_surface_restore_grid(checkpoint_fs_extra_halo, model_grid) =
-    with_halo(checkpoint_free_surface_restore_halo(checkpoint_fs_extra_halo, on_architecture(CPU(), model_grid)),
-              on_architecture(CPU(), model_grid))
 
 
 prognostic_state(obj) = obj

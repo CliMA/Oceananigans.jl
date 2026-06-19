@@ -18,7 +18,7 @@ using Oceananigans.Utils: tupleit
 
 import Oceananigans
 import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!,
-                     restore_checkpoint_grid, checkpoint_restore_mode, warn_if_cross_grid_pickup,
+                     checkpoint_restore_mode, warn_if_cross_grid_pickup,
                      RestoreOnCurrentGrid, RestoreOnCompatibleGrid
 import Oceananigans.Models: total_velocities
 import Oceananigans.TimeSteppers: update_state!, reconcile_state!, materialize_clock!
@@ -390,13 +390,17 @@ function prognostic_state(model::HydrostaticFreeSurfaceModel)
 end
 
 function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
-    checkpoint_grid = restore_checkpoint_grid(from)
+    checkpoint_grid = from.checkpoint_grid
 
-    if !Oceananigans.OutputWriters.same_checkpoint_interior_grid(checkpoint_grid, restored.grid)
+    if checkpoint_grid != with_halo(halo_size(checkpoint_grid), on_architecture(CPU(), restored.grid))
         throw(ArgumentError("Checkpoint pickup only supports the same interior grid with a different halo size. Restoring across different grids or resolutions is not supported by this path."))
     end
 
-    mode = Oceananigans.OutputWriters.checkpoint_free_surface_restore_mode(restored, from, checkpoint_grid)
+    hasproperty(from, :checkpoint_free_surface_grid) ||
+        throw(ArgumentError("Hydrostatic free-surface checkpoint pickup requires `checkpoint_free_surface_grid` metadata. Re-create the checkpoint with the current checkpointer implementation."))
+
+    checkpoint_free_surface_grid = from.checkpoint_free_surface_grid
+    mode = Oceananigans.OutputWriters.checkpoint_restore_mode(restored, checkpoint_grid, checkpoint_free_surface_grid)
     return restore_prognostic_state!(restored, from, checkpoint_grid, mode)
 end
 

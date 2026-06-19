@@ -16,7 +16,7 @@ using Oceananigans.TurbulenceClosures: with_tracers, build_closure_fields
 using Oceananigans.Utils: tupleit
 
 import Oceananigans: prognostic_state, restore_prognostic_state!,
-                     restore_checkpoint_grid, checkpoint_restore_mode, warn_if_cross_grid_pickup,
+                     checkpoint_restore_mode, warn_if_cross_grid_pickup,
                      RestoreOnCurrentGrid, RestoreOnCompatibleGrid
 import Oceananigans.Architectures: architecture
 
@@ -272,7 +272,7 @@ function prognostic_state(model::ShallowWaterModel)
 end
 
 function restore_prognostic_state!(restored::ShallowWaterModel, from)
-    checkpoint_grid = restore_checkpoint_grid(from)
+    checkpoint_grid = from.checkpoint_grid
     mode = checkpoint_restore_mode(checkpoint_grid, restored.grid)
     return restore_prognostic_state!(restored, from, checkpoint_grid, mode)
 end
