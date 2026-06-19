@@ -27,6 +27,8 @@ export column_depthᶜᶜᵃ, column_depthᶠᶜᵃ, column_depthᶜᶠᵃ, colu
 export offset_data, new_data
 export on_architecture
 
+export EquatorialLatitudeLongitudeGrid
+
 using Adapt: Adapt, adapt
 using DocStringExtensions: FIELDS, TYPEDSIGNATURES
 using GPUArraysCore: @allowscalar
@@ -187,5 +189,6 @@ include("rectilinear_grid.jl")
 include("orthogonal_spherical_shell_grid.jl")
 include("latitude_longitude_grid.jl")
 include("coordinate_transformations.jl")
+include("equatorial_latitude_longitude_grid.jl")
 
 end # module

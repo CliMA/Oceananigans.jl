@@ -253,40 +253,41 @@ EquatorialLatitudeLongitudeGrid(FT::DataType; kwargs...) = EquatorialLatitudeLon
 
 """ Return a reproduction of `grid` with precomputed metric terms. """
 function with_precomputed_metrics(grid::EquatorialLatitudeLongitudeGrid)
-        Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ = allocate_metrics(grid)
 
-    # Compute Δx spacings and Az areas
-    arch = grid.architecture
-    dev = Architectures.device(arch)
-    workgroup, worksize  = metric_workgroup(grid), metric_worksize(grid)
-    loop! = compute_Δx_Az!(dev, workgroup, worksize)
-    loop!(grid, Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ)
+    Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
+    Δyᶠᶜᵃ, Δyᶜᶠᵃ,
+    Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ = allocate_metrics(grid)
 
-    # Compute Δy spacings if needed
-    # force Δy computation for this grid
-    loop! = compute_Δy!(dev, (16,16), (length(grid.λᶜᵃᵃ), length(grid.φᵃᶜᵃ) - 1))
-    loop!(grid, Δyᶠᶜᵃ, Δyᶜᶠᵃ)
-    #if !(grid isa YRegularLLG)
-    #    loop! = compute_Δy!(dev, 16, length(grid.Δφᵃᶜᵃ) - 1)
-    #    loop!(grid, Δyᶠᶜᵃ, Δyᶜᶠᵃ)
-    #end
+    arch = architecture(grid)
+    dev  = Architectures.device(arch)
+
+    # Δx and Az
+    workgroup, worksize = metric_workgroup(grid), metric_worksize(grid)
+    compute_Δx_Az!(dev, workgroup, worksize)(
+        grid, Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
+              Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ
+    )
+
+    # Δy (always 2D for this grid)
+    compute_Δy!(dev, (16, 16), (length(grid.λᶜᵃᵃ), length(grid.φᵃᶜᵃ) - 1))(grid, Δyᶠᶜᵃ, Δyᶜᶠᵃ)
 
     Nλ, Nφ, Nz = size(grid)
     Hλ, Hφ, Hz = halo_size(grid)
     TX, TY, TZ = topology(grid)
 
-    println("Δx size:", size(Δxᶠᶜᵃ))
-    println("worksize:", metric_worksize(grid))
-
-    return EquatorialLatitudeLongitudeGrid{TX, TY, TZ}(architecture(grid),
-                                             Nλ, Nφ, Nz,
-                                             Hλ, Hφ, Hz,
-                                             grid.Lx, grid.Ly, grid.Lz,
-                                             grid.Δλᶠᵃᵃ, grid.Δλᶜᵃᵃ, grid.λᶠᵃᵃ, grid.λᶜᵃᵃ,
-                                             grid.Δφᵃᶠᵃ, grid.Δφᵃᶜᵃ, grid.φᵃᶠᵃ, grid.φᵃᶜᵃ,
-                                             grid.z,
-                                             Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ,
-                                             Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, grid.radius)
+    return EquatorialLatitudeLongitudeGrid{TX, TY, TZ}(
+        arch,
+        Nλ, Nφ, Nz,
+        Hλ, Hφ, Hz,
+        grid.Lx, grid.Ly, grid.Lz,
+        grid.Δλᶠᵃᵃ, grid.Δλᶜᵃᵃ, grid.λᶠᵃᵃ, grid.λᶜᵃᵃ,
+        grid.Δφᵃᶠᵃ, grid.Δφᵃᶜᵃ, grid.φᵃᶠᵃ, grid.φᵃᶜᵃ,
+        grid.z,
+        Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
+        Δyᶠᶜᵃ, Δyᶜᶠᵃ,
+        Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
+        grid.radius
+    )
 end
 
 function validate_equ_lat_lon_grid_args(topology, size, halo, FT, latitude, longitude, z, precompute_metrics)
@@ -771,3 +772,5 @@ function EquatorialLatitudeLongitudeGrid(rectilinear_grid::RectilinearGrid;
                                  longitude = λᶠ,
                                  latitude = φᶠ)
 end
+
+is_lat_lon_grid(::EquatorialLatitudeLongitudeGrid) = true

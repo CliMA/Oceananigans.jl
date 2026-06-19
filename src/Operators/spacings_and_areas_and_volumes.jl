@@ -253,6 +253,19 @@ for sym in (:Δφᵃᶜᵃ, :Δφᵃᶠᵃ)
     end
 end
 
+#####
+##### EquatorialLatitudeLongitude Grids (define both precomputed and non-precomputed metrics)
+#####
+
+### Curvilinear spacings
+
+# --- EquatorialLatitudeLongitudeGrid spacings (NON-RECURSIVE) ---
+
+@inline Δxᶠᵃᵃ(i, j, k, grid::EquatorialLatitudeLongitudeGrid) = @inbounds grid.radius * deg2rad(grid.Δφᵃᶜᵃ[j])
+@inline Δxᶜᵃᵃ(i, j, k, grid::EquatorialLatitudeLongitudeGrid) = @inbounds grid.radius * deg2rad(grid.Δφᵃᶜᵃ[j])
+@inline Δyᵃᶠᵃ(i, j, k, grid::EquatorialLatitudeLongitudeGrid) = @inbounds grid.radius * deg2rad(grid.Δλᶠᵃᵃ[i]) * cosd(grid.φᵃᶜᵃ[j])
+@inline Δyᵃᶜᵃ(i, j, k, grid::EquatorialLatitudeLongitudeGrid) = @inbounds grid.radius * deg2rad(grid.Δλᶜᵃᵃ[i]) * cosd(grid.φᵃᶜᵃ[j])
+
 ### Linear spacings
 
 ### Precomputed metrics
