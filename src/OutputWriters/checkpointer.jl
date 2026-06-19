@@ -168,7 +168,7 @@ latest_checkpoint(checkpointer, filepaths) = latest_checkpoint_by_iteration(chec
 checkpoint_restore_mode(::Nothing, grid) = RestoreOnCurrentGrid()
 
 function checkpoint_restore_mode(checkpoint_grid, grid)
-    same_interior = checkpoint_grid == with_halo(halo_size(checkpoint_grid), on_architecture(CPU(), grid))
+    same_interior = checkpoint_grid == grid
     same_interior || throw(ArgumentError("Checkpoint pickup only supports the same interior grid with a different halo size. Restoring across different grids or resolutions is not supported by this path."))
 
     if halo_size(checkpoint_grid) == halo_size(grid)
@@ -180,7 +180,7 @@ function checkpoint_restore_mode(checkpoint_grid, grid)
 end
 
 function checkpoint_restore_mode(restored, checkpoint_grid, checkpoint_free_surface_grid)
-    same_interior = checkpoint_grid == with_halo(halo_size(checkpoint_grid), on_architecture(CPU(), restored.grid))
+    same_interior = checkpoint_grid == restored.grid
     same_interior || throw(ArgumentError("Checkpoint pickup only supports the same interior grid with a different halo size. Restoring across different grids or resolutions is not supported by this path."))
 
     checkpoint_free_surface_halo = halo_size(checkpoint_free_surface_grid)
