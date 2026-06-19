@@ -274,7 +274,7 @@ end
 #####
 
 """
-    slice(grid, i, j, k)
+    slice(grid, i, j, k; kwargs...)
 
 Return a grid extracted from `grid` along each dimension according to its index:
 
@@ -287,10 +287,12 @@ is no longer periodic.
 
 The constant coordinate of a collapsed dimension can be set with a keyword argument named
 after that coordinate (`x`, `y`, `z` for `RectilinearGrid`; `longitude`, `latitude`, `z` for
-`LatitudeLongitudeGrid`). By default the `Flat` dimension is located at the sliced cell
-center; pass a number to place it elsewhere (e.g. `z=0` for a grid at the surface), or
-`nothing` to leave the `Flat` dimension without a location. A coordinate keyword may only be
-set for a collapsed (`Integer`-indexed) dimension.
+`LatitudeLongitudeGrid`, with `λ` and `φ` accepted as aliases for `longitude` and `latitude`
+respectively). By default the `Flat` dimension is located at the sliced cell center;
+pass a number to place it elsewhere (e.g. `z=0` to place the surface grid exactly at
+`z = 0`, or `longitude=180` to place a meridional section exactly at 180°), or `nothing`
+to leave the `Flat` dimension without a location. A coordinate keyword may only be set
+for a collapsed (`Integer`-indexed) dimension.
 
 Currently implemented for `RectilinearGrid` and `LatitudeLongitudeGrid`. For both, the
 horizontal coordinates are independent of the vertical (and vice versa), so for an integer
@@ -300,8 +302,8 @@ dimension is still located at the sliced cell center, so e.g. `slice(grid, :, :,
 matters for curved grids, where this method does not yet apply.)
 
 This is the grid-level primitive behind exchange/surface grids in coupled models: e.g. a
-2D horizontal grid for a slab-ocean SST or an atmosphere–ocean exchange grid is
-`slice(grid, :, :, k)`.
+2D horizontal grid for a slab-ocean sea-surface temperature or an atmosphere–ocean
+exchange grid is `slice(grid, :, :, k)`.
 
 Example
 =======
