@@ -824,7 +824,7 @@ end
 #####
 ##### Test the tests
 #####
-#=
+
 @testset "Grids" begin
     @info "Testing AbstractGrids..."
 
@@ -1304,7 +1304,6 @@ end
         end
     end
 end
-=#
 
 @testset "Grid slicing [slice]" begin
     @info "  Testing slice(grid, ...)"

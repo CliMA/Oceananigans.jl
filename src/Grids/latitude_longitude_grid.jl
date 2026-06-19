@@ -404,7 +404,11 @@ end
 # precomputed-metrics settings are retained. The most common use is a surface/exchange grid,
 # `slice(grid, :, :, k)`, which keeps both horizontal directions (and thus the
 # latitude-dependent metrics) intact.
-function slice(grid::LatitudeLongitudeGrid, i, j, k; longitude=:auto, latitude=:auto, z=:auto)
+function slice(grid::LatitudeLongitudeGrid, i, j, k;
+               longitude=:auto, latitude=:auto, z=:auto,
+               λ=:auto, φ=:auto)
+    longitude = λ === :auto ? longitude : λ
+    latitude  = φ === :auto ? latitude  : φ
     arch = architecture(grid)
     FT = eltype(grid)
     TX, TY, TZ = topology(grid)

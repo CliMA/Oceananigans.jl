@@ -329,7 +329,7 @@ julia> slice(grid, :, :, 2:4)
 └── Bounded  z ∈ [0.25, 1.0] regularly spaced with Δz=0.25
 ```
 
-Pass `z=0` to place the surface grid exactly at `z = 0`:
+Pass, e.g., `z=0` to place the surface grid exactly at `z = 0`:
 
 ```jldoctest slice
 julia> slice(grid, :, :, 4; z=0)
@@ -359,6 +359,9 @@ reconstruction_faces(c::MutableVerticalDiscretization, N) = reconstruction_faces
 slice_dimension(::Colon, c, N, H, T; location=:auto) =
     location === :auto ? (T, c, N, H) :
     throw(ArgumentError("`location` can only be set for a collapsed (Integer-indexed) dimension"))
+
+slice_dimension(::Integer, ::Nothing, ::Any, ::Any, ::Any; location=:auto) =
+    (Flat, location === :auto ? nothing : location, 1, 0)
 
 function slice_dimension(index::Integer, c, N, H, T; location=:auto)
     if location === :auto
