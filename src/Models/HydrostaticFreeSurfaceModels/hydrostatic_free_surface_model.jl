@@ -392,7 +392,7 @@ end
 function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
     checkpoint_grid = from.checkpoint_grid
 
-    checkpoint_free_surface_grid = Oceananigans.OutputWriters.checkpoint_free_surface_grid(from, checkpoint_grid)
+    checkpoint_free_surface_grid = Oceananigans.OutputWriters.checkpoint_free_surface_grid(from, checkpoint_grid, restored)
     mode = Oceananigans.OutputWriters.checkpoint_restore_mode(restored, checkpoint_grid, checkpoint_free_surface_grid)
     return restore_prognostic_state!(restored, from, checkpoint_grid, mode)
 end

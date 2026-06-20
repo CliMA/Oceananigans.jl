@@ -3,9 +3,8 @@ using StructArrays: StructArray
 
 using Oceananigans
 using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper
-using Oceananigans.Grids: halo_size, with_halo
+using Oceananigans.Grids: halo_size, with_halo, topology, total_size
 using Oceananigans.Architectures: on_architecture, architecture, CPU
-using Oceananigans.Utils: worksize
 
 import Oceananigans: prognostic_state, restore_prognostic_state!, fs_halo_size,
                      checkpoint_restore_mode, RestoreOnCurrentGrid, RestoreOnCompatibleGrid
@@ -176,19 +175,47 @@ function checkpoint_restore_mode(checkpoint_grid, grid)
         return RestoreOnCurrentGrid()
     end
 
-    @warn "Picking up a checkpoint onto the same interior grid with a different halo size; interiors will be restored directly and halos will be rebuilt afterward." checkpoint_grid model_grid=grid
+    @warn "Picking up a checkpoint onto the same interior grid with a different halo size; interiors will be restored directly and halos will be rebuilt afterward."
     return RestoreOnCompatibleGrid(checkpoint_grid)
 end
 
-checkpoint_free_surface_grid(from, checkpoint_grid) = from.checkpoint_free_surface_grid
+checkpoint_free_surface_grid(from, checkpoint_grid, restored) = from.checkpoint_free_surface_grid
 
-function checkpoint_free_surface_grid(from::NamedTuple, checkpoint_grid)
+function checkpoint_free_surface_grid(from::NamedTuple, checkpoint_grid, restored)
     hasproperty(from, :checkpoint_free_surface_grid) && return from.checkpoint_free_surface_grid
 
-    Wx, Wy, Wz = worksize(checkpoint_grid)
-    sx, sy, sz = size(from.free_surface.displacement.data)
-    halo = ((sx - Wx) ÷ 2, (sy - Wy) ÷ 2, max(0, (sz - Wz) ÷ 2))
-    return with_halo(halo, checkpoint_grid)
+    displacement = restored.free_surface.displacement
+    saved_size = size(from.free_surface.displacement.data)
+    checkpoint_halo = halo_size(checkpoint_grid)
+    loc = Oceananigans.location(displacement)
+    inds = Oceananigans.Fields.indices(displacement)
+    topo = topology(checkpoint_grid)
+    sz = size(checkpoint_grid)
+
+    inferred_halo = ntuple(3) do d
+        ind = inds[d]
+
+        if ind isa AbstractUnitRange && length(ind) < size(displacement, d)
+            checkpoint_halo[d]
+        else
+            expected = saved_size[d]
+            found = nothing
+
+            for H in 0:max(expected, checkpoint_halo[d])
+                trial_halo = ntuple(i -> i == d ? H : checkpoint_halo[i], 3)
+                trial_size = total_size(loc, topo, sz, trial_halo, inds)[d]
+                if trial_size == expected
+                    found = H
+                    break
+                end
+            end
+
+            isnothing(found) && throw(ArgumentError("Unable to infer legacy split-explicit free-surface halo from checkpoint data size $(saved_size)."))
+            found
+        end
+    end
+
+    return with_halo(inferred_halo, checkpoint_grid)
 end
 
 function checkpoint_restore_mode(restored, checkpoint_grid, checkpoint_free_surface_grid)
@@ -207,7 +234,7 @@ function checkpoint_restore_mode(restored, checkpoint_grid, checkpoint_free_surf
 
     restore_halo = ntuple(d -> checkpoint_free_surface_halo[d] - halo_size(checkpoint_grid, d) + halo_size(restored.grid, d), 3)
     restore_grid = with_halo(restore_halo, on_architecture(CPU(), restored.grid))
-    @warn "Picking up a checkpoint onto the same interior grid with a different halo size; interiors will be restored directly and halos will be rebuilt afterward." checkpoint_grid=restore_grid model_grid=restored.grid
+    @warn "Picking up a checkpoint onto the same interior grid with a different halo size; interiors will be restored directly and halos will be rebuilt afterward."
     return RestoreOnCompatibleGrid(restore_grid)
 end
 
