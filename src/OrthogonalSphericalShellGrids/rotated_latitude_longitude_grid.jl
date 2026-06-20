@@ -58,14 +58,14 @@ grid = RotatedLatitudeLongitudeGrid(; size, longitude, latitude, z, north_pole=(
 
 # output
 90×40×1 OrthogonalSphericalShellGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
-├── centered at (λ, φ) = (-110.0, 35.0)
+├── singularities at (λ, φ) = (70, 55) and (-110, -55)
 ├── longitude: Periodic  extent 360.0 degrees variably spaced with min(Δλ)=0.694593, max(Δλ)=4.0
 ├── latitude:  Bounded  extent 160.0 degrees  variably spaced with min(Δφ)=4.0, max(Δφ)=4.0
 └── z:         Bounded  z ∈ [0.0, 1.0]        regularly spaced with Δz=1.0
 ```
 
-Note that the center latitude ``λ = -110`` follows from ``180 + 70 - 360 = -110``:
-a clockwise rotation of 70 degrees modulo 360 degrees.
+The north singularity is at `north_pole = (70, 55)`; the south singularity at
+``(-110, -55)`` is the antipodal point, with ``λ = 70 + 180 - 360 = -110``.
 We can also make an ordinary LatitudeLongitudeGrid using `north_pole = (0, 90)`:
 
 ```jldoctest rllg
@@ -73,7 +73,7 @@ grid = RotatedLatitudeLongitudeGrid(; size, longitude, latitude, z, north_pole=(
 
 # output
 90×40×1 OrthogonalSphericalShellGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
-├── centered at (λ, φ) = (180.0, 0.0)
+├── singularities at (λ, φ) = (0, 90) and (180, -90)
 ├── longitude: Periodic  extent 360.0 degrees variably spaced with min(Δλ)=0.694593, max(Δλ)=4.0
 ├── latitude:  Bounded  extent 160.0 degrees  variably spaced with min(Δφ)=4.0, max(Δφ)=4.0
 └── z:         Bounded  z ∈ [0.0, 1.0]        regularly spaced with Δz=1.0
@@ -241,4 +241,13 @@ end
         grid.Δyᶜᶜᵃ[i, j] = lat_lon_metric(source_grid.Δyᶠᶜᵃ, i, j)
         grid.Δyᶠᶠᵃ[i, j] = lat_lon_metric(source_grid.Δyᶜᶠᵃ, i, j)
     end
+end
+
+function Oceananigans.Grids.center_line_summary(grid::RotatedLatitudeLongitudeGrid)
+    λ₀, φ₀ = grid.conformal_mapping.north_pole
+    λ_south = mod(λ₀ + 180, 360)
+    λ_south = λ_south > 180 ? λ_south - 360 : λ_south
+    φ_south = -φ₀
+    return "singularities at (λ, φ) = (" * prettysummary(λ₀) * ", " * prettysummary(φ₀) *
+           ") and (" * prettysummary(λ_south) * ", " * prettysummary(φ_south) * ")"
 end

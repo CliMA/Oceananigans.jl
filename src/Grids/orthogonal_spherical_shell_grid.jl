@@ -452,6 +452,21 @@ function get_center_and_extents_of_shell(grid::OSSG)
     return (λ_center, φ_center), (extent_λ, extent_φ)
 end
 
+function center_line_summary(grid::OrthogonalSphericalShellGrid)
+    (λ_center, φ_center), _ = get_center_and_extents_of_shell(grid)
+    λ_center = round(λ_center, digits=4)
+    φ_center = round(φ_center, digits=4)
+    λ_center = ifelse(λ_center ≈ 0, 0.0, λ_center)
+    φ_center = ifelse(φ_center ≈ 0, 0.0, φ_center)
+    if φ_center ≈ 90
+        return "centered at: North Pole, (λ, φ) = (" * prettysummary(λ_center) * ", " * prettysummary(φ_center) * ")"
+    elseif φ_center ≈ -90
+        return "centered at: South Pole, (λ, φ) = (" * prettysummary(λ_center) * ", " * prettysummary(φ_center) * ")"
+    else
+        return "centered at (λ, φ) = (" * prettysummary(λ_center) * ", " * prettysummary(φ_center) * ")"
+    end
+end
+
 function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
     TX, TY, TZ = topology(grid)
     Nx, Ny, Nz = size(grid)
@@ -460,23 +475,9 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
 
     Ωz = domain(topology(grid, 3)(), Nz, grid.z.cᵃᵃᶠ)
 
-    (λ_center, φ_center), (extent_λ, extent_φ) = get_center_and_extents_of_shell(grid)
+    _, (extent_λ, extent_φ) = get_center_and_extents_of_shell(grid)
 
-    λ_center = round(λ_center, digits=4)
-    φ_center = round(φ_center, digits=4)
-
-    λ_center = ifelse(λ_center ≈ 0, 0.0, λ_center)
-    φ_center = ifelse(φ_center ≈ 0, 0.0, φ_center)
-
-    center_str = "centered at (λ, φ) = (" * prettysummary(λ_center) * ", " * prettysummary(φ_center) * ")"
-
-    if φ_center ≈ 90
-        center_str = "centered at: North Pole, (λ, φ) = (" * prettysummary(λ_center) * ", " * prettysummary(φ_center) * ")"
-    end
-
-    if φ_center ≈ -90
-        center_str = "centered at: South Pole, (λ, φ) = (" * prettysummary(λ_center) * ", " * prettysummary(φ_center) * ")"
-    end
+    center_str = center_line_summary(grid)
 
     λ_summary = "$(TX)  extent $(prettysummary(extent_λ)) degrees"
     φ_summary = "$(TY)  extent $(prettysummary(extent_φ)) degrees"
