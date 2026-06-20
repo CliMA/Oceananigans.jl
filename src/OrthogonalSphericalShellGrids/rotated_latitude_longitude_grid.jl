@@ -1,4 +1,4 @@
-using Oceananigans.Grids: LatitudeLongitudeGrid, validate_lat_lon_grid_args
+using Oceananigans.Grids: LatitudeLongitudeGrid, validate_lat_lon_grid_args, size_summary
 using Oceananigans.Utils: KernelParameters, launch!
 using StaticArrays: @SMatrix, SVector
 
@@ -57,7 +57,7 @@ z = (0, 1)
 grid = RotatedLatitudeLongitudeGrid(; size, longitude, latitude, z, north_pole=(70, 55))
 
 # output
-90×40×1 OrthogonalSphericalShellGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
+90×40×1 RotatedLatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── singularities at (λ, φ) = (70, 55) and (-110, -55)
 ├── longitude: Periodic  extent 360.0 degrees variably spaced with min(Δλ)=0.694593, max(Δλ)=4.0
 ├── latitude:  Bounded  extent 160.0 degrees  variably spaced with min(Δφ)=4.0, max(Δφ)=4.0
@@ -72,7 +72,7 @@ We can also make an ordinary LatitudeLongitudeGrid using `north_pole = (0, 90)`:
 grid = RotatedLatitudeLongitudeGrid(; size, longitude, latitude, z, north_pole=(0, 90))
 
 # output
-90×40×1 OrthogonalSphericalShellGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
+90×40×1 RotatedLatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
 ├── singularities at (λ, φ) = (0, 90) and (180, -90)
 ├── longitude: Periodic  extent 360.0 degrees variably spaced with min(Δλ)=0.694593, max(Δλ)=4.0
 ├── latitude:  Bounded  extent 160.0 degrees  variably spaced with min(Δφ)=4.0, max(Δφ)=4.0
@@ -250,4 +250,12 @@ function Oceananigans.Grids.center_line_summary(grid::RotatedLatitudeLongitudeGr
     φ_south = -φ₀
     return "singularities at (λ, φ) = (" * prettysummary(λ₀) * ", " * prettysummary(φ₀) *
            ") and (" * prettysummary(λ_south) * ", " * prettysummary(φ_south) * ")"
+end
+
+function Base.summary(grid::RotatedLatitudeLongitudeGrid)
+    FT = eltype(grid)
+    TX, TY, TZ = topology(grid)
+    return string(size_summary(grid),
+                  " RotatedLatitudeLongitudeGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
+                  " with ", size_summary(halo_size(grid)), " halo")
 end
