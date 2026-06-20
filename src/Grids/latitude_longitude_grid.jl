@@ -400,6 +400,35 @@ function with_halo(halo, grid::LatitudeLongitudeGrid)
     return LatitudeLongitudeGrid(arch, FT; kwargs...)
 end
 
+# See the `slice` docstring (defined in grid_utils.jl) for documentation. `radius` and
+# precomputed-metrics settings are retained. The most common use is a surface/exchange grid,
+# `slice(grid, :, :, k)`, which keeps both horizontal directions (and thus the
+# latitude-dependent metrics) intact.
+function slice(grid::LatitudeLongitudeGrid, i, j, k;
+               longitude=:auto, latitude=:auto, z=:auto,
+               λ=:auto, φ=:auto)
+    longitude = λ === :auto ? longitude : λ
+    latitude  = φ === :auto ? latitude  : φ
+    arch = architecture(grid)
+    FT = eltype(grid)
+    TX, TY, TZ = topology(grid)
+
+    TX′, longitude′, Nx, Hx = slice_dimension(i, cpu_face_constructor_x(grid), grid.Nx, grid.Hx, TX; location=longitude)
+    TY′, latitude′,  Ny, Hy = slice_dimension(j, cpu_face_constructor_y(grid), grid.Ny, grid.Hy, TY; location=latitude)
+    TZ′, z′,         Nz, Hz = slice_dimension(k, cpu_face_constructor_z(grid), grid.Nz, grid.Hz, TZ; location=z)
+    topo = (TX′, TY′, TZ′)
+
+    sz   = pop_flat_elements((Nx, Ny, Nz), topo)
+    halo = pop_flat_elements((Hx, Hy, Hz), topo)
+
+    kwargs = Dict{Symbol, Any}(:size => sz, :halo => halo, :topology => topo,
+                               :radius => grid.radius,
+                               :precompute_metrics => metrics_precomputed(grid),
+                               :longitude => longitude′, :latitude => latitude′, :z => z′)
+
+    return LatitudeLongitudeGrid(arch, FT; kwargs...)
+end
+
 function Architectures.on_architecture(arch::AbstractSerialArchitecture, grid::LatitudeLongitudeGrid)
     if arch == architecture(grid)
         return grid
