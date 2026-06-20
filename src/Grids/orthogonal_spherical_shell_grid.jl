@@ -319,7 +319,7 @@ function Base.summary(grid::OrthogonalSphericalShellGrid)
     FT = eltype(grid)
     TX, TY, TZ = topology(grid)
     return string(size_summary(grid),
-                  " OrthogonalSphericalShellGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
+                  " $(grid_name(grid)){$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
                   " with ", size_summary(halo_size(grid)), " halo")
 end
 

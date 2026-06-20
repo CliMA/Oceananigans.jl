@@ -252,10 +252,4 @@ function Oceananigans.Grids.center_line_summary(grid::RotatedLatitudeLongitudeGr
            ") and (" * prettysummary(λ_south) * ", " * prettysummary(φ_south) * ")"
 end
 
-function Base.summary(grid::RotatedLatitudeLongitudeGrid)
-    FT = eltype(grid)
-    TX, TY, TZ = topology(grid)
-    return string(size_summary(grid),
-                  " RotatedLatitudeLongitudeGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
-                  " with ", size_summary(halo_size(grid)), " halo")
-end
+Oceananigans.Grids.grid_name(::RotatedLatitudeLongitudeGrid) = "RotatedLatitudeLongitudeGrid"
