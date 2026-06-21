@@ -219,7 +219,7 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
 
     # Extract grids from outputs, falling back to `nothing` for non-field outputs
     output_grids = Dict(string(name) => (try grid(output) catch; nothing end) for (name, output) in pairs(outputs))
-    unique_grids = Tuple(unique(objectid, filter(!isnothing, collect(values(output_grids)))))
+    unique_grids = unique(objectid, filter(!isnothing, collect(values(output_grids))))
     single_grid  = length(unique_grids) == 1
 
     # Serialize the unique grids. With a single grid it is stored at `serialized/grid`

@@ -38,6 +38,7 @@ CUDA.allowscalar() do
         @testset "Unit tests" begin
             include("test_quality_assurance.jl")
             include("test_grids.jl")
+            include("test_lambert_conformal_conic_grid.jl")
             include("test_grid_reconstruction.jl")
             include("test_immersed_boundary_grid.jl")
             include("test_operators.jl")
@@ -185,6 +186,14 @@ CUDA.allowscalar() do
             include("test_multi_region_unit.jl")
             include("test_multi_region_advection_diffusion.jl")
             include("test_multi_region_cubed_sphere.jl")
+        end
+    end
+
+    if group == :nccl_extension || group == :all
+        MPI.Initialized() || MPI.Init()
+        reset_cuda_if_necessary()
+        @testset "NCCL extension tests" begin
+            include("test_nccl_extension.jl")
         end
     end
 
