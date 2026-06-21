@@ -113,7 +113,7 @@ function lcc_cone_constant(FT, φ₁, φ₂)
 end
 
 """
-    $(SIGNATURES)
+$(SIGNATURES)
 
 Return a spherical Lambert conformal conic projection map.
 
@@ -230,7 +230,7 @@ end
 end
 
 """
-    $(SIGNATURES)
+$(SIGNATURES)
 
 Return the projected coordinates `(x, y)` corresponding to longitude `λ` and latitude `φ`, in degrees.
 
@@ -266,7 +266,7 @@ show((round(x; digits=12), round(y; digits=12)))
 end
 
 """
-    $(SIGNATURES)
+$(SIGNATURES)
 
 Return the longitude and latitude `(λ, φ)`, in degrees, corresponding to projected coordinates `(x, y)`.
 
@@ -314,7 +314,7 @@ show((round(λ; digits=10), round(φ; digits=10)))
 end
 
 """
-    $(SIGNATURES)
+$(SIGNATURES)
 
 Return the Lambert conformal conic scale factor at latitude `φ`, in degrees.
 
@@ -512,7 +512,7 @@ function validate_lcc_projected_domain(map::LambertConformalConic{FT}, size; war
 end
 
 """
-    $(SIGNATURES)
+$(SIGNATURES)
 
 Return a regional `LambertConformalConicGrid`, represented internally as an
 `OrthogonalSphericalShellGrid` with 2D longitude, latitude, and spherical metric arrays.
@@ -555,10 +555,12 @@ grid = LambertConformalConicGrid(size = (8, 6, 1),
                                  standard_parallels = (30, 60),
                                  z = (-100, 0))
 
-print(summary(grid))
-
 # output
-8×6×1 OrthogonalSphericalShellGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×1 halo
+8×6×1 LambertConformalConicGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×1 halo
+├── centered at (λ, φ) = (-105.0, 40.0)
+├── longitude: Bounded  extent 0.742148 degrees variably spaced with min(Δλ)=0.0926432, max(Δλ)=0.0927288
+├── latitude:  Bounded  extent 0.556121 degrees variably spaced with min(Δφ)=0.0926432, max(Δφ)=0.0927288
+└── z:         Bounded  z ∈ [-100.0, 0.0]       regularly spaced with Δz=100.0
 ```
 
 ```jldoctest
@@ -570,10 +572,12 @@ grid = LambertConformalConicGrid(size = (4, 4, 1),
                                  standard_parallels = (30, 60),
                                  z = (-1, 0))
 
-print(summary(grid))
-
 # output
-4×4×1 OrthogonalSphericalShellGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×1 halo
+4×4×1 LambertConformalConicGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×1 halo
+├── centered at (λ, φ) = (-105.0, 40.0)
+├── longitude: Bounded  extent 0.742301 degrees variably spaced with min(Δλ)=0.185286, max(Δλ)=0.185458
+├── latitude:  Bounded  extent 0.556121 degrees variably spaced with min(Δφ)=0.138965, max(Δφ)=0.139093
+└── z:         Bounded  z ∈ [-1.0, 0.0]         regularly spaced with Δz=1.0
 ```
 
 ```jldoctest
@@ -587,11 +591,12 @@ grid = LambertConformalConicGrid(size = (4, 4, 1),
                                  latitude_of_origin = 40,
                                  z = (-1, 0))
 
-print(summary(grid))
-
 # output
-4×4×1 OrthogonalSphericalShellGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×1 halo
-```
+4×4×1 LambertConformalConicGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×1 halo
+├── centered at (λ, φ) = (-105.0, 40.0)
+├── longitude: Bounded  extent 0.742301 degrees variably spaced with min(Δλ)=0.185286, max(Δλ)=0.185458
+├── latitude:  Bounded  extent 0.556121 degrees variably spaced with min(Δφ)=0.138965, max(Δφ)=0.139093
+└── z:         Bounded  z ∈ [-1.0, 0.0]         regularly spaced with Δz=1.0```
 
 ```jldoctest
 using Oceananigans
@@ -602,10 +607,12 @@ grid = LambertConformalConicGrid(size = (4, 4, 1),
                                  standard_parallel = 45,
                                  z = (-1, 0))
 
-print(summary(grid))
-
 # output
-4×4×1 OrthogonalSphericalShellGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×1 halo
+4×4×1 LambertConformalConicGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×1 halo
+├── centered at (λ, φ) = (-100.0, 45.0)
+├── longitude: Bounded  extent 0.359729 degrees variably spaced with min(Δλ)=0.0899317, max(Δλ)=0.0899322
+├── latitude:  Bounded  extent 0.359728 degrees variably spaced with min(Δφ)=0.0899317, max(Δφ)=0.0899322
+└── z:         Bounded  z ∈ [-1.0, 0.0]         regularly spaced with Δz=1.0
 ```
 """
 function LambertConformalConicGrid(arch::AbstractArchitecture = CPU(),
@@ -894,3 +901,5 @@ function Grids.with_number_type(FT, grid::LambertConformalConicGrid)
     arch = args[:architecture]
     return LambertConformalConicGrid(arch, FT; kwargs..., warn = false)
 end
+
+Oceananigans.Grids.grid_name(::LambertConformalConicGrid) = "LambertConformalConicGrid"
