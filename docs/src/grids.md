@@ -134,17 +134,16 @@ The shape of the physical domain determines what grid type should be used:
 
 !!! note "OrthogonalSphericalShellGrids"
     See the auxiliary module [`OrthogonalSphericalShellGrids`](@ref)
-    for recipes that implement useful `OrthogonalSphericalShellGrid`s, including the ["tripolar" grid](@cite Murray1996),
+    for recipes that implement useful `OrthogonalSphericalShellGrid`s, including the [`TripolarGrid`](@ref) [Murray1996](@citep),
     [`RotatedLatitudeLongitudeGrid`](@ref Oceananigans.OrthogonalSphericalShellGrids.RotatedLatitudeLongitudeGrid),
     [`LambertConformalConicGrid`](@ref Oceananigans.OrthogonalSphericalShellGrids.LambertConformalConicGrid), and
     [`ConformalCubedSpherePanelGrid`](@ref Oceananigans.OrthogonalSphericalShellGrids.ConformalCubedSpherePanelGrid).
 
-A [`LambertConformalConicGrid`](@ref Oceananigans.OrthogonalSphericalShellGrids.LambertConformalConicGrid)
-is a regional `OrthogonalSphericalShellGrid` generated from projected `x/y` coordinates in meters.
-It stores longitude and latitude at every staggered horizontal location, together with spherical-shell
-metrics and cell areas, so that models use the same curvilinear-grid machinery as other
-`OrthogonalSphericalShellGrid`s.
-The horizontal topology is `Bounded` by default and LCC grids are not intended for global domains.
+A [`LambertConformalConicGrid`](@ref) is a regional `OrthogonalSphericalShellGrid` generated from
+projected `x/y` coordinates in meters. It stores longitude and latitude at every staggered horizontal
+location, together with spherical-shell metrics and cell areas, so that models use the same curvilinear-grid machinery as other `OrthogonalSphericalShellGrid`s.
+The horizontal topology is `Bounded` by default and Lambert Conformal Conic grids are not intended for
+global domains.
 The projection is conformal rather than equal-area, and longitude is singular at the cone apex or pole,
 so regional domains should normally avoid placing the apex on a grid point.
 
@@ -161,7 +160,7 @@ grid = LambertConformalConicGrid(size = (8, 6, 1),
                                  z = (-100, 0))
 
 # output
-8×6×1 OrthogonalSphericalShellGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×1 halo
+8×6×1 LambertConformalConicGrid{Float64, Bounded, Bounded, Bounded} on CPU with 3×3×1 halo
 ├── centered at (λ, φ) = (-105.0, 40.0)
 ├── longitude: Bounded  extent 1.48547 degrees variably spaced with min(Δλ)=0.185194, max(Δλ)=0.185537
 ├── latitude:  Bounded  extent 1.11223 degrees variably spaced with min(Δφ)=0.185194, max(Δφ)=0.185537
