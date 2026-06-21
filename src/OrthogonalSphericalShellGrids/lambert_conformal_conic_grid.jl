@@ -596,7 +596,8 @@ grid = LambertConformalConicGrid(size = (4, 4, 1),
 ├── centered at (λ, φ) = (-105.0, 40.0)
 ├── longitude: Bounded  extent 0.742301 degrees variably spaced with min(Δλ)=0.185286, max(Δλ)=0.185458
 ├── latitude:  Bounded  extent 0.556121 degrees variably spaced with min(Δφ)=0.138965, max(Δφ)=0.139093
-└── z:         Bounded  z ∈ [-1.0, 0.0]         regularly spaced with Δz=1.0```
+└── z:         Bounded  z ∈ [-1.0, 0.0]         regularly spaced with Δz=1.0
+```
 
 ```jldoctest
 using Oceananigans
