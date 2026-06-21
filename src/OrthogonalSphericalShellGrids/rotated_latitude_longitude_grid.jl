@@ -1,4 +1,4 @@
-using Oceananigans.Grids: LatitudeLongitudeGrid, validate_lat_lon_grid_args, size_summary
+using Oceananigans.Grids: LatitudeLongitudeGrid, validate_lat_lon_grid_args
 using Oceananigans.Utils: KernelParameters, launch!
 using StaticArrays: @SMatrix, SVector
 
