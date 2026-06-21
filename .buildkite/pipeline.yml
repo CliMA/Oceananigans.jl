@@ -83,6 +83,8 @@ steps:
       julia +$JULIA_VERSION --color=yes --project=docs/ -e \
         'using Pkg; Pkg.instantiate()'
       julia +$JULIA_VERSION --color=yes --project=docs/ docs/make.jl
+    artifact_paths:
+      - "docs/build/**/*"
 
   - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
     key: "tests"
