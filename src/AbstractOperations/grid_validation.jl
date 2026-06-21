@@ -1,5 +1,5 @@
 """
-    validate_grid(a::AbstractField, b::AbstractField)
+$(TYPEDSIGNATURES)
 
 Confirm that `a` and `b` are on the same grid if both are fields and return `a.grid`.
 """
@@ -18,7 +18,7 @@ validate_grid(a, b::AbstractField) = b.grid
 validate_grid(a, b) = nothing
 
 """
-    validate_grid(a, b, c...)
+$(TYPEDSIGNATURES)
 
 Confirm that the grids associated with the 3+ long list `a, b, c...` are
 consistent by checking each member against `a`.

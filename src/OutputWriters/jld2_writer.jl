@@ -83,7 +83,7 @@ Keyword arguments
                     `file_splitting = TimeInterval(30days)`, which will split files every 30 days of
                     simulation time. The default incurs no splitting (`NoFileSplitting()`).
 
-- `overwrite_existing`: Remove existing files if their filenames conflict.
+- `overwrite_existing`: Remove an existing file with the same filename when the writer is initialized.
                         Default: `false`.
 
 ## Output file metadata management
@@ -219,7 +219,7 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
 
     # Extract grids from outputs, falling back to `nothing` for non-field outputs
     output_grids = Dict(string(name) => (try grid(output) catch; nothing end) for (name, output) in pairs(outputs))
-    unique_grids = Tuple(unique(objectid, filter(!isnothing, collect(values(output_grids)))))
+    unique_grids = unique(objectid, filter(!isnothing, collect(values(output_grids))))
     single_grid  = length(unique_grids) == 1
 
     # Serialize the unique grids. With a single grid it is stored at `serialized/grid`
@@ -265,7 +265,7 @@ initialize_jld2_file!(writer::JLD2Writer, model) =
     initialize_jld2_file!(writer.filepath, writer.init, writer.jld2_kw, writer.including, writer.outputs, model)
 
 """
-    initialize!(writer::JLD2Writer, model)
+$(TYPEDSIGNATURES)
 
 Initialize a `JLD2Writer` by creating its output file and writing initial metadata.
 
@@ -274,18 +274,13 @@ This function is called automatically when a `Simulation` containing the writer 
 has already been initialized, preventing files from being overwritten when `run!` is called
 multiple times.
 
-When resuming a simulation (i.e., `model.clock.iteration > 0`, such as when picking up from
-a checkpoint), existing files are preserved regardless of the `overwrite_existing` setting.
 """
 function initialize!(writer::JLD2Writer, model)
     # Skip if already initialized (e.g., when run! is called multiple times)
     writer.initialized && return nothing
 
-    # Remove existing file if overwrite_existing is true,
-    # but only if we're starting fresh (iteration == 0).
-    # When resuming (iteration > 0), we preserve existing files.
-    starting_fresh = model.clock.iteration == 0
-    if writer.overwrite_existing && starting_fresh
+    # Remove an existing conflicting file once, during writer initialization.
+    if writer.overwrite_existing
         isfile(writer.filepath) && rm(writer.filepath, force=true)
     end
 
@@ -322,17 +317,9 @@ function write_output!(writer::JLD2Writer, model)
     verbose = writer.verbose
     current_iteration = model.clock.iteration
 
-    # Some logic to handle writing to existing files
+    # Skip writes for iterations that are already present in the file.
     if iteration_exists(writer.filepath, current_iteration)
-
-        if writer.overwrite_existing
-            # Something went wrong, so we remove the file and re-initialize it.
-            rm(writer.filepath, force=true)
-            initialize_jld2_file!(writer, model)
-        else # nothing we can do since we were asked not to overwrite_existing, so we skip output writing
-            @warn "Iteration $current_iteration was found in $(writer.filepath). Skipping output writing (for now...)"
-        end
-
+        @warn "Iteration $current_iteration was found in $(writer.filepath). Skipping output writing."
     else # ok let's do this
 
         # Fetch JLD2 output and store in `data`
@@ -373,7 +360,7 @@ function write_output!(writer::JLD2Writer, model)
 end
 
 """
-    jld2output!(path, iter, time, data, kwargs)
+$(TYPEDSIGNATURES)
 
 Write the `(name, value)` pairs in `data`, including the simulation
 `time`, to the JLD2 file at `path` in the `timeseries` group,

@@ -56,7 +56,7 @@ offset_data(underlying_data::AbstractArray, grid::AbstractGrid, loc, indices=def
     offset_data(underlying_data, loc, topology(grid), size(grid), halo_size(grid), indices)
 
 """
-    new_data(FT, arch, loc, topo, sz, halo_sz, indices)
+$(TYPEDSIGNATURES)
 
 Return an `OffsetArray` of zeros of float type `FT` on `arch`itecture,
 with indices corresponding to a field on a `grid` of `size(grid)` and located at `loc`.

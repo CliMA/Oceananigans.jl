@@ -6,7 +6,9 @@ export TimeSeriesInterpolation
 export InMemory, OnDisk
 export Cyclical, Linear, Clamp
 
-using Oceananigans: boundary_conditions
+using DocStringExtensions: TYPEDSIGNATURES
+
+using Oceananigans: Oceananigans, boundary_conditions
 using Oceananigans.Utils: @apply_regionally
 
 struct JLD2Path
@@ -22,7 +24,7 @@ struct ZarrPath
 end
 
 """
-    auto_extension(filename, ext)
+$(TYPEDSIGNATURES)
 
 If `filename` ends in `ext`, return `filename`. Otherwise return `filename * ext`.
 """

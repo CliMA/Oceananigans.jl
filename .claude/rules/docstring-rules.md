@@ -7,7 +7,7 @@ paths:
 
 ## Use DocStringExtensions.jl
 
-- Include `$(SIGNATURES)` for automatic signature documentation
+- Include `$(TYPEDSIGNATURES)` for automatic signature documentation
 - Add examples in docstrings when helpful
 
 ## CRITICAL: Always use `jldoctest`, NEVER plain `julia` blocks
