@@ -110,7 +110,8 @@ example_pages = [
     "Horizontal convection"                 => "literated/horizontal_convection.md",
     "Tilted bottom boundary layer"          => "literated/tilted_bottom_boundary_layer.md",
     "Spherical baroclinic instability"      => "literated/spherical_baroclinic_instability.md",
-    "Differentiable reentrant channel"      => "literated/reentrant_channel.md"
+    "Differentiable reentrant channel"      => "literated/reentrant_channel.md",
+    "Polar vortex crystal"                  => "literated/polar_vortex_crystal.md"
 ]
 
 model_pages = [
