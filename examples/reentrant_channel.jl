@@ -1,4 +1,4 @@
-# # Differentiating an Abernathey channel with Reactant and Enzyme
+# # Differentiating an re-entrant channel with Reactant and Enzyme
 #
 # This example builds a re-entrant, eddying channel in the spirit of
 # [Abernathey, Marshall and Ferreira (2011)](https://doi.org/10.1175/2011JPO4708.1) --
@@ -57,14 +57,6 @@ architecture = ReactantState()
 
 Nx, Ny, Nz = 96, 192, 32
 
-## Geometrically stretched vertical spacing: thin cells at the surface, thick at depth
-k_center = collect(1:Nz)
-Δz_center = @. 10 * 1.104^(Nz - k_center)
-Lz = sum(Δz_center)
-
-z_faces = vcat([-Lz], -Lz .+ cumsum(Δz_center))
-z_faces[Nz + 1] = 0
-
 ## We construct a vertical discretization for a domain of depth around 2000 meters via `ReferenceToStretchedDiscretization`. We use a 10-meter vertical spacing at the surface and increase the spacing at depth via a power law.
 
 z = ReferenceToStretchedDiscretization(extent=2000,
@@ -73,7 +65,7 @@ z = ReferenceToStretchedDiscretization(extent=2000,
                                        constant_spacing_extent = 10)
 
 Nz = length(z)
-Lz = abs(z.faces[1]) # if this is used elsewhere
+Lz = abs(z.faces[1])
 
 underlying_grid = RectilinearGrid(architecture;
                                   topology = (Periodic, Bounded, Bounded),
@@ -104,16 +96,15 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(ridge))
 g  = Oceananigans.defaults.gravitational_acceleration
 cᵖ = 3994.0  # specific heat capacity [J K⁻¹ kg⁻¹]
 ρ  = 999.8   # reference density [kg m⁻³]
-Q  = 10.0    # heat flux magnitude [W m⁻²]
+J  = 10.0    # heat flux magnitude [W m⁻²]
 
 parameters = (; Ly, Lz,
-              Q = Q,                      # heat flux magnitude [W m⁻²]
-              Qᵇ = Q / (ρ * cᵖ) * α * g,   # buoyancy flux magnitude [m² s⁻³]
+              Jᵇ = J / (ρ * cᵖ) * α * g,   # buoyancy flux magnitude [m² s⁻³]
               y_shutoff = 5/6 * Ly,        # latitude north of which the buoyancy flux vanishes [m]
               τ = 0.2 / ρ,                 # peak kinematic wind stress [m² s⁻²]
               μ = 1 / 30days,              # bottom-drag damping rate [s⁻¹]
-              ΔT = 8,                      # surface temperature contrast [K]       
-              ΔB = α * g * 8,             # surface buoyancy contrast [m s⁻²]
+              ΔT = 8,                      # surface temperature contrast [K]
+              ΔB = α * g * ΔT,            # surface buoyancy contrast [m s⁻²]
               h = 1000.0,                  # stratification decay scale [m]
               y_sponge = 19/20 * Ly,       # southern edge of the northern sponge [m]
               λt = 7days)                  # sponge relaxation timescale [s]
@@ -128,7 +119,7 @@ end
 
 b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(buoyancy_flux, discrete_form=true, parameters=parameters))
 
-# An eastward wind stress is applied at the surface as a `Field` boundary condition;
+# An eastward wind stress is applied at the surface as a `FluxBoundaryCondition`;
 # we set its profile later. Linear bottom drag removes the momentum the wind injects.
 
 u_stress_bc = FluxBoundaryCondition(Field{Face, Center, Nothing}(grid))
@@ -141,7 +132,7 @@ v_bcs = FieldBoundaryConditions(bottom = FluxBoundaryCondition(v_drag, discrete_
 
 # ## Coriolis
 #
-# A southern-hemisphere β-plane gives the planetary vorticity gradient that supports
+# A southern-hemisphere ``β``-plane gives the planetary vorticity gradient that supports
 # the Rossby waves and the asymmetry between the eastward and westward jets.
 
 coriolis = BetaPlane(latitude = -60)
@@ -169,8 +160,8 @@ Fb = Forcing(buoyancy_relaxation, discrete_form=true, parameters=parameters)
 # Small horizontal and vertical diffusivities/viscosities provide the dissipation that
 # the resolved eddy field needs at the grid scale.
 
-horizontal_closure = HorizontalScalarDiffusivity(ν=30.0, κ=0.5e-5)
-vertical_closure   = VerticalScalarDiffusivity(ν=3e-4, κ=0.5e-5)
+horizontal_closure = HorizontalScalarDiffusivity(ν=30.0, κ=5e-6)
+vertical_closure   = VerticalScalarDiffusivity(ν=3e-4, κ=5e-6)
 
 # ## Model
 #
@@ -272,7 +263,7 @@ dwind_stress = Field{Face, Center, Nothing}(grid)
 @info "Compiling the gradient program (this can take a few minutes)..."
 
 rdifferentiate_tracer_error = @compile raise_first=true raise=true sync=true differentiate_tracer_error(model, bᵢ, wind_stress,
-                                                                                                       dmodel, dbᵢ, dwind_stress)
+                                                                                                        dmodel, dbᵢ, dwind_stress)
 
 # Running it integrates the channel forward and pulls the adjoint back through every time
 # step, filling `dbᵢ` with ``\partial J / \partial b_i`` at every grid point.
