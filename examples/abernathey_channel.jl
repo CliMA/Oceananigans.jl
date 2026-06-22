@@ -65,13 +65,23 @@ Lz = sum(Δz_center)
 z_faces = vcat([-Lz], -Lz .+ cumsum(Δz_center))
 z_faces[Nz + 1] = 0
 
-underlying_grid = RectilinearGrid(architecture,
+## We construct a vertical discretization for a domain of depth around 2000 meters via `ReferenceToStretchedDiscretization`. We use a 10-meter vertical spacing at the surface and increase the spacing at depth via a power law.
+
+z = ReferenceToStretchedDiscretization(extent=2000,
+                                       stretching = PowerLawStretching(1.029),
+                                       constant_spacing = 10,
+                                       constant_spacing_extent = 10)
+
+Nz = length(z)
+Lz = abs(z.faces[1]) # if this is used elsewhere
+
+underlying_grid = RectilinearGrid(architecture;
                                   topology = (Periodic, Bounded, Bounded),
                                   size = (Nx, Ny, Nz),
                                   halo = (4, 4, 4),
                                   x = (0, Lx),
                                   y = (0, Ly),
-                                  z = z_faces)
+                                  z)
 
 # A meridional ridge breaks the zonal symmetry. The ridge is a Gaussian bump in `x`
 # that rises nearly to the surface, punctured by a deep gap in the southern half of the
@@ -91,16 +101,18 @@ grid = ImmersedBoundaryGrid(underlying_grid, GridFittedBottom(ridge))
 # boundary-condition and forcing functions below.
 
 α  = 2e-4    # [K⁻¹]    thermal expansion coefficient
-g  = 9.8061  # [m s⁻²]  gravitational acceleration
-cᵖ = 3994.0  # [J K⁻¹]  heat capacity
-ρ  = 999.8   # [kg m⁻³] reference density
+g  = Oceananigans.defaults.gravitational_acceleration
+cᵖ = 3994.0  # specific heat capacity [J K⁻¹ kg⁻¹]
+ρ  = 999.8   # reference density [kg m⁻³]
 
 parameters = (; Ly, Lz,
-              Qᵇ = 10 / (ρ * cᵖ) * α * g,  # buoyancy flux magnitude [m² s⁻³]
+              Q = 10,                      # heat flux magnitude [W m⁻²]
+              Qᵇ = Q / (ρ * cᵖ) * α * g,   # buoyancy flux magnitude [m² s⁻³]
               y_shutoff = 5/6 * Ly,        # latitude north of which the buoyancy flux vanishes [m]
               τ = 0.2 / ρ,                 # peak kinematic wind stress [m² s⁻²]
               μ = 1 / 30days,              # bottom-drag damping rate [s⁻¹]
-              ΔB = 8 * α * g,              # surface buoyancy contrast [m s⁻²]
+              ΔT = 8,                      # surface temperature contrast [K]       
+              ΔB = α * g * ΔT,             # surface buoyancy contrast [m s⁻²]
               h = 1000.0,                  # stratification decay scale [m]
               y_sponge = 19/20 * Ly,       # southern edge of the northern sponge [m]
               λt = 7days)                  # sponge relaxation timescale [s]
@@ -131,7 +143,7 @@ v_bcs = FieldBoundaryConditions(bottom = FluxBoundaryCondition(v_drag, discrete_
 # A southern-hemisphere β-plane gives the planetary vorticity gradient that supports
 # the Rossby waves and the asymmetry between the eastward and westward jets.
 
-coriolis = BetaPlane(f₀ = -1e-4, β = 1e-11)
+coriolis = BetaPlane(latitude = -60)
 
 # ## Forcing
 #
