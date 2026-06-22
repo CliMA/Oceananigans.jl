@@ -142,4 +142,3 @@ end
     condition = on_architecture(architecture(op.grid), condition)
     return immersed_reduced_tripolar_condition_operand(func, op, condition, mask)
 end
-
