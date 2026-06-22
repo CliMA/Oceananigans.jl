@@ -4,8 +4,8 @@ export
     Distributed, Partition, Equal, Fractional,
     child_architecture, reconstruct_global_grid, partition,
     inject_halo_communication_boundary_conditions,
-    DistributedFFTBasedPoissonSolver, mpi_initialized, mpi_rank,
-    mpi_size, global_barrier, global_communicator,
+    DistributedFFTBasedPoissonSolver, TransposableField, mpi_initialized, mpi_rank,
+    mpi_size, global_barrier, global_communicator, sanitize_environ!,
     @root, @onrank, @distribute, @handshake
 
 using MPI
@@ -21,6 +21,7 @@ import Oceananigans.Solvers: fft_poisson_solver
 using DocStringExtensions: TYPEDSIGNATURES
 
 include("distributed_macros.jl")
+include("sanitize_environ.jl")
 include("distributed_architectures.jl")
 include("partition_assemble.jl")
 include("distributed_grids.jl")
@@ -36,6 +37,8 @@ include("distributed_transpose.jl")
 include("plan_distributed_transforms.jl")
 include("distributed_fft_based_poisson_solver.jl")
 include("distributed_fft_tridiagonal_solver.jl")
+
+function NCCLDistributed end
 
 fft_poisson_solver(grid::DistributedRectilinearGrid) = fft_poisson_solver(grid, reconstruct_global_grid(grid))
 
