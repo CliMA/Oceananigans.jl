@@ -83,8 +83,10 @@ steps:
       julia +$JULIA_VERSION --color=yes --project=docs/ -e \
         'using Pkg; Pkg.instantiate()'
       julia +$JULIA_VERSION --color=yes --project=docs/ docs/make.jl
+
+      tar czf docs/docs-build.tar.gz docs/build
     artifact_paths:
-      - "$OCEANANIGANS_DIR/docs/build/**/*"
+      - "$OCEANANIGANS_DIR/docs/docs-build.tar.gz"
 
   - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
     key: "tests"
