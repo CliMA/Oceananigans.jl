@@ -101,6 +101,14 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
                                     latitude = [0, 1, 2, 3, 4],
                                     z = (0, 1))
 
+        @info "  Testing RectilinearGrid eltype..."
+        RFT = @jit eltype(sgrid)
+        @test RFT == Reactant.TracedRNumber{FT}
+
+        @info "  Testing LatitudeLongitudeGrid eltype..."
+        RFT = @jit eltype(llg)
+        @test RFT == Reactant.TracedRNumber{FT}
+
         @test architecture(llg) isa ReactantState
 
         for name in propertynames(llg)

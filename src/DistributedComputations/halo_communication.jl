@@ -47,7 +47,7 @@ end
 # the MPI tag is an integer with:
 #   digit 1-2: an counter which keeps track of how many communications are live. The counter is stored in `arch.mpi_tag`
 #   digit 3-4: a unique identifier for the field's location that goes from 0 - 26 (see `loc_id`)
-#   digit 5: the side we send / recieve from
+#   digit 5: the side we send / receive from
 
 for side in sides
     side_str = string(side)
