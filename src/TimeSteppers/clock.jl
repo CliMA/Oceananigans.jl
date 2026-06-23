@@ -172,6 +172,9 @@ function tick_stage!(clock, stage_Δt, step_Δt)
     return nothing
 end
 
+# Helper function to convert clock internal fields, so that we don't overload `Base.convert`.
+clock_convert(T, x) = convert(T, x)
+
 """
 $(TYPEDSIGNATURES)
 
@@ -181,9 +184,9 @@ function Adapt.adapt_structure(to, clock::Clock)
     KT = kernel_time_type(clock)
     DT = time_step_type(KT)
 
-    return (time          = convert(KT, clock.time),
-            last_Δt       = convert(DT, clock.last_Δt),
-            last_stage_Δt = convert(DT, clock.last_stage_Δt),
+    return (time          = clock_convert(KT, clock.time),
+            last_Δt       = clock_convert(DT, clock.last_Δt),
+            last_stage_Δt = clock_convert(DT, clock.last_stage_Δt),
             iteration     = clock.iteration,
             stage         = clock.stage)
 end
