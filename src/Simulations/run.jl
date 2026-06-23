@@ -1,10 +1,12 @@
 using Dates: unix2datetime
 
-using Oceananigans: AbstractModel, run_diagnostic!, restore_prognostic_state!
+using Oceananigans: AbstractModel, run_diagnostic!, restore_prognostic_state!, fs_halo_size
 using Oceananigans.Architectures: architecture
 using Oceananigans.Diagnostics: nan_detected
 using Oceananigans.DistributedComputations: all_reduce
-using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_path, load_checkpoint_state
+using Oceananigans.Grids: halo_size
+using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_path, load_checkpoint_state,
+                                  checkpoint_free_surface_grid
 using Oceananigans.TimeSteppers: update_state!, unit_time
 
 import Oceananigans: initialize!
@@ -60,6 +62,53 @@ function aligned_time_step(sim::Simulation, Δt)
     return aligned_Δt
 end
 
+pickup_filesize(filepath) = filepath === nothing ? nothing : filesize(filepath)
+pickup_filesize_str(filesize_bytes) = isnothing(filesize_bytes) ? "unknown" : Base.format_bytes(filesize_bytes)
+pickup_elapsed_time(start_time_ns) = prettytime(1e-9 * (time_ns() - start_time_ns))
+
+function log_pickup_stage(stage; kwargs...)
+    @info "Checkpoint pickup" pickup_stage=stage kwargs...
+    return nothing
+end
+
+function pickup_compatibility_details(sim, state)
+    isnothing(state) && return NamedTuple()
+    hasproperty(state, :model) || return NamedTuple()
+    hasproperty(state.model, :checkpoint_grid) || return NamedTuple()
+    hasproperty(sim.model, :grid) || return NamedTuple()
+
+    checkpoint_grid = state.model.checkpoint_grid
+    restored_grid = sim.model.grid
+
+    checkpoint_grid_halo = halo_size(checkpoint_grid)
+    restored_grid_halo = halo_size(restored_grid)
+
+    details = (
+        checkpoint_grid_halo = checkpoint_grid_halo,
+        restored_grid_halo = restored_grid_halo
+    )
+
+    if !hasproperty(sim.model, :free_surface) || fs_halo_size(sim.model) === nothing
+        restore_layout = checkpoint_grid_halo == restored_grid_halo ? :exact : :compatible
+        return merge(details, (; checkpoint_free_surface_halo = nothing,
+                                 restored_free_surface_halo = nothing,
+                                 restore_layout))
+    end
+
+    checkpoint_free_surface_grid = checkpoint_free_surface_grid(state.model, checkpoint_grid, sim.model)
+    checkpoint_free_surface_halo = halo_size(checkpoint_free_surface_grid)
+    restored_free_surface_halo = fs_halo_size(sim.model)
+
+    exact_layout = checkpoint_grid_halo == restored_grid_halo &&
+                   checkpoint_free_surface_halo == restored_free_surface_halo
+
+    restore_layout = exact_layout ? :exact : :compatible
+
+    return merge(details, (; checkpoint_free_surface_halo,
+                             restored_free_surface_halo,
+                             restore_layout))
+end
+
 """
     set!(simulation; checkpoint=nothing, iteration=nothing)
 
@@ -104,12 +153,40 @@ function set!(sim::Simulation; checkpoint=nothing, iteration=nothing)
     end
 
     if checkpoint_filepath !== nothing
-        last_modified_utc = unix2datetime(round(Int, stat(checkpoint_filepath).mtime))
-        @info "Picking up simulation from checkpoint file $(abspath(checkpoint_filepath)); last modified (UTC): $(last_modified_utc)"
+        checkpoint_stat = stat(checkpoint_filepath)
+        checkpoint_filesize = checkpoint_stat.size
+        last_modified_utc = unix2datetime(round(Int, checkpoint_stat.mtime))
+        log_pickup_stage("resolve_checkpoint";
+                         checkpoint_path=abspath(checkpoint_filepath),
+                         checkpoint_filesize_bytes=checkpoint_filesize,
+                         checkpoint_filesize=pickup_filesize_str(checkpoint_filesize),
+                         checkpoint_last_modified_utc=last_modified_utc)
     end
 
+    load_start_time = time_ns()
+    log_pickup_stage("load_checkpoint_state:start"; checkpoint_path=checkpoint_filepath)
     state = load_checkpoint_state(checkpoint_filepath)
+    log_pickup_stage("load_checkpoint_state:end";
+                     checkpoint_path=checkpoint_filepath,
+                     elapsed=pickup_elapsed_time(load_start_time))
+
+    compatibility_details = try
+        pickup_compatibility_details(sim, state)
+    catch err
+        @warn "Checkpoint pickup compatibility inspection failed; proceeding with restore." exception=(err, catch_backtrace())
+        NamedTuple()
+    end
+
+    if !isempty(compatibility_details)
+        log_pickup_stage("compatibility_check"; compatibility_details...)
+    end
+
+    restore_start_time = time_ns()
+    log_pickup_stage("restore:start"; checkpoint_path=checkpoint_filepath)
     restore_prognostic_state!(sim, state)
+    log_pickup_stage("restore:end";
+                     checkpoint_path=checkpoint_filepath,
+                     elapsed=pickup_elapsed_time(restore_start_time))
     return nothing
 end
 
