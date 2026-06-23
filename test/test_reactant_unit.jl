@@ -256,8 +256,10 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         @test (grid == grid) isa Bool
         @test grid == grid
 
-        c  = CenterField(grid); set!(c, 2)
-        d  = CenterField(grid); set!(d, 3)
+        value_c = 2
+        c  = CenterField(grid); set!(c, value_c)
+        value_d = 2
+        d  = CenterField(grid); set!(d, value_d)
         cd = CenterField(grid)
 
         # `c * d` builds a BinaryOperation -> validate_grid(c, d) -> (c.grid == d.grid).
@@ -266,7 +268,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         multiply!(cd, c, d) = (cd .= c * d; nothing)
         compiled_multiply! = @compile sync=true multiply!(cd, c, d)
         compiled_multiply!(cd, c, d)
-        @test all(Array(interior(cd)) .≈ 2 * 3)
+        @test all(≈(value_c * value_d), Array(interior(cd)))
     end
 
     @testset "Field reductions on RectilinearGrid" begin
