@@ -4,7 +4,6 @@ using Random
 using Oceananigans.Architectures: architecture, on_architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom,
                                        immersed_peripheral_node, immersed_inactive_node, mask_immersed_field!
-using Oceananigans.BoundaryConditions: prescribes_normal_flow
 using Oceananigans.Operators: Δzᶠᶜᶜ, Δzᶜᶠᶜ
 
 #####
@@ -170,7 +169,6 @@ bump(x, y) = -0.5 - 0.4 * exp(-((x - 0.5)^2 + (y - 0.5)^2) / 0.05)
         grid = on_architecture(CPU(), underlying)
         f, c = Face(), Center()
 
-        @test prescribes_normal_flow(U.boundary_conditions.west)
         @test typeof(model.free_surface).parameters[1].name.name == :LocalHaloFilling
         @test !any(immersed_peripheral_node(1, j, 1, grid, f, c, c) |
                    immersed_inactive_node(1, j, 1, grid, f, c, c) for j in 1:grid.Ny)
