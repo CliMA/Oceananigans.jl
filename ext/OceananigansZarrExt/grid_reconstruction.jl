@@ -329,7 +329,7 @@ function write_zarr_grid_reconstruction!(root_group, grids)
 end
 
 function write_one_grid_reconstruction!(root_group, grid, subgroup_name)
-    args, kwargs, immersed_grid_args, metadata = zarr_grid_constructor_info(grid)
+    args, kwargs, _, metadata = zarr_grid_constructor_info(grid)
 
     # Positional args: stored as a JSON array of [key, value] pairs so order survives
     # the round-trip through JSON (Zarr.jl parses attrs with `dicttype=Dict{String,Any}`
@@ -373,10 +373,7 @@ function write_zarr_grid_coords!(group, grid, outputs, grid_suffix, indices, wit
                 var_name,
                 size(arr)...;
                 chunks = size(arr),#TODO: Do we want grid chunking?
-                # attrs = merge(
-                #     Dict("_ARRAY_DIMENSIONS" => collect(var_dims)),
-                #     get(attributes_dict, var_name, Dict{String,Any}())
-                # ) TODO: Do we want to write attributes for coordinates? e.g. as netcdf?
+                attrs = Dict("_ARRAY_DIMENSIONS" => collect(var_dims))
             )
 
             coord .= arr
@@ -395,385 +392,424 @@ function write_zarr_grid_coords!(group, grid, outputs, grid_suffix, indices, wit
     return nothing
 end
 
-# function write_zarr_grid_metrics!(group, grid, indices, dimension_name_generator, grid_suffix)
-#     metrics = gather_grid_metrics(grid, indices, dimension_name_generator; grid_index=grid_suffix)
+function write_zarr_grid_metrics!(group, grid, indices, dimension_name_generator, grid_suffix)
+    metrics = gather_grid_metrics(grid, indices, dimension_name_generator; grid_index=grid_suffix)
     
-#     for (name, field) in pairs(metrics)
-#         if !haskey(group, name)
+    for (name, field) in pairs(metrics)
+        if !haskey(group, name)
 
-#             metric = Zarr.zcreate(
-#                 eltype(field),
-#                 group,
-#                 name,
-#                 size(field)...;
-#                 chunks = size(field),#TODO: Do we want to chunk metrics?
-#                 # attrs = merge(
-#                 #     Dict("_ARRAY_DIMENSIONS" => collect(var_dims)),
-#                 #     get(attributes_dict, var_name, Dict{String,Any}())
-#                 # ) TODO: Do we want to write attributes for metrics? e.g. as netcdf?
-#             )
+            metric = Zarr.zcreate(
+                eltype(field),
+                group,
+                name,
+                size(field)...;
+                chunks = size(field),
+                # attrs = merge(
+                #     Dict("_ARRAY_DIMENSIONS" => collect(var_dims)),
+                #     get(attributes_dict, var_name, Dict{String,Any}())
+                # ) TODO: Do we want to write attributes for metrics? e.g. as netcdf?
+            )
 
-#             metric .= field
+            metric .= field
 
-#         else
-#             existing = collect(group[name])
+        else
+            existing = collect(group[name])
 
-#             existing == field || throw(
-#                 ArgumentError(
-#                     "Variable '$name' already exists but values differ."
-#                 )
-#             )
-#         end
-#     end
-#     return nothing
-# end
+            existing == field || throw(
+                ArgumentError(
+                    "Variable '$name' already exists but values differ."
+                )
+            )
+        end
+    end
+    return nothing
+end
 
+function write_zarr_grid_immersed_boundary!(group, grid::ImmersedBoundaryGrid, indices, dimension_name_generator, grid_suffix)
 
+    _, _, ibg_args, _ = zarr_grid_constructor_info(grid)
+    ib_vars = gather_immersed_boundary(grid, indices, dimension_name_generator; grid_index=grid_suffix)
 
-#£££££££££££££££££££££££££££££££££££££££££££££££££££££££££££ BELOW just write immersed boundary data (mask or bottom_height) and reconstruction
+    mask = pop!(ibg_args, :mask, nothing)
+    bottom_height = pop!(ibg_args, :bottom_height, nothing)
 
-# function write_immersed_boundary_data!(ds, grid::ImmersedBoundaryGrid, immersed_grid_args, prefix)
-#     group_name = "$(prefix)immersed_grid_reconstruction_args"
-#     if (grid.immersed_boundary isa GridFittedBottom) || (grid.immersed_boundary isa PartialCellBottom)
-#         bottom_height = pop!(immersed_grid_args, :bottom_height)
-#         ibg_group = defGroup(ds, group_name; attrib=convert_for_netcdf(immersed_grid_args))
-#         defVar(ibg_group, "bottom_height", bottom_height)
+    # Here the mask and bottom_height are overwritten with reconstruction fields.
+    # Follows the NetCDF implentation, so mask, bottom_height are written beyond `indices`.
+    if !isnothing(mask)
+        ib_vars["mask"] = mask
+    end
 
-#     elseif grid.immersed_boundary isa GridFittedBoundary
-#         mask = pop!(immersed_grid_args, :mask)
-#         ibg_group = defGroup(ds, group_name; attrib=convert_for_netcdf(immersed_grid_args))
-#         defVar(ibg_group, "mask", mask)
-#     end
+    if !isnothing(bottom_height)
+        ib_vars["bottom_height"] = bottom_height
+    end
 
-#     return ds
-# end
+    ibg_group = Zarr.zgroup(
+        group,
+        "immersed_boundary";
+        attrs = zarr_safe_dict(convert_for_zarr(ibg_args))
+    )
 
-# write_immersed_boundary_data!(ds, grid, immersed_grid_args, prefix) = nothing
+    for (name, field) in pairs(ib_vars)
+        if !haskey(ibg_group, name)
 
+            ib_var = Zarr.zcreate(
+                eltype(field),
+                ibg_group,
+                name,
+                size(field)...;
+                chunks = size(field),
+                # attrs = merge(
+                #     Dict("_ARRAY_DIMENSIONS" => collect(var_dims)),
+                #     get(attributes_dict, var_name, Dict{String,Any}())
+                # ) TODO: Do we want to write attributes for immersed boundary variables? e.g. as netcdf?
+            )
 
-# function reconstruct_grid(filename::String; grid_index=1, architecture=nothing)
-#     ds = NCDataset(filename, "r")
-#     grid = reconstruct_grid(ds; grid_index, architecture)
-#     close(ds)
-#     return grid
-# end
+            ib_var .= field
 
-# function reconstruct_immersed_boundary(ds, ::Val{:GridFittedBoundary}, prefix)
-#     ibg_group = ds.group["$(prefix)immersed_grid_reconstruction_args"]
-#     mask = Array(ibg_group["mask"])
-#     return GridFittedBoundary(mask)
-# end
+        else
+            existing = collect(ibg_group[name])
 
-# function reconstruct_immersed_boundary(ds, ::Val{:GridFittedBottom}, prefix)
-#     ibg_group = ds.group["$(prefix)immersed_grid_reconstruction_args"]
-#     bottom_height = Array(ibg_group["bottom_height"])
-#     immersed_condition = ibg_group.attrib["immersed_condition"] |> materialize_from_netcdf
-#     return GridFittedBottom(bottom_height, immersed_condition)
-# end
+            existing == field || throw(
+                ArgumentError(
+                    "Variable '$name' already exists but values differ."
+                )
+            )
+        end
+    end
+    return nothing
+end
 
-# function reconstruct_immersed_boundary(ds, ::Val{:PartialCellBottom}, prefix)
-#     ibg_group = ds.group["$(prefix)immersed_grid_reconstruction_args"]
-#     bottom_height = Array(ibg_group["bottom_height"])
-#     minimum_fractional_cell_height = ibg_group.attrib["minimum_fractional_cell_height"] |> materialize_from_netcdf
-#     return PartialCellBottom(bottom_height, minimum_fractional_cell_height)
-# end
+write_zarr_grid_immersed_boundary!(group, grid, indices, dimension_name_generator, grid_suffix) = nothing
 
-# reconstruct_immersed_boundary(ds, immersed_boundary_type, prefix) = error("Unsupported immersed boundary type: $immersed_boundary_type")
+#####
+##### Grid reconstruction
+#####
 
-# function reconstruct_immersed_boundary(ds, prefix)
-#     grid_reconstruction_metadata = ds.group["$(prefix)grid_reconstruction_metadata"].attrib
-#     immersed_boundary_type = grid_reconstruction_metadata[:immersed_boundary_type]
-#     immersed_boundary = reconstruct_immersed_boundary(ds, Val(Symbol(immersed_boundary_type)), prefix)
-#     return immersed_boundary
-# end
+function reconstruct_immersed_boundary(grid_group, ::Val{:GridFittedBoundary})
+    ibg_group = grid_group["immersed_boundary"]
+    mask = Array(ibg_group["mask"])
+    return GridFittedBoundary(mask)
+end
 
-# function reconstruct_grid(ds; grid_index=1, architecture=nothing)
-#     # Try prefixed format (multi-grid) first, fall back to unprefixed format (single-grid / legacy)
-#     prefixed_key = "grid_$(grid_index)_underlying_grid_reconstruction_args"
-#     prefix = haskey(ds.group, prefixed_key) ? "grid_$(grid_index)_" : ""
+function reconstruct_immersed_boundary(grid_group, ::Val{:GridFittedBottom})
+    ibg_group = grid_group["immersed_boundary"]
+    bottom_height = Array(ibg_group["bottom_height"])
+    immersed_condition = ibg_group.attrs["immersed_condition"] |> materialize_from_zarr
+    return GridFittedBottom(bottom_height, immersed_condition)
+end
 
-#     # Read back the grid reconstruction metadata
-#     underlying_grid_reconstruction_args   = ds.group["$(prefix)underlying_grid_reconstruction_args"].attrib |> Dict
-#     if !isnothing(architecture) # If architecture is specified, force it into the underlying grid reconstruction arguments before materializing
-#         underlying_grid_reconstruction_args["architecture"] = architecture
-#     end
-#     underlying_grid_reconstruction_args   = underlying_grid_reconstruction_args |> materialize_from_netcdf
-#     underlying_grid_reconstruction_kwargs = ds.group["$(prefix)underlying_grid_reconstruction_kwargs"].attrib |> materialize_from_netcdf
-#     grid_reconstruction_metadata          = ds.group["$(prefix)grid_reconstruction_metadata"].attrib |> materialize_from_netcdf
+function reconstruct_immersed_boundary(grid_group, ::Val{:PartialCellBottom})
+    ibg_group = grid_group["immersed_boundary"]
+    bottom_height = Array(ibg_group["bottom_height"])
+    minimum_fractional_cell_height = ibg_group.attrs["minimum_fractional_cell_height"] |> materialize_from_zarr
+    return PartialCellBottom(bottom_height, minimum_fractional_cell_height)
+end
 
-#     # Pop out information about the underlying grid
-#     underlying_grid_type = grid_reconstruction_metadata[:underlying_grid_type]
+reconstruct_immersed_boundary(grid_group, immersed_boundary_type, prefix) = error("Unsupported immersed boundary type: $immersed_boundary_type")
 
-#     # OSSG (TripolarGrid, RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid, …)
-#     # is rebuilt directly from the saved λ/φ/Δx/Δy/Az/z arrays — bypassing the user-facing
-#     # constructor of the original alias. The reconstructed grid is a generic
-#     # `OrthogonalSphericalShellGrid` (with `conformal_mapping = nothing`), which is the
-#     # most we can faithfully recover from on-disk state alone.
-#     if underlying_grid_type <: OrthogonalSphericalShellGrid
-#         underlying_grid = reconstruct_ossg_grid(ds, prefix,
-#                                                 underlying_grid_reconstruction_args,
-#                                                 underlying_grid_reconstruction_kwargs)
-#     else
-#         underlying_grid = underlying_grid_type(values(underlying_grid_reconstruction_args)...; underlying_grid_reconstruction_kwargs...)
-#     end
+function reconstruct_immersed_boundary(grid_group)
+    grid_reconstruction_metadata = grid_group.attrs["grid_reconstruction_metadata"]
+    immersed_boundary_type = grid_reconstruction_metadata["immersed_boundary_type"]
+    immersed_boundary = reconstruct_immersed_boundary(grid_group, Val(Symbol(immersed_boundary_type)))
+    return immersed_boundary
+end
 
-#     # If this is an ImmersedBoundaryGrid, reconstruct the immersed boundary, otherwise underlying grid is the final grid
-#     if isnothing(grid_reconstruction_metadata[:immersed_boundary_type])
-#         grid = underlying_grid
-#     else
-#         immersed_boundary = reconstruct_immersed_boundary(ds, prefix)
-#         immersed_boundary = on_architecture(Architectures.architecture(underlying_grid), immersed_boundary)
-#         grid = ImmersedBoundaryGrid(underlying_grid, immersed_boundary)
-#     end
+"""
+    reconstruct_zarr_grid(group; grid_index=1, architecture=nothing)
 
-#     return grid
-# end
+Read a grid back from a Zarr group written by `ZarrWriter`. Looks for `grid/` (single)
+then `grid_<index>/` (multi).
+"""
+function reconstruct_zarr_grid(group; grid_index=1, architecture=nothing)
+    subgroup_name = "grid" in keys(group.groups) ? "grid" : "grid_$grid_index"
+    haskey(group.groups, subgroup_name) ||
+        throw(ArgumentError("No grid reconstruction data found in this Zarr group (looked for `$subgroup_name`)."))
 
-# #####
-# ##### Metrics-based OrthogonalSphericalShellGrid reconstruction
-# #####
-# #
-# # OSSG variants (TripolarGrid, RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid)
-# # are rebuilt directly from the eight λ/φ aux-coord arrays + twelve Δx/Δy/Az metric
-# # arrays + the z vertical-coordinate scaffold — without going through the original
-# # constructor. This means:
-# #   - Reconstruction is uniform across OSSG aliases (one code path).
-# #   - The reconstructed grid is a generic `OrthogonalSphericalShellGrid` with
-# #     `conformal_mapping = nothing`. The type-alias identity (e.g. `TripolarGrid`)
-# #     is *not* preserved — a faithful copy of the grid arrays is the contract.
-# #   - Requires `include_grid_metrics = true` on the writer (the default).
-# #
-# # Halo regions: if the writer was run with `with_halos = true`, the saved arrays
-# # already include halos and are copied in directly. Otherwise the file holds interior
-# # values only, and the halo cells of the reconstructed arrays are left as zeros
-# # (NaN-filling would be a kinder choice if floating-point hazards matter to consumers).
+    grid_group = group.groups[subgroup_name]
+    attrs = grid_group.attrs
 
-# """
-#     reconstruct_ossg_grid(ds, prefix, args, kwargs)
+    # Positional args: list of [key, value] pairs (preserves order across JSON).
+    args_pairs  = attrs["underlying_grid_reconstruction_args"]
+    args_ordered = [(Symbol(p[1]), materialize_from_zarr(p[2])) for p in args_pairs]
+    if !isnothing(architecture)
+        # Override architecture entry with the user-supplied one.
+        args_ordered = [(k === :architecture ? :architecture => architecture : k => v)
+                        for (k, v) in args_ordered]
+    end
+    args_values = [v for (_, v) in args_ordered]
+    args_dict   = Dict(args_ordered)
+    kwargs_dict = materialize_from_zarr(attrs["underlying_grid_reconstruction_kwargs"])
+    metadata    = materialize_from_zarr(attrs["grid_reconstruction_metadata"])
 
-# Rebuild an `OrthogonalSphericalShellGrid` from the metric arrays stored in `ds`. Used
-# internally by `reconstruct_grid` for any underlying grid type that is a subtype of
-# `OrthogonalSphericalShellGrid` (TripolarGrid, RotatedLatitudeLongitudeGrid, etc.).
-# """
-# function reconstruct_ossg_grid(ds, prefix, args, kwargs)
-#     arch = args[:architecture]
-#     FT   = args[:number_type]
+    underlying_grid_type = metadata[:underlying_grid_type]
 
-#     # Size/halo come back from the file as `Int32`; normalize to `Int`.
-#     Nx, Ny, Nz = map(Int, kwargs[:size])
-#     Hx, Hy, Hz = map(Int, kwargs[:halo])
-#     topo       = kwargs[:topology]
-#     radius     = FT(kwargs[:radius])
-#     TX, TY, TZ = topo
-#     topo_instances = (TX(), TY(), TZ())
+    if underlying_grid_type <: OrthogonalSphericalShellGrid
+        underlying_grid = reconstruct_zarr_ossg_grid(group, grid_group, args_dict, kwargs_dict)
+    else
+        underlying_grid = underlying_grid_type(args_values...; kwargs_dict...)
+    end
 
-#     file_has_halos = haskey(ds.attrib, "output_includes_halos")
+    if isnothing(metadata[:immersed_boundary_type])
+        grid = underlying_grid
+    else
+        haskey(grid_group.groups, "immersed_boundary") ||
+            throw(ArgumentError("No grid immersed boundary reconstruction data found in this Zarr group"))
+        immersed_boundary = reconstruct_immersed_boundary(grid_group)
+        immersed_boundary = on_architecture(Architectures.architecture(underlying_grid), immersed_boundary)
+        grid = ImmersedBoundaryGrid(underlying_grid, immersed_boundary)
+    end
 
-#     # Vertical: detect whether the file used "z" (Static) or "r" (Mutable) for the
-#     # reference 1D coordinate. Read the Face nodes and let `generate_coordinate`
-#     # rebuild the full halo-padded `StaticVerticalDiscretization`.
-#     z_face_var = "$(prefix)z_aaf"
-#     r_face_var = "$(prefix)r_aaf"
-#     if r_face_var ∈ keys(ds)
-#         face_var = r_face_var
-#     elseif z_face_var ∈ keys(ds)
-#         face_var = z_face_var
-#     else
-#         throw(ArgumentError("No vertical coordinate variable (z_aaf or r_aaf) found in dataset for OSSG reconstruction."))
-#     end
-#     z_face_data = collect(ds[face_var])
-#     interior_z_faces = file_has_halos ? z_face_data[Hz+1:Hz+Nz+1] : z_face_data
-#     Lz, z_disc = generate_coordinate(FT, TZ(), Nz, Hz, collect(interior_z_faces), :z, arch)
+    return grid
+end
 
-#     # Read 2D aux coords + metrics and pad with halos as needed.
-#     read_2d(name, lx, ly) = read_ossg_halo_padded_array(ds, "$(prefix)$(name)",
-#                                                        FT, arch, lx, ly,
-#                                                        topo_instances, (Nx, Ny, Nz), (Hx, Hy, Hz),
-#                                                        file_has_halos)
+#####
+##### Metrics-based OrthogonalSphericalShellGrid reconstruction
+#####
+#
+# OSSG variants (TripolarGrid, RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid)
+# are rebuilt directly from the eight λ/φ aux-coord arrays + twelve Δx/Δy/Az metric
+# arrays + the z vertical-coordinate scaffold — without going through the original
+# constructor. This means:
+#   - Reconstruction is uniform across OSSG aliases (one code path).
+#   - The reconstructed grid is a generic `OrthogonalSphericalShellGrid` with
+#     `conformal_mapping = nothing`. The type-alias identity (e.g. `TripolarGrid`)
+#     is *not* preserved — a faithful copy of the grid arrays is the contract.
+#   - Requires `include_grid_metrics = true` on the writer (the default).
+#
+# Halo regions: if the writer was run with `with_halos = true`, the saved arrays
+# already include halos and are copied in directly. Otherwise the file holds interior
+# values only, and the halo cells of the reconstructed arrays are left as zeros
+# (NaN-filling would be a kinder choice if floating-point hazards matter to consumers).
 
-#     λcc = read_2d("λ_cca", Center(), Center())
-#     λfc = read_2d("λ_fca", Face(),   Center())
-#     λcf = read_2d("λ_cfa", Center(), Face())
-#     λff = read_2d("λ_ffa", Face(),   Face())
+"""
+    reconstruct_ossg_grid(ds, prefix, args, kwargs)
 
-#     φcc = read_2d("φ_cca", Center(), Center())
-#     φfc = read_2d("φ_fca", Face(),   Center())
-#     φcf = read_2d("φ_cfa", Center(), Face())
-#     φff = read_2d("φ_ffa", Face(),   Face())
+Rebuild an `OrthogonalSphericalShellGrid` from the metric arrays stored in `ds`. Used
+internally by `reconstruct_grid` for any underlying grid type that is a subtype of
+`OrthogonalSphericalShellGrid` (TripolarGrid, RotatedLatitudeLongitudeGrid, etc.).
+"""
+function reconstruct_zarr_ossg_grid(root_group, grid_group, args, kwargs)
+    arch = args[:architecture]
+    FT   = args[:number_type]
 
-#     # Metrics may not be present if the writer ran with `include_grid_metrics=false`.
-#     have_metrics = "$(prefix)Δx_cca" ∈ keys(ds)
-#     if !have_metrics
-#         throw(ArgumentError("OrthogonalSphericalShellGrid reconstruction requires grid metrics " *
-#                             "(Δx_**, Δy_**, Az_**). Re-run the writer with `include_grid_metrics=true`."))
-#     end
+    # Size/halo come back from the file as `Int32`; normalize to `Int`.
+    Nx, Ny, Nz = map(Int, kwargs[:size])
+    Hx, Hy, Hz = map(Int, kwargs[:halo])
+    topo       = kwargs[:topology]
+    radius     = FT(kwargs[:radius])
+    TX, TY, TZ = topo
+    topo_instances = (TX(), TY(), TZ())
 
-#     Δxcc = read_2d("Δx_cca", Center(), Center())
-#     Δxfc = read_2d("Δx_fca", Face(),   Center())
-#     Δxcf = read_2d("Δx_cfa", Center(), Face())
-#     Δxff = read_2d("Δx_ffa", Face(),   Face())
+    file_has_halos = haskey(root_group.attrs, "output_includes_halos")
 
-#     Δycc = read_2d("Δy_cca", Center(), Center())
-#     Δyfc = read_2d("Δy_fca", Face(),   Center())
-#     Δycf = read_2d("Δy_cfa", Center(), Face())
-#     Δyff = read_2d("Δy_ffa", Face(),   Face())
+    # Vertical: detect whether the file used "z" (Static) or "r" (Mutable) for the
+    # reference 1D coordinate. Read the Face nodes and let `generate_coordinate`
+    # rebuild the full halo-padded `StaticVerticalDiscretization` (:z is hardcoded!).TODO
+    z_face_var = "z_aaf"
+    r_face_var = "r_aaf"
+    if haskey(grid_group, r_face_var)
+        face_var = r_face_var
+    elseif haskey(grid_group, z_face_var)
+        face_var = z_face_var
+    else
+        throw(ArgumentError("No vertical coordinate variable (z_aaf or r_aaf) found in dataset for OSSG reconstruction."))
+    end
+    z_face_data = collect(grid_group[face_var])
+    interior_z_faces = file_has_halos ? z_face_data[Hz+1:Hz+Nz+1] : z_face_data
+    Lz, z_disc = generate_coordinate(FT, TZ(), Nz, Hz, collect(interior_z_faces), :z, arch)
 
-#     Azcc = read_2d("Az_cca", Center(), Center())
-#     Azfc = read_2d("Az_fca", Face(),   Center())
-#     Azcf = read_2d("Az_cfa", Center(), Face())
-#     Azff = read_2d("Az_ffa", Face(),   Face())
+    # Read 2D aux coords + metrics and pad with halos as needed.
+    read_2d(name, lx, ly) = read_ossg_halo_padded_array(grid_group, name,
+                                                       FT, arch, lx, ly,
+                                                       topo_instances, (Nx, Ny, Nz), (Hx, Hy, Hz),
+                                                       file_has_halos)
 
-#     # Reconstruct the conformal_mapping (if saved) so the resulting grid keeps its
-#     # type-alias identity (TripolarGrid / RotatedLatitudeLongitudeGrid). This is what
-#     # downstream code (boundary-condition defaults, kernel dispatch) keys on.
-#     cm_group_key = "$(prefix)conformal_mapping"
-#     conformal_mapping = haskey(ds.group, cm_group_key) ?
-#         reconstruct_conformal_mapping(ds.group[cm_group_key].attrib, TY) : nothing
+    λcc = read_2d("λ_cca", Center(), Center())
+    λfc = read_2d("λ_fca", Face(),   Center())
+    λcf = read_2d("λ_cfa", Center(), Face())
+    λff = read_2d("λ_ffa", Face(),   Face())
 
-#     # Preliminary grid with unfilled metric halos. We use it as the "helper grid" for
-#     # halo filling: building a Field on it picks up the correct BCs from the topology
-#     # (e.g. the north fold for TripolarGrid), so `fill_halo_regions!` does the right
-#     # thing across the fold.
-#     preliminary = OrthogonalSphericalShellGrid{FT, TX, TY, TZ}(arch,
-#                                                                 Nx, Ny, Nz, Hx, Hy, Hz,
-#                                                                 FT(Lz),
-#                                                                 λcc, λfc, λcf, λff,
-#                                                                 φcc, φfc, φcf, φff,
-#                                                                 z_disc,
-#                                                                 Δxcc, Δxfc, Δxcf, Δxff,
-#                                                                 Δycc, Δyfc, Δycf, Δyff,
-#                                                                 Azcc, Azfc, Azcf, Azff,
-#                                                                 radius,
-#                                                                 conformal_mapping)
+    φcc = read_2d("φ_cca", Center(), Center())
+    φfc = read_2d("φ_fca", Face(),   Center())
+    φcf = read_2d("φ_cfa", Center(), Face())
+    φff = read_2d("φ_ffa", Face(),   Face())
 
-#     fill_metric_halos(arr, lx, ly) = halo_fill_2d_metric(arr, preliminary, lx, ly)
+    # Metrics may not be present if the writer ran with `include_grid_metrics=false`.
+    if !haskey(grid_group, "Δx_cca")
+        throw(ArgumentError("OrthogonalSphericalShellGrid reconstruction requires grid metrics " *
+                            "(Δx_**, Δy_**, Az_**). Re-run the writer with `include_grid_metrics=true`."))
+    end
 
-#     λcc = fill_metric_halos(λcc, Center, Center)
-#     λfc = fill_metric_halos(λfc, Face,   Center)
-#     λcf = fill_metric_halos(λcf, Center, Face)
-#     λff = fill_metric_halos(λff, Face,   Face)
+    Δxcc = read_2d("Δx_cca", Center(), Center())
+    Δxfc = read_2d("Δx_fca", Face(),   Center())
+    Δxcf = read_2d("Δx_cfa", Center(), Face())
+    Δxff = read_2d("Δx_ffa", Face(),   Face())
 
-#     φcc = fill_metric_halos(φcc, Center, Center)
-#     φfc = fill_metric_halos(φfc, Face,   Center)
-#     φcf = fill_metric_halos(φcf, Center, Face)
-#     φff = fill_metric_halos(φff, Face,   Face)
+    Δycc = read_2d("Δy_cca", Center(), Center())
+    Δyfc = read_2d("Δy_fca", Face(),   Center())
+    Δycf = read_2d("Δy_cfa", Center(), Face())
+    Δyff = read_2d("Δy_ffa", Face(),   Face())
 
-#     Δxcc = fill_metric_halos(Δxcc, Center, Center)
-#     Δxfc = fill_metric_halos(Δxfc, Face,   Center)
-#     Δxcf = fill_metric_halos(Δxcf, Center, Face)
-#     Δxff = fill_metric_halos(Δxff, Face,   Face)
+    Azcc = read_2d("Az_cca", Center(), Center())
+    Azfc = read_2d("Az_fca", Face(),   Center())
+    Azcf = read_2d("Az_cfa", Center(), Face())
+    Azff = read_2d("Az_ffa", Face(),   Face())
 
-#     Δycc = fill_metric_halos(Δycc, Center, Center)
-#     Δyfc = fill_metric_halos(Δyfc, Face,   Center)
-#     Δycf = fill_metric_halos(Δycf, Center, Face)
-#     Δyff = fill_metric_halos(Δyff, Face,   Face)
+    # Reconstruct the conformal_mapping (if saved) so the resulting grid keeps its
+    # type-alias identity (TripolarGrid / RotatedLatitudeLongitudeGrid). This is what
+    # downstream code (boundary-condition defaults, kernel dispatch) keys on.
+    cm_group_key = "conformal_mapping_attrs"
+    conformal_mapping = haskey(kwargs, cm_group_key) ?
+        reconstruct_conformal_mapping(kwargs[cm_group_key], TY) : nothing
 
-#     Azcc = fill_metric_halos(Azcc, Center, Center)
-#     Azfc = fill_metric_halos(Azfc, Face,   Center)
-#     Azcf = fill_metric_halos(Azcf, Center, Face)
-#     Azff = fill_metric_halos(Azff, Face,   Face)
+    # Preliminary grid with unfilled metric halos. We use it as the "helper grid" for
+    # halo filling: building a Field on it picks up the correct BCs from the topology
+    # (e.g. the north fold for TripolarGrid), so `fill_halo_regions!` does the right
+    # thing across the fold.
+    preliminary = OrthogonalSphericalShellGrid{FT, TX, TY, TZ}(arch,
+                                                                Nx, Ny, Nz, Hx, Hy, Hz,
+                                                                FT(Lz),
+                                                                λcc, λfc, λcf, λff,
+                                                                φcc, φfc, φcf, φff,
+                                                                z_disc,
+                                                                Δxcc, Δxfc, Δxcf, Δxff,
+                                                                Δycc, Δyfc, Δycf, Δyff,
+                                                                Azcc, Azfc, Azcf, Azff,
+                                                                radius,
+                                                                conformal_mapping)
 
-#     return OrthogonalSphericalShellGrid{FT, TX, TY, TZ}(arch,
-#                                                          Nx, Ny, Nz, Hx, Hy, Hz,
-#                                                          FT(Lz),
-#                                                          λcc, λfc, λcf, λff,
-#                                                          φcc, φfc, φcf, φff,
-#                                                          z_disc,
-#                                                          Δxcc, Δxfc, Δxcf, Δxff,
-#                                                          Δycc, Δyfc, Δycf, Δyff,
-#                                                          Azcc, Azfc, Azcf, Azff,
-#                                                          radius,
-#                                                          conformal_mapping)
-# end
+    fill_metric_halos(arr, lx, ly) = halo_fill_2d_metric(arr, preliminary, lx, ly)
 
-# # Wrap a bare 2D metric/coord `OffsetMatrix` as a `Field` on `grid`, fill its halos
-# # using the grid's default BCs (e.g. the north fold on TripolarGrid), and return a
-# # halo-filled `OffsetMatrix` matching the input layout. Necessary because derivatives
-# # across the tripolar fold otherwise NaN out if the metric halos are zero.
-# function halo_fill_2d_metric(old_data, grid, LX, LY)
-#     TX, TY, _ = topology(grid)
-#     Nx, Ny, _ = size(grid)
-#     new_field = Field{LX, LY, Center}(grid)
-#     Ni = Base.length(LX(), TX(), Nx)
-#     Nj = Base.length(LY(), TY(), Ny)
-#     cpu_old_data = on_architecture(CPU(), old_data)
-#     # Broadcast the 2D metric into every z-level so we can slice any of them back out
-#     # below; we need `LZ = Center` (not `Nothing`) so the TripolarGrid fold halo-fill
-#     # — which dispatches on `Center` z-location — adds the 360° longitude wrap.
-#     for k in axes(new_field.data, 3)
-#         new_field.data[1:Ni, 1:Nj, k] .= cpu_old_data[1:Ni, 1:Nj]
-#     end
-#     fill_halo_regions!(new_field)
-#     # The UPivot fold's "redundancy substitution" rewrites the j=Ny interior row for
-#     # Center- and Face-Center y-locations (see fill_halo_regions_upivotzipper.jl) to
-#     # mirror the right half of that row from the left half. That's correct for
-#     # symmetric metrics (Δx/Δy/Az/φ) but wrong for λ, whose halves differ by 360°.
-#     # Re-stamp the interior from the saved data so λ is preserved; for symmetric
-#     # metrics this is a no-op.
-#     for k in axes(new_field.data, 3)
-#         new_field.data[1:Ni, 1:Nj, k] .= cpu_old_data[1:Ni, 1:Nj]
-#     end
-#     # Take z=1 instead of `dropdims`, which would require z to be singleton (it isn't —
-#     # the field has Nz+2Hz cells in z). Any k works because we set every level identically.
-#     return on_architecture(architecture(grid), deepcopy(view(new_field.data, :, :, 1)))
-# end
+    λcc = fill_metric_halos(λcc, Center, Center)
+    λfc = fill_metric_halos(λfc, Face,   Center)
+    λcf = fill_metric_halos(λcf, Center, Face)
+    λff = fill_metric_halos(λff, Face,   Face)
 
-# # Rebuild the `conformal_mapping` from its serialized attributes (see
-# # `conformal_mapping_info` in `src/OrthogonalSphericalShellGrids/`). The `TY`
-# # argument is the y-topology type — for `Tripolar`, that's the fold flavor
-# # (`RightCenterFolded`/`RightFaceFolded`) which lives as a type-parameter on
-# # the struct rather than a runtime field.
-# reconstruct_conformal_mapping(attrib, TY) = reconstruct_conformal_mapping(attrib, Val(Symbol(attrib["type"])), TY)
+    φcc = fill_metric_halos(φcc, Center, Center)
+    φfc = fill_metric_halos(φfc, Face,   Center)
+    φcf = fill_metric_halos(φcf, Center, Face)
+    φff = fill_metric_halos(φff, Face,   Face)
 
-# reconstruct_conformal_mapping(attrib, ::Val{:Nothing}, TY) = nothing
+    Δxcc = fill_metric_halos(Δxcc, Center, Center)
+    Δxfc = fill_metric_halos(Δxfc, Face,   Center)
+    Δxcf = fill_metric_halos(Δxcf, Center, Face)
+    Δxff = fill_metric_halos(Δxff, Face,   Face)
 
-# function reconstruct_conformal_mapping(attrib, ::Val{:Tripolar}, TY)
-#     return Tripolar(
-#         attrib["north_poles_latitude"],
-#         attrib["first_pole_longitude"],
-#         attrib["southernmost_latitude"],
-#         TY,
-#     )
-# end
+    Δycc = fill_metric_halos(Δycc, Center, Center)
+    Δyfc = fill_metric_halos(Δyfc, Face,   Center)
+    Δycf = fill_metric_halos(Δycf, Center, Face)
+    Δyff = fill_metric_halos(Δyff, Face,   Face)
 
-# function reconstruct_conformal_mapping(attrib, ::Val{:LatitudeLongitudeRotation}, TY)
-#     return LatitudeLongitudeRotation((attrib["north_pole_λ"], attrib["north_pole_φ"]))
-# end
+    Azcc = fill_metric_halos(Azcc, Center, Center)
+    Azfc = fill_metric_halos(Azfc, Face,   Center)
+    Azcf = fill_metric_halos(Azcf, Center, Face)
+    Azff = fill_metric_halos(Azff, Face,   Face)
 
-# # Unknown conformal-mapping types (e.g., `CubedSphereConformalMapping`) — leave as
-# # `nothing`; the grid will still be usable as a generic OSSG.
-# reconstruct_conformal_mapping(attrib, ::Val, TY) = nothing
+    return OrthogonalSphericalShellGrid{FT, TX, TY, TZ}(arch,
+                                                         Nx, Ny, Nz, Hx, Hy, Hz,
+                                                         FT(Lz),
+                                                         λcc, λfc, λcf, λff,
+                                                         φcc, φfc, φcf, φff,
+                                                         z_disc,
+                                                         Δxcc, Δxfc, Δxcf, Δxff,
+                                                         Δycc, Δyfc, Δycf, Δyff,
+                                                         Azcc, Azfc, Azcf, Azff,
+                                                         radius,
+                                                         conformal_mapping)
+end
 
-# # Read a 2D OSSG metric/coord variable from the file and pad it out to the halo-included
-# # shape that the OSSG constructor expects. Returns an OffsetMatrix indexed `[1-Hx:Nx+Hx, …]`.
-# function read_ossg_halo_padded_array(ds, name, FT, arch, lx, ly, topo_instances, sz, halo_sz, file_has_halos)
-#     Nx, Ny, Nz = sz
-#     TX, TY, _  = topo_instances
+# Wrap a bare 2D metric/coord `OffsetMatrix` as a `Field` on `grid`, fill its halos
+# using the grid's default BCs (e.g. the north fold on TripolarGrid), and return a
+# halo-filled `OffsetMatrix` matching the input layout. Necessary because derivatives
+# across the tripolar fold otherwise NaN out if the metric halos are zero.
+function halo_fill_2d_metric(old_data, grid, LX, LY)
+    TX, TY, _ = topology(grid)
+    Nx, Ny, _ = size(grid)
+    new_field = Field{LX, LY, Center}(grid)
+    Ni = Base.length(LX(), TX(), Nx)
+    Nj = Base.length(LY(), TY(), Ny)
+    cpu_old_data = on_architecture(CPU(), old_data)
+    # Broadcast the 2D metric into every z-level so we can slice any of them back out
+    # below; we need `LZ = Center` (not `Nothing`) so the TripolarGrid fold halo-fill
+    # — which dispatches on `Center` z-location — adds the 360° longitude wrap.
+    for k in axes(new_field.data, 3)
+        new_field.data[1:Ni, 1:Nj, k] .= cpu_old_data[1:Ni, 1:Nj]
+    end
+    fill_halo_regions!(new_field)
+    # The UPivot fold's "redundancy substitution" rewrites the j=Ny interior row for
+    # Center- and Face-Center y-locations (see fill_halo_regions_upivotzipper.jl) to
+    # mirror the right half of that row from the left half. That's correct for
+    # symmetric metrics (Δx/Δy/Az/φ) but wrong for λ, whose halves differ by 360°.
+    # Re-stamp the interior from the saved data so λ is preserved; for symmetric
+    # metrics this is a no-op.
+    for k in axes(new_field.data, 3)
+        new_field.data[1:Ni, 1:Nj, k] .= cpu_old_data[1:Ni, 1:Nj]
+    end
+    # Take z=1 instead of `dropdims`, which would require z to be singleton (it isn't —
+    # the field has Nz+2Hz cells in z). Any k works because we set every level identically.
+    return on_architecture(architecture(grid), deepcopy(view(new_field.data, :, :, 1)))
+end
 
-#     # Allocate a halo-padded 2D array via `Oceananigans.Grids.new_data` (imported as
-#     # `allocate_grid_data` to avoid colliding with `OutputReaders`' separate `new_data`),
-#     # then drop the singleton vertical dim so we get an `OffsetMatrix` the OSSG
-#     # constructor accepts.
-#     full3d = allocate_grid_data(FT, arch, (lx, ly, nothing), topo_instances, sz, halo_sz)
-#     full2d = OffsetArray(dropdims(parent(full3d), dims=3), full3d.offsets[1:2]...)
+# Rebuild the `conformal_mapping` from its serialized attributes (see
+# `conformal_mapping_info` in `src/OrthogonalSphericalShellGrids/`). The `TY`
+# argument is the y-topology type — for `Tripolar`, that's the fold flavor
+# (`RightCenterFolded`/`RightFaceFolded`) which lives as a type-parameter on
+# the struct rather than a runtime field.
+reconstruct_conformal_mapping(attrib, TY) = reconstruct_conformal_mapping(attrib, Val(Symbol(attrib["type"])), TY)
 
-#     raw = collect(ds[name])
+reconstruct_conformal_mapping(attrib, ::Val{:Nothing}, TY) = nothing
 
-#     if file_has_halos
-#         # The saved array already includes halos. Sanity-check the size and assign through.
-#         expected_full = size(parent(full2d))
-#         size(raw) == expected_full || throw(ArgumentError(
-#             "Saved array '$name' has size $(size(raw)) but expected halo-included size $expected_full."))
-#         parent(full2d) .= FT.(raw)
-#     else
-#         # The saved array is the interior only. Copy it into the interior of the halo array.
-#         i_range = interior_indices(lx, TX, Nx)
-#         j_range = interior_indices(ly, TY, Ny)
-#         expected_interior = (length(i_range), length(j_range))
-#         size(raw) == expected_interior || throw(ArgumentError(
-#             "Saved array '$name' has size $(size(raw)) but expected interior size $expected_interior."))
-#         full2d[i_range, j_range] .= FT.(raw)
-#     end
+function reconstruct_conformal_mapping(attrib, ::Val{:Tripolar}, TY)
+    return Tripolar(
+        attrib["north_poles_latitude"],
+        attrib["first_pole_longitude"],
+        attrib["southernmost_latitude"],
+        TY,
+    )
+end
 
-#     return full2d
-# end
+function reconstruct_conformal_mapping(attrib, ::Val{:LatitudeLongitudeRotation}, TY)
+    return LatitudeLongitudeRotation((attrib["north_pole_λ"], attrib["north_pole_φ"]))
+end
+
+# Unknown conformal-mapping types (e.g., `CubedSphereConformalMapping`) — leave as
+# `nothing`; the grid will still be usable as a generic OSSG.
+reconstruct_conformal_mapping(attrib, ::Val, TY) = nothing
+
+# Read a 2D OSSG metric/coord variable from the file and pad it out to the halo-included
+# shape that the OSSG constructor expects. Returns an OffsetMatrix indexed `[1-Hx:Nx+Hx, …]`.
+function read_ossg_halo_padded_array(grid_group, name, FT, arch, lx, ly, topo_instances, sz, halo_sz, file_has_halos)
+    Nx, Ny, Nz = sz
+    TX, TY, _  = topo_instances
+
+    # Allocate a halo-padded 2D array via `Oceananigans.Grids.new_data` (imported as
+    # `allocate_grid_data` to avoid colliding with `OutputReaders`' separate `new_data`),
+    # then drop the singleton vertical dim so we get an `OffsetMatrix` the OSSG
+    # constructor accepts.
+    full3d = allocate_grid_data(FT, arch, (lx, ly, nothing), topo_instances, sz, halo_sz)
+    full2d = OffsetArray(dropdims(parent(full3d), dims=3), full3d.offsets[1:2]...)
+
+    raw = collect(grid_group[name])
+
+    if ndims(raw) == 3 && size(raw, 3) == 1#TODO: do we want nothing dim in Zarr?
+        raw = dropdims(raw; dims=3)
+    end
+
+    if file_has_halos
+        # The saved array already includes halos. Sanity-check the size and assign through.
+        expected_full = size(parent(full2d))
+        size(raw) == expected_full || throw(ArgumentError(
+            "Saved array '$name' has size $(size(raw)) but expected halo-included size $expected_full."))
+        parent(full2d) .= FT.(raw)
+    else
+        # The saved array is the interior only. Copy it into the interior of the halo array.
+        i_range = interior_indices(lx, TX, Nx)
+        j_range = interior_indices(ly, TY, Ny)
+        expected_interior = (length(i_range), length(j_range))
+        size(raw) == expected_interior || throw(ArgumentError(
+            "Saved array '$name' has size $(size(raw)) but expected interior size $expected_interior."))
+        full2d[i_range, j_range] .= FT.(raw)
+    end
+
+    return full2d
+end

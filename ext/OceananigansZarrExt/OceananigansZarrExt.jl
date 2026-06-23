@@ -12,8 +12,11 @@ module OceananigansZarrExt
 using Zarr
 using OrderedCollections: OrderedDict
 
+using Dates: AbstractTime, UTC, now, DateTime
 using Oceananigans: AbstractModel
+using Oceananigans.AbstractOperations: KernelFunctionOperation
 using Oceananigans.Architectures: architecture
+using Oceananigans.BoundaryConditions: fill_halo_regions!
 using Oceananigans.Fields: AbstractField, location, indices
 import Oceananigans.Grids: grid
 using Oceananigans.Grids:
@@ -26,6 +29,11 @@ using Oceananigans.Grids:
     parent_index_range, nodes, ξnodes, ηnodes, rnodes, validate_index, peripheral_node, inactive_node,
     topology, constructor_arguments, architecture,
     generate_coordinate, total_length, interior_indices
+
+# Aliased to avoid clashing with `Oceananigans.OutputReaders.new_data`, which is a
+# different function (5-arg, for FieldTimeSeries data allocation).
+import Oceananigans.Grids: new_data as allocate_grid_data
+using OffsetArrays: OffsetArray
 using Oceananigans.ImmersedBoundaries:
     ImmersedBoundaryGrid,
     GridFittedBoundary,
@@ -57,9 +65,11 @@ using Oceananigans.OutputWriters:
     add_grid_suffix,
     dimension_name_generator_free_surface,
     vertical_coordinate_name,
-    add_schedule_metadata!, default_output_attributes
+    add_schedule_metadata!,
+    restrict_to_interior
 using Oceananigans.Utils:
     TimeInterval, IterationInterval, WallTimeInterval, materialize_schedule,
+    versioninfo_with_gpu, oceananigans_versioninfo,
     prettykeys, pretty_filesize
 
 import Oceananigans: initialize!, write_output!

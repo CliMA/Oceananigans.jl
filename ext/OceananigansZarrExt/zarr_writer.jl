@@ -10,7 +10,7 @@ function ZarrWriter(model::AbstractModel, outputs;
                     schedule,
                     dir = ".",
                     indices = (:, :, :),
-                    with_halos = true,
+                    with_halos = false,
                     # include_grid_metrics = true,
                     array_type = Array{Float32},
                     file_splitting = NoFileSplitting(),
@@ -49,6 +49,10 @@ function ZarrWriter(model::AbstractModel, outputs;
         store = Zarr.DirectoryStore(filepath)
     else
         filepath = string(store)
+    end
+
+    if with_halos && indices != (:, :, :)
+        throw(ArgumentError("If with_halos=true then you cannot pass indices: $indices"))
     end
 
     initialize!(file_splitting, model)
@@ -248,6 +252,19 @@ function initialize_zarr_store!(writer::ZarrWriter, model)
         root_attrs["rank_topology"] = [arch.ranks[1], arch.ranks[2], arch.ranks[3]]
     end
 
+    useful_attributes = Dict("date" => "This file was generated on $(now()) local time ($(now(UTC)) UTC).",
+                            "Julia" => "This file was generated using Julia $(VERSION).",
+                             "Oceananigans" => "This file was generated using " * oceananigans_versioninfo())
+
+    if writer.with_halos
+        useful_attributes["output_includes_halos"] =
+            "The outputs include data from the halo regions of the grid."
+    end
+
+    merge!(root_attrs, useful_attributes)
+
+    add_schedule_metadata!(root_attrs, writer.schedule)
+
     # Compute the "global" grids that we want to serialize. For distributed grids,
     # `reconstruct_global_grid` is a collective — all ranks must call it. For non-
     # distributed grids it's an identity.
@@ -284,6 +301,8 @@ function initialize_zarr_store!(writer::ZarrWriter, model)
                 if writer.output_grid_map[string(name)] == grid_index
             )
             write_zarr_grid_coords!(grid_group, grid, grid_outputs, dim_grid_suffix(grid_index), writer.indices, writer.with_halos, writer.dimension_name_generator)
+            write_zarr_grid_metrics!(grid_group, grid, writer.indices, writer.dimension_name_generator, dim_grid_suffix(grid_index))
+            write_zarr_grid_immersed_boundary!(grid_group, grid, writer.indices, writer.dimension_name_generator, dim_grid_suffix(grid_index))            
         end
     else
         g = nothing
@@ -298,57 +317,6 @@ function initialize_zarr_store!(writer::ZarrWriter, model)
     _ztrace("initialize_zarr_store! return")
 
     return nothing
-end
-
-#####
-##### Grid reconstruction
-#####
-
-"""
-    reconstruct_zarr_grid(group; grid_index=1, architecture=nothing)
-
-Read a grid back from a Zarr group written by `ZarrWriter`. Looks for `grid/` (single)
-then `grid_<index>/` (multi). Reconstructs `RectilinearGrid`/`LatitudeLongitudeGrid` from
-the serialized constructor arguments. Immersed-boundary reconstruction not implemented
-in v1.
-"""
-function reconstruct_zarr_grid(group; grid_index=1, architecture=nothing)
-    subgroup_name = "grid" in keys(group.groups) ? "grid" : "grid_$grid_index"
-    haskey(group.groups, subgroup_name) ||
-        throw(ArgumentError("No grid reconstruction data found in this Zarr group (looked for `$subgroup_name`)."))
-
-    subgroup = group.groups[subgroup_name]
-    attrs = subgroup.attrs
-
-    # Positional args: list of [key, value] pairs (preserves order across JSON).
-    args_pairs  = attrs["underlying_grid_reconstruction_args"]
-    args_ordered = [(Symbol(p[1]), materialize_from_zarr(p[2])) for p in args_pairs]
-    if !isnothing(architecture)
-        # Override architecture entry with the user-supplied one.
-        args_ordered = [(k === :architecture ? :architecture => architecture : k => v)
-                        for (k, v) in args_ordered]
-    end
-    args_values = [v for (_, v) in args_ordered]
-    kwargs_dict = materialize_from_zarr(attrs["underlying_grid_reconstruction_kwargs"])
-    metadata    = materialize_from_zarr(attrs["grid_reconstruction_metadata"])
-
-    @show args_values
-    @show kwargs_dict
-    @show metadata
-
-    nt = (; pairs(kwargs_dict)...)
-
-    @show nt
-
-    grid_type = metadata[:underlying_grid_type]
-
-    underlying = grid_type(args_values...; kwargs_dict...)
-
-    if isnothing(metadata[:immersed_boundary_type])
-        return underlying
-    else
-        throw(ArgumentError("Immersed-boundary reconstruction not yet implemented for Zarr."))
-    end
 end
 
 
@@ -412,9 +380,10 @@ function define_zarr_output_variable!(g, writer::ZarrWriter, output::AbstractFie
 
     # _ARRAY_DIMENSIONS in C order (reverse of Julia order, then `time` last in Julia
     # but first in C order — i.e., the reversed sequence ends in the slowest-varying axis).
-    spatial_dim_names = zarr_field_dimensions(output)
-    julia_order_dims  = String[spatial_dim_names..., "time"]
-    array_dimensions  = reverse(julia_order_dims)
+    spatial_coord_names = zarr_field_coordinates(output)
+    #ßspatial_dim_names   = zarr_field_dims(output)
+    julia_order_coords  = String[spatial_coord_names..., "time"]
+    array_coords  = reverse(julia_order_coords)
 
     # For distributed runs, the field's local `indices` reflect this rank's slab and
     # are not meaningful on disk (the on-disk array is the GLOBAL field). Save the
@@ -424,7 +393,9 @@ function define_zarr_output_variable!(g, writer::ZarrWriter, output::AbstractFie
         collect(string.(indices_strings(output)))
 
     attrs = Dict{String, Any}(
-        "_ARRAY_DIMENSIONS" => array_dimensions,
+        #TODO _ARRAY_DIMESNIONS should be a list of strings, not a tuple of strings. --- IGNORE ---
+        
+        "coordinates" => array_coords,
         "location"          => collect(string.(location_strings(output))),
         "indices"           => indices_for_attr,
     )
@@ -627,50 +598,6 @@ function start_next_file(model, writer::ZarrWriter)
     initialize_zarr_store!(writer, model)
     return nothing
 end
-
-#####
-##### Helpers: field dim names, location strings, indices strings
-#####
-
-zarr_field_dimensions(field::AbstractField) = zarr_field_dimensions(field, field.grid)
-
-function zarr_field_dimensions(field::AbstractField, grid::RectilinearGrid)
-    LX, LY, LZ = location(field)
-    name_x = LX === Nothing ? "" : trilocation_dim_name("x", grid, LX(), nothing, nothing, Val(:x))
-    name_y = LY === Nothing ? "" : trilocation_dim_name("y", grid, nothing, LY(), nothing, Val(:y))
-    name_z = LZ === Nothing ? "" : trilocation_dim_name("z", grid, nothing, nothing, LZ(), Val(:z))
-    return (name_x, name_y, name_z)
-end
-
-function zarr_field_dimensions(field::AbstractField, grid::LatitudeLongitudeGrid)
-    LΛ, LΦ, LZ = location(field)
-    name_λ = LΛ === Nothing ? "" : trilocation_dim_name("λ", grid, LΛ(), nothing, nothing, Val(:x))
-    name_φ = LΦ === Nothing ? "" : trilocation_dim_name("φ", grid, nothing, LΦ(), nothing, Val(:y))
-    name_z = LZ === Nothing ? "" : trilocation_dim_name("z", grid, nothing, nothing, LZ(), Val(:z))
-    return (name_λ, name_φ, name_z)
-end
-
-function zarr_field_dimensions(field::AbstractField, grid::OrthogonalSphericalShellGrid)
-    LΛ, LΦ, LZ = location(field)
-    name_λ = LΛ === Nothing ? "" : trilocation_dim_name("λ", grid, LΛ(), nothing, nothing, Val(:x))
-    name_φ = LΦ === Nothing ? "" : trilocation_dim_name("φ", grid, nothing, LΦ(), nothing, Val(:y))
-    name_z = LZ === Nothing ? "" : trilocation_dim_name("z", grid, nothing, nothing, LZ(), Val(:z))
-    return (name_λ, name_φ, name_z)
-end
-
-zarr_field_dimensions(field::AbstractField, grid::ImmersedBoundaryGrid) =
-    zarr_field_dimensions(field, grid.underlying_grid)
-
-# Location and indices as JSON-friendly String tuples.
-location_strings(field::AbstractField) = map(loc -> loc === Nothing ? "Nothing" : string(loc),
-                                             location(field))
-
-indices_strings(field::AbstractField) = map(index_string, indices(field))
-index_string(::Colon) = ":"
-index_string(r::AbstractUnitRange) = string(first(r), ":", last(r))
-index_string(i::Integer) = string(i)
-
-
 
 Base.summary(ow::ZarrWriter) =
     string("ZarrWriter writing ", prettykeys(ow.outputs), " to ", ow.filepath, " on ", summary(ow.schedule))
