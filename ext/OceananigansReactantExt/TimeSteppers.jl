@@ -47,13 +47,6 @@ function Clock(grid::ReactantGrid)
     return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt, kernel_time_type=FT)
 end
 
-Base.convert(::Type{T}, x::Reactant.TracedRNumber) where {T<:Reactant.ReactantPrimitive} =
-      Reactant.promote_to(Reactant.TracedRNumber{T}, x)
-
-Base.convert(::Type{T}, x::Reactant.ConcreteRNumber{T}) where {T<:AbstractFloat} = x
-Base.convert(::Type{T}, x::Reactant.ConcreteRNumber) where {T<:AbstractFloat} =
-      Reactant.ConcreteRNumber(convert(T, Reactant.to_number(x)); x.sharding)
-
 innertype(::ConcreteRNumber{T}) where T = T
 
 const ConcreteReactantClock = Clock{<:ConcreteRNumber}
