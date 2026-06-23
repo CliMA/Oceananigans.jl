@@ -422,7 +422,7 @@ function Base.similar(grid::RectilinearGrid)
 end
 
 """
-    with_number_type(number_type, grid)
+$(TYPEDSIGNATURES)
 
 Return a `new_grid` that's identical to `grid` but with `number_type`.
 """
@@ -433,7 +433,7 @@ function with_number_type(FT, grid::RectilinearGrid)
 end
 
 """
-    with_halo(halo, grid)
+$(TYPEDSIGNATURES)
 
 Return a `new_grid` that's identical to `grid` but with `halo`.
 """
@@ -446,8 +446,29 @@ function with_halo(halo, grid::RectilinearGrid)
     return RectilinearGrid(arch, FT; kwargs...)
 end
 
+# See the `slice` docstring (defined in grid_utils.jl) for documentation. The `x`, `y`, `z`
+# keywords set the constant coordinate of a collapsed dimension (default `:auto` → cell center).
+function slice(grid::RectilinearGrid, i, j, k; x=:auto, y=:auto, z=:auto)
+    arch = architecture(grid)
+    FT = eltype(grid)
+    TX, TY, TZ = topology(grid)
+
+    TX′, x′, Nx, Hx = slice_dimension(i, cpu_face_constructor_x(grid), grid.Nx, grid.Hx, TX; location=x)
+    TY′, y′, Ny, Hy = slice_dimension(j, cpu_face_constructor_y(grid), grid.Ny, grid.Hy, TY; location=y)
+    TZ′, z′, Nz, Hz = slice_dimension(k, cpu_face_constructor_z(grid), grid.Nz, grid.Hz, TZ; location=z)
+    topo = (TX′, TY′, TZ′)
+
+    sz   = pop_flat_elements((Nx, Ny, Nz), topo)
+    halo = pop_flat_elements((Hx, Hy, Hz), topo)
+
+    kwargs = Dict{Symbol, Any}(:size => sz, :halo => halo, :topology => topo,
+                               :x => x′, :y => y′, :z => z′)
+
+    return RectilinearGrid(arch, FT; kwargs...)
+end
+
 """
-    on_architecture(architecture, grid)
+$(TYPEDSIGNATURES)
 
 Return a `new_grid` that's identical to `grid` but on `architecture`.
 """

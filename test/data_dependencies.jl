@@ -46,11 +46,28 @@ dh = DataDep("regression_truth_data",
 
 DataDeps.register(dh)
 
-# Invalidate stale DataDeps cache if new files are missing
+# Invalidate stale DataDeps cache when any expected reference file is missing
+# or has an unexpected size. Persistent CI caches (e.g. buildkite agents)
+# may hold reference data from previous artifact uploads; expected sizes are
+# the authoritative way to detect that.
+#
+# Sizes refer to the current files in glwagner/OceananigansArtifacts.jl
+# (data_for_regression_tests/). When regenerating reference data, update
+# these alongside the new upload.
+const _expected_reference_sizes = Dict(
+    "ocean_large_eddy_simulation_DynamicSmagorinsky_directional_iteration10000.jld2" => 713110,
+    "ocean_large_eddy_simulation_DynamicSmagorinsky_directional_iteration10010.jld2" => 713110,
+    "ocean_large_eddy_simulation_DynamicSmagorinsky_lagrangian_iteration10000.jld2"  => 1244676,
+    "ocean_large_eddy_simulation_DynamicSmagorinsky_lagrangian_iteration10010.jld2"  => 1244676,
+)
+
 dd_path = try; datadep"regression_truth_data"; catch; nothing; end
 if dd_path !== nothing
-    expected = joinpath(dd_path, "ocean_large_eddy_simulation_DynamicSmagorinsky_directional_iteration10000.jld2")
-    if !isfile(expected)
+    cache_stale = any(_expected_reference_sizes) do (filename, expected_size)
+        path = joinpath(dd_path, filename)
+        !isfile(path) || filesize(path) != expected_size
+    end
+    if cache_stale
         @info "Regression truth data cache is stale, re-downloading..."
         rm(dd_path; recursive=true)
         datadep"regression_truth_data"

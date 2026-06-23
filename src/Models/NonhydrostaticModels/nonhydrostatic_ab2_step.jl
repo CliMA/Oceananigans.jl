@@ -2,7 +2,7 @@ using Oceananigans.TimeSteppers: _ab2_step_field!, implicit_step!
 import Oceananigans.TimeSteppers: ab2_step!
 
 """
-    ab2_step!(model::NonhydrostaticModel, Δt, callbacks)
+$(TYPEDSIGNATURES)
 
 Advance `NonhydrostaticModel` by one Adams-Bashforth 2nd-order time step with pressure correction.
 Dispatches to `pressure_correction_ab2_step!` which implements a predictor-corrector scheme
@@ -11,7 +11,7 @@ ab2_step!(model::NonhydrostaticModel, args...) =
     pressure_correction_ab2_step!(model, args...)
 
 """
-    pressure_correction_ab2_step!(model, Δt, callbacks)
+$(TYPEDSIGNATURES)
 
 Implement the AB2 time step with pressure correction for `NonhydrostaticModel`.
 
@@ -25,6 +25,7 @@ This predictor-corrector scheme:
 """
 function pressure_correction_ab2_step!(model, Δt, callbacks)
     grid = model.grid
+    kernel_Δt = convert(eltype(grid), Δt)
 
     # Compute flux bc tendencies
     compute_flux_bc_tendencies!(model)
@@ -34,7 +35,7 @@ function pressure_correction_ab2_step!(model, Δt, callbacks)
     for (i, name) in enumerate(keys(model_fields))
         field = model_fields[name]
         exclude_periphery = i < 4 # We assume that the first 3 fields are velocity / momentum variables
-        kernel_args = (field, Δt, model.timestepper.χ, model.timestepper.Gⁿ[name], model.timestepper.G⁻[name])
+        kernel_args = (field, kernel_Δt, model.timestepper.χ, model.timestepper.Gⁿ[name], model.timestepper.G⁻[name])
         launch!(architecture(grid), grid, :xyz, _ab2_step_field!, kernel_args...; exclude_periphery)
 
         implicit_step!(field,
@@ -44,11 +45,13 @@ function pressure_correction_ab2_step!(model, Δt, callbacks)
                        Val(i-3), # We assume that the first 3 fields are velocity / momentum variables
                        model.clock,
                        fields(model),
-                       Δt)
+                       kernel_Δt,
+                       model.advection,
+                       model.velocities)
     end
 
-    compute_pressure_correction!(model, Δt)
-    make_pressure_correction!(model, Δt)
+    compute_pressure_correction!(model, kernel_Δt)
+    make_pressure_correction!(model, kernel_Δt)
 
     return nothing
 end

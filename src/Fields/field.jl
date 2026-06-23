@@ -1,10 +1,10 @@
 import Oceananigans: prognostic_state, restore_prognostic_state!
-using Oceananigans.BoundaryConditions:  construct_boundary_conditions_kernels, OBC, MCBC,
+using Oceananigans.BoundaryConditions:  construct_boundary_conditions_kernels, NFBC, MCBC,
     Zipper, validate_boundary_condition_architecture, validate_boundary_condition_topology
 using Oceananigans.Grids: parent_index_range, default_indices, validate_indices,
     index_range_contains, halo_size, offset_data, interior_parent_indices
 using Oceananigans.Utils: @apply_regionally, getregion
-using Oceananigans.Architectures: convert_to_device
+using Oceananigans.Architectures: CPU, convert_to_device, on_architecture
 
 using LinearAlgebra: LinearAlgebra
 using KernelAbstractions: @kernel, @index
@@ -54,7 +54,7 @@ end
 validate_boundary_condition_location(bc, ::Center, side) = nothing          # anything goes for centers
 validate_boundary_condition_location(::Nothing, ::Nothing, side) = nothing  # its nothing or nothing
 
-const ValidFaceBCS = Union{OBC, Nothing, Missing, MCBC}
+const ValidFaceBCS = Union{NFBC, Nothing, Missing, MCBC}
 validate_boundary_condition_location(::ValidFaceBCS, ::Face, side) = nothing  # only open, connected or nothing on faces
 validate_boundary_condition_location(bc, loc, side) = # everything else is wrong!
     throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc)!"))
@@ -238,7 +238,7 @@ function Base.similar(f::Field, grid=f.grid)
 end
 
 """
-    offset_windowed_data(data, data_indices, loc, grid, view_indices)
+$(TYPEDSIGNATURES)
 
 Return an `OffsetArray` of `parent(data)`.
 
@@ -264,7 +264,7 @@ end
 convert_colon_indices(view_indices, field_indices) = view_indices
 convert_colon_indices(::Colon, field_indices) = field_indices
 """
-    view(f::Field, indices...)
+$(TYPEDSIGNATURES)
 
 Returns a `Field` with `indices`, whose `data` is
 a view into `f`, offset to preserve index meaning.
@@ -407,7 +407,7 @@ function interior(a::OffsetArray,
 end
 
 """
-    interior(f::Field)
+$(TYPEDSIGNATURES)
 
 Return a view of `f` that excludes halo points.
 """
@@ -513,14 +513,14 @@ struct FixedTime{T}
 end
 
 """
-    compute_at!(field, time)
+$(TYPEDSIGNATURES)
 
 Computes `field.data` at `time`. Falls back to compute!(field).
 """
 compute_at!(field, time) = compute!(field)
 
 """
-    compute_at!(field, time)
+$(TYPEDSIGNATURES)
 
 Computes `field.data` if `time != field.status.time`.
 """
@@ -696,7 +696,7 @@ get_neutral_mask(::MinimumReduction) = +Inf
 get_neutral_mask(::MaximumReduction) = -Inf
 
 """
-    condition_operand(f::Function, op::AbstractField, condition, mask)
+$(TYPEDSIGNATURES)
 
 Wrap `f(op)` in `ConditionedOperand` with `condition` and `mask`. `f` defaults to `identity`.
 
@@ -859,12 +859,17 @@ Grids.nodes(f::Field; kwargs...) = nodes(f.grid, instantiated_location(f)...; in
 ##### Checkpointing
 #####
 
+# Save a host copy of the underlying data (halos included) so that on restore we can
+# `copyto!` straight into the existing device array. Serializing the device array directly
+# makes JLD2 reconstruct a *new* device array on read, doubling GPU memory at pickup and
+# OOMing for large fields. `parent` keeps the same indexing as `restored`'s parent below.
 function prognostic_state(field::Field)
-    return (; data = prognostic_state(field.data))
+    return (; data = on_architecture(CPU(), parent(field)))
 end
 
 function restore_prognostic_state!(restored::Field, from)
-    restore_prognostic_state!(restored.data, from.data)
+    # `from.data` is a host-side copy of the parent data; restore region-by-region when needed.
+    @apply_regionally copyto!(parent(restored), from.data)
     return restored
 end
 

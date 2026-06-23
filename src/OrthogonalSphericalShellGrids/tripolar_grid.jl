@@ -1,7 +1,7 @@
 using Oceananigans.BoundaryConditions: UPivotZipperBoundaryCondition, FPivotZipperBoundaryCondition, NoFluxBoundaryCondition
 using Oceananigans.Grids: Grids, Bounded, Flat, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid,
     architecture, cpu_face_constructor_z, validate_dimension_specification,
-    AbstractTopology, RightCenterFolded, RightFaceFolded, new_data
+    AbstractTopology, RightCenterFolded, RightFaceFolded, new_data, topology
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 """
@@ -73,7 +73,7 @@ Keyword Arguments
              in ``z``-direction. Default: (0, 1).
 - `first_pole_longitude`: The longitude of the first "north" singularity.
                           The second singularity is located at `first_pole_longitude + 180ᵒ`.
-                          Default: 75.
+                          Default: 70.
 - `north_poles_latitude`: The latitude of the "north" singularities. Default: 55.
 - `fold_topology`: The folding topology to use. Either `RightCenterFolded` or `RightFaceFolded`:
     - `RightCenterFolded` folds the north boundary along cell `XFace`s and `Center`s,

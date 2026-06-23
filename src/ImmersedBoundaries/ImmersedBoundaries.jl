@@ -24,6 +24,8 @@ import Oceananigans.Grids: architecture, with_halo, inflate_halo_size_one_dimens
                            inactive_cell
 
 import Oceananigans.Fields: fractional_x_index, fractional_y_index, fractional_z_index
+using Oceananigans.Fields: AbstractField
+using DocStringExtensions: TYPEDSIGNATURES
 
 include("immersed_boundary_grid.jl")
 include("immersed_boundary_interface.jl")

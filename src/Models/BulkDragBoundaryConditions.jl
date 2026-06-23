@@ -25,13 +25,14 @@ export BulkDragFunction,
        LinearFormulation,
        QuadraticFormulation
 
+using Adapt: Adapt
+using DocStringExtensions: TYPEDSIGNATURES
+
 using Oceananigans.Architectures: Architectures, on_architecture
-using Oceananigans.Grids: AbstractGrid, XDirection, YDirection, ZDirection, Face
 using Oceananigans.BoundaryConditions: BoundaryConditions, BoundaryCondition, Flux,
                                        LeftBoundary, RightBoundary
+using Oceananigans.Grids: AbstractGrid, XDirection, YDirection, ZDirection, Face
 using Oceananigans.Operators: ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ, ℑxzᶠᵃᶜ, ℑyzᵃᶠᶜ, ℑxzᶜᵃᶠ, ℑyzᵃᶜᶠ
-
-using Adapt: Adapt
 
 #####
 ##### Drag formulations
@@ -287,7 +288,7 @@ const BulkDragBoundaryCondition = BoundaryCondition{<:Flux, <:BulkDragFunction}
 #####
 
 """
-    regularize_boundary_condition(df::BulkDragFunction, grid, loc, dim, Side, field_names)
+$(TYPEDSIGNATURES)
 
 Regularize a `BulkDragFunction` by:
 1. Inferring the direction from the field location if not specified
@@ -457,8 +458,8 @@ model.velocities.u.boundary_conditions
 
 # output
 Oceananigans.FieldBoundaryConditions, with boundary conditions
-├── west: OpenBoundaryCondition{Nothing}: Nothing
-├── east: OpenBoundaryCondition{Nothing}: Nothing
+├── west: NormalFlowBoundaryCondition{Nothing}: Nothing
+├── east: NormalFlowBoundaryCondition{Nothing}: Nothing
 ├── south: FluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), XDirection(), Cᴰ=0.001)
 ├── north: FluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), XDirection(), Cᴰ=0.001)
 ├── bottom: FluxBoundaryCondition: BulkDragFunction(QuadraticFormulation(), XDirection(), Cᴰ=0.001)

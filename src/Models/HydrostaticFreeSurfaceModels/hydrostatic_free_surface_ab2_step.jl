@@ -9,7 +9,7 @@ import Oceananigans.TimeSteppers: ab2_step!
 #####
 
 """
-    ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, callbacks)
+$(TYPEDSIGNATURES)
 
 Advance `HydrostaticFreeSurfaceModel` by one Adams-Bashforth 2nd-order time step.
 
@@ -19,7 +19,7 @@ ab2_step!(model::HydrostaticFreeSurfaceModel, Δt, callbacks) =
     hydrostatic_ab2_step!(model, model.free_surface, model.grid, Δt, callbacks)
 
 """
-    hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
+$(TYPEDSIGNATURES)
 
 The Adams-Bashforth 2nd-order time step for `HydrostaticFreeSurfaceModel` with explicit free surfaces
 (`ExplicitFreeSurface` or `SplitExplicitFreeSurface`).
@@ -73,16 +73,16 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
 end
 
 """
-    hydrostatic_ab2_step!(model::HydrostaticFreeSurfaceModel, ::ImplicitFreeSurface, grid, Δt, callbacks)
+$(TYPEDSIGNATURES)
 
 The Adams-Bashforth 2nd-order time step for `HydrostaticFreeSurfaceModel` with `ImplicitFreeSurface`.
 
 For implicit free surfaces, a predictor-corrector approach is used:
-1. Compute momentum and tracer tendencies
-2. Advance grid scaling (for z-star coordinates)
-3. Advance velocities using AB2 (predictor step)
-4. Solve implicit free surface equation
-5. Correct velocities for the updated barotropic pressure gradient
+1. Advance velocities using AB2 (predictor step)
+2. Enforce targeted open boundary transports on the predictor velocity
+3. Solve implicit free surface equation
+4. Correct velocities for the updated barotropic pressure gradient
+5. Advance grid scaling (for z-star coordinates)
 6. Advance tracers using AB2
 """
 function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, Δt, callbacks)
@@ -101,6 +101,11 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
         ab2_step_velocities!(model.velocities, model, Δt, χ)
     end
 
+    # Enforce targeted open boundary transports on the predictor velocity, before the
+    # free-surface solve, so the implicit free surface is solved consistently with the
+    # prescribed boundary transport.
+    @apply_regionally enforce_targeted_open_boundary_transport!(model, model.boundary_transport)
+
     # Advancing free surface in preparation for the correction step
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
 
@@ -116,6 +121,7 @@ function hydrostatic_ab2_step!(model, free_surface::ImplicitFreeSurface, grid, �
         compute_transport_velocities!(model, free_surface)
         compute_tracer_tendencies!(model)
 
+        # Advance grid (z-star scaling)
         ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
 
         # Finally step tracers
@@ -130,7 +136,7 @@ end
 #####
 
 """
-    ab2_step_grid!(grid, model, ::ZCoordinate, Δt, χ)
+$(TYPEDSIGNATURES)
 
 Update grid scaling factors during an AB2 time step.
 
@@ -144,7 +150,7 @@ ab2_step_grid!(grid, model, ::ZCoordinate, Δt, χ) = nothing
 #####
 
 """
-    ab2_step_velocities!(velocities, model, Δt, χ)
+$(TYPEDSIGNATURES)
 
 Advance horizontal velocities `u` and `v` using the AB2 scheme.
 
@@ -169,7 +175,9 @@ function ab2_step_velocities!(velocities, model, Δt, χ)
                        nothing,
                        model.clock,
                        fields(model),
-                       Δt)
+                       Δt,
+                       model.advection.momentum,
+                       model.velocities)
     end
 
     return nothing
@@ -187,7 +195,7 @@ hasclosure(closure_tuple::Tuple, ClosureType) = any(hasclosure(c, ClosureType) f
 ab2_step_tracers!(::EmptyNamedTuple, model, Δt, χ) = nothing
 
 """
-    ab2_step_tracers!(tracers, model, Δt, χ)
+$(TYPEDSIGNATURES)
 
 Advance tracer fields using the AB2 scheme.
 
@@ -221,6 +229,7 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
             FT = eltype(grid)
             launch!(architecture(grid), grid, :xyz, _ab2_step_tracer_field!, tracer_field, grid, convert(FT, Δt), χ, Gⁿ, G⁻)
 
+            @inbounds c_advection = model.advection[tracer_name]
             implicit_step!(tracer_field,
                            model.timestepper.implicit_solver,
                            closure,
@@ -228,7 +237,9 @@ function ab2_step_tracers!(tracers, model, Δt, χ)
                            Val(tracer_index),
                            model.clock,
                            fields(model),
-                           Δt)
+                           Δt,
+                           c_advection,
+                           model.transport_velocities)
         end
     end
 

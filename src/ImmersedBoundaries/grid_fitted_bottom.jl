@@ -28,8 +28,8 @@ const GFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFit
 
 Return a bottom immersed boundary.
 
-Keyword Arguments
-=================
+Arguments
+=========
 
 * `bottom_height`: an array or function that gives the height of the
                    bottom in absolute ``z`` coordinates.
@@ -83,7 +83,7 @@ end
 Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom_height), adapt(to, ib.immersed_condition))
 
 """
-    materialize_immersed_boundary(grid, ib)
+$(TYPEDSIGNATURES)
 
 Returns a new `ib` wrapped around a Field that holds the numerical `immersed_boundary`.
 If `ib` is an `AbstractGridFittedBottom`, `ib.bottom_height` is the z-coordinate of

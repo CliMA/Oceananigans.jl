@@ -260,7 +260,7 @@ function solve!(x, solver::FourierTridiagonalPoissonSolver, b=nothing)
 end
 
 """
-    set_source_term!(solver, source_term)
+$(TYPEDSIGNATURES)
 
 Sets the source term in the discrete Poisson equation `solver` to `source_term` by
 multiplying it by the vertical grid spacing at cell centers in the stretched direction.
