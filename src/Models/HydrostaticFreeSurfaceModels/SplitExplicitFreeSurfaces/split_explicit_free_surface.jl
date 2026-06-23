@@ -21,9 +21,18 @@ struct ExtendedHalos end
 struct LocalHaloFilling end
 struct CompleteHaloFilling end
 
+has_normal_flow(bc) = false
+has_normal_flow(::BoundaryCondition{NormalFlow}) = true
+has_normal_flow(::BoundaryCondition{NormalFlow{Nothing}, Nothing}) = false 
+
+has_normal_flow(bcs::FieldBoundaryConditions) =
+    has_normal_flow(bcs.west)   || has_normal_flow(bcs.east)  ||
+    has_normal_flow(bcs.south)  || has_normal_flow(bcs.north) ||
+    has_normal_flow(bcs.bottom) || has_normal_flow(bcs.top)
+
 function substep_halo_filling(extend_halos::Bool, bcs)
     extend_halos || return CompleteHaloFilling()
-    open_boundaries = has_prescribed_normal_flow(bcs.U) || has_prescribed_normal_flow(bcs.V)
+    open_boundaries = has_normal_flow(bcs.U) || has_normal_flow(bcs.V)
     return open_boundaries ? LocalHaloFilling() : ExtendedHalos()
 end
 

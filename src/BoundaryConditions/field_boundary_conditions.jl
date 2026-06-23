@@ -74,11 +74,6 @@ end
 
 const boundarynames = (:west, :east, :south, :north, :bottom, :top, :immersed)
 
-has_prescribed_normal_flow(bcs::FieldBoundaryConditions) =
-    prescribes_normal_flow(bcs.west)   || prescribes_normal_flow(bcs.east)  ||
-    prescribes_normal_flow(bcs.south)  || prescribes_normal_flow(bcs.north) ||
-    prescribes_normal_flow(bcs.bottom) || prescribes_normal_flow(bcs.top)
-
 const NoKernelFBC = FieldBoundaryConditions{W, E, S, N, B, T, I, Nothing, Nothing} where {W, E, S, N, B, T, I}
 
 # Internal constructor that fills up computational details in the "auxiliaries" spot.
