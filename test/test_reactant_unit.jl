@@ -258,7 +258,7 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
 
         value_c = 2
         c  = CenterField(grid); set!(c, value_c)
-        value_d = 2
+        value_d = 3
         d  = CenterField(grid); set!(d, value_d)
         cd = CenterField(grid)
 
