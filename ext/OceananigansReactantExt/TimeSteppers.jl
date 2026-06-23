@@ -9,6 +9,7 @@ using Oceananigans
 using Oceananigans: AbstractModel, Distributed
 using Oceananigans.Grids: architecture
 using Oceananigans.TimeSteppers:
+    TimeSteppers as OceananigansTimeSteppers,
     update_state!,
     tick!,
     tick_stage!,
@@ -46,6 +47,17 @@ function Clock(grid::ReactantGrid)
 
     return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt, kernel_time_type=FT)
 end
+
+# Extend `Oceananigans.TimeSteppers.clock_convert` not to commit type piracy on
+# `Base.convert`.  For Reactant's traced numbers we actually don't want to
+# `convert` them to the "destination" type `T` (which is in contrast with the
+# semantic of `Base.convert`).
+OceananigansTimeSteppers.clock_convert(::Type{T}, x::Reactant.TracedRNumber) where {T<:Reactant.ReactantPrimitive} =
+    Reactant.promote_to(Reactant.TracedRNumber{T}, x)
+
+OceananigansTimeSteppers.clock_convert(::Type{T}, x::Reactant.ConcreteRNumber{T}) where {T<:AbstractFloat} = x
+OceananigansTimeSteppers.clock_convert(::Type{T}, x::Reactant.ConcreteRNumber) where {T<:AbstractFloat} =
+    Reactant.ConcreteRNumber(convert(T, Reactant.to_number(x)); x.sharding)
 
 innertype(::ConcreteRNumber{T}) where T = T
 
