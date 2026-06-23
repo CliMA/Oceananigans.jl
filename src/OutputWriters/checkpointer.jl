@@ -19,6 +19,59 @@ checkpoint_pickup_strategy(restored, ::Nothing) = (;
     checkpoint_free_surface_halo = nothing,
     restored_free_surface_halo = nothing
 )
+
+function checkpoint_pickup_strategy(restored, state)
+    if hasproperty(restored, :ocean) && hasproperty(state, :ocean) &&
+       hasproperty(restored.ocean, :model) && hasproperty(state.ocean, :model)
+        return checkpoint_pickup_strategy(restored.ocean.model, state.ocean.model)
+    end
+
+    hasproperty(state, :checkpoint_grid) || return checkpoint_pickup_strategy(restored, nothing)
+    hasproperty(restored, :grid) || return checkpoint_pickup_strategy(restored, nothing)
+
+    checkpoint_grid = state.checkpoint_grid
+    restored_grid = restored.grid
+
+    checkpoint_grid_halo = halo_size(checkpoint_grid)
+    restored_grid_halo = halo_size(restored_grid)
+    grid_halo_mismatch = checkpoint_grid_halo != restored_grid_halo
+
+    checkpoint_free_surface_halo = nothing
+    restored_free_surface_halo = nothing
+    free_surface_halo_mismatch = false
+
+    if hasproperty(restored, :free_surface) && fs_halo_size(restored) !== nothing
+        checkpoint_free_surface = checkpoint_free_surface_grid(state, checkpoint_grid, restored)
+        checkpoint_free_surface_halo = halo_size(checkpoint_free_surface)
+        restored_free_surface_halo = fs_halo_size(restored)
+        free_surface_halo_mismatch = checkpoint_free_surface_halo != restored_free_surface_halo
+    end
+
+    requires_temporary_rewrite = grid_halo_mismatch || free_surface_halo_mismatch
+
+    rewrite_reason = if grid_halo_mismatch && free_surface_halo_mismatch
+        :grid_and_free_surface_halo_mismatch
+    elseif grid_halo_mismatch
+        :grid_halo_mismatch
+    elseif free_surface_halo_mismatch
+        :free_surface_halo_mismatch
+    else
+        :none
+    end
+
+    restore_layout = requires_temporary_rewrite ? :compatible : :exact
+
+    return (;
+        available = true,
+        requires_temporary_rewrite,
+        rewrite_reason,
+        restore_layout,
+        checkpoint_grid_halo,
+        restored_grid_halo,
+        checkpoint_free_surface_halo,
+        restored_free_surface_halo
+    )
+end
 import Oceananigans.Fields: set!
 
 mutable struct Checkpointer{T} <: AbstractOutputWriter
@@ -227,57 +280,6 @@ function checkpoint_free_surface_grid(from::NamedTuple, checkpoint_grid, restore
     end
 
     return with_halo(inferred_halo, checkpoint_grid)
-end
-
-function checkpoint_pickup_strategy(restored, state)
-    hasproperty(state, :model) || return checkpoint_pickup_strategy(restored, nothing)
-
-    model_state = state.model
-    hasproperty(model_state, :checkpoint_grid) || return checkpoint_pickup_strategy(restored, nothing)
-    hasproperty(restored, :grid) || return checkpoint_pickup_strategy(restored, nothing)
-
-    checkpoint_grid = model_state.checkpoint_grid
-    restored_grid = restored.grid
-
-    checkpoint_grid_halo = halo_size(checkpoint_grid)
-    restored_grid_halo = halo_size(restored_grid)
-    grid_halo_mismatch = checkpoint_grid_halo != restored_grid_halo
-
-    checkpoint_free_surface_halo = nothing
-    restored_free_surface_halo = nothing
-    free_surface_halo_mismatch = false
-
-    if hasproperty(restored, :free_surface) && fs_halo_size(restored) !== nothing
-        checkpoint_free_surface_grid = checkpoint_free_surface_grid(model_state, checkpoint_grid, restored)
-        checkpoint_free_surface_halo = halo_size(checkpoint_free_surface_grid)
-        restored_free_surface_halo = fs_halo_size(restored)
-        free_surface_halo_mismatch = checkpoint_free_surface_halo != restored_free_surface_halo
-    end
-
-    requires_temporary_rewrite = grid_halo_mismatch || free_surface_halo_mismatch
-
-    rewrite_reason = if grid_halo_mismatch && free_surface_halo_mismatch
-        :grid_and_free_surface_halo_mismatch
-    elseif grid_halo_mismatch
-        :grid_halo_mismatch
-    elseif free_surface_halo_mismatch
-        :free_surface_halo_mismatch
-    else
-        :none
-    end
-
-    restore_layout = requires_temporary_rewrite ? :compatible : :exact
-
-    return (;
-        available = true,
-        requires_temporary_rewrite,
-        rewrite_reason,
-        restore_layout,
-        checkpoint_grid_halo,
-        restored_grid_halo,
-        checkpoint_free_surface_halo,
-        restored_free_surface_halo
-    )
 end
 
 function checkpoint_restore_mode(restored, checkpoint_grid, checkpoint_free_surface_grid)
