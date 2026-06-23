@@ -97,13 +97,15 @@ g  = Oceananigans.defaults.gravitational_acceleration
 cᵖ = 3994.0  # specific heat capacity [J K⁻¹ kg⁻¹]
 ρ  = 999.8   # reference density [kg m⁻³]
 J  = 10.0    # heat flux magnitude [W m⁻²]
+ΔT = 8       # surface temperature contrast [K]
+
 
 parameters = (; Ly, Lz,
               Jᵇ = J / (ρ * cᵖ) * α * g,   # buoyancy flux magnitude [m² s⁻³]
               y_shutoff = 5/6 * Ly,        # latitude north of which the buoyancy flux vanishes [m]
               τ = 0.2 / ρ,                 # peak kinematic wind stress [m² s⁻²]
               μ = 1 / 30days,              # bottom-drag damping rate [s⁻¹]
-              ΔT = 8,                      # surface temperature contrast [K]
+              ΔT = ΔT,
               ΔB = α * g * ΔT,            # surface buoyancy contrast [m s⁻²]
               h = 1000.0,                  # stratification decay scale [m]
               y_sponge = 19/20 * Ly,       # southern edge of the northern sponge [m]
