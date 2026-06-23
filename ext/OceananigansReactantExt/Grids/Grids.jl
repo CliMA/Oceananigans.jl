@@ -53,7 +53,7 @@ const ReactantStateLatitudeLongitudeGrid =
 # `&&`/`||` used by callers such as `AbstractOperations.validate_grid`. Compare
 # structural metadata instead, which is what equality means for a traced grid.
 function Base.:(==)(grid1::ReactantStateLatitudeLongitudeGrid, grid2::ReactantStateLatitudeLongitudeGrid)
-    return topology(grid1) === topology(grid2) && size(grid1) == size(grid2) && halo_size(grid1) == halo_size(grid2)
+    return topology(grid1) == topology(grid2) && size(grid1) == size(grid2) && halo_size(grid1) == halo_size(grid2)
 end
 
 function total_size(grid::ShardedGrid, loc, indices)
