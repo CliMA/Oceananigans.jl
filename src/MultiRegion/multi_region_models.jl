@@ -146,6 +146,11 @@ function Advection.cell_advection_timescale(grid::MultiRegionGrids, velocities)
     return minimum(Δt.regional_objects)
 end
 
+function SplitExplicitFreeSurfaces.has_normal_flow(bcs::MultiRegionObject) 
+    @apply_regionally open_boundaries = SplitExplicitFreeSurfaces.has_normal_flow(bcs)
+    return any(open_boundaries.regional_objects)
+end
+
 ## Split explicit extension for complete halo filling
 function SplitExplicitFreeSurfaces.iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid::ConformalCubedSphereGridOfSomeKind, GUⁿ, GVⁿ, Δτᴮ, F, clock, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
     arch = architecture(grid)
