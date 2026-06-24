@@ -2,22 +2,25 @@ module NonhydrostaticModels
 
 export NonhydrostaticModel, BackgroundField, BackgroundFields
 
-using DocStringExtensions
-
+using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
-using Oceananigans.Utils
-using Oceananigans.Grids
-using Oceananigans.Solvers
-
+using Oceananigans: Oceananigans
 using Oceananigans.DistributedComputations
-using Oceananigans.DistributedComputations: reconstruct_global_grid, Distributed
-using Oceananigans.DistributedComputations: DistributedFFTBasedPoissonSolver, DistributedFourierTridiagonalPoissonSolver
+using Oceananigans.DistributedComputations: DistributedComputations,
+                                            reconstruct_global_grid, Distributed,
+                                            DistributedFFTBasedPoissonSolver,
+                                            DistributedFourierTridiagonalPoissonSolver
+using Oceananigans.Grids
 using Oceananigans.Grids: XYZRegularRG
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver, ConjugateGradientPoissonSolver
-using Oceananigans.Solvers: InhomogeneousFormulation, ZDirection
+using Oceananigans.Solvers
+using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver, ConjugateGradientPoissonSolver,
+                            InhomogeneousFormulation, ZDirection
+using Oceananigans.Utils
 using Oceananigans.Utils: sum_of_velocities
+
+using ..Models: initialize_boundary_transport
 
 import Oceananigans: fields, prognostic_fields
 import Oceananigans.Advection: cell_advection_timescale
@@ -76,7 +79,7 @@ nonhydrostatic_pressure_solver(grid, free_surface) = nonhydrostatic_pressure_sol
 #####
 
 include("background_fields.jl")
-include("boundary_mass_fluxes.jl")
+include("enforce_net_zero_transport.jl")
 include("nonhydrostatic_model.jl")
 include("pressure_field.jl")
 include("show_nonhydrostatic_model.jl")
@@ -93,7 +96,7 @@ function cell_advection_timescale(model::NonhydrostaticModel)
 end
 
 """
-    fields(model::NonhydrostaticModel)
+$(TYPEDSIGNATURES)
 
 Return a flattened `NamedTuple` of the fields in `model.velocities`, `model.tracers`, and any
 auxiliary fields for a `NonhydrostaticModel` model.
@@ -104,7 +107,7 @@ fields(model::NonhydrostaticModel) = merge(model.velocities,
                                            biogeochemical_auxiliary_fields(model.biogeochemistry))
 
 """
-    prognostic_fields(model::HydrostaticFreeSurfaceModel)
+$(TYPEDSIGNATURES)
 
 Return a flattened `NamedTuple` of the prognostic fields associated with `NonhydrostaticModel`.
 """

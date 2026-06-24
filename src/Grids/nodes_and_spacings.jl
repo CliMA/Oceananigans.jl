@@ -130,18 +130,105 @@ nodes(grid::AbstractGrid, (ℓx, ℓy, ℓz); reshape=false, with_halos=false) =
 ##### << Spacings >>
 #####
 
-# placeholders
-# see Oceananigans/AbstractOperations/grid_metrics.jl for definitions
+"""
+    xspacings(grid, ℓx, ℓy, ℓz)
+
+Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
+in the ``x`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
+
+julia> xspacings(grid, Center(), Center(), Center())
+KernelFunctionOperation at (Center, Center, Center)
+├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
+├── kernel_function: Δx (generic function with 20 methods)
+└── arguments: ("Center", "Center", "Center")
+```
+"""
 function xspacings end
+
+"""
+    yspacings(grid, ℓx, ℓy, ℓz)
+
+Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
+in the ``y`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
+
+julia> yspacings(grid, Center(), Face(), Center())
+KernelFunctionOperation at (Center, Face, Center)
+├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
+├── kernel_function: Δy (generic function with 20 methods)
+└── arguments: ("Center", "Face", "Center")
+```
+"""
 function yspacings end
+
+"""
+    λspacings(grid, ℓx, ℓy, ℓz)
+
+Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
+in the ``λ`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = LatitudeLongitudeGrid(size=(36, 34, 25),
+                                    longitude = (-180, 180),
+                                    latitude = (-85, 85),
+                                    z = (-1000, 0));
+
+julia> λspacings(grid, Center(), Face(), Center())
+KernelFunctionOperation at (Center, Face, Center)
+├── grid: 36×34×25 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
+├── kernel_function: Δλ (generic function with 20 methods)
+└── arguments: ("Center", "Face", "Center")
+```
+"""
 function λspacings end
+
+"""
+    φspacings(grid, ℓx, ℓy, ℓz)
+
+Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
+in the ``φ`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = LatitudeLongitudeGrid(size=(36, 34, 25),
+                                    longitude = (-180, 180),
+                                    latitude = (-85, 85),
+                                    z = (-1000, 0));
+
+julia> φspacings(grid, Center(), Face(), Center())
+KernelFunctionOperation at (Center, Face, Center)
+├── grid: 36×34×25 LatitudeLongitudeGrid{Float64, Periodic, Bounded, Bounded} on CPU with 3×3×3 halo
+├── kernel_function: Δφ (generic function with 20 methods)
+└── arguments: ("Center", "Face", "Center")
+```
+"""
 function φspacings end
 
 destantiate(::Face)   = Face
 destantiate(::Center) = Center
 
 """
-    minimum_xspacing(grid, ℓx, ℓy, ℓz)
+$(TYPEDSIGNATURES)
 
 Return the minimum spacing for `grid` in ``x`` direction at location `ℓx, ℓy, ℓz`.
 
@@ -160,7 +247,7 @@ minimum_xspacing(grid, loc...) = minimum(xspacings(grid, loc...))
 minimum_xspacing(grid) = minimum(xspacings(grid))
 
 """
-    minimum_yspacing(grid, ℓx, ℓy, ℓz)
+$(TYPEDSIGNATURES)
 
 Return the minimum spacing for `grid` in ``y`` direction at location `ℓx, ℓy, ℓz`.
 

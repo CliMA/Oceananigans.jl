@@ -11,10 +11,12 @@ export seconds_to_nanosecond, period_to_seconds, time_difference_seconds, add_ti
 export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSchedule, OrSchedule, ConsecutiveIterations
 export apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 export isregional, getregion, _getregion, regions, sync_device!
-export newton_div
+export newton_div, NormalDivision, ConvertingDivision, BackendOptimizedDivision
 export TabulatedFunction
 export interpolator, _interpolate
 export ϕ₁, ϕ₂, ϕ₃, ϕ₄, ϕ₅, ϕ₆, ϕ₇, ϕ₈
+
+using DocStringExtensions: TYPEDSIGNATURES
 
 #####
 ##### Misc. small utils
@@ -24,6 +26,8 @@ instantiate(T::Type) = T()
 instantiate(t) = t
 
 getnamewrapper(type) = typeof(type).name.wrapper
+
+function get_active_cells_map end
 
 #####
 ##### Include utils

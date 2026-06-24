@@ -5,7 +5,6 @@
 struct BenchmarkMetadata
     julia_version::String
     oceananigans_version::String
-    numericalearth_version::String
     architecture::String
     gpu_name::Union{String, Nothing}
     cuda_version::Union{String, Nothing}
@@ -34,7 +33,6 @@ function BenchmarkMetadata(arch)
     return BenchmarkMetadata(
         string(VERSION),
         string(pkgversion(Oceananigans)),
-        string(pkgversion(NumericalEarth)),
         string(typeof(arch)),
         gpu_name,
         cuda_version,
@@ -49,7 +47,6 @@ function Base.show(io::IO, ::MIME"text/plain", m::BenchmarkMetadata)
     println(io, "BenchmarkMetadata")
     println(io, "├── julia_version: ", m.julia_version)
     println(io, "├── oceananigans_version: ", m.oceananigans_version)
-    println(io, "├── numericalearth_version: ", m.numericalearth_version)
     println(io, "├── architecture: ", m.architecture)
     if !isnothing(m.gpu_name)
         println(io, "├── gpu_name: ", m.gpu_name)

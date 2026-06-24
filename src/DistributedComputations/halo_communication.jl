@@ -47,7 +47,7 @@ end
 # the MPI tag is an integer with:
 #   digit 1-2: an counter which keeps track of how many communications are live. The counter is stored in `arch.mpi_tag`
 #   digit 3-4: a unique identifier for the field's location that goes from 0 - 26 (see `loc_id`)
-#   digit 5: the side we send / recieve from
+#   digit 5: the side we send / receive from
 
 for side in sides
     side_str = string(side)
@@ -138,6 +138,10 @@ function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers, args.
 
     # No corner filling needed!
     only_local_halos && return nothing
+
+    # Skip corners entirely if no corner neighbors exist (avoids unnecessary sync_device!)
+    isnothing(connectivity.southwest) && isnothing(connectivity.southeast) &&
+    isnothing(connectivity.northwest) && isnothing(connectivity.northeast) && return nothing
 
     # This has to be synchronized!
     fill_send_buffers!(c, buffers, grid, Val(:corners))

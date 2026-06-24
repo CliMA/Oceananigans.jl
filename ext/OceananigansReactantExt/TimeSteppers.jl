@@ -9,15 +9,19 @@ using Oceananigans
 using Oceananigans: AbstractModel, Distributed
 using Oceananigans.Grids: architecture
 using Oceananigans.TimeSteppers:
+    TimeSteppers as OceananigansTimeSteppers,
     update_state!,
     tick!,
     tick_stage!,
     step_lagrangian_particles!,
     QuasiAdamsBashforth2TimeStepper,
+    RungeKutta3TimeStepper,
+    SplitRungeKuttaTimeStepper,
     cache_previous_tendencies!
 
 import Oceananigans.TimeSteppers: Clock, first_time_step!, time_step!,
-                                  ab2_step!, maybe_initialize_state!
+                                  ab2_step!, maybe_prepare_first_time_step!,
+                                  materialize_clock!, convert_time
 import Oceananigans: initialize!
 
 const ReactantModel{TS} = Union{
@@ -25,30 +29,88 @@ const ReactantModel{TS} = Union{
     AbstractModel{TS, <:Distributed{<:ReactantState}}
 }
 
-function Clock(::ReactantGrid)
-    FT = Oceananigans.defaults.FloatType
-    t = ConcreteRNumber(zero(FT))
-    iter = ConcreteRNumber(0)
+function Clock(grid::ReactantGrid)
+    FT = eltype(grid)
+    arch = architecture(grid)
+
+    sharding = if arch isa Distributed
+        Sharding.Replicated(arch.connectivity)
+    else
+        Sharding.NoSharding()
+    end
+
+    t = ConcreteRNumber(0.0; sharding=sharding)
+    iter = ConcreteRNumber(0, sharding=sharding)
     stage = 1
-    last_Δt = ConcreteRNumber(convert(FT, Inf))
-    last_stage_Δt = ConcreteRNumber(convert(FT, Inf))
-    return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
+    last_Δt = ConcreteRNumber(Inf, sharding=sharding)
+    last_stage_Δt = ConcreteRNumber(Inf, sharding=sharding)
+
+    return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt, kernel_time_type=FT)
 end
 
-function Clock(grid::ShardedGrid)
-    FT = Oceananigans.defaults.FloatType
-    arch = architecture(grid)
-    replicate = Sharding.Replicated(arch.connectivity)
-    t = ConcreteRNumber(zero(FT), sharding=replicate)
-    iter = ConcreteRNumber(0, sharding=replicate)
-    stage = 1
-    last_Δt = ConcreteRNumber(convert(FT, Inf), sharding=replicate)
-    last_stage_Δt = ConcreteRNumber(convert(FT, Inf), sharding=replicate)
-    return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt)
+# Extend `Oceananigans.TimeSteppers.clock_convert` not to commit type piracy on
+# `Base.convert`.  For Reactant's traced numbers we actually don't want to
+# `convert` them to the "destination" type `T` (which is in contrast with the
+# semantic of `Base.convert`).
+OceananigansTimeSteppers.clock_convert(::Type{T}, x::Reactant.TracedRNumber) where {T<:Reactant.ReactantPrimitive} =
+    Reactant.promote_to(Reactant.TracedRNumber{T}, x)
+
+OceananigansTimeSteppers.clock_convert(::Type{T}, x::Reactant.ConcreteRNumber{T}) where {T<:AbstractFloat} = x
+OceananigansTimeSteppers.clock_convert(::Type{T}, x::Reactant.ConcreteRNumber) where {T<:AbstractFloat} =
+    Reactant.ConcreteRNumber(convert(T, Reactant.to_number(x)); x.sharding)
+
+innertype(::ConcreteRNumber{T}) where T = T
+
+const ConcreteReactantClock = Clock{<:ConcreteRNumber}
+const TracedReactantClock = Oceananigans.TimeSteppers.Clock{<:Reactant.TracedRNumber}
+
+# In traced context clock.time is TracedRNumber{Float64}. We want to demote it to
+# TracedRNumber{FT} (inserting an XLA cast) but can't construct Clock{FT} with a
+# TracedRNumber value — EnsureReturnType would call Clock{FT}.new(TracedRNumber{FT})
+# which fails. Explicitly constructing Clock{TracedRNumber{FT}} avoids this: the field
+# type matches the value type so new() succeeds, and EnsureReturnType is not triggered
+# for a composite type parameter.
+function convert_time(grid, clock::TracedReactantClock)
+    FT  = eltype(grid)
+    new_time = convert(FT, clock.time)   # promote_to(TracedRNumber{FT}, clock.time)
+    return Clock(; time          = new_time,
+                   last_Δt       = clock.last_Δt,
+                   last_stage_Δt = clock.last_stage_Δt,
+                   iteration     = clock.iteration,
+                   stage         = clock.stage,
+                   kernel_time_type = FT)
+end
+
+function Base.setproperty!(clock::ConcreteReactantClock, prop::Symbol, value)
+    clock_val = getproperty(clock, prop)
+
+    if prop in (:last_Δt, :last_stage_Δt, :time, :iteration)
+        converted_val = convert(innertype(clock_val), value)
+        if Reactant.Sharding.is_sharded(clock_val)
+            sharding = clock_val.sharding
+            sharded_val = ConcreteRNumber(converted_val; sharding)
+            return setfield!(clock, prop, sharded_val)
+        end
+    end
+
+    return setfield!(clock, prop, convert(typeof(clock_val), value))
 end
 
 # Reactant handles initialization via first_time_step!, so this is a no-op.
-maybe_initialize_state!(::ReactantModel, callbacks) = nothing
+maybe_prepare_first_time_step!(::ReactantModel, Δt, callbacks) = nothing
+maybe_prepare_first_time_step!(::ReactantModel{<:RungeKutta3TimeStepper}, Δt, callbacks) = nothing
+maybe_prepare_first_time_step!(::ReactantModel{<:SplitRungeKuttaTimeStepper}, Δt, callbacks) = nothing
+
+# For QAB2, last_Δt and last_stage_Δt are always the same value after tick!.
+# Alias them so Reactant's tracer sees one buffer, avoiding XLA buffer donation errors.
+# We use setfield! to bypass the ReactantClock setproperty! override, which would
+# convert through Float64 and create a new ConcreteRNumber (breaking the alias).
+const ConcreteClock = Clock{<:Reactant.ConcreteRNumber}
+
+function materialize_clock!(clock::ConcreteClock, ::QuasiAdamsBashforth2TimeStepper)
+    setfield!(clock, :last_stage_Δt, getfield(clock, :last_Δt))
+    return nothing
+end
 
 #####
 ##### QuasiAdamsBashforth2TimeStepper for Reactant
@@ -59,9 +121,9 @@ maybe_initialize_state!(::ReactantModel, callbacks) = nothing
 # returns TracedRNumber{Float64}, and `ab2_timestepper.χ = TracedRNumber{Float64}`
 # fails because the field type is Float64.
 
-function time_step!(model::ReactantModel{<:QuasiAdamsBashforth2TimeStepper{FT}}, Δt;
-                    callbacks=[], euler=false) where FT
+const QAB2TS{FT} = QuasiAdamsBashforth2TimeStepper{FT}
 
+function time_step!(model::ReactantModel{<:QAB2TS{FT}}, Δt; callbacks=[], euler=false) where FT
     # If euler, then set χ = -0.5
     minus_point_five = convert(FT, -0.5)
     ab2_timestepper = model.timestepper
@@ -98,6 +160,50 @@ function first_time_step!(model::ReactantModel{<:Oceananigans.TimeSteppers.Quasi
     initialize!(model)
     update_state!(model)
     time_step!(model, Δt, euler=true)
+    return nothing
+end
+
+function Oceananigans.TimeSteppers.tick_time!(clock::Oceananigans.TimeSteppers.Clock{<:Reactant.TracedRNumber}, Δt)
+    t_next = Oceananigans.TimeSteppers.next_time(clock, Δt)
+    clock.time.mlir_data = t_next.mlir_data
+    return t_next
+end
+
+# Promote a value to TracedRNumber via addition with zero(clock.time).
+# This is needed because .mlir_data only exists on TracedRNumber.
+promote_to_traced(Δt, clock) = Δt + zero(clock.time)
+
+function Oceananigans.TimeSteppers.tick!(clock::TracedReactantClock, Δt)
+    Oceananigans.TimeSteppers.tick_time!(clock, Δt)
+
+    clock.iteration.mlir_data = (clock.iteration + 1).mlir_data
+    clock.stage = 1
+
+    Δt = promote_to_traced(Δt, clock)
+    clock.last_Δt.mlir_data = Δt.mlir_data
+
+    return nothing
+end
+
+function Oceananigans.TimeSteppers.tick_stage!(clock::TracedReactantClock, stage_Δt)
+    Oceananigans.TimeSteppers.tick_time!(clock, stage_Δt)
+    stage_Δt = promote_to_traced(stage_Δt, clock)
+    clock.stage += 1
+    clock.last_stage_Δt.mlir_data = stage_Δt.mlir_data
+    return nothing
+end
+
+function Oceananigans.TimeSteppers.tick_stage!(clock::TracedReactantClock, stage_Δt, step_Δt)
+    Oceananigans.TimeSteppers.tick_time!(clock, stage_Δt)
+    clock.iteration.mlir_data = (clock.iteration + 1).mlir_data
+    clock.stage = 1
+
+    step_Δt = promote_to_traced(step_Δt, clock)
+    clock.last_Δt.mlir_data = step_Δt.mlir_data
+
+    stage_Δt = promote_to_traced(stage_Δt, clock)
+    clock.last_stage_Δt.mlir_data = stage_Δt.mlir_data
+
     return nothing
 end
 

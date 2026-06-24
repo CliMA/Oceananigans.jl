@@ -142,7 +142,7 @@ Keyword arguments
 - `topology`: Tuple of topologies (`Flat`, `Bounded`, `Periodic`) for each direction. The vertical
               `topology[3]` must be `Bounded`, while the latitude-longitude topologies can be
               `Bounded`, `Periodic`, or `Flat`. If no topology is provided then, by default, the
-              topology is (`Periodic`, `Bounded`, `Bounded`) if the latitudinal extent is 360 degrees
+              topology is (`Periodic`, `Bounded`, `Bounded`) if the longitudinal extent is 360 degrees
               or (`Bounded`, `Bounded`, `Bounded`) otherwise.
 
 - `precompute_metrics`: Boolean specifying whether to precompute horizontal spacings and areas.
@@ -292,7 +292,7 @@ function validate_lat_lon_grid_args(topology, size, halo, FT, latitude, longitud
 
     # Validate longitude and latitude
     λ₁, λ₂ = get_domain_extent(longitude, Nλ)
-    λ₂ - λ₁ ≤ 360 || throw(ArgumentError("Longitudinal extent cannot be greater than 360 degrees."))
+    λ₂ - λ₁ ≤ 360 + 10 * eps(FT(360)) || throw(ArgumentError("Longitudinal extent cannot be greater than 360 degrees."))
     λ₁ <= λ₂      || throw(ArgumentError("Longitudes must increase west to east."))
 
     φ₁, φ₂ = get_domain_extent(latitude, Nφ)
@@ -397,6 +397,35 @@ function with_halo(halo, grid::LatitudeLongitudeGrid)
     kwargs[:halo] = halo
     arch = args[:architecture]
     FT = args[:number_type]
+    return LatitudeLongitudeGrid(arch, FT; kwargs...)
+end
+
+# See the `slice` docstring (defined in grid_utils.jl) for documentation. `radius` and
+# precomputed-metrics settings are retained. The most common use is a surface/exchange grid,
+# `slice(grid, :, :, k)`, which keeps both horizontal directions (and thus the
+# latitude-dependent metrics) intact.
+function slice(grid::LatitudeLongitudeGrid, i, j, k;
+               longitude=:auto, latitude=:auto, z=:auto,
+               λ=:auto, φ=:auto)
+    longitude = λ === :auto ? longitude : λ
+    latitude  = φ === :auto ? latitude  : φ
+    arch = architecture(grid)
+    FT = eltype(grid)
+    TX, TY, TZ = topology(grid)
+
+    TX′, longitude′, Nx, Hx = slice_dimension(i, cpu_face_constructor_x(grid), grid.Nx, grid.Hx, TX; location=longitude)
+    TY′, latitude′,  Ny, Hy = slice_dimension(j, cpu_face_constructor_y(grid), grid.Ny, grid.Hy, TY; location=latitude)
+    TZ′, z′,         Nz, Hz = slice_dimension(k, cpu_face_constructor_z(grid), grid.Nz, grid.Hz, TZ; location=z)
+    topo = (TX′, TY′, TZ′)
+
+    sz   = pop_flat_elements((Nx, Ny, Nz), topo)
+    halo = pop_flat_elements((Hx, Hy, Hz), topo)
+
+    kwargs = Dict{Symbol, Any}(:size => sz, :halo => halo, :topology => topo,
+                               :radius => grid.radius,
+                               :precompute_metrics => metrics_precomputed(grid),
+                               :longitude => longitude′, :latitude => latitude′, :z => z′)
+
     return LatitudeLongitudeGrid(arch, FT; kwargs...)
 end
 

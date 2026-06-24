@@ -21,7 +21,7 @@ struct TimeSeriesInterpolation{LX, LY, LZ, FTS, C, G, T} <: AbstractOperation{LX
 end
 
 """
-    TimeSeriesInterpolation(time_series, grid; clock)
+$(TYPEDSIGNATURES)
 
 Returns a `TimeSeriesInterpolation` that wraps a `FieldTimeSeries`
 and interpolates to the current `clock.time` when indexed.

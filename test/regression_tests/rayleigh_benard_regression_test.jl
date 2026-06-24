@@ -104,7 +104,7 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     datadep_path = "regression_truth_data/" * prefix * "_iteration$spinup_steps.jld2"
     initial_filename = @datadep_str datadep_path
 
-    solution₀, Gⁿ₀, G⁻₀ = get_fields_from_checkpoint(initial_filename)
+    solution₀, Gⁿ₀, G⁻₀, _, _ = get_fields_from_checkpoint(initial_filename)
 
     cpu_arch = cpu_architecture(architecture(grid))
 
@@ -156,7 +156,7 @@ function run_rayleigh_benard_regression_test(arch, grid_type)
     datadep_path = "regression_truth_data/" * prefix * "_iteration$(spinup_steps+test_steps).jld2"
     final_filename = @datadep_str datadep_path
 
-    solution₁, Gⁿ₁, G⁻₁ = get_fields_from_checkpoint(final_filename)
+    solution₁, Gⁿ₁, G⁻₁, _, _ = get_fields_from_checkpoint(final_filename)
 
     test_fields =  @allowscalar (u = Array(interior(model.velocities.u)),
                                  v = Array(interior(model.velocities.v)),

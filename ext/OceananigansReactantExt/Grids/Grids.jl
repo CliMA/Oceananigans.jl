@@ -3,13 +3,14 @@ module Grids
 export constant_with_arch
 
 using Reactant
+using Reactant: TracedRArray
 using OffsetArrays
 
 using Oceananigans
 using Oceananigans: Distributed
 using Oceananigans.Architectures: ReactantState, CPU
 using Oceananigans.Grids: AbstractGrid, AbstractUnderlyingGrid, StaticVerticalDiscretization, MutableVerticalDiscretization
-using Oceananigans.Grids: Center, Face, RightConnected, LeftConnected, Periodic, Bounded, Flat, BoundedTopology
+using Oceananigans.Grids: Center, Face, RightConnected, LeftConnected, Periodic, Bounded, Flat, FaceExtendedTopology
 using Oceananigans.Fields: Field
 using Oceananigans.ImmersedBoundaries: GridFittedBottom, AbstractImmersedBoundary
 
@@ -41,6 +42,20 @@ const ShardedGrid{FT, TX, TY, TZ} = AbstractGrid{FT, TX, TY, TZ, <:ShardedDistri
 include("serial_grids.jl")
 include("sharded_grids.jl")
 
+const ReactantStateLatitudeLongitudeGrid =
+    LatitudeLongitudeGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any,
+                          <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:ReactantState}
+
+# The generic `==(::AbstractGrid, ::AbstractGrid)` compares node *values*
+# (`x1 == x2 && ...`). On a LatitudeLongitudeGrid the coordinate arrays are
+# materialized, so under Reactant they are traced/concrete arrays and that
+# comparison yields a `TracedRNumber{Bool}` that cannot drive the short-circuiting
+# `&&`/`||` used by callers such as `AbstractOperations.validate_grid`. Compare
+# structural metadata instead, which is what equality means for a traced grid.
+function Base.:(==)(grid1::ReactantStateLatitudeLongitudeGrid, grid2::ReactantStateLatitudeLongitudeGrid)
+    return topology(grid1) == topology(grid2) && size(grid1) == size(grid2) && halo_size(grid1) == halo_size(grid2)
+end
+
 function total_size(grid::ShardedGrid, loc, indices)
     sz = size(grid)
     halo_sz = halo_size(grid)
@@ -56,7 +71,7 @@ end
 reactant_total_length(loc, topo, N, H, ::Colon) = reactant_total_length(loc, topo, N, H)
 reactant_total_length(loc, topo, N, H, ind::AbstractUnitRange) = min(reactant_total_length(loc, topo, N, H), length(ind))
 reactant_total_length(loc, topo, N, H) = Oceananigans.Grids.total_length(loc, topo, N, H)
-reactant_total_length(::Face, ::BoundedTopology, N, H=0) = N + 2H
+reactant_total_length(::Face, ::FaceExtendedTopology, N, H=0) = N + 2H
 
 reactant_offset_indices(loc, topo, N, H=0) = 1 - H : N + H
 reactant_offset_indices(::Nothing, topo, N, H=0) = 1:1
@@ -75,7 +90,7 @@ function Oceananigans.Grids.new_data(FT::DataType, arch::ShardedDistributed,
 end
 
 # The type parameter for indices helps / encourages the compiler to fully type infer `offset_data`
-function reactant_offset_data(underlying_data::ConcreteRArray, loc, topo, N, H, indices::T=default_indices(length(loc))) where T
+function reactant_offset_data(underlying_data::Union{ConcreteRArray, TracedRArray}, loc, topo, N, H, indices::T=default_indices(length(loc))) where T
     loc = map(instantiate, loc)
     topo = map(instantiate, topo)
     ii = map(reactant_offset_indices, loc, topo, N, H, indices)

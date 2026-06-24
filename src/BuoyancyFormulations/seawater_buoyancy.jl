@@ -146,7 +146,7 @@ end
 #####
 
 """
-    ∂x_b(i, j, k, grid, b::SeawaterBuoyancy, C)
+$(TYPEDSIGNATURES)
 
 Returns the ``x``-derivative of buoyancy for temperature and salt-stratified water,
 
@@ -171,8 +171,15 @@ interfaces in `x` and cell centers in `y` and `z`.
         - haline_contractionᶠᶜᶜ(i, j, k, grid, b.equation_of_state, T, S) * ∂xᶠᶜᶜ(i, j, k, grid, S) )
 end
 
+@inline function ∂xᵣ_b(i, j, k, grid, b::SeawaterBuoyancy, C)
+    T, S = get_temperature_and_salinity(b, C)
+    return b.gravitational_acceleration * (
+           thermal_expansionᶠᶜᶜ(i, j, k, grid, b.equation_of_state, T, S) * ∂xᵣᶠᶜᶜ(i, j, k, grid, T)
+        - haline_contractionᶠᶜᶜ(i, j, k, grid, b.equation_of_state, T, S) * ∂xᵣᶠᶜᶜ(i, j, k, grid, S) )
+end
+
 """
-    ∂y_b(i, j, k, grid, b::SeawaterBuoyancy, C)
+$(TYPEDSIGNATURES)
 
 Returns the ``y``-derivative of buoyancy for temperature and salt-stratified water,
 
@@ -197,8 +204,15 @@ interfaces in `y` and cell centers in `x` and `z`.
         - haline_contractionᶜᶠᶜ(i, j, k, grid, b.equation_of_state, T, S) * ∂yᶜᶠᶜ(i, j, k, grid, S) )
 end
 
+@inline function ∂yᵣ_b(i, j, k, grid, b::SeawaterBuoyancy, C)
+    T, S = get_temperature_and_salinity(b, C)
+    return b.gravitational_acceleration * (
+           thermal_expansionᶜᶠᶜ(i, j, k, grid, b.equation_of_state, T, S) * ∂yᵣᶜᶠᶜ(i, j, k, grid, T)
+        - haline_contractionᶜᶠᶜ(i, j, k, grid, b.equation_of_state, T, S) * ∂yᵣᶜᶠᶜ(i, j, k, grid, S) )
+end
+
 """
-    ∂z_b(i, j, k, grid, b::SeawaterBuoyancy, C)
+$(TYPEDSIGNATURES)
 
 Returns the vertical derivative of buoyancy for temperature and salt-stratified water,
 

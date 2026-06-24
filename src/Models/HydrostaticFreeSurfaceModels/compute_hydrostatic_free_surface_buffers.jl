@@ -1,4 +1,5 @@
-using Oceananigans.Grids: halo_size, XFlatGrid, YFlatGrid, get_active_cells_map
+using Oceananigans.Utils: get_active_cells_map
+using Oceananigans.Grids: halo_size, XFlatGrid, YFlatGrid
 using Oceananigans.DistributedComputations: Distributed, DistributedGrid, AsynchronousDistributed, synchronize_communication!
 using Oceananigans.ImmersedBoundaries: CellMaps
 using Oceananigans.Models.NonhydrostaticModels: buffer_tendency_kernel_parameters, buffer_κ_kernel_parameters, buffer_parameters
@@ -12,13 +13,13 @@ complete_communication_and_compute_tracer_buffer!(model, grid, arch) = nothing
 complete_communication_and_compute_momentum_buffer!(model, grid, arch) = nothing
 
 """
-    complete_communication_and_compute_momentum_buffer!(model::HydrostaticFreeSurfaceModel, ::DistributedGrid, ::AsynchronousDistributed)
+$(TYPEDSIGNATURES)
 
 Complete halo communication and compute momentum tendencies in the buffer regions for distributed grids.
 
 This method is called after interior momentum tendencies are computed to:
 1. synchronize halo communication for tracers and velocities,
-2. compute diagnostic fields (buoyancy gradients, vertical velocity, pressure, closure_fields) in the buffer regions, and
+2. compute diagnostic fields (buoyancy gradients, pressure, closure_fields) in the buffer regions, and
 3. compute momentum tendencies in cells that depend on halo data.
 """
 function complete_communication_and_compute_momentum_buffer!(model::HydrostaticFreeSurfaceModel, ::DistributedGrid, ::AsynchronousDistributed)
@@ -30,17 +31,12 @@ function complete_communication_and_compute_momentum_buffer!(model::HydrostaticF
         synchronize_communication!(tracer)
     end
 
-    # Synchronize velocities and free surface
-    synchronize_communication!(model.velocities.u)
-    synchronize_communication!(model.velocities.v)
-
     surface_params = buffer_surface_kernel_parameters(grid, arch)
     volume_params  = buffer_volume_kernel_parameters(grid, arch)
 
     κ_params = buffer_κ_kernel_parameters(grid, model.closure, arch)
 
     compute_buoyancy_gradients!(model.buoyancy, grid, model.tracers, parameters = volume_params)
-    update_vertical_velocities!(model.velocities, grid, model; parameters = surface_params)
     update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers; parameters = surface_params)
     compute_closure_fields!(model.closure_fields, model.closure, model; parameters = κ_params)
 
@@ -53,7 +49,7 @@ function complete_communication_and_compute_momentum_buffer!(model::HydrostaticF
 end
 
 """
-    compute_momentum_buffer_contributions!(grid, arch, model)
+$(TYPEDSIGNATURES)
 
 Compute momentum tendencies in buffer regions adjacent to processor boundaries.
 
@@ -89,7 +85,7 @@ function compute_momentum_buffer_contributions!(grid::DistributedActiveInteriorI
 end
 
 """
-    complete_communication_and_compute_tracer_buffer!(model::HydrostaticFreeSurfaceModel, ::DistributedGrid, ::AsynchronousDistributed)
+$(TYPEDSIGNATURES)
 
 Complete halo communication and compute tracer tendencies in buffer regions for distributed grids.
 
@@ -102,19 +98,10 @@ function complete_communication_and_compute_tracer_buffer!(model::HydrostaticFre
     grid = model.grid
     arch = architecture(grid)
 
-    # synchronize the free surface
+    # Synchronize velocities and free surface
     synchronize_communication!(model.free_surface)
-
-    # We do not need to synchronize the transport velocities
-    # for an ExplicitFreeSurface (`transport_velocities === velocities`)
-    if !(model.free_surface isa ExplicitFreeSurface)
-        ũ, ṽ, _ = model.transport_velocities
-        synchronize_communication!(ũ)
-        synchronize_communication!(ṽ)
-
-        surface_params = buffer_surface_kernel_parameters(grid, arch)
-        update_vertical_velocities!(model.transport_velocities, grid, model; parameters=surface_params)
-    end
+    synchronize_communication!(model.velocities.u)
+    synchronize_communication!(model.velocities.v)
 
     compute_tracer_buffer_contributions!(grid, arch, model)
 
@@ -122,7 +109,7 @@ function complete_communication_and_compute_tracer_buffer!(model::HydrostaticFre
 end
 
 """
-    compute_tracer_buffer_contributions!(grid, arch, model)
+$(TYPEDSIGNATURES)
 
 Compute tracer tendencies in buffer regions adjacent to processor boundaries.
 """
@@ -154,7 +141,7 @@ function compute_tracer_buffer_contributions!(grid::DistributedActiveInteriorIBG
 end
 
 """
-    buffer_surface_kernel_parameters(grid, arch)
+$(TYPEDSIGNATURES)
 
 Return kernel parameters for computing 2D (surface) variables in buffer regions.
 
@@ -181,7 +168,7 @@ function buffer_surface_kernel_parameters(grid, arch)
 end
 
 """
-    buffer_volume_kernel_parameters(grid, arch)
+$(TYPEDSIGNATURES)
 
 Return kernel parameters for computing 3D (volume) variables in buffer regions.
 

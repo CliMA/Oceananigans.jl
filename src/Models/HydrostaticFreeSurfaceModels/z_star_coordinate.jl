@@ -23,7 +23,7 @@ barotropic_velocities(free_surface) = nothing, nothing
 barotropic_transport(free_surface)  = nothing, nothing
 
 """
-    ab2_step_grid!(grid::MutableGridOfSomeKind, model, ::ZStarCoordinate, Δt, χ)
+$(TYPEDSIGNATURES)
 
 Update z-star grid scaling factors during an AB2 time step.
 
@@ -38,7 +38,7 @@ function ab2_step_grid!(grid::MutableGridOfSomeKind, model, ztype::ZStarCoordina
 end
 
 """
-    rk_substep_grid!(grid::MutableGridOfSomeKind, model, ::ZStarCoordinate, Δt)
+$(TYPEDSIGNATURES)
 
 Update z-star grid scaling factors during a split Runge-Kutta substep.
 
@@ -84,7 +84,8 @@ end
 end
 
 """
-    update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSomeKind, ::ZStarCoordinate; parameters)
+    update_grid_vertical_velocity!(velocities, model, grid::MutableGridOfSomeKind, ::ZStarCoordinate;
+                                   parameters=surface_kernel_parameters(grid))
 
 Compute the time derivative of the z-star grid stretching factor `∂t_σ`.
 
@@ -141,7 +142,7 @@ end
 scale_by_stretching_factor!(Gⁿ, tracers, grid) = nothing
 
 """
-    scale_by_stretching_factor!(Gⁿ, tracers, grid::MutableGridOfSomeKind)
+$(TYPEDSIGNATURES)
 
 Multiply tracer tendencies by the grid stretching factor `σ` for z-star coordinates.
 
@@ -166,21 +167,21 @@ end
 end
 
 #####
-##### Initialize vertical coordinate
+##### Reconcile vertical coordinate
 #####
 
 """
-    initialize_vertical_coordinate!(vertical_coordinate, model, grid)
+$(TYPEDSIGNATURES)
 
-Initialize the vertical coordinate system at the start of a simulation.
+Reconcile the vertical coordinate with the current free surface displacement.
 
 For `ZCoordinate` (static grids), this is a no-op.
-For `ZStarCoordinate`, initializes the grid stretching factors `σ` from the
-initial free surface height (we assume that `∂t_σ = 0`).
+For `ZStarCoordinate`, recomputes the grid stretching factors `σ` from the
+free surface height (we assume that `∂t_σ = 0`).
 """
-initialize_vertical_coordinate!(::ZCoordinate, model, grid) = nothing
+reconcile_vertical_coordinate!(::ZCoordinate, model, grid) = nothing
 
-function initialize_vertical_coordinate!(::ZStarCoordinate, model, grid::MutableGridOfSomeKind)
+function reconcile_vertical_coordinate!(::ZStarCoordinate, model, grid::MutableGridOfSomeKind)
     launch!(architecture(grid), grid, surface_kernel_parameters(grid), _update_zstar_scaling!, model.free_surface.displacement, grid)
     parent(grid.z.σᶜᶜ⁻) .= parent(grid.z.σᶜᶜⁿ)
     return nothing
