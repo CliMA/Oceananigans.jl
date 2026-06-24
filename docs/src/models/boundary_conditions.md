@@ -94,8 +94,8 @@ julia> model.velocities.v.boundary_conditions
 Oceananigans.FieldBoundaryConditions, with boundary conditions
 ├── west: PeriodicBoundaryCondition
 ├── east: PeriodicBoundaryCondition
-├── south: OpenBoundaryCondition{Nothing}: Nothing
-├── north: OpenBoundaryCondition{Nothing}: Nothing
+├── south: NormalFlowBoundaryCondition{Nothing}: Nothing
+├── north: NormalFlowBoundaryCondition{Nothing}: Nothing
 ├── bottom: ValueBoundaryCondition: 0.0
 ├── top: FluxBoundaryCondition: Nothing
 └── immersed: Nothing
@@ -203,7 +203,9 @@ ValueBoundaryCondition: 20
 
 A constant [`Value`](@ref) boundary condition can be used to specify constant tracer (such as temperature),
 or a constant _tangential_ velocity component at a boundary. Note that boundary conditions on the
-_normal_ velocity component must use the [`Open`](@ref) boundary condition type.
+_normal_ velocity component must use the [`NormalFlow`](@ref) boundary condition type (constructed
+via `NormalFlowBoundaryCondition`). A [`Value`](@ref) condition may also carry a matching `scheme` (e.g.
+`ValueBoundaryCondition(c; scheme=PerturbationAdvection())`) to radiate a tracer across an open boundary.
 
 Finally, note that `ValueBoundaryCondition(condition)` is an alias for `BoundaryCondition(Value, condition)`.
 
@@ -364,7 +366,7 @@ When running on the GPU, `Q` must be converted to a `CuArray`.
 ### 10. Open boundary condition with matching scheme
 
 As discussed in [the numerical description of open boundary conditions](@ref numerical_bcs) it is often necessary to specify a matching scheme
-on open boundaries to approximate the behaviour of the boundary nodes given the interior state
+on open boundaries to approximate the behavior of the boundary nodes given the interior state
 and specified external conditions. For example if we want to specify an outflowing boundary
 with a mean velocity ``U=1`` and damp the exiting flow to this speed we can setup a
 [`PerturbationAdvection`](@ref) open boundary:
@@ -375,14 +377,48 @@ PerturbationAdvection{Float64}
 ├── inflow_timescale: 1.0
 ├── outflow_timescale: 10.0
 ├── gravity_wave_speed: 0.0
-└── density: Nothing
+├── density: Nothing
+└── target_transport: Nothing
 
-julia> open_boundary = OpenBoundaryCondition(1; scheme)
-OpenBoundaryCondition{PerturbationAdvection{Float64, Nothing}}: 1
+julia> open_boundary = NormalFlowBoundaryCondition(1; scheme)
+NormalFlowBoundaryCondition{PerturbationAdvection{Float64, Nothing, Nothing}}: 1
 ```
 
 The boundary value and timescales need to be carefully chosen to allow information to enter/
 exit the domain in each specific problem.
+
+### 11. Open boundary condition with a target transport
+
+A [`PerturbationAdvection`](@ref) scheme can additionally pin the *net volume transport*
+through the boundary — the integral of the normal velocity over the boundary area,
+``\oint \mathbf{u} \cdot \mathrm{d} \mathbf{A}`` (units m³ s⁻¹) — to a prescribed value
+through the `target_transport` keyword:
+
+```jldoctest
+julia> using Oceananigans
+
+julia> scheme = PerturbationAdvection(; inflow_timescale=1, outflow_timescale=10, target_transport=2)
+PerturbationAdvection{Float64}
+├── inflow_timescale: 1.0
+├── outflow_timescale: 10.0
+├── gravity_wave_speed: 0.0
+├── density: Nothing
+└── target_transport: 2.0
+
+julia> open_boundary = NormalFlowBoundaryCondition(1; scheme)
+NormalFlowBoundaryCondition{PerturbationAdvection{Float64, Nothing, Float64}}: 1
+```
+
+At each time step the normal velocity on a targeted boundary is shifted uniformly so that its
+net transport equals `target_transport`. Boundaries that carry a `target_transport` are
+corrected independently of one another. In a `NonhydrostaticModel` any remaining net
+imbalance is then distributed over the open boundaries *without* a target (the "pool"
+boundaries) to satisfy the zero-net-transport solvability condition.
+
+`target_transport` holds the net transport `∮u·dA` exactly for a `NonhydrostaticModel`. For a
+`HydrostaticFreeSurfaceModel` it is currently only approximate: the correction is applied
+before the implicit free-surface solve so that the free surface stays consistent, but the
+subsequent barotropic correction perturbs the boundary velocity slightly.
 
 ## Building boundary conditions on a field
 

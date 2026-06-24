@@ -180,7 +180,7 @@ stride(wta::IntervalWindowedTimeAverage) = wta.schedule.stride
 stride(wta::SpecifiedWindowedTimeAverage) = wta.schedule.stride
 
 """
-    WindowedTimeAverage(operand, model=nothing; schedule)
+    WindowedTimeAverage(operand, model=nothing; schedule, fetch_operand=true)
 
 Returns an object for computing running averages of `operand` over `schedule.window` and
 recurring on `schedule.interval`, where `schedule` is an `AveragedTimeInterval` or `AveragedSpecifiedTimes`.
@@ -362,7 +362,7 @@ time_average_outputs(schedule, outputs, model) = schedule, outputs # fallback
 const AveragedTimeSchedule = Union{AveragedTimeInterval, AveragedSpecifiedTimes}
 
 """
-    time_average_outputs(schedule::AveragedTimeInterval, outputs, model, field_slicer)
+$(TYPEDSIGNATURES)
 
 Wrap each `output` in a `WindowedTimeAverage` on the time-averaged `schedule` and with `field_slicer`.
 

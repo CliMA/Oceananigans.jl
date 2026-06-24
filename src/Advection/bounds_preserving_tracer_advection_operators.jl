@@ -5,9 +5,11 @@ const _ω̂ₙ = 5/18
 const _ε₂ = 1e-20
 
 # Note: this can probably be generalized to include UpwindBiased
-const BoundsPreservingWENO = WENO{<:Any, <:Any, <:Any, <:Tuple}
+const BoundsPreservingWENO = WENO{<:Any, <:Any, <:Any, <:Any, <:Tuple}
 
 @inline div_Uc(i, j, k, grid, advection::BoundsPreservingWENO, U, ::ZeroField) = zero(grid)
+@inline div_Uc(i, j, k, grid, advection::BoundsPreservingWENO, ::ZeroU, c) = zero(grid)
+@inline div_Uc(i, j, k, grid, advection::BoundsPreservingWENO, ::ZeroU, ::ZeroField) = zero(grid)
 
 # Is this immersed-boundary safe without having to extend it in ImmersedBoundaries.jl? I think so... (velocity on immmersed boundaries is masked to 0)
 # For bounds preserving advection, we need fluxes at both cell-faces to compute the flux on one face.

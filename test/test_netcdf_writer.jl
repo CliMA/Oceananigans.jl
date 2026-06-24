@@ -726,12 +726,19 @@ function test_netcdf_rectilinear_grid_fitted_bottom(arch, bottom_boundary_type)
     for loc in ("ccc", "fcc", "cfc", "ccf")
         @test haskey(ds_h, "peripheral_nodes_$loc")
         @test eltype(ds_h["peripheral_nodes_$loc"]) == Float64
+        @test haskey(ds_h, "inactive_nodes_$loc")
+        @test eltype(ds_h["inactive_nodes_$loc"]) == Float64
     end
 
     @test dimsize(ds_h[:peripheral_nodes_ccc]) == (x_caa=Nx + 2Hx,     y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz)
     @test dimsize(ds_h[:peripheral_nodes_fcc]) == (x_faa=Nx + 2Hx + 1, y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz)
     @test dimsize(ds_h[:peripheral_nodes_cfc]) == (x_caa=Nx + 2Hx,     y_afa=Ny + 2Hy + 1, z_aac=Nz + 2Hz)
     @test dimsize(ds_h[:peripheral_nodes_ccf]) == (x_caa=Nx + 2Hx,     y_aca=Ny + 2Hy,     z_aaf=Nz + 2Hz + 1)
+
+    @test dimsize(ds_h[:inactive_nodes_ccc]) == (x_caa=Nx + 2Hx,     y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz)
+    @test dimsize(ds_h[:inactive_nodes_fcc]) == (x_faa=Nx + 2Hx + 1, y_aca=Ny + 2Hy,     z_aac=Nz + 2Hz)
+    @test dimsize(ds_h[:inactive_nodes_cfc]) == (x_caa=Nx + 2Hx,     y_afa=Ny + 2Hy + 1, z_aac=Nz + 2Hz)
+    @test dimsize(ds_h[:inactive_nodes_ccf]) == (x_caa=Nx + 2Hx,     y_aca=Ny + 2Hy,     z_aaf=Nz + 2Hz + 1)
 
     @test all(ds_h[:bottom_height][:, :] .≈ Array(parent(grid.immersed_boundary.bottom_height)))
 
@@ -748,12 +755,19 @@ function test_netcdf_rectilinear_grid_fitted_bottom(arch, bottom_boundary_type)
     for loc in ("ccc", "fcc", "cfc", "ccf")
         @test haskey(ds_n, "peripheral_nodes_$loc")
         @test eltype(ds_n["peripheral_nodes_$loc"]) == Float32
+        @test haskey(ds_n, "inactive_nodes_$loc")
+        @test eltype(ds_n["inactive_nodes_$loc"]) == Float32
     end
 
     @test dimsize(ds_n[:peripheral_nodes_ccc]) == (x_caa=Nx,     y_aca=Ny,     z_aac=Nz)
     @test dimsize(ds_n[:peripheral_nodes_fcc]) == (x_faa=Nx + 1, y_aca=Ny,     z_aac=Nz)
     @test dimsize(ds_n[:peripheral_nodes_cfc]) == (x_caa=Nx,     y_afa=Ny + 1, z_aac=Nz)
     @test dimsize(ds_n[:peripheral_nodes_ccf]) == (x_caa=Nx,     y_aca=Ny,     z_aaf=Nz + 1)
+
+    @test dimsize(ds_n[:inactive_nodes_ccc]) == (x_caa=Nx,     y_aca=Ny,     z_aac=Nz)
+    @test dimsize(ds_n[:inactive_nodes_fcc]) == (x_faa=Nx + 1, y_aca=Ny,     z_aac=Nz)
+    @test dimsize(ds_n[:inactive_nodes_cfc]) == (x_caa=Nx,     y_afa=Ny + 1, z_aac=Nz)
+    @test dimsize(ds_n[:inactive_nodes_ccf]) == (x_caa=Nx,     y_aca=Ny,     z_aaf=Nz + 1)
 
     @test all(ds_n[:bottom_height][:, :] .≈ Array(interior(grid.immersed_boundary.bottom_height)))
 
@@ -770,12 +784,19 @@ function test_netcdf_rectilinear_grid_fitted_bottom(arch, bottom_boundary_type)
     for loc in ("ccc", "fcc", "cfc", "ccf")
         @test haskey(ds_s, "peripheral_nodes_$loc")
         @test eltype(ds_s["peripheral_nodes_$loc"]) == Float32
+        @test haskey(ds_s, "inactive_nodes_$loc")
+        @test eltype(ds_s["inactive_nodes_$loc"]) == Float32
     end
 
     @test dimsize(ds_s[:peripheral_nodes_ccc]) == (x_caa=nx, y_aca=ny, z_aac=nz)
     @test dimsize(ds_s[:peripheral_nodes_fcc]) == (x_faa=nx, y_aca=ny, z_aac=nz)
     @test dimsize(ds_s[:peripheral_nodes_cfc]) == (x_caa=nx, y_afa=ny, z_aac=nz)
     @test dimsize(ds_s[:peripheral_nodes_ccf]) == (x_caa=nx, y_aca=ny, z_aaf=nz)
+
+    @test dimsize(ds_s[:inactive_nodes_ccc]) == (x_caa=nx, y_aca=ny, z_aac=nz)
+    @test dimsize(ds_s[:inactive_nodes_fcc]) == (x_faa=nx, y_aca=ny, z_aac=nz)
+    @test dimsize(ds_s[:inactive_nodes_cfc]) == (x_caa=nx, y_afa=ny, z_aac=nz)
+    @test dimsize(ds_s[:inactive_nodes_ccf]) == (x_caa=nx, y_aca=ny, z_aaf=nz)
 
     @test all(ds_s[:bottom_height][:, :] .≈ Array(interior(grid.immersed_boundary.bottom_height, i_slice, j_slice)))
 
@@ -875,12 +896,19 @@ function test_netcdf_latlon_grid_fitted_bottom(arch, bottom_boundary_type)
     for loc in ("ccc", "fcc", "cfc", "ccf")
         @test haskey(ds_h, "peripheral_nodes_$loc")
         @test eltype(ds_h["peripheral_nodes_$loc"]) == Float64
+        @test haskey(ds_h, "inactive_nodes_$loc")
+        @test eltype(ds_h["inactive_nodes_$loc"]) == Float64
     end
 
     @test dimsize(ds_h[:peripheral_nodes_ccc]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz)
     @test dimsize(ds_h[:peripheral_nodes_fcc]) == (λ_faa=Nλ + 2Hλ + 1, φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz)
     @test dimsize(ds_h[:peripheral_nodes_cfc]) == (λ_caa=Nλ + 2Hλ,     φ_afa=Nφ + 2Hφ + 1, z_aac=Nz + 2Hz)
     @test dimsize(ds_h[:peripheral_nodes_ccf]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ,     z_aaf=Nz + 2Hz + 1)
+
+    @test dimsize(ds_h[:inactive_nodes_ccc]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz)
+    @test dimsize(ds_h[:inactive_nodes_fcc]) == (λ_faa=Nλ + 2Hλ + 1, φ_aca=Nφ + 2Hφ,     z_aac=Nz + 2Hz)
+    @test dimsize(ds_h[:inactive_nodes_cfc]) == (λ_caa=Nλ + 2Hλ,     φ_afa=Nφ + 2Hφ + 1, z_aac=Nz + 2Hz)
+    @test dimsize(ds_h[:inactive_nodes_ccf]) == (λ_caa=Nλ + 2Hλ,     φ_aca=Nφ + 2Hφ,     z_aaf=Nz + 2Hz + 1)
 
     @test all(ds_h[:bottom_height][:, :] .≈ Array(parent(grid.immersed_boundary.bottom_height)))
 
@@ -897,12 +925,19 @@ function test_netcdf_latlon_grid_fitted_bottom(arch, bottom_boundary_type)
     for loc in ("ccc", "fcc", "cfc", "ccf")
         @test haskey(ds_n, "peripheral_nodes_$loc")
         @test eltype(ds_n["peripheral_nodes_$loc"]) == Float32
+        @test haskey(ds_n, "inactive_nodes_$loc")
+        @test eltype(ds_n["inactive_nodes_$loc"]) == Float32
     end
 
     @test dimsize(ds_n[:peripheral_nodes_ccc]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aac=Nz)
     @test dimsize(ds_n[:peripheral_nodes_fcc]) == (λ_faa=Nλ + 1, φ_aca=Nφ,     z_aac=Nz)
     @test dimsize(ds_n[:peripheral_nodes_cfc]) == (λ_caa=Nλ,     φ_afa=Nφ + 1, z_aac=Nz)
     @test dimsize(ds_n[:peripheral_nodes_ccf]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aaf=Nz + 1)
+
+    @test dimsize(ds_n[:inactive_nodes_ccc]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aac=Nz)
+    @test dimsize(ds_n[:inactive_nodes_fcc]) == (λ_faa=Nλ + 1, φ_aca=Nφ,     z_aac=Nz)
+    @test dimsize(ds_n[:inactive_nodes_cfc]) == (λ_caa=Nλ,     φ_afa=Nφ + 1, z_aac=Nz)
+    @test dimsize(ds_n[:inactive_nodes_ccf]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aaf=Nz + 1)
 
     @test all(ds_n[:bottom_height][:, :] .≈ Array(interior(grid.immersed_boundary.bottom_height)))
 
@@ -919,12 +954,19 @@ function test_netcdf_latlon_grid_fitted_bottom(arch, bottom_boundary_type)
     for loc in ("ccc", "fcc", "cfc", "ccf")
         @test haskey(ds_s, "peripheral_nodes_$loc")
         @test eltype(ds_s["peripheral_nodes_$loc"]) == Float32
+        @test haskey(ds_s, "inactive_nodes_$loc")
+        @test eltype(ds_s["inactive_nodes_$loc"]) == Float32
     end
 
     @test dimsize(ds_s[:peripheral_nodes_ccc]) == (λ_caa=nλ, φ_aca=nφ, z_aac=nz)
     @test dimsize(ds_s[:peripheral_nodes_fcc]) == (λ_faa=nλ, φ_aca=nφ, z_aac=nz)
     @test dimsize(ds_s[:peripheral_nodes_cfc]) == (λ_caa=nλ, φ_afa=nφ, z_aac=nz)
     @test dimsize(ds_s[:peripheral_nodes_ccf]) == (λ_caa=nλ, φ_aca=nφ, z_aaf=nz)
+
+    @test dimsize(ds_s[:inactive_nodes_ccc]) == (λ_caa=nλ, φ_aca=nφ, z_aac=nz)
+    @test dimsize(ds_s[:inactive_nodes_fcc]) == (λ_faa=nλ, φ_aca=nφ, z_aac=nz)
+    @test dimsize(ds_s[:inactive_nodes_cfc]) == (λ_caa=nλ, φ_afa=nφ, z_aac=nz)
+    @test dimsize(ds_s[:inactive_nodes_ccf]) == (λ_caa=nλ, φ_aca=nφ, z_aaf=nz)
 
     @test all(ds_s[:bottom_height][:, :] .≈ Array(interior(grid.immersed_boundary.bottom_height, i_slice, j_slice)))
 
@@ -3096,6 +3138,64 @@ function test_singleton_dimension_behavior(arch)
     return nothing
 end
 
+function test_netcdf_reduced_field_time_series(arch)
+    # Regression test for reading reduced (Nothing-location) fields back as a
+    # FieldTimeSeries from NetCDF. The on-disk variable is squeezed to fewer than 3
+    # spatial dimensions, and the reader must re-inflate those dimensions (via
+    # `inflate_nothing_dimensions`) before building the OffsetArray — otherwise
+    # `offset_data` is handed a lower-dimensional array than the grid expects.
+    Nx, Ny, Nz = 4, 5, 6
+    grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid; tracers=:c)
+    set!(model, c=(x, y, z) -> x + 2y + 3z)
+
+    cx  = Field(Average(model.tracers.c, dims=1))        # (Nothing, Center, Center) → 2D on disk
+    cxy = Field(Average(model.tracers.c, dims=(1, 2)))   # (Nothing, Nothing, Center) → 1D on disk
+    cyz = Field(Average(model.tracers.c, dims=(2, 3)))   # (Center, Nothing, Nothing) → 1D on disk
+
+    Nt = 3
+    sim = Simulation(model; Δt=1e-3, stop_iteration=Nt)
+
+    Arch = typeof(arch)
+    fp = "test_reduced_fts_$Arch.nc"
+    isfile(fp) && rm(fp)
+    sim.output_writers[:nc] = NetCDFWriter(model, (; cx, cxy, cyz);
+                                           filename=fp, schedule=IterationInterval(1),
+                                           array_type=Array{Float64}, overwrite_existing=true)
+
+    # Snapshot the reduced fields (and the save times) in memory on the same schedule as
+    # the writer so the round-trip can be compared value-for-value.
+    save_times = Float64[]
+    snaps = (cx=Array{Float64,3}[], cxy=Array{Float64,3}[], cyz=Array{Float64,3}[])
+    save = s -> begin
+        push!(save_times, s.model.clock.time)
+        push!(snaps.cx,  Array(interior(compute!(cx))))
+        push!(snaps.cxy, Array(interior(compute!(cxy))))
+        push!(snaps.cyz, Array(interior(compute!(cyz))))
+    end
+    sim.callbacks[:save] = Callback(save, IterationInterval(1))
+
+    run!(sim)
+
+    for (name, ref_loc, ref) in (("cx",  (Nothing, Center, Center), snaps.cx),
+                                 ("cxy", (Nothing, Nothing, Center), snaps.cxy),
+                                 ("cyz", (Center, Nothing, Nothing), snaps.cyz))
+        fts = FieldTimeSeries(fp, name; architecture=arch)
+        @test fts isa FieldTimeSeries
+        @test location(fts) == ref_loc
+        @test fts.times ≈ save_times
+        @test size(fts) == (size(ref[1])..., length(ref))
+        for k in 1:length(ref)
+            rec = Array(interior(fts[k]))
+            @test size(rec) == size(ref[k])
+            @test rec ≈ ref[k]
+        end
+    end
+
+    rm(fp)
+    return nothing
+end
+
 function test_netcdf_dimension_type(arch)
     grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
     model = NonhydrostaticModel(grid)
@@ -3751,6 +3851,11 @@ end
         @testset "Singleton dimension behavior [$A]" begin
             @info "  Testing singleton dimension behavior [$A]..."
             test_singleton_dimension_behavior(arch)
+        end
+
+        @testset "Reduced FieldTimeSeries round-trip [$A]" begin
+            @info "  Testing reduced FieldTimeSeries round-trip [$A]..."
+            test_netcdf_reduced_field_time_series(arch)
         end
 
         @testset "Field defvar and dimension validation [$A]" begin

@@ -9,11 +9,14 @@ using Oceananigans
 using Oceananigans: AbstractModel, Distributed
 using Oceananigans.Grids: architecture
 using Oceananigans.TimeSteppers:
+    TimeSteppers as OceananigansTimeSteppers,
     update_state!,
     tick!,
     tick_stage!,
     step_lagrangian_particles!,
     QuasiAdamsBashforth2TimeStepper,
+    RungeKutta3TimeStepper,
+    SplitRungeKuttaTimeStepper,
     cache_previous_tendencies!
 
 import Oceananigans.TimeSteppers: Clock, first_time_step!, time_step!,
@@ -45,12 +48,16 @@ function Clock(grid::ReactantGrid)
     return Clock(; time=t, iteration=iter, stage, last_Δt, last_stage_Δt, kernel_time_type=FT)
 end
 
-Base.convert(::Type{T}, x::Reactant.TracedRNumber) where {T<:Reactant.ReactantPrimitive} =
-      Reactant.promote_to(Reactant.TracedRNumber{T}, x)
+# Extend `Oceananigans.TimeSteppers.clock_convert` not to commit type piracy on
+# `Base.convert`.  For Reactant's traced numbers we actually don't want to
+# `convert` them to the "destination" type `T` (which is in contrast with the
+# semantic of `Base.convert`).
+OceananigansTimeSteppers.clock_convert(::Type{T}, x::Reactant.TracedRNumber) where {T<:Reactant.ReactantPrimitive} =
+    Reactant.promote_to(Reactant.TracedRNumber{T}, x)
 
-Base.convert(::Type{T}, x::Reactant.ConcreteRNumber{T}) where {T<:AbstractFloat} = x
-Base.convert(::Type{T}, x::Reactant.ConcreteRNumber) where {T<:AbstractFloat} =
-      Reactant.ConcreteRNumber(convert(T, Reactant.to_number(x)); x.sharding)
+OceananigansTimeSteppers.clock_convert(::Type{T}, x::Reactant.ConcreteRNumber{T}) where {T<:AbstractFloat} = x
+OceananigansTimeSteppers.clock_convert(::Type{T}, x::Reactant.ConcreteRNumber) where {T<:AbstractFloat} =
+    Reactant.ConcreteRNumber(convert(T, Reactant.to_number(x)); x.sharding)
 
 innertype(::ConcreteRNumber{T}) where T = T
 
@@ -90,7 +97,9 @@ function Base.setproperty!(clock::ConcreteReactantClock, prop::Symbol, value)
 end
 
 # Reactant handles initialization via first_time_step!, so this is a no-op.
-maybe_prepare_first_time_step!(::ReactantModel, callbacks) = nothing
+maybe_prepare_first_time_step!(::ReactantModel, Δt, callbacks) = nothing
+maybe_prepare_first_time_step!(::ReactantModel{<:RungeKutta3TimeStepper}, Δt, callbacks) = nothing
+maybe_prepare_first_time_step!(::ReactantModel{<:SplitRungeKuttaTimeStepper}, Δt, callbacks) = nothing
 
 # For QAB2, last_Δt and last_stage_Δt are always the same value after tick!.
 # Alias them so Reactant's tracer sees one buffer, avoiding XLA buffer donation errors.

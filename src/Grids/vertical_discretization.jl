@@ -17,15 +17,16 @@ Represent a static one-dimensional vertical coordinate.
 Fields
 ======
 
-- `cᶜ::C`: Cell-centered coordinate.
-- `cᶠ::D`: Face-centered coordinate.
-- `Δᶜ::E`: Cell-centered grid spacing.
-- `Δᶠ::F`: Face-centered grid spacing.
+$(FIELDS)
 """
 struct StaticVerticalDiscretization{C, D, E, F} <: AbstractVerticalCoordinate
+    "Face-centered coordinate"
     cᵃᵃᶠ :: C
+    "Cell-centered coordinate"
     cᵃᵃᶜ :: D
+    "Face-centered grid spacing"
     Δᵃᵃᶠ :: E
+    "Cell-centered grid spacing"
     Δᵃᵃᶜ :: F
 end
 
@@ -82,7 +83,7 @@ const RegularVerticalGrid = AbstractUnderlyingGrid{<:Any, <:Any, <:Any, <:Any,  
 
 
 """
-    MutableVerticalDiscretization(r_faces)
+$(TYPEDSIGNATURES)
 
 Construct a `MutableVerticalDiscretization` from `r_faces` that can be a `Tuple`,
 a function of an index `k`, or an `AbstractArray`. A `MutableVerticalDiscretization`
@@ -260,9 +261,52 @@ julia> z = znodes(horz_periodic_grid, Center(), Center(), Center(), with_halos=t
 @inline znodes(grid::AUG, ℓz; kwargs...) = rnodes(grid, ℓz; kwargs...)
 @inline znodes(grid::AUG, ℓx, ℓy, ℓz; kwargs...) = rnodes(grid, ℓx, ℓy, ℓz; kwargs...)
 
-function rspacings end
+"""
+    zspacings(grid, ℓx, ℓy, ℓz)
+
+Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
+in the ``z`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
+
+julia> zspacings(grid, Center(), Center(), Face())
+KernelFunctionOperation at (Center, Center, Face)
+├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
+├── kernel_function: Δz (generic function with 19 methods)
+└── arguments: ("Center", "Center", "Face")
+```
+"""
 function zspacings end
 
+"""
+    rspacings(grid, ℓx, ℓy, ℓz)
+
+Return a `KernelFunctionOperation` that computes the grid spacings for `grid`
+in the ``r`` direction at location `ℓx, ℓy, ℓz`.
+
+Examples
+========
+```jldoctest
+julia> using Oceananigans
+
+julia> grid = RectilinearGrid(size=(2, 4, 8), extent=(1, 1, 1));
+
+julia> rspacings(grid, Center(), Center(), Face())
+KernelFunctionOperation at (Center, Center, Face)
+├── grid: 2×4×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
+├── kernel_function: Δr (generic function with 19 methods)
+└── arguments: ("Center", "Center", "Face")
+```
+"""
+function rspacings end
+
+# The 3-argument implementations of zspacings and rspacings are defined in
+# src/AbstractOperations/grid_metrics.jl, where KernelFunctionOperation is available.
 @inline rspacings(grid, ℓz) = rspacings(grid, nothing, nothing, ℓz)
 @inline zspacings(grid, ℓz) = zspacings(grid, nothing, nothing, ℓz)
 
