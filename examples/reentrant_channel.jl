@@ -1,10 +1,8 @@
 # # Differentiating an re-entrant channel with Reactant and Enzyme
 #
-# This example builds a re-entrant, eddying channel in the spirit of
-# [Abernathey, Marshall and Ferreira (2011)](@cite Abernathey2011) --
-# a workhorse idealization of the Antarctic Circumpolar Current -- and then
-# *differentiates* a scalar diagnostic of the flow with respect to the model's
-# initial condition.
+# This example builds a re-entrant, eddying channel inspired by the setup by
+# [Abernathey2011](@citet) and then *differentiates* a scalar diagnostic of
+# the flow with respect to the model's initial condition.
 #
 # The simulation runs on Oceananigans' `ReactantState` architecture, which traces
 # the time-stepping kernels into an [XLA](https://openxla.org) program. Because the
@@ -172,7 +170,7 @@ vertical_closure   = VerticalScalarDiffusivity(ν=3e-4, κ=5e-6)
 # buoyancy (so `b` *is* the buoyancy).
 
 model = HydrostaticFreeSurfaceModel(grid; coriolis,
-                                    free_surface = SplitExplicitFreeSurface(substeps=3),
+                                    free_surface = SplitExplicitFreeSurface(substeps=30),
                                     momentum_advection = WENO(),
                                     tracer_advection = WENO(),
                                     buoyancy = BuoyancyTracer(),
