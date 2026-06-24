@@ -149,7 +149,7 @@ function construct_grid(grid::LatitudeLongitudeGrid, child_arch, topo, size, ext
 end
 
 """
-    reconstruct_global_grid(mrg::MultiRegionGrid)
+$(TYPEDSIGNATURES)
 
 Reconstruct the `mrg` global grid associated with the `MultiRegionGrid` on `architecture(mrg)`.
 """
@@ -187,7 +187,7 @@ reconstruct_global_immersed_boundary(g::GridFittedBoundary{<:Field}) = GridFitte
                                                                                                                               getregion(mrg.active_z_columns, r))
 
 """
-    multi_region_object_from_array(a::AbstractArray, mrg::MultiRegionGrid)
+$(TYPEDSIGNATURES)
 
 Adapt an array `a` to be compatible with a `MultiRegionGrid`.
 """

@@ -386,3 +386,16 @@ using Oceananigans.Grids: with_halo, topology, halo_size
         end
     end
 end
+
+@testset "Invalid north BC on tripolar grids" begin
+    for arch in archs
+        @testset "$fold_topology fold topology" for fold_topology in fold_topologies
+            grid = TripolarGrid(arch; size = (10, 10, 1), fold_topology = fold_topology)
+            bad_bcs = FieldBoundaryConditions(north = GradientBoundaryCondition(0))
+
+            # Field validation rejects the non-Zipper north BC. `regularize` does not
+            # throw — it passes user-supplied BCs through and leaves validation to Field.
+            @test_throws ArgumentError CenterField(grid; boundary_conditions = bad_bcs)
+        end
+    end
+end

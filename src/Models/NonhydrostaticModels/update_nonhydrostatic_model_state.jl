@@ -1,17 +1,18 @@
 using Oceananigans: UpdateStateCallsite
+using Oceananigans.Advection: update_advection_timestep!
 using Oceananigans.Architectures
 using Oceananigans.BoundaryConditions
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.BoundaryConditions: update_boundary_conditions!
 using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
-using Oceananigans.TurbulenceClosures: compute_closure_fields!
-import Oceananigans.TurbulenceClosures: step_closure_prognostics!
 using Oceananigans.Fields: compute!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models: update_model_field_time_series!, surface_kernel_parameters
+using Oceananigans.TimeSteppers: compute_tendencies!
+using Oceananigans.TurbulenceClosures: compute_closure_fields!, step_closure_prognostics!
 
 """
-    update_state!(model::NonhydrostaticModel, callbacks=[])
+$(TYPEDSIGNATURES)
 
 Update peripheral aspects of the model (halo regions, closure_fields, hydrostatic
 pressure) to the current model state. If `callbacks` are provided (in an array),
@@ -30,8 +31,11 @@ function update_state!(model::NonhydrostaticModel, callbacks=[])
     # Update the boundary conditions
     update_boundary_conditions!(fields(model), model)
 
-    # Fill halos for velocities and tracers
-    fill_halo_regions!(merge(model.velocities, model.tracers), model.clock, fields(model); fill_open_bcs=false, async=true)
+    # Fill halos for velocities and tracers in a single pass. Boundary-normal velocities are
+    # deferred to compute_pressure_correction! (they need the pressure-corrected state), so we
+    # skip NormalFlow fills here with `fill_normal_flow_bcs=false`. Tracer open boundaries are
+    # `Value` conditions, which are not gated by this flag, so they still fire.
+    fill_halo_regions!(merge(model.velocities, model.tracers), model.clock, fields(model); fill_normal_flow_bcs=false, async=true)
 
     # Compute auxiliary fields
     for aux_field in model.auxiliary_fields
@@ -48,6 +52,7 @@ function update_state!(model::NonhydrostaticModel, callbacks=[])
         callback.callsite isa UpdateStateCallsite && callback(model)
     end
 
+    update_advection_timestep!(model.advection, model.timestepper, model.clock)
     compute_tendencies!(model, callbacks)
     update_biogeochemical_state!(model.biogeochemistry, model)
 
@@ -75,5 +80,5 @@ function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = surface
     return nothing
 end
 
-step_closure_prognostics!(model::NonhydrostaticModel, Δt) =
+Oceananigans.TurbulenceClosures.step_closure_prognostics!(model::NonhydrostaticModel, Δt) =
     step_closure_prognostics!(model.closure_fields, model.closure, model, Δt)

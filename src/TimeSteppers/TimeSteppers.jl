@@ -5,10 +5,19 @@ export
     RungeKutta3TimeStepper,
     SplitRungeKuttaTimeStepper,
     time_step!,
-    Clock
+    Clock,
+    convert_time,
+    AbstractTimeDiscretization,
+    ExplicitTimeDiscretization,
+    VerticallyImplicitTimeDiscretization,
+    AdaptiveVerticallyImplicitDiscretization,
+    time_discretization
 
+using Adapt: Adapt
+using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @kernel, @index
-using Oceananigans: AbstractModel, initialize!, prognostic_fields
+
+using Oceananigans: Oceananigans, AbstractModel, initialize!, prognostic_fields
 
 """
     abstract type AbstractTimeStepper
@@ -29,8 +38,9 @@ step_closure_prognostics!(model, Δt) = nothing
 reconcile_state!(model) = nothing
 
 # Prepare the model for the first time step, in case run! is not used.
-function maybe_prepare_first_time_step!(model, callbacks)
+function maybe_prepare_first_time_step!(model, Δt, callbacks)
     if model.clock.iteration == 0
+        model.clock.last_Δt = Δt
         reconcile_state!(model)
         update_state!(model, callbacks)
     end
@@ -48,13 +58,14 @@ materialize_clock!(clock, timestepper) = nothing
 reset!(timestepper) = nothing
 implicit_step!(field, ::Nothing, args...; kwargs...) = nothing
 
+include("time_discretization.jl")
 include("clock.jl")
 include("quasi_adams_bashforth_2.jl")
 include("runge_kutta_3.jl")
 include("split_runge_kutta.jl")
 
 """
-    TimeStepper(name::Symbol, args...; kwargs...)
+$(TYPEDSIGNATURES)
 
 Return a timestepper with name `name`, instantiated with `args...` and `kwargs...`.
 

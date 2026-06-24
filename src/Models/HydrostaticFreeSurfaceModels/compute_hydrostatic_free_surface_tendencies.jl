@@ -7,18 +7,17 @@ using Oceananigans.Fields: immersed_boundary_condition
 using Oceananigans.Biogeochemistry: update_tendencies!
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE, FlavorOfTD
 
-using Oceananigans.Grids: get_active_cells_map
+using Oceananigans.Utils: get_active_cells_map
 
 """
-    compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callbacks)
+$(TYPEDSIGNATURES)
 
 Compute tendencies for horizontal velocity fields `u` and `v`.
 
 This function:
 1. Computes interior momentum tendencies (advection, Coriolis, pressure gradient, diffusion, forcing)
 2. Completes halo communication and computes buffer tendencies for distributed grids
-3. Computes flux boundary condition contributions
-4. Executes any callbacks with `TendencyCallsite`
+3. Executes any callbacks with `TendencyCallsite`
 
 Momentum tendencies are stored in `model.timestepper.Gⁿ.u` and `model.timestepper.Gⁿ.v`.
 """
@@ -27,7 +26,7 @@ function compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callba
     grid = model.grid
     arch = architecture(grid)
 
-    active_cells_map = get_active_cells_map(model.grid, Val(:interior))
+    active_cells_map = get_active_cells_map(model.grid, Val(:core))
     kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
 
     compute_hydrostatic_momentum_tendencies!(model, model.velocities, kernel_parameters; active_cells_map)
@@ -41,7 +40,7 @@ function compute_momentum_tendencies!(model::HydrostaticFreeSurfaceModel, callba
 end
 
 """
-    compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel)
+$(TYPEDSIGNATURES)
 
 Compute tendencies for all tracer fields.
 
@@ -62,7 +61,7 @@ function compute_tracer_tendencies!(model::HydrostaticFreeSurfaceModel)
     grid = model.grid
     arch = architecture(grid)
 
-    active_cells_map  = get_active_cells_map(model.grid, Val(:interior))
+    active_cells_map  = get_active_cells_map(model.grid, Val(:core))
     kernel_parameters = interior_tendency_kernel_parameters(arch, grid)
 
     compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_map)

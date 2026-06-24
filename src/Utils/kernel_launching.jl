@@ -17,7 +17,7 @@ import KernelAbstractions: get, expand, StaticSize
 struct KernelParameters{S, O} end
 
 """
-    KernelParameters(size, offsets)
+$(TYPEDSIGNATURES)
 
 Return parameters for kernel launching and execution that define (i) a tuple that
 defines the `size` of the kernel being launched and (ii) a tuple of `offsets` that
@@ -47,7 +47,7 @@ KernelParameters(size, offsets) = KernelParameters{size, offsets}()
 KernelParameters(s::Number, o::Number) = KernelParameters(tuple(s), tuple(o))
 
 """
-    KernelParameters(range1, [range2, range3])
+$(TYPEDSIGNATURES)
 
 Return parameters for launching a kernel of up to three dimensions, where the
 indices spanned by the kernel in each dimension are given by (range1, range2, range3).
@@ -143,16 +143,12 @@ periphery_offset(loc, grid, side) = 0
 worksize(grid) = size(grid)
 
 """
-    interior_work_layout(grid, dims, location)
+$(TYPEDSIGNATURES)
 
 Returns the `workgroup` and `worksize` for launching a kernel over `dims`
-on `grid` that excludes peripheral nodes.
+on `grid` that excludes peripheral nodes (determined from `location`).
 The `workgroup` is a tuple specifying the threads per block in each
 dimension. The `worksize` specifies the range of the loop in each dimension.
-
-Specifying `include_right_boundaries=true` will ensure the work layout includes the
-right face end points along bounded dimensions. This requires the field `location`
-to be specified.
 
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
@@ -190,15 +186,11 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 end
 
 """
-    work_layout(grid, dims, location)
+$(TYPEDSIGNATURES)
 
 Returns the `workgroup` and `worksize` for launching a kernel over `dims`
 on `grid`. The `workgroup` is a tuple specifying the threads per block in each
 dimension. The `worksize` specifies the range of the loop in each dimension.
-
-Specifying `include_right_boundaries=true` will ensure the work layout includes the
-right face end points along bounded dimensions. This requires the field `location`
-to be specified.
 
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
@@ -235,7 +227,7 @@ end
 """
     configure_kernel(arch, grid, workspec, kernel!;
                      active_cells_map = nothing,
-                     exclude_periphery = false;
+                     exclude_periphery = false,
                      reduced_dimensions = (),
                      location = nothing)
 
@@ -254,7 +246,7 @@ Keyword Arguments
 =================
 
 - `reduced_dimensions`: A tuple specifying the dimensions to be reduced in the work distribution. Default is an empty tuple.
-- `location`: The location of the kernel execution, needed for `include_right_boundaries`. Default is `nothing`.
+- `location`: The location of the kernel execution, used when `exclude_periphery = true`. Default is `nothing`.
 - `active_cells_map`: A map indicating the active cells in the grid. If the map is not a nothing, the workspec will be disregarded and
                       the kernel is configured as a linear kernel with a worksize equal to the length of the active cell map. Default is `nothing`.
 - `exclude_periphery`: A boolean indicating whether to exclude the periphery, used only for interior kernels.
@@ -326,7 +318,7 @@ end
 end
 
 """
-    launch!(arch, grid, workspec, kernel!, kernel_args...; kw...)
+$(TYPEDSIGNATURES)
 
 Launches `kernel!` with arguments `kernel_args`
 over the `dims` of `grid` on the architecture `arch`.
@@ -363,10 +355,12 @@ end
                           reduced_dimensions = (),
                           active_cells_map = nothing)
 
+    active_map = possibly_load_active_cells_map(active_cells_map, grid, workspec, exclude_periphery)
+
     # When active_cells_map is a NamedTuple (distributed grids with split maps),
     # launch once for each non-nothing sub-map.
-    if active_cells_map isa NamedTuple
-        for map in active_cells_map
+    if active_map isa NamedTuple
+        for map in active_map
             if !isnothing(map)
                 _launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...;
                          exclude_periphery, reduced_dimensions, active_cells_map = map)
@@ -377,7 +371,7 @@ end
 
     location = Oceananigans.location(first_kernel_arg)
 
-    loop!, worksize = configure_kernel(arch, grid, workspec, kernel!, active_cells_map, Val(exclude_periphery);
+    loop!, worksize = configure_kernel(arch, grid, workspec, kernel!, active_map, Val(exclude_periphery);
                                        location,
                                        reduced_dimensions)
 
@@ -387,6 +381,24 @@ end
     end
 
     return nothing
+end
+
+# Fallback, use always the provided map
+possibly_load_active_cells_map(active_cells_map, grid, workspec, exclude_periphery) = active_cells_map
+
+# If we use standard dimensions, load the corresponding map
+@inline function possibly_load_active_cells_map(::Nothing, grid, workspec::Symbol, exclude_periphery)
+    if exclude_periphery # The active cell map includes borders
+        return nothing
+    end
+
+    if workspec == :xyz
+        return get_active_cells_map(grid, Val(:xyz))
+    elseif workspec == :xy
+        return get_active_cells_map(grid, Val(:xy))
+    else
+        return nothing
+    end
 end
 
 #####
@@ -413,6 +425,7 @@ struct OffsetStaticSize{S} <: _Size
     end
 end
 
+@pure OffsetStaticSize(s::Tuple{}) = OffsetStaticSize{s}()
 @pure OffsetStaticSize(s::Tuple{Vararg{Int}}) = OffsetStaticSize{s}()
 @pure OffsetStaticSize(s::Int...) = OffsetStaticSize{s}()
 @pure OffsetStaticSize(s::Type{<:Tuple}) = OffsetStaticSize{tuple(s.parameters...)}()
