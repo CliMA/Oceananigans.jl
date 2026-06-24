@@ -76,9 +76,17 @@ steps:
       # use v13.
       echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > docs/LocalPreferences.toml
 
+      # `docs/Manifest.toml` is ignored and may persist in the agent checkout
+      # across builds. Resolve the docs environment from `docs/Project.toml`.
+      rm -f docs/Manifest.toml
+
       julia +$JULIA_VERSION --color=yes --project=docs/ -e \
         'using Pkg; Pkg.instantiate()'
       julia +$JULIA_VERSION --color=yes --project=docs/ docs/make.jl
+
+      tar czf docs/docs-build.tar.gz docs/build
+    artifact_paths:
+      - "$OCEANANIGANS_DIR/docs/docs-build.tar.gz"
 
   - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
     key: "tests"
@@ -158,7 +166,6 @@ steps:
           - "🍂 lagrangian_particles"
           - "🧅 multi_region"
           - "🦧 scripts"
-          - "🍱 xesmf"
 
     retry:
       automatic:

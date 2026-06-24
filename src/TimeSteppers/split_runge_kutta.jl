@@ -117,7 +117,7 @@ function SplitRungeKuttaTimeStepper(; coefficients = nothing, stages = 3)
 end
 
 """
-    spectral_coefficients(c::AbstractVector)
+$(TYPEDSIGNATURES)
 
 Convert spectral Runge-Kutta coefficients `c` to low-storage coefficients `β` for use
 with `SplitRungeKuttaTimeStepper`.
@@ -164,7 +164,7 @@ After all substeps, Lagrangian particles are stepped and the `model.clock`s is a
 """
 function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; callbacks=[])
 
-    maybe_prepare_first_time_step!(model, callbacks)
+    maybe_prepare_first_time_step!(model, Δt, callbacks)
 
     cache_current_fields!(model)
     grid = model.grid
@@ -174,11 +174,13 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
     ####
 
     for (stage, β) in enumerate(model.timestepper.β)
+
         # Update the clock stage
+        Δτ = Δt / β
         model.clock.stage = stage
+        model.clock.last_stage_Δt = Δτ
 
         # Perform the substep
-        Δτ = Δt / β
         rk_substep!(model, Δτ, callbacks)
 
         # Step closure prognostics
@@ -206,7 +208,7 @@ end
 #####
 
 """
-    rk_substep!(model::AbstractModel, Δτ, callbacks)
+$(TYPEDSIGNATURES)
 
 Perform a single Runge-Kutta substep, advancing the model state by `Δτ`.
 
@@ -221,7 +223,7 @@ The implementation should:
 rk_substep!(model::AbstractModel, Δτ, callbacks) = error("rk_substep! not implemented for $(typeof(model))")
 
 """
-    cache_current_fields!(model::AbstractModel)
+$(TYPEDSIGNATURES)
 
 Cache the current prognostic fields at the beginning of a split Runge-Kutta time step.
 
@@ -230,6 +232,17 @@ The cached fields are stored in `model.timestepper.Ψ⁻` and used as the base s
 for all substeps within a single time step.
 """
 cache_current_fields!(model::AbstractModel) = error("cache_current_fields! not implemented for $(typeof(model))")
+
+# Make sure the clock knows about the first stage Δt
+function maybe_prepare_first_time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt, callbacks)
+    if model.clock.iteration == 0
+        model.clock.last_Δt = Δt
+        model.clock.last_stage_Δt = Δt / model.timestepper.β[1]
+        reconcile_state!(model)
+        update_state!(model, callbacks)
+    end
+    return nothing
+end
 
 #####
 ##### Checkpointing

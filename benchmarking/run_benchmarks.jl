@@ -21,6 +21,7 @@
 ##### Usage (io mode):
 #####   julia --project run_benchmarks.jl --mode=io --size=360x180x50 --output_iteration_interval=1
 #####   julia --project run_benchmarks.jl --mode=io --device=CPU --size=90x45x10 --time_steps=10 --output_iteration_interval=2
+#####   julia --project run_benchmarks.jl --mode=io --output_format=zarr --zarr_chunks=120x60x25
 #####
 
 using ArgParse: @add_arg_table!, ArgParseSettings, parse_args
@@ -149,9 +150,14 @@ function parse_commandline()
             default = 1
 
         "--output_format"
-            help = "Output file format for IO benchmark mode: jld2 or netcdf"
+            help = "Output file format for IO benchmark mode: jld2, netcdf, or zarr"
             arg_type = String
             default = "jld2"
+
+        "--zarr_chunks"
+            help = "Zarr spatial chunk size for IO mode as NxxNyxNz (e.g., 120x60x25), or 'default' for default spatial chunking (grid size, 1)"
+            arg_type = String
+            default = "default"
 
         "--tracers"
             help = "Tracer names as comma-separated list (e.g., T,S or T,S,C1,C2,C3)"
@@ -282,6 +288,12 @@ function run_benchmarks(args)
     output_dir = args["output_dir"]
     output_iteration_interval = args["output_iteration_interval"]
     output_format = args["output_format"]
+    zarr_chunks = if mode == "io" && output_format == "zarr"
+        chunks_arg = strip(args["zarr_chunks"])
+        chunks_arg == "default" ? nothing : parse_size(chunks_arg)
+    else
+        nothing
+    end
 
     # Default to 1440 time steps for IO mode when the user hasn't explicitly set it
     if mode == "io" && time_steps == 100
@@ -311,6 +323,7 @@ function run_benchmarks(args)
         println("Time steps: ", time_steps, " (warmup: ", warmup_steps, ")")
         println("Output format: ", output_format)
         println("Output iteration interval: ", output_iteration_interval)
+        output_format == "zarr" && println("Zarr chunks: ", isnothing(zarr_chunks) ? "default (spatial=grid size, time=1)" : zarr_chunks)
         println("Output fields: u, v, w, T, S (full 3D)")
     else
         println("Stop time: ", args["stop_time"], " hours")
@@ -366,7 +379,7 @@ function run_benchmarks(args)
                 stop_time, Δt, output_interval, output_dir, name, group, verbose=true)
         elseif mode == "io"
             run_io_benchmark(model;
-                time_steps, Δt, warmup_steps, output_iteration_interval, output_format, output_dir, name, group, verbose=true)
+                time_steps, Δt, warmup_steps, output_iteration_interval, output_format, zarr_chunks, output_dir, name, group, verbose=true)
         else
             error("Unknown mode: $mode. Use 'benchmark', 'simulate', or 'io'.")
         end

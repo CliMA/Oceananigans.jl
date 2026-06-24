@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.BoundaryConditions: ImpenetrableBoundaryCondition
 using Oceananigans.Fields: Field
-using Oceananigans.Forcings: MultipleForcings
+using Oceananigans.Forcings: MultipleForcings, FieldTimeSeriesTarget, FieldTimeSeriesRelaxation
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!, immersed_peripheral_node, peripheral_node
 
 """ Take one time step with three forcing arrays on u, v, w. """
@@ -373,7 +373,7 @@ function test_settling_tracer_comparison(arch; open_bottom=true)
 
     function build_settling_model(grid, w_settle)
         # Create settling velocity as a field with appropriate boundary conditions
-        bottom_boundary_conditions = open_bottom ? OpenBoundaryCondition(w_settle) : OpenBoundaryCondition(nothing)
+        bottom_boundary_conditions = open_bottom ? NormalFlowBoundaryCondition(w_settle) : NormalFlowBoundaryCondition(nothing)
         boundary_conditions = FieldBoundaryConditions(grid, (Center(), Center(), Face()), bottom = bottom_boundary_conditions)
         w_settle_field = ZFaceField(grid; boundary_conditions)
 
@@ -474,6 +474,35 @@ function test_hydrostatic_continuous_discrete_forcing_consistency(arch)
     Gd = Array(interior(model_d.timestepper.Gⁿ.T))
 
     return all(Gc .≈ Gd) && all(Gc .≈ -3)
+end
+
+""" Build a time-invariant FTS where each snapshot equals `f(x, y, z)`. Used to
+isolate the spatial-interpolation path: temporal interpolation collapses to a
+constant since all snapshots are identical.
+
+`fill_halo_regions!` is required after `set!` because sim cells outside the FTS
+*Center* coverage (the boundary sim cells when FTS is coarser than sim) sample
+halo cells during interpolation. Without halo-filling, halos are zero-initialized
+and bias the interpolation toward zero. """
+function spatial_test_fts(grid, times, f::Function)
+    fts = FieldTimeSeries{Center, Center, Center}(grid, times)
+    for n in eachindex(times)
+        set!(fts[n], f)
+        fill_halo_regions!(fts[n])
+    end
+    return fts
+end
+
+""" Build a spatially-uniform FTS where snapshot `n` is the scalar `g(times[n])`.
+Used with an FTS grid that matches the simulation grid to isolate the
+temporal-interpolation path: spatial interpolation collapses to identity. """
+function temporal_test_fts(grid, times, g::Function)
+    fts = FieldTimeSeries{Center, Center, Center}(grid, times)
+    for n in eachindex(times)
+        set!(fts[n], g(times[n]))
+        fill_halo_regions!(fts[n])
+    end
+    return fts
 end
 
 @testset "Forcings" begin
@@ -592,6 +621,150 @@ end
                 @test relaxed_time_stepping(arch, PiecewiseLinearMask; center=0.5, width=0.1)
                 @test relaxed_time_stepping(arch, CosineRampMask;      start=0.4, stop=0.6)
                 @test relaxed_time_stepping_max_mask(arch)
+            end
+
+            @testset "Relaxation with FieldTimeSeries target [$A]" begin
+                @info "      Testing Relaxation with FieldTimeSeries target [$A]..."
+
+                grid = RectilinearGrid(arch, size=(2, 2, 4), extent=(100, 100, 1000))
+                τ     = 60
+                c_ref = 5
+
+                fts = FieldTimeSeries{Center, Center, Center}(grid, [0, 1e6])
+                for n in eachindex(fts.times)
+                    set!(fts[n], c_ref)
+                end
+
+                r = Relaxation(rate=1/τ, target=fts)
+                model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r))
+
+                # Materialization wires the FTS in and rewrites target to a FieldTimeSeriesTarget.
+                rm = model.forcing.c
+                @test rm isa FieldTimeSeriesRelaxation
+                @test rm.target isa FieldTimeSeriesTarget
+                @test rm.target.field_time_series === fts
+                @test rm.target.location == (Center(), Center(), Center())
+
+                # Analytical convergence: dc/dt = (c_ref - c)/τ ⇒ after one step,
+                # c ≈ c_ref * (1 - exp(-Δt/τ)) for c(0) = 0.
+                set!(model, c=0)
+                Δt = 1
+                time_step!(model, Δt)
+                c_after  = Array(interior(model.tracers.c))
+                expected = c_ref * (1 - exp(-Δt/τ))
+                @test all(isapprox.(c_after, expected; atol=1e-6 * c_ref))
+
+                # Extent validation: FTS strictly smaller than the simulation grid throws.
+                small_grid = RectilinearGrid(arch, size=(2, 2, 4), extent=(50, 50, 500))
+                fts_small  = FieldTimeSeries{Center, Center, Center}(small_grid, [0, 1e6])
+                r_small    = Relaxation(rate=1/τ, target=fts_small)
+                @test_throws ArgumentError NonhydrostaticModel(grid; tracers=:c, forcing=(; c=r_small))
+            end
+
+            @testset "Relaxation FTS-target cross-grid spatial interp [$A]" begin
+                @info "      Testing Relaxation FTS-target cross-grid spatial interp [$A]..."
+
+                Lx, Ly, Lz = 1000.0, 1000.0, 100.0
+                # Bounded topology so Face-node extrema reach the domain edges
+                # exactly, matching the physical setting for Davies-style fringes.
+                topology = (Bounded, Bounded, Bounded)
+                # Coarse-FTS / fine-sim is the primary use case (reanalysis FTS
+                # driving an LES interior). The FTS x and y must be **padded**
+                # so the FTS Centers bracket the sim Centers — otherwise the
+                # sim boundary cells fall outside FTS Center coverage and
+                # trilinear interpolation reads zero-initialized FTS halos.
+                # The validator `validate_fts_target_extent` checks this at
+                # materialize time; the calculation below leaves a comfortable
+                # margin past the minimum δ ≈ 53.6 m required at this resolution.
+                δ_pad = 100.0
+                sim_grid = RectilinearGrid(arch, size=(32, 32, 4), extent=(Lx, Ly, Lz), topology=topology)
+                fts_grid = RectilinearGrid(arch, size=( 8,  8, 4),
+                                           x=(-δ_pad, Lx + δ_pad),
+                                           y=(-δ_pad, Ly + δ_pad),
+                                           z=(-Lz, 0),               # match ocean-facing z of sim_grid
+                                           topology=topology)
+
+                f(x, y, z) = x                                    # affine → trilinear-exact
+                fts = spatial_test_fts(fts_grid, [0.0, 1.0], f)
+
+                Δ_fringe = Lx / 4
+                # NOTE: single-sided fringe; switch to MaximumMask of west + east
+                # CosineRampMask{:x} once #5576 lands for a true Davies two-sided fringe.
+                mask = CosineRampMask{:x}(start=Δ_fringe, stop=0)  # full at x=0, off at x=Δ_fringe
+
+                τ  = 100.0
+                Δt = 0.1                                          # w·Δt/τ ≤ 1e-3 → tight linearization
+                forcing = Relaxation(rate=1/τ, mask=mask, target=fts)
+                model = NonhydrostaticModel(sim_grid; tracers=:c, forcing=(; c=forcing))
+                # model.tracers.c is zero-initialized by NonhydrostaticModel.
+                time_step!(model, Δt)
+
+                c = Array(interior(model.tracers.c))
+
+                interior_max_abs = 0.0
+                fringe_count = 0
+                for k in 1:size(sim_grid, 3), j in 1:size(sim_grid, 2), i in 1:size(sim_grid, 1)
+                    x, y, z = node(i, j, k, sim_grid, Center(), Center(), Center())
+                    w = mask(x, y, z)
+                    if w ≈ 0
+                        interior_max_abs = max(interior_max_abs, abs(c[i, j, k]))
+                    else
+                        fringe_count += 1
+                        # Exact one-step solution of dc/dt = (w/τ)·(f(x,y,z) - c), c(0)=0:
+                        # c(Δt) = f(x,y,z) · (1 - exp(-w·Δt/τ))
+                        expected = f(x, y, z) * (1 - exp(-w * Δt / τ))
+                        @test c[i, j, k] ≈ expected rtol=1e-3
+                    end
+                end
+                @test interior_max_abs < 1e-12                    # no leakage into interior
+                @test fringe_count > 0                            # sanity: mask is non-trivial
+            end
+
+            @testset "Relaxation FTS-target temporal interp [$A]" begin
+                @info "      Testing Relaxation FTS-target temporal interp [$A]..."
+
+                Lx, Ly, Lz = 1000.0, 1000.0, 100.0
+                # Bounded x mirrors the spatial-interp test for consistency.
+                topology = (Bounded, Bounded, Bounded)
+                grid = RectilinearGrid(arch, size=(8, 8, 4), extent=(Lx, Ly, Lz), topology=topology)
+
+                g(t) = t                                          # affine in t → linear-interp exact
+                times = [0.0, 1.0, 2.0]
+                fts = temporal_test_fts(grid, times, g)           # FTS on sim grid → identity spatial
+
+                Δ_fringe = Lx / 4
+                mask = CosineRampMask{:x}(start=Δ_fringe, stop=0)
+
+                τ  = 1.0
+                Δt = 0.05
+                Nsteps = 10                                       # step to t = 0.5, well inside [0, 1]
+                forcing = Relaxation(rate=1/τ, mask=mask, target=fts)
+                model = NonhydrostaticModel(grid; tracers=:c, forcing=(; c=forcing))
+                for _ in 1:Nsteps
+                    time_step!(model, Δt)
+                end
+                t_end = model.clock.time
+
+                c = Array(interior(model.tracers.c))
+
+                interior_max_abs = 0.0
+                fringe_count = 0
+                for k in 1:size(grid, 3), j in 1:size(grid, 2), i in 1:size(grid, 1)
+                    x, y, z = node(i, j, k, grid, Center(), Center(), Center())
+                    w = mask(x, y, z)
+                    if w ≈ 0
+                        interior_max_abs = max(interior_max_abs, abs(c[i, j, k]))
+                    else
+                        fringe_count += 1
+                        # Exact solution of dc/dt = (w/τ)·(t - c), c(0)=0:
+                        # c(t) = t - τ_eff + τ_eff · exp(-t/τ_eff),  τ_eff = τ/w
+                        τ_eff = τ / w
+                        expected = t_end - τ_eff + τ_eff * exp(-t_end / τ_eff)
+                        @test c[i, j, k] ≈ expected rtol=1e-3
+                    end
+                end
+                @test interior_max_abs < 1e-12
+                @test fringe_count > 0
             end
 
             @testset "Advective and multiple forcing [$A]" begin

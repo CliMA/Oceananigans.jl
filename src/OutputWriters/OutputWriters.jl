@@ -1,21 +1,20 @@
 module OutputWriters
 
 export
-    JLD2Writer, NetCDFWriter, written_names,
+    JLD2Writer, NetCDFWriter, ZarrWriter, written_names,
     Checkpointer, checkpoint, WindowedTimeAverage, FileSizeLimit,
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval, AveragedSpecifiedTimes
 
-using Oceananigans.Architectures
-using Oceananigans.Grids
-using Oceananigans.Fields
-
-using Oceananigans: boundary_conditions
-using Oceananigans: AbstractOutputWriter
-using Oceananigans.Grids: interior_indices
-using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, instantiate
-using Oceananigans.Utils: pretty_filesize
-
+using DocStringExtensions: TYPEDSIGNATURES
 using OffsetArrays
+
+using Oceananigans: AbstractOutputWriter, boundary_conditions
+using Oceananigans.Architectures
+using Oceananigans.Fields
+using Oceananigans.Grids
+using Oceananigans.Grids: interior_indices
+using Oceananigans.Utils: TimeInterval, IterationInterval, WallTimeInterval, instantiate,
+                          pretty_filesize
 
 import Oceananigans: write_output!, initialize!
 
@@ -36,6 +35,7 @@ include("output_construction.jl")
 include("jld2_writer.jl")
 include("output_attributes.jl")
 include("netcdf_writer.jl")
+include("zarr_writer.jl")
 include("checkpointer.jl")
 
 function written_names(filename)

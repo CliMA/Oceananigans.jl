@@ -1,7 +1,7 @@
 using Oceananigans.BoundaryConditions: UPivotZipperBoundaryCondition, FPivotZipperBoundaryCondition, NoFluxBoundaryCondition
 using Oceananigans.Grids: Grids, Bounded, Flat, OrthogonalSphericalShellGrid, Periodic, RectilinearGrid,
     architecture, cpu_face_constructor_z, validate_dimension_specification,
-    AbstractTopology, RightCenterFolded, RightFaceFolded, new_data
+    AbstractTopology, RightCenterFolded, RightFaceFolded, new_data, topology
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 
 """
@@ -73,7 +73,7 @@ Keyword Arguments
              in ``z``-direction. Default: (0, 1).
 - `first_pole_longitude`: The longitude of the first "north" singularity.
                           The second singularity is located at `first_pole_longitude + 180ᵒ`.
-                          Default: 75.
+                          Default: 70.
 - `north_poles_latitude`: The latitude of the "north" singularities. Default: 55.
 - `fold_topology`: The folding topology to use. Either `RightCenterFolded` or `RightFaceFolded`:
     - `RightCenterFolded` folds the north boundary along cell `XFace`s and `Center`s,
@@ -311,31 +311,6 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
     Azᶠᶜᵃ = deepcopy(dropdims(Azᶠᶜᵃ.data, dims=3))
     Azᶜᶜᵃ = deepcopy(dropdims(Azᶜᶜᵃ.data, dims=3))
 
-    # Continue the metrics to the south with a LatitudeLongitudeGrid
-    # metrics (probably we don't even need to do this, since the tripolar grid should
-    # terminate below Antarctica, but it's better to be safe)
-    latitude_longitude_grid = LatitudeLongitudeGrid(; size,
-                                                      latitude,
-                                                      longitude,
-                                                      halo,
-                                                      z = (0, 1), # z does not really matter here
-                                                      radius)
-
-    continue_south!(Δxᶠᶠᵃ, latitude_longitude_grid.Δxᶠᶠᵃ)
-    continue_south!(Δxᶠᶜᵃ, latitude_longitude_grid.Δxᶠᶜᵃ)
-    continue_south!(Δxᶜᶠᵃ, latitude_longitude_grid.Δxᶜᶠᵃ)
-    continue_south!(Δxᶜᶜᵃ, latitude_longitude_grid.Δxᶜᶜᵃ)
-
-    continue_south!(Δyᶠᶠᵃ, latitude_longitude_grid.Δyᶠᶜᵃ)
-    continue_south!(Δyᶠᶜᵃ, latitude_longitude_grid.Δyᶠᶜᵃ)
-    continue_south!(Δyᶜᶠᵃ, latitude_longitude_grid.Δyᶜᶠᵃ)
-    continue_south!(Δyᶜᶜᵃ, latitude_longitude_grid.Δyᶜᶠᵃ)
-
-    continue_south!(Azᶠᶠᵃ, latitude_longitude_grid.Azᶠᶠᵃ)
-    continue_south!(Azᶠᶜᵃ, latitude_longitude_grid.Azᶠᶜᵃ)
-    continue_south!(Azᶜᶠᵃ, latitude_longitude_grid.Azᶜᶠᵃ)
-    continue_south!(Azᶜᶜᵃ, latitude_longitude_grid.Azᶜᶜᵃ)
-
     # Final grid with correct metrics
     # TODO: remove `on_architecture(arch, ...)` when we shift grid construction to GPU
     grid = OrthogonalSphericalShellGrid{topology...}(arch,
@@ -367,30 +342,6 @@ function TripolarGrid(arch = CPU(), FT::DataType = Oceananigans.defaults.FloatTy
                                                      Tripolar(north_poles_latitude, first_pole_longitude, southernmost_latitude, fold_topology))
 
     return grid
-end
-
-# Continue the metrics to the south with LatitudeLongitudeGrid metrics
-function continue_south!(new_metric, lat_lon_metric::Number)
-    Hx, Hy = new_metric.offsets
-    Nx, Ny = size(new_metric)
-
-    for j in Hy+1:1, i in Hx+1:Nx+Hx
-        @inbounds new_metric[i, j] = lat_lon_metric
-    end
-
-    return nothing
-end
-
-# Continue the metrics to the south with LatitudeLongitudeGrid metrics
-function continue_south!(new_metric, lat_lon_metric::AbstractArray{<:Any, 1})
-    Hx, Hy = new_metric.offsets
-    Nx, Ny = size(new_metric)
-
-    for j in Hy+1:1, i in Hx+1:Nx+Hx
-        @inbounds new_metric[i, j] = lat_lon_metric[j]
-    end
-
-    return nothing
 end
 
 # Copy interior data from old grid into a new Field, then fill halos

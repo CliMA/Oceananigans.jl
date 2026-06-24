@@ -62,7 +62,7 @@ const SplitActiveCellsMapIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, 
 @inline Utils.get_active_cells_map(grid::SplitActiveCellsMapIBG, ::Val{:north}) = grid.interior_active_cells.north_halo_dependent_cells
 
 """
-    linear_index_to_tuple(idx, map, grid)
+$(TYPEDSIGNATURES)
 
 Converts a linear index to a tuple of indices based on the given map and grid.
 
