@@ -53,9 +53,11 @@ Ly = 2000kilometers # meridional (north-south) domain length [m]
 
 architecture = ReactantState()
 
-Nx, Ny, Nz = 96, 192, 32
+Nx, Ny = 96, 192
 
-## We construct a vertical discretization for a domain of depth around 2000 meters via `ReferenceToStretchedDiscretization`. We use a 10-meter vertical spacing at the surface and increase the spacing at depth via a power law.
+# We construct a vertical discretization for a domain of depth around 2000 meters via
+# `ReferenceToStretchedDiscretization`. We use a 10-meter vertical spacing at the surface
+# and increase the spacing at depth via a power law.
 
 z = ReferenceToStretchedDiscretization(extent=2000,
                                        stretching = PowerLawStretching(1.029),
@@ -79,7 +81,7 @@ underlying_grid = RectilinearGrid(architecture;
 
 function ridge(x, y)
     zonal = (Lz + 100) * exp(-(x - Lx/2)^2 / 1e6kilometers)
-    gap   = 1 - 0.5 * (tanh((y - Ly/6) / 1e5) - tanh((y - Ly/2) / 1e5))
+    gap   = 1 - 0.5 * (tanh((y - Ly/6) / 100kilometers) - tanh((y - Ly/2) / 100kilometers))
     return zonal * gap - Lz
 end
 
@@ -97,14 +99,13 @@ cᵖ = 3994.0  # specific heat capacity [J K⁻¹ kg⁻¹]
 J  = 10.0    # heat flux magnitude [W m⁻²]
 ΔT = 8       # surface temperature contrast [K]
 
-
 parameters = (; Ly, Lz,
-              Jᵇ = J / (ρ * cᵖ) * α * g,   # buoyancy flux magnitude [m² s⁻³]
+              Jᵇ = α * g * J / (ρ * cᵖ),   # buoyancy flux magnitude [m² s⁻³]
               y_shutoff = 5/6 * Ly,        # latitude north of which the buoyancy flux vanishes [m]
               τ = 0.2 / ρ,                 # peak kinematic wind stress [m² s⁻²]
               μ = 1 / 30days,              # bottom-drag damping rate [s⁻¹]
               ΔT = ΔT,
-              ΔB = α * g * ΔT,            # surface buoyancy contrast [m s⁻²]
+              ΔB = α * g * ΔT,             # surface buoyancy contrast [m s⁻²]
               h = 1000.0,                  # stratification decay scale [m]
               y_sponge = 19/20 * Ly,       # southern edge of the northern sponge [m]
               λt = 7days)                  # sponge relaxation timescale [s]
@@ -114,7 +115,7 @@ parameters = (; Ly, Lz,
 
 @inline function buoyancy_flux(i, j, grid, clock, fields, p)
     y = ynode(j, grid, Center())
-    return ifelse(y < p.y_shutoff, p.Qᵇ * cos(3π * y / p.Ly), 0.0)
+    return ifelse(y < p.y_shutoff, p.Jᵇ * cos(3π * y / p.Ly), 0.0)
 end
 
 b_bcs = FieldBoundaryConditions(top = FluxBoundaryCondition(buoyancy_flux, discrete_form=true, parameters=parameters))
