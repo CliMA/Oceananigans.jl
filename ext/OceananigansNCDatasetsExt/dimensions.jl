@@ -59,8 +59,12 @@ end
 # from the canonical full-extent dimension already in the dataset. Resolve the base name to
 # itself when it is unused or its values already match, otherwise to the first free
 # `name_2`, `name_3`, … whose values match (deduping fields that share the same window).
-function resolve_windowed_dim_name(ds, base_name, data, dimension_type)
-    (base_name == "" || data === nothing) && return base_name
+#
+# This only applies to axes the field actually windows (a non-`Colon` index). Axes with the
+# default `Colon` index keep the strict create-or-validate in `create_spatial_dimensions!`,
+# so a dimension pre-created with mismatched values still errors rather than being aliased.
+function resolve_windowed_dim_name(ds, base_name, index, data, dimension_type)
+    (base_name == "" || data === nothing || index === Colon()) && return base_name
     target = collect(dimension_type.(data))
     candidate = base_name
     n = 1
@@ -81,8 +85,8 @@ function create_field_coord_variables!(ds, fd, grid, spatial_dim_names, dim_name
     dimension_attributes = default_dimension_attributes(grid, dim_name_generator; grid_index)
     spatial_dim_data = nodes(fd; with_halos)
 
-    resolved_dim_names = map(spatial_dim_names, spatial_dim_data) do name, data
-        resolve_windowed_dim_name(ds, name, data, dimension_type)
+    resolved_dim_names = map(spatial_dim_names, indices(fd), spatial_dim_data) do name, index, data
+        resolve_windowed_dim_name(ds, name, index, data, dimension_type)
     end
 
     # A renamed windowed axis inherits the attributes of the base coordinate it derives from.
