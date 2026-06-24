@@ -90,9 +90,6 @@ trilocation_dim_name(var_name, grid, LX, LY, LZ, dim) =
 
 trilocation_dim_name(var_name, grid::ImmersedBoundaryGrid, args...) = trilocation_dim_name(var_name, grid.underlying_grid, args...)
 
-dimension_name_generator_free_surface(dimension_name_generator, var_name, grid, LX, LY, LZ, dim) = dimension_name_generator(var_name, grid, LX, LY, LZ, dim)
-dimension_name_generator_free_surface(dimension_name_generator, var_name, grid, LX, LY, LZ, dim::Val{:z}) = dimension_name_generator(var_name, grid, LX, LY, LZ, dim) * "_displacement"
-
 add_grid_suffix(name, grid_index) = isempty(name) ? name : name * "_grid$(grid_index)"
 add_grid_suffix(name, ::Nothing) = name
 

@@ -90,7 +90,6 @@ import Oceananigans.OutputWriters:
     reconstruct_grid,
     trilocation_dim_name,
     add_grid_suffix,
-    dimension_name_generator_free_surface,
     vertical_coordinate_name
 
 const c = Center()
