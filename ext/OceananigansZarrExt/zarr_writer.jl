@@ -302,7 +302,7 @@ function initialize_zarr_store!(writer::ZarrWriter, model)
             )
             write_zarr_grid_coords!(grid_group, grid, grid_outputs, dim_grid_suffix(grid_index), writer.indices, writer.with_halos, writer.dimension_name_generator)
             write_zarr_grid_metrics!(grid_group, grid, writer.indices, writer.dimension_name_generator, dim_grid_suffix(grid_index))
-            write_zarr_grid_immersed_boundary!(grid_group, grid, writer.indices, writer.dimension_name_generator, dim_grid_suffix(grid_index))            
+            write_zarr_grid_immersed_boundary!(grid_group, grid, writer.indices, writer.dimension_name_generator, dim_grid_suffix(grid_index))
         end
     else
         g = nothing
@@ -394,7 +394,7 @@ function define_zarr_output_variable!(g, writer::ZarrWriter, output::AbstractFie
 
     attrs = Dict{String, Any}(
         #TODO _ARRAY_DIMESNIONS should be a list of strings, not a tuple of strings. --- IGNORE ---
-        
+
         "coordinates" => array_coords,
         "location"          => collect(string.(location_strings(output))),
         "indices"           => indices_for_attr,

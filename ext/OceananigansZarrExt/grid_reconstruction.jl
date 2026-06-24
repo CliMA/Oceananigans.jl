@@ -349,7 +349,7 @@ end
 
 function write_zarr_grid_coords!(group, grid, outputs, grid_suffix, indices, with_halos, dimension_name_generator)
     dims = gather_dimensions(outputs, grid, indices, with_halos, dimension_name_generator; grid_index=grid_suffix)
-    
+
     for (var_name, entry) in dims
         isempty(var_name) && continue
 
@@ -394,7 +394,7 @@ end
 
 function write_zarr_grid_metrics!(group, grid, indices, dimension_name_generator, grid_suffix)
     metrics = gather_grid_metrics(grid, indices, dimension_name_generator; grid_index=grid_suffix)
-    
+
     for (name, field) in pairs(metrics)
         if !haskey(group, name)
 
@@ -658,7 +658,8 @@ function reconstruct_zarr_ossg_grid(root_group, grid_group, args, kwargs)
     # Reconstruct the conformal_mapping (if saved) so the resulting grid keeps its
     # type-alias identity (TripolarGrid / RotatedLatitudeLongitudeGrid). This is what
     # downstream code (boundary-condition defaults, kernel dispatch) keys on.
-    cm_group_key = "conformal_mapping_attrs"
+    cm_group_key = :conformal_mapping_attrs
+
     conformal_mapping = haskey(kwargs, cm_group_key) ?
         reconstruct_conformal_mapping(kwargs[cm_group_key], TY) : nothing
 
@@ -755,21 +756,21 @@ end
 # argument is the y-topology type — for `Tripolar`, that's the fold flavor
 # (`RightCenterFolded`/`RightFaceFolded`) which lives as a type-parameter on
 # the struct rather than a runtime field.
-reconstruct_conformal_mapping(attrib, TY) = reconstruct_conformal_mapping(attrib, Val(Symbol(attrib["type"])), TY)
+reconstruct_conformal_mapping(attrib, TY) = reconstruct_conformal_mapping(attrib, Val(nameof(attrib[:type])), TY)
 
 reconstruct_conformal_mapping(attrib, ::Val{:Nothing}, TY) = nothing
 
 function reconstruct_conformal_mapping(attrib, ::Val{:Tripolar}, TY)
     return Tripolar(
-        attrib["north_poles_latitude"],
-        attrib["first_pole_longitude"],
-        attrib["southernmost_latitude"],
+        attrib[:north_poles_latitude],
+        attrib[:first_pole_longitude],
+        attrib[:southernmost_latitude],
         TY,
     )
 end
 
 function reconstruct_conformal_mapping(attrib, ::Val{:LatitudeLongitudeRotation}, TY)
-    return LatitudeLongitudeRotation((attrib["north_pole_λ"], attrib["north_pole_φ"]))
+    return LatitudeLongitudeRotation((attrib[:north_pole_λ], attrib[:north_pole_φ]))
 end
 
 # Unknown conformal-mapping types (e.g., `CubedSphereConformalMapping`) — leave as

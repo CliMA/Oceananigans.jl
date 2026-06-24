@@ -12,7 +12,7 @@
 const base_dimension_attributes = Dict("time"        => Dict("long_name" => "Time", "units" => "s"),
                                        "particle_id" => Dict("long_name" => "Particle ID"))
 
-suffix_grid_keys(dims, grid_index) = Dict(add_grid_suffix(key, grid_index) => value for (key, value) in dims)                                    
+suffix_grid_keys(dims, grid_index) = Dict(add_grid_suffix(key, grid_index) => value for (key, value) in dims)
 
 function default_vertical_dimension_attributes(coordinate::StaticVerticalDiscretization, dim_name_generator; grid_index=nothing)
     z = vertical_coordinate_name(coordinate)
@@ -548,6 +548,3 @@ function create_spatial_dimensions!(dims, attributes_dict; dimension_type=Float6
     end
     return tuple(effective_dim_names...)
 end
-
-
-
