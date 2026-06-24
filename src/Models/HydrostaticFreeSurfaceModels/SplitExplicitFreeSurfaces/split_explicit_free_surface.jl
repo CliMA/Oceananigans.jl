@@ -1,7 +1,8 @@
 using Oceananigans: Oceananigans
-using Oceananigans.Grids: Grids, Flat, LeftConnected, RightConnected, FullyConnected,
-    RightCenterFolded, RightFaceFolded,
-    halo_size, on_architecture, minimum_xspacing, minimum_yspacing, with_halo
+using Oceananigans.Grids: Grids, Flat, LeftConnected, RightConnected, FullyConnected
+using Oceananigans.Grids: RightCenterFolded, RightFaceFolded
+using Oceananigans.Grids: halo_size, on_architecture, minimum_xspacing, minimum_yspacing, with_halo
+using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow
 using Oceananigans.Fields: TracerFields, XFaceField, YFaceField
 using Oceananigans.Utils: prettytime
 using Adapt: Adapt
@@ -22,8 +23,7 @@ struct LocalHaloFilling end
 struct CompleteHaloFilling end
 
 has_normal_flow(bc) = false
-has_normal_flow(::BoundaryCondition{NormalFlow}) = true
-has_normal_flow(::BoundaryCondition{NormalFlow{Nothing}, Nothing}) = false 
+has_normal_flow(bc::BoundaryCondition{NormalFlow}) = (bc.condition != 0) || isnothing(bc.condition)
 
 has_normal_flow(bcs::FieldBoundaryConditions) =
     has_normal_flow(bcs.west)   || has_normal_flow(bcs.east)  ||
