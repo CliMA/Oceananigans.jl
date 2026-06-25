@@ -146,7 +146,7 @@ function Advection.cell_advection_timescale(grid::MultiRegionGrids, velocities)
     return minimum(Δt.regional_objects)
 end
 
-function SplitExplicitFreeSurfaces.has_normal_flow(bcs::MultiRegionObject) 
+function SplitExplicitFreeSurfaces.has_normal_flow(bcs::MultiRegionObject)
     @apply_regionally open_boundaries = SplitExplicitFreeSurfaces.has_normal_flow(bcs)
     return any(open_boundaries.regional_objects)
 end
