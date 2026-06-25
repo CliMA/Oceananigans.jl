@@ -68,3 +68,22 @@ end
         end
     end
 end
+
+@testset "node returns the physical (deformed) znode on mutable grids" begin
+    # On a mutable vertical grid the physical height is znode = rnode·σ + η, which differs
+    # from the reference rnode once η ≠ 0. `node` (and hence interpolation targets and every
+    # node-evaluated forcing / closure / boundary function) must report the physical znode.
+    z = Oceananigans.Grids.MutableVerticalDiscretization(collect(0:0.25:1))   # 5 faces ⇒ Nz = 4
+    grid = RectilinearGrid(CPU(); size=(2, 2, 4), x=(0, 1), y=(0, 1), z=z,
+                           topology=(Periodic, Periodic, Bounded))
+
+    Δη = 0.3
+    fill!(grid.z.ηⁿ, Δη)                                       # σ stays 1, η = Δη ⇒ znode = rnode + Δη
+    c = Center()
+    for k in 1:4
+        zr = Oceananigans.Grids.rnode(1, 1, k, grid, c, c, c)
+        zz = Oceananigans.Grids.znode(1, 1, k, grid, c, c, c)
+        @test zz ≈ zr + Δη                                     # deformation is actually present
+        @test Oceananigans.Grids.node(1, 1, k, grid, c, c, c)[end] == zz   # node reports znode, not rnode
+    end
+end

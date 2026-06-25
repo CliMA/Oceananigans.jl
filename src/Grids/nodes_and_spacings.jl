@@ -31,19 +31,22 @@ _node_names(grid, ::Nothing, ::Nothing, ℓz) = tuple(rname(grid))
 
 _node_names(grid, ::Nothing, ::Nothing, ::Nothing) = tuple()
 
-# Interface for grids to opt-in to `node`: ξnode, ηnode, rnode
+# Interface for grids to opt-in to `node`: ξnode, ηnode, and znode (which defaults to rnode).
+# We use znode (the physical vertical position) rather than rnode (the reference coordinate)
+# so that `node` reports the deformed height on a mutable vertical grid; on static grids
+# znode === rnode, so this is identical there.
 @inline _node(i, j, k, grid, ℓx, ℓy, ℓz) = (ξnode(i, j, k, grid, ℓx, ℓy, ℓz),
                                             ηnode(i, j, k, grid, ℓx, ℓy, ℓz),
-                                            rnode(i, j, k, grid, ℓx, ℓy, ℓz))
+                                            znode(i, j, k, grid, ℓx, ℓy, ℓz))
 
 # Omission of Nothing locations
-@inline _node(i, j, k, grid, ℓx::Nothing, ℓy, ℓz) = (ηnode(i, j, k, grid, ℓx, ℓy, ℓz), rnode(i, j, k, grid, ℓx, ℓy, ℓz))
-@inline _node(i, j, k, grid, ℓx, ℓy::Nothing, ℓz) = (ξnode(i, j, k, grid, ℓx, ℓy, ℓz), rnode(i, j, k, grid, ℓx, ℓy, ℓz))
+@inline _node(i, j, k, grid, ℓx::Nothing, ℓy, ℓz) = (ηnode(i, j, k, grid, ℓx, ℓy, ℓz), znode(i, j, k, grid, ℓx, ℓy, ℓz))
+@inline _node(i, j, k, grid, ℓx, ℓy::Nothing, ℓz) = (ξnode(i, j, k, grid, ℓx, ℓy, ℓz), znode(i, j, k, grid, ℓx, ℓy, ℓz))
 @inline _node(i, j, k, grid, ℓx, ℓy, ℓz::Nothing) = (ξnode(i, j, k, grid, ℓx, ℓy, ℓz), ηnode(i, j, k, grid, ℓx, ℓy, ℓz))
 
 @inline _node(i, j, k, grid, ℓx, ℓy::Nothing, ℓz::Nothing) = tuple(ξnode(i, j, k, grid, ℓx, ℓy, ℓz))
 @inline _node(i, j, k, grid, ℓx::Nothing, ℓy, ℓz::Nothing) = tuple(ηnode(i, j, k, grid, ℓx, ℓy, ℓz))
-@inline _node(i, j, k, grid, ℓx::Nothing, ℓy::Nothing, ℓz) = tuple(rnode(i, j, k, grid, ℓx, ℓy, ℓz))
+@inline _node(i, j, k, grid, ℓx::Nothing, ℓy::Nothing, ℓz) = tuple(znode(i, j, k, grid, ℓx, ℓy, ℓz))
 
 @inline _node(i, j, k, grid, ::Nothing, ::Nothing, ::Nothing) = tuple()
 
