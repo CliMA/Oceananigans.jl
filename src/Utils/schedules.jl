@@ -1,6 +1,6 @@
 using Dates: AbstractTime
 
-import Oceananigans: initialize!
+import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
 
 """
     AbstractSchedule
@@ -36,7 +36,7 @@ mutable struct TimeInterval{IT, TT} <: AbstractSchedule
 end
 
 """
-    TimeInterval(interval)
+$(TYPEDSIGNATURES)
 
 Return a callable `TimeInterval` that schedules periodic output or diagnostic evaluation
 on a `interval` of simulation time, as kept by `model.clock`.
@@ -72,13 +72,30 @@ function next_actuation_time(schedule::TimeInterval)
     return add_time_interval(t₀, T, N + 1)
 end
 
+#  Return `Inf` if we exhausted the actuations in a TimeInterval(::SpecifiedTimes)
+function next_actuation_time(schedule::TimeInterval{<:AbstractArray})
+    schedule.actuations ≥ length(schedule.interval) && return Inf
+    return add_time_interval(schedule.first_actuation_time, schedule.interval, schedule.actuations + 1)
+end
+
 function (schedule::TimeInterval)(model)
     t = model.clock.time
     t★ = next_actuation_time(schedule)
 
-    if t >= t★
+    # Array-interval schedules return `Inf` once exhausted; never fire again.
+    t★ === Inf && return false
+
+    if t ≥ t★
         if schedule.actuations < typemax(Int)
             schedule.actuations += 1
+            # Advance actuations so the next actuation is strictly in the future.
+            while schedule.actuations < typemax(Int)
+                tN = next_actuation_time(schedule)
+                if tN === Inf || tN > t
+                    break
+                end
+                schedule.actuations += 1
+            end
         else # re-initialize the schedule to t★
             initialize!(schedule, t★)
         end
@@ -90,10 +107,27 @@ end
 
 function schedule_aligned_time_step(schedule::TimeInterval, clock, Δt)
     t★ = next_actuation_time(schedule)
+    t★ === Inf && return Δt
     t = clock.time
     δt = time_difference_seconds(t★, t)
     return min(Δt, δt)
 end
+
+function prognostic_state(schedule::TimeInterval)
+    return (first_actuation_time = schedule.first_actuation_time,
+            actuations = schedule.actuations,
+            interval = schedule.interval)
+end
+
+function restore_prognostic_state!(restored::TimeInterval, from)
+    if hasproperty(from, :interval) && from.interval == restored.interval
+        restored.first_actuation_time = from.first_actuation_time
+        restored.actuations = from.actuations
+    end
+    return restored
+end
+
+restore_prognostic_state!(::TimeInterval, ::Nothing) = nothing
 
 #####
 ##### IterationInterval
@@ -120,6 +154,11 @@ IterationInterval(interval::Int; offset=0) = IterationInterval(interval, offset)
 
 next_actuation_time(schedule::IterationInterval) = Inf
 
+# IterationInterval has no state
+prognostic_state(schedule::IterationInterval) = nothing
+restore_prognostic_state!(restored::IterationInterval, from) = restored
+restore_prognostic_state!(restored::IterationInterval, from::Nothing) = nothing
+
 #####
 ##### WallTimeInterval
 #####
@@ -143,7 +182,7 @@ other than the moment `WallTimeInterval` is constructed.
 """
 function WallTimeInterval(interval; start_time = time_ns() * 1e-9)
     FT = Oceananigans.defaults.FloatType
-    return WallTimeInterval(convert(FT, interval), convert(FT, interval))
+    return WallTimeInterval(convert(FT, interval), convert(FT, start_time))
 end
 
 function (schedule::WallTimeInterval)(model)
@@ -158,6 +197,11 @@ function (schedule::WallTimeInterval)(model)
     end
 end
 
+# WallTimeInterval uses absolute wall clock time, which doesn't make sense to checkpoint.
+# On restore, the schedule starts fresh from the current wall time.
+prognostic_state(::WallTimeInterval) = nothing
+restore_prognostic_state!(restored::WallTimeInterval,  ::Nothing) = restored
+
 #####
 ##### SpecifiedTimes
 #####
@@ -168,7 +212,7 @@ mutable struct SpecifiedTimes{FT} <: AbstractSchedule
 end
 
 """
-    SpecifiedTimes(times)
+$(TYPEDSIGNATURES)
 
 Return a `schedule::SpecifiedTimes` that "actuates" (i.e., schedules output or callback execution)
 whenever the model's clock equals the specified values in `times`. For example,
@@ -242,6 +286,19 @@ function specified_times_str(st)
     return string(str, "]")
 end
 
+Base.copy(st::SpecifiedTimes) = SpecifiedTimes(copy(st.times), st.previous_actuation)
+
+function prognostic_state(schedule::SpecifiedTimes)
+    return (; previous_actuation = schedule.previous_actuation)
+end
+
+function restore_prognostic_state!(restored::SpecifiedTimes, from)
+    restored.previous_actuation = from.previous_actuation
+    return restored
+end
+
+restore_prognostic_state!(::SpecifiedTimes, ::Nothing) = nothing
+
 #####
 ##### ConsecutiveIterations
 #####
@@ -253,7 +310,7 @@ mutable struct ConsecutiveIterations{S} <: AbstractSchedule
 end
 
 """
-    ConsecutiveIterations(parent_schedule)
+    ConsecutiveIterations(parent_schedule, N=1)
 
 Return a `schedule::ConsecutiveIterations` that actuates both when `parent_schedule`
 actuates, and at iterations immediately following the actuation of `parent_schedule`.
@@ -276,6 +333,19 @@ end
 schedule_aligned_time_step(schedule::ConsecutiveIterations, clock, Δt) =
     schedule_aligned_time_step(schedule.parent, clock, Δt)
 
+function prognostic_state(schedule::ConsecutiveIterations)
+    return (parent = prognostic_state(schedule.parent),
+            previous_parent_actuation_iteration = schedule.previous_parent_actuation_iteration)
+end
+
+function restore_prognostic_state!(restored::ConsecutiveIterations, from)
+    restore_prognostic_state!(restored.parent, from.parent)
+    restored.previous_parent_actuation_iteration = from.previous_parent_actuation_iteration
+    return restored
+end
+
+restore_prognostic_state!(::ConsecutiveIterations, ::Nothing) = nothing
+
 #####
 ##### Any and AndSchedule
 #####
@@ -286,7 +356,7 @@ struct AndSchedule{S} <: AbstractSchedule
 end
 
 """
-    AndSchedule(schedules...)
+$(TYPEDSIGNATURES)
 
 Return a schedule that actuates when all `child_schedule`s actuate.
 """
@@ -302,7 +372,7 @@ struct OrSchedule{S} <: AbstractSchedule
 end
 
 """
-    OrSchedule(schedules...)
+$(TYPEDSIGNATURES)
 
 Return a schedule that actuates when any of the `child_schedule`s actuates.
 """
@@ -331,6 +401,7 @@ function Base.summary(schedule::IterationInterval)
 end
 Base.summary(schedule::TimeInterval) = string("TimeInterval(", prettytime(schedule.interval), ")")
 Base.summary(schedule::SpecifiedTimes) = string("SpecifiedTimes(", specified_times_str(schedule), ")")
+Base.show(io::IO, schedule::SpecifiedTimes) = print(io, summary(schedule))
 Base.summary(schedule::ConsecutiveIterations) = string("ConsecutiveIterations(",
                                                        summary(schedule.parent), ", ",
                                                        schedule.consecutive_iterations, ")")

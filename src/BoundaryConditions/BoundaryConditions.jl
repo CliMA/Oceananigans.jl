@@ -1,26 +1,29 @@
 module BoundaryConditions
 
 export
-    Flux, Gradient, Value, Open,
+    Flux, Gradient, Value, NormalFlow,
     BoundaryCondition, getbc,
-    PeriodicBoundaryCondition, OpenBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition,
+    PeriodicBoundaryCondition, NormalFlowBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, DistributedCommunicationBoundaryCondition,
-    PerturbationAdvection,
+    PerturbationAdvection, has_target_transport, get_target_transport,
     validate_boundary_condition_topology, validate_boundary_condition_architecture,
     FieldBoundaryConditions,
     compute_x_bcs!, compute_y_bcs!, compute_z_bcs!,
     fill_halo_regions!,
     WestAndEast, SouthAndNorth, BottomAndTop,
     West, East, South, North, Bottom, Top,
+    PeriodicFillHalo,
     DistributedFillHalo
 
 using Adapt
 using KernelAbstractions: @index, @kernel
 
+using Oceananigans: Oceananigans
 using Oceananigans.Architectures: CPU, GPU
 using Oceananigans.Utils: launch!
 using Oceananigans.Operators: Ax, Ay, Az, volume
 using Oceananigans.Grids
+using DocStringExtensions: TYPEDSIGNATURES
 
 # All possible fill_halo! kernels
 struct WestAndEast end
@@ -43,10 +46,11 @@ include("show_boundary_conditions.jl")
 
 include("fill_halo_regions.jl")
 include("fill_halo_regions_value_gradient.jl")
-include("fill_halo_regions_open.jl")
+include("fill_halo_regions_normal_flow.jl")
 include("fill_halo_regions_periodic.jl")
 include("fill_halo_regions_flux.jl")
-include("fill_halo_regions_zipper.jl")
+include("fill_halo_regions_upivotzipper.jl")
+include("fill_halo_regions_fpivotzipper.jl")
 include("fill_halo_kernels.jl")
 
 include("compute_flux_bcs.jl")

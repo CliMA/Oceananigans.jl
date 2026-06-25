@@ -1,15 +1,12 @@
 using CubedSphere.SphericalGeometry: lat_lon_to_cartesian, spherical_area_quadrilateral
 
 """
-    _compute_tripolar_coordinates!(λFF, φFF, λFC, φFC, λCF, φCF, λCC, φCC,
-                                   λᶠᵃᵃ, λᶜᵃᵃ, φᵃᶠᵃ, φᵃᶜᵃ,
-                                   first_pole_longitude,
-                                   focal_distance, Nλ)
+$(TYPEDSIGNATURES)
 
 Compute the tripolar coordinates for a given set of input parameters following
 the formulation by [Murray (1996)](@cite Murray1996).
 
-The tripolar grid is built as a set of cofocal ellipsed and perpendicular hyperbolae.
+The tripolar grid is built as a set of cofocal ellipses and perpendicular hyperbolae.
 The `focal_distance` argument is the distance from the center of the ellipses to the foci.
 
 The family of ellipses obeys:
@@ -56,41 +53,55 @@ Murray, R. J. (1996). Explicit generation of orthogonal grids for ocean models.
     Journal of Computational Physics, 126(2), 251-273.
 ```
 """
-@kernel function _compute_tripolar_coordinates!(λFF, φFF, λFC, φFC, λCF, φCF, λCC, φCC,
-                                                λᶠᵃᵃ, λᶜᵃᵃ, φᵃᶠᵃ, φᵃᶜᵃ,
-                                                first_pole_longitude,
-                                                focal_distance, Nλ)
+@kernel function _compute_tripolar_coordinates!(
+        λFC, φFC, λCC, φCC,
+        λFF, φFF, λCF, φCF,
+        λF, λC, φC, φF,
+        first_pole_longitude,
+        focal_distance, Nx, Ny
+    )
 
     i, j = @index(Global, NTuple)
 
-    λ2Ds = (λFF,  λFC,  λCF,  λCC)
-    φ2Ds = (φFF,  φFC,  φCF,  φCC)
-    λ1Ds = (λᶠᵃᵃ, λᶠᵃᵃ, λᶜᵃᵃ, λᶜᵃᵃ)
-    φ1Ds = (φᵃᶠᵃ, φᵃᶜᵃ, φᵃᶠᵃ, φᵃᶜᵃ)
+    λ2Ds = (λFC, λCC, λFF, λCF)
+    φ2Ds = (φFC, φCC, φFF, φCF)
+    λ1Ds = (λF , λC , λF , λC )
+    φ1Ds = (φC , φC , φF , φF )
+    isxfaces = (true, false, true, false)
 
-    for (λ2D, φ2D, λ1D, φ1D) in zip(λ2Ds, φ2Ds, λ1Ds, φ1Ds)
-        ψ = asinh(tand((90 - φ1D[j]) / 2) / focal_distance)
-        x = focal_distance * sind(λ1D[i]) * cosh(ψ)
-        y = focal_distance * cosd(λ1D[i]) * sinh(ψ)
+    for (λ2D, φ2D, λ1D, φ1D, isxface) in zip(λ2Ds, φ2Ds, λ1Ds, φ1Ds, isxfaces)
+        # We chose the formulae below for λ ∈ (-180, 180) and φ ∈ (-90, 90)
+        # so that the grid of (x,y) never crosses the negative x-axis,
+        # overwhich atan is discontinuous, which we want to avoid.
+        ψ = asinh(tand((90 - max(φ1D[j], -90)) / 2) / focal_distance)
+        x = focal_distance * cosd(λ1D[i]) * cosh(ψ)
+        y = focal_distance * sind(λ1D[i]) * sinh(ψ)
+        R = sqrt(x^2 + y^2)
 
-        # When x == 0 and y == 0 we are exactly at the north pole,
-        # λ (which depends on `atan(y / x)`) is not defined
-        # This makes sense, what is the longitude of the north pole? Could be anything!
-        # so we choose a value that is continuous with the surrounding points.
-        on_the_north_pole = (x == 0) & (y == 0)
-        north_pole_value  = ifelse(i == 1, -90, 90)
+        # λ is simply atan(y,x)
+        λ2D[i, j] = atand(y, x)
+        # But we fill the halos east and west ourselves here instead of periodicity.
+        # That is, we continue the longitudes in the East and West halos.
+        λ2D[i, j] -= ifelse(i < 1 && j ≤ Ny, 360, 0)
+        λ2D[i, j] += ifelse(i < 1 && j > Ny, 360, 0)
+        # For the East halo, we need to "specialise" on center/face x-location
+        # as we only continue for cells beyond the (face-located) antimeridian at +180.
+        λ2D[i, j] += ifelse(i > Nx + isxface && j ≤ Ny, 360, 0)
+        λ2D[i, j] -= ifelse(i > Nx + isxface && j > Ny, 360, 0)
+        # In case we are on the true North Pole (x == y == 0)
+        # we impose λ from λ1D as this is along a symmetry meridian (constant λ along j)
+        λ2D[i, j] = ifelse(x == y == 0, λ1D[i], λ2D[i, j])
+        # Same in case we are on the true South Pole (ψ == Inf)
+        λ2D[i, j] = ifelse(isinf(ψ), λ1D[i], λ2D[i, j])
 
-        λ2D[i, j] = ifelse(on_the_north_pole, north_pole_value, - 180 / π * atan(y / x))
-        φ2D[i, j] = 90 - 360 / π * atan(sqrt(y^2 + x^2)) # The latitude will be in the range [-90, 90]
-
-        # Shift longitude to the range [-180, 180], the
-        # the north singularities will be located at -90 and 90
-        λ2D[i, j] += ifelse(i ≤ Nλ÷2, -90, 90)
+        # And φ is simply
+        φ2D[i, j] = 2 * atand(1, R) - 90
+        # In case we are on the true South Pole (ψ == Inf), then we set φ = -90
+        φ2D[i, j] = ifelse(isinf(ψ), -90, φ2D[i, j])
 
         # Make sure the singularities are at longitude we want them to be at.
         # (`first_pole_longitude` and `first_pole_longitude` + 180)
-        λ2D[i, j] += first_pole_longitude + 90
-        λ2D[i, j]  = convert_to_0_360(λ2D[i, j])
+        λ2D[i, j] += first_pole_longitude + 180
     end
 end
 

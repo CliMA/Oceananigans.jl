@@ -50,7 +50,9 @@ v_bcs = FieldBoundaryConditions(bottom=v_drag_bc)
 
 boundary_conditions=(u=u_bcs, v=v_bcs)
 
-model = HydrostaticFreeSurfaceModel(; grid, coriolis, boundary_conditions,
+model = HydrostaticFreeSurfaceModel(grid;
+                                    coriolis,
+                                    boundary_conditions,
                                     buoyancy = BuoyancyTracer(),
                                     closure = mesoscale_closure,
                                     tracers = (:b, :K),
@@ -216,4 +218,3 @@ record(fig, filename * ".mp4", 1:Nt, framerate=8) do i
     @info "Plotting frame $i of $Nt"
     n[] = i
 end
-

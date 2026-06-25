@@ -3,13 +3,14 @@ module Utils
 using Oceananigans
 using Reactant
 
-import Oceananigans.Grids: prettysummary
-import Oceananigans.Utils: prettytime
+import Oceananigans.Utils: prettytime, prettysummary
 
 function prettytime(concrete_number::Union{ConcretePJRTNumber,ConcreteIFRTNumber})
     number = Reactant.to_number(concrete_number)
     return prettytime(number)
 end
+
+prettytime(t::Reactant.TracedRNumber) = "TracedRNumber"
 
 function prettysummary(concrete_number::ConcretePJRTNumber)
     number = Reactant.to_number(concrete_number)

@@ -1,14 +1,19 @@
 module Smagorinskys
 
-using Oceananigans
-using Oceananigans.Operators
-using Oceananigans.Fields
-
-using Oceananigans.Grids: AbstractGrid
-
+using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @kernel, @index
 
-import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
+using Oceananigans: Oceananigans
+using Oceananigans.Grids: AbstractGrid, Center
+using Oceananigans.Operators: Operators, Δxᶜᶜᶜ, Δyᶜᶜᶜ, Δzᶜᶜᶜ, ℑxyzᶜᶜᶠ,
+                              ℑxᶜᵃᵃ, ℑxᶠᵃᵃ, ℑyᵃᶜᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶜ, ℑzᵃᵃᶠ,
+                              ℑxyᶜᶜᵃ, ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ, ℑxyᶠᶠᵃ,
+                              ℑxzᶜᵃᶜ, ℑxzᶜᵃᶠ, ℑxzᶠᵃᶜ, ℑxzᶠᵃᶠ,
+                              ℑyzᵃᶜᶜ, ℑyzᵃᶜᶠ, ℑyzᵃᶠᶜ, ℑyzᵃᶠᶠ
+
+
+import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers, step_closure_prognostics!,
+                                        initialize_closure_fields!
 
 include("smagorinsky.jl")
 include("dynamic_coefficient.jl")

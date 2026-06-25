@@ -1,4 +1,5 @@
 using Oceananigans: fields
+using Oceananigans.Fields: znode
 using Oceananigans.TimeSteppers: implicit_step!
 
 Base.@kwdef struct TKEDissipationEquations{FT}
@@ -15,7 +16,7 @@ end
 
 get_time_step(closure::TKEDissipationVerticalDiffusivity) = closure.tke_dissipation_time_step
 
-function time_step_tke_dissipation_equations!(model)
+function time_step_tke_dissipation_equations!(model, Δt)
 
     # TODO: properly handle closure tuples
     closure = model.closure
@@ -38,9 +39,10 @@ function time_step_tke_dissipation_equations!(model)
     e_index = findfirst(k -> k == :e, keys(model.tracers))
     ϵ_index = findfirst(k -> k == :ϵ, keys(model.tracers))
     implicit_solver = model.timestepper.implicit_solver
+    active_cells_map = get_active_cells_map(grid, Val(:xyz))
 
     FT = eltype(model.tracers.e)
-    Δt = convert(FT, model.clock.last_Δt)
+    Δt = convert(FT, Δt)
     Δτ = get_time_step(closure)
 
     if isnothing(Δτ)
@@ -59,30 +61,32 @@ function time_step_tke_dissipation_equations!(model)
         end
 
         launch!(arch, grid, :xyz,
-                compute_tke_dissipation_diffusivities!,
+                compute_tke_dissipation_closure_fields!,
                 κe, κϵ,
                 grid, closure,
-                model.velocities, model.tracers, buoyancy_force(model))
+                model.velocities, model.tracers, buoyancy_force(model);
+                active_cells_map)
 
-        # Compute the linear implicit component of the RHS (diffusivities, L)
+        # Compute the linear implicit component of the RHS (closure_fields, L)
         # and step forward
         launch!(arch, grid, :xyz,
                 substep_tke_dissipation!,
                 Le, Lϵ,
                 grid, closure,
-                model.velocities, previous_velocities, # try this soon: model.velocities, model.velocities,
+                model.velocities, previous_velocities,
                 model.tracers, buoyancy_force(model), closure_fields,
-                Δτ, χ, Gⁿe, G⁻e, Gⁿϵ, G⁻ϵ)
+                Δτ, χ, Gⁿe, G⁻e, Gⁿϵ, G⁻ϵ;
+                active_cells_map)
 
         implicit_step!(e, implicit_solver, closure,
                        model.closure_fields, Val(e_index),
-                       model.clock, 
+                       model.clock,
                        fields(model),
                        Δτ)
 
         implicit_step!(ϵ, implicit_solver, closure,
                        model.closure_fields, Val(ϵ_index),
-                       model.clock, 
+                       model.clock,
                        fields(model),
                        Δτ)
     end
@@ -90,8 +94,8 @@ function time_step_tke_dissipation_equations!(model)
     return nothing
 end
 
-# Compute TKE and dissipation diffusivities
-@kernel function compute_tke_dissipation_diffusivities!(κe, κϵ, grid, closure,
+# Compute TKE and dissipation closure_fields
+@kernel function compute_tke_dissipation_closure_fields!(κe, κϵ, grid, closure,
                                                         velocities, tracers, buoyancy)
     i, j, k = @index(Global, NTuple)
     closure_ij = getclosure(i, j, closure)
@@ -106,7 +110,7 @@ end
 @kernel function substep_tke_dissipation!(Le, Lϵ,
                                           grid, closure,
                                           next_velocities, previous_velocities,
-                                          tracers, buoyancy, diffusivities,
+                                          tracers, buoyancy, closure_fields,
                                           Δτ, χ, slow_Gⁿe, G⁻e, slow_Gⁿϵ, G⁻ϵ)
 
     i, j, k = @index(Global, NTuple)
@@ -128,7 +132,7 @@ end
     ωϵ  = ϵⁱʲᵏ / e★
 
     # Compute additional diagonal component of the linear TKE operator
-    wb = explicit_buoyancy_flux(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, diffusivities)
+    wb = explicit_buoyancy_flux(i, j, k, grid, closure_ij, next_velocities, tracers, buoyancy, closure_fields)
 
     # Patankar trick for TKE equation
     wb⁻ = min(wb, zero(grid))
@@ -157,7 +161,7 @@ end
     v⁺ = next_velocities.v
     uⁿ = previous_velocities.u
     vⁿ = previous_velocities.v
-    κu = diffusivities.κu
+    κu = closure_fields.κu
     Cᴾϵ = closure_ij.tke_dissipation_equations.Cᴾϵ
 
     # TODO: correctly handle closure / diffusivity tuples
@@ -305,4 +309,3 @@ function add_closure_specific_boundary_conditions(closure::FlavorOfTD,
 
     return new_boundary_conditions
 end
-

@@ -1,10 +1,6 @@
-using Adapt
-using Oceananigans.Grids: rnode
-using Oceananigans.Fields: fill_halo_regions!
+using Oceananigans.Grids: Grids, constructor_arguments, rnode
+using Oceananigans.Fields: Field, fill_halo_regions!
 using Oceananigans.BoundaryConditions: FBC
-using Printf
-
-import Oceananigans.Grids: constructor_arguments
 
 #####
 ##### GridFittedBottom (2.5D immersed boundary with modified bottom height)
@@ -32,8 +28,8 @@ const GFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:GridFit
 
 Return a bottom immersed boundary.
 
-Keyword Arguments
-=================
+Arguments
+=========
 
 * `bottom_height`: an array or function that gives the height of the
                    bottom in absolute ``z`` coordinates.
@@ -73,9 +69,9 @@ function Base.show(io::IO, ib::GridFittedBottom)
     print(io, "└── bottom_height: ", prettysummary(ib.bottom_height), '\n')
 end
 
-on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(on_architecture(arch, ib.bottom_height), ib.immersed_condition)
+Architectures.on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(on_architecture(arch, ib.bottom_height), ib.immersed_condition)
 
-function on_architecture(arch, ib::GridFittedBottom{<:Field})
+function Architectures.on_architecture(arch, ib::GridFittedBottom{<:Field})
     architecture(ib.bottom_height) == arch && return ib
     arch_grid = on_architecture(arch, ib.bottom_height.grid)
     new_bottom_height = Field{Center, Center, Nothing}(arch_grid)
@@ -87,7 +83,7 @@ end
 Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom_height), adapt(to, ib.immersed_condition))
 
 """
-    materialize_immersed_boundary(grid, ib)
+$(TYPEDSIGNATURES)
 
 Returns a new `ib` wrapped around a Field that holds the numerical `immersed_boundary`.
 If `ib` is an `AbstractGridFittedBottom`, `ib.bottom_height` is the z-coordinate of
@@ -114,8 +110,8 @@ compute_numerical_bottom_height!(bottom_field, grid, ib) =
     for k in 1:grid.Nz
         z⁺ = rnode(i, j, k+1, grid, c, c, f)
         z  = rnode(i, j, k,   grid, c, c, c)
-        bottom_cell = ifelse(condition isa CenterImmersedCondition, z ≤ zb, z⁺ ≤ zb)
-        @inbounds bottom_field[i, j, 1] = ifelse(bottom_cell, z⁺, bottom_field[i, j, 1])
+        immersed_cell = ifelse(condition isa CenterImmersedCondition, z ≤ zb, z⁺ ≤ zb)
+        @inbounds bottom_field[i, j, 1] = ifelse(immersed_cell, z⁺, bottom_field[i, j, 1])
     end
 end
 
@@ -132,14 +128,15 @@ end
     # wetting or drying that could happen for a moving grid if we use znode
     z  = rnode(i, j, k, underlying_grid, c, c, c)
     zb = @inbounds ib.bottom_height[i, j, 1]
-    zb = Base.stack(collect(zb for _ in k))
-    return z .≤ zb
+    _zb = Base.stack(collect(zb for _ in k))
+    return z .≤ _zb
 end
 
 #####
 ##### Static column depth
 #####
 
+# AbstractGridFittedBottomImmersedBoundaryGrid
 const AGFBIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:AbstractGridFittedBottom}
 
 @inline static_column_depthᶜᶜᵃ(i, j, ibg::AGFBIBG) = @inbounds rnode(i, j, ibg.Nz+1, ibg, c, c, f) - ibg.immersed_boundary.bottom_height[i, j, 1]
@@ -156,12 +153,11 @@ YFlatAGFIBG = ImmersedBoundaryGrid{<:Any, <:Any, <:Flat, <:Any, <:Any, <:Abstrac
 @inline static_column_depthᶠᶠᵃ(i, j, ibg::XFlatAGFIBG) = static_column_depthᶜᶠᵃ(i, j, ibg)
 @inline static_column_depthᶠᶠᵃ(i, j, ibg::YFlatAGFIBG) = static_column_depthᶠᶜᵃ(i, j, ibg)
 
-function constructor_arguments(grid::AGFBIBG)
-    args, kwargs = constructor_arguments(grid.underlying_grid)
-    args = merge(args, Dict(:bottom_height => grid.immersed_boundary.bottom_height,
-                            :immersed_condition => grid.immersed_boundary.immersed_condition,
-                            :immersed_boundary_type => nameof(typeof(grid.immersed_boundary))))
-    return args, kwargs
+function Grids.constructor_arguments(grid::AGFBIBG)
+    underlying_grid_args, underlying_grid_kwargs = constructor_arguments(grid.underlying_grid)
+    grid_fitted_bottom_args = Dict(:bottom_height      => grid.immersed_boundary.bottom_height,
+                                   :immersed_condition => grid.immersed_boundary.immersed_condition)
+    return underlying_grid_args, underlying_grid_kwargs, grid_fitted_bottom_args
 end
 
 function Base.:(==)(gfb1::GridFittedBottom, gfb2::GridFittedBottom)

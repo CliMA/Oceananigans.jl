@@ -173,14 +173,14 @@ catke = CATKEVerticalDiffusivity()
 
 @info "Building a model..."
 
-model = HydrostaticFreeSurfaceModel(grid = grid,
+model = HydrostaticFreeSurfaceModel(grid;
                                     free_surface = ImplicitFreeSurface(),
                                     momentum_advection = WENO(),
                                     tracer_advection = WENO(),
                                     buoyancy = BuoyancyTracer(),
                                     coriolis = coriolis,
                                     closure = (horizontal_closure, vertical_closure, catke),
-                                    tracers = (:b, :e, :c),
+                                    tracers = (:b, :c),
                                     boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),
                                     forcing = (; b=Fb,)
                                     )

@@ -1,4 +1,4 @@
-# # Two dimensional turbulence example
+# # [Two dimensional turbulence example](@id two_dimensional_turbulence)
 #
 # In this example, we initialize a random velocity field and observe its turbulent decay
 # in a two-dimensional domain. This example demonstrates:
@@ -22,10 +22,13 @@
 # and a small isotropic viscosity.  Note that we assign `Flat` to the `z` direction.
 
 using Oceananigans
+using Random
+
+Random.seed!(404) # for reproducible results
 
 grid = RectilinearGrid(size=(128, 128), extent=(2π, 2π), topology=(Periodic, Periodic, Flat))
 
-model = NonhydrostaticModel(; grid,
+model = NonhydrostaticModel(grid;
                             advection = UpwindBiased(order=5),
                             closure = ScalarDiffusivity(ν=1e-5))
 

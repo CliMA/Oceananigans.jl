@@ -1,4 +1,5 @@
-using Oceananigans.Grids: prettysummary, architecture
+using Oceananigans.Architectures: architecture
+using Oceananigans.Utils: prettysummary
 import Oceananigans
 
 mutable struct TimeStepWizard{FT, C, D}
@@ -40,8 +41,7 @@ max(min_Δt, min_change * last_Δt) ≤ new_Δt ≤ min(max_Δt, max_change * la
 
 where `new_Δt` is the new time step calculated by the `TimeStepWizard`.
 
-For more information on the CFL number, see its [wikipedia entry]
-(https://en.wikipedia.org/wiki/Courant%E2%80%93Friedrichs%E2%80%93Lewy_condition).
+For more information on the CFL number, see its [wikipedia entry](https://en.wikipedia.org/wiki/Courant%E2%80%93Friedrichs%E2%80%93Lewy_condition).
 
 Example
 =======
@@ -91,9 +91,9 @@ end
 using Oceananigans.DistributedComputations: all_reduce
 
 """
-     new_time_step(old_Δt, wizard, model)
+$(TYPEDSIGNATURES)
 
-Return a new time_step given `model.velocities` and model diffusivites,
+Return a new time step given `model.velocities` and model diffusivities,
 and the parameters of the `TimeStepWizard` `wizard`.
 """
 function new_time_step(old_Δt, wizard, model)
@@ -116,14 +116,13 @@ end
     simulation.Δt = new_time_step(simulation.Δt, wizard, simulation.model)
 
 """
-    conjure_time_step_wizard!(simulation, schedule=IterationInterval(5), wizard_kw...)
+    conjure_time_step_wizard!(simulation, schedule=IterationInterval(10); wizard_kw...)
 
 Add a `TimeStepWizard` built with `wizard_kw` as a `Callback` to `simulation`,
-called on `schedule` which is `IterationInterval(5)` by default.
+called on `schedule` which is `IterationInterval(10)` by default.
 """
 function conjure_time_step_wizard!(simulation, schedule=IterationInterval(10); wizard_kw...)
     wizard = TimeStepWizard(; wizard_kw...)
     simulation.callbacks[:time_step_wizard] = Callback(wizard, schedule)
     return nothing
 end
-

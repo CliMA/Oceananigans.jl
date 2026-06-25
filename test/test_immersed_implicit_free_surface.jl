@@ -3,10 +3,9 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
 using Oceananigans.Architectures: on_architecture
 using Oceananigans.TurbulenceClosures
-using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integrated_volume_flux!,
-                                                        compute_implicit_free_surface_right_hand_side!,
+using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_implicit_free_surface_right_hand_side!,
                                                         step_free_surface!,
-                                                        make_pressure_correction!
+                                                        correct_barotropic_mode!
 
 @testset "Immersed boundaries test divergent flow solve with hydrostatic free surface models" begin
     for arch in archs
@@ -42,10 +41,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integ
 
         for free_surface in free_surfaces
 
-            model = HydrostaticFreeSurfaceModel(; grid, free_surface,
-                                                buoyancy = nothing,
-                                                tracers = nothing,
-                                                closure = nothing)
+            model = HydrostaticFreeSurfaceModel(grid; free_surface)
 
             # Now create a divergent flow field and solve for pressure correction
             u, v, w = model.velocities
@@ -56,7 +52,7 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: compute_vertically_integ
 
             step_free_surface!(model.free_surface, model, model.timestepper, 1.0)
 
-            sol = (sol..., model.free_surface.η)
+            sol = (sol..., model.free_surface.displacement)
             f  = (f..., model.free_surface)
         end
 

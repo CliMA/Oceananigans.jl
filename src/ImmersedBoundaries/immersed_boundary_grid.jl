@@ -1,3 +1,5 @@
+using Oceananigans.Grids: Grids, AbstractUnderlyingGrid, halo_size, topology
+
 """
     abstract type AbstractImmersedBoundary
 
@@ -34,11 +36,12 @@ has_active_z_columns(::NoActiveZColumnsIBG) = false
 
 """
     ImmersedBoundaryGrid(grid, ib::AbstractImmersedBoundary;
-                         active_cells_map=false, active_z_columns=active_cells_map)
+                         active_cells_map=false,
+                         active_z_columns=active_cells_map)
 
-Return a grid with an `AbstractImmersedBoundary` immersed boundary (`ib`). If `active_cells_map` or `active_z_columns` are `true`,
-the grid will populate `interior_active_cells` and `active_z_columns` fields -- a list of active indices in the
-interior and on a reduced x-y plane, respectively.
+Return a grid with an `AbstractImmersedBoundary` immersed boundary (`ib`). If `active_cells_map` or
+`active_z_columns` are `true`, the grid will populate `interior_active_cells` and `active_z_columns`
+fields -- a list of active indices in the interior and on a reduced x-y plane, respectively.
 """
 function ImmersedBoundaryGrid(grid::AbstractUnderlyingGrid, ib::AbstractImmersedBoundary;
                               active_cells_map::Bool=false,
@@ -90,6 +93,18 @@ const IBG = ImmersedBoundaryGrid
 @inline y_domain(ibg::IBG) = y_domain(ibg.underlying_grid)
 @inline z_domain(ibg::IBG) = z_domain(ibg.underlying_grid)
 
+"""
+    underlying_grid(grid)
+    underlying_grid(field)
+
+Return the non-immersed grid: for an `ImmersedBoundaryGrid` this is the wrapped
+`grid.underlying_grid`; for any other grid this is the grid itself. Passing a
+`Field` extracts its grid and unwraps in one call.
+"""
+@inline underlying_grid(grid::AbstractGrid) = grid
+@inline underlying_grid(ibg::IBG) = ibg.underlying_grid
+@inline underlying_grid(field::AbstractField) = underlying_grid(field.grid)
+
 Adapt.adapt_structure(to, ibg::IBG{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} =
     ImmersedBoundaryGrid{TX, TY, TZ}(adapt(to, ibg.underlying_grid),
                                      adapt(to, ibg.immersed_boundary),
@@ -107,14 +122,13 @@ inflate_halo_size_one_dimension(req_H, old_H, ::Type{Flat}, ::IBG) = 0
 
 function Base.summary(grid::ImmersedBoundaryGrid)
     FT = eltype(grid)
-    TX, TY, TZ = Oceananigans.Grids.topology_strs(grid)
-
-    return string(size_summary(size(grid)),
+    TX, TY, TZ = topology(grid)
+    return string(size_summary(grid),
                   " ImmersedBoundaryGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
                   " with ", size_summary(halo_size(grid)), " halo")
 end
 
-function show(io::IO, ibg::ImmersedBoundaryGrid)
+function Base.show(io::IO, ibg::ImmersedBoundaryGrid)
     print(io, summary(ibg), ":", "\n",
              "├── immersed_boundary: ", summary(ibg.immersed_boundary), "\n",
              "├── underlying_grid: ", summary(ibg.underlying_grid), "\n")
@@ -124,7 +138,7 @@ end
 
 @inline Base.zero(ibg::IBG) = zero(ibg.underlying_grid)
 
-function on_architecture(arch, ibg::IBG)
+function Architectures.on_architecture(arch, ibg::IBG)
     underlying_grid   = on_architecture(arch, ibg.underlying_grid)
     immersed_boundary = on_architecture(arch, ibg.immersed_boundary)
     return ImmersedBoundaryGrid(underlying_grid, immersed_boundary)

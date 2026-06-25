@@ -19,7 +19,8 @@ EnzymeCore.EnzymeRules.inactive_noinl(::typeof(Oceananigans.AbstractOperations.m
 EnzymeCore.EnzymeRules.inactive_noinl(::typeof(Oceananigans.Utils.flatten_reduced_dimensions), x...) = nothing
 EnzymeCore.EnzymeRules.inactive_noinl(::typeof(Oceananigans.Utils.prettytime), x...) = nothing
 EnzymeCore.EnzymeRules.inactive(::typeof(Oceananigans.Grids.total_size), x...) = nothing
-EnzymeCore.EnzymeRules.inactive(::typeof(Oceananigans.BoundaryConditions.periodic_size_and_offset), x...) = nothing
+EnzymeCore.EnzymeRules.inactive(::typeof(Oceananigans.BoundaryConditions.periodic_size), x...) = nothing
+EnzymeCore.EnzymeRules.inactive(::typeof(Oceananigans.BoundaryConditions.periodic_offset), x...) = nothing
 @inline EnzymeCore.EnzymeRules.inactive_type(v::Type{Oceananigans.Utils.KernelParameters}) = true
 
 @inline batch(::Val{1}, ::Type{T}) where T = T
@@ -133,8 +134,8 @@ EnzymeCore.EnzymeRules.inactive(::typeof(Oceananigans.BoundaryConditions.periodi
 #
 #         FunctionFieldType(dfunction_field_func, grid.val; clock, parameters)
 #     else
-#   	    ntuple(Val(config_width)) do i
-#   		    Base.@_inline_meta
+#           ntuple(Val(config_width)) do i
+#                   Base.@_inline_meta
 #
 #             dfunction_field_func = if function_field_is_active
 #                 dactives[i][]
@@ -143,7 +144,7 @@ EnzymeCore.EnzymeRules.inactive(::typeof(Oceananigans.BoundaryConditions.periodi
 #             end
 #
 #             FunctionFieldType(dfunction_field_func, grid.val; clock, parameters)
-#   	    end
+#           end
 #     end
 #
 #     P = EnzymeCore.EnzymeRules.needs_primal(config) ? RT : Nothing

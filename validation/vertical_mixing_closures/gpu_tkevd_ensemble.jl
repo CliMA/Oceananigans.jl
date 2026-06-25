@@ -31,7 +31,7 @@ coriolis_ensemble = CuArray([FPlane(f=f_ij(i, j)) for i=1:Ex, j=1:Ey])
 
 model = HydrostaticFreeSurfaceModel(architecture = GPU(),
                                     grid = grid,
-                                    tracers = (:b, :e),
+                                    tracers = (:b,),
                                     buoyancy = BuoyancyTracer(),
                                     coriolis = coriolis_ensemble,
                                     boundary_conditions = (b=b_bcs, u=u_bcs, v=v_bcs),

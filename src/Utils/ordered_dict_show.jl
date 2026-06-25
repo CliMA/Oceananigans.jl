@@ -26,5 +26,3 @@ function ordered_dict_show(dict::OrderedDict, padchar)
 
     return join(lines, "\n")
 end
-
-

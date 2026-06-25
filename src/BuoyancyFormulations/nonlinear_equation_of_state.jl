@@ -1,4 +1,4 @@
-using Oceananigans.Grids: znode, ZFlatGrid
+using Oceananigans.Grids: Center, Face, znode, ZFlatGrid
 using Oceananigans.Operators: Δzᶜᶜᶠ, Δzᶜᶜᶜ
 
 const c = Center()
@@ -27,7 +27,7 @@ const f = Face()
 @inline θ_and_sᴬ(i, j, k, θ::Number,        sᴬ::Number)        = θ, sᴬ
 
 # Basic functionality
-@inline ρ′(i, j, k, grid, eos, θ, sᴬ) = ρ′(θ_and_sᴬ(i, j, k, θ, sᴬ)..., Zᶜᶜᶜ(i, j, k, grid), eos)
+@inline SeawaterPolynomials.ρ′(i, j, k, grid, eos, θ, sᴬ) = ρ′(θ_and_sᴬ(i, j, k, θ, sᴬ)..., Zᶜᶜᶜ(i, j, k, grid), eos)
 
 @inline thermal_expansionᶜᶜᶜ(i, j, k, grid, eos, θ, sᴬ) = thermal_expansion(θ_and_sᴬ(i, j, k, θ, sᴬ)..., Zᶜᶜᶜ(i, j, k, grid), eos)
 @inline thermal_expansionᶠᶜᶜ(i, j, k, grid, eos, θ, sᴬ) = thermal_expansion(ℑxᶠᵃᵃ(i, j, k, grid, θ), ℑxᶠᵃᵃ(i, j, k, grid, sᴬ), Zᶜᶜᶜ(i, j, k, grid), eos)

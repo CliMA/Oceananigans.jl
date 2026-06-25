@@ -54,10 +54,10 @@ using Oceananigans.Grids: architecture
 using Oceananigans.Fields: ZeroField, ConstantField, FunctionField, compute_at!, indices, instantiated_location
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: tracernames
 using Oceananigans.ImmersedBoundaries: conditional_length
-using Oceananigans.Operators: ℑxyᶜᶠᵃ, ℑxyᶠᶜᵃ, hack_cosd
+using Oceananigans.Operators: ℑxyᶠᶜᵃ, hack_cosd
 using Oceananigans.TurbulenceClosures: with_tracers
 using Oceananigans.MultiRegion: reconstruct_global_grid, reconstruct_global_field
-using Oceananigans.Grids: prettysummary
+using Oceananigans.Utils: prettysummary
 
 import Oceananigans.Utils: launch!, datatuple, getnamewrapper
 Logging.global_logger(OceananigansLogger())
@@ -90,3 +90,9 @@ already_included[] = true
 
 float_types = (Float32, Float64)
 archs = test_architectures()
+
+# We need to Mock a grid since it provides an architecture for advection materialization
+struct MockGrid{A <: AbstractArchitecture}
+    arch::A
+end
+Oceananigans.Grids.architecture(a::MockGrid) = a.arch

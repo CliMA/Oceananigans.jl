@@ -1,9 +1,14 @@
 module Grids
 
 export Center, Face
-export AbstractTopology, Periodic, Bounded, Flat, FullyConnected, LeftConnected, RightConnected, topology
-
-export AbstractGrid, AbstractUnderlyingGrid, halo_size, total_size
+export AbstractTopology, topology
+export Periodic, Bounded, Flat, FullyConnected, LeftConnected, RightConnected
+export RightFaceFolded, RightCenterFolded
+export LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded
+export LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected
+export SerialFoldedTopology, SlabFoldedTopology, PencilFoldedTopology, DistributedFoldedTopology, FoldedTopology
+export AbstractGrid, AbstractUnderlyingGrid, grid, halo_size, total_size
+export slice
 export RectilinearGrid
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 export XFlatGrid, YFlatGrid, ZFlatGrid
@@ -23,16 +28,16 @@ export column_depthᶜᶜᵃ, column_depthᶠᶜᵃ, column_depthᶜᶠᵃ, colu
 export offset_data, new_data
 export on_architecture
 
-using Adapt
-using GPUArraysCore
-using OffsetArrays
-using Printf
+using Adapt: Adapt, adapt
+using DocStringExtensions: FIELDS, TYPEDSIGNATURES
+using GPUArraysCore: @allowscalar
+using OffsetArrays: OffsetArray
+using Printf: @sprintf
 
-using Oceananigans
-using Oceananigans.Architectures
-
-import Base: size, length, eltype, -
-import Oceananigans.Architectures: architecture, on_architecture
+using Oceananigans: Oceananigans
+using Oceananigans.Architectures: Architectures, AbstractSerialArchitecture,
+                                  architecture, on_architecture
+using Oceananigans.Utils: Utils
 
 #####
 ##### Abstract types
@@ -102,10 +107,56 @@ Grid topology for dimensions that are connected to other models or domains only 
 """
 struct RightConnected <: AbstractTopology end
 
-topology_str(T) = string(T)
-topology_str(::Type{RightConnected}) = "RightConnected"
-topology_str(::Type{LeftConnected}) = "LeftConnected"
-topology_str(::Type{FullyConnected}) = "FullyConnected"
+"""
+    RightFaceFolded
+
+Grid topology for tripolar F-point pivot connection
+(folded north boundary along face locations).
+"""
+struct RightFaceFolded <: AbstractTopology end
+
+"""
+    RightCenterFolded
+
+Grid topology for tripolar U-point pivot connection.
+(folded north boundary along center locations).
+"""
+struct RightCenterFolded <: AbstractTopology end
+
+"""
+    LeftConnectedRightCenterFolded
+
+Local grid topology for the northernmost y-rank of a 1×N distributed tripolar grid
+with U-point pivot (serial fold). Connected to the south neighbor on the left,
+center-folded on the right (north).
+"""
+struct LeftConnectedRightCenterFolded <: AbstractTopology end
+
+"""
+    LeftConnectedRightFaceFolded
+
+Local grid y topology for the northernmost y-rank of a 1×N distributed tripolar grid
+with F-point pivot (serial fold). Connected to the south neighbor on the left,
+face-folded on the right (north). Face-extended (Ny+1 Face points in y).
+"""
+struct LeftConnectedRightFaceFolded <: AbstractTopology end
+
+"""
+    LeftConnectedRightCenterConnected
+
+Local grid y topology for the northernmost y-rank of an M×N distributed tripolar grid
+with U-point pivot (distributed zipper).
+"""
+struct LeftConnectedRightCenterConnected <: AbstractTopology end
+
+"""
+    LeftConnectedRightFaceConnected
+
+Local grid y topology for the northernmost y-rank of an M×N distributed tripolar grid
+with F-point pivot (distributed zipper).
+Face-extended (Ny+1 Face points in y).
+"""
+struct LeftConnectedRightFaceConnected <: AbstractTopology end
 
 #####
 ##### Directions (for tilted domains)
@@ -136,5 +187,6 @@ include("grid_generation.jl")
 include("rectilinear_grid.jl")
 include("orthogonal_spherical_shell_grid.jl")
 include("latitude_longitude_grid.jl")
+include("coordinate_transformations.jl")
 
 end # module

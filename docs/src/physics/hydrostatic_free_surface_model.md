@@ -114,7 +114,7 @@ The `ZStarCoordinate` generalized vertical coordinate is often denoted as ``z^*`
 ```
 where ``\eta`` is the free surface and ``z = -H(x, y)`` is the bottom of the domain.
 
-![Schematic of the quantities involved in the ZStarCoordinate generalized vertical coordinate](../assets/zstar_schematic.png)
+![Schematic of the quantities involved in the ZStarCoordinate generalized vertical coordinate](./assets/zstar_schematic.png)
 
 Note that in both depth and ``z^*`` coordinates, the bottom boundary is the same ``z = z^* = - H(x, y)``.
 On the other hand, while in depth coordinates the upper boundary ``z = \eta(x, y, t)`` changes with time,

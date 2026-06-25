@@ -29,11 +29,27 @@ end
 @inline add_time_interval(base::AbstractTime, interval::Number, count=1) = base + seconds_to_nanosecond(interval * count)
 @inline add_time_interval(base::AbstractTime, interval::Period, count=1) = base + count * interval
 
+@inline add_time_interval(base, interval::Array{<:Number}, count=1) = interval[count]
+@inline add_time_interval(base, interval::Array{<:Dates.Period}, count=1) = seconds_to_nanosecond(interval[count])
+@inline add_time_interval(base, interval::Array{Dates.DateTime}, count=1) = interval[count]
+
+period_type(interval::AbstractFloat) = typeof(interval)
+
 function period_type(interval::Number)
     FT = Oceananigans.defaults.FloatType
     return FT
 end
 
+period_type(interval::Array{<:AbstractFloat}) = Array{eltype(interval), 1}
+
+function period_type(interval::Array{<:Number})
+    FT = Oceananigans.defaults.FloatType
+    return Array{FT, 1}
+end
+
 period_type(interval::Dates.Period) = typeof(interval)
+period_type(interval) = typeof(interval)
+
 time_type(interval::Number) = typeof(interval)
 time_type(interval::Dates.Period) = Dates.DateTime
+time_type(interval::Array) = eltype(interval)

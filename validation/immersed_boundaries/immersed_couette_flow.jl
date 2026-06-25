@@ -22,7 +22,7 @@ u_immersed_bc = ValueBoundaryCondition(-1)
 u_top_bc = ValueBoundaryCondition(1)
 u_bcs = FieldBoundaryConditions(immersed=u_immersed_bc, top=u_top_bc)
 
-model = NonhydrostaticModel(; grid,
+model = NonhydrostaticModel(grid;
                             advection = nothing,
                             timestepper = :RungeKutta3,
                             tracers = :c,

@@ -1,15 +1,17 @@
 using MPI
 using OffsetArrays
-using Oceananigans.Utils: getnamewrapper
-using Oceananigans.Grids: AbstractGrid, topology, size, halo_size, architecture, pop_flat_elements
-using Oceananigans.Grids: validate_rectilinear_grid_args, validate_lat_lon_grid_args
-using Oceananigans.Grids: generate_coordinate, with_precomputed_metrics
-using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z
-using Oceananigans.Grids: metrics_precomputed
 
 using Oceananigans.Fields
+using Oceananigans.Grids: AbstractGrid, topology, size, halo_size, architecture, pop_flat_elements,
+                          validate_rectilinear_grid_args, validate_lat_lon_grid_args,
+                          generate_coordinate, with_precomputed_metrics,
+                          cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z,
+                          metrics_precomputed, constructor_arguments
+using Oceananigans.Utils: getnamewrapper
 
-import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, with_halo
+
+import Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid,
+                           with_halo, with_number_type, size_summary
 
 const DistributedGrid{FT, TX, TY, TZ} = Union{
     AbstractGrid{FT, TX, TY, TZ, <:Distributed{<:CPU}},
@@ -68,7 +70,7 @@ end
 global_size(arch, local_size) = map(sum, concatenate_local_sizes(local_size, arch))
 
 """
-    RectilinearGrid(arch::Distributed, FT=Float64; kw...)
+    RectilinearGrid(arch::Distributed, FT=Oceananigans.defaults.FloatType; kw...)
 
 Return the rank-local portion of `RectilinearGrid` on `arch`itecture.
 """
@@ -117,7 +119,7 @@ function RectilinearGrid(arch::Distributed,
 end
 
 """
-    LatitudeLongitudeGrid(arch::Distributed, FT=Float64; kw...)
+    LatitudeLongitudeGrid(arch::Distributed, FT=Oceananigans.defaults.FloatType; kw...)
 
 Return the rank-local portion of `LatitudeLongitudeGrid` on `arch`itecture.
 """
@@ -125,9 +127,9 @@ function LatitudeLongitudeGrid(arch::Distributed,
                                FT::DataType = Oceananigans.defaults.FloatType;
                                precompute_metrics = true,
                                size,
-                               latitude,
-                               longitude,
-                               z,
+                               latitude = nothing,
+                               longitude = nothing,
+                               z = nothing,
                                topology = nothing,
                                radius = Oceananigans.defaults.planet_radius,
                                halo = nothing)
@@ -185,7 +187,7 @@ end
 reconstruct_global_grid(grid::AbstractGrid) = grid
 
 """
-    reconstruct_global_grid(grid::DistributedGrid)
+$(TYPEDSIGNATURES)
 
 Return the global grid on `child_architecture(grid)`
 """
@@ -301,7 +303,7 @@ child_architecture(grid::AbstractGrid) = architecture(grid)
 child_architecture(grid::DistributedGrid) = child_architecture(architecture(grid))
 
 """
-    scatter_grid_properties(global_grid)
+$(TYPEDSIGNATURES)
 
 Return the individual `extent`, `topology`, `size`, and `halo` of a `global_grid`.
 """
@@ -333,7 +335,7 @@ function scatter_local_grids(global_grid::LatitudeLongitudeGrid, arch::Distribut
 end
 
 """
-    insert_connected_topology(T, R, r)
+$(TYPEDSIGNATURES)
 
 Return the local topology associated with the global topology `T`, the amount of ranks
 in `T` direction (`R`) and the local rank index `r`.
@@ -347,14 +349,36 @@ insert_connected_topology(::Type{Bounded}, R, r) = ifelse(R == 1, Bounded,
 
 insert_connected_topology(::Type{Periodic}, R, r) = ifelse(R == 1, Periodic, FullyConnected)
 
+# Fold-aware topology insertion for distributed tripolar grids.
+# These take 5 arguments: (global_y_topology, Ry, ry, Rx, rx) where
+# Ry/ry are y-rank count/index and Rx/rx are x-rank count/index (all 1-based).
+
+local_fold_topology(::Type{RightCenterFolded}, Rx, rx) =
+    Rx == 1 ? LeftConnectedRightCenterFolded : LeftConnectedRightCenterConnected
+
+local_fold_topology(::Type{RightFaceFolded}, Rx, rx) =
+    Rx == 1 ? LeftConnectedRightFaceFolded : LeftConnectedRightFaceConnected
+
+function insert_connected_topology(T::Type{<:Union{RightCenterFolded, RightFaceFolded}}, Ry, ry, Rx, rx)
+    if ry == 1
+        return RightConnected
+    elseif ry == Ry
+        return local_fold_topology(T, Rx, rx)
+    else
+        return FullyConnected
+    end
+end
+
 """
-    reconstruct_global_topology(T, R, r, r1, r2, arch)
+$(TYPEDSIGNATURES)
 
 Reconstruct the global topology associated with the local topologies `T`, the amount of ranks
 in `T` direction (`R`) and the local rank index `r`.
 
 If all ranks have `FullyConnected` topologies, the global topology is `Periodic`;
 otherwise it is `Bounded`.
+
+This version uses MPI communication to gather topology information from all ranks.
 """
 function reconstruct_global_topology(T, R, r, r1, r2, arch)
     if R == 1
@@ -373,4 +397,49 @@ function reconstruct_global_topology(T, R, r, r1, r2, arch)
     else
         return Bounded
     end
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Reconstruct global topology from a collection of local topologies without MPI.
+
+If `R == 1`, returns the single topology. Otherwise, if all local topologies
+are `FullyConnected`, returns `Periodic`; otherwise returns `Bounded`.
+
+This is an offline version that works with pre-collected topology information
+(e.g., from JLD2 files), in contrast to the MPI-based version above.
+"""
+function reconstruct_global_topology(local_topologies::AbstractVector, R::Int)
+    R == 1 && return first(local_topologies)
+    return all(==(FullyConnected), local_topologies) ? Periodic : Bounded
+end
+
+function with_number_type(FT, local_grid::DistributedRectilinearGrid)
+    global_grid = reconstruct_global_grid(local_grid)
+    args_local, _ = constructor_arguments(local_grid)
+    _, kwargs_global = constructor_arguments(global_grid)
+    arch = args_local[:architecture]
+    kwargs = kwargs_global
+    return RectilinearGrid(arch, FT; kwargs...)
+end
+
+#####
+##### Show
+#####
+
+function size_summary(grid::DistributedGrid)
+    local_summary = size_summary(size(grid))
+    arch = architecture(grid)
+
+    Rx, Ry, Rz = arch.ranks
+    Nr = prod(arch.ranks)
+
+    distributed_info = if Nr == 1
+        "(distributed on 1 rank)"
+    else
+        "(distributed across $Rx×$Ry×$Rz ranks)"
+    end
+
+    return string(local_summary, " ", distributed_info)
 end

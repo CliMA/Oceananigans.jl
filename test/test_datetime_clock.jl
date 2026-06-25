@@ -10,6 +10,7 @@ using Oceananigans.Simulations: Simulation, run!, Callback
 using Oceananigans.Units: hour, Time
 using Oceananigans.TimeSteppers: Clock, tick!
 using Oceananigans.Utils: TimeInterval, SpecifiedTimes, schedule_aligned_time_step, IterationInterval
+using Oceananigans.OutputWriters: AveragedTimeInterval
 import Oceananigans: initialize!
 
 struct DummyModel
@@ -26,7 +27,7 @@ function run_forcing_simulation(arch, FT, start_time; Δt, stop_time)
     end
 
     clock = Clock(time=start_time)
-    model = HydrostaticFreeSurfaceModel(; grid, clock, forcing=(; u=u_forcing))
+    model = HydrostaticFreeSurfaceModel(grid; clock, forcing=(; u=u_forcing))
     simulation = Simulation(model; Δt, stop_time, verbose=false)
 
     forcing_history = FT[]
@@ -64,6 +65,27 @@ function time_interval_schedule_checks(start_time)
     mid_clock = Clock(time=start_time + Dates.Minute(30))
     aligned = schedule_aligned_time_step(schedule, mid_clock, hour)
     @test aligned ≈ hour / 2 atol=1e-12
+
+    return true
+end
+
+function averaged_time_interval_schedule_checks(start_time)
+    schedule = AveragedTimeInterval(Dates.Hour(2), window=Dates.Hour(1))
+    @test schedule.interval isa Dates.Hour
+    @test schedule.window  isa Dates.Hour
+    @test schedule.first_actuation_time isa DateTime
+
+    clock = Clock(time=start_time)
+    model = DummyModel(clock)
+
+    initialize!(schedule, model)
+    @test schedule.first_actuation_time == start_time
+    @test !schedule(model)
+
+    tick!(clock, hour + 60)
+    @test schedule(model)
+
+    @test_throws ArgumentError initialize!(AveragedTimeInterval(1.0), DummyModel(Clock(time=start_time)))
 
     return true
 end
@@ -120,6 +142,25 @@ function numeric_time_interval_schedule_checks(FT)
     tick!(clock, aligned)
     @test schedule(model)
     @test !schedule(model)
+
+    return true
+end
+
+function numeric_averaged_time_interval_schedule_checks(FT)
+    schedule = AveragedTimeInterval(FT(2), window=FT(1))
+    @test schedule.interval isa FT
+    @test schedule.window  isa FT
+    @test schedule.first_actuation_time isa FT
+
+    clock = Clock(time=zero(FT))
+    model = DummyModel(clock)
+
+    initialize!(schedule, model)
+    @test schedule.first_actuation_time == zero(FT)
+    @test !schedule(model)
+
+    tick!(clock, FT(1.5))
+    @test schedule(model)
 
     return true
 end
@@ -192,6 +233,10 @@ end
         @test time_interval_schedule_checks(start_time)
     end
 
+    @testset "AveragedTimeInterval schedule (DateTime)" begin
+        @test averaged_time_interval_schedule_checks(start_time)
+    end
+
     @testset "SpecifiedTimes schedule (DateTime)" begin
         @test specified_times_schedule_checks(start_time)
     end
@@ -199,6 +244,10 @@ end
     for FT in float_types
         @testset "TimeInterval schedule [$FT]" begin
             @test numeric_time_interval_schedule_checks(FT)
+        end
+
+        @testset "AveragedTimeInterval schedule [$FT]" begin
+            @test numeric_averaged_time_interval_schedule_checks(FT)
         end
 
         @testset "SpecifiedTimes schedule [$FT]" begin

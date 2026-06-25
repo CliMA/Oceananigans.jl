@@ -49,8 +49,10 @@ end
 
 for closure in closures_to_run
 
-    model = HydrostaticFreeSurfaceModel(; grid, closure, coriolis,
-                                        tracers = (:b, :e, :ϵ),
+    model = HydrostaticFreeSurfaceModel(grid;
+                                        closure,
+                                        coriolis,
+                                        tracers = (:b,),
                                         buoyancy = BuoyancyTracer(),
                                         boundary_conditions = (; b=b_bcs, u=u_bcs))
 
@@ -165,4 +167,3 @@ display(fig)
 # record(fig, "windy_convection.mp4", 1:Nt, framerate=24) do nn
 #     n[] = nn
 # end
-

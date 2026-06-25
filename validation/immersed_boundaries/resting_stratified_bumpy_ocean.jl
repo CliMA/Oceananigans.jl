@@ -43,7 +43,7 @@ for ib in immersed_boundaries
 
     @show grid
 
-    model = HydrostaticFreeSurfaceModel(; grid,
+    model = HydrostaticFreeSurfaceModel(grid;
                                         tracer_advection,
                                         momentum_advection,
                                         coriolis = FPlane(f=0.1),
@@ -112,4 +112,3 @@ hmvd = heatmap!(ax_vd, Δv)
 =#
 
 display(fig)
-

@@ -55,7 +55,7 @@ function run_simulation(solver, preconditioner)
     b_sponge = Relaxation(rate=damping_rate, mask=mask_top, target=b_target)
 
     if solver == "FFT"
-        model = NonhydrostaticModel(; grid,
+        model = NonhydrostaticModel(grid;
                                     # advection = WENO(),
                                     advection = Centered(),
                                     tracers = :b,
@@ -64,7 +64,7 @@ function run_simulation(solver, preconditioner)
                                     boundary_conditions=(; u=uv_bcs, v=uv_bcs),
                                     forcing=(u=u_sponge, v=v_sponge, w=w_sponge, b=b_sponge))
     else
-        model = NonhydrostaticModel(; grid,
+        model = NonhydrostaticModel(grid;
                                     pressure_solver = ImmersedPoissonSolver(grid, preconditioner=preconditioner, reltol=1e-8),
                                     # advection = WENO(),
                                     advection = Centered(),

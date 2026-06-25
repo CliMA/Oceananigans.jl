@@ -15,9 +15,9 @@ drogue_depths = -20:20/(n_particles-1):0
 
 c = CenterField(grid)
 
-particle_properties = StructArray{CTrackingParticle}((zeros(n_particles), 
-                                                      zeros(n_particles), 
-                                                      zeros(n_particles), 
+particle_properties = StructArray{CTrackingParticle}((zeros(n_particles),
+                                                      zeros(n_particles),
+                                                      zeros(n_particles),
                                                       zeros(n_particles)))
 
 particles = LagrangianParticles(particle_properties; dynamics = DroguedParticleDynamics(drogue_depths), tracked_fields = (; c))
@@ -35,7 +35,13 @@ coriolis = FPlane(latitude = 45)
 closure = ScalarDiffusivity(κ = 1e-4, ν = 1e-4)
 advection = UpwindBiased()
 
-model = NonhydrostaticModel(; grid, particles, boundary_conditions = (; u = u_bcs), coriolis, closure, advection, tracers = (; c))
+model = NonhydrostaticModel(grid;
+                            particles,
+                            boundary_conditions = (; u = u_bcs),
+                            coriolis,
+                            closure,
+                            advection,
+                            tracers = (; c))
 
 # Random noise damped at top and bottom
 Ξ(z) = randn() * z / model.grid.Lz * (1 + z / model.grid.Lz) # noise
@@ -50,8 +56,8 @@ simulation = Simulation(model, Δt = 10, stop_time = 4hours)
 conjure_time_step_wizard!(simulation, IterationInterval(100), cfl = 0.5, diffusive_cfl = 0.5)
 
 simulation.output_writers[:velocities] = JLD2Writer(model, model.velocities;
-                                                    overwrite_existing = true, 
-                                                    filename = "drogued_velocities.jld2", 
+                                                    overwrite_existing = true,
+                                                    filename = "drogued_velocities.jld2",
                                                     schedule = TimeInterval(10minutes))
 
 prog(sim) = @info prettytime(sim) * " in " * prettytime(sim.run_wall_time) * " with Δt = " * prettytime(sim.Δt)
@@ -61,16 +67,16 @@ add_callback!(simulation, prog, IterationInterval(50))
 run!(simulation)
 
 simulation.output_writers[:particles] = JLD2Writer(model, (; particles);
-                                                   overwrite_existing = true, 
-                                                   filename = "drogued_particles.jld2", 
+                                                   overwrite_existing = true,
+                                                   filename = "drogued_particles.jld2",
                                                    schedule = TimeInterval(0.1minutes))
 simulation.output_writers[:tracer] = JLD2Writer(model, model.tracers;
-                                                overwrite_existing = true, 
-                                                filename = "drogued_tracer.jld2", 
+                                                overwrite_existing = true,
+                                                filename = "drogued_tracer.jld2",
                                                 schedule = TimeInterval(0.1minutes))
 
-particles.properties.x .= 0 
-particles.properties.y .= 0 
+particles.properties.x .= 0
+particles.properties.y .= 0
 
 simulation.stop_time += 0.2hours
 
@@ -104,4 +110,3 @@ heatmap!(ax, xnodes(c), ynodes(c), c_plt, colorrange = (0, 1), alpha = 0.5)
 scatter!(ax, x_plt, y_plt, color = particle_c_plt, colorrange = (0, 1))
 heatmap!(ax2, xnodes(c), znodes(c), c_slice_plt, colorrange = (0, 1), alpha = 0.5)
 scatter!(ax2, x_plt, drogue_depths, color = particle_c_plt, colorrange = (0, 1))
-

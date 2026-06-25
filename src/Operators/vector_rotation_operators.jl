@@ -1,3 +1,5 @@
+using Oceananigans.Grids: φnode
+
 # TODO: have a general Oceananigans-wide function that retrieves a pointwise
 # value for a function, an array, a number, a field etc?
 # This would be a generalization of `getbc` that could be used everywhere we need it
@@ -6,7 +8,7 @@
 @inline getvalue(a::AbstractArray, i, j, k, grid, args...) = @inbounds a[i, j, k]
 
 """
-    intrinsic_vector(i, j, k, grid::AbstractGrid, uₑ, vₑ, wₑ)
+$(TYPEDSIGNATURES)
 
 Convert the three-dimensional vector with components `uₑ, vₑ, wₑ` defined in an _extrinsic_
 coordinate system associated with the domain, to the coordinate system _intrinsic_ to the grid.
@@ -24,7 +26,7 @@ _intrinsic_ coordinate system are equivalent. However, for other grids (e.g., fo
     getvalue(uₑ, i, j, k, grid), getvalue(vₑ, i, j, k, grid), getvalue(wₑ, i, j, k, grid)
 
 """
-    extrinsic_vector(i, j, k, grid::AbstractGrid, uᵢ, vᵢ, wᵢ)
+$(TYPEDSIGNATURES)
 
 Convert the three-dimensional vector with components `uᵢ, vᵢ, wᵢ ` defined on the _intrinsic_ coordinate
 system of the grid, to the _extrinsic_ coordinate system associated with the domain.
@@ -50,9 +52,9 @@ _intrinsic_ coordinate systems are equivalent. However, for other grids (e.g., f
 
 
 """
-    rotation_angle(i, j, grid::OrthogonalSphericalShellGrid)
+$(TYPEDSIGNATURES)
 
-Return the rotation angle (in degrees) of the `i, j`-th point of the `grid`.
+Return the rotation angle (in radians) of the `i, j`-th point of the `grid`.
 The rotation angle is the angle (positive counter-clockwise) that we need to rotate
 the grid's intrinsic coordinates in order to match the grid's extrinsic coordinates.
 """
@@ -71,17 +73,16 @@ the grid's intrinsic coordinates in order to match the grid's extrinsic coordina
     Rcosθ₁ = ifelse(Δyᶠᶜᵃ⁺ == 0, zero(grid), deg2rad(φᶠᶠᵃ⁺⁺ - φᶠᶠᵃ⁺⁻) / Δyᶠᶜᵃ⁺)
     Rcosθ₂ = ifelse(Δyᶠᶜᵃ⁻ == 0, zero(grid), deg2rad(φᶠᶠᵃ⁻⁺ - φᶠᶠᵃ⁻⁻) / Δyᶠᶜᵃ⁻)
 
+    Rsinθ₁ = ifelse(Δxᶜᶠᵃ⁺ == 0, zero(grid), deg2rad(φᶠᶠᵃ⁺⁺ - φᶠᶠᵃ⁻⁺) / Δxᶜᶠᵃ⁺)
+    Rsinθ₂ = ifelse(Δxᶜᶠᵃ⁻ == 0, zero(grid), deg2rad(φᶠᶠᵃ⁺⁻ - φᶠᶠᵃ⁻⁻) / Δxᶜᶠᵃ⁻)
+
     # θ is the rotation angle between intrinsic and extrinsic reference frame
     Rcosθ =   (Rcosθ₁ + Rcosθ₂) / 2
-    Rsinθ = - (deg2rad(φᶠᶠᵃ⁺⁺ - φᶠᶠᵃ⁻⁺) / Δxᶜᶠᵃ⁺ + deg2rad(φᶠᶠᵃ⁺⁻ - φᶠᶠᵃ⁻⁻) / Δxᶜᶠᵃ⁻) / 2
+    Rsinθ = - (Rsinθ₁ + Rsinθ₂) / 2
 
-    # Normalization for the rotation angles
-    R = sqrt(Rcosθ^2 + Rsinθ^2)
+    θ = atan(Rsinθ, Rcosθ)
 
-    cosθ, sinθ = Rcosθ / R, Rsinθ / R
-
-    θ_degrees = atand(sinθ / cosθ)
-    return θ_degrees
+    return θ
 end
 
 # Intrinsic and extrinsic conversion for `OrthogonalSphericalShellGrid`s,
@@ -96,9 +97,9 @@ end
     u = getvalue(uₑ, i, j, k, grid)
     v = getvalue(vₑ, i, j, k, grid)
 
-    θ_degrees = rotation_angle(i, j, grid::OrthogonalSphericalShellGrid)
-    sinθ = sind(θ_degrees)
-    cosθ = cosd(θ_degrees)
+    θ = rotation_angle(i, j, grid::OrthogonalSphericalShellGrid)
+    sinθ = sin(θ)
+    cosθ = cos(θ)
 
     uᵢ = u * cosθ - v * sinθ
     vᵢ = u * sinθ + v * cosθ
@@ -121,9 +122,9 @@ end
     u = getvalue(uᵢ, i, j, k, grid)
     v = getvalue(vᵢ, i, j, k, grid)
 
-    θ_degrees = rotation_angle(i, j, grid::OrthogonalSphericalShellGrid)
-    sinθ = sind(θ_degrees)
-    cosθ = cosd(θ_degrees)
+    θ = rotation_angle(i, j, grid::OrthogonalSphericalShellGrid)
+    sinθ = sin(θ)
+    cosθ = cos(θ)
 
     uₑ = + u * cosθ + v * sinθ
     vₑ = - u * sinθ + v * cosθ

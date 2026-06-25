@@ -1,9 +1,8 @@
 using KernelAbstractions: @kernel, @index
 
-using Oceananigans.Architectures: on_architecture, architecture
+using Oceananigans.Architectures: architecture
 using Oceananigans.Operators: Δzᶜᶜᶜ, Azᶜᶜᶜ
-using Oceananigans.Grids: hack_sind, ξnode, ηnode, rnode
-using LinearAlgebra
+using Oceananigans.Grids: Flat, hack_sind, ξnode, ηnode
 
 using Base: ForwardOrdering
 
@@ -11,7 +10,7 @@ const f = Face()
 const c = Center()
 
 """
-    regrid!(dst_field, src_field)
+$(TYPEDSIGNATURES)
 
 Regrid `src_field` onto the grid of `dst_field`.
 

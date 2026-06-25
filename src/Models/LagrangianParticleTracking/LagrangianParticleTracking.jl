@@ -4,22 +4,22 @@ export LagrangianParticles, DroguedParticleDynamics
 
 using Printf
 using Adapt
+using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions
 using StructArrays
 
-using Oceananigans.Grids
-using Oceananigans.ImmersedBoundaries
-
-using Oceananigans.Grids: prettysummary
-using Oceananigans.Grids: AbstractGrid, hack_cosd
-using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
-using Oceananigans.Grids: XYFlatGrid, YZFlatGrid, XZFlatGrid
-using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.Architectures: device, architecture
-using Oceananigans.Fields: interpolate, datatuple, compute!, location
+using Oceananigans.Fields: interpolate, compute!, location
+using Oceananigans.Grids
+using Oceananigans.Grids: AbstractGrid, hack_cosd,
+                          XFlatGrid, YFlatGrid, ZFlatGrid,
+                          XYFlatGrid, YZFlatGrid, XZFlatGrid
+using Oceananigans.ImmersedBoundaries
+using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.TimeSteppers: AbstractLagrangianParticles
-using Oceananigans.Utils: launch!
+using Oceananigans.Utils: datatuple, launch!, prettysummary
 
+import Oceananigans: prognostic_state, restore_prognostic_state!
 import Oceananigans.TimeSteppers: step_lagrangian_particles!
 import Oceananigans.OutputWriters: serializeproperty!, fetch_output
 
@@ -157,5 +157,18 @@ function fetch_output(lagrangian_particles::LagrangianParticles, model)
     names = propertynames(particle_properties)
     return NamedTuple{names}([getproperty(particle_properties, name) for name in names])
 end
+
+# Checkpointing
+
+function prognostic_state(lagrangian_particles::LagrangianParticles)
+    return (; properties = prognostic_state(lagrangian_particles.properties))
+end
+
+function restore_prognostic_state!(restored::LagrangianParticles, from)
+    restore_prognostic_state!(restored.properties, from.properties)
+    return restored
+end
+
+restore_prognostic_state!(::LagrangianParticles, ::Nothing) = nothing
 
 end # module

@@ -34,10 +34,12 @@ coriolis = FPlane(; f)
 closure = TKEDissipationVerticalDiffusivity()
 #closure = CATKEVerticalDiffusivity()
 
-model = HydrostaticFreeSurfaceModel(; grid, closure, coriolis,
-                                    tracers = (:b, :e, :ϵ),
+model = HydrostaticFreeSurfaceModel(grid;
+                                    closure,
+                                    coriolis,
+                                    tracers = (:b,),
                                     buoyancy = BuoyancyTracer(),
-                                    boundary_conditions=(u=u_bcs, b=b_bcs))
+                                    boundary_conditions = (u=u_bcs, b=b_bcs))
 
 bᵢ(z) = N² * z
 set!(model, b=bᵢ)
@@ -120,4 +122,3 @@ lines!(axs, 𝕊ᶜn, zf, label="𝕊ᶜ")
 axislegend(axs, position=:rb)
 
 fig
-

@@ -78,7 +78,7 @@ fig
 # ```
 #
 # We prescribe the excursion parameter which, in turn, implies a tidal velocity ``U_{\mathrm{tidal}}``
-# which then allows us to determing the tidal forcing amplitude ``F_0``. For the last step, we
+# which then allows us to determine the tidal forcing amplitude ``F_0``. For the last step, we
 # use Fourier decomposition on the inviscid, linearized momentum equations to determine the
 # flow response for a given tidal forcing. Doing so we get that for the sinusoidal forcing above,
 # the tidal velocity and tidal forcing amplitudes are related via:
@@ -109,12 +109,12 @@ u_forcing = Forcing(tidal_forcing, parameters=(; A₂, ω₂))
 
 # We built a `HydrostaticFreeSurfaceModel`:
 
-model = HydrostaticFreeSurfaceModel(; grid, coriolis,
-                                      buoyancy = BuoyancyTracer(),
-                                      tracers = :b,
-                                      momentum_advection = WENO(),
-                                      tracer_advection = WENO(),
-                                      forcing = (; u = u_forcing))
+model = HydrostaticFreeSurfaceModel(grid; coriolis,
+                                    buoyancy = BuoyancyTracer(),
+                                    tracers = :b,
+                                    momentum_advection = WENO(),
+                                    tracer_advection = WENO(),
+                                    forcing = (; u = u_forcing))
 
 # We initialize the model with the tidal flow and a linear stratification.
 

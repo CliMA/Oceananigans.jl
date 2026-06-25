@@ -2,31 +2,27 @@ module VarianceDissipationComputations
 
 export VarianceDissipation, flatten_dissipation_fields
 
+using KernelAbstractions: @kernel, @index
+using DocStringExtensions: TYPEDSIGNATURES
+
+using Oceananigans: UpdateStateCallsite
 using Oceananigans.Advection
-using Oceananigans.BoundaryConditions
-using Oceananigans.Grids: architecture, AbstractGrid
-using Oceananigans.Utils
-using Oceananigans.Fields
-using Oceananigans.Fields: VelocityFields
-using Oceananigans.Operators
-using Oceananigans.BoundaryConditions
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper,
-                                 RungeKutta3TimeStepper,
-                                 SplitRungeKutta3TimeStepper
-
-using Oceananigans.TurbulenceClosures: _diffusive_flux_x,
-                                       _diffusive_flux_y,
-                                       _diffusive_flux_z
-
 using Oceananigans.Advection: _advective_tracer_flux_x,
                               _advective_tracer_flux_y,
                               _advective_tracer_flux_z
-
-using Oceananigans: UpdateStateCallsite
+using Oceananigans.BoundaryConditions
+using Oceananigans.Fields
+using Oceananigans.Fields: VelocityFields
+using Oceananigans.Grids: architecture, AbstractGrid
+using Oceananigans.Operators
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper,
+                                 RungeKutta3TimeStepper,
+                                 SplitRungeKuttaTimeStepper
+using Oceananigans.TurbulenceClosures: _diffusive_flux_x,
+                                       _diffusive_flux_y,
+                                       _diffusive_flux_z
+using Oceananigans.Utils
 using Oceananigans.Utils: IterationInterval, ConsecutiveIterations
-using KernelAbstractions: @kernel, @index
-
-const RungeKuttaScheme = Union{RungeKutta3TimeStepper, SplitRungeKutta3TimeStepper}
 
 struct VarianceDissipation{P, K, A, D, S}
     advective_production :: P
@@ -73,7 +69,7 @@ Keyword Arguments
 
 !!! compat "Time stepper compatibility"
     At the moment, the variance dissipation diagnostic is supported only for a [`QuasiAdamsBashforth2TimeStepper`](@ref)
-    and a [`SplitRungeKutta3TimeStepper`](@ref).
+    and a [`SplitRungeKuttaTimeStepper`](@ref).
 """
 function VarianceDissipation(tracer_name, grid;
                              Uⁿ⁻¹ = VelocityFields(grid),
@@ -108,7 +104,7 @@ function (ϵ::VarianceDissipation)(model)
 
     # Check if the model has tracers
     if !hasproperty(model.tracers, ϵ.tracer_name)
-        throw(ArgumentError("Model must have a tracer called $tracer_name."))
+        throw(ArgumentError("Model must have a tracer called $(ϵ.tracer_name)."))
     end
 
     # First we compute the dissipation from previously computed fluxes

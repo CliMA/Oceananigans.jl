@@ -1,12 +1,7 @@
-using Oceananigans.Architectures: architecture
-using Oceananigans.Grids: prettysummary
+using Oceananigans.Utils: prettysummary, @apply_regionally
 using LinearAlgebra: norm, dot
-using LinearAlgebra
-using KernelAbstractions: @kernel, @index
 
-import Oceananigans.Architectures: architecture
-
-mutable struct ConjugateGradientSolver{A, G, L, T, F, M, P, E}
+mutable struct ConjugateGradientSolver{A, G, L, T, F, M, P, E, N}
                 architecture :: A
                         grid :: G
            linear_operation! :: L
@@ -21,9 +16,10 @@ mutable struct ConjugateGradientSolver{A, G, L, T, F, M, P, E}
               preconditioner :: M
       preconditioner_product :: P
     enforce_gauge_condition! :: E
+               residual_norm :: N
 end
 
-architecture(solver::ConjugateGradientSolver) = solver.architecture
+Architectures.architecture(solver::ConjugateGradientSolver) = solver.architecture
 iteration(cgs::ConjugateGradientSolver) = cgs.iteration
 
 initialize_precondition_product(preconditioner, template_field) = similar(template_field)
@@ -39,19 +35,20 @@ Base.summary(::ConjugateGradientSolver) = "ConjugateGradientSolver"
 
 """
     ConjugateGradientSolver(linear_operation;
-                                          template_field,
-                                          maxiter = size(template_field.grid),
-                                          reltol = sqrt(eps(template_field.grid)),
-                                          abstol = 0,
-                                          preconditioner = nothing,
-                                          enforce_gauge_condition! = no_gauge_enforcement!)
+                            template_field,
+                            maxiter = prod(size(template_field)),
+                            reltol = sqrt(eps(template_field.grid)),
+                            abstol = 0,
+                            preconditioner = nothing,
+                            enforce_gauge_condition! = no_gauge_enforcement!,
+                            residual_norm = norm)
 
-Returns a `ConjugateGradientSolver` that solves the linear equation
-``A x = b`` using a iterative conjugate gradient method with optional preconditioning.
+Return a `ConjugateGradientSolver` that solves the linear equation ``A x = b``
+using a iterative conjugate gradient method with optional preconditioning.
 
 The solver is used by calling
 
-```
+```julia
 solve!(x, solver::PreconditionedConjugateGradientOperator, b, args...)
 ```
 
@@ -85,6 +82,8 @@ Arguments
                               with the gauge condition.
                               The default is `no_gauge_enforcement!`, which does not enforce a gauge condition.
 
+* `residual_norm`: Function used to compute the norm of the residual for convergence checks. Default: `norm`.
+
 See [`solve!`](@ref) for more information about the preconditioned conjugate-gradient algorithm.
 """
 function ConjugateGradientSolver(linear_operation;
@@ -93,7 +92,8 @@ function ConjugateGradientSolver(linear_operation;
                                  reltol = sqrt(eps(eltype(template_field.grid))),
                                  abstol = 0,
                                  preconditioner = nothing,
-                                 enforce_gauge_condition! = no_gauge_enforcement!)
+                                 enforce_gauge_condition! = no_gauge_enforcement!,
+                                 residual_norm = norm)
 
     arch = architecture(template_field)
     grid = template_field.grid
@@ -101,7 +101,7 @@ function ConjugateGradientSolver(linear_operation;
     # Create work arrays for solver
     linear_operator_product = similar(template_field) # A*xᵢ = qᵢ
     search_direction = similar(template_field) # pᵢ
-            residual = similar(template_field) # rᵢ
+    residual = similar(template_field) # rᵢ
 
     # Either nothing (no preconditioner) or P*xᵢ = zᵢ
     precondition_product = initialize_precondition_product(preconditioner, template_field)
@@ -121,11 +121,12 @@ function ConjugateGradientSolver(linear_operation;
                                    residual,
                                    preconditioner,
                                    precondition_product,
-                                   enforce_gauge_condition!)
+                                   enforce_gauge_condition!,
+                                   residual_norm)
 end
 
 """
-    solve!(x, solver::ConjugateGradientSolver, b, args...)
+$(TYPEDSIGNATURES)
 
 Solve `A * x = b` using an iterative conjugate-gradient method, where `A * x` is
 determined by `solver.linear_operation`
@@ -182,7 +183,7 @@ function solve!(x, solver::ConjugateGradientSolver, b, args...)
 
     @apply_regionally initialize_solution!(q, x, b, solver, args...)
 
-    residual_norm = norm(solver.residual)
+    residual_norm = solver.residual_norm(solver.residual)
     tolerance = max(solver.reltol * residual_norm, solver.abstol)
 
     @debug "ConjugateGradientSolver, |b|: $(norm(b))"
@@ -278,7 +279,7 @@ end
 function iterating(solver, tolerance)
     # End conditions
     solver.iteration >= solver.maxiter && return false
-    norm(solver.residual) <= tolerance && return false
+    solver.residual_norm(solver.residual) <= tolerance && return false
     return true
 end
 
@@ -290,5 +291,6 @@ function Base.show(io::IO, solver::ConjugateGradientSolver)
               "├── preconditioner: ", prettysummary(solver.preconditioner), "\n",
               "├── reltol: ", prettysummary(solver.reltol), "\n",
               "├── abstol: ", prettysummary(solver.abstol), "\n",
+              "├── residual_norm: ", prettysummary(solver.residual_norm), "\n",
               "└── maxiter: ", solver.maxiter)
 end

@@ -14,8 +14,8 @@ using Adapt: adapt
 
 using Oceananigans.Fields
 using Oceananigans.Operators
-
-using Oceananigans.Grids: AbstractGrid, node, prettysummary
+using Oceananigans.Grids: AbstractGrid, node
+using Oceananigans.Utils: prettysummary
 
 import Adapt: adapt_structure
 

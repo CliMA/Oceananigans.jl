@@ -36,14 +36,8 @@ function setup_simulation(N, T, CFL, ϕₐ, advection_scheme; u, v)
     domain = (x=(0, 1), y=(0, L), z=(0, L))
     grid = RectilinearGrid(topology=topology, size=(1, N, N), halo=(3, 3, 3); domain...)
 
-    model = NonhydrostaticModel(
-               grid = grid,
-        timestepper = :RungeKutta3,
-          advection = advection_scheme,
-            tracers = :c,
-           buoyancy = nothing,
-            closure = ScalarDiffusivity(ν=0, κ=0)
-    )
+    model = NonhydrostaticModel(grid; timestepper = :RungeKutta3, advection = advection_scheme,
+                                      tracers = :c, closure = ScalarDiffusivity(ν=0, κ=0))
 
     set!(model, v=u, w=v, c=ϕₐ)
 

@@ -52,14 +52,8 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
     @inline νhb(i, j, k, grid, lx, ly, lz) = (1 / (1 / Δx(i, j, k, grid, lx, ly, lz)^2 + 1 / Δy(i, j, k, grid, lx, ly, lz)^2 ))^2 / timescale
     biharmonic_viscosity = HorizontalScalarBiharmonicDiffusivity(ν=νhb, discrete_form=true)
 
-    model = HydrostaticFreeSurfaceModel(momentum_advection = momentum_advection,
-                                        tracer_advection = WENO(),
-                                        grid = mrg,
-                                        tracers = :c,
-                                        closure = nothing,
-                                        free_surface = ExplicitFreeSurface(gravitational_acceleration=10.0),
-                                        coriolis = nothing,
-                                        buoyancy = nothing)
+    model = HydrostaticFreeSurfaceModel(mrg; momentum_advection, tracer_advection = WENO(), tracers = :c,
+                                             free_surface = ExplicitFreeSurface(gravitational_acceleration=10.0))
 
     # ** Initial conditions **
     #
@@ -74,7 +68,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
 
     progress(sim) = @printf("Iter: %d, time: %s, Δt: %s, max|u|: %.3f, max|η|: %.3f \n",
                             iteration(sim), prettytime(sim), prettytime(sim.Δt),
-                            maximum(abs, model.velocities.u), maximum(abs, model.free_surface.η))
+                            maximum(abs, model.velocities.u), maximum(abs, model.free_surface.displacement))
 
     simulation.callbacks[:progress] = Callback(progress, IterationInterval(10))
     wizard = TimeStepWizard(cfl=0.1, max_change=1.1, max_Δt=10.0)
@@ -86,7 +80,7 @@ function run_bickley_jet(; output_time_interval = 2, stop_time = 200, arch = CPU
 
     ζ = u
 
-    outputs = merge(model.velocities, model.tracers, (ζ=ζ, η=model.free_surface.η))
+    outputs = merge(model.velocities, model.tracers, (ζ=ζ, η=model.free_surface.displacement))
 
     name = typeof(model.advection.momentum).name.wrapper
     if model.advection.momentum isa WENOVectorInvariantVel

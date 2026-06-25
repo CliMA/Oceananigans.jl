@@ -1,5 +1,5 @@
 """
-    struct DiscreteBoundaryFunction{P, F} <: Function
+    struct DiscreteBoundaryFunction{P, F}
 
 A wrapper for boundary condition functions with optional parameters.
 When `parameters=nothing`, the boundary condition `func` is called with the signature
@@ -57,4 +57,3 @@ Adapt.adapt_structure(to, bf::DiscreteBoundaryFunction) = DiscreteBoundaryFuncti
 
 on_architecture(to, bf::DiscreteBoundaryFunction) = DiscreteBoundaryFunction(on_architecture(to, bf.func),
                                                                              on_architecture(to, bf.parameters))
-

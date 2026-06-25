@@ -6,6 +6,8 @@ and `Arch`itecture.
 """
 abstract type AbstractGrid{FT, TX, TY, TZ, Arch} end
 
+grid(g::AbstractGrid) = g
+
 """
     AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch}
 
@@ -43,37 +45,36 @@ const XYZFlatGrid = AbstractGrid{<:Any, Flat, Flat, Flat}
 isrectilinear(grid) = false
 
 # Fallback
-@inline get_active_column_map(::AbstractGrid) = nothing
-@inline get_active_cells_map(::AbstractGrid, any_map_type) = nothing
+@inline Utils.get_active_cells_map(::AbstractGrid, any_map_type) = nothing
 
 """
-    topology(grid)
+$(TYPEDSIGNATURES)
 
 Return a tuple with the topology of the `grid` for each dimension.
 """
 @inline topology(::AbstractGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ} = (TX, TY, TZ)
 
 """
-    topology(grid, dim)
+$(TYPEDSIGNATURES)
 
 Return the topology of the `grid` for the `dim`-th dimension.
 """
 @inline topology(grid, dim) = topology(grid)[dim]
 
 """
-    architecture(grid::AbstractGrid)
+$(TYPEDSIGNATURES)
 
 Return the architecture that the `grid` lives on.
 """
-@inline architecture(grid::AbstractGrid) = grid.architecture
+@inline Architectures.architecture(grid::AbstractGrid) = grid.architecture
 
 """
-    size(grid)
+$(TYPEDSIGNATURES)
 
 Return a 3-tuple of the number of "center" cells on a grid in (x, y, z).
 Center cells have the location (Center, Center, Center).
 """
-@inline Base.size(grid::AbstractGrid) = (grid.Nx, grid.Ny, grid.Nz)
+@inline Base.size(grid::AbstractGrid) = map(Int, (grid.Nx, grid.Ny, grid.Nz))
 Base.eltype(::AbstractGrid{FT}) where FT = FT
 Base.eltype(::Type{<:AbstractGrid{FT}}) where FT = FT
 Base.eps(::AbstractGrid{FT}) where FT = eps(FT)
@@ -91,20 +92,14 @@ function Base.:(==)(grid1::AbstractGrid, grid2::AbstractGrid)
 end
 
 """
-    halo_size(grid)
+$(TYPEDSIGNATURES)
 
 Return a 3-tuple with the number of halo cells on either side of the
 domain in (x, y, z).
 """
-halo_size(grid) = (grid.Hx, grid.Hy, grid.Hz)
+halo_size(grid) = map(Int, (grid.Hx, grid.Hy, grid.Hz))
 halo_size(grid, d) = halo_size(grid)[d]
 
 @inline Base.size(grid::AbstractGrid, d::Int) = size(grid)[d]
 
 grid_name(grid::AbstractGrid) = typeof(grid).name.wrapper
-
-# For summary/show methods
-@inline function topology_strs(grid::AbstractGrid)
-    TX, TY, TZ = topology(grid)
-    return (topology_str(TX), topology_str(TY), topology_str(TZ))
-end

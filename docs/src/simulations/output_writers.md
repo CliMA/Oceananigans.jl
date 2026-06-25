@@ -3,7 +3,7 @@
 `AbstractOutputWriter`s save data to disk.
 `Oceananigans` provides three ways to write output:
 
-1. [`NetCDFWriter`](@ref) for output of arrays and scalars that uses [NCDatasets.jl](https://github.com/Alexander-Barth/NCDatasets.jl)
+1. [`NetCDFWriter`](@ref) for output of arrays and scalars that uses [NCDatasets.jl](https://github.com/JuliaGeo/NCDatasets.jl)
 2. [`JLD2Writer`](@ref) for arbitrary julia data structures that uses [JLD2.jl](https://github.com/JuliaIO/JLD2.jl)
 3. [`Checkpointer`](@ref) that automatically saves as much model data as possible, using [JLD2.jl](https://github.com/JuliaIO/JLD2.jl)
 
@@ -26,7 +26,10 @@ The `Checkpointer` is discussed in detail on a separate [section](@ref checkpoin
 
 Other important keyword arguments are
 
-* `indices` for outputting subregions, two- and one-dimensional slices of fields. Specifies the indices to write to disk with a `Tuple` of `Colon`, `UnitRange`,or `Int` elements. For example, `indices = (:, :, 1)` implies outputing ``x-y``-slices of the bottom-most index (`k=1`). Defaults to `(:, :, :)`, i.e., "all indices".
+* `indices` for outputting subregions, two- and one-dimensional slices of fields. Specifies the indices to write to disk with a `Tuple`
+  of `Colon`, `UnitRange`, or `Int` elements. For example, `indices = (:, :, 1)` implies outputting ``x``-``y`` slices of the bottom-most
+  index (`k=1`). Defaults to `(:, :, :)`, i.e., "all indices".
+
 * `with_halos :: Boolean`: whether to output the halos (`true`) or only the interior points (`false`; default).
 
 * `array_type` for specifying the type of the array that holds outputted field data. The default is
@@ -57,7 +60,7 @@ using NCDatasets
 
 grid = RectilinearGrid(size=(16, 16, 16), extent=(1, 1, 1))
 
-model = NonhydrostaticModel(grid=grid, tracers=:c)
+model = NonhydrostaticModel(grid; tracers=:c)
 
 simulation = Simulation(model, Δt=12, stop_time=3600)
 
@@ -92,7 +95,7 @@ Nx, Ny, Nz = 16, 16, 16
 
 grid = RectilinearGrid(size=(Nx, Ny, Nz), extent=(1, 2, 3))
 
-model = NonhydrostaticModel(grid=grid)
+model = NonhydrostaticModel(grid)
 
 simulation = Simulation(model, Δt=1.25, stop_iteration=3)
 
@@ -124,27 +127,25 @@ simulation.output_writers[:things] =
                  global_attributes=global_attributes, output_attributes=output_attributes)
 ```
 
-`NetCDFWriter` can also be configured for `outputs` that are interpolated or regridded
-to a different grid than `model.grid`. To use this functionality, include the keyword argument
-`grid = output_grid`.
+`NetCDFWriter` supports outputs that live on different grids within a single writer.
+The grid is automatically extracted from each output field, and dimensions are
+suffixed (e.g., `_grid1`, `_grid2`) when multiple grids are present.
 
 ```@example
 using Oceananigans
-using Oceananigans.Fields: interpolate!
 using NCDatasets
 
 grid = RectilinearGrid(size=(1, 1, 8), extent=(1, 1, 1));
-model = NonhydrostaticModel(; grid)
+model = NonhydrostaticModel(grid)
 
 coarse_grid = RectilinearGrid(size=(grid.Nx, grid.Ny, grid.Nz÷2), extent=(grid.Lx, grid.Ly, grid.Lz))
 coarse_u = Field{Face, Center, Center}(coarse_grid)
 
-interpolate_u(model) = interpolate!(coarse_u, model.velocities.u)
-outputs = (; u = interpolate_u)
+# u lives on coarse_grid, w lives on model.grid — both in the same file
+outputs = (; u = coarse_u, w = model.velocities.w)
 
 output_writer = NetCDFWriter(model, outputs;
-                             grid = coarse_grid,
-                             filename = "coarse_u.nc",
+                             filename = "multi_grid.nc",
                              schedule = IterationInterval(1))
 ```
 
@@ -170,7 +171,7 @@ Write out 3D fields for u, v, w, and a tracer c, along with a horizontal average
 using Oceananigans
 using Oceananigans.Utils: hour, minute
 
-model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)), tracers=(:c,))
+model = NonhydrostaticModel(RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)), tracers=(:c,))
 simulation = Simulation(model, Δt=12, stop_time=1hour)
 
 function init_save_some_metadata!(file, model)
@@ -236,7 +237,9 @@ to time-average its outputs before writing them to disk:
 using Oceananigans
 using Oceananigans.Units
 
-model = NonhydrostaticModel(grid=RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1)))
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+
+model = NonhydrostaticModel(grid)
 
 simulation = Simulation(model, Δt=10minutes, stop_time=30days)
 

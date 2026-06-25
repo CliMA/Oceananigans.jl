@@ -13,7 +13,6 @@ using Oceananigans.Advection: conditional_flux_ccc,
                               conditional_flux_cfc,
                               conditional_flux_ccf
 
-using Oceananigans.ImmersedBoundaries
 using Oceananigans.ImmersedBoundaries: GFIBG, IBC
 
 const IBG = ImmersedBoundaryGrid
@@ -73,8 +72,8 @@ end
 #####
 
 # Harder in some ways... ValueBoundaryCondition...
-const VBC = BoundaryCondition{Value}
-const GBC = BoundaryCondition{Gradient}
+const VBC = BoundaryCondition{<:Value}
+const GBC = BoundaryCondition{<:Gradient}
 const VBCorGBC = Union{VBC, GBC}
 const ASD = AbstractScalarDiffusivity
 

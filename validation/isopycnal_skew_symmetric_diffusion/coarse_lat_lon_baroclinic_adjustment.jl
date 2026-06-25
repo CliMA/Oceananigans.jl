@@ -45,7 +45,7 @@ closures = (vertical_closure, horizontal_closure, gent_mcwilliams_diffusivity)
 
 @info "Building a model..."
 
-model = HydrostaticFreeSurfaceModel(grid = grid,
+model = HydrostaticFreeSurfaceModel(grid;
                                     coriolis = coriolis,
                                     buoyancy = BuoyancyTracer(),
                                     closure = closures,
@@ -191,4 +191,3 @@ record(fig, filename * ".mp4", 1:Nt, framerate=8) do i
     @info "Plotting frame $i of $Nt"
     n[] = i
 end
-

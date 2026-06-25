@@ -32,11 +32,7 @@ function setup_simulation(; Nx, Δt, stop_iteration, architecture=CPU(), dir=DAT
 
     grid = RectilinearGrid(architecture, size=(Nx, Nx, 1), x=(0, Lx(topo)), y=(0, Ly(topo)), z=(0, 1), topology=topo)
 
-    model = NonhydrostaticModel(        grid = grid,
-                                    coriolis = nothing,
-                                    buoyancy = nothing,
-                                     tracers = :c,
-                                     closure = ScalarDiffusivity(κ=1))
+    model = NonhydrostaticModel(grid; tracers = :c, closure = ScalarDiffusivity(κ=1))
 
     set!(model, c = (x, y, z) -> c(x, y, 0))
 

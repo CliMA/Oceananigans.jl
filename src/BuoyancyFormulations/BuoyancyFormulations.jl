@@ -2,15 +2,15 @@ module BuoyancyFormulations
 
 export
     BuoyancyForce, BuoyancyTracer, SeawaterBuoyancy, LinearEquationOfState,
-    ∂x_b, ∂y_b, ∂z_b, buoyancy_perturbationᶜᶜᶜ, x_dot_g_bᶠᶜᶜ, y_dot_g_bᶜᶠᶜ, z_dot_g_bᶜᶜᶠ,
+    ∂xᵣ_b, ∂yᵣ_b, ∂x_b, ∂y_b, ∂z_b, buoyancy_perturbationᶜᶜᶜ, x_dot_g_bᶠᶜᶜ, y_dot_g_bᶜᶠᶜ, z_dot_g_bᶜᶜᶠ,
     top_buoyancy_flux
 
-using Oceananigans
-using Oceananigans.Grids
-using Oceananigans.Operators
-using Oceananigans.BoundaryConditions: getbc
+using DocStringExtensions: TYPEDSIGNATURES
+using SeawaterPolynomials: SeawaterPolynomials, ρ′, thermal_expansion, haline_contraction, with_float_type
 
-import SeawaterPolynomials: ρ′, thermal_expansion, haline_contraction, with_float_type
+using Oceananigans: Oceananigans
+using Oceananigans.Operators: ℑxᶠᵃᵃ, ℑyᵃᶠᵃ, ℑzᵃᵃᶠ, ∂xᵣᶠᶜᶜ, ∂yᵣᶜᶠᶜ, ∂xᶠᶜᶜ, ∂yᶜᶠᶜ, ∂zᶜᶜᶠ
+using Oceananigans.BoundaryConditions: getbc
 
 """
     AbstractBuoyancyFormulation{EOS}

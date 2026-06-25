@@ -1,5 +1,6 @@
+using Adapt: Adapt, adapt
+using Oceananigans.BuoyancyFormulations: buoyancy_perturbationᶜᶜᶜ
 using Oceananigans.Operators
-using Adapt: Adapt
 
 """
     AnisotropicMinimumDissipation{FT} <: AbstractTurbulenceClosure
@@ -77,7 +78,7 @@ second-order advection scheme. [Verstappen et al. (2014)](@cite Verstappen14) sh
 should be 4 times larger than for straightforward (spectral) discretisation, resulting in `C = 1/3`
 in our formulation. They also empirically demonstrated that this coefficient produces the correct
 discrete production-dissipation balance. Further demonstration of this can be found at
-[https://github.com/CliMA/Oceananigans.jl/issues/4367](https://github.com/CliMA/Oceananigans.jl/issues/4367).
+<https://github.com/CliMA/Oceananigans.jl/issues/4367>.
 
 `C`, `Cν` and `Cκ` may be numbers, or functions of `x, y, z`.
 
@@ -147,7 +148,7 @@ end
 
 AnisotropicMinimumDissipation(FT::DataType; kw...) = AnisotropicMinimumDissipation(ExplicitTimeDiscretization(), FT; kw...)
 
-function with_tracers(tracers, closure::AnisotropicMinimumDissipation{TD}) where TD
+function Utils.with_tracers(tracers, closure::AnisotropicMinimumDissipation{TD}) where TD
     Cκ = tracer_diffusivities(tracers, closure.Cκ)
     return AnisotropicMinimumDissipation{TD}(closure.Cν, Cκ, closure.Cb)
 end
@@ -202,7 +203,7 @@ end
     @inbounds κₑ[i, j, k] = max(zero(FT), κˢᵍˢ)
 end
 
-function compute_diffusivities!(closure_fields, closure::AnisotropicMinimumDissipation, model; parameters = :xyz)
+function compute_closure_fields!(closure_fields, closure::AnisotropicMinimumDissipation, model; parameters = :xyz)
     grid = model.grid
     arch = model.architecture
     velocities = model.velocities
@@ -317,10 +318,10 @@ end
     ijk = (i, j, k, grid)
 
     wx_bx = (ℑxzᶜᵃᶜ(ijk..., norm_∂x_w, w)
-             * Δᶠxᶜᶜᶜ(ijk...) * ℑxᶜᵃᵃ(ijk..., ∂xᶠᶜᶜ, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers))
+             * Δᶠxᶜᶜᶜ(ijk...) * ℑxᶜᵃᵃ(ijk..., ∂xᵣᶠᶜᶜ, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers))
 
     wy_by = (ℑyzᵃᶜᶜ(ijk..., norm_∂y_w, w)
-             * Δᶠyᶜᶜᶜ(ijk...) * ℑyᵃᶜᵃ(ijk..., ∂yᶜᶠᶜ, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers))
+             * Δᶠyᶜᶜᶜ(ijk...) * ℑyᵃᶜᵃ(ijk..., ∂yᵣᶜᶠᶜ, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers))
 
     wz_bz = (norm_∂z_w(ijk..., w)
              * Δᶠzᶜᶜᶜ(ijk...) * ℑzᵃᵃᶜ(ijk..., ∂zᶜᶜᶠ, buoyancy_perturbationᶜᶜᶜ, buoyancy.formulation, tracers))

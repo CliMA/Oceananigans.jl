@@ -1,15 +1,15 @@
 using Oceananigans: UpdateStateCallsite
+using Oceananigans.Advection: update_advection_timestep!
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.BoundaryConditions: fill_halo_regions!, update_boundary_conditions!
 using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
 using Oceananigans.Fields: compute!
-using Oceananigans.TurbulenceClosures: compute_diffusivities!
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!, mask_immersed_field_xy!
-using Oceananigans.Models: update_model_field_time_series!
-using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!, p_kernel_parameters
-
-import Oceananigans.Models.NonhydrostaticModels: compute_auxiliaries!
-import Oceananigans.TimeSteppers: update_state!
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!
+using Oceananigans.Models: update_model_field_time_series!, surface_kernel_parameters, volume_kernel_parameters
+using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
+using Oceananigans.TurbulenceClosures: compute_closure_fields!
+import Oceananigans.TurbulenceClosures: step_closure_prognostics!
+using Oceananigans.Utils: KernelParameters, worksize
 
 compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxiliary_fields)
 
@@ -17,83 +17,104 @@ compute_auxiliary_fields!(auxiliary_fields) = Tuple(compute!(a) for a in auxilia
 # single column models.
 
 """
-    update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendencies = true)
+    update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[])
 
-Update peripheral aspects of the model (auxiliary fields, halo regions, diffusivities,
-hydrostatic pressure) to the current model state. If `callbacks` are provided (in an array),
-they are called in the end. Finally, the tendencies for the new time-step are computed if
-`compute_tendencies = true`.
+Update the model state to be consistent with the current prognostic fields.
+
+This function performs the following steps:
+1. Mask immersed boundary regions (set field values to zero in solid regions)
+2. Update time-dependent field boundary conditions
+3. Fill halo regions for tracers
+4. Compute diagnostic quantities:
+   - Buoyancy gradients (for turbulence closures)
+   - Vertical velocity `w` from continuity equation
+   - Hydrostatic pressure `pHY′`
+   - Closure fields
+5. Fill local halos for closure fields and pressure
+6. Execute any callbacks registered for `UpdateStateCallsite`
+7. Update biogeochemical state
+
+Note: Halo regions for free surface fields are filled separately after the barotropic step,
+while for velocities they are filled in the time-stepping function.
 """
-update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]; compute_tendencies = true) =
-         update_state!(model, model.grid, callbacks; compute_tendencies)
+update_state!(model::HydrostaticFreeSurfaceModel, callbacks=[]) = update_state!(model, model.grid, callbacks)
 
-function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks; compute_tendencies = true)
+function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 
-    @apply_regionally mask_immersed_model_fields!(model, grid)
+    arch = architecture(grid)
 
-    # Update possible FieldTimeSeries used in the model
-    @apply_regionally update_model_field_time_series!(model, model.clock)
+    @apply_regionally begin
+        foreach(mask_immersed_field!, model.tracers)
+        update_model_field_time_series!(model, model.clock)
+        update_boundary_conditions!(fields(model), model)
+    end
 
-    # Update the boundary conditions
-    @apply_regionally update_boundary_conditions!(fields(model), model)
+    tracers = model.tracers
 
-    # Fill the halos
-    fill_halo_regions!(prognostic_fields(model), model.grid, model.clock, fields(model); async=true)
+    # Fill the halos of the prognostic fields. Note that the halos of the
+    # free-surface variables and the horizontal velocities
+    # are filled within the time-stepping after the state evolution.
+    fill_halo_regions!(tracers, model.clock, fields(model); async=true)
 
-    @apply_regionally compute_auxiliaries!(model)
+    # Compute diagnostic quantities
+    @apply_regionally begin
+        surface_params = surface_kernel_parameters(grid)
+        volume_params = volume_kernel_parameters(grid)
+        κ_params = diffusivity_kernel_parameters(grid)
+        compute_buoyancy_gradients!(model.buoyancy, grid, tracers, parameters=volume_params)
+        update_vertical_velocities!(model.velocities, grid, model, parameters=surface_params)
+        update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers, parameters=surface_params)
+        compute_closure_fields!(model.closure_fields, model.closure, model, parameters=κ_params)
+    end
 
+    # Fill only local halos for diagnostic quantities since the parameters used
+    # above include regions inside the (horizontal) halos.
     fill_halo_regions!(model.closure_fields; only_local_halos=true)
+    fill_halo_regions!(model.pressure.pHY′; only_local_halos=true)
 
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
 
     update_biogeochemical_state!(model.biogeochemistry, model)
 
-    compute_tendencies &&
-        @apply_regionally compute_tendencies!(model, callbacks)
-
-    return nothing
-end
-
-# Mask immersed fields
-function mask_immersed_model_fields!(model, grid)
-    η = displacement(model.free_surface)
-    fields_to_mask = merge(model.auxiliary_fields, prognostic_fields(model))
-
-    foreach(keys(fields_to_mask)) do key
-        if key != :η
-            @inbounds mask_immersed_field!(fields_to_mask[key])
-        end
+    @apply_regionally begin
+        update_advection_timestep!(model.advection, model.timestepper, model.clock)
+        compute_momentum_tendencies!(model, callbacks)
     end
-    mask_immersed_field_xy!(η, k=size(grid, 3)+1)
 
     return nothing
 end
 
-function compute_auxiliaries!(model::HydrostaticFreeSurfaceModel; w_parameters = w_kernel_parameters(model.grid),
-                                                                  p_parameters = p_kernel_parameters(model.grid),
-                                                                  κ_parameters = :xyz)
+"""
+$(TYPEDSIGNATURES)
 
-    grid        = model.grid
-    closure     = model.closure
-    tracers     = model.tracers
-    diffusivity = model.closure_fields
-    buoyancy    = model.buoyancy
-
-    P    = model.pressure.pHY′
-    arch = architecture(grid)
-
-    # Maybe compute buoyancy gradients
-    compute_buoyancy_gradients!(buoyancy, grid, tracers; parameters = κ_parameters)
-
-    # Update the vertical velocity to comply with the barotropic correction step
-    update_grid_vertical_velocity!(model, grid, model.vertical_coordinate)
-
-    # Advance diagnostic quantities
-    compute_w_from_continuity!(model; parameters = w_parameters)
-    update_hydrostatic_pressure!(P, arch, grid, buoyancy, tracers; parameters = p_parameters)
-
-    # Update closure diffusivities
-    compute_diffusivities!(diffusivity, closure, model; parameters = κ_parameters)
-
+Set velocity field values to zero in immersed (solid) regions of the grid.
+"""
+function mask_immersed_horizontal_velocities!(velocities)
+    mask_immersed_field!(velocities.u)
+    mask_immersed_field!(velocities.v)
     return nothing
 end
+
+"""
+$(TYPEDSIGNATURES)
+
+Return kernel parameters for computing turbulent closure_fields including one extra cell
+in horizontal directions.
+
+The extra cells (indices `0:Nx+1` and `0:Ny+1`) are needed because closure_fields at
+cell faces require data from neighboring cells. This ensures that viscous fluxes
+can be computed correctly at domain boundaries without requiring (possibly costly) halo exchanges.
+"""
+@inline function diffusivity_kernel_parameters(grid)
+    Wx, Wy, Wz = worksize(grid)
+    Tx, Ty, Tz = topology(grid)
+
+    ii = ifelse(Tx == Flat, 1:Wx, 0:Wx+1)
+    jj = ifelse(Ty == Flat, 1:Wy, 0:Wy+1)
+    kk = 1:Wz
+
+    return KernelParameters(ii, jj, kk)
+end
+
+step_closure_prognostics!(model::HydrostaticFreeSurfaceModel, Δt) =
+    step_closure_prognostics!(model.closure_fields, model.closure, model, Δt)

@@ -14,6 +14,9 @@
 
 using Oceananigans
 using Oceananigans.Units
+using Random
+
+Random.seed!(8675309) # for reproducible results
 
 # ## Grid
 
@@ -34,7 +37,7 @@ grid = RectilinearGrid(size = (48, 48, 8),
 # We built a `HydrostaticFreeSurfaceModel` with an `ImplicitFreeSurface` solver.
 # Regarding Coriolis, we use a beta-plane centered at 45° South.
 
-model = HydrostaticFreeSurfaceModel(; grid,
+model = HydrostaticFreeSurfaceModel(grid;
                                     coriolis = BetaPlane(latitude = -45),
                                     buoyancy = BuoyancyTracer(),
                                     tracers = :b,

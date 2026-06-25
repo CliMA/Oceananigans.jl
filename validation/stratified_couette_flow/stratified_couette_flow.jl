@@ -120,7 +120,8 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
 
     equation_of_state = LinearEquationOfState(thermal_expansion=1.0, haline_contraction=0.0)
     buoyancy = SeawaterBuoyancy(; equation_of_state)
-    model = NonhydrostaticModel(; grid, buoyancy,
+    model = NonhydrostaticModel(grid;
+                                buoyancy,
                                 tracers = (:T, :S),
                                 closure = (AnisotropicMinimumDissipation(), ScalarDiffusivity(ν=ν, κ=κ)),
                                 boundary_conditions = (u=ubcs, v=vbcs, T=Tbcs))
@@ -275,7 +276,9 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
 
     simulation.callbacks[:progress] = Callback(print_progress, IterationInterval(Ni))
 
-    push!(simulation.output_writers, field_writer, profile_writer, statistics_writer)
+    simulation.output_writers[:fields] = field_writer
+    simulation.output_writers[:profiles] = profile_writer
+    simulation.output_writers[:statistics] = statistics_writer
 
     run!(simulation)
 

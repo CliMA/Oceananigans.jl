@@ -108,9 +108,9 @@ function test_biogeochemistry(grid, MinimalBiogeochemistryType, ModelType)
                                                  drift_velocities)
 
     if ModelType == HydrostaticFreeSurfaceModel && grid isa OrthogonalSphericalShellGrid
-        model = ModelType(; grid, biogeochemistry, momentum_advection = VectorInvariant())
+        model = ModelType(grid; biogeochemistry, momentum_advection = VectorInvariant())
     else
-        model = ModelType(; grid, biogeochemistry)
+        model = ModelType(grid; biogeochemistry)
     end
     set!(model, P = 1)
 
