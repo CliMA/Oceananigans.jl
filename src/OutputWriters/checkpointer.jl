@@ -20,6 +20,9 @@ checkpoint_pickup_strategy(restored, ::Nothing) = (;
     restored_free_surface_halo = nothing
 )
 
+free_surface_compatibility_halo(::Nothing) = nothing
+free_surface_compatibility_halo(halo) = (halo[1], halo[2])
+
 function checkpoint_pickup_strategy(restored, state)
     if hasproperty(restored, :ocean) && hasproperty(state, :ocean) &&
        hasproperty(restored.ocean, :model) && hasproperty(state.ocean, :model)
@@ -44,7 +47,8 @@ function checkpoint_pickup_strategy(restored, state)
         checkpoint_free_surface = checkpoint_free_surface_grid(state, checkpoint_grid, restored)
         checkpoint_free_surface_halo = halo_size(checkpoint_free_surface)
         restored_free_surface_halo = fs_halo_size(restored)
-        free_surface_halo_mismatch = checkpoint_free_surface_halo != restored_free_surface_halo
+        free_surface_halo_mismatch = free_surface_compatibility_halo(checkpoint_free_surface_halo) !=
+                                     free_surface_compatibility_halo(restored_free_surface_halo)
     end
 
     requires_temporary_rewrite = grid_halo_mismatch || free_surface_halo_mismatch
@@ -290,7 +294,8 @@ function checkpoint_restore_mode(restored, checkpoint_grid, checkpoint_free_surf
     restored_free_surface_halo = fs_halo_size(restored)
 
     same_grid_halos = halo_size(checkpoint_grid) == halo_size(restored.grid)
-    same_free_surface_halos = checkpoint_free_surface_halo == restored_free_surface_halo
+    same_free_surface_halos = free_surface_compatibility_halo(checkpoint_free_surface_halo) ==
+                              free_surface_compatibility_halo(restored_free_surface_halo)
 
     if same_grid_halos && same_free_surface_halos
         return RestoreOnCurrentGrid()

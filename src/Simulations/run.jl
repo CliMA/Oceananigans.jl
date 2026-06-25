@@ -71,7 +71,8 @@ function log_pickup_stage(stage; kwargs...)
 end
 
 function pickup_compatibility_details(sim, state)
-    strategy = checkpoint_pickup_strategy(sim.model, state)
+    checkpoint_model_state = hasproperty(state, :model) ? state.model : state
+    strategy = checkpoint_pickup_strategy(sim.model, checkpoint_model_state)
     strategy.available || return NamedTuple()
 
     return (;
