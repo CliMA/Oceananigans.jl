@@ -86,8 +86,8 @@ fill_halo_regions!(field::DistributedField, args...; kwargs...) =
 
 # Sometimes we want to fill halo using `adapted` arguments, where the grid has
 # been stripped from the architecture. For this reason we pass it explicitly
-maybe_distributed_fill_halo_regions!(arch, args...) = fill_halo_regions!(args...)
-maybe_distributed_fill_halo_regions!(arch::Distributed, args...) = distributed_fill_halo_regions!(arch, args...)
+maybe_distributed_fill_halo_regions!(arch, args...; kwargs...) = fill_halo_regions!(args...; kwargs...)
+maybe_distributed_fill_halo_regions!(arch::Distributed, args...; kwargs...) = distributed_fill_halo_regions!(arch, args...; kwargs...)
 
 # Otherwise we recover the architecture from the (still distributed) grid.
 fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid::DistributedGrid, args...; kwargs...) =
