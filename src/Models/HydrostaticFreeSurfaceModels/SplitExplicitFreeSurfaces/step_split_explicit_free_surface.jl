@@ -1,4 +1,5 @@
 using Oceananigans: fields
+using Oceananigans.DistributedComputations: maybe_distributed_fill_halo_regions!
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
 # Include buffers for distributed grids
@@ -103,6 +104,7 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
 
     η           = free_surface.displacement
     grid        = free_surface.displacement.grid
+    arch        = architecture(grid)
     state       = free_surface.filtered_state
     timestepper = free_surface.timestepper
     g           = free_surface.gravitational_acceleration
@@ -142,11 +144,11 @@ function iterate_split_explicit!(free_surface::FillHaloSplitExplicit, grid, GU�
             @inbounds averaging_weight = weights[substep]
             @inbounds transport_weight = transport_weights[substep]
 
-            fill_halo_regions!(converted_η_halo_args...; only_local_halos)
+            maybe_distributed_fill_halo_regions!(arch, converted_η_halo_args...; only_local_halos)
             @apply_regionally apply_barotropic_kernel!(velocity_kernel!, transport_weight, converted_U_args)
 
-            fill_halo_regions!(converted_U_halo_args...; only_local_halos)
-            fill_halo_regions!(converted_V_halo_args...; only_local_halos)
+            maybe_distributed_fill_halo_regions!(arch, converted_U_halo_args...; only_local_halos)
+            maybe_distributed_fill_halo_regions!(arch, converted_V_halo_args...; only_local_halos)
             @apply_regionally apply_barotropic_kernel!(free_surface_kernel!, averaging_weight, converted_η_args)
         end
     end
