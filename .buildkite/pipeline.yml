@@ -148,6 +148,7 @@ steps:
           - "🦖 poisson_solvers_2"
           - "🎭 reactant_2"
           - "👹 reactant_1"
+          - "🧪 reactant_correctness"
           - "🐇 unit"
           - "👻 abstract_operations"
           - "🕊 poisson_solvers_1"
