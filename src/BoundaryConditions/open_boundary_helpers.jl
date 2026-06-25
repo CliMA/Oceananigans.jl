@@ -1,12 +1,8 @@
 # Helper functions for open boundary conditions
 # Simplifies user setup for common use cases
 
-using Oceananigans: Field
-using Oceananigans.Operators
-using Oceananigans.ImmersedBoundaries
-
-import Oceananigans.Operators: Δzᶠᶜᶜ, Δzᶜᶠᶜ
-import Oceananigans.ImmersedBoundaries: immersed_peripheral_node, immersed_inactive_node
+using Oceananigans.Operators: Δzᶠᶜᶜ, Δzᶜᶠᶜ
+using Oceananigans.Grids: immersed_peripheral_node, immersed_inactive_node
 
 """
     FlatherOpenBoundaries(grid; gravitational_acceleration=9.81)
