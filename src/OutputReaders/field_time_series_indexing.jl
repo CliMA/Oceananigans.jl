@@ -3,7 +3,8 @@ import Dates
 using Dates: AbstractTime
 
 using Oceananigans.Grids: _node
-using Oceananigans.Fields: interpolator, _interpolate, FractionalIndices, instantiated_location, flatten_node, FixedTime
+using Oceananigans.Fields: interpolator, _interpolate, FractionalIndices, instantiated_location, flatten_node, FixedTime,
+                           mapped_data
 using Oceananigans.Architectures: architecture
 using Oceananigans.DistributedComputations: child_architecture, Distributed
 using GPUArraysCore: @allowscalar
@@ -265,15 +266,22 @@ end
 ##### Linear time- and space-interpolation of a FTS
 #####
 
-@inline function interpolate(to_node, to_time_index::Time, from_fts::FlavorOfFTS, from_loc, from_grid)
-    data = from_fts.data
-    times = from_fts.times
-    backend = from_fts.backend
+@inline interpolate(to_node, to_time_index::Time, from_fts::FlavorOfFTS, from_loc, from_grid) =
+    interpolate(identity, to_node, to_time_index, from_fts, from_loc, from_grid)
+
+# Space+time interpolation of a `FieldTimeSeries` with each source value mapped through `func`
+# (in the spirit of `mean(func, itr)`). `func = identity` reproduces the unmapped interpolation
+# exactly, since `mapped_data(identity, data)` is `data`. See `Oceananigans.Fields.interpolate(func, …)`.
+@inline function interpolate(func::Base.Callable, to_node, to_time_index::Time,
+                             from_fts::FlavorOfFTS, from_loc, from_grid)
+    data          = mapped_data(func, from_fts.data)
+    times         = from_fts.times
+    backend       = from_fts.backend
     time_indexing = from_fts.time_indexing
     return interpolate(to_node, to_time_index, data, from_loc, from_grid, times, backend, time_indexing)
 end
 
-@inline function interpolate(to_node, to_time_index::Time, data::OffsetArray,
+@inline function interpolate(to_node, to_time_index::Time, data::AbstractArray,
                              from_loc, from_grid, times, backend, time_indexing)
 
     to_time = to_time_index.time
@@ -281,7 +289,7 @@ end
     return interpolate(to_node, interp, data, from_loc, from_grid, backend, time_indexing)
 end
 
-@inline function interpolate(to_node, time_indices::TimeInterpolator, data::OffsetArray,
+@inline function interpolate(to_node, time_indices::TimeInterpolator, data::AbstractArray,
                              from_loc, from_grid, backend, time_indexing)
 
     # Build space interpolators
@@ -297,7 +305,7 @@ end
 end
 
 @inline function interpolate(fi::FractionalIndices, time_indices::TimeInterpolator,
-                             data::OffsetArray, backend, time_indexing)
+                             data::AbstractArray, backend, time_indexing)
 
     ñ  = time_indices.fractional_index
     n₁ = convert(Int, time_indices.first_index)

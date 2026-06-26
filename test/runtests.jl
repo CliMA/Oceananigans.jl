@@ -47,6 +47,7 @@ CUDA.allowscalar() do
             include("test_field.jl")
             include("test_set_field_interpolation.jl")
             include("test_lcc_interpolation.jl")
+            include("test_interpolate_transform.jl")
             include("test_regrid.jl")
             include("test_field_scans.jl")
             include("test_halo_regions.jl")
