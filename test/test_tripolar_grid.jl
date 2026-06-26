@@ -91,6 +91,31 @@ end
     end
 end
 
+@testset "Flat-z (2D) construction: z = nothing builds a horizontal-only tripolar grid" begin
+    for arch in archs
+        @testset "$fold_topology fold topology" for fold_topology in fold_topologies
+            # `z = nothing` builds a purely horizontal (2D) tripolar grid with a `Flat` vertical;
+            # the vertical entry of `size`/`halo` is then optional.
+            grid_2tuple = TripolarGrid(arch; size = (4, 5),    z = nothing, halo = (3, 3),    fold_topology)
+            grid_3tuple = TripolarGrid(arch; size = (4, 5, 1), z = nothing, halo = (3, 3, 3), fold_topology)
+
+            for grid in (grid_2tuple, grid_3tuple)
+                @test grid isa TripolarGrid
+                @test topology(grid, 3) === Flat
+                @test (grid.Nx, grid.Ny, grid.Nz) == (4, 5, 1)
+            end
+
+            # The default Bounded-z grid is unchanged, and shares the same horizontal coordinates.
+            grid_bounded = TripolarGrid(arch; size = (4, 5, 1), z = (0, 1), halo = (3, 3, 3), fold_topology)
+            @test topology(grid_bounded, 3) === Bounded
+            @allowscalar begin
+                @test λnodes(grid_2tuple, Center(), Center()) ≈ λnodes(grid_bounded, Center(), Center())
+                @test φnodes(grid_2tuple, Center(), Center()) ≈ φnodes(grid_bounded, Center(), Center())
+            end
+        end
+    end
+end
+
 @testset "Model tests..." begin
     for arch in archs
         @testset "$fold_topology fold topology" for fold_topology in fold_topologies
