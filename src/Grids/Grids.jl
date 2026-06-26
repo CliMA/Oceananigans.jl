@@ -33,6 +33,7 @@ using DocStringExtensions: FIELDS, TYPEDSIGNATURES
 using GPUArraysCore: @allowscalar
 using OffsetArrays: OffsetArray
 using Printf: @sprintf
+using BFloat16s: BFloat16
 
 using Oceananigans: Oceananigans
 using Oceananigans.Architectures: Architectures, AbstractSerialArchitecture,
