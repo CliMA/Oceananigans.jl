@@ -14,9 +14,7 @@ export
     WestAndEast, SouthAndNorth, BottomAndTop,
     West, East, South, North, Bottom, Top,
     PeriodicFillHalo,
-    DistributedFillHalo,
-    make_gpu_compatible,  # Helper for distributed GPU with FieldTimeSeries
-    FlatherOpenBoundaries  # Helper function for easy Flather BC setup
+    DistributedFillHalo
 
 using Adapt
 using KernelAbstractions: @index, @kernel
@@ -60,10 +58,8 @@ include("compute_flux_bcs.jl")
 
 include("update_boundary_conditions.jl")
 include("polar_boundary_condition.jl")
-include("distributed_gpu_boundary_conditions.jl")  # Helper for GPU-compatible BCs
 
 include("perturbation_advection.jl")
 include("open_boundary_schemes.jl")
-include("open_boundary_helpers.jl")  # Helper functions for easy BC setup
 
 end # module
