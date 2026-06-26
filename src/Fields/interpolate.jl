@@ -367,7 +367,9 @@ Interpolate `from_field` `at_node` after mapping each source value through `func
 in `func`-space (no inverse). With `func = log`, `exp(interpolate(log, …))` is a geometric-mean
 interpolation. `func = identity` reproduces `interpolate(at_node, from_field, …)`.
 """
-@inline function interpolate(func::Base.Callable, at_node, from_field, from_loc, from_grid)
+# `at_node::Tuple` (it is always a coordinate tuple here) keeps this disjoint from the
+# `FieldTimeSeries` method `interpolate(to_node, ::Time, fts, …)`, whose second argument is a `Time`.
+@inline function interpolate(func::Base.Callable, at_node::Tuple, from_field, from_loc, from_grid)
     fidx = FractionalIndices(at_node, from_grid, from_loc...)
     return interpolate(func, fidx, from_field, from_loc, from_grid)
 end
