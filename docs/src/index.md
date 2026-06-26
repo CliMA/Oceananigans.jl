@@ -131,6 +131,8 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
+1. Atkinson, E. and Grisouard, N. (2026). [Formation and arrest of a surface density front via strain-driven frontogenesis](https://doi.org/10.1029/2025GL119220), _Geophysical Research Letters_, **53(12)**, e2025GL119220. DOI: [10.1029/2025GL119220](https://doi.org/10.1029/2025GL119220)
+
 1. Wenegrat, J. O., Chor, T., and Barkan, R. (2026). [Coarse-grained local available potential energy](https://doi.org/10.48550/arXiv.2605.15879), _arXiv preprint_, arXiv:2605.15879. DOI: [10.48550/arXiv.2605.15879](https://doi.org/10.48550/arXiv.2605.15879)
 
 1. Chor, T., Wenegrat, J., and Wagner, G. L. (2026) [Turbulent mixing and dissipation around rough seamounts](https://doi.org/10.1029/2025GL121312), _Geophysical Research Letters_. DOI: [https://doi.org/10.1029/2025GL121312](https://doi.org/10.1029/2025GL121312)
@@ -152,8 +154,6 @@ If you have work using Oceananigans that you would like to have listed here, ple
 1. Yakushev, E., Berezina, A., Yakubov, S., Novikov, M., Ghaffari, P., Dzhurova, B., Hristova, O., Vogt, R., and Ranneklev, S. (2026). [Model-based analysis of seasonal hypoxia: The Varna Lake–Bay case study](https://doi.org/10.1016/j.ecolmodel.2026.111535), _Ecological Modelling_, **515**, 111535. DOI: [10.1016/j.ecolmodel.2026.111535](https://doi.org/10.1016/j.ecolmodel.2026.111535)
 
 1. Gupta, M., Thompon, A. F., and Klein P. (2026). [Energetics of the upper‐ocean under sea ice: Frictional dissipation versus baroclinic production](https://doi.org/10.1029/2025JC023026), _Journal of Geophysical Research: Oceans_, **131(2)**, e2025JC023026. DOI: [10.1029/2025JC023026](https://doi.org/10.1029/2025JC023026)
-
-1. Atkinson, E. and Grisouard, N. (2026). [Formation and arrest of a surface density front via strain-driven frontogenesis](https://doi.org/10.22541/essoar.175941869.94553891/v2), _ESS Open Archive_. DOI: [10.22541/essoar.175941869.94553891/v2](https://doi.org/10.22541/essoar.175941869.94553891/v2)
 
 1. Sjur, A. L. P., Isachsen, P. E., Nilsson, J., and Allen, S. (2026). [Nonlinear dynamics of time-variable slope circulation](https://doi.org/10.5194/egusphere-2026-778), _EGUsphere preprint_. DOI: [10.5194/egusphere-2026-778](https://doi.org/10.5194/egusphere-2026-778)
 

@@ -98,7 +98,7 @@ end
 
 # Combined Hovmöller (x–t) of all three tracers in one figure with a shared colorbar, so
 # the panels are directly comparable across c̄. Boundary noise / pileup / wrong-branch
-# behavior shows up as vertical striations or sharp colour jumps near the domain edges —
+# behavior shows up as vertical striations or sharp color jumps near the domain edges —
 # easier to spot here than in single animation frames.
 function plot_tracer_outflow_hovmollers(filepath)
     @info "Plotting Hovmöllers from $filepath"
