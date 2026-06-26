@@ -1,6 +1,6 @@
 const AHCG = AbstractHorizontallyCurvilinearGrid
 
-struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, FT2} <: AHCG{FT, TX, TY, TZ, Z, Arch}
+struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, FT2, Nx, Ny, Nz} <: AHCG{FT, TX, TY, TZ, Z, Arch}
     architecture :: Arch
        Nx :: Int
        Ny :: Int
@@ -47,7 +47,7 @@ function OrthogonalSphericalShellGrid{FT, TX, TY, TZ}(architecture::Arch,
                                                   radius :: FT2,
                                                   conformal_mapping :: Map) where {TX, TY, TZ, FT, Z, Map,
                                                                                    CC, FC, CF, FF, Arch, FT2}
-    return OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, FT2}(architecture,
+    return OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, FT2, Nx, Ny, Nz}(architecture,
                                                   Nx, Ny, Nz,
                                                   Hx, Hy, Hz,
                                                   Lz,
@@ -58,6 +58,12 @@ function OrthogonalSphericalShellGrid{FT, TX, TY, TZ}(architecture::Arch,
                                                   Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
                                                   radius,
                                                   conformal_mapping)
+end
+
+# Read the grid size from the trailing type parameters so `size(grid)` is a compile-time constant.
+@generated function Base.size(grid::OrthogonalSphericalShellGrid)
+    Nx, Ny, Nz = grid.parameters[end-2], grid.parameters[end-1], grid.parameters[end]
+    return :(($Nx, $Ny, $Nz))
 end
 
 function OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture::Arch,

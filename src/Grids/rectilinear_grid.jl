@@ -1,6 +1,6 @@
 using OrderedCollections: OrderedDict
 
-struct RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch}
+struct RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch, Nx, Ny, Nz} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch}
     architecture :: Arch
     Nx :: Int
     Ny :: Int
@@ -34,11 +34,13 @@ function RectilinearGrid{TX, TY, TZ}(arch::Arch, Nx, Ny, Nz, Hx, Hy, Hz,
                                                          FX, VX, FY, VY, CZ}
 
     return RectilinearGrid{FT, TX, TY, TZ,
-                           CZ, FX, FY, VX, VY, Arch}(arch, Nx, Ny, Nz,
-                                                     Hx, Hy, Hz, Lx, Ly, Lz,
-                                                     Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
-                                                     Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ, z)
+                           CZ, FX, FY, VX, VY, Arch, Nx, Ny, Nz}(arch, Nx, Ny, Nz,
+                                                                 Hx, Hy, Hz, Lx, Ly, Lz,
+                                                                 Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
+                                                                 Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ, z)
 end
+
+@inline Base.size(::RectilinearGrid{<:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, Nx, Ny, Nz}) where {Nx, Ny, Nz} = (Nx, Ny, Nz)
 
 const RG = RectilinearGrid
 

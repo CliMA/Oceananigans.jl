@@ -2,7 +2,7 @@ using KernelAbstractions: @kernel, @index
 using OrderedCollections: OrderedDict
 
 struct LatitudeLongitudeGrid{FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC,
-                             DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Z, Arch}
+                             DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I, Nx, Ny, Nz} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Z, Arch}
     architecture :: Arch
     Nx :: I
     Ny :: I
@@ -62,7 +62,7 @@ function LatitudeLongitudeGrid{TX, TY, TZ}(architecture::Arch,
                                  DXF, DXC, XF, XC,
                                  DYF, DYC, YF, YC,
                                  DXCC, DXFC, DXCF, DXFF,
-                                 DYFC, DYCF, Arch, I}(architecture,
+                                 DYFC, DYCF, Arch, I, Nλ, Nφ, Nz}(architecture,
                                                       Nλ, Nφ, Nz,
                                                       Hλ, Hφ, Hz,
                                                       Lλ, Lφ, Lz,
@@ -71,6 +71,12 @@ function LatitudeLongitudeGrid{TX, TY, TZ}(architecture::Arch,
                                                       Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
                                                       Δyᶠᶜᵃ, Δyᶜᶠᵃ,
                                                       Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
+end
+
+# Read the grid size from the trailing type parameters so `size(grid)` is a compile-time constant.
+@generated function Base.size(grid::LatitudeLongitudeGrid)
+    Nx, Ny, Nz = grid.parameters[end-2], grid.parameters[end-1], grid.parameters[end]
+    return :(($Nx, $Ny, $Nz))
 end
 
 const LLG = LatitudeLongitudeGrid

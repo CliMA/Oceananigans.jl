@@ -152,37 +152,28 @@ dimension. The `worksize` specifies the range of the loop in each dimension.
 
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
-@inline function interior_work_layout(grid, workdims::Symbol, (LX, LY, LZ))
+@inline select_dims(::Val{:xyz}, x, y, z) = (x, y, z)
+@inline select_dims(::Val{:xy},  x, y, z) = (x, y)
+@inline select_dims(::Val{:xz},  x, y, z) = (x, z)
+@inline select_dims(::Val{:yz},  x, y, z) = (y, z)
+
+@inline function interior_work_layout(grid, workdims::Val, (LX, LY, LZ))
     Fx, Fy, Fz = worksize(grid)
 
-    # just an example for :xyz
     ℓx = instantiate(LX)
     ℓy = instantiate(LY)
     ℓz = instantiate(LZ)
 
-    # Offsets
     ox = periphery_offset(ℓx, grid, 1)
     oy = periphery_offset(ℓy, grid, 2)
     oz = periphery_offset(ℓz, grid, 3)
 
-    # Worksize
     Wx, Wy, Wz = (Fx-ox, Fy-oy, Fz-oz)
-    workgroup = heuristic_workgroup(Wx, Wy, Wz)
-    workgroup = StaticSize(workgroup)
+    workgroup = StaticSize(heuristic_workgroup(Wx, Wy, Wz))
 
-    # Adapt to workdims
-    _worksize = ifelse(workdims == :xyz, (Wx, Wy, Wz),
-                ifelse(workdims == :xy,  (Wx, Wy),
-                ifelse(workdims == :xz,  (Wx, Wz), (Wy, Wz))))
+    range = contiguousrange(select_dims(workdims, Wx, Wy, Wz), select_dims(workdims, ox, oy, oz))
 
-    offsets = ifelse(workdims == :xyz, (ox, oy, oz),
-              ifelse(workdims == :xy,  (ox, oy),
-              ifelse(workdims == :xz,  (ox, oz), (oy, oz))))
-
-    range = contiguousrange(_worksize, offsets)
-    _worksize = OffsetStaticSize(range)
-
-    return workgroup, _worksize
+    return workgroup, OffsetStaticSize(range)
 end
 
 """
@@ -194,29 +185,21 @@ dimension. The `worksize` specifies the range of the loop in each dimension.
 
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
-@inline function work_layout(grid, workdims::Symbol, reduced_dimensions)
+@inline function work_layout(grid, workdims::Val, reduced_dimensions)
     Fx, Fy, Fz = worksize(grid)
     Wx, Wy, Wz = flatten_reduced_dimensions((Fx, Fy, Fz), reduced_dimensions) # this seems to be for halo filling
     workgroup  = heuristic_workgroup(Wx, Wy, Wz)
-
-    _worksize = ifelse(workdims == :xyz, (Wx, Wy, Wz),
-                ifelse(workdims == :xy,  (Wx, Wy),
-                ifelse(workdims == :xz,  (Wx, Wz),
-                                         (Wy, Wz))))
-
-    return StaticSize(workgroup), StaticSize(_worksize)
+    return StaticSize(workgroup), StaticSize(select_dims(workdims, Wx, Wy, Wz))
 end
+
+@inline work_layout(grid, workdims::Symbol, reduced_dimensions) = work_layout(grid, Val(workdims), reduced_dimensions)
+@inline interior_work_layout(grid, workdims::Symbol, location) = interior_work_layout(grid, Val(workdims), location)
 
 @inline function work_layout(grid, worksize::NTuple{N, Int}, reduced_dimensions) where N
     workgroup = heuristic_workgroup(worksize...)
     return StaticSize(workgroup), StaticSize(worksize)
 end
 
-@inline function work_layout(active_cells_map::AbstractArray)
-    length_map = length(active_cells_map)
-    workgroup = min(length_map, 256)
-    return StaticSize(workgroup), StaticSize(length_map)
-end
 
 @inline function offset_work_layout(grid, ::KernelParameters{spec, offsets}, reduced_dimensions) where {spec, offsets}
     workgroup, worksize = work_layout(grid, spec, reduced_dimensions)
@@ -251,6 +234,9 @@ Keyword Arguments
                       the kernel is configured as a linear kernel with a worksize equal to the length of the active cell map. Default is `nothing`.
 - `exclude_periphery`: A boolean indicating whether to exclude the periphery, used only for interior kernels.
 """
+@inline configure_kernel(arch, grid, workspec::Symbol, kernel!; kwargs...) =
+    configure_kernel(arch, grid, Val(workspec), kernel!; kwargs...)
+
 @inline function configure_kernel(arch, grid, workspec, kernel!;
                                   active_cells_map = nothing,
                                   exclude_periphery = false,
@@ -275,7 +261,7 @@ end
 end
 
 # With a "true" exclude_periphery, we use the `interior_work_layout` function
-@inline function configure_kernel(arch, grid, workspec::Symbol, kernel!, ::Nothing, ::Val{true};
+@inline function configure_kernel(arch, grid, workspec::Val, kernel!, ::Nothing, ::Val{true};
                                   reduced_dimensions = (),
                                   location = nothing)
 
@@ -300,15 +286,13 @@ end
 # When there is an active_cells_map, we use the `mapped_kernel` function
 @inline function configure_kernel(arch, grid, workspec, kernel!, active_cells_map::AbstractArray, args...; kwargs...)
 
-    workgroup, worksize = work_layout(active_cells_map)
-
     dev  = Architectures.device(arch)
-    loop = kernel!(dev, workgroup, worksize)
+    loop = kernel!(dev, StaticSize((256,)), NDIteration.DynamicSize())
 
     # Map out the function to use active_cells_map as an index map
     loop = mapped_kernel(loop, dev, active_cells_map)
 
-    return loop, worksize::StaticSize
+    return loop, active_cells_map
 end
 
 @inline function mapped_kernel(kernel::Kernel{Dev, B, W}, dev, map) where {Dev, B, W}
@@ -345,9 +329,8 @@ end
     return nothing
 end
 
-# When dims::Val
-@inline launch!(arch, grid, ::Val{workspec}, args...; kw...) where workspec =
-    _launch!(arch, grid, workspec, args...; kw...)
+@inline launch!(arch, grid, workspec::Symbol, args...; kw...) = _launch!(arch, grid, Val(workspec), args...; kw...)
+@inline launch!(arch, grid, workspec::Val,    args...; kw...) = _launch!(arch, grid, workspec, args...; kw...)
 
 # Inner interface
 @inline function _launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...;
@@ -386,20 +369,18 @@ end
 # Fallback, use always the provided map
 possibly_load_active_cells_map(active_cells_map, grid, workspec, exclude_periphery) = active_cells_map
 
-# If we use standard dimensions, load the corresponding map
-@inline function possibly_load_active_cells_map(::Nothing, grid, workspec::Symbol, exclude_periphery)
-    if exclude_periphery # The active cell map includes borders
-        return nothing
-    end
-
-    if workspec == :xyz
-        return get_active_cells_map(grid, Val(:xyz))
-    elseif workspec == :xy
-        return get_active_cells_map(grid, Val(:xy))
-    else
-        return nothing
-    end
+@inline function possibly_load_active_cells_map(::Nothing, grid, ::Val{:xyz}, exclude_periphery)
+    exclude_periphery && return nothing
+    return get_active_cells_map(grid, Val(:xyz))
 end
+
+@inline function possibly_load_active_cells_map(::Nothing, grid, ::Val{:xy}, exclude_periphery)
+    exclude_periphery && return nothing
+    return get_active_cells_map(grid, Val(:xy))
+end
+
+@inline possibly_load_active_cells_map(::Nothing, grid, ::Val, exclude_periphery) = nothing
+@inline possibly_load_active_cells_map(::Nothing, grid, workspec::Symbol, exclude_periphery) = possibly_load_active_cells_map(nothing, grid, Val(workspec), exclude_periphery)
 
 #####
 ##### Extension to KA for offset indices: to remove when implemented in KA
@@ -510,9 +491,7 @@ end
 ##### Utilities for Mapped kernels
 #####
 
-struct IndexMap end
-
-const MappedNDRange{N, B, W} = NDRange{N, B, W, <:IndexMap, <:AbstractArray} where {N, B<:StaticSize, W<:StaticSize}
+const MappedNDRange{N, B, W} = NDRange{N, B, W, <:Any, <:AbstractArray} where {N, B, W<:StaticSize}
 
 # TODO: maybe don't do this
 # NDRange has been modified to include an index_map in place of workitems.
@@ -546,17 +525,12 @@ Adapt.adapt_structure(to, ndrange::MappedNDRange{N, B, W}) where {N, B, W} =
 function partition(kernel::MappedKernel, inrange, ingroupsize)
     static_workgroupsize = workgroupsize(kernel)
 
-    # Calculate the static NDRange and WorkgroupSize
     index_map = kernel.index_map
     range = length(index_map)
     groupsize = get(static_workgroupsize)
 
     blocks, groupsize, dynamic = NDIteration.partition(range, groupsize)
-
-    static_blocks = StaticSize{blocks}
-    static_workgroupsize = StaticSize{groupsize} # we might have padded workgroupsize
-
-    iterspace = NDRange{length(range), static_blocks, static_workgroupsize}(IndexMap(), index_map)
+    iterspace = NDRange{1, NDIteration.DynamicSize, static_workgroupsize}(CartesianIndices(blocks), index_map)
 
     return iterspace, dynamic
 end
