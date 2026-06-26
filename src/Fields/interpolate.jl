@@ -328,6 +328,53 @@ end
 
 # interpolator, _interpolate, and ϕ₁-ϕ₈ are imported from Oceananigans.Utils
 
+#####
+##### Interpolation of a mapped field: `interpolate(f, …)`
+#####
+
+# Like `mean(f, itr)` / `sum(f, itr)`, a leading function `f` is applied to each source value
+# *before* the weighted blend; the result stays in `f`-space (no inverse is applied). With `f = log`
+# this blends log-values, so `exp(interpolate(log, …))` is a positivity-preserving, geometric-mean
+# interpolation — accurate for exponentially-varying fields (pressure, density). `f = identity`
+# reproduces the plain `interpolate` exactly. `f` is routed through the shared low-level blend
+# `_interpolate` (via a lazy mapped array) so `Field`s and `FieldTimeSeries` share one code path.
+
+"""
+    MappedData(f, data)
+
+Lazily apply `f` elementwise to `data`: a read returns `f(data[I...])`. This lets the existing
+`_interpolate` blend `f`-mapped values without copying. GPU-safe when `f` is (`log`/`exp` are).
+"""
+struct MappedData{T, N, F, A} <: AbstractArray{T, N}
+    f    :: F
+    data :: A
+end
+
+@inline MappedData(f::F, data::A) where {F, A} =
+    MappedData{eltype(A), ndims(A), F, A}(f, data)
+
+@inline Base.size(m::MappedData) = size(m.data)
+@inline Base.axes(m::MappedData) = axes(m.data)
+@inline Base.getindex(m::MappedData, I::Vararg{Int}) = m.f(@inbounds m.data[I...])
+
+Adapt.adapt_structure(to, m::MappedData) = MappedData(m.f, adapt(to, m.data))
+
+"""
+$(TYPEDSIGNATURES)
+
+Interpolate `from_field` `at_node` after mapping each source value through `f`, in the spirit of
+`mean(f, itr)`: `f` is applied to each value before the weighted blend and the result is returned in
+`f`-space (no inverse). With `f = log`, `exp(interpolate(log, …))` is a geometric-mean interpolation.
+`f = identity` reproduces `interpolate(at_node, from_field, …)`.
+"""
+@inline function interpolate(f::Base.Callable, at_node, from_field, from_loc, from_grid)
+    fidx = FractionalIndices(at_node, from_grid, from_loc...)
+    ix = interpolator(fidx.i)
+    iy = interpolator(fidx.j)
+    iz = interpolator(fidx.k)
+    return _interpolate(MappedData(f, from_field), ix, iy, iz)
+end
+
 """
 $(TYPEDSIGNATURES)
 

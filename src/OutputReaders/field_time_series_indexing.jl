@@ -3,7 +3,8 @@ import Dates
 using Dates: AbstractTime
 
 using Oceananigans.Grids: _node
-using Oceananigans.Fields: interpolator, _interpolate, FractionalIndices, instantiated_location, flatten_node, FixedTime
+using Oceananigans.Fields: interpolator, _interpolate, FractionalIndices, instantiated_location, flatten_node, FixedTime,
+                           MappedData
 using Oceananigans.Architectures: architecture
 using Oceananigans.DistributedComputations: child_architecture, Distributed
 using GPUArraysCore: @allowscalar
@@ -271,6 +272,43 @@ end
     backend = from_fts.backend
     time_indexing = from_fts.time_indexing
     return interpolate(to_node, to_time_index, data, from_loc, from_grid, times, backend, time_indexing)
+end
+
+# Space+time interpolation of a `FieldTimeSeries` with each source value mapped through `f`
+# (in the spirit of `mean(f, itr)`). Mirrors the unmapped method above: `f` is applied per source
+# value in both time slots, blended linearly in time, and the result is returned in `f`-space (no
+# inverse). See `Oceananigans.Fields.interpolate(f, …)`.
+@inline function interpolate(f::Base.Callable, to_node, to_time_index::Time,
+                             from_fts::FlavorOfFTS, from_loc, from_grid)
+    data          = from_fts.data
+    times         = from_fts.times
+    backend       = from_fts.backend
+    time_indexing = from_fts.time_indexing
+
+    interp = TimeInterpolator(time_indexing, times, to_time_index.time)
+    node   = flatten_node(to_node...)
+
+    fi = topology(from_grid) === (Flat, Flat, Flat) ?
+         FractionalIndices(nothing, nothing, nothing) :
+         FractionalIndices(node, from_grid, from_loc...)
+
+    ix = interpolator(fi.i)
+    iy = interpolator(fi.j)
+    iz = interpolator(fi.k)
+
+    ñ  = interp.fractional_index
+    n₁ = convert(Int, interp.first_index)
+    n₂ = convert(Int, interp.second_index)
+    Nt = convert(Int, interp.length)
+    m₁ = memory_index(backend, time_indexing, Nt, n₁)
+    m₂ = memory_index(backend, time_indexing, Nt, n₂)
+
+    mapped = MappedData(f, data)
+    ψ₁ = _interpolate(mapped, ix, iy, iz, m₁)
+    ψ₂ = _interpolate(mapped, ix, iy, iz, m₂)
+    ψ̃  = ψ₂ * ñ + ψ₁ * (1 - ñ)
+
+    return ifelse(n₁ == n₂, ψ₁, ψ̃)
 end
 
 @inline function interpolate(to_node, to_time_index::Time, data::OffsetArray,
