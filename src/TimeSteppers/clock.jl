@@ -184,11 +184,11 @@ function Adapt.adapt_structure(to, clock::Clock)
     KT = kernel_time_type(clock)
     DT = time_step_type(KT)
 
-    return (time          = clock_convert(KT, clock.time),
-            last_Δt       = clock_convert(DT, clock.last_Δt),
-            last_stage_Δt = clock_convert(DT, clock.last_stage_Δt),
-            iteration     = clock.iteration,
-            stage         = clock.stage)
+    return (time          = adapt(to, clock_convert(KT, clock.time)),
+            last_Δt       = adapt(to, clock_convert(DT, clock.last_Δt)),
+            last_stage_Δt = adapt(to, clock_convert(DT, clock.last_stage_Δt)),
+            iteration     = adapt(to, clock.iteration),
+            stage         = adapt(to, clock.stage))
 end
 
 """
