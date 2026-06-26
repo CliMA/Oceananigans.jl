@@ -131,9 +131,9 @@ end
     δy_V = δyᶜᶜᶜ(i, j, kᴺ, grid, Δx_qᶜᶠᶜ, barotropic_V, V, v)
 
     δh_U = (δx_U + δy_V) * Az⁻¹ᶜᶜᶜ(i, j, kᴺ, grid)
-    PE   = Fη(i, j, kᴺ+1, grid, clock, fields)
+    fη   = Fη(i, j, kᴺ+1, grid, clock, fields)
 
-    @inbounds ∂t_σ[i, j, 1] = ifelse(hᶜᶜ == 0, zero(grid), (- δh_U + PE) / hᶜᶜ)
+    @inbounds ∂t_σ[i, j, 1] = ifelse(hᶜᶜ == 0, zero(grid), (- δh_U + fη) / hᶜᶜ)
 end
 
 #####
