@@ -314,65 +314,69 @@ where `at_node` is a tuple of coordinates and and `from_loc = (ℓx, ℓy, ℓz)
 
 Note that this is a lower-level `interpolate` method defined for use in CPU/GPU kernels.
 """
-@inline function interpolate(at_node, from_field, from_loc, from_grid)
-    fractional_indices = FractionalIndices(at_node, from_grid, from_loc...)
-    return interpolate(fractional_indices, from_field, from_loc, from_grid)
-end
+@inline interpolate(at_node, from_field, from_loc, from_grid) =
+    interpolate(identity, at_node, from_field, from_loc, from_grid)
 
-@inline function interpolate(fidx::FractionalIndices, from_field, from_loc, from_grid)
-    ix = interpolator(fidx.i)
-    iy = interpolator(fidx.j)
-    iz = interpolator(fidx.k)
-    return _interpolate(from_field, ix, iy, iz)
-end
+@inline interpolate(fidx::FractionalIndices, from_field, from_loc, from_grid) =
+    interpolate(identity, fidx, from_field, from_loc, from_grid)
 
 # interpolator, _interpolate, and ϕ₁-ϕ₈ are imported from Oceananigans.Utils
 
 #####
-##### Interpolation of a mapped field: `interpolate(f, …)`
+##### Interpolation of a mapped field: `interpolate(func, …)`
 #####
 
-# Like `mean(f, itr)` / `sum(f, itr)`, a leading function `f` is applied to each source value
-# *before* the weighted blend; the result stays in `f`-space (no inverse is applied). With `f = log`
-# this blends log-values, so `exp(interpolate(log, …))` is a positivity-preserving, geometric-mean
-# interpolation — accurate for exponentially-varying fields (pressure, density). `f = identity`
-# reproduces the plain `interpolate` exactly. `f` is routed through the shared low-level blend
-# `_interpolate` (via a lazy mapped array) so `Field`s and `FieldTimeSeries` share one code path.
+# Like `mean(func, itr)` / `sum(func, itr)`, a leading function `func` is applied to each source value
+# *before* the weighted blend; the result stays in `func`-space (no inverse is applied). With
+# `func = log` this blends log-values, so `exp(interpolate(log, …))` is a positivity-preserving,
+# geometric-mean interpolation — accurate for exponentially-varying fields (pressure, density).
+# `func = identity` reproduces the plain `interpolate` exactly. `func` is routed through the shared
+# low-level blend `_interpolate` (via a lazy mapped array) so `Field`s and `FieldTimeSeries` share
+# one code path.
 
 """
-    MappedData(f, data)
+    MappedData(func, data)
 
-Lazily apply `f` elementwise to `data`: a read returns `f(data[I...])`. This lets the existing
-`_interpolate` blend `f`-mapped values without copying. GPU-safe when `f` is (`log`/`exp` are).
+Lazily apply `func` elementwise to `data`: a read returns `func(data[I...])`. This lets the existing
+`_interpolate` blend `func`-mapped values without copying. GPU-safe when `func` is (`log`/`exp` are).
 """
 struct MappedData{T, N, F, A} <: AbstractArray{T, N}
-    f    :: F
+    func :: F
     data :: A
 end
 
-@inline MappedData(f::F, data::A) where {F, A} =
-    MappedData{eltype(A), ndims(A), F, A}(f, data)
+@inline MappedData(func::F, data::A) where {F, A} =
+    MappedData{eltype(A), ndims(A), F, A}(func, data)
 
 @inline Base.size(m::MappedData) = size(m.data)
 @inline Base.axes(m::MappedData) = axes(m.data)
-@inline Base.getindex(m::MappedData, I::Vararg{Int}) = m.f(@inbounds m.data[I...])
+@inline Base.getindex(m::MappedData, I::Vararg{Int}) = m.func(@inbounds m.data[I...])
 
-Adapt.adapt_structure(to, m::MappedData) = MappedData(m.f, adapt(to, m.data))
+Adapt.adapt_structure(to, m::MappedData) = MappedData(m.func, adapt(to, m.data))
+
+# `func = identity` returns `data` unchanged, so the identity path is byte-identical to plain
+# `interpolate` and pays no wrapper overhead.
+@inline mapped_data(func, data) = MappedData(func, data)
+@inline mapped_data(::typeof(identity), data) = data
 
 """
 $(TYPEDSIGNATURES)
 
-Interpolate `from_field` `at_node` after mapping each source value through `f`, in the spirit of
-`mean(f, itr)`: `f` is applied to each value before the weighted blend and the result is returned in
-`f`-space (no inverse). With `f = log`, `exp(interpolate(log, …))` is a geometric-mean interpolation.
-`f = identity` reproduces `interpolate(at_node, from_field, …)`.
+Interpolate `from_field` `at_node` after mapping each source value through `func`, in the spirit of
+`mean(func, itr)`: `func` is applied to each value before the weighted blend and the result is returned
+in `func`-space (no inverse). With `func = log`, `exp(interpolate(log, …))` is a geometric-mean
+interpolation. `func = identity` reproduces `interpolate(at_node, from_field, …)`.
 """
-@inline function interpolate(f::Base.Callable, at_node, from_field, from_loc, from_grid)
+@inline function interpolate(func::Base.Callable, at_node, from_field, from_loc, from_grid)
     fidx = FractionalIndices(at_node, from_grid, from_loc...)
+    return interpolate(func, fidx, from_field, from_loc, from_grid)
+end
+
+@inline function interpolate(func::Base.Callable, fidx::FractionalIndices, from_field, from_loc, from_grid)
     ix = interpolator(fidx.i)
     iy = interpolator(fidx.j)
     iz = interpolator(fidx.k)
-    return _interpolate(MappedData(f, from_field), ix, iy, iz)
+    return _interpolate(mapped_data(func, from_field), ix, iy, iz)
 end
 
 """
