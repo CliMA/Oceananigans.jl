@@ -21,13 +21,20 @@ using Oceananigans.TimeSteppers:
 
 import Oceananigans.TimeSteppers: Clock, first_time_step!, time_step!,
                                   ab2_step!, maybe_prepare_first_time_step!,
-                                  materialize_clock!, convert_time
+                                  materialize_clock!, convert_time, constructor_update_state!
 import Oceananigans: initialize!
 
 const ReactantModel{TS} = Union{
     AbstractModel{TS, <:ReactantState},
     AbstractModel{TS, <:Distributed{<:ReactantState}}
 }
+
+# update_state! launches kernels that cannot be lowered outside a trace, so at
+# construction we compile and run it rather than launching it eagerly.
+function constructor_update_state!(model::ReactantModel)
+    @jit update_state!(model)
+    return nothing
+end
 
 function Clock(grid::ReactantGrid)
     FT = eltype(grid)

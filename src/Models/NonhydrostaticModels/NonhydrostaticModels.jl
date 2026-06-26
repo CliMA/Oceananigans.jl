@@ -25,7 +25,7 @@ using ..Models: initialize_boundary_transport
 import Oceananigans: fields, prognostic_fields
 import Oceananigans.Advection: cell_advection_timescale
 import Oceananigans.Simulations: timestepper
-import Oceananigans.TimeSteppers: step_lagrangian_particles!, update_state!
+import Oceananigans.TimeSteppers: step_lagrangian_particles!, update_state!, constructor_update_state!
 
 function nonhydrostatic_pressure_solver(::Distributed, local_grid::XYZRegularRG, ::Nothing)
     global_grid = reconstruct_global_grid(local_grid)

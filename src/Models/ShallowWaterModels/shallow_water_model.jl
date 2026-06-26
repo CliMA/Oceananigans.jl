@@ -11,7 +11,7 @@ using Oceananigans.Grids: topology, Flat, architecture, RectilinearGrid, Center
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models: validate_model_halo, validate_tracer_advection
 using Oceananigans.Advection: materialize_advection
-using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!
+using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, constructor_update_state!
 using Oceananigans.TurbulenceClosures: with_tracers, build_closure_fields
 using Oceananigans.Utils: tupleit
 
@@ -225,7 +225,7 @@ function ShallowWaterModel(grid;
                               timestepper,
                               formulation)
 
-    update_state!(model)
+    constructor_update_state!(model)
 
     return model
 end

@@ -37,6 +37,11 @@ step_closure_prognostics!(model, Δt) = nothing
 # Reconcile auxiliary state with prognostic fields (fallback is a no-op).
 reconcile_state!(model) = nothing
 
+# Run the state update at construction (and other eager, outside-compile sites).
+# Overridden for Reactant models, where update_state! must be compiled rather
+# than launched eagerly.
+constructor_update_state!(model, callbacks=[]) = update_state!(model, callbacks)
+
 # Prepare the model for the first time step, in case run! is not used.
 function maybe_prepare_first_time_step!(model, Δt, callbacks)
     if model.clock.iteration == 0

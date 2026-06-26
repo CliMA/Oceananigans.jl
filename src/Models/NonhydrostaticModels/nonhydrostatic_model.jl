@@ -306,7 +306,7 @@ function NonhydrostaticModel(grid;
                                 pressures, closure_fields, timestepper, pressure_solver, auxiliary_fields, boundary_transport)
 
     materialize_clock!(clock, timestepper)
-    update_state!(model)
+    constructor_update_state!(model)
     initialize_closure_fields!(model.closure_fields, model.closure, model)
 
     return model
