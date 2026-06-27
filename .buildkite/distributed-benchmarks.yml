@@ -36,34 +36,52 @@ steps:
 
   - wait
 
-  - label: "🚀 Run distributed benchmarks"
-    key: "benchmarks"
+  - label: "🚀 Default baseline (1 rank)"
+    key: "baseline"
     command: |
-      # Default configuration (360x180x50, tripolar, F64, WENOVectorInvariant + WENO7, CATKE)
-      # run across three rank partitionings of the same global problem.
+      # Single-process baseline of the default configuration (360x180x50, tripolar, F64,
+      # WENOVectorInvariant + WENO7, CATKE) on one central GPU.
+      julia $JULIA_ARGS $BENCHMARK_SCRIPT --device=GPU --size=360x180x50 --group="Default" --output=benchmark_results_default.json --clear
+    agents:
+      slurm_mem: 100G
+      slurm_ntasks: 1
+      slurm_gpus_per_task: 1
+    timeout_in_minutes: 5440
+    artifact_paths:
+      - "benchmark_results_default.json"
+      - "benchmark_results_default.md"
+    retry:
+      automatic:
+        - exit_status: 1
+          limit: 1
+
+  - label: "🚀 Distributed partitions (4 ranks)"
+    key: "partitions"
+    command: |
+      # The same default configuration partitioned three ways across 4 ranks.
 
       echo "========================================"
       echo "  Partition 1x4 (4 ranks)"
       echo "========================================"
-      srun julia $JULIA_ARGS $BENCHMARK_SCRIPT --distributed --device=GPU --partition=1x4x1 --size=360x180x50 --group="1x4" --output=$OUTPUT_FILE --clear
+      srun julia $JULIA_ARGS $BENCHMARK_SCRIPT --distributed --device=GPU --partition=1x4x1 --size=360x180x50 --group="1x4" --output=benchmark_results_distributed.json --clear
 
       echo "========================================"
       echo "  Partition 4x1 (4 ranks)"
       echo "========================================"
-      srun julia $JULIA_ARGS $BENCHMARK_SCRIPT --distributed --device=GPU --partition=4x1x1 --size=360x180x50 --group="4x1" --output=$OUTPUT_FILE
+      srun julia $JULIA_ARGS $BENCHMARK_SCRIPT --distributed --device=GPU --partition=4x1x1 --size=360x180x50 --group="4x1" --output=benchmark_results_distributed.json
 
       echo "========================================"
       echo "  Partition 2x2 (4 ranks)"
       echo "========================================"
-      srun julia $JULIA_ARGS $BENCHMARK_SCRIPT --distributed --device=GPU --partition=2x2x1 --size=360x180x50 --group="2x2" --output=$OUTPUT_FILE
+      srun julia $JULIA_ARGS $BENCHMARK_SCRIPT --distributed --device=GPU --partition=2x2x1 --size=360x180x50 --group="2x2" --output=benchmark_results_distributed.json
     agents:
       slurm_mem: 150G
       slurm_ntasks: 4
       slurm_gpus_per_task: 1
     timeout_in_minutes: 5440
     artifact_paths:
-      - "benchmark_results.json"
-      - "benchmark_results.md"
+      - "benchmark_results_distributed.json"
+      - "benchmark_results_distributed.md"
     retry:
       automatic:
         - exit_status: 1
@@ -77,11 +95,13 @@ steps:
       slurm_mem: 8G
       slurm_ntasks: 1
     command: |
-      # Download all artifacts from this build
-      buildkite-agent artifact download "*.json" .
-      buildkite-agent artifact download "*.md" . || true
+      # Download per-step results and merge into the canonical benchmark_results.json
+      buildkite-agent artifact download "benchmark_results_*.json" .
+      buildkite-agent artifact download "benchmark_results_*.md" . || true
 
       MERGED="benchmark_results.json"
+      jq -s 'add' benchmark_results_default.json benchmark_results_distributed.json > \$MERGED
+      cat benchmark_results_default.md benchmark_results_distributed.md > benchmark_results.md 2>/dev/null || true
       echo "Total benchmark entries: \$(jq length \$MERGED)"
 
       # Fetch latest passing main build for comparison (same pipeline)
@@ -105,12 +125,12 @@ steps:
           # Compare PR vs main per partition (rank 0 is representative). Smaller time/step is better.
           echo "# Distributed Benchmark Comparison: PR vs Main" > benchmark_comparison.md
           echo "" >> benchmark_comparison.md
-          echo "| Partition | PR (ms/step) | Main (ms/step) | Change |" >> benchmark_comparison.md
-          echo "|-----------|--------------|----------------|--------|" >> benchmark_comparison.md
+          echo "| Run | PR (ms/step) | Main (ms/step) | Change |" >> benchmark_comparison.md
+          echo "|-----|--------------|----------------|--------|" >> benchmark_comparison.md
 
           jq -r --slurpfile main baseline_benchmark_results.json '
-            (\$main[0] | map(select(.rank == 0)) | map({(.group): .time_per_step_seconds}) | add // {}) as \$baseline |
-            map(select(.rank == 0)) |
+            (\$main[0] | map(select((.rank // 0) == 0)) | map({(.group): .time_per_step_seconds}) | add // {}) as \$baseline |
+            map(select((.rank // 0) == 0)) |
             .[] |
             .group as \$grp |
             (.time_per_step_seconds * 1000) as \$pr_ms |

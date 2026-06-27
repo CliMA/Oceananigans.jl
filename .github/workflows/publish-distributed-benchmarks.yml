@@ -6,7 +6,9 @@ on:
     types: [distributed_benchmarks_complete]
 
 concurrency:
-  group: ${{ github.workflow }}-${{ github.event.client_payload.branch }}
+  # On main, share one group with the serial publisher so they can't push data.js at once.
+  # On PRs they only comment, so keep them independent (own group per workflow).
+  group: ${{ github.event.client_payload.branch == 'main' && 'benchmarks-publish-main' || format('{0}-{1}', github.workflow, github.event.client_payload.branch) }}
   cancel-in-progress: ${{ github.event.client_payload.branch != 'main' }}
 
 jobs:
@@ -69,54 +71,48 @@ jobs:
         run: |
           import json, glob
 
-          # Load benchmark results (one entry per rank, grouped per partition)
           all_data = []
           for path in sorted(glob.glob("artifacts/**/benchmark_results.json", recursive=True)):
               with open(path) as f:
                   all_data.extend(json.load(f))
 
-          # Save merged results
           with open("benchmark_results_merged.json", "w") as f:
               json.dump(all_data, f, ensure_ascii=False, indent=2)
+
+          # The dashboard groups charts by a 4-level name: group / chart / device / line.
+          # Put the baseline ("Default") and the three partitions on a single chart by
+          # sharing group + chart + device and varying only the final segment.
+          GROUP = "Default Distributed"
+          CHART = "tripolar 360×180×50 F64"
 
           def gpu_name(d):
               return d.get("metadata", {}).get("gpu_name", "GPU")
 
-          # One chart per partition: rank 0 is representative of the synchronized step time.
-          # We also chart the aggregate throughput (sum of per-rank grid points per second).
+          # rank 0 is representative of the synchronized step time; the non-distributed
+          # baseline has no rank field (treated as rank 0).
           data = []
           seen = set()
           for d in all_data:
-              if d.get("rank", 0) != 0:
+              if (d.get("rank") or 0) != 0:
                   continue
-              group = d.get("group", "Distributed")
+              variant = d.get("group", "Default")
               gpu = gpu_name(d)
-              key = (group, gpu)
+              key = (variant, gpu)
               if key in seen:
                   continue
               seen.add(key)
               data.append({
-                  "name": f"Distributed/{group}/{gpu}",
+                  "name": f"{GROUP}/{CHART}/{gpu}/{variant}",
                   "unit": "s/timestep",
                   "value": d["time_per_step_seconds"],
               })
 
-          # Aggregate throughput per partition (sum of per-rank local throughput)
-          throughput = {}
-          for d in all_data:
-              group = d.get("group", "Distributed")
-              gpu = gpu_name(d)
-              throughput.setdefault((group, gpu), 0.0)
-              throughput[(group, gpu)] += d["grid_points_per_second"]
-
           with open("github-action-benchmark.json", "w") as f:
               json.dump(data, f, indent=2)
 
-          print(f"Transformed {len(data)} distributed benchmark entries for visualization")
+          print(f"Transformed {len(data)} entries for the Default Distributed chart")
           for d in data:
               print(f"  {d['name']}: {d['value']:.4g} {d['unit']}")
-          for (group, gpu), tps in throughput.items():
-              print(f"  aggregate throughput {group} ({gpu}): {tps:.3e} points/s")
 
       - name: Create job summary
         if: ${{ steps.locate.outputs.path != '' }}
@@ -156,14 +152,16 @@ jobs:
           git commit -m "Save distributed benchmark results for commit ${COMMIT}"
           git push -u origin main
 
-      # For main branch: push results to external benchmarks repo (distributed data dir)
+      # For main branch: push results to external benchmarks repo.
+      # Same suite name + root data dir as the serial flow so the "Default Distributed"
+      # chart lands on the existing dashboard (which renders only the first suite).
       - uses: benchmark-action/github-action-benchmark@v1
         if: ${{ github.event.client_payload.branch == 'main' && steps.locate.outputs.path != '' }}
         with:
-          name: Oceananigans.jl Distributed Benchmarks
+          name: Oceananigans.jl Benchmarks
           tool: "customSmallerIsBetter"
           output-file-path: "github-action-benchmark.json"
-          benchmark-data-dir-path: "distributed"
+          benchmark-data-dir-path: "."
           gh-repository: "github.com/NumericalEarth/OceananigansBenchmarks"
           github-token: ${{ secrets.BENCHMARKS_TOKEN }}
           ref: ${{ github.event.client_payload.commit }}
