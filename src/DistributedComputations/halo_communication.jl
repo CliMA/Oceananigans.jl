@@ -74,8 +74,6 @@ end
 ##### Filling halos for halo communication boundary conditions
 #####
 
-# The communication buffers and the boundary-condition `args` (e.g. `clock`, `fields(model)`) are bundled into a
-# single tuple that is threaded by reference through the whole distributed halo machinery.
 fill_halo_regions!(field::DistributedField, args...; kwargs...) =
     fill_halo_regions!(field.data,
                        field.boundary_conditions,
