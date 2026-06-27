@@ -75,6 +75,7 @@ synchronize_communication!(::AbstractField) = nothing
 synchronize_communication!(::AbstractArray) = nothing
 synchronize_communication!(::Number)        = nothing
 synchronize_communication!(::Nothing)       = nothing
+synchronize_communication!(::Tuple{})       = nothing
 
 # Distribute synchronize_communication! over tuples and named tuples
 synchronize_communication!(nt::NamedTuple) = synchronize_communication!(values(nt))
