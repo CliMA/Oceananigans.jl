@@ -24,7 +24,7 @@ complete_communication_and_compute_buffer!(model, grid, arch) = nothing
 compute_buffer_tendencies!(model) = nothing
 
 """ Kernel parameters for computing interior tendencies. """
-interior_tendency_kernel_parameters(arch, grid) = :xyz # fallback
+interior_tendency_kernel_parameters(arch, grid) = KernelParameters(size(grid), map(zero, size(grid))) # fallback
 
 function interior_tendency_kernel_parameters(arch::AsynchronousDistributed, grid)
     Rx, Ry, _ = arch.ranks
