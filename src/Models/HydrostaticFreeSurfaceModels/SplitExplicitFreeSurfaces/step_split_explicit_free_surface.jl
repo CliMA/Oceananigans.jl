@@ -163,19 +163,14 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
         # argument conversion to GPU-compatible values. To alleviate this penalty we convert first and then we substep!
         converted_U_args = convert_to_device(arch, U_args)
         converted_η_args = convert_to_device(arch, η_args)
-        iterate_split_explicit_substeps!(barotropic_velocity_kernel!, free_surface_kernel!, converted_U_args, converted_η_args, weights, transport_weights, Val(Nsubsteps))
-    end
 
-    return nothing
-end
+        @unroll for substep in 1:Nsubsteps
+            @inbounds averaging_weight = weights[substep]
+            @inbounds transport_weight = transport_weights[substep]
 
-@noinline function iterate_split_explicit_substeps!(barotropic_velocity_kernel!, free_surface_kernel!, converted_U_args, converted_η_args, weights, transport_weights, ::Val{Nsubsteps}) where Nsubsteps
-    @unroll for substep in 1:Nsubsteps
-        @inbounds averaging_weight = weights[substep]
-        @inbounds transport_weight = transport_weights[substep]
-
-        barotropic_velocity_kernel!(transport_weight, converted_U_args...)
-        free_surface_kernel!(averaging_weight, converted_η_args...)
+            barotropic_velocity_kernel!(transport_weight, converted_U_args...)
+            free_surface_kernel!(averaging_weight, converted_η_args...)
+        end
     end
 
     return nothing
