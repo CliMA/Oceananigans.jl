@@ -176,8 +176,7 @@ end
 cooperative_wait(req::MPI.Request)            = MPI.Waitall(req)
 cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
 
-# Fallback: for serial boundary conditions fall back to `fill_halo_event!`, splatting the boundary-condition args
-# (`args` is `(buffers, bc_args...)`; `Base.tail` prunes the distributed-only `buffers`).
+# Fallback: for serial boundary conditions `Base.tail` prunes the distributed-only `buffers`.
 distributed_fill_halo_event!(c, kernel!, bcs, loc, grid::DistributedGrid, args::Tuple; kwargs...) =
     fill_halo_event!(c, kernel!, bcs, loc, grid, Base.tail(args)...; kwargs...)
 
