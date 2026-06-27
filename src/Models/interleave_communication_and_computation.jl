@@ -26,16 +26,21 @@ compute_buffer_tendencies!(model) = nothing
 """ Kernel parameters for computing interior tendencies. """
 interior_tendency_kernel_parameters(arch, grid) = KernelParameters(size(grid), map(zero, size(grid))) # fallback
 
+@inline local_dimension(T) = T == Bounded            || 
+                             T == Periodic           || 
+                             T == Flat               || 
+                             T == RightFaceConnected || 
+                             T == RightCenterConnected
+
 function interior_tendency_kernel_parameters(arch::AsynchronousDistributed, grid)
-    Rx, Ry, _ = arch.ranks
     Hx, Hy, _ = halo_size(grid)
     Tx, Ty, _ = topology(grid)
     Wx, Wy, Wz = worksize(grid)
 
-    # Kernel parameters to compute the tendencies in all the interior if the direction is local (`R == 1`) and only in
+    # Kernel parameters to compute the tendencies in all the interior if the direction is local and only in
     # the part of the domain that does not depend on the halo cells if the direction is partitioned.
-    local_x = Rx == 1
-    local_y = Ry == 1
+    local_x = local_dimension(Tx)
+    local_y = local_dimension(Ty)
     one_sided_x = Tx == RightConnected || Tx == LeftConnected
     one_sided_y = Ty == RightConnected || Ty == LeftConnected
 
@@ -57,8 +62,8 @@ function interior_tendency_kernel_parameters(arch::AsynchronousDistributed, grid
     end
 
     # Offsets
-    Ox = Rx == 1 || Tx == RightConnected ? 0 : Hx
-    Oy = Ry == 1 || Ty == RightConnected ? 0 : Hy
+    Ox = local_x || Tx == RightConnected ? 0 : Hx
+    Oy = local_y || Ty == RightConnected ? 0 : Hy
 
     sizes = (Sx, Sy, Wz)
     offsets = (Ox, Oy, 0)

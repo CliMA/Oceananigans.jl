@@ -1,6 +1,7 @@
 using Oceananigans.TurbulenceClosures: required_halo_size_x, required_halo_size_y
 using Oceananigans.Grids: XFlatGrid, YFlatGrid
 using Oceananigans.Utils: worksize
+using Oceananigans.Models: local_dimension
 
 # TODO: the code in this file is difficult to understand.
 # Rewriting it may be helpful.
@@ -70,17 +71,19 @@ function buffer_κ_kernel_parameters(grid, closure, arch)
     return buffer_parameters(params, grid, arch)
 end
 
-# Recompute only on communicating sides
+# Recompute only on communicating sides.
 function buffer_parameters(parameters, grid, arch)
-    Rx, Ry, _ = arch.ranks
     Tx, Ty, _ = topology(grid)
 
-    include_west  = !isa(grid, XFlatGrid) && (Rx != 1) && !(Tx == RightConnected)
-    include_east  = !isa(grid, XFlatGrid) && (Rx != 1) && !(Tx == LeftConnected)
-    include_south = !isa(grid, YFlatGrid) && (Ry != 1) && !(Ty == RightConnected)
-    include_north = !isa(grid, YFlatGrid) && (Ry != 1) && !(Ty == LeftConnected)
+    include_west  = !local_dimension(Tx) && !(Tx == RightConnected)
+    include_east  = !local_dimension(Tx) && !(Tx == LeftConnected)
+    include_south = !local_dimension(Ty) && !(Ty == RightConnected)
+    include_north = !local_dimension(Ty) && !(Ty == LeftConnected)
 
-    include_side = (include_west, include_east, include_south, include_north)
+    west  = include_west  ? (KernelParameters(parameters[1]...),) : ()
+    east  = include_east  ? (KernelParameters(parameters[2]...),) : ()
+    south = include_south ? (KernelParameters(parameters[3]...),) : ()
+    north = include_north ? (KernelParameters(parameters[4]...),) : ()
 
-    return Tuple(KernelParameters(parameters[i]...) for i in findall(include_side))
+    return (west..., east..., south..., north...)
 end
