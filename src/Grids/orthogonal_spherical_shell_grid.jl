@@ -1,6 +1,6 @@
 const AHCG = AbstractHorizontallyCurvilinearGrid
 
-struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, FT2, Nx, Ny, Nz} <: AHCG{FT, TX, TY, TZ, Z, Arch}
+struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, FT2, Sz} <: AHCG{FT, TX, TY, TZ, Z, Arch}
     architecture :: Arch
        Nx :: Int
        Ny :: Int
@@ -47,7 +47,7 @@ function OrthogonalSphericalShellGrid{FT, TX, TY, TZ}(architecture::Arch,
                                                   radius :: FT2,
                                                   conformal_mapping :: Map) where {TX, TY, TZ, FT, Z, Map,
                                                                                    CC, FC, CF, FF, Arch, FT2}
-    return OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, FT2, Nx, Ny, Nz}(architecture,
+    return OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, FT2, GridSize{Nx, Ny, Nz, Hx, Hy, Hz}}(architecture,
                                                   Nx, Ny, Nz,
                                                   Hx, Hy, Hz,
                                                   Lz,
@@ -60,10 +60,15 @@ function OrthogonalSphericalShellGrid{FT, TX, TY, TZ}(architecture::Arch,
                                                   conformal_mapping)
 end
 
-# Read the grid size from the trailing type parameters so `size(grid)` is a compile-time constant.
+# Read size and halo from the trailing `GridSize` type parameter so both are compile-time constants.
 @generated function Base.size(grid::OrthogonalSphericalShellGrid)
-    Nx, Ny, Nz = grid.parameters[end-2], grid.parameters[end-1], grid.parameters[end]
-    return :(($Nx, $Ny, $Nz))
+    sz = grid.parameters[end].parameters
+    return :(($(sz[1]), $(sz[2]), $(sz[3])))
+end
+
+@generated function halo_size(grid::OrthogonalSphericalShellGrid)
+    sz = grid.parameters[end].parameters
+    return :(($(sz[4]), $(sz[5]), $(sz[6])))
 end
 
 function OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture::Arch,

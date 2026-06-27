@@ -87,8 +87,7 @@ The specific implementation of `ab2_step!` varies by model type (e.g., `Nonhydro
 includes a pressure correction step, while `HydrostaticFreeSurfaceModel` handles the
 free surface and barotropic mode).
 """
-function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt;
-                    callbacks=[], euler=false)
+function time_step!(model::AbstractModel{<:QuasiAdamsBashforth2TimeStepper}, Δt; callbacks=[], euler=false)
 
     Δt == 0 && @warn "Δt == 0 may cause model blowup!"
 

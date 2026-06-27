@@ -49,31 +49,29 @@ If CATKE or TD closures are active, their prognostic tracers (`e`, `ϵ`) are ski
 For `ExplicitFreeSurface`, the free surface tendency is also cached.
 """
 function cache_previous_tendencies!(model::HydrostaticFreeSurfaceModel)
-    prognostic_field_names = keys(prognostic_fields(model))
-    three_dimensional_prognostic_field_names = filter(name -> name != :η, prognostic_field_names)
-
-    closure = model.closure
-    catke_in_closures = hasclosure(closure, FlavorOfCATKE)
-    td_in_closures    = hasclosure(closure, FlavorOfTD)
-
-    for field_name in three_dimensional_prognostic_field_names
-
-        if catke_in_closures && field_name == :e
-            @debug "Skipping store tendencies for e"
-        elseif td_in_closures && field_name == :ϵ
-            @debug "Skipping store tendencies for ϵ"
-        elseif td_in_closures && field_name == :e
-            @debug "Skipping store tendencies for e"
-        else
-            launch!(model.architecture, model.grid, :xyz,
-                    _cache_field_tendencies!,
-                    model.timestepper.G⁻[field_name],
-                    model.timestepper.Gⁿ[field_name])
-        end
-    end
-
+    cache_prognostic_field_tendencies!(model, Val(keys(prognostic_fields(model))))
     cache_free_surface_tendency!(model.free_surface, model)
+    return nothing
+end
 
+@inline cache_prognostic_field_tendencies!(model, ::Val{()}) = nothing
+
+@inline function cache_prognostic_field_tendencies!(model, ::Val{names}) where names
+    cache_prognostic_field_tendency!(model, Val(first(names)))
+    cache_prognostic_field_tendencies!(model, Val(Base.tail(names)))
+    return nothing
+end
+
+@inline function cache_prognostic_field_tendency!(model, ::Val{field_name}) where field_name
+    closure = model.closure
+    skip = field_name == :η ||
+           (hasclosure(closure, FlavorOfCATKE) && field_name == :e) ||
+           (hasclosure(closure, FlavorOfTD) && (field_name == :ϵ || field_name == :e))
+    skip && return nothing
+    launch!(model.architecture, model.grid, :xyz,
+            _cache_field_tendencies!,
+            model.timestepper.G⁻[field_name],
+            model.timestepper.Gⁿ[field_name])
     return nothing
 end
 

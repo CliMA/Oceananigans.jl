@@ -90,6 +90,7 @@ const IBG = ImmersedBoundaryGrid
 @inline architecture(ibg::IBG) = architecture(ibg.underlying_grid)
 
 @inline Base.size(ibg::IBG) = size(ibg.underlying_grid)
+@inline Grids.halo_size(ibg::IBG) = halo_size(ibg.underlying_grid)
 
 @inline x_domain(ibg::IBG) = x_domain(ibg.underlying_grid)
 @inline y_domain(ibg::IBG) = y_domain(ibg.underlying_grid)

@@ -61,13 +61,9 @@ end
 @inline isregional(a)                   = false
 @inline isregional(::MultiRegionObject) = true
 
-@inline isregional(t::Tuple{}) = false
-@inline isregional(nt::NT) where NT<:NamedTuple{(), Tuple{}} = false
-
-@inline function isregional(t::Union{Tuple, NamedTuple})
-    idx = findfirst(isregional, t)
-    return !isnothing(idx)
-end
+@inline isregional(::Tuple{}) = false
+@inline isregional(t::Tuple) = isregional(first(t)) || isregional(Base.tail(t))
+@inline isregional(nt::NamedTuple) = isregional(values(nt))
 
 @inline regions(t::Union{Tuple, NamedTuple}) = regions(first(t))
 @inline regions(mo::MultiRegionObject) = 1:length(mo.regional_objects)
@@ -82,9 +78,12 @@ Architectures.on_architecture(arch, mo::MultiRegionObject) = MultiRegionObject(o
 
 # For non-returning functions -> can we make it NON BLOCKING? This seems to be synchronous!
 @inline function apply_regionally!(regional_func!, args...; kwargs...)
-    multi_region_args   = isnothing(findfirst(isregional, args))   ? nothing : args[findfirst(isregional, args)]
-    multi_region_kwargs = isnothing(findfirst(isregional, kwargs)) ? nothing : kwargs[findfirst(isregional, kwargs)]
-    isnothing(multi_region_args) && isnothing(multi_region_kwargs) && return regional_func!(args...; kwargs...)
+    regional_in_args   = isregional(args)
+    regional_in_kwargs = isregional(values(kwargs))
+    regional_in_args || regional_in_kwargs || return regional_func!(args...; kwargs...)
+
+    multi_region_args   = regional_in_args   ? args[findfirst(isregional, args)]     : nothing
+    multi_region_kwargs = regional_in_kwargs ? kwargs[findfirst(isregional, kwargs)] : nothing
 
     R = isnothing(multi_region_args) ? regions(multi_region_kwargs) : regions(multi_region_args)
 

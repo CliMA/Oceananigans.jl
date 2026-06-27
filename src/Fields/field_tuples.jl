@@ -49,27 +49,17 @@ const FullField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple{<:Colon, <:Co
 """
 $(TYPEDSIGNATURES)
 
-Fill halo regions for all `fields`. The algorithm:
-
-  1. Flattens fields, extracting `values` if the field is `NamedTuple`, and removing
-     duplicate entries to avoid "repeated" halo filling.
-
-  2. Filters fields into three categories:
-     i. ReducedFields with non-trivial boundary conditions;
-     ii. Fields with non-trivial indices and boundary conditions;
-     iii. Fields spanning the whole grid with non-trivial boundary conditions.
-
-  3. Halo regions for every `ReducedField` and windowed fields are filled independently.
-
-  4. In every direction, the halo regions in each of the remaining `Field` tuple
-     are filled simultaneously.
+Fill halo regions for every field in `fields`. Recurses over the tuple so each field is
+filled at its concrete type: iterating a heterogeneous tuple with a runtime index instead
+makes the dispatch type-unstable and heap-allocates the kernel arguments on every field.
 """
-function BoundaryConditions.fill_halo_regions!(fields::Union{NamedTuple, Tuple}, args...; kwargs...)
+@inline BoundaryConditions.fill_halo_regions!(fields::NamedTuple, args...; kwargs...) = fill_halo_regions!(values(fields), args...; kwargs...)
 
-    for i in eachindex(fields)
-        @inbounds fill_halo_regions!(fields[i], args...; kwargs...)
-    end
+@inline BoundaryConditions.fill_halo_regions!(::Tuple{}, args...; kwargs...) = nothing
 
+@inline function BoundaryConditions.fill_halo_regions!(fields::Tuple, args...; kwargs...)
+    fill_halo_regions!(first(fields), args...; kwargs...)
+    fill_halo_regions!(Base.tail(fields), args...; kwargs...)
     return nothing
 end
 
