@@ -164,9 +164,9 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
     ℓy = instantiate(LY)
     ℓz = instantiate(LZ)
 
-    ox = periphery_offset(ℓx, grid, 1)
-    oy = periphery_offset(ℓy, grid, 2)
-    oz = periphery_offset(ℓz, grid, 3)
+    ox = periphery_offset(ℓx, grid, Val(1))
+    oy = periphery_offset(ℓy, grid, Val(2))
+    oz = periphery_offset(ℓz, grid, Val(3))
 
     Wx, Wy, Wz = (Fx-ox, Fy-oy, Fz-oz)
     workgroup = StaticSize(heuristic_workgroup(Wx, Wy, Wz))
