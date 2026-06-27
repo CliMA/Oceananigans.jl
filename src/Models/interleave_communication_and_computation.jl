@@ -1,7 +1,7 @@
 using Oceananigans: prognostic_fields
 using Oceananigans.Grids
 using Oceananigans.Utils: KernelParameters, worksize
-using Oceananigans.Grids: halo_size, topology, architecture
+using Oceananigans.Grids: halo_size, topology, architecture, Bounded, Periodic, Flat, RightFaceFolded, RightCenterFolded
 using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: DistributedGrid
 using Oceananigans.DistributedComputations: synchronize_communication!, AsynchronousDistributed
@@ -26,11 +26,11 @@ compute_buffer_tendencies!(model) = nothing
 """ Kernel parameters for computing interior tendencies. """
 interior_tendency_kernel_parameters(arch, grid) = KernelParameters(size(grid), map(zero, size(grid))) # fallback
 
-@inline local_dimension(T) = T == Bounded            || 
-                             T == Periodic           || 
-                             T == Flat               || 
-                             T == RightFaceConnected || 
-                             T == RightCenterConnected
+@inline local_dimension(T) = T == Bounded           || 
+                             T == Periodic          || 
+                             T == Flat              || 
+                             T == RightFaceFolded   || 
+                             T == RightCenterFolded
 
 function interior_tendency_kernel_parameters(arch::AsynchronousDistributed, grid)
     Hx, Hy, _ = halo_size(grid)
