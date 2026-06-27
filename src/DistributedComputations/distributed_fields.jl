@@ -77,8 +77,14 @@ synchronize_communication!(::Number)        = nothing
 synchronize_communication!(::Nothing)       = nothing
 
 # Distribute synchronize_communication! over tuples and named tuples
-synchronize_communication!(t::Union{NamedTuple, Tuple}) = foreach(synchronize_communication!, t)
+synchronize_communication!(nt::NamedTuple) = synchronize_communication!(values(nt))
 
+function synchronize_communication!(t::Tuple)
+    synchronize_communication!(first(t))
+    synchronize_communication!(Base.tail(t))
+    return nothing
+end
+    
 """
 $(TYPEDSIGNATURES)
 
