@@ -347,8 +347,6 @@ end
         return nothing
     end
 
-    # Instantiated location (instances, not the `DataType`-widened location *types*): `interior_work_layout`'s
-    # `periphery_offset` dispatches on it, and instantiating a widened `DataType` is a runtime dynamic call.
     location = Oceananigans.instantiated_location(first_kernel_arg)
 
     loop!, worksize = configure_kernel(arch, grid, workspec, kernel!, active_map, Val(exclude_periphery);
