@@ -157,12 +157,8 @@ For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 @inline select_dims(::Val{:xz},  x, y, z) = (x, z)
 @inline select_dims(::Val{:yz},  x, y, z) = (y, z)
 
-@inline function interior_work_layout(grid, workdims::Val, (LX, LY, LZ))
+@inline function interior_work_layout(grid, workdims::Val, (ℓx, ℓy, ℓz))
     Fx, Fy, Fz = worksize(grid)
-
-    ℓx = instantiate(LX)
-    ℓy = instantiate(LY)
-    ℓz = instantiate(LZ)
 
     ox = periphery_offset(ℓx, grid, Val(1))
     oy = periphery_offset(ℓy, grid, Val(2))
@@ -199,7 +195,6 @@ end
     workgroup = heuristic_workgroup(worksize...)
     return StaticSize(workgroup), StaticSize(worksize)
 end
-
 
 @inline function offset_work_layout(grid, ::KernelParameters{spec, offsets}, reduced_dimensions) where {spec, offsets}
     workgroup, worksize = work_layout(grid, spec, reduced_dimensions)
@@ -352,7 +347,9 @@ end
         return nothing
     end
 
-    location = Oceananigans.location(first_kernel_arg)
+    # Instantiated location (instances, not the `DataType`-widened location *types*): `interior_work_layout`'s
+    # `periphery_offset` dispatches on it, and instantiating a widened `DataType` is a runtime dynamic call.
+    location = Oceananigans.instantiated_location(first_kernel_arg)
 
     loop!, worksize = configure_kernel(arch, grid, workspec, kernel!, active_map, Val(exclude_periphery);
                                        location,
