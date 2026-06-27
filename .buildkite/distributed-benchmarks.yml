@@ -1,0 +1,156 @@
+agents:
+  queue: central
+  slurm_mem: 8G
+  modules: climacommon/2025_07_30
+
+env:
+  JULIA_DEPOT_PATH: "${BUILDKITE_BUILD_PATH}/${BUILDKITE_PIPELINE_SLUG}/depot/default:"
+  OPENBLAS_NUM_THREADS: 1
+  JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
+  JULIA_NUM_PRECOMPILE_TASKS: 8
+  OMPI_MCA_opal_warn_on_missing_libcuda: 0
+  DATADEPS_ALWAYS_ACCEPT: true
+  JULIA_ARGS: "--color=yes --project=benchmarking --check-bounds=no"
+  BENCHMARK_SCRIPT: "benchmarking/run_benchmarks.jl"
+  OUTPUT_FILE: "benchmark_results.json"
+
+steps:
+  - label: "🏕️ Initialize benchmarking environment"
+    key: "init"
+    env:
+      TEST_GROUP: "init"
+    command:
+      - echo "--- Instantiate benchmarking project"
+      - julia $JULIA_ARGS -e 'using Pkg; Pkg.instantiate()'
+      - echo "--- Pre-download bathymetry data"
+      - julia $JULIA_ARGS -e 'using OceananigansBenchmarks, DataDeps; datadep"benchmark_bathymetry"'
+    agents:
+      slurm_mem: 50G
+      slurm_ntasks: 1
+      slurm_gpus_per_task: 1
+    timeout_in_minutes: 5440
+    retry:
+      automatic:
+        - exit_status: 1
+          limit: 1
+
+  - wait
+
+  - label: "🚀 Run distributed benchmarks"
+    key: "benchmarks"
+    command: |
+      # Default configuration (360x180x50, tripolar, F64, WENOVectorInvariant + WENO7, CATKE)
+      # run across three rank partitionings of the same global problem.
+
+      echo "========================================"
+      echo "  Partition 1x4 (4 ranks)"
+      echo "========================================"
+      srun julia $JULIA_ARGS $BENCHMARK_SCRIPT --distributed --device=GPU --partition=1x4x1 --size=360x180x50 --group="1x4" --output=$OUTPUT_FILE --clear
+
+      echo "========================================"
+      echo "  Partition 4x1 (4 ranks)"
+      echo "========================================"
+      srun julia $JULIA_ARGS $BENCHMARK_SCRIPT --distributed --device=GPU --partition=4x1x1 --size=360x180x50 --group="4x1" --output=$OUTPUT_FILE
+
+      echo "========================================"
+      echo "  Partition 2x2 (4 ranks)"
+      echo "========================================"
+      srun julia $JULIA_ARGS $BENCHMARK_SCRIPT --distributed --device=GPU --partition=2x2x1 --size=360x180x50 --group="2x2" --output=$OUTPUT_FILE
+    agents:
+      slurm_mem: 150G
+      slurm_ntasks: 4
+      slurm_gpus_per_task: 1
+    timeout_in_minutes: 5440
+    artifact_paths:
+      - "benchmark_results.json"
+      - "benchmark_results.md"
+    retry:
+      automatic:
+        - exit_status: 1
+          limit: 1
+
+  - wait
+
+  - label: "📊 Compare with main"
+    key: "merge-compare"
+    agents:
+      slurm_mem: 8G
+      slurm_ntasks: 1
+    command: |
+      # Download all artifacts from this build
+      buildkite-agent artifact download "*.json" .
+      buildkite-agent artifact download "*.md" . || true
+
+      MERGED="benchmark_results.json"
+      echo "Total benchmark entries: \$(jq length \$MERGED)"
+
+      # Fetch latest passing main build for comparison (same pipeline)
+      MAIN_BUILD_JSON=\$(curl -s -H "Authorization: Bearer ${BUILDKITE_API_TOKEN}" \
+        "https://api.buildkite.com/v2/organizations/clima/pipelines/${BUILDKITE_PIPELINE_SLUG}/builds?branch=main&state=passed&per_page=1")
+
+      MAIN_BUILD_NUM=\$(echo "\$MAIN_BUILD_JSON" | jq -r '.[0].number')
+
+      if [ "\$MAIN_BUILD_NUM" != "null" ] && [ -n "\$MAIN_BUILD_NUM" ]; then
+        echo "Comparing with main build #\$MAIN_BUILD_NUM"
+
+        curl -s -H "Authorization: Bearer ${BUILDKITE_API_TOKEN}" \
+          "https://api.buildkite.com/v2/organizations/clima/pipelines/${BUILDKITE_PIPELINE_SLUG}/builds/\${MAIN_BUILD_NUM}/artifacts" \
+          -o artifacts.json
+
+        MAIN_URL=\$(jq -r '.[] | select(.filename == "benchmark_results.json") | .download_url' artifacts.json | head -1)
+
+        if [ -n "\$MAIN_URL" ] && [ "\$MAIN_URL" != "null" ]; then
+          curl -s -L -H "Authorization: Bearer ${BUILDKITE_API_TOKEN}" "\$MAIN_URL" -o baseline_benchmark_results.json
+
+          # Compare PR vs main per partition (rank 0 is representative). Smaller time/step is better.
+          echo "# Distributed Benchmark Comparison: PR vs Main" > benchmark_comparison.md
+          echo "" >> benchmark_comparison.md
+          echo "| Partition | PR (ms/step) | Main (ms/step) | Change |" >> benchmark_comparison.md
+          echo "|-----------|--------------|----------------|--------|" >> benchmark_comparison.md
+
+          jq -r --slurpfile main baseline_benchmark_results.json '
+            (\$main[0] | map(select(.rank == 0)) | map({(.group): .time_per_step_seconds}) | add // {}) as \$baseline |
+            map(select(.rank == 0)) |
+            .[] |
+            .group as \$grp |
+            (.time_per_step_seconds * 1000) as \$pr_ms |
+            (\$baseline[\$grp] // null) as \$main_t |
+            if \$main_t != null and \$main_t > 0 then
+              (\$main_t * 1000) as \$main_ms |
+              ((\$pr_ms - \$main_ms) / \$main_ms * 100) as \$change |
+              "| \(\$grp) | \(\$pr_ms | . * 100 | round / 100) | \(\$main_ms | . * 100 | round / 100) | \(if \$change >= 0 then "+" else "" end)\(\$change | . * 10 | round / 10)% |"
+            else
+              "| \(\$grp) | \(\$pr_ms | . * 100 | round / 100) | (new) | |"
+            end
+          ' "\$MERGED" >> benchmark_comparison.md
+
+          echo "Comparison saved to benchmark_comparison.md"
+          cat benchmark_comparison.md
+        else
+          echo "No benchmark_results.json found in main build artifacts"
+        fi
+      else
+        echo "No main build found for comparison"
+      fi
+    artifact_paths:
+      - "benchmark_results.json"
+      - "benchmark_results.md"
+      - "benchmark_comparison.md"
+      - "baseline_benchmark_results.json"
+
+  - wait
+
+  - label: "📢 Notify GitHub to publish results"
+    key: "notify-github"
+    agents:
+      slurm_mem: 8G
+      slurm_ntasks: 1
+    command: |
+      # Trigger the Publish Distributed Benchmarks workflow via repository_dispatch.
+      # Requires GITHUB_DISPATCH_TOKEN (a GitHub PAT with repo scope) in Buildkite secrets.
+      curl -sS -f -X POST \
+        -H "Authorization: token ${GITHUB_DISPATCH_TOKEN}" \
+        -H "Accept: application/vnd.github.v3+json" \
+        "https://api.github.com/repos/CliMA/Oceananigans.jl/dispatches" \
+        -d "{\"event_type\":\"distributed_benchmarks_complete\",\"client_payload\":{\"build_number\":\"${BUILDKITE_BUILD_NUMBER}\",\"commit\":\"${BUILDKITE_COMMIT}\",\"branch\":\"${BUILDKITE_BRANCH}\",\"pr_number\":\"${BUILDKITE_PULL_REQUEST}\"}}"
+    soft_fail: true

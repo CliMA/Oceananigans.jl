@@ -1,0 +1,208 @@
+name: Publish Distributed Benchmarks
+run-name: "${{ github.event.client_payload.pr_number && github.event.client_payload.pr_number != 'false' && format('{0} — PR #{1}', github.event.client_payload.branch, github.event.client_payload.pr_number) || format('{0} @ {1}', github.event.client_payload.branch, github.event.client_payload.commit) }}"
+
+on:
+  repository_dispatch:
+    types: [distributed_benchmarks_complete]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.client_payload.branch }}
+  cancel-in-progress: ${{ github.event.client_payload.branch != 'main' }}
+
+jobs:
+  publish-distributed-benchmarks:
+    name: "Publish distributed benchmarks"
+    permissions:
+      actions: write
+      contents: write
+      pull-requests: write
+      statuses: read
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+        with:
+          ref: ${{ github.event.client_payload.commit || '' }}
+
+      - name: Download Buildkite Artifacts
+        id: download
+        env:
+          BUILDKITE_TOKEN: ${{ secrets.BUILDKITE_TOKEN }}
+        run: |
+          # Buildkite triggered this workflow — build is already done, use build number directly
+          BUILD_NUM="${{ github.event.client_payload.build_number }}"
+          echo "Buildkite build #$BUILD_NUM completed (dispatched by Buildkite)"
+
+          # Download artifacts from the resolved build
+          ARTIFACTS_JSON=$(curl -s -H "Authorization: Bearer $BUILDKITE_TOKEN" \
+            "https://api.buildkite.com/v2/organizations/clima/pipelines/oceananigans-distributed-benchmarks-1/builds/$BUILD_NUM/artifacts")
+
+          COUNT=$(echo "$ARTIFACTS_JSON" | jq 'length')
+          echo "Found $COUNT artifacts in build #$BUILD_NUM"
+          mkdir -p artifacts
+
+          for ROW in $(echo "$ARTIFACTS_JSON" | jq -r '.[] | @base64'); do
+            FILENAME=$(echo "$ROW" | base64 -d | jq -r '.filename')
+            DL_URL=$(echo "$ROW" | base64 -d | jq -r '.download_url')
+            echo "  Downloading $FILENAME..."
+            curl -s -L -H "Authorization: Bearer $BUILDKITE_TOKEN" "$DL_URL" -o "artifacts/$FILENAME"
+          done
+
+          echo "download-state=success" >> "$GITHUB_OUTPUT"
+
+      - name: Locate benchmark results
+        id: locate
+        if: ${{ steps.download.outputs.download-state == 'success' }}
+        run: |
+          BENCHMARK_FILE=$(find artifacts -type f -name "benchmark_results.json" 2>/dev/null | head -1)
+          if [ -n "$BENCHMARK_FILE" ]; then
+            echo "path=$BENCHMARK_FILE" >> "$GITHUB_OUTPUT"
+            echo "Found benchmark results: $BENCHMARK_FILE"
+            echo "Number of entries: $(jq length "$BENCHMARK_FILE")"
+          else
+            echo "No benchmark_results.json found in artifacts"
+            echo "path=" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Transform results for github-action-benchmark
+        if: ${{ steps.locate.outputs.path != '' }}
+        shell: python3 {0}
+        run: |
+          import json, glob
+
+          # Load benchmark results (one entry per rank, grouped per partition)
+          all_data = []
+          for path in sorted(glob.glob("artifacts/**/benchmark_results.json", recursive=True)):
+              with open(path) as f:
+                  all_data.extend(json.load(f))
+
+          # Save merged results
+          with open("benchmark_results_merged.json", "w") as f:
+              json.dump(all_data, f, ensure_ascii=False, indent=2)
+
+          def gpu_name(d):
+              return d.get("metadata", {}).get("gpu_name", "GPU")
+
+          # One chart per partition: rank 0 is representative of the synchronized step time.
+          # We also chart the aggregate throughput (sum of per-rank grid points per second).
+          data = []
+          seen = set()
+          for d in all_data:
+              if d.get("rank", 0) != 0:
+                  continue
+              group = d.get("group", "Distributed")
+              gpu = gpu_name(d)
+              key = (group, gpu)
+              if key in seen:
+                  continue
+              seen.add(key)
+              data.append({
+                  "name": f"Distributed/{group}/{gpu}",
+                  "unit": "s/timestep",
+                  "value": d["time_per_step_seconds"],
+              })
+
+          # Aggregate throughput per partition (sum of per-rank local throughput)
+          throughput = {}
+          for d in all_data:
+              group = d.get("group", "Distributed")
+              gpu = gpu_name(d)
+              throughput.setdefault((group, gpu), 0.0)
+              throughput[(group, gpu)] += d["grid_points_per_second"]
+
+          with open("github-action-benchmark.json", "w") as f:
+              json.dump(data, f, indent=2)
+
+          print(f"Transformed {len(data)} distributed benchmark entries for visualization")
+          for d in data:
+              print(f"  {d['name']}: {d['value']:.4g} {d['unit']}")
+          for (group, gpu), tps in throughput.items():
+              print(f"  aggregate throughput {group} ({gpu}): {tps:.3e} points/s")
+
+      - name: Create job summary
+        if: ${{ steps.locate.outputs.path != '' }}
+        shell: python3 {0}
+        run: |
+          import glob, os
+
+          summary = ""
+
+          # Copy markdown report if available
+          md_files = glob.glob("artifacts/**/benchmark_results.md", recursive=True)
+          if md_files:
+              with open(md_files[0]) as f:
+                  summary += f.read() + "\n"
+
+          # Copy comparison if available
+          comp_files = glob.glob("artifacts/**/benchmark_comparison.md", recursive=True)
+          if comp_files:
+              with open(comp_files[0]) as f:
+                  summary += "\n" + f.read() + "\n"
+
+          with open(os.environ["GITHUB_STEP_SUMMARY"], "a") as f:
+              f.write(summary)
+
+      - name: Push results to OceananigansBenchmarks repo
+        if: ${{ github.event.client_payload.branch == 'main' && steps.locate.outputs.path != '' }}
+        run: |
+          git clone https://x-access-token:${{ secrets.BENCHMARKS_TOKEN }}@github.com/NumericalEarth/OceananigansBenchmarks.git
+          cd OceananigansBenchmarks
+          COMMIT="${{ github.event.client_payload.commit || github.sha }}"
+          DIRNAME="distributed_benchmarks/by_branch/main/${COMMIT}"
+          mkdir -vp "${DIRNAME}"
+          cp -v "../benchmark_results_merged.json" "${DIRNAME}/benchmark_results.json"
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add .
+          git commit -m "Save distributed benchmark results for commit ${COMMIT}"
+          git push -u origin main
+
+      # For main branch: push results to external benchmarks repo (distributed data dir)
+      - uses: benchmark-action/github-action-benchmark@v1
+        if: ${{ github.event.client_payload.branch == 'main' && steps.locate.outputs.path != '' }}
+        with:
+          name: Oceananigans.jl Distributed Benchmarks
+          tool: "customSmallerIsBetter"
+          output-file-path: "github-action-benchmark.json"
+          benchmark-data-dir-path: "distributed"
+          gh-repository: "github.com/NumericalEarth/OceananigansBenchmarks"
+          github-token: ${{ secrets.BENCHMARKS_TOKEN }}
+          ref: ${{ github.event.client_payload.commit }}
+          comment-always: false
+          summary-always: true
+          alert-threshold: "110%"
+          fail-on-alert: false
+          auto-push: true
+          max-items-in-chart: 5000
+          comment-on-alert: true
+
+      # For PRs: comment benchmark comparison on the PR
+      - name: Comment benchmark results on PR
+        if: ${{ github.event.client_payload.branch != 'main' && steps.locate.outputs.path != '' }}
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          PR_NUMBER="${{ github.event.client_payload.pr_number }}"
+
+          # If no PR number from Buildkite, look it up by branch
+          if [ -z "$PR_NUMBER" ] || [ "$PR_NUMBER" = "false" ]; then
+            PR_NUMBER=$(gh pr list --head "${{ github.event.client_payload.branch }}" --json number --jq '.[0].number')
+          fi
+
+          if [ -z "$PR_NUMBER" ]; then
+            echo "No open PR found for branch ${{ github.event.client_payload.branch }}, skipping comment"
+            exit 0
+          fi
+
+          echo "Posting distributed benchmark results to PR #$PR_NUMBER"
+
+          {
+            echo "## Distributed Benchmark Comparison"
+            echo ""
+            if [ -f "artifacts/benchmark_comparison.md" ]; then
+              cat artifacts/benchmark_comparison.md
+            else
+              echo "No benchmark comparison available."
+            fi
+          } > pr_comment.md
+
+          gh pr comment "$PR_NUMBER" --body-file pr_comment.md
