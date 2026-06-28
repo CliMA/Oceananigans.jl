@@ -197,19 +197,19 @@ If CATKE closure is active, the TKE tracer `e` is skipped (handled separately).
 Implicit vertical diffusion is applied after the explicit step if configured.
 """
 function rk_substep_tracers!(tracers, model, Δt)
-    rk_substep_tracers!(tracers, model, Δt, Val(1), Val(propertynames(tracers)))
+    rk_substep_tracers!(model, Δt, Val(1), Val(propertynames(tracers)))
     return nothing
 end
 
-@inline rk_substep_tracers!(tracers, model, Δt, ::Val, ::Val{()}) = nothing
+@inline rk_substep_tracers!(model, Δt, ::Val, ::Val{()}) = nothing
 
-@inline function rk_substep_tracers!(tracers, model, Δt, ::Val{tracer_index}, ::Val{names}) where {tracer_index, names}
-    rk_substep_tracer!(tracers, model, Δt, Val(tracer_index), Val(first(names)))
-    rk_substep_tracers!(tracers, model, Δt, Val(tracer_index + 1), Val(Base.tail(names)))
+@inline function rk_substep_tracers!(model, Δt, ::Val{tracer_index}, ::Val{names}) where {tracer_index, names}
+    rk_substep_tracer!(model, Δt, Val(tracer_index), Val(first(names)))
+    rk_substep_tracers!(model, Δt, Val(tracer_index + 1), Val(Base.tail(names)))
     return nothing
 end
 
-@inline function rk_substep_tracer!(tracers, model, Δt, ::Val{tracer_index}, ::Val{tracer_name}) where {tracer_index, tracer_name}
+@inline function rk_substep_tracer!(model, Δt, ::Val{tracer_index}, ::Val{tracer_name}) where {tracer_index, tracer_name}
     closure = model.closure
     (hasclosure(closure, FlavorOfCATKE) && tracer_name == :e) && return nothing
 
@@ -218,7 +218,7 @@ end
 
     Gⁿ = model.timestepper.Gⁿ[tracer_name]
     Ψ⁻ = model.timestepper.Ψ⁻[tracer_name]
-    c  = tracers[tracer_name]
+    c  = model.tracers[tracer_name]
 
     launch!(architecture(grid), grid, :xyz,
             _rk_substep_tracer_field!, c, grid, convert(FT, Δt), Gⁿ, Ψ⁻)
