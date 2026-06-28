@@ -34,7 +34,7 @@ function RectilinearGrid{TX, TY, TZ}(arch::Arch, Nx, Ny, Nz, Hx, Hy, Hz,
                                                          FX, VX, FY, VY, CZ}
 
     return RectilinearGrid{FT, TX, TY, TZ,
-                           CZ, FX, FY, VX, VY, Arch, GridSize{Nx, Ny, Nz, Hx, Hy, Hz}}(arch, Nx, Ny, Nz,
+                           CZ, FX, FY, VX, VY, Arch, GridSize{Int(Nx), Int(Ny), Int(Nz), Int(Hx), Int(Hy), Int(Hz)}}(arch, Nx, Ny, Nz,
                                                                  Hx, Hy, Hz, Lx, Ly, Lz,
                                                                  Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
                                                                  Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ, z)

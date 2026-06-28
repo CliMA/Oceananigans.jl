@@ -124,6 +124,13 @@ CUDA.allowscalar() do
         end
     end
 
+    # Memory allocation regression tests
+    if group == :memory_allocation || group == :all
+        @testset "Memory allocation tests" begin
+            include("test_memory_allocation.jl")
+        end
+    end
+
     # Models
     if group == :time_stepping_1 || group == :all
         @testset "Model and time stepping tests (part 1)" begin
@@ -205,6 +212,8 @@ CUDA.allowscalar() do
         reset_cuda_if_necessary()
         include("test_distributed_architectures.jl")
         include("test_distributed_models.jl")
+        # archs = nonhydrostatic_regression_test_architectures()
+        # include("test_memory_allocation.jl")
     end
 
     if group == :distributed_solvers || group == :all
