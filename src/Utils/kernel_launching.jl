@@ -571,5 +571,46 @@ end
     end
 end
 
-# NOTE: the custom `__run` stopgap was removed. KernelAbstractions' own `__run`/`__thread_run` are used,
-# and we are investigating the per-launch kernel-argument copy from first principles.
+#####
+##### STOPGAP (propose upstream to KernelAbstractions):
+##### KA's CPU `__run` reassigns `len`/`rem`/`Nthreads` and then captures them -- together with the
+##### kernel-argument tuple `args` -- inside the `@threads`/`@spawn` closures. Julia's closure conversion
+##### boxes those captured variables and hoists the box to function entry, so `args` (tens of KB for an
+##### Oceananigans launch) is heap-copied on *every* launch, even single-threaded. Wrapping the thread
+##### dispatch in a `let` gives the closures fresh bindings: the args box disappears on the single-threaded
+##### path, and only a single closure box remains when actually multithreading. The logic is otherwise
+##### identical to KA's `__run`, so it stays correct for every thread count.
+#####
+
+import KernelAbstractions: __run
+using KernelAbstractions: __thread_run
+
+function __run(obj, ndrange, iterspace, args, dynamic, static_threads)
+    N = length(iterspace)
+    Nthreads = Threads.nthreads()
+    if Nthreads == 1
+        len, rem = N, 0
+    else
+        len, rem = divrem(N, Nthreads)
+    end
+    if len == 0
+        Nthreads = N
+        len, rem = 1, 0
+    end
+    if Nthreads == 1
+        __thread_run(1, len, rem, obj, ndrange, iterspace, args, dynamic)
+    else
+        let len = len, rem = rem, Nthreads = Nthreads
+            if static_threads
+                Threads.@threads :static for tid in 1:Nthreads
+                    __thread_run(tid, len, rem, obj, ndrange, iterspace, args, dynamic)
+                end
+            else
+                @sync for tid in 1:Nthreads
+                    Threads.@spawn __thread_run(tid, len, rem, obj, ndrange, iterspace, args, dynamic)
+                end
+            end
+        end
+    end
+    return nothing
+end
