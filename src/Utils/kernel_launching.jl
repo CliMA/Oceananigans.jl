@@ -354,7 +354,7 @@ end
 
     # Don't launch kernels with no size
     if length(worksize) > 0
-        launch_kernel!(loop!, first_kernel_arg, other_kernel_args...)
+        loop!(first_kernel_arg, other_kernel_args...)
     end
 
     return nothing
@@ -572,35 +572,23 @@ end
 end
 
 #####
-##### CPU kernel launch -- bypasses KernelAbstractions' `(::Kernel{CPU})` entry / `__run`.
+##### STOPGAP -- pirate KernelAbstractions' CPU `__run` (port the `let` fix to KA, then delete this).
 #####
 ##### KA's `__run` reassigns `len`/`rem`/`Nthreads` and captures them -- together with the kernel-argument
 ##### tuple `args` -- inside its `@threads`/`@spawn` closures. Julia's closure conversion boxes those captures
 ##### and hoists the box to function entry, so `args` (tens of KB for an Oceananigans launch) is heap-copied on
-##### *every* launch, even single-threaded. We cannot fix this by pirating `__run` (a method overwrite of a KA
-##### function breaks module precompilation). Instead we run the block loop ourselves for CPU kernels: the
-##### single-threaded path has no closures (no box), and the multithreaded path wraps the dispatch in a `let`
-##### so `args` is not pulled into a boxed closure. GPU kernels keep KA's standard launch path untouched.
+##### *every* CPU launch, even single-threaded. We override `__run` (rather than route launches through our own
+##### function) because some launches -- e.g. `fill_halo_event!` -- call the KA kernel directly and never pass
+##### through `launch!`, so only a global override catches them all. The body is KA's `__run` verbatim, plus
+##### the single `let` marked below, which keeps the args box out of the single-threaded path. NOTE: this is a
+##### method overwrite of a KA function and therefore breaks Oceananigans precompilation; it is a deliberate,
+##### temporary measure until the `let` fix lands upstream in KernelAbstractions.
 #####
 
-import KernelAbstractions
-import KernelAbstractions: mkcontext, launch_config, __thread_run
+import KernelAbstractions: __run
+using KernelAbstractions: __thread_run
 
-# GPU (and any non-CPU) kernels: use KernelAbstractions' own launch.
-@inline launch_kernel!(loop!, args...) = loop!(args...)
-
-@inline function launch_kernel!(loop!::Kernel{<:KernelAbstractions.CPU}, args...)
-    ndrange, workgroupsize, iterspace, dynamic = launch_config(loop!, nothing, nothing)
-    length(blocks(iterspace)) == 0 && return nothing
-    cpu_run!(loop!, ndrange, iterspace, args, dynamic, loop!.backend.static)
-    return nothing
-end
-
-# This is KernelAbstractions' `__run` verbatim, plus the single change marked below: the `@threads`/`@spawn`
-# dispatch is wrapped in a `let` so the reassigned `len`/`rem`/`Nthreads` (and, crucially, `args`) are not
-# pulled into a boxed closure. Keep this in lockstep with KA's `__run` so the `let` fix can be upstreamed and
-# this whole bypass deleted.
-function cpu_run!(obj, ndrange, iterspace, args, dynamic, static_threads)
+function __run(obj, ndrange, iterspace, args, dynamic, static_threads)
     N = length(iterspace)
     Nthreads = Threads.nthreads()
     if Nthreads == 1
