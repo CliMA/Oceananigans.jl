@@ -212,8 +212,8 @@ CUDA.allowscalar() do
         reset_cuda_if_necessary()
         include("test_distributed_architectures.jl")
         include("test_distributed_models.jl")
-        # archs = nonhydrostatic_regression_test_architectures()
-        # include("test_memory_allocation.jl")
+        archs = nonhydrostatic_regression_test_architectures()
+        include("test_memory_allocation.jl")
     end
 
     if group == :distributed_solvers || group == :all
