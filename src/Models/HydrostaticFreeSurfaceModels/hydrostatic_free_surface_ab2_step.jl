@@ -208,19 +208,19 @@ If CATKE or TD closures are active, their prognostic tracers (`e`, `ϵ`) are ski
 as they are handled separately. Implicit vertical diffusion is applied if configured.
 """
 function ab2_step_tracers!(tracers, model, Δt, χ)
-    ab2_step_tracers!(tracers, model, Δt, χ, Val(1), Val(propertynames(tracers)))
+    ab2_step_tracers!(model, Δt, χ, Val(1), Val(propertynames(tracers)))
     return nothing
 end
 
-@inline ab2_step_tracers!(tracers, model, Δt, χ, ::Val, ::Val{()}) = nothing
+@inline ab2_step_tracers!(model, Δt, χ, ::Val, ::Val{()}) = nothing
 
-@inline function ab2_step_tracers!(tracers, model, Δt, χ, ::Val{tracer_index}, ::Val{names}) where {tracer_index, names}
-    ab2_step_tracer!(tracers, model, Δt, χ, Val(tracer_index), Val(first(names)))
-    ab2_step_tracers!(tracers, model, Δt, χ, Val(tracer_index + 1), Val(Base.tail(names)))
+@inline function ab2_step_tracers!(model, Δt, χ, ::Val{tracer_index}, ::Val{names}) where {tracer_index, names}
+    ab2_step_tracer!(model, Δt, χ, Val(tracer_index), Val(first(names)))
+    ab2_step_tracers!(model, Δt, χ, Val(tracer_index + 1), Val(Base.tail(names)))
     return nothing
 end
 
-@inline function ab2_step_tracer!(tracers, model, Δt, χ, ::Val{tracer_index}, ::Val{tracer_name}) where {tracer_index, tracer_name}
+@inline function ab2_step_tracer!(model, Δt, χ, ::Val{tracer_index}, ::Val{tracer_name}) where {tracer_index, tracer_name}
     closure = model.closure
     skip = (hasclosure(closure, FlavorOfCATKE) && tracer_name == :e) ||
            (hasclosure(closure, FlavorOfTD) && (tracer_name == :ϵ || tracer_name == :e))
@@ -228,7 +228,7 @@ end
 
     Gⁿ = model.timestepper.Gⁿ[tracer_name]
     G⁻ = model.timestepper.G⁻[tracer_name]
-    tracer_field = tracers[tracer_name]
+    tracer_field = model.tracers[tracer_name]
     grid = model.grid
 
     FT = eltype(grid)
