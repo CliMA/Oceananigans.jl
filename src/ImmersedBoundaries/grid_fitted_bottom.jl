@@ -47,7 +47,7 @@ Arguments
 """
 GridFittedBottom(bottom_height) = GridFittedBottom(bottom_height, CenterImmersedCondition())
 
-# 1-based interior view of a bare bottom-height array. 
+# 1-based interior view of a bare bottom-height array.
 @inline function bottom_height_interior(bottom_height)
     parent_ranges = ntuple(Val(ndims(bottom_height))) do d
         H = 1 - first(axes(bottom_height, d))
