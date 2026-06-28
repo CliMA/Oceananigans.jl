@@ -308,24 +308,29 @@ keyword arguments `kw`.
 """
 @inline launch!(args...; kwargs...) = _launch!(args...; kwargs...)
 
-@inline launch!(arch, grid, workspec::NTuple{N, Int}, args...; kwargs...) where N =
-    _launch!(arch, grid, workspec, args...; kwargs...)
+@inline launch!(arch, grid, workspec::NTuple{N, Int}, args...; kwargs...) where N = _launch!(arch, grid, workspec, args...; kwargs...)
 
 @inline function launch!(arch, grid, workspec_tuple::Tuple, args...; kwargs...)
-    for workspec in workspec_tuple
-        _launch!(arch, grid, workspec, args...; kwargs...)
-    end
+    _launch!(arch, grid, first(workspec_tuple), args...; kwargs...)
+    launch!(arch, grid, Base.tail(workspec_tuple), args...; kwargs...)
     return nothing
 end
 
-# launching with an empty tuple has no effect
-@inline function launch!(arch, grid, workspec_tuple::Tuple{}, kernel, args...; kwargs...)
-    @warn "trying to launch kernel $kernel with workspec == (). The kernel will not be launched."
-    return nothing
-end
+# Launching with an empty tuple of workspecs has no effect (e.g. no connected buffer sides).
+@inline launch!(arch, grid, ::Tuple{}, args...; kwargs...) = nothing
 
 @inline launch!(arch, grid, workspec::Symbol, args...; kw...) = _launch!(arch, grid, Val(workspec), args...; kw...)
 @inline launch!(arch, grid, workspec::Val,    args...; kw...) = _launch!(arch, grid, workspec, args...; kw...)
+
+
+@inline launch_split_maps!(::Tuple{}, args...; kw...) = nothing
+
+@inline function launch_split_maps!(maps::Tuple, arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...; exclude_periphery = false, reduced_dimensions = ())
+    cells_map = first(maps)
+    isnothing(cells_map) || _launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...; exclude_periphery, reduced_dimensions, active_cells_map = cells_map)
+    launch_split_maps!(Base.tail(maps), arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...; exclude_periphery, reduced_dimensions)
+    return nothing
+end
 
 # Inner interface
 @inline function _launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...;
@@ -335,15 +340,9 @@ end
 
     active_map = possibly_load_active_cells_map(active_cells_map, grid, workspec, exclude_periphery)
 
-    # When active_cells_map is a NamedTuple (distributed grids with split maps),
-    # launch once for each non-nothing sub-map.
+    # When active_cells_map is a NamedTuple (distributed grids with split maps), launch once for each non-nothing sub-map.
     if active_map isa NamedTuple
-        for map in active_map
-            if !isnothing(map)
-                _launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...;
-                         exclude_periphery, reduced_dimensions, active_cells_map = map)
-            end
-        end
+        launch_split_maps!(values(active_map), arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...; exclude_periphery, reduced_dimensions)
         return nothing
     end
 
@@ -571,3 +570,6 @@ end
         return true
     end
 end
+
+# NOTE: the custom `__run` stopgap was removed. KernelAbstractions' own `__run`/`__thread_run` are used,
+# and we are investigating the per-launch kernel-argument copy from first principles.
