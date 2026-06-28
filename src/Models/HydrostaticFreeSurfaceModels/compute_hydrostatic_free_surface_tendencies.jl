@@ -131,7 +131,7 @@ end
             compute_hydrostatic_free_surface_Gc!,
             c_tendency,
             grid,
-            args;
+            args...;
             active_cells_map)
 
     launch_tracer_tendencies!(model, arch, grid, kernel_parameters, active_cells_map,
@@ -175,11 +175,11 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
 
     launch!(arch, grid, kernel_parameters,
             compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid,
-            u_kernel_args; active_cells_map)
+            u_kernel_args...; active_cells_map)
 
     launch!(arch, grid, kernel_parameters,
             compute_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid,
-            v_kernel_args; active_cells_map)
+            v_kernel_args...; active_cells_map)
 
     return nothing
 end
@@ -189,23 +189,14 @@ end
 #####
 
 """ Calculate the right-hand-side of the u-velocity equation. """
-@kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid, args)
-    i, j, k = @index(Global, NTuple)
-    @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
-end
+@tendency_kernel compute_hydrostatic_free_surface_Gu! hydrostatic_free_surface_u_velocity_tendency 14
 
 """ Calculate the right-hand-side of the v-velocity equation. """
-@kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid, args)
-    i, j, k = @index(Global, NTuple)
-    @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
-end
+@tendency_kernel compute_hydrostatic_free_surface_Gv! hydrostatic_free_surface_v_velocity_tendency 14
 
 #####
 ##### Tendency calculators for tracers
 #####
 
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
-@kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid, args)
-    i, j, k = @index(Global, NTuple)
-    @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
-end
+@tendency_kernel compute_hydrostatic_free_surface_Gc! hydrostatic_free_surface_tracer_tendency 14

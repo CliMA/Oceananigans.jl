@@ -89,15 +89,15 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
 
     exclude_periphery = true
     launch!(arch, grid, kernel_parameters, compute_Gu!,
-            tendencies.u, grid, u_kernel_args;
+            tendencies.u, grid, u_kernel_args...;
             active_cells_map, exclude_periphery)
 
     launch!(arch, grid, kernel_parameters, compute_Gv!,
-            tendencies.v, grid, v_kernel_args;
+            tendencies.v, grid, v_kernel_args...;
             active_cells_map, exclude_periphery)
 
     launch!(arch, grid, kernel_parameters, compute_Gw!,
-            tendencies.w, grid, w_kernel_args;
+            tendencies.w, grid, w_kernel_args...;
             active_cells_map, exclude_periphery)
 
     start_tracer_kernel_args = (advection, closure)
@@ -117,7 +117,7 @@ function compute_interior_tendency_contributions!(model, kernel_parameters; acti
                      clock, forcing)
 
         launch!(arch, grid, kernel_parameters, compute_Gc!,
-                c_tendency, grid, args;
+                c_tendency, grid, args...;
                 active_cells_map)
     end
 
@@ -129,32 +129,20 @@ end
 #####
 
 """ Calculate the right-hand-side of the u-velocity equation. """
-@kernel function compute_Gu!(Gu, grid, args)
-    i, j, k = @index(Global, NTuple)
-    @inbounds Gu[i, j, k] = u_velocity_tendency(i, j, k, grid, args...)
-end
+@tendency_kernel compute_Gu! u_velocity_tendency 14
 
 """ Calculate the right-hand-side of the v-velocity equation. """
-@kernel function compute_Gv!(Gv, grid, args)
-    i, j, k = @index(Global, NTuple)
-    @inbounds Gv[i, j, k] = v_velocity_tendency(i, j, k, grid, args...)
-end
+@tendency_kernel compute_Gv! v_velocity_tendency 14
 
 """ Calculate the right-hand-side of the w-velocity equation. """
-@kernel function compute_Gw!(Gw, grid, args)
-    i, j, k = @index(Global, NTuple)
-    @inbounds Gw[i, j, k] = w_velocity_tendency(i, j, k, grid, args...)
-end
+@tendency_kernel compute_Gw! w_velocity_tendency 14
 
 #####
 ##### Tracer(s)
 #####
 
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
-@kernel function compute_Gc!(Gc, grid, args)
-    i, j, k = @index(Global, NTuple)
-    @inbounds Gc[i, j, k] = tracer_tendency(i, j, k, grid, args...)
-end
+@tendency_kernel compute_Gc! tracer_tendency 14
 
 #####
 ##### Boundary contributions to tendencies due to user-prescribed fluxes

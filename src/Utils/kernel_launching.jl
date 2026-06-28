@@ -322,6 +322,21 @@ end
 @inline launch!(arch, grid, workspec::Symbol, args...; kw...) = _launch!(arch, grid, Val(workspec), args...; kw...)
 @inline launch!(arch, grid, workspec::Val,    args...; kw...) = _launch!(arch, grid, workspec, args...; kw...)
 
+"""
+    @tendency_kernel(name, tendency, N)
+
+Define `@kernel function name(output, grid, arg1, …, arg_N)` that writes `tendency(i, j, k, grid, arg1, …, arg_N)` into `output[i, j, k]`, 
+spelling the `N` tendency arguments out as separate fixed parameters instead of bundling them into one packed tuple.
+"""
+macro tendency_kernel(name, tendency, N::Int)
+    arguments = [Symbol(:arg, i) for i in 1:N]
+    return esc(quote
+        @kernel function $(name)(output, grid, $(arguments...))
+            i, j, k = @index(Global, NTuple)
+            @inbounds output[i, j, k] = $(tendency)(i, j, k, grid, $(arguments...))
+        end
+    end)
+end
 
 @inline launch_split_maps!(::Tuple{}, args...; kw...) = nothing
 

@@ -197,31 +197,8 @@ steps:
       # use v13.
       echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
 
-      # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
-      set +e
-      julia +$JULIA_VERSION --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(coverage="user", julia_args=`--check-bounds=auto`)'
-      test_status=$$?
-      set -e
-
-      # Sanity check: did we actually produce coverage?
-      echo "PWD:"; pwd
-      echo "Coverage files produced:" `find . -type f -name "*.cov" | wc -l`
-      find . -type f -name "*.cov" | head -n 20 || true
-
-      group_slug="{{ matrix.group }}"
-      group_slug="$${group_slug//[^A-Za-z0-9_.-]/_}"
-      tarball="coverage-${BUILDKITE_BUILD_NUMBER}-${BUILDKITE_JOB_ID}-{{ matrix.architecture }}-$${group_slug}.tgz"
-
-      find . -type f -name "*.cov" > cov_list.txt
-      echo "Coverage files found:" `wc -l < cov_list.txt`
-
-      tar -czf "$$tarball" -T cov_list.txt
-      ls -lh "$$tarball"
-
-      buildkite-agent artifact upload "$$tarball"
-
-      # Preserve the original test result for Buildkite
-      exit "$${test_status}"
+      # CodeCov increases allocations, we run without it to test memory allocations
+      julia +$JULIA_VERSION --color=yes --project -e 'using Pkg; Pkg.test(julia_args=["--check-bounds=auto"])'
 
     matrix:
       setup:

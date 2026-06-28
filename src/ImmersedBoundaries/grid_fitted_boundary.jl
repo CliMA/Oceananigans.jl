@@ -26,8 +26,7 @@ end
 
 function materialize_immersed_boundary(grid, ib::GridFittedBoundary)
     mask_field = compute_mask(grid, ib)
-    mask_data  = mask_field.data
-    return GridFittedBoundary(mask_data)
+    return GridFittedBoundary(mask_field)
 end
 
 Architectures.on_architecture(arch, ib::GridFittedBoundary{<:Field}) = GridFittedBoundary(compute_mask(on_architecture(arch, ib.mask.grid), ib))
