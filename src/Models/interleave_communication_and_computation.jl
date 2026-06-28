@@ -24,7 +24,7 @@ complete_communication_and_compute_buffer!(model, grid, arch) = nothing
 compute_buffer_tendencies!(model) = nothing
 
 """ Kernel parameters for computing interior tendencies. """
-interior_tendency_kernel_parameters(arch, grid) = KernelParameters(worksize(grid), map(zero, worksize(grid))) # fallback
+@inline interior_tendency_kernel_parameters(arch, grid) = KernelParameters(worksize(grid), map(zero, worksize(grid))) # fallback
 
 @inline local_dimension(T) = T == Bounded           || 
                              T == Periodic          || 
@@ -32,7 +32,7 @@ interior_tendency_kernel_parameters(arch, grid) = KernelParameters(worksize(grid
                              T == RightFaceFolded   || 
                              T == RightCenterFolded
 
-function interior_tendency_kernel_parameters(arch::AsynchronousDistributed, grid)
+@inline function interior_tendency_kernel_parameters(arch::AsynchronousDistributed, grid)
     Hx, Hy, _ = halo_size(grid)
     Tx, Ty, _ = topology(grid)
     Wx, Wy, Wz = worksize(grid)

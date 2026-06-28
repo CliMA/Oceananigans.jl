@@ -354,7 +354,7 @@ end
 
     # Don't launch kernels with no size
     if length(worksize) > 0
-        loop!(first_kernel_arg, other_kernel_args...)
+        launch_kernel!(loop!, first_kernel_arg, other_kernel_args...)
     end
 
     return nothing
@@ -572,20 +572,35 @@ end
 end
 
 #####
-##### STOPGAP (propose upstream to KernelAbstractions):
-##### KA's CPU `__run` reassigns `len`/`rem`/`Nthreads` and then captures them -- together with the
-##### kernel-argument tuple `args` -- inside the `@threads`/`@spawn` closures. Julia's closure conversion
-##### boxes those captured variables and hoists the box to function entry, so `args` (tens of KB for an
-##### Oceananigans launch) is heap-copied on *every* launch, even single-threaded. Wrapping the thread
-##### dispatch in a `let` gives the closures fresh bindings: the args box disappears on the single-threaded
-##### path, and only a single closure box remains when actually multithreading. The logic is otherwise
-##### identical to KA's `__run`, so it stays correct for every thread count.
+##### CPU kernel launch -- bypasses KernelAbstractions' `(::Kernel{CPU})` entry / `__run`.
+#####
+##### KA's `__run` reassigns `len`/`rem`/`Nthreads` and captures them -- together with the kernel-argument
+##### tuple `args` -- inside its `@threads`/`@spawn` closures. Julia's closure conversion boxes those captures
+##### and hoists the box to function entry, so `args` (tens of KB for an Oceananigans launch) is heap-copied on
+##### *every* launch, even single-threaded. We cannot fix this by pirating `__run` (a method overwrite of a KA
+##### function breaks module precompilation). Instead we run the block loop ourselves for CPU kernels: the
+##### single-threaded path has no closures (no box), and the multithreaded path wraps the dispatch in a `let`
+##### so `args` is not pulled into a boxed closure. GPU kernels keep KA's standard launch path untouched.
 #####
 
-import KernelAbstractions: __run
-using KernelAbstractions: __thread_run
+import KernelAbstractions
+import KernelAbstractions: mkcontext, launch_config, __thread_run
 
-function __run(obj, ndrange, iterspace, args, dynamic, static_threads)
+# GPU (and any non-CPU) kernels: use KernelAbstractions' own launch.
+@inline launch_kernel!(loop!, args...) = loop!(args...)
+
+@inline function launch_kernel!(loop!::Kernel{<:KernelAbstractions.CPU}, args...)
+    ndrange, workgroupsize, iterspace, dynamic = launch_config(loop!, nothing, nothing)
+    length(blocks(iterspace)) == 0 && return nothing
+    cpu_run!(loop!, ndrange, iterspace, args, dynamic, loop!.backend.static)
+    return nothing
+end
+
+# This is KernelAbstractions' `__run` verbatim, plus the single change marked below: the `@threads`/`@spawn`
+# dispatch is wrapped in a `let` so the reassigned `len`/`rem`/`Nthreads` (and, crucially, `args`) are not
+# pulled into a boxed closure. Keep this in lockstep with KA's `__run` so the `let` fix can be upstreamed and
+# this whole bypass deleted.
+function cpu_run!(obj, ndrange, iterspace, args, dynamic, static_threads)
     N = length(iterspace)
     Nthreads = Threads.nthreads()
     if Nthreads == 1
@@ -600,7 +615,7 @@ function __run(obj, ndrange, iterspace, args, dynamic, static_threads)
     if Nthreads == 1
         __thread_run(1, len, rem, obj, ndrange, iterspace, args, dynamic)
     else
-        let len = len, rem = rem, Nthreads = Nthreads
+        let len = len, rem = rem, Nthreads = Nthreads   # <-- the only change vs KA's `__run`
             if static_threads
                 Threads.@threads :static for tid in 1:Nthreads
                     __thread_run(tid, len, rem, obj, ndrange, iterspace, args, dynamic)

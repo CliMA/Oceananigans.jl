@@ -9,17 +9,12 @@ using Oceananigans.Grids: AbstractGrid
 
 extract_field_time_series(t1, tn...) = extract_field_time_series(tuple(t1, tn...))
 
-# Utility used to extract field time series from a type through recursion
-function extract_field_time_series(t)
-    prop = propertynames(t)
-    if isempty(prop)
-        return nothing
-    end
-
-    extracted = Tuple(extract_field_time_series(getproperty(t, p)) for p in prop)
-    flattened = flattened_unique_values(extracted)
-
-    return flattened
+# Utility used to extract field time series from a type through recursion.
+@inline function extract_field_time_series(t)
+    N = fieldcount(typeof(t))
+    N === 0 && return nothing
+    extracted = ntuple(i -> extract_field_time_series(getfield(t, i)), Val(N))
+    return flattened_unique_values(extracted)
 end
 
 # Termination (move all here when we switch the code up)

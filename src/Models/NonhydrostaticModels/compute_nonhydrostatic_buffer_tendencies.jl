@@ -26,7 +26,7 @@ end
 
 # Tendencies need computing in the range 1 : H and W - H + 1 : W where W = worksize.
 # These buffer regions complement the halo-independent interior kernel (H+1:W-H).
-function buffer_tendency_kernel_parameters(grid, arch)
+@inline function buffer_tendency_kernel_parameters(grid, arch)
     Nx, Ny, Nz = size(grid)
     Wx, Wy, _  = worksize(grid)
     Hx, Hy, _  = halo_size(grid)
@@ -41,7 +41,7 @@ function buffer_tendency_kernel_parameters(grid, arch)
 end
 
 # p needs computing in the range  0 : 0 and W + 1 : W + 1 where W = worksize
-function buffer_p_kernel_parameters(grid, arch)
+@inline function buffer_p_kernel_parameters(grid, arch)
     Nx, Ny, _ = size(grid)
     Wx, Wy, _ = worksize(grid)
 
@@ -55,7 +55,7 @@ function buffer_p_kernel_parameters(grid, arch)
 end
 
 # closure_fields need recomputing in the range 0 : B and W - B + 1 : W + 1 where W = worksize
-function buffer_κ_kernel_parameters(grid, closure, arch)
+@inline function buffer_κ_kernel_parameters(grid, closure, arch)
     Nx, Ny, Nz = size(grid)
     Wx, Wy, _  = worksize(grid)
 
@@ -72,7 +72,7 @@ function buffer_κ_kernel_parameters(grid, closure, arch)
 end
 
 # Recompute only on communicating sides.
-function buffer_parameters(parameters, grid, arch)
+@inline function buffer_parameters(parameters, grid, arch)
     Tx, Ty, _ = topology(grid)
 
     include_west  = !local_dimension(Tx) && !(Tx == RightConnected)
