@@ -24,18 +24,24 @@ Return values of the (possibly nested) `NamedTuple` `a`,
 flattened into a single tuple, with duplicate entries removed.
 """
 @inline function flattened_unique_values(a::Union{NamedTuple, Tuple})
-    tupled = Tuple(tuplify(ai) for ai in a)
-    flattened = flatten_tuple(tupled)
-
-    # Alternative implementation of `unique` for tuples that uses === comparison, rather than ==
-    seen = []
-    return Tuple(last(push!(seen, f)) for f in flattened if !any(f === s for s in seen))
+    flattened = flatten_tuple(map(tuplify, values(a)))
+    return unique_egal(flattened, ())
 end
+
+# De-duplicate a tuple by `===` (rather than `==`), keeping first occurrences, accumulating into a tuple
+# rather than a `Vector{Any}`. Type-stable in the case of an empty tuple (most cases).
+@inline unique_egal(::Tuple{}, accumulated::Tuple) = accumulated
+@inline unique_egal(remaining::Tuple, accumulated::Tuple) = unique_egal(Base.tail(remaining), 
+                                                                        egal_member(first(remaining), accumulated) ? 
+                                                                                    accumulated : (accumulated..., first(remaining)))
+
+@inline egal_member(value, ::Tuple{}) = false
+@inline egal_member(value, accumulated::Tuple) = value === first(accumulated) || egal_member(value, Base.tail(accumulated))
 
 const FullField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple{<:Colon, <:Colon, <:Colon}}
 
 # Utility for extracting values from nested NamedTuples
-@inline tuplify(a::NamedTuple) = Tuple(tuplify(ai) for ai in a)
+@inline tuplify(a::NamedTuple) = map(tuplify, values(a))
 @inline tuplify(a) = a
 
 # Outer-inner form
