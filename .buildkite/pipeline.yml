@@ -199,7 +199,7 @@ steps:
 
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
-      julia +$JULIA_VERSION --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(coverage="user")'
+      julia +$JULIA_VERSION --color=yes --project --code-coverage=user -e 'using Pkg; Pkg.test(coverage="user", julia_args=`--check-bounds=auto`)'
       test_status=$$?
       set -e
 
