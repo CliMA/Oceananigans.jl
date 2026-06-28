@@ -39,8 +39,8 @@ function initialize_immersed_boundary_grid!(ibg::ReactantImmersedBoundaryGrid)
 
     if needs_initialization
         ib = ibg.immersed_boundary
-        bottom_field = ib.bottom_height
         grid = ibg.underlying_grid
+        bottom_field = Oceananigans.ImmersedBoundaries.bottom_height_field(ibg)
         Oceananigans.ImmersedBoundaries.compute_numerical_bottom_height!(bottom_field, grid, ib)
         Oceananigans.BoundaryConditions.fill_halo_regions!(bottom_field)
     end

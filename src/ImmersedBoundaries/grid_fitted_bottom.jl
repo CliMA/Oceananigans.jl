@@ -47,12 +47,13 @@ Arguments
 """
 GridFittedBottom(bottom_height) = GridFittedBottom(bottom_height, CenterImmersedCondition())
 
+# 1-based interior view of a bare bottom-height array. 
 @inline function bottom_height_interior(bottom_height)
-    interior_ranges = ntuple(Val(ndims(bottom_height))) do d
-        H = 1 - first(axes(bottom_height, d))      # halo width along d (0 for the z-axis)
-        1:(size(bottom_height, d) - 2H)
+    parent_ranges = ntuple(Val(ndims(bottom_height))) do d
+        H = 1 - first(axes(bottom_height, d))
+        (1 + H):(size(bottom_height, d) - H)
     end
-    return view(bottom_height, interior_ranges...)
+    return view(parent(bottom_height), parent_ranges...)
 end
 
 set_bottom_height!(bottom_field, bottom_height) = set!(bottom_field, bottom_height)
@@ -62,6 +63,9 @@ function set_bottom_height!(bottom_field, bottom_height::OffsetArray)
     copyto!(interior(bottom_field), source)
     return bottom_field
 end
+
+bottom_height_field(bottom_data, grid) = Field{Center, Center, Nothing}(grid; data=bottom_data)
+bottom_height_field(grid::IBG) = bottom_height_field(grid.immersed_boundary.bottom_height, grid.underlying_grid)
 
 function Base.summary(ib::GridFittedBottom)
     bottom_interior = bottom_height_interior(ib.bottom_height)
