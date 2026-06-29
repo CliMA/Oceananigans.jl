@@ -331,7 +331,7 @@ isrot180antisymmetric(arr) = arr == -rot180(arr)
                 grid = TripolarGrid(arch; size = (10, 10, 1), fold_topology = fold_topology)
                 bottom(x, y) = rand()
                 grid = ImmersedBoundaryGrid(grid, GridFittedBottom(bottom))
-                bottom_height = on_architecture(CPU(), grid.immersed_boundary.bottom_height.data)
+                bottom_height = on_architecture(CPU(), grid.immersed_boundary.bottom_height)
                 @test view(bottom_height, iᶜ, jᶜ, 1) == view(bottom_height, iᶜ′, jᶜ′, 1)
             end
 
