@@ -20,10 +20,10 @@ hydrostatic_allocation_model(grid) = HydrostaticFreeSurfaceModel(grid;
                                                                  free_surface       = SplitExplicitFreeSurface(grid; substeps=8),
                                                                  tracers            = (:T, :S))
 
-nonhydrostatic_allocation_model(grid) = NonhydrostaticModel(grid; 
-                                                            advection = WENO(), 
-                                                            coriolis = FPlane(f=1e-4), 
-                                                            buoyancy = BuoyancyTracer(), 
+nonhydrostatic_allocation_model(grid) = NonhydrostaticModel(grid;
+                                                            advection = WENO(),
+                                                            coriolis = FPlane(f=1e-4),
+                                                            buoyancy = BuoyancyTracer(),
                                                             tracers = :b)
 
 const Models = (hydrostatic    = (build = hydrostatic_allocation_model,    Δt = 1.0),
