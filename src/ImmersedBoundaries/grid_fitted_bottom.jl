@@ -105,7 +105,7 @@ top-most interface of the last ``immersed`` cell in the column. If `ib` is a `Gr
 """
 function materialize_immersed_boundary(grid, ib::GridFittedBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
-    set_bottom_height!(bottom_field, ib.bottom_height)
+    set!(bottom_field, ib.bottom_height)
     @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, ib)
     fill_halo_regions!(bottom_field)
     return GridFittedBottom(bottom_field.data, ib.immersed_condition)
