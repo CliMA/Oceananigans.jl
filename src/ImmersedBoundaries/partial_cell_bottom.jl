@@ -66,7 +66,7 @@ end
 
 function materialize_immersed_boundary(grid, ib::PartialCellBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
-    set_bottom_height!(bottom_field, ib.bottom_height)
+    set!(bottom_field, ib.bottom_height)
 
     minimum_fractional_cell_height = convert(eltype(grid), ib.minimum_fractional_cell_height)
     compute_ib = PartialCellBottom(bottom_field, minimum_fractional_cell_height)
