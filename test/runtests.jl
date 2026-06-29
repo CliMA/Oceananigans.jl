@@ -214,7 +214,7 @@ CUDA.allowscalar() do
         include("test_distributed_models.jl")
     end
 
-    if group == :distributed_memory || group == :all
+    if group == :distributed_memory_allocation || group == :all
         MPI.Initialized() || MPI.Init()
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
