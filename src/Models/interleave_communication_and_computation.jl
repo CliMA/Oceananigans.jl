@@ -67,7 +67,7 @@ function interior_tendency_kernel_parameters(arch::AsynchronousDistributed, grid
 end
 
 """
-    surface_kernel_parameters(grid)
+$(TYPEDSIGNATURES)
 
 Return kernel parameters for computing 2D (surface) variables including halo regions.
 
@@ -87,7 +87,7 @@ quantities that require neighbor data (like derivatives and interpolations).
 end
 
 """
-    volume_kernel_parameters(grid)
+$(TYPEDSIGNATURES)
 
 Return kernel parameters for computing 3D (volume) variables including halo regions.
 Similar to `surface_kernel_parameters` but for three-dimensional fields.

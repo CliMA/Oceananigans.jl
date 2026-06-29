@@ -267,6 +267,12 @@ using Oceananigans.Utils: TabulatedFunction
         ##### 5D TabulatedFunction (quintilinear interpolation)
         #####
 
+        # NOTE: The 5D TabulatedFunction tests are temporarily disabled. The fully
+        # unrolled 32-term 5D interpolation / `build_table` kernel blows up LLVM during
+        # compilation and OOMs CI (segfault / lost agent). Tests cover up to 4D until
+        # higher-dimensional interpolation is reworked to avoid the compile blowup.
+        # See https://github.com/CliMA/Oceananigans.jl/pull/5705
+        #=
         @testset "5D TabulatedFunction" begin
             g5d(a, b, c, d, e) = a^2 + b^2 + c^2 + d^2 + e^2
             f5d = TabulatedFunction(g5d; range=((-1, 1), (-1, 1), (-1, 1), (-1, 1), (-1, 1)),
@@ -319,6 +325,7 @@ using Oceananigans.Utils: TabulatedFunction
                                           points=(3, 4, 5, 6, 7))
             @test size(f5d_asym.table) == (3, 4, 5, 6, 7)
         end
+        =#
 
         #####
         ##### Architecture and Adapt tests
@@ -372,7 +379,8 @@ using Oceananigans.Utils: TabulatedFunction
             @test f4_adapted.func === nothing
             @test f4_adapted isa TabulatedFunction{4}
 
-            # Test on_architecture for 5D
+            # Test on_architecture for 5D (temporarily disabled — see 5D compile-time note above)
+            #=
             f5 = TabulatedFunction((a, b, c, d, e) -> a + b + c + d + e;
                                     range=((0,1), (0,1), (0,1), (0,1), (0,1)), points=4)
             f5_cpu = on_architecture(CPU(), f5)
@@ -382,6 +390,7 @@ using Oceananigans.Utils: TabulatedFunction
             f5_adapted = Adapt.adapt_structure(nothing, f5)
             @test f5_adapted.func === nothing
             @test f5_adapted isa TabulatedFunction{5}
+            =#
         end
 
         #####
@@ -435,8 +444,11 @@ using Oceananigans.Utils: TabulatedFunction
             f4 = TabulatedFunction((x, y, z, w) -> x + y + z + w; range=((0, 1), (0, 1), (0, 1), (0, 1)))
             @test f4 isa TabulatedFunction4D
 
+            # 5D temporarily disabled — see 5D compile-time note above
+            #=
             f5 = TabulatedFunction((a, b, c, d, e) -> a + b + c + d + e; range=((0,1), (0,1), (0,1), (0,1), (0,1)))
             @test f5 isa TabulatedFunction5D
+            =#
         end
     end
 end

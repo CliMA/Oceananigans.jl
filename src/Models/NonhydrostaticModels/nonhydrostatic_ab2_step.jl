@@ -2,7 +2,7 @@ using Oceananigans.TimeSteppers: _ab2_step_field!, implicit_step!
 import Oceananigans.TimeSteppers: ab2_step!
 
 """
-    ab2_step!(model::NonhydrostaticModel, Δt, callbacks)
+$(TYPEDSIGNATURES)
 
 Advance `NonhydrostaticModel` by one Adams-Bashforth 2nd-order time step with pressure correction.
 Dispatches to `pressure_correction_ab2_step!` which implements a predictor-corrector scheme
@@ -11,7 +11,7 @@ ab2_step!(model::NonhydrostaticModel, args...) =
     pressure_correction_ab2_step!(model, args...)
 
 """
-    pressure_correction_ab2_step!(model, Δt, callbacks)
+$(TYPEDSIGNATURES)
 
 Implement the AB2 time step with pressure correction for `NonhydrostaticModel`.
 

@@ -42,7 +42,7 @@ first_path(path::String) = path
 #####
 
 """
-    find_rank_files(path)
+$(TYPEDSIGNATURES)
 
 Given a file path, check if distributed rank files exist (e.g., `output_rank0.jld2`, `output_rank1.jld2`).
 Returns a sorted vector of rank file paths if they exist, or `nothing` if not.
@@ -107,7 +107,7 @@ function get_rank(all_ranks, i, j, k=1)
 end
 
 """
-    compute_global_size(all_ranks)
+$(TYPEDSIGNATURES)
 
 Compute the global grid size by summing local sizes along each partitioned dimension.
 """
@@ -127,7 +127,7 @@ function compute_global_size(all_ranks)
 end
 
 """
-    compute_partition_offsets(all_ranks)
+$(TYPEDSIGNATURES)
 
 Compute cumulative offsets for placing each rank's data in the global array.
 Returns (x_offsets, y_offsets) where offset[i] gives the starting index for rank i.
@@ -150,7 +150,7 @@ end
 # which uses MPI for live distributed coordination. This function works offline with
 # pre-loaded file data and does not require MPI.
 """
-    collect_global_coordinates_from_files(all_ranks, dim, coord_func)
+$(TYPEDSIGNATURES)
 
 Concatenate coordinate data from all ranks along dimension `dim`.
 `coord_func` extracts coordinates from a grid (e.g., `cpu_face_constructor_x`).
@@ -176,7 +176,7 @@ function collect_global_coordinates_from_files(all_ranks, dim, coord_func)
 end
 
 """
-    reconstruct_global_grid_from_files(all_ranks, arch)
+$(TYPEDSIGNATURES)
 
 Reconstruct a global grid from distributed rank output data.
 This is the offline (file-based) equivalent of `DistributedComputations.reconstruct_global_grid`.
@@ -307,7 +307,7 @@ function reconstruct_global_grid_from_files(grid0::OrthogonalSphericalShellGrid,
 end
 
 """
-    assemble_global_2d_array(all_ranks, field_accessor)
+$(TYPEDSIGNATURES)
 
 Assemble a global 2D array from local rank data. `field_accessor` is a function
 that extracts the desired 2D array from a grid (e.g., `grid -> grid.λᶜᶜᵃ`).
@@ -560,7 +560,7 @@ const OnDiskCombinedFieldTimeSeries = FieldTimeSeries{<:Any, <:Any, <:Any, <:Any
                                                       <:Any, <:Any, <:Any, <:Any, <:Any, <:Any, <:DistributedPaths}
 
 """
-    getindex(fts, n::Int)
+$(TYPEDSIGNATURES)
 
 Load and combine field data from distributed rank files at time index `n`.
 This method dispatches when `fts.path isa DistributedPaths` and `fts.backend isa OnDisk`.
