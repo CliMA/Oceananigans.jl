@@ -30,15 +30,14 @@ const Models = (hydrostatic    = (build = hydrostatic_allocation_model,    Δt =
                 nonhydrostatic = (build = nonhydrostatic_allocation_model, Δt = 1e-3))
 
 function time_step_allocations(model, Δt; samples=10)
-    # Compile first
     time_step!(model, Δt)
     time_step!(model, Δt)
     time_step!(model, Δt)
     time_step!(model, Δt)
     time_step!(model, Δt)
 
-    # Then measure allocation
-    return minimum(@allocated(time_step!(model, convert(eltype(model.grid), Δt))) for _ in 1:samples)
+    Δt = convert(eltype(model.grid), Δt)
+    return minimum(@allocated(time_step!(model, Δt)) for _ in 1:samples)
 end
 
 #TODO: Fix allocations in the nonhydrostatic model
