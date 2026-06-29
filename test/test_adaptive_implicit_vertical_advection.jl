@@ -29,7 +29,7 @@ end
         adaptive = scheme(; time_discretization = AdaptiveVerticallyImplicitDiscretization(), extra_kw...)
 
         @test !(explicit isa AdaptiveImplicitVerticalAdvection)
-        @test adaptive  isa AdaptiveImplicitVerticalAdvection
+        @test adaptive isa AdaptiveImplicitVerticalAdvection
 
         @test time_discretization(explicit) isa ExplicitTimeDiscretization
         @test time_discretization(adaptive) isa AdaptiveVerticallyImplicitDiscretization
