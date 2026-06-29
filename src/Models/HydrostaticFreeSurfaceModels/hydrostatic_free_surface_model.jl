@@ -316,9 +316,16 @@ compute_transport_velocities!(model, free_surface) = update_transport_velocities
 # Not if `transport === velocities`
 function update_transport_velocities!(transport_velocities, velocities)
     transport_velocities === velocities && return nothing
-    for name in propertynames(transport_velocities)
-        update_transport_velocity_data!(transport_velocities[name], velocities[name])
-    end
+    update_transport_velocities!(transport_velocities, velocities, Val(propertynames(transport_velocities)))
+    return nothing
+end
+
+@inline update_transport_velocities!(transport_velocities, velocities, ::Val{()}) = nothing
+
+@inline function update_transport_velocities!(transport_velocities, velocities, ::Val{names}) where names
+    name = first(names)
+    update_transport_velocity_data!(transport_velocities[name], velocities[name])
+    update_transport_velocities!(transport_velocities, velocities, Val(Base.tail(names)))
     return nothing
 end
 
