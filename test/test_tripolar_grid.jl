@@ -96,8 +96,8 @@ end
         @testset "$fold_topology fold topology" for fold_topology in fold_topologies
             # `z = nothing` builds a purely horizontal (2D) tripolar grid with a `Flat` vertical;
             # the vertical entry of `size`/`halo` is then optional.
-            grid_2tuple = TripolarGrid(arch; size = (4, 15),    z = nothing, halo = (3, 3),    fold_topology, )
-            grid_3tuple = TripolarGrid(arch; size = (4, 15, 1), z = nothing, halo = (3, 3, 3), fold_topology, southernmost_latitude)
+            grid_2tuple = TripolarGrid(arch; size = (4, 15),    z = nothing, halo = (3, 3),    fold_topology)
+            grid_3tuple = TripolarGrid(arch; size = (4, 15, 1), z = nothing, halo = (3, 3, 3), fold_topology)
 
             for grid in (grid_2tuple, grid_3tuple)
                 @test grid isa TripolarGrid
