@@ -36,6 +36,8 @@ function create_field_dimensions!(ds, fd::AbstractField, dimension_name_generato
     # Nothing location or the grid axis is Flat. The "effective" dim names are what
     # actually go into the variable's NetCDF signature.
     spatial_dim_names = field_dimensions(fd, dimension_name_generator; grid_index)
+    write_indices = output_write_indices(fd, (:, :, :), with_halos)
+    spatial_dim_data = nodes(grid(fd), instantiated_location(fd)...; with_halos, indices=write_indices)
     effective_dim_names = tuple(filter(!isempty, spatial_dim_names)...)
 
     create_field_coord_variables!(ds, fd, grid(fd), spatial_dim_names, dimension_name_generator;

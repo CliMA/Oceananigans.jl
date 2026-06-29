@@ -40,6 +40,41 @@ function jld2_sliced_field_output(model, outputs=model.velocities)
     return size(u₁) == (2, 2, 4) && size(v₁) == (2, 2, 4) && size(w₁) == (2, 2, 5)
 end
 
+function test_jld2_defers_halo_slicing(arch)
+    grid = RectilinearGrid(arch, size=(4, 4, 4), halo=(2, 2, 2), extent=(1, 1, 1))
+    model = NonhydrostaticModel(grid)
+
+    set!(model, u = (x, y, z) -> x + 2y + 3z)
+
+    u² = Field(model.velocities.u * model.velocities.u; indices=(:, :, grid.Nz))
+    filename = "test_deferred_halo_slicing_$(typeof(arch)).jld2"
+
+    simulation = Simulation(model, Δt=1, stop_iteration=1)
+    simulation.output_writers[:u²] = JLD2Writer(model, (; u²);
+                                                filename,
+                                                schedule = IterationInterval(1),
+                                                array_type = Array{Float64},
+                                                with_halos = false,
+                                                overwrite_existing = true)
+
+    writer_output = simulation.output_writers[:u²].outputs.u²
+    @test size(parent(writer_output), 1) > grid.Nx
+    @test size(parent(writer_output), 2) > grid.Ny
+
+    run!(simulation)
+
+    data = jldopen(filename, "r") do file
+        file["timeseries/u²/0"]
+    end
+
+    @test size(data) == (grid.Nx, grid.Ny, 1)
+    @test data ≈ Array(interior(u²))
+
+    rm(filename)
+
+    return nothing
+end
+
 function test_jld2_size_file_splitting(arch)
     grid = RectilinearGrid(arch, size=(16, 16, 16), extent=(1, 1, 1), halo=(1, 1, 1))
     model = NonhydrostaticModel(grid; buoyancy=SeawaterBuoyancy(), tracers=(:T, :S))
@@ -444,6 +479,7 @@ for arch in archs
         test_field_slicing("sliced_jld2_test.jld2", ("u", "v", "w"), (2, 4, 4), (2, 4, 4), (2, 4, 5))
         test_field_slicing("sliced_funcs_jld2_test.jld2", ("u", "v", "w"), (4, 4, 4), (4, 4, 4), (4, 4, 5))
         test_field_slicing("sliced_func_fields_jld2_test.jld2", ("αt", "background_u"), (2, 4, 4), (2, 4, 4))
+        test_jld2_defers_halo_slicing(arch)
 
         ####
         #### File splitting

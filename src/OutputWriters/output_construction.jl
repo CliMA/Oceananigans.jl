@@ -1,6 +1,7 @@
-using Oceananigans.Fields: validate_indices, Reduction
-using Oceananigans.Grids: default_indices
-using Oceananigans.Utils: @apply_regionally
+using Oceananigans: location
+using Oceananigans.Fields: Field, AbstractField, validate_indices, Reduction, indices
+using Oceananigans.Grids: default_indices, interior_indices, topology, halo_size, parent_index_range
+using Oceananigans.Utils: @apply_regionally, instantiate
 
 restrict_to_interior(::Colon, loc, topo, N) = interior_indices(loc, topo, N)
 restrict_to_interior(::Colon, ::Nothing, topo, N) = UnitRange(1, 1)
@@ -56,12 +57,47 @@ function output_indices(output::Union{AbstractField, Reduction}, grid, indices, 
 end
 
 function construct_output(user_output::Union{AbstractField, Reduction}, user_indices, with_halos)
-    indices = output_indices(user_output, user_indices, with_halos)
+    indices = output_indices(user_output, user_indices, true)
 
     # Don't compute AbstractOperations or Reductions
     additional_kw = user_output isa Field ? NamedTuple() : (; compute=false)
 
     return Field(user_output; indices, additional_kw...)
+end
+
+#####
+##### Write-time halo slicing
+#####
+
+output_writer_indices(writer) = hasproperty(writer, :indices) ? writer.indices : default_indices(3)
+output_writer_with_halos(writer) = hasproperty(writer, :with_halos) ? writer.with_halos : true
+
+output_write_indices(output, user_indices, with_halos) = indices(output)
+output_write_indices(output::AbstractField, user_indices, with_halos) = output_indices(output, user_indices, with_halos)
+output_write_indices(output::Reduction, user_indices, with_halos) = output_indices(output, user_indices, with_halos)
+output_write_indices(output::WindowedTimeAverage, user_indices, with_halos) = output_write_indices(output.operand, user_indices, with_halos)
+
+function output_parent_indices(output::AbstractField, write_indices)
+    loc = map(instantiate, location(output))
+    topo = map(instantiate, topology(output.grid))
+    halo = halo_size(output.grid)
+    return map(parent_index_range, Oceananigans.Fields.indices(output), write_indices, loc, topo, halo)
+end
+
+slice_output_for_write(data, output, writer) =
+    slice_output_for_write(data, output, output_writer_indices(writer), output_writer_with_halos(writer))
+
+slice_output_for_write(data, output, user_indices, with_halos) = data
+
+function slice_output_for_write(data::AbstractArray, output::AbstractField, user_indices, with_halos)
+    with_halos && return data
+    write_indices = output_write_indices(output, user_indices, with_halos)
+    parent_indices = output_parent_indices(output, write_indices)
+    return view(data, parent_indices...)
+end
+
+function slice_output_for_write(data::AbstractArray, output::WindowedTimeAverage, user_indices, with_halos)
+    return slice_output_for_write(data, output.operand, user_indices, with_halos)
 end
 
 #####

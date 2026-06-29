@@ -16,7 +16,7 @@ export
 
 using DocStringExtensions: TYPEDSIGNATURES
 
-using Oceananigans: AbstractModel, fields, prognostic_fields
+using Oceananigans: Oceananigans, AbstractModel, fields, prognostic_fields
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.Advection: AbstractAdvectionScheme, Centered
 using Oceananigans.Fields: Field, flattened_unique_values
@@ -30,7 +30,6 @@ import Oceananigans.Architectures: architecture
 import Oceananigans.Grids: grid
 import Oceananigans.Fields: set!
 import Oceananigans.Solvers: iteration
-import Oceananigans.OutputWriters: default_included_properties
 import Oceananigans.TimeSteppers: reset!
 
 # A prototype interface for AbstractModel.
@@ -122,10 +121,9 @@ include("LagrangianParticleTracking/LagrangianParticleTracking.jl")
 
 using .NonhydrostaticModels: NonhydrostaticModel, PressureField, BackgroundField, BackgroundFields
 
-using .HydrostaticFreeSurfaceModels:
-    HydrostaticFreeSurfaceModel,
-    ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
-    PrescribedVelocityFields, ZStarCoordinate, ZCoordinate
+using .HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModel, ExplicitFreeSurface,
+                                     ImplicitFreeSurface, SplitExplicitFreeSurface,
+                                     PrescribedVelocityFields, ZStarCoordinate, ZCoordinate
 
 using .ShallowWaterModels: ShallowWaterModel, ConservativeFormulation, VectorInvariantFormulation
 using .LagrangianParticleTracking: LagrangianParticles, DroguedParticleDynamics
@@ -195,10 +193,9 @@ function reset!(model::OceananigansModels)
 end
 
 using Oceananigans.Diagnostics: NaNChecker
-import Oceananigans.Diagnostics: default_nan_checker
 
 # Check for NaNs in the first prognostic field (generalizes to prescribed velocities).
-function default_nan_checker(model::OceananigansModels)
+function Oceananigans.Diagnostics.default_nan_checker(model::OceananigansModels)
     model_fields = prognostic_fields(model)
 
     if isempty(model_fields)
@@ -215,21 +212,18 @@ using Oceananigans.Models.HydrostaticFreeSurfaceModels: OnlyParticleTrackingMode
 
 # Particle tracking models with prescribed velocities (and no tracers)
 # have no prognostic fields and no chance to producing a NaN.
-default_nan_checker(::OnlyParticleTrackingModel) = nothing
+Oceananigans.Diagnostics.default_nan_checker(::OnlyParticleTrackingModel) = nothing
 
 # Extend output writer functionality to custom Oceananigans.Models
-import Oceananigans.OutputWriters: default_included_properties,
-                                   checkpointer_address
+Oceananigans.OutputWriters.default_included_properties(::NonhydrostaticModel) = [:coriolis, :buoyancy, :closure]
+Oceananigans.OutputWriters.default_included_properties(::HydrostaticFreeSurfaceModel) = [:coriolis, :buoyancy, :closure]
+Oceananigans.OutputWriters.default_included_properties(::ShallowWaterModel) = [:coriolis, :closure]
 
-default_included_properties(::NonhydrostaticModel) = [:coriolis, :buoyancy, :closure]
-default_included_properties(::HydrostaticFreeSurfaceModel) = [:coriolis, :buoyancy, :closure]
-default_included_properties(::ShallowWaterModel) = [:coriolis, :closure]
+Oceananigans.OutputWriters.checkpointer_address(::ShallowWaterModel) = "ShallowWaterModel"
+Oceananigans.OutputWriters.checkpointer_address(::NonhydrostaticModel) = "NonhydrostaticModel"
+Oceananigans.OutputWriters.checkpointer_address(::HydrostaticFreeSurfaceModel) = "HydrostaticFreeSurfaceModel"
 
-checkpointer_address(::ShallowWaterModel) = "ShallowWaterModel"
-checkpointer_address(::NonhydrostaticModel) = "NonhydrostaticModel"
-checkpointer_address(::HydrostaticFreeSurfaceModel) = "HydrostaticFreeSurfaceModel"
-
-default_included_properties(::OceananigansModels) = Symbol[]
+Oceananigans.OutputWriters.default_included_properties(::OceananigansModels) = Symbol[]
 
 # Specialized output attributes for velocity and tracer fields
 include("output_attributes.jl")

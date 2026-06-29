@@ -2,16 +2,17 @@ using Printf: @sprintf
 using JLD2
 using Oceananigans.Utils
 using Oceananigans.Utils: TimeInterval, prettykeys, materialize_schedule
-using Oceananigans.Fields: indices
 using Oceananigans.Grids: grid
 
 default_included_properties(model) = []
 
-mutable struct JLD2Writer{O, T, D, IF, IN, FS, KW} <: AbstractOutputWriter
+mutable struct JLD2Writer{O, T, D, I, IF, IN, FS, KW} <: AbstractOutputWriter
     filepath :: String
     outputs :: O
     schedule :: T
     array_type :: D
+    indices :: I
+    with_halos :: Bool
     init :: IF
     including :: IN
     part :: Int
@@ -191,11 +192,12 @@ function JLD2Writer(model, outputs; filename, schedule,
 
     # Note: file initialization is deferred until `initialize!(writer, model)` is called
     # (typically when `run!` is invoked on a Simulation containing this writer)
-    return JLD2Writer(filepath, d_outputs, schedule, array_type, init,
+    return JLD2Writer(filepath, d_outputs, schedule, array_type, indices, with_halos, init,
                       including, part, file_splitting, overwrite_existing, verbose, jld2_kw, false)
 end
 
-function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model)
+function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, model,
+                               indices=(:, :, :), with_halos=true)
     try
         jldopen(filepath, "a+"; jld2_kw...) do file
             init(file, model)
@@ -251,7 +253,7 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
             end
             try
                 file["timeseries/$name/serialized/location"] = location(field)
-                file["timeseries/$name/serialized/indices"] = indices(field)
+                file["timeseries/$name/serialized/indices"] = output_write_indices(field, indices, with_halos)
                 serializeproperty!(file, "timeseries/$name/serialized/boundary_conditions", boundary_conditions(field))
             catch
             end
@@ -262,7 +264,8 @@ function initialize_jld2_file!(filepath, init, jld2_kw, including, outputs, mode
 end
 
 initialize_jld2_file!(writer::JLD2Writer, model) =
-    initialize_jld2_file!(writer.filepath, writer.init, writer.jld2_kw, writer.including, writer.outputs, model)
+    initialize_jld2_file!(writer.filepath, writer.init, writer.jld2_kw, writer.including,
+                          writer.outputs, model, writer.indices, writer.with_halos)
 
 """
 $(TYPEDSIGNATURES)
