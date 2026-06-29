@@ -14,7 +14,8 @@ function type_contains_field_time_series(T, seen)
                           type_contains_field_time_series(T.b, seen)
     T <: FieldTimeSeries && return true
     T <: GPUAdaptedFieldTimeSeries && return true
-    (T <: Number || T <: AbstractArray || T <: AbstractGrid) && return false
+    (T <: Number || T <: AbstractGrid) && return false
+    (T <: AbstractArray && !(T <: AbstractField)) && return false
     isconcretetype(T) || return true # abstract / unresolved: assume an FTS may hide inside
     return any(ft -> type_contains_field_time_series(ft, seen), fieldtypes(T))
 end
