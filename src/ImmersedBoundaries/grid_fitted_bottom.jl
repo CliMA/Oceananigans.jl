@@ -56,6 +56,9 @@ GridFittedBottom(bottom_height) = GridFittedBottom(bottom_height, CenterImmersed
     return view(parent(bottom_height), parent_ranges...)
 end
 
+@inline bottom_heights_equal(h1, h2) = h1 == h2
+@inline bottom_heights_equal(h1::AbstractArray, h2::AbstractArray) = bottom_height_interior(h1) == bottom_height_interior(h2)
+
 set_bottom_height!(bottom_field, bottom_height) = set!(bottom_field, bottom_height)
 
 function set_bottom_height!(bottom_field, bottom_height::OffsetArray)
@@ -71,7 +74,7 @@ function Base.summary(ib::GridFittedBottom)
     bottom_interior = bottom_height_interior(ib.bottom_height)
     zmax  = maximum(bottom_interior)
     zmin  = minimum(bottom_interior)
-    zmean = mean(bottom_interior)
+    zmean = sum(bottom_interior) / length(bottom_interior)
 
     summary1 = "GridFittedBottom("
 
@@ -173,5 +176,5 @@ function Grids.constructor_arguments(grid::AGFBIBG)
 end
 
 function Base.:(==)(gfb1::GridFittedBottom, gfb2::GridFittedBottom)
-    return gfb1.bottom_height == gfb2.bottom_height && gfb1.immersed_condition == gfb2.immersed_condition
+    return bottom_heights_equal(gfb1.bottom_height, gfb2.bottom_height) && gfb1.immersed_condition == gfb2.immersed_condition
 end

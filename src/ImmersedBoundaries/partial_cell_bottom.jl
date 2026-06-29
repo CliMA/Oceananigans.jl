@@ -20,7 +20,7 @@ function Base.summary(ib::PartialCellBottom)
     bottom_interior = bottom_height_interior(ib.bottom_height)
     zmax = maximum(bottom_interior)
     zmin = minimum(bottom_interior)
-    zmean = mean(bottom_interior)
+    zmean = sum(bottom_interior) / length(bottom_interior)
 
     summary1 = "PartialCellBottom("
 
@@ -212,5 +212,5 @@ function Grids.constructor_arguments(grid::PCBIBG)
 end
 
 function Base.:(==)(pcb1::PartialCellBottom, pcb2::PartialCellBottom)
-    return pcb1.bottom_height == pcb2.bottom_height && pcb1.minimum_fractional_cell_height == pcb2.minimum_fractional_cell_height
+    return bottom_heights_equal(pcb1.bottom_height, pcb2.bottom_height) && pcb1.minimum_fractional_cell_height == pcb2.minimum_fractional_cell_height
 end
