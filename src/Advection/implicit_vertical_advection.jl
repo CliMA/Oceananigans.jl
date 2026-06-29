@@ -78,7 +78,7 @@ end
 # Upper diagonal: coefficient of q_{k+1} in the tridiagonal system
 @inline function implicit_advection_upper_diagonal(i, j, k, grid, advection::AIVA, w, Δt, ℓx, ℓy, density=nothing)
     scheme = vertical_scheme(advection)
-    td     = TimeSteppers.time_discretization(scheme)
+    td  = TimeSteppers.time_discretization(scheme)
     wⁱ  = implicit_vertical_velocity(ℓx, ℓy, i, j, k+1, grid, scheme, td, w)
     Azᵢ = Az(i, j, k+1, grid, ℓx, ℓy, Face())
     ϖᶠ  = densityᶜᶜᶠ(i, j, k+1, grid, density)
