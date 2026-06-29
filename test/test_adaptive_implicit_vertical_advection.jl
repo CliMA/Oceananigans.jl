@@ -6,13 +6,10 @@ using Oceananigans.Advection: AdaptiveImplicitVerticalAdvection,
                               implicit_advection_upper_diagonal,
                               implicit_advection_lower_diagonal,
                               implicit_advection_diagonal
-using Oceananigans.TimeSteppers: AdaptiveVerticallyImplicitDiscretization,
-                                 ExplicitTimeDiscretization,
-                                 time_discretization,
-                                 implicit_step!,
-                                 reset!
 using Oceananigans.Grids: Center
 using Oceananigans.Operators: ℑzᵃᵃᶠ
+using Oceananigans.TimeSteppers: AdaptiveVerticallyImplicitDiscretization, ExplicitTimeDiscretization,
+                                 time_discretization, implicit_step!, reset!
 using Oceananigans.TurbulenceClosures: implicit_diffusion_solver, VerticallyImplicitTimeDiscretization
 
 @testset "AdaptiveVerticallyImplicitDiscretization construction" begin
