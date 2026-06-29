@@ -1,13 +1,17 @@
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions
 using Oceananigans.DistributedComputations: reconstruct_global_grid
 using Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, metrics_precomputed,
-    pop_flat_elements, grid_name, new_data, halo_size, with_halo, minimum_xspacing, minimum_yspacing, minimum_zspacing
-using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary, bottom_height_field
-import Oceananigans.ImmersedBoundaries: set_bottom_height!
+                          pop_flat_elements, grid_name, new_data, halo_size, with_halo,
+                          minimum_xspacing, minimum_yspacing, minimum_zspacing
+using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary,
+                                       bottom_height_field, set_bottom_height!
 using Oceananigans.Models: PrescribedVelocityFields
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModels
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: SplitExplicitFreeSurfaces,
-    SplitExplicitFreeSurface, FixedSubstepNumber, FixedTimeStepSize, maybe_augmented_kernel_parameters
+                                                                                  SplitExplicitFreeSurface,
+                                                                                  FixedSubstepNumber,
+                                                                                  FixedTimeStepSize,
+                                                                                  maybe_augmented_kernel_parameters
 
 struct MultiRegionGrid{FT, TX, TY, TZ, CZ, P, C, G, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch}
     architecture :: Arch
@@ -189,7 +193,7 @@ reconstruct_global_immersed_boundary(g::GridFittedBoundary{<:Field}, ::MultiRegi
 
 # On a multi-region grid the stored bottom height is a `MultiRegionObject` of per-region halo-inclusive
 # `OffsetArray`s; strip each region's halos before copying (the bare-`OffsetArray` method does this per region).
-set_bottom_height!(bottom_field, bottom_height::MultiRegionObject) =
+Oceananigans.ImmersedBoundaries.set_bottom_height!(bottom_field, bottom_height::MultiRegionObject) =
     @apply_regionally set_bottom_height!(bottom_field, bottom_height)
 
 @inline  Utils.getregion(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}, r) where {FT, TX, TY, TZ} = ImmersedBoundaryGrid{TX, TY, TZ}(_getregion(mrg.underlying_grid, r),
