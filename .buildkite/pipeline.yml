@@ -152,7 +152,6 @@ steps:
           - "🦤 general_solvers"
           - "🎣 turbulence_closures"
           - "🏀 coriolis"
-          - "🧠 memory_allocation"
           - "🦀 time_stepping_1"
           - "🦈 time_stepping_2"
           - "🦟 time_stepping_3"

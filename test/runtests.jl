@@ -212,6 +212,12 @@ CUDA.allowscalar() do
         reset_cuda_if_necessary()
         include("test_distributed_architectures.jl")
         include("test_distributed_models.jl")
+    end
+
+    if group == :distributed_memory || group == :all
+        MPI.Initialized() || MPI.Init()
+        # In case CUDA is not found, we reset CUDA and restart the julia session
+        reset_cuda_if_necessary()
         archs = nonhydrostatic_regression_test_architectures()
         include("test_memory_allocation.jl")
     end
