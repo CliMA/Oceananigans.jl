@@ -91,7 +91,7 @@ end
 # Uses k′ = k-1 indexing convention (LinearAlgebra.Tridiagonal convention, matching ivd_lower_diagonal)
 @inline function implicit_advection_lower_diagonal(i, j, k′, grid, advection::AIVA, w, Δt, ℓx, ℓy, density=nothing)
     scheme = vertical_scheme(advection)
-    td     = TimeSteppers.time_discretization(scheme)
+    td  = TimeSteppers.time_discretization(scheme)
     k   = k′ + 1
     wⁱ  = implicit_vertical_velocity(ℓx, ℓy, i, j, k, grid, scheme, td, w)
     Azᵢ = Az(i, j, k, grid, ℓx, ℓy, Face())
