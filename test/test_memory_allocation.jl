@@ -66,7 +66,7 @@ const distributed_memory = Dict(
         @testset "Testing time-stepping memory allocations [$(summary(arch))]..." begin
             for (name, (build, Δt)) in pairs(Models)
                 for immersed in (:flat, :immersed, :active_immersed)
-                    grid  = allocation_grid(arch; immersed_mode=immersed, size=(32, 32, 8))
+                    grid  = allocation_grid(arch; immersed_mode=immersed, size=(48, 48, 8))
                     model = build(grid)
                     allocations = time_step_allocations(model, Δt)
                     baseline = arch isa Distributed ? distributed_memory : serial_memory
