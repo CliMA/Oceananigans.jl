@@ -61,6 +61,9 @@ const distributed_memory = Dict(
     (:nonhydrostatic, :active_immersed) => 2e10,
 )
 
+# For distributed this includes only (4, 1), (1, 4) and (2, 2)
+archs = nonhydrostatic_regression_test_architectures()
+
 @testset "Memory allocation regression tests" begin
     for arch in archs
         @testset "Testing time-stepping memory allocations [$(summary(arch))]..." begin
