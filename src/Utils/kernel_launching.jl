@@ -152,37 +152,24 @@ dimension. The `worksize` specifies the range of the loop in each dimension.
 
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
-@inline function interior_work_layout(grid, workdims::Symbol, (LX, LY, LZ))
+@inline select_dims(::Val{:xyz}, x, y, z) = (x, y, z)
+@inline select_dims(::Val{:xy},  x, y, z) = (x, y)
+@inline select_dims(::Val{:xz},  x, y, z) = (x, z)
+@inline select_dims(::Val{:yz},  x, y, z) = (y, z)
+
+@inline function interior_work_layout(grid, workdims::Val, (ℓx, ℓy, ℓz))
     Fx, Fy, Fz = worksize(grid)
 
-    # just an example for :xyz
-    ℓx = instantiate(LX)
-    ℓy = instantiate(LY)
-    ℓz = instantiate(LZ)
+    ox = periphery_offset(ℓx, grid, Val(1))
+    oy = periphery_offset(ℓy, grid, Val(2))
+    oz = periphery_offset(ℓz, grid, Val(3))
 
-    # Offsets
-    ox = periphery_offset(ℓx, grid, 1)
-    oy = periphery_offset(ℓy, grid, 2)
-    oz = periphery_offset(ℓz, grid, 3)
-
-    # Worksize
     Wx, Wy, Wz = (Fx-ox, Fy-oy, Fz-oz)
-    workgroup = heuristic_workgroup(Wx, Wy, Wz)
-    workgroup = StaticSize(workgroup)
+    workgroup = StaticSize(heuristic_workgroup(Wx, Wy, Wz))
 
-    # Adapt to workdims
-    _worksize = ifelse(workdims == :xyz, (Wx, Wy, Wz),
-                ifelse(workdims == :xy,  (Wx, Wy),
-                ifelse(workdims == :xz,  (Wx, Wz), (Wy, Wz))))
+    range = contiguousrange(select_dims(workdims, Wx, Wy, Wz), select_dims(workdims, ox, oy, oz))
 
-    offsets = ifelse(workdims == :xyz, (ox, oy, oz),
-              ifelse(workdims == :xy,  (ox, oy),
-              ifelse(workdims == :xz,  (ox, oz), (oy, oz))))
-
-    range = contiguousrange(_worksize, offsets)
-    _worksize = OffsetStaticSize(range)
-
-    return workgroup, _worksize
+    return workgroup, OffsetStaticSize(range)
 end
 
 """
@@ -194,28 +181,19 @@ dimension. The `worksize` specifies the range of the loop in each dimension.
 
 For more information, see: https://github.com/CliMA/Oceananigans.jl/pull/308
 """
-@inline function work_layout(grid, workdims::Symbol, reduced_dimensions)
+@inline function work_layout(grid, workdims::Val, reduced_dimensions)
     Fx, Fy, Fz = worksize(grid)
     Wx, Wy, Wz = flatten_reduced_dimensions((Fx, Fy, Fz), reduced_dimensions) # this seems to be for halo filling
     workgroup  = heuristic_workgroup(Wx, Wy, Wz)
-
-    _worksize = ifelse(workdims == :xyz, (Wx, Wy, Wz),
-                ifelse(workdims == :xy,  (Wx, Wy),
-                ifelse(workdims == :xz,  (Wx, Wz),
-                                         (Wy, Wz))))
-
-    return StaticSize(workgroup), StaticSize(_worksize)
+    return StaticSize(workgroup), StaticSize(select_dims(workdims, Wx, Wy, Wz))
 end
+
+@inline work_layout(grid, workdims::Symbol, reduced_dimensions) = work_layout(grid, Val(workdims), reduced_dimensions)
+@inline interior_work_layout(grid, workdims::Symbol, location) = interior_work_layout(grid, Val(workdims), location)
 
 @inline function work_layout(grid, worksize::NTuple{N, Int}, reduced_dimensions) where N
     workgroup = heuristic_workgroup(worksize...)
     return StaticSize(workgroup), StaticSize(worksize)
-end
-
-@inline function work_layout(active_cells_map::AbstractArray)
-    length_map = length(active_cells_map)
-    workgroup = min(length_map, 256)
-    return StaticSize(workgroup), StaticSize(length_map)
 end
 
 @inline function offset_work_layout(grid, ::KernelParameters{spec, offsets}, reduced_dimensions) where {spec, offsets}
@@ -251,6 +229,9 @@ Keyword Arguments
                       the kernel is configured as a linear kernel with a worksize equal to the length of the active cell map. Default is `nothing`.
 - `exclude_periphery`: A boolean indicating whether to exclude the periphery, used only for interior kernels.
 """
+@inline configure_kernel(arch, grid, workspec::Symbol, kernel!; kwargs...) =
+    configure_kernel(arch, grid, Val(workspec), kernel!; kwargs...)
+
 @inline function configure_kernel(arch, grid, workspec, kernel!;
                                   active_cells_map = nothing,
                                   exclude_periphery = false,
@@ -275,7 +256,7 @@ end
 end
 
 # With a "true" exclude_periphery, we use the `interior_work_layout` function
-@inline function configure_kernel(arch, grid, workspec::Symbol, kernel!, ::Nothing, ::Val{true};
+@inline function configure_kernel(arch, grid, workspec::Val, kernel!, ::Nothing, ::Val{true};
                                   reduced_dimensions = (),
                                   location = nothing)
 
@@ -300,15 +281,13 @@ end
 # When there is an active_cells_map, we use the `mapped_kernel` function
 @inline function configure_kernel(arch, grid, workspec, kernel!, active_cells_map::AbstractArray, args...; kwargs...)
 
-    workgroup, worksize = work_layout(active_cells_map)
-
     dev  = Architectures.device(arch)
-    loop = kernel!(dev, workgroup, worksize)
+    loop = kernel!(dev, StaticSize((256,)), NDIteration.DynamicSize())
 
     # Map out the function to use active_cells_map as an index map
     loop = mapped_kernel(loop, dev, active_cells_map)
 
-    return loop, worksize::StaticSize
+    return loop, active_cells_map
 end
 
 @inline function mapped_kernel(kernel::Kernel{Dev, B, W}, dev, map) where {Dev, B, W}
@@ -329,25 +308,44 @@ keyword arguments `kw`.
 """
 @inline launch!(args...; kwargs...) = _launch!(args...; kwargs...)
 
-@inline launch!(arch, grid, workspec::NTuple{N, Int}, args...; kwargs...) where N =
-    _launch!(arch, grid, workspec, args...; kwargs...)
+@inline launch!(arch, grid, workspec::NTuple{N, Int}, args...; kwargs...) where N = _launch!(arch, grid, workspec, args...; kwargs...)
 
 @inline function launch!(arch, grid, workspec_tuple::Tuple, args...; kwargs...)
-    for workspec in workspec_tuple
-        _launch!(arch, grid, workspec, args...; kwargs...)
-    end
+    _launch!(arch, grid, first(workspec_tuple), args...; kwargs...)
+    launch!(arch, grid, Base.tail(workspec_tuple), args...; kwargs...)
     return nothing
 end
 
-# launching with an empty tuple has no effect
-@inline function launch!(arch, grid, workspec_tuple::Tuple{}, kernel, args...; kwargs...)
-    @warn "trying to launch kernel $kernel with workspec == (). The kernel will not be launched."
-    return nothing
+# Launching with an empty tuple of workspecs has no effect (e.g. no connected buffer sides).
+@inline launch!(arch, grid, ::Tuple{}, args...; kwargs...) = nothing
+
+@inline launch!(arch, grid, workspec::Symbol, args...; kw...) = _launch!(arch, grid, Val(workspec), args...; kw...)
+@inline launch!(arch, grid, workspec::Val,    args...; kw...) = _launch!(arch, grid, workspec, args...; kw...)
+
+"""
+    @tendency_kernel(name, tendency, N)
+
+Define `@kernel function name(output, grid, arg1, …, arg_N)` that writes `tendency(i, j, k, grid, arg1, …, arg_N)` into `output[i, j, k]`, 
+spelling the `N` tendency arguments out as separate fixed parameters instead of bundling them into one packed tuple.
+"""
+macro tendency_kernel(name, tendency, N::Int)
+    arguments = [Symbol(:arg, i) for i in 1:N]
+    return esc(quote
+        @kernel function $(name)(output, grid, $(arguments...))
+            i, j, k = @index(Global, NTuple)
+            @inbounds output[i, j, k] = $(tendency)(i, j, k, grid, $(arguments...))
+        end
+    end)
 end
 
-# When dims::Val
-@inline launch!(arch, grid, ::Val{workspec}, args...; kw...) where workspec =
-    _launch!(arch, grid, workspec, args...; kw...)
+@inline launch_split_maps!(::Tuple{}, args...; kw...) = nothing
+
+@inline function launch_split_maps!(maps::Tuple, arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...; exclude_periphery = false, reduced_dimensions = ())
+    cells_map = first(maps)
+    isnothing(cells_map) || _launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...; exclude_periphery, reduced_dimensions, active_cells_map = cells_map)
+    launch_split_maps!(Base.tail(maps), arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...; exclude_periphery, reduced_dimensions)
+    return nothing
+end
 
 # Inner interface
 @inline function _launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...;
@@ -357,19 +355,13 @@ end
 
     active_map = possibly_load_active_cells_map(active_cells_map, grid, workspec, exclude_periphery)
 
-    # When active_cells_map is a NamedTuple (distributed grids with split maps),
-    # launch once for each non-nothing sub-map.
+    # When active_cells_map is a NamedTuple (distributed grids with split maps), launch once for each non-nothing sub-map.
     if active_map isa NamedTuple
-        for map in active_map
-            if !isnothing(map)
-                _launch!(arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...;
-                         exclude_periphery, reduced_dimensions, active_cells_map = map)
-            end
-        end
+        launch_split_maps!(values(active_map), arch, grid, workspec, kernel!, first_kernel_arg, other_kernel_args...; exclude_periphery, reduced_dimensions)
         return nothing
     end
 
-    location = Oceananigans.location(first_kernel_arg)
+    location = Oceananigans.instantiated_location(first_kernel_arg)
 
     loop!, worksize = configure_kernel(arch, grid, workspec, kernel!, active_map, Val(exclude_periphery);
                                        location,
@@ -386,20 +378,18 @@ end
 # Fallback, use always the provided map
 possibly_load_active_cells_map(active_cells_map, grid, workspec, exclude_periphery) = active_cells_map
 
-# If we use standard dimensions, load the corresponding map
-@inline function possibly_load_active_cells_map(::Nothing, grid, workspec::Symbol, exclude_periphery)
-    if exclude_periphery # The active cell map includes borders
-        return nothing
-    end
-
-    if workspec == :xyz
-        return get_active_cells_map(grid, Val(:xyz))
-    elseif workspec == :xy
-        return get_active_cells_map(grid, Val(:xy))
-    else
-        return nothing
-    end
+@inline function possibly_load_active_cells_map(::Nothing, grid, ::Val{:xyz}, exclude_periphery)
+    exclude_periphery && return nothing
+    return get_active_cells_map(grid, Val(:xyz))
 end
+
+@inline function possibly_load_active_cells_map(::Nothing, grid, ::Val{:xy}, exclude_periphery)
+    exclude_periphery && return nothing
+    return get_active_cells_map(grid, Val(:xy))
+end
+
+@inline possibly_load_active_cells_map(::Nothing, grid, ::Val, exclude_periphery) = nothing
+@inline possibly_load_active_cells_map(::Nothing, grid, workspec::Symbol, exclude_periphery) = possibly_load_active_cells_map(nothing, grid, Val(workspec), exclude_periphery)
 
 #####
 ##### Extension to KA for offset indices: to remove when implemented in KA
@@ -510,9 +500,7 @@ end
 ##### Utilities for Mapped kernels
 #####
 
-struct IndexMap end
-
-const MappedNDRange{N, B, W} = NDRange{N, B, W, <:IndexMap, <:AbstractArray} where {N, B<:StaticSize, W<:StaticSize}
+const MappedNDRange{N, B, W} = NDRange{N, B, W, <:Any, <:AbstractArray} where {N, B, W<:StaticSize}
 
 # TODO: maybe don't do this
 # NDRange has been modified to include an index_map in place of workitems.
@@ -546,17 +534,12 @@ Adapt.adapt_structure(to, ndrange::MappedNDRange{N, B, W}) where {N, B, W} =
 function partition(kernel::MappedKernel, inrange, ingroupsize)
     static_workgroupsize = workgroupsize(kernel)
 
-    # Calculate the static NDRange and WorkgroupSize
     index_map = kernel.index_map
     range = length(index_map)
     groupsize = get(static_workgroupsize)
 
     blocks, groupsize, dynamic = NDIteration.partition(range, groupsize)
-
-    static_blocks = StaticSize{blocks}
-    static_workgroupsize = StaticSize{groupsize} # we might have padded workgroupsize
-
-    iterspace = NDRange{length(range), static_blocks, static_workgroupsize}(IndexMap(), index_map)
+    iterspace = NDRange{1, NDIteration.DynamicSize, static_workgroupsize}(CartesianIndices(blocks), index_map)
 
     return iterspace, dynamic
 end
@@ -565,7 +548,7 @@ end
 ##### Extend the valid index function to check whether the index is valid in the index map
 #####
 
-const MappedCompilerMetadata{N, C} = CompilerMetadata{N, C, <:Any, <:Any, <:MappedNDRange} where {N<:StaticSize, C}
+const MappedCompilerMetadata{N, C} = CompilerMetadata{N, C, <:Any, <:Any, <:MappedNDRange} where {N, C}
 
 Adapt.adapt_structure(to, cm::MappedCompilerMetadata{N, C}) where {N, C} =
     CompilerMetadata{N, C}(Adapt.adapt(to, cm.groupindex),
@@ -601,4 +584,51 @@ end
     else
         return true
     end
+end
+
+#####
+##### STOPGAP -- pirate KernelAbstractions' CPU `__run` (port the `let` fix to KA, then delete this).
+#####
+##### KA's `__run` reassigns `len`/`rem`/`Nthreads` and captures them -- together with the kernel-argument
+##### tuple `args` -- inside its `@threads`/`@spawn` closures. Julia's closure conversion boxes those captures
+##### and hoists the box to function entry, so `args` (tens of KB for an Oceananigans launch) is heap-copied on
+##### *every* CPU launch, even single-threaded. We override `__run` (rather than route launches through our own
+##### function) because some launches -- e.g. `fill_halo_event!` -- call the KA kernel directly and never pass
+##### through `launch!`, so only a global override catches them all. The body is KA's `__run` verbatim, plus
+##### the single `let` marked below, which keeps the args box out of the single-threaded path. NOTE: this is a
+##### method overwrite of a KA function and therefore breaks Oceananigans precompilation; it is a deliberate,
+##### temporary measure until the `let` fix lands upstream in KernelAbstractions.
+#####
+
+import KernelAbstractions: __run
+using KernelAbstractions: __thread_run
+
+function __run(obj, ndrange, iterspace, args, dynamic, static_threads)
+    N = length(iterspace)
+    Nthreads = Threads.nthreads()
+    if Nthreads == 1
+        len, rem = N, 0
+    else
+        len, rem = divrem(N, Nthreads)
+    end
+    if len == 0
+        Nthreads = N
+        len, rem = 1, 0
+    end
+    if Nthreads == 1
+        __thread_run(1, len, rem, obj, ndrange, iterspace, args, dynamic)
+    else
+        let len = len, rem = rem, Nthreads = Nthreads   # <-- the only change vs KA's `__run`
+            if static_threads
+                Threads.@threads :static for tid in 1:Nthreads
+                    __thread_run(tid, len, rem, obj, ndrange, iterspace, args, dynamic)
+                end
+            else
+                @sync for tid in 1:Nthreads
+                    Threads.@spawn __thread_run(tid, len, rem, obj, ndrange, iterspace, args, dynamic)
+                end
+            end
+        end
+    end
+    return nothing
 end

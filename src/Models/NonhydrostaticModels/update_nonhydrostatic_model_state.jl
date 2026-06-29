@@ -21,10 +21,8 @@ they are called in the end.
 function update_state!(model::NonhydrostaticModel, callbacks=[])
 
     # Mask immersed tracers
-    foreach(model.tracers) do tracer
-        mask_immersed_field!(tracer)
-    end
-
+    mask_immersed_field!(model.tracers)
+    
     # Update all FieldTimeSeries used in the model
     update_model_field_time_series!(model, model.clock)
 

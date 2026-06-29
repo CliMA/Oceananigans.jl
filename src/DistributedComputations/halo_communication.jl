@@ -80,23 +80,22 @@ fill_halo_regions!(field::DistributedField, args...; kwargs...) =
                        field.indices,
                        instantiated_location(field),
                        field.grid,
-                       field.communication_buffers,
-                       args...;
+                       (field.communication_buffers, args...);
                        kwargs...)
 
-function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid::DistributedGrid, args...; kwargs...)
+fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid::DistributedGrid, args...; kwargs...) = 
+    fill_halo_regions!(c, boundary_conditions, indices, loc, grid, Tuple(args); kwargs...)
+
+function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid::DistributedGrid, args::Tuple; kwargs...)
 
     arch = architecture(grid)
     kernels!, bcs = get_boundary_kernels(boundary_conditions, c, grid, loc, indices)
 
-    number_of_tasks  = length(kernels!)
     outstanding_requests = length(arch.mpi_requests)
 
-    for task = 1:number_of_tasks
-        @inbounds distributed_fill_halo_event!(c, kernels![task], bcs[task], loc, grid, args...; kwargs...)
-    end
+    distributed_fill_halo_events!(c, values(kernels!), values(bcs), loc, grid, args; kwargs...)
 
-    fill_corners!(c, arch.connectivity, indices, loc, arch, grid, args...; kwargs...)
+    fill_corners!(c, arch.connectivity, indices, loc, arch, grid, args; kwargs...)
 
     # We increment the request counter only if we have actually initiated the MPI communication.
     # This is the case only if at least one of the boundary conditions is a distributed communication
@@ -105,6 +104,14 @@ function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, g
         arch.mpi_tag[] += 1
     end
 
+    return nothing
+end
+
+@inline distributed_fill_halo_events!(c, ::Tuple{}, ::Tuple{}, loc, grid, args; kwargs...) = nothing
+
+@inline function distributed_fill_halo_events!(c, kernels!::Tuple, bcs::Tuple, loc, grid, args; kwargs...)
+    distributed_fill_halo_event!(c, first(kernels!), first(bcs), loc, grid, args; kwargs...)
+    distributed_fill_halo_events!(c, Base.tail(kernels!), Base.tail(bcs), loc, grid, args; kwargs...)
     return nothing
 end
 
@@ -133,7 +140,7 @@ end
 end
 
 # corner passing routine
-function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers, args...;
+function fill_corners!(c, connectivity, indices, loc, arch, grid, args::Tuple;
                        async=false, only_local_halos=false, kw...)
 
     # No corner filling needed!
@@ -143,16 +150,18 @@ function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers, args.
     isnothing(connectivity.southwest) && isnothing(connectivity.southeast) &&
     isnothing(connectivity.northwest) && isnothing(connectivity.northeast) && return nothing
 
+    buffers = first(args)  # the boundary-condition `args` are unused by corner passing (pure MPI)
+
     # This has to be synchronized!
     fill_send_buffers!(c, buffers, grid, Val(:corners))
     sync_device!(arch)
 
     requests = MPI.Request[]
 
-    reqsw = fill_southwest_halo!(c, connectivity.southwest, indices, loc, arch, grid, buffers, buffers.southwest, args...; kw...)
-    reqse = fill_southeast_halo!(c, connectivity.southeast, indices, loc, arch, grid, buffers, buffers.southeast, args...; kw...)
-    reqnw = fill_northwest_halo!(c, connectivity.northwest, indices, loc, arch, grid, buffers, buffers.northwest, args...; kw...)
-    reqne = fill_northeast_halo!(c, connectivity.northeast, indices, loc, arch, grid, buffers, buffers.northeast, args...; kw...)
+    reqsw = fill_southwest_halo!(c, connectivity.southwest, indices, loc, arch, grid, buffers, buffers.southwest; kw...)
+    reqse = fill_southeast_halo!(c, connectivity.southeast, indices, loc, arch, grid, buffers, buffers.southeast; kw...)
+    reqnw = fill_northwest_halo!(c, connectivity.northwest, indices, loc, arch, grid, buffers, buffers.northwest; kw...)
+    reqne = fill_northeast_halo!(c, connectivity.northeast, indices, loc, arch, grid, buffers, buffers.northeast; kw...)
 
     !isnothing(reqsw) && push!(requests, reqsw...)
     !isnothing(reqse) && push!(requests, reqse...)
@@ -167,19 +176,18 @@ end
 cooperative_wait(req::MPI.Request)            = MPI.Waitall(req)
 cooperative_waitall!(req::Array{MPI.Request}) = MPI.Waitall(req)
 
-# Fallback: for serial boundary conditions fall back to `fill_halo_event!` but prune out the additional `buffers`
-# argument used only for distributed halo-filling boundary conditions
-distributed_fill_halo_event!(c, kernel!, bcs, loc, grid::DistributedGrid, buffers, args...; kwargs...) =
-    fill_halo_event!(c, kernel!, bcs, loc, grid, args...; kwargs...)
+# Fallback: for serial boundary conditions `Base.tail` prunes the distributed-only `buffers`.
+distributed_fill_halo_event!(c, kernel!, bcs, loc, grid::DistributedGrid, args::Tuple; kwargs...) =
+    fill_halo_event!(c, kernel!, bcs, loc, grid, Base.tail(args)...; kwargs...)
 
 # There are two additional keyword arguments (with respect to serial `fill_halo_event!`s) that take an effect on `DistributedGrids`:
 # - only_local_halos: if true, only the local halos are filled, i.e. corresponding to non-communicating boundary conditions
 # - async: if true, ansynchronous MPI communication is enabled
-function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc, grid::DistributedGrid, buffers, args...;
-                                      async = false, only_local_halos = false, kwargs...)
+function distributed_fill_halo_event!(c, kernel!::DistributedFillHalo, bcs, loc, grid::DistributedGrid, args::Tuple;  async = false, only_local_halos = false, kwargs...)
 
     only_local_halos && return nothing # No need to do anything here
 
+    buffers = first(args)
     buffer_side = kernel!.side
     arch = architecture(grid)
 
@@ -202,9 +210,9 @@ for side in [:southwest, :southeast, :northwest, :northeast]
     recv_side_halo! = Symbol("recv_$(side)_halo!")
 
     @eval begin
-        $fill_corner_halo!(c, corner, indices, loc, arch, grid, buffers, ::Nothing, args...; kwargs...) = nothing
+        $fill_corner_halo!(c, corner, indices, loc, arch, grid, buffers, ::Nothing; kwargs...) = nothing
 
-        function $fill_corner_halo!(c, corner, indices, loc, arch, grid, buffers, sd, args...; kwargs...)
+        function $fill_corner_halo!(c, corner, indices, loc, arch, grid, buffers, sd; kwargs...)
             child_arch = child_architecture(arch)
             local_rank = arch.local_rank
 

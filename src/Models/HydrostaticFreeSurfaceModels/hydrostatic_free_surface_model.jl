@@ -37,11 +37,11 @@ function default_vertical_coordinate(grid)
 end
 
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
-                                           G, T, V, B, R, F, P, BGC, U, W, C, Φ, K, AF, Z, BM} <: AbstractModel{TS, A}
+                                           G, CL, V, B, R, F, P, BGC, U, W, C, Φ, K, AF, Z, BM} <: AbstractModel{TS, A}
 
     architecture :: A          # Computer `Architecture` on which `Model` is run
     grid :: G                  # Grid of physical points on which `Model` is solved
-    clock :: Clock{T}          # Tracks iteration number and simulation time of `Model`
+    clock :: CL                # Tracks iteration number and simulation time of `Model` (full concrete `Clock` type)
     advection :: V             # Advection scheme for tracers
     buoyancy :: B              # Set of parameters for buoyancy model
     coriolis :: R              # Set of parameters for the background rotation rate of `Model`
@@ -316,9 +316,16 @@ compute_transport_velocities!(model, free_surface) = update_transport_velocities
 # Not if `transport === velocities`
 function update_transport_velocities!(transport_velocities, velocities)
     transport_velocities === velocities && return nothing
-    for name in propertynames(transport_velocities)
-        update_transport_velocity_data!(transport_velocities[name], velocities[name])
-    end
+    update_transport_velocities!(transport_velocities, velocities, Val(propertynames(transport_velocities)))
+    return nothing
+end
+
+@inline update_transport_velocities!(transport_velocities, velocities, ::Val{()}) = nothing
+
+@inline function update_transport_velocities!(transport_velocities, velocities, ::Val{names}) where names
+    name = first(names)
+    update_transport_velocity_data!(transport_velocities[name], velocities[name])
+    update_transport_velocities!(transport_velocities, velocities, Val(Base.tail(names)))
     return nothing
 end
 

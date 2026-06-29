@@ -95,39 +95,47 @@ Launches the tracer tendency kernel for each tracer, computing advection, diffus
 and forcing contributions. Uses `model.transport_velocities` for advection.
 """
 function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_map=nothing)
+    launch_tracer_tendencies!(model, model.architecture, model.grid, kernel_parameters,
+                              active_cells_map, Val(1), Val(propertynames(model.tracers)))
+    return nothing
+end
 
-    arch = model.architecture
-    grid = model.grid
+@inline launch_tracer_tendencies!(model, arch, grid, kernel_parameters, active_cells_map, ::Val, ::Val{()}) = nothing
 
-    for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
+@inline function launch_tracer_tendencies!(model, arch, grid, kernel_parameters, active_cells_map,
+                                           ::Val{tracer_index}, ::Val{tracer_names}) where {tracer_index, tracer_names}
 
-        @inbounds c_tendency    = model.timestepper.Gⁿ[tracer_name]
-        @inbounds c_advection   = model.advection[tracer_name]
-        @inbounds c_forcing     = model.forcing[tracer_name]
-        @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
+    tracer_name = first(tracer_names)
 
-        args = tuple(Val(tracer_index),
-                     Val(tracer_name),
-                     c_advection,
-                     model.closure,
-                     c_immersed_bc,
-                     model.buoyancy,
-                     model.biogeochemistry,
-                     model.transport_velocities,
-                     model.free_surface,
-                     model.tracers,
-                     model.closure_fields,
-                     model.auxiliary_fields,
-                     model.clock,
-                     c_forcing)
+    @inbounds c_tendency    = model.timestepper.Gⁿ[tracer_name]
+    @inbounds c_advection   = model.advection[tracer_name]
+    @inbounds c_forcing     = model.forcing[tracer_name]
+    @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
 
-        launch!(arch, grid, kernel_parameters,
-                compute_hydrostatic_free_surface_Gc!,
-                c_tendency,
-                grid,
-                args;
-                active_cells_map)
-    end
+    args = tuple(Val(tracer_index),
+                 Val(tracer_name),
+                 c_advection,
+                 model.closure,
+                 c_immersed_bc,
+                 model.buoyancy,
+                 model.biogeochemistry,
+                 model.transport_velocities,
+                 model.free_surface,
+                 model.tracers,
+                 model.closure_fields,
+                 model.auxiliary_fields,
+                 model.clock,
+                 c_forcing)
+
+    launch!(arch, grid, kernel_parameters,
+            compute_hydrostatic_free_surface_Gc!,
+            c_tendency,
+            grid,
+            args...;
+            active_cells_map)
+
+    launch_tracer_tendencies!(model, arch, grid, kernel_parameters, active_cells_map,
+                              Val(tracer_index + 1), Val(Base.tail(tracer_names)))
 
     return nothing
 end
@@ -167,11 +175,11 @@ function compute_hydrostatic_momentum_tendencies!(model, velocities, kernel_para
 
     launch!(arch, grid, kernel_parameters,
             compute_hydrostatic_free_surface_Gu!, model.timestepper.Gⁿ.u, grid,
-            u_kernel_args; active_cells_map)
+            u_kernel_args...; active_cells_map)
 
     launch!(arch, grid, kernel_parameters,
             compute_hydrostatic_free_surface_Gv!, model.timestepper.Gⁿ.v, grid,
-            v_kernel_args; active_cells_map)
+            v_kernel_args...; active_cells_map)
 
     return nothing
 end
@@ -181,23 +189,14 @@ end
 #####
 
 """ Calculate the right-hand-side of the u-velocity equation. """
-@kernel function compute_hydrostatic_free_surface_Gu!(Gu, grid, args)
-    i, j, k = @index(Global, NTuple)
-    @inbounds Gu[i, j, k] = hydrostatic_free_surface_u_velocity_tendency(i, j, k, grid, args...)
-end
+@tendency_kernel compute_hydrostatic_free_surface_Gu! hydrostatic_free_surface_u_velocity_tendency 14
 
 """ Calculate the right-hand-side of the v-velocity equation. """
-@kernel function compute_hydrostatic_free_surface_Gv!(Gv, grid, args)
-    i, j, k = @index(Global, NTuple)
-    @inbounds Gv[i, j, k] = hydrostatic_free_surface_v_velocity_tendency(i, j, k, grid, args...)
-end
+@tendency_kernel compute_hydrostatic_free_surface_Gv! hydrostatic_free_surface_v_velocity_tendency 14
 
 #####
 ##### Tendency calculators for tracers
 #####
 
 """ Calculate the right-hand-side of the tracer advection-diffusion equation. """
-@kernel function compute_hydrostatic_free_surface_Gc!(Gc, grid, args)
-    i, j, k = @index(Global, NTuple)
-    @inbounds Gc[i, j, k] = hydrostatic_free_surface_tracer_tendency(i, j, k, grid, args...)
-end
+@tendency_kernel compute_hydrostatic_free_surface_Gc! hydrostatic_free_surface_tracer_tendency 14

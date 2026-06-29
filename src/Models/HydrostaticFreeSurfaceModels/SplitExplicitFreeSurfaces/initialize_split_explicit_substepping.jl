@@ -33,9 +33,11 @@ function initialize_free_surface_state!(free_surface, baroclinic_timestepper, ti
 
     initialize_free_surface_timestepper!(timestepper, η, U, V)
 
-    for field in free_surface.filtered_state
-        fill!(field, 0)
-    end
+    fill!(free_surface.filtered_state.η̅, 0)
+    fill!(free_surface.filtered_state.U̅, 0)
+    fill!(free_surface.filtered_state.V̅, 0)
+    fill!(free_surface.filtered_state.Ũ, 0)
+    fill!(free_surface.filtered_state.Ṽ, 0)
 
     return nothing
 end
@@ -57,9 +59,11 @@ function initialize_free_surface_state!(free_surface, baroclinic_ts::SplitRungeK
 
     initialize_free_surface_timestepper!(barotropic_ts, η, U, V)
 
-    for field in free_surface.filtered_state
-        fill!(field, 0)
-    end
+    fill!(free_surface.filtered_state.η̅, 0)
+    fill!(free_surface.filtered_state.U̅, 0)
+    fill!(free_surface.filtered_state.V̅, 0)
+    fill!(free_surface.filtered_state.Ũ, 0)
+    fill!(free_surface.filtered_state.Ṽ, 0)
 
     return nothing
 end
