@@ -39,26 +39,27 @@ struct LatitudeLongitudeGrid{FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, 
     radius :: FT
 end
 
-function LatitudeLongitudeGrid{TX, TY, TZ}(architecture::Arch,
-                                           Nλ::I, Nφ::I, Nz::I, Hλ::I, Hφ::I, Hz::I,
-                                           Lλ :: FT, Lφ :: FT, Lz :: FT,
-                                           Δλᶠᵃᵃ :: DXF, Δλᶜᵃᵃ :: DXC,
-                                            λᶠᵃᵃ :: XF,   λᶜᵃᵃ :: XC,
-                                           Δφᵃᶠᵃ :: DYF, Δφᵃᶜᵃ :: DYC,
-                                            φᵃᶠᵃ :: YF,   φᵃᶜᵃ :: YC, z :: Z,
-                                           Δxᶜᶜᵃ :: DXCC, Δxᶠᶜᵃ :: DXFC,
-                                           Δxᶜᶠᵃ :: DXCF, Δxᶠᶠᵃ :: DXFF,
-                                           Δyᶠᶜᵃ :: DYFC, Δyᶜᶠᵃ :: DYCF,
-                                           Azᶜᶜᵃ :: DXCC, Azᶠᶜᵃ :: DXFC,
-                                           Azᶜᶠᵃ :: DXCF, Azᶠᶠᵃ :: DXFF,
-                                           radius :: FT) where {Arch, FT, TX, TY, TZ, Z,
-                                                                DXF, DXC, XF, XC,
-                                                                DYF, DYC, YF, YC,
-                                                                DXFC, DXCF,
-                                                                DXFF, DXCC,
-                                                                DYFC, DYCF, I}
-    size = GridSize(Nλ, Nφ, Nz, Hλ, Hφ, Hz)
-    SZ   = typeof(size)
+LatitudeLongitudeGrid{TX, TY, TZ}(arch, Nλ, Nφ, Nz, Hλ, Hφ, Hz, args...) where {TX, TY, TZ} =
+    LatitudeLongitudeGrid{TX, TY, TZ, typeof(GridSize(Nλ, Nφ, Nz, Hλ, Hφ, Hz))}(arch, Nλ, Nφ, Nz, Hλ, Hφ, Hz, args...)
+
+function LatitudeLongitudeGrid{TX, TY, TZ, SZ}(architecture::Arch,
+                                               Nλ::I, Nφ::I, Nz::I, Hλ::I, Hφ::I, Hz::I,
+                                               Lλ :: FT, Lφ :: FT, Lz :: FT,
+                                               Δλᶠᵃᵃ :: DXF, Δλᶜᵃᵃ :: DXC,
+                                                λᶠᵃᵃ :: XF,   λᶜᵃᵃ :: XC,
+                                               Δφᵃᶠᵃ :: DYF, Δφᵃᶜᵃ :: DYC,
+                                                φᵃᶠᵃ :: YF,   φᵃᶜᵃ :: YC, z :: Z,
+                                               Δxᶜᶜᵃ :: DXCC, Δxᶠᶜᵃ :: DXFC,
+                                               Δxᶜᶠᵃ :: DXCF, Δxᶠᶠᵃ :: DXFF,
+                                               Δyᶠᶜᵃ :: DYFC, Δyᶜᶠᵃ :: DYCF,
+                                               Azᶜᶜᵃ :: DXCC, Azᶠᶜᵃ :: DXFC,
+                                               Azᶜᶠᵃ :: DXCF, Azᶠᶠᵃ :: DXFF,
+                                               radius :: FT) where {SZ, Arch, FT, TX, TY, TZ, Z,
+                                                                    DXF, DXC, XF, XC,
+                                                                    DYF, DYC, YF, YC,
+                                                                    DXFC, DXCF,
+                                                                    DXFF, DXCC,
+                                                                    DYFC, DYCF, I}
     return LatitudeLongitudeGrid{FT, TX, TY, TZ, Z,
                                  DXF, DXC, XF, XC,
                                  DYF, DYC, YF, YC,
@@ -75,12 +76,16 @@ function LatitudeLongitudeGrid{TX, TY, TZ}(architecture::Arch,
 end
 
 @generated function Base.size(grid::LatitudeLongitudeGrid)
-    sz = grid.parameters[end].parameters
+    Sz = grid.parameters[end]
+    Sz === Nothing && return :(map(Int, (grid.Nx, grid.Ny, grid.Nz)))
+    sz = Sz.parameters
     return :(($(sz[1]), $(sz[2]), $(sz[3])))
 end
 
 @generated function halo_size(grid::LatitudeLongitudeGrid)
-    sz = grid.parameters[end].parameters
+    Sz = grid.parameters[end]
+    Sz === Nothing && return :(map(Int, (grid.Hx, grid.Hy, grid.Hz)))
+    sz = Sz.parameters
     return :(($(sz[4]), $(sz[5]), $(sz[6])))
 end
 
@@ -452,32 +457,32 @@ end
 
 function Adapt.adapt_structure(to, grid::LatitudeLongitudeGrid)
     TX, TY, TZ = topology(grid)
-    return LatitudeLongitudeGrid{TX, TY, TZ}(nothing,
-                                             grid.Nx, grid.Ny, grid.Nz,
-                                             grid.Hx, grid.Hy, grid.Hz,
-                                             Adapt.adapt(to, grid.Lx),
-                                             Adapt.adapt(to, grid.Ly),
-                                             Adapt.adapt(to, grid.Lz),
-                                             Adapt.adapt(to, grid.Δλᶠᵃᵃ),
-                                             Adapt.adapt(to, grid.Δλᶜᵃᵃ),
-                                             Adapt.adapt(to, grid.λᶠᵃᵃ),
-                                             Adapt.adapt(to, grid.λᶜᵃᵃ),
-                                             Adapt.adapt(to, grid.Δφᵃᶠᵃ),
-                                             Adapt.adapt(to, grid.Δφᵃᶜᵃ),
-                                             Adapt.adapt(to, grid.φᵃᶠᵃ),
-                                             Adapt.adapt(to, grid.φᵃᶜᵃ),
-                                             Adapt.adapt(to, grid.z),
-                                             Adapt.adapt(to, grid.Δxᶜᶜᵃ),
-                                             Adapt.adapt(to, grid.Δxᶠᶜᵃ),
-                                             Adapt.adapt(to, grid.Δxᶜᶠᵃ),
-                                             Adapt.adapt(to, grid.Δxᶠᶠᵃ),
-                                             Adapt.adapt(to, grid.Δyᶠᶜᵃ),
-                                             Adapt.adapt(to, grid.Δyᶜᶠᵃ),
-                                             Adapt.adapt(to, grid.Azᶜᶜᵃ),
-                                             Adapt.adapt(to, grid.Azᶠᶜᵃ),
-                                             Adapt.adapt(to, grid.Azᶜᶠᵃ),
-                                             Adapt.adapt(to, grid.Azᶠᶠᵃ),
-                                             Adapt.adapt(to, grid.radius))
+    return LatitudeLongitudeGrid{TX, TY, TZ, Nothing}(nothing,
+                                                      grid.Nx, grid.Ny, grid.Nz,
+                                                      grid.Hx, grid.Hy, grid.Hz,
+                                                      Adapt.adapt(to, grid.Lx),
+                                                      Adapt.adapt(to, grid.Ly),
+                                                      Adapt.adapt(to, grid.Lz),
+                                                      Adapt.adapt(to, grid.Δλᶠᵃᵃ),
+                                                      Adapt.adapt(to, grid.Δλᶜᵃᵃ),
+                                                      Adapt.adapt(to, grid.λᶠᵃᵃ),
+                                                      Adapt.adapt(to, grid.λᶜᵃᵃ),
+                                                      Adapt.adapt(to, grid.Δφᵃᶠᵃ),
+                                                      Adapt.adapt(to, grid.Δφᵃᶜᵃ),
+                                                      Adapt.adapt(to, grid.φᵃᶠᵃ),
+                                                      Adapt.adapt(to, grid.φᵃᶜᵃ),
+                                                      Adapt.adapt(to, grid.z),
+                                                      Adapt.adapt(to, grid.Δxᶜᶜᵃ),
+                                                      Adapt.adapt(to, grid.Δxᶠᶜᵃ),
+                                                      Adapt.adapt(to, grid.Δxᶜᶠᵃ),
+                                                      Adapt.adapt(to, grid.Δxᶠᶠᵃ),
+                                                      Adapt.adapt(to, grid.Δyᶠᶜᵃ),
+                                                      Adapt.adapt(to, grid.Δyᶜᶠᵃ),
+                                                      Adapt.adapt(to, grid.Azᶜᶜᵃ),
+                                                      Adapt.adapt(to, grid.Azᶠᶜᵃ),
+                                                      Adapt.adapt(to, grid.Azᶜᶠᵃ),
+                                                      Adapt.adapt(to, grid.Azᶠᶠᵃ),
+                                                      Adapt.adapt(to, grid.radius))
 end
 
 #####

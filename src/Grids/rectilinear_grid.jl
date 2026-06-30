@@ -24,32 +24,35 @@ struct RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch, Sz} <: Abstract
     z     :: CZ
 end
 
-function RectilinearGrid{TX, TY, TZ}(arch::Arch, Nx, Ny, Nz, Hx, Hy, Hz,
-                                     Lx :: FT, Ly :: FT, Lz :: FT,
-                                     Δxᶠᵃᵃ :: FX, Δxᶜᵃᵃ :: FX,
-                                      xᶠᵃᵃ :: VX,  xᶜᵃᵃ :: VX,
-                                     Δyᵃᶠᵃ :: FY, Δyᵃᶜᵃ :: FY,
-                                      yᵃᶠᵃ :: VY,  yᵃᶜᵃ :: VY,
-                                      z    :: CZ) where {Arch, FT, TX, TY, TZ,
-                                                         FX, VX, FY, VY, CZ}
+RectilinearGrid{TX, TY, TZ}(arch, Nx, Ny, Nz, Hx, Hy, Hz, args...) where {TX, TY, TZ} =
+    RectilinearGrid{TX, TY, TZ, typeof(GridSize(Nx, Ny, Nz, Hx, Hy, Hz))}(arch, Nx, Ny, Nz, Hx, Hy, Hz, args...)
 
-    size = GridSize(Nx, Ny, Nz, Hx, Hy, Hz)
-    SZ   = typeof(size)
+function RectilinearGrid{TX, TY, TZ, SZ}(arch::Arch, Nx, Ny, Nz, Hx, Hy, Hz,
+                                         Lx :: FT, Ly :: FT, Lz :: FT,
+                                         Δxᶠᵃᵃ :: FX, Δxᶜᵃᵃ :: FX,
+                                          xᶠᵃᵃ :: VX,  xᶜᵃᵃ :: VX,
+                                         Δyᵃᶠᵃ :: FY, Δyᵃᶜᵃ :: FY,
+                                          yᵃᶠᵃ :: VY,  yᵃᶜᵃ :: VY,
+                                          z    :: CZ) where {SZ, Arch, FT, TX, TY, TZ,
+                                                             FX, VX, FY, VY, CZ}
 
-    return RectilinearGrid{FT, TX, TY, TZ,
-                           CZ, FX, FY, VX, VY, Arch, SZ}(arch, Nx, Ny, Nz,
-                                                         Hx, Hy, Hz, Lx, Ly, Lz,
-                                                         Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
-                                                         Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ, z)
+    return RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch, SZ}(arch, Nx, Ny, Nz,
+                                                                         Hx, Hy, Hz, Lx, Ly, Lz,
+                                                                         Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
+                                                                         Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ, z)
 end
 
 @generated function Base.size(grid::RectilinearGrid)
-    sz = grid.parameters[end].parameters
+    Sz = grid.parameters[end]
+    Sz === Nothing && return :(map(Int, (grid.Nx, grid.Ny, grid.Nz)))
+    sz = Sz.parameters
     return :(($(sz[1]), $(sz[2]), $(sz[3])))
 end
 
 @generated function halo_size(grid::RectilinearGrid)
-    sz = grid.parameters[end].parameters
+    Sz = grid.parameters[end]
+    Sz === Nothing && return :(map(Int, (grid.Hx, grid.Hy, grid.Hz)))
+    sz = Sz.parameters
     return :(($(sz[4]), $(sz[5]), $(sz[6])))
 end
 
@@ -380,7 +383,7 @@ validate_halo(TX, TY, TZ, size, e::ColumnEnsembleSize) = tuple(0, 0, e.Hz)
 
 function Adapt.adapt_structure(to, grid::RectilinearGrid)
     TX, TY, TZ = topology(grid)
-    return RectilinearGrid{TX, TY, TZ}(nothing,
+    return RectilinearGrid{TX, TY, TZ, Nothing}(nothing,
                                        grid.Nx, grid.Ny, grid.Nz,
                                        grid.Hx, grid.Hy, grid.Hz,
                                        grid.Lx, grid.Ly, grid.Lz,
