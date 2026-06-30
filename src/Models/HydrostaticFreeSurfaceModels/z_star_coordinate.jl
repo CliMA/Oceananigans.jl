@@ -153,13 +153,16 @@ This function scales tendencies after they are computed so that the time-steppin
 advances `σ * c` correctly.
 """
 function scale_by_stretching_factor!(Gⁿ, tracers, grid::MutableGridOfSomeKind)
+    scale_by_stretching_factor!(Gⁿ, grid, Val(propertynames(tracers)))
+    return nothing
+end
 
-    # Multiply the Gⁿ tendencies by the grid scaling
-    for i in propertynames(tracers)
-        @inbounds G = Gⁿ[i]
-        launch!(architecture(grid), grid, :xyz, _scale_by_stretching_factor!, G, grid)
-    end
+@inline scale_by_stretching_factor!(Gⁿ, grid, ::Val{()}) = nothing
 
+@inline function scale_by_stretching_factor!(Gⁿ, grid, ::Val{names}) where names
+    name = first(names)
+    launch!(architecture(grid), grid, :xyz, _scale_by_stretching_factor!, Gⁿ[name], grid)
+    scale_by_stretching_factor!(Gⁿ, grid, Val(Base.tail(names)))
     return nothing
 end
 
