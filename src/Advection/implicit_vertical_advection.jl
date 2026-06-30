@@ -60,15 +60,15 @@ end
 #####
 ##### Tridiagonal coefficients for implicit first-order upwind advection (for fields at cell Centers in z).
 #####
-##### The upwind flux at face k+1 (top of cell k), weighted by the face density ϖᶠ:
-#####   F_{k+1} = Az_{k+1} ϖᶠ_{k+1} * [max(wⁱ_{k+1}, 0) * c_k + min(wⁱ_{k+1}, 0) * c_{k+1}],   c = q / ρ
+##### The upwind flux at face k+1 (top of cell k), weighted by the face density ρᶠ:
+#####   F_{k+1} = Az_{k+1} ρᶠ_{k+1} * [max(wⁱ_{k+1}, 0) * c_k + min(wⁱ_{k+1}, 0) * c_{k+1}],   c = q / ρ
 #####
-##### The implicit system (I - Δt * L) qⁿ⁺¹ = q★ gives (with ϖᶜ the cell density of the reconstructed value):
+##### The implicit system (I - Δt * L) qⁿ⁺¹ = q★ gives (with ρᶜ the cell density of the reconstructed value):
 #####
-##### Upper diagonal (coeff of q_{k+1}):   Δt / V_k * Az_{k+1} ϖᶠ_{k+1} / ϖᶜ_{k+1} * min(wⁱ_{k+1}, 0)
-##### Lower diagonal (coeff of q_{k-1}): - Δt / V_k * Az_k     ϖᶠ_k     / ϖᶜ_{k-1} * max(wⁱ_k, 0)
+##### Upper diagonal (coeff of q_{k+1}):   Δt / V_k * Az_{k+1} ρᶠ_{k+1} / ρᶜ_{k+1} * min(wⁱ_{k+1}, 0)
+##### Lower diagonal (coeff of q_{k-1}): - Δt / V_k * Az_k     ρᶠ_k     / ρᶜ_{k-1} * max(wⁱ_k, 0)
 #####
-##### With `density === nothing`, ϖᶠ = ϖᶜ = 1 and these reduce to the volume-conserving coefficients.
+##### With `density === nothing`, ρᶠ = ρᶜ = 1 and these reduce to the volume-conserving coefficients.
 #####
 
 @inline implicit_vertical_velocity(::Center, ::Center, args...) = implicit_vertical_velocityᶜᶜᶠ(args...)
@@ -81,10 +81,10 @@ end
     td  = TimeSteppers.time_discretization(scheme)
     wⁱ  = implicit_vertical_velocity(ℓx, ℓy, i, j, k+1, grid, scheme, td, w)
     Azᵢ = Az(i, j, k+1, grid, ℓx, ℓy, Face())
-    ϖᶠ  = densityᶜᶜᶠ(i, j, k+1, grid, density)
-    ϖᶜ  = densityᶜᶜᶜ(i, j, k+1, grid, density)
+    ρᶠ  = densityᶜᶜᶠ(i, j, k+1, grid, density)
+    ρᶜ  = densityᶜᶜᶜ(i, j, k+1, grid, density)
     V⁻¹ = 1 / volume(i, j, k, grid, ℓx, ℓy, Center())
-    return Δt * V⁻¹ * Azᵢ * ϖᶠ / ϖᶜ * min(wⁱ, zero(wⁱ)) * !peripheral_node(i, j, k+1, grid, ℓx, ℓy, Face())
+    return Δt * V⁻¹ * Azᵢ * ρᶠ / ρᶜ * min(wⁱ, zero(wⁱ)) * !peripheral_node(i, j, k+1, grid, ℓx, ℓy, Face())
 end
 
 # Lower diagonal: coefficient of q_{k-1} in the tridiagonal system
@@ -95,10 +95,10 @@ end
     k   = k′ + 1
     wⁱ  = implicit_vertical_velocity(ℓx, ℓy, i, j, k, grid, scheme, td, w)
     Azᵢ = Az(i, j, k, grid, ℓx, ℓy, Face())
-    ϖᶠ  = densityᶜᶜᶠ(i, j, k, grid, density)
-    ϖᶜ  = densityᶜᶜᶜ(i, j, k-1, grid, density)
+    ρᶠ  = densityᶜᶜᶠ(i, j, k, grid, density)
+    ρᶜ  = densityᶜᶜᶜ(i, j, k-1, grid, density)
     V⁻¹ = 1 / volume(i, j, k, grid, ℓx, ℓy, Center())
-    return - Δt * V⁻¹ * Azᵢ * ϖᶠ / ϖᶜ * max(wⁱ, zero(wⁱ)) * !peripheral_node(i, j, k′, grid, ℓx, ℓy, Center())
+    return - Δt * V⁻¹ * Azᵢ * ρᶠ / ρᶜ * max(wⁱ, zero(wⁱ)) * !peripheral_node(i, j, k′, grid, ℓx, ℓy, Center())
 end
 
 @inline function implicit_advection_diagonal(i, j, k, grid, advection::AIVA, w, Δt, ℓx, ℓy, density=nothing)
@@ -110,15 +110,15 @@ end
     Az⁺ = Az(i, j, k+1, grid, ℓx, ℓy, Face())
     Az⁻ = Az(i, j, k,   grid, ℓx, ℓy, Face())
 
-    ϖᶠ⁺ = densityᶜᶜᶠ(i, j, k+1, grid, density)
-    ϖᶠ⁻ = densityᶜᶜᶠ(i, j, k,   grid, density)
-    ϖᶜ  = densityᶜᶜᶜ(i, j, k,   grid, density)   # reconstructed value at cell k
+    ρᶠ⁺ = densityᶜᶜᶠ(i, j, k+1, grid, density)
+    ρᶠ⁻ = densityᶜᶜᶠ(i, j, k,   grid, density)
+    ρᶜ  = densityᶜᶜᶜ(i, j, k,   grid, density)   # reconstructed value at cell k
 
     active⁺ = !peripheral_node(i, j, k+1, grid, ℓx, ℓy, Face())
     active⁻ = !peripheral_node(i, j, k,   grid, ℓx, ℓy, Face())
 
     V⁻¹ = 1 / volume(i, j, k, grid, ℓx, ℓy, Center())
 
-    return Δt * V⁻¹ / ϖᶜ * (Az⁺ * ϖᶠ⁺ * max(wⁱ⁺, zero(wⁱ⁺)) * active⁺ -
-                            Az⁻ * ϖᶠ⁻ * min(wⁱ⁻, zero(wⁱ⁻)) * active⁻)
+    return Δt * V⁻¹ / ρᶜ * (Az⁺ * ρᶠ⁺ * max(wⁱ⁺, zero(wⁱ⁺)) * active⁺ -
+                            Az⁻ * ρᶠ⁻ * min(wⁱ⁻, zero(wⁱ⁻)) * active⁻)
 end
