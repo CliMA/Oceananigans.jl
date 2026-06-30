@@ -100,6 +100,19 @@ domain in (x, y, z).
 halo_size(grid) = map(Int, (grid.Hx, grid.Hy, grid.Hz))
 halo_size(grid, d) = halo_size(grid)[d]
 
+"""
+    GridSize{Nx, Ny, Nz, Hx, Hy, Hz}
+
+Singleton type encoding a grid's interior size `(Nx, Ny, Nz)` and halo size `(Hx, Hy, Hz)` as type
+parameters. Carrying it as the trailing grid type parameter makes both `size(grid)` and `halo_size(grid)`
+compile-time constants, which in turn lets `KernelParameters` built from halo-aware ranges infer concretely.
+"""
+struct GridSize{Nx, Ny, Nz, Hx, Hy, Hz}
+    function GridSize(Nx, Ny, Nz, Hx, Hy, Hz)
+        return new{Int(Nx), Int(Ny), Int(Nz), Int(Hx), Int(Hy), Int(Hz)}()
+    end
+end
+
 @inline Base.size(grid::AbstractGrid, d::Int) = size(grid)[d]
 
 grid_name(grid::AbstractGrid) = typeof(grid).name.wrapper

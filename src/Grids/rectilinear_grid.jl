@@ -1,6 +1,6 @@
 using OrderedCollections: OrderedDict
 
-struct RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch}
+struct RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch, Sz} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch}
     architecture :: Arch
     Nx :: Int
     Ny :: Int
@@ -33,11 +33,25 @@ function RectilinearGrid{TX, TY, TZ}(arch::Arch, Nx, Ny, Nz, Hx, Hy, Hz,
                                       z    :: CZ) where {Arch, FT, TX, TY, TZ,
                                                          FX, VX, FY, VY, CZ}
 
+    size = GridSize(Nx, Ny, Nz, Hx, Hy, Hz)
+    SZ   = typeof(size)
+
     return RectilinearGrid{FT, TX, TY, TZ,
-                           CZ, FX, FY, VX, VY, Arch}(arch, Nx, Ny, Nz,
-                                                     Hx, Hy, Hz, Lx, Ly, Lz,
-                                                     Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
-                                                     Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ, z)
+                           CZ, FX, FY, VX, VY, Arch, SZ}(arch, Nx, Ny, Nz,
+                                                         Hx, Hy, Hz, Lx, Ly, Lz,
+                                                         Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
+                                                         Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ, z)
+end
+
+# Read size and halo from the trailing `GridSize` type parameter so both are compile-time constants.
+@generated function Base.size(grid::RectilinearGrid)
+    sz = grid.parameters[end].parameters
+    return :(($(sz[1]), $(sz[2]), $(sz[3])))
+end
+
+@generated function halo_size(grid::RectilinearGrid)
+    sz = grid.parameters[end].parameters
+    return :(($(sz[4]), $(sz[5]), $(sz[6])))
 end
 
 const RG = RectilinearGrid
