@@ -74,7 +74,6 @@ function LatitudeLongitudeGrid{TX, TY, TZ}(architecture::Arch,
                                                           Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
 end
 
-# Read size and halo from the trailing `GridSize` type parameter so both are compile-time constants.
 @generated function Base.size(grid::LatitudeLongitudeGrid)
     sz = grid.parameters[end].parameters
     return :(($(sz[1]), $(sz[2]), $(sz[3])))

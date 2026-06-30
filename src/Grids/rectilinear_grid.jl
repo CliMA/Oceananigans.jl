@@ -43,7 +43,6 @@ function RectilinearGrid{TX, TY, TZ}(arch::Arch, Nx, Ny, Nz, Hx, Hy, Hz,
                                                          Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ, z)
 end
 
-# Read size and halo from the trailing `GridSize` type parameter so both are compile-time constants.
 @generated function Base.size(grid::RectilinearGrid)
     sz = grid.parameters[end].parameters
     return :(($(sz[1]), $(sz[2]), $(sz[3])))
