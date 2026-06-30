@@ -103,9 +103,8 @@ halo_size(grid, d) = halo_size(grid)[d]
 """
     GridSize{Nx, Ny, Nz, Hx, Hy, Hz}
 
-Singleton type encoding a grid's interior size `(Nx, Ny, Nz)` and halo size `(Hx, Hy, Hz)` as type
-parameters. Carrying it as the trailing grid type parameter makes both `size(grid)` and `halo_size(grid)`
-compile-time constants, which in turn lets `KernelParameters` built from halo-aware ranges infer concretely.
+Singleton type encoding a grid's interior size `(Nx, Ny, Nz)` and halo size `(Hx, Hy, Hz)` as type parameters. 
+Carrying it as the trailing grid type parameter makes both `size(grid)` and `halo_size(grid)` compile-time constants.
 """
 struct GridSize{Nx, Ny, Nz, Hx, Hy, Hz}
     function GridSize(Nx, Ny, Nz, Hx, Hy, Hz)
