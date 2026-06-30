@@ -43,12 +43,12 @@ end
 #TODO: Fix allocations in the nonhydrostatic model
 
 const serial_memory = Dict(
-    (:hydrostatic,    :flat)            => 2e10,
-    (:hydrostatic,    :immersed)        => 2e10,
-    (:hydrostatic,    :active_immersed) => 2e10,
-    (:nonhydrostatic, :flat)            => 2e10,
-    (:nonhydrostatic, :immersed)        => 2e10,
-    (:nonhydrostatic, :active_immersed) => 2e10,
+    (:hydrostatic,    :flat)            => 2.6e6,
+    (:hydrostatic,    :immersed)        => 2.8e6,
+    (:hydrostatic,    :active_immersed) => 2.9e6,
+    (:nonhydrostatic, :flat)            => 1.9e6,
+    (:nonhydrostatic, :immersed)        => 2.2e6,
+    (:nonhydrostatic, :active_immersed) => 2.3e6,
 )
 
 const distributed_memory = Dict(
