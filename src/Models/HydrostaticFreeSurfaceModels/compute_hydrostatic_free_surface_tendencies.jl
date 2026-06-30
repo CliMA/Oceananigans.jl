@@ -94,11 +94,9 @@ Compute tracer tendencies in the grid interior (or on specified active cells).
 Launches the tracer tendency kernel for each tracer, computing advection, diffusion,
 and forcing contributions. Uses `model.transport_velocities` for advection.
 """
-function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_map=nothing)
-    launch_tracer_tendencies!(model, model.architecture, model.grid, kernel_parameters,
-                              active_cells_map, Val(1), Val(propertynames(model.tracers)))
-    return nothing
-end
+
+compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_map=nothing) =
+    launch_tracer_tendencies!(model, model.architecture, model.grid, kernel_parameters, active_cells_map, Val(1), Val(propertynames(model.tracers)))
 
 @inline launch_tracer_tendencies!(model, arch, grid, kernel_parameters, active_cells_map, ::Val, ::Val{()}) = nothing
 
