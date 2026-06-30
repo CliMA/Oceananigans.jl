@@ -19,9 +19,6 @@ using Printf: @sprintf
 using OrderedCollections: OrderedDict
 using Statistics: mean
 
-# Bare import so the module name `Oceananigans` is bound in this extension's scope.
-# `materialize_from_netcdf` evaluates fully-qualified strings such as
-# "Oceananigans.Grids.Periodic" inside the Oceananigans module, which requires the name.
 import Oceananigans
 
 using Oceananigans: initialize!, prettytime, pretty_filesize, AbstractModel

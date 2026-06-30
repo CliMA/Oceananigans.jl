@@ -119,8 +119,8 @@ materialize_from_netcdf(dict::AbstractDict) = OrderedDict(Symbol(key) => materia
 materialize_from_netcdf(x::Number) = x
 materialize_from_netcdf(x::Array) = Tuple(x)
 # Evaluate in this extension module: it imports the bare type names some values serialize
-# to (e.g. "CenterImmersedCondition()", "GPU()"), while the `import Oceananigans` above
-# binds `Oceananigans` so fully-qualified names also resolve (e.g. "Oceananigans.Grids.Periodic",
+# to (e.g. "CenterImmersedCondition()", "GPU()"), while the `import Oceananigans` at the top of
+# module binds `Oceananigans` so fully-qualified names also resolve (e.g. "Oceananigans.Grids.Periodic",
 # which is how they serialize when Oceananigans is imported rather than `using`d).
 materialize_from_netcdf(x::String) = Core.eval(@__MODULE__, Meta.parse(x))
 materialize_from_netcdf(x) = x
