@@ -3732,8 +3732,6 @@ function test_materialize_from_netcdf_strings()
     @test materialize_from_netcdf("Oceananigans.Architectures.CPU()") isa CPU
     @test materialize_from_netcdf("Float64") === Float64
 
-    # Bare internal names: some values serialize unqualified (hardcoded in the writer) to
-    # names that live in submodules and aren't re-exported at the Oceananigans top level.
     @test materialize_from_netcdf("CenterImmersedCondition()") isa CenterImmersedCondition
     @test materialize_from_netcdf("InterfaceImmersedCondition()") isa InterfaceImmersedCondition
     return nothing
