@@ -42,7 +42,16 @@ end
 
 #TODO: Fix allocations in the nonhydrostatic model
 
-const serial_memory = Dict(
+const serial_memory_cpu = Dict(
+    (:hydrostatic,    :flat)            => 1.1e6,
+    (:hydrostatic,    :immersed)        => 1.1e6,
+    (:hydrostatic,    :active_immersed) => 1.3e6,
+    (:nonhydrostatic, :flat)            => 8.7e5,
+    (:nonhydrostatic, :immersed)        => 9.8e5,
+    (:nonhydrostatic, :active_immersed) => 1.1e6,
+)
+
+const serial_memory_gpu = Dict(
     (:hydrostatic,    :flat)            => 2.6e6,
     (:hydrostatic,    :immersed)        => 2.8e6,
     (:hydrostatic,    :active_immersed) => 2.9e6,
@@ -51,13 +60,22 @@ const serial_memory = Dict(
     (:nonhydrostatic, :active_immersed) => 2.3e6,
 )
 
-const distributed_memory = Dict(
-    (:hydrostatic,    :flat)            => 2e10,
-    (:hydrostatic,    :immersed)        => 2e10,
-    (:hydrostatic,    :active_immersed) => 2e10,
-    (:nonhydrostatic, :flat)            => 2e10,
-    (:nonhydrostatic, :immersed)        => 2e10,
-    (:nonhydrostatic, :active_immersed) => 2e10,
+const distributed_memory_cpu = Dict(
+    (:hydrostatic,    :flat)            => 8.0e6,
+    (:hydrostatic,    :immersed)        => 9.6e6,
+    (:hydrostatic,    :active_immersed) => 1.3e7,
+    (:nonhydrostatic, :flat)            => 6.6e6,
+    (:nonhydrostatic, :immersed)        => 8.0e6,
+    (:nonhydrostatic, :active_immersed) => 1.0e7,
+)
+
+const distributed_memory_gpu = Dict(
+    (:hydrostatic,    :flat)            => 1.5e7,
+    (:hydrostatic,    :immersed)        => 1.7e7,
+    (:hydrostatic,    :active_immersed) => 2.2e7,
+    (:nonhydrostatic, :flat)            => 1.2e7,
+    (:nonhydrostatic, :immersed)        => 1.4e7,
+    (:nonhydrostatic, :active_immersed) => 1.7e7,
 )
 
 # For distributed this includes only (4, 1), (1, 4) and (2, 2)
