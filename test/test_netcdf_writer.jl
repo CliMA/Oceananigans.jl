@@ -3728,8 +3728,6 @@ function test_netcdf_tripolar_grid_reconstruction(arch)
 end
 
 function test_materialize_from_netcdf_strings()
-    # Fully-qualified names: produced when Oceananigans is imported (not `using`d), so
-    # materializing them must resolve `Oceananigans` in the extension's scope.
     @test materialize_from_netcdf("(Oceananigans.Grids.Periodic, Oceananigans.Grids.Bounded)") === (Periodic, Bounded)
     @test materialize_from_netcdf("Oceananigans.Architectures.CPU()") isa CPU
     @test materialize_from_netcdf("Float64") === Float64
