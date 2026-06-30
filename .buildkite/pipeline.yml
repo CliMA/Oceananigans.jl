@@ -173,6 +173,46 @@ steps:
           limit: 1
 
   - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
+    key: "test_memory_allocation"
+    depends_on: "init"
+    agents:
+      queue: "Oceananigans-nautilus"
+    command: |
+      # Add matrix-specific environment variables
+      if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
+        export CUDA_VISIBLE_DEVICES="-1"
+        export TEST_ARCHITECTURE="CPU"
+      else
+        export CUDA_VISIBLE_DEVICES="0"
+        export TEST_ARCHITECTURE="GPU"
+      fi
+
+      # Strip emoji for environment variable
+      group="{{ matrix.group }}"
+      export TEST_GROUP="\${group#* }"
+      echo $TEST_GROUP
+
+      # On Nautilus we have old GPUs which require CUDA toolkit v12, can't
+      # use v13.
+      echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
+
+      # CodeCov increases allocations, we run without it to test memory allocations
+      julia +$JULIA_VERSION --color=yes --project -e 'using Pkg; Pkg.test(julia_args=["--check-bounds=auto"])'
+
+    matrix:
+      setup:
+        architecture:
+          - "CPU"
+          - "GPU"
+        group:
+          - "🧠 memory_allocation"
+
+    retry:
+      automatic:
+        - exit_status: 1
+          limit: 1
+
+  - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
     key: "tests_enzyme_reactant"
     depends_on: "init_enzyme"
     agents:

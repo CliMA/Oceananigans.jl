@@ -87,7 +87,7 @@ function Solvers.solve!(η, implicit_free_surface_solver::FFTImplicitFreeSurface
 end
 
 function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::FFTImplicitFreeSurfaceSolver,
-                                                        g, Δt, velocities, η)
+                                                        g, Δt, velocities, η, args...)
 
     poisson_solver = implicit_solver.fft_poisson_solver
     arch = architecture(poisson_solver)

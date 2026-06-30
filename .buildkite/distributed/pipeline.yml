@@ -21,6 +21,7 @@ definitions:
     - "🦍 distributed_nonhydrostatic_regression"
     - "🍊 distributed_vertical_coordinate_1"
     - "🍇 distributed_vertical_coordinate_2"
+    - "🧠 distributed_memory_allocation"
     # nccl_extension intentionally GPU-only — added to the GPU matrix below.
 
   retry_config: &retry_config
@@ -87,6 +88,7 @@ steps:
           - "🦍 distributed_nonhydrostatic_regression"
           - "🍊 distributed_vertical_coordinate_1"
           - "🍇 distributed_vertical_coordinate_2"
+          - "🧠 distributed_memory_allocation"
           - "⚡ nccl_extension"
 
   - wait
