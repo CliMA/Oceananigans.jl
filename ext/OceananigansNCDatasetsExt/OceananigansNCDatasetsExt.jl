@@ -50,7 +50,7 @@ using Oceananigans.Grids: OrthogonalSphericalShellGrid
 using OffsetArrays: OffsetArray
 using Oceananigans.ImmersedBoundaries:
     ImmersedBoundaryGrid, GridFittedBottom, GFBIBG, GridFittedBoundary, PartialCellBottom, PCBIBG,
-    CenterImmersedCondition, InterfaceImmersedCondition, underlying_grid
+    CenterImmersedCondition, InterfaceImmersedCondition, underlying_grid, bottom_height_field
 using Oceananigans.Models: LagrangianParticles
 using Oceananigans.OutputReaders:
     InMemoryFTS,
