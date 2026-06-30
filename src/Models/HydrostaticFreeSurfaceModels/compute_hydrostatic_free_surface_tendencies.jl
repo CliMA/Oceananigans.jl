@@ -95,37 +95,43 @@ Launches the tracer tendency kernel for each tracer, computing advection, diffus
 and forcing contributions. Uses `model.transport_velocities` for advection.
 """
 function compute_hydrostatic_tracer_tendencies!(model, kernel_parameters; active_cells_map=nothing)
+    launch_tracer_tendencies!(model, model.architecture, model.grid, kernel_parameters,
+                              active_cells_map, Val(1), Val(propertynames(model.tracers)))
+    return nothing
+end
 
-    arch = model.architecture
-    grid = model.grid
+@inline launch_tracer_tendencies!(model, arch, grid, kernel_parameters, active_cells_map, ::Val, ::Val{()}) = nothing
 
-    for (tracer_index, tracer_name) in enumerate(propertynames(model.tracers))
+@inline function launch_tracer_tendencies!(model, arch, grid, kernel_parameters, active_cells_map, ::Val{tracer_index}, ::Val{tracer_names}) where {tracer_index, tracer_names}
 
-        @inbounds c_tendency    = model.timestepper.Gⁿ[tracer_name]
-        @inbounds c_advection   = model.advection[tracer_name]
-        @inbounds c_forcing     = model.forcing[tracer_name]
-        @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
+    tracer_name = first(tracer_names)
 
-        launch!(arch, grid, kernel_parameters,
-                compute_hydrostatic_free_surface_Gc!,
-                c_tendency,
-                grid,
-                Val(tracer_index),
-                Val(tracer_name),
-                c_advection,
-                model.closure,
-                c_immersed_bc,
-                model.buoyancy,
-                model.biogeochemistry,
-                model.transport_velocities,
-                model.free_surface,
-                model.tracers,
-                model.closure_fields,
-                model.auxiliary_fields,
-                model.clock,
-                c_forcing;
-                active_cells_map)
-    end
+    @inbounds c_tendency    = model.timestepper.Gⁿ[tracer_name]
+    @inbounds c_advection   = model.advection[tracer_name]
+    @inbounds c_forcing     = model.forcing[tracer_name]
+    @inbounds c_immersed_bc = immersed_boundary_condition(model.tracers[tracer_name])
+
+    launch!(arch, grid, kernel_parameters,
+            compute_hydrostatic_free_surface_Gc!,
+            c_tendency,
+            grid,
+            Val(tracer_index),
+            Val(tracer_name),
+            c_advection,
+            model.closure,
+            c_immersed_bc,
+            model.buoyancy,
+            model.biogeochemistry,
+            model.transport_velocities,
+            model.free_surface,
+            model.tracers,
+            model.closure_fields,
+            model.auxiliary_fields,
+            model.clock,
+            c_forcing;
+            active_cells_map)
+
+    launch_tracer_tendencies!(model, arch, grid, kernel_parameters, active_cells_map, Val(tracer_index + 1), Val(Base.tail(tracer_names)))
 
     return nothing
 end
