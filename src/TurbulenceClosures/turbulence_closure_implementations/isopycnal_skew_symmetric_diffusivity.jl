@@ -1,4 +1,4 @@
-using Oceananigans.Fields: VelocityFields, NamedFieldTuple
+using Oceananigans.Fields: VelocityFields
 
 struct AdvectiveFormulation end
 struct DiffusiveFormulation end
@@ -100,7 +100,7 @@ function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfI
         # Precompute the _tapered_ 33 component of the isopycnal rotation tensor
         (; ϵ_R₃₃ = Field{Center, Center, Face}(grid))
     else
-        NamedFieldTuple()
+        NamedTuple()
     end
 
     if A() isa AdvectiveFormulation && !(closure.κ_skew isa Nothing)
@@ -111,15 +111,17 @@ function build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfI
     return closure_fields
 end
 
-function compute_closure_fields!(closure_fields, closure::FlavorOfISSD, model; parameters = :xyz)
+function compute_closure_fields!(closure_fields, closure::FlavorOfISSD{TD}, model; parameters = :xyz) where TD
 
     arch = model.architecture
     grid = model.grid
     tracers = buoyancy_tracers(model)
     buoyancy = buoyancy_force(model)
 
-    launch!(arch, grid, parameters,
-            compute_tapered_R₃₃!, closure_fields.ϵ_R₃₃, grid, closure, tracers, buoyancy)
+    if TD() isa VerticallyImplicitTimeDiscretization
+        launch!(arch, grid, parameters,
+                compute_tapered_R₃₃!, closure_fields.ϵ_R₃₃, grid, closure, tracers, buoyancy)
+    end
 
     compute_eddy_velocities!(closure_fields, closure, model; parameters)
 
@@ -312,7 +314,7 @@ end
                                          (κ_symmetricᶜᶜᶠ + κ_skewᶜᶜᶠ) * R₃₂ * ∂y_c)
 end
 
-@inline function explicit_κ_∂z_c(i, j, k, grid, ::ExplicitTimeDiscretization, κ_symmetricᶜᶜᶠ, closure, buoyancy, tracers)
+@inline function explicit_κ_∂z_c(i, j, k, grid, ::ExplicitTimeDiscretization, c, κ_symmetricᶜᶜᶠ, closure, buoyancy, tracers)
     ∂z_c = ∂zᶜᶜᶠ(i, j, k, grid, c)
     R₃₃ = isopycnal_rotation_tensor_zz_ccf(i, j, k, grid, buoyancy, tracers, closure.isopycnal_tensor)
 
