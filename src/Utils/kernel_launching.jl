@@ -140,7 +140,7 @@ periphery_offset(loc, grid, side) = 0
 
 # Returns the default worksize given a particular grid
 # defaults to the size of the grid.
-worksize(grid) = size(grid)
+@inline worksize(grid) = size(grid)
 
 """
 $(TYPEDSIGNATURES)
