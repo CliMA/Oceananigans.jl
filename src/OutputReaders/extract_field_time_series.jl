@@ -1,6 +1,6 @@
 using Oceananigans.AbstractOperations: AbstractOperation
 using Oceananigans.BoundaryConditions: DiscreteBoundaryFunction, ContinuousBoundaryFunction
-using Oceananigans.Fields: flattened_unique_values, Field
+using Oceananigans.Fields: Field
 using Oceananigans.Grids: AbstractGrid
 
 #####
