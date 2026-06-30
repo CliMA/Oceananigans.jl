@@ -89,7 +89,15 @@ archs = nonhydrostatic_regression_test_architectures()
                     grid  = allocation_grid(arch; immersed_mode=immersed, size=(48, 48, 8))
                     model = build(grid)
                     allocations = time_step_allocations(model, Δt)
-                    baseline = arch isa Distributed ? distributed_memory : serial_memory
+                    baseline = if arch isa Distributed{<:GPU}
+                        distributed_memory_gpu
+                    elseif arch isa Distributed{<:CPU}
+                        distributed_memory_cpu
+                    elseif arch isa GPU
+                        serial_memory_gpu
+                    else
+                        serial_memory_cpu
+                    end
                     bound = ceil(Int, 1.1 * baseline[(name, immersed)])
                     @handshake @info "  $name | $(summary(arch)) | $immersed : $(pretty_filesize(allocations)) (≤ $(pretty_filesize(bound)))"
                     @test allocations ≤ bound
