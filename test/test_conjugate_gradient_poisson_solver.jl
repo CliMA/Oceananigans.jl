@@ -345,8 +345,6 @@ end
             end
         end
 
-        # Anisotropic grids where the vertical resolution is ~8x finer than the
-        # horizontal, the regime where ColumnwiseTridiagonalPreconditioner shines.
         Nh, Nz = 8, 8
         Lh, Lz = 1, 1/8
         stretched_aniso_z = [-Lz * (1 - tanh(2k / Nz) / tanh(2)) for k in 0:Nz]
