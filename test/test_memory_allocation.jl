@@ -4,6 +4,9 @@ using Oceananigans
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using Oceananigans.DistributedComputations: @handshake
 using Oceananigans.Utils: pretty_filesize
+using Oceananigans.Models: local_dimension
+using Oceananigans.Grids: RightConnected, LeftConnected
+using Oceananigans.Models.NonhydrostaticModels: buffer_parameters
 
 function allocation_grid(arch, FT=Float64; immersed_mode, size, extent=(1, 1, 1), halo=(7, 7, 7), topology=(Periodic, Periodic, Bounded))
     grid = RectilinearGrid(arch, FT; size, extent, halo, topology)
@@ -80,6 +83,27 @@ const distributed_memory_gpu = Dict(
 
 # For distributed this includes only (4, 1), (1, 4) and (2, 2)
 archs = nonhydrostatic_regression_test_architectures()
+
+@testset "local_dimension predicate" begin
+    @test local_dimension(Periodic) === true
+    @test local_dimension(Bounded)  === true
+    @test local_dimension(Flat)     === true
+    @test local_dimension(RightConnected) === false
+    @test local_dimension(LeftConnected)  === false
+    @test @inferred(local_dimension(Periodic)) === true
+end
+
+@testset "buffer_parameters is type-stable and allocation-free" begin
+    grid = RectilinearGrid(CPU(), size=(8, 8, 8), extent=(1, 1, 1))  # Periodic, Periodic, Bounded
+    arch = CPU()
+    params = ntuple(_ -> ((1, 1, 1), (0, 0, 0)), 4)
+
+    @test buffer_parameters(params, grid, arch) === ()
+    @test @inferred(buffer_parameters(params, grid, arch)) === ()
+
+    buffer_parameters(params, grid, arch)  # warm up
+    @test @allocated(buffer_parameters(params, grid, arch)) == 0
+end
 
 @testset "Memory allocation regression tests" begin
     for arch in archs

@@ -1,6 +1,7 @@
 using Oceananigans.TurbulenceClosures: required_halo_size_x, required_halo_size_y
 using Oceananigans.Grids: XFlatGrid, YFlatGrid
 using Oceananigans.Utils: worksize
+using Oceananigans.Models: local_dimension
 
 # TODO: the code in this file is difficult to understand.
 # Rewriting it may be helpful.
@@ -25,7 +26,7 @@ end
 
 # Tendencies need computing in the range 1 : H and W - H + 1 : W where W = worksize.
 # These buffer regions complement the halo-independent interior kernel (H+1:W-H).
-function buffer_tendency_kernel_parameters(grid, arch)
+@inline function buffer_tendency_kernel_parameters(grid, arch)
     Nx, Ny, Nz = size(grid)
     Wx, Wy, _  = worksize(grid)
     Hx, Hy, _  = halo_size(grid)
@@ -40,7 +41,7 @@ function buffer_tendency_kernel_parameters(grid, arch)
 end
 
 # p needs computing in the range  0 : 0 and W + 1 : W + 1 where W = worksize
-function buffer_p_kernel_parameters(grid, arch)
+@inline function buffer_p_kernel_parameters(grid, arch)
     Nx, Ny, _ = size(grid)
     Wx, Wy, _ = worksize(grid)
 
@@ -54,7 +55,7 @@ function buffer_p_kernel_parameters(grid, arch)
 end
 
 # closure_fields need recomputing in the range 0 : B and W - B + 1 : W + 1 where W = worksize
-function buffer_κ_kernel_parameters(grid, closure, arch)
+@inline function buffer_κ_kernel_parameters(grid, closure, arch)
     Nx, Ny, Nz = size(grid)
     Wx, Wy, _  = worksize(grid)
 
@@ -70,17 +71,19 @@ function buffer_κ_kernel_parameters(grid, closure, arch)
     return buffer_parameters(params, grid, arch)
 end
 
-# Recompute only on communicating sides
-function buffer_parameters(parameters, grid, arch)
-    Rx, Ry, _ = arch.ranks
-    Tx, Ty, _ = topology(grid)
+# Recompute only on communicating sides.
+@inline function buffer_parameters(parameters, grid, arch)
+    TX, TY, _ = topology(grid)
 
-    include_west  = !isa(grid, XFlatGrid) && (Rx != 1) && !(Tx == RightConnected)
-    include_east  = !isa(grid, XFlatGrid) && (Rx != 1) && !(Tx == LeftConnected)
-    include_south = !isa(grid, YFlatGrid) && (Ry != 1) && !(Ty == RightConnected)
-    include_north = !isa(grid, YFlatGrid) && (Ry != 1) && !(Ty == LeftConnected)
+    include_west  = !local_dimension(TX) && !(TX === RightConnected)
+    include_east  = !local_dimension(TX) && !(TX === LeftConnected)
+    include_south = !local_dimension(TY) && !(TY === RightConnected)
+    include_north = !local_dimension(TY) && !(TY === LeftConnected)
 
-    include_side = (include_west, include_east, include_south, include_north)
+    west  = include_west  ? (KernelParameters(parameters[1]...),) : ()
+    east  = include_east  ? (KernelParameters(parameters[2]...),) : ()
+    south = include_south ? (KernelParameters(parameters[3]...),) : ()
+    north = include_north ? (KernelParameters(parameters[4]...),) : ()
 
-    return Tuple(KernelParameters(parameters[i]...) for i in findall(include_side))
+    return (west..., east..., south..., north...)
 end
