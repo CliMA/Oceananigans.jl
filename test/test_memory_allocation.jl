@@ -3,7 +3,7 @@ include("dependencies_for_runtests.jl")
 using Oceananigans
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using Oceananigans.DistributedComputations: @handshake
-using Oceananigans.Utils: pretty_filesize
+using Oceananigans.Utils: pretty_filesize, work_layout, interior_work_layout
 
 function allocation_grid(arch, FT=Float64; immersed_mode, size, extent=(1, 1, 1), halo=(7, 7, 7), topology=(Periodic, Periodic, Bounded))
     grid = RectilinearGrid(arch, FT; size, extent, halo, topology)
