@@ -945,7 +945,7 @@ end
 ext(path) = splitext(path) |> last
 
 function FieldTimeSeries(path::String, args...; reader_kw = NamedTuple(), kwargs...)
-    # JLD2 is the default; don't append .jld2 to paths that already carry a recognised extension
+    # JLD2 is the default; don't append .jld2 to paths that already carry a recognized extension
     path = (endswith(path, ".nc") || endswith(path, ".zarr") || endswith(path, ".zip")) ?
            path : auto_extension(path, ".jld2")
     typed_path = if ext(path) == ".jld2"

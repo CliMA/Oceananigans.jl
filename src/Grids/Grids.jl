@@ -8,6 +8,7 @@ export LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded
 export LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected
 export SerialFoldedTopology, SlabFoldedTopology, PencilFoldedTopology, DistributedFoldedTopology, FoldedTopology
 export AbstractGrid, AbstractUnderlyingGrid, grid, halo_size, total_size
+export slice
 export RectilinearGrid
 export AbstractCurvilinearGrid, AbstractHorizontallyCurvilinearGrid
 export XFlatGrid, YFlatGrid, ZFlatGrid
@@ -32,6 +33,7 @@ using DocStringExtensions: FIELDS, TYPEDSIGNATURES
 using GPUArraysCore: @allowscalar
 using OffsetArrays: OffsetArray
 using Printf: @sprintf
+using BFloat16s: BFloat16
 
 using Oceananigans: Oceananigans
 using Oceananigans.Architectures: Architectures, AbstractSerialArchitecture,
