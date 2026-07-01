@@ -3,7 +3,7 @@ include("dependencies_for_runtests.jl")
 using Oceananigans
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using Oceananigans.DistributedComputations: @handshake
-using Oceananigans.Utils: pretty_filesize
+using Oceananigans.Utils: pretty_filesize, work_layout, interior_work_layout
 
 function allocation_grid(arch, FT=Float64; immersed_mode, size, extent=(1, 1, 1), halo=(7, 7, 7), topology=(Periodic, Periodic, Bounded))
     grid = RectilinearGrid(arch, FT; size, extent, halo, topology)
@@ -40,42 +40,40 @@ function time_step_allocations(model, Δt; samples=10)
     return minimum(@allocated(time_step!(model, Δt)) for _ in 1:samples)
 end
 
-#TODO: Fix allocations in the nonhydrostatic model
-
 const serial_memory_cpu = Dict(
-    (:hydrostatic,    :flat)            => 1.1e6,
-    (:hydrostatic,    :immersed)        => 1.1e6,
-    (:hydrostatic,    :active_immersed) => 1.3e6,
-    (:nonhydrostatic, :flat)            => 8.7e5,
-    (:nonhydrostatic, :immersed)        => 9.8e5,
-    (:nonhydrostatic, :active_immersed) => 1.1e6,
+    (:hydrostatic,    :flat)            => 4.4e5,
+    (:hydrostatic,    :immersed)        => 4.6e5,
+    (:hydrostatic,    :active_immersed) => 5.0e3,
+    (:nonhydrostatic, :flat)            => 8.6e5,
+    (:nonhydrostatic, :immersed)        => 8.9e5,
+    (:nonhydrostatic, :active_immersed) => 6.9e5,
 )
 
 const serial_memory_gpu = Dict(
-    (:hydrostatic,    :flat)            => 2.6e6,
-    (:hydrostatic,    :immersed)        => 2.8e6,
-    (:hydrostatic,    :active_immersed) => 2.9e6,
-    (:nonhydrostatic, :flat)            => 1.9e6,
+    (:hydrostatic,    :flat)            => 2.2e6,
+    (:hydrostatic,    :immersed)        => 2.4e6,
+    (:hydrostatic,    :active_immersed) => 2.1e6,
+    (:nonhydrostatic, :flat)            => 2.0e6,
     (:nonhydrostatic, :immersed)        => 2.2e6,
-    (:nonhydrostatic, :active_immersed) => 2.3e6,
+    (:nonhydrostatic, :active_immersed) => 2.1e6,
 )
 
 const distributed_memory_cpu = Dict(
-    (:hydrostatic,    :flat)            => 8.0e6,
-    (:hydrostatic,    :immersed)        => 9.6e6,
-    (:hydrostatic,    :active_immersed) => 1.3e7,
+    (:hydrostatic,    :flat)            => 7.5e5,
+    (:hydrostatic,    :immersed)        => 8.7e5,
+    (:hydrostatic,    :active_immersed) => 9.1e5,
     (:nonhydrostatic, :flat)            => 6.6e6,
     (:nonhydrostatic, :immersed)        => 8.0e6,
     (:nonhydrostatic, :active_immersed) => 1.0e7,
 )
 
 const distributed_memory_gpu = Dict(
-    (:hydrostatic,    :flat)            => 1.5e7,
-    (:hydrostatic,    :immersed)        => 1.7e7,
-    (:hydrostatic,    :active_immersed) => 2.2e7,
-    (:nonhydrostatic, :flat)            => 1.2e7,
-    (:nonhydrostatic, :immersed)        => 1.4e7,
-    (:nonhydrostatic, :active_immersed) => 1.7e7,
+    (:hydrostatic,    :flat)            => 8.8e6,
+    (:hydrostatic,    :immersed)        => 1.0e7,
+    (:hydrostatic,    :active_immersed) => 1.2e7,
+    (:nonhydrostatic, :flat)            => 8.4e6,
+    (:nonhydrostatic, :immersed)        => 9.5e6,
+    (:nonhydrostatic, :active_immersed) => 1.2e7,
 )
 
 # For distributed this includes only (4, 1), (1, 4) and (2, 2)
@@ -87,6 +85,10 @@ archs = nonhydrostatic_regression_test_architectures()
             for (name, (build, Δt)) in pairs(Models)
                 for immersed in (:flat, :immersed, :active_immersed)
                     grid  = allocation_grid(arch; immersed_mode=immersed, size=(48, 48, 8))
+
+                    @test (@inferred work_layout(grid, Val(:xyz), ())) isa Tuple
+                    @test (@inferred interior_work_layout(grid, Val(:xyz), (Center(), Center(), Center()))) isa Tuple
+
                     model = build(grid)
                     allocations = time_step_allocations(model, Δt)
                     baseline = if arch isa Distributed{<:GPU}
