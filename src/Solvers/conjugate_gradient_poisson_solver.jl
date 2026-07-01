@@ -308,8 +308,6 @@ end
 
 Base.summary(::ColumnwiseTridiagonalPreconditioner) = "ColumnwiseTridiagonalPreconditioner"
 
-# Marker types whose `get_coefficient` methods compute the tridiagonal coefficients of the
-# vertical sub-system of V∇² on the fly, sparing the solver three full 3D coefficient arrays.
 struct ColumnwiseTridiagonalLowerDiagonal end
 struct ColumnwiseTridiagonalDiagonal end
 struct ColumnwiseTridiagonalUpperDiagonal end
