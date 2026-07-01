@@ -1,5 +1,6 @@
 using Oceananigans.Operators: Vᶜᶜᶜ, V⁻¹ᶜᶜᶜ, Ax_∂xᶠᶜᶜ, Axᶠᶜᶜ, Ay_∂yᶜᶠᶜ, Ayᶜᶠᶜ, Az_∂zᶜᶜᶠ,
-    Azᶜᶜᶠ, Δx⁻¹ᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ, Δz⁻¹ᶜᶜᶠ, δxᶜᶜᶜ, δyᶜᶜᶜ, δzᶜᶜᶜ
+    Azᶜᶜᶠ, Δx⁻¹ᶠᶜᶜ, Δy⁻¹ᶜᶠᶜ, Δz⁻¹ᶜᶜᶠ, δxᶜᶜᶜ, δyᶜᶜᶜ, δzᶜᶜᶜ, Δzᵃᵃᶠ
+using Oceananigans.Grids: XYZRegularRG, XYRegularRG, XZRegularRG, YZRegularRG
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Statistics: mean
 
@@ -79,6 +80,41 @@ function compute_symmetric_laplacian!(∇²ϕ, ϕ)
     return nothing
 end
 
+# Linear operator for the free-surface pressure Poisson equation.
+# Applies V∇² with Neumann BC at the top, then adds the Robin BC diagonal correction
+# -Az(Nz+1)/den * ϕ[Nz] at k=Nz (where den = g*Δt² + Δzᶠ/2).
+#
+# The top ghost is explicitly set to Neumann (ϕ[Nz+1] = ϕ[Nz]) before computing V∇².
+# This prevents the MixedBoundaryCondition on p_Δt (set at model construction) from
+# polluting the operator during CG iterations with a stale coefficient/inhomogeneity.
+struct FreeSurfaceLaplacian end
+
+@kernel function _fill_top_neumann_halo!(ϕ, grid)
+    i, j = @index(Global, NTuple)
+    Nz = grid.Nz
+    @inbounds ϕ[i, j, Nz+1] = ϕ[i, j, Nz]
+end
+
+@kernel function _apply_free_surface_correction!(∇²ϕ, grid, ϕ, Δt, g)
+    i, j = @index(Global, NTuple)
+    Nz = grid.Nz
+    Δzᶠ = Δzᵃᵃᶠ(i, j, Nz+1, grid)
+    den = g * Δt^2 + Δzᶠ / 2
+    Az = Azᶜᶜᶠ(i, j, Nz+1, grid)
+    @inbounds ∇²ϕ[i, j, Nz] -= Az / den * ϕ[i, j, Nz]
+end
+
+function (::FreeSurfaceLaplacian)(∇²ϕ, ϕ, free_surface, Δt)
+    grid = ϕ.grid
+    arch = architecture(grid)
+    fill_halo_regions!(ϕ)
+    launch!(arch, grid, :xy, _fill_top_neumann_halo!, ϕ, grid)
+    launch!(arch, grid, :xyz, _symmetric_laplacian_operator!, ∇²ϕ, grid, ϕ)
+    g = free_surface.gravitational_acceleration
+    launch!(arch, grid, :xy, _apply_free_surface_correction!, ∇²ϕ, grid, ϕ, Δt, g)
+    return nothing
+end
+
 @kernel function subtract_and_mask!(a, grid, b)
     i, j, k = @index(Global, NTuple)
     active = !inactive_cell(i, j, k, grid)
@@ -133,6 +169,7 @@ This is because the pressure field is defined only up to an arbitrary constant, 
 is a common choice to remove this degree of freedom.
 """
 function ConjugateGradientPoissonSolver(grid;
+                                        linear_operation = compute_symmetric_laplacian!,
                                         preconditioner = DefaultPreconditioner(),
                                         reltol = sqrt(eps(grid)),
                                         abstol = sqrt(eps(grid)),
@@ -151,7 +188,7 @@ function ConjugateGradientPoissonSolver(grid;
 
     volume_inverse_norm = VolumeInverseNorm(grid)
 
-    conjugate_gradient_solver = ConjugateGradientSolver(compute_symmetric_laplacian!;
+    conjugate_gradient_solver = ConjugateGradientSolver(linear_operation;
                                                         reltol,
                                                         abstol,
                                                         preconditioner,
@@ -162,6 +199,26 @@ function ConjugateGradientPoissonSolver(grid;
 
     return ConjugateGradientPoissonSolver(grid, rhs, conjugate_gradient_solver)
 end
+
+#####
+##### Preconditioner selection for free-surface CG solvers
+#####
+
+# For grids where x and y are both uniform, use FT with InhomogeneousFormulation in z
+# so the preconditioner already encodes the Robin BC (best preconditioner for IBG + free surface).
+# Note: per-type (not union) dispatches required because XYRegularRG <: XZRegularRG, causing
+# union dispatches to be ambiguous.
+fft_free_surface_preconditioner(grid::XYZRegularRG) =
+    FourierTridiagonalPoissonSolver(grid; tridiagonal_formulation=InhomogeneousFormulation(ZDirection()))
+
+fft_free_surface_preconditioner(grid::XYRegularRG) =
+    FourierTridiagonalPoissonSolver(grid; tridiagonal_formulation=InhomogeneousFormulation(ZDirection()))
+
+# For grids stretched in x or y, the z-direction InhomogeneousFormulation cannot be used
+# (the non-tridiagonal directions must be uniform for FFT). Use the standard FT solver in the
+# stretched direction (HomogeneousNeumann) as preconditioner; CG corrects for the free surface.
+fft_free_surface_preconditioner(grid::XZRegularRG) = FourierTridiagonalPoissonSolver(grid)
+fft_free_surface_preconditioner(grid::YZRegularRG) = FourierTridiagonalPoissonSolver(grid)
 
 #####
 ##### A preconditioner based on the FFT solver

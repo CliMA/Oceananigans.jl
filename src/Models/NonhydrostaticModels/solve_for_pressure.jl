@@ -3,6 +3,7 @@ using Oceananigans.DistributedComputations: DistributedFFTBasedPoissonSolver
 using Oceananigans.Grids: XDirection, YDirection, ZDirection, inactive_cell
 using Oceananigans.Solvers: FFTBasedPoissonSolver, FourierTridiagonalPoissonSolver
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver
+using Oceananigans.Solvers: AbstractHomogeneousNeumannFormulation
 using Oceananigans.Solvers: solve!
 
 #####
@@ -128,6 +129,8 @@ end
 update_fourier_tridiagonal_solver!(solver, ::Nothing, Ũ, Δt) = nothing
 
 function update_fourier_tridiagonal_solver!(solver, free_surface, Ũ, Δt)
+    solver isa FourierTridiagonalPoissonSolver || return nothing
+    solver.tridiagonal_formulation isa AbstractHomogeneousNeumannFormulation && return nothing
     g = free_surface.gravitational_acceleration
     η = free_surface.displacement
     λx, λy = solver.poisson_eigenvalues
@@ -146,7 +149,29 @@ end
     @inbounds diagonal[i, j, Nz] = - 1 / den - 1/Δzᵃᵃᶠ(i, j, Nz, grid) - Δzᶜ * (λx[i] + λy[j])
 end
 
-function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, free_surface, Ũ, Δt)
+#####
+##### CG free-surface source term: subtracts the Robin BC inhomogeneous term Az*g*Δt*η★/den at k=Nz.
+#####
+
+@kernel function _add_cg_free_surface_rhs!(rhs, grid, w̃, Δt, g, η)
+    i, j = @index(Global, NTuple)
+    Nz = grid.Nz
+    Δzᶠ = Δzᵃᵃᶠ(i, j, Nz+1, grid)
+    den = g * Δt^2 + Δzᶠ / 2
+    Az = Azᶜᶜᶠ(i, j, Nz+1, grid)
+    η★ = η[i, j, Nz+1] + Δt * w̃[i, j, Nz+1]
+    @inbounds rhs[i, j, Nz] -= Az * g * Δt * η★ / den
+end
+
+function add_cg_free_surface_rhs!(rhs, free_surface, grid, Ũ, Δt)
+    g = free_surface.gravitational_acceleration
+    η = free_surface.displacement
+    arch = grid.architecture
+    launch!(arch, grid, :xy, _add_cg_free_surface_rhs!, rhs, grid, Ũ.w, Δt, g, η)
+    return nothing
+end
+
+function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, ::Nothing, Ũ, Δt)
     ϵ = eps(eltype(pressure))
     Δt⁺ = max(ϵ, Δt)
     Δt★ = Δt⁺ * isfinite(Δt)
@@ -158,4 +183,22 @@ function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, f
     launch!(arch, grid, :xyz, _cg_source_term!, rhs, grid, Ũ)
 
     return solve!(pressure, solver.conjugate_gradient_solver, rhs)
+end
+
+function solve_for_pressure!(pressure, solver::ConjugateGradientPoissonSolver, free_surface, Ũ, Δt)
+    ϵ = eps(eltype(pressure))
+    Δt⁺ = max(ϵ, Δt)
+    Δt★ = Δt⁺ * isfinite(Δt)
+    pressure .*= Δt★
+
+    rhs = solver.right_hand_side
+    grid = solver.grid
+    arch = architecture(grid)
+    launch!(arch, grid, :xyz, _cg_source_term!, rhs, grid, Ũ)
+    add_cg_free_surface_rhs!(rhs, free_surface, grid, Ũ, Δt)
+
+    preconditioner = solver.conjugate_gradient_solver.preconditioner
+    update_fourier_tridiagonal_solver!(preconditioner, free_surface, Ũ, Δt)
+
+    return solve!(pressure, solver.conjugate_gradient_solver, rhs, free_surface, Δt)
 end
