@@ -41,7 +41,6 @@ extract_field_time_series(t1, tn...) = extract_field_time_series(tuple(t1, tn...
     return concatenate_extracted(ntuple(i -> extract_field_time_series(getfield(t, i)), Val(N)))
 end
 
-# Terminations: a `FieldTimeSeries` (or the series underlying a `TimeSeriesInterpolation`) is collected.
 extract_field_time_series(f::FieldTimeSeries) = (f,)
 extract_field_time_series(f::TimeSeriesInterpolation) = (f.time_series,)
 
