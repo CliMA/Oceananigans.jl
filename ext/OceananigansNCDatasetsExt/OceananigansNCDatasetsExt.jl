@@ -19,6 +19,8 @@ using Printf: @sprintf
 using OrderedCollections: OrderedDict
 using Statistics: mean
 
+import Oceananigans
+
 using Oceananigans: initialize!, prettytime, pretty_filesize, AbstractModel
 using Oceananigans.AbstractOperations: KernelFunctionOperation, AbstractOperation
 using Oceananigans.Architectures: CPU, GPU, on_architecture

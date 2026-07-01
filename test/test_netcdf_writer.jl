@@ -3263,8 +3263,9 @@ end
 
 using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid, RotatedLatitudeLongitudeGrid,
                                                   ConformalCubedSpherePanelGrid
-using Oceananigans.OutputWriters: reconstruct_grid
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, bottom_height_interior
+using Oceananigans.OutputWriters: reconstruct_grid, materialize_from_netcdf
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, bottom_height_interior,
+                                       CenterImmersedCondition, InterfaceImmersedCondition
 
 function test_netcdf_tripolar_grid_output(arch)
     grid = TripolarGrid(arch, size=(20, 16, 4), z=(-100, 0))
@@ -3726,6 +3727,16 @@ function test_netcdf_tripolar_grid_reconstruction(arch)
     return nothing
 end
 
+function test_materialize_from_netcdf_strings()
+    @test materialize_from_netcdf("(Oceananigans.Grids.Periodic, Oceananigans.Grids.Bounded)") === (Periodic, Bounded)
+    @test materialize_from_netcdf("Oceananigans.Architectures.CPU()") isa CPU
+    @test materialize_from_netcdf("Float64") === Float64
+
+    @test materialize_from_netcdf("CenterImmersedCondition()") isa CenterImmersedCondition
+    @test materialize_from_netcdf("InterfaceImmersedCondition()") isa InterfaceImmersedCondition
+    return nothing
+end
+
 @testset "NetCDF output writer" begin
     @info "Testing NetCDF output writer..."
 
@@ -3889,5 +3900,10 @@ end
             @info "  Testing MutableVerticalDiscretization output [$A]..."
             test_netcdf_rectilinear_mvd_output(arch)
         end
+    end
+
+    @testset "Materialize grid-reconstruction strings from NetCDF" begin
+        @info "  Testing materialize_from_netcdf with qualified and bare type names..."
+        test_materialize_from_netcdf_strings()
     end
 end
