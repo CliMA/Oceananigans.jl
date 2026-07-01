@@ -349,8 +349,8 @@ end
 end
 
 @inline function _fill_west_halo!(j, k, grid, c, bc::PAVBC, ::Tuple{Center, Any, Any}, clock, model_fields)
-    boundary_indices = (1, j, k)
-    boundary_adjacent_indices = (2, j, k)
+    boundary_indices = (0, j, k)
+    boundary_adjacent_indices = (1, j, k)
     Δx = Δxᶠᶜᶜ(1, j, k, grid)
     U = @inbounds model_fields.u[1, j, k]
     step_left_open_boundary!(bc, j, k, boundary_indices, boundary_adjacent_indices,
@@ -370,8 +370,8 @@ end
 end
 
 @inline function _fill_south_halo!(i, k, grid, c, bc::PAVBC, ::Tuple{Any, Center, Any}, clock, model_fields)
-    boundary_indices = (i, 1, k)
-    boundary_adjacent_indices = (i, 2, k)
+    boundary_indices = (i, 0, k)
+    boundary_adjacent_indices = (i, 1, k)
     Δy = Δyᶜᶠᶜ(i, 1, k, grid)
     U = @inbounds model_fields.v[i, 1, k]
     step_left_open_boundary!(bc, i, k, boundary_indices, boundary_adjacent_indices,
@@ -391,8 +391,8 @@ end
 end
 
 @inline function _fill_bottom_halo!(i, j, grid, c, bc::PAVBC, ::Tuple{Any, Any, Center}, clock, model_fields)
-    boundary_indices = (i, j, 1)
-    boundary_adjacent_indices = (i, j, 2)
+    boundary_indices = (i, j, 0)
+    boundary_adjacent_indices = (i, j, 1)
     Δz = Δzᶜᶜᶠ(i, j, 1, grid)
     U = @inbounds model_fields.w[i, j, 1]
     step_left_open_boundary!(bc, i, j, boundary_indices, boundary_adjacent_indices,
