@@ -1,6 +1,6 @@
 using OrderedCollections: OrderedDict
 
-struct RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch, Sz} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch}
+struct RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch, SZ} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch, SZ}
     architecture :: Arch
     Nx :: Int
     Ny :: Int
@@ -40,20 +40,6 @@ function RectilinearGrid{TX, TY, TZ, SZ}(arch::Arch, Nx, Ny, Nz, Hx, Hy, Hz,
                                                                          Hx, Hy, Hz, Lx, Ly, Lz,
                                                                          Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
                                                                          Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ, z)
-end
-
-@generated function Base.size(grid::RectilinearGrid)
-    Sz = grid.parameters[end]
-    Sz === Nothing && return :(map(Int, (grid.Nx, grid.Ny, grid.Nz)))
-    sz = Sz.parameters
-    return :(($(sz[1]), $(sz[2]), $(sz[3])))
-end
-
-@generated function halo_size(grid::RectilinearGrid)
-    Sz = grid.parameters[end]
-    Sz === Nothing && return :(map(Int, (grid.Hx, grid.Hy, grid.Hz)))
-    sz = Sz.parameters
-    return :(($(sz[4]), $(sz[5]), $(sz[6])))
 end
 
 const RG = RectilinearGrid

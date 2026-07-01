@@ -2,7 +2,7 @@ using KernelAbstractions: @kernel, @index
 using OrderedCollections: OrderedDict
 
 struct LatitudeLongitudeGrid{FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC,
-                             DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I, Sz} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Z, Arch}
+                             DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I, SZ} <: AbstractHorizontallyCurvilinearGrid{FT, TX, TY, TZ, Z, Arch, SZ}
     architecture :: Arch
     Nx :: I
     Ny :: I
@@ -73,20 +73,6 @@ function LatitudeLongitudeGrid{TX, TY, TZ, SZ}(architecture::Arch,
                                                           Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
                                                           Δyᶠᶜᵃ, Δyᶜᶠᵃ,
                                                           Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ, radius)
-end
-
-@generated function Base.size(grid::LatitudeLongitudeGrid)
-    Sz = grid.parameters[end]
-    Sz === Nothing && return :(map(Int, (grid.Nx, grid.Ny, grid.Nz)))
-    sz = Sz.parameters
-    return :(($(sz[1]), $(sz[2]), $(sz[3])))
-end
-
-@generated function halo_size(grid::LatitudeLongitudeGrid)
-    Sz = grid.parameters[end]
-    Sz === Nothing && return :(map(Int, (grid.Hx, grid.Hy, grid.Hz)))
-    sz = Sz.parameters
-    return :(($(sz[4]), $(sz[5]), $(sz[6])))
 end
 
 const LLG = LatitudeLongitudeGrid

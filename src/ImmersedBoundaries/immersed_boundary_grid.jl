@@ -7,7 +7,7 @@ Abstract supertype for immersed boundary grids.
 """
 abstract type AbstractImmersedBoundary end
 
-struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch}
+struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch, Nothing}
     architecture :: Arch
     underlying_grid :: G
     immersed_boundary :: I

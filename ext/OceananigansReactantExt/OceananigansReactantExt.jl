@@ -119,13 +119,13 @@ end
 
 # https://github.com/CliMA/Oceananigans.jl/blob/d9b3b142d8252e8e11382d1b3118ac2a092b38a2/src/Grids/orthogonal_spherical_shell_grid.jl#L14
 Base.@nospecializeinfer function Reactant.traced_type_inner(
-    @nospecialize(OA::Type{Oceananigans.Grids.OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, rFT, Sz}}),
+    @nospecialize(OA::Type{Oceananigans.Grids.OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, rFT, SZ}}),
     seen,
     mode::Reactant.TraceMode,
     @nospecialize(track_numbers::Type),
     @nospecialize(sharding),
     @nospecialize(runtime)
-) where {FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, rFT, Sz}
+) where {FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, rFT, SZ}
     FT2 = Reactant.traced_type_inner(FT, seen, mode, track_numbers, sharding, runtime)
     TX2 = Reactant.traced_type_inner(TX, seen, mode, track_numbers, sharding, runtime)
     TY2 = Reactant.traced_type_inner(TY, seen, mode, track_numbers, sharding, runtime)
@@ -143,7 +143,7 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
         FT2 = Reactant.promote_traced_type(FT2, eltype(NF))
     end
     rFT2 = Reactant.traced_type_inner(rFT, seen, mode, track_numbers, sharding, runtime)
-    return Oceananigans.Grids.OrthogonalSphericalShellGrid{FT2, TX2, TY2, TZ2, Z2, Map2, CC2, FC2, CF2, FF2, Arch, rFT2, Sz}
+    return Oceananigans.Grids.OrthogonalSphericalShellGrid{FT2, TX2, TY2, TZ2, Z2, Map2, CC2, FC2, CF2, FF2, Arch, rFT2, SZ}
 end
 
 @inline Reactant.make_tracer(
@@ -191,13 +191,13 @@ end
 
 Base.@nospecializeinfer function Reactant.traced_type_inner(
     @nospecialize(OA::Type{LatitudeLongitudeGrid{FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC,
-                                                 DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I, Sz}}),
+                                                 DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I, SZ}}),
     seen,
     mode::Reactant.TraceMode,
     @nospecialize(track_numbers::Type),
     @nospecialize(sharding),
     @nospecialize(runtime)
-) where {FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC, DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I, Sz}
+) where {FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC, DXCC, DXFC, DXCF, DXFF, DYFC, DYCF, Arch, I, SZ}
     TX2 = Reactant.traced_type_inner(TX, seen, mode, track_numbers, sharding, runtime)
     TY2 = Reactant.traced_type_inner(TY, seen, mode, track_numbers, sharding, runtime)
     TZ2 = Reactant.traced_type_inner(TZ, seen, mode, track_numbers, sharding, runtime)
@@ -228,19 +228,19 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     end
 
     res = Oceananigans.Grids.LatitudeLongitudeGrid{FT2, TX2, TY2, TZ2, Z2, DXF2, DXC2, XF2, XC2, DYF2, DYC2, YF2, YC2,
-                                                   DXCC2, DXFC2, DXCF2, DXFF2, DYFC2, DYCF2, Arch, I2, Sz}
+                                                   DXCC2, DXFC2, DXCF2, DXFF2, DYFC2, DYCF2, Arch, I2, SZ}
 
     return res
 end
 
 Base.@nospecializeinfer function Reactant.traced_type_inner(
-        @nospecialize(OA::Type{RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch, Sz}}),
+        @nospecialize(OA::Type{RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch, SZ}}),
         seen,
         mode::Reactant.TraceMode,
         @nospecialize(track_numbers::Type),
         @nospecialize(sharding),
         @nospecialize(runtime)
-    ) where {FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch, Sz}
+    ) where {FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch, SZ}
 
     TX2 = Reactant.traced_type_inner(TX, seen, mode, track_numbers, sharding, runtime)
     TY2 = Reactant.traced_type_inner(TY, seen, mode, track_numbers, sharding, runtime)
@@ -267,7 +267,7 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
         end
     end
 
-    res = Oceananigans.Grids.RectilinearGrid{FT2, TX2, TY2, TZ2, CZ2, FX2, FY2, VX2, VY2, Arch, Sz}
+    res = Oceananigans.Grids.RectilinearGrid{FT2, TX2, TY2, TZ2, CZ2, FX2, FY2, VX2, VY2, Arch, SZ}
 
     return res
 end

@@ -1,6 +1,6 @@
 const AHCG = AbstractHorizontallyCurvilinearGrid
 
-struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, FT2, Sz} <: AHCG{FT, TX, TY, TZ, Z, Arch}
+struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, FT2, SZ} <: AHCG{FT, TX, TY, TZ, Z, Arch, SZ}
     architecture :: Arch
        Nx :: Int
        Ny :: Int
@@ -60,20 +60,6 @@ function OrthogonalSphericalShellGrid{FT, TX, TY, TZ, SZ}(architecture::Arch,
                                                                                                Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
                                                                                                radius,
                                                                                                conformal_mapping)
-end
-
-@generated function Base.size(grid::OrthogonalSphericalShellGrid)
-    Sz = grid.parameters[end]
-    Sz === Nothing && return :(map(Int, (grid.Nx, grid.Ny, grid.Nz)))
-    sz = Sz.parameters
-    return :(($(sz[1]), $(sz[2]), $(sz[3])))
-end
-
-@generated function halo_size(grid::OrthogonalSphericalShellGrid)
-    Sz = grid.parameters[end]
-    Sz === Nothing && return :(map(Int, (grid.Hx, grid.Hy, grid.Hz)))
-    sz = Sz.parameters
-    return :(($(sz[4]), $(sz[5]), $(sz[6])))
 end
 
 function OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture::Arch,
