@@ -26,6 +26,7 @@ include("tripolar_field_extensions.jl")
 include("right_face_folded_kernel_parameters.jl")
 include("rotated_latitude_longitude_grid.jl")
 include("lambert_conformal_conic_grid.jl")
+include("lambert_conformal_conic_interpolation.jl")
 include("conformal_cubed_sphere_panel.jl")
 
 # Distributed computations on a tripolar grid
