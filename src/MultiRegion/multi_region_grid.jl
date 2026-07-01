@@ -1,12 +1,17 @@
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions
 using Oceananigans.DistributedComputations: reconstruct_global_grid
 using Oceananigans.Grids: RectilinearGrid, LatitudeLongitudeGrid, metrics_precomputed,
-    pop_flat_elements, grid_name, new_data, halo_size, with_halo, minimum_xspacing, minimum_yspacing, minimum_zspacing
-using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary
+                          pop_flat_elements, grid_name, new_data, halo_size, with_halo,
+                          minimum_xspacing, minimum_yspacing, minimum_zspacing
+using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary,
+                                       bottom_height_field, set_bottom_height!
 using Oceananigans.Models: PrescribedVelocityFields
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: HydrostaticFreeSurfaceModels
 using Oceananigans.Models.HydrostaticFreeSurfaceModels.SplitExplicitFreeSurfaces: SplitExplicitFreeSurfaces,
-    SplitExplicitFreeSurface, FixedSubstepNumber, FixedTimeStepSize, maybe_augmented_kernel_parameters
+                                                                                  SplitExplicitFreeSurface,
+                                                                                  FixedSubstepNumber,
+                                                                                  FixedTimeStepSize,
+                                                                                  maybe_augmented_kernel_parameters
 
 struct MultiRegionGrid{FT, TX, TY, TZ, CZ, P, C, G, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch}
     architecture :: Arch
@@ -166,15 +171,30 @@ end
 
 function DistributedComputations.reconstruct_global_grid(mrg::ImmersedMultiRegionGrid)
     global_grid     = reconstruct_global_grid(mrg.underlying_grid)
-    global_immersed_boundary = reconstruct_global_immersed_boundary(mrg.immersed_boundary)
+    global_immersed_boundary = reconstruct_global_immersed_boundary(mrg.immersed_boundary, mrg.underlying_grid)
     global_immersed_boundary = on_architecture(architecture(mrg), global_immersed_boundary)
 
     return ImmersedBoundaryGrid(global_grid, global_immersed_boundary)
 end
 
-reconstruct_global_immersed_boundary(g::GridFittedBottom{<:Field})   =   GridFittedBottom(reconstruct_global_field(g.bottom_height), g.immersed_condition)
-reconstruct_global_immersed_boundary(g::PartialCellBottom{<:Field})  =  PartialCellBottom(reconstruct_global_field(g.bottom_height), g.minimum_fractional_cell_height)
-reconstruct_global_immersed_boundary(g::GridFittedBoundary{<:Field}) = GridFittedBoundary(reconstruct_global_field(g.mask))
+function reconstruct_global_immersed_boundary(ib::GridFittedBottom, mrg::MultiRegionGrids)
+    bottom_field  = bottom_height_field(ib.bottom_height, mrg)
+    global_bottom = reconstruct_global_field(bottom_field)
+    return GridFittedBottom(interior(global_bottom), ib.immersed_condition)
+end
+
+function reconstruct_global_immersed_boundary(ib::PartialCellBottom, mrg::MultiRegionGrids)
+    bottom_field  = bottom_height_field(ib.bottom_height, mrg)
+    global_bottom = reconstruct_global_field(bottom_field)
+    return PartialCellBottom(interior(global_bottom), ib.minimum_fractional_cell_height)
+end
+
+reconstruct_global_immersed_boundary(g::GridFittedBoundary{<:Field}, ::MultiRegionGrids) = GridFittedBoundary(reconstruct_global_field(g.mask))
+
+# On a multi-region grid the stored bottom height is a `MultiRegionObject` of per-region halo-inclusive
+# `OffsetArray`s; strip each region's halos before copying (the bare-`OffsetArray` method does this per region).
+Oceananigans.ImmersedBoundaries.set_bottom_height!(bottom_field, bottom_height::MultiRegionObject) =
+    @apply_regionally set_bottom_height!(bottom_field, bottom_height)
 
 @inline  Utils.getregion(mrg::ImmersedMultiRegionGrid{FT, TX, TY, TZ}, r) where {FT, TX, TY, TZ} = ImmersedBoundaryGrid{TX, TY, TZ}(_getregion(mrg.underlying_grid, r),
                                                                                                                               _getregion(mrg.immersed_boundary, r),

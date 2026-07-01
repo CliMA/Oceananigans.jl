@@ -74,3 +74,6 @@ statprof
 
 # MCPRepl security configuration (contains API keys)
 .mcprepl/
+
+# Sandbox MWEs and scratch experiments (not part of the package)
+sandbox/
