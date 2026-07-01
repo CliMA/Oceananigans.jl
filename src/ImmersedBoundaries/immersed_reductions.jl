@@ -138,9 +138,9 @@ end
 
 @inline function evaluate_condition(nic::NotImmersedColumn, i, j, k,
                                     grid::ImmersedBoundaryGrid,
-                                    ::ConditionalOperation, args...)
+                                    co::ConditionalOperation, args...)
     immersed = is_immersed_column(i, j, k, nic.immersed_column)
-    value = !immersed & evaluate_condition(nic.condition, i, j, k, grid, args...)
+    value = !immersed & evaluate_condition(nic.condition, i, j, k, grid, co, args...)
     return value
 end
 
