@@ -285,10 +285,6 @@ end
 
 zarr_grid_type_string(g) = string(typeof(g).name.wrapper)
 
-# TODO: from netcdf, need this too?
-# zarr_grid_type_string(::TripolarGrid) = "TripolarGrid"
-# zarr_grid_type_string(::RotatedLatitudeLongitudeGrid) = "RotatedLatitudeLongitudeGrid"
-
 add_conformal_mapping_info_to_kwargs!(kwargs, grid) = nothing
 
 function add_conformal_mapping_info_to_kwargs!(kwargs, grid::OrthogonalSphericalShellGrid)
@@ -358,7 +354,7 @@ function write_zarr_grid_coords!(group, grid, outputs, grid_suffix, indices, wit
             var_dims = entry.dims
         else
             arr = entry
-            var_dims = (var_name,)
+            var_dims = tuple(var_name)
         end
 
         arr isa Nothing && continue
@@ -381,11 +377,7 @@ function write_zarr_grid_coords!(group, grid, outputs, grid_suffix, indices, wit
         else
             existing = collect(group[var_name])
 
-            existing == arr || throw(
-                ArgumentError(
-                    "Variable '$var_name' already exists but values differ."
-                )
-            )
+            existing == arr || throw(ArgumentError("Variable '$var_name' already exists but values differ."))
         end
     end
 
@@ -397,17 +389,15 @@ function write_zarr_grid_metrics!(group, grid, indices, dimension_name_generator
 
     for (name, field) in pairs(metrics)
         if !haskey(group, name)
-
+            dim_name = field_dimensions(field, grid, dimension_name_generator; grid_index=grid_suffix)
+            dim_attrs = Dict("_ARRAY_DIMENSIONS" => [d for d in dim_name if !isempty(d)])
             metric = Zarr.zcreate(
                 eltype(field),
                 group,
                 name,
                 size(field)...;
                 chunks = size(field),
-                # attrs = merge(
-                #     Dict("_ARRAY_DIMENSIONS" => collect(var_dims)),
-                #     get(attributes_dict, var_name, Dict{String,Any}())
-                # ) TODO: Do we want to write attributes for metrics? e.g. as netcdf?
+                attrs = dim_attrs
             )
 
             metric .= field
@@ -415,11 +405,7 @@ function write_zarr_grid_metrics!(group, grid, indices, dimension_name_generator
         else
             existing = collect(group[name])
 
-            existing == field || throw(
-                ArgumentError(
-                    "Variable '$name' already exists but values differ."
-                )
-            )
+            existing == field || throw(ArgumentError("Variable '$name' already exists but values differ."))
         end
     end
     return nothing
@@ -451,29 +437,22 @@ function write_zarr_grid_immersed_boundary!(group, grid::ImmersedBoundaryGrid, i
 
     for (name, field) in pairs(ib_vars)
         if !haskey(ibg_group, name)
-
+            dim_names = field_dimensions(field, grid, dimension_name_generator; grid_index=grid_suffix)
+            dim_attrs = Dict("_ARRAY_DIMENSIONS" => [d for d in dim_names if !isempty(d)])
             ib_var = Zarr.zcreate(
                 eltype(field),
                 ibg_group,
                 name,
                 size(field)...;
                 chunks = size(field),
-                # attrs = merge(
-                #     Dict("_ARRAY_DIMENSIONS" => collect(var_dims)),
-                #     get(attributes_dict, var_name, Dict{String,Any}())
-                # ) TODO: Do we want to write attributes for immersed boundary variables? e.g. as netcdf?
+                attrs = dim_attrs
             )
-
             ib_var .= field
 
         else
             existing = collect(ibg_group[name])
 
-            existing == field || throw(
-                ArgumentError(
-                    "Variable '$name' already exists but values differ."
-                )
-            )
+            existing == field || throw(ArgumentError("Variable '$name' already exists but values differ."))
         end
     end
     return nothing
@@ -620,9 +599,9 @@ function reconstruct_zarr_ossg_grid(root_group, grid_group, args, kwargs)
 
     # Read 2D aux coords + metrics and pad with halos as needed.
     read_2d(name, lx, ly) = read_ossg_halo_padded_array(grid_group, name,
-                                                       FT, arch, lx, ly,
-                                                       topo_instances, (Nx, Ny, Nz), (Hx, Hy, Hz),
-                                                       file_has_halos)
+                                                        FT, arch, lx, ly,
+                                                        topo_instances, (Nx, Ny, Nz), (Hx, Hy, Hz),
+                                                        file_has_halos)
 
     λcc = read_2d("λ_cca", Center(), Center())
     λfc = read_2d("λ_fca", Face(),   Center())
@@ -668,16 +647,16 @@ function reconstruct_zarr_ossg_grid(root_group, grid_group, args, kwargs)
     # (e.g. the north fold for TripolarGrid), so `fill_halo_regions!` does the right
     # thing across the fold.
     preliminary = OrthogonalSphericalShellGrid{FT, TX, TY, TZ}(arch,
-                                                                Nx, Ny, Nz, Hx, Hy, Hz,
-                                                                FT(Lz),
-                                                                λcc, λfc, λcf, λff,
-                                                                φcc, φfc, φcf, φff,
-                                                                z_disc,
-                                                                Δxcc, Δxfc, Δxcf, Δxff,
-                                                                Δycc, Δyfc, Δycf, Δyff,
-                                                                Azcc, Azfc, Azcf, Azff,
-                                                                radius,
-                                                                conformal_mapping)
+                                                               Nx, Ny, Nz, Hx, Hy, Hz,
+                                                               FT(Lz),
+                                                               λcc, λfc, λcf, λff,
+                                                               φcc, φfc, φcf, φff,
+                                                               z_disc,
+                                                               Δxcc, Δxfc, Δxcf, Δxff,
+                                                               Δycc, Δyfc, Δycf, Δyff,
+                                                               Azcc, Azfc, Azcf, Azff,
+                                                               radius,
+                                                               conformal_mapping)
 
     fill_metric_halos(arr, lx, ly) = halo_fill_2d_metric(arr, preliminary, lx, ly)
 
@@ -707,16 +686,16 @@ function reconstruct_zarr_ossg_grid(root_group, grid_group, args, kwargs)
     Azff = fill_metric_halos(Azff, Face,   Face)
 
     return OrthogonalSphericalShellGrid{FT, TX, TY, TZ}(arch,
-                                                         Nx, Ny, Nz, Hx, Hy, Hz,
-                                                         FT(Lz),
-                                                         λcc, λfc, λcf, λff,
-                                                         φcc, φfc, φcf, φff,
-                                                         z_disc,
-                                                         Δxcc, Δxfc, Δxcf, Δxff,
-                                                         Δycc, Δyfc, Δycf, Δyff,
-                                                         Azcc, Azfc, Azcf, Azff,
-                                                         radius,
-                                                         conformal_mapping)
+                                                        Nx, Ny, Nz, Hx, Hy, Hz,
+                                                        FT(Lz),
+                                                        λcc, λfc, λcf, λff,
+                                                        φcc, φfc, φcf, φff,
+                                                        z_disc,
+                                                        Δxcc, Δxfc, Δxcf, Δxff,
+                                                        Δycc, Δyfc, Δycf, Δyff,
+                                                        Azcc, Azfc, Azcf, Azff,
+                                                        radius,
+                                                        conformal_mapping)
 end
 
 # Wrap a bare 2D metric/coord `OffsetMatrix` as a `Field` on `grid`, fill its halos
