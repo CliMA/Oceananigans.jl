@@ -45,7 +45,6 @@ end
 extract_field_time_series(f::FieldTimeSeries) = (f,)
 extract_field_time_series(f::TimeSeriesInterpolation) = (f.time_series,)
 
-# Types that cannot contain a `FieldTimeSeries` halt the recursion with an empty tuple.
 CannotPossiblyContainFTS = (:Number, :AbstractArray, :AbstractGrid, :AbstractField, :Returns, :Nothing)
 
 for T in CannotPossiblyContainFTS
