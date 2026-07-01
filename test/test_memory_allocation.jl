@@ -111,7 +111,7 @@ archs = nonhydrostatic_regression_test_architectures()
     # identity when entries share a type, so this case is intentionally not `@inferred` (see the
     # type-stable, no-dedup `extract_field_time_series` used by `update_model_field_time_series!`).
     @test flattened_unique_values((u = u, v = c, w = u)) === (u, c)
-    @test flattened_unique_values((u = u, v = c, w = u, d = deepcopy(u))) === (u, c, u)
+    @test flattened_unique_values((u = u, v = c, w = u, d = deepcopy(u))) == (u, c, u)
 end
 
 @testset "extract_field_time_series: tuple convention, inference" begin
