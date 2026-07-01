@@ -43,9 +43,9 @@ function time_step_allocations(model, Δt; samples=10)
 end
 
 const serial_memory_cpu = Dict(
-    (:hydrostatic,    :flat)            => 4.4e5,
-    (:hydrostatic,    :immersed)        => 4.6e5,
-    (:hydrostatic,    :active_immersed) => 5.0e3,
+    (:hydrostatic,    :flat)            => 560,
+    (:hydrostatic,    :immersed)        => 592,
+    (:hydrostatic,    :active_immersed) => 640,
     (:nonhydrostatic, :flat)            => 8.6e5,
     (:nonhydrostatic, :immersed)        => 8.9e5,
     (:nonhydrostatic, :active_immersed) => 6.9e5,
