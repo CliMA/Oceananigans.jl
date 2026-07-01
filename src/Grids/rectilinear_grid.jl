@@ -1,6 +1,6 @@
 using OrderedCollections: OrderedDict
 
-struct RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch}
+struct RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch, SZ} <: AbstractUnderlyingGrid{FT, TX, TY, TZ, CZ, Arch, SZ}
     architecture :: Arch
     Nx :: Int
     Ny :: Int
@@ -24,20 +24,22 @@ struct RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch} <: AbstractUnde
     z     :: CZ
 end
 
-function RectilinearGrid{TX, TY, TZ}(arch::Arch, Nx, Ny, Nz, Hx, Hy, Hz,
-                                     Lx :: FT, Ly :: FT, Lz :: FT,
-                                     Δxᶠᵃᵃ :: FX, Δxᶜᵃᵃ :: FX,
-                                      xᶠᵃᵃ :: VX,  xᶜᵃᵃ :: VX,
-                                     Δyᵃᶠᵃ :: FY, Δyᵃᶜᵃ :: FY,
-                                      yᵃᶠᵃ :: VY,  yᵃᶜᵃ :: VY,
-                                      z    :: CZ) where {Arch, FT, TX, TY, TZ,
-                                                         FX, VX, FY, VY, CZ}
+RectilinearGrid{TX, TY, TZ}(arch, Nx, Ny, Nz, Hx, Hy, Hz, args...) where {TX, TY, TZ} =
+    RectilinearGrid{TX, TY, TZ, typeof(GridSize(Nx, Ny, Nz, Hx, Hy, Hz))}(arch, Nx, Ny, Nz, Hx, Hy, Hz, args...)
 
-    return RectilinearGrid{FT, TX, TY, TZ,
-                           CZ, FX, FY, VX, VY, Arch}(arch, Nx, Ny, Nz,
-                                                     Hx, Hy, Hz, Lx, Ly, Lz,
-                                                     Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
-                                                     Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ, z)
+function RectilinearGrid{TX, TY, TZ, SZ}(arch::Arch, Nx, Ny, Nz, Hx, Hy, Hz,
+                                         Lx :: FT, Ly :: FT, Lz :: FT,
+                                         Δxᶠᵃᵃ :: FX, Δxᶜᵃᵃ :: FX,
+                                          xᶠᵃᵃ :: VX,  xᶜᵃᵃ :: VX,
+                                         Δyᵃᶠᵃ :: FY, Δyᵃᶜᵃ :: FY,
+                                          yᵃᶠᵃ :: VY,  yᵃᶜᵃ :: VY,
+                                          z    :: CZ) where {SZ, Arch, FT, TX, TY, TZ,
+                                                             FX, VX, FY, VY, CZ}
+
+    return RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch, SZ}(arch, Nx, Ny, Nz,
+                                                                         Hx, Hy, Hz, Lx, Ly, Lz,
+                                                                         Δxᶠᵃᵃ, Δxᶜᵃᵃ, xᶠᵃᵃ, xᶜᵃᵃ,
+                                                                         Δyᵃᶠᵃ, Δyᵃᶜᵃ, yᵃᶠᵃ, yᵃᶜᵃ, z)
 end
 
 const RG = RectilinearGrid
@@ -367,7 +369,7 @@ validate_halo(TX, TY, TZ, size, e::ColumnEnsembleSize) = tuple(0, 0, e.Hz)
 
 function Adapt.adapt_structure(to, grid::RectilinearGrid)
     TX, TY, TZ = topology(grid)
-    return RectilinearGrid{TX, TY, TZ}(nothing,
+    return RectilinearGrid{TX, TY, TZ, Nothing}(nothing,
                                        grid.Nx, grid.Ny, grid.Nz,
                                        grid.Hx, grid.Hy, grid.Hz,
                                        grid.Lx, grid.Ly, grid.Lz,
