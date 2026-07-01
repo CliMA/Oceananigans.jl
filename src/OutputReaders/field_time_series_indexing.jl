@@ -141,7 +141,7 @@ function getindex(fts::OnDiskFTS, n::Int)
 
     # Load data from the correct file (handles split files via SplitFilePath)
     arch = architecture(fts)
-    filepath, local_n = file_and_local_index(fts.path, n)
+    filepath, local_n = file_and_local_index(fts.path, n, fts.times[n], fts.reader_kw)
     file = jldopen(filepath; fts.reader_kw...)
     iter = keys(file["timeseries/t"])[local_n]
     raw_data = on_architecture(arch, file["timeseries/$(fts.name)/$iter"])
@@ -151,7 +151,7 @@ function getindex(fts::OnDiskFTS, n::Int)
     loc = instantiated_location(fts)
     @apply_regionally field_data = offset_data(raw_data, fts.grid, loc, fts.indices)
 
-    status = @allowscalar FixedTime(fts.times[n])
+    status = @allowscalar FixedTime(time)
 
     field = Field(loc, fts.grid;
                   indices = fts.indices,
