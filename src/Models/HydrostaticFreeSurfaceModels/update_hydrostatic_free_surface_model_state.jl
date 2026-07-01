@@ -45,7 +45,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     arch = architecture(grid)
 
     @apply_regionally begin
-        foreach(mask_immersed_field!, model.tracers)
+        mask_immersed_field!(model.tracers)
         update_model_field_time_series!(model, model.clock)
         compute_forcing!(model.forcing)
         update_boundary_conditions!(fields(model), model)
@@ -87,7 +87,7 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
 end
 
 """
-    mask_immersed_horizontal_velocities!(velocities)
+$(TYPEDSIGNATURES)
 
 Set velocity field values to zero in immersed (solid) regions of the grid.
 """
@@ -98,7 +98,7 @@ function mask_immersed_horizontal_velocities!(velocities)
 end
 
 """
-    diffusivity_kernel_parameters(grid)
+$(TYPEDSIGNATURES)
 
 Return kernel parameters for computing turbulent closure_fields including one extra cell
 in horizontal directions.

@@ -5,7 +5,7 @@ using Oceananigans.TimeSteppers: _rk3_substep_field!
 import Oceananigans.TimeSteppers: rk3_substep!
 
 """
-    rk3_substep!(model::ShallowWaterModel, Δt, γⁿ, ζⁿ, callbacks)
+$(TYPEDSIGNATURES)
 
 Perform a single RK3 substep for `ShallowWaterModel`.
 

@@ -1,10 +1,17 @@
 module OrthogonalSphericalShellGrids
 
 # The only thing we need!
-export TripolarGrid, RotatedLatitudeLongitudeGrid, ConformalCubedSpherePanelGrid
+export TripolarGrid, RotatedLatitudeLongitudeGrid, LambertConformalConicGrid,
+       LambertConformalConic, lcc_forward, lcc_inverse, lcc_scale_factor,
+       ConformalCubedSpherePanelGrid
 
 import Oceananigans
 import Oceananigans.Architectures: on_architecture
+
+using Distances: haversine
+using Adapt: Adapt, adapt
+using KernelAbstractions: @kernel, @index
+using DocStringExtensions: TYPEDSIGNATURES
 
 using Oceananigans.Architectures: on_architecture, AbstractArchitecture, CPU, GPU
 using Oceananigans.BoundaryConditions: BoundaryCondition
@@ -13,15 +20,13 @@ using Oceananigans.Grids: halo_size, generate_coordinate, topology
 using Oceananigans.Grids: total_length, add_halos, fill_metric_halo_regions!
 using Oceananigans.BoundaryConditions: fill_halo_regions!
 
-using Distances: haversine
-using Adapt: Adapt, adapt
-using KernelAbstractions: @kernel, @index
-
 include("generate_tripolar_coordinates.jl")
 include("tripolar_grid.jl")
 include("tripolar_field_extensions.jl")
 include("right_face_folded_kernel_parameters.jl")
 include("rotated_latitude_longitude_grid.jl")
+include("lambert_conformal_conic_grid.jl")
+include("lambert_conformal_conic_interpolation.jl")
 include("conformal_cubed_sphere_panel.jl")
 
 # Distributed computations on a tripolar grid
@@ -58,7 +63,7 @@ end
 # `TripolarGrid` / `RotatedLatitudeLongitudeGrid` type-alias on read.
 
 """
-    conformal_mapping_info(cm)
+$(TYPEDSIGNATURES)
 
 Return a `Dict{Symbol, Any}` describing the conformal mapping `cm` (or `nothing`) of an
 `OrthogonalSphericalShellGrid`, suitable for serialization to NetCDF attributes.

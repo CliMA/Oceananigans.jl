@@ -1,9 +1,10 @@
+using DocStringExtensions: TYPEDEF, TYPEDSIGNATURES
+using Oceananigans: instantiated_location
 using Oceananigans.Grids: node, xnodes, ynodes, znodes
 using Oceananigans.Fields: AbstractField, Field, compute!, show_location
 using Oceananigans.AbstractOperations: Average
 using Oceananigans.OutputReaders: interpolate
 using Oceananigans.Utils: prettysummary
-using Oceananigans: instantiated_location
 
 @inline zerofunction(args...) = 0
 @inline onefunction(args...) = 1

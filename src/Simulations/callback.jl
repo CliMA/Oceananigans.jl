@@ -16,7 +16,7 @@ end
 @inline (callback::Callback{<:Nothing})(sim) = callback.func(sim)
 
 """
-    initialize!(callback::Callback, sim)
+$(TYPEDSIGNATURES)
 
 Initialize `callback` at the beginning of `run!(sim)`.
 By default, this calls `initialize!` on `callback.func`,
@@ -29,7 +29,7 @@ or specialized for `callback.func`.
 initialize!(callback::Callback, sim) = initialize!(callback.func, sim)
 
 """
-    finalize!(callback::Callback, sim)
+$(TYPEDSIGNATURES)
 
 Finalize `callback` at the end of `run!(sim)`.
 By default, this calls `finalize!` on `callback.func`,
@@ -109,7 +109,7 @@ function generic_callback_name(::GenericName, existing_names)
 end
 
 """
-    add_callback!(simulation, callback::Callback; name = GenericName(), callback_kw...)
+    add_callback!(simulation, callback::Callback; name = GenericName())
     add_callback!(simulation, func, schedule=IterationInterval(1); name = GenericName(), callback_kw...)
 
 Add `Callback(func, schedule)` to `simulation.callbacks` under `name`. The default

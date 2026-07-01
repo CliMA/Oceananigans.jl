@@ -38,6 +38,7 @@ CUDA.allowscalar() do
         @testset "Unit tests" begin
             include("test_quality_assurance.jl")
             include("test_grids.jl")
+            include("test_lambert_conformal_conic_grid.jl")
             include("test_grid_reconstruction.jl")
             include("test_immersed_boundary_grid.jl")
             include("test_operators.jl")
@@ -45,6 +46,8 @@ CUDA.allowscalar() do
             include("test_boundary_conditions.jl")
             include("test_field.jl")
             include("test_set_field_interpolation.jl")
+            include("test_lcc_interpolation.jl")
+            include("test_interpolate_transform.jl")
             include("test_regrid.jl")
             include("test_field_scans.jl")
             include("test_halo_regions.jl")
@@ -122,6 +125,13 @@ CUDA.allowscalar() do
         end
     end
 
+    # Memory allocation regression tests
+    if group == :memory_allocation || group == :all
+        @testset "Memory allocation tests" begin
+            include("test_memory_allocation.jl")
+        end
+    end
+
     # Models
     if group == :time_stepping_1 || group == :all
         @testset "Model and time stepping tests (part 1)" begin
@@ -148,6 +158,7 @@ CUDA.allowscalar() do
             include("test_seawater_density.jl")
             include("test_model_diagnostics.jl")
             include("test_orthogonal_spherical_shell_time_stepping.jl")
+            include("test_tracer_budget_closure.jl")
             include("test_curvature_metric_terms.jl")
             include("test_bulk_drag.jl")
         end
@@ -188,12 +199,28 @@ CUDA.allowscalar() do
         end
     end
 
+    if group == :nccl_extension || group == :all
+        MPI.Initialized() || MPI.Init()
+        reset_cuda_if_necessary()
+        @testset "NCCL extension tests" begin
+            include("test_nccl_extension.jl")
+        end
+    end
+
     if group == :distributed || group == :all
         MPI.Initialized() || MPI.Init()
         # In case CUDA is not found, we reset CUDA and restart the julia session
         reset_cuda_if_necessary()
         include("test_distributed_architectures.jl")
         include("test_distributed_models.jl")
+    end
+
+    if group == :distributed_memory_allocation || group == :all
+        MPI.Initialized() || MPI.Init()
+        # In case CUDA is not found, we reset CUDA and restart the julia session
+        reset_cuda_if_necessary()
+        archs = nonhydrostatic_regression_test_architectures()
+        include("test_memory_allocation.jl")
     end
 
     if group == :distributed_solvers || group == :all

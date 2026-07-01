@@ -131,6 +131,10 @@ the features they describe! Also, if you have developed a new feature in Oceanan
 
 If you have work using Oceananigans that you would like to have listed here, please open a pull request to add it or let us know!
 
+1. Knudsen, L., Wenegrat, J., Hilditch, J., and Thomas, L. N. (2026). [Parametric subharmonic instability in the ocean bottom boundary layer](https://doi.org/10.48550/arXiv.2605.28555), _arXiv preprint_, arXiv:2605.28555. DOI: [10.48550/arXiv.2605.28555](https://doi.org/10.48550/arXiv.2605.28555)
+
+1. Atkinson, E. and Grisouard, N. (2026). [Formation and arrest of a surface density front via strain-driven frontogenesis](https://doi.org/10.1029/2025GL119220), _Geophysical Research Letters_, **53(12)**, e2025GL119220. DOI: [10.1029/2025GL119220](https://doi.org/10.1029/2025GL119220)
+
 1. Wenegrat, J. O., Chor, T., and Barkan, R. (2026). [Coarse-grained local available potential energy](https://doi.org/10.48550/arXiv.2605.15879), _arXiv preprint_, arXiv:2605.15879. DOI: [10.48550/arXiv.2605.15879](https://doi.org/10.48550/arXiv.2605.15879)
 
 1. Chor, T., Wenegrat, J., and Wagner, G. L. (2026) [Turbulent mixing and dissipation around rough seamounts](https://doi.org/10.1029/2025GL121312), _Geophysical Research Letters_. DOI: [https://doi.org/10.1029/2025GL121312](https://doi.org/10.1029/2025GL121312)
@@ -145,6 +149,8 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Wang, S., Kang, W., and Li, C. (2026). [A tug-of-war between baroclinic eddies and convection: implications for icy moon oceans](https://doi.org/10.48550/arXiv.2603.17185), _arXiv preprint_, arXiv:2603.17185. DOI: [10.48550/arXiv.2603.17185](https://doi.org/10.48550/arXiv.2603.17185)
 
+1. Kang, W. and Zhang, Y. (2026). [Subsurface ocean salinity and dissipation rate inferred from Enceladus ice shell morphology](https://doi.org/10.48550/arXiv.2603.22602), _arXiv preprint_, arXiv:2603.22602. DOI: [10.48550/arXiv.2603.22602](https://doi.org/10.48550/arXiv.2603.22602)
+
 1. De Abreu, S. and Timmermans, M.-L. (2026). [Mixed-layer deepening and internal wave generation under sea ice in free drift](https://doi.org/10.1175/JPO-D-25-0165.1), _Journal of Physical Oceanography_, **56(4)**, 823-837. DOI: [10.1175/JPO-D-25-0165.1](https://doi.org/10.1175/JPO-D-25-0165.1)
 
 1. Markmann, Τ., Straat, Μ., Peitz, S., Hammer, B. (2026). [Fourier neural operators as data-driven surrogates for two- and three-dimensional Rayleigh–bénard convection](https://doi.org/10.1016/j.neucom.2026.133201), _Neurocomputing_, 133201. DOI: [10.1016/j.neucom.2026.133201](https://doi.org/10.1016/j.neucom.2026.133201)
@@ -153,19 +159,17 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Gupta, M., Thompon, A. F., and Klein P. (2026). [Energetics of the upper‐ocean under sea ice: Frictional dissipation versus baroclinic production](https://doi.org/10.1029/2025JC023026), _Journal of Geophysical Research: Oceans_, **131(2)**, e2025JC023026. DOI: [10.1029/2025JC023026](https://doi.org/10.1029/2025JC023026)
 
-1. Atkinson, E. and Grisouard, N. (2026). [Formation and arrest of a surface density front via strain-driven frontogenesis](https://doi.org/10.22541/essoar.175941869.94553891/v2), _ESS Open Archive_. DOI: [10.22541/essoar.175941869.94553891/v2](https://doi.org/10.22541/essoar.175941869.94553891/v2)
-
 1. Sjur, A. L. P., Isachsen, P. E., Nilsson, J., and Allen, S. (2026). [Nonlinear dynamics of time-variable slope circulation](https://doi.org/10.5194/egusphere-2026-778), _EGUsphere preprint_. DOI: [10.5194/egusphere-2026-778](https://doi.org/10.5194/egusphere-2026-778)
 
 1. Yuan, Q., Wang, S., Wang, B., Jing, R., and Chen, B. (2026). [The influence of wave steepness and age on wake dynamics and power performance of offshore wind farms](https://doi.org/10.1016/j.apenergy.2025.127147), _Applied Energy_, **404**, 127147. DOI: [10.1016/j.apenergy.2025.127147](https://doi.org/10.1016/j.apenergy.2025.127147)
 
-1. Pan, W. and Li, Q. (2026). [Transient response of Langmuir turbulence to abrupt onset of surface heating](https://doi.org/10.1103/jjdt-zp9n), _Physical Review Fluids_, **11**, 024606. DOI: [10.1175/JPO-D-25-0077.1](https://doi.org/10.1103/jjdt-zp9n)
+1. Pan, W. and Li, Q. (2026). [Transient response of Langmuir turbulence to abrupt onset of surface heating](https://doi.org/10.1103/jjdt-zp9n), _Physical Review Fluids_, **11**, 024606. DOI: [10.1103/jjdt-zp9n](https://doi.org/10.1103/jjdt-zp9n)
 
 1. Li, Q. (2026). [Large eddy simulations of stabilizing effects induced by opposing Eulerian shear and Stokes drift shear in an idealized ocean surface boundary layer](https://doi.org/10.1175/JPO-D-25-0077.1), _Journal of Physical Oceanography_, e250077, in press. DOI: [10.1175/JPO-D-25-0077.1](https://doi.org/10.1175/JPO-D-25-0077.1)
 
 1. Peng. S., Silvestri, S., and Bodner, A. (2026). [Submesoscale and boundary layer turbulence under mesoscale forcing in the upper ocean](https://doi.org/10.48550/arXiv.2601.10441), _arXiv preprint_, arXiv:2601.10441. DOI: [10.48550/arXiv.2601.10441](https://doi.org/10.48550/arXiv.2601.10441)
 
-1. Wang, S., Kang, W., Zhang, Y., & Marshall, J. (2026). [Evolution of a point plume in a rotating unstratified fluid overlain by a stratified layer: scaling and implications for icy satellites](https://doi.org/10.22541/essoar.176824050.01249257/v1), _ESS Open Archive_. DOI: [10.22541/essoar.176824050.01249257/v1](https://doi.org/10.22541/essoar.176659936.64523492/v1)
+1. Wang, S., Kang, W., Zhang, Y., & Marshall, J. (2026). [Evolution of a point plume in a rotating unstratified fluid overlain by a stratified layer: scaling and implications for icy satellites](https://doi.org/10.22541/essoar.176824050.01249257/v1), _ESS Open Archive_. DOI: [10.22541/essoar.176824050.01249257/v1](https://doi.org/10.22541/essoar.176824050.01249257/v1)
 
 1. Wei, Z., Li, Q., & Chen, B. (2026). [A direct assessment of Langmuir turbulence parameterizations in idealized coastal merging boundary layers](https://doi.org/10.1029/2025MS004993), _Journal of Advances in Modeling Earth Systems_, **18**, e2025MS004993. DOI:[10.1029/2025MS004993](https://doi.org/10.1029/2025MS004993)
 
@@ -197,7 +201,7 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Shikanian, A. and Parfenyev, V. (2025) [The effects of no-slip boundaries and external force torque on two-dimensional turbulence in a square domain](https://doi.org/10.48550/arXiv.2508.13590), _arXiv preprint_, arXiv:2508.13590. DOI: [10.48550/arXiv.2508.13590](https://doi.org/10.48550/arXiv.2508.13590)
 
-1. Souza, A. N., Silvestri, S., Deck, K., Bischoff, T., Ferrari, R., and Flierl, G. R. (2025) [Surface to seafloor: A generative AI framework for decoding the ocean interior state](https://doi.org/10.48550/arXiv.2504.15308), _arXiv preprint_, arXiv:2504.15308. DOI: [10.48550/arXiv.2503.12845](https://doi.org/10.48550/arXiv.2504.15308)
+1. Souza, A. N., Silvestri, S., Deck, K., Bischoff, T., Ferrari, R., and Flierl, G. R. (2025) [Surface to seafloor: A generative AI framework for decoding the ocean interior state](https://doi.org/10.48550/arXiv.2504.15308), _arXiv preprint_, arXiv:2504.15308. DOI: [10.48550/arXiv.2504.15308](https://doi.org/10.48550/arXiv.2504.15308)
 
 1. Vankevich, R. Y., Rodionov, А. А., Shpilev, N. N., and Chebotkova, V. V. (2025) [Modeling the origin and evolution of convective vortex structures on a slope. Numerical experiment](https://doi.org/10.59887/2073-6673.2025.18(4)-2), _Fundamental and Applied Hydrophysics_, **18(4)**, 20-27. (in Russian) DOI: [10.59887/2073-6673.2025.18(4)-2](https://doi.org/10.59887/2073-6673.2025.18(4)-2)
 
@@ -273,7 +277,7 @@ If you have work using Oceananigans that you would like to have listed here, ple
 
 1. Coakley, S., Miles, T. N., Glenn, S., and Lim, H. S. (2021). [Observation-Large eddy simulation comparison of ocean mixing under Typhoon Soulik (2018)](https://doi.org/10.23919/OCEANS44145.2021.9705670), _OCEANS 2021: San Diego – Porto, 2021_, pp. 1-7. DOI: [10.23919/OCEANS44145.2021.9705670](https://doi.org/10.23919/OCEANS44145.2021.9705670)
 
-1. Arnscheidt, C. W., Marshall, J., Dutrieux, P., Rye, C. D., and Ramadhan, A. (2021). [On the settling depth of meltwater escaping from beneath Antarctic ice shelves](https://doi.org/10.1175/JPO-D-20-0286.1), _Journal of Physical Oceanography_, **51(7)**, 2257–2270. DOI: [10.1175/JPO-D-20-0178.1](https://doi.org/10.1175/JPO-D-20-0286.1)
+1. Arnscheidt, C. W., Marshall, J., Dutrieux, P., Rye, C. D., and Ramadhan, A. (2021). [On the settling depth of meltwater escaping from beneath Antarctic ice shelves](https://doi.org/10.1175/JPO-D-20-0286.1), _Journal of Physical Oceanography_, **51(7)**, 2257–2270. DOI: [10.1175/JPO-D-20-0286.1](https://doi.org/10.1175/JPO-D-20-0286.1)
 
 1. Wagner, G. L., Chini, G. P., Ramadhan, A., Gallet, B., and Ferrari, R. (2021). [Near-inertial waves and turbulence driven by the growth of swell](https://doi.org/10.1175/JPO-D-20-0178.1), _Journal of Physical Oceanography_, **51(5)**, 1337-1351. DOI: [10.1175/JPO-D-20-0178.1](https://doi.org/10.1175/JPO-D-20-0178.1)
 

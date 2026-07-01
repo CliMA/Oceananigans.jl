@@ -1,6 +1,7 @@
 using Oceananigans.Grids: Grids, constructor_arguments, rnode
-using Oceananigans.Fields: Field, fill_halo_regions!
+using Oceananigans.Fields: Field, fill_halo_regions!, interior
 using Oceananigans.BoundaryConditions: FBC
+using OffsetArrays: OffsetArray
 
 #####
 ##### GridFittedBottom (2.5D immersed boundary with modified bottom height)
@@ -46,10 +47,34 @@ Arguments
 """
 GridFittedBottom(bottom_height) = GridFittedBottom(bottom_height, CenterImmersedCondition())
 
+# 1-based interior view of a bare bottom-height array.
+@inline function bottom_height_interior(bottom_height)
+    parent_ranges = ntuple(Val(ndims(bottom_height))) do d
+        H = 1 - first(axes(bottom_height, d))
+        (1 + H):(size(bottom_height, d) - H)
+    end
+    return view(parent(bottom_height), parent_ranges...)
+end
+
+@inline bottom_heights_equal(h1, h2) = h1 == h2
+@inline bottom_heights_equal(h1::AbstractArray, h2::AbstractArray) = bottom_height_interior(h1) == bottom_height_interior(h2)
+
+set_bottom_height!(bottom_field, bottom_height) = set!(bottom_field, bottom_height)
+
+function set_bottom_height!(bottom_field, bottom_height::OffsetArray)
+    source = on_architecture(architecture(bottom_field), bottom_height_interior(bottom_height))
+    copyto!(interior(bottom_field), source)
+    return bottom_field
+end
+
+bottom_height_field(bottom_data, grid) = Field{Center, Center, Nothing}(grid; data=bottom_data)
+bottom_height_field(grid::IBG) = bottom_height_field(grid.immersed_boundary.bottom_height, grid.underlying_grid)
+
 function Base.summary(ib::GridFittedBottom)
-    zmax  = maximum(ib.bottom_height)
-    zmin  = minimum(ib.bottom_height)
-    zmean = mean(ib.bottom_height)
+    bottom_interior = bottom_height_interior(ib.bottom_height)
+    zmax  = maximum(bottom_interior)
+    zmin  = minimum(bottom_interior)
+    zmean = sum(bottom_interior) / length(bottom_interior)
 
     summary1 = "GridFittedBottom("
 
@@ -71,19 +96,10 @@ end
 
 Architectures.on_architecture(arch, ib::GridFittedBottom) = GridFittedBottom(on_architecture(arch, ib.bottom_height), ib.immersed_condition)
 
-function Architectures.on_architecture(arch, ib::GridFittedBottom{<:Field})
-    architecture(ib.bottom_height) == arch && return ib
-    arch_grid = on_architecture(arch, ib.bottom_height.grid)
-    new_bottom_height = Field{Center, Center, Nothing}(arch_grid)
-    set!(new_bottom_height, ib.bottom_height)
-    fill_halo_regions!(new_bottom_height)
-    return GridFittedBottom(new_bottom_height, ib.immersed_condition)
-end
-
 Adapt.adapt_structure(to, ib::GridFittedBottom) = GridFittedBottom(adapt(to, ib.bottom_height), adapt(to, ib.immersed_condition))
 
 """
-    materialize_immersed_boundary(grid, ib)
+$(TYPEDSIGNATURES)
 
 Returns a new `ib` wrapped around a Field that holds the numerical `immersed_boundary`.
 If `ib` is an `AbstractGridFittedBottom`, `ib.bottom_height` is the z-coordinate of
@@ -92,11 +108,10 @@ top-most interface of the last ``immersed`` cell in the column. If `ib` is a `Gr
 """
 function materialize_immersed_boundary(grid, ib::GridFittedBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
-    set!(bottom_field, ib.bottom_height)
+    set_bottom_height!(bottom_field, ib.bottom_height)
     @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, ib)
     fill_halo_regions!(bottom_field)
-    new_ib = GridFittedBottom(bottom_field)
-    return new_ib
+    return GridFittedBottom(bottom_field.data, ib.immersed_condition)
 end
 
 compute_numerical_bottom_height!(bottom_field, grid, ib) =
@@ -161,5 +176,5 @@ function Grids.constructor_arguments(grid::AGFBIBG)
 end
 
 function Base.:(==)(gfb1::GridFittedBottom, gfb2::GridFittedBottom)
-    return gfb1.bottom_height == gfb2.bottom_height && gfb1.immersed_condition == gfb2.immersed_condition
+    return bottom_heights_equal(gfb1.bottom_height, gfb2.bottom_height) && gfb1.immersed_condition == gfb2.immersed_condition
 end

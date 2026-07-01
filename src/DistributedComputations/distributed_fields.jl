@@ -75,12 +75,19 @@ synchronize_communication!(::AbstractField) = nothing
 synchronize_communication!(::AbstractArray) = nothing
 synchronize_communication!(::Number)        = nothing
 synchronize_communication!(::Nothing)       = nothing
+synchronize_communication!(::Tuple{})       = nothing
 
 # Distribute synchronize_communication! over tuples and named tuples
-synchronize_communication!(t::Union{NamedTuple, Tuple}) = foreach(synchronize_communication!, t)
+synchronize_communication!(nt::NamedTuple) = synchronize_communication!(values(nt))
+
+function synchronize_communication!(t::Tuple)
+    synchronize_communication!(first(t))
+    synchronize_communication!(Base.tail(t))
+    return nothing
+end
 
 """
-    synchronize_communication!(field)
+$(TYPEDSIGNATURES)
 
 complete the halo passing of `field` among processors.
 """
@@ -107,7 +114,7 @@ end
 reconstruct_global_field(field) = field
 
 """
-    reconstruct_global_field(field::DistributedField)
+$(TYPEDSIGNATURES)
 
 Reconstruct a global field from a local field by combining the data from all processes.
 """

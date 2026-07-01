@@ -4,6 +4,10 @@ using Oceananigans.BoundaryConditions: ContinuousBoundaryFunction, BoundaryAdjac
                                        fill_halo_regions!
 
 using Oceananigans: prognostic_fields
+using Oceananigans.Models: possible_field_time_series
+using Oceananigans.OutputReaders: extract_field_time_series
+using Oceananigans.Fields: flattened_unique_values
+using Oceananigans.Units: Time
 
 function test_boundary_condition(arch, FT, Model, topo, side, field_name, boundary_condition)
     grid = RectilinearGrid(arch, FT, size=(1, 1, 1), extent=(1, π, 42), topology=topo)
@@ -723,6 +727,25 @@ test_boundary_conditions(C, FT, ArrayType) = (integer_bc(C, FT, ArrayType),
                 bc = field_time_series_bc(C, FT, array_type(arch))
                 @test test_boundary_condition(arch, FT, NonhydrostaticModel, topo, :top, :T, bc)
             end
+        end
+    end
+
+    @testset "FieldTimeSeries in boundary conditions are advanced in time" begin
+        for arch in archs
+            @info "  Testing FieldTimeSeries-in-boundary-condition time-advance [$(typeof(arch))]..."
+            grid = RectilinearGrid(arch, size=(1, 1, 1), extent=(1, 1, 1))
+            bare  = FieldTimeSeries{Center, Center, Nothing}(grid, [0.0, 1.0])
+            param = FieldTimeSeries{Center, Center, Nothing}(grid, [0.0, 1.0])
+
+            @inline ϕ_top(i, j, grid, clock, fields, p) = @inbounds p[i, j, 1, Time(clock.time)]
+
+            bcs = (T = FieldBoundaryConditions(top = ValueBoundaryCondition(bare)),
+                   S = FieldBoundaryConditions(top = ValueBoundaryCondition(ϕ_top; discrete_form=true, parameters=param)))
+            model = NonhydrostaticModel(grid; tracers=(:T, :S), boundary_conditions=bcs)
+
+            collected = flattened_unique_values(extract_field_time_series(possible_field_time_series(model)))
+            @test bare  ∈ collected
+            @test param ∈ collected
         end
     end
 end
