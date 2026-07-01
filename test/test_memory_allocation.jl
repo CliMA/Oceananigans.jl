@@ -4,8 +4,8 @@ using Oceananigans
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using Oceananigans.DistributedComputations: @handshake
 using Oceananigans.Fields: flattened_unique_values
-using Oceananigans.Utils: pretty_filesize, work_layout, interior_work_layout
 using Oceananigans.OutputReaders: extract_field_time_series, FieldTimeSeries
+using Oceananigans.Utils: pretty_filesize, work_layout, interior_work_layout
 
 function allocation_grid(arch, FT=Float64; immersed_mode, size, extent=(1, 1, 1), halo=(7, 7, 7), topology=(Periodic, Periodic, Bounded))
     grid = RectilinearGrid(arch, FT; size, extent, halo, topology)
