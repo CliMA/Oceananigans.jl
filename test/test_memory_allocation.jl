@@ -86,13 +86,8 @@ archs = nonhydrostatic_regression_test_architectures()
                 for immersed in (:flat, :immersed, :active_immersed)
                     grid  = allocation_grid(arch; immersed_mode=immersed, size=(48, 48, 8))
 
-                    @test try
-                        wg,  ws  = @inferred work_layout(grid, :xyz, ())
-                        wg2, ws2 = @inferred interior_work_layout(grid, :xyz, (Center(), Center(), Center()))
-                        true
-                    catch
-                        false
-                    end
+                    @test (@inferred work_layout(grid, Val(:xyz), ())) isa Tuple
+                    @test (@inferred interior_work_layout(grid, Val(:xyz), (Center(), Center(), Center()))) isa Tuple
 
                     model = build(grid)
                     allocations = time_step_allocations(model, Δt)
