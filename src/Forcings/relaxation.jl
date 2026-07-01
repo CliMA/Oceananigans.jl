@@ -212,7 +212,13 @@ function validate_fts_target_extent(fts, field)
     # node range, trilinear interpolation reads from FTS halos (which
     # `set!(fts[n], …)` does not fill), producing silently wrong values near
     # the boundary.
-    for (label, nodes_fn) in (("x", xnodes), ("y", ynodes), ("z", znodes))
+    #
+    # Require horizontal bracketing only. The vertical is intentionally NOT required to bracket: a
+    # target may not span the model's full column (e.g. a limited-area child nested in ERA5
+    # pressure-level data, which does not reach the surface), and interpolation clamps to the target's
+    # edge value there on a clamping vertical (e.g. a geopotential-height `PressureLevelGrid`) rather
+    # than reading halos.
+    for (label, nodes_fn) in (("x", xnodes), ("y", ynodes))
         sim_lo, sim_hi = extrema(nodes_fn(sim_grid, sim_loc...))
         fts_lo, fts_hi = extrema(nodes_fn(fts_grid, fts_loc...))
         (fts_lo ≤ sim_lo && sim_hi ≤ fts_hi) ||
