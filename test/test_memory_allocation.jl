@@ -4,6 +4,8 @@ using Oceananigans
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 using Oceananigans.DistributedComputations: @handshake
 using Oceananigans.Utils: pretty_filesize
+using Oceananigans.Fields: flattened_unique_values
+using Oceananigans.OutputReaders: extract_field_time_series, FieldTimeSeries
 
 function allocation_grid(arch, FT=Float64; immersed_mode, size, extent=(1, 1, 1), halo=(7, 7, 7), topology=(Periodic, Periodic, Bounded))
     grid = RectilinearGrid(arch, FT; size, extent, halo, topology)
@@ -80,6 +82,46 @@ const distributed_memory_gpu = Dict(
 
 # For distributed this includes only (4, 1), (1, 4) and (2, 2)
 archs = nonhydrostatic_regression_test_architectures()
+
+@testset "flattened_unique_values: correctness, inference, allocations" begin
+    grid = RectilinearGrid(CPU(), size=(4, 4, 4), extent=(1, 1, 1))
+    u = XFaceField(grid)
+    c = CenterField(grid)
+
+    nt = (velocities = (u = u, v = c), tracers = (T = c, extra = u))
+    result = flattened_unique_values(nt)
+
+    @test result isa Tuple
+    @test length(result) == 2
+    @test any(f -> f === u, result)
+    @test any(f -> f === c, result)
+
+    @test @inferred(flattened_unique_values(())) === ()
+    @test @inferred(flattened_unique_values((u = u, v = c))) === (u, c)
+
+    # De-duplication by identity: a repeated entry is dropped. The result length depends on runtime
+    # identity when entries share a type, so this case is intentionally not `@inferred` (see the
+    # type-stable, no-dedup `extract_field_time_series` used by `update_model_field_time_series!`).
+    @test flattened_unique_values((u = u, v = c, w = u)) === (u, c)
+end
+
+@testset "extract_field_time_series: tuple convention, inference" begin
+    grid = RectilinearGrid(CPU(), size=(4, 4, 4), extent=(1, 1, 1))
+
+    plain = (a = 1, b = (2.0, "x"), c = grid)
+    @test extract_field_time_series(plain) === ()
+    @test @inferred(extract_field_time_series(plain)) === ()
+    @test extract_field_time_series(3.0) === ()
+    @test extract_field_time_series(nothing) === ()
+
+    times = 0:0.5:2
+    fts = FieldTimeSeries{Center, Center, Center}(grid, times)
+    @test extract_field_time_series(fts) === (fts,)
+
+    nested = (u = 1, deep = (grid = grid, series = fts, tag = "t"))
+    got = extract_field_time_series(nested)
+    @test got == (fts,)
+end
 
 @testset "Memory allocation regression tests" begin
     for arch in archs
