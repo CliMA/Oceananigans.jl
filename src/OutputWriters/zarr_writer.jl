@@ -4,7 +4,7 @@
 ##### ZarrWriter functionality is implemented in ext/OceananigansZarrExt
 #####
 
-mutable struct ZarrWriter{O, T, S, A, FS, C, CH, G} <: AbstractOutputWriter
+mutable struct ZarrWriter{O, T, S, A, FS, C, CH, G, DN} <: AbstractOutputWriter
     filepath :: String
     store :: S
     grids :: G                  # Tuple of unique grids across all outputs
@@ -14,6 +14,7 @@ mutable struct ZarrWriter{O, T, S, A, FS, C, CH, G} <: AbstractOutputWriter
     array_type :: A
     indices :: Tuple
     with_halos :: Bool
+    # include_grid_metrics :: Bool
     overwrite_existing :: Bool
     verbose :: Bool
     part :: Int
@@ -21,6 +22,7 @@ mutable struct ZarrWriter{O, T, S, A, FS, C, CH, G} <: AbstractOutputWriter
     compressor :: C
     chunks :: CH
     dimensions :: Dict
+    dimension_name_generator :: DN
     initialized :: Bool
 end
 
@@ -32,6 +34,10 @@ end
                with_halos = true,
                array_type = Array{Float32},
                file_splitting = NoFileSplitting(),
+               dimensions = Dict(),
+               dimension_name_generator = trilocation_dim_name,
+               with_halos = false,
+            #    include_grid_metrics = true,
                overwrite_existing = false,
                verbose = false,
                part = 1,
@@ -113,6 +119,16 @@ Keyword arguments
 
 - `part`: Starting part number for file splitting. Default: `1`.
 
+- `include_grid_metrics`: Include grid metrics such as grid spacings, areas, and volumes as
+                          additional variables. Default: `true`. Note that even with
+                          `include_grid_metrics = false`, core grid coordinates are still saved.
+
+- `dimension_name_generator`: A function with signature `(var_name, grid, LX, LY, LZ, dim)` where `dim` is
+                              either `Val(:x)`, `Val(:y)`, or `Val(:z)` that returns a string corresponding
+                              to the name of the dimension `var_name` on `grid` with location `(LX, LY, LZ)`
+                              along `dim`. This advanced option can be used to rename dimensions and variables
+                              to satisfy certain naming conventions. Default: `trilocation_dim_name`.
+
 Reading output back
 ===================
 
@@ -148,6 +164,7 @@ function ZarrWriter(model, outputs; kw...)
 end
 
 # Hooks for the extension to fill in.
+#TODO: probably need more hooks for the extension to fill in, e.g. for writing grid coordinate data, grid metrics, etc.
 function initialize_zarr_store! end
 function write_zarr_grid_reconstruction! end
 function reconstruct_zarr_grid end
