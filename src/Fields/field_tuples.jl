@@ -38,6 +38,7 @@ end
 end
 
 @inline is_contained(value, ::Tuple{}) = false
+# `is_contained` verifies if an object is duplicated in the tuple, thus needing the equality `===` operator.
 @inline is_contained(value, accumulated::Tuple) = value === first(accumulated) || is_contained(value, Base.tail(accumulated))
 
 const FullField = Field{<:Any, <:Any, <:Any, <:Any, <:Any, <:Tuple{<:Colon, <:Colon, <:Colon}}
