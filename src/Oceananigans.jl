@@ -12,8 +12,11 @@ export
     Center, Face,
     Periodic, Bounded, Flat,
     RightConnected, LeftConnected, FullyConnected,
+    RightFaceFolded, RightCenterFolded,
+    slice,
     RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
-    TripolarGrid, RotatedLatitudeLongitudeGrid,
+    TripolarGrid, RotatedLatitudeLongitudeGrid, LambertConformalConicGrid,
+    LambertConformalConic, lcc_forward, lcc_inverse, lcc_scale_factor,
     MutableVerticalDiscretization,
     ExponentialDiscretization, ReferenceToStretchedDiscretization, PowerLawStretching, LinearStretching,
     nodes, xnodes, ynodes, rnodes, znodes, λnodes, φnodes,
@@ -26,7 +29,7 @@ export
     # Immersed boundaries
     ImmersedBoundaryGrid,
     GridFittedBoundary, GridFittedBottom, PartialCellBottom,
-    ImmersedBoundaryCondition,
+    ImmersedBoundaryCondition, bottom_height_field,
 
     # Distributed
     Distributed, Partition,
@@ -34,10 +37,11 @@ export
     # Advection schemes
     Centered, UpwindBiased, WENO,
     VectorInvariant, WENOVectorInvariant, FluxFormAdvection,
+    AdaptiveImplicitVerticalAdvection,
 
     # Boundary conditions
     BoundaryCondition,
-    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, OpenBoundaryCondition,
+    FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, NormalFlowBoundaryCondition,
     PerturbationAdvection,
     FieldBoundaryConditions,
 
@@ -47,7 +51,7 @@ export
     interior, set!, compute!, regrid!,
 
     # Forcing functions
-    Forcing, Relaxation, LinearTarget, GaussianMask, PiecewiseLinearMask, AdvectiveForcing,
+    Forcing, Relaxation, LinearTarget, GaussianMask, PiecewiseLinearMask, CosineRampMask, AdvectiveForcing,
 
     # Coriolis forces
     FPlane, ConstantCartesianCoriolis, BetaPlane, NonTraditionalBetaPlane, HydrostaticSphericalCoriolis,
@@ -73,7 +77,9 @@ export
     CATKEVerticalDiffusivity,
     TKEDissipationVerticalDiffusivity,
     RiBasedVerticalDiffusivity,
+    ExplicitTimeDiscretization,
     VerticallyImplicitTimeDiscretization,
+    AdaptiveVerticallyImplicitDiscretization,
     viscosity, diffusivity,
 
     # Lagrangian particle tracking
@@ -84,6 +90,7 @@ export
     ConservativeFormulation, VectorInvariantFormulation,
     PressureField, fields, ZCoordinate, ZStarCoordinate,
     BulkDrag, LinearFormulation, QuadraticFormulation,
+    BoundaryConditionOperation,
 
     # Hydrostatic free surface model stuff
     VectorInvariant, ExplicitFreeSurface, ImplicitFreeSurface, SplitExplicitFreeSurface,
@@ -99,7 +106,7 @@ export
     CFL, AdvectiveCFL, DiffusiveCFL,
 
     # Output writers
-    NetCDFWriter, JLD2Writer, Checkpointer,
+    NetCDFWriter, JLD2Writer, ZarrWriter, Checkpointer,
     TimeInterval, IterationInterval, WallTimeInterval, AveragedTimeInterval, ConsecutiveIterations,
     SpecifiedTimes, FileSizeLimit, AndSchedule, OrSchedule, written_names,
 
@@ -115,7 +122,12 @@ export
     CubedSpherePartition, ConformalCubedSphereGrid, CubedSphereField,
 
     # Utils
-    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
+    prettytime, apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject,
+
+    # Plotting (methods provided by OceananigansMakieExt)
+    quadmesh, quadmesh!
+
+using DocStringExtensions
 
 function __init__()
     if VERSION >= v"1.13.0"
@@ -129,10 +141,12 @@ function __init__()
     Threads.nthreads() > 1 && @info "Oceananigans will use $(Threads.nthreads()) threads"
 end
 
+using BFloat16s: BFloat16
+
 # List of fully-supported floating point types where applicable.
 # Currently used only in the Advection module to specialize
 # reconstruction schemes (WENO, UpwindBiased, and Centered).
-const fully_supported_float_types = (Float32, Float64)
+const fully_supported_float_types = (Float32, Float64, BigFloat, BFloat16)
 
 #####
 ##### Default settings for constructors
@@ -204,10 +218,16 @@ function initialize! end # for initializing models, simulations, etc
 function location end
 function instantiated_location end
 function tupleit end
-function fields end
-function prognostic_fields end
+fields(::Nothing) = NamedTuple()
+prognostic_fields(::Nothing) = NamedTuple()
+function prognostic_state end
+function restore_prognostic_state! end
 function tracer_tendency_kernel_function end
 function boundary_conditions end
+
+# Plotting placeholders; methods added by OceananigansMakieExt when Makie is loaded.
+function quadmesh end
+function quadmesh! end
 
 #####
 ##### Include all the submodules

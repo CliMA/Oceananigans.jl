@@ -50,14 +50,14 @@ Specifies a `ScalarDiffusivity` acting only in the vertical direction.
 struct VerticalFormulation <: AbstractDiffusivityFormulation end
 
 """
-    viscosity(closure, diffusivities)
+    viscosity(closure, closure_fields)
 
 Returns the scalar viscosity associated with `closure`.
 """
 function viscosity end
 
 """
-    diffusivity(closure, tracer_index, closure_fields)
+    diffusivity(closure, closure_fields, tracer_index)
 
 Returns the scalar diffusivity associated with `closure` and `tracer_index`.
 """
@@ -112,7 +112,7 @@ const AVD = AbstractScalarDiffusivity{<:Any, <:VerticalFormulation}
 @inline κᶠᶜᶠ(i, j, k, grid, closure::ASD, K, id, clk, fields) = κᶠᶜᶠ(i, j, k, grid, diffusivity_location(closure), diffusivity(closure, K, id), clk, fields)
 @inline κᶜᶠᶠ(i, j, k, grid, closure::ASD, K, id, clk, fields) = κᶜᶠᶠ(i, j, k, grid, diffusivity_location(closure), diffusivity(closure, K, id), clk, fields)
 
-# Vertical and horizontal diffusivity 
+# Vertical and horizontal diffusivity
 
 # Viscosities without explicit passing of `id`
 @inline νzᶜᶜᶜ(i, j, k, grid, closure::ASD, K, clk, fields) = νᶜᶜᶜ(i, j, k, grid, closure, K, clk, fields)
@@ -214,8 +214,8 @@ const C = Center
 @inline viscous_flux_vx(i, j, k, grid, clo::AHD, K, clk, fields, b) = - νh_ζᶠᶠᶜ(i, j, k, grid, clo, K, clk, fields, fields.u, fields.v)
 @inline viscous_flux_uy(i, j, k, grid, clo::AHD, K, clk, fields, b) = + νh_ζᶠᶠᶜ(i, j, k, grid, clo, K, clk, fields, fields.u, fields.v)
 @inline viscous_flux_vy(i, j, k, grid, clo::AHD, K, clk, fields, b) = - νh_δᶜᶜᶜ(i, j, k, grid, clo, K, clk, fields, fields.u, fields.v)
-@inline viscous_flux_wx(i, j, k, grid, clo::AHD, K, clk, fields, b) = - νh_σᶠᶜᶠ(i, j, k, grid, clo, K, clk, fields, ∂xᶠᶜᶠ, fields.w)
-@inline viscous_flux_wy(i, j, k, grid, clo::AHD, K, clk, fields, b) = - νh_σᶜᶠᶠ(i, j, k, grid, clo, K, clk, fields, ∂yᶜᶠᶠ, fields.w)
+@inline viscous_flux_wx(i, j, k, grid, clo::AHD, K, clk, fields, b) = - νh_σᶠᶜᶠ(i, j, k, grid, clo, K, clk, fields, ∂xᵣᶠᶜᶠ, fields.w)
+@inline viscous_flux_wy(i, j, k, grid, clo::AHD, K, clk, fields, b) = - νh_σᶜᶠᶠ(i, j, k, grid, clo, K, clk, fields, ∂yᵣᶜᶠᶠ, fields.w)
 
 # "Divergence damping"
 @inline viscous_flux_ux(i, j, k, grid, clo::ADD, K, clk, fields, b) = - νh_δᶜᶜᶜ(i, j, k, grid, clo, K, clk, fields, fields.u, fields.v)
@@ -238,8 +238,8 @@ const C = Center
 const AIDorAHD = Union{AID, AHD}
 const AIDorAVD = Union{AID, AVD}
 
-@inline diffusive_flux_x(i, j, k, grid, cl::AIDorAHD, K, id, c, clk, fields, b) = - κhᶠᶜᶜ(i, j, k, grid, cl, K, id, clk, fields) * ∂xᶠᶜᶜ(i, j, k, grid, c)
-@inline diffusive_flux_y(i, j, k, grid, cl::AIDorAHD, K, id, c, clk, fields, b) = - κhᶜᶠᶜ(i, j, k, grid, cl, K, id, clk, fields) * ∂yᶜᶠᶜ(i, j, k, grid, c)
+@inline diffusive_flux_x(i, j, k, grid, cl::AIDorAHD, K, id, c, clk, fields, b) = - κhᶠᶜᶜ(i, j, k, grid, cl, K, id, clk, fields) * ∂xᵣᶠᶜᶜ(i, j, k, grid, c)
+@inline diffusive_flux_y(i, j, k, grid, cl::AIDorAHD, K, id, c, clk, fields, b) = - κhᶜᶠᶜ(i, j, k, grid, cl, K, id, clk, fields) * ∂yᵣᶜᶠᶜ(i, j, k, grid, c)
 @inline diffusive_flux_z(i, j, k, grid, cl::AIDorAVD, K, id, c, clk, fields, b) = - κzᶜᶜᶠ(i, j, k, grid, cl, K, id, clk, fields) * ∂zᶜᶜᶠ(i, j, k, grid, c)
 
 #####
@@ -248,8 +248,8 @@ const AIDorAVD = Union{AID, AVD}
 
 const VITD = VerticallyImplicitTimeDiscretization
 
-@inline ivd_viscous_flux_uz(i, j, k, grid, closure::AID, K, clock, fields, b) = - ν_σᶠᶜᶠ(i, j, k, grid, closure, K, clock, fields, ∂xᶠᶜᶠ, fields.w)
-@inline ivd_viscous_flux_vz(i, j, k, grid, closure::AID, K, clock, fields, b) = - ν_σᶜᶠᶠ(i, j, k, grid, closure, K, clock, fields, ∂yᶜᶠᶠ, fields.w)
+@inline ivd_viscous_flux_uz(i, j, k, grid, closure::AID, K, clock, fields, b) = - ν_σᶠᶜᶠ(i, j, k, grid, closure, K, clock, fields, ∂xᵣᶠᶜᶠ, fields.w)
+@inline ivd_viscous_flux_vz(i, j, k, grid, closure::AID, K, clock, fields, b) = - ν_σᶜᶠᶠ(i, j, k, grid, closure, K, clock, fields, ∂yᵣᶜᶠᶠ, fields.w)
 @inline ivd_viscous_flux_uz(i, j, k, grid, closure::AVD, K, clock, fields, b) = zero(grid)
 @inline ivd_viscous_flux_vz(i, j, k, grid, closure::AVD, K, clock, fields, b) = zero(grid)
 
@@ -285,7 +285,7 @@ end
                   zero(grid))
 end
 
-@inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::AIDorAVD, K, id, c, clk, fields, b) 
+@inline function diffusive_flux_z(i, j, k, grid::VerticallyBoundedGrid, ::VITD, closure::AIDorAVD, K, id, c, clk, fields, b)
     return ifelse((k == 1) | (k == grid.Nz+1),
                   diffusive_flux_z(i, j, k, grid, ExplicitTimeDiscretization(), closure, K, id, c, clk, fields, b),
                   zero(grid))

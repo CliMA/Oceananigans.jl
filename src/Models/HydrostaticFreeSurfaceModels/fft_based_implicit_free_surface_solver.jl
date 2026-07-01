@@ -45,9 +45,9 @@ function FFTImplicitFreeSurfaceSolver(grid, settings=nothing, gravitational_acce
     # Either [1, 2], [1], or [2]
     nonflat_dims = findall(T -> !(T() isa Flat), (TX, TY))
 
-    sz = Tuple(sz[i] for i in nonflat_dims)
-    halo = Tuple(halo[i] for i in nonflat_dims)
-    domain = NamedTuple((:x, :y)[i] => domain[i] for i in nonflat_dims)
+    nonflat_sz = Tuple(sz[i] for i in nonflat_dims)
+    nonflat_halo = Tuple(halo[i] for i in nonflat_dims)
+    nonflat_domain = NamedTuple((:x, :y)[i] => domain[i] for i in nonflat_dims)
 
     # Build a "horizontal grid" with a Flat vertical direction.
     # Even if the three dimensional grid is vertically stretched, we can only use
@@ -55,9 +55,9 @@ function FFTImplicitFreeSurfaceSolver(grid, settings=nothing, gravitational_acce
     # horizontal direction.
     horizontal_grid = RectilinearGrid(architecture(grid), eltype(grid);
                                       topology = (TX, TY, Flat),
-                                      size = sz,
-                                      halo = halo,
-                                      domain...)
+                                      size = nonflat_sz,
+                                      halo = nonflat_halo,
+                                      nonflat_domain...)
 
     solver = FFTBasedPoissonSolver(horizontal_grid)
     right_hand_side = solver.storage
@@ -87,7 +87,7 @@ function Solvers.solve!(η, implicit_free_surface_solver::FFTImplicitFreeSurface
 end
 
 function compute_implicit_free_surface_right_hand_side!(rhs, implicit_solver::FFTImplicitFreeSurfaceSolver,
-                                                        g, Δt, velocities, η)
+                                                        g, Δt, velocities, η, args...)
 
     poisson_solver = implicit_solver.fft_poisson_solver
     arch = architecture(poisson_solver)

@@ -113,7 +113,7 @@ function ConditionalOperation(c::ConditionalOperation;
                               func = c.func,
                               condition = c.condition,
                               mask = c.mask)
-    condition = validate_condition(condition, operand)
+    condition = validate_condition(condition, c.operand)
     LX, LY, LZ = location(c)
     compined_func = func ∘ c.func
 
@@ -124,7 +124,7 @@ function ConditionalOperation(c::NoFuncCO;
                               func = c.func,
                               condition = c.condition,
                               mask = c.mask)
-    condition = validate_condition(condition, operand)
+    condition = validate_condition(condition, c.operand)
     LX, LY, LZ = location(c)
     return ConditionalOperation{LX, LY, LZ}(c.operand, func, c.grid, condition, mask)
 end
@@ -198,13 +198,8 @@ end
 
 @inline conditional_length(c::ConditionalOperation) = sum(conditional_one(c, 0))
 @inline conditional_length(c::ConditionalOperation, ::Colon) = conditional_length(c)
-@inline conditional_length(c::ConditionalOperation, ::NTuple{3}) = conditional_length(c)
-@inline conditional_length(c::ConditionalOperation, dims) = sum(conditional_one(c, 0); dims)
-
-# Disambiguations
 @inline conditional_length(c::ConditionalOperation, dims::Int) = sum(conditional_one(c, 0); dims)
-@inline conditional_length(c::ConditionalOperation, dims::NTuple{1}) = sum(conditional_one(c, 0); dims)
-@inline conditional_length(c::ConditionalOperation, dims::NTuple{2}) = sum(conditional_one(c, 0); dims)
+@inline conditional_length(c::ConditionalOperation, dims::Tuple) = sum(conditional_one(c, 0); dims)
 
 compute_at!(c::ConditionalOperation, time) = compute_at!(c.operand, time)
 indices(c::ConditionalOperation) = indices(c.operand)

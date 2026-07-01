@@ -178,4 +178,3 @@ simulation.output_writers[:simple_output] = JLD2Writer(model, outputs; filename,
                                                        overwrite_existing = true)
 
 run!(simulation)
-

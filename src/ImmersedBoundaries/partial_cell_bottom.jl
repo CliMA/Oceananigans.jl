@@ -17,9 +17,10 @@ end
 const PCBIBG{FT, TX, TY, TZ} = ImmersedBoundaryGrid{FT, TX, TY, TZ, <:Any, <:PartialCellBottom} where {FT, TX, TY, TZ}
 
 function Base.summary(ib::PartialCellBottom)
-    zmax = maximum(parent(ib.bottom_height))
-    zmin = minimum(parent(ib.bottom_height))
-    zmean = mean(parent(ib.bottom_height))
+    bottom_interior = bottom_height_interior(ib.bottom_height)
+    zmax = maximum(bottom_interior)
+    zmin = minimum(bottom_interior)
+    zmean = sum(bottom_interior) / length(bottom_interior)
 
     summary1 = "PartialCellBottom("
 
@@ -65,10 +66,15 @@ end
 
 function materialize_immersed_boundary(grid, ib::PartialCellBottom)
     bottom_field = Field{Center, Center, Nothing}(grid)
-    set!(bottom_field, ib.bottom_height)
-    @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, ib)
+    set_bottom_height!(bottom_field, ib.bottom_height)
+
+    minimum_fractional_cell_height = convert(eltype(grid), ib.minimum_fractional_cell_height)
+    compute_ib = PartialCellBottom(bottom_field, minimum_fractional_cell_height)
+
+    @apply_regionally compute_numerical_bottom_height!(bottom_field, grid, compute_ib)
     fill_halo_regions!(bottom_field)
-    return PartialCellBottom(bottom_field, ib.minimum_fractional_cell_height)
+
+    return PartialCellBottom(bottom_field.data, minimum_fractional_cell_height)
 end
 
 @kernel function _compute_numerical_bottom_height!(bottom_field, grid, ib::PartialCellBottom)
@@ -98,14 +104,6 @@ end
         adjusted_zb = ifelse(bottom_cell, capped_zb, adjusted_zb)
     end
     @inbounds bottom_field[i, j, 1] = adjusted_zb
-end
-
-function Architectures.on_architecture(arch, ib::PartialCellBottom{<:Field})
-    architecture(ib.bottom_height) == arch && return ib
-    arch_grid = on_architecture(arch, ib.bottom_height.grid)
-    new_bottom_height = Field{Center, Center, Nothing}(arch_grid)
-    copyto!(parent(new_bottom_height), parent(ib.bottom_height))
-    return PartialCellBottom(new_bottom_height, ib.minimum_fractional_cell_height)
 end
 
 Adapt.adapt_structure(to, ib::PartialCellBottom) = PartialCellBottom(adapt(to, ib.bottom_height),
@@ -214,5 +212,5 @@ function Grids.constructor_arguments(grid::PCBIBG)
 end
 
 function Base.:(==)(pcb1::PartialCellBottom, pcb2::PartialCellBottom)
-    return pcb1.bottom_height == pcb2.bottom_height && pcb1.minimum_fractional_cell_height == pcb2.minimum_fractional_cell_height
+    return bottom_heights_equal(pcb1.bottom_height, pcb2.bottom_height) && pcb1.minimum_fractional_cell_height == pcb2.minimum_fractional_cell_height
 end

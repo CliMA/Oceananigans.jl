@@ -17,7 +17,7 @@ Thus, the shallow water dynamics in vector-invariant form become:
 ```math
 \begin{align}
   \partial_t \boldsymbol{u} + (\zeta \boldsymbol{\hat z} + \boldsymbol{f})  \times\boldsymbol{u} & =
-  - \boldsymbol{\nabla} \left [ g (h +b) + \frac12 \boldsymbol{u} \cdot \boldsymbol{u} \right ] \, , \\
+  - \boldsymbol{\nabla} \left [ g (h +b) + \frac12 \boldsymbol{u} \boldsymbol{\cdot} \boldsymbol{u} \right ] \, , \\
   \partial_t h + \boldsymbol{\nabla} \boldsymbol{\cdot} (\boldsymbol{u} h) & = 0 \, ,
 \end{align}
 ```

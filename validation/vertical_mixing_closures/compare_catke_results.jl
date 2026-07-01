@@ -142,4 +142,3 @@ display(fig)
 record(fig, "compare_catkes_windy_convection.mp4", 1:Nt, framerate=24) do nn
     n[] = nn
 end
-

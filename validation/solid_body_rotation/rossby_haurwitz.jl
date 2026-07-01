@@ -125,4 +125,3 @@ end
 filepath_w = run_rossby_haurwitz(architecture=GPU(), Nx=512, Ny=256, advection_scheme=WENO(vector_invariant=VelocityStencil()), prefix = "WENOVectorInvariantVel")
 filepath_w = run_rossby_haurwitz(architecture=GPU(), Nx=512, Ny=256, advection_scheme=WENO(vector_invariant=VorticityStencil()), prefix = "WENOVectorInvariantVort")
 filepath_w = run_rossby_haurwitz(architecture=GPU(), Nx=512, Ny=256, advection_scheme=VectorInvariant(), prefix = "VectorInvariant")
-

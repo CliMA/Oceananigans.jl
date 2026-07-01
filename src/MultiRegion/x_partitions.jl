@@ -25,8 +25,8 @@ function partition_extent(p::XPartition, grid)
     y = cpu_face_constructor_y(grid)
     z = cpu_face_constructor_z(grid)
 
-    x = divide_direction(x, p)
-    return Tuple((x = x[i], y = y, z = z) for i in 1:length(p))
+    divided_x = divide_direction(x, p)
+    return Tuple((x = xi, y = y, z = z) for xi in divided_x)
 end
 
 function partition_topology(p::XPartition, grid)
@@ -87,7 +87,7 @@ function reconstruct_extent(mrg, p::XPartition)
              cpu_face_constructor_x(mrg.region_grids.regional_objects[length(p)])[end])
     else
         x = [cpu_face_constructor_x(mrg.region_grids.regional_objects[1])...]
-        for (idx, grid) in enumerate(mrg.region_grids.regional_objects[2:end])
+        for grid in mrg.region_grids.regional_objects[2:end]
             x = [x..., cpu_face_constructor_x(grid)[2:end]...]
         end
     end

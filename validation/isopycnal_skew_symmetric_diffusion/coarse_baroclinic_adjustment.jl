@@ -103,7 +103,7 @@ function progress(sim)
             prettytime(sim.Δt))
 
     wall_clock[] = time_ns()
-    
+
     return nothing
 end
 
@@ -186,4 +186,3 @@ record(fig, filename * ".mp4", 1:Nt, framerate=8) do i
     @info "Plotting frame $i of $Nt"
     n[] = i
 end
-

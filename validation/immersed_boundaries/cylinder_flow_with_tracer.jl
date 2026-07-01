@@ -46,7 +46,7 @@ function run_cylinder_steadystate(; output_time_interval = 1, stop_time = 100, a
     immersed_grid = ImmersedBoundaryGrid(arch, underlying_grid, GridFittedBoundary(inside_cylinder))
 
     # boundary conditions: inflow and outflow in y
-    v_bc = OpenBoundaryCondition(1.0)
+    v_bc = NormalFlowBoundaryCondition(1.0)
     v_bcs = FieldBoundaryConditions(north = v_bc, south = v_bc)
 
     immersed_model = NonhydrostaticModel(immersed_grid; advection, timestepper = :RungeKutta3,
@@ -379,5 +379,3 @@ advection = Centered()
 experiment_name = run_cylinder_steadystate(Nh = 350, advection = advection, radius = R, stop_time = 100, ν = nu)
 visualize_cylinder_steadystate(experiment_name)
 analyze_cylinder_steadystate(experiment_name)
-
-

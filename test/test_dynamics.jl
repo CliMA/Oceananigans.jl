@@ -588,7 +588,9 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
                     @test test_diffusion_cosine(fieldname, NonhydrostaticModel, :QuasiAdamsBashforth2, grid, closure, coord)
 
                     if fieldname != :w && topology(grid)[3] == Bounded
+                        @test test_diffusion_cosine(fieldname, HydrostaticFreeSurfaceModel, :SplitRungeKutta2, grid, closure, coord; free_surface=nothing)
                         @test test_diffusion_cosine(fieldname, HydrostaticFreeSurfaceModel, :SplitRungeKutta3, grid, closure, coord; free_surface=nothing)
+                        @test test_diffusion_cosine(fieldname, HydrostaticFreeSurfaceModel, :SplitRungeKutta5, grid, closure, coord; free_surface=nothing)
                         @test test_diffusion_cosine(fieldname, HydrostaticFreeSurfaceModel, :QuasiAdamsBashforth2, grid, closure, coord; free_surface = nothing)
                     end
                 end
@@ -653,11 +655,11 @@ timesteppers = (:QuasiAdamsBashforth2, :RungeKutta3)
         free_surface_types(::Val{:QuasiAdamsBashforth2}, g, grid) = (ImplicitFreeSurface(; gravitational_acceleration=g),
                                                                      SplitExplicitFreeSurface(grid, ; gravitational_acceleration=g, cfl=0.5))
 
-        free_surface_types(::Val{:SplitRungeKutta3}, g, grid) = (SplitExplicitFreeSurface(grid; gravitational_acceleration=g, cfl=0.5), )
+        free_surface_types(split_runge_kutta, g, grid) = (SplitExplicitFreeSurface(grid; gravitational_acceleration=g, cfl=0.5), )
 
         @testset "Internal wave with HydrostaticFreeSurfaceModel" begin
             for grid in test_grids
-                for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta3)
+                for timestepper in (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta5) #timesteppers
                     grid_name = typeof(grid).name.wrapper
                     topo = topology(grid)
 

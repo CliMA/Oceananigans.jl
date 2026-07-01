@@ -20,7 +20,7 @@ const TISSDVector{TD} = AbstractVector{<:TISSD{TD}} where TD
 const FlavorOfTISSD{TD} = Union{TISSD{TD}, TISSDVector{TD}} where TD
 
 """
-    TriadIsopycnalSkewSymmetricDiffusivity([time_disc=VerticallyImplicitTimeDiscretization(), FT=Float64;]
+    TriadIsopycnalSkewSymmetricDiffusivity([time_disc=ExplicitTimeDiscretization(), FT=Float64;]
                                            κ_skew = 0,
                                            κ_symmetric = 0,
                                            isopycnal_tensor = SmallSlopeIsopycnalTensor(),
@@ -68,14 +68,12 @@ Utils.with_tracers(tracers, closure::TISSD{TD, N}) where {TD, N} =
 function Utils.with_tracers(tracers, closure_vector::TISSDVector)
     arch = architecture(closure_vector)
 
-    if arch isa Architectures.GPU
-        closure_vector = Vector(closure_vector)
-    end
+    _closure_vector = arch isa Architectures.GPU ? Vector(closure_vector) : closure_vector
 
-    Ex = length(closure_vector)
-    closure_vector = [with_tracers(tracers, closure_vector[i]) for i=1:Ex]
+    Ex = length(_closure_vector)
+    vec = [with_tracers(tracers, _closure_vector[i]) for i=1:Ex]
 
-    return on_architecture(arch, closure_vector)
+    return on_architecture(arch, vec)
 end
 
 # Note: computing diffusivities at cell centers for now.
@@ -94,7 +92,7 @@ end
 build_closure_fields(grid, clock, tracer_names, bcs, closure::FlavorOfTISSD) =
     DiffusivityFields(grid, tracer_names, bcs, closure)
 
-function compute_diffusivities!(diffusivities, closure::FlavorOfTISSD{TD}, model; parameters = :xyz) where TD
+function compute_closure_fields!(closure_fields, closure::FlavorOfTISSD{TD}, model; parameters = :xyz) where TD
 
     arch = model.architecture
     grid = model.grid
@@ -105,7 +103,7 @@ function compute_diffusivities!(diffusivities, closure::FlavorOfTISSD{TD}, model
     if TD() isa VerticallyImplicitTimeDiscretization
         launch!(arch, grid, parameters,
                 triad_compute_tapered_R₃₃!,
-                diffusivities, grid, closure, clock, buoyancy, tracers)
+                closure_fields, grid, closure, clock, buoyancy, tracers)
     end
 
     return nothing
@@ -140,15 +138,15 @@ end
 #####
 
 @inline function triad_Sx(ix, iz, j, kx, kz, grid, buoyancy, tracers)
-    bx = ∂x_b(ix, j, kx, grid, buoyancy, tracers)
-    bz = ∂z_b(iz, j, kz, grid, buoyancy, tracers)
+    bx = ∂xᵣ_b(ix, j, kx, grid, buoyancy, tracers)
+    bz =  ∂z_b(iz, j, kz, grid, buoyancy, tracers)
     bz = max(bz, zero(grid))
     return ifelse(bz == 0, zero(grid), - bx / bz)
 end
 
 @inline function triad_Sy(i, jy, jz, ky, kz, grid, buoyancy, tracers)
-    by = ∂y_b(i, jy, ky, grid, buoyancy, tracers)
-    bz = ∂z_b(i, jz, kz, grid, buoyancy, tracers)
+    by = ∂yᵣ_b(i, jy, ky, grid, buoyancy, tracers)
+    bz =  ∂z_b(i, jz, kz, grid, buoyancy, tracers)
     bz = max(bz, zero(grid))
     return ifelse(bz == 0, zero(grid), - by / bz)
 end
@@ -204,7 +202,7 @@ end
     ϵκ⁻⁻ = ϵκx⁻⁻(i,   j, k, grid, loc, κ, clock, sl, b, C)
 
     # Small slope approximation
-    ∂x_c = ∂xᶠᶜᶜ(i, j, k, grid, c)
+    ∂x_c = ∂xᵣᶠᶜᶜ(i, j, k, grid, c)
 
     #       i-1     i
     # k+1  -------------
@@ -230,7 +228,7 @@ end
     sl = closure.slope_limiter
     loc = (Center(), Center(), Center())
 
-    ∂y_c = ∂yᶜᶠᶜ(i, j, k, grid, c)
+    ∂y_c = ∂yᵣᶜᶠᶜ(i, j, k, grid, c)
 
     ϵκ⁺⁺ = ϵκy⁺⁺(i, j-1, k, grid, loc, κ, clock, sl, b, C)
     ϵκ⁺⁻ = ϵκy⁺⁻(i, j-1, k, grid, loc, κ, clock, sl, b, C)
@@ -278,15 +276,15 @@ end
     # |     |     |     |
     # --------------------
 
-    κR₃₁_∂x_c = (ϵκˣ⁻⁻ * Sx⁻⁻(i, j, k,   grid, b, C) * ∂xᶠᶜᶜ(i,   j, k,   grid, c) +
-                 ϵκˣ⁺⁻ * Sx⁺⁻(i, j, k,   grid, b, C) * ∂xᶠᶜᶜ(i+1, j, k,   grid, c) +
-                 ϵκˣ⁻⁺ * Sx⁻⁺(i, j, k-1, grid, b, C) * ∂xᶠᶜᶜ(i,   j, k-1, grid, c) +
-                 ϵκˣ⁺⁺ * Sx⁺⁺(i, j, k-1, grid, b, C) * ∂xᶠᶜᶜ(i+1, j, k-1, grid, c)) / 4
+    κR₃₁_∂x_c = (ϵκˣ⁻⁻ * Sx⁻⁻(i, j, k,   grid, b, C) * ∂xᵣᶠᶜᶜ(i,   j, k,   grid, c) +
+                 ϵκˣ⁺⁻ * Sx⁺⁻(i, j, k,   grid, b, C) * ∂xᵣᶠᶜᶜ(i+1, j, k,   grid, c) +
+                 ϵκˣ⁻⁺ * Sx⁻⁺(i, j, k-1, grid, b, C) * ∂xᵣᶠᶜᶜ(i,   j, k-1, grid, c) +
+                 ϵκˣ⁺⁺ * Sx⁺⁺(i, j, k-1, grid, b, C) * ∂xᵣᶠᶜᶜ(i+1, j, k-1, grid, c)) / 4
 
-    κR₃₂_∂y_c = (ϵκʸ⁻⁻ * Sy⁻⁻(i, j, k,   grid, b, C) * ∂yᶜᶠᶜ(i, j,   k,   grid, c) +
-                 ϵκʸ⁺⁻ * Sy⁺⁻(i, j, k,   grid, b, C) * ∂yᶜᶠᶜ(i, j+1, k,   grid, c) +
-                 ϵκʸ⁻⁺ * Sy⁻⁺(i, j, k-1, grid, b, C) * ∂yᶜᶠᶜ(i, j,   k-1, grid, c) +
-                 ϵκʸ⁺⁺ * Sy⁺⁺(i, j, k-1, grid, b, C) * ∂yᶜᶠᶜ(i, j+1, k-1, grid, c)) / 4
+    κR₃₂_∂y_c = (ϵκʸ⁻⁻ * Sy⁻⁻(i, j, k,   grid, b, C) * ∂yᵣᶜᶠᶜ(i, j,   k,   grid, c) +
+                 ϵκʸ⁺⁻ * Sy⁺⁻(i, j, k,   grid, b, C) * ∂yᵣᶜᶠᶜ(i, j+1, k,   grid, c) +
+                 ϵκʸ⁻⁺ * Sy⁻⁺(i, j, k-1, grid, b, C) * ∂yᵣᶜᶠᶜ(i, j,   k-1, grid, c) +
+                 ϵκʸ⁺⁺ * Sy⁺⁺(i, j, k-1, grid, b, C) * ∂yᵣᶜᶠᶜ(i, j+1, k-1, grid, c)) / 4
 
     κϵ_R₃₃_∂z_c = explicit_R₃₃_∂z_c(i, j, k, grid, TD(), clock, c, closure, b, C)
 

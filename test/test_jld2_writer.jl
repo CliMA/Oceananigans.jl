@@ -49,18 +49,16 @@ function test_jld2_size_file_splitting(arch)
         file["boundary_conditions/fake"] = π
     end
 
-    ow = JLD2Writer(model, (; u=model.velocities.u);
-                    dir = ".",
-                    filename = "test.jld2",
-                    schedule = IterationInterval(1),
-                    init = fake_bc_init,
-                    including = [:grid],
-                    array_type = Array{Float64},
-                    with_halos = true,
-                    file_splitting = FileSizeLimit(200KiB),
-                    overwrite_existing = true)
-
-    push!(simulation.output_writers, ow)
+    simulation.output_writers[:ow1] = JLD2Writer(model, (; u=model.velocities.u);
+                                                 dir = ".",
+                                                 filename = "test.jld2",
+                                                 schedule = IterationInterval(1),
+                                                 init = fake_bc_init,
+                                                 including = [:grid],
+                                                 array_type = Array{Float64},
+                                                 with_halos = true,
+                                                 file_splitting = FileSizeLimit(200KiB),
+                                                 overwrite_existing = true)
 
     # 531 KiB of output will be written which should get split into 3 files.
     run!(simulation)
@@ -97,18 +95,16 @@ function test_jld2_time_file_splitting(arch)
         file["boundary_conditions/fake"] = π
     end
 
-    ow = JLD2Writer(model, (; u=model.velocities.u);
-                    dir = ".",
-                    filename = "test",
-                    schedule = IterationInterval(1),
-                    init = fake_bc_init,
-                    including = [:grid],
-                    array_type = Array{Float64},
-                    with_halos = true,
-                    file_splitting = TimeInterval(3seconds),
-                    overwrite_existing = true)
-
-    push!(simulation.output_writers, ow)
+    simulation.output_writers[:ow1] = JLD2Writer(model, (; u=model.velocities.u);
+                                                 dir = ".",
+                                                 filename = "test",
+                                                 schedule = IterationInterval(1),
+                                                 init = fake_bc_init,
+                                                 including = [:grid],
+                                                 array_type = Array{Float64},
+                                                 with_halos = true,
+                                                 file_splitting = TimeInterval(3seconds),
+                                                 overwrite_existing = true)
 
     run!(simulation)
 

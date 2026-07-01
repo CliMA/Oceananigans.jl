@@ -320,5 +320,3 @@ run!(simulation, pickup = pickup_file)
     Free surface: $(typeof(model.free_surface).name.wrapper)
     Time step: $(prettytime(Δt))
 """
-
-

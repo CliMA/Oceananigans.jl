@@ -149,4 +149,3 @@ display(fig)
 record(fig, "sediment_entrainment.mp4", 1:Nt, framerate=160) do nn
     n[] = nn
 end
-

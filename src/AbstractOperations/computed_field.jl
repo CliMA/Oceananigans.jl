@@ -54,7 +54,7 @@ function Field(operand::OperationOrFunctionField;
     @apply_regionally boundary_conditions = FieldBoundaryConditions(indices, boundary_conditions)
 
     if isnothing(data)
-        @apply_regionally data = new_data(grid, loc, indices)
+        @apply_regionally data = new_data(eltype(operand), grid, loc, indices)
         recompute_safely = false
     end
 

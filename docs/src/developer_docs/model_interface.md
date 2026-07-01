@@ -65,24 +65,42 @@ implement (or inherit sane fallbacks for) the items listed below.
 - `update_state!(model, callbacks=[]; compute_tendencies=true)`: invoked by
   Simulation right after `initialize!` and inside most time steppers. This is
   where models fill halos, update boundary conditions, recompute auxiliary
-  fields, and run [`Callback`](@ref callbacks)s with an `UpdateStateCallsite`. 
-  PDE-based models typically finish by calling `compute_tendencies!(model, callbacks)` 
+  fields, and run [`Callback`](@ref callbacks)s with an `UpdateStateCallsite`.
+  PDE-based models typically finish by calling `compute_tendencies!(model, callbacks)`
   so that any `TendencyCallsite` callbacks can modify tendencies before integration.
   Note that `compute_tendencies!` is not part of the required interface—it is simply
   a useful pattern for models that integrate differential equations.
+  **`update_state!` must be idempotent**: calling it N times on the same prognostic
+  state must produce the same result as calling it once.
 
 - `time_step!(model, Δt; callbacks=[])`: advances the model clock and its
   prognostic variables by one step. Simulation hands in the tuple of
-  `ModelCallsite` [`Callback`](@ref callbacks)s so the model can execute 
-  `TendencyCallsite` (before tendencies are applied) and `UpdateStateCallsite` 
-  callbacks (after auxiliary updates). The method must call `tick!(model.clock, Δt)` 
+  `ModelCallsite` [`Callback`](@ref callbacks)s so the model can execute
+  `TendencyCallsite` (before tendencies are applied) and `UpdateStateCallsite`
+  callbacks (after auxiliary updates). The method must call `tick!(model.clock, Δt)`
   (or equivalent) so that `time(model)` and `iteration(model)` remain consistent.
+  At iteration 0, `time_step!` calls `maybe_prepare_first_time_step!(model, Δt, callbacks)`
+  as a safety net for bare model time-stepping (without `Simulation`). This calls
+  `reconcile_state!(model)` and `update_state!(model, callbacks)` to ensure the
+  model state is current before the first tendency computation.
 
 - `set!(model, kw...)`: not strictly required, but strongly recommended as an
-  interface for users to modify the model's prognostic state.
+  interface for users to modify the model's prognostic state. After setting fields,
+  `set!` should call `reconcile_state!(model)` to ensure auxiliary state (e.g.
+  barotropic velocities, vertical coordinate scaling) is consistent with the
+  new prognostic state, followed by `update_state!(model)`.
 
 - `initialize!(model::AbstractModel)`: called exactly once per `run!` before the
-  first time step.
+  first time step (at iteration 0). Unlike `update_state!`, `initialize!` is
+  **allowed to be non-idempotent** — it can perform one-time setup such as
+  bootstrapping closure coefficients or synchronously filling halo regions.
+  It is skipped on checkpoint restart (iteration > 0).
+
+- `reconcile_state!(model::AbstractModel)`: ensures that auxiliary/derived state
+  is consistent with prognostic fields after external mutation (e.g. via `set!`).
+  For `HydrostaticFreeSurfaceModel`, this reconciles barotropic velocities with
+  the 3D velocity field and recomputes vertical coordinate scaling from the
+  free surface displacement. The default fallback is a no-op.
 
 ### Optional integrations
 
@@ -148,10 +166,10 @@ state variables `x`, `y`, and `z`.
 using Oceananigans
 using Oceananigans.Models: AbstractModel
 using Oceananigans.Simulations: Simulation, run!
-using Oceananigans.TimeSteppers: Clock, tick!
+using Oceananigans.TimeSteppers: Clock, tick!, tick_stage!
 using Oceananigans: TendencyCallsite, UpdateStateCallsite
 
-import Oceananigans.TimeSteppers: update_state!, time_step!
+import Oceananigans.TimeSteppers: update_state!, time_step!, maybe_prepare_first_time_step!
 import Oceananigans.Fields: set!
 
 mutable struct LorenzModel{FT, P, S} <: AbstractModel{Nothing, Nothing}
@@ -180,7 +198,7 @@ Base.summary(::LorenzModel) = "LorenzModel"
 update_state!(model::LorenzModel, cb=nothing; compute_tendencies=true) = nothing
 
 function time_step!(model::LorenzModel, Δt; callbacks = ())
-    model.clock.iteration == 0 && update_state!(model, callbacks; compute_tendencies = false)
+    maybe_prepare_first_time_step!(model, Δt, callbacks)
 
     (; σ, ρ, β) = model.parameters
     (; x, y, z) = model.state
@@ -241,8 +259,8 @@ fig
 
 This minimal implementation inherits all other behavior from the generic
 `AbstractModel` fallbacks: Simulation can query `time(sim.model)`, diagnostics
-can read `sim.model.clock`, and [`Callback`](@ref callbacks)s scheduled on 
-`ModelCallsite`s execute because `time_step!` forwards the tuple that Simulation 
+can read `sim.model.clock`, and [`Callback`](@ref callbacks)s scheduled on
+`ModelCallsite`s execute because `time_step!` forwards the tuple that Simulation
 hands to it. Note that this model has no grid, no fields, and no time-stepper object—just
 the essentials. Larger models can follow the same recipe while adding grids,
 fields, closures, and time steppers as needed.
@@ -315,7 +333,7 @@ end
 
 function time_step!(model::KuramotoSivashinskyModel, Δt; callbacks = [])
     # First stage: initialize
-    model.clock.iteration == 0 && update_state!(model, callbacks)
+    maybe_prepare_first_time_step!(model, Δt, callbacks)
     [callback(model) for callback in callbacks if callback.callsite isa TendencyCallsite]
 
     # RK3 coefficients (Williamson's low-storage scheme)
@@ -330,18 +348,18 @@ function time_step!(model::KuramotoSivashinskyModel, Δt; callbacks = [])
     # Stage 1: u = u + Δt * γ¹ * Gⁿ
     u .+= Δt * γ¹ .* Gⁿ
     G⁻ .= Gⁿ
-    tick!(model.clock, Δt * γ¹; stage=true)
+    tick_stage!(model.clock, Δt * γ¹)
     update_state!(model, callbacks)
 
     # Stage 2: u = u + Δt * (γ² * Gⁿ + ζ² * G⁻)
     u .+= Δt * γ² .* Gⁿ .+ Δt * ζ² .* G⁻
     G⁻ .= Gⁿ
-    tick!(model.clock, Δt * (γ² + ζ²); stage=true)
+    tick_stage!(model.clock, Δt * (γ² + ζ²))
     update_state!(model, callbacks)
 
     # Stage 3: u = u + Δt * (γ³ * Gⁿ + ζ³ * G⁻)
     u .+= Δt * γ³ .* Gⁿ .+ Δt * ζ³ .* G⁻
-    tick!(model.clock, Δt * (γ³ + ζ³))  # final tick increments iteration, resets stage
+    tick_stage!(model.clock, Δt * (γ³ + ζ³), Δt)  # final stage: pass full Δt as step size
     update_state!(model, callbacks)
 
     return nothing
@@ -364,8 +382,7 @@ simulation = Simulation(ks_model; Δt=0.002, stop_time=60)
 simulation.output_writers[:solution] = JLD2Writer(ks_model, (; u=ks_model.solution),
                                                   filename = "ks_solution.jld2",
                                                   schedule = TimeInterval(1),
-                                                  overwrite_existing = true,
-                                                  including = [:grid])
+                                                  overwrite_existing = true)
 
 run!(simulation)
 nothing # hide
@@ -411,4 +428,3 @@ operators within a custom `AbstractModel`. The key additions compared to the
 - Third-order Runge-Kutta (RK3) time-stepping using Williamson's low-storage scheme
 - Using `fill_halo_regions!` in `update_state!` to maintain periodic boundary conditions
 - Leveraging `AbstractOperations` (`∂x`) for computing spatial derivatives via broadcasting
-

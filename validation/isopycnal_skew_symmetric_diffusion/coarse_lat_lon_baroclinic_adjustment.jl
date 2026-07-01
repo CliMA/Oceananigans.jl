@@ -191,4 +191,3 @@ record(fig, filename * ".mp4", 1:Nt, framerate=8) do i
     @info "Plotting frame $i of $Nt"
     n[] = i
 end
-

@@ -11,8 +11,12 @@ export seconds_to_nanosecond, period_to_seconds, time_difference_seconds, add_ti
 export TimeInterval, IterationInterval, WallTimeInterval, SpecifiedTimes, AndSchedule, OrSchedule, ConsecutiveIterations
 export apply_regionally!, construct_regionally, @apply_regionally, MultiRegionObject
 export isregional, getregion, _getregion, regions, sync_device!
-export newton_div
+export newton_div, NormalDivision, ConvertingDivision, BackendOptimizedDivision
 export TabulatedFunction
+export interpolator, _interpolate
+export ϕ₁, ϕ₂, ϕ₃, ϕ₄, ϕ₅, ϕ₆, ϕ₇, ϕ₈
+
+using DocStringExtensions: TYPEDSIGNATURES
 
 #####
 ##### Misc. small utils
@@ -23,6 +27,8 @@ instantiate(t) = t
 
 getnamewrapper(type) = typeof(type).name.wrapper
 
+function get_active_cells_map end
+
 #####
 ##### Include utils
 #####
@@ -32,7 +38,6 @@ include("kernel_launching.jl")
 include("prettytime.jl")
 include("pretty_filesize.jl")
 include("tuple_utils.jl")
-include("output_writer_diagnostic_utils.jl")
 include("ordered_dict_show.jl")
 include("with_tracers.jl")
 include("versioninfo.jl")
@@ -42,6 +47,7 @@ include("user_function_arguments.jl")
 include("multi_region_transformation.jl")
 include("sum_of_arrays.jl")
 include("newton_div.jl")
+include("interpolation.jl")
 include("tabulated_function.jl")
 
 end # module

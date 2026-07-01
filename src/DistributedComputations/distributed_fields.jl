@@ -19,17 +19,17 @@ import Oceananigans.BoundaryConditions: fill_halo_regions!
 import LinearAlgebra: norm, dot
 import Statistics: mean
 
-function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedGrid, data, old_bcs, indices::Tuple, op, status) where {LX, LY, LZ}
+function Field(loc::Tuple{<:LX, <:LY, <:LZ}, grid::DistributedGrid, data, global_bcs, indices::Tuple, op, status) where {LX, LY, LZ}
     indices = validate_indices(indices, loc, grid)
     validate_field_data(loc, data, grid, indices)
-    validate_boundary_conditions(loc, grid, old_bcs)
+    validate_boundary_conditions(loc, grid, global_bcs)
 
     arch = architecture(grid)
     rank = arch.local_rank
-    new_bcs = inject_halo_communication_boundary_conditions(old_bcs, rank, arch.connectivity, topology(grid))
-    buffers = communication_buffers(grid, data, new_bcs)
+    local_bcs = inject_halo_communication_boundary_conditions(global_bcs, loc, rank, arch.connectivity, topology(grid))
+    buffers = communication_buffers(grid, data, local_bcs)
 
-    return Field{LX, LY, LZ}(grid, data, new_bcs, indices, op, status, buffers)
+    return Field{LX, LY, LZ}(grid, data, local_bcs, indices, op, status, buffers)
 end
 
 const DistributedField         = Field{<:Any, <:Any, <:Any, <:Any, <:DistributedGrid}
@@ -72,15 +72,22 @@ synchronize_communication!(var) = throw(ArgumentError("`synchronize_communicatio
 
 # Methods for types that do not require synchronization
 synchronize_communication!(::AbstractField) = nothing
-synchronize_communication!(::AbstractArray) = nothing   
+synchronize_communication!(::AbstractArray) = nothing
 synchronize_communication!(::Number)        = nothing
 synchronize_communication!(::Nothing)       = nothing
+synchronize_communication!(::Tuple{})       = nothing
 
 # Distribute synchronize_communication! over tuples and named tuples
-synchronize_communication!(t::Union{NamedTuple, Tuple}) = foreach(synchronize_communication!, t)
+synchronize_communication!(nt::NamedTuple) = synchronize_communication!(values(nt))
+
+function synchronize_communication!(t::Tuple)
+    synchronize_communication!(first(t))
+    synchronize_communication!(Base.tail(t))
+    return nothing
+end
 
 """
-    synchronize_communication!(field)
+$(TYPEDSIGNATURES)
 
 complete the halo passing of `field` among processors.
 """
@@ -107,14 +114,21 @@ end
 reconstruct_global_field(field) = field
 
 """
-    reconstruct_global_field(field::DistributedField)
+$(TYPEDSIGNATURES)
 
 Reconstruct a global field from a local field by combining the data from all processes.
 """
 function reconstruct_global_field(field::DistributedField)
-    global_grid = reconstruct_global_grid(field.grid)
-    global_field = Field(instantiated_location(field), global_grid)
     arch = architecture(field)
+    field_indices = field.indices
+
+    if (!(field_indices[1] isa Colon) && (arch.ranks[1] != 1)) ||
+       (!(field_indices[2] isa Colon) && (arch.ranks[2] != 1))
+        @warn "Windowed fields in a partitioned directions are not supported."
+    end
+
+    global_grid = reconstruct_global_grid(field.grid)
+    global_field = Field(instantiated_location(field), global_grid; indices=field_indices)
 
     global_data = construct_global_array(interior(field), arch, size(field))
 
@@ -228,14 +242,14 @@ end
 
 # Distributed dot product
 @inline function dot(u::DistributedField, v::DistributedField; condition=nothing)
-    cu = condition_operand(u, condition, 0) 
-    cv = condition_operand(v, condition, 0) 
-     
-    B = cu * cv # Binary operation 
-    r = zeros(u.grid, 1) 
-     
-    Base.mapreducedim!(identity, +, r, B) 
-    dot_local = @allowscalar r[1] 
+    cu = condition_operand(u, condition, 0)
+    cv = condition_operand(v, condition, 0)
+
+    B = cu * cv # Binary operation
+    r = zeros(u.grid, 1)
+
+    Base.mapreducedim!(identity, +, r, B)
+    dot_local = @allowscalar r[1]
     arch = architecture(u)
     return all_reduce(+, dot_local, arch)
 end

@@ -1,7 +1,6 @@
 using Oceananigans.Grids: cpu_face_constructor_x, cpu_face_constructor_y, cpu_face_constructor_z, default_indices
 
-using Rotations
-using DocStringExtensions
+using Rotations: RotX, RotY, RotZ
 
 # Rotations of adjacent regions with respect to host region.
 # Transforming host indices into the adjacent region coordinate system
@@ -29,8 +28,8 @@ function CubedSphereConnectivity(partition::CubedSpherePartition, rotations::Tup
     return CubedSphereConnectivity(connectivity, rotations)
 end
 
-@inline getregion(connectivity::CubedSphereConnectivity, r) = _getregion(connectivity.connections, r)
-@inline _getregion(connectivity::CubedSphereConnectivity, r) = getregion(connectivity.connections, r)
+@inline Utils.getregion(connectivity::CubedSphereConnectivity, r) = _getregion(connectivity.connections, r)
+@inline Utils._getregion(connectivity::CubedSphereConnectivity, r) = getregion(connectivity.connections, r)
 
 """
     struct CubedSphereRegionalConnectivity{S, FS, R}
@@ -39,6 +38,44 @@ The connectivity among various regions for a cubed sphere grid. Parameter `R`
 denotes the rotation of the `from_rank` region to the current region.
 
 $(TYPEDFIELDS)
+
+---
+
+    CubedSphereRegionalConnectivity(rank, from_rank, side, from_side, rotation=nothing)
+
+Return a `CubedSphereRegionalConnectivity`: `from_rank :: Int` → `rank :: Int` and
+`from_side` → `side`. The rotation of
+the adjacent region relative to the host region is prescribed via `rotation` argument
+(default `rotation=nothing`).
+
+Example
+=======
+
+A connectivity that implies that the boundary condition for the
+east side of region 1 comes from the west side of region 2 is:
+
+```jldoctest cubedsphereconnectivity
+julia> using Oceananigans
+
+julia> using Oceananigans.MultiRegion: CubedSphereRegionalConnectivity, East, West, North, South, ↺, ↻
+
+julia> CubedSphereRegionalConnectivity(1, 2, East(), West())
+CubedSphereRegionalConnectivity
+├── from: Oceananigans.BoundaryConditions.West side, region 2
+├── to:   Oceananigans.BoundaryConditions.East side, region 1
+└── no rotation
+```
+
+A connectivity that implies that the boundary condition for the
+north side of region 1 comes from the east side of region 3 is
+
+```jldoctest cubedsphereconnectivity
+julia> CubedSphereRegionalConnectivity(1, 3, North(), East(), ↺())
+CubedSphereRegionalConnectivity
+├── from: Oceananigans.BoundaryConditions.East side, region 3
+├── to:   Oceananigans.BoundaryConditions.North side, region 1
+└── counter-clockwise rotation ↺
+```
 """
 struct CubedSphereRegionalConnectivity{S, FS, R} <: AbstractConnectivity
     "the current region rank"
@@ -52,43 +89,6 @@ struct CubedSphereRegionalConnectivity{S, FS, R} <: AbstractConnectivity
     "rotation of the region from which boundary condition comes from compare to host region"
         rotation :: R
 
-    @doc """
-        CubedSphereRegionalConnectivity(rank, from_rank, side, from_side, rotation=nothing)
-
-    Return a `CubedSphereRegionalConnectivity`: `from_rank :: Int` → `rank :: Int` and
-    `from_side` → `side`. The rotation of
-    the adjacent region relative to the host region is prescribed via `rotation` argument
-    (default `rotation=nothing`).
-
-    Example
-    =======
-
-    A connectivity that implies that the boundary condition for the
-    east side of region 1 comes from the west side of region 2 is:
-
-    ```jldoctest cubedsphereconnectivity
-    julia> using Oceananigans
-
-    julia> using Oceananigans.MultiRegion: CubedSphereRegionalConnectivity, East, West, North, South, ↺, ↻
-
-    julia> CubedSphereRegionalConnectivity(1, 2, East(), West())
-    CubedSphereRegionalConnectivity
-    ├── from: Oceananigans.BoundaryConditions.West side, region 2
-    ├── to:   Oceananigans.BoundaryConditions.East side, region 1
-    └── no rotation
-    ```
-
-    A connectivity that implies that the boundary condition for the
-    north side of region 1 comes from the east side of region 3 is
-
-    ```jldoctest cubedsphereconnectivity
-    julia> CubedSphereRegionalConnectivity(1, 3, North(), East(), ↺())
-    CubedSphereRegionalConnectivity
-    ├── from: Oceananigans.BoundaryConditions.East side, region 3
-    ├── to:   Oceananigans.BoundaryConditions.North side, region 1
-    └── counter-clockwise rotation ↺
-    ```
-    """
     CubedSphereRegionalConnectivity(rank, from_rank, side, from_side, rotation=nothing) =
         new{typeof(side), typeof(from_side), typeof(rotation)}(rank, from_rank, side, from_side, rotation)
 end
@@ -98,12 +98,12 @@ function Base.summary(c::CubedSphereRegionalConnectivity)
 end
 
 function Base.show(io::IO, c::CubedSphereRegionalConnectivity{S, FS, R}) where {S, FS, R}
-    if R == Nothing
-        rotation_description = "no rotation"
+    rotation_description = if R == Nothing
+        "no rotation"
     elseif R == ↺
-        rotation_description = "counter-clockwise rotation ↺"
+        "counter-clockwise rotation ↺"
     elseif R == ↻
-        rotation_description = "clockwise rotation ↻"
+        "clockwise rotation ↻"
     end
 
     return print(io, "CubedSphereRegionalConnectivity", "\n",
@@ -142,10 +142,10 @@ function find_west_connectivity(region, partition::CubedSpherePartition)
         from_rank = rank_from_panel_idx(pᵢ - 1, pⱼ, pidx, partition)
     end
 
-    if from_side == North()
-        rotation = ↻()
+    rotation = if from_side == North()
+        ↻()
     elseif from_side == East()
-        rotation = nothing
+        nothing
     end
 
     return CubedSphereRegionalConnectivity(region, from_rank, West(), from_side, rotation)
@@ -175,10 +175,10 @@ function find_east_connectivity(region, partition::CubedSpherePartition)
         from_rank = rank_from_panel_idx(pᵢ + 1, pⱼ, pidx, partition)
     end
 
-    if from_side == South()
-        rotation = ↻()
+    rotation = if from_side == South()
+        ↻()
     elseif from_side == West()
-        rotation = nothing
+        nothing
     end
 
     return CubedSphereRegionalConnectivity(region, from_rank, East(), from_side, rotation)
@@ -208,10 +208,10 @@ function find_south_connectivity(region, partition::CubedSpherePartition)
         from_rank = rank_from_panel_idx(pᵢ, pⱼ - 1, pidx, partition)
     end
 
-    if from_side == East()
-        rotation = ↺()
+    rotation = if from_side == East()
+        ↺()
     elseif from_side == North()
-        rotation = nothing
+        nothing
     end
 
     return CubedSphereRegionalConnectivity(region, from_rank, South(), from_side, rotation)
@@ -241,10 +241,10 @@ function find_north_connectivity(region, partition::CubedSpherePartition)
         from_rank = rank_from_panel_idx(pᵢ, pⱼ + 1, pidx, partition)
     end
 
-    if from_side == West()
-        rotation = ↺()
+    rotation = if from_side == West()
+        ↺()
     elseif from_side == South()
-        rotation = nothing
+        nothing
     end
 
     return CubedSphereRegionalConnectivity(region, from_rank, North(), from_side, rotation)

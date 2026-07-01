@@ -1,28 +1,34 @@
 module SplitExplicitFreeSurfaces
 
-export SplitExplicitFreeSurface, ForwardBackwardScheme, AdamsBashforth3Scheme
+export SplitExplicitFreeSurface, ForwardBackwardScheme
 export FixedSubstepNumber, FixedTimeStepSize
 
+using DocStringExtensions: TYPEDSIGNATURES
+using KernelAbstractions: @index, @kernel
+
 using Oceananigans.Architectures: convert_to_device, architecture
-using Oceananigans.Utils: KernelParameters, configure_kernel, launch!, @apply_regionally
-using Oceananigans.Operators: Az⁻¹ᶜᶜᶠ, Δx_qᶜᶠᶠ, Δy_qᶠᶜᶠ, Δzᶜᶠᶜ, Δzᶠᶜᶜ, δxTᶜᵃᵃ, δyTᵃᶜᵃ, ∂xTᶠᶜᶠ, ∂yTᶜᶠᶠ
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, fill_halo_regions!
 using Oceananigans.Fields: Field
-using Oceananigans.Grids: Center, Face, get_active_column_map, topology
-using Oceananigans.ImmersedBoundaries: mask_immersed_field!
+using Oceananigans.Grids: Center, Face, topology, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ,
+                          LeftConnected, RightConnected, FullyConnected,
+                          RightCenterFolded, RightFaceFolded,
+                          LeftConnectedRightCenterFolded, LeftConnectedRightFaceFolded,
+                          LeftConnectedRightCenterConnected, LeftConnectedRightFaceConnected
+using Oceananigans.ImmersedBoundaries: mask_immersed_field!,
+                                       column_depthTᶠᶜᵃ, column_depthTᶜᶠᵃ,
+                                       column_depthᶠᶜᵃ, column_depthᶜᶠᵃ
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: AbstractFreeSurface,
-                                                        free_surface_displacement_field
+                                                        free_surface_displacement_field,
+                                                        update_vertical_velocities!
+using Oceananigans.Operators: ∂xᵣTᶠᶜᶠ, ∂xᵣᶠᶜᶠ, ∂yᵣTᶜᶠᶠ, ∂yᵣᶜᶠᶠ, δxTᶜᵃᵃ, δxᶜᵃᵃ, δyTᵃᶜᵃ, δyᵃᶜᵃ,
+                              Az⁻¹ᶜᶜᶠ, Δx_qᶜᶠᶠ, Δy_qᶠᶜᶠ, Δzᶜᶠᶜ, Δzᶠᶜᶜ
+using Oceananigans.Utils: Utils, KernelParameters, configure_kernel, launch!, @apply_regionally, get_active_cells_map
 
-using KernelAbstractions: @index, @kernel
-using KernelAbstractions.Extras.LoopInfo: @unroll
-
-using Oceananigans.Grids: column_depthᶜᶠᵃ,
-                          column_depthᶠᶜᵃ
-
-import Oceananigans.Models.HydrostaticFreeSurfaceModels: initialize_free_surface!,
+import Oceananigans.Models.HydrostaticFreeSurfaceModels: reconcile_free_surface!,
                                                          materialize_free_surface,
                                                          step_free_surface!,
                                                          compute_free_surface_tendency!,
+                                                         compute_transport_velocities!,
                                                          explicit_barotropic_pressure_x_gradient,
                                                          explicit_barotropic_pressure_y_gradient
 

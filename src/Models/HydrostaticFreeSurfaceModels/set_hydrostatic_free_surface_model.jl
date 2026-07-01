@@ -1,11 +1,12 @@
-using Oceananigans.TimeSteppers: update_state!
 using Oceananigans.Operators: intrinsic_vector, ℑxyᶠᶜᵃ, ℑxyᶜᶠᵃ
 using Oceananigans.Utils: @apply_regionally
 
 import Oceananigans.Fields: set!
 
 """
-    set!(model::HydrostaticFreeSurfaceModel; kwargs...)
+    set!(model::HydrostaticFreeSurfaceModel;
+         u=ZeroField(), v=ZeroField(), intrinsic_velocities=false,
+         reconcile_state=true, kwargs...)
 
 Set velocity and tracer fields of `model`. The keyword arguments `kwargs...`
 take the form `name = data`, where `name` refers to one of the fields of either:
@@ -47,6 +48,7 @@ model.velocities.u
 """
 @inline function set!(model::HydrostaticFreeSurfaceModel;
                       u=ZeroField(), v=ZeroField(), intrinsic_velocities=false,
+                      reconcile_state=true,
                       kwargs...)
 
     set_velocities!(model, u, v; intrinsic_velocities)
@@ -69,8 +71,8 @@ model.velocities.u
         @apply_regionally set!(ϕ, value)
     end
 
-    # initialize!(model)
-    initialization_update_state!(model; compute_tendencies=false)
+    reconcile_state && reconcile_state!(model)
+    update_state!(model)
 
     return nothing
 end

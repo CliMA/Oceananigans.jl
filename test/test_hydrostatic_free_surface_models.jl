@@ -3,7 +3,7 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: VectorInvariant, PrescribedVelocityFields
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: ExplicitFreeSurface, ImplicitFreeSurface
 using Oceananigans.Models.HydrostaticFreeSurfaceModels: SingleColumnGrid
-using Oceananigans.Advection: EnergyConserving, EnstrophyConserving, FluxFormAdvection
+using Oceananigans.Advection: EnergyConserving, EnstrophyConserving, FluxFormAdvection, CrossAndSelfUpwinding
 using Oceananigans.TurbulenceClosures
 using Oceananigans.TurbulenceClosures: CATKEVerticalDiffusivity
 
@@ -273,17 +273,21 @@ topos_3d = ((Periodic, Periodic, Bounded),
             end
         end
 
-        for momentum_advection in (VectorInvariant(), WENOVectorInvariant(), Centered(), WENO())
-            @testset "Time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(momentum_advection))]" begin
-                @info "  Testing time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(momentum_advection))]..."
-                @test time_step_hydrostatic_model_works(rectilinear_grid; momentum_advection)
-            end
-        end
+        momentum_advections = (
+            Centered(),
+            WENO(),
+            VectorInvariant(),
+            WENOVectorInvariant(),
+            WENOVectorInvariant(; upwinding = CrossAndSelfUpwinding(cross_scheme = WENO())),
+            WENOVectorInvariant(; multi_dimensional_stencil = true),
+        )
 
-        for momentum_advection in (VectorInvariant(), WENOVectorInvariant())
-            @testset "Time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(momentum_advection))]" begin
-                @info "  Testing time-stepping HydrostaticFreeSurfaceModels [$arch, $(typeof(momentum_advection))]..."
-                @test time_step_hydrostatic_model_works(lat_lon_sector_grid; momentum_advection)
+        for momentum_advection in momentum_advections
+            @testset "Time-stepping HydrostaticFreeSurfaceModels [$arch, $(summary(momentum_advection))]" begin
+                for grid in (rectilinear_grid, lat_lon_sector_grid)
+                    @info "  Testing time-stepping HydrostaticFreeSurfaceModels [$arch, $(nameof(typeof(grid))), $(summary(momentum_advection))]..."
+                    @test time_step_hydrostatic_model_works(grid; momentum_advection)
+                end
             end
         end
 
@@ -340,6 +344,80 @@ topos_3d = ((Periodic, Periodic, Bounded),
 
             @test time_step_hydrostatic_model_works(rectilinear_grid, momentum_advection  = nothing, velocities = velocities)
             @test time_step_hydrostatic_model_works(lat_lon_sector_grid, momentum_advection = nothing, velocities = velocities)
+        end
+
+        @testset "PrescribedVelocityFields with FieldTimeSeries [$arch]" begin
+            @info "  Testing PrescribedVelocityFields with FieldTimeSeries [$arch]..."
+
+            grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+            times = 0:0.1:1.0
+
+            # Create velocity FieldTimeSeries and populate with set!
+            u_fts = FieldTimeSeries{Face, Center, Center}(grid, times)
+            for (n, t) in enumerate(times)
+                set!(u_fts, t, n)  # u = t at each time index
+            end
+
+            # Use with PrescribedVelocityFields
+            velocities = PrescribedVelocityFields(; u=u_fts)
+            model = HydrostaticFreeSurfaceModel(grid; velocities, tracers=:c)
+
+            # At t=0, velocity field should interpolate to u=0
+            u = model.velocities.u
+            @test u[1, 1, 1] ≈ 0.0
+
+            # Time step to t=0.05
+            time_step!(model, 0.05)
+
+            # Now u should interpolate to 0.05 (between t=0 and t=0.1)
+            @test u[1, 1, 1] ≈ 0.05
+
+            # Time step to t=0.15 (total t=0.2)
+            time_step!(model, 0.15)
+
+            # Now u should interpolate to 0.2
+            @test u[1, 1, 1] ≈ 0.2
+
+            @info "    PrescribedVelocityFields with FieldTimeSeries test passed"
+        end
+
+        @testset "PrescribedVelocityFields with FieldTimeSeries output [$arch]" begin
+            @info "  Testing PrescribedVelocityFields with FieldTimeSeries output [$arch]..."
+
+            grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+            times = 0:0.1:1.0
+
+            # Create velocity FieldTimeSeries with u = t
+            u_fts = FieldTimeSeries{Face, Center, Center}(grid, times)
+            set!(u_fts, (x, y, z, t) -> t)
+
+            velocities = PrescribedVelocityFields(; u=u_fts)
+            model = HydrostaticFreeSurfaceModel(grid; velocities, tracers=:c)
+
+            simulation = Simulation(model; Δt=0.05, stop_time=0.5)
+
+            # Output the prescribed velocity (which is a TimeSeriesInterpolation)
+            test_filename = "test_prescribed_velocity_output.jld2"
+            simulation.output_writers[:fields] = JLD2Writer(model, (; u=model.velocities.u);
+                                                           schedule=TimeInterval(0.1),
+                                                           filename=test_filename,
+                                                           overwrite_existing=true)
+
+            run!(simulation)
+
+            # Read output and verify values
+            u_output = FieldTimeSeries(test_filename, "u")
+
+            for n in eachindex(u_output.times)
+                t = u_output.times[n]
+                u_val = u_output[n][1, 1, 1]
+                @test u_val ≈ t atol=1e-5
+            end
+
+            # Clean up
+            rm(test_filename)
+
+            @info "    PrescribedVelocityFields with FieldTimeSeries output test passed"
         end
 
         @testset "HydrostaticFreeSurfaceModel with tracers and forcings [$arch]" begin

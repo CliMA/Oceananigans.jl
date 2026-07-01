@@ -276,7 +276,9 @@ function simulate_stratified_couette_flow(; Nxy, Nz, arch=GPU(), h=1, U_wall=1,
 
     simulation.callbacks[:progress] = Callback(print_progress, IterationInterval(Ni))
 
-    push!(simulation.output_writers, field_writer, profile_writer, statistics_writer)
+    simulation.output_writers[:fields] = field_writer
+    simulation.output_writers[:profiles] = profile_writer
+    simulation.output_writers[:statistics] = statistics_writer
 
     run!(simulation)
 

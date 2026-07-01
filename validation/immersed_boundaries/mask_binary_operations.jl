@@ -40,4 +40,3 @@ for (n, f) in enumerate([Σc, Πc, ratio_c, pow_c])
 end
 
 fig
-

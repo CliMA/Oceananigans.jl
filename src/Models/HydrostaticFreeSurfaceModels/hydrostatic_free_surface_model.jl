@@ -1,109 +1,69 @@
-using Oceananigans.Architectures: AbstractArchitecture
-using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, adapt_advection_order
-using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
-using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
+using Oceananigans.Advection: AbstractAdvectionScheme, Centered, VectorInvariant, WENOVectorInvariant, adapt_advection_order, materialize_advection, weno_order
+using Oceananigans.Architectures: AbstractArchitecture, ReactantState
 using Oceananigans.Biogeochemistry: validate_biogeochemistry, AbstractBiogeochemistry, biogeochemical_auxiliary_fields
+using Oceananigans.BoundaryConditions: FieldBoundaryConditions, regularize_field_boundary_conditions
+using Oceananigans.BuoyancyFormulations: validate_buoyancy, materialize_buoyancy
 using Oceananigans.DistributedComputations: Distributed
-using Oceananigans.Fields: Field, CenterField, tracernames, TracerFields
+using Oceananigans.Fields: Field, CenterField, ZeroField, tracernames, TracerFields
 using Oceananigans.Forcings: model_forcing
-using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization
+using Oceananigans.Grids: AbstractHorizontallyCurvilinearGrid, architecture, halo_size, MutableVerticalDiscretization, Face, Center
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-
-using Oceananigans.Advection:
-    AbstractAdvectionScheme,
-    Centered,
-    VectorInvariant,
-    adapt_advection_order
-
-using Oceananigans.BuoyancyFormulations:
-    validate_buoyancy,
-    materialize_buoyancy
-
-using Oceananigans.Biogeochemistry:
-    validate_biogeochemistry,
-    AbstractBiogeochemistry,
-    biogeochemical_auxiliary_fields
-
-using Oceananigans.Fields:
-    Field,
-    CenterField,
-    tracernames,
-    TracerFields
-
-using Oceananigans.Grids:
-    AbstractHorizontallyCurvilinearGrid,
-    architecture,
-    halo_size,
-    MutableVerticalDiscretization
-
-using Oceananigans.Models:
-    AbstractModel,
-    validate_model_halo,
-    validate_tracer_advection,
-    extract_boundary_conditions,
-    initialization_update_state!
-
-using Oceananigans.TimeSteppers:
-    Clock,
-    TimeStepper,
-    update_state!,
-    AbstractLagrangianParticles,
-    SplitRungeKutta3TimeStepper
-
-using Oceananigans.TurbulenceClosures:
-    validate_closure,
-    with_tracers,
-    build_closure_fields,
-    add_closure_specific_boundary_conditions,
-    time_discretization,
-    implicit_diffusion_solver,
-    closure_required_tracers
-
+using Oceananigans.Models: AbstractModel, validate_model_halo, validate_tracer_advection, extract_boundary_conditions
+using Oceananigans.TimeSteppers: Clock, TimeStepper, AbstractLagrangianParticles, materialize_clock!, time_discretization
+using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, add_closure_specific_boundary_conditions,
+                                       implicit_diffusion_solver, VerticallyImplicitTimeDiscretization,
+                                       closure_required_tracers, initialize_closure_fields!
+using Oceananigans.Advection: needs_implicit_solver
 using Oceananigans.Utils: tupleit
 
-import Oceananigans: initialize!
+import Oceananigans
+import Oceananigans: initialize!, prognostic_state, restore_prognostic_state!
 import Oceananigans.Models: total_velocities
+import Oceananigans.TimeSteppers: update_state!, reconcile_state!, materialize_clock!
 import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
 
 PressureField(grid) = (; pHY′ = CenterField(grid))
 
-import Oceananigans
 const defaults = Oceananigans.defaults
 const ParticlesOrNothing = Union{Nothing, AbstractLagrangianParticles}
 const AbstractBGCOrNothing = Union{Nothing, AbstractBiogeochemistry}
 
 function default_vertical_coordinate(grid)
     if grid.z isa MutableVerticalDiscretization
-        return ZStarCoordinate(grid)
+        return ZStarCoordinate()
     else
         return ZCoordinate()
     end
 end
 
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
-                                           G, T, V, B, R, F, P, BGC, U, C, Φ, K, AF, Z} <: AbstractModel{TS, A}
+                                           G, CL, V, B, R, F, P, BGC, U, W, C, Φ, K, AF, Z, BM} <: AbstractModel{TS, A}
 
-    architecture :: A           # Computer `Architecture` on which `Model` is run
-    grid :: G                   # Grid of physical points on which `Model` is solved
-    clock :: Clock{T}           # Tracks iteration number and simulation time of `Model`
-    advection :: V              # Advection scheme for tracers
-    buoyancy :: B               # Set of parameters for buoyancy model
-    coriolis :: R               # Set of parameters for the background rotation rate of `Model`
-    free_surface :: S           # Free surface parameters and fields
-    forcing :: F                # Container for forcing functions defined by the user
-    closure :: E                # Diffusive 'turbulence closure' for all model fields
-    particles :: P              # Particle set for Lagrangian tracking
-    biogeochemistry :: BGC      # Biogeochemistry for Oceananigans tracers
-    velocities :: U             # Container for velocity fields `u`, `v`, and `w`
-    tracers :: C                # Container for tracer fields
-    pressure :: Φ               # Container for hydrostatic pressure
-    closure_fields :: K         # Container for auxiliary fields for closures
-    timestepper :: TS           # Object containing timestepper fields and parameters
-    auxiliary_fields :: AF      # User-specified auxiliary fields for forcing functions and boundary conditions
-    vertical_coordinate :: Z    # Rulesets that define the time-evolution of the grid
+    architecture :: A          # Computer `Architecture` on which `Model` is run
+    grid :: G                  # Grid of physical points on which `Model` is solved
+    clock :: CL                # Tracks iteration number and simulation time of `Model`
+    advection :: V             # Advection scheme for tracers
+    buoyancy :: B              # Set of parameters for buoyancy model
+    coriolis :: R              # Set of parameters for the background rotation rate of `Model`
+    free_surface :: S          # Free surface parameters and fields
+    forcing :: F               # Container for forcing functions defined by the user
+    closure :: E               # Diffusive 'turbulence closure' for all model fields
+    particles :: P             # Particle set for Lagrangian tracking
+    biogeochemistry :: BGC     # Biogeochemistry for Oceananigans tracers
+    velocities :: U            # Container for velocity fields `u`, `v`, and `w`
+    transport_velocities :: W  # Container for velocity fields used to transport tracers
+    tracers :: C               # Container for tracer fields
+    pressure :: Φ              # Container for hydrostatic pressure
+    closure_fields :: K        # Container for turbulent closure_fields
+    timestepper :: TS          # Object containing timestepper fields and parameters
+    auxiliary_fields :: AF     # User-specified auxiliary fields for forcing functions and boundary conditions
+    vertical_coordinate :: Z   # Rulesets that define the time-evolution of the grid
+    boundary_transport :: BM # Transport fields for targeted open boundary conditions (or `nothing`)
 end
 
-default_free_surface(grid::XYRegularRG; gravitational_acceleration=defaults.gravitational_acceleration) =
+supported_timesteppers = (:QuasiAdamsBashforth2, :SplitRungeKutta2, :SplitRungeKutta3, :SplitRungeKutta4, :SplitRungeKutta5)
+
+default_free_surface(grid::XYRegularStaticRG; gravitational_acceleration=defaults.gravitational_acceleration) =
     ImplicitFreeSurface(; gravitational_acceleration)
 
 default_free_surface(grid; gravitational_acceleration=defaults.gravitational_acceleration) =
@@ -111,7 +71,7 @@ default_free_surface(grid; gravitational_acceleration=defaults.gravitational_acc
 
 """
     HydrostaticFreeSurfaceModel(grid;
-                                clock = Clock{Float64}(time = 0),
+                                clock = Clock(grid),
                                 momentum_advection = VectorInvariant(),
                                 tracer_advection = Centered(),
                                 buoyancy = nothing,
@@ -121,7 +81,7 @@ default_free_surface(grid; gravitational_acceleration=defaults.gravitational_acc
                                 closure = nothing,
                                 timestepper = :QuasiAdamsBashforth2,
                                 boundary_conditions::NamedTuple = NamedTuple(),
-                                tracers = (:T, :S),
+                                tracers = nothing,
                                 particles::ParticlesOrNothing = nothing,
                                 biogeochemistry::AbstractBGCOrNothing = nothing,
                                 velocities = nothing,
@@ -155,15 +115,16 @@ Keyword arguments
                preallocated `CenterField`s.
   - `forcing`: `NamedTuple` of user-defined forcing functions that contribute to solution tendencies.
   - `closure`: The turbulence closure for `model`. See `Oceananigans.TurbulenceClosures`.
-  - `timestepper`: A symbol that specifies the time-stepping method.
-                   Either `:QuasiAdamsBashforth2` (default) or `:SplitRungeKutta3`.
+  - `timestepper`: A symbol or a `TimeStepper` object that specifies the time-stepping method.
+                   Supported symbols include $(join("`" .* repr.(supported_timesteppers) .* "`", ", ")).
+                   Default: `:QuasiAdamsBashforth2`.
   - `boundary_conditions`: `NamedTuple` containing field boundary conditions.
   - `particles`: Lagrangian particles to be advected with the flow. Default: `nothing`.
   - `biogeochemistry`: Biogeochemical model for `tracers`.
   - `velocities`: The model velocities. Default: `nothing`.
   - `pressure`: Hydrostatic pressure field. Default: `nothing`.
   - `closure_fields`: Closure fields. Default: `nothing`.
-  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `nothing`.
+  - `auxiliary_fields`: `NamedTuple` of auxiliary fields. Default: `NamedTuple()`.
   - `vertical_coordinate`: Algorithm for grid evolution: `ZStarCoordinate()` or `ZCoordinate(grid)`.
                            Default: `default_vertical_coordinate(grid)`, which returns `ZStarCoordinate(grid)`
                            for grids with `MutableVerticalDiscretization` otherwise returns
@@ -189,6 +150,8 @@ function HydrostaticFreeSurfaceModel(grid;
                                      auxiliary_fields = NamedTuple(),
                                      vertical_coordinate = default_vertical_coordinate(grid))
 
+    arch = architecture(grid)
+
     # Check halos and throw an error if the grid's halo is too small
     @apply_regionally validate_model_halo(grid, momentum_advection, tracer_advection, closure)
 
@@ -196,6 +159,20 @@ function HydrostaticFreeSurfaceModel(grid;
         msg = string("The grid ", summary(grid), " does not support ZStarCoordinate.", '\n',
                      "z must be a MutableVerticalDiscretization to allow the use of ZStarCoordinate.")
         throw(ArgumentError(msg))
+    end
+
+    if timestepper isa Symbol && timestepper ∉ supported_timesteppers
+        msg = """
+        timestepper = :$timestepper is not supported.
+        Supported timesteppers are: $(join(repr.(supported_timesteppers), ", ")).
+        You can also construct your own TimeStepper and pass it to the constructor.
+        """
+        throw(ArgumentError(msg))
+    end
+
+    if arch isa Distributed{ReactantState} && momentum_advection isa WENOVectorInvariant && weno_order(momentum_advection.vertical_advection_scheme) == 3
+        # Ref: <https://github.com/CliMA/Oceananigans.jl/issues/5568>.
+        throw(ArgumentError("HydrostaticFreeSurfaceModel does not support Reactant sharding with WENO3 advection"))
     end
 
     # Validate biogeochemistry (add biogeochemical tracers automagically)
@@ -232,6 +209,10 @@ function HydrostaticFreeSurfaceModel(grid;
     momentum_advection_tuple = (; momentum = momentum_advection)
     advection = merge(momentum_advection_tuple, tracer_advection_tuple)
     advection = NamedTuple(name => adapt_advection_order(scheme, grid) for (name, scheme) in pairs(advection))
+
+    # Fill any settings in advection scheme that might have been deferred until
+    # the grid and backend is known
+    advection = NamedTuple(name => materialize_advection(scheme, grid) for (name, scheme) in pairs(advection))
 
     validate_buoyancy(buoyancy, tracernames(tracers))
     buoyancy = materialize_buoyancy(buoyancy, grid)
@@ -279,32 +260,71 @@ function HydrostaticFreeSurfaceModel(grid;
 
     @apply_regionally validate_velocity_boundary_conditions(grid, velocities)
 
-    arch = architecture(grid)
     free_surface = validate_free_surface(arch, free_surface)
     free_surface = materialize_free_surface(free_surface, velocities, grid)
 
     # Instantiate timestepper if not already instantiated
-    implicit_solver   = implicit_diffusion_solver(time_discretization(closure), grid)
+    implicit_solver = implicit_diffusion_solver(time_discretization(closure), grid)
+
+    # Also create the implicit solver if adaptive implicit advection requires it
+    if isnothing(implicit_solver) && needs_implicit_solver(advection)
+        implicit_solver = implicit_diffusion_solver(VerticallyImplicitTimeDiscretization(), grid)
+    end
+
     prognostic_fields = hydrostatic_prognostic_fields(velocities, free_surface, tracers)
 
     Gⁿ = hydrostatic_tendency_fields(velocities, free_surface, grid, tracernames(tracers), boundary_conditions)
-    G⁻ = previous_hydrostatic_tendency_fields(Val(timestepper), velocities, free_surface, grid, tracernames(tracers), boundary_conditions)
+    G⁻ = previous_hydrostatic_tendency_fields(timestepper, velocities, free_surface, grid, tracernames(tracers), boundary_conditions)
     timestepper = TimeStepper(timestepper, grid, prognostic_fields; implicit_solver, Gⁿ, G⁻)
+    materialize_clock!(clock, timestepper)
 
     # Materialize forcing for model tracer and velocity fields.
-    model_fields = merge(prognostic_fields, auxiliary_fields)
+    # Use hydrostatic_fields (which includes w) to match the model_fields
+    # constructed inside tendency kernels, ensuring field dependency indices
+    # are consistent between materialization and tendency computation.
+    model_fields = merge(hydrostatic_fields(velocities, free_surface, tracers), auxiliary_fields)
     forcing = model_forcing(forcing, model_fields, prognostic_fields)
+    transport_velocities = transport_velocity_fields(velocities)
 
     !isnothing(particles) && arch isa Distributed && error("LagrangianParticles are not supported on Distributed architectures.")
 
-    model = HydrostaticFreeSurfaceModel(arch, grid, clock, advection, buoyancy, coriolis,
-                                        free_surface, forcing, closure, particles, biogeochemistry, velocities, tracers,
-                                        pressure, closure_fields, timestepper, auxiliary_fields, vertical_coordinate)
+    boundary_transport = initialize_targeted_boundary_transport(velocities)
 
-    initialization_update_state!(model; compute_tendencies=false)
+    model = HydrostaticFreeSurfaceModel(arch, grid, clock, advection, buoyancy, coriolis,
+                                        free_surface, forcing, closure, particles, biogeochemistry, velocities, transport_velocities,
+                                        tracers, pressure, closure_fields, timestepper, auxiliary_fields, vertical_coordinate,
+                                        boundary_transport)
+
+    materialize_clock!(clock, timestepper)
+    update_state!(model)
 
     return model
 end
+
+transport_velocity_fields(velocities) = (u = copy_velocity(velocities.u),
+                                         v = copy_velocity(velocities.v),
+                                         w = copy_velocity(velocities.w))
+
+copy_velocity(u::Field{<:Face, <:Center, <:Center}) = XFaceField(u.grid; boundary_conditions=u.boundary_conditions)
+copy_velocity(v::Field{<:Center, <:Face, <:Center}) = YFaceField(v.grid; boundary_conditions=v.boundary_conditions)
+copy_velocity(w::Field{<:Center, <:Center, <:Face}) = ZFaceField(w.grid; boundary_conditions=w.boundary_conditions)
+copy_velocity(c) = c
+
+# Fallback transport velocities for a generic free surface (just copy velocities over)
+compute_transport_velocities!(model, free_surface) = update_transport_velocities!(model.transport_velocities, model.velocities)
+
+# Not if `transport === velocities`
+function update_transport_velocities!(transport_velocities, velocities)
+    transport_velocities === velocities && return nothing
+    for name in propertynames(transport_velocities)
+        update_transport_velocity_data!(transport_velocities[name], velocities[name])
+    end
+    return nothing
+end
+
+# Only concrete Field types are duplicated (see `copy_velocity` above)
+update_transport_velocity_data!(dst::Field, src::Field) = parent(dst) .= parent(src)
+update_transport_velocity_data!(dst, src) = nothing
 
 validate_velocity_boundary_conditions(grid, velocities) = validate_vertical_velocity_boundary_conditions(velocities.w)
 
@@ -314,10 +334,9 @@ function validate_vertical_velocity_boundary_conditions(w)
     return nothing
 end
 
-validate_free_surface(::Distributed, free_surface::SplitExplicitFreeSurface) = free_surface
-validate_free_surface(::Distributed, free_surface::ExplicitFreeSurface)      = free_surface
-validate_free_surface(::Distributed, free_surface::Nothing)                  = free_surface
-validate_free_surface(arch::Distributed, free_surface) = error("$(typeof(free_surface)) is not supported with $(typeof(arch))")
+const FFTIFS = ImplicitFreeSurface{<:Any, <:Any, <:FFTImplicitFreeSurfaceSolver}
+
+validate_free_surface(arch::Distributed, ::FFTIFS) = error("$(FFTIFS) is not supported with $(typeof(arch))")
 validate_free_surface(arch, free_surface) = free_surface
 
 validate_momentum_advection(momentum_advection, ibg::ImmersedBoundaryGrid) = validate_momentum_advection(momentum_advection, ibg.underlying_grid)
@@ -327,8 +346,53 @@ validate_momentum_advection(momentum_advection::Nothing,         grid::Orthogona
 validate_momentum_advection(momentum_advection::VectorInvariant, grid::OrthogonalSphericalShellGrid) = momentum_advection
 validate_momentum_advection(momentum_advection, grid::OrthogonalSphericalShellGrid) = error("$(typeof(momentum_advection)) is not supported with $(typeof(grid))")
 
-initialize!(model::HydrostaticFreeSurfaceModel) = initialize_free_surface!(model.free_surface, model.grid, model.velocities)
+function reconcile_state!(model::HydrostaticFreeSurfaceModel)
+    mask_immersed_horizontal_velocities!(model.velocities)
+    fill_halo_regions!(prognostic_fields(model), model.clock, fields(model))
+    reconcile_free_surface!(model.free_surface, model.grid, model.velocities)
+    reconcile_vertical_coordinate!(model.vertical_coordinate, model, model.grid)
+    return nothing
+end
+
+function initialize!(model::HydrostaticFreeSurfaceModel)
+    reconcile_state!(model)
+    initialize_closure_fields!(model.closure_fields, model.closure, model)
+    return nothing
+end
+
+# return the total advective velocities
 @inline total_velocities(model::HydrostaticFreeSurfaceModel) = model.velocities
 timestepper(model::HydrostaticFreeSurfaceModel) = model.timestepper
 buoyancy_force(model::HydrostaticFreeSurfaceModel) = model.buoyancy
 buoyancy_tracers(model::HydrostaticFreeSurfaceModel) = model.tracers
+
+#####
+##### Checkpointing
+#####
+
+function prognostic_state(model::HydrostaticFreeSurfaceModel)
+    return (clock = prognostic_state(model.clock),
+            particles = prognostic_state(model.particles),
+            velocities = prognostic_state(model.velocities),
+            tracers = prognostic_state(model.tracers),
+            closure_fields = prognostic_state(model.closure_fields),
+            timestepper = prognostic_state(model.timestepper),
+            free_surface = prognostic_state(model.free_surface),
+            auxiliary_fields = prognostic_state(model.auxiliary_fields),
+            vertical_coordinate = prognostic_state(model.vertical_coordinate, model.grid))
+end
+
+function restore_prognostic_state!(restored::HydrostaticFreeSurfaceModel, from)
+    restore_prognostic_state!(restored.clock, from.clock)
+    restore_prognostic_state!(restored.particles, from.particles)
+    restore_prognostic_state!(restored.velocities, from.velocities)
+    restore_prognostic_state!(restored.timestepper, from.timestepper)
+    restore_prognostic_state!(restored.free_surface, from.free_surface)
+    restore_prognostic_state!(restored.tracers, from.tracers)
+    restore_prognostic_state!(restored.closure_fields, from.closure_fields)
+    restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
+    restore_prognostic_state!(restored.vertical_coordinate, restored.grid, from.vertical_coordinate)
+    return restored
+end
+
+restore_prognostic_state!(::HydrostaticFreeSurfaceModel, ::Nothing) = nothing

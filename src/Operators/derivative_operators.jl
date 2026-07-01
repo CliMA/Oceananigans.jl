@@ -92,3 +92,19 @@ for dir in (:x, :y, :z), LX in (:ᶜ, :ᶠ, :ᵃ), LY in (:ᶜ, :ᶠ, :ᵃ), LZ 
         @inline $operator(i, j, k, grid, c) = $area(i, j, k, grid) * $derivative(i, j, k, grid, c)
     end
 end
+
+# x-direction slopes at different staggerings
+@inline ∂x_zᶠᶜᶜ(i, j, k, grid) = zero(grid)
+@inline ∂x_zᶜᶜᶜ(i, j, k, grid) = zero(grid)
+@inline ∂x_zᶠᶜᶠ(i, j, k, grid) = zero(grid)
+@inline ∂x_zᶜᶠᶜ(i, j, k, grid) = zero(grid)
+@inline ∂x_zᶠᶠᶜ(i, j, k, grid) = zero(grid)
+@inline ∂x_zᶜᶜᶠ(i, j, k, grid) = zero(grid)
+
+# y-direction slopes at different staggerings
+@inline ∂y_zᶜᶠᶜ(i, j, k, grid) = zero(grid)
+@inline ∂y_zᶜᶜᶜ(i, j, k, grid) = zero(grid)
+@inline ∂y_zᶜᶠᶠ(i, j, k, grid) = zero(grid)
+@inline ∂y_zᶠᶜᶜ(i, j, k, grid) = zero(grid)
+@inline ∂y_zᶠᶠᶜ(i, j, k, grid) = zero(grid)
+@inline ∂y_zᶜᶜᶠ(i, j, k, grid) = zero(grid)

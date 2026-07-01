@@ -50,4 +50,3 @@ using Oceananigans.OrthogonalSphericalShellGrids: RotatedLatitudeLongitudeGrid
     @test interior(m1.velocities.u)   == interior(m2.velocities.u)
     @test interior(m1.velocities.v)   == interior(m2.velocities.v)
 end
-

@@ -13,8 +13,9 @@ include("reactant_test_utils.jl")
 
     for momentum_advection in (nothing, VectorInvariant(), WENOVectorInvariant())
         hydrostatic_model_kw = (; momentum_advection, free_surface=ExplicitFreeSurface())
+        rungekutta3_kw = merge(hydrostatic_model_kw, (; timestepper=:SplitRungeKutta3))
         name = string(typeof(momentum_advection).name.wrapper)
-    
+
         @info "  Testing hydrostatic LatitudeLongitudeGrid + ExplicitFreeSurface Reactant correctness with momentum_advection: $name"
         @info "    Not immersed:"
         test_reactant_model_correctness(LatitudeLongitudeGrid,
@@ -22,11 +23,24 @@ include("reactant_test_utils.jl")
                                         lat_lon_kw,
                                         hydrostatic_model_kw)
 
+        @info "    Not immersed, SplitRungeKutta3 timestepper:"
+        test_reactant_model_correctness(LatitudeLongitudeGrid,
+                                        HydrostaticFreeSurfaceModel,
+                                        lat_lon_kw,
+                                        rungekutta3_kw)
+
         @info "    ImmersedBoundaryGrid:"
         simulation = test_reactant_model_correctness(LatitudeLongitudeGrid,
                                                      HydrostaticFreeSurfaceModel,
                                                      lat_lon_kw,
                                                      hydrostatic_model_kw,
+                                                     immersed_boundary_grid=true)
+
+        @info "    ImmersedBoundaryGrid, SplitRungeKutta3 timestepper:"
+        simulation = test_reactant_model_correctness(LatitudeLongitudeGrid,
+                                                     HydrostaticFreeSurfaceModel,
+                                                     lat_lon_kw,
+                                                     rungekutta3_kw,
                                                      immersed_boundary_grid=true)
 
         η = simulation.model.free_surface.displacement
@@ -77,4 +91,3 @@ include("reactant_test_utils.jl")
     test_reactant_model_correctness(LatitudeLongitudeGrid, HydrostaticFreeSurfaceModel, lat_lon_kw, hydrostatic_model_kw)
     =#
 end
-

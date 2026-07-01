@@ -29,7 +29,7 @@ viscAh=300.
 viscAz=2.e-4
 
 grid = RectilinearGrid(topology = (Flat, Bounded, Bounded),
-                       size = (Ny, Nz), 
+                       size = (Ny, Nz),
                        y = (-Ly/2, Ly/2),
                        z = ([0 cumsum(reverse(dz))']'.-Lz),
                        halo = (3, 3))
@@ -98,7 +98,7 @@ function progress(sim)
             prettytime(sim.Δt))
 
     wall_clock[] = time_ns()
-    
+
     return nothing
 end
 
@@ -175,4 +175,3 @@ record(fig, filename * ".mp4", 1:Nt, framerate=8) do i
     @info "Plotting frame $i of $Nt"
     n[] = i
 end
-

@@ -3,7 +3,8 @@ import Dates
 using Dates: AbstractTime
 
 using Oceananigans.Grids: _node
-using Oceananigans.Fields: interpolator, _interpolate, FractionalIndices, instantiated_location, flatten_node, FixedTime
+using Oceananigans.Fields: interpolator, _interpolate, FractionalIndices, instantiated_location, flatten_node, FixedTime,
+                           mapped_data
 using Oceananigans.Architectures: architecture
 using Oceananigans.DistributedComputations: child_architecture, Distributed
 using GPUArraysCore: @allowscalar
@@ -56,7 +57,6 @@ Adapt.adapt_structure(to, ti::TimeInterpolator) =
     tᴺ = last(times)
 
     T = ti.period
-    Δt = T - (tᴺ - t¹)
 
     # Compute modulus of shifted time, then add shift back
     τ = t - t¹
@@ -76,8 +76,8 @@ end
 @inline function interpolating_time_indices(::Clamp, times, t)
     ñ, n₁, n₂ = find_time_index(times, t)
 
-    beyond_indices    = (0, n₂, n₂) # Beyond the last time:  return n₂
-    before_indices    = (0, n₁, n₁) # Before the first time: return n₁
+    beyond_indices    = (zero(ñ), n₂, n₂) # Beyond the last time:  return n₂
+    before_indices    = (zero(ñ), n₁, n₁) # Before the first time: return n₁
     unclamped_indices = (ñ, n₁, n₂) # Business as usual
 
     Nt = length(times)
@@ -136,10 +136,14 @@ end
 import Base: getindex
 
 function getindex(fts::OnDiskFTS, n::Int)
-    # Load data
+    # Bounds check before resolving the file/local index
+    1 <= n <= length(fts.times) || throw(BoundsError(fts, n))
+
+    # Load data from the correct file (handles split files via SplitFilePath)
     arch = architecture(fts)
-    file = jldopen(fts.path; fts.reader_kw...)
-    iter = keys(file["timeseries/t"])[n]
+    filepath, local_n = file_and_local_index(fts.path, n)
+    file = jldopen(filepath; fts.reader_kw...)
+    iter = keys(file["timeseries/t"])[local_n]
     raw_data = on_architecture(arch, file["timeseries/$(fts.name)/$iter"])
     close(file)
 
@@ -164,17 +168,43 @@ end
 @propagate_inbounds setindex!(f::FlavorOfFTS, v, i, j, k, n::Int) = setindex!(f.data, v, i, j, k, memory_index(f, n))
 
 # Reduced FTS
-const XYFTS = FlavorOfFTS{<:Any, <:Any, Nothing, <:Any, <:Any}
-const XZFTS = FlavorOfFTS{<:Any, Nothing, <:Any, <:Any, <:Any}
-const YZFTS = FlavorOfFTS{Nothing, <:Any, <:Any, <:Any, <:Any}
+const XYFTS = FlavorOfFTS{<:Any, <:Any, Nothing}
+const XZFTS = FlavorOfFTS{<:Any, Nothing, <:Any}
+const YZFTS = FlavorOfFTS{Nothing, <:Any, <:Any}
+const XFTS  = FlavorOfFTS{<:Any, Nothing, Nothing}
+const YFTS  = FlavorOfFTS{Nothing, <:Any, Nothing}
+const ZFTS  = FlavorOfFTS{Nothing, Nothing, <:Any}
+const FTS0  = FlavorOfFTS{Nothing, Nothing, Nothing}
 
-@propagate_inbounds getindex(f::XYFTS, i::Int, j::Int, n::Int) = getindex(f.data, i, j, 1, memory_index(f, n))
-@propagate_inbounds getindex(f::XZFTS, i::Int, k::Int, n::Int) = getindex(f.data, i, 1, k, memory_index(f, n))
-@propagate_inbounds getindex(f::YZFTS, j::Int, k::Int, n::Int) = getindex(f.data, 1, j, k, memory_index(f, n))
+# `getbc` for 2D FTS boundary conditions (only possible for 2D, 1D and 0D FTS)
 
-@propagate_inbounds getindex(f::XYFTS, i::Int, j::Int, n::Time) = getindex(f, i, j, 1, n)
-@propagate_inbounds getindex(f::XZFTS, i::Int, k::Int, n::Time) = getindex(f, i, 1, k, n)
-@propagate_inbounds getindex(f::YZFTS, j::Int, k::Int, n::Time) = getindex(f, 1, j, k, n)
+# Bottom and top boundary conditions
+@inline getbc(f::XYFTS, i::Int, j::Int, grid::AbstractGrid, clock, args...) = @inbounds f[i, j, 1, Time(clock.time)]
+
+# South and north boundary conditions
+@inline getbc(f::XZFTS, i::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[i, 1, k, Time(clock.time)]
+
+# West and east boundary conditions
+@inline getbc(f::YZFTS, j::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, j, k, Time(clock.time)]
+
+# Disambiguation for 1D and 0D FTS
+
+# South - north and top - bottom, only the first index is valid (the second one is either j or k)
+@inline getbc(f::XFTS, i::Int, ::Int, grid::AbstractGrid, clock, args...) = @inbounds f[i, 1, 1, Time(clock.time)]
+
+# West - east and top - bottom, this case is not really well defined since the indexes could be i and j or j and k
+# so we check which dimension of the grid is 1 and pick the corresponding index
+@inline function getbc(f::YFTS, i1::Int, i2::Int, grid::AbstractGrid, clock, args...)
+    Nx, _, Nz = size(grid)
+    j = ifelse(Nz == 1, i1, i2)
+    return @inbounds f[1, j, 1, Time(clock.time)]
+end
+
+# West - east and south - north boundary conditions, only the last index is valid (the first one is either i or j)
+@inline getbc(f::ZFTS, ::Int, k::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, 1, k, Time(clock.time)]
+
+# 0D -> index do not matter!
+@inline getbc(f::FTS0, ::Int, ::Int, grid::AbstractGrid, clock, args...) = @inbounds f[1, 1, 1, Time(clock.time)]
 
 #####
 ##### Time interpolation / extrapolation
@@ -236,15 +266,22 @@ end
 ##### Linear time- and space-interpolation of a FTS
 #####
 
-@inline function interpolate(to_node, to_time_index::Time, from_fts::FlavorOfFTS, from_loc, from_grid)
-    data = from_fts.data
-    times = from_fts.times
-    backend = from_fts.backend
+@inline interpolate(to_node, to_time_index::Time, from_fts::FlavorOfFTS, from_loc, from_grid) =
+    interpolate(identity, to_node, to_time_index, from_fts, from_loc, from_grid)
+
+# Space+time interpolation of a `FieldTimeSeries` with each source value mapped through `func`
+# (in the spirit of `mean(func, itr)`). `func = identity` reproduces the unmapped interpolation
+# exactly, since `mapped_data(identity, data)` is `data`. See `Oceananigans.Fields.interpolate(func, …)`.
+@inline function interpolate(func::Base.Callable, to_node, to_time_index::Time,
+                             from_fts::FlavorOfFTS, from_loc, from_grid)
+    data          = mapped_data(func, from_fts.data)
+    times         = from_fts.times
+    backend       = from_fts.backend
     time_indexing = from_fts.time_indexing
     return interpolate(to_node, to_time_index, data, from_loc, from_grid, times, backend, time_indexing)
 end
 
-@inline function interpolate(to_node, to_time_index::Time, data::OffsetArray,
+@inline function interpolate(to_node, to_time_index::Time, data::AbstractArray,
                              from_loc, from_grid, times, backend, time_indexing)
 
     to_time = to_time_index.time
@@ -252,7 +289,7 @@ end
     return interpolate(to_node, interp, data, from_loc, from_grid, backend, time_indexing)
 end
 
-@inline function interpolate(to_node, time_indices::TimeInterpolator, data::OffsetArray,
+@inline function interpolate(to_node, time_indices::TimeInterpolator, data::AbstractArray,
                              from_loc, from_grid, backend, time_indexing)
 
     # Build space interpolators
@@ -268,7 +305,7 @@ end
 end
 
 @inline function interpolate(fi::FractionalIndices, time_indices::TimeInterpolator,
-                             data::OffsetArray, backend, time_indexing)
+                             data::AbstractArray, backend, time_indexing)
 
     ñ  = time_indices.fractional_index
     n₁ = convert(Int, time_indices.first_index)

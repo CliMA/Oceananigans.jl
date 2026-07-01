@@ -129,4 +129,3 @@ frames = 1:length(times)
 record(fig, "splash.mp4", frames, framerate = 12) do nn
     n[] = nn
 end
-

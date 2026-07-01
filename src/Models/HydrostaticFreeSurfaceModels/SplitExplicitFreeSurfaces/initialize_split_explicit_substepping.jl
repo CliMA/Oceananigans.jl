@@ -1,18 +1,17 @@
-using Oceananigans.ImmersedBoundaries: peripheral_node
-using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKutta3TimeStepper
-using Oceananigans.Operators: Δz
+using Oceananigans.Utils
+using Oceananigans.Grids: peripheral_node
+using Oceananigans.TimeSteppers: QuasiAdamsBashforth2TimeStepper, SplitRungeKuttaTimeStepper
 
-# This file contains two different initializations methods performed at different stages of the simulation.
+# This file contains two different methods performed at different stages of the simulation.
 #
-# - `initialize_free_surface!`: the first initialization, performed only once at the beginning of the simulation,
-#                               calculates the barotropic velocities from the velocity initial conditions.
+# - `reconcile_free_surface!`: reconciles the barotropic velocities with the 3D velocity fields.
+#                              Called during `set!` and `initialize!` to ensure consistency.
 #
 # - `initialize_free_surface_state!`: is performed at the beginning of the substepping procedure, resets the filtered state to zero
 #                                     and reinitializes the timestepper auxiliaries from the previous filtered state.
 
-# `initialize_free_surface!` is called at the beginning of the simulation to initialize the free surface state
-# from the initial velocity conditions.
-function initialize_free_surface!(sefs::SplitExplicitFreeSurface, grid, velocities)
+# `reconcile_free_surface!` computes the barotropic mode from velocity fields to ensure consistency.
+function reconcile_free_surface!(sefs::SplitExplicitFreeSurface, grid, velocities)
     barotropic_velocities = sefs.barotropic_velocities
     u, v, w = velocities
     @apply_regionally compute_barotropic_mode!(barotropic_velocities.U,
@@ -25,8 +24,8 @@ function initialize_free_surface!(sefs::SplitExplicitFreeSurface, grid, velociti
     return nothing
 end
 
-# `initialize_free_surface_state!` is called at the beginning of the substepping to
-# reset the filtered state to zero and reinitialize the state from the filtered state.
+# `initialize_free_surface_state!` is called at the beginning of the substepping to reset the filtered state to zero and
+# reinitialize the state from the filtered state.
 function initialize_free_surface_state!(free_surface, baroclinic_timestepper, timestepper)
 
     η = free_surface.displacement
@@ -34,14 +33,17 @@ function initialize_free_surface_state!(free_surface, baroclinic_timestepper, ti
 
     initialize_free_surface_timestepper!(timestepper, η, U, V)
 
-    for field in free_surface.filtered_state
-        fill!(field, 0)
-    end
+    fill!(free_surface.filtered_state.η̅, 0)
+    fill!(free_surface.filtered_state.U̅, 0)
+    fill!(free_surface.filtered_state.V̅, 0)
+    fill!(free_surface.filtered_state.Ũ, 0)
+    fill!(free_surface.filtered_state.Ṽ, 0)
+
     return nothing
 end
 
 # At the last stage we reset the velocities and perform the complete substepping from n to n+1
-function initialize_free_surface_state!(free_surface, baroclinic_ts::SplitRungeKutta3TimeStepper, barotropic_ts)
+function initialize_free_surface_state!(free_surface, baroclinic_ts::SplitRungeKuttaTimeStepper, barotropic_ts)
 
     η = free_surface.displacement
     U, V = free_surface.barotropic_velocities
@@ -57,8 +59,11 @@ function initialize_free_surface_state!(free_surface, baroclinic_ts::SplitRungeK
 
     initialize_free_surface_timestepper!(barotropic_ts, η, U, V)
 
-    for field in free_surface.filtered_state
-        fill!(field, 0)
-    end
+    fill!(free_surface.filtered_state.η̅, 0)
+    fill!(free_surface.filtered_state.U̅, 0)
+    fill!(free_surface.filtered_state.V̅, 0)
+    fill!(free_surface.filtered_state.Ũ, 0)
+    fill!(free_surface.filtered_state.Ṽ, 0)
+
     return nothing
 end

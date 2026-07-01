@@ -87,7 +87,7 @@ function test_reactant_model_correctness(GridType, ModelType, grid_kw, model_kw;
     Oceananigans.TimeSteppers.update_state!(model)
     Oceananigans.Models.HydrostaticFreeSurfaceModels.compute_hydrostatic_momentum_tendencies!(model, model.velocities, :xyz)
     @jit Oceananigans.TimeSteppers.update_state!(r_model)
-    
+
     mod = @code_hlo optimize=:before_jit Oceananigans.Models.HydrostaticFreeSurfaceModels.compute_hydrostatic_momentum_tendencies!(r_model, r_model.velocities, :xyz)
     @jit Oceananigans.Models.HydrostaticFreeSurfaceModels.compute_hydrostatic_momentum_tendencies!(r_model, r_model.velocities, :xyz)
 
@@ -196,4 +196,3 @@ end
     i, j, k = @index(Global, NTuple)
     @inbounds f[i, j, k] += 1
 end
-

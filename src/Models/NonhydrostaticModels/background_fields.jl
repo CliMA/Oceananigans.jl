@@ -21,7 +21,7 @@ function background_tracer_fields(bg, tracer_names, grid, clock)
               regularize_background_field(Center, Center, Center, getindex(bg, c), grid, clock) :
               ZeroField()
               for c in tracer_names)
-        
+
     return NamedTuple{tracer_names}(tracer_fields)
 end
 
@@ -37,7 +37,7 @@ struct BackgroundFields{Q, U, C}
     end
 end
 
-Adapt.adapt_structure(to, bf::BackgroundFields{Q}) where Q =    
+Adapt.adapt_structure(to, bf::BackgroundFields{Q}) where Q =
     BackgroundFields{Q}(adapt(to, bf.velocities), adapt(to, bf.tracers))
 
 const BackgroundFieldsWithClosureFluxes = BackgroundFields{true}
@@ -111,7 +111,7 @@ function regularize_background_field(LX, LY, LZ, field::AbstractField, grid, clo
     if location(field) != (LX, LY, LZ)
         throw(ArgumentError("Cannot use field at $(location(field)) as a background field at $((LX, LY, LZ))"))
     end
-    
+
     return field
 end
 

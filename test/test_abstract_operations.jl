@@ -1,5 +1,7 @@
 include("dependencies_for_runtests.jl")
 
+using Oceananigans.AbstractOperations: ConditionalOperation
+
 function simple_binary_operation(op, a, b, num1, num2)
     a_b = op(a, b)
     interior(a) .= num1
@@ -112,13 +114,13 @@ for arch in archs
                 end
             end
 
-            @test compute!(Field(ZeroField() + u)) == u
-            @test compute!(Field(u + ZeroField())) == u
-            @test compute!(Field(-ZeroField() + u)) == u
-            @test compute!(Field(u - ZeroField())) == u
-            @test compute!(Field(ZeroField() * u)) == ZeroField()
-            @test compute!(Field(u * ZeroField())) == ZeroField()
-            @test compute!(Field(ZeroField() / u)) == ZeroField()
+            @test Field(ZeroField() + u) == u
+            @test Field(u + ZeroField()) == u
+            @test Field(-ZeroField() + u) == u
+            @test Field(u - ZeroField()) == u
+            @test Field(ZeroField() * u) == ZeroField()
+            @test Field(u * ZeroField()) == ZeroField()
+            @test Field(ZeroField() / u) == ZeroField()
             @test u / ZeroField() == ConstantField(Inf)
 
             @test ZeroField() + 1 == ConstantField(1)
@@ -134,15 +136,32 @@ for arch in archs
             @test ZeroField() - ZeroField() == ZeroField()
             @test ZeroField() * ZeroField() == ZeroField()
 
-            @test compute!(Field(ConstantField(1) + u)) == compute!(Field(1 + u))
-            @test compute!(Field(ConstantField(1) - u)) == compute!(Field(1 - u))
-            @test compute!(Field(ConstantField(1) * u)) == compute!(Field(1 * u))
-            @test compute!(Field(u / ConstantField(1))) == compute!(Field(u / 1))
+            @test Field(ConstantField(1) + u) == Field(1 + u)
+            @test Field(ConstantField(1) - u) == Field(1 - u)
+            @test Field(ConstantField(1) * u) == Field(1 * u)
+            @test Field(u / ConstantField(1)) == Field(u / 1)
 
             @test ConstantField(1) + 1 == ConstantField(2)
             @test ConstantField(1) - 1 == ConstantField(0)
             @test ConstantField(1) * 2 == ConstantField(2)
             @test ConstantField(1) / 2 == ConstantField(1/2)
+        end
+
+        @testset "Comparison operations [$A]" begin
+            for (ψ, ϕ) in ((u, v), (u, c))
+                for op in (>, <, >=, <=)
+                    @test op(ψ, ϕ) isa BinaryOperation
+                    @test eltype(op(ψ, ϕ)) == Bool
+                    @test @allowscalar typeof(op(ψ, ϕ)[2, 2, 2]) <: Bool
+                end
+            end
+
+            # Test comparisons with numbers
+            for op in (>, <, >=, <=)
+                @test op(u, 0) isa BinaryOperation
+                @test op(0, u) isa BinaryOperation
+                @test eltype(op(u, 0)) == Bool
+            end
         end
 
         @testset "Multiary operations [$A]" begin
@@ -163,6 +182,48 @@ for arch in archs
             less_trivial_kernel_function(i, j, k, grid, u, v) = @inbounds u[i, j, k] * ℑxyᶠᶜᵃ(i, j, k, grid, v)
             op = KernelFunctionOperation{Face, Center, Center}(less_trivial_kernel_function, grid, u, v)
             @test op isa KernelFunctionOperation
+
+            two_index_kernel_function(i, j, grid) = i + j
+            op = KernelFunctionOperation{Center, Center, Nothing}(two_index_kernel_function, grid)
+            @test op isa KernelFunctionOperation
+            @test Array(interior(Field(op), :, :, 1)) == [i + j for i in 1:size(grid, 1), j in 1:size(grid, 2)]
+
+            one_index_kernel_function(k, grid) = 2k
+            op = KernelFunctionOperation{Nothing, Nothing, Center}(one_index_kernel_function, grid)
+            @test Array(interior(Field(op), 1, 1, :)) == [2k for k in 1:size(grid, 3)]
+
+            q = CenterField(grid)
+            set!(q, 2)
+            interior_pattern_kernel_function(i, k, grid, q) = @inbounds q[i, 1, k] * i * k
+            op = KernelFunctionOperation{Center, Nothing, Center}(interior_pattern_kernel_function, grid, q)
+            @test  Array(interior(Field(op), :, 1, :)) == [2 * i * k for i in 1:size(grid, 1), k in 1:size(grid, 3)]
+
+            # Varargs kernel functions keep the full three-index convention...
+            varargs_kernel_function(arguments...) = arguments[1] + arguments[2] + arguments[3]
+            op = KernelFunctionOperation{Center, Center, Nothing}(varargs_kernel_function, grid)
+            @test  Array(interior(Field(op), :, :, 1)) == [i + j + 1 for i in 1:size(grid, 1), j in 1:size(grid, 2)]
+
+            # ... unless only the reduced call is applicable (here the typed grid argument rejects `grid ← k`)
+            reduced_varargs_kernel_function(i, j, grid::Oceananigans.Grids.AbstractGrid, arguments...) = i * j + length(arguments)
+            op = KernelFunctionOperation{Center, Center, Nothing}(reduced_varargs_kernel_function, grid)
+            @test  Array(interior(Field(op), :, :, 1)) == [i * j for i in 1:size(grid, 1), j in 1:size(grid, 2)]
+
+            # When the full three-index call is applicable it is preferred, even if a
+            # reduced-arity method also exists (heavily overloaded operators rely on this)
+            dual_kernel_function(i, j, grid) = i + j
+            dual_kernel_function(i, j, k, grid) = -7
+            op = KernelFunctionOperation{Center, Center, Nothing}(dual_kernel_function, grid)
+            @test  Array(interior(Field(op), :, :, 1)) == fill(-7, size(grid, 1), size(grid, 2))
+
+            # Spacing operators (e.g. Δx) have reduced-arity helper methods that must not be
+            # mistaken for the reduced form at reduced locations
+            @test Array(interior(Field(xspacings(grid, Center(), Center(), Center())), :, 1, 1)) ==
+                  [Oceananigans.Operators.Δx(i, 1, 1, grid, Center(), Center(), Center()) for i in 1:size(grid, 1)]
+
+            # Three-index kernel functions at reduced locations still work
+            three_index_kernel_function(i, j, k, grid) = i + j
+            op = KernelFunctionOperation{Center, Center, Nothing}(three_index_kernel_function, grid)
+            @test Array(interior(compute!(Field(op))))[:, :, 1] == [i + j for i in 1:size(grid, 1), j in 1:size(grid, 2)]
         end
 
         @testset "Fidelity of simple binary operations" begin
@@ -174,13 +235,20 @@ for arch in archs
             u, v, w = VelocityFields(grid)
             T, S = TracerFields((:T, :S), grid)
 
-            for op in (+, *, -, /)
+            for op in (+, *, -, /, atand, atan, mod)
                 @test simple_binary_operation(op, u, v, num1, num2)
                 @test simple_binary_operation(op, u, w, num1, num2)
                 @test simple_binary_operation(op, u, T, num1, num2)
                 @test simple_binary_operation(op, T, S, num1, num2)
             end
             @test three_field_addition(u, v, w, num1, num2)
+
+            # Comparison operations
+            for op in (>, <, >=, <=)
+                @test simple_binary_operation(op, u, v, num1, num2)
+                @test simple_binary_operation(op, u, v, num2, num1)
+                @test simple_binary_operation(op, T, S, num1, num1) # equal values
+            end
         end
 
         @testset "Derivatives" begin
@@ -289,6 +357,23 @@ for arch in archs
             @test u + 2 isa BinaryOperation
             @test u - 2 isa BinaryOperation
             @test u / 2 isa BinaryOperation
+
+            # Comparison operators produce BinaryOperations
+            @test (u > v) isa BinaryOperation
+            @test (u < v) isa BinaryOperation
+            @test (u >= v) isa BinaryOperation
+            @test (u <= v) isa BinaryOperation
+            @test (u > 0) isa BinaryOperation
+            @test (0 < u) isa BinaryOperation
+
+            # Eltype inference: arithmetic ops return Float64, comparisons return Bool
+            @test eltype(u + v) == Float64
+            @test eltype(u * v) == Float64
+            @test eltype(sin(u)) == Float64
+            @test eltype(u + v + w) == Float64
+            @test eltype(u > v) == Bool
+            @test eltype(u >= 0) == Bool
+            @test eltype(0 < u) == Bool
         end
 
         @testset "BinaryOperations with grid metric operations [$A]" begin
@@ -349,6 +434,25 @@ for arch in archs
                 @test c_z[2, 2, 2] == znode(2, 2, 2, grid, Center(), Center(), Center())
                 @test w_z[2, 2, 2] == znode(2, 2, 2, grid, Center(), Center(), Face())
             end
+
+            # Test binary operations with GridMetric and location type tuples (not instances)
+            op = *((Center, Center, Center), AbstractOperations.Δx, c)
+            @test op isa BinaryOperation
+            op = *((Center, Center, Center), c, AbstractOperations.Δx)
+            @test op isa BinaryOperation
+        end
+
+        @testset "ConditionalOperation from ConditionalOperation [$A]" begin
+            @info "  Testing ConditionalOperation constructed from ConditionalOperation [$A]"
+            grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
+            c = CenterField(grid)
+            set!(c, 1)
+            cond(i, j, k, grid, c) = @inbounds c[i, j, k] > 0
+            co = ConditionalOperation(c; condition=cond, mask=0)
+            # Test constructing a new ConditionalOperation from an existing one
+            co2 = ConditionalOperation(co; func=abs)
+            @test co2 isa ConditionalOperation
+            @test co2.operand === c
         end
 
         @testset "Indexing of AbstractOperations [$A]" begin

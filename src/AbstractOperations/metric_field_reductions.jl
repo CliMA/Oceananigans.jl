@@ -126,14 +126,14 @@ julia> set!(f, (x, y, z) -> x * y * z)
 └── data: 14×14×14 OffsetArray(::Array{Float64, 3}, -2:11, -2:11, -2:11) with eltype Float64 with indices -2:11×-2:11×-2:11
     └── max=0.823975, min=0.000244141, mean=0.125
 
-julia> ∫f = Integral(f)
-Integral of BinaryOperation at (Center, Center, Center) over dims (1, 2, 3)
-└── operand: BinaryOperation at (Center, Center, Center)
-    └── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
-
-julia> ∫f = Field(Integral(f));
-
-julia> compute!(∫f);
+julia> ∫f = Integral(f) |> Field
+1×1×1 Field{Nothing, Nothing, Nothing} reduced over dims = (1, 2, 3) on RectilinearGrid on CPU
+├── data: OffsetArrays.OffsetArray{Float64, 3, Array{Float64, 3}}, size: (1, 1, 1)
+├── grid: 8×8×8 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 3×3×3 halo
+├── operand: Integral of BinaryOperation at (Center, Center, Center) over dims (1, 2, 3)
+├── status: time=0.0
+└── data: 1×1×1 OffsetArray(::Array{Float64, 3}, 1:1, 1:1, 1:1) with eltype Float64 with indices 1:1×1:1×1:1
+    └── max=0.125, min=0.125, mean=0.125
 
 julia> ∫f[1, 1, 1]
 0.125
@@ -176,8 +176,7 @@ grid = RectilinearGrid(size=8, z=(0, 1), topology=(Flat, Flat, Bounded))
 c = CenterField(grid)
 set!(c, z -> z)
 
-∫ᶻc_ci = CumulativeIntegral(c, dims=3)
-∫ᶻc = Field(∫ᶻc_ci)
+∫ᶻc_ci = CumulativeIntegral(c, dims=3) |> Field
 
 # output
 1×1×9 Field{Center, Center, Face} on RectilinearGrid on CPU
@@ -191,14 +190,14 @@ set!(c, z -> z)
 """
 function CumulativeIntegral(field::AbstractField; dims, reverse=false, condition=nothing, mask=0)
     dims ∈ (1, 2, 3) || throw(ArgumentError("CumulativeIntegral only supports dims=1, 2, or 3."))
-    
+
     # Check that we're not accumulating over a Periodic dimension
     topo = topology(field.grid, dims)
     if topo === Periodic
         throw(ArgumentError("CumulativeIntegral does not support Periodic dimensions. " *
                             "The cumulative integral of a periodic function is not periodic."))
     end
-    
+
     maybe_reverse_cumsum = reverse ? reverse_cumsum! : cumsum!
     dx = reduction_grid_metric(dims)
     operand = condition_operand(field * dx, condition, mask)

@@ -45,6 +45,9 @@
 
 using Oceananigans
 using Oceananigans.Units: minutes, hour, hours, day
+using Random
+
+Random.seed!(1234) # for reproducible results
 
 grid = RectilinearGrid(size=(64, 64), extent=(64, 64), halo=(3, 3), topology=(Periodic, Flat, Bounded))
 
