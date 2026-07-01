@@ -312,10 +312,6 @@ struct ColumnwiseTridiagonalLowerDiagonal end
 struct ColumnwiseTridiagonalDiagonal end
 struct ColumnwiseTridiagonalUpperDiagonal end
 
-# inactive_cell flags both immersed faces and Bounded-domain halos, so masking the geometric
-# couplings here encodes the BCs that V∇² sees through fill_halo_regions!. The lower and upper
-# diagonals share the same value az⁺(k) = az⁻(k+1): with the BatchedTridiagonalSolver indexing
-# convention the row-k lower coupling is read from index k-1, so a[k] and c[k] both equal az⁺(k).
 @inline function columnwise_tridiagonal_offdiagonal(i, j, k, grid)
     az⁺ = ifelse(inactive_cell(i, j, k+1, grid), zero(grid), Azᶜᶜᶠ(i, j, k+1, grid) * Δz⁻¹ᶜᶜᶠ(i, j, k+1, grid))
     return ifelse(inactive_cell(i, j, k, grid), zero(grid), az⁺)
