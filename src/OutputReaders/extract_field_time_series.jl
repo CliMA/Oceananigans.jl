@@ -51,7 +51,6 @@ for T in CannotPossiblyContainFTS
     @eval extract_field_time_series(::$T) = ()
 end
 
-# Special recursion rules for `AbstractOperation`, `Tuple` and `NamedTuple`
 extract_field_time_series(t::AbstractOperation) =
     has_field_time_series(typeof(t)) ?
         concatenate_extracted(map(p -> extract_field_time_series(getproperty(t, p)), propertynames(t))) : ()
