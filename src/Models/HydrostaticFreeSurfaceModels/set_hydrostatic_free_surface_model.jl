@@ -4,7 +4,9 @@ using Oceananigans.Utils: @apply_regionally
 import Oceananigans.Fields: set!
 
 """
-    set!(model::HydrostaticFreeSurfaceModel; kwargs...)
+    set!(model::HydrostaticFreeSurfaceModel;
+         u=ZeroField(), v=ZeroField(), intrinsic_velocities=false,
+         reconcile_state=true, kwargs...)
 
 Set velocity and tracer fields of `model`. The keyword arguments `kwargs...`
 take the form `name = data`, where `name` refers to one of the fields of either:
@@ -46,6 +48,7 @@ model.velocities.u
 """
 @inline function set!(model::HydrostaticFreeSurfaceModel;
                       u=ZeroField(), v=ZeroField(), intrinsic_velocities=false,
+                      reconcile_state=true,
                       kwargs...)
 
     set_velocities!(model, u, v; intrinsic_velocities)
@@ -66,13 +69,10 @@ model.velocities.u
         end
 
         @apply_regionally set!(ϕ, value)
-
-        if fldname ∈ propertynames(model.free_surface)
-            fill_halo_regions!(ϕ, model.grid, model.clock, fields(model))
-        end
     end
 
-    initialization_update_state!(model)
+    reconcile_state && reconcile_state!(model)
+    update_state!(model)
 
     return nothing
 end

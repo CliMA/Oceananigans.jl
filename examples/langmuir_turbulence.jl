@@ -4,6 +4,9 @@
 # reported in section 4 of
 #
 # ```@bibliography
+# Pages = []
+# Canonical = false
+#
 # Wagner2021
 # ```
 #
@@ -26,6 +29,10 @@
 using Oceananigans
 using Oceananigans.Units: minute, minutes, hours
 using CUDA
+using Random
+using Zarr
+
+Random.seed!(1337) # for reproducible results
 
 # ## Model set-up
 #
@@ -198,16 +205,18 @@ simulation.callbacks[:progress] = Callback(progress, IterationInterval(20))
 # ### A field writer
 #
 # We set up an output writer for the simulation that saves all velocity fields,
-# tracer fields, and the subgrid turbulent diffusivity.
+# tracer fields, and the subgrid turbulent diffusivity. We write to a Zarr store —
+# each output becomes a chunked array of shape `(Nx, Ny, Nz, Nt)` that grows along
+# the time axis. The on-disk layout is friendly to chunked / parallel reads.
 
 output_interval = 5minutes
 
 fields_to_output = merge(model.velocities, model.tracers)
 
 simulation.output_writers[:fields] =
-    JLD2Writer(model, fields_to_output,
+    ZarrWriter(model, fields_to_output,
                schedule = TimeInterval(output_interval),
-               filename = "langmuir_turbulence_fields.jld2",
+               filename = "langmuir_turbulence_fields.zarr",
                overwrite_existing = true)
 
 # ### An "averages" writer
@@ -225,9 +234,9 @@ wu = Average(w * u, dims=(1, 2))
 wv = Average(w * v, dims=(1, 2))
 
 simulation.output_writers[:averages] =
-    JLD2Writer(model, (; U, V, B, wu, wv),
+    ZarrWriter(model, (; U, V, B, wu, wv),
                schedule = AveragedTimeInterval(output_interval, window=2minutes),
-               filename = "langmuir_turbulence_averages.jld2",
+               filename = "langmuir_turbulence_averages.zarr",
                overwrite_existing = true)
 
 # ## Running the simulation
@@ -245,13 +254,13 @@ run!(simulation)
 using CairoMakie
 
 time_series = (;
-     w = FieldTimeSeries("langmuir_turbulence_fields.jld2", "w"),
-     u = FieldTimeSeries("langmuir_turbulence_fields.jld2", "u"),
-     B = FieldTimeSeries("langmuir_turbulence_averages.jld2", "B"),
-     U = FieldTimeSeries("langmuir_turbulence_averages.jld2", "U"),
-     V = FieldTimeSeries("langmuir_turbulence_averages.jld2", "V"),
-    wu = FieldTimeSeries("langmuir_turbulence_averages.jld2", "wu"),
-    wv = FieldTimeSeries("langmuir_turbulence_averages.jld2", "wv"))
+     w = FieldTimeSeries("langmuir_turbulence_fields.zarr", "w"),
+     u = FieldTimeSeries("langmuir_turbulence_fields.zarr", "u"),
+     B = FieldTimeSeries("langmuir_turbulence_averages.zarr", "B"),
+     U = FieldTimeSeries("langmuir_turbulence_averages.zarr", "U"),
+     V = FieldTimeSeries("langmuir_turbulence_averages.zarr", "V"),
+    wu = FieldTimeSeries("langmuir_turbulence_averages.zarr", "wu"),
+    wv = FieldTimeSeries("langmuir_turbulence_averages.zarr", "wv"))
 
 times = time_series.w.times
 nothing #hide

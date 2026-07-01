@@ -10,30 +10,32 @@ fill_halo_regions!(::Ref, args...; kwargs...) = nothing # a lot of Refs are pass
 fill_halo_regions!(::Nothing, args...; kwargs...) = nothing
 
 """
-    fill_halo_regions!(fields::Union{Tuple, NamedTuple}, arch, args...)
+$(TYPEDSIGNATURES)
 
-Fill halo regions for each field in the tuple `fields` according to their boundary
-conditions, possibly recursing into `fields` if it is a nested tuple-of-tuples.
+Do nothing: data `c` whose boundary conditions are `nothing` has no halos to fill. Some fields
+carry `nothing` boundary conditions, such as `FunctionField` and `ZeroField`.
 """
-fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = nothing # Some fields have `nothing` boundary conditions, such as `FunctionField` and `ZeroField`.
+fill_halo_regions!(c::OffsetArray, ::Nothing, args...; kwargs...) = nothing
 
 "Fill halo regions in ``x``, ``y``, and ``z`` for a given field's data."
 function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, grid, args...; kwargs...)
-
     kernels!, bcs = get_boundary_kernels(boundary_conditions, c, grid, loc, indices)
-    number_of_tasks = length(kernels!)
+    fill_halo_events!(c, values(kernels!), values(bcs), loc, grid, args...; kwargs...)
+    return nothing
+end
 
-    # Fill halo in the three permuted directions (1, 2, and 3), making sure dependencies are fulfilled
-    for task = 1:number_of_tasks
-        @inbounds fill_halo_event!(c, kernels![task], bcs[task], loc, grid, args...; kwargs...)
-    end
+@inline fill_halo_events!(c, ::Tuple{}, ::Tuple{}, loc, grid, args...; kwargs...) = nothing
 
+@inline function fill_halo_events!(c, kernels!::Tuple, bcs::Tuple, loc, grid, args...; kwargs...)
+    fill_halo_event!(c, first(kernels!), first(bcs), loc, grid, args...; kwargs...)
+    fill_halo_events!(c, Base.tail(kernels!), Base.tail(bcs), loc, grid, args...; kwargs...)
     return nothing
 end
 
 const NoBCs = Union{Nothing, Missing, Tuple{Vararg{Nothing}}}
 
-@inline fill_halo_event!(c, kernel!, bcs, loc, grid, args...; kwargs...) = kernel!(c, bcs..., loc, grid, Tuple(args))
+@inline fill_halo_event!(c, kernel!, bcs::Tuple{Any, Any}, loc, grid, args...; kwargs...) = kernel!(c, bcs[1], bcs[2], loc, grid, args)
+@inline fill_halo_event!(c, kernel!, bcs::Tuple{Any}, loc, grid, args...; kwargs...) = kernel!(c, bcs[1], loc, grid, args)
 @inline fill_halo_event!(c, ::Nothing, ::NoBCs, loc, grid, args...; kwargs...) = nothing
 
 #####

@@ -47,7 +47,7 @@ end
 # the MPI tag is an integer with:
 #   digit 1-2: an counter which keeps track of how many communications are live. The counter is stored in `arch.mpi_tag`
 #   digit 3-4: a unique identifier for the field's location that goes from 0 - 26 (see `loc_id`)
-#   digit 5: the side we send / recieve from
+#   digit 5: the side we send / receive from
 
 for side in sides
     side_str = string(side)
@@ -89,12 +89,9 @@ function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, g
     arch = architecture(grid)
     kernels!, bcs = get_boundary_kernels(boundary_conditions, c, grid, loc, indices)
 
-    number_of_tasks  = length(kernels!)
     outstanding_requests = length(arch.mpi_requests)
 
-    for task = 1:number_of_tasks
-        @inbounds distributed_fill_halo_event!(c, kernels![task], bcs[task], loc, grid, args...; kwargs...)
-    end
+    distributed_fill_halo_events!(c, values(kernels!), values(bcs), loc, grid, args...; kwargs...)
 
     fill_corners!(c, arch.connectivity, indices, loc, arch, grid, args...; kwargs...)
 
@@ -105,6 +102,14 @@ function fill_halo_regions!(c::OffsetArray, boundary_conditions, indices, loc, g
         arch.mpi_tag[] += 1
     end
 
+    return nothing
+end
+
+@inline distributed_fill_halo_events!(c, ::Tuple{}, ::Tuple{}, loc, grid, args...; kwargs...) = nothing
+
+@inline function distributed_fill_halo_events!(c, kernels!::Tuple, bcs::Tuple, loc, grid, args...; kwargs...)
+    distributed_fill_halo_event!(c, first(kernels!), first(bcs), loc, grid, args...; kwargs...)
+    distributed_fill_halo_events!(c, Base.tail(kernels!), Base.tail(bcs), loc, grid, args...; kwargs...)
     return nothing
 end
 
@@ -138,6 +143,10 @@ function fill_corners!(c, connectivity, indices, loc, arch, grid, buffers, args.
 
     # No corner filling needed!
     only_local_halos && return nothing
+
+    # Skip corners entirely if no corner neighbors exist (avoids unnecessary sync_device!)
+    isnothing(connectivity.southwest) && isnothing(connectivity.southeast) &&
+    isnothing(connectivity.northwest) && isnothing(connectivity.northeast) && return nothing
 
     # This has to be synchronized!
     fill_send_buffers!(c, buffers, grid, Val(:corners))

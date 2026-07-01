@@ -23,11 +23,13 @@
 using Oceananigans
 using Oceananigans.Units
 
-using CUDA
-using Random
-using Printf
 using CairoMakie
+using CUDA
+using Printf
+using Random
 using SeawaterPolynomials.TEOS10: TEOS10EquationOfState
+
+Random.seed!(1969) # for reproducible results
 
 # ## The grid
 #

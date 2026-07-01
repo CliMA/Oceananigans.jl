@@ -2,11 +2,11 @@ env:
   JULIA_VERSION: "1.12.5"
   JULIA_VERSION_ENZYME: "1.10.10"
   BUILDKITE_HOME: "/var/lib/buildkite-agent"
-  JULIA_DEPOT_PATH: "$BUILDKITE_HOME/.julia-oceananigans"
+  JULIA_DEPOT_PATH: "$BUILDKITE_HOME/.julia:"
   JULIA_PKG_SERVER_REGISTRY_PREFERENCE: eager
   XLA_REACTANT_GPU_PREALLOCATE: false
   OCEANANIGANS_DIR: "$HOME/Oceananigans.jl-$BUILDKITE_BUILD_NUMBER"
-
+  JULIA_CUDA_USE_COMPAT: false
 agents:
   queue: "Oceananigans"
 with:
@@ -25,6 +25,10 @@ steps:
       mkdir -p "$OCEANANIGANS_DIR"
       rsync -a . "$OCEANANIGANS_DIR/"
       cd "$OCEANANIGANS_DIR"
+
+      # On Nautilus we have old GPUs which require CUDA toolkit v12, can't
+      # use v13.
+      echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
 
       julia +$JULIA_VERSION -O0 --color=yes --project -e 'using Pkg; Pkg.test()'
       # After we have instantiated the general environment, move manifest to the
@@ -46,6 +50,10 @@ steps:
       juliaup add $JULIA_VERSION_ENZYME
       cd "$OCEANANIGANS_DIR"
 
+      # On Nautilus we have old GPUs which require CUDA toolkit v12, can't
+      # use v13.
+      echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
+
       julia +$JULIA_VERSION_ENZYME -O0 --color=yes --project -e 'using Pkg; Pkg.test(julia_args=["--check-bounds=auto"])' # Remove --check-bounds=auto when https://github.com/EnzymeAD/Reactant.jl/issues/2347 is fixed
       # After we have instantiated the Enzyme environment, move manifest to the
       # version-specific filename, not to clash with the general manifest.
@@ -63,9 +71,22 @@ steps:
       CUDA_VISIBLE_DEVICES: "0" # GPU for docs
     command: |
       cd "$OCEANANIGANS_DIR"
+
+      # On Nautilus we have old GPUs which require CUDA toolkit v12, can't
+      # use v13.
+      echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > docs/LocalPreferences.toml
+
+      # `docs/Manifest.toml` is ignored and may persist in the agent checkout
+      # across builds. Resolve the docs environment from `docs/Project.toml`.
+      rm -f docs/Manifest.toml
+
       julia +$JULIA_VERSION --color=yes --project=docs/ -e \
         'using Pkg; Pkg.instantiate()'
       julia +$JULIA_VERSION --color=yes --project=docs/ docs/make.jl
+
+      tar czf docs/docs-build.tar.gz docs/build
+    artifact_paths:
+      - "$OCEANANIGANS_DIR/docs/docs-build.tar.gz"
 
   - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
     key: "tests"
@@ -86,6 +107,10 @@ steps:
       group="{{ matrix.group }}"
       export TEST_GROUP="\${group#* }"
       echo $TEST_GROUP
+
+      # On Nautilus we have old GPUs which require CUDA toolkit v12, can't
+      # use v13.
+      echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
 
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
@@ -126,20 +151,61 @@ steps:
           - "🕊 poisson_solvers_1"
           - "🦤 general_solvers"
           - "🎣 turbulence_closures"
+          - "🏀 coriolis"
           - "🦀 time_stepping_1"
           - "🦈 time_stepping_2"
           - "🦟 time_stepping_3"
           - "🐫 nonhydrostatic_regression"
           - "🐙 hydrostatic_free_surface"
           - "🫐 tripolar_grid"
-          - "🥑 vertical_coordinate"
+          - "🥑 vertical_coordinate_1"
+          - "🍎 vertical_coordinate_2"
           - "🙈 hydrostatic_regression"
           - "🦢 shallow_water"
           - "🐳 simulation"
           - "🍂 lagrangian_particles"
           - "🧅 multi_region"
           - "🦧 scripts"
-          - "🍱 xesmf"
+
+    retry:
+      automatic:
+        - exit_status: 1
+          limit: 1
+
+  - label: "{{ matrix.architecture }} - {{ matrix.group }} tests"
+    key: "test_memory_allocation"
+    depends_on: "init"
+    agents:
+      queue: "Oceananigans-nautilus"
+    command: |
+      # Add matrix-specific environment variables
+      if [[ "{{ matrix.architecture }}" == "CPU" ]]; then
+        export CUDA_VISIBLE_DEVICES="-1"
+        export TEST_ARCHITECTURE="CPU"
+      else
+        export CUDA_VISIBLE_DEVICES="0"
+        export TEST_ARCHITECTURE="GPU"
+      fi
+
+      # Strip emoji for environment variable
+      group="{{ matrix.group }}"
+      export TEST_GROUP="\${group#* }"
+      echo $TEST_GROUP
+
+      # On Nautilus we have old GPUs which require CUDA toolkit v12, can't
+      # use v13.
+      echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
+
+      # CodeCov increases allocations, we run without it to test memory allocations
+      julia +$JULIA_VERSION --color=yes --project -e 'using Pkg; Pkg.test(julia_args=["--check-bounds=auto"])'
+
+    matrix:
+      setup:
+        architecture:
+          - "CPU"
+          - "GPU"
+        group:
+          - "🧠 memory_allocation"
 
     retry:
       automatic:
@@ -165,6 +231,10 @@ steps:
       group="{{ matrix.group }}"
       export TEST_GROUP="\${group#* }"
       echo $TEST_GROUP
+
+      # On Nautilus we have old GPUs which require CUDA toolkit v12, can't
+      # use v13.
+      echo -e '[CUDA_Runtime_jll]\nversion = "12.9"' > test/LocalPreferences.toml
 
       # Run tests (but don't exit immediately so we can upload coverage even if tests fail)
       set +e
@@ -201,6 +271,7 @@ steps:
           - "🎭 reactant_2"
           - "👺 enzyme"
           - "👹 reactant_1"
+          - "🧪 reactant_correctness"
 
     retry:
       automatic:

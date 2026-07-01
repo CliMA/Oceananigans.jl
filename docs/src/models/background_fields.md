@@ -105,3 +105,35 @@ FunctionField located at (Center, Center, Center)
 ├── clock: Clock{Float64, Float64}(time=0 seconds, iteration=0, last_Δt=Inf days)
 └── parameters: (α = 3.14, N = 1.0, f = 0.1)
 ```
+
+## Turbulent fluxes of background fields
+
+By default, only the advective interaction between the background and resolved fields is included
+(as described above). Turbulent closure fluxes acting on background fields are neglected.
+
+To include them, construct `BackgroundFields` explicitly with `background_closure_fluxes=true`
+and pass it to the model:
+
+```jldoctest
+using Oceananigans
+using Oceananigans.Models.NonhydrostaticModels: BackgroundFields
+
+U(x, y, z, t) = 0.2 * z  # linear shear background velocity
+background_fields = BackgroundFields(background_closure_fluxes=true, u=U)
+
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+model = NonhydrostaticModel(grid; background_fields, closure=ScalarDiffusivity(ν=1e-4, κ=1e-5))
+
+model.background_fields.velocities.u
+
+# output
+FunctionField located at (Face, Center, Center)
+├── func: U (generic function with 1 method)
+├── grid: 1×1×1 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 1×1×1 halo
+├── clock: Clock{Float64, Float64}(time=0 seconds, iteration=0, last_Δt=Inf days)
+└── parameters: nothing
+```
+
+This is relevant when background gradients are large enough that diffusive fluxes from the
+background field contribute non-negligibly to the resolved dynamics — for example, in
+strongly sheared background flows with active turbulence closures.

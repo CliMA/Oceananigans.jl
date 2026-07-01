@@ -1,15 +1,16 @@
 import Oceananigans: prognostic_state, restore_prognostic_state!
-using Oceananigans.BoundaryConditions:  construct_boundary_conditions_kernels, OBC, MCBC,
+using Oceananigans.BoundaryConditions:  construct_boundary_conditions_kernels, NFBC, MCBC,
     Zipper, validate_boundary_condition_architecture, validate_boundary_condition_topology
 using Oceananigans.Grids: parent_index_range, default_indices, validate_indices,
     index_range_contains, halo_size, offset_data, interior_parent_indices
 using Oceananigans.Utils: @apply_regionally, getregion
-using Oceananigans.Architectures: convert_to_device
+using Oceananigans.Architectures: CPU, convert_to_device, on_architecture
 
 using LinearAlgebra: LinearAlgebra
 using KernelAbstractions: @kernel, @index
 using Base: @propagate_inbounds
 using GPUArraysCore: @allowscalar
+using ReactantCore: ReactantCore
 using Statistics: Statistics
 
 #####
@@ -28,8 +29,8 @@ struct Field{LX, LY, LZ, O, G, I, D, T, B, S, F} <: AbstractField{LX, LY, LZ, G,
     # Inner constructor that does not validate _anything_!
     function Field{LX, LY, LZ}(grid::G, data::D, bcs::B, indices::I, op::O, status::S, buffers::F) where {LX, LY, LZ, G, D, B, O, S, I, F}
         T = eltype(data)
-        @apply_regionally new_bcs = construct_boundary_conditions_kernels(bcs, data, grid, (LX(), LY(), LZ()), indices) # Adding the kernels to the bcs
-        return new{LX, LY, LZ, O, G, I, D, T, typeof(new_bcs), S, F}(grid, data, new_bcs, indices, op, status, buffers)
+        @apply_regionally local_bcs = construct_boundary_conditions_kernels(bcs, data, grid, (LX(), LY(), LZ()), indices) # Adding the kernels to the bcs
+        return new{LX, LY, LZ, O, G, I, D, T, typeof(local_bcs), S, F}(grid, data, local_bcs, indices, op, status, buffers)
     end
 end
 
@@ -53,7 +54,7 @@ end
 validate_boundary_condition_location(bc, ::Center, side) = nothing          # anything goes for centers
 validate_boundary_condition_location(::Nothing, ::Nothing, side) = nothing  # its nothing or nothing
 
-const ValidFaceBCS = Union{OBC, Nothing, Missing, MCBC}
+const ValidFaceBCS = Union{NFBC, Nothing, Missing, MCBC}
 validate_boundary_condition_location(::ValidFaceBCS, ::Face, side) = nothing  # only open, connected or nothing on faces
 validate_boundary_condition_location(bc, loc, side) = # everything else is wrong!
     throw(ArgumentError("Cannot specify $side boundary condition $bc on a field at $(loc)!"))
@@ -152,6 +153,8 @@ at the fluid's surface ``z = 0``, which for `Center` corresponds to `k = Nz`.
 ```jldoctest fields
 julia> u = XFaceField(grid); v = YFaceField(grid);
 
+julia> set!(u, (x, y, z) -> x * y); set!(v, (x, y, z) -> x^2 * y);
+
 julia> ωₛ = Field(∂x(v) - ∂y(u), indices=(:, :, grid.Nz))
 2×3×1 Field{Face, Face, Center} on RectilinearGrid on CPU
 ├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
@@ -161,18 +164,7 @@ julia> ωₛ = Field(∂x(v) - ∂y(u), indices=(:, :, grid.Nz))
 ├── operand: BinaryOperation at (Face, Face, Center)
 ├── status: time=0.0
 └── data: 6×9×1 OffsetArray(::Array{Float64, 3}, -1:4, -2:6, 4:4) with eltype Float64 with indices -1:4×-2:6×4:4
-    └── max=0.0, min=0.0, mean=0.0
-
-julia> compute!(ωₛ)
-2×3×1 Field{Face, Face, Center} on RectilinearGrid on CPU
-├── grid: 2×3×4 RectilinearGrid{Float64, Periodic, Periodic, Bounded} on CPU with 2×3×3 halo
-├── boundary conditions: FieldBoundaryConditions
-│   └── west: Periodic, east: Periodic, south: Periodic, north: Periodic, bottom: Nothing, top: Nothing, immersed: Nothing
-├── indices: (:, :, 4:4)
-├── operand: BinaryOperation at (Face, Face, Center)
-├── status: time=0.0
-└── data: 6×9×1 OffsetArray(::Array{Float64, 3}, -1:4, -2:6, 4:4) with eltype Float64 with indices -1:4×-2:6×4:4
-    └── max=0.0, min=0.0, mean=0.0
+    └── max=0.166667, min=-0.25, mean=-0.0208333
 ```
 """
 function Field{LX, LY, LZ}(grid::AbstractGrid,
@@ -246,7 +238,7 @@ function Base.similar(f::Field, grid=f.grid)
 end
 
 """
-    offset_windowed_data(data, data_indices, loc, grid, view_indices)
+$(TYPEDSIGNATURES)
 
 Return an `OffsetArray` of `parent(data)`.
 
@@ -272,7 +264,7 @@ end
 convert_colon_indices(view_indices, field_indices) = view_indices
 convert_colon_indices(::Colon, field_indices) = field_indices
 """
-    view(f::Field, indices...)
+$(TYPEDSIGNATURES)
 
 Returns a `Field` with `indices`, whose `data` is
 a view into `f`, offset to preserve index meaning.
@@ -415,13 +407,16 @@ function interior(a::OffsetArray,
 end
 
 """
-    interior(f::Field)
+$(TYPEDSIGNATURES)
 
 Return a view of `f` that excludes halo points.
 """
 interior(f::Field) = interior(f.data, location(f), f.grid, f.indices)
 interior(a::OffsetArray, loc, grid, indices) = interior(a, loc, topology(grid), size(grid), halo_size(grid), indices)
 interior(f::Field, I...) = view(interior(f), I...)
+
+ReactantCore.materialize_traced_array(f::Field) =
+    ReactantCore.materialize_traced_array(interior(f))
 
 # Don't use axes(f) to checkbounds; use axes(f.data)
 Base.checkbounds(f::Field, I...) = Base.checkbounds(f.data, I...)
@@ -518,14 +513,14 @@ struct FixedTime{T}
 end
 
 """
-    compute_at!(field, time)
+$(TYPEDSIGNATURES)
 
 Computes `field.data` at `time`. Falls back to compute!(field).
 """
 compute_at!(field, time) = compute!(field)
 
 """
-    compute_at!(field, time)
+$(TYPEDSIGNATURES)
 
 Computes `field.data` if `time != field.status.time`.
 """
@@ -701,7 +696,7 @@ get_neutral_mask(::MinimumReduction) = +Inf
 get_neutral_mask(::MaximumReduction) = -Inf
 
 """
-    condition_operand(f::Function, op::AbstractField, condition, mask)
+$(TYPEDSIGNATURES)
 
 Wrap `f(op)` in `ConditionedOperand` with `condition` and `mask`. `f` defaults to `identity`.
 
@@ -715,34 +710,14 @@ Otherwise return `ConditionedOperand`, even when `isnothing(condition)` but `!(f
 # All non-trivial conditioning is found in AbstractOperations/conditional_operations.jl
 const Identity = typeof(Base.identity)
 @inline condition_operand(::Identity, operand, ::Nothing, mask) = operand
-@inline condition_operand(::Nothing, operand, ::Nothing, mask) = operand
+@inline condition_operand(::Nothing,  operand, ::Nothing, mask) = operand
 
 @inline conditional_length(c::AbstractField) = length(c)
 @inline conditional_length(c::AbstractField, ::Colon) = conditional_length(c)
-@inline conditional_length(c::AbstractField, ::NTuple{3}) = conditional_length(c)
-@inline conditional_length(c::AbstractField, d::Int) = size(c, d)
-@inline conditional_length(c::AbstractField, dims::NTuple{1}) = conditional_length(c, dims[1])
-
-@inline function conditional_length(c::AbstractField, dims::NTuple{2})
-    N = size(c)
-    d1, d2 = dims
-    return N[d1] * N[d2]
-end
+@inline conditional_length(c::AbstractField, dims::Int) = size(c, dims)
+@inline conditional_length(c::AbstractField, dims::Tuple) = prod(size(c, d) for d in dims)
 
 # Allocating and in-place reductions
-
-"""
-    maybe_copy_interior(r::AbstractField)
-
-Return the interior view of `r`, materialized if necessary to be GPU-native on MetalGPU.
-MetalGPU does not support ReshapedArray in kernels,
-so copying ensures the reduction operates on a GPU-native array.
-"""
-maybe_copy_interior(r::AbstractField) = maybe_copy_interior(architecture(r), r)
-
-# Extended in the OceananigansMetalExt for compatibility with Metal
-maybe_copy_interior(arch, r) = interior(r)
-
 for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 
     reduction! = Symbol(reduction, '!')
@@ -760,7 +735,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             operand = condition_operand(f, a, condition, mask)
 
             return Base.$(reduction!)(identity,
-                                      maybe_copy_interior(r),
+                                      interior(r),
                                       operand;
                                       kwargs...)
         end
@@ -774,7 +749,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
 
             mask = convert(eltype(a), mask)
             return Base.$(reduction!)(identity,
-                                      maybe_copy_interior(r),
+                                      interior(r),
                                       condition_operand(a, condition, mask);
                                       kwargs...)
         end
@@ -792,7 +767,7 @@ for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
             loc = reduced_location(instantiated_location(c); dims)
             r = Field(loc, c.grid, T; indices=indices(c))
             initialize_reduced_field!(Base.$(reduction!), identity, r, conditioned_c)
-            Base.$(reduction!)(identity, maybe_copy_interior(r), conditioned_c, init=false)
+            Base.$(reduction!)(identity, interior(r), conditioned_c, init=false)
 
             if dims isa Colon
                 return @allowscalar first(r)
@@ -884,12 +859,17 @@ Grids.nodes(f::Field; kwargs...) = nodes(f.grid, instantiated_location(f)...; in
 ##### Checkpointing
 #####
 
+# Save a host copy of the underlying data (halos included) so that on restore we can
+# `copyto!` straight into the existing device array. Serializing the device array directly
+# makes JLD2 reconstruct a *new* device array on read, doubling GPU memory at pickup and
+# OOMing for large fields. `parent` keeps the same indexing as `restored`'s parent below.
 function prognostic_state(field::Field)
-    return (; data = prognostic_state(field.data))
+    return (; data = on_architecture(CPU(), parent(field)))
 end
 
 function restore_prognostic_state!(restored::Field, from)
-    restore_prognostic_state!(restored.data, from.data)
+    # `from.data` is a host-side copy of the parent data; restore region-by-region when needed.
+    @apply_regionally copyto!(parent(restored), from.data)
     return restored
 end
 

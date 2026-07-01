@@ -1,5 +1,5 @@
 """
-    compute_pressure_correction!(model::NonhydrostaticModel, Δt)
+$(TYPEDSIGNATURES)
 
 Calculate the (nonhydrostatic) pressure correction associated `tendencies`, `velocities`, and step size `Δt`.
 """
@@ -8,7 +8,7 @@ function compute_pressure_correction!(model::NonhydrostaticModel, Δt)
     # Mask immersed velocities
     foreach(mask_immersed_field!, model.velocities)
     fill_halo_regions!(model.velocities, model.clock, fields(model))
-    enforce_open_boundary_mass_conservation!(model, model.boundary_mass_fluxes)
+    enforce_net_zero_transport!(model.velocities, model.boundary_transport)
 
     p_Δt = model.pressures.pNHS
     solve_for_pressure!(p_Δt, model.pressure_solver, model.free_surface, model.velocities, Δt)

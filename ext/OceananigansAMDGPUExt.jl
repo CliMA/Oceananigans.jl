@@ -49,12 +49,8 @@ AC.on_architecture(::AC.CPU, a::ROCArray) = Array(a)
 AC.on_architecture(::ROCGPU, a::Array) = ROCArray(a)
 AC.on_architecture(::ROCGPU, a::ROCArray) = a
 AC.on_architecture(::ROCGPU, a::BitArray) = ROCArray(a)
-AC.on_architecture(::ROCGPU, a::SubArray{<:Any, <:Any, <:ROCArray}) = a
-AC.on_architecture(::ROCGPU, a::SubArray{<:Any, <:Any, <:Array}) = ROCArray(a)
-AC.on_architecture(::AC.CPU, a::SubArray{<:Any, <:Any, <:ROCArray}) = Array(a)
 AC.on_architecture(::ROCGPU, a::StepRangeLen) = a
 AC.on_architecture(arch::Distributed, a::ROCArray) = AC.on_architecture(AC.child_architecture(arch), a)
-AC.on_architecture(arch::Distributed, a::SubArray{<:Any, <:Any, <:ROCArray}) = AC.on_architecture(child_architecture(arch), a)
 
 @inline AC.sparse_matrix_constructors(::AC.GPU{ROCBackend}, A::SparseMatrixCSC) = (ROCArray(A.colptr), ROCArray(A.rowval), ROCArray(A.nzval),  (A.m, A.n))
 @inline AC.sparse_matrix_constructors(::AC.CPU, A::ROCSparseMatrixCSC) = (A.dims[1], A.dims[2], Int64.(Array(A.colPtr)), Int64.(Array(A.rowVal)), Array(A.nzVal))
@@ -104,8 +100,8 @@ end
 
 AMDGPU.Device.@device_override @inline function __validindex(ctx::MappedCompilerMetadata)
     if __dynamic_checkbounds(ctx)
-        I = @inbounds linear_expand(__iterspace(ctx), AMDGPU.Device.blockIdx().x, AMDGPU.Device.threadIdx().x)
-        return I in __linear_ndrange(ctx)
+        index = @inbounds linear_expand(__iterspace(ctx), AMDGPU.Device.blockIdx().x, AMDGPU.Device.threadIdx().x)
+        return index ≤ __linear_ndrange(ctx)
     else
         return true
     end

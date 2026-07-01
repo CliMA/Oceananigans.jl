@@ -5,10 +5,19 @@ export
     RungeKutta3TimeStepper,
     SplitRungeKuttaTimeStepper,
     time_step!,
-    Clock
+    Clock,
+    convert_time,
+    AbstractTimeDiscretization,
+    ExplicitTimeDiscretization,
+    VerticallyImplicitTimeDiscretization,
+    AdaptiveVerticallyImplicitDiscretization,
+    time_discretization
 
+using Adapt: Adapt
+using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @kernel, @index
-using Oceananigans: AbstractModel, initialize!, prognostic_fields
+
+using Oceananigans: Oceananigans, AbstractModel, initialize!, prognostic_fields
 
 """
     abstract type AbstractTimeStepper
@@ -25,9 +34,14 @@ function step_closure_prognostics! end
 # Fallback for models without closure prognostics
 step_closure_prognostics!(model, Δt) = nothing
 
-# Update the model state at iteration 0, in case run! is not used.
-function maybe_initialize_state!(model, callbacks)
+# Reconcile auxiliary state with prognostic fields (fallback is a no-op).
+reconcile_state!(model) = nothing
+
+# Prepare the model for the first time step, in case run! is not used.
+function maybe_prepare_first_time_step!(model, Δt, callbacks)
     if model.clock.iteration == 0
+        model.clock.last_Δt = Δt
+        reconcile_state!(model)
         update_state!(model, callbacks)
     end
     return nothing
@@ -37,16 +51,21 @@ end
 abstract type AbstractLagrangianParticles end
 step_lagrangian_particles!(model, Δt) = nothing
 
+# Materialize clock fields to avoid aliasing issues with Reactant.
+# For QAB2, last_Δt and last_stage_Δt must be distinct objects.
+materialize_clock!(clock, timestepper) = nothing
+
 reset!(timestepper) = nothing
 implicit_step!(field, ::Nothing, args...; kwargs...) = nothing
 
+include("time_discretization.jl")
 include("clock.jl")
 include("quasi_adams_bashforth_2.jl")
 include("runge_kutta_3.jl")
 include("split_runge_kutta.jl")
 
 """
-    TimeStepper(name::Symbol, args...; kwargs...)
+$(TYPEDSIGNATURES)
 
 Return a timestepper with name `name`, instantiated with `args...` and `kwargs...`.
 

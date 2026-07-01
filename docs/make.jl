@@ -13,9 +13,6 @@ Distributed.addprocs(2)
     set_theme!(Theme(fontsize=20))
     CairoMakie.activate!(type = "png")
 
-    using NCDatasets
-    using XESMF
-
     using Oceananigans
     using Oceananigans.AbstractOperations
     using Oceananigans.Operators
@@ -23,7 +20,9 @@ Distributed.addprocs(2)
     using Oceananigans.OutputWriters
     using Oceananigans.TimeSteppers
     using Oceananigans.TurbulenceClosures
-    using Oceananigans.BoundaryConditions: Flux, Value, Gradient, Open
+    using Oceananigans.BoundaryConditions: Flux, Value, Gradient, NormalFlow
+
+    using NCDatasets
 
     bib_filepath = joinpath(dirname(@__FILE__), "oceananigans.bib")
     bib = CitationBibliography(bib_filepath, style=:authoryear)
@@ -41,6 +40,7 @@ Distributed.addprocs(2)
         "ocean_wind_mixing_and_convection.jl",
         "shallow_water_Bickley_jet.jl",
         "spherical_baroclinic_instability.jl",
+        "polar_vortex_crystal.jl",
         "hydrostatic_lock_exchange.jl",
         "internal_tide.jl",
         "langmuir_turbulence.jl",
@@ -109,7 +109,8 @@ example_pages = [
     "Shallow water Bickley jet"             => "literated/shallow_water_Bickley_jet.md",
     "Horizontal convection"                 => "literated/horizontal_convection.md",
     "Tilted bottom boundary layer"          => "literated/tilted_bottom_boundary_layer.md",
-    "Spherical baroclinic instability"      => "literated/spherical_baroclinic_instability.md"
+    "Spherical baroclinic instability"      => "literated/spherical_baroclinic_instability.md",
+    "Polar vortex crystal"                  => "literated/polar_vortex_crystal.md"
 ]
 
 model_pages = [
@@ -186,6 +187,7 @@ developer_pages = [
 pages = [
     "Manual" => [
         "Quick Start" => "quick_start.md",
+        "Units" => "units.md",
         "Grids" => "grids.md",
         "Fields" => "fields.md",
         "Operations" => "operations.md",
@@ -234,9 +236,8 @@ DocMeta.setdocmeta!(Oceananigans, :DocTestSetup, :(using Oceananigans); recursiv
 
 modules = Module[]
 OceananigansNCDatasetsExt = isdefined(Base, :get_extension) ? Base.get_extension(Oceananigans, :OceananigansNCDatasetsExt) : Oceananigans.OceananigansNCDatasetsExt
-OceananigansXESMFExt = isdefined(Base, :get_extension) ? Base.get_extension(Oceananigans, :OceananigansXESMFExt) : Oceananigans.OceananigansXESMFExt
 
-for m in [Oceananigans, XESMF, OceananigansNCDatasetsExt, OceananigansXESMFExt]
+for m in [Oceananigans, OceananigansNCDatasetsExt]
     if !isnothing(m)
         push!(modules, m)
     end
@@ -254,8 +255,9 @@ makedocs(; sitename = "Oceananigans.jl",
          clean = true,
          linkcheck = true,
          linkcheck_ignore = [
-            r"jstor\.org",
-            r"^https://github\.com/.*?/blob/",
+             r"jstor\.org",
+             r"^https://github\.com/.*?/blob/",
+             r"https://clima\.caltech\.edu/?",
          ],
          draft = false,        # set to true to speed things up
          doctest = true,       # set to false to speed things up

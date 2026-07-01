@@ -49,7 +49,7 @@ using .Solvers
 import ConstructionBase: constructorof
 
 constructorof(::Type{<:RectilinearGrid{FT, TX, TY, TZ}}) where {FT, TX, TY, TZ} = RectilinearGrid{TX, TY, TZ}
-constructorof(::Type{<:VectorInvariant{N, FT, M}}) where {N, FT, M} = VectorInvariant{N, FT, M}
+constructorof(::Type{<:VectorInvariant{N, FT, TD, Z, ZS, V, K, D, U, M}}) where {N, FT, TD, Z, ZS, V, K, D, U, M} = VectorInvariant{N, FT, TD, M}
 
 # https://github.com/CliMA/Oceananigans.jl/blob/da9959f3e5d8ee7cf2fb42b74ecc892874ec1687/src/AbstractOperations/conditional_operations.jl#L8
 Base.@nospecializeinfer function Reactant.traced_type_inner(
@@ -153,6 +153,15 @@ end
     kwargs...
     ) = Reactant.make_tracer_via_immutable_constructor(seen, prev, args...; kwargs...)
 
+# Distributed architecture is infrastructure, not traced computation.
+# Returning it unchanged avoids issues with Ref fields (mpi_tag).
+@inline Reactant.make_tracer(
+    seen,
+    prev::Oceananigans.DistributedComputations.Distributed,
+    @nospecialize(args...);
+    kwargs...
+    ) = prev
+
 # https://github.com/CliMA/Oceananigans.jl/blob/d9b3b142d8252e8e11382d1b3118ac2a092b38a2/src/ImmersedBoundaries/immersed_boundary_grid.jl#L8
 Base.@nospecializeinfer function Reactant.traced_type_inner(
     @nospecialize(OA::Type{ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, Arch}}),
@@ -170,8 +179,15 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
     M2 = Reactant.traced_type_inner(M, seen, mode, track_numbers, sharding, runtime)
     S2 = Reactant.traced_type_inner(S, seen, mode, track_numbers, sharding, runtime)
     FT2 = eltype(G2)
-    return Oceananigans.Grids.ImmersedBoundaryGrid{FT2, TX2, TY2, TZ2, G2, I2, M2, S2, Arch}
+    return Oceananigans.ImmersedBoundaries.ImmersedBoundaryGrid{FT2, TX2, TY2, TZ2, G2, I2, M2, S2, Arch}
 end
+
+@inline Reactant.make_tracer(
+    seen,
+    @nospecialize(prev::Oceananigans.ImmersedBoundaries.ImmersedBoundaryGrid),
+    args...;
+    kwargs...
+    ) = Reactant.make_tracer_via_immutable_constructor(seen, prev, args...; kwargs...)
 
 Base.@nospecializeinfer function Reactant.traced_type_inner(
     @nospecialize(OA::Type{LatitudeLongitudeGrid{FT, TX, TY, TZ, Z, DXF, DXC, XF, XC, DYF, DYC, YF, YC,
@@ -204,7 +220,7 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
 
     FT2 = Reactant.traced_type_inner(FT, seen, mode, track_numbers, sharding, runtime)
 
-    for NF in (XF2, XC2, YF2, YC2, DXCC2, DXFC2, DYCF2, DYCF2, DXFF2)
+    for NF in (XF2, XC2, YF2, YC2, DXCC2, DXFC2, DXCF2, DYFC2, DYCF2, DXFF2)
         if NF === Nothing
            continue
         end
@@ -213,15 +229,60 @@ Base.@nospecializeinfer function Reactant.traced_type_inner(
 
     res = Oceananigans.Grids.LatitudeLongitudeGrid{FT2, TX2, TY2, TZ2, Z2, DXF2, DXC2, XF2, XC2, DYF2, DYC2, YF2, YC2,
                                                    DXCC2, DXFC2, DXCF2, DXFF2, DYFC2, DYCF2, Arch, I2}
+
     return res
 end
 
-@inline Reactant.make_tracer(
-    seen,
-    @nospecialize(prev::Oceananigans.Grids.LatitudeLongitudeGrid),
-    args...;
-    kwargs...
-    ) = Reactant.make_tracer_via_immutable_constructor(seen, prev, args...; kwargs...)
+Base.@nospecializeinfer function Reactant.traced_type_inner(
+        @nospecialize(OA::Type{RectilinearGrid{FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch}}),
+        seen,
+        mode::Reactant.TraceMode,
+        @nospecialize(track_numbers::Type),
+        @nospecialize(sharding),
+        @nospecialize(runtime)
+    ) where {FT, TX, TY, TZ, CZ, FX, FY, VX, VY, Arch}
+
+    TX2 = Reactant.traced_type_inner(TX, seen, mode, track_numbers, sharding, runtime)
+    TY2 = Reactant.traced_type_inner(TY, seen, mode, track_numbers, sharding, runtime)
+    TZ2 = Reactant.traced_type_inner(TZ, seen, mode, track_numbers, sharding, runtime)
+    CZ2 = Reactant.traced_type_inner(CZ, seen, mode, track_numbers, sharding, runtime)
+    FX2 = Reactant.traced_type_inner(FX, seen, mode, track_numbers, sharding, runtime)
+    FY2 = Reactant.traced_type_inner(FY, seen, mode, track_numbers, sharding, runtime)
+    VX2 = Reactant.traced_type_inner(VX, seen, mode, track_numbers, sharding, runtime)
+    VY2 = Reactant.traced_type_inner(VY, seen, mode, track_numbers, sharding, runtime)
+    FT2 = Reactant.traced_type_inner(FT, seen, mode, track_numbers, sharding, runtime)
+
+    for NF in (FX2, FY2, VX2, VY2)
+        if NF === Nothing
+            continue
+        end
+        FT2 = Reactant.promote_traced_type(FT2, eltype(NF))
+    end
+
+    # Also promote over the vertical discretization's data:
+    if CZ2 !== Nothing
+        for P in Base.fieldtypes(CZ2)
+            P === Nothing && continue
+            FT2 = Reactant.promote_traced_type(FT2, eltype(P))
+        end
+    end
+
+    res = Oceananigans.Grids.RectilinearGrid{FT2, TX2, TY2, TZ2, CZ2, FX2, FY2, VX2, VY2, Arch}
+
+    return res
+end
+
+@inline function Reactant.make_tracer(
+        seen,
+        @nospecialize(prev::Oceananigans.Grids.RectilinearGrid),
+        args...;
+        kwargs...
+        )
+
+        res = Reactant.make_tracer_via_immutable_constructor(seen, prev, args...; kwargs...)
+
+        return res
+end
 
 struct Fix1v2{F,T}
     f::F
@@ -285,8 +346,8 @@ end
     )
 end
 
-function evalkern(kern, i, j, k)
-    kern.kernel_function(i, j, k, kern.grid, kern.arguments...)
+function eval_kernel_function(kfo, i, j, k)
+    return kfo.kernel_function(i, j, k, kfo.grid, kfo.arguments...)
 end
 
 @inline function Reactant.TracedUtils.materialize_traced_array(c::Oceananigans.AbstractOperations.KernelFunctionOperation)
@@ -301,50 +362,20 @@ end
         end)...)
     end
 
-    tvals = Reactant.Ops.fill(Reactant.unwrapped_eltype(Base.eltype(c)), size(c))
-    Reactant.TracedRArrayOverrides._copyto!(tvals, Base.broadcasted(Fix1v2(evalkern, c), axes2...))
+    tvals = Reactant.Ops.fill(zero(Reactant.unwrapped_eltype(Base.eltype(c))), size(c))
+
+    fix1 = Fix1v2(eval_kernel_function, c)
+    called_fix1 = Reactant.call_with_reactant(fix1, axes2...)
+
+    if called_fix1 isa Number
+        fill!(tvals, called_fix1)
+    else
+        @assert called_fix1 isa AbstractArray
+        @assert size(called_fix1) == size(c)
+        Base.copyto!(tvals, called_fix1)
+    end
+
     return tvals
-end
-
-function Oceananigans.TimeSteppers.tick_time!(clock::Oceananigans.TimeSteppers.Clock{<:Reactant.TracedRNumber}, Δt)
-    nt = Oceananigans.TimeSteppers.next_time(clock, Δt)
-    clock.time.mlir_data = nt.mlir_data
-    nt
-end
-
-const ReactantClock = Oceananigans.TimeSteppers.Clock{<:Any, <:Any, <:Reactant.TracedRNumber}
-
-# Promote a value to TracedRNumber via addition with zero(clock.time).
-# This is needed because .mlir_data only exists on TracedRNumber.
-promote_to_traced(Δt, clock) = Δt + zero(clock.time)
-
-function Oceananigans.TimeSteppers.tick!(clock::ReactantClock, Δt)
-    Oceananigans.TimeSteppers.tick_time!(clock, Δt)
-    Δt = promote_to_traced(Δt, clock)
-    clock.iteration.mlir_data = (clock.iteration + 1).mlir_data
-    clock.stage = 1
-    clock.last_Δt.mlir_data = Δt.mlir_data
-    clock.last_stage_Δt.mlir_data = Δt.mlir_data
-    return nothing
-end
-
-function Oceananigans.TimeSteppers.tick_stage!(clock::ReactantClock, stage_Δt)
-    Oceananigans.TimeSteppers.tick_time!(clock, stage_Δt)
-    stage_Δt = promote_to_traced(stage_Δt, clock)
-    clock.stage += 1
-    clock.last_stage_Δt.mlir_data = stage_Δt.mlir_data
-    return nothing
-end
-
-function Oceananigans.TimeSteppers.tick_stage!(clock::ReactantClock, stage_Δt, step_Δt)
-    Oceananigans.TimeSteppers.tick_time!(clock, stage_Δt)
-    stage_Δt = promote_to_traced(stage_Δt, clock)
-    step_Δt = promote_to_traced(step_Δt, clock)
-    clock.iteration.mlir_data = (clock.iteration + 1).mlir_data
-    clock.stage = 1
-    clock.last_Δt.mlir_data = step_Δt.mlir_data
-    clock.last_stage_Δt.mlir_data = stage_Δt.mlir_data
-    return nothing
 end
 
 @inline function Reactant.TracedUtils.broadcast_to_size(c::Oceananigans.AbstractOperations.KernelFunctionOperation, rsize)

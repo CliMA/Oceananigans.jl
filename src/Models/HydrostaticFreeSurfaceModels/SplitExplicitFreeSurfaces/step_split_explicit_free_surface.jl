@@ -1,7 +1,13 @@
 using KernelAbstractions.Extras.LoopInfo: @unroll
 
-# Selection between topology aware and non-aware operators
-# depending on whether we fill halos or not in between substeps
+# Selection between topology-aware and non-aware operators depending on
+# whether we fill halos or not in between substeps.
+#
+# filled_halos = Val(false): halos are NOT filled each substep (extend_halos mode).
+#   → Use topology-aware operators because halo data goes stale after the first substep.
+#
+# filled_halos = Val(true): halos ARE filled each substep (fill_halos mode).
+#   → Use non-topology-aware operators because halo data is always fresh.
 @inline x_derivative_operator(::Val{false}) = ∂xᵣTᶠᶜᶠ
 @inline x_derivative_operator(::Val{true})  = ∂xᵣᶠᶜᶠ
 @inline y_derivative_operator(::Val{false}) = ∂yᵣTᶜᶠᶠ
