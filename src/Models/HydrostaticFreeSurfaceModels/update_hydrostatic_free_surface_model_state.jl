@@ -1,6 +1,7 @@
 using Oceananigans: UpdateStateCallsite
 using Oceananigans.Advection: update_advection_timestep!
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
+using Oceananigans.Architectures: synchronize
 using Oceananigans.BoundaryConditions: fill_halo_regions!, update_boundary_conditions!
 using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
 using Oceananigans.Fields: compute!
@@ -61,24 +62,52 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
         surface_params = surface_kernel_parameters(grid)
         volume_params = volume_kernel_parameters(grid)
         κ_params = diffusivity_kernel_parameters(grid)
+        @info "HFSM update_state: compute_buoyancy_gradients" iteration=model.clock.iteration
         compute_buoyancy_gradients!(model.buoyancy, grid, tracers, parameters=volume_params)
+        synchronize(arch)
+        @info "HFSM update_state: compute_buoyancy_gradients done" iteration=model.clock.iteration
+        @info "HFSM update_state: update_vertical_velocities" iteration=model.clock.iteration
         update_vertical_velocities!(model.velocities, grid, model, parameters=surface_params)
+        synchronize(arch)
+        @info "HFSM update_state: update_vertical_velocities done" iteration=model.clock.iteration
+        @info "HFSM update_state: update_hydrostatic_pressure" iteration=model.clock.iteration
         update_hydrostatic_pressure!(model.pressure.pHY′, arch, grid, model.buoyancy, model.tracers, parameters=surface_params)
+        synchronize(arch)
+        @info "HFSM update_state: update_hydrostatic_pressure done" iteration=model.clock.iteration
+        @info "HFSM update_state: compute_closure_fields" iteration=model.clock.iteration
         compute_closure_fields!(model.closure_fields, model.closure, model, parameters=κ_params)
+        synchronize(arch)
+        @info "HFSM update_state: compute_closure_fields done" iteration=model.clock.iteration
     end
 
     # Fill only local halos for diagnostic quantities since the parameters used
     # above include regions inside the (horizontal) halos.
+    @info "HFSM update_state: fill_halo_regions closure_fields" iteration=model.clock.iteration
     fill_halo_regions!(model.closure_fields; only_local_halos=true)
+    synchronize(arch)
+    @info "HFSM update_state: fill_halo_regions closure_fields done" iteration=model.clock.iteration
+    @info "HFSM update_state: fill_halo_regions pressure" iteration=model.clock.iteration
     fill_halo_regions!(model.pressure.pHY′; only_local_halos=true)
+    synchronize(arch)
+    @info "HFSM update_state: fill_halo_regions pressure done" iteration=model.clock.iteration
 
+    @info "HFSM update_state: update_state callbacks" iteration=model.clock.iteration
     [callback(model) for callback in callbacks if callback.callsite isa UpdateStateCallsite]
+    @info "HFSM update_state: update_state callbacks done" iteration=model.clock.iteration
 
+    @info "HFSM update_state: update_biogeochemical_state" iteration=model.clock.iteration
     update_biogeochemical_state!(model.biogeochemistry, model)
+    synchronize(arch)
+    @info "HFSM update_state: update_biogeochemical_state done" iteration=model.clock.iteration
 
     @apply_regionally begin
+        @info "HFSM update_state: update_advection_timestep" iteration=model.clock.iteration
         update_advection_timestep!(model.advection, model.timestepper, model.clock)
+        @info "HFSM update_state: update_advection_timestep done" iteration=model.clock.iteration
+        @info "HFSM update_state: compute_momentum_tendencies" iteration=model.clock.iteration
         compute_momentum_tendencies!(model, callbacks)
+        synchronize(arch)
+        @info "HFSM update_state: compute_momentum_tendencies done" iteration=model.clock.iteration
     end
 
     return nothing

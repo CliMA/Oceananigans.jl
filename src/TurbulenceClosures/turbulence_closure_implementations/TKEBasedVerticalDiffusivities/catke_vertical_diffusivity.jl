@@ -242,21 +242,31 @@ function step_closure_prognostics!(closure_fields, closure::FlavorOfCATKE, model
     clock = model.clock
     top_tracer_bcs = get_top_tracer_bcs(buoyancy, tracers)
 
-    # Step TKE equation with the provided timestep
+    @info "CATKE step_closure_prognostics: time_step_catke_equation!" iteration=model.clock.iteration
     time_step_catke_equation!(model, model.timestepper, Δt)
+    Oceananigans.Architectures.synchronize(arch)
+    @info "CATKE step_closure_prognostics: time_step_catke_equation! done" iteration=model.clock.iteration
+    Oceananigans.BoundaryConditions.fill_halo_regions!(model.tracers.e, model.clock, fields(model))
+    Oceananigans.Architectures.synchronize(arch)
+    @info "CATKE step_closure_prognostics: fill_halo_regions e done" iteration=model.clock.iteration
 
-    # Update previous velocities and surface buoyancy flux
     u, v, w = model.velocities
     u⁻, v⁻ = closure_fields.previous_velocities
+    @info "CATKE step_closure_prognostics: update_previous_velocities" iteration=model.clock.iteration
     parent(u⁻) .= parent(u)
     parent(v⁻) .= parent(v)
+    Oceananigans.Architectures.synchronize(arch)
+    @info "CATKE step_closure_prognostics: update_previous_velocities done" iteration=model.clock.iteration
 
     active_cells_map = get_active_cells_map(grid, Val(:xy))
 
+    @info "CATKE step_closure_prognostics: compute_average_surface_buoyancy_flux" iteration=model.clock.iteration
     launch!(arch, grid, :xy,
             compute_average_surface_buoyancy_flux!,
             closure_fields.Jᵇ, grid, closure, velocities, tracers, buoyancy, top_tracer_bcs, clock, Δt;
             active_cells_map)
+    Oceananigans.Architectures.synchronize(arch)
+    @info "CATKE step_closure_prognostics: compute_average_surface_buoyancy_flux done" iteration=model.clock.iteration
 
     return nothing
 end

@@ -141,6 +141,18 @@ restore_prognostic_state!(restored::AbstractTimeStepper, from, ::RestoreOnCurren
 restore_prognostic_state!(restored::AbstractTimeStepper, from, ::RestoreOnCurrentGrid, clock, model_fields; kwargs...) =
     restore_prognostic_state!(restored, from)
 
+function restore_prognostic_state!(restored::AbstractTimeStepper, ::Nothing, ::RestoreOnCurrentGrid, clock, model_fields; kwargs...)
+    clock.last_Δt = convert(typeof(clock.last_Δt), Inf)
+    clock.last_stage_Δt = convert(typeof(clock.last_stage_Δt), Inf)
+    return restored
+end
+
+function restore_prognostic_state!(restored::AbstractTimeStepper, ::Nothing, ::RestoreOnCompatibleGrid, clock, model_fields; kwargs...)
+    clock.last_Δt = convert(typeof(clock.last_Δt), Inf)
+    clock.last_stage_Δt = convert(typeof(clock.last_stage_Δt), Inf)
+    return restored
+end
+
 function restore_prognostic_state!(restored::AbstractTimeStepper, from, mode::RestoreOnCompatibleGrid, clock, model_fields; kwargs...)
     if !isnothing(restored.Gⁿ) && !isnothing(from.Gⁿ)
         for name in keys(restored.Gⁿ)
@@ -169,6 +181,5 @@ function restore_prognostic_state!(restored::AbstractTimeStepper, from, mode::Re
     return restored
 end
 
-restore_prognostic_state!(restored::AbstractTimeStepper, ::Nothing, ::RestoreOnCompatibleGrid, clock, model_fields; kwargs...) = restored
 
 end # module
