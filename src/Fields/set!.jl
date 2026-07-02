@@ -222,7 +222,6 @@ function Base.copyto!(f::Field, src::AbstractArray)
     src_range = CartesianIndices(src)
     field_range = CartesianIndices(interior(f))
 
-    try
-        copyto!(f.data, field_range, src, src_range)
+    copyto!(f.data, field_range, src, src_range)
 end
 Base.copyto!(f::Field, src::Field) = copyto!(parent(f), parent(src))
