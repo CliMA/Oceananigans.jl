@@ -1,18 +1,20 @@
 # CUDA-side per-launch host-allocation fixes for Oceananigans.
 # See notes/gpu-cuda-launch-allocation-investigation.md for the full derivation.
 #
-# These are method overrides into CUDA.jl's kernel/driver modules, applied with `Core.eval` at load time
-# (from `__init__` via `apply_allocation_fixes!`) — evaluating into a closed module at top level breaks
-# incremental precompilation. They belong upstream in CUDA.jl (the mechanisms are backend-agnostic Julia
-# codegen properties); they live here until then.
+# Most fixes are ordinary method definitions in this extension (precompile-friendly): the kernel-launch
+# functor is overloaded on signatures *strictly more specific* than CUDA.jl's own
+# `(obj::Kernel{CUDABackend})(args...)` — one method per workgroup-size type — so nothing is overwritten.
+# Only the two driver tweaks at the bottom replace same-signature CUDA.jl methods and must be applied with
+# `Core.eval` at load time, guarded against downstream precompilation.
 #
 # CUDA.jl ≥ 6.1 splits the implementation into the `CUDACore` subpackage while older versions keep it in
-# `CUDA` itself, so the target modules are resolved through `parentmodule` and interpolated into the
-# quotes ($_CUDACore), never referred to by name. Overrides that rely on version-specific internals are
-# feature-gated in `apply_allocation_fixes!` and skipped (or replaced by a public-API fallback) when the
-# internals are absent.
+# `CUDA` itself, so the implementation modules are resolved through `parentmodule` and never referred to
+# by name. Overrides that rely on version-specific internals are feature-gated and degrade to public-API
+# fallbacks when the internals are absent.
 
 import Adapt
+import KernelAbstractions
+const _KA = KernelAbstractions
 
 const _CUDAKernels = parentmodule(CUDABackend)   # CUDACore.CUDAKernels (≥ 6.1) or CUDA.CUDAKernels
 const _CUDACore    = parentmodule(_CUDAKernels)  # CUDACore (≥ 6.1) or CUDA
@@ -37,7 +39,51 @@ end
 Adapt.adapt_structure(to::_KernelAdaptor, nt::NamedTuple) = flat_adapt_namedtuple(to, nt)
 Adapt.adapt_structure(to::_KernelAdaptor, t::Tuple) = flat_adapt_tuple(to, t)
 
-# (1) Kernel-launch functor.
+# (1) Positional path to the (cached) compiled kernel: the kwargs `cufunction` pays `pairs` iteration and
+# `hash(kwargs)` inside `compiler_config` on every launch. Uses CUDA.jl internals, so it is feature-gated
+# at extension-precompile time (the extension precompiles against the resolved CUDA.jl version) and
+# replaced by the public kwargs `cufunction` when the internals are missing.
+const _cufunction_internals = (:active_state, :cufunction_lock, :compiler_cache, :methodinstance,
+                               :compiler_config, :CUDACompilerConfig, :GPUCompiler, :compile, :link,
+                               :_kernel_instances, :KernelState, :create_exceptions!, :HostKernel,
+                               :CuDevice)
+
+if all(name -> isdefined(_CUDACore, name), _cufunction_internals)
+    const _compiler_configs = Dict{Tuple{_CUDACore.CuDevice, Bool, Union{Int, Nothing}}, Any}()
+
+    @noinline function cached_compiler_config(dev, always_inline::Bool, maxthreads::Union{Int, Nothing})
+        key = (dev, always_inline, maxthreads)
+        cfg = get(_compiler_configs, key, nothing)
+        if cfg === nothing
+            cfg = _CUDACore.compiler_config(dev; always_inline, maxthreads)
+            _compiler_configs[key] = cfg
+        end
+        return cfg
+    end
+
+    function cached_cufunction(f::F, tt::TT, always_inline::Bool, maxthreads::Union{Int, Nothing}) where {F, TT}
+        cuda = _CUDACore.active_state()
+        Base.@lock _CUDACore.cufunction_lock begin
+            cache = _CUDACore.compiler_cache(cuda.context)
+            source = _CUDACore.methodinstance(F, tt)
+            config = cached_compiler_config(cuda.device, always_inline, maxthreads)::_CUDACore.CUDACompilerConfig
+            fun = _CUDACore.GPUCompiler.cached_compilation(cache, source, config, _CUDACore.compile, _CUDACore.link)
+            key = (objectid(source), hash(fun), f)
+            kernel = get(_CUDACore._kernel_instances, key, nothing)
+            if kernel === nothing
+                state = _CUDACore.KernelState(_CUDACore.create_exceptions!(fun.mod), UInt32(0))
+                kernel = _CUDACore.HostKernel{F, tt}(f, fun, state)
+                _CUDACore._kernel_instances[key] = kernel
+            end
+            return kernel::_CUDACore.HostKernel{F, tt}
+        end
+    end
+else
+    @inline cached_cufunction(f, tt, always_inline, maxthreads) =
+        _CUDACore.cufunction(f, tt; always_inline, maxthreads)
+end
+
+# (2) Kernel-launch functor.
 #   a. Split the heavy trailing-`Vararg` functor into a tiny `@inline` dispatcher that bundles `args` into a
 #      `Tuple` and a fixed-arity `cuda_run` worker. A non-inlined trailing-`Vararg` callee is invoked through
 #      the jlcall ABI, which heap-boxes every non-isbits argument (each `Field`) on every launch; a fixed-arity
@@ -45,88 +91,53 @@ Adapt.adapt_structure(to::_KernelAdaptor, t::Tuple) = flat_adapt_tuple(to, t)
 #   b. Build the launch type signature from the argument *types* by inference, and call the (already cached)
 #      `cufunction` directly, instead of `@cuda launch=false` — which materializes every converted argument
 #      just to read its type, allocating for big nested args (NamedTuples/Tuples of fields) on every launch.
-const _cuda_functor_fix = quote
-    @inline (obj::KA.Kernel{CUDABackend})(args...; ndrange=nothing, workgroupsize=nothing) =
-        cuda_run(obj, ndrange, workgroupsize, args)
+#
+# One dispatcher per workgroup-size type: each signature is strictly more specific than CUDA.jl's
+# `(obj::Kernel{CUDABackend})(args...)`, so these are new methods (legal in precompilation), yet together
+# they cover every kernel CUDA.jl constructs.
+@inline (obj::_KA.Kernel{CUDABackend, <:_KA.NDIteration.StaticSize})(args...; ndrange=nothing, workgroupsize=nothing) =
+    cuda_run(obj, ndrange, workgroupsize, args)
 
-    function cuda_run(obj::KA.Kernel{CUDABackend}, ndrange, workgroupsize, args::Tuple)
-        backend = KA.backend(obj)
+@inline (obj::_KA.Kernel{CUDABackend, <:_KA.NDIteration.DynamicSize})(args...; ndrange=nothing, workgroupsize=nothing) =
+    cuda_run(obj, ndrange, workgroupsize, args)
 
-        ndrange, workgroupsize, iterspace, dynamic = KA.launch_config(obj, ndrange, workgroupsize)
-        ctx = KA.mkcontext(obj, ndrange, iterspace)
+function cuda_run(obj::_KA.Kernel{CUDABackend}, ndrange, workgroupsize, args::Tuple)
+    backend = _KA.backend(obj)
 
-        maxthreads = KA.workgroupsize(obj) <: KA.StaticSize ? prod(KA.get(KA.workgroupsize(obj))) : nothing
+    ndrange, workgroupsize, iterspace, dynamic = _KA.launch_config(obj, ndrange, workgroupsize)
+    ctx = _KA.mkcontext(obj, ndrange, iterspace)
 
-        kernel_f = $_CUDACore.cudaconvert(obj.f)
-        tt = Tuple{Base.promote_op($_CUDACore.cudaconvert, typeof(ctx)),
-                   map(a -> Base.promote_op($_CUDACore.cudaconvert, typeof(a)), args)...}
-        kernel = _oceananigans_cufunction(kernel_f, tt, backend.always_inline, maxthreads)
+    maxthreads = _KA.workgroupsize(obj) <: _KA.NDIteration.StaticSize ? prod(_KA.get(_KA.workgroupsize(obj))) : nothing
 
-        if KA.workgroupsize(obj) <: KA.DynamicSize && workgroupsize === nothing
-            config = $_CUDACore.launch_configuration(kernel.fun; max_threads=prod(ndrange))
-            threads = if backend.prefer_blocks
-                cu_blocks = max(cld(prod(ndrange), min(prod(ndrange), config.threads)), config.blocks)
-                cld(prod(ndrange), cu_blocks)
-            else
-                config.threads
-            end
-            workgroupsize = threads_to_workgroupsize(threads, ndrange)
-            iterspace, dynamic = KA.partition(obj, ndrange, workgroupsize)
-            ctx = KA.mkcontext(obj, ndrange, iterspace)
+    kernel_f = _CUDACore.cudaconvert(obj.f)
+    tt = Tuple{Base.promote_op(_CUDACore.cudaconvert, typeof(ctx)),
+               map(a -> Base.promote_op(_CUDACore.cudaconvert, typeof(a)), args)...}
+    kernel = cached_cufunction(kernel_f, tt, backend.always_inline, maxthreads)
+
+    if _KA.workgroupsize(obj) <: _KA.NDIteration.DynamicSize && workgroupsize === nothing
+        config = _CUDACore.launch_configuration(kernel.fun; max_threads=prod(ndrange))
+        threads = if backend.prefer_blocks
+            cu_blocks = max(cld(prod(ndrange), min(prod(ndrange), config.threads)), config.blocks)
+            cld(prod(ndrange), cu_blocks)
+        else
+            config.threads
         end
-
-        blocks  = length(KA.blocks(iterspace))
-        threads = length(KA.workitems(iterspace))
-
-        blocks == 0 && return nothing
-
-        kernel(ctx, args...; threads, blocks)
-
-        return nothing
-    end
-end
-
-# Positional clone of `cufunction`: the kwargs path pays `pairs` iteration and `hash(kwargs)` inside
-# `compiler_config` on every (cached) launch. Uses CUDA.jl internals, so it is feature-gated and
-# replaced by the public kwargs `cufunction` when they are missing.
-const _cuda_cufunction_fix = quote
-    const _oceananigans_compiler_configs = Dict{Tuple{$_CUDACore.CuDevice, Bool, Union{Int, Nothing}}, Any}()
-
-    @noinline function _oceananigans_config(dev, always_inline::Bool, maxthreads::Union{Int, Nothing})
-        key = (dev, always_inline, maxthreads)
-        cfg = get(_oceananigans_compiler_configs, key, nothing)
-        if cfg === nothing
-            cfg = $_CUDACore.compiler_config(dev; always_inline, maxthreads)
-            _oceananigans_compiler_configs[key] = cfg
-        end
-        return cfg
+        workgroupsize = _CUDAKernels.threads_to_workgroupsize(threads, ndrange)
+        iterspace, dynamic = _KA.partition(obj, ndrange, workgroupsize)
+        ctx = _KA.mkcontext(obj, ndrange, iterspace)
     end
 
-    function _oceananigans_cufunction(f::F, tt::TT, always_inline::Bool, maxthreads::Union{Int, Nothing}) where {F, TT}
-        cuda = $_CUDACore.active_state()
-        Base.@lock $_CUDACore.cufunction_lock begin
-            cache = $_CUDACore.compiler_cache(cuda.context)
-            source = $_CUDACore.methodinstance(F, tt)
-            config = _oceananigans_config(cuda.device, always_inline, maxthreads)::$_CUDACore.CUDACompilerConfig
-            fun = $_CUDACore.GPUCompiler.cached_compilation(cache, source, config, $_CUDACore.compile, $_CUDACore.link)
-            key = (objectid(source), hash(fun), f)
-            kernel = get($_CUDACore._kernel_instances, key, nothing)
-            if kernel === nothing
-                state = $_CUDACore.KernelState($_CUDACore.create_exceptions!(fun.mod), UInt32(0))
-                kernel = $_CUDACore.HostKernel{F, tt}(f, fun, state)
-                $_CUDACore._kernel_instances[key] = kernel
-            end
-            return kernel::$_CUDACore.HostKernel{F, tt}
-        end
-    end
+    blocks  = length(_KA.blocks(iterspace))
+    threads = length(_KA.workitems(iterspace))
+
+    blocks == 0 && return nothing
+
+    kernel(ctx, args...; threads, blocks)
+
+    return nothing
 end
 
-const _cuda_cufunction_fallback = quote
-    @inline _oceananigans_cufunction(f, tt, always_inline, maxthreads) =
-        $_CUDACore.cufunction(f, tt; always_inline, maxthreads)
-end
-
-# (2) `prepare_cuda_state` runs before every driver call (e.g. the graph-capture check on every
+# (3) `prepare_cuda_state` runs before every driver call (e.g. the graph-capture check on every
 # `pointer(::CuArray)`) and allocated a fresh `Ref{CUcontext}` each time; reuse a per-thread Ref instead.
 # (The `activate` below is CUDA context activation; this is not Pkg.activate.)
 # Threads can be spawned after load (e.g. CUDA's synchronization worker), so the cache is sized
@@ -146,7 +157,7 @@ const _cuda_core_fix = quote
     end
 end
 
-# (3) The driver `launch` allocates a fresh `attrs = CUlaunchAttribute[]` and `config = Ref(CUlaunchConfig)`
+# (4) The driver `launch` allocates a fresh `attrs = CUlaunchAttribute[]` and `config = Ref(CUlaunchConfig)`
 # on every kernel launch (they are handed to `cuLaunchKernelEx`, so escape analysis cannot stack them).
 # Reuse a shared empty attrs vector (attributes are only needed for cooperative/cluster launches) and a
 # per-thread config Ref. (~96 B x #launches per step.)
@@ -201,22 +212,15 @@ const _cuda_launch_fix = quote
     end
 end
 
-const _cufunction_fix_internals = (:active_state, :cufunction_lock, :compiler_cache, :methodinstance,
-                                   :compiler_config, :CUDACompilerConfig, :GPUCompiler, :compile, :link,
-                                   :_kernel_instances, :KernelState, :create_exceptions!, :HostKernel,
-                                   :CuDevice)
-
 const _launch_fix_internals = (:CUlaunchAttribute, :CUlaunchConfig, :cuLaunchKernelEx, :pack_arguments,
                                :diagnose_launch_failure, :CU_LAUNCH_ATTRIBUTE_COOPERATIVE,
                                :CU_LAUNCH_ATTRIBUTE_CLUSTER_DIMENSION)
 
 function apply_allocation_fixes!()
-    if all(name -> isdefined(_CUDACore, name), _cufunction_fix_internals)
-        Core.eval(_CUDAKernels, _cuda_cufunction_fix)
-    else
-        Core.eval(_CUDAKernels, _cuda_cufunction_fallback)
-    end
-    Core.eval(_CUDAKernels, _cuda_functor_fix)
+    # These two replace same-signature CUDA.jl methods, which is legal only at runtime load: evaluating
+    # into another module while a downstream package is being precompiled would not survive into its
+    # image and errors. Skip there; `__init__` runs again in the actual session and applies them.
+    ccall(:jl_generating_output, Cint, ()) == 1 && return nothing
 
     if isdefined(_CUDACore, :task_local_state!) && isdefined(_CUDACore, :prepare_cuda_state)
         Core.eval(_CUDACore, _cuda_core_fix)
