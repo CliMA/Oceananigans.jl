@@ -1,5 +1,22 @@
 using Oceananigans.Utils: prettysummary, @apply_regionally
 using LinearAlgebra: norm, dot
+import MPI
+
+# MPI-aware inner product and norm for distributed CG.
+# Falls back to local computation for single-GPU (no :communicator property).
+# Uses hasproperty duck-typing to avoid a circular dependency between Solvers
+# and DistributedComputations.
+function _cg_dot(a, b, arch)
+    local_val = Float64(sum(interior(a) .* interior(b)))
+    hasproperty(arch, :communicator) || return local_val
+    return MPI.Allreduce(local_val, MPI.SUM, arch.communicator)
+end
+
+function _cg_norm(a, arch)
+    local_sq = Float64(sum(abs2, interior(a)))
+    hasproperty(arch, :communicator) || return sqrt(local_sq)
+    return sqrt(MPI.Allreduce(local_sq, MPI.SUM, arch.communicator))
+end
 
 mutable struct ConjugateGradientSolver{A, G, L, T, F, M, P, E, N}
                 architecture :: A
@@ -211,7 +228,7 @@ function iterate!(x, solver, b, args...)
     # Unpreconditioned: z = r
     @apply_regionally z = precondition!(solver.preconditioner_product, solver.preconditioner, r, args...)
 
-    ρ = dot(z, r)
+    ρ = _cg_dot(z, r, solver.architecture)
 
     @debug "ConjugateGradientSolver $(solver.iteration), ρ: $ρ"
     @debug "ConjugateGradientSolver $(solver.iteration), |z|: $(norm(z))"
@@ -220,7 +237,7 @@ function iterate!(x, solver, b, args...)
 
     perform_linear_operation!(solver.linear_operation!, q, p, args...)
 
-    α = ρ / dot(p, q)
+    α = ρ / _cg_dot(p, q, solver.architecture)
 
     @debug "ConjugateGradientSolver $(solver.iteration), |q|: $(norm(q))"
     @debug "ConjugateGradientSolver $(solver.iteration), α: $α"
