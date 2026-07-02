@@ -1,5 +1,4 @@
 using Oceananigans.TurbulenceClosures: required_halo_size_x, required_halo_size_y
-using Oceananigans.Grids: XFlatGrid, YFlatGrid
 using Oceananigans.Utils: worksize
 using Oceananigans.Models: local_dimension
 
