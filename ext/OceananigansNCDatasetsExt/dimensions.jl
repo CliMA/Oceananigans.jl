@@ -186,10 +186,12 @@ function gather_vertical_dimensions(coordinate::StaticVerticalDiscretization, TZ
                 zᵃᵃᶜ_name => zᵃᵃᶜ_data)
 end
 
-# For MutableVerticalDiscretization, the saved 1D coordinate is the *reference* (Lagrangian)
-# coordinate `r`. The physical `z = z(r, η, …)` is reconstructible at read time from `r` and
-# the time-varying `η` (output separately).
-function gather_vertical_dimensions(coordinate::MutableVerticalDiscretization, TZ, Nz, Hz, z_indices, with_halos, dim_name_generator)
+# Generic fallback for non-static vertical coordinates (`MutableVerticalDiscretization`
+# and any others defined downstream): the saved 1D coordinate is the *reference*
+# coordinate `r`, stored in the shared `cᵃᵃᶠ`/`cᵃᵃᶜ` fields. The physical
+# `z = z(r, …)` is reconstructible at read time from `r` and the coordinate transform
+# (e.g. the time-varying free-surface `η`), output separately.
+function gather_vertical_dimensions(coordinate::AbstractVerticalCoordinate, TZ, Nz, Hz, z_indices, with_halos, dim_name_generator)
     rᵃᵃᶠ_name = dim_name_generator("r", coordinate, nothing, nothing, f, Val(:z))
     rᵃᵃᶜ_name = dim_name_generator("r", coordinate, nothing, nothing, c, Val(:z))
 
@@ -431,10 +433,13 @@ function default_vertical_dimension_attributes(coordinate::StaticVerticalDiscret
     return suffix_grid_keys(vertical_dimension_attributes, grid_index)
 end
 
-function default_vertical_dimension_attributes(coordinate::MutableVerticalDiscretization, dim_name_generator; grid_index=nothing)
-    # `r` is the reference (Lagrangian) coordinate. Physical depth `z = z(r, η, …)` is
-    # reconstructible at read time from `r` and the time-varying free-surface `η`
-    # written separately (see grid_reconstruction.jl).
+# Generic fallback for non-static vertical coordinates: `MutableVerticalDiscretization`
+# (z-star / σ) and any other `AbstractVerticalCoordinate` defined downstream. We save the
+# reference coordinate `r`; physical height `z = z(r, …)` is reconstructible at
+# read time from `r` and the coordinate transform (e.g. the time-varying free-surface `η`) —
+# see grid_reconstruction.jl. The `StaticVerticalDiscretization` method above handles the
+# plain-`z` case.
+function default_vertical_dimension_attributes(coordinate::AbstractVerticalCoordinate, dim_name_generator; grid_index=nothing)
     r = vertical_coordinate_name(coordinate)
     rᵃᵃᶠ_name = dim_name_generator(r, coordinate, nothing, nothing, f, Val(:z))
     rᵃᵃᶜ_name = dim_name_generator(r, coordinate, nothing, nothing, c, Val(:z))
@@ -442,8 +447,8 @@ function default_vertical_dimension_attributes(coordinate::MutableVerticalDiscre
     Δrᵃᵃᶠ_name = dim_name_generator("Δr", coordinate, nothing, nothing, f, Val(:z))
     Δrᵃᵃᶜ_name = dim_name_generator("Δr", coordinate, nothing, nothing, c, Val(:z))
 
-    long_face   = "Reference cell-face locations in the vertical (Lagrangian r). Physical depth is reconstructible from r and η."
-    long_center = "Reference cell-center locations in the vertical (Lagrangian r). Physical depth is reconstructible from r and η."
+    long_face   = "Reference cell-face locations in the vertical (reference coordinate r). Physical height is reconstructible from r and the vertical coordinate transform."
+    long_center = "Reference cell-center locations in the vertical (reference coordinate r). Physical height is reconstructible from r and the vertical coordinate transform."
 
     rᵃᵃᶠ_attrs = Dict("long_name" => long_face,   "units" => "m", "axis" => "Z", "positive" => "up")
     rᵃᵃᶜ_attrs = Dict("long_name" => long_center, "units" => "m", "axis" => "Z", "positive" => "up")
