@@ -101,6 +101,15 @@ end
 @inline (obj::_KA.Kernel{CUDABackend, <:_KA.NDIteration.DynamicSize})(args...; ndrange=nothing, workgroupsize=nothing) =
     cuda_run(obj, ndrange, workgroupsize, args)
 
+# `promote_op` is not inferable for every adapt rule (e.g. closure reconstruction of `Returns` forcings
+# gives `Any`, tripping GPUCompiler's `isdispatchtuple` assertion); recover the concrete type from the
+# converted value in exactly those cases.
+@inline function device_argument_type(a)
+    a isa Type && return Core.Typeof(a)
+    T = Base.promote_op(_CUDACore.cudaconvert, typeof(a))
+    return isconcretetype(T) ? T : Core.Typeof(_CUDACore.cudaconvert(a))
+end
+
 function cuda_run(obj::_KA.Kernel{CUDABackend}, ndrange, workgroupsize, args::Tuple)
     backend = _KA.backend(obj)
 
@@ -110,8 +119,7 @@ function cuda_run(obj::_KA.Kernel{CUDABackend}, ndrange, workgroupsize, args::Tu
     maxthreads = _KA.workgroupsize(obj) <: _KA.NDIteration.StaticSize ? prod(_KA.get(_KA.workgroupsize(obj))) : nothing
 
     kernel_f = _CUDACore.cudaconvert(obj.f)
-    tt = Tuple{Base.promote_op(_CUDACore.cudaconvert, typeof(ctx)),
-               map(a -> Base.promote_op(_CUDACore.cudaconvert, typeof(a)), args)...}
+    tt = Tuple{device_argument_type(ctx), map(device_argument_type, args)...}
     kernel = cached_cufunction(kernel_f, tt, backend.always_inline, maxthreads)
 
     if _KA.workgroupsize(obj) <: _KA.NDIteration.DynamicSize && workgroupsize === nothing
