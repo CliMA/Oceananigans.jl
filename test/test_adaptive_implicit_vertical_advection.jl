@@ -2,12 +2,14 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Advection: AdaptiveImplicitVerticalAdvection,
                               advective_tracer_flux_z,
+                              advective_momentum_flux_Ww,
+                              explicit_velocity_scaleᶜᶜᶜ,
                               needs_implicit_solver,
                               implicit_advection_upper_diagonal,
                               implicit_advection_lower_diagonal,
                               implicit_advection_diagonal
-using Oceananigans.Grids: Center
-using Oceananigans.Operators: ℑzᵃᵃᶠ
+using Oceananigans.Grids: Center, Face, znode
+using Oceananigans.Operators: ℑzᵃᵃᶠ, volume
 using Oceananigans.TimeSteppers: AdaptiveVerticallyImplicitDiscretization, ExplicitTimeDiscretization,
                                  time_discretization, implicit_step!, reset!
 using Oceananigans.TurbulenceClosures: implicit_diffusion_solver, VerticallyImplicitTimeDiscretization
@@ -150,19 +152,19 @@ end
     set!(W, (x, y, z) -> 5 * sinpi(z / 500))   # exceeds the target CFL over part of the column
     fill_halo_regions!(W)
 
-    ℓx = ℓy = Center()
+    ℓx = ℓy = ℓz = Center()
 
     @testset "ρ ≡ 1 reproduces the volume-conserving coefficients" begin
         ρ = CenterField(grid)
         set!(ρ, 1)
         fill_halo_regions!(ρ)
         for k in 2:15, j in 1:2, i in 1:2
-            @test implicit_advection_upper_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ρ) ≈
-                  implicit_advection_upper_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy)
-            @test implicit_advection_lower_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ρ) ≈
-                  implicit_advection_lower_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy)
-            @test implicit_advection_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ρ) ≈
-                  implicit_advection_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy)
+            @test implicit_advection_upper_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ℓz, ρ) ≈
+                  implicit_advection_upper_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ℓz)
+            @test implicit_advection_lower_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ℓz, ρ) ≈
+                  implicit_advection_lower_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ℓz)
+            @test implicit_advection_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ℓz, ρ) ≈
+                  implicit_advection_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ℓz)
         end
     end
 
@@ -171,12 +173,12 @@ end
         set!(ρ, (x, y, z) -> 1 + z / 1000)   # ρ varies smoothly from 1 to 2
         fill_halo_regions!(ρ)
         for k in 2:15, j in 1:2, i in 1:2
-            uw = implicit_advection_upper_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ρ)
-            u0 = implicit_advection_upper_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy)
+            uw = implicit_advection_upper_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ℓz, ρ)
+            u0 = implicit_advection_upper_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ℓz)
             @test uw ≈ u0 * ℑzᵃᵃᶠ(i, j, k+1, grid, ρ) / ρ[i, j, k+1]
 
-            lw = implicit_advection_lower_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ρ)
-            l0 = implicit_advection_lower_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy)
+            lw = implicit_advection_lower_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ℓz, ρ)
+            l0 = implicit_advection_lower_diagonal(i, j, k, grid, scheme, W, Δt, ℓx, ℓy, ℓz)
             @test lw ≈ l0 * ℑzᵃᵃᶠ(i, j, k+1, grid, ρ) / ρ[i, j, k]
         end
     end
@@ -201,4 +203,94 @@ end
         # The upwind operator is flux-form, so a closed column conserves ∑ V q (uniform V here).
         @test sum(interior(q)) ≈ mass₀ rtol=1e-10
     end
+end
+
+@testset "z-Face implicit vertical advection (w)" begin
+    grid = RectilinearGrid(CPU(), size=(1, 1, 16), x=(0, 1), y=(0, 1), z=(0, 1000),
+                           topology=(Periodic, Periodic, Bounded))
+
+    Δt = 50.0
+    td = AdaptiveVerticallyImplicitDiscretization(cfl=0.3)
+    scheme = WENO(; time_discretization=td, weight_computation=Oceananigans.Utils.NormalDivision)
+
+    # Strong interior updraft, vanishing near the boundaries so interior fluxes telescope.
+    W = ZFaceField(grid)
+    set!(W, (x, y, z) -> 8 * sinpi(z / 1000)^2)
+    fill_halo_regions!(W)
+
+    solver = implicit_diffusion_solver(VerticallyImplicitTimeDiscretization(), grid)
+    clock = Clock(grid)
+    Nz = size(grid, 3)
+
+    c, f = Center(), Face()
+    q₀(x, y, z) = exp(-(z - 500)^2 / (2 * 150^2))
+    column_integral(q) = sum(volume(1, 1, k, grid, c, c, f) * q[1, 1, k] for k in 1:Nz)
+    integral_height(q) = sum(volume(1, 1, k, grid, c, c, f) * q[1, 1, k] * znode(1, 1, k, grid, c, c, f)
+                             for k in 1:Nz) / column_integral(q)
+
+    @testset "Ww flux is CFL-limited when α > cfl" begin
+        td.Δt[] = Δt
+        k = 8   # near max W, where the CFL is exceeded
+        s = explicit_velocity_scaleᶜᶜᶜ(1, 1, k, grid, scheme, td, W)
+        flux_explicit = advective_momentum_flux_Ww(1, 1, k, grid, scheme, ExplicitTimeDiscretization(), W, W)
+        flux_adaptive = advective_momentum_flux_Ww(1, 1, k, grid, scheme, td, W, W)
+        @test 0 < s < 1
+        @test flux_adaptive ≈ s * flux_explicit rtol=1e-12
+    end
+
+    @testset "explicit limit reduces to the identity" begin
+        q = ZFaceField(grid)
+        set!(q, q₀)
+        fill_halo_regions!(q)
+        td.Δt[] = 1e-3   # vertical CFL below target everywhere ⇒ wⁱ ≡ 0
+        before = Array(interior(q))
+        implicit_step!(q, solver, nothing, nothing, nothing, clock, (;), 1e-3, scheme, (; w=W))
+        @test Array(interior(q)) == before
+    end
+
+    @testset "conservation, positivity, and upwind direction under strong splitting" begin
+        ρ = CenterField(grid)
+        set!(ρ, (x, y, z) -> 1.2 * exp(-z / 500))
+        fill_halo_regions!(ρ)
+
+        for density in (nothing, ρ)
+            q = ZFaceField(grid)
+            set!(q, q₀)
+            fill_halo_regions!(q)
+            td.Δt[] = Δt
+            integral₀ = column_integral(q)
+            height₀ = integral_height(q)
+            implicit_step!(q, solver, nothing, nothing, nothing, clock, (;), Δt, scheme, (; w=W), density)
+            @test all(isfinite, interior(q))
+            # Interior fluxes telescope (w ≈ 0 at boundary-adjacent centers) ⇒ ∑ Vᶜᶜᶠ q conserved.
+            @test column_integral(q) ≈ integral₀ rtol=1e-10
+            # (I - ΔtL) is an M-matrix, so its inverse is nonnegative.
+            @test minimum(q[1, 1, k] for k in 1:Nz) ≥ -1e-10
+            # The advecting velocity is an updraft: the field must move upward.
+            @test integral_height(q) > height₀
+        end
+    end
+end
+
+@testset "NonhydrostaticModel momentum AIVA is stable above the explicit vertical CFL" begin
+    # Regression: `w` used to receive z-Center-shaped implicit coefficients (get_coefficient did
+    # not dispatch on ℓz) while its explicit `Ww` flux was left fully explicit and unscaled.
+    grid = RectilinearGrid(CPU(), size=(16, 16), x=(0, 1), z=(0, 1), halo=(4, 4),
+                           topology=(Periodic, Flat, Bounded))
+
+    advection = WENO(; time_discretization=AdaptiveVerticallyImplicitDiscretization(cfl=0.5),
+                     weight_computation=Oceananigans.Utils.NormalDivision)
+    model = NonhydrostaticModel(grid; advection, timestepper=:RungeKutta3)
+
+    # Divergence-free overturning cell: u = -∂z ψ, w = ∂x ψ with ψ = sin(2πx) sin(πz)
+    set!(model, u = (x, z) -> -π * sinpi(2x) * cospi(z),
+                w = (x, z) -> 2π * cospi(2x) * sinpi(z))
+
+    # Δt implies a vertical CFL of max|w| Δt / Δz ≈ 2π ⋅ 0.03 ⋅ 16 ≈ 3
+    for _ in 1:10
+        time_step!(model, 0.03)
+    end
+
+    @test all(isfinite, interior(model.velocities.u))
+    @test all(isfinite, interior(model.velocities.w))
 end
