@@ -6,6 +6,13 @@ using Oceananigans.DistributedComputations
 using Oceananigans.DistributedComputations: DistributedGrid
 using Oceananigans.DistributedComputations: synchronize_communication!, AsynchronousDistributed
 
+# True for topologies whose buffer region is owned locally (no MPI-communicating side in that direction).
+@inline local_dimension(T) = T === Bounded         ||
+                             T === Periodic        ||
+                             T === Flat            ||
+                             T === RightFaceFolded ||
+                             T === RightCenterFolded
+
 function complete_communication_and_compute_buffer!(model, ::DistributedGrid, ::AsynchronousDistributed)
 
     # Iterate over the fields to clear _ALL_ possible architectures
