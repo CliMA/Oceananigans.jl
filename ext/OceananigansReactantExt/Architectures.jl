@@ -93,6 +93,7 @@ function Oceananigans.Distributed(arch::ReactantState; devices=nothing,
                                              mesh, nothing, nothing, Ref(0), devices)
 end
 
+Oceananigans.Grids.unwrapped_eltype(T::Type{<:Reactant.TracedRNumber})      = Reactant.unwrapped_eltype(T)
 Oceananigans.Grids.unwrapped_eltype(T::Type{<:Reactant.ConcretePJRTNumber}) = Reactant.unwrapped_eltype(T)
 Oceananigans.Grids.unwrapped_eltype(T::Type{<:Reactant.ConcreteIFRTNumber}) = Reactant.unwrapped_eltype(T)
 

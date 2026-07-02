@@ -107,7 +107,7 @@ end
 end
 
 Adapt.adapt_structure(to, ib::PartialCellBottom) = PartialCellBottom(adapt(to, ib.bottom_height),
-                                                                     ib.minimum_fractional_cell_height)
+                                                                     adapt(to, ib.minimum_fractional_cell_height))
 
 Architectures.on_architecture(to, ib::PartialCellBottom) = PartialCellBottom(on_architecture(to, ib.bottom_height),
                                                                              on_architecture(to, ib.minimum_fractional_cell_height))
