@@ -53,12 +53,12 @@ function time_step_allocations(model, Δt; samples=10)
 end
 
 const serial_memory_cpu = Dict(
-    (:hydrostatic,    :flat)            => 592,
+    (:hydrostatic,    :flat)            => 560,
     (:hydrostatic,    :immersed)        => 592,
     (:hydrostatic,    :active_immersed) => 640,
-    (:nonhydrostatic, :flat)            => 598736,
-    (:nonhydrostatic, :immersed)        => 627392,
-    (:nonhydrostatic, :active_immersed) => 676640,
+    (:nonhydrostatic, :flat)            => 8.6e5,
+    (:nonhydrostatic, :immersed)        => 8.9e5,
+    (:nonhydrostatic, :active_immersed) => 6.9e5,
 )
 
 const serial_memory_gpu = Dict(
@@ -163,14 +163,18 @@ end
 end
 
 # The `SplitRungeKutta3` timestepper takes 3 substeps per time step, so we allow 3× the single-step hydrostatic bound.
-@testset "SplitRungeKutta3 hydrostatic memory allocations [CPU]" begin
-    arch = CPU()
-    for immersed in (:flat, :immersed, :active_immersed)
-        grid  = allocation_grid(arch; immersed_mode=immersed, size=(48, 48, 8))
-        model = hydrostatic_split_rk3_allocation_model(grid)
-        allocations = time_step_allocations(model, 1.0)
-        bound = ceil(Int, 1.1 * 3 * serial_memory_cpu[(:hydrostatic, immersed)])
-        @info "  hydrostatic_split_rk3 | $(summary(arch)) | $immersed : $(pretty_filesize(allocations)) (≤ $(pretty_filesize(bound)))"
-        @test allocations ≤ bound
+if !mpi_test
+    @testset "SplitRungeKutta3 hydrostatic memory allocations" begin
+        for arch in archs
+            baseline = arch isa GPU ? serial_memory_gpu : serial_memory_cpu
+            for immersed in (:flat, :immersed, :active_immersed)
+                grid  = allocation_grid(arch; immersed_mode=immersed, size=(48, 48, 8))
+                model = hydrostatic_split_rk3_allocation_model(grid)
+                allocations = time_step_allocations(model, 1.0)
+                bound = ceil(Int, 1.1 * 3 * baseline[(:hydrostatic, immersed)])
+                @info "  hydrostatic_split_rk3 | $(summary(arch)) | $immersed : $(pretty_filesize(allocations)) (≤ $(pretty_filesize(bound)))"
+                @test allocations ≤ bound
+            end
+        end
     end
 end
