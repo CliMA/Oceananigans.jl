@@ -597,15 +597,9 @@ end
             Ntot = 4N # total number of grid points across the 4 ranks
             @test dot(c, c) == (1^2 + 2^2 + 3^2 + 4^2) * N
             @test norm(c)   == sqrt((1^2 + 2^2 + 3^2 + 4^2) * N)
+            @test mean(c)   == (1 + 2 + 3 + 4) * N / Ntot
             @test minimum(c) == 1
             @test maximum(c) == 4
-
-            # `mean` on a DistributedField reduces the numerator globally but not the
-            # denominator: `_mean` divides the global `sum` by `conditional_length`,
-            # which falls back to the local `length(c)` for a bare field (no distributed
-            # override), so the result is `nranks` times too large. This makes
-            # `enforce_zero_mean_gauge!` subtract the wrong constant on distributed grids.
-            @test_broken mean(c) == (1 + 2 + 3 + 4) * N / Ntot
 
             cbool = CenterField(grid, Bool)
             cbool_reduced = Field{Nothing, Nothing, Nothing}(grid, Bool)
