@@ -1,7 +1,7 @@
 using KernelAbstractions: @kernel, @index
 
 using Oceananigans.Grids: node_names
-using Oceananigans.Architectures: cpu_architecture, GPU, CPU, ReactantState, device_copy_to!
+using Oceananigans.Architectures: cpu_architecture, GPU, CPU, ReactantState
 
 #####
 ##### Utilities
@@ -128,7 +128,7 @@ function set_to_array!(u, a)
     a = on_architecture(architecture(u), a)
 
     try
-        device_copy_to!(interior(u), a)
+        interior(u) = a
     catch err
         if err isa DimensionMismatch
             Nx, Ny, Nz = size(u)
