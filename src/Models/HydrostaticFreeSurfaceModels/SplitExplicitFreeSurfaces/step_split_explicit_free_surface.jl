@@ -164,13 +164,27 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
         converted_U_args = convert_to_device(arch, U_args)
         converted_η_args = convert_to_device(arch, η_args)
 
-        @unroll for substep in 1:Nsubsteps
-            @inbounds averaging_weight = weights[substep]
-            @inbounds transport_weight = transport_weights[substep]
+        substep_barotropic_loop!(barotropic_velocity_kernel!, free_surface_kernel!,
+                                 weights, transport_weights,
+                                 converted_U_args, converted_η_args, Val(Nsubsteps))
+    end
 
-            barotropic_velocity_kernel!(transport_weight, converted_U_args...)
-            free_surface_kernel!(averaging_weight, converted_η_args...)
-        end
+    return nothing
+end
+
+# A function barrier around the substep launches: on the GPU, the sixteen unrolled launch sites
+# inlined into the large parent body defeat scalar replacement, so every launch heap-allocates
+# its argument tuple. (On the CPU the barrier is allocation-neutral.)
+function substep_barotropic_loop!(barotropic_velocity_kernel!, free_surface_kernel!,
+                                  weights, transport_weights,
+                                  converted_U_args, converted_η_args, ::Val{Nsubsteps}) where Nsubsteps
+
+    @unroll for substep in 1:Nsubsteps
+        @inbounds averaging_weight = weights[substep]
+        @inbounds transport_weight = transport_weights[substep]
+
+        barotropic_velocity_kernel!(transport_weight, converted_U_args...)
+        free_surface_kernel!(averaging_weight, converted_η_args...)
     end
 
     return nothing
