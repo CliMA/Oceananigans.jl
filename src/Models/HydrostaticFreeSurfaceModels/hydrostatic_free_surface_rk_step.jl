@@ -149,30 +149,32 @@ stored in `model.timestepper.Ψ⁻` and `Gᵤ` is the current tendency in `model
 If an implicit solver is configured, implicit vertical diffusion is applied after the explicit step.
 """
 function rk_substep_velocities!(velocities, model, Δt)
+    rk_substep_velocity!(velocities, model, Δt, Val(:u))
+    rk_substep_velocity!(velocities, model, Δt, Val(:v))
+    return nothing
+end
 
+@inline function rk_substep_velocity!(velocities, model, Δt, ::Val{name}) where name
     grid = model.grid
     FT = eltype(grid)
 
-    for name in (:u, :v)
-        Gⁿ = model.timestepper.Gⁿ[name]
-        Ψ⁻ = model.timestepper.Ψ⁻[name]
-        velocity_field = velocities[name]
+    Gⁿ = model.timestepper.Gⁿ[name]
+    Ψ⁻ = model.timestepper.Ψ⁻[name]
+    velocity_field = velocities[name]
 
-        launch!(architecture(grid), grid, :xyz,
-                _rk_substep_field!, velocity_field, convert(FT, Δt), Gⁿ, Ψ⁻; exclude_periphery=true)
+    launch!(architecture(grid), grid, :xyz,
+            _rk_substep_field!, velocity_field, convert(FT, Δt), Gⁿ, Ψ⁻; exclude_periphery=true)
 
-        implicit_step!(velocity_field,
-                       model.timestepper.implicit_solver,
-                       model.closure,
-                       model.closure_fields,
-                       nothing,
-                       model.clock,
-                       fields(model),
-                       Δt,
-                       model.advection.momentum,
-                       model.velocities)
-    end
-
+    implicit_step!(velocity_field,
+                   model.timestepper.implicit_solver,
+                   model.closure,
+                   model.closure_fields,
+                   nothing,
+                   model.clock,
+                   fields(model),
+                   Δt,
+                   model.advection.momentum,
+                   model.velocities)
     return nothing
 end
 
@@ -195,40 +197,43 @@ If CATKE closure is active, the TKE tracer `e` is skipped (handled separately).
 Implicit vertical diffusion is applied after the explicit step if configured.
 """
 function rk_substep_tracers!(tracers, model, Δt)
+    rk_substep_tracers!(model, Δt, Val(1), Val(propertynames(tracers)))
+    return nothing
+end
 
+@inline rk_substep_tracers!(model, Δt, ::Val, ::Val{()}) = nothing
+
+@inline function rk_substep_tracers!(model, Δt, ::Val{tracer_index}, ::Val{names}) where {tracer_index, names}
+    rk_substep_tracer!(model, Δt, Val(tracer_index), Val(first(names)))
+    rk_substep_tracers!(model, Δt, Val(tracer_index + 1), Val(Base.tail(names)))
+    return nothing
+end
+
+@inline function rk_substep_tracer!(model, Δt, ::Val{tracer_index}, ::Val{tracer_name}) where {tracer_index, tracer_name}
     closure = model.closure
+    (hasclosure(closure, FlavorOfCATKE) && tracer_name == :e) && return nothing
+
     grid = model.grid
     FT = eltype(grid)
 
-    catke_in_closures = hasclosure(closure, FlavorOfCATKE)
+    Gⁿ = model.timestepper.Gⁿ[tracer_name]
+    Ψ⁻ = model.timestepper.Ψ⁻[tracer_name]
+    c  = model.tracers[tracer_name]
 
-    # Tracer update kernels
-    for (tracer_index, tracer_name) in enumerate(propertynames(tracers))
+    launch!(architecture(grid), grid, :xyz,
+            _rk_substep_tracer_field!, c, grid, convert(FT, Δt), Gⁿ, Ψ⁻)
 
-        if catke_in_closures && tracer_name == :e
-            @debug "Skipping RK substep for e"
-        else
-            Gⁿ = model.timestepper.Gⁿ[tracer_name]
-            Ψ⁻ = model.timestepper.Ψ⁻[tracer_name]
-            c  = tracers[tracer_name]
-
-            launch!(architecture(grid), grid, :xyz,
-                    _rk_substep_tracer_field!, c, grid, convert(FT, Δt), Gⁿ, Ψ⁻)
-
-            @inbounds c_advection = model.advection[tracer_name]
-            implicit_step!(c,
-                           model.timestepper.implicit_solver,
-                           closure,
-                           model.closure_fields,
-                           Val(tracer_index),
-                           model.clock,
-                           fields(model),
-                           Δt,
-                           c_advection,
-                           model.transport_velocities)
-        end
-    end
-
+    @inbounds c_advection = model.advection[tracer_name]
+    implicit_step!(c,
+                   model.timestepper.implicit_solver,
+                   closure,
+                   model.closure_fields,
+                   Val(tracer_index),
+                   model.clock,
+                   fields(model),
+                   Δt,
+                   c_advection,
+                   model.transport_velocities)
     return nothing
 end
 

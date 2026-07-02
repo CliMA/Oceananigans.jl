@@ -37,11 +37,11 @@ function default_vertical_coordinate(grid)
 end
 
 mutable struct HydrostaticFreeSurfaceModel{TS, E, A<:AbstractArchitecture, S,
-                                           G, T, V, B, R, F, P, BGC, U, W, C, Φ, K, AF, Z, BM} <: AbstractModel{TS, A}
+                                           G, CL, V, B, R, F, P, BGC, U, W, C, Φ, K, AF, Z, BM} <: AbstractModel{TS, A}
 
     architecture :: A          # Computer `Architecture` on which `Model` is run
     grid :: G                  # Grid of physical points on which `Model` is solved
-    clock :: Clock{T}          # Tracks iteration number and simulation time of `Model`
+    clock :: CL                # Tracks iteration number and simulation time of `Model`
     advection :: V             # Advection scheme for tracers
     buoyancy :: B              # Set of parameters for buoyancy model
     coriolis :: R              # Set of parameters for the background rotation rate of `Model`

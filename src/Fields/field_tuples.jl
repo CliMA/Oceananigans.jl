@@ -65,12 +65,13 @@ Fill halo regions for all `fields`. The algorithm:
   4. In every direction, the halo regions in each of the remaining `Field` tuple
      are filled simultaneously.
 """
-function BoundaryConditions.fill_halo_regions!(fields::Union{NamedTuple, Tuple}, args...; kwargs...)
+@inline BoundaryConditions.fill_halo_regions!(fields::NamedTuple, args...; kwargs...) = fill_halo_regions!(values(fields), args...; kwargs...)
 
-    for i in eachindex(fields)
-        @inbounds fill_halo_regions!(fields[i], args...; kwargs...)
-    end
+@inline BoundaryConditions.fill_halo_regions!(::Tuple{}, args...; kwargs...) = nothing
 
+@inline function BoundaryConditions.fill_halo_regions!(fields::Tuple, args...; kwargs...)
+    fill_halo_regions!(first(fields), args...; kwargs...)
+    fill_halo_regions!(Base.tail(fields), args...; kwargs...)
     return nothing
 end
 

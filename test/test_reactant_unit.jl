@@ -243,6 +243,34 @@ ridge(λ, φ) = 0.1 * exp((λ - 2)^2 / 2)
         @test maximum(c) ≈ -50.0
     end
 
+    @testset "AbstractOperation on LatitudeLongitudeGrid under trace" begin
+        grid = LatitudeLongitudeGrid(arch;
+                                     size = (4, 4, 4),
+                                     longitude = (0, 360),
+                                     latitude = (-60, 60),
+                                     z = (0, 1))
+
+        # The Reactant LatitudeLongitudeGrid `==` must return a plain `Bool`. The
+        # generic grid `==` compares node values, which under Reactant trace to a
+        # `TracedRNumber{Bool}` that cannot drive the `||` in validate_grid.
+        @test (grid == grid) isa Bool
+        @test grid == grid
+
+        value_c = 2
+        c  = CenterField(grid); set!(c, value_c)
+        value_d = 3
+        d  = CenterField(grid); set!(d, value_d)
+        cd = CenterField(grid)
+
+        # `c * d` builds a BinaryOperation -> validate_grid(c, d) -> (c.grid == d.grid).
+        # Compiling the assignment exercises the Reactant grid `==` while materializing
+        # into the preallocated `cd` (so we avoid the reduction allocation path).
+        multiply!(cd, c, d) = (cd .= c * d; nothing)
+        compiled_multiply! = @compile sync=true multiply!(cd, c, d)
+        compiled_multiply!(cd, c, d)
+        @test all(≈(value_c * value_d), Array(interior(cd)))
+    end
+
     @testset "Field reductions on RectilinearGrid" begin
         grid = RectilinearGrid(arch;
                                size = (10, 10, 10),
