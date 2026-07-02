@@ -1,3 +1,5 @@
+using Oceananigans.AbstractOperations: KernelFunctionOperation
+
 #####
 ##### FieldTimeSeriesOperation: AbstractOperations over FieldTimeSeries
 #####
@@ -136,8 +138,17 @@ Base.getindex(fts_op::FieldTimeSeriesOperation, n::Int) =
 @inline Base.getindex(fts_op::FieldTimeSeriesOperation, i::Int, j::Int, k::Int, time_index::Time) =
     interpolating_getindex(fts_op, i, j, k, time_index)
 
-# TODO: support partly-in-memory FieldTimeSeries arguments, which require both
-# bracketing time indices to be resident simultaneously (cf. update_field_time_series!).
+# Updating a FieldTimeSeriesOperation updates its FieldTimeSeries arguments;
+# other arguments fall through to the no-op fallback.
+update_field_time_series!(fts_op::FieldTimeSeriesOperation, n₁::Int, n₂=n₁) =
+    foreach(a -> update_field_time_series!(a, n₁, n₂), fts_op.args)
+
+function update_field_time_series!(fts_op::FieldTimeSeriesOperation, time_index::Time)
+    interpolator = cpu_interpolating_time_indices(architecture(fts_op), fts_op.times,
+                                                  fts_op.time_indexing, time_index.time)
+    return update_field_time_series!(fts_op, interpolator.first_index, interpolator.second_index)
+end
+
 function Base.getindex(fts_op::FieldTimeSeriesOperation, time_index::Time)
     interpolator = cpu_interpolating_time_indices(architecture(fts_op), fts_op.times,
                                                   fts_op.time_indexing, time_index.time)
@@ -146,6 +157,10 @@ function Base.getindex(fts_op::FieldTimeSeriesOperation, time_index::Time)
     n₂ = interpolator.second_index
 
     n₁ == n₂ && return compute!(Field(fts_op[n₁]))
+
+    # Ensure both bracketing time indices of partly-in-memory arguments are
+    # resident simultaneously before slicing.
+    update_field_time_series!(fts_op, n₁, n₂)
 
     t₂ = @allowscalar fts_op.times[n₂]
     t₁ = @allowscalar fts_op.times[n₁]
@@ -185,6 +200,59 @@ function set!(fts::FieldTimeSeries, fts_op::FieldTimeSeriesOperation)
         set!(fts[n], fts_op[n])
     end
     return fts
+end
+
+#####
+##### KernelFunctionOperation over FieldTimeSeries
+#####
+
+# Callable that builds the KernelFunctionOperation for one time slice.
+struct TimeSeriesKernelFunction{LX, LY, LZ, F, G}
+    func :: F
+    grid :: G
+end
+
+@inline (kf::TimeSeriesKernelFunction{LX, LY, LZ})(args...) where {LX, LY, LZ} =
+    KernelFunctionOperation{LX, LY, LZ}(kf.func, kf.grid, args...)
+
+Base.show(io::IO, kf::TimeSeriesKernelFunction) =
+    print(io, "KernelFunctionOperation of ", kf.func)
+
+"""
+$(TYPEDSIGNATURES)
+
+Return a `FieldTimeSeriesOperation` at location `(LX, LY, LZ)` on `grid` whose slice at
+time index `n` is `KernelFunctionOperation{LX, LY, LZ}(func, grid, args_at_n...)`, where
+`FieldTimeSeries` arguments are sliced at `n` and other arguments (e.g. parameters)
+pass through unchanged:
+
+```jldoctest
+using Oceananigans
+
+@inline scaled_product(i, j, k, grid, a, b, scale) = @inbounds scale * a[i, j, k] * b[i, j, k]
+
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+times = 0:1.0:2
+
+a = FieldTimeSeries{Center, Center, Center}(grid, times)
+b = FieldTimeSeries{Center, Center, Center}(grid, times)
+
+for n in 1:length(times)
+    set!(a[n], n)
+    set!(b[n], 2n)
+end
+
+q = FieldTimeSeriesOperation{Center, Center, Center}(scaled_product, grid, a, b, 10)
+
+q[1, 1, 1, 2]
+
+# output
+80.0
+```
+"""
+function FieldTimeSeriesOperation{LX, LY, LZ}(func, grid::AbstractGrid, args...) where {LX, LY, LZ}
+    kf = TimeSeriesKernelFunction{LX, LY, LZ, typeof(func), typeof(grid)}(func, grid)
+    return FieldTimeSeriesOperation(kf, args...)
 end
 
 #####

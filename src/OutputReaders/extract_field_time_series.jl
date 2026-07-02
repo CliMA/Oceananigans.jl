@@ -44,6 +44,11 @@ end
 extract_field_time_series(f::FieldTimeSeries) = (f,)
 extract_field_time_series(f::TimeSeriesInterpolation) = (f.time_series,)
 
+# More specific than the AbstractField fall-through below: a FieldTimeSeriesOperation
+# carries FieldTimeSeries inside its argument tuple.
+extract_field_time_series(fts_op::FieldTimeSeriesOperation) =
+    concatenate_extracted(map(extract_field_time_series, fts_op.args))
+
 CannotPossiblyContainFTS = (:Number, :AbstractArray, :AbstractGrid, :AbstractField, :Returns, :Nothing)
 
 for T in CannotPossiblyContainFTS

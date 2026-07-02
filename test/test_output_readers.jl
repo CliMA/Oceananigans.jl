@@ -2,7 +2,8 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Units: Time
 using Oceananigans.Fields: indices, interpolate!
-using Oceananigans.OutputReaders: Cyclical, Clamp, Linear, SplitFilePath
+using Oceananigans.OutputReaders: Cyclical, Clamp, Linear, SplitFilePath,
+                                  extract_field_time_series, update_field_time_series!
 
 using Random
 using NCDatasets
@@ -793,6 +794,69 @@ end
             @test_throws ArgumentError FieldTimeSeriesOperation(+, c, 1)
 
             @test summary(q) isa String
+
+            # extract_field_time_series finds the FieldTimeSeries inside operations,
+            # nested operation trees, and containers of operations
+            extracted = extract_field_time_series(q)
+            @test a in extracted && b in extracted
+            er = extract_field_time_series(sqrt(a^2 + b^2))
+            @test a in er && b in er
+            et = extract_field_time_series((q, c, 1.0))
+            @test a in et && b in et
+
+            # KernelFunctionOperation form: FieldTimeSeries arguments are sliced,
+            # other arguments (e.g. parameters) pass through
+            @inline scaled_product(i, j, k, grid, a, b, scale) = @inbounds scale * a[i, j, k] * b[i, j, k]
+            qk = FieldTimeSeriesOperation{Center, Center, Center}(scaled_product, grid, a, b, 10)
+            @test qk isa FieldTimeSeriesOperation
+            @test CUDA.@allowscalar qk[1, 1, 1, 2] == 10 * 2 * 4
+            @test CUDA.@allowscalar qk[1, 1, 1, Time(0.5)] == 0.5 * 10 * (1 * 2) + 0.5 * 10 * (2 * 4)
+            ek = extract_field_time_series(qk)
+            @test a in ek && b in ek
+        end
+
+        @testset "FieldTimeSeriesOperation with partly-in-memory arguments [$(typeof(arch))]" begin
+            @info "  Testing FieldTimeSeriesOperation with partly-in-memory arguments [$(typeof(arch))]..."
+            cpu_grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
+            times = 0:1.0:3
+            path_a = "ftsop_windowed_a_$(typeof(arch)).jld2"
+            path_b = "ftsop_windowed_b_$(typeof(arch)).jld2"
+            rm(path_a, force=true); rm(path_b, force=true)
+
+            fta = FieldTimeSeries{Center, Center, Center}(cpu_grid, times; backend=OnDisk(), path=path_a, name="a")
+            ftb = FieldTimeSeries{Center, Center, Center}(cpu_grid, times; backend=OnDisk(), path=path_b, name="b")
+            tmp = CenterField(cpu_grid)
+            for n in 1:length(times)
+                set!(tmp, n);  set!(fta, tmp, n)   # a = 1, 2, 3, 4
+                set!(tmp, 2n); set!(ftb, tmp, n)   # b = 2, 4, 6, 8
+            end
+
+            aw = FieldTimeSeries(path_a, "a"; backend=InMemory(2), architecture=arch)
+            bw = FieldTimeSeries(path_b, "b"; backend=InMemory(2), architecture=arch)
+
+            q = aw * bw
+
+            # Pointwise Time indexing slides the windows forward, and jumps backward
+            @test CUDA.@allowscalar q[1, 1, 1, Time(2.5)] == 0.5 * 18 + 0.5 * 32
+            @test CUDA.@allowscalar q[1, 1, 1, Time(0.5)] == 0.5 * 2 + 0.5 * 8
+
+            # Global Time getindex jointly updates both bracketing indices
+            f = q[Time(1.5)]
+            @test CUDA.@allowscalar f[1, 1, 1] == 0.5 * (2 * 4) + 0.5 * (3 * 6)
+
+            # Explicit joint update
+            update_field_time_series!(q, Time(2.7))
+            @test CUDA.@allowscalar q[1, 1, 1, 3] == 18
+
+            # Materialization from windowed arguments
+            qfts = FieldTimeSeries(q)
+            CUDA.@allowscalar begin
+                for n in 1:length(times)
+                    @test qfts[1, 1, 1, n] == n * 2n
+                end
+            end
+
+            rm(path_a, force=true); rm(path_b, force=true)
         end
     end
 
