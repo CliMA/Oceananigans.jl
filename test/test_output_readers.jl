@@ -724,6 +724,78 @@ end
     Nt = 5
     Nx, Ny, Nz = 16, 10, 5
 
+    for arch in archs
+        @testset "FieldTimeSeriesOperation [$(typeof(arch))]" begin
+            @info "  Testing FieldTimeSeriesOperation [$(typeof(arch))]..."
+            grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
+            times = 0:1.0:3
+            a = FieldTimeSeries{Center, Center, Center}(grid, times)
+            b = FieldTimeSeries{Center, Center, Center}(grid, times)
+            for n in 1:length(times)
+                set!(a[n], n)      # a = 1, 2, 3, 4
+                set!(b[n], 2n)     # b = 2, 4, 6, 8
+            end
+
+            q = a * b
+            @test q isa FieldTimeSeriesOperation
+            @test size(q) == (2, 2, 2, 4)
+            @test ndims(q) == 4
+
+            # Node indexing: q[n] is a three-dimensional operation over slices
+            qn = compute!(Field(q[2]))
+            @test CUDA.@allowscalar qn[1, 1, 1] == 2 * 4
+            @test CUDA.@allowscalar q[1, 1, 1, 2] == 8
+
+            # Time indexing linearly interpolates the node values of the operation,
+            # exactly like Time-indexing a stored FieldTimeSeries of the result
+            @test CUDA.@allowscalar q[1, 1, 1, Time(0.5)] == 0.5 * (1 * 2) + 0.5 * (2 * 4)
+            f = q[Time(0.5)]
+            @test f isa Field
+            @test CUDA.@allowscalar f[1, 1, 1] == 5.0
+            @test CUDA.@allowscalar q[Time(1.0)][1, 1, 1] == 8.0  # at a node: exact
+
+            # For nonlinear operators this differs (between nodes) from operating
+            # on Time-interpolated arguments
+            itc = CUDA.@allowscalar a[1, 1, 1, Time(0.5)] * b[1, 1, 1, Time(0.5)]
+            @test itc == 1.5 * 3.0
+            @test CUDA.@allowscalar q[1, 1, 1, Time(0.5)] != itc
+
+            # Composition, unary operators, and scalar / Field mixing
+            r = sqrt(a^2 + b^2)
+            @test r isa FieldTimeSeriesOperation
+            @test CUDA.@allowscalar r[1, 1, 1, 2] ≈ sqrt(4 + 16)
+
+            s = 2 * a + b / 2 - 1
+            @test CUDA.@allowscalar s[1, 1, 1, 3] == 2 * 3 + 6 / 2 - 1
+            @test CUDA.@allowscalar (-a)[1, 1, 1, 1] == -1
+
+            c = CenterField(grid)
+            set!(c, 10)
+            w = a * c
+            @test w isa FieldTimeSeriesOperation
+            @test CUDA.@allowscalar w[1, 1, 1, 3] == 30
+
+            # Materialization: Time-indexing the materialized series is identical
+            # to Time-indexing the lazy operation
+            qfts = FieldTimeSeries(q)
+            @test qfts isa FieldTimeSeries
+            CUDA.@allowscalar begin
+                for n in 1:length(times)
+                    @test qfts[1, 1, 1, n] == q[1, 1, 1, n]
+                end
+                @test qfts[1, 1, 1, Time(0.5)] == q[1, 1, 1, Time(0.5)]
+                @test qfts[1, 1, 1, Time(2.7)] ≈ q[1, 1, 1, Time(2.7)]
+            end
+
+            # Mismatched times and missing FieldTimeSeries arguments throw
+            other = FieldTimeSeries{Center, Center, Center}(grid, 0:0.5:1.5)
+            @test_throws ArgumentError a * other
+            @test_throws ArgumentError FieldTimeSeriesOperation(+, c, 1)
+
+            @test summary(q) isa String
+        end
+    end
+
     for output_writer in (JLD2Writer, NetCDFWriter)
         filepath1d, filepath2d, filepath3d, unsplit_filepath, split_filepath = generate_some_interesting_simulation_data(Nx, Ny, Nz; output_writer)
 
