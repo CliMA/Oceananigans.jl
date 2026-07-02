@@ -1033,6 +1033,43 @@ end
             @test CUDA.@allowscalar dc[2, 1, 1, 3] ≈ 3           # ∂x(3x) = 3
             @test CUDA.@allowscalar dc[2, 1, 1, Time(0.5)] ≈ 1.5 # blend of node derivatives
             @test CUDA.@allowscalar ∂y(c2)[2, 2, 2, 2] ≈ 0
+
+            # Temporal derivative: finite-difference node values (centered interior,
+            # one-sided ends), Time-interpolated like any other series
+            qt = FieldTimeSeries{Center, Center, Center}(grid, times)
+            for n in 1:length(times)
+                set!(qt[n], n^2)   # 1, 4, 9, 16
+            end
+            dq = ∂t(qt)
+            @test dq isa FieldTimeSeriesOperation
+            CUDA.@allowscalar begin
+                @test dq[1, 1, 1, 1] == 3   # (4 - 1) / 1
+                @test dq[1, 1, 1, 2] == 4   # (9 - 1) / 2
+                @test dq[1, 1, 1, 4] == 7   # (16 - 9) / 1
+                @test dq[1, 1, 1, Time(0.5)] == 3.5
+            end
+            @test Adapt.adapt(Array, dq)[1, 1, 1, 2] == 4
+            dfts = FieldTimeSeries(dq)   # lazy ≡ materialized
+            @test CUDA.@allowscalar dfts[1, 1, 1, Time(2.3)] == dq[1, 1, 1, Time(2.3)]
+
+            # Cyclical wraps the stencil across the period
+            qc = FieldTimeSeries{Center, Center, Center}(grid, times; time_indexing=Cyclical(4.0))
+            for n in 1:length(times)
+                set!(qc[n], n)
+            end
+            @test CUDA.@allowscalar ∂t(qc)[1, 1, 1, 1] == -1   # (2 - 4) / (1 - 3 + 4)
+
+            # Partly-in-memory arguments need a window of at least 4
+            path_dt = "dt_window_guard_$(typeof(arch)).jld2"
+            rm(path_dt, force=true)
+            dt_cpu_grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
+            fdt = FieldTimeSeries{Center, Center, Center}(dt_cpu_grid, times; backend=OnDisk(), path=path_dt, name="q")
+            tmp_dt = CenterField(dt_cpu_grid)
+            for n in 1:length(times)
+                set!(tmp_dt, n); set!(fdt, tmp_dt, n)
+            end
+            @test_throws ArgumentError ∂t(FieldTimeSeries(path_dt, "q"; backend=InMemory(2), architecture=arch))
+            rm(path_dt, force=true)
         end
     end
 

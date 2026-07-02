@@ -287,6 +287,112 @@ function FieldTimeSeriesOperation{LX, LY, LZ}(func, grid::AbstractGrid, args...)
 end
 
 #####
+##### Time derivative
+#####
+
+struct TimeSeriesTimeDerivative end
+
+const TimeDerivativeFTSOp = FieldTimeSeriesOperation{<:Any, <:Any, <:Any, <:Any, <:TimeSeriesTimeDerivative}
+
+# Return the finite-difference stencil (n₋, n₊, Δt) for the time derivative at node n:
+# centered in the interior, one-sided at the endpoints under Linear and Clamp,
+# wrap-aware (and always centered) under Cyclical.
+@inline function time_derivative_stencil(::Union{Linear, Clamp}, times, n)
+    Nt = length(times)
+    n₋ = max(n - 1, 1)
+    n₊ = min(n + 1, Nt)
+    Δt = @inbounds times[n₊] - times[n₋]
+    return n₋, n₊, Δt
+end
+
+@inline function time_derivative_stencil(time_indexing::Cyclical, times, n)
+    Nt = length(times)
+    n₋ = mod1(n - 1, Nt)
+    n₊ = mod1(n + 1, Nt)
+    Δt = @inbounds times[n₊] - times[n₋]
+    T = time_indexing.period
+    Δt = ifelse(n₋ > n, Δt + T, ifelse(n₊ < n, Δt + T, Δt))
+    return n₋, n₊, Δt
+end
+
+"""
+$(TYPEDSIGNATURES)
+
+Return the time derivative of `fts` as a `FieldTimeSeriesOperation`, following the same
+pattern as every other operation over `FieldTimeSeries`: well-defined node values that
+`Time`-indexing linearly interpolates. The node values are centered differences over the
+neighboring time nodes in the interior (wrap-aware under `Cyclical` time indexing) and
+one-sided differences at the endpoints under `Linear` and `Clamp`:
+
+```jldoctest
+using Oceananigans
+using Oceananigans.Units: Time
+
+grid = RectilinearGrid(size=(1, 1, 1), extent=(1, 1, 1))
+times = 0:1.0:2
+
+c = FieldTimeSeries{Center, Center, Center}(grid, times)
+
+for n in 1:length(times)
+    set!(c[n], n^2)
+end
+
+dc = ∂t(c)
+
+dc[1, 1, 1, 2]
+
+# output
+4.0
+```
+"""
+function ∂t(fts::FieldTimeSeriesLike)
+    LX, LY, LZ = location(fts)
+    times = fts.times
+    time_indexing = fts.time_indexing
+
+    Nt = length(times)
+    minimum_length = time_indexing isa Cyclical ? 3 : 2
+    Nt < minimum_length &&
+        throw(ArgumentError("∂t requires at least $minimum_length times, got $Nt."))
+
+    time_indexing isa Cyclical && isnothing(time_indexing.period) &&
+        throw(ArgumentError("∂t with Cyclical time indexing requires an explicitly-specified period."))
+
+    for source in extract_field_time_series(fts)
+        window = time_indices_length(source.backend, source.times)
+        if !isnothing(window) && window < 4
+            throw(ArgumentError("∂t of a partly-in-memory FieldTimeSeries requires a window of at" *
+                                " least 4 time indices: Time-interpolating the derivative touches" *
+                                " one neighboring node on each side of the bracketing nodes."))
+        end
+    end
+
+    args = (fts,)
+    grid = fts.grid
+    T = eltype(fts)
+
+    return FieldTimeSeriesOperation{LX, LY, LZ, typeof(time_indexing), TimeSeriesTimeDerivative,
+                                    typeof(args), typeof(grid), typeof(times), T}(
+                                    TimeSeriesTimeDerivative(), args, grid, times, time_indexing)
+end
+
+# The slice at node n couples the two neighboring nodes rather than same-index slices.
+function Base.getindex(fts_op::TimeDerivativeFTSOp, n::Int)
+    a = first(fts_op.args)
+    n₋, n₊, Δt = time_derivative_stencil(fts_op.time_indexing, fts_op.times, n)
+    update_field_time_series!(a, n₋, n₊)
+    return (a[n₊] - a[n₋]) / Δt
+end
+
+# Updating the derivative at (n₁, n₂) requires the argument one node beyond each side.
+function update_field_time_series!(fts_op::TimeDerivativeFTSOp, n₁::Int, n₂=n₁)
+    a = first(fts_op.args)
+    lo, _ = time_derivative_stencil(fts_op.time_indexing, fts_op.times, n₁)
+    _, hi = time_derivative_stencil(fts_op.time_indexing, fts_op.times, n₂)
+    return update_field_time_series!(a, lo, hi)
+end
+
+#####
 ##### Operators: the same operations that build AbstractOperations from Fields
 ##### build FieldTimeSeriesOperations from FieldTimeSeries. The per-arity method
 ##### definers below are called by the @unary, @binary, and @multiary macros
@@ -458,4 +564,18 @@ end
                                                 i, j, k, n)
     kf = fts_op.op
     return kf.func(i, j, k, kf.grid, map(a -> time_slice(a, n), fts_op.args)...)
+end
+
+@propagate_inbounds function pointwise_getindex(fts_op::TimeDerivativeFTSOp, i, j, k, n)
+    a = first(fts_op.args)
+    n₋, n₊, Δt = time_derivative_stencil(fts_op.time_indexing, fts_op.times, n)
+    return (time_series_value(a, i, j, k, n₊) - time_series_value(a, i, j, k, n₋)) / Δt
+end
+
+const TimeDerivativeGPUFTSOp = GPUAdaptedFieldTimeSeriesOperation{<:Any, <:Any, <:Any, <:Any, <:TimeSeriesTimeDerivative}
+
+@inline function Base.getindex(fts_op::TimeDerivativeGPUFTSOp, i::Int, j::Int, k::Int, n::Int)
+    a = first(fts_op.args)
+    n₋, n₊, Δt = time_derivative_stencil(fts_op.time_indexing, fts_op.times, n)
+    return (time_series_value(a, i, j, k, n₊) - time_series_value(a, i, j, k, n₋)) / Δt
 end
