@@ -1,0 +1,99 @@
+using MPI
+MPI.Init()
+
+# Make sure results are
+# reproducible
+using Random
+Random.seed!(1234)
+
+include("dependencies_for_runtests.jl")
+include("dependencies_for_poisson_solvers.jl")
+
+# # Distributed conjugate gradient Poisson solver tests
+#
+# These tests are meant to be run on 4 ranks. This script may be run
+# stand-alone (outside the test environment) via
+#
+# mpiexec -n 4 julia --project test_distributed_conjugate_gradient_poisson_solver.jl
+#
+# provided that a few packages (like TimesDates.jl) are in your global environment.
+
+using Oceananigans.DistributedComputations: reconstruct_global_grid, DistributedGrid, Partition
+using Oceananigans.Solvers: ConjugateGradientPoissonSolver, DiagonallyDominantPreconditioner, fft_poisson_solver
+using Oceananigans.Models.NonhydrostaticModels: solve_for_pressure!
+
+function random_divergent_source_term(grid::DistributedGrid)
+    arch = architecture(grid)
+    default_bcs = FieldBoundaryConditions()
+
+    u_bcs = regularize_field_boundary_conditions(default_bcs, grid, :u)
+    v_bcs = regularize_field_boundary_conditions(default_bcs, grid, :v)
+    w_bcs = regularize_field_boundary_conditions(default_bcs, grid, :w)
+
+    u_bcs = inject_halo_communication_boundary_conditions(u_bcs, (Face(), Center(), Center()), arch.local_rank, arch.connectivity, topology(grid))
+    v_bcs = inject_halo_communication_boundary_conditions(v_bcs, (Center(), Face(), Center()), arch.local_rank, arch.connectivity, topology(grid))
+    w_bcs = inject_halo_communication_boundary_conditions(w_bcs, (Center(), Center(), Face()), arch.local_rank, arch.connectivity, topology(grid))
+
+    Ru = XFaceField(grid, boundary_conditions=u_bcs)
+    Rv = YFaceField(grid, boundary_conditions=v_bcs)
+    Rw = ZFaceField(grid, boundary_conditions=w_bcs)
+    U = (u=Ru, v=Rv, w=Rw)
+
+    Nx, Ny, Nz = size(grid)
+    set!(Ru, rand(size(Ru)...))
+    set!(Rv, rand(size(Rv)...))
+    set!(Rw, rand(size(Rw)...))
+
+    fill_halo_regions!(Ru)
+    fill_halo_regions!(Rv)
+    fill_halo_regions!(Rw)
+
+    # Compute the right hand side R = ∇⋅U
+    ArrayType = array_type(arch)
+    R = zeros(Nx, Ny, Nz) |> ArrayType
+    launch!(arch, grid, :xyz, divergence!, grid, U.u.data, U.v.data, U.w.data, R)
+
+    return R, U
+end
+
+# Mirrors `compute_pressure_solution` from test_conjugate_gradient_poisson_solver.jl,
+# but builds the solver on a `Distributed` grid and selects the preconditioner.
+function divergence_free_poisson_solution(grid_points, ranks, topo, child_arch, preconditioner_type)
+    arch = Distributed(child_arch, partition=Partition(ranks...))
+    local_grid = RectilinearGrid(arch, topology=topo, size=grid_points, extent=(2π, 2π, 2π))
+
+    preconditioner = preconditioner_type == :fft ? fft_poisson_solver(local_grid) :
+                                                    DiagonallyDominantPreconditioner()
+
+    reltol = abstol = eps(eltype(local_grid))
+    solver = ConjugateGradientPoissonSolver(local_grid; preconditioner, reltol, abstol, maxiter=Int(1e5))
+
+    # The test will solve for ϕ, then compare R to ∇²ϕ.
+    ϕ   = CenterField(local_grid)
+    ∇²ϕ = CenterField(local_grid)
+    R, U = random_divergent_source_term(local_grid)
+
+    # Using Δt = 1.
+    solve_for_pressure!(ϕ, solver, nothing, U, 1)
+
+    # "Recompute" ∇²ϕ
+    compute_∇²!(∇²ϕ, ϕ, arch, local_grid)
+
+    return Array(interior(∇²ϕ)) ≈ Array(R)
+end
+
+@testset "Distributed conjugate gradient Poisson solver" begin
+    for preconditioner_type in (:diagonally_dominant, :fft)
+        for topology in ((Periodic, Periodic, Periodic),
+                         (Periodic, Periodic, Bounded),
+                         (Bounded,  Bounded,  Bounded))
+
+            @info "  Testing distributed CG Poisson solver [$preconditioner_type] with topology $topology and (4, 1, 1) ranks..."
+            @test divergence_free_poisson_solution((16, 16, 8), (4, 1, 1), topology, child_arch, preconditioner_type)
+            @info "  Testing distributed CG Poisson solver [$preconditioner_type] with topology $topology and (1, 4, 1) ranks..."
+            @test divergence_free_poisson_solution((16, 16, 8), (1, 4, 1), topology, child_arch, preconditioner_type)
+            @info "  Testing distributed CG Poisson solver [$preconditioner_type] with topology $topology and (2, 2, 1) ranks..."
+            @test divergence_free_poisson_solution((16, 16, 8), (2, 2, 1), topology, child_arch, preconditioner_type)
+        end
+    end
+end
