@@ -1,6 +1,5 @@
-using DocStringExtensions: TYPEDEF, TYPEDSIGNATURES
 using Oceananigans: instantiated_location
-using Oceananigans.Grids: node, xnodes, ynodes, znodes
+using Oceananigans.Grids: node, xnodes, ynodes
 using Oceananigans.Fields: AbstractField, Field, compute!, show_location
 using Oceananigans.AbstractOperations: Average
 using Oceananigans.OutputReaders: interpolate
@@ -229,13 +228,15 @@ function validate_fts_target_extent(fts, field)
     return nothing
 end
 
+# `transform` is host-side only (`compute_forcing!`, `show`) and may not be isbits
+# (e.g. a `Symbol`), so the device copy drops it.
 Adapt.adapt_structure(to, r::Relaxation) =
     Relaxation(Adapt.adapt(to, r.rate),
                Adapt.adapt(to, r.relaxed),
                Adapt.adapt(to, r.mask),
                Adapt.adapt(to, r.target),
                Adapt.adapt(to, r.location),
-               Adapt.adapt(to, r.transform))
+               nothing)
 
 """Show the innards of a `Relaxation` in the REPL."""
 function Base.show(io::IO, relaxation::Relaxation)
