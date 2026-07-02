@@ -33,6 +33,8 @@ import Oceananigans.DistributedComputations: Distributed
 const GPUVar = Union{CuArray, CuContext, CuPtr, Ptr}
 
 function __init__()
+    apply_allocation_fixes!()
+
     if CUDA.functional()
         @debug "CUDA-enabled GPU(s) detected:"
         for (gpu, dev) in enumerate(CUDA.devices())
@@ -169,5 +171,7 @@ function fast_inv_cuda(a::Float32)
     inv_a = ccall("llvm.nvvm.rcp.approx.ftz.f", llvmcall, Float32, (Float32,), a)
     return inv_a
 end
+
+include("cuda_allocation_fixes.jl")
 
 end # module OceananigansCUDAExt

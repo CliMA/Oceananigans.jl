@@ -155,22 +155,38 @@ function iterate_split_explicit_in_halo!(free_surface, grid, GUⁿ, GVⁿ, Δτ�
     barotropic_velocity_kernel!, _ = configure_kernel(arch, grid, parameters, _split_explicit_barotropic_velocity!)
     free_surface_kernel!, _        = configure_kernel(arch, grid, parameters, _split_explicit_free_surface!)
 
-    U_args = (grid, Val(false), Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper)
-    η_args = (grid, Val(false), Δτᴮ, η, U, V, F, clock, η̅, U̅, V̅, timestepper)
+    # We need to perform ~50 time-steps which means launching ~100 very small kernels: we are limited by latency of
+    # argument conversion to GPU-compatible values. To alleviate this penalty we convert first and then we substep!
+    GC.@preserve free_surface grid GUⁿ GVⁿ F begin
+        substep_barotropic_loop!(arch, barotropic_velocity_kernel!, free_surface_kernel!,
+                                 weights, transport_weights,
+                                 grid, Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper, F, clock, η̅, U̅, V̅,
+                                 Val(Nsubsteps))
+    end
 
-    GC.@preserve U_args η_args begin
-        # We need to perform ~50 time-steps which means launching ~100 very small kernels: we are limited by latency of
-        # argument conversion to GPU-compatible values. To alleviate this penalty we convert first and then we substep!
-        converted_U_args = convert_to_device(arch, U_args)
-        converted_η_args = convert_to_device(arch, η_args)
+    return nothing
+end
 
-        @unroll for substep in 1:Nsubsteps
-            @inbounds averaging_weight = weights[substep]
-            @inbounds transport_weight = transport_weights[substep]
+# A function barrier taking the arguments piecewise: conversion, argument-tuple construction and the
+# launches all live in this small body, where scalar replacement keeps the (large, isbits) converted
+# tuples off the heap. In the large parent body they are heap-materialized, and `GC.@preserve` on a
+# tuple of host `Field`s forces it onto the heap outright, with a box per element -- so we preserve
+# the owners in the parent instead.
+function substep_barotropic_loop!(arch, barotropic_velocity_kernel!, free_surface_kernel!,
+                                  weights, transport_weights,
+                                  grid, Δτᴮ, η, U, V, GUⁿ, GVⁿ, g, Ũ, Ṽ, timestepper, F, clock, η̅, U̅, V̅,
+                                  ::Val{Nsubsteps}) where Nsubsteps
 
-            barotropic_velocity_kernel!(transport_weight, converted_U_args...)
-            free_surface_kernel!(averaging_weight, converted_η_args...)
-        end
+    cd(x) = convert_to_device(arch, x)
+    converted_U_args = (cd(grid), Val(false), Δτᴮ, cd(η), cd(U), cd(V), cd(GUⁿ), cd(GVⁿ), g, cd(Ũ), cd(Ṽ), cd(timestepper))
+    converted_η_args = (cd(grid), Val(false), Δτᴮ, cd(η), cd(U), cd(V), cd(F), cd(clock), cd(η̅), cd(U̅), cd(V̅), cd(timestepper))
+
+    @unroll for substep in 1:Nsubsteps
+        @inbounds averaging_weight = weights[substep]
+        @inbounds transport_weight = transport_weights[substep]
+
+        barotropic_velocity_kernel!(transport_weight, converted_U_args...)
+        free_surface_kernel!(averaging_weight, converted_η_args...)
     end
 
     return nothing

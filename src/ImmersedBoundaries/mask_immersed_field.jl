@@ -2,7 +2,7 @@ using KernelAbstractions: @kernel, @index
 using Oceananigans.Grids: interior_indices
 using Oceananigans.Utils: KernelParameters
 using Oceananigans.AbstractOperations: BinaryOperation
-using Oceananigans.Fields: location, Field, ReducedField
+using Oceananigans.Fields: location, instantiated_location, Field, ReducedField
 using Oceananigans.Fields: ConstantField, OneField, ZeroField
 
 instantiate(T::Type) = T()
@@ -34,7 +34,7 @@ mask_immersed_field_xy!(::Number, args...; kw...) = nothing
 mask_immersed_field_xy!(::Nothing, args...; kw...) = nothing
 
 mask_immersed_field!(field::Field, value=zero(eltype(field.grid))) =
-    mask_immersed_field!(field, field.grid, location(field), value)
+    mask_immersed_field!(field, field.grid, instantiated_location(field), value)
 
 function mask_immersed_field!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(+)}, value=zero(eltype(bop)))
     a_value = ifelse(bop.b isa Number, -bop.b, value)
@@ -64,7 +64,7 @@ masks `field` defined on `grid` with a value `val` at locations where `periphera
 """
 function mask_immersed_field!(field::Field, grid::ImmersedBoundaryGrid, loc, value)
     arch = architecture(field)
-    loc  = instantiate.(loc)
+    loc  = map(instantiate, loc)
     kp = KernelParameters(interior_indices(field)...)
     launch!(arch, grid, kp, _mask_immersed_field!, field, loc, grid, value)
     return nothing
@@ -77,7 +77,7 @@ end
 end
 
 mask_immersed_field_xy!(field, value=zero(eltype(field.grid)); k) =
-    mask_immersed_field_xy!(field, field.grid, location(field), value, k)
+    mask_immersed_field_xy!(field, field.grid, instantiated_location(field), value, k)
 
 function mask_immersed_field_xy!(bop::BinaryOperation{<:Any, <:Any, <:Any, typeof(+)}, value=zero(eltype(bop)); k)
     a_value = ifelse(bop.b isa Number, -bop.b, value)
@@ -107,7 +107,7 @@ Mask `field` on `grid` with a `value` on the slices `[:, :, k]` where `immersed_
 """
 function mask_immersed_field_xy!(field::Field, grid::ImmersedBoundaryGrid, loc, value, k)
     arch = architecture(field)
-    loc  = instantiate.(loc)
+    loc  = map(instantiate, loc)
     return launch!(arch, grid, :xy, _mask_immersed_field_xy!, field, loc, grid, value, k)
 end
 
@@ -124,7 +124,7 @@ end
 # We mask a `ReducedField` if the entire reduced direction is immersed.
 # This requires a sweep over the reduced direction
 function mask_immersed_field!(field::ReducedField, grid::ImmersedBoundaryGrid, loc, value)
-    loc  = instantiate.(loc)
+    loc  = map(instantiate, loc)
     dims = reduced_dimensions(field)
     launch!(architecture(field), grid, size(field), _mask_immersed_reduced_field!, field, dims, loc, grid, value)
     return nothing
