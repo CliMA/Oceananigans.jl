@@ -127,8 +127,11 @@ end
 function set_to_array!(u, a)
     a = on_architecture(architecture(u), a)
 
+    a_range = CartesianIndices(a)
+    u_range = CartesianIndices(interior(u))
+
     try
-        broadcast!(interior(u), a)
+        copyto!(interior(u), u_range, a, a_range)
     catch err
         if err isa DimensionMismatch
             Nx, Ny, Nz = size(u)
