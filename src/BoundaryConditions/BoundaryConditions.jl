@@ -6,6 +6,7 @@ export
     PeriodicBoundaryCondition, NormalFlowBoundaryCondition, NoFluxBoundaryCondition, MultiRegionCommunicationBoundaryCondition,
     FluxBoundaryCondition, ValueBoundaryCondition, GradientBoundaryCondition, DistributedCommunicationBoundaryCondition,
     PerturbationAdvection, has_target_transport, get_target_transport,
+    GravityWaveRadiation, Radiation, ImplicitGravityWaveRadiation, GravityWaveRadiationBoundaryCondition, ImplicitGravityWaveRadiationBoundaryCondition,
     validate_boundary_condition_topology, validate_boundary_condition_architecture,
     FieldBoundaryConditions,
     compute_x_bcs!, compute_y_bcs!, compute_z_bcs!,
@@ -21,7 +22,7 @@ using KernelAbstractions: @index, @kernel
 using Oceananigans: Oceananigans
 using Oceananigans.Architectures: CPU, GPU
 using Oceananigans.Utils: launch!
-using Oceananigans.Operators: Ax, Ay, Az, volume
+using Oceananigans.Operators: Ax, Ay, Az, volume, ℑxᶠᵃᵃ, ℑyᵃᶠᵃ
 using Oceananigans.Grids
 using DocStringExtensions: TYPEDSIGNATURES
 
@@ -59,4 +60,6 @@ include("update_boundary_conditions.jl")
 include("polar_boundary_condition.jl")
 
 include("perturbation_advection.jl")
+include("open_boundary_schemes.jl")
+
 end # module

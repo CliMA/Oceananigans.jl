@@ -268,6 +268,9 @@ end
 # this is strictly more specific and disambiguates.
 BoundaryConditions.regularize_boundary_condition(bc::BoundaryCondition, grid::DistTRG, loc, dim, bound, prognostic_names, sign) = bc
 
+# Only to solve the ambiguities (this method should never be used)
+BoundaryConditions.regularize_boundary_condition(bc::BoundaryConditions.RBC, grid::DistTRG, loc, dim, bound, prognostic_names, sign) = bc
+
 # Non-fold distributed ranks: no specific 7-arg method — the generic `args...`-accepting
 # methods in BoundaryConditions (lines 244-254) take over and drop the extra `sign` arg.
 
@@ -277,7 +280,8 @@ function BoundaryConditions.regularize_field_boundary_conditions(bcs::FieldBound
                                                                  prognostic_names=nothing)
 
     loc  = assumed_field_location(field_name)
-    sign = (field_name == :u) || (field_name == :v) ? -1 : 1
+    sign = field_name == :u || field_name == :v ||
+           field_name == :U || field_name == :V ? -1 : 1
 
     west   = regularize_boundary_condition(bcs.west,   grid, loc, 1, LeftBoundary,  prognostic_names)
     east   = regularize_boundary_condition(bcs.east,   grid, loc, 1, RightBoundary, prognostic_names)
