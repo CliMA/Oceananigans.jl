@@ -266,6 +266,8 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     filtered_state = (η̅ = η̅, U̅ = U̅, V̅ = V̅, Ũ = Ũ, Ṽ = Ṽ)
     barotropic_velocities = (U = U, V = V)
 
+    # `KernelParameters` rather than `:xy`: a `Symbol`-typed field forces a runtime `Val(::Symbol)`
+    # in `configure_kernel` on every substepping call.
     kernel_parameters = if extend_halos
         maybe_augmented_kernel_parameters(TX, TY, maybe_extended_grid, substepping)
     else
@@ -416,15 +418,18 @@ end
 @inline split_explicit_kernel_size(::Type{LeftConnectedRightCenterConnected}, N, H) = -H+2:N+H-1
 @inline split_explicit_kernel_size(::Type{LeftConnectedRightFaceConnected},   N, H) = -H+2:N+H-1
 
-# Adapt
-Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface{extend_halos}) where {extend_halos} =
+# Adapt. Inside kernels only the displacement and barotropic velocities are read (via `free_surface_fields`);
+# the filtered state, substepping and timestepper are used on the host and reach the substep kernels through
+# unpacked arguments, never through this adapted object. Dropping them keeps device conversion allocation-free
+# (adapting the filtered-state NamedTuple would otherwise rebuild it on every launch that receives the free surface).
+@inline Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface{extend_halos}) where {extend_halos} =
     SplitExplicitFreeSurface{extend_halos}(Adapt.adapt(to, free_surface.displacement),
                                            Adapt.adapt(to, free_surface.barotropic_velocities),
-                                           Adapt.adapt(to, free_surface.filtered_state),
+                                           nothing,
                                            free_surface.gravitational_acceleration,
                                            nothing,
-                                           Adapt.adapt(to, free_surface.substepping),
-                                           Adapt.adapt(to, free_surface.timestepper))
+                                           nothing,
+                                           nothing)
 
 for Type in (SplitExplicitFreeSurface,
              FixedTimeStepSize,

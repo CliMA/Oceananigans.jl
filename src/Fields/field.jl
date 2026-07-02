@@ -825,7 +825,15 @@ Statistics.mean!(r::ReducedAbstractField, a::AbstractArray; kwargs...) = Statist
 ##### fill_halo_regions!
 #####
 
-function BoundaryConditions.fill_halo_regions!(field::Field, positional_args...; kwargs...)
+# Tiny inlinable entry point: bundle the trailing arguments into a single `Tuple` so the heavy method below
+# is fixed-arity. A trailing `Vararg` on a non-inlined callee is passed via the jlcall ABI, which heap-boxes
+# every non-isbits argument (the field and any field tuples threaded through for boundary conditions) on
+# every halo fill. Delegating to a fixed-arity `Tuple` argument avoids that boxing (as in KernelAbstractions'
+# `__run`).
+@inline BoundaryConditions.fill_halo_regions!(field::Field, positional_args...; kwargs...) =
+    fill_halo_regions!(field, positional_args; kwargs...)
+
+function BoundaryConditions.fill_halo_regions!(field::Field, positional_args::Tuple; kwargs...)
 
     arch = architecture(field.grid)
     args = (field.data,
@@ -835,8 +843,6 @@ function BoundaryConditions.fill_halo_regions!(field::Field, positional_args...;
             field.grid,
             positional_args...)
 
-    # Manually convert args... to be
-    # passed to the fill_halo_regions! function.
     GC.@preserve args begin
         converted_args = convert_to_device(arch, args)
         fill_halo_regions!(converted_args...; kwargs...)

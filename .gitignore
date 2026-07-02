@@ -77,3 +77,6 @@ statprof
 
 # Sandbox MWEs and scratch experiments (not part of the package)
 sandbox/
+
+# Notes
+notes/*
