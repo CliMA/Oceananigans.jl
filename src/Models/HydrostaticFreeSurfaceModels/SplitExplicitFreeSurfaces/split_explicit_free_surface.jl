@@ -356,7 +356,7 @@ Base.show(io::IO, sefs::SplitExplicitFreeSurface) = print(io, "$(summary(sefs))\
 #####
 
 # Extending halos is not allowed with variable time-stepping
-function maybe_extend_halos(TX, TY, grid, ::FixedTimeStepSize) = grid
+maybe_extend_halos(TX, TY, grid, ::FixedTimeStepSize) = grid
 
 function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
     old_halos = halo_size(grid)
