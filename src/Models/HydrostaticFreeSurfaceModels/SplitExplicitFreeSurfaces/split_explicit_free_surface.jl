@@ -23,7 +23,11 @@ struct LocalHaloFilling end
 struct CompleteHaloFilling end
 
 has_normal_flow(bc) = false
-has_normal_flow(bc::BoundaryCondition{<:NormalFlow}) = (bc.condition != 0) || isnothing(bc.condition)
+has_normal_flow(bc::BoundaryCondition{<:NormalFlow}) = !isnothing(bc.classification.scheme) || non_zero_transport(bc.condition)
+
+non_zero_transport(condition)         = true
+non_zero_transport(::Nothing)         = false
+non_zero_transport(condition::Number) = !iszero(condition)
 
 has_normal_flow(bcs::FieldBoundaryConditions) =
     has_normal_flow(bcs.west)   || has_normal_flow(bcs.east)  ||
