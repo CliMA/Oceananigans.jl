@@ -94,7 +94,6 @@ const distributed_memory_gpu = Dict(
 # For distributed this includes only (4, 1), (1, 4) and (2, 2)
 archs = nonhydrostatic_regression_test_architectures()
 
-<<<<<<< ss/fix-buffer-parametes
 @testset "local_dimension predicate" begin
     @test local_dimension(Periodic) === true
     @test local_dimension(Bounded)  === true
@@ -114,7 +113,8 @@ end
 
     buffer_parameters(params, grid, arch)  # warm up
     @test @allocated(buffer_parameters(params, grid, arch)) == 0
-=======
+end
+
 @testset "flattened_unique_values: correctness, inference, allocations" begin
     grid = RectilinearGrid(CPU(), size=(4, 4, 4), extent=(1, 1, 1))
     u = XFaceField(grid)
@@ -154,7 +154,6 @@ end
     nested = (u = 1, deep = (grid = grid, series = fts, tag = "t"))
     got = extract_field_time_series(nested)
     @test got == (fts,)
->>>>>>> main
 end
 
 @testset "Memory allocation regression tests" begin
