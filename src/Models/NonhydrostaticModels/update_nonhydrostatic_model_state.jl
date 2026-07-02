@@ -6,6 +6,7 @@ using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.BoundaryConditions: update_boundary_conditions!
 using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
 using Oceananigans.Fields: compute!
+using Oceananigans.Forcings: compute_forcing!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models: update_model_field_time_series!, surface_kernel_parameters
 using Oceananigans.TimeSteppers: compute_tendencies!
@@ -25,6 +26,9 @@ function update_state!(model::NonhydrostaticModel, callbacks=[])
 
     # Update all FieldTimeSeries used in the model
     update_model_field_time_series!(model, model.clock)
+
+    # Refresh transformed forcings (e.g. Relaxation targets carrying a lazy Field)
+    compute_forcing!(model.forcing)
 
     # Update the boundary conditions
     update_boundary_conditions!(fields(model), model)
