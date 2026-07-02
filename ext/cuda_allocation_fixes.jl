@@ -43,6 +43,38 @@ const _cuda_kernels_fix = quote
     @inline (obj::KA.Kernel{CUDABackend})(args...; ndrange=nothing, workgroupsize=nothing) =
         cuda_run(obj, ndrange, workgroupsize, args)
 
+    const _oceananigans_compiler_configs = Dict{Tuple{CuDevice, Bool, Union{Int, Nothing}}, Any}()
+
+    @noinline function _oceananigans_config(dev, always_inline::Bool, maxthreads::Union{Int, Nothing})
+        key = (dev, always_inline, maxthreads)
+        cfg = get(_oceananigans_compiler_configs, key, nothing)
+        if cfg === nothing
+            cfg = CUDACore.compiler_config(dev; always_inline, maxthreads)
+            _oceananigans_compiler_configs[key] = cfg
+        end
+        return cfg
+    end
+
+    # Positional clone of `CUDACore.cufunction`: the kwargs path pays `pairs` iteration and
+    # `hash(kwargs)` inside `compiler_config` on every (cached) launch.
+    function _oceananigans_cufunction(f::F, tt::TT, always_inline::Bool, maxthreads::Union{Int, Nothing}) where {F, TT}
+        cuda = CUDACore.active_state()
+        Base.@lock CUDACore.cufunction_lock begin
+            cache = CUDACore.compiler_cache(cuda.context)
+            source = CUDACore.methodinstance(F, tt)
+            config = _oceananigans_config(cuda.device, always_inline, maxthreads)::CUDACore.CUDACompilerConfig
+            fun = CUDACore.GPUCompiler.cached_compilation(cache, source, config, CUDACore.compile, CUDACore.link)
+            key = (objectid(source), hash(fun), f)
+            kernel = get(CUDACore._kernel_instances, key, nothing)
+            if kernel === nothing
+                state = CUDACore.KernelState(CUDACore.create_exceptions!(fun.mod), UInt32(0))
+                kernel = CUDACore.HostKernel{F, tt}(f, fun, state)
+                CUDACore._kernel_instances[key] = kernel
+            end
+            return kernel::CUDACore.HostKernel{F, tt}
+        end
+    end
+
     function cuda_run(obj::KA.Kernel{CUDABackend}, ndrange, workgroupsize, args::Tuple)
         backend = KA.backend(obj)
 
@@ -54,7 +86,7 @@ const _cuda_kernels_fix = quote
         kernel_f = cudaconvert(obj.f)
         tt = Tuple{Base.promote_op(cudaconvert, typeof(ctx)),
                    map(a -> Base.promote_op(cudaconvert, typeof(a)), args)...}
-        kernel = cufunction(kernel_f, tt; always_inline=backend.always_inline, maxthreads=maxthreads)
+        kernel = _oceananigans_cufunction(kernel_f, tt, backend.always_inline, maxthreads)
 
         if KA.workgroupsize(obj) <: KA.DynamicSize && workgroupsize === nothing
             config = CUDACore.launch_configuration(kernel.fun; max_threads=prod(ndrange))

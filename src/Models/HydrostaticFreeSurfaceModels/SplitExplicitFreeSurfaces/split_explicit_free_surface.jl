@@ -420,9 +420,8 @@ end
 
 # Adapt. Inside kernels only the displacement and barotropic velocities are read (via `free_surface_fields`);
 # the filtered state, substepping and timestepper are used on the host and reach the substep kernels through
-# unpacked arguments, never through this adapted object. Dropping them keeps device conversion allocation-free
-# (adapting the filtered-state NamedTuple would otherwise rebuild it on every launch that receives the free surface).
-@inline Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface{extend_halos}) where {extend_halos} =
+# unpacked arguments, never through this adapted object.
+Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface{extend_halos}) where {extend_halos} =
     SplitExplicitFreeSurface{extend_halos}(Adapt.adapt(to, free_surface.displacement),
                                            Adapt.adapt(to, free_surface.barotropic_velocities),
                                            nothing,

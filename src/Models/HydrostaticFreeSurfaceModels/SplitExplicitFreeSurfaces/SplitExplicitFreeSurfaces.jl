@@ -6,7 +6,7 @@ export FixedSubstepNumber, FixedTimeStepSize
 using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions: @index, @kernel
 
-using Oceananigans.Architectures: convert_to_device, architecture, CPU
+using Oceananigans.Architectures: convert_to_device, architecture
 using Oceananigans.BoundaryConditions: FieldBoundaryConditions, fill_halo_regions!
 using Oceananigans.Fields: Field
 using Oceananigans.Grids: Center, Face, topology, column_depthᶜᶠᵃ, column_depthᶠᶜᵃ,
