@@ -604,6 +604,11 @@ end
 
             all!(cbool_reduced, cbool)
             @test @allowscalar cbool_reduced[1, 1, 1] == false
+
+            # `mean` must divide the globally-reduced `sum` by the *global* point count.
+            # The four equal rank-blocks hold 1, 2, 3, 4, so the global mean is 2.5
+            # regardless of the local block size N.
+            @test mean(c) == (1 + 2 + 3 + 4) / 4
         end
     end
 
