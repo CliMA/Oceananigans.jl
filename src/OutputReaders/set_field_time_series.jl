@@ -2,6 +2,7 @@ using Printf
 using Oceananigans.Architectures: cpu_architecture
 using Oceananigans.TimeSteppers: Clock
 using Oceananigans.Fields: set_to_function!
+using Oceananigans.AbstractOperations: KernelFunctionOperation
 
 #####
 ##### set!
@@ -166,6 +167,24 @@ function set!(fts::InMemoryFTS, f::Function)
         clock.time = cpu_times[n]
         set_to_function!(fts[n], f, clock)
     end
+
+    return fts
+end
+
+# Fill the resident window of a derived series by evaluating its kernel function
+# over the corresponding source slices; indexing a source repositions that source's
+# own window as needed.
+function set!(fts::DerivedFTS, backend::DerivedInMemoryBackend=fts.backend)
+    LX, LY, LZ = location(fts)
+
+    for n in time_indices(fts)
+        slices = map(source -> source[n], backend.sources)
+        derived = KernelFunctionOperation{LX, LY, LZ}(backend.func, fts.grid,
+                                                      slices..., backend.parameters...)
+        set!(fts[n], derived)
+    end
+
+    fill_halo_regions!(fts)
 
     return fts
 end
