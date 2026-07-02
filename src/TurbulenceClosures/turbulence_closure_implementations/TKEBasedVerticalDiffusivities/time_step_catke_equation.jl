@@ -114,17 +114,20 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper, Δt)
 
     tracers = buoyancy_tracers(model)
     buoyancy = buoyancy_force(model)
+    self_starting = !isfinite(model.clock.last_Δt)
 
     for m = 1:M
-        # Compute the linear implicit component of the RHS (closure_fields, L)...
+        @info "CATKE SRK: compute_TKE_diffusivity!" iteration=model.clock.iteration substep=m substeps=M self_starting
         launch!(arch, grid, :xyz,
                 compute_TKE_diffusivity!,
                 κe, grid, closure,
                 model.velocities, tracers, buoyancy, closure_fields;
                 active_cells_map)
+        Oceananigans.Architectures.synchronize(arch)
+        @info "CATKE SRK: compute_TKE_diffusivity! done" iteration=model.clock.iteration substep=m substeps=M self_starting
 
-        if m == 1
-            # First substep: reset from cached state σe⁻
+        if m == 1 && !self_starting
+            @info "CATKE SRK: _rk_substep_turbulent_kinetic_energy!" iteration=model.clock.iteration substep=m substeps=M self_starting
             launch!(arch, grid, :xyz,
                     _rk_substep_turbulent_kinetic_energy!,
                     Le, σe⁻, grid, closure,
@@ -132,8 +135,10 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper, Δt)
                     tracers, buoyancy, closure_fields,
                     Δτ, Gⁿ;
                     active_cells_map)
+            Oceananigans.Architectures.synchronize(arch)
+            @info "CATKE SRK: _rk_substep_turbulent_kinetic_energy! done" iteration=model.clock.iteration substep=m substeps=M self_starting
         else
-            # Subsequent substeps: Euler increment from current state
+            @info "CATKE SRK: _rk_euler_substep_turbulent_kinetic_energy!" iteration=model.clock.iteration substep=m substeps=M self_starting
             launch!(arch, grid, :xyz,
                     _rk_euler_substep_turbulent_kinetic_energy!,
                     Le, grid, closure,
@@ -141,13 +146,18 @@ function time_step_catke_equation!(model, ::SplitRungeKuttaTimeStepper, Δt)
                     tracers, buoyancy, closure_fields,
                     Δτ, Gⁿ;
                     active_cells_map)
+            Oceananigans.Architectures.synchronize(arch)
+            @info "CATKE SRK: _rk_euler_substep_turbulent_kinetic_energy! done" iteration=model.clock.iteration substep=m substeps=M self_starting
         end
 
+        @info "CATKE SRK: implicit_step!" iteration=model.clock.iteration substep=m substeps=M self_starting
         implicit_step!(e, implicit_solver, closure,
                        closure_fields, Val(tracer_index),
                        model.clock,
                        fields(model),
                        Δτ)
+        Oceananigans.Architectures.synchronize(arch)
+        @info "CATKE SRK: implicit_step! done" iteration=model.clock.iteration substep=m substeps=M self_starting
     end
 
     return nothing

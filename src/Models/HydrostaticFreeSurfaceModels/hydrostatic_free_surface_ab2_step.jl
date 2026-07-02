@@ -40,16 +40,22 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
     Δt = convert(FT, Δt)
 
     # Computing momentum flux boundary conditions
+    @info "HFSM ab2: compute_momentum_flux_bcs" iteration=model.clock.iteration
     @apply_regionally compute_momentum_flux_bcs!(model)
 
     # Advance the free surface
+    @info "HFSM ab2: compute_free_surface_tendency" iteration=model.clock.iteration
     compute_free_surface_tendency!(grid, model, model.free_surface)
+    @info "HFSM ab2: step_free_surface" iteration=model.clock.iteration
     step_free_surface!(model.free_surface, model, model.timestepper, Δt)
 
     # Update velocities
     @apply_regionally begin
+        @info "HFSM ab2: compute_transport_velocities" iteration=model.clock.iteration
         compute_transport_velocities!(model, model.free_surface)
+        @info "HFSM ab2: ab2_step_velocities" iteration=model.clock.iteration
         ab2_step_velocities!(model.velocities, model, Δt, χ)
+        @info "HFSM ab2: mask_immersed_horizontal_velocities" iteration=model.clock.iteration
         mask_immersed_horizontal_velocities!(model.velocities)
     end
 
@@ -59,13 +65,17 @@ function hydrostatic_ab2_step!(model, free_surface, grid, Δt, callbacks)
 
     # Computing tracer tendencies
     @apply_regionally begin
+        @info "HFSM ab2: compute_tracer_tendencies" iteration=model.clock.iteration
         compute_tracer_tendencies!(model)
 
         # Advance grid
+        @info "HFSM ab2: ab2_step_grid" iteration=model.clock.iteration
         ab2_step_grid!(model.grid, model, model.vertical_coordinate, Δt, χ)
 
         # Correct the barotropic mode and advance tracers
+        @info "HFSM ab2: correct_barotropic_mode" iteration=model.clock.iteration
         correct_barotropic_mode!(model, Δt)
+        @info "HFSM ab2: ab2_step_tracers" iteration=model.clock.iteration
         ab2_step_tracers!(model.tracers, model, Δt, χ)
     end
 

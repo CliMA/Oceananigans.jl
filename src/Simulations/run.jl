@@ -4,7 +4,8 @@ using Oceananigans: AbstractModel, run_diagnostic!, restore_prognostic_state!
 using Oceananigans.Architectures: architecture
 using Oceananigans.Diagnostics: nan_detected
 using Oceananigans.DistributedComputations: all_reduce
-using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_path, load_checkpoint_state
+using Oceananigans.OutputWriters: WindowedTimeAverage, checkpoint_path, load_checkpoint_state,
+                                  checkpoint_pickup_strategy, write_checkpoint_file
 using Oceananigans.TimeSteppers: update_state!, unit_time
 
 import Oceananigans: initialize!
@@ -60,6 +61,31 @@ function aligned_time_step(sim::Simulation, Δt)
     return aligned_Δt
 end
 
+pickup_filesize(filepath) = filepath === nothing ? nothing : filesize(filepath)
+pickup_filesize_str(filesize_bytes) = isnothing(filesize_bytes) ? "unknown" : Base.format_bytes(filesize_bytes)
+pickup_elapsed_time(start_time_ns) = prettytime(1e-9 * (time_ns() - start_time_ns))
+
+function log_pickup_stage(stage; kwargs...)
+    @info "Checkpoint pickup" pickup_stage=stage kwargs...
+    return nothing
+end
+
+function pickup_compatibility_details(sim, state)
+    checkpoint_model_state = hasproperty(state, :model) ? state.model : state
+    strategy = checkpoint_pickup_strategy(sim.model, checkpoint_model_state)
+    strategy.available || return NamedTuple()
+
+    return (;
+        checkpoint_grid_halo = strategy.checkpoint_grid_halo,
+        restored_grid_halo = strategy.restored_grid_halo,
+        checkpoint_free_surface_halo = strategy.checkpoint_free_surface_halo,
+        restored_free_surface_halo = strategy.restored_free_surface_halo,
+        restore_layout = strategy.restore_layout,
+        requires_temporary_rewrite = strategy.requires_temporary_rewrite,
+        rewrite_reason = strategy.rewrite_reason
+    )
+end
+
 """
     set!(simulation; checkpoint=nothing, iteration=nothing)
 
@@ -104,12 +130,107 @@ function set!(sim::Simulation; checkpoint=nothing, iteration=nothing)
     end
 
     if checkpoint_filepath !== nothing
-        last_modified_utc = unix2datetime(round(Int, stat(checkpoint_filepath).mtime))
-        @info "Picking up simulation from checkpoint file $(abspath(checkpoint_filepath)); last modified (UTC): $(last_modified_utc)"
+        checkpoint_stat = stat(checkpoint_filepath)
+        checkpoint_filesize = checkpoint_stat.size
+        last_modified_utc = unix2datetime(round(Int, checkpoint_stat.mtime))
+        log_pickup_stage("resolve_checkpoint";
+                         checkpoint_path=abspath(checkpoint_filepath),
+                         checkpoint_filesize_bytes=checkpoint_filesize,
+                         checkpoint_filesize=pickup_filesize_str(checkpoint_filesize),
+                         checkpoint_last_modified_utc=last_modified_utc)
     end
 
+    load_start_time = time_ns()
+    log_pickup_stage("load_checkpoint_state:start"; checkpoint_path=checkpoint_filepath)
     state = load_checkpoint_state(checkpoint_filepath)
-    restore_prognostic_state!(sim, state)
+    log_pickup_stage("load_checkpoint_state:end";
+                     checkpoint_path=checkpoint_filepath,
+                     elapsed=pickup_elapsed_time(load_start_time))
+
+    compatibility_details = try
+        pickup_compatibility_details(sim, state)
+    catch err
+        @warn "Checkpoint pickup compatibility inspection failed; proceeding with restore." exception=(err, catch_backtrace())
+        NamedTuple()
+    end
+
+    if !isempty(compatibility_details)
+        log_pickup_stage("compatibility_check"; compatibility_details...)
+    end
+
+    requires_temporary_rewrite = get(compatibility_details, :requires_temporary_rewrite, false)
+
+    if !requires_temporary_rewrite
+        restore_start_time = time_ns()
+        log_pickup_stage("restore:start"; checkpoint_path=checkpoint_filepath)
+        restore_prognostic_state!(sim, state)
+        log_pickup_stage("restore:end";
+                         checkpoint_path=checkpoint_filepath,
+                         elapsed=pickup_elapsed_time(restore_start_time))
+        return nothing
+    end
+
+    temp_dir = mktempdir()
+    temp_checkpoint_filepath = joinpath(temp_dir, basename(checkpoint_filepath))
+
+    try
+        original_restore_start_time = time_ns()
+        log_pickup_stage("restore_from_original:start"; checkpoint_path=checkpoint_filepath)
+        restore_prognostic_state!(sim, state)
+        log_pickup_stage("restore_from_original:end";
+                         checkpoint_path=checkpoint_filepath,
+                         elapsed=pickup_elapsed_time(original_restore_start_time))
+
+        temp_write_start_time = time_ns()
+        log_pickup_stage("temp_checkpoint_write:start";
+                         source_checkpoint_path=checkpoint_filepath,
+                         temp_checkpoint_path=temp_checkpoint_filepath)
+        write_checkpoint_file(temp_checkpoint_filepath, sim)
+        temp_checkpoint_filesize = pickup_filesize(temp_checkpoint_filepath)
+        log_pickup_stage("temp_checkpoint_write:end";
+                         temp_checkpoint_path=temp_checkpoint_filepath,
+                         temp_checkpoint_filesize_bytes=temp_checkpoint_filesize,
+                         temp_checkpoint_filesize=pickup_filesize_str(temp_checkpoint_filesize),
+                         elapsed=pickup_elapsed_time(temp_write_start_time))
+
+        state = nothing
+        log_pickup_stage("gc_after_original_restore:start"; temp_checkpoint_path=temp_checkpoint_filepath)
+        for _ = 1:5
+            GC.gc(true)
+        end
+        log_pickup_stage("gc_after_original_restore:end"; temp_checkpoint_path=temp_checkpoint_filepath)
+
+        temp_load_start_time = time_ns()
+        log_pickup_stage("temp_checkpoint_reload:start"; temp_checkpoint_path=temp_checkpoint_filepath)
+        temp_state = load_checkpoint_state(temp_checkpoint_filepath)
+        log_pickup_stage("temp_checkpoint_reload:end";
+                         temp_checkpoint_path=temp_checkpoint_filepath,
+                         elapsed=pickup_elapsed_time(temp_load_start_time))
+
+        temp_restore_start_time = time_ns()
+        log_pickup_stage("restore_from_temp:start"; temp_checkpoint_path=temp_checkpoint_filepath)
+        restore_prognostic_state!(sim, temp_state)
+        log_pickup_stage("restore_from_temp:end";
+                         temp_checkpoint_path=temp_checkpoint_filepath,
+                         elapsed=pickup_elapsed_time(temp_restore_start_time))
+    finally
+        cleanup_start_time = time_ns()
+        cleanup_status = :removed
+
+        try
+            rm(temp_dir; recursive=true, force=true)
+        catch err
+            cleanup_status = :failed
+            @warn "Failed to remove temporary checkpoint directory after pickup rewrite." temp_checkpoint_path=temp_checkpoint_filepath temp_checkpoint_dir=temp_dir exception=(err, catch_backtrace())
+        end
+
+        log_pickup_stage("temp_checkpoint_cleanup";
+                         temp_checkpoint_path=temp_checkpoint_filepath,
+                         temp_checkpoint_dir=temp_dir,
+                         cleanup_status,
+                         elapsed=pickup_elapsed_time(cleanup_start_time))
+    end
+
     return nothing
 end
 

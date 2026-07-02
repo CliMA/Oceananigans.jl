@@ -16,7 +16,9 @@ using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_clo
 using Oceananigans.TurbulenceClosures.TKEBasedVerticalDiffusivities: FlavorOfCATKE
 using Oceananigans.Utils: tupleit
 
-import Oceananigans: prognostic_state, restore_prognostic_state!
+import Oceananigans: prognostic_state, restore_prognostic_state!,
+                     checkpoint_restore_mode,
+                     RestoreOnCurrentGrid, RestoreOnCompatibleGrid
 import Oceananigans.Architectures: architecture
 import Oceananigans.Models: total_velocities
 import Oceananigans.TurbulenceClosures: buoyancy_force, buoyancy_tracers
@@ -352,7 +354,8 @@ end
 #####
 
 function prognostic_state(model::NonhydrostaticModel)
-    return (clock = prognostic_state(model.clock),
+    return (checkpoint_grid = model.grid,
+            clock = prognostic_state(model.clock),
             particles = prognostic_state(model.particles),
             velocities = prognostic_state(model.velocities),
             tracers = prognostic_state(model.tracers),
@@ -363,6 +366,12 @@ function prognostic_state(model::NonhydrostaticModel)
 end
 
 function restore_prognostic_state!(restored::NonhydrostaticModel, from)
+    checkpoint_grid = from.checkpoint_grid
+    mode = checkpoint_restore_mode(checkpoint_grid, restored.grid)
+    return restore_prognostic_state!(restored, from, checkpoint_grid, mode)
+end
+
+function restore_prognostic_state!(restored::NonhydrostaticModel, from, checkpoint_grid, ::RestoreOnCurrentGrid)
     restore_prognostic_state!(restored.clock, from.clock)
     restore_prognostic_state!(restored.particles, from.particles)
     restore_prognostic_state!(restored.velocities, from.velocities)
@@ -371,6 +380,29 @@ function restore_prognostic_state!(restored::NonhydrostaticModel, from)
     restore_prognostic_state!(restored.closure_fields, from.closure_fields)
     restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields)
     restore_prognostic_state!(restored.boundary_transport, from.boundary_transport)
+
+    return restored
+end
+
+function restore_prognostic_state!(restored::NonhydrostaticModel, from, checkpoint_grid, mode::RestoreOnCompatibleGrid)
+    restore_prognostic_state!(restored.clock, from.clock)
+    restore_prognostic_state!(restored.particles, from.particles)
+    restore_prognostic_state!(restored.velocities, from.velocities, mode)
+    restore_prognostic_state!(restored.tracers, from.tracers, mode)
+    restore_prognostic_state!(restored.closure_fields, from.closure_fields, mode)
+    restore_prognostic_state!(restored.auxiliary_fields, from.auxiliary_fields, mode)
+    restore_prognostic_state!(restored.boundary_transport, from.boundary_transport, mode)
+
+
+    model_fields = Oceananigans.fields(restored)
+
+    Oceananigans.BoundaryConditions.fill_halo_regions!(merge(restored.velocities, restored.tracers),
+                                                       restored.clock,
+                                                       model_fields; fill_open_bcs=false)
+
+    restore_prognostic_state!(restored.timestepper, from.timestepper, mode, restored.clock, model_fields; fill_open_bcs=false)
+
+    foreach(Oceananigans.ImmersedBoundaries.mask_immersed_field!, merge(restored.velocities, restored.tracers))
     return restored
 end
 
