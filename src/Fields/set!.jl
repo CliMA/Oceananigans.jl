@@ -128,7 +128,7 @@ function set_to_array!(u, a)
     a = on_architecture(architecture(u), a)
 
     try
-        interior(u) = a
+        broadcast!(interior(u), a)
     catch err
         if err isa DimensionMismatch
             Nx, Ny, Nz = size(u)
