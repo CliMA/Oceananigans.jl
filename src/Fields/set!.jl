@@ -127,11 +127,8 @@ end
 function set_to_array!(u, a)
     a = on_architecture(architecture(u), a)
 
-    a_range = CartesianIndices(a)
-    u_range = CartesianIndices(interior(u))
-
     try
-        copyto!(interior(u), u_range, a, a_range)
+        copyto!(u, a)
     catch err
         if err isa DimensionMismatch
             Nx, Ny, Nz = size(u)
@@ -221,5 +218,11 @@ function copy_to_field!(u, v)
 end
 
 Base.copyto!(f::Field, src::Base.Broadcast.Broadcasted) = copyto!(interior(f), src)
-Base.copyto!(f::Field, src::AbstractArray) = copyto!(interior(f), src)
+function Base.copyto!(f::Field, src::AbstractArray)
+    src_range = CartesianIndices(src)
+    field_range = CartesianIndices(interior(f))
+
+    try
+        copyto!(f.data, field_range, src, src_range)
+end
 Base.copyto!(f::Field, src::Field) = copyto!(parent(f), parent(src))
