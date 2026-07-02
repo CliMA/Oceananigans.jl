@@ -179,24 +179,46 @@ end
 """
 $(TYPEDSIGNATURES)
 
-Materialize `fts_op` into a `FieldTimeSeries` by computing the operation at every
-time node. `Time`-indexing the result is identical to `Time`-indexing `fts_op`.
+Materialize `fts_op` into a `FieldTimeSeries` by storing `fts_op` in the series'
+`path` — the provenance that `set!` computes data from, just as file-backed series
+compute their data from a file path — and computing the operation at every resident
+time index. With the default totally-in-memory backend every time index is computed
+once. With `backend = InMemory(N)` only a length-`N` window is resident, and sliding
+the window recomputes it from `fts_op`.
+
+`Time`-indexing the result is identical to `Time`-indexing `fts_op`.
 """
-function FieldTimeSeries(fts_op::FieldTimeSeriesOperation; kwargs...)
+function FieldTimeSeries(fts_op::FieldTimeSeriesOperation; backend = InMemory(), kwargs...)
     LX, LY, LZ = location(fts_op)
+
+    if backend isa PartlyInMemory
+        source_windows = map(extract_field_time_series(fts_op)) do source
+            window = time_indices_length(source.backend, source.times)
+            isnothing(window) ? length(backend) : window
+        end
+
+        if !isempty(source_windows) && minimum(source_windows) < length(backend)
+            @warn string("A FieldTimeSeries argument holds a window of ", minimum(source_windows),
+                         " time indices, shorter than the materialized window of ",
+                         length(backend), ": every window slide will reload the",
+                         " argument's window repeatedly.")
+        end
+    end
+
     fts = FieldTimeSeries{LX, LY, LZ}(fts_op.grid, fts_op.times;
-                                      time_indexing = fts_op.time_indexing, kwargs...)
-
-    fts.backend isa TotallyInMemory ||
-        throw(ArgumentError("Materializing a FieldTimeSeriesOperation requires a totally in-memory backend."))
-
-    set!(fts, fts_op)
+                                      time_indexing = fts_op.time_indexing,
+                                      path = fts_op, backend, kwargs...)
+    set!(fts)
 
     return fts
 end
 
-function set!(fts::FieldTimeSeries, fts_op::FieldTimeSeriesOperation)
-    for n in time_indices(fts.backend, fts.time_indexing, length(fts.times))
+# Fill every resident time index of `fts` by computing `fts_op`. Since
+# `set!(fts::InMemoryFTS) = set!(fts, fts.path)`, a series constructed with
+# `path = fts_op` refills its window through this method when the window slides,
+# exactly like a file-backed series refills from its file.
+function set!(fts::InMemoryFTS, fts_op::FieldTimeSeriesOperation; kwargs...)
+    for n in time_indices(fts)
         set!(fts[n], fts_op[n])
     end
     return fts

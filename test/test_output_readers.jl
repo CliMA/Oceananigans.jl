@@ -858,6 +858,86 @@ end
 
             rm(path_a, force=true); rm(path_b, force=true)
         end
+
+        @testset "FieldTimeSeriesOperation windowed materialization [$(typeof(arch))]" begin
+            @info "  Testing FieldTimeSeriesOperation windowed materialization [$(typeof(arch))]..."
+            grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
+            times = 0:1.0:3
+            a = FieldTimeSeries{Center, Center, Center}(grid, times)
+            b = FieldTimeSeries{Center, Center, Center}(grid, times)
+            for n in 1:length(times)
+                set!(a[n], n)      # a = 1, 2, 3, 4
+                set!(b[n], 2n)     # b = 2, 4, 6, 8
+            end
+            q = a * b
+
+            # The operation is the series' provenance: set! (re)computes from it
+            qw = FieldTimeSeries(q; backend=InMemory(2))
+            @test qw.path === q
+            @test size(parent(qw), 4) == 2   # only the window is stored
+
+            CUDA.@allowscalar begin
+                for n in 1:4   # slicing slides + recomputes the window
+                    @test qw[n][1, 1, 1] == n * 2n
+                    @test size(parent(qw), 4) == 2
+                end
+                @test qw[1][1, 1, 1] == 2    # backward jump
+                @test qw[Time(2.5)][1, 1, 1] == 0.5 * 18 + 0.5 * 32
+                @test qw[Time(0.5)][1, 1, 1] == 0.5 * 2 + 0.5 * 8
+            end
+
+            # Pointwise (kernel-path) indexing after an explicit update, as models do
+            update_field_time_series!(qw, Time(1.5))
+            @test CUDA.@allowscalar qw[1, 1, 1, Time(1.5)] == 13.0
+
+            @test occursin("FieldTimeSeriesOperation", summary(qw))
+
+            # Structural window validation is inherited from InMemory
+            @test_throws ArgumentError FieldTimeSeries(q; backend=InMemory(5))
+
+            # Cyclical time indexing wraps across the window
+            ac = FieldTimeSeries{Center, Center, Center}(grid, times; time_indexing=Cyclical(4.0))
+            bc = FieldTimeSeries{Center, Center, Center}(grid, times; time_indexing=Cyclical(4.0))
+            for n in 1:length(times)
+                set!(ac[n], n)
+                set!(bc[n], 2n)
+            end
+            qcw = FieldTimeSeries(ac * bc; backend=InMemory(2))
+            CUDA.@allowscalar begin
+                @test qcw[Time(3.5)][1, 1, 1] == 0.5 * 32 + 0.5 * 2
+                @test qcw[Time(4.5)][1, 1, 1] == 0.5 * 2 + 0.5 * 8   # a full period later
+                @test qcw[Time(1.0)][1, 1, 1] == 8.0
+            end
+
+            # Windowed on-disk sources feeding a windowed materialization
+            path_a = "ftsmat_a_$(typeof(arch)).jld2"
+            path_b = "ftsmat_b_$(typeof(arch)).jld2"
+            rm(path_a, force=true); rm(path_b, force=true)
+            cpu_grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
+            fta = FieldTimeSeries{Center, Center, Center}(cpu_grid, times; backend=OnDisk(), path=path_a, name="a")
+            ftb = FieldTimeSeries{Center, Center, Center}(cpu_grid, times; backend=OnDisk(), path=path_b, name="b")
+            tmp = CenterField(cpu_grid)
+            for n in 1:length(times)
+                set!(tmp, n);  set!(fta, tmp, n)
+                set!(tmp, 2n); set!(ftb, tmp, n)
+            end
+            aw = FieldTimeSeries(path_a, "a"; backend=InMemory(2), architecture=arch)
+            bw = FieldTimeSeries(path_b, "b"; backend=InMemory(2), architecture=arch)
+
+            qww = FieldTimeSeries(aw * bw; backend=InMemory(2))
+            CUDA.@allowscalar begin
+                for n in (1, 3, 4, 2, 1)   # forward and backward
+                    @test qww[n][1, 1, 1] == n * 2n
+                end
+                @test qww[Time(2.5)][1, 1, 1] == 25.0
+            end
+
+            # Derived window longer than a source window warns at construction
+            qw3 = @test_logs (:warn, r"shorter than the materialized window") FieldTimeSeries(aw * bw; backend=InMemory(3))
+            @test CUDA.@allowscalar qw3[4][1, 1, 1] == 32
+
+            rm(path_a, force=true); rm(path_b, force=true)
+        end
     end
 
     for output_writer in (JLD2Writer, NetCDFWriter)
