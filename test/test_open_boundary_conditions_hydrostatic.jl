@@ -1,5 +1,5 @@
 using Oceananigans
-using Oceananigans.BoundaryConditions: Flather, Radiation, FlatherBoundaryCondition, ChapmanBoundaryCondition, fill_halo_regions!
+using Oceananigans.BoundaryConditions: GravityWaveRadiation, Radiation, GravityWaveRadiationBoundaryCondition, ImplicitGravityWaveRadiationBoundaryCondition, fill_halo_regions!
 using Test
 
 #####
@@ -18,13 +18,13 @@ function test_barotropic_gravity_wave_radiation()
                            z = (-H, 0),
                            topology = (Bounded, Periodic, Bounded))
 
-    # Radiation OBC on 3D velocity, Flather on barotropic transport
+    # Radiation OBC on 3D velocity, GravityWaveRadiation on barotropic transport
     u_bcs = FieldBoundaryConditions(east  = NormalFlowBoundaryCondition(0; scheme = Radiation(outflow_timescale = 100.0)),
                                     west  = NormalFlowBoundaryCondition(0; scheme = Radiation(outflow_timescale = 100.0)))
 
     U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing);
-                                    east  = FlatherBoundaryCondition((0.0, 0.0)),
-                                    west  = FlatherBoundaryCondition((0.0, 0.0)))
+                                    east  = GravityWaveRadiationBoundaryCondition((0.0, 0.0)),
+                                    west  = GravityWaveRadiationBoundaryCondition((0.0, 0.0)))
 
     free_surface = SplitExplicitFreeSurface(grid; substeps = 10)
 
@@ -53,13 +53,13 @@ function test_barotropic_gravity_wave_radiation()
 end
 
 #####
-##### Test 2: Tidal bay (Flather)
+##### Test 2: Tidal bay (GravityWaveRadiation)
 #####
 # Rectangular basin with 3 solid walls and 1 open boundary (east).
-# Sinusoidal tidal forcing at the open boundary. The Flather condition
+# Sinusoidal tidal forcing at the open boundary. The GravityWaveRadiation condition
 # should allow the tide to enter without reflection.
 
-function test_tidal_bay_flather()
+function test_tidal_bay_gravity_wave()
     Nx, Ny, Nz = 20, 1, 1
     Lx, Ly, H = 1000.0, 100.0, 100.0
 
@@ -75,10 +75,10 @@ function test_tidal_bay_flather()
     # Tidal parameters
     A = 0.01  # Small amplitude (m)
 
-    # Flather OBC on the barotropic transport at east boundary: prescribe zero external values.
-    # The Flather condition is applied to the barotropic transport (U), not the 3D velocity (u),
+    # GravityWaveRadiation OBC on the barotropic transport at east boundary: prescribe zero external values.
+    # The GravityWaveRadiation condition is applied to the barotropic transport (U), not the 3D velocity (u),
     # because the split-explicit solver handles wave radiation at the barotropic level.
-    U_east_bc = FlatherBoundaryCondition((0.0, 0.0))
+    U_east_bc = GravityWaveRadiationBoundaryCondition((0.0, 0.0))
     U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing); east = U_east_bc)
 
     free_surface = SplitExplicitFreeSurface(grid; substeps = 10)
@@ -102,7 +102,7 @@ function test_tidal_bay_flather()
 
     E₁ = sum(interior(η) .^ 2)
 
-    # With Flather at east boundary, the wave should radiate out
+    # With GravityWaveRadiation at east boundary, the wave should radiate out
     # and energy should decrease significantly
     return E₁ < 0.5 * E₀
 end
@@ -111,7 +111,7 @@ end
 ##### Test 3: Coastal Kelvin wave
 #####
 # Channel with solid wall on south, open boundaries east and west.
-# A Kelvin wave forced at the west boundary with Flather.
+# A Kelvin wave forced at the west boundary with GravityWaveRadiation.
 # Exact analytical solution: η = A exp(−f y / c) cos(kx − ωt)
 
 function test_coastal_kelvin_wave()
@@ -131,12 +131,12 @@ function test_coastal_kelvin_wave()
     # Kelvin wave parameters
     A = 0.001  # Amplitude (m)
 
-    # Flather OBC at east and west boundaries for barotropic transport U.
+    # GravityWaveRadiation OBC at east and west boundaries for barotropic transport U.
     # At west: prescribe incoming Kelvin wave
     # At east: let it radiate out (zero external)
     U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing);
-                                    west = FlatherBoundaryCondition((0.0, 0.0)),
-                                    east = FlatherBoundaryCondition((0.0, 0.0)))
+                                    west = GravityWaveRadiationBoundaryCondition((0.0, 0.0)),
+                                    east = GravityWaveRadiationBoundaryCondition((0.0, 0.0)))
 
     free_surface = SplitExplicitFreeSurface(grid; substeps = 10)
 
@@ -201,12 +201,12 @@ function test_orlanski_analytical_verification()
                                  x = (0, Lx_small), y = (0, 100.0), z = (-H, 0),
                                  topology = (Bounded, Periodic, Bounded))
 
-    # Radiation OBC on 3D velocity, Flather on barotropic transport
+    # Radiation OBC on 3D velocity, GravityWaveRadiation on barotropic transport
     u_bcs = FieldBoundaryConditions(east  = NormalFlowBoundaryCondition(0; scheme = Radiation(inflow_timescale = Δt)),
                                     west  = NormalFlowBoundaryCondition(0; scheme = Radiation(inflow_timescale = Δt)))
     U_bcs = FieldBoundaryConditions(grid_small, (Face(), Center(), nothing);
-                                    east  = FlatherBoundaryCondition((0.0, 0.0)),
-                                    west  = FlatherBoundaryCondition((0.0, 0.0)))
+                                    east  = GravityWaveRadiationBoundaryCondition((0.0, 0.0)),
+                                    west  = GravityWaveRadiationBoundaryCondition((0.0, 0.0)))
 
     fs_small = SplitExplicitFreeSurface(grid_small; substeps = 10)
     model_small = HydrostaticFreeSurfaceModel(grid_small;
@@ -289,7 +289,7 @@ function test_substep_halo_filling_strategy()
                            topology = (Bounded, Periodic, Bounded))
 
     U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing);
-                                    east = FlatherBoundaryCondition((0.0, 0.0)))
+                                    east = GravityWaveRadiationBoundaryCondition((0.0, 0.0)))
 
     walls(; extend_halos = true) = HydrostaticFreeSurfaceModel(grid;
         free_surface = SplitExplicitFreeSurface(grid; substeps = 4, extend_halos),
@@ -407,13 +407,13 @@ function test_radiation_instant_relaxation()
 end
 
 #####
-##### Test 8: Chapman + Flather pairing
+##### Test 8: ImplicitGravityWaveRadiation + GravityWaveRadiation pairing
 #####
 # The barotropic gravity wave radiation test with the free surface boundary also
-# radiating via Chapman: η halos must carry radiated values (not zero-gradient mirrors)
+# radiating via ImplicitGravityWaveRadiation: η halos must carry radiated values (not zero-gradient mirrors)
 # and the pulse must still exit (energy decay).
 
-function test_chapman_flather_radiation()
+function test_implicit_gravity_wave_radiation()
     Nx, Ny, Nz = 60, 1, 1
     Lx, Ly, H = 1000.0, 100.0, 100.0
 
@@ -424,11 +424,11 @@ function test_chapman_flather_radiation()
     u_bcs = FieldBoundaryConditions(east = NormalFlowBoundaryCondition(0; scheme = Radiation(outflow_timescale = 100.0)),
                                     west = NormalFlowBoundaryCondition(0; scheme = Radiation(outflow_timescale = 100.0)))
     U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing);
-                                    east = FlatherBoundaryCondition((0.0, 0.0)),
-                                    west = FlatherBoundaryCondition((0.0, 0.0)))
+                                    east = GravityWaveRadiationBoundaryCondition((0.0, 0.0)),
+                                    west = GravityWaveRadiationBoundaryCondition((0.0, 0.0)))
     η_bcs = FieldBoundaryConditions(grid, (Center(), Center(), Face());
-                                    east = ChapmanBoundaryCondition(),
-                                    west = ChapmanBoundaryCondition())
+                                    east = ImplicitGravityWaveRadiationBoundaryCondition(),
+                                    west = ImplicitGravityWaveRadiationBoundaryCondition())
 
     model = HydrostaticFreeSurfaceModel(grid;
         free_surface = SplitExplicitFreeSurface(grid; substeps = 10),
@@ -452,46 +452,46 @@ function test_chapman_flather_radiation()
 end
 
 #####
-##### Flather–Chapman default pairing (constructor)
+##### GravityWaveRadiation–ImplicitGravityWaveRadiation default pairing (constructor)
 #####
 
-is_chapman_bc(bc) = bc isa Oceananigans.BoundaryConditions.CHVBC
+is_implicit_gravity_wave_bc(bc) = bc isa Oceananigans.BoundaryConditions.IGWVBC
 
-function test_flather_chapman_default_pairing()
+function test_gravity_wave_pairing()
     grid = RectilinearGrid(size = (8, 8, 1),
                            x = (0, 1000.0), y = (0, 1000.0), z = (-100.0, 0),
                            topology = (Bounded, Bounded, Bounded))
 
     U_bcs = FieldBoundaryConditions(grid, (Face(), Center(), nothing);
-                                    west = FlatherBoundaryCondition((0.0, 0.0)),
-                                    east = FlatherBoundaryCondition((0.0, 0.0)))
+                                    west = GravityWaveRadiationBoundaryCondition((0.0, 0.0)),
+                                    east = GravityWaveRadiationBoundaryCondition((0.0, 0.0)))
     V_bcs = FieldBoundaryConditions(grid, (Center(), Face(), nothing);
-                                    north = FlatherBoundaryCondition((0.0, 0.0)))
+                                    north = GravityWaveRadiationBoundaryCondition((0.0, 0.0)))
 
-    # (a) Flather on U (west/east) and V (north), default η → Chapman on those sides only.
+    # (a) GravityWaveRadiation on U (west/east) and V (north), default η → ImplicitGravityWaveRadiation on those sides only.
     paired = HydrostaticFreeSurfaceModel(grid;
         free_surface = SplitExplicitFreeSurface(grid; substeps = 4),
         boundary_conditions = (U = U_bcs, V = V_bcs),
         buoyancy = nothing, tracers = ())
 
     η = paired.free_surface.displacement.boundary_conditions
-    auto_paired = is_chapman_bc(η.west) && is_chapman_bc(η.east) &&
-                  is_chapman_bc(η.north) && !is_chapman_bc(η.south)
+    auto_paired = is_implicit_gravity_wave_bc(η.west) && is_implicit_gravity_wave_bc(η.east) &&
+                  is_implicit_gravity_wave_bc(η.north) && !is_implicit_gravity_wave_bc(η.south)
 
-    # (b) User-specified η is respected, not overwritten by the Chapman default.
+    # (b) User-specified η is respected, not overwritten by the ImplicitGravityWaveRadiation default.
     η_user = FieldBoundaryConditions(grid, (Center(), Center(), Face());
                                      west = GradientBoundaryCondition(0))
     explicit = HydrostaticFreeSurfaceModel(grid;
         free_surface = SplitExplicitFreeSurface(grid; substeps = 4),
         boundary_conditions = (U = U_bcs, V = V_bcs, η = η_user),
         buoyancy = nothing, tracers = ())
-    user_respected = !is_chapman_bc(explicit.free_surface.displacement.boundary_conditions.west)
+    user_respected = !is_implicit_gravity_wave_bc(explicit.free_surface.displacement.boundary_conditions.west)
 
-    # (c) No Flather barotropic boundaries → η keeps its default (no Chapman).
+    # (c) No GravityWaveRadiation barotropic boundaries → η keeps its default (no ImplicitGravityWaveRadiation).
     walls = HydrostaticFreeSurfaceModel(grid;
         free_surface = SplitExplicitFreeSurface(grid; substeps = 4),
         buoyancy = nothing, tracers = ())
-    no_pairing = !is_chapman_bc(walls.free_surface.displacement.boundary_conditions.west)
+    no_pairing = !is_implicit_gravity_wave_bc(walls.free_surface.displacement.boundary_conditions.west)
 
     return auto_paired && user_respected && no_pairing
 end
@@ -501,8 +501,8 @@ end
         @test test_barotropic_gravity_wave_radiation()
     end
 
-    @testset "Tidal bay Flather" begin
-        @test test_tidal_bay_flather()
+    @testset "Tidal bay GravityWaveRadiation" begin
+        @test test_tidal_bay_gravity_wave()
     end
 
     @testset "Coastal Kelvin wave" begin
@@ -525,11 +525,11 @@ end
         @test test_radiation_instant_relaxation()
     end
 
-    @testset "Chapman + Flather barotropic radiation" begin
-        @test test_chapman_flather_radiation()
+    @testset "ImplicitGravityWaveRadiation + GravityWaveRadiation barotropic radiation" begin
+        @test test_implicit_gravity_wave_radiation()
     end
 
-    @testset "Flather–Chapman default pairing" begin
-        @test test_flather_chapman_default_pairing()
+    @testset "GravityWaveRadiation–ImplicitGravityWaveRadiation default pairing" begin
+        @test test_gravity_wave_pairing()
     end
 end

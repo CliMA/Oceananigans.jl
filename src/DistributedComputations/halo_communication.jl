@@ -98,7 +98,7 @@ function distributed_fill_halo_regions!(arch, c, boundary_conditions, indices, l
 
     outstanding_requests = length(arch.mpi_requests)
 
-    distributed_fill_halo_events!(c, values(kernels!), values(bcs), loc, grid, args...; kwargs...)
+    distributed_fill_halo_events!(c, values(kernels!), values(bcs), loc, arch, grid, args...; kwargs...)
 
     fill_corners!(c, arch.connectivity, indices, loc, arch, grid, args...; kwargs...)
 
@@ -112,11 +112,11 @@ function distributed_fill_halo_regions!(arch, c, boundary_conditions, indices, l
     return nothing
 end
 
-@inline distributed_fill_halo_events!(c, ::Tuple{}, ::Tuple{}, loc, grid, args...; kwargs...) = nothing
+@inline distributed_fill_halo_events!(c, ::Tuple{}, ::Tuple{}, loc, arch, grid, args...; kwargs...) = nothing
 
-@inline function distributed_fill_halo_events!(c, kernels!::Tuple, bcs::Tuple, loc, grid, args...; kwargs...)
-    distributed_fill_halo_event!(c, first(kernels!), first(bcs), loc, grid, args...; kwargs...)
-    distributed_fill_halo_events!(c, Base.tail(kernels!), Base.tail(bcs), loc, grid, args...; kwargs...)
+@inline function distributed_fill_halo_events!(c, kernels!::Tuple, bcs::Tuple, loc, arch, grid, args...; kwargs...)
+    distributed_fill_halo_event!(c, first(kernels!), first(bcs), loc, arch, grid, args...; kwargs...)
+    distributed_fill_halo_events!(c, Base.tail(kernels!), Base.tail(bcs), loc, arch, grid, args...; kwargs...)
     return nothing
 end
 

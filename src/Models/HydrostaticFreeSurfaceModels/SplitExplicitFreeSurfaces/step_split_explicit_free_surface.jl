@@ -256,7 +256,7 @@ function step_free_surface!(free_surface::SplitExplicitFreeSurface, model, baroc
     @apply_regionally launch!(architecture(free_surface_grid), free_surface_grid, :xy, _update_split_explicit_state!, η, U, V, free_surface_grid, filtered_state)
 
     # Fill all the barotropic state.
-    # Barotropic model fields for open boundary condition halo filling (e.g. Flather needs η).
+    # Barotropic model fields for open boundary condition halo filling (e.g. GravityWaveRadiation needs η).
     fill_halo_regions!((filtered_state.Ũ, filtered_state.Ṽ), model.clock, fields(model); async=true)
     fill_halo_regions!((U, V), model.clock, fields(model); async=true)
     fill_halo_regions!(η, model.clock, fields(model); async=true)

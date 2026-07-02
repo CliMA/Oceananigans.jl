@@ -135,7 +135,7 @@ Keyword Arguments
                   avoiding communication at each substep. If `false`, halos are not extended and
                   `fill_halo_regions!` is called after each individual update of `U` and `η`, including
                   communication (`CompleteHaloFilling`). Note that when the barotropic velocities
-                  have prescribed normal-flow boundary conditions (e.g. `Flather`), the per-substep
+                  have prescribed normal-flow boundary conditions (e.g. `GravityWaveRadiation`), the per-substep
                   `fill_halo_regions!` path is selected automatically with `only_local_halos = true`
                   (`LocalHaloFilling`) — `extend_halos = false` is not required for open boundaries.
 
@@ -301,29 +301,29 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
 end
 
 #####
-##### Flather–Chapman pairing
+##### GravityWaveRadiation–ImplicitGravityWaveRadiation pairing
 #####
 
 function default_free_surface_boundary_conditions(free_surface::SplitExplicitFreeSurface, user_boundary_conditions)
     g = free_surface.gravitational_acceleration
     U = get(user_boundary_conditions, :U, nothing)
     V = get(user_boundary_conditions, :V, nothing)
-    η = chapman_companion_boundary_conditions(U, V, g)
+    η = implicit_gravity_wave_companion_boundary_conditions(U, V, g)
     return isnothing(η) ? NamedTuple() : (; η)
 end
 
-function chapman_companion_boundary_conditions(U_bcs, V_bcs, g)
-    chapman = ChapmanBoundaryCondition(; gravitational_acceleration = g)
-    west  = chapman_if_flather(U_bcs, :west,  chapman)
-    east  = chapman_if_flather(U_bcs, :east,  chapman)
-    south = chapman_if_flather(V_bcs, :south, chapman)
-    north = chapman_if_flather(V_bcs, :north, chapman)
+function implicit_gravity_wave_companion_boundary_conditions(U_bcs, V_bcs, g)
+    companion = ImplicitGravityWaveRadiationBoundaryCondition(; gravitational_acceleration = g)
+    west  = companion_at_gravity_wave_side(U_bcs, :west,  companion)
+    east  = companion_at_gravity_wave_side(U_bcs, :east,  companion)
+    south = companion_at_gravity_wave_side(V_bcs, :south, companion)
+    north = companion_at_gravity_wave_side(V_bcs, :north, companion)
     all(isnothing, (west, east, south, north)) && return nothing
     return FieldBoundaryConditions(; west, east, south, north)
 end
 
-@inline chapman_if_flather(::Nothing, side, chapman) = nothing
-@inline chapman_if_flather(bcs, side, chapman) = flather_boundary_condition(getproperty(bcs, side)) ? chapman : nothing
+@inline companion_at_gravity_wave_side(::Nothing, side, companion) = nothing
+@inline companion_at_gravity_wave_side(bcs, side, companion) = gravity_wave_boundary_condition(getproperty(bcs, side)) ? companion : nothing
 
 # (p = 2, q = 4, r = 0.18927) minimize dispersion error from Shchepetkin and McWilliams (2005): https://doi.org/10.1016/j.ocemod.2004.08.002
 @inline function averaging_shape_function(τ::FT; p = 2, q = 4, r = FT(0.18927)) where FT
