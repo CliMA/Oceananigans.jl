@@ -163,8 +163,6 @@ end
 end
 
 # The `SplitRungeKutta3` timestepper takes 3 substeps per time step, so we allow 3× the single-step hydrostatic bound.
-# This is a serial check; skip it under MPI, where the distributed pipeline would replicate the same serial run on
-# every rank (no distributed coverage) and stall on the immersed cases.
 if !mpi_test
     @testset "SplitRungeKutta3 hydrostatic memory allocations" begin
         for arch in archs
