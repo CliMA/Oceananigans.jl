@@ -53,21 +53,21 @@ function time_step_allocations(model, Δt; samples=10)
 end
 
 const serial_memory_cpu = Dict(
-    (:hydrostatic,    :flat)            => 560,
+    (:hydrostatic,    :flat)            => 592,
     (:hydrostatic,    :immersed)        => 592,
     (:hydrostatic,    :active_immersed) => 640,
-    (:nonhydrostatic, :flat)            => 8.6e5,
-    (:nonhydrostatic, :immersed)        => 8.9e5,
-    (:nonhydrostatic, :active_immersed) => 6.9e5,
+    (:nonhydrostatic, :flat)            => 598736,
+    (:nonhydrostatic, :immersed)        => 627392,
+    (:nonhydrostatic, :active_immersed) => 676640,
 )
 
 const serial_memory_gpu = Dict(
-    (:hydrostatic,    :flat)            => 2.2e6,
-    (:hydrostatic,    :immersed)        => 2.4e6,
-    (:hydrostatic,    :active_immersed) => 2.1e6,
-    (:nonhydrostatic, :flat)            => 2.0e6,
-    (:nonhydrostatic, :immersed)        => 2.2e6,
-    (:nonhydrostatic, :active_immersed) => 2.1e6,
+    (:hydrostatic,    :flat)            => 4496,
+    (:hydrostatic,    :immersed)        => 4544,
+    (:hydrostatic,    :active_immersed) => 4544,
+    (:nonhydrostatic, :flat)            => 601760,
+    (:nonhydrostatic, :immersed)        => 654512,
+    (:nonhydrostatic, :active_immersed) => 716144,
 )
 
 const distributed_memory_cpu = Dict(
