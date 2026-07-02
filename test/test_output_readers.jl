@@ -4,7 +4,7 @@ using Oceananigans.Units: Time
 using Oceananigans.Fields: indices, interpolate!
 using Oceananigans.OutputReaders: Cyclical, Clamp, Linear, SplitFilePath,
                                   extract_field_time_series, update_field_time_series!,
-                                  GPUAdaptedFieldTimeSeriesOperation
+                                  GPUAdaptedFieldTimeSeriesOperation, pointwise_evaluable
 using Oceananigans.AbstractOperations: @unary, @binary
 using Oceananigans.Architectures: on_architecture
 
@@ -1012,6 +1012,27 @@ end
             q2 = on_architecture(CPU(), q)
             @test q2 isa FieldTimeSeriesOperation
             @test CUDA.@allowscalar q2[1, 1, 1, 2] == 8
+
+            # Pointwise indexing is slice-free when provably equivalent (colocated
+            # arguments, totally in-memory series) and falls back to slicing otherwise
+            @test pointwise_evaluable(q)
+            u2 = XFaceField(grid)
+            set!(u2, 1)
+            Oceananigans.BoundaryConditions.fill_halo_regions!(u2)
+            w2 = a * u2
+            @test !pointwise_evaluable(w2)
+            @test CUDA.@allowscalar w2[2, 1, 1, 2] == 2   # interpolates u2 to Center
+
+            # Spatial derivatives build lazy 4-D operations over Derivative slices
+            c2 = FieldTimeSeries{Center, Center, Center}(grid, times)
+            for n in 1:length(times)
+                set!(c2[n], (x, y, z) -> n * x)
+            end
+            dc = ∂x(c2)
+            @test dc isa FieldTimeSeriesOperation
+            @test CUDA.@allowscalar dc[2, 1, 1, 3] ≈ 3           # ∂x(3x) = 3
+            @test CUDA.@allowscalar dc[2, 1, 1, Time(0.5)] ≈ 1.5 # blend of node derivatives
+            @test CUDA.@allowscalar ∂y(c2)[2, 2, 2, 2] ≈ 0
         end
     end
 

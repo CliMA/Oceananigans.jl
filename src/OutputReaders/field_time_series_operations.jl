@@ -1,4 +1,4 @@
-using Oceananigans.AbstractOperations: KernelFunctionOperation
+using Oceananigans.AbstractOperations: KernelFunctionOperation, ∂x, ∂y, ∂z
 
 #####
 ##### FieldTimeSeriesOperation: AbstractOperations over FieldTimeSeries
@@ -130,8 +130,17 @@ Base.show(io::IO, ::MIME"text/plain", fts_op::FieldTimeSeriesOperation) = show(i
 Base.getindex(fts_op::FieldTimeSeriesOperation, n::Int) =
     time_series_operation_slice(fts_op.op, fts_op.args, n)
 
-@propagate_inbounds Base.getindex(fts_op::FieldTimeSeriesOperation, i::Int, j::Int, k::Int, n::Int) =
-    fts_op[n][i, j, k]
+# Pointwise indexing evaluates the operator on pointwise argument values when that is
+# provably equivalent (see pointwise_evaluable at the bottom of this file); otherwise
+# it falls back to indexing the slice operation, which spatially interpolates arguments
+# and updates partly-in-memory windows.
+@propagate_inbounds function Base.getindex(fts_op::FieldTimeSeriesOperation, i::Int, j::Int, k::Int, n::Int)
+    if pointwise_evaluable(fts_op) # constant-folds: depends only on argument types
+        return pointwise_getindex(fts_op, i, j, k, n)
+    else
+        return fts_op[n][i, j, k]
+    end
+end
 
 # Linear time interpolation of the node values of the operation, reusing the
 # machinery that Time-indexes a stored FieldTimeSeries.
@@ -323,6 +332,12 @@ for op in (+, *)
     Oceananigans.AbstractOperations.add_time_series_methods!(op, Val(3))
 end
 
+# Spatial derivatives: the slice at time index n is the Derivative operation over the
+# sliced argument, interpolation and location flipping included.
+for op in (∂x, ∂y, ∂z)
+    Oceananigans.AbstractOperations.add_time_series_methods!(op, Val(1))
+end
+
 #####
 ##### GPU adaptation: pointwise, slice-free evaluation inside kernels
 #####
@@ -403,4 +418,44 @@ on_architecture(to, fts_op::FieldTimeSeriesOperation) =
 function on_architecture(to, kf::TimeSeriesKernelFunction{LX, LY, LZ}) where {LX, LY, LZ}
     grid = on_architecture(to, kf.grid)
     return TimeSeriesKernelFunction{LX, LY, LZ, typeof(kf.func), typeof(grid)}(kf.func, grid)
+end
+
+#####
+##### Pointwise (slice-free) evaluation
+#####
+
+# Building the three-dimensional slice operation on every pointwise access is expensive
+# (glwagner's review suggestion on #5761). Pointwise evaluation is equivalent when no
+# spatial interpolation is required — every field argument colocated with the operation —
+# and no window updates can be triggered by access — every series argument totally in
+# memory. Both properties depend only on argument types, so getindex's branch
+# constant-folds.
+@inline pointwise_evaluable(fts_op::FieldTimeSeriesOperation{LX, LY, LZ}) where {LX, LY, LZ} =
+    all(map(a -> pointwise_evaluable_argument(a, (LX, LY, LZ)), fts_op.args))
+
+# The kernel-function form indexes its arguments itself, like any KernelFunctionOperation,
+# so its arguments need not be colocated.
+@inline pointwise_evaluable(fts_op::FieldTimeSeriesOperation{<:Any, <:Any, <:Any, <:Any, <:TimeSeriesKernelFunction}) =
+    all(map(a -> pointwise_evaluable_argument(a, nothing), fts_op.args))
+
+@inline pointwise_evaluable_argument(a, loc) = true
+@inline pointwise_evaluable_argument(a::AbstractField, loc) = location(a) == loc
+@inline pointwise_evaluable_argument(fts::FieldTimeSeries, loc) = location(fts) == loc && fts.backend isa TotallyInMemory
+@inline pointwise_evaluable_argument(fts_op::FieldTimeSeriesOperation, loc) = location(fts_op) == loc && pointwise_evaluable(fts_op)
+
+@inline pointwise_evaluable_argument(a::AbstractField, ::Nothing) = true
+@inline pointwise_evaluable_argument(fts::FieldTimeSeries, ::Nothing) = fts.backend isa TotallyInMemory
+@inline pointwise_evaluable_argument(fts_op::FieldTimeSeriesOperation, ::Nothing) = pointwise_evaluable(fts_op)
+
+@inline time_series_value(a::FieldTimeSeries, i, j, k, n) = @inbounds a[i, j, k, n]
+@inline time_series_value(fts_op::FieldTimeSeriesOperation, i, j, k, n) = @inbounds fts_op[i, j, k, n]
+@inline time_slice(a::FieldTimeSeriesLike, n) = TimeSlice(a, n)
+
+@propagate_inbounds pointwise_getindex(fts_op::FieldTimeSeriesOperation, i, j, k, n) =
+    fts_op.op(map(a -> time_series_value(a, i, j, k, n), fts_op.args)...)
+
+@propagate_inbounds function pointwise_getindex(fts_op::FieldTimeSeriesOperation{<:Any, <:Any, <:Any, <:Any, <:TimeSeriesKernelFunction},
+                                                i, j, k, n)
+    kf = fts_op.op
+    return kf.func(i, j, k, kf.grid, map(a -> time_slice(a, n), fts_op.args)...)
 end
