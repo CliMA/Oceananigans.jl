@@ -279,21 +279,128 @@ end
 
 #####
 ##### Operators: the same operations that build AbstractOperations from Fields
-##### build FieldTimeSeriesOperations from FieldTimeSeries.
+##### build FieldTimeSeriesOperations from FieldTimeSeries. The per-arity method
+##### definers below are called by the @unary, @binary, and @multiary macros
+##### (via the Oceananigans.AbstractOperations.add_time_series_methods! hook),
+##### so user-registered operators get FieldTimeSeries methods automatically.
 #####
 
-for op in (:+, :-, :*, :/, :^)
+function Oceananigans.AbstractOperations.add_time_series_methods!(op, ::Val{1})
+    @eval (::typeof($op))(a::FieldTimeSeriesLike) = FieldTimeSeriesOperation($op, a)
+    return nothing
+end
+
+function Oceananigans.AbstractOperations.add_time_series_methods!(op, ::Val{2})
     @eval begin
-        Base.$op(a::FieldTimeSeriesLike, b::FieldTimeSeriesLike) = FieldTimeSeriesOperation(Base.$op, a, b)
-        Base.$op(a::FieldTimeSeriesLike, b::AbstractField) = FieldTimeSeriesOperation(Base.$op, a, b)
-        Base.$op(a::AbstractField, b::FieldTimeSeriesLike) = FieldTimeSeriesOperation(Base.$op, a, b)
-        Base.$op(a::FieldTimeSeriesLike, b::Number) = FieldTimeSeriesOperation(Base.$op, a, b)
-        Base.$op(a::Number, b::FieldTimeSeriesLike) = FieldTimeSeriesOperation(Base.$op, a, b)
+        (::typeof($op))(a::FieldTimeSeriesLike, b::FieldTimeSeriesLike) = FieldTimeSeriesOperation($op, a, b)
+        (::typeof($op))(a::FieldTimeSeriesLike, b::AbstractField) = FieldTimeSeriesOperation($op, a, b)
+        (::typeof($op))(a::AbstractField, b::FieldTimeSeriesLike) = FieldTimeSeriesOperation($op, a, b)
+        (::typeof($op))(a::FieldTimeSeriesLike, b::Number) = FieldTimeSeriesOperation($op, a, b)
+        (::typeof($op))(a::Number, b::FieldTimeSeriesLike) = FieldTimeSeriesOperation($op, a, b)
     end
+    return nothing
 end
 
-for op in (:sqrt, :sin, :cos, :exp, :tanh, :abs, :log10, :log, :tan, :sinh, :cosh)
-    @eval Base.$op(a::FieldTimeSeriesLike) = FieldTimeSeriesOperation(Base.$op, a)
+function Oceananigans.AbstractOperations.add_time_series_methods!(op, ::Val{3})
+    @eval (::typeof($op))(a::FieldTimeSeriesLike, b::FieldTimeSeriesLike, c::FieldTimeSeriesLike, d::FieldTimeSeriesLike...) =
+        FieldTimeSeriesOperation($op, a, b, c, d...)
+    return nothing
 end
 
-Base.:-(a::FieldTimeSeriesLike) = FieldTimeSeriesOperation(Base.:-, a)
+# FieldTimeSeries methods for the default operators, whose @unary/@binary/@multiary
+# registrations expand while AbstractOperations loads, before this module exists.
+# Keep in sync with the operator lists at the bottom of
+# src/AbstractOperations/AbstractOperations.jl.
+for op in (sqrt, sin, cos, exp, tanh, abs, log10, log, tan, sinh, cosh, -, +)
+    Oceananigans.AbstractOperations.add_time_series_methods!(op, Val(1))
+end
+
+for op in (+, -, *, /, ^, >, <, >=, <=, atan, atand, mod)
+    Oceananigans.AbstractOperations.add_time_series_methods!(op, Val(2))
+end
+
+for op in (+, *)
+    Oceananigans.AbstractOperations.add_time_series_methods!(op, Val(3))
+end
+
+#####
+##### GPU adaptation: pointwise, slice-free evaluation inside kernels
+#####
+
+struct GPUAdaptedFieldTimeSeriesOperation{LX, LY, LZ, TI, O, A, χ, T} <: AbstractField{LX, LY, LZ, Nothing, T, 4}
+    op :: O
+    args :: A
+    times :: χ
+    time_indexing :: TI
+end
+
+# A lazy time slice of a four-dimensional series, indexable at (i, j, k) inside kernels.
+struct TimeSlice{S, N}
+    series :: S
+    n :: N
+end
+
+@inline Base.getindex(slice::TimeSlice, i, j, k) = @inbounds slice.series[i, j, k, slice.n]
+
+@inline time_series_value(a::Union{GPUAdaptedFieldTimeSeries, GPUAdaptedFieldTimeSeriesOperation}, i, j, k, n) =
+    @inbounds a[i, j, k, n]
+
+@inline time_series_value(a::AbstractArray, i, j, k, n) = @inbounds a[i, j, k]
+@inline time_series_value(a, i, j, k, n) = a
+
+@inline time_slice(a::Union{GPUAdaptedFieldTimeSeries, GPUAdaptedFieldTimeSeriesOperation}, n) = TimeSlice(a, n)
+@inline time_slice(a, n) = a
+
+# Pointwise node evaluation: apply the operator to the pointwise argument values.
+# Correct when all field arguments share the operation's location, which
+# adapt_structure guarantees.
+@inline Base.getindex(fts_op::GPUAdaptedFieldTimeSeriesOperation, i::Int, j::Int, k::Int, n::Int) =
+    fts_op.op(map(a -> time_series_value(a, i, j, k, n), fts_op.args)...)
+
+# Kernel-function form: the kernel function indexes its (time-sliced) arguments itself,
+# so arguments at different locations are its responsibility, as for any
+# KernelFunctionOperation.
+@inline function Base.getindex(fts_op::GPUAdaptedFieldTimeSeriesOperation{<:Any, <:Any, <:Any, <:Any, <:TimeSeriesKernelFunction},
+                               i::Int, j::Int, k::Int, n::Int)
+    kf = fts_op.op
+    return kf.func(i, j, k, kf.grid, map(a -> time_slice(a, n), fts_op.args)...)
+end
+
+@inline Base.getindex(fts_op::GPUAdaptedFieldTimeSeriesOperation, i::Int, j::Int, k::Int, time_index::Time) =
+    interpolating_getindex(fts_op, i, j, k, time_index)
+
+function Adapt.adapt_structure(to, fts_op::FieldTimeSeriesOperation{LX, LY, LZ}) where {LX, LY, LZ}
+    if !(fts_op.op isa TimeSeriesKernelFunction)
+        for a in fts_op.args
+            a isa AbstractField && location(a) != (LX, LY, LZ) &&
+                throw(ArgumentError("Adapting a FieldTimeSeriesOperation for pointwise (GPU kernel)" *
+                                    " evaluation requires all field arguments to share the operation's" *
+                                    " location: interpolating arguments to a common location inside" *
+                                    " kernels is not supported yet."))
+        end
+    end
+
+    op = Adapt.adapt(to, fts_op.op)
+    args = map(a -> Adapt.adapt(to, a), fts_op.args)
+    times = Adapt.adapt(to, fts_op.times)
+    time_indexing = Adapt.adapt(to, fts_op.time_indexing)
+    T = eltype(fts_op)
+
+    return GPUAdaptedFieldTimeSeriesOperation{LX, LY, LZ, typeof(time_indexing), typeof(op),
+                                              typeof(args), typeof(times), T}(op, args, times, time_indexing)
+end
+
+function Adapt.adapt_structure(to, kf::TimeSeriesKernelFunction{LX, LY, LZ}) where {LX, LY, LZ}
+    func = Adapt.adapt(to, kf.func)
+    grid = Adapt.adapt(to, kf.grid)
+    return TimeSeriesKernelFunction{LX, LY, LZ, typeof(func), typeof(grid)}(func, grid)
+end
+
+on_architecture(to, fts_op::FieldTimeSeriesOperation) =
+    FieldTimeSeriesOperation(on_architecture(to, fts_op.op),
+                             map(a -> on_architecture(to, a), fts_op.args)...)
+
+function on_architecture(to, kf::TimeSeriesKernelFunction{LX, LY, LZ}) where {LX, LY, LZ}
+    grid = on_architecture(to, kf.grid)
+    return TimeSeriesKernelFunction{LX, LY, LZ, typeof(kf.func), typeof(grid)}(kf.func, grid)
+end

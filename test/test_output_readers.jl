@@ -3,10 +3,20 @@ include("dependencies_for_runtests.jl")
 using Oceananigans.Units: Time
 using Oceananigans.Fields: indices, interpolate!
 using Oceananigans.OutputReaders: Cyclical, Clamp, Linear, SplitFilePath,
-                                  extract_field_time_series, update_field_time_series!
+                                  extract_field_time_series, update_field_time_series!,
+                                  GPUAdaptedFieldTimeSeriesOperation
+using Oceananigans.AbstractOperations: @unary, @binary
+using Oceananigans.Architectures: on_architecture
 
 using Random
 using NCDatasets
+
+# Operators registered after Oceananigans loads, to test that @unary / @binary
+# give them FieldTimeSeries methods (must be top-level)
+plus_two(x) = x + 2
+@unary plus_two
+harmonic(x, y) = 2 * x * y / (x + y)
+@binary harmonic
 
 function generate_nonzero_simulation_data(Lx, Δt, FT; architecture=CPU())
     grid = RectilinearGrid(architecture, size=10, x=(0, Lx), topology=(Periodic, Flat, Flat))
@@ -937,6 +947,71 @@ end
             @test CUDA.@allowscalar qw3[4][1, 1, 1] == 32
 
             rm(path_a, force=true); rm(path_b, force=true)
+        end
+
+        @testset "FieldTimeSeriesOperation operator registration and GPU adaptation [$(typeof(arch))]" begin
+            @info "  Testing FieldTimeSeriesOperation operator registration and GPU adaptation [$(typeof(arch))]..."
+            grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
+            times = 0:1.0:3
+            a = FieldTimeSeries{Center, Center, Center}(grid, times)
+            b = FieldTimeSeries{Center, Center, Center}(grid, times)
+            for n in 1:length(times)
+                set!(a[n], n)      # a = 1, 2, 3, 4
+                set!(b[n], 2n)     # b = 2, 4, 6, 8
+            end
+
+            # Operators registered with @unary / @binary after load work on FieldTimeSeries
+            p = plus_two(a)
+            @test p isa FieldTimeSeriesOperation
+            @test CUDA.@allowscalar p[1, 1, 1, 2] == 4
+            h = harmonic(a, b)
+            @test h isa FieldTimeSeriesOperation
+            @test CUDA.@allowscalar h[1, 1, 1, 2] ≈ 2 * 2 * 4 / (2 + 4)
+            @test CUDA.@allowscalar harmonic(a, 2)[1, 1, 1, 2] ≈ 2 * 2 * 2 / (2 + 2)
+
+            # Default operator coverage beyond arithmetic: comparisons, atan, mod, multiary
+            @test (a > b) isa FieldTimeSeriesOperation
+            @test CUDA.@allowscalar (a > b)[1, 1, 1, 2] == false
+            @test CUDA.@allowscalar (b >= 2a)[1, 1, 1, 2] == true
+            @test CUDA.@allowscalar atan(a, b)[1, 1, 1, 2] ≈ atan(2, 4)
+            m3 = +(a, b, b)
+            @test m3 isa FieldTimeSeriesOperation
+            @test CUDA.@allowscalar m3[1, 1, 1, 2] == 10
+
+            # Adapted operations evaluate pointwise without host-side slicing
+            q = a * b
+            adapted = Adapt.adapt(Array, q)
+            @test adapted isa GPUAdaptedFieldTimeSeriesOperation
+            @test adapted[1, 1, 1, 2] == 8
+            @test adapted[1, 1, 1, Time(0.5)] == 5.0
+            @test Adapt.adapt(Array, sqrt(a^2 + b^2))[1, 1, 1, 2] ≈ sqrt(4 + 16)
+            @test Adapt.adapt(Array, 2 * a + b / 2 - 1)[1, 1, 1, 3] == 8
+
+            # Kernel-function form: arguments are passed time-sliced to the kernel function
+            @inline scaled_product(i, j, k, grid, a, b, scale) = @inbounds scale * a[i, j, k] * b[i, j, k]
+            qk = FieldTimeSeriesOperation{Center, Center, Center}(scaled_product, grid, a, b, 10)
+            ak = Adapt.adapt(Array, qk)
+            @test ak[1, 1, 1, 2] == 80
+            @test ak[1, 1, 1, Time(0.5)] == 0.5 * 20 + 0.5 * 80
+
+            # Field arguments at a different location cannot be adapted (no in-kernel
+            # interpolation yet) — except through the kernel-function form, which owns
+            # its locations like any KernelFunctionOperation
+            u = XFaceField(grid)
+            @test_throws ArgumentError Adapt.adapt(Array, a * u)
+            @test Adapt.adapt(Array, FieldTimeSeriesOperation{Center, Center, Center}(scaled_product, grid, a, u, 1)) isa
+                  GPUAdaptedFieldTimeSeriesOperation
+
+            # In-kernel Time sampling through a KernelFunctionOperation (the forcing pattern)
+            @inline sample_series(i, j, k, grid, q, t) = q[i, j, k, Time(t)]
+            kfo = KernelFunctionOperation{Center, Center, Center}(sample_series, grid, q, 0.5)
+            f = compute!(Field(kfo))
+            @test CUDA.@allowscalar f[1, 1, 1] == 5.0
+
+            # on_architecture round-trips
+            q2 = on_architecture(CPU(), q)
+            @test q2 isa FieldTimeSeriesOperation
+            @test CUDA.@allowscalar q2[1, 1, 1, 2] == 8
         end
     end
 
