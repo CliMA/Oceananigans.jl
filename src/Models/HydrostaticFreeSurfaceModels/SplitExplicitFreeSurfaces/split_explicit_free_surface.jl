@@ -4,7 +4,7 @@ using Oceananigans.Grids: RightCenterFolded, RightFaceFolded
 using Oceananigans.Grids: halo_size, on_architecture, minimum_xspacing, minimum_yspacing, with_halo
 using Oceananigans.BoundaryConditions: BoundaryCondition, NormalFlow
 using Oceananigans.Fields: TracerFields, XFaceField, YFaceField
-using Oceananigans.Utils: prettytime
+using Oceananigans.Utils: prettytime, worksize, KernelParameters
 using Adapt: Adapt
 
 import Oceananigans: prognostic_state, restore_prognostic_state!
@@ -282,7 +282,8 @@ function materialize_free_surface(free_surface::SplitExplicitFreeSurface{extend_
     barotropic_velocities = (U = U, V = V)
 
     kernel_parameters = if strategy isa CompleteHaloFilling
-        :xy
+        Wx, Wy, _ = worksize(grid)
+        KernelParameters((Wx, Wy), (0, 0)) # concretely typed parameters
     else
         maybe_augmented_kernel_parameters(TX, TY, maybe_extended_grid, substepping)
     end
@@ -426,7 +427,10 @@ function maybe_extend_halos(TX, TY, grid, substepping::FixedSubstepNumber)
     end
 end
 
-maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedTimeStepSize) = :xy
+function maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedTimeStepSize)
+    Wx, Wy, _ = worksize(grid)
+    return KernelParameters((Wx, Wy), (0, 0))
+end
 
 function maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedSubstepNumber)
     Nx, Ny, _ = size(grid)
@@ -437,19 +441,19 @@ function maybe_augmented_kernel_parameters(TX, TY, grid, ::FixedSubstepNumber)
     return KernelParameters(kernel_sizes...)
 end
 
-split_explicit_kernel_size(topo, N, H)                   =    1:N
-split_explicit_kernel_size(::Type{FullyConnected}, N, H) = -H+2:N+H-1
-split_explicit_kernel_size(::Type{RightConnected}, N, H) =    1:N+H-1
-split_explicit_kernel_size(::Type{LeftConnected},  N, H) = -H+2:N
+@inline split_explicit_kernel_size(topo, N, H)                   =    1:N
+@inline split_explicit_kernel_size(::Type{FullyConnected}, N, H) = -H+2:N+H-1
+@inline split_explicit_kernel_size(::Type{RightConnected}, N, H) =    1:N+H-1
+@inline split_explicit_kernel_size(::Type{LeftConnected},  N, H) = -H+2:N
 
-split_explicit_kernel_size(::Type{RightCenterFolded}, N, H) = 1:N+H-1
-split_explicit_kernel_size(::Type{RightFaceFolded}, N, H)   = 1:N+H-1
+@inline split_explicit_kernel_size(::Type{RightCenterFolded}, N, H) = 1:N+H-1
+@inline split_explicit_kernel_size(::Type{RightFaceFolded}, N, H)   = 1:N+H-1
 
 # Distributed fold topologies: connected on both sides (left=MPI, right=fold/zipper)
-split_explicit_kernel_size(::Type{LeftConnectedRightCenterFolded},    N, H) = -H+2:N+H-1
-split_explicit_kernel_size(::Type{LeftConnectedRightFaceFolded},      N, H) = -H+2:N+H-1
-split_explicit_kernel_size(::Type{LeftConnectedRightCenterConnected}, N, H) = -H+2:N+H-1
-split_explicit_kernel_size(::Type{LeftConnectedRightFaceConnected},   N, H) = -H+2:N+H-1
+@inline split_explicit_kernel_size(::Type{LeftConnectedRightCenterFolded},    N, H) = -H+2:N+H-1
+@inline split_explicit_kernel_size(::Type{LeftConnectedRightFaceFolded},      N, H) = -H+2:N+H-1
+@inline split_explicit_kernel_size(::Type{LeftConnectedRightCenterConnected}, N, H) = -H+2:N+H-1
+@inline split_explicit_kernel_size(::Type{LeftConnectedRightFaceConnected},   N, H) = -H+2:N+H-1
 
 # Adapt
 Adapt.adapt_structure(to, free_surface::SplitExplicitFreeSurface{extend_halos}) where {extend_halos} =
