@@ -1,4 +1,5 @@
 using Oceananigans.Utils: prettysummary, @apply_regionally
+using Oceananigans.Fields: interior
 using LinearAlgebra: norm, dot
 import MPI
 
