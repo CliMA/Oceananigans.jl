@@ -243,6 +243,7 @@ simulation.output_writers[:averages] =
 #
 # This part is easy,
 
+## Fail the docs build if this simulation produces NaNs #hide
 Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 

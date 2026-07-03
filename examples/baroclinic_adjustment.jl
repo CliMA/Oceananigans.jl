@@ -166,6 +166,7 @@ simulation.output_writers[:zonal] = JLD2Writer(model, (; b=B, u=U, v=V);
 
 @info "Running the simulation..."
 
+## Fail the docs build if this simulation produces NaNs #hide
 Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
