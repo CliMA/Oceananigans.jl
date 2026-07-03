@@ -194,6 +194,7 @@ simulation.output_writers[:simple_output] =
 #
 # The simulation is set up. Let there be plankton:
 
+Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
 # Notice how the time-step is reduced at early times, when turbulence is strong,

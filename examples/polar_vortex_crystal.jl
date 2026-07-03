@@ -134,6 +134,7 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; η, ζ, s);
                                                 schedule = TimeInterval(12hours),
                                                 overwrite_existing = true)
 
+Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
 # ## Visualization

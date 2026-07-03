@@ -207,6 +207,7 @@ simulation.output_writers[:fields] = NetCDFWriter(model, outputs;
 
 # Now we just run it!
 
+Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
 # ## Visualize the results

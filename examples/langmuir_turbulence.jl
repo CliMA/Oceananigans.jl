@@ -243,6 +243,7 @@ simulation.output_writers[:averages] =
 #
 # This part is easy,
 
+Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
 # # Making a neat movie

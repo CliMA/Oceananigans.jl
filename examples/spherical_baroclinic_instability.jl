@@ -188,6 +188,7 @@ function run_baroclinic_instability(grid, name; stop_time=60days, save_interval=
     simulation.output_writers[:surface] = JLD2Writer(model, fields; indices, filename,
                                                      schedule = TimeInterval(save_interval),
                                                      overwrite_existing = true)
+    Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
     run!(simulation)
     return filename
 end

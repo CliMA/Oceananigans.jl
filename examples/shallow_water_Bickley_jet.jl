@@ -154,6 +154,7 @@ simulation.output_writers[:growth] = NetCDFWriter(model, (; perturbation_norm),
 
 # And finally run the simulation.
 
+Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
 # ## Visualize the results

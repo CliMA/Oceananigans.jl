@@ -92,6 +92,7 @@ simulation = Simulation(model, Δt = 0.1 * diffusion_time_scale, stop_iteration 
 # `simulation` will run for 1000 iterations with a time-step that resolves the time-scale
 # at which our temperature field diffuses. All that's left is to
 
+Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
 # ## Visualizing the results
@@ -117,6 +118,7 @@ simulation.output_writers[:temperature] =
 # We run the simulation for 10,000 more iterations,
 
 simulation.stop_iteration += 10000
+Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
 # Finally, we animate the results by opening the JLD2 file, extract the

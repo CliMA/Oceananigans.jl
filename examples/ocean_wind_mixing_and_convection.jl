@@ -235,6 +235,7 @@ simulation.output_writers[:slices] =
 
 # We're ready:
 
+Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
 # ## Turbulence visualization

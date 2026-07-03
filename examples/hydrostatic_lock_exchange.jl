@@ -163,6 +163,7 @@ simulation.output_writers[:fields] = JLD2Writer(model, (; b, e, u, N²);
 
 # ## Run Simulation
 
+Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
 @info "Simulation finished. Output saved to $(filename)"

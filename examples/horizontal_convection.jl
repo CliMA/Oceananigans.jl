@@ -155,6 +155,7 @@ nothing #hide
 
 # Ready to press the big red button:
 
+Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
 # ## Load saved output, process, visualize

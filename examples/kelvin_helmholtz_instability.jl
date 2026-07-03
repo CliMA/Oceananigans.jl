@@ -188,6 +188,7 @@ function grow_instability!(simulation, energy)
     energy₀ = energy[1, 1, 1]
 
     ## Grow
+    Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
     run!(simulation)
 
     ## Analyze
@@ -385,6 +386,7 @@ simulation.output_writers[:vorticity] =
 # And now we...
 
 @info "*** Running a simulation of Kelvin-Helmholtz instability..."
+Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
 # ## Pretty things
