@@ -738,6 +738,33 @@ end
     Nt = 5
     Nx, Ny, Nz = 16, 10, 5
 
+    for arch in archs
+        @testset "FieldTimeSeries rejects AbstractOperations [$(typeof(arch))]" begin
+            @info "  Testing that FieldTimeSeries operands are rejected by AbstractOperations [$(typeof(arch))]..."
+            grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
+            times = 0:1.0:3
+            a = FieldTimeSeries{Center, Center, Center}(grid, times)
+            b = FieldTimeSeries{Center, Center, Center}(grid, times)
+            [set!(a[n], n) for n in 1:length(times)]
+            [set!(b[n], 2n) for n in 1:length(times)]
+
+            # Operations with FieldTimeSeries operands would silently drop
+            # the time dimension (issue #5758), so they throw instead.
+            @test_throws ArgumentError a * b
+            @test_throws ArgumentError a + b
+            @test_throws ArgumentError a * 2
+            @test_throws ArgumentError 2 * a
+            @test_throws ArgumentError sqrt(a)
+            @test_throws ArgumentError -a
+            @test_throws ArgumentError +(a, b, b)
+            @test_throws ArgumentError ∂x(a)
+
+            # Slicing a snapshot out of the series still supports operations
+            c = compute!(Field(a[2] * b[2]))
+            @test CUDA.@allowscalar c[1, 1, 1] == 8
+        end
+    end
+
     for output_writer in (JLD2Writer, NetCDFWriter)
         filepath1d, filepath2d, filepath3d, unsplit_filepath, split_filepath = generate_some_interesting_simulation_data(Nx, Ny, Nz; output_writer)
 
