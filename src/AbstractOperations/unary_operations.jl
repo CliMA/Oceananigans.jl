@@ -112,6 +112,7 @@ macro unary(ops...)
 
             push!($(operators), Symbol($op))
             push!($(unary_operators), Symbol($op))
+            $(add_time_series_methods!)($op, $(Val(1)))
         end
 
         push!(expr.args, :($(esc(define_unary_operator))))

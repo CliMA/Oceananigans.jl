@@ -43,6 +43,19 @@ Return `abstract_operation` relocated to `loc`ation.
 """
 at(loc, f) = f # fallback
 
+"""
+$(TYPEDSIGNATURES)
+
+Define methods on the operator `op` of the given arity (`Val(1)`, `Val(2)`, or `Val(3)`
+for unary, binary, and multiary) so that applying it to `FieldTimeSeries` arguments
+builds a `FieldTimeSeriesOperation`.
+
+The fallback does nothing; `OutputReaders` extends this function per arity. The
+`@unary`, `@binary`, and `@multiary` macros call it so that user-registered operators
+support `FieldTimeSeries` arguments just like the default operators do.
+"""
+add_time_series_methods!(op, arity) = nothing
+
 include("grid_validation.jl")
 include("grid_metrics.jl")
 include("metric_field_reductions.jl")

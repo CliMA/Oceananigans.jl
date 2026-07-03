@@ -163,6 +163,7 @@ macro multiary(ops...)
         add_to_operator_lists = quote
             push!($(operators), Symbol($op))
             push!($(multiary_operators), Symbol($op))
+            $(add_time_series_methods!)($op, $(Val(3)))
         end
 
         push!(expr.args, :($(esc(add_to_operator_lists))))

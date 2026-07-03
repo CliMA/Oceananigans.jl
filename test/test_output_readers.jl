@@ -2,10 +2,24 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Units: Time
 using Oceananigans.Fields: indices, interpolate!
-using Oceananigans.OutputReaders: Cyclical, Clamp, Linear, SplitFilePath
+using Oceananigans.OutputReaders: Cyclical, Clamp, Linear, SplitFilePath,
+                                  extract_field_time_series, update_field_time_series!,
+                                  GPUAdaptedFieldTimeSeriesOperation, pointwise_evaluable,
+                                  AbstractFieldTimeSeries
+using Oceananigans.AbstractOperations: Average, Integral
+using Statistics: mean
+using Oceananigans.AbstractOperations: @unary, @binary
+using Oceananigans.Architectures: on_architecture
 
 using Random
 using NCDatasets
+
+# Operators registered after Oceananigans loads, to test that @unary / @binary
+# give them FieldTimeSeries methods (must be top-level)
+plus_two(x) = x + 2
+@unary plus_two
+harmonic(x, y) = 2 * x * y / (x + y)
+@binary harmonic
 
 function generate_nonzero_simulation_data(Lx, Δt, FT; architecture=CPU())
     grid = RectilinearGrid(architecture, size=10, x=(0, Lx), topology=(Periodic, Flat, Flat))
@@ -723,6 +737,375 @@ end
 
     Nt = 5
     Nx, Ny, Nz = 16, 10, 5
+
+    for arch in archs
+        @testset "FieldTimeSeriesOperation [$(typeof(arch))]" begin
+            @info "  Testing FieldTimeSeriesOperation [$(typeof(arch))]..."
+            grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
+            times = 0:1.0:3
+            a = FieldTimeSeries{Center, Center, Center}(grid, times)
+            b = FieldTimeSeries{Center, Center, Center}(grid, times)
+            for n in 1:length(times)
+                set!(a[n], n)      # a = 1, 2, 3, 4
+                set!(b[n], 2n)     # b = 2, 4, 6, 8
+            end
+
+            q = a * b
+            @test q isa FieldTimeSeriesOperation
+            @test size(q) == (2, 2, 2, 4)
+            @test ndims(q) == 4
+
+            # Node indexing: q[n] is a three-dimensional operation over slices
+            qn = compute!(Field(q[2]))
+            @test CUDA.@allowscalar qn[1, 1, 1] == 2 * 4
+            @test CUDA.@allowscalar q[1, 1, 1, 2] == 8
+
+            # Time indexing linearly interpolates the node values of the operation,
+            # exactly like Time-indexing a stored FieldTimeSeries of the result
+            @test CUDA.@allowscalar q[1, 1, 1, Time(0.5)] == 0.5 * (1 * 2) + 0.5 * (2 * 4)
+            f = q[Time(0.5)]
+            @test f isa Field
+            @test CUDA.@allowscalar f[1, 1, 1] == 5.0
+            @test CUDA.@allowscalar q[Time(1.0)][1, 1, 1] == 8.0  # at a node: exact
+
+            # For nonlinear operators this differs (between nodes) from operating
+            # on Time-interpolated arguments
+            itc = CUDA.@allowscalar a[1, 1, 1, Time(0.5)] * b[1, 1, 1, Time(0.5)]
+            @test itc == 1.5 * 3.0
+            @test CUDA.@allowscalar q[1, 1, 1, Time(0.5)] != itc
+
+            # Composition, unary operators, and scalar / Field mixing
+            r = sqrt(a^2 + b^2)
+            @test r isa FieldTimeSeriesOperation
+            @test CUDA.@allowscalar r[1, 1, 1, 2] ≈ sqrt(4 + 16)
+
+            s = 2 * a + b / 2 - 1
+            @test CUDA.@allowscalar s[1, 1, 1, 3] == 2 * 3 + 6 / 2 - 1
+            @test CUDA.@allowscalar (-a)[1, 1, 1, 1] == -1
+
+            c = CenterField(grid)
+            set!(c, 10)
+            w = a * c
+            @test w isa FieldTimeSeriesOperation
+            @test CUDA.@allowscalar w[1, 1, 1, 3] == 30
+
+            # Materialization: Time-indexing the materialized series is identical
+            # to Time-indexing the lazy operation
+            qfts = FieldTimeSeries(q)
+            @test qfts isa FieldTimeSeries
+            CUDA.@allowscalar begin
+                for n in 1:length(times)
+                    @test qfts[1, 1, 1, n] == q[1, 1, 1, n]
+                end
+                @test qfts[1, 1, 1, Time(0.5)] == q[1, 1, 1, Time(0.5)]
+                @test qfts[1, 1, 1, Time(2.7)] ≈ q[1, 1, 1, Time(2.7)]
+            end
+
+            # Mismatched times and missing FieldTimeSeries arguments throw
+            other = FieldTimeSeries{Center, Center, Center}(grid, 0:0.5:1.5)
+            @test_throws ArgumentError a * other
+            @test_throws ArgumentError FieldTimeSeriesOperation(+, c, 1)
+
+            @test summary(q) isa String
+
+            # extract_field_time_series finds the FieldTimeSeries inside operations,
+            # nested operation trees, and containers of operations
+            extracted = extract_field_time_series(q)
+            @test a in extracted && b in extracted
+            er = extract_field_time_series(sqrt(a^2 + b^2))
+            @test a in er && b in er
+            et = extract_field_time_series((q, c, 1.0))
+            @test a in et && b in et
+
+            # KernelFunctionOperation form: FieldTimeSeries arguments are sliced,
+            # other arguments (e.g. parameters) pass through
+            @inline scaled_product(i, j, k, grid, a, b, scale) = @inbounds scale * a[i, j, k] * b[i, j, k]
+            qk = FieldTimeSeriesOperation{Center, Center, Center}(scaled_product, grid, a, b, 10)
+            @test qk isa FieldTimeSeriesOperation
+            @test CUDA.@allowscalar qk[1, 1, 1, 2] == 10 * 2 * 4
+            @test CUDA.@allowscalar qk[1, 1, 1, Time(0.5)] == 0.5 * 10 * (1 * 2) + 0.5 * 10 * (2 * 4)
+            ek = extract_field_time_series(qk)
+            @test a in ek && b in ek
+        end
+
+        @testset "FieldTimeSeriesOperation with partly-in-memory arguments [$(typeof(arch))]" begin
+            @info "  Testing FieldTimeSeriesOperation with partly-in-memory arguments [$(typeof(arch))]..."
+            cpu_grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
+            times = 0:1.0:3
+            path_a = "ftsop_windowed_a_$(typeof(arch)).jld2"
+            path_b = "ftsop_windowed_b_$(typeof(arch)).jld2"
+            rm(path_a, force=true); rm(path_b, force=true)
+
+            fta = FieldTimeSeries{Center, Center, Center}(cpu_grid, times; backend=OnDisk(), path=path_a, name="a")
+            ftb = FieldTimeSeries{Center, Center, Center}(cpu_grid, times; backend=OnDisk(), path=path_b, name="b")
+            tmp = CenterField(cpu_grid)
+            for n in 1:length(times)
+                set!(tmp, n);  set!(fta, tmp, n)   # a = 1, 2, 3, 4
+                set!(tmp, 2n); set!(ftb, tmp, n)   # b = 2, 4, 6, 8
+            end
+
+            aw = FieldTimeSeries(path_a, "a"; backend=InMemory(2), architecture=arch)
+            bw = FieldTimeSeries(path_b, "b"; backend=InMemory(2), architecture=arch)
+
+            q = aw * bw
+
+            # Pointwise Time indexing slides the windows forward, and jumps backward
+            @test CUDA.@allowscalar q[1, 1, 1, Time(2.5)] == 0.5 * 18 + 0.5 * 32
+            @test CUDA.@allowscalar q[1, 1, 1, Time(0.5)] == 0.5 * 2 + 0.5 * 8
+
+            # Global Time getindex jointly updates both bracketing indices
+            f = q[Time(1.5)]
+            @test CUDA.@allowscalar f[1, 1, 1] == 0.5 * (2 * 4) + 0.5 * (3 * 6)
+
+            # Explicit joint update
+            update_field_time_series!(q, Time(2.7))
+            @test CUDA.@allowscalar q[1, 1, 1, 3] == 18
+
+            # Materialization from windowed arguments
+            qfts = FieldTimeSeries(q)
+            CUDA.@allowscalar begin
+                for n in 1:length(times)
+                    @test qfts[1, 1, 1, n] == n * 2n
+                end
+            end
+
+            rm(path_a, force=true); rm(path_b, force=true)
+        end
+
+        @testset "FieldTimeSeriesOperation windowed materialization [$(typeof(arch))]" begin
+            @info "  Testing FieldTimeSeriesOperation windowed materialization [$(typeof(arch))]..."
+            grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
+            times = 0:1.0:3
+            a = FieldTimeSeries{Center, Center, Center}(grid, times)
+            b = FieldTimeSeries{Center, Center, Center}(grid, times)
+            for n in 1:length(times)
+                set!(a[n], n)      # a = 1, 2, 3, 4
+                set!(b[n], 2n)     # b = 2, 4, 6, 8
+            end
+            q = a * b
+
+            # The operation is the series' provenance: set! (re)computes from it
+            qw = FieldTimeSeries(q; backend=InMemory(2))
+            @test qw.path === q
+            @test size(parent(qw), 4) == 2   # only the window is stored
+
+            CUDA.@allowscalar begin
+                for n in 1:4   # slicing slides + recomputes the window
+                    @test qw[n][1, 1, 1] == n * 2n
+                    @test size(parent(qw), 4) == 2
+                end
+                @test qw[1][1, 1, 1] == 2    # backward jump
+                @test qw[Time(2.5)][1, 1, 1] == 0.5 * 18 + 0.5 * 32
+                @test qw[Time(0.5)][1, 1, 1] == 0.5 * 2 + 0.5 * 8
+            end
+
+            # Pointwise (kernel-path) indexing after an explicit update, as models do
+            update_field_time_series!(qw, Time(1.5))
+            @test CUDA.@allowscalar qw[1, 1, 1, Time(1.5)] == 13.0
+
+            @test occursin("FieldTimeSeriesOperation", summary(qw))
+
+            # Structural window validation is inherited from InMemory
+            @test_throws ArgumentError FieldTimeSeries(q; backend=InMemory(5))
+
+            # Cyclical time indexing wraps across the window
+            ac = FieldTimeSeries{Center, Center, Center}(grid, times; time_indexing=Cyclical(4.0))
+            bc = FieldTimeSeries{Center, Center, Center}(grid, times; time_indexing=Cyclical(4.0))
+            for n in 1:length(times)
+                set!(ac[n], n)
+                set!(bc[n], 2n)
+            end
+            qcw = FieldTimeSeries(ac * bc; backend=InMemory(2))
+            CUDA.@allowscalar begin
+                @test qcw[Time(3.5)][1, 1, 1] == 0.5 * 32 + 0.5 * 2
+                @test qcw[Time(4.5)][1, 1, 1] == 0.5 * 2 + 0.5 * 8   # a full period later
+                @test qcw[Time(1.0)][1, 1, 1] == 8.0
+            end
+
+            # Windowed on-disk sources feeding a windowed materialization
+            path_a = "ftsmat_a_$(typeof(arch)).jld2"
+            path_b = "ftsmat_b_$(typeof(arch)).jld2"
+            rm(path_a, force=true); rm(path_b, force=true)
+            cpu_grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
+            fta = FieldTimeSeries{Center, Center, Center}(cpu_grid, times; backend=OnDisk(), path=path_a, name="a")
+            ftb = FieldTimeSeries{Center, Center, Center}(cpu_grid, times; backend=OnDisk(), path=path_b, name="b")
+            tmp = CenterField(cpu_grid)
+            for n in 1:length(times)
+                set!(tmp, n);  set!(fta, tmp, n)
+                set!(tmp, 2n); set!(ftb, tmp, n)
+            end
+            aw = FieldTimeSeries(path_a, "a"; backend=InMemory(2), architecture=arch)
+            bw = FieldTimeSeries(path_b, "b"; backend=InMemory(2), architecture=arch)
+
+            qww = FieldTimeSeries(aw * bw; backend=InMemory(2))
+            CUDA.@allowscalar begin
+                for n in (1, 3, 4, 2, 1)   # forward and backward
+                    @test qww[n][1, 1, 1] == n * 2n
+                end
+                @test qww[Time(2.5)][1, 1, 1] == 25.0
+            end
+
+            # Derived window longer than a source window warns at construction
+            qw3 = @test_logs (:warn, r"shorter than the materialized window") FieldTimeSeries(aw * bw; backend=InMemory(3))
+            @test CUDA.@allowscalar qw3[4][1, 1, 1] == 32
+
+            rm(path_a, force=true); rm(path_b, force=true)
+        end
+
+        @testset "FieldTimeSeriesOperation operator registration and GPU adaptation [$(typeof(arch))]" begin
+            @info "  Testing FieldTimeSeriesOperation operator registration and GPU adaptation [$(typeof(arch))]..."
+            grid = RectilinearGrid(arch, size=(2, 2, 2), extent=(1, 1, 1))
+            times = 0:1.0:3
+            a = FieldTimeSeries{Center, Center, Center}(grid, times)
+            b = FieldTimeSeries{Center, Center, Center}(grid, times)
+            for n in 1:length(times)
+                set!(a[n], n)      # a = 1, 2, 3, 4
+                set!(b[n], 2n)     # b = 2, 4, 6, 8
+            end
+
+            # Operators registered with @unary / @binary after load work on FieldTimeSeries
+            p = plus_two(a)
+            @test p isa FieldTimeSeriesOperation
+            @test CUDA.@allowscalar p[1, 1, 1, 2] == 4
+            h = harmonic(a, b)
+            @test h isa FieldTimeSeriesOperation
+            @test CUDA.@allowscalar h[1, 1, 1, 2] ≈ 2 * 2 * 4 / (2 + 4)
+            @test CUDA.@allowscalar harmonic(a, 2)[1, 1, 1, 2] ≈ 2 * 2 * 2 / (2 + 2)
+
+            # Default operator coverage beyond arithmetic: comparisons, atan, mod, multiary
+            @test (a > b) isa FieldTimeSeriesOperation
+            @test CUDA.@allowscalar (a > b)[1, 1, 1, 2] == false
+            @test CUDA.@allowscalar (b >= 2a)[1, 1, 1, 2] == true
+            @test CUDA.@allowscalar atan(a, b)[1, 1, 1, 2] ≈ atan(2, 4)
+            m3 = +(a, b, b)
+            @test m3 isa FieldTimeSeriesOperation
+            @test CUDA.@allowscalar m3[1, 1, 1, 2] == 10
+
+            # Adapted operations evaluate pointwise without host-side slicing
+            q = a * b
+            adapted = Adapt.adapt(Array, q)
+            @test adapted isa GPUAdaptedFieldTimeSeriesOperation
+            @test adapted[1, 1, 1, 2] == 8
+            @test adapted[1, 1, 1, Time(0.5)] == 5.0
+            @test Adapt.adapt(Array, sqrt(a^2 + b^2))[1, 1, 1, 2] ≈ sqrt(4 + 16)
+            @test Adapt.adapt(Array, 2 * a + b / 2 - 1)[1, 1, 1, 3] == 8
+
+            # Kernel-function form: arguments are passed time-sliced to the kernel function
+            @inline scaled_product(i, j, k, grid, a, b, scale) = @inbounds scale * a[i, j, k] * b[i, j, k]
+            qk = FieldTimeSeriesOperation{Center, Center, Center}(scaled_product, grid, a, b, 10)
+            ak = Adapt.adapt(Array, qk)
+            @test ak[1, 1, 1, 2] == 80
+            @test ak[1, 1, 1, Time(0.5)] == 0.5 * 20 + 0.5 * 80
+
+            # Field arguments at a different location cannot be adapted (no in-kernel
+            # interpolation yet) — except through the kernel-function form, which owns
+            # its locations like any KernelFunctionOperation
+            u = XFaceField(grid)
+            @test_throws ArgumentError Adapt.adapt(Array, a * u)
+            @test Adapt.adapt(Array, FieldTimeSeriesOperation{Center, Center, Center}(scaled_product, grid, a, u, 1)) isa
+                  GPUAdaptedFieldTimeSeriesOperation
+
+            # In-kernel Time sampling through a KernelFunctionOperation (the forcing pattern)
+            @inline sample_series(i, j, k, grid, q, t) = q[i, j, k, Time(t)]
+            kfo = KernelFunctionOperation{Center, Center, Center}(sample_series, grid, q, 0.5)
+            f = compute!(Field(kfo))
+            @test CUDA.@allowscalar f[1, 1, 1] == 5.0
+
+            # on_architecture round-trips
+            q2 = on_architecture(CPU(), q)
+            @test q2 isa FieldTimeSeriesOperation
+            @test CUDA.@allowscalar q2[1, 1, 1, 2] == 8
+
+            # Reductions mirror the FieldTimeSeries reductions and match reducing
+            # the materialized series
+            qfts = FieldTimeSeries(q)
+            @test maximum(q) == maximum(qfts) == 32
+            @test minimum(q) == 2
+            @test sum(q) == sum(qfts)
+            @test mean(q) == mean(qfts)
+            qs = sum(q; dims=(1, 2))
+            @test qs isa FieldTimeSeries
+            CUDA.@allowscalar begin
+                @test qs[1, 1, 1, 3] == sum(qfts; dims=(1, 2))[1, 1, 1, 3] == 4 * 18
+                @test sum(q; dims=4)[1, 1, 1, 1] == 2 + 8 + 18 + 32          # time reduction
+                @test mean(q; dims=4)[1, 1, 1, 1] == 15.0
+                @test maximum(q; dims=4)[1, 1, 1, 1] == 32
+            end
+
+            # Lazy Average / Integral of a series: slices are Scans
+            qa = Average(q, dims=(1, 2, 3))
+            @test qa isa FieldTimeSeriesOperation
+            @test CUDA.@allowscalar compute!(Field(qa[2]))[1, 1, 1] == 8
+            qafts = FieldTimeSeries(qa)
+            @test CUDA.@allowscalar qafts[1, 1, 1, 3] == 18
+            qi = Integral(q, dims=(1, 2, 3))
+            @test CUDA.@allowscalar compute!(Field(qi[2]))[1, 1, 1] ≈ 8
+
+            # Pointwise indexing is slice-free, spatially interpolating arguments at
+            # other locations with operators stored at construction; only partly-in-memory
+            # arguments (which need window updates on access) fall back to slicing
+            @test pointwise_evaluable(q)
+            u2 = XFaceField(grid)
+            set!(u2, 1)
+            Oceananigans.BoundaryConditions.fill_halo_regions!(u2)
+            w2 = a * u2
+            @test pointwise_evaluable(w2)
+            @test CUDA.@allowscalar w2[2, 1, 1, 2] == 2   # interpolates u2 to Center
+            @test Adapt.adapt(Array, w2)[2, 1, 1, 2] == 2 # ... on the GPU-adapted form too
+
+            # Both flavors of series share the AbstractFieldTimeSeries supertype
+            @test a isa AbstractFieldTimeSeries
+            @test q isa AbstractFieldTimeSeries
+
+            # Spatial derivatives build lazy 4-D operations over Derivative slices
+            c2 = FieldTimeSeries{Center, Center, Center}(grid, times)
+            for n in 1:length(times)
+                set!(c2[n], (x, y, z) -> n * x)
+            end
+            dc = ∂x(c2)
+            @test dc isa FieldTimeSeriesOperation
+            @test CUDA.@allowscalar dc[2, 1, 1, 3] ≈ 3           # ∂x(3x) = 3
+            @test CUDA.@allowscalar dc[2, 1, 1, Time(0.5)] ≈ 1.5 # blend of node derivatives
+            @test CUDA.@allowscalar ∂y(c2)[2, 2, 2, 2] ≈ 0
+
+            # Temporal derivative: finite-difference node values (centered interior,
+            # one-sided ends), Time-interpolated like any other series
+            qt = FieldTimeSeries{Center, Center, Center}(grid, times)
+            for n in 1:length(times)
+                set!(qt[n], n^2)   # 1, 4, 9, 16
+            end
+            dq = ∂t(qt)
+            @test dq isa FieldTimeSeriesOperation
+            CUDA.@allowscalar begin
+                @test dq[1, 1, 1, 1] == 3   # (4 - 1) / 1
+                @test dq[1, 1, 1, 2] == 4   # (9 - 1) / 2
+                @test dq[1, 1, 1, 4] == 7   # (16 - 9) / 1
+                @test dq[1, 1, 1, Time(0.5)] == 3.5
+            end
+            @test Adapt.adapt(Array, dq)[1, 1, 1, 2] == 4
+            dfts = FieldTimeSeries(dq)   # lazy ≡ materialized
+            @test CUDA.@allowscalar dfts[1, 1, 1, Time(2.3)] == dq[1, 1, 1, Time(2.3)]
+
+            # Cyclical wraps the stencil across the period
+            qc = FieldTimeSeries{Center, Center, Center}(grid, times; time_indexing=Cyclical(4.0))
+            for n in 1:length(times)
+                set!(qc[n], n)
+            end
+            @test CUDA.@allowscalar ∂t(qc)[1, 1, 1, 1] == -1   # (2 - 4) / (1 - 3 + 4)
+
+            # Partly-in-memory arguments need a window of at least 4
+            path_dt = "dt_window_guard_$(typeof(arch)).jld2"
+            rm(path_dt, force=true)
+            dt_cpu_grid = RectilinearGrid(size=(2, 2, 2), extent=(1, 1, 1))
+            fdt = FieldTimeSeries{Center, Center, Center}(dt_cpu_grid, times; backend=OnDisk(), path=path_dt, name="q")
+            tmp_dt = CenterField(dt_cpu_grid)
+            for n in 1:length(times)
+                set!(tmp_dt, n); set!(fdt, tmp_dt, n)
+            end
+            @test_throws ArgumentError ∂t(FieldTimeSeries(path_dt, "q"; backend=InMemory(2), architecture=arch))
+            rm(path_dt, force=true)
+        end
+    end
 
     for output_writer in (JLD2Writer, NetCDFWriter)
         filepath1d, filepath2d, filepath3d, unsplit_filepath, split_filepath = generate_some_interesting_simulation_data(Nx, Ny, Nz; output_writer)

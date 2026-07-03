@@ -259,7 +259,13 @@ end
 ##### FieldTimeSeries
 #####
 
-mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW} <: AbstractField{LX, LY, LZ, G, ET, 4}
+"""
+Abstract supertype for four-dimensional (space + time) fields: concrete, data-holding
+`FieldTimeSeries` as well as lazy `FieldTimeSeriesOperation`.
+"""
+abstract type AbstractFieldTimeSeries{LX, LY, LZ, TI, G, ET} <: AbstractField{LX, LY, LZ, G, ET, 4} end
+
+mutable struct FieldTimeSeries{LX, LY, LZ, TI, K, I, D, G, ET, B, χ, P, N, KW} <: AbstractFieldTimeSeries{LX, LY, LZ, TI, G, ET}
     data :: D
     grid :: G
     backend :: K

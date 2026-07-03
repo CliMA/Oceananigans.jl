@@ -20,6 +20,8 @@ function Base.summary(fts::FieldTimeSeries{LX, LY, LZ, K}) where {LX, LY, LZ, K}
 
     if isnothing(path)
         suffix = " on $A"
+    elseif isnothing(name)
+        suffix = " at $path"
     else
         suffix = " of $name at $path"
     end

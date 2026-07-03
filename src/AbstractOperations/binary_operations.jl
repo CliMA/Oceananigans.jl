@@ -196,6 +196,7 @@ macro binary(ops...)
         add_to_operator_lists = quote
             push!($(operators), Symbol($op))
             push!($(binary_operators), Symbol($op))
+            $(add_time_series_methods!)($op, $(Val(2)))
         end
 
         push!(expr.args, :($(esc(add_to_operator_lists))))
