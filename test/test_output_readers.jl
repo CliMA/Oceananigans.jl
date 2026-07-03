@@ -4,7 +4,10 @@ using Oceananigans.Units: Time
 using Oceananigans.Fields: indices, interpolate!
 using Oceananigans.OutputReaders: Cyclical, Clamp, Linear, SplitFilePath,
                                   extract_field_time_series, update_field_time_series!,
-                                  GPUAdaptedFieldTimeSeriesOperation, pointwise_evaluable
+                                  GPUAdaptedFieldTimeSeriesOperation, pointwise_evaluable,
+                                  AbstractFieldTimeSeries
+using Oceananigans.AbstractOperations: Average, Integral
+using Statistics: mean
 using Oceananigans.AbstractOperations: @unary, @binary
 using Oceananigans.Architectures: on_architecture
 
@@ -1013,15 +1016,46 @@ end
             @test q2 isa FieldTimeSeriesOperation
             @test CUDA.@allowscalar q2[1, 1, 1, 2] == 8
 
-            # Pointwise indexing is slice-free when provably equivalent (colocated
-            # arguments, totally in-memory series) and falls back to slicing otherwise
+            # Reductions mirror the FieldTimeSeries reductions and match reducing
+            # the materialized series
+            qfts = FieldTimeSeries(q)
+            @test maximum(q) == maximum(qfts) == 32
+            @test minimum(q) == 2
+            @test sum(q) == sum(qfts)
+            @test mean(q) == mean(qfts)
+            qs = sum(q; dims=(1, 2))
+            @test qs isa FieldTimeSeries
+            CUDA.@allowscalar begin
+                @test qs[1, 1, 1, 3] == sum(qfts; dims=(1, 2))[1, 1, 1, 3] == 4 * 18
+                @test sum(q; dims=4)[1, 1, 1, 1] == 2 + 8 + 18 + 32          # time reduction
+                @test mean(q; dims=4)[1, 1, 1, 1] == 15.0
+                @test maximum(q; dims=4)[1, 1, 1, 1] == 32
+            end
+
+            # Lazy Average / Integral of a series: slices are Scans
+            qa = Average(q, dims=(1, 2, 3))
+            @test qa isa FieldTimeSeriesOperation
+            @test CUDA.@allowscalar compute!(Field(qa[2]))[1, 1, 1] == 8
+            qafts = FieldTimeSeries(qa)
+            @test CUDA.@allowscalar qafts[1, 1, 1, 3] == 18
+            qi = Integral(q, dims=(1, 2, 3))
+            @test CUDA.@allowscalar compute!(Field(qi[2]))[1, 1, 1] ≈ 8
+
+            # Pointwise indexing is slice-free, spatially interpolating arguments at
+            # other locations with operators stored at construction; only partly-in-memory
+            # arguments (which need window updates on access) fall back to slicing
             @test pointwise_evaluable(q)
             u2 = XFaceField(grid)
             set!(u2, 1)
             Oceananigans.BoundaryConditions.fill_halo_regions!(u2)
             w2 = a * u2
-            @test !pointwise_evaluable(w2)
+            @test pointwise_evaluable(w2)
             @test CUDA.@allowscalar w2[2, 1, 1, 2] == 2   # interpolates u2 to Center
+            @test Adapt.adapt(Array, w2)[2, 1, 1, 2] == 2 # ... on the GPU-adapted form too
+
+            # Both flavors of series share the AbstractFieldTimeSeries supertype
+            @test a isa AbstractFieldTimeSeries
+            @test q isa AbstractFieldTimeSeries
 
             # Spatial derivatives build lazy 4-D operations over Derivative slices
             c2 = FieldTimeSeries{Center, Center, Center}(grid, times)

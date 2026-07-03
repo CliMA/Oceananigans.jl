@@ -1,7 +1,7 @@
 module OutputReaders
 
 export FieldDataset
-export FieldTimeSeries
+export FieldTimeSeries, AbstractFieldTimeSeries
 export FieldTimeSeriesOperation, ∂t
 export TimeSeriesInterpolation
 export InMemory, OnDisk

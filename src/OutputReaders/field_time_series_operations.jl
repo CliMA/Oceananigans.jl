@@ -1,18 +1,28 @@
-using Oceananigans.AbstractOperations: KernelFunctionOperation, ∂x, ∂y, ∂z
+using Statistics: Statistics, mean
+
+using Oceananigans: instantiated_location
+using Oceananigans.AbstractOperations: KernelFunctionOperation, Average, Integral, Derivative, ∂x, ∂y, ∂z
+using Oceananigans.Fields: Scan, reduced_location
+using Oceananigans.Operators: interpolation_operator
 
 #####
 ##### FieldTimeSeriesOperation: AbstractOperations over FieldTimeSeries
 #####
 
-struct FieldTimeSeriesOperation{LX, LY, LZ, TI, O, A, G, χ, T} <: AbstractField{LX, LY, LZ, G, T, 4}
+struct FieldTimeSeriesOperation{LX, LY, LZ, TI, O, A, P, G, χ, T} <: AbstractFieldTimeSeries{LX, LY, LZ, TI, G, T}
     op :: O
     args :: A
+    interpolators :: P
     grid :: G
     times :: χ
     time_indexing :: TI
 end
 
-const FieldTimeSeriesLike = Union{FieldTimeSeries, FieldTimeSeriesOperation}
+const FieldTimeSeriesLike = AbstractFieldTimeSeries
+
+# The grid an operation acts on; Scans (reductions like Average) carry it on their operand.
+operation_grid(a) = a.grid
+operation_grid(scan::Scan) = operation_grid(scan.operand)
 
 @inline time_series_operation_argument(a, n) = a
 @inline time_series_operation_argument(fts::FieldTimeSeriesLike, n) = fts[n]
@@ -99,12 +109,33 @@ function FieldTimeSeriesOperation(op, args...)
     # the location, grid, and eltype of the operation.
     trial = time_series_operation_slice(op, args, 1)
     LX, LY, LZ = location(trial)
-    grid = trial.grid
+    grid = operation_grid(trial)
     T = eltype(trial)
 
-    return FieldTimeSeriesOperation{LX, LY, LZ, typeof(time_indexing), typeof(op), typeof(args),
-                                    typeof(grid), typeof(times), T}(op, args, grid, times, time_indexing)
+    # Spatial interpolation operators from each field argument's location to the
+    # operation's location (or, for derivatives, the stencil-and-interpolation pair),
+    # for pointwise (slice-free) four-dimensional indexing.
+    interpolators = pointwise_interpolators(trial, args)
+
+    return FieldTimeSeriesOperation{LX, LY, LZ, typeof(time_indexing), typeof(op), typeof(args), typeof(interpolators),
+                                    typeof(grid), typeof(times), T}(op, args, interpolators, grid, times, time_indexing)
 end
+
+function pointwise_interpolators(trial, args)
+    Lop = instantiated_location(trial)
+    return map(a -> a isa AbstractField ? interpolation_operator(instantiated_location(a), Lop) : nothing, args)
+end
+
+# A spatial stencil (e.g. a derivative) followed by interpolation to the operation's
+# location — the pointwise equivalent of a Derivative slice, constant across time.
+struct PointwiseStencil{D, I}
+    stencil :: D
+    ▶ :: I
+end
+
+@inline (ps::PointwiseStencil)(i, j, k, grid, c) = ps.▶(i, j, k, grid, ps.stencil, c)
+
+pointwise_interpolators(trial::Derivative, args) = (PointwiseStencil(trial.∂, trial.▶),)
 
 architecture(fts_op::FieldTimeSeriesOperation) = architecture(fts_op.grid)
 
@@ -371,9 +402,11 @@ function ∂t(fts::FieldTimeSeriesLike)
     grid = fts.grid
     T = eltype(fts)
 
+    interpolators = (nothing,) # the argument is colocated with its time derivative
+
     return FieldTimeSeriesOperation{LX, LY, LZ, typeof(time_indexing), TimeSeriesTimeDerivative,
-                                    typeof(args), typeof(grid), typeof(times), T}(
-                                    TimeSeriesTimeDerivative(), args, grid, times, time_indexing)
+                                    typeof(args), typeof(interpolators), typeof(grid), typeof(times), T}(
+                                    TimeSeriesTimeDerivative(), args, interpolators, grid, times, time_indexing)
 end
 
 # The slice at node n couples the two neighboring nodes rather than same-index slices.
@@ -448,9 +481,11 @@ end
 ##### GPU adaptation: pointwise, slice-free evaluation inside kernels
 #####
 
-struct GPUAdaptedFieldTimeSeriesOperation{LX, LY, LZ, TI, O, A, χ, T} <: AbstractField{LX, LY, LZ, Nothing, T, 4}
+struct GPUAdaptedFieldTimeSeriesOperation{LX, LY, LZ, TI, O, A, P, G, χ, T} <: AbstractField{LX, LY, LZ, Nothing, T, 4}
     op :: O
     args :: A
+    interpolators :: P
+    grid :: G
     times :: χ
     time_indexing :: TI
 end
@@ -472,11 +507,18 @@ end
 @inline time_slice(a::Union{GPUAdaptedFieldTimeSeries, GPUAdaptedFieldTimeSeriesOperation}, n) = TimeSlice(a, n)
 @inline time_slice(a, n) = a
 
-# Pointwise node evaluation: apply the operator to the pointwise argument values.
-# Correct when all field arguments share the operation's location, which
-# adapt_structure guarantees.
+# Pointwise node evaluation: spatially interpolate each argument (lazily time-sliced
+# for series arguments) to the operation's location, then apply the operator — proper
+# four-dimensional indexing with no intermediate slice or Field construction.
 @inline Base.getindex(fts_op::GPUAdaptedFieldTimeSeriesOperation, i::Int, j::Int, k::Int, n::Int) =
-    fts_op.op(map(a -> time_series_value(a, i, j, k, n), fts_op.args)...)
+    fts_op.op(map((▶, a) -> interpolated_argument_value(▶, a, i, j, k, n, fts_op.grid),
+                  fts_op.interpolators, fts_op.args)...)
+
+const SomeTimeSeries = Union{AbstractFieldTimeSeries, GPUAdaptedFieldTimeSeries, GPUAdaptedFieldTimeSeriesOperation}
+
+@inline interpolated_argument_value(::Nothing, a, i, j, k, n, grid) = a
+@inline interpolated_argument_value(▶, a::SomeTimeSeries, i, j, k, n, grid) = ▶(i, j, k, grid, TimeSlice(a, n))
+@inline interpolated_argument_value(▶, a::AbstractArray, i, j, k, n, grid) = ▶(i, j, k, grid, a)
 
 # Kernel-function form: the kernel function indexes its (time-sliced) arguments itself,
 # so arguments at different locations are its responsibility, as for any
@@ -487,28 +529,25 @@ end
     return kf.func(i, j, k, kf.grid, map(a -> time_slice(a, n), fts_op.args)...)
 end
 
+@inline Base.getindex(fts_op::GPUAdaptedFieldTimeSeriesOperation{<:Any, <:Any, <:Any, <:Any, <:Union{typeof(∂x), typeof(∂y), typeof(∂z)}},
+                      i::Int, j::Int, k::Int, n::Int) =
+    first(fts_op.interpolators)(i, j, k, fts_op.grid, TimeSlice(first(fts_op.args), n))
+
 @inline Base.getindex(fts_op::GPUAdaptedFieldTimeSeriesOperation, i::Int, j::Int, k::Int, time_index::Time) =
     interpolating_getindex(fts_op, i, j, k, time_index)
 
 function Adapt.adapt_structure(to, fts_op::FieldTimeSeriesOperation{LX, LY, LZ}) where {LX, LY, LZ}
-    if !(fts_op.op isa TimeSeriesKernelFunction)
-        for a in fts_op.args
-            a isa AbstractField && location(a) != (LX, LY, LZ) &&
-                throw(ArgumentError("Adapting a FieldTimeSeriesOperation for pointwise (GPU kernel)" *
-                                    " evaluation requires all field arguments to share the operation's" *
-                                    " location: interpolating arguments to a common location inside" *
-                                    " kernels is not supported yet."))
-        end
-    end
-
     op = Adapt.adapt(to, fts_op.op)
     args = map(a -> Adapt.adapt(to, a), fts_op.args)
+    interpolators = Adapt.adapt(to, fts_op.interpolators)
+    grid = Adapt.adapt(to, fts_op.grid)
     times = Adapt.adapt(to, fts_op.times)
     time_indexing = Adapt.adapt(to, fts_op.time_indexing)
     T = eltype(fts_op)
 
-    return GPUAdaptedFieldTimeSeriesOperation{LX, LY, LZ, typeof(time_indexing), typeof(op),
-                                              typeof(args), typeof(times), T}(op, args, times, time_indexing)
+    return GPUAdaptedFieldTimeSeriesOperation{LX, LY, LZ, typeof(time_indexing), typeof(op), typeof(args),
+                                              typeof(interpolators), typeof(grid), typeof(times), T}(
+                                              op, args, interpolators, grid, times, time_indexing)
 end
 
 function Adapt.adapt_structure(to, kf::TimeSeriesKernelFunction{LX, LY, LZ}) where {LX, LY, LZ}
@@ -531,34 +570,33 @@ end
 #####
 
 # Building the three-dimensional slice operation on every pointwise access is expensive
-# (glwagner's review suggestion on #5761). Pointwise evaluation is equivalent when no
-# spatial interpolation is required — every field argument colocated with the operation —
-# and no window updates can be triggered by access — every series argument totally in
-# memory. Both properties depend only on argument types, so getindex's branch
-# constant-folds.
-@inline pointwise_evaluable(fts_op::FieldTimeSeriesOperation{LX, LY, LZ}) where {LX, LY, LZ} =
-    all(map(a -> pointwise_evaluable_argument(a, (LX, LY, LZ)), fts_op.args))
+# (glwagner's review suggestion on #5761). Pointwise four-dimensional indexing spatially
+# interpolates each argument with the operators stored at construction, so the only
+# remaining requirement is that no window updates can be triggered by access — every
+# series argument totally in memory. This depends only on argument types, so getindex's
+# branch constant-folds.
+@inline pointwise_evaluable(fts_op::FieldTimeSeriesOperation) =
+    all(map(pointwise_evaluable_argument, fts_op.args))
 
-# The kernel-function form indexes its arguments itself, like any KernelFunctionOperation,
-# so its arguments need not be colocated.
-@inline pointwise_evaluable(fts_op::FieldTimeSeriesOperation{<:Any, <:Any, <:Any, <:Any, <:TimeSeriesKernelFunction}) =
-    all(map(a -> pointwise_evaluable_argument(a, nothing), fts_op.args))
-
-@inline pointwise_evaluable_argument(a, loc) = true
-@inline pointwise_evaluable_argument(a::AbstractField, loc) = location(a) == loc
-@inline pointwise_evaluable_argument(fts::FieldTimeSeries, loc) = location(fts) == loc && fts.backend isa TotallyInMemory
-@inline pointwise_evaluable_argument(fts_op::FieldTimeSeriesOperation, loc) = location(fts_op) == loc && pointwise_evaluable(fts_op)
-
-@inline pointwise_evaluable_argument(a::AbstractField, ::Nothing) = true
-@inline pointwise_evaluable_argument(fts::FieldTimeSeries, ::Nothing) = fts.backend isa TotallyInMemory
-@inline pointwise_evaluable_argument(fts_op::FieldTimeSeriesOperation, ::Nothing) = pointwise_evaluable(fts_op)
+@inline pointwise_evaluable_argument(a) = true
+@inline pointwise_evaluable_argument(fts::FieldTimeSeries) = fts.backend isa TotallyInMemory
+@inline pointwise_evaluable_argument(fts_op::FieldTimeSeriesOperation) = pointwise_evaluable(fts_op)
 
 @inline time_series_value(a::FieldTimeSeries, i, j, k, n) = @inbounds a[i, j, k, n]
 @inline time_series_value(fts_op::FieldTimeSeriesOperation, i, j, k, n) = @inbounds fts_op[i, j, k, n]
 @inline time_slice(a::FieldTimeSeriesLike, n) = TimeSlice(a, n)
 
 @propagate_inbounds pointwise_getindex(fts_op::FieldTimeSeriesOperation, i, j, k, n) =
-    fts_op.op(map(a -> time_series_value(a, i, j, k, n), fts_op.args)...)
+    fts_op.op(map((▶, a) -> interpolated_argument_value(▶, a, i, j, k, n, fts_op.grid),
+                  fts_op.interpolators, fts_op.args)...)
+
+# Spatial derivatives evaluate their stencil-and-interpolation pair directly: the
+# operator is the stencil, so it must not be re-applied to the resulting value.
+const SpatialDerivative = Union{typeof(∂x), typeof(∂y), typeof(∂z)}
+const SpatialDerivativeFTSOp = FieldTimeSeriesOperation{<:Any, <:Any, <:Any, <:Any, <:SpatialDerivative}
+
+@propagate_inbounds pointwise_getindex(fts_op::SpatialDerivativeFTSOp, i, j, k, n) =
+    first(fts_op.interpolators)(i, j, k, fts_op.grid, TimeSlice(first(fts_op.args), n))
 
 @propagate_inbounds function pointwise_getindex(fts_op::FieldTimeSeriesOperation{<:Any, <:Any, <:Any, <:Any, <:TimeSeriesKernelFunction},
                                                 i, j, k, n)
@@ -578,4 +616,104 @@ const TimeDerivativeGPUFTSOp = GPUAdaptedFieldTimeSeriesOperation{<:Any, <:Any, 
     a = first(fts_op.args)
     n₋, n₊, Δt = time_derivative_stencil(fts_op.time_indexing, fts_op.times, n)
     return (time_series_value(a, i, j, k, n₊) - time_series_value(a, i, j, k, n₋)) / Δt
+end
+
+#####
+##### Reductions
+#####
+
+# Lazy Average and Integral of a series: the slice at time index n is the Scan over the
+# sliced argument. Scans require a full sweep, so these operations are never pointwise
+# evaluable; index them via slices (`Field(op[n])`) or materialize them.
+struct TimeSeriesReduction{R, K}
+    scan :: R
+    kwargs :: K
+end
+
+(tsr::TimeSeriesReduction)(a) = tsr.scan(a; tsr.kwargs...)
+
+Base.show(io::IO, tsr::TimeSeriesReduction) = print(io, tsr.scan, " with ", tsr.kwargs)
+
+const TimeSeriesReductionFTSOp = FieldTimeSeriesOperation{<:Any, <:Any, <:Any, <:Any, <:TimeSeriesReduction}
+
+@inline pointwise_evaluable(::TimeSeriesReductionFTSOp) = false
+
+# Scans cannot be broadcast onto a Field, so materialize reduced slices via compute!.
+function set!(fts::InMemoryFTS, fts_op::TimeSeriesReductionFTSOp; kwargs...)
+    for n in time_indices(fts)
+        set!(fts[n], compute!(Field(fts_op[n])))
+    end
+    return fts
+end
+
+Oceananigans.AbstractOperations.Average(fts::FieldTimeSeriesLike; kwargs...) =
+    FieldTimeSeriesOperation(TimeSeriesReduction(Average, NamedTuple(kwargs)), fts)
+
+Oceananigans.AbstractOperations.Integral(fts::FieldTimeSeriesLike; kwargs...) =
+    FieldTimeSeriesOperation(TimeSeriesReduction(Integral, NamedTuple(kwargs)), fts)
+
+# Reductions over FieldTimeSeriesOperation mirror the FieldTimeSeries methods in
+# field_time_series_reductions.jl: spatial dims produce a reduced FieldTimeSeries,
+# dims including 4 reduce over time, and Colon reduces over everything. Slices are
+# reduced lazily — reductions apply pointwise to operations without materializing them.
+for reduction in (:sum, :maximum, :minimum, :all, :any, :prod)
+    reduction! = Symbol(reduction, '!')
+
+    @eval begin
+        function Base.$(reduction)(f::Function, fts_op::FieldTimeSeriesOperation; dims=:, kw...)
+            dims = tupleit(dims)
+            Nt = length(fts_op.times)
+
+            if dims isa Colon
+                return Base.$(reduction)(Base.$(reduction)(f, fts_op[n]; kw...) for n in 1:Nt)
+            elseif 4 ∈ dims
+                spatial_dims = filter(d -> d != 4, dims)
+                loc = isempty(spatial_dims) ? instantiated_location(fts_op) :
+                                              reduced_location(instantiated_location(fts_op); dims=spatial_dims)
+                rts = FieldTimeSeries(loc, fts_op.grid, [mean(fts_op.times)]; indices=indices(fts_op))
+
+                if isempty(spatial_dims)
+                    temp = compute!(Field(fts_op[1]))
+                    set!(rts[1], temp)
+                    for n in 2:Nt
+                        set!(temp, fts_op[n])
+                        broadcasted_accumulate!(Base.$(reduction!), interior(rts[1]), interior(temp))
+                    end
+                else
+                    temp = Base.$(reduction)(f, fts_op[1]; dims=spatial_dims, kw...)
+                    set!(rts[1], temp)
+                    for n in 2:Nt
+                        Base.$(reduction!)(f, temp, fts_op[n]; kw...)
+                        broadcasted_accumulate!(Base.$(reduction!), interior(rts[1]), interior(temp))
+                    end
+                end
+            else
+                loc = reduced_location(instantiated_location(fts_op); dims)
+                rts = FieldTimeSeries(loc, fts_op.grid, fts_op.times; indices=indices(fts_op))
+                for n in 1:Nt
+                    Base.$(reduction!)(f, rts[n], fts_op[n]; kw...)
+                end
+            end
+
+            return rts
+        end
+
+        Base.$(reduction)(fts_op::FieldTimeSeriesOperation; kw...) = Base.$(reduction)(identity, fts_op; kw...)
+    end
+end
+
+Oceananigans.Fields.conditional_length(fts_op::FieldTimeSeriesOperation) =
+    length(fts_op.times) * Oceananigans.Fields.conditional_length(fts_op[1])
+
+function Statistics._mean(f, fts_op::FieldTimeSeriesOperation, ::Colon; condition=nothing)
+    isnothing(condition) || error("Conditional mean of a FieldTimeSeriesOperation is not implemented.")
+    return sum(f, fts_op) / Oceananigans.Fields.conditional_length(fts_op)
+end
+
+function Statistics._mean(f, fts_op::FieldTimeSeriesOperation, dims; condition=nothing)
+    isnothing(condition) || error("Conditional mean of a FieldTimeSeriesOperation is not implemented.")
+    r = sum(f, fts_op; dims)
+    n = Oceananigans.Fields.conditional_length(fts_op, dims)
+    r ./= n
+    return r
 end
