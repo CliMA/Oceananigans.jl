@@ -93,6 +93,8 @@ end
 ##### Show method
 #####
 
+Base.summary(op::TimeSeriesInterpolation) = string("TimeSeriesInterpolation at ", show_location(op))
+
 function Base.show(io::IO, op::TimeSeriesInterpolation)
     print(io, "TimeSeriesInterpolation located at ", show_location(op), "\n",
           "├── time_series: $(summary(op.time_series))", "\n",
