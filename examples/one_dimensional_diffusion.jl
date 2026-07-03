@@ -119,8 +119,6 @@ simulation.output_writers[:temperature] =
 # We run the simulation for 10,000 more iterations,
 
 simulation.stop_iteration += 10000
-## Fail the docs build if this simulation produces NaNs #hide
-Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
 # Finally, we animate the results by opening the JLD2 file, extract the

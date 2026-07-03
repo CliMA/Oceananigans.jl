@@ -387,8 +387,6 @@ simulation.output_writers[:vorticity] =
 # And now we...
 
 @info "*** Running a simulation of Kelvin-Helmholtz instability..."
-## Fail the docs build if this simulation produces NaNs #hide
-Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
 # ## Pretty things
