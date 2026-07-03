@@ -348,12 +348,10 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
     possible_fts = Oceananigans.Models.possible_field_time_series(model.val)
 
     time_series_tuple = Oceananigans.OutputReaders.extract_field_time_series(possible_fts)
-    time_series_tuple = Oceananigans.Models.flattened_unique_values(time_series_tuple)
 
     fulltape = if EnzymeCore.EnzymeRules.width(config) == 1
         dpossible_fts = Oceananigans.Models.possible_field_time_series(model.dval)
         dtime_series_tuple = Oceananigans.OutputReaders.extract_field_time_series(possible_fts)
-        dtime_series_tuple = Oceananigans.Models.flattened_unique_values(dtime_series_tuple)
 
         tapes = []
         for (fts, dfts) in zip(time_series_tuple, dtime_series_tuple)
@@ -368,7 +366,6 @@ function EnzymeCore.EnzymeRules.augmented_primal(config,
             Base.@_inline_meta
             dpossible_fts = Oceananigans.Models.possible_field_time_series(model.dval[i])
             dtime_series_tuple = Oceananigans.OutputReaders.extract_field_time_series(possible_fts)
-            dtime_series_tuple = Oceananigans.Models.flattened_unique_values(dtime_series_tuple)
 
             tapes = []
             for (fts, dfts) in zip(time_series_tuple, dtime_series_tuple)
@@ -396,12 +393,10 @@ function EnzymeCore.EnzymeRules.reverse(config,
     possible_fts = Oceananigans.Models.possible_field_time_series(model.val)
 
     time_series_tuple = Oceananigans.OutputReaders.extract_field_time_series(possible_fts)
-    time_series_tuple = Oceananigans.Models.flattened_unique_values(time_series_tuple)
 
     if EnzymeCore.EnzymeRules.width(config) == 1
         dpossible_fts = Oceananigans.Models.possible_field_time_series(model.dval)
         dtime_series_tuple = Oceananigans.OutputReaders.extract_field_time_series(dpossible_fts)
-        dtime_series_tuple = Oceananigans.Models.flattened_unique_values(dtime_series_tuple)
 
         tapes = fulltape
         i = 1
@@ -418,7 +413,6 @@ function EnzymeCore.EnzymeRules.reverse(config,
             tapes = fulltape[i]
             dpossible_fts = Oceananigans.Models.possible_field_time_series(model.dval[i])
             dtime_series_tuple = Oceananigans.OutputReaders.extract_field_time_series(dpossible_fts)
-            dtime_series_tuple = Oceananigans.Models.flattened_unique_values(dtime_series_tuple)
 
             i += 1
             for (fts, dfts) in zip(time_series_tuple, dtime_series_tuple)

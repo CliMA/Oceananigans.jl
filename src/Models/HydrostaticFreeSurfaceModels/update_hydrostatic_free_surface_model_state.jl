@@ -4,6 +4,7 @@ using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.BoundaryConditions: fill_halo_regions!, update_boundary_conditions!
 using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
 using Oceananigans.Fields: compute!
+using Oceananigans.Forcings: compute_forcing!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models: update_model_field_time_series!, surface_kernel_parameters, volume_kernel_parameters
 using Oceananigans.Models.NonhydrostaticModels: update_hydrostatic_pressure!
@@ -44,8 +45,9 @@ function update_state!(model::HydrostaticFreeSurfaceModel, grid, callbacks)
     arch = architecture(grid)
 
     @apply_regionally begin
-        foreach(mask_immersed_field!, model.tracers)
+        mask_immersed_field!(model.tracers)
         update_model_field_time_series!(model, model.clock)
+        compute_forcing!(model.forcing)
         update_boundary_conditions!(fields(model), model)
     end
 

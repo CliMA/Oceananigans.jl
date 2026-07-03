@@ -24,7 +24,7 @@ MPI.Init()
 using Oceananigans.BoundaryConditions: fill_halo_regions!, DCBC
 using Oceananigans.DistributedComputations: Distributed, index2rank, cpu_architecture, child_architecture, reconstruct_global_grid
 using Oceananigans.Fields: AbstractField, interior
-using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary
+using Oceananigans.ImmersedBoundaries: GridFittedBottom, PartialCellBottom, GridFittedBoundary, bottom_height_interior
 using Oceananigans.Grids:
     architecture,
     halo_size,
@@ -552,7 +552,7 @@ end
 
         # GridFittedBottom: shape, type and rank-wise stitching.
         gfb = reconstruct_global_grid(ibg_gfb)
-        bh = Array(interior(gfb.immersed_boundary.bottom_height))
+        bh = Array(bottom_height_interior(gfb.immersed_boundary.bottom_height))
         @test gfb.immersed_boundary isa GridFittedBottom
         @test size(bh) == (Nx, Ny, 1)
         for r in 0:3
@@ -564,7 +564,7 @@ end
 
         pcb = reconstruct_global_grid(ibg_pcb)
         @test pcb.immersed_boundary isa PartialCellBottom
-        @test size(interior(pcb.immersed_boundary.bottom_height)) == (Nx, Ny, 1)
+        @test size(bottom_height_interior(pcb.immersed_boundary.bottom_height)) == (Nx, Ny, 1)
         @test pcb.immersed_boundary.minimum_fractional_cell_height == 0.3
 
         # GridFittedBoundary: 3-D mask path
@@ -614,6 +614,11 @@ end
 
             all!(cbool_reduced, cbool)
             @test @allowscalar cbool_reduced[1, 1, 1] == false
+
+            # `mean` must divide the globally-reduced `sum` by the *global* point count.
+            # The four equal rank-blocks hold 1, 2, 3, 4, so the global mean is 2.5
+            # regardless of the local block size N.
+            @test mean(c) == (1 + 2 + 3 + 4) / 4
         end
     end
 

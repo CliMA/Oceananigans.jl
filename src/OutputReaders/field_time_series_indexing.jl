@@ -76,8 +76,8 @@ end
 @inline function interpolating_time_indices(::Clamp, times, t)
     ñ, n₁, n₂ = find_time_index(times, t)
 
-    beyond_indices    = (0, n₂, n₂) # Beyond the last time:  return n₂
-    before_indices    = (0, n₁, n₁) # Before the first time: return n₁
+    beyond_indices    = (zero(ñ), n₂, n₂) # Beyond the last time:  return n₂
+    before_indices    = (zero(ñ), n₁, n₁) # Before the first time: return n₁
     unclamped_indices = (ñ, n₁, n₂) # Business as usual
 
     Nt = length(times)
