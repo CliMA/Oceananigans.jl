@@ -7,7 +7,7 @@ Abstract supertype for immersed boundary grids.
 """
 abstract type AbstractImmersedBoundary end
 
-struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch}
+struct ImmersedBoundaryGrid{FT, TX, TY, TZ, G, I, M, S, Arch} <: AbstractGrid{FT, TX, TY, TZ, Arch, Nothing}
     architecture :: Arch
     underlying_grid :: G
     immersed_boundary :: I
@@ -36,11 +36,12 @@ has_active_z_columns(::NoActiveZColumnsIBG) = false
 
 """
     ImmersedBoundaryGrid(grid, ib::AbstractImmersedBoundary;
-                         active_cells_map=false, active_z_columns=active_cells_map)
+                         active_cells_map=false,
+                         active_z_columns=active_cells_map)
 
-Return a grid with an `AbstractImmersedBoundary` immersed boundary (`ib`). If `active_cells_map` or `active_z_columns` are `true`,
-the grid will populate `interior_active_cells` and `active_z_columns` fields -- a list of active indices in the
-interior and on a reduced x-y plane, respectively.
+Return a grid with an `AbstractImmersedBoundary` immersed boundary (`ib`). If `active_cells_map` or
+`active_z_columns` are `true`, the grid will populate `interior_active_cells` and `active_z_columns`
+fields -- a list of active indices in the interior and on a reduced x-y plane, respectively.
 """
 function ImmersedBoundaryGrid(grid::AbstractUnderlyingGrid, ib::AbstractImmersedBoundary;
                               active_cells_map::Bool=false,
@@ -87,6 +88,9 @@ const IBG = ImmersedBoundaryGrid
 @inline get_ibg_property(ibg::IBG, ::Val{:active_z_columns})       = getfield(ibg, :active_z_columns)
 
 @inline architecture(ibg::IBG) = architecture(ibg.underlying_grid)
+
+@inline Base.size(ibg::IBG) = size(ibg.underlying_grid)
+@inline Grids.halo_size(ibg::IBG) = halo_size(ibg.underlying_grid)
 
 @inline x_domain(ibg::IBG) = x_domain(ibg.underlying_grid)
 @inline y_domain(ibg::IBG) = y_domain(ibg.underlying_grid)

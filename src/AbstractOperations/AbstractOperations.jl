@@ -5,16 +5,16 @@ export Δx, Δy, Δz, Ax, Ay, Az, volume
 export Average, Integral, CumulativeIntegral, KernelFunctionOperation
 export UnaryOperation, Derivative, BinaryOperation, MultiaryOperation, ConditionalOperation
 
+using Adapt: Adapt, adapt
 using Base: @propagate_inbounds
+using DocStringExtensions: TYPEDSIGNATURES
 
 using Oceananigans: location
+using Oceananigans.Architectures: Architectures, architecture, on_architecture
 using Oceananigans.Fields: AbstractField, instantiated_location
 using Oceananigans.Grids: Center, Face
 using Oceananigans.Operators: interpolation_operator
 
-using Adapt: Adapt, adapt
-
-using Oceananigans.Architectures: Architectures, architecture, on_architecture
 import Oceananigans.BoundaryConditions: fill_halo_regions!
 import Oceananigans.Fields: compute_at!, indices
 
@@ -37,11 +37,22 @@ Architectures.architecture(a::AbstractOperation) = architecture(a.grid)
 const operators = Set()
 
 """
-    at(loc, abstract_operation)
+$(TYPEDSIGNATURES)
 
 Return `abstract_operation` relocated to `loc`ation.
 """
 at(loc, f) = f # fallback
+
+"""
+$(TYPEDSIGNATURES)
+
+Validate that `a` may be an operand of an `AbstractOperation`, returning `a`.
+
+The fallback validates everything. Four-dimensional fields like `FieldTimeSeries`
+extend `validate_operand` to throw an error, since `AbstractOperation`s are
+three-dimensional and would silently drop the time dimension of their operands.
+"""
+@inline validate_operand(a) = a
 
 include("grid_validation.jl")
 include("grid_metrics.jl")

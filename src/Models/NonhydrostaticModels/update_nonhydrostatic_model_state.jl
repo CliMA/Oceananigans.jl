@@ -5,14 +5,15 @@ using Oceananigans.BoundaryConditions
 using Oceananigans.Biogeochemistry: update_biogeochemical_state!
 using Oceananigans.BoundaryConditions: update_boundary_conditions!
 using Oceananigans.BuoyancyFormulations: compute_buoyancy_gradients!
-using Oceananigans.TurbulenceClosures: compute_closure_fields!
-import Oceananigans.TurbulenceClosures: step_closure_prognostics!
 using Oceananigans.Fields: compute!
+using Oceananigans.Forcings: compute_forcing!
 using Oceananigans.ImmersedBoundaries: mask_immersed_field!
 using Oceananigans.Models: update_model_field_time_series!, surface_kernel_parameters
+using Oceananigans.TimeSteppers: compute_tendencies!
+using Oceananigans.TurbulenceClosures: compute_closure_fields!, step_closure_prognostics!
 
 """
-    update_state!(model::NonhydrostaticModel, callbacks=[])
+$(TYPEDSIGNATURES)
 
 Update peripheral aspects of the model (halo regions, closure_fields, hydrostatic
 pressure) to the current model state. If `callbacks` are provided (in an array),
@@ -21,12 +22,13 @@ they are called in the end.
 function update_state!(model::NonhydrostaticModel, callbacks=[])
 
     # Mask immersed tracers
-    foreach(model.tracers) do tracer
-        mask_immersed_field!(tracer)
-    end
+    mask_immersed_field!(model.tracers)
 
     # Update all FieldTimeSeries used in the model
     update_model_field_time_series!(model, model.clock)
+
+    # Refresh transformed forcings (e.g. Relaxation targets carrying a lazy Field)
+    compute_forcing!(model.forcing)
 
     # Update the boundary conditions
     update_boundary_conditions!(fields(model), model)
@@ -80,5 +82,5 @@ function compute_auxiliaries!(model::NonhydrostaticModel; p_parameters = surface
     return nothing
 end
 
-step_closure_prognostics!(model::NonhydrostaticModel, Δt) =
+Oceananigans.TurbulenceClosures.step_closure_prognostics!(model::NonhydrostaticModel, Δt) =
     step_closure_prognostics!(model.closure_fields, model.closure, model, Δt)

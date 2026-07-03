@@ -4,18 +4,18 @@ export LagrangianParticles, DroguedParticleDynamics
 
 using Printf
 using Adapt
+using DocStringExtensions: TYPEDSIGNATURES
 using KernelAbstractions
 using StructArrays
 
-using Oceananigans.Grids
-using Oceananigans.ImmersedBoundaries
-
-using Oceananigans.Grids: AbstractGrid, hack_cosd
-using Oceananigans.Grids: XFlatGrid, YFlatGrid, ZFlatGrid
-using Oceananigans.Grids: XYFlatGrid, YZFlatGrid, XZFlatGrid
-using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.Architectures: device, architecture
 using Oceananigans.Fields: interpolate, compute!, location
+using Oceananigans.Grids
+using Oceananigans.Grids: AbstractGrid, hack_cosd,
+                          XFlatGrid, YFlatGrid, ZFlatGrid,
+                          XYFlatGrid, YZFlatGrid, XZFlatGrid
+using Oceananigans.ImmersedBoundaries
+using Oceananigans.ImmersedBoundaries: immersed_cell
 using Oceananigans.TimeSteppers: AbstractLagrangianParticles
 using Oceananigans.Utils: datatuple, launch!, prettysummary
 
