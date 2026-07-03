@@ -255,8 +255,7 @@ function Base.getindex(fts::FieldTimeSeries, time_index::Time)
     t = interp_time(t₁, t₂, ñ)
     status = FixedTime(t)
 
-    # then interpolate pointwise, via `fts[i, j, k, Time(t)]` inside the
-    # compute kernel — no intermediate slice Fields or operation trees.
+    # then interpolate pointwise, via `fts[i, j, k, Time(t)]` inside the compute kernel.
     ψ̃ = Field(TimeSeriesInterpolation(fts, fts.grid; clock=Clock(time=time_index.time)); status)
 
     # Compute the field and return it
