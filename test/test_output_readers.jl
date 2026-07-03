@@ -711,6 +711,20 @@ function test_interpolation_with_in_memory_backends(filepath_sine)
         @test fts_clp[Time(t)][1, 1, 1] ≈ fts_clp[end][1, 1, 1]
     end
 
+
+    # Global Time-indexing of a reduced-location series returns a computed Field
+    # with FixedTime status (interpolation computes pointwise in a single kernel)
+    grid2 = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
+    times2 = 0:1.0:3
+    s = FieldTimeSeries{Center, Center, Nothing}(grid2, times2)
+    for n in 1:length(times2)
+        set!(s[n], (x, y) -> n * y)
+    end
+    fs = s[Time(1.5)]
+    @test location(fs) == (Center, Center, Nothing)
+    @test fs.status.time == 1.5
+    @test CUDA.@allowscalar fs[1, 2, 1] ≈ 2.5 * 1.5 / 4
+
     return nothing
 end
 
