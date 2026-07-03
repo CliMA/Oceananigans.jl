@@ -1,6 +1,6 @@
 module Forcings
 
-export Forcing, ContinuousForcing, DiscreteForcing, Relaxation, GaussianMask, PiecewiseLinearMask, CosineRampMask, LinearTarget, AdvectiveForcing
+export Forcing, ContinuousForcing, DiscreteForcing, Relaxation, GaussianMask, PiecewiseLinearMask, CosineRampMask, LinearTarget, AdvectiveForcing, compute_forcing!
 
 using Adapt: Adapt, adapt
 using DocStringExtensions: TYPEDSIGNATURES
@@ -17,5 +17,6 @@ include("relaxation.jl")
 include("advective_forcing.jl")
 include("forcing.jl")
 include("model_forcing.jl")
+include("compute_forcing.jl")
 
 end # module
