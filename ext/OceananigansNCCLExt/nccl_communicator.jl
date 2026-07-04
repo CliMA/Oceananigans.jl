@@ -40,7 +40,7 @@ function create_nccl_comm_from_mpi(mpi_subcomm)
         # Rank 0 creates UniqueID, broadcasts raw bytes via MPI
         if my_rank == 0
             nccl_id = NCCL.UniqueID()
-            # UniqueID.internal is NTuple{128, Cchar} (Int8)
+            # UniqueID.internal is NTuple{128, Cchar}
             id_bytes = Vector{UInt8}(undef, 128)
             id_ref = Ref(nccl_id.internal)
             unsafe_copyto!(pointer(id_bytes),
@@ -52,8 +52,6 @@ function create_nccl_comm_from_mpi(mpi_subcomm)
         MPI.Bcast!(id_bytes, mpi_subcomm; root=0)
 
         # Reconstruct UniqueID on all ranks.
-        # Cchar is Int8 on x86 and UInt8 on aarch64 (ARM default unsigned char);
-        # use `% Cchar` for a portable bit-reinterpretation that works on both.
         nccl_internal = ntuple(i -> id_bytes[i] % Cchar, Val(128))
         nccl_id_all = NCCL.UniqueID(nccl_internal)
 
