@@ -1,8 +1,7 @@
 using MPI
 MPI.Init()
 
-# Make sure results are
-# reproducible
+# Make sure results are reproducible
 using Random
 Random.seed!(1234)
 
@@ -63,7 +62,7 @@ function divergence_free_poisson_solution(grid_points, ranks, topo, child_arch, 
     local_grid = RectilinearGrid(arch, topology=topo, size=grid_points, extent=(2π, 2π, 2π))
 
     preconditioner = preconditioner_type == :fft ? fft_poisson_solver(local_grid) :
-                                                    DiagonallyDominantPreconditioner()
+                                                   DiagonallyDominantPreconditioner()
 
     reltol = abstol = eps(eltype(local_grid))
     solver = ConjugateGradientPoissonSolver(local_grid; preconditioner, reltol, abstol, maxiter=Int(1e5))

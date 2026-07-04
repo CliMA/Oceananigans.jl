@@ -596,8 +596,8 @@ end
             # zero-mean gauge condition all reduce across ranks.
             Ntot = 4N # total number of grid points across the 4 ranks
             @test dot(c, c) == (1^2 + 2^2 + 3^2 + 4^2) * N
-            @test norm(c)   == sqrt((1^2 + 2^2 + 3^2 + 4^2) * N)
-            @test mean(c)   == (1 + 2 + 3 + 4) * N / Ntot
+            @test norm(c) == sqrt((1^2 + 2^2 + 3^2 + 4^2) * N)
+            @test mean(c) == (1 + 2 + 3 + 4) * N / Ntot
             @test minimum(c) == 1
             @test maximum(c) == 4
 
