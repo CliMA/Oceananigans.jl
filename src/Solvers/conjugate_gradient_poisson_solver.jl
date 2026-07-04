@@ -215,10 +215,70 @@ fft_free_surface_preconditioner(grid::XYRegularRG) =
     FourierTridiagonalPoissonSolver(grid; tridiagonal_formulation=InhomogeneousFormulation(ZDirection()))
 
 # For grids stretched in x or y, the z-direction InhomogeneousFormulation cannot be used
-# (the non-tridiagonal directions must be uniform for FFT). Use the standard FT solver in the
-# stretched direction (HomogeneousNeumann) as preconditioner; CG corrects for the free surface.
-fft_free_surface_preconditioner(grid::XZRegularRG) = FourierTridiagonalPoissonSolver(grid)
-fft_free_surface_preconditioner(grid::YZRegularRG) = FourierTridiagonalPoissonSolver(grid)
+# (the non-tridiagonal directions must be uniform for FFT), and the Robin diagonal correction
+# cannot be represented in a tridiagonal solve along x or y. Instead we use the homogeneous
+# Neumann FT solver, deflating its null space with the Robin term (see below).
+fft_free_surface_preconditioner(grid::XZRegularRG) = DeflatedFourierTridiagonalPreconditioner(grid)
+fft_free_surface_preconditioner(grid::YZRegularRG) = DeflatedFourierTridiagonalPreconditioner(grid)
+
+#####
+##### Deflated FT preconditioner for the free-surface (Robin) Poisson operator
+#####
+##### The homogeneous Neumann FT solve is singular (its solution is defined up to a
+##### constant and is returned with zero mean), while the free-surface operator is not:
+##### its action on constants is the Robin diagonal correction, 𝟙ᵀA𝟙 = -Σᵢⱼ Az/den.
+##### A semidefinite preconditioner never corrects the constant error mode and breaks CG,
+##### so we deflate: project the mean out of the residual before the FT solve (keeping the
+##### singular tridiagonal block consistent) and add the constant mode back through the
+##### Robin term,
+#####
+#####     z = M⁺(r - r̄𝟙) + (𝟙ᵀr / 𝟙ᵀA𝟙) 𝟙 .
+#####
+
+struct DeflatedFourierTridiagonalPreconditioner{S, D}
+    solver :: S
+    robin_diagonal :: D
+end
+
+function DeflatedFourierTridiagonalPreconditioner(grid)
+    solver = FourierTridiagonalPoissonSolver(grid)
+    robin_diagonal = Field{Center, Center, Nothing}(grid)
+    return DeflatedFourierTridiagonalPreconditioner(solver, robin_diagonal)
+end
+
+Base.summary(::DeflatedFourierTridiagonalPreconditioner) = "DeflatedFourierTridiagonalPreconditioner"
+
+@kernel function _robin_diagonal!(d, grid, g, Δt)
+    i, j = @index(Global, NTuple)
+    Nz = grid.Nz
+    Δzᶠ = Δzᵃᵃᶠ(i, j, Nz+1, grid)
+    den = g * Δt^2 + Δzᶠ / 2
+    @inbounds d[i, j, 1] = Azᶜᶜᶠ(i, j, Nz+1, grid) / den
+end
+
+@kernel function _shifted_preconditioner_rhs!(preconditioner_rhs, rhs, grid, r̄)
+    i, j, k = @index(Global, NTuple)
+    @inbounds preconditioner_rhs[i, j, k] = (rhs[i, j, k] - r̄) * V⁻¹ᶜᶜᶜ(i, j, k, grid)
+end
+
+@inline function precondition!(z, preconditioner::DeflatedFourierTridiagonalPreconditioner, r, free_surface, Δt)
+    solver = preconditioner.solver
+    grid = solver.grid
+    arch = architecture(grid)
+
+    Σr = sum(r)
+    r̄ = Σr / (grid.Nx * grid.Ny * grid.Nz)
+    launch!(arch, grid, :xyz, _shifted_preconditioner_rhs!, solver.storage, r, grid, r̄)
+    solve!(z, solver, solver.storage)
+
+    g = free_surface.gravitational_acceleration
+    d = preconditioner.robin_diagonal
+    launch!(arch, grid, :xy, _robin_diagonal!, d, grid, g, Δt)
+    c = -Σr / sum(d)
+    interior(z) .+= c
+
+    return z
+end
 
 #####
 ##### A preconditioner based on the FFT solver

@@ -1,7 +1,9 @@
 include("dependencies_for_runtests.jl")
 
 using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
-using Oceananigans.Solvers: ConjugateGradientPoissonSolver, FreeSurfaceLaplacian
+using Oceananigans.Solvers: ConjugateGradientPoissonSolver, FreeSurfaceLaplacian,
+                            DeflatedFourierTridiagonalPreconditioner,
+                            fft_free_surface_preconditioner, no_gauge_enforcement!
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models.NonhydrostaticModels: nonhydrostatic_pressure_solver
 
@@ -265,16 +267,18 @@ using Oceananigans.Models.NonhydrostaticModels: nonhydrostatic_pressure_solver
             # XYReg (stretched z) + fs → FT with InhomogeneousFormulation (z-tridiagonal still valid)
             @test nonhydrostatic_pressure_solver(arch, grid_xy, mock_fs) isa FourierTridiagonalPoissonSolver
 
-            # XZReg (stretched y) + fs → CG with FreeSurfaceLaplacian
+            # XZReg (stretched y) + fs → CG with FreeSurfaceLaplacian and deflated FT preconditioner
             let solver = nonhydrostatic_pressure_solver(arch, grid_xz, mock_fs)
                 @test solver isa ConjugateGradientPoissonSolver
                 @test solver.conjugate_gradient_solver.linear_operation! isa FreeSurfaceLaplacian
+                @test solver.conjugate_gradient_solver.preconditioner isa DeflatedFourierTridiagonalPreconditioner
             end
 
-            # YZReg (stretched x) + fs → CG with FreeSurfaceLaplacian
+            # YZReg (stretched x) + fs → CG with FreeSurfaceLaplacian and deflated FT preconditioner
             let solver = nonhydrostatic_pressure_solver(arch, grid_yz, mock_fs)
                 @test solver isa ConjugateGradientPoissonSolver
                 @test solver.conjugate_gradient_solver.linear_operation! isa FreeSurfaceLaplacian
+                @test solver.conjugate_gradient_solver.preconditioner isa DeflatedFourierTridiagonalPreconditioner
             end
 
             # IBG on XYZReg + fs → CG with FreeSurfaceLaplacian (FT InhomogZDir preconditioner)
@@ -284,11 +288,11 @@ using Oceananigans.Models.NonhydrostaticModels: nonhydrostatic_pressure_solver
                 @test solver.conjugate_gradient_solver.preconditioner isa FourierTridiagonalPoissonSolver
             end
 
-            # IBG on XZReg + fs → CG with FreeSurfaceLaplacian (FT HomogNeumann preconditioner)
+            # IBG on XZReg + fs → CG with FreeSurfaceLaplacian and deflated FT preconditioner
             let solver = nonhydrostatic_pressure_solver(arch, ibg_xz, mock_fs)
                 @test solver isa ConjugateGradientPoissonSolver
                 @test solver.conjugate_gradient_solver.linear_operation! isa FreeSurfaceLaplacian
-                @test solver.conjugate_gradient_solver.preconditioner isa FourierTridiagonalPoissonSolver
+                @test solver.conjugate_gradient_solver.preconditioner isa DeflatedFourierTridiagonalPreconditioner
             end
         end
     end
@@ -310,6 +314,71 @@ using Oceananigans.Models.NonhydrostaticModels: nonhydrostatic_pressure_solver
             @test ibg_model.pressure_solver isa ConjugateGradientPoissonSolver
             @test ibg_model.pressure_solver.conjugate_gradient_solver.linear_operation! isa FreeSurfaceLaplacian
             @test !isnothing(ibg_model.free_surface)
+
+            # Stretched-x grid + ImplicitFreeSurface: constructible (the free surface is materialized
+            # without the hydrostatic implicit step solver) and steppable
+            stretched_grid = RectilinearGrid(arch, size=(2,2,2), y=(0,1), z=(0,1),
+                                             x=[0.0, 0.4, 1.0], topology=(Bounded, Periodic, Bounded))
+            stretched_model = NonhydrostaticModel(stretched_grid; free_surface=ImplicitFreeSurface())
+            @test stretched_model.pressure_solver isa ConjugateGradientPoissonSolver
+            time_step!(stretched_model, 0.01)
+            @test iteration(stretched_model.pressure_solver) < stretched_model.pressure_solver.conjugate_gradient_solver.maxiter
+        end
+    end
+
+    @testset "Free surface solution: CG solver vs direct FT solve" begin
+        @info "  Testing free surface solution agreement between CG and FT solvers..."
+
+        # Step a free-surface model and return (η, u, w)
+        function stepped_free_surface_fields(model; Δt=0.01, N=10)
+            set!(model.free_surface.displacement, (x, z) -> 0.05 * cospi(x))
+            for _ in 1:N
+                time_step!(model, Δt)
+            end
+            return (Array(interior(model.free_surface.displacement)),
+                    Array(interior(model.velocities.u)),
+                    Array(interior(model.velocities.w)))
+        end
+
+        for arch in archs
+            Nx, Nz = 16, 8
+            free_surface = ImplicitFreeSurface()
+            grid = RectilinearGrid(arch, size=(Nx, Nz), x=(0, 1), z=(-1, 0),
+                                   topology=(Bounded, Flat, Bounded))
+            η_ft, u_ft, w_ft = stepped_free_surface_fields(NonhydrostaticModel(grid; free_surface))
+
+            # CG + FreeSurfaceLaplacian on the same grid reproduces the direct FT solve
+            pressure_solver = ConjugateGradientPoissonSolver(grid;
+                                                             linear_operation = FreeSurfaceLaplacian(),
+                                                             preconditioner = fft_free_surface_preconditioner(grid),
+                                                             enforce_gauge_condition! = no_gauge_enforcement!)
+            η_cg, u_cg, w_cg = stepped_free_surface_fields(NonhydrostaticModel(grid; free_surface, pressure_solver))
+            @test isapprox(η_cg, η_ft, atol=1e-8)
+            @test isapprox(u_cg, u_ft, atol=1e-8)
+            @test isapprox(w_cg, w_ft, atol=1e-8)
+
+            # An x-spacing array makes the grid stretched-typed (YZRegularRG), dispatching to
+            # CG + deflated FT preconditioner; with uniform values the FT solution is the reference.
+            array_x_grid = RectilinearGrid(arch, size=(Nx, Nz), x=collect(range(0, 1, length=Nx+1)),
+                                           z=(-1, 0), topology=(Bounded, Flat, Bounded))
+            array_x_model = NonhydrostaticModel(array_x_grid; free_surface)
+            @test array_x_model.pressure_solver isa ConjugateGradientPoissonSolver
+            η_sx, u_sx, w_sx = stepped_free_surface_fields(array_x_model)
+            @test isapprox(η_sx, η_ft, atol=1e-8)
+            @test isapprox(u_sx, u_ft, atol=1e-8)
+            @test isapprox(w_sx, w_ft, atol=1e-8)
+
+            # IBG with a flat bottom on a face of the underlying grid reproduces the
+            # FT solution on the equivalent smaller grid
+            underlying = RectilinearGrid(arch, size=(Nx, 2Nz), x=(0, 1), z=(-2, 0),
+                                         topology=(Bounded, Flat, Bounded))
+            ibg = ImmersedBoundaryGrid(underlying, GridFittedBottom(x -> -1))
+            ibg_model = NonhydrostaticModel(ibg; free_surface)
+            @test ibg_model.pressure_solver isa ConjugateGradientPoissonSolver
+            η_ib, u_ib, w_ib = stepped_free_surface_fields(ibg_model)
+            @test isapprox(η_ib[:, :, 1], η_ft[:, :, 1], atol=1e-8)
+            @test isapprox(u_ib[:, :, Nz+1:2Nz], u_ft, atol=1e-8)
+            @test isapprox(w_ib[:, :, Nz+1:2Nz+1], w_ft, atol=1e-8)
         end
     end
 end
