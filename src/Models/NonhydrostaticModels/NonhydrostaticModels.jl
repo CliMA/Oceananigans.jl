@@ -15,7 +15,7 @@ using Oceananigans.Grids
 using Oceananigans.Grids: XYZRegularRG, XYRegularRG, XZRegularRG, YZRegularRG
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Solvers
-using Oceananigans.Solvers: GridWithFFTSolver, GridWithFourierTridiagonalSolver, ConjugateGradientPoissonSolver,
+using Oceananigans.Solvers: GridWithFFTSolver, ConjugateGradientPoissonSolver,
                             InhomogeneousFormulation, ZDirection,
                             FreeSurfaceLaplacian, fft_free_surface_preconditioner,
                             no_gauge_enforcement!
@@ -67,10 +67,10 @@ nonhydrostatic_pressure_solver(arch, grid::XYRegularRG, free_surface) =
 
 # XZRegularRG (y stretched) or YZRegularRG (x stretched) + free_surface:
 # InhomogeneousFormulation(ZDirection()) can't be used because the non-tridiagonal directions
-# include the non-uniform y or x. Use FT in the stretched direction (HomogeneousNeumann) as
-# preconditioner; CG corrects for the free surface (expected to be a small perturbation).
+# include the non-uniform y or x. Use the deflated FT preconditioner in the stretched direction;
+# CG corrects for the free surface.
 function nonhydrostatic_pressure_solver(arch, grid::XZRegularRG, free_surface)
-    preconditioner = FourierTridiagonalPoissonSolver(grid)
+    preconditioner = fft_free_surface_preconditioner(grid)
     return ConjugateGradientPoissonSolver(grid;
                                          linear_operation = FreeSurfaceLaplacian(),
                                          preconditioner,
@@ -78,7 +78,7 @@ function nonhydrostatic_pressure_solver(arch, grid::XZRegularRG, free_surface)
 end
 
 function nonhydrostatic_pressure_solver(arch, grid::YZRegularRG, free_surface)
-    preconditioner = FourierTridiagonalPoissonSolver(grid)
+    preconditioner = fft_free_surface_preconditioner(grid)
     return ConjugateGradientPoissonSolver(grid;
                                          linear_operation = FreeSurfaceLaplacian(),
                                          preconditioner,
