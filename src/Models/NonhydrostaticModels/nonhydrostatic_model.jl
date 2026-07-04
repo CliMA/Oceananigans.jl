@@ -9,7 +9,7 @@ using Oceananigans.Fields: Field, tracernames, VelocityFields, TracerFields, Cen
 using Oceananigans.Forcings: model_forcing
 using Oceananigans.Grids: topology, inflate_halo_size, with_halo, architecture
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
-using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_free_surface
+using Oceananigans.Models: AbstractModel, extract_boundary_conditions, materialize_nonhydrostatic_free_surface
 using Oceananigans.Solvers: FFTBasedPoissonSolver
 using Oceananigans.TimeSteppers: Clock, TimeStepper, update_state!, materialize_clock!, AbstractLagrangianParticles, time_discretization
 using Oceananigans.TurbulenceClosures: validate_closure, with_tracers, build_closure_fields, implicit_diffusion_solver, VerticallyImplicitTimeDiscretization, initialize_closure_fields!
@@ -265,7 +265,7 @@ function NonhydrostaticModel(grid;
 
     # TODO: limit free surface to `nothing` (rigid lid) or ImplicitFreeSurface
     if !isnothing(free_surface)
-        free_surface = materialize_free_surface(free_surface, velocities, grid)
+        free_surface = materialize_nonhydrostatic_free_surface(free_surface, velocities, grid)
     end
 
     # Either check grid-correctness, or construct tuples of fields

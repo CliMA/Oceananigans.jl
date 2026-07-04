@@ -96,6 +96,9 @@ validate_tracer_advection(tracer_advection::Nothing, grid) = nothing, NamedTuple
 # Used in both NonhydrostaticModels and HydrostaticFreeSurfaceModels
 function materialize_free_surface end
 
+# Used in NonhydrostaticModels; skips building the hydrostatic implicit step solver
+function materialize_nonhydrostatic_free_surface end
+
 # Communication - Computation overlap in distributed models
 include("interleave_communication_and_computation.jl")
 
