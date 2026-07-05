@@ -71,6 +71,7 @@ steps:
     key: "distributed_tests_gpu"
     env:
       TEST_ARCHITECTURE: "GPU"
+      UCX_LOG_LEVEL: "debug"
     command: *test_command
     timeout_in_minutes: 5440
     agents:
