@@ -39,7 +39,7 @@ function create_nccl_comm_from_mpi(mpi_subcomm)
 
         # UniqueID.internal is NTuple{128, Cchar}
         id_bytes = Vector{Cchar}(undef, 128)
-        
+
         # Rank 0 creates UniqueID, broadcasts raw bytes via MPI
         if my_rank == 0
             nccl_id = NCCL.UniqueID()
