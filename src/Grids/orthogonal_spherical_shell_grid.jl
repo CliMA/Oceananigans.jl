@@ -302,7 +302,7 @@ function Architectures.on_architecture(arch::AbstractSerialArchitecture, grid::O
 end
 
 function Adapt.adapt_structure(to, grid::OrthogonalSphericalShellGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
-    return OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Nothing}(nothing,
+    return OrthogonalSphericalShellGrid{unwrapped_eltype(FT), TX, TY, TZ, Nothing}(nothing,
            grid.Nx, grid.Ny, grid.Nz,
            grid.Hx, grid.Hy, grid.Hz,
            Adapt.adapt(to, grid.Lz),
