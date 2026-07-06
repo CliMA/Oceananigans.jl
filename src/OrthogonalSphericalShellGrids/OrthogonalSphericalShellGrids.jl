@@ -26,12 +26,16 @@ include("tripolar_field_extensions.jl")
 include("right_face_folded_kernel_parameters.jl")
 include("rotated_latitude_longitude_grid.jl")
 include("lambert_conformal_conic_grid.jl")
+include("lambert_conformal_conic_interpolation.jl")
 include("conformal_cubed_sphere_panel.jl")
 
 # Distributed computations on a tripolar grid
 include("distributed_tripolar_grid.jl")
 include("distributed_zipper.jl")
 include("distributed_zipper_north_tags.jl")
+
+# Reductions on a tripolar grid
+include("tripolar_grid_reductions.jl")
 
 # `constructor_arguments` for an `OrthogonalSphericalShellGrid`. OSSG itself is a
 # general orthogonal grid on the surface of a sphere; `TripolarGrid`,

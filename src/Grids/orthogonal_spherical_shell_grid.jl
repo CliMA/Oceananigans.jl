@@ -1,6 +1,6 @@
 const AHCG = AbstractHorizontallyCurvilinearGrid
 
-struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, FT2} <: AHCG{FT, TX, TY, TZ, Z, Arch}
+struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, FT2, SZ} <: AHCG{FT, TX, TY, TZ, Z, Arch, SZ}
     architecture :: Arch
        Nx :: Int
        Ny :: Int
@@ -34,30 +34,32 @@ struct OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch
     conformal_mapping :: Map
 end
 
+OrthogonalSphericalShellGrid{FT, TX, TY, TZ}(arch, Nx, Ny, Nz, Hx, Hy, Hz, args...) where {FT, TX, TY, TZ} =
+    OrthogonalSphericalShellGrid{FT, TX, TY, TZ, typeof(GridSize(Nx, Ny, Nz, Hx, Hy, Hz))}(arch, Nx, Ny, Nz, Hx, Hy, Hz, args...)
 
-function OrthogonalSphericalShellGrid{FT, TX, TY, TZ}(architecture::Arch,
-                                                  Nx, Ny, Nz,
-                                                  Hx, Hy, Hz,
-                                                  Lz :: FT2,
-                                                   λᶜᶜᵃ :: CC,  λᶠᶜᵃ :: FC,  λᶜᶠᵃ :: CF,  λᶠᶠᵃ :: FF,
-                                                   φᶜᶜᵃ :: CC,  φᶠᶜᵃ :: FC,  φᶜᶠᵃ :: CF,  φᶠᶠᵃ :: FF, z :: Z,
-                                                  Δxᶜᶜᵃ :: CC, Δxᶠᶜᵃ :: FC, Δxᶜᶠᵃ :: CF, Δxᶠᶠᵃ :: FF,
-                                                  Δyᶜᶜᵃ :: CC, Δyᶠᶜᵃ :: FC, Δyᶜᶠᵃ :: CF, Δyᶠᶠᵃ :: FF,
-                                                  Azᶜᶜᵃ :: CC, Azᶠᶜᵃ :: FC, Azᶜᶠᵃ :: CF, Azᶠᶠᵃ :: FF,
-                                                  radius :: FT2,
-                                                  conformal_mapping :: Map) where {TX, TY, TZ, FT, Z, Map,
-                                                                                   CC, FC, CF, FF, Arch, FT2}
-    return OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, FT2}(architecture,
-                                                  Nx, Ny, Nz,
-                                                  Hx, Hy, Hz,
-                                                  Lz,
-                                                   λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
-                                                   φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, z,
-                                                  Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
-                                                  Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
-                                                  Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
-                                                  radius,
-                                                  conformal_mapping)
+function OrthogonalSphericalShellGrid{FT, TX, TY, TZ, SZ}(architecture::Arch,
+                                                          Nx, Ny, Nz,
+                                                          Hx, Hy, Hz,
+                                                          Lz :: FT2,
+                                                           λᶜᶜᵃ :: CC,  λᶠᶜᵃ :: FC,  λᶜᶠᵃ :: CF,  λᶠᶠᵃ :: FF,
+                                                           φᶜᶜᵃ :: CC,  φᶠᶜᵃ :: FC,  φᶜᶠᵃ :: CF,  φᶠᶠᵃ :: FF, z :: Z,
+                                                          Δxᶜᶜᵃ :: CC, Δxᶠᶜᵃ :: FC, Δxᶜᶠᵃ :: CF, Δxᶠᶠᵃ :: FF,
+                                                          Δyᶜᶜᵃ :: CC, Δyᶠᶜᵃ :: FC, Δyᶜᶠᵃ :: CF, Δyᶠᶠᵃ :: FF,
+                                                          Azᶜᶜᵃ :: CC, Azᶠᶜᵃ :: FC, Azᶜᶠᵃ :: CF, Azᶠᶠᵃ :: FF,
+                                                          radius :: FT2,
+                                                          conformal_mapping :: Map) where {SZ, TX, TY, TZ, FT, Z, Map,
+                                                                                           CC, FC, CF, FF, Arch, FT2}
+    return OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Z, Map, CC, FC, CF, FF, Arch, FT2, SZ}(architecture,
+                                                                                               Nx, Ny, Nz,
+                                                                                               Hx, Hy, Hz,
+                                                                                               Lz,
+                                                                                                λᶜᶜᵃ,  λᶠᶜᵃ,  λᶜᶠᵃ,  λᶠᶠᵃ,
+                                                                                                φᶜᶜᵃ,  φᶠᶜᵃ,  φᶜᶠᵃ,  φᶠᶠᵃ, z,
+                                                                                               Δxᶜᶜᵃ, Δxᶠᶜᵃ, Δxᶜᶠᵃ, Δxᶠᶠᵃ,
+                                                                                               Δyᶜᶜᵃ, Δyᶠᶜᵃ, Δyᶜᶠᵃ, Δyᶠᶠᵃ,
+                                                                                               Azᶜᶜᵃ, Azᶠᶜᵃ, Azᶜᶠᵃ, Azᶠᶠᵃ,
+                                                                                               radius,
+                                                                                               conformal_mapping)
 end
 
 function OrthogonalSphericalShellGrid{TX, TY, TZ}(architecture::Arch,
@@ -299,27 +301,26 @@ function Architectures.on_architecture(arch::AbstractSerialArchitecture, grid::O
     return new_grid
 end
 
-function Adapt.adapt_structure(to, grid::OrthogonalSphericalShellGrid)
-    TX, TY, TZ = topology(grid)
-
-    return OrthogonalSphericalShellGrid{TX, TY, TZ}(
-        nothing,
-        grid.Nx, grid.Ny, grid.Nz,
-        grid.Hx, grid.Hy, grid.Hz,
-        adapt(to, grid.Lz),
-        adapt(to,  grid.λᶜᶜᵃ), adapt(to,  grid.λᶠᶜᵃ), adapt(to,  grid.λᶜᶠᵃ), adapt(to,  grid.λᶠᶠᵃ),
-        adapt(to,  grid.φᶜᶜᵃ), adapt(to,  grid.φᶠᶜᵃ), adapt(to,  grid.φᶜᶠᵃ), adapt(to,  grid.φᶠᶠᵃ), adapt(to, grid.z),
-        adapt(to, grid.Δxᶜᶜᵃ), adapt(to, grid.Δxᶠᶜᵃ), adapt(to, grid.Δxᶜᶠᵃ), adapt(to, grid.Δxᶠᶠᵃ),
-        adapt(to, grid.Δyᶜᶜᵃ), adapt(to, grid.Δyᶠᶜᵃ), adapt(to, grid.Δyᶜᶠᵃ), adapt(to, grid.Δyᶠᶠᵃ),
-        adapt(to, grid.Azᶜᶜᵃ), adapt(to, grid.Azᶠᶜᵃ), adapt(to, grid.Azᶜᶠᵃ), adapt(to, grid.Azᶠᶠᵃ),
-        adapt(to, grid.radius), adapt(to, grid.conformal_mapping))
+function Adapt.adapt_structure(to, grid::OrthogonalSphericalShellGrid{FT, TX, TY, TZ}) where {FT, TX, TY, TZ}
+    return OrthogonalSphericalShellGrid{FT, TX, TY, TZ, Nothing}(nothing,
+           grid.Nx, grid.Ny, grid.Nz,
+           grid.Hx, grid.Hy, grid.Hz,
+           Adapt.adapt(to, grid.Lz),
+           Adapt.adapt(to, grid.λᶜᶜᵃ), Adapt.adapt(to, grid.λᶠᶜᵃ), Adapt.adapt(to, grid.λᶜᶠᵃ), Adapt.adapt(to, grid.λᶠᶠᵃ),
+           Adapt.adapt(to, grid.φᶜᶜᵃ), Adapt.adapt(to, grid.φᶠᶜᵃ), Adapt.adapt(to, grid.φᶜᶠᵃ), Adapt.adapt(to, grid.φᶠᶠᵃ),
+           Adapt.adapt(to, grid.z),
+           Adapt.adapt(to, grid.Δxᶜᶜᵃ), Adapt.adapt(to, grid.Δxᶠᶜᵃ), Adapt.adapt(to, grid.Δxᶜᶠᵃ), Adapt.adapt(to, grid.Δxᶠᶠᵃ),
+           Adapt.adapt(to, grid.Δyᶜᶜᵃ), Adapt.adapt(to, grid.Δyᶠᶜᵃ), Adapt.adapt(to, grid.Δyᶜᶠᵃ), Adapt.adapt(to, grid.Δyᶠᶠᵃ),
+           Adapt.adapt(to, grid.Azᶜᶜᵃ), Adapt.adapt(to, grid.Azᶠᶜᵃ), Adapt.adapt(to, grid.Azᶜᶠᵃ), Adapt.adapt(to, grid.Azᶠᶠᵃ),
+           Adapt.adapt(to, grid.radius),
+           Adapt.adapt(to, grid.conformal_mapping))
 end
 
 function Base.summary(grid::OrthogonalSphericalShellGrid)
     FT = eltype(grid)
     TX, TY, TZ = topology(grid)
     return string(size_summary(grid),
-                  " OrthogonalSphericalShellGrid{$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
+                  " $(grid_name(grid)){$FT, $TX, $TY, $TZ} on ", summary(architecture(grid)),
                   " with ", size_summary(halo_size(grid)), " halo")
 end
 
@@ -452,6 +453,21 @@ function get_center_and_extents_of_shell(grid::OSSG)
     return (λ_center, φ_center), (extent_λ, extent_φ)
 end
 
+function center_line_summary(grid::OrthogonalSphericalShellGrid)
+    (λ_center, φ_center), _ = get_center_and_extents_of_shell(grid)
+    λ_center = round(λ_center, digits=4)
+    φ_center = round(φ_center, digits=4)
+    λ_center = ifelse(λ_center ≈ 0, 0, λ_center)
+    φ_center = ifelse(φ_center ≈ 0, 0, φ_center)
+    if φ_center ≈ 90
+        return "centered at: North Pole, (λ, φ) = (" * prettysummary(λ_center) * ", " * prettysummary(φ_center) * ")"
+    elseif φ_center ≈ -90
+        return "centered at: South Pole, (λ, φ) = (" * prettysummary(λ_center) * ", " * prettysummary(φ_center) * ")"
+    else
+        return "centered at (λ, φ) = (" * prettysummary(λ_center) * ", " * prettysummary(φ_center) * ")"
+    end
+end
+
 function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
     TX, TY, TZ = topology(grid)
     Nx, Ny, Nz = size(grid)
@@ -460,23 +476,9 @@ function Base.show(io::IO, grid::OrthogonalSphericalShellGrid, withsummary=true)
 
     Ωz = domain(topology(grid, 3)(), Nz, grid.z.cᵃᵃᶠ)
 
-    (λ_center, φ_center), (extent_λ, extent_φ) = get_center_and_extents_of_shell(grid)
+    _, (extent_λ, extent_φ) = get_center_and_extents_of_shell(grid)
 
-    λ_center = round(λ_center, digits=4)
-    φ_center = round(φ_center, digits=4)
-
-    λ_center = ifelse(λ_center ≈ 0, 0.0, λ_center)
-    φ_center = ifelse(φ_center ≈ 0, 0.0, φ_center)
-
-    center_str = "centered at (λ, φ) = (" * prettysummary(λ_center) * ", " * prettysummary(φ_center) * ")"
-
-    if φ_center ≈ 90
-        center_str = "centered at: North Pole, (λ, φ) = (" * prettysummary(λ_center) * ", " * prettysummary(φ_center) * ")"
-    end
-
-    if φ_center ≈ -90
-        center_str = "centered at: South Pole, (λ, φ) = (" * prettysummary(λ_center) * ", " * prettysummary(φ_center) * ")"
-    end
+    center_str = center_line_summary(grid)
 
     λ_summary = "$(TX)  extent $(prettysummary(extent_λ)) degrees"
     φ_summary = "$(TY)  extent $(prettysummary(extent_φ)) degrees"
