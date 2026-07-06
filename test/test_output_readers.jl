@@ -711,19 +711,31 @@ function test_interpolation_with_in_memory_backends(filepath_sine)
         @test fts_clp[Time(t)][1, 1, 1] ≈ fts_clp[end][1, 1, 1]
     end
 
+    # Same identity with decreasing t, which slides the in-memory window backward
+    for time in reverse(0:0.3:last(fts.times))
+        tidx = findfirst(fts.times .> time)
+        if !isnothing(tidx)
+            t⁻ = fts.times[tidx - 1]
+            t⁺ = fts.times[tidx]
+            Δt⁺ = (time - t⁻) / (t⁺ - t⁻)
+            @test fts_lin[Time(time)][1, 1, 1] ≈ (sinf(t⁻) * (1 - Δt⁺) + sinf(t⁺) * Δt⁺)
+        end
+    end
 
     # Global Time-indexing of a reduced-location series returns a computed Field
     # with FixedTime status (interpolation computes pointwise in a single kernel)
-    grid2 = RectilinearGrid(size=(4, 4, 4), extent=(1, 1, 1))
-    times2 = 0:1.0:3
-    s = FieldTimeSeries{Center, Center, Nothing}(grid2, times2)
-    for n in 1:length(times2)
-        set!(s[n], (x, y) -> n * y)
+    for arch in archs
+        grid = RectilinearGrid(arch, size=(4, 4, 4), extent=(1, 1, 1))
+        times = 0:1.0:3
+        s = FieldTimeSeries{Center, Center, Nothing}(grid, times)
+        for n in 1:length(times)
+            set!(s[n], (x, y) -> n * y)
+        end
+        fs = s[Time(1.5)]
+        @test location(fs) == (Center, Center, Nothing)
+        @test fs.status.time == 1.5
+        @test Array(interior(fs))[1, 2, 1] ≈ 2.5 * 1.5 / 4
     end
-    fs = s[Time(1.5)]
-    @test location(fs) == (Center, Center, Nothing)
-    @test fs.status.time == 1.5
-    @test CUDA.@allowscalar fs[1, 2, 1] ≈ 2.5 * 1.5 / 4
 
     return nothing
 end
