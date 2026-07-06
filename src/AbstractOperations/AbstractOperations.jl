@@ -56,6 +56,17 @@ support `FieldTimeSeries` arguments just like the default operators do.
 """
 add_time_series_methods!(op, arity) = nothing
 
+"""
+$(TYPEDSIGNATURES)
+
+Validate that `a` may be an operand of an `AbstractOperation`, returning `a`.
+
+The fallback validates everything. Four-dimensional fields like `FieldTimeSeries`
+extend `validate_operand` to throw an error, since `AbstractOperation`s are
+three-dimensional and would silently drop the time dimension of their operands.
+"""
+@inline validate_operand(a) = a
+
 include("grid_validation.jl")
 include("grid_metrics.jl")
 include("metric_field_reductions.jl")
