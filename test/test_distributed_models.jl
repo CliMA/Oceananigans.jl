@@ -591,6 +591,16 @@ end
             sum!(c_reduced, c)
             @test @allowscalar c_reduced[1, 1, 1] == 1*N + 2*N + 3*N + 4*N
 
+            # Global reductions used by ConjugateGradientPoissonSolver: the
+            # convergence norm, the search-direction dot products, and the
+            # zero-mean gauge condition all reduce across ranks.
+            Ntot = 4N # total number of grid points across the 4 ranks
+            @test dot(c, c) == (1^2 + 2^2 + 3^2 + 4^2) * N
+            @test norm(c) == sqrt((1^2 + 2^2 + 3^2 + 4^2) * N)
+            @test mean(c) == (1 + 2 + 3 + 4) * N / Ntot
+            @test minimum(c) == 1
+            @test maximum(c) == 4
+
             cbool = CenterField(grid, Bool)
             cbool_reduced = Field{Nothing, Nothing, Nothing}(grid, Bool)
             bool_val = arch.local_rank == 0 ? true : false
