@@ -7,7 +7,7 @@ export
     ConjugateGradientSolver,
     KrylovSolver,
     FreeSurfaceLaplacian,
-    fft_free_surface_preconditioner,
+    fourier_tridiagonal_free_surface_solver,
     no_gauge_enforcement!,
     AbstractHomogeneousNeumannFormulation
 
@@ -17,8 +17,8 @@ using KernelAbstractions: @kernel, @index
 
 using Oceananigans.Architectures: Architectures, CPU, GPU, architecture, on_architecture
 using Oceananigans.BoundaryConditions: fill_halo_regions!
-using Oceananigans.Fields: AbstractField, CenterField, Field, field, interior, topology
-using Oceananigans.Grids: AbstractGrid, Bounded, Center, Flat, Periodic,
+using Oceananigans.Fields: AbstractField, CenterField, field, topology
+using Oceananigans.Grids: AbstractGrid, Bounded, Flat, Periodic,
                           XYRegularRG, XZRegularRG, YZRegularRG, XYZRegularRG,
                           RectilinearGrid, RegularVerticalCoordinate, inactive_cell
 using Oceananigans.Utils: launch!, worksize
@@ -42,6 +42,7 @@ include("discrete_transforms.jl")
 include("plan_transforms.jl")
 include("fft_based_poisson_solver.jl")
 include("fourier_tridiagonal_poisson_solver.jl")
+include("fourier_tridiagonal_free_surface_solver.jl")
 include("conjugate_gradient_poisson_solver.jl")
 include("krylov_solver.jl")
 
