@@ -2,7 +2,7 @@ include("dependencies_for_runtests.jl")
 
 using Oceananigans.Grids: required_halo_size_x, required_halo_size_y, required_halo_size_z
 using Oceananigans.Solvers: ConjugateGradientPoissonSolver, FreeSurfaceLaplacian,
-                            RobinEigenbasisFormulation,
+                            RobinEigenbasisFormulation, DiagonallyDominantPreconditioner,
                             fourier_tridiagonal_free_surface_solver, no_gauge_enforcement!
 using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid
 using Oceananigans.Models.NonhydrostaticModels: nonhydrostatic_pressure_solver
@@ -330,8 +330,8 @@ using Oceananigans.Models.NonhydrostaticModels: nonhydrostatic_pressure_solver
         @info "  Testing free surface solution agreement between CG and FT solvers..."
 
         # Step a free-surface model and return (η, u, w)
-        function stepped_free_surface_fields(model; Δt=0.01, N=10)
-            set!(model.free_surface.displacement, (x, z) -> 0.05 * cospi(x))
+        function stepped_free_surface_fields(model; Δt=0.01, N=10, displacement=(x, z) -> 0.05 * cospi(x))
+            set!(model.free_surface.displacement, displacement)
             for _ in 1:N
                 time_step!(model, Δt)
             end
@@ -379,6 +379,47 @@ using Oceananigans.Models.NonhydrostaticModels: nonhydrostatic_pressure_solver
             @test isapprox(η_ib[:, :, 1], η_ft[:, :, 1], atol=1e-8)
             @test isapprox(u_ib[:, :, Nz+1:2Nz], u_ft, atol=1e-8)
             @test isapprox(w_ib[:, :, Nz+1:2Nz+1], w_ft, atol=1e-8)
+
+            # Genuinely stretched x + non-flat immersed bottom: the eigenbasis-preconditioned
+            # CG solution matches the DiagonallyDominant-preconditioned solution of the same
+            # operator, and the free-surface Robin handling keeps the iteration count small.
+            stretched_x = [-tanh(2 * (1/2 - ξ)) / tanh(1) for ξ in range(0, 1, length=Nx+1)]
+            stretched_underlying = RectilinearGrid(arch, size=(Nx, 2Nz), x=stretched_x, z=(-2, 0),
+                                                   topology=(Bounded, Flat, Bounded))
+            seamount = ImmersedBoundaryGrid(stretched_underlying, GridFittedBottom(x -> -2 + exp(-8x^2)))
+            eigenbasis_model = NonhydrostaticModel(seamount; free_surface)
+            reference_solver = ConjugateGradientPoissonSolver(seamount;
+                                                              linear_operation = FreeSurfaceLaplacian(),
+                                                              preconditioner = DiagonallyDominantPreconditioner(),
+                                                              enforce_gauge_condition! = no_gauge_enforcement!)
+            reference_model = NonhydrostaticModel(seamount; free_surface, pressure_solver=reference_solver)
+            η_eb, u_eb, w_eb = stepped_free_surface_fields(eigenbasis_model)
+            η_dd, u_dd, w_dd = stepped_free_surface_fields(reference_model)
+            @test iteration(eigenbasis_model.pressure_solver) < 20
+            @test isapprox(η_eb, η_dd, atol=1e-8)
+            @test isapprox(u_eb, u_dd, atol=1e-8)
+            @test isapprox(w_eb, w_dd, atol=1e-8)
+
+            # Genuinely stretched y + immersed bottom (3D): with a y-independent wave the
+            # stretched direction is inert, so the FT solution on the equivalent truncated
+            # regular grid is an exact reference.
+            Ny = 4
+            η₀(x, y, z) = 0.05 * cospi(2x)
+            stretched_y = [tanh(2 * (ξ - 1/2)) / 2tanh(1) + 1/2 for ξ in range(0, 1, length=Ny+1)]
+            underlying_sy = RectilinearGrid(arch, size=(Nx, Ny, 2Nz), x=(0, 1), y=stretched_y, z=(-2, 0),
+                                            topology=(Periodic, Bounded, Bounded))
+            ibg_sy = ImmersedBoundaryGrid(underlying_sy, GridFittedBottom((x, y) -> -1))
+            reference_grid = RectilinearGrid(arch, size=(Nx, Ny, Nz), x=(0, 1), y=(0, 1), z=(-1, 0),
+                                             topology=(Periodic, Bounded, Bounded))
+            ibg_sy_model = NonhydrostaticModel(ibg_sy; free_surface)
+            reference_model = NonhydrostaticModel(reference_grid; free_surface)
+            @test ibg_sy_model.pressure_solver isa ConjugateGradientPoissonSolver
+            @test ibg_sy_model.pressure_solver.conjugate_gradient_solver.preconditioner.tridiagonal_formulation isa RobinEigenbasisFormulation
+            η_sy, u_sy, w_sy = stepped_free_surface_fields(ibg_sy_model; displacement=η₀)
+            η_rf, u_rf, w_rf = stepped_free_surface_fields(reference_model; displacement=η₀)
+            @test isapprox(η_sy[:, :, 1], η_rf[:, :, 1], atol=1e-8)
+            @test isapprox(u_sy[:, :, Nz+1:2Nz], u_rf, atol=1e-8)
+            @test isapprox(w_sy[:, :, Nz+1:2Nz+1], w_rf, atol=1e-8)
         end
     end
 end
