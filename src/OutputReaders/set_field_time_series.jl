@@ -106,6 +106,14 @@ end
 
 set!(fts::InMemoryFTS, value, n::Int) = set!(fts[n], value)
 
+# Set every time slice to the same value.
+function set!(fts::InMemoryFTS, value::Number)
+    for n in time_indices(fts)
+        set!(fts[n], value)
+    end
+    return fts
+end
+
 function set!(fts::InMemoryFTS, fields_vector::AbstractVector{<:AbstractField})
     raw_data = parent(fts)
 
