@@ -163,8 +163,6 @@ fields are cached. Then, for each stage `m`:
 After all substeps, Lagrangian particles are stepped and the `model.clock`s is advanced.
 """
 function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; callbacks=[])
-    @info "SRK time_step: start" iteration=model.clock.iteration Δt
-
     maybe_prepare_first_time_step!(model, Δt, callbacks)
 
     cache_current_fields!(model)
@@ -180,28 +178,20 @@ function time_step!(model::AbstractModel{<:SplitRungeKuttaTimeStepper}, Δt; cal
         Δτ = Δt / β
         model.clock.stage = stage
         model.clock.last_stage_Δt = Δτ
-        @info "SRK time_step: stage start" iteration=model.clock.iteration stage β Δτ
 
         # Perform the substep
-        @info "SRK time_step: rk_substep" iteration=model.clock.iteration stage
         rk_substep!(model, Δτ, callbacks)
-        @info "SRK time_step: rk_substep done" iteration=model.clock.iteration stage
 
         # Step closure prognostics
-        @info "SRK time_step: step_closure_prognostics" iteration=model.clock.iteration stage
         step_closure_prognostics!(model, Δτ)
-        Oceananigans.Architectures.synchronize(Oceananigans.Architectures.architecture(model.grid))
-        @info "SRK time_step: step_closure_prognostics done" iteration=model.clock.iteration stage
+
         # Tick the clock if we ended the stages
         if stage == model.timestepper.Nstages
             tick_time!(model.clock, Δt)
         end
 
         # Update the state
-        @info "SRK time_step: update_state" iteration=model.clock.iteration stage
         update_state!(model, callbacks)
-        @info "SRK time_step: update_state done" iteration=model.clock.iteration stage
-        @info "SRK time_step: stage done" iteration=model.clock.iteration stage
     end
 
     # Step particles

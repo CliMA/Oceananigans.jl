@@ -1,5 +1,4 @@
 using Oceananigans.TurbulenceClosures: implicit_step!
-using Oceananigans.Architectures: synchronize
 using Oceananigans.ImmersedBoundaries: peripheral_node, MutableGridOfSomeKind
 
 import Oceananigans.TimeSteppers: rk_substep!, cache_current_fields!
@@ -32,67 +31,33 @@ The order of operations for explicit free surfaces is:
 8. Advance tracers
 """
 @inline function rk_substep!(model, free_surface, grid, Δτ, callbacks)
-    arch = architecture(grid)
-
     # Compute barotropic and baroclinic tendencies
-    @info "HFSM rk_substep: compute_momentum_flux_bcs" iteration=model.clock.iteration stage=model.clock.stage
     @apply_regionally compute_momentum_flux_bcs!(model)
-    synchronize(arch)
-    @info "HFSM rk_substep: compute_momentum_flux_bcs done" iteration=model.clock.iteration stage=model.clock.stage
 
     # Advance the free surface first
-    @info "HFSM rk_substep: compute_free_surface_tendency" iteration=model.clock.iteration stage=model.clock.stage
     compute_free_surface_tendency!(grid, model, free_surface)
-    synchronize(arch)
-    @info "HFSM rk_substep: compute_free_surface_tendency done" iteration=model.clock.iteration stage=model.clock.stage
-    @info "HFSM rk_substep: step_free_surface" iteration=model.clock.iteration stage=model.clock.stage
     step_free_surface!(free_surface, model, model.timestepper, Δτ)
-    synchronize(arch)
-    @info "HFSM rk_substep: step_free_surface done" iteration=model.clock.iteration stage=model.clock.stage
 
     @apply_regionally begin
-        @info "HFSM rk_substep: compute_transport_velocities" iteration=model.clock.iteration stage=model.clock.stage
         compute_transport_velocities!(model, free_surface)
-        synchronize(arch)
-        @info "HFSM rk_substep: compute_transport_velocities done" iteration=model.clock.iteration stage=model.clock.stage
-        @info "HFSM rk_substep: rk_substep_velocities" iteration=model.clock.iteration stage=model.clock.stage
         rk_substep_velocities!(model.velocities, model, Δτ)
-        synchronize(arch)
-        @info "HFSM rk_substep: rk_substep_velocities done" iteration=model.clock.iteration stage=model.clock.stage
-        @info "HFSM rk_substep: mask_immersed_horizontal_velocities" iteration=model.clock.iteration stage=model.clock.stage
         mask_immersed_horizontal_velocities!(model.velocities)
-        synchronize(arch)
-        @info "HFSM rk_substep: mask_immersed_horizontal_velocities done" iteration=model.clock.iteration stage=model.clock.stage
     end
+
     # Mask and fill velocity halos
     u, v, _ = model.velocities
-    @info "HFSM rk_substep: fill_halo_regions velocities" iteration=model.clock.iteration stage=model.clock.stage
     fill_halo_regions!((u, v), model.clock, fields(model); async=true)
-    synchronize(arch)
-    @info "HFSM rk_substep: fill_halo_regions velocities done" iteration=model.clock.iteration stage=model.clock.stage
 
     @apply_regionally begin
         # compute tracer tendencies
-        @info "HFSM rk_substep: compute_tracer_tendencies" iteration=model.clock.iteration stage=model.clock.stage
         compute_tracer_tendencies!(model)
-        synchronize(arch)
-        @info "HFSM rk_substep: compute_tracer_tendencies done" iteration=model.clock.iteration stage=model.clock.stage
 
         # Advance grid
-        @info "HFSM rk_substep: rk_substep_grid" iteration=model.clock.iteration stage=model.clock.stage
         rk_substep_grid!(grid, model, model.vertical_coordinate, Δτ)
-        synchronize(arch)
-        @info "HFSM rk_substep: rk_substep_grid done" iteration=model.clock.iteration stage=model.clock.stage
 
         # Correct for the updated barotropic mode
-        @info "HFSM rk_substep: correct_barotropic_mode" iteration=model.clock.iteration stage=model.clock.stage
         correct_barotropic_mode!(model, Δτ)
-        synchronize(arch)
-        @info "HFSM rk_substep: correct_barotropic_mode done" iteration=model.clock.iteration stage=model.clock.stage
-        @info "HFSM rk_substep: rk_substep_tracers" iteration=model.clock.iteration stage=model.clock.stage
         rk_substep_tracers!(model.tracers, model, Δτ)
-        synchronize(arch)
-        @info "HFSM rk_substep: rk_substep_tracers done" iteration=model.clock.iteration stage=model.clock.stage
     end
 
     return nothing
