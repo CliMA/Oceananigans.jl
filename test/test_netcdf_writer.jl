@@ -769,7 +769,7 @@ function test_netcdf_rectilinear_grid_fitted_bottom(arch, bottom_boundary_type)
     @test dimsize(ds_n[:inactive_nodes_cfc]) == (x_caa=Nx,     y_afa=Ny + 1, z_aac=Nz)
     @test dimsize(ds_n[:inactive_nodes_ccf]) == (x_caa=Nx,     y_aca=Ny,     z_aaf=Nz + 1)
 
-    @test all(ds_n[:bottom_height][:, :] .≈ Array(interior(grid.immersed_boundary.bottom_height)))
+    @test all(ds_n[:bottom_height][:, :] .≈ Array(bottom_height_interior(grid.immersed_boundary.bottom_height)))
 
     close(ds_n)
     rm(filepath_no_halos)
@@ -798,7 +798,7 @@ function test_netcdf_rectilinear_grid_fitted_bottom(arch, bottom_boundary_type)
     @test dimsize(ds_s[:inactive_nodes_cfc]) == (x_caa=nx, y_afa=ny, z_aac=nz)
     @test dimsize(ds_s[:inactive_nodes_ccf]) == (x_caa=nx, y_aca=ny, z_aaf=nz)
 
-    @test all(ds_s[:bottom_height][:, :] .≈ Array(interior(grid.immersed_boundary.bottom_height, i_slice, j_slice)))
+    @test all(ds_s[:bottom_height][:, :] .≈ Array(bottom_height_interior(grid.immersed_boundary.bottom_height)[i_slice, j_slice, :]))
 
     close(ds_s)
     rm(filepath_sliced)
@@ -939,7 +939,7 @@ function test_netcdf_latlon_grid_fitted_bottom(arch, bottom_boundary_type)
     @test dimsize(ds_n[:inactive_nodes_cfc]) == (λ_caa=Nλ,     φ_afa=Nφ + 1, z_aac=Nz)
     @test dimsize(ds_n[:inactive_nodes_ccf]) == (λ_caa=Nλ,     φ_aca=Nφ,     z_aaf=Nz + 1)
 
-    @test all(ds_n[:bottom_height][:, :] .≈ Array(interior(grid.immersed_boundary.bottom_height)))
+    @test all(ds_n[:bottom_height][:, :] .≈ Array(bottom_height_interior(grid.immersed_boundary.bottom_height)))
 
     close(ds_n)
     rm(filepath_no_halos)
@@ -968,7 +968,7 @@ function test_netcdf_latlon_grid_fitted_bottom(arch, bottom_boundary_type)
     @test dimsize(ds_s[:inactive_nodes_cfc]) == (λ_caa=nλ, φ_afa=nφ, z_aac=nz)
     @test dimsize(ds_s[:inactive_nodes_ccf]) == (λ_caa=nλ, φ_aca=nφ, z_aaf=nz)
 
-    @test all(ds_s[:bottom_height][:, :] .≈ Array(interior(grid.immersed_boundary.bottom_height, i_slice, j_slice)))
+    @test all(ds_s[:bottom_height][:, :] .≈ Array(bottom_height_interior(grid.immersed_boundary.bottom_height)[i_slice, j_slice, :]))
 
     close(ds_s)
     rm(filepath_sliced)
@@ -3263,8 +3263,9 @@ end
 
 using Oceananigans.OrthogonalSphericalShellGrids: TripolarGrid, RotatedLatitudeLongitudeGrid,
                                                   ConformalCubedSpherePanelGrid
-using Oceananigans.OutputWriters: reconstruct_grid
-using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom
+using Oceananigans.OutputWriters: reconstruct_grid, materialize_from_netcdf
+using Oceananigans.ImmersedBoundaries: ImmersedBoundaryGrid, GridFittedBottom, bottom_height_interior,
+                                       CenterImmersedCondition, InterfaceImmersedCondition
 
 function test_netcdf_tripolar_grid_output(arch)
     grid = TripolarGrid(arch, size=(20, 16, 4), z=(-100, 0))
@@ -3726,6 +3727,16 @@ function test_netcdf_tripolar_grid_reconstruction(arch)
     return nothing
 end
 
+function test_materialize_from_netcdf_strings()
+    @test materialize_from_netcdf("(Oceananigans.Grids.Periodic, Oceananigans.Grids.Bounded)") === (Periodic, Bounded)
+    @test materialize_from_netcdf("Oceananigans.Architectures.CPU()") isa CPU
+    @test materialize_from_netcdf("Float64") === Float64
+
+    @test materialize_from_netcdf("CenterImmersedCondition()") isa CenterImmersedCondition
+    @test materialize_from_netcdf("InterfaceImmersedCondition()") isa InterfaceImmersedCondition
+    return nothing
+end
+
 @testset "NetCDF output writer" begin
     @info "Testing NetCDF output writer..."
 
@@ -3889,5 +3900,10 @@ end
             @info "  Testing MutableVerticalDiscretization output [$A]..."
             test_netcdf_rectilinear_mvd_output(arch)
         end
+    end
+
+    @testset "Materialize grid-reconstruction strings from NetCDF" begin
+        @info "  Testing materialize_from_netcdf with qualified and bare type names..."
+        test_materialize_from_netcdf_strings()
     end
 end

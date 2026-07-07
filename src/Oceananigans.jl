@@ -13,6 +13,7 @@ export
     Periodic, Bounded, Flat,
     RightConnected, LeftConnected, FullyConnected,
     RightFaceFolded, RightCenterFolded,
+    slice,
     RectilinearGrid, LatitudeLongitudeGrid, OrthogonalSphericalShellGrid,
     TripolarGrid, RotatedLatitudeLongitudeGrid, LambertConformalConicGrid,
     LambertConformalConic, lcc_forward, lcc_inverse, lcc_scale_factor,
@@ -28,7 +29,7 @@ export
     # Immersed boundaries
     ImmersedBoundaryGrid,
     GridFittedBoundary, GridFittedBottom, PartialCellBottom,
-    ImmersedBoundaryCondition,
+    ImmersedBoundaryCondition, bottom_height_field,
 
     # Distributed
     Distributed, Partition,
@@ -140,10 +141,12 @@ function __init__()
     Threads.nthreads() > 1 && @info "Oceananigans will use $(Threads.nthreads()) threads"
 end
 
+using BFloat16s: BFloat16
+
 # List of fully-supported floating point types where applicable.
 # Currently used only in the Advection module to specialize
 # reconstruction schemes (WENO, UpwindBiased, and Centered).
-const fully_supported_float_types = (Float32, Float64, BigFloat)
+const fully_supported_float_types = (Float32, Float64, BigFloat, BFloat16)
 
 #####
 ##### Default settings for constructors

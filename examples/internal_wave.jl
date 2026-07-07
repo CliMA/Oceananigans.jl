@@ -127,6 +127,8 @@ simulation.output_writers[:velocities] = JLD2Writer(model, model.velocities; fil
 
 # With initial conditions set and an output writer at the ready, we run the simulation
 
+## Fail the docs build if this simulation produces NaNs #hide
+Oceananigans.Diagnostics.erroring_NaNChecker!(simulation) #hide
 run!(simulation)
 
 # ## Animating a propagating packet

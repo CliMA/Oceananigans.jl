@@ -148,7 +148,8 @@ function step_free_surface!(free_surface::ImplicitFreeSurface, model, timesteppe
     end
 
     fill_halo_regions!((u, v), model.clock, fields(model))
-    compute_implicit_free_surface_right_hand_side!(rhs, solver, g, Δt, model.velocities, η)
+    @apply_regionally compute_implicit_free_surface_right_hand_side!(rhs, solver, g, Δt, model.velocities, η,
+                                                                     model.forcing.η, model.clock, fields(model))
 
     # Solve for the free surface at tⁿ⁺¹
     start_time = time_ns()
