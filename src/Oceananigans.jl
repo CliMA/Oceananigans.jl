@@ -69,6 +69,8 @@ export
     ScalarDiffusivity,
     VerticalScalarBiharmonicDiffusivity,
     HorizontalScalarBiharmonicDiffusivity,
+    HorizontalDivergenceScalarBiharmonicDiffusivity,
+    HorizontalVectorInvariantScalarBiharmonicDiffusivity,
     ScalarBiharmonicDiffusivity,
     SmagorinskyLilly,
     DynamicSmagorinsky,
