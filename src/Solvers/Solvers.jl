@@ -39,6 +39,7 @@ include("plan_transforms.jl")
 include("fft_based_poisson_solver.jl")
 include("fourier_tridiagonal_poisson_solver.jl")
 include("conjugate_gradient_poisson_solver.jl")
+include("multigrid_preconditioner.jl")
 include("krylov_solver.jl")
 
 const GridWithFFTSolver = Union{XYZRegularRG, XYRegularRG, XZRegularRG, YZRegularRG}
