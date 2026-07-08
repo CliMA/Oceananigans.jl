@@ -34,11 +34,12 @@ References
 using Oceananigans
 using Oceananigans.BoundaryConditions: NormalRadiation
 
-rad = NormalRadiation(outflow_timescale = 360 * 86400, inflow_timescale = 86400)
-rad.outflow_timescale
+NormalRadiation(outflow_timescale = 360 * 86400, inflow_timescale = 86400)
 
 # output
-3.1104e7
+NormalRadiation{Float64}
+├── inflow_timescale: 86400.0
+└── outflow_timescale: 3.1104e7
 ```
 """
 struct NormalRadiation{FT, S}
@@ -64,6 +65,14 @@ Adapt.adapt_structure(to, r::NormalRadiation) =
               adapt(to, r.φᵇ),
               adapt(to, r.φ₁),
               adapt(to, r.φ₁ˡ))
+
+Base.summary(::NormalRadiation{FT}) where FT = "NormalRadiation{$FT}"
+
+function Base.show(io::IO, r::NormalRadiation)
+    print(io, summary(r), '\n')
+    print(io, "├── inflow_timescale: ",  prettysummary(r.inflow_timescale), '\n')
+    print(io, "└── outflow_timescale: ", prettysummary(r.outflow_timescale))
+end
 
 const RVBC  = BoundaryCondition{<:Value{<:NormalRadiation}}
 const RNFBC = BoundaryCondition{<:NormalFlow{<:NormalRadiation}}

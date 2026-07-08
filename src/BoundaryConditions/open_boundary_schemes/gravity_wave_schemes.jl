@@ -34,11 +34,11 @@ References
 using Oceananigans
 using Oceananigans.BoundaryConditions: GravityWaveRadiation
 
-gravity_wave = GravityWaveRadiation()
-typeof(gravity_wave)
+GravityWaveRadiation()
 
 # output
 GravityWaveRadiation{Float64}
+└── gravitational_acceleration: 9.80665
 ```
 """
 struct GravityWaveRadiation{FT}
@@ -53,6 +53,13 @@ Adapt.adapt_structure(to, f::GravityWaveRadiation) =
     GravityWaveRadiation(adapt(to, f.gravitational_acceleration))
 
 const GWNFBC = BoundaryCondition{<:NormalFlow{<:GravityWaveRadiation}}
+
+Base.summary(::GravityWaveRadiation{FT}) where FT = "GravityWaveRadiation{$FT}"
+
+function Base.show(io::IO, f::GravityWaveRadiation)
+    print(io, summary(f), '\n')
+    print(io, "└── gravitational_acceleration: ", prettysummary(f.gravitational_acceleration))
+end
 
 """
     SurfaceWaveRadiation(; gravitational_acceleration = defaults.gravitational_acceleration)
@@ -78,6 +85,17 @@ References
 ==========
 * Chapman, D. C. (1985). "Numerical treatment of cross-shelf open boundaries in a
   barotropic coastal ocean model." Journal of Physical Oceanography, 15(8), 1060-1075.
+
+```jldoctest
+using Oceananigans
+using Oceananigans.BoundaryConditions: SurfaceWaveRadiation
+
+SurfaceWaveRadiation()
+
+# output
+SurfaceWaveRadiation{Float64}
+└── gravitational_acceleration: 9.80665
+```
 """
 struct SurfaceWaveRadiation{FT}
     gravitational_acceleration :: FT
@@ -91,6 +109,13 @@ Adapt.adapt_structure(to, c::SurfaceWaveRadiation) =
     SurfaceWaveRadiation(adapt(to, c.gravitational_acceleration))
 
 const IGWVBC = BoundaryCondition{<:Value{<:SurfaceWaveRadiation}}
+
+Base.summary(::SurfaceWaveRadiation{FT}) where FT = "SurfaceWaveRadiation{$FT}"
+
+function Base.show(io::IO, c::SurfaceWaveRadiation)
+    print(io, summary(c), '\n')
+    print(io, "└── gravitational_acceleration: ", prettysummary(c.gravitational_acceleration))
+end
 
 @inline gravity_wave_boundary_condition(bc::GWNFBC) = true
 @inline gravity_wave_boundary_condition(bc)         = false
