@@ -306,44 +306,42 @@ Kernels run on the default stream.
 See [configure_kernel](@ref) for more information and also a list of the
 keyword arguments `kw`.
 """
-@inline launch!(arch, grid, workspec, kernel!, kernel_args...; kwargs...) = launch!(arch, grid, workspec, kernel!, kernel_args; kwargs...)
+@inline launch!(arch, grid, workspec, kernel!, kernel_args::Vararg{Any, N}; kwargs...) where N = _launch!(arch, grid, workspec, kernel!, kernel_args...; kwargs...)
 
-@inline launch!(arch, grid, workspec, kernel!, kernel_args; kwargs...) = _launch!(arch, grid, workspec, kernel!, kernel_args; kwargs...)
+@inline launch!(arch, grid, workspec::NTuple{N, Int}, kernel!, kernel_args::Vararg{Any, M}; kwargs...) where {N, M} =
+    _launch!(arch, grid, workspec, kernel!, kernel_args...; kwargs...)
 
-@inline launch!(arch, grid, workspec::NTuple{N, Int}, kernel!, kernel_args; kwargs...) where N =
-    _launch!(arch, grid, workspec, kernel!, kernel_args; kwargs...)
-
-@inline function launch!(arch, grid, workspec_tuple::Tuple, kernel!, kernel_args; kwargs...)
-    _launch!(arch, grid, first(workspec_tuple), kernel!, kernel_args; kwargs...)
-    launch!(arch, grid, Base.tail(workspec_tuple), kernel!, kernel_args; kwargs...)
+@inline function launch!(arch, grid, workspec_tuple::Tuple, kernel!, kernel_args::Vararg{Any, N}; kwargs...) where N
+    _launch!(arch, grid, first(workspec_tuple), kernel!, kernel_args...; kwargs...)
+    launch!(arch, grid, Base.tail(workspec_tuple), kernel!, kernel_args...; kwargs...)
     return nothing
 end
 
-@inline launch!(arch, grid, ::Tuple{}, kernel!, args; kwargs...) = nothing
+@inline launch!(arch, grid, ::Tuple{}, kernel!, kernel_args...; kwargs...) = nothing
 
-@inline launch!(arch, grid, workspec::Symbol, kernel!, args; kw...) = _launch!(arch, grid, Val(workspec), kernel!, args; kw...)
-@inline launch!(arch, grid, workspec::Val, kernel!, args; kw...) = _launch!(arch, grid, workspec, kernel!, args; kw...)
+@inline launch!(arch, grid, workspec::Symbol, kernel!, kernel_args::Vararg{Any, N}; kw...) where N = _launch!(arch, grid, Val(workspec), kernel!, kernel_args...; kw...)
+@inline launch!(arch, grid, workspec::Val, kernel!, kernel_args::Vararg{Any, N}; kw...) where N = _launch!(arch, grid, workspec, kernel!, kernel_args...; kw...)
 
-@inline launch_split_maps!(::Tuple{}, arch, grid, workspec, kernel!, kernel_args; kw...) = nothing
+@inline launch_split_maps!(::Tuple{}, arch, grid, workspec, kernel!, kernel_args::Vararg{Any, N}; kw...) where N = nothing
 
-@inline function launch_split_maps!(maps::Tuple, arch, grid, workspec, kernel!, kernel_args; exclude_periphery = false, reduced_dimensions = ())
+@inline function launch_split_maps!(maps::Tuple, arch, grid, workspec, kernel!, kernel_args::Vararg{Any, N}; exclude_periphery = false, reduced_dimensions = ()) where N
     cells_map = first(maps)
-    isnothing(cells_map) || _launch!(arch, grid, workspec, kernel!, kernel_args; exclude_periphery, reduced_dimensions, active_cells_map = cells_map)
-    launch_split_maps!(Base.tail(maps), arch, grid, workspec, kernel!, kernel_args; exclude_periphery, reduced_dimensions)
+    isnothing(cells_map) || _launch!(arch, grid, workspec, kernel!, kernel_args...; exclude_periphery, reduced_dimensions, active_cells_map = cells_map)
+    launch_split_maps!(Base.tail(maps), arch, grid, workspec, kernel!, kernel_args...; exclude_periphery, reduced_dimensions)
     return nothing
 end
 
 # Inner interface
-@inline function _launch!(arch, grid, workspec, kernel!, kernel_args;
+@inline function _launch!(arch, grid, workspec, kernel!, kernel_args::Vararg{Any, N};
                           exclude_periphery = false,
                           reduced_dimensions = (),
-                          active_cells_map = nothing)
+                          active_cells_map = nothing) where N
 
     active_map = possibly_load_active_cells_map(active_cells_map, grid, workspec, exclude_periphery)
 
     # When active_cells_map is a NamedTuple (distributed grids with split maps), launch once for each non-nothing sub-map.
     if active_map isa NamedTuple
-        launch_split_maps!(values(active_map), arch, grid, workspec, kernel!, kernel_args; exclude_periphery, reduced_dimensions)
+        launch_split_maps!(values(active_map), arch, grid, workspec, kernel!, kernel_args...; exclude_periphery, reduced_dimensions)
         return nothing
     end
 
